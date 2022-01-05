@@ -16,6 +16,7 @@ Strip::~Strip(void){
 }
 
 StripCache::StripCache() :  strips(nullptr),
+							m_tgrid_w(0),
 							m_y0(0),
 							m_th(0),
 							m_tgrid_h(0),
@@ -33,7 +34,8 @@ StripCache::~StripCache()
 		delete strips[i];
 	delete[] strips;
 }
-void StripCache::init(uint32_t th,
+void StripCache::init(uint16_t tgrid_w,
+						uint32_t th,
 					  uint16_t tgrid_h,
 					  GrkImage *outputImage,
 					  void* serialize_d,
@@ -45,6 +47,7 @@ void StripCache::init(uint32_t th,
 	serialize_data = serialize_d;
 	serializeBufferCallback = serializeBufferCb;
 	reclaimCallback = reclaimCb;
+	m_tgrid_w = tgrid_w;
 	m_y0 = outputImage->y0;
 	m_th = th;
 	m_tgrid_h = tgrid_h;
@@ -56,38 +59,44 @@ void StripCache::init(uint32_t th,
 bool StripCache::composite(GrkImage *tileImage){
 	uint16_t stripId = (uint16_t)(((tileImage->y0 - m_y0) + m_th - 1) / m_th);
 	assert(stripId < m_tgrid_h);
-	auto img = strips[stripId]->stripImg;
+	auto strip = strips[stripId];
+	auto img = strip->stripImg;
 	uint64_t dataLength = m_packedRowBytes * (tileImage->y1 - tileImage->y0);
-
-	std::unique_lock<std::mutex> lk(bufCacheMutex);
-	if (!img->interleavedData)
-		img->interleavedData = getBuffer(dataLength).data;
-
+	if (strip->tileCounter == 0)
+	{
+		std::unique_lock<std::mutex> lk(bufCacheMutex);
+		if (!img->interleavedData)
+			img->interleavedData = getBuffer(dataLength).data;
+	}
 	bool rc =  img->compositeInterleaved(tileImage);
-	if (rc)
-		strips[stripId]->tileCounter++;
-	if (strips[stripId]->tileCounter == m_tgrid_h){
+	if (!rc)
+		return false;
+	if (++(strip->tileCounter) == m_tgrid_w){
 		grk_simple_buf buf;
 		buf.data = img->interleavedData;
 		buf.dataLength = dataLength;
 		serializeBufferCallback(&buf, stripId,serialize_data);
-		putBuffer(buf);
-		img->interleavedData = nullptr;
+		{
+			std::unique_lock<std::mutex> lk(bufCacheMutex);
+			putBuffer(buf);
+			img->interleavedData = nullptr;
+		}
 	}
 
 	return rc;
 }
 grk_simple_buf StripCache::getBuffer(uint64_t len){
 	for (auto iter = bufCache.begin(); iter != bufCache.end(); ++iter){
-		if (iter->dataLength >= len){
+		if (iter->maxDataLength >= len){
 			auto b = *iter;
+			b.dataLength = len;
 			bufCache.erase(iter);
 			return b;
 		}
 	}
 	grk_simple_buf rc;
 	rc.data = (uint8_t*)grkAlignedMalloc(len);
-	rc.dataLength = len;
+	rc.maxDataLength = len;
 
 	return rc;
 }

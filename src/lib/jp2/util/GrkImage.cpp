@@ -333,18 +333,7 @@ void GrkImage::postReadHeader(CodingParams *cp){
 		rowsPerStrip =y1 - y0;
 }
 bool GrkImage::allocCompositeData(bool wholeTileDecompress, CodingParams *cp){
-	if (wholeTileDecompress && canAllocInterleaved(cp)){
-		uint64_t stride =  grk::PtoI<int32_t>::getPackedBytes(numcomps, comps->w, comps->prec);
-		uint64_t dataSize = (uint64_t)stride * comps->h;
-
-		interleavedData = (uint8_t*)grkAlignedMalloc(dataSize);
-		if(!interleavedData)
-		{
-			GRK_ERROR("Failed to allocate aligned memory buffer of dimensions %u x %u",
-						   stride, comps->h);
-			return false;
-		}
-	} else {
+	if (!wholeTileDecompress || !canAllocInterleaved(cp)){
 		for(uint32_t i = 0; i < numcomps; i++)
 		{
 			auto destComp = comps + i;

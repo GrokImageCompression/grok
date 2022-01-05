@@ -2,6 +2,7 @@
 
 #include <vector>
 #include <mutex>
+#include <atomic>
 
 namespace grk {
 
@@ -9,7 +10,7 @@ struct Strip {
 	Strip(GrkImage *outputImage, uint16_t id, uint32_t tileHeight);
 	~Strip(void);
 	GrkImage* stripImg;
-	uint16_t tileCounter;
+	std::atomic<uint32_t> tileCounter;
 };
 
 class StripCache {
@@ -17,7 +18,8 @@ public:
 	StripCache(void);
 	virtual ~StripCache();
 
-	void init(uint32_t th,
+	void init( uint16_t tgrid_w,
+				uint32_t th,
 			  uint16_t tgrid_h,
 			  GrkImage *outputImg,
 			  void* serialize_d,
@@ -30,6 +32,7 @@ private:
 	std::vector<grk_simple_buf> bufCache;
 
 	Strip **strips;
+	uint16_t m_tgrid_w;
 	uint32_t m_y0;
 	uint32_t m_th;
 	uint16_t m_tgrid_h;

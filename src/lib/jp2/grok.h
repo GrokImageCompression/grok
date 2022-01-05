@@ -760,6 +760,7 @@ typedef struct _grk_header_info
 typedef struct _grk_simple_buf {
 	uint8_t *data;
 	uint64_t dataLength;
+	uint64_t maxDataLength;
 } grk_simple_buf;
 
 

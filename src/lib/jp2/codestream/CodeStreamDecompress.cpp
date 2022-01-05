@@ -468,7 +468,8 @@ bool CodeStreamDecompress::decompressTiles(void)
 	if (!createOutputImage())
 		return false;
 
-	m_stripCache.init(m_cp.t_height,
+	m_stripCache.init(m_cp.t_grid_width,
+					  m_cp.t_height,
 					  m_cp.t_grid_height,
 					  m_outputImage,
 					  serialize_data,
@@ -541,14 +542,13 @@ bool CodeStreamDecompress::decompressTiles(void)
 				{
 					numTilesDecompressed++;
 					if(m_multiTile && processor->getImage()) {
-						if (!m_outputImage->composite(processor->getImage()))
-							success = false;
-						/*
 						if (m_outputImage->canAllocInterleaved(&m_cp)) {
 							if (!m_stripCache.composite(processor->getImage()))
 								success = false;
+						} else {
+							if (!m_outputImage->composite(processor->getImage()))
+								success = false;
 						}
-						*/
 					}
 					//if cache strategy set to none, then delete image
 					if (!success || m_tileCache->getStrategy() == GRK_TILE_CACHE_NONE){

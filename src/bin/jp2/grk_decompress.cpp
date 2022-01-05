@@ -1036,6 +1036,7 @@ int GrkDecompress::preProcess(grk_plugin_decompress_callback_info* info)
 							  : info->output_file_name;
 	auto cod_format = (GRK_SUPPORTED_FILE_FMT)(
 		info->cod_format != GRK_UNK_FMT ? info->cod_format : parameters->cod_format);
+	bool canEncodeHeaderBeforeDecompress = false;
 	switch(cod_format)
 	{
 		case GRK_PXM_FMT:
@@ -1249,8 +1250,13 @@ int GrkDecompress::preProcess(grk_plugin_decompress_callback_info* info)
 		spdlog::error("grk_decompress: failed to set the decompressed area");
 		goto cleanup;
 	}
-	//if (cod_format == GRK_TIF_FMT && !encodeHeader(info))
-	//	goto cleanup;
+	canEncodeHeaderBeforeDecompress =	info->image->decompressFormat == GRK_TIF_FMT &&
+										!info->image->forceRGB &&
+										!info->image->precision &&
+										!info->image->upsample &&
+					(info->image->color_space == GRK_CLRSPC_SRGB ||info->image->color_space == GRK_CLRSPC_GRAY);
+	if (canEncodeHeaderBeforeDecompress && !encodeHeader(info))
+		goto cleanup;
 	// decompress all tiles
 	if(!parameters->singleTileDecompress)
 	{
@@ -1266,7 +1272,7 @@ int GrkDecompress::preProcess(grk_plugin_decompress_callback_info* info)
 			goto cleanup;
 		}
 	}
-	if (/*cod_format != GRK_TIF_FMT && */!encodeHeader(info))
+	if (!canEncodeHeaderBeforeDecompress && !encodeHeader(info))
 		goto cleanup;
 	failed = false;
 cleanup:

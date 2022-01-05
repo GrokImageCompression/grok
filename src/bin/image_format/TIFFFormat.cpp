@@ -300,6 +300,8 @@ bool TIFFFormat::encodePixels(uint8_t *data, uint64_t dataLen, uint32_t stripId)
 }
 bool TIFFFormat::encodeRows(uint32_t rowsToWrite)
 {
+	if (encodeState & IMAGE_FORMAT_ENCODED_PIXELS)
+		return true;
 	bool success = false;
 	uint32_t height = m_image->comps[0].h;
 	rowsToWrite = (std::min)(rowsToWrite,height - rowsWritten);
