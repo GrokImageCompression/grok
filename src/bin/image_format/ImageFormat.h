@@ -56,7 +56,7 @@ class ImageFormat : public IImageFormat
 
 	uint8_t getImagePrec(void);
 	uint16_t getImageNumComps(void);
-
+	GRK_COLOR_SPACE getImageColourSpace(void);
 
 	grk_image* m_image;
 	uint32_t m_rowCount;

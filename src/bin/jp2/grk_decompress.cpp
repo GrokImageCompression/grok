@@ -1266,7 +1266,7 @@ int GrkDecompress::preProcess(grk_plugin_decompress_callback_info* info)
 			goto cleanup;
 		}
 	}
-	if (!encodeHeader(info))
+	if (/*cod_format != GRK_TIF_FMT && */!encodeHeader(info))
 		goto cleanup;
 	failed = false;
 cleanup:

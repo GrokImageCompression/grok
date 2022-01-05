@@ -67,6 +67,7 @@ bool TIFFFormat::encodeHeader(grk_image* image)
 	uint8_t bps = getImagePrec();
 	numcomps = getImageNumComps();
 	bool subsampled = isSubsampled(m_image);
+	auto colourSpace = getImageColourSpace();
 
 	assert(m_image);
 	assert(m_fileName.c_str());
@@ -81,7 +82,7 @@ bool TIFFFormat::encodeHeader(grk_image* image)
 		spdlog::error("TIFFFormat::encodeHeader: Image sanity check failed.");
 		goto cleanup;
 	}
-	if(m_image->color_space == GRK_CLRSPC_CMYK)
+	if(colourSpace == GRK_CLRSPC_CMYK)
 	{
 		if(numcomps < 4U)
 		{
@@ -101,7 +102,7 @@ bool TIFFFormat::encodeHeader(grk_image* image)
 	}
 	else if(numcomps > 2U)
 	{
-		switch(m_image->color_space)
+		switch(colourSpace)
 		{
 			case GRK_CLRSPC_EYCC:
 			case GRK_CLRSPC_SYCC:
@@ -212,7 +213,7 @@ bool TIFFFormat::encodeHeader(grk_image* image)
 	{
 		if(m_image->meta->color.icc_profile_buf)
 		{
-			if(m_image->color_space == GRK_CLRSPC_ICC)
+			if(colourSpace == GRK_CLRSPC_ICC)
 				TIFFSetField(tif, TIFFTAG_ICCPROFILE, m_image->meta->color.icc_profile_len,
 							 m_image->meta->color.icc_profile_buf);
 		}

@@ -69,6 +69,8 @@ bool StripCache::composite(GrkImage *tileImage){
 		buf.data = img->interleavedData;
 		buf.dataLength = dataLength;
 		serializeBufferCallback(&buf, stripId,serialize_data);
+		putBuffer(buf);
+		img->interleavedData = nullptr;
 	}
 
 	return rc;
