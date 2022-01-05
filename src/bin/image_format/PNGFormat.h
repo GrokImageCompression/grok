@@ -43,5 +43,4 @@ class PNGFormat : public ImageFormat
 	GRK_COLOR_SPACE m_colorSpace;
 	uint8_t prec;
 	uint16_t nr_comp;
-	int32_t const* m_planes[4];
 };

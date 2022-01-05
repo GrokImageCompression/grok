@@ -280,6 +280,8 @@ bool ImageFormat::areAllComponentsSameSubsampling(grk_image* image)
 {
 	if(!image || image->numcomps == 1)
 		return true;
+	if (image->upsample)
+		return true;
 	auto comp0 = image->comps;
 	for(uint32_t i = 0; i < image->numcomps; ++i)
 	{

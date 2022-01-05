@@ -403,7 +403,7 @@ static void user_error_fn(png_structp png_ptr, png_const_charp message)
 
 PNGFormat::PNGFormat()
 	: m_info(nullptr), png(nullptr), row_buf(nullptr), row_buf_array(nullptr), row32s(nullptr),
-	  m_colorSpace(GRK_CLRSPC_UNKNOWN), prec(0), nr_comp(0), m_planes{nullptr}
+	  m_colorSpace(GRK_CLRSPC_UNKNOWN), prec(0), nr_comp(0)
 {}
 
 bool PNGFormat::encodeHeader(grk_image* img)
@@ -640,8 +640,6 @@ bool PNGFormat::encodeHeader(grk_image* img)
 			goto beach;
 		}
 	}
-	for(uint32_t compno = 0; compno < nr_comp; ++compno)
-		m_planes[compno] = m_image->comps[compno].data;
 
 	fails = false;
 	encodeState = IMAGE_FORMAT_ENCODED_HEADER;
@@ -659,6 +657,10 @@ bool PNGFormat::encodeRows(uint32_t rows)
 {
 	(void)rows;
 
+	int32_t const* planes[4];
+	for(uint32_t compno = 0; compno < nr_comp; ++compno)
+		planes[compno] = m_image->comps[compno].data;
+
 	png_bytep row_buf_cpy = row_buf;
 	int32_t adjust = m_image->comps[0].sgnd ? 1 << (prec - 1) : 0;
 	uint32_t max = maxY(rows);
@@ -667,7 +669,7 @@ bool PNGFormat::encodeRows(uint32_t rows)
 		return false;
 	for(uint32_t y = m_rowCount; y < max; ++y)
 	{
-		iter->interleave((int32_t**)m_planes,
+		iter->interleave((int32_t**)planes,
 						nr_comp,
 						row_buf,
 						m_image->comps[0].w,

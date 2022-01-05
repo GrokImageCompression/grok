@@ -543,10 +543,12 @@ bool CodeStreamDecompress::decompressTiles(void)
 					if(m_multiTile && processor->getImage()) {
 						if (!m_outputImage->composite(processor->getImage()))
 							success = false;
+						/*
 						if (m_outputImage->canAllocInterleaved(&m_cp)) {
-							//if (!m_stripCache.composite(processor->getImage()))
-							//	success = false;
+							if (!m_stripCache.composite(processor->getImage()))
+								success = false;
 						}
+						*/
 					}
 					//if cache strategy set to none, then delete image
 					if (!success || m_tileCache->getStrategy() == GRK_TILE_CACHE_NONE){
