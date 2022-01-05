@@ -235,11 +235,13 @@ bool ImageFormat::validate_icc(GRK_COLOR_SPACE colourSpace, uint8_t* iccbuf, uin
  *    (if equalPrecision is true)
  *
  */
-bool ImageFormat::allComponentsSanityCheck(grk_image* image, bool equalPrecision)
+bool ImageFormat::allComponentsSanityCheck(grk_image* image, bool checkEqualPrecision)
 {
 	assert(image);
 	if(image->numcomps == 0)
 		return false;
+	if (m_image->precision)
+		checkEqualPrecision = false;
 	auto comp0 = image->comps;
 	if(comp0->prec == 0 || comp0->prec > GRK_MAX_SUPPORTED_IMAGE_PRECISION)
 	{
@@ -249,19 +251,19 @@ bool ImageFormat::allComponentsSanityCheck(grk_image* image, bool equalPrecision
 
 	for(uint16_t i = 1U; i < image->numcomps; ++i)
 	{
-		auto compi = image->comps + i;
-		if(equalPrecision && comp0->prec != compi->prec)
+		auto comp_i = image->comps + i;
+		if(checkEqualPrecision && comp0->prec != comp_i->prec)
 		{
 			spdlog::warn("precision {} of component {}"
 						 " differs from precision {} of component 0.",
-						 compi->prec, i, comp0->prec);
+						 comp_i->prec, i, comp0->prec);
 			return false;
 		}
-		if(comp0->sgnd != compi->sgnd)
+		if(comp0->sgnd != comp_i->sgnd)
 		{
 			spdlog::warn("signedness {} of component {}"
 						 " differs from signedness {} of component 0.",
-						 compi->sgnd, i, comp0->sgnd);
+						 comp_i->sgnd, i, comp0->sgnd);
 			return false;
 		}
 	}
@@ -273,7 +275,7 @@ bool ImageFormat::areAllComponentsSameSubsampling(grk_image* image)
 	assert(image);
 	if(image->numcomps == 1)
 		return true;
-	if (image->upsample)
+	if (image->upsample || image->forceRGB)
 		return true;
 	auto comp0 = image->comps;
 	for(uint32_t i = 0; i < image->numcomps; ++i)
@@ -291,7 +293,7 @@ bool ImageFormat::areAllComponentsSameSubsampling(grk_image* image)
 bool ImageFormat::isSubsampled(grk_image* image)
 {
 	assert(image);
-	if (image->forceRGB)
+	if (image->upsample || image->forceRGB)
 		return false;
 	for(uint32_t i = 0; i < image->numcomps; ++i)
 	{
@@ -304,7 +306,7 @@ bool ImageFormat::isSubsampled(grk_image* image)
 bool ImageFormat::isChromaSubsampled(grk_image* image)
 {
 	assert(image);
-	if(image->numcomps < 3)
+	if(image->numcomps < 3 || image->forceRGB || image->upsample)
 		return false;
 	for(uint32_t i = 0; i < image->numcomps; ++i)
 	{
@@ -318,9 +320,7 @@ bool ImageFormat::isChromaSubsampled(grk_image* image)
 				break;
 			default:
 				if(comp->dx != 1 || comp->dy != 1)
-				{
 					return false;
-				}
 				break;
 		}
 	}
