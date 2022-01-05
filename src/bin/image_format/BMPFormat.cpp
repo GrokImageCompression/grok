@@ -436,16 +436,15 @@ BMPFormat::BMPFormat(void) : m_srcIndex(0)
 }
 
 
-bool BMPFormat::encodeHeader(grk_image* image, const std::string& filename,
-							 uint32_t compressionParam)
+bool BMPFormat::encodeHeader(grk_image* image)
 {
-	(void)compressionParam;
-	if(!ImageFormat::encodeHeader(image, filename, compressionParam))
+	if(!ImageFormat::openFile())
 		return false;
+	m_image = image;
 	bool ret = false;
 	uint32_t w = m_image->comps[0].w;
 	uint32_t h = m_image->comps[0].h;
-	uint32_t padW = (uint32_t)m_image->packedWidthBytes;
+	uint32_t padW = (uint32_t)m_image->packedRowBytes;
 	uint32_t image_size = padW * h;
 	uint32_t colours_used, lut_size;
 	uint32_t full_header_size, info_header_size, icc_size = 0;
@@ -533,6 +532,7 @@ bool BMPFormat::encodeHeader(grk_image* image, const std::string& filename,
 	if(!write(header_buf, header_plus_lut))
 		goto cleanup;
 	ret = true;
+	encodeState = IMAGE_FORMAT_ENCODED_HEADER;
 cleanup:
 	delete[] header_buf;
 
@@ -555,7 +555,7 @@ bool BMPFormat::encodeRows(uint32_t rows)
 	auto numcomps = m_image->numcomps;
 	auto stride_src = m_image->comps[0].stride;
 	m_srcIndex = (uint64_t)stride_src * (h - 1);
-	uint32_t w_dest = (uint32_t)m_image->packedWidthBytes;
+	uint32_t w_dest = (uint32_t)m_image->packedRowBytes;
 	uint32_t pad_dest = (4 - (((uint64_t)numcomps * w) & 3)) & 3;
 
 	int32_t scale[4] = {1, 1, 1, 1};

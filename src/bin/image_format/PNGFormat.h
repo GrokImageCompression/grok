@@ -26,8 +26,7 @@ class PNGFormat : public ImageFormat
 {
   public:
 	PNGFormat();
-	bool encodeHeader(grk_image* m_image, const std::string& filename,
-					  uint32_t compressionParam) override;
+	bool encodeHeader(grk_image* m_image) override;
 	bool encodeRows(uint32_t rows) override;
 	bool encodePixels(uint8_t *data, uint64_t dataLen, uint32_t strip) override;
 	bool encodeFinish(void) override;

@@ -265,9 +265,9 @@ struct CodingParams
 	bool isBinaryComment[GRK_NUM_COMMENTS_SUPPORTED];
 	// note: maximum number of tiles is 65535
 	/** number of tiles in width */
-	uint32_t t_grid_width;
+	uint16_t t_grid_width;
 	/** number of tiles in height */
-	uint32_t t_grid_height;
+	uint16_t t_grid_height;
 	PPMMarker* ppm_marker;
 	/** tile coding parameters */
 	TileCodingParams* tcps;

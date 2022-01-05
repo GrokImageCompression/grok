@@ -44,33 +44,28 @@ TIFFFormat::TIFFFormat(): tif(nullptr),
 							rowsWritten(0),
 							strip(0),
 							units(0),
-							bytesToWrite(0)
+							bytesToWrite(0),
+							numcomps(0)
 {
-	for(uint32_t i = 0; i < grk::maxNumPackComponents; ++i)
-		planes[i] = nullptr;
 }
 TIFFFormat::~TIFFFormat(){
 	if(tif)
 		TIFFClose(tif);
 	delete[] packedBuf;
 }
-bool TIFFFormat::encodeHeader(grk_image* image, const std::string& filename,
-							  uint32_t compressionParam)
+bool TIFFFormat::encodeHeader(grk_image* image)
 {
 	m_image = image;
-	m_fileName = filename;
-
 	int tiPhoto = PHOTOMETRIC_MINISBLACK;
 	bool success = false;
 	int32_t firstExtraChannel = -1;
 	uint32_t num_colour_channels = 0;
 	size_t numExtraChannels = 0;
-	planes[0] = m_image->comps[0].data;
-	uint16_t numcomps = m_image->numcomps;
 	bool sgnd = m_image->comps[0].sgnd;
 	uint32_t width = m_image->comps[0].w;
 	uint32_t height = m_image->comps[0].h;
-	uint8_t bps = m_image->comps[0].prec;
+	uint8_t bps = getImagePrec();
+	numcomps = getImageNumComps();
 	bool subsampled = isSubsampled(m_image);
 
 	assert(m_image);
@@ -157,7 +152,6 @@ bool TIFFFormat::encodeHeader(grk_image* image, const std::string& filename,
 				firstExtraChannel = (int32_t)i;
 			numExtraChannels++;
 		}
-		planes[i] = m_image->comps[i].data;
 	}
 	// TIFF assumes that alpha channels occur as last channels in m_image.
 	if(numExtraChannels > 0)
@@ -203,16 +197,16 @@ bool TIFFFormat::encodeHeader(grk_image* image, const std::string& filename,
 		TIFFSetField(tif, TIFFTAG_YCBCRCOEFFICIENTS, YCbCrCoefficients);
 		TIFFSetField(tif, TIFFTAG_YCBCRPOSITIONING, YCBCRPOSITION_CENTERED);
 	}
-	switch(compressionParam)
+	switch(compressionLevel)
 	{
 		case COMPRESSION_ADOBE_DEFLATE:
 #ifdef ZIP_SUPPORT
-			TIFFSetField(tif, TIFFTAG_COMPRESSION, compressionParam); // zip compression
+			TIFFSetField(tif, TIFFTAG_COMPRESSION, compressionLevel); // zip compression
 #endif
 			break;
 		default:
-			if(compressionParam != 0)
-				TIFFSetField(tif, TIFFTAG_COMPRESSION, compressionParam);
+			if(compressionLevel != 0)
+				TIFFSetField(tif, TIFFTAG_COMPRESSION, compressionLevel);
 	}
 	if(m_image->meta)
 	{
@@ -278,6 +272,7 @@ bool TIFFFormat::encodeHeader(grk_image* image, const std::string& filename,
 	if (!m_image->interleavedData)
 		packedBuf = new uint8_t[(size_t)TIFFVStripSize(tif, (uint32_t)m_image->rowsPerStrip)];
 	success = true;
+	encodeState = IMAGE_FORMAT_ENCODED_HEADER;
 cleanup:
 	return success;
 }
@@ -286,14 +281,12 @@ bool TIFFFormat::encodePixels(uint8_t *data, uint64_t dataLen, uint32_t stripId)
 	uint32_t totalStrips = ((m_image->y1 - m_image->y0) + m_image->rowsPerStrip - 1) / m_image->rowsPerStrip;
 	{
 		std::unique_lock<std::mutex> lk(encodePixelmutex);
-		if (encodeState != IMAGE_FORMAT_ENCODE_UNENCODED)
-			return true;
 		written = TIFFWriteEncodedStrip(tif, (tmsize_t)stripId, data, (tmsize_t)dataLen);
 		if (written == -1)
-			encodeState = IMAGE_FORMAT_ENCODE_ERROR;
+			encodeState |= IMAGE_FORMAT_ERROR;
 		else if (++stripCount == totalStrips){
 			encodeFinish();
-			encodeState = IMAGE_FORMAT_ENCODE_ENCODED;
+			encodeState |= IMAGE_FORMAT_ENCODED_PIXELS;
 		}
 	}
 	if(written == -1)
@@ -311,6 +304,9 @@ bool TIFFFormat::encodeRows(uint32_t rowsToWrite)
 	rowsToWrite = (std::min)(rowsToWrite,height - rowsWritten);
 	if (rowsToWrite == 0)
 		return true;
+	int32_t const* planes[grk::maxNumPackComponents];
+	for(uint32_t i = 0U; i < numcomps; ++i)
+		planes[i] = m_image->comps[i].data;
 	uint32_t h = rowsWritten;
 	if(isSubsampled(m_image))
 	{
@@ -367,15 +363,15 @@ bool TIFFFormat::encodeRows(uint32_t rowsToWrite)
 			uint32_t stripRows = (std::min)(m_image->rowsPerStrip, height - h);
 			if (!m_image->interleavedData)
 				iter->interleave((int32_t**)planes, m_image->numcomps, (uint8_t*)packedBuf, m_image->comps[0].w, m_image->comps[0].stride,
-						m_image->packedWidthBytes, stripRows, 0);
-			if(!encodePixels(bufPtr, m_image->packedWidthBytes * stripRows, strip++)) {
+						m_image->packedRowBytes, stripRows, 0);
+			if(!encodePixels(bufPtr, m_image->packedRowBytes * stripRows, strip++)) {
 				delete iter;
 				goto cleanup;
 			}
 			rowsWritten += stripRows;
 			h += stripRows;
 			if (m_image->interleavedData)
-				bufPtr += m_image->packedWidthBytes * stripRows;
+				bufPtr += m_image->packedRowBytes * stripRows;
 		}
 		delete iter;
 	}

@@ -989,6 +989,35 @@ static void grk_reclaim_buffers(grk_simple_buf** reclaimed, uint32_t max_reclaim
 
 }
 
+bool GrkDecompress::encodeHeader(grk_plugin_decompress_callback_info* info) {
+	if (!storeToDisk)
+		return true;
+	auto parameters = info->decompressor_parameters;
+	const char* outfile = info->decompressor_parameters->outfile[0]
+							  ? info->decompressor_parameters->outfile
+							  : info->output_file_name;
+	auto cod_format = (GRK_SUPPORTED_FILE_FMT)(
+		info->cod_format != GRK_UNK_FMT ? info->cod_format : parameters->cod_format);
+	auto outfileStr = outfile ? std::string(outfile) : "";
+	uint32_t compressionLevel = 0;
+	if(cod_format == GRK_TIF_FMT)
+		compressionLevel = parameters->compression;
+	else if(cod_format == GRK_JPG_FMT || cod_format == GRK_PNG_FMT)
+		compressionLevel = parameters->compressionLevel;
+	if(!imageFormat->initEncode(outfileStr, compressionLevel))
+	{
+		spdlog::error("Outfile {} not generated", outfileStr);
+		return false;
+	}
+	if(!imageFormat->encodeHeader(info->image))
+	{
+		spdlog::error("Outfile {} not generated", outfileStr);
+		return false;
+	}
+
+	return true;
+}
+
 // return: 0 for success, non-zero for failure
 int GrkDecompress::preProcess(grk_plugin_decompress_callback_info* info)
 {
@@ -1005,7 +1034,9 @@ int GrkDecompress::preProcess(grk_plugin_decompress_callback_info* info)
 	const char* outfile = info->decompressor_parameters->outfile[0]
 							  ? info->decompressor_parameters->outfile
 							  : info->output_file_name;
-	switch(info->cod_format)
+	auto cod_format = (GRK_SUPPORTED_FILE_FMT)(
+		info->cod_format != GRK_UNK_FMT ? info->cod_format : parameters->cod_format);
+	switch(cod_format)
 	{
 		case GRK_PXM_FMT:
 			imageFormat = new PNMFormat(parameters->split_pnm);
@@ -1200,7 +1231,7 @@ int GrkDecompress::preProcess(grk_plugin_decompress_callback_info* info)
 	if(info->decompress_flags == GRK_DECODE_HEADER)
 		goto cleanup;
 	// 3. decompress
-	if(info->tile)
+    if(info->tile)
 		info->tile->decompress_flags = info->decompress_flags;
 	// limit to 16 bit precision
 	for(uint32_t i = 0; i < info->image->numcomps; ++i)
@@ -1218,6 +1249,8 @@ int GrkDecompress::preProcess(grk_plugin_decompress_callback_info* info)
 		spdlog::error("grk_decompress: failed to set the decompressed area");
 		goto cleanup;
 	}
+	//if (cod_format == GRK_TIF_FMT && !encodeHeader(info))
+	//	goto cleanup;
 	// decompress all tiles
 	if(!parameters->singleTileDecompress)
 	{
@@ -1232,27 +1265,9 @@ int GrkDecompress::preProcess(grk_plugin_decompress_callback_info* info)
 			spdlog::error("grk_decompress: failed to decompress tile");
 			goto cleanup;
 		}
-		// spdlog::info("Tile {} was decompressed.", parameters->tileIndex);
 	}
-
-	if(storeToDisk)
-	{
-		auto fmt = imageFormat;
-		auto outfileStr = outfile ? std::string(outfile) : "";
-		uint32_t compressionParam = 0;
-		auto cod_format = (GRK_SUPPORTED_FILE_FMT)(
-			info->cod_format != GRK_UNK_FMT ? info->cod_format : parameters->cod_format);
-
-		if(cod_format == GRK_TIF_FMT)
-			compressionParam = parameters->compression;
-		else if(cod_format == GRK_JPG_FMT || cod_format == GRK_PNG_FMT)
-			compressionParam = parameters->compressionLevel;
-		if(!fmt->encodeHeader(info->image, outfileStr, compressionParam))
-		{
-			spdlog::error("Outfile {} not generated", outfileStr);
-			goto cleanup;
-		}
-	}
+	if (!encodeHeader(info))
+		goto cleanup;
 	failed = false;
 cleanup:
 	grk_object_unref(info->stream);

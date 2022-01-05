@@ -267,7 +267,6 @@ bool CodeStreamDecompress::setDecompressWindow(grkRectU32 window)
 		decompressor->m_start_tile_y_index = 0;
 		decompressor->m_end_tile_x_index = cp->t_grid_width;
 		decompressor->m_end_tile_y_index = cp->t_grid_height;
-		compositeImage->postReadHeader(&m_cp);
 	} else {
 		/* Check if the window provided by the user are correct */
 		uint32_t start_x = window.x0 + image->x0;
@@ -354,16 +353,17 @@ bool CodeStreamDecompress::setDecompressWindow(grkRectU32 window)
 }
 void CodeStreamDecompress::initDecompress(grk_decompress_core_params* parameters)
 {
-	if(parameters)
-	{
-		m_cp.m_coding_params.m_dec.m_layer = parameters->max_layers;
-		m_cp.m_coding_params.m_dec.m_reduce = parameters->reduce;
-		m_tileCache->setStrategy(parameters->tileCacheStrategy);
-	}
+	assert(parameters);
+
+	m_cp.m_coding_params.m_dec.m_layer = parameters->max_layers;
+	m_cp.m_coding_params.m_dec.m_reduce = parameters->reduce;
+	m_tileCache->setStrategy(parameters->tileCacheStrategy);
+	serialize_data = parameters->serialize_data;
+	serializeBufferCallback = parameters->serializeBufferCallback;
+	reclaimCallback = parameters->reclaimCallback;
 }
 bool CodeStreamDecompress::decompress(grk_plugin_tile* tile)
 {
-	/* customization of the decoding */
 	m_procedure_list.push_back(std::bind(&CodeStreamDecompress::decompressTiles, this));
 	current_plugin_tile = tile;
 
@@ -468,6 +468,13 @@ bool CodeStreamDecompress::decompressTiles(void)
 	if (!createOutputImage())
 		return false;
 
+	m_stripCache.init(m_cp.t_height,
+					  m_cp.t_grid_height,
+					  m_outputImage,
+					  serialize_data,
+					  serializeBufferCallback,
+					  reclaimCallback);
+
 	std::vector<std::future<int>> results;
 	std::atomic<bool> success(true);
 	std::atomic<uint32_t> numTilesDecompressed(0);
@@ -533,8 +540,14 @@ bool CodeStreamDecompress::decompressTiles(void)
 				else
 				{
 					numTilesDecompressed++;
-					if(m_multiTile && processor->getImage() && !m_outputImage->composite(processor->getImage()))
-						success = false;
+					if(m_multiTile && processor->getImage()) {
+						if (!m_outputImage->composite(processor->getImage()))
+							success = false;
+						if (m_outputImage->canAllocInterleaved(&m_cp)) {
+							//if (!m_stripCache.composite(processor->getImage()))
+							//	success = false;
+						}
+					}
 					//if cache strategy set to none, then delete image
 					if (!success || m_tileCache->getStrategy() == GRK_TILE_CACHE_NONE){
 						processor->release();
@@ -607,13 +620,10 @@ cleanup:
 }
 bool CodeStreamDecompress::copy_default_tcp(void)
 {
-	auto image = m_headerImage;
-	uint32_t numTiles = m_cp.t_grid_height * m_cp.t_grid_width;
-
-	for(uint32_t i = 0; i < numTiles; ++i)
+	for(uint32_t i = 0; i < m_cp.t_grid_height * m_cp.t_grid_width; ++i)
 	{
 		auto tcp = m_cp.tcps + i;
-		if(!tcp->copy(m_decompressorState.m_default_tcp, image))
+		if(!tcp->copy(m_decompressorState.m_default_tcp, m_headerImage))
 			return false;
 	}
 
@@ -779,7 +789,7 @@ bool CodeStreamDecompress::createOutputImage(void){
 	}
 	// only allocate data if there are multiple tiles. Otherwise, the single tile data
 	// will simply be transferred to the output image
-	if(m_multiTile && !m_outputImage->allocCompositeData(&m_cp))
+	if(m_multiTile && !m_outputImage->allocCompositeData(wholeTileDecompress, &m_cp))
 		return false;
 
 	return true;

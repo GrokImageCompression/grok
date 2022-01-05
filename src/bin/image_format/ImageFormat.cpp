@@ -23,8 +23,10 @@
 
 ImageFormat::ImageFormat()
 	: m_image(nullptr), m_rowCount(0), m_numStrips(0),
-	  m_fileIO(new FileStreamIO()), m_fileStream(nullptr), m_useStdIO(false),
-	  encodeState(IMAGE_FORMAT_ENCODE_UNENCODED),
+	  m_fileIO(new FileStreamIO()), m_fileStream(nullptr),
+	  m_fileName(""), compressionLevel(GRK_DECOMPRESS_COMPRESSION_LEVEL_DEFAULT),
+	  m_useStdIO(false),
+	  encodeState(IMAGE_FORMAT_UNENCODED),
 	  stripCount(0)
 {}
 
@@ -37,6 +39,8 @@ ImageFormat& ImageFormat::operator=(const ImageFormat& rhs)
 		m_numStrips = rhs.m_numStrips;
 		m_fileIO = nullptr;
 		m_fileStream = nullptr;
+		m_fileName = "";
+		compressionLevel = rhs.compressionLevel;
 		m_useStdIO = rhs.m_useStdIO;
 	}
 	return *this;
@@ -47,21 +51,27 @@ ImageFormat::~ImageFormat()
 	delete m_fileIO;
 }
 
-ImageFormatEncodeState ImageFormat::getEncodeState(void){
+uint32_t ImageFormat::getEncodeState(void){
 	return encodeState;
 }
-
-bool ImageFormat::encodeHeader(grk_image* image, const std::string& filename,
-							   uint32_t compressionParam)
-{
-	(void)compressionParam;
-	m_image = image;
-
-	bool rc = m_fileIO->open(filename, "w");
+bool ImageFormat::openFile(void){
+	bool rc = m_fileIO->open(m_fileName, "w");
 	if (rc)
 		m_fileStream = ((FileStreamIO*)m_fileIO)->getFileStream();
 
 	return rc;
+}
+bool ImageFormat::initEncode(const std::string& filename,uint32_t compressionLevel) {
+	this->compressionLevel = compressionLevel;
+	m_fileName = filename;
+
+	return true;
+}
+bool ImageFormat::encodeHeader(grk_image* image)
+{
+	m_image = image;
+
+	return true;
 }
 
 bool ImageFormat::encodeFinish(void)
@@ -97,6 +107,18 @@ uint32_t ImageFormat::maxY(uint32_t rows)
 {
 	return std::min<uint32_t>(m_rowCount + rows, m_image->comps[0].h);
 }
+
+uint8_t ImageFormat::getImagePrec(void){
+	if (!m_image)
+		return 0;
+	return m_image->precision ? m_image->precision->prec : m_image->comps[0].prec;
+}
+uint16_t ImageFormat::getImageNumComps(void){
+	if (!m_image)
+		return 0;
+	return m_image->forceRGB ? 3 : m_image->numcomps;
+}
+
 void ImageFormat::scaleComponent(grk_image_comp* component, uint8_t precision)
 {
 	if(component->prec == precision)
@@ -213,12 +235,13 @@ bool ImageFormat::allComponentsSanityCheck(grk_image* image, bool equalPrecision
 	if(!image || image->numcomps == 0)
 		return false;
 	auto comp0 = image->comps;
-
+/*
 	if(!image->interleavedData && !comp0->data)
 	{
 		spdlog::error("component 0 : data is null.");
 		return false;
 	}
+*/
 	if(comp0->prec == 0 || comp0->prec > GRK_MAX_SUPPORTED_IMAGE_PRECISION)
 	{
 		spdlog::warn("component 0 precision {} is not supported.", 0, comp0->prec);
@@ -228,12 +251,13 @@ bool ImageFormat::allComponentsSanityCheck(grk_image* image, bool equalPrecision
 	for(uint16_t i = 1U; i < image->numcomps; ++i)
 	{
 		auto compi = image->comps + i;
-
+/*
 		if(!image->interleavedData && !compi->data)
 		{
 			spdlog::error("component {} : data is null.", i);
 			return false;
 		}
+*/
 		if(equalPrecision && comp0->prec != compi->prec)
 		{
 			spdlog::warn("precision {} of component {}"

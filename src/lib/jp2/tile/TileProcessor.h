@@ -106,7 +106,7 @@ struct TileProcessor
 
 	/** index of tile being currently compressed/decompressed */
 	uint16_t m_tileIndex;
-	/** Compressing Only
+	/** Compression Only
 	 *  true for first POC tile part, otherwise false*/
 	bool m_first_poc_tile_part;
 	/** Compressing Only
@@ -116,10 +116,7 @@ struct TileProcessor
 	uint8_t m_tilePartIndexCounter;
 	// Decompressing Only
 	uint32_t tilePartDataLength;
-	/** Compressing Only
-	 * Total number of tile parts of the tile*/
-	uint8_t numTilePartsTotal;
-	/** Compressing Only
+	/** Compression Only
 	 *  Current packet iterator number */
 	uint32_t pino;
 	Tile* tile;
@@ -129,7 +126,6 @@ struct TileProcessor
 	bool wholeTileDecompress;
 	CodingParams* m_cp;
 	PacketLengthCache packetLengthCache;
-
   private:
 	// Compressing only - track which packets have already been written
 	// to the code stream
@@ -154,9 +150,9 @@ struct TileProcessor
 	bool makeSingleLosslessLayer();
 	void makeLayerFinal(uint32_t layno);
 	bool pcrdBisectSimple(uint32_t* p_data_written);
-	void makeLayerSimple(uint32_t layno, double thresh, bool final);
+	void makeLayerSimple(uint32_t layno, double thresh, bool finalAttempt);
 	bool pcrdBisectFeasible(uint32_t* p_data_written);
-	void makeLayerFeasible(uint32_t layno, uint16_t thresh, bool final);
+	void makeLayerFeasible(uint32_t layno, uint16_t thresh, bool finalAttempt);
 	bool truncated;
 	GrkImage* m_image;
 	bool m_isCompressor;

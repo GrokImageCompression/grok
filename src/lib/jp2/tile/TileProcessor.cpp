@@ -24,7 +24,7 @@ namespace grk
 TileProcessor::TileProcessor(CodeStream* codeStream, IBufferedStream* stream, bool isCompressor,
 							 bool isWholeTileDecompress)
 	: m_tileIndex(0), m_first_poc_tile_part(true), m_tilePartIndexCounter(0), tilePartDataLength(0),
-	  numTilePartsTotal(0), pino(0), tile(nullptr), headerImage(codeStream->getHeaderImage()),
+	  pino(0), tile(nullptr), headerImage(codeStream->getHeaderImage()),
 	  current_plugin_tile(codeStream->getCurrentPluginTile()),
 	  wholeTileDecompress(isWholeTileDecompress), m_cp(codeStream->getCodingParams()),
 	  packetLengthCache(PacketLengthCache(m_cp)), m_stream(stream), m_corrupt_packet(false),
@@ -761,7 +761,6 @@ bool TileProcessor::encodeT2(uint32_t* tileBytesWritten)
 bool TileProcessor::preCompressTile()
 {
 	m_tilePartIndexCounter = 0;
-	numTilePartsTotal = m_cp->tcps[m_tileIndex].m_numTileParts;
 	m_first_poc_tile_part = true;
 
 	/* initialization before tile compressing  */

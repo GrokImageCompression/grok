@@ -29,10 +29,11 @@ class ImageFormat : public IImageFormat
 	ImageFormat();
 	virtual ~ImageFormat();
 	ImageFormat& operator=(const ImageFormat& rhs);
-	virtual bool encodeHeader(grk_image* image, const std::string& filename,
-							  uint32_t compressionParam) override;
+	virtual bool initEncode(const std::string& filename,uint32_t compressionLevel) override;
+	virtual bool encodeHeader(grk_image* image) override;
 	virtual bool encodeFinish(void) override;
-	ImageFormatEncodeState getEncodeState(void) override;
+	uint32_t getEncodeState(void) override;
+	bool openFile(void);
 
   protected:
 	bool open(std::string fname, std::string mode);
@@ -53,6 +54,10 @@ class ImageFormat : public IImageFormat
 	bool isChromaSubsampled(grk_image* image);
 	bool areAllComponentsSameSubsampling(grk_image* image);
 
+	uint8_t getImagePrec(void);
+	uint16_t getImageNumComps(void);
+
+
 	grk_image* m_image;
 	uint32_t m_rowCount;
 	uint32_t m_numStrips;
@@ -60,9 +65,10 @@ class ImageFormat : public IImageFormat
 	IFileIO* m_fileIO;
 	FILE* m_fileStream;
 	std::string m_fileName;
+	uint32_t compressionLevel;
 
 	bool m_useStdIO;
-	ImageFormatEncodeState encodeState;
+	uint32_t encodeState;
 	uint32_t stripCount;
 	mutable std::mutex encodePixelmutex;
 };

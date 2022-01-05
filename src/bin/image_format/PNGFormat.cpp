@@ -406,10 +406,9 @@ PNGFormat::PNGFormat()
 	  m_colorSpace(GRK_CLRSPC_UNKNOWN), prec(0), nr_comp(0), m_planes{nullptr}
 {}
 
-bool PNGFormat::encodeHeader(grk_image* img, const std::string& filename, uint32_t compressionLevel)
+bool PNGFormat::encodeHeader(grk_image* img)
 {
 	m_image = img;
-	m_fileName = filename;
 	uint32_t color_type;
 	png_color_8 sig_bit;
 	uint32_t i;
@@ -423,8 +422,8 @@ bool PNGFormat::encodeHeader(grk_image* img, const std::string& filename, uint32
 
 	memset(&sig_bit, 0, sizeof(sig_bit));
 
-	prec = m_image->comps[0].prec;
-	nr_comp = m_image->numcomps;
+	prec = getImagePrec();
+	nr_comp = getImageNumComps();
 
 	if(nr_comp > 4)
 	{
@@ -477,7 +476,7 @@ bool PNGFormat::encodeHeader(grk_image* img, const std::string& filename, uint32
 					  prec);
 		return false;
 	}
-	if(!ImageFormat::encodeHeader(m_image, m_fileName, compressionLevel))
+	if(!ImageFormat::openFile())
 		return false;
 
 	/* Create and initialize the png_struct with the desired error handler
@@ -645,6 +644,7 @@ bool PNGFormat::encodeHeader(grk_image* img, const std::string& filename, uint32
 		m_planes[compno] = m_image->comps[compno].data;
 
 	fails = false;
+	encodeState = IMAGE_FORMAT_ENCODED_HEADER;
 
 beach:
 	return !fails;

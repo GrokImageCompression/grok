@@ -323,6 +323,11 @@ class CodeStreamDecompress : public CodeStream, public ICodeStreamDecompress
 	uint16_t m_marker_scratch_size;
 	GrkImage* m_outputImage;
 	TileCache* m_tileCache;
+
+	StripCache m_stripCache;
+	void* serialize_data;
+	grk_serialize_pixels serializeBufferCallback;
+	grk_reclaim_buffers reclaimCallback;
 };
 
 } // namespace grk

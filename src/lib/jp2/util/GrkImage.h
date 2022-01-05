@@ -48,7 +48,7 @@ public:
 	 *
 	 * @return true if successful
 	 */
-	bool allocCompositeData(CodingParams *cp);
+	bool allocCompositeData(bool wholeTileDecompress, CodingParams *cp);
 
 	bool canAllocInterleaved(CodingParams *cp);
 
@@ -69,6 +69,7 @@ public:
 	void transferDataFrom(const Tile* tile_src_data);
 	GrkImage* duplicate(const Tile* tile_src);
 	bool composite(const GrkImage* srcImg);
+	bool compositeInterleaved(const GrkImage* srcImg);
 	void createMeta();
 	bool greyToRGB(void);
 	bool convertToRGB(bool wholeTileDecompress);
@@ -80,7 +81,6 @@ public:
   private:
 	~GrkImage();
 	bool compositePlanar(const GrkImage* srcImg);
-	bool compositeInterleaved(const GrkImage* srcImg);
 	bool generateCompositeBounds(const grk_image_comp* srcComp, uint16_t compno,
 								 grkRectU32* destWin, uint32_t* srcLineOffset);
 	bool generateCompositeBounds(uint16_t compno, grkRectU32 src, uint32_t src_stride,

@@ -62,13 +62,10 @@ static bool writeToFile(FILE* m_fileStream, bool bigEndian, int32_t* ptr, uint32
 	return true;
 }
 
-bool RAWFormat::encodeHeader(grk_image* image, const std::string& filename,
-							 uint32_t compressionParam)
+bool RAWFormat::encodeHeader(grk_image* image)
 {
-	(void)compressionParam;
 	m_image = image;
-	m_fileName = filename;
-
+	encodeState = IMAGE_FORMAT_ENCODED_HEADER;
 	return true;
 }
 bool RAWFormat::encodePixels(uint8_t *data, uint64_t dataLen, uint32_t strip) {

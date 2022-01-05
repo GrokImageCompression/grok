@@ -30,8 +30,7 @@ class JPEGFormat : public ImageFormat
 {
   public:
 	JPEGFormat(void);
-	bool encodeHeader(grk_image* image, const std::string& filename,
-					  uint32_t compressionParam) override;
+	bool encodeHeader(grk_image* image) override;
 	bool encodeRows(uint32_t rows) override;
 	bool encodePixels(uint8_t *data, uint64_t dataLen, uint32_t strip) override;
 	bool encodeFinish(void) override;
@@ -39,7 +38,7 @@ class JPEGFormat : public ImageFormat
 
   private:
 	grk_image* jpegtoimage(const char* filename, grk_cparameters* parameters);
-	bool imagetojpeg(grk_image* image, const char* filename, uint32_t compressionParam);
+	bool imagetojpeg(grk_image* image, const char* filename, uint32_t compressionLevel);
 
 	bool success;
 	uint8_t* buffer;

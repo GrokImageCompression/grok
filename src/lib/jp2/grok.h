@@ -982,7 +982,7 @@ typedef struct _grk_image
 	grk_image_comp* comps;
 	uint8_t* interleavedData;
 	uint32_t rowsPerStrip;
-	uint64_t packedWidthBytes;
+	uint64_t packedRowBytes;
 } grk_image;
 
 ////////////////////////////////////////////////

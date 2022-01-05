@@ -194,18 +194,16 @@ cleanup:
 	return image;
 }
 
-bool PGXFormat::encodeHeader(grk_image* image, const std::string& filename,
-							 uint32_t compressionParam)
+bool PGXFormat::encodeHeader(grk_image* image)
 {
-	(void)compressionParam;
 	m_image = image;
-	m_fileName = filename;
 	if(!allComponentsSanityCheck(m_image, false))
 	{
 		spdlog::error("PGXFormat::encodeHeader: image sanity check failed.");
 		return false;
 	}
 
+	encodeState = IMAGE_FORMAT_ENCODED_HEADER;
 	return true;
 }
 bool PGXFormat::encodePixels(uint8_t *data, uint64_t dataLen, uint32_t strip) {

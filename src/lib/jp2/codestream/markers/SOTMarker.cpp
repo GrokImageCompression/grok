@@ -151,17 +151,11 @@ bool SOTMarker::read(CodeStreamDecompress* codeStream, uint8_t* headerData, uint
 		return false;
 	}
 	tcp->m_tilePartIndexCounter++;
-	/* PSot should be equal to zero or >=14 or <= 2^32-1 */
+	/* PSot should be equal to zero or >=14 and <= 2^32-1 */
 	if((tilePartLength != 0) && (tilePartLength < 14))
 	{
-		if(tilePartLength == sot_marker_segment_len)
-		{
-			GRK_WARN("Empty SOT marker detected: Psot=%u.", tilePartLength);
-		}
-		else
-		{
-			GRK_ERROR("Psot value is not correct regards to the JPEG2000 norm: %u.",
-					  tilePartLength);
+		if(tilePartLength != sot_marker_segment_len) {
+			GRK_ERROR("Illegal Psot value %u", tilePartLength);
 			return false;
 		}
 	}

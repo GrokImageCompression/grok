@@ -696,12 +696,9 @@ PNMFormat::PNMFormat(bool split) : forceSplit(split)
 #endif
 }
 
-bool PNMFormat::encodeHeader(grk_image* image, const std::string& filename,
-							 uint32_t compressionParam)
+bool PNMFormat::encodeHeader(grk_image* image)
 {
 	m_image = image;
-	m_fileName = filename;
-
 	if(!allComponentsSanityCheck(m_image, true))
 	{
 		spdlog::error("PNMFormat::encodeHeader: image sanity check failed.");
@@ -718,7 +715,8 @@ bool PNMFormat::encodeHeader(grk_image* image, const std::string& filename,
 		return false;
 	}
 
-	(void)compressionParam;
+	(void)compressionLevel;
+	encodeState = IMAGE_FORMAT_ENCODED_HEADER;
 
 	return true;
 }
@@ -737,7 +735,7 @@ bool PNMFormat::encodeRows(uint32_t rows)
 	int* blue = nullptr;
 	int* alpha = nullptr;
 	uint32_t width, height, stride_diff, max;
-	uint32_t compno, ncomp, prec = m_image->comps[0].prec;
+	uint32_t compno, ncomp, prec = getImagePrec();
 	int adjustR, adjustG, adjustB, adjustA;
 	bool two, grayscale, hasAlpha, triple;
 	int v;
@@ -748,7 +746,7 @@ bool PNMFormat::encodeRows(uint32_t rows)
 	m_useStdIO = grk::useStdio(m_fileName.c_str());
 	alpha = nullptr;
 	two = hasAlpha = 0;
-	ncomp = m_image->numcomps;
+	ncomp = getImageNumComps();
 
 	while(*tmp)
 		++tmp;

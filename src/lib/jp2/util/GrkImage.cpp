@@ -16,7 +16,7 @@ GrkImage::~GrkImage()
 	}
 	if(meta)
 		grk_object_unref(&meta->obj);
-	delete[] interleavedData;
+	grkAlignedFree(interleavedData);
 }
 
 void GrkImage::copyComponent(grk_image_comp* src, grk_image_comp* dest){
@@ -66,7 +66,7 @@ GrkImage* GrkImage::create(grk_image *src,
 		image->precision = src->precision;
 		image->numPrecision = src->numPrecision;
 		image->rowsPerStrip = src->rowsPerStrip;
-		image->packedWidthBytes = src->packedWidthBytes;
+		image->packedRowBytes = src->packedRowBytes;
 	}
 
 	/* allocate memory for the per-component information */
@@ -225,7 +225,7 @@ void GrkImage::copyHeader(GrkImage* dest)
 	dest->precision = precision;
 	dest->numPrecision = numPrecision;
 	dest->rowsPerStrip = rowsPerStrip;
-	dest->packedWidthBytes = packedWidthBytes;
+	dest->packedRowBytes = packedRowBytes;
 }
 
 void GrkImage::createMeta()
@@ -313,27 +313,27 @@ void GrkImage::postReadHeader(CodingParams *cp){
 		uint32_t chroma_subsample_x = comps[1].dx;
 		uint32_t chroma_subsample_y = comps[1].dy;
 		uint32_t units = (width + chroma_subsample_x - 1) / chroma_subsample_x;
-		packedWidthBytes = (uint64_t)((((uint64_t)width * chroma_subsample_y + units * 2U) * prec + 7U) / 8U);
-		rowsPerStrip = (uint32_t)((chroma_subsample_y * 8 * 1024 * 1024) / packedWidthBytes);
+		packedRowBytes = (uint64_t)((((uint64_t)width * chroma_subsample_y + units * 2U) * prec + 7U) / 8U);
+		rowsPerStrip = (uint32_t)((chroma_subsample_y * 8 * 1024 * 1024) / packedRowBytes);
 	} else {
 		switch(decompressFormat){
 		case GRK_BMP_FMT:
-			packedWidthBytes =	(((uint64_t)ncmp *  width + 3) >> 2) << 2;
+			packedRowBytes =	(((uint64_t)ncmp *  width + 3) >> 2) << 2;
 		   break;
 		default:
-			packedWidthBytes =	grk::PtoI<int32_t>::getPackedBytes(ncmp, x1 - x0, prec);
+			packedRowBytes =	grk::PtoI<int32_t>::getPackedBytes(ncmp, x1 - x0, prec);
 			break;
 		}
 		if (canAllocInterleaved(cp))
 			rowsPerStrip = cp->t_height;
 		else
-			rowsPerStrip =	(uint32_t)((16 * 1024 * 1024) / packedWidthBytes);
+			rowsPerStrip =	(uint32_t)((16 * 1024 * 1024) / packedRowBytes);
 	}
 	if(rowsPerStrip > y1 - y0)
 		rowsPerStrip =y1 - y0;
 }
-bool GrkImage::allocCompositeData(CodingParams *cp){
-	if (canAllocInterleaved(cp)){
+bool GrkImage::allocCompositeData(bool wholeTileDecompress, CodingParams *cp){
+	if (wholeTileDecompress && canAllocInterleaved(cp)){
 		uint64_t stride =  grk::PtoI<int32_t>::getPackedBytes(numcomps, comps->w, comps->prec);
 		uint64_t dataSize = (uint64_t)stride * comps->h;
 

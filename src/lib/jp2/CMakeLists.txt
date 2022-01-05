@@ -125,7 +125,9 @@ set(GROK_LIBRARY_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/codestream/markers/PPMMarker.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/codestream/markers/SOTMarker.h
   ${CMAKE_CURRENT_SOURCE_DIR}/codestream/markers/SOTMarker.cpp
-  
+
+  ${CMAKE_CURRENT_SOURCE_DIR}/cache/StripCache.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/cache/StripCache.h
   ${CMAKE_CURRENT_SOURCE_DIR}/cache/TileCache.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/cache/TileCache.h
   ${CMAKE_CURRENT_SOURCE_DIR}/cache/MemManager.cpp

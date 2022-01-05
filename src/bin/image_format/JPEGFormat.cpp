@@ -344,21 +344,21 @@ JPEGFormat::JPEGFormat(void)
 	  readFromStdin(false), planes{0, 0, 0}
 {}
 
-bool JPEGFormat::encodeHeader(grk_image* image, const std::string& filename,
-							  uint32_t compressionParam)
+bool JPEGFormat::encodeHeader(grk_image* image)
 {
 	if(!image)
 		return false;
 	m_image = image;
 	int32_t firstAlpha = -1;
 	size_t numAlphaChannels = 0;
-	uint32_t numcomps = m_image->numcomps;
-	uint32_t sgnd = m_image->comps[0].sgnd;
-	adjust = sgnd ? 1 << (m_image->comps[0].prec - 1) : 0;
 	uint32_t width = m_image->comps[0].w;
 
 	// actual bits per sample
-	uint8_t prec = m_image->comps[0].prec;
+	uint8_t prec = getImagePrec();
+	uint16_t numcomps = getImageNumComps();
+	uint32_t sgnd = m_image->comps[0].sgnd;
+	adjust = sgnd ? 1 << (prec - 1) : 0;
+
 	uint32_t i = 0;
 
 	struct my_error_mgr jerr;
@@ -434,7 +434,7 @@ bool JPEGFormat::encodeHeader(grk_image* image, const std::string& filename,
 
 	if(prec != 1 && prec != 2 && prec != 4 && prec != 8)
 	{
-		spdlog::error("JPEGFormat::encodeHeader: can not create {}\n\twrong bit_depth {}", filename,
+		spdlog::error("JPEGFormat::encodeHeader: can not create {}\n\twrong bit_depth {}", m_fileName,
 					  prec);
 		return false;
 	}
@@ -481,7 +481,7 @@ bool JPEGFormat::encodeHeader(grk_image* image, const std::string& filename,
 	 * VERY IMPORTANT: use "b" option to fopen() if you are on a machine that
 	 * requires it in order to write binary files.
 	 */
-	if(!ImageFormat::encodeHeader(m_image, filename, compressionParam))
+	if(!ImageFormat::openFile())
 		return false;
 
 	jpeg_stdio_dest(&cinfo, m_fileStream);
@@ -506,9 +506,9 @@ bool JPEGFormat::encodeHeader(grk_image* image, const std::string& filename,
 	 * Here we just illustrate the use of quality (quantization table) scaling:
 	 */
 	jpeg_set_quality(&cinfo,
-					 (int)((compressionParam == GRK_DECOMPRESS_COMPRESSION_LEVEL_DEFAULT)
+					 (int)((compressionLevel == GRK_DECOMPRESS_COMPRESSION_LEVEL_DEFAULT)
 							   ? 90
-							   : compressionParam),
+							   : compressionLevel),
 					 (boolean)TRUE /* limit to baseline-JPEG values */);
 
 	// set resolution
@@ -530,6 +530,7 @@ bool JPEGFormat::encodeHeader(grk_image* image, const std::string& filename,
 		write_icc_profile(&cinfo, m_image->meta->color.icc_profile_buf,
 						  m_image->meta->color.icc_profile_len);
 	}
+	encodeState = IMAGE_FORMAT_ENCODED_HEADER;
 
 	return true;
 }

@@ -20,22 +20,22 @@
 #include "grok.h"
 #include <string>
 
-enum ImageFormatEncodeState {
-	IMAGE_FORMAT_ENCODE_UNENCODED,
-	IMAGE_FORMAT_ENCODE_ENCODED,
-	IMAGE_FORMAT_ENCODE_ERROR
-};
+const uint32_t IMAGE_FORMAT_UNENCODED = 1;
+const uint32_t IMAGE_FORMAT_ENCODED_HEADER = 2;
+const uint32_t 	IMAGE_FORMAT_ENCODED_PIXELS = 4;
+const uint32_t 	IMAGE_FORMAT_ERROR = 8;
+
 
 
 class IImageFormat
 {
   public:
 	virtual ~IImageFormat() = default;
-	virtual bool encodeHeader(grk_image* image, const std::string& filename,
-							  uint32_t compressionParam) = 0;
+	virtual bool initEncode(const std::string& filename,uint32_t compressionLevel) = 0;
+	virtual bool encodeHeader(grk_image* image) = 0;
 	virtual bool encodeRows(uint32_t rows) = 0;
 	virtual bool encodePixels(uint8_t *data, uint64_t dataLen, uint32_t strip) = 0;
 	virtual bool encodeFinish(void) = 0;
 	virtual grk_image* decode(const std::string& filename, grk_cparameters* parameters) = 0;
-	virtual ImageFormatEncodeState getEncodeState(void) = 0;
+	virtual uint32_t getEncodeState(void) = 0;
 };

@@ -355,8 +355,8 @@ bool CodeStreamCompress::initCompress(grk_cparameters* parameters, GrkImage* ima
 			GRK_ERROR("Invalid tile dimensions (%u,%u)", m_cp.t_width, m_cp.t_height);
 			return false;
 		}
-		m_cp.t_grid_width = ceildiv<uint32_t>((image->x1 - m_cp.tx0), m_cp.t_width);
-		m_cp.t_grid_height = ceildiv<uint32_t>((image->y1 - m_cp.ty0), m_cp.t_height);
+		m_cp.t_grid_width  = (uint16_t)ceildiv<uint32_t>((image->x1 - m_cp.tx0), m_cp.t_width);
+		m_cp.t_grid_height = (uint16_t)ceildiv<uint32_t>((image->y1 - m_cp.ty0), m_cp.t_height);
 	}
 	else
 	{

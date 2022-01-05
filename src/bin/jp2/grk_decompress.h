@@ -56,6 +56,7 @@ class GrkDecompress
 	int postProcess(grk_plugin_decompress_callback_info* info);
 
   private:
+	bool encodeHeader(grk_plugin_decompress_callback_info* info);
 	// returns 0 for failure, 1 for success, and 2 if file is not suitable for decoding
 	int decompress(const std::string& fileName, DecompressInitParams* initParams);
 	int pluginMain(int argc, char** argv, DecompressInitParams* initParams);
