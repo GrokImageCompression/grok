@@ -785,7 +785,6 @@ int GrkDecompress::decompress(const std::string& fileName, DecompressInitParams*
 	}
 	grk_plugin_decompress_callback_info info;
 	memset(&info, 0, sizeof(grk_plugin_decompress_callback_info));
-	memset(&info.header_info, 0, sizeof(grk_header_info));
 	info.decod_format = GRK_UNK_FMT;
 	info.decompress_flags = GRK_DECODE_ALL;
 	info.decompressor_parameters = &initParams->parameters;
