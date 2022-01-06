@@ -46,10 +46,10 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <limits.h>
-#include <stddef.h>
-#include <stdint.h>
-#include <string.h>
+#include <climits>
+#include <cstddef>
+#include <cstdint>
+#include <cstring>
 
 #include "grok.h"
 
@@ -143,6 +143,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len) {
   grk_decompress_init(codec, &parameters);
   grk_image *psImage = nullptr;
   grk_header_info header_info;
+  memset(&header_info,0,sizeof(grk_header_info));
   uint32_t x0, y0, width, height;
   if (!grk_decompress_read_header(codec, &header_info))
     goto cleanup;
