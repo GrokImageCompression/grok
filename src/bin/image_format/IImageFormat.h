@@ -34,7 +34,11 @@ class IImageFormat
 	virtual bool initEncode(const std::string& filename,uint32_t compressionLevel) = 0;
 	virtual bool encodeHeader(grk_image* image) = 0;
 	virtual bool encodeRows(uint32_t rows) = 0;
-	virtual bool encodePixels(uint8_t *data, uint64_t dataLen, uint32_t strip) = 0;
+	virtual bool encodePixels(uint8_t *data,
+							uint64_t dataLen,
+							grk_serialize_buf** reclaimed,
+							uint32_t max_reclaimed,
+							uint32_t *num_reclaimed, uint32_t strip) = 0;
 	virtual bool encodeFinish(void) = 0;
 	virtual grk_image* decode(const std::string& filename, grk_cparameters* parameters) = 0;
 	virtual uint32_t getEncodeState(void) = 0;

@@ -68,12 +68,6 @@ bool RAWFormat::encodeHeader(grk_image* image)
 	encodeState = IMAGE_FORMAT_ENCODED_HEADER;
 	return true;
 }
-bool RAWFormat::encodePixels(uint8_t *data, uint64_t dataLen, uint32_t strip) {
-	(void)data;
-	(void)dataLen;
-	(void)strip;
-	return false;
-}
 bool RAWFormat::encodeRows(uint32_t rows)
 {
 	(void)rows;

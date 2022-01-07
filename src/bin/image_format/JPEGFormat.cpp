@@ -534,12 +534,6 @@ bool JPEGFormat::encodeHeader(grk_image* image)
 
 	return true;
 }
-bool JPEGFormat::encodePixels(uint8_t *data, uint64_t dataLen, uint32_t strip) {
-	(void)data;
-	(void)dataLen;
-	(void)strip;
-	return false;
-}
 bool JPEGFormat::encodeRows(uint32_t rows)
 {
 	(void)rows;

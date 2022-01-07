@@ -74,6 +74,21 @@ bool ImageFormat::encodeHeader(grk_image* image)
 	return true;
 }
 
+bool ImageFormat::encodePixels(uint8_t *data,
+						uint64_t dataLen,
+						grk_serialize_buf** reclaimed,
+						uint32_t max_reclaimed,
+						uint32_t *num_reclaimed, uint32_t strip){
+	(void)data;
+	(void)dataLen;
+	(void)reclaimed;
+	(void)max_reclaimed;
+	(void)num_reclaimed;
+	(void)strip;
+
+	return false;
+}
+
 bool ImageFormat::encodeFinish(void)
 {
 	bool rc = m_fileIO->close();

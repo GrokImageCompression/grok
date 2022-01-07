@@ -277,12 +277,16 @@ bool TIFFFormat::encodeHeader(grk_image* image)
 cleanup:
 	return success;
 }
-bool TIFFFormat::encodePixels(uint8_t *data, uint64_t dataLen, uint32_t stripId) {
+bool TIFFFormat::encodePixels(uint8_t *data,
+							uint64_t dataLen,
+							grk_serialize_buf** reclaimed,
+							uint32_t max_reclaimed,
+							uint32_t *num_reclaimed, uint32_t strip) {
 	tmsize_t written = 0;
 	uint32_t totalStrips = ((m_image->y1 - m_image->y0) + m_image->rowsPerStrip - 1) / m_image->rowsPerStrip;
 	{
 		std::unique_lock<std::mutex> lk(encodePixelmutex);
-		written = TIFFWriteEncodedStrip(tif, (tmsize_t)stripId, data, (tmsize_t)dataLen);
+		written = TIFFWriteEncodedStrip(tif, (tmsize_t)strip, data, (tmsize_t)dataLen);
 		if (written == -1)
 			encodeState |= IMAGE_FORMAT_ERROR;
 		else if (++stripCount == totalStrips){
@@ -319,7 +323,7 @@ bool TIFFFormat::encodeRows(uint32_t rowsToWrite)
 			uint32_t rowsSoFar = h - rowsWritten;
 			if(rowsSoFar > 0 && (rowsSoFar % m_image->rowsPerStrip == 0))
 			{
-				if(bytesToWrite && !encodePixels(packedBuf, bytesToWrite, strip++))
+				if(bytesToWrite && !encodePixels(packedBuf, bytesToWrite, nullptr,0,nullptr,strip++))
 					goto cleanup;
 				bufptr = (int8_t*)packedBuf;
 				bytesToWrite = 0;
@@ -351,7 +355,7 @@ bool TIFFFormat::encodeRows(uint32_t rowsToWrite)
 		if (h != rowsWritten)
 			rowsWritten += h - chroma_subsample_y - rowsWritten;
 		// cleanup
-		if(bytesToWrite && !encodePixels(packedBuf, bytesToWrite, strip++))
+		if(bytesToWrite && !encodePixels(packedBuf, bytesToWrite,nullptr,0,nullptr, strip++))
 			goto cleanup;
 	}
 	else
@@ -367,7 +371,7 @@ bool TIFFFormat::encodeRows(uint32_t rowsToWrite)
 			if (!m_image->interleavedData)
 				iter->interleave((int32_t**)planes, m_image->numcomps, (uint8_t*)packedBuf, m_image->comps[0].w, m_image->comps[0].stride,
 						m_image->packedRowBytes, stripRows, 0);
-			if(!encodePixels(bufPtr, m_image->packedRowBytes * stripRows, strip++)) {
+			if(!encodePixels(bufPtr, m_image->packedRowBytes * stripRows,nullptr,0,nullptr, strip++)) {
 				delete iter;
 				goto cleanup;
 			}

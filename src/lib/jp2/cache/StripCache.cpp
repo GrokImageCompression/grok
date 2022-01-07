@@ -22,8 +22,7 @@ StripCache::StripCache() :  strips(nullptr),
 							m_tgrid_h(0),
 							m_packedRowBytes(0),
 							serialize_data(nullptr),
-							serializeBufferCallback(nullptr),
-							reclaimCallback(nullptr)
+							serializeBufferCallback(nullptr)
 {
 }
 StripCache::~StripCache()
@@ -39,14 +38,12 @@ void StripCache::init(uint16_t tgrid_w,
 					  uint16_t tgrid_h,
 					  GrkImage *outputImage,
 					  void* serialize_d,
-					  grk_serialize_pixels serializeBufferCb,
-					  grk_reclaim_buffers reclaimCb){
+					  grk_serialize_pixels serializeBufferCb){
 	assert(outputImage);
 	if (!tgrid_h || !outputImage)
 		return;
 	serialize_data = serialize_d;
 	serializeBufferCallback = serializeBufferCb;
-	reclaimCallback = reclaimCb;
 	m_tgrid_w = tgrid_w;
 	m_y0 = outputImage->y0;
 	m_th = th;
@@ -72,10 +69,12 @@ bool StripCache::composite(GrkImage *tileImage){
 	if (!rc)
 		return false;
 	if (++(strip->tileCounter) == m_tgrid_w){
-		grk_simple_buf buf;
+		grk_serialize_buf buf;
 		buf.data = img->interleavedData;
 		buf.dataLength = dataLength;
-		serializeBufferCallback(&buf, stripId,serialize_data);
+		grk_serialize_buf* reclaimed[5];
+		uint32_t num_reclaimed;
+		serializeBufferCallback(&buf,stripId, reclaimed, 5, &num_reclaimed,serialize_data);
 		{
 			std::unique_lock<std::mutex> lk(bufCacheMutex);
 			putBuffer(buf);
@@ -85,7 +84,7 @@ bool StripCache::composite(GrkImage *tileImage){
 
 	return rc;
 }
-grk_simple_buf StripCache::getBuffer(uint64_t len){
+grk_serialize_buf StripCache::getBuffer(uint64_t len){
 	for (auto iter = bufCache.begin(); iter != bufCache.end(); ++iter){
 		if (iter->maxDataLength >= len){
 			auto b = *iter;
@@ -94,13 +93,13 @@ grk_simple_buf StripCache::getBuffer(uint64_t len){
 			return b;
 		}
 	}
-	grk_simple_buf rc;
+	grk_serialize_buf rc;
 	rc.data = (uint8_t*)grkAlignedMalloc(len);
 	rc.maxDataLength = len;
 
 	return rc;
 }
-void StripCache::putBuffer(grk_simple_buf b){
+void StripCache::putBuffer(grk_serialize_buf b){
 	bufCache.push_back(b);
 }
 

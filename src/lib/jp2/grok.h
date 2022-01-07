@@ -757,15 +757,20 @@ typedef struct _grk_header_info
 } grk_header_info;
 
 
-typedef struct _grk_simple_buf {
+typedef struct _grk_serialize_buf {
 	uint8_t *data;
 	uint64_t dataLength;
 	uint64_t maxDataLength;
-} grk_simple_buf;
+	uint64_t serializeOffset;
+} grk_serialize_buf;
 
 
-typedef void (*grk_reclaim_buffers)(grk_simple_buf** reclaimed, uint32_t max_reclaimed, void* user_data);
-typedef bool (*grk_serialize_pixels)(grk_simple_buf* buffer, uint32_t strip, void* user_data);
+typedef bool (*grk_serialize_pixels)(grk_serialize_buf* buffer,
+										uint32_t strip,
+										grk_serialize_buf** reclaimed,
+										uint32_t max_reclaimed,
+										uint32_t *num_reclaimed,
+										void* user_data);
 
 /**
  * Core decompress parameters
@@ -791,7 +796,6 @@ typedef struct _grk_decompress_core_params
 
 	void* serialize_data;
 	grk_serialize_pixels serializeBufferCallback;
-	grk_reclaim_buffers reclaimCallback;
 
 } grk_decompress_core_params;
 

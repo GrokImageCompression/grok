@@ -360,7 +360,6 @@ void CodeStreamDecompress::initDecompress(grk_decompress_core_params* parameters
 	m_tileCache->setStrategy(parameters->tileCacheStrategy);
 	serialize_data = parameters->serialize_data;
 	serializeBufferCallback = parameters->serializeBufferCallback;
-	reclaimCallback = parameters->reclaimCallback;
 }
 bool CodeStreamDecompress::decompress(grk_plugin_tile* tile)
 {
@@ -473,8 +472,7 @@ bool CodeStreamDecompress::decompressTiles(void)
 					  m_cp.t_grid_height,
 					  m_outputImage,
 					  serialize_data,
-					  serializeBufferCallback,
-					  reclaimCallback);
+					  serializeBufferCallback);
 
 	std::vector<std::future<int>> results;
 	std::atomic<bool> success(true);
