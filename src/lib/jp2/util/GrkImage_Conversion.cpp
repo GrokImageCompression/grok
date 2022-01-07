@@ -1282,6 +1282,12 @@ bool GrkImage::cieLabToRGB(void)
 	// sanity checks
 	if(numcomps == 0 || !allComponentsSanityCheck(true))
 		return false;
+	if (numcomps < 3){
+		GRK_WARN("cieLabToRGB: there must be at least three components");
+		return false;
+	}
+	if (numcomps > 3)
+		GRK_WARN("cieLabToRGB: there are more than three components : extra components will be ignored.");
 	if(!meta)
 		return false;
 	size_t i;
@@ -1290,16 +1296,18 @@ bool GrkImage::cieLabToRGB(void)
 		auto comp0 = comps;
 		auto compi = comps + i;
 
-		if(comp0->prec != compi->prec)
-			break;
-		if(comp0->sgnd != compi->sgnd)
-			break;
 		if(comp0->stride != compi->stride)
+			break;
+
+		if(comp0->w != compi->w)
+			break;
+
+		if(comp0->h != compi->h)
 			break;
 	}
 	if(i != numcomps)
 	{
-		GRK_WARN("All components must have same precision, sign and stride");
+		GRK_WARN("cieLabToRGB: all components must have same dimensions, precision and sign");
 		return false;
 	}
 
@@ -1317,16 +1325,10 @@ bool GrkImage::cieLabToRGB(void)
 	cmsCIExyY WhitePoint;
 	defaultType = row[1] == GRK_DEFAULT_CIELAB_SPACE;
 	int32_t *L, *a, *b, *red, *green, *blue;
-	int32_t *src[3], *dst[3];
 	// range, offset and precision for L,a and b coordinates
 	double r_L, o_L, r_a, o_a, r_b, o_b, prec_L, prec_a, prec_b;
 	double minL, maxL, mina, maxa, minb, maxb;
 	cmsUInt16Number RGB[3];
-	auto dest_img = createRGB(3, comps[0].w, comps[0].h,
-												  comps[0].prec);
-	if(!dest_img)
-		return false;
-
 	prec_L = (double)comps[0].prec;
 	prec_a = (double)comps[1].prec;
 	prec_b = (double)comps[2].prec;
@@ -1393,14 +1395,11 @@ bool GrkImage::cieLabToRGB(void)
 	cmsCloseProfile(in);
 	cmsCloseProfile(out);
 	if(transform == nullptr)
-	{
-		grk_object_unref(&dest_img->obj);
 		return false;
-	}
 
-	L = src[0] = comps[0].data;
-	a = src[1] = comps[1].data;
-	b = src[2] = comps[2].data;
+	L = comps[0].data;
+	a = comps[1].data;
+	b = comps[2].data;
 
 	if(!L || !a || !b)
 	{
@@ -1408,16 +1407,17 @@ bool GrkImage::cieLabToRGB(void)
 		return false;
 	}
 
-	red = dst[0] = dest_img->comps[0].data;
-	green = dst[1] = dest_img->comps[1].data;
-	blue = dst[2] = dest_img->comps[2].data;
+	auto dest_img = createRGB(3, comps[0].w, comps[0].h,
+												  comps[0].prec);
+	if(!dest_img)
+		return false;
 
-	dest_img->comps[0].data = nullptr;
-	dest_img->comps[1].data = nullptr;
-	dest_img->comps[2].data = nullptr;
+	red   = dest_img->comps[0].data;
+	green = dest_img->comps[1].data;
+	blue  = dest_img->comps[2].data;
 
-	grk_object_unref(&dest_img->obj);
-	dest_img = nullptr;
+	uint32_t src_stride_diff = comps[0].stride - comps[0].w;
+	uint32_t dest_stride_diff = dest_img->comps[0].stride - dest_img->comps[0].w;
 
 	minL = -(r_L * o_L) / (pow(2, prec_L) - 1);
 	maxL = minL + r_L;
@@ -1428,7 +1428,6 @@ bool GrkImage::cieLabToRGB(void)
 	minb = -(r_b * o_b) / (pow(2, prec_b) - 1);
 	maxb = minb + r_b;
 
-	uint32_t stride_diff = comps[0].stride - comps[0].w;
 	size_t dest_index = 0;
 	for(uint32_t j = 0; j < comps[0].h; ++j)
 	{
@@ -1449,24 +1448,41 @@ bool GrkImage::cieLabToRGB(void)
 			blue[dest_index] = RGB[2];
 			dest_index++;
 		}
-		dest_index += stride_diff;
-		L += stride_diff;
-		a += stride_diff;
-		b += stride_diff;
+		dest_index += dest_stride_diff;
+		L += src_stride_diff;
+		a += src_stride_diff;
+		b += src_stride_diff;
 	}
 	cmsDeleteTransform(transform);
-	for(i = 0; i < 3; ++i)
+
+	for(i = 0; i < numcomps; ++i)
 	{
-		auto comp = comps + i;
-		grk_image_single_component_data_free(comp);
-		comp->data = dst[i];
-		comp->prec = 16;
+		auto srcComp = comps + i;
+		grk_image_single_component_data_free(srcComp);
+		srcComp->data = nullptr;
 	}
+	numcomps = 3;
+	for(i = 0; i < numcomps; ++i)
+	{
+		auto srcComp = comps + i;
+		auto destComp = dest_img->comps + i;
+
+		srcComp->prec = 16;
+		srcComp->stride = destComp->stride;
+		srcComp->data = destComp->data;
+	}
+
+	// clean up dest image
+	dest_img->comps[0].data = nullptr;
+	dest_img->comps[1].data = nullptr;
+	dest_img->comps[2].data = nullptr;
+	grk_object_unref(&dest_img->obj);
+	dest_img = nullptr;
+
 	color_space = GRK_CLRSPC_SRGB;
 
 	return true;
 }
-
 
 
 } // namespace grk
