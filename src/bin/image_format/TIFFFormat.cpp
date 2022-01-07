@@ -19,9 +19,7 @@
  */
 #include "grk_apps_config.h"
 
-#ifndef GROK_HAVE_LIBTIFF
-#error GROK_HAVE_LIBTIFF_NOT_DEFINED
-#endif /* GROK_HAVE_LIBTIFF */
+#ifdef GROK_HAVE_LIBTIFF
 
 #include "tiffiop.h"
 #include "grok.h"
@@ -32,11 +30,6 @@
 #ifndef _WIN32
 
 #define TIFF_IO_MAX 2147483647U
-typedef union fd_as_handle_union
-{
-	int fd;
-	thandle_t h;
-} fd_as_handle_union_t;
 
 static tmsize_t _tiffReadProc(thandle_t fd, void* buf, tmsize_t size)
 {
@@ -45,10 +38,9 @@ static tmsize_t _tiffReadProc(thandle_t fd, void* buf, tmsize_t size)
 
   return size;
 }
-
 static tmsize_t _tiffWriteProc(thandle_t fd, void* buf, tmsize_t size)
 {
-	fd_as_handle_union_t fdh;
+	auto *cdata = (ClientData*)fd;
 	const size_t bytes_total = (size_t) size;
 
 	if ((tmsize_t) bytes_total != size)
@@ -56,7 +48,6 @@ static tmsize_t _tiffWriteProc(thandle_t fd, void* buf, tmsize_t size)
 		errno=EINVAL;
 		return (tmsize_t) -1;
 	}
-	fdh.h = fd;
     tmsize_t count = -1;
     size_t bytes_written=0;
 	for (; bytes_written < bytes_total; bytes_written+=(size_t)count)
@@ -65,7 +56,7 @@ static tmsize_t _tiffWriteProc(thandle_t fd, void* buf, tmsize_t size)
 		size_t io_size = bytes_total-bytes_written;
 		if (io_size > TIFF_IO_MAX)
 			io_size = TIFF_IO_MAX;
-		count=write(fdh.fd, buf_offset, (TIFFIOSize_t) io_size);
+		count=write(cdata->fd, buf_offset, (TIFFIOSize_t) io_size);
 		if (count <= 0)
 			break;
 	}
@@ -77,25 +68,29 @@ static tmsize_t _tiffWriteProc(thandle_t fd, void* buf, tmsize_t size)
 
 static uint64_t _tiffSeekProc(thandle_t fd, uint64_t off, int whence)
 {
-	fd_as_handle_union_t fdh;
-
+	auto *cdata = (ClientData*)fd;
 	_TIFF_off_t off_io = (_TIFF_off_t) off;
+
 	if ((uint64_t) off_io != off)
 	{
 		errno=EINVAL;
 		return (uint64_t) -1;
 	}
-	fdh.h = fd;
 
-	return((uint64_t)lseek(fdh.fd, off_io, whence));
+	return((uint64_t)lseek(cdata->fd, off_io, whence));
 }
 
 static int _tiffCloseProc(thandle_t fd)
 {
-	fd_as_handle_union_t fdh;
-	fdh.h = fd;
+	auto *cdata = (ClientData*)fd;
 
-	return(close(fdh.fd));
+#ifdef GROK_HAVE_URING
+	cdata->uring.close();
+#endif
+	int rc = ::close(cdata->fd);
+	cdata->fd = 0;
+
+	return rc;
 }
 
 static uint64_t _tiffSizeProc(thandle_t fd)
@@ -104,50 +99,7 @@ static uint64_t _tiffSizeProc(thandle_t fd)
 
 	 return 0U;
 }
-TIFF* MyTIFFFdOpen(int fd, const char* name, const char* mode)
-{
-	fd_as_handle_union_t fdh;
 
-	fdh.fd = fd;
-	auto tif = TIFFClientOpen(name,
-							mode,
-							fdh.h,
-							_tiffReadProc,
-							_tiffWriteProc,
-							_tiffSeekProc,
-							_tiffCloseProc,
-							_tiffSizeProc,
-							nullptr,
-							nullptr);
-	if (tif)
-		tif->tif_fd = fd;
-
-	return (tif);
-}
-TIFF* MyTIFFOpen(const char* name, const char* mode)
-{
-	static const char module[] = "MyTIFFOpen";
-
-	int m = _TIFFgetMode(mode, module);
-	if (m == -1)
-		return ((TIFF*)0);
-
-	int fd = open(name, m, 0666);
-	if (fd < 0) {
-		if (errno > 0 && strerror(errno) != NULL ) {
-			TIFFErrorExt(0, module, "%s: %s", name, strerror(errno) );
-		} else {
-			TIFFErrorExt(0, module, "%s: Cannot open", name);
-		}
-		return ((TIFF *)0);
-	}
-
-	auto tif = MyTIFFFdOpen((int)fd, name, mode);
-	if(!tif)
-		close(fd);
-
-	return tif;
-}
 #endif
 
 TIFFFormat::TIFFFormat(): tif(nullptr),
@@ -166,6 +118,51 @@ TIFFFormat::~TIFFFormat(){
 		TIFFClose(tif);
 	delete[] packedBuf;
 }
+#ifndef _WIN32
+TIFF* TIFFFormat::MyTIFFOpen(const char* name, const char* mode)
+{
+	static const char module[] = "MyTIFFOpen";
+
+	int m = _TIFFgetMode(mode, module);
+	if (m == -1)
+		return ((TIFF*)0);
+
+	int fd = ::open(name, m, 0666);
+	if (fd < 0) {
+		if (errno > 0 && strerror(errno) != NULL ) {
+			TIFFErrorExt(0, module, "%s: %s", name, strerror(errno) );
+		} else {
+			TIFFErrorExt(0, module, "%s: Cannot open", name);
+		}
+		return ((TIFF *)0);
+	}
+
+	clientData.fd = fd;
+	auto tif = TIFFClientOpen(name,
+							mode,
+							&clientData,
+							_tiffReadProc,
+							_tiffWriteProc,
+							_tiffSeekProc,
+							_tiffCloseProc,
+							_tiffSizeProc,
+							nullptr,
+							nullptr);
+	if (tif) {
+		tif->tif_fd = fd;
+#ifdef GROK_HAVE_URING
+		clientData.uring.attach(name, mode, fd);
+#endif
+	}
+	else {
+		::close(fd);
+		clientData.fd = 0;
+	}
+
+	return tif;
+}
+#endif
+
 bool TIFFFormat::encodeHeader(grk_image* image)
 {
 	m_image = image;
@@ -1351,3 +1348,5 @@ void tiffSetErrorAndWarningHandlers(bool verbose)
 	TIFFSetErrorHandler(MyTiffErrorHandler);
 	TIFFSetWarningHandler(MyTiffWarningHandler);
 }
+
+#endif

@@ -17,9 +17,7 @@
  */
 #include "grk_apps_config.h"
 
-#ifndef GROK_HAVE_URING
-#error GROK_HAVE_URING_NOT_DEFINED
-#else
+#ifdef GROK_HAVE_URING
 
 #include "FileUringIO.h"
 #include "common.h"
@@ -35,31 +33,13 @@
 #include <dirent.h>
 #include <chrono>
 
-#define QD 1024
-#define BS (32 * 1024)
+const uint32_t QD = 1024;
+const uint32_t  BS =  (32 * 1024);
 
-struct io_data
-{
-	io_data() : readop(false), offset(0), iov{0, 0} {}
-	bool readop;
-	uint64_t offset;
-	iovec iov;
-};
-
-static void enqueue(io_uring* ring, io_data* data, int fd)
-{
-	auto sqe = io_uring_get_sqe(ring);
-	assert(sqe);
-
-	if(data->readop)
-		io_uring_prep_readv(sqe, fd, &data->iov, 1, data->offset);
-	else
-		io_uring_prep_writev(sqe, fd, &data->iov, 1, data->offset);
-	io_uring_sqe_set_data(sqe, data);
-	io_uring_submit(ring);
-}
-
-FileUringIO::FileUringIO() : m_fd(0), m_off(0), m_queueCount(0)
+FileUringIO::FileUringIO() : m_fd(0),
+							ownsDescriptor(false),
+							m_off(0),
+							m_queueCount(0)
 {
 	memset(&ring, 0, sizeof(ring));
 }
@@ -77,6 +57,7 @@ void FileUringIO::attach(std::string fileName, std::string mode, int fd){
 		m_fd = doRead ? STDIN_FILENO : STDOUT_FILENO;
 	else
 		m_fd = fd;
+	ownsDescriptor = false;
 }
 
 bool FileUringIO::open(std::string fileName, std::string mode)
@@ -99,6 +80,7 @@ bool FileUringIO::open(std::string fileName, std::string mode)
 			spdlog::error("{}: Cannot open", name);
 		return false;
 	}
+	ownsDescriptor = true;
 	// initialize ring
 	if(!doRead)
 	{
@@ -106,6 +88,7 @@ bool FileUringIO::open(std::string fileName, std::string mode)
 		if(ret < 0)
 		{
 			spdlog::error("queue_init: %s\n", strerror(-ret));
+			close();
 			return false;
 		}
 	}
@@ -137,48 +120,74 @@ int FileUringIO::getMode(const char* mode)
 	return m;
 }
 
+void FileUringIO::enqueue(io_uring* ring, io_data* data, int fd)
+{
+	auto sqe = io_uring_get_sqe(ring);
+	assert(sqe);
+
+	if(data->readop)
+		io_uring_prep_readv(sqe, fd, &data->iov, 1, data->offset);
+	else
+		io_uring_prep_writev(sqe, fd, &data->iov, 1, data->offset);
+	io_uring_sqe_set_data(sqe, data);
+	io_uring_submit(ring);
+}
+
+io_data* FileUringIO::retrieveCompletion(void){
+	io_uring_cqe* cqe;
+	int ret = io_uring_wait_cqe_nr(&ring, &cqe,1);
+
+	if(ret < 0)
+	{
+		spdlog::error("io_uring_wait_cqe");
+		return nullptr;
+	}
+	if(cqe->res < 0)
+	{
+		spdlog::error("The system call invoked asynchronously failed");
+		return nullptr;
+	}
+
+	/* Retrieve user data from CQE */
+	auto data = (io_data*)io_uring_cqe_get_data(cqe);
+
+	/* Mark this completion as seen */
+	io_uring_cqe_seen(&ring, cqe);
+
+	return data;
+}
+
 bool FileUringIO::close(void)
 {
-	bool rc = false;
-	if(m_fd)
-	{
-		if(fsync(m_fd))
-			spdlog::error("failed to synch file");
+	if(!m_fd)
+		return true;
+	if(fsync(m_fd)){
+		spdlog::error("failed to synch file");
+		return false;
 	}
+	uint32_t i = 0;
 	if(ring.ring_fd)
 	{
 		// process completions
-		for(uint32_t i = 0; i < m_queueCount; ++i)
+		for(; i < m_queueCount; ++i)
 		{
-			io_uring_cqe* cqe;
-			int ret = io_uring_wait_cqe(&ring, &cqe);
-
-			if(ret < 0)
-			{
-				spdlog::error("io_uring_wait_cqe");
-				rc = false;
-			}
-			if(cqe->res < 0)
-			{
-				spdlog::error("The system call invoked asynchronously failed");
-				rc = false;
-			}
-
 			/* Retrieve user data from CQE */
-			auto data = (io_data*)io_uring_cqe_get_data(cqe);
+			auto data = retrieveCompletion();
+			if (!data)
+				break;;
 
-			/* process this request here */
+			/* process request */
 			if(!data->readop)
 				delete[](uint8_t*) data->iov.iov_base;
 			delete data;
-
-			/* Mark this completion as seen */
-			io_uring_cqe_seen(&ring, cqe);
 		}
 		io_uring_queue_exit(&ring);
 		memset(&ring, 0, sizeof(ring));
 	}
-	if(!m_fd || grk::useStdio(m_fileName.c_str()))
+	assert(i ==  m_queueCount);
+	m_queueCount = 0;
+	bool rc = false;
+	if(grk::useStdio(m_fileName.c_str()) || !ownsDescriptor)
 		rc = true;
 	else if(::close(m_fd) == 0)
 		rc = true;

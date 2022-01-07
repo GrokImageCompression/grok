@@ -243,10 +243,9 @@ bool ImageFormat::validate_icc(GRK_COLOR_SPACE colourSpace, uint8_t* iccbuf, uin
 
 /**
  * return false if :
- * 1. any component's data buffer is NULL
- * 2. any component's precision is either 0 or greater than GRK_MAX_SUPPORTED_IMAGE_PRECISION
- * 3. any component's signedness does not match another component's signedness
- * 4. any component's precision does not match another component's precision
+ * 1. any component's precision is either 0 or greater than GRK_MAX_SUPPORTED_IMAGE_PRECISION
+ * 2. any component's signedness does not match another component's signedness
+ * 3. any component's precision does not match another component's precision
  *    (if equalPrecision is true)
  *
  */

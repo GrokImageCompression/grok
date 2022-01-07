@@ -15,17 +15,34 @@
  */
 
 #pragma once
+
+#include "grk_apps_config.h"
+#ifdef GROK_HAVE_LIBTIFF
+
+#ifdef GROK_HAVE_URING
+#include "FileUringIO.h"
+#endif
+
 #include "ImageFormat.h"
-
-#ifndef GROK_HAVE_LIBTIFF
-#error GROK_HAVE_LIBTIFF_NOT_DEFINED
-#endif /* GROK_HAVE_LIBTIFF */
-
 #include <tiffio.h>
 #include "convert.h"
 
 /* TIFF conversion*/
 void tiffSetErrorAndWarningHandlers(bool verbose);
+
+struct ClientData {
+	ClientData() : fd(0),
+					writeCount(0),
+					maxWrites(0)
+	{}
+	int fd;
+	uint32_t writeCount;
+	uint32_t maxWrites;
+#ifdef GROK_HAVE_URING
+	FileUringIO uring;
+#endif
+};
+
 
 class TIFFFormat : public ImageFormat
 {
@@ -43,6 +60,10 @@ class TIFFFormat : public ImageFormat
 	grk_image* decode(const std::string& filename, grk_cparameters* parameters) override;
 
   private:
+#ifndef _WIN32
+	TIFF* MyTIFFOpen(const char* name, const char* mode);
+#endif
+	ClientData clientData;
 	TIFF* tif;
 	uint8_t *packedBuf;
 	uint32_t chroma_subsample_x;
@@ -53,3 +74,5 @@ class TIFFFormat : public ImageFormat
 	uint64_t bytesToWrite;
 	uint16_t numcomps;
 };
+
+#endif

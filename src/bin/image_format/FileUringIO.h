@@ -19,13 +19,22 @@
 #pragma once
 
 #include "grk_apps_config.h"
-
 #ifdef GROK_HAVE_URING
 
 #include "IFileIO.h"
-
 #include <liburing.h>
 #include <liburing/io_uring.h>
+
+struct io_data
+{
+	io_data() : readop(false),
+				offset(0),
+				iov{0, 0}
+	{}
+	bool readop;
+	uint64_t offset;
+	iovec iov;
+};
 
 class FileUringIO : public IFileIO
 {
@@ -38,14 +47,16 @@ class FileUringIO : public IFileIO
 	bool write(uint8_t* buf, size_t len) override;
 	bool read(uint8_t* buf, size_t len) override;
 	bool seek(int64_t pos) override;
-
   private:
 	io_uring ring;
 	int m_fd;
+	bool ownsDescriptor;
 	std::string m_fileName;
 	uint64_t m_off;
 	size_t m_queueCount;
 	int getMode(const char* mode);
+	io_data* retrieveCompletion(void);
+	void enqueue(io_uring* ring, io_data* data, int fd);
 };
 
 #endif
