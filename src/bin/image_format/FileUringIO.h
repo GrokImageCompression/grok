@@ -26,6 +26,7 @@ class FileUringIO : public IFileIO
 	FileUringIO();
 	virtual ~FileUringIO() override;
 	bool open(std::string fileName, std::string mode) override;
+	void attach(std::string fileName, std::string mode, int fd);
 	bool close(void) override;
 	bool write(uint8_t* buf, size_t len) override;
 	bool read(uint8_t* buf, size_t len) override;

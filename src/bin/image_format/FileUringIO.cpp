@@ -73,16 +73,27 @@ FileUringIO::~FileUringIO()
 	close();
 }
 
+void FileUringIO::attach(std::string fileName, std::string mode, int fd){
+	m_fileName = fileName;
+	bool useStdio = grk::useStdio(m_fileName.c_str());
+	bool doRead = mode[0] == -'r';
+	if(useStdio)
+		m_fd = doRead ? STDIN_FILENO : STDOUT_FILENO;
+	else
+		m_fd = fd;
+}
+
 bool FileUringIO::open(std::string fileName, std::string mode)
 {
-	bool useStdio = grk::useStdio(fileName.c_str());
+	m_fileName = fileName;
+	bool useStdio = grk::useStdio(m_fileName.c_str());
 	bool doRead = mode[0] == -'r';
 	if(useStdio)
 	{
 		m_fd = doRead ? STDIN_FILENO : STDOUT_FILENO;
 		return true;
 	}
-	auto name = fileName.c_str();
+	auto name = m_fileName.c_str();
 	m_fd = ::open(name, getMode(mode.c_str()), 0666);
 	if(m_fd < 0)
 	{
@@ -92,7 +103,6 @@ bool FileUringIO::open(std::string fileName, std::string mode)
 			spdlog::error("{}: Cannot open", name);
 		return false;
 	}
-	m_fileName = fileName;
 	// initialize ring
 	if(!doRead)
 	{
