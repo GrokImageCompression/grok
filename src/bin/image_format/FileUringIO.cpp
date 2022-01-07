@@ -19,7 +19,7 @@
 
 #ifndef GROK_HAVE_URING
 #error GROK_HAVE_URING_NOT_DEFINED
-#endif
+#else
 
 #include "FileUringIO.h"
 #include "common.h"
@@ -35,12 +35,8 @@
 #include <dirent.h>
 #include <chrono>
 
-#include <liburing.h>
-#include <liburing/io_uring.h>
-
 #define QD 1024
 #define BS (32 * 1024)
-struct io_uring ring;
 
 struct io_data
 {
@@ -242,3 +238,4 @@ bool FileUringIO::seek(int64_t pos)
 {
 	return lseek(m_fd, pos, SEEK_SET) == pos;
 }
+#endif

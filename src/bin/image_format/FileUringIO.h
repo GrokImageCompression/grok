@@ -18,7 +18,14 @@
 
 #pragma once
 
+#include "grk_apps_config.h"
+
+#ifdef GROK_HAVE_URING
+
 #include "IFileIO.h"
+
+#include <liburing.h>
+#include <liburing/io_uring.h>
 
 class FileUringIO : public IFileIO
 {
@@ -33,9 +40,12 @@ class FileUringIO : public IFileIO
 	bool seek(int64_t pos) override;
 
   private:
+	io_uring ring;
 	int m_fd;
 	std::string m_fileName;
 	uint64_t m_off;
 	size_t m_queueCount;
 	int getMode(const char* mode);
 };
+
+#endif
