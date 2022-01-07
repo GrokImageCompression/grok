@@ -16,26 +16,139 @@
  *
  *    This source code incorporates work covered by the BSD 2-clause license.
  *    Please see the LICENSE file in the root directory for details.
- *
  */
-
-#include <cstdio>
-#include <cstdlib>
 #include "grk_apps_config.h"
-#include "grok.h"
-#include "TIFFFormat.h"
-#include "convert.h"
-#include <cstring>
-#include "common.h"
 
 #ifndef GROK_HAVE_LIBTIFF
 #error GROK_HAVE_LIBTIFF_NOT_DEFINED
 #endif /* GROK_HAVE_LIBTIFF */
 
-#include <tiffio.h>
-#include <cassert>
-#include <memory>
-#include <string>
+#include "tiffiop.h"
+#include "grok.h"
+#include "TIFFFormat.h"
+#include "convert.h"
+#include "common.h"
+
+#ifndef _WIN32
+
+#define TIFF_IO_MAX 2147483647U
+typedef union fd_as_handle_union
+{
+	int fd;
+	thandle_t h;
+} fd_as_handle_union_t;
+
+static tmsize_t _tiffReadProc(thandle_t fd, void* buf, tmsize_t size)
+{
+  (void)fd;
+  (void)buf;
+
+  return size;
+}
+
+static tmsize_t _tiffWriteProc(thandle_t fd, void* buf, tmsize_t size)
+{
+	fd_as_handle_union_t fdh;
+	const size_t bytes_total = (size_t) size;
+
+	if ((tmsize_t) bytes_total != size)
+	{
+		errno=EINVAL;
+		return (tmsize_t) -1;
+	}
+	fdh.h = fd;
+    tmsize_t count = -1;
+    size_t bytes_written=0;
+	for (; bytes_written < bytes_total; bytes_written+=(size_t)count)
+	{
+		const char *buf_offset = (char *) buf+bytes_written;
+		size_t io_size = bytes_total-bytes_written;
+		if (io_size > TIFF_IO_MAX)
+			io_size = TIFF_IO_MAX;
+		count=write(fdh.fd, buf_offset, (TIFFIOSize_t) io_size);
+		if (count <= 0)
+			break;
+	}
+	if (count < 0)
+		return (tmsize_t)-1;
+
+	return (tmsize_t) bytes_written;
+}
+
+static uint64_t _tiffSeekProc(thandle_t fd, uint64_t off, int whence)
+{
+	fd_as_handle_union_t fdh;
+
+	_TIFF_off_t off_io = (_TIFF_off_t) off;
+	if ((uint64_t) off_io != off)
+	{
+		errno=EINVAL;
+		return (uint64_t) -1;
+	}
+	fdh.h = fd;
+
+	return((uint64_t)lseek(fdh.fd, off_io, whence));
+}
+
+static int _tiffCloseProc(thandle_t fd)
+{
+	fd_as_handle_union_t fdh;
+	fdh.h = fd;
+
+	return(close(fdh.fd));
+}
+
+static uint64_t _tiffSizeProc(thandle_t fd)
+{
+	(void)fd;
+
+	 return 0U;
+}
+TIFF* MyTIFFFdOpen(int fd, const char* name, const char* mode)
+{
+	fd_as_handle_union_t fdh;
+
+	fdh.fd = fd;
+	auto tif = TIFFClientOpen(name,
+							mode,
+							fdh.h,
+							_tiffReadProc,
+							_tiffWriteProc,
+							_tiffSeekProc,
+							_tiffCloseProc,
+							_tiffSizeProc,
+							nullptr,
+							nullptr);
+	if (tif)
+		tif->tif_fd = fd;
+
+	return (tif);
+}
+TIFF* MyTIFFOpen(const char* name, const char* mode)
+{
+	static const char module[] = "MyTIFFOpen";
+
+	int m = _TIFFgetMode(mode, module);
+	if (m == -1)
+		return ((TIFF*)0);
+
+	int fd = open(name, m, 0666);
+	if (fd < 0) {
+		if (errno > 0 && strerror(errno) != NULL ) {
+			TIFFErrorExt(0, module, "%s: %s", name, strerror(errno) );
+		} else {
+			TIFFErrorExt(0, module, "%s: Cannot open", name);
+		}
+		return ((TIFF *)0);
+	}
+
+	auto tif = MyTIFFFdOpen((int)fd, name, mode);
+	if(!tif)
+		close(fd);
+
+	return tif;
+}
+#endif
 
 TIFFFormat::TIFFFormat(): tif(nullptr),
 							packedBuf(nullptr),
@@ -167,7 +280,11 @@ bool TIFFFormat::encodeHeader(grk_image* image)
 			numExtraChannels = 0;
 		}
 	}
+#ifdef _WIN32
 	tif = TIFFOpen(m_fileName.c_str(), "wb");
+#else
+	tif = MyTIFFOpen(m_fileName.c_str(), "wb");
+#endif
 	if(!tif)
 	{
 		spdlog::error("TIFFFormat::encodeHeader:failed to open {} for writing", m_fileName.c_str());
@@ -281,7 +398,8 @@ bool TIFFFormat::encodePixels(uint8_t *data,
 							uint64_t dataLen,
 							grk_serialize_buf** reclaimed,
 							uint32_t max_reclaimed,
-							uint32_t *num_reclaimed, uint32_t strip) {
+							uint32_t *num_reclaimed,
+							uint32_t strip) {
 	tmsize_t written = 0;
 	uint32_t totalStrips = ((m_image->y1 - m_image->y0) + m_image->rowsPerStrip - 1) / m_image->rowsPerStrip;
 	{
@@ -299,6 +417,13 @@ bool TIFFFormat::encodePixels(uint8_t *data,
 		spdlog::error("TIFFFormat::encodeRows: error in TIFFWriteEncodedStrip");
 		return false;
 	}
+
+	if (reclaimed){
+		(void)max_reclaimed;
+		(void)num_reclaimed;
+
+	}
+
 
 	return true;
 }
