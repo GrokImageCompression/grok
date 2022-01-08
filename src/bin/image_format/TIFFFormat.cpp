@@ -27,6 +27,32 @@
 #include "convert.h"
 #include "common.h"
 
+
+
+ClientData::ClientData() : fd(0),
+							incomingPixelWrite(false),
+							maxPixelWrites(0),
+							numPixelWrites(0),
+							active(true)
+{}
+
+#ifdef GROK_HAVE_URING
+bool ClientData::write(uint8_t* buf, size_t len){
+	if (!active)
+		return false;
+	if (incomingPixelWrite)
+		numPixelWrites++;
+	uring.write(buf, len);
+	if (numPixelWrites == maxPixelWrites){
+		uring.close();
+		active = false;
+	}
+	incomingPixelWrite = false;
+
+	return true;
+}
+#endif
+
 #ifndef _WIN32
 
 #define TIFF_IO_MAX 2147483647U
@@ -43,14 +69,8 @@ static tmsize_t _tiffWriteProc(thandle_t fd, void* buf, tmsize_t size)
 	auto *cdata = (ClientData*)fd;
 
 #ifdef GROK_HAVE_URING
-	cdata->writeCount++;
-	if (cdata->writeCount < 3){
-		cdata->uring.write((uint8_t*)buf, (size_t)size);
-		if (cdata->writeCount == 2)
-			cdata->uring.close();
+	if (cdata->write((uint8_t*)buf, (size_t)size))
 		return size;
-	}
-
 #endif
 
 	const size_t bytes_total = (size_t) size;
@@ -297,6 +317,7 @@ bool TIFFFormat::encodeHeader(grk_image* image)
 			numExtraChannels = 0;
 		}
 	}
+	clientData.maxPixelWrites = ((m_image->y1 - m_image->y0) + m_image->rowsPerStrip - 1) / m_image->rowsPerStrip;
 #ifdef _WIN32
 	tif = TIFFOpen(m_fileName.c_str(), "wb");
 #else
@@ -418,13 +439,13 @@ bool TIFFFormat::encodePixels(uint8_t *data,
 							uint32_t *num_reclaimed,
 							uint32_t strip) {
 	tmsize_t written = 0;
-	uint32_t totalStrips = ((m_image->y1 - m_image->y0) + m_image->rowsPerStrip - 1) / m_image->rowsPerStrip;
 	{
 		std::unique_lock<std::mutex> lk(encodePixelmutex);
+		clientData.incomingPixelWrite = true;
 		written = TIFFWriteEncodedStrip(tif, (tmsize_t)strip, data, (tmsize_t)dataLen);
 		if (written == -1)
 			encodeState |= IMAGE_FORMAT_ERROR;
-		else if (++stripCount == totalStrips){
+		else if (++stripCount == clientData.maxPixelWrites){
 			encodeFinish();
 			encodeState |= IMAGE_FORMAT_ENCODED_PIXELS;
 		}

@@ -58,6 +58,9 @@ class FileUringIO : public IFileIO
 	int getMode(const char* mode);
 	void enqueue(io_uring* ring, io_data* data, int fd);
 	bool initQueue(void);
+
+	const uint32_t QD = 1024;
+	const uint32_t  BS =  (32 * 1024);
 };
 
 #endif

@@ -33,8 +33,6 @@
 #include <dirent.h>
 #include <chrono>
 
-const uint32_t QD = 1024;
-const uint32_t  BS =  (32 * 1024);
 
 FileUringIO::FileUringIO() : m_fd(0),
 							ownsDescriptor(false),

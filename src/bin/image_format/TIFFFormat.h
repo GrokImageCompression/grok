@@ -31,16 +31,17 @@
 void tiffSetErrorAndWarningHandlers(bool verbose);
 
 struct ClientData {
-	ClientData() : fd(0),
-					writeCount(0),
-					maxWrites(0)
-	{}
-	int fd;
-	uint32_t writeCount;
-	uint32_t maxWrites;
+	ClientData();
 #ifdef GROK_HAVE_URING
+	bool write(uint8_t* buf, size_t len);
 	FileUringIO uring;
 #endif
+	int fd;
+	bool incomingPixelWrite;
+	uint32_t maxPixelWrites;
+private:
+	uint32_t numPixelWrites;
+	bool active;
 };
 
 
