@@ -41,18 +41,18 @@ static tmsize_t _tiffReadProc(thandle_t fd, void* buf, tmsize_t size)
 static tmsize_t _tiffWriteProc(thandle_t fd, void* buf, tmsize_t size)
 {
 	auto *cdata = (ClientData*)fd;
-/*
+
 #ifdef GROK_HAVE_URING
 	cdata->writeCount++;
-	if (cdata->writeCount == 2){
-		auto b = new uint8_t[size];
-		memcpy(b,buf,(size_t)size);
-		cdata->uring.write(b, (size_t)size);
-		cdata->uring.close();
+	if (cdata->writeCount < 3){
+		cdata->uring.write((uint8_t*)buf, (size_t)size);
+		if (cdata->writeCount == 2)
+			cdata->uring.close();
 		return size;
 	}
+
 #endif
-*/
+
 	const size_t bytes_total = (size_t) size;
 	if ((tmsize_t) bytes_total != size)
 	{
