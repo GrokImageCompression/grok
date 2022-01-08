@@ -173,6 +173,7 @@ TIFF* TIFFFormat::MyTIFFOpen(const char* name, const char* mode)
 
 	if (!success){
 		::close(fd);
+		clientData.uring.close();
 		clientData.fd = 0;
 	}
 

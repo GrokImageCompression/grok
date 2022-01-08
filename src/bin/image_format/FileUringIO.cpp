@@ -170,16 +170,11 @@ bool FileUringIO::close(void)
 {
 	if(!m_fd)
 		return true;
-	if(fsync(m_fd)){
-		spdlog::error("failed to synch file");
-		return false;
-	}
-	uint32_t i = 0;
 	if(ring.ring_fd)
 	{
 		// process completions
 		size_t count = m_queueCount;
-		for(; i < count; ++i)
+		for(uint32_t i = 0; i < count; ++i)
 		{
 			auto data = retrieveCompletion(false);
 			if (!data)
