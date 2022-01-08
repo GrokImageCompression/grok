@@ -187,6 +187,7 @@ bool GrkImage::execUpsample(void)
 		}
 	}
 
+	all_components_data_free();
 	delete[] comps;
 	comps = new_components;
 
