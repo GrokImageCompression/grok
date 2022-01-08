@@ -42,7 +42,7 @@ class FileUringIO : public IFileIO
 	FileUringIO();
 	virtual ~FileUringIO() override;
 	bool open(std::string fileName, std::string mode) override;
-	void attach(std::string fileName, std::string mode, int fd);
+	bool attach(std::string fileName, std::string mode, int fd);
 	bool close(void) override;
 	bool write(uint8_t* buf, size_t len) override;
 	bool read(uint8_t* buf, size_t len) override;
@@ -57,6 +57,7 @@ class FileUringIO : public IFileIO
 	size_t m_queueCount;
 	int getMode(const char* mode);
 	void enqueue(io_uring* ring, io_data* data, int fd);
+	bool initQueue(void);
 };
 
 #endif

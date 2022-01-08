@@ -41,8 +41,20 @@ static tmsize_t _tiffReadProc(thandle_t fd, void* buf, tmsize_t size)
 static tmsize_t _tiffWriteProc(thandle_t fd, void* buf, tmsize_t size)
 {
 	auto *cdata = (ClientData*)fd;
+/*
+#ifdef GROK_HAVE_URING
+	cdata->writeCount++;
+	if (cdata->writeCount == 1){
+		auto b = new uint8_t[size];
+		memcpy(b,buf,(size_t)size);
+		cdata->uring.write(b, (size_t)size);
+		cdata->uring.close();
+		delete[] b;
+		return size;
+	}
+#endif
+*/
 	const size_t bytes_total = (size_t) size;
-
 	if ((tmsize_t) bytes_total != size)
 	{
 		errno=EINVAL;
@@ -138,23 +150,29 @@ TIFF* TIFFFormat::MyTIFFOpen(const char* name, const char* mode)
 	}
 
 	clientData.fd = fd;
-	auto tif = TIFFClientOpen(name,
-							mode,
-							&clientData,
-							_tiffReadProc,
-							_tiffWriteProc,
-							_tiffSeekProc,
-							_tiffCloseProc,
-							_tiffSizeProc,
-							nullptr,
-							nullptr);
-	if (tif) {
-		tif->tif_fd = fd;
+	bool success = true;
+	TIFF *tif = nullptr;
 #ifdef GROK_HAVE_URING
-		clientData.uring.attach(name, mode, fd);
+	success = clientData.uring.attach(name, mode, fd);
 #endif
+	if (success) {
+		tif = TIFFClientOpen(name,
+								mode,
+								&clientData,
+								_tiffReadProc,
+								_tiffWriteProc,
+								_tiffSeekProc,
+								_tiffCloseProc,
+								_tiffSizeProc,
+								nullptr,
+								nullptr);
+		if (tif)
+			tif->tif_fd = fd;
+		else
+			success = false;
 	}
-	else {
+
+	if (!success){
 		::close(fd);
 		clientData.fd = 0;
 	}
@@ -491,8 +509,14 @@ bool TIFFFormat::encodeRows(uint32_t rowsToWrite)
 		{
 			uint32_t stripRows = (std::min)(m_image->rowsPerStrip, height - h);
 			if (!m_image->interleavedData)
-				iter->interleave((int32_t**)planes, m_image->numcomps, (uint8_t*)packedBuf, m_image->comps[0].w, m_image->comps[0].stride,
-						m_image->packedRowBytes, stripRows, 0);
+				iter->interleave((int32_t**)planes,
+								m_image->numcomps,
+								(uint8_t*)packedBuf,
+								m_image->comps[0].w,
+								m_image->comps[0].stride,
+								m_image->packedRowBytes,
+								stripRows,
+								0);
 			if(!encodePixels(bufPtr, m_image->packedRowBytes * stripRows,nullptr,0,nullptr, strip++)) {
 				delete iter;
 				goto cleanup;

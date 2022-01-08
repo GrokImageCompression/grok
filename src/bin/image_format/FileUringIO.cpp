@@ -49,7 +49,7 @@ FileUringIO::~FileUringIO()
 	close();
 }
 
-void FileUringIO::attach(std::string fileName, std::string mode, int fd){
+bool FileUringIO::attach(std::string fileName, std::string mode, int fd){
 	m_fileName = fileName;
 	bool useStdio = grk::useStdio(m_fileName.c_str());
 	bool doRead = mode[0] == -'r';
@@ -58,6 +58,8 @@ void FileUringIO::attach(std::string fileName, std::string mode, int fd){
 	else
 		m_fd = fd;
 	ownsDescriptor = false;
+
+	return (doRead ? true : initQueue());
 }
 
 bool FileUringIO::open(std::string fileName, std::string mode)
@@ -81,16 +83,17 @@ bool FileUringIO::open(std::string fileName, std::string mode)
 		return false;
 	}
 	ownsDescriptor = true;
-	// initialize ring
-	if(!doRead)
+
+	return (doRead ? true : initQueue());
+}
+
+bool FileUringIO::initQueue(void){
+	int ret = io_uring_queue_init(QD, &ring, 0);
+	if(ret < 0)
 	{
-		int ret = io_uring_queue_init(QD, &ring, 0);
-		if(ret < 0)
-		{
-			spdlog::error("queue_init: %s\n", strerror(-ret));
-			close();
-			return false;
-		}
+		spdlog::error("queue_init: %s\n", strerror(-ret));
+		close();
+		return false;
 	}
 
 	return true;
@@ -130,7 +133,8 @@ void FileUringIO::enqueue(io_uring* ring, io_data* data, int fd)
 	else
 		io_uring_prep_writev(sqe, fd, &data->iov, 1, data->offset);
 	io_uring_sqe_set_data(sqe, data);
-	io_uring_submit(ring);
+	int ret = io_uring_submit(ring);
+	assert(ret == 1);
 }
 
 io_data* FileUringIO::retrieveCompletion(bool peek){
