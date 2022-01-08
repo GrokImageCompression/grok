@@ -173,7 +173,9 @@ TIFF* TIFFFormat::MyTIFFOpen(const char* name, const char* mode)
 
 	if (!success){
 		::close(fd);
+#ifdef GROK_HAVE_URING
 		clientData.uring.close();
+#endif
 		clientData.fd = 0;
 	}
 
