@@ -133,13 +133,19 @@ void FileUringIO::enqueue(io_uring* ring, io_data* data, int fd)
 	io_uring_submit(ring);
 }
 
-io_data* FileUringIO::retrieveCompletion(void){
+io_data* FileUringIO::retrieveCompletion(bool peek){
 	io_uring_cqe* cqe;
-	int ret = io_uring_wait_cqe_nr(&ring, &cqe,1);
+	int ret;
+
+	if (peek)
+		ret = io_uring_peek_cqe(&ring, &cqe);
+	else
+		ret = io_uring_wait_cqe(&ring, &cqe);
 
 	if(ret < 0)
 	{
-		spdlog::error("io_uring_wait_cqe");
+		if (!peek)
+			spdlog::error("io_uring_wait_cqe returned an error.");
 		return nullptr;
 	}
 	if(cqe->res < 0)
@@ -148,11 +154,10 @@ io_data* FileUringIO::retrieveCompletion(void){
 		return nullptr;
 	}
 
-	/* Retrieve user data from CQE */
 	auto data = (io_data*)io_uring_cqe_get_data(cqe);
-
-	/* Mark this completion as seen */
 	io_uring_cqe_seen(&ring, cqe);
+
+	m_queueCount--;
 
 	return data;
 }
@@ -169,12 +174,12 @@ bool FileUringIO::close(void)
 	if(ring.ring_fd)
 	{
 		// process completions
-		for(; i < m_queueCount; ++i)
+		size_t count = m_queueCount;
+		for(; i < count; ++i)
 		{
-			/* Retrieve user data from CQE */
-			auto data = retrieveCompletion();
+			auto data = retrieveCompletion(false);
 			if (!data)
-				break;;
+				break;
 
 			/* process request */
 			if(!data->readop)
@@ -184,7 +189,7 @@ bool FileUringIO::close(void)
 		io_uring_queue_exit(&ring);
 		memset(&ring, 0, sizeof(ring));
 	}
-	assert(i ==  m_queueCount);
+	assert(m_queueCount == 0);
 	m_queueCount = 0;
 	bool rc = false;
 	if(grk::useStdio(m_fileName.c_str()) || !ownsDescriptor)

@@ -47,6 +47,7 @@ class FileUringIO : public IFileIO
 	bool write(uint8_t* buf, size_t len) override;
 	bool read(uint8_t* buf, size_t len) override;
 	bool seek(int64_t pos) override;
+	io_data* retrieveCompletion(bool peek);
   private:
 	io_uring ring;
 	int m_fd;
@@ -55,7 +56,6 @@ class FileUringIO : public IFileIO
 	uint64_t m_off;
 	size_t m_queueCount;
 	int getMode(const char* mode);
-	io_data* retrieveCompletion(void);
 	void enqueue(io_uring* ring, io_data* data, int fd);
 };
 
