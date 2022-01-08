@@ -342,17 +342,22 @@ bool GrkImage::greyToRGB(void){
 	auto new_components = new grk_image_comp[3];
 	memset(new_components, 0, 3 * sizeof(grk_image_comp));
 	for (uint16_t i = 0; i < 3; ++i){
-		auto src = comps;
 		auto dest = new_components + i;
-		copyComponent(src, dest);
-		if (!allocData(dest)){
-			delete [] new_components;
-			return false;
+		copyComponent(comps, dest);
+		if (i > 0) {
+			if (!allocData(dest)){
+				delete [] new_components;
+				return false;
+			}
+			size_t dataSize = (uint64_t)comps->stride * comps->h * sizeof(uint32_t);
+			memcpy(dest->data, comps->data, dataSize);
 		}
-		size_t dataSize = (uint64_t)src->stride * src->h * sizeof(uint32_t);
-		memcpy(dest->data, src->data, dataSize);
 	}
 
+	new_components->data = comps->data;
+	new_components->stride = comps->stride;
+	comps->data = nullptr;
+	all_components_data_free();
 	delete[] comps;
 	comps = new_components;
 	numcomps = 3;

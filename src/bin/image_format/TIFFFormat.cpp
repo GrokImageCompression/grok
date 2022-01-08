@@ -44,12 +44,11 @@ static tmsize_t _tiffWriteProc(thandle_t fd, void* buf, tmsize_t size)
 /*
 #ifdef GROK_HAVE_URING
 	cdata->writeCount++;
-	if (cdata->writeCount == 1){
+	if (cdata->writeCount == 2){
 		auto b = new uint8_t[size];
 		memcpy(b,buf,(size_t)size);
 		cdata->uring.write(b, (size_t)size);
 		cdata->uring.close();
-		delete[] b;
 		return size;
 	}
 #endif
