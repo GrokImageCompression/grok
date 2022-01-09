@@ -42,16 +42,18 @@ ClientData::ClientData() : fd(0),
 bool ClientData::write(uint8_t* buf, size_t len){
 	if (!active)
 		return false;
+	//printf("%d %d %d\n", m_prePixelOffset, relativePixelOffset, len);
+	uring.write(buf, m_prePixelOffset + relativePixelOffset, len);
 	if (incomingPixelWrite)
 		numPixelWrites++;
 	else
 		m_prePixelOffset += len;
-	uring.write(buf, m_prePixelOffset + relativePixelOffset, len);
 	if (numPixelWrites == maxPixelWrites){
 		uring.close();
 		active = false;
 	}
 	incomingPixelWrite = false;
+	relativePixelOffset = 0;
 
 	return true;
 }
@@ -73,8 +75,8 @@ static tmsize_t _tiffWriteProc(thandle_t fd, void* buf, tmsize_t size)
 	auto *cdata = (ClientData*)fd;
 
 #ifdef GROK_HAVE_URING
-	//if (cdata->write((uint8_t*)buf, (size_t)size))
-	//	return size;
+	if (cdata->write((uint8_t*)buf, (size_t)size))
+		return size;
 #endif
 
 	const size_t bytes_total = (size_t) size;
@@ -445,6 +447,7 @@ bool TIFFFormat::encodePixels(grk_serialize_buf pixels,
 	{
 		std::unique_lock<std::mutex> lk(encodePixelmutex);
 		clientData.incomingPixelWrite = true;
+		clientData.relativePixelOffset = pixels.relativeOffset;
 		written = TIFFWriteEncodedStrip(tif, (tmsize_t)strip, pixels.data, (tmsize_t)pixels.dataLength);
 		if (written == -1)
 			encodeState |= IMAGE_FORMAT_ERROR;

@@ -152,7 +152,7 @@ io_data* FileUringIO::retrieveCompletion(bool peek){
 	}
 	if(cqe->res < 0)
 	{
-		spdlog::error("The system call invoked asynchronously failed");
+		spdlog::error("The system call invoked asynchronously has failed");
 		return nullptr;
 	}
 
@@ -175,13 +175,11 @@ bool FileUringIO::close(void)
 		for(uint32_t i = 0; i < count; ++i)
 		{
 			auto data = retrieveCompletion(false);
-			if (!data)
-				break;
-
-			/* process request */
-			if(!data->readop)
-				delete[](uint8_t*) data->iov.iov_base;
-			delete data;
+			if (data) {
+				if(!data->readop)
+					delete[](uint8_t*) data->iov.iov_base;
+				delete data;
+			}
 		}
 		io_uring_queue_exit(&ring);
 		memset(&ring, 0, sizeof(ring));
