@@ -96,7 +96,8 @@ static tmsize_t TiffWrite(thandle_t fd, void* buf, tmsize_t size)
 	if (cdata->write((uint8_t*)buf, (size_t)size))
 		return size;
 #endif
-
+	//grk::ChronoTimer timer("fwrite: time to write");
+	//timer.start();
 	const size_t bytes_total = (size_t) size;
 	if ((tmsize_t) bytes_total != size)
 	{
@@ -117,6 +118,7 @@ static tmsize_t TiffWrite(thandle_t fd, void* buf, tmsize_t size)
 	}
 	if (count < 0)
 		return (tmsize_t)-1;
+	//timer.finish();
 
 	return (tmsize_t) bytes_written;
 }

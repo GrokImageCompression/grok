@@ -68,6 +68,7 @@ bool FileStreamIO::close(void)
 bool FileStreamIO::write(uint8_t* buf, uint64_t offset, size_t len)
 {
 	auto actual = fwrite(buf, 1, len, m_fileHandle);
+	(void)offset;
 	if(actual < len)
 		spdlog::error("wrote fewer bytes {} than expected number of bytes {}.", actual, len);
 

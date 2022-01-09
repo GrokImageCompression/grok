@@ -45,6 +45,7 @@
 #include <cassert>
 #include "grok.h"
 #include <algorithm>
+#include <chrono>
 
 /*
  Use fseeko() and ftello() if they are available since they use
@@ -93,6 +94,23 @@ const GRK_SUPPORTED_FILE_FMT supportedStdoutFileFormats[] = {
 const size_t maxICCProfileBufferLen = 10000000;
 
 int batch_sleep(int val);
+
+class ChronoTimer {
+public:
+	ChronoTimer(std::string msg) : message(msg){
+	}
+	void start(void){
+		startTime = std::chrono::high_resolution_clock::now();
+	}
+	void finish(void){
+		auto finish = std::chrono::high_resolution_clock::now();
+		std::chrono::duration<double> elapsed = finish - startTime;
+		spdlog::info("{} : {} ms",message, elapsed.count() * 1000);
+	}
+private:
+	std::string message;
+	std::chrono::high_resolution_clock::time_point startTime;
+};
 
 struct grk_dircnt
 {

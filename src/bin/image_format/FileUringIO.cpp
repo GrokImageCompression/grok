@@ -125,12 +125,16 @@ void FileUringIO::enqueue(io_uring* ring, io_data* data, int fd)
 	auto sqe = io_uring_get_sqe(ring);
 	assert(sqe);
 
+	//grk::ChronoTimer timer("uring: time to enque");
+	//timer.start();
 	if(data->readop)
 		io_uring_prep_readv(sqe, fd, &data->iov, 1, data->offset);
 	else
 		io_uring_prep_writev(sqe, fd, &data->iov, 1, data->offset);
 	io_uring_sqe_set_data(sqe, data);
 	int ret = io_uring_submit(ring);
+	//timer.finish();
+
 	assert(ret == 1);
 	(void)ret;
 }
@@ -171,6 +175,8 @@ bool FileUringIO::close(void)
 		return true;
 	if(ring.ring_fd)
 	{
+		//grk::ChronoTimer timer("uring: time to close");
+		//timer.start();
 		// process completions
 		size_t count = m_queueCount;
 		for(uint32_t i = 0; i < count; ++i)
@@ -184,6 +190,7 @@ bool FileUringIO::close(void)
 		}
 		io_uring_queue_exit(&ring);
 		memset(&ring, 0, sizeof(ring));
+		//timer.finish();
 	}
 	assert(m_queueCount == 0);
 	m_queueCount = 0;
@@ -200,7 +207,6 @@ bool FileUringIO::close(void)
 bool FileUringIO::write(uint8_t* buf, uint64_t offset, size_t len)
 {
 	bool rc = true;
-	// auto start = std::chrono::high_resolution_clock::now();
 	io_data* data = new io_data();
 	auto b = new uint8_t[len];
 	memcpy(b, buf, len);
@@ -208,35 +214,12 @@ bool FileUringIO::write(uint8_t* buf, uint64_t offset, size_t len)
 	data->iov.iov_base = b;
 	data->iov.iov_len = len;
 	enqueue(&ring, data, m_fd);
-
-	// auto finish = std::chrono::high_resolution_clock::now();
-	// std::chrono::duration<double> elapsed = finish - start;
-	// spdlog::info("write time: {} ms",	elapsed.count() * 1000);
 	m_queueCount++;
 
 	return rc;
 }
 bool FileUringIO::read(uint8_t* buf, size_t len)
 {
-	/*
-		bool rc = true;
-		// auto start = std::chrono::high_resolution_clock::now();
-		io_data* data = new io_data();
-		data->readop = false;
-		data->offset = m_off;
-		m_off += (uint64_t)len;
-		data->iov.iov_base = buf;
-		data->iov.iov_len = len;
-		queue_write(&ring, data, m_fd);
-
-		// auto finish = std::chrono::high_resolution_clock::now();
-		// std::chrono::duration<double> elapsed = finish - start;
-		// spdlog::info("write time: {} ms",	elapsed.count() * 1000);
-		m_queueCount++;
-
-		return rc;
-	*/
-
 	auto actual = (size_t)::read(m_fd, buf, len);
 	if(actual < len)
 		spdlog::error("read fewer bytes {} than expected number of bytes {}.", actual, len);
