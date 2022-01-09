@@ -60,6 +60,7 @@ void put_int(T** buf, T val)
 
 
 BMPFormat::BMPFormat(void) : m_off(0),
+							m_header(nullptr),
 							m_srcIndex(0)
 {
 #ifdef GROK_HAVE_URING
@@ -70,10 +71,13 @@ BMPFormat::BMPFormat(void) : m_off(0),
 	memset(&Info_h, 0, sizeof(GRK_BITMAPINFOHEADER));
 }
 
+BMPFormat::~BMPFormat(void){
+	delete[] m_header;
+}
 
 bool BMPFormat::encodeHeader(grk_image* image)
 {
-	if(!ImageFormat::openFile())
+	if(!openFile())
 		return false;
 	m_image = image;
 	bool ret = false;
@@ -84,7 +88,7 @@ bool BMPFormat::encodeHeader(grk_image* image)
 	uint32_t colours_used, lut_size;
 	uint32_t full_header_size, info_header_size, icc_size = 0;
 	uint32_t header_plus_lut = 0;
-	uint8_t *header_buf = nullptr, *header_ptr = nullptr;
+	uint8_t *header_ptr = nullptr;
 
 	if(!allComponentsSanityCheck(m_image, false))
 		goto cleanup;
@@ -110,7 +114,7 @@ bool BMPFormat::encodeHeader(grk_image* image)
 	info_header_size = full_header_size - fileHeaderSize;
 	header_plus_lut = full_header_size + lut_size;
 
-	header_ptr = header_buf = new uint8_t[header_plus_lut];
+	header_ptr = m_header = new uint8_t[header_plus_lut];
 	*header_ptr++ = 'B';
 	*header_ptr++ = 'M';
 
@@ -164,13 +168,12 @@ bool BMPFormat::encodeHeader(grk_image* image)
 			*header_ptr++ = 0;
 		}
 	}
-	if(!write(header_buf, m_off, header_plus_lut))
+	if(!write(m_header, m_off, header_plus_lut))
 		goto cleanup;
 	m_off += header_plus_lut;
 	ret = true;
 	encodeState = IMAGE_FORMAT_ENCODED_HEADER;
 cleanup:
-	delete[] header_buf;
 
 	return ret;
 }

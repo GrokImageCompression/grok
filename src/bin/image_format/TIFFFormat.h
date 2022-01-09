@@ -45,6 +45,7 @@ private:
 	uint32_t numPixelWrites;
 	bool active;
 	uint64_t m_off;
+	uint8_t initialWrite[8];
 };
 
 

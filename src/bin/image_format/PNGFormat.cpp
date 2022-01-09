@@ -476,7 +476,7 @@ bool PNGFormat::encodeHeader(grk_image* img)
 					  prec);
 		return false;
 	}
-	if(!ImageFormat::openFile())
+	if(!openFile())
 		return false;
 
 	/* Create and initialize the png_struct with the desired error handler

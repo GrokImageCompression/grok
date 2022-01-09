@@ -481,7 +481,7 @@ bool JPEGFormat::encodeHeader(grk_image* image)
 	 * VERY IMPORTANT: use "b" option to fopen() if you are on a machine that
 	 * requires it in order to write binary files.
 	 */
-	if(!ImageFormat::openFile())
+	if(!openFile())
 		return false;
 
 	jpeg_stdio_dest(&cinfo, m_fileStream);

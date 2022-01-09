@@ -45,8 +45,18 @@ ClientData::ClientData() : fd(0),
 bool ClientData::write(uint8_t* buf, size_t len){
 	if (!active)
 		return false;
-	//printf("%d %d %d\n", m_prePixelOffset, relativePixelOffset, len);
-	uring.write(buf, m_off, len);
+	uint8_t* bufPtr = buf;
+	if (m_off == 0){
+		assert(len == 8);
+		if (len != 8){
+			uring.close();
+			active = false;
+			return false;
+		}
+		memcpy(initialWrite, buf, 8);
+		bufPtr = initialWrite;
+	}
+	uring.write(bufPtr, m_off, len);
 	m_off += len;
 	if (incomingPixelWrite)
 		numPixelWrites++;
@@ -71,14 +81,14 @@ uint64_t ClientData::getAsynchFileLength(void){
 
 #define TIFF_IO_MAX 2147483647U
 
-static tmsize_t _tiffReadProc(thandle_t fd, void* buf, tmsize_t size)
+static tmsize_t TiffRead(thandle_t fd, void* buf, tmsize_t size)
 {
   (void)fd;
   (void)buf;
 
   return size;
 }
-static tmsize_t _tiffWriteProc(thandle_t fd, void* buf, tmsize_t size)
+static tmsize_t TiffWrite(thandle_t fd, void* buf, tmsize_t size)
 {
 	auto *cdata = (ClientData*)fd;
 
@@ -111,7 +121,7 @@ static tmsize_t _tiffWriteProc(thandle_t fd, void* buf, tmsize_t size)
 	return (tmsize_t) bytes_written;
 }
 
-static uint64_t _tiffSeekProc(thandle_t fd, uint64_t off, int whence)
+static uint64_t TiffSeek(thandle_t fd, uint64_t off, int whence)
 {
 	auto *cdata = (ClientData*)fd;
 	_TIFF_off_t off_io = (_TIFF_off_t) off;
@@ -125,7 +135,7 @@ static uint64_t _tiffSeekProc(thandle_t fd, uint64_t off, int whence)
 	return cdata->isActive() ? cdata->getAsynchFileLength() : ((uint64_t)lseek(cdata->fd, off_io, whence));
 }
 
-static int _tiffCloseProc(thandle_t fd)
+static int TiffClose(thandle_t fd)
 {
 	auto *cdata = (ClientData*)fd;
 
@@ -138,7 +148,7 @@ static int _tiffCloseProc(thandle_t fd)
 	return rc;
 }
 
-static uint64_t _tiffSizeProc(thandle_t fd)
+static uint64_t TiffSize(thandle_t fd)
 {
 	(void)fd;
 
@@ -192,11 +202,11 @@ TIFF* TIFFFormat::MyTIFFOpen(const char* name, const char* mode)
 		tif = TIFFClientOpen(name,
 								mode,
 								&clientData,
-								_tiffReadProc,
-								_tiffWriteProc,
-								_tiffSeekProc,
-								_tiffCloseProc,
-								_tiffSizeProc,
+								TiffRead,
+								TiffWrite,
+								TiffSeek,
+								TiffClose,
+								TiffSize,
 								nullptr,
 								nullptr);
 		if (tif)
@@ -206,10 +216,10 @@ TIFF* TIFFFormat::MyTIFFOpen(const char* name, const char* mode)
 	}
 
 	if (!success){
-		::close(fd);
 #ifdef GROK_HAVE_URING
 		clientData.uring.close();
 #endif
+		::close(fd);
 		clientData.fd = 0;
 	}
 

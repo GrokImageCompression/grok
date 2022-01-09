@@ -64,6 +64,7 @@ class BMPFormat : public ImageFormat
 {
   public:
 	BMPFormat(void);
+	~BMPFormat(void);
 	bool encodeHeader(grk_image* image) override;
 	bool encodeRows(uint32_t rows) override;
 	bool encodeFinish(void) override;
@@ -82,6 +83,7 @@ class BMPFormat : public ImageFormat
 	bool read_rle8_data(uint8_t* pData, uint32_t stride, uint32_t width, uint32_t height);
 	bool read_rle4_data(uint8_t* pData, uint32_t stride, uint32_t width, uint32_t height);
 
+	uint8_t *m_header;
 	uint64_t m_srcIndex;
 	GRK_BITMAPFILEHEADER File_h;
 	GRK_BITMAPINFOHEADER Info_h;
