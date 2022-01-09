@@ -31,11 +31,14 @@
 
 ClientData::ClientData() : fd(0),
 							incomingPixelWrite(false),
-							relativePixelOffset(0),
 							maxPixelWrites(0),
 							numPixelWrites(0),
+#ifdef GROK_HAVE_URING
 							active(true),
-							m_prePixelOffset(0)
+#else
+							active(false),
+#endif
+							m_off(0)
 {}
 
 #ifdef GROK_HAVE_URING
@@ -43,21 +46,26 @@ bool ClientData::write(uint8_t* buf, size_t len){
 	if (!active)
 		return false;
 	//printf("%d %d %d\n", m_prePixelOffset, relativePixelOffset, len);
-	uring.write(buf, m_prePixelOffset + relativePixelOffset, len);
+	uring.write(buf, m_off, len);
+	m_off += len;
 	if (incomingPixelWrite)
 		numPixelWrites++;
-	else
-		m_prePixelOffset += len;
 	if (numPixelWrites == maxPixelWrites){
 		uring.close();
 		active = false;
 	}
 	incomingPixelWrite = false;
-	relativePixelOffset = 0;
-
 	return true;
 }
 #endif
+
+bool ClientData::isActive(void){
+	return active;
+}
+
+uint64_t ClientData::getAsynchFileLength(void){
+	return m_off;
+}
 
 #ifndef _WIN32
 
@@ -114,7 +122,7 @@ static uint64_t _tiffSeekProc(thandle_t fd, uint64_t off, int whence)
 		return (uint64_t) -1;
 	}
 
-	return((uint64_t)lseek(cdata->fd, off_io, whence));
+	return cdata->isActive() ? cdata->getAsynchFileLength() : ((uint64_t)lseek(cdata->fd, off_io, whence));
 }
 
 static int _tiffCloseProc(thandle_t fd)
@@ -447,7 +455,6 @@ bool TIFFFormat::encodePixels(grk_serialize_buf pixels,
 	{
 		std::unique_lock<std::mutex> lk(encodePixelmutex);
 		clientData.incomingPixelWrite = true;
-		clientData.relativePixelOffset = pixels.relativeOffset;
 		written = TIFFWriteEncodedStrip(tif, (tmsize_t)strip, pixels.data, (tmsize_t)pixels.dataLength);
 		if (written == -1)
 			encodeState |= IMAGE_FORMAT_ERROR;

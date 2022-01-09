@@ -72,7 +72,6 @@ bool StripCache::composite(GrkImage *tileImage){
 		grk_serialize_buf buf;
 		memset(&buf,0,sizeof(buf));
 		buf.data = img->interleavedData;
-		buf.relativeOffset = stripId * m_packedRowBytes * m_th;
 		buf.dataLength = dataLength;
 		grk_serialize_buf reclaimed[5];
 		uint32_t num_reclaimed;

@@ -32,18 +32,19 @@ void tiffSetErrorAndWarningHandlers(bool verbose);
 
 struct ClientData {
 	ClientData();
+	bool isActive(void);
+	uint64_t getAsynchFileLength(void);
 #ifdef GROK_HAVE_URING
 	bool write(uint8_t* buf, size_t len);
 	FileUringIO uring;
 #endif
 	int fd;
 	bool incomingPixelWrite;
-	uint64_t relativePixelOffset;
 	uint32_t maxPixelWrites;
 private:
 	uint32_t numPixelWrites;
 	bool active;
-	uint64_t m_prePixelOffset;
+	uint64_t m_off;
 };
 
 
