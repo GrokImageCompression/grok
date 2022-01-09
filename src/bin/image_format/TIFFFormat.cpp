@@ -436,9 +436,8 @@ bool TIFFFormat::encodeHeader(grk_image* image)
 cleanup:
 	return success;
 }
-bool TIFFFormat::encodePixels(uint8_t *data,
-							uint64_t dataLen,
-							grk_serialize_buf** reclaimed,
+bool TIFFFormat::encodePixels(grk_serialize_buf pixels,
+							grk_serialize_buf* reclaimed,
 							uint32_t max_reclaimed,
 							uint32_t *num_reclaimed,
 							uint32_t strip) {
@@ -446,7 +445,7 @@ bool TIFFFormat::encodePixels(uint8_t *data,
 	{
 		std::unique_lock<std::mutex> lk(encodePixelmutex);
 		clientData.incomingPixelWrite = true;
-		written = TIFFWriteEncodedStrip(tif, (tmsize_t)strip, data, (tmsize_t)dataLen);
+		written = TIFFWriteEncodedStrip(tif, (tmsize_t)strip, pixels.data, (tmsize_t)pixels.dataLength);
 		if (written == -1)
 			encodeState |= IMAGE_FORMAT_ERROR;
 		else if (++stripCount == clientData.maxPixelWrites){
@@ -490,7 +489,11 @@ bool TIFFFormat::encodeRows(uint32_t rowsToWrite)
 			uint32_t rowsSoFar = h - rowsWritten;
 			if(rowsSoFar > 0 && (rowsSoFar % m_image->rowsPerStrip == 0))
 			{
-				if(bytesToWrite && !encodePixels(packedBuf, bytesToWrite, nullptr,0,nullptr,strip++))
+				grk_serialize_buf buf;
+				memset(&buf,0,sizeof(grk_serialize_buf));
+				buf.data = packedBuf;
+				buf.dataLength = bytesToWrite;
+				if(bytesToWrite && !encodePixels(buf, nullptr,0,nullptr,strip++))
 					goto cleanup;
 				bufptr = (int8_t*)packedBuf;
 				bytesToWrite = 0;
@@ -522,7 +525,11 @@ bool TIFFFormat::encodeRows(uint32_t rowsToWrite)
 		if (h != rowsWritten)
 			rowsWritten += h - chroma_subsample_y - rowsWritten;
 		// cleanup
-		if(bytesToWrite && !encodePixels(packedBuf, bytesToWrite,nullptr,0,nullptr, strip++))
+		grk_serialize_buf buf;
+		memset(&buf,0,sizeof(grk_serialize_buf));
+		buf.data = packedBuf;
+		buf.dataLength = bytesToWrite;
+		if(bytesToWrite && !encodePixels(buf,nullptr,0,nullptr, strip++))
 			goto cleanup;
 	}
 	else
@@ -544,7 +551,11 @@ bool TIFFFormat::encodeRows(uint32_t rowsToWrite)
 								m_image->packedRowBytes,
 								stripRows,
 								0);
-			if(!encodePixels(bufPtr, m_image->packedRowBytes * stripRows,nullptr,0,nullptr, strip++)) {
+			grk_serialize_buf buf;
+			memset(&buf,0,sizeof(grk_serialize_buf));
+			buf.data = bufPtr;
+			buf.dataLength = m_image->packedRowBytes * stripRows;
+			if(!encodePixels(buf,nullptr,0,nullptr, strip++)) {
 				delete iter;
 				goto cleanup;
 			}

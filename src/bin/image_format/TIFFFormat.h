@@ -54,11 +54,10 @@ class TIFFFormat : public ImageFormat
 	~TIFFFormat();
 	bool encodeHeader(grk_image* image) override;
 	bool encodeRows(uint32_t rows) override;
-	bool encodePixels(uint8_t *data,
-							uint64_t dataLen,
-							grk_serialize_buf** reclaimed,
-							uint32_t max_reclaimed,
-							uint32_t *num_reclaimed, uint32_t strip) override;
+	bool encodePixels(grk_serialize_buf pixels,
+						grk_serialize_buf* reclaimed,
+						uint32_t max_reclaimed,
+						uint32_t *num_reclaimed, uint32_t strip) override;
 	bool encodeFinish(void) override;
 	grk_image* decode(const std::string& filename, grk_cparameters* parameters) override;
 

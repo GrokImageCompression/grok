@@ -31,11 +31,10 @@ class ImageFormat : public IImageFormat
 	ImageFormat& operator=(const ImageFormat& rhs);
 	virtual bool initEncode(const std::string& filename,uint32_t compressionLevel) override;
 	virtual bool encodeHeader(grk_image* image) override;
-	bool encodePixels(uint8_t *data,
-							uint64_t dataLen,
-							grk_serialize_buf** reclaimed,
-							uint32_t max_reclaimed,
-							uint32_t *num_reclaimed, uint32_t strip) override;
+	bool encodePixels(grk_serialize_buf pixels,
+						grk_serialize_buf* reclaimed,
+						uint32_t max_reclaimed,
+						uint32_t *num_reclaimed, uint32_t strip) override;
 	virtual bool encodeFinish(void) override;
 	uint32_t getEncodeState(void) override;
 	bool openFile(void);

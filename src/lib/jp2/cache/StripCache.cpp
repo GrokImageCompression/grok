@@ -72,9 +72,9 @@ bool StripCache::composite(GrkImage *tileImage){
 		grk_serialize_buf buf;
 		buf.data = img->interleavedData;
 		buf.dataLength = dataLength;
-		grk_serialize_buf* reclaimed[5];
+		grk_serialize_buf reclaimed[5];
 		uint32_t num_reclaimed;
-		serializeBufferCallback(&buf,stripId, reclaimed, 5, &num_reclaimed,serialize_data);
+		serializeBufferCallback(buf,stripId, reclaimed, 5, &num_reclaimed,serialize_data);
 		{
 			std::unique_lock<std::mutex> lk(bufCacheMutex);
 			putBuffer(buf);

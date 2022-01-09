@@ -759,15 +759,15 @@ typedef struct _grk_header_info
 
 typedef struct _grk_serialize_buf {
 	uint8_t *data;
+	uint64_t relativeOffset;
 	uint64_t dataLength;
 	uint64_t maxDataLength;
-	uint64_t serializeOffset;
 } grk_serialize_buf;
 
 
-typedef bool (*grk_serialize_pixels)(grk_serialize_buf* buffer,
+typedef bool (*grk_serialize_pixels)(grk_serialize_buf buffer,
 										uint32_t strip,
-										grk_serialize_buf** reclaimed,
+										grk_serialize_buf* reclaimed,
 										uint32_t max_reclaimed,
 										uint32_t *num_reclaimed,
 										void* user_data);

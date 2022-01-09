@@ -970,17 +970,16 @@ static void cleanUpFile(const char* outfile){
 		free(p);
 }
 
-static bool grk_serialize_pixels(grk_serialize_buf* buffer,
+static bool grk_serialize_pixels(grk_serialize_buf buffer,
 								uint32_t strip,
-								grk_serialize_buf** reclaimed,
+								grk_serialize_buf* reclaimed,
 								uint32_t max_reclaimed,
 								uint32_t *num_reclaimed, void* user_data){
 	if (!user_data)
 		return false;
 	IImageFormat *imageFormat = (IImageFormat*)user_data;
 
-	return imageFormat->encodePixels(buffer->data,
-									buffer->dataLength,
+	return imageFormat->encodePixels(buffer,
 									reclaimed,
 									max_reclaimed,
 									num_reclaimed,
