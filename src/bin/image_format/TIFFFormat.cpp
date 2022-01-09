@@ -56,7 +56,7 @@ bool ClientData::write(uint8_t* buf, size_t len){
 		memcpy(initialWrite, buf, 8);
 		bufPtr = initialWrite;
 	}
-	uring.write(bufPtr, m_off, len);
+	uring.write(bufPtr, m_off, false,len);
 	m_off += len;
 	if (incomingPixelWrite)
 		numPixelWrites++;

@@ -65,10 +65,11 @@ bool FileStreamIO::close(void)
 	m_fileHandle = nullptr;
 	return rc;
 }
-bool FileStreamIO::write(uint8_t* buf, uint64_t offset, size_t len)
+bool FileStreamIO::write(uint8_t* buf, uint64_t offset,bool reclaimable,size_t len)
 {
 	auto actual = fwrite(buf, 1, len, m_fileHandle);
 	(void)offset;
+	(void)reclaimable;
 	if(actual < len)
 		spdlog::error("wrote fewer bytes {} than expected number of bytes {}.", actual, len);
 

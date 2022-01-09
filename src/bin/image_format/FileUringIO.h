@@ -27,11 +27,11 @@
 
 struct io_data
 {
-	io_data() : readop(false),
+	io_data() : reclaimable(false),
 				offset(0),
 				iov{0, 0}
 	{}
-	bool readop;
+	bool reclaimable;
 	uint64_t offset;
 	iovec iov;
 };
@@ -44,7 +44,7 @@ class FileUringIO : public IFileIO
 	bool open(std::string fileName, std::string mode) override;
 	bool attach(std::string fileName, std::string mode, int fd);
 	bool close(void) override;
-	bool write(uint8_t* buf, uint64_t offset, size_t len) override;
+	bool write(uint8_t* buf, uint64_t offset, bool reclaimable, size_t len) override;
 	bool read(uint8_t* buf, size_t len) override;
 	bool seek(int64_t pos) override;
 	io_data* retrieveCompletion(bool peek);
@@ -55,7 +55,7 @@ class FileUringIO : public IFileIO
 	std::string m_fileName;
 	size_t m_queueCount;
 	int getMode(const char* mode);
-	void enqueue(io_uring* ring, io_data* data, int fd);
+	void enqueue(io_uring* ring, io_data* data, bool readop, int fd);
 	bool initQueue(void);
 
 	const uint32_t QD = 1024;

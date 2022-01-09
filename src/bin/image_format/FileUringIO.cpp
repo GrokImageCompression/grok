@@ -120,14 +120,14 @@ int FileUringIO::getMode(const char* mode)
 	return m;
 }
 
-void FileUringIO::enqueue(io_uring* ring, io_data* data, int fd)
+void FileUringIO::enqueue(io_uring* ring, io_data* data, bool readop, int fd)
 {
 	auto sqe = io_uring_get_sqe(ring);
 	assert(sqe);
 
 	//grk::ChronoTimer timer("uring: time to enque");
 	//timer.start();
-	if(data->readop)
+	if(readop)
 		io_uring_prep_readv(sqe, fd, &data->iov, 1, data->offset);
 	else
 		io_uring_prep_writev(sqe, fd, &data->iov, 1, data->offset);
@@ -183,8 +183,8 @@ bool FileUringIO::close(void)
 		{
 			auto data = retrieveCompletion(false);
 			if (data) {
-				if(!data->readop)
-					delete[](uint8_t*) data->iov.iov_base;
+				if (data->reclaimable)
+					delete[] data->iov.iov_base;
 				delete data;
 			}
 		}
@@ -204,7 +204,7 @@ bool FileUringIO::close(void)
 	return rc;
 }
 
-bool FileUringIO::write(uint8_t* buf, uint64_t offset, size_t len)
+bool FileUringIO::write(uint8_t* buf, uint64_t offset, bool reclaimable, size_t len)
 {
 	bool rc = true;
 	io_data* data = new io_data();
@@ -213,7 +213,7 @@ bool FileUringIO::write(uint8_t* buf, uint64_t offset, size_t len)
 	data->offset = offset;
 	data->iov.iov_base = b;
 	data->iov.iov_len = len;
-	enqueue(&ring, data, m_fd);
+	enqueue(&ring, data,reclaimable, m_fd);
 	m_queueCount++;
 
 	return rc;
@@ -230,4 +230,5 @@ bool FileUringIO::seek(int64_t pos)
 {
 	return lseek(m_fd, pos, SEEK_SET) == pos;
 }
+
 #endif
