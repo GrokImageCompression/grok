@@ -152,7 +152,8 @@ io_data* FileUringIO::retrieveCompletion(bool peek){
 	}
 	if(cqe->res < 0)
 	{
-		spdlog::error("The system call invoked asynchronously has failed");
+		spdlog::error("The system call invoked asynchronously has failed with the following error:"
+							" \n%s", strerror(cqe->res));
 		return nullptr;
 	}
 
