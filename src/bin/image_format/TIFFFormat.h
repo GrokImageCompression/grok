@@ -38,10 +38,12 @@ struct ClientData {
 #endif
 	int fd;
 	bool incomingPixelWrite;
+	uint64_t relativePixelOffset;
 	uint32_t maxPixelWrites;
 private:
 	uint32_t numPixelWrites;
 	bool active;
+	uint64_t m_prePixelOffset;
 };
 
 

@@ -42,7 +42,7 @@ class ImageFormat : public IImageFormat
 
   protected:
 	bool open(std::string fname, std::string mode);
-	bool write(uint8_t* buf, size_t len);
+	bool write(uint8_t* buf,uint64_t offset, size_t len);
 	bool read(uint8_t* buf, size_t len);
 	bool seek(int64_t pos);
 	uint32_t maxY(uint32_t rows);

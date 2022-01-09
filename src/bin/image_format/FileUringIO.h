@@ -44,7 +44,7 @@ class FileUringIO : public IFileIO
 	bool open(std::string fileName, std::string mode) override;
 	bool attach(std::string fileName, std::string mode, int fd);
 	bool close(void) override;
-	bool write(uint8_t* buf, size_t len) override;
+	bool write(uint8_t* buf, uint64_t offset, size_t len) override;
 	bool read(uint8_t* buf, size_t len) override;
 	bool seek(int64_t pos) override;
 	io_data* retrieveCompletion(bool peek);
@@ -53,7 +53,6 @@ class FileUringIO : public IFileIO
 	int m_fd;
 	bool ownsDescriptor;
 	std::string m_fileName;
-	uint64_t m_off;
 	size_t m_queueCount;
 	int getMode(const char* mode);
 	void enqueue(io_uring* ring, io_data* data, int fd);

@@ -65,7 +65,7 @@ bool FileStreamIO::close(void)
 	m_fileHandle = nullptr;
 	return rc;
 }
-bool FileStreamIO::write(uint8_t* buf, size_t len)
+bool FileStreamIO::write(uint8_t* buf, uint64_t offset, size_t len)
 {
 	auto actual = fwrite(buf, 1, len, m_fileHandle);
 	if(actual < len)

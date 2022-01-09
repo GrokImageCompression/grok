@@ -68,8 +68,8 @@ class BMPFormat : public ImageFormat
 	bool encodeRows(uint32_t rows) override;
 	bool encodeFinish(void) override;
 	grk_image* decode(const std::string& filename, grk_cparameters* parameters) override;
-
   private:
+	uint64_t m_off;
 	grk_image* bmp8toimage(const uint8_t* pData, uint32_t srcStride, grk_image* image,
 						   uint8_t const* const* pLUT, bool topDown);
 	grk_image* bmp4toimage(const uint8_t* pData, uint32_t srcStride, grk_image* image,

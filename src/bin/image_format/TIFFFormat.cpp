@@ -31,9 +31,11 @@
 
 ClientData::ClientData() : fd(0),
 							incomingPixelWrite(false),
+							relativePixelOffset(0),
 							maxPixelWrites(0),
 							numPixelWrites(0),
-							active(true)
+							active(true),
+							m_prePixelOffset(0)
 {}
 
 #ifdef GROK_HAVE_URING
@@ -42,7 +44,9 @@ bool ClientData::write(uint8_t* buf, size_t len){
 		return false;
 	if (incomingPixelWrite)
 		numPixelWrites++;
-	uring.write(buf, len);
+	else
+		m_prePixelOffset += len;
+	uring.write(buf, m_prePixelOffset + relativePixelOffset, len);
 	if (numPixelWrites == maxPixelWrites){
 		uring.close();
 		active = false;
@@ -69,8 +73,8 @@ static tmsize_t _tiffWriteProc(thandle_t fd, void* buf, tmsize_t size)
 	auto *cdata = (ClientData*)fd;
 
 #ifdef GROK_HAVE_URING
-	if (cdata->write((uint8_t*)buf, (size_t)size))
-		return size;
+	//if (cdata->write((uint8_t*)buf, (size_t)size))
+	//	return size;
 #endif
 
 	const size_t bytes_total = (size_t) size;

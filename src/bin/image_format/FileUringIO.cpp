@@ -36,7 +36,6 @@
 
 FileUringIO::FileUringIO() : m_fd(0),
 							ownsDescriptor(false),
-							m_off(0),
 							m_queueCount(0)
 {
 	memset(&ring, 0, sizeof(ring));
@@ -133,6 +132,7 @@ void FileUringIO::enqueue(io_uring* ring, io_data* data, int fd)
 	io_uring_sqe_set_data(sqe, data);
 	int ret = io_uring_submit(ring);
 	assert(ret == 1);
+	(void)ret;
 }
 
 io_data* FileUringIO::retrieveCompletion(bool peek){
@@ -198,15 +198,14 @@ bool FileUringIO::close(void)
 	return rc;
 }
 
-bool FileUringIO::write(uint8_t* buf, size_t len)
+bool FileUringIO::write(uint8_t* buf, uint64_t offset, size_t len)
 {
 	bool rc = true;
 	// auto start = std::chrono::high_resolution_clock::now();
 	io_data* data = new io_data();
 	auto b = new uint8_t[len];
 	memcpy(b, buf, len);
-	data->offset = m_off;
-	m_off += (uint64_t)len;
+	data->offset = offset;
 	data->iov.iov_base = b;
 	data->iov.iov_len = len;
 	enqueue(&ring, data, m_fd);
