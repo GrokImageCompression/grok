@@ -207,13 +207,15 @@ bool FileUringIO::close(void)
 bool FileUringIO::write(uint8_t* buf, uint64_t offset, bool reclaimable, size_t len)
 {
 	bool rc = true;
+	(void)reclaimable;
 	io_data* data = new io_data();
 	auto b = new uint8_t[len];
 	memcpy(b, buf, len);
 	data->offset = offset;
+	data->reclaimable = true;
 	data->iov.iov_base = b;
 	data->iov.iov_len = len;
-	enqueue(&ring, data,reclaimable, m_fd);
+	enqueue(&ring, data,false, m_fd);
 	m_queueCount++;
 
 	return rc;
