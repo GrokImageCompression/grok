@@ -41,6 +41,9 @@ struct ClientData {
 	int fd;
 	bool incomingPixelWrite;
 	uint32_t maxPixelWrites;
+	grk_serialize_buf* reclaimed;
+	uint32_t max_reclaimed;
+	uint32_t *num_reclaimed;
 private:
 	uint32_t numPixelWrites;
 	bool active;

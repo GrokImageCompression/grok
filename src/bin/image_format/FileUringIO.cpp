@@ -229,7 +229,7 @@ bool FileUringIO::write(uint8_t* buf, uint64_t offset, bool reclaimable, size_t 
 	auto b = new uint8_t[len];
 	memcpy(b, buf, len);
 	data->offset = offset;
-	data->reclaimable = true;
+	data->reclaimable = reclaimable;
 	data->iov.iov_base = b;
 	data->iov.iov_len = len;
 	enqueue(&ring, data,false, m_fd);
