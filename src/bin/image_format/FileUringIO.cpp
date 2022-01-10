@@ -184,7 +184,7 @@ bool FileUringIO::close(void)
 			auto data = retrieveCompletion(false);
 			if (data) {
 				if (data->reclaimable)
-					delete[] data->iov.iov_base;
+					delete[] (uint8_t*)data->iov.iov_base;
 				delete data;
 			}
 		}

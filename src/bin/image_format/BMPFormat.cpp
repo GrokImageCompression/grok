@@ -261,7 +261,7 @@ bool BMPFormat::encodeRows(uint32_t rows)
 			destInd += pad_dest;
 			m_srcIndex -= stride_src;
 		}
-		if(!write(destBuff, m_off,true, destInd))
+		if(!write(destBuff, m_off,false, destInd))
 			goto cleanup;
 		m_off += destInd;
 		m_rowCount += k_max;
