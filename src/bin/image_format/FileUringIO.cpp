@@ -134,12 +134,22 @@ void FileUringIO::enqueue(io_uring* ring, io_data* data, bool readop, int fd)
 	io_uring_sqe_set_data(sqe, data);
 	int ret = io_uring_submit(ring);
 	//timer.finish();
-
 	assert(ret == 1);
 	(void)ret;
+
+	// reclaim
+	while (true) {
+		bool success;
+		auto data = retrieveCompletion(true,success);
+		if (!success || !data)
+			break;
+		if (data->reclaimable)
+			delete[] (uint8_t*)data->iov.iov_base;
+		delete data;
+	}
 }
 
-io_data* FileUringIO::retrieveCompletion(bool peek){
+io_data* FileUringIO::retrieveCompletion(bool peek, bool &success){
 	io_uring_cqe* cqe;
 	int ret;
 
@@ -150,17 +160,21 @@ io_data* FileUringIO::retrieveCompletion(bool peek){
 
 	if(ret < 0)
 	{
-		if (!peek)
+		if (!peek) {
 			spdlog::error("io_uring_wait_cqe returned an error.");
+			success = false;
+		}
 		return nullptr;
 	}
 	if(cqe->res < 0)
 	{
 		spdlog::error("The system call invoked asynchronously has failed with the following error:"
 							" \n%s", strerror(cqe->res));
+		success = false;
 		return nullptr;
 	}
 
+	success = true;
 	auto data = (io_data*)io_uring_cqe_get_data(cqe);
 	io_uring_cqe_seen(&ring, cqe);
 
@@ -181,7 +195,10 @@ bool FileUringIO::close(void)
 		size_t count = m_queueCount;
 		for(uint32_t i = 0; i < count; ++i)
 		{
-			auto data = retrieveCompletion(false);
+			bool success;
+			auto data = retrieveCompletion(false,success);
+			if (!success)
+				break;
 			if (data) {
 				if (data->reclaimable)
 					delete[] (uint8_t*)data->iov.iov_base;

@@ -47,7 +47,7 @@ class FileUringIO : public IFileIO
 	bool write(uint8_t* buf, uint64_t offset, bool reclaimable, size_t len) override;
 	bool read(uint8_t* buf, size_t len) override;
 	bool seek(int64_t pos) override;
-	io_data* retrieveCompletion(bool peek);
+	io_data* retrieveCompletion(bool peek,bool &success);
   private:
 	io_uring ring;
 	int m_fd;
