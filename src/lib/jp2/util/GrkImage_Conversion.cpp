@@ -10,6 +10,7 @@ namespace grk
  * 2. any component's precision is either 0 or greater than GRK_MAX_SUPPORTED_IMAGE_PRECISION
  * 3. any component's signedness does not match another component's signedness
  * 4. any component's precision does not match another component's precision
+ * 5. any component's width,stride or height does not match another component's width,stride or height
  *    (if equalPrecision is true)
  *
  */
@@ -50,6 +51,27 @@ bool GrkImage::allComponentsSanityCheck(bool equalPrecision)
 		{
 			GRK_WARN("signedness {} of component {}"
 						 " differs from signedness {} of component 0.",
+						 compi->sgnd, i, comp0->sgnd);
+			return false;
+		}
+		if(comp0->w != compi->w)
+		{
+			GRK_WARN("width {} of component {}"
+						 " differs from width {} of component 0.",
+						 compi->sgnd, i, comp0->sgnd);
+			return false;
+		}
+		if(comp0->stride != compi->stride)
+		{
+			GRK_WARN("stride {} of component {}"
+						 " differs from stride {} of component 0.",
+						 compi->sgnd, i, comp0->sgnd);
+			return false;
+		}
+		if(comp0->h != compi->h)
+		{
+			GRK_WARN("height {} of component {}"
+						 " differs from height {} of component 0.",
 						 compi->sgnd, i, comp0->sgnd);
 			return false;
 		}
@@ -968,7 +990,6 @@ void GrkImage::applyColourManagement(void){
 /*#define DEBUG_PROFILE*/
 void GrkImage::applyICC(void)
 {
-	cmsColorSpaceSignature in_space;
 	cmsColorSpaceSignature out_space;
 	cmsUInt32Number intent = 0;
 	cmsHTRANSFORM transform = nullptr;
@@ -984,16 +1005,10 @@ void GrkImage::applyICC(void)
 		return;
 	in_prof = cmsOpenProfileFromMem(meta->color.icc_profile_buf,
 									meta->color.icc_profile_len);
-#ifdef DEBUG_PROFILE
-	FILE* icm = fopen("debug.icm", "wb");
-	fwrite(color.icc_profile_buf, 1, color.icc_profile_len, icm);
-	fclose(icm);
-#endif
-
 	if(in_prof == nullptr)
 		return;
 
-	in_space = cmsGetPCS(in_prof);
+	//auto in_space = cmsGetPCS(in_prof);
 	out_space = cmsGetColorSpace(in_prof);
 	intent = cmsGetHeaderRenderingIntent(in_prof);
 
@@ -1064,28 +1079,6 @@ void GrkImage::applyICC(void)
 					  out_space);
 		goto cleanup;
 	}
-
-#ifdef DEBUG_PROFILE
-	GRK_ERROR("{}:{}:color_apply_icc_profile\n\tchannels({}) prec({}) w({}) h({})"
-				  "\n\tprofile: in({}) out({})",
-				  __FILE__, __LINE__, numcomps, prec, max_w, max_h, (void*)in_prof,
-				  (void*)out_prof);
-
-	GRK_ERROR("\trender_intent ({})\n\t"
-				  "color_space: in({})({}{}{}{})   out:({})({}{}{}{})\n\t"
-				  "       type: in({})              out:({})",
-				  intent, in_space, (in_space >> 24) & 0xff, (in_space >> 16) & 0xff,
-				  (in_space >> 8) & 0xff, in_space & 0xff,
-
-				  out_space, (out_space >> 24) & 0xff, (out_space >> 16) & 0xff,
-				  (out_space >> 8) & 0xff, out_space & 0xff,
-
-				  in_type, out_type);
-#else
-	(void)prec;
-	(void)in_space;
-#endif /* DEBUG_PROFILE */
-
 	transform = cmsCreateTransform(in_prof, in_type, out_prof, out_type, intent, 0);
 
 	cmsCloseProfile(in_prof);
@@ -1095,11 +1088,6 @@ void GrkImage::applyICC(void)
 
 	if(transform == nullptr)
 	{
-#ifdef DEBUG_PROFILE
-		GRK_ERROR("{}:{}:color_apply_icc_profile\n\tcmsCreateTransform failed. "
-					  "ICC Profile ignored.",
-					  __FILE__, __LINE__);
-#endif
 		color_space = oldspace;
 		return;
 	}
@@ -1107,11 +1095,10 @@ void GrkImage::applyICC(void)
 	{ /* RGB, RGBA */
 		if(prec <= 8)
 		{
-			uint8_t *in = nullptr, *inbuf = nullptr, *out = nullptr, *outbuf = nullptr;
 			max = (size_t)w * h;
 			nr_samples = max * 3 * (cmsUInt32Number)sizeof(uint8_t);
-			in = inbuf = new uint8_t[nr_samples];
-			out = outbuf = new uint8_t[nr_samples];
+			auto inbuf = new uint8_t[nr_samples];
+			auto outbuf = new uint8_t[nr_samples];
 
 			auto r = comps[0].data;
 			auto g = comps[1].data;
@@ -1123,9 +1110,9 @@ void GrkImage::applyICC(void)
 			{
 				for(uint32_t i = 0; i < w; ++i)
 				{
-					in[dest_index++] = (uint8_t)r[src_index];
-					in[dest_index++] = (uint8_t)g[src_index];
-					in[dest_index++] = (uint8_t)b[src_index];
+					inbuf[dest_index++] = (uint8_t)r[src_index];
+					inbuf[dest_index++] = (uint8_t)g[src_index];
+					inbuf[dest_index++] = (uint8_t)b[src_index];
 					src_index++;
 				}
 				src_index += stride_diff;
@@ -1139,9 +1126,9 @@ void GrkImage::applyICC(void)
 			{
 				for(uint32_t i = 0; i < w; ++i)
 				{
-					r[dest_index] = (int32_t)out[src_index++];
-					g[dest_index] = (int32_t)out[src_index++];
-					b[dest_index] = (int32_t)out[src_index++];
+					r[dest_index] = (int32_t)outbuf[src_index++];
+					g[dest_index] = (int32_t)outbuf[src_index++];
+					b[dest_index] = (int32_t)outbuf[src_index++];
 					dest_index++;
 				}
 				dest_index += stride_diff;
@@ -1151,11 +1138,10 @@ void GrkImage::applyICC(void)
 		}
 		else
 		{
-			uint16_t *in = nullptr, *inbuf = nullptr, *out = nullptr, *outbuf = nullptr;
 			max = (size_t)w * h;
 			nr_samples = max * 3 * (cmsUInt32Number)sizeof(uint16_t);
-			in = inbuf = new uint16_t[nr_samples];
-			out = outbuf = new uint16_t[nr_samples];
+			auto inbuf = new uint16_t[nr_samples];
+			auto outbuf = new uint16_t[nr_samples];
 
 			auto r = comps[0].data;
 			auto g = comps[1].data;
@@ -1167,9 +1153,9 @@ void GrkImage::applyICC(void)
 			{
 				for(uint32_t i = 0; i < w; ++i)
 				{
-					in[dest_index++] = (uint16_t)r[src_index];
-					in[dest_index++] = (uint16_t)g[src_index];
-					in[dest_index++] = (uint16_t)b[src_index];
+					inbuf[dest_index++] = (uint16_t)r[src_index];
+					inbuf[dest_index++] = (uint16_t)g[src_index];
+					inbuf[dest_index++] = (uint16_t)b[src_index];
 					src_index++;
 				}
 				src_index += stride_diff;
@@ -1183,9 +1169,9 @@ void GrkImage::applyICC(void)
 			{
 				for(uint32_t i = 0; i < w; ++i)
 				{
-					r[dest_index] = (int32_t)out[src_index++];
-					g[dest_index] = (int32_t)out[src_index++];
-					b[dest_index] = (int32_t)out[src_index++];
+					r[dest_index] = (int32_t)outbuf[src_index++];
+					g[dest_index] = (int32_t)outbuf[src_index++];
+					b[dest_index] = (int32_t)outbuf[src_index++];
 					dest_index++;
 				}
 				dest_index += stride_diff;
@@ -1327,8 +1313,6 @@ bool GrkImage::cieLabToRGB(void)
 
 	bool defaultType = true;
 	color_space = GRK_CLRSPC_SRGB;
-	uint32_t illuminant = GRK_CIE_D50;
-	cmsCIExyY WhitePoint;
 	defaultType = row[1] == GRK_DEFAULT_CIELAB_SPACE;
 	int32_t *L, *a, *b, *red, *green, *blue;
 	// range, offset and precision for L,a and b coordinates
@@ -1339,6 +1323,7 @@ bool GrkImage::cieLabToRGB(void)
 	prec_a = (double)comps[1].prec;
 	prec_b = (double)comps[2].prec;
 
+	uint32_t illuminant = GRK_CIE_D50;
 	if(defaultType)
 	{ // default Lab space
 		r_L = 100;
@@ -1358,6 +1343,7 @@ bool GrkImage::cieLabToRGB(void)
 		o_b = row[7];
 		illuminant = row[8];
 	}
+	cmsCIExyY WhitePoint;
 	switch(illuminant)
 	{
 		case GRK_CIE_D50:
@@ -1385,8 +1371,7 @@ bool GrkImage::cieLabToRGB(void)
 			break;
 		default:
 			GRK_WARN("Unrecognized illuminant {} in CIELab colour space. "
-						 "Setting to default Daylight50",
-						 illuminant);
+						 "Setting to default Daylight50", illuminant);
 			illuminant = GRK_CIE_D50;
 			break;
 	}
@@ -1462,11 +1447,8 @@ bool GrkImage::cieLabToRGB(void)
 	cmsDeleteTransform(transform);
 
 	for(i = 0; i < numcomps; ++i)
-	{
-		auto srcComp = comps + i;
-		grk_image_single_component_data_free(srcComp);
-		srcComp->data = nullptr;
-	}
+		grk_image_single_component_data_free(comps + i);
+
 	numcomps = 3;
 	for(i = 0; i < numcomps; ++i)
 	{
@@ -1477,13 +1459,11 @@ bool GrkImage::cieLabToRGB(void)
 		srcComp->stride = destComp->stride;
 		srcComp->data = destComp->data;
 	}
-
 	// clean up dest image
 	dest_img->comps[0].data = nullptr;
 	dest_img->comps[1].data = nullptr;
 	dest_img->comps[2].data = nullptr;
 	grk_object_unref(&dest_img->obj);
-	dest_img = nullptr;
 
 	color_space = GRK_CLRSPC_SRGB;
 
