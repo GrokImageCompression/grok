@@ -168,7 +168,7 @@ bool BMPFormat::encodeHeader(grk_image* image)
 			*header_ptr++ = 0;
 		}
 	}
-	if(!write(m_header, m_off, false, header_plus_lut))
+	if(!write(m_header, m_off, header_plus_lut,header_plus_lut,false))
 		goto cleanup;
 	m_off += header_plus_lut;
 	ret = true;
@@ -261,7 +261,7 @@ bool BMPFormat::encodeRows(uint32_t rows)
 			destInd += pad_dest;
 			m_srcIndex -= stride_src;
 		}
-		if(!write(destBuff, m_off,true, destInd))
+		if(!write(destBuff, m_off,destInd,destInd,true))
 			goto cleanup;
 		m_off += destInd;
 		m_rowCount += k_max;
@@ -277,7 +277,11 @@ bool BMPFormat::encodeFinish(void)
 {
 	if(m_image->meta && m_image->meta->color.icc_profile_buf)
 	{
-		if(!write(m_image->meta->color.icc_profile_buf,m_off, false,m_image->meta->color.icc_profile_len))
+		if(!write(m_image->meta->color.icc_profile_buf,
+				m_off,
+				m_image->meta->color.icc_profile_len,
+				m_image->meta->color.icc_profile_len,
+				false))
 			return false;
 		m_off += m_image->meta->color.icc_profile_len;
 	}

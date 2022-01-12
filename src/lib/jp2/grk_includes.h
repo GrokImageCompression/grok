@@ -112,7 +112,7 @@
 #include "GrkMappedFile.h"
 #include "GrkMatrix.h"
 #include "GrkImage.h"
-#include "StripCache.h"
+#include "StripPool.h"
 #include "grk_exceptions.h"
 #include "SparseBuffer.h"
 #include "BitIO.h"

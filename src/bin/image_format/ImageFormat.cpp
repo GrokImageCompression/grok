@@ -102,9 +102,9 @@ bool ImageFormat::open(std::string fileName, std::string mode)
 	return m_fileIO->open(fileName, mode);
 }
 
-bool ImageFormat::write(uint8_t* buf, uint64_t offset,bool reclaimable, size_t len)
+bool ImageFormat::write(uint8_t* buf, uint64_t offset,size_t len, size_t maxLen,bool pooled)
 {
-	return m_fileIO->write(buf, offset, reclaimable,len);
+	return m_fileIO->write(buf, offset, len,maxLen, pooled);
 }
 bool ImageFormat::read(uint8_t* buf, size_t len)
 {

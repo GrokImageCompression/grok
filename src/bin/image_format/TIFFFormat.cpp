@@ -41,7 +41,8 @@ ClientData::ClientData() : fd(0),
 #else
 							active(false),
 #endif
-							m_off(0)
+							m_off(0),
+							maxLen(0)
 {}
 
 #ifdef GROK_HAVE_URING
@@ -59,7 +60,7 @@ bool ClientData::write(uint8_t* buf, size_t len){
 		memcpy(initialWrite, buf, 8);
 		bufPtr = initialWrite;
 	}
-	uring.write(bufPtr, m_off, incomingPixelWrite,len);
+	uring.write(bufPtr, m_off, len, maxLen, incomingPixelWrite);
 	m_off += len;
 	if (incomingPixelWrite)
 		numPixelWrites++;

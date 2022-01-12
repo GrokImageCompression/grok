@@ -143,7 +143,7 @@ void FileUringIO::enqueue(io_uring* ring, io_data* data, bool readop, int fd)
 		auto data = retrieveCompletion(true,success);
 		if (!success || !data)
 			break;
-		if (data->reclaimable)
+		if (data->pooled)
 			delete[] (uint8_t*)data->iov.iov_base;
 		delete data;
 	}
@@ -200,7 +200,7 @@ bool FileUringIO::close(void)
 			if (!success)
 				break;
 			if (data) {
-				if (data->reclaimable)
+				if (data->pooled)
 					delete[] (uint8_t*)data->iov.iov_base;
 				delete data;
 			}
@@ -221,17 +221,38 @@ bool FileUringIO::close(void)
 	return rc;
 }
 
-bool FileUringIO::write(uint8_t* buf, uint64_t offset, bool reclaimable, size_t len)
+bool FileUringIO::write(uint8_t* buf, uint64_t offset, size_t len, size_t maxLen,bool pooled)
 {
 	bool rc = true;
-	(void)reclaimable;
+	(void)pooled;
 	io_data* data = new io_data();
 	auto b = new uint8_t[len];
 	memcpy(b, buf, len);
 	data->offset = offset;
-	data->reclaimable = reclaimable;
+	data->pooled = pooled;
 	data->iov.iov_base = b;
 	data->iov.iov_len = len;
+	enqueue(&ring, data,false, m_fd);
+	m_queueCount++;
+
+	return rc;
+}
+bool FileUringIO::write(GrkSerializeBuf buffer,
+						GrkSerializeBuf* reclaimed,
+						uint32_t max_reclaimed,
+						uint32_t *num_reclaimed) {
+
+	bool rc = true;
+	(void)reclaimed;
+	(void)max_reclaimed;
+	(void)num_reclaimed;
+	io_data* data = new io_data();
+	auto b = new uint8_t[buffer.dataLength];
+	memcpy(b, buffer.data, buffer.dataLength);
+	data->offset = buffer.offset;
+	data->pooled = buffer.pooled;
+	data->iov.iov_base = b;
+	data->iov.iov_len = buffer.dataLength;
 	enqueue(&ring, data,false, m_fd);
 	m_queueCount++;
 

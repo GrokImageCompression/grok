@@ -2,6 +2,8 @@
 
 namespace grk {
 
+const uint32_t reclaimSize = 5;
+
 Strip::Strip(GrkImage* outputImage, uint16_t id, uint32_t tileHeight) : stripImg(nullptr),
 												   	   	   	   	   	   tileCounter(0){
 	stripImg = new GrkImage();
@@ -15,7 +17,7 @@ Strip::~Strip(void){
 	grk_object_unref(&stripImg->obj);
 }
 
-StripCache::StripCache() :  strips(nullptr),
+StripPool::StripPool() :  strips(nullptr),
 							m_tgrid_w(0),
 							m_y0(0),
 							m_th(0),
@@ -25,15 +27,15 @@ StripCache::StripCache() :  strips(nullptr),
 							serializeBufferCallback(nullptr)
 {
 }
-StripCache::~StripCache()
+StripPool::~StripPool()
 {
-	for (auto iter = bufCache.begin(); iter != bufCache.end(); ++iter)
-		grkAlignedFree(iter->data);
+	for (auto &b : pool)
+		grkAlignedFree(b.data);
 	for (uint16_t i = 0; i < m_tgrid_h; ++i)
 		delete strips[i];
 	delete[] strips;
 }
-void StripCache::init(uint16_t tgrid_w,
+void StripPool::init(uint16_t tgrid_w,
 						uint32_t th,
 					  uint16_t tgrid_h,
 					  GrkImage *outputImage,
@@ -53,7 +55,7 @@ void StripCache::init(uint16_t tgrid_w,
 	for (uint16_t i = 0; i < m_tgrid_h; ++i)
 		strips[i] = new Strip(outputImage, i, m_th);
 }
-bool StripCache::composite(GrkImage *tileImage){
+bool StripPool::composite(GrkImage *tileImage){
 	uint16_t stripId = (uint16_t)(((tileImage->y0 - m_y0) + m_th - 1) / m_th);
 	assert(stripId < m_tgrid_h);
 	auto strip = strips[stripId];
@@ -61,7 +63,7 @@ bool StripCache::composite(GrkImage *tileImage){
 	uint64_t dataLength = m_packedRowBytes * (tileImage->y1 - tileImage->y0);
 	if (strip->tileCounter == 0)
 	{
-		std::unique_lock<std::mutex> lk(bufCacheMutex);
+		std::unique_lock<std::mutex> lk(poolMutex);
 		if (!img->interleavedData)
 			img->interleavedData = getBuffer(dataLength).data;
 	}
@@ -69,15 +71,14 @@ bool StripCache::composite(GrkImage *tileImage){
 	if (!rc)
 		return false;
 	if (++(strip->tileCounter) == m_tgrid_w){
-		grk_serialize_buf buf;
-		memset(&buf,0,sizeof(buf));
+		GrkSerializeBuf buf;
 		buf.data = img->interleavedData;
 		buf.dataLength = dataLength;
-		grk_serialize_buf reclaimed[5];
+		GrkSerializeBuf reclaimed[reclaimSize];
 		uint32_t num_reclaimed;
-		serializeBufferCallback(buf,stripId, reclaimed, 5, &num_reclaimed,serialize_data);
+		serializeBufferCallback(buf,stripId, reclaimed, reclaimSize, &num_reclaimed,serialize_data);
 		{
-			std::unique_lock<std::mutex> lk(bufCacheMutex);
+			std::unique_lock<std::mutex> lk(poolMutex);
 			putBuffer(buf);
 			img->interleavedData = nullptr;
 		}
@@ -85,23 +86,23 @@ bool StripCache::composite(GrkImage *tileImage){
 
 	return rc;
 }
-grk_serialize_buf StripCache::getBuffer(uint64_t len){
-	for (auto iter = bufCache.begin(); iter != bufCache.end(); ++iter){
+GrkSerializeBuf StripPool::getBuffer(uint64_t len){
+	for (auto iter = pool.begin(); iter != pool.end(); ++iter){
 		if (iter->maxDataLength >= len){
 			auto b = *iter;
 			b.dataLength = len;
-			bufCache.erase(iter);
+			pool.erase(iter);
 			return b;
 		}
 	}
-	grk_serialize_buf rc;
+	GrkSerializeBuf rc;
 	rc.data = (uint8_t*)grkAlignedMalloc(len);
 	rc.maxDataLength = len;
 
 	return rc;
 }
-void StripCache::putBuffer(grk_serialize_buf b){
-	bufCache.push_back(b);
+void StripPool::putBuffer(GrkSerializeBuf b){
+	pool.push_back(b);
 }
 
 

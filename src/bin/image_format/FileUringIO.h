@@ -27,11 +27,11 @@
 
 struct io_data
 {
-	io_data() : reclaimable(false),
+	io_data() : pooled(false),
 				offset(0),
 				iov{0, 0}
 	{}
-	bool reclaimable;
+	bool pooled;
 	uint64_t offset;
 	iovec iov;
 };
@@ -44,7 +44,11 @@ class FileUringIO : public IFileIO
 	bool open(std::string fileName, std::string mode) override;
 	bool attach(std::string fileName, std::string mode, int fd);
 	bool close(void) override;
-	bool write(uint8_t* buf, uint64_t offset, bool reclaimable, size_t len) override;
+	bool write(uint8_t* buf, uint64_t offset, size_t len, size_t maxLen,bool pooled) override;
+	bool write(GrkSerializeBuf buffer,
+				GrkSerializeBuf* reclaimed,
+				uint32_t max_reclaimed,
+				uint32_t *num_reclaimed) override;
 	bool read(uint8_t* buf, size_t len) override;
 	bool seek(int64_t pos) override;
 	io_data* retrieveCompletion(bool peek,bool &success);

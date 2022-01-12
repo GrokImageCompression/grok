@@ -19,8 +19,21 @@
 #pragma once
 
 #include <string>
+#include "grok.h"
 
 typedef bool (*process_read_func)(void);
+
+struct GrkSerializeBuf : grk_serialize_buf {
+public:
+	GrkSerializeBuf()
+	{
+		data = nullptr;
+		dataLength = 0;
+		maxDataLength = 0;
+		offset = 0;
+		pooled = false;
+	}
+};
 
 class IFileIO
 {
@@ -28,7 +41,11 @@ class IFileIO
 	virtual ~IFileIO() = default;
 	virtual bool open(std::string fileName, std::string mode) = 0;
 	virtual bool close(void) = 0;
-	virtual bool write(uint8_t* buf, uint64_t offset, bool reclaimable, size_t len) = 0;
+	virtual bool write(uint8_t* buf, uint64_t offset, size_t len, size_t maxLen,bool pooled) = 0;
+	virtual bool write(GrkSerializeBuf buffer,
+						GrkSerializeBuf* reclaimed,
+						uint32_t max_reclaimed,
+						uint32_t *num_reclaimed) = 0;
 	virtual bool read(uint8_t* buf, size_t len) = 0;
 	virtual bool seek(int64_t pos) = 0;
 };
