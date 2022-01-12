@@ -455,7 +455,7 @@ bool TIFFFormat::encodeHeader(grk_image* image)
 		}
 		TIFFSetField(tif, TIFFTAG_EXTRASAMPLES, numExtraChannels, out.get());
 	}
-	if (!m_image->interleavedData)
+	if (!m_image->interleavedData.data)
 		packedBuf = new uint8_t[(size_t)TIFFVStripSize(tif, (uint32_t)m_image->rowsPerStrip)];
 	success = true;
 	encodeState = IMAGE_FORMAT_ENCODED_HEADER;
@@ -564,11 +564,11 @@ bool TIFFFormat::encodeRows(uint32_t rowsToWrite)
 		auto iter = grk::InterleaverFactory<int32_t>::makeInterleaver(m_image->comps[0].prec);
 		if (!iter)
 			goto cleanup;
-		auto bufPtr = m_image->interleavedData ? m_image->interleavedData : packedBuf;
+		auto bufPtr = m_image->interleavedData.data ? m_image->interleavedData.data : packedBuf;
 		while(h < hTarget)
 		{
 			uint32_t stripRows = (std::min)(m_image->rowsPerStrip, height - h);
-			if (!m_image->interleavedData)
+			if (!m_image->interleavedData.data)
 				iter->interleave((int32_t**)planes,
 								m_image->numcomps,
 								(uint8_t*)packedBuf,
@@ -587,7 +587,7 @@ bool TIFFFormat::encodeRows(uint32_t rowsToWrite)
 			}
 			rowsWritten += stripRows;
 			h += stripRows;
-			if (m_image->interleavedData)
+			if (m_image->interleavedData.data)
 				bufPtr += m_image->packedRowBytes * stripRows;
 		}
 		delete iter;

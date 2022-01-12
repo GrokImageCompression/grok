@@ -16,7 +16,7 @@ GrkImage::~GrkImage()
 	}
 	if(meta)
 		grk_object_unref(&meta->obj);
-	grkAlignedFree(interleavedData);
+	grkAlignedFree(interleavedData.data);
 }
 
 void GrkImage::copyComponent(grk_image_comp* src, grk_image_comp* dest){
@@ -382,8 +382,8 @@ void GrkImage::transferDataTo(GrkImage* dest)
 		srcComp->data = nullptr;
 	}
 
-	dest->interleavedData = interleavedData;
-	interleavedData = nullptr;
+	dest->interleavedData.data = interleavedData.data;
+	interleavedData.data = nullptr;
 }
 
 /**
@@ -448,7 +448,7 @@ bool GrkImage::generateCompositeBounds(const grk_image_comp* srcComp,
 }
 
 bool GrkImage::composite(const GrkImage* srcImg){
-	return interleavedData ? compositeInterleaved(srcImg) : compositePlanar(srcImg);
+	return interleavedData.data ? compositeInterleaved(srcImg) : compositePlanar(srcImg);
 }
 
 /**
@@ -488,7 +488,7 @@ bool GrkImage::compositeInterleaved(const GrkImage* srcImg)
 		planes[i] = (srcImg->comps + i)->data;
 	iter->interleave((int32_t**)planes,
 						srcImg->numcomps,
-						interleavedData + destIndex,
+						interleavedData.data + destIndex,
 						destWin.width(),
 						srcComp->stride,
 						destStride,

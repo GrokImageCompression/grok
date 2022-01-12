@@ -64,15 +64,15 @@ bool StripPool::composite(GrkImage *tileImage){
 	if (strip->tileCounter == 0)
 	{
 		std::unique_lock<std::mutex> lk(poolMutex);
-		if (!img->interleavedData)
-			img->interleavedData = getBuffer(dataLength).data;
+		if (!img->interleavedData.data)
+			img->interleavedData.data = getBuffer(dataLength).data;
 	}
 	bool rc =  img->compositeInterleaved(tileImage);
 	if (!rc)
 		return false;
 	if (++(strip->tileCounter) == m_tgrid_w){
 		GrkSerializeBuf buf;
-		buf.data = img->interleavedData;
+		buf.data = img->interleavedData.data;
 		buf.dataLength = dataLength;
 		GrkSerializeBuf reclaimed[reclaimSize];
 		uint32_t num_reclaimed;
@@ -80,7 +80,7 @@ bool StripPool::composite(GrkImage *tileImage){
 		{
 			std::unique_lock<std::mutex> lk(poolMutex);
 			putBuffer(buf);
-			img->interleavedData = nullptr;
+			img->interleavedData.data = nullptr;
 		}
 	}
 

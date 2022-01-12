@@ -986,7 +986,7 @@ typedef struct _grk_image
 	uint32_t numPrecision;
 	grk_image_meta* meta;
 	grk_image_comp* comps;
-	uint8_t* interleavedData;
+	grk_serialize_buf interleavedData;
 	uint32_t rowsPerStrip;
 	uint64_t packedRowBytes;
 } grk_image;
