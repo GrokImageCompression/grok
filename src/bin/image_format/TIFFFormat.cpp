@@ -564,19 +564,18 @@ bool TIFFFormat::encodeRows(uint32_t rowsToWrite)
 		auto iter = grk::InterleaverFactory<int32_t>::makeInterleaver(m_image->comps[0].prec);
 		if (!iter)
 			goto cleanup;
-		auto bufPtr = m_image->interleavedData.data ? m_image->interleavedData.data : packedBuf;
+		auto bufPtr = packedBuf;
 		while(h < hTarget)
 		{
 			uint32_t stripRows = (std::min)(m_image->rowsPerStrip, height - h);
-			if (!m_image->interleavedData.data)
-				iter->interleave((int32_t**)planes,
-								m_image->numcomps,
-								(uint8_t*)packedBuf,
-								m_image->comps[0].w,
-								m_image->comps[0].stride,
-								m_image->packedRowBytes,
-								stripRows,
-								0);
+			iter->interleave((int32_t**)planes,
+							m_image->numcomps,
+							(uint8_t*)packedBuf,
+							m_image->comps[0].w,
+							m_image->comps[0].stride,
+							m_image->packedRowBytes,
+							stripRows,
+							0);
 			grk_serialize_buf buf;
 			memset(&buf,0,sizeof(grk_serialize_buf));
 			buf.data = bufPtr;
