@@ -23,15 +23,42 @@
 
 typedef bool (*process_read_func)(void);
 
-struct GrkSerializeBuf : grk_serialize_buf {
+
+struct GrkSerializeBuf : public grk_serialize_buf {
 public:
-	GrkSerializeBuf()
+	GrkSerializeBuf() : GrkSerializeBuf(nullptr,0,0,0,false)
 	{
+	}
+	GrkSerializeBuf(uint8_t *data,
+					uint64_t offset,
+					uint64_t dataLen,
+					uint64_t allocLen,
+					bool pooled)
+	{
+		this->data = data;
+		this->offset = offset;
+		this->dataLen = dataLen;
+		this->allocLen = allocLen;
+		this->pooled = pooled;
+	}
+	explicit GrkSerializeBuf(const grk_serialize_buf rhs){
+		data = rhs.data;
+		offset = rhs.offset;
+		dataLen = rhs.dataLen;
+		allocLen = rhs.allocLen;
+		pooled = rhs.pooled;
+	}
+	bool alloc(uint64_t len){
+		dealloc();
+		data = new uint8_t[len];
+		dataLen = len;
+		allocLen = len;
+
+		return true;
+	}
+	void dealloc(){
+		delete[]  data;
 		data = nullptr;
-		dataLength = 0;
-		maxDataLength = 0;
-		offset = 0;
-		pooled = false;
 	}
 };
 

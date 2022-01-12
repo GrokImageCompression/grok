@@ -760,8 +760,8 @@ typedef struct _grk_header_info
 typedef struct _grk_serialize_buf {
 	uint8_t *data;
 	uint64_t offset;
-	uint64_t dataLength;
-	uint64_t maxDataLength;
+	uint64_t dataLen;
+	uint64_t allocLen;
 	bool pooled;
 } grk_serialize_buf;
 

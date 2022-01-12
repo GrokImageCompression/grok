@@ -471,7 +471,7 @@ bool TIFFFormat::encodePixels(grk_serialize_buf pixels,
 	{
 		std::unique_lock<std::mutex> lk(encodePixelmutex);
 		clientData.incomingPixelWrite = true;
-		written = TIFFWriteEncodedStrip(tif, (tmsize_t)strip, pixels.data, (tmsize_t)pixels.dataLength);
+		written = TIFFWriteEncodedStrip(tif, (tmsize_t)strip, pixels.data, (tmsize_t)pixels.dataLen);
 		if (written == -1)
 			encodeState |= IMAGE_FORMAT_ERROR;
 		else if (++stripCount == clientData.maxPixelWrites){
@@ -518,7 +518,7 @@ bool TIFFFormat::encodeRows(uint32_t rowsToWrite)
 				grk_serialize_buf buf;
 				memset(&buf,0,sizeof(grk_serialize_buf));
 				buf.data = packedBuf;
-				buf.dataLength = bytesToWrite;
+				buf.dataLen = bytesToWrite;
 				if(bytesToWrite && !encodePixels(buf, nullptr,0,nullptr,strip++))
 					goto cleanup;
 				bufptr = (int8_t*)packedBuf;
@@ -554,7 +554,7 @@ bool TIFFFormat::encodeRows(uint32_t rowsToWrite)
 		grk_serialize_buf buf;
 		memset(&buf,0,sizeof(grk_serialize_buf));
 		buf.data = packedBuf;
-		buf.dataLength = bytesToWrite;
+		buf.dataLen = bytesToWrite;
 		if(bytesToWrite && !encodePixels(buf,nullptr,0,nullptr, strip++))
 			goto cleanup;
 	}
@@ -579,7 +579,7 @@ bool TIFFFormat::encodeRows(uint32_t rowsToWrite)
 			grk_serialize_buf buf;
 			memset(&buf,0,sizeof(grk_serialize_buf));
 			buf.data = bufPtr;
-			buf.dataLength = m_image->packedRowBytes * stripRows;
+			buf.dataLen = m_image->packedRowBytes * stripRows;
 			if(!encodePixels(buf,nullptr,0,nullptr, strip++)) {
 				delete iter;
 				goto cleanup;

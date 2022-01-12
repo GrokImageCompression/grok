@@ -15,29 +15,29 @@ public:
 	}
 	GrkSerializeBuf(uint8_t *data,
 					uint64_t offset,
-					uint64_t dataLength,
-					uint64_t maxDataLength,
+					uint64_t dataLen,
+					uint64_t allocLen,
 					bool pooled)
 	{
 		this->data = data;
 		this->offset = offset;
-		this->dataLength = dataLength;
-		this->maxDataLength = maxDataLength;
+		this->dataLen = dataLen;
+		this->allocLen = allocLen;
 		this->pooled = pooled;
 	}
 	explicit GrkSerializeBuf(const grk_serialize_buf rhs){
 		data = rhs.data;
 		offset = rhs.offset;
-		dataLength = rhs.dataLength;
-		maxDataLength = rhs.maxDataLength;
+		dataLen = rhs.dataLen;
+		allocLen = rhs.allocLen;
 		pooled = rhs.pooled;
 	}
 	bool alloc(uint64_t len){
 		dealloc();
 		data = (uint8_t*)grkAlignedMalloc(len);
 		if (data) {
-			dataLength = len;
-			maxDataLength = len;
+			dataLen = len;
+			allocLen = len;
 		}
 
 		return (data != nullptr);

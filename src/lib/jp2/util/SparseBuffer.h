@@ -53,7 +53,7 @@ struct SparseBuffer
 	bool zeroCopyRead(uint8_t** ptr, size_t chunk_len);
 	size_t getCurrentChunkOffset(void);
 	void pushBack(grkBufferU8* chunk);
-	size_t dataLength; /* total length of all chunks*/
+	size_t dataLen; /* total length of all chunks*/
 	size_t currentChunkId; /* current index into chunk vector */
 	std::vector<grkBufferU8*> chunks;
 };

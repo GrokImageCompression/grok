@@ -20,7 +20,7 @@
 
 namespace grk
 {
-SparseBuffer::SparseBuffer() : dataLength(0), currentChunkId(0) {}
+SparseBuffer::SparseBuffer() : dataLen(0), currentChunkId(0) {}
 SparseBuffer::~SparseBuffer()
 {
 	cleanup();
@@ -40,7 +40,7 @@ size_t SparseBuffer::read(void* buffer, size_t numBytes)
 	if(buffer == nullptr || numBytes == 0)
 		return 0;
 	/*don't try to read more bytes than are available */
-	size_t contiguousBytesRemaining = dataLength - (size_t)getGlobalOffset();
+	size_t contiguousBytesRemaining = dataLen - (size_t)getGlobalOffset();
 	if(numBytes > contiguousBytesRemaining)
 	{
 #ifdef DEBUG_CHUNK_BUF
@@ -70,7 +70,7 @@ size_t SparseBuffer::read(void* buffer, size_t numBytes)
 size_t SparseBuffer::skip(size_t numBytes)
 {
 	size_t bytes_remaining;
-	if(numBytes + getGlobalOffset() > dataLength)
+	if(numBytes + getGlobalOffset() > dataLen)
 	{
 #ifdef DEBUG_CHUNK_BUF
 		GRK_WARN("attempt to skip past end of chunk buffer");
@@ -111,7 +111,7 @@ void SparseBuffer::pushBack(grkBufferU8* chunk)
 		return;
 	chunks.push_back(chunk);
 	currentChunkId = (size_t)(chunks.size() - 1);
-	dataLength += chunk->len;
+	dataLen += chunk->len;
 }
 void SparseBuffer::cleanup(void)
 {

@@ -27,12 +27,9 @@
 
 struct io_data
 {
-	io_data() : pooled(false),
-				offset(0),
-				iov{0, 0}
+	io_data() : iov{0, 0}
 	{}
-	bool pooled;
-	uint64_t offset;
+	GrkSerializeBuf buf;
 	iovec iov;
 };
 

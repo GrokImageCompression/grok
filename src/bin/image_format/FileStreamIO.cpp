@@ -80,15 +80,15 @@ bool FileStreamIO::write(GrkSerializeBuf buffer,
 						GrkSerializeBuf* reclaimed,
 						uint32_t max_reclaimed,
 						uint32_t *num_reclaimed) {
-	auto actual = fwrite(buffer.data, 1, buffer.dataLength, m_fileHandle);
+	auto actual = fwrite(buffer.data, 1, buffer.dataLen, m_fileHandle);
 	(void)reclaimed;
 	(void)max_reclaimed;
 	(void)num_reclaimed;
 
-	if(actual < buffer.dataLength)
-		spdlog::error("wrote fewer bytes {} than expected number of bytes {}.", actual, buffer.dataLength);
+	if(actual < buffer.dataLen)
+		spdlog::error("wrote fewer bytes {} than expected number of bytes {}.", actual, buffer.dataLen);
 
-	return actual == buffer.dataLength;
+	return actual == buffer.dataLen;
 }
 bool FileStreamIO::read(uint8_t* buf, size_t len)
 {

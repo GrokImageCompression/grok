@@ -60,12 +60,12 @@ bool StripPool::composite(GrkImage *tileImage){
 	assert(stripId < m_tgrid_h);
 	auto strip = strips[stripId];
 	auto img = strip->stripImg;
-	uint64_t dataLength = m_packedRowBytes * (tileImage->y1 - tileImage->y0);
+	uint64_t dataLen = m_packedRowBytes * (tileImage->y1 - tileImage->y0);
 	if (strip->tileCounter == 0)
 	{
 		std::unique_lock<std::mutex> lk(poolMutex);
 		if (!img->interleavedData.data) {
-			img->interleavedData = getBuffer(dataLength);
+			img->interleavedData = getBuffer(dataLen);
 			if (!img->interleavedData.data)
 				return false;
 		}
@@ -75,7 +75,7 @@ bool StripPool::composite(GrkImage *tileImage){
 		return false;
 	if (++(strip->tileCounter) == m_tgrid_w){
 		GrkSerializeBuf buf = GrkSerializeBuf(img->interleavedData);
-		buf.dataLength = dataLength;
+		buf.dataLen = dataLen;
 		GrkSerializeBuf reclaimed[reclaimSize];
 		uint32_t num_reclaimed;
 		serializeBufferCallback(buf,stripId, reclaimed, reclaimSize, &num_reclaimed,serialize_data);
@@ -90,9 +90,9 @@ bool StripPool::composite(GrkImage *tileImage){
 }
 GrkSerializeBuf StripPool::getBuffer(uint64_t len){
 	for (auto iter = pool.begin(); iter != pool.end(); ++iter){
-		if (iter->maxDataLength >= len){
+		if (iter->allocLen >= len){
 			auto b = *iter;
-			b.dataLength = len;
+			b.dataLen = len;
 			pool.erase(iter);
 			return b;
 		}

@@ -128,9 +128,9 @@ void FileUringIO::enqueue(io_uring* ring, io_data* data, bool readop, int fd)
 	//grk::ChronoTimer timer("uring: time to enque");
 	//timer.start();
 	if(readop)
-		io_uring_prep_readv(sqe, fd, &data->iov, 1, data->offset);
+		io_uring_prep_readv(sqe, fd, &data->iov, 1, data->buf.offset);
 	else
-		io_uring_prep_writev(sqe, fd, &data->iov, 1, data->offset);
+		io_uring_prep_writev(sqe, fd, &data->iov, 1, data->buf.offset);
 	io_uring_sqe_set_data(sqe, data);
 	int ret = io_uring_submit(ring);
 	//timer.finish();
@@ -143,7 +143,7 @@ void FileUringIO::enqueue(io_uring* ring, io_data* data, bool readop, int fd)
 		auto data = retrieveCompletion(true,success);
 		if (!success || !data)
 			break;
-		if (data->pooled)
+		if (data->buf.pooled)
 			delete[] (uint8_t*)data->iov.iov_base;
 		delete data;
 	}
@@ -200,7 +200,7 @@ bool FileUringIO::close(void)
 			if (!success)
 				break;
 			if (data) {
-				if (data->pooled)
+				if (data->buf.pooled)
 					delete[] (uint8_t*)data->iov.iov_base;
 				delete data;
 			}
@@ -228,8 +228,7 @@ bool FileUringIO::write(uint8_t* buf, uint64_t offset, size_t len, size_t maxLen
 	io_data* data = new io_data();
 	auto b = new uint8_t[len];
 	memcpy(b, buf, len);
-	data->offset = offset;
-	data->pooled = pooled;
+	data->buf = GrkSerializeBuf(b,offset,len,maxLen,pooled);
 	data->iov.iov_base = b;
 	data->iov.iov_len = len;
 	enqueue(&ring, data,false, m_fd);
@@ -247,12 +246,11 @@ bool FileUringIO::write(GrkSerializeBuf buffer,
 	(void)max_reclaimed;
 	(void)num_reclaimed;
 	io_data* data = new io_data();
-	auto b = new uint8_t[buffer.dataLength];
-	memcpy(b, buffer.data, buffer.dataLength);
-	data->offset = buffer.offset;
-	data->pooled = buffer.pooled;
+	auto b = new uint8_t[buffer.dataLen];
+	memcpy(b, buffer.data, buffer.dataLen);
+	data->buf = buffer;
 	data->iov.iov_base = b;
-	data->iov.iov_len = buffer.dataLength;
+	data->iov.iov_len = buffer.dataLen;
 	enqueue(&ring, data,false, m_fd);
 	m_queueCount++;
 
