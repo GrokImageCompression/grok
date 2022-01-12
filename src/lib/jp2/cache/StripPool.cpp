@@ -30,7 +30,7 @@ StripPool::StripPool() :  strips(nullptr),
 StripPool::~StripPool()
 {
 	for (auto &b : pool)
-		grkAlignedFree(b.data);
+		b.dealloc();
 	for (uint16_t i = 0; i < m_tgrid_h; ++i)
 		delete strips[i];
 	delete[] strips;
@@ -64,15 +64,17 @@ bool StripPool::composite(GrkImage *tileImage){
 	if (strip->tileCounter == 0)
 	{
 		std::unique_lock<std::mutex> lk(poolMutex);
-		if (!img->interleavedData.data)
-			img->interleavedData.data = getBuffer(dataLength).data;
+		if (!img->interleavedData.data) {
+			img->interleavedData = getBuffer(dataLength);
+			if (!img->interleavedData.data)
+				return false;
+		}
 	}
 	bool rc =  img->compositeInterleaved(tileImage);
 	if (!rc)
 		return false;
 	if (++(strip->tileCounter) == m_tgrid_w){
-		GrkSerializeBuf buf;
-		buf.data = img->interleavedData.data;
+		GrkSerializeBuf buf = GrkSerializeBuf(img->interleavedData);
 		buf.dataLength = dataLength;
 		GrkSerializeBuf reclaimed[reclaimSize];
 		uint32_t num_reclaimed;
@@ -96,8 +98,7 @@ GrkSerializeBuf StripPool::getBuffer(uint64_t len){
 		}
 	}
 	GrkSerializeBuf rc;
-	rc.data = (uint8_t*)grkAlignedMalloc(len);
-	rc.maxDataLength = len;
+	rc.alloc(len);
 
 	return rc;
 }

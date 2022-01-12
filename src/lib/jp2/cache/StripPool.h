@@ -25,6 +25,27 @@ public:
 		this->maxDataLength = maxDataLength;
 		this->pooled = pooled;
 	}
+	explicit GrkSerializeBuf(const grk_serialize_buf rhs){
+		data = rhs.data;
+		offset = rhs.offset;
+		dataLength = rhs.dataLength;
+		maxDataLength = rhs.maxDataLength;
+		pooled = rhs.pooled;
+	}
+	bool alloc(uint64_t len){
+		dealloc();
+		data = (uint8_t*)grkAlignedMalloc(len);
+		if (data) {
+			dataLength = len;
+			maxDataLength = len;
+		}
+
+		return (data != nullptr);
+	}
+	void dealloc(){
+		grkAlignedFree(data);
+		data = nullptr;
+	}
 };
 
 
