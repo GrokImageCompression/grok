@@ -37,7 +37,8 @@
 
 FileUringIO::FileUringIO() : m_fd(0),
 							ownsDescriptor(false),
-							m_queueCount(0)
+							requestsSubmitted(0),
+							requestsCompleted(0)
 {
 	memset(&ring, 0, sizeof(ring));
 }
@@ -145,7 +146,7 @@ void FileUringIO::enqueue(io_uring* ring,
 	//timer.finish();
 	assert(ret == 1);
 	(void)ret;
-	m_queueCount++;
+	requestsSubmitted++;
 
 	// reclaim
 	bool canReclaim = reclaimed && max_reclaimed > 0 && num_reclaimed;
@@ -163,11 +164,11 @@ void FileUringIO::enqueue(io_uring* ring,
 			} else {
 				grk::grkAlignedFree((uint8_t*)data->iov.iov_base);
 			}
+		} else {
+			grk::grkAlignedFree((uint8_t*)data->iov.iov_base);
 		}
 		delete data;
 	}
-	//if (canReclaim)
-	//	printf("%d\n", *num_reclaimed);
 }
 
 io_data* FileUringIO::retrieveCompletion(bool peek, bool &success){
@@ -199,8 +200,7 @@ io_data* FileUringIO::retrieveCompletion(bool peek, bool &success){
 	auto data = (io_data*)io_uring_cqe_get_data(cqe);
 	if (data) {
 		io_uring_cqe_seen(&ring, cqe);
-		assert(m_queueCount != 0);
-		m_queueCount--;
+		requestsCompleted++;
 	}
 
 	return data;
@@ -214,8 +214,9 @@ bool FileUringIO::close(void)
 	{
 		//grk::ChronoTimer timer("uring: time to close");
 		//timer.start();
-		// process completions
-		size_t count = m_queueCount;
+
+		// process pending requests
+		size_t count = requestsSubmitted - requestsCompleted;
 		for(uint32_t i = 0; i < count; ++i)
 		{
 			bool success;
@@ -223,19 +224,18 @@ bool FileUringIO::close(void)
 			if (!success)
 				break;
 			if (data) {
-				if (data->buf.pooled) {
-					//printf("Close: deallocating  %p\n", data->iov.iov_base);
-					grk::grkAlignedFree(data->iov.iov_base);
-				}
+				//printf("Close: deallocating  %p\n", data->iov.iov_base);
+				grk::grkAlignedFree(data->iov.iov_base);
 				delete data;
 			}
 		}
 		io_uring_queue_exit(&ring);
 		memset(&ring, 0, sizeof(ring));
+
 		//timer.finish();
 	}
-	assert(m_queueCount == 0);
-	m_queueCount = 0;
+	requestsSubmitted = 0;
+	requestsCompleted = 0;
 	bool rc = false;
 	if(grk::useStdio(m_fileName.c_str()) || !ownsDescriptor)
 		rc = true;
@@ -257,16 +257,23 @@ bool FileUringIO::write(GrkSerializeBuf buffer,
 						uint32_t max_reclaimed,
 						uint32_t *num_reclaimed) {
 
-	bool rc = true;
 	(void)reclaimed;
 	(void)max_reclaimed;
 	(void)num_reclaimed;
 	io_data* data = new io_data();
+	if (!buffer.pooled && buffer.data){
+		auto b = (uint8_t*)grk::grkAlignedMalloc(buffer.dataLen);
+		if (!b)
+			return false;
+		memcpy(b,buffer.data,buffer.dataLen);
+		buffer.data = b;
+	}
 	data->buf = buffer;
 	data->iov.iov_base = buffer.data;
 	data->iov.iov_len = buffer.dataLen;
 	enqueue(&ring, data,reclaimed,max_reclaimed,num_reclaimed,false, m_fd);
-	return rc;
+
+	return true;
 }
 bool FileUringIO::read(uint8_t* buf, size_t len)
 {

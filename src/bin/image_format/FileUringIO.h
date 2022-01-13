@@ -55,7 +55,8 @@ class FileUringIO : public IFileIO
 	int m_fd;
 	bool ownsDescriptor;
 	std::string m_fileName;
-	size_t m_queueCount;
+	size_t requestsSubmitted;
+	size_t requestsCompleted;
 	int getMode(const char* mode);
 	void enqueue(io_uring* ring,
 				io_data* data,

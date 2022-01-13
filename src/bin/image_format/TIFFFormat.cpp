@@ -474,7 +474,7 @@ cleanup:
 }
 bool TIFFFormat::encodePixelsSync(grk_serialize_buf pixels,uint32_t strip){
 
-	bool rc =  encodePixels(pixels,reclaimed,reclaimSize,&num_reclaimed,strip);
+	bool rc =  encodePixelsCore(pixels,reclaimed,reclaimSize,&num_reclaimed,strip);
 #ifndef GROK_HAVE_URING
 		pool.put(GrkSerializeBuf(pixels));
 #endif
@@ -487,14 +487,13 @@ bool TIFFFormat::encodePixelsSync(grk_serialize_buf pixels,uint32_t strip){
 
 	return rc;
 }
-bool TIFFFormat::encodePixels(grk_serialize_buf pixels,
+bool TIFFFormat::encodePixelsCore(grk_serialize_buf pixels,
 							grk_serialize_buf* reclaimed,
 							uint32_t max_reclaimed,
 							uint32_t *num_reclaimed,
 							uint32_t strip) {
 	tmsize_t written = 0;
 	{
-		std::unique_lock<std::mutex> lk(encodePixelmutex);
 		clientData.scheduled.pooled = true;
 		clientData.reclaimed = reclaimed;
 		clientData.max_reclaimed = max_reclaimed;
@@ -510,6 +509,15 @@ bool TIFFFormat::encodePixels(grk_serialize_buf pixels,
 	}
 
 	return true;
+}
+bool TIFFFormat::encodePixels(grk_serialize_buf pixels,
+							grk_serialize_buf* reclaimed,
+							uint32_t max_reclaimed,
+							uint32_t *num_reclaimed,
+							uint32_t strip) {
+
+	std::unique_lock<std::mutex> lk(encodePixelmutex);
+	return encodePixelsCore(pixels,reclaimed,max_reclaimed, num_reclaimed, strip);
 }
 bool TIFFFormat::encodeRows(uint32_t rowsToWrite)
 {

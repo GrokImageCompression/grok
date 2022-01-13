@@ -73,6 +73,10 @@ class TIFFFormat : public ImageFormat
 	TIFF* MyTIFFOpen(const char* name, const char* mode);
 #endif
 	bool encodePixelsSync(grk_serialize_buf pixels, uint32_t strip);
+	bool encodePixelsCore(grk_serialize_buf pixels,
+						grk_serialize_buf* reclaimed,
+						uint32_t max_reclaimed,
+						uint32_t *num_reclaimed, uint32_t strip);
 	ClientData clientData;
 	TIFF* tif;
 	uint32_t chroma_subsample_x;
