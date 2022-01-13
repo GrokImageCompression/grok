@@ -27,14 +27,11 @@
 #include "convert.h"
 #include "common.h"
 
-
-
-ClientData::ClientData() : fd(0),
-							incomingPixelWrite(false),
-							maxPixelWrites(0),
+ClientData::ClientData(BufferPool *pool) : fd(0),
 							reclaimed(nullptr),
 							max_reclaimed(0),
 							num_reclaimed(nullptr),
+							maxPixelWrites(0),
 							numPixelWrites(0),
 #ifdef GROK_HAVE_URING
 							active(true),
@@ -42,33 +39,44 @@ ClientData::ClientData() : fd(0),
 							active(false),
 #endif
 							m_off(0),
-							maxLen(0)
+							pool(pool)
 {}
 
 #ifdef GROK_HAVE_URING
-bool ClientData::write(uint8_t* buf, size_t len){
+bool ClientData::write(void){
 	if (!active)
 		return false;
-	uint8_t* bufPtr = buf;
+
 	if (m_off == 0){
-		assert(len == 8);
-		if (len != 8){
+		assert(scheduled.dataLen == 8);
+		assert(!scheduled.pooled);
+		if (scheduled.dataLen != 8){
 			uring.close();
 			active = false;
 			return false;
 		}
-		memcpy(initialWrite, buf, 8);
-		bufPtr = initialWrite;
+		memcpy(initialWrite, scheduled.data, 8);
+		scheduled.data = initialWrite;
 	}
-	uring.write(bufPtr, m_off, len, maxLen, incomingPixelWrite);
-	m_off += len;
-	if (incomingPixelWrite)
+	scheduled.offset = m_off;
+	uring.write(scheduled,reclaimed,max_reclaimed,num_reclaimed);
+	m_off += scheduled.dataLen;
+	if (scheduled.pooled)
 		numPixelWrites++;
+	if (reclaimed && num_reclaimed && *num_reclaimed) {
+		for (uint32_t i = 0; i < *num_reclaimed; ++i)
+			pool->put(GrkSerializeBuf(reclaimed[i]));
+	}
 	if (numPixelWrites == maxPixelWrites){
 		uring.close();
 		active = false;
 	}
-	incomingPixelWrite = false;
+	// clear scheduled
+	scheduled = GrkSerializeBuf();
+	num_reclaimed = nullptr;
+	reclaimed = nullptr;
+	max_reclaimed = 0;
+
 	return true;
 }
 #endif
@@ -76,13 +84,14 @@ bool ClientData::write(uint8_t* buf, size_t len){
 bool ClientData::isActive(void){
 	return active;
 }
-
 uint64_t ClientData::getAsynchFileLength(void){
 	return m_off;
 }
 
-#ifndef _WIN32
 
+
+
+#ifndef _WIN32
 #define TIFF_IO_MAX 2147483647U
 
 static tmsize_t TiffRead(thandle_t fd, void* buf, tmsize_t size)
@@ -97,7 +106,9 @@ static tmsize_t TiffWrite(thandle_t fd, void* buf, tmsize_t size)
 	auto *cdata = (ClientData*)fd;
 
 #ifdef GROK_HAVE_URING
-	if (cdata->write((uint8_t*)buf, (size_t)size))
+	cdata->scheduled.data = (uint8_t*)buf;
+	cdata->scheduled.dataLen = (uint64_t)size;
+	if (cdata->write())
 		return size;
 #endif
 	//grk::ChronoTimer timer("fwrite: time to write");
@@ -163,8 +174,8 @@ static uint64_t TiffSize(thandle_t fd)
 
 #endif
 
-TIFFFormat::TIFFFormat(): tif(nullptr),
-							packedBuf(nullptr),
+TIFFFormat::TIFFFormat():  clientData(&pool),
+							tif(nullptr),
 							chroma_subsample_x(1),
 							chroma_subsample_y(1),
 							rowsWritten(0),
@@ -177,7 +188,6 @@ TIFFFormat::TIFFFormat(): tif(nullptr),
 TIFFFormat::~TIFFFormat(){
 	if(tif)
 		TIFFClose(tif);
-	delete[] packedBuf;
 }
 #ifndef _WIN32
 TIFF* TIFFFormat::MyTIFFOpen(const char* name, const char* mode)
@@ -455,12 +465,24 @@ bool TIFFFormat::encodeHeader(grk_image* image)
 		}
 		TIFFSetField(tif, TIFFTAG_EXTRASAMPLES, numExtraChannels, out.get());
 	}
-	if (!m_image->interleavedData.data)
-		packedBuf = new uint8_t[(size_t)TIFFVStripSize(tif, (uint32_t)m_image->rowsPerStrip)];
+	//if (!m_image->interleavedData.data)
+	//	packedBuf = new uint8_t[(size_t)TIFFVStripSize(tif, (uint32_t)m_image->rowsPerStrip)];
 	success = true;
 	encodeState = IMAGE_FORMAT_ENCODED_HEADER;
 cleanup:
 	return success;
+}
+bool TIFFFormat::encodePixelsSync(grk_serialize_buf pixels,uint32_t strip){
+
+	bool rc =  encodePixels(pixels,reclaimed,reclaimSize,&num_reclaimed,strip);
+	if (rc){
+#ifndef GROK_HAVE_URING
+		pool.put(GrkSerializeBuf(pixels));
+#endif
+	}
+	num_reclaimed = 0;
+
+	return rc;
 }
 bool TIFFFormat::encodePixels(grk_serialize_buf pixels,
 							grk_serialize_buf* reclaimed,
@@ -468,9 +490,12 @@ bool TIFFFormat::encodePixels(grk_serialize_buf pixels,
 							uint32_t *num_reclaimed,
 							uint32_t strip) {
 	tmsize_t written = 0;
+	clientData.scheduled.pooled = true;
+	clientData.reclaimed = reclaimed;
+	clientData.max_reclaimed = max_reclaimed;
+	clientData.num_reclaimed = num_reclaimed;
 	{
 		std::unique_lock<std::mutex> lk(encodePixelmutex);
-		clientData.incomingPixelWrite = true;
 		written = TIFFWriteEncodedStrip(tif, (tmsize_t)strip, pixels.data, (tmsize_t)pixels.dataLen);
 		if (written == -1)
 			encodeState |= IMAGE_FORMAT_ERROR;
@@ -484,13 +509,6 @@ bool TIFFFormat::encodePixels(grk_serialize_buf pixels,
 		spdlog::error("TIFFFormat::encodeRows: error in TIFFWriteEncodedStrip");
 		return false;
 	}
-
-	if (reclaimed){
-		(void)max_reclaimed;
-		(void)num_reclaimed;
-
-	}
-
 
 	return true;
 }
@@ -507,21 +525,25 @@ bool TIFFFormat::encodeRows(uint32_t rowsToWrite)
 	for(uint32_t i = 0U; i < numcomps; ++i)
 		planes[i] = m_image->comps[i].data;
 	uint32_t h = rowsWritten;
-	if(isSubsampled(m_image))
-	{
-		auto bufptr = (int8_t*)packedBuf;
+	GrkSerializeBuf packedBuf;
+	uint64_t offset = 0;
+	uint64_t packedLen = (uint64_t)TIFFVStripSize(tif, (uint32_t)m_image->rowsPerStrip);
+
+	if(isSubsampled(m_image)) {
+		packedBuf = pool.get(packedLen);
+		auto bufPtr = (int8_t*)packedBuf.data;
 		for(; h < rowsWritten + rowsToWrite; h += chroma_subsample_y)
 		{
 			uint32_t rowsSoFar = h - rowsWritten;
 			if(rowsSoFar > 0 && (rowsSoFar % m_image->rowsPerStrip == 0))
 			{
-				grk_serialize_buf buf;
-				memset(&buf,0,sizeof(grk_serialize_buf));
-				buf.data = packedBuf;
-				buf.dataLen = bytesToWrite;
-				if(bytesToWrite && !encodePixels(buf, nullptr,0,nullptr,strip++))
+				packedBuf.dataLen = bytesToWrite;
+				packedBuf.offset = offset;
+				if(bytesToWrite && !encodePixelsSync(packedBuf,strip++))
 					goto cleanup;
-				bufptr = (int8_t*)packedBuf;
+				packedBuf = pool.get(packedLen);
+				bufPtr = (int8_t*)(packedBuf.data);
+				offset += bytesToWrite;
 				bytesToWrite = 0;
 			}
 			size_t xpos = 0;
@@ -533,14 +555,14 @@ bool TIFFFormat::encodeRows(uint32_t rowsToWrite)
 					for(size_t sub_x = xpos; sub_x < xpos + chroma_subsample_x; ++sub_x)
 					{
 						bool accept = (h + sub_h) < height && sub_x < m_image->comps[0].w;
-						*bufptr++ =
+						*bufPtr++ =
 								accept ? (int8_t)planes[0][sub_x + sub_h * m_image->comps[0].stride] : 0;
 						bytesToWrite++;
 					}
 				}
 				// 2. chroma
-				*bufptr++ = (int8_t)*planes[1]++;
-				*bufptr++ = (int8_t)*planes[2]++;
+				*bufPtr++ = (int8_t)*planes[1]++;
+				*bufPtr++ = (int8_t)*planes[2]++;
 				bytesToWrite += 2;
 				xpos += chroma_subsample_x;
 			}
@@ -551,11 +573,9 @@ bool TIFFFormat::encodeRows(uint32_t rowsToWrite)
 		if (h != rowsWritten)
 			rowsWritten += h - chroma_subsample_y - rowsWritten;
 		// cleanup
-		grk_serialize_buf buf;
-		memset(&buf,0,sizeof(grk_serialize_buf));
-		buf.data = packedBuf;
-		buf.dataLen = bytesToWrite;
-		if(bytesToWrite && !encodePixels(buf,nullptr,0,nullptr, strip++))
+		packedBuf.dataLen = bytesToWrite;
+		packedBuf.offset = offset;
+		if(bytesToWrite && !encodePixelsSync(packedBuf,strip++))
 			goto cleanup;
 	}
 	else
@@ -564,35 +584,34 @@ bool TIFFFormat::encodeRows(uint32_t rowsToWrite)
 		auto iter = grk::InterleaverFactory<int32_t>::makeInterleaver(m_image->comps[0].prec);
 		if (!iter)
 			goto cleanup;
-		auto bufPtr = packedBuf;
 		while(h < hTarget)
 		{
 			uint32_t stripRows = (std::min)(m_image->rowsPerStrip, height - h);
+			packedBuf = pool.get(packedLen);
 			iter->interleave((int32_t**)planes,
 							m_image->numcomps,
-							(uint8_t*)packedBuf,
+							(uint8_t*)packedBuf.data,
 							m_image->comps[0].w,
 							m_image->comps[0].stride,
 							m_image->packedRowBytes,
 							stripRows,
 							0);
-			grk_serialize_buf buf;
-			memset(&buf,0,sizeof(grk_serialize_buf));
-			buf.data = bufPtr;
-			buf.dataLen = m_image->packedRowBytes * stripRows;
-			if(!encodePixels(buf,nullptr,0,nullptr, strip++)) {
+			packedBuf.pooled = true;
+			packedBuf.offset = offset;
+			packedBuf.dataLen = m_image->packedRowBytes * stripRows;
+			if(!encodePixelsSync(packedBuf,strip++)) {
 				delete iter;
 				goto cleanup;
 			}
 			rowsWritten += stripRows;
 			h += stripRows;
-			if (m_image->interleavedData.data)
-				bufPtr += m_image->packedRowBytes * stripRows;
+			offset += m_image->packedRowBytes * stripRows;
 		}
 		delete iter;
 	}
 	success = true;
 cleanup:
+
 	return success;
 }
 bool TIFFFormat::encodeFinish(void)
@@ -600,8 +619,6 @@ bool TIFFFormat::encodeFinish(void)
 	if(tif)
 		TIFFClose(tif);
 	tif = nullptr;
-	delete[] packedBuf;
-	packedBuf = nullptr;
 
 	return true;
 }

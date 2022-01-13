@@ -77,12 +77,13 @@ bool StripPool::composite(GrkImage *tileImage){
 		GrkSerializeBuf buf = GrkSerializeBuf(img->interleavedData);
 		buf.dataLen = dataLen;
 		GrkSerializeBuf reclaimed[reclaimSize];
-		uint32_t num_reclaimed;
+		uint32_t num_reclaimed = 0;;
 		serializeBufferCallback(buf,stripId, reclaimed, reclaimSize, &num_reclaimed,serialize_data);
 		{
 			std::unique_lock<std::mutex> lk(poolMutex);
-			putBuffer(buf);
 			img->interleavedData.data = nullptr;
+			for(uint32_t i = 0; i < num_reclaimed; ++i)
+				putBuffer(reclaimed[i]);
 		}
 	}
 

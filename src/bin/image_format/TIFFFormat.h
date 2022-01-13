@@ -31,25 +31,26 @@
 void tiffSetErrorAndWarningHandlers(bool verbose);
 
 struct ClientData {
-	ClientData();
+	ClientData(BufferPool *pool);
 	bool isActive(void);
 	uint64_t getAsynchFileLength(void);
 #ifdef GROK_HAVE_URING
-	bool write(uint8_t* buf, size_t len);
+	bool write(void);
 	FileUringIO uring;
 #endif
 	int fd;
-	bool incomingPixelWrite;
-	uint32_t maxPixelWrites;
+	GrkSerializeBuf scheduled;
 	grk_serialize_buf* reclaimed;
 	uint32_t max_reclaimed;
 	uint32_t *num_reclaimed;
+
+	uint32_t maxPixelWrites;
 private:
 	uint32_t numPixelWrites;
 	bool active;
 	uint64_t m_off;
-	uint64_t maxLen;
 	uint8_t initialWrite[8];
+	BufferPool *pool;
 };
 
 
@@ -71,9 +72,9 @@ class TIFFFormat : public ImageFormat
 #ifndef _WIN32
 	TIFF* MyTIFFOpen(const char* name, const char* mode);
 #endif
+	bool encodePixelsSync(grk_serialize_buf pixels, uint32_t strip);
 	ClientData clientData;
 	TIFF* tif;
-	uint8_t *packedBuf;
 	uint32_t chroma_subsample_x;
 	uint32_t chroma_subsample_y;
 	uint32_t rowsWritten;

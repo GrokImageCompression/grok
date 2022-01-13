@@ -27,7 +27,8 @@ ImageFormat::ImageFormat()
 	  m_fileName(""), compressionLevel(GRK_DECOMPRESS_COMPRESSION_LEVEL_DEFAULT),
 	  m_useStdIO(false),
 	  encodeState(IMAGE_FORMAT_UNENCODED),
-	  stripCount(0)
+	  stripCount(0),
+	  num_reclaimed(0)
 {}
 
 ImageFormat& ImageFormat::operator=(const ImageFormat& rhs)
@@ -101,10 +102,19 @@ bool ImageFormat::open(std::string fileName, std::string mode)
 {
 	return m_fileIO->open(fileName, mode);
 }
-
-bool ImageFormat::write(uint8_t* buf, uint64_t offset,size_t len, size_t maxLen,bool pooled)
+bool ImageFormat::write(GrkSerializeBuf buffer)
 {
-	return m_fileIO->write(buf, offset, len,maxLen, pooled);
+	bool rc =  m_fileIO->write(buffer,reclaimed,reclaimSize,&num_reclaimed);
+#ifdef GROK_HAVE_URING
+	for (uint32_t i = 0; i < num_reclaimed; ++i)
+		pool.put(GrkSerializeBuf(reclaimed[i]));
+#else
+	if (buffer.pooled)
+		pool.put(buffer);
+#endif
+	num_reclaimed = 0;
+	return rc;
+
 }
 bool ImageFormat::read(uint8_t* buf, size_t len)
 {

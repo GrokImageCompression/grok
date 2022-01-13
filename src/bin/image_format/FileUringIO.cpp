@@ -32,6 +32,7 @@
 #include <fcntl.h>
 #include <dirent.h>
 #include <chrono>
+#include "MemManager.h"
 
 
 FileUringIO::FileUringIO() : m_fd(0),
@@ -120,31 +121,49 @@ int FileUringIO::getMode(const char* mode)
 	return m;
 }
 
-void FileUringIO::enqueue(io_uring* ring, io_data* data, bool readop, int fd)
+void FileUringIO::enqueue(io_uring* ring,
+						io_data* data,
+						grk_serialize_buf* reclaimed,
+						uint32_t max_reclaimed,
+						uint32_t *num_reclaimed,
+						bool readop,
+						int fd)
 {
 	auto sqe = io_uring_get_sqe(ring);
 	assert(sqe);
 
 	//grk::ChronoTimer timer("uring: time to enque");
 	//timer.start();
+	assert(data->buf.data == data->iov.iov_base);
 	if(readop)
 		io_uring_prep_readv(sqe, fd, &data->iov, 1, data->buf.offset);
 	else
 		io_uring_prep_writev(sqe, fd, &data->iov, 1, data->buf.offset);
 	io_uring_sqe_set_data(sqe, data);
 	int ret = io_uring_submit(ring);
+	printf("Enqueued  %p, length %d, offset %d\n", data->buf.data, data->buf.dataLen, data->buf.offset);
 	//timer.finish();
 	assert(ret == 1);
 	(void)ret;
+	m_queueCount++;
 
 	// reclaim
+	bool canReclaim = reclaimed && max_reclaimed > 0 && num_reclaimed;
+	if (canReclaim)
+		*num_reclaimed = 0;
 	while (true) {
 		bool success;
 		auto data = retrieveCompletion(true,success);
 		if (!success || !data)
 			break;
-		if (data->buf.pooled)
-			delete[] (uint8_t*)data->iov.iov_base;
+		if (data->buf.pooled) {
+			if (canReclaim && *num_reclaimed < max_reclaimed){
+				reclaimed[*num_reclaimed] = data->buf;
+				(*num_reclaimed)++;
+			} else {
+				grk::grkAlignedFree((uint8_t*)data->iov.iov_base);
+			}
+		}
 		delete data;
 	}
 }
@@ -176,9 +195,11 @@ io_data* FileUringIO::retrieveCompletion(bool peek, bool &success){
 
 	success = true;
 	auto data = (io_data*)io_uring_cqe_get_data(cqe);
-	io_uring_cqe_seen(&ring, cqe);
-
-	m_queueCount--;
+	if (data) {
+		io_uring_cqe_seen(&ring, cqe);
+		assert(m_queueCount != 0);
+		m_queueCount--;
+	}
 
 	return data;
 }
@@ -200,8 +221,10 @@ bool FileUringIO::close(void)
 			if (!success)
 				break;
 			if (data) {
-				if (data->buf.pooled)
-					delete[] (uint8_t*)data->iov.iov_base;
+				if (data->buf.pooled) {
+					//printf("Close: deallocating  %p\n", data->iov.iov_base);
+					grk::grkAlignedFree(data->iov.iov_base);
+				}
 				delete data;
 			}
 		}
@@ -223,21 +246,12 @@ bool FileUringIO::close(void)
 
 bool FileUringIO::write(uint8_t* buf, uint64_t offset, size_t len, size_t maxLen,bool pooled)
 {
-	bool rc = true;
-	(void)pooled;
-	io_data* data = new io_data();
-	auto b = new uint8_t[len];
-	memcpy(b, buf, len);
-	data->buf = GrkSerializeBuf(b,offset,len,maxLen,pooled);
-	data->iov.iov_base = b;
-	data->iov.iov_len = len;
-	enqueue(&ring, data,false, m_fd);
-	m_queueCount++;
+	GrkSerializeBuf b = GrkSerializeBuf(buf,offset,len,maxLen,pooled);
 
-	return rc;
+	return write(b, nullptr,0,nullptr);
 }
 bool FileUringIO::write(GrkSerializeBuf buffer,
-						GrkSerializeBuf* reclaimed,
+						grk_serialize_buf* reclaimed,
 						uint32_t max_reclaimed,
 						uint32_t *num_reclaimed) {
 
@@ -246,14 +260,10 @@ bool FileUringIO::write(GrkSerializeBuf buffer,
 	(void)max_reclaimed;
 	(void)num_reclaimed;
 	io_data* data = new io_data();
-	auto b = new uint8_t[buffer.dataLen];
-	memcpy(b, buffer.data, buffer.dataLen);
 	data->buf = buffer;
-	data->iov.iov_base = b;
+	data->iov.iov_base = buffer.data;
 	data->iov.iov_len = buffer.dataLen;
-	enqueue(&ring, data,false, m_fd);
-	m_queueCount++;
-
+	enqueue(&ring, data,reclaimed,max_reclaimed,num_reclaimed,false, m_fd);
 	return rc;
 }
 bool FileUringIO::read(uint8_t* buf, size_t len)

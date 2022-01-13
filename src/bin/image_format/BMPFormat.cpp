@@ -89,6 +89,7 @@ bool BMPFormat::encodeHeader(grk_image* image)
 	uint32_t full_header_size, info_header_size, icc_size = 0;
 	uint32_t header_plus_lut = 0;
 	uint8_t *header_ptr = nullptr;
+	GrkSerializeBuf destBuff;
 
 	if(!allComponentsSanityCheck(m_image, false))
 		goto cleanup;
@@ -168,7 +169,11 @@ bool BMPFormat::encodeHeader(grk_image* image)
 			*header_ptr++ = 0;
 		}
 	}
-	if(!write(m_header, m_off, header_plus_lut,header_plus_lut,false))
+	destBuff.data = m_header;
+	destBuff.offset = m_off;
+	destBuff.pooled = false;
+	destBuff.dataLen = header_plus_lut;
+	if(!write(destBuff))
 		goto cleanup;
 	m_off += header_plus_lut;
 	ret = true;
@@ -214,11 +219,12 @@ bool BMPFormat::encodeRows(uint32_t rows)
 		shift[compno] = (m_image->comps[compno].sgnd ? 1 << (m_image->comps[compno].prec - 1) : 0);
 	}
 
-	auto destBuff = new uint8_t[(uint64_t)m_image->rowsPerStrip * w_dest];
+	auto packedLen = (uint64_t)m_image->rowsPerStrip * w_dest;
+	auto destBuff = pool.get(packedLen);
 	// zero out padding at end of line
 	if(pad_dest)
 	{
-		uint8_t* ptr = destBuff + w_dest - pad_dest;
+		uint8_t* ptr = destBuff.data + w_dest - pad_dest;
 		for(uint32_t m = 0; m < m_image->rowsPerStrip; ++m)
 		{
 			memset(ptr, 0, pad_dest);
@@ -247,29 +253,33 @@ bool BMPFormat::encodeRows(uint32_t rows)
 				}
 				if(numcomps == 1)
 				{
-					destBuff[destInd++] = rc[0];
+					destBuff.data[destInd++] = rc[0];
 				}
 				else
 				{
-					destBuff[destInd++] = rc[2];
-					destBuff[destInd++] = rc[1];
-					destBuff[destInd++] = rc[0];
+					destBuff.data[destInd++] = rc[2];
+					destBuff.data[destInd++] = rc[1];
+					destBuff.data[destInd++] = rc[0];
 					if(numcomps == 4)
-						destBuff[destInd++] = rc[3];
+						destBuff.data[destInd++] = rc[3];
 				}
 			}
 			destInd += pad_dest;
 			m_srcIndex -= stride_src;
 		}
-		if(!write(destBuff, m_off,destInd,destInd,true))
+		destBuff.offset = m_off;
+		destBuff.pooled = true;
+		destBuff.dataLen = destInd;
+		if(!write(destBuff))
 			goto cleanup;
+		destBuff = pool.get(packedLen);
 		m_off += destInd;
 		m_rowCount += k_max;
 	}
 
 	ret = true;
 cleanup:
-	delete[] destBuff;
+	pool.put(destBuff);
 
 	return ret;
 }
@@ -277,11 +287,12 @@ bool BMPFormat::encodeFinish(void)
 {
 	if(m_image->meta && m_image->meta->color.icc_profile_buf)
 	{
-		if(!write(m_image->meta->color.icc_profile_buf,
-				m_off,
-				m_image->meta->color.icc_profile_len,
-				m_image->meta->color.icc_profile_len,
-				false))
+		GrkSerializeBuf destBuff;
+		destBuff.data = m_image->meta->color.icc_profile_buf;
+		destBuff.offset = m_off;
+		destBuff.pooled = false;
+		destBuff.dataLen = m_image->meta->color.icc_profile_len;
+		if(!write(destBuff))
 			return false;
 		m_off += m_image->meta->color.icc_profile_len;
 	}

@@ -24,6 +24,7 @@
 #include "IFileIO.h"
 #include <liburing.h>
 #include <liburing/io_uring.h>
+#include <mutex>
 
 struct io_data
 {
@@ -43,7 +44,7 @@ class FileUringIO : public IFileIO
 	bool close(void) override;
 	bool write(uint8_t* buf, uint64_t offset, size_t len, size_t maxLen,bool pooled) override;
 	bool write(GrkSerializeBuf buffer,
-				GrkSerializeBuf* reclaimed,
+				grk_serialize_buf* reclaimed,
 				uint32_t max_reclaimed,
 				uint32_t *num_reclaimed) override;
 	bool read(uint8_t* buf, size_t len) override;
@@ -56,7 +57,13 @@ class FileUringIO : public IFileIO
 	std::string m_fileName;
 	size_t m_queueCount;
 	int getMode(const char* mode);
-	void enqueue(io_uring* ring, io_data* data, bool readop, int fd);
+	void enqueue(io_uring* ring,
+				io_data* data,
+				grk_serialize_buf* reclaimed,
+				uint32_t max_reclaimed,
+				uint32_t *num_reclaimed,
+				bool readop,
+				int fd);
 	bool initQueue(void);
 
 	const uint32_t QD = 1024;

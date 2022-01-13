@@ -20,6 +20,7 @@
 
 #include <string>
 #include "grok.h"
+#include "MemManager.h"
 
 typedef bool (*process_read_func)(void);
 
@@ -50,14 +51,20 @@ public:
 	}
 	bool alloc(uint64_t len){
 		dealloc();
-		data = new uint8_t[len];
-		dataLen = len;
-		allocLen = len;
+		data = (uint8_t*)grk::grkAlignedMalloc(len);
+		if (data) {
+			//printf("Allocated  %p\n", data);
+			dataLen = len;
+			allocLen = len;
+		}
 
-		return true;
+		return data != nullptr;;
 	}
 	void dealloc(){
-		delete[]  data;
+		if (data) {
+			grk::grkAlignedFree(data);
+			//printf("Deallocated  %p\n", data);
+		}
 		data = nullptr;
 	}
 };
@@ -70,7 +77,7 @@ class IFileIO
 	virtual bool close(void) = 0;
 	virtual bool write(uint8_t* buf, uint64_t offset, size_t len, size_t maxLen,bool pooled) = 0;
 	virtual bool write(GrkSerializeBuf buffer,
-						GrkSerializeBuf* reclaimed,
+						grk_serialize_buf* reclaimed,
 						uint32_t max_reclaimed,
 						uint32_t *num_reclaimed) = 0;
 	virtual bool read(uint8_t* buf, size_t len) = 0;

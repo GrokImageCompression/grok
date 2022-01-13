@@ -35,6 +35,8 @@ set(compare_images_SRCS compare_images.cpp
   ${GROK_SOURCE_DIR}/src/bin/common/common.cpp
   ${GROK_SOURCE_DIR}/src/bin/common/common.h
   ${GROK_SOURCE_DIR}/src/bin/common/convert.cpp
+  ${GROK_SOURCE_DIR}/src/bin/image_format/MemManager.cpp
+  ${GROK_SOURCE_DIR}/src/bin/image_format/BufferPool.cpp
   ${GROK_SOURCE_DIR}/src/bin/image_format/ImageFormat.cpp
   ${GROK_SOURCE_DIR}/src/bin/image_format/ImageFormat.h
   ${GROK_SOURCE_DIR}/src/bin/image_format/FileStreamIO.h

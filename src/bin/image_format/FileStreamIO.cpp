@@ -77,7 +77,7 @@ bool FileStreamIO::write(uint8_t* buf, uint64_t offset,size_t len, size_t maxLen
 	return actual == len;
 }
 bool FileStreamIO::write(GrkSerializeBuf buffer,
-						GrkSerializeBuf* reclaimed,
+						grk_serialize_buf* reclaimed,
 						uint32_t max_reclaimed,
 						uint32_t *num_reclaimed) {
 	auto actual = fwrite(buffer.data, 1, buffer.dataLen, m_fileHandle);

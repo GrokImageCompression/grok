@@ -19,9 +19,11 @@
 
 #include "IImageFormat.h"
 #include "IFileIO.h"
+#include "BufferPool.h"
 
 #include <mutex>
 
+const uint32_t reclaimSize = 5;
 
 class ImageFormat : public IImageFormat
 {
@@ -41,7 +43,7 @@ class ImageFormat : public IImageFormat
 
   protected:
 	bool open(std::string fname, std::string mode);
-	bool write(uint8_t* buf,uint64_t offset,size_t len, size_t maxLen,bool pooled);
+	bool write(GrkSerializeBuf buffer);
 	bool read(uint8_t* buf, size_t len);
 	bool seek(int64_t pos);
 	uint32_t maxY(uint32_t rows);
@@ -75,4 +77,7 @@ class ImageFormat : public IImageFormat
 	uint32_t encodeState;
 	uint32_t stripCount;
 	mutable std::mutex encodePixelmutex;
+	BufferPool pool;
+	grk_serialize_buf reclaimed[reclaimSize];
+	uint32_t num_reclaimed;
 };
