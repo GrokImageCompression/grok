@@ -141,7 +141,7 @@ void FileUringIO::enqueue(io_uring* ring,
 		io_uring_prep_writev(sqe, fd, &data->iov, 1, data->buf.offset);
 	io_uring_sqe_set_data(sqe, data);
 	int ret = io_uring_submit(ring);
-	printf("Enqueued  %p, length %d, offset %d\n", data->buf.data, data->buf.dataLen, data->buf.offset);
+	//printf("Enqueued  %p, length %d, offset %d\n", data->buf.data, data->buf.dataLen, data->buf.offset);
 	//timer.finish();
 	assert(ret == 1);
 	(void)ret;
@@ -166,6 +166,8 @@ void FileUringIO::enqueue(io_uring* ring,
 		}
 		delete data;
 	}
+	//if (canReclaim)
+	//	printf("%d\n", *num_reclaimed);
 }
 
 io_data* FileUringIO::retrieveCompletion(bool peek, bool &success){
@@ -176,6 +178,7 @@ io_data* FileUringIO::retrieveCompletion(bool peek, bool &success){
 		ret = io_uring_peek_cqe(&ring, &cqe);
 	else
 		ret = io_uring_wait_cqe(&ring, &cqe);
+	success = true;
 
 	if(ret < 0)
 	{
@@ -193,7 +196,6 @@ io_data* FileUringIO::retrieveCompletion(bool peek, bool &success){
 		return nullptr;
 	}
 
-	success = true;
 	auto data = (io_data*)io_uring_cqe_get_data(cqe);
 	if (data) {
 		io_uring_cqe_seen(&ring, cqe);
