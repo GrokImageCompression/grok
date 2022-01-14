@@ -31,8 +31,8 @@ ClientData::ClientData(BufferPool *pool) : fd(0),
 							reclaimed(nullptr),
 							max_reclaimed(0),
 							num_reclaimed(nullptr),
-							maxPixelWrites(0),
-							numPixelWrites(0),
+							maxPixelRequests(0),
+							numPixelRequests(0),
 #ifdef GROK_HAVE_URING
 							active(true),
 #else
@@ -46,28 +46,16 @@ ClientData::ClientData(BufferPool *pool) : fd(0),
 bool ClientData::write(void){
 	if (!active)
 		return false;
-
-	if (m_off == 0){
-		assert(scheduled.dataLen == 8);
-		assert(!scheduled.pooled);
-		if (scheduled.dataLen != 8){
-			uring.close();
-			active = false;
-			return false;
-		}
-		memcpy(initialWrite, scheduled.data, 8);
-		scheduled.data = initialWrite;
-	}
 	scheduled.offset = m_off;
 	uring.write(scheduled,reclaimed,max_reclaimed,num_reclaimed);
 	m_off += scheduled.dataLen;
 	if (scheduled.pooled)
-		numPixelWrites++;
+		numPixelRequests++;
 	if (reclaimed && num_reclaimed && *num_reclaimed) {
 		for (uint32_t i = 0; i < *num_reclaimed; ++i)
 			pool->put(GrkSerializeBuf(reclaimed[i]));
 	}
-	if (numPixelWrites == maxPixelWrites){
+	if (numPixelRequests == maxPixelRequests){
 		uring.close();
 		active = false;
 	}
@@ -357,7 +345,7 @@ bool TIFFFormat::encodeHeader(grk_image* image)
 			numExtraChannels = 0;
 		}
 	}
-	clientData.maxPixelWrites = ((m_image->y1 - m_image->y0) + m_image->rowsPerStrip - 1) / m_image->rowsPerStrip;
+	clientData.maxPixelRequests = ((m_image->y1 - m_image->y0) + m_image->rowsPerStrip - 1) / m_image->rowsPerStrip;
 #ifdef _WIN32
 	tif = TIFFOpen(m_fileName.c_str(), "wb");
 #else
@@ -479,7 +467,7 @@ bool TIFFFormat::encodePixelsSync(grk_serialize_buf pixels,uint32_t strip){
 		pool.put(GrkSerializeBuf(pixels));
 #endif
 	if ((encodeState & IMAGE_FORMAT_ERROR) == 0 &&
-			++stripCount == clientData.maxPixelWrites){
+			++stripCount == clientData.maxPixelRequests){
 		encodeFinish();
 		encodeState |= IMAGE_FORMAT_ENCODED_PIXELS;
 	}

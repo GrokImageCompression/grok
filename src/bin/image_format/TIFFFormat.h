@@ -44,12 +44,11 @@ struct ClientData {
 	uint32_t max_reclaimed;
 	uint32_t *num_reclaimed;
 
-	uint32_t maxPixelWrites;
+	uint32_t maxPixelRequests;
 private:
-	uint32_t numPixelWrites;
+	uint32_t numPixelRequests;
 	bool active;
 	uint64_t m_off;
-	uint8_t initialWrite[8];
 	BufferPool *pool;
 };
 
