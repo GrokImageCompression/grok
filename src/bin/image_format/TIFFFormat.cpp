@@ -51,10 +51,6 @@ bool ClientData::write(void){
 	m_off += scheduled.dataLen;
 	if (scheduled.pooled)
 		numPixelRequests++;
-	if (reclaimed && num_reclaimed && *num_reclaimed) {
-		for (uint32_t i = 0; i < *num_reclaimed; ++i)
-			pool->put(GrkSerializeBuf(reclaimed[i]));
-	}
 	if (numPixelRequests == maxPixelRequests){
 		uring.close();
 		active = false;
@@ -462,16 +458,14 @@ cleanup:
 }
 bool TIFFFormat::encodePixelsSync(grk_serialize_buf pixels,uint32_t strip){
 
-	bool rc =  encodePixelsCore(pixels,reclaimed,reclaimSize,&num_reclaimed,strip);
+	bool rc =  encodePixelsCore(pixels,m_reclaimed,reclaimSize,&m_num_reclaimed,strip);
 #ifndef GROK_HAVE_URING
 		pool.put(GrkSerializeBuf(pixels));
+#else
+	for (uint32_t i = 0; i < m_num_reclaimed; ++i)
+		pool.put(GrkSerializeBuf(m_reclaimed[i]));
 #endif
-	if ((encodeState & IMAGE_FORMAT_ERROR) == 0 &&
-			++stripCount == clientData.maxPixelRequests){
-		encodeFinish();
-		encodeState |= IMAGE_FORMAT_ENCODED_PIXELS;
-	}
-	num_reclaimed = 0;
+	m_num_reclaimed = 0;
 
 	return rc;
 }
@@ -487,8 +481,13 @@ bool TIFFFormat::encodePixelsCore(grk_serialize_buf pixels,
 		clientData.max_reclaimed = max_reclaimed;
 		clientData.num_reclaimed = num_reclaimed;
 		written = TIFFWriteEncodedStrip(tif, (tmsize_t)strip, pixels.data, (tmsize_t)pixels.dataLen);
-		if (written == -1)
+		if (written == -1) {
 			encodeState |= IMAGE_FORMAT_ERROR;
+		}
+		else if (++stripCount == clientData.maxPixelRequests){
+			encodeFinish();
+			encodeState |= IMAGE_FORMAT_ENCODED_PIXELS;
+		}
 	}
 	if(written == -1)
 	{
@@ -509,6 +508,7 @@ bool TIFFFormat::encodePixels(grk_serialize_buf pixels,
 }
 bool TIFFFormat::encodeRows(uint32_t rowsToWrite)
 {
+	std::unique_lock<std::mutex> lk(encodePixelmutex);
 	if (encodeState & IMAGE_FORMAT_ENCODED_PIXELS)
 		return true;
 	bool success = false;

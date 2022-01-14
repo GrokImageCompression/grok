@@ -34,7 +34,7 @@
 #include <chrono>
 #include "MemManager.h"
 
-const static bool debugUring = true;
+const static bool debugUring = false;
 
 FileUringIO::FileUringIO() : m_fd(0),
 							ownsDescriptor(false),
@@ -143,8 +143,8 @@ void FileUringIO::enqueue(io_uring* ring,
 		io_uring_prep_writev(sqe, fd, &data->iov, 1, data->buf.offset);
 	io_uring_sqe_set_data(sqe, data);
 	int ret = io_uring_submit(ring);
-	if (debugUring)
-		spdlog::info("Enqueued {}, length {}, offset {}", fmt::ptr(data->buf.data), data->buf.dataLen, data->buf.offset);
+	//if (debugUring)
+	//	spdlog::info("Enqueued {}, length {}, offset {}", fmt::ptr(data->buf.data), data->buf.dataLen, data->buf.offset);
 	//timer.finish();
 	assert(ret == 1);
 	(void)ret;
@@ -171,8 +171,8 @@ void FileUringIO::enqueue(io_uring* ring,
 		}
 		delete data;
 	}
-	if (debugUring && canReclaim && *num_reclaimed)
-		spdlog::info("Reclaimed : {}", *num_reclaimed);
+	//if (debugUring && canReclaim && *num_reclaimed)
+	//	spdlog::info("Reclaimed : {}", *num_reclaimed);
 }
 
 io_data* FileUringIO::retrieveCompletion(bool peek, bool &success){
@@ -228,7 +228,8 @@ bool FileUringIO::close(void)
 			if (!success)
 				break;
 			if (data) {
-				//printf("Close: deallocating  %p\n", data->iov.iov_base);
+				//if (debugUring)
+				//	printf("Close: deallocating  %p\n", data->iov.iov_base);
 				grk::grkAlignedFree(data->iov.iov_base);
 				delete data;
 			}

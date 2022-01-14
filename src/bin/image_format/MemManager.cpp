@@ -20,6 +20,9 @@
  */
 
 #include "MemManager.h"
+#include <cstdio>
+
+const bool debugMemory = false;
 
 // OSX is missing C++11 aligned_alloc (stdlib.h version)
 #if defined(__APPLE__)
@@ -124,6 +127,8 @@ void* grkAlignedMalloc(size_t size)
 }
 void grkAlignedFree(void* ptr)
 {
+	//if (debugMemory && ptr)
+	//	printf("Binary Aligned dealloc  %p\n", ptr);
 #if defined(GROK_HAVE_POSIX_MEMALIGN) || defined(GROK_HAVE_ALIGNED_ALLOC) || \
 	defined(GROK_HAVE_MEMALIGN)
 	free(ptr);

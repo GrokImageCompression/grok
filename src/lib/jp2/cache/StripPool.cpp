@@ -30,7 +30,7 @@ StripPool::StripPool() :  strips(nullptr),
 StripPool::~StripPool()
 {
 	for (auto &b : pool)
-		b.dealloc();
+		b.second.dealloc();
 	for (uint16_t i = 0; i < m_tgrid_h; ++i)
 		delete strips[i];
 	delete[] strips;
@@ -91,8 +91,8 @@ bool StripPool::composite(GrkImage *tileImage){
 }
 GrkSerializeBuf StripPool::getBuffer(uint64_t len){
 	for (auto iter = pool.begin(); iter != pool.end(); ++iter){
-		if (iter->allocLen >= len){
-			auto b = *iter;
+		if (iter->second.allocLen >= len){
+			auto b = iter->second;
 			b.dataLen = len;
 			pool.erase(iter);
 			return b;
@@ -104,7 +104,9 @@ GrkSerializeBuf StripPool::getBuffer(uint64_t len){
 	return rc;
 }
 void StripPool::putBuffer(GrkSerializeBuf b){
-	pool.push_back(b);
+	assert(b.data);
+	assert(pool.find(b.data) == pool.end());
+	pool[b.data] = b;
 }
 
 

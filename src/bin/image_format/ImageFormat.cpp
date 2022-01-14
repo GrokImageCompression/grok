@@ -28,7 +28,7 @@ ImageFormat::ImageFormat()
 	  m_useStdIO(false),
 	  encodeState(IMAGE_FORMAT_UNENCODED),
 	  stripCount(0),
-	  num_reclaimed(0)
+	  m_num_reclaimed(0)
 {}
 
 ImageFormat& ImageFormat::operator=(const ImageFormat& rhs)
@@ -104,15 +104,15 @@ bool ImageFormat::open(std::string fileName, std::string mode)
 }
 bool ImageFormat::write(GrkSerializeBuf buffer)
 {
-	bool rc =  m_fileIO->write(buffer,reclaimed,reclaimSize,&num_reclaimed);
+	bool rc =  m_fileIO->write(buffer,m_reclaimed,reclaimSize,&m_num_reclaimed);
 #ifdef GROK_HAVE_URING
-	for (uint32_t i = 0; i < num_reclaimed; ++i)
-		pool.put(GrkSerializeBuf(reclaimed[i]));
+	for (uint32_t i = 0; i < m_num_reclaimed; ++i)
+		pool.put(GrkSerializeBuf(m_reclaimed[i]));
 #else
 	if (buffer.pooled)
 		pool.put(buffer);
 #endif
-	num_reclaimed = 0;
+	m_num_reclaimed = 0;
 	return rc;
 
 }

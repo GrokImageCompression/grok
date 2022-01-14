@@ -71,7 +71,7 @@ public:
 private:
 	GrkSerializeBuf getBuffer(uint64_t len);
 	void putBuffer(GrkSerializeBuf b);
-	std::vector<GrkSerializeBuf> pool;
+	std::map<uint8_t*, GrkSerializeBuf> pool;
 
 	Strip **strips;
 	uint16_t m_tgrid_w;

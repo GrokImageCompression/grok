@@ -78,6 +78,6 @@ class ImageFormat : public IImageFormat
 	uint32_t stripCount;
 	mutable std::mutex encodePixelmutex;
 	BufferPool pool;
-	grk_serialize_buf reclaimed[reclaimSize];
-	uint32_t num_reclaimed;
+	grk_serialize_buf m_reclaimed[reclaimSize];
+	uint32_t m_num_reclaimed;
 };

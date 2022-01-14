@@ -35,6 +35,8 @@ namespace grk
 const uint32_t grkWidthAlignment = 32;
 const size_t grkBufferALignment = 64;
 
+const bool debugMemory = false;
+
 uint32_t grkMakeAlignedWidth(uint32_t width)
 {
 	assert(width);
@@ -124,6 +126,8 @@ void* grkAlignedMalloc(size_t size)
 }
 void grkAlignedFree(void* ptr)
 {
+	//if (debugMemory && ptr)
+	//	printf("Lib Aligned dealloc  %p\n", ptr);
 #if defined(GROK_HAVE_POSIX_MEMALIGN) || defined(GROK_HAVE_ALIGNED_ALLOC) || \
 	defined(GROK_HAVE_MEMALIGN)
 	free(ptr);
