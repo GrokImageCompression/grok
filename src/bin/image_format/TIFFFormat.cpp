@@ -27,7 +27,7 @@
 #include "convert.h"
 #include "common.h"
 
-ClientData::ClientData(BufferPool *pool) : fd(0),
+ClientData::ClientData(void) : fd(0),
 							reclaimed(nullptr),
 							max_reclaimed(0),
 							num_reclaimed(nullptr),
@@ -38,8 +38,7 @@ ClientData::ClientData(BufferPool *pool) : fd(0),
 #else
 							active(false),
 #endif
-							m_off(0),
-							pool(pool)
+							m_off(0)
 {}
 
 #ifdef GROK_HAVE_URING
@@ -158,8 +157,7 @@ static uint64_t TiffSize(thandle_t fd)
 
 #endif
 
-TIFFFormat::TIFFFormat():  clientData(&pool),
-							tif(nullptr),
+TIFFFormat::TIFFFormat():  	tif(nullptr),
 							chroma_subsample_x(1),
 							chroma_subsample_y(1),
 							rowsWritten(0),

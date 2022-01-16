@@ -31,7 +31,7 @@
 void tiffSetErrorAndWarningHandlers(bool verbose);
 
 struct ClientData {
-	ClientData(BufferPool *pool);
+	ClientData(void);
 	bool isActive(void);
 	uint64_t getAsynchFileLength(void);
 #ifdef GROK_HAVE_URING
@@ -49,7 +49,6 @@ private:
 	uint32_t numPixelRequests;
 	bool active;
 	uint64_t m_off;
-	BufferPool *pool;
 };
 
 
