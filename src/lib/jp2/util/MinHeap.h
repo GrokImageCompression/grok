@@ -34,10 +34,9 @@ template <typename T, typename IT> class MinHeap
 		}
 		return nullptr;
 	}
-	bool empty(void)
+	size_t size(void)
 	{
-		std::lock_guard<std::mutex> lock(queue_mutex);
-		return queue.empty();
+		return queue.size();
 	}
 
   private:
