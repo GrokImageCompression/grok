@@ -63,10 +63,6 @@ BMPFormat::BMPFormat(void) : m_off(0),
 							m_header(nullptr),
 							m_srcIndex(0)
 {
-#ifdef GROK_HAVE_URING
-	delete m_fileIO;
-	m_fileIO = new FileUringIO();
-#endif
 	memset(&File_h, 0, sizeof(GRK_BITMAPFILEHEADER));
 	memset(&Info_h, 0, sizeof(GRK_BITMAPINFOHEADER));
 }
@@ -77,6 +73,11 @@ BMPFormat::~BMPFormat(void){
 
 bool BMPFormat::encodeHeader(grk_image* image)
 {
+#ifdef GROK_HAVE_URING
+	delete m_fileIO;
+	m_fileIO = new FileUringIO();
+#endif
+
 	if(!openFile())
 		return false;
 	m_image = image;

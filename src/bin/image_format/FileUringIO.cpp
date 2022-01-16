@@ -282,15 +282,20 @@ bool FileUringIO::write(GrkSerializeBuf buffer,
 }
 bool FileUringIO::read(uint8_t* buf, size_t len)
 {
-	auto actual = (size_t)::read(m_fd, buf, len);
-	if(actual < len)
-		spdlog::error("read fewer bytes {} than expected number of bytes {}.", actual, len);
+	(void)buf;
+	(void)len;
 
-	return actual == len;
+	throw new std::runtime_error("uring read");
+
+	return false;
 }
 bool FileUringIO::seek(int64_t pos)
 {
-	return lseek(m_fd, pos, SEEK_SET) == pos;
+	(void)pos;
+
+	throw new std::runtime_error("uring seek");
+
+	return false;
 }
 
 #endif
