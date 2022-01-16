@@ -50,10 +50,12 @@ public:
 
 
 struct Strip {
-	Strip(GrkImage *outputImage, uint16_t id, uint32_t tileHeight);
+	Strip(GrkImage *outputImage, uint16_t index, uint32_t tileHeight);
 	~Strip(void);
+	uint32_t getIndex(void);
 	GrkImage* stripImg;
 	std::atomic<uint32_t> tileCounter;
+	uint32_t m_index;
 };
 
 class StripPool {

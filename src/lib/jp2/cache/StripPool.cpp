@@ -4,11 +4,12 @@ namespace grk {
 
 const uint32_t reclaimSize = 5;
 
-Strip::Strip(GrkImage* outputImage, uint16_t id, uint32_t tileHeight) : stripImg(nullptr),
-												   	   	   	   	   	   tileCounter(0){
+Strip::Strip(GrkImage* outputImage, uint16_t index, uint32_t tileHeight) : stripImg(nullptr),
+												   	   	   	   	   	   tileCounter(0),
+																	   m_index(index){
 	stripImg = new GrkImage();
 	outputImage->copyHeader(stripImg);
-	stripImg->y0 = outputImage->y0 + id * tileHeight;
+	stripImg->y0 = outputImage->y0 + index * tileHeight;
 	stripImg->y1 = std::min<uint32_t>(outputImage->y1, stripImg->y0 + tileHeight);
 	stripImg->comps->y0 = stripImg->y0;
 	stripImg->comps->h  = stripImg->y1 - stripImg->y0;
@@ -16,6 +17,10 @@ Strip::Strip(GrkImage* outputImage, uint16_t id, uint32_t tileHeight) : stripImg
 Strip::~Strip(void){
 	grk_object_unref(&stripImg->obj);
 }
+uint32_t Strip::getIndex(void){
+	return m_index;
+}
+
 
 StripPool::StripPool() :  strips(nullptr),
 							m_tgrid_w(0),
