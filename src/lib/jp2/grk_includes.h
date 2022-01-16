@@ -96,6 +96,7 @@
 #pragma GCC diagnostic pop
 #endif
 #include "packer.h"
+#include "MinHeap.h"
 #include "SequentialCache.h"
 #include "SparseCache.h"
 #include "CodeStreamLimits.h"

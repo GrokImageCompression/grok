@@ -21,13 +21,13 @@
 #include "grk_includes.h"
 namespace grk
 {
-TileProcessor::TileProcessor(CodeStream* codeStream, IBufferedStream* stream, bool isCompressor,
+TileProcessor::TileProcessor(uint16_t tileIndex, CodeStream* codeStream, IBufferedStream* stream, bool isCompressor,
 							 bool isWholeTileDecompress)
-	: m_tileIndex(0), m_first_poc_tile_part(true), m_tilePartIndexCounter(0), tilePartDataLength(0),
+	: m_first_poc_tile_part(true), m_tilePartIndexCounter(0), tilePartDataLength(0),
 	  pino(0), tile(nullptr), headerImage(codeStream->getHeaderImage()),
 	  current_plugin_tile(codeStream->getCurrentPluginTile()),
 	  wholeTileDecompress(isWholeTileDecompress), m_cp(codeStream->getCodingParams()),
-	  packetLengthCache(PacketLengthCache(m_cp)), m_stream(stream), m_corrupt_packet(false),
+	  packetLengthCache(PacketLengthCache(m_cp)),m_tileIndex(tileIndex), m_stream(stream), m_corrupt_packet(false),
 	  newTilePartProgressionPosition(0), m_tcp(nullptr), truncated(false), m_image(nullptr),
 	  m_isCompressor(isCompressor), preCalculatedTileLen(0)
 {
@@ -53,6 +53,12 @@ bool TileProcessor::canPreCalculateTileLen(void)
 {
 	return !m_cp->m_coding_params.m_enc.m_enableTilePartGeneration &&
 		   (m_cp->tcps + m_tileIndex)->getNumProgressions() == 1;
+}
+uint16_t TileProcessor::getIndex(void) const{
+	return m_tileIndex;
+}
+void TileProcessor::incrementIndex(void){
+	m_tileIndex++;
 }
 void TileProcessor::generateImage(GrkImage* src_image, Tile* src_tile)
 {

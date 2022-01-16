@@ -596,7 +596,7 @@ bool CodeStreamCompress::initCompress(grk_cparameters* parameters, GrkImage* ima
 }
 bool CodeStreamCompress::compress(grk_plugin_tile* tile)
 {
-	TileProcessorMinHeap heap;
+	MinHeap<TileProcessor, uint16_t> heap;
 	uint32_t numTiles = (uint32_t)m_cp.t_grid_height * m_cp.t_grid_width;
 	if(numTiles > maxNumTilesJ2K)
 	{
@@ -617,8 +617,7 @@ bool CodeStreamCompress::compress(grk_plugin_tile* tile)
 			results.emplace_back(pool.enqueue([this, tile, tileIndex, &heap, &success] {
 				if(success)
 				{
-					auto tileProcessor = new TileProcessor(this, m_stream, true, false);
-					tileProcessor->m_tileIndex = tileIndex;
+					auto tileProcessor = new TileProcessor(tileIndex,this, m_stream, true, false);
 					tileProcessor->current_plugin_tile = tile;
 					if(!tileProcessor->preCompressTile() || !tileProcessor->doCompress())
 						success = false;
@@ -632,8 +631,7 @@ bool CodeStreamCompress::compress(grk_plugin_tile* tile)
 	{
 		for(uint16_t i = 0; i < numTiles; ++i)
 		{
-			auto tileProcessor = new TileProcessor(this, m_stream, true, false);
-			tileProcessor->m_tileIndex = i;
+			auto tileProcessor = new TileProcessor(i,this, m_stream, true, false);
 			tileProcessor->current_plugin_tile = tile;
 			if(!tileProcessor->preCompressTile() || !tileProcessor->doCompress())
 			{
@@ -679,9 +677,7 @@ bool CodeStreamCompress::compressTile(uint16_t tileIndex, uint8_t* p_data,
 		return false;
 	bool rc = false;
 
-	auto currentTileProcessor = new TileProcessor(this, m_stream, true, false);
-	currentTileProcessor->m_tileIndex = tileIndex;
-
+	auto currentTileProcessor = new TileProcessor(tileIndex,this, m_stream, true, false);
 	if(!currentTileProcessor->preCompressTile())
 	{
 		GRK_ERROR("Error while preCompressTile with tile index = %u", tileIndex);
@@ -831,7 +827,7 @@ bool CodeStreamCompress::writeTilePart(TileProcessor* tileProcessor)
 	uint64_t currentPos = 0;
 	if(tileProcessor->canPreCalculateTileLen())
 		currentPos = m_stream->tell();
-	uint16_t currentTileIndex = tileProcessor->m_tileIndex;
+	uint16_t currentTileIndex = tileProcessor->getIndex();
 	auto calculatedBytesWritten = tileProcessor->getPreCalculatedTileLen();
 	// 1. write SOT
 	SOTMarker sot;
@@ -861,7 +857,7 @@ bool CodeStreamCompress::writeTilePart(TileProcessor* tileProcessor)
 	{
 		auto actualBytes = m_stream->tell() - currentPos;
 		// GRK_INFO("Tile %d: precalculated / actual : %d / %d",
-		//		tileProcessor->m_tileIndex, calculatedBytesWritten, actualBytes);
+		//		tileProcessor->getIndex(), calculatedBytesWritten, actualBytes);
 		if(actualBytes != calculatedBytesWritten)
 		{
 			GRK_ERROR("Error in tile length calculation. Please share uncompressed image\n"
@@ -887,9 +883,9 @@ bool CodeStreamCompress::writeTileParts(TileProcessor* tileProcessor)
 		return false;
 	// 2. write the other tile parts
 	uint32_t pino;
-	auto tcp = m_cp.tcps + tileProcessor->m_tileIndex;
+	auto tcp = m_cp.tcps + tileProcessor->getIndex();
 	// write tile parts for first progression order
-	uint64_t numTileParts = getNumTilePartsForProgression(0, tileProcessor->m_tileIndex);
+	uint64_t numTileParts = getNumTilePartsForProgression(0, tileProcessor->getIndex());
 	if(numTileParts > maxTilePartsPerTileJ2K)
 	{
 		GRK_ERROR("Number of tile parts %d for first POC exceeds maximum number of tile parts %d",
@@ -906,7 +902,7 @@ bool CodeStreamCompress::writeTileParts(TileProcessor* tileProcessor)
 	for(pino = 1; pino < tcp->getNumProgressions(); ++pino)
 	{
 		tileProcessor->pino = pino;
-		numTileParts = getNumTilePartsForProgression(pino, tileProcessor->m_tileIndex);
+		numTileParts = getNumTilePartsForProgression(pino, tileProcessor->getIndex());
 		if(numTileParts > maxTilePartsPerTileJ2K)
 		{
 			GRK_ERROR("Number of tile parts %d exceeds maximum number of "
@@ -921,7 +917,7 @@ bool CodeStreamCompress::writeTileParts(TileProcessor* tileProcessor)
 				return false;
 		}
 	}
-	++tileProcessor->m_tileIndex;
+	tileProcessor->incrementIndex();
 
 	return true;
 }

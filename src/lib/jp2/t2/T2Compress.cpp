@@ -327,9 +327,9 @@ bool T2Compress::compressPacket(TileCodingParams* tcp, PacketIter* pi, IBuffered
 			return false;
 	}
 
-	// if (tileProcessor->m_tileIndex == 3)
+	// if (tileProcessor->getIndex() == 3)
 	//	GRK_INFO("Tile %d:  packet header length: %d for layer %d",
-	//			tileProcessor->m_tileIndex, stream->tell() - stream_start,layno);
+	//			tileProcessor->getIndex(), stream->tell() - stream_start,layno);
 
 	// GRK_INFO("Written packet header bytes %d for layer %d", (uint32_t)(stream->tell() -
 	// stream_start),layno);
@@ -355,9 +355,9 @@ bool T2Compress::compressPacket(TileCodingParams* tcp, PacketIter* pi, IBuffered
 	}
 	*packet_bytes_written += (uint32_t)(stream->tell() - stream_start);
 
-	// if (tileProcessor->m_tileIndex == 3)
+	// if (tileProcessor->getIndex() == 3)
 	//	GRK_INFO("Tile %d : written packet length: %d for layer %d",
-	//			tileProcessor->m_tileIndex, *packet_bytes_written,layno);
+	//			tileProcessor->getIndex(), *packet_bytes_written,layno);
 	return true;
 }
 
@@ -417,9 +417,9 @@ bool T2Compress::compressPacketSimulate(TileCodingParams* tcp, PacketIter* pi,
 			max_bytes_available -= 2;
 		byteCount += 2;
 	}
-	// if (finalSimulation && tileProcessor->m_tileIndex == 3 && byteCount == 553)
+	// if (finalSimulation && tileProcessor->getIndex() == 3 && byteCount == 553)
 	//	GRK_INFO("Tile %d, simulated packet header length: %d for layer %d",
-	//			tileProcessor->m_tileIndex, byteCount,layno);
+	//			tileProcessor->getIndex(), byteCount,layno);
 	/* Writing the packet body */
 	for(uint32_t bandIndex = 0; bandIndex < res->numTileBandWindows; bandIndex++)
 	{
@@ -455,9 +455,9 @@ bool T2Compress::compressPacketSimulate(TileCodingParams* tcp, PacketIter* pi,
 
 	// if (max_bytes_available == UINT_MAX)
 	//	GRK_INFO("Simulated packet bytes %d for layer %d", *packet_bytes_written,layno);
-	// if (finalSimulation && tileProcessor->m_tileIndex == 3)
+	// if (finalSimulation && tileProcessor->getIndex() == 3)
 	//	GRK_INFO("Tile %d : simulated packet length: %d for layer %d",
-	//			tileProcessor->m_tileIndex, *packet_bytes_written,layno);
+	//			tileProcessor->getIndex(), *packet_bytes_written,layno);
 
 	return true;
 }

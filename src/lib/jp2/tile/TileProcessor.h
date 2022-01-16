@@ -75,7 +75,7 @@ struct PacketTracker
 
 struct TileProcessor
 {
-	explicit TileProcessor(CodeStream* codeStream, IBufferedStream* stream, bool isCompressor,
+	explicit TileProcessor(uint16_t index, CodeStream* codeStream, IBufferedStream* stream, bool isCompressor,
 						   bool isWholeTileDecompress);
 	~TileProcessor();
 	bool init(void);
@@ -104,8 +104,9 @@ struct TileProcessor
 	uint32_t getPreCalculatedTileLen(void);
 	bool canPreCalculateTileLen(void);
 
-	/** index of tile being currently compressed/decompressed */
-	uint16_t m_tileIndex;
+	uint16_t getIndex(void) const;
+	void incrementIndex(void);
+
 	/** Compression Only
 	 *  true for first POC tile part, otherwise false*/
 	bool m_first_poc_tile_part;
@@ -127,6 +128,8 @@ struct TileProcessor
 	CodingParams* m_cp;
 	PacketLengthCache packetLengthCache;
   private:
+	/** index of tile being currently compressed/decompressed */
+	uint16_t m_tileIndex;
 	// Compressing only - track which packets have already been written
 	// to the code stream
 	PacketTracker m_packetTracker;
@@ -160,48 +163,5 @@ struct TileProcessor
 	uint32_t preCalculatedTileLen;
 };
 
-struct TileProcessorComparator
-{
-	bool operator()(const TileProcessor* a, const TileProcessor* b) const
-	{
-		return a->m_tileIndex > b->m_tileIndex;
-	}
-};
-
-class TileProcessorMinHeap
-{
-  public:
-	TileProcessorMinHeap() : nextTileIndex(0) {}
-	void push(TileProcessor* val)
-	{
-		std::lock_guard<std::mutex> lock(queue_mutex);
-		queue.push(val);
-	}
-	TileProcessor* pop(void)
-	{
-		std::lock_guard<std::mutex> lock(queue_mutex);
-		if(queue.empty())
-			return nullptr;
-		auto val = queue.top();
-		if(val->m_tileIndex <= nextTileIndex)
-		{
-			queue.pop();
-			if(val->m_tileIndex == nextTileIndex)
-				nextTileIndex++;
-			return val;
-		}
-		return nullptr;
-	}
-	bool empty(void)
-	{
-		std::lock_guard<std::mutex> lock(queue_mutex);
-		return queue.empty();
-	}
-
-  private:
-	std::priority_queue<TileProcessor*, std::vector<TileProcessor*>, TileProcessorComparator> queue;
-	std::mutex queue_mutex;
-	uint16_t nextTileIndex;
-};
 
 } // namespace grk

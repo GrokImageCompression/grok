@@ -121,8 +121,7 @@ TileProcessor* CodeStreamDecompress::allocateProcessor(uint16_t tileIndex)
 	auto tileProcessor = tileCache ? tileCache->processor : nullptr;
 	if(!tileProcessor)
 	{
-		tileProcessor = new TileProcessor(this, m_stream, false, wholeTileDecompress);
-		tileProcessor->m_tileIndex = tileIndex;
+		tileProcessor = new TileProcessor(tileIndex,this, m_stream, false, wholeTileDecompress);
 		m_tileCache->put(tileIndex, tileProcessor);
 	}
 	m_currentTileProcessor = tileProcessor;
@@ -133,7 +132,7 @@ TileCodingParams* CodeStreamDecompress::get_current_decode_tcp()
 {
 	auto tileProcessor = m_currentTileProcessor;
 
-	return (isDecodingTilePartHeader()) ? m_cp.tcps + tileProcessor->m_tileIndex
+	return (isDecodingTilePartHeader()) ? m_cp.tcps + tileProcessor->getIndex()
 										: m_decompressorState.m_default_tcp;
 }
 CodeStreamInfo* CodeStreamDecompress::getCodeStreamInfo(void)
@@ -513,7 +512,7 @@ bool CodeStreamDecompress::decompressTiles(void)
 		{
 			if(!findNextTile(processor))
 			{
-				GRK_ERROR("Failed to decompress tile %u/%u", processor->m_tileIndex,
+				GRK_ERROR("Failed to decompress tile %u/%u", processor->getIndex(),
 						  numTilesToDecompress);
 				success = false;
 				goto cleanup;
@@ -532,7 +531,7 @@ bool CodeStreamDecompress::decompressTiles(void)
 			{
 				if(!decompressT2T1(processor))
 				{
-					GRK_ERROR("Failed to decompress tile %u/%u", processor->m_tileIndex,
+					GRK_ERROR("Failed to decompress tile %u/%u", processor->getIndex(),
 							  numTilesToDecompress);
 					success = false;
 				}
@@ -852,7 +851,7 @@ bool CodeStreamDecompress::decompressTile()
 		{
 			if(!findNextTile(tileProcessor))
 			{
-				GRK_ERROR("Failed to decompress tile %u", tileProcessor->m_tileIndex);
+				GRK_ERROR("Failed to decompress tile %u", tileProcessor->getIndex());
 				goto cleanup;
 			}
 		}
@@ -870,10 +869,10 @@ cleanup:
 }
 bool CodeStreamDecompress::decompressT2T1(TileProcessor* tileProcessor)
 {
-	auto tcp = m_cp.tcps + tileProcessor->m_tileIndex;
+	auto tcp = m_cp.tcps + tileProcessor->getIndex();
 	if(!tcp->m_compressedTileData)
 	{
-		GRK_ERROR("Decompress: Tile %d has no compressed data", tileProcessor->m_tileIndex);
+		GRK_ERROR("Decompress: Tile %d has no compressed data", tileProcessor->getIndex());
 		return false;
 	}
 	bool doPost =
@@ -892,7 +891,7 @@ bool CodeStreamDecompress::findNextTile(TileProcessor* tileProcessor)
 		GRK_ERROR("no tile data.");
 		return false;
 	}
-	auto tcp = m_cp.tcps + tileProcessor->m_tileIndex;
+	auto tcp = m_cp.tcps + tileProcessor->getIndex();
 	if(!tcp->m_compressedTileData)
 	{
 		GRK_ERROR("Missing SOD marker");

@@ -254,14 +254,14 @@ bool T2Decompress::readPacketHeader(TileCodingParams* p_tcp, const PacketIter* p
 	auto cp = tileProcessor->m_cp;
 	if(cp->ppm_marker)
 	{
-		if(tileProcessor->m_tileIndex >= cp->ppm_marker->m_tile_packet_headers.size())
+		if(tileProcessor->getIndex() >= cp->ppm_marker->m_tile_packet_headers.size())
 		{
 			GRK_ERROR("PPM marker has no packed packet header data for tile %d",
-					  tileProcessor->m_tileIndex + 1);
+					  tileProcessor->getIndex() + 1);
 			return false;
 		}
 		auto tile_packet_header =
-			&cp->ppm_marker->m_tile_packet_headers[tileProcessor->m_tileIndex];
+			&cp->ppm_marker->m_tile_packet_headers[tileProcessor->getIndex()];
 		header_data_start = &tile_packet_header->buf;
 		remaining_length = &tile_packet_header->len;
 	}
@@ -304,7 +304,7 @@ bool T2Decompress::readPacketHeader(TileCodingParams* p_tcp, const PacketIter* p
 						if(value != prc->getInclTree()->getUninitializedValue() &&
 						   value != p_pi->layno)
 						{
-							GRK_WARN("Tile number: %u", tileProcessor->m_tileIndex + 1);
+							GRK_WARN("Tile number: %u", tileProcessor->getIndex() + 1);
 							std::string msg =
 								"Illegal inclusion tag tree found when decoding packet header.\n";
 							msg += "This problem can occur if empty packets are used (i.e., "

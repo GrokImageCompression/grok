@@ -127,7 +127,7 @@ bool CodeStreamDecompress::parseTileHeaderMarkers(bool* canDecompress)
 			if(codeStreamInfo)
 			{
 				if(!TileLengthMarkers::addTileMarkerInfo(
-					   m_currentTileProcessor->m_tileIndex, codeStreamInfo, marker_handler->id,
+					   m_currentTileProcessor->getIndex(), codeStreamInfo, marker_handler->id,
 					   (uint32_t)m_stream->tell() - marker_size - grk_marker_length,
 					   marker_size + grk_marker_length))
 				{
@@ -283,21 +283,21 @@ bool CodeStreamDecompress::parseTileHeaderMarkers(bool* canDecompress)
 	// then skip tiles with no tile data i.e. no SOD marker
 	if(!m_decompressorState.lastTilePartWasRead)
 	{
-		tcp = m_cp.tcps + m_currentTileProcessor->m_tileIndex;
+		tcp = m_cp.tcps + m_currentTileProcessor->getIndex();
 		if(!tcp->m_compressedTileData)
 		{
 			*canDecompress = false;
 			return true;
 		}
 	}
-	if(!merge_ppt(m_cp.tcps + m_currentTileProcessor->m_tileIndex))
+	if(!merge_ppt(m_cp.tcps + m_currentTileProcessor->getIndex()))
 	{
 		GRK_ERROR("Failed to merge PPT data");
 		return false;
 	}
 	if(!m_currentTileProcessor->init())
 	{
-		GRK_ERROR("Cannot decompress tile %u", m_currentTileProcessor->m_tileIndex);
+		GRK_ERROR("Cannot decompress tile %u", m_currentTileProcessor->getIndex());
 		return false;
 	}
 	*canDecompress = true;
@@ -512,7 +512,7 @@ bool CodeStreamDecompress::read_ppt(uint8_t* headerData, uint16_t header_size)
 		return false;
 	}
 
-	auto tcp = &(cp->tcps[tileProcessor->m_tileIndex]);
+	auto tcp = &(cp->tcps[tileProcessor->getIndex()]);
 	tcp->ppt = true;
 
 	/* Z_ppt */

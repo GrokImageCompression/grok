@@ -49,7 +49,7 @@ bool SOTMarker::write(TileProcessor* proc, uint32_t tileLength)
 	if(!stream->writeShort(10))
 		return false;
 	/* Isot */
-	if(!stream->writeShort((uint16_t)proc->m_tileIndex))
+	if(!stream->writeShort((uint16_t)proc->getIndex()))
 		return false;
 
 	/* Psot  */
@@ -70,7 +70,7 @@ bool SOTMarker::write(TileProcessor* proc, uint32_t tileLength)
 		return false;
 
 	/* TNsot */
-	if(!stream->writeByte(proc->m_cp->tcps[proc->m_tileIndex].m_numTileParts))
+	if(!stream->writeByte(proc->m_cp->tcps[proc->getIndex()].m_numTileParts))
 		return false;
 
 	return true;
@@ -123,7 +123,7 @@ bool SOTMarker::read(CodeStreamDecompress* codeStream, uint8_t* headerData, uint
 		GRK_ERROR("Error reading SOT marker");
 		return false;
 	}
-	auto tileIndex = codeStream->currentProcessor()->m_tileIndex;
+	auto tileIndex = codeStream->currentProcessor()->getIndex();
 	auto cp = codeStream->getCodingParams();
 
 	/* testcase 2.pdf.SIGFPE.706.1112 */
