@@ -596,7 +596,7 @@ bool CodeStreamCompress::initCompress(grk_cparameters* parameters, GrkImage* ima
 }
 bool CodeStreamCompress::compress(grk_plugin_tile* tile)
 {
-	MinHeap<TileProcessor, uint16_t> heap;
+	MinHeap<TileProcessor, uint16_t, MinHeapLocker> heap;
 	uint32_t numTiles = (uint32_t)m_cp.t_grid_height * m_cp.t_grid_width;
 	if(numTiles > maxNumTilesJ2K)
 	{

@@ -2,6 +2,22 @@
 
 #include <mutex>
 
+class MinHeapLocker {
+public:
+	MinHeapLocker(std::mutex &mut) :  lock(mut)
+	{}
+private:
+	std::lock_guard<std::mutex> lock;
+};
+
+class MinHeapFakeLocker {
+public:
+	MinHeapFakeLocker(std::mutex &mut)
+	{
+		(void)mut;
+	}
+};
+
 template <typename T> struct MinHeapComparator
 {
 	bool operator()(const T* a, const T* b) const
@@ -10,18 +26,18 @@ template <typename T> struct MinHeapComparator
 	}
 };
 
-template <typename T, typename IT> class MinHeap
+template <typename T, typename IT, typename L> class MinHeap
 {
   public:
 	MinHeap() : nextIndex(0) {}
 	void push(T* val)
 	{
-		std::lock_guard<std::mutex> lock(queue_mutex);
+		L locker(queue_mutex);
 		queue.push(val);
 	}
 	T* pop(void)
 	{
-		std::lock_guard<std::mutex> lock(queue_mutex);
+		L locker(queue_mutex);
 		if(queue.empty())
 			return nullptr;
 		auto val = queue.top();
