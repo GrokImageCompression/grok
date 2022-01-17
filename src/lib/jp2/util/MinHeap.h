@@ -44,11 +44,10 @@ template <typename T, typename IT, typename L> class MinHeap
 		if(queue.empty())
 			return T();
 		auto val = queue.top();
-		if(val.getIndex() <= nextIndex)
+		if(val.getIndex() == nextIndex)
 		{
 			queue.pop();
-			if(val.getIndex() == nextIndex)
-				nextIndex++;
+			nextIndex++;
 			return val;
 		}
 		return T();
@@ -89,11 +88,10 @@ template <typename T, typename IT, typename L> class MinHeapPtr
 		if(queue.empty())
 			return nullptr;
 		auto val = queue.top();
-		if(val->getIndex() <= nextIndex)
+		if(val->getIndex() == nextIndex)
 		{
 			queue.pop();
-			if(val->getIndex() == nextIndex)
-				nextIndex++;
+			nextIndex++;
 			return val;
 		}
 		return nullptr;
