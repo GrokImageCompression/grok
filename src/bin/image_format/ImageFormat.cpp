@@ -78,12 +78,11 @@ bool ImageFormat::encodeHeader(grk_image* image)
 bool ImageFormat::encodePixels(grk_serialize_buf pixels,
 							grk_serialize_buf* reclaimed,
 							uint32_t max_reclaimed,
-							uint32_t *num_reclaimed, uint32_t strip){
+							uint32_t *num_reclaimed){
 	(void)pixels;
 	(void)reclaimed;
 	(void)max_reclaimed;
 	(void)num_reclaimed;
-	(void)strip;
 
 	return false;
 }

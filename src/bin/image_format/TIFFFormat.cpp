@@ -454,9 +454,9 @@ bool TIFFFormat::encodeHeader(grk_image* image)
 cleanup:
 	return success;
 }
-bool TIFFFormat::encodePixelsSync(grk_serialize_buf pixels,uint32_t strip){
+bool TIFFFormat::encodePixelsSync(grk_serialize_buf pixels){
 
-	bool rc =  encodePixelsCore(pixels,m_reclaimed,reclaimSize,&m_num_reclaimed,strip);
+	bool rc =  encodePixelsCore(pixels,m_reclaimed,reclaimSize,&m_num_reclaimed);
 #ifndef GROK_HAVE_URING
 		pool.put(GrkSerializeBuf(pixels));
 #else
@@ -470,15 +470,14 @@ bool TIFFFormat::encodePixelsSync(grk_serialize_buf pixels,uint32_t strip){
 bool TIFFFormat::encodePixelsCore(grk_serialize_buf pixels,
 							grk_serialize_buf* reclaimed,
 							uint32_t max_reclaimed,
-							uint32_t *num_reclaimed,
-							uint32_t strip) {
+							uint32_t *num_reclaimed) {
 	tmsize_t written = 0;
 	{
 		clientData.scheduled.pooled = true;
 		clientData.reclaimed = reclaimed;
 		clientData.max_reclaimed = max_reclaimed;
 		clientData.num_reclaimed = num_reclaimed;
-		written = TIFFWriteEncodedStrip(tif, (tmsize_t)strip, pixels.data, (tmsize_t)pixels.dataLen);
+		written = TIFFWriteEncodedStrip(tif, (tmsize_t)pixels.index, pixels.data, (tmsize_t)pixels.dataLen);
 		if (written == -1) {
 			encodeState |= IMAGE_FORMAT_ERROR;
 		}
@@ -498,11 +497,10 @@ bool TIFFFormat::encodePixelsCore(grk_serialize_buf pixels,
 bool TIFFFormat::encodePixels(grk_serialize_buf pixels,
 							grk_serialize_buf* reclaimed,
 							uint32_t max_reclaimed,
-							uint32_t *num_reclaimed,
-							uint32_t strip) {
+							uint32_t *num_reclaimed) {
 
 	std::unique_lock<std::mutex> lk(encodePixelmutex);
-	return encodePixelsCore(pixels,reclaimed,max_reclaimed, num_reclaimed, strip);
+	return encodePixelsCore(pixels,reclaimed,max_reclaimed, num_reclaimed);
 }
 bool TIFFFormat::encodeRows(uint32_t rowsToWrite)
 {
@@ -532,7 +530,8 @@ bool TIFFFormat::encodeRows(uint32_t rowsToWrite)
 			{
 				packedBuf.dataLen = bytesToWrite;
 				packedBuf.offset = offset;
-				if(bytesToWrite && !encodePixelsSync(packedBuf,strip++))
+				packedBuf.index = strip++;
+				if(bytesToWrite && !encodePixelsSync(packedBuf))
 					goto cleanup;
 				packedBuf = pool.get(packedLen);
 				bufPtr = (int8_t*)(packedBuf.data);
@@ -568,7 +567,8 @@ bool TIFFFormat::encodeRows(uint32_t rowsToWrite)
 		// cleanup
 		packedBuf.dataLen = bytesToWrite;
 		packedBuf.offset = offset;
-		if(bytesToWrite && !encodePixelsSync(packedBuf,strip++))
+		packedBuf.index = strip++;
+		if(bytesToWrite && !encodePixelsSync(packedBuf))
 			goto cleanup;
 	}
 	else
@@ -592,7 +592,8 @@ bool TIFFFormat::encodeRows(uint32_t rowsToWrite)
 			packedBuf.pooled = true;
 			packedBuf.offset = offset;
 			packedBuf.dataLen = m_image->packedRowBytes * stripRows;
-			if(!encodePixelsSync(packedBuf,strip++)) {
+			packedBuf.index = strip++;
+			if(!encodePixelsSync(packedBuf)) {
 				delete iter;
 				goto cleanup;
 			}

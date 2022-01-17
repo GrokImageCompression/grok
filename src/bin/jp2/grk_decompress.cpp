@@ -971,7 +971,6 @@ static void cleanUpFile(const char* outfile){
 }
 
 static bool grk_serialize_pixels(grk_serialize_buf buffer,
-								uint32_t strip,
 								grk_serialize_buf* reclaimed,
 								uint32_t max_reclaimed,
 								uint32_t *num_reclaimed, void* user_data){
@@ -982,8 +981,7 @@ static bool grk_serialize_pixels(grk_serialize_buf buffer,
 	return imageFormat->encodePixels(buffer,
 									reclaimed,
 									max_reclaimed,
-									num_reclaimed,
-									strip);
+									num_reclaimed);
 }
 
 bool GrkDecompress::encodeHeader(grk_plugin_decompress_callback_info* info) {

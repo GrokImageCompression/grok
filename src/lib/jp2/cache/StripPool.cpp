@@ -90,11 +90,9 @@ bool StripPool::composite(GrkImage *tileImage){
 			serializeHeap.push(buf);
 			buf = serializeHeap.pop();
 			while(buf.data) {
-				serializeBufferCallback(buf,buf.getIndex(), reclaimed, reclaimSize, &num_reclaimed,serialize_data);
-				if (num_reclaimed){
-					for(uint32_t i = 0; i < num_reclaimed; ++i)
-						putBuffer(reclaimed[i]);
-				}
+				serializeBufferCallback(buf,reclaimed, reclaimSize, &num_reclaimed,serialize_data);
+				for(uint32_t i = 0; i < num_reclaimed; ++i)
+					putBuffer(reclaimed[i]);
 				buf = serializeHeap.pop();
 			}
 		}

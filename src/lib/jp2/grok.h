@@ -768,7 +768,6 @@ typedef struct _grk_serialize_buf {
 
 
 typedef bool (*grk_serialize_pixels)(grk_serialize_buf buffer,
-										uint32_t strip,
 										grk_serialize_buf* reclaimed,
 										uint32_t max_reclaimed,
 										uint32_t *num_reclaimed,
