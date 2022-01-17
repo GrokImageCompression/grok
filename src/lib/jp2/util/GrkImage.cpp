@@ -276,7 +276,7 @@ bool GrkImage::canAllocInterleaved(CodingParams *cp){
 	return true;
 }
 
-bool isSubsampled(grk_image* image)
+bool isFinalOutputSubsampled(grk_image* image)
 {
 	if(!image)
 		return false;
@@ -307,7 +307,7 @@ void GrkImage::postReadHeader(CodingParams *cp){
 	if (forceRGB)
 		ncmp = 3;
 	bool tiffSubSampled = decompressFormat ==   GRK_TIF_FMT &&
-							(isSubsampled(this) &&
+							(isFinalOutputSubsampled(this) &&
 								(color_space == GRK_CLRSPC_EYCC || color_space ==  GRK_CLRSPC_SYCC));
 	if (tiffSubSampled){
 		uint32_t chroma_subsample_x = comps[1].dx;

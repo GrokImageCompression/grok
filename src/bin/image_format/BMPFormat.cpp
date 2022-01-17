@@ -94,7 +94,7 @@ bool BMPFormat::encodeHeader(grk_image* image)
 
 	if(!allComponentsSanityCheck(m_image, false))
 		goto cleanup;
-	if(isSubsampled(m_image))
+	if(isFinalOutputSubsampled(m_image))
 	{
 		spdlog::error("Sub-sampled images not supported");
 		goto cleanup;

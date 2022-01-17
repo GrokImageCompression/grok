@@ -414,7 +414,7 @@ bool PNGFormat::encodeHeader(grk_image* img)
 	uint32_t i;
 	bool fails = true;
 
-	if(isSubsampled(m_image))
+	if(isFinalOutputSubsampled(m_image))
 	{
 		spdlog::error("Sub-sampled images not supported");
 		return false;

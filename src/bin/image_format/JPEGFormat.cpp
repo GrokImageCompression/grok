@@ -383,7 +383,7 @@ bool JPEGFormat::encodeHeader(grk_image* image)
 	JDIMENSION image_height = m_image->y1 - m_image->y0; /* input m_image height */
 
 	// sub-sampling not supported at the moment
-	if(isSubsampled(m_image))
+	if(isFinalOutputSubsampled(m_image))
 	{
 		spdlog::error("JPEGFormat::encodeHeader: subsampling not currently supported.");
 		return false;

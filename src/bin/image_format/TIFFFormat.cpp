@@ -238,7 +238,7 @@ bool TIFFFormat::encodeHeader(grk_image* image)
 	uint32_t height = m_image->comps[0].h;
 	uint8_t bps = getImagePrec();
 	numcomps = getImageNumComps();
-	bool subsampled = isSubsampled(m_image);
+	bool subsampled = isFinalOutputSubsampled(m_image);
 	auto colourSpace = getImageColourSpace();
 
 	assert(m_image);
@@ -303,7 +303,7 @@ bool TIFFFormat::encodeHeader(grk_image* image)
 					  grk::maxNumPackComponents);
 		goto cleanup;
 	}
-	if(isSubsampled(m_image))
+	if(isFinalOutputSubsampled(m_image))
 	{
 		if(tiPhoto != PHOTOMETRIC_YCBCR)
 		{
@@ -520,7 +520,7 @@ bool TIFFFormat::encodeRows(uint32_t rowsToWrite)
 	uint64_t offset = 0;
 	uint64_t packedLen = (uint64_t)TIFFVStripSize(tif, (uint32_t)m_image->rowsPerStrip);
 
-	if(isSubsampled(m_image)) {
+	if(isFinalOutputSubsampled(m_image)) {
 		packedBuf = pool.get(packedLen);
 		auto bufPtr = (int8_t*)packedBuf.data;
 		for(; h < rowsWritten + rowsToWrite; h += chroma_subsample_y)
@@ -1322,7 +1322,7 @@ grk_image* TIFFFormat::decode(const std::string& filename, grk_cparameters* para
 		comp->sgnd = isSigned;
 	}
 
-	if(needSignedPixelReader && isSubsampled(image))
+	if(needSignedPixelReader && isFinalOutputSubsampled(image))
 	{
 		spdlog::error("TIFF: subsampling not supported for signed 8 and 16 bit images");
 		goto cleanup;

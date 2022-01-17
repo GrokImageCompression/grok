@@ -311,7 +311,7 @@ bool ImageFormat::areAllComponentsSameSubsampling(grk_image* image)
 	return true;
 }
 
-bool ImageFormat::isSubsampled(grk_image* image)
+bool ImageFormat::isFinalOutputSubsampled(grk_image* image)
 {
 	assert(image);
 	if (image->upsample || image->forceRGB)
