@@ -989,16 +989,13 @@ bool CodeStreamDecompress::endDecompress(void)
 }
 bool CodeStreamDecompress::postProcess(void){
 	auto img = getCompositeImage();
-	bool rc =  img->convertToRGB(wholeTileDecompress);
-	if (rc){
-		img->applyColourManagement();
-		img->greyToRGB();
-		img->convertPrecision();
-		if (!img->execUpsample())
-			return false;
-	}
-
-	return rc;
+	if (!img->convertToRGB(wholeTileDecompress))
+		return false;
+	img->applyColourManagement();
+	if (!img->greyToRGB())
+		return false;
+	img->convertPrecision();
+	return img->execUpsample();
 }
 
 void CodeStreamDecompress::dump_tile_info(TileCodingParams* default_tile, uint32_t numcomps,

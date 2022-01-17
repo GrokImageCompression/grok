@@ -73,7 +73,7 @@ public:
 	void createMeta();
 	bool greyToRGB(void);
 	bool convertToRGB(bool wholeTileDecompress);
-	void applyColourManagement(void);
+	bool applyColourManagement(void);
 	void convertPrecision(void);
 	bool execUpsample(void);
 	void all_components_data_free(void);
@@ -95,7 +95,7 @@ public:
 	bool color_sycc_to_rgb(bool oddFirstX, bool oddFirstY);
 	bool color_cmyk_to_rgb(void);
 	bool color_esycc_to_rgb(void);
-	void applyICC(void);
+	bool applyICC(void);
 	bool cieLabToRGB(void);
 	bool componentsEqual(grk_image_comp* src, grk_image_comp* dest);
 	static void copyComponent(grk_image_comp* src, grk_image_comp* dest);
