@@ -314,19 +314,6 @@ char* actual_path(const char* outfile, bool* mem_allocated)
 #endif
 }
 
-bool isSubsampled(grk_image* image)
-{
-	assert(image);
-	if (image->upsample || image->forceRGB)
-		return false;
-	for(uint32_t i = 0; i < image->numcomps; ++i)
-	{
-		if(image->comps[i].dx != 1 || image->comps[i].dy != 1)
-			return true;
-	}
-	return false;
-}
-
 uint32_t uint_adds(uint32_t a, uint32_t b)
 {
 	uint64_t sum = (uint64_t)a + (uint64_t)b;

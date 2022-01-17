@@ -140,7 +140,6 @@ const char* pathSeparator();
 char* get_file_name(char* name);
 uint32_t get_num_images(char* imgdirpath);
 char* actual_path(const char* outfile, bool* mem_allocated);
-bool isSubsampled(grk_image* image);
 
 // swap endian for 16 bit integer
 template<typename T>
