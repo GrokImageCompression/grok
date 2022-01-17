@@ -316,9 +316,14 @@ bool TIFFFormat::encodeHeader(grk_image* image)
 			goto cleanup;
 		}
 	}
-	// extra channels
-	for(uint32_t i = 0U; i < numcomps; ++i)
+	// extra channels (use actual number of components, before post processing)
+	for(uint32_t i = 0U; i < m_image->numcomps; ++i)
 	{
+		auto type = m_image->comps[i].type;
+		assert(type == GRK_COMPONENT_TYPE_COLOUR ||
+				type ==GRK_COMPONENT_TYPE_OPACITY ||
+				type == GRK_COMPONENT_TYPE_PREMULTIPLIED_OPACITY ||
+				type == GRK_COMPONENT_TYPE_UNSPECIFIED);
 		if(m_image->comps[i].type != GRK_COMPONENT_TYPE_COLOUR)
 		{
 			if(firstExtraChannel == -1)

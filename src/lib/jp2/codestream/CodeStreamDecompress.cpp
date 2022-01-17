@@ -169,21 +169,14 @@ bool CodeStreamDecompress::readHeader(grk_header_info* header_info)
 	{
 		m_headerImage = new GrkImage();
 
-		/* customization of the validation */
 		m_validation_list.push_back(std::bind(&CodeStreamDecompress::decompressValidation, this));
-
-		/* validation of the parameters codec */
 		if(!exec(m_validation_list))
 		{
 			m_headerError = true;
 			return false;
 		}
-
 		m_procedure_list.push_back(std::bind(&CodeStreamDecompress::readHeaderProcedure, this));
-		// custom procedures here
 		m_procedure_list.push_back(std::bind(&CodeStreamDecompress::copy_default_tcp, this));
-
-		/* read header */
 		if(!exec(m_procedure_list))
 		{
 			m_headerError = true;
@@ -199,16 +192,11 @@ bool CodeStreamDecompress::readHeader(grk_header_info* header_info)
 			composite->numPrecision = header_info->numPrecision;
 		}
 	}
-
 	if(header_info)
 	{
-		CodingParams* cp = nullptr;
-		TileCodingParams* tcp = nullptr;
-		TileComponentCodingParams* tccp = nullptr;
-
-		cp = &(m_cp);
-		tcp = m_decompressorState.m_default_tcp;
-		tccp = tcp->tccps;
+		auto cp = &(m_cp);
+		auto tcp = m_decompressorState.m_default_tcp;
+		auto tccp = tcp->tccps;
 
 		header_info->cblockw_init = 1U << tccp->cblkw;
 		header_info->cblockh_init = 1U << tccp->cblkh;
@@ -985,6 +973,10 @@ bool CodeStreamDecompress::readMarker(bool suppressWarning)
 /** Reading function used after code stream if necessary */
 bool CodeStreamDecompress::endDecompress(void)
 {
+	return true;
+}
+bool CodeStreamDecompress::preProcess(void){
+
 	return true;
 }
 bool CodeStreamDecompress::postProcess(void){

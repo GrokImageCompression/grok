@@ -42,6 +42,7 @@ class FileFormatDecompress : public FileFormat, public ICodeStreamDecompress
 	bool decompressTile(uint16_t tileIndex);
 	bool endDecompress(void);
 	bool postProcess(void);
+	bool preProcess(void);
 	void dump(uint32_t flag, FILE* outputFileStream);
 
   private:

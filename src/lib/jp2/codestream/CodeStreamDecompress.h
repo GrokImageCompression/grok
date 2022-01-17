@@ -52,6 +52,7 @@ class CodeStreamDecompress : public CodeStream, public ICodeStreamDecompress
 	bool decompress(grk_plugin_tile* tile);
 	bool decompressTile(uint16_t tileIndex);
 	bool endDecompress(void);
+	bool preProcess(void);
 	bool postProcess(void);
 	CodeStreamInfo* getCodeStreamInfo(void);
 	GrkImage* getCompositeImage();

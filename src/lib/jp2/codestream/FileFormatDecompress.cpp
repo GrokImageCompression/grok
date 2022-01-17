@@ -344,10 +344,33 @@ bool FileFormatDecompress::decompress(grk_plugin_tile* tile)
 
 	return true;
 }
+// if there is a channel definition box, then set the image component types
+// now, so header encoding in image format will be correct
+bool FileFormatDecompress::preProcess(void)
+{
+	auto img = codeStream->getCompositeImage();
+	if(color.channel_definition) {
+		auto info = color.channel_definition->descriptions;
+		uint16_t n = color.channel_definition->num_channel_descriptions;
+
+		for(uint16_t i = 0; i < n; ++i)
+		{
+			uint16_t cn = info[i].cn;
+
+			if(cn >= img->numcomps)
+			{
+				GRK_WARN("apply_channel_definition: cn=%u, numcomps=%u", cn, img->numcomps);
+				continue;
+			}
+			img->comps[cn].type = (GRK_COMPONENT_TYPE)info[i].typ;
+		}
+	}
+   return true;
+}
 bool FileFormatDecompress::postProcess(void)
 {
 	bool rc =  applyColour();
-	return rc ? codeStream->postProcess() : false;;
+	return rc ? codeStream->postProcess() : false;
 }
 bool FileFormatDecompress::decompressTile(uint16_t tileIndex)
 {
@@ -383,7 +406,6 @@ bool FileFormatDecompress::applyColour(GrkImage* img)
 {
 	if(!img || img->color_applied)
 		return true;
-
 	if(color.palette)
 	{
 		/* Part 1, I.5.3.4: Either both or none : */

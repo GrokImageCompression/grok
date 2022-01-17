@@ -257,7 +257,12 @@ bool GRK_CALLCONV grk_decompress_read_header(grk_codec* codecWrapper, grk_header
 	if(codecWrapper)
 	{
 		auto codec = GrkCodec::getImpl(codecWrapper);
-		return codec->m_decompressor ? codec->m_decompressor->readHeader(header_info) : false;
+		if (! codec->m_decompressor)
+			return false;
+		bool rc =  codec->m_decompressor->readHeader(header_info);
+		rc &= codec->m_decompressor->preProcess();
+
+		return rc;
 	}
 	return false;
 }
@@ -279,7 +284,6 @@ bool GRK_CALLCONV grk_decompress(grk_codec* codecWrapper, grk_plugin_tile* tile)
 	{
 		auto codec = GrkCodec::getImpl(codecWrapper);
 		bool rc = codec->m_decompressor ? codec->m_decompressor->decompress(tile) : false;
-
 		rc = rc && (codec->m_decompressor ? codec->m_decompressor->postProcess() : false);
 
 		return rc;

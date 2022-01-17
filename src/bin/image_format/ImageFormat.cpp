@@ -138,6 +138,9 @@ uint8_t ImageFormat::getImagePrec(void){
 uint16_t ImageFormat::getImageNumComps(void){
 	if (!m_image)
 		return 0;
+	if (m_image->meta && m_image->meta->color.palette)
+		return m_image->meta->color.palette->num_channels;
+
 	return (m_image->forceRGB  && m_image->numcomps < 3) ? 3 : m_image->numcomps;
 }
 GRK_COLOR_SPACE ImageFormat::getImageColourSpace(void){

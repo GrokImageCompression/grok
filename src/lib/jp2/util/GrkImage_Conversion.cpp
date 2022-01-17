@@ -123,9 +123,6 @@ bool GrkImage::execUpsample(void)
 	{
 		auto new_cmp = new_components + compno;
 		auto org_cmp = comps + compno;
-
-		new_cmp->type = org_cmp->type;
-
 		if((org_cmp->dx > 1U) || (org_cmp->dy > 1U))
 		{
 			auto src = org_cmp->data;
@@ -367,6 +364,7 @@ bool GrkImage::greyToRGB(void){
 	for (uint16_t i = 0; i < 3; ++i){
 		auto dest = new_components + i;
 		copyComponent(comps, dest);
+		// alloc data for new components
 		if (i > 0) {
 			if (!allocData(dest)){
 				delete [] new_components;
@@ -377,6 +375,7 @@ bool GrkImage::greyToRGB(void){
 		}
 	}
 
+	// attach first new component to old component
 	new_components->data = comps->data;
 	new_components->stride = comps->stride;
 	comps->data = nullptr;
