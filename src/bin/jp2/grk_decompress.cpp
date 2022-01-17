@@ -1245,10 +1245,9 @@ int GrkDecompress::preProcess(grk_plugin_decompress_callback_info* info)
 		goto cleanup;
 	}
 	canEncodeHeaderBeforeDecompress =	info->image->decompressFormat == GRK_TIF_FMT &&
-										!info->image->forceRGB &&
+										!parameters->singleTileDecompress  &&
 										!info->image->precision &&
-										!info->image->upsample &&
-					(info->image->color_space == GRK_CLRSPC_SRGB ||info->image->color_space == GRK_CLRSPC_GRAY);
+										!isSubsampled(info->image);
 	if (canEncodeHeaderBeforeDecompress && !encodeHeader(info))
 		goto cleanup;
 	// decompress all tiles

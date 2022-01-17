@@ -262,10 +262,8 @@ bool GrkImage::canAllocInterleaved(CodingParams *cp){
 	// tile origin and image origin must coincide
 	if (cp->tx0 != x0 || cp->ty0 != y0)
 		return false;
-	// only RGB or MONO in TIFF format is allowed
-	if (precision ||
-		(decompressFormat != GRK_TIF_FMT) ||
-			(color_space != GRK_CLRSPC_SRGB && color_space != GRK_CLRSPC_GRAY))
+
+	if (precision || decompressFormat != GRK_TIF_FMT || isSubsampled() || forceRGB || upsample)
 		return false;
 	// check that all components are equal
 	for(uint16_t compno = 1; compno < numcomps; compno++){
@@ -276,13 +274,11 @@ bool GrkImage::canAllocInterleaved(CodingParams *cp){
 	return true;
 }
 
-bool isSubsampled(grk_image* image)
+bool GrkImage::isSubsampled(void)
 {
-	if(!image)
-		return false;
-	for(uint32_t i = 0; i < image->numcomps; ++i)
+	for(uint32_t i = 0; i < numcomps; ++i)
 	{
-		if(image->comps[i].dx != 1 || image->comps[i].dy != 1)
+		if(comps[i].dx != 1 || comps[i].dy != 1)
 			return true;
 	}
 	return false;
@@ -307,7 +303,7 @@ void GrkImage::postReadHeader(CodingParams *cp){
 	if (forceRGB)
 		ncmp = 3;
 	bool tiffSubSampled = decompressFormat ==   GRK_TIF_FMT &&
-							(isSubsampled(this) &&
+							(isSubsampled() &&
 								(color_space == GRK_CLRSPC_EYCC || color_space ==  GRK_CLRSPC_SYCC));
 	if (tiffSubSampled){
 		uint32_t chroma_subsample_x = comps[1].dx;
