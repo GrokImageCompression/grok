@@ -80,15 +80,23 @@ bool StripPool::composite(GrkImage *tileImage){
 		return false;
 	if (++(strip->tileCounter) == m_tgrid_w){
 		GrkSerializeBuf buf = GrkSerializeBuf(img->interleavedData);
+		buf.index = stripId;
 		buf.dataLen = dataLen;
-		GrkSerializeBuf reclaimed[reclaimSize];
-		uint32_t num_reclaimed = 0;;
 		img->interleavedData.data = nullptr;
-		serializeBufferCallback(buf,stripId, reclaimed, reclaimSize, &num_reclaimed,serialize_data);
-		if (num_reclaimed){
+		GrkSerializeBuf reclaimed[reclaimSize];
+		uint32_t num_reclaimed = 0;
+		{
 			std::unique_lock<std::mutex> lk(poolMutex);
-			for(uint32_t i = 0; i < num_reclaimed; ++i)
-				putBuffer(reclaimed[i]);
+			serializeHeap.push(buf);
+			buf = serializeHeap.pop();
+			while(buf.data) {
+				serializeBufferCallback(buf,buf.getIndex(), reclaimed, reclaimSize, &num_reclaimed,serialize_data);
+				if (num_reclaimed){
+					for(uint32_t i = 0; i < num_reclaimed; ++i)
+						putBuffer(reclaimed[i]);
+				}
+				buf = serializeHeap.pop();
+			}
 		}
 	}
 

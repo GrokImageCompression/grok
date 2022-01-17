@@ -763,6 +763,7 @@ typedef struct _grk_serialize_buf {
 	uint64_t dataLen;
 	uint64_t allocLen;
 	bool pooled;
+	uint32_t index;
 } grk_serialize_buf;
 
 

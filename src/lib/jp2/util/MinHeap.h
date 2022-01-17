@@ -2,6 +2,8 @@
 
 #include <mutex>
 
+namespace grk {
+
 class MinHeapLocker {
 public:
 	MinHeapLocker(std::mutex &mut) :  lock(mut)
@@ -20,9 +22,9 @@ public:
 
 template <typename T> struct MinHeapComparator
 {
-	bool operator()(const T* a, const T* b) const
+	bool operator()(const T a, const T b) const
 	{
-		return a->getIndex() > b->getIndex();
+		return a.getIndex() > b.getIndex();
 	}
 };
 
@@ -40,7 +42,7 @@ template <typename T, typename IT, typename L> class MinHeap
 	{
 		L locker(queue_mutex);
 		if(queue.empty())
-			return nullptr;
+			return T();
 		auto val = queue.top();
 		if(val.getIndex() <= nextIndex)
 		{
@@ -49,7 +51,7 @@ template <typename T, typename IT, typename L> class MinHeap
 				nextIndex++;
 			return val;
 		}
-		return nullptr;
+		return T();
 	}
 	size_t size(void)
 	{
@@ -106,4 +108,6 @@ template <typename T, typename IT, typename L> class MinHeapPtr
 	std::mutex queue_mutex;
 	IT nextIndex;
 };
+
+}
 

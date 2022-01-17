@@ -4,26 +4,29 @@
 #include <mutex>
 #include <atomic>
 #include "grok.h"
+#include "MinHeap.h"
 
 namespace grk {
 
 
 struct GrkSerializeBuf : public grk_serialize_buf {
 public:
-	GrkSerializeBuf() : GrkSerializeBuf(nullptr,0,0,0,false)
+	GrkSerializeBuf() : GrkSerializeBuf(nullptr,0,0,0,false,0)
 	{
 	}
 	GrkSerializeBuf(uint8_t *data,
 					uint64_t offset,
 					uint64_t dataLen,
 					uint64_t allocLen,
-					bool pooled)
+					bool pooled,
+					uint32_t index)
 	{
 		this->data = data;
 		this->offset = offset;
 		this->dataLen = dataLen;
 		this->allocLen = allocLen;
 		this->pooled = pooled;
+		this->index = index;
 	}
 	explicit GrkSerializeBuf(const grk_serialize_buf rhs){
 		data = rhs.data;
@@ -31,6 +34,10 @@ public:
 		dataLen = rhs.dataLen;
 		allocLen = rhs.allocLen;
 		pooled = rhs.pooled;
+		index = rhs.index;
+	}
+	uint32_t getIndex(void) const{
+		return index;
 	}
 	bool alloc(uint64_t len){
 		dealloc();
@@ -86,6 +93,7 @@ private:
 
 	void* serialize_data;
 	grk_serialize_pixels serializeBufferCallback;
+	MinHeap<GrkSerializeBuf, uint32_t, MinHeapFakeLocker> serializeHeap;
 };
 
 }
