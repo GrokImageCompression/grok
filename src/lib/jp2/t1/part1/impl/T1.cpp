@@ -297,6 +297,10 @@ int32_t* T1::getUncompressedData(void)
 }
 bool T1::allocUncompressedData(size_t len)
 {
+	if (len== 0){
+		GRK_ERROR("Unable to allocated zero-length memory");
+		return false;
+	}
 	if(uncompressedData && uncompressedDataLen > len)
 		return true;
 	deallocUncompressedData();
@@ -326,6 +330,10 @@ void T1::attachUncompressedData(int32_t* data, uint32_t width, uint32_t height)
 }
 bool T1::alloc(uint32_t width, uint32_t height)
 {
+	if (width == 0 || height == 0){
+		GRK_ERROR("Unable to allocated memory for degenerate code block of dimensions %dx%d",width,height);
+		return false;
+	}
 	uint32_t newflagssize;
 	uint32_t flags_stride;
 	if(compressor)

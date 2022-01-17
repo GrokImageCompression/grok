@@ -34,14 +34,18 @@ namespace t1_part1
 	{
 		delete t1;
 	}
-	void T1Part1::preCompress(CompressBlockExec* block, uint32_t& maximum)
+	bool T1Part1::preCompress(CompressBlockExec* block, uint32_t& maximum)
 	{
 		auto tile = block->tile;
 		auto cblk = block->cblk;
 		auto w = cblk->width();
 		auto h = cblk->height();
+		if (w == 0 || h == 0){
+			GRK_ERROR("Unable to compress degenerate code block of dimensions %dx%d",w,h);
+			return false;
+		}
 		if(!t1->alloc(w, h))
-			return;
+			return false;
 		auto tileLineAdvance =
 			(tile->comps + block->compno)->getBuffer()->getResWindowBufferHighestREL()->stride - w;
 		uint32_t tileIndex = 0;
@@ -84,11 +88,14 @@ namespace t1_part1
 				tileIndex += tileLineAdvance;
 			}
 		}
+
+		return true;
 	}
 	bool T1Part1::compress(CompressBlockExec* block)
 	{
 		uint32_t max = 0;
-		preCompress(block, max);
+		if (!preCompress(block, max))
+			return false;
 
 		auto cblk = block->cblk;
 		cblk_enc cblkexp;

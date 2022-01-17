@@ -32,7 +32,7 @@ namespace t1_part1
 		bool decompress(DecompressBlockExec* block);
 
 	  private:
-		void preCompress(CompressBlockExec* block, uint32_t& max);
+		bool preCompress(CompressBlockExec* block, uint32_t& max);
 		T1* t1;
 	};
 } // namespace t1_part1
