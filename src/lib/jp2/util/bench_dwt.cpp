@@ -207,7 +207,7 @@ int main(int argc, char** argv)
 		begin = 1;
 
 	CodeStream codeStream(!forwardArg.isSet(), nullptr);
-	codeStream.m_headerImage = &image;
+	codeStream.headerImage_ = &image;
 
 	for(size_t k = begin; k <= end; ++k)
 	{
@@ -338,6 +338,6 @@ int main(int argc, char** argv)
 		grk_deinitialize();
 	}
 
-	codeStream.m_headerImage = nullptr;
+	codeStream.headerImage_ = nullptr;
 	return 0;
 }

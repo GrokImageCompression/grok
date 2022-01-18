@@ -16,10 +16,10 @@
 
 namespace grk
 {
-logger logger::m_logger;
+logger logger::logger_;
 
 logger::logger()
-	: m_error_data(nullptr), m_warning_data(nullptr), m_info_data(nullptr), error_handler(nullptr),
+	: error_data_(nullptr), warning_data_(nullptr), info_data_(nullptr), error_handler(nullptr),
 	  warning_handler(nullptr), info_handler(nullptr)
 {}
 
@@ -39,29 +39,29 @@ void log(grk_msg_callback msg_handler, void* l_data, char const* const format,
 
 void GRK_INFO(const char* fmt, ...)
 {
-	if(!logger::m_logger.info_handler)
+	if(!logger::logger_.info_handler)
 		return;
 	va_list arg;
 	va_start(arg, fmt);
-	log(logger::m_logger.info_handler, logger::m_logger.m_info_data, fmt, arg);
+	log(logger::logger_.info_handler, logger::logger_.info_data_, fmt, arg);
 	va_end(arg);
 }
 void GRK_WARN(const char* fmt, ...)
 {
-	if(!logger::m_logger.warning_handler)
+	if(!logger::logger_.warning_handler)
 		return;
 	va_list arg;
 	va_start(arg, fmt);
-	log(logger::m_logger.warning_handler, logger::m_logger.m_warning_data, fmt, arg);
+	log(logger::logger_.warning_handler, logger::logger_.warning_data_, fmt, arg);
 	va_end(arg);
 }
 void GRK_ERROR(const char* fmt, ...)
 {
-	if(!logger::m_logger.error_handler)
+	if(!logger::logger_.error_handler)
 		return;
 	va_list arg;
 	va_start(arg, fmt);
-	log(logger::m_logger.error_handler, logger::m_logger.m_error_data, fmt, arg);
+	log(logger::logger_.error_handler, logger::logger_.error_data_, fmt, arg);
 	va_end(arg);
 }
 

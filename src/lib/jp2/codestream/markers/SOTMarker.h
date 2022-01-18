@@ -49,7 +49,7 @@ class SOTMarker
 	bool read(CodeStreamDecompress* codeStream, uint8_t* headerData, uint16_t header_size);
 
   private:
-	uint64_t m_psot_location;
+	uint64_t psot_location_;
 
 	/**
 	 * Reads values from a SOT marker (Start of tile-part)

@@ -23,7 +23,7 @@ class BlockCache : public SparseCache<T>
 {
   public:
 	BlockCache(uint64_t maxChunkSize, P* blockInitializer)
-		: SparseCache<T>(maxChunkSize), m_blockInitializer(blockInitializer)
+		: SparseCache<T>(maxChunkSize), blockInitializer_(blockInitializer)
 	{}
 	virtual ~BlockCache() = default;
 
@@ -31,21 +31,21 @@ class BlockCache : public SparseCache<T>
 	virtual T* create(uint64_t index) override
 	{
 		auto item = new T();
-		m_blockInitializer->initCodeBlock(item, index);
+		blockInitializer_->initCodeBlock(item, index);
 		return item;
 	}
 
   private:
-	P* m_blockInitializer;
+	P* blockInitializer_;
 };
 
 struct PrecinctImpl
 {
 	PrecinctImpl(bool isCompressor, grkRectU32* bounds, grkPointU32 cblk_expn)
-		: enc(nullptr), dec(nullptr), m_bounds(*bounds), m_cblk_expn(cblk_expn),
-		  m_isCompressor(isCompressor), incltree(nullptr), imsbtree(nullptr)
+		: enc(nullptr), dec(nullptr), bounds_(*bounds), cblk_expn_(cblk_expn),
+		  isCompressor_(isCompressor), incltree(nullptr), imsbtree(nullptr)
 	{
-		m_cblk_grid =
+		cblk_grid_ =
 			grkRectU32(floordivpow2(bounds->x0, cblk_expn.x), floordivpow2(bounds->y0, cblk_expn.y),
 					   ceildivpow2<uint32_t>(bounds->x1, cblk_expn.x),
 					   ceildivpow2<uint32_t>(bounds->y1, cblk_expn.y));
@@ -59,23 +59,23 @@ struct PrecinctImpl
 	grkRectU32 getCodeBlockBounds(uint64_t cblkno)
 	{
 		auto cblk_start = grkPointU32(
-			(m_cblk_grid.x0 + (uint32_t)(cblkno % m_cblk_grid.width())) << m_cblk_expn.x,
-			(m_cblk_grid.y0 + (uint32_t)(cblkno / m_cblk_grid.width())) << m_cblk_expn.y);
+			(cblk_grid_.x0 + (uint32_t)(cblkno % cblk_grid_.width())) << cblk_expn_.x,
+			(cblk_grid_.y0 + (uint32_t)(cblkno / cblk_grid_.width())) << cblk_expn_.y);
 		auto cblk_bounds =
-			grkRectU32(cblk_start.x, cblk_start.y, cblk_start.x + (1U << m_cblk_expn.x),
-					   cblk_start.y + (1U << m_cblk_expn.y));
+			grkRectU32(cblk_start.x, cblk_start.y, cblk_start.x + (1U << cblk_expn_.x),
+					   cblk_start.y + (1U << cblk_expn_.y));
 
-		return cblk_bounds.intersection(&m_bounds);
+		return cblk_bounds.intersection(&bounds_);
 	}
 	bool initCodeBlocks(grkRectU32* bounds)
 	{
-		if((m_isCompressor && enc) || (!m_isCompressor && dec))
+		if((isCompressor_ && enc) || (!isCompressor_ && dec))
 			return true;
-		m_bounds = *bounds;
-		auto numBlocks = m_cblk_grid.area();
+		bounds_ = *bounds;
+		auto numBlocks = cblk_grid_.area();
 		if(!numBlocks)
 			return true;
-		if(m_isCompressor)
+		if(isCompressor_)
 			enc = new BlockCache<CompressCodeblock, PrecinctImpl>(numBlocks, this);
 		else
 			dec = new BlockCache<DecompressCodeblock, PrecinctImpl>(numBlocks, this);
@@ -105,8 +105,8 @@ struct PrecinctImpl
 		// if cw == 0 or ch == 0,
 		// then the precinct has no code blocks, therefore
 		// no need for inclusion and msb tag trees
-		auto grid_width = m_cblk_grid.width();
-		auto grid_height = m_cblk_grid.height();
+		auto grid_width = cblk_grid_.width();
+		auto grid_height = cblk_grid_.height();
 		if(grid_width > 0 && grid_height > 0)
 		{
 			if(!incltree)
@@ -130,8 +130,8 @@ struct PrecinctImpl
 		// if cw == 0 or ch == 0,
 		// then the precinct has no code blocks, therefore
 		// no need for inclusion and msb tag trees
-		auto grid_width = m_cblk_grid.width();
-		auto grid_height = m_cblk_grid.height();
+		auto grid_width = cblk_grid_.width();
+		auto grid_height = cblk_grid_.height();
 		if(grid_width > 0 && grid_height > 0)
 		{
 			if(!imsbtree)
@@ -152,10 +152,10 @@ struct PrecinctImpl
 	}
 	BlockCache<CompressCodeblock, PrecinctImpl>* enc;
 	BlockCache<DecompressCodeblock, PrecinctImpl>* dec;
-	grkRectU32 m_cblk_grid;
-	grkRectU32 m_bounds;
-	grkPointU32 m_cblk_expn;
-	bool m_isCompressor;
+	grkRectU32 cblk_grid_;
+	grkRectU32 bounds_;
+	grkPointU32 cblk_expn_;
+	bool isCompressor_;
 
   private:
 	TagTreeU16* incltree; /* inclusion tree */
@@ -165,7 +165,7 @@ struct Precinct : public grkRectU32
 {
 	Precinct(const grkRectU32& bounds, bool isCompressor, grkPointU32 cblk_expn)
 		: grkRectU32(bounds), precinctIndex(0),
-		  impl(new PrecinctImpl(isCompressor, this, cblk_expn)), m_cblk_expn(cblk_expn)
+		  impl(new PrecinctImpl(isCompressor, this, cblk_expn)), cblk_expn_(cblk_expn)
 	{}
 	~Precinct()
 	{
@@ -189,19 +189,19 @@ struct Precinct : public grkRectU32
 	}
 	uint32_t getCblkGridwidth(void)
 	{
-		return impl->m_cblk_grid.width();
+		return impl->cblk_grid_.width();
 	}
 	uint32_t getCblkGridHeight(void)
 	{
-		return impl->m_cblk_grid.height();
+		return impl->cblk_grid_.height();
 	}
 	uint32_t getNominalBlockSize(void)
 	{
-		return (1U << impl->m_cblk_expn.x) * (1U << impl->m_cblk_expn.y);
+		return (1U << impl->cblk_expn_.x) * (1U << impl->cblk_expn_.y);
 	}
 	uint64_t getNumCblks(void)
 	{
-		return impl->m_cblk_grid.area();
+		return impl->cblk_grid_.area();
 	}
 	CompressCodeblock* getCompressedBlockPtr(uint64_t cblkno)
 	{
@@ -217,17 +217,17 @@ struct Precinct : public grkRectU32
 	}
 	grkPointU32 getCblkExpn(void)
 	{
-		return m_cblk_expn;
+		return cblk_expn_;
 	}
 	grkRectU32 getCblkGrid(void)
 	{
-		return impl->m_cblk_grid;
+		return impl->cblk_grid_;
 	}
 	uint64_t precinctIndex;
 
   private:
 	PrecinctImpl* impl;
-	grkPointU32 m_cblk_expn;
+	grkPointU32 cblk_expn_;
 	PrecinctImpl* getImpl(void)
 	{
 		impl->initCodeBlocks(this);

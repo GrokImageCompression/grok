@@ -21,14 +21,14 @@ namespace grk
 struct logger
 {
 	logger();
-	void* m_error_data;
-	void* m_warning_data;
-	void* m_info_data;
+	void* error_data_;
+	void* warning_data_;
+	void* info_data_;
 	grk_msg_callback error_handler;
 	grk_msg_callback warning_handler;
 	grk_msg_callback info_handler;
 
-	static logger m_logger;
+	static logger logger_;
 };
 
 void GRK_INFO(const char* fmt, ...);

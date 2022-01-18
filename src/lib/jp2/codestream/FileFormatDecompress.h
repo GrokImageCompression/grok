@@ -84,7 +84,7 @@ class FileFormatDecompress : public FileFormat, public ICodeStreamDecompress
 	std::map<uint32_t, BOX_FUNC> header;
 	std::map<uint32_t, BOX_FUNC> img_header;
 
-	bool m_headerError;
+	bool headerError_;
 	AsocBox root_asoc;
 	CodeStreamDecompress* codeStream;
 	uint32_t jp2_state;

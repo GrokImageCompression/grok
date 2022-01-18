@@ -34,7 +34,7 @@ class PacketLengthCache
   private:
 	PacketLengthMarkers* pltMarkers;
 	SequentialCache<PacketInfo> packetInfoCache;
-	CodingParams* m_cp;
+	CodingParams* cp_;
 };
 
 } // namespace grk

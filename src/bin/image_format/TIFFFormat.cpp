@@ -38,16 +38,16 @@ ClientData::ClientData(void) : fd(0),
 #else
 							active(false),
 #endif
-							m_off(0)
+							off_(0)
 {}
 
 #ifdef GROK_HAVE_URING
 bool ClientData::write(void){
 	if (!active)
 		return false;
-	scheduled.offset = m_off;
+	scheduled.offset = off_;
 	uring.write(scheduled,reclaimed,max_reclaimed,num_reclaimed);
-	m_off += scheduled.dataLen;
+	off_ += scheduled.dataLen;
 	if (scheduled.pooled)
 		numPixelRequests++;
 	if (numPixelRequests == maxPixelRequests){
@@ -68,7 +68,7 @@ bool ClientData::isActive(void){
 	return active;
 }
 uint64_t ClientData::getAsynchFileLength(void){
-	return m_off;
+	return off_;
 }
 
 
@@ -235,23 +235,23 @@ bool TIFFFormat::encodeHeader(void)
 	int32_t firstExtraChannel = -1;
 	uint32_t num_colour_channels = 0;
 	size_t numExtraChannels = 0;
-	bool sgnd = m_image->comps[0].sgnd;
-	uint32_t width = m_image->comps[0].w;
-	uint32_t height = m_image->comps[0].h;
+	bool sgnd = image_->comps[0].sgnd;
+	uint32_t width = image_->comps[0].w;
+	uint32_t height = image_->comps[0].h;
 	uint8_t bps = getImagePrec();
 	numcomps = getImageNumComps();
-	bool subsampled = isFinalOutputSubsampled(m_image);
+	bool subsampled = isFinalOutputSubsampled(image_);
 	auto colourSpace = getImageColourSpace();
 
-	assert(m_image);
-	assert(m_fileName.c_str());
+	assert(image_);
+	assert(fileName_.c_str());
 
 	if(bps == 0)
 	{
-		spdlog::error("TIFFFormat::encodeHeader: m_image precision is zero.");
+		spdlog::error("TIFFFormat::encodeHeader: image_ precision is zero.");
 		goto cleanup;
 	}
-	if(!allComponentsSanityCheck(m_image, true))
+	if(!allComponentsSanityCheck(image_, true))
 	{
 		spdlog::error("TIFFFormat::encodeHeader: Image sanity check failed.");
 		goto cleanup;
@@ -282,12 +282,12 @@ bool TIFFFormat::encodeHeader(void)
 			case GRK_CLRSPC_SYCC:
 				if(subsampled && numcomps != 3)
 				{
-					spdlog::error("TIFFFormat::encodeHeader: subsampled YCbCr m_image with alpha "
+					spdlog::error("TIFFFormat::encodeHeader: subsampled YCbCr image_ with alpha "
 								  "not supported.");
 					goto cleanup;
 				}
-				chroma_subsample_x = m_image->comps[1].dx;
-				chroma_subsample_y = m_image->comps[1].dy;
+				chroma_subsample_x = image_->comps[1].dx;
+				chroma_subsample_y = image_->comps[1].dy;
 				tiPhoto = PHOTOMETRIC_YCBCR;
 				break;
 			case GRK_CLRSPC_DEFAULT_CIE:
@@ -305,35 +305,35 @@ bool TIFFFormat::encodeHeader(void)
 					  grk::maxNumPackComponents);
 		goto cleanup;
 	}
-	if(isFinalOutputSubsampled(m_image))
+	if(isFinalOutputSubsampled(image_))
 	{
 		if(tiPhoto != PHOTOMETRIC_YCBCR)
 		{
 			spdlog::error("TIFFFormat : subsampling only supported for YCbCr images");
 			goto cleanup;
 		}
-		if(!isChromaSubsampled(m_image))
+		if(!isChromaSubsampled(image_))
 		{
 			spdlog::error("TIFFFormat::encodeHeader: only chroma channels can be subsampled");
 			goto cleanup;
 		}
 	}
 	// extra channels (use actual number of components, before post processing)
-	for(uint32_t i = 0U; i < m_image->numcomps; ++i)
+	for(uint32_t i = 0U; i < image_->numcomps; ++i)
 	{
-		auto type = m_image->comps[i].type;
+		auto type = image_->comps[i].type;
 		assert(type == GRK_COMPONENT_TYPE_COLOUR ||
 				type ==GRK_COMPONENT_TYPE_OPACITY ||
 				type == GRK_COMPONENT_TYPE_PREMULTIPLIED_OPACITY ||
 				type == GRK_COMPONENT_TYPE_UNSPECIFIED);
-		if(m_image->comps[i].type != GRK_COMPONENT_TYPE_COLOUR)
+		if(image_->comps[i].type != GRK_COMPONENT_TYPE_COLOUR)
 		{
 			if(firstExtraChannel == -1)
 				firstExtraChannel = (int32_t)i;
 			numExtraChannels++;
 		}
 	}
-	// TIFF assumes that alpha channels occur as last channels in m_image.
+	// TIFF assumes that alpha channels occur as last channels in image_.
 	if(numExtraChannels > 0)
 	{
 		num_colour_channels = (uint32_t)(numcomps - (uint32_t)numExtraChannels);
@@ -341,27 +341,27 @@ bool TIFFFormat::encodeHeader(void)
 		{
 			spdlog::warn(
 				"TIFFFormat::encodeHeader: TIFF requires that non-colour channels occur as "
-				"last channels in m_image. "
+				"last channels in image_. "
 				"TIFFTAG_EXTRASAMPLES tag for extra channels will not be set");
 			numExtraChannels = 0;
 		}
 	}
-	clientData.maxPixelRequests = ((m_image->y1 - m_image->y0) + m_image->rowsPerStrip - 1) / m_image->rowsPerStrip;
+	clientData.maxPixelRequests = ((image_->y1 - image_->y0) + image_->rowsPerStrip - 1) / image_->rowsPerStrip;
 #ifdef _WIN32
-	tif = TIFFOpen(m_fileName.c_str(), "wb");
+	tif = TIFFOpen(fileName_.c_str(), "wb");
 #else
-	tif = MyTIFFOpen(m_fileName.c_str(), "wb");
+	tif = MyTIFFOpen(fileName_.c_str(), "wb");
 #endif
 	if(!tif)
 	{
-		spdlog::error("TIFFFormat::encodeHeader:failed to open {} for writing", m_fileName.c_str());
+		spdlog::error("TIFFFormat::encodeHeader:failed to open {} for writing", fileName_.c_str());
 		goto cleanup;
 	}
 	// calculate rows per strip, base on target 8K strip size
 	if(subsampled)
 		units = (width + chroma_subsample_x - 1) / chroma_subsample_x;
 	else
-		units = m_image->comps->w;
+		units = image_->comps->w;
 
 	TIFFSetField(tif, TIFFTAG_IMAGEWIDTH, width);
 	TIFFSetField(tif, TIFFTAG_IMAGELENGTH, height);
@@ -371,7 +371,7 @@ bool TIFFFormat::encodeHeader(void)
 	TIFFSetField(tif, TIFFTAG_ORIENTATION, ORIENTATION_TOPLEFT);
 	TIFFSetField(tif, TIFFTAG_PLANARCONFIG, PLANARCONFIG_CONTIG);
 	TIFFSetField(tif, TIFFTAG_PHOTOMETRIC, tiPhoto);
-	TIFFSetField(tif, TIFFTAG_ROWSPERSTRIP, m_image->rowsPerStrip);
+	TIFFSetField(tif, TIFFTAG_ROWSPERSTRIP, image_->rowsPerStrip);
 	if(tiPhoto == PHOTOMETRIC_YCBCR)
 	{
 		float refBlackWhite[6] = {0.0, 255.0, 128.0, 255.0, 128.0, 255.0};
@@ -393,45 +393,45 @@ bool TIFFFormat::encodeHeader(void)
 			if(compressionLevel_ != 0)
 				TIFFSetField(tif, TIFFTAG_COMPRESSION, compressionLevel_);
 	}
-	if(m_image->meta)
+	if(image_->meta)
 	{
-		if(m_image->meta->color.icc_profile_buf)
+		if(image_->meta->color.icc_profile_buf)
 		{
 			if(colourSpace == GRK_CLRSPC_ICC)
-				TIFFSetField(tif, TIFFTAG_ICCPROFILE, m_image->meta->color.icc_profile_len,
-							 m_image->meta->color.icc_profile_buf);
+				TIFFSetField(tif, TIFFTAG_ICCPROFILE, image_->meta->color.icc_profile_len,
+							 image_->meta->color.icc_profile_buf);
 		}
-		if(m_image->meta->xmp_buf && m_image->meta->xmp_len)
-			TIFFSetField(tif, TIFFTAG_XMLPACKET, m_image->meta->xmp_len, m_image->meta->xmp_buf);
-		if(m_image->meta->iptc_buf && m_image->meta->iptc_len)
+		if(image_->meta->xmp_buf && image_->meta->xmp_len)
+			TIFFSetField(tif, TIFFTAG_XMLPACKET, image_->meta->xmp_len, image_->meta->xmp_buf);
+		if(image_->meta->iptc_buf && image_->meta->iptc_len)
 		{
-			auto iptc_len = m_image->meta->iptc_len;
+			auto iptc_len = image_->meta->iptc_len;
 			// length must be multiple of 4
 			iptc_len += (4 - (iptc_len & 0x03));
-			if(iptc_len > m_image->meta->iptc_len)
+			if(iptc_len > image_->meta->iptc_len)
 			{
 				auto new_iptf_buf = new uint8_t[iptc_len];
 				memset(new_iptf_buf, 0, iptc_len);
-				memcpy(new_iptf_buf, m_image->meta->iptc_buf, m_image->meta->iptc_len);
-				delete[] m_image->meta->iptc_buf;
-				m_image->meta->iptc_buf = new_iptf_buf;
-				m_image->meta->iptc_len = iptc_len;
+				memcpy(new_iptf_buf, image_->meta->iptc_buf, image_->meta->iptc_len);
+				delete[] image_->meta->iptc_buf;
+				image_->meta->iptc_buf = new_iptf_buf;
+				image_->meta->iptc_len = iptc_len;
 			}
 			// Tag is of type TIFF_LONG, so byte length is divided by four
 			if(TIFFIsByteSwapped(tif))
-				TIFFSwabArrayOfLong((uint32_t*)m_image->meta->iptc_buf,
-									(tmsize_t)(m_image->meta->iptc_len / 4));
-			TIFFSetField(tif, TIFFTAG_RICHTIFFIPTC, (uint32_t)(m_image->meta->iptc_len / 4),
-						 (void*)m_image->meta->iptc_buf);
+				TIFFSwabArrayOfLong((uint32_t*)image_->meta->iptc_buf,
+									(tmsize_t)(image_->meta->iptc_len / 4));
+			TIFFSetField(tif, TIFFTAG_RICHTIFFIPTC, (uint32_t)(image_->meta->iptc_len / 4),
+						 (void*)image_->meta->iptc_buf);
 		}
 	}
-	if(m_image->capture_resolution[0] > 0 && m_image->capture_resolution[1] > 0)
+	if(image_->capture_resolution[0] > 0 && image_->capture_resolution[1] > 0)
 	{
 		TIFFSetField(tif, TIFFTAG_RESOLUTIONUNIT, RESUNIT_CENTIMETER); // cm
 		for(int i = 0; i < 2; ++i)
 		{
-			TIFFSetField(tif, TIFFTAG_XRESOLUTION, m_image->capture_resolution[0] / 100);
-			TIFFSetField(tif, TIFFTAG_YRESOLUTION, m_image->capture_resolution[1] / 100);
+			TIFFSetField(tif, TIFFTAG_XRESOLUTION, image_->capture_resolution[0] / 100);
+			TIFFSetField(tif, TIFFTAG_YRESOLUTION, image_->capture_resolution[1] / 100);
 		}
 	}
 	if(numExtraChannels)
@@ -440,12 +440,12 @@ bool TIFFFormat::encodeHeader(void)
 		numExtraChannels = 0;
 		for(uint32_t i = 0U; i < numcomps; ++i)
 		{
-			auto comp = m_image->comps + i;
+			auto comp = image_->comps + i;
 			if(comp->type != GRK_COMPONENT_TYPE_COLOUR)
 			{
 				if(comp->type == GRK_COMPONENT_TYPE_OPACITY ||
 				   comp->type == GRK_COMPONENT_TYPE_PREMULTIPLIED_OPACITY)
-					out[numExtraChannels++] = (m_image->comps[i].type == GRK_COMPONENT_TYPE_OPACITY)
+					out[numExtraChannels++] = (image_->comps[i].type == GRK_COMPONENT_TYPE_OPACITY)
 												  ? EXTRASAMPLE_UNASSALPHA
 												  : EXTRASAMPLE_ASSOCALPHA;
 				else
@@ -454,8 +454,8 @@ bool TIFFFormat::encodeHeader(void)
 		}
 		TIFFSetField(tif, TIFFTAG_EXTRASAMPLES, numExtraChannels, out.get());
 	}
-	//if (!m_image->interleavedData.data)
-	//	packedBuf = new uint8_t[(size_t)TIFFVStripSize(tif, (uint32_t)m_image->rowsPerStrip)];
+	//if (!image_->interleavedData.data)
+	//	packedBuf = new uint8_t[(size_t)TIFFVStripSize(tif, (uint32_t)image_->rowsPerStrip)];
 	success = true;
 	encodeState = IMAGE_FORMAT_ENCODED_HEADER;
 cleanup:
@@ -463,14 +463,14 @@ cleanup:
 }
 bool TIFFFormat::encodePixelsSync(grk_serialize_buf pixels){
 
-	bool rc =  encodePixelsCore(pixels,m_reclaimed,reclaimSize,&m_num_reclaimed);
+	bool rc =  encodePixelsCore(pixels,reclaimed_,reclaimSize,&num_reclaimed_);
 #ifndef GROK_HAVE_URING
 		pool.put(GrkSerializeBuf(pixels));
 #else
-	for (uint32_t i = 0; i < m_num_reclaimed; ++i)
-		pool.put(GrkSerializeBuf(m_reclaimed[i]));
+	for (uint32_t i = 0; i < num_reclaimed_; ++i)
+		pool.put(GrkSerializeBuf(reclaimed_[i]));
 #endif
-	m_num_reclaimed = 0;
+	num_reclaimed_ = 0;
 
 	return rc;
 }
@@ -518,25 +518,25 @@ bool TIFFFormat::encodeRows(uint32_t rowsToWrite)
 	if (encodeState & IMAGE_FORMAT_ENCODED_PIXELS)
 		return true;
 	bool success = false;
-	uint32_t height = m_image->comps[0].h;
+	uint32_t height = image_->comps[0].h;
 	rowsToWrite = (std::min)(rowsToWrite,height - rowsWritten);
 	if (rowsToWrite == 0)
 		return true;
 	int32_t const* planes[grk::maxNumPackComponents];
 	for(uint32_t i = 0U; i < numcomps; ++i)
-		planes[i] = m_image->comps[i].data;
+		planes[i] = image_->comps[i].data;
 	uint32_t h = rowsWritten;
 	GrkSerializeBuf packedBuf;
 	uint64_t offset = 0;
-	uint64_t packedLen = (uint64_t)TIFFVStripSize(tif, (uint32_t)m_image->rowsPerStrip);
+	uint64_t packedLen = (uint64_t)TIFFVStripSize(tif, (uint32_t)image_->rowsPerStrip);
 
-	if(isFinalOutputSubsampled(m_image)) {
+	if(isFinalOutputSubsampled(image_)) {
 		packedBuf = pool.get(packedLen);
 		auto bufPtr = (int8_t*)packedBuf.data;
 		for(; h < rowsWritten + rowsToWrite; h += chroma_subsample_y)
 		{
 			uint32_t rowsSoFar = h - rowsWritten;
-			if(rowsSoFar > 0 && (rowsSoFar % m_image->rowsPerStrip == 0))
+			if(rowsSoFar > 0 && (rowsSoFar % image_->rowsPerStrip == 0))
 			{
 				packedBuf.dataLen = bytesToWrite;
 				packedBuf.offset = offset;
@@ -556,9 +556,9 @@ bool TIFFFormat::encodeRows(uint32_t rowsToWrite)
 				{
 					for(size_t sub_x = xpos; sub_x < xpos + chroma_subsample_x; ++sub_x)
 					{
-						bool accept = (h + sub_h) < height && sub_x < m_image->comps[0].w;
+						bool accept = (h + sub_h) < height && sub_x < image_->comps[0].w;
 						*bufPtr++ =
-								accept ? (int8_t)planes[0][sub_x + sub_h * m_image->comps[0].stride] : 0;
+								accept ? (int8_t)planes[0][sub_x + sub_h * image_->comps[0].stride] : 0;
 						bytesToWrite++;
 					}
 				}
@@ -568,9 +568,9 @@ bool TIFFFormat::encodeRows(uint32_t rowsToWrite)
 				bytesToWrite += 2;
 				xpos += chroma_subsample_x;
 			}
-			planes[0] += m_image->comps[0].stride * chroma_subsample_y;
-			planes[1] += m_image->comps[1].stride - m_image->comps[1].w;
-			planes[2] += m_image->comps[2].stride - m_image->comps[2].w;
+			planes[0] += image_->comps[0].stride * chroma_subsample_y;
+			planes[1] += image_->comps[1].stride - image_->comps[1].w;
+			planes[2] += image_->comps[2].stride - image_->comps[2].w;
 		}
 		if (h != rowsWritten)
 			rowsWritten += h - chroma_subsample_y - rowsWritten;
@@ -584,24 +584,24 @@ bool TIFFFormat::encodeRows(uint32_t rowsToWrite)
 	else
 	{
 		tmsize_t hTarget = rowsWritten + rowsToWrite;
-		auto iter = grk::InterleaverFactory<int32_t>::makeInterleaver(m_image->comps[0].prec);
+		auto iter = grk::InterleaverFactory<int32_t>::makeInterleaver(image_->comps[0].prec);
 		if (!iter)
 			goto cleanup;
 		while(h < hTarget)
 		{
-			uint32_t stripRows = (std::min)(m_image->rowsPerStrip, height - h);
+			uint32_t stripRows = (std::min)(image_->rowsPerStrip, height - h);
 			packedBuf = pool.get(packedLen);
 			iter->interleave((int32_t**)planes,
-							m_image->numcomps,
+							image_->numcomps,
 							(uint8_t*)packedBuf.data,
-							m_image->comps[0].w,
-							m_image->comps[0].stride,
-							m_image->packedRowBytes,
+							image_->comps[0].w,
+							image_->comps[0].stride,
+							image_->packedRowBytes,
 							stripRows,
 							0);
 			packedBuf.pooled = true;
 			packedBuf.offset = offset;
-			packedBuf.dataLen = m_image->packedRowBytes * stripRows;
+			packedBuf.dataLen = image_->packedRowBytes * stripRows;
 			packedBuf.index = strip++;
 			if(!encodePixelsSync(packedBuf)) {
 				delete iter;
@@ -609,7 +609,7 @@ bool TIFFFormat::encodeRows(uint32_t rowsToWrite)
 			}
 			rowsWritten += stripRows;
 			h += stripRows;
-			offset += m_image->packedRowBytes * stripRows;
+			offset += image_->packedRowBytes * stripRows;
 		}
 		delete iter;
 	}

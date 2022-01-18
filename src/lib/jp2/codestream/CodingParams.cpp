@@ -28,7 +28,7 @@ CodingParams::CodingParams()
 	  t_grid_height(0), ppm_marker(nullptr), tcps(nullptr), tlm_markers(nullptr),
 	  plm_markers(nullptr)
 {
-	memset(&m_coding_params, 0, sizeof(m_coding_params));
+	memset(&coding_params_, 0, sizeof(coding_params_));
 }
 CodingParams::~CodingParams()
 {
@@ -66,11 +66,11 @@ TileCodingParams::TileCodingParams()
 	: csty(0), prg(GRK_PROG_UNKNOWN), numlayers(0), numLayersToDecompress(0), mct(0), numpocs(0),
 	  ppt_markers_count(0), ppt_markers(nullptr), ppt_data(nullptr), ppt_buffer(nullptr),
 	  ppt_data_size(0), ppt_len(0), main_qcd_qntsty(0), main_qcd_numStepSizes(0), tccps(nullptr),
-	  m_tilePartIndexCounter(-1), m_numTileParts(0), m_compressedTileData(nullptr),
-	  mct_norms(nullptr), m_mct_decoding_matrix(nullptr), m_mct_coding_matrix(nullptr),
-	  m_mct_records(nullptr), m_nb_mct_records(0), m_nb_max_mct_records(0), m_mcc_records(nullptr),
-	  m_nb_mcc_records(0), m_nb_max_mcc_records(0), cod(false), ppt(false), m_qcd(nullptr),
-	  m_ht(false)
+	  tilePartIndexCounter_(-1), numTileParts_(0), compressedTileData_(nullptr),
+	  mct_norms(nullptr), mct_decoding_matrix_(nullptr), mct_coding_matrix_(nullptr),
+	  mct_records_(nullptr), nb_mct_records_(0), nb_max_mct_records_(0), mcc_records_(nullptr),
+	  nb_mcc_records_(0), nb_max_mcc_records_(0), cod(false), ppt(false), qcd_(nullptr),
+	  ht_(false)
 {
 	for(auto i = 0; i < maxCompressLayersGRK; ++i)
 		rates[i] = 0.0;
@@ -84,29 +84,29 @@ TileCodingParams::~TileCodingParams()
 	if(ppt_markers != nullptr)
 	{
 		for(uint32_t i = 0U; i < ppt_markers_count; ++i)
-			grkFree(ppt_markers[i].m_data);
+			grkFree(ppt_markers[i].data_);
 		grkFree(ppt_markers);
 	}
 
 	delete[] ppt_buffer;
 	delete[] tccps;
-	grkFree(m_mct_coding_matrix);
-	grkFree(m_mct_decoding_matrix);
-	if(m_mcc_records)
-		grkFree(m_mcc_records);
-	if(m_mct_records)
+	grkFree(mct_coding_matrix_);
+	grkFree(mct_decoding_matrix_);
+	if(mcc_records_)
+		grkFree(mcc_records_);
+	if(mct_records_)
 	{
-		auto mct_data = m_mct_records;
-		for(uint32_t i = 0; i < m_nb_mct_records; ++i)
+		auto mct_data = mct_records_;
+		for(uint32_t i = 0; i < nb_mct_records_; ++i)
 		{
-			grkFree(mct_data->m_data);
+			grkFree(mct_data->data_);
 			++mct_data;
 		}
-		grkFree(m_mct_records);
+		grkFree(mct_records_);
 	}
 	grkFree(mct_norms);
-	delete m_compressedTileData;
-	delete m_qcd;
+	delete compressedTileData_;
+	delete qcd_;
 }
 
 bool TileCodingParams::copy(const TileCodingParams* rhs, const GrkImage* image)
@@ -116,78 +116,78 @@ bool TileCodingParams::copy(const TileCodingParams* rhs, const GrkImage* image)
 
 	// cache tccps
 	auto cachedTccps = tccps;
-	auto cachedQcd = m_qcd;
+	auto cachedQcd = qcd_;
 	*this = *rhs;
 	/* Initialize some values of the current tile coding parameters*/
 	cod = false;
 	ppt = false;
 	ppt_data = nullptr;
 	/* Remove memory not owned by this tile in case of early error return. */
-	m_mct_decoding_matrix = nullptr;
-	m_nb_max_mct_records = 0;
-	m_mct_records = nullptr;
-	m_nb_max_mcc_records = 0;
-	m_mcc_records = nullptr;
+	mct_decoding_matrix_ = nullptr;
+	nb_max_mct_records_ = 0;
+	mct_records_ = nullptr;
+	nb_max_mcc_records_ = 0;
+	mcc_records_ = nullptr;
 	// restore tccps
 	tccps = cachedTccps;
-	m_qcd = cachedQcd;
+	qcd_ = cachedQcd;
 
 	/* Get the mct_decoding_matrix of the dflt_tile_cp and copy them into the current tile cp*/
-	if(rhs->m_mct_decoding_matrix)
+	if(rhs->mct_decoding_matrix_)
 	{
-		m_mct_decoding_matrix = (float*)grkMalloc(mct_size);
-		if(!m_mct_decoding_matrix)
+		mct_decoding_matrix_ = (float*)grkMalloc(mct_size);
+		if(!mct_decoding_matrix_)
 			return false;
-		memcpy(m_mct_decoding_matrix, rhs->m_mct_decoding_matrix, mct_size);
+		memcpy(mct_decoding_matrix_, rhs->mct_decoding_matrix_, mct_size);
 	}
 
 	/* Get the mct_record of the dflt_tile_cp and copy them into the current tile cp*/
-	uint32_t mct_records_size = rhs->m_nb_max_mct_records * (uint32_t)sizeof(grk_mct_data);
-	m_mct_records = (grk_mct_data*)grkMalloc(mct_records_size);
-	if(!m_mct_records)
+	uint32_t mct_records_size = rhs->nb_max_mct_records_ * (uint32_t)sizeof(grk_mct_data);
+	mct_records_ = (grk_mct_data*)grkMalloc(mct_records_size);
+	if(!mct_records_)
 		return false;
-	memcpy(m_mct_records, rhs->m_mct_records, mct_records_size);
+	memcpy(mct_records_, rhs->mct_records_, mct_records_size);
 
 	/* Copy the mct record data from dflt_tile_cp to the current tile*/
 
-	for(uint32_t j = 0; j < rhs->m_nb_mct_records; ++j)
+	for(uint32_t j = 0; j < rhs->nb_mct_records_; ++j)
 	{
-		auto src_mct_rec = rhs->m_mct_records + j;
-		auto dest_mct_rec = m_mct_records + j;
-		if(src_mct_rec->m_data)
+		auto src_mct_rec = rhs->mct_records_ + j;
+		auto dest_mct_rec = mct_records_ + j;
+		if(src_mct_rec->data_)
 		{
-			dest_mct_rec->m_data = (uint8_t*)grkMalloc(src_mct_rec->m_data_size);
-			if(!dest_mct_rec->m_data)
+			dest_mct_rec->data_ = (uint8_t*)grkMalloc(src_mct_rec->data_size_);
+			if(!dest_mct_rec->data_)
 				return false;
-			memcpy(dest_mct_rec->m_data, src_mct_rec->m_data, src_mct_rec->m_data_size);
+			memcpy(dest_mct_rec->data_, src_mct_rec->data_, src_mct_rec->data_size_);
 		}
 		/* Update with each pass to free exactly what has been allocated on early return. */
-		m_nb_max_mct_records += 1;
+		nb_max_mct_records_ += 1;
 	}
 
 	/* Get the mcc_record of the dflt_tile_cp and copy them into the current tile cp*/
 	uint32_t mcc_records_size =
-		rhs->m_nb_max_mcc_records * (uint32_t)sizeof(grk_simple_mcc_decorrelation_data);
-	m_mcc_records = (grk_simple_mcc_decorrelation_data*)grkMalloc(mcc_records_size);
-	if(!m_mcc_records)
+		rhs->nb_max_mcc_records_ * (uint32_t)sizeof(grk_simple_mcc_decorrelation_data);
+	mcc_records_ = (grk_simple_mcc_decorrelation_data*)grkMalloc(mcc_records_size);
+	if(!mcc_records_)
 		return false;
-	memcpy(m_mcc_records, rhs->m_mcc_records, mcc_records_size);
-	m_nb_max_mcc_records = rhs->m_nb_max_mcc_records;
+	memcpy(mcc_records_, rhs->mcc_records_, mcc_records_size);
+	nb_max_mcc_records_ = rhs->nb_max_mcc_records_;
 
 	/* Copy the mcc record data from dflt_tile_cp to the current tile*/
-	for(uint32_t j = 0; j < rhs->m_nb_max_mcc_records; ++j)
+	for(uint32_t j = 0; j < rhs->nb_max_mcc_records_; ++j)
 	{
-		auto src_mcc_rec = rhs->m_mcc_records + j;
-		auto dest_mcc_rec = m_mcc_records + j;
-		if(src_mcc_rec->m_decorrelation_array)
+		auto src_mcc_rec = rhs->mcc_records_ + j;
+		auto dest_mcc_rec = mcc_records_ + j;
+		if(src_mcc_rec->decorrelation_array_)
 		{
-			uint32_t offset = (uint32_t)(src_mcc_rec->m_decorrelation_array - rhs->m_mct_records);
-			dest_mcc_rec->m_decorrelation_array = m_mct_records + offset;
+			uint32_t offset = (uint32_t)(src_mcc_rec->decorrelation_array_ - rhs->mct_records_);
+			dest_mcc_rec->decorrelation_array_ = mct_records_ + offset;
 		}
-		if(src_mcc_rec->m_offset_array)
+		if(src_mcc_rec->offset_array_)
 		{
-			uint32_t offset = (uint32_t)(src_mcc_rec->m_offset_array - rhs->m_mct_records);
-			dest_mcc_rec->m_offset_array = m_mct_records + offset;
+			uint32_t offset = (uint32_t)(src_mcc_rec->offset_array_ - rhs->mct_records_);
+			dest_mcc_rec->offset_array_ = mct_records_ + offset;
 		}
 	}
 	memcpy(tccps, rhs->tccps, tccp_size);
@@ -197,14 +197,14 @@ bool TileCodingParams::copy(const TileCodingParams* rhs, const GrkImage* image)
 
 void TileCodingParams::setIsHT(bool ht, bool reversible, uint8_t guardBits)
 {
-	m_ht = ht;
-	if(!m_qcd)
-		m_qcd = T1Factory::makeQuantizer(ht, reversible, guardBits);
+	ht_ = ht;
+	if(!qcd_)
+		qcd_ = T1Factory::makeQuantizer(ht, reversible, guardBits);
 }
 
 bool TileCodingParams::isHT(void)
 {
-	return m_ht;
+	return ht_;
 }
 uint32_t TileCodingParams::getNumProgressions()
 {
@@ -217,7 +217,7 @@ bool TileCodingParams::hasPoc(void)
 TileComponentCodingParams::TileComponentCodingParams()
 	: csty(0), numresolutions(0), cblkw(0), cblkh(0), cblk_sty(0), qmfbid(0),
 	  quantizationMarkerSet(false), fromQCC(false), fromTileHeader(false), qntsty(0),
-	  numStepSizes(0), numgbits(0), roishift(0), m_dc_level_shift(0)
+	  numStepSizes(0), numgbits(0), roishift(0), dc_level_shift_(0)
 {
 	for(uint32_t i = 0; i < GRK_J2K_MAXRLVLS; ++i)
 	{
@@ -227,27 +227,27 @@ TileComponentCodingParams::TileComponentCodingParams()
 }
 
 DecompressorState::DecompressorState()
-	: m_default_tcp(nullptr), m_start_tile_x_index(0), m_start_tile_y_index(0),
-	  m_end_tile_x_index(0), m_end_tile_y_index(0), lastSotReadPosition(0),
+	: default_tcp_(nullptr), start_tile_x_index_(0), start_tile_y_index_(0),
+	  end_tile_x_index_(0), end_tile_y_index_(0), lastSotReadPosition(0),
 	  lastTilePartInCodeStream(false), lastTilePartWasRead(false), skipTileData(false),
-	  m_state(DECOMPRESS_STATE_NONE)
+	  state_(DECOMPRESS_STATE_NONE)
 {}
 
 uint16_t DecompressorState::getState(void)
 {
-	return m_state;
+	return state_;
 }
 void DecompressorState::setState(uint16_t state)
 {
-	m_state = state;
+	state_ = state;
 }
 void DecompressorState::orState(uint16_t state)
 {
-	m_state |= state;
+	state_ |= state;
 }
 void DecompressorState::andState(uint16_t state)
 {
-	m_state &= state;
+	state_ &= state;
 }
 bool DecompressorState::findNextTile(CodeStreamDecompress* codeStream)
 {

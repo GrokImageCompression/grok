@@ -26,14 +26,14 @@ class SequentialCache
   public:
 	SequentialCache(void) : SequentialCache(kSequentialChunkSize) {}
 	SequentialCache(uint64_t maxChunkSize)
-		: m_chunkSize(std::min<uint64_t>(maxChunkSize, kSequentialChunkSize)), m_currChunk(nullptr),
-		  m_index(0)
+		: chunkSize_(std::min<uint64_t>(maxChunkSize, kSequentialChunkSize)), currChunk_(nullptr),
+		  index_(0)
 	{}
 	virtual ~SequentialCache(void)
 	{
 		for(auto& ch : chunks)
 		{
-			for(size_t i = 0; i < m_chunkSize; ++i)
+			for(size_t i = 0; i < chunkSize_; ++i)
 				delete ch[i];
 			delete[] ch;
 		}
@@ -42,16 +42,16 @@ class SequentialCache
 	{
 		if(chunks.empty())
 			return;
-		m_index = 0;
-		m_currChunk = chunks[0];
+		index_ = 0;
+		currChunk_ = chunks[0];
 	}
 	T* get()
 	{
-		uint64_t itemIndex = m_index % m_chunkSize;
-		uint64_t chunkIndex = m_index / m_chunkSize;
-		bool initialized = (m_currChunk != nullptr);
+		uint64_t itemIndex = index_ % chunkSize_;
+		uint64_t chunkIndex = index_ / chunkSize_;
+		bool initialized = (currChunk_ != nullptr);
 		bool lastChunk = (chunkIndex == chunks.size() - 1);
-		bool endOfChunk = (itemIndex == m_chunkSize - 1);
+		bool endOfChunk = (itemIndex == chunkSize_ - 1);
 		bool createNew = !initialized || (lastChunk && endOfChunk);
 		itemIndex++;
 		if(createNew || endOfChunk)
@@ -60,23 +60,23 @@ class SequentialCache
 			chunkIndex++;
 			if(createNew)
 			{
-				m_currChunk = new T*[m_chunkSize];
-				memset(m_currChunk, 0, m_chunkSize * sizeof(T*));
-				chunks.push_back(m_currChunk);
+				currChunk_ = new T*[chunkSize_];
+				memset(currChunk_, 0, chunkSize_ * sizeof(T*));
+				chunks.push_back(currChunk_);
 			}
 			else
 			{
-				m_currChunk = chunks[chunkIndex];
+				currChunk_ = chunks[chunkIndex];
 			}
 		}
-		auto item = m_currChunk[itemIndex];
+		auto item = currChunk_[itemIndex];
 		if(!item)
 		{
 			item = create();
-			m_currChunk[itemIndex] = item;
+			currChunk_[itemIndex] = item;
 		}
 		if(initialized)
-			m_index++;
+			index_++;
 		return item;
 	}
 
@@ -89,9 +89,9 @@ class SequentialCache
 
   private:
 	std::vector<T**> chunks;
-	uint64_t m_chunkSize;
-	T** m_currChunk;
-	uint64_t m_index;
+	uint64_t chunkSize_;
+	T** currChunk_;
+	uint64_t index_;
 	static constexpr uint64_t kSequentialChunkSize = 1024;
 };
 

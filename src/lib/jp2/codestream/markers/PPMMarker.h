@@ -27,8 +27,8 @@ namespace grk
 {
 struct grk_ppx
 {
-	uint8_t* m_data; /* m_data == nullptr => Zppx not read yet */
-	uint32_t m_data_size;
+	uint8_t* data_; /* data_ == nullptr => Zppx not read yet */
+	uint32_t data_size_;
 };
 
 class PPMMarker
@@ -52,7 +52,7 @@ class PPMMarker
 	 */
 	bool merge(void);
 
-	std::vector<grkBufferU8> m_tile_packet_headers;
+	std::vector<grkBufferU8> tile_packet_headers_;
 
   private:
 	/** number of ppm markers (reserved size) */

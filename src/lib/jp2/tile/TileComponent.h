@@ -52,11 +52,11 @@ struct TileComponent : public grkRectU32
   private:
 	template<typename F>
 	bool postDecompressImpl(int32_t* srcData, DecompressBlockExec* block, uint16_t stride);
-	ISparseCanvas* m_sa;
+	ISparseCanvas* sa_;
 	bool wholeTileDecompress;
-	bool m_is_encoder;
+	bool is_encoder_;
 	TileComponentWindowBuffer<int32_t>* buf;
-	TileComponentCodingParams* m_tccp;
+	TileComponentCodingParams* tccp_;
 };
 
 } // namespace grk

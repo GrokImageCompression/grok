@@ -25,18 +25,18 @@ namespace grk
 {
 
 CodeStreamDecompress::CodeStreamDecompress(IBufferedStream* stream)
-	: CodeStream(stream), wholeTileDecompress(true), m_curr_marker(0), m_headerError(false),
-	  m_tile_ind_to_dec(-1), m_marker_scratch(nullptr), m_marker_scratch_size(0),
-	  m_outputImage(nullptr), m_tileCache(new TileCache())
+	: CodeStream(stream), wholeTileDecompress(true), curr_marker_(0), headerError_(false),
+	  tile_ind_to_dec_(-1), marker_scratch_(nullptr), marker_scratch_size_(0),
+	  outputImage_(nullptr), tileCache_(new TileCache())
 {
-	m_decompressorState.m_default_tcp = new TileCodingParams();
-	m_decompressorState.lastSotReadPosition = 0;
+	decompressorState_.default_tcp_ = new TileCodingParams();
+	decompressorState_.lastSotReadPosition = 0;
 
 	/* code stream index creation */
 	codeStreamInfo = new CodeStreamInfo(stream);
 	if(!codeStreamInfo)
 	{
-		delete m_decompressorState.m_default_tcp;
+		delete decompressorState_.default_tcp_;
 		throw std::runtime_error("Out of memory");
 	}
 	marker_map = {
@@ -105,35 +105,35 @@ CodeStreamDecompress::~CodeStreamDecompress()
 {
 	for(auto& val : marker_map)
 		delete val.second;
-	delete m_decompressorState.m_default_tcp;
-	delete[] m_marker_scratch;
-	if(m_outputImage)
-		grk_object_unref(&m_outputImage->obj);
-	delete m_tileCache;
+	delete decompressorState_.default_tcp_;
+	delete[] marker_scratch_;
+	if(outputImage_)
+		grk_object_unref(&outputImage_->obj);
+	delete tileCache_;
 }
 GrkImage* CodeStreamDecompress::getCompositeImage()
 {
-	return m_tileCache->getComposite();
+	return tileCache_->getComposite();
 }
 TileProcessor* CodeStreamDecompress::allocateProcessor(uint16_t tileIndex)
 {
-	auto tileCache = m_tileCache->get(tileIndex);
+	auto tileCache = tileCache_->get(tileIndex);
 	auto tileProcessor = tileCache ? tileCache->processor : nullptr;
 	if(!tileProcessor)
 	{
-		tileProcessor = new TileProcessor(tileIndex,this, m_stream, false, wholeTileDecompress);
-		m_tileCache->put(tileIndex, tileProcessor);
+		tileProcessor = new TileProcessor(tileIndex,this, stream_, false, wholeTileDecompress);
+		tileCache_->put(tileIndex, tileProcessor);
 	}
-	m_currentTileProcessor = tileProcessor;
+	currentTileProcessor_ = tileProcessor;
 
-	return m_currentTileProcessor;
+	return currentTileProcessor_;
 }
 TileCodingParams* CodeStreamDecompress::get_current_decode_tcp()
 {
-	auto tileProcessor = m_currentTileProcessor;
+	auto tileProcessor = currentTileProcessor_;
 
-	return (isDecodingTilePartHeader()) ? m_cp.tcps + tileProcessor->getIndex()
-										: m_decompressorState.m_default_tcp;
+	return (isDecodingTilePartHeader()) ? cp_.tcps + tileProcessor->getIndex()
+										: decompressorState_.default_tcp_;
 }
 CodeStreamInfo* CodeStreamDecompress::getCodeStreamInfo(void)
 {
@@ -141,20 +141,20 @@ CodeStreamInfo* CodeStreamDecompress::getCodeStreamInfo(void)
 }
 bool CodeStreamDecompress::isDecodingTilePartHeader()
 {
-	return (m_decompressorState.getState() & DECOMPRESS_STATE_TPH);
+	return (decompressorState_.getState() & DECOMPRESS_STATE_TPH);
 }
 DecompressorState* CodeStreamDecompress::getDecompressorState(void)
 {
-	return &m_decompressorState;
+	return &decompressorState_;
 }
 GrkImage* CodeStreamDecompress::getImage(uint16_t tileIndex)
 {
-	auto entry = m_tileCache->get(tileIndex);
+	auto entry = tileCache_->get(tileIndex);
 	return entry ? entry->processor->getImage() : nullptr;
 }
 std::vector<GrkImage*> CodeStreamDecompress::getAllImages(void)
 {
-	return m_tileCache->getAllImages();
+	return tileCache_->getAllImages();
 }
 GrkImage* CodeStreamDecompress::getImage()
 {
@@ -162,28 +162,28 @@ GrkImage* CodeStreamDecompress::getImage()
 }
 bool CodeStreamDecompress::readHeader(grk_header_info* header_info)
 {
-	if(m_headerError)
+	if(headerError_)
 		return false;
 
-	if(!m_headerImage)
+	if(!headerImage_)
 	{
-		m_headerImage = new GrkImage();
+		headerImage_ = new GrkImage();
 
-		m_validation_list.push_back(std::bind(&CodeStreamDecompress::decompressValidation, this));
-		if(!exec(m_validation_list))
+		validation_list_.push_back(std::bind(&CodeStreamDecompress::decompressValidation, this));
+		if(!exec(validation_list_))
 		{
-			m_headerError = true;
+			headerError_ = true;
 			return false;
 		}
-		m_procedure_list.push_back(std::bind(&CodeStreamDecompress::readHeaderProcedure, this));
-		m_procedure_list.push_back(std::bind(&CodeStreamDecompress::copy_default_tcp, this));
-		if(!exec(m_procedure_list))
+		procedure_list_.push_back(std::bind(&CodeStreamDecompress::readHeaderProcedure, this));
+		procedure_list_.push_back(std::bind(&CodeStreamDecompress::copy_default_tcp, this));
+		if(!exec(procedure_list_))
 		{
-			m_headerError = true;
+			headerError_ = true;
 			return false;
 		}
 		auto composite = getCompositeImage();
-		m_headerImage->copyHeader(composite);
+		headerImage_->copyHeader(composite);
 		if (header_info) {
 			composite->decompressFormat = header_info->decompressFormat;
 			composite->forceRGB = header_info->forceRGB;
@@ -194,8 +194,8 @@ bool CodeStreamDecompress::readHeader(grk_header_info* header_info)
 	}
 	if(header_info)
 	{
-		auto cp = &(m_cp);
-		auto tcp = m_decompressorState.m_default_tcp;
+		auto cp = &(cp_);
+		auto tcp = decompressorState_.default_tcp_;
 		auto tccp = tcp->tccps;
 
 		header_info->cblockw_init = 1U << tccp->cblkw;
@@ -213,33 +213,33 @@ bool CodeStreamDecompress::readHeader(grk_header_info* header_info)
 			header_info->prcw_init[i] = 1U << tccp->precinctWidthExp[i];
 			header_info->prch_init[i] = 1U << tccp->precinctHeightExp[i];
 		}
-		header_info->tx0 = m_cp.tx0;
-		header_info->ty0 = m_cp.ty0;
+		header_info->tx0 = cp_.tx0;
+		header_info->ty0 = cp_.ty0;
 
-		header_info->t_width = m_cp.t_width;
-		header_info->t_height = m_cp.t_height;
+		header_info->t_width = cp_.t_width;
+		header_info->t_height = cp_.t_height;
 
-		header_info->t_grid_width = m_cp.t_grid_width;
-		header_info->t_grid_height = m_cp.t_grid_height;
+		header_info->t_grid_width = cp_.t_grid_width;
+		header_info->t_grid_height = cp_.t_grid_height;
 
 		header_info->numlayers = tcp->numlayers;
 
-		header_info->num_comments = m_cp.num_comments;
+		header_info->num_comments = cp_.num_comments;
 		for(size_t i = 0; i < header_info->num_comments; ++i)
 		{
-			header_info->comment[i] = m_cp.comment[i];
-			header_info->comment_len[i] = m_cp.comment_len[i];
-			header_info->isBinaryComment[i] = m_cp.isBinaryComment[i];
+			header_info->comment[i] = cp_.comment[i];
+			header_info->comment_len[i] = cp_.comment_len[i];
+			header_info->isBinaryComment[i] = cp_.isBinaryComment[i];
 		}
 	}
 	return true;
 }
 bool CodeStreamDecompress::setDecompressWindow(grkRectU32 window)
 {
-	auto cp = &(m_cp);
-	auto image = m_headerImage;
+	auto cp = &(cp_);
+	auto image = headerImage_;
 	auto compositeImage = getCompositeImage();
-	auto decompressor = &m_decompressorState;
+	auto decompressor = &decompressorState_;
 
 	/* Check if we have read the main header */
 	if(decompressor->getState() != DECOMPRESS_STATE_TPH_SOT)
@@ -250,10 +250,10 @@ bool CodeStreamDecompress::setDecompressWindow(grkRectU32 window)
 
 	if(window == grkRectU32(0, 0, 0, 0))
 	{
-		decompressor->m_start_tile_x_index = 0;
-		decompressor->m_start_tile_y_index = 0;
-		decompressor->m_end_tile_x_index = cp->t_grid_width;
-		decompressor->m_end_tile_y_index = cp->t_grid_height;
+		decompressor->start_tile_x_index_ = 0;
+		decompressor->start_tile_y_index_ = 0;
+		decompressor->end_tile_x_index_ = cp->t_grid_width;
+		decompressor->end_tile_y_index_ = cp->t_grid_height;
 	} else {
 		/* Check if the window provided by the user are correct */
 		uint32_t start_x = window.x0 + image->x0;
@@ -270,7 +270,7 @@ bool CodeStreamDecompress::setDecompressWindow(grkRectU32 window)
 		}
 		else
 		{
-			decompressor->m_start_tile_x_index = (start_x - cp->tx0) / cp->t_width;
+			decompressor->start_tile_x_index_ = (start_x - cp->tx0) / cp->t_width;
 			compositeImage->x0 = start_x;
 		}
 
@@ -284,7 +284,7 @@ bool CodeStreamDecompress::setDecompressWindow(grkRectU32 window)
 		}
 		else
 		{
-			decompressor->m_start_tile_y_index = (start_y - cp->ty0) / cp->t_height;
+			decompressor->start_tile_y_index_ = (start_y - cp->ty0) / cp->t_height;
 			compositeImage->y0 = start_y;
 		}
 
@@ -296,7 +296,7 @@ bool CodeStreamDecompress::setDecompressWindow(grkRectU32 window)
 			GRK_WARN("Right position of the decompress window (%u)"
 					 " is outside the image area (Xsiz=%u).",
 					 end_x, image->x1);
-			decompressor->m_end_tile_x_index = cp->t_grid_width;
+			decompressor->end_tile_x_index_ = cp->t_grid_width;
 			compositeImage->x1 = image->x1;
 		}
 		else
@@ -304,7 +304,7 @@ bool CodeStreamDecompress::setDecompressWindow(grkRectU32 window)
 			// avoid divide by zero
 			if(cp->t_width == 0)
 				return false;
-			decompressor->m_end_tile_x_index = ceildiv<uint32_t>(end_x - cp->tx0, cp->t_width);
+			decompressor->end_tile_x_index_ = ceildiv<uint32_t>(end_x - cp->tx0, cp->t_width);
 			compositeImage->x1 = end_x;
 		}
 
@@ -314,7 +314,7 @@ bool CodeStreamDecompress::setDecompressWindow(grkRectU32 window)
 			GRK_WARN("Bottom position of the decompress window (%u)"
 					 " is outside of the image area (Ysiz=%u).",
 					 end_y, image->y1);
-			decompressor->m_end_tile_y_index = cp->t_grid_height;
+			decompressor->end_tile_y_index_ = cp->t_grid_height;
 			compositeImage->y1 = image->y1;
 		}
 		else
@@ -322,11 +322,11 @@ bool CodeStreamDecompress::setDecompressWindow(grkRectU32 window)
 			// avoid divide by zero
 			if(cp->t_height == 0)
 				return false;
-			decompressor->m_end_tile_y_index = ceildiv<uint32_t>(end_y - cp->ty0, cp->t_height);
+			decompressor->end_tile_y_index_ = ceildiv<uint32_t>(end_y - cp->ty0, cp->t_height);
 			compositeImage->y1 = end_y;
 		}
 		wholeTileDecompress = false;
-		if(!compositeImage->subsampleAndReduce(cp->m_coding_params.m_dec.m_reduce))
+		if(!compositeImage->subsampleAndReduce(cp->coding_params_.dec_.reduce_))
 			return false;
 
 		GRK_INFO("Decompress window set to (%d,%d,%d,%d)", compositeImage->x0 - image->x0,
@@ -335,7 +335,7 @@ bool CodeStreamDecompress::setDecompressWindow(grkRectU32 window)
 
 	}
 	compositeImage->validateColourSpace();
-	compositeImage->postReadHeader(&m_cp);
+	compositeImage->postReadHeader(&cp_);
 
 	return true;
 }
@@ -343,38 +343,38 @@ void CodeStreamDecompress::initDecompress(grk_decompress_core_params* parameters
 {
 	assert(parameters);
 
-	m_cp.m_coding_params.m_dec.m_layer = parameters->max_layers;
-	m_cp.m_coding_params.m_dec.m_reduce = parameters->reduce;
-	m_tileCache->setStrategy(parameters->tileCacheStrategy);
+	cp_.coding_params_.dec_.layer_ = parameters->max_layers;
+	cp_.coding_params_.dec_.reduce_ = parameters->reduce;
+	tileCache_->setStrategy(parameters->tileCacheStrategy);
 	serialize_data = parameters->serialize_data;
 	serializeBufferCallback = parameters->serializeBufferCallback;
 }
 bool CodeStreamDecompress::decompress(grk_plugin_tile* tile)
 {
-	m_procedure_list.push_back(std::bind(&CodeStreamDecompress::decompressTiles, this));
+	procedure_list_.push_back(std::bind(&CodeStreamDecompress::decompressTiles, this));
 	current_plugin_tile = tile;
 
 	return decompressExec();
 }
 bool CodeStreamDecompress::decompressTile(uint16_t tileIndex)
 {
-	auto entry = m_tileCache->get(tileIndex);
+	auto entry = tileCache_->get(tileIndex);
 	if(entry && entry->processor && entry->processor->getImage())
 		return true;
 
 	// another tile has already been decoded
-	if(m_outputImage)
+	if(outputImage_)
 	{
 		/* Copy code stream image information to composite image */
-		m_headerImage->copyHeader(getCompositeImage());
+		headerImage_->copyHeader(getCompositeImage());
 	}
 
-	uint16_t numTilesToDecompress = (uint16_t)(m_cp.t_grid_width * m_cp.t_grid_height);
+	uint16_t numTilesToDecompress = (uint16_t)(cp_.t_grid_width * cp_.t_grid_height);
 	if(codeStreamInfo)
 	{
 		if(!codeStreamInfo->allocTileInfo(numTilesToDecompress))
 		{
-			m_headerError = true;
+			headerError_ = true;
 			return false;
 		}
 	}
@@ -388,12 +388,12 @@ bool CodeStreamDecompress::decompressTile(uint16_t tileIndex)
 	}
 
 	/* Compute the dimension of the desired tile*/
-	uint32_t tile_x = tileIndex % m_cp.t_grid_width;
-	uint32_t tile_y = tileIndex / m_cp.t_grid_width;
+	uint32_t tile_x = tileIndex % cp_.t_grid_width;
+	uint32_t tile_y = tileIndex / cp_.t_grid_width;
 
 	auto imageBounds =
 		grkRectU32(compositeImage->x0, compositeImage->y0, compositeImage->x1, compositeImage->y1);
-	auto tileBounds = m_cp.getTileBounds(compositeImage, tile_x, tile_y);
+	auto tileBounds = cp_.getTileBounds(compositeImage, tile_x, tile_y);
 	// crop tile bounds with image bounds
 	auto croppedImageBounds = imageBounds.intersection(tileBounds);
 	if(imageBounds.non_empty() && tileBounds.non_empty() && croppedImageBounds.non_empty())
@@ -411,7 +411,7 @@ bool CodeStreamDecompress::decompressTile(uint16_t tileIndex)
 		croppedImageBounds = imageBounds;
 	}
 
-	auto reduce = m_cp.m_coding_params.m_dec.m_reduce;
+	auto reduce = cp_.coding_params_.dec_.reduce_;
 	for(uint32_t compno = 0; compno < compositeImage->numcomps; ++compno)
 	{
 		auto comp = compositeImage->comps + compno;
@@ -422,43 +422,43 @@ bool CodeStreamDecompress::decompressTile(uint16_t tileIndex)
 		comp->w = reducedCompBounds.width();
 		comp->h = reducedCompBounds.height();
 	}
-	compositeImage->postReadHeader(&m_cp);
-	m_tile_ind_to_dec = (int32_t)tileIndex;
+	compositeImage->postReadHeader(&cp_);
+	tile_ind_to_dec_ = (int32_t)tileIndex;
 
 	// reset tile part numbers, in case we are re-using the same codec object
 	// from previous decompress
 	for(uint32_t i = 0; i < numTilesToDecompress; ++i)
-		m_cp.tcps[i].m_tilePartIndexCounter = -1;
+		cp_.tcps[i].tilePartIndexCounter_ = -1;
 
 	/* customization of the decoding */
-	m_procedure_list.push_back([this] { return decompressTile(); });
+	procedure_list_.push_back([this] { return decompressTile(); });
 
 	return decompressExec();
 }
 bool CodeStreamDecompress::endOfCodeStream(void)
 {
-	return m_decompressorState.getState() == DECOMPRESS_STATE_EOC ||
-		   m_decompressorState.getState() == DECOMPRESS_STATE_NO_EOC ||
-		   m_stream->numBytesLeft() == 0;
+	return decompressorState_.getState() == DECOMPRESS_STATE_EOC ||
+		   decompressorState_.getState() == DECOMPRESS_STATE_NO_EOC ||
+		   stream_->numBytesLeft() == 0;
 }
 bool CodeStreamDecompress::decompressTiles(void)
 {
-	uint16_t numTilesToDecompress = (uint16_t)(m_cp.t_grid_height * m_cp.t_grid_width);
+	uint16_t numTilesToDecompress = (uint16_t)(cp_.t_grid_height * cp_.t_grid_width);
 	if(codeStreamInfo)
 	{
 		if(!codeStreamInfo->allocTileInfo(numTilesToDecompress))
 		{
-			m_headerError = true;
+			headerError_ = true;
 			return false;
 		}
 	}
 	if (!createOutputImage())
 		return false;
 
-	m_stripCache.init(m_cp.t_grid_width,
-					  m_cp.t_height,
-					  m_cp.t_grid_height,
-					  m_outputImage,
+	stripCache_.init(cp_.t_grid_width,
+					  cp_.t_height,
+					  cp_.t_grid_height,
+					  outputImage_,
 					  serialize_data,
 					  serializeBufferCallback);
 
@@ -482,21 +482,21 @@ bool CodeStreamDecompress::decompressTiles(void)
 		}
 		catch(InvalidMarkerException& ime)
 		{
-			GRK_ERROR("Found invalid marker : 0x%x", ime.m_marker);
+			GRK_ERROR("Found invalid marker : 0x%x", ime.marker_);
 			success = false;
 			goto cleanup;
 		}
 		if(!canDecompress)
 			continue;
-		if(!m_currentTileProcessor)
+		if(!currentTileProcessor_)
 		{
 			GRK_ERROR("Missing SOT marker");
 			success = false;
 			goto cleanup;
 		}
 		// 2. find next tile
-		auto processor = m_currentTileProcessor;
-		m_currentTileProcessor = nullptr;
+		auto processor = currentTileProcessor_;
+		currentTileProcessor_ = nullptr;
 		try
 		{
 			if(!findNextTile(processor))
@@ -527,17 +527,17 @@ bool CodeStreamDecompress::decompressTiles(void)
 				else
 				{
 					numTilesDecompressed++;
-					if(m_outputImage->multiTile && processor->getImage()) {
-						if (wholeTileDecompress && m_outputImage->canAllocInterleaved(&m_cp)) {
-							if (!m_stripCache.composite(processor->getImage()))
+					if(outputImage_->multiTile && processor->getImage()) {
+						if (wholeTileDecompress && outputImage_->canAllocInterleaved(&cp_)) {
+							if (!stripCache_.composite(processor->getImage()))
 								success = false;
 						} else {
-							if (!m_outputImage->composite(processor->getImage()))
+							if (!outputImage_->composite(processor->getImage()))
 								success = false;
 						}
 					}
 					//if cache strategy set to none, then delete image
-					if (!success || m_tileCache->getStrategy() == GRK_TILE_CACHE_NONE){
+					if (!success || tileCache_->getStrategy() == GRK_TILE_CACHE_NONE){
 						processor->release();
 					}
 				}
@@ -565,7 +565,7 @@ bool CodeStreamDecompress::decompressTiles(void)
 	// check if there is another tile that has not been processed
 	// we will reject if it has the TPSot problem
 	// (https://github.com/uclouvain/openjpeg/issues/254)
-	if(m_curr_marker == J2K_MS_SOT && m_stream->numBytesLeft())
+	if(curr_marker_ == J2K_MS_SOT && stream_->numBytesLeft())
 	{
 		uint16_t marker_size;
 		if(!read_short(&marker_size))
@@ -575,10 +575,10 @@ bool CodeStreamDecompress::decompressTiles(void)
 		}
 		marker_size =
 			(uint16_t)(marker_size - 2); /* Subtract the size of the marker ID already read */
-		auto marker_handler = get_marker_handler(m_curr_marker);
-		if(!(m_decompressorState.getState() & marker_handler->states))
+		auto marker_handler = get_marker_handler(curr_marker_);
+		if(!(decompressorState_.getState() & marker_handler->states))
 		{
-			GRK_ERROR("Marker %d is not compliant with its position", m_curr_marker);
+			GRK_ERROR("Marker %d is not compliant with its position", curr_marker_);
 			success = false;
 			goto cleanup;
 		}
@@ -608,10 +608,10 @@ cleanup:
 }
 bool CodeStreamDecompress::copy_default_tcp(void)
 {
-	for(uint32_t i = 0; i < m_cp.t_grid_height * m_cp.t_grid_width; ++i)
+	for(uint32_t i = 0; i < cp_.t_grid_height * cp_.t_grid_width; ++i)
 	{
-		auto tcp = m_cp.tcps + i;
-		if(!tcp->copy(m_decompressorState.m_default_tcp, m_headerImage))
+		auto tcp = cp_.tcps + i;
+		if(!tcp->copy(decompressorState_.default_tcp_, headerImage_))
 			return false;
 	}
 
@@ -624,7 +624,7 @@ void CodeStreamDecompress::addMarker(uint16_t id, uint64_t pos, uint32_t len)
 }
 uint16_t CodeStreamDecompress::getCurrentMarker()
 {
-	return m_curr_marker;
+	return curr_marker_;
 }
 bool CodeStreamDecompress::isWholeTileDecompress()
 {
@@ -632,11 +632,11 @@ bool CodeStreamDecompress::isWholeTileDecompress()
 }
 GrkImage* CodeStreamDecompress::getHeaderImage(void)
 {
-	return m_headerImage;
+	return headerImage_;
 }
 int32_t CodeStreamDecompress::tileIndexToDecode()
 {
-	return m_tile_ind_to_dec;
+	return tile_ind_to_dec_;
 }
 bool CodeStreamDecompress::readHeaderProcedure(void)
 {
@@ -647,7 +647,7 @@ bool CodeStreamDecompress::readHeaderProcedure(void)
 	}
 	catch(InvalidMarkerException& ime)
 	{
-		GRK_ERROR("Found invalid marker : 0x%x", ime.m_marker);
+		GRK_ERROR("Found invalid marker : 0x%x", ime.marker_);
 		rc = false;
 	}
 	return rc;
@@ -658,7 +658,7 @@ bool CodeStreamDecompress::readHeaderProcedureImpl(void)
 	bool has_cod = false;
 	bool has_qcd = false;
 
-	m_decompressorState.setState(DECOMPRESS_STATE_MH_SOC);
+	decompressorState_.setState(DECOMPRESS_STATE_MH_SOC);
 
 	/* Try to read the SOC marker, the code stream must begin with SOC marker */
 	if(!read_soc())
@@ -669,7 +669,7 @@ bool CodeStreamDecompress::readHeaderProcedureImpl(void)
 	if(!readMarker())
 		return false;
 
-	if(m_curr_marker != J2K_MS_SIZ)
+	if(curr_marker_ != J2K_MS_SIZ)
 	{
 		GRK_ERROR("Code-stream must contain a valid SIZ marker segment, immediately after the SOC "
 				  "marker ");
@@ -677,16 +677,16 @@ bool CodeStreamDecompress::readHeaderProcedureImpl(void)
 	}
 
 	/* Try to read until the SOT is detected */
-	while(m_curr_marker != J2K_MS_SOT)
+	while(curr_marker_ != J2K_MS_SOT)
 	{
-		auto marker_handler = get_marker_handler(m_curr_marker);
+		auto marker_handler = get_marker_handler(curr_marker_);
 		if(!marker_handler)
 		{
 			if(!read_unk())
 				return false;
-			if(m_curr_marker == J2K_MS_SOT)
+			if(curr_marker_ == J2K_MS_SOT)
 				break;
-			marker_handler = get_marker_handler(m_curr_marker);
+			marker_handler = get_marker_handler(curr_marker_);
 		}
 		if(marker_handler->id == J2K_MS_SIZ)
 			has_siz = true;
@@ -697,9 +697,9 @@ bool CodeStreamDecompress::readHeaderProcedureImpl(void)
 
 		/* Check if the marker is known and if it is in the correct location
 		 * (main, tile, end of code stream)*/
-		if(!(m_decompressorState.getState() & marker_handler->states))
+		if(!(decompressorState_.getState() & marker_handler->states))
 		{
-			GRK_ERROR("Marker %d is not compliant with its position", m_curr_marker);
+			GRK_ERROR("Marker %d is not compliant with its position", curr_marker_);
 			return false;
 		}
 
@@ -718,7 +718,7 @@ bool CodeStreamDecompress::readHeaderProcedureImpl(void)
 			return false;
 
 		/* Add the marker to the code stream index*/
-		addMarker(marker_handler->id, m_stream->tell() - marker_size - 4U, marker_size + 4U);
+		addMarker(marker_handler->id, stream_->tell() - marker_size - 4U, marker_size + 4U);
 		// read next marker
 		if(!readMarker())
 			return false;
@@ -738,44 +738,44 @@ bool CodeStreamDecompress::readHeaderProcedureImpl(void)
 		GRK_ERROR("required QCD marker not found in main header");
 		return false;
 	}
-	if(!merge_ppm(&(m_cp)))
+	if(!merge_ppm(&(cp_)))
 	{
 		GRK_ERROR("Failed to merge PPM data");
 		return false;
 	}
 	// we don't include the SOC marker, therefore subtract 2
 	if(codeStreamInfo)
-		codeStreamInfo->setMainHeaderEnd((uint32_t)m_stream->tell() - 2U);
+		codeStreamInfo->setMainHeaderEnd((uint32_t)stream_->tell() - 2U);
 
 	/* Next step: read a tile-part header */
-	m_decompressorState.setState(DECOMPRESS_STATE_TPH_SOT);
+	decompressorState_.setState(DECOMPRESS_STATE_TPH_SOT);
 
 	return true;
 }
 bool CodeStreamDecompress::decompressExec(void)
 {
-	if(!exec(m_procedure_list))
+	if(!exec(procedure_list_))
 		return false;
 
 	// transfer output image to composite image
-	m_outputImage->transferDataTo(getCompositeImage());
+	outputImage_->transferDataTo(getCompositeImage());
 
 	return true;
 }
 
 bool CodeStreamDecompress::createOutputImage(void){
-	if(!m_headerImage->multiTile)
+	if(!headerImage_->multiTile)
 	{
-		if(m_outputImage)
-			grk_object_unref(&m_outputImage->obj);
-		m_outputImage = nullptr;
+		if(outputImage_)
+			grk_object_unref(&outputImage_->obj);
+		outputImage_ = nullptr;
 	}
-	if(!m_outputImage)
+	if(!outputImage_)
 	{
-		m_outputImage = new GrkImage();
-		getCompositeImage()->copyHeader(m_outputImage);
+		outputImage_ = new GrkImage();
+		getCompositeImage()->copyHeader(outputImage_);
 	}
-	if(!m_outputImage->allocCompositeData(&m_cp))
+	if(!outputImage_->allocCompositeData(&cp_))
 		return false;
 
 	return true;
@@ -788,7 +788,7 @@ bool CodeStreamDecompress::decompressTile()
 {
 	if (!createOutputImage())
 		return false;
-	m_outputImage->multiTile = false;
+	outputImage_->multiTile = false;
 
 	if(tileIndexToDecode() == -1)
 	{
@@ -796,32 +796,32 @@ bool CodeStreamDecompress::decompressTile()
 				  "since first tile SOT has not been detected");
 		return false;
 	}
-	auto tileCache = m_tileCache->get((uint16_t)tileIndexToDecode());
+	auto tileCache = tileCache_->get((uint16_t)tileIndexToDecode());
 	auto tileProcessor = tileCache ? tileCache->processor : nullptr;
 	bool rc = false;
 	if(!tileCache || !tileCache->processor->getImage())
 	{
 		// if we have a TLM marker, then we can skip tiles until
 		// we get to desired tile
-		if(m_cp.tlm_markers)
+		if(cp_.tlm_markers)
 		{
 			// for first SOT position, we add two to skip SOC marker
-			if(!m_cp.tlm_markers->skipTo((uint16_t)m_tile_ind_to_dec, m_stream,
+			if(!cp_.tlm_markers->skipTo((uint16_t)tile_ind_to_dec_, stream_,
 										 codeStreamInfo->getMainHeaderEnd() + 2))
 				return false;
 		}
 		else
 		{
-			if(!codeStreamInfo->allocTileInfo((uint16_t)(m_cp.t_grid_width * m_cp.t_grid_height)))
+			if(!codeStreamInfo->allocTileInfo((uint16_t)(cp_.t_grid_width * cp_.t_grid_height)))
 				return false;
-			if(!codeStreamInfo->skipToTile((uint16_t)m_tile_ind_to_dec,
-										   m_decompressorState.lastSotReadPosition))
+			if(!codeStreamInfo->skipToTile((uint16_t)tile_ind_to_dec_,
+										   decompressorState_.lastSotReadPosition))
 				return false;
 		}
 		/* Special case if we have previously read the EOC marker
 		 * (if the previous tile decompressed is the last ) */
-		if(m_decompressorState.getState() == DECOMPRESS_STATE_EOC)
-			m_decompressorState.setState(DECOMPRESS_STATE_TPH_SOT);
+		if(decompressorState_.getState() == DECOMPRESS_STATE_EOC)
+			decompressorState_.setState(DECOMPRESS_STATE_TPH_SOT);
 		bool canDecompress = true;
 		try
 		{
@@ -830,10 +830,10 @@ bool CodeStreamDecompress::decompressTile()
 		}
 		catch(InvalidMarkerException& ime)
 		{
-			GRK_ERROR("Found invalid marker : 0x%x", ime.m_marker);
+			GRK_ERROR("Found invalid marker : 0x%x", ime.marker_);
 			goto cleanup;
 		}
-		tileProcessor = m_currentTileProcessor;
+		tileProcessor = currentTileProcessor_;
 		try
 		{
 			if(!findNextTile(tileProcessor))
@@ -856,30 +856,30 @@ cleanup:
 }
 bool CodeStreamDecompress::decompressT2T1(TileProcessor* tileProcessor)
 {
-	auto tcp = m_cp.tcps + tileProcessor->getIndex();
-	if(!tcp->m_compressedTileData)
+	auto tcp = cp_.tcps + tileProcessor->getIndex();
+	if(!tcp->compressedTileData_)
 	{
 		GRK_ERROR("Decompress: Tile %d has no compressed data", tileProcessor->getIndex());
 		return false;
 	}
 	bool doPost =
 		!current_plugin_tile || (current_plugin_tile->decompress_flags & GRK_DECODE_POST_T1);
-	if(!tileProcessor->decompressT2T1(tcp, m_outputImage, doPost))
+	if(!tileProcessor->decompressT2T1(tcp, outputImage_, doPost))
 		return false;
 
 	return true;
 }
 bool CodeStreamDecompress::findNextTile(TileProcessor* tileProcessor)
 {
-	auto decompressor = &m_decompressorState;
+	auto decompressor = &decompressorState_;
 
 	if(!(decompressor->getState() & DECOMPRESS_STATE_DATA))
 	{
 		GRK_ERROR("no tile data.");
 		return false;
 	}
-	auto tcp = m_cp.tcps + tileProcessor->getIndex();
-	if(!tcp->m_compressedTileData)
+	auto tcp = cp_.tcps + tileProcessor->getIndex();
+	if(!tcp->compressedTileData_)
 	{
 		GRK_ERROR("Missing SOD marker");
 		return false;
@@ -897,41 +897,41 @@ bool CodeStreamDecompress::findNextTile(TileProcessor* tileProcessor)
 bool CodeStreamDecompress::decompressValidation(void)
 {
 	bool is_valid = true;
-	is_valid &= (m_decompressorState.getState() == DECOMPRESS_STATE_NONE);
+	is_valid &= (decompressorState_.getState() == DECOMPRESS_STATE_NONE);
 
 	return is_valid;
 }
 bool CodeStreamDecompress::process_marker(const marker_handler* marker_handler,
 										  uint16_t marker_size)
 {
-	if(!m_marker_scratch)
+	if(!marker_scratch_)
 	{
-		m_marker_scratch = new uint8_t[default_header_size];
-		m_marker_scratch_size = default_header_size;
+		marker_scratch_ = new uint8_t[default_header_size];
+		marker_scratch_size_ = default_header_size;
 	}
-	if(marker_size > m_marker_scratch_size)
+	if(marker_size > marker_scratch_size_)
 	{
-		if(marker_size > m_stream->numBytesLeft())
+		if(marker_size > stream_->numBytesLeft())
 		{
 			GRK_ERROR("Marker size inconsistent with stream length");
 			return false;
 		}
-		delete[] m_marker_scratch;
-		m_marker_scratch = new uint8_t[2 * marker_size];
-		m_marker_scratch_size = (uint16_t)(2U * marker_size);
+		delete[] marker_scratch_;
+		marker_scratch_ = new uint8_t[2 * marker_size];
+		marker_scratch_size_ = (uint16_t)(2U * marker_size);
 	}
-	if(m_stream->read(m_marker_scratch, marker_size) != marker_size)
+	if(stream_->read(marker_scratch_, marker_size) != marker_size)
 	{
 		GRK_ERROR("Stream too short");
 		return false;
 	}
 
-	return marker_handler->func(m_marker_scratch, marker_size);
+	return marker_handler->func(marker_scratch_, marker_size);
 }
 bool CodeStreamDecompress::read_short(uint16_t* val)
 {
 	uint8_t temp[2];
-	if(m_stream->read(temp, 2) != 2)
+	if(stream_->read(temp, 2) != 2)
 		return false;
 
 	grk_read<uint16_t>(temp, val);
@@ -954,16 +954,16 @@ bool CodeStreamDecompress::readMarker(void)
 }
 bool CodeStreamDecompress::readMarker(bool suppressWarning)
 {
-	if(!read_short(&m_curr_marker))
+	if(!read_short(&curr_marker_))
 		return false;
 
 	/* Check if the current marker ID is valid */
-	if(m_curr_marker < 0xff00)
+	if(curr_marker_ < 0xff00)
 	{
 		if(!suppressWarning)
 			GRK_WARN("marker ID 0x%.4x does not match JPEG 2000 marker format 0xffxx",
-					 m_curr_marker);
-		throw InvalidMarkerException(m_curr_marker);
+					 curr_marker_);
+		throw InvalidMarkerException(curr_marker_);
 	}
 
 	return true;
@@ -1104,10 +1104,10 @@ void CodeStreamDecompress::dump(uint32_t flag, FILE* outputFileStream)
 void CodeStreamDecompress::dump_MH_info(FILE* outputFileStream)
 {
 	fprintf(outputFileStream, "Codestream info from main header: {\n");
-	fprintf(outputFileStream, "\t tx0=%d, ty0=%d\n", m_cp.tx0, m_cp.ty0);
-	fprintf(outputFileStream, "\t tdx=%d, tdy=%d\n", m_cp.t_width, m_cp.t_height);
-	fprintf(outputFileStream, "\t tw=%d, th=%d\n", m_cp.t_grid_width, m_cp.t_grid_height);
-	CodeStreamDecompress::dump_tile_info(getDecompressorState()->m_default_tcp,
+	fprintf(outputFileStream, "\t tx0=%d, ty0=%d\n", cp_.tx0, cp_.ty0);
+	fprintf(outputFileStream, "\t tdx=%d, tdy=%d\n", cp_.t_width, cp_.t_height);
+	fprintf(outputFileStream, "\t tw=%d, th=%d\n", cp_.t_grid_width, cp_.t_grid_height);
+	CodeStreamDecompress::dump_tile_info(getDecompressorState()->default_tcp_,
 										 getHeaderImage()->numcomps, outputFileStream);
 	fprintf(outputFileStream, "}\n");
 }

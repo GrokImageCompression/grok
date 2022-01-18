@@ -70,7 +70,7 @@ class BMPFormat : public ImageFormat
 	bool encodeFinish(void) override;
 	grk_image* decode(const std::string& filename, grk_cparameters* parameters) override;
   private:
-	uint64_t m_off;
+	uint64_t off_;
 	grk_image* bmp8toimage(const uint8_t* pData, uint32_t srcStride, grk_image* image,
 						   uint8_t const* const* pLUT, bool topDown);
 	grk_image* bmp4toimage(const uint8_t* pData, uint32_t srcStride, grk_image* image,
@@ -83,8 +83,8 @@ class BMPFormat : public ImageFormat
 	bool read_rle8_data(uint8_t* pData, uint32_t stride, uint32_t width, uint32_t height);
 	bool read_rle4_data(uint8_t* pData, uint32_t stride, uint32_t width, uint32_t height);
 
-	uint8_t *m_header;
-	uint64_t m_srcIndex;
+	uint8_t *header_;
+	uint64_t srcIndex_;
 	GRK_BITMAPFILEHEADER File_h;
 	GRK_BITMAPINFOHEADER Info_h;
 

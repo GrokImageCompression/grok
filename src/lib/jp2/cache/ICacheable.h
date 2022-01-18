@@ -28,27 +28,27 @@ enum GrkCacheState
 class ICacheable
 {
   public:
-	ICacheable() : m_state(GRK_CACHE_STATE_CLOSED) {}
+	ICacheable() : state_(GRK_CACHE_STATE_CLOSED) {}
 	virtual ~ICacheable() = default;
 	bool isOpen(void)
 	{
-		return m_state == GRK_CACHE_STATE_OPEN;
+		return state_ == GRK_CACHE_STATE_OPEN;
 	}
 	bool isClosed(void)
 	{
-		return m_state == GRK_CACHE_STATE_CLOSED;
+		return state_ == GRK_CACHE_STATE_CLOSED;
 	}
 	bool isError(void)
 	{
-		return m_state == GRK_CACHE_STATE_ERROR;
+		return state_ == GRK_CACHE_STATE_ERROR;
 	}
 	void setCacheState(GrkCacheState state)
 	{
-		m_state = state;
+		state_ = state;
 	}
 
   private:
-	GrkCacheState m_state;
+	GrkCacheState state_;
 };
 
 } // namespace grk

@@ -70,16 +70,16 @@ char* CodeStreamCompress::convertProgressionOrder(GRK_PROG_ORDER prg_order)
 bool CodeStreamCompress::mct_validation(void)
 {
 	bool is_valid = true;
-	if((m_cp.rsiz & 0x8200) == 0x8200)
+	if((cp_.rsiz & 0x8200) == 0x8200)
 	{
-		uint32_t numTiles = m_cp.t_grid_height * m_cp.t_grid_width;
+		uint32_t numTiles = cp_.t_grid_height * cp_.t_grid_width;
 		for(uint32_t i = 0; i < numTiles; ++i)
 		{
-			auto tcp = m_cp.tcps + i;
+			auto tcp = cp_.tcps + i;
 			if(tcp->mct == 2)
 			{
-				is_valid &= (tcp->m_mct_coding_matrix != nullptr);
-				for(uint32_t j = 0; j < m_headerImage->numcomps; ++j)
+				is_valid &= (tcp->mct_coding_matrix_ != nullptr);
+				for(uint32_t j = 0; j < headerImage_->numcomps; ++j)
 				{
 					auto tccp = tcp->tccps + j;
 					is_valid &= !(tccp->qmfbid & 1);
@@ -94,12 +94,12 @@ bool CodeStreamCompress::mct_validation(void)
 bool CodeStreamCompress::startCompress(void)
 {
 	/* customization of the validation */
-	m_validation_list.push_back(std::bind(&CodeStreamCompress::compressValidation, this));
+	validation_list_.push_back(std::bind(&CodeStreamCompress::compressValidation, this));
 	// custom validation here
-	m_validation_list.push_back(std::bind(&CodeStreamCompress::mct_validation, this));
+	validation_list_.push_back(std::bind(&CodeStreamCompress::mct_validation, this));
 
 	/* validation of the parameters codec */
-	if(!exec(m_validation_list))
+	if(!exec(validation_list_))
 		return false;
 
 	/* customization of the compressing */
@@ -107,7 +107,7 @@ bool CodeStreamCompress::startCompress(void)
 		return false;
 
 	/* write header */
-	return exec(m_procedure_list);
+	return exec(procedure_list_);
 }
 bool CodeStreamCompress::initCompress(grk_cparameters* parameters, GrkImage* image)
 {
@@ -145,15 +145,15 @@ bool CodeStreamCompress::initCompress(grk_cparameters* parameters, GrkImage* ima
 	}
 
 	// create private sanitized copy of image
-	m_headerImage = new GrkImage();
-	image->copyHeader(m_headerImage);
+	headerImage_ = new GrkImage();
+	image->copyHeader(headerImage_);
 	if(image->comps)
 	{
 		for(uint32_t compno = 0; compno < image->numcomps; compno++)
 		{
 			if(image->comps[compno].data)
 			{
-				m_headerImage->comps[compno].data = image->comps[compno].data;
+				headerImage_->comps[compno].data = image->comps[compno].data;
 				image->comps[compno].data = nullptr;
 			}
 		}
@@ -280,53 +280,53 @@ bool CodeStreamCompress::initCompress(grk_cparameters* parameters, GrkImage* ima
 			return false;
 		}
 	}
-	/* set default values for m_cp */
-	m_cp.t_grid_width = 1;
-	m_cp.t_grid_height = 1;
+	/* set default values for cp_ */
+	cp_.t_grid_width = 1;
+	cp_.t_grid_height = 1;
 
-	m_cp.m_coding_params.m_enc.m_max_comp_size = parameters->max_comp_size;
-	m_cp.rsiz = parameters->rsiz;
-	m_cp.m_coding_params.m_enc.m_allocationByRateDistortion =
+	cp_.coding_params_.enc_.max_comp_size_ = parameters->max_comp_size;
+	cp_.rsiz = parameters->rsiz;
+	cp_.coding_params_.enc_.allocationByRateDistortion_ =
 		parameters->allocationByRateDistoration;
-	m_cp.m_coding_params.m_enc.m_allocationByFixedQuality = parameters->allocationByQuality;
-	m_cp.m_coding_params.m_enc.writePLT = parameters->writePLT;
-	m_cp.m_coding_params.m_enc.writeTLM = parameters->writeTLM;
-	m_cp.m_coding_params.m_enc.rateControlAlgorithm = parameters->rateControlAlgorithm;
+	cp_.coding_params_.enc_.allocationByFixedQuality_ = parameters->allocationByQuality;
+	cp_.coding_params_.enc_.writePLT = parameters->writePLT;
+	cp_.coding_params_.enc_.writeTLM = parameters->writeTLM;
+	cp_.coding_params_.enc_.rateControlAlgorithm = parameters->rateControlAlgorithm;
 
 	/* tiles */
-	m_cp.t_width = parameters->t_width;
-	m_cp.t_height = parameters->t_height;
+	cp_.t_width = parameters->t_width;
+	cp_.t_height = parameters->t_height;
 
 	/* tile offset */
-	m_cp.tx0 = parameters->tx0;
-	m_cp.ty0 = parameters->ty0;
+	cp_.tx0 = parameters->tx0;
+	cp_.ty0 = parameters->ty0;
 
 	/* comment string */
 	if(parameters->num_comments)
 	{
 		for(size_t i = 0; i < parameters->num_comments; ++i)
 		{
-			m_cp.comment_len[i] = parameters->comment_len[i];
-			if(!m_cp.comment_len[i])
+			cp_.comment_len[i] = parameters->comment_len[i];
+			if(!cp_.comment_len[i])
 			{
 				GRK_WARN("Empty comment. Ignoring");
 				continue;
 			}
-			if(m_cp.comment_len[i] > GRK_MAX_COMMENT_LENGTH)
+			if(cp_.comment_len[i] > GRK_MAX_COMMENT_LENGTH)
 			{
 				GRK_WARN("Comment length %s is greater than maximum comment length %u. Ignoring",
-						 m_cp.comment_len[i], GRK_MAX_COMMENT_LENGTH);
+						 cp_.comment_len[i], GRK_MAX_COMMENT_LENGTH);
 				continue;
 			}
-			m_cp.comment[i] = (char*)new uint8_t[m_cp.comment_len[i]];
-			if(!m_cp.comment[i])
+			cp_.comment[i] = (char*)new uint8_t[cp_.comment_len[i]];
+			if(!cp_.comment[i])
 			{
 				GRK_ERROR("Not enough memory to allocate copy of comment string");
 				return false;
 			}
-			memcpy(m_cp.comment[i], parameters->comment[i], m_cp.comment_len[i]);
-			m_cp.isBinaryComment[i] = parameters->is_binary_comment[i];
-			m_cp.num_comments++;
+			memcpy(cp_.comment[i], parameters->comment[i], cp_.comment_len[i]);
+			cp_.isBinaryComment[i] = parameters->is_binary_comment[i];
+			cp_.num_comments++;
 		}
 	}
 	else
@@ -336,38 +336,38 @@ bool CodeStreamCompress::initCompress(grk_cparameters* parameters, GrkImage* ima
 		const size_t clen = strlen(comment);
 		const char* version = grk_version();
 
-		m_cp.comment[0] = (char*)new uint8_t[clen + strlen(version) + 1];
-		if(!m_cp.comment[0])
+		cp_.comment[0] = (char*)new uint8_t[clen + strlen(version) + 1];
+		if(!cp_.comment[0])
 		{
 			GRK_ERROR("Not enough memory to allocate comment string");
 			return false;
 		}
-		sprintf(m_cp.comment[0], "%s%s", comment, version);
-		m_cp.comment_len[0] = (uint16_t)strlen(m_cp.comment[0]);
-		m_cp.num_comments = 1;
-		m_cp.isBinaryComment[0] = false;
+		sprintf(cp_.comment[0], "%s%s", comment, version);
+		cp_.comment_len[0] = (uint16_t)strlen(cp_.comment[0]);
+		cp_.num_comments = 1;
+		cp_.isBinaryComment[0] = false;
 	}
 	if(parameters->tile_size_on)
 	{
 		// avoid divide by zero
-		if(m_cp.t_width == 0 || m_cp.t_height == 0)
+		if(cp_.t_width == 0 || cp_.t_height == 0)
 		{
-			GRK_ERROR("Invalid tile dimensions (%u,%u)", m_cp.t_width, m_cp.t_height);
+			GRK_ERROR("Invalid tile dimensions (%u,%u)", cp_.t_width, cp_.t_height);
 			return false;
 		}
-		m_cp.t_grid_width  = (uint16_t)ceildiv<uint32_t>((image->x1 - m_cp.tx0), m_cp.t_width);
-		m_cp.t_grid_height = (uint16_t)ceildiv<uint32_t>((image->y1 - m_cp.ty0), m_cp.t_height);
+		cp_.t_grid_width  = (uint16_t)ceildiv<uint32_t>((image->x1 - cp_.tx0), cp_.t_width);
+		cp_.t_grid_height = (uint16_t)ceildiv<uint32_t>((image->y1 - cp_.ty0), cp_.t_height);
 	}
 	else
 	{
-		m_cp.t_width = image->x1 - m_cp.tx0;
-		m_cp.t_height = image->y1 - m_cp.ty0;
+		cp_.t_width = image->x1 - cp_.tx0;
+		cp_.t_height = image->y1 - cp_.ty0;
 	}
 	if(parameters->enableTilePartGeneration)
 	{
-		m_cp.m_coding_params.m_enc.m_newTilePartProgressionDivider =
+		cp_.coding_params_.enc_.newTilePartProgressionDivider_ =
 			parameters->newTilePartProgressionDivider;
-		m_cp.m_coding_params.m_enc.m_enableTilePartGeneration = true;
+		cp_.coding_params_.enc_.enableTilePartGeneration_ = true;
 	}
 	uint8_t numgbits = parameters->numgbits;
 	if(parameters->numgbits > 7)
@@ -375,22 +375,22 @@ bool CodeStreamCompress::initCompress(grk_cparameters* parameters, GrkImage* ima
 		GRK_ERROR("Number of guard bits %d is greater than 7", numgbits);
 		return false;
 	}
-	m_cp.tcps = new TileCodingParams[m_cp.t_grid_width * m_cp.t_grid_height];
-	for(uint32_t tileno = 0; tileno < m_cp.t_grid_width * m_cp.t_grid_height; tileno++)
+	cp_.tcps = new TileCodingParams[cp_.t_grid_width * cp_.t_grid_height];
+	for(uint32_t tileno = 0; tileno < cp_.t_grid_width * cp_.t_grid_height; tileno++)
 	{
-		auto tcp = m_cp.tcps + tileno;
+		auto tcp = cp_.tcps + tileno;
 		tcp->tccps = new TileComponentCodingParams[image->numcomps];
 
 		tcp->setIsHT(parameters->isHT, !parameters->irreversible, numgbits);
-		tcp->m_qcd->generate((uint32_t)(parameters->numresolution - 1), image->comps[0].prec,
+		tcp->qcd_->generate((uint32_t)(parameters->numresolution - 1), image->comps[0].prec,
 							 parameters->mct > 0, image->comps[0].sgnd);
 		for(uint32_t i = 0; i < image->numcomps; i++)
-			tcp->m_qcd->pull((tcp->tccps + i)->stepsizes);
+			tcp->qcd_->pull((tcp->tccps + i)->stepsizes);
 
 		tcp->numlayers = parameters->numlayers;
 		for(uint16_t j = 0; j < tcp->numlayers; j++)
 		{
-			if(m_cp.m_coding_params.m_enc.m_allocationByFixedQuality)
+			if(cp_.coding_params_.enc_.allocationByFixedQuality_)
 				tcp->distortion[j] = parameters->layer_distortion[j];
 			else
 				tcp->rates[j] = parameters->layer_rate[j];
@@ -441,26 +441,26 @@ bool CodeStreamCompress::initCompress(grk_cparameters* parameters, GrkImage* ima
 				return false;
 			}
 			tcp->mct = 2;
-			tcp->m_mct_coding_matrix = (float*)grkMalloc(lMctSize);
-			if(!tcp->m_mct_coding_matrix)
+			tcp->mct_coding_matrix_ = (float*)grkMalloc(lMctSize);
+			if(!tcp->mct_coding_matrix_)
 			{
 				grkFree(lTmpBuf);
 				lTmpBuf = nullptr;
 				GRK_ERROR("Not enough memory to allocate compressor MCT coding matrix ");
 				return false;
 			}
-			memcpy(tcp->m_mct_coding_matrix, parameters->mct_data, lMctSize);
+			memcpy(tcp->mct_coding_matrix_, parameters->mct_data, lMctSize);
 			memcpy(lTmpBuf, parameters->mct_data, lMctSize);
 
-			tcp->m_mct_decoding_matrix = (float*)grkMalloc(lMctSize);
-			if(!tcp->m_mct_decoding_matrix)
+			tcp->mct_decoding_matrix_ = (float*)grkMalloc(lMctSize);
+			if(!tcp->mct_decoding_matrix_)
 			{
 				grkFree(lTmpBuf);
 				lTmpBuf = nullptr;
 				GRK_ERROR("Not enough memory to allocate compressor MCT decoding matrix ");
 				return false;
 			}
-			if(GrkMatrix().matrix_inversion_f(lTmpBuf, (tcp->m_mct_decoding_matrix),
+			if(GrkMatrix().matrix_inversion_f(lTmpBuf, (tcp->mct_decoding_matrix_),
 											  image->numcomps) == false)
 			{
 				grkFree(lTmpBuf);
@@ -477,13 +477,13 @@ bool CodeStreamCompress::initCompress(grk_cparameters* parameters, GrkImage* ima
 				GRK_ERROR("Not enough memory to allocate compressor MCT norms ");
 				return false;
 			}
-			mct::calculate_norms(tcp->mct_norms, image->numcomps, tcp->m_mct_decoding_matrix);
+			mct::calculate_norms(tcp->mct_norms, image->numcomps, tcp->mct_decoding_matrix_);
 			grkFree(lTmpBuf);
 
 			for(uint32_t i = 0; i < image->numcomps; i++)
 			{
 				auto tccp = &tcp->tccps[i];
-				tccp->m_dc_level_shift = dc_shift[i];
+				tccp->dc_level_shift_ = dc_shift[i];
 			}
 
 			if(init_mct_encoding(tcp, image) == false)
@@ -519,7 +519,7 @@ bool CodeStreamCompress::initCompress(grk_cparameters* parameters, GrkImage* ima
 				auto tccp = tcp->tccps + i;
 				auto comp = image->comps + i;
 				if(!comp->sgnd)
-					tccp->m_dc_level_shift = 1 << (comp->prec - 1);
+					tccp->dc_level_shift_ = 1 << (comp->prec - 1);
 			}
 		}
 
@@ -597,7 +597,7 @@ bool CodeStreamCompress::initCompress(grk_cparameters* parameters, GrkImage* ima
 bool CodeStreamCompress::compress(grk_plugin_tile* tile)
 {
 	MinHeapPtr<TileProcessor, uint16_t, MinHeapLocker> heap;
-	uint32_t numTiles = (uint32_t)m_cp.t_grid_height * m_cp.t_grid_width;
+	uint32_t numTiles = (uint32_t)cp_.t_grid_height * cp_.t_grid_width;
 	if(numTiles > maxNumTilesJ2K)
 	{
 		GRK_ERROR("Number of tiles %u is greater than max tiles %u"
@@ -617,7 +617,7 @@ bool CodeStreamCompress::compress(grk_plugin_tile* tile)
 			results.emplace_back(pool.enqueue([this, tile, tileIndex, &heap, &success] {
 				if(success)
 				{
-					auto tileProcessor = new TileProcessor(tileIndex,this, m_stream, true, false);
+					auto tileProcessor = new TileProcessor(tileIndex,this, stream_, true, false);
 					tileProcessor->current_plugin_tile = tile;
 					if(!tileProcessor->preCompressTile() || !tileProcessor->doCompress())
 						success = false;
@@ -631,7 +631,7 @@ bool CodeStreamCompress::compress(grk_plugin_tile* tile)
 	{
 		for(uint16_t i = 0; i < numTiles; ++i)
 		{
-			auto tileProcessor = new TileProcessor(i,this, m_stream, true, false);
+			auto tileProcessor = new TileProcessor(i,this, stream_, true, false);
 			tileProcessor->current_plugin_tile = tile;
 			if(!tileProcessor->preCompressTile() || !tileProcessor->doCompress())
 			{
@@ -677,7 +677,7 @@ bool CodeStreamCompress::compressTile(uint16_t tileIndex, uint8_t* p_data,
 		return false;
 	bool rc = false;
 
-	auto currentTileProcessor = new TileProcessor(tileIndex,this, m_stream, true, false);
+	auto currentTileProcessor = new TileProcessor(tileIndex,this, stream_, true, false);
 	if(!currentTileProcessor->preCompressTile())
 	{
 		GRK_ERROR("Error while preCompressTile with tile index = %u", tileIndex);
@@ -705,60 +705,60 @@ cleanup:
 bool CodeStreamCompress::endCompress(void)
 {
 	/* customization of the compressing */
-	m_procedure_list.push_back(std::bind(&CodeStreamCompress::write_eoc, this));
-	if(m_cp.m_coding_params.m_enc.writeTLM)
-		m_procedure_list.push_back(std::bind(&CodeStreamCompress::write_tlm_end, this));
+	procedure_list_.push_back(std::bind(&CodeStreamCompress::write_eoc, this));
+	if(cp_.coding_params_.enc_.writeTLM)
+		procedure_list_.push_back(std::bind(&CodeStreamCompress::write_tlm_end, this));
 
-	return exec(m_procedure_list);
+	return exec(procedure_list_);
 }
 ///////////////////////////////////////////////////////////////////////////////////////////
 bool CodeStreamCompress::write_rgn(uint16_t tile_no, uint32_t comp_no, uint32_t nb_comps)
 {
 	uint32_t rgn_size;
-	auto cp = &(m_cp);
+	auto cp = &(cp_);
 	auto tcp = &cp->tcps[tile_no];
 	auto tccp = &tcp->tccps[comp_no];
 	uint32_t comp_room = (nb_comps <= 256) ? 1 : 2;
 	rgn_size = 6 + comp_room;
 
 	/* RGN  */
-	if(!m_stream->writeShort(J2K_MS_RGN))
+	if(!stream_->writeShort(J2K_MS_RGN))
 		return false;
 	/* Lrgn */
-	if(!m_stream->writeShort((uint16_t)(rgn_size - 2)))
+	if(!stream_->writeShort((uint16_t)(rgn_size - 2)))
 		return false;
 	/* Crgn */
 	if(comp_room == 2)
 	{
-		if(!m_stream->writeShort((uint16_t)comp_no))
+		if(!stream_->writeShort((uint16_t)comp_no))
 			return false;
 	}
 	else
 	{
-		if(!m_stream->writeByte((uint8_t)comp_no))
+		if(!stream_->writeByte((uint8_t)comp_no))
 			return false;
 	}
 	/* Srgn */
-	if(!m_stream->writeByte(0))
+	if(!stream_->writeByte(0))
 		return false;
 
 	/* SPrgn */
-	return m_stream->writeByte((uint8_t)tccp->roishift);
+	return stream_->writeByte((uint8_t)tccp->roishift);
 }
 
 bool CodeStreamCompress::write_eoc()
 {
-	if(!m_stream->writeShort(J2K_MS_EOC))
+	if(!stream_->writeShort(J2K_MS_EOC))
 		return false;
 
-	return m_stream->flush();
+	return stream_->flush();
 }
 bool CodeStreamCompress::write_mct_record(grk_mct_data* p_mct_record, IBufferedStream* stream)
 {
 	uint32_t mct_size;
 	uint32_t tmp;
 
-	mct_size = 10 + p_mct_record->m_data_size;
+	mct_size = 10 + p_mct_record->data_size_;
 
 	/* MCT */
 	if(!stream->writeShort(J2K_MS_MCT))
@@ -770,8 +770,8 @@ bool CodeStreamCompress::write_mct_record(grk_mct_data* p_mct_record, IBufferedS
 	if(!stream->writeShort(0))
 		return false;
 	/* only one marker atm */
-	tmp = (p_mct_record->m_index & 0xff) | (uint32_t)(p_mct_record->m_array_type << 8) |
-		  (uint32_t)(p_mct_record->m_element_type << 10);
+	tmp = (p_mct_record->index_ & 0xff) | (uint32_t)(p_mct_record->array_type_ << 8) |
+		  (uint32_t)(p_mct_record->element_type_ << 10);
 
 	if(!stream->writeShort((uint16_t)tmp))
 		return false;
@@ -780,45 +780,45 @@ bool CodeStreamCompress::write_mct_record(grk_mct_data* p_mct_record, IBufferedS
 	if(!stream->writeShort(0))
 		return false;
 
-	return stream->writeBytes(p_mct_record->m_data, p_mct_record->m_data_size);
+	return stream->writeBytes(p_mct_record->data_, p_mct_record->data_size_);
 }
 bool CodeStreamCompress::get_end_header(void)
 {
-	codeStreamInfo->setMainHeaderEnd(m_stream->tell());
+	codeStreamInfo->setMainHeaderEnd(stream_->tell());
 
 	return true;
 }
 bool CodeStreamCompress::init_header_writing(void)
 {
-	m_procedure_list.push_back([this] {
-		return getNumTileParts(&m_compressorState.m_total_tile_parts, getHeaderImage());
+	procedure_list_.push_back([this] {
+		return getNumTileParts(&compressorState_.total_tile_parts_, getHeaderImage());
 	});
 
-	m_procedure_list.push_back(std::bind(&CodeStreamCompress::write_soc, this));
-	m_procedure_list.push_back(std::bind(&CodeStreamCompress::write_siz, this));
-	if(m_cp.tcps[0].isHT())
-		m_procedure_list.push_back(std::bind(&CodeStreamCompress::write_cap, this));
-	m_procedure_list.push_back(std::bind(&CodeStreamCompress::write_cod, this));
-	m_procedure_list.push_back(std::bind(&CodeStreamCompress::write_qcd, this));
-	m_procedure_list.push_back(std::bind(&CodeStreamCompress::write_all_coc, this));
-	m_procedure_list.push_back(std::bind(&CodeStreamCompress::write_all_qcc, this));
+	procedure_list_.push_back(std::bind(&CodeStreamCompress::write_soc, this));
+	procedure_list_.push_back(std::bind(&CodeStreamCompress::write_siz, this));
+	if(cp_.tcps[0].isHT())
+		procedure_list_.push_back(std::bind(&CodeStreamCompress::write_cap, this));
+	procedure_list_.push_back(std::bind(&CodeStreamCompress::write_cod, this));
+	procedure_list_.push_back(std::bind(&CodeStreamCompress::write_qcd, this));
+	procedure_list_.push_back(std::bind(&CodeStreamCompress::write_all_coc, this));
+	procedure_list_.push_back(std::bind(&CodeStreamCompress::write_all_qcc, this));
 
-	if(m_cp.m_coding_params.m_enc.writeTLM)
-		m_procedure_list.push_back(std::bind(&CodeStreamCompress::write_tlm_begin, this));
-	if(m_cp.tcps->hasPoc())
-		m_procedure_list.push_back(std::bind(&CodeStreamCompress::writePoc, this));
+	if(cp_.coding_params_.enc_.writeTLM)
+		procedure_list_.push_back(std::bind(&CodeStreamCompress::write_tlm_begin, this));
+	if(cp_.tcps->hasPoc())
+		procedure_list_.push_back(std::bind(&CodeStreamCompress::writePoc, this));
 
-	m_procedure_list.push_back(std::bind(&CodeStreamCompress::write_regions, this));
-	m_procedure_list.push_back(std::bind(&CodeStreamCompress::write_com, this));
+	procedure_list_.push_back(std::bind(&CodeStreamCompress::write_regions, this));
+	procedure_list_.push_back(std::bind(&CodeStreamCompress::write_com, this));
 	// begin custom procedures
-	if((m_cp.rsiz & (GRK_PROFILE_PART2 | GRK_EXTENSION_MCT)) ==
+	if((cp_.rsiz & (GRK_PROFILE_PART2 | GRK_EXTENSION_MCT)) ==
 	   (GRK_PROFILE_PART2 | GRK_EXTENSION_MCT))
-		m_procedure_list.push_back(std::bind(&CodeStreamCompress::write_mct_data_group, this));
+		procedure_list_.push_back(std::bind(&CodeStreamCompress::write_mct_data_group, this));
 	// end custom procedures
 
 	if(codeStreamInfo)
-		m_procedure_list.push_back(std::bind(&CodeStreamCompress::get_end_header, this));
-	m_procedure_list.push_back(std::bind(&CodeStreamCompress::updateRates, this));
+		procedure_list_.push_back(std::bind(&CodeStreamCompress::get_end_header, this));
+	procedure_list_.push_back(std::bind(&CodeStreamCompress::updateRates, this));
 
 	return true;
 }
@@ -826,7 +826,7 @@ bool CodeStreamCompress::writeTilePart(TileProcessor* tileProcessor)
 {
 	uint64_t currentPos = 0;
 	if(tileProcessor->canPreCalculateTileLen())
-		currentPos = m_stream->tell();
+		currentPos = stream_->tell();
 	uint16_t currentTileIndex = tileProcessor->getIndex();
 	auto calculatedBytesWritten = tileProcessor->getPreCalculatedTileLen();
 	// 1. write SOT
@@ -839,8 +839,8 @@ bool CodeStreamCompress::writeTilePart(TileProcessor* tileProcessor)
 	{
 		if(!writePoc())
 			return false;
-		auto tcp = m_cp.tcps + currentTileIndex;
-		tilePartBytesWritten += getPocSize(m_headerImage->numcomps, tcp->getNumProgressions());
+		auto tcp = cp_.tcps + currentTileIndex;
+		tilePartBytesWritten += getPocSize(headerImage_->numcomps, tcp->getNumProgressions());
 	}
 	// 3. compress tile part and write to stream
 	if(!tileProcessor->writeTilePartT2(&tilePartBytesWritten))
@@ -850,12 +850,12 @@ bool CodeStreamCompress::writeTilePart(TileProcessor* tileProcessor)
 	}
 	// 4. now that we know the tile part length, we can
 	// write the Psot in the SOT marker
-	if(!sot.write_psot(m_stream, tilePartBytesWritten))
+	if(!sot.write_psot(stream_, tilePartBytesWritten))
 		return false;
 	// 5. update TLM
 	if(tileProcessor->canPreCalculateTileLen())
 	{
-		auto actualBytes = m_stream->tell() - currentPos;
+		auto actualBytes = stream_->tell() - currentPos;
 		// GRK_INFO("Tile %d: precalculated / actual : %d / %d",
 		//		tileProcessor->getIndex(), calculatedBytesWritten, actualBytes);
 		if(actualBytes != calculatedBytesWritten)
@@ -866,24 +866,24 @@ bool CodeStreamCompress::writeTilePart(TileProcessor* tileProcessor)
 		}
 		tilePartBytesWritten = calculatedBytesWritten;
 	}
-	if(m_cp.tlm_markers)
-		m_cp.tlm_markers->push(currentTileIndex, tilePartBytesWritten);
-	++tileProcessor->m_tilePartIndexCounter;
+	if(cp_.tlm_markers)
+		cp_.tlm_markers->push(currentTileIndex, tilePartBytesWritten);
+	++tileProcessor->tilePartIndexCounter_;
 
 	return true;
 }
 bool CodeStreamCompress::writeTileParts(TileProcessor* tileProcessor)
 {
-	m_currentTileProcessor = tileProcessor;
-	assert(tileProcessor->m_tilePartIndexCounter == 0);
+	currentTileProcessor_ = tileProcessor;
+	assert(tileProcessor->tilePartIndexCounter_ == 0);
 	// 1. write first tile part
 	tileProcessor->pino = 0;
-	tileProcessor->m_first_poc_tile_part = true;
+	tileProcessor->first_poc_tile_part_ = true;
 	if(!writeTilePart(tileProcessor))
 		return false;
 	// 2. write the other tile parts
 	uint32_t pino;
-	auto tcp = m_cp.tcps + tileProcessor->getIndex();
+	auto tcp = cp_.tcps + tileProcessor->getIndex();
 	// write tile parts for first progression order
 	uint64_t numTileParts = getNumTilePartsForProgression(0, tileProcessor->getIndex());
 	if(numTileParts > maxTilePartsPerTileJ2K)
@@ -892,7 +892,7 @@ bool CodeStreamCompress::writeTileParts(TileProcessor* tileProcessor)
 				  numTileParts, maxTilePartsPerTileJ2K);
 		return false;
 	}
-	tileProcessor->m_first_poc_tile_part = false;
+	tileProcessor->first_poc_tile_part_ = false;
 	for(uint8_t tilepartno = 1; tilepartno < (uint8_t)numTileParts; ++tilepartno)
 	{
 		if(!writeTilePart(tileProcessor))
@@ -912,7 +912,7 @@ bool CodeStreamCompress::writeTileParts(TileProcessor* tileProcessor)
 		}
 		for(uint8_t tilepartno = 0; tilepartno < numTileParts; ++tilepartno)
 		{
-			tileProcessor->m_first_poc_tile_part = (tilepartno == 0);
+			tileProcessor->first_poc_tile_part_ = (tilepartno == 0);
 			if(!writeTilePart(tileProcessor))
 				return false;
 		}
@@ -923,8 +923,8 @@ bool CodeStreamCompress::writeTileParts(TileProcessor* tileProcessor)
 }
 bool CodeStreamCompress::updateRates(void)
 {
-	auto cp = &(m_cp);
-	auto image = m_headerImage;
+	auto cp = &(cp_);
+	auto image = headerImage_;
 	auto tcp = cp->tcps;
 	auto width = image->x1 - image->x0;
 	auto height = image->y1 - image->y0;
@@ -933,15 +933,15 @@ bool CodeStreamCompress::updateRates(void)
 
 	uint32_t bits_empty = 8 * image->comps->dx * image->comps->dy;
 	uint32_t size_pixel = (uint32_t)image->numcomps * image->comps->prec;
-	auto header_size = (double)m_stream->tell();
+	auto header_size = (double)stream_->tell();
 
 	for(uint32_t tile_y = 0; tile_y < cp->t_grid_height; ++tile_y)
 	{
 		for(uint32_t tile_x = 0; tile_x < cp->t_grid_width; ++tile_x)
 		{
 			double stride = 0;
-			if(cp->m_coding_params.m_enc.m_enableTilePartGeneration)
-				stride = (tcp->m_numTileParts - 1) * 14;
+			if(cp->coding_params_.enc_.enableTilePartGeneration_)
+				stride = (tcp->numTileParts_ - 1) * 14;
 			double offset = stride / tcp->numlayers;
 			auto tileBounds = cp->getTileBounds(image, tile_x, tile_y);
 			uint64_t numTilePixels = tileBounds.area();
@@ -1004,19 +1004,19 @@ bool CodeStreamCompress::compressValidation()
 
 	/* ISO 15444-1:2004 states between 1 & 33
 	 * ergo (number of decomposition levels between 0 -> 32) */
-	if((m_cp.tcps->tccps->numresolutions == 0) ||
-	   (m_cp.tcps->tccps->numresolutions > GRK_J2K_MAXRLVLS))
+	if((cp_.tcps->tccps->numresolutions == 0) ||
+	   (cp_.tcps->tccps->numresolutions > GRK_J2K_MAXRLVLS))
 	{
 		GRK_ERROR("Invalid number of resolutions : %u not in range [1,%u]",
-				  m_cp.tcps->tccps->numresolutions, GRK_J2K_MAXRLVLS);
+				  cp_.tcps->tccps->numresolutions, GRK_J2K_MAXRLVLS);
 		return false;
 	}
-	if(m_cp.t_width == 0)
+	if(cp_.t_width == 0)
 	{
 		GRK_ERROR("Tile x dimension must be greater than zero ");
 		return false;
 	}
-	if(m_cp.t_height == 0)
+	if(cp_.t_height == 0)
 	{
 		GRK_ERROR("Tile y dimension must be greater than zero ");
 		return false;
@@ -1026,25 +1026,25 @@ bool CodeStreamCompress::compressValidation()
 }
 bool CodeStreamCompress::write_soc()
 {
-	return m_stream->writeShort(J2K_MS_SOC);
+	return stream_->writeShort(J2K_MS_SOC);
 }
 bool CodeStreamCompress::write_siz()
 {
 	SIZMarker siz;
 
-	return siz.write(this, m_stream);
+	return siz.write(this, stream_);
 }
 bool CodeStreamCompress::write_cap()
 {
-	return m_cp.tcps->m_qcd->write(m_stream);
+	return cp_.tcps->qcd_->write(stream_);
 }
 
 bool CodeStreamCompress::write_com()
 {
-	for(uint32_t i = 0; i < m_cp.num_comments; ++i)
+	for(uint32_t i = 0; i < cp_.num_comments; ++i)
 	{
-		const char* comment = m_cp.comment[i];
-		uint16_t comment_size = m_cp.comment_len[i];
+		const char* comment = cp_.comment[i];
+		uint16_t comment_size = cp_.comment_len[i];
 		if(!comment_size)
 		{
 			GRK_WARN("Empty comment. Ignoring");
@@ -1059,14 +1059,14 @@ bool CodeStreamCompress::write_com()
 		uint32_t totacom_size = (uint32_t)comment_size + 6;
 
 		/* COM */
-		if(!m_stream->writeShort(J2K_MS_COM))
+		if(!stream_->writeShort(J2K_MS_COM))
 			return false;
 		/* L_COM */
-		if(!m_stream->writeShort((uint16_t)(totacom_size - 2)))
+		if(!stream_->writeShort((uint16_t)(totacom_size - 2)))
 			return false;
-		if(!m_stream->writeShort(m_cp.isBinaryComment[i] ? 0 : 1))
+		if(!stream_->writeShort(cp_.isBinaryComment[i] ? 0 : 1))
 			return false;
-		if(!m_stream->writeBytes((uint8_t*)comment, comment_size))
+		if(!stream_->writeBytes((uint8_t*)comment, comment_size))
 			return false;
 	}
 
@@ -1075,26 +1075,26 @@ bool CodeStreamCompress::write_com()
 bool CodeStreamCompress::write_cod()
 {
 	uint32_t code_size;
-	auto tcp = m_cp.tcps;
+	auto tcp = cp_.tcps;
 	code_size = 9 + get_SPCod_SPCoc_size(0);
 
 	/* COD */
-	if(!m_stream->writeShort(J2K_MS_COD))
+	if(!stream_->writeShort(J2K_MS_COD))
 		return false;
 	/* L_COD */
-	if(!m_stream->writeShort((uint16_t)(code_size - 2)))
+	if(!stream_->writeShort((uint16_t)(code_size - 2)))
 		return false;
 	/* Scod */
-	if(!m_stream->writeByte((uint8_t)tcp->csty))
+	if(!stream_->writeByte((uint8_t)tcp->csty))
 		return false;
 	/* SGcod (A) */
-	if(!m_stream->writeByte((uint8_t)tcp->prg))
+	if(!stream_->writeByte((uint8_t)tcp->prg))
 		return false;
 	/* SGcod (B) */
-	if(!m_stream->writeShort((uint16_t)tcp->numlayers))
+	if(!stream_->writeShort((uint16_t)tcp->numlayers))
 		return false;
 	/* SGcod (C) */
-	if(!m_stream->writeByte((uint8_t)tcp->mct))
+	if(!stream_->writeByte((uint8_t)tcp->mct))
 		return false;
 	if(!write_SPCod_SPCoc(0))
 	{
@@ -1108,38 +1108,38 @@ bool CodeStreamCompress::write_coc(uint32_t comp_no)
 {
 	uint32_t coc_size;
 	uint32_t comp_room;
-	auto tcp = m_cp.tcps;
+	auto tcp = cp_.tcps;
 	auto image = getHeaderImage();
 	comp_room = (image->numcomps <= 256) ? 1 : 2;
 	coc_size = cod_coc_len + comp_room + get_SPCod_SPCoc_size(comp_no);
 
 	/* COC */
-	if(!m_stream->writeShort(J2K_MS_COC))
+	if(!stream_->writeShort(J2K_MS_COC))
 		return false;
 	/* L_COC */
-	if(!m_stream->writeShort((uint16_t)(coc_size - 2)))
+	if(!stream_->writeShort((uint16_t)(coc_size - 2)))
 		return false;
 	/* Ccoc */
 	if(comp_room == 2)
 	{
-		if(!m_stream->writeShort((uint16_t)comp_no))
+		if(!stream_->writeShort((uint16_t)comp_no))
 			return false;
 	}
 	else
 	{
-		if(!m_stream->writeByte((uint8_t)comp_no))
+		if(!stream_->writeByte((uint8_t)comp_no))
 			return false;
 	}
 
 	/* Scoc */
-	if(!m_stream->writeByte((uint8_t)tcp->tccps[comp_no].csty))
+	if(!stream_->writeByte((uint8_t)tcp->tccps[comp_no].csty))
 		return false;
 
 	return write_SPCod_SPCoc(0);
 }
 bool CodeStreamCompress::compare_coc(uint32_t first_comp_no, uint32_t second_comp_no)
 {
-	auto tcp = m_cp.tcps;
+	auto tcp = cp_.tcps;
 
 	if(tcp->tccps[first_comp_no].csty != tcp->tccps[second_comp_no].csty)
 		return false;
@@ -1153,10 +1153,10 @@ bool CodeStreamCompress::write_qcd()
 	qcd_size = 4 + get_SQcd_SQcc_size(0);
 
 	/* QCD */
-	if(!m_stream->writeShort(J2K_MS_QCD))
+	if(!stream_->writeShort(J2K_MS_QCD))
 		return false;
 	/* L_QCD */
-	if(!m_stream->writeShort((uint16_t)(qcd_size - 2)))
+	if(!stream_->writeShort((uint16_t)(qcd_size - 2)))
 		return false;
 	if(!write_SQcd_SQcc(0))
 	{
@@ -1171,7 +1171,7 @@ bool CodeStreamCompress::write_qcc(uint32_t comp_no)
 	uint32_t qcc_size = 6 + get_SQcd_SQcc_size(comp_no);
 
 	/* QCC */
-	if(!m_stream->writeShort(J2K_MS_QCC))
+	if(!stream_->writeShort(J2K_MS_QCC))
 	{
 		return false;
 	}
@@ -1181,19 +1181,19 @@ bool CodeStreamCompress::write_qcc(uint32_t comp_no)
 		--qcc_size;
 
 		/* L_QCC */
-		if(!m_stream->writeShort((uint16_t)(qcc_size - 2)))
+		if(!stream_->writeShort((uint16_t)(qcc_size - 2)))
 			return false;
 		/* Cqcc */
-		if(!m_stream->writeByte((uint8_t)comp_no))
+		if(!stream_->writeByte((uint8_t)comp_no))
 			return false;
 	}
 	else
 	{
 		/* L_QCC */
-		if(!m_stream->writeShort((uint16_t)(qcc_size - 2)))
+		if(!stream_->writeShort((uint16_t)(qcc_size - 2)))
 			return false;
 		/* Cqcc */
-		if(!m_stream->writeShort((uint16_t)comp_no))
+		if(!stream_->writeShort((uint16_t)comp_no))
 			return false;
 	}
 
@@ -1205,7 +1205,7 @@ bool CodeStreamCompress::compare_qcc(uint32_t first_comp_no, uint32_t second_com
 }
 bool CodeStreamCompress::writePoc()
 {
-	auto tcp = m_cp.tcps;
+	auto tcp = cp_.tcps;
 	auto tccp = tcp->tccps;
 	auto image = getHeaderImage();
 	uint16_t numComps = image->numcomps;
@@ -1215,49 +1215,49 @@ bool CodeStreamCompress::writePoc()
 	auto poc_size = getPocSize(numComps, numPocs);
 
 	/* POC  */
-	if(!m_stream->writeShort(J2K_MS_POC))
+	if(!stream_->writeShort(J2K_MS_POC))
 		return false;
 
 	/* Lpoc */
-	if(!m_stream->writeShort((uint16_t)(poc_size - 2)))
+	if(!stream_->writeShort((uint16_t)(poc_size - 2)))
 		return false;
 
 	for(uint32_t i = 0; i < numPocs; ++i)
 	{
 		auto current_prog = tcp->progressionOrderChange + i;
 		/* RSpoc_i */
-		if(!m_stream->writeByte(current_prog->resS))
+		if(!stream_->writeByte(current_prog->resS))
 			return false;
 		/* CSpoc_i */
 		if(pocRoom == 2)
 		{
-			if(!m_stream->writeShort(current_prog->compS))
+			if(!stream_->writeShort(current_prog->compS))
 				return false;
 		}
 		else
 		{
-			if(!m_stream->writeByte((uint8_t)current_prog->compS))
+			if(!stream_->writeByte((uint8_t)current_prog->compS))
 				return false;
 		}
 		/* LYEpoc_i */
-		if(!m_stream->writeShort(current_prog->layE))
+		if(!stream_->writeShort(current_prog->layE))
 			return false;
 		/* REpoc_i */
-		if(!m_stream->writeByte(current_prog->resE))
+		if(!stream_->writeByte(current_prog->resE))
 			return false;
 		/* CEpoc_i */
 		if(pocRoom == 2)
 		{
-			if(!m_stream->writeShort(current_prog->compE))
+			if(!stream_->writeShort(current_prog->compE))
 				return false;
 		}
 		else
 		{
-			if(!m_stream->writeByte((uint8_t)current_prog->compE))
+			if(!stream_->writeByte((uint8_t)current_prog->compE))
 				return false;
 		}
 		/* Ppoc_i */
-		if(!m_stream->writeByte((uint8_t)current_prog->progression))
+		if(!stream_->writeByte((uint8_t)current_prog->progression))
 			return false;
 
 		/* change the value of the max layer according to the actual number of layers in the file,
@@ -1275,20 +1275,20 @@ bool CodeStreamCompress::write_mct_data_group()
 	if(!write_cbd())
 		return false;
 
-	auto tcp = m_cp.tcps;
-	auto mct_record = tcp->m_mct_records;
+	auto tcp = cp_.tcps;
+	auto mct_record = tcp->mct_records_;
 
-	for(uint32_t i = 0; i < tcp->m_nb_mct_records; ++i)
+	for(uint32_t i = 0; i < tcp->nb_mct_records_; ++i)
 	{
-		if(!write_mct_record(mct_record, m_stream))
+		if(!write_mct_record(mct_record, stream_))
 			return false;
 		++mct_record;
 	}
 
-	auto mcc_record = tcp->m_mcc_records;
-	for(uint32_t i = 0; i < tcp->m_nb_mcc_records; ++i)
+	auto mcc_record = tcp->mcc_records_;
+	for(uint32_t i = 0; i < tcp->nb_mcc_records_; ++i)
 	{
-		if(!write_mcc_record(mcc_record, m_stream))
+		if(!write_mcc_record(mcc_record, stream_))
 			return false;
 		++mcc_record;
 	}
@@ -1326,7 +1326,7 @@ bool CodeStreamCompress::write_regions()
 {
 	for(uint16_t compno = 0; compno < getHeaderImage()->numcomps; ++compno)
 	{
-		auto tccp = m_cp.tcps->tccps + compno;
+		auto tccp = cp_.tcps->tccps + compno;
 		if(tccp->roishift)
 		{
 			if(!write_rgn(0, compno, getHeaderImage()->numcomps))
@@ -1347,7 +1347,7 @@ bool CodeStreamCompress::write_mcc_record(grk_simple_mcc_decorrelation_data* p_m
 
 	assert(stream != nullptr);
 
-	if(p_mcc_record->m_nb_comps > 255)
+	if(p_mcc_record->nb_comps_ > 255)
 	{
 		nb_bytes_for_comp = 2;
 		mask = 0x8000;
@@ -1358,7 +1358,7 @@ bool CodeStreamCompress::write_mcc_record(grk_simple_mcc_decorrelation_data* p_m
 		mask = 0;
 	}
 
-	mcc_size = p_mcc_record->m_nb_comps * 2 * nb_bytes_for_comp + 19;
+	mcc_size = p_mcc_record->nb_comps_ * 2 * nb_bytes_for_comp + 19;
 
 	/* MCC */
 	if(!stream->writeShort(J2K_MS_MCC))
@@ -1371,7 +1371,7 @@ bool CodeStreamCompress::write_mcc_record(grk_simple_mcc_decorrelation_data* p_m
 	if(!stream->writeShort(0))
 		return false;
 	/* Imcc -> no need for other values, take the first */
-	if(!stream->writeByte((uint8_t)p_mcc_record->m_index))
+	if(!stream->writeByte((uint8_t)p_mcc_record->index_))
 		return false;
 	/* only one marker atm */
 	/* Ymcc */
@@ -1384,10 +1384,10 @@ bool CodeStreamCompress::write_mcc_record(grk_simple_mcc_decorrelation_data* p_m
 	if(!stream->writeByte(0x1))
 		return false;
 	/* Nmcci number of input components involved and size for each component offset = 8 bits */
-	if(!stream->writeShort((uint16_t)(p_mcc_record->m_nb_comps | mask)))
+	if(!stream->writeShort((uint16_t)(p_mcc_record->nb_comps_ | mask)))
 		return false;
 
-	for(i = 0; i < p_mcc_record->m_nb_comps; ++i)
+	for(i = 0; i < p_mcc_record->nb_comps_; ++i)
 	{
 		/* Cmccij Component offset*/
 		if(nb_bytes_for_comp == 2)
@@ -1403,10 +1403,10 @@ bool CodeStreamCompress::write_mcc_record(grk_simple_mcc_decorrelation_data* p_m
 	}
 
 	/* Mmcci number of output components involved and size for each component offset = 8 bits */
-	if(!stream->writeShort((uint16_t)(p_mcc_record->m_nb_comps | mask)))
+	if(!stream->writeShort((uint16_t)(p_mcc_record->nb_comps_ | mask)))
 		return false;
 
-	for(i = 0; i < p_mcc_record->m_nb_comps; ++i)
+	for(i = 0; i < p_mcc_record->nb_comps_; ++i)
 	{
 		/* Wmccij Component offset*/
 		if(nb_bytes_for_comp == 2)
@@ -1421,13 +1421,13 @@ bool CodeStreamCompress::write_mcc_record(grk_simple_mcc_decorrelation_data* p_m
 		}
 	}
 
-	tmcc = ((uint32_t)((!p_mcc_record->m_is_irreversible) & 1U)) << 16;
+	tmcc = ((uint32_t)((!p_mcc_record->is_irreversible_) & 1U)) << 16;
 
-	if(p_mcc_record->m_decorrelation_array)
-		tmcc |= p_mcc_record->m_decorrelation_array->m_index;
+	if(p_mcc_record->decorrelation_array_)
+		tmcc |= p_mcc_record->decorrelation_array_->index_;
 
-	if(p_mcc_record->m_offset_array)
-		tmcc |= ((p_mcc_record->m_offset_array->m_index) << 8);
+	if(p_mcc_record->offset_array_)
+		tmcc |= ((p_mcc_record->offset_array_->index_) << 8);
 
 	/* Tmcci : use MCT defined as number 1 and irreversible array based. */
 	return stream->write24(tmcc);
@@ -1436,26 +1436,26 @@ bool CodeStreamCompress::write_mco()
 {
 	uint32_t mco_size;
 	uint32_t i;
-	auto tcp = &(m_cp.tcps[0]);
-	mco_size = 5 + tcp->m_nb_mcc_records;
+	auto tcp = &(cp_.tcps[0]);
+	mco_size = 5 + tcp->nb_mcc_records_;
 
 	/* MCO */
-	if(!m_stream->writeShort(J2K_MS_MCO))
+	if(!stream_->writeShort(J2K_MS_MCO))
 		return false;
 
 	/* Lmco */
-	if(!m_stream->writeShort((uint16_t)(mco_size - 2)))
+	if(!stream_->writeShort((uint16_t)(mco_size - 2)))
 		return false;
 
 	/* Nmco : only one transform stage*/
-	if(!m_stream->writeByte((uint8_t)tcp->m_nb_mcc_records))
+	if(!stream_->writeByte((uint8_t)tcp->nb_mcc_records_))
 		return false;
 
-	auto mcc_record = tcp->m_mcc_records;
-	for(i = 0; i < tcp->m_nb_mcc_records; ++i)
+	auto mcc_record = tcp->mcc_records_;
+	for(i = 0; i < tcp->nb_mcc_records_; ++i)
 	{
 		/* Imco -> use the mcc indicated by 1*/
-		if(!m_stream->writeByte((uint8_t)mcc_record->m_index))
+		if(!stream_->writeByte((uint8_t)mcc_record->index_))
 			return false;
 		++mcc_record;
 	}
@@ -1469,15 +1469,15 @@ bool CodeStreamCompress::write_cbd()
 	uint16_t cbd_size = (uint16_t)(6U + getHeaderImage()->numcomps);
 
 	/* CBD */
-	if(!m_stream->writeShort(J2K_MS_CBD))
+	if(!stream_->writeShort(J2K_MS_CBD))
 		return false;
 
 	/* L_CBD */
-	if(!m_stream->writeShort((uint16_t)(cbd_size - 2U)))
+	if(!stream_->writeShort((uint16_t)(cbd_size - 2U)))
 		return false;
 
 	/* Ncbd */
-	if(!m_stream->writeShort(image->numcomps))
+	if(!stream_->writeShort(image->numcomps))
 		return false;
 
 	for(i = 0; i < image->numcomps; ++i)
@@ -1487,7 +1487,7 @@ bool CodeStreamCompress::write_cbd()
 		uint8_t bpc = (uint8_t)(comp->prec - 1);
 		if(comp->sgnd)
 			bpc = (uint8_t)(bpc + (1 << 7));
-		if(!m_stream->writeByte(bpc))
+		if(!stream_->writeByte(bpc))
 			return false;
 	}
 	return true;
@@ -1495,18 +1495,18 @@ bool CodeStreamCompress::write_cbd()
 
 bool CodeStreamCompress::write_tlm_begin()
 {
-	if(!m_cp.tlm_markers)
-		m_cp.tlm_markers = new TileLengthMarkers(m_stream);
+	if(!cp_.tlm_markers)
+		cp_.tlm_markers = new TileLengthMarkers(stream_);
 
-	return m_cp.tlm_markers->writeBegin(m_compressorState.m_total_tile_parts);
+	return cp_.tlm_markers->writeBegin(compressorState_.total_tile_parts_);
 }
 bool CodeStreamCompress::write_tlm_end()
 {
-	return m_cp.tlm_markers->writeEnd();
+	return cp_.tlm_markers->writeEnd();
 }
 uint32_t CodeStreamCompress::get_SPCod_SPCoc_size(uint32_t comp_no)
 {
-	auto tcp = m_cp.tcps;
+	auto tcp = cp_.tcps;
 	auto tccp = tcp->tccps + comp_no;
 	assert(comp_no < getHeaderImage()->numcomps);
 
@@ -1518,7 +1518,7 @@ uint32_t CodeStreamCompress::get_SPCod_SPCoc_size(uint32_t comp_no)
 }
 bool CodeStreamCompress::compare_SPCod_SPCoc(uint32_t first_comp_no, uint32_t second_comp_no)
 {
-	auto tcp = m_cp.tcps;
+	auto tcp = cp_.tcps;
 	auto tccp0 = tcp->tccps + first_comp_no;
 	auto tccp1 = tcp->tccps + second_comp_no;
 
@@ -1547,25 +1547,25 @@ bool CodeStreamCompress::compare_SPCod_SPCoc(uint32_t first_comp_no, uint32_t se
 
 bool CodeStreamCompress::write_SPCod_SPCoc(uint32_t comp_no)
 {
-	auto tcp = m_cp.tcps;
+	auto tcp = cp_.tcps;
 	auto tccp = tcp->tccps + comp_no;
 
 	assert(comp_no < (getHeaderImage()->numcomps));
 
 	/* SPcoc (D) */
-	if(!m_stream->writeByte((uint8_t)(tccp->numresolutions - 1)))
+	if(!stream_->writeByte((uint8_t)(tccp->numresolutions - 1)))
 		return false;
 	/* SPcoc (E) */
-	if(!m_stream->writeByte((uint8_t)(tccp->cblkw - 2)))
+	if(!stream_->writeByte((uint8_t)(tccp->cblkw - 2)))
 		return false;
 	/* SPcoc (F) */
-	if(!m_stream->writeByte((uint8_t)(tccp->cblkh - 2)))
+	if(!stream_->writeByte((uint8_t)(tccp->cblkh - 2)))
 		return false;
 	/* SPcoc (G) */
-	if(!m_stream->writeByte(tccp->cblk_sty))
+	if(!stream_->writeByte(tccp->cblk_sty))
 		return false;
 	/* SPcoc (H) */
-	if(!m_stream->writeByte((uint8_t)tccp->qmfbid))
+	if(!stream_->writeByte((uint8_t)tccp->qmfbid))
 		return false;
 
 	if(tccp->csty & J2K_CCP_CSTY_PRT)
@@ -1573,7 +1573,7 @@ bool CodeStreamCompress::write_SPCod_SPCoc(uint32_t comp_no)
 		for(uint32_t i = 0; i < tccp->numresolutions; ++i)
 		{
 			/* SPcoc (I_i) */
-			if(!m_stream->writeByte(
+			if(!stream_->writeByte(
 				   (uint8_t)(tccp->precinctWidthExp[i] + (tccp->precinctHeightExp[i] << 4))))
 			{
 				return false;
@@ -1585,7 +1585,7 @@ bool CodeStreamCompress::write_SPCod_SPCoc(uint32_t comp_no)
 }
 uint32_t CodeStreamCompress::get_SQcd_SQcc_size(uint32_t comp_no)
 {
-	auto tcp = m_cp.tcps;
+	auto tcp = cp_.tcps;
 	auto tccp = tcp->tccps + comp_no;
 	assert(comp_no < getHeaderImage()->numcomps);
 
@@ -1596,7 +1596,7 @@ uint32_t CodeStreamCompress::get_SQcd_SQcc_size(uint32_t comp_no)
 }
 bool CodeStreamCompress::compare_SQcd_SQcc(uint32_t first_comp_no, uint32_t second_comp_no)
 {
-	auto tcp = m_cp.tcps;
+	auto tcp = cp_.tcps;
 	auto tccp0 = tcp->tccps + first_comp_no;
 	auto tccp1 = tcp->tccps + second_comp_no;
 
@@ -1634,13 +1634,13 @@ bool CodeStreamCompress::compare_SQcd_SQcc(uint32_t first_comp_no, uint32_t seco
 bool CodeStreamCompress::write_SQcd_SQcc(uint32_t comp_no)
 {
 	assert(comp_no < getHeaderImage()->numcomps);
-	auto tcp = m_cp.tcps;
+	auto tcp = cp_.tcps;
 	auto tccp = tcp->tccps + comp_no;
 	uint32_t num_bands =
 		(tccp->qntsty == J2K_CCP_QNTSTY_SIQNT) ? 1 : (tccp->numresolutions * 3U - 2);
 
 	/* Sqcx */
-	if(!m_stream->writeByte((uint8_t)(tccp->qntsty + (tccp->numgbits << 5))))
+	if(!stream_->writeByte((uint8_t)(tccp->qntsty + (tccp->numgbits << 5))))
 		return false;
 
 	/* SPqcx_i */
@@ -1650,12 +1650,12 @@ bool CodeStreamCompress::write_SQcd_SQcc(uint32_t comp_no)
 		uint32_t mant = tccp->stepsizes[band_no].mant;
 		if(tccp->qntsty == J2K_CCP_QNTSTY_NOQNT)
 		{
-			if(!m_stream->writeByte((uint8_t)(expn << 3)))
+			if(!stream_->writeByte((uint8_t)(expn << 3)))
 				return false;
 		}
 		else
 		{
-			if(!m_stream->writeShort((uint16_t)((expn << 11) + mant)))
+			if(!stream_->writeShort((uint16_t)((expn << 11) + mant)))
 				return false;
 		}
 	}
@@ -1748,93 +1748,93 @@ bool CodeStreamCompress::init_mct_encoding(TileCodingParams* p_tcp, GrkImage* p_
 	if(p_tcp->mct != 2)
 		return true;
 
-	if(p_tcp->m_mct_decoding_matrix)
+	if(p_tcp->mct_decoding_matrix_)
 	{
-		if(p_tcp->m_nb_mct_records == p_tcp->m_nb_max_mct_records)
+		if(p_tcp->nb_mct_records_ == p_tcp->nb_max_mct_records_)
 		{
-			p_tcp->m_nb_max_mct_records += default_number_mct_records;
+			p_tcp->nb_max_mct_records_ += default_number_mct_records;
 
 			auto new_mct_records = (grk_mct_data*)grkRealloc(
-				p_tcp->m_mct_records, p_tcp->m_nb_max_mct_records * sizeof(grk_mct_data));
+				p_tcp->mct_records_, p_tcp->nb_max_mct_records_ * sizeof(grk_mct_data));
 			if(!new_mct_records)
 			{
-				grkFree(p_tcp->m_mct_records);
-				p_tcp->m_mct_records = nullptr;
-				p_tcp->m_nb_max_mct_records = 0;
-				p_tcp->m_nb_mct_records = 0;
+				grkFree(p_tcp->mct_records_);
+				p_tcp->mct_records_ = nullptr;
+				p_tcp->nb_max_mct_records_ = 0;
+				p_tcp->nb_mct_records_ = 0;
 				/* GRK_ERROR( "Not enough memory to set up mct compressing"); */
 				return false;
 			}
-			p_tcp->m_mct_records = new_mct_records;
-			mct_deco_data = p_tcp->m_mct_records + p_tcp->m_nb_mct_records;
+			p_tcp->mct_records_ = new_mct_records;
+			mct_deco_data = p_tcp->mct_records_ + p_tcp->nb_mct_records_;
 
 			memset(mct_deco_data, 0,
-				   (p_tcp->m_nb_max_mct_records - p_tcp->m_nb_mct_records) * sizeof(grk_mct_data));
+				   (p_tcp->nb_max_mct_records_ - p_tcp->nb_mct_records_) * sizeof(grk_mct_data));
 		}
-		mct_deco_data = p_tcp->m_mct_records + p_tcp->m_nb_mct_records;
-		grkFree(mct_deco_data->m_data);
-		mct_deco_data->m_data = nullptr;
+		mct_deco_data = p_tcp->mct_records_ + p_tcp->nb_mct_records_;
+		grkFree(mct_deco_data->data_);
+		mct_deco_data->data_ = nullptr;
 
-		mct_deco_data->m_index = indix++;
-		mct_deco_data->m_array_type = MCT_TYPE_DECORRELATION;
-		mct_deco_data->m_element_type = MCT_TYPE_FLOAT;
+		mct_deco_data->index_ = indix++;
+		mct_deco_data->array_type_ = MCT_TYPE_DECORRELATION;
+		mct_deco_data->element_type_ = MCT_TYPE_FLOAT;
 		nb_elem = (uint32_t)p_image->numcomps * p_image->numcomps;
-		mct_size = nb_elem * MCT_ELEMENT_SIZE[mct_deco_data->m_element_type];
-		mct_deco_data->m_data = (uint8_t*)grkMalloc(mct_size);
+		mct_size = nb_elem * MCT_ELEMENT_SIZE[mct_deco_data->element_type_];
+		mct_deco_data->data_ = (uint8_t*)grkMalloc(mct_size);
 
-		if(!mct_deco_data->m_data)
+		if(!mct_deco_data->data_)
 			return false;
 
-		j2k_mct_write_functions_from_float[mct_deco_data->m_element_type](
-			p_tcp->m_mct_decoding_matrix, mct_deco_data->m_data, nb_elem);
+		j2k_mct_write_functions_from_float[mct_deco_data->element_type_](
+			p_tcp->mct_decoding_matrix_, mct_deco_data->data_, nb_elem);
 
-		mct_deco_data->m_data_size = mct_size;
-		++p_tcp->m_nb_mct_records;
+		mct_deco_data->data_size_ = mct_size;
+		++p_tcp->nb_mct_records_;
 	}
 
-	if(p_tcp->m_nb_mct_records == p_tcp->m_nb_max_mct_records)
+	if(p_tcp->nb_mct_records_ == p_tcp->nb_max_mct_records_)
 	{
 		grk_mct_data* new_mct_records;
-		p_tcp->m_nb_max_mct_records += default_number_mct_records;
+		p_tcp->nb_max_mct_records_ += default_number_mct_records;
 		new_mct_records = (grk_mct_data*)grkRealloc(
-			p_tcp->m_mct_records, p_tcp->m_nb_max_mct_records * sizeof(grk_mct_data));
+			p_tcp->mct_records_, p_tcp->nb_max_mct_records_ * sizeof(grk_mct_data));
 		if(!new_mct_records)
 		{
-			grkFree(p_tcp->m_mct_records);
-			p_tcp->m_mct_records = nullptr;
-			p_tcp->m_nb_max_mct_records = 0;
-			p_tcp->m_nb_mct_records = 0;
+			grkFree(p_tcp->mct_records_);
+			p_tcp->mct_records_ = nullptr;
+			p_tcp->nb_max_mct_records_ = 0;
+			p_tcp->nb_mct_records_ = 0;
 			/* GRK_ERROR( "Not enough memory to set up mct compressing"); */
 			return false;
 		}
-		p_tcp->m_mct_records = new_mct_records;
-		mct_offset_data = p_tcp->m_mct_records + p_tcp->m_nb_mct_records;
+		p_tcp->mct_records_ = new_mct_records;
+		mct_offset_data = p_tcp->mct_records_ + p_tcp->nb_mct_records_;
 
 		memset(mct_offset_data, 0,
-			   (p_tcp->m_nb_max_mct_records - p_tcp->m_nb_mct_records) * sizeof(grk_mct_data));
+			   (p_tcp->nb_max_mct_records_ - p_tcp->nb_mct_records_) * sizeof(grk_mct_data));
 		if(mct_deco_data)
 			mct_deco_data = mct_offset_data - 1;
 	}
-	mct_offset_data = p_tcp->m_mct_records + p_tcp->m_nb_mct_records;
-	if(mct_offset_data->m_data)
+	mct_offset_data = p_tcp->mct_records_ + p_tcp->nb_mct_records_;
+	if(mct_offset_data->data_)
 	{
-		grkFree(mct_offset_data->m_data);
-		mct_offset_data->m_data = nullptr;
+		grkFree(mct_offset_data->data_);
+		mct_offset_data->data_ = nullptr;
 	}
-	mct_offset_data->m_index = indix++;
-	mct_offset_data->m_array_type = MCT_TYPE_OFFSET;
-	mct_offset_data->m_element_type = MCT_TYPE_FLOAT;
+	mct_offset_data->index_ = indix++;
+	mct_offset_data->array_type_ = MCT_TYPE_OFFSET;
+	mct_offset_data->element_type_ = MCT_TYPE_FLOAT;
 	nb_elem = p_image->numcomps;
-	mct_size = nb_elem * MCT_ELEMENT_SIZE[mct_offset_data->m_element_type];
-	mct_offset_data->m_data = (uint8_t*)grkMalloc(mct_size);
-	if(!mct_offset_data->m_data)
+	mct_size = nb_elem * MCT_ELEMENT_SIZE[mct_offset_data->element_type_];
+	mct_offset_data->data_ = (uint8_t*)grkMalloc(mct_size);
+	if(!mct_offset_data->data_)
 		return false;
 
 	data = (float*)grkMalloc(nb_elem * sizeof(float));
 	if(!data)
 	{
-		grkFree(mct_offset_data->m_data);
-		mct_offset_data->m_data = nullptr;
+		grkFree(mct_offset_data->data_);
+		mct_offset_data->data_ = nullptr;
 		return false;
 	}
 	tccp = p_tcp->tccps;
@@ -1842,51 +1842,51 @@ bool CodeStreamCompress::init_mct_encoding(TileCodingParams* p_tcp, GrkImage* p_
 
 	for(i = 0; i < nb_elem; ++i)
 	{
-		*(current_data++) = (float)(tccp->m_dc_level_shift);
+		*(current_data++) = (float)(tccp->dc_level_shift_);
 		++tccp;
 	}
-	j2k_mct_write_functions_from_float[mct_offset_data->m_element_type](
-		data, mct_offset_data->m_data, nb_elem);
+	j2k_mct_write_functions_from_float[mct_offset_data->element_type_](
+		data, mct_offset_data->data_, nb_elem);
 	grkFree(data);
-	mct_offset_data->m_data_size = mct_size;
-	++p_tcp->m_nb_mct_records;
+	mct_offset_data->data_size_ = mct_size;
+	++p_tcp->nb_mct_records_;
 
-	if(p_tcp->m_nb_mcc_records == p_tcp->m_nb_max_mcc_records)
+	if(p_tcp->nb_mcc_records_ == p_tcp->nb_max_mcc_records_)
 	{
 		grk_simple_mcc_decorrelation_data* new_mcc_records;
-		p_tcp->m_nb_max_mcc_records += default_number_mct_records;
+		p_tcp->nb_max_mcc_records_ += default_number_mct_records;
 		new_mcc_records = (grk_simple_mcc_decorrelation_data*)grkRealloc(
-			p_tcp->m_mcc_records,
-			p_tcp->m_nb_max_mcc_records * sizeof(grk_simple_mcc_decorrelation_data));
+			p_tcp->mcc_records_,
+			p_tcp->nb_max_mcc_records_ * sizeof(grk_simple_mcc_decorrelation_data));
 		if(!new_mcc_records)
 		{
-			grkFree(p_tcp->m_mcc_records);
-			p_tcp->m_mcc_records = nullptr;
-			p_tcp->m_nb_max_mcc_records = 0;
-			p_tcp->m_nb_mcc_records = 0;
+			grkFree(p_tcp->mcc_records_);
+			p_tcp->mcc_records_ = nullptr;
+			p_tcp->nb_max_mcc_records_ = 0;
+			p_tcp->nb_mcc_records_ = 0;
 			/* GRK_ERROR( "Not enough memory to set up mct compressing"); */
 			return false;
 		}
-		p_tcp->m_mcc_records = new_mcc_records;
-		mcc_data = p_tcp->m_mcc_records + p_tcp->m_nb_mcc_records;
+		p_tcp->mcc_records_ = new_mcc_records;
+		mcc_data = p_tcp->mcc_records_ + p_tcp->nb_mcc_records_;
 		memset(mcc_data, 0,
-			   (p_tcp->m_nb_max_mcc_records - p_tcp->m_nb_mcc_records) *
+			   (p_tcp->nb_max_mcc_records_ - p_tcp->nb_mcc_records_) *
 				   sizeof(grk_simple_mcc_decorrelation_data));
 	}
-	mcc_data = p_tcp->m_mcc_records + p_tcp->m_nb_mcc_records;
-	mcc_data->m_decorrelation_array = mct_deco_data;
-	mcc_data->m_is_irreversible = 1;
-	mcc_data->m_nb_comps = p_image->numcomps;
-	mcc_data->m_index = indix++;
-	mcc_data->m_offset_array = mct_offset_data;
-	++p_tcp->m_nb_mcc_records;
+	mcc_data = p_tcp->mcc_records_ + p_tcp->nb_mcc_records_;
+	mcc_data->decorrelation_array_ = mct_deco_data;
+	mcc_data->is_irreversible_ = 1;
+	mcc_data->nb_comps_ = p_image->numcomps;
+	mcc_data->index_ = indix++;
+	mcc_data->offset_array_ = mct_offset_data;
+	++p_tcp->nb_mcc_records_;
 
 	return true;
 }
 uint64_t CodeStreamCompress::getNumTilePartsForProgression(uint32_t pino, uint16_t tileno)
 {
 	uint64_t numTileParts = 1;
-	auto cp = &m_cp;
+	auto cp = &cp_;
 
 	/*  preconditions */
 	assert(tileno < (cp->t_grid_width * cp->t_grid_height));
@@ -1903,7 +1903,7 @@ uint64_t CodeStreamCompress::getNumTilePartsForProgression(uint32_t pino, uint16
 	auto prog = convertProgressionOrder(tcp->prg);
 	assert(strlen(prog) > 0);
 
-	if(cp->m_coding_params.m_enc.m_enableTilePartGeneration)
+	if(cp->coding_params_.enc_.enableTilePartGeneration_)
 	{
 		for(uint32_t i = 0; i < 4; ++i)
 		{
@@ -1928,10 +1928,10 @@ uint64_t CodeStreamCompress::getNumTilePartsForProgression(uint32_t pino, uint16
 			}
 			// we start a new tile part when progression matches specified tile part
 			// divider
-			if(cp->m_coding_params.m_enc.m_newTilePartProgressionDivider == prog[i])
+			if(cp->coding_params_.enc_.newTilePartProgressionDivider_ == prog[i])
 			{
 				assert(prog[i] != 'P');
-				cp->m_coding_params.m_enc.newTilePartProgressionPosition = i;
+				cp->coding_params_.enc_.newTilePartProgressionPosition = i;
 				break;
 			}
 		}
@@ -1949,13 +1949,13 @@ bool CodeStreamCompress::getNumTileParts(uint16_t* numTilePartsForAllTiles, GrkI
 	assert(numTilePartsForAllTiles != nullptr);
 	assert(image != nullptr);
 
-	uint32_t numTiles = (uint16_t)(m_cp.t_grid_width * m_cp.t_grid_height);
+	uint32_t numTiles = (uint16_t)(cp_.t_grid_width * cp_.t_grid_height);
 	*numTilePartsForAllTiles = 0;
-	auto tcp = m_cp.tcps;
+	auto tcp = cp_.tcps;
 	for(uint16_t tileno = 0; tileno < numTiles; ++tileno)
 	{
 		uint8_t totalTilePartsForTile = 0;
-		PacketManager::updateCompressParams(image, &m_cp, tileno);
+		PacketManager::updateCompressParams(image, &cp_, tileno);
 		for(uint32_t pino = 0; pino < tcp->getNumProgressions(); ++pino)
 		{
 			uint64_t numTilePartsForProgression = getNumTilePartsForProgression(pino, tileno);
@@ -1982,7 +1982,7 @@ bool CodeStreamCompress::getNumTileParts(uint16_t* numTilePartsForAllTiles, GrkI
 			}
 			*numTilePartsForAllTiles = (uint16_t)newTotalTilePartsForAllTiles;
 		}
-		tcp->m_numTileParts = totalTilePartsForTile;
+		tcp->numTileParts_ = totalTilePartsForTile;
 		++tcp;
 	}
 

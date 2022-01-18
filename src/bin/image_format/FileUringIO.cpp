@@ -36,7 +36,7 @@
 
 const static bool debugUring = false;
 
-FileUringIO::FileUringIO() : m_fd(0),
+FileUringIO::FileUringIO() : fd_(0),
 							ownsDescriptor(false),
 							requestsSubmitted(0),
 							requestsCompleted(0)
@@ -50,13 +50,13 @@ FileUringIO::~FileUringIO()
 }
 
 bool FileUringIO::attach(std::string fileName, std::string mode, int fd){
-	m_fileName = fileName;
-	bool useStdio = grk::useStdio(m_fileName.c_str());
+	fileName_ = fileName;
+	bool useStdio = grk::useStdio(fileName_.c_str());
 	bool doRead = mode[0] == -'r';
 	if(useStdio)
-		m_fd = doRead ? STDIN_FILENO : STDOUT_FILENO;
+		fd_ = doRead ? STDIN_FILENO : STDOUT_FILENO;
 	else
-		m_fd = fd;
+		fd_ = fd;
 	ownsDescriptor = false;
 
 	return (doRead ? true : initQueue());
@@ -64,17 +64,17 @@ bool FileUringIO::attach(std::string fileName, std::string mode, int fd){
 
 bool FileUringIO::open(std::string fileName, std::string mode)
 {
-	m_fileName = fileName;
-	bool useStdio = grk::useStdio(m_fileName.c_str());
+	fileName_ = fileName;
+	bool useStdio = grk::useStdio(fileName_.c_str());
 	bool doRead = mode[0] == -'r';
 	if(useStdio)
 	{
-		m_fd = doRead ? STDIN_FILENO : STDOUT_FILENO;
+		fd_ = doRead ? STDIN_FILENO : STDOUT_FILENO;
 		return true;
 	}
-	auto name = m_fileName.c_str();
-	m_fd = ::open(name, getMode(mode.c_str()), 0666);
-	if(m_fd < 0)
+	auto name = fileName_.c_str();
+	fd_ = ::open(name, getMode(mode.c_str()), 0666);
+	if(fd_ < 0)
 	{
 		if(errno > 0 && strerror(errno) != nullptr)
 			spdlog::error("{}: {}", name, strerror(errno));
@@ -212,7 +212,7 @@ io_data* FileUringIO::retrieveCompletion(bool peek, bool &success){
 
 bool FileUringIO::close(void)
 {
-	if(!m_fd)
+	if(!fd_)
 		return true;
 	if(ring.ring_fd)
 	{
@@ -242,11 +242,11 @@ bool FileUringIO::close(void)
 	requestsSubmitted = 0;
 	requestsCompleted = 0;
 	bool rc = false;
-	if(grk::useStdio(m_fileName.c_str()) || !ownsDescriptor)
+	if(grk::useStdio(fileName_.c_str()) || !ownsDescriptor)
 		rc = true;
-	else if(::close(m_fd) == 0)
+	else if(::close(fd_) == 0)
 		rc = true;
-	m_fd = 0;
+	fd_ = 0;
 
 	return rc;
 }
@@ -276,7 +276,7 @@ bool FileUringIO::write(GrkSerializeBuf buffer,
 	data->buf = buffer;
 	data->iov.iov_base = buffer.data;
 	data->iov.iov_len = buffer.dataLen;
-	enqueue(&ring, data,reclaimed,max_reclaimed,num_reclaimed,false, m_fd);
+	enqueue(&ring, data,reclaimed,max_reclaimed,num_reclaimed,false, fd_);
 
 	return true;
 }

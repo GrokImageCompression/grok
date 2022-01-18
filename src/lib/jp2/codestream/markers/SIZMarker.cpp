@@ -46,7 +46,7 @@ void SIZMarker::subsampleAndReduceHeaderImageComponents(GrkImage* headerImage,
 	auto imageBounds = grkRectU32(x0, y0, x1, y1);
 
 	// 2. sub-sample and apply resolution reduction
-	uint32_t reduce = p_cp->m_coding_params.m_dec.m_reduce;
+	uint32_t reduce = p_cp->coding_params_.dec_.reduce_;
 	for(uint32_t i = 0; i < headerImage->numcomps; ++i)
 	{
 		auto comp = headerImage->comps + i;
@@ -247,39 +247,39 @@ bool SIZMarker::read(CodeStreamDecompress* codeStream, uint8_t* headerData, uint
 	cp->t_grid_height = (uint16_t)t_grid_height;
 	numTiles = cp->t_grid_width * cp->t_grid_height;
 
-	decompressor->m_start_tile_x_index = 0;
-	decompressor->m_start_tile_y_index = 0;
-	decompressor->m_end_tile_x_index = cp->t_grid_width;
-	decompressor->m_end_tile_y_index = cp->t_grid_height;
+	decompressor->start_tile_x_index_ = 0;
+	decompressor->start_tile_y_index_ = 0;
+	decompressor->end_tile_x_index_ = cp->t_grid_width;
+	decompressor->end_tile_y_index_ = cp->t_grid_height;
 
 	/* memory allocations */
 	cp->tcps = new TileCodingParams[numTiles];
-	decompressor->m_default_tcp->tccps = new TileComponentCodingParams[image->numcomps];
-	decompressor->m_default_tcp->m_mct_records =
+	decompressor->default_tcp_->tccps = new TileComponentCodingParams[image->numcomps];
+	decompressor->default_tcp_->mct_records_ =
 		(grk_mct_data*)grkCalloc(default_number_mct_records, sizeof(grk_mct_data));
 
-	if(!decompressor->m_default_tcp->m_mct_records)
+	if(!decompressor->default_tcp_->mct_records_)
 	{
 		GRK_ERROR("Not enough memory to take in charge SIZ marker");
 		return false;
 	}
-	decompressor->m_default_tcp->m_nb_max_mct_records = default_number_mct_records;
+	decompressor->default_tcp_->nb_max_mct_records_ = default_number_mct_records;
 
-	decompressor->m_default_tcp->m_mcc_records = (grk_simple_mcc_decorrelation_data*)grkCalloc(
+	decompressor->default_tcp_->mcc_records_ = (grk_simple_mcc_decorrelation_data*)grkCalloc(
 		default_number_mcc_records, sizeof(grk_simple_mcc_decorrelation_data));
 
-	if(!decompressor->m_default_tcp->m_mcc_records)
+	if(!decompressor->default_tcp_->mcc_records_)
 	{
 		GRK_ERROR("Not enough memory to take in charge SIZ marker");
 		return false;
 	}
-	decompressor->m_default_tcp->m_nb_max_mcc_records = default_number_mcc_records;
+	decompressor->default_tcp_->nb_max_mcc_records_ = default_number_mcc_records;
 
 	/* set up default dc level shift */
 	for(i = 0; i < image->numcomps; ++i)
 	{
 		if(!image->comps[i].sgnd)
-			decompressor->m_default_tcp->tccps[i].m_dc_level_shift =
+			decompressor->default_tcp_->tccps[i].dc_level_shift_ =
 											1 << (image->comps[i].prec - 1);
 	}
 

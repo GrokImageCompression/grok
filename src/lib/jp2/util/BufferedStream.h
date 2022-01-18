@@ -160,53 +160,53 @@ struct BufferedStream : public IBufferedStream
 	/**
 	 * user data
 	 */
-	void* m_user_data;
+	void* user_data_;
 	/**
-	 * Pointer to function to free m_user_data (nullptr at initialization)
+	 * Pointer to function to free user_data_ (nullptr at initialization)
 	 * when destroying the stream. If pointer is nullptr the function is not
-	 * called and the m_user_data is not freed (even if it isn't nullptr).
+	 * called and the user_data_ is not freed (even if it isn't nullptr).
 	 */
-	grk_stream_free_user_data_fn m_free_user_data_fn;
+	grk_stream_free_user_data_fn free_user_data_fn_;
 	/**
 	 * User data length.
 	 * Currently set to size of file for file read stream,
 	 * and size of buffer for buffer read/write stream
 	 */
-	uint64_t m_user_data_length;
+	uint64_t user_data_length_;
 	/**
 	 * Pointer to actual read function (nullptr at initialization).
 	 */
-	grk_stream_read_fn m_read_fn;
+	grk_stream_read_fn read_fn_;
 	/**
 	 * Pointer to actual zero copy read function (nullptr at initialization).
 	 */
-	grk_stream_zero_copy_read_fn m_zero_copy_read_fn;
+	grk_stream_zero_copy_read_fn zero_copy_read_fn_;
 	/**
 	 * Pointer to actual write function (nullptr at initialization).
 	 */
-	grk_stream_write_fn m_write_fn;
+	grk_stream_write_fn write_fn_;
 	/**
 	 * Pointer to actual seek function (if available).
 	 */
-	grk_stream_seek_fn m_seek_fn;
+	grk_stream_seek_fn seek_fn_;
 	/**
 	 * Stream status flags
 	 */
-	uint32_t m_status;
+	uint32_t status_;
 
-	grkBufferU8* m_buf;
+	grkBufferU8* buf_;
 
 	// number of bytes read in, or slated for write
-	size_t m_buffered_bytes;
+	size_t buffered_bytes_;
 
 	// number of seekable bytes in buffer. This will equal
 	// the number of bytes
 	// read in the last media read.
-	// We always have m_buffered_bytes <= m_read_bytes_seekable
-	size_t m_read_bytes_seekable;
+	// We always have buffered_bytes_ <= read_bytes_seekable_
+	size_t read_bytes_seekable_;
 
 	// number of bytes read/written from the beginning of the stream
-	uint64_t m_stream_offset;
+	uint64_t stream_offset_;
 };
 
 template<typename TYPE>

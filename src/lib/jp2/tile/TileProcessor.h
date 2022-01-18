@@ -59,10 +59,10 @@ struct PacketTracker
   private:
 	uint8_t* bits;
 
-	uint32_t m_numcomps;
-	uint32_t m_numres;
-	uint64_t m_numprec;
-	uint32_t m_numlayers;
+	uint32_t numcomps_;
+	uint32_t numres_;
+	uint64_t numprec_;
+	uint32_t numlayers_;
 
 	uint64_t get_buffer_len(uint32_t numcomps, uint32_t numres, uint64_t numprec,
 							uint32_t numlayers);
@@ -109,12 +109,12 @@ struct TileProcessor
 
 	/** Compression Only
 	 *  true for first POC tile part, otherwise false*/
-	bool m_first_poc_tile_part;
+	bool first_poc_tile_part_;
 	/** Compressing Only
 	 *  index of tile part being currently coding.
-	 *  m_tilePartIndexCounter holds the total number of tile parts encoded thus far
+	 *  tilePartIndexCounter_ holds the total number of tile parts encoded thus far
 	 *  while the compressor is compressing the current tile part.*/
-	uint8_t m_tilePartIndexCounter;
+	uint8_t tilePartIndexCounter_;
 	// Decompressing Only
 	uint32_t tilePartDataLength;
 	/** Compression Only
@@ -125,20 +125,20 @@ struct TileProcessor
 	grk_plugin_tile* current_plugin_tile;
 	// true if whole tile will be decoded; false if tile window will be decoded
 	bool wholeTileDecompress;
-	CodingParams* m_cp;
+	CodingParams* cp_;
 	PacketLengthCache packetLengthCache;
   private:
 	/** index of tile being currently compressed/decompressed */
-	uint16_t m_tileIndex;
+	uint16_t tileIndex_;
 	// Compressing only - track which packets have already been written
 	// to the code stream
-	PacketTracker m_packetTracker;
-	IBufferedStream* m_stream;
-	bool m_corrupt_packet;
+	PacketTracker packetTracker_;
+	IBufferedStream* stream_;
+	bool corrupt_packet_;
 	/** position of the tile part flag in progression order*/
 	uint32_t newTilePartProgressionPosition;
 	// coding/decoding parameters for this tile
-	TileCodingParams* m_tcp;
+	TileCodingParams* tcp_;
 	bool isWholeTileDecompress(uint32_t compno);
 	bool needsMctDecompress(uint32_t compno);
 	bool mctDecompress();
@@ -157,8 +157,8 @@ struct TileProcessor
 	bool pcrdBisectFeasible(uint32_t* p_data_written);
 	void makeLayerFeasible(uint32_t layno, uint16_t thresh, bool finalAttempt);
 	bool truncated;
-	GrkImage* m_image;
-	bool m_isCompressor;
+	GrkImage* image_;
+	bool isCompressor_;
 	grkRectU32 unreducedTileWindow;
 	uint32_t preCalculatedTileLen;
 };

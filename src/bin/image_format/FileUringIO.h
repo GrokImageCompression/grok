@@ -52,9 +52,9 @@ class FileUringIO : public IFileIO
 	io_data* retrieveCompletion(bool peek,bool &success);
   private:
 	io_uring ring;
-	int m_fd;
+	int fd_;
 	bool ownsDescriptor;
-	std::string m_fileName;
+	std::string fileName_;
 	size_t requestsSubmitted;
 	size_t requestsCompleted;
 	int getMode(const char* mode);

@@ -26,10 +26,10 @@ namespace grk
 typedef std::function<uint8_t*(uint32_t* len)> WRITE_FUNC;
 struct BoxWriteHandler
 {
-	BoxWriteHandler() : handler(nullptr), m_data(nullptr), m_size(0) {}
+	BoxWriteHandler() : handler(nullptr), data_(nullptr), size_(0) {}
 	WRITE_FUNC handler;
-	uint8_t* m_data;
-	uint32_t m_size;
+	uint8_t* data_;
+	uint32_t size_;
 };
 
 FileFormatCompress::FileFormatCompress(IBufferedStream* stream)
@@ -214,14 +214,14 @@ bool FileFormatCompress::write_jp2h(void)
 	for(i = 0; i < nb_writers; ++i)
 	{
 		auto current_writer = writers + i;
-		current_writer->m_data = current_writer->handler(&(current_writer->m_size));
-		if(current_writer->m_data == nullptr)
+		current_writer->data_ = current_writer->handler(&(current_writer->size_));
+		if(current_writer->data_ == nullptr)
 		{
 			GRK_ERROR("Not enough memory to hold JP2 Header data");
 			result = false;
 			break;
 		}
-		jp2h_size += current_writer->m_size;
+		jp2h_size += current_writer->size_;
 	}
 
 	if(!result)
@@ -229,7 +229,7 @@ bool FileFormatCompress::write_jp2h(void)
 		for(i = 0; i < nb_writers; ++i)
 		{
 			auto current_writer = writers + i;
-			grkFree(current_writer->m_data);
+			grkFree(current_writer->data_);
 		}
 		return false;
 	}
@@ -245,8 +245,8 @@ bool FileFormatCompress::write_jp2h(void)
 		for(i = 0; i < nb_writers; ++i)
 		{
 			auto current_writer = writers + i;
-			if(stream->writeBytes(current_writer->m_data, current_writer->m_size) !=
-			   current_writer->m_size)
+			if(stream->writeBytes(current_writer->data_, current_writer->size_) !=
+			   current_writer->size_)
 			{
 				result = false;
 				break;
@@ -257,7 +257,7 @@ bool FileFormatCompress::write_jp2h(void)
 	for(i = 0; i < nb_writers; ++i)
 	{
 		auto current_writer = writers + i;
-		grkFree(current_writer->m_data);
+		grkFree(current_writer->data_);
 	}
 
 	return result;
@@ -669,7 +669,7 @@ bool FileFormatCompress::startCompress(void)
 	init_compressValidation();
 
 	/* validation of the parameters codec */
-	if(!exec(m_validation_list))
+	if(!exec(validation_list_))
 		return false;
 
 	/* customization of the compressing */
@@ -686,7 +686,7 @@ bool FileFormatCompress::startCompress(void)
 	needs_xl_jp2c_box_length = (image_size > (uint64_t)1 << 30) ? true : false;
 
 	/* write header */
-	if(!exec(m_procedure_list))
+	if(!exec(procedure_list_))
 		return false;
 
 	return codeStream->startCompress();
@@ -923,23 +923,23 @@ bool FileFormatCompress::endCompress(void)
 		return false;
 
 	/* write header */
-	return exec(m_procedure_list);
+	return exec(procedure_list_);
 }
 void FileFormatCompress::init_end_header_writing(void)
 {
-	m_procedure_list->push_back(std::bind(&FileFormatCompress::write_jp2c, this));
+	procedure_list_->push_back(std::bind(&FileFormatCompress::write_jp2c, this));
 }
 void FileFormatCompress::init_compressValidation(void)
 {
-	m_validation_list->push_back(std::bind(&FileFormatCompress::default_validation, this));
+	validation_list_->push_back(std::bind(&FileFormatCompress::default_validation, this));
 }
 void FileFormatCompress::init_header_writing(void)
 {
-	m_procedure_list->push_back(std::bind(&FileFormatCompress::write_jp, this));
-	m_procedure_list->push_back(std::bind(&FileFormatCompress::write_ftyp, this));
-	m_procedure_list->push_back(std::bind(&FileFormatCompress::write_jp2h, this));
-	m_procedure_list->push_back(std::bind(&FileFormatCompress::write_uuids, this));
-	m_procedure_list->push_back(std::bind(&FileFormatCompress::skip_jp2c, this));
+	procedure_list_->push_back(std::bind(&FileFormatCompress::write_jp, this));
+	procedure_list_->push_back(std::bind(&FileFormatCompress::write_ftyp, this));
+	procedure_list_->push_back(std::bind(&FileFormatCompress::write_jp2h, this));
+	procedure_list_->push_back(std::bind(&FileFormatCompress::write_uuids, this));
+	procedure_list_->push_back(std::bind(&FileFormatCompress::skip_jp2c, this));
 }
 bool FileFormatCompress::skip_jp2c(void)
 {
@@ -965,10 +965,10 @@ bool FileFormatCompress::default_validation(void)
 	is_valid &= (codeStream != nullptr);
 
 	/* make sure a procedure list is present */
-	is_valid &= (m_procedure_list != nullptr);
+	is_valid &= (procedure_list_ != nullptr);
 
 	/* make sure a validation list is present */
-	is_valid &= (m_validation_list != nullptr);
+	is_valid &= (validation_list_ != nullptr);
 
 	/* PARAMETER VALIDATION */
 	/* number of components */

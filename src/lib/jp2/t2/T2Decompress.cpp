@@ -118,7 +118,7 @@ bool T2Decompress::processPacket(TileCodingParams* tcp, PacketIter* currPi, Spar
 bool T2Decompress::decompressPackets(uint16_t tile_no, SparseBuffer* srcBuf,
 									 bool* stopProcessionPackets)
 {
-	auto cp = tileProcessor->m_cp;
+	auto cp = tileProcessor->cp_;
 	auto tcp = cp->tcps + tile_no;
 	*stopProcessionPackets = false;
 	PacketManager packetManager(false, tileProcessor->headerImage, cp, tile_no, FINAL_PASS,
@@ -251,17 +251,17 @@ bool T2Decompress::readPacketHeader(TileCodingParams* p_tcp, const PacketIter* p
 	}
 	auto header_data_start = &active_src;
 	auto remaining_length = &available_bytes;
-	auto cp = tileProcessor->m_cp;
+	auto cp = tileProcessor->cp_;
 	if(cp->ppm_marker)
 	{
-		if(tileProcessor->getIndex() >= cp->ppm_marker->m_tile_packet_headers.size())
+		if(tileProcessor->getIndex() >= cp->ppm_marker->tile_packet_headers_.size())
 		{
 			GRK_ERROR("PPM marker has no packed packet header data for tile %d",
 					  tileProcessor->getIndex() + 1);
 			return false;
 		}
 		auto tile_packet_header =
-			&cp->ppm_marker->m_tile_packet_headers[tileProcessor->getIndex()];
+			&cp->ppm_marker->tile_packet_headers_[tileProcessor->getIndex()];
 		header_data_start = &tile_packet_header->buf;
 		remaining_length = &tile_packet_header->len;
 	}
@@ -529,7 +529,7 @@ bool T2Decompress::readPacketData(Resolution* res, const PacketIter* p_pi, Spars
 				{
 					// HT doesn't tolerate truncated code blocks since decoding runs both forward
 					// and reverse. So, in this case, we ignore the entire code block
-					if(tileProcessor->m_cp->tcps[0].isHT())
+					if(tileProcessor->cp_->tcps[0].isHT())
 						cblk->cleanUpSegBuffers();
 					seg->numBytesInPacket = 0;
 					seg->numpasses = 0;

@@ -844,7 +844,7 @@ typedef struct _grk_decompress_params
 	// on file format we are writing to
 	uint32_t compressionLevel;
 	/** Verbose mode */
-	bool m_verbose;
+	bool verbose_;
 	int32_t deviceId;
 	uint32_t duration; // seconds
 	uint32_t kernelBuildOptions;

@@ -59,15 +59,15 @@ struct PacketLengthMarkers
 	void writeMarkerLength(PacketLengthMarkerInfo* markerInfo);
 	void writeIncrement(uint32_t bytes);
 
-	PL_MAP* m_markers;
-	uint8_t m_markerIndex;
-	PL_INFO_VEC* m_curr_vec;
-	size_t m_packetIndex;
-	uint32_t m_packet_len;
-	uint32_t m_markerBytesWritten;
-	uint32_t m_totalBytesWritten;
-	uint64_t m_marker_len_cache;
-	IBufferedStream* m_stream;
+	PL_MAP* markers_;
+	uint8_t markerIndex_;
+	PL_INFO_VEC* curr_vec_;
+	size_t packetIndex_;
+	uint32_t packet_len_;
+	uint32_t markerBytesWritten_;
+	uint32_t totalBytesWritten_;
+	uint64_t marker_len_cache_;
+	IBufferedStream* stream_;
 	bool preCalculatedMarkerLengths;
 };
 

@@ -97,7 +97,7 @@ class PacketManager
 	CodingParams* cp;
 	uint16_t tileno;
 	IncludeTracker* includeTracker;
-	PacketIter* m_pi;
+	PacketIter* pi_;
 	J2K_T2_MODE t2Mode;
 	TileProcessor* tileProcessor;
 };

@@ -472,12 +472,12 @@ int GrkDecompress::parseCommandLine(int argc, char** argv, DecompressInitParams*
 
 		initParams->transferExifTags = transferExifTagsArg.isSet();
 
-		parameters->m_verbose = verboseArg.isSet();
+		parameters->verbose_ = verboseArg.isSet();
 		bool useStdio = inputFileArg.isSet() && outForArg.isSet() && !outputFileArg.isSet();
 		// disable verbose mode so we don't write info or warnings to stdout
 		if(useStdio)
-			parameters->m_verbose = false;
-		if(!parameters->m_verbose)
+			parameters->verbose_ = false;
+		if(!parameters->verbose_)
 			spdlog::set_level(spdlog::level::level_enum::err);
 
 		if(logfileArg.isSet())
@@ -828,10 +828,10 @@ int GrkDecompress::pluginMain(int argc, char** argv, DecompressInitParams* initP
 	if(parseCommandLine(argc, argv, initParams) == 1)
 		return EXIT_FAILURE;
 #ifdef GROK_HAVE_LIBTIFF
-	tiffSetErrorAndWarningHandlers(initParams->parameters.m_verbose);
+	tiffSetErrorAndWarningHandlers(initParams->parameters.verbose_);
 #endif
 #ifdef GROK_HAVE_LIBPNG
-	pngSetVerboseFlag(initParams->parameters.m_verbose);
+	pngSetVerboseFlag(initParams->parameters.verbose_);
 #endif
 	initParams->initialized = true;
 	// loads plugin but does not actually create codec
@@ -843,7 +843,7 @@ int GrkDecompress::pluginMain(int argc, char** argv, DecompressInitParams* initP
 	// create codec
 	grk_plugin_init_info initInfo;
 	initInfo.deviceId = initParams->parameters.deviceId;
-	initInfo.verbose = initParams->parameters.m_verbose;
+	initInfo.verbose = initParams->parameters.verbose_;
 	if(!grk_plugin_init(initInfo))
 	{
 		success = 1;
@@ -1156,7 +1156,7 @@ int GrkDecompress::preProcess(grk_plugin_decompress_callback_info* info)
 				goto cleanup;
 		}
 		/* catch events using our callbacks and give a local context */
-		if(parameters->m_verbose)
+		if(parameters->verbose_)
 		{
 			grk_set_info_handler(infoCallback, nullptr);
 			grk_set_warning_handler(warningCallback, nullptr);

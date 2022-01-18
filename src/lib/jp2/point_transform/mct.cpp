@@ -618,7 +618,7 @@ void mct::genShift(uint16_t compno, GrkImage* image, TileComponentCodingParams* 
 		_max = (1 << img_comp->prec) - 1;
 	}
 	auto tccp = tccps + compno;
-	shift = sign * tccp->m_dc_level_shift;
+	shift = sign * tccp->dc_level_shift_;
 	shiftInfo.push_back({_min, _max, shift});
 }
 void mct::genShift(GrkImage* image, TileComponentCodingParams* tccps, int32_t sign,

@@ -62,7 +62,7 @@ struct Strip {
 	uint32_t getIndex(void);
 	GrkImage* stripImg;
 	std::atomic<uint32_t> tileCounter;
-	uint32_t m_index;
+	uint32_t index_;
 };
 
 class StripPool {
@@ -83,11 +83,11 @@ private:
 	std::map<uint8_t*, GrkSerializeBuf> pool;
 
 	Strip **strips;
-	uint16_t m_tgrid_w;
-	uint32_t m_y0;
-	uint32_t m_th;
-	uint16_t m_tgrid_h;
-	uint64_t m_packedRowBytes;
+	uint16_t tgrid_w_;
+	uint32_t y0_;
+	uint32_t th_;
+	uint16_t tgrid_h_;
+	uint64_t packedRowBytes_;
 
 	mutable std::mutex poolMutex;
 

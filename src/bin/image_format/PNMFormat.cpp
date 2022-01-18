@@ -139,7 +139,7 @@ bool PNMFormat::decodeHeader(struct pnm_header* ph)
 	char line[lineSize];
 	char c;
 
-	if(fread(&c, 1, 1, m_fileStream) != 1)
+	if(fread(&c, 1, 1, fileStream_) != 1)
 	{
 		spdlog::error(" fread error");
 		return false;
@@ -149,7 +149,7 @@ bool PNMFormat::decodeHeader(struct pnm_header* ph)
 		spdlog::error("read_pnm_header:PNM:magic P missing");
 		return false;
 	}
-	if(fread(&c, 1, 1, m_fileStream) != 1)
+	if(fread(&c, 1, 1, fileStream_) != 1)
 	{
 		spdlog::error(" fread error");
 		return false;
@@ -164,7 +164,7 @@ bool PNMFormat::decodeHeader(struct pnm_header* ph)
 	if(format == 7)
 	{
 		uint32_t end = 0;
-		while(fgets(line, lineSearch, m_fileStream))
+		while(fgets(line, lineSearch, fileStream_))
 		{
 			if(*line == '#' || *line == '\n')
 				continue;
@@ -297,7 +297,7 @@ bool PNMFormat::decodeHeader(struct pnm_header* ph)
 	}
 	else
 	{
-		while(fgets(line, lineSearch, m_fileStream))
+		while(fgets(line, lineSearch, fileStream_))
 		{
 			int allow_null = 0;
 			if(*line == '#' || *line == '\n' || *line == '\r')
@@ -327,7 +327,7 @@ bool PNMFormat::decodeHeader(struct pnm_header* ph)
 				}
 				if(format == 1 || format == 4)
 				{
-					if(!header_rewind(s, line, m_fileStream))
+					if(!header_rewind(s, line, fileStream_))
 						return false;
 					break;
 				}
@@ -340,7 +340,7 @@ bool PNMFormat::decodeHeader(struct pnm_header* ph)
 			if(!s || (*s == 0))
 				return false;
 
-			if(!header_rewind(s, line, m_fileStream))
+			if(!header_rewind(s, line, fileStream_))
 				return false;
 
 			break;
@@ -368,15 +368,15 @@ bool PNMFormat::decodeHeader(struct pnm_header* ph)
 		uint64_t minBytes = (ph->maxval != 1) ? area : area / 8;
 		if(minBytes)
 		{
-			int64_t currentPos = GRK_FTELL(m_fileStream);
-			GRK_FSEEK(m_fileStream, 0L, SEEK_END);
-			uint64_t length = (uint64_t)GRK_FTELL(m_fileStream);
+			int64_t currentPos = GRK_FTELL(fileStream_);
+			GRK_FSEEK(fileStream_, 0L, SEEK_END);
+			uint64_t length = (uint64_t)GRK_FTELL(fileStream_);
 			if(length < minBytes)
 			{
 				spdlog::error("File is truncated");
 				return false;
 			}
-			GRK_FSEEK(m_fileStream, currentPos, SEEK_SET);
+			GRK_FSEEK(fileStream_, currentPos, SEEK_SET);
 		}
 	}
 	return true;
@@ -457,9 +457,9 @@ grk_image* PNMFormat::decode(grk_cparameters* parameters)
 	uint64_t area = 0;
 	bool success = false;
 
-	if((m_fileStream = fopen(m_fileName.c_str(), "rb")) == nullptr)
+	if((fileStream_ = fopen(fileName_.c_str(), "rb")) == nullptr)
 	{
-		spdlog::error("pnmtoimage:Failed to open {} for reading.", m_fileName.c_str());
+		spdlog::error("pnmtoimage:Failed to open {} for reading.", fileName_.c_str());
 		goto cleanup;
 	}
 	memset(&header_info, 0, sizeof(struct pnm_header));
@@ -542,7 +542,7 @@ grk_image* PNMFormat::decode(grk_cparameters* parameters)
 		area = (uint64_t)image->comps[0].stride * h;
 		while(i < area)
 		{
-			size_t bytesRead = fread(chunk, 1, chunkSize, m_fileStream);
+			size_t bytesRead = fread(chunk, 1, chunkSize, fileStream_);
 			if(bytesRead == 0)
 				break;
 			uint8_t* chunkPtr = (uint8_t*)chunk;
@@ -575,7 +575,7 @@ grk_image* PNMFormat::decode(grk_cparameters* parameters)
 			for(compno = 0; compno < numcomps; compno++)
 			{
 				uint32_t val = 0;
-				if(fscanf(m_fileStream, "%u", &val) != 1)
+				if(fscanf(fileStream_, "%u", &val) != 1)
 				{
 					spdlog::error("error reading ASCII PPM pixel data");
 					goto cleanup;
@@ -597,9 +597,9 @@ grk_image* PNMFormat::decode(grk_cparameters* parameters)
 	{
 		bool rc = false;
 		if(prec <= 8)
-			rc = readBytes<uint8_t>(m_fileStream, image, area);
+			rc = readBytes<uint8_t>(fileStream_, image, area);
 		else
-			rc = readBytes<uint16_t>(m_fileStream, image, area);
+			rc = readBytes<uint16_t>(fileStream_, image, area);
 		if(!rc)
 			goto cleanup;
 	}
@@ -614,15 +614,15 @@ grk_image* PNMFormat::decode(grk_cparameters* parameters)
 		else
 		{
 			/* let's see if bits are packed into bytes or not */
-			int64_t currentPos = GRK_FTELL(m_fileStream);
+			int64_t currentPos = GRK_FTELL(fileStream_);
 			if(currentPos == -1)
 				goto cleanup;
-			if(GRK_FSEEK(m_fileStream, 0L, SEEK_END))
+			if(GRK_FSEEK(fileStream_, 0L, SEEK_END))
 				goto cleanup;
-			int64_t endPos = GRK_FTELL(m_fileStream);
+			int64_t endPos = GRK_FTELL(fileStream_);
 			if(endPos == -1)
 				goto cleanup;
-			if(GRK_FSEEK(m_fileStream, currentPos, SEEK_SET))
+			if(GRK_FSEEK(fileStream_, currentPos, SEEK_SET))
 				goto cleanup;
 			uint64_t pixels = (uint64_t)(endPos - currentPos);
 			if(pixels == packed_area)
@@ -638,7 +638,7 @@ grk_image* PNMFormat::decode(grk_cparameters* parameters)
 		while(i < area)
 		{
 			auto toRead = min((uint64_t)chunkSize, (uint64_t)(area - i));
-			size_t bytesRead = fread(chunk, 1, toRead, m_fileStream);
+			size_t bytesRead = fread(chunk, 1, toRead, fileStream_);
 			if(bytesRead == 0)
 				break;
 			auto chunkPtr = (uint8_t*)chunk;
@@ -680,7 +680,7 @@ grk_image* PNMFormat::decode(grk_cparameters* parameters)
 	}
 	success = true;
 cleanup:
-	if(!grk::safe_fclose(m_fileStream) || !success)
+	if(!grk::safe_fclose(fileStream_) || !success)
 	{
 		grk_object_unref(&image->obj);
 		image = nullptr;
@@ -691,26 +691,26 @@ cleanup:
 PNMFormat::PNMFormat(bool split) : forceSplit(split)
 {
 #ifdef GROK_HAVE_URING
-	delete m_fileIO;
-	m_fileIO = new FileUringIO();
+	delete fileIO_;
+	fileIO_ = new FileUringIO();
 #endif
 }
 
 bool PNMFormat::encodeHeader(void)
 {
-	if(!allComponentsSanityCheck(m_image, true))
+	if(!allComponentsSanityCheck(image_, true))
 	{
 		spdlog::error("PNMFormat::encodeHeader: image sanity check failed.");
 		return false;
 	}
 
-	if(!areAllComponentsSameSubsampling(m_image))
+	if(!areAllComponentsSameSubsampling(image_))
 		return false;
 
-	if(m_image->numcomps > 4)
+	if(image_->numcomps > 4)
 	{
 		spdlog::error("PNMFormat::encodeHeader: %d number of components not supported.",
-					  m_image->numcomps);
+					  image_->numcomps);
 		return false;
 	}
 
@@ -732,11 +732,11 @@ bool PNMFormat::encodeRows(uint32_t rows)
 	int adjustR, adjustG, adjustB, adjustA;
 	bool two, grayscale, hasAlpha, triple;
 	int v;
-	const char* tmp = m_fileName.c_str();
+	const char* tmp = fileName_.c_str();
 	char* destname = nullptr;
 	bool success = false;
 
-	m_useStdIO = grk::useStdio(m_fileName.c_str());
+	useStdIO_ = grk::useStdio(fileName_.c_str());
 	alpha = nullptr;
 	two = hasAlpha = 0;
 	ncomp = getImageNumComps();
@@ -749,7 +749,7 @@ bool PNMFormat::encodeRows(uint32_t rows)
 	if(grayscale)
 		ncomp = 1;
 
-	if(m_useStdIO)
+	if(useStdIO_)
 	{
 		if(forceSplit)
 		{
@@ -761,48 +761,48 @@ bool PNMFormat::encodeRows(uint32_t rows)
 	if(!forceSplit && (ncomp == 2 /* GRAYA */
 					   || ncomp > 2) /* RGB, RGBA */)
 	{
-		if(!grk::grk_open_for_output(&m_fileStream, m_fileName.c_str(), m_useStdIO))
+		if(!grk::grk_open_for_output(&fileStream_, fileName_.c_str(), useStdIO_))
 			goto cleanup;
 
 		two = (prec > 8);
 		triple = (ncomp > 2);
-		width = m_image->comps[0].w;
-		stride_diff = m_image->comps[0].stride - width;
-		height = m_image->comps[0].h;
+		width = image_->comps[0].w;
+		stride_diff = image_->comps[0].stride - width;
+		height = image_->comps[0].h;
 		max = (uint32_t)((1U << prec) - 1);
 		hasAlpha = (ncomp == 4 || ncomp == 2);
-		red = m_image->comps[0].data;
+		red = image_->comps[0].data;
 
 		if(triple)
 		{
-			green = m_image->comps[1].data;
-			blue = m_image->comps[2].data;
+			green = image_->comps[1].data;
+			blue = image_->comps[2].data;
 		}
 		else
 			green = blue = nullptr;
 
 		if(hasAlpha)
 		{
-			fprintf(m_fileStream,
+			fprintf(fileStream_,
 					"P7\n# Grok-%s\nWIDTH %u\nHEIGHT %u\nDEPTH %u\n"
 					"MAXVAL %u\nTUPLTYPE %s\nENDHDR\n",
 					grk_version(), width, height, ncomp, max,
 					(triple ? "RGB_ALPHA" : "GRAYSCALE_ALPHA"));
-			alpha = m_image->comps[ncomp - 1].data;
+			alpha = image_->comps[ncomp - 1].data;
 			adjustA =
-				(m_image->comps[ncomp - 1].sgnd ? 1 << (m_image->comps[ncomp - 1].prec - 1) : 0);
+				(image_->comps[ncomp - 1].sgnd ? 1 << (image_->comps[ncomp - 1].prec - 1) : 0);
 		}
 		else
 		{
-			fprintf(m_fileStream, "P6\n# Grok-%s\n%u %u\n%u\n", grk_version(), width, height, max);
+			fprintf(fileStream_, "P6\n# Grok-%s\n%u %u\n%u\n", grk_version(), width, height, max);
 			adjustA = 0;
 		}
-		adjustR = (m_image->comps[0].sgnd ? 1 << (m_image->comps[0].prec - 1) : 0);
+		adjustR = (image_->comps[0].sgnd ? 1 << (image_->comps[0].prec - 1) : 0);
 
 		if(triple)
 		{
-			adjustG = (m_image->comps[1].sgnd ? 1 << (m_image->comps[1].prec - 1) : 0);
-			adjustB = (m_image->comps[2].sgnd ? 1 << (m_image->comps[2].prec - 1) : 0);
+			adjustG = (image_->comps[1].sgnd ? 1 << (image_->comps[1].prec - 1) : 0);
+			adjustB = (image_->comps[2].sgnd ? 1 << (image_->comps[2].prec - 1) : 0);
 		}
 		else
 			adjustG = adjustB = 0;
@@ -820,17 +820,17 @@ bool PNMFormat::encodeRows(uint32_t rows)
 				{
 					v = *red++ + adjustR;
 					if(!grk::writeBytes<uint16_t>((uint16_t)v, buf, &outPtr, &outCount, bufSize,
-												  true, m_fileStream))
+												  true, fileStream_))
 						goto cleanup;
 					if(triple)
 					{
 						v = *green++ + adjustG;
 						if(!grk::writeBytes<uint16_t>((uint16_t)v, buf, &outPtr, &outCount, bufSize,
-													  true, m_fileStream))
+													  true, fileStream_))
 							goto cleanup;
 						v = *blue++ + adjustB;
 						if(!grk::writeBytes<uint16_t>((uint16_t)v, buf, &outPtr, &outCount, bufSize,
-													  true, m_fileStream))
+													  true, fileStream_))
 							goto cleanup;
 					} /* if(triple) */
 
@@ -838,7 +838,7 @@ bool PNMFormat::encodeRows(uint32_t rows)
 					{
 						v = *alpha++ + adjustA;
 						if(!grk::writeBytes<uint16_t>((uint16_t)v, buf, &outPtr, &outCount, bufSize,
-													  true, m_fileStream))
+													  true, fileStream_))
 							goto cleanup;
 					}
 				}
@@ -853,7 +853,7 @@ bool PNMFormat::encodeRows(uint32_t rows)
 			}
 			if(outCount)
 			{
-				size_t res = fwrite(buf, sizeof(uint16_t), outCount, m_fileStream);
+				size_t res = fwrite(buf, sizeof(uint16_t), outCount, fileStream_);
 				if(res != outCount)
 					goto cleanup;
 			}
@@ -870,24 +870,24 @@ bool PNMFormat::encodeRows(uint32_t rows)
 				{
 					v = *red++;
 					if(!grk::writeBytes<uint8_t>((uint8_t)v, buf, &outPtr, &outCount, bufSize, true,
-												 m_fileStream))
+												 fileStream_))
 						goto cleanup;
 					if(triple)
 					{
 						v = *green++;
 						if(!grk::writeBytes<uint8_t>((uint8_t)v, buf, &outPtr, &outCount, bufSize,
-													 true, m_fileStream))
+													 true, fileStream_))
 							goto cleanup;
 						v = *blue++;
 						if(!grk::writeBytes<uint8_t>((uint8_t)v, buf, &outPtr, &outCount, bufSize,
-													 true, m_fileStream))
+													 true, fileStream_))
 							goto cleanup;
 					}
 					if(hasAlpha)
 					{
 						v = *alpha++;
 						if(!grk::writeBytes<uint8_t>((uint8_t)v, buf, &outPtr, &outCount, bufSize,
-													 true, m_fileStream))
+													 true, fileStream_))
 							goto cleanup;
 					}
 				}
@@ -902,34 +902,34 @@ bool PNMFormat::encodeRows(uint32_t rows)
 			}
 			if(outCount)
 			{
-				size_t res = fwrite(buf, sizeof(uint8_t), outCount, m_fileStream);
+				size_t res = fwrite(buf, sizeof(uint8_t), outCount, fileStream_);
 				if(res != outCount)
 					goto cleanup;
 			}
 		}
 		// we only write the first PNM file to stdout
-		if(m_useStdIO)
+		if(useStdIO_)
 		{
 			success = true;
 			goto cleanup;
 		}
 	}
 
-	if(!m_useStdIO && m_fileStream)
+	if(!useStdIO_ && fileStream_)
 	{
-		if(!grk::safe_fclose(m_fileStream))
+		if(!grk::safe_fclose(fileStream_))
 			goto cleanup;
-		m_fileStream = nullptr;
+		fileStream_ = nullptr;
 	}
 
-	if(m_useStdIO)
+	if(useStdIO_)
 		ncomp = 1;
 
 	/* YUV or MONO: */
-	if(m_image->numcomps > ncomp)
+	if(image_->numcomps > ncomp)
 		spdlog::warn("[PGM file] Only the first component"
 					 " is written out");
-	destname = (char*)malloc(strlen(m_fileName.c_str()) + 8);
+	destname = (char*)malloc(strlen(fileName_.c_str()) + 8);
 	if(!destname)
 	{
 		spdlog::error("imagetopnm: out of memory");
@@ -940,35 +940,35 @@ bool PNMFormat::encodeRows(uint32_t rows)
 	{
 		if(ncomp > 1)
 		{
-			size_t lastindex = m_fileName.find_last_of(".");
+			size_t lastindex = fileName_.find_last_of(".");
 			if(lastindex == std::string::npos)
 			{
 				spdlog::error(" imagetopnm: missing file tag");
 				goto cleanup;
 			}
-			string rawname = m_fileName.substr(0, lastindex);
+			string rawname = fileName_.substr(0, lastindex);
 			ostringstream iss;
 			iss << rawname << "_" << compno << ".pgm";
 			strcpy(destname, iss.str().c_str());
 		}
 		else
-			sprintf(destname, "%s", m_fileName.c_str());
+			sprintf(destname, "%s", fileName_.c_str());
 
-		if(!m_fileStream && !grk::grk_open_for_output(&m_fileStream, destname, m_useStdIO))
+		if(!fileStream_ && !grk::grk_open_for_output(&fileStream_, destname, useStdIO_))
 			goto cleanup;
 
-		width = m_image->comps[compno].w;
-		stride_diff = m_image->comps[compno].stride - width;
-		height = m_image->comps[compno].h;
-		prec = m_image->comps[compno].prec;
+		width = image_->comps[compno].w;
+		stride_diff = image_->comps[compno].stride - width;
+		height = image_->comps[compno].h;
+		prec = image_->comps[compno].prec;
 		max = (uint32_t)((1 << prec) - 1);
 
-		fprintf(m_fileStream, "P5\n#Grok-%s\n%u %u\n%u\n", grk_version(), width, height, max);
+		fprintf(fileStream_, "P5\n#Grok-%s\n%u %u\n%u\n", grk_version(), width, height, max);
 
-		red = m_image->comps[compno].data;
+		red = image_->comps[compno].data;
 		if(!red)
 			goto cleanup;
-		adjustR = (m_image->comps[compno].sgnd ? 1 << (m_image->comps[compno].prec - 1) : 0);
+		adjustR = (image_->comps[compno].sgnd ? 1 << (image_->comps[compno].prec - 1) : 0);
 
 		if(prec > 8)
 		{
@@ -983,13 +983,13 @@ bool PNMFormat::encodeRows(uint32_t rows)
 				{
 					v = *red++ + adjustR;
 					if(!grk::writeBytes<uint16_t>((uint16_t)v, buf, &outPtr, &outCount, bufSize,
-												  true, m_fileStream))
+												  true, fileStream_))
 						goto cleanup;
 					if(hasAlpha)
 					{
 						v = *alpha++;
 						if(!grk::writeBytes<uint16_t>((uint16_t)v, buf, &outPtr, &outCount, bufSize,
-													  true, m_fileStream))
+													  true, fileStream_))
 							goto cleanup;
 					}
 				}
@@ -1000,7 +1000,7 @@ bool PNMFormat::encodeRows(uint32_t rows)
 			// flush
 			if(outCount)
 			{
-				size_t res = fwrite(buf, sizeof(uint16_t), outCount, m_fileStream);
+				size_t res = fwrite(buf, sizeof(uint16_t), outCount, fileStream_);
 				if(res != outCount)
 					goto cleanup;
 			}
@@ -1017,7 +1017,7 @@ bool PNMFormat::encodeRows(uint32_t rows)
 				{
 					v = *red++ + adjustR;
 					if(!grk::writeBytes<uint8_t>((uint8_t)v, buf, &outPtr, &outCount, bufSize, true,
-												 m_fileStream))
+												 fileStream_))
 						goto cleanup;
 				}
 				red += stride_diff;
@@ -1026,17 +1026,17 @@ bool PNMFormat::encodeRows(uint32_t rows)
 			}
 			if(outCount)
 			{
-				size_t res = fwrite(buf, sizeof(uint8_t), outCount, m_fileStream);
+				size_t res = fwrite(buf, sizeof(uint8_t), outCount, fileStream_);
 				if(res != outCount)
 					goto cleanup;
 			}
 		}
-		if(!m_useStdIO && m_fileStream)
+		if(!useStdIO_ && fileStream_)
 		{
-			if(!grk::safe_fclose(m_fileStream))
+			if(!grk::safe_fclose(fileStream_))
 				goto cleanup;
 		}
-		m_fileStream = nullptr;
+		fileStream_ = nullptr;
 	} /* for (compno */
 
 	success = true;
@@ -1048,9 +1048,9 @@ cleanup:
 }
 bool PNMFormat::encodeFinish(void)
 {
-	if(!m_useStdIO && m_fileStream)
+	if(!useStdIO_ && fileStream_)
 	{
-		if(!grk::safe_fclose(m_fileStream))
+		if(!grk::safe_fclose(fileStream_))
 			return false;
 	}
 
@@ -1058,6 +1058,6 @@ bool PNMFormat::encodeFinish(void)
 }
 grk_image* PNMFormat::decode(const std::string& filename, grk_cparameters* parameters)
 {
-	m_fileName = filename;
+	fileName_ = filename;
 	return decode(parameters);
 }

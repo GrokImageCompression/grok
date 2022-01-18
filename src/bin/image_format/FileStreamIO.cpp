@@ -19,7 +19,7 @@
 #include <FileStreamIO.h>
 #include "common.h"
 
-FileStreamIO::FileStreamIO() : m_fileHandle(nullptr) {}
+FileStreamIO::FileStreamIO() : fileHandle_(nullptr) {}
 
 FileStreamIO::~FileStreamIO()
 {
@@ -36,12 +36,12 @@ bool FileStreamIO::open(std::string fileName, std::string mode)
 			{
 				if(!grk::grk_set_binary_mode(stdin))
 					return false;
-				m_fileHandle = stdin;
+				fileHandle_ = stdin;
 			}
 			else
 			{
-				m_fileHandle = fopen(fileName.c_str(), "rb");
-				if(!m_fileHandle)
+				fileHandle_ = fopen(fileName.c_str(), "rb");
+				if(!fileHandle_)
 				{
 					spdlog::error("Failed to open {} for reading", fileName);
 					return false;
@@ -49,20 +49,20 @@ bool FileStreamIO::open(std::string fileName, std::string mode)
 			}
 			break;
 		case 'w':
-			if(!grk::grk_open_for_output(&m_fileHandle, fileName.c_str(), useStdio))
+			if(!grk::grk_open_for_output(&fileHandle_, fileName.c_str(), useStdio))
 				return false;
 			break;
 	}
-	m_fileName = fileName;
+	fileName_ = fileName;
 
 	return true;
 }
 bool FileStreamIO::close(void)
 {
 	bool rc = true;
-	if(!grk::useStdio(m_fileName.c_str()) && m_fileHandle)
-		rc = grk::safe_fclose(m_fileHandle);
-	m_fileHandle = nullptr;
+	if(!grk::useStdio(fileName_.c_str()) && fileHandle_)
+		rc = grk::safe_fclose(fileHandle_);
+	fileHandle_ = nullptr;
 	return rc;
 }
 bool FileStreamIO::write(uint8_t* buf, uint64_t offset,size_t len, size_t maxLen,bool pooled)
@@ -70,7 +70,7 @@ bool FileStreamIO::write(uint8_t* buf, uint64_t offset,size_t len, size_t maxLen
 	(void)offset;
 	(void)pooled;
 	(void)maxLen;
-	auto actual = fwrite(buf, 1, len, m_fileHandle);
+	auto actual = fwrite(buf, 1, len, fileHandle_);
 	if(actual < len)
 		spdlog::error("wrote fewer bytes {} than expected number of bytes {}.", actual, len);
 
@@ -80,7 +80,7 @@ bool FileStreamIO::write(GrkSerializeBuf buffer,
 						grk_serialize_buf* reclaimed,
 						uint32_t max_reclaimed,
 						uint32_t *num_reclaimed) {
-	auto actual = fwrite(buffer.data, 1, buffer.dataLen, m_fileHandle);
+	auto actual = fwrite(buffer.data, 1, buffer.dataLen, fileHandle_);
 	(void)reclaimed;
 	(void)max_reclaimed;
 	(void)num_reclaimed;
@@ -92,7 +92,7 @@ bool FileStreamIO::write(GrkSerializeBuf buffer,
 }
 bool FileStreamIO::read(uint8_t* buf, size_t len)
 {
-	auto actual = fread(buf, 1, len, m_fileHandle);
+	auto actual = fread(buf, 1, len, fileHandle_);
 	if(actual < len)
 		spdlog::error("read fewer bytes {} than expected number of bytes {}.", actual, len);
 
@@ -100,18 +100,18 @@ bool FileStreamIO::read(uint8_t* buf, size_t len)
 }
 bool FileStreamIO::seek(int64_t pos)
 {
-	return GRK_FSEEK(m_fileHandle, pos, SEEK_SET) == 0;
+	return GRK_FSEEK(fileHandle_, pos, SEEK_SET) == 0;
 }
 
 FILE* FileStreamIO::getFileStream()
 {
-	return m_fileHandle;
+	return fileHandle_;
 }
 int FileStreamIO::getFileDescriptor(void)
 {
 #ifndef __WIN32__
-	if(m_fileHandle)
-		return fileno(m_fileHandle);
+	if(fileHandle_)
+		return fileno(fileHandle_);
 #endif
 	return 0;
 }

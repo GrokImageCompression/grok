@@ -22,7 +22,7 @@ namespace grk
 PacketManager::PacketManager(bool compression, GrkImage* img, CodingParams* cparams,
 							 uint16_t tilenumber, J2K_T2_MODE t2_mode, TileProcessor* tileProc)
 	: image(img), cp(cparams), tileno(tilenumber),
-	  includeTracker(new IncludeTracker(image->numcomps)), m_pi(nullptr), t2Mode(t2_mode),
+	  includeTracker(new IncludeTracker(image->numcomps)), pi_(nullptr), t2Mode(t2_mode),
 	  tileProcessor(tileProc)
 {
 	assert(cp != nullptr);
@@ -30,12 +30,12 @@ PacketManager::PacketManager(bool compression, GrkImage* img, CodingParams* cpar
 	assert(tileno < cp->t_grid_width * cp->t_grid_height);
 	auto tcp = cp->tcps + tileno;
 	uint32_t numProgressions = tcp->numpocs + 1;
-	m_pi = new PacketIter[numProgressions];
+	pi_ = new PacketIter[numProgressions];
 	for(uint32_t i = 0; i < numProgressions; ++i)
-		m_pi[i].init(this);
+		pi_[i].init(this);
 	for(uint32_t pino = 0; pino < numProgressions; ++pino)
 	{
-		auto curPi = m_pi + pino;
+		auto curPi = pi_ + pino;
 		curPi->comps = new PiComp[image->numcomps];
 		curPi->numcomps = image->numcomps;
 		for(uint32_t compno = 0; compno < image->numcomps; ++compno)
@@ -71,10 +71,10 @@ PacketManager::PacketManager(bool compression, GrkImage* img, CodingParams* cpar
 	uint64_t step_l = max_res * step_r;
 
 	/* set values for first packet iterator*/
-	m_pi->enableTilePartGeneration = cp->m_coding_params.m_enc.m_enableTilePartGeneration;
+	pi_->enableTilePartGeneration = cp->coding_params_.enc_.enableTilePartGeneration_;
 	for(uint32_t pino = 0; pino < tcp->getNumProgressions(); ++pino)
 	{
-		auto cur_pi = m_pi + pino;
+		auto cur_pi = pi_ + pino;
 
 		cur_pi->tx0 = tileBounds.x0;
 		cur_pi->ty0 = tileBounds.y0;
@@ -127,10 +127,10 @@ PacketManager::PacketManager(bool compression, GrkImage* img, CodingParams* cpar
 }
 PacketManager::~PacketManager()
 {
-	if(m_pi)
+	if(pi_)
 	{
-		m_pi->destroy_include();
-		delete[] m_pi;
+		pi_->destroy_include();
+		delete[] pi_;
 	}
 	delete includeTracker;
 }
@@ -140,7 +140,7 @@ uint32_t PacketManager::getNumProgressions(void)
 }
 PacketIter* PacketManager::getPacketIter(uint32_t poc) const
 {
-	return m_pi + poc;
+	return pi_ + poc;
 }
 TileProcessor* PacketManager::getTileProcessor(void)
 {
@@ -152,7 +152,7 @@ void PacketManager::init(TileCodingParams* tcp, uint8_t max_res, uint64_t max_pr
 	bool poc = tcp->hasPoc();
 	for(uint32_t pino = 0; pino < tcp->getNumProgressions(); ++pino)
 	{
-		auto cur_pi = m_pi + pino;
+		auto cur_pi = pi_ + pino;
 		auto current_poc = tcp->progressionOrderChange + pino;
 		auto cur_pi_prog = &cur_pi->prog;
 
@@ -175,11 +175,11 @@ void PacketManager::enableTilePartGeneration(uint32_t pino, bool first_poc_tile_
 	auto tcps = cp->tcps + tileno;
 	auto poc = tcps->progressionOrderChange + pino;
 	auto prog = CodeStreamCompress::convertProgressionOrder(poc->progression);
-	auto cur_pi = m_pi + pino;
+	auto cur_pi = pi_ + pino;
 	auto cur_pi_prog = &cur_pi->prog;
 	cur_pi_prog->progression = poc->progression;
 
-	if(cp->m_coding_params.m_enc.m_enableTilePartGeneration &&
+	if(cp->coding_params_.enc_.enableTilePartGeneration_ &&
 	   (GRK_IS_CINEMA(cp->rsiz) || GRK_IS_IMF(cp->rsiz) || t2Mode == FINAL_PASS))
 	{
 		for(uint32_t i = newTilePartProgressionPosition + 1; i < 4; i++)

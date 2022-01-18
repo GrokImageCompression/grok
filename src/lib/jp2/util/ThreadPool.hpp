@@ -46,7 +46,7 @@ class ThreadPool
 	}
 	size_t num_threads()
 	{
-		return m_num_threads;
+		return num_threads_;
 	}
 
 	static ThreadPool* get()
@@ -83,14 +83,14 @@ class ThreadPool
 	bool stop;
 
 	std::map<std::thread::id, size_t> id_map;
-	size_t m_num_threads;
+	size_t num_threads_;
 
 	static ThreadPool* singleton;
 	static std::mutex singleton_mutex;
 };
 
 // the constructor just launches some amount of workers
-inline ThreadPool::ThreadPool(size_t threads) : stop(false), m_num_threads(threads)
+inline ThreadPool::ThreadPool(size_t threads) : stop(false), num_threads_(threads)
 {
 	if(threads == 1)
 		return;
@@ -141,7 +141,7 @@ template<class F, class... Args>
 auto ThreadPool::enqueue(F&& f, Args&&... args)
 	-> std::future<typename std::invoke_result<F, Args...>::type>
 {
-	assert(m_num_threads > 1);
+	assert(num_threads_ > 1);
 	using return_type = typename std::invoke_result<F, Args...>::type;
 
 	auto task = std::make_shared<std::packaged_task<return_type()>>(

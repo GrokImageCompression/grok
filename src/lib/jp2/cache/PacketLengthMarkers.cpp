@@ -28,88 +28,88 @@ const uint32_t available_packet_len_bytes_per_plt = USHRT_MAX - 1 - 4;
 // const uint32_t min_packets_per_full_plt = available_packet_len_bytes_per_plt / 5;
 
 PacketLengthMarkers::PacketLengthMarkers()
-	: m_markers(new PL_MAP()), m_markerIndex(0), m_curr_vec(nullptr), m_packetIndex(0),
-	  m_packet_len(0), m_markerBytesWritten(0), m_totalBytesWritten(0), m_marker_len_cache(0),
-	  m_stream(nullptr), preCalculatedMarkerLengths(false)
+	: markers_(new PL_MAP()), markerIndex_(0), curr_vec_(nullptr), packetIndex_(0),
+	  packet_len_(0), markerBytesWritten_(0), totalBytesWritten_(0), marker_len_cache_(0),
+	  stream_(nullptr), preCalculatedMarkerLengths(false)
 {}
 PacketLengthMarkers::PacketLengthMarkers(IBufferedStream* strm) : PacketLengthMarkers()
 {
-	m_stream = strm;
+	stream_ = strm;
 	pushInit();
 }
 PacketLengthMarkers::~PacketLengthMarkers()
 {
-	if(m_markers)
+	if(markers_)
 	{
-		for(auto it = m_markers->begin(); it != m_markers->end(); it++)
+		for(auto it = markers_->begin(); it != markers_->end(); it++)
 			delete it->second.packetLength;
-		delete m_markers;
+		delete markers_;
 	}
 }
 void PacketLengthMarkers::pushInit(void)
 {
-	m_markers->clear();
+	markers_->clear();
 	readInit(0);
-	m_totalBytesWritten = 0;
-	m_markerBytesWritten = 0;
-	m_marker_len_cache = 0;
+	totalBytesWritten_ = 0;
+	markerBytesWritten_ = 0;
+	marker_len_cache_ = 0;
 }
 void PacketLengthMarkers::pushNextPacketLength(uint32_t len)
 {
 	assert(len);
 	// GRK_INFO("Push packet length: %d", len);
-	m_curr_vec->push_back(len);
+	curr_vec_->push_back(len);
 }
 void PacketLengthMarkers::writeIncrement(uint32_t bytes)
 {
-	m_markerBytesWritten += bytes;
-	m_totalBytesWritten += bytes;
+	markerBytesWritten_ += bytes;
+	totalBytesWritten_ += bytes;
 }
 void PacketLengthMarkers::writeMarkerLength(PacketLengthMarkerInfo* markerInfo)
 {
-	if(!m_markerBytesWritten)
+	if(!markerBytesWritten_)
 		return;
 
 	if(markerInfo)
 	{
-		markerInfo->markerLength = m_markerBytesWritten;
+		markerInfo->markerLength = markerBytesWritten_;
 	}
-	else if(m_marker_len_cache)
+	else if(marker_len_cache_)
 	{
-		uint64_t current_pos = m_stream->tell();
-		m_stream->seek(m_marker_len_cache);
+		uint64_t current_pos = stream_->tell();
+		stream_->seek(marker_len_cache_);
 		// do not include 2 bytes for marker itself
-		m_stream->writeShort((uint16_t)(m_markerBytesWritten - 2));
-		m_stream->seek(current_pos);
-		m_marker_len_cache = 0;
+		stream_->writeShort((uint16_t)(markerBytesWritten_ - 2));
+		stream_->seek(current_pos);
+		marker_len_cache_ = 0;
 	}
 }
 // check if we need to start a new marker
 void PacketLengthMarkers::tryWriteMarkerHeader(PacketLengthMarkerInfo* markerInfo, bool simulate)
 {
-	bool firstMarker = m_totalBytesWritten == 0;
+	bool firstMarker = totalBytesWritten_ == 0;
 	// 5 bytes worst-case to store a packet length
-	if(firstMarker || (m_markerBytesWritten >= available_packet_len_bytes_per_plt - 5))
+	if(firstMarker || (markerBytesWritten_ >= available_packet_len_bytes_per_plt - 5))
 	{
 		writeMarkerLength(simulate ? markerInfo : nullptr);
 
 		// begin new marker
-		m_markerBytesWritten = 0;
+		markerBytesWritten_ = 0;
 		if(!simulate)
-			m_stream->writeShort(J2K_MS_PLT);
+			stream_->writeShort(J2K_MS_PLT);
 		writeIncrement(2);
 
 		if(!simulate)
 		{
 			if(markerInfo->markerLength)
 			{
-				m_stream->writeShort((uint16_t)(markerInfo->markerLength - 2));
+				stream_->writeShort((uint16_t)(markerInfo->markerLength - 2));
 			}
 			else
 			{
 				// cache location of marker length and skip over
-				m_marker_len_cache = m_stream->tell();
-				m_stream->skip(2);
+				marker_len_cache_ = stream_->tell();
+				stream_->skip(2);
 			}
 		}
 		writeIncrement(2);
@@ -117,22 +117,22 @@ void PacketLengthMarkers::tryWriteMarkerHeader(PacketLengthMarkerInfo* markerInf
 }
 uint32_t PacketLengthMarkers::write(bool simulate)
 {
-	if(m_markers->empty())
+	if(markers_->empty())
 		return 0;
 
 	if(simulate)
 		preCalculatedMarkerLengths = true;
 
-	m_totalBytesWritten = 0;
-	m_markerBytesWritten = 0;
+	totalBytesWritten_ = 0;
+	markerBytesWritten_ = 0;
 	// write first marker header
-	tryWriteMarkerHeader(&m_markers->begin()->second, simulate);
+	tryWriteMarkerHeader(&markers_->begin()->second, simulate);
 	PacketLengthMarkerInfo* finalMarkerInfo = nullptr;
-	for(auto map_iter = m_markers->begin(); map_iter != m_markers->end(); ++map_iter)
+	for(auto map_iter = markers_->begin(); map_iter != markers_->end(); ++map_iter)
 	{
 		// write marker index
 		if(!simulate)
-			m_stream->writeByte(map_iter->first);
+			stream_->writeByte(map_iter->first);
 		writeIncrement(1);
 
 		// write packet lengths
@@ -164,7 +164,7 @@ uint32_t PacketLengthMarkers::write(bool simulate)
 					val = (uint32_t)(val >> 7);
 				}
 				assert(counter == -1);
-				uint32_t written = (uint32_t)m_stream->writeBytes(temp, numBytes);
+				uint32_t written = (uint32_t)stream_->writeBytes(temp, numBytes);
 				assert(written == numBytes);
 				(void)written;
 			}
@@ -172,12 +172,12 @@ uint32_t PacketLengthMarkers::write(bool simulate)
 		}
 		finalMarkerInfo = &map_iter->second;
 	}
-	if(!m_markers->empty())
+	if(!markers_->empty())
 	{
 		writeMarkerLength(simulate ? finalMarkerInfo : nullptr);
 	}
 
-	return m_totalBytesWritten;
+	return totalBytesWritten_;
 }
 
 bool PacketLengthMarkers::readPLM(uint8_t* headerData, uint16_t header_size)
@@ -207,7 +207,7 @@ bool PacketLengthMarkers::readPLM(uint8_t* headerData, uint16_t header_size)
 			readNext(tmp);
 		}
 		header_size = (uint16_t)(header_size - (1 + Nplm));
-		if(m_packet_len != 0)
+		if(packet_len_ != 0)
 		{
 			GRK_ERROR("Malformed PLM marker segment");
 			return false;
@@ -233,7 +233,7 @@ bool PacketLengthMarkers::readPLT(uint8_t* headerData, uint16_t header_size)
 		uint8_t tmp = *headerData++;
 		readNext(tmp);
 	}
-	if(m_packet_len != 0)
+	if(packet_len_ != 0)
 	{
 		GRK_ERROR("Malformed PLT marker segment");
 		return false;
@@ -242,71 +242,71 @@ bool PacketLengthMarkers::readPLT(uint8_t* headerData, uint16_t header_size)
 }
 void PacketLengthMarkers::readInit(uint8_t index)
 {
-	m_markerIndex = index;
-	m_packet_len = 0;
-	auto pair = m_markers->find(m_markerIndex);
-	if(pair != m_markers->end())
+	markerIndex_ = index;
+	packet_len_ = 0;
+	auto pair = markers_->find(markerIndex_);
+	if(pair != markers_->end())
 	{
-		m_curr_vec = pair->second.packetLength;
+		curr_vec_ = pair->second.packetLength;
 	}
 	else
 	{
-		m_curr_vec = new PL_INFO_VEC();
-		m_markers->operator[](m_markerIndex) = PacketLengthMarkerInfo(m_curr_vec);
+		curr_vec_ = new PL_INFO_VEC();
+		markers_->operator[](markerIndex_) = PacketLengthMarkerInfo(curr_vec_);
 	}
 }
 void PacketLengthMarkers::readNext(uint8_t Iplm)
 {
 	/* take only the lower seven bits */
-	m_packet_len |= (Iplm & 0x7f);
+	packet_len_ |= (Iplm & 0x7f);
 	if(Iplm & 0x80)
 	{
-		m_packet_len <<= 7;
+		packet_len_ <<= 7;
 	}
 	else
 	{
-		assert(m_curr_vec);
-		m_curr_vec->push_back(m_packet_len);
+		assert(curr_vec_);
+		curr_vec_->push_back(packet_len_);
 		// GRK_INFO("Packet length: (%u, %u)", Zpl, packet_len);
-		m_packet_len = 0;
+		packet_len_ = 0;
 	}
 }
 void PacketLengthMarkers::rewind(void)
 {
-	m_packetIndex = 0;
-	m_markerIndex = 0;
-	m_curr_vec = nullptr;
-	if(m_markers)
+	packetIndex_ = 0;
+	markerIndex_ = 0;
+	curr_vec_ = nullptr;
+	if(markers_)
 	{
-		auto pair = m_markers->find(0);
-		if(pair != m_markers->end())
-			m_curr_vec = pair->second.packetLength;
+		auto pair = markers_->find(0);
+		if(pair != markers_->end())
+			curr_vec_ = pair->second.packetLength;
 	}
 }
 // note: packet length must be at least 1, so 0 indicates
 // no packet length available
 uint32_t PacketLengthMarkers::popNextPacketLength(void)
 {
-	if(!m_markers)
+	if(!markers_)
 		return 0;
 	uint32_t rc = 0;
-	if(m_curr_vec)
+	if(curr_vec_)
 	{
-		if(m_packetIndex == m_curr_vec->size())
+		if(packetIndex_ == curr_vec_->size())
 		{
-			m_markerIndex++;
-			if(m_markerIndex < m_markers->size())
+			markerIndex_++;
+			if(markerIndex_ < markers_->size())
 			{
-				m_curr_vec = m_markers->operator[](m_markerIndex).packetLength;
-				m_packetIndex = 0;
+				curr_vec_ = markers_->operator[](markerIndex_).packetLength;
+				packetIndex_ = 0;
 			}
 			else
 			{
-				m_curr_vec = nullptr;
+				curr_vec_ = nullptr;
 			}
 		}
-		if(m_curr_vec)
-			rc = m_curr_vec->operator[](m_packetIndex++);
+		if(curr_vec_)
+			rc = curr_vec_->operator[](packetIndex_++);
 	}
 	// GRK_INFO("Read packet length: %d", rc);
 	return rc;

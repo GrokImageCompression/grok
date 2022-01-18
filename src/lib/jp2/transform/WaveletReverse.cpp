@@ -292,12 +292,12 @@ template<typename T>
 struct dwt_data
 {
 	dwt_data()
-		: allocatedMem(nullptr), m_lenBytes(0), m_paddingBytes(0), mem(nullptr), memL(nullptr),
+		: allocatedMem(nullptr), lenBytes_(0), paddingBytes_(0), mem(nullptr), memL(nullptr),
 		  memH(nullptr), dn_full(0), sn_full(0), parity(0), resno(0)
 	{}
 
 	dwt_data(const dwt_data& rhs)
-		: allocatedMem(nullptr), m_lenBytes(0), m_paddingBytes(0), mem(nullptr), memL(nullptr),
+		: allocatedMem(nullptr), lenBytes_(0), paddingBytes_(0), mem(nullptr), memL(nullptr),
 		  memH(nullptr), dn_full(rhs.dn_full), sn_full(rhs.sn_full), parity(rhs.parity),
 		  win_l(rhs.win_l), win_h(rhs.win_h), resno(rhs.resno)
 	{}
@@ -317,16 +317,16 @@ struct dwt_data
 			GRK_ERROR("data size overflow");
 			return false;
 		}
-		m_paddingBytes = grkMakeAlignedWidth((uint32_t)padding * 2 + 32) * sizeof(T);
-		m_lenBytes = len * sizeof(T) + 2 * m_paddingBytes;
-		allocatedMem = (T*)grkAlignedMalloc(m_lenBytes);
+		paddingBytes_ = grkMakeAlignedWidth((uint32_t)padding * 2 + 32) * sizeof(T);
+		lenBytes_ = len * sizeof(T) + 2 * paddingBytes_;
+		allocatedMem = (T*)grkAlignedMalloc(lenBytes_);
 		if(!allocatedMem)
 		{
-			GRK_ERROR("Failed to allocate %d bytes", m_lenBytes);
+			GRK_ERROR("Failed to allocate %d bytes", lenBytes_);
 			return false;
 		}
-		// memset(allocatedMem, 128, m_lenBytes);
-		mem = allocatedMem + m_paddingBytes / sizeof(T);
+		// memset(allocatedMem, 128, lenBytes_);
+		mem = allocatedMem + paddingBytes_ / sizeof(T);
 		return (allocatedMem != nullptr) ? true : false;
 	}
 	void release()
@@ -338,8 +338,8 @@ struct dwt_data
 		memH = nullptr;
 	}
 	T* allocatedMem;
-	size_t m_lenBytes;
-	size_t m_paddingBytes;
+	size_t lenBytes_;
+	size_t paddingBytes_;
 	T* mem;
 	T* memL;
 	T* memH;
@@ -1742,7 +1742,7 @@ class Partial53 : public PartialInterleaver<T, FILTER_WIDTH, VERT_PASS_WIDTH>
 			{
 				assert((uint64_t)(dwt->memL + (win_l_x1 - win_l_x0) * VERT_PASS_WIDTH) -
 						   (uint64_t)dwt->allocatedMem <
-					   dwt->m_lenBytes);
+					   dwt->lenBytes_);
 				for(i = 0; i < win_l_x1 - win_l_x0; i++)
 				{
 					for(uint32_t off = 0; off < VERT_PASS_WIDTH; off++)
@@ -1751,7 +1751,7 @@ class Partial53 : public PartialInterleaver<T, FILTER_WIDTH, VERT_PASS_WIDTH>
 				}
 				assert((uint64_t)(dwt->memH + (win_h_x1 - win_h_x0) * VERT_PASS_WIDTH) -
 						   (uint64_t)dwt->allocatedMem <
-					   dwt->m_lenBytes);
+					   dwt->lenBytes_);
 				for(i = 0; i < win_h_x1 - win_h_x0; i++)
 				{
 					for(uint32_t off = 0; off < VERT_PASS_WIDTH; off++)
@@ -1856,7 +1856,7 @@ static Params97 makeParams97(dwt_data<vec4f>* dwt, bool isBandL, bool step1)
 	if(memPartial)
 	{
 		assert((uint64_t)rc.data >= (uint64_t)dwt->allocatedMem);
-		assert((uint64_t)rc.data <= (uint64_t)dwt->allocatedMem + dwt->m_lenBytes);
+		assert((uint64_t)rc.data <= (uint64_t)dwt->allocatedMem + dwt->lenBytes_);
 	}
 
 	return rc;

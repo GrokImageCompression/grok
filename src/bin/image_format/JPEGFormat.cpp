@@ -117,11 +117,11 @@ grk_image* JPEGFormat::jpegtoimage(const char* filename, grk_cparameters* parame
 	{
 		if(!grk::grk_set_binary_mode(stdin))
 			return nullptr;
-		m_fileStream = stdin;
+		fileStream_ = stdin;
 	}
 	else
 	{
-		if((m_fileStream = fopen(filename, "rb")) == nullptr)
+		if((fileStream_ = fopen(filename, "rb")) == nullptr)
 		{
 			spdlog::error("can't open {}", filename);
 			return 0;
@@ -144,7 +144,7 @@ grk_image* JPEGFormat::jpegtoimage(const char* filename, grk_cparameters* parame
 	setup_read_icc_profile(&cinfo);
 
 	/* Step 2: specify data source (eg, a file) */
-	jpeg_stdio_src(&cinfo, m_fileStream);
+	jpeg_stdio_src(&cinfo, fileStream_);
 
 	/* Step 3: read file parameters with jpeg_read_header() */
 
@@ -177,7 +177,7 @@ grk_image* JPEGFormat::jpegtoimage(const char* filename, grk_cparameters* parame
 	bps = cinfo.data_precision;
 	if(bps != 8)
 	{
-		spdlog::error("jpegtoimage: Unsupported m_image precision {}", bps);
+		spdlog::error("jpegtoimage: Unsupported image_ precision {}", bps);
 		success = false;
 		goto cleanup;
 	}
@@ -203,8 +203,8 @@ grk_image* JPEGFormat::jpegtoimage(const char* filename, grk_cparameters* parame
 		cmptparm[j].h = h;
 	}
 
-	m_image = grk_image_new((uint16_t)numcomps, &cmptparm[0], color_space);
-	if(!m_image)
+	image_ = grk_image_new((uint16_t)numcomps, &cmptparm[0], color_space);
+	if(!image_)
 	{
 		success = false;
 		goto cleanup;
@@ -213,7 +213,7 @@ grk_image* JPEGFormat::jpegtoimage(const char* filename, grk_cparameters* parame
 	{
 		if(validate_icc(color_space, icc_data_ptr, icc_data_len))
 		{
-			copy_icc(m_image, icc_data_ptr, icc_data_len);
+			copy_icc(image_, icc_data_ptr, icc_data_len);
 			icc_data_len = 0;
 		}
 		else
@@ -223,46 +223,46 @@ grk_image* JPEGFormat::jpegtoimage(const char* filename, grk_cparameters* parame
 	}
 	free(icc_data_ptr);
 	icc_data_ptr = nullptr;
-	/* set m_image offset and reference grid */
-	m_image->x0 = parameters->image_offset_x0;
-	m_image->x1 = !m_image->x0 ? (w - 1) * 1 + 1 : m_image->x0 + (w - 1) * 1 + 1;
-	if(m_image->x1 <= m_image->x0)
+	/* set image_ offset and reference grid */
+	image_->x0 = parameters->image_offset_x0;
+	image_->x1 = !image_->x0 ? (w - 1) * 1 + 1 : image_->x0 + (w - 1) * 1 + 1;
+	if(image_->x1 <= image_->x0)
 	{
-		spdlog::error("jpegtoimage: Bad value for m_image->x1({}) vs. "
-					  "m_image->x0({}).",
-					  m_image->x1, m_image->x0);
+		spdlog::error("jpegtoimage: Bad value for image_->x1({}) vs. "
+					  "image_->x0({}).",
+					  image_->x1, image_->x0);
 		success = false;
 		goto cleanup;
 	}
 
-	m_image->y0 = parameters->image_offset_y0;
-	m_image->y1 = !m_image->y0 ? (h - 1) * 1 + 1 : m_image->y0 + (h - 1) * 1 + 1;
+	image_->y0 = parameters->image_offset_y0;
+	image_->y1 = !image_->y0 ? (h - 1) * 1 + 1 : image_->y0 + (h - 1) * 1 + 1;
 
-	if(m_image->y1 <= m_image->y0)
+	if(image_->y1 <= image_->y0)
 	{
-		spdlog::error("jpegtoimage: Bad value for m_image->y1({}) vs. "
-					  "m_image->y0({}).",
-					  m_image->y1, m_image->y0);
+		spdlog::error("jpegtoimage: Bad value for image_->y1({}) vs. "
+					  "image_->y0({}).",
+					  image_->y1, image_->y0);
 		success = false;
 		goto cleanup;
 	}
 
 	for(int j = 0; j < numcomps; j++)
 	{
-		planes[j] = m_image->comps[j].data;
+		planes[j] = image_->comps[j].data;
 	}
 
 	buffer32s = new int32_t[w * (size_t)numcomps];
 
 	/* We may need to do some setup of our own at this point before reading
 	 * the data.  After jpeg_start_decompress() we have the correct scaled
-	 * output m_image dimensions available, as well as the output colormap
+	 * output image_ dimensions available, as well as the output colormap
 	 * if we asked for color quantization.
 	 * In this example, we need to make an output work buffer of the right size.
 	 */
 	/* JSAMPLEs per row in output buffer */
 	row_stride = (int)cinfo.output_width * cinfo.output_components;
-	/* Make a one-row-high sample array that will go away when done with m_image */
+	/* Make a one-row-high sample array that will go away when done with image_ */
 	buffer =
 		(*cinfo.mem->alloc_sarray)((j_common_ptr)&cinfo, JPOOL_IMAGE, (JDIMENSION)row_stride, 1);
 	if(!buffer)
@@ -277,7 +277,7 @@ grk_image* JPEGFormat::jpegtoimage(const char* filename, grk_cparameters* parame
 	/* Here we use the library's state variable cinfo.output_scanline as the
 	 * loop counter, so that we don't have to keep track ourselves.
 	 */
-	dest_stride = m_image->comps[0].stride;
+	dest_stride = image_->comps[0].stride;
 	while(cinfo.output_scanline < cinfo.output_height)
 	{
 		/* jpeg_read_scanlines expects an array of pointers to scanlines.
@@ -320,23 +320,23 @@ cleanup:
 
 	if(!success)
 	{
-		grk_object_unref(&m_image->obj);
-		m_image = nullptr;
+		grk_object_unref(&image_->obj);
+		image_ = nullptr;
 	}
 	/* After finish_decompress, we can close the input file.
 	 * Here we postpone it until after no more JPEG errors are possible,
 	 * so as to simplify the setjmp error logic above.  (Actually, I don't
 	 * think that jpeg_destroy can do an error exit, but why assume anything...)
 	 */
-	if(m_fileStream && !readFromStdin)
+	if(fileStream_ && !readFromStdin)
 	{
-		if(!grk::safe_fclose(m_fileStream))
+		if(!grk::safe_fclose(fileStream_))
 		{
-			grk_object_unref(&m_image->obj);
-			m_image = nullptr;
+			grk_object_unref(&image_->obj);
+			image_ = nullptr;
 		}
 	}
-	return m_image;
+	return image_;
 } /* jpegtoimage() */
 
 JPEGFormat::JPEGFormat(void)
@@ -351,12 +351,12 @@ bool JPEGFormat::encodeHeader(void)
 
 	int32_t firstAlpha = -1;
 	size_t numAlphaChannels = 0;
-	uint32_t width = m_image->comps[0].w;
+	uint32_t width = image_->comps[0].w;
 
 	// actual bits per sample
 	uint8_t prec = getImagePrec();
 	uint16_t numcomps = getImageNumComps();
-	uint32_t sgnd = m_image->comps[0].sgnd;
+	uint32_t sgnd = image_->comps[0].sgnd;
 	adjust = sgnd ? 1 << (prec - 1) : 0;
 
 	uint32_t i = 0;
@@ -379,17 +379,17 @@ bool JPEGFormat::encodeHeader(void)
 	 * Note that this struct must live as long as the main JPEG parameter
 	 * struct, to avoid dangling-pointer problems.
 	 */
-	JDIMENSION image_width = m_image->x1 - m_image->x0; /* input m_image width */
-	JDIMENSION image_height = m_image->y1 - m_image->y0; /* input m_image height */
+	JDIMENSION image_width = image_->x1 - image_->x0; /* input image_ width */
+	JDIMENSION image_height = image_->y1 - image_->y0; /* input image_ height */
 
 	// sub-sampling not supported at the moment
-	if(isFinalOutputSubsampled(m_image))
+	if(isFinalOutputSubsampled(image_))
 	{
 		spdlog::error("JPEGFormat::encodeHeader: subsampling not currently supported.");
 		return false;
 	}
 
-	switch(m_image->color_space)
+	switch(image_->color_space)
 	{
 		case GRK_CLRSPC_SRGB: /**< sRGB */
 			color_space = JCS_RGB;
@@ -418,41 +418,41 @@ bool JPEGFormat::encodeHeader(void)
 			break;
 	}
 
-	if(m_image->numcomps > 4)
+	if(image_->numcomps > 4)
 	{
 		spdlog::error("JPEGFormat::encodeHeader: number of components {} "
 					  "is greater than 4.",
-					  m_image->numcomps);
+					  image_->numcomps);
 		return false;
 	}
-	if(!allComponentsSanityCheck(m_image, true))
+	if(!allComponentsSanityCheck(image_, true))
 		return false;
 
-	planes[0] = m_image->comps[0].data;
+	planes[0] = image_->comps[0].data;
 	for(i = 1U; i < numcomps; ++i)
-		planes[i] = m_image->comps[i].data;
+		planes[i] = image_->comps[i].data;
 
 	if(prec != 1 && prec != 2 && prec != 4 && prec != 8)
 	{
-		spdlog::error("JPEGFormat::encodeHeader: can not create {}\n\twrong bit_depth {}", m_fileName,
+		spdlog::error("JPEGFormat::encodeHeader: can not create {}\n\twrong bit_depth {}", fileName_,
 					  prec);
 		return false;
 	}
 	// Alpha channels
 	for(i = 0U; i < numcomps; ++i)
 	{
-		if(m_image->comps[i].type)
+		if(image_->comps[i].type)
 		{
 			if(firstAlpha == -1)
 				firstAlpha = 0;
 			numAlphaChannels++;
 		}
 	}
-	// We assume that alpha channels occur as last channels in m_image.
+	// We assume that alpha channels occur as last channels in image_.
 	if(numAlphaChannels && ((uint32_t)firstAlpha + numAlphaChannels >= numcomps))
 	{
 		spdlog::warn("JPEGFormat::encodeHeader: PNG requires that alpha channels occur"
-					 " as last channels in m_image.");
+					 " as last channels in image_.");
 		numAlphaChannels = 0;
 	}
 	buffer = new uint8_t[width * numcomps];
@@ -484,17 +484,17 @@ bool JPEGFormat::encodeHeader(void)
 	if(!openFile())
 		return false;
 
-	jpeg_stdio_dest(&cinfo, m_fileStream);
+	jpeg_stdio_dest(&cinfo, fileStream_);
 
 	/* Step 3: set parameters for compression */
 
-	/* First we supply a description of the input m_image.
+	/* First we supply a description of the input image_.
 	 * Four fields of the cinfo struct must be filled in:
 	 */
-	cinfo.image_width = image_width; /* m_image width and height, in pixels */
+	cinfo.image_width = image_width; /* image_ width and height, in pixels */
 	cinfo.image_height = image_height;
 	cinfo.input_components = (int)numcomps; /* # of color components per pixel */
-	cinfo.in_color_space = color_space; /* colorspace of input m_image */
+	cinfo.in_color_space = color_space; /* colorspace of input image_ */
 
 	/* Now use the library's routine to set default compression parameters.
 	 * (You must set at least cinfo.in_color_space before calling this,
@@ -512,11 +512,11 @@ bool JPEGFormat::encodeHeader(void)
 					 (boolean)TRUE /* limit to baseline-JPEG values */);
 
 	// set resolution
-	if(m_image->capture_resolution[0] > 0 && m_image->capture_resolution[1] > 0)
+	if(image_->capture_resolution[0] > 0 && image_->capture_resolution[1] > 0)
 	{
 		cinfo.density_unit = 2; // dots per cm
-		cinfo.X_density = (uint16_t)(m_image->capture_resolution[0] / 100.0 + 0.5);
-		cinfo.Y_density = (uint16_t)(m_image->capture_resolution[1] / 100.0 + 0.5);
+		cinfo.X_density = (uint16_t)(image_->capture_resolution[0] / 100.0 + 0.5);
+		cinfo.Y_density = (uint16_t)(image_->capture_resolution[1] / 100.0 + 0.5);
 	}
 
 	/* Step 4: Start compressor */
@@ -525,10 +525,10 @@ bool JPEGFormat::encodeHeader(void)
 	 * Pass TRUE unless you are very sure of what you're doing.
 	 */
 	jpeg_start_compress(&cinfo, (boolean)TRUE);
-	if(m_image->meta && m_image->meta->color.icc_profile_buf)
+	if(image_->meta && image_->meta->color.icc_profile_buf)
 	{
-		write_icc_profile(&cinfo, m_image->meta->color.icc_profile_buf,
-						  m_image->meta->color.icc_profile_len);
+		write_icc_profile(&cinfo, image_->meta->color.icc_profile_buf,
+						  image_->meta->color.icc_profile_len);
 	}
 	encodeState = IMAGE_FORMAT_ENCODED_HEADER;
 
@@ -556,11 +556,11 @@ bool JPEGFormat::encodeRows(uint32_t rows)
 		 * more than one scanline at a time if that's more convenient.
 		 */
 		iter->interleave((int32_t**)planes,
-						m_image->numcomps,
+						image_->numcomps,
 						(uint8_t*)buffer,
-						m_image->comps[0].w,
-						m_image->comps[0].stride,
-						m_image->comps[0].w,
+						image_->comps[0].w,
+						image_->comps[0].stride,
+						image_->comps[0].w,
 						1,
 						adjust);
 		JSAMPROW row_pointer[1]; /* pointer to JSAMPLE row[s] */

@@ -34,12 +34,12 @@ class PNGFormat : public ImageFormat
   private:
 	grk_image* do_decode(const char* read_idf, grk_cparameters* params);
 
-	png_infop m_info;
+	png_infop info_;
 	png_structp png;
 	uint8_t* row_buf;
 	uint8_t** row_buf_array;
 	int32_t* row32s;
-	GRK_COLOR_SPACE m_colorSpace;
+	GRK_COLOR_SPACE colorSpace_;
 	uint8_t prec;
 	uint16_t nr_comp;
 };

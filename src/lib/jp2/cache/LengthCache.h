@@ -140,11 +140,11 @@ struct TileLengthMarkers
 
   private:
 	void push(uint8_t i_TLM, TilePartLengthInfo curr_vec);
-	TL_MAP* m_markers;
-	uint8_t m_markerIndex;
-	uint8_t m_markerTilePartIndex;
-	TL_INFO_VEC* m_curr_vec;
-	IBufferedStream* m_stream;
+	TL_MAP* markers_;
+	uint8_t markerIndex_;
+	uint8_t markerTilePartIndex_;
+	TL_INFO_VEC* curr_vec_;
+	IBufferedStream* stream_;
 	uint64_t streamStart;
 };
 

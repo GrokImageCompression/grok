@@ -53,8 +53,8 @@ class TileCache
   private:
 	// each component is sub-sampled and resolution-reduced
 	GrkImage* tileComposite;
-	std::map<uint32_t, TileCacheEntry*> m_cache;
-	GRK_TILE_CACHE_STRATEGY m_strategy;
+	std::map<uint32_t, TileCacheEntry*> cache_;
+	GRK_TILE_CACHE_STRATEGY strategy_;
 };
 
 } // namespace grk

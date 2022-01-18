@@ -86,7 +86,7 @@ struct TileComponentCodingParams
 	/** precinct height (power of 2 exponent, < 16) */
 	uint32_t precinctHeightExp[GRK_J2K_MAXRLVLS];
 	/** the dc_level_shift **/
-	int32_t m_dc_level_shift;
+	int32_t dc_level_shift_;
 };
 
 /**
@@ -94,11 +94,11 @@ struct TileComponentCodingParams
  */
 struct grk_mct_data
 {
-	J2K_MCT_ELEMENT_TYPE m_element_type;
-	J2K_MCT_ARRAY_TYPE m_array_type;
-	uint32_t m_index;
-	uint8_t* m_data;
-	uint32_t m_data_size;
+	J2K_MCT_ELEMENT_TYPE element_type_;
+	J2K_MCT_ARRAY_TYPE array_type_;
+	uint32_t index_;
+	uint8_t* data_;
+	uint32_t data_size_;
 };
 
 /**
@@ -106,11 +106,11 @@ struct grk_mct_data
  */
 struct grk_simple_mcc_decorrelation_data
 {
-	uint32_t m_index;
-	uint32_t m_nb_comps;
-	grk_mct_data* m_decorrelation_array;
-	grk_mct_data* m_offset_array;
-	uint32_t m_is_irreversible : 1;
+	uint32_t index_;
+	uint32_t nb_comps_;
+	grk_mct_data* decorrelation_array_;
+	grk_mct_data* offset_array_;
+	uint32_t is_irreversible_ : 1;
 };
 
 /**
@@ -170,53 +170,53 @@ struct TileCodingParams
 	// 1. tile parts must appear in code stream in strictly increasing
 	// order
 	// 2. tile part index must be  <= 254
-	int16_t m_tilePartIndexCounter;
+	int16_t tilePartIndexCounter_;
 	/** number of tile parts for the tile. */
-	uint8_t m_numTileParts;
-	SparseBuffer* m_compressedTileData;
+	uint8_t numTileParts_;
+	SparseBuffer* compressedTileData_;
 	/** compressing norms */
 	double* mct_norms;
 	/** the mct decoding matrix */
-	float* m_mct_decoding_matrix;
+	float* mct_decoding_matrix_;
 	/** the mct coding matrix */
-	float* m_mct_coding_matrix;
+	float* mct_coding_matrix_;
 	/** mct records */
-	grk_mct_data* m_mct_records;
+	grk_mct_data* mct_records_;
 	/** the number of mct records. */
-	uint32_t m_nb_mct_records;
+	uint32_t nb_mct_records_;
 	/** the max number of mct records. */
-	uint32_t m_nb_max_mct_records;
+	uint32_t nb_max_mct_records_;
 	/** mcc records */
-	grk_simple_mcc_decorrelation_data* m_mcc_records;
+	grk_simple_mcc_decorrelation_data* mcc_records_;
 	/** the number of mct records. */
-	uint32_t m_nb_mcc_records;
+	uint32_t nb_mcc_records_;
 	/** the max number of mct records. */
-	uint32_t m_nb_max_mcc_records;
+	uint32_t nb_max_mcc_records_;
 	/** If cod == true --> there was a COD marker for the present tile */
 	bool cod;
 	/** If ppt == true --> there was a PPT marker for the present tile */
 	bool ppt;
-	Quantizer* m_qcd;
+	Quantizer* qcd_;
 
   private:
-	bool m_ht;
+	bool ht_;
 };
 
 struct EncodingParams
 {
 	/** Maximum rate for each component.
 	 * If == 0, component size limitation is not considered */
-	size_t m_max_comp_size;
+	size_t max_comp_size_;
 	/** Position of tile part flag in progression order*/
 	uint32_t newTilePartProgressionPosition;
 	/** Flag determining tile part generation*/
-	uint8_t m_newTilePartProgressionDivider;
+	uint8_t newTilePartProgressionDivider_;
 	/** allocation by rate/distortion */
-	bool m_allocationByRateDistortion;
+	bool allocationByRateDistortion_;
 	/** allocation by fixed_quality */
-	bool m_allocationByFixedQuality;
+	bool allocationByFixedQuality_;
 	/** Enabling Tile part generation*/
-	bool m_enableTilePartGeneration;
+	bool enableTilePartGeneration_;
 	/* write plt marker */
 	bool writePLT;
 	/* write TLM marker */
@@ -229,10 +229,10 @@ struct DecodingParams
 {
 	/** if != 0, then original dimension divided by 2^(reduce); if == 0 or not used, image is
 	 * decompressed to the full resolution */
-	uint8_t m_reduce;
+	uint8_t reduce_;
 	/** if != 0, then only the first "layer" layers are decompressed; if == 0 or not used, all the
 	 * quality layers are decompressed */
-	uint16_t m_layer;
+	uint16_t layer_;
 };
 
 /**
@@ -273,9 +273,9 @@ struct CodingParams
 	TileCodingParams* tcps;
 	union
 	{
-		DecodingParams m_dec;
-		EncodingParams m_enc;
-	} m_coding_params;
+		DecodingParams dec_;
+		EncodingParams enc_;
+	} coding_params_;
 	TileLengthMarkers* tlm_markers;
 	PacketLengthMarkers* plm_markers;
 };
@@ -313,12 +313,12 @@ struct DecompressorState
 
 	// store decoding parameters common to all tiles (information
 	// like COD, COC and RGN in main header)
-	TileCodingParams* m_default_tcp;
+	TileCodingParams* default_tcp_;
 	/** Only tile indices in the correct range will be decompressed.*/
-	uint32_t m_start_tile_x_index;
-	uint32_t m_start_tile_y_index;
-	uint32_t m_end_tile_x_index;
-	uint32_t m_end_tile_y_index;
+	uint32_t start_tile_x_index_;
+	uint32_t start_tile_y_index_;
+	uint32_t end_tile_x_index_;
+	uint32_t end_tile_y_index_;
 	/** Position of the last SOT marker read */
 	uint64_t lastSotReadPosition;
 	/**
@@ -335,15 +335,15 @@ struct DecompressorState
   private:
 	/** Decoder state: used to indicate in which part of the code stream
 	 *  the decompressor is (main header, tile header, end) */
-	uint16_t m_state;
+	uint16_t state_;
 };
 
 struct CompressorState
 {
-	CompressorState() : m_total_tile_parts(0) {}
+	CompressorState() : total_tile_parts_(0) {}
 	/** Total num of tile parts in whole image = num tiles* num tileparts in each tile*/
 	/** used in TLMmarker*/
-	uint16_t m_total_tile_parts; /* numTilePartsTotal */
+	uint16_t total_tile_parts_; /* numTilePartsTotal */
 };
 
 } // namespace grk

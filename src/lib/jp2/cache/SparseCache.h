@@ -25,14 +25,14 @@ class SparseCache
 {
   public:
 	SparseCache(uint64_t maxChunkSize)
-		: m_chunkSize(std::min<uint64_t>(maxChunkSize, 1024)), m_currChunk(nullptr),
-		  m_currChunkIndex(0)
+		: chunkSize_(std::min<uint64_t>(maxChunkSize, 1024)), currChunk_(nullptr),
+		  currChunkIndex_(0)
 	{}
 	virtual ~SparseCache(void)
 	{
 		for(auto& ch : chunks)
 		{
-			for(size_t i = 0; i < m_chunkSize; ++i)
+			for(size_t i = 0; i < chunkSize_; ++i)
 				delete ch.second[i];
 			delete[] ch.second;
 		}
@@ -40,43 +40,43 @@ class SparseCache
 
 	T* tryGet(uint64_t index)
 	{
-		uint64_t chunkIndex = index / m_chunkSize;
-		uint64_t itemIndex = index % m_chunkSize;
-		if(m_currChunk == nullptr || (chunkIndex != m_currChunkIndex))
+		uint64_t chunkIndex = index / chunkSize_;
+		uint64_t itemIndex = index % chunkSize_;
+		if(currChunk_ == nullptr || (chunkIndex != currChunkIndex_))
 		{
 			auto iter = chunks.find(chunkIndex);
 			if(iter != chunks.end())
-				m_currChunk = iter->second;
+				currChunk_ = iter->second;
 			else
 				return nullptr;
 		}
-		return m_currChunk[itemIndex];
+		return currChunk_[itemIndex];
 	}
 
 	T* get(uint64_t index)
 	{
-		uint64_t chunkIndex = index / m_chunkSize;
-		uint64_t itemIndex = index % m_chunkSize;
-		if(m_currChunk == nullptr || (chunkIndex != m_currChunkIndex))
+		uint64_t chunkIndex = index / chunkSize_;
+		uint64_t itemIndex = index % chunkSize_;
+		if(currChunk_ == nullptr || (chunkIndex != currChunkIndex_))
 		{
-			m_currChunkIndex = chunkIndex;
+			currChunkIndex_ = chunkIndex;
 			auto iter = chunks.find(chunkIndex);
 			if(iter != chunks.end())
 			{
-				m_currChunk = iter->second;
+				currChunk_ = iter->second;
 			}
 			else
 			{
-				m_currChunk = new T*[m_chunkSize];
-				memset(m_currChunk, 0, m_chunkSize * sizeof(T*));
-				chunks[chunkIndex] = m_currChunk;
+				currChunk_ = new T*[chunkSize_];
+				memset(currChunk_, 0, chunkSize_ * sizeof(T*));
+				chunks[chunkIndex] = currChunk_;
 			}
 		}
-		auto item = m_currChunk[itemIndex];
+		auto item = currChunk_[itemIndex];
 		if(!item)
 		{
 			item = create(index);
-			m_currChunk[itemIndex] = item;
+			currChunk_[itemIndex] = item;
 		}
 		return item;
 	}
@@ -91,9 +91,9 @@ class SparseCache
 
   private:
 	std::map<uint64_t, T**> chunks;
-	uint64_t m_chunkSize;
-	T** m_currChunk;
-	uint64_t m_currChunkIndex;
+	uint64_t chunkSize_;
+	T** currChunk_;
+	uint64_t currChunkIndex_;
 };
 
 } // namespace grk

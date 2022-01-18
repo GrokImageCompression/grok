@@ -24,7 +24,7 @@
 namespace grk
 {
 FileFormatDecompress::FileFormatDecompress(IBufferedStream* stream)
-	: FileFormat(), m_headerError(false), codeStream(new CodeStreamDecompress(stream)), jp2_state(0)
+	: FileFormat(), headerError_(false), codeStream(new CodeStreamDecompress(stream)), jp2_state(0)
 {
 	header = {{JP2_JP, [this](uint8_t* data, uint32_t len) { return read_jp(data, len); }},
 			  {JP2_FTYP, [this](uint8_t* data, uint32_t len) { return read_ftyp(data, len); }},
@@ -95,7 +95,7 @@ void FileFormatDecompress::free_color(grk_color* color)
 }
 void FileFormatDecompress::init_end_header_reading(void)
 {
-	m_procedure_list->push_back(std::bind(&FileFormatDecompress::readHeaderProcedureImpl, this));
+	procedure_list_->push_back(std::bind(&FileFormatDecompress::readHeaderProcedureImpl, this));
 }
 bool FileFormatDecompress::read_asoc(uint8_t* header_data, uint32_t header_data_size)
 {
@@ -157,25 +157,25 @@ GrkImage* FileFormatDecompress::getImage(void)
 /** Main header reading function handler */
 bool FileFormatDecompress::readHeader(grk_header_info* header_info)
 {
-	if(m_headerError)
+	if(headerError_)
 		return false;
 
 	bool needsHeaderRead = !codeStream->getHeaderImage();
 	if(needsHeaderRead)
 	{
-		m_procedure_list->push_back(
+		procedure_list_->push_back(
 			std::bind(&FileFormatDecompress::readHeaderProcedureImpl, this));
 
 		/* validation of the parameters codec */
-		if(!exec(m_validation_list))
+		if(!exec(validation_list_))
 		{
-			m_headerError = true;
+			headerError_ = true;
 			return false;
 		}
 		/* read header */
-		if(!exec(m_procedure_list))
+		if(!exec(procedure_list_))
 		{
-			m_headerError = true;
+			headerError_ = true;
 			return false;
 		}
 	}
@@ -191,7 +191,7 @@ bool FileFormatDecompress::readHeader(grk_header_info* header_info)
 	}
 	if(!codeStream->readHeader(header_info))
 	{
-		m_headerError = true;
+		headerError_ = true;
 		return false;
 	}
 	if(needsHeaderRead)
@@ -199,7 +199,7 @@ bool FileFormatDecompress::readHeader(grk_header_info* header_info)
 		auto image = (GrkImage*)codeStream->getCompositeImage();
 		if(!check_color(image, &color))
 		{
-			m_headerError = true;
+			headerError_ = true;
 			return false;
 		}
 		if(has_capture_resolution)
@@ -231,7 +231,7 @@ bool FileFormatDecompress::readHeader(grk_header_info* header_info)
 				else
 				{
 					GRK_ERROR("CIE Lab image: ICC profile buffer not present");
-					m_headerError = true;
+					headerError_ = true;
 					return false;
 				}
 				break;
@@ -263,7 +263,7 @@ bool FileFormatDecompress::readHeader(grk_header_info* header_info)
 				{
 					GRK_ERROR(
 						"sRGB colour space mandates uniform sampling in all three components");
-					m_headerError = true;
+					headerError_ = true;
 					return false;
 				}
 			}
@@ -386,7 +386,7 @@ bool FileFormatDecompress::decompressTile(uint16_t tileIndex)
 bool FileFormatDecompress::endDecompress(void)
 {
 	init_end_header_reading();
-	if(!exec(m_procedure_list))
+	if(!exec(procedure_list_))
 		return false;
 
 	return codeStream->endDecompress();

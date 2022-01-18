@@ -138,9 +138,9 @@ class FileFormat
   protected:
 	bool exec(std::vector<PROCEDURE_FUNC>* procs);
 	/** list of validation procedures */
-	std::vector<PROCEDURE_FUNC>* m_validation_list;
+	std::vector<PROCEDURE_FUNC>* validation_list_;
 	/** list of execution procedures */
-	std::vector<PROCEDURE_FUNC>* m_procedure_list;
+	std::vector<PROCEDURE_FUNC>* procedure_list_;
 
 	/* width of image */
 	uint32_t w;

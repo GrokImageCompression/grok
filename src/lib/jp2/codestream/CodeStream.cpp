@@ -23,26 +23,26 @@
 namespace grk
 {
 CodeStream::CodeStream(IBufferedStream* stream)
-	: codeStreamInfo(nullptr), m_headerImage(nullptr), m_currentTileProcessor(nullptr),
-	  m_stream(stream), current_plugin_tile(nullptr)
+	: codeStreamInfo(nullptr), headerImage_(nullptr), currentTileProcessor_(nullptr),
+	  stream_(stream), current_plugin_tile(nullptr)
 {}
 CodeStream::~CodeStream()
 {
-	if(m_headerImage)
-		grk_object_unref(&m_headerImage->obj);
+	if(headerImage_)
+		grk_object_unref(&headerImage_->obj);
 	delete codeStreamInfo;
 }
 CodingParams* CodeStream::getCodingParams(void)
 {
-	return &m_cp;
+	return &cp_;
 }
 GrkImage* CodeStream::getHeaderImage(void)
 {
-	return m_headerImage;
+	return headerImage_;
 }
 TileProcessor* CodeStream::currentProcessor(void)
 {
-	return m_currentTileProcessor;
+	return currentTileProcessor_;
 }
 bool CodeStream::exec(std::vector<PROCEDURE_FUNC>& procs)
 {
@@ -58,7 +58,7 @@ grk_plugin_tile* CodeStream::getCurrentPluginTile()
 }
 IBufferedStream* CodeStream::getStream()
 {
-	return m_stream;
+	return stream_;
 }
 
 } // namespace grk

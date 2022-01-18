@@ -196,7 +196,7 @@ cleanup:
 
 bool PGXFormat::encodeHeader(void)
 {
-	if(!allComponentsSanityCheck(m_image, false))
+	if(!allComponentsSanityCheck(image_, false))
 	{
 		spdlog::error("PGXFormat::encodeHeader: image sanity check failed.");
 		return false;
@@ -209,11 +209,11 @@ bool PGXFormat::encodeRows(uint32_t rows)
 {
 	(void)rows;
 
-	const char* outfile = m_fileName.c_str();
+	const char* outfile = fileName_.c_str();
 	bool success = false;
-	for(uint32_t compno = 0; compno < m_image->numcomps; compno++)
+	for(uint32_t compno = 0; compno < image_->numcomps; compno++)
 	{
-		auto comp = &m_image->comps[compno];
+		auto comp = &image_->comps[compno];
 		char bname[4096]; /* buffer for name */
 		bname[4095] = '\0';
 		int nbytes = 0;
@@ -238,8 +238,8 @@ bool PGXFormat::encodeRows(uint32_t rows)
 		memcpy(bname, outfile, dotpos);
 		// add new tag
 		sprintf(bname + dotpos, "_%u.pgx", compno);
-		m_fileStream = fopen(bname, "wb");
-		if(!m_fileStream)
+		fileStream_ = fopen(bname, "wb");
+		if(!fileStream_)
 		{
 			spdlog::error("failed to open {} for writing", bname);
 			goto beach;
@@ -248,7 +248,7 @@ bool PGXFormat::encodeRows(uint32_t rows)
 		uint32_t w = comp->w;
 		uint32_t h = comp->h;
 
-		fprintf(m_fileStream, "PG ML %c %u %u %u\n", comp->sgnd ? '-' : '+', comp->prec, w, h);
+		fprintf(fileStream_, "PG ML %c %u %u %u\n", comp->sgnd ? '-' : '+', comp->prec, w, h);
 
 		if(comp->prec <= 8)
 			nbytes = 1;
@@ -269,7 +269,7 @@ bool PGXFormat::encodeRows(uint32_t rows)
 				{
 					const int val = comp->data[index++];
 					if(!grk::writeBytes<uint8_t>((uint8_t)val, buf, &outPtr, &outCount, bufSize,
-												 true, m_fileStream))
+												 true, fileStream_))
 					{
 						spdlog::error("failed to write bytes for {}", bname);
 						goto beach;
@@ -279,7 +279,7 @@ bool PGXFormat::encodeRows(uint32_t rows)
 			}
 			if(outCount)
 			{
-				size_t res = fwrite(buf, sizeof(uint8_t), outCount, m_fileStream);
+				size_t res = fwrite(buf, sizeof(uint8_t), outCount, fileStream_);
 				if(res != outCount)
 				{
 					spdlog::error("failed to write bytes for {}", bname);
@@ -295,9 +295,9 @@ bool PGXFormat::encodeRows(uint32_t rows)
 			{
 				for(uint32_t i = 0; i < w; ++i)
 				{
-					const int val = m_image->comps[compno].data[index++];
+					const int val = image_->comps[compno].data[index++];
 					if(!grk::writeBytes<uint16_t>((uint16_t)val, buf, &outPtr, &outCount, bufSize,
-												  true, m_fileStream))
+												  true, fileStream_))
 					{
 						spdlog::error("failed to write bytes for {}", bname);
 						goto beach;
@@ -307,7 +307,7 @@ bool PGXFormat::encodeRows(uint32_t rows)
 			}
 			if(outCount)
 			{
-				size_t res = fwrite(buf, sizeof(uint16_t), outCount, m_fileStream);
+				size_t res = fwrite(buf, sizeof(uint16_t), outCount, fileStream_);
 				if(res != outCount)
 				{
 					spdlog::error("failed to write bytes for {}", bname);
@@ -315,12 +315,12 @@ bool PGXFormat::encodeRows(uint32_t rows)
 				}
 			}
 		}
-		if(!grk::safe_fclose(m_fileStream))
+		if(!grk::safe_fclose(fileStream_))
 		{
-			m_fileStream = nullptr;
+			fileStream_ = nullptr;
 			goto beach;
 		}
-		m_fileStream = nullptr;
+		fileStream_ = nullptr;
 	}
 	success = true;
 beach:
@@ -330,11 +330,11 @@ bool PGXFormat::encodeFinish(void)
 {
 	bool success = true;
 
-	if(!grk::safe_fclose(m_fileStream))
+	if(!grk::safe_fclose(fileStream_))
 	{
 		success = false;
 	}
-	m_fileStream = nullptr;
+	fileStream_ = nullptr;
 
 	return success;
 }

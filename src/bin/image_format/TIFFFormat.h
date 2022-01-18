@@ -48,7 +48,7 @@ struct ClientData {
 private:
 	uint32_t numPixelRequests;
 	bool active;
-	uint64_t m_off;
+	uint64_t off_;
 };
 
 

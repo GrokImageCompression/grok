@@ -29,7 +29,7 @@ bool T2Compress::compressPackets(uint16_t tile_no, uint16_t max_layers, IBuffere
 								 uint32_t* tileBytesWritten, bool first_poc_tile_part,
 								 uint32_t newTilePartProgressionPosition, uint32_t pino)
 {
-	auto cp = tileProcessor->m_cp;
+	auto cp = tileProcessor->cp_;
 	auto image = tileProcessor->headerImage;
 	auto tilePtr = tileProcessor->tile;
 	auto tcp = &cp->tcps[tile_no];
@@ -64,7 +64,7 @@ bool T2Compress::compressPacketsSimulate(uint16_t tile_no, uint16_t max_layers,
 										 PacketLengthMarkers* markers, bool finalSimulation)
 {
 	assert(allPacketBytes);
-	auto cp = tileProcessor->m_cp;
+	auto cp = tileProcessor->cp_;
 	auto image = tileProcessor->headerImage;
 	auto tcp = cp->tcps + tile_no;
 	uint32_t pocno = (cp->rsiz == GRK_PROFILE_CINEMA_4K) ? 2 : 1;
@@ -72,7 +72,7 @@ bool T2Compress::compressPacketsSimulate(uint16_t tile_no, uint16_t max_layers,
 	// Cinema profile has CPRL progression and maximum component size specification,
 	// so in this case, we set max_comp to the number of components, so we can ensure that
 	// each component length meets spec. Otherwise, set to 1.
-	uint32_t max_comp = cp->m_coding_params.m_enc.m_max_comp_size > 0 ? image->numcomps : 1;
+	uint32_t max_comp = cp->coding_params_.enc_.max_comp_size_ > 0 ? image->numcomps : 1;
 
 	PacketManager packetManager(true, image, cp, tile_no, THRESH_CALC, tileProcessor);
 	*allPacketBytes = 0;
@@ -104,8 +104,8 @@ bool T2Compress::compressPacketsSimulate(uint16_t tile_no, uint16_t max_layers,
 					if(maxBytes != UINT_MAX)
 						maxBytes -= bytesInPacket;
 					*allPacketBytes += bytesInPacket;
-					if(cp->m_coding_params.m_enc.m_max_comp_size &&
-					   componentBytes > cp->m_coding_params.m_enc.m_max_comp_size)
+					if(cp->coding_params_.enc_.max_comp_size_ &&
+					   componentBytes > cp->coding_params_.enc_.max_comp_size_)
 						return false;
 				}
 			}

@@ -140,16 +140,16 @@ class CodeStream
 
   protected:
 	bool exec(std::vector<PROCEDURE_FUNC>& p_procedure_list);
-	CodingParams m_cp;
+	CodingParams cp_;
 	CodeStreamInfo* codeStreamInfo;
-	std::vector<PROCEDURE_FUNC> m_procedure_list;
-	std::vector<PROCEDURE_FUNC> m_validation_list;
+	std::vector<PROCEDURE_FUNC> procedure_list_;
+	std::vector<PROCEDURE_FUNC> validation_list_;
 	// stores header image information (decompress/compress)
 	// decompress: components are subsampled and resolution-reduced
-	GrkImage* m_headerImage;
-	TileProcessor* m_currentTileProcessor;
-	IBufferedStream* m_stream;
-	std::map<uint32_t, TileProcessor*> m_processors;
+	GrkImage* headerImage_;
+	TileProcessor* currentTileProcessor_;
+	IBufferedStream* stream_;
+	std::map<uint32_t, TileProcessor*> processors_;
 	grk_plugin_tile* current_plugin_tile;
 };
 

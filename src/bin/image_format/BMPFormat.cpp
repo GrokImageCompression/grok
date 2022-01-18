@@ -59,16 +59,16 @@ void put_int(T** buf, T val)
 }
 
 
-BMPFormat::BMPFormat(void) : m_off(0),
-							m_header(nullptr),
-							m_srcIndex(0)
+BMPFormat::BMPFormat(void) : off_(0),
+							header_(nullptr),
+							srcIndex_(0)
 {
 	memset(&File_h, 0, sizeof(GRK_BITMAPFILEHEADER));
 	memset(&Info_h, 0, sizeof(GRK_BITMAPINFOHEADER));
 }
 
 BMPFormat::~BMPFormat(void){
-	delete[] m_header;
+	delete[] header_;
 }
 
 bool BMPFormat::encodeHeader(void)
@@ -77,16 +77,16 @@ bool BMPFormat::encodeHeader(void)
 		return true;
 
 #ifdef GROK_HAVE_URING
-	delete m_fileIO;
-	m_fileIO = new FileUringIO();
+	delete fileIO_;
+	fileIO_ = new FileUringIO();
 #endif
 
 	if(!openFile())
 		return false;
 	bool ret = false;
-	uint32_t w = m_image->comps[0].w;
-	uint32_t h = m_image->comps[0].h;
-	uint32_t padW = (uint32_t)m_image->packedRowBytes;
+	uint32_t w = image_->comps[0].w;
+	uint32_t h = image_->comps[0].h;
+	uint32_t padW = (uint32_t)image_->packedRowBytes;
 	uint32_t image_size = padW * h;
 	uint32_t colours_used, lut_size;
 	uint32_t full_header_size, info_header_size, icc_size = 0;
@@ -94,31 +94,31 @@ bool BMPFormat::encodeHeader(void)
 	uint8_t *header_ptr = nullptr;
 	GrkSerializeBuf destBuff;
 
-	if(!allComponentsSanityCheck(m_image, false))
+	if(!allComponentsSanityCheck(image_, false))
 		goto cleanup;
-	if(isFinalOutputSubsampled(m_image))
+	if(isFinalOutputSubsampled(image_))
 	{
 		spdlog::error("Sub-sampled images not supported");
 		goto cleanup;
 	}
-	if(m_image->numcomps != 1 && (m_image->numcomps != 3 && m_image->numcomps != 4))
+	if(image_->numcomps != 1 && (image_->numcomps != 3 && image_->numcomps != 4))
 	{
-		spdlog::error("Unsupported number of components: {}", m_image->numcomps);
+		spdlog::error("Unsupported number of components: {}", image_->numcomps);
 		goto cleanup;
 	}
 
-	colours_used = (m_image->numcomps == 3) ? 0 : 256;
+	colours_used = (image_->numcomps == 3) ? 0 : 256;
 	lut_size = colours_used * (uint32_t)sizeof(uint32_t);
 	full_header_size = fileHeaderSize + BITMAPINFOHEADER_LENGTH;
-	if(m_image->meta && m_image->meta->color.icc_profile_buf)
+	if(image_->meta && image_->meta->color.icc_profile_buf)
 	{
 		full_header_size = fileHeaderSize + sizeof(GRK_BITMAPINFOHEADER);
-		icc_size = m_image->meta->color.icc_profile_len;
+		icc_size = image_->meta->color.icc_profile_len;
 	}
 	info_header_size = full_header_size - fileHeaderSize;
 	header_plus_lut = full_header_size + lut_size;
 
-	header_ptr = m_header = new uint8_t[header_plus_lut];
+	header_ptr = header_ = new uint8_t[header_plus_lut];
 	*header_ptr++ = 'B';
 	*header_ptr++ = 'M';
 
@@ -133,18 +133,18 @@ bool BMPFormat::encodeHeader(void)
 	put_int((uint32_t**)(&header_ptr), w);
 	put_int((uint32_t**)(&header_ptr), h);
 	put_int((uint16_t**)(&header_ptr), (uint16_t)1);
-	put_int((uint16_t**)(&header_ptr), (uint16_t)(m_image->numcomps * 8));
+	put_int((uint16_t**)(&header_ptr), (uint16_t)(image_->numcomps * 8));
 	put_int((uint32_t**)(&header_ptr), 0U);
 	put_int((uint32_t**)(&header_ptr), image_size);
 	for(uint32_t i = 0; i < 2; ++i)
 	{
 		double cap =
-			(m_image->capture_resolution[i] != 0) ? m_image->capture_resolution[i] : 7834.0;
+			(image_->capture_resolution[i] != 0) ? image_->capture_resolution[i] : 7834.0;
 		put_int((uint32_t**)(&header_ptr), (uint32_t)(cap + 0.5f));
 	}
 	put_int((uint32_t**)(&header_ptr), colours_used);
 	put_int((uint32_t**)(&header_ptr), colours_used);
-	if(m_image->meta && m_image->meta->color.icc_profile_buf)
+	if(image_->meta && image_->meta->color.icc_profile_buf)
 	{
 		put_int((uint32_t**)(&header_ptr), 0U);
 		put_int((uint32_t**)(&header_ptr), 0U);
@@ -158,11 +158,11 @@ bool BMPFormat::encodeHeader(void)
 		put_int((uint32_t**)(&header_ptr), 0U);
 		put_int((uint32_t**)(&header_ptr), 0U);
 		put_int((uint32_t**)(&header_ptr), info_header_size + lut_size + image_size);
-		put_int((uint32_t**)(&header_ptr), m_image->meta->color.icc_profile_len);
+		put_int((uint32_t**)(&header_ptr), image_->meta->color.icc_profile_len);
 		put_int((uint32_t**)(&header_ptr), 0U);
 	}
 	// 1024-byte LUT
-	if(m_image->numcomps == 1)
+	if(image_->numcomps == 1)
 	{
 		for(uint32_t i = 0; i < 256; i++)
 		{
@@ -172,13 +172,13 @@ bool BMPFormat::encodeHeader(void)
 			*header_ptr++ = 0;
 		}
 	}
-	destBuff.data = m_header;
-	destBuff.offset = m_off;
+	destBuff.data = header_;
+	destBuff.offset = off_;
 	destBuff.pooled = false;
 	destBuff.dataLen = header_plus_lut;
 	if(!write(destBuff))
 		goto cleanup;
-	m_off += header_plus_lut;
+	off_ += header_plus_lut;
 	ret = true;
 	encodeState = IMAGE_FORMAT_ENCODED_HEADER;
 cleanup:
@@ -190,12 +190,12 @@ bool BMPFormat::encodeRows(uint32_t rows)
 {
 	(void)rows;
 	bool ret = false;
-	auto w = m_image->comps[0].w;
-	auto h = m_image->comps[0].h;
-	auto numcomps = m_image->numcomps;
-	auto stride_src = m_image->comps[0].stride;
-	m_srcIndex = (uint64_t)stride_src * (h - 1);
-	uint32_t w_dest = (uint32_t)m_image->packedRowBytes;
+	auto w = image_->comps[0].w;
+	auto h = image_->comps[0].h;
+	auto numcomps = image_->numcomps;
+	auto stride_src = image_->comps[0].stride;
+	srcIndex_ = (uint64_t)stride_src * (h - 1);
+	uint32_t w_dest = (uint32_t)image_->packedRowBytes;
 	uint32_t pad_dest = (4 - (((uint64_t)numcomps * w) & 3)) & 3;
 
 	int32_t scale[4] = {1, 1, 1, 1};
@@ -204,41 +204,41 @@ bool BMPFormat::encodeRows(uint32_t rows)
 
 	for(uint32_t compno = 0; compno < numcomps; ++compno)
 	{
-		if(m_image->comps[0].prec != 8)
+		if(image_->comps[0].prec != 8)
 		{
-			if(m_image->comps[0].prec < 8)
+			if(image_->comps[0].prec < 8)
 			{
-				scale[compno] = 1 << (8 - m_image->comps[compno].prec);
+				scale[compno] = 1 << (8 - image_->comps[compno].prec);
 				scaleType[compno] = 1;
 			}
 			else
 			{
-				scale[compno] = 1 << (m_image->comps[compno].prec - 8);
+				scale[compno] = 1 << (image_->comps[compno].prec - 8);
 				scaleType[compno] = 2;
 			}
 			spdlog::warn("BMP conversion: scaling component {} from {} bits to 8 bits", compno,
-						 m_image->comps[compno].prec);
+						 image_->comps[compno].prec);
 		}
-		shift[compno] = (m_image->comps[compno].sgnd ? 1 << (m_image->comps[compno].prec - 1) : 0);
+		shift[compno] = (image_->comps[compno].sgnd ? 1 << (image_->comps[compno].prec - 1) : 0);
 	}
 
-	auto packedLen = (uint64_t)m_image->rowsPerStrip * w_dest;
+	auto packedLen = (uint64_t)image_->rowsPerStrip * w_dest;
 	auto destBuff = pool.get(packedLen);
 	// zero out padding at end of line
 	if(pad_dest)
 	{
 		uint8_t* ptr = destBuff.data + w_dest - pad_dest;
-		for(uint32_t m = 0; m < m_image->rowsPerStrip; ++m)
+		for(uint32_t m = 0; m < image_->rowsPerStrip; ++m)
 		{
 			memset(ptr, 0, pad_dest);
 			ptr += w_dest;
 		}
 	}
 
-	while(m_rowCount < h)
+	while(rowCount_ < h)
 	{
 		uint64_t destInd = 0;
-		uint32_t k_max = std::min<uint32_t>(m_image->rowsPerStrip, (uint32_t)(h - m_rowCount));
+		uint32_t k_max = std::min<uint32_t>(image_->rowsPerStrip, (uint32_t)(h - rowCount_));
 		for(uint32_t k = 0; k < k_max; k++)
 		{
 			for(uint32_t i = 0; i < w; i++)
@@ -246,7 +246,7 @@ bool BMPFormat::encodeRows(uint32_t rows)
 				uint8_t rc[4] = {0, 0, 0, 0};
 				for(uint32_t compno = 0; compno < numcomps; ++compno)
 				{
-					int32_t r = m_image->comps[compno].data[m_srcIndex + i];
+					int32_t r = image_->comps[compno].data[srcIndex_ + i];
 					r += shift[compno];
 					if(scaleType[compno] == 1)
 						r *= scale[compno];
@@ -268,16 +268,16 @@ bool BMPFormat::encodeRows(uint32_t rows)
 				}
 			}
 			destInd += pad_dest;
-			m_srcIndex -= stride_src;
+			srcIndex_ -= stride_src;
 		}
-		destBuff.offset = m_off;
+		destBuff.offset = off_;
 		destBuff.pooled = true;
 		destBuff.dataLen = destInd;
 		if(!write(destBuff))
 			goto cleanup;
 		destBuff = pool.get(packedLen);
-		m_off += destInd;
-		m_rowCount += k_max;
+		off_ += destInd;
+		rowCount_ += k_max;
 	}
 
 	ret = true;
@@ -288,16 +288,16 @@ cleanup:
 }
 bool BMPFormat::encodeFinish(void)
 {
-	if(m_image->meta && m_image->meta->color.icc_profile_buf)
+	if(image_->meta && image_->meta->color.icc_profile_buf)
 	{
 		GrkSerializeBuf destBuff;
-		destBuff.data = m_image->meta->color.icc_profile_buf;
-		destBuff.offset = m_off;
+		destBuff.data = image_->meta->color.icc_profile_buf;
+		destBuff.offset = off_;
 		destBuff.pooled = false;
-		destBuff.dataLen = m_image->meta->color.icc_profile_len;
+		destBuff.dataLen = image_->meta->color.icc_profile_len;
 		if(!write(destBuff))
 			return false;
-		m_off += m_image->meta->color.icc_profile_len;
+		off_ += image_->meta->color.icc_profile_len;
 	}
 
 	return ImageFormat::encodeFinish();
@@ -692,7 +692,7 @@ grk_image* BMPFormat::decode(const std::string& fname, grk_cparameters* paramete
 	uint16_t numcmpts = 1U;
 	GRK_COLOR_SPACE colour_space = GRK_CLRSPC_UNKNOWN;
 
-	m_image = image;
+	image_ = image;
 	if(!open(fname, "r"))
 		return nullptr;
 
@@ -1055,7 +1055,7 @@ grk_image* BMPFormat::decode(const std::string& fname, grk_cparameters* paramete
 cleanup:
 	delete[] palette;
 	delete[] pData;
-	m_fileIO->close();
+	fileIO_->close();
 	return image;
 }
 

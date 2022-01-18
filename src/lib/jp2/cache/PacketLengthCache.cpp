@@ -20,7 +20,7 @@ namespace grk
 {
 #include "grk_includes.h"
 
-PacketLengthCache::PacketLengthCache(CodingParams* cp) : pltMarkers(nullptr), m_cp(cp) {}
+PacketLengthCache::PacketLengthCache(CodingParams* cp) : pltMarkers(nullptr), cp_(cp) {}
 
 PacketLengthCache::~PacketLengthCache()
 {
@@ -54,7 +54,7 @@ PacketInfo* PacketLengthCache::next(void)
 		// we don't currently support PLM markers,
 		// so we disable packet length markers if we have both PLT and PLM
 		auto packetLengths = pltMarkers;
-		bool usePlt = packetLengths && !m_cp->plm_markers;
+		bool usePlt = packetLengths && !cp_->plm_markers;
 		if(usePlt)
 		{
 			packetInfo->packetLength = packetLengths->popNextPacketLength();
@@ -74,7 +74,7 @@ void PacketLengthCache::rewind(void)
 	auto packetLengths = pltMarkers;
 	// we don't currently support PLM markers,
 	// so we disable packet length markers if we have both PLT and PLM
-	bool usePlt = packetLengths && !m_cp->plm_markers;
+	bool usePlt = packetLengths && !cp_->plm_markers;
 	if(usePlt)
 		packetLengths->rewind();
 }

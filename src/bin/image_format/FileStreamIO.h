@@ -38,6 +38,6 @@ class FileStreamIO : public IFileIO
 	int getFileDescriptor(void);
 
   private:
-	FILE* m_fileHandle;
-	std::string m_fileName;
+	FILE* fileHandle_;
+	std::string fileName_;
 };

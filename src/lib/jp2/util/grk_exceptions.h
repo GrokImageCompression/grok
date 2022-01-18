@@ -39,9 +39,9 @@ class CorruptPacketHeaderException : public std::exception
 class InvalidMarkerException : public std::exception
 {
   public:
-	explicit InvalidMarkerException(uint16_t marker) : m_marker(marker) {}
+	explicit InvalidMarkerException(uint16_t marker) : marker_(marker) {}
 
-	uint16_t m_marker;
+	uint16_t marker_;
 };
 class BadAsocException : public std::exception
 {

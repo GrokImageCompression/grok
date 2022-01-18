@@ -313,19 +313,19 @@ class CodeStreamDecompress : public CodeStream, public ICodeStreamDecompress
 	bool createOutputImage(void);
 
 	std::map<uint16_t, marker_handler*> marker_map;
-	DecompressorState m_decompressorState;
+	DecompressorState decompressorState_;
 	bool wholeTileDecompress;
-	uint16_t m_curr_marker;
-	bool m_headerError;
+	uint16_t curr_marker_;
+	bool headerError_;
 	/** index of single tile to decompress;
 	 *  !!! initialized to -1 !!! */
-	int32_t m_tile_ind_to_dec;
-	uint8_t* m_marker_scratch;
-	uint16_t m_marker_scratch_size;
-	GrkImage* m_outputImage;
-	TileCache* m_tileCache;
+	int32_t tile_ind_to_dec_;
+	uint8_t* marker_scratch_;
+	uint16_t marker_scratch_size_;
+	GrkImage* outputImage_;
+	TileCache* tileCache_;
 
-	StripPool m_stripCache;
+	StripPool stripCache_;
 	void* serialize_data;
 	grk_serialize_pixels serializeBufferCallback;
 };

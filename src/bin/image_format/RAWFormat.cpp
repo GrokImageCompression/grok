@@ -28,7 +28,7 @@
 #include "common.h"
 
 template<typename T>
-static bool writeToFile(FILE* m_fileStream, bool bigEndian, int32_t* ptr, uint32_t w,
+static bool writeToFile(FILE* fileStream_, bool bigEndian, int32_t* ptr, uint32_t w,
 						uint32_t stride, uint32_t h, int32_t lower, int32_t upper)
 {
 	const size_t bufSize = 4096;
@@ -46,7 +46,7 @@ static bool writeToFile(FILE* m_fileStream, bool bigEndian, int32_t* ptr, uint32
 			else if(curr < lower)
 				curr = lower;
 			if(!grk::writeBytes<T>((T)curr, buf, &outPtr, &outCount, bufSize, bigEndian,
-								   m_fileStream))
+								   fileStream_))
 				return false;
 		}
 		ptr += stride_diff;
@@ -54,7 +54,7 @@ static bool writeToFile(FILE* m_fileStream, bool bigEndian, int32_t* ptr, uint32
 	// flush
 	if(outCount)
 	{
-		size_t res = fwrite(buf, sizeof(T), outCount, m_fileStream);
+		size_t res = fwrite(buf, sizeof(T), outCount, fileStream_);
 		if(res != outCount)
 			return false;
 	}
@@ -71,19 +71,19 @@ bool RAWFormat::encodeRows(uint32_t rows)
 {
 	(void)rows;
 
-	const char* outfile = m_fileName.c_str();
-	m_useStdIO = grk::useStdio(outfile);
-	m_fileStream = nullptr;
+	const char* outfile = fileName_.c_str();
+	useStdIO_ = grk::useStdio(outfile);
+	fileStream_ = nullptr;
 	unsigned int compno, numcomps;
 	bool success = false;
 
-	if((m_image->numcomps * m_image->x1 * m_image->y1) == 0)
+	if((image_->numcomps * image_->x1 * image_->y1) == 0)
 	{
-		spdlog::error("imagetoraw: invalid raw m_image parameters");
+		spdlog::error("imagetoraw: invalid raw image_ parameters");
 		goto beach;
 	}
 
-	numcomps = m_image->numcomps;
+	numcomps = image_->numcomps;
 	if(numcomps > 4)
 	{
 		spdlog::warn("imagetoraw: number of components {} is "
@@ -94,13 +94,13 @@ bool RAWFormat::encodeRows(uint32_t rows)
 
 	for(compno = 1; compno < numcomps; ++compno)
 	{
-		if(m_image->comps[0].dx != m_image->comps[compno].dx)
+		if(image_->comps[0].dx != image_->comps[compno].dx)
 			break;
-		if(m_image->comps[0].dy != m_image->comps[compno].dy)
+		if(image_->comps[0].dy != image_->comps[compno].dy)
 			break;
-		if(m_image->comps[0].prec != m_image->comps[compno].prec)
+		if(image_->comps[0].prec != image_->comps[compno].prec)
 			break;
-		if(m_image->comps[0].sgnd != m_image->comps[compno].sgnd)
+		if(image_->comps[0].sgnd != image_->comps[compno].sgnd)
 			break;
 	}
 	if(compno != numcomps)
@@ -109,14 +109,14 @@ bool RAWFormat::encodeRows(uint32_t rows)
 					  "same sign.");
 		goto beach;
 	}
-	if(!grk::grk_open_for_output(&m_fileStream, outfile, m_useStdIO))
+	if(!grk::grk_open_for_output(&fileStream_, outfile, useStdIO_))
 		goto beach;
 
-	spdlog::info("imagetoraw: raw m_image characteristics: {} components", m_image->numcomps);
+	spdlog::info("imagetoraw: raw image_ characteristics: {} components", image_->numcomps);
 
-	for(compno = 0; compno < m_image->numcomps; compno++)
+	for(compno = 0; compno < image_->numcomps; compno++)
 	{
-		auto comp = m_image->comps + compno;
+		auto comp = image_->comps + compno;
 		spdlog::info("Component {} characteristics: {}x{}x{} {}", compno, comp->w, comp->h,
 					 comp->prec, comp->sgnd == 1 ? "signed" : "unsigned");
 
@@ -140,19 +140,19 @@ bool RAWFormat::encodeRows(uint32_t rows)
 		if(prec <= 8)
 		{
 			if(sgnd)
-				rc = writeToFile<int8_t>(m_fileStream, bigEndian, ptr, w, stride, h, lower, upper);
+				rc = writeToFile<int8_t>(fileStream_, bigEndian, ptr, w, stride, h, lower, upper);
 			else
-				rc = writeToFile<uint8_t>(m_fileStream, bigEndian, ptr, w, stride, h, lower, upper);
+				rc = writeToFile<uint8_t>(fileStream_, bigEndian, ptr, w, stride, h, lower, upper);
 			if(!rc)
 				spdlog::error("imagetoraw: failed to write bytes for {}", outfile);
 		}
 		else if(prec <= 16)
 		{
 			if(sgnd)
-				rc = writeToFile<int16_t>(m_fileStream, bigEndian, ptr, w, stride, h, lower, upper);
+				rc = writeToFile<int16_t>(fileStream_, bigEndian, ptr, w, stride, h, lower, upper);
 			else
 				rc =
-					writeToFile<uint16_t>(m_fileStream, bigEndian, ptr, w, stride, h, lower, upper);
+					writeToFile<uint16_t>(fileStream_, bigEndian, ptr, w, stride, h, lower, upper);
 			if(!rc)
 				spdlog::error("fimagetoraw: ailed to write bytes for {}", outfile);
 		}
@@ -177,9 +177,9 @@ bool RAWFormat::encodeFinish(void)
 {
 	bool success = true;
 
-	if(!m_useStdIO && m_fileStream)
+	if(!useStdIO_ && fileStream_)
 	{
-		if(!grk::safe_fclose(m_fileStream))
+		if(!grk::safe_fclose(fileStream_))
 			success = false;
 	}
 	return success;
@@ -190,7 +190,7 @@ grk_image* RAWFormat::decode(const std::string& filename, grk_cparameters* param
 }
 
 template<typename T>
-static bool readFile(FILE* m_fileStream, bool bigEndian, int32_t* ptr, uint64_t nloop)
+static bool readFile(FILE* fileStream_, bool bigEndian, int32_t* ptr, uint64_t nloop)
 {
 	const size_t bufSize = 4096;
 	T buf[bufSize];
@@ -198,7 +198,7 @@ static bool readFile(FILE* m_fileStream, bool bigEndian, int32_t* ptr, uint64_t 
 	for(uint64_t i = 0; i < nloop; i += bufSize)
 	{
 		size_t target = (i + bufSize > nloop) ? (nloop - i) : bufSize;
-		size_t ct = fread(buf, sizeof(T), target, m_fileStream);
+		size_t ct = fread(buf, sizeof(T), target, fileStream_);
 		if(ct != target)
 			return false;
 		T* inPtr = buf;
@@ -211,7 +211,7 @@ static bool readFile(FILE* m_fileStream, bool bigEndian, int32_t* ptr, uint64_t 
 
 grk_image* RAWFormat::rawtoimage(const char* filename, grk_cparameters* parameters, bool bigEndian)
 {
-	m_useStdIO = grk::useStdio(filename);
+	useStdIO_ = grk::useStdio(filename);
 	grk_raw_cparameters* raw_cp = &parameters->raw_cp;
 	uint32_t subsampling_dx = parameters->subsampling_dx;
 	uint32_t subsampling_dy = parameters->subsampling_dy;
@@ -235,16 +235,16 @@ grk_image* RAWFormat::rawtoimage(const char* filename, grk_cparameters* paramete
 		return nullptr;
 	}
 
-	if(m_useStdIO)
+	if(useStdIO_)
 	{
 		if(!grk::grk_set_binary_mode(stdin))
 			return nullptr;
-		m_fileStream = stdin;
+		fileStream_ = stdin;
 	}
 	else
 	{
-		m_fileStream = fopen(filename, "rb");
-		if(!m_fileStream)
+		fileStream_ = fopen(filename, "rb");
+		if(!fileStream_)
 		{
 			spdlog::error("Failed to open {} for reading", filename);
 			goto cleanup;
@@ -303,9 +303,9 @@ grk_image* RAWFormat::rawtoimage(const char* filename, grk_cparameters* paramete
 			{
 				bool rc;
 				if(raw_cp->sgnd)
-					rc = readFile<int8_t>(m_fileStream, bigEndian, ptr, w);
+					rc = readFile<int8_t>(fileStream_, bigEndian, ptr, w);
 				else
-					rc = readFile<uint8_t>(m_fileStream, bigEndian, ptr, w);
+					rc = readFile<uint8_t>(fileStream_, bigEndian, ptr, w);
 				if(!rc)
 				{
 					spdlog::error("Error reading raw file. End of file probably reached.");
@@ -324,9 +324,9 @@ grk_image* RAWFormat::rawtoimage(const char* filename, grk_cparameters* paramete
 			{
 				bool rc;
 				if(raw_cp->sgnd)
-					rc = readFile<int16_t>(m_fileStream, bigEndian, ptr, w);
+					rc = readFile<int16_t>(fileStream_, bigEndian, ptr, w);
 				else
-					rc = readFile<uint16_t>(m_fileStream, bigEndian, ptr, w);
+					rc = readFile<uint16_t>(fileStream_, bigEndian, ptr, w);
 				if(!rc)
 				{
 					spdlog::error("Error reading raw file. End of file probably reached.");
@@ -342,13 +342,13 @@ grk_image* RAWFormat::rawtoimage(const char* filename, grk_cparameters* paramete
 		goto cleanup;
 	}
 
-	if(fread(&ch, 1, 1, m_fileStream))
+	if(fread(&ch, 1, 1, fileStream_))
 		spdlog::warn("End of raw file not reached... processing anyway");
 	success = true;
 cleanup:
-	if(m_fileStream && !m_useStdIO)
+	if(fileStream_ && !useStdIO_)
 	{
-		if(!grk::safe_fclose(m_fileStream))
+		if(!grk::safe_fclose(fileStream_))
 		{
 			grk_object_unref(&image->obj);
 			image = nullptr;

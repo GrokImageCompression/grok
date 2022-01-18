@@ -312,7 +312,7 @@ class CodeStreamCompress : public CodeStream, public ICodeStreamCompress
 
 	bool init_mct_encoding(TileCodingParams* p_tcp, GrkImage* p_image);
 
-	CompressorState m_compressorState;
+	CompressorState compressorState_;
 };
 
 } // namespace grk

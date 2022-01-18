@@ -65,20 +65,20 @@ class ImageFormat : public IImageFormat
 
 	bool isHeaderEncoded(void);
 
-	grk_image* m_image;
-	uint32_t m_rowCount;
-	uint32_t m_numStrips;
+	grk_image* image_;
+	uint32_t rowCount_;
+	uint32_t numStrips_;
 
-	IFileIO* m_fileIO;
-	FILE* m_fileStream;
-	std::string m_fileName;
+	IFileIO* fileIO_;
+	FILE* fileStream_;
+	std::string fileName_;
 	uint32_t compressionLevel_;
 
-	bool m_useStdIO;
+	bool useStdIO_;
 	uint32_t encodeState;
 	uint32_t stripCount;
 	mutable std::mutex encodePixelmutex;
 	BufferPool pool;
-	grk_serialize_buf m_reclaimed[reclaimSize];
-	uint32_t m_num_reclaimed;
+	grk_serialize_buf reclaimed_[reclaimSize];
+	uint32_t num_reclaimed_;
 };
