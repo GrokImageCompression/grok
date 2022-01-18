@@ -87,7 +87,7 @@ struct TileProcessor
 	bool doCompress(void);
 	bool decompressT1(void);
 	bool decompressT2(SparseBuffer* srcBuf);
-	bool decompressT2T1(TileCodingParams* tcp, GrkImage* outputImage, bool multiTile, bool doPost);
+	bool decompressT2T1(TileCodingParams* tcp, GrkImage* outputImage, bool doPost);
 	bool ingestUncompressedData(uint8_t* p_src, uint64_t src_length);
 	bool needsRateControl();
 	void ingestImage();

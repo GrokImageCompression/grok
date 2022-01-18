@@ -1902,7 +1902,7 @@ bool CodeStreamDecompress::read_siz(uint8_t* headerData, uint16_t header_size)
 	bool rc =  siz.read(this, headerData, header_size);
 	if (rc) {
 		uint16_t numTilesToDecompress = (uint16_t)(m_cp.t_grid_height * m_cp.t_grid_width);
-		m_multiTile = numTilesToDecompress > 1;
+		m_headerImage->multiTile = numTilesToDecompress > 1;
 	}
 
 	return rc;

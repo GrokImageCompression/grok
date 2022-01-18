@@ -223,6 +223,7 @@ void GrkImage::copyHeader(GrkImage* dest)
 	dest->forceRGB = forceRGB;
 	dest->upsample = upsample;
 	dest->precision = precision;
+	dest->multiTile = multiTile;
 	dest->numPrecision = numPrecision;
 	dest->rowsPerStrip = rowsPerStrip;
 	dest->packedRowBytes = packedRowBytes;
@@ -262,11 +263,17 @@ bool GrkImage::canAllocInterleaved(CodingParams *cp){
 	// tile origin and image origin must coincide
 	if (cp->tx0 != x0 || cp->ty0 != y0)
 		return false;
-	// only RGB or MONO in TIFF format is allowed
-	if (precision ||
-		(decompressFormat != GRK_TIF_FMT) ||
-			(color_space != GRK_CLRSPC_SRGB && color_space != GRK_CLRSPC_GRAY))
+
+	if (cp->m_coding_params.m_dec.m_reduce ||
+		isFinalOutputSubsampled() ||
+		precision ||
+		upsample ||
+		forceRGB ||
+		decompressFormat != GRK_TIF_FMT ||
+		(meta && (meta->color.palette || meta->color.icc_profile_buf))) {
+
 		return false;
+	}
 	// check that all components are equal
 	for(uint16_t compno = 1; compno < numcomps; compno++){
 		if (!componentsEqual(comps, comps+compno))
@@ -276,13 +283,11 @@ bool GrkImage::canAllocInterleaved(CodingParams *cp){
 	return true;
 }
 
-bool isFinalOutputSubsampled(grk_image* image)
+bool GrkImage::isFinalOutputSubsampled()
 {
-	if(!image)
-		return false;
-	for(uint32_t i = 0; i < image->numcomps; ++i)
+	for(uint32_t i = 0; i < numcomps; ++i)
 	{
-		if(image->comps[i].dx != 1 || image->comps[i].dy != 1)
+		if(comps[i].dx != 1 || comps[i].dy != 1)
 			return true;
 	}
 	return false;
@@ -307,8 +312,8 @@ void GrkImage::postReadHeader(CodingParams *cp){
 	if (forceRGB)
 		ncmp = 3;
 	bool tiffSubSampled = decompressFormat ==   GRK_TIF_FMT &&
-							(isFinalOutputSubsampled(this) &&
-								(color_space == GRK_CLRSPC_EYCC || color_space ==  GRK_CLRSPC_SYCC));
+							isFinalOutputSubsampled() &&
+								(color_space == GRK_CLRSPC_EYCC || color_space ==  GRK_CLRSPC_SYCC);
 	if (tiffSubSampled){
 		uint32_t chroma_subsample_x = comps[1].dx;
 		uint32_t chroma_subsample_y = comps[1].dy;
@@ -324,7 +329,7 @@ void GrkImage::postReadHeader(CodingParams *cp){
 			packedRowBytes =	grk::PtoI<int32_t>::getPackedBytes(ncmp, x1 - x0, prec);
 			break;
 		}
-		if (canAllocInterleaved(cp))
+		if (multiTile && canAllocInterleaved(cp))
 			rowsPerStrip = cp->t_height;
 		else
 			rowsPerStrip =	(uint32_t)((16 * 1024 * 1024) / packedRowBytes);

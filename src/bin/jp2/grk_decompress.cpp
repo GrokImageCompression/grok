@@ -1026,12 +1026,12 @@ int GrkDecompress::preProcess(grk_plugin_decompress_callback_info* info)
 	auto infile = info->input_file_name ? info->input_file_name : parameters->infile;
 	int decod_format =
 		info->decod_format != GRK_UNK_FMT ? info->decod_format : parameters->decod_format;
+	bool canEncodeHeaderBeforeDecompress = false;
 	const char* outfile = info->decompressor_parameters->outfile[0]
 							  ? info->decompressor_parameters->outfile
 							  : info->output_file_name;
 	auto cod_format = (GRK_SUPPORTED_FILE_FMT)(
 		info->cod_format != GRK_UNK_FMT ? info->cod_format : parameters->cod_format);
-	bool canEncodeHeaderBeforeDecompress = false;
 	switch(cod_format)
 	{
 		case GRK_PXM_FMT:

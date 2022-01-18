@@ -424,21 +424,20 @@ bool TileProcessor::decompressT1(void)
 	}
 	return true;
 }
-bool TileProcessor::decompressT2T1(TileCodingParams* tcp, GrkImage* outputImage, bool multiTile,
-								   bool doPost)
+bool TileProcessor::decompressT2T1(TileCodingParams* tcp, GrkImage* outputImage,  bool doPost)
 {
 	if(!allocWindowBuffers(outputImage))
 		return false;
 	if(!decompressT2(tcp->m_compressedTileData) || m_corrupt_packet)
 	{
 		GRK_WARN("Tile %d was not decompressed", m_tileIndex);
-		return multiTile;
+		return outputImage->multiTile;
 	}
 	if(!decompressT1())
 		return false;
 	if(doPost)
 	{
-		if(multiTile)
+		if(outputImage->multiTile)
 			generateImage(outputImage, tile);
 		else
 			outputImage->transferDataFrom(tile);

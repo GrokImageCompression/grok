@@ -303,8 +303,7 @@ eb9e0a4ba88c1b1eec20c108918a88f8  basn6a08_png-6.png
 3a054ead69cd2beeb36bd86f102a86f7  basn6a08_png-12.png
 3a054ead69cd2beeb36bd86f102a86f7  basn6a08_png-14.png
 3a054ead69cd2beeb36bd86f102a86f7  basn6a08_png-16.png
-25e6912d4934ee12a2a37aa48b0127f7  issue205-tif.jp2.tif
-25e6912d4934ee12a2a37aa48b0127f7  issue205-tif.jp2.tif
+d402c4aefdb7aa7d14696757a245cc38  issue205-tif.jp2.tif
 1438eeda860a4dce8d16a4074ea5dd41  random-issue-0005.tif.j2k.lossless.tif
 491b2c327dac0cf39a1a6639d2e66cfb  4bpp.bmp
 dc4f61d85db7583163fb95d6c3e07fd3  truncated.bmp

@@ -78,6 +78,7 @@ public:
 	bool execUpsample(void);
 	void all_components_data_free(void);
 	void postReadHeader(CodingParams *cp);
+	bool isFinalOutputSubsampled();
   private:
 	~GrkImage();
 	bool compositePlanar(const GrkImage* srcImg);

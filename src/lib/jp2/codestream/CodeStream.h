@@ -150,7 +150,6 @@ class CodeStream
 	TileProcessor* m_currentTileProcessor;
 	IBufferedStream* m_stream;
 	std::map<uint32_t, TileProcessor*> m_processors;
-	bool m_multiTile;
 	grk_plugin_tile* current_plugin_tile;
 };
 

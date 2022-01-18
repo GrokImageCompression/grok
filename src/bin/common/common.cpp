@@ -268,6 +268,20 @@ bool jpeg2000_file_format(const char* fname, GRK_SUPPORTED_FILE_FMT* fmt)
 	return true;
 }
 
+bool isFinalOutputSubsampled(grk_image* image)
+{
+	assert(image);
+	if (image->upsample || image->forceRGB)
+		return false;
+	for(uint32_t i = 0; i < image->numcomps; ++i)
+	{
+		if(image->comps[i].dx != 1 || image->comps[i].dy != 1)
+			return true;
+	}
+	return false;
+}
+
+
 const char* pathSeparator()
 {
 #ifdef _WIN32

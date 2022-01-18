@@ -984,6 +984,7 @@ typedef struct _grk_image
 	bool upsample;
 	grk_precision* precision;
 	uint32_t numPrecision;
+	bool multiTile;
 	grk_image_meta* meta;
 	grk_image_comp* comps;
 	grk_serialize_buf interleavedData;
