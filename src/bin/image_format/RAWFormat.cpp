@@ -62,9 +62,8 @@ static bool writeToFile(FILE* m_fileStream, bool bigEndian, int32_t* ptr, uint32
 	return true;
 }
 
-bool RAWFormat::encodeHeader(grk_image* image)
+bool RAWFormat::encodeHeader(void)
 {
-	m_image = image;
 	encodeState = IMAGE_FORMAT_ENCODED_HEADER;
 	return true;
 }

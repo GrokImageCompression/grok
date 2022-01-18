@@ -48,7 +48,7 @@ public:
 	 *
 	 * @return true if successful
 	 */
-	bool allocCompositeData(bool wholeTileDecompress, CodingParams *cp);
+	bool allocCompositeData(CodingParams *cp);
 
 	bool canAllocInterleaved(CodingParams *cp);
 
@@ -78,6 +78,7 @@ public:
 	bool execUpsample(void);
 	void all_components_data_free(void);
 	void postReadHeader(CodingParams *cp);
+	void validateColourSpace(void);
 	bool isFinalOutputSubsampled();
   private:
 	~GrkImage();

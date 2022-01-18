@@ -31,8 +31,7 @@ class ImageFormat : public IImageFormat
 	ImageFormat();
 	virtual ~ImageFormat();
 	ImageFormat& operator=(const ImageFormat& rhs);
-	virtual bool initEncode(const std::string& filename,uint32_t compressionLevel) override;
-	virtual bool encodeHeader(grk_image* image) override;
+	virtual bool encodeInit(grk_image* image, const std::string& filename,uint32_t compressionLevel) override;
 	bool encodePixels(grk_serialize_buf pixels,
 						grk_serialize_buf* reclaimed,
 						uint32_t max_reclaimed,
@@ -64,6 +63,8 @@ class ImageFormat : public IImageFormat
 	uint16_t getImageNumComps(void);
 	GRK_COLOR_SPACE getImageColourSpace(void);
 
+	bool isHeaderEncoded(void);
+
 	grk_image* m_image;
 	uint32_t m_rowCount;
 	uint32_t m_numStrips;
@@ -71,7 +72,7 @@ class ImageFormat : public IImageFormat
 	IFileIO* m_fileIO;
 	FILE* m_fileStream;
 	std::string m_fileName;
-	uint32_t compressionLevel;
+	uint32_t compressionLevel_;
 
 	bool m_useStdIO;
 	uint32_t encodeState;

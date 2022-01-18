@@ -65,7 +65,7 @@ class BMPFormat : public ImageFormat
   public:
 	BMPFormat(void);
 	~BMPFormat(void);
-	bool encodeHeader(grk_image* image) override;
+	bool encodeHeader(void) override;
 	bool encodeRows(uint32_t rows) override;
 	bool encodeFinish(void) override;
 	grk_image* decode(const std::string& filename, grk_cparameters* parameters) override;

@@ -987,6 +987,20 @@ static bool grk_serialize_pixels(grk_serialize_buf buffer,
 bool GrkDecompress::encodeHeader(grk_plugin_decompress_callback_info* info) {
 	if (!storeToDisk)
 		return true;
+	if (!encodeInit(info))
+		return false;
+	if(!imageFormat->encodeHeader())
+	{
+		spdlog::error("Encode header failed.");
+		return false;
+	}
+
+	return true;
+}
+
+bool GrkDecompress::encodeInit(grk_plugin_decompress_callback_info* info) {
+	if (!storeToDisk)
+		return true;
 	auto parameters = info->decompressor_parameters;
 	const char* outfile = info->decompressor_parameters->outfile[0]
 							  ? info->decompressor_parameters->outfile
@@ -999,12 +1013,7 @@ bool GrkDecompress::encodeHeader(grk_plugin_decompress_callback_info* info) {
 		compressionLevel = parameters->compression;
 	else if(cod_format == GRK_JPG_FMT || cod_format == GRK_PNG_FMT)
 		compressionLevel = parameters->compressionLevel;
-	if(!imageFormat->initEncode(outfileStr, compressionLevel))
-	{
-		spdlog::error("Outfile {} not generated", outfileStr);
-		return false;
-	}
-	if(!imageFormat->encodeHeader(info->image))
+	if(!imageFormat->encodeInit(info->image, outfileStr, compressionLevel))
 	{
 		spdlog::error("Outfile {} not generated", outfileStr);
 		return false;
@@ -1026,7 +1035,6 @@ int GrkDecompress::preProcess(grk_plugin_decompress_callback_info* info)
 	auto infile = info->input_file_name ? info->input_file_name : parameters->infile;
 	int decod_format =
 		info->decod_format != GRK_UNK_FMT ? info->decod_format : parameters->decod_format;
-	bool canEncodeHeaderBeforeDecompress = false;
 	const char* outfile = info->decompressor_parameters->outfile[0]
 							  ? info->decompressor_parameters->outfile
 							  : info->output_file_name;
@@ -1244,16 +1252,10 @@ int GrkDecompress::preProcess(grk_plugin_decompress_callback_info* info)
 		spdlog::error("grk_decompress: failed to set the decompressed area");
 		goto cleanup;
 	}
-	canEncodeHeaderBeforeDecompress =	info->image->decompressFormat == GRK_TIF_FMT &&
-										!parameters->singleTileDecompress &&
-										parameters->core.reduce == 0 &&
-										parameters->dw_x0 == 0 &&
-										parameters->dw_y0 == 0 &&
-										parameters->dw_x1 == 0 &&
-										parameters->dw_y1 == 0;
+	if (!encodeInit(info))
+		return false;
 
-	if (canEncodeHeaderBeforeDecompress && !encodeHeader(info))
-		goto cleanup;
+
 	// decompress all tiles
 	if(!parameters->singleTileDecompress)
 	{
@@ -1269,7 +1271,7 @@ int GrkDecompress::preProcess(grk_plugin_decompress_callback_info* info)
 			goto cleanup;
 		}
 	}
-	if (!canEncodeHeaderBeforeDecompress && !encodeHeader(info))
+	if (!encodeHeader(info))
 		goto cleanup;
 	failed = false;
 cleanup:

@@ -406,9 +406,11 @@ PNGFormat::PNGFormat()
 	  m_colorSpace(GRK_CLRSPC_UNKNOWN), prec(0), nr_comp(0)
 {}
 
-bool PNGFormat::encodeHeader(grk_image* img)
+bool PNGFormat::encodeHeader(void)
 {
-	m_image = img;
+	if (isHeaderEncoded())
+		return true;
+
 	uint32_t color_type;
 	png_color_8 sig_bit;
 	uint32_t i;
@@ -531,9 +533,9 @@ bool PNGFormat::encodeHeader(grk_image* img)
 	 *
 	 */
 	png_set_compression_level(png,
-							  (int)((compressionLevel == GRK_DECOMPRESS_COMPRESSION_LEVEL_DEFAULT)
+							  (int)((compressionLevel_ == GRK_DECOMPRESS_COMPRESSION_LEVEL_DEFAULT)
 										? 0
-										: compressionLevel));
+										: compressionLevel_));
 
 	if(nr_comp >= 3)
 	{ /* RGB(A) */

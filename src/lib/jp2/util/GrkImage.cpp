@@ -264,8 +264,7 @@ bool GrkImage::canAllocInterleaved(CodingParams *cp){
 	if (cp->tx0 != x0 || cp->ty0 != y0)
 		return false;
 
-	if (cp->m_coding_params.m_dec.m_reduce ||
-		isFinalOutputSubsampled() ||
+	if (isFinalOutputSubsampled() ||
 		precision ||
 		upsample ||
 		forceRGB ||
@@ -293,7 +292,7 @@ bool GrkImage::isFinalOutputSubsampled()
 	return false;
 }
 
-void GrkImage::postReadHeader(CodingParams *cp){
+void GrkImage::validateColourSpace(void){
 	if(color_space == GRK_CLRSPC_UNKNOWN &&
 		numcomps == 3 &&
 		comps[0].dx == 1 && comps[0].dy == 1 &&
@@ -303,6 +302,10 @@ void GrkImage::postReadHeader(CodingParams *cp){
 	   (comps[2].dx ==2 || comps[2].dy ==2) ) {
 			color_space = GRK_CLRSPC_SYCC;
 	}
+}
+
+void GrkImage::postReadHeader(CodingParams *cp){
+
 
 	uint32_t width = x1 - x0;
 	uint8_t prec = comps[0].prec;
@@ -337,8 +340,13 @@ void GrkImage::postReadHeader(CodingParams *cp){
 	if(rowsPerStrip > y1 - y0)
 		rowsPerStrip =y1 - y0;
 }
-bool GrkImage::allocCompositeData(bool wholeTileDecompress, CodingParams *cp){
-	if (!wholeTileDecompress || !canAllocInterleaved(cp)){
+bool GrkImage::allocCompositeData(CodingParams *cp){
+	// only allocate data if there are multiple tiles. Otherwise, the single tile data
+	// will simply be transferred to the output image
+	if (!multiTile)
+		return true;
+
+	if (!canAllocInterleaved(cp)){
 		for(uint32_t i = 0; i < numcomps; i++)
 		{
 			auto destComp = comps + i;

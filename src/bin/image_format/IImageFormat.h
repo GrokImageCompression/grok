@@ -31,8 +31,8 @@ class IImageFormat
 {
   public:
 	virtual ~IImageFormat() = default;
-	virtual bool initEncode(const std::string& filename,uint32_t compressionLevel) = 0;
-	virtual bool encodeHeader(grk_image* image) = 0;
+	virtual bool encodeInit(grk_image* image, const std::string& filename,uint32_t compressionLevel) = 0;
+	virtual bool encodeHeader(void) = 0;
 	virtual bool encodeRows(uint32_t rows) = 0;
 	virtual bool encodePixels(grk_serialize_buf pixels,
 							grk_serialize_buf* reclaimed,

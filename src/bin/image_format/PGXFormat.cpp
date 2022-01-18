@@ -194,9 +194,8 @@ cleanup:
 	return image;
 }
 
-bool PGXFormat::encodeHeader(grk_image* image)
+bool PGXFormat::encodeHeader(void)
 {
-	m_image = image;
 	if(!allComponentsSanityCheck(m_image, false))
 	{
 		spdlog::error("PGXFormat::encodeHeader: image sanity check failed.");

@@ -696,9 +696,8 @@ PNMFormat::PNMFormat(bool split) : forceSplit(split)
 #endif
 }
 
-bool PNMFormat::encodeHeader(grk_image* image)
+bool PNMFormat::encodeHeader(void)
 {
-	m_image = image;
 	if(!allComponentsSanityCheck(m_image, true))
 	{
 		spdlog::error("PNMFormat::encodeHeader: image sanity check failed.");
@@ -715,7 +714,7 @@ bool PNMFormat::encodeHeader(grk_image* image)
 		return false;
 	}
 
-	(void)compressionLevel;
+	(void)compressionLevel_;
 	encodeState = IMAGE_FORMAT_ENCODED_HEADER;
 
 	return true;

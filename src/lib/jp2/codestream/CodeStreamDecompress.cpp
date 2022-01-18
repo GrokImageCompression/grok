@@ -334,6 +334,7 @@ bool CodeStreamDecompress::setDecompressWindow(grkRectU32 window)
 				 compositeImage->y1 - image->y0);
 
 	}
+	compositeImage->validateColourSpace();
 	compositeImage->postReadHeader(&m_cp);
 
 	return true;
@@ -774,9 +775,7 @@ bool CodeStreamDecompress::createOutputImage(void){
 		m_outputImage = new GrkImage();
 		getCompositeImage()->copyHeader(m_outputImage);
 	}
-	// only allocate data if there are multiple tiles. Otherwise, the single tile data
-	// will simply be transferred to the output image
-	if(m_outputImage->multiTile && !m_outputImage->allocCompositeData(wholeTileDecompress, &m_cp))
+	if(!m_outputImage->allocCompositeData(&m_cp))
 		return false;
 
 	return true;

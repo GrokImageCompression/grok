@@ -24,7 +24,7 @@
 ImageFormat::ImageFormat()
 	: m_image(nullptr), m_rowCount(0), m_numStrips(0),
 	  m_fileIO(new FileStreamIO()), m_fileStream(nullptr),
-	  m_fileName(""), compressionLevel(GRK_DECOMPRESS_COMPRESSION_LEVEL_DEFAULT),
+	  m_fileName(""), compressionLevel_(GRK_DECOMPRESS_COMPRESSION_LEVEL_DEFAULT),
 	  m_useStdIO(false),
 	  encodeState(IMAGE_FORMAT_UNENCODED),
 	  stripCount(0),
@@ -41,7 +41,7 @@ ImageFormat& ImageFormat::operator=(const ImageFormat& rhs)
 		m_fileIO = nullptr;
 		m_fileStream = nullptr;
 		m_fileName = "";
-		compressionLevel = rhs.compressionLevel;
+		compressionLevel_ = rhs.compressionLevel_;
 		m_useStdIO = rhs.m_useStdIO;
 	}
 	return *this;
@@ -62,19 +62,15 @@ bool ImageFormat::openFile(void){
 
 	return rc;
 }
-bool ImageFormat::initEncode(const std::string& filename,uint32_t compressionLevel) {
-	this->compressionLevel = compressionLevel;
+bool ImageFormat::encodeInit(grk_image* image,
+							const std::string& filename,
+							uint32_t compressionLevel) {
+	compressionLevel_ = compressionLevel;
 	m_fileName = filename;
-
-	return true;
-}
-bool ImageFormat::encodeHeader(grk_image* image)
-{
 	m_image = image;
 
 	return true;
 }
-
 bool ImageFormat::encodePixels(grk_serialize_buf pixels,
 							grk_serialize_buf* reclaimed,
 							uint32_t max_reclaimed,
@@ -96,6 +92,10 @@ bool ImageFormat::encodeFinish(void)
 	m_fileName = "";
 
 	return rc;
+}
+
+bool ImageFormat::isHeaderEncoded(void){
+	return ( (encodeState & IMAGE_FORMAT_ENCODED_HEADER) == IMAGE_FORMAT_ENCODED_HEADER );
 }
 bool ImageFormat::open(std::string fileName, std::string mode)
 {

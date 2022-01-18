@@ -71,8 +71,11 @@ BMPFormat::~BMPFormat(void){
 	delete[] m_header;
 }
 
-bool BMPFormat::encodeHeader(grk_image* image)
+bool BMPFormat::encodeHeader(void)
 {
+	if (isHeaderEncoded())
+		return true;
+
 #ifdef GROK_HAVE_URING
 	delete m_fileIO;
 	m_fileIO = new FileUringIO();
@@ -80,7 +83,6 @@ bool BMPFormat::encodeHeader(grk_image* image)
 
 	if(!openFile())
 		return false;
-	m_image = image;
 	bool ret = false;
 	uint32_t w = m_image->comps[0].w;
 	uint32_t h = m_image->comps[0].h;

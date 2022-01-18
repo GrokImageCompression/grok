@@ -344,11 +344,11 @@ JPEGFormat::JPEGFormat(void)
 	  readFromStdin(false), planes{0, 0, 0}
 {}
 
-bool JPEGFormat::encodeHeader(grk_image* image)
+bool JPEGFormat::encodeHeader(void)
 {
-	if(!image)
-		return false;
-	m_image = image;
+	if (isHeaderEncoded())
+		return true;
+
 	int32_t firstAlpha = -1;
 	size_t numAlphaChannels = 0;
 	uint32_t width = m_image->comps[0].w;
@@ -506,9 +506,9 @@ bool JPEGFormat::encodeHeader(grk_image* image)
 	 * Here we just illustrate the use of quality (quantization table) scaling:
 	 */
 	jpeg_set_quality(&cinfo,
-					 (int)((compressionLevel == GRK_DECOMPRESS_COMPRESSION_LEVEL_DEFAULT)
+					 (int)((compressionLevel_ == GRK_DECOMPRESS_COMPRESSION_LEVEL_DEFAULT)
 							   ? 90
-							   : compressionLevel),
+							   : compressionLevel_),
 					 (boolean)TRUE /* limit to baseline-JPEG values */);
 
 	// set resolution

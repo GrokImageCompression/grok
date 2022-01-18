@@ -225,9 +225,11 @@ TIFF* TIFFFormat::MyTIFFOpen(const char* name, const char* mode)
 }
 #endif
 
-bool TIFFFormat::encodeHeader(grk_image* image)
+bool TIFFFormat::encodeHeader(void)
 {
-	m_image = image;
+	if (isHeaderEncoded())
+		return true;
+
 	int tiPhoto = PHOTOMETRIC_MINISBLACK;
 	bool success = false;
 	int32_t firstExtraChannel = -1;
@@ -380,16 +382,16 @@ bool TIFFFormat::encodeHeader(grk_image* image)
 		TIFFSetField(tif, TIFFTAG_YCBCRCOEFFICIENTS, YCbCrCoefficients);
 		TIFFSetField(tif, TIFFTAG_YCBCRPOSITIONING, YCBCRPOSITION_CENTERED);
 	}
-	switch(compressionLevel)
+	switch(compressionLevel_)
 	{
 		case COMPRESSION_ADOBE_DEFLATE:
 #ifdef ZIP_SUPPORT
-			TIFFSetField(tif, TIFFTAG_COMPRESSION, compressionLevel); // zip compression
+			TIFFSetField(tif, TIFFTAG_COMPRESSION, compressionLevel_); // zip compression
 #endif
 			break;
 		default:
-			if(compressionLevel != 0)
-				TIFFSetField(tif, TIFFTAG_COMPRESSION, compressionLevel);
+			if(compressionLevel_ != 0)
+				TIFFSetField(tif, TIFFTAG_COMPRESSION, compressionLevel_);
 	}
 	if(m_image->meta)
 	{
@@ -505,6 +507,9 @@ bool TIFFFormat::encodePixels(grk_serialize_buf pixels,
 							uint32_t *num_reclaimed) {
 
 	std::unique_lock<std::mutex> lk(encodePixelmutex);
+	if (!isHeaderEncoded())
+		encodeHeader();
+
 	return encodePixelsCore(pixels,reclaimed,max_reclaimed, num_reclaimed);
 }
 bool TIFFFormat::encodeRows(uint32_t rowsToWrite)
