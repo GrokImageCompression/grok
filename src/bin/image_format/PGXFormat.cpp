@@ -205,10 +205,8 @@ bool PGXFormat::encodeHeader(void)
 	encodeState = IMAGE_FORMAT_ENCODED_HEADER;
 	return true;
 }
-bool PGXFormat::encodeRows(uint32_t rows)
+bool PGXFormat::encodeRows(void)
 {
-	(void)rows;
-
 	const char* outfile = fileName_.c_str();
 	bool success = false;
 	for(uint32_t compno = 0; compno < image_->numcomps; compno++)

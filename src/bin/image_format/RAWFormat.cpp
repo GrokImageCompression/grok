@@ -67,10 +67,8 @@ bool RAWFormat::encodeHeader(void)
 	encodeState = IMAGE_FORMAT_ENCODED_HEADER;
 	return true;
 }
-bool RAWFormat::encodeRows(uint32_t rows)
+bool RAWFormat::encodeRows(void)
 {
-	(void)rows;
-
 	const char* outfile = fileName_.c_str();
 	useStdIO_ = grk::useStdio(fileName_);
 	fileStream_ = nullptr;

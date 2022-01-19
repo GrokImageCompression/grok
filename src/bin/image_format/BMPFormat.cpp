@@ -186,9 +186,8 @@ cleanup:
 	return ret;
 }
 
-bool BMPFormat::encodeRows(uint32_t rows)
+bool BMPFormat::encodeRows()
 {
-	(void)rows;
 	bool ret = false;
 	auto w = image_->comps[0].w;
 	auto h = image_->comps[0].h;

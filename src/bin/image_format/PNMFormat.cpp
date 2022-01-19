@@ -181,14 +181,14 @@ template<typename T> bool PNMFormat::writeRows(uint32_t rowsOffset, uint32_t row
 
 	return true;
 }
-bool PNMFormat::encodeRows(uint32_t rows)
+bool PNMFormat::encodeRows(void)
 {
 	if (!isHeaderEncoded()) {
 		if (!encodeHeader())
 			return false;
 	}
 
-	return (getImagePrec() > 8U) ? encodeRowsCore<uint16_t>(rows) : encodeRowsCore<uint8_t>(rows);
+	return (getImagePrec() > 8U) ? encodeRowsCore<uint16_t>(image_->comps[0].h) : encodeRowsCore<uint8_t>(image_->comps[0].h);
 
 }
 template<typename T> bool PNMFormat::encodeRowsCore(uint32_t rows)

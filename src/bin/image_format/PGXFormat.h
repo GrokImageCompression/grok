@@ -21,7 +21,7 @@ class PGXFormat : public ImageFormat
 {
   public:
 	bool encodeHeader(void) override;
-	bool encodeRows(uint32_t rows) override;
+	bool encodeRows(void) override;
 	bool encodeFinish(void) override;
 	grk_image* decode(const std::string& filename, grk_cparameters* parameters) override;
 };

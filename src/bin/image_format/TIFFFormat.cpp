@@ -513,13 +513,13 @@ bool TIFFFormat::encodePixels(grk_serialize_buf pixels,
 
 	return encodePixelsCore(pixels,reclaimed,max_reclaimed, num_reclaimed);
 }
-bool TIFFFormat::encodeRows(uint32_t rowsToWrite)
+bool TIFFFormat::encodeRows()
 {
-	std::unique_lock<std::mutex> lk(encodePixelmutex);
 	if (encodeState & IMAGE_FORMAT_ENCODED_PIXELS)
 		return true;
 	bool success = false;
 	uint32_t height = image_->comps[0].h;
+	uint32_t rowsToWrite = height;
 	rowsToWrite = (std::min)(rowsToWrite,height - rowsWritten);
 	if (rowsToWrite == 0)
 		return true;

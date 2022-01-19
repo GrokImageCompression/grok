@@ -534,10 +534,8 @@ bool JPEGFormat::encodeHeader(void)
 
 	return true;
 }
-bool JPEGFormat::encodeRows(uint32_t rows)
+bool JPEGFormat::encodeRows(void)
 {
-	(void)rows;
-
 	/* Step 5: while (scan lines remain to be written) */
 	/*           jpeg_write_scanlines(...); */
 

@@ -649,17 +649,15 @@ bool PNGFormat::encodeHeader(void)
 beach:
 	return !fails;
 }
-bool PNGFormat::encodeRows(uint32_t rows)
+bool PNGFormat::encodeRows(void)
 {
-	(void)rows;
-
 	int32_t const* planes[4];
 	for(uint32_t compno = 0; compno < nr_comp; ++compno)
 		planes[compno] = image_->comps[compno].data;
 
 	png_bytep row_buf_cpy = row_buf;
 	int32_t adjust = image_->comps[0].sgnd ? 1 << (prec - 1) : 0;
-	uint32_t max = maxY(rows);
+	uint32_t max = maxY(image_->comps->h);
 	auto iter = grk::InterleaverFactory<int32_t>::makeInterleaver(prec == 16 ? 0xFF : prec);
 	if (!iter)
 		return false;
@@ -677,7 +675,7 @@ bool PNGFormat::encodeRows(uint32_t rows)
 		png_write_row(png, row_buf_cpy);
 	}
 	delete iter;
-	rowCount_ += rows;
+	rowCount_ += image_->comps->h;
 
 	return true;
 }

@@ -58,7 +58,7 @@ class TIFFFormat : public ImageFormat
 	TIFFFormat();
 	~TIFFFormat();
 	bool encodeHeader(void) override;
-	bool encodeRows(uint32_t rows) override;
+	bool encodeRows() override;
 	bool encodePixels(grk_serialize_buf pixels,
 						grk_serialize_buf* reclaimed,
 						uint32_t max_reclaimed,
