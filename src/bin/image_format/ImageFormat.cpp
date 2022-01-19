@@ -68,6 +68,7 @@ bool ImageFormat::encodeInit(grk_image* image,
 	compressionLevel_ = compressionLevel;
 	fileName_ = filename;
 	image_ = image;
+	useStdIO_ = grk::useStdio(fileName_);
 
 	return true;
 }

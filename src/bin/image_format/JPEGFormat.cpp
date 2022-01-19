@@ -81,7 +81,7 @@ METHODDEF(void) my_error_exit(j_common_ptr cinfo)
 
 grk_image* JPEGFormat::jpegtoimage(const char* filename, grk_cparameters* parameters)
 {
-	readFromStdin = grk::useStdio(filename);
+	readFromStdin = grk::useStdio(std::string(filename));
 
 	int32_t* planes[3];
 	JDIMENSION w = 0, h = 0;

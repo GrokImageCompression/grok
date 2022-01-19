@@ -110,7 +110,6 @@ bool PNMFormat::encodeRows(uint32_t rows)
 	std::string destname;
 	bool success = false;
 
-	useStdIO_ = grk::useStdio(fileName_.c_str());
 	alpha = nullptr;
 	two = hasAlpha = 0;
 	ncomp = getImageNumComps();

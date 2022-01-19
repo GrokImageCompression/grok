@@ -72,7 +72,7 @@ bool RAWFormat::encodeRows(uint32_t rows)
 	(void)rows;
 
 	const char* outfile = fileName_.c_str();
-	useStdIO_ = grk::useStdio(outfile);
+	useStdIO_ = grk::useStdio(fileName_);
 	fileStream_ = nullptr;
 	unsigned int compno, numcomps;
 	bool success = false;
@@ -211,7 +211,7 @@ static bool readFile(FILE* fileStream_, bool bigEndian, int32_t* ptr, uint64_t n
 
 grk_image* RAWFormat::rawtoimage(const char* filename, grk_cparameters* parameters, bool bigEndian)
 {
-	useStdIO_ = grk::useStdio(filename);
+	useStdIO_ = filename == nullptr || grk::useStdio(std::string(filename));
 	grk_raw_cparameters* raw_cp = &parameters->raw_cp;
 	uint32_t subsampling_dx = parameters->subsampling_dx;
 	uint32_t subsampling_dy = parameters->subsampling_dy;

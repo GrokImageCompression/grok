@@ -66,7 +66,7 @@ grk_image* PNGFormat::do_decode(const char* read_idf, grk_cparameters* params)
 	png_uint_32 width = 0U, height = 0U;
 	uint32_t stride;
 	int color_type;
-	useStdIO_ = grk::useStdio(read_idf);
+	useStdIO_ = read_idf == nullptr || grk::useStdio(std::string(read_idf));
 	grk_image_comp cmptparm[4];
 	uint16_t nr_comp;
 	uint8_t sigbuf[8];

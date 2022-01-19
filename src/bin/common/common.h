@@ -130,7 +130,7 @@ std::string convertFileFmtToString(GRK_SUPPORTED_FILE_FMT fmt);
 int parseWindowBounds(char* inArg, uint32_t* dw_x0, uint32_t* dw_y0, uint32_t* dw_x1,
 					  uint32_t* dw_y1);
 bool safe_fclose(FILE* fd);
-bool useStdio(const char* filename);
+bool useStdio(std::string filename);
 bool supportedStdioFormat(GRK_SUPPORTED_FILE_FMT format);
 bool grk_open_for_output(FILE** fdest, const char* outfile, bool writeToStdout);
 bool grk_set_binary_mode(FILE* file);

@@ -146,9 +146,9 @@ bool safe_fclose(FILE* fd)
 	return fclose(fd) ? false : true;
 }
 
-bool useStdio(const char* filename)
+bool useStdio(std::string  filename)
 {
-	return (filename == nullptr) || (filename[0] == 0);
+	return  filename.empty();
 }
 
 bool supportedStdioFormat(GRK_SUPPORTED_FILE_FMT format)
