@@ -965,6 +965,7 @@ bool FileFormatDecompress::read_channel_definition(uint8_t* p_cdef_header_data,
 	assert(p_cdef_header_data != nullptr);
 
 	(void)cdef_header_size;
+	bool rc = false;
 
 	/* Part 1, I.5.3.6: 'The shall be at most one Channel Definition box
 	 * inside a JP2 Header box.'*/
@@ -1004,13 +1005,13 @@ bool FileFormatDecompress::read_channel_definition(uint8_t* p_cdef_header_data,
 		if(cdef_info[i].typ > 2 && cdef_info[i].typ != GRK_COMPONENT_TYPE_UNSPECIFIED)
 		{
 			GRK_ERROR("CDEF box : Illegal channel type %u", cdef_info[i].typ);
-			return false;
+			goto cleanup;
 		}
 		grk_read<uint16_t>(p_cdef_header_data, &cdef_info[i].asoc); /* Asoc^i */
 		if(cdef_info[i].asoc > 3 && cdef_info[i].asoc != GRK_COMPONENT_ASSOC_UNASSOCIATED)
 		{
 			GRK_ERROR("CDEF box : Illegal channel association %u", cdef_info[i].asoc);
-			return false;
+			goto cleanup;
 		}
 		p_cdef_header_data += 2;
 	}
@@ -1028,7 +1029,7 @@ bool FileFormatDecompress::read_channel_definition(uint8_t* p_cdef_header_data,
 				GRK_ERROR("CDEF box : multiple descriptions of component, %u, with differing types "
 						  ": %u and %u.",
 						  infoi.cn, infoi.typ, infoj.typ);
-				return false;
+				goto cleanup;
 			}
 		}
 	}
@@ -1048,12 +1049,19 @@ bool FileFormatDecompress::read_channel_definition(uint8_t* p_cdef_header_data,
 				GRK_ERROR(
 					"CDEF box : components %u and %u share same type/association pair (%u,%u).",
 					infoi.cn, infoj.cn, infoj.typ, infoj.asoc);
-				return false;
+				goto cleanup;
 			}
 		}
 	}
+	rc = true;
+cleanup:
+	if (!rc){
+		delete[] color.channel_definition->descriptions;
+		delete color.channel_definition;
+		color.channel_definition = nullptr;
+	}
 
-	return true;
+	return rc;
 }
 bool FileFormatDecompress::read_colr(uint8_t* p_colr_header_data, uint32_t colr_header_size)
 {

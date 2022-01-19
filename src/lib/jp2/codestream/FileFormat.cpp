@@ -57,14 +57,15 @@ FileFormat::~FileFormat()
 
 bool FileFormat::exec(std::vector<PROCEDURE_FUNC>* procs)
 {
-	bool result = true;
 	assert(procs);
 
-	for(auto it = procs->begin(); it != procs->end(); ++it)
-		result = result && (*it)();
+	for(auto it = procs->begin(); it != procs->end(); ++it){
+		if (! (*it)())
+			return false;
+	}
 	procs->clear();
 
-	return result;
+	return true;
 }
 
 } // namespace grk
