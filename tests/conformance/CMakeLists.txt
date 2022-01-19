@@ -519,12 +519,7 @@ foreach(kdu_file ${kdu_j2k_conf_files})
   # Build filenames
   set( filenameInput "${kdu_file}.j2c" )
   set( filenameRef   "${kdu_file}.ppm" )
-
-	if("${kdu_file}" STREQUAL "a6_mono_colr")
-    set(kdu_test_args -upsample -split-pnm )
-  else()
-    set(kdu_test_args -upsample )
-  endif()
+  set(kdu_test_args -upsample -s )
 
   add_test(NAME ETS-KDU-${filenameInput}-decode
     COMMAND grk_decompress
@@ -591,6 +586,7 @@ foreach(r_file ${richter_jp2_conf_files})
     COMMAND grk_decompress
     -i ${INPUT_CONF}/${filenameInput}
     -o ${TEMP}/${filenameInput}.ppm
+    -s
   )
 
   set(ric_test_args -n 1)

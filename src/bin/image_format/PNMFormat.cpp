@@ -104,9 +104,8 @@ bool PNMFormat::encodeRows(uint32_t rows)
 	uint32_t width, height, stride_diff, max;
 	uint32_t compno, ncomp, prec = getImagePrec();
 	int adjustR, adjustG, adjustB, adjustA;
-	bool two, grayscale, hasAlpha, triple;
+	bool two, hasAlpha, triple;
 	int v;
-	const char* tmp = fileName_.c_str();
 	std::string destname;
 	bool success = false;
 
@@ -114,26 +113,13 @@ bool PNMFormat::encodeRows(uint32_t rows)
 	two = hasAlpha = 0;
 	ncomp = getImageNumComps();
 
-	while(*tmp)
-		++tmp;
-	tmp -= 2;
-	grayscale = (*tmp == 'g' || *tmp == 'G');
-
-	if(grayscale)
-		ncomp = 1;
-
-	if(useStdIO_)
-	{
-		if(forceSplit)
-		{
-			spdlog::warn("Unable to write split file to stdout. Disabling");
-			forceSplit = false;
-		}
+	if(useStdIO_ && forceSplit) {
+		spdlog::warn("Unable to write split file to stdout. Disabling");
+		forceSplit = false;
 	}
 
-	// 1. Write single PAM (if there is alpha) or PPM
-	if(useStdIO_ || (!forceSplit && ncomp > 1))
-	{
+	// 1. write first file: PAM or PPM
+	if (!forceSplit || ncomp > 1) {
 		if(!grk::grk_open_for_output(&fileStream_, fileName_.c_str(), useStdIO_))
 			goto cleanup;
 
@@ -281,18 +267,22 @@ bool PNMFormat::encodeRows(uint32_t rows)
 			}
 		}
 		// we only write the first PAM file to stdout
-		if(useStdIO_)
-		{
-			success = true;
-			goto cleanup;
-		}
-		else if (fileStream_)
+		if(!useStdIO_ && fileStream_)
 		{
 			if(!grk::safe_fclose(fileStream_))
 				goto cleanup;
 			fileStream_ = nullptr;
 		}
 
+		if (useStdIO_) {
+			success = true;
+			goto cleanup;
+		}
+	}
+
+	if (!forceSplit){
+		success = true;
+		goto cleanup;
 	}
 
 	// 2. write split files (PGM)
