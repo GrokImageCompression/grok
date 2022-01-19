@@ -176,6 +176,7 @@ bool grk_set_binary_mode(FILE* file)
 bool grk_open_for_output(FILE** fdest, const char* outfile, bool writeToStdout)
 {
 	assert(fdest);
+	assert(!*fdest);
 	if(writeToStdout)
 	{
 		if(!grk::grk_set_binary_mode(stdout))

@@ -98,6 +98,23 @@ bool ImageFormat::encodeFinish(void)
 bool ImageFormat::isHeaderEncoded(void){
 	return ( (encodeState & IMAGE_FORMAT_ENCODED_HEADER) == IMAGE_FORMAT_ENCODED_HEADER );
 }
+bool ImageFormat::isOpacity(uint16_t compno){
+	if (!image_ || compno >= image_->numcomps)
+		return false;
+	auto comp = image_->comps + compno;
+
+	return (comp->type == GRK_COMPONENT_TYPE_OPACITY || comp->type == GRK_COMPONENT_TYPE_PREMULTIPLIED_OPACITY);
+}
+bool ImageFormat::hasOpacity(void){
+	if (!image_)
+		return false;
+	for (uint16_t i = 0; i < image_->numcomps; ++i){
+		if (isOpacity(i))
+			return true;
+	}
+
+	return false;
+}
 bool ImageFormat::open(std::string fileName, std::string mode)
 {
 	return fileIO_->open(fileName, mode);

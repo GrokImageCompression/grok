@@ -182,11 +182,10 @@ TIFF* TIFFFormat::MyTIFFOpen(const char* name, const char* mode)
 
 	int fd = ::open(name, m, 0666);
 	if (fd < 0) {
-		if (errno > 0 && strerror(errno) != NULL ) {
+		if (errno > 0 && strerror(errno) != NULL )
 			TIFFErrorExt(0, module, "%s: %s", name, strerror(errno) );
-		} else {
+		else
 			TIFFErrorExt(0, module, "%s: Cannot open", name);
-		}
 		return ((TIFF *)0);
 	}
 
@@ -507,8 +506,10 @@ bool TIFFFormat::encodePixels(grk_serialize_buf pixels,
 							uint32_t *num_reclaimed) {
 
 	std::unique_lock<std::mutex> lk(encodePixelmutex);
-	if (!isHeaderEncoded())
-		encodeHeader();
+	if (!isHeaderEncoded()){
+		if (!encodeHeader())
+			return false;
+	}
 
 	return encodePixelsCore(pixels,reclaimed,max_reclaimed, num_reclaimed);
 }

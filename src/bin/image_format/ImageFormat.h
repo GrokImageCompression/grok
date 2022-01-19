@@ -64,6 +64,8 @@ class ImageFormat : public IImageFormat
 	GRK_COLOR_SPACE getImageColourSpace(void);
 
 	bool isHeaderEncoded(void);
+	bool isOpacity(uint16_t compno);
+	bool hasOpacity(void);
 
 	grk_image* image_;
 	uint32_t rowCount_;

@@ -29,6 +29,11 @@ class PNMFormat : public ImageFormat
 
   private:
 	bool forceSplit;
+	bool hasAlpha(void);
+	template<typename T> bool writeRows(uint32_t rowsOffset, uint32_t rows, uint16_t compno, T *buf, size_t *outCount);
+	bool writeHeader(bool doPGM);
+	template<typename T> bool encodeRowsCore(uint32_t rows);
+	bool encodeNonSplit(void);
 	grk_image* decode(grk_cparameters* parameters);
 	bool decodeHeader(struct pnm_header* ph);
 };
