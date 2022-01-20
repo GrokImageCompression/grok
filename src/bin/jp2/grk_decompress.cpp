@@ -1334,7 +1334,7 @@ int GrkDecompress::postProcess(grk_plugin_decompress_callback_info* info)
 	if(storeToDisk)
 	{
 		auto outfileStr = outfile ? std::string(outfile) : "";
-		if(!fmt->encodeRows())
+		if(!fmt->encodePixels())
 		{
 			spdlog::error("Outfile {} not generated", outfileStr);
 			goto cleanup;

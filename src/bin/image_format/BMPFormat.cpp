@@ -63,8 +63,8 @@ BMPFormat::BMPFormat(void) : off_(0),
 							header_(nullptr),
 							srcIndex_(0)
 {
-	memset(&File_h, 0, sizeof(GRK_BITMAPFILEHEADER));
-	memset(&Info_h, 0, sizeof(GRK_BITMAPINFOHEADER));
+	memset(&fileHeader_, 0, sizeof(GRK_BITMAPFILEHEADER));
+	memset(&infoHeader_, 0, sizeof(GRK_BITMAPINFOHEADER));
 }
 
 BMPFormat::~BMPFormat(void){
@@ -79,10 +79,12 @@ bool BMPFormat::encodeHeader(void)
 #ifdef GROK_HAVE_URING
 	delete fileIO_;
 	fileIO_ = new FileUringIO();
-#endif
-
+	if (!fileIO_->open(fileName_, "w"))
+		return false;
+#else
 	if(!openFile())
 		return false;
+#endif
 	bool ret = false;
 	uint32_t w = image_->comps[0].w;
 	uint32_t h = image_->comps[0].h;
@@ -186,8 +188,14 @@ cleanup:
 	return ret;
 }
 
-bool BMPFormat::encodeRows()
+bool BMPFormat::encodePixels()
 {
+	if (encodeState & IMAGE_FORMAT_ENCODED_PIXELS)
+		return true;
+	if (!isHeaderEncoded()){
+		if (!encodeHeader())
+			return false;
+	}
 	bool ret = false;
 	auto w = image_->comps[0].w;
 	auto h = image_->comps[0].h;
@@ -458,8 +466,8 @@ bool BMPFormat::read_info_header(GRK_BITMAPFILEHEADER* fileHeader, GRK_BITMAPINF
 		get_int((int32_t**)&temp_ptr, &infoHeader->biXpelsPerMeter);
 		get_int((int32_t**)&temp_ptr, &infoHeader->biYpelsPerMeter);
 		get_int(&temp_ptr, &infoHeader->biClrUsed);
-		if(Info_h.biBitCount <= 8U && infoHeader->biClrUsed == 0)
-			infoHeader->biClrUsed = (1U << Info_h.biBitCount);
+		if(infoHeader_.biBitCount <= 8U && infoHeader->biClrUsed == 0)
+			infoHeader->biClrUsed = (1U << infoHeader_.biBitCount);
 		get_int(&temp_ptr, &infoHeader->biClrImportant);
 
 		if(fileHeader->bfSize && infoHeader->biSizeImage)
@@ -521,8 +529,8 @@ bool BMPFormat::read_rle8_data(uint8_t* pData, uint32_t stride, uint32_t width, 
 	const uint8_t* beyond = nullptr;
 	uint8_t* pixels_ptr = nullptr;
 	bool rc = false;
-	auto pixels = new uint8_t[Info_h.biSizeImage];
-	if(!read(pixels, Info_h.biSizeImage))
+	auto pixels = new uint8_t[infoHeader_.biSizeImage];
+	if(!read(pixels, infoHeader_.biSizeImage))
 	{
 		goto cleanup;
 	}
@@ -598,8 +606,8 @@ bool BMPFormat::read_rle4_data(uint8_t* pData, uint32_t stride, uint32_t width, 
 	uint8_t* pixels_ptr = nullptr;
 	const uint8_t* beyond = nullptr;
 	bool rc = false;
-	auto pixels = new uint8_t[Info_h.biSizeImage];
-	if(!read(pixels, Info_h.biSizeImage))
+	auto pixels = new uint8_t[infoHeader_.biSizeImage];
+	if(!read(pixels, infoHeader_.biSizeImage))
 		goto cleanup;
 	pixels_ptr = pixels;
 	beyond = pData + stride * height;
@@ -695,45 +703,45 @@ grk_image* BMPFormat::decode(const std::string& fname, grk_cparameters* paramete
 	if(!open(fname, "r"))
 		return nullptr;
 
-	if(!read_file_header(&File_h, &Info_h))
+	if(!read_file_header(&fileHeader_, &infoHeader_))
 		goto cleanup;
-	if(!read_info_header(&File_h, &Info_h))
+	if(!read_info_header(&fileHeader_, &infoHeader_))
 		goto cleanup;
-	is_os2 = Info_h.biSize == BITMAPCOREHEADER_LENGTH;
+	is_os2 = infoHeader_.biSize == BITMAPCOREHEADER_LENGTH;
 	if(is_os2)
 	{
 		uint32_t num_entries =
-			(File_h.bfOffBits - fileHeaderSize - BITMAPCOREHEADER_LENGTH) / os2_palette_element_len;
-		if(num_entries != (uint32_t)(1 << Info_h.biBitCount))
+			(fileHeader_.bfOffBits - fileHeaderSize - BITMAPCOREHEADER_LENGTH) / os2_palette_element_len;
+		if(num_entries != (uint32_t)(1 << infoHeader_.biBitCount))
 		{
 			spdlog::error("OS2: calculated number of entries {} "
 						  "doesn't match (1 << bit count) {}",
-						  num_entries, (uint32_t)(1 << Info_h.biBitCount));
+						  num_entries, (uint32_t)(1 << infoHeader_.biBitCount));
 			goto cleanup;
 		}
 	}
-	if(Info_h.biWidth < 0)
+	if(infoHeader_.biWidth < 0)
 	{
 		spdlog::warn("BMP with negative width. Converting to positive value");
-		Info_h.biWidth = -Info_h.biWidth;
+		infoHeader_.biWidth = -infoHeader_.biWidth;
 	}
-	if(Info_h.biHeight < 0)
+	if(infoHeader_.biHeight < 0)
 	{
 		topDown = true;
-		Info_h.biHeight = -Info_h.biHeight;
+		infoHeader_.biHeight = -infoHeader_.biHeight;
 	}
 	/* Load palette */
-	if(Info_h.biBitCount <= 8U)
+	if(infoHeader_.biBitCount <= 8U)
 	{
 		memset(lut_R, 0, sizeof(lut_R));
 		memset(lut_G, 0, sizeof(lut_G));
 		memset(lut_B, 0, sizeof(lut_B));
 
-		palette_num_entries = Info_h.biClrUsed;
+		palette_num_entries = infoHeader_.biClrUsed;
 		// need to check this a second time for OS2 files
-		if((palette_num_entries == 0U) && (Info_h.biBitCount <= 8U))
+		if((palette_num_entries == 0U) && (infoHeader_.biBitCount <= 8U))
 		{
-			palette_num_entries = (1U << Info_h.biBitCount);
+			palette_num_entries = (1U << infoHeader_.biBitCount);
 		}
 		if(palette_num_entries > 256U)
 			palette_num_entries = 256U;
@@ -763,48 +771,48 @@ grk_image* BMPFormat::decode(const std::string& fname, grk_cparameters* paramete
 	else
 	{
 		numcmpts = 3U;
-		if((Info_h.biCompression == 3) && (Info_h.biAlphaMask != 0U))
+		if((infoHeader_.biCompression == 3) && (infoHeader_.biAlphaMask != 0U))
 			numcmpts++;
 	}
 
-	if(Info_h.biWidth == 0 || Info_h.biHeight == 0)
+	if(infoHeader_.biWidth == 0 || infoHeader_.biHeight == 0)
 		goto cleanup;
-	if(Info_h.biBitCount > ((uint32_t)((uint32_t)-1) - 31) / (uint32_t)Info_h.biWidth)
+	if(infoHeader_.biBitCount > ((uint32_t)((uint32_t)-1) - 31) / (uint32_t)infoHeader_.biWidth)
 		goto cleanup;
 
-	bmpStride = (((uint32_t)Info_h.biWidth * Info_h.biBitCount + 31U) / 32U) *
+	bmpStride = (((uint32_t)infoHeader_.biWidth * infoHeader_.biBitCount + 31U) / 32U) *
 				(uint32_t)sizeof(uint32_t); /* rows are aligned on 32bits */
-	if(Info_h.biBitCount == 4 && Info_h.biCompression == 2)
+	if(infoHeader_.biBitCount == 4 && infoHeader_.biCompression == 2)
 	{ /* RLE 4 gets decoded as 8 bits data for now... */
-		if(8 > ((uint32_t)((uint32_t)-1) - 31) / (uint32_t)Info_h.biWidth)
+		if(8 > ((uint32_t)((uint32_t)-1) - 31) / (uint32_t)infoHeader_.biWidth)
 			goto cleanup;
-		bmpStride = (((uint32_t)Info_h.biWidth * 8U + 31U) / 32U) * (uint32_t)sizeof(uint32_t);
+		bmpStride = (((uint32_t)infoHeader_.biWidth * 8U + 31U) / 32U) * (uint32_t)sizeof(uint32_t);
 	}
 
-	if(bmpStride > ((uint32_t)(uint32_t)-1) / sizeof(uint8_t) / (uint32_t)Info_h.biHeight)
+	if(bmpStride > ((uint32_t)(uint32_t)-1) / sizeof(uint8_t) / (uint32_t)infoHeader_.biHeight)
 		goto cleanup;
-	pData = new uint8_t[bmpStride * (size_t)Info_h.biHeight];
+	pData = new uint8_t[bmpStride * (size_t)infoHeader_.biHeight];
 	if(pData == nullptr)
 		goto cleanup;
-	if(!seek((int64_t)File_h.bfOffBits))
+	if(!seek((int64_t)fileHeader_.bfOffBits))
 		goto cleanup;
 
-	switch(Info_h.biCompression)
+	switch(infoHeader_.biCompression)
 	{
 		case 0:
 		case 3:
 			/* read raw data */
-			result = read_raw_data(pData, bmpStride, (uint32_t)Info_h.biHeight);
+			result = read_raw_data(pData, bmpStride, (uint32_t)infoHeader_.biHeight);
 			break;
 		case 1:
 			/* read rle8 data */
-			result = read_rle8_data(pData, bmpStride, (uint32_t)Info_h.biWidth,
-									(uint32_t)Info_h.biHeight);
+			result = read_rle8_data(pData, bmpStride, (uint32_t)infoHeader_.biWidth,
+									(uint32_t)infoHeader_.biHeight);
 			break;
 		case 2:
 			/* read rle4 data */
-			result = read_rle4_data(pData, bmpStride, (uint32_t)Info_h.biWidth,
-									(uint32_t)Info_h.biHeight);
+			result = read_rle4_data(pData, bmpStride, (uint32_t)infoHeader_.biWidth,
+									(uint32_t)infoHeader_.biHeight);
 			break;
 		default:
 			spdlog::error("Unsupported BMP compression");
@@ -825,12 +833,12 @@ grk_image* BMPFormat::decode(const std::string& fname, grk_cparameters* paramete
 	for(uint32_t i = 0; i < numcmpts; i++)
 	{
 		auto img_comp = cmptparm + i;
-		img_comp->prec = (numcmpts == 1U) ? (uint8_t)Info_h.biBitCount : 8U;
+		img_comp->prec = (numcmpts == 1U) ? (uint8_t)infoHeader_.biBitCount : 8U;
 		img_comp->sgnd = false;
 		img_comp->dx = parameters->subsampling_dx;
 		img_comp->dy = parameters->subsampling_dy;
-		img_comp->w = grk::ceildiv<uint32_t>((uint32_t)Info_h.biWidth, img_comp->dx);
-		img_comp->h = grk::ceildiv<uint32_t>((uint32_t)Info_h.biHeight, img_comp->dy);
+		img_comp->w = grk::ceildiv<uint32_t>((uint32_t)infoHeader_.biWidth, img_comp->dx);
+		img_comp->h = grk::ceildiv<uint32_t>((uint32_t)infoHeader_.biHeight, img_comp->dy);
 	}
 
 	image = grk_image_new(numcmpts, &cmptparm[0], colour_space);
@@ -866,24 +874,24 @@ grk_image* BMPFormat::decode(const std::string& fname, grk_cparameters* paramete
 	}
 
 	// ICC profile
-	if(Info_h.biSize == sizeof(GRK_BITMAPINFOHEADER) &&
-	   Info_h.biColorSpaceType == ICC_PROFILE_EMBEDDED && Info_h.biIccProfileSize &&
-	   Info_h.biIccProfileSize < grk::maxICCProfileBufferLen)
+	if(infoHeader_.biSize == sizeof(GRK_BITMAPINFOHEADER) &&
+	   infoHeader_.biColorSpaceType == ICC_PROFILE_EMBEDDED && infoHeader_.biIccProfileSize &&
+	   infoHeader_.biIccProfileSize < grk::maxICCProfileBufferLen)
 	{
 		// read in ICC profile
-		if(!seek((int64_t)(fileHeaderSize + Info_h.biIccProfileOffset)))
+		if(!seek((int64_t)(fileHeaderSize + infoHeader_.biIccProfileOffset)))
 			goto cleanup;
 
 		// allocate buffer
-		auto iccbuf = new uint8_t[Info_h.biIccProfileSize];
-		if(!read(iccbuf, Info_h.biIccProfileSize))
+		auto iccbuf = new uint8_t[infoHeader_.biIccProfileSize];
+		if(!read(iccbuf, infoHeader_.biIccProfileSize))
 		{
 			spdlog::warn("Unable to read full ICC profile. Profile will be ignored.");
 			delete[] iccbuf;
 			goto cleanup;
 		}
-		if(validate_icc(colour_space, iccbuf, Info_h.biIccProfileSize))
-			copy_icc(image, iccbuf, Info_h.biIccProfileSize);
+		if(validate_icc(colour_space, iccbuf, infoHeader_.biIccProfileSize))
+			copy_icc(image, iccbuf, infoHeader_.biIccProfileSize);
 		else
 			spdlog::warn("ICC profile does not match underlying colour space. Ignoring");
 		delete[] iccbuf;
@@ -897,14 +905,14 @@ grk_image* BMPFormat::decode(const std::string& fname, grk_cparameters* paramete
 	/* set image offset and reference grid */
 	image->x0 = parameters->image_offset_x0;
 	image->y0 = parameters->image_offset_y0;
-	image->x1 = image->x0 + ((uint32_t)Info_h.biWidth - 1U) * parameters->subsampling_dx + 1U;
-	image->y1 = image->y0 + ((uint32_t)Info_h.biHeight - 1U) * parameters->subsampling_dy + 1U;
+	image->x1 = image->x0 + ((uint32_t)infoHeader_.biWidth - 1U) * parameters->subsampling_dx + 1U;
+	image->y1 = image->y0 + ((uint32_t)infoHeader_.biHeight - 1U) * parameters->subsampling_dy + 1U;
 
 	/* Read the data */
-	switch(Info_h.biCompression)
+	switch(infoHeader_.biCompression)
 	{
 		case 0:
-			switch(Info_h.biBitCount)
+			switch(infoHeader_.biBitCount)
 			{
 				case 32: /* RGBX */
 					mask32toimage(pData, bmpStride, image, 0x00FF0000U, 0x0000FF00U, 0x000000FFU,
@@ -931,7 +939,7 @@ grk_image* BMPFormat::decode(const std::string& fname, grk_cparameters* paramete
 			}
 			break;
 		case 1:
-			switch(Info_h.biBitCount)
+			switch(infoHeader_.biBitCount)
 			{
 				case 8: /*RLE8*/
 					bmp8toimage(pData, bmpStride, image, pLUT, topDown);
@@ -942,7 +950,7 @@ grk_image* BMPFormat::decode(const std::string& fname, grk_cparameters* paramete
 			}
 			break;
 		case 2:
-			switch(Info_h.biBitCount)
+			switch(infoHeader_.biBitCount)
 			{
 				case 4: /*RLE4*/
 					bmp8toimage(pData, bmpStride, image, pLUT,
@@ -954,16 +962,16 @@ grk_image* BMPFormat::decode(const std::string& fname, grk_cparameters* paramete
 			}
 			break;
 		case 3:
-			switch(Info_h.biBitCount)
+			switch(infoHeader_.biBitCount)
 			{
 				case 32: /* BITFIELDS bit mask */
-					if(Info_h.biRedMask && Info_h.biGreenMask && Info_h.biBlueMask)
+					if(infoHeader_.biRedMask && infoHeader_.biGreenMask && infoHeader_.biBlueMask)
 					{
 						bool fail = false;
 						bool hasAlpha = image->numcomps > 3;
 						// sanity check on bit masks
-						uint32_t m[4] = {Info_h.biRedMask, Info_h.biGreenMask, Info_h.biBlueMask,
-										 Info_h.biAlphaMask};
+						uint32_t m[4] = {infoHeader_.biRedMask, infoHeader_.biGreenMask, infoHeader_.biBlueMask,
+										 infoHeader_.biAlphaMask};
 						for(uint32_t i = 0; i < image->numcomps; ++i)
 						{
 							int lead = grk::count_leading_zeros(m[i]);
@@ -1019,19 +1027,19 @@ grk_image* BMPFormat::decode(const std::string& fname, grk_cparameters* paramete
 						break;
 					}
 
-					mask32toimage(pData, bmpStride, image, Info_h.biRedMask, Info_h.biGreenMask,
-								  Info_h.biBlueMask, Info_h.biAlphaMask);
+					mask32toimage(pData, bmpStride, image, infoHeader_.biRedMask, infoHeader_.biGreenMask,
+								  infoHeader_.biBlueMask, infoHeader_.biAlphaMask);
 					break;
 				case 16: /* BITFIELDS bit mask*/
-					if((Info_h.biRedMask == 0U) && (Info_h.biGreenMask == 0U) &&
-					   (Info_h.biBlueMask == 0U))
+					if((infoHeader_.biRedMask == 0U) && (infoHeader_.biGreenMask == 0U) &&
+					   (infoHeader_.biBlueMask == 0U))
 					{
-						Info_h.biRedMask = 0xF800U;
-						Info_h.biGreenMask = 0x07E0U;
-						Info_h.biBlueMask = 0x001FU;
+						infoHeader_.biRedMask = 0xF800U;
+						infoHeader_.biGreenMask = 0x07E0U;
+						infoHeader_.biBlueMask = 0x001FU;
 					}
-					mask16toimage(pData, bmpStride, image, Info_h.biRedMask, Info_h.biGreenMask,
-								  Info_h.biBlueMask, Info_h.biAlphaMask);
+					mask16toimage(pData, bmpStride, image, infoHeader_.biRedMask, infoHeader_.biGreenMask,
+								  infoHeader_.biBlueMask, infoHeader_.biAlphaMask);
 					break;
 				default:
 					handled = false;
@@ -1049,7 +1057,7 @@ grk_image* BMPFormat::decode(const std::string& fname, grk_cparameters* paramete
 		image = nullptr;
 		spdlog::error("Precision [{}] does not match supported precision: "
 					  "24 bit RGB, 8 bit RGB, 4/8 bit RLE and 16/32 bit BITFIELD",
-					  Info_h.biBitCount);
+					  infoHeader_.biBitCount);
 	}
 cleanup:
 	delete[] palette;

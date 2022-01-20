@@ -39,12 +39,10 @@ static tmsize_t TiffRead(thandle_t handle, void* buf, tmsize_t size)
 }
 static tmsize_t TiffWrite(thandle_t handle, void* buf, tmsize_t size)
 {
-	auto *serializer = (TiffUringSerializer*)handle;
+	auto *serializer = (Serializer*)handle;
 
 #ifdef GROK_HAVE_URING
-	serializer->scheduled.data = (uint8_t*)buf;
-	serializer->scheduled.dataLen = (uint64_t)size;
-	if (serializer->write())
+	if (serializer->write((uint8_t*)buf,(uint64_t)size ))
 		return size;
 #endif
 	//grk::ChronoTimer timer("fwrite: time to write");
@@ -63,7 +61,7 @@ static tmsize_t TiffWrite(thandle_t handle, void* buf, tmsize_t size)
 		size_t io_size = bytes_total-bytes_written;
 		if (io_size > TIFF_IO_MAX)
 			io_size = TIFF_IO_MAX;
-		count=write(serializer->fd, buf_offset, (TIFFIOSize_t) io_size);
+		count=write(serializer->getFd(), buf_offset, (TIFFIOSize_t) io_size);
 		if (count <= 0)
 			break;
 	}
@@ -76,7 +74,7 @@ static tmsize_t TiffWrite(thandle_t handle, void* buf, tmsize_t size)
 
 static uint64_t TiffSeek(thandle_t handle, uint64_t off, int whence)
 {
-	auto *serializer = (TiffUringSerializer*)handle;
+	auto *serializer = (Serializer*)handle;
 	_TIFF_off_t off_io = (_TIFF_off_t) off;
 
 	if ((uint64_t) off_io != off)
@@ -85,20 +83,14 @@ static uint64_t TiffSeek(thandle_t handle, uint64_t off, int whence)
 		return (uint64_t) -1;
 	}
 
-	return serializer->isActive() ? serializer->getAsynchFileLength() : ((uint64_t)lseek(serializer->fd, off_io, whence));
+	return serializer->isAsynchActive() ? serializer->getAsynchFileLength() : ((uint64_t)lseek(serializer->getFd(), off_io, whence));
 }
 
 static int TiffClose(thandle_t handle)
 {
-	auto *serializer = (TiffUringSerializer*)handle;
+	auto *serializer = (Serializer*)handle;
 
-#ifdef GROK_HAVE_URING
-	serializer->uring.close();
-#endif
-	int rc = ::close(serializer->fd);
-	serializer->fd = 0;
-
-	return rc;
+	return serializer->close() ? 0 : EINVAL;
 }
 
 static uint64_t TiffSize(thandle_t handle)
@@ -125,55 +117,28 @@ TIFFFormat::~TIFFFormat(){
 		TIFFClose(tif);
 }
 #ifndef _WIN32
+
 TIFF* TIFFFormat::MyTIFFOpen(const char* name, const char* mode)
 {
-	static const char module[] = "MyTIFFOpen";
-
-	int m = _TIFFgetMode(mode, module);
-	if (m == -1)
+	if (!serializer.open(name,mode,false))
 		return ((TIFF*)0);
-
-	int fd = ::open(name, m, 0666);
-	if (fd < 0) {
-		if (errno > 0 && strerror(errno) != NULL )
-			TIFFErrorExt(0, module, "%s: %s", name, strerror(errno) );
-		else
-			TIFFErrorExt(0, module, "%s: Cannot open", name);
-		return ((TIFF *)0);
+	auto tif = TIFFClientOpen(name,
+							mode,
+							&serializer,
+							TiffRead,
+							TiffWrite,
+							TiffSeek,
+							TiffClose,
+							TiffSize,
+							nullptr,
+							nullptr);
+	if (tif) {
+		tif->tif_fd = serializer.getFd();
+		return tif;
 	}
+	serializer.close();
 
-	serializer.fd = fd;
-	bool success = true;
-	TIFF *tif = nullptr;
-#ifdef GROK_HAVE_URING
-	success = serializer.uring.attach(name, mode, fd);
-#endif
-	if (success) {
-		tif = TIFFClientOpen(name,
-								mode,
-								&serializer,
-								TiffRead,
-								TiffWrite,
-								TiffSeek,
-								TiffClose,
-								TiffSize,
-								nullptr,
-								nullptr);
-		if (tif)
-			tif->tif_fd = fd;
-		else
-			success = false;
-	}
-
-	if (!success){
-#ifdef GROK_HAVE_URING
-		serializer.uring.close();
-#endif
-		::close(fd);
-		serializer.fd = 0;
-	}
-
-	return tif;
+	return nullptr;
 }
 #endif
 
@@ -278,7 +243,7 @@ bool TIFFFormat::encodeHeader(void)
 				type ==GRK_CHANNEL_TYPE_OPACITY ||
 				type == GRK_CHANNEL_TYPE_PREMULTIPLIED_OPACITY ||
 				type == GRK_CHANNEL_TYPE_UNSPECIFIED);
-		if(image_->comps[i].type != GRK_CHANNEL_TYPE_COLOUR)
+		if(type != GRK_CHANNEL_TYPE_COLOUR)
 		{
 			if(firstExtraChannel == -1)
 				firstExtraChannel = (int32_t)i;
@@ -298,7 +263,7 @@ bool TIFFFormat::encodeHeader(void)
 			numExtraChannels = 0;
 		}
 	}
-	serializer.maxPixelRequests = ((image_->y1 - image_->y0) + image_->rowsPerStrip - 1) / image_->rowsPerStrip;
+	serializer.init(image_);
 #ifdef _WIN32
 	tif = TIFFOpen(fileName_.c_str(), "wb");
 #else
@@ -412,9 +377,9 @@ cleanup:
 	return success;
 }
 /***
- * Override of ImageFormat::encodeRows
+ * application-orchestrated pixel encoding
  */
-bool TIFFFormat::encodeRows()
+bool TIFFFormat::encodePixels()
 {
 	if (encodeState & IMAGE_FORMAT_ENCODED_PIXELS)
 		return true;
@@ -447,7 +412,7 @@ bool TIFFFormat::encodeRows()
 				packedBuf.dataLen = bytesToWrite;
 				packedBuf.offset = offset;
 				packedBuf.index = strip++;
-				if(bytesToWrite && !encodePixelsSync(packedBuf))
+				if(bytesToWrite && !encodePixelsApplication(packedBuf))
 					goto cleanup;
 				packedBuf = pool.get(packedLen);
 				bufPtr = (int8_t*)(packedBuf.data);
@@ -484,7 +449,7 @@ bool TIFFFormat::encodeRows()
 		packedBuf.dataLen = bytesToWrite;
 		packedBuf.offset = offset;
 		packedBuf.index = strip++;
-		if(bytesToWrite && !encodePixelsSync(packedBuf))
+		if(bytesToWrite && !encodePixelsApplication(packedBuf))
 			goto cleanup;
 	}
 	else
@@ -509,7 +474,7 @@ bool TIFFFormat::encodeRows()
 			packedBuf.offset = offset;
 			packedBuf.dataLen = image_->packedRowBytes * stripRows;
 			packedBuf.index = strip++;
-			if(!encodePixelsSync(packedBuf)) {
+			if(!encodePixelsApplication(packedBuf)) {
 				delete iter;
 				goto cleanup;
 			}
@@ -525,9 +490,9 @@ cleanup:
 	return success;
 }
 /***
- * Synchronous pixel encoding
+ * application-orchestrated pixel encoding
  */
-bool TIFFFormat::encodePixelsSync(grk_serialize_buf pixels){
+bool TIFFFormat::encodePixelsApplication(grk_serialize_buf pixels){
 
 	bool rc =  encodePixelsCore(pixels,reclaimed_,reclaimSize,&num_reclaimed_);
 #ifndef GROK_HAVE_URING
@@ -541,7 +506,7 @@ bool TIFFFormat::encodePixelsSync(grk_serialize_buf pixels){
 	return rc;
 }
 /***
- * Asynchronous pixel encoding
+ * library-orchestrated pixel encoding
  */
 bool TIFFFormat::encodePixels(grk_serialize_buf pixels,
 							grk_serialize_buf* reclaimed,
@@ -565,17 +530,15 @@ bool TIFFFormat::encodePixelsCore(grk_serialize_buf pixels,
 							grk_serialize_buf* reclaimed,
 							uint32_t max_reclaimed,
 							uint32_t *num_reclaimed) {
-	serializer.scheduled.pooled = true;
-	serializer.reclaimed = reclaimed;
-	serializer.max_reclaimed = max_reclaimed;
-	serializer.num_reclaimed = num_reclaimed;
+	serializer.initPixelRequest(reclaimed, max_reclaimed, num_reclaimed);
 	tmsize_t  written = TIFFWriteEncodedStrip(tif, (tmsize_t)pixels.index, pixels.data, (tmsize_t)pixels.dataLen);
 	if (written == -1) {
 		encodeState |= IMAGE_FORMAT_ERROR;
 	}
-	else if (++stripCount == serializer.maxPixelRequests){
-		encodeFinish();
-		encodeState |= IMAGE_FORMAT_ENCODED_PIXELS;
+	else {
+		serializer.incrementPixelRequest();
+		if (serializer.allPixelRequestsComplete())
+			encodeFinish();
 	}
 	if(written == -1)
 		spdlog::error("TIFFFormat::encodeRows: error in TIFFWriteEncodedStrip");
@@ -584,9 +547,14 @@ bool TIFFFormat::encodePixelsCore(grk_serialize_buf pixels,
 }
 bool TIFFFormat::encodeFinish(void)
 {
+	if (encodeState & IMAGE_FORMAT_ENCODED_PIXELS){
+		assert(!tif);
+		return true;
+	}
 	if(tif)
 		TIFFClose(tif);
 	tif = nullptr;
+	encodeState |= IMAGE_FORMAT_ENCODED_PIXELS;
 
 	return true;
 }

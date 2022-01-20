@@ -66,7 +66,7 @@ class BMPFormat : public ImageFormat
 	BMPFormat(void);
 	~BMPFormat(void);
 	bool encodeHeader(void) override;
-	bool encodeRows(void) override;
+	bool encodePixels(void) override;
 	bool encodeFinish(void) override;
 	grk_image* decode(const std::string& filename, grk_cparameters* parameters) override;
   private:
@@ -85,8 +85,8 @@ class BMPFormat : public ImageFormat
 
 	uint8_t *header_;
 	uint64_t srcIndex_;
-	GRK_BITMAPFILEHEADER File_h;
-	GRK_BITMAPINFOHEADER Info_h;
+	GRK_BITMAPFILEHEADER fileHeader_;
+	GRK_BITMAPINFOHEADER infoHeader_;
 
 	void conv_1u32s(uint8_t const* pSrc, int32_t srcStride, int32_t* pDst, int32_t dstStride,
 						uint32_t destWidth, uint32_t destHeight);

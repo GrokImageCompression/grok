@@ -464,7 +464,7 @@ static int imageToPNG(const grk_image *src, const char *filename,
     return EXIT_FAILURE;
   if (!png.encodeHeader())
     return EXIT_FAILURE;
-  if (!png.encodeRows())
+  if (!png.encodePixels())
     return EXIT_FAILURE;
   if (!png.encodeFinish())
     return EXIT_FAILURE;

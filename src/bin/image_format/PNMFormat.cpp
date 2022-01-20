@@ -184,7 +184,7 @@ template<typename T> bool PNMFormat::writeRows(uint32_t rowsOffset, uint32_t row
 
 	return true;
 }
-bool PNMFormat::encodeRows(void)
+bool PNMFormat::encodePixels(void)
 {
 	if (encodeState & IMAGE_FORMAT_ENCODED_PIXELS)
 		return true;

@@ -205,7 +205,7 @@ bool PGXFormat::encodeHeader(void)
 	encodeState = IMAGE_FORMAT_ENCODED_HEADER;
 	return true;
 }
-bool PGXFormat::encodeRows(void)
+bool PGXFormat::encodePixels(void)
 {
 	const char* outfile = fileName_.c_str();
 	bool success = false;

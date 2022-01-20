@@ -67,7 +67,7 @@ bool RAWFormat::encodeHeader(void)
 	encodeState = IMAGE_FORMAT_ENCODED_HEADER;
 	return true;
 }
-bool RAWFormat::encodeRows(void)
+bool RAWFormat::encodePixels(void)
 {
 	const char* outfile = fileName_.c_str();
 	useStdIO_ = grk::useStdio(fileName_);

@@ -9,7 +9,7 @@ ENDIF(MSVC)
 set(common_SRCS
   ${GROK_SOURCE_DIR}/src/bin/common/convert.cpp
   ${GROK_SOURCE_DIR}/src/bin/common/convert.h
-  ${GROK_SOURCE_DIR}/src/bin/image_format/UringSerializer.cpp
+  ${GROK_SOURCE_DIR}/src/bin/image_format/Serializer.cpp
   ${GROK_SOURCE_DIR}/src/bin/image_format/MemManager.cpp
   ${GROK_SOURCE_DIR}/src/bin/image_format/BufferPool.cpp
   ${GROK_SOURCE_DIR}/src/bin/image_format/IImageFormat.h

@@ -649,7 +649,7 @@ bool PNGFormat::encodeHeader(void)
 beach:
 	return !fails;
 }
-bool PNGFormat::encodeRows(void)
+bool PNGFormat::encodePixels(void)
 {
 	int32_t const* planes[4];
 	for(uint32_t compno = 0; compno < nr_comp; ++compno)

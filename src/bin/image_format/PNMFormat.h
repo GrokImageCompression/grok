@@ -17,20 +17,20 @@
 #pragma once
 
 #include "ImageFormat.h"
-#include "UringSerializer.h"
+#include "Serializer.h"
 
 class PNMFormat : public ImageFormat
 {
   public:
 	explicit PNMFormat(bool split);
 	bool encodeHeader(void) override;
-	bool encodeRows(void) override;
+	bool encodePixels(void) override;
 	bool encodeFinish(void) override;
 	grk_image* decode(const std::string& filename, grk_cparameters* parameters) override;
 
   private:
 	bool forceSplit;
-	UringSerializer serializer;
+	Serializer serializer;
 	bool hasAlpha(void);
 	bool doNonSplitEncode(void);
 	bool writeHeader(bool doPGM);

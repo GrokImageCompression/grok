@@ -26,17 +26,10 @@
 #include "ImageFormat.h"
 #include <tiffio.h>
 #include "convert.h"
-#include "UringSerializer.h"
+#include "Serializer.h"
 
 /* TIFF conversion*/
 void tiffSetErrorAndWarningHandlers(bool verbose);
-
-struct TiffUringSerializer : public UringSerializer {
-	TiffUringSerializer() : UringSerializer(), fd(0)
-	{}
-
-	int fd;
-};
 
 class TIFFFormat : public ImageFormat
 {
@@ -44,7 +37,7 @@ class TIFFFormat : public ImageFormat
 	TIFFFormat();
 	~TIFFFormat();
 	bool encodeHeader(void) override;
-	bool encodeRows() override;
+	bool encodePixels() override;
 	bool encodePixels(grk_serialize_buf pixels,
 						grk_serialize_buf* reclaimed,
 						uint32_t max_reclaimed,
@@ -56,12 +49,12 @@ class TIFFFormat : public ImageFormat
 #ifndef _WIN32
 	TIFF* MyTIFFOpen(const char* name, const char* mode);
 #endif
-	bool encodePixelsSync(grk_serialize_buf pixels);
+	bool encodePixelsApplication(grk_serialize_buf pixels);
 	bool encodePixelsCore(grk_serialize_buf pixels,
 						grk_serialize_buf* reclaimed,
 						uint32_t max_reclaimed,
 						uint32_t *num_reclaimed);
-	TiffUringSerializer serializer;
+	Serializer serializer;
 	TIFF* tif;
 	uint32_t chroma_subsample_x;
 	uint32_t chroma_subsample_y;
