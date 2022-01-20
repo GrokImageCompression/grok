@@ -117,7 +117,7 @@ bool PNMFormat::writeHeader(bool doPGM){
 	uint32_t height = image_->comps[0].h;
 	uint32_t max = (uint32_t)((1U << prec) - 1);
 
-	if (doPGM) {
+	if (doPGM || getImageNumComps() == 1) {
 		iss << "P5\n#Grok-" << grk_version() << "\n" << width << " " << height << "\n" << max << "\n";
 	} else {
 		if(hasAlpha())
