@@ -56,13 +56,11 @@ GrkImage* GrkImage::create(grk_image *src,
 {
 	auto image = new GrkImage();
 	image->color_space = clrspc;
-	image->targetColourSpace = clrspc;
 	image->numcomps = numcmpts;
 	if (src) {
 		image->decompressFormat = src->decompressFormat;
 		image->forceRGB = src->forceRGB;
 		image->upsample = src->upsample;
-		image->targetColourSpace = src->targetColourSpace;
 		image->precision = src->precision;
 		image->numPrecision = src->numPrecision;
 		image->rowsPerStrip = src->rowsPerStrip;
@@ -202,7 +200,6 @@ void GrkImage::copyHeader(GrkImage* dest)
 	}
 
 	dest->color_space = color_space;
-	dest->targetColourSpace = targetColourSpace;
 	if(has_capture_resolution)
 	{
 		dest->capture_resolution[0] = capture_resolution[0];

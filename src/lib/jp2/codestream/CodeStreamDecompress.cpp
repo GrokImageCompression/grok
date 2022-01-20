@@ -190,6 +190,7 @@ bool CodeStreamDecompress::readHeader(grk_header_info* header_info)
 			composite->upsample = header_info->upsample;
 			composite->precision = header_info->precision;
 			composite->numPrecision = header_info->numPrecision;
+			composite->splitByComponent = header_info->splitByComponent;
 		}
 	}
 	if(header_info)

@@ -789,6 +789,7 @@ typedef struct _grk_header_info
 	bool upsample;
 	grk_precision* precision;
 	uint32_t numPrecision;
+	bool splitByComponent;
 
 } grk_header_info;
 
@@ -998,11 +999,12 @@ typedef struct _grk_image
 	grk_precision* precision;
 	uint32_t numPrecision;
 	bool multiTile;
-	grk_image_meta* meta;
-	grk_image_comp* comps;
+	bool splitByComponent;
 	grk_serialize_buf interleavedData;
 	uint32_t rowsPerStrip;
 	uint64_t packedRowBytes;
+	grk_image_meta* meta;
+	grk_image_comp* comps;
 } grk_image;
 
 ////////////////////////////////////////////////
