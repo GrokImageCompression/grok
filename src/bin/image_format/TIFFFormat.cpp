@@ -27,71 +27,24 @@
 #include "convert.h"
 #include "common.h"
 
-ClientData::ClientData(void) : fd(0),
-							reclaimed(nullptr),
-							max_reclaimed(0),
-							num_reclaimed(nullptr),
-							maxPixelRequests(0),
-							numPixelRequests(0),
-#ifdef GROK_HAVE_URING
-							active(true),
-#else
-							active(false),
-#endif
-							off_(0)
-{}
-
-#ifdef GROK_HAVE_URING
-bool ClientData::write(void){
-	if (!active)
-		return false;
-	scheduled.offset = off_;
-	uring.write(scheduled,reclaimed,max_reclaimed,num_reclaimed);
-	off_ += scheduled.dataLen;
-	if (scheduled.pooled)
-		numPixelRequests++;
-	if (numPixelRequests == maxPixelRequests){
-		uring.close();
-		active = false;
-	}
-	// clear scheduled
-	scheduled = GrkSerializeBuf();
-	num_reclaimed = nullptr;
-	reclaimed = nullptr;
-	max_reclaimed = 0;
-
-	return true;
-}
-#endif
-
-bool ClientData::isActive(void){
-	return active;
-}
-uint64_t ClientData::getAsynchFileLength(void){
-	return off_;
-}
-
-
-
-
 #ifndef _WIN32
 #define TIFF_IO_MAX 2147483647U
 
-static tmsize_t TiffRead(thandle_t fd, void* buf, tmsize_t size)
+static tmsize_t TiffRead(thandle_t handle, void* buf, tmsize_t size)
 {
-  (void)fd;
+  (void)handle;
   (void)buf;
 
   return size;
 }
-static tmsize_t TiffWrite(thandle_t fd, void* buf, tmsize_t size)
+static tmsize_t TiffWrite(thandle_t handle, void* buf, tmsize_t size)
 {
-	auto *cdata = (ClientData*)fd;
+	auto *serializer = (TiffUringSerializer*)handle;
 
 #ifdef GROK_HAVE_URING
-	cdata->scheduled.data = (uint8_t*)buf;
-	cdata->scheduled.dataLen = (uint64_t)size;
-	if (cdata->write())
+	serializer->scheduled.data = (uint8_t*)buf;
+	serializer->scheduled.dataLen = (uint64_t)size;
+	if (serializer->write())
 		return size;
 #endif
 	//grk::ChronoTimer timer("fwrite: time to write");
@@ -110,7 +63,7 @@ static tmsize_t TiffWrite(thandle_t fd, void* buf, tmsize_t size)
 		size_t io_size = bytes_total-bytes_written;
 		if (io_size > TIFF_IO_MAX)
 			io_size = TIFF_IO_MAX;
-		count=write(cdata->fd, buf_offset, (TIFFIOSize_t) io_size);
+		count=write(serializer->fd, buf_offset, (TIFFIOSize_t) io_size);
 		if (count <= 0)
 			break;
 	}
@@ -121,9 +74,9 @@ static tmsize_t TiffWrite(thandle_t fd, void* buf, tmsize_t size)
 	return (tmsize_t) bytes_written;
 }
 
-static uint64_t TiffSeek(thandle_t fd, uint64_t off, int whence)
+static uint64_t TiffSeek(thandle_t handle, uint64_t off, int whence)
 {
-	auto *cdata = (ClientData*)fd;
+	auto *serializer = (TiffUringSerializer*)handle;
 	_TIFF_off_t off_io = (_TIFF_off_t) off;
 
 	if ((uint64_t) off_io != off)
@@ -132,25 +85,25 @@ static uint64_t TiffSeek(thandle_t fd, uint64_t off, int whence)
 		return (uint64_t) -1;
 	}
 
-	return cdata->isActive() ? cdata->getAsynchFileLength() : ((uint64_t)lseek(cdata->fd, off_io, whence));
+	return serializer->isActive() ? serializer->getAsynchFileLength() : ((uint64_t)lseek(serializer->fd, off_io, whence));
 }
 
-static int TiffClose(thandle_t fd)
+static int TiffClose(thandle_t handle)
 {
-	auto *cdata = (ClientData*)fd;
+	auto *serializer = (TiffUringSerializer*)handle;
 
 #ifdef GROK_HAVE_URING
-	cdata->uring.close();
+	serializer->uring.close();
 #endif
-	int rc = ::close(cdata->fd);
-	cdata->fd = 0;
+	int rc = ::close(serializer->fd);
+	serializer->fd = 0;
 
 	return rc;
 }
 
-static uint64_t TiffSize(thandle_t fd)
+static uint64_t TiffSize(thandle_t handle)
 {
-	(void)fd;
+	(void)handle;
 
 	 return 0U;
 }
@@ -189,16 +142,16 @@ TIFF* TIFFFormat::MyTIFFOpen(const char* name, const char* mode)
 		return ((TIFF *)0);
 	}
 
-	clientData.fd = fd;
+	serializer.fd = fd;
 	bool success = true;
 	TIFF *tif = nullptr;
 #ifdef GROK_HAVE_URING
-	success = clientData.uring.attach(name, mode, fd);
+	success = serializer.uring.attach(name, mode, fd);
 #endif
 	if (success) {
 		tif = TIFFClientOpen(name,
 								mode,
-								&clientData,
+								&serializer,
 								TiffRead,
 								TiffWrite,
 								TiffSeek,
@@ -214,10 +167,10 @@ TIFF* TIFFFormat::MyTIFFOpen(const char* name, const char* mode)
 
 	if (!success){
 #ifdef GROK_HAVE_URING
-		clientData.uring.close();
+		serializer.uring.close();
 #endif
 		::close(fd);
-		clientData.fd = 0;
+		serializer.fd = 0;
 	}
 
 	return tif;
@@ -345,7 +298,7 @@ bool TIFFFormat::encodeHeader(void)
 			numExtraChannels = 0;
 		}
 	}
-	clientData.maxPixelRequests = ((image_->y1 - image_->y0) + image_->rowsPerStrip - 1) / image_->rowsPerStrip;
+	serializer.maxPixelRequests = ((image_->y1 - image_->y0) + image_->rowsPerStrip - 1) / image_->rowsPerStrip;
 #ifdef _WIN32
 	tif = TIFFOpen(fileName_.c_str(), "wb");
 #else
@@ -453,8 +406,6 @@ bool TIFFFormat::encodeHeader(void)
 		}
 		TIFFSetField(tif, TIFFTAG_EXTRASAMPLES, numExtraChannels, out.get());
 	}
-	//if (!image_->interleavedData.data)
-	//	packedBuf = new uint8_t[(size_t)TIFFVStripSize(tif, (uint32_t)image_->rowsPerStrip)];
 	success = true;
 	encodeState = IMAGE_FORMAT_ENCODED_HEADER;
 cleanup:
@@ -467,6 +418,10 @@ bool TIFFFormat::encodeRows()
 {
 	if (encodeState & IMAGE_FORMAT_ENCODED_PIXELS)
 		return true;
+	if (!isHeaderEncoded()){
+		if (!encodeHeader())
+			return false;
+	}
 	bool success = false;
 	uint32_t height = image_->comps[0].h;
 	uint32_t rowsToWrite = height;
@@ -594,6 +549,8 @@ bool TIFFFormat::encodePixels(grk_serialize_buf pixels,
 							uint32_t *num_reclaimed) {
 
 	std::unique_lock<std::mutex> lk(encodePixelmutex);
+	if (encodeState & IMAGE_FORMAT_ENCODED_PIXELS)
+		return true;
 	if (!isHeaderEncoded()){
 		if (!encodeHeader())
 			return false;
@@ -608,15 +565,15 @@ bool TIFFFormat::encodePixelsCore(grk_serialize_buf pixels,
 							grk_serialize_buf* reclaimed,
 							uint32_t max_reclaimed,
 							uint32_t *num_reclaimed) {
-	clientData.scheduled.pooled = true;
-	clientData.reclaimed = reclaimed;
-	clientData.max_reclaimed = max_reclaimed;
-	clientData.num_reclaimed = num_reclaimed;
+	serializer.scheduled.pooled = true;
+	serializer.reclaimed = reclaimed;
+	serializer.max_reclaimed = max_reclaimed;
+	serializer.num_reclaimed = num_reclaimed;
 	tmsize_t  written = TIFFWriteEncodedStrip(tif, (tmsize_t)pixels.index, pixels.data, (tmsize_t)pixels.dataLen);
 	if (written == -1) {
 		encodeState |= IMAGE_FORMAT_ERROR;
 	}
-	else if (++stripCount == clientData.maxPixelRequests){
+	else if (++stripCount == serializer.maxPixelRequests){
 		encodeFinish();
 		encodeState |= IMAGE_FORMAT_ENCODED_PIXELS;
 	}

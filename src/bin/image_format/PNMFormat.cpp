@@ -67,6 +67,9 @@ PNMFormat::PNMFormat(bool split) : forceSplit(split)
 
 bool PNMFormat::encodeHeader(void)
 {
+	if (isHeaderEncoded())
+		return true;
+
 	if(!allComponentsSanityCheck(image_, true))
 	{
 		spdlog::error("PNMFormat::encodeHeader: image sanity check failed.");
@@ -93,7 +96,7 @@ bool PNMFormat::encodeHeader(void)
 		forceSplit = false;
 	}
 
-	if (encodeNonSplit()) {
+	if (doNonSplitEncode()) {
 		if(!grk::grk_open_for_output(&fileStream_, fileName_.c_str(), useStdIO_))
 			return false;
 		if (!writeHeader(false))
@@ -141,7 +144,7 @@ bool PNMFormat::writeHeader(bool doPGM){
 
 const size_t bufSize = 4096;
 
-bool PNMFormat::encodeNonSplit(void){
+bool PNMFormat::doNonSplitEncode(void){
 	return !forceSplit || getImageNumComps() > 1;
 }
 
@@ -183,13 +186,26 @@ template<typename T> bool PNMFormat::writeRows(uint32_t rowsOffset, uint32_t row
 }
 bool PNMFormat::encodeRows(void)
 {
+	if (encodeState & IMAGE_FORMAT_ENCODED_PIXELS)
+		return true;
+
 	if (!isHeaderEncoded()) {
 		if (!encodeHeader())
 			return false;
 	}
 
 	return (getImagePrec() > 8U) ? encodeRowsCore<uint16_t>(image_->comps[0].h) : encodeRowsCore<uint8_t>(image_->comps[0].h);
+}
+bool PNMFormat::encodePixelsSync(grk_serialize_buf pixels){
 
+	return true;
+}
+bool PNMFormat::encodePixelsCore(grk_serialize_buf pixels,
+					grk_serialize_buf* reclaimed,
+					uint32_t max_reclaimed,
+					uint32_t *num_reclaimed){
+
+	return true;
 }
 template<typename T> bool PNMFormat::encodeRowsCore(uint32_t rows)
 {
@@ -199,7 +215,7 @@ template<typename T> bool PNMFormat::encodeRowsCore(uint32_t rows)
 	uint32_t height = image_->comps[0].h;
 
 	// 1. write first file: PAM or PPM
-	if (encodeNonSplit()) {
+	if (doNonSplitEncode()) {
 		size_t outCount = 0;
 		T buf[bufSize];
 		uint32_t i = 0;
@@ -217,12 +233,8 @@ template<typename T> bool PNMFormat::encodeRowsCore(uint32_t rows)
 			if(res != outCount)
 				goto cleanup;
 		}
-		if (!useStdIO_ && fileStream_){
-			bool ret = grk::safe_fclose(fileStream_);
-			fileStream_ = nullptr;
-			if (!ret)
-				goto cleanup;
-		}
+		if (!closeStream())
+			goto cleanup;
 		if (!forceSplit){
 			success = true;
 			goto cleanup;
@@ -269,27 +281,16 @@ template<typename T> bool PNMFormat::encodeRowsCore(uint32_t rows)
 			if(res != outCount)
 				goto cleanup;
 		}
-		bool rc = grk::safe_fclose(fileStream_);
-		fileStream_ = nullptr;
-		if (!rc)
+		if (!closeStream())
 			goto cleanup;
 	} /* for (compno */
 	success = true;
 cleanup:
-	if(!useStdIO_)
-		grk::safe_fclose(fileStream_);
-	fileStream_ = nullptr;
-
-	return success;
+	return closeStream() && success;
 }
 bool PNMFormat::encodeFinish(void)
 {
-	bool rc = true;
-	if(!useStdIO_&& !grk::safe_fclose(fileStream_))
-		rc =  false;
-	fileStream_ = nullptr;
-
-	return rc;
+	return closeStream();
 }
 
 static char* skip_white(char* s)

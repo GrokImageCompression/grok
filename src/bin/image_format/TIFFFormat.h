@@ -26,31 +26,17 @@
 #include "ImageFormat.h"
 #include <tiffio.h>
 #include "convert.h"
+#include "UringSerializer.h"
 
 /* TIFF conversion*/
 void tiffSetErrorAndWarningHandlers(bool verbose);
 
-struct ClientData {
-	ClientData(void);
-	bool isActive(void);
-	uint64_t getAsynchFileLength(void);
-#ifdef GROK_HAVE_URING
-	bool write(void);
-	FileUringIO uring;
-#endif
+struct TiffUringSerializer : public UringSerializer {
+	TiffUringSerializer() : UringSerializer(), fd(0)
+	{}
+
 	int fd;
-	GrkSerializeBuf scheduled;
-	grk_serialize_buf* reclaimed;
-	uint32_t max_reclaimed;
-	uint32_t *num_reclaimed;
-
-	uint32_t maxPixelRequests;
-private:
-	uint32_t numPixelRequests;
-	bool active;
-	uint64_t off_;
 };
-
 
 class TIFFFormat : public ImageFormat
 {
@@ -75,7 +61,7 @@ class TIFFFormat : public ImageFormat
 						grk_serialize_buf* reclaimed,
 						uint32_t max_reclaimed,
 						uint32_t *num_reclaimed);
-	ClientData clientData;
+	TiffUringSerializer serializer;
 	TIFF* tif;
 	uint32_t chroma_subsample_x;
 	uint32_t chroma_subsample_y;

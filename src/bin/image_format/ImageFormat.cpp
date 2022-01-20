@@ -143,6 +143,15 @@ bool ImageFormat::seek(int64_t pos)
 	return fileIO_->seek(pos);
 }
 
+bool ImageFormat::closeStream(void){
+	bool rc = true;
+	if(!useStdIO_&& !grk::safe_fclose(fileStream_))
+		rc =  false;
+	fileStream_ = nullptr;
+
+	return rc;
+}
+
 uint32_t ImageFormat::maxY(uint32_t rows)
 {
 	return std::min<uint32_t>(rowCount_ + rows, image_->comps[0].h);

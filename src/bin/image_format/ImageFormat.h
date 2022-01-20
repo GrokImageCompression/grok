@@ -45,6 +45,7 @@ class ImageFormat : public IImageFormat
 	bool write(GrkSerializeBuf buffer);
 	bool read(uint8_t* buf, size_t len);
 	bool seek(int64_t pos);
+	bool closeStream(void);
 	uint32_t maxY(uint32_t rows);
 	int getMode(const char* mode);
 	void scaleComponent(grk_image_comp* component, uint8_t precision);
