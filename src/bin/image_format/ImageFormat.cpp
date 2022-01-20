@@ -103,7 +103,7 @@ bool ImageFormat::isOpacity(uint16_t compno){
 		return false;
 	auto comp = image_->comps + compno;
 
-	return (comp->type == GRK_COMPONENT_TYPE_OPACITY || comp->type == GRK_COMPONENT_TYPE_PREMULTIPLIED_OPACITY);
+	return (comp->type == GRK_CHANNEL_TYPE_OPACITY || comp->type == GRK_CHANNEL_TYPE_PREMULTIPLIED_OPACITY);
 }
 bool ImageFormat::hasOpacity(void){
 	if (!image_)
@@ -357,7 +357,7 @@ bool ImageFormat::isChromaSubsampled(grk_image* image)
 		{
 			case 1:
 			case 2:
-				if(comp->type != GRK_COMPONENT_TYPE_COLOUR)
+				if(comp->type != GRK_CHANNEL_TYPE_COLOUR)
 					return false;
 				break;
 			default:

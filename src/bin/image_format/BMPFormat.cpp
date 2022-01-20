@@ -890,8 +890,8 @@ grk_image* BMPFormat::decode(const std::string& fname, grk_cparameters* paramete
 	}
 	if(numcmpts == 4U)
 	{
-		image->comps[3].type = GRK_COMPONENT_TYPE_OPACITY;
-		image->comps[3].association = GRK_COMPONENT_ASSOC_WHOLE_IMAGE;
+		image->comps[3].type = GRK_CHANNEL_TYPE_OPACITY;
+		image->comps[3].association = GRK_CHANNEL_ASSOC_WHOLE_IMAGE;
 	}
 
 	/* set image offset and reference grid */

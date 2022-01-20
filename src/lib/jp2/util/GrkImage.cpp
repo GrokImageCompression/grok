@@ -94,21 +94,21 @@ GrkImage* GrkImage::create(grk_image *src,
 			delete image;
 			return nullptr;
 		}
-		comp->type = GRK_COMPONENT_TYPE_COLOUR;
+		comp->type = GRK_CHANNEL_TYPE_COLOUR;
 		switch(compno)
 		{
 			case 0:
-				comp->association = GRK_COMPONENT_ASSOC_COLOUR_1;
+				comp->association = GRK_CHANNEL_ASSOC_COLOUR_1;
 				break;
 			case 1:
-				comp->association = GRK_COMPONENT_ASSOC_COLOUR_2;
+				comp->association = GRK_CHANNEL_ASSOC_COLOUR_2;
 				break;
 			case 2:
-				comp->association = GRK_COMPONENT_ASSOC_COLOUR_3;
+				comp->association = GRK_CHANNEL_ASSOC_COLOUR_3;
 				break;
 			default:
-				comp->association = GRK_COMPONENT_ASSOC_UNASSOCIATED;
-				comp->type = GRK_COMPONENT_TYPE_UNSPECIFIED;
+				comp->association = GRK_CHANNEL_ASSOC_UNASSOCIATED;
+				comp->type = GRK_CHANNEL_TYPE_UNSPECIFIED;
 				break;
 		}
 	}

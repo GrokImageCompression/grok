@@ -612,24 +612,10 @@ typedef struct _grk_cparameters
 	bool verbose;
 } grk_cparameters;
 
-/**
- Channel definition: channel index, type, association
- */
-typedef struct _grk_channel_description
-{
-	uint16_t cn;
-	uint16_t typ;
-	uint16_t asoc;
-} grk_channel_description;
 
-/**
- Channel definitions and number of definitions
- */
-typedef struct _grk_channel_definition
-{
-	grk_channel_description* descriptions;
-	uint16_t num_channel_descriptions;
-} grk_channel_definition;
+// Note: "component" refers to an image component as decompressed
+// from the code stream, while "channel" refers to a component resulting
+// from the application of a Palette box LUT and a Component mapping box.
 
 /**
  Component mappings: component index, mapping type, palette column
@@ -653,6 +639,56 @@ typedef struct _grk_palette_data
 	bool* channel_sign;
 	uint8_t* channel_prec;
 } grk_palette_data;
+
+
+// Channel Definition box structures and enums.
+// When no Component mapping box is present, it is still possible to have
+// a Channel defintion box, in which case channels are associated with components
+// in the obvious way : channel `k` corresponds to component `k`.
+
+
+// channel type
+typedef enum GRK_CHANNEL_TYPE_
+{
+
+	GRK_CHANNEL_TYPE_COLOUR = 0,
+	GRK_CHANNEL_TYPE_OPACITY = 1,
+	GRK_CHANNEL_TYPE_PREMULTIPLIED_OPACITY = 2,
+	GRK_CHANNEL_TYPE_UNSPECIFIED = 65535U
+
+} GRK_CHANNEL_TYPE;
+
+// channel association
+typedef enum GRK_CHANNEL_ASSOC_
+{
+
+	GRK_CHANNEL_ASSOC_WHOLE_IMAGE = 0,
+	GRK_CHANNEL_ASSOC_COLOUR_1 = 1,
+	GRK_CHANNEL_ASSOC_COLOUR_2 = 2,
+	GRK_CHANNEL_ASSOC_COLOUR_3 = 3,
+	GRK_CHANNEL_ASSOC_UNASSOCIATED = 65535U
+
+} GRK_CHANNEL_ASSOC;
+
+
+/**
+ Channel definition: channel index, type, association
+ */
+typedef struct _grk_channel_description
+{
+	uint16_t channel;
+	uint16_t typ;
+	uint16_t asoc;
+} grk_channel_description;
+
+/**
+ Channel definitions and number of definitions
+ */
+typedef struct _grk_channel_definition
+{
+	grk_channel_description* descriptions;
+	uint16_t num_channel_descriptions;
+} grk_channel_definition;
 
 /**
  ICC profile, palette, channel definition
@@ -889,29 +925,6 @@ typedef grk_object grk_stream;
  ==============================
  */
 
-// component type
-typedef enum GRK_COMPONENT_TYPE
-{
-
-	GRK_COMPONENT_TYPE_COLOUR = 0,
-	GRK_COMPONENT_TYPE_OPACITY = 1,
-	GRK_COMPONENT_TYPE_PREMULTIPLIED_OPACITY = 2,
-	GRK_COMPONENT_TYPE_UNSPECIFIED = 65535U
-
-} GRK_COMPONENT_TYPE;
-
-// component association
-typedef enum GRK_COMPONENT_ASSOC
-{
-
-	GRK_COMPONENT_ASSOC_WHOLE_IMAGE = 0,
-	GRK_COMPONENT_ASSOC_COLOUR_1 = 1,
-	GRK_COMPONENT_ASSOC_COLOUR_2 = 2,
-	GRK_COMPONENT_ASSOC_COLOUR_3 = 3,
-	GRK_COMPONENT_ASSOC_UNASSOCIATED = 65535U
-
-} GRK_COMPONENT_ASSOC;
-
 /**
  * Image component
  * */
@@ -938,8 +951,8 @@ typedef struct _grk_image_comp
 	/* signed */
 	bool sgnd;
 
-	GRK_COMPONENT_TYPE type;
-	GRK_COMPONENT_ASSOC association;
+	GRK_CHANNEL_TYPE type;
+	GRK_CHANNEL_ASSOC association;
 	// component registration coordinates
 	uint16_t Xcrg, Ycrg;
 	/** image component data */

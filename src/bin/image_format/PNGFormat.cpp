@@ -259,8 +259,8 @@ grk_image* PNGFormat::do_decode(const char* read_idf, grk_cparameters* params)
 	/* Set alpha channel. Only non-premultiplied alpha is supported */
 	if((nr_comp & 1U) == 0)
 	{
-		image_->comps[nr_comp - 1U].type = GRK_COMPONENT_TYPE_OPACITY;
-		image_->comps[nr_comp - 1U].association = GRK_COMPONENT_ASSOC_WHOLE_IMAGE;
+		image_->comps[nr_comp - 1U].type = GRK_CHANNEL_TYPE_OPACITY;
+		image_->comps[nr_comp - 1U].association = GRK_CHANNEL_ASSOC_WHOLE_IMAGE;
 	}
 	for(uint32_t i = 0; i < nr_comp; i++)
 		planes_[i] = image_->comps[i].data;

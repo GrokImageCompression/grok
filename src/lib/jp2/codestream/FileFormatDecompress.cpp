@@ -355,14 +355,14 @@ bool FileFormatDecompress::preProcess(void)
 
 		for(uint16_t i = 0; i < n; ++i)
 		{
-			uint16_t cn = info[i].cn;
+			uint16_t channel = info[i].channel;
 
-			if(cn >= img->numcomps)
+			if(channel >= img->numcomps)
 			{
-				GRK_WARN("apply_channel_definition: cn=%u, numcomps=%u", cn, img->numcomps);
+				GRK_WARN("apply_channel_definition: channel=%u, numcomps=%u", channel, img->numcomps);
 				continue;
 			}
-			img->comps[cn].type = (GRK_COMPONENT_TYPE)info[i].typ;
+			img->comps[channel].type = (GRK_CHANNEL_TYPE)info[i].typ;
 		}
 	}
    return true;
@@ -912,22 +912,22 @@ void FileFormatDecompress::apply_channel_definition(GrkImage* image, grk_color* 
 	{
 		/* WATCH: asoc_index = asoc - 1 ! */
 		uint16_t asoc = info[i].asoc;
-		uint16_t cn = info[i].cn;
+		uint16_t channel = info[i].channel;
 
-		if(cn >= image->numcomps)
+		if(channel >= image->numcomps)
 		{
-			GRK_WARN("apply_channel_definition: cn=%u, numcomps=%u", cn, image->numcomps);
+			GRK_WARN("apply_channel_definition: channel=%u, numcomps=%u", channel, image->numcomps);
 			continue;
 		}
-		image->comps[cn].type = (GRK_COMPONENT_TYPE)info[i].typ;
+		image->comps[channel].type = (GRK_CHANNEL_TYPE)info[i].typ;
 
 		// no need to do anything further if this is not a colour channel,
 		// or if this channel is associated with the whole image
-		if(info[i].typ != GRK_COMPONENT_TYPE_COLOUR ||
-		   info[i].asoc == GRK_COMPONENT_ASSOC_WHOLE_IMAGE)
+		if(info[i].typ != GRK_CHANNEL_TYPE_COLOUR ||
+		   info[i].asoc == GRK_CHANNEL_ASSOC_WHOLE_IMAGE)
 			continue;
 
-		if(info[i].typ == GRK_COMPONENT_TYPE_COLOUR && asoc > image->numcomps)
+		if(info[i].typ == GRK_CHANNEL_TYPE_COLOUR && asoc > image->numcomps)
 		{
 			GRK_WARN("apply_channel_definition: association=%u > numcomps=%u", asoc,
 					 image->numcomps);
@@ -936,23 +936,23 @@ void FileFormatDecompress::apply_channel_definition(GrkImage* image, grk_color* 
 		uint16_t asoc_index = (uint16_t)(asoc - 1);
 
 		/* Swap only if color channel */
-		if((cn != asoc_index) && (info[i].typ == GRK_COMPONENT_TYPE_COLOUR))
+		if((channel != asoc_index) && (info[i].typ == GRK_CHANNEL_TYPE_COLOUR))
 		{
 			grk_image_comp saved;
 			uint16_t j;
 
-			memcpy(&saved, &image->comps[cn], sizeof(grk_image_comp));
-			memcpy(&image->comps[cn], &image->comps[asoc_index], sizeof(grk_image_comp));
+			memcpy(&saved, &image->comps[channel], sizeof(grk_image_comp));
+			memcpy(&image->comps[channel], &image->comps[asoc_index], sizeof(grk_image_comp));
 			memcpy(&image->comps[asoc_index], &saved, sizeof(grk_image_comp));
 
 			/* Swap channels in following channel definitions, don't bother with j <= i that are
 			 * already processed */
 			for(j = (uint16_t)(i + 1U); j < n; ++j)
 			{
-				if(info[j].cn == cn)
-					info[j].cn = asoc_index;
-				else if(info[j].cn == asoc_index)
-					info[j].cn = cn;
+				if(info[j].channel == channel)
+					info[j].channel = asoc_index;
+				else if(info[j].channel == asoc_index)
+					info[j].channel = channel;
 				/* asoc is related to color index. Do not update. */
 			}
 		}
@@ -997,18 +997,18 @@ bool FileFormatDecompress::read_channel_definition(uint8_t* p_cdef_header_data,
 	auto cdef_info = color.channel_definition->descriptions;
 	for(i = 0; i < num_channel_descriptions; ++i)
 	{
-		grk_read<uint16_t>(p_cdef_header_data, &cdef_info[i].cn); /* Cn^i */
+		grk_read<uint16_t>(p_cdef_header_data, &cdef_info[i].channel); /* Cn^i */
 		p_cdef_header_data += 2;
 
 		grk_read<uint16_t>(p_cdef_header_data, &cdef_info[i].typ); /* Typ^i */
 		p_cdef_header_data += 2;
-		if(cdef_info[i].typ > 2 && cdef_info[i].typ != GRK_COMPONENT_TYPE_UNSPECIFIED)
+		if(cdef_info[i].typ > 2 && cdef_info[i].typ != GRK_CHANNEL_TYPE_UNSPECIFIED)
 		{
 			GRK_ERROR("CDEF box : Illegal channel type %u", cdef_info[i].typ);
 			goto cleanup;
 		}
 		grk_read<uint16_t>(p_cdef_header_data, &cdef_info[i].asoc); /* Asoc^i */
-		if(cdef_info[i].asoc > 3 && cdef_info[i].asoc != GRK_COMPONENT_ASSOC_UNASSOCIATED)
+		if(cdef_info[i].asoc > 3 && cdef_info[i].asoc != GRK_CHANNEL_ASSOC_UNASSOCIATED)
 		{
 			GRK_ERROR("CDEF box : Illegal channel association %u", cdef_info[i].asoc);
 			goto cleanup;
@@ -1017,18 +1017,18 @@ bool FileFormatDecompress::read_channel_definition(uint8_t* p_cdef_header_data,
 	}
 
 	// cdef sanity check
-	// 1. check for multiple descriptions of the same component with different types
+	// 1. check for multiple descriptions of the same channel with different types
 	for(i = 0; i < color.channel_definition->num_channel_descriptions; ++i)
 	{
-		auto infoi = cdef_info[i];
+		auto info_i = cdef_info[i];
 		for(uint16_t j = 0; j < color.channel_definition->num_channel_descriptions; ++j)
 		{
-			auto infoj = cdef_info[j];
-			if(i != j && infoi.cn == infoj.cn && infoi.typ != infoj.typ)
+			auto info_j = cdef_info[j];
+			if(i != j && info_i.channel == info_j.channel && info_i.typ != info_j.typ)
 			{
-				GRK_ERROR("CDEF box : multiple descriptions of component, %u, with differing types "
+				GRK_ERROR("CDEF box : multiple descriptions of channel %u with differing types "
 						  ": %u and %u.",
-						  infoi.cn, infoi.typ, infoj.typ);
+						  info_i.channel, info_i.typ, info_j.typ);
 				goto cleanup;
 			}
 		}
@@ -1037,18 +1037,18 @@ bool FileFormatDecompress::read_channel_definition(uint8_t* p_cdef_header_data,
 	// 2. check that type/association pairs are unique
 	for(i = 0; i < color.channel_definition->num_channel_descriptions; ++i)
 	{
-		auto infoi = cdef_info[i];
+		auto info_i = cdef_info[i];
 		for(uint16_t j = 0; j < color.channel_definition->num_channel_descriptions; ++j)
 		{
-			auto infoj = cdef_info[j];
-			if(i != j && infoi.cn != infoj.cn && infoi.typ == infoj.typ &&
-			   infoi.asoc == infoj.asoc &&
-			   (infoi.typ != GRK_COMPONENT_TYPE_UNSPECIFIED ||
-				infoi.asoc != GRK_COMPONENT_ASSOC_UNASSOCIATED))
+			auto info_j = cdef_info[j];
+			if(i != j && info_i.channel != info_j.channel && info_i.typ == info_j.typ &&
+			   info_i.asoc == info_j.asoc &&
+			   (info_i.typ != GRK_CHANNEL_TYPE_UNSPECIFIED ||
+				info_i.asoc != GRK_CHANNEL_ASSOC_UNASSOCIATED))
 			{
 				GRK_ERROR(
-					"CDEF box : components %u and %u share same type/association pair (%u,%u).",
-					infoi.cn, infoj.cn, infoj.typ, infoj.asoc);
+					"CDEF box : channels %u and %u share same type/association pair (%u,%u).",
+					info_i.channel, info_j.channel, info_j.typ, info_j.asoc);
 				goto cleanup;
 			}
 		}
@@ -1202,12 +1202,12 @@ bool FileFormatDecompress::check_color(GrkImage* image, grk_color* color)
 			num_channels = (uint32_t)color->palette->num_channels;
 		for(i = 0; i < n; i++)
 		{
-			if(info[i].cn >= num_channels)
+			if(info[i].channel >= num_channels)
 			{
-				GRK_ERROR("Invalid channel index %u (>= %u).", info[i].cn, num_channels);
+				GRK_ERROR("Invalid channel index %u (>= %u).", info[i].channel, num_channels);
 				return false;
 			}
-			if(info[i].asoc == GRK_COMPONENT_ASSOC_UNASSOCIATED)
+			if(info[i].asoc == GRK_CHANNEL_ASSOC_UNASSOCIATED)
 				continue;
 			if(info[i].asoc > 0 && (uint32_t)(info[i].asoc - 1) >= num_channels)
 			{
@@ -1223,7 +1223,7 @@ bool FileFormatDecompress::check_color(GrkImage* image, grk_color* color)
 		{
 			for(i = 0; i < n; ++i)
 			{
-				if((uint32_t)info[i].cn == (num_channels - 1U))
+				if((uint32_t)info[i].channel == (num_channels - 1U))
 					break;
 			}
 			if(i == n)

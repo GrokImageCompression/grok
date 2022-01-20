@@ -433,7 +433,7 @@ uint8_t* FileFormatCompress::write_channel_definition(uint32_t* p_nb_bytes_writt
 	for(uint16_t i = 0U; i < color.channel_definition->num_channel_descriptions; ++i)
 	{
 		/* Cni */
-		grk_write<uint16_t>(current_cdef_ptr, color.channel_definition->descriptions[i].cn);
+		grk_write<uint16_t>(current_cdef_ptr, color.channel_definition->descriptions[i].channel);
 		current_cdef_ptr += 2;
 		/* Typi */
 		grk_write<uint16_t>(current_cdef_ptr, color.channel_definition->descriptions[i].typ);
@@ -811,7 +811,7 @@ bool FileFormatCompress::initCompress(grk_cparameters* parameters, GrkImage* ima
 	/* Channel Definition box */
 	for(i = 0; i < image->numcomps; i++)
 	{
-		if(image->comps[i].type != GRK_COMPONENT_TYPE_COLOUR)
+		if(image->comps[i].type != GRK_CHANNEL_TYPE_COLOUR)
 		{
 			alpha_count++;
 			// technically, this is an error, but we will let it pass
@@ -850,15 +850,15 @@ bool FileFormatCompress::initCompress(grk_cparameters* parameters, GrkImage* ima
 		for(i = 0U; i < color_channels; i++)
 		{
 			/* cast is valid : image->numcomps [1,16384] */
-			color.channel_definition->descriptions[i].cn = (uint16_t)i;
-			color.channel_definition->descriptions[i].typ = GRK_COMPONENT_TYPE_COLOUR;
+			color.channel_definition->descriptions[i].channel = (uint16_t)i;
+			color.channel_definition->descriptions[i].typ = GRK_CHANNEL_TYPE_COLOUR;
 			/* No overflow + cast is valid : image->numcomps [1,16384] */
 			color.channel_definition->descriptions[i].asoc = (uint16_t)(i + 1U);
 		}
 		for(; i < image->numcomps; i++)
 		{
 			/* cast is valid : image->numcomps [1,16384] */
-			color.channel_definition->descriptions[i].cn = (uint16_t)i;
+			color.channel_definition->descriptions[i].channel = (uint16_t)i;
 			color.channel_definition->descriptions[i].typ = image->comps[i].type;
 			color.channel_definition->descriptions[i].asoc = image->comps[i].association;
 		}

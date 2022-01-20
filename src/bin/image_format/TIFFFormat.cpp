@@ -321,11 +321,11 @@ bool TIFFFormat::encodeHeader(void)
 	for(uint32_t i = 0U; i < image_->numcomps; ++i)
 	{
 		auto type = image_->comps[i].type;
-		assert(type == GRK_COMPONENT_TYPE_COLOUR ||
-				type ==GRK_COMPONENT_TYPE_OPACITY ||
-				type == GRK_COMPONENT_TYPE_PREMULTIPLIED_OPACITY ||
-				type == GRK_COMPONENT_TYPE_UNSPECIFIED);
-		if(image_->comps[i].type != GRK_COMPONENT_TYPE_COLOUR)
+		assert(type == GRK_CHANNEL_TYPE_COLOUR ||
+				type ==GRK_CHANNEL_TYPE_OPACITY ||
+				type == GRK_CHANNEL_TYPE_PREMULTIPLIED_OPACITY ||
+				type == GRK_CHANNEL_TYPE_UNSPECIFIED);
+		if(image_->comps[i].type != GRK_CHANNEL_TYPE_COLOUR)
 		{
 			if(firstExtraChannel == -1)
 				firstExtraChannel = (int32_t)i;
@@ -440,11 +440,11 @@ bool TIFFFormat::encodeHeader(void)
 		for(uint32_t i = 0U; i < numcomps; ++i)
 		{
 			auto comp = image_->comps + i;
-			if(comp->type != GRK_COMPONENT_TYPE_COLOUR)
+			if(comp->type != GRK_CHANNEL_TYPE_COLOUR)
 			{
-				if(comp->type == GRK_COMPONENT_TYPE_OPACITY ||
-				   comp->type == GRK_COMPONENT_TYPE_PREMULTIPLIED_OPACITY)
-					out[numExtraChannels++] = (image_->comps[i].type == GRK_COMPONENT_TYPE_OPACITY)
+				if(comp->type == GRK_CHANNEL_TYPE_OPACITY ||
+				   comp->type == GRK_CHANNEL_TYPE_PREMULTIPLIED_OPACITY)
+					out[numExtraChannels++] = (image_->comps[i].type == GRK_CHANNEL_TYPE_OPACITY)
 												  ? EXTRASAMPLE_UNASSALPHA
 												  : EXTRASAMPLE_ASSOCALPHA;
 				else
@@ -1284,8 +1284,8 @@ grk_image* TIFFFormat::decode(const std::string& filename, grk_cparameters* para
 
 		if(extrasamples > 0 && j >= numColourChannels)
 		{
-			comp->type = GRK_COMPONENT_TYPE_UNSPECIFIED;
-			comp->association = GRK_COMPONENT_ASSOC_UNASSOCIATED;
+			comp->type = GRK_CHANNEL_TYPE_UNSPECIFIED;
+			comp->association = GRK_CHANNEL_ASSOC_UNASSOCIATED;
 			auto alphaType = sampleinfo[j - numColourChannels];
 			if(alphaType == EXTRASAMPLE_ASSOCALPHA)
 			{
@@ -1293,13 +1293,13 @@ grk_image* TIFFFormat::decode(const std::string& filename, grk_cparameters* para
 					spdlog::warn(
 						"TIFFFormat::decode: Found more than one associated alpha channel");
 				alpha_count++;
-				comp->type = GRK_COMPONENT_TYPE_PREMULTIPLIED_OPACITY;
+				comp->type = GRK_CHANNEL_TYPE_PREMULTIPLIED_OPACITY;
 				found_assocalpha = true;
 			}
 			else if(alphaType == EXTRASAMPLE_UNASSALPHA)
 			{
 				alpha_count++;
-				comp->type = GRK_COMPONENT_TYPE_OPACITY;
+				comp->type = GRK_CHANNEL_TYPE_OPACITY;
 			}
 			else
 			{
@@ -1309,24 +1309,24 @@ grk_image* TIFFFormat::decode(const std::string& filename, grk_cparameters* para
 				   (color_space == GRK_CLRSPC_SRGB && numcomps == 4))
 				{
 					alpha_count++;
-					comp->type = GRK_COMPONENT_TYPE_OPACITY;
+					comp->type = GRK_CHANNEL_TYPE_OPACITY;
 				}
 			}
 		}
-		if(comp->type == GRK_COMPONENT_TYPE_OPACITY ||
-		   comp->type == GRK_COMPONENT_TYPE_PREMULTIPLIED_OPACITY)
+		if(comp->type == GRK_CHANNEL_TYPE_OPACITY ||
+		   comp->type == GRK_CHANNEL_TYPE_PREMULTIPLIED_OPACITY)
 		{
 			switch(alpha_count)
 			{
 				case 1:
-					comp->association = GRK_COMPONENT_ASSOC_WHOLE_IMAGE;
+					comp->association = GRK_CHANNEL_ASSOC_WHOLE_IMAGE;
 					break;
 				case 2:
-					comp->association = GRK_COMPONENT_ASSOC_UNASSOCIATED;
+					comp->association = GRK_CHANNEL_ASSOC_UNASSOCIATED;
 					break;
 				default:
-					comp->type = GRK_COMPONENT_TYPE_UNSPECIFIED;
-					comp->association = GRK_COMPONENT_ASSOC_UNASSOCIATED;
+					comp->type = GRK_CHANNEL_TYPE_UNSPECIFIED;
+					comp->association = GRK_CHANNEL_ASSOC_UNASSOCIATED;
 					break;
 			}
 		}
