@@ -460,59 +460,9 @@ bool TIFFFormat::encodeHeader(void)
 cleanup:
 	return success;
 }
-bool TIFFFormat::encodePixelsSync(grk_serialize_buf pixels){
-
-	bool rc =  encodePixelsCore(pixels,reclaimed_,reclaimSize,&num_reclaimed_);
-#ifndef GROK_HAVE_URING
-		pool.put(GrkSerializeBuf(pixels));
-#else
-	for (uint32_t i = 0; i < num_reclaimed_; ++i)
-		pool.put(GrkSerializeBuf(reclaimed_[i]));
-#endif
-	num_reclaimed_ = 0;
-
-	return rc;
-}
-bool TIFFFormat::encodePixelsCore(grk_serialize_buf pixels,
-							grk_serialize_buf* reclaimed,
-							uint32_t max_reclaimed,
-							uint32_t *num_reclaimed) {
-	tmsize_t written = 0;
-	{
-		clientData.scheduled.pooled = true;
-		clientData.reclaimed = reclaimed;
-		clientData.max_reclaimed = max_reclaimed;
-		clientData.num_reclaimed = num_reclaimed;
-		written = TIFFWriteEncodedStrip(tif, (tmsize_t)pixels.index, pixels.data, (tmsize_t)pixels.dataLen);
-		if (written == -1) {
-			encodeState |= IMAGE_FORMAT_ERROR;
-		}
-		else if (++stripCount == clientData.maxPixelRequests){
-			encodeFinish();
-			encodeState |= IMAGE_FORMAT_ENCODED_PIXELS;
-		}
-	}
-	if(written == -1)
-	{
-		spdlog::error("TIFFFormat::encodeRows: error in TIFFWriteEncodedStrip");
-		return false;
-	}
-
-	return true;
-}
-bool TIFFFormat::encodePixels(grk_serialize_buf pixels,
-							grk_serialize_buf* reclaimed,
-							uint32_t max_reclaimed,
-							uint32_t *num_reclaimed) {
-
-	std::unique_lock<std::mutex> lk(encodePixelmutex);
-	if (!isHeaderEncoded()){
-		if (!encodeHeader())
-			return false;
-	}
-
-	return encodePixelsCore(pixels,reclaimed,max_reclaimed, num_reclaimed);
-}
+/***
+ * Override of ImageFormat::encodeRows
+ */
 bool TIFFFormat::encodeRows()
 {
 	if (encodeState & IMAGE_FORMAT_ENCODED_PIXELS)
@@ -618,6 +568,62 @@ bool TIFFFormat::encodeRows()
 cleanup:
 
 	return success;
+}
+/***
+ * Synchronous pixel encoding
+ */
+bool TIFFFormat::encodePixelsSync(grk_serialize_buf pixels){
+
+	bool rc =  encodePixelsCore(pixels,reclaimed_,reclaimSize,&num_reclaimed_);
+#ifndef GROK_HAVE_URING
+		pool.put(GrkSerializeBuf(pixels));
+#else
+	for (uint32_t i = 0; i < num_reclaimed_; ++i)
+		pool.put(GrkSerializeBuf(reclaimed_[i]));
+#endif
+	num_reclaimed_ = 0;
+
+	return rc;
+}
+/***
+ * Asynchronous pixel encoding
+ */
+bool TIFFFormat::encodePixels(grk_serialize_buf pixels,
+							grk_serialize_buf* reclaimed,
+							uint32_t max_reclaimed,
+							uint32_t *num_reclaimed) {
+
+	std::unique_lock<std::mutex> lk(encodePixelmutex);
+	if (!isHeaderEncoded()){
+		if (!encodeHeader())
+			return false;
+	}
+
+	return encodePixelsCore(pixels,reclaimed,max_reclaimed, num_reclaimed);
+}
+/***
+ * Common core pixel encoding
+ */
+bool TIFFFormat::encodePixelsCore(grk_serialize_buf pixels,
+							grk_serialize_buf* reclaimed,
+							uint32_t max_reclaimed,
+							uint32_t *num_reclaimed) {
+	clientData.scheduled.pooled = true;
+	clientData.reclaimed = reclaimed;
+	clientData.max_reclaimed = max_reclaimed;
+	clientData.num_reclaimed = num_reclaimed;
+	tmsize_t  written = TIFFWriteEncodedStrip(tif, (tmsize_t)pixels.index, pixels.data, (tmsize_t)pixels.dataLen);
+	if (written == -1) {
+		encodeState |= IMAGE_FORMAT_ERROR;
+	}
+	else if (++stripCount == clientData.maxPixelRequests){
+		encodeFinish();
+		encodeState |= IMAGE_FORMAT_ENCODED_PIXELS;
+	}
+	if(written == -1)
+		spdlog::error("TIFFFormat::encodeRows: error in TIFFWriteEncodedStrip");
+
+	return (written != -1);
 }
 bool TIFFFormat::encodeFinish(void)
 {
