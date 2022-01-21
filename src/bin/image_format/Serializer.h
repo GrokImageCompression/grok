@@ -27,7 +27,9 @@ struct Serializer {
 	void initPixelRequest(grk_serialize_buf* reclaimed,
 						uint32_t max_reclaimed,
 						uint32_t *num_reclaimed);
-	void incrementPixelRequest(void);
+	uint32_t getNumPixelRequests(void);
+	uint64_t getOffset(void);
+	uint32_t incrementPixelRequest(void);
 	bool allPixelRequestsComplete(void);
 private:
 #ifdef GROK_HAVE_URING
@@ -37,8 +39,8 @@ private:
 	grk_serialize_buf* reclaimed_;
 	uint32_t max_reclaimed_;
 	uint32_t *num_reclaimed_;
-	uint32_t numPixelRequests;
-	uint32_t maxPixelRequests;
+	uint32_t numPixelRequests_;
+	uint32_t maxPixelRequests_;
 #ifndef _WIN32
 	int getMode(const char* mode);
 	int fd_;

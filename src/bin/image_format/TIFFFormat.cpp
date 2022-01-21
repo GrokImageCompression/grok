@@ -106,7 +106,6 @@ TIFFFormat::TIFFFormat():  	tif(nullptr),
 							chroma_subsample_x(1),
 							chroma_subsample_y(1),
 							rowsWritten(0),
-							strip(0),
 							units(0),
 							bytesToWrite(0),
 							numcomps(0)
@@ -398,7 +397,6 @@ bool TIFFFormat::encodePixels()
 		planes[i] = image_->comps[i].data;
 	uint32_t h = rowsWritten;
 	GrkSerializeBuf packedBuf;
-	uint64_t offset = 0;
 	uint64_t packedLen = (uint64_t)TIFFVStripSize(tif, (uint32_t)image_->rowsPerStrip);
 
 	if(isFinalOutputSubsampled(image_)) {
@@ -410,13 +408,12 @@ bool TIFFFormat::encodePixels()
 			if(rowsSoFar > 0 && (rowsSoFar % image_->rowsPerStrip == 0))
 			{
 				packedBuf.dataLen = bytesToWrite;
-				packedBuf.offset = offset;
-				packedBuf.index = strip++;
+				packedBuf.offset = serializer.getOffset();
+				packedBuf.index = serializer.getNumPixelRequests();
 				if(bytesToWrite && !encodePixelsApplication(packedBuf))
 					goto cleanup;
 				packedBuf = pool.get(packedLen);
 				bufPtr = (int8_t*)(packedBuf.data);
-				offset += bytesToWrite;
 				bytesToWrite = 0;
 			}
 			size_t xpos = 0;
@@ -447,8 +444,8 @@ bool TIFFFormat::encodePixels()
 			rowsWritten += h - chroma_subsample_y - rowsWritten;
 		// cleanup
 		packedBuf.dataLen = bytesToWrite;
-		packedBuf.offset = offset;
-		packedBuf.index = strip++;
+		packedBuf.offset = serializer.getOffset();
+		packedBuf.index = serializer.getNumPixelRequests();
 		if(bytesToWrite && !encodePixelsApplication(packedBuf))
 			goto cleanup;
 	}
@@ -471,16 +468,15 @@ bool TIFFFormat::encodePixels()
 							stripRows,
 							0);
 			packedBuf.pooled = true;
-			packedBuf.offset = offset;
+			packedBuf.offset = serializer.getOffset();
 			packedBuf.dataLen = image_->packedRowBytes * stripRows;
-			packedBuf.index = strip++;
+			packedBuf.index = serializer.getNumPixelRequests();
 			if(!encodePixelsApplication(packedBuf)) {
 				delete iter;
 				goto cleanup;
 			}
 			rowsWritten += stripRows;
 			h += stripRows;
-			offset += image_->packedRowBytes * stripRows;
 		}
 		delete iter;
 	}
@@ -495,11 +491,12 @@ cleanup:
 bool TIFFFormat::encodePixelsApplication(grk_serialize_buf pixels){
 
 	bool rc =  encodePixelsCore(pixels,reclaimed_,reclaimSize,&num_reclaimed_);
-#ifndef GROK_HAVE_URING
-		pool.put(GrkSerializeBuf(pixels));
-#else
+#ifdef GROK_HAVE_URING
 	for (uint32_t i = 0; i < num_reclaimed_; ++i)
 		pool.put(GrkSerializeBuf(reclaimed_[i]));
+#else
+	// for synchronous encode, we immediately return the pixel buffer to the pool
+	pool.put(GrkSerializeBuf(pixels));
 #endif
 	num_reclaimed_ = 0;
 
@@ -516,10 +513,8 @@ bool TIFFFormat::encodePixels(grk_serialize_buf pixels,
 	std::unique_lock<std::mutex> lk(encodePixelmutex);
 	if (encodeState & IMAGE_FORMAT_ENCODED_PIXELS)
 		return true;
-	if (!isHeaderEncoded()){
-		if (!encodeHeader())
-			return false;
-	}
+	if (!isHeaderEncoded() && !encodeHeader())
+		return false;
 
 	return encodePixelsCore(pixels,reclaimed,max_reclaimed, num_reclaimed);
 }

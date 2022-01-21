@@ -5,8 +5,8 @@ Serializer::Serializer(void) :
 							reclaimed_(nullptr),
 							max_reclaimed_(0),
 							num_reclaimed_(nullptr),
-							numPixelRequests(0),
-							maxPixelRequests(0),
+							numPixelRequests_(0),
+							maxPixelRequests_(0),
 #ifndef _WIN32
 							fd_(0),
 #endif
@@ -14,7 +14,7 @@ Serializer::Serializer(void) :
 							off_(0)
 {}
 void Serializer::init(grk_image *image){
-	maxPixelRequests = ((image->y1 - image->y0) + image->rowsPerStrip - 1) / image->rowsPerStrip;
+	maxPixelRequests_ = ((image->y1 - image->y0) + image->rowsPerStrip - 1) / image->rowsPerStrip;
 }
 #ifndef _WIN32
 int Serializer::getFd(void){
@@ -85,8 +85,8 @@ bool Serializer::write(uint8_t *buf, uint64_t size){
 	uring.write(scheduled_,reclaimed_,max_reclaimed_,num_reclaimed_);
 	off_ += scheduled_.dataLen;
 	if (scheduled_.pooled)
-		numPixelRequests++;
-	if (numPixelRequests == maxPixelRequests){
+		numPixelRequests_++;
+	if (numPixelRequests_ == maxPixelRequests_){
 		uring.close();
 		asynchActive_ = false;
 	}
@@ -106,14 +106,23 @@ void Serializer::initPixelRequest(grk_serialize_buf* reclaimed,
 	max_reclaimed_ = max_reclaimed;
 	num_reclaimed_ = num_reclaimed;
 }
-void Serializer::incrementPixelRequest(void){
+uint32_t Serializer::incrementPixelRequest(void){
 // write method will increment numPixelRequests if uring is enabled
 #ifndef GROK_HAVE_URING
-	numPixelRequests++;
+	numPixelRequests_++;
 #endif
+
+	return numPixelRequests_;
+}
+
+uint32_t Serializer::getNumPixelRequests(void){
+	return numPixelRequests_;
+}
+uint64_t Serializer::getOffset(void){
+	return off_;
 }
 bool Serializer::allPixelRequestsComplete(void){
-	return numPixelRequests == maxPixelRequests;
+	return numPixelRequests_ == maxPixelRequests_;
 }
 void Serializer::clear(void){
 #ifdef GROK_HAVE_URING
