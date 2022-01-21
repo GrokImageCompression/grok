@@ -38,10 +38,8 @@ class TIFFFormat : public ImageFormat
 	~TIFFFormat();
 	bool encodeHeader(void) override;
 	bool encodePixels() override;
-	bool encodePixels(grk_serialize_buf pixels,
-						grk_serialize_buf* reclaimed,
-						uint32_t max_reclaimed,
-						uint32_t *num_reclaimed) override;
+	bool encodePixels(grk_serialize_buf pixels, grk_serialize_buf* reclaimed,
+					  uint32_t max_reclaimed, uint32_t* num_reclaimed) override;
 	bool encodeFinish(void) override;
 	grk_image* decode(const std::string& filename, grk_cparameters* parameters) override;
 
@@ -50,10 +48,8 @@ class TIFFFormat : public ImageFormat
 	TIFF* MyTIFFOpen(const char* name, const char* mode);
 #endif
 	bool encodePixelsApplication(grk_serialize_buf pixels);
-	bool encodePixelsCore(grk_serialize_buf pixels,
-						grk_serialize_buf* reclaimed,
-						uint32_t max_reclaimed,
-						uint32_t *num_reclaimed);
+	bool encodePixelsCore(grk_serialize_buf pixels, grk_serialize_buf* reclaimed,
+						  uint32_t max_reclaimed, uint32_t* num_reclaimed);
 	Serializer serializer;
 	TIFF* tif;
 	uint32_t chroma_subsample_x;

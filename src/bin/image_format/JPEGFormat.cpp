@@ -346,7 +346,7 @@ JPEGFormat::JPEGFormat(void)
 
 bool JPEGFormat::encodeHeader(void)
 {
-	if (isHeaderEncoded())
+	if(isHeaderEncoded())
 		return true;
 
 	int32_t firstAlpha = -1;
@@ -434,8 +434,8 @@ bool JPEGFormat::encodeHeader(void)
 
 	if(prec != 1 && prec != 2 && prec != 4 && prec != 8)
 	{
-		spdlog::error("JPEGFormat::encodeHeader: can not create {}\n\twrong bit_depth {}", fileName_,
-					  prec);
+		spdlog::error("JPEGFormat::encodeHeader: can not create {}\n\twrong bit_depth {}",
+					  fileName_, prec);
 		return false;
 	}
 	// Alpha channels
@@ -545,7 +545,7 @@ bool JPEGFormat::encodePixels(void)
 	 * more if you wish, though.
 	 */
 	auto iter = grk::InterleaverFactory<int32_t>::makeInterleaver(8);
-	if (!iter)
+	if(!iter)
 		return false;
 	while(cinfo.next_scanline < cinfo.image_height)
 	{
@@ -553,14 +553,8 @@ bool JPEGFormat::encodePixels(void)
 		 * Here the array is only one element long, but you could pass
 		 * more than one scanline at a time if that's more convenient.
 		 */
-		iter->interleave((int32_t**)planes,
-						image_->numcomps,
-						(uint8_t*)buffer,
-						image_->comps[0].w,
-						image_->comps[0].stride,
-						image_->comps[0].w,
-						1,
-						adjust);
+		iter->interleave((int32_t**)planes, image_->numcomps, (uint8_t*)buffer, image_->comps[0].w,
+						 image_->comps[0].stride, image_->comps[0].w, 1, adjust);
 		JSAMPROW row_pointer[1]; /* pointer to JSAMPLE row[s] */
 		row_pointer[0] = buffer;
 		(void)jpeg_write_scanlines(&cinfo, row_pointer, 1);

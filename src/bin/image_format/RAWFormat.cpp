@@ -149,8 +149,7 @@ bool RAWFormat::encodePixels(void)
 			if(sgnd)
 				rc = writeToFile<int16_t>(fileStream_, bigEndian, ptr, w, stride, h, lower, upper);
 			else
-				rc =
-					writeToFile<uint16_t>(fileStream_, bigEndian, ptr, w, stride, h, lower, upper);
+				rc = writeToFile<uint16_t>(fileStream_, bigEndian, ptr, w, stride, h, lower, upper);
 			if(!rc)
 				spdlog::error("fimagetoraw: ailed to write bytes for {}", outfile);
 		}

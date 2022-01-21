@@ -69,6 +69,7 @@ class BMPFormat : public ImageFormat
 	bool encodePixels(void) override;
 	bool encodeFinish(void) override;
 	grk_image* decode(const std::string& filename, grk_cparameters* parameters) override;
+
   private:
 	uint64_t off_;
 	grk_image* bmp8toimage(const uint8_t* pData, uint32_t srcStride, grk_image* image,
@@ -83,17 +84,17 @@ class BMPFormat : public ImageFormat
 	bool read_rle8_data(uint8_t* pData, uint32_t stride, uint32_t width, uint32_t height);
 	bool read_rle4_data(uint8_t* pData, uint32_t stride, uint32_t width, uint32_t height);
 
-	uint8_t *header_;
+	uint8_t* header_;
 	uint64_t srcIndex_;
 	GRK_BITMAPFILEHEADER fileHeader_;
 	GRK_BITMAPINFOHEADER infoHeader_;
 
 	void conv_1u32s(uint8_t const* pSrc, int32_t srcStride, int32_t* pDst, int32_t dstStride,
-						uint32_t destWidth, uint32_t destHeight);
+					uint32_t destWidth, uint32_t destHeight);
 	void conv_4u32s(uint8_t const* pSrc, int32_t srcStride, int32_t* pDst, int32_t dstStride,
-						uint32_t destWidth, uint32_t destHeight);
+					uint32_t destWidth, uint32_t destHeight);
 	void conv_8u32s(uint8_t const* pSrc, int32_t srcStride, int32_t* pDst, int32_t dstStride,
-						uint32_t width, uint32_t height);
+					uint32_t width, uint32_t height);
 
 	void applyLUT8u_1u32s_C1P3R(uint8_t const* pSrc, int32_t srcStride, int32_t* const* pDst,
 								int32_t const* pDstStride, uint8_t const* const* pLUT,

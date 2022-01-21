@@ -58,28 +58,26 @@ void put_int(T** buf, T val)
 	(*buf)++;
 }
 
-
-BMPFormat::BMPFormat(void) : off_(0),
-							header_(nullptr),
-							srcIndex_(0)
+BMPFormat::BMPFormat(void) : off_(0), header_(nullptr), srcIndex_(0)
 {
 	memset(&fileHeader_, 0, sizeof(GRK_BITMAPFILEHEADER));
 	memset(&infoHeader_, 0, sizeof(GRK_BITMAPINFOHEADER));
 }
 
-BMPFormat::~BMPFormat(void){
+BMPFormat::~BMPFormat(void)
+{
 	delete[] header_;
 }
 
 bool BMPFormat::encodeHeader(void)
 {
-	if (isHeaderEncoded())
+	if(isHeaderEncoded())
 		return true;
 
 #ifdef GROK_HAVE_URING
 	delete fileIO_;
 	fileIO_ = new FileUringIO();
-	if (!fileIO_->open(fileName_, "w"))
+	if(!fileIO_->open(fileName_, "w"))
 		return false;
 #else
 	if(!openFile())
@@ -93,7 +91,7 @@ bool BMPFormat::encodeHeader(void)
 	uint32_t colours_used, lut_size;
 	uint32_t full_header_size, info_header_size, icc_size = 0;
 	uint32_t header_plus_lut = 0;
-	uint8_t *header_ptr = nullptr;
+	uint8_t* header_ptr = nullptr;
 	GrkSerializeBuf destBuff;
 
 	if(!allComponentsSanityCheck(image_, false))
@@ -140,8 +138,7 @@ bool BMPFormat::encodeHeader(void)
 	put_int((uint32_t**)(&header_ptr), image_size);
 	for(uint32_t i = 0; i < 2; ++i)
 	{
-		double cap =
-			(image_->capture_resolution[i] != 0) ? image_->capture_resolution[i] : 7834.0;
+		double cap = (image_->capture_resolution[i] != 0) ? image_->capture_resolution[i] : 7834.0;
 		put_int((uint32_t**)(&header_ptr), (uint32_t)(cap + 0.5f));
 	}
 	put_int((uint32_t**)(&header_ptr), colours_used);
@@ -190,10 +187,11 @@ cleanup:
 
 bool BMPFormat::encodePixels()
 {
-	if (encodeState & IMAGE_FORMAT_ENCODED_PIXELS)
+	if(encodeState & IMAGE_FORMAT_ENCODED_PIXELS)
 		return true;
-	if (!isHeaderEncoded()){
-		if (!encodeHeader())
+	if(!isHeaderEncoded())
+	{
+		if(!encodeHeader())
 			return false;
 	}
 	bool ret = false;
@@ -310,7 +308,6 @@ bool BMPFormat::encodeFinish(void)
 	return ImageFormat::encodeFinish();
 }
 
-
 grk_image* BMPFormat::bmp1toimage(const uint8_t* pData, uint32_t srcStride, grk_image* image,
 								  uint8_t const* const* pLUT)
 {
@@ -319,8 +316,8 @@ grk_image* BMPFormat::bmp1toimage(const uint8_t* pData, uint32_t srcStride, grk_
 	auto pSrc = pData + (height - 1U) * srcStride;
 	if(image->numcomps == 1U)
 	{
-		conv_1u32s(pSrc, -(int32_t)srcStride, image->comps[0].data,
-					   (int32_t)image->comps[0].stride, width, height);
+		conv_1u32s(pSrc, -(int32_t)srcStride, image->comps[0].data, (int32_t)image->comps[0].stride,
+				   width, height);
 	}
 	else
 	{
@@ -346,8 +343,8 @@ grk_image* BMPFormat::bmp4toimage(const uint8_t* pData, uint32_t srcStride, grk_
 	auto pSrc = pData + (height - 1U) * srcStride;
 	if(image->numcomps == 1U)
 	{
-		conv_4u32s(pSrc, -(int32_t)srcStride, image->comps[0].data,
-					   (int32_t)image->comps[0].stride, width, height);
+		conv_4u32s(pSrc, -(int32_t)srcStride, image->comps[0].data, (int32_t)image->comps[0].stride,
+				   width, height);
 	}
 	else
 	{
@@ -375,7 +372,7 @@ grk_image* BMPFormat::bmp8toimage(const uint8_t* pData, uint32_t srcStride, grk_
 	if(image->numcomps == 1U)
 	{
 		conv_8u32s(pSrc, s_stride, image->comps[0].data, (int32_t)image->comps[0].stride, width,
-					   height);
+				   height);
 	}
 	else
 	{
@@ -710,8 +707,8 @@ grk_image* BMPFormat::decode(const std::string& fname, grk_cparameters* paramete
 	is_os2 = infoHeader_.biSize == BITMAPCOREHEADER_LENGTH;
 	if(is_os2)
 	{
-		uint32_t num_entries =
-			(fileHeader_.bfOffBits - fileHeaderSize - BITMAPCOREHEADER_LENGTH) / os2_palette_element_len;
+		uint32_t num_entries = (fileHeader_.bfOffBits - fileHeaderSize - BITMAPCOREHEADER_LENGTH) /
+							   os2_palette_element_len;
 		if(num_entries != (uint32_t)(1 << infoHeader_.biBitCount))
 		{
 			spdlog::error("OS2: calculated number of entries {} "
@@ -970,8 +967,8 @@ grk_image* BMPFormat::decode(const std::string& fname, grk_cparameters* paramete
 						bool fail = false;
 						bool hasAlpha = image->numcomps > 3;
 						// sanity check on bit masks
-						uint32_t m[4] = {infoHeader_.biRedMask, infoHeader_.biGreenMask, infoHeader_.biBlueMask,
-										 infoHeader_.biAlphaMask};
+						uint32_t m[4] = {infoHeader_.biRedMask, infoHeader_.biGreenMask,
+										 infoHeader_.biBlueMask, infoHeader_.biAlphaMask};
 						for(uint32_t i = 0; i < image->numcomps; ++i)
 						{
 							int lead = grk::count_leading_zeros(m[i]);
@@ -1027,8 +1024,9 @@ grk_image* BMPFormat::decode(const std::string& fname, grk_cparameters* paramete
 						break;
 					}
 
-					mask32toimage(pData, bmpStride, image, infoHeader_.biRedMask, infoHeader_.biGreenMask,
-								  infoHeader_.biBlueMask, infoHeader_.biAlphaMask);
+					mask32toimage(pData, bmpStride, image, infoHeader_.biRedMask,
+								  infoHeader_.biGreenMask, infoHeader_.biBlueMask,
+								  infoHeader_.biAlphaMask);
 					break;
 				case 16: /* BITFIELDS bit mask*/
 					if((infoHeader_.biRedMask == 0U) && (infoHeader_.biGreenMask == 0U) &&
@@ -1038,8 +1036,9 @@ grk_image* BMPFormat::decode(const std::string& fname, grk_cparameters* paramete
 						infoHeader_.biGreenMask = 0x07E0U;
 						infoHeader_.biBlueMask = 0x001FU;
 					}
-					mask16toimage(pData, bmpStride, image, infoHeader_.biRedMask, infoHeader_.biGreenMask,
-								  infoHeader_.biBlueMask, infoHeader_.biAlphaMask);
+					mask16toimage(pData, bmpStride, image, infoHeader_.biRedMask,
+								  infoHeader_.biGreenMask, infoHeader_.biBlueMask,
+								  infoHeader_.biAlphaMask);
 					break;
 				default:
 					handled = false;
@@ -1066,8 +1065,8 @@ cleanup:
 	return image;
 }
 
-void BMPFormat::conv_1u32s(uint8_t const* pSrc, int32_t srcStride, int32_t* pDst,
-							   int32_t dstStride, uint32_t destWidth, uint32_t destHeight)
+void BMPFormat::conv_1u32s(uint8_t const* pSrc, int32_t srcStride, int32_t* pDst, int32_t dstStride,
+						   uint32_t destWidth, uint32_t destHeight)
 {
 	uint32_t absSrcStride = (uint32_t)std::abs(srcStride);
 	for(uint32_t y = destHeight; y != 0U; --y)
@@ -1088,8 +1087,8 @@ void BMPFormat::conv_1u32s(uint8_t const* pSrc, int32_t srcStride, int32_t* pDst
 	}
 }
 
-void BMPFormat::conv_4u32s(uint8_t const* pSrc, int32_t srcStride, int32_t* pDst,
-							   int32_t dstStride, uint32_t destWidth, uint32_t destHeight)
+void BMPFormat::conv_4u32s(uint8_t const* pSrc, int32_t srcStride, int32_t* pDst, int32_t dstStride,
+						   uint32_t destWidth, uint32_t destHeight)
 {
 	uint32_t absSrcStride = (uint32_t)std::abs(srcStride);
 	for(uint32_t y = destHeight; y != 0U; --y)
@@ -1110,8 +1109,8 @@ void BMPFormat::conv_4u32s(uint8_t const* pSrc, int32_t srcStride, int32_t* pDst
 	}
 }
 
-void BMPFormat::conv_8u32s(uint8_t const* pSrc, int32_t srcStride, int32_t* pDst,
-							   int32_t dstStride, uint32_t width, uint32_t height)
+void BMPFormat::conv_8u32s(uint8_t const* pSrc, int32_t srcStride, int32_t* pDst, int32_t dstStride,
+						   uint32_t width, uint32_t height)
 {
 	for(uint32_t y = height; y != 0U; --y)
 	{

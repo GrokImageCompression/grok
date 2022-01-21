@@ -28,9 +28,9 @@ const uint32_t available_packet_len_bytes_per_plt = USHRT_MAX - 1 - 4;
 // const uint32_t min_packets_per_full_plt = available_packet_len_bytes_per_plt / 5;
 
 PacketLengthMarkers::PacketLengthMarkers()
-	: markers_(new PL_MAP()), markerIndex_(0), curr_vec_(nullptr), packetIndex_(0),
-	  packet_len_(0), markerBytesWritten_(0), totalBytesWritten_(0), marker_len_cache_(0),
-	  stream_(nullptr), preCalculatedMarkerLengths(false)
+	: markers_(new PL_MAP()), markerIndex_(0), curr_vec_(nullptr), packetIndex_(0), packet_len_(0),
+	  markerBytesWritten_(0), totalBytesWritten_(0), marker_len_cache_(0), stream_(nullptr),
+	  preCalculatedMarkerLengths(false)
 {}
 PacketLengthMarkers::PacketLengthMarkers(IBufferedStream* strm) : PacketLengthMarkers()
 {

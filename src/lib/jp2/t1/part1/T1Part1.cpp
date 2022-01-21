@@ -40,8 +40,9 @@ namespace t1_part1
 		auto cblk = block->cblk;
 		auto w = cblk->width();
 		auto h = cblk->height();
-		if (w == 0 || h == 0){
-			GRK_ERROR("Unable to compress degenerate code block of dimensions %dx%d",w,h);
+		if(w == 0 || h == 0)
+		{
+			GRK_ERROR("Unable to compress degenerate code block of dimensions %dx%d", w, h);
 			return false;
 		}
 		if(!t1->alloc(w, h))
@@ -94,7 +95,7 @@ namespace t1_part1
 	bool T1Part1::compress(CompressBlockExec* block)
 	{
 		uint32_t max = 0;
-		if (!preCompress(block, max))
+		if(!preCompress(block, max))
 			return false;
 
 		auto cblk = block->cblk;
@@ -163,11 +164,10 @@ namespace t1_part1
 			}
 		}
 
-		bool rc =  block->tilec->postProcess(t1->getUncompressedData(), block);
+		bool rc = block->tilec->postProcess(t1->getUncompressedData(), block);
 		cblk->release();
 
 		return rc;
-
 	}
 
 } // namespace t1_part1

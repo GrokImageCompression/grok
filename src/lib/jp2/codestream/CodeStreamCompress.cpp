@@ -286,8 +286,7 @@ bool CodeStreamCompress::initCompress(grk_cparameters* parameters, GrkImage* ima
 
 	cp_.coding_params_.enc_.max_comp_size_ = parameters->max_comp_size;
 	cp_.rsiz = parameters->rsiz;
-	cp_.coding_params_.enc_.allocationByRateDistortion_ =
-		parameters->allocationByRateDistoration;
+	cp_.coding_params_.enc_.allocationByRateDistortion_ = parameters->allocationByRateDistoration;
 	cp_.coding_params_.enc_.allocationByFixedQuality_ = parameters->allocationByQuality;
 	cp_.coding_params_.enc_.writePLT = parameters->writePLT;
 	cp_.coding_params_.enc_.writeTLM = parameters->writeTLM;
@@ -355,7 +354,7 @@ bool CodeStreamCompress::initCompress(grk_cparameters* parameters, GrkImage* ima
 			GRK_ERROR("Invalid tile dimensions (%u,%u)", cp_.t_width, cp_.t_height);
 			return false;
 		}
-		cp_.t_grid_width  = (uint16_t)ceildiv<uint32_t>((image->x1 - cp_.tx0), cp_.t_width);
+		cp_.t_grid_width = (uint16_t)ceildiv<uint32_t>((image->x1 - cp_.tx0), cp_.t_width);
 		cp_.t_grid_height = (uint16_t)ceildiv<uint32_t>((image->y1 - cp_.ty0), cp_.t_height);
 	}
 	else
@@ -383,7 +382,7 @@ bool CodeStreamCompress::initCompress(grk_cparameters* parameters, GrkImage* ima
 
 		tcp->setIsHT(parameters->isHT, !parameters->irreversible, numgbits);
 		tcp->qcd_->generate((uint32_t)(parameters->numresolution - 1), image->comps[0].prec,
-							 parameters->mct > 0, image->comps[0].sgnd);
+							parameters->mct > 0, image->comps[0].sgnd);
 		for(uint32_t i = 0; i < image->numcomps; i++)
 			tcp->qcd_->pull((tcp->tccps + i)->stepsizes);
 
@@ -617,7 +616,7 @@ bool CodeStreamCompress::compress(grk_plugin_tile* tile)
 			results.emplace_back(pool.enqueue([this, tile, tileIndex, &heap, &success] {
 				if(success)
 				{
-					auto tileProcessor = new TileProcessor(tileIndex,this, stream_, true, false);
+					auto tileProcessor = new TileProcessor(tileIndex, this, stream_, true, false);
 					tileProcessor->current_plugin_tile = tile;
 					if(!tileProcessor->preCompressTile() || !tileProcessor->doCompress())
 						success = false;
@@ -631,7 +630,7 @@ bool CodeStreamCompress::compress(grk_plugin_tile* tile)
 	{
 		for(uint16_t i = 0; i < numTiles; ++i)
 		{
-			auto tileProcessor = new TileProcessor(i,this, stream_, true, false);
+			auto tileProcessor = new TileProcessor(i, this, stream_, true, false);
 			tileProcessor->current_plugin_tile = tile;
 			if(!tileProcessor->preCompressTile() || !tileProcessor->doCompress())
 			{
@@ -677,7 +676,7 @@ bool CodeStreamCompress::compressTile(uint16_t tileIndex, uint8_t* p_data,
 		return false;
 	bool rc = false;
 
-	auto currentTileProcessor = new TileProcessor(tileIndex,this, stream_, true, false);
+	auto currentTileProcessor = new TileProcessor(tileIndex, this, stream_, true, false);
 	if(!currentTileProcessor->preCompressTile())
 	{
 		GRK_ERROR("Error while preCompressTile with tile index = %u", tileIndex);
@@ -790,9 +789,8 @@ bool CodeStreamCompress::get_end_header(void)
 }
 bool CodeStreamCompress::init_header_writing(void)
 {
-	procedure_list_.push_back([this] {
-		return getNumTileParts(&compressorState_.total_tile_parts_, getHeaderImage());
-	});
+	procedure_list_.push_back(
+		[this] { return getNumTileParts(&compressorState_.total_tile_parts_, getHeaderImage()); });
 
 	procedure_list_.push_back(std::bind(&CodeStreamCompress::write_soc, this));
 	procedure_list_.push_back(std::bind(&CodeStreamCompress::write_siz, this));
@@ -1845,8 +1843,8 @@ bool CodeStreamCompress::init_mct_encoding(TileCodingParams* p_tcp, GrkImage* p_
 		*(current_data++) = (float)(tccp->dc_level_shift_);
 		++tccp;
 	}
-	j2k_mct_write_functions_from_float[mct_offset_data->element_type_](
-		data, mct_offset_data->data_, nb_elem);
+	j2k_mct_write_functions_from_float[mct_offset_data->element_type_](data, mct_offset_data->data_,
+																	   nb_elem);
 	grkFree(data);
 	mct_offset_data->data_size_ = mct_size;
 	++p_tcp->nb_mct_records_;

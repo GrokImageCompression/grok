@@ -56,7 +56,6 @@ struct pnm_header
 	PNM_COLOUR_SPACE colour_space;
 };
 
-
 PNMFormat::PNMFormat(bool split) : forceSplit(split)
 {
 #ifdef GROK_HAVE_URING
@@ -67,7 +66,7 @@ PNMFormat::PNMFormat(bool split) : forceSplit(split)
 
 bool PNMFormat::encodeHeader(void)
 {
-	if (isHeaderEncoded())
+	if(isHeaderEncoded())
 		return true;
 
 	if(!allComponentsSanityCheck(image_, true))
@@ -82,24 +81,28 @@ bool PNMFormat::encodeHeader(void)
 	uint16_t ncomp = getImageNumComps();
 	if(ncomp > 4)
 	{
-		spdlog::error("PNMFormat::encodeHeader: Number of components cannot be greater than 4; %d number of components not supported.",
+		spdlog::error("PNMFormat::encodeHeader: Number of components cannot be greater than 4; %d "
+					  "number of components not supported.",
 					  image_->numcomps);
 		return false;
 	}
-	if (hasOpacity() && !hasAlpha()){
+	if(hasOpacity() && !hasAlpha())
+	{
 		spdlog::error("PNMFormat: alpha channel must be stored in final component of image");
 		return false;
 	}
 
-	if(useStdIO_ && forceSplit) {
+	if(useStdIO_ && forceSplit)
+	{
 		spdlog::warn("Unable to write split file to stdout. Disabling");
 		forceSplit = false;
 	}
 
-	if (doNonSplitEncode()) {
+	if(doNonSplitEncode())
+	{
 		if(!grk::grk_open_for_output(&fileStream_, fileName_.c_str(), useStdIO_))
 			return false;
-		if (!writeHeader(false))
+		if(!writeHeader(false))
 			return false;
 	}
 
@@ -107,107 +110,122 @@ bool PNMFormat::encodeHeader(void)
 
 	return true;
 }
-bool PNMFormat::hasAlpha(void){
-	if (!image_)
+bool PNMFormat::hasAlpha(void)
+{
+	if(!image_)
 		return false;
 	uint16_t ncomp = getImageNumComps();
 	return (ncomp == 4 && isOpacity(3)) || (ncomp == 2 && isOpacity(1));
 }
-bool PNMFormat::writeHeader(bool doPGM){
+bool PNMFormat::writeHeader(bool doPGM)
+{
 	ostringstream iss;
 	uint32_t prec = getImagePrec();
 	uint32_t width = image_->comps[0].w;
 	uint32_t height = image_->comps[0].h;
 	uint32_t max = (uint32_t)((1U << prec) - 1);
 
-	if (doPGM || getImageNumComps() == 1) {
-		iss << "P5\n#Grok-" << grk_version() << "\n" << width << " " << height << "\n" << max << "\n";
-	} else {
+	if(doPGM || getImageNumComps() == 1)
+	{
+		iss << "P5\n#Grok-" << grk_version() << "\n"
+			<< width << " " << height << "\n"
+			<< max << "\n";
+	}
+	else
+	{
 		if(hasAlpha())
 		{
 			uint16_t ncomp = getImageNumComps();
 			iss << "P7\n# Grok-" << grk_version() << "\nWIDTH " << width << "\nHEIGHT " << height;
-			iss << "\nDEPTH " <<  ncomp << "\nMAXVAL " << max;
-			iss << "\nTUPLTYPE " << ((ncomp >= 3) ? "RGB_ALPHA" : "GRAYSCALE_ALPHA") << "\nENDHDR\n";
+			iss << "\nDEPTH " << ncomp << "\nMAXVAL " << max;
+			iss << "\nTUPLTYPE " << ((ncomp >= 3) ? "RGB_ALPHA" : "GRAYSCALE_ALPHA")
+				<< "\nENDHDR\n";
 		}
 		else
 		{
-			iss << "P6\n# Grok-" << grk_version() << "\n" << width << " " << height << "\n" << max << "\n";
+			iss << "P6\n# Grok-" << grk_version() << "\n"
+				<< width << " " << height << "\n"
+				<< max << "\n";
 		}
 	}
 	auto str = iss.str();
 	size_t res = fwrite(str.c_str(), sizeof(uint8_t), str.size(), fileStream_);
 
-	return  (res == str.size());
-
+	return (res == str.size());
 }
 
 const size_t bufSize = 4096;
 
-bool PNMFormat::doNonSplitEncode(void){
+bool PNMFormat::doNonSplitEncode(void)
+{
 	return !forceSplit || getImageNumComps() > 1;
 }
 
-template<typename T> bool PNMFormat::writeRows(uint32_t rowsOffset, uint32_t rows, uint16_t compno,T *buf, size_t *outCount){
-	if (rows == 0) {
+template<typename T>
+bool PNMFormat::writeRows(uint32_t rowsOffset, uint32_t rows, uint16_t compno, T* buf,
+						  size_t* outCount)
+{
+	if(rows == 0)
+	{
 		spdlog::warn("PNMFormat: Attempt to write zero rows");
 		return true;
 	}
 	uint16_t ncomp = getImageNumComps();
 	bool singleComp = compno <= 4;
-	if (!singleComp && !hasAlpha())
-		ncomp = (std::min)(ncomp,(uint16_t)3);
+	if(!singleComp && !hasAlpha())
+		ncomp = (std::min)(ncomp, (uint16_t)3);
 	uint32_t width = image_->comps[0].w;
 	uint32_t stride_diff = image_->comps[0].stride - width;
 	// all components have same sign and precision
 	int32_t adjust = (image_->comps[0].sgnd ? 1 << (image_->comps[0].prec - 1) : 0);
-	int32_t* compPtr[4] = {nullptr,nullptr,nullptr,nullptr};
+	int32_t* compPtr[4] = {nullptr, nullptr, nullptr, nullptr};
 	T* outPtr = buf + *outCount;
-	uint16_t start = singleComp ? compno   : 0;
-	uint16_t end   = singleComp ? compno+1 : ncomp;
-	for (uint16_t i = start; i < end; ++i)
+	uint16_t start = singleComp ? compno : 0;
+	uint16_t end = singleComp ? compno + 1 : ncomp;
+	for(uint16_t i = start; i < end; ++i)
 		compPtr[i] = (image_->comps + i)->data + rowsOffset * image_->comps[0].stride;
 	for(uint32_t j = 0; j < rows; ++j)
 	{
 		for(uint32_t i = 0; i < width; ++i)
 		{
-			for (uint16_t i = start; i < end; ++i) {
+			for(uint16_t i = start; i < end; ++i)
+			{
 				int32_t v = *compPtr[i]++ + adjust;
-				if(!grk::writeBytes<T>((T)v, buf, &outPtr, outCount, bufSize,
-											  true, fileStream_))
+				if(!grk::writeBytes<T>((T)v, buf, &outPtr, outCount, bufSize, true, fileStream_))
 					return false;
 			}
 		}
-		for (uint16_t i = start; i < end; ++i)
-			compPtr[i]+= stride_diff;
+		for(uint16_t i = start; i < end; ++i)
+			compPtr[i] += stride_diff;
 	}
 
 	return true;
 }
 bool PNMFormat::encodePixels(void)
 {
-	if (encodeState & IMAGE_FORMAT_ENCODED_PIXELS)
+	if(encodeState & IMAGE_FORMAT_ENCODED_PIXELS)
 		return true;
 
-	if (!isHeaderEncoded()) {
-		if (!encodeHeader())
+	if(!isHeaderEncoded())
+	{
+		if(!encodeHeader())
 			return false;
 	}
 
-	return (getImagePrec() > 8U) ? encodeRowsCore<uint16_t>(image_->comps[0].h) : encodeRowsCore<uint8_t>(image_->comps[0].h);
+	return (getImagePrec() > 8U) ? encodeRowsCore<uint16_t>(image_->comps[0].h)
+								 : encodeRowsCore<uint8_t>(image_->comps[0].h);
 }
-bool PNMFormat::encodePixelsSync(grk_serialize_buf pixels){
-
+bool PNMFormat::encodePixelsSync(grk_serialize_buf pixels)
+{
 	return true;
 }
-bool PNMFormat::encodePixelsCore(grk_serialize_buf pixels,
-					grk_serialize_buf* reclaimed,
-					uint32_t max_reclaimed,
-					uint32_t *num_reclaimed){
-
+bool PNMFormat::encodePixelsCore(grk_serialize_buf pixels, grk_serialize_buf* reclaimed,
+								 uint32_t max_reclaimed, uint32_t* num_reclaimed)
+{
 	return true;
 }
-template<typename T> bool PNMFormat::encodeRowsCore(uint32_t rows)
+template<typename T>
+bool PNMFormat::encodeRowsCore(uint32_t rows)
 {
 	(void)rows;
 	uint16_t ncomp = getImageNumComps();
@@ -215,16 +233,19 @@ template<typename T> bool PNMFormat::encodeRowsCore(uint32_t rows)
 	uint32_t height = image_->comps[0].h;
 
 	// 1. write first file: PAM or PPM
-	if (doNonSplitEncode()) {
+	if(doNonSplitEncode())
+	{
 		size_t outCount = 0;
 		T buf[bufSize];
 		uint32_t i = 0;
-		for (; i + image_->rowsPerStrip < height; i+= image_->rowsPerStrip) {
-			if (!writeRows<T>(i, image_->rowsPerStrip, 0xFFFF, buf,&outCount))
+		for(; i + image_->rowsPerStrip < height; i += image_->rowsPerStrip)
+		{
+			if(!writeRows<T>(i, image_->rowsPerStrip, 0xFFFF, buf, &outCount))
 				goto cleanup;
 		}
-		if (i < height){
-			if (!writeRows<T>(i, height - i, 0xFFFF, buf,&outCount))
+		if(i < height)
+		{
+			if(!writeRows<T>(i, height - i, 0xFFFF, buf, &outCount))
 				goto cleanup;
 		}
 		if(outCount)
@@ -233,9 +254,10 @@ template<typename T> bool PNMFormat::encodeRowsCore(uint32_t rows)
 			if(res != outCount)
 				goto cleanup;
 		}
-		if (!closeStream())
+		if(!closeStream())
 			goto cleanup;
-		if (!forceSplit){
+		if(!forceSplit)
+		{
 			success = true;
 			goto cleanup;
 		}
@@ -257,22 +279,25 @@ template<typename T> bool PNMFormat::encodeRowsCore(uint32_t rows)
 			iss << rawname << "_" << compno << ".pgm";
 			destname = iss.str().c_str();
 		}
-		else {
+		else
+		{
 			destname = fileName_;
 		}
 		if(!grk::grk_open_for_output(&fileStream_, destname.c_str(), useStdIO_))
 			goto cleanup;
-		if (!writeHeader(true))
+		if(!writeHeader(true))
 			goto cleanup;
 		size_t outCount = 0;
 		T buf[bufSize];
 		uint32_t i = 0;
-		for (; i + image_->rowsPerStrip < height; i+= image_->rowsPerStrip) {
-			if (!writeRows<T>(i, image_->rowsPerStrip, compno, buf,&outCount))
+		for(; i + image_->rowsPerStrip < height; i += image_->rowsPerStrip)
+		{
+			if(!writeRows<T>(i, image_->rowsPerStrip, compno, buf, &outCount))
 				goto cleanup;
 		}
-		if (i < height){
-			if (!writeRows<T>(i, height - i, compno, buf,&outCount))
+		if(i < height)
+		{
+			if(!writeRows<T>(i, height - i, compno, buf, &outCount))
 				goto cleanup;
 		}
 		if(outCount)
@@ -281,7 +306,7 @@ template<typename T> bool PNMFormat::encodeRowsCore(uint32_t rows)
 			if(res != outCount)
 				goto cleanup;
 		}
-		if (!closeStream())
+		if(!closeStream())
 			goto cleanup;
 	} /* for (compno */
 	success = true;
@@ -924,7 +949,6 @@ cleanup:
 	}
 	return image;
 } /* pnmtoimage() */
-
 
 grk_image* PNMFormat::decode(const std::string& filename, grk_cparameters* parameters)
 {

@@ -19,7 +19,8 @@ GrkImage::~GrkImage()
 	grkAlignedFree(interleavedData.data);
 }
 
-void GrkImage::copyComponent(grk_image_comp* src, grk_image_comp* dest){
+void GrkImage::copyComponent(grk_image_comp* src, grk_image_comp* dest)
+{
 	dest->dx = src->dx;
 	dest->dy = src->dy;
 	dest->w = src->w;
@@ -33,31 +34,22 @@ void GrkImage::copyComponent(grk_image_comp* src, grk_image_comp* dest){
 	dest->type = src->type;
 }
 
-bool GrkImage::componentsEqual(grk_image_comp* src, grk_image_comp* dest){
-	return (dest->dx == src->dx &&
-			dest->dy == src->dy &&
-			dest->w == src->w &&
-			dest->stride == src->stride &&
-			dest->h == src->h &&
-			dest->x0 == src->x0 &&
-			dest->y0 == src->y0 &&
-			dest->Xcrg == src->Xcrg &&
-			dest->Ycrg == src->Ycrg &&
-			dest->prec == src->prec &&
-			dest->sgnd == src->sgnd &&
-			dest->type == src->type);
+bool GrkImage::componentsEqual(grk_image_comp* src, grk_image_comp* dest)
+{
+	return (dest->dx == src->dx && dest->dy == src->dy && dest->w == src->w &&
+			dest->stride == src->stride && dest->h == src->h && dest->x0 == src->x0 &&
+			dest->y0 == src->y0 && dest->Xcrg == src->Xcrg && dest->Ycrg == src->Ycrg &&
+			dest->prec == src->prec && dest->sgnd == src->sgnd && dest->type == src->type);
 }
 
-GrkImage* GrkImage::create(grk_image *src,
-							uint16_t numcmpts,
-							grk_image_comp* cmptparms,
-							GRK_COLOR_SPACE clrspc,
-						    bool doAllocation)
+GrkImage* GrkImage::create(grk_image* src, uint16_t numcmpts, grk_image_comp* cmptparms,
+						   GRK_COLOR_SPACE clrspc, bool doAllocation)
 {
 	auto image = new GrkImage();
 	image->color_space = clrspc;
 	image->numcomps = numcmpts;
-	if (src) {
+	if(src)
+	{
 		image->decompressFormat = src->decompressFormat;
 		image->forceRGB = src->forceRGB;
 		image->upsample = src->upsample;
@@ -253,26 +245,25 @@ bool GrkImage::allocData(grk_image_comp* comp)
 	return true;
 }
 
-bool GrkImage::canAllocInterleaved(CodingParams *cp){
+bool GrkImage::canAllocInterleaved(CodingParams* cp)
+{
 	// packed tile width bits must be divisible by 8
-	if ( ((cp->t_width * numcomps * comps->prec) & 7) != 0)
+	if(((cp->t_width * numcomps * comps->prec) & 7) != 0)
 		return false;
 	// tile origin and image origin must coincide
-	if (cp->tx0 != x0 || cp->ty0 != y0)
+	if(cp->tx0 != x0 || cp->ty0 != y0)
 		return false;
 
-	if (isFinalOutputSubsampled() ||
-		precision ||
-		upsample ||
-		forceRGB ||
-		decompressFormat != GRK_TIF_FMT ||
-		(meta && (meta->color.palette || meta->color.icc_profile_buf))) {
-
+	if(isFinalOutputSubsampled() || precision || upsample || forceRGB ||
+	   decompressFormat != GRK_TIF_FMT ||
+	   (meta && (meta->color.palette || meta->color.icc_profile_buf)))
+	{
 		return false;
 	}
 	// check that all components are equal
-	for(uint16_t compno = 1; compno < numcomps; compno++){
-		if (!componentsEqual(comps, comps+compno))
+	for(uint16_t compno = 1; compno < numcomps; compno++)
+	{
+		if(!componentsEqual(comps, comps + compno))
 			return false;
 	}
 
@@ -289,61 +280,64 @@ bool GrkImage::isFinalOutputSubsampled()
 	return false;
 }
 
-void GrkImage::validateColourSpace(void){
-	if(color_space == GRK_CLRSPC_UNKNOWN &&
-		numcomps == 3 &&
-		comps[0].dx == 1 && comps[0].dy == 1 &&
-		comps[1].dx == comps[2].dx &&
-		comps[1].dy == comps[2].dy &&
-	   (comps[1].dx ==2 || comps[1].dy ==2) &&
-	   (comps[2].dx ==2 || comps[2].dy ==2) ) {
-			color_space = GRK_CLRSPC_SYCC;
+void GrkImage::validateColourSpace(void)
+{
+	if(color_space == GRK_CLRSPC_UNKNOWN && numcomps == 3 && comps[0].dx == 1 && comps[0].dy == 1 &&
+	   comps[1].dx == comps[2].dx && comps[1].dy == comps[2].dy &&
+	   (comps[1].dx == 2 || comps[1].dy == 2) && (comps[2].dx == 2 || comps[2].dy == 2))
+	{
+		color_space = GRK_CLRSPC_SYCC;
 	}
 }
 
-void GrkImage::postReadHeader(CodingParams *cp){
-
-
+void GrkImage::postReadHeader(CodingParams* cp)
+{
 	uint32_t width = x1 - x0;
 	uint8_t prec = comps[0].prec;
-	if (precision)
+	if(precision)
 		prec = precision->prec;
 	uint16_t ncmp = numcomps;
-	if (forceRGB)
+	if(forceRGB)
 		ncmp = 3;
-	bool tiffSubSampled = decompressFormat ==   GRK_TIF_FMT &&
-							isFinalOutputSubsampled() &&
-								(color_space == GRK_CLRSPC_EYCC || color_space ==  GRK_CLRSPC_SYCC);
-	if (tiffSubSampled){
+	bool tiffSubSampled = decompressFormat == GRK_TIF_FMT && isFinalOutputSubsampled() &&
+						  (color_space == GRK_CLRSPC_EYCC || color_space == GRK_CLRSPC_SYCC);
+	if(tiffSubSampled)
+	{
 		uint32_t chroma_subsample_x = comps[1].dx;
 		uint32_t chroma_subsample_y = comps[1].dy;
 		uint32_t units = (width + chroma_subsample_x - 1) / chroma_subsample_x;
-		packedRowBytes = (uint64_t)((((uint64_t)width * chroma_subsample_y + units * 2U) * prec + 7U) / 8U);
+		packedRowBytes =
+			(uint64_t)((((uint64_t)width * chroma_subsample_y + units * 2U) * prec + 7U) / 8U);
 		rowsPerStrip = (uint32_t)((chroma_subsample_y * 8 * 1024 * 1024) / packedRowBytes);
-	} else {
-		switch(decompressFormat){
-		case GRK_BMP_FMT:
-			packedRowBytes =	(((uint64_t)ncmp *  width + 3) >> 2) << 2;
-		   break;
-		default:
-			packedRowBytes =	grk::PtoI<int32_t>::getPackedBytes(ncmp, x1 - x0, prec);
-			break;
+	}
+	else
+	{
+		switch(decompressFormat)
+		{
+			case GRK_BMP_FMT:
+				packedRowBytes = (((uint64_t)ncmp * width + 3) >> 2) << 2;
+				break;
+			default:
+				packedRowBytes = grk::PtoI<int32_t>::getPackedBytes(ncmp, x1 - x0, prec);
+				break;
 		}
-		if (multiTile && canAllocInterleaved(cp))
+		if(multiTile && canAllocInterleaved(cp))
 			rowsPerStrip = cp->t_height;
 		else
-			rowsPerStrip =	(uint32_t)((16 * 1024 * 1024) / packedRowBytes);
+			rowsPerStrip = (uint32_t)((16 * 1024 * 1024) / packedRowBytes);
 	}
 	if(rowsPerStrip > y1 - y0)
-		rowsPerStrip =y1 - y0;
+		rowsPerStrip = y1 - y0;
 }
-bool GrkImage::allocCompositeData(CodingParams *cp){
+bool GrkImage::allocCompositeData(CodingParams* cp)
+{
 	// only allocate data if there are multiple tiles. Otherwise, the single tile data
 	// will simply be transferred to the output image
-	if (!multiTile)
+	if(!multiTile)
 		return true;
 
-	if (!canAllocInterleaved(cp)){
+	if(!canAllocInterleaved(cp))
+	{
 		for(uint32_t i = 0; i < numcomps; i++)
 		{
 			auto destComp = comps + i;
@@ -357,8 +351,9 @@ bool GrkImage::allocCompositeData(CodingParams *cp){
 			{
 				if(!GrkImage::allocData(destComp))
 				{
-					GRK_ERROR("Failed to allocate pixel data for component %d, with dimensions %u x %u",
-							  i, destComp->w, destComp->h);
+					GRK_ERROR(
+						"Failed to allocate pixel data for component %d, with dimensions %u x %u",
+						i, destComp->w, destComp->h);
 					return false;
 				}
 			}
@@ -444,20 +439,17 @@ void GrkImage::transferDataFrom(const Tile* tile_src_data)
 			assert(destComp->stride >= destComp->w);
 	}
 }
-bool GrkImage::generateCompositeBounds(const grk_image_comp* srcComp,
-										uint16_t compno,
-										grkRectU32* destWin,
-										uint32_t* srcLineOffset)
+bool GrkImage::generateCompositeBounds(const grk_image_comp* srcComp, uint16_t compno,
+									   grkRectU32* destWin, uint32_t* srcLineOffset)
 {
-	auto src = grkRectU32(srcComp->x0,
-						  srcComp->y0,
-						  srcComp->x0 + srcComp->w,
-					      srcComp->y0 + srcComp->h);
+	auto src =
+		grkRectU32(srcComp->x0, srcComp->y0, srcComp->x0 + srcComp->w, srcComp->y0 + srcComp->h);
 
-	return generateCompositeBounds(compno, src, srcComp->stride,destWin, srcLineOffset);
+	return generateCompositeBounds(compno, src, srcComp->stride, destWin, srcLineOffset);
 }
 
-bool GrkImage::composite(const GrkImage* srcImg){
+bool GrkImage::composite(const GrkImage* srcImg)
+{
 	return interleavedData.data ? compositeInterleaved(srcImg) : compositePlanar(srcImg);
 }
 
@@ -480,10 +472,11 @@ bool GrkImage::compositeInterleaved(const GrkImage* srcImg)
 		GRK_WARN("GrkImage::compositeInterleaved: cannot generate composite bounds");
 		return false;
 	}
-	for (uint16_t i = 0; i < srcImg->numcomps; ++i){
+	for(uint16_t i = 0; i < srcImg->numcomps; ++i)
+	{
 		if(!(srcImg->comps + i)->data)
 		{
-			GRK_WARN("GrkImage::compositeInterleaved: null data for source component %d",i);
+			GRK_WARN("GrkImage::compositeInterleaved: null data for source component %d", i);
 			return false;
 		}
 	}
@@ -491,18 +484,13 @@ bool GrkImage::compositeInterleaved(const GrkImage* srcImg)
 	auto destx0 = grk::PtoI<int32_t>::getPackedBytes(numcomps, destWin.x0, destComp->prec);
 	auto destIndex = (uint64_t)destWin.y0 * destStride + (uint64_t)destx0;
 	auto iter = InterleaverFactory<int32_t>::makeInterleaver(destComp->prec);
-	if (!iter)
+	if(!iter)
 		return false;
 	int32_t const* planes[grk::maxNumPackComponents];
-	for (uint16_t i = 0; i < srcImg->numcomps; ++i)
+	for(uint16_t i = 0; i < srcImg->numcomps; ++i)
 		planes[i] = (srcImg->comps + i)->data;
-	iter->interleave((int32_t**)planes,
-						srcImg->numcomps,
-						interleavedData.data + destIndex,
-						destWin.width(),
-						srcComp->stride,
-						destStride,
-						destWin.height(), 0);
+	iter->interleave((int32_t**)planes, srcImg->numcomps, interleavedData.data + destIndex,
+					 destWin.width(), srcComp->stride, destStride, destWin.height(), 0);
 	delete iter;
 
 	return true;
@@ -549,25 +537,21 @@ bool GrkImage::compositePlanar(const GrkImage* srcImg)
 		auto src_ptr = srcComp->data;
 		for(uint32_t j = 0; j < destWin.height(); ++j)
 		{
-			memcpy(destComp->data + destIndex, src_ptr + srcIndex,destWin.width() * sizeof(int32_t));
+			memcpy(destComp->data + destIndex, src_ptr + srcIndex,
+				   destWin.width() * sizeof(int32_t));
 			destIndex += destLineOffset + destWin.width();
-			srcIndex  += srcLineOffset  + destWin.width();
+			srcIndex += srcLineOffset + destWin.width();
 		}
 	}
 
 	return true;
 }
-bool GrkImage::generateCompositeBounds(uint16_t compno,
-										grkRectU32 src,
-										uint32_t src_stride,
-									    grkRectU32* destWin,
-									    uint32_t* srcLineOffset)
+bool GrkImage::generateCompositeBounds(uint16_t compno, grkRectU32 src, uint32_t src_stride,
+									   grkRectU32* destWin, uint32_t* srcLineOffset)
 {
 	auto destComp = comps + compno;
-	grkRectU32 destCompRect = grkRectU32(destComp->x0,
-										destComp->y0,
-										destComp->x0 + destComp->w,
-					   	   	   	   	   	destComp->y0 + destComp->h);
+	grkRectU32 destCompRect = grkRectU32(destComp->x0, destComp->y0, destComp->x0 + destComp->w,
+										 destComp->y0 + destComp->h);
 	*srcLineOffset = src_stride - src.width();
 	if(destCompRect.x0 < src.x0)
 	{
@@ -599,7 +583,8 @@ bool GrkImage::generateCompositeBounds(uint16_t compno,
 	{
 		destWin->y0 = (uint32_t)(src.y0 - destCompRect.y0);
 		destWin->y1 =
-			destWin->y0 + ((destCompRect.y1 >= src.y1) ? src.height() : (uint32_t)(destCompRect.y1 - src.y0));
+			destWin->y0 +
+			((destCompRect.y1 >= src.y1) ? src.height() : (uint32_t)(destCompRect.y1 - src.y0));
 	}
 	else
 	{

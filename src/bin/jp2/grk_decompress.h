@@ -27,8 +27,7 @@ namespace grk
 {
 struct DecompressInitParams
 {
-	DecompressInitParams() : initialized(false),
-							 transferExifTags(false)
+	DecompressInitParams() : initialized(false), transferExifTags(false)
 	{
 		pluginPath[0] = 0;
 		memset(&inputFolder, 0, sizeof(inputFolder));

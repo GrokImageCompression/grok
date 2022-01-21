@@ -65,7 +65,7 @@ typedef struct _img_folder
 
 static int loadImages(dircnt* dirptr, char* imgdirpath);
 static char nextFile(size_t imageno, dircnt* dirptr, inputFolder* inputFolder,
-		grk_decompress_parameters* parameters);
+					 grk_decompress_parameters* parameters);
 static int parseCommandLine(int argc, char** argv, grk_decompress_parameters* parameters,
 							inputFolder* inputFolder);
 
@@ -113,7 +113,7 @@ static int loadImages(dircnt* dirptr, char* imgdirpath)
 {
 	int i = 0;
 
-	for (const auto & entry : std::filesystem::directory_iterator(imgdirpath))
+	for(const auto& entry : std::filesystem::directory_iterator(imgdirpath))
 	{
 		strcpy(dirptr->filename[i], entry.path().filename().string().c_str());
 		i++;
@@ -123,7 +123,7 @@ static int loadImages(dircnt* dirptr, char* imgdirpath)
 }
 /* -------------------------------------------------------------------------- */
 static char nextFile(size_t imageno, dircnt* dirptr, inputFolder* inputFolder,
-		grk_decompress_parameters* parameters)
+					 grk_decompress_parameters* parameters)
 {
 	char inputFile[GRK_PATH_LEN], infilename[3 * GRK_PATH_LEN], temp_ofname[GRK_PATH_LEN];
 	char *temp_p, temp1[GRK_PATH_LEN] = "";
@@ -303,7 +303,7 @@ int main(int argc, char* argv[])
 	FILE* fout = nullptr;
 
 	grk_decompress_parameters parameters; /* Decompression parameters */
-	memset(&parameters,0, sizeof(grk_decompress_parameters));
+	memset(&parameters, 0, sizeof(grk_decompress_parameters));
 	grk_image* image = nullptr; /* Image structure */
 	grk_codec* codec = nullptr; /* Handle to a decompressor */
 	grk_stream* stream = nullptr; /* Stream */

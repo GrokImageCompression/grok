@@ -188,7 +188,7 @@ const char* GRK_CALLCONV grk_version(void)
 grk_image* GRK_CALLCONV grk_image_new(uint16_t numcmpts, grk_image_comp* cmptparms,
 									  GRK_COLOR_SPACE clrspc)
 {
-	return GrkImage::create(nullptr,numcmpts, cmptparms, clrspc, true);
+	return GrkImage::create(nullptr, numcmpts, cmptparms, clrspc, true);
 }
 
 grk_image_meta* GRK_CALLCONV grk_image_meta_new(void)
@@ -238,7 +238,8 @@ void GRK_CALLCONV grk_decompress_set_default_params(grk_decompress_core_params* 
 		parameters->tileCacheStrategy = GRK_TILE_CACHE_NONE;
 	}
 }
-bool GRK_CALLCONV grk_decompress_init(grk_codec* codecWrapper, grk_decompress_core_params* parameters)
+bool GRK_CALLCONV grk_decompress_init(grk_codec* codecWrapper,
+									  grk_decompress_core_params* parameters)
 {
 	if(codecWrapper && parameters)
 	{
@@ -257,9 +258,9 @@ bool GRK_CALLCONV grk_decompress_read_header(grk_codec* codecWrapper, grk_header
 	if(codecWrapper)
 	{
 		auto codec = GrkCodec::getImpl(codecWrapper);
-		if (! codec->decompressor_)
+		if(!codec->decompressor_)
 			return false;
-		bool rc =  codec->decompressor_->readHeader(header_info);
+		bool rc = codec->decompressor_->readHeader(header_info);
 		rc &= codec->decompressor_->preProcess();
 
 		return rc;
@@ -273,8 +274,8 @@ bool GRK_CALLCONV grk_decompress_set_window(grk_codec* codecWrapper, uint32_t st
 	{
 		auto codec = GrkCodec::getImpl(codecWrapper);
 		return codec->decompressor_ ? codec->decompressor_->setDecompressWindow(
-										   grkRectU32(start_x, start_y, end_x, end_y))
-									 : false;
+										  grkRectU32(start_x, start_y, end_x, end_y))
+									: false;
 	}
 	return false;
 }
@@ -434,9 +435,8 @@ bool GRK_CALLCONV grk_compress_init(grk_codec* codecWrapper, grk_cparameters* pa
 	if(codecWrapper && parameters && p_image)
 	{
 		auto codec = GrkCodec::getImpl(codecWrapper);
-		return codec->compressor_
-				   ? codec->compressor_->initCompress(parameters, (GrkImage*)p_image)
-				   : false;
+		return codec->compressor_ ? codec->compressor_->initCompress(parameters, (GrkImage*)p_image)
+								  : false;
 	}
 	return false;
 }
@@ -478,7 +478,7 @@ bool GRK_CALLCONV grk_compress_tile(grk_codec* codecWrapper, uint16_t tileIndex,
 	{
 		auto codec = GrkCodec::getImpl(codecWrapper);
 		return codec->compressor_ ? codec->compressor_->compressTile(tileIndex, p_data, data_size)
-								   : false;
+								  : false;
 	}
 	return false;
 }

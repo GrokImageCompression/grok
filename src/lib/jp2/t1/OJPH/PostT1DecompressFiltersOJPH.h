@@ -52,8 +52,9 @@ template<typename T>
 class RoiScaleOJPHFilter
 {
   public:
-	RoiScaleOJPHFilter(grk::DecompressBlockExec* block) : roiShift(block->roishift),
-													scale(block->stepsize / (float)(1u << (31 - block->bandNumbps)))
+	RoiScaleOJPHFilter(grk::DecompressBlockExec* block)
+		: roiShift(block->roishift),
+		  scale(block->stepsize / (float)(1u << (31 - block->bandNumbps)))
 	{
 		assert(block->bandNumbps <= 31);
 	}
@@ -80,7 +81,9 @@ template<typename T>
 class ScaleOJPHFilter
 {
   public:
-	ScaleOJPHFilter(grk::DecompressBlockExec* block) : scale(block->stepsize / (float)(1u << (31 - block->bandNumbps))) {
+	ScaleOJPHFilter(grk::DecompressBlockExec* block)
+		: scale(block->stepsize / (float)(1u << (31 - block->bandNumbps)))
+	{
 		assert(block->bandNumbps <= 31);
 	}
 	inline void copy(T* dest, T* src, uint32_t len)

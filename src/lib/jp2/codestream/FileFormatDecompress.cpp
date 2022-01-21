@@ -163,8 +163,7 @@ bool FileFormatDecompress::readHeader(grk_header_info* header_info)
 	bool needsHeaderRead = !codeStream->getHeaderImage();
 	if(needsHeaderRead)
 	{
-		procedure_list_->push_back(
-			std::bind(&FileFormatDecompress::readHeaderProcedureImpl, this));
+		procedure_list_->push_back(std::bind(&FileFormatDecompress::readHeaderProcedureImpl, this));
 
 		/* validation of the parameters codec */
 		if(!exec(validation_list_))
@@ -349,7 +348,8 @@ bool FileFormatDecompress::decompress(grk_plugin_tile* tile)
 bool FileFormatDecompress::preProcess(void)
 {
 	auto img = codeStream->getCompositeImage();
-	if(color.channel_definition) {
+	if(color.channel_definition)
+	{
 		auto info = color.channel_definition->descriptions;
 		uint16_t n = color.channel_definition->num_channel_descriptions;
 
@@ -359,17 +359,18 @@ bool FileFormatDecompress::preProcess(void)
 
 			if(channel >= img->numcomps)
 			{
-				GRK_WARN("apply_channel_definition: channel=%u, numcomps=%u", channel, img->numcomps);
+				GRK_WARN("apply_channel_definition: channel=%u, numcomps=%u", channel,
+						 img->numcomps);
 				continue;
 			}
 			img->comps[channel].type = (GRK_CHANNEL_TYPE)info[i].typ;
 		}
 	}
-   return true;
+	return true;
 }
 bool FileFormatDecompress::postProcess(void)
 {
-	bool rc =  applyColour();
+	bool rc = applyColour();
 	return rc ? codeStream->postProcess() : false;
 }
 bool FileFormatDecompress::decompressTile(uint16_t tileIndex)
@@ -923,8 +924,7 @@ void FileFormatDecompress::apply_channel_definition(GrkImage* image, grk_color* 
 
 		// no need to do anything further if this is not a colour channel,
 		// or if this channel is associated with the whole image
-		if(info[i].typ != GRK_CHANNEL_TYPE_COLOUR ||
-		   info[i].asoc == GRK_CHANNEL_ASSOC_WHOLE_IMAGE)
+		if(info[i].typ != GRK_CHANNEL_TYPE_COLOUR || info[i].asoc == GRK_CHANNEL_ASSOC_WHOLE_IMAGE)
 			continue;
 
 		if(info[i].typ == GRK_CHANNEL_TYPE_COLOUR && asoc > image->numcomps)
@@ -1046,16 +1046,16 @@ bool FileFormatDecompress::read_channel_definition(uint8_t* p_cdef_header_data,
 			   (info_i.typ != GRK_CHANNEL_TYPE_UNSPECIFIED ||
 				info_i.asoc != GRK_CHANNEL_ASSOC_UNASSOCIATED))
 			{
-				GRK_ERROR(
-					"CDEF box : channels %u and %u share same type/association pair (%u,%u).",
-					info_i.channel, info_j.channel, info_j.typ, info_j.asoc);
+				GRK_ERROR("CDEF box : channels %u and %u share same type/association pair (%u,%u).",
+						  info_i.channel, info_j.channel, info_j.typ, info_j.asoc);
 				goto cleanup;
 			}
 		}
 	}
 	rc = true;
 cleanup:
-	if (!rc){
+	if(!rc)
+	{
 		delete[] color.channel_definition->descriptions;
 		delete color.channel_definition;
 		color.channel_definition = nullptr;

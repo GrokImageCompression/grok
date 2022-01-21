@@ -24,8 +24,7 @@ TileCacheEntry::~TileCacheEntry()
 {
 	delete processor;
 }
-TileCache::TileCache(GRK_TILE_CACHE_STRATEGY strategy)
-	: tileComposite(nullptr), strategy_(strategy)
+TileCache::TileCache(GRK_TILE_CACHE_STRATEGY strategy) : tileComposite(nullptr), strategy_(strategy)
 {
 	tileComposite = new GrkImage();
 }

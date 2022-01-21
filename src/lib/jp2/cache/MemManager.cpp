@@ -126,7 +126,7 @@ void* grkAlignedMalloc(size_t size)
 }
 void grkAlignedFree(void* ptr)
 {
-	//if (debugMemory && ptr)
+	// if (debugMemory && ptr)
 	//	printf("Lib Aligned dealloc  %p\n", ptr);
 #if defined(GROK_HAVE_POSIX_MEMALIGN) || defined(GROK_HAVE_ALIGNED_ALLOC) || \
 	defined(GROK_HAVE_MEMALIGN)

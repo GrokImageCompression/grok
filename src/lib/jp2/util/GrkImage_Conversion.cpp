@@ -3,15 +3,14 @@
 
 namespace grk
 {
-
 /**
  * return false if :
  * 1. any component's data buffer is NULL
  * 2. any component's precision is either 0 or greater than GRK_MAX_SUPPORTED_IMAGE_PRECISION
  * 3. any component's signedness does not match another component's signedness
  * 4. any component's precision does not match another component's precision
- * 5. any component's width,stride or height does not match another component's width,stride or height
- *    (if equalPrecision is true)
+ * 5. any component's width,stride or height does not match another component's width,stride or
+ * height (if equalPrecision is true)
  *
  */
 bool GrkImage::allComponentsSanityCheck(bool equalPrecision)
@@ -43,36 +42,36 @@ bool GrkImage::allComponentsSanityCheck(bool equalPrecision)
 		if(equalPrecision && comp0->prec != compi->prec)
 		{
 			GRK_WARN("precision {} of component {}"
-						 " differs from precision {} of component 0.",
-						 compi->prec, i, comp0->prec);
+					 " differs from precision {} of component 0.",
+					 compi->prec, i, comp0->prec);
 			return false;
 		}
 		if(comp0->sgnd != compi->sgnd)
 		{
 			GRK_WARN("signedness {} of component {}"
-						 " differs from signedness {} of component 0.",
-						 compi->sgnd, i, comp0->sgnd);
+					 " differs from signedness {} of component 0.",
+					 compi->sgnd, i, comp0->sgnd);
 			return false;
 		}
 		if(comp0->w != compi->w)
 		{
 			GRK_WARN("width {} of component {}"
-						 " differs from width {} of component 0.",
-						 compi->sgnd, i, comp0->sgnd);
+					 " differs from width {} of component 0.",
+					 compi->sgnd, i, comp0->sgnd);
 			return false;
 		}
 		if(comp0->stride != compi->stride)
 		{
 			GRK_WARN("stride {} of component {}"
-						 " differs from stride {} of component 0.",
-						 compi->sgnd, i, comp0->sgnd);
+					 " differs from stride {} of component 0.",
+					 compi->sgnd, i, comp0->sgnd);
 			return false;
 		}
 		if(comp0->h != compi->h)
 		{
 			GRK_WARN("height {} of component {}"
-						 " differs from height {} of component 0.",
-						 compi->sgnd, i, comp0->sgnd);
+					 " differs from height {} of component 0.",
+					 compi->sgnd, i, comp0->sgnd);
 			return false;
 		}
 	}
@@ -81,7 +80,7 @@ bool GrkImage::allComponentsSanityCheck(bool equalPrecision)
 
 bool GrkImage::execUpsample(void)
 {
-	if (!upsample)
+	if(!upsample)
 		return true;
 
 	if(!comps)
@@ -113,7 +112,8 @@ bool GrkImage::execUpsample(void)
 		new_cmp->dy = 1;
 		new_cmp->w = x1 - x0;
 		new_cmp->h = y1 - y0;
-		if (!allocData(new_cmp)){
+		if(!allocData(new_cmp))
+		{
 			delete[] new_components;
 			return false;
 		}
@@ -213,7 +213,6 @@ bool GrkImage::execUpsample(void)
 	return true;
 }
 
-
 template<typename T>
 void clip(grk_image_comp* component, uint8_t precision)
 {
@@ -234,7 +233,6 @@ void clip(grk_image_comp* component, uint8_t precision)
 	}
 	component->prec = precision;
 }
-
 
 void GrkImage::scaleComponent(grk_image_comp* component, uint8_t precision)
 {
@@ -273,8 +271,10 @@ void GrkImage::scaleComponent(grk_image_comp* component, uint8_t precision)
 	component->prec = precision;
 }
 
-void GrkImage::convertPrecision(void){
-	if (precision) {
+void GrkImage::convertPrecision(void)
+{
+	if(precision)
+	{
 		for(uint32_t compno = 0; compno < numcomps; ++compno)
 		{
 			uint32_t precisionno = compno;
@@ -287,16 +287,15 @@ void GrkImage::convertPrecision(void){
 
 			switch(precision[precisionno].mode)
 			{
-				case GRK_PREC_MODE_CLIP:
-					{
-						if(comp->sgnd)
-							clip<int32_t>(comp, prec);
-						else
-							clip<uint32_t>(comp, prec);
-					}
-					break;
+				case GRK_PREC_MODE_CLIP: {
+					if(comp->sgnd)
+						clip<int32_t>(comp, prec);
+					else
+						clip<uint32_t>(comp, prec);
+				}
+				break;
 				case GRK_PREC_MODE_SCALE:
-					scaleComponent(comp,prec);
+					scaleComponent(comp, prec);
 					break;
 				default:
 					break;
@@ -304,12 +303,13 @@ void GrkImage::convertPrecision(void){
 		}
 	}
 
-	if (decompressFormat == GRK_JPG_FMT) {
+	if(decompressFormat == GRK_JPG_FMT)
+	{
 		uint8_t prec = comps[0].prec;
 		if(prec < 8 && numcomps > 1)
 		{ /* GRAY_ALPHA, RGB, RGB_ALPHA */
 			for(uint16_t i = 0; i < numcomps; ++i)
-				scaleComponent(comps+i, 8);
+				scaleComponent(comps + i, 8);
 			prec = 8;
 		}
 		else if((prec > 1) && (prec < 8) && ((prec == 6) || ((prec & 1) == 1)))
@@ -319,15 +319,17 @@ void GrkImage::convertPrecision(void){
 			else
 				prec++;
 			for(uint16_t i = 0; i < numcomps; ++i)
-				scaleComponent(comps+i, prec);
+				scaleComponent(comps + i, prec);
 		}
-	} else if (decompressFormat == GRK_PNG_FMT){
+	}
+	else if(decompressFormat == GRK_PNG_FMT)
+	{
 		uint16_t nr_comp = numcomps;
 		if(nr_comp > 4)
 		{
 			GRK_WARN("PNG: number of components {} is "
-						 "greater than 4. Truncating to 4",
-						 nr_comp);
+					 "greater than 4. Truncating to 4",
+					 nr_comp);
 			nr_comp = 4;
 		}
 		uint8_t prec = comps[0].prec;
@@ -347,27 +349,30 @@ void GrkImage::convertPrecision(void){
 				prec++;
 		}
 		for(uint16_t i = 0; i < nr_comp; ++i)
-			scaleComponent(comps+i, prec);
+			scaleComponent(comps + i, prec);
 	}
-
 }
 
-bool GrkImage::greyToRGB(void){
+bool GrkImage::greyToRGB(void)
+{
 	if(numcomps != 1)
 		return true;
 
-	if (!forceRGB || color_space != GRK_CLRSPC_GRAY)
+	if(!forceRGB || color_space != GRK_CLRSPC_GRAY)
 		return true;
 
 	auto new_components = new grk_image_comp[3];
 	memset(new_components, 0, 3 * sizeof(grk_image_comp));
-	for (uint16_t i = 0; i < 3; ++i){
+	for(uint16_t i = 0; i < 3; ++i)
+	{
 		auto dest = new_components + i;
 		copyComponent(comps, dest);
 		// alloc data for new components
-		if (i > 0) {
-			if (!allocData(dest)){
-				delete [] new_components;
+		if(i > 0)
+		{
+			if(!allocData(dest))
+			{
+				delete[] new_components;
 				return false;
 			}
 			size_t dataSize = (uint64_t)comps->stride * comps->h * sizeof(uint32_t);
@@ -388,10 +393,12 @@ bool GrkImage::greyToRGB(void){
 	return true;
 }
 
-bool GrkImage::convertToRGB(bool wholeTileDecompress){
+bool GrkImage::convertToRGB(bool wholeTileDecompress)
+{
 	bool oddFirstX = x0 & 1;
 	bool oddFirstY = y0 & 1;
-	if (!wholeTileDecompress){
+	if(!wholeTileDecompress)
+	{
 		oddFirstX = false;
 		oddFirstY = false;
 	}
@@ -402,8 +409,8 @@ bool GrkImage::convertToRGB(bool wholeTileDecompress){
 			if(numcomps != 3)
 			{
 				GRK_ERROR("grk_decompress: YCC: number of components {} "
-							  "not equal to 3 ",
-							  numcomps);
+						  "not equal to 3 ",
+						  numcomps);
 				return false;
 			}
 			if(convert)
@@ -416,19 +423,19 @@ bool GrkImage::convertToRGB(bool wholeTileDecompress){
 			if(numcomps != 3)
 			{
 				GRK_ERROR("grk_decompress: YCC: number of components {} "
-							  "not equal to 3 ",
-							  numcomps);
+						  "not equal to 3 ",
+						  numcomps);
 				return false;
 			}
-			if (convert && !color_esycc_to_rgb())
+			if(convert && !color_esycc_to_rgb())
 				GRK_WARN("grk_decompress: eYCC to RGB colour conversion failed");
 			break;
 		case GRK_CLRSPC_CMYK:
 			if(numcomps != 4)
 			{
 				GRK_ERROR("grk_decompress: CMYK: number of components {} "
-							  "not equal to 4 ",
-							  numcomps);
+						  "not equal to 4 ",
+						  numcomps);
 				return false;
 			}
 			if(convert && !color_cmyk_to_rgb())
@@ -439,11 +446,9 @@ bool GrkImage::convertToRGB(bool wholeTileDecompress){
 	}
 
 	return true;
-
 }
 
-grk_image* GrkImage::createRGB(uint16_t numcmpts, uint32_t w, uint32_t h,
-												uint8_t prec)
+grk_image* GrkImage::createRGB(uint16_t numcmpts, uint32_t w, uint32_t h, uint8_t prec)
 {
 	if(!numcmpts)
 	{
@@ -465,7 +470,7 @@ grk_image* GrkImage::createRGB(uint16_t numcmpts, uint32_t w, uint32_t h,
 		cmptparms[compno].prec = prec;
 		cmptparms[compno].sgnd = 0U;
 	}
-	auto img = GrkImage::create(this,numcmpts, (grk_image_comp*)cmptparms, GRK_CLRSPC_SRGB, true);
+	auto img = GrkImage::create(this, numcmpts, (grk_image_comp*)cmptparms, GRK_CLRSPC_SRGB, true);
 	delete[] cmptparms;
 
 	return img;
@@ -486,7 +491,7 @@ grk_image* GrkImage::createRGB(uint16_t numcmpts, uint32_t w, uint32_t h,
 
  -----------------------------------------------------------*/
 void GrkImage::sycc_to_rgb(int32_t offset, int32_t upb, int32_t y, int32_t cb, int32_t cr,
-						int32_t* out_r, int32_t* out_g, int32_t* out_b)
+						   int32_t* out_r, int32_t* out_g, int32_t* out_b)
 {
 	int32_t r, g, b;
 
@@ -517,8 +522,7 @@ void GrkImage::sycc_to_rgb(int32_t offset, int32_t upb, int32_t y, int32_t cb, i
 bool GrkImage::sycc444_to_rgb(void)
 {
 	int32_t *d0, *d1, *d2, *r, *g, *b;
-	auto dst =
-		createRGB(3, comps[0].w, comps[0].h, comps[0].prec);
+	auto dst = createRGB(3, comps[0].w, comps[0].h, comps[0].prec);
 	if(!dst)
 		return false;
 
@@ -571,8 +575,7 @@ bool GrkImage::sycc444_to_rgb(void)
 
 bool GrkImage::sycc422_to_rgb(bool oddFirstX)
 {
-	auto dst =
-		createRGB(3, comps[0].w, comps[0].h, comps[0].prec);
+	auto dst = createRGB(3, comps[0].w, comps[0].h, comps[0].prec);
 	if(!dst)
 		return false;
 
@@ -659,8 +662,7 @@ bool GrkImage::sycc422_to_rgb(bool oddFirstX)
 
 bool GrkImage::sycc420_to_rgb(bool oddFirstX, bool oddFirstY)
 {
-	auto dst = createRGB(3, comps[0].w, comps[0].h,
-											 comps[0].prec);
+	auto dst = createRGB(3, comps[0].w, comps[0].h, comps[0].prec);
 	if(!dst)
 		return false;
 
@@ -785,33 +787,32 @@ bool GrkImage::color_sycc_to_rgb(bool oddFirstX, bool oddFirstY)
 	if(numcomps < 3)
 	{
 		GRK_WARN("color_sycc_to_rgb: number of components {} is less than 3."
-					 " Unable to convert",
-					 numcomps);
+				 " Unable to convert",
+				 numcomps);
 		return false;
 	}
 	bool rc;
 
-	if((comps[0].dx == 1) && (comps[1].dx == 2) && (comps[2].dx == 2) &&
-	   (comps[0].dy == 1) && (comps[1].dy == 2) && (comps[2].dy == 2))
+	if((comps[0].dx == 1) && (comps[1].dx == 2) && (comps[2].dx == 2) && (comps[0].dy == 1) &&
+	   (comps[1].dy == 2) && (comps[2].dy == 2))
 	{ /* horizontal and vertical sub-sample */
 		rc = sycc420_to_rgb(oddFirstX, oddFirstY);
 	}
-	else if((comps[0].dx == 1) && (comps[1].dx == 2) && (comps[2].dx == 2) &&
-			(comps[0].dy == 1) && (comps[1].dy == 1) && (comps[2].dy == 1))
+	else if((comps[0].dx == 1) && (comps[1].dx == 2) && (comps[2].dx == 2) && (comps[0].dy == 1) &&
+			(comps[1].dy == 1) && (comps[2].dy == 1))
 	{ /* horizontal sub-sample only */
-		rc = sycc422_to_rgb( oddFirstX);
+		rc = sycc422_to_rgb(oddFirstX);
 	}
-	else if((comps[0].dx == 1) && (comps[1].dx == 1) && (comps[2].dx == 1) &&
-			(comps[0].dy == 1) && (comps[1].dy == 1) && (comps[2].dy == 1))
+	else if((comps[0].dx == 1) && (comps[1].dx == 1) && (comps[2].dx == 1) && (comps[0].dy == 1) &&
+			(comps[1].dy == 1) && (comps[2].dy == 1))
 	{ /* no sub-sample */
 		rc = sycc444_to_rgb();
 	}
 	else
 	{
 		GRK_WARN("color_sycc_to_rgb:  Invalid sub-sampling: ({},{}), ({},{}), ({},{})."
-					 " Unable to convert.",
-					 comps[0].dx, comps[0].dy, comps[1].dx, comps[1].dy,
-					 comps[2].dx, comps[2].dy);
+				 " Unable to convert.",
+				 comps[0].dx, comps[0].dy, comps[1].dx, comps[1].dy, comps[2].dx, comps[2].dy);
 		rc = false;
 	}
 	if(rc)
@@ -938,24 +939,21 @@ bool GrkImage::color_esycc_to_rgb(void)
 
 } /* color_esycc_to_rgb() */
 
-bool GrkImage::applyColourManagement(void){
+bool GrkImage::applyColourManagement(void)
+{
 	bool isTiff = decompressFormat == GRK_TIF_FMT;
 	bool canStoreCIE = isTiff && color_space == GRK_CLRSPC_DEFAULT_CIE;
-	bool isCIE =
-		color_space == GRK_CLRSPC_DEFAULT_CIE || color_space == GRK_CLRSPC_CUSTOM_CIE;
+	bool isCIE = color_space == GRK_CLRSPC_DEFAULT_CIE || color_space == GRK_CLRSPC_CUSTOM_CIE;
 	// A TIFF,PNG, BMP or JPEG image can store the ICC profile,
 	// so no need to apply it in this case,
 	// (unless we are forcing to RGB).
 	// Otherwise, we apply the profile
-	bool canStoreICC = (decompressFormat == GRK_TIF_FMT ||
-							decompressFormat == GRK_PNG_FMT ||
-							decompressFormat == GRK_JPG_FMT ||
-							decompressFormat == GRK_BMP_FMT);
+	bool canStoreICC = (decompressFormat == GRK_TIF_FMT || decompressFormat == GRK_PNG_FMT ||
+						decompressFormat == GRK_JPG_FMT || decompressFormat == GRK_BMP_FMT);
 
-	bool shouldColourManage = meta &&
-						  meta->color.icc_profile_buf &&
-						  (forceRGB || ((isCIE && !canStoreCIE) || !canStoreICC));
-	if (!shouldColourManage)
+	bool shouldColourManage = meta && meta->color.icc_profile_buf &&
+							  (forceRGB || ((isCIE && !canStoreCIE) || !canStoreICC));
+	if(!shouldColourManage)
 		return true;
 
 	if(meta && meta->color.icc_profile_buf)
@@ -963,12 +961,12 @@ bool GrkImage::applyColourManagement(void){
 		if(isCIE)
 		{
 			if(!forceRGB)
-				GRK_WARN(
-					" Input file is in CIE colour space,\n"
-					"but the codec is unable to store this information in the "
-					"output file .\n"
-					"The output image will therefore be converted to sRGB before saving.");
-			if(!cieLabToRGB()) {
+				GRK_WARN(" Input file is in CIE colour space,\n"
+						 "but the codec is unable to store this information in the "
+						 "output file .\n"
+						 "The output image will therefore be converted to sRGB before saving.");
+			if(!cieLabToRGB())
+			{
 				GRK_ERROR("Unable to convert L*a*b image to sRGB");
 				return false;
 			}
@@ -978,12 +976,13 @@ bool GrkImage::applyColourManagement(void){
 			if(!forceRGB)
 			{
 				GRK_WARN(" Input file contains a color profile,\n"
-							 "but the codec is unable to store this profile"
-							 " in the output file .\n"
-							 "The profile will therefore be applied to the output"
-							 " image before saving.");
+						 "but the codec is unable to store this profile"
+						 " in the output file .\n"
+						 "The profile will therefore be applied to the output"
+						 " image before saving.");
 			}
-			if (!applyICC()){
+			if(!applyICC())
+			{
 				GRK_ERROR("Unable to apply ICC profile");
 				return false;
 			}
@@ -992,7 +991,6 @@ bool GrkImage::applyColourManagement(void){
 
 	return true;
 }
-
 
 /*#define DEBUG_PROFILE*/
 bool GrkImage::applyICC(void)
@@ -1010,14 +1008,13 @@ bool GrkImage::applyICC(void)
 		return false;
 	if(!meta)
 		return false;
-	in_prof = cmsOpenProfileFromMem(meta->color.icc_profile_buf,
-									meta->color.icc_profile_len);
+	in_prof = cmsOpenProfileFromMem(meta->color.icc_profile_buf, meta->color.icc_profile_len);
 	if(in_prof == nullptr)
 		return false;
 
 	bool rc = false;
 
-	//auto in_space = cmsGetPCS(in_prof);
+	// auto in_space = cmsGetPCS(in_prof);
 	out_space = cmsGetColorSpace(in_prof);
 	intent = cmsGetHeaderRenderingIntent(in_prof);
 
@@ -1084,8 +1081,8 @@ bool GrkImage::applyICC(void)
 	else
 	{
 		GRK_WARN("Apply ICC \nICC profile has unknown "
-					  "output color space (%#x)\nICC profile ignored.",
-					  out_space);
+				 "output color space (%#x)\nICC profile ignored.",
+				 out_space);
 		goto cleanup;
 	}
 	transform = cmsCreateTransform(in_prof, in_type, out_prof, out_type, intent, 0);
@@ -1191,8 +1188,8 @@ bool GrkImage::applyICC(void)
 	}
 	else
 	{ /* GRAY, GRAYA */
-		uint8_t *inbuf = nullptr;
-		uint8_t *outbuf = nullptr;
+		uint8_t* inbuf = nullptr;
+		uint8_t* outbuf = nullptr;
 
 		int32_t *r = nullptr, *g = nullptr, *b = nullptr;
 		max = (size_t)w * h;
@@ -1211,16 +1208,17 @@ bool GrkImage::applyICC(void)
 		auto in = inbuf = new uint8_t[nr_samples];
 		auto out = outbuf = new uint8_t[nr_samples];
 
-		if (forceRGB) {
+		if(forceRGB)
+		{
 			if(numcomps == 2)
 				comps[3] = comps[1];
 
-			comps[1] 		= comps[0];
-			comps[1].data   = nullptr;
-			allocData(comps+1);
-			comps[2] 		= comps[0];
-			comps[2].data   = nullptr;
-			allocData(comps+2);
+			comps[1] = comps[0];
+			comps[1].data = nullptr;
+			allocData(comps + 1);
+			comps[2] = comps[0];
+			comps[2].data = nullptr;
+			allocData(comps + 2);
 			numcomps = (uint16_t)(2 + numcomps);
 		}
 
@@ -1279,19 +1277,20 @@ cleanup:
 	return rc;
 } /* applyICC() */
 
-
 // transform LAB colour space to sRGB @ 16 bit precision
 bool GrkImage::cieLabToRGB(void)
 {
 	// sanity checks
 	if(numcomps == 0 || !allComponentsSanityCheck(true))
 		return false;
-	if (numcomps < 3){
+	if(numcomps < 3)
+	{
 		GRK_WARN("cieLabToRGB: there must be at least three components");
 		return false;
 	}
-	if (numcomps > 3)
-		GRK_WARN("cieLabToRGB: there are more than three components : extra components will be ignored.");
+	if(numcomps > 3)
+		GRK_WARN("cieLabToRGB: there are more than three components : extra components will be "
+				 "ignored.");
 	if(!meta)
 		return false;
 	size_t i;
@@ -1383,7 +1382,8 @@ bool GrkImage::cieLabToRGB(void)
 			break;
 		default:
 			GRK_WARN("Unrecognized illuminant {} in CIELab colour space. "
-						 "Setting to default Daylight50", illuminant);
+					 "Setting to default Daylight50",
+					 illuminant);
 			illuminant = GRK_CIE_D50;
 			break;
 	}
@@ -1392,8 +1392,7 @@ bool GrkImage::cieLabToRGB(void)
 	auto in = cmsCreateLab4Profile(illuminant == GRK_CIE_D50 ? nullptr : &WhitePoint);
 	// sRGB output profile
 	auto out = cmsCreate_sRGBProfile();
-	auto transform =
-		cmsCreateTransform(in, TYPE_Lab_DBL, out, TYPE_RGB_16, INTENT_PERCEPTUAL, 0);
+	auto transform = cmsCreateTransform(in, TYPE_Lab_DBL, out, TYPE_RGB_16, INTENT_PERCEPTUAL, 0);
 
 	cmsCloseProfile(in);
 	cmsCloseProfile(out);
@@ -1410,14 +1409,13 @@ bool GrkImage::cieLabToRGB(void)
 		return false;
 	}
 
-	auto dest_img = createRGB(3, comps[0].w, comps[0].h,
-												  comps[0].prec);
+	auto dest_img = createRGB(3, comps[0].w, comps[0].h, comps[0].prec);
 	if(!dest_img)
 		return false;
 
-	red   = dest_img->comps[0].data;
+	red = dest_img->comps[0].data;
 	green = dest_img->comps[1].data;
-	blue  = dest_img->comps[2].data;
+	blue = dest_img->comps[2].data;
 
 	uint32_t src_stride_diff = comps[0].stride - comps[0].w;
 	uint32_t dest_stride_diff = dest_img->comps[0].stride - dest_img->comps[0].w;
@@ -1481,6 +1479,5 @@ bool GrkImage::cieLabToRGB(void)
 
 	return true;
 }
-
 
 } // namespace grk

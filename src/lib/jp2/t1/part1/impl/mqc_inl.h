@@ -29,10 +29,10 @@
 	uint32_t a = mqc->a;                    \
 	uint32_t ct = mqc->ct
 
-#define POP_MQC()                         \
-	mqc->curctx = curctx;                 \
-	mqc->c = c;                           \
-	mqc->a = a;                           \
+#define POP_MQC()         \
+	mqc->curctx = curctx; \
+	mqc->c = c;           \
+	mqc->a = a;           \
 	mqc->ct = ct;
 
 #define mqc_setcurctx(mqc, ctxno) (mqc)->curctx = (mqc)->ctxs + (uint32_t)(ctxno)

@@ -21,15 +21,15 @@
 #include "grk_includes.h"
 namespace grk
 {
-TileProcessor::TileProcessor(uint16_t tileIndex, CodeStream* codeStream, IBufferedStream* stream, bool isCompressor,
-							 bool isWholeTileDecompress)
-	: first_poc_tile_part_(true), tilePartIndexCounter_(0), tilePartDataLength(0),
-	  pino(0), tile(nullptr), headerImage(codeStream->getHeaderImage()),
+TileProcessor::TileProcessor(uint16_t tileIndex, CodeStream* codeStream, IBufferedStream* stream,
+							 bool isCompressor, bool isWholeTileDecompress)
+	: first_poc_tile_part_(true), tilePartIndexCounter_(0), tilePartDataLength(0), pino(0),
+	  tile(nullptr), headerImage(codeStream->getHeaderImage()),
 	  current_plugin_tile(codeStream->getCurrentPluginTile()),
 	  wholeTileDecompress(isWholeTileDecompress), cp_(codeStream->getCodingParams()),
-	  packetLengthCache(PacketLengthCache(cp_)),tileIndex_(tileIndex), stream_(stream), corrupt_packet_(false),
-	  newTilePartProgressionPosition(0), tcp_(nullptr), truncated(false), image_(nullptr),
-	  isCompressor_(isCompressor), preCalculatedTileLen(0)
+	  packetLengthCache(PacketLengthCache(cp_)), tileIndex_(tileIndex), stream_(stream),
+	  corrupt_packet_(false), newTilePartProgressionPosition(0), tcp_(nullptr), truncated(false),
+	  image_(nullptr), isCompressor_(isCompressor), preCalculatedTileLen(0)
 {
 	tile = new Tile();
 	tile->comps = new TileComponent[headerImage->numcomps];
@@ -54,10 +54,12 @@ bool TileProcessor::canPreCalculateTileLen(void)
 	return !cp_->coding_params_.enc_.enableTilePartGeneration_ &&
 		   (cp_->tcps + tileIndex_)->getNumProgressions() == 1;
 }
-uint16_t TileProcessor::getIndex(void) const{
+uint16_t TileProcessor::getIndex(void) const
+{
 	return tileIndex_;
 }
-void TileProcessor::incrementIndex(void){
+void TileProcessor::incrementIndex(void)
+{
 	tileIndex_++;
 }
 void TileProcessor::generateImage(GrkImage* src_image, Tile* src_tile)
@@ -70,7 +72,8 @@ GrkImage* TileProcessor::getImage(void)
 {
 	return image_;
 }
-void TileProcessor::release(void){
+void TileProcessor::release(void)
+{
 	if(image_)
 		grk_object_unref(&image_->obj);
 	image_ = nullptr;
@@ -135,8 +138,8 @@ bool TileProcessor::init(void)
 		grkRectU32 unreducedTileComp = grkRectU32(
 			ceildiv<uint32_t>(tile->x0, imageComp->dx), ceildiv<uint32_t>(tile->y0, imageComp->dy),
 			ceildiv<uint32_t>(tile->x1, imageComp->dx), ceildiv<uint32_t>(tile->y1, imageComp->dy));
-		if(!tilec->init(isCompressor_, wholeTileDecompress, unreducedTileComp, imageComp->prec,
-						cp_, tcp->tccps + compno, current_plugin_tile))
+		if(!tilec->init(isCompressor_, wholeTileDecompress, unreducedTileComp, imageComp->prec, cp_,
+						tcp->tccps + compno, current_plugin_tile))
 		{
 			return false;
 		}
@@ -168,7 +171,7 @@ bool TileProcessor::init(void)
 			}
 		}
 		packetTracker_.init(tile->numcomps, tile->comps->numresolutions, max_precincts,
-							 tcp->numlayers);
+							tcp->numlayers);
 	}
 
 	return true;
@@ -259,7 +262,7 @@ bool TileProcessor::doCompress(void)
 		preCalculatedTileLen = sot_marker_segment_len;
 		// if (tileIndex_ == 3)
 		//	GRK_INFO("Precalc: Tile %d, SOT marker seg len : %d", tileIndex_,
-		//sot_marker_segment_len);
+		// sot_marker_segment_len);
 		// POC marker
 		if(canWritePocMarker())
 		{
@@ -359,8 +362,8 @@ bool TileProcessor::decompressT2(SparseBuffer* srcBuf)
 		if(!rc)
 			return false;
 		// synch plugin with T2 data
-		//todo re-enable decompress synch
-		//decompress_synch_plugin_with_host(this);
+		// todo re-enable decompress synch
+		// decompress_synch_plugin_with_host(this);
 	}
 
 	return true;
@@ -397,7 +400,7 @@ bool TileProcessor::decompressT1(void)
 			if(!tilec->getBuffer()->alloc())
 			{
 				// clean up
-				for (auto& b : blocks)
+				for(auto& b : blocks)
 					delete b;
 				GRK_ERROR("Not enough memory for tile data");
 				return false;
@@ -424,7 +427,7 @@ bool TileProcessor::decompressT1(void)
 	}
 	return true;
 }
-bool TileProcessor::decompressT2T1(TileCodingParams* tcp, GrkImage* outputImage,  bool doPost)
+bool TileProcessor::decompressT2T1(TileCodingParams* tcp, GrkImage* outputImage, bool doPost)
 {
 	if(!allocWindowBuffers(outputImage))
 		return false;
@@ -1569,8 +1572,7 @@ Tile::~Tile()
 {
 	delete[] comps;
 }
-PacketTracker::PacketTracker()
-	: bits(nullptr), numcomps_(0), numres_(0), numprec_(0), numlayers_(0)
+PacketTracker::PacketTracker() : bits(nullptr), numcomps_(0), numres_(0), numprec_(0), numlayers_(0)
 {}
 PacketTracker::~PacketTracker()
 {

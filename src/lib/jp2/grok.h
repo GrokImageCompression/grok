@@ -102,16 +102,16 @@ typedef enum GRK_SUPPORTED_FILE_FMT
 #define GRK_JP2_INFO 128 /**< JP2 file information */
 #define GRK_JP2_IND 256 /**< JP2 file index */
 
-#define GRK_CBLKSTY_LAZY 		0x001 /**< Selective arithmetic coding bypass */
-#define GRK_CBLKSTY_RESET		0x002 /**< Reset context probabilities on coding pass boundaries */
-#define GRK_CBLKSTY_TERMALL 	0x004 /**< Termination on each coding pass */
-#define GRK_CBLKSTY_VSC 		0x008 /**< Vertical stripe causal context */
-#define GRK_CBLKSTY_PTERM 		0x010 /**< Predictable termination */
-#define GRK_CBLKSTY_SEGSYM 		0x020 /**< Segmentation symbols are used */
-#define GRK_CBLKSTY_HT 			0x040 /**< high throughput block coding */
-#define GRK_CBLKSTY_HT_MIXED 	0x080 /**< high throughput block coding - mixed*/
-#define GRK_CBLKSTY_HT_PHLD		0x100 /**< high throughput block coding - placeholder */
-#define GRK_JPH_RSIZ_FLAG 		0x4000 /**<for JPH, bit 14 of RSIZ must be set to 1 */
+#define GRK_CBLKSTY_LAZY 0x001 /**< Selective arithmetic coding bypass */
+#define GRK_CBLKSTY_RESET 0x002 /**< Reset context probabilities on coding pass boundaries */
+#define GRK_CBLKSTY_TERMALL 0x004 /**< Termination on each coding pass */
+#define GRK_CBLKSTY_VSC 0x008 /**< Vertical stripe causal context */
+#define GRK_CBLKSTY_PTERM 0x010 /**< Predictable termination */
+#define GRK_CBLKSTY_SEGSYM 0x020 /**< Segmentation symbols are used */
+#define GRK_CBLKSTY_HT 0x040 /**< high throughput block coding */
+#define GRK_CBLKSTY_HT_MIXED 0x080 /**< high throughput block coding - mixed*/
+#define GRK_CBLKSTY_HT_PHLD 0x100 /**< high throughput block coding - placeholder */
+#define GRK_JPH_RSIZ_FLAG 0x4000 /**<for JPH, bit 14 of RSIZ must be set to 1 */
 
 /**
  * JPEG 2000 Profiles, see Table A.10 from 15444-1 (updated in various AMDs)
@@ -612,7 +612,6 @@ typedef struct _grk_cparameters
 	bool verbose;
 } grk_cparameters;
 
-
 // Note: "component" refers to an image component as decompressed
 // from the code stream, while "channel" refers to a component resulting
 // from the application of a Palette box LUT and a Component mapping box.
@@ -640,12 +639,10 @@ typedef struct _grk_palette_data
 	uint8_t* channel_prec;
 } grk_palette_data;
 
-
 // Channel Definition box structures and enums.
 // When no Component mapping box is present, it is still possible to have
 // a Channel defintion box, in which case channels are associated with components
 // in the obvious way : channel `k` corresponds to component `k`.
-
 
 // channel type
 typedef enum GRK_CHANNEL_TYPE_
@@ -669,7 +666,6 @@ typedef enum GRK_CHANNEL_ASSOC_
 	GRK_CHANNEL_ASSOC_UNASSOCIATED = 65535U
 
 } GRK_CHANNEL_ASSOC;
-
 
 /**
  Channel definition: channel index, type, association
@@ -793,9 +789,9 @@ typedef struct _grk_header_info
 
 } grk_header_info;
 
-
-typedef struct _grk_serialize_buf {
-	uint8_t *data;
+typedef struct _grk_serialize_buf
+{
+	uint8_t* data;
 	uint64_t offset;
 	uint64_t dataLen;
 	uint64_t allocLen;
@@ -803,12 +799,9 @@ typedef struct _grk_serialize_buf {
 	uint32_t index;
 } grk_serialize_buf;
 
-
-typedef bool (*grk_serialize_pixels)(grk_serialize_buf buffer,
-										grk_serialize_buf* reclaimed,
-										uint32_t max_reclaimed,
-										uint32_t *num_reclaimed,
-										void* user_data);
+typedef bool (*grk_serialize_pixels)(grk_serialize_buf buffer, grk_serialize_buf* reclaimed,
+									 uint32_t max_reclaimed, uint32_t* num_reclaimed,
+									 void* user_data);
 
 /**
  * Core decompress parameters
@@ -836,7 +829,6 @@ typedef struct _grk_decompress_core_params
 	grk_serialize_pixels serializeBufferCallback;
 
 } grk_decompress_core_params;
-
 
 #define GRK_DECOMPRESS_COMPRESSION_LEVEL_DEFAULT (UINT_MAX)
 
@@ -1289,7 +1281,8 @@ GRK_API void GRK_CALLCONV grk_decompress_set_default_params(grk_decompress_core_
  *
  * @return true			if the decompressor is correctly set
  */
-GRK_API bool GRK_CALLCONV grk_decompress_init(grk_codec* codec, grk_decompress_core_params* parameters);
+GRK_API bool GRK_CALLCONV grk_decompress_init(grk_codec* codec,
+											  grk_decompress_core_params* parameters);
 
 /**
  * Decompress JPEG 2000 header

@@ -154,7 +154,8 @@ bool SOTMarker::read(CodeStreamDecompress* codeStream, uint8_t* headerData, uint
 	/* PSot should be equal to zero or >=14 and <= 2^32-1 */
 	if((tilePartLength != 0) && (tilePartLength < 14))
 	{
-		if(tilePartLength != sot_marker_segment_len) {
+		if(tilePartLength != sot_marker_segment_len)
+		{
 			GRK_ERROR("Illegal Psot value %u", tilePartLength);
 			return false;
 		}

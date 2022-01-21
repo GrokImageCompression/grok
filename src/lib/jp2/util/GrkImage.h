@@ -19,7 +19,7 @@ class GrkImage : public grk_image
 {
 	friend GrkObjectWrapperImpl<GrkImage>;
 
-public:
+  public:
 	GrkImage();
 	bool subsampleAndReduce(uint32_t reduce);
 	/**
@@ -32,8 +32,7 @@ public:
 	 *
 	 * @return 		     a new image if successful, otherwise nullptr
 	 * */
-	static GrkImage* create(grk_image *src,
-							uint16_t numcmpts, grk_image_comp* cmptparms,
+	static GrkImage* create(grk_image* src, uint16_t numcmpts, grk_image_comp* cmptparms,
 							GRK_COLOR_SPACE clrspc, bool doAllocation);
 	/**
 	 * Allocate data for single image component
@@ -48,9 +47,9 @@ public:
 	 *
 	 * @return true if successful
 	 */
-	bool allocCompositeData(CodingParams *cp);
+	bool allocCompositeData(CodingParams* cp);
 
-	bool canAllocInterleaved(CodingParams *cp);
+	bool canAllocInterleaved(CodingParams* cp);
 
 	/**
 	 * Copy only header of image and its component header (no data are copied)
@@ -77,9 +76,10 @@ public:
 	void convertPrecision(void);
 	bool execUpsample(void);
 	void all_components_data_free(void);
-	void postReadHeader(CodingParams *cp);
+	void postReadHeader(CodingParams* cp);
 	void validateColourSpace(void);
 	bool isFinalOutputSubsampled();
+
   private:
 	~GrkImage();
 	bool compositePlanar(const GrkImage* srcImg);
@@ -88,9 +88,9 @@ public:
 	bool generateCompositeBounds(uint16_t compno, grkRectU32 src, uint32_t src_stride,
 								 grkRectU32* destWin, uint32_t* srcLineOffset);
 	bool allComponentsSanityCheck(bool equalPrecision);
-	grk_image* createRGB(uint16_t numcmpts, uint32_t w, uint32_t h,	uint8_t prec);
-	void sycc_to_rgb(int32_t offset, int32_t upb, int32_t y, int32_t cb, int32_t cr,
-							int32_t* out_r, int32_t* out_g, int32_t* out_b);
+	grk_image* createRGB(uint16_t numcmpts, uint32_t w, uint32_t h, uint8_t prec);
+	void sycc_to_rgb(int32_t offset, int32_t upb, int32_t y, int32_t cb, int32_t cr, int32_t* out_r,
+					 int32_t* out_g, int32_t* out_b);
 	bool sycc444_to_rgb(void);
 	bool sycc422_to_rgb(bool oddFirstX);
 	bool sycc420_to_rgb(bool oddFirstX, bool oddFirstY);

@@ -260,8 +260,7 @@ bool T2Decompress::readPacketHeader(TileCodingParams* p_tcp, const PacketIter* p
 					  tileProcessor->getIndex() + 1);
 			return false;
 		}
-		auto tile_packet_header =
-			&cp->ppm_marker->tile_packet_headers_[tileProcessor->getIndex()];
+		auto tile_packet_header = &cp->ppm_marker->tile_packet_headers_[tileProcessor->getIndex()];
 		header_data_start = &tile_packet_header->buf;
 		remaining_length = &tile_packet_header->len;
 	}

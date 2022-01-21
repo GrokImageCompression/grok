@@ -10,9 +10,10 @@
 
 #include <cstdint>
 
-struct Serializer {
+struct Serializer
+{
 	Serializer(void);
-	void init(grk_image *image);
+	void init(grk_image* image);
 	bool isAsynchActive(void);
 	uint64_t getAsynchFileLength(void);
 #ifndef _WIN32
@@ -21,24 +22,24 @@ struct Serializer {
 	bool close(void);
 #endif
 #ifdef GROK_HAVE_URING
-	bool write(uint8_t *buf, uint64_t size);
+	bool write(uint8_t* buf, uint64_t size);
 #endif
 	void clear(void);
-	void initPixelRequest(grk_serialize_buf* reclaimed,
-						uint32_t max_reclaimed,
-						uint32_t *num_reclaimed);
+	void initPixelRequest(grk_serialize_buf* reclaimed, uint32_t max_reclaimed,
+						  uint32_t* num_reclaimed);
 	uint32_t getNumPixelRequests(void);
 	uint64_t getOffset(void);
 	uint32_t incrementPixelRequest(void);
 	bool allPixelRequestsComplete(void);
-private:
+
+  private:
 #ifdef GROK_HAVE_URING
 	FileUringIO uring;
 	GrkSerializeBuf scheduled_;
 #endif
 	grk_serialize_buf* reclaimed_;
 	uint32_t max_reclaimed_;
-	uint32_t *num_reclaimed_;
+	uint32_t* num_reclaimed_;
 	uint32_t numPixelRequests_;
 	uint32_t maxPixelRequests_;
 #ifndef _WIN32

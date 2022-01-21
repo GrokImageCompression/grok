@@ -23,22 +23,23 @@ namespace openhtj2k
 {
 struct TileCodingParams;
 
-	class T1OpenHTJ2K : public grk::T1Interface
-	{
-	  public:
-		T1OpenHTJ2K(bool isCompressor, grk::TileCodingParams* tcp, uint32_t maxCblkW, uint32_t maxCblkH);
-		virtual ~T1OpenHTJ2K();
+class T1OpenHTJ2K : public grk::T1Interface
+{
+  public:
+	T1OpenHTJ2K(bool isCompressor, grk::TileCodingParams* tcp, uint32_t maxCblkW,
+				uint32_t maxCblkH);
+	virtual ~T1OpenHTJ2K();
 
-		bool compress(grk::CompressBlockExec* block);
-		bool decompress(grk::DecompressBlockExec* block);
+	bool compress(grk::CompressBlockExec* block);
+	bool decompress(grk::DecompressBlockExec* block);
 
-	  private:
-		void preCompress(grk::CompressBlockExec* block, grk::Tile* tile);
-		bool postProcess(grk::DecompressBlockExec* block);
+  private:
+	void preCompress(grk::CompressBlockExec* block, grk::Tile* tile);
+	bool postProcess(grk::DecompressBlockExec* block);
 
-		uint32_t coded_data_size;
-		uint8_t* coded_data;
-		uint32_t unencoded_data_size;
-		int32_t* unencoded_data;
-	};
+	uint32_t coded_data_size;
+	uint8_t* coded_data;
+	uint32_t unencoded_data_size;
+	int32_t* unencoded_data;
+};
 } // namespace openhtj2k

@@ -2244,7 +2244,8 @@ static int pluginMain(int argc, char** argv, CompressInitParams* initParams)
 			// cache certain settings
 			auto mct = initParams->parameters.mct;
 			auto rateControlAlgorithm = initParams->parameters.rateControlAlgorithm;
-			for (const auto & entry : std::filesystem::directory_iterator(initParams->inputFolder.imgdirpath))
+			for(const auto& entry :
+				std::filesystem::directory_iterator(initParams->inputFolder.imgdirpath))
 			{
 				if(nextFile(entry.path().filename().string(), &initParams->inputFolder,
 							initParams->outFolder.imgdirpath ? &initParams->outFolder
@@ -2301,7 +2302,8 @@ int main(int argc, char** argv)
 			}
 			else
 			{
-				for (const auto & entry : std::filesystem::directory_iterator(initParams.inputFolder.imgdirpath))
+				for(const auto& entry :
+					std::filesystem::directory_iterator(initParams.inputFolder.imgdirpath))
 				{
 					initParams.parameters = parametersCache;
 					if(compress(entry.path().filename().string(), &initParams) == 1)

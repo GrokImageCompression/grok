@@ -32,63 +32,64 @@
 
 static tmsize_t TiffRead(thandle_t handle, void* buf, tmsize_t size)
 {
-  (void)handle;
-  (void)buf;
+	(void)handle;
+	(void)buf;
 
-  return size;
+	return size;
 }
 static tmsize_t TiffWrite(thandle_t handle, void* buf, tmsize_t size)
 {
-	auto *serializer = (Serializer*)handle;
+	auto* serializer = (Serializer*)handle;
 
 #ifdef GROK_HAVE_URING
-	if (serializer->write((uint8_t*)buf,(uint64_t)size ))
+	if(serializer->write((uint8_t*)buf, (uint64_t)size))
 		return size;
 #endif
-	//grk::ChronoTimer timer("fwrite: time to write");
-	//timer.start();
-	const size_t bytes_total = (size_t) size;
-	if ((tmsize_t) bytes_total != size)
+	// grk::ChronoTimer timer("fwrite: time to write");
+	// timer.start();
+	const size_t bytes_total = (size_t)size;
+	if((tmsize_t)bytes_total != size)
 	{
-		errno=EINVAL;
-		return (tmsize_t) -1;
+		errno = EINVAL;
+		return (tmsize_t)-1;
 	}
-    tmsize_t count = -1;
-    size_t bytes_written=0;
-	for (; bytes_written < bytes_total; bytes_written+=(size_t)count)
+	tmsize_t count = -1;
+	size_t bytes_written = 0;
+	for(; bytes_written < bytes_total; bytes_written += (size_t)count)
 	{
-		const char *buf_offset = (char *) buf+bytes_written;
-		size_t io_size = bytes_total-bytes_written;
-		if (io_size > TIFF_IO_MAX)
+		const char* buf_offset = (char*)buf + bytes_written;
+		size_t io_size = bytes_total - bytes_written;
+		if(io_size > TIFF_IO_MAX)
 			io_size = TIFF_IO_MAX;
-		count=write(serializer->getFd(), buf_offset, (TIFFIOSize_t) io_size);
-		if (count <= 0)
+		count = write(serializer->getFd(), buf_offset, (TIFFIOSize_t)io_size);
+		if(count <= 0)
 			break;
 	}
-	if (count < 0)
+	if(count < 0)
 		return (tmsize_t)-1;
-	//timer.finish();
+	// timer.finish();
 
-	return (tmsize_t) bytes_written;
+	return (tmsize_t)bytes_written;
 }
 
 static uint64_t TiffSeek(thandle_t handle, uint64_t off, int whence)
 {
-	auto *serializer = (Serializer*)handle;
-	_TIFF_off_t off_io = (_TIFF_off_t) off;
+	auto* serializer = (Serializer*)handle;
+	_TIFF_off_t off_io = (_TIFF_off_t)off;
 
-	if ((uint64_t) off_io != off)
+	if((uint64_t)off_io != off)
 	{
-		errno=EINVAL;
-		return (uint64_t) -1;
+		errno = EINVAL;
+		return (uint64_t)-1;
 	}
 
-	return serializer->isAsynchActive() ? serializer->getAsynchFileLength() : ((uint64_t)lseek(serializer->getFd(), off_io, whence));
+	return serializer->isAsynchActive() ? serializer->getAsynchFileLength()
+										: ((uint64_t)lseek(serializer->getFd(), off_io, whence));
 }
 
 static int TiffClose(thandle_t handle)
 {
-	auto *serializer = (Serializer*)handle;
+	auto* serializer = (Serializer*)handle;
 
 	return serializer->close() ? 0 : EINVAL;
 }
@@ -97,21 +98,17 @@ static uint64_t TiffSize(thandle_t handle)
 {
 	(void)handle;
 
-	 return 0U;
+	return 0U;
 }
 
 #endif
 
-TIFFFormat::TIFFFormat():  	tif(nullptr),
-							chroma_subsample_x(1),
-							chroma_subsample_y(1),
-							rowsWritten(0),
-							units(0),
-							bytesToWrite(0),
-							numcomps(0)
+TIFFFormat::TIFFFormat()
+	: tif(nullptr), chroma_subsample_x(1), chroma_subsample_y(1), rowsWritten(0), units(0),
+	  bytesToWrite(0), numcomps(0)
+{}
+TIFFFormat::~TIFFFormat()
 {
-}
-TIFFFormat::~TIFFFormat(){
 	if(tif)
 		TIFFClose(tif);
 }
@@ -119,19 +116,12 @@ TIFFFormat::~TIFFFormat(){
 
 TIFF* TIFFFormat::MyTIFFOpen(const char* name, const char* mode)
 {
-	if (!serializer.open(name,mode,false))
+	if(!serializer.open(name, mode, false))
 		return ((TIFF*)0);
-	auto tif = TIFFClientOpen(name,
-							mode,
-							&serializer,
-							TiffRead,
-							TiffWrite,
-							TiffSeek,
-							TiffClose,
-							TiffSize,
-							nullptr,
-							nullptr);
-	if (tif) {
+	auto tif = TIFFClientOpen(name, mode, &serializer, TiffRead, TiffWrite, TiffSeek, TiffClose,
+							  TiffSize, nullptr, nullptr);
+	if(tif)
+	{
 		tif->tif_fd = serializer.getFd();
 		return tif;
 	}
@@ -143,7 +133,7 @@ TIFF* TIFFFormat::MyTIFFOpen(const char* name, const char* mode)
 
 bool TIFFFormat::encodeHeader(void)
 {
-	if (isHeaderEncoded())
+	if(isHeaderEncoded())
 		return true;
 
 	int tiPhoto = PHOTOMETRIC_MINISBLACK;
@@ -238,10 +228,9 @@ bool TIFFFormat::encodeHeader(void)
 	for(uint32_t i = 0U; i < image_->numcomps; ++i)
 	{
 		auto type = image_->comps[i].type;
-		assert(type == GRK_CHANNEL_TYPE_COLOUR ||
-				type ==GRK_CHANNEL_TYPE_OPACITY ||
-				type == GRK_CHANNEL_TYPE_PREMULTIPLIED_OPACITY ||
-				type == GRK_CHANNEL_TYPE_UNSPECIFIED);
+		assert(type == GRK_CHANNEL_TYPE_COLOUR || type == GRK_CHANNEL_TYPE_OPACITY ||
+			   type == GRK_CHANNEL_TYPE_PREMULTIPLIED_OPACITY ||
+			   type == GRK_CHANNEL_TYPE_UNSPECIFIED);
 		if(type != GRK_CHANNEL_TYPE_COLOUR)
 		{
 			if(firstExtraChannel == -1)
@@ -380,17 +369,18 @@ cleanup:
  */
 bool TIFFFormat::encodePixels()
 {
-	if (encodeState & IMAGE_FORMAT_ENCODED_PIXELS)
+	if(encodeState & IMAGE_FORMAT_ENCODED_PIXELS)
 		return true;
-	if (!isHeaderEncoded()){
-		if (!encodeHeader())
+	if(!isHeaderEncoded())
+	{
+		if(!encodeHeader())
 			return false;
 	}
 	bool success = false;
 	uint32_t height = image_->comps[0].h;
 	uint32_t rowsToWrite = height;
-	rowsToWrite = (std::min)(rowsToWrite,height - rowsWritten);
-	if (rowsToWrite == 0)
+	rowsToWrite = (std::min)(rowsToWrite, height - rowsWritten);
+	if(rowsToWrite == 0)
 		return true;
 	int32_t const* planes[grk::maxNumPackComponents];
 	for(uint32_t i = 0U; i < numcomps; ++i)
@@ -399,7 +389,8 @@ bool TIFFFormat::encodePixels()
 	GrkSerializeBuf packedBuf;
 	uint64_t packedLen = (uint64_t)TIFFVStripSize(tif, (uint32_t)image_->rowsPerStrip);
 
-	if(isFinalOutputSubsampled(image_)) {
+	if(isFinalOutputSubsampled(image_))
+	{
 		packedBuf = pool.get(packedLen);
 		auto bufPtr = (int8_t*)packedBuf.data;
 		for(; h < rowsWritten + rowsToWrite; h += chroma_subsample_y)
@@ -426,7 +417,7 @@ bool TIFFFormat::encodePixels()
 					{
 						bool accept = (h + sub_h) < height && sub_x < image_->comps[0].w;
 						*bufPtr++ =
-								accept ? (int8_t)planes[0][sub_x + sub_h * image_->comps[0].stride] : 0;
+							accept ? (int8_t)planes[0][sub_x + sub_h * image_->comps[0].stride] : 0;
 						bytesToWrite++;
 					}
 				}
@@ -440,7 +431,7 @@ bool TIFFFormat::encodePixels()
 			planes[1] += image_->comps[1].stride - image_->comps[1].w;
 			planes[2] += image_->comps[2].stride - image_->comps[2].w;
 		}
-		if (h != rowsWritten)
+		if(h != rowsWritten)
 			rowsWritten += h - chroma_subsample_y - rowsWritten;
 		// cleanup
 		packedBuf.dataLen = bytesToWrite;
@@ -453,25 +444,21 @@ bool TIFFFormat::encodePixels()
 	{
 		tmsize_t hTarget = rowsWritten + rowsToWrite;
 		auto iter = grk::InterleaverFactory<int32_t>::makeInterleaver(image_->comps[0].prec);
-		if (!iter)
+		if(!iter)
 			goto cleanup;
 		while(h < hTarget)
 		{
 			uint32_t stripRows = (std::min)(image_->rowsPerStrip, height - h);
 			packedBuf = pool.get(packedLen);
-			iter->interleave((int32_t**)planes,
-							image_->numcomps,
-							(uint8_t*)packedBuf.data,
-							image_->comps[0].w,
-							image_->comps[0].stride,
-							image_->packedRowBytes,
-							stripRows,
-							0);
+			iter->interleave((int32_t**)planes, image_->numcomps, (uint8_t*)packedBuf.data,
+							 image_->comps[0].w, image_->comps[0].stride, image_->packedRowBytes,
+							 stripRows, 0);
 			packedBuf.pooled = true;
 			packedBuf.offset = serializer.getOffset();
 			packedBuf.dataLen = image_->packedRowBytes * stripRows;
 			packedBuf.index = serializer.getNumPixelRequests();
-			if(!encodePixelsApplication(packedBuf)) {
+			if(!encodePixelsApplication(packedBuf))
+			{
 				delete iter;
 				goto cleanup;
 			}
@@ -488,11 +475,11 @@ cleanup:
 /***
  * application-orchestrated pixel encoding
  */
-bool TIFFFormat::encodePixelsApplication(grk_serialize_buf pixels){
-
-	bool rc =  encodePixelsCore(pixels,reclaimed_,reclaimSize,&num_reclaimed_);
+bool TIFFFormat::encodePixelsApplication(grk_serialize_buf pixels)
+{
+	bool rc = encodePixelsCore(pixels, reclaimed_, reclaimSize, &num_reclaimed_);
 #ifdef GROK_HAVE_URING
-	for (uint32_t i = 0; i < num_reclaimed_; ++i)
+	for(uint32_t i = 0; i < num_reclaimed_; ++i)
 		pool.put(GrkSerializeBuf(reclaimed_[i]));
 #else
 	// for synchronous encode, we immediately return the pixel buffer to the pool
@@ -505,34 +492,34 @@ bool TIFFFormat::encodePixelsApplication(grk_serialize_buf pixels){
 /***
  * library-orchestrated pixel encoding
  */
-bool TIFFFormat::encodePixels(grk_serialize_buf pixels,
-							grk_serialize_buf* reclaimed,
-							uint32_t max_reclaimed,
-							uint32_t *num_reclaimed) {
-
+bool TIFFFormat::encodePixels(grk_serialize_buf pixels, grk_serialize_buf* reclaimed,
+							  uint32_t max_reclaimed, uint32_t* num_reclaimed)
+{
 	std::unique_lock<std::mutex> lk(encodePixelmutex);
-	if (encodeState & IMAGE_FORMAT_ENCODED_PIXELS)
+	if(encodeState & IMAGE_FORMAT_ENCODED_PIXELS)
 		return true;
-	if (!isHeaderEncoded() && !encodeHeader())
+	if(!isHeaderEncoded() && !encodeHeader())
 		return false;
 
-	return encodePixelsCore(pixels,reclaimed,max_reclaimed, num_reclaimed);
+	return encodePixelsCore(pixels, reclaimed, max_reclaimed, num_reclaimed);
 }
 /***
  * Common core pixel encoding
  */
-bool TIFFFormat::encodePixelsCore(grk_serialize_buf pixels,
-							grk_serialize_buf* reclaimed,
-							uint32_t max_reclaimed,
-							uint32_t *num_reclaimed) {
+bool TIFFFormat::encodePixelsCore(grk_serialize_buf pixels, grk_serialize_buf* reclaimed,
+								  uint32_t max_reclaimed, uint32_t* num_reclaimed)
+{
 	serializer.initPixelRequest(reclaimed, max_reclaimed, num_reclaimed);
-	tmsize_t  written = TIFFWriteEncodedStrip(tif, (tmsize_t)pixels.index, pixels.data, (tmsize_t)pixels.dataLen);
-	if (written == -1) {
+	tmsize_t written =
+		TIFFWriteEncodedStrip(tif, (tmsize_t)pixels.index, pixels.data, (tmsize_t)pixels.dataLen);
+	if(written == -1)
+	{
 		encodeState |= IMAGE_FORMAT_ERROR;
 	}
-	else {
+	else
+	{
 		serializer.incrementPixelRequest();
-		if (serializer.allPixelRequestsComplete())
+		if(serializer.allPixelRequestsComplete())
 			encodeFinish();
 	}
 	if(written == -1)
@@ -542,7 +529,8 @@ bool TIFFFormat::encodePixelsCore(grk_serialize_buf pixels,
 }
 bool TIFFFormat::encodeFinish(void)
 {
-	if (encodeState & IMAGE_FORMAT_ENCODED_PIXELS){
+	if(encodeState & IMAGE_FORMAT_ENCODED_PIXELS)
+	{
 		assert(!tif);
 		return true;
 	}
@@ -1333,7 +1321,7 @@ cleanup:
 		if(is_cinema)
 		{
 			for(uint32_t j = 0; j < numcomps; ++j)
-				scaleComponent(image->comps+j, 12);
+				scaleComponent(image->comps + j, 12);
 		}
 		return image;
 	}
@@ -1342,7 +1330,6 @@ cleanup:
 
 	return nullptr;
 }
-
 
 static void tiff_error(const char* msg, void* client_data)
 {

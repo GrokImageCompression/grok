@@ -81,12 +81,10 @@ Renormalize mqc->a and mqc->c while compressing, so that mqc->a stays between 0x
 		mqc_renorme_macro(mqc, a, c, ct);        \
 	}
 
-#define mqc_encode_macro(mqc, curctx, a, c, ct, d)    \
-	{                                                 \
-		if((*curctx)->mps == (d))                     \
-			mqc_codemps_macro(mqc, curctx, a, c, ct)  \
-		else                                          \
-			mqc_codelps_macro(mqc, curctx, a, c, ct)  \
+#define mqc_encode_macro(mqc, curctx, a, c, ct, d)                                                 \
+	{                                                                                              \
+		if((*curctx)->mps == (d))                                                                  \
+			mqc_codemps_macro(mqc, curctx, a, c, ct) else mqc_codelps_macro(mqc, curctx, a, c, ct) \
 	}
 
 #define mqc_bypass_enc_macro(mqc, c, ct, d)                                       \

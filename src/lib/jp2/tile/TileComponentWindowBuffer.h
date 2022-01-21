@@ -65,7 +65,7 @@ struct ResWindowBuffer
 					grkRectU32 tileCompUnreduced, uint32_t FILTER_WIDTH)
 		: allocated_(false), tileCompRes_(tileCompAtRes), tileCompResLower_(tileCompAtLowerRes),
 		  resWindowBufferREL_(new grkBuffer2d<T, AllocatorAligned>(tileCompWindow.width(),
-																	tileCompWindow.height())),
+																   tileCompWindow.height())),
 		  resWindowBufferTopLevelREL_(resWindowTopLevelREL), filterWidth_(FILTER_WIDTH)
 	{
 		for(uint32_t i = 0; i < SPLIT_NUM_ORIENTATIONS; ++i)
@@ -83,8 +83,8 @@ struct ResWindowBuffer
 			for(uint8_t orient = 0; orient < ((resno) > 0 ? BAND_NUM_ORIENTATIONS : 1); orient++)
 			{
 				bandWindowPadded_.push_back(getBandWindow(numDecomps, orient,
-														   tileCompWindowUnreduced,
-														   tileCompUnreduced, 2 * FILTER_WIDTH));
+														  tileCompWindowUnreduced,
+														  tileCompUnreduced, 2 * FILTER_WIDTH));
 			}
 
 			if(tileCompResLower_)
@@ -104,16 +104,12 @@ struct ResWindowBuffer
 				}
 				auto winLow = bandWindowBufferPaddedREL_[BAND_ORIENT_LL];
 				auto winHigh = bandWindowBufferPaddedREL_[BAND_ORIENT_HL];
-				resWindowBufferREL_->x0 =
-					(std::min<uint32_t>)(2 * winLow->x0, 2 * winHigh->x0 + 1);
-				resWindowBufferREL_->x1 =
-					(std::max<uint32_t>)(2 * winLow->x1, 2 * winHigh->x1 + 1);
+				resWindowBufferREL_->x0 = (std::min<uint32_t>)(2 * winLow->x0, 2 * winHigh->x0 + 1);
+				resWindowBufferREL_->x1 = (std::max<uint32_t>)(2 * winLow->x1, 2 * winHigh->x1 + 1);
 				winLow = bandWindowBufferPaddedREL_[BAND_ORIENT_LL];
 				winHigh = bandWindowBufferPaddedREL_[BAND_ORIENT_LH];
-				resWindowBufferREL_->y0 =
-					(std::min<uint32_t>)(2 * winLow->y0, 2 * winHigh->y0 + 1);
-				resWindowBufferREL_->y1 =
-					(std::max<uint32_t>)(2 * winLow->y1, 2 * winHigh->y1 + 1);
+				resWindowBufferREL_->y0 = (std::min<uint32_t>)(2 * winLow->y0, 2 * winHigh->y0 + 1);
+				resWindowBufferREL_->y1 = (std::max<uint32_t>)(2 * winLow->y1, 2 * winHigh->y1 + 1);
 
 				// todo: shouldn't need to clip
 				auto resBounds = grkRectU32(0, 0, tileCompRes_->width(), tileCompRes_->height());
@@ -188,7 +184,7 @@ struct ResWindowBuffer
 			// attach to top level window
 			if(resWindowBufferREL_ != resWindowBufferTopLevelREL_)
 				resWindowBufferREL_->attach(resWindowBufferTopLevelREL_->getBuffer(),
-											 resWindowBufferTopLevelREL_->stride);
+											resWindowBufferTopLevelREL_->stride);
 
 			// tileCompResLower_ is null for lowest resolution
 			if(tileCompResLower_)
@@ -223,9 +219,8 @@ struct ResWindowBuffer
 							break;
 					}
 				}
-				resWindowBufferSplitREL_[SPLIT_L]->attach(
-					resWindowBufferTopLevelREL_->getBuffer(),
-					resWindowBufferTopLevelREL_->stride);
+				resWindowBufferSplitREL_[SPLIT_L]->attach(resWindowBufferTopLevelREL_->getBuffer(),
+														  resWindowBufferTopLevelREL_->stride);
 				resWindowBufferSplitREL_[SPLIT_H]->attach(
 					resWindowBufferTopLevelREL_->getBuffer() +
 						tileCompResLower_->height() * resWindowBufferTopLevelREL_->stride,
@@ -247,11 +242,11 @@ struct ResWindowBuffer
 			if(tileCompResLower_)
 			{
 				resWindowBufferSplitREL_[SPLIT_L]->attach(resWindowBufferREL_->getBuffer(),
-														   resWindowBufferREL_->stride);
+														  resWindowBufferREL_->stride);
 				resWindowBufferSplitREL_[SPLIT_H]->attach(resWindowBufferREL_->getBuffer() +
-															   tileCompResLower_->height() *
-																   resWindowBufferREL_->stride,
-														   resWindowBufferREL_->stride);
+															  tileCompResLower_->height() *
+																  resWindowBufferREL_->stride,
+														  resWindowBufferREL_->stride);
 			}
 		}
 		allocated_ = true;

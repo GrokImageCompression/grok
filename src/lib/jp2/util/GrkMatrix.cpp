@@ -23,7 +23,6 @@
 
 namespace grk
 {
-
 /**
  * Matrix inversion.
  */

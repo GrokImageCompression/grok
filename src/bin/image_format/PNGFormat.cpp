@@ -400,7 +400,6 @@ static void user_error_fn(png_structp png_ptr, png_const_charp message)
 	spdlog::error("libpng error: {}", message);
 }
 
-
 PNGFormat::PNGFormat()
 	: info_(nullptr), png(nullptr), row_buf(nullptr), row_buf_array(nullptr), row32s(nullptr),
 	  colorSpace_(GRK_CLRSPC_UNKNOWN), prec(0), nr_comp(0)
@@ -408,7 +407,7 @@ PNGFormat::PNGFormat()
 
 bool PNGFormat::encodeHeader(void)
 {
-	if (isHeaderEncoded())
+	if(isHeaderEncoded())
 		return true;
 
 	uint32_t color_type;
@@ -562,8 +561,7 @@ bool PNGFormat::encodeHeader(void)
 	/* png_set_sRGB(png, info, PNG_sRGB_INTENT_PERCEPTUAL); */
 
 	// Set iCCP chunk
-	if(image_->meta && image_->meta->color.icc_profile_buf &&
-	   image_->meta->color.icc_profile_len)
+	if(image_->meta && image_->meta->color.icc_profile_buf && image_->meta->color.icc_profile_len)
 	{
 		std::string profileName = "Unknown";
 		// if lcms is present, try to extract the description tag from the ICC header,
@@ -659,18 +657,12 @@ bool PNGFormat::encodePixels(void)
 	int32_t adjust = image_->comps[0].sgnd ? 1 << (prec - 1) : 0;
 	uint32_t max = maxY(image_->comps->h);
 	auto iter = grk::InterleaverFactory<int32_t>::makeInterleaver(prec == 16 ? 0xFF : prec);
-	if (!iter)
+	if(!iter)
 		return false;
 	for(uint32_t y = rowCount_; y < max; ++y)
 	{
-		iter->interleave((int32_t**)planes,
-						nr_comp,
-						row_buf,
-						image_->comps[0].w,
-						image_->comps[0].stride,
-						image_->comps[0].w,
-						1,
-						adjust);
+		iter->interleave((int32_t**)planes, nr_comp, row_buf, image_->comps[0].w,
+						 image_->comps[0].stride, image_->comps[0].w, 1, adjust);
 
 		png_write_row(png, row_buf_cpy);
 	}

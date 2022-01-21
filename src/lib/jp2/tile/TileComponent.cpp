@@ -156,9 +156,9 @@ bool TileComponent::init(bool isCompressor, bool whole_tile, grkRectU32 unreduce
 			/* the test (!isEncoder && l_tccp->qmfbid == 0) is strongly */
 			/* linked to the use of two_invK instead of invK */
 			const uint32_t log2_gain = (!is_encoder_ && tccp->qmfbid == 0) ? 0
-									   : (band->orientation == 0)			? 0
-									   : (band->orientation == 3)			? 2
-																			: 1;
+									   : (band->orientation == 0)		   ? 0
+									   : (band->orientation == 3)		   ? 2
+																		   : 1;
 			uint32_t numbps = prec + log2_gain;
 			auto offset = (resno == 0) ? 0 : 3 * resno - 2;
 			auto step_size = tccp->stepsizes + offset + bandIndex;

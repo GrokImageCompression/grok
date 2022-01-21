@@ -59,7 +59,6 @@
 
 namespace openhtj2k
 {
-
 class sqrt_energy_gains
 {
   public:
@@ -155,10 +154,11 @@ const float bibo_gains::gain_5x3_h[34] = {
 	2.8671e+00f, 2.8671e+00f, 2.8671e+00f, 2.8671e+00f, 2.8671e+00f, 2.8671e+00f, 2.8671e+00f,
 	2.8671e+00f, 2.8671e+00f, 2.8671e+00f, 2.8671e+00f, 2.8671e+00f, 2.8671e+00f};
 
-QuantizerOpenHTJ2K::QuantizerOpenHTJ2K(bool reversible,uint8_t guard_bits) : Quantizer(reversible, guard_bits), base_delta(-1.0f)
+QuantizerOpenHTJ2K::QuantizerOpenHTJ2K(bool reversible, uint8_t guard_bits)
+	: Quantizer(reversible, guard_bits), base_delta(-1.0f)
 {}
-void QuantizerOpenHTJ2K::generate(uint32_t decomps,
-						 uint32_t max_bit_depth, bool color_transform, bool is_signed)
+void QuantizerOpenHTJ2K::generate(uint32_t decomps, uint32_t max_bit_depth, bool color_transform,
+								  bool is_signed)
 {
 	num_decomps = decomps;
 	if(isReversible)
@@ -171,7 +171,6 @@ void QuantizerOpenHTJ2K::generate(uint32_t decomps,
 			base_delta = 1.0f / (float)(1 << (max_bit_depth + is_signed));
 		set_irrev_quant();
 	}
-
 }
 void QuantizerOpenHTJ2K::set_rev_quant(uint32_t bit_depth, bool is_employing_color_transform)
 {
@@ -257,7 +256,8 @@ uint32_t QuantizerOpenHTJ2K::get_MAGBp() const
 	return B;
 }
 
-bool QuantizerOpenHTJ2K::write(grk::IBufferedStream *stream) {
+bool QuantizerOpenHTJ2K::write(grk::IBufferedStream* stream)
+{
 	// marker size excluding header
 	uint16_t Lcap = 8;
 	uint32_t Pcap = 0x00020000; // for jph, Pcap^15 must be set, the 15th MSB

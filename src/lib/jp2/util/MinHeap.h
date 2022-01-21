@@ -2,25 +2,28 @@
 
 #include <mutex>
 
-namespace grk {
+namespace grk
+{
+class MinHeapLocker
+{
+  public:
+	MinHeapLocker(std::mutex& mut) : lock(mut) {}
 
-class MinHeapLocker {
-public:
-	MinHeapLocker(std::mutex &mut) :  lock(mut)
-	{}
-private:
+  private:
 	std::lock_guard<std::mutex> lock;
 };
 
-class MinHeapFakeLocker {
-public:
-	MinHeapFakeLocker(std::mutex &mut)
+class MinHeapFakeLocker
+{
+  public:
+	MinHeapFakeLocker(std::mutex& mut)
 	{
 		(void)mut;
 	}
 };
 
-template <typename T> struct MinHeapComparator
+template<typename T>
+struct MinHeapComparator
 {
 	bool operator()(const T a, const T b) const
 	{
@@ -28,8 +31,8 @@ template <typename T> struct MinHeapComparator
 	}
 };
 
-
-template <typename T, typename IT, typename L> class MinHeap
+template<typename T, typename IT, typename L>
+class MinHeap
 {
   public:
 	MinHeap() : nextIndex(0) {}
@@ -58,13 +61,13 @@ template <typename T, typename IT, typename L> class MinHeap
 	}
 
   private:
-	std::priority_queue<T, std::vector<T>, MinHeapComparator<T> > queue;
+	std::priority_queue<T, std::vector<T>, MinHeapComparator<T>> queue;
 	std::mutex queue_mutex;
 	IT nextIndex;
 };
 
-
-template <typename T> struct MinHeapPtrComparator
+template<typename T>
+struct MinHeapPtrComparator
 {
 	bool operator()(const T* a, const T* b) const
 	{
@@ -72,8 +75,8 @@ template <typename T> struct MinHeapPtrComparator
 	}
 };
 
-
-template <typename T, typename IT, typename L> class MinHeapPtr
+template<typename T, typename IT, typename L>
+class MinHeapPtr
 {
   public:
 	MinHeapPtr() : nextIndex(0) {}
@@ -102,10 +105,9 @@ template <typename T, typename IT, typename L> class MinHeapPtr
 	}
 
   private:
-	std::priority_queue<T*, std::vector<T*>, MinHeapPtrComparator<T> > queue;
+	std::priority_queue<T*, std::vector<T*>, MinHeapPtrComparator<T>> queue;
 	std::mutex queue_mutex;
 	IT nextIndex;
 };
 
-}
-
+} // namespace grk

@@ -63,7 +63,6 @@ static const j2k_mct_function j2k_mct_read_functions_to_int32[] = {
 	j2k_read_int16_to_int32, j2k_read_int32_to_int32, j2k_read_float32_to_int32,
 	j2k_read_float64_to_int32};
 
-
 bool CodeStreamDecompress::parseTileHeaderMarkers(bool* canDecompress)
 {
 	if(decompressorState_.getState() == DECOMPRESS_STATE_EOC)
@@ -306,7 +305,6 @@ bool CodeStreamDecompress::parseTileHeaderMarkers(bool* canDecompress)
 	return true;
 }
 
-
 /**
  * Reads a POC marker (Progression Order Change)
  *
@@ -399,7 +397,6 @@ bool CodeStreamDecompress::read_poc(uint8_t* headerData, uint16_t header_size)
 	tcp->numpocs = currentNumProgressions - 1;
 	return true;
 }
-
 
 /**
  * Reads a CRG marker (Component registration)
@@ -800,7 +797,7 @@ bool CodeStreamDecompress::add_mct(TileCodingParams* p_tcp, GrkImage* p_image, u
 			return false;
 
 		j2k_mct_read_functions_to_int32[offset_array->element_type_](offset_array->data_,
-																	  offset_data, nb_elem);
+																	 offset_data, nb_elem);
 
 		auto current_offset_data = offset_data;
 
@@ -852,7 +849,6 @@ bool CodeStreamDecompress::read_cbd(uint8_t* headerData, uint16_t header_size)
 
 	return true;
 }
-
 
 /**
  * Reads a TLM marker (Tile Length Marker)
@@ -1899,8 +1895,9 @@ bool CodeStreamDecompress::read_siz(uint8_t* headerData, uint16_t header_size)
 {
 	SIZMarker siz;
 
-	bool rc =  siz.read(this, headerData, header_size);
-	if (rc) {
+	bool rc = siz.read(this, headerData, header_size);
+	if(rc)
+	{
 		uint16_t numTilesToDecompress = (uint16_t)(cp_.t_grid_height * cp_.t_grid_width);
 		headerImage_->multiTile = numTilesToDecompress > 1;
 	}
@@ -1967,6 +1964,5 @@ bool CodeStreamDecompress::read_com(uint8_t* headerData, uint16_t header_size)
 	cp_.num_comments++;
 	return true;
 }
-
 
 } // namespace grk

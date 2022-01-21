@@ -328,7 +328,7 @@ int GrkDecompress::loadImages(grk_dircnt* dirptr, char* imgdirpath)
 {
 	int i = 0;
 
-	for (const auto & entry : std::filesystem::directory_iterator(imgdirpath))
+	for(const auto& entry : std::filesystem::directory_iterator(imgdirpath))
 	{
 		strcpy(dirptr->filename[i], entry.path().filename().string().c_str());
 		i++;
@@ -356,7 +356,8 @@ char GrkDecompress::nextFile(const std::string inputFile, grk_img_fol* inputFold
 	{
 		std::string outfilename = outFolder->imgdirpath + std::string(pathSeparator()) +
 								  temp_ofname + "." + inputFolder->out_format;
-		if(grk::strcpy_s(parameters->outfile, sizeof(parameters->outfile), outfilename.c_str()) != 0)
+		if(grk::strcpy_s(parameters->outfile, sizeof(parameters->outfile), outfilename.c_str()) !=
+		   0)
 			return 1;
 	}
 
@@ -755,7 +756,8 @@ void GrkDecompress::setDefaultParams(grk_decompress_parameters* parameters)
 
 void GrkDecompress::destoryParams(grk_decompress_parameters* parameters)
 {
-	if(parameters) {
+	if(parameters)
+	{
 		free(parameters->precision);
 		parameters->precision = nullptr;
 	}
@@ -789,8 +791,9 @@ int GrkDecompress::decompress(const std::string& fileName, DecompressInitParams*
 	info.decompress_flags = GRK_DECODE_ALL;
 	info.decompressor_parameters = &initParams->parameters;
 	info.user_data = this;
-	info.cod_format =
-			(GRK_SUPPORTED_FILE_FMT)(info.cod_format != GRK_UNK_FMT ? info.cod_format : info.decompressor_parameters->cod_format);
+	info.cod_format = (GRK_SUPPORTED_FILE_FMT)(info.cod_format != GRK_UNK_FMT
+												   ? info.cod_format
+												   : info.decompressor_parameters->cod_format);
 	info.header_info.decompressFormat = info.cod_format;
 	info.header_info.forceRGB = info.decompressor_parameters->force_rgb;
 	info.header_info.upsample = info.decompressor_parameters->upsample;
@@ -891,7 +894,8 @@ int GrkDecompress::pluginMain(int argc, char** argv, DecompressInitParams* initP
 		}
 		else
 		{
-		    for (const auto & entry : std::filesystem::directory_iterator(initParams->inputFolder.imgdirpath))
+			for(const auto& entry :
+				std::filesystem::directory_iterator(initParams->inputFolder.imgdirpath))
 			{
 				if(nextFile(entry.path().filename().string(), &initParams->inputFolder,
 							initParams->outFolder.imgdirpath ? &initParams->outFolder
@@ -960,8 +964,9 @@ enum grk_stream_type
 
 grk_stream_type stream_type = GRK_MAPPED_FILE_STREAM;
 
-static void cleanUpFile(const char* outfile){
-	if (!outfile)
+static void cleanUpFile(const char* outfile)
+{
+	if(!outfile)
 		return;
 
 	bool allocated = false;
@@ -971,24 +976,21 @@ static void cleanUpFile(const char* outfile){
 		free(p);
 }
 
-static bool grk_serialize_pixels(grk_serialize_buf buffer,
-								grk_serialize_buf* reclaimed,
-								uint32_t max_reclaimed,
-								uint32_t *num_reclaimed, void* user_data){
-	if (!user_data)
+static bool grk_serialize_pixels(grk_serialize_buf buffer, grk_serialize_buf* reclaimed,
+								 uint32_t max_reclaimed, uint32_t* num_reclaimed, void* user_data)
+{
+	if(!user_data)
 		return false;
-	IImageFormat *imageFormat = (IImageFormat*)user_data;
+	IImageFormat* imageFormat = (IImageFormat*)user_data;
 
-	return imageFormat->encodePixels(buffer,
-									reclaimed,
-									max_reclaimed,
-									num_reclaimed);
+	return imageFormat->encodePixels(buffer, reclaimed, max_reclaimed, num_reclaimed);
 }
 
-bool GrkDecompress::encodeHeader(grk_plugin_decompress_callback_info* info) {
-	if (!storeToDisk)
+bool GrkDecompress::encodeHeader(grk_plugin_decompress_callback_info* info)
+{
+	if(!storeToDisk)
 		return true;
-	if (!encodeInit(info))
+	if(!encodeInit(info))
 		return false;
 	if(!imageFormat->encodeHeader())
 	{
@@ -999,15 +1001,17 @@ bool GrkDecompress::encodeHeader(grk_plugin_decompress_callback_info* info) {
 	return true;
 }
 
-bool GrkDecompress::encodeInit(grk_plugin_decompress_callback_info* info) {
-	if (!storeToDisk)
+bool GrkDecompress::encodeInit(grk_plugin_decompress_callback_info* info)
+{
+	if(!storeToDisk)
 		return true;
 	auto parameters = info->decompressor_parameters;
 	const char* outfile = info->decompressor_parameters->outfile[0]
 							  ? info->decompressor_parameters->outfile
 							  : info->output_file_name;
-	auto cod_format = (GRK_SUPPORTED_FILE_FMT)(
-		info->cod_format != GRK_UNK_FMT ? info->cod_format : parameters->cod_format);
+	auto cod_format =
+		(GRK_SUPPORTED_FILE_FMT)(info->cod_format != GRK_UNK_FMT ? info->cod_format
+																 : parameters->cod_format);
 	auto outfileStr = outfile ? std::string(outfile) : "";
 	uint32_t compressionLevel = 0;
 	if(cod_format == GRK_TIF_FMT)
@@ -1039,8 +1043,9 @@ int GrkDecompress::preProcess(grk_plugin_decompress_callback_info* info)
 	const char* outfile = info->decompressor_parameters->outfile[0]
 							  ? info->decompressor_parameters->outfile
 							  : info->output_file_name;
-	auto cod_format = (GRK_SUPPORTED_FILE_FMT)(
-		info->cod_format != GRK_UNK_FMT ? info->cod_format : parameters->cod_format);
+	auto cod_format =
+		(GRK_SUPPORTED_FILE_FMT)(info->cod_format != GRK_UNK_FMT ? info->cod_format
+																 : parameters->cod_format);
 	switch(cod_format)
 	{
 		case GRK_PXM_FMT:
@@ -1235,7 +1240,7 @@ int GrkDecompress::preProcess(grk_plugin_decompress_callback_info* info)
 	if(info->decompress_flags == GRK_DECODE_HEADER)
 		goto cleanup;
 	// 3. decompress
-    if(info->tile)
+	if(info->tile)
 		info->tile->decompress_flags = info->decompress_flags;
 	// limit to 16 bit precision
 	for(uint32_t i = 0; i < info->image->numcomps; ++i)
@@ -1253,9 +1258,8 @@ int GrkDecompress::preProcess(grk_plugin_decompress_callback_info* info)
 		spdlog::error("grk_decompress: failed to set the decompressed area");
 		goto cleanup;
 	}
-	if (!encodeInit(info))
+	if(!encodeInit(info))
 		return false;
-
 
 	// decompress all tiles
 	if(!parameters->singleTileDecompress)
@@ -1272,7 +1276,7 @@ int GrkDecompress::preProcess(grk_plugin_decompress_callback_info* info)
 			goto cleanup;
 		}
 	}
-	if (!encodeHeader(info))
+	if(!encodeHeader(info))
 		goto cleanup;
 	failed = false;
 cleanup:
@@ -1405,7 +1409,8 @@ int GrkDecompress::main(int argc, char** argv)
 			}
 			else
 			{
-				for (const auto & entry : std::filesystem::directory_iterator(initParams.inputFolder.imgdirpath))
+				for(const auto& entry :
+					std::filesystem::directory_iterator(initParams.inputFolder.imgdirpath))
 				{
 					if(decompress(entry.path().filename().string(), &initParams) == 1)
 						numDecompressed++;

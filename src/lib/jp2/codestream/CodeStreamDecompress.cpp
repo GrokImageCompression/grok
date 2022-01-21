@@ -23,7 +23,6 @@
 
 namespace grk
 {
-
 CodeStreamDecompress::CodeStreamDecompress(IBufferedStream* stream)
 	: CodeStream(stream), wholeTileDecompress(true), curr_marker_(0), headerError_(false),
 	  tile_ind_to_dec_(-1), marker_scratch_(nullptr), marker_scratch_size_(0),
@@ -121,7 +120,7 @@ TileProcessor* CodeStreamDecompress::allocateProcessor(uint16_t tileIndex)
 	auto tileProcessor = tileCache ? tileCache->processor : nullptr;
 	if(!tileProcessor)
 	{
-		tileProcessor = new TileProcessor(tileIndex,this, stream_, false, wholeTileDecompress);
+		tileProcessor = new TileProcessor(tileIndex, this, stream_, false, wholeTileDecompress);
 		tileCache_->put(tileIndex, tileProcessor);
 	}
 	currentTileProcessor_ = tileProcessor;
@@ -184,7 +183,8 @@ bool CodeStreamDecompress::readHeader(grk_header_info* header_info)
 		}
 		auto composite = getCompositeImage();
 		headerImage_->copyHeader(composite);
-		if (header_info) {
+		if(header_info)
+		{
 			composite->decompressFormat = header_info->decompressFormat;
 			composite->forceRGB = header_info->forceRGB;
 			composite->upsample = header_info->upsample;
@@ -255,7 +255,9 @@ bool CodeStreamDecompress::setDecompressWindow(grkRectU32 window)
 		decompressor->start_tile_y_index_ = 0;
 		decompressor->end_tile_x_index_ = cp->t_grid_width;
 		decompressor->end_tile_y_index_ = cp->t_grid_height;
-	} else {
+	}
+	else
+	{
 		/* Check if the window provided by the user are correct */
 		uint32_t start_x = window.x0 + image->x0;
 		uint32_t start_y = window.y0 + image->y0;
@@ -333,7 +335,6 @@ bool CodeStreamDecompress::setDecompressWindow(grkRectU32 window)
 		GRK_INFO("Decompress window set to (%d,%d,%d,%d)", compositeImage->x0 - image->x0,
 				 compositeImage->y0 - image->y0, compositeImage->x1 - image->x0,
 				 compositeImage->y1 - image->y0);
-
 	}
 	compositeImage->validateColourSpace();
 	compositeImage->postReadHeader(&cp_);
@@ -439,8 +440,7 @@ bool CodeStreamDecompress::decompressTile(uint16_t tileIndex)
 bool CodeStreamDecompress::endOfCodeStream(void)
 {
 	return decompressorState_.getState() == DECOMPRESS_STATE_EOC ||
-		   decompressorState_.getState() == DECOMPRESS_STATE_NO_EOC ||
-		   stream_->numBytesLeft() == 0;
+		   decompressorState_.getState() == DECOMPRESS_STATE_NO_EOC || stream_->numBytesLeft() == 0;
 }
 bool CodeStreamDecompress::decompressTiles(void)
 {
@@ -453,15 +453,11 @@ bool CodeStreamDecompress::decompressTiles(void)
 			return false;
 		}
 	}
-	if (!createOutputImage())
+	if(!createOutputImage())
 		return false;
 
-	stripCache_.init(cp_.t_grid_width,
-					  cp_.t_height,
-					  cp_.t_grid_height,
-					  outputImage_,
-					  serialize_data,
-					  serializeBufferCallback);
+	stripCache_.init(cp_.t_grid_width, cp_.t_height, cp_.t_grid_height, outputImage_,
+					 serialize_data, serializeBufferCallback);
 
 	std::vector<std::future<int>> results;
 	std::atomic<bool> success(true);
@@ -528,21 +524,25 @@ bool CodeStreamDecompress::decompressTiles(void)
 				else
 				{
 					numTilesDecompressed++;
-					if(outputImage_->multiTile && processor->getImage()) {
-						if (wholeTileDecompress && outputImage_->canAllocInterleaved(&cp_)) {
-							if (!stripCache_.composite(processor->getImage()))
+					if(outputImage_->multiTile && processor->getImage())
+					{
+						if(wholeTileDecompress && outputImage_->canAllocInterleaved(&cp_))
+						{
+							if(!stripCache_.composite(processor->getImage()))
 								success = false;
-						} else {
-							if (!outputImage_->composite(processor->getImage()))
+						}
+						else
+						{
+							if(!outputImage_->composite(processor->getImage()))
 								success = false;
 						}
 					}
-					//if cache strategy set to none, then delete image
-					if (!success || tileCache_->getStrategy() == GRK_TILE_CACHE_NONE){
+					// if cache strategy set to none, then delete image
+					if(!success || tileCache_->getStrategy() == GRK_TILE_CACHE_NONE)
+					{
 						processor->release();
 					}
 				}
-
 			}
 			return 0;
 		};
@@ -764,7 +764,8 @@ bool CodeStreamDecompress::decompressExec(void)
 	return true;
 }
 
-bool CodeStreamDecompress::createOutputImage(void){
+bool CodeStreamDecompress::createOutputImage(void)
+{
 	if(!headerImage_->multiTile)
 	{
 		if(outputImage_)
@@ -787,7 +788,7 @@ bool CodeStreamDecompress::createOutputImage(void){
  */
 bool CodeStreamDecompress::decompressTile()
 {
-	if (!createOutputImage())
+	if(!createOutputImage())
 		return false;
 	outputImage_->multiTile = false;
 
@@ -808,7 +809,7 @@ bool CodeStreamDecompress::decompressTile()
 		{
 			// for first SOT position, we add two to skip SOC marker
 			if(!cp_.tlm_markers->skipTo((uint16_t)tile_ind_to_dec_, stream_,
-										 codeStreamInfo->getMainHeaderEnd() + 2))
+										codeStreamInfo->getMainHeaderEnd() + 2))
 				return false;
 		}
 		else
@@ -975,16 +976,17 @@ bool CodeStreamDecompress::endDecompress(void)
 {
 	return true;
 }
-bool CodeStreamDecompress::preProcess(void){
-
+bool CodeStreamDecompress::preProcess(void)
+{
 	return true;
 }
-bool CodeStreamDecompress::postProcess(void){
+bool CodeStreamDecompress::postProcess(void)
+{
 	auto img = getCompositeImage();
-	if (!img->convertToRGB(wholeTileDecompress))
+	if(!img->convertToRGB(wholeTileDecompress))
 		return false;
 	img->applyColourManagement();
-	if (!img->greyToRGB())
+	if(!img->greyToRGB())
 		return false;
 	img->convertPrecision();
 	return img->execUpsample();

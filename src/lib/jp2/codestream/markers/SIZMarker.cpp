@@ -36,7 +36,7 @@ void SIZMarker::subsampleAndReduceHeaderImageComponents(GrkImage* headerImage,
 	uint32_t y0 = std::max<uint32_t>(p_cp->ty0, headerImage->y0);
 
 	/* validity of p_cp members used here checked in j2k_read_siz. Can't overflow. */
-	uint32_t x1 = p_cp->tx0 + (p_cp->t_grid_width - 1U)  * p_cp->t_width;
+	uint32_t x1 = p_cp->tx0 + (p_cp->t_grid_width - 1U) * p_cp->t_width;
 	uint32_t y1 = p_cp->ty0 + (p_cp->t_grid_height - 1U) * p_cp->t_height;
 
 	/* (use saturated add to prevent overflow) */
@@ -227,7 +227,7 @@ bool SIZMarker::read(CodeStreamDecompress* codeStream, uint8_t* headerData, uint
 	}
 
 	/* Compute the number of tiles */
-	uint32_t t_grid_width  = ceildiv<uint32_t>(image->x1 - cp->tx0, cp->t_width);
+	uint32_t t_grid_width = ceildiv<uint32_t>(image->x1 - cp->tx0, cp->t_width);
 	uint32_t t_grid_height = ceildiv<uint32_t>(image->y1 - cp->ty0, cp->t_height);
 	if(t_grid_width == 0 || t_grid_height == 0)
 	{
@@ -243,7 +243,7 @@ bool SIZMarker::read(CodeStreamDecompress* codeStream, uint8_t* headerData, uint
 			t_grid_width, t_grid_height, maxNumTilesJ2K);
 		return false;
 	}
-	cp->t_grid_width  = (uint16_t)t_grid_width;
+	cp->t_grid_width = (uint16_t)t_grid_width;
 	cp->t_grid_height = (uint16_t)t_grid_height;
 	numTiles = cp->t_grid_width * cp->t_grid_height;
 
@@ -279,8 +279,7 @@ bool SIZMarker::read(CodeStreamDecompress* codeStream, uint8_t* headerData, uint
 	for(i = 0; i < image->numcomps; ++i)
 	{
 		if(!image->comps[i].sgnd)
-			decompressor->default_tcp_->tccps[i].dc_level_shift_ =
-											1 << (image->comps[i].prec - 1);
+			decompressor->default_tcp_->tccps[i].dc_level_shift_ = 1 << (image->comps[i].prec - 1);
 	}
 
 	for(i = 0; i < numTiles; ++i)

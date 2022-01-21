@@ -6,20 +6,14 @@
 #include "grok.h"
 #include "MinHeap.h"
 
-namespace grk {
-
-
-struct GrkSerializeBuf : public grk_serialize_buf {
-public:
-	GrkSerializeBuf() : GrkSerializeBuf(nullptr,0,0,0,false,0)
-	{
-	}
-	GrkSerializeBuf(uint8_t *data,
-					uint64_t offset,
-					uint64_t dataLen,
-					uint64_t allocLen,
-					bool pooled,
-					uint32_t index)
+namespace grk
+{
+struct GrkSerializeBuf : public grk_serialize_buf
+{
+  public:
+	GrkSerializeBuf() : GrkSerializeBuf(nullptr, 0, 0, 0, false, 0) {}
+	GrkSerializeBuf(uint8_t* data, uint64_t offset, uint64_t dataLen, uint64_t allocLen,
+					bool pooled, uint32_t index)
 	{
 		this->data = data;
 		this->offset = offset;
@@ -28,7 +22,8 @@ public:
 		this->pooled = pooled;
 		this->index = index;
 	}
-	explicit GrkSerializeBuf(const grk_serialize_buf rhs){
+	explicit GrkSerializeBuf(const grk_serialize_buf rhs)
+	{
 		data = rhs.data;
 		offset = rhs.offset;
 		dataLen = rhs.dataLen;
@@ -36,28 +31,32 @@ public:
 		pooled = rhs.pooled;
 		index = rhs.index;
 	}
-	uint32_t getIndex(void) const{
+	uint32_t getIndex(void) const
+	{
 		return index;
 	}
-	bool alloc(uint64_t len){
+	bool alloc(uint64_t len)
+	{
 		dealloc();
 		data = (uint8_t*)grkAlignedMalloc(len);
-		if (data) {
+		if(data)
+		{
 			dataLen = len;
 			allocLen = len;
 		}
 
 		return (data != nullptr);
 	}
-	void dealloc(){
+	void dealloc()
+	{
 		grkAlignedFree(data);
 		data = nullptr;
 	}
 };
 
-
-struct Strip {
-	Strip(GrkImage *outputImage, uint16_t index, uint32_t tileHeight);
+struct Strip
+{
+	Strip(GrkImage* outputImage, uint16_t index, uint32_t tileHeight);
 	~Strip(void);
 	uint32_t getIndex(void);
 	GrkImage* stripImg;
@@ -65,24 +64,22 @@ struct Strip {
 	uint32_t index_;
 };
 
-class StripPool {
-public:
+class StripPool
+{
+  public:
 	StripPool(void);
 	virtual ~StripPool();
 
-	void init( uint16_t tgrid_w,
-				uint32_t th,
-			  uint16_t tgrid_h,
-			  GrkImage *outputImg,
-			  void* serialize_d,
-			  grk_serialize_pixels serializeBufferCb);
-	bool composite(GrkImage *tileImage);
-private:
+	void init(uint16_t tgrid_w, uint32_t th, uint16_t tgrid_h, GrkImage* outputImg,
+			  void* serialize_d, grk_serialize_pixels serializeBufferCb);
+	bool composite(GrkImage* tileImage);
+
+  private:
 	GrkSerializeBuf getBuffer(uint64_t len);
 	void putBuffer(GrkSerializeBuf b);
 	std::map<uint8_t*, GrkSerializeBuf> pool;
 
-	Strip **strips;
+	Strip** strips;
 	uint16_t tgrid_w_;
 	uint32_t y0_;
 	uint32_t th_;
@@ -96,4 +93,4 @@ private:
 	MinHeap<GrkSerializeBuf, uint32_t, MinHeapFakeLocker> serializeHeap;
 };
 
-}
+} // namespace grk

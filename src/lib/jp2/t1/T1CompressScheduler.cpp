@@ -54,7 +54,7 @@ void T1CompressScheduler::scheduleCompress(TileCodingParams* tcp, const double* 
 					for(uint64_t cblkno = 0; cblkno < prc->getNumCblks(); ++cblkno)
 					{
 						auto cblk = prc->getCompressedBlockPtr(cblkno);
-						if (!cblk->non_empty())
+						if(!cblk->non_empty())
 							continue;
 						if(!cblk->allocData(nominalBlockSize))
 							continue;

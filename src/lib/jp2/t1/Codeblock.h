@@ -255,7 +255,8 @@ struct DecompressCodeblock : public Codeblock
 		}
 		return true;
 	}
-	void release(void) {
+	void release(void)
+	{
 		cleanUpSegBuffers();
 		delete[] segs;
 		segs = nullptr;

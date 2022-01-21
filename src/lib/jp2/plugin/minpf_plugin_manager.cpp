@@ -191,7 +191,7 @@ int32_t minpf_load_from_dir(const char* directory_path, minpf_invoke_service_fun
 
 	mgr->platformServices.invokeService = func;
 	int32_t rc = -1;
-	for (const auto & entry : std::filesystem::directory_iterator(directory_path))
+	for(const auto& entry : std::filesystem::directory_iterator(directory_path))
 	{
 		auto str = entry.path().filename().string();
 		const char* f = str.c_str();

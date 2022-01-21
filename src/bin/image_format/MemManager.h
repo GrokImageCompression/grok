@@ -28,7 +28,6 @@
 
 #include "grk_config_private.h"
 
-
 namespace grk
 {
 uint32_t grkMakeAlignedWidth(uint32_t width);

@@ -34,7 +34,7 @@ BufferedStream::BufferedStream(uint8_t* buffer, size_t buffer_size, bool is_inpu
 	  buffered_bytes_(0), read_bytes_seekable_(0), stream_offset_(0)
 {
 	buf_ = new grkBufferU8((!buffer && buffer_size) ? new uint8_t[buffer_size] : buffer,
-							buffer_size, buffer == nullptr);
+						   buffer_size, buffer == nullptr);
 	obj.wrapper = new GrkObjectWrapperImpl(this);
 }
 
@@ -115,8 +115,7 @@ size_t BufferedStream::read(uint8_t* buffer, size_t p_size)
 		if(buffer && buffered_bytes_)
 		{
 			assert(buf_->currPtr() >= buf_->buf);
-			assert((ptrdiff_t)buf_->currPtr() - (ptrdiff_t)buf_->buf +
-					   (ptrdiff_t)buffered_bytes_ <=
+			assert((ptrdiff_t)buf_->currPtr() - (ptrdiff_t)buf_->buf + (ptrdiff_t)buffered_bytes_ <=
 				   (ptrdiff_t)buf_->len);
 			memcpy(buffer, buf_->currPtr(), buffered_bytes_);
 		}
@@ -132,8 +131,7 @@ size_t BufferedStream::read(uint8_t* buffer, size_t p_size)
 		if(buffer)
 		{
 			assert(buf_->currPtr() >= buf_->buf);
-			assert((ptrdiff_t)buf_->currPtr() - (ptrdiff_t)buf_->buf +
-					   (ptrdiff_t)buffered_bytes_ <=
+			assert((ptrdiff_t)buf_->currPtr() - (ptrdiff_t)buf_->buf + (ptrdiff_t)buffered_bytes_ <=
 				   (ptrdiff_t)buf_->len);
 			memcpy(buffer, buf_->currPtr(), buffered_bytes_);
 			buffer += buffered_bytes_;

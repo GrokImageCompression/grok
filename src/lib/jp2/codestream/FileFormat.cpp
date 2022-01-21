@@ -59,8 +59,9 @@ bool FileFormat::exec(std::vector<PROCEDURE_FUNC>* procs)
 {
 	assert(procs);
 
-	for(auto it = procs->begin(); it != procs->end(); ++it){
-		if (! (*it)())
+	for(auto it = procs->begin(); it != procs->end(); ++it)
+	{
+		if(!(*it)())
 			return false;
 	}
 	procs->clear();

@@ -22,16 +22,15 @@
 
 const uint32_t IMAGE_FORMAT_UNENCODED = 1;
 const uint32_t IMAGE_FORMAT_ENCODED_HEADER = 2;
-const uint32_t 	IMAGE_FORMAT_ENCODED_PIXELS = 4;
-const uint32_t 	IMAGE_FORMAT_ERROR = 8;
-
-
+const uint32_t IMAGE_FORMAT_ENCODED_PIXELS = 4;
+const uint32_t IMAGE_FORMAT_ERROR = 8;
 
 class IImageFormat
 {
   public:
 	virtual ~IImageFormat() = default;
-	virtual bool encodeInit(grk_image* image, const std::string& filename,uint32_t compressionLevel) = 0;
+	virtual bool encodeInit(grk_image* image, const std::string& filename,
+							uint32_t compressionLevel) = 0;
 	virtual bool encodeHeader(void) = 0;
 	/***
 	 * application-orchestrated pixel encoding
@@ -40,10 +39,8 @@ class IImageFormat
 	/***
 	 * library-orchestrated pixel encoding
 	 */
-	virtual bool encodePixels(grk_serialize_buf pixels,
-							grk_serialize_buf* reclaimed,
-							uint32_t max_reclaimed,
-							uint32_t *num_reclaimed) = 0;
+	virtual bool encodePixels(grk_serialize_buf pixels, grk_serialize_buf* reclaimed,
+							  uint32_t max_reclaimed, uint32_t* num_reclaimed) = 0;
 	virtual bool encodeFinish(void) = 0;
 	virtual grk_image* decode(const std::string& filename, grk_cparameters* parameters) = 0;
 	virtual uint32_t getEncodeState(void) = 0;

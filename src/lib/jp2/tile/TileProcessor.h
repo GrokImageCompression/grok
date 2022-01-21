@@ -75,8 +75,8 @@ struct PacketTracker
 
 struct TileProcessor
 {
-	explicit TileProcessor(uint16_t index, CodeStream* codeStream, IBufferedStream* stream, bool isCompressor,
-						   bool isWholeTileDecompress);
+	explicit TileProcessor(uint16_t index, CodeStream* codeStream, IBufferedStream* stream,
+						   bool isCompressor, bool isWholeTileDecompress);
 	~TileProcessor();
 	bool init(void);
 	bool allocWindowBuffers(const GrkImage* outputImage);
@@ -127,6 +127,7 @@ struct TileProcessor
 	bool wholeTileDecompress;
 	CodingParams* cp_;
 	PacketLengthCache packetLengthCache;
+
   private:
 	/** index of tile being currently compressed/decompressed */
 	uint16_t tileIndex_;
@@ -162,6 +163,5 @@ struct TileProcessor
 	grkRectU32 unreducedTileWindow;
 	uint32_t preCalculatedTileLen;
 };
-
 
 } // namespace grk
