@@ -84,8 +84,8 @@ static uint64_t TiffSize(thandle_t handle)
 #endif
 
 TIFFFormat::TIFFFormat()
-	: tif(nullptr), chroma_subsample_x(1), chroma_subsample_y(1), rowsWritten(0), units(0),
-	  bytesToWrite(0), numcomps(0)
+	: tif(nullptr), chroma_subsample_x(1), chroma_subsample_y(1), units(0),
+	   numcomps(0)
 {}
 TIFFFormat::~TIFFFormat()
 {
@@ -357,33 +357,34 @@ bool TIFFFormat::encodePixels()
 			return false;
 	}
 	bool success = false;
+
 	uint32_t height = image_->comps[0].h;
 	uint32_t rowsToWrite = height;
-	rowsToWrite = (std::min)(rowsToWrite, height - rowsWritten);
-	if(rowsToWrite == 0)
-		return true;
+	uint32_t rowsWritten = 0;
 	int32_t const* planes[grk::maxNumPackComponents];
 	for(uint32_t i = 0U; i < numcomps; ++i)
 		planes[i] = image_->comps[i].data;
-	uint32_t h = rowsWritten;
+	uint32_t h = 0;
 	GrkSerializeBuf packedBuf;
-	uint64_t packedLen = (uint64_t)TIFFVStripSize(tif, (uint32_t)image_->rowsPerStrip);
 
 	if(isFinalOutputSubsampled(image_))
 	{
-		packedBuf = pool.get(packedLen);
+		// TIFF-specific
+		uint64_t packedLengthEncoded = (uint64_t)TIFFVStripSize(tif, (uint32_t)image_->rowsPerStrip);
+		packedBuf = pool.get(packedLengthEncoded);
 		auto bufPtr = (int8_t*)packedBuf.data;
+		uint32_t bytesToWrite = 0;
 		for(; h < rowsWritten + rowsToWrite; h += chroma_subsample_y)
 		{
 			uint32_t rowsSoFar = h - rowsWritten;
-			if(rowsSoFar > 0 && (rowsSoFar % image_->rowsPerStrip == 0))
+			if(bytesToWrite > 0 && rowsSoFar > 0 && (rowsSoFar % image_->rowsPerStrip == 0))
 			{
 				packedBuf.dataLen = bytesToWrite;
 				packedBuf.offset = serializer.getOffset();
 				packedBuf.index = serializer.getNumPixelRequests();
 				if(bytesToWrite && !encodePixelsApplication(packedBuf))
 					goto cleanup;
-				packedBuf = pool.get(packedLen);
+				packedBuf = pool.get(packedLengthEncoded);
 				bufPtr = (int8_t*)(packedBuf.data);
 				bytesToWrite = 0;
 			}
@@ -422,14 +423,14 @@ bool TIFFFormat::encodePixels()
 	}
 	else
 	{
-		tmsize_t hTarget = rowsWritten + rowsToWrite;
+		uint32_t hTarget = rowsWritten + rowsToWrite;
 		auto iter = grk::InterleaverFactory<int32_t>::makeInterleaver(image_->comps[0].prec);
 		if(!iter)
 			goto cleanup;
 		while(h < hTarget)
 		{
 			uint32_t stripRows = (std::min)(image_->rowsPerStrip, height - h);
-			packedBuf = pool.get(packedLen);
+			packedBuf = pool.get(image_->packedRowBytes * stripRows);
 			iter->interleave((int32_t**)planes, image_->numcomps, (uint8_t*)packedBuf.data,
 							 image_->comps[0].w, image_->comps[0].stride, image_->packedRowBytes,
 							 stripRows, 0);

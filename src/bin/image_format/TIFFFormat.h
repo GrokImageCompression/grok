@@ -54,9 +54,7 @@ class TIFFFormat : public ImageFormat
 	TIFF* tif;
 	uint32_t chroma_subsample_x;
 	uint32_t chroma_subsample_y;
-	uint32_t rowsWritten;
 	size_t units;
-	uint64_t bytesToWrite;
 	uint16_t numcomps;
 };
 
