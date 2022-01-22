@@ -26,7 +26,7 @@
 #include "ImageFormat.h"
 #include <tiffio.h>
 #include "convert.h"
-#include "Serializer.h"
+
 
 /* TIFF conversion*/
 void tiffSetErrorAndWarningHandlers(bool verbose);
@@ -50,12 +50,10 @@ class TIFFFormat : public ImageFormat
 	bool encodePixelsApplication(grk_serialize_buf pixels);
 	bool encodePixelsCore(grk_serialize_buf pixels, grk_serialize_buf* reclaimed,
 						  uint32_t max_reclaimed, uint32_t* num_reclaimed);
-	Serializer serializer;
 	TIFF* tif;
 	uint32_t chroma_subsample_x;
 	uint32_t chroma_subsample_y;
 	size_t units;
-	uint16_t numcomps;
 };
 
 #endif

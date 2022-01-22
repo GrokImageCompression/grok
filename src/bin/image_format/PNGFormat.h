@@ -32,7 +32,7 @@ class PNGFormat : public ImageFormat
 	grk_image* decode(const std::string& filename, grk_cparameters* parameters) override;
 
   private:
-	grk_image* do_decode(const char* read_idf, grk_cparameters* params);
+	grk_image* do_decode(grk_cparameters* params);
 
 	png_infop info_;
 	png_structp png;

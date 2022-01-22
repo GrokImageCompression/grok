@@ -84,8 +84,7 @@ static uint64_t TiffSize(thandle_t handle)
 #endif
 
 TIFFFormat::TIFFFormat()
-	: tif(nullptr), chroma_subsample_x(1), chroma_subsample_y(1), units(0),
-	   numcomps(0)
+	: tif(nullptr), chroma_subsample_x(1), chroma_subsample_y(1), units(0)
 {}
 TIFFFormat::~TIFFFormat()
 {
@@ -125,7 +124,7 @@ bool TIFFFormat::encodeHeader(void)
 	uint32_t width = image_->comps[0].w;
 	uint32_t height = image_->comps[0].h;
 	uint8_t bps = getImagePrec();
-	numcomps = getImageNumComps();
+	uint16_t numcomps = getImageNumComps();
 	bool subsampled = isFinalOutputSubsampled(image_);
 	auto colourSpace = getImageColourSpace();
 
@@ -362,6 +361,7 @@ bool TIFFFormat::encodePixels()
 	uint32_t rowsToWrite = height;
 	uint32_t rowsWritten = 0;
 	int32_t const* planes[grk::maxNumPackComponents];
+	uint16_t numcomps = getImageNumComps();
 	for(uint32_t i = 0U; i < numcomps; ++i)
 		planes[i] = image_->comps[i].data;
 	uint32_t h = 0;
@@ -424,7 +424,7 @@ bool TIFFFormat::encodePixels()
 	else
 	{
 		uint32_t hTarget = rowsWritten + rowsToWrite;
-		auto iter = grk::InterleaverFactory<int32_t>::makeInterleaver(image_->comps[0].prec);
+		auto iter = grk::InterleaverFactory<int32_t>::makeInterleaver(getImagePrec());
 		if(!iter)
 			goto cleanup;
 		while(h < hTarget)
@@ -499,8 +499,10 @@ bool TIFFFormat::encodePixelsCore(grk_serialize_buf pixels, grk_serialize_buf* r
 #endif
 	tmsize_t written =
 		TIFFWriteEncodedStrip(tif, (tmsize_t)pixels.index, pixels.data, (tmsize_t)pixels.dataLen);
-	if(written == -1)
+	bool success = written != -1;
+	if(!success)
 	{
+		spdlog::error("TIFFFormat::encodePixelsCore: error in pixels encode");
 		encodeState |= IMAGE_FORMAT_ERROR;
 	}
 	else
@@ -511,10 +513,8 @@ bool TIFFFormat::encodePixelsCore(grk_serialize_buf pixels, grk_serialize_buf* r
 		if(serializer.allPixelRequestsComplete())
 			encodeFinish();
 	}
-	if(written == -1)
-		spdlog::error("TIFFFormat::encodeRows: error in TIFFWriteEncodedStrip");
 
-	return (written != -1);
+	return success;
 }
 bool TIFFFormat::encodeFinish(void)
 {

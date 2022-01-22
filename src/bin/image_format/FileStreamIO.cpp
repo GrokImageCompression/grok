@@ -28,7 +28,7 @@ FileStreamIO::~FileStreamIO()
 
 bool FileStreamIO::open(std::string fileName, std::string mode)
 {
-	bool useStdio = grk::useStdio(fileName.c_str());
+	bool useStdio = grk::useStdio(fileName);
 	switch(mode[0])
 	{
 		case 'r':

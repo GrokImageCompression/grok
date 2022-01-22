@@ -39,8 +39,7 @@ class PNMFormat : public ImageFormat
 	template<typename T>
 	bool writeRows(uint32_t rowsOffset, uint32_t rows, uint16_t compno, T* buf, size_t* outCount);
 	template<typename T>
-	bool encodeRowsCore(uint32_t rows);
-
+	bool encodeRows(uint32_t rows);
 	bool encodePixelsApplication(grk_serialize_buf pixels);
 	bool encodePixelsCore(grk_serialize_buf pixels, grk_serialize_buf* reclaimed,
 						  uint32_t max_reclaimed, uint32_t* num_reclaimed);

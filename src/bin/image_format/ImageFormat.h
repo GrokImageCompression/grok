@@ -20,6 +20,7 @@
 #include "IImageFormat.h"
 #include "IFileIO.h"
 #include "BufferPool.h"
+#include "Serializer.h"
 
 #include <mutex>
 
@@ -83,4 +84,5 @@ class ImageFormat : public IImageFormat
 	BufferPool pool;
 	grk_serialize_buf reclaimed_[reclaimSize];
 	uint32_t num_reclaimed_;
+	Serializer serializer;
 };

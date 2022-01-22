@@ -50,7 +50,7 @@ FileUringIO::~FileUringIO()
 bool FileUringIO::attach(std::string fileName, std::string mode, int fd)
 {
 	fileName_ = fileName;
-	bool useStdio = grk::useStdio(fileName_.c_str());
+	bool useStdio = grk::useStdio(fileName_);
 	bool doRead = mode[0] == -'r';
 	if(useStdio)
 		fd_ = doRead ? STDIN_FILENO : STDOUT_FILENO;
@@ -64,7 +64,7 @@ bool FileUringIO::attach(std::string fileName, std::string mode, int fd)
 bool FileUringIO::open(std::string fileName, std::string mode)
 {
 	fileName_ = fileName;
-	bool useStdio = grk::useStdio(fileName_.c_str());
+	bool useStdio = grk::useStdio(fileName_);
 	bool doRead = mode[0] == -'r';
 	if(useStdio)
 	{
@@ -249,7 +249,7 @@ bool FileUringIO::close(void)
 	requestsSubmitted = 0;
 	requestsCompleted = 0;
 	bool rc = false;
-	if(grk::useStdio(fileName_.c_str()) || !ownsDescriptor)
+	if(grk::useStdio(fileName_) || !ownsDescriptor)
 		rc = true;
 	else if(::close(fd_) == 0)
 		rc = true;
