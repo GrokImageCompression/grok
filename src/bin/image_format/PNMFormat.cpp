@@ -215,10 +215,24 @@ bool PNMFormat::encodePixels(void)
 	return (getImagePrec() > 8U) ? encodeRowsCore<uint16_t>(image_->comps[0].h)
 								 : encodeRowsCore<uint8_t>(image_->comps[0].h);
 }
-bool PNMFormat::encodePixelsSync(grk_serialize_buf pixels)
+bool PNMFormat::encodePixelsApplication(grk_serialize_buf pixels)
 {
 	(void)pixels;
 	return true;
+}
+/***
+ * library-orchestrated pixel encoding
+ */
+bool PNMFormat::encodePixels(grk_serialize_buf pixels, grk_serialize_buf* reclaimed,
+							  uint32_t max_reclaimed, uint32_t* num_reclaimed)
+{
+	std::unique_lock<std::mutex> lk(encodePixelmutex);
+	if(encodeState & IMAGE_FORMAT_ENCODED_PIXELS)
+		return true;
+	if(!isHeaderEncoded() && !encodeHeader())
+		return false;
+
+	return encodePixelsCore(pixels, reclaimed, max_reclaimed, num_reclaimed);
 }
 bool PNMFormat::encodePixelsCore(grk_serialize_buf pixels, grk_serialize_buf* reclaimed,
 								 uint32_t max_reclaimed, uint32_t* num_reclaimed)

@@ -25,6 +25,8 @@ class PNMFormat : public ImageFormat
 	explicit PNMFormat(bool split);
 	bool encodeHeader(void) override;
 	bool encodePixels(void) override;
+	bool encodePixels(grk_serialize_buf pixels, grk_serialize_buf* reclaimed,
+					  uint32_t max_reclaimed, uint32_t* num_reclaimed) override;
 	bool encodeFinish(void) override;
 	grk_image* decode(const std::string& filename, grk_cparameters* parameters) override;
 
@@ -39,7 +41,7 @@ class PNMFormat : public ImageFormat
 	template<typename T>
 	bool encodeRowsCore(uint32_t rows);
 
-	bool encodePixelsSync(grk_serialize_buf pixels);
+	bool encodePixelsApplication(grk_serialize_buf pixels);
 	bool encodePixelsCore(grk_serialize_buf pixels, grk_serialize_buf* reclaimed,
 						  uint32_t max_reclaimed, uint32_t* num_reclaimed);
 
