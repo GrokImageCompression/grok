@@ -3,7 +3,13 @@
 #define IO_MAX 2147483647U
 
 Serializer::Serializer(void)
-	: reclaimed_(nullptr), max_reclaimed_(0), num_reclaimed_(nullptr), numPixelRequests_(0),
+	:
+#ifdef 	GROK_HAVE_URING
+	  reclaimed_(nullptr),
+	  max_reclaimed_(0),
+	  num_reclaimed_(nullptr),
+#endif
+	  numPixelRequests_(0),
 	  maxPixelRequests_(0),
 #ifndef _WIN32
 	  fd_(0),
@@ -60,26 +66,31 @@ int Serializer::getMode(std::string mode)
 
 bool Serializer::open(std::string name, std::string mode)
 {
-	int m = getMode(mode);
-	if(m == -1)
-		return false;
+	bool useStdio = grk::useStdio(name);
+	bool doRead = mode[0] == -'r';
+	int fd = 0;
+	if(useStdio) {
+		fd = doRead ? STDIN_FILENO : STDOUT_FILENO;
+	} else {
+		int m = getMode(mode);
+		if(m == -1)
+			return false;
 
-	int fd = ::open(name.c_str(), m, 0666);
-	if(fd < 0)
-	{
-		if(errno > 0 && strerror(errno) != NULL)
-			spdlog::error("{}: {}", name, strerror(errno));
-		else
-			spdlog::error("Cannot open {}", name);
-		return false;
+		fd = ::open(name.c_str(), m, 0666);
+		if(fd < 0)
+		{
+			if(errno > 0 && strerror(errno) != NULL)
+				spdlog::error("{}: {}", name, strerror(errno));
+			else
+				spdlog::error("Cannot open {}", name);
+			return false;
+		}
 	}
-
 #ifdef GROK_HAVE_URING
 	if(!uring.attach(name, mode, fd))
 		return false;
 	asynchActive_ = true;
 #endif
-
 	fd_ = fd;
 
 	return true;

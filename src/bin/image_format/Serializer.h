@@ -37,15 +37,16 @@ struct Serializer
 #ifdef GROK_HAVE_URING
 	FileUringIO uring;
 	GrkSerializeBuf scheduled_;
+	grk_serialize_buf* reclaimed_;
+	uint32_t max_reclaimed_;
+	uint32_t* num_reclaimed_;
 #endif
 #else
 	FileStreamIO fileStreamIO;
 #endif
-	grk_serialize_buf* reclaimed_;
-	uint32_t max_reclaimed_;
-	uint32_t* num_reclaimed_;
 	uint32_t numPixelRequests_;
 	uint32_t maxPixelRequests_;
+
 #ifndef _WIN32
 	int getMode(std::string mode);
 	int fd_;
