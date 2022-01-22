@@ -42,7 +42,7 @@ class ImageFormat : public IImageFormat
 
   protected:
 	bool open(std::string fname, std::string mode);
-	bool write(GrkSerializeBuf buffer);
+	uint64_t write(GrkSerializeBuf buffer);
 	bool read(uint8_t* buf, size_t len);
 	bool seek(int64_t pos, int whence);
 	bool closeStream(void);

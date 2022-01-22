@@ -122,9 +122,9 @@ bool ImageFormat::open(std::string fileName, std::string mode)
 {
 	return fileIO_->open(fileName, mode);
 }
-bool ImageFormat::write(GrkSerializeBuf buffer)
+uint64_t ImageFormat::write(GrkSerializeBuf buffer)
 {
-	bool rc = fileIO_->write(buffer, reclaimed_, reclaimSize, &num_reclaimed_);
+	auto rc = fileIO_->write(buffer, reclaimed_, reclaimSize, &num_reclaimed_);
 #ifdef GROK_HAVE_URING
 	for(uint32_t i = 0; i < num_reclaimed_; ++i)
 		pool.put(GrkSerializeBuf(reclaimed_[i]));

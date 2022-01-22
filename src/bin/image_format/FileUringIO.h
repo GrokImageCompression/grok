@@ -41,8 +41,8 @@ class FileUringIO : public IFileIO
 	bool open(std::string fileName, std::string mode) override;
 	bool attach(std::string fileName, std::string mode, int fd);
 	bool close(void) override;
-	bool write(uint8_t* buf, uint64_t offset, size_t len, size_t maxLen, bool pooled) override;
-	bool write(GrkSerializeBuf buffer, grk_serialize_buf* reclaimed, uint32_t max_reclaimed,
+	uint64_t write(uint8_t* buf, uint64_t offset, size_t len, size_t maxLen, bool pooled) override;
+	uint64_t write(GrkSerializeBuf buffer, grk_serialize_buf* reclaimed, uint32_t max_reclaimed,
 			   uint32_t* num_reclaimed) override;
 	bool read(uint8_t* buf, size_t len) override;
 	uint64_t seek(int64_t pos, int whence) override;

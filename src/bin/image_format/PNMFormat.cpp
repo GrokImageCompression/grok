@@ -147,7 +147,9 @@ bool PNMFormat::writeHeader(bool doPGM)
 		}
 	}
 	auto str = iss.str();
-	size_t res = fwrite(str.c_str(), sizeof(uint8_t), str.size(), fileStream_);
+	size_t res = 0;
+	if (fileStream_)
+		res = fwrite(str.c_str(), sizeof(uint8_t), str.size(), fileStream_);
 
 	return (res == str.size());
 }

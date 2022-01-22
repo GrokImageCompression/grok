@@ -258,13 +258,13 @@ bool FileUringIO::close(void)
 	return rc;
 }
 
-bool FileUringIO::write(uint8_t* buf, uint64_t offset, size_t len, size_t maxLen, bool pooled)
+uint64_t FileUringIO::write(uint8_t* buf, uint64_t offset, size_t len, size_t maxLen, bool pooled)
 {
 	GrkSerializeBuf b = GrkSerializeBuf(buf, offset, len, maxLen, pooled);
 
 	return write(b, nullptr, 0, nullptr);
 }
-bool FileUringIO::write(GrkSerializeBuf buffer, grk_serialize_buf* reclaimed,
+uint64_t FileUringIO::write(GrkSerializeBuf buffer, grk_serialize_buf* reclaimed,
 						uint32_t max_reclaimed, uint32_t* num_reclaimed)
 {
 	GRK_UNUSED(reclaimed);
@@ -284,7 +284,7 @@ bool FileUringIO::write(GrkSerializeBuf buffer, grk_serialize_buf* reclaimed,
 	data->iov.iov_len = buffer.dataLen;
 	enqueue(&ring, data, reclaimed, max_reclaimed, num_reclaimed, false, fd_);
 
-	return true;
+	return buffer.dataLen;
 }
 bool FileUringIO::read(uint8_t* buf, size_t len)
 {

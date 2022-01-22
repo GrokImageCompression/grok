@@ -65,7 +65,7 @@ bool FileStreamIO::close(void)
 	fileHandle_ = nullptr;
 	return rc;
 }
-bool FileStreamIO::write(uint8_t* buf, uint64_t offset, size_t len, size_t maxLen, bool pooled)
+uint64_t FileStreamIO::write(uint8_t* buf, uint64_t offset, size_t len, size_t maxLen, bool pooled)
 {
 	GRK_UNUSED(offset);
 	GRK_UNUSED(pooled);
@@ -74,9 +74,9 @@ bool FileStreamIO::write(uint8_t* buf, uint64_t offset, size_t len, size_t maxLe
 	if(actual < len)
 		spdlog::error("wrote fewer bytes {} than expected number of bytes {}.", actual, len);
 
-	return actual == len;
+	return (uint64_t)actual;
 }
-bool FileStreamIO::write(GrkSerializeBuf buffer, grk_serialize_buf* reclaimed,
+uint64_t FileStreamIO::write(GrkSerializeBuf buffer, grk_serialize_buf* reclaimed,
 						 uint32_t max_reclaimed, uint32_t* num_reclaimed)
 {
 	auto actual = fwrite(buffer.data, 1, buffer.dataLen, fileHandle_);
@@ -88,7 +88,7 @@ bool FileStreamIO::write(GrkSerializeBuf buffer, grk_serialize_buf* reclaimed,
 		spdlog::error("wrote fewer bytes {} than expected number of bytes {}.", actual,
 					  buffer.dataLen);
 
-	return actual == buffer.dataLen;
+	return buffer.dataLen;
 }
 bool FileStreamIO::read(uint8_t* buf, size_t len)
 {

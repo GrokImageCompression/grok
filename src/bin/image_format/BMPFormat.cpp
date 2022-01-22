@@ -175,7 +175,7 @@ bool BMPFormat::encodeHeader(void)
 	destBuff.offset = off_;
 	destBuff.pooled = false;
 	destBuff.dataLen = header_plus_lut;
-	if(!write(destBuff))
+	if(write(destBuff) != destBuff.dataLen)
 		goto cleanup;
 	off_ += header_plus_lut;
 	ret = true;
@@ -278,7 +278,7 @@ bool BMPFormat::encodePixels()
 		destBuff.offset = off_;
 		destBuff.pooled = true;
 		destBuff.dataLen = destInd;
-		if(!write(destBuff))
+		if(write(destBuff) != destBuff.dataLen)
 			goto cleanup;
 		destBuff = pool.get(packedLen);
 		off_ += destInd;
@@ -300,7 +300,7 @@ bool BMPFormat::encodeFinish(void)
 		destBuff.offset = off_;
 		destBuff.pooled = false;
 		destBuff.dataLen = image_->meta->color.icc_profile_len;
-		if(!write(destBuff))
+		if(write(destBuff) != destBuff.dataLen)
 			return false;
 		off_ += image_->meta->color.icc_profile_len;
 	}
