@@ -106,21 +106,6 @@ static inline void* grkAlignedAllocN(size_t alignment, size_t size)
 #endif
 	return ptr;
 }
-void* grkMalloc(size_t size)
-{
-	if(size == 0U) /* prevent implementation defined behavior of realloc */
-		return nullptr;
-
-	return malloc(size);
-}
-void* grkCalloc(size_t num, size_t size)
-{
-	if(num == 0 || size == 0)
-		/* prevent implementation defined behavior of realloc */
-		return nullptr;
-
-	return calloc(num, size);
-}
 void* grkAlignedMalloc(size_t size)
 {
 	return grkAlignedAllocN(grkBufferALignment, size);
@@ -139,16 +124,5 @@ void grkAlignedFree(void* ptr)
 	if(ptr != nullptr)
 		free(((void**)ptr)[-1]);
 #endif
-}
-void* grkRealloc(void* ptr, size_t new_size)
-{
-	if(new_size == 0U) /* prevent implementation defined behavior of realloc */
-		return nullptr;
-
-	return realloc(ptr, new_size);
-}
-void grkFree(void* ptr)
-{
-	free(ptr);
 }
 } // namespace grk
