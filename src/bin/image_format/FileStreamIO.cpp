@@ -100,7 +100,10 @@ bool FileStreamIO::read(uint8_t* buf, size_t len)
 }
 uint64_t FileStreamIO::seek(int64_t off, int whence)
 {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wsign-conversion"
 	return GRK_FSEEK(fileHandle_, off, whence);
+#pragma GCC diagnostic pop
 }
 
 FILE* FileStreamIO::getFileStream()
