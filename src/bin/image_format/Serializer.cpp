@@ -17,16 +17,16 @@ void Serializer::init(grk_image* image)
 #ifdef _WIN32
 
 bool Serializer::open(std::string name, std::string mode){
-	return false;
+	return fileStreamIO.open(name,mode);
 }
 bool Serializer::close(void){
-	return false;
+	return fileStreamIO.close();
 }
 bool Serializer::write(uint8_t* buf, size_t size){
-	return false;
+	return fileStreamIO.write(buf,0,size,size,false);
 }
-bool Serializer::seek(int64_t off, int whence){
-	return false;
+uint64_t Serializer::seek(int64_t off, int whence){
+	return fileStreamIO.seek(off,whence);
 }
 
 #else

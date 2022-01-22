@@ -295,13 +295,14 @@ bool FileUringIO::read(uint8_t* buf, size_t len)
 
 	return false;
 }
-bool FileUringIO::seek(uint64_t pos, int whence)
+uint64_t FileUringIO::seek(int64_t pos, int whence)
 {
 	(void)pos;
+	(void)whence;
 
 	throw new std::runtime_error("uring seek");
 
-	return false;
+	return 0;
 }
 
 #endif

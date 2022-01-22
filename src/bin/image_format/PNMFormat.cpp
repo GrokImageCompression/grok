@@ -217,11 +217,17 @@ bool PNMFormat::encodePixels(void)
 }
 bool PNMFormat::encodePixelsSync(grk_serialize_buf pixels)
 {
+	(void)pixels;
 	return true;
 }
 bool PNMFormat::encodePixelsCore(grk_serialize_buf pixels, grk_serialize_buf* reclaimed,
 								 uint32_t max_reclaimed, uint32_t* num_reclaimed)
 {
+	(void)pixels;
+	(void)reclaimed;
+	(void)max_reclaimed;
+	(void)num_reclaimed;
+
 	return true;
 }
 template<typename T>

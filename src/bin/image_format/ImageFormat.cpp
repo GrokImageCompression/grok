@@ -140,9 +140,9 @@ bool ImageFormat::read(uint8_t* buf, size_t len)
 	return fileIO_->read(buf, len);
 }
 
-bool ImageFormat::seek(uint64_t pos, int whence)
+bool ImageFormat::seek(int64_t pos, int whence)
 {
-	return fileIO_->seek(pos,whence);
+	return fileIO_->seek(pos,whence) == 0U;
 }
 
 bool ImageFormat::closeStream(void)

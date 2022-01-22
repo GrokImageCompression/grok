@@ -98,9 +98,9 @@ bool FileStreamIO::read(uint8_t* buf, size_t len)
 
 	return actual == len;
 }
-bool FileStreamIO::seek(uint64_t pos, int whence)
+uint64_t FileStreamIO::seek(int64_t off, int whence)
 {
-	return GRK_FSEEK(fileHandle_, pos, whence) == 0;
+	return GRK_FSEEK(fileHandle_, off, whence);
 }
 
 FILE* FileStreamIO::getFileStream()

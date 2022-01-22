@@ -3,6 +3,7 @@
 #include "grk_apps_config.h"
 #include "grok.h"
 #include "IFileIO.h"
+#include "FileStreamIO.h"
 
 #ifdef GROK_HAVE_URING
 #include "FileUringIO.h"
@@ -39,7 +40,7 @@ struct Serializer
 	GrkSerializeBuf scheduled_;
 #endif
 #else
-
+	FileStreamIO fileStreamIO;
 #endif
 	grk_serialize_buf* reclaimed_;
 	uint32_t max_reclaimed_;
