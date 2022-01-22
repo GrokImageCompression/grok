@@ -254,10 +254,10 @@ bool PNMFormat::encodePixels(grk_serialize_buf pixels, grk_serialize_buf* reclai
 bool PNMFormat::encodePixelsCore(grk_serialize_buf pixels, grk_serialize_buf* reclaimed,
 								 uint32_t max_reclaimed, uint32_t* num_reclaimed)
 {
-	(void)pixels;
-	(void)reclaimed;
-	(void)max_reclaimed;
-	(void)num_reclaimed;
+	GRK_UNUSED(pixels);
+	GRK_UNUSED(reclaimed);
+	GRK_UNUSED(max_reclaimed);
+	GRK_UNUSED(num_reclaimed);
 #ifdef GROK_HAVE_URING
 	serializer.initPixelRequest(reclaimed, max_reclaimed, num_reclaimed);
 #endif
@@ -286,7 +286,7 @@ bool PNMFormat::encodeFinish(void)
 template<typename T>
 bool PNMFormat::encodeRows(uint32_t rows)
 {
-	(void)rows;
+	GRK_UNUSED(rows);
 	uint16_t ncomp = getImageNumComps();
 	bool success = false;
 	uint32_t height = image_->comps[0].h;

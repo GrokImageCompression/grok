@@ -31,7 +31,7 @@ T1OpenHTJ2K::T1OpenHTJ2K(bool isCompressor, grk::TileCodingParams* tcp, uint32_t
 	  coded_data(isCompressor ? nullptr : new uint8_t[coded_data_size]),
 	  unencoded_data_size(maxCblkW * maxCblkH), unencoded_data(new int32_t[unencoded_data_size])
 {
-	(void)tcp;
+	GRK_UNUSED(tcp);
 }
 T1OpenHTJ2K::~T1OpenHTJ2K()
 {
@@ -40,8 +40,8 @@ T1OpenHTJ2K::~T1OpenHTJ2K()
 }
 void T1OpenHTJ2K::preCompress(grk::CompressBlockExec* block, grk::Tile* tile)
 {
-	(void)block;
-	(void)tile;
+	GRK_UNUSED(block);
+	GRK_UNUSED(tile);
 
 	auto cblk = block->cblk;
 	uint16_t w = (uint16_t)cblk->width();

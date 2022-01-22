@@ -44,14 +44,14 @@ static bool pngWarningHandlerVerbose = true;
 
 static void png_warning_fn(png_structp png_ptr, png_const_charp warning_message)
 {
-	(void)png_ptr;
+	GRK_UNUSED(png_ptr);
 	if(pngWarningHandlerVerbose)
 		spdlog::warn("libpng: {}", warning_message);
 }
 
 static void png_error_fn(png_structp png_ptr, png_const_charp error_message)
 {
-	(void)png_ptr;
+	GRK_UNUSED(png_ptr);
 	spdlog::error("libpng: {}", error_message);
 }
 
@@ -62,13 +62,13 @@ void pngSetVerboseFlag(bool verbose)
 
 static void user_warning_fn(png_structp png_ptr, png_const_charp message)
 {
-	(void)png_ptr;
+	GRK_UNUSED(png_ptr);
 	spdlog::warn("libpng warning: {}", message);
 }
 
 static void user_error_fn(png_structp png_ptr, png_const_charp message)
 {
-	(void)png_ptr;
+	GRK_UNUSED(png_ptr);
 	spdlog::error("libpng error: {}", message);
 }
 
@@ -449,7 +449,7 @@ grk_image* PNGFormat::do_decode(grk_cparameters* params)
 	{
 		auto number_of_passes = png_set_interlace_handling(png);
 		assert(number_of_passes == 7);
-		(void)number_of_passes;
+		GRK_UNUSED(number_of_passes);
 	}
 
 	/* png_set_expand():

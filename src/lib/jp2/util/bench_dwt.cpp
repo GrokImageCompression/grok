@@ -124,7 +124,7 @@ class GrokOutput : public StdOutput
   public:
 	virtual void usage(CmdLineInterface& c)
 	{
-		(void)c;
+		GRK_UNUSED(c);
 		::usage();
 	}
 };

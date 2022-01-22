@@ -67,7 +67,7 @@ static void* grk_map(grk_handle fd, size_t len, bool do_read)
 static int32_t unmap(void* ptr, size_t len)
 {
 	int32_t rc = -1;
-	(void)len;
+	GRK_UNUSED(len);
 	if(ptr)
 		rc = UnmapViewOfFile(ptr) ? 0 : -1;
 	return rc;
@@ -139,7 +139,7 @@ static uint64_t size_proc(grk_handle fd)
 
 static void* grk_map(grk_handle fd, size_t len, bool do_read)
 {
-	(void)len;
+	GRK_UNUSED(len);
 	if(!fd)
 		return nullptr;
 	void* ptr = nullptr;

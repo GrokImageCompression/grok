@@ -94,7 +94,7 @@ BOOL sig_handler(DWORD signum)
 #else
 void sig_handler(int signum)
 {
-	(void)signum;
+	GRK_UNUSED(signum);
 	exit_func();
 }
 #endif
@@ -369,7 +369,7 @@ class GrokOutput : public TCLAP::StdOutput
   public:
 	virtual void usage(TCLAP::CmdLineInterface& c)
 	{
-		(void)c;
+		GRK_UNUSED(c);
 		decompress_help_display();
 	}
 };
@@ -765,8 +765,8 @@ void GrkDecompress::destoryParams(grk_decompress_parameters* parameters)
 
 void MycmsLogErrorHandlerFunction(cmsContext ContextID, cmsUInt32Number ErrorCode, const char* Text)
 {
-	(void)ContextID;
-	(void)ErrorCode;
+	GRK_UNUSED(ContextID);
+	GRK_UNUSED(ErrorCode);
 	spdlog::warn(" LCMS error: {}", Text);
 }
 
@@ -971,7 +971,7 @@ static void cleanUpFile(const char* outfile)
 
 	bool allocated = false;
 	char* p = actual_path(outfile, &allocated);
-	(void)remove(p);
+	GRK_UNUSED(remove)(p);
 	if(allocated)
 		free(p);
 }
@@ -1421,7 +1421,7 @@ int GrkDecompress::main(int argc, char** argv)
 	}
 	catch(std::bad_alloc& ba)
 	{
-		(void)ba;
+		GRK_UNUSED(ba);
 		spdlog::error("Out of memory. Exiting.");
 		rc = 1;
 		goto cleanup;

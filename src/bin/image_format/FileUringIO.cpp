@@ -142,7 +142,7 @@ void FileUringIO::enqueue(io_uring* ring, io_data* data, grk_serialize_buf* recl
 	//	spdlog::info("Enqueued {}, length {}, offset {}", fmt::ptr(data->buf.data),
 	//data->buf.dataLen, data->buf.offset); timer.finish();
 	assert(ret == 1);
-	(void)ret;
+	GRK_UNUSED(ret);
 	requestsSubmitted++;
 
 	// reclaim
@@ -267,9 +267,9 @@ bool FileUringIO::write(uint8_t* buf, uint64_t offset, size_t len, size_t maxLen
 bool FileUringIO::write(GrkSerializeBuf buffer, grk_serialize_buf* reclaimed,
 						uint32_t max_reclaimed, uint32_t* num_reclaimed)
 {
-	(void)reclaimed;
-	(void)max_reclaimed;
-	(void)num_reclaimed;
+	GRK_UNUSED(reclaimed);
+	GRK_UNUSED(max_reclaimed);
+	GRK_UNUSED(num_reclaimed);
 	io_data* data = new io_data();
 	if(!buffer.pooled)
 	{
@@ -288,8 +288,8 @@ bool FileUringIO::write(GrkSerializeBuf buffer, grk_serialize_buf* reclaimed,
 }
 bool FileUringIO::read(uint8_t* buf, size_t len)
 {
-	(void)buf;
-	(void)len;
+	GRK_UNUSED(buf);
+	GRK_UNUSED(len);
 
 	throw new std::runtime_error("uring read");
 
@@ -297,8 +297,8 @@ bool FileUringIO::read(uint8_t* buf, size_t len)
 }
 uint64_t FileUringIO::seek(int64_t pos, int whence)
 {
-	(void)pos;
-	(void)whence;
+	GRK_UNUSED(pos);
+	GRK_UNUSED(whence);
 
 	throw new std::runtime_error("uring seek");
 

@@ -964,7 +964,7 @@ bool FileFormatDecompress::read_channel_definition(uint8_t* p_cdef_header_data,
 	uint16_t i;
 	assert(p_cdef_header_data != nullptr);
 
-	(void)cdef_header_size;
+	GRK_UNUSED(cdef_header_size);
 	bool rc = false;
 
 	/* Part 1, I.5.3.6: 'The shall be at most one Channel Definition box

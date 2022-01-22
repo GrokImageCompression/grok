@@ -95,7 +95,7 @@ BOOL sig_handler(DWORD signum)
 #else
 void sig_handler(int signum)
 {
-	(void)signum;
+	GRK_UNUSED(signum);
 	exit_func();
 }
 #endif
@@ -414,7 +414,7 @@ class GrokOutput : public TCLAP::StdOutput
   public:
 	virtual void usage(TCLAP::CmdLineInterface& c)
 	{
-		(void)c;
+		GRK_UNUSED(c);
 		compress_help_display();
 	}
 };
@@ -2158,7 +2158,7 @@ cleanup:
 		{
 			bool allocated = false;
 			char* p = actual_path(parameters->outfile, &allocated);
-			(void)remove(p);
+			GRK_UNUSED(remove)(p);
 			if(allocated)
 				free(p);
 		}

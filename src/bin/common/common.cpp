@@ -168,7 +168,7 @@ bool grk_set_binary_mode(FILE* file)
 #ifdef _WIN32
 	return (_setmode(_fileno(file), _O_BINARY) != -1);
 #else
-	(void)file;
+	GRK_UNUSED(file);
 	return true;
 #endif
 }
@@ -302,7 +302,7 @@ uint32_t get_num_images(char* imgdirpath)
 	uint32_t i = 0;
     for (const auto & entry : std::filesystem::directory_iterator(imgdirpath))
 	{
-    	(void)entry;
+    	GRK_UNUSED(entry);
     	i++;
 	}
 
@@ -396,17 +396,17 @@ int count_trailing_zeros(uint32_t val)
 
 void errorCallback(const char* msg, void* client_data)
 {
-	(void)client_data;
+	GRK_UNUSED(client_data);
 	spdlog::default_logger()->error(msg);
 }
 void warningCallback(const char* msg, void* client_data)
 {
-	(void)client_data;
+	GRK_UNUSED(client_data);
 	spdlog::default_logger()->warn(msg);
 }
 void infoCallback(const char* msg, void* client_data)
 {
-	(void)client_data;
+	GRK_UNUSED(client_data);
 	spdlog::default_logger()->info(msg);
 }
 

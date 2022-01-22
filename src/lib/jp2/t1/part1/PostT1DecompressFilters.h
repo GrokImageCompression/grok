@@ -34,7 +34,7 @@ class ShiftFilter
   public:
 	ShiftFilter(DecompressBlockExec* block)
 	{
-		(void)block;
+		GRK_UNUSED(block);
 	}
 	inline void copy(T* dest, T* src, uint32_t len)
 	{

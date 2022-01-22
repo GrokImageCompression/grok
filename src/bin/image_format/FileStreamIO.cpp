@@ -67,9 +67,9 @@ bool FileStreamIO::close(void)
 }
 bool FileStreamIO::write(uint8_t* buf, uint64_t offset, size_t len, size_t maxLen, bool pooled)
 {
-	(void)offset;
-	(void)pooled;
-	(void)maxLen;
+	GRK_UNUSED(offset);
+	GRK_UNUSED(pooled);
+	GRK_UNUSED(maxLen);
 	auto actual = fwrite(buf, 1, len, fileHandle_);
 	if(actual < len)
 		spdlog::error("wrote fewer bytes {} than expected number of bytes {}.", actual, len);
@@ -80,9 +80,9 @@ bool FileStreamIO::write(GrkSerializeBuf buffer, grk_serialize_buf* reclaimed,
 						 uint32_t max_reclaimed, uint32_t* num_reclaimed)
 {
 	auto actual = fwrite(buffer.data, 1, buffer.dataLen, fileHandle_);
-	(void)reclaimed;
-	(void)max_reclaimed;
-	(void)num_reclaimed;
+	GRK_UNUSED(reclaimed);
+	GRK_UNUSED(max_reclaimed);
+	GRK_UNUSED(num_reclaimed);
 
 	if(actual < buffer.dataLen)
 		spdlog::error("wrote fewer bytes {} than expected number of bytes {}.", actual,

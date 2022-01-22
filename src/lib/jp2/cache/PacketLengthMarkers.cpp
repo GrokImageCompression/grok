@@ -166,7 +166,7 @@ uint32_t PacketLengthMarkers::write(bool simulate)
 				assert(counter == -1);
 				uint32_t written = (uint32_t)stream_->writeBytes(temp, numBytes);
 				assert(written == numBytes);
-				(void)written;
+				GRK_UNUSED(written);
 			}
 			writeIncrement(numBytes);
 		}

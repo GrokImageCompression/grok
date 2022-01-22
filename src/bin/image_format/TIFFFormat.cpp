@@ -32,8 +32,8 @@
 
 static tmsize_t TiffRead(thandle_t handle, void* buf, tmsize_t size)
 {
-	(void)handle;
-	(void)buf;
+	GRK_UNUSED(handle);
+	GRK_UNUSED(buf);
 
 	return size;
 }
@@ -76,7 +76,7 @@ static int TiffClose(thandle_t handle)
 
 static uint64_t TiffSize(thandle_t handle)
 {
-	(void)handle;
+	GRK_UNUSED(handle);
 
 	return 0U;
 }
@@ -490,10 +490,10 @@ bool TIFFFormat::encodePixels(grk_serialize_buf pixels, grk_serialize_buf* recla
 bool TIFFFormat::encodePixelsCore(grk_serialize_buf pixels, grk_serialize_buf* reclaimed,
 								  uint32_t max_reclaimed, uint32_t* num_reclaimed)
 {
-	(void)pixels;
-	(void)reclaimed;
-	(void)max_reclaimed;
-	(void)num_reclaimed;
+	GRK_UNUSED(pixels);
+	GRK_UNUSED(reclaimed);
+	GRK_UNUSED(max_reclaimed);
+	GRK_UNUSED(num_reclaimed);
 #ifdef GROK_HAVE_URING
 	serializer.initPixelRequest(reclaimed, max_reclaimed, num_reclaimed);
 #endif
@@ -1322,7 +1322,7 @@ cleanup:
 
 static void tiff_error(const char* msg, void* client_data)
 {
-	(void)client_data;
+	GRK_UNUSED(client_data);
 	if(msg)
 	{
 		std::string out = std::string("libtiff: ") + msg;
@@ -1331,7 +1331,7 @@ static void tiff_error(const char* msg, void* client_data)
 }
 static void tiff_warn(const char* msg, void* client_data)
 {
-	(void)client_data;
+	GRK_UNUSED(client_data);
 	if(msg)
 	{
 		std::string out = std::string("libtiff: ") + msg;
@@ -1342,13 +1342,13 @@ static void tiff_warn(const char* msg, void* client_data)
 static bool tiffWarningHandlerVerbose = true;
 void MyTiffErrorHandler(const char* module, const char* fmt, va_list ap)
 {
-	(void)module;
+	GRK_UNUSED(module);
 	grk::log(tiff_error, nullptr, fmt, ap);
 }
 
 void MyTiffWarningHandler(const char* module, const char* fmt, va_list ap)
 {
-	(void)module;
+	GRK_UNUSED(module);
 	if(tiffWarningHandlerVerbose)
 		grk::log(tiff_warn, nullptr, fmt, ap);
 }

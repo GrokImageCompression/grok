@@ -18,7 +18,7 @@ class MinHeapFakeLocker
   public:
 	MinHeapFakeLocker(std::mutex& mut)
 	{
-		(void)mut;
+		GRK_UNUSED(mut);
 	}
 };
 

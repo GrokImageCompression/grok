@@ -1765,8 +1765,8 @@ class Partial53 : public PartialInterleaver<T, FILTER_WIDTH, VERT_PASS_WIDTH>
   private:
 	void adjust_bounds(dwt_data<T>* dwt, int64_t sn_full, int64_t dn_full, int64_t* sn, int64_t* dn)
 	{
-		(void)sn_full;
-		(void)dn_full;
+		GRK_UNUSED(sn_full);
+		GRK_UNUSED(dn_full);
 		if((uint64_t)dwt->memH < (uint64_t)dwt->memL && *sn == *dn)
 		{
 			assert(dn_full == sn_full - 1);
@@ -1906,7 +1906,7 @@ bool decompress_partial_tile(TileComponent* GRK_RESTRICT tilec, uint16_t compno,
 	}
 
 	const uint16_t debug_compno = 0;
-	(void)debug_compno;
+	GRK_UNUSED(debug_compno);
 	const uint32_t HORIZ_PASS_HEIGHT = sizeof(T) / sizeof(int32_t);
 	const uint32_t pad = FILTER_WIDTH * std::max<uint32_t>(HORIZ_PASS_HEIGHT, VERT_PASS_WIDTH) *
 						 sizeof(T) / sizeof(int32_t);
@@ -1991,8 +1991,8 @@ bool decompress_partial_tile(TileComponent* GRK_RESTRICT tilec, uint16_t compno,
 
 		auto executor_h = [resno, compno, sa, resWindowRect,
 						   &decompressor](decompress_job<T, dwt_data<T>>* job) {
-			(void)compno;
-			(void)resno;
+			GRK_UNUSED(compno);
+			GRK_UNUSED(resno);
 			for(uint32_t j = job->min_j; j < job->max_j; j += HORIZ_PASS_HEIGHT)
 			{
 				auto height = std::min<uint32_t>((uint32_t)HORIZ_PASS_HEIGHT, job->max_j - j);
@@ -2001,7 +2001,7 @@ bool decompress_partial_tile(TileComponent* GRK_RESTRICT tilec, uint16_t compno,
 				// j, height);
 				uint32_t len =
 					(job->data.win_l.length() + job->data.win_h.length()) * HORIZ_PASS_HEIGHT;
-				(void)len;
+				GRK_UNUSED(len);
 				std::ostringstream ss;
 #endif
 				job->data.memL = job->data.mem + job->data.parity;
@@ -2046,8 +2046,8 @@ bool decompress_partial_tile(TileComponent* GRK_RESTRICT tilec, uint16_t compno,
 
 		auto executor_v = [compno, resno, sa, resWindowRect,
 						   &decompressor](decompress_job<T, dwt_data<T>>* job) {
-			(void)compno;
-			(void)resno;
+			GRK_UNUSED(compno);
+			GRK_UNUSED(resno);
 			for(uint32_t j = job->min_j; j < job->max_j; j += VERT_PASS_WIDTH)
 			{
 				auto width = std::min<uint32_t>(VERT_PASS_WIDTH, (job->max_j - j));
@@ -2056,7 +2056,7 @@ bool decompress_partial_tile(TileComponent* GRK_RESTRICT tilec, uint16_t compno,
 				// j, width);
 				uint32_t len =
 					(job->data.win_l.length() + job->data.win_h.length()) * VERT_PASS_WIDTH;
-				(void)len;
+				GRK_UNUSED(len);
 				std::ostringstream ss;
 #endif
 				job->data.memL = job->data.mem + (job->data.parity) * VERT_PASS_WIDTH;

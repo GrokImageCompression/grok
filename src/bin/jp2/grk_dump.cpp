@@ -103,7 +103,7 @@ class GrokOutput : public TCLAP::StdOutput
   public:
 	virtual void usage(TCLAP::CmdLineInterface& c)
 	{
-		(void)c;
+		GRK_UNUSED(c);
 		decompress_help_display();
 	}
 };
@@ -273,7 +273,7 @@ static int parseCommandLine(int argc, char** argv, grk_decompress_parameters* pa
  */
 static void errorCallback(const char* msg, void* client_data)
 {
-	(void)client_data;
+	GRK_UNUSED(client_data);
 	spdlog::error(msg);
 }
 /**
@@ -281,7 +281,7 @@ static void errorCallback(const char* msg, void* client_data)
  */
 static void warningCallback(const char* msg, void* client_data)
 {
-	(void)client_data;
+	GRK_UNUSED(client_data);
 	spdlog::warn(msg);
 }
 /**
@@ -289,7 +289,7 @@ static void warningCallback(const char* msg, void* client_data)
  */
 static void infoCallback(const char* msg, void* client_data)
 {
-	(void)client_data;
+	GRK_UNUSED(client_data);
 	spdlog::info(msg);
 }
 

@@ -74,10 +74,10 @@ bool ImageFormat::encodeInit(grk_image* image, const std::string& filename,
 bool ImageFormat::encodePixels(grk_serialize_buf pixels, grk_serialize_buf* reclaimed,
 							   uint32_t max_reclaimed, uint32_t* num_reclaimed)
 {
-	(void)pixels;
-	(void)reclaimed;
-	(void)max_reclaimed;
-	(void)num_reclaimed;
+	GRK_UNUSED(pixels);
+	GRK_UNUSED(reclaimed);
+	GRK_UNUSED(max_reclaimed);
+	GRK_UNUSED(num_reclaimed);
 
 	return false;
 }
