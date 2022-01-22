@@ -28,7 +28,7 @@
 #include "common.h"
 
 #ifndef _WIN32
-#define TIFF_IO_MAX 2147483647U
+#define IO_MAX 2147483647U
 
 static tmsize_t TiffRead(thandle_t handle, void* buf, tmsize_t size)
 {
@@ -40,39 +40,20 @@ static tmsize_t TiffRead(thandle_t handle, void* buf, tmsize_t size)
 static tmsize_t TiffWrite(thandle_t handle, void* buf, tmsize_t size)
 {
 	auto* serializer = (Serializer*)handle;
-
-#ifdef GROK_HAVE_URING
-	if(serializer->write((uint8_t*)buf, (uint64_t)size))
-		return size;
-#endif
-	// grk::ChronoTimer timer("fwrite: time to write");
-	// timer.start();
 	const size_t bytes_total = (size_t)size;
 	if((tmsize_t)bytes_total != size)
 	{
 		errno = EINVAL;
 		return (tmsize_t)-1;
 	}
-	tmsize_t count = -1;
-	size_t bytes_written = 0;
-	for(; bytes_written < bytes_total; bytes_written += (size_t)count)
-	{
-		const char* buf_offset = (char*)buf + bytes_written;
-		size_t io_size = bytes_total - bytes_written;
-		if(io_size > TIFF_IO_MAX)
-			io_size = TIFF_IO_MAX;
-		count = write(serializer->getFd(), buf_offset, (TIFFIOSize_t)io_size);
-		if(count <= 0)
-			break;
-	}
-	if(count < 0)
-		return (tmsize_t)-1;
-	// timer.finish();
 
-	return (tmsize_t)bytes_written;
+	if(serializer->write((uint8_t*)buf, bytes_total))
+		return size;
+	else
+		return (tmsize_t)-1;
 }
 
-static uint64_t TiffSeek(thandle_t handle, uint64_t off, int whence)
+static uint64_t TiffSeek(thandle_t handle, uint64_t off, int32_t whence)
 {
 	auto* serializer = (Serializer*)handle;
 	_TIFF_off_t off_io = (_TIFF_off_t)off;
@@ -83,8 +64,7 @@ static uint64_t TiffSeek(thandle_t handle, uint64_t off, int whence)
 		return (uint64_t)-1;
 	}
 
-	return serializer->isAsynchActive() ? serializer->getAsynchFileLength()
-										: ((uint64_t)lseek(serializer->getFd(), off_io, whence));
+	return serializer->seek((int64_t)off,whence);
 }
 
 static int TiffClose(thandle_t handle)
@@ -116,7 +96,7 @@ TIFFFormat::~TIFFFormat()
 
 TIFF* TIFFFormat::MyTIFFOpen(const char* name, const char* mode)
 {
-	if(!serializer.open(name, mode, false))
+	if(!serializer.open(name, mode))
 		return ((TIFF*)0);
 	auto tif = TIFFClientOpen(name, mode, &serializer, TiffRead, TiffWrite, TiffSeek, TiffClose,
 							  TiffSize, nullptr, nullptr);

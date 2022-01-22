@@ -80,5 +80,5 @@ class IFileIO
 	virtual bool write(GrkSerializeBuf buffer, grk_serialize_buf* reclaimed, uint32_t max_reclaimed,
 					   uint32_t* num_reclaimed) = 0;
 	virtual bool read(uint8_t* buf, size_t len) = 0;
-	virtual bool seek(int64_t pos) = 0;
+	virtual bool seek(uint64_t pos, int whence) = 0;
 };

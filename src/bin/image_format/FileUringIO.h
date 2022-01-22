@@ -45,7 +45,7 @@ class FileUringIO : public IFileIO
 	bool write(GrkSerializeBuf buffer, grk_serialize_buf* reclaimed, uint32_t max_reclaimed,
 			   uint32_t* num_reclaimed) override;
 	bool read(uint8_t* buf, size_t len) override;
-	bool seek(int64_t pos) override;
+	bool seek(uint64_t pos, int whence) override;
 	io_data* retrieveCompletion(bool peek, bool& success);
 
   private:

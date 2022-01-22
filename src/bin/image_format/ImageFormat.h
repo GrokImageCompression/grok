@@ -43,7 +43,7 @@ class ImageFormat : public IImageFormat
 	bool open(std::string fname, std::string mode);
 	bool write(GrkSerializeBuf buffer);
 	bool read(uint8_t* buf, size_t len);
-	bool seek(int64_t pos);
+	bool seek(uint64_t pos, int whence);
 	bool closeStream(void);
 	uint32_t maxY(uint32_t rows);
 	int getMode(const char* mode);

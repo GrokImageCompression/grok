@@ -1,5 +1,6 @@
 #include "Serializer.h"
 #include "common.h"
+#define IO_MAX 2147483647U
 
 Serializer::Serializer(void)
 	: reclaimed_(nullptr), max_reclaimed_(0), num_reclaimed_(nullptr), numPixelRequests_(0),
@@ -13,12 +14,27 @@ void Serializer::init(grk_image* image)
 {
 	maxPixelRequests_ = ((image->y1 - image->y0) + image->rowsPerStrip - 1) / image->rowsPerStrip;
 }
-#ifndef _WIN32
+#ifdef _WIN32
+
+bool Serializer::open(std::string name, std::string mode){
+	return false;
+}
+bool Serializer::close(void){
+	return false;
+}
+bool Serializer::write(uint8_t* buf, size_t size){
+	return false;
+}
+bool Serializer::seek(int64_t off, int whence){
+	return false;
+}
+
+#else
 int Serializer::getFd(void)
 {
 	return fd_;
 }
-int Serializer::getMode(const char* mode)
+int Serializer::getMode(std::string mode)
 {
 	int m = -1;
 
@@ -42,14 +58,13 @@ int Serializer::getMode(const char* mode)
 	return (m);
 }
 
-bool Serializer::open(const char* name, const char* mode, bool readOp)
+bool Serializer::open(std::string name, std::string mode)
 {
-	(void)readOp;
 	int m = getMode(mode);
 	if(m == -1)
 		return false;
 
-	int fd = ::open(name, m, 0666);
+	int fd = ::open(name.c_str(), m, 0666);
 	if(fd < 0)
 	{
 		if(errno > 0 && strerror(errno) != NULL)
@@ -77,29 +92,48 @@ bool Serializer::close(void)
 
 	return ::close(fd_) == 0;
 }
-#ifdef GROK_HAVE_URING
-bool Serializer::write(uint8_t* buf, uint64_t size)
-{
-	if(!asynchActive_)
-		return false;
-	scheduled_.data = buf;
-	scheduled_.dataLen = size;
-	scheduled_.offset = off_;
-	uring.write(scheduled_, reclaimed_, max_reclaimed_, num_reclaimed_);
-	off_ += scheduled_.dataLen;
-	if(scheduled_.pooled)
-		numPixelRequests_++;
-	if(numPixelRequests_ == maxPixelRequests_)
-	{
-		uring.close();
-		asynchActive_ = false;
-	}
-	clear();
+uint64_t Serializer::seek(int64_t off, int32_t whence){
+	return  isAsynchActive() ? getAsynchFileLength()
+										: ((uint64_t)lseek(getFd(), off, whence));
 
-	return true;
 }
+bool Serializer::write(uint8_t* buf, size_t bytes_total)
+{
+#ifdef GROK_HAVE_URING
+	if(asynchActive_) {
+		scheduled_.data = buf;
+		scheduled_.dataLen = bytes_total;
+		scheduled_.offset = off_;
+		uring.write(scheduled_, reclaimed_, max_reclaimed_, num_reclaimed_);
+		off_ += scheduled_.dataLen;
+		if(scheduled_.pooled)
+			numPixelRequests_++;
+		if(numPixelRequests_ == maxPixelRequests_)
+		{
+			uring.close();
+			asynchActive_ = false;
+		}
+		clear();
+		return true;
+	}
 #endif
-#endif
+	ssize_t count = 1;
+	size_t bytes_written = 0;
+	for(; bytes_written < bytes_total; bytes_written += (size_t)count)
+	{
+		const char* buf_offset = (char*)buf + bytes_written;
+		size_t io_size = (size_t)(bytes_total - bytes_written);
+		if(io_size > IO_MAX)
+			io_size = IO_MAX;
+		count = ::write(fd_, buf_offset, io_size);
+		if(count <= 0)
+			break;
+	}
+
+	return (count != -1);
+}
+#endif // #ifndef _WIN32
+
 void Serializer::initPixelRequest(grk_serialize_buf* reclaimed, uint32_t max_reclaimed,
 								  uint32_t* num_reclaimed)
 {

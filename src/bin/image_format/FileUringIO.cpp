@@ -295,7 +295,7 @@ bool FileUringIO::read(uint8_t* buf, size_t len)
 
 	return false;
 }
-bool FileUringIO::seek(int64_t pos)
+bool FileUringIO::seek(uint64_t pos, int whence)
 {
 	(void)pos;
 
