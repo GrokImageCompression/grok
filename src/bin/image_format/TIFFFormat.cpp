@@ -489,7 +489,13 @@ bool TIFFFormat::encodePixels(grk_serialize_buf pixels, grk_serialize_buf* recla
 bool TIFFFormat::encodePixelsCore(grk_serialize_buf pixels, grk_serialize_buf* reclaimed,
 								  uint32_t max_reclaimed, uint32_t* num_reclaimed)
 {
+	(void)pixels;
+	(void)reclaimed;
+	(void)max_reclaimed;
+	(void)num_reclaimed;
+#ifdef GROK_HAVE_URING
 	serializer.initPixelRequest(reclaimed, max_reclaimed, num_reclaimed);
+#endif
 	tmsize_t written =
 		TIFFWriteEncodedStrip(tif, (tmsize_t)pixels.index, pixels.data, (tmsize_t)pixels.dataLen);
 	if(written == -1)
@@ -498,7 +504,9 @@ bool TIFFFormat::encodePixelsCore(grk_serialize_buf pixels, grk_serialize_buf* r
 	}
 	else
 	{
+#ifndef GROK_HAVE_URING
 		serializer.incrementPixelRequest();
+#endif
 		if(serializer.allPixelRequestsComplete())
 			encodeFinish();
 	}

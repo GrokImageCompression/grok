@@ -93,9 +93,18 @@ bool Serializer::close(void)
 	return ::close(fd_) == 0;
 }
 uint64_t Serializer::seek(int64_t off, int32_t whence){
-	return  isAsynchActive() ? getAsynchFileLength()
-										: ((uint64_t)lseek(getFd(), off, whence));
+	if (asynchActive_)
+		return off_;
+	off_t rc = lseek(getFd(), off, whence);
+	if (rc == (off_t)-1){
+		if(strerror(errno) != NULL)
+			spdlog::error("{}", strerror(errno));
+		else
+			spdlog::error("I/O error");
+		return (uint64_t)-1;
+	}
 
+	return (uint64_t)rc;
 }
 bool Serializer::write(uint8_t* buf, size_t bytes_total)
 {
@@ -113,7 +122,12 @@ bool Serializer::write(uint8_t* buf, size_t bytes_total)
 			uring.close();
 			asynchActive_ = false;
 		}
-		clear();
+		// clear
+		scheduled_ = GrkSerializeBuf();
+		num_reclaimed_ = nullptr;
+		reclaimed_ = nullptr;
+		max_reclaimed_ = 0;
+
 		return true;
 	}
 #endif
@@ -134,26 +148,22 @@ bool Serializer::write(uint8_t* buf, size_t bytes_total)
 }
 #endif // #ifndef _WIN32
 
+#ifdef GROK_HAVE_URING
 void Serializer::initPixelRequest(grk_serialize_buf* reclaimed, uint32_t max_reclaimed,
 								  uint32_t* num_reclaimed)
 {
-#ifdef GROK_HAVE_URING
 	scheduled_.pooled = true;
-#endif
 	reclaimed_ = reclaimed;
 	max_reclaimed_ = max_reclaimed;
 	num_reclaimed_ = num_reclaimed;
 }
-uint32_t Serializer::incrementPixelRequest(void)
+#else
+void Serializer::incrementPixelRequest(void)
 {
-// write method will increment numPixelRequests if uring is enabled
-#ifndef GROK_HAVE_URING
+    // write method will take care of incrementing numPixelRequests if uring is enabled
 	numPixelRequests_++;
-#endif
-
-	return numPixelRequests_;
 }
-
+#endif
 uint32_t Serializer::getNumPixelRequests(void)
 {
 	return numPixelRequests_;
@@ -165,21 +175,4 @@ uint64_t Serializer::getOffset(void)
 bool Serializer::allPixelRequestsComplete(void)
 {
 	return numPixelRequests_ == maxPixelRequests_;
-}
-void Serializer::clear(void)
-{
-#ifdef GROK_HAVE_URING
-	scheduled_ = GrkSerializeBuf();
-#endif
-	num_reclaimed_ = nullptr;
-	reclaimed_ = nullptr;
-	max_reclaimed_ = 0;
-}
-bool Serializer::isAsynchActive(void)
-{
-	return asynchActive_;
-}
-uint64_t Serializer::getAsynchFileLength(void)
-{
-	return off_;
 }
