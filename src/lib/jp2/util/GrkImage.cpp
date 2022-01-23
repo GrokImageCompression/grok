@@ -317,6 +317,9 @@ void GrkImage::postReadHeader(CodingParams* cp)
 			case GRK_BMP_FMT:
 				packedRowBytes = (((uint64_t)ncmp * width + 3) >> 2) << 2;
 				break;
+			case GRK_PXM_FMT:
+				packedRowBytes = grk::PtoI<int32_t>::getPackedBytes(ncmp, x1 - x0, prec > 8 ? 16 : 8);
+				break;
 			default:
 				packedRowBytes = grk::PtoI<int32_t>::getPackedBytes(ncmp, x1 - x0, prec);
 				break;
