@@ -69,6 +69,7 @@ bool FileUringIO::open(std::string fileName, std::string mode)
 	if(useStdio)
 	{
 		fd_ = doRead ? STDIN_FILENO : STDOUT_FILENO;
+		ownsDescriptor = false;
 		return true;
 	}
 	auto name = fileName_.c_str();
@@ -249,11 +250,12 @@ bool FileUringIO::close(void)
 	requestsSubmitted = 0;
 	requestsCompleted = 0;
 	bool rc = false;
-	if(grk::useStdio(fileName_) || !ownsDescriptor)
+	if(!ownsDescriptor)
 		rc = true;
-	else if(::close(fd_) == 0)
+	else if(fd_ && ::close(fd_) == 0)
 		rc = true;
 	fd_ = 0;
+	ownsDescriptor = false;
 
 	return rc;
 }

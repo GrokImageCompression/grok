@@ -20,7 +20,7 @@ struct Serializer
 #endif
 	bool open(std::string name, std::string mode);
 	bool close(void);
-	bool write(uint8_t* buf, size_t size);
+	size_t write(uint8_t* buf, size_t size);
 	uint64_t seek(int64_t off, int32_t whence);
 	uint32_t getNumPixelRequests(void);
 	uint64_t getOffset(void);
@@ -31,7 +31,6 @@ struct Serializer
 	void incrementPixelRequest(void);
 #endif
 	bool allPixelRequestsComplete(void);
-
   private:
 #ifndef _WIN32
 #ifdef GROK_HAVE_URING
@@ -46,7 +45,6 @@ struct Serializer
 #endif
 	uint32_t numPixelRequests_;
 	uint32_t maxPixelRequests_;
-
 #ifndef _WIN32
 	int getMode(std::string mode);
 	int fd_;

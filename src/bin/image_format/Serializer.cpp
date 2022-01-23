@@ -2,8 +2,7 @@
 #include "common.h"
 #define IO_MAX 2147483647U
 
-Serializer::Serializer(void)
-	:
+Serializer::Serializer(void) :
 #ifdef 	GROK_HAVE_URING
 	  reclaimed_(nullptr),
 	  max_reclaimed_(0),
@@ -28,8 +27,8 @@ bool Serializer::open(std::string name, std::string mode){
 bool Serializer::close(void){
 	return fileStreamIO.close();
 }
-bool Serializer::write(uint8_t* buf, size_t size){
-	return fileStreamIO.write(buf,0,size,size,false);
+size_t Serializer::write(uint8_t* buf, size_t size){
+	return (size_t)fileStreamIO.write(buf,0,size,size,false);
 }
 uint64_t Serializer::seek(int64_t off, int whence){
 	return fileStreamIO.seek(off,whence);
@@ -98,10 +97,15 @@ bool Serializer::open(std::string name, std::string mode)
 bool Serializer::close(void)
 {
 #ifdef GROK_HAVE_URING
-	uring.close();
+	return uring.close();
 #endif
+	if (!fd_)
+		return true;
 
-	return ::close(fd_) == 0;
+	int rc =  ::close(fd_);
+	fd_ = 0;
+
+	return rc == 0;
 }
 uint64_t Serializer::seek(int64_t off, int32_t whence){
 	if (asynchActive_)
@@ -117,7 +121,7 @@ uint64_t Serializer::seek(int64_t off, int32_t whence){
 
 	return (uint64_t)rc;
 }
-bool Serializer::write(uint8_t* buf, size_t bytes_total)
+size_t Serializer::write(uint8_t* buf, size_t bytes_total)
 {
 #ifdef GROK_HAVE_URING
 	if(asynchActive_) {
@@ -139,10 +143,10 @@ bool Serializer::write(uint8_t* buf, size_t bytes_total)
 		reclaimed_ = nullptr;
 		max_reclaimed_ = 0;
 
-		return true;
+		return bytes_total;
 	}
 #endif
-	ssize_t count = 1;
+	ssize_t count = 0;
 	size_t bytes_written = 0;
 	for(; bytes_written < bytes_total; bytes_written += (size_t)count)
 	{
@@ -155,7 +159,7 @@ bool Serializer::write(uint8_t* buf, size_t bytes_total)
 			break;
 	}
 
-	return (count != -1);
+	return (size_t)count;
 }
 #endif // #ifndef _WIN32
 

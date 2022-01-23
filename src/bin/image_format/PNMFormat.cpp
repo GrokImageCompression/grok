@@ -99,7 +99,7 @@ bool PNMFormat::encodeHeader(void)
 	// write first header if we start with non-split encode
 	if(doNonSplitEncode())
 	{
-		if(!grk::grk_open_for_output(&fileStream_, fileName_.c_str(), useStdIO_))
+		if (!serializer.open(fileName_, "wb"))
 			return false;
 		if(!writeHeader(false))
 			return false;
@@ -147,11 +147,13 @@ bool PNMFormat::writeHeader(bool doPGM)
 		}
 	}
 	auto str = iss.str();
-	size_t res = 0;
+	size_t res;
 	if (fileStream_)
 		res = fwrite(str.c_str(), sizeof(uint8_t), str.size(), fileStream_);
+	else
+		res = serializer.write((uint8_t*)str.c_str(), str.size());
 
-	return (res == str.size());
+	return res == str.size();
 }
 
 const size_t bufSize = 4096;
@@ -220,10 +222,7 @@ cleanup:
 */
 
 	return (getImagePrec() > 8U) ? encodeRows<uint16_t>(image_->comps[0].h)
-								 : encodeRows<uint8_t>(image_->comps[0].h);
-
-
-
+								 : encodeRows<uint8_t>( image_->comps[0].h);
 }
 bool PNMFormat::encodePixelsApplication(grk_serialize_buf pixels)
 {
@@ -263,7 +262,7 @@ bool PNMFormat::encodePixelsCore(grk_serialize_buf pixels, grk_serialize_buf* re
 #ifdef GROK_HAVE_URING
 	serializer.initPixelRequest(reclaimed, max_reclaimed, num_reclaimed);
 #endif
-	bool success = serializer.write(pixels.data, pixels.dataLen);
+	bool success = serializer.write(pixels.data, pixels.dataLen) == pixels.dataLen;
 	if (!success) {
 		encodeState |= IMAGE_FORMAT_ERROR;
 		spdlog::error("PNMFormat::encodePixelsCore: error in pixel encode");
@@ -281,9 +280,8 @@ bool PNMFormat::encodePixelsCore(grk_serialize_buf pixels, grk_serialize_buf* re
 }
 bool PNMFormat::encodeFinish(void)
 {
-	return closeStream();
+	return serializer.close() && closeStream();
 }
-
 
 template<typename T>
 bool PNMFormat::encodeRows(uint32_t rows)
@@ -309,14 +307,10 @@ bool PNMFormat::encodeRows(uint32_t rows)
 			if(!writeRows<T>(i, height - i, 0xFFFF, buf, &outCount))
 				goto cleanup;
 		}
-		if(outCount)
-		{
-			size_t res = fwrite(buf, sizeof(T), outCount, fileStream_);
-			if(res != outCount)
-				goto cleanup;
-		}
+		if(outCount && !serializer.write((uint8_t*)buf, sizeof(T) * outCount))
+			goto cleanup;
 
-		if(!closeStream())
+		if(!serializer.close())
 			goto cleanup;
 		if(!forceSplit)
 		{
@@ -373,7 +367,7 @@ bool PNMFormat::encodeRows(uint32_t rows)
 	} /* for (compno */
 	success = true;
 cleanup:
-	return closeStream() && success;
+	return serializer.close() && closeStream() && success;
 }
 template<typename T>
 bool PNMFormat::writeRows(uint32_t rowsOffset, uint32_t rows, uint16_t compno, T* buf,
@@ -394,8 +388,8 @@ bool PNMFormat::writeRows(uint32_t rowsOffset, uint32_t rows, uint16_t compno, T
 	int32_t adjust = (image_->comps[0].sgnd ? 1 << (getImagePrec() - 1) : 0);
 	int32_t* compPtr[4] = {nullptr, nullptr, nullptr, nullptr};
 	T* outPtr = buf + *outCount;
-	uint16_t start = singleComp ? compno : 0;
-	uint16_t end = singleComp ? compno + 1 : ncomp;
+	uint16_t start 	= singleComp ? compno : 0;
+	uint16_t end 	= singleComp ? compno + 1 : ncomp;
 	for(uint16_t i = start; i < end; ++i)
 		compPtr[i] = (image_->comps + i)->data + rowsOffset * image_->comps[0].stride;
 	for(uint32_t j = 0; j < rows; ++j)
@@ -405,8 +399,13 @@ bool PNMFormat::writeRows(uint32_t rowsOffset, uint32_t rows, uint16_t compno, T
 			for(uint16_t i = start; i < end; ++i)
 			{
 				int32_t v = *compPtr[i]++ + adjust;
-				if(!grk::writeBytes<T>((T)v, buf, &outPtr, outCount, bufSize, true, fileStream_))
-					return false;
+				if (fileStream_) {
+					if(!grk::writeBytes<T>((T)v, buf, &outPtr, outCount, bufSize, true, fileStream_))
+						return false;
+				} else {
+					if(!grk::writeBytes<T>((T)v, buf, &outPtr, outCount, bufSize, true,  &serializer))
+						return false;
+				}
 			}
 		}
 		for(uint16_t i = start; i < end; ++i)

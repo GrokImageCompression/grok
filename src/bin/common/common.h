@@ -47,6 +47,7 @@
 #include "grok.h"
 #include <algorithm>
 #include <chrono>
+#include "Serializer.h"
 
 #if defined(_WIN32)
 #define GRK_FSEEK(stream, offset, whence) _fseeki64(stream, /* __int64 */ offset, whence)
@@ -198,14 +199,34 @@ inline bool writeBytes(T val, T* buf, T** outPtr, size_t* outCount, size_t len, 
 	(*outCount)++;
 	if(*outCount == len)
 	{
-		size_t res = fwrite(buf, sizeof(T), len, out);
-		if(res != len)
+		size_t res = fwrite(buf, 1, sizeof(T) * len, out);
+		if(res != sizeof(T) * len)
 			return false;
 		*outCount = 0;
 		*outPtr = buf;
 	}
 	return true;
 }
+
+template<typename T>
+inline bool writeBytes(T val, T* buf, T** outPtr, size_t* outCount, size_t len, bool big_endian,
+					   Serializer *ser)
+{
+	if(*outCount >= len)
+		return false;
+	*(*outPtr)++ = grk::endian<T>(val, big_endian);
+	(*outCount)++;
+	if(*outCount == len)
+	{
+		if (!ser->write((uint8_t*)buf, sizeof(T) * len))
+			return false;
+		*outCount = 0;
+		*outPtr = buf;
+	}
+	return true;
+}
+
+
 
 uint32_t uint_adds(uint32_t a, uint32_t b);
 int population_count(uint32_t val);

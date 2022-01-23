@@ -47,7 +47,7 @@ static tmsize_t TiffWrite(thandle_t handle, void* buf, tmsize_t size)
 		return (tmsize_t)-1;
 	}
 
-	if(serializer->write((uint8_t*)buf, bytes_total))
+	if(serializer->write((uint8_t*)buf, bytes_total) == bytes_total)
 		return size;
 	else
 		return (tmsize_t)-1;
