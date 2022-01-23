@@ -223,6 +223,9 @@ bool PNMFormat::encodePixelsCore(grk_serialize_buf pixels)
 }
 bool PNMFormat::encodeFinish(void)
 {
+	if(encodeState & IMAGE_FORMAT_ENCODED_PIXELS)
+		return true;
+
 	return serializer.close() && closeStream();
 }
 

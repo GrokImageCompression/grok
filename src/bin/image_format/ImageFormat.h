@@ -34,7 +34,9 @@ class ImageFormat : public IImageFormat
 	void serializeRegisterClientCallback(grk_serialize_callback reclaim_callback,void* user_data) override;
 	void serializeReclaimBuffer(grk_serialize_buf buffer);
 	void serializeRegisterApplicationClient(void);
+#ifndef GROK_HAVE_URING
 	void reclaim(grk_serialize_buf pixels);
+#endif
 	virtual bool encodeInit(grk_image* image, const std::string& filename,
 							uint32_t compressionLevel) override;
 	bool encodePixels(grk_serialize_buf pixels) override;

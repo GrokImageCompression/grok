@@ -50,13 +50,12 @@ void ImageFormat::serializeReclaimBuffer(grk_serialize_buf buffer){
 	if (cb)
 		cb(buffer, serializer.getSerializerReclaimUserData());
 }
-void ImageFormat::reclaim(grk_serialize_buf pixels){
-	GRK_UNUSED(pixels);
 #ifndef GROK_HAVE_URING
+void ImageFormat::reclaim(grk_serialize_buf pixels){
 	// for synchronous encode, we immediately return the pixel buffer to the pool
 	serializeReclaimBuffer(GrkSerializeBuf(pixels));
-#endif
 }
+#endif
 bool ImageFormat::encodeInit(grk_image* image, const std::string& filename,
 							 uint32_t compressionLevel)
 {

@@ -254,8 +254,11 @@ bool GrkImage::canAllocInterleaved(CodingParams* cp)
 	if(cp->tx0 != x0 || cp->ty0 != y0)
 		return false;
 
+	bool supportedFileFormat = decompressFormat == GRK_TIF_FMT ||
+			(decompressFormat == GRK_PXM_FMT && !splitByComponent);
+	supportedFileFormat = decompressFormat == GRK_TIF_FMT;
 	if(isFinalOutputSubsampled() || precision || upsample || forceRGB ||
-	   decompressFormat != GRK_TIF_FMT ||
+	   !supportedFileFormat ||
 	   (meta && (meta->color.palette || meta->color.icc_profile_buf)))
 	{
 		return false;
