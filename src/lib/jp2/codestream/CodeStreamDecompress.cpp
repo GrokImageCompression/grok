@@ -345,11 +345,14 @@ void CodeStreamDecompress::initDecompress(grk_decompress_core_params* parameters
 {
 	assert(parameters);
 
-	cp_.coding_params_.dec_.layer_ = parameters->max_layers;
+	cp_.coding_params_.dec_.layer_ 	= parameters->max_layers;
 	cp_.coding_params_.dec_.reduce_ = parameters->reduce;
 	tileCache_->setStrategy(parameters->tileCacheStrategy);
-	serialize_data = parameters->serialize_data;
-	serializeBufferCallback = parameters->serializeBufferCallback;
+
+	serializeBufferCallback 			= parameters->serialize_buffer_callback;
+	serializeUserData	 				= parameters->serialize_user_data;
+	serializeRegisterClientCallback 	= parameters->serialize_register_client_callback;
+	reclaimUserData 					= parameters->reclaim_user_data;
 }
 bool CodeStreamDecompress::decompress(grk_plugin_tile* tile)
 {
@@ -457,7 +460,7 @@ bool CodeStreamDecompress::decompressTiles(void)
 		return false;
 
 	stripCache_.init(cp_.t_grid_width, cp_.t_height, cp_.t_grid_height, outputImage_,
-					 serialize_data, serializeBufferCallback);
+						serializeUserData, serializeBufferCallback);
 
 	std::vector<std::future<int>> results;
 	std::atomic<bool> success(true);

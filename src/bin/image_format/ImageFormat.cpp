@@ -21,43 +21,47 @@
 #include "FileStreamIO.h"
 #include <lcms2.h>
 
+static bool reclaimCallback(grk_serialize_buf buffer, void* serialize_user_data){
+	auto pool = (BufferPool*)serialize_user_data;
+	if (pool)
+		pool->put(GrkSerializeBuf(buffer));
+
+	return true;
+}
+
 ImageFormat::ImageFormat()
 	: image_(nullptr), fileIO_(new FileStreamIO()),
 	  fileStream_(nullptr), fileName_(""),
 	  compressionLevel_(GRK_DECOMPRESS_COMPRESSION_LEVEL_DEFAULT), useStdIO_(false),
-	  encodeState(IMAGE_FORMAT_UNENCODED), num_reclaimed_(0)
+	  encodeState(IMAGE_FORMAT_UNENCODED), num_reclaimed_(0),
+	  reclaim_callback_(nullptr), reclaim_user_data_(nullptr)
 {}
-
-ImageFormat& ImageFormat::operator=(const ImageFormat& rhs)
-{
-	if(this != &rhs)
-	{ // self-assignment check expected
-		image_ = rhs.image_;
-		fileIO_ = nullptr;
-		fileStream_ = nullptr;
-		fileName_ = "";
-		compressionLevel_ = rhs.compressionLevel_;
-		useStdIO_ = rhs.useStdIO_;
-	}
-	return *this;
-}
-
 ImageFormat::~ImageFormat()
 {
 	delete fileIO_;
 }
-
-uint32_t ImageFormat::getEncodeState(void)
-{
-	return encodeState;
+void  ImageFormat::serializeRegisterClientCallback(grk_serialize_callback reclaim_callback,void* user_data){
+	reclaim_callback_ = reclaim_callback;
+	reclaim_user_data_ = user_data;
 }
-bool ImageFormat::openFile(void)
-{
-	bool rc = fileIO_->open(fileName_, "w");
-	if(rc)
-		fileStream_ = ((FileStreamIO*)fileIO_)->getFileStream();
-
-	return rc;
+void ImageFormat::serializeReclaimBuffer(grk_serialize_buf buffer){
+	if (reclaim_callback_)
+		reclaim_callback_(buffer, reclaim_user_data_);
+}
+void ImageFormat::serializeRegisterApplicationClient(void){
+	serializeRegisterClientCallback(reclaimCallback,&pool);
+}
+void ImageFormat::reclaim(grk_serialize_buf pixels, grk_serialize_buf* reclaimed, uint32_t *num_reclaimed){
+	GRK_UNUSED(pixels);
+	GRK_UNUSED(reclaimed);
+#ifdef GROK_HAVE_URING
+	for(uint32_t i = 0; i < *num_reclaimed; ++i)
+		serializeReclaimBuffer(GrkSerializeBuf(reclaimed[i]));
+#else
+	// for synchronous encode, we immediately return the pixel buffer to the pool
+	serializeReclaimBuffer(GrkSerializeBuf(pixels));
+#endif
+	*num_reclaimed = 0;
 }
 bool ImageFormat::encodeInit(grk_image* image, const std::string& filename,
 							 uint32_t compressionLevel)
@@ -66,6 +70,7 @@ bool ImageFormat::encodeInit(grk_image* image, const std::string& filename,
 	fileName_ = filename;
 	image_ = image;
 	useStdIO_ = grk::useStdio(fileName_);
+	serializer.init(image_);
 
 	return true;
 }
@@ -79,7 +84,6 @@ bool ImageFormat::encodePixels(grk_serialize_buf pixels, grk_serialize_buf* recl
 
 	return false;
 }
-
 bool ImageFormat::encodeFinish(void)
 {
 	bool rc = fileIO_->close();
@@ -90,7 +94,6 @@ bool ImageFormat::encodeFinish(void)
 
 	return rc;
 }
-
 bool ImageFormat::isHeaderEncoded(void)
 {
 	return ((encodeState & IMAGE_FORMAT_ENCODED_HEADER) == IMAGE_FORMAT_ENCODED_HEADER);
@@ -131,18 +134,17 @@ uint64_t ImageFormat::write(GrkSerializeBuf buffer)
 		pool.put(buffer);
 #endif
 	num_reclaimed_ = 0;
+
 	return rc;
 }
 bool ImageFormat::read(uint8_t* buf, size_t len)
 {
 	return fileIO_->read(buf, len);
 }
-
 bool ImageFormat::seek(int64_t pos, int whence)
 {
 	return fileIO_->seek(pos,whence) == 0U;
 }
-
 bool ImageFormat::closeStream(void)
 {
 	bool rc = true;
@@ -152,16 +154,27 @@ bool ImageFormat::closeStream(void)
 
 	return rc;
 }
+uint32_t ImageFormat::getEncodeState(void)
+{
+	return encodeState;
+}
+bool ImageFormat::openFile(void)
+{
+	bool rc = fileIO_->open(fileName_, "w");
+	if(rc)
+		fileStream_ = ((FileStreamIO*)fileIO_)->getFileStream();
 
+	return rc;
+}
 uint32_t ImageFormat::maxY(uint32_t rows)
 {
 	return std::min<uint32_t>(rows, image_->comps[0].h);
 }
-
 uint8_t ImageFormat::getImagePrec(void)
 {
 	if(!image_)
 		return 0;
+
 	return image_->precision ? image_->precision->prec : image_->comps[0].prec;
 }
 uint16_t ImageFormat::getImageNumComps(void)
@@ -177,6 +190,7 @@ GRK_COLOR_SPACE ImageFormat::getImageColourSpace(void)
 {
 	if(!image_)
 		return GRK_CLRSPC_UNKNOWN;
+
 	return image_->forceRGB ? GRK_CLRSPC_SRGB : image_->color_space;
 }
 
@@ -216,7 +230,6 @@ void ImageFormat::scaleComponent(grk_image_comp* component, uint8_t precision)
 	}
 	component->prec = precision;
 }
-
 void ImageFormat::allocPalette(grk_color* color, uint8_t num_channels, uint16_t num_entries)
 {
 	assert(color);
@@ -232,7 +245,6 @@ void ImageFormat::allocPalette(grk_color* color, uint8_t num_channels, uint16_t 
 	jp2_pclr->component_mapping = nullptr;
 	color->palette = jp2_pclr;
 }
-
 void ImageFormat::copy_icc(grk_image* dest, uint8_t* iccbuf, uint32_t icclen)
 {
 	create_meta(dest);
@@ -246,7 +258,6 @@ void ImageFormat::create_meta(grk_image* img)
 	if(img && !img->meta)
 		img->meta = grk_image_meta_new();
 }
-
 bool ImageFormat::validate_icc(GRK_COLOR_SPACE colourSpace, uint8_t* iccbuf, uint32_t icclen)
 {
 	bool rc = true;
@@ -281,7 +292,6 @@ bool ImageFormat::validate_icc(GRK_COLOR_SPACE colourSpace, uint8_t* iccbuf, uin
 
 	return rc;
 }
-
 /**
  * return false if :
  * 1. any component's precision is either 0 or greater than GRK_MAX_SUPPORTED_IMAGE_PRECISION
@@ -303,7 +313,6 @@ bool ImageFormat::allComponentsSanityCheck(grk_image* image, bool checkEqualPrec
 		spdlog::warn("component 0 precision {} is not supported.", 0, comp0->prec);
 		return false;
 	}
-
 	for(uint16_t i = 1U; i < image->numcomps; ++i)
 	{
 		auto comp_i = image->comps + i;
@@ -322,9 +331,9 @@ bool ImageFormat::allComponentsSanityCheck(grk_image* image, bool checkEqualPrec
 			return false;
 		}
 	}
+
 	return true;
 }
-
 bool ImageFormat::areAllComponentsSameSubsampling(grk_image* image)
 {
 	assert(image);
@@ -342,6 +351,7 @@ bool ImageFormat::areAllComponentsSameSubsampling(grk_image* image)
 			return false;
 		}
 	}
+
 	return true;
 }
 
@@ -355,9 +365,9 @@ bool ImageFormat::isFinalOutputSubsampled(grk_image* image)
 		if(image->comps[i].dx != 1 || image->comps[i].dy != 1)
 			return true;
 	}
+
 	return false;
 }
-
 bool ImageFormat::isChromaSubsampled(grk_image* image)
 {
 	assert(image);

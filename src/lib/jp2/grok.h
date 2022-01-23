@@ -799,8 +799,15 @@ typedef struct _grk_serialize_buf
 	uint32_t index;
 } grk_serialize_buf;
 
-typedef bool (*grk_serialize_pixels)(grk_serialize_buf buffer, grk_serialize_buf* reclaimed,
-									 uint32_t max_reclaimed, uint32_t* num_reclaimed,
+
+typedef bool (*grk_serialize_callback)(grk_serialize_buf buffer, void* serialize_user_data);
+typedef void (*grk_serialize_register_client_callback)(grk_serialize_callback reclaim_callback,
+														void* reclaim_user_data);
+
+typedef bool (*grk_serialize_pixels_callback)(grk_serialize_buf buffer,
+									 grk_serialize_buf* reclaimed,
+									 uint32_t max_reclaimed,
+									 uint32_t* num_reclaimed,
 									 void* user_data);
 
 /**
@@ -825,8 +832,10 @@ typedef struct _grk_decompress_core_params
 	uint16_t max_layers;
 	GRK_TILE_CACHE_STRATEGY tileCacheStrategy;
 
-	void* serialize_data;
-	grk_serialize_pixels serializeBufferCallback;
+	grk_serialize_pixels_callback serialize_buffer_callback;
+	void* serialize_user_data;
+	grk_serialize_register_client_callback serialize_register_client_callback;
+	void* reclaim_user_data;
 
 } grk_decompress_core_params;
 

@@ -31,7 +31,10 @@ class ImageFormat : public IImageFormat
   public:
 	ImageFormat();
 	virtual ~ImageFormat();
-	ImageFormat& operator=(const ImageFormat& rhs);
+	void serializeRegisterClientCallback(grk_serialize_callback reclaim_callback,void* user_data) override;
+	void serializeReclaimBuffer(grk_serialize_buf buffer);
+	void serializeRegisterApplicationClient(void);
+	void reclaim(grk_serialize_buf pixels, grk_serialize_buf* reclaimed, uint32_t *num_reclaimed);
 	virtual bool encodeInit(grk_image* image, const std::string& filename,
 							uint32_t compressionLevel) override;
 	bool encodePixels(grk_serialize_buf pixels, grk_serialize_buf* reclaimed,
@@ -39,7 +42,6 @@ class ImageFormat : public IImageFormat
 	virtual bool encodeFinish(void) override;
 	uint32_t getEncodeState(void) override;
 	bool openFile(void);
-
   protected:
 	bool open(std::string fname, std::string mode);
 	uint64_t write(GrkSerializeBuf buffer);
@@ -80,5 +82,8 @@ class ImageFormat : public IImageFormat
 	BufferPool pool;
 	grk_serialize_buf reclaimed_[reclaimSize];
 	uint32_t num_reclaimed_;
+
 	Serializer serializer;
+	grk_serialize_callback reclaim_callback_;
+	void* reclaim_user_data_;
 };

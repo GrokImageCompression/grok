@@ -36,7 +36,7 @@ StripPool::~StripPool()
 	delete[] strips;
 }
 void StripPool::init(uint16_t tgrid_w, uint32_t th, uint16_t tgrid_h, GrkImage* outputImage,
-					 void* serialize_d, grk_serialize_pixels serializeBufferCb)
+					 void* serialize_d, grk_serialize_pixels_callback serializeBufferCb)
 {
 	assert(outputImage);
 	if(!tgrid_h || !outputImage)

@@ -127,10 +127,6 @@ bool TIFFFormat::encodeHeader(void)
 	uint16_t numcomps = getImageNumComps();
 	bool subsampled = isFinalOutputSubsampled(image_);
 	auto colourSpace = getImageColourSpace();
-
-	assert(image_);
-	assert(fileName_.c_str());
-
 	if(bps == 0)
 	{
 		spdlog::error("TIFFFormat::encodeHeader: image_ precision is zero.");
@@ -230,7 +226,6 @@ bool TIFFFormat::encodeHeader(void)
 			numExtraChannels = 0;
 		}
 	}
-	serializer.init(image_);
 #ifdef _WIN32
 	tif = TIFFOpen(fileName_.c_str(), "wb");
 #else
@@ -341,6 +336,7 @@ bool TIFFFormat::encodeHeader(void)
 	success = true;
 	encodeState = IMAGE_FORMAT_ENCODED_HEADER;
 cleanup:
+
 	return success;
 }
 /***
@@ -356,6 +352,7 @@ bool TIFFFormat::encodePixels()
 			return false;
 	}
 	bool success = false;
+	serializeRegisterApplicationClient();
 
 	uint32_t height = image_->comps[0].h;
 	int32_t const* planes[grk::maxNumPackComponents];
@@ -456,14 +453,7 @@ cleanup:
 bool TIFFFormat::encodePixelsApplication(grk_serialize_buf pixels)
 {
 	bool rc = encodePixelsCore(pixels, reclaimed_, reclaimSize, &num_reclaimed_);
-#ifdef GROK_HAVE_URING
-	for(uint32_t i = 0; i < num_reclaimed_; ++i)
-		pool.put(GrkSerializeBuf(reclaimed_[i]));
-#else
-	// for synchronous encode, we immediately return the pixel buffer to the pool
-	pool.put(GrkSerializeBuf(pixels));
-#endif
-	num_reclaimed_ = 0;
+	reclaim(GrkSerializeBuf(pixels), reclaimed_, &num_reclaimed_);
 
 	return rc;
 }

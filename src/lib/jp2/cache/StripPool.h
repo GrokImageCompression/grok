@@ -71,7 +71,7 @@ class StripPool
 	virtual ~StripPool();
 
 	void init(uint16_t tgrid_w, uint32_t th, uint16_t tgrid_h, GrkImage* outputImg,
-			  void* serialize_d, grk_serialize_pixels serializeBufferCb);
+			  void* serialize_d, grk_serialize_pixels_callback serializeBufferCb);
 	bool composite(GrkImage* tileImage);
 
   private:
@@ -89,7 +89,7 @@ class StripPool
 	mutable std::mutex poolMutex;
 
 	void* serialize_data;
-	grk_serialize_pixels serializeBufferCallback;
+	grk_serialize_pixels_callback serializeBufferCallback;
 	MinHeap<GrkSerializeBuf, uint32_t, MinHeapFakeLocker> serializeHeap;
 };
 

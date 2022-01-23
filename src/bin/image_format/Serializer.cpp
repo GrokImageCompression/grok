@@ -125,9 +125,9 @@ size_t Serializer::write(uint8_t* buf, size_t bytes_total)
 {
 #ifdef GROK_HAVE_URING
 	if(asynchActive_) {
-		scheduled_.data = buf;
-		scheduled_.dataLen = bytes_total;
-		scheduled_.offset = off_;
+		scheduled_.data 	= buf;
+		scheduled_.dataLen 	= bytes_total;
+		scheduled_.offset 	= off_;
 		uring.write(scheduled_, reclaimed_, max_reclaimed_, num_reclaimed_);
 		off_ += scheduled_.dataLen;
 		if(scheduled_.pooled)
@@ -138,10 +138,10 @@ size_t Serializer::write(uint8_t* buf, size_t bytes_total)
 			asynchActive_ = false;
 		}
 		// clear
-		scheduled_ = GrkSerializeBuf();
-		num_reclaimed_ = nullptr;
-		reclaimed_ = nullptr;
-		max_reclaimed_ = 0;
+		scheduled_ 		= GrkSerializeBuf();
+		num_reclaimed_ 	= nullptr;
+		reclaimed_ 		= nullptr;
+		max_reclaimed_ 	= 0;
 
 		return bytes_total;
 	}
@@ -167,10 +167,10 @@ size_t Serializer::write(uint8_t* buf, size_t bytes_total)
 void Serializer::initPixelRequest(grk_serialize_buf* reclaimed, uint32_t max_reclaimed,
 								  uint32_t* num_reclaimed)
 {
-	scheduled_.pooled = true;
-	reclaimed_ = reclaimed;
-	max_reclaimed_ = max_reclaimed;
-	num_reclaimed_ = num_reclaimed;
+	scheduled_.pooled 	= true;
+	reclaimed_ 			= reclaimed;
+	max_reclaimed_ 		= max_reclaimed;
+	num_reclaimed_ 		= num_reclaimed;
 }
 #else
 void Serializer::incrementPixelRequest(void)

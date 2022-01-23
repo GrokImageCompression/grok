@@ -29,6 +29,7 @@ class IImageFormat
 {
   public:
 	virtual ~IImageFormat() = default;
+	virtual void serializeRegisterClientCallback(grk_serialize_callback reclaim_callback,void* user_data) = 0;
 	virtual bool encodeInit(grk_image* image, const std::string& filename,
 							uint32_t compressionLevel) = 0;
 	virtual bool encodeHeader(void) = 0;
