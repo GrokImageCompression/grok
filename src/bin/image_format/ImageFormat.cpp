@@ -22,10 +22,10 @@
 #include <lcms2.h>
 
 ImageFormat::ImageFormat()
-	: image_(nullptr), rowCount_(0), numStrips_(0), fileIO_(new FileStreamIO()),
+	: image_(nullptr), fileIO_(new FileStreamIO()),
 	  fileStream_(nullptr), fileName_(""),
 	  compressionLevel_(GRK_DECOMPRESS_COMPRESSION_LEVEL_DEFAULT), useStdIO_(false),
-	  encodeState(IMAGE_FORMAT_UNENCODED), stripCount(0), num_reclaimed_(0)
+	  encodeState(IMAGE_FORMAT_UNENCODED), num_reclaimed_(0)
 {}
 
 ImageFormat& ImageFormat::operator=(const ImageFormat& rhs)
@@ -33,8 +33,6 @@ ImageFormat& ImageFormat::operator=(const ImageFormat& rhs)
 	if(this != &rhs)
 	{ // self-assignment check expected
 		image_ = rhs.image_;
-		rowCount_ = rhs.rowCount_;
-		numStrips_ = rhs.numStrips_;
 		fileIO_ = nullptr;
 		fileStream_ = nullptr;
 		fileName_ = "";
@@ -157,7 +155,7 @@ bool ImageFormat::closeStream(void)
 
 uint32_t ImageFormat::maxY(uint32_t rows)
 {
-	return std::min<uint32_t>(rowCount_ + rows, image_->comps[0].h);
+	return std::min<uint32_t>(rows, image_->comps[0].h);
 }
 
 uint8_t ImageFormat::getImagePrec(void)

@@ -331,7 +331,8 @@ bool PNGFormat::encodePixels(void)
 	auto iter = grk::InterleaverFactory<int32_t>::makeInterleaver(prec == 16 ? 0xFF : prec);
 	if(!iter)
 		return false;
-	for(uint32_t y = rowCount_; y < max; ++y)
+	uint32_t rowCount = 0;
+	for(uint32_t y = rowCount; y < max; ++y)
 	{
 		iter->interleave((int32_t**)planes, nr_comp, row_buf, image_->comps[0].w,
 						 image_->comps[0].stride, image_->comps[0].w, 1, adjust);
@@ -339,7 +340,7 @@ bool PNGFormat::encodePixels(void)
 		png_write_row(png, row_buf_cpy);
 	}
 	delete iter;
-	rowCount_ += image_->comps->h;
+	rowCount += image_->comps->h;
 
 	return true;
 }
@@ -347,9 +348,6 @@ bool PNGFormat::encodeFinish(void)
 {
 	if(setjmp(png_jmpbuf(png)))
 		return false;
-
-	if(rowCount_ < image_->comps[0].h)
-		spdlog::warn("Full image was not written");
 
 	if(png)
 	{

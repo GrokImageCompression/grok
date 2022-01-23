@@ -69,9 +69,6 @@ class ImageFormat : public IImageFormat
 	bool hasOpacity(void);
 
 	grk_image* image_;
-	uint32_t rowCount_;
-	uint32_t numStrips_;
-
 	IFileIO* fileIO_;
 	FILE* fileStream_;
 	std::string fileName_;
@@ -79,7 +76,6 @@ class ImageFormat : public IImageFormat
 
 	bool useStdIO_;
 	uint32_t encodeState;
-	uint32_t stripCount;
 	mutable std::mutex encodePixelmutex;
 	BufferPool pool;
 	grk_serialize_buf reclaimed_[reclaimSize];

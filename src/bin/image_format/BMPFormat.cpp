@@ -239,11 +239,11 @@ bool BMPFormat::encodePixels()
 			ptr += w_dest;
 		}
 	}
-
-	while(rowCount_ < h)
+	uint32_t rowCount = 0;
+	while(rowCount < h)
 	{
 		uint64_t destInd = 0;
-		uint32_t k_max = std::min<uint32_t>(image_->rowsPerStrip, (uint32_t)(h - rowCount_));
+		uint32_t k_max = std::min<uint32_t>(image_->rowsPerStrip, (uint32_t)(h - rowCount));
 		for(uint32_t k = 0; k < k_max; k++)
 		{
 			for(uint32_t i = 0; i < w; i++)
@@ -282,7 +282,7 @@ bool BMPFormat::encodePixels()
 			goto cleanup;
 		destBuff = pool.get(packedLen);
 		off_ += destInd;
-		rowCount_ += k_max;
+		rowCount += k_max;
 	}
 
 	ret = true;

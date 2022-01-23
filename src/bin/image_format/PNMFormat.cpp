@@ -176,50 +176,6 @@ bool PNMFormat::encodePixels(void)
 		if(!encodeHeader())
 			return false;
 	}
-/*
-	bool success = false;
-
-	uint32_t height = image_->comps[0].h;
-	uint32_t rowsToWrite = height;
-	uint32_t rowsWritten = 0;
-	int32_t const* planes[grk::maxNumPackComponents];
-	uint16_t numcomps = getImageNumComps();
-	for(uint32_t i = 0U; i < numcomps; ++i)
-		planes[i] = image_->comps[i].data;
-	uint32_t h = 0;
-	GrkSerializeBuf packedBuf;
-
-	int32_t adjust = (image_->comps[0].sgnd ? 1 << (getImagePrec() - 1) : 0);
-	uint32_t hTarget = rowsWritten + rowsToWrite;
-	auto iter = grk::InterleaverFactory<int32_t>::makeInterleaver(getImagePrec() > 8U ? 16 : 8);
-	if(!iter)
-		goto cleanup;
-	while(h < hTarget)
-	{
-		uint32_t stripRows = (std::min)(image_->rowsPerStrip, height - h);
-		packedBuf = pool.get(image_->packedRowBytes * stripRows);
-		iter->interleave((int32_t**)planes, image_->numcomps, (uint8_t*)packedBuf.data,
-						 image_->comps[0].w, image_->comps[0].stride, image_->packedRowBytes,
-						 stripRows, adjust);
-		packedBuf.pooled = true;
-		packedBuf.offset = serializer.getOffset();
-		packedBuf.dataLen = image_->packedRowBytes * stripRows;
-		packedBuf.index = serializer.getNumPixelRequests();
-		if(!encodePixelsApplication(packedBuf))
-		{
-			delete iter;
-			goto cleanup;
-		}
-		rowsWritten += stripRows;
-		h += stripRows;
-	}
-	delete iter;
-
-	success = true;
-cleanup:
-
-	return success;
-*/
 
 	return (getImagePrec() > 8U) ? encodeRows<uint16_t>(image_->comps[0].h)
 								 : encodeRows<uint8_t>( image_->comps[0].h);
@@ -283,6 +239,8 @@ bool PNMFormat::encodeFinish(void)
 	return serializer.close() && closeStream();
 }
 
+#define OLD
+
 template<typename T>
 bool PNMFormat::encodeRows(uint32_t rows)
 {
@@ -294,6 +252,7 @@ bool PNMFormat::encodeRows(uint32_t rows)
 	// 1. write first file: PAM or PPM
 	if(doNonSplitEncode())
 	{
+#ifdef OLD
 		size_t outCount = 0;
 		T buf[bufSize];
 		uint32_t i = 0;
@@ -309,6 +268,39 @@ bool PNMFormat::encodeRows(uint32_t rows)
 		}
 		if(outCount && !serializer.write((uint8_t*)buf, sizeof(T) * outCount))
 			goto cleanup;
+#else
+		int32_t const* planes[grk::maxNumPackComponents];
+		uint16_t numcomps = getImageNumComps();
+		for(uint32_t i = 0U; i < numcomps; ++i)
+			planes[i] = image_->comps[i].data;
+		uint32_t h = 0;
+		GrkSerializeBuf packedBuf;
+		int32_t adjust = (image_->comps[0].sgnd ? 1 << (getImagePrec() - 1) : 0);
+		auto iter = grk::InterleaverFactory<int32_t>::makeInterleaver(getImagePrec() > 8U ? 0xFF : 8);
+
+		if(!iter)
+			goto cleanup;
+		while(h < height)
+		{
+			uint32_t stripRows = (std::min)(image_->rowsPerStrip, height - h);
+			packedBuf = pool.get(image_->packedRowBytes * stripRows);
+			iter->interleave((int32_t**)planes, numcomps, packedBuf.data,
+							 image_->comps[0].w, image_->comps[0].stride, image_->packedRowBytes,
+							 stripRows, adjust);
+			packedBuf.pooled = true;
+			packedBuf.offset = serializer.getOffset();
+			packedBuf.dataLen = image_->packedRowBytes * stripRows;
+			packedBuf.index = serializer.getNumPixelRequests();
+			if(!encodePixelsApplication(packedBuf))
+			{
+				delete iter;
+				goto cleanup;
+			}
+			h += stripRows;
+		}
+		delete iter;
+#endif
+
 
 		if(!serializer.close())
 			goto cleanup;
