@@ -37,7 +37,8 @@
 const static bool debugUring = false;
 
 FileUringIO::FileUringIO()
-	: fd_(0), ownsDescriptor(false), requestsSubmitted(0), requestsCompleted(0)
+	: fd_(0), ownsDescriptor(false), requestsSubmitted(0), requestsCompleted(0),
+		reclaim_callback_(nullptr), reclaim_user_data_(nullptr)
 {
 	memset(&ring, 0, sizeof(ring));
 }
@@ -46,7 +47,10 @@ FileUringIO::~FileUringIO()
 {
 	close();
 }
-
+void  FileUringIO::serializeRegisterClientCallback(grk_serialize_callback reclaim_callback,void* user_data){
+	reclaim_callback_ = reclaim_callback;
+	reclaim_user_data_ = user_data;
+}
 bool FileUringIO::attach(std::string fileName, std::string mode, int fd)
 {
 	fileName_ = fileName;
@@ -124,8 +128,7 @@ int FileUringIO::getMode(const char* mode)
 	return m;
 }
 
-void FileUringIO::enqueue(io_uring* ring, io_data* data, grk_serialize_buf* reclaimed,
-						  uint32_t max_reclaimed, uint32_t* num_reclaimed, bool readop, int fd)
+void FileUringIO::enqueue(io_uring* ring, io_data* data, bool readop, int fd)
 {
 	auto sqe = io_uring_get_sqe(ring);
 	assert(sqe);
@@ -146,10 +149,6 @@ void FileUringIO::enqueue(io_uring* ring, io_data* data, grk_serialize_buf* recl
 	GRK_UNUSED(ret);
 	requestsSubmitted++;
 
-	// reclaim
-	bool canReclaim = reclaimed && max_reclaimed > 0 && num_reclaimed;
-	if(canReclaim)
-		*num_reclaimed = 0;
 	while(true)
 	{
 		bool success;
@@ -158,10 +157,8 @@ void FileUringIO::enqueue(io_uring* ring, io_data* data, grk_serialize_buf* recl
 			break;
 		if(data->buf.pooled)
 		{
-			if(canReclaim && *num_reclaimed < max_reclaimed)
-			{
-				reclaimed[*num_reclaimed] = data->buf;
-				(*num_reclaimed)++;
+			if (reclaim_callback_) {
+				reclaim_callback_(data->buf, reclaim_user_data_);
 			}
 			else
 			{
@@ -264,14 +261,10 @@ uint64_t FileUringIO::write(uint8_t* buf, uint64_t offset, size_t len, size_t ma
 {
 	GrkSerializeBuf b = GrkSerializeBuf(buf, offset, len, maxLen, pooled);
 
-	return write(b, nullptr, 0, nullptr);
+	return write(b);
 }
-uint64_t FileUringIO::write(GrkSerializeBuf buffer, grk_serialize_buf* reclaimed,
-						uint32_t max_reclaimed, uint32_t* num_reclaimed)
+uint64_t FileUringIO::write(GrkSerializeBuf buffer)
 {
-	GRK_UNUSED(reclaimed);
-	GRK_UNUSED(max_reclaimed);
-	GRK_UNUSED(num_reclaimed);
 	io_data* data = new io_data();
 	if(!buffer.pooled)
 	{
@@ -284,7 +277,7 @@ uint64_t FileUringIO::write(GrkSerializeBuf buffer, grk_serialize_buf* reclaimed
 	data->buf = buffer;
 	data->iov.iov_base = buffer.data;
 	data->iov.iov_len = buffer.dataLen;
-	enqueue(&ring, data, reclaimed, max_reclaimed, num_reclaimed, false, fd_);
+	enqueue(&ring, data, false, fd_);
 
 	return buffer.dataLen;
 }

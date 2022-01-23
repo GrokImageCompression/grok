@@ -58,10 +58,6 @@ struct pnm_header
 
 PNMFormat::PNMFormat(bool split) : forceSplit(split)
 {
-#ifdef GROK_HAVE_URING
-	delete fileIO_;
-	fileIO_ = new FileUringIO();
-#endif
 }
 
 bool PNMFormat::encodeHeader(void)
@@ -113,7 +109,7 @@ bool PNMFormat::hasAlpha(void)
 	if(!image_)
 		return false;
 	uint16_t ncomp = getImageNumComps();
-	return (ncomp == 4 && isOpacity(3)) || (ncomp == 2 && isOpacity(1));
+	return (ncomp == 4 && isOpacity(ncomp-1)) || (ncomp == 2 && isOpacity(ncomp-1));
 }
 bool PNMFormat::writeHeader(bool doPGM)
 {
@@ -182,23 +178,18 @@ bool PNMFormat::encodePixels(void)
 }
 bool PNMFormat::encodePixelsApplication(grk_serialize_buf pixels)
 {
-	bool rc = encodePixelsCore(pixels, reclaimed_, reclaimSize, &num_reclaimed_);
-#ifdef GROK_HAVE_URING
-	for(uint32_t i = 0; i < num_reclaimed_; ++i)
-		pool.put(GrkSerializeBuf(reclaimed_[i]));
-#else
+	bool rc = encodePixelsCore(pixels);
+#ifndef GROK_HAVE_URING
 	// for synchronous encode, we immediately return the pixel buffer to the pool
-	pool.put(GrkSerializeBuf(pixels));
+	reclaim(GrkSerializeBuf(pixels));
 #endif
-	num_reclaimed_ = 0;
 
 	return rc;
 }
 /***
  * library-orchestrated pixel encoding
  */
-bool PNMFormat::encodePixels(grk_serialize_buf pixels, grk_serialize_buf* reclaimed,
-							  uint32_t max_reclaimed, uint32_t* num_reclaimed)
+bool PNMFormat::encodePixels(grk_serialize_buf pixels)
 {
 	std::unique_lock<std::mutex> lk(encodePixelmutex);
 	if(encodeState & IMAGE_FORMAT_ENCODED_PIXELS)
@@ -206,17 +197,13 @@ bool PNMFormat::encodePixels(grk_serialize_buf pixels, grk_serialize_buf* reclai
 	if(!isHeaderEncoded() && !encodeHeader())
 		return false;
 
-	return encodePixelsCore(pixels, reclaimed, max_reclaimed, num_reclaimed);
+	return encodePixelsCore(pixels);
 }
-bool PNMFormat::encodePixelsCore(grk_serialize_buf pixels, grk_serialize_buf* reclaimed,
-								 uint32_t max_reclaimed, uint32_t* num_reclaimed)
+bool PNMFormat::encodePixelsCore(grk_serialize_buf pixels)
 {
 	GRK_UNUSED(pixels);
-	GRK_UNUSED(reclaimed);
-	GRK_UNUSED(max_reclaimed);
-	GRK_UNUSED(num_reclaimed);
 #ifdef GROK_HAVE_URING
-	serializer.initPixelRequest(reclaimed, max_reclaimed, num_reclaimed);
+	serializer.initPixelRequest();
 #endif
 	bool success = serializer.write(pixels.data, pixels.dataLen) == pixels.dataLen;
 	if (!success) {

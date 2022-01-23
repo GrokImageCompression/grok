@@ -77,8 +77,7 @@ class IFileIO
 	virtual bool open(std::string fileName, std::string mode) = 0;
 	virtual bool close(void) = 0;
 	virtual uint64_t write(uint8_t* buf, uint64_t offset, size_t len, size_t maxLen, bool pooled) = 0;
-	virtual uint64_t write(GrkSerializeBuf buffer, grk_serialize_buf* reclaimed, uint32_t max_reclaimed,
-					   uint32_t* num_reclaimed) = 0;
+	virtual uint64_t write(GrkSerializeBuf buffer) = 0;
 	virtual bool read(uint8_t* buf, size_t len) = 0;
 	virtual uint64_t seek(int64_t off, int whence) = 0;
 };

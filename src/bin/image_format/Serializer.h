@@ -15,6 +15,9 @@ struct Serializer
 {
 	Serializer(void);
 	void init(grk_image* image);
+	void serializeRegisterClientCallback(grk_serialize_callback reclaim_callback,void* user_data);
+	grk_serialize_callback getSerializerReclaimCallback(void);
+	void* getSerializerReclaimUserData(void);
 #ifndef _WIN32
 	int getFd(void);
 #endif
@@ -25,8 +28,7 @@ struct Serializer
 	uint32_t getNumPixelRequests(void);
 	uint64_t getOffset(void);
 #ifdef GROK_HAVE_URING
-	void initPixelRequest(grk_serialize_buf* reclaimed, uint32_t max_reclaimed,
-						  uint32_t* num_reclaimed);
+	void initPixelRequest(void);
 #else
 	void incrementPixelRequest(void);
 #endif
@@ -36,9 +38,6 @@ struct Serializer
 #ifdef GROK_HAVE_URING
 	FileUringIO uring;
 	GrkSerializeBuf scheduled_;
-	grk_serialize_buf* reclaimed_;
-	uint32_t max_reclaimed_;
-	uint32_t* num_reclaimed_;
 #endif
 #else
 	FileStreamIO fileStreamIO;
@@ -51,4 +50,6 @@ struct Serializer
 #endif
 	bool asynchActive_;
 	uint64_t off_;
+	grk_serialize_callback reclaim_callback_;
+	void* reclaim_user_data_;
 };

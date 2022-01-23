@@ -26,7 +26,9 @@ namespace grk
 CodeStreamDecompress::CodeStreamDecompress(IBufferedStream* stream)
 	: CodeStream(stream), wholeTileDecompress(true), curr_marker_(0), headerError_(false),
 	  tile_ind_to_dec_(-1), marker_scratch_(nullptr), marker_scratch_size_(0),
-	  outputImage_(nullptr), tileCache_(new TileCache())
+	  outputImage_(nullptr), tileCache_(new TileCache()),
+	  serializeBufferCallback(nullptr), serializeUserData(nullptr),
+	  serializeRegisterClientCallback(nullptr)
 {
 	decompressorState_.default_tcp_ = new TileCodingParams();
 	decompressorState_.lastSotReadPosition = 0;
@@ -352,7 +354,6 @@ void CodeStreamDecompress::initDecompress(grk_decompress_core_params* parameters
 	serializeBufferCallback 			= parameters->serialize_buffer_callback;
 	serializeUserData	 				= parameters->serialize_user_data;
 	serializeRegisterClientCallback 	= parameters->serialize_register_client_callback;
-	reclaimUserData 					= parameters->reclaim_user_data;
 }
 bool CodeStreamDecompress::decompress(grk_plugin_tile* tile)
 {
@@ -459,8 +460,10 @@ bool CodeStreamDecompress::decompressTiles(void)
 	if(!createOutputImage())
 		return false;
 
+
 	stripCache_.init(cp_.t_grid_width, cp_.t_height, cp_.t_grid_height, outputImage_,
-						serializeUserData, serializeBufferCallback);
+						serializeBufferCallback, serializeUserData,
+						serializeRegisterClientCallback);
 
 	std::vector<std::future<int>> results;
 	std::atomic<bool> success(true);

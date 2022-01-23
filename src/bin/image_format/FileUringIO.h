@@ -38,12 +38,12 @@ class FileUringIO : public IFileIO
   public:
 	FileUringIO();
 	virtual ~FileUringIO() override;
+	void serializeRegisterClientCallback(grk_serialize_callback reclaim_callback,void* user_data);
 	bool open(std::string fileName, std::string mode) override;
 	bool attach(std::string fileName, std::string mode, int fd);
 	bool close(void) override;
 	uint64_t write(uint8_t* buf, uint64_t offset, size_t len, size_t maxLen, bool pooled) override;
-	uint64_t write(GrkSerializeBuf buffer, grk_serialize_buf* reclaimed, uint32_t max_reclaimed,
-			   uint32_t* num_reclaimed) override;
+	uint64_t write(GrkSerializeBuf buffer) override;
 	bool read(uint8_t* buf, size_t len) override;
 	uint64_t seek(int64_t pos, int whence) override;
 	io_data* retrieveCompletion(bool peek, bool& success);
@@ -56,12 +56,14 @@ class FileUringIO : public IFileIO
 	size_t requestsSubmitted;
 	size_t requestsCompleted;
 	int getMode(const char* mode);
-	void enqueue(io_uring* ring, io_data* data, grk_serialize_buf* reclaimed,
-				 uint32_t max_reclaimed, uint32_t* num_reclaimed, bool readop, int fd);
+	void enqueue(io_uring* ring, io_data* data, bool readop, int fd);
 	bool initQueue(void);
 
 	const uint32_t QD = 1024;
 	const uint32_t BS = (32 * 1024);
+	grk_serialize_callback reclaim_callback_;
+	void* reclaim_user_data_;
+
 };
 
 #endif

@@ -3,21 +3,31 @@
 #define IO_MAX 2147483647U
 
 Serializer::Serializer(void) :
-#ifdef 	GROK_HAVE_URING
-	  reclaimed_(nullptr),
-	  max_reclaimed_(0),
-	  num_reclaimed_(nullptr),
-#endif
 	  numPixelRequests_(0),
 	  maxPixelRequests_(0),
 #ifndef _WIN32
 	  fd_(0),
 #endif
-	  asynchActive_(false), off_(0)
+	  asynchActive_(false), off_(0),
+ 	 reclaim_callback_(nullptr),
+	 reclaim_user_data_(nullptr)
 {}
 void Serializer::init(grk_image* image)
 {
 	maxPixelRequests_ = ((image->y1 - image->y0) + image->rowsPerStrip - 1) / image->rowsPerStrip;
+}
+void  Serializer::serializeRegisterClientCallback(grk_serialize_callback reclaim_callback,void* user_data){
+	reclaim_callback_ = reclaim_callback;
+	reclaim_user_data_ = user_data;
+#ifdef GROK_HAVE_URING
+	uring.serializeRegisterClientCallback(reclaim_callback, user_data);
+#endif
+}
+grk_serialize_callback Serializer::getSerializerReclaimCallback(void){
+	return reclaim_callback_;
+}
+void* Serializer::getSerializerReclaimUserData(void){
+	return reclaim_user_data_;
 }
 #ifdef _WIN32
 
@@ -128,7 +138,7 @@ size_t Serializer::write(uint8_t* buf, size_t bytes_total)
 		scheduled_.data 	= buf;
 		scheduled_.dataLen 	= bytes_total;
 		scheduled_.offset 	= off_;
-		uring.write(scheduled_, reclaimed_, max_reclaimed_, num_reclaimed_);
+		uring.write(scheduled_);
 		off_ += scheduled_.dataLen;
 		if(scheduled_.pooled)
 			numPixelRequests_++;
@@ -139,9 +149,6 @@ size_t Serializer::write(uint8_t* buf, size_t bytes_total)
 		}
 		// clear
 		scheduled_ 		= GrkSerializeBuf();
-		num_reclaimed_ 	= nullptr;
-		reclaimed_ 		= nullptr;
-		max_reclaimed_ 	= 0;
 
 		return bytes_total;
 	}
@@ -164,13 +171,9 @@ size_t Serializer::write(uint8_t* buf, size_t bytes_total)
 #endif // #ifndef _WIN32
 
 #ifdef GROK_HAVE_URING
-void Serializer::initPixelRequest(grk_serialize_buf* reclaimed, uint32_t max_reclaimed,
-								  uint32_t* num_reclaimed)
+void Serializer::initPixelRequest(void)
 {
 	scheduled_.pooled 	= true;
-	reclaimed_ 			= reclaimed;
-	max_reclaimed_ 		= max_reclaimed;
-	num_reclaimed_ 		= num_reclaimed;
 }
 #else
 void Serializer::incrementPixelRequest(void)

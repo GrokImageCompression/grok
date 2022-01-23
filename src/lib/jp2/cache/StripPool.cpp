@@ -2,7 +2,13 @@
 
 namespace grk
 {
-const uint32_t reclaimSize = 5;
+static bool reclaimCallback(grk_serialize_buf buffer, void* serialize_user_data){
+	auto pool = (StripPool*)serialize_user_data;
+	if (pool)
+		pool->putBuffer(GrkSerializeBuf(buffer));
+
+	return true;
+}
 
 Strip::Strip(GrkImage* outputImage, uint16_t index, uint32_t tileHeight)
 	: stripImg(nullptr), tileCounter(0), index_(index)
@@ -22,10 +28,9 @@ uint32_t Strip::getIndex(void)
 {
 	return index_;
 }
-
 StripPool::StripPool()
 	: strips(nullptr), tgrid_w_(0), y0_(0), th_(0), tgrid_h_(0), packedRowBytes_(0),
-	  serialize_data(nullptr), serializeBufferCallback(nullptr)
+	  serializeUserData_(nullptr), serializeBufferCallback_(nullptr)
 {}
 StripPool::~StripPool()
 {
@@ -36,13 +41,16 @@ StripPool::~StripPool()
 	delete[] strips;
 }
 void StripPool::init(uint16_t tgrid_w, uint32_t th, uint16_t tgrid_h, GrkImage* outputImage,
-					 void* serialize_d, grk_serialize_pixels_callback serializeBufferCb)
+					 grk_serialize_pixels_callback serializeBufferCallback, void* serializeUserData,
+					 grk_serialize_register_client_callback serializeRegisterClientCallback)
 {
 	assert(outputImage);
 	if(!tgrid_h || !outputImage)
 		return;
-	serialize_data = serialize_d;
-	serializeBufferCallback = serializeBufferCb;
+	serializeBufferCallback_ = serializeBufferCallback;
+	serializeUserData_ = serializeUserData;
+	if (serializeRegisterClientCallback)
+		serializeRegisterClientCallback(reclaimCallback, serializeUserData, this);
 	tgrid_w_ = tgrid_w;
 	y0_ = outputImage->y0;
 	th_ = th;
@@ -78,19 +86,15 @@ bool StripPool::composite(GrkImage* tileImage)
 		buf.index = stripId;
 		buf.dataLen = dataLen;
 		img->interleavedData.data = nullptr;
-		GrkSerializeBuf reclaimed[reclaimSize];
-		uint32_t num_reclaimed = 0;
+			uint32_t num_reclaimed = 0;
 		{
 			std::unique_lock<std::mutex> lk(poolMutex);
 			serializeHeap.push(buf);
 			buf = serializeHeap.pop();
 			while(buf.data)
 			{
-				if(!serializeBufferCallback(buf, reclaimed, reclaimSize, &num_reclaimed,
-											serialize_data))
+				if(!serializeBufferCallback_(buf,serializeUserData_))
 					return false;
-				for(uint32_t i = 0; i < num_reclaimed; ++i)
-					putBuffer(reclaimed[i]);
 				buf = serializeHeap.pop();
 			}
 		}

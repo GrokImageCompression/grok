@@ -76,14 +76,9 @@ uint64_t FileStreamIO::write(uint8_t* buf, uint64_t offset, size_t len, size_t m
 
 	return (uint64_t)actual;
 }
-uint64_t FileStreamIO::write(GrkSerializeBuf buffer, grk_serialize_buf* reclaimed,
-						 uint32_t max_reclaimed, uint32_t* num_reclaimed)
+uint64_t FileStreamIO::write(GrkSerializeBuf buffer)
 {
 	auto actual = fwrite(buffer.data, 1, buffer.dataLen, fileHandle_);
-	GRK_UNUSED(reclaimed);
-	GRK_UNUSED(max_reclaimed);
-	GRK_UNUSED(num_reclaimed);
-
 	if(actual < buffer.dataLen)
 		spdlog::error("wrote fewer bytes {} than expected number of bytes {}.", actual,
 					  buffer.dataLen);

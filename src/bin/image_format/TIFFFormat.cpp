@@ -452,16 +452,18 @@ cleanup:
  */
 bool TIFFFormat::encodePixelsApplication(grk_serialize_buf pixels)
 {
-	bool rc = encodePixelsCore(pixels, reclaimed_, reclaimSize, &num_reclaimed_);
-	reclaim(GrkSerializeBuf(pixels), reclaimed_, &num_reclaimed_);
+	bool rc = encodePixelsCore(pixels);
+#ifndef GROK_HAVE_URING
+	// for synchronous encode, we immediately return the pixel buffer to the pool
+	reclaim(GrkSerializeBuf(pixels));
+#endif
 
 	return rc;
 }
 /***
  * library-orchestrated pixel encoding
  */
-bool TIFFFormat::encodePixels(grk_serialize_buf pixels, grk_serialize_buf* reclaimed,
-							  uint32_t max_reclaimed, uint32_t* num_reclaimed)
+bool TIFFFormat::encodePixels(grk_serialize_buf pixels)
 {
 	std::unique_lock<std::mutex> lk(encodePixelmutex);
 	if(encodeState & IMAGE_FORMAT_ENCODED_PIXELS)
@@ -469,20 +471,16 @@ bool TIFFFormat::encodePixels(grk_serialize_buf pixels, grk_serialize_buf* recla
 	if(!isHeaderEncoded() && !encodeHeader())
 		return false;
 
-	return encodePixelsCore(pixels, reclaimed, max_reclaimed, num_reclaimed);
+	return encodePixelsCore(pixels);
 }
 /***
  * Common core pixel encoding
  */
-bool TIFFFormat::encodePixelsCore(grk_serialize_buf pixels, grk_serialize_buf* reclaimed,
-								  uint32_t max_reclaimed, uint32_t* num_reclaimed)
+bool TIFFFormat::encodePixelsCore(grk_serialize_buf pixels)
 {
 	GRK_UNUSED(pixels);
-	GRK_UNUSED(reclaimed);
-	GRK_UNUSED(max_reclaimed);
-	GRK_UNUSED(num_reclaimed);
 #ifdef GROK_HAVE_URING
-	serializer.initPixelRequest(reclaimed, max_reclaimed, num_reclaimed);
+	serializer.initPixelRequest();
 #endif
 	tmsize_t written =
 		TIFFWriteEncodedStrip(tif, (tmsize_t)pixels.index, pixels.data, (tmsize_t)pixels.dataLen);

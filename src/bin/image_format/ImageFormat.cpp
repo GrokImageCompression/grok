@@ -33,35 +33,29 @@ ImageFormat::ImageFormat()
 	: image_(nullptr), fileIO_(new FileStreamIO()),
 	  fileStream_(nullptr), fileName_(""),
 	  compressionLevel_(GRK_DECOMPRESS_COMPRESSION_LEVEL_DEFAULT), useStdIO_(false),
-	  encodeState(IMAGE_FORMAT_UNENCODED), num_reclaimed_(0),
-	  reclaim_callback_(nullptr), reclaim_user_data_(nullptr)
+	  encodeState(IMAGE_FORMAT_UNENCODED)
 {}
 ImageFormat::~ImageFormat()
 {
 	delete fileIO_;
 }
 void  ImageFormat::serializeRegisterClientCallback(grk_serialize_callback reclaim_callback,void* user_data){
-	reclaim_callback_ = reclaim_callback;
-	reclaim_user_data_ = user_data;
-}
-void ImageFormat::serializeReclaimBuffer(grk_serialize_buf buffer){
-	if (reclaim_callback_)
-		reclaim_callback_(buffer, reclaim_user_data_);
+	serializer.serializeRegisterClientCallback(reclaim_callback, user_data);
 }
 void ImageFormat::serializeRegisterApplicationClient(void){
 	serializeRegisterClientCallback(reclaimCallback,&pool);
 }
-void ImageFormat::reclaim(grk_serialize_buf pixels, grk_serialize_buf* reclaimed, uint32_t *num_reclaimed){
+void ImageFormat::serializeReclaimBuffer(grk_serialize_buf buffer){
+	auto cb = serializer.getSerializerReclaimCallback();
+	if (cb)
+		cb(buffer, serializer.getSerializerReclaimUserData());
+}
+void ImageFormat::reclaim(grk_serialize_buf pixels){
 	GRK_UNUSED(pixels);
-	GRK_UNUSED(reclaimed);
-#ifdef GROK_HAVE_URING
-	for(uint32_t i = 0; i < *num_reclaimed; ++i)
-		serializeReclaimBuffer(GrkSerializeBuf(reclaimed[i]));
-#else
+#ifndef GROK_HAVE_URING
 	// for synchronous encode, we immediately return the pixel buffer to the pool
 	serializeReclaimBuffer(GrkSerializeBuf(pixels));
 #endif
-	*num_reclaimed = 0;
 }
 bool ImageFormat::encodeInit(grk_image* image, const std::string& filename,
 							 uint32_t compressionLevel)
@@ -74,13 +68,9 @@ bool ImageFormat::encodeInit(grk_image* image, const std::string& filename,
 
 	return true;
 }
-bool ImageFormat::encodePixels(grk_serialize_buf pixels, grk_serialize_buf* reclaimed,
-							   uint32_t max_reclaimed, uint32_t* num_reclaimed)
+bool ImageFormat::encodePixels(grk_serialize_buf pixels)
 {
 	GRK_UNUSED(pixels);
-	GRK_UNUSED(reclaimed);
-	GRK_UNUSED(max_reclaimed);
-	GRK_UNUSED(num_reclaimed);
 
 	return false;
 }
@@ -125,15 +115,11 @@ bool ImageFormat::open(std::string fileName, std::string mode)
 }
 uint64_t ImageFormat::write(GrkSerializeBuf buffer)
 {
-	auto rc = fileIO_->write(buffer, reclaimed_, reclaimSize, &num_reclaimed_);
-#ifdef GROK_HAVE_URING
-	for(uint32_t i = 0; i < num_reclaimed_; ++i)
-		pool.put(GrkSerializeBuf(reclaimed_[i]));
-#else
+	auto rc = fileIO_->write(buffer);
+#ifndef GROK_HAVE_URING
 	if(buffer.pooled)
 		pool.put(buffer);
 #endif
-	num_reclaimed_ = 0;
 
 	return rc;
 }

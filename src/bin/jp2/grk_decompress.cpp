@@ -977,22 +977,22 @@ static void cleanUpFile(const char* outfile)
 }
 
 static void grkSerializeRegisterClientCallback(grk_serialize_callback reclaim_callback,
-												void* user_data){
-	if(!user_data)
+												void* serialize_user_data,
+												void* reclaim_user_data){
+	if(!serialize_user_data || !reclaim_user_data)
 		return;
-	auto imageFormat = (IImageFormat*)user_data;
+	auto imageFormat = (IImageFormat*)serialize_user_data;
 
-	imageFormat->serializeRegisterClientCallback(reclaim_callback, user_data);
+	imageFormat->serializeRegisterClientCallback(reclaim_callback, reclaim_user_data);
 }
 
-static bool grkSerializeBufferCallback(grk_serialize_buf buffer, grk_serialize_buf* reclaimed,
-								 uint32_t max_reclaimed, uint32_t* num_reclaimed, void* user_data)
+static bool grkSerializeBufferCallback(grk_serialize_buf buffer, void *user_data)
 {
 	if(!user_data)
 		return false;
 	auto imageFormat = (IImageFormat*)user_data;
 
-	return imageFormat->encodePixels(buffer, reclaimed, max_reclaimed, num_reclaimed);
+	return imageFormat->encodePixels(buffer);
 }
 
 bool GrkDecompress::encodeHeader(grk_plugin_decompress_callback_info* info)
@@ -1094,10 +1094,7 @@ int GrkDecompress::preProcess(grk_plugin_decompress_callback_info* info)
 	}
 	parameters->core.serialize_buffer_callback = grkSerializeBufferCallback;
 	parameters->core.serialize_user_data = imageFormat;
-
 	parameters->core.serialize_register_client_callback = grkSerializeRegisterClientCallback;
-	parameters->core.reclaim_user_data = imageFormat;
-
 
 	// 1. initialize
 	if(!info->stream)

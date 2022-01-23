@@ -333,7 +333,6 @@ class CodeStreamDecompress : public CodeStream, public ICodeStreamDecompress
 	grk_serialize_pixels_callback serializeBufferCallback;
 	void* serializeUserData;
 	grk_serialize_register_client_callback serializeRegisterClientCallback;
-	void* reclaimUserData;
 };
 
 } // namespace grk
