@@ -226,6 +226,8 @@ bool PNMFormat::encodeFinish(void)
 	if(encodeState & IMAGE_FORMAT_ENCODED_PIXELS)
 		return true;
 
+	encodeState |= IMAGE_FORMAT_ENCODED_PIXELS;
+
 	return serializer.close() && closeStream();
 }
 
@@ -266,7 +268,7 @@ bool PNMFormat::encodeRows(uint32_t rows)
 		uint32_t h = 0;
 		GrkSerializeBuf packedBuf;
 		int32_t adjust = (image_->comps[0].sgnd ? 1 << (getImagePrec() - 1) : 0);
-		auto iter = grk::InterleaverFactory<int32_t>::makeInterleaver(getImagePrec() > 8U ? 0xFF : 8);
+		auto iter = grk::InterleaverFactory<int32_t>::makeInterleaver(getImagePrec() > 8U ? packer16BitBE : 8);
 
 		if(!iter)
 			goto cleanup;

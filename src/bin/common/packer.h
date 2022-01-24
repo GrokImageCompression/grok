@@ -28,6 +28,8 @@
 namespace grk {
 
 const uint32_t maxNumPackComponents = 10;
+const uint8_t packer16BitBE = 0xFF;
+
 
 
 #define PUTBITS2(s, nb)   {                                         \
@@ -961,7 +963,7 @@ public:
 			return new PlanarToInterleaved15<T>();
 		case 16:
 			return new PlanarToInterleaved16<T>();
-		case 0xFF:
+		case packer16BitBE:
 			return new PlanarToInterleaved16BE<T>();
 		default:
 			return nullptr;

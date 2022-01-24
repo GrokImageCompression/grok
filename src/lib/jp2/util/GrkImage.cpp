@@ -256,7 +256,6 @@ bool GrkImage::canAllocInterleaved(CodingParams* cp)
 
 	bool supportedFileFormat = decompressFormat == GRK_TIF_FMT ||
 			(decompressFormat == GRK_PXM_FMT && !splitByComponent);
-	supportedFileFormat = decompressFormat == GRK_TIF_FMT;
 	if(isFinalOutputSubsampled() || precision || upsample || forceRGB ||
 	   !supportedFileFormat ||
 	   (meta && (meta->color.palette || meta->color.icc_profile_buf)))
@@ -486,10 +485,23 @@ bool GrkImage::compositeInterleaved(const GrkImage* srcImg)
 			return false;
 		}
 	}
-	auto destStride = grk::PtoI<int32_t>::getPackedBytes(numcomps, destComp->w, destComp->prec);
-	auto destx0 = grk::PtoI<int32_t>::getPackedBytes(numcomps, destWin.x0, destComp->prec);
+	uint8_t prec = 0;
+	switch (decompressFormat){
+	case GRK_TIF_FMT:
+		prec = destComp->prec;
+		break;
+	case GRK_PXM_FMT:
+		prec = destComp->prec > 8 ? 16 : 8;
+		break;
+	default:
+		return false;
+		break;
+	}
+	auto destStride = grk::PtoI<int32_t>::getPackedBytes(numcomps, destComp->w, prec);
+	auto destx0 = grk::PtoI<int32_t>::getPackedBytes(numcomps, destWin.x0, prec);
 	auto destIndex = (uint64_t)destWin.y0 * destStride + (uint64_t)destx0;
-	auto iter = InterleaverFactory<int32_t>::makeInterleaver(destComp->prec);
+
+	auto iter = InterleaverFactory<int32_t>::makeInterleaver(prec == 16 ? packer16BitBE : prec);
 	if(!iter)
 		return false;
 	int32_t const* planes[grk::maxNumPackComponents];
