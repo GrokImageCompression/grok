@@ -46,7 +46,6 @@ class TIFFFormat : public ImageFormat
 #ifndef _WIN32
 	TIFF* MyTIFFOpen(const char* name, const char* mode);
 #endif
-	bool encodePixelsApplication(grk_serialize_buf pixels);
 	bool encodePixelsCore(grk_serialize_buf pixels);
 	TIFF* tif;
 	uint32_t chroma_subsample_x;

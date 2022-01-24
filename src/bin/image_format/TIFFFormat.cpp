@@ -378,7 +378,7 @@ bool TIFFFormat::encodePixels()
 				packedBuf.dataLen = bytesToWrite;
 				packedBuf.offset = serializer.getOffset();
 				packedBuf.index = serializer.getNumPixelRequests();
-				if(bytesToWrite && !encodePixelsApplication(packedBuf))
+				if(bytesToWrite && !encodePixelsCore(packedBuf))
 					goto cleanup;
 				packedBuf = pool.get(packedLengthEncoded);
 				bufPtr = (int8_t*)(packedBuf.data);
@@ -414,7 +414,7 @@ bool TIFFFormat::encodePixels()
 		packedBuf.dataLen = bytesToWrite;
 		packedBuf.offset = serializer.getOffset();
 		packedBuf.index = serializer.getNumPixelRequests();
-		if(bytesToWrite && !encodePixelsApplication(packedBuf))
+		if(bytesToWrite && !encodePixelsCore(packedBuf))
 			goto cleanup;
 	}
 	else
@@ -433,7 +433,7 @@ bool TIFFFormat::encodePixels()
 			packedBuf.offset = serializer.getOffset();
 			packedBuf.dataLen = image_->packedRowBytes * stripRows;
 			packedBuf.index = serializer.getNumPixelRequests();
-			if(!encodePixelsApplication(packedBuf))
+			if(!encodePixelsCore(packedBuf))
 			{
 				delete iter;
 				goto cleanup;
@@ -446,19 +446,6 @@ bool TIFFFormat::encodePixels()
 cleanup:
 
 	return success;
-}
-/***
- * application-orchestrated pixel encoding
- */
-bool TIFFFormat::encodePixelsApplication(grk_serialize_buf pixels)
-{
-	bool rc = encodePixelsCore(pixels);
-#ifndef GROK_HAVE_URING
-	// for synchronous encode, we immediately return the pixel buffer to the pool
-	reclaim(GrkSerializeBuf(pixels));
-#endif
-
-	return rc;
 }
 /***
  * library-orchestrated pixel encoding
@@ -493,7 +480,9 @@ bool TIFFFormat::encodePixelsCore(grk_serialize_buf pixels)
 	else
 	{
 #ifndef GROK_HAVE_URING
-		serializer.incrementPixelRequest();
+	serializer.incrementPixelRequest();
+	// for synchronous encode, we immediately return the pixel buffer to the pool
+	reclaim(GrkSerializeBuf(pixels));
 #endif
 		if(serializer.allPixelRequestsComplete())
 			encodeFinish();

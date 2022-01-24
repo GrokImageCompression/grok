@@ -984,12 +984,12 @@ typedef struct _grk_image
 	/** number of components in the image */
 	uint16_t numcomps;
 	GRK_COLOR_SPACE color_space;
-	GRK_COLOR_SPACE targetColourSpace;
 	bool color_applied;
 	bool has_capture_resolution;
 	double capture_resolution[2];
 	bool has_display_resolution;
 	double display_resolution[2];
+
 	GRK_SUPPORTED_FILE_FMT decompressFormat;
 	bool forceRGB;
 	bool upsample;
@@ -997,6 +997,7 @@ typedef struct _grk_image
 	uint32_t numPrecision;
 	bool multiTile;
 	bool splitByComponent;
+
 	grk_serialize_buf interleavedData;
 	uint32_t rowsPerStrip;
 	uint64_t packedRowBytes;

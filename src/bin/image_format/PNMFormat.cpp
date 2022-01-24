@@ -176,16 +176,6 @@ bool PNMFormat::encodePixels(void)
 	return (getImagePrec() > 8U) ? encodeRows<uint16_t>(image_->comps[0].h)
 								 : encodeRows<uint8_t>( image_->comps[0].h);
 }
-bool PNMFormat::encodePixelsApplication(grk_serialize_buf pixels)
-{
-	bool rc = encodePixelsCore(pixels);
-#ifndef GROK_HAVE_URING
-	// for synchronous encode, we immediately return the pixel buffer to the pool
-	reclaim(GrkSerializeBuf(pixels));
-#endif
-
-	return rc;
-}
 /***
  * library-orchestrated pixel encoding
  */
@@ -213,7 +203,9 @@ bool PNMFormat::encodePixelsCore(grk_serialize_buf pixels)
 	else
 	{
 #ifndef GROK_HAVE_URING
-		serializer.incrementPixelRequest();
+	serializer.incrementPixelRequest();
+	// for synchronous encode, we immediately return the pixel buffer to the pool
+	reclaim(GrkSerializeBuf(pixels));
 #endif
 		if(serializer.allPixelRequestsComplete())
 			encodeFinish();
@@ -283,7 +275,7 @@ bool PNMFormat::encodeRows(uint32_t rows)
 			packedBuf.offset = serializer.getOffset();
 			packedBuf.dataLen = image_->packedRowBytes * stripRows;
 			packedBuf.index = serializer.getNumPixelRequests();
-			if(!encodePixelsApplication(packedBuf))
+			if(!encodePixelsCore(packedBuf))
 			{
 				delete iter;
 				goto cleanup;
