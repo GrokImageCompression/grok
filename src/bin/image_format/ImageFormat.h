@@ -64,7 +64,6 @@ class ImageFormat : public IImageFormat
 	bool areAllComponentsSameSubsampling(grk_image* image);
 
 	uint8_t getImagePrec(void);
-	uint16_t getImageNumComps(void);
 	GRK_COLOR_SPACE getImageColourSpace(void);
 
 	bool isHeaderEncoded(void);

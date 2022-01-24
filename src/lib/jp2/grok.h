@@ -997,6 +997,8 @@ typedef struct _grk_image
 	uint32_t numPrecision;
 	bool multiTile;
 	bool splitByComponent;
+	uint16_t decompressNumComps;
+	uint32_t decompressWidth;
 
 	grk_serialize_buf interleavedData;
 	uint32_t rowsPerStrip;

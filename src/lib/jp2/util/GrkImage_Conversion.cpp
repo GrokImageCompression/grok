@@ -392,7 +392,15 @@ bool GrkImage::greyToRGB(void)
 
 	return true;
 }
-
+/***
+ * Check if decompress format requires conversion
+ */
+bool GrkImage::needsConversionToRGB(void){
+	 return (color_space == GRK_CLRSPC_SYCC ||
+			 color_space == GRK_CLRSPC_EYCC ||
+			  color_space == GRK_CLRSPC_CMYK) &&
+			 	 ((decompressFormat != GRK_UNK_FMT && decompressFormat != GRK_TIF_FMT) || forceRGB);
+}
 bool GrkImage::convertToRGB(bool wholeTileDecompress)
 {
 	bool oddFirstX = x0 & 1;
@@ -402,7 +410,7 @@ bool GrkImage::convertToRGB(bool wholeTileDecompress)
 		oddFirstX = false;
 		oddFirstY = false;
 	}
-	bool convert = (decompressFormat != GRK_UNK_FMT && decompressFormat != GRK_TIF_FMT) || forceRGB;
+	bool convert = needsConversionToRGB();
 	switch(color_space)
 	{
 		case GRK_CLRSPC_SYCC:

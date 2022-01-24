@@ -86,7 +86,7 @@ grk_image* JPEGFormat::jpegtoimage(const char* filename, grk_cparameters* parame
 	int32_t* planes[3];
 	JDIMENSION w = 0, h = 0;
 	uint32_t dest_stride;
-	int bps = 0, numcomps = 0;
+	int bps = 0, decompressNumComps = 0;
 	cvtTo32 cvtJpegTo32s;
 	GRK_COLOR_SPACE color_space = GRK_CLRSPC_UNKNOWN;
 	grk_image_comp cmptparm[3]; /* mono or RGB */
@@ -182,12 +182,12 @@ grk_image* JPEGFormat::jpegtoimage(const char* filename, grk_cparameters* parame
 		goto cleanup;
 	}
 
-	numcomps = cinfo.output_components;
+	decompressNumComps = cinfo.output_components;
 	w = cinfo.image_width;
 	h = cinfo.image_height;
 	cvtJpegTo32s = cvtTo32_LUT[bps];
 	memset(&cmptparm[0], 0, 3 * sizeof(grk_image_comp));
-	cvtToPlanar = cvtInterleavedToPlanar_LUT[numcomps];
+	cvtToPlanar = cvtInterleavedToPlanar_LUT[decompressNumComps];
 
 	if(cinfo.output_components == 3)
 		color_space = GRK_CLRSPC_SRGB;
@@ -203,7 +203,7 @@ grk_image* JPEGFormat::jpegtoimage(const char* filename, grk_cparameters* parame
 		cmptparm[j].h = h;
 	}
 
-	image_ = grk_image_new((uint16_t)numcomps, &cmptparm[0], color_space);
+	image_ = grk_image_new((uint16_t)decompressNumComps, &cmptparm[0], color_space);
 	if(!image_)
 	{
 		success = false;
@@ -247,12 +247,12 @@ grk_image* JPEGFormat::jpegtoimage(const char* filename, grk_cparameters* parame
 		goto cleanup;
 	}
 
-	for(int j = 0; j < numcomps; j++)
+	for(int j = 0; j < decompressNumComps; j++)
 	{
 		planes[j] = image_->comps[j].data;
 	}
 
-	buffer32s = new int32_t[w * (size_t)numcomps];
+	buffer32s = new int32_t[w * (size_t)decompressNumComps];
 
 	/* We may need to do some setup of our own at this point before reading
 	 * the data.  After jpeg_start_decompress() we have the correct scaled
@@ -287,7 +287,7 @@ grk_image* JPEGFormat::jpegtoimage(const char* filename, grk_cparameters* parame
 		GRK_UNUSED(jpeg_read_scanlines)(&cinfo, buffer, 1);
 
 		// convert 8 bit buffer to 32 bit buffer
-		cvtJpegTo32s(buffer[0], buffer32s, (size_t)w * (size_t)numcomps, false);
+		cvtJpegTo32s(buffer[0], buffer32s, (size_t)w * (size_t)decompressNumComps, false);
 
 		// convert to planar
 		cvtToPlanar(buffer32s, planes, (size_t)w);
@@ -351,11 +351,11 @@ bool JPEGFormat::encodeHeader(void)
 
 	int32_t firstAlpha = -1;
 	size_t numAlphaChannels = 0;
-	uint32_t width = image_->comps[0].w;
+	uint32_t width = image_->decompressWidth;
 
 	// actual bits per sample
 	uint8_t prec = getImagePrec();
-	uint16_t numcomps = getImageNumComps();
+	uint16_t decompressNumComps = image_->decompressNumComps;
 	uint32_t sgnd = image_->comps[0].sgnd;
 	adjust = sgnd ? 1 << (prec - 1) : 0;
 
@@ -407,9 +407,9 @@ bool JPEGFormat::encodeHeader(void)
 			color_space = JCS_CMYK;
 			break;
 		default:
-			if(numcomps == 3)
+			if(decompressNumComps == 3)
 				color_space = JCS_RGB;
-			else if(numcomps == 1)
+			else if(decompressNumComps == 1)
 				color_space = JCS_GRAYSCALE;
 			else
 			{
@@ -418,18 +418,18 @@ bool JPEGFormat::encodeHeader(void)
 			break;
 	}
 
-	if(image_->numcomps > 4)
+	if(image_->decompressNumComps > 4)
 	{
 		spdlog::error("JPEGFormat::encodeHeader: number of components {} "
 					  "is greater than 4.",
-					  image_->numcomps);
+					  image_->decompressNumComps);
 		return false;
 	}
 	if(!allComponentsSanityCheck(image_, true))
 		return false;
 
 	planes[0] = image_->comps[0].data;
-	for(i = 1U; i < numcomps; ++i)
+	for(i = 1U; i < decompressNumComps; ++i)
 		planes[i] = image_->comps[i].data;
 
 	if(prec != 1 && prec != 2 && prec != 4 && prec != 8)
@@ -439,7 +439,7 @@ bool JPEGFormat::encodeHeader(void)
 		return false;
 	}
 	// Alpha channels
-	for(i = 0U; i < numcomps; ++i)
+	for(i = 0U; i < decompressNumComps; ++i)
 	{
 		if(image_->comps[i].type)
 		{
@@ -449,14 +449,14 @@ bool JPEGFormat::encodeHeader(void)
 		}
 	}
 	// We assume that alpha channels occur as last channels in image_.
-	if(numAlphaChannels && ((uint32_t)firstAlpha + numAlphaChannels >= numcomps))
+	if(numAlphaChannels && ((uint32_t)firstAlpha + numAlphaChannels >= decompressNumComps))
 	{
 		spdlog::warn("JPEGFormat::encodeHeader: PNG requires that alpha channels occur"
 					 " as last channels in image_.");
 		numAlphaChannels = 0;
 	}
-	buffer = new uint8_t[width * numcomps];
-	buffer32s = new int32_t[width * numcomps];
+	buffer = new uint8_t[width * decompressNumComps];
+	buffer32s = new int32_t[width * decompressNumComps];
 
 	/* We set up the normal JPEG error routines, then override error_exit. */
 	cinfo.err = jpeg_std_error(&jerr.pub);
@@ -493,7 +493,7 @@ bool JPEGFormat::encodeHeader(void)
 	 */
 	cinfo.image_width = image_width; /* image_ width and height, in pixels */
 	cinfo.image_height = image_height;
-	cinfo.input_components = (int)numcomps; /* # of color components per pixel */
+	cinfo.input_components = (int)decompressNumComps; /* # of color components per pixel */
 	cinfo.in_color_space = color_space; /* colorspace of input image_ */
 
 	/* Now use the library's routine to set default compression parameters.
@@ -553,8 +553,8 @@ bool JPEGFormat::encodePixels(void)
 		 * Here the array is only one element long, but you could pass
 		 * more than one scanline at a time if that's more convenient.
 		 */
-		iter->interleave((int32_t**)planes, image_->numcomps, (uint8_t*)buffer, image_->comps[0].w,
-						 image_->comps[0].stride, image_->comps[0].w, 1, adjust);
+		iter->interleave((int32_t**)planes, image_->decompressNumComps, (uint8_t*)buffer, image_->decompressWidth,
+						 image_->comps[0].stride, image_->decompressWidth, 1, adjust);
 		JSAMPROW row_pointer[1]; /* pointer to JSAMPLE row[s] */
 		row_pointer[0] = buffer;
 		GRK_UNUSED(jpeg_write_scanlines)(&cinfo, row_pointer, 1);

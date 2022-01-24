@@ -89,7 +89,7 @@ bool ImageFormat::isHeaderEncoded(void)
 }
 bool ImageFormat::isOpacity(uint16_t compno)
 {
-	if(!image_ || compno >= image_->numcomps)
+	if(!image_ || compno >= image_->decompressNumComps)
 		return false;
 	auto comp = image_->comps + compno;
 
@@ -100,7 +100,7 @@ bool ImageFormat::hasOpacity(void)
 {
 	if(!image_)
 		return false;
-	for(uint16_t i = 0; i < image_->numcomps; ++i)
+	for(uint16_t i = 0; i < image_->decompressNumComps; ++i)
 	{
 		if(isOpacity(i))
 			return true;
@@ -161,15 +161,6 @@ uint8_t ImageFormat::getImagePrec(void)
 		return 0;
 
 	return image_->precision ? image_->precision->prec : image_->comps[0].prec;
-}
-uint16_t ImageFormat::getImageNumComps(void)
-{
-	if(!image_)
-		return 0;
-	if(image_->meta && image_->meta->color.palette)
-		return image_->meta->color.palette->num_channels;
-
-	return (image_->forceRGB && image_->numcomps < 3) ? 3 : image_->numcomps;
 }
 GRK_COLOR_SPACE ImageFormat::getImageColourSpace(void)
 {
@@ -288,7 +279,7 @@ bool ImageFormat::validate_icc(GRK_COLOR_SPACE colourSpace, uint8_t* iccbuf, uin
 bool ImageFormat::allComponentsSanityCheck(grk_image* image, bool checkEqualPrecision)
 {
 	assert(image);
-	if(image->numcomps == 0)
+	if(image->decompressNumComps == 0)
 		return false;
 	if(image_->precision)
 		checkEqualPrecision = false;
@@ -298,7 +289,7 @@ bool ImageFormat::allComponentsSanityCheck(grk_image* image, bool checkEqualPrec
 		spdlog::warn("component 0 precision {} is not supported.", 0, comp0->prec);
 		return false;
 	}
-	for(uint16_t i = 1U; i < image->numcomps; ++i)
+	for(uint16_t i = 1U; i < image->decompressNumComps; ++i)
 	{
 		auto comp_i = image->comps + i;
 		if(checkEqualPrecision && comp0->prec != comp_i->prec)
@@ -322,12 +313,12 @@ bool ImageFormat::allComponentsSanityCheck(grk_image* image, bool checkEqualPrec
 bool ImageFormat::areAllComponentsSameSubsampling(grk_image* image)
 {
 	assert(image);
-	if(image->numcomps == 1)
+	if(image->decompressNumComps == 1)
 		return true;
 	if(image->upsample || image->forceRGB)
 		return true;
 	auto comp0 = image->comps;
-	for(uint32_t i = 0; i < image->numcomps; ++i)
+	for(uint32_t i = 0; i < image->decompressNumComps; ++i)
 	{
 		auto comp = image->comps + i;
 		if(comp->dx != comp0->dx || comp->dy != comp0->dy)
@@ -345,7 +336,7 @@ bool ImageFormat::isFinalOutputSubsampled(grk_image* image)
 	assert(image);
 	if(image->upsample || image->forceRGB)
 		return false;
-	for(uint32_t i = 0; i < image->numcomps; ++i)
+	for(uint32_t i = 0; i < image->decompressNumComps; ++i)
 	{
 		if(image->comps[i].dx != 1 || image->comps[i].dy != 1)
 			return true;
@@ -356,9 +347,9 @@ bool ImageFormat::isFinalOutputSubsampled(grk_image* image)
 bool ImageFormat::isChromaSubsampled(grk_image* image)
 {
 	assert(image);
-	if(image->numcomps < 3 || image->forceRGB || image->upsample)
+	if(image->decompressNumComps < 3 || image->forceRGB || image->upsample)
 		return false;
-	for(uint32_t i = 0; i < image->numcomps; ++i)
+	for(uint32_t i = 0; i < image->decompressNumComps; ++i)
 	{
 		auto comp = image->comps + i;
 		switch(i)

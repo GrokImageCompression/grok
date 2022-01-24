@@ -84,7 +84,7 @@ bool BMPFormat::encodeHeader(void)
 		return false;
 #endif
 	bool ret = false;
-	uint32_t w = image_->comps[0].w;
+	uint32_t w = image_->decompressWidth;
 	uint32_t h = image_->comps[0].h;
 	uint32_t padW = (uint32_t)image_->packedRowBytes;
 	uint32_t image_size = padW * h;
@@ -101,13 +101,13 @@ bool BMPFormat::encodeHeader(void)
 		spdlog::error("Sub-sampled images not supported");
 		goto cleanup;
 	}
-	if(image_->numcomps != 1 && (image_->numcomps != 3 && image_->numcomps != 4))
+	if(image_->decompressNumComps != 1 && (image_->decompressNumComps != 3 && image_->decompressNumComps != 4))
 	{
-		spdlog::error("Unsupported number of components: {}", image_->numcomps);
+		spdlog::error("Unsupported number of components: {}", image_->decompressNumComps);
 		goto cleanup;
 	}
 
-	colours_used = (image_->numcomps == 3) ? 0 : 256;
+	colours_used = (image_->decompressNumComps == 3) ? 0 : 256;
 	lut_size = colours_used * (uint32_t)sizeof(uint32_t);
 	full_header_size = fileHeaderSize + BITMAPINFOHEADER_LENGTH;
 	if(image_->meta && image_->meta->color.icc_profile_buf)
@@ -133,7 +133,7 @@ bool BMPFormat::encodeHeader(void)
 	put_int((uint32_t**)(&header_ptr), w);
 	put_int((uint32_t**)(&header_ptr), h);
 	put_int((uint16_t**)(&header_ptr), (uint16_t)1);
-	put_int((uint16_t**)(&header_ptr), (uint16_t)(image_->numcomps * 8));
+	put_int((uint16_t**)(&header_ptr), (uint16_t)(image_->decompressNumComps * 8));
 	put_int((uint32_t**)(&header_ptr), 0U);
 	put_int((uint32_t**)(&header_ptr), image_size);
 	for(uint32_t i = 0; i < 2; ++i)
@@ -161,7 +161,7 @@ bool BMPFormat::encodeHeader(void)
 		put_int((uint32_t**)(&header_ptr), 0U);
 	}
 	// 1024-byte LUT
-	if(image_->numcomps == 1)
+	if(image_->decompressNumComps == 1)
 	{
 		for(uint32_t i = 0; i < 256; i++)
 		{
@@ -195,19 +195,19 @@ bool BMPFormat::encodePixels()
 			return false;
 	}
 	bool ret = false;
-	auto w = image_->comps[0].w;
+	auto w = image_->decompressWidth;
 	auto h = image_->comps[0].h;
-	auto numcomps = image_->numcomps;
+	auto decompressNumComps = image_->decompressNumComps;
 	auto stride_src = image_->comps[0].stride;
 	srcIndex_ = (uint64_t)stride_src * (h - 1);
 	uint32_t w_dest = (uint32_t)image_->packedRowBytes;
-	uint32_t pad_dest = (4 - (((uint64_t)numcomps * w) & 3)) & 3;
+	uint32_t pad_dest = (4 - (((uint64_t)decompressNumComps * w) & 3)) & 3;
 
 	int32_t scale[4] = {1, 1, 1, 1};
 	uint8_t scaleType[4] = {0, 0, 0, 0};
 	int32_t shift[4] = {0, 0, 0, 0};
 
-	for(uint32_t compno = 0; compno < numcomps; ++compno)
+	for(uint32_t compno = 0; compno < decompressNumComps; ++compno)
 	{
 		if(image_->comps[0].prec != 8)
 		{
@@ -249,7 +249,7 @@ bool BMPFormat::encodePixels()
 			for(uint32_t i = 0; i < w; i++)
 			{
 				uint8_t rc[4] = {0, 0, 0, 0};
-				for(uint32_t compno = 0; compno < numcomps; ++compno)
+				for(uint32_t compno = 0; compno < decompressNumComps; ++compno)
 				{
 					int32_t r = image_->comps[compno].data[srcIndex_ + i];
 					r += shift[compno];
@@ -259,7 +259,7 @@ bool BMPFormat::encodePixels()
 						r /= scale[compno];
 					rc[compno] = (uint8_t)r;
 				}
-				if(numcomps == 1)
+				if(decompressNumComps == 1)
 				{
 					destBuff.data[destInd++] = rc[0];
 				}
@@ -268,7 +268,7 @@ bool BMPFormat::encodePixels()
 					destBuff.data[destInd++] = rc[2];
 					destBuff.data[destInd++] = rc[1];
 					destBuff.data[destInd++] = rc[0];
-					if(numcomps == 4)
+					if(decompressNumComps == 4)
 						destBuff.data[destInd++] = rc[3];
 				}
 			}
@@ -311,10 +311,10 @@ bool BMPFormat::encodeFinish(void)
 grk_image* BMPFormat::bmp1toimage(const uint8_t* pData, uint32_t srcStride, grk_image* image,
 								  uint8_t const* const* pLUT)
 {
-	uint32_t width = image->comps[0].w;
+	uint32_t width = image->decompressWidth;
 	uint32_t height = image->comps[0].h;
 	auto pSrc = pData + (height - 1U) * srcStride;
-	if(image->numcomps == 1U)
+	if(image->decompressNumComps == 1U)
 	{
 		conv_1u32s(pSrc, -(int32_t)srcStride, image->comps[0].data, (int32_t)image->comps[0].stride,
 				   width, height);
@@ -338,10 +338,10 @@ grk_image* BMPFormat::bmp1toimage(const uint8_t* pData, uint32_t srcStride, grk_
 grk_image* BMPFormat::bmp4toimage(const uint8_t* pData, uint32_t srcStride, grk_image* image,
 								  uint8_t const* const* pLUT)
 {
-	uint32_t width = image->comps[0].w;
+	uint32_t width = image->decompressWidth;
 	uint32_t height = image->comps[0].h;
 	auto pSrc = pData + (height - 1U) * srcStride;
-	if(image->numcomps == 1U)
+	if(image->decompressNumComps == 1U)
 	{
 		conv_4u32s(pSrc, -(int32_t)srcStride, image->comps[0].data, (int32_t)image->comps[0].stride,
 				   width, height);
@@ -365,11 +365,11 @@ grk_image* BMPFormat::bmp4toimage(const uint8_t* pData, uint32_t srcStride, grk_
 grk_image* BMPFormat::bmp8toimage(const uint8_t* pData, uint32_t srcStride, grk_image* image,
 								  uint8_t const* const* pLUT, bool topDown)
 {
-	uint32_t width = image->comps[0].w;
+	uint32_t width = image->decompressWidth;
 	uint32_t height = image->comps[0].h;
 	auto pSrc = topDown ? pData : (pData + (height - 1U) * srcStride);
 	int32_t s_stride = topDown ? (int32_t)srcStride : (-(int32_t)srcStride);
-	if(image->numcomps == 1U)
+	if(image->decompressNumComps == 1U)
 	{
 		conv_8u32s(pSrc, s_stride, image->comps[0].data, (int32_t)image->comps[0].stride, width,
 				   height);
@@ -965,11 +965,11 @@ grk_image* BMPFormat::decode(const std::string& fname, grk_cparameters* paramete
 					if(infoHeader_.biRedMask && infoHeader_.biGreenMask && infoHeader_.biBlueMask)
 					{
 						bool fail = false;
-						bool hasAlpha = image->numcomps > 3;
+						bool hasAlpha = image->decompressNumComps > 3;
 						// sanity check on bit masks
 						uint32_t m[4] = {infoHeader_.biRedMask, infoHeader_.biGreenMask,
 										 infoHeader_.biBlueMask, infoHeader_.biAlphaMask};
-						for(uint32_t i = 0; i < image->numcomps; ++i)
+						for(uint32_t i = 0; i < image->decompressNumComps; ++i)
 						{
 							int lead = grk::count_leading_zeros(m[i]);
 							int trail = grk::count_trailing_zeros(m[i]);
@@ -1227,11 +1227,11 @@ void BMPFormat::bmp24toimage(const uint8_t* pData, uint32_t srcStride, grk_image
 	uint32_t index;
 	uint32_t width, height;
 	const uint8_t* pSrc = nullptr;
-	width = image->comps[0].w;
+	width = image->decompressWidth;
 	height = image->comps[0].h;
 	index = 0;
 	pSrc = pData + (height - 1U) * srcStride;
-	uint32_t stride_diff = image->comps[0].stride - image->comps[0].w;
+	uint32_t stride_diff = image->comps[0].stride - image->decompressWidth;
 	for(uint32_t y = 0; y < height; y++)
 	{
 		size_t src_index = 0;
@@ -1278,10 +1278,10 @@ void BMPFormat::mask32toimage(const uint8_t* pData, uint32_t srcStride, grk_imag
 	uint8_t blueShift, bluePrec;
 	uint8_t alphaShift, alphaPrec;
 
-	uint32_t width = image->comps[0].w;
+	uint32_t width = image->decompressWidth;
 	uint32_t stride_diff = image->comps[0].stride - width;
 	uint32_t height = image->comps[0].h;
-	bool hasAlpha = image->numcomps > 3U;
+	bool hasAlpha = image->decompressNumComps > 3U;
 	mask_get_shift_and_prec(redMask, &redShift, &redPrec);
 	mask_get_shift_and_prec(greenMask, &greenShift, &greenPrec);
 	mask_get_shift_and_prec(blueMask, &blueShift, &bluePrec);
@@ -1329,10 +1329,10 @@ void BMPFormat::mask16toimage(const uint8_t* pData, uint32_t srcStride, grk_imag
 	uint8_t blueShift, bluePrec;
 	uint8_t alphaShift, alphaPrec;
 
-	uint32_t width = image->comps[0].w;
+	uint32_t width = image->decompressWidth;
 	uint32_t stride_diff = image->comps[0].stride - width;
 	uint32_t height = image->comps[0].h;
-	bool hasAlpha = image->numcomps > 3U;
+	bool hasAlpha = image->decompressNumComps > 3U;
 	mask_get_shift_and_prec(redMask, &redShift, &redPrec);
 	mask_get_shift_and_prec(greenMask, &greenShift, &greenPrec);
 	mask_get_shift_and_prec(blueMask, &blueShift, &bluePrec);

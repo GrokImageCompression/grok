@@ -78,10 +78,11 @@ class GrkImage : public grk_image
 	void all_components_data_free(void);
 	void postReadHeader(CodingParams* cp);
 	void validateColourSpace(void);
-	bool isFinalOutputSubsampled();
-
+	bool isSubsampled();
   private:
 	~GrkImage();
+	bool needsConversionToRGB(void);
+	bool isOpacity(uint16_t compno);
 	bool compositePlanar(const GrkImage* srcImg);
 	bool generateCompositeBounds(const grk_image_comp* srcComp, uint16_t compno,
 								 grkRectU32* destWin, uint32_t* srcLineOffset);

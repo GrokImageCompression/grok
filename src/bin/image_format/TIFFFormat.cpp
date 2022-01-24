@@ -121,10 +121,11 @@ bool TIFFFormat::encodeHeader(void)
 	uint32_t num_colour_channels = 0;
 	size_t numExtraChannels = 0;
 	bool sgnd = image_->comps[0].sgnd;
-	uint32_t width = image_->comps[0].w;
+	uint32_t width = image_->decompressWidth;
+	units = width;
 	uint32_t height = image_->comps[0].h;
 	uint8_t bps = getImagePrec();
-	uint16_t numcomps = getImageNumComps();
+	uint16_t numcomps = image_->decompressNumComps;
 	bool subsampled = isFinalOutputSubsampled(image_);
 	auto colourSpace = getImageColourSpace();
 	if(bps == 0)
@@ -236,12 +237,8 @@ bool TIFFFormat::encodeHeader(void)
 		spdlog::error("TIFFFormat::encodeHeader:failed to open {} for writing", fileName_.c_str());
 		goto cleanup;
 	}
-	// calculate rows per strip, base on target 8K strip size
 	if(subsampled)
 		units = (width + chroma_subsample_x - 1) / chroma_subsample_x;
-	else
-		units = image_->comps->w;
-
 	TIFFSetField(tif, TIFFTAG_IMAGEWIDTH, width);
 	TIFFSetField(tif, TIFFTAG_IMAGELENGTH, height);
 	TIFFSetField(tif, TIFFTAG_SAMPLEFORMAT, sgnd ? SAMPLEFORMAT_INT : SAMPLEFORMAT_UINT);
@@ -356,7 +353,7 @@ bool TIFFFormat::encodePixels()
 
 	uint32_t height = image_->comps[0].h;
 	int32_t const* planes[grk::maxNumPackComponents];
-	uint16_t numcomps = getImageNumComps();
+	uint16_t numcomps = image_->decompressNumComps;
 	for(uint32_t i = 0U; i < numcomps; ++i)
 		planes[i] = image_->comps[i].data;
 	uint32_t h = 0;
@@ -392,7 +389,7 @@ bool TIFFFormat::encodePixels()
 				{
 					for(size_t sub_x = xpos; sub_x < xpos + chroma_subsample_x; ++sub_x)
 					{
-						bool accept = (h + sub_h) < height && sub_x < image_->comps[0].w;
+						bool accept = (h + sub_h) < height && sub_x < image_->decompressWidth;
 						*bufPtr++ =
 							accept ? (int8_t)planes[0][sub_x + sub_h * image_->comps[0].stride] : 0;
 						bytesToWrite++;
@@ -427,7 +424,7 @@ bool TIFFFormat::encodePixels()
 			uint32_t stripRows = (std::min)(image_->rowsPerStrip, height - h);
 			packedBuf = pool.get(image_->packedRowBytes * stripRows);
 			iter->interleave((int32_t**)planes, numcomps, packedBuf.data,
-							 image_->comps[0].w, image_->comps[0].stride, image_->packedRowBytes,
+							 image_->decompressWidth, image_->comps[0].stride, image_->packedRowBytes,
 							 stripRows, 0);
 			packedBuf.pooled = true;
 			packedBuf.offset = serializer.getOffset();
