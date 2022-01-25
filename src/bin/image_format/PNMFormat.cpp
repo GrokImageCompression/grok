@@ -113,9 +113,9 @@ bool PNMFormat::hasAlpha(void)
 bool PNMFormat::writeHeader(bool doPGM)
 {
 	ostringstream iss;
-	uint32_t prec = getImagePrec();
+	uint32_t prec = image_->decompressPrec;
 	uint32_t width = image_->decompressWidth;
-	uint32_t height = image_->comps[0].h;
+	uint32_t height = image_->decompressHeight;
 	uint32_t max = (uint32_t)((1U << prec) - 1);
 
 	if(doPGM || image_->decompressNumComps == 1)
@@ -172,8 +172,8 @@ bool PNMFormat::encodePixels(void)
 			return false;
 	}
 
-	return (getImagePrec() > 8U) ? encodeRows<uint16_t>(image_->comps[0].h)
-								 : encodeRows<uint8_t>( image_->comps[0].h);
+	return (image_->decompressPrec > 8U) ? encodeRows<uint16_t>(image_->decompressHeight)
+								 : encodeRows<uint8_t>( image_->decompressHeight);
 }
 /***
  * library-orchestrated pixel encoding
@@ -226,9 +226,9 @@ template<typename T>
 bool PNMFormat::encodeRows(uint32_t rows)
 {
 	GRK_UNUSED(rows);
-	uint16_t ncomp = image_->decompressNumComps;
+	uint16_t ncomp = image_->numcomps;
 	bool success = false;
-	uint32_t height = image_->comps[0].h;
+	uint32_t height = image_->decompressHeight;
 
 	// 1. write first file: PAM or PPM
 	if(doNonSplitEncode())
@@ -239,8 +239,8 @@ bool PNMFormat::encodeRows(uint32_t rows)
 			planes[i] = image_->comps[i].data;
 		uint32_t h = 0;
 		GrkSerializeBuf packedBuf;
-		int32_t adjust = (image_->comps[0].sgnd ? 1 << (getImagePrec() - 1) : 0);
-		auto iter = grk::InterleaverFactory<int32_t>::makeInterleaver(getImagePrec() > 8U ? grk::packer16BitBE : 8);
+		int32_t adjust = (image_->comps[0].sgnd ? 1 << (image_->decompressPrec - 1) : 0);
+		auto iter = grk::InterleaverFactory<int32_t>::makeInterleaver(image_->decompressPrec > 8U ? grk::packer16BitBE : 8);
 
 		if(!iter)
 			goto cleanup;
@@ -339,7 +339,7 @@ bool PNMFormat::writeRows(uint32_t rowsOffset, uint32_t rows, uint16_t compno, T
 	uint32_t width = image_->decompressWidth;
 	uint32_t stride_diff = image_->comps[0].stride - width;
 	// all components have same sign and precision
-	int32_t adjust = (image_->comps[0].sgnd ? 1 << (getImagePrec() - 1) : 0);
+	int32_t adjust = (image_->comps[0].sgnd ? 1 << (image_->decompressPrec - 1) : 0);
 	int32_t* compPtr[4] = {nullptr, nullptr, nullptr, nullptr};
 	T* outPtr = buf + *outCount;
 	uint16_t start 	= singleComp ? compno : 0;

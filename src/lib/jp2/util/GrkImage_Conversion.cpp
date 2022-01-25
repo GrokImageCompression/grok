@@ -396,10 +396,10 @@ bool GrkImage::greyToRGB(void)
  * Check if decompress format requires conversion
  */
 bool GrkImage::needsConversionToRGB(void){
-	 return (color_space == GRK_CLRSPC_SYCC ||
+	 return (((color_space == GRK_CLRSPC_SYCC ||
 			 color_space == GRK_CLRSPC_EYCC ||
 			  color_space == GRK_CLRSPC_CMYK) &&
-			 	 ((decompressFormat != GRK_UNK_FMT && decompressFormat != GRK_TIF_FMT) || forceRGB);
+			 	 (decompressFormat != GRK_UNK_FMT && decompressFormat != GRK_TIF_FMT)) || forceRGB);
 }
 bool GrkImage::convertToRGB(bool wholeTileDecompress)
 {

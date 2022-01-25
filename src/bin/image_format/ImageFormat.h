@@ -62,10 +62,6 @@ class ImageFormat : public IImageFormat
 	bool isFinalOutputSubsampled(grk_image* image);
 	bool isChromaSubsampled(grk_image* image);
 	bool areAllComponentsSameSubsampling(grk_image* image);
-
-	uint8_t getImagePrec(void);
-	GRK_COLOR_SPACE getImageColourSpace(void);
-
 	bool isHeaderEncoded(void);
 	bool isOpacity(uint16_t compno);
 	bool hasOpacity(void);

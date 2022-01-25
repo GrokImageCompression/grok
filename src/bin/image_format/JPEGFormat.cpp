@@ -354,7 +354,7 @@ bool JPEGFormat::encodeHeader(void)
 	uint32_t width = image_->decompressWidth;
 
 	// actual bits per sample
-	uint8_t prec = getImagePrec();
+	uint8_t prec = image_->decompressPrec;
 	uint16_t decompressNumComps = image_->decompressNumComps;
 	uint32_t sgnd = image_->comps[0].sgnd;
 	adjust = sgnd ? 1 << (prec - 1) : 0;

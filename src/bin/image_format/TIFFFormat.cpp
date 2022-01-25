@@ -123,11 +123,11 @@ bool TIFFFormat::encodeHeader(void)
 	bool sgnd = image_->comps[0].sgnd;
 	uint32_t width = image_->decompressWidth;
 	units = width;
-	uint32_t height = image_->comps[0].h;
-	uint8_t bps = getImagePrec();
+	uint32_t height = image_->decompressHeight;
+	uint8_t bps = image_->decompressPrec;
 	uint16_t numcomps = image_->decompressNumComps;
 	bool subsampled = isFinalOutputSubsampled(image_);
-	auto colourSpace = getImageColourSpace();
+	auto colourSpace = image_->decompressColourSpace;
 	if(bps == 0)
 	{
 		spdlog::error("TIFFFormat::encodeHeader: image_ precision is zero.");
@@ -281,8 +281,8 @@ bool TIFFFormat::encodeHeader(void)
 			TIFFSetField(tif, TIFFTAG_XMLPACKET, image_->meta->xmp_len, image_->meta->xmp_buf);
 		if(image_->meta->iptc_buf && image_->meta->iptc_len)
 		{
-			auto iptc_len = image_->meta->iptc_len;
 			// length must be multiple of 4
+			auto iptc_len = image_->meta->iptc_len;
 			iptc_len += (4 - (iptc_len & 0x03));
 			if(iptc_len > image_->meta->iptc_len)
 			{
@@ -351,7 +351,7 @@ bool TIFFFormat::encodePixels()
 	bool success = false;
 	serializeRegisterApplicationClient();
 
-	uint32_t height = image_->comps[0].h;
+	uint32_t height = image_->decompressHeight;
 	int32_t const* planes[grk::maxNumPackComponents];
 	uint16_t numcomps = image_->decompressNumComps;
 	for(uint32_t i = 0U; i < numcomps; ++i)
@@ -416,7 +416,7 @@ bool TIFFFormat::encodePixels()
 	}
 	else
 	{
-		auto iter = grk::InterleaverFactory<int32_t>::makeInterleaver(getImagePrec());
+		auto iter = grk::InterleaverFactory<int32_t>::makeInterleaver(image_->decompressPrec);
 		if(!iter)
 			goto cleanup;
 		while(h < height)

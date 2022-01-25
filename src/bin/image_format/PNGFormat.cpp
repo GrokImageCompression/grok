@@ -95,7 +95,7 @@ bool PNGFormat::encodeHeader(void)
 
 	memset(&sig_bit, 0, sizeof(sig_bit));
 
-	prec = getImagePrec();
+	prec = image_->decompressPrec;
 	nr_comp = image_->decompressNumComps;
 
 	if(nr_comp > 4)

@@ -153,23 +153,8 @@ bool ImageFormat::openFile(void)
 }
 uint32_t ImageFormat::maxY(uint32_t rows)
 {
-	return std::min<uint32_t>(rows, image_->comps[0].h);
+	return std::min<uint32_t>(rows, image_->decompressHeight);
 }
-uint8_t ImageFormat::getImagePrec(void)
-{
-	if(!image_)
-		return 0;
-
-	return image_->precision ? image_->precision->prec : image_->comps[0].prec;
-}
-GRK_COLOR_SPACE ImageFormat::getImageColourSpace(void)
-{
-	if(!image_)
-		return GRK_CLRSPC_UNKNOWN;
-
-	return image_->forceRGB ? GRK_CLRSPC_SRGB : image_->color_space;
-}
-
 void ImageFormat::scaleComponent(grk_image_comp* component, uint8_t precision)
 {
 	if(component->prec == precision)

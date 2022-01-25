@@ -999,6 +999,9 @@ typedef struct _grk_image
 	bool splitByComponent;
 	uint16_t decompressNumComps;
 	uint32_t decompressWidth;
+	uint32_t decompressHeight;
+	uint8_t decompressPrec;
+	GRK_COLOR_SPACE decompressColourSpace;
 
 	grk_serialize_buf interleavedData;
 	uint32_t rowsPerStrip;

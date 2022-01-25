@@ -53,6 +53,9 @@ GrkImage* GrkImage::create(grk_image* src, uint16_t numcmpts, grk_image_comp* cm
 	image->numcomps = numcmpts;
 	image->decompressNumComps = numcmpts;
 	image->decompressWidth = cmptparms->w;
+	image->decompressHeight = cmptparms->h;
+	image->decompressPrec = cmptparms->prec;
+	image->decompressColourSpace = clrspc;
 	if(src)
 	{
 		image->decompressFormat = src->decompressFormat;
@@ -216,6 +219,9 @@ void GrkImage::copyHeader(GrkImage* dest)
 	dest->decompressFormat = decompressFormat;
 	dest->decompressNumComps = decompressNumComps;
 	dest->decompressWidth = decompressWidth;
+	dest->decompressHeight = decompressHeight;
+	dest->decompressPrec = decompressPrec;
+	dest->decompressColourSpace = decompressColourSpace;
 	dest->forceRGB = forceRGB;
 	dest->upsample = upsample;
 	dest->precision = precision;
@@ -324,6 +330,15 @@ void GrkImage::postReadHeader(CodingParams* cp)
 	decompressWidth = comps->w;
 	if (isSubsampled() && (upsample || forceRGB))
 		decompressWidth = x1 - x0;
+	decompressHeight = comps->h;
+	if (isSubsampled() && (upsample || forceRGB))
+		decompressHeight = y1 - y0;
+	decompressPrec = comps->prec;
+	if (precision)
+		decompressPrec = precision->prec;
+	decompressColourSpace = color_space;
+	if (needsConversionToRGB())
+		decompressColourSpace = GRK_CLRSPC_SRGB;
 	bool tiffSubSampled = decompressFormat == GRK_TIF_FMT && isSubsampled() &&
 						  (color_space == GRK_CLRSPC_EYCC || color_space == GRK_CLRSPC_SYCC);
 	if(tiffSubSampled)
@@ -349,12 +364,10 @@ void GrkImage::postReadHeader(CodingParams* cp)
 				packedRowBytes = grk::PtoI<int32_t>::getPackedBytes(ncmp, decompressWidth, prec);
 				break;
 		}
-		if(multiTile && canAllocInterleaved(cp)) {
+		if(multiTile && canAllocInterleaved(cp))
 			rowsPerStrip = cp->t_height;
-		}
-		else {
+		else
 			rowsPerStrip = packedRowBytes ? (uint32_t)((16 * 1024 * 1024) / packedRowBytes) : y1 - y0;
-		}
 	}
 	if(rowsPerStrip > y1 - y0)
 		rowsPerStrip = y1 - y0;
