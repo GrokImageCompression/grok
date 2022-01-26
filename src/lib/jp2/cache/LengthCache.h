@@ -144,7 +144,10 @@ struct TileLengthMarkers
 	TL_INFO_VEC* curr_vec_;
 	IBufferedStream* stream_;
 	uint64_t streamStart;
+	// use to flag an invalid set of markers
 	bool valid_;
+	// used to flag an invalid marker
+	bool validPerMarker_;
 	bool hasTileIndices_;
 	// used when there are no tile indices in TLM markers
 	uint16_t tileCount_;

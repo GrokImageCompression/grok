@@ -278,7 +278,7 @@ bool CodeStreamInfo::skipToTile(uint16_t tileIndex, uint64_t lastSotReadPosition
 }
 TileLengthMarkers::TileLengthMarkers()
 	: markers_(new TL_MAP()), markerIndex_(0), markerTilePartIndex_(0), curr_vec_(nullptr),
-	  stream_(nullptr), streamStart(0), valid_(false), hasTileIndices_(false), tileCount_(0)
+	  stream_(nullptr), streamStart(0), valid_(false),validPerMarker_(true), hasTileIndices_(false), tileCount_(0)
 {}
 TileLengthMarkers::TileLengthMarkers(IBufferedStream* stream) : TileLengthMarkers()
 {
@@ -297,23 +297,31 @@ bool TileLengthMarkers::isValid(void){
 	return valid_;
 }
 bool TileLengthMarkers::validate(uint16_t numTiles){
-	//1. check that all tiles have tile length entries
+	if (!validPerMarker_)
+		return false;
+
+	//1. check for sequential tile indices
 	uint16_t tileIndex = 0;
-	bool isValid = true;
-	for(auto it = markers_->begin(); it != markers_->end() && isValid; it++){
-		for(auto itv = it->second->begin(); itv != it->second->end() && isValid; itv++){
+	bool sequentialTileIndices = true;
+	for(auto it = markers_->begin(); it != markers_->end() && sequentialTileIndices; it++){
+		for(auto itv = it->second->begin(); itv != it->second->end() && sequentialTileIndices; itv++){
 			auto ind = itv->tileIndex;
 			if (ind == tileIndex)
 				continue;
 			if (ind != tileIndex+1){
-				isValid = false;
-				GRK_WARN("Corrupt TLM marker");
+				sequentialTileIndices = false;
+				GRK_WARN("TLM: tile indices are not sequential. Disabling TLM.");
 				break;
 			}
 			tileIndex++;
 		}
 	}
-	valid_ = isValid && (tileIndex == numTiles-1);
+	//2. second validation level should be to compare TLM tile length against length
+	// signaled in SOT marker - they should be equal. We don't do this for performance
+	// reasons.
+
+
+	valid_ = sequentialTileIndices && (tileIndex == numTiles-1);
 
 	return valid_;
 }
@@ -322,23 +330,27 @@ bool TileLengthMarkers::read(uint8_t* headerData, uint16_t header_size)
 	assert(markers_);
 	if(header_size < tlm_marker_start_bytes)
 	{
-		GRK_ERROR("Error reading TLM marker");
+		GRK_ERROR("TLM: error reading marker");
 		return false;
 	}
-	uint8_t i_TLM, L;
-	uint32_t L_iT, L_LTP;
-
 	// correct for length of marker
 	header_size = (uint16_t)(header_size - 2);
 	// read TLM marker segment index
-	i_TLM = *headerData++;
+	uint8_t i_TLM = *headerData++;
+	if (markers_->find(i_TLM) != markers_->end()){
+		if (validPerMarker_) {
+			GRK_WARN("TLM: each marker index must be unique. Disabling TLM");
+			validPerMarker_ = false;
+		}
+	}
+
 	// read and parse L parameter, which indicates number of bytes used to represent
 	// remaining parameters
-	L = *headerData++;
+	uint8_t L = *headerData++;
 	// 0x70 ==  1110000
 	if((L & ~0x70) != 0)
 	{
-		GRK_ERROR("Illegal L value in TLM marker");
+		GRK_ERROR("TLM: illegal L value");
 		return false;
 	}
 	/*
@@ -347,7 +359,7 @@ bool TileLengthMarkers::read(uint8_t* headerData, uint16_t header_size)
 	 * 0 => 16 bit tile part lengths
 	 * 1 => 32 bit tile part lengths
 	 */
-	L_LTP = (L >> 6) & 0x1;
+	uint32_t  L_LTP = (L >> 6) & 0x1;
 	uint32_t bytesPerTilePartLength = L_LTP ? 4U : 2U;
 	/*
 	 * 0 <= L_iT <= 2
@@ -356,22 +368,24 @@ bool TileLengthMarkers::read(uint8_t* headerData, uint16_t header_size)
 	 * 1 => 1 byte tile indices
 	 * 2 => 2 byte tile indices
 	 */
-	L_iT = ((L >> 4) & 0x3);
+	uint32_t  L_iT = ((L >> 4) & 0x3);
 
 	// sanity check on tile indices
 	if (markers_->empty()){
 		hasTileIndices_ = L_iT != 0;
 	} else if ( (hasTileIndices_ && L_iT == 0) ||
 				(!hasTileIndices_&& L_iT != 0)){
-			GRK_WARN("Cannot mix TLM markers with and without tile part indices. Disabling TLM");
-			valid_ = false;
+		if (validPerMarker_) {
+			GRK_WARN("TLM: Cannot mix markers with and without tile part indices. Disabling TLM");
+			validPerMarker_ = false;
+		}
 	}
 
 
 	uint32_t quotient = bytesPerTilePartLength + L_iT;
 	if(header_size % quotient != 0)
 	{
-		GRK_ERROR("Error reading TLM marker");
+		GRK_ERROR("TLM: error reading marker");
 		return false;
 	}
 	// note: each tile can have max 255 tile parts, but
@@ -389,6 +403,12 @@ bool TileLengthMarkers::read(uint8_t* headerData, uint16_t header_size)
 		}
 		// read tile part length
 		grk_read<uint32_t>(headerData, &Ptlm_i, bytesPerTilePartLength);
+		if (Ptlm_i < 14){
+			if (validPerMarker_) {
+				GRK_WARN("TLM: tile part length %d is less than 14. Disabling TLM",Ptlm_i );
+				validPerMarker_ = false;
+			}
+		}
 		auto info =
 				hasTileIndices_ ? TilePartLengthInfo((uint16_t)Ttlm_i, Ptlm_i) : TilePartLengthInfo(tileCount_++,Ptlm_i);
 		push(i_TLM, info);
