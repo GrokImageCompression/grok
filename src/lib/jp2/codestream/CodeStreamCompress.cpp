@@ -354,8 +354,18 @@ bool CodeStreamCompress::initCompress(grk_cparameters* parameters, GrkImage* ima
 			GRK_ERROR("Invalid tile dimensions (%u,%u)", cp_.t_width, cp_.t_height);
 			return false;
 		}
-		cp_.t_grid_width = (uint16_t)ceildiv<uint32_t>((image->x1 - cp_.tx0), cp_.t_width);
-		cp_.t_grid_height = (uint16_t)ceildiv<uint32_t>((image->y1 - cp_.ty0), cp_.t_height);
+		uint32_t tgw = ceildiv<uint32_t>((image->x1 - cp_.tx0), cp_.t_width);
+		uint32_t tgh = ceildiv<uint32_t>((image->y1 - cp_.ty0), cp_.t_height);
+		uint64_t numTiles = (uint64_t)tgw * tgh;
+		if(numTiles > maxNumTilesJ2K)
+		{
+			GRK_ERROR("Number of tiles %u is greater than max tiles %u"
+					  "allowed by the standard.",
+					  numTiles, maxNumTilesJ2K);
+			return false;
+		}
+		cp_.t_grid_width = (uint16_t)tgw;
+		cp_.t_grid_height = (uint16_t)tgh;
 	}
 	else
 	{
@@ -375,7 +385,7 @@ bool CodeStreamCompress::initCompress(grk_cparameters* parameters, GrkImage* ima
 		return false;
 	}
 	cp_.tcps = new TileCodingParams[cp_.t_grid_width * cp_.t_grid_height];
-	for(uint32_t tileno = 0; tileno < cp_.t_grid_width * cp_.t_grid_height; tileno++)
+	for(uint16_t tileno = 0; tileno < (uint16_t)(cp_.t_grid_width * cp_.t_grid_height); tileno++)
 	{
 		auto tcp = cp_.tcps + tileno;
 		tcp->tccps = new TileComponentCodingParams[image->numcomps];
