@@ -1959,9 +1959,9 @@ bool CodeStreamCompress::getNumTileParts(uint16_t* numTilePartsForAllTiles, GrkI
 
 	uint32_t numTiles = (uint16_t)(cp_.t_grid_width * cp_.t_grid_height);
 	*numTilePartsForAllTiles = 0;
-	auto tcp = cp_.tcps;
 	for(uint16_t tileno = 0; tileno < numTiles; ++tileno)
 	{
+		auto tcp = cp_.tcps + tileno;
 		uint8_t totalTilePartsForTile = 0;
 		PacketManager::updateCompressParams(image, &cp_, tileno);
 		for(uint32_t pino = 0; pino < tcp->getNumProgressions(); ++pino)
@@ -1991,7 +1991,6 @@ bool CodeStreamCompress::getNumTileParts(uint16_t* numTilePartsForAllTiles, GrkI
 			*numTilePartsForAllTiles = (uint16_t)newTotalTilePartsForAllTiles;
 		}
 		tcp->numTileParts_ = totalTilePartsForTile;
-		++tcp;
 	}
 
 	return true;
