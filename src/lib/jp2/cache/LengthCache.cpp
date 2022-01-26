@@ -278,7 +278,7 @@ bool CodeStreamInfo::skipToTile(uint16_t tileIndex, uint64_t lastSotReadPosition
 }
 TileLengthMarkers::TileLengthMarkers()
 	: markers_(new TL_MAP()), markerIndex_(0), markerTilePartIndex_(0), curr_vec_(nullptr),
-	  stream_(nullptr), streamStart(0)
+	  stream_(nullptr), streamStart(0), valid_(false), hasTileIndices_(false), tileCount_(0)
 {}
 TileLengthMarkers::TileLengthMarkers(IBufferedStream* stream) : TileLengthMarkers()
 {
@@ -293,8 +293,33 @@ TileLengthMarkers::~TileLengthMarkers()
 		delete markers_;
 	}
 }
+bool TileLengthMarkers::isValid(void){
+	return valid_;
+}
+bool TileLengthMarkers::validate(uint16_t numTiles){
+	//1. check that all tiles have tile length entries
+	uint16_t tileIndex = 0;
+	bool isValid = true;
+	for(auto it = markers_->begin(); it != markers_->end() && isValid; it++){
+		for(auto itv = it->second->begin(); itv != it->second->end() && isValid; itv++){
+			auto ind = itv->tileIndex;
+			if (ind == tileIndex)
+				continue;
+			if (ind != tileIndex+1){
+				isValid = false;
+				GRK_WARN("Corrupt TLM marker");
+				break;
+			}
+			tileIndex++;
+		}
+	}
+	valid_ = isValid && (tileIndex == numTiles-1);
+
+	return valid_;
+}
 bool TileLengthMarkers::read(uint8_t* headerData, uint16_t header_size)
 {
+	assert(markers_);
 	if(header_size < tlm_marker_start_bytes)
 	{
 		GRK_ERROR("Error reading TLM marker");
@@ -327,11 +352,22 @@ bool TileLengthMarkers::read(uint8_t* headerData, uint16_t header_size)
 	/*
 	 * 0 <= L_iT <= 2
 	 *
-	 * 0 => no tile part indices
-	 * 1 => 1 byte tile part indices
-	 * 2 => 2 byte tile part indices
+	 * 0 => no tile indices
+	 * 1 => 1 byte tile indices
+	 * 2 => 2 byte tile indices
 	 */
 	L_iT = ((L >> 4) & 0x3);
+
+	// sanity check on tile indices
+	if (markers_->empty()){
+		hasTileIndices_ = L_iT != 0;
+	} else if ( (hasTileIndices_ && L_iT == 0) ||
+				(!hasTileIndices_&& L_iT != 0)){
+			GRK_WARN("Cannot mix TLM markers with and without tile part indices. Disabling TLM");
+			valid_ = false;
+	}
+
+
 	uint32_t quotient = bytesPerTilePartLength + L_iT;
 	if(header_size % quotient != 0)
 	{
@@ -345,7 +381,7 @@ bool TileLengthMarkers::read(uint8_t* headerData, uint16_t header_size)
 	uint32_t Ttlm_i = 0, Ptlm_i = 0;
 	for(size_t i = 0; i < numTileParts; ++i)
 	{
-		// read (global) tile part index
+		// read (global) tile index
 		if(L_iT)
 		{
 			grk_read<uint32_t>(headerData, &Ttlm_i, L_iT);
@@ -354,7 +390,7 @@ bool TileLengthMarkers::read(uint8_t* headerData, uint16_t header_size)
 		// read tile part length
 		grk_read<uint32_t>(headerData, &Ptlm_i, bytesPerTilePartLength);
 		auto info =
-			L_iT ? TilePartLengthInfo((uint16_t)Ttlm_i, Ptlm_i) : TilePartLengthInfo(Ptlm_i);
+				hasTileIndices_ ? TilePartLengthInfo((uint16_t)Ttlm_i, Ptlm_i) : TilePartLengthInfo(tileCount_++,Ptlm_i);
 		push(i_TLM, info);
 		headerData += bytesPerTilePartLength;
 	}
@@ -388,10 +424,13 @@ void TileLengthMarkers::rewind(void)
 			curr_vec_ = pair->second;
 	}
 }
-TilePartLengthInfo TileLengthMarkers::getNext(void)
+TilePartLengthInfo* TileLengthMarkers::getNext(void)
 {
-	if(!markers_)
-		return 0;
+	assert(markers_);
+	if (!valid_){
+		GRK_WARN("Attempt to get next marker from invalid TLM marker");
+		return nullptr;
+	}
 	if(curr_vec_)
 	{
 		if(markerTilePartIndex_ == curr_vec_->size())
@@ -408,9 +447,9 @@ TilePartLengthInfo TileLengthMarkers::getNext(void)
 			}
 		}
 		if(curr_vec_)
-			return curr_vec_->operator[](markerTilePartIndex_++);
+			return &curr_vec_->operator[](markerTilePartIndex_++);
 	}
-	return 0;
+	return nullptr;
 }
 bool TileLengthMarkers::skipTo(uint16_t skipTileIndex, IBufferedStream* stream,
 							   uint64_t firstSotPos)
@@ -418,21 +457,19 @@ bool TileLengthMarkers::skipTo(uint16_t skipTileIndex, IBufferedStream* stream,
 	assert(stream);
 	rewind();
 	auto tl = getNext();
-	uint16_t tileIndex = 0;
 	uint64_t skip = 0;
-	while(tileIndex != skipTileIndex)
+	while(tl && tl->tileIndex != skipTileIndex)
 	{
-		if(tl.length == 0)
+		if(tl->length == 0)
 		{
 			GRK_ERROR("corrupt TLM marker");
 			return false;
 		}
-		skip += tl.length;
+		skip += tl->length;
 		tl = getNext();
-		tileIndex = (uint16_t)(tl.hasTileIndex ? tl.tileIndex : tileIndex + 1U);
 	}
 
-	return stream->seek(firstSotPos + skip);
+	return tl && tl->tileIndex == skipTileIndex && stream->seek(firstSotPos + skip);
 }
 bool TileLengthMarkers::writeBegin(uint16_t numTilePartsTotal)
 {

@@ -100,12 +100,10 @@ struct CodeStreamInfo
 };
 struct TilePartLengthInfo
 {
-	TilePartLengthInfo() : hasTileIndex(false), tileIndex(0), length(0) {}
-	TilePartLengthInfo(uint32_t len) : hasTileIndex(false), tileIndex(0), length(len) {}
-	TilePartLengthInfo(uint16_t tileno, uint32_t len)
-		: hasTileIndex(true), tileIndex(tileno), length(len)
+	explicit TilePartLengthInfo() : tileIndex(0), length(0) {}
+	explicit TilePartLengthInfo(uint16_t tileno, uint32_t len)
+		: tileIndex(tileno), length(len)
 	{}
-	bool hasTileIndex;
 	uint16_t tileIndex;
 	uint32_t length;
 };
@@ -121,9 +119,10 @@ struct TileLengthMarkers
 
 	bool read(uint8_t* headerData, uint16_t header_size);
 	void rewind(void);
-	TilePartLengthInfo getNext(void);
+	TilePartLengthInfo* getNext(void);
+	bool validate(uint16_t numTiles);
+	bool isValid(void);
 	bool skipTo(uint16_t skipTileIndex, IBufferedStream* stream, uint64_t firstSotPos);
-
 	bool writeBegin(uint16_t numTilePartsTotal);
 	void push(uint16_t tileIndex, uint32_t tile_part_size);
 	bool writeEnd(void);
@@ -137,7 +136,6 @@ struct TileLengthMarkers
 	 */
 	static bool addTileMarkerInfo(uint16_t tileno, CodeStreamInfo* codeStreamInfo, uint16_t type,
 								  uint64_t pos, uint32_t len);
-
   private:
 	void push(uint8_t i_TLM, TilePartLengthInfo curr_vec);
 	TL_MAP* markers_;
@@ -146,6 +144,10 @@ struct TileLengthMarkers
 	TL_INFO_VEC* curr_vec_;
 	IBufferedStream* stream_;
 	uint64_t streamStart;
+	bool valid_;
+	bool hasTileIndices_;
+	// used when there are no tile indices in TLM markers
+	uint16_t tileCount_;
 };
 
 struct PacketInfo
