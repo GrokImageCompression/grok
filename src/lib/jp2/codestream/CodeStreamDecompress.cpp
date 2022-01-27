@@ -754,9 +754,6 @@ bool CodeStreamDecompress::readHeaderProcedureImpl(void)
 	if(codeStreamInfo)
 		codeStreamInfo->setMainHeaderEnd((uint32_t)stream_->tell() - 2U);
 
-	if (cp_.tlm_markers)
-		cp_.tlm_markers->validate((uint16_t)(cp_.t_grid_height * cp_.t_grid_width));
-
 	/* Next step: read a tile-part header */
 	decompressorState_.setState(DECOMPRESS_STATE_TPH_SOT);
 
@@ -814,14 +811,20 @@ bool CodeStreamDecompress::decompressTile()
 	{
 		// if we have a TLM marker, then we can skip tiles until
 		// we get to desired tile
-		if(cp_.tlm_markers && cp_.tlm_markers->isValid())
+		bool tryTLM = cp_.tlm_markers && cp_.tlm_markers->isValid();
+		if(tryTLM)
 		{
+			auto currentPosition = stream_->tell();
 			// for first SOT position, we add two to skip SOC marker
 			if(!cp_.tlm_markers->skipTo((uint16_t)tile_ind_to_dec_, stream_,
-										codeStreamInfo->getMainHeaderEnd() + 2))
-				return false;
+										codeStreamInfo->getMainHeaderEnd() + 2)){
+				tryTLM = false;
+				cp_.tlm_markers->invalidate();
+				if (!stream_->seek(currentPosition))
+					return false;
+			}
 		}
-		else
+		if (!tryTLM)
 		{
 			if(!codeStreamInfo->allocTileInfo((uint16_t)(cp_.t_grid_width * cp_.t_grid_height)))
 				return false;

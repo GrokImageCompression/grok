@@ -120,7 +120,7 @@ struct TileLengthMarkers
 	bool read(uint8_t* headerData, uint16_t header_size);
 	void rewind(void);
 	TilePartLengthInfo* getNext(void);
-	bool validate(uint16_t numTiles);
+	void invalidate(void);
 	bool isValid(void);
 	bool skipTo(uint16_t skipTileIndex, IBufferedStream* stream, uint64_t firstSotPos);
 	bool writeBegin(uint16_t numTilePartsTotal);
@@ -144,10 +144,7 @@ struct TileLengthMarkers
 	TL_INFO_VEC* curr_vec_;
 	IBufferedStream* stream_;
 	uint64_t streamStart;
-	// use to flag an invalid set of markers
 	bool valid_;
-	// used to flag an invalid marker
-	bool validPerMarker_;
 	bool hasTileIndices_;
 	// used when there are no tile indices in TLM markers
 	uint16_t tileCount_;

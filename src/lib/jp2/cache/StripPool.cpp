@@ -86,7 +86,6 @@ bool StripPool::composite(GrkImage* tileImage)
 		buf.index = stripId;
 		buf.dataLen = dataLen;
 		img->interleavedData.data = nullptr;
-			uint32_t num_reclaimed = 0;
 		{
 			std::unique_lock<std::mutex> lk(poolMutex);
 			serializeHeap.push(buf);
