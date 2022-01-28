@@ -140,10 +140,7 @@ size_t Serializer::write(uint8_t* buf, size_t bytes_total)
 		scheduled_.offset 	= off_;
 		uring.write(scheduled_);
 		off_ += scheduled_.dataLen;
-		if(scheduled_.pooled)
-			numPixelRequests_++;
-		if(numPixelRequests_ == maxPixelRequests_)
-		{
+		if(scheduled_.pooled && (++numPixelRequests_ == maxPixelRequests_)) {
 			uring.close();
 			asynchActive_ = false;
 		}
