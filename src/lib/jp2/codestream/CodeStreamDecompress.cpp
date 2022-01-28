@@ -796,56 +796,54 @@ bool CodeStreamDecompress::decompressTile()
 {
 	if(!createOutputImage())
 		return false;
-	outputImage_->multiTile = false;
-
-	if(tileIndexToDecode() == -1)
+	if(tile_ind_to_dec_ == -1)
 	{
-		GRK_ERROR("j2k_decompress_tile: Unable to decompress tile "
+		GRK_ERROR("decompressTile: Unable to decompress tile "
 				  "since first tile SOT has not been detected");
 		return false;
 	}
+	outputImage_->multiTile = false;
 	auto tileCache = tileCache_->get((uint16_t)tileIndexToDecode());
 	auto tileProcessor = tileCache ? tileCache->processor : nullptr;
-	bool rc = false;
 	if(!tileCache || !tileCache->processor->getImage())
 	{
 		// if we have a TLM marker, then we can skip tiles until
 		// we get to desired tile
-		bool tryTLM = cp_.tlm_markers && cp_.tlm_markers->isValid();
-		if(tryTLM)
+		bool useTLM = cp_.tlm_markers && cp_.tlm_markers->isValid();
+		if(useTLM)
 		{
 			auto currentPosition = stream_->tell();
-			// for first SOT position, we add two to skip SOC marker
-			if(!cp_.tlm_markers->skipTo((uint16_t)tile_ind_to_dec_, stream_,
+			// for very first SOT position, we add two to skip SOC marker
+			if(!cp_.tlm_markers->seekTo((uint16_t)tile_ind_to_dec_, stream_,
 										codeStreamInfo->getMainHeaderEnd() + 2)){
-				tryTLM = false;
+				useTLM = false;
 				cp_.tlm_markers->invalidate();
 				if (!stream_->seek(currentPosition))
 					return false;
 			}
 		}
-		if (!tryTLM)
+		if (!useTLM)
 		{
 			if(!codeStreamInfo->allocTileInfo((uint16_t)(cp_.t_grid_width * cp_.t_grid_height)))
 				return false;
-			if(!codeStreamInfo->skipToTile((uint16_t)tile_ind_to_dec_,
-										   decompressorState_.lastSotReadPosition))
+			if(!codeStreamInfo->seekToFirstTilePart((uint16_t)tile_ind_to_dec_))
 				return false;
 		}
 		/* Special case if we have previously read the EOC marker
 		 * (if the previous tile decompressed is the last ) */
 		if(decompressorState_.getState() == DECOMPRESS_STATE_EOC)
 			decompressorState_.setState(DECOMPRESS_STATE_TPH_SOT);
+
 		bool canDecompress = true;
 		try
 		{
 			if(!parseTileHeaderMarkers(&canDecompress))
-				goto cleanup;
+				return false;
 		}
 		catch(InvalidMarkerException& ime)
 		{
 			GRK_ERROR("Found invalid marker : 0x%x", ime.marker_);
-			goto cleanup;
+			return false;
 		}
 		tileProcessor = currentTileProcessor_;
 		try
@@ -853,7 +851,7 @@ bool CodeStreamDecompress::decompressTile()
 			if(!findNextTile(tileProcessor))
 			{
 				GRK_ERROR("Failed to decompress tile %u", tileProcessor->getIndex());
-				goto cleanup;
+				return false;
 			}
 		}
 		catch(DecodeUnknownMarkerAtEndOfTileException& e)
@@ -861,12 +859,10 @@ bool CodeStreamDecompress::decompressTile()
 			GRK_UNUSED(e);
 		}
 		if(!decompressT2T1(tileProcessor))
-			goto cleanup;
+			return false;
 	}
-	rc = true;
-cleanup:
 
-	return rc;
+	return true;
 }
 bool CodeStreamDecompress::decompressT2T1(TileProcessor* tileProcessor)
 {

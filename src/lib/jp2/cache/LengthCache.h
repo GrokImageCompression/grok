@@ -25,7 +25,6 @@ struct MarkerInfo
 	MarkerInfo(uint16_t _id, uint64_t _pos, uint32_t _len);
 	MarkerInfo();
 	void dump(FILE* outputFileStream);
-	/** marker id */
 	uint16_t id;
 	/** position in code stream */
 	uint64_t pos;
@@ -53,23 +52,18 @@ struct TileInfo
 	bool update(uint16_t tileIndex, uint8_t currentTilePart, uint8_t numTileParts);
 	TilePartInfo* getTilePartInfo(uint8_t tilePart);
 	void dump(FILE* outputFileStream, uint16_t tileNum);
-	/** tile index */
 	uint16_t tileno;
-	/** number of tile parts */
 	uint8_t numTileParts;
-	/** current nb of tile part (allocated)*/
 	uint8_t allocatedTileParts;
-	/** current tile-part index */
 	uint8_t currentTilePart;
 
   private:
-	/** tile part index */
+	// TilePartInfo array
 	TilePartInfo* tilePartInfo;
-	/** array of markers */
+
+	// MarkerInfo array
 	MarkerInfo* markerInfo;
-	/** number of markers */
 	uint32_t numMarkers;
-	/** actual size of markers array */
 	uint32_t allocatedMarkers;
 };
 struct CodeStreamInfo
@@ -85,17 +79,17 @@ struct CodeStreamInfo
 	void setMainHeaderStart(uint64_t start);
 	uint64_t getMainHeaderEnd(void);
 	void setMainHeaderEnd(uint64_t end);
-	bool skipToTile(uint16_t tileIndex, uint64_t lastSotReadPosition);
+	bool seekToFirstTilePart(uint16_t tileIndex);
 
   private:
 	/** main header start position (SOC position) */
 	uint64_t mainHeaderStart;
 	/** main header end position (first SOT position) */
 	uint64_t mainHeaderEnd;
-	/** list of markers */
 	std::vector<MarkerInfo*> marker;
-	uint16_t numTiles;
+	// TileInfo array
 	TileInfo* tileInfo;
+	uint16_t numTiles;
 	IBufferedStream* stream;
 };
 struct TilePartLengthInfo
@@ -108,6 +102,7 @@ struct TilePartLengthInfo
 	uint32_t length;
 };
 typedef std::vector<TilePartLengthInfo> TL_INFO_VEC;
+
 // map of (TLM marker id) => (tile part length vector)
 typedef std::map<uint8_t, TL_INFO_VEC*> TL_MAP;
 
@@ -122,7 +117,7 @@ struct TileLengthMarkers
 	TilePartLengthInfo* getNext(void);
 	void invalidate(void);
 	bool isValid(void);
-	bool skipTo(uint16_t skipTileIndex, IBufferedStream* stream, uint64_t firstSotPos);
+	bool seekTo(uint16_t skipTileIndex, IBufferedStream* stream, uint64_t firstSotPos);
 	bool writeBegin(uint16_t numTilePartsTotal);
 	void push(uint16_t tileIndex, uint32_t tile_part_size);
 	bool writeEnd(void);
@@ -146,7 +141,8 @@ struct TileLengthMarkers
 	uint64_t streamStart;
 	bool valid_;
 	bool hasTileIndices_;
-	// used when there are no tile indices in TLM markers
+	// used to track tile index when there are no tile indices
+	// stored in markers
 	uint16_t tileCount_;
 };
 

@@ -76,8 +76,8 @@ bool CodeStreamDecompress::parseTileHeaderMarkers(bool* canDecompress)
 		GRK_ERROR("parse_markers: no SOT marker found");
 		return false;
 	}
-	/* Seek in code stream for SOT marker specifying desired tile index.
-	 * If we don't find it, we stop when we read the EOC or run out of data */
+	/* Seek in code stream for next SOT marker. If we don't find it,
+	 *  we stop when we either read the EOC or run out of data */
 	while(!decompressorState_.lastTilePartWasRead && (curr_marker_ != J2K_MS_EOC))
 	{
 		/* read markers until SOD is detected */
@@ -90,8 +90,9 @@ bool CodeStreamDecompress::parseTileHeaderMarkers(bool* canDecompress)
 				break;
 			}
 			uint16_t marker_size;
-			if(!read_short(&marker_size))
+			if(!read_short(&marker_size)) {
 				return false;
+			}
 			else if(marker_size < 2)
 			{
 				GRK_ERROR("Marker size %d for marker 0x%x is less than 2", marker_size,

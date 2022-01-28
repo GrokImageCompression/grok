@@ -172,7 +172,7 @@ void TileInfo::dump(FILE* outputFileStream, uint16_t tileNum)
 	}
 }
 CodeStreamInfo::CodeStreamInfo(IBufferedStream* str)
-	: mainHeaderStart(0), mainHeaderEnd(0), numTiles(0), tileInfo(nullptr), stream(str)
+	: mainHeaderStart(0), mainHeaderEnd(0), tileInfo(nullptr), numTiles(0), stream(str)
 {}
 CodeStreamInfo::~CodeStreamInfo()
 {
@@ -196,8 +196,9 @@ bool CodeStreamInfo::updateTileInfo(uint16_t tileIndex, uint8_t currentTilePart,
 }
 TileInfo* CodeStreamInfo::getTileInfo(uint16_t tileIndex)
 {
-	assert(tileIndex < numTiles);
-	assert(tileInfo);
+	if (!tileInfo || tileIndex >= numTiles)
+		return nullptr;
+
 	return tileInfo + tileIndex;
 }
 void CodeStreamInfo::dump(FILE* outputFileStream)
@@ -249,29 +250,21 @@ void CodeStreamInfo::setMainHeaderEnd(uint64_t end)
 {
 	this->mainHeaderEnd = end;
 }
-bool CodeStreamInfo::skipToTile(uint16_t tileIndex, uint64_t lastSotReadPosition)
+bool CodeStreamInfo::seekToFirstTilePart(uint16_t tileIndex)
 {
-	if(tileInfo && tileInfo->hasTilePartInfo())
+	// no need to seek if we haven't parsed any tiles yet
+	bool hasVeryFirstTilePartInfo = tileInfo && (tileInfo+0)->hasTilePartInfo();
+	if (!hasVeryFirstTilePartInfo)
+		return true;
+
+	auto tileInfoForTile = getTileInfo(tileIndex);
+	assert(tileInfoForTile && tileInfoForTile->numTileParts);
+
+	// move to first start of first tile part for this tile (skip 2 byte marker)
+	if(!(stream->seek(tileInfoForTile->getTilePartInfo(0)->startPosition + 2)))
 	{
-		auto tileInfoForTile = getTileInfo(tileIndex);
-		if(!tileInfoForTile->numTileParts)
-		{
-			/* the index for this tile has not been built,
-			 *  so move to the last SOT read */
-			if(!(stream->seek(lastSotReadPosition + 2)))
-			{
-				GRK_ERROR("Problem with seek function");
-				return false;
-			}
-		}
-		else
-		{
-			if(!(stream->seek(tileInfoForTile->getTilePartInfo(0)->startPosition + 2)))
-			{
-				GRK_ERROR("Problem with seek function");
-				return false;
-			}
-		}
+		GRK_ERROR("Error in seek");
+		return false;
 	}
 
 	return true;
@@ -451,14 +444,14 @@ TilePartLengthInfo* TileLengthMarkers::getNext(void)
 	}
 	return nullptr;
 }
-bool TileLengthMarkers::skipTo(uint16_t skipTileIndex, IBufferedStream* stream,
+bool TileLengthMarkers::seekTo(uint16_t tileIndex, IBufferedStream* stream,
 							   uint64_t firstSotPos)
 {
 	assert(stream);
 	rewind();
 	auto tl = getNext();
 	uint64_t skip = 0;
-	while(tl && tl->tileIndex != skipTileIndex)
+	while(tl && tl->tileIndex != tileIndex)
 	{
 		if(tl->length == 0)
 		{
@@ -469,7 +462,7 @@ bool TileLengthMarkers::skipTo(uint16_t skipTileIndex, IBufferedStream* stream,
 		tl = getNext();
 	}
 
-	return tl && tl->tileIndex == skipTileIndex && stream->seek(firstSotPos + skip);
+	return tl && tl->tileIndex == tileIndex && stream->seek(firstSotPos + skip);
 }
 bool TileLengthMarkers::writeBegin(uint16_t numTilePartsTotal)
 {
