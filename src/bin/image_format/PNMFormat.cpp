@@ -175,43 +175,6 @@ bool PNMFormat::encodePixels(void)
 	return (image_->decompressPrec > 8U) ? encodeRows<uint16_t>(image_->decompressHeight)
 								 : encodeRows<uint8_t>( image_->decompressHeight);
 }
-/***
- * library-orchestrated pixel encoding
- */
-bool PNMFormat::encodePixels(grk_serialize_buf pixels)
-{
-	std::unique_lock<std::mutex> lk(encodePixelmutex);
-	if(encodeState & IMAGE_FORMAT_ENCODED_PIXELS)
-		return true;
-	if(!isHeaderEncoded() && !encodeHeader())
-		return false;
-
-	return encodePixelsCore(pixels);
-}
-bool PNMFormat::encodePixelsCore(grk_serialize_buf pixels)
-{
-	GRK_UNUSED(pixels);
-#ifdef GROK_HAVE_URING
-	serializer.initPixelRequest();
-#endif
-	bool success = serializer.write(pixels.data, pixels.dataLen) == pixels.dataLen;
-	if (!success) {
-		encodeState |= IMAGE_FORMAT_ERROR;
-		spdlog::error("PNMFormat::encodePixelsCore: error in pixel encode");
-	}
-	else
-	{
-#ifndef GROK_HAVE_URING
-	serializer.incrementPixelRequest();
-	// for synchronous encode, we immediately return the pixel buffer to the pool
-	reclaim(GrkSerializeBuf(pixels));
-#endif
-		if(serializer.allPixelRequestsComplete())
-			encodeFinish();
-	}
-
-	return success;
-}
 bool PNMFormat::encodeFinish(void)
 {
 	if(encodeState & IMAGE_FORMAT_ENCODED_PIXELS)
@@ -254,7 +217,7 @@ bool PNMFormat::encodeRows(uint32_t rows)
 			packedBuf.pooled = true;
 			packedBuf.offset = serializer.getOffset();
 			packedBuf.dataLen = image_->packedRowBytes * stripRows;
-			packedBuf.index = serializer.getNumPixelRequests();
+			packedBuf.index = serializer.getNumPooledRequests();
 			if(!encodePixelsCore(packedBuf))
 			{
 				delete iter;

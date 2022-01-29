@@ -374,7 +374,7 @@ bool TIFFFormat::encodePixels()
 			{
 				packedBuf.dataLen = bytesToWrite;
 				packedBuf.offset = serializer.getOffset();
-				packedBuf.index = serializer.getNumPixelRequests();
+				packedBuf.index = serializer.getNumPooledRequests();
 				if(bytesToWrite && !encodePixelsCore(packedBuf))
 					goto cleanup;
 				packedBuf = pool.get(packedLengthEncoded);
@@ -410,7 +410,7 @@ bool TIFFFormat::encodePixels()
 		// cleanup
 		packedBuf.dataLen = bytesToWrite;
 		packedBuf.offset = serializer.getOffset();
-		packedBuf.index = serializer.getNumPixelRequests();
+		packedBuf.index = serializer.getNumPooledRequests();
 		if(bytesToWrite && !encodePixelsCore(packedBuf))
 			goto cleanup;
 	}
@@ -429,7 +429,7 @@ bool TIFFFormat::encodePixels()
 			packedBuf.pooled = true;
 			packedBuf.offset = serializer.getOffset();
 			packedBuf.dataLen = image_->packedRowBytes * stripRows;
-			packedBuf.index = serializer.getNumPixelRequests();
+			packedBuf.index = serializer.getNumPooledRequests();
 			if(!encodePixelsCore(packedBuf))
 			{
 				delete iter;
@@ -444,48 +444,10 @@ cleanup:
 
 	return success;
 }
-/***
- * library-orchestrated pixel encoding
- */
-bool TIFFFormat::encodePixels(grk_serialize_buf pixels)
-{
-	std::unique_lock<std::mutex> lk(encodePixelmutex);
-	if(encodeState & IMAGE_FORMAT_ENCODED_PIXELS)
-		return true;
-	if(!isHeaderEncoded() && !encodeHeader())
-		return false;
-
-	return encodePixelsCore(pixels);
-}
-/***
- * Common core pixel encoding
- */
-bool TIFFFormat::encodePixelsCore(grk_serialize_buf pixels)
-{
-	GRK_UNUSED(pixels);
-#ifdef GROK_HAVE_URING
-	serializer.initPixelRequest();
-#endif
+bool TIFFFormat::encodePixelsCoreWrite(grk_serialize_buf pixels){
 	tmsize_t written =
 		TIFFWriteEncodedStrip(tif, (tmsize_t)pixels.index, pixels.data, (tmsize_t)pixels.dataLen);
-	bool success = written != -1;
-	if(!success)
-	{
-		spdlog::error("TIFFFormat::encodePixelsCore: error in pixels encode");
-		encodeState |= IMAGE_FORMAT_ERROR;
-	}
-	else
-	{
-#ifndef GROK_HAVE_URING
-	serializer.incrementPixelRequest();
-	// for synchronous encode, we immediately return the pixel buffer to the pool
-	reclaim(GrkSerializeBuf(pixels));
-#endif
-		if(serializer.allPixelRequestsComplete())
-			encodeFinish();
-	}
-
-	return success;
+	return  written != -1;
 }
 bool TIFFFormat::encodeFinish(void)
 {

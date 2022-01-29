@@ -67,11 +67,49 @@ bool ImageFormat::encodeInit(grk_image* image, const std::string& filename,
 
 	return true;
 }
+/***
+ * library-orchestrated pixel encoding
+ */
 bool ImageFormat::encodePixels(grk_serialize_buf pixels)
 {
-	GRK_UNUSED(pixels);
+	std::unique_lock<std::mutex> lk(encodePixelmutex);
+	if(encodeState & IMAGE_FORMAT_ENCODED_PIXELS)
+		return true;
+	if(!isHeaderEncoded() && !encodeHeader())
+		return false;
 
-	return false;
+	return encodePixelsCore(pixels);
+}
+/***
+ * Common core pixel encoding
+ */
+bool ImageFormat::encodePixelsCore(grk_serialize_buf pixels)
+{
+	GRK_UNUSED(pixels);
+#ifdef GROK_HAVE_URING
+	serializer.initPooledRequest();
+#endif
+	bool success = encodePixelsCoreWrite(pixels);
+	if(!success)
+	{
+		spdlog::error("TIFFFormat::encodePixelsCore: error in pixels encode");
+		encodeState |= IMAGE_FORMAT_ERROR;
+	}
+	else
+	{
+#ifndef GROK_HAVE_URING
+	serializer.incrementPooled();
+	// for synchronous encode, we immediately return the pixel buffer to the pool
+	reclaim(GrkSerializeBuf(pixels));
+#endif
+		if(serializer.allPooledRequestsComplete())
+			encodeFinish();
+	}
+
+	return success;
+}
+bool ImageFormat::encodePixelsCoreWrite(grk_serialize_buf pixels){
+	 return (serializer.write(pixels.data, pixels.dataLen) == pixels.dataLen);
 }
 bool ImageFormat::encodeFinish(void)
 {

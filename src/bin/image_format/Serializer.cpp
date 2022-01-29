@@ -3,18 +3,18 @@
 #define IO_MAX 2147483647U
 
 Serializer::Serializer(void) :
-	  numPixelRequests_(0),
-	  maxPixelRequests_(0),
 #ifndef _WIN32
-	  fd_(0),
+	  fd_(-1),
 #endif
+	  numPooledRequests_(0),
+	  maxPooledRequests_(0),
 	  asynchActive_(false), off_(0),
  	 reclaim_callback_(nullptr),
 	 reclaim_user_data_(nullptr)
 {}
 void Serializer::init(grk_image* image)
 {
-	maxPixelRequests_ = ((image->y1 - image->y0) + image->rowsPerStrip - 1) / image->rowsPerStrip;
+	maxPooledRequests_ = ((image->y1 - image->y0) + image->rowsPerStrip - 1) / image->rowsPerStrip;
 }
 void  Serializer::serializeRegisterClientCallback(grk_serialize_callback reclaim_callback,void* user_data){
 	reclaim_callback_ = reclaim_callback;
@@ -109,11 +109,11 @@ bool Serializer::close(void)
 #ifdef GROK_HAVE_URING
 	return uring.close();
 #endif
-	if (!fd_)
+	if (fd_< 0)
 		return true;
 
 	int rc =  ::close(fd_);
-	fd_ = 0;
+	fd_ = -1;
 
 	return rc == 0;
 }
@@ -140,7 +140,7 @@ size_t Serializer::write(uint8_t* buf, size_t bytes_total)
 		scheduled_.offset 	= off_;
 		uring.write(scheduled_);
 		off_ += scheduled_.dataLen;
-		if(scheduled_.pooled && (++numPixelRequests_ == maxPixelRequests_)) {
+		if(scheduled_.pooled && (++numPooledRequests_ == maxPooledRequests_)) {
 			uring.close();
 			asynchActive_ = false;
 		}
@@ -168,26 +168,26 @@ size_t Serializer::write(uint8_t* buf, size_t bytes_total)
 #endif // #ifndef _WIN32
 
 #ifdef GROK_HAVE_URING
-void Serializer::initPixelRequest(void)
+void Serializer::initPooledRequest(void)
 {
 	scheduled_.pooled 	= true;
 }
 #else
-void Serializer::incrementPixelRequest(void)
+void Serializer::incrementPooled(void)
 {
     // write method will take care of incrementing numPixelRequests if uring is enabled
-	numPixelRequests_++;
+	numPooledRequests_++;
 }
 #endif
-uint32_t Serializer::getNumPixelRequests(void)
+uint32_t Serializer::getNumPooledRequests(void)
 {
-	return numPixelRequests_;
+	return numPooledRequests_;
 }
 uint64_t Serializer::getOffset(void)
 {
 	return off_;
 }
-bool Serializer::allPixelRequestsComplete(void)
+bool Serializer::allPooledRequestsComplete(void)
 {
-	return numPixelRequests_ == maxPixelRequests_;
+	return numPooledRequests_ == maxPooledRequests_;
 }

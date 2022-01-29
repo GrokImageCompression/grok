@@ -44,6 +44,8 @@ class ImageFormat : public IImageFormat
 	uint32_t getEncodeState(void) override;
 	bool openFile(void);
   protected:
+	virtual bool encodePixelsCore(grk_serialize_buf pixels);
+	virtual bool encodePixelsCoreWrite(grk_serialize_buf pixels);
 	bool open(std::string fname, std::string mode);
 	uint64_t write(GrkSerializeBuf buffer);
 	bool read(uint8_t* buf, size_t len);

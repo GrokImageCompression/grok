@@ -38,7 +38,6 @@ class TIFFFormat : public ImageFormat
 	~TIFFFormat();
 	bool encodeHeader(void) override;
 	bool encodePixels() override;
-	bool encodePixels(grk_serialize_buf pixels) override;
 	bool encodeFinish(void) override;
 	grk_image* decode(const std::string& filename, grk_cparameters* parameters) override;
 
@@ -46,7 +45,7 @@ class TIFFFormat : public ImageFormat
 #ifndef _WIN32
 	TIFF* MyTIFFOpen(const char* name, const char* mode);
 #endif
-	bool encodePixelsCore(grk_serialize_buf pixels);
+	bool encodePixelsCoreWrite(grk_serialize_buf pixels) override;
 	TIFF* tif;
 	uint32_t chroma_subsample_x;
 	uint32_t chroma_subsample_y;
