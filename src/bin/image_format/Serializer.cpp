@@ -107,6 +107,7 @@ bool Serializer::open(std::string name, std::string mode)
 bool Serializer::close(void)
 {
 #ifdef GROK_HAVE_URING
+	asynchActive_ = false;
 	return uring.close();
 #endif
 	if (fd_< 0)

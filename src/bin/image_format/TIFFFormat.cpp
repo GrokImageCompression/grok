@@ -100,13 +100,11 @@ TIFF* TIFFFormat::MyTIFFOpen(const char* name, const char* mode)
 	auto tif = TIFFClientOpen(name, mode, &serializer, TiffRead, TiffWrite, TiffSeek, TiffClose,
 							  TiffSize, nullptr, nullptr);
 	if(tif)
-	{
 		tif->tif_fd = serializer.getFd();
-		return tif;
-	}
-	serializer.close();
+	else
+		serializer.close();
 
-	return nullptr;
+	return tif;
 }
 #endif
 

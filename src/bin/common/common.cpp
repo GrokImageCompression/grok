@@ -139,11 +139,11 @@ int parseWindowBounds(char* inArg, uint32_t* dw_x0, uint32_t* dw_y0, uint32_t* d
 	return EXIT_SUCCESS;
 }
 
-bool safe_fclose(FILE* fd)
+bool safe_fclose(FILE* file)
 {
-	if(!fd)
+	if(!file)
 		return true;
-	return fclose(fd) ? false : true;
+	return fclose(file) ? false : true;
 }
 
 bool useStdio(std::string  filename)

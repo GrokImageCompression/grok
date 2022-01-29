@@ -98,9 +98,9 @@ bool ImageFormat::encodePixelsCore(grk_serialize_buf pixels)
 	else
 	{
 #ifndef GROK_HAVE_URING
-	serializer.incrementPooled();
-	// for synchronous encode, we immediately return the pixel buffer to the pool
-	reclaim(GrkSerializeBuf(pixels));
+		serializer.incrementPooled();
+		// for synchronous encode, we immediately return the pixel buffer to the pool
+		reclaim(GrkSerializeBuf(pixels));
 #endif
 		if(serializer.allPooledRequestsComplete())
 			encodeFinish();
@@ -125,27 +125,6 @@ bool ImageFormat::isHeaderEncoded(void)
 {
 	return ((encodeState & IMAGE_FORMAT_ENCODED_HEADER) == IMAGE_FORMAT_ENCODED_HEADER);
 }
-bool ImageFormat::isOpacity(uint16_t compno)
-{
-	if(!image_ || compno >= image_->decompressNumComps)
-		return false;
-	auto comp = image_->comps + compno;
-
-	return (comp->type == GRK_CHANNEL_TYPE_OPACITY ||
-			comp->type == GRK_CHANNEL_TYPE_PREMULTIPLIED_OPACITY);
-}
-bool ImageFormat::hasOpacity(void)
-{
-	if(!image_)
-		return false;
-	for(uint16_t i = 0; i < image_->decompressNumComps; ++i)
-	{
-		if(isOpacity(i))
-			return true;
-	}
-
-	return false;
-}
 bool ImageFormat::open(std::string fileName, std::string mode)
 {
 	return fileIO_->open(fileName, mode);
@@ -167,15 +146,6 @@ bool ImageFormat::read(uint8_t* buf, size_t len)
 bool ImageFormat::seek(int64_t pos, int whence)
 {
 	return fileIO_->seek(pos,whence) == 0U;
-}
-bool ImageFormat::closeStream(void)
-{
-	bool rc = true;
-	if(!useStdIO_ && !grk::safe_fclose(fileStream_))
-		rc = false;
-	fileStream_ = nullptr;
-
-	return rc;
 }
 uint32_t ImageFormat::getEncodeState(void)
 {

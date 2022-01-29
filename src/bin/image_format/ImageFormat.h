@@ -50,7 +50,6 @@ class ImageFormat : public IImageFormat
 	uint64_t write(GrkSerializeBuf buffer);
 	bool read(uint8_t* buf, size_t len);
 	bool seek(int64_t pos, int whence);
-	bool closeStream(void);
 	uint32_t maxY(uint32_t rows);
 	int getMode(const char* mode);
 	void scaleComponent(grk_image_comp* component, uint8_t precision);
@@ -65,8 +64,6 @@ class ImageFormat : public IImageFormat
 	bool isChromaSubsampled(grk_image* image);
 	bool areAllComponentsSameSubsampling(grk_image* image);
 	bool isHeaderEncoded(void);
-	bool isOpacity(uint16_t compno);
-	bool hasOpacity(void);
 
 	grk_image* image_;
 	IFileIO* fileIO_;

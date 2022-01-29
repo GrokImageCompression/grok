@@ -103,13 +103,6 @@ bool PNMFormat::encodeHeader(void)
 
 	return true;
 }
-bool PNMFormat::hasAlpha(void)
-{
-	if(!image_)
-		return false;
-	uint16_t ncomp = image_->decompressNumComps;
-	return (ncomp == 4 && isOpacity(ncomp-1)) || (ncomp == 2 && isOpacity(ncomp-1));
-}
 bool PNMFormat::writeHeader(bool doPGM)
 {
 	ostringstream iss;
@@ -330,6 +323,43 @@ bool PNMFormat::writeRows(uint32_t rowsOffset, uint32_t rows, uint16_t compno, T
 	}
 
 	return true;
+}
+bool PNMFormat::hasAlpha(void)
+{
+	if(!image_)
+		return false;
+	uint16_t ncomp = image_->decompressNumComps;
+	return (ncomp == 4 && isOpacity(ncomp-1)) || (ncomp == 2 && isOpacity(ncomp-1));
+}
+bool PNMFormat::isOpacity(uint16_t compno)
+{
+	if(!image_ || compno >= image_->decompressNumComps)
+		return false;
+	auto comp = image_->comps + compno;
+
+	return (comp->type == GRK_CHANNEL_TYPE_OPACITY ||
+			comp->type == GRK_CHANNEL_TYPE_PREMULTIPLIED_OPACITY);
+}
+bool PNMFormat::hasOpacity(void)
+{
+	if(!image_)
+		return false;
+	for(uint16_t i = 0; i < image_->decompressNumComps; ++i)
+	{
+		if(isOpacity(i))
+			return true;
+	}
+
+	return false;
+}
+bool PNMFormat::closeStream(void)
+{
+	bool rc = true;
+	if(!useStdIO_ && !grk::safe_fclose(fileStream_))
+		rc = false;
+	fileStream_ = nullptr;
+
+	return rc;
 }
 
 static char* skip_white(char* s)
