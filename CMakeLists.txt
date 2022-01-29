@@ -1,5 +1,3 @@
-# option to set custom Grok name space
-#set(GROK_NAMESPACE "FOO")
 cmake_minimum_required(VERSION 3.17)
 
 if(NOT GROK_NAMESPACE)
@@ -52,30 +50,6 @@ set(GROK_LIBRARY_PROPERTIES
 set(CMAKE_MODULE_PATH
     ${${GROK_NAMESPACE}_SOURCE_DIR}/cmake
     ${CMAKE_MODULE_PATH})
-
-if(WIN32)
-  if(NOT BORLAND)
-    if(NOT CYGWIN)
-      if(NOT MINGW)
-        if(NOT ITK_ENABLE_VISUAL_STUDIO_DEPRECATED_C_WARNINGS)
-          add_definitions(
-            -D_CRT_FAR_MAPPINGS_NO_DEPRECATE
-            -D_CRT_IS_WCTYPE_NO_DEPRECATE
-            -D_CRT_MANAGED_FP_NO_DEPRECATE
-            -D_CRT_NONSTDC_NO_DEPRECATE
-            -D_CRT_SECURE_NO_DEPRECATE
-            -D_CRT_SECURE_NO_DEPRECATE_GLOBALS
-            -D_CRT_SETERRORMODE_BEEP_SLEEP_NO_DEPRECATE
-            -D_CRT_TIME_FUNCTIONS_NO_DEPRECATE
-            -D_CRT_VCCLRIT_NO_DEPRECATE
-            -D_SCL_SECURE_NO_DEPRECATE
-            )
-        endif()
-      endif()
-    endif()
-  endif()
-endif()
-
 
 # --------------------------------------------------------------------------
 # Install directories
