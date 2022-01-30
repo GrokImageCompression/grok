@@ -1009,18 +1009,18 @@ bool GrkImage::applyICC(void)
 	cmsHPROFILE in_prof = nullptr;
 	cmsHPROFILE out_prof = nullptr;
 	cmsUInt32Number in_type, out_type;
-	size_t nr_samples, max;
+	size_t nr_samples, componentSize;
 	uint32_t prec, w, stride_diff, h;
 	GRK_COLOR_SPACE oldspace;
+	bool rc = false;
+
 	if(numcomps == 0 || !allComponentsSanityCheck(true))
 		return false;
 	if(!meta)
 		return false;
 	in_prof = cmsOpenProfileFromMem(meta->color.icc_profile_buf, meta->color.icc_profile_len);
-	if(in_prof == nullptr)
-		return false;
-
-	bool rc = false;
+	if(!in_prof)
+		goto cleanup;
 
 	// auto in_space = cmsGetPCS(in_prof);
 	out_space = cmsGetColorSpace(in_prof);
@@ -1029,9 +1029,9 @@ bool GrkImage::applyICC(void)
 	w = comps[0].w;
 	stride_diff = comps[0].stride - w;
 	h = comps[0].h;
-
 	if(!w || !h)
 		goto cleanup;
+	componentSize = (size_t)w * h;
 
 	prec = comps[0].prec;
 	oldspace = color_space;
@@ -1094,23 +1094,16 @@ bool GrkImage::applyICC(void)
 		goto cleanup;
 	}
 	transform = cmsCreateTransform(in_prof, in_type, out_prof, out_type, intent, 0);
-
-	cmsCloseProfile(in_prof);
-	in_prof = nullptr;
-	cmsCloseProfile(out_prof);
-	out_prof = nullptr;
-
-	if(transform == nullptr)
-	{
+	if (!transform) {
 		color_space = oldspace;
-		return false;
+		goto cleanup;
 	}
+
 	if(numcomps > 2)
 	{ /* RGB, RGBA */
 		if(prec <= 8)
 		{
-			max = (size_t)w * h;
-			nr_samples = max * 3 * (cmsUInt32Number)sizeof(uint8_t);
+			nr_samples = componentSize * 3U * sizeof(uint8_t);
 			auto inbuf = new uint8_t[nr_samples];
 			auto outbuf = new uint8_t[nr_samples];
 
@@ -1132,7 +1125,7 @@ bool GrkImage::applyICC(void)
 				src_index += stride_diff;
 			}
 
-			cmsDoTransform(transform, inbuf, outbuf, (cmsUInt32Number)max);
+			cmsDoTransform(transform, inbuf, outbuf, (cmsUInt32Number)componentSize);
 
 			src_index = 0;
 			dest_index = 0;
@@ -1152,8 +1145,7 @@ bool GrkImage::applyICC(void)
 		}
 		else
 		{
-			max = (size_t)w * h;
-			nr_samples = max * 3 * (cmsUInt32Number)sizeof(uint16_t);
+			nr_samples = componentSize * 3U * sizeof(uint16_t);
 			auto inbuf = new uint16_t[nr_samples];
 			auto outbuf = new uint16_t[nr_samples];
 
@@ -1174,9 +1166,7 @@ bool GrkImage::applyICC(void)
 				}
 				src_index += stride_diff;
 			}
-
-			cmsDoTransform(transform, inbuf, outbuf, (cmsUInt32Number)max);
-
+			cmsDoTransform(transform, inbuf, outbuf, (cmsUInt32Number)componentSize);
 			src_index = 0;
 			dest_index = 0;
 			for(uint32_t j = 0; j < h; ++j)
@@ -1196,12 +1186,7 @@ bool GrkImage::applyICC(void)
 	}
 	else
 	{ /* GRAY, GRAYA */
-		uint8_t* inbuf = nullptr;
-		uint8_t* outbuf = nullptr;
-
-		int32_t *r = nullptr, *g = nullptr, *b = nullptr;
-		max = (size_t)w * h;
-		nr_samples = max * 3 * (cmsUInt32Number)sizeof(uint8_t);
+		nr_samples = componentSize * 3U * sizeof(uint8_t);
 		auto newComps = new grk_image_comp[numcomps + 2U];
 		for(uint32_t i = 0; i < numcomps + 2U; ++i)
 		{
@@ -1212,15 +1197,12 @@ bool GrkImage::applyICC(void)
 		}
 		delete[] comps;
 		comps = newComps;
-
-		auto in = inbuf = new uint8_t[nr_samples];
-		auto out = outbuf = new uint8_t[nr_samples];
-
+		auto inbuf = new uint8_t[nr_samples];
+		auto outbuf = new uint8_t[nr_samples];
 		if(forceRGB)
 		{
 			if(numcomps == 2)
 				comps[3] = comps[1];
-
 			comps[1] = comps[0];
 			comps[1].data = nullptr;
 			allocData(comps + 1);
@@ -1229,21 +1211,17 @@ bool GrkImage::applyICC(void)
 			allocData(comps + 2);
 			numcomps = (uint16_t)(2 + numcomps);
 		}
-
-		r = comps[0].data;
+		auto r = comps[0].data;
 		size_t src_index = 0;
 		size_t dest_index = 0;
 		for(uint32_t j = 0; j < h; ++j)
 		{
 			for(uint32_t i = 0; i < w; ++i)
-			{
-				in[dest_index++] = (uint8_t)r[src_index];
-				src_index++;
-			}
+				inbuf[dest_index++] = (uint8_t)r[src_index++];
 			src_index += stride_diff;
 		}
-
-		cmsDoTransform(transform, inbuf, outbuf, (cmsUInt32Number)max);
+		cmsDoTransform(transform, inbuf, outbuf, (cmsUInt32Number)componentSize);
+		int32_t *g = nullptr, *b = nullptr;
 		if(forceRGB)
 		{
 			g = comps[1].data;
@@ -1255,11 +1233,11 @@ bool GrkImage::applyICC(void)
 		{
 			for(uint32_t i = 0; i < w; ++i)
 			{
-				r[dest_index] = (int32_t)out[src_index++];
+				r[dest_index] = (int32_t)outbuf[src_index++];
 				if(forceRGB)
 				{
-					g[dest_index] = (int32_t)out[src_index++];
-					b[dest_index] = (int32_t)out[src_index++];
+					g[dest_index] = (int32_t)outbuf[src_index++];
+					b[dest_index] = (int32_t)outbuf[src_index++];
 				}
 				else
 				{
@@ -1269,7 +1247,6 @@ bool GrkImage::applyICC(void)
 			}
 			dest_index += stride_diff;
 		}
-
 		delete[] inbuf;
 		delete[] outbuf;
 	} /* if(image->numcomps */
