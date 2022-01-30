@@ -1,7 +1,7 @@
 //---------------------------------------------------------------------------------
 //
 //  Little Color Management System
-//  Copyright (c) 1998-2020 Marti Maria Saguer
+//  Copyright (c) 1998-2022 Marti Maria Saguer
 //
 // Permission is hereby granted, free of charge, to any person obtaining
 // a copy of this software and associated documentation files (the "Software"),
@@ -284,7 +284,7 @@ void FloatXFORM(_cmsTRANSFORM* p,
 
             accum = p->FromInputFloat(p, fIn, accum, Stride->BytesPerPlaneIn);
 
-            // Any gamut chack to do?
+            // Any gamut check to do?
             if (p->GamutCheck != NULL) {
 
                 // Evaluate gamut marker.

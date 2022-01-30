@@ -1,7 +1,7 @@
 //---------------------------------------------------------------------------------
 //
 //  Little Color Management System
-//  Copyright (c) 1998-2020 Marti Maria Saguer
+//  Copyright (c) 1998-2022 Marti Maria Saguer
 //
 // Permission is hereby granted, free of charge, to any person obtaining
 // a copy of this software and associated documentation files (the "Software"),
@@ -207,7 +207,7 @@ _cmsParametricCurvesCollection *GetParametricCurveByType(cmsContext ContextID, i
 }
 
 // Low level allocate, which takes care of memory details. nEntries may be zero, and in this case
-// no optimation curve is computed. nSegments may also be zero in the inverse case, where only the
+// no optimization curve is computed. nSegments may also be zero in the inverse case, where only the
 // optimization curve is given. Both features simultaneously is an error
 static
 cmsToneCurve* AllocateToneCurveStruct(cmsContext ContextID, cmsUInt32Number nEntries,

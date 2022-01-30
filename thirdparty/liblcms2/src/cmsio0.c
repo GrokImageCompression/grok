@@ -1,7 +1,7 @@
 //---------------------------------------------------------------------------------
 //
 //  Little Color Management System
-//  Copyright (c) 1998-2020 Marti Maria Saguer
+//  Copyright (c) 1998-2022 Marti Maria Saguer
 //
 // Permission is hereby granted, free of charge, to any person obtaining
 // a copy of this software and associated documentation files (the "Software"),
@@ -479,10 +479,10 @@ cmsBool CMSEXPORT cmsCloseIOhandler(cmsIOHANDLER* io)
 
 cmsIOHANDLER* CMSEXPORT cmsGetProfileIOhandler(cmsHPROFILE hProfile)
 {
-	_cmsICCPROFILE* Icc = (_cmsICCPROFILE*)hProfile;
+    _cmsICCPROFILE* Icc = (_cmsICCPROFILE*)hProfile;
 
-	if (Icc == NULL) return NULL;
-	return Icc->IOhandler;
+    if (Icc == NULL) return NULL;
+    return Icc->IOhandler;
 }
 
 // Creates an empty structure holding all required parameters
@@ -1434,7 +1434,25 @@ cmsBool CMSEXPORT cmsSaveProfileToMem(cmsHPROFILE hProfile, void *MemPtr, cmsUIn
     return rc;
 }
 
+// Free one tag contents
+static
+void freeOneTag(_cmsICCPROFILE* Icc, cmsUInt32Number i)
+{
+    if (Icc->TagPtrs[i]) {
 
+        cmsTagTypeHandler* TypeHandler = Icc->TagTypeHandlers[i];
+
+        if (TypeHandler != NULL) {
+            cmsTagTypeHandler LocalTypeHandler = *TypeHandler;
+
+            LocalTypeHandler.ContextID = Icc->ContextID;             
+            LocalTypeHandler.ICCVersion = Icc->Version;
+            LocalTypeHandler.FreePtr(&LocalTypeHandler, Icc->TagPtrs[i]);
+        }
+        else
+            _cmsFree(Icc->ContextID, Icc->TagPtrs[i]);
+    }
+}
 
 // Closes a profile freeing any involved resources
 cmsBool  CMSEXPORT cmsCloseProfile(cmsHPROFILE hProfile)
@@ -1454,20 +1472,7 @@ cmsBool  CMSEXPORT cmsCloseProfile(cmsHPROFILE hProfile)
 
     for (i=0; i < Icc -> TagCount; i++) {
 
-        if (Icc -> TagPtrs[i]) {
-
-            cmsTagTypeHandler* TypeHandler = Icc ->TagTypeHandlers[i];
-
-            if (TypeHandler != NULL) {
-                cmsTagTypeHandler LocalTypeHandler = *TypeHandler;
-
-                LocalTypeHandler.ContextID = Icc ->ContextID;              // As an additional parameters
-                LocalTypeHandler.ICCVersion = Icc ->Version;
-                LocalTypeHandler.FreePtr(&LocalTypeHandler, Icc -> TagPtrs[i]);
-            }
-            else
-                _cmsFree(Icc ->ContextID, Icc ->TagPtrs[i]);
-        }
+        freeOneTag(Icc, i);        
     }
 
     if (Icc ->IOhandler != NULL) {
@@ -1519,8 +1524,12 @@ void* CMSEXPORT cmsReadTag(cmsHPROFILE hProfile, cmsTagSignature sig)
     if (!_cmsLockMutex(Icc->ContextID, Icc ->UsrMutex)) return NULL;
 
     n = _cmsSearchTag(Icc, sig, TRUE);
-    if (n < 0) goto Error;               // Not found, return NULL
-
+    if (n < 0)
+    {
+        // Not found, return NULL
+        _cmsUnlockMutex(Icc->ContextID, Icc->UsrMutex);
+        return NULL;
+    }
 
     // If the element is already in memory, return the pointer
     if (Icc -> TagPtrs[n]) {
@@ -1616,8 +1625,12 @@ void* CMSEXPORT cmsReadTag(cmsHPROFILE hProfile, cmsTagSignature sig)
     return Icc -> TagPtrs[n];
 
 
-    // Return error and unlock tha data
+    // Return error and unlock the data
 Error:
+
+    freeOneTag(Icc, n);    
+    Icc->TagPtrs[n] = NULL;
+    
     _cmsUnlockMutex(Icc->ContextID, Icc ->UsrMutex);
     return NULL;
 }
@@ -1783,7 +1796,7 @@ cmsUInt32Number CMSEXPORT cmsReadRawTag(cmsHPROFILE hProfile, cmsTagSignature si
     // It is already read?
     if (Icc -> TagPtrs[i] == NULL) {
 
-        // No yet, get original position
+        // Not yet, get original position
         Offset   = Icc ->TagOffsets[i];
         TagSize  = Icc ->TagSizes[i];
 
