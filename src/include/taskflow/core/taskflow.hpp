@@ -3,7 +3,7 @@
 #include "flow_builder.hpp"
 
 /** 
-@file core/taskflow.hpp
+@file taskflow/core/taskflow.hpp
 @brief taskflow include file
 */
 
@@ -14,25 +14,27 @@ namespace tf {
 /**
 @class Taskflow 
 
-@brief main entry to create a task dependency graph
+@brief class to create a taskflow object 
 
 A %taskflow manages a task dependency graph where each task represents a 
 callable object (e.g., @std_lambda, @std_function) and an edge represents a 
 dependency between two tasks. A task is one of the following types:
   
-  1. static task         : the callable is constructible from 
+  1. static task         : the callable constructible from 
                            @c std::function<void()>
-  2. dynamic task        : the callable is constructible from 
+  2. dynamic task        : the callable constructible from 
                            @c std::function<void(tf::Subflow&)>
-  3. condition task      : the callable is constructible from 
+  3. condition task      : the callable constructible from 
                            @c std::function<int()>
-  4. multi-condition task: the callable is constructible from 
+  4. multi-condition task: the callable constructible from 
                            @c %std::function<tf::SmallVector<int>()>
-  5. module task         : the task is constructed from tf::Taskflow::composed_of
-  6. %cudaFlow task      : the callable is constructible from 
+  5. module task         : the task constructed from tf::Taskflow::composed_of
+  6. runtime task        : the callable constructible from
+                           @c std::function<void(tf::Runtime&)>
+  7. %cudaFlow task      : the callable constructible from 
                            @c std::function<void(tf::cudaFlow&)> or
                            @c std::function<void(tf::cudaFlowCapturer&)>
-  7. %syclFlow task      : the callable is constructible from
+  8. %syclFlow task      : the callable constructible from
                            @c std::function<void(tf::syclFlow&)>
 
 Each task is a basic computation unit and is run by one worker thread
@@ -75,8 +77,6 @@ class Taskflow : public FlowBuilder {
   friend class FlowBuilder;
 
   struct Dumper {
-    //std::stack<const Taskflow*> stack;
-    //std::unordered_set<const Taskflow*> visited;
     size_t id;
     std::stack<std::pair<const Node*, const Graph*>> stack;
     std::unordered_map<const Graph*, size_t> visited;
@@ -251,8 +251,15 @@ class Taskflow : public FlowBuilder {
     */
     template <typename V>
     void for_each_task(V&& visitor) const;
+    
+    /**
+    @brief returns a reference to the underlying graph object
 
-    Graph& graph() { return _graph; }
+    A graph object (of type tf::Graph) is the ultimate storage for the 
+    task dependency graph and should only be used as an opaque
+    data structure to interact with the executor (e.g., composition).
+    */
+    Graph& graph();
 
   private:
     
@@ -309,7 +316,7 @@ inline Taskflow& Taskflow::operator = (Taskflow&& rhs) {
 
 // Procedure:
 inline void Taskflow::clear() {
-  _graph.clear();
+  _graph._clear();
 }
 
 // Function: num_tasks
@@ -330,6 +337,11 @@ inline void Taskflow::name(const std::string &name) {
 // Function: name
 inline const std::string& Taskflow::name() const {
   return _name;
+}
+
+// Function: graph
+inline Graph& Taskflow::graph() {
+  return _graph;
 }
 
 // Function: for_each_task
@@ -406,6 +418,10 @@ inline void Taskflow::_dump(
       os << "shape=diamond color=black fillcolor=aquamarine style=filled";
     break;
 
+    case Node::RUNTIME:
+      os << "shape=component";
+    break;
+
     case Node::CUDAFLOW:
       os << " style=\"filled\""
          << " color=\"black\" fillcolor=\"purple\""
@@ -432,15 +448,18 @@ inline void Taskflow::_dump(
       os << 'p' << node << " -> p" << node->_successors[s] 
          << " [style=dashed label=\"" << s << "\"];\n";
     } else {
-        os << 'p' << node << " -> p" << node->_successors[s] << ";\n";
+      os << 'p' << node << " -> p" << node->_successors[s] << ";\n";
     }
   }
 
   // subflow join node
-  if (node->_parent && node->_successors.size() == 0) {
-      os << 'p' << node << " -> p" << node->_parent << ";\n";
+  if(node->_parent && node->_parent->_handle.index() == Node::DYNAMIC &&
+     node->_successors.size() == 0
+    ) {
+    os << 'p' << node << " -> p" << node->_parent << ";\n";
   }
-
+  
+  // node info
   switch(node->_handle.index()) {
 
     case Node::DYNAMIC: {
@@ -629,7 +648,7 @@ bool Future<T>::cancel() {
     else {
       auto ptr = arg.lock();
       if(ptr) {
-        ptr->_is_cancelled = true;
+        ptr->_is_cancelled.store(true, std::memory_order_relaxed);
         return true;
       }
       return false;

@@ -160,9 +160,9 @@ template <typename C>
 constexpr bool is_syclflow_task_v = std::is_invocable_r_v<void, C, syclFlow&>;
 
 /**
-@brief determines if a callable is a %Runtime task
+@brief determines if a callable is a runtime task
 
-A Runtime task is a callable object constructible from 
+A runtime task is a callable object constructible from 
 std::function<void(tf::Runtime&)>.
 */
 template <typename C>
@@ -175,16 +175,19 @@ constexpr bool is_runtime_task_v = std::is_invocable_r_v<void, C, Runtime&>;
 /**
 @class Task
 
-@brief handle to a node in a task dependency graph
+@brief class to create a task handle over a node in a taskflow graph
 
-A Task is handle to manipulate a node in a taskflow graph. 
+A task is a wrapper over a node in a taskflow graph. 
 It provides a set of methods for users to access and modify the attributes of 
-the associated graph node without directly touching internal node data.
-
+the associated node in the taskflow graph.
+A task is very lightweight object (i.e., only storing a node pointer) that
+can be trivially copied around,
+and it does not own the lifetime of the associated node.
 */
 class Task {
 
   friend class FlowBuilder;
+  friend class Runtime;
   friend class Taskflow;
   friend class TaskView;
   friend class Executor;
@@ -260,7 +263,8 @@ class Task {
 
     @tparam C callable type
 
-    @param callable callable to construct one of the static, dynamic, condition, and cudaFlow tasks
+    @param callable callable to construct one of the static, dynamic, condition, 
+           and cudaFlow tasks
 
     @return @c *this
     */
@@ -269,8 +273,9 @@ class Task {
     
     /**
     @brief creates a module task from a taskflow
-
-    @param graph a custom object that defines @c T::graph() method
+    
+    @tparam T object type
+    @param object a custom object that defines @c T::graph() method
 
     @return @c *this
     */
@@ -315,6 +320,28 @@ class Task {
     @brief assigns pointer to user data
 
     @param data pointer to user data
+
+    The following example shows how to attach user data to a task and
+    run the task iteratively while changing the data value:
+
+    @code{.cpp}
+    tf::Executor executor;
+    tf::Taskflow taskflow("attach data to a task");
+    
+    int data;
+    
+    // create a task and attach it the data
+    auto A = taskflow.placeholder();
+    A.data(&data).work([A](){
+      auto d = *static_cast<int*>(A.data());
+      std::cout << "data is " << d << std::endl;
+    }); 
+
+    // run the taskflow iteratively with changing data
+    for(data = 0; data<10; data++){
+      executor.run(taskflow).wait();
+    }
+    @endcode
 
     @return @c *this
     */
@@ -442,7 +469,6 @@ inline Task& Task::name(const std::string& name) {
 // Function: acquire
 inline Task& Task::acquire(Semaphore& s) {
   if(!_node->_semaphores) {
-    //_node->_semaphores.emplace();
     _node->_semaphores = std::make_unique<Node::Semaphores>();
   }
   _node->_semaphores->to_acquire.push_back(&s);

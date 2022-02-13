@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../executor.hpp"
+#include "../core/executor.hpp"
 
 namespace tf {
 
@@ -241,21 +241,22 @@ void parallel_pdqsort(
 
     //diff_t size = end - begin;
     size_t size = end - begin;
+
+    // Insertion sort is faster for small arrays.
+    if (size < insertion_sort_threshold) {
+      if (leftmost) {
+        insertion_sort(begin, end, comp);
+      }
+      else {
+        unguarded_insertion_sort(begin, end, comp);
+      }
+      return;
+    }
     
     if(size <= cutoff) {
       std::sort(begin, end, comp);
       return;
     }
-    //// Insertion sort is faster for small arrays.
-    //if (size < insertion_sort_threshold) {
-    //  if (leftmost) {
-    //    insertion_sort(begin, end, comp);
-    //  }
-    //  else {
-    //    unguarded_insertion_sort(begin, end, comp);
-    //  }
-    //  return;
-    //}
 
     // Choose pivot as median of 3 or pseudomedian of 9.
     //diff_t s2 = size / 2;
@@ -429,16 +430,16 @@ void parallel_3wqsort(tf::Subflow& sf, RandItr first, RandItr last, C compare) {
 
 // Function: sort
 template <typename B, typename E, typename C>
-Task FlowBuilder::sort(B&& beg, E&& end, C cmp) {
+Task FlowBuilder::sort(B beg, E end, C cmp) {
   
-  using I = stateful_iterator_t<B, E>;
+  using B_t = std::decay_t<unwrap_ref_decay_t<B>>;
+  using E_t = std::decay_t<unwrap_ref_decay_t<E>>;
 
-  Task task = emplace(
-  [b=std::forward<B>(beg), e=std::forward<E>(end), cmp] (Subflow& sf) mutable {
+  Task task = emplace([b=beg, e=end, cmp] (Subflow& sf) mutable {
     
     // fetch the iterator values
-    I beg = b;
-    I end = e;
+    B_t beg = b;
+    E_t end = e;
   
     if(beg == end) {
       return;
@@ -448,12 +449,12 @@ Task FlowBuilder::sort(B&& beg, E&& end, C cmp) {
     size_t N = std::distance(beg, end);
 
     // only myself - no need to spawn another graph
-    if(W <= 1 || N <= parallel_sort_cutoff<I>()) {
+    if(W <= 1 || N <= parallel_sort_cutoff<B_t>()) {
       std::sort(beg, end, cmp);
       return;
     }
 
-    //parallel_3wqsort(sf, beg, end-1, c);
+    //parallel_3wqsort(sf, beg, end-1, cmp);
     parallel_pdqsort(sf, beg, end, cmp, log2(end - beg));
 
     sf.join();
@@ -464,15 +465,9 @@ Task FlowBuilder::sort(B&& beg, E&& end, C cmp) {
 
 // Function: sort
 template <typename B, typename E>
-Task FlowBuilder::sort(B&& beg, E&& end) {
-  
-  using I = stateful_iterator_t<B, E>;
-  //using value_type = std::decay_t<decltype(*std::declval<I>())>;
-  using value_type = typename std::iterator_traits<I>::value_type;
-
-  return sort(
-    std::forward<B>(beg), std::forward<E>(end), std::less<value_type>{}
-  );
+Task FlowBuilder::sort(B beg, E end) {
+  using value_type = std::decay_t<decltype(*std::declval<B>())>;
+  return sort(beg, end, std::less<value_type>{});
 }
 
 }  // namespace tf ------------------------------------------------------------

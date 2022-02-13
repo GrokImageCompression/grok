@@ -1,10 +1,11 @@
 #pragma once
 
+#include "../taskflow.hpp"
 #include "cuda_task.hpp"
 #include "cuda_capturer.hpp"
 
 /** 
-@file cuda_flow.hpp
+@file taskflow/cuda/cudaflow.hpp
 @brief cudaFlow include file
 */
 
@@ -17,7 +18,7 @@ namespace tf {
 /**
 @class cudaFlow
 
-@brief class for building a CUDA task dependency graph
+@brief class to create a %cudaFlow task dependency graph
 
 A %cudaFlow is a high-level interface over CUDA Graph to perform GPU operations 
 using the task dependency graph model.
@@ -170,7 +171,7 @@ class cudaFlow {
     @return a tf::cudaTask handle
     */
     template <typename F, typename... ArgsT>
-    cudaTask kernel(dim3 g, dim3 b, size_t s, F&& f, ArgsT&&... args);
+    cudaTask kernel(dim3 g, dim3 b, size_t s, F f, ArgsT&&... args);
     
     /**
     @brief updates parameters of a kernel task
@@ -181,7 +182,7 @@ class cudaFlow {
     */
     template <typename F, typename... ArgsT>
     void kernel(
-      cudaTask task, dim3 g, dim3 b, size_t shm, F&& f, ArgsT&&... args
+      cudaTask task, dim3 g, dim3 b, size_t shm, F f, ArgsT&&... args
     );
     
     /**
@@ -380,12 +381,12 @@ class cudaFlow {
 
     @tparam C callable type
 
-    @param callable callable to run by a single kernel thread
+    @param c callable to run by a single kernel thread
     
     @return a tf::cudaTask handle
     */
     template <typename C>
-    cudaTask single_task(C callable);
+    cudaTask single_task(C c);
     
     /**
     @brief updates a single-threaded kernel task
@@ -394,7 +395,7 @@ class cudaFlow {
     on an existing task.
     */
     template <typename C>
-    void single_task(cudaTask task, C callable);
+    void single_task(cudaTask task, C c);
 
     /**
     @brief applies a callable to each dereferenced element of the data array
@@ -1269,7 +1270,7 @@ cudaTask cudaFlow::host(C&& c) {
 // Function: kernel
 template <typename F, typename... ArgsT>
 cudaTask cudaFlow::kernel(
-  dim3 g, dim3 b, size_t s, F&& f, ArgsT&&... args
+  dim3 g, dim3 b, size_t s, F f, ArgsT&&... args
 ) {
   
   auto node = _graph.emplace_back(
@@ -1420,7 +1421,7 @@ void cudaFlow::host(cudaTask task, C&& c) {
 // Function: update kernel parameters
 template <typename F, typename... ArgsT>
 void cudaFlow::kernel(
-  cudaTask task, dim3 g, dim3 b, size_t s, F&& f, ArgsT&&... args
+  cudaTask task, dim3 g, dim3 b, size_t s, F f, ArgsT&&... args
 ) {
 
   if(task.type() != cudaTaskType::KERNEL) {
@@ -1662,7 +1663,7 @@ template <typename C, typename D,
   std::enable_if_t<is_cudaflow_task_v<C>, void>*
 >
 Task FlowBuilder::emplace_on(C&& c, D&& d) {
-  auto n = _graph.emplace_back(
+  auto n = _graph._emplace_back(
     std::in_place_type_t<Node::cudaFlow>{},
     [c=std::forward<C>(c), d=std::forward<D>(d)] (Executor& e, Node* p) mutable {
       cudaScopedDevice ctx(d);

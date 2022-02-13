@@ -658,12 +658,12 @@ class Executor {
     void _invoke(Worker&, Node*);
     void _invoke_static_task(Worker&, Node*);
     void _invoke_dynamic_task(Worker&, Node*);
-    void _join_dynamic_task_external(Worker&, Node*, Graph&);
-    void _join_dynamic_task_internal(Worker&, Node*, Graph&);
-    void _detach_dynamic_task(Worker&, Node*, Graph&);
+    void _invoke_dynamic_task_external(Worker&, Node*, Graph&, bool);
+    void _invoke_dynamic_task_internal(Worker&, Node*, Graph&);
     void _invoke_condition_task(Worker&, Node*, SmallVector<int>&);
     void _invoke_multi_condition_task(Worker&, Node*, SmallVector<int>&);
-    void _invoke_module_task(Worker&, Node*);
+    void _invoke_module_task(Worker&, Node*, bool&);
+    void _invoke_module_task_internal(Worker&, Node*, Graph&, bool&);
     void _invoke_async_task(Worker&, Node*);
     void _invoke_silent_async_task(Worker&, Node*);
     void _invoke_cudaflow_task(Worker&, Node*);
@@ -878,9 +878,7 @@ inline void Executor::_consume_task(Worker& w, Node* p) {
   std::uniform_int_distribution<size_t> rdvtm(0, _workers.size()-1);
 
   while(p->_join_counter != 0) {
-
     exploit:
-
     if(auto t = w._wsq.pop(); t) {
       _invoke(w, t);
     }
@@ -892,7 +890,6 @@ inline void Executor::_consume_task(Worker& w, Node* p) {
       explore:
 
       t = (w._id == w._vtm) ? _wsq.steal() : _workers[w._vtm]._wsq.steal();
-
       if(t) {
         _invoke(w, t);
         goto exploit;
@@ -900,7 +897,6 @@ inline void Executor::_consume_task(Worker& w, Node* p) {
       else if(p->_join_counter != 0){
 
         if(num_steals++ > max_steals) {
-          //(num_pauses++ < 100) ? relax_cpu() : std::this_thread::yield();
           std::this_thread::yield();
         }
 
@@ -1164,10 +1160,23 @@ inline void Executor::_schedule(const SmallVector<Node*>& nodes) {
 // Procedure: _invoke
 inline void Executor::_invoke(Worker& worker, Node* node) {
   
+  int state;
+  SmallVector<int> conds;
+
   // synchronize all outstanding memory operations caused by reordering
-  while(!(node->_state.load(std::memory_order_acquire) & Node::READY));
+  do {
+    state = node->_state.load(std::memory_order_acquire);
+  } while(! (state & Node::READY));
+
+  // unwind stack for deferred node
+  if(state & Node::DEFERRED) {
+    node->_state.fetch_and(~Node::DEFERRED, std::memory_order_relaxed);
+    goto invoke_epilogue;
+  }
   
-  begin_invoke:
+  //while(!(node->_state.load(std::memory_order_acquire) & Node::READY));
+  
+  invoke_prologue:
 
   // no need to do other things if the topology is cancelled
   if(node->_is_cancelled()) {
@@ -1187,7 +1196,7 @@ inline void Executor::_invoke(Worker& worker, Node* node) {
 
   // condition task
   //int cond = -1;
-  SmallVector<int> conds;
+  //SmallVector<int> conds = { -1 };
   
   // switch is faster than nested if-else due to jump table
   switch(node->_handle.index()) {
@@ -1217,7 +1226,11 @@ inline void Executor::_invoke(Worker& worker, Node* node) {
 
     // module task
     case Node::MODULE: {
-      _invoke_module_task(worker, node);
+      bool deferred = false;
+      _invoke_module_task(worker, node, deferred);
+      if(deferred) {
+        return;
+      }
     }
     break;
 
@@ -1259,6 +1272,8 @@ inline void Executor::_invoke(Worker& worker, Node* node) {
     default:
     break;
   }
+
+  invoke_epilogue:
 
   // if releasing semaphores exist, release them
   if(node->_semaphores && !node->_semaphores->to_release.empty()) {
@@ -1326,7 +1341,7 @@ inline void Executor::_invoke(Worker& worker, Node* node) {
   if(cache) {
     node = cache;
     //node->_state.fetch_or(Node::READY, std::memory_order_release);
-    goto begin_invoke;
+    goto invoke_prologue;
   }
 }
 
@@ -1345,13 +1360,18 @@ inline void Executor::_tear_down_async(Node* node) {
 inline void Executor::_tear_down_invoke(Worker& worker, Node* node) {
   // we must check parent first before substracting the join counter,
   // or it can introduce data race
-  if(node->_parent == nullptr) {
+  if(auto parent = node->_parent; parent == nullptr) {
     if(node->_topology->_join_counter.fetch_sub(1) == 1) {
       _tear_down_topology(worker, node->_topology);
     }
   }
-  else {  // joined subflow
-    node->_parent->_join_counter.fetch_sub(1);
+  else {
+    // prefetch the deferred status, as subtracting the join counter can 
+    // immediately cause the other worker to release the subflow
+    auto deferred = parent->_state.load(std::memory_order_relaxed) & Node::DEFERRED;
+    if(parent->_join_counter.fetch_sub(1) == 1 && deferred) {
+      _schedule(worker, parent);
+    }
   }
 }
 
@@ -1413,15 +1433,15 @@ inline void Executor::_invoke_dynamic_task(Worker& w, Node* node) {
   handle->work(sf);
 
   if(sf._joinable) {
-    _join_dynamic_task_internal(w, node, handle->subgraph);
+    _invoke_dynamic_task_internal(w, node, handle->subgraph);
   }
   
   _observer_epilogue(w, node);
 }
 
-// Procedure: _detach_dynamic_task
-inline void Executor::_detach_dynamic_task(
-  Worker& w, Node* p, Graph& g
+// Procedure: _invoke_dynamic_task_external
+inline void Executor::_invoke_dynamic_task_external(
+  Worker& w, Node* p, Graph& g, bool detach
 ) {
 
   // graph is empty and has no async tasks
@@ -1433,55 +1453,44 @@ inline void Executor::_detach_dynamic_task(
 
   for(auto n : g._nodes) {
 
-    n->_state.store(Node::DETACHED, std::memory_order_relaxed);
-    n->_set_up_join_counter();
     n->_topology = p->_topology;
-    n->_parent = nullptr;
-    
-    if(n->num_dependents() == 0) {
-      src.push_back(n);
-    }
-  }
-
-  {
-    std::lock_guard<std::mutex> lock(p->_topology->_taskflow._mutex);
-    p->_topology->_taskflow._graph._merge(std::move(g));
-  }
-
-  p->_topology->_join_counter.fetch_add(src.size());
-  _schedule(w, src);
-}
-
-// Procedure: _join_dynamic_task_external
-inline void Executor::_join_dynamic_task_external(
-  Worker& w, Node* p, Graph& g
-) {
-
-  // graph is empty and has no async tasks
-  if(g.empty() && p->_join_counter == 0) {
-    return;
-  }
-
-  SmallVector<Node*> src; 
-
-  for(auto n : g._nodes) {
-
     n->_state.store(0, std::memory_order_relaxed);
     n->_set_up_join_counter();
-    n->_topology = p->_topology;
-    n->_parent = p;
+
+    if(detach) {
+      n->_parent = nullptr;
+      n->_state.fetch_or(Node::DETACHED, std::memory_order_relaxed);
+    }
+    else {
+      n->_parent = p;
+    }
     
     if(n->num_dependents() == 0) {
       src.push_back(n);
     }
   }
-  p->_join_counter.fetch_add(src.size());
-  _schedule(w, src);
-  _consume_task(w, p);
+
+  // detach here
+  if(detach) {
+    
+    {
+      std::lock_guard<std::mutex> lock(p->_topology->_taskflow._mutex);
+      p->_topology->_taskflow._graph._merge(std::move(g));
+    }
+
+    p->_topology->_join_counter.fetch_add(src.size());
+    _schedule(w, src);
+  }
+  // join here
+  else {  
+    p->_join_counter.fetch_add(src.size());
+    _schedule(w, src);
+    _consume_task(w, p);
+  }
 }
 
-// Procedure: _join_dynamic_task_internal
-inline void Executor::_join_dynamic_task_internal(
+// Procedure: _invoke_dynamic_task_internal
+inline void Executor::_invoke_dynamic_task_internal(
   Worker& w, Node* p, Graph& g
 ) {
 
@@ -1504,6 +1513,35 @@ inline void Executor::_join_dynamic_task_internal(
   p->_join_counter.fetch_add(src.size());
   _schedule(w, src);
   _consume_task(w, p);
+}
+
+// Procedure: _invoke_module_task_internal
+inline void Executor::_invoke_module_task_internal(
+  Worker& w, Node* p, Graph& g, bool& deferred
+) {
+
+  // graph is empty and has no async tasks
+  if(g.empty()) {
+    return;
+  }
+
+  // set deferred
+  deferred = true;
+  p->_state.fetch_or(Node::DEFERRED, std::memory_order_relaxed);
+
+  SmallVector<Node*> src; 
+
+  for(auto n : g._nodes) {
+    n->_topology = p->_topology;
+    n->_state.store(0, std::memory_order_relaxed);
+    n->_set_up_join_counter();
+    n->_parent = p;
+    if(n->num_dependents() == 0) {
+      src.push_back(n);
+    }
+  }
+  p->_join_counter.fetch_add(src.size());
+  _schedule(w, src);
 }
 
 // Procedure: _invoke_condition_task
@@ -1539,10 +1577,10 @@ inline void Executor::_invoke_syclflow_task(Worker& worker, Node* node) {
 }
 
 // Procedure: _invoke_module_task
-inline void Executor::_invoke_module_task(Worker& w, Node* node) {
+inline void Executor::_invoke_module_task(Worker& w, Node* node, bool& deferred) {
   _observer_prologue(w, node);
-  _join_dynamic_task_internal(
-    w, node, std::get_if<Node::Module>(&node->_handle)->graph
+  _invoke_module_task_internal(
+    w, node, std::get_if<Node::Module>(&node->_handle)->graph, deferred
   );
   _observer_epilogue(w, node);  
 }
@@ -1832,7 +1870,7 @@ inline void Subflow::join() {
   }
   
   // only the parent worker can join the subflow
-  _executor._join_dynamic_task_external(_worker, _parent, _graph);
+  _executor._invoke_dynamic_task_external(_worker, _parent, _graph, false);
   _joinable = false;
 }
 
@@ -1845,7 +1883,7 @@ inline void Subflow::detach() {
   }
 
   // only the parent worker can detach the subflow
-  _executor._detach_dynamic_task(_worker, _parent, _graph);
+  _executor._invoke_dynamic_task_external(_worker, _parent, _graph, true);
   _joinable = false;
 }
 
@@ -1968,7 +2006,7 @@ void Runtime::run(C&& callable) {
     Subflow sf(_executor, _worker, _parent, graph); 
     callable(sf);
     if(sf._joinable) {
-      _executor._join_dynamic_task_internal(_worker, _parent, graph);
+      _executor._invoke_dynamic_task_internal(_worker, _parent, graph);
     }
   }
   else {

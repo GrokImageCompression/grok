@@ -179,8 +179,9 @@ class FlowBuilder {
 
     @param task task to remove
 
-    Removes a task and its input and output dependencies from this graph. 
-    If the task does not belong to this graph, nothing will happen.
+    Removes a task and its input and output dependencies from the graph
+    associated with the flow builder. 
+    If the task does not belong to the graph, nothing will happen.
 
     @code{.cpp}
     tf::Task A = taskflow.emplace([](){ std::cout << "A"; });
@@ -196,11 +197,53 @@ class FlowBuilder {
     void erase(Task task);
 
     /**
-    @brief creates a module task from a taskflow
-
-    @param taskflow a custom object that defines @c T::graph() method
+    @brief creates a module task for the target object
+    
+    @tparam T target object type
+    @param object a custom object that defines the method @c T::graph()
 
     @return a tf::Task handle
+
+    The example below demonstrates a taskflow composition using
+    the @c composed_of method.
+
+    @code{.cpp}
+    tf::Taskflow t1, t2;
+    t1.emplace([](){ std::cout << "t1"; });
+
+    // t2 is partially composed of t1
+    tf::Task comp = t2.composed_of(t1);
+    tf::Task init = t2.emplace([](){ std::cout << "t2"; });
+    init.precede(comp);
+    @endcode
+
+    The taskflow object @c t2 is composed of another taskflow object @c t1,
+    preceded by another static task @c init.
+    When taskflow @c t2 is submitted to an executor,
+    @c init will run first and then @c comp which spwans its definition 
+    in taskflow @c t1.
+
+    The target @c object being composed must define the method 
+    <tt>T::graph()</tt> that returns a reference to a graph object of
+    type tf::Graph such that it can interact with the executor.
+    For example:
+
+    @code{.cpp}
+    // custom struct
+    struct MyObj {
+      tf::Graph graph;
+      MyObj() {
+        tf::FlowBuilder builder(graph);
+        tf::Task task = builder.emplace([](){
+          std::cout << "a task\n";  // static task
+        });
+      }
+      Graph& graph() { return graph; }
+    };
+
+    MyObj obj;
+    tf::Task comp = taskflow.composed_of(obj);
+    @endcode
 
     Please refer to @ref ComposableTasking for details.
     */
@@ -356,10 +399,14 @@ class FlowBuilder {
 
     @return a tf::Task handle
 
-    The following example creates a runtime task.
+    The following example creates a runtime task that enables in-task
+    control over the running executor.
 
     @code{.cpp}
-    tf::Task runtime_task = taskflow.emplace([](tf::Runtime& rt){});
+    tf::Task runtime_task = taskflow.emplace([](tf::Runtime& rt){
+      auto& executor = rt.executor();
+      std::cout << executor.num_workers() << '\n';
+    });
     @endcode
     
     Please refer to @ref RuntimeTasking for details.
@@ -439,10 +486,10 @@ class FlowBuilder {
     Please refer to @ref ParallelIterations for details.
     */
     template <typename B, typename E, typename C>
-    Task for_each(B&& first, E&& last, C callable);
+    Task for_each(B first, E last, C callable);
     
     /**
-    @brief constructs an index-based parallel-for task 
+    @brief constructs a parallel-transform task
 
     @tparam B beginning index type (must be integral)
     @tparam E ending index type (must be integral)
@@ -478,7 +525,77 @@ class FlowBuilder {
     Please refer to @ref ParallelIterations for details.
     */
     template <typename B, typename E, typename S, typename C>
-    Task for_each_index(B&& first, E&& last, S&& step, C callable);
+    Task for_each_index(B first, E last, S step, C callable);
+
+    // ------------------------------------------------------------------------
+    // transform
+    // ------------------------------------------------------------------------
+
+    /**
+    @brief constructs a parallel-transform task 
+
+    @tparam B beginning input iterator type
+    @tparam E ending input iterator type
+    @tparam O output iterator type
+    @tparam C callable type
+
+    @param first1 iterator to the beginning of the first range
+    @param last1 iterator to the end of the first range
+    @param d_first iterator to the beginning of the output range 
+    @param c an unary callable to apply to dereferenced input elements
+
+    @return a tf::Task handle
+    
+    The task spawns a subflow that applies the callable object to an
+    input range and stores the result in another output range.
+    This method is equivalent to the parallel execution of the following loop:
+    
+    @code{.cpp}
+    while (first1 != last1) {
+      *d_first++ = c(*first1++);
+    }
+    @endcode
+
+    Arguments are templated to enable stateful range using std::reference_wrapper.
+    The callable needs to take a single argument of the dereferenced 
+    iterator type.
+    */
+    template <typename B, typename E, typename O, typename C>
+    Task transform(B first1, E last1, O d_first, C c);
+
+    /**
+    @brief constructs a parallel-transform task
+
+    @tparam B1 beginning input iterator type for the first input range
+    @tparam E1 ending input iterator type for the first input range
+    @tparam B2 beginning input iterator type for the first second range
+    @tparam O output iterator type
+    @tparam C callable type
+
+    @param first1 iterator to the beginning of the first input range
+    @param last1 iterator to the end of the first input range
+    @param first2 iterator to the beginning of the second input range
+    @param d_first iterator to the beginning of the output range
+    @param c a binary operator to apply to dereferenced input elements
+
+    @return a tf::Task handle
+    
+    The task spawns a subflow that applies the callable object to two
+    input ranges and stores the result in another output range.
+    This method is equivalent to the parallel execution of the following loop:
+    
+    @code{.cpp}
+    while (first1 != last1) {
+      *d_first++ = c(*first1++, *first2++);
+    }
+    @endcode
+
+    Arguments are templated to enable stateful range using std::reference_wrapper.
+    The callable needs to take two arguments of dereferenced elements
+    from the two input ranges.
+    */
+    template <typename B1, typename E1, typename B2, typename O, typename C>
+    Task transform(B1 first1, E1 last1, B2 first2, O d_first, C c);
     
     // ------------------------------------------------------------------------
     // reduction
@@ -515,7 +632,7 @@ class FlowBuilder {
     Please refer to @ref ParallelReduction for details.
     */
     template <typename B, typename E, typename T, typename O>
-    Task reduce(B&& first, E&& last, T& init, O bop);
+    Task reduce(B first, E last, T& init, O bop);
 
     // ------------------------------------------------------------------------
     // transfrom and reduction
@@ -554,7 +671,7 @@ class FlowBuilder {
     Please refer to @ref ParallelReduction for details. 
     */
     template <typename B, typename E, typename T, typename BOP, typename UOP>
-    Task transform_reduce(B&& first, E&& last, T& init, BOP bop, UOP uop);
+    Task transform_reduce(B first, E last, T& init, BOP bop, UOP uop);
     
     // ------------------------------------------------------------------------
     // sort
@@ -579,7 +696,7 @@ class FlowBuilder {
     Please refer to @ref ParallelSort for details.
     */
     template <typename B, typename E, typename C>
-    Task sort(B&& first, E&& last, C cmp);
+    Task sort(B first, E last, C cmp);
     
     /**
     @brief constructs a dynamic task to perform STL-styled parallel sort using
@@ -600,7 +717,7 @@ class FlowBuilder {
     Please refer to @ref ParallelSort for details.
      */
     template <typename B, typename E>
-    Task sort(B&& first, E&& last);
+    Task sort(B first, E last);
     
   protected:
     
@@ -623,7 +740,7 @@ inline FlowBuilder::FlowBuilder(Graph& graph) :
 // Function: emplace
 template <typename C, std::enable_if_t<is_static_task_v<C>, void>*>
 Task FlowBuilder::emplace(C&& c) {
-  return Task(_graph.emplace_back(
+  return Task(_graph._emplace_back(
     std::in_place_type_t<Node::Static>{}, std::forward<C>(c)
   ));
 }
@@ -631,7 +748,7 @@ Task FlowBuilder::emplace(C&& c) {
 // Function: emplace
 template <typename C, std::enable_if_t<is_dynamic_task_v<C>, void>*>
 Task FlowBuilder::emplace(C&& c) {
-  return Task(_graph.emplace_back(
+  return Task(_graph._emplace_back(
     std::in_place_type_t<Node::Dynamic>{}, std::forward<C>(c)
   ));
 }
@@ -639,7 +756,7 @@ Task FlowBuilder::emplace(C&& c) {
 // Function: emplace
 template <typename C, std::enable_if_t<is_condition_task_v<C>, void>*>
 Task FlowBuilder::emplace(C&& c) {
-  return Task(_graph.emplace_back(
+  return Task(_graph._emplace_back(
     std::in_place_type_t<Node::Condition>{}, std::forward<C>(c)
   ));
 }
@@ -647,7 +764,7 @@ Task FlowBuilder::emplace(C&& c) {
 // Function: emplace
 template <typename C, std::enable_if_t<is_multi_condition_task_v<C>, void>*>
 Task FlowBuilder::emplace(C&& c) {
-  return Task(_graph.emplace_back(
+  return Task(_graph._emplace_back(
     std::in_place_type_t<Node::MultiCondition>{}, std::forward<C>(c)
   ));
 }
@@ -655,7 +772,7 @@ Task FlowBuilder::emplace(C&& c) {
 // Function: emplace
 template <typename C, std::enable_if_t<is_runtime_task_v<C>, void>*>
 Task FlowBuilder::emplace(C&& c) {
-  return Task(_graph.emplace_back(
+  return Task(_graph._emplace_back(
     std::in_place_type_t<Node::Runtime>{}, std::forward<C>(c)
   ));
 }
@@ -687,13 +804,13 @@ inline void FlowBuilder::erase(Task task) {
     }
   });
   
-  _graph.erase(task._node);
+  _graph._erase(task._node);
 }
 
 // Function: composed_of    
 template <typename T>
 Task FlowBuilder::composed_of(T& object) {
-  auto node = _graph.emplace_back(
+  auto node = _graph._emplace_back(
     std::in_place_type_t<Node::Module>{}, object
   );
   return Task(node);
@@ -701,7 +818,7 @@ Task FlowBuilder::composed_of(T& object) {
 
 // Function: placeholder
 inline Task FlowBuilder::placeholder() {
-  auto node = _graph.emplace_back();
+  auto node = _graph._emplace_back();
   return Task(node);
 }
 
@@ -773,6 +890,7 @@ class Subflow : public FlowBuilder {
 
   friend class Executor;
   friend class FlowBuilder;
+  friend class Runtime;
 
   public:
     
@@ -788,6 +906,8 @@ class Subflow : public FlowBuilder {
       sf.join();  // join the subflow of one task
     });
     @endcode
+
+    Only the worker that spawns this subflow can join it.
     */
     void join();
 
@@ -803,11 +923,16 @@ class Subflow : public FlowBuilder {
       sf.detach();
     });
     @endcode
+
+    Only the worker that spawns this subflow can detach it.
     */
     void detach();
 
     /**
     @brief resets the subflow to a clean graph of joinable state
+
+    Resetting a subflow will first clear the underlying task dependency
+    graphs and then change the subflow to a joinable state.
     */
     void reset();
     
@@ -947,7 +1072,7 @@ class Subflow : public FlowBuilder {
     @endcode
 
     This member function is thread-safe.
-     */
+    */
     template <typename F, typename... ArgsT>
     void named_silent_async(const std::string& name, F&& f, ArgsT&&... args);
     
@@ -958,19 +1083,29 @@ class Subflow : public FlowBuilder {
 
   private:
     
-    Subflow(Executor&, Node*, Graph&);
-
     Executor& _executor;
+    Worker& _worker;
     Node* _parent;
-
     bool _joinable {true};
+    
+    Subflow(Executor&, Worker&, Node*, Graph&);
+    
+    template <typename F, typename... ArgsT>
+    auto _named_async(Worker& w, const std::string& name, F&& f, ArgsT&&... args);
+    
+    template <typename F, typename... ArgsT>
+    void _named_silent_async(Worker& w, const std::string& name, F&& f, ArgsT&&... args);
 };
 
 // Constructor
-inline Subflow::Subflow(Executor& executor, Node* parent, Graph& graph) :
+inline Subflow::Subflow(
+  Executor& executor, Worker& worker, Node* parent, Graph& graph
+) :
   FlowBuilder {graph},
   _executor   {executor},
+  _worker     {worker},
   _parent     {parent} {
+  // assert(_parent != nullptr);
 }
 
 // Function: joined
@@ -985,7 +1120,7 @@ inline Executor& Subflow::executor() {
 
 // Procedure: reset
 inline void Subflow::reset() {
-  _graph.clear();
+  _graph._clear();
   _joinable = true;
 }
 

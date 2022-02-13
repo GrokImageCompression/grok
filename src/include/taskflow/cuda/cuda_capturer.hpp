@@ -17,7 +17,7 @@ namespace tf {
 /**
 @class cudaFlowCapturer
 
-@brief class for building a CUDA task dependency graph through stream capture
+@brief class to create a %cudaFlow graph using stream capture
 
 The usage of tf::cudaFlowCapturer is similar to tf::cudaFlow, except users can
 call the method tf::cudaFlowCapturer::on to capture a sequence of asynchronous 
@@ -271,7 +271,7 @@ class cudaFlowCapturer {
     @return cudaTask handle
     */ 
     template <typename F, typename... ArgsT>
-    cudaTask kernel(dim3 g, dim3 b, size_t s, F&& f, ArgsT&&... args);
+    cudaTask kernel(dim3 g, dim3 b, size_t s, F f, ArgsT&&... args);
     
     /**
     @brief updates a capture task to a kernel operation
@@ -281,7 +281,7 @@ class cudaFlowCapturer {
     */
     template <typename F, typename... ArgsT>
     void kernel(
-      cudaTask task, dim3 g, dim3 b, size_t s, F&& f, ArgsT&&... args
+      cudaTask task, dim3 g, dim3 b, size_t s, F f, ArgsT&&... args
     );
 
     // ------------------------------------------------------------------------
@@ -293,10 +293,10 @@ class cudaFlowCapturer {
 
     @tparam C callable type
 
-    @param callable callable to run by a single kernel thread
+    @param c callable to run by a single kernel thread
     */
     template <typename C>
-    cudaTask single_task(C callable);
+    cudaTask single_task(C c);
     
     /**
     @brief updates a capture task to a single-threaded kernel
@@ -305,7 +305,7 @@ class cudaFlowCapturer {
     on an existing task.
     */
     template <typename C>
-    void single_task(cudaTask task, C callable);
+    void single_task(cudaTask task, C c);
     
     /**
     @brief captures a kernel that applies a callable to each dereferenced element 
@@ -1154,7 +1154,7 @@ inline cudaTask cudaFlowCapturer::memset(void* ptr, int v, size_t n) {
 // Function: kernel
 template <typename F, typename... ArgsT>
 cudaTask cudaFlowCapturer::kernel(
-  dim3 g, dim3 b, size_t s, F&& f, ArgsT&&... args
+  dim3 g, dim3 b, size_t s, F f, ArgsT&&... args
 ) {
   return on([g, b, s, f, args...] (cudaStream_t stream) mutable {
     f<<<g, b, s, stream>>>(args...);
@@ -1298,7 +1298,7 @@ inline void cudaFlowCapturer::memset(
 // Function: kernel
 template <typename F, typename... ArgsT>
 void cudaFlowCapturer::kernel(
-  cudaTask task, dim3 g, dim3 b, size_t s, F&& f, ArgsT&&... args
+  cudaTask task, dim3 g, dim3 b, size_t s, F f, ArgsT&&... args
 ) {
   on(task, [g, b, s, f, args...] (cudaStream_t stream) mutable {
     f<<<g, b, s, stream>>>(args...);

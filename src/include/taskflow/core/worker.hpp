@@ -11,6 +11,10 @@
 
 namespace tf {
 
+// ----------------------------------------------------------------------------
+// Class Definition: Worker
+// ----------------------------------------------------------------------------
+
 /**
 @private
 */
@@ -27,32 +31,35 @@ class Worker {
     Notifier::Waiter* _waiter;
     std::default_random_engine _rdgen { std::random_device{}() };
     TaskQueue<Node*> _wsq;
-
 };
+
+// ----------------------------------------------------------------------------
+// Class Definition: PerThreadWorker
+// ----------------------------------------------------------------------------
 
 /**
 @private
 */
-struct PerThreadWorker {
-
-  Worker* worker;
-
-  PerThreadWorker() : worker {nullptr} {}
-
-  PerThreadWorker(const PerThreadWorker&) = delete;
-  PerThreadWorker(PerThreadWorker&&) = delete;
-
-  PerThreadWorker& operator = (const PerThreadWorker&) = delete;
-  PerThreadWorker& operator = (PerThreadWorker&&) = delete;
-};
+//struct PerThreadWorker {
+//
+//  Worker* worker;
+//
+//  PerThreadWorker() : worker {nullptr} {}
+//
+//  PerThreadWorker(const PerThreadWorker&) = delete;
+//  PerThreadWorker(PerThreadWorker&&) = delete;
+//
+//  PerThreadWorker& operator = (const PerThreadWorker&) = delete;
+//  PerThreadWorker& operator = (PerThreadWorker&&) = delete;
+//};
 
 /**
 @private
 */
-inline PerThreadWorker& this_worker() {
-  thread_local PerThreadWorker worker;
-  return worker;
-}
+//inline PerThreadWorker& this_worker() {
+//  thread_local PerThreadWorker worker;
+//  return worker;
+//}
 
 // ----------------------------------------------------------------------------
 // Class Definition: WorkerView
