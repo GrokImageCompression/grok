@@ -21,17 +21,17 @@
 #include "FileStreamIO.h"
 #include <lcms2.h>
 
-static bool reclaimCallback(grk_serialize_buf buffer, void* serialize_user_data){
+static bool reclaimCallback(grk_serialize_buf buffer, void* serialize_user_data)
+{
 	auto pool = (BufferPool*)serialize_user_data;
-	if (pool)
+	if(pool)
 		pool->put(GrkSerializeBuf(buffer));
 
 	return true;
 }
 
 ImageFormat::ImageFormat()
-	: image_(nullptr), fileIO_(new FileStreamIO()),
-	  fileStream_(nullptr), fileName_(""),
+	: image_(nullptr), fileIO_(new FileStreamIO()), fileStream_(nullptr), fileName_(""),
 	  compressionLevel_(GRK_DECOMPRESS_COMPRESSION_LEVEL_DEFAULT), useStdIO_(false),
 	  encodeState(IMAGE_FORMAT_UNENCODED)
 {}
@@ -39,19 +39,24 @@ ImageFormat::~ImageFormat()
 {
 	delete fileIO_;
 }
-void  ImageFormat::serializeRegisterClientCallback(grk_serialize_callback reclaim_callback,void* user_data){
+void ImageFormat::serializeRegisterClientCallback(grk_serialize_callback reclaim_callback,
+												  void* user_data)
+{
 	serializer.serializeRegisterClientCallback(reclaim_callback, user_data);
 }
-void ImageFormat::serializeRegisterApplicationClient(void){
-	serializeRegisterClientCallback(reclaimCallback,&pool);
+void ImageFormat::serializeRegisterApplicationClient(void)
+{
+	serializeRegisterClientCallback(reclaimCallback, &pool);
 }
-void ImageFormat::serializeReclaimBuffer(grk_serialize_buf buffer){
+void ImageFormat::serializeReclaimBuffer(grk_serialize_buf buffer)
+{
 	auto cb = serializer.getSerializerReclaimCallback();
-	if (cb)
+	if(cb)
 		cb(buffer, serializer.getSerializerReclaimUserData());
 }
 #ifndef GROK_HAVE_URING
-void ImageFormat::reclaim(grk_serialize_buf pixels){
+void ImageFormat::reclaim(grk_serialize_buf pixels)
+{
 	// for synchronous encode, we immediately return the pixel buffer to the pool
 	serializeReclaimBuffer(GrkSerializeBuf(pixels));
 }
@@ -108,8 +113,9 @@ bool ImageFormat::encodePixelsCore(grk_serialize_buf pixels)
 
 	return success;
 }
-bool ImageFormat::encodePixelsCoreWrite(grk_serialize_buf pixels){
-	 return (serializer.write(pixels.data, pixels.dataLen) == pixels.dataLen);
+bool ImageFormat::encodePixelsCoreWrite(grk_serialize_buf pixels)
+{
+	return (serializer.write(pixels.data, pixels.dataLen) == pixels.dataLen);
 }
 bool ImageFormat::encodeFinish(void)
 {
@@ -145,7 +151,7 @@ bool ImageFormat::read(uint8_t* buf, size_t len)
 }
 bool ImageFormat::seek(int64_t pos, int whence)
 {
-	return fileIO_->seek(pos,whence) == 0U;
+	return fileIO_->seek(pos, whence) == 0U;
 }
 uint32_t ImageFormat::getEncodeState(void)
 {

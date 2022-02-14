@@ -27,7 +27,6 @@
 #include <tiffio.h>
 #include "convert.h"
 
-
 /* TIFF conversion*/
 void tiffSetErrorAndWarningHandlers(bool verbose);
 

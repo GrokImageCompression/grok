@@ -56,9 +56,7 @@ struct pnm_header
 	PNM_COLOUR_SPACE colour_space;
 };
 
-PNMFormat::PNMFormat(bool split) : forceSplit(split)
-{
-}
+PNMFormat::PNMFormat(bool split) : forceSplit(split) {}
 
 bool PNMFormat::encodeHeader(void)
 {
@@ -94,7 +92,7 @@ bool PNMFormat::encodeHeader(void)
 	// write first header if we start with non-split encode
 	if(doNonSplitEncode())
 	{
-		if (!serializer.open(fileName_, "wb"))
+		if(!serializer.open(fileName_, "wb"))
 			return false;
 		if(!writeHeader(false))
 			return false;
@@ -136,7 +134,7 @@ bool PNMFormat::writeHeader(bool doPGM)
 	}
 	auto str = iss.str();
 	size_t res;
-	if (fileStream_)
+	if(fileStream_)
 		res = fwrite(str.c_str(), sizeof(uint8_t), str.size(), fileStream_);
 	else
 		res = serializer.write((uint8_t*)str.c_str(), str.size());
@@ -166,7 +164,7 @@ bool PNMFormat::encodePixels(void)
 	}
 
 	return (image_->decompressPrec > 8U) ? encodeRows<uint16_t>(image_->decompressHeight)
-								 : encodeRows<uint8_t>( image_->decompressHeight);
+										 : encodeRows<uint8_t>(image_->decompressHeight);
 }
 bool PNMFormat::encodeFinish(void)
 {
@@ -196,7 +194,8 @@ bool PNMFormat::encodeRows(uint32_t rows)
 		uint32_t h = 0;
 		GrkSerializeBuf packedBuf;
 		int32_t adjust = (image_->comps[0].sgnd ? 1 << (image_->decompressPrec - 1) : 0);
-		auto iter = grk::InterleaverFactory<int32_t>::makeInterleaver(image_->decompressPrec > 8U ? grk::packer16BitBE : 8);
+		auto iter = grk::InterleaverFactory<int32_t>::makeInterleaver(
+			image_->decompressPrec > 8U ? grk::packer16BitBE : 8);
 
 		if(!iter)
 			goto cleanup;
@@ -205,8 +204,8 @@ bool PNMFormat::encodeRows(uint32_t rows)
 			uint32_t stripRows = (std::min)(image_->rowsPerStrip, height - h);
 			packedBuf = pool.get(image_->packedRowBytes * stripRows);
 			iter->interleave((int32_t**)planes, decompressNumComps, packedBuf.data,
-							 image_->decompressWidth, image_->comps[0].stride, image_->packedRowBytes,
-							 stripRows, adjust);
+							 image_->decompressWidth, image_->comps[0].stride,
+							 image_->packedRowBytes, stripRows, adjust);
 			packedBuf.pooled = true;
 			packedBuf.offset = serializer.getOffset();
 			packedBuf.dataLen = image_->packedRowBytes * stripRows;
@@ -298,8 +297,8 @@ bool PNMFormat::writeRows(uint32_t rowsOffset, uint32_t rows, uint16_t compno, T
 	int32_t adjust = (image_->comps[0].sgnd ? 1 << (image_->decompressPrec - 1) : 0);
 	int32_t* compPtr[4] = {nullptr, nullptr, nullptr, nullptr};
 	T* outPtr = buf + *outCount;
-	uint16_t start 	= singleComp ? compno : 0;
-	uint16_t end 	= singleComp ? compno + 1 : ncomp;
+	uint16_t start = singleComp ? compno : 0;
+	uint16_t end = singleComp ? compno + 1 : ncomp;
 	for(uint16_t i = start; i < end; ++i)
 		compPtr[i] = (image_->comps + i)->data + rowsOffset * image_->comps[0].stride;
 	for(uint32_t j = 0; j < rows; ++j)
@@ -309,11 +308,16 @@ bool PNMFormat::writeRows(uint32_t rowsOffset, uint32_t rows, uint16_t compno, T
 			for(uint16_t i = start; i < end; ++i)
 			{
 				int32_t v = *compPtr[i]++ + adjust;
-				if (fileStream_) {
-					if(!grk::writeBytes<T>((T)v, buf, &outPtr, outCount, bufSize, true, fileStream_))
+				if(fileStream_)
+				{
+					if(!grk::writeBytes<T>((T)v, buf, &outPtr, outCount, bufSize, true,
+										   fileStream_))
 						return false;
-				} else {
-					if(!grk::writeBytes<T>((T)v, buf, &outPtr, outCount, bufSize, true,  &serializer))
+				}
+				else
+				{
+					if(!grk::writeBytes<T>((T)v, buf, &outPtr, outCount, bufSize, true,
+										   &serializer))
 						return false;
 				}
 			}
@@ -329,7 +333,7 @@ bool PNMFormat::hasAlpha(void)
 	if(!image_)
 		return false;
 	uint16_t ncomp = image_->decompressNumComps;
-	return (ncomp == 4 && isOpacity(ncomp-1)) || (ncomp == 2 && isOpacity(ncomp-1));
+	return (ncomp == 4 && isOpacity(ncomp - 1)) || (ncomp == 2 && isOpacity(ncomp - 1));
 }
 bool PNMFormat::isOpacity(uint16_t compno)
 {

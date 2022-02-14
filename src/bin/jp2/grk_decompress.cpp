@@ -977,8 +977,8 @@ static void cleanUpFile(const char* outfile)
 }
 
 static void grkSerializeRegisterClientCallback(grk_serialize_callback reclaim_callback,
-												void* serialize_user_data,
-												void* reclaim_user_data){
+											   void* serialize_user_data, void* reclaim_user_data)
+{
 	if(!serialize_user_data || !reclaim_user_data)
 		return;
 	auto imageFormat = (IImageFormat*)serialize_user_data;
@@ -986,7 +986,7 @@ static void grkSerializeRegisterClientCallback(grk_serialize_callback reclaim_ca
 	imageFormat->serializeRegisterClientCallback(reclaim_callback, reclaim_user_data);
 }
 
-static bool grkSerializeBufferCallback(grk_serialize_buf buffer, void *user_data)
+static bool grkSerializeBufferCallback(grk_serialize_buf buffer, void* user_data)
 {
 	if(!user_data)
 		return false;

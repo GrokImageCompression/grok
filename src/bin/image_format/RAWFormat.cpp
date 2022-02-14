@@ -110,7 +110,8 @@ bool RAWFormat::encodePixels(void)
 	if(!grk::grk_open_for_output(&fileStream_, outfile, useStdIO_))
 		goto beach;
 
-	spdlog::info("imagetoraw: raw image_ characteristics: {} components", image_->decompressNumComps);
+	spdlog::info("imagetoraw: raw image_ characteristics: {} components",
+				 image_->decompressNumComps);
 
 	for(compno = 0; compno < image_->decompressNumComps; compno++)
 	{

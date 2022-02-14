@@ -693,4 +693,3 @@ beach:
 	}
 	return image_;
 } /* pngtoimage() */
-

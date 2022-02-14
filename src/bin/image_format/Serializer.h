@@ -15,7 +15,7 @@ struct Serializer
 {
 	Serializer(void);
 	void init(grk_image* image);
-	void serializeRegisterClientCallback(grk_serialize_callback reclaim_callback,void* user_data);
+	void serializeRegisterClientCallback(grk_serialize_callback reclaim_callback, void* user_data);
 	grk_serialize_callback getSerializerReclaimCallback(void);
 	void* getSerializerReclaimUserData(void);
 #ifndef _WIN32
@@ -33,6 +33,7 @@ struct Serializer
 	void incrementPooled(void);
 #endif
 	bool allPooledRequestsComplete(void);
+
   private:
 #ifndef _WIN32
 #ifdef GROK_HAVE_URING

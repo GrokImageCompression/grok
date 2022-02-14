@@ -38,7 +38,7 @@ const static bool debugUring = false;
 
 FileUringIO::FileUringIO()
 	: fd_(0), ownsDescriptor(false), requestsSubmitted(0), requestsCompleted(0),
-		reclaim_callback_(nullptr), reclaim_user_data_(nullptr)
+	  reclaim_callback_(nullptr), reclaim_user_data_(nullptr)
 {
 	memset(&ring, 0, sizeof(ring));
 }
@@ -47,7 +47,9 @@ FileUringIO::~FileUringIO()
 {
 	close();
 }
-void  FileUringIO::serializeRegisterClientCallback(grk_serialize_callback reclaim_callback,void* user_data){
+void FileUringIO::serializeRegisterClientCallback(grk_serialize_callback reclaim_callback,
+												  void* user_data)
+{
 	reclaim_callback_ = reclaim_callback;
 	reclaim_user_data_ = user_data;
 }
@@ -144,7 +146,7 @@ void FileUringIO::enqueue(io_uring* ring, io_data* data, bool readop, int fd)
 	int ret = io_uring_submit(ring);
 	// if (debugUring)
 	//	spdlog::info("Enqueued {}, length {}, offset {}", fmt::ptr(data->buf.data),
-	//data->buf.dataLen, data->buf.offset); timer.finish();
+	// data->buf.dataLen, data->buf.offset); timer.finish();
 	assert(ret == 1);
 	GRK_UNUSED(ret);
 	requestsSubmitted++;
@@ -157,7 +159,8 @@ void FileUringIO::enqueue(io_uring* ring, io_data* data, bool readop, int fd)
 			break;
 		if(data->buf.pooled)
 		{
-			if (reclaim_callback_) {
+			if(reclaim_callback_)
+			{
 				reclaim_callback_(data->buf, reclaim_user_data_);
 			}
 			else

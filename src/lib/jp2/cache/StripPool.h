@@ -75,6 +75,7 @@ class StripPool
 			  grk_serialize_register_client_callback serializeRegisterClientCallback);
 	bool composite(GrkImage* tileImage);
 	void putBuffer(GrkSerializeBuf b);
+
   private:
 	GrkSerializeBuf getBuffer(uint64_t len);
 	std::map<uint8_t*, GrkSerializeBuf> pool;

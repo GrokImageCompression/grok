@@ -90,7 +90,8 @@ bool CodeStreamDecompress::parseTileHeaderMarkers(bool* canDecompress)
 				break;
 			}
 			uint16_t marker_size;
-			if(!read_short(&marker_size)) {
+			if(!read_short(&marker_size))
+			{
 				return false;
 			}
 			else if(marker_size < 2)

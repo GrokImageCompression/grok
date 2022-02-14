@@ -79,6 +79,7 @@ class GrkImage : public grk_image
 	void postReadHeader(CodingParams* cp);
 	void validateColourSpace(void);
 	bool isSubsampled();
+
   private:
 	~GrkImage();
 	bool needsConversionToRGB(void);

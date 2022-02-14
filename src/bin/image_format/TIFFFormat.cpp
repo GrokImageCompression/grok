@@ -64,7 +64,7 @@ static uint64_t TiffSeek(thandle_t handle, uint64_t off, int32_t whence)
 		return (uint64_t)-1;
 	}
 
-	return serializer->seek((int64_t)off,whence);
+	return serializer->seek((int64_t)off, whence);
 }
 
 static int TiffClose(thandle_t handle)
@@ -83,9 +83,7 @@ static uint64_t TiffSize(thandle_t handle)
 
 #endif
 
-TIFFFormat::TIFFFormat()
-	: tif(nullptr), chroma_subsample_x(1), chroma_subsample_y(1), units(0)
-{}
+TIFFFormat::TIFFFormat() : tif(nullptr), chroma_subsample_x(1), chroma_subsample_y(1), units(0) {}
 TIFFFormat::~TIFFFormat()
 {
 	if(tif)
@@ -360,7 +358,8 @@ bool TIFFFormat::encodePixels()
 	if(isFinalOutputSubsampled(image_))
 	{
 		// TIFF-specific
-		uint64_t packedLengthEncoded = (uint64_t)TIFFVStripSize(tif, (uint32_t)image_->rowsPerStrip);
+		uint64_t packedLengthEncoded =
+			(uint64_t)TIFFVStripSize(tif, (uint32_t)image_->rowsPerStrip);
 		packedBuf = pool.get(packedLengthEncoded);
 		auto bufPtr = (int8_t*)packedBuf.data;
 		uint32_t bytesToWrite = 0;
@@ -421,9 +420,8 @@ bool TIFFFormat::encodePixels()
 		{
 			uint32_t stripRows = (std::min)(image_->rowsPerStrip, height - h);
 			packedBuf = pool.get(image_->packedRowBytes * stripRows);
-			iter->interleave((int32_t**)planes, numcomps, packedBuf.data,
-							 image_->decompressWidth, image_->comps[0].stride, image_->packedRowBytes,
-							 stripRows, 0);
+			iter->interleave((int32_t**)planes, numcomps, packedBuf.data, image_->decompressWidth,
+							 image_->comps[0].stride, image_->packedRowBytes, stripRows, 0);
 			packedBuf.pooled = true;
 			packedBuf.offset = serializer.getOffset();
 			packedBuf.dataLen = image_->packedRowBytes * stripRows;
@@ -442,10 +440,11 @@ cleanup:
 
 	return success;
 }
-bool TIFFFormat::encodePixelsCoreWrite(grk_serialize_buf pixels){
+bool TIFFFormat::encodePixelsCoreWrite(grk_serialize_buf pixels)
+{
 	tmsize_t written =
 		TIFFWriteEncodedStrip(tif, (tmsize_t)pixels.index, pixels.data, (tmsize_t)pixels.dataLen);
-	return  written != -1;
+	return written != -1;
 }
 bool TIFFFormat::encodeFinish(void)
 {

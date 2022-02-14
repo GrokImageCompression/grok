@@ -2,9 +2,10 @@
 
 namespace grk
 {
-static bool reclaimCallback(grk_serialize_buf buffer, void* serialize_user_data){
+static bool reclaimCallback(grk_serialize_buf buffer, void* serialize_user_data)
+{
 	auto pool = (StripPool*)serialize_user_data;
-	if (pool)
+	if(pool)
 		pool->putBuffer(GrkSerializeBuf(buffer));
 
 	return true;
@@ -49,7 +50,7 @@ void StripPool::init(uint16_t tgrid_w, uint32_t th, uint16_t tgrid_h, GrkImage* 
 		return;
 	serializeBufferCallback_ = serializeBufferCallback;
 	serializeUserData_ = serializeUserData;
-	if (serializeRegisterClientCallback)
+	if(serializeRegisterClientCallback)
 		serializeRegisterClientCallback(reclaimCallback, serializeUserData, this);
 	tgrid_w_ = tgrid_w;
 	y0_ = outputImage->y0;
@@ -92,7 +93,7 @@ bool StripPool::composite(GrkImage* tileImage)
 			buf = serializeHeap.pop();
 			while(buf.data)
 			{
-				if(!serializeBufferCallback_(buf,serializeUserData_))
+				if(!serializeBufferCallback_(buf, serializeUserData_))
 					return false;
 				buf = serializeHeap.pop();
 			}

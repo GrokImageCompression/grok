@@ -799,14 +799,12 @@ typedef struct _grk_serialize_buf
 	uint32_t index;
 } grk_serialize_buf;
 
-
 typedef bool (*grk_serialize_callback)(grk_serialize_buf buffer, void* serialize_user_data);
 typedef void (*grk_serialize_register_client_callback)(grk_serialize_callback reclaim_callback,
-														void* serialize_user_data,
-														void* reclaim_user_data);
+													   void* serialize_user_data,
+													   void* reclaim_user_data);
 
-typedef bool (*grk_serialize_pixels_callback)(grk_serialize_buf buffer,
-									 void* user_data);
+typedef bool (*grk_serialize_pixels_callback)(grk_serialize_buf buffer, void* user_data);
 
 /**
  * Core decompress parameters

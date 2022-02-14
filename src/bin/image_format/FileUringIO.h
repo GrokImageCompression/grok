@@ -38,7 +38,7 @@ class FileUringIO : public IFileIO
   public:
 	FileUringIO();
 	virtual ~FileUringIO() override;
-	void serializeRegisterClientCallback(grk_serialize_callback reclaim_callback,void* user_data);
+	void serializeRegisterClientCallback(grk_serialize_callback reclaim_callback, void* user_data);
 	bool open(std::string fileName, std::string mode) override;
 	bool attach(std::string fileName, std::string mode, int fd);
 	bool close(void) override;
@@ -63,7 +63,6 @@ class FileUringIO : public IFileIO
 	const uint32_t BS = (32 * 1024);
 	grk_serialize_callback reclaim_callback_;
 	void* reclaim_user_data_;
-
 };
 
 #endif

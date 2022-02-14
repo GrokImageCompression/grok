@@ -2,46 +2,52 @@
 #include "common.h"
 #define IO_MAX 2147483647U
 
-Serializer::Serializer(void) :
+Serializer::Serializer(void)
+	:
 #ifndef _WIN32
 	  fd_(-1),
 #endif
-	  numPooledRequests_(0),
-	  maxPooledRequests_(0),
-	  asynchActive_(false), off_(0),
- 	 reclaim_callback_(nullptr),
-	 reclaim_user_data_(nullptr)
+	  numPooledRequests_(0), maxPooledRequests_(0), asynchActive_(false), off_(0),
+	  reclaim_callback_(nullptr), reclaim_user_data_(nullptr)
 {}
 void Serializer::init(grk_image* image)
 {
 	maxPooledRequests_ = ((image->y1 - image->y0) + image->rowsPerStrip - 1) / image->rowsPerStrip;
 }
-void  Serializer::serializeRegisterClientCallback(grk_serialize_callback reclaim_callback,void* user_data){
+void Serializer::serializeRegisterClientCallback(grk_serialize_callback reclaim_callback,
+												 void* user_data)
+{
 	reclaim_callback_ = reclaim_callback;
 	reclaim_user_data_ = user_data;
 #ifdef GROK_HAVE_URING
 	uring.serializeRegisterClientCallback(reclaim_callback, user_data);
 #endif
 }
-grk_serialize_callback Serializer::getSerializerReclaimCallback(void){
+grk_serialize_callback Serializer::getSerializerReclaimCallback(void)
+{
 	return reclaim_callback_;
 }
-void* Serializer::getSerializerReclaimUserData(void){
+void* Serializer::getSerializerReclaimUserData(void)
+{
 	return reclaim_user_data_;
 }
 #ifdef _WIN32
 
-bool Serializer::open(std::string name, std::string mode){
-	return fileStreamIO.open(name,mode);
+bool Serializer::open(std::string name, std::string mode)
+{
+	return fileStreamIO.open(name, mode);
 }
-bool Serializer::close(void){
+bool Serializer::close(void)
+{
 	return fileStreamIO.close();
 }
-size_t Serializer::write(uint8_t* buf, size_t size){
-	return (size_t)fileStreamIO.write(buf,0,size,size,false);
+size_t Serializer::write(uint8_t* buf, size_t size)
+{
+	return (size_t)fileStreamIO.write(buf, 0, size, size, false);
 }
-uint64_t Serializer::seek(int64_t off, int whence){
-	return fileStreamIO.seek(off,whence);
+uint64_t Serializer::seek(int64_t off, int whence)
+{
+	return fileStreamIO.seek(off, whence);
 }
 
 #else
@@ -78,9 +84,12 @@ bool Serializer::open(std::string name, std::string mode)
 	bool useStdio = grk::useStdio(name);
 	bool doRead = mode[0] == -'r';
 	int fd = 0;
-	if(useStdio) {
+	if(useStdio)
+	{
 		fd = doRead ? STDIN_FILENO : STDOUT_FILENO;
-	} else {
+	}
+	else
+	{
 		int m = getMode(mode);
 		if(m == -1)
 			return false;
@@ -110,19 +119,21 @@ bool Serializer::close(void)
 	asynchActive_ = false;
 	return uring.close();
 #endif
-	if (fd_< 0)
+	if(fd_ < 0)
 		return true;
 
-	int rc =  ::close(fd_);
+	int rc = ::close(fd_);
 	fd_ = -1;
 
 	return rc == 0;
 }
-uint64_t Serializer::seek(int64_t off, int32_t whence){
-	if (asynchActive_)
+uint64_t Serializer::seek(int64_t off, int32_t whence)
+{
+	if(asynchActive_)
 		return off_;
 	off_t rc = lseek(getFd(), off, whence);
-	if (rc == (off_t)-1){
+	if(rc == (off_t)-1)
+	{
 		if(strerror(errno) != NULL)
 			spdlog::error("{}", strerror(errno));
 		else
@@ -135,18 +146,20 @@ uint64_t Serializer::seek(int64_t off, int32_t whence){
 size_t Serializer::write(uint8_t* buf, size_t bytes_total)
 {
 #ifdef GROK_HAVE_URING
-	if(asynchActive_) {
-		scheduled_.data 	= buf;
-		scheduled_.dataLen 	= bytes_total;
-		scheduled_.offset 	= off_;
+	if(asynchActive_)
+	{
+		scheduled_.data = buf;
+		scheduled_.dataLen = bytes_total;
+		scheduled_.offset = off_;
 		uring.write(scheduled_);
 		off_ += scheduled_.dataLen;
-		if(scheduled_.pooled && (++numPooledRequests_ == maxPooledRequests_)) {
+		if(scheduled_.pooled && (++numPooledRequests_ == maxPooledRequests_))
+		{
 			uring.close();
 			asynchActive_ = false;
 		}
 		// clear
-		scheduled_ 		= GrkSerializeBuf();
+		scheduled_ = GrkSerializeBuf();
 
 		return bytes_total;
 	}
@@ -171,12 +184,12 @@ size_t Serializer::write(uint8_t* buf, size_t bytes_total)
 #ifdef GROK_HAVE_URING
 void Serializer::initPooledRequest(void)
 {
-	scheduled_.pooled 	= true;
+	scheduled_.pooled = true;
 }
 #else
 void Serializer::incrementPooled(void)
 {
-    // write method will take care of incrementing numPixelRequests if uring is enabled
+	// write method will take care of incrementing numPixelRequests if uring is enabled
 	numPooledRequests_++;
 }
 #endif

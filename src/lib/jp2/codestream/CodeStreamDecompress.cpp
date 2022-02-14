@@ -26,9 +26,8 @@ namespace grk
 CodeStreamDecompress::CodeStreamDecompress(IBufferedStream* stream)
 	: CodeStream(stream), wholeTileDecompress(true), curr_marker_(0), headerError_(false),
 	  tile_ind_to_dec_(-1), marker_scratch_(nullptr), marker_scratch_size_(0),
-	  outputImage_(nullptr), tileCache_(new TileCache()),
-	  serializeBufferCallback(nullptr), serializeUserData(nullptr),
-	  serializeRegisterClientCallback(nullptr)
+	  outputImage_(nullptr), tileCache_(new TileCache()), serializeBufferCallback(nullptr),
+	  serializeUserData(nullptr), serializeRegisterClientCallback(nullptr)
 {
 	decompressorState_.default_tcp_ = new TileCodingParams();
 	decompressorState_.lastSotReadPosition = 0;
@@ -347,13 +346,13 @@ void CodeStreamDecompress::initDecompress(grk_decompress_core_params* parameters
 {
 	assert(parameters);
 
-	cp_.coding_params_.dec_.layer_ 	= parameters->max_layers;
+	cp_.coding_params_.dec_.layer_ = parameters->max_layers;
 	cp_.coding_params_.dec_.reduce_ = parameters->reduce;
 	tileCache_->setStrategy(parameters->tileCacheStrategy);
 
-	serializeBufferCallback 			= parameters->serialize_buffer_callback;
-	serializeUserData	 				= parameters->serialize_user_data;
-	serializeRegisterClientCallback 	= parameters->serialize_register_client_callback;
+	serializeBufferCallback = parameters->serialize_buffer_callback;
+	serializeUserData = parameters->serialize_user_data;
+	serializeRegisterClientCallback = parameters->serialize_register_client_callback;
 }
 bool CodeStreamDecompress::decompress(grk_plugin_tile* tile)
 {
@@ -460,10 +459,8 @@ bool CodeStreamDecompress::decompressTiles(void)
 	if(!createOutputImage())
 		return false;
 
-
 	stripCache_.init(cp_.t_grid_width, cp_.t_height, cp_.t_grid_height, outputImage_,
-						serializeBufferCallback, serializeUserData,
-						serializeRegisterClientCallback);
+					 serializeBufferCallback, serializeUserData, serializeRegisterClientCallback);
 
 	std::vector<std::future<int>> results;
 	std::atomic<bool> success(true);
@@ -815,14 +812,15 @@ bool CodeStreamDecompress::decompressTile()
 			auto currentPosition = stream_->tell();
 			// for very first SOT position, we add two to skip SOC marker
 			if(!cp_.tlm_markers->seekTo((uint16_t)tile_ind_to_dec_, stream_,
-										codeStreamInfo->getMainHeaderEnd() + 2)){
+										codeStreamInfo->getMainHeaderEnd() + 2))
+			{
 				useTLM = false;
 				cp_.tlm_markers->invalidate();
-				if (!stream_->seek(currentPosition))
+				if(!stream_->seek(currentPosition))
 					return false;
 			}
 		}
-		if (!useTLM)
+		if(!useTLM)
 		{
 			if(!codeStreamInfo->allocTileInfo((uint16_t)(cp_.t_grid_width * cp_.t_grid_height)))
 				return false;

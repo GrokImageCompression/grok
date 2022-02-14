@@ -95,9 +95,7 @@ struct CodeStreamInfo
 struct TilePartLengthInfo
 {
 	explicit TilePartLengthInfo() : tileIndex(0), length(0) {}
-	explicit TilePartLengthInfo(uint16_t tileno, uint32_t len)
-		: tileIndex(tileno), length(len)
-	{}
+	explicit TilePartLengthInfo(uint16_t tileno, uint32_t len) : tileIndex(tileno), length(len) {}
 	uint16_t tileIndex;
 	uint32_t length;
 };
@@ -131,6 +129,7 @@ struct TileLengthMarkers
 	 */
 	static bool addTileMarkerInfo(uint16_t tileno, CodeStreamInfo* codeStreamInfo, uint16_t type,
 								  uint64_t pos, uint32_t len);
+
   private:
 	void push(uint8_t i_TLM, TilePartLengthInfo curr_vec);
 	TL_MAP* markers_;

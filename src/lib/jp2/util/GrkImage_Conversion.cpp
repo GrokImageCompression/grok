@@ -395,11 +395,12 @@ bool GrkImage::greyToRGB(void)
 /***
  * Check if decompress format requires conversion
  */
-bool GrkImage::needsConversionToRGB(void){
-	 return (((color_space == GRK_CLRSPC_SYCC ||
-			 color_space == GRK_CLRSPC_EYCC ||
+bool GrkImage::needsConversionToRGB(void)
+{
+	return (((color_space == GRK_CLRSPC_SYCC || color_space == GRK_CLRSPC_EYCC ||
 			  color_space == GRK_CLRSPC_CMYK) &&
-			 	 (decompressFormat != GRK_UNK_FMT && decompressFormat != GRK_TIF_FMT)) || forceRGB);
+			 (decompressFormat != GRK_UNK_FMT && decompressFormat != GRK_TIF_FMT)) ||
+			forceRGB);
 }
 bool GrkImage::convertToRGB(bool wholeTileDecompress)
 {
@@ -1094,7 +1095,8 @@ bool GrkImage::applyICC(void)
 		goto cleanup;
 	}
 	transform = cmsCreateTransform(in_prof, in_type, out_prof, out_type, intent, 0);
-	if (!transform) {
+	if(!transform)
+	{
 		color_space = oldspace;
 		goto cleanup;
 	}

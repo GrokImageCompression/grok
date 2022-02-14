@@ -553,8 +553,9 @@ bool JPEGFormat::encodePixels(void)
 		 * Here the array is only one element long, but you could pass
 		 * more than one scanline at a time if that's more convenient.
 		 */
-		iter->interleave((int32_t**)planes, image_->decompressNumComps, (uint8_t*)buffer, image_->decompressWidth,
-						 image_->comps[0].stride, image_->decompressWidth, 1, adjust);
+		iter->interleave((int32_t**)planes, image_->decompressNumComps, (uint8_t*)buffer,
+						 image_->decompressWidth, image_->comps[0].stride, image_->decompressWidth,
+						 1, adjust);
 		JSAMPROW row_pointer[1]; /* pointer to JSAMPLE row[s] */
 		row_pointer[0] = buffer;
 		GRK_UNUSED(jpeg_write_scanlines)(&cinfo, row_pointer, 1);

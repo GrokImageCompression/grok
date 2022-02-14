@@ -31,7 +31,8 @@ class ImageFormat : public IImageFormat
   public:
 	ImageFormat();
 	virtual ~ImageFormat();
-	void serializeRegisterClientCallback(grk_serialize_callback reclaim_callback,void* user_data) override;
+	void serializeRegisterClientCallback(grk_serialize_callback reclaim_callback,
+										 void* user_data) override;
 	void serializeReclaimBuffer(grk_serialize_buf buffer);
 	void serializeRegisterApplicationClient(void);
 #ifndef GROK_HAVE_URING
@@ -43,6 +44,7 @@ class ImageFormat : public IImageFormat
 	virtual bool encodeFinish(void) override;
 	uint32_t getEncodeState(void) override;
 	bool openFile(void);
+
   protected:
 	virtual bool encodePixelsCore(grk_serialize_buf pixels);
 	virtual bool encodePixelsCoreWrite(grk_serialize_buf pixels);
