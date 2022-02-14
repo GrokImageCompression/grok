@@ -43,8 +43,8 @@ static const float delta = 0.443506852f;
 static const float grk_K = 1.230174105f;
 static const float grk_invK = (float)(1.0 / 1.230174105);
 
-#define GRK_S(i) a[(i)*2]
-#define GRK_D(i) a[(1 + (i)*2)]
+#define GRK_S(i) a[(i)<<1]
+#define GRK_D(i) a[(1 + ((i)<<1))]
 #define GRK_S_(i) ((i) < 0 ? GRK_S(0) : ((i) >= sn ? GRK_S(sn - 1) : GRK_S(i)))
 #define GRK_D_(i) ((i) < 0 ? GRK_D(0) : ((i) >= dn ? GRK_D(dn - 1) : GRK_D(i)))
 #define GRK_SS_(i) ((i) < 0 ? GRK_S(0) : ((i) >= dn ? GRK_S(dn - 1) : GRK_S(i)))
@@ -76,19 +76,6 @@ void deinterleave_h(const T* GRK_RESTRICT a, T* GRK_RESTRICT b, int32_t dn, int3
 		src += 2;
 	}
 }
-
-#if 0
-void dwt97::encode_step1(float* fw,
-                                 uint32_t end,
-                                 const float c)
-{
-    uint32_t i = 0;
-    for (; i < end; ++i) {
-        fw[0] *= c;
-        fw += 2;
-    }
-}
-#else
 void dwt97::encode_step1_combined(float* fw, uint32_t iters_c1, uint32_t iters_c2, const float c1,
 								  const float c2)
 {
@@ -125,8 +112,6 @@ void dwt97::encode_step1_combined(float* fw, uint32_t iters_c1, uint32_t iters_c
 	else if(i < iters_c2)
 		fw[1] *= c2;
 }
-
-#endif
 
 void dwt97::encode_step2(float* fl, float* fw, uint32_t end, uint32_t m, float c)
 {
@@ -176,17 +161,10 @@ void dwt97::encode_1_real(float* w, int32_t dn, int32_t sn, int32_t parity)
 	encode_step2(w + b, w + a + 1, (uint32_t)sn, (uint32_t)std::min<int32_t>(sn, dn - a), beta);
 	encode_step2(w + a, w + b + 1, (uint32_t)dn, (uint32_t)std::min<int32_t>(dn, sn - b), gamma);
 	encode_step2(w + b, w + a + 1, (uint32_t)sn, (uint32_t)std::min<int32_t>(sn, dn - a), delta);
-#if 0
-    encode_step1(w + b, (uint32_t)dn,
-                         grk_K);
-    encode_step1(w + a, (uint32_t)sn,
-                         grk_invK);
-#else
 	if(a == 0)
 		encode_step1_combined(w, (uint32_t)sn, (uint32_t)dn, grk_invK, grk_K);
 	else
 		encode_step1_combined(w, (uint32_t)dn, (uint32_t)sn, grk_K, grk_invK);
-#endif
 }
 template<typename T, typename DWT>
 struct encode_h_job
@@ -273,13 +251,12 @@ template<typename T>
 void deinterleave_v_cols(const T* GRK_RESTRICT src, T* GRK_RESTRICT dst, uint32_t dn, uint32_t sn,
 						 uint32_t stride_width, uint32_t parity, uint32_t cols)
 {
-	int32_t k;
 	int64_t i = sn;
 	T* GRK_RESTRICT destPtr = dst;
 	const T* GRK_RESTRICT srcPtr = src + parity * NB_ELTS_V8;
 	uint32_t c;
 
-	for(k = 0; k < 2; k++)
+	for(uint32_t k = 0; k < 2; k++)
 	{
 		while(i--)
 		{
@@ -408,19 +385,15 @@ bool WaveletFwdImpl::encode_procedure(TileComponent* tilec)
 	if(tilec->numresolutions == 1U)
 		return true;
 
-	int32_t i;
-	int32_t maxNumResolutions;
-	size_t dataSize;
-
 	// const int num_threads = grk_thread_pool_get_thread_count(tp);
 	uint32_t stride = tilec->getBuffer()->getResWindowBufferHighestREL()->stride;
 	T* GRK_RESTRICT tiledp = (T*)tilec->getBuffer()->getResWindowBufferHighestREL()->getBuffer();
 
-	maxNumResolutions = (int32_t)tilec->numresolutions - 1;
+	uint8_t maxNumResolutions = (uint8_t)(tilec->numresolutions - 1);
 	auto currentRes = tilec->tileCompResolution + maxNumResolutions;
 	auto lastRes = currentRes - 1;
 
-	dataSize = max_resolution(tilec->tileCompResolution, tilec->numresolutions);
+	size_t dataSize = max_resolution(tilec->tileCompResolution, tilec->numresolutions);
 	/* overflow check */
 	if(dataSize > (SIZE_MAX / (NB_ELTS_V8 * sizeof(int32_t))))
 	{
@@ -433,9 +406,8 @@ bool WaveletFwdImpl::encode_procedure(TileComponent* tilec)
 	/* in that case, so do not error out */
 	if(dataSize != 0 && !bj)
 		return false;
-	i = maxNumResolutions;
+	int32_t i = maxNumResolutions;
 	uint32_t num_threads = ThreadPool::get()->num_threads() > 1 ? 2 : 1;
-
 	DWT dwt;
 	while(i--)
 	{
@@ -576,12 +548,9 @@ bool WaveletFwdImpl::encode_procedure(TileComponent* tilec)
 
 bool WaveletFwdImpl::compress(TileComponent* tile_comp, uint8_t qmfbid)
 {
-	if(qmfbid == 1)
-		return encode_procedure<int32_t, dwt53>(tile_comp);
-	else if(qmfbid == 0)
-		return encode_procedure<float, dwt97>(tile_comp);
-
-	return false;
+	return (qmfbid == 1) ?
+				encode_procedure<int32_t, dwt53>(tile_comp) :
+					encode_procedure<float, dwt97>(tile_comp);
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////
@@ -598,8 +567,8 @@ void dwt53::encode_and_deinterleave_v(int32_t* arrayIn, int32_t* tmpIn, uint32_t
 
 	fetch_cols_vertical_pass<int32_t>(arrayIn, tmpIn, height, stride_width, cols);
 
-#define GRK_Sc(i) tmp[(i)*2 * NB_ELTS_V8 + c]
-#define GRK_Dc(i) tmp[((1 + (i)*2)) * NB_ELTS_V8 + c]
+#define GRK_Sc(i) tmp[((i)<<1) * NB_ELTS_V8 + c]
+#define GRK_Dc(i) tmp[((1 + ((i)<<1))) * NB_ELTS_V8 + c]
 
 #ifdef __SSE2__
 	if(height == 1)
@@ -622,21 +591,21 @@ void dwt53::encode_and_deinterleave_v(int32_t* arrayIn, int32_t* tmpIn, uint32_t
 			__m128i xmm_Si_1 = *(const __m128i*)(tmp + 4 * 1);
 			for(; i + 1 < sn; i++)
 			{
-				__m128i xmm_Sip1_0 = *(const __m128i*)(tmp + (i + 1) * 2 * NB_ELTS_V8 + 4 * 0);
-				__m128i xmm_Sip1_1 = *(const __m128i*)(tmp + (i + 1) * 2 * NB_ELTS_V8 + 4 * 1);
-				__m128i xmm_Di_0 = *(const __m128i*)(tmp + (1 + i * 2) * NB_ELTS_V8 + 4 * 0);
-				__m128i xmm_Di_1 = *(const __m128i*)(tmp + (1 + i * 2) * NB_ELTS_V8 + 4 * 1);
+				__m128i xmm_Sip1_0 = *(const __m128i*)(tmp + ((i + 1) << 1) * NB_ELTS_V8 + 4 * 0);
+				__m128i xmm_Sip1_1 = *(const __m128i*)(tmp + ((i + 1) << 1) * NB_ELTS_V8 + 4 * 1);
+				__m128i xmm_Di_0 = *(const __m128i*)(tmp + (1 + (i<<1)) * NB_ELTS_V8 + 4 * 0);
+				__m128i xmm_Di_1 = *(const __m128i*)(tmp + (1 + (i<<1)) * NB_ELTS_V8 + 4 * 1);
 				xmm_Di_0 =
 					_mm_sub_epi32(xmm_Di_0, _mm_srai_epi32(_mm_add_epi32(xmm_Si_0, xmm_Sip1_0), 1));
 				xmm_Di_1 =
 					_mm_sub_epi32(xmm_Di_1, _mm_srai_epi32(_mm_add_epi32(xmm_Si_1, xmm_Sip1_1), 1));
-				*(__m128i*)(tmp + (1 + i * 2) * NB_ELTS_V8 + 4 * 0) = xmm_Di_0;
-				*(__m128i*)(tmp + (1 + i * 2) * NB_ELTS_V8 + 4 * 1) = xmm_Di_1;
+				*(__m128i*)(tmp + (1 + (i<<1)) * NB_ELTS_V8 + 4 * 0) = xmm_Di_0;
+				*(__m128i*)(tmp + (1 + (i<<1)) * NB_ELTS_V8 + 4 * 1) = xmm_Di_1;
 				xmm_Si_0 = xmm_Sip1_0;
 				xmm_Si_1 = xmm_Sip1_1;
 			}
 		}
-		if(((height) % 2) == 0)
+		if(((height) & 1) == 0)
 		{
 			for(c = 0; c < NB_ELTS_V8; c++)
 				GRK_Dc(i) -= GRK_Sc(i);
@@ -646,28 +615,28 @@ void dwt53::encode_and_deinterleave_v(int32_t* arrayIn, int32_t* tmpIn, uint32_t
 		i = 1;
 		if(i < dn)
 		{
-			__m128i xmm_Dim1_0 = *(const __m128i*)(tmp + (1 + (i - 1) * 2) * NB_ELTS_V8 + 4 * 0);
-			__m128i xmm_Dim1_1 = *(const __m128i*)(tmp + (1 + (i - 1) * 2) * NB_ELTS_V8 + 4 * 1);
+			__m128i xmm_Dim1_0 = *(const __m128i*)(tmp + (1 + ((i - 1)<<1)) * NB_ELTS_V8 + 4 * 0);
+			__m128i xmm_Dim1_1 = *(const __m128i*)(tmp + (1 + ((i - 1)<<1)) * NB_ELTS_V8 + 4 * 1);
 			const __m128i xmm_two = _mm_set1_epi32(2);
 			for(; i < dn; i++)
 			{
-				__m128i xmm_Di_0 = *(const __m128i*)(tmp + (1 + i * 2) * NB_ELTS_V8 + 4 * 0);
-				__m128i xmm_Di_1 = *(const __m128i*)(tmp + (1 + i * 2) * NB_ELTS_V8 + 4 * 1);
-				__m128i xmm_Si_0 = *(const __m128i*)(tmp + (i * 2) * NB_ELTS_V8 + 4 * 0);
-				__m128i xmm_Si_1 = *(const __m128i*)(tmp + (i * 2) * NB_ELTS_V8 + 4 * 1);
+				__m128i xmm_Di_0 = *(const __m128i*)(tmp + (1 + (i<<1)) * NB_ELTS_V8 + 4 * 0);
+				__m128i xmm_Di_1 = *(const __m128i*)(tmp + (1 + (i<<1)) * NB_ELTS_V8 + 4 * 1);
+				__m128i xmm_Si_0 = *(const __m128i*)(tmp + (i<<1) * NB_ELTS_V8 + 4 * 0);
+				__m128i xmm_Si_1 = *(const __m128i*)(tmp + (i<<1) * NB_ELTS_V8 + 4 * 1);
 				xmm_Si_0 = _mm_add_epi32(
 					xmm_Si_0,
 					_mm_srai_epi32(_mm_add_epi32(_mm_add_epi32(xmm_Dim1_0, xmm_Di_0), xmm_two), 2));
 				xmm_Si_1 = _mm_add_epi32(
 					xmm_Si_1,
 					_mm_srai_epi32(_mm_add_epi32(_mm_add_epi32(xmm_Dim1_1, xmm_Di_1), xmm_two), 2));
-				*(__m128i*)(tmp + (i * 2) * NB_ELTS_V8 + 4 * 0) = xmm_Si_0;
-				*(__m128i*)(tmp + (i * 2) * NB_ELTS_V8 + 4 * 1) = xmm_Si_1;
+				*(__m128i*)(tmp + (i<<1) * NB_ELTS_V8 + 4 * 0) = xmm_Si_0;
+				*(__m128i*)(tmp + (i<<1) * NB_ELTS_V8 + 4 * 1) = xmm_Si_1;
 				xmm_Dim1_0 = xmm_Di_0;
 				xmm_Dim1_1 = xmm_Di_1;
 			}
 		}
-		if(((height) % 2) == 1)
+		if(((height) & 1) == 1)
 		{
 			for(c = 0; c < NB_ELTS_V8; c++)
 				GRK_Sc(i) += (GRK_Dc(i - 1) + GRK_Dc(i - 1) + 2) >> 2;
@@ -684,14 +653,14 @@ void dwt53::encode_and_deinterleave_v(int32_t* arrayIn, int32_t* tmpIn, uint32_t
 		i = 1;
 		if(i < sn)
 		{
-			__m128i xmm_Dim1_0 = *(const __m128i*)(tmp + (1 + (i - 1) * 2) * NB_ELTS_V8 + 4 * 0);
-			__m128i xmm_Dim1_1 = *(const __m128i*)(tmp + (1 + (i - 1) * 2) * NB_ELTS_V8 + 4 * 1);
+			__m128i xmm_Dim1_0 = *(const __m128i*)(tmp + (1 + ((i - 1)<<1)) * NB_ELTS_V8 + 4 * 0);
+			__m128i xmm_Dim1_1 = *(const __m128i*)(tmp + (1 + ((i - 1)<<1)) * NB_ELTS_V8 + 4 * 1);
 			for(; i < sn; i++)
 			{
-				__m128i xmm_Di_0 = *(const __m128i*)(tmp + (1 + i * 2) * NB_ELTS_V8 + 4 * 0);
-				__m128i xmm_Di_1 = *(const __m128i*)(tmp + (1 + i * 2) * NB_ELTS_V8 + 4 * 1);
-				__m128i xmm_Si_0 = *(const __m128i*)(tmp + (i * 2) * NB_ELTS_V8 + 4 * 0);
-				__m128i xmm_Si_1 = *(const __m128i*)(tmp + (i * 2) * NB_ELTS_V8 + 4 * 1);
+				__m128i xmm_Di_0 = *(const __m128i*)(tmp + (1 + (i<<1)) * NB_ELTS_V8 + 4 * 0);
+				__m128i xmm_Di_1 = *(const __m128i*)(tmp + (1 + (i<<1)) * NB_ELTS_V8 + 4 * 1);
+				__m128i xmm_Si_0 = *(const __m128i*)(tmp + (i<<1) * NB_ELTS_V8 + 4 * 0);
+				__m128i xmm_Si_1 = *(const __m128i*)(tmp + (i<<1) * NB_ELTS_V8 + 4 * 1);
 				xmm_Si_0 =
 					_mm_sub_epi32(xmm_Si_0, _mm_srai_epi32(_mm_add_epi32(xmm_Di_0, xmm_Dim1_0), 1));
 				xmm_Si_1 =
@@ -702,7 +671,7 @@ void dwt53::encode_and_deinterleave_v(int32_t* arrayIn, int32_t* tmpIn, uint32_t
 				xmm_Dim1_1 = xmm_Di_1;
 			}
 		}
-		if(((height) % 2) == 1)
+		if(((height) & 1) == 1)
 		{
 			for(c = 0; c < NB_ELTS_V8; c++)
 				GRK_Sc(i) -= GRK_Dc(i - 1);
@@ -715,23 +684,23 @@ void dwt53::encode_and_deinterleave_v(int32_t* arrayIn, int32_t* tmpIn, uint32_t
 			const __m128i xmm_two = _mm_set1_epi32(2);
 			for(; i + 1 < dn; i++)
 			{
-				__m128i xmm_Sip1_0 = *(const __m128i*)(tmp + (i + 1) * 2 * NB_ELTS_V8 + 4 * 0);
-				__m128i xmm_Sip1_1 = *(const __m128i*)(tmp + (i + 1) * 2 * NB_ELTS_V8 + 4 * 1);
-				__m128i xmm_Di_0 = *(const __m128i*)(tmp + (1 + i * 2) * NB_ELTS_V8 + 4 * 0);
-				__m128i xmm_Di_1 = *(const __m128i*)(tmp + (1 + i * 2) * NB_ELTS_V8 + 4 * 1);
+				__m128i xmm_Sip1_0 = *(const __m128i*)(tmp + ((i + 1)<<1) * NB_ELTS_V8 + 4 * 0);
+				__m128i xmm_Sip1_1 = *(const __m128i*)(tmp + ((i + 1)<<1) * NB_ELTS_V8 + 4 * 1);
+				__m128i xmm_Di_0 = *(const __m128i*)(tmp + (1 + (i<<1)) * NB_ELTS_V8 + 4 * 0);
+				__m128i xmm_Di_1 = *(const __m128i*)(tmp + (1 + (i<<1)) * NB_ELTS_V8 + 4 * 1);
 				xmm_Di_0 = _mm_add_epi32(
 					xmm_Di_0,
 					_mm_srai_epi32(_mm_add_epi32(_mm_add_epi32(xmm_Si_0, xmm_Sip1_0), xmm_two), 2));
 				xmm_Di_1 = _mm_add_epi32(
 					xmm_Di_1,
 					_mm_srai_epi32(_mm_add_epi32(_mm_add_epi32(xmm_Si_1, xmm_Sip1_1), xmm_two), 2));
-				*(__m128i*)(tmp + (1 + i * 2) * NB_ELTS_V8 + 4 * 0) = xmm_Di_0;
-				*(__m128i*)(tmp + (1 + i * 2) * NB_ELTS_V8 + 4 * 1) = xmm_Di_1;
+				*(__m128i*)(tmp + (1 + (i<<1)) * NB_ELTS_V8 + 4 * 0) = xmm_Di_0;
+				*(__m128i*)(tmp + (1 + (i<<1)) * NB_ELTS_V8 + 4 * 1) = xmm_Di_1;
 				xmm_Si_0 = xmm_Sip1_0;
 				xmm_Si_1 = xmm_Sip1_1;
 			}
 		}
-		if(((height) % 2) == 0)
+		if(((height) & 1) == 0)
 		{
 			for(c = 0; c < NB_ELTS_V8; c++)
 				GRK_Dc(i) += (GRK_Sc(i) + GRK_Sc(i) + 2) >> 2;
@@ -826,14 +795,14 @@ void dwt53::encode_and_deinterleave_h_one_row(int32_t* rowIn, int32_t* tmpIn, ui
 		{
 			int32_t i;
 			for(i = 0; i < sn - 1; i++)
-				tmp[sn + i] = row[2 * i + 1] - ((row[(i)*2] + row[(i + 1) * 2]) >> 1);
-			if((width % 2) == 0)
-				tmp[sn + i] = row[2 * i + 1] - row[(i)*2];
+				tmp[sn + i] = row[(i<<1) + 1] - ((row[i<<1] + row[(i + 1) << 1]) >> 1);
+			if((width & 1) == 0)
+				tmp[sn + i] = row[(i<<1) + 1] - row[i << 1];
 			row[0] += (tmp[sn] + tmp[sn] + 2) >> 2;
 			for(i = 1; i < dn; i++)
-				row[i] = row[2 * i] + ((tmp[sn + (i - 1)] + tmp[sn + i] + 2) >> 2);
-			if((width % 2) == 1)
-				row[i] = row[2 * i] + ((tmp[sn + (i - 1)] + tmp[sn + (i - 1)] + 2) >> 2);
+				row[i] = row[i<<1] + ((tmp[sn + (i - 1)] + tmp[sn + i] + 2) >> 2);
+			if((width & 1) == 1)
+				row[i] = row[i<<1] + ((tmp[sn + (i - 1)] + tmp[sn + (i - 1)] + 2) >> 2);
 			memcpy(row + sn, tmp + sn, (size_t)dn * sizeof(int32_t));
 		}
 	}
@@ -841,20 +810,20 @@ void dwt53::encode_and_deinterleave_h_one_row(int32_t* rowIn, int32_t* tmpIn, ui
 	{
 		if(width == 1)
 		{
-			row[0] *= 2;
+			row[0] = row[0] << 1;
 		}
 		else
 		{
 			int32_t i;
 			tmp[sn + 0] = row[0] - row[1];
 			for(i = 1; i < sn; i++)
-				tmp[sn + i] = row[2 * i] - ((row[2 * i + 1] + row[2 * (i - 1) + 1]) >> 1);
-			if((width % 2) == 1)
-				tmp[sn + i] = row[2 * i] - row[2 * (i - 1) + 1];
+				tmp[sn + i] = row[i<<1] - ((row[(i<<1) + 1] + row[((i - 1)<<1) + 1]) >> 1);
+			if((width & 1) == 1)
+				tmp[sn + i] = row[i<<1] - row[((i - 1)<<1) + 1];
 			for(i = 0; i < dn - 1; i++)
-				row[i] = row[2 * i + 1] + ((tmp[sn + i] + tmp[sn + i + 1] + 2) >> 2);
-			if((width % 2) == 0)
-				row[i] = row[2 * i + 1] + ((tmp[sn + i] + tmp[sn + i] + 2) >> 2);
+				row[i] = row[(i<<1) + 1] + ((tmp[sn + i] + tmp[sn + i + 1] + 2) >> 2);
+			if((width & 1) == 0)
+				row[i] = row[(i<<1) + 1] + ((tmp[sn + i] + tmp[sn + i] + 2) >> 2);
 			memcpy(row + sn, tmp + sn, (size_t)dn * sizeof(int32_t));
 		}
 	}
@@ -875,7 +844,6 @@ void dwt97::encode_and_deinterleave_v(float* arrayIn, float* tmpIn, uint32_t hei
 		return;
 
 	fetch_cols_vertical_pass(arrayIn, tmpIn, height, stride_width, cols);
-
 	if(even)
 	{
 		a = 0;

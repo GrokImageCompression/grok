@@ -1569,12 +1569,12 @@ class Partial53 : public PartialInterleaver<T, FILTER_WIDTH, VERT_PASS_WIDTH>
 	void decompress_v(dwt_data<T>* dwt)
 	{
 #ifndef GRK_DEBUG_SPARSE
-#define get_S_off(buf, i, off) buf[(i)*2 * VERT_PASS_WIDTH + off]
-#define get_D_off(buf, i, off) buf[(1 + (i)*2) * VERT_PASS_WIDTH + off]
+#define get_S_off(buf, i, off) buf[((i)<<1) * VERT_PASS_WIDTH + off]
+#define get_D_off(buf, i, off) buf[(1 + ((i)<<1)) * VERT_PASS_WIDTH + off]
 #endif
 
-#define S_off(buf, i, off) buf[(i)*2 * VERT_PASS_WIDTH + off]
-#define D_off(buf, i, off) buf[(1 + (i)*2) * VERT_PASS_WIDTH + off]
+#define S_off(buf, i, off) buf[((i)<<1) * VERT_PASS_WIDTH + off]
+#define D_off(buf, i, off) buf[(1 + ((i)<<1)) * VERT_PASS_WIDTH + off]
 
 // parity == 0
 #define S_off_(buf, i, off) (((i) >= sn ? get_S_off(buf, sn - 1, off) : get_S_off(buf, i, off)))
@@ -1644,23 +1644,23 @@ class Partial53 : public PartialInterleaver<T, FILTER_WIDTH, VERT_PASS_WIDTH>
 					if(i + 1 < i_max)
 					{
 						const __m128i two = _mm_set1_epi32(2);
-						auto Dm1 = _mm_load_si128((__m128i*)(buf + (2 * i - 1) * VERT_PASS_WIDTH));
+						auto Dm1 = _mm_load_si128((__m128i*)(buf + ((i<<1) - 1) * VERT_PASS_WIDTH));
 						for(; i + 1 < i_max; i += 2)
 						{
 							/* No bound checking */
-							auto S = _mm_load_si128((__m128i*)(buf + (i * 2) * VERT_PASS_WIDTH));
+							auto S = _mm_load_si128((__m128i*)(buf + (i<<1) * VERT_PASS_WIDTH));
 							auto D =
-								_mm_load_si128((__m128i*)(buf + (i * 2 + 1) * VERT_PASS_WIDTH));
+								_mm_load_si128((__m128i*)(buf + ((i<<1) + 1) * VERT_PASS_WIDTH));
 							auto S1 =
-								_mm_load_si128((__m128i*)(buf + (i * 2 + 2) * VERT_PASS_WIDTH));
+								_mm_load_si128((__m128i*)(buf + ((i<<1) + 2) * VERT_PASS_WIDTH));
 							auto D1 =
-								_mm_load_si128((__m128i*)(buf + (i * 2 + 3) * VERT_PASS_WIDTH));
+								_mm_load_si128((__m128i*)(buf + ((i<<1) + 3) * VERT_PASS_WIDTH));
 							S = _mm_sub_epi32(
 								S, _mm_srai_epi32(_mm_add_epi32(_mm_add_epi32(Dm1, D), two), 2));
 							S1 = _mm_sub_epi32(
 								S1, _mm_srai_epi32(_mm_add_epi32(_mm_add_epi32(D, D1), two), 2));
-							_mm_store_si128((__m128i*)(buf + i * 2 * VERT_PASS_WIDTH), S);
-							_mm_store_si128((__m128i*)(buf + (i + 1) * 2 * VERT_PASS_WIDTH), S1);
+							_mm_store_si128((__m128i*)(buf + (i<<1) * VERT_PASS_WIDTH), S);
+							_mm_store_si128((__m128i*)(buf + ((i + 1)<<1) * VERT_PASS_WIDTH), S1);
 							Dm1 = D1;
 						}
 					}
@@ -1692,22 +1692,22 @@ class Partial53 : public PartialInterleaver<T, FILTER_WIDTH, VERT_PASS_WIDTH>
 #ifdef __SSE2__
 					if(i + 1 < i_max)
 					{
-						auto S = _mm_load_si128((__m128i*)(buf + i * 2 * VERT_PASS_WIDTH));
+						auto S = _mm_load_si128((__m128i*)(buf + (i<<1) * VERT_PASS_WIDTH));
 						for(; i + 1 < i_max; i += 2)
 						{
 							/* No bound checking */
 							auto D =
-								_mm_load_si128((__m128i*)(buf + (1 + i * 2) * VERT_PASS_WIDTH));
+								_mm_load_si128((__m128i*)(buf + (1 + (i<<1)) * VERT_PASS_WIDTH));
 							auto S1 =
-								_mm_load_si128((__m128i*)(buf + ((i + 1) * 2) * VERT_PASS_WIDTH));
+								_mm_load_si128((__m128i*)(buf + ((i + 1)<<1) * VERT_PASS_WIDTH));
 							auto D1 = _mm_load_si128(
-								(__m128i*)(buf + (1 + (i + 1) * 2) * VERT_PASS_WIDTH));
+								(__m128i*)(buf + (1 + ((i + 1)<<1)) * VERT_PASS_WIDTH));
 							auto S2 =
-								_mm_load_si128((__m128i*)(buf + ((i + 2) * 2) * VERT_PASS_WIDTH));
+								_mm_load_si128((__m128i*)(buf + ((i + 2)<<1) * VERT_PASS_WIDTH));
 							D = _mm_add_epi32(D, _mm_srai_epi32(_mm_add_epi32(S, S1), 1));
 							D1 = _mm_add_epi32(D1, _mm_srai_epi32(_mm_add_epi32(S1, S2), 1));
-							_mm_store_si128((__m128i*)(buf + (1 + i * 2) * VERT_PASS_WIDTH), D);
-							_mm_store_si128((__m128i*)(buf + (1 + (i + 1) * 2) * VERT_PASS_WIDTH),
+							_mm_store_si128((__m128i*)(buf + (1 + (i<<1)) * VERT_PASS_WIDTH), D);
+							_mm_store_si128((__m128i*)(buf + (1 + ((i + 1)<<1)) * VERT_PASS_WIDTH),
 											D1);
 							S = S2;
 						}
