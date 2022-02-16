@@ -1120,7 +1120,7 @@ GRK_API void GRK_CALLCONV grk_deinitialize();
 /**
  * Increment ref count
  */
-GRK_API void GRK_CALLCONV grk_object_ref(grk_object* obj);
+GRK_API grk_object* GRK_CALLCONV grk_object_ref(grk_object* obj);
 
 /*
  * Decrement ref count

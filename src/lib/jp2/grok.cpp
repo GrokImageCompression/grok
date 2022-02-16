@@ -89,23 +89,22 @@ GRK_API void GRK_CALLCONV grk_deinitialize()
 	ThreadPool::release();
 }
 
-GRK_API void GRK_CALLCONV grk_object_ref(grk_object* obj)
+GRK_API grk_object* GRK_CALLCONV grk_object_ref(grk_object* obj)
 {
 	if(!obj)
-		return;
-	GrkObjectWrapper* object = (GrkObjectWrapper*)obj->wrapper;
+		return nullptr;
+	auto  wrapper = (GrkObjectWrapper*)obj->wrapper;
+	wrapper->ref();
 
-	object->ref();
+	return obj;
 }
 GRK_API void GRK_CALLCONV grk_object_unref(grk_object* obj)
 {
 	if(!obj)
 		return;
-	GrkObjectWrapper* object = (GrkObjectWrapper*)obj->wrapper;
-	if(object->unref() == 0)
-	{
-		delete object;
-	}
+	GrkObjectWrapper* wrapper = (GrkObjectWrapper*)obj->wrapper;
+	if(wrapper->unref() == 0)
+		delete wrapper;
 }
 
 /* ---------------------------------------------------------------------- */
