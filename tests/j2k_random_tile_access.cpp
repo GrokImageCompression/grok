@@ -62,9 +62,9 @@ int32_t main(int argc, char **argv) {
   }
 
   grk_initialize(nullptr, 0);
-  grk_set_info_handler(grk::infoCallback, nullptr);
-  grk_set_warning_handler(grk::warningCallback, nullptr);
-  grk_set_error_handler(grk::errorCallback, nullptr);
+  grk_set_msg_handlers(grk::infoCallback, nullptr,
+						grk::warningCallback, nullptr,
+						grk::errorCallback, nullptr);
 
   for (uint32_t i = 0; i < 4; ++i) {
     grk_codec *codec = nullptr; /* Handle to a decompressor */

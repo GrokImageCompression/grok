@@ -1171,13 +1171,9 @@ int GrkDecompress::preProcess(grk_plugin_decompress_callback_info* info)
 				spdlog::error("grk_decompress: unknown decode format {}", decod_format);
 				goto cleanup;
 		}
-		/* catch events using our callbacks and give a local context */
-		if(parameters->verbose_)
-		{
-			grk_set_info_handler(infoCallback, nullptr);
-			grk_set_warning_handler(warningCallback, nullptr);
-		}
-		grk_set_error_handler(errorCallback, nullptr);
+		grk_set_msg_handlers(parameters->verbose_ ? infoCallback : nullptr, nullptr,
+							 parameters->verbose_ ? warningCallback : nullptr, nullptr,
+							 errorCallback, nullptr);
 
 		if(!grk_decompress_init(info->codec, &(parameters->core)))
 		{

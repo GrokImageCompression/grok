@@ -93,7 +93,7 @@ GRK_API grk_object* GRK_CALLCONV grk_object_ref(grk_object* obj)
 {
 	if(!obj)
 		return nullptr;
-	auto  wrapper = (GrkObjectWrapper*)obj->wrapper;
+	auto wrapper = (GrkObjectWrapper*)obj->wrapper;
 	wrapper->ref();
 
 	return obj;
@@ -107,29 +107,18 @@ GRK_API void GRK_CALLCONV grk_object_unref(grk_object* obj)
 		delete wrapper;
 }
 
-/* ---------------------------------------------------------------------- */
-/* Functions to set the message handlers */
-
-bool GRK_CALLCONV grk_set_info_handler(grk_msg_callback p_callback, void* p_user_data)
+GRK_API void GRK_CALLCONV grk_set_msg_handlers(grk_msg_callback info_callback, void* info_user_data,
+											   grk_msg_callback warn_callback, void* warn_user_data,
+											   grk_msg_callback error_callback,
+											   void* error_user_data)
 {
-	logger::logger_.info_handler = p_callback;
-	logger::logger_.info_data_ = p_user_data;
-
-	return true;
+	logger::logger_.info_handler = info_callback;
+	logger::logger_.info_data_ = info_user_data;
+	logger::logger_.warning_handler = warn_callback;
+	logger::logger_.warning_data_ = warn_user_data;
+	logger::logger_.error_handler = error_callback;
+	logger::logger_.error_data_ = error_user_data;
 }
-bool GRK_CALLCONV grk_set_warning_handler(grk_msg_callback p_callback, void* p_user_data)
-{
-	logger::logger_.warning_handler = p_callback;
-	logger::logger_.warning_data_ = p_user_data;
-	return true;
-}
-bool GRK_CALLCONV grk_set_error_handler(grk_msg_callback p_callback, void* p_user_data)
-{
-	logger::logger_.error_handler = p_callback;
-	logger::logger_.error_data_ = p_user_data;
-	return true;
-}
-/* ---------------------------------------------------------------------- */
 
 static size_t grk_read_from_file(void* buffer, size_t numBytes, FILE* p_file)
 {

@@ -141,11 +141,9 @@ int main(int argc, char *argv[]) {
     break;
   }
   }
-
-  /* catch events using our callbacks and give a local context */
-  grk_set_info_handler(grk::infoCallback, nullptr);
-  grk_set_warning_handler(grk::warningCallback, nullptr);
-  grk_set_error_handler(grk::errorCallback, nullptr);
+  grk_set_msg_handlers(grk::infoCallback, nullptr,
+						grk::warningCallback, nullptr,
+						grk::errorCallback, nullptr);
 
   /* Set up the decompress parameters using user parameters */
   if (!grk_decompress_init(codec, &param.core)) {

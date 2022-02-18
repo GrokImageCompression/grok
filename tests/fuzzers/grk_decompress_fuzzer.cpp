@@ -125,33 +125,33 @@ int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len) {
   } else {
     return 0;
   }
-  auto pStream = grk_stream_new(1024, true);
+  auto stream = grk_stream_new(1024, true);
   MemFile memFile;
   memFile.pabyData = buf;
   memFile.nLength = len;
   memFile.nCurPos = 0;
-  grk_stream_set_user_data_length(pStream, len);
-  grk_stream_set_read_function(pStream, ReadCallback);
-  grk_stream_set_seek_function(pStream, SeekCallback);
-  grk_stream_set_user_data(pStream, &memFile, nullptr);
-  auto codec = grk_decompress_create(eCodecFormat, pStream);
-  grk_set_info_handler(InfoCallback, nullptr);
-  grk_set_warning_handler(WarningCallback, nullptr);
-  grk_set_error_handler(ErrorCallback, nullptr);
+  grk_stream_set_user_data_length(stream, len);
+  grk_stream_set_read_function(stream, ReadCallback);
+  grk_stream_set_seek_function(stream, SeekCallback);
+  grk_stream_set_user_data(stream, &memFile, nullptr);
+  auto codec = grk_decompress_create(eCodecFormat, stream);
+  grk_set_msg_handlers(InfoCallback, nullptr,
+					  WarningCallback, nullptr,
+					  ErrorCallback, nullptr);
   grk_decompress_core_params parameters;
   grk_decompress_set_default_params(&parameters);
   grk_decompress_init(codec, &parameters);
-  grk_image *psImage = nullptr;
+  grk_image *image = nullptr;
   grk_header_info header_info;
   memset(&header_info,0,sizeof(grk_header_info));
   uint32_t x0, y0, width, height;
   if (!grk_decompress_read_header(codec, &header_info))
     goto cleanup;
-  psImage = grk_decompress_get_composited_image(codec);
-  width = psImage->x1 - psImage->x0;
+  image = grk_decompress_get_composited_image(codec);
+  width = image->x1 - image->x0;
   if (width > 1024)
     width = 1024;
-  height = psImage->y1 - psImage->y0;
+  height = image->y1 - image->y0;
   if (height > 1024)
     height = 1024;
   x0 = 10;
@@ -164,10 +164,9 @@ int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len) {
     if (!grk_decompress(codec, nullptr))
       goto cleanup;
   }
-
   grk_decompress_end(codec);
 cleanup:
-  grk_object_unref(pStream);
+  grk_object_unref(stream);
   grk_object_unref(codec);
 
   return 0;

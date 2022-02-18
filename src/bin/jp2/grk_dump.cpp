@@ -314,10 +314,7 @@ int main(int argc, char* argv[])
 	int rc = EXIT_SUCCESS;
 
 	grk_initialize(nullptr, 0);
-
-	grk_set_info_handler(infoCallback, nullptr);
-	grk_set_warning_handler(warningCallback, nullptr);
-	grk_set_error_handler(errorCallback, nullptr);
+	grk_set_msg_handlers(infoCallback, nullptr, warningCallback, nullptr, errorCallback, nullptr);
 
 	/* Set decoding parameters to default values */
 	grk_decompress_set_default_params(&parameters.core);

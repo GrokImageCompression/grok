@@ -91,11 +91,9 @@ int main(int argc, char *argv[]) {
       image->comps[compno].data[i] = 0;
     }
   }
-
-  /* catch events using our callbacks and give a local context */
-  grk_set_info_handler(info_callback, nullptr);
-  grk_set_warning_handler(warning_callback, nullptr);
-  grk_set_error_handler(error_callback, nullptr);
+  grk_set_msg_handlers(info_callback, nullptr,
+		  	  	  	  warning_callback, nullptr,
+					  error_callback, nullptr);
 
   l_stream =
       grk_stream_create_file_stream(parameters.outfile, 1024 * 1024, false);

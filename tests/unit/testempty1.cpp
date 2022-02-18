@@ -84,20 +84,15 @@ int main(int argc, char *argv[]) {
     }
   }
 
-  /* catch events using our callbacks and give a local context */
-  grk_set_info_handler(info_callback, nullptr);
-  grk_set_warning_handler(warning_callback, nullptr);
-  grk_set_error_handler(error_callback, nullptr);
+  grk_set_msg_handlers(info_callback, nullptr,
+		  	  	  	  warning_callback, nullptr,
+					   error_callback, nullptr);
 
   l_stream =
       grk_stream_create_file_stream("testempty1.j2k", 1024 * 1024, false);
   assert(l_stream);
 
   codec = grk_compress_create(GRK_CODEC_J2K, l_stream);
-  grk_set_info_handler(info_callback, nullptr);
-  grk_set_warning_handler(warning_callback, nullptr);
-  grk_set_error_handler(error_callback, nullptr);
-
   grk_compress_init(codec, &parameters, image);
 
   bSuccess = grk_compress_start(codec);

@@ -203,9 +203,9 @@ int main(int argc, char *argv[]) {
   }
 
   /* catch events using our callbacks and give a local context */
-  grk_set_info_handler(grk::infoCallback, nullptr);
-  grk_set_warning_handler(grk::warningCallback, nullptr);
-  grk_set_error_handler(grk::errorCallback, nullptr);
+  grk_set_msg_handlers(grk::infoCallback, nullptr,
+						grk::warningCallback, nullptr,
+						grk::errorCallback, nullptr);
 
   image = grk_image_new(num_comps, params, GRK_CLRSPC_SRGB);
   if (!image)

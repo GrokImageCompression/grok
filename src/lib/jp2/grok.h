@@ -1128,27 +1128,10 @@ GRK_API grk_object* GRK_CALLCONV grk_object_ref(grk_object* obj);
  */
 GRK_API void GRK_CALLCONV grk_object_unref(grk_object* obj);
 
-/**
- * Set info handler
- *
- * @param p_callback    the callback function which will be used
- * @param user_data   client object where will be returned the message
- */
-GRK_API bool GRK_CALLCONV grk_set_info_handler(grk_msg_callback p_callback, void* user_data);
-/**
- * Set warning handler
- *
- * @param p_callback    the callback function which will be used
- * @param user_data   client object where will be returned the message
- */
-GRK_API bool GRK_CALLCONV grk_set_warning_handler(grk_msg_callback p_callback, void* user_data);
-/**
- * Set error handler
- *
- * @param p_callback    the callback function which will be used
- * @param user_data   client object where will be returned the message
- */
-GRK_API bool GRK_CALLCONV grk_set_error_handler(grk_msg_callback p_callback, void* user_data);
+GRK_API void GRK_CALLCONV grk_set_msg_handlers(grk_msg_callback info_callback, void* info_user_data,
+											   grk_msg_callback warn_callback, void* warn_user_data,
+											   grk_msg_callback error_callback,
+											   void* error_user_data);
 
 /**
  * Create image

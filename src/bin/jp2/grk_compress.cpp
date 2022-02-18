@@ -2081,15 +2081,9 @@ static bool pluginCompressCallback(grk_plugin_compress_user_callback_info* info)
 			bSuccess = false;
 			goto cleanup;
 	}
-
-	/* catch events using our callbacks and give a local context */
-	if(parameters->verbose)
-	{
-		grk_set_info_handler(grk::infoCallback, nullptr);
-		grk_set_warning_handler(grk::warningCallback, nullptr);
-	}
-	grk_set_error_handler(grk::errorCallback, nullptr);
-
+	grk_set_msg_handlers(parameters->verbose ? infoCallback : nullptr, nullptr,
+						 parameters->verbose ? warningCallback : nullptr, nullptr, errorCallback,
+						 nullptr);
 	if(!grk_compress_init(codec, parameters, image))
 	{
 		spdlog::error("failed to compress image: grk_compress_init");
