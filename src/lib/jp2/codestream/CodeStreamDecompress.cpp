@@ -413,7 +413,7 @@ bool CodeStreamDecompress::decompressTile(uint16_t tileIndex)
 	}
 
 	auto reduce = cp_.coding_params_.dec_.reduce_;
-	for(uint32_t compno = 0; compno < compositeImage->numcomps; ++compno)
+	for(uint16_t compno = 0; compno < compositeImage->numcomps; ++compno)
 	{
 		auto comp = compositeImage->comps + compno;
 		auto compBounds = croppedImageBounds.rectceildiv(comp->dx, comp->dy);
@@ -1118,7 +1118,7 @@ void CodeStreamDecompress::dump_image_header(GrkImage* img_header, bool dev_dump
 	fprintf(outputFileStream, "%s numcomps=%d\n", tab, img_header->numcomps);
 	if(img_header->comps)
 	{
-		uint32_t compno;
+		uint16_t compno;
 		for(compno = 0; compno < img_header->numcomps; compno++)
 		{
 			fprintf(outputFileStream, "%s\t component %u {\n", tab, compno);

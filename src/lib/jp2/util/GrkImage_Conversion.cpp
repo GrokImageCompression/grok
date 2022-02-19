@@ -89,7 +89,7 @@ bool GrkImage::execUpsample(void)
 	grk_image_comp* new_components = nullptr;
 	bool upsampleNeeded = false;
 
-	for(uint32_t compno = 0U; compno < numcomps; ++compno)
+	for(uint16_t compno = 0U; compno < numcomps; ++compno)
 	{
 		if(!(comps + compno))
 			return false;
@@ -104,7 +104,7 @@ bool GrkImage::execUpsample(void)
 
 	new_components = new grk_image_comp[numcomps];
 	memset(new_components, 0, numcomps * sizeof(grk_image_comp));
-	for(uint32_t compno = 0U; compno < numcomps; ++compno)
+	for(uint16_t compno = 0U; compno < numcomps; ++compno)
 	{
 		auto new_cmp = new_components + compno;
 		copyComponent(comps + compno, new_cmp);
@@ -118,7 +118,7 @@ bool GrkImage::execUpsample(void)
 			return false;
 		}
 	}
-	for(uint32_t compno = 0U; compno < numcomps; ++compno)
+	for(uint16_t compno = 0U; compno < numcomps; ++compno)
 	{
 		auto new_cmp = new_components + compno;
 		auto org_cmp = comps + compno;
@@ -462,7 +462,7 @@ grk_image* GrkImage::createRGB(uint16_t numcmpts, uint32_t w, uint32_t h, uint8_
 	}
 
 	auto cmptparms = new grk_image_comp[numcmpts];
-	uint32_t compno = 0U;
+	uint16_t compno = 0U;
 	for(compno = 0U; compno < numcmpts; ++compno)
 	{
 		memset(cmptparms + compno, 0, sizeof(grk_image_comp));

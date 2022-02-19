@@ -410,7 +410,7 @@ bool T1::code_block_enc_allocate(cblk_enc* p_code_block)
 	}
 	return true;
 }
-double T1::getwmsedec(int32_t nmsedec, uint32_t compno, uint32_t level, uint8_t orientation,
+double T1::getwmsedec(int32_t nmsedec, uint16_t compno, uint32_t level, uint8_t orientation,
 					  int32_t bpno, uint32_t qmfbid, double stepsize, const double* mct_norms,
 					  uint32_t mct_numcomps)
 {

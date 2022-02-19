@@ -77,7 +77,7 @@ bool T2Compress::compressPacketsSimulate(uint16_t tile_no, uint16_t max_layers,
 	PacketManager packetManager(true, image, cp, tile_no, THRESH_CALC, tileProcessor);
 	*allPacketBytes = 0;
 	tileProcessor->getPacketTracker()->clear();
-	for(uint32_t compno = 0; compno < max_comp; ++compno)
+	for(uint16_t compno = 0; compno < max_comp; ++compno)
 	{
 		uint64_t componentBytes = 0;
 		for(uint32_t poc = 0; poc < pocno; ++poc)
@@ -267,7 +267,7 @@ bool T2Compress::compressPacket(TileCodingParams* tcp, PacketIter* pi, IBuffered
 {
 	assert(stream);
 
-	uint32_t compno = pi->compno;
+	uint16_t compno = pi->compno;
 	uint32_t resno = pi->resno;
 	uint64_t precinctIndex = pi->precinctIndex;
 	uint16_t layno = pi->layno;
@@ -367,7 +367,7 @@ bool T2Compress::compressPacketSimulate(TileCodingParams* tcp, PacketIter* pi,
 										bool finalSimulation)
 {
 	GRK_UNUSED(finalSimulation);
-	uint32_t compno = pi->compno;
+	uint16_t compno = pi->compno;
 	uint32_t resno = pi->resno;
 	uint64_t precinctIndex = pi->precinctIndex;
 	uint16_t layno = pi->layno;

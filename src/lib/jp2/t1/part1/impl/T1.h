@@ -107,7 +107,7 @@ struct T1
 	 */
 	double getnorm_97(uint32_t level, uint8_t orientation);
 
-	double getwmsedec(int32_t nmsedec, uint32_t compno, uint32_t level, uint8_t orientation,
+	double getwmsedec(int32_t nmsedec, uint16_t compno, uint32_t level, uint8_t orientation,
 					  int32_t bpno, uint32_t qmfbid, double stepsize, const double* mct_norms,
 					  uint32_t mct_numcomps);
 };

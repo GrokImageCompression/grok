@@ -149,7 +149,7 @@ bool CodeStreamCompress::initCompress(grk_cparameters* parameters, GrkImage* ima
 	image->copyHeader(headerImage_);
 	if(image->comps)
 	{
-		for(uint32_t compno = 0; compno < image->numcomps; compno++)
+		for(uint16_t compno = 0; compno < image->numcomps; compno++)
 		{
 			if(image->comps[compno].data)
 			{

@@ -252,7 +252,7 @@ class CodeStreamDecompress : public CodeStream, public ICodeStreamDecompress
 	 * @param       header_size   the size of the data contained in the COM marker.
 
 	 */
-	bool read_SPCod_SPCoc(uint32_t compno, uint8_t* headerData, uint16_t* header_size);
+	bool read_SPCod_SPCoc(uint16_t compno, uint8_t* headerData, uint16_t* header_size);
 	/**
 	 * Reads a SQcd or SQcc element, i.e. the quantization values of a band
 	 * in the QCD or QCC.
@@ -264,7 +264,7 @@ class CodeStreamDecompress : public CodeStream, public ICodeStreamDecompress
 	 *              it is changed by the function.
 	 *
 	 */
-	bool read_SQcd_SQcc(bool fromQCC, uint32_t compno, uint8_t* headerData, uint16_t* header_size);
+	bool read_SQcd_SQcc(bool fromQCC, uint16_t compno, uint8_t* headerData, uint16_t* header_size);
 	/**
 	 * Merges all PPM markers read (Packed headers, main header)
 	 *

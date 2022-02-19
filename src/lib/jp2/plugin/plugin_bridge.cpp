@@ -26,7 +26,7 @@ void decompress_synch_plugin_with_host(TileProcessor* tcd)
 	if(tcd->current_plugin_tile && tcd->current_plugin_tile->tileComponents)
 	{
 		auto tile = tcd->tile;
-		for(uint32_t compno = 0; compno < tile->numcomps; compno++)
+		for(uint16_t compno = 0; compno < tile->numcomps; compno++)
 		{
 			auto tilec = &tile->comps[compno];
 			auto plugin_tilec = tcd->current_plugin_tile->tileComponents[compno];
@@ -101,7 +101,7 @@ bool tile_equals(grk_plugin_tile* plugin_tile, Tile* tilePtr)
 		return true;
 	if(plugin_tile->numComponents != tilePtr->numcomps)
 		return false;
-	for(uint32_t compno = 0; compno < tilePtr->numcomps; ++compno)
+	for(uint16_t compno = 0; compno < tilePtr->numcomps; ++compno)
 	{
 		auto tilecomp = tilePtr->comps + compno;
 		auto plugin_tilecomp = plugin_tile->tileComponents[compno];
@@ -143,7 +143,7 @@ bool tile_equals(grk_plugin_tile* plugin_tile, Tile* tilePtr)
 	return true;
 }
 
-void compress_synch_with_plugin(TileProcessor* tcd, uint32_t compno, uint32_t resno,
+void compress_synch_with_plugin(TileProcessor* tcd, uint16_t compno, uint32_t resno,
 								uint32_t bandIndex, uint64_t precinctIndex, uint64_t cblkno,
 								Subband* band, CompressCodeblock* cblk, uint32_t* numPix)
 {
@@ -274,7 +274,7 @@ void compress_synch_with_plugin(TileProcessor* tcd, uint32_t compno, uint32_t re
 // set context stream for debugging purposes
 void set_context_stream(TileProcessor* p_tileProcessor)
 {
-	for(uint32_t compno = 0; compno < p_tileProcessor->tile->numcomps; compno++)
+	for(uint16_t compno = 0; compno < p_tileProcessor->tile->numcomps; compno++)
 	{
 		auto tilec = p_tileProcessor->tile->comps + compno;
 		for(uint32_t resno = 0; resno < tilec->numresolutions; resno++)

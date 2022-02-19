@@ -40,7 +40,7 @@ struct grk_plugin_debug_mqc
 	uint8_t contextCache[DEBUG_CONTEXT_CACHE_SIZE];
 	uint32_t contextCacheCount;
 	uint8_t orientation;
-	uint32_t compno;
+	uint16_t compno;
 	uint32_t level;
 };
 

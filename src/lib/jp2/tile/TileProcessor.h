@@ -140,8 +140,8 @@ struct TileProcessor
 	uint32_t newTilePartProgressionPosition;
 	// coding/decoding parameters for this tile
 	TileCodingParams* tcp_;
-	bool isWholeTileDecompress(uint32_t compno);
-	bool needsMctDecompress(uint32_t compno);
+	bool isWholeTileDecompress(uint16_t compno);
+	bool needsMctDecompress(uint16_t compno);
 	bool mctDecompress();
 	bool dcLevelShiftDecompress();
 	bool dcLevelShiftCompress();

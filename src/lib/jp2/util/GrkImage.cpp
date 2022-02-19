@@ -72,7 +72,7 @@ GrkImage* GrkImage::create(grk_image* src, uint16_t numcmpts, grk_image_comp* cm
 	memset(image->comps, 0, image->numcomps * sizeof(grk_image_comp));
 
 	/* create the individual image components */
-	for(uint32_t compno = 0; compno < numcmpts; compno++)
+	for(uint16_t compno = 0; compno < numcmpts; compno++)
 	{
 		auto comp = &image->comps[compno];
 
@@ -125,7 +125,7 @@ void GrkImage::all_components_data_free()
 
 bool GrkImage::subsampleAndReduce(uint32_t reduce)
 {
-	for(uint32_t compno = 0; compno < numcomps; ++compno)
+	for(uint16_t compno = 0; compno < numcomps; ++compno)
 	{
 		auto comp = comps + compno;
 
@@ -193,7 +193,7 @@ void GrkImage::copyHeader(GrkImage* dest)
 	}
 	dest->numcomps = numcomps;
 	dest->comps = new grk_image_comp[dest->numcomps];
-	for(uint32_t compno = 0; compno < dest->numcomps; compno++)
+	for(uint16_t compno = 0; compno < dest->numcomps; compno++)
 	{
 		memcpy(&(dest->comps[compno]), &(comps[compno]), sizeof(grk_image_comp));
 		dest->comps[compno].data = nullptr;
@@ -417,7 +417,7 @@ void GrkImage::transferDataTo(GrkImage* dest)
 	if(!dest || !comps || !dest->comps || numcomps != dest->numcomps)
 		return;
 
-	for(uint32_t compno = 0; compno < numcomps; compno++)
+	for(uint16_t compno = 0; compno < numcomps; compno++)
 	{
 		auto srcComp = comps + compno;
 		auto destComp = dest->comps + compno;

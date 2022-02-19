@@ -700,7 +700,7 @@ inline bool readBytes(FILE* fp, grk_image* image, size_t area)
 
 	uint64_t i = 0;
 	uint64_t index = 0;
-	uint32_t compno = 0;
+	uint16_t compno = 0;
 	uint64_t totalSize = area * image->decompressNumComps;
 	const uint64_t chunkSize = 4096 * 4;
 	T chunk[chunkSize];
@@ -746,7 +746,8 @@ grk_image* PNMFormat::decode(grk_cparameters* parameters)
 	uint32_t subsampling_dx = parameters->subsampling_dx;
 	uint32_t subsampling_dy = parameters->subsampling_dy;
 	uint16_t decompressNumComps;
-	uint32_t compno, w, stride_diff, width, counter, h, format;
+	uint16_t compno;
+	uint32_t w, stride_diff, width, counter, h, format;
 	uint8_t prec;
 	GRK_COLOR_SPACE color_space;
 	grk_image_comp cmptparm[4]; /* RGBA: max. 4 components */

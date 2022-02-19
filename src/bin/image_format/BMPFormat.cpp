@@ -208,7 +208,7 @@ bool BMPFormat::encodePixels()
 	uint8_t scaleType[4] = {0, 0, 0, 0};
 	int32_t shift[4] = {0, 0, 0, 0};
 
-	for(uint32_t compno = 0; compno < decompressNumComps; ++compno)
+	for(uint16_t compno = 0; compno < decompressNumComps; ++compno)
 	{
 		if(image_->comps[0].prec != 8)
 		{
@@ -250,7 +250,7 @@ bool BMPFormat::encodePixels()
 			for(uint32_t i = 0; i < w; i++)
 			{
 				uint8_t rc[4] = {0, 0, 0, 0};
-				for(uint32_t compno = 0; compno < decompressNumComps; ++compno)
+				for(uint16_t compno = 0; compno < decompressNumComps; ++compno)
 				{
 					int32_t r = image_->comps[compno].data[srcIndex_ + i];
 					r += shift[compno];

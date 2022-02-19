@@ -173,9 +173,7 @@ uint32_t PacketLengthMarkers::write(bool simulate)
 		finalMarkerInfo = &map_iter->second;
 	}
 	if(!markers_->empty())
-	{
 		writeMarkerLength(simulate ? finalMarkerInfo : nullptr);
-	}
 
 	return totalBytesWritten_;
 }

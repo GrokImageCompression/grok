@@ -130,9 +130,8 @@ bool TileInfo::update(uint16_t tileIndex, uint8_t currentTilePart, uint8_t numTi
 
 		if(currentTilePart >= allocatedTileParts)
 		{
-			TilePartInfo* newTilePartIndex;
 			allocatedTileParts = currentTilePart + 1U;
-			newTilePartIndex =
+			auto newTilePartIndex =
 				(TilePartInfo*)grkRealloc(tilePartInfo, allocatedTileParts * sizeof(TilePartInfo));
 			if(!newTilePartIndex)
 			{
@@ -160,10 +159,7 @@ void TileInfo::dump(FILE* outputFileStream, uint16_t tileNum)
 	if(hasTilePartInfo())
 	{
 		for(uint8_t tilePart = 0; tilePart < numTileParts; tilePart++)
-		{
-			auto tilePartInfo = getTilePartInfo(tilePart);
-			tilePartInfo->dump(outputFileStream, tilePart);
-		}
+			getTilePartInfo(tilePart)->dump(outputFileStream, tilePart);
 	}
 	if(markerInfo)
 	{
@@ -259,7 +255,6 @@ bool CodeStreamInfo::seekToFirstTilePart(uint16_t tileIndex)
 
 	auto tileInfoForTile = getTileInfo(tileIndex);
 	assert(tileInfoForTile && tileInfoForTile->numTileParts);
-
 	// move to first start of first tile part for this tile (skip 2 byte marker)
 	if(!(stream->seek(tileInfoForTile->getTilePartInfo(0)->startPosition + 2)))
 	{
@@ -528,7 +523,6 @@ bool TileLengthMarkers::addTileMarkerInfo(uint16_t tileno, CodeStreamInfo* codes
 		if(tilePartInfo)
 			tilePartInfo->startPosition = pos;
 	}
-
 	codestreamInfo->pushMarker(id, pos, len);
 
 	return true;

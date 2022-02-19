@@ -328,7 +328,7 @@ bool TileProcessor::writeTilePartT2(uint32_t* tileBytesWritten)
  * @param compno Component number
  * @return true if the tile component should be fully decompressed
  */
-bool TileProcessor::isWholeTileDecompress(uint32_t compno)
+bool TileProcessor::isWholeTileDecompress(uint16_t compno)
 {
 	auto tilec = tile->comps + compno;
 	/* Compute the intersection of the area of interest, expressed in tile component coordinates, */
@@ -477,7 +477,7 @@ void TileProcessor::ingestImage()
 		}
 	}
 }
-bool TileProcessor::needsMctDecompress(uint32_t compno)
+bool TileProcessor::needsMctDecompress(uint16_t compno)
 {
 	if(!tcp_->mct)
 		return false;
@@ -669,7 +669,7 @@ bool TileProcessor::encodeT2(uint32_t* tileBytesWritten)
 {
 	auto l_t2 = new T2Compress(this);
 #ifdef DEBUG_LOSSLESS_T2
-	for(uint32_t compno = 0; compno < p_image->numcomps_; ++compno)
+	for(uint16_t compno = 0; compno < p_image->numcomps_; ++compno)
 	{
 		TileComponent* tilec = &tilePtr->comps[compno];
 		tilec->round_trip_resolutions = new Resolution[tilec->numresolutions];
@@ -743,7 +743,7 @@ bool TileProcessor::encodeT2(uint32_t* tileBytesWritten)
 	delete l_t2;
 
 #ifdef DEBUG_LOSSLESS_T2
-	for(uint32_t compno = 0; compno < p_image->numcomps_; ++compno)
+	for(uint16_t compno = 0; compno < p_image->numcomps_; ++compno)
 	{
 		TileComponent* tilec = &tilePtr->comps[compno];
 		for(uint32_t resno = 0; resno < tilec->numresolutions; ++resno)

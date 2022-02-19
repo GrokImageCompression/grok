@@ -209,7 +209,7 @@ bool PGXFormat::encodePixels(void)
 {
 	const char* outfile = fileName_.c_str();
 	bool success = false;
-	for(uint32_t compno = 0; compno < image_->numcomps; compno++)
+	for(uint16_t compno = 0; compno < image_->numcomps; compno++)
 	{
 		auto comp = &image_->comps[compno];
 		char bname[4096]; /* buffer for name */

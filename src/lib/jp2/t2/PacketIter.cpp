@@ -37,7 +37,7 @@ PacketIter::~PacketIter()
 {
 	if(comps)
 	{
-		for(uint32_t compno = 0; compno < numcomps; compno++)
+		for(uint16_t compno = 0; compno < numcomps; compno++)
 			delete[](comps + compno)->resolutions;
 		delete[] comps;
 	}
@@ -371,7 +371,7 @@ void PacketIter::update_dxy(void)
 {
 	dx = 0;
 	dy = 0;
-	for(uint32_t compno = 0; compno < numcomps; compno++)
+	for(uint16_t compno = 0; compno < numcomps; compno++)
 		update_dxy_for_comp(comps + compno);
 }
 void PacketIter::update_dxy_for_comp(PiComp* comp)

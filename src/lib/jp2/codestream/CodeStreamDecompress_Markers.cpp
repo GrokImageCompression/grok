@@ -866,7 +866,7 @@ bool CodeStreamDecompress::read_tlm(uint8_t* headerData, uint16_t header_size)
 
 	return cp_.tlm_markers->read(headerData, header_size);
 }
-bool CodeStreamDecompress::read_SQcd_SQcc(bool fromQCC, uint32_t comp_no, uint8_t* headerData,
+bool CodeStreamDecompress::read_SQcd_SQcc(bool fromQCC, uint16_t comp_no, uint8_t* headerData,
 										  uint16_t* header_size)
 {
 	assert(headerData != nullptr);
@@ -1016,7 +1016,7 @@ bool CodeStreamDecompress::read_SQcd_SQcc(bool fromQCC, uint32_t comp_no, uint8_
 	}
 	return true;
 }
-bool CodeStreamDecompress::read_SPCod_SPCoc(uint32_t compno, uint8_t* headerData,
+bool CodeStreamDecompress::read_SPCod_SPCoc(uint16_t compno, uint8_t* headerData,
 											uint16_t* header_size)
 {
 	uint32_t i;

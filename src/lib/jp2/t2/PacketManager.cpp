@@ -38,7 +38,7 @@ PacketManager::PacketManager(bool compression, GrkImage* img, CodingParams* cpar
 		auto curPi = pi_ + pino;
 		curPi->comps = new PiComp[image->numcomps];
 		curPi->numcomps = image->numcomps;
-		for(uint32_t compno = 0; compno < image->numcomps; ++compno)
+		for(uint16_t compno = 0; compno < image->numcomps; ++compno)
 		{
 			auto comp = curPi->comps + compno;
 			auto tccp = tcp->tccps + compno;
@@ -50,7 +50,7 @@ PacketManager::PacketManager(bool compression, GrkImage* img, CodingParams* cpar
 	auto precinct = new uint32_t[data_stride * image->numcomps];
 	auto precinctByComponent = new uint32_t*[image->numcomps];
 	auto resolutionPrecinctGrid = precinct;
-	for(uint32_t compno = 0; compno < image->numcomps; ++compno)
+	for(uint16_t compno = 0; compno < image->numcomps; ++compno)
 	{
 		precinctByComponent[compno] = resolutionPrecinctGrid;
 		resolutionPrecinctGrid += data_stride;
@@ -95,7 +95,7 @@ PacketManager::PacketManager(bool compression, GrkImage* img, CodingParams* cpar
 
 		/* allocation for components and number of components
 		 *  has already been calculated by pi_create */
-		for(uint32_t compno = 0; compno < cur_pi->numcomps; ++compno)
+		for(uint16_t compno = 0; compno < cur_pi->numcomps; ++compno)
 		{
 			auto current_comp = cur_pi->comps + compno;
 			auto img_comp = image->comps + compno;
@@ -506,7 +506,7 @@ void PacketManager::getParams(const GrkImage* image, const CodingParams* p_cp, u
 			numPrecinctsPerRes[i] = 0;
 	}
 	auto tcp = &p_cp->tcps[tileno];
-	for(uint32_t compno = 0; compno < image->numcomps; ++compno)
+	for(uint16_t compno = 0; compno < image->numcomps; ++compno)
 	{
 		uint32_t* precinct = nullptr;
 		if(precinctByComponent)

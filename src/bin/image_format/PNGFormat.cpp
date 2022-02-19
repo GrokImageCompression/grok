@@ -322,7 +322,7 @@ beach:
 bool PNGFormat::encodePixels(void)
 {
 	int32_t const* planes[4];
-	for(uint32_t compno = 0; compno < nr_comp; ++compno)
+	for(uint16_t compno = 0; compno < nr_comp; ++compno)
 		planes[compno] = image_->comps[compno].data;
 
 	png_bytep row_buf_cpy = row_buf;
