@@ -94,7 +94,7 @@ struct TileProcessor
 	bool prepareSodDecompress(CodeStreamDecompress* codeStream);
 	void generateImage(GrkImage* src_image, Tile* src_tile);
 	GrkImage* getImage(void);
-	void release(void);
+	void release(GRK_TILE_CACHE_STRATEGY strategy);
 	void setCorruptPacket(void);
 	PacketTracker* getPacketTracker(void);
 	grkRectU32 getUnreducedTileWindow(void);

@@ -39,7 +39,7 @@ TileProcessor::TileProcessor(uint16_t tileIndex, CodeStream* codeStream, IBuffer
 }
 TileProcessor::~TileProcessor()
 {
-	release();
+	release(GRK_TILE_CACHE_NONE);
 }
 IBufferedStream* TileProcessor::getStream(void)
 {
@@ -72,11 +72,16 @@ GrkImage* TileProcessor::getImage(void)
 {
 	return image_;
 }
-void TileProcessor::release(void)
+void TileProcessor::release(GRK_TILE_CACHE_STRATEGY strategy)
 {
-	if(image_)
-		grk_object_unref(&image_->obj);
-	image_ = nullptr;
+	// delete image in absence of tile cache strategy
+	if (strategy == GRK_TILE_CACHE_NONE) {
+		if(image_)
+			grk_object_unref(&image_->obj);
+		image_ = nullptr;
+	}
+
+	// delete tile components
 	delete tile;
 	tile = nullptr;
 }

@@ -361,11 +361,13 @@ bool CodeStreamDecompress::decompress(grk_plugin_tile* tile)
 }
 bool CodeStreamDecompress::decompressTile(uint16_t tileIndex)
 {
+	// 1. check if tile has already been decompressed
 	auto entry = tileCache_->get(tileIndex);
 	if(entry && entry->processor && entry->processor->getImage())
 		return true;
 
-	// another tile has already been decoded
+
+	//2. otherwise, decompress tile
 	if(outputImage_)
 	{
 		/* Copy code stream image information to composite image */
@@ -373,13 +375,9 @@ bool CodeStreamDecompress::decompressTile(uint16_t tileIndex)
 	}
 
 	uint16_t numTilesToDecompress = (uint16_t)(cp_.t_grid_width * cp_.t_grid_height);
-	if(codeStreamInfo)
-	{
-		if(!codeStreamInfo->allocTileInfo(numTilesToDecompress))
-		{
-			headerError_ = true;
-			return false;
-		}
+	if(codeStreamInfo && !codeStreamInfo->allocTileInfo(numTilesToDecompress)) {
+		headerError_ = true;
+		return false;
 	}
 
 	auto compositeImage = getCompositeImage();
@@ -536,9 +534,7 @@ bool CodeStreamDecompress::decompressTiles(void)
 								success = false;
 						}
 					}
-					// if cache strategy set to none, then delete image
-					if(!success || tileCache_->getStrategy() == GRK_TILE_CACHE_NONE)
-						processor->release();
+					processor->release(success ? tileCache_->getStrategy() : GRK_TILE_CACHE_NONE);
 				}
 			}
 			return 0;

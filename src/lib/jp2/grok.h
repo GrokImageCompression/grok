@@ -387,8 +387,8 @@ typedef enum _GRK_CODEC_FORMAT
 
 typedef enum GRK_TILE_CACHE_STRATEGY
 {
-	GRK_TILE_CACHE_NONE,
-	GRK_TILE_CACHE_ALL,
+	GRK_TILE_CACHE_NONE,	// no tile caching
+	GRK_TILE_CACHE_IMAGE	// cache final tile image
 } GRK_TILE_CACHE_STRATEGY;
 
 /**
