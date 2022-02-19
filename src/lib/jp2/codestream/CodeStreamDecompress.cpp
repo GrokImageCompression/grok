@@ -168,7 +168,6 @@ bool CodeStreamDecompress::readHeader(grk_header_info* header_info)
 	if(!headerImage_)
 	{
 		headerImage_ = new GrkImage();
-
 		validation_list_.push_back(std::bind(&CodeStreamDecompress::decompressValidation, this));
 		if(!exec(validation_list_))
 		{
@@ -238,7 +237,6 @@ bool CodeStreamDecompress::readHeader(grk_header_info* header_info)
 }
 bool CodeStreamDecompress::setDecompressWindow(grkRectU32 window)
 {
-	auto cp = &(cp_);
 	auto image = headerImage_;
 	auto compositeImage = getCompositeImage();
 	auto decompressor = &decompressorState_;
@@ -254,8 +252,8 @@ bool CodeStreamDecompress::setDecompressWindow(grkRectU32 window)
 	{
 		decompressor->start_tile_x_index_ = 0;
 		decompressor->start_tile_y_index_ = 0;
-		decompressor->end_tile_x_index_ = cp->t_grid_width;
-		decompressor->end_tile_y_index_ = cp->t_grid_height;
+		decompressor->end_tile_x_index_ = cp_.t_grid_width;
+		decompressor->end_tile_y_index_ = cp_.t_grid_height;
 	}
 	else
 	{
@@ -274,7 +272,7 @@ bool CodeStreamDecompress::setDecompressWindow(grkRectU32 window)
 		}
 		else
 		{
-			decompressor->start_tile_x_index_ = (start_x - cp->tx0) / cp->t_width;
+			decompressor->start_tile_x_index_ = (start_x - cp_.tx0) / cp_.t_width;
 			compositeImage->x0 = start_x;
 		}
 
@@ -288,7 +286,7 @@ bool CodeStreamDecompress::setDecompressWindow(grkRectU32 window)
 		}
 		else
 		{
-			decompressor->start_tile_y_index_ = (start_y - cp->ty0) / cp->t_height;
+			decompressor->start_tile_y_index_ = (start_y - cp_.ty0) / cp_.t_height;
 			compositeImage->y0 = start_y;
 		}
 
@@ -300,15 +298,15 @@ bool CodeStreamDecompress::setDecompressWindow(grkRectU32 window)
 			GRK_WARN("Right position of the decompress window (%u)"
 					 " is outside the image area (Xsiz=%u).",
 					 end_x, image->x1);
-			decompressor->end_tile_x_index_ = cp->t_grid_width;
+			decompressor->end_tile_x_index_ = cp_.t_grid_width;
 			compositeImage->x1 = image->x1;
 		}
 		else
 		{
 			// avoid divide by zero
-			if(cp->t_width == 0)
+			if(cp_.t_width == 0)
 				return false;
-			decompressor->end_tile_x_index_ = ceildiv<uint32_t>(end_x - cp->tx0, cp->t_width);
+			decompressor->end_tile_x_index_ = ceildiv<uint32_t>(end_x - cp_.tx0, cp_.t_width);
 			compositeImage->x1 = end_x;
 		}
 
@@ -318,19 +316,19 @@ bool CodeStreamDecompress::setDecompressWindow(grkRectU32 window)
 			GRK_WARN("Bottom position of the decompress window (%u)"
 					 " is outside of the image area (Ysiz=%u).",
 					 end_y, image->y1);
-			decompressor->end_tile_y_index_ = cp->t_grid_height;
+			decompressor->end_tile_y_index_ = cp_.t_grid_height;
 			compositeImage->y1 = image->y1;
 		}
 		else
 		{
 			// avoid divide by zero
-			if(cp->t_height == 0)
+			if(cp_.t_height == 0)
 				return false;
-			decompressor->end_tile_y_index_ = ceildiv<uint32_t>(end_y - cp->ty0, cp->t_height);
+			decompressor->end_tile_y_index_ = ceildiv<uint32_t>(end_y - cp_.ty0, cp_.t_height);
 			compositeImage->y1 = end_y;
 		}
 		wholeTileDecompress = false;
-		if(!compositeImage->subsampleAndReduce(cp->coding_params_.dec_.reduce_))
+		if(!compositeImage->subsampleAndReduce(cp_.coding_params_.dec_.reduce_))
 			return false;
 
 		GRK_INFO("Decompress window set to (%d,%d,%d,%d)", compositeImage->x0 - image->x0,
@@ -443,18 +441,16 @@ bool CodeStreamDecompress::decompressTile(uint16_t tileIndex)
 bool CodeStreamDecompress::endOfCodeStream(void)
 {
 	return decompressorState_.getState() == DECOMPRESS_STATE_EOC ||
-		   decompressorState_.getState() == DECOMPRESS_STATE_NO_EOC || stream_->numBytesLeft() == 0;
+			decompressorState_.getState() == DECOMPRESS_STATE_NO_EOC ||
+				stream_->numBytesLeft() == 0;
 }
 bool CodeStreamDecompress::decompressTiles(void)
 {
 	uint16_t numTilesToDecompress = (uint16_t)(cp_.t_grid_height * cp_.t_grid_width);
-	if(codeStreamInfo)
+	if(codeStreamInfo && !codeStreamInfo->allocTileInfo(numTilesToDecompress) )
 	{
-		if(!codeStreamInfo->allocTileInfo(numTilesToDecompress))
-		{
-			headerError_ = true;
-			return false;
-		}
+		headerError_ = true;
+		return false;
 	}
 	if(!createOutputImage())
 		return false;
@@ -542,9 +538,7 @@ bool CodeStreamDecompress::decompressTiles(void)
 					}
 					// if cache strategy set to none, then delete image
 					if(!success || tileCache_->getStrategy() == GRK_TILE_CACHE_NONE)
-					{
 						processor->release();
-					}
 				}
 			}
 			return 0;
@@ -612,7 +606,7 @@ cleanup:
 }
 bool CodeStreamDecompress::copy_default_tcp(void)
 {
-	for(uint32_t i = 0; i < cp_.t_grid_height * cp_.t_grid_width; ++i)
+	for(uint16_t i = 0; i < cp_.t_grid_height * cp_.t_grid_width; ++i)
 	{
 		auto tcp = cp_.tcps + i;
 		if(!tcp->copy(decompressorState_.default_tcp_, headerImage_))
@@ -1003,15 +997,13 @@ void CodeStreamDecompress::dump_tile_info(TileCodingParams* default_tile, uint32
 {
 	if(default_tile)
 	{
-		uint32_t compno;
-
 		fprintf(outputFileStream, "\t default tile {\n");
 		fprintf(outputFileStream, "\t\t csty=%#x\n", default_tile->csty);
 		fprintf(outputFileStream, "\t\t prg=%#x\n", default_tile->prg);
 		fprintf(outputFileStream, "\t\t numlayers=%d\n", default_tile->numlayers);
 		fprintf(outputFileStream, "\t\t mct=%x\n", default_tile->mct);
 
-		for(compno = 0; compno < numcomps; compno++)
+		for(uint16_t compno = 0; compno < numcomps; compno++)
 		{
 			auto tccp = &(default_tile->tccps[compno]);
 			uint32_t resno;
@@ -1088,7 +1080,7 @@ void CodeStreamDecompress::dump(uint32_t flag, FILE* outputFileStream)
 		uint32_t numTiles = cp->t_grid_height * cp->t_grid_width;
 		if(getHeaderImage())
 		{
-			for(uint32_t i = 0; i < numTiles; ++i)
+			for(uint16_t i = 0; i < numTiles; ++i)
 			{
 				auto tcp = cp->tcps + i;
 				dump_tile_info(tcp, getHeaderImage()->numcomps, outputFileStream);
@@ -1096,19 +1088,9 @@ void CodeStreamDecompress::dump(uint32_t flag, FILE* outputFileStream)
 		}
 	}
 
-	/* Dump the code stream info of the current tile */
-	if(flag & GRK_J2K_TH_INFO)
-	{
-	}
-
 	/* Dump the code stream index from main header */
 	if((flag & GRK_J2K_MH_IND) && codeStreamInfo)
 		codeStreamInfo->dump(outputFileStream);
-
-	/* Dump the code stream index of the current tile */
-	if(flag & GRK_J2K_TH_IND)
-	{
-	}
 }
 void CodeStreamDecompress::dump_MH_info(FILE* outputFileStream)
 {
@@ -1124,7 +1106,6 @@ void CodeStreamDecompress::dump_image_header(GrkImage* img_header, bool dev_dump
 											 FILE* outputFileStream)
 {
 	char tab[2];
-
 	if(dev_dump_flag)
 	{
 		fprintf(stdout, "[DEV] Dump an image_header struct {\n");
@@ -1156,7 +1137,6 @@ void CodeStreamDecompress::dump_image_comp_header(grk_image_comp* comp_header, b
 												  FILE* outputFileStream)
 {
 	char tab[3];
-
 	if(dev_dump_flag)
 	{
 		fprintf(stdout, "[DEV] Dump an image_comp_header struct {\n");

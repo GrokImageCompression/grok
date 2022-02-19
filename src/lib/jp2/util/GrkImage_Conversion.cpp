@@ -118,7 +118,6 @@ bool GrkImage::execUpsample(void)
 			return false;
 		}
 	}
-
 	for(uint32_t compno = 0U; compno < numcomps; ++compno)
 	{
 		auto new_cmp = new_components + compno;
@@ -205,7 +204,6 @@ bool GrkImage::execUpsample(void)
 			memcpy(new_cmp->data, org_cmp->data, org_cmp->stride * org_cmp->h * sizeof(int32_t));
 		}
 	}
-
 	all_components_data_free();
 	delete[] comps;
 	comps = new_components;
@@ -275,7 +273,7 @@ void GrkImage::convertPrecision(void)
 {
 	if(precision)
 	{
-		for(uint32_t compno = 0; compno < numcomps; ++compno)
+		for(uint16_t compno = 0; compno < numcomps; ++compno)
 		{
 			uint32_t precisionno = compno;
 			if(precisionno >= numPrecision)
@@ -284,7 +282,6 @@ void GrkImage::convertPrecision(void)
 			auto comp = comps + compno;
 			if(prec == 0)
 				prec = comp->prec;
-
 			switch(precision[precisionno].mode)
 			{
 				case GRK_PREC_MODE_CLIP: {
@@ -302,7 +299,6 @@ void GrkImage::convertPrecision(void)
 			}
 		}
 	}
-
 	if(decompressFormat == GRK_JPG_FMT)
 	{
 		uint8_t prec = comps[0].prec;

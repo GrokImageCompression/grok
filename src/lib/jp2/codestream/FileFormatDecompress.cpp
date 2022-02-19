@@ -66,17 +66,14 @@ void FileFormatDecompress::alloc_palette(grk_color* color, uint8_t num_channels,
 }
 void FileFormatDecompress::free_palette_clr(grk_color* color)
 {
-	if(color)
+	if(color && color->palette)
 	{
-		if(color->palette)
-		{
-			delete[] color->palette->channel_sign;
-			delete[] color->palette->channel_prec;
-			delete[] color->palette->lut;
-			delete[] color->palette->component_mapping;
-			delete color->palette;
-			color->palette = nullptr;
-		}
+		delete[] color->palette->channel_sign;
+		delete[] color->palette->channel_prec;
+		delete[] color->palette->lut;
+		delete[] color->palette->component_mapping;
+		delete color->palette;
+		color->palette = nullptr;
 	}
 }
 void FileFormatDecompress::free_color(grk_color* color)
@@ -107,7 +104,6 @@ bool FileFormatDecompress::read_asoc(uint8_t* header_data, uint32_t header_data_
 		GRK_ERROR("ASOC super box can't be empty");
 		return false;
 	}
-
 	try
 	{
 		read_asoc(&root_asoc, &header_data, &header_data_size, header_data_size);
@@ -164,7 +160,6 @@ bool FileFormatDecompress::readHeader(grk_header_info* header_info)
 	if(needsHeaderRead)
 	{
 		procedure_list_->push_back(std::bind(&FileFormatDecompress::readHeaderProcedureImpl, this));
-
 		/* validation of the parameters codec */
 		if(!exec(validation_list_))
 		{
@@ -347,7 +342,6 @@ bool FileFormatDecompress::decompress(grk_plugin_tile* tile)
 // now, so header encoding in image format will be correct
 bool FileFormatDecompress::preProcess(void)
 {
-	auto img = codeStream->getCompositeImage();
 	if(color.channel_definition)
 	{
 		auto info = color.channel_definition->descriptions;
@@ -356,7 +350,7 @@ bool FileFormatDecompress::preProcess(void)
 		for(uint16_t i = 0; i < n; ++i)
 		{
 			uint16_t channel = info[i].channel;
-
+			auto img = codeStream->getCompositeImage();
 			if(channel >= img->numcomps)
 			{
 				GRK_WARN("apply_channel_definition: channel=%u, numcomps=%u", channel,
@@ -370,8 +364,7 @@ bool FileFormatDecompress::preProcess(void)
 }
 bool FileFormatDecompress::postProcess(void)
 {
-	bool rc = applyColour();
-	return rc ? codeStream->postProcess() : false;
+	return applyColour() ? codeStream->postProcess() : false;
 }
 bool FileFormatDecompress::decompressTile(uint16_t tileIndex)
 {
@@ -394,8 +387,7 @@ bool FileFormatDecompress::endDecompress(void)
 }
 bool FileFormatDecompress::applyColour(void)
 {
-	auto images = codeStream->getAllImages();
-	for(auto& img : images)
+	for(auto& img : codeStream->getAllImages())
 	{
 		if(!applyColour(img))
 			return false;
@@ -411,12 +403,9 @@ bool FileFormatDecompress::applyColour(GrkImage* img)
 	{
 		/* Part 1, I.5.3.4: Either both or none : */
 		if(!color.palette->component_mapping)
-			free_palette_clr(&(color));
-		else
-		{
-			if(!apply_palette_clr(img, &(color)))
-				return false;
-		}
+			free_palette_clr(&color);
+		else if (!apply_palette_clr(img, &color))
+			return false;
 	}
 	/* Apply channel definitions if needed */
 	if(color.channel_definition)
@@ -434,14 +423,13 @@ uint32_t FileFormatDecompress::read_asoc(AsocBox* parent, uint8_t** header_data,
 		GRK_ERROR("ASOC box must be at least 8 bytes in size");
 		throw BadAsocException();
 	}
-	uint32_t asocBytesUsed = 0;
-
 	// create asoc
 	auto childAsoc = new AsocBox();
 	parent->children.push_back(childAsoc);
 
 	// read all children
-	while(asocBytesUsed<asocSize&& * header_data_size> 8)
+	uint32_t asocBytesUsed = 0;
+	while(asocBytesUsed<asocSize && *header_data_size> 8)
 	{
 		uint32_t childSize = 0;
 		grk_read<uint32_t>(*header_data, &childSize);
@@ -515,7 +503,6 @@ bool FileFormatDecompress::readHeaderProcedureImpl(void)
 	auto stream = codeStream->getStream();
 	assert(stream != nullptr);
 	bool rc = false;
-
 	auto current_data = (uint8_t*)grkCalloc(1, last_data_size);
 	if(!current_data)
 	{
@@ -607,9 +594,7 @@ bool FileFormatDecompress::readHeaderProcedureImpl(void)
 					goto cleanup;
 				}
 				if(!current_handler(current_data, current_data_size))
-				{
 					goto cleanup;
-				}
 			}
 			else
 			{
@@ -659,12 +644,11 @@ cleanup:
 bool FileFormatDecompress::read_box_hdr(FileFormatBox* box, uint32_t* p_number_bytes_read,
 										IBufferedStream* stream)
 {
-	uint8_t data_header[8];
-
 	assert(stream != nullptr);
 	assert(box != nullptr);
 	assert(p_number_bytes_read != nullptr);
 
+	uint8_t data_header[8];
 	*p_number_bytes_read = (uint32_t)stream->read(data_header, 8);
 	// we reached EOS
 	if(*p_number_bytes_read < 8)
@@ -715,8 +699,7 @@ bool FileFormatDecompress::read_ihdr(uint8_t* p_image_header_data, uint32_t imag
 	p_image_header_data += 4;
 	grk_read<uint32_t>(p_image_header_data, &(w)); /* WIDTH */
 	p_image_header_data += 4;
-
-	if((w == 0) || (h == 0))
+	if(w == 0 || h == 0)
 	{
 		GRK_ERROR("JP2 IHDR box: invalid dimensions: (%u,%u)", w, h);
 		return false;
@@ -789,6 +772,7 @@ bool FileFormatDecompress::read_uuid(uint8_t* headerData, uint32_t header_size)
 {
 	if(!headerData || header_size < 16)
 		return false;
+
 	if(header_size == 16)
 	{
 		GRK_WARN("Read UUID box with no data - ignoring");
@@ -908,7 +892,6 @@ void FileFormatDecompress::apply_channel_definition(GrkImage* image, grk_color* 
 {
 	auto info = color->channel_definition->descriptions;
 	uint16_t n = color->channel_definition->num_channel_descriptions;
-
 	for(uint16_t i = 0; i < n; ++i)
 	{
 		/* WATCH: asoc_index = asoc - 1 ! */
@@ -961,7 +944,6 @@ void FileFormatDecompress::apply_channel_definition(GrkImage* image, grk_color* 
 bool FileFormatDecompress::read_channel_definition(uint8_t* p_cdef_header_data,
 												   uint32_t cdef_header_size)
 {
-	uint16_t i;
 	assert(p_cdef_header_data != nullptr);
 
 	GRK_UNUSED(cdef_header_size);
@@ -995,7 +977,7 @@ bool FileFormatDecompress::read_channel_definition(uint8_t* p_cdef_header_data,
 	color.channel_definition->descriptions = new grk_channel_description[num_channel_descriptions];
 	color.channel_definition->num_channel_descriptions = (uint16_t)num_channel_descriptions;
 	auto cdef_info = color.channel_definition->descriptions;
-	for(i = 0; i < num_channel_descriptions; ++i)
+	for(uint16_t i = 0; i < num_channel_descriptions; ++i)
 	{
 		grk_read<uint16_t>(p_cdef_header_data, &cdef_info[i].channel); /* Cn^i */
 		p_cdef_header_data += 2;
@@ -1018,7 +1000,7 @@ bool FileFormatDecompress::read_channel_definition(uint8_t* p_cdef_header_data,
 
 	// cdef sanity check
 	// 1. check for multiple descriptions of the same channel with different types
-	for(i = 0; i < color.channel_definition->num_channel_descriptions; ++i)
+	for(uint16_t i = 0; i < color.channel_definition->num_channel_descriptions; ++i)
 	{
 		auto info_i = cdef_info[i];
 		for(uint16_t j = 0; j < color.channel_definition->num_channel_descriptions; ++j)
@@ -1035,7 +1017,7 @@ bool FileFormatDecompress::read_channel_definition(uint8_t* p_cdef_header_data,
 	}
 
 	// 2. check that type/association pairs are unique
-	for(i = 0; i < color.channel_definition->num_channel_descriptions; ++i)
+	for(uint16_t i = 0; i < color.channel_definition->num_channel_descriptions; ++i)
 	{
 		auto info_i = cdef_info[i];
 		for(uint16_t j = 0; j < color.channel_definition->num_channel_descriptions; ++j)
@@ -1085,15 +1067,14 @@ bool FileFormatDecompress::read_colr(uint8_t* p_colr_header_data, uint32_t colr_
 	grk_read<uint8_t>(p_colr_header_data++, &meth); /* METH */
 	grk_read<uint8_t>(p_colr_header_data++, &precedence); /* PRECEDENCE */
 	grk_read<uint8_t>(p_colr_header_data++, &approx); /* APPROX */
-
 	if(meth == 1)
 	{
-		uint32_t temp;
 		if(colr_header_size < 7)
 		{
 			GRK_ERROR("Bad COLR header box (bad size: %u)", colr_header_size);
 			return false;
 		}
+		uint32_t temp;
 		grk_read<uint32_t>(p_colr_header_data, &temp); /* EnumCS */
 		p_colr_header_data += 4;
 
@@ -1312,7 +1293,7 @@ bool FileFormatDecompress::check_color(GrkImage* image, grk_color* color)
 			{
 				if(!pcol_usage[i])
 				{
-					is_sane = 0U;
+					is_sane = false;
 					GRK_WARN("Component mapping seems wrong. Trying to correct.", i);
 					break;
 				}
@@ -1538,12 +1519,12 @@ bool FileFormatDecompress::read_palette_clr(uint8_t* p_pclr_header_data, uint32_
 	}
 	uint8_t num_channels;
 	grk_read<uint8_t>(p_pclr_header_data, &num_channels); /* NPC */
-	++p_pclr_header_data;
-	if(num_channels == 0U)
+	if(!num_channels)
 	{
 		GRK_ERROR("Invalid PCLR box : 0 palette columns");
 		return false;
 	}
+	++p_pclr_header_data;
 	if(pclr_header_size < 3 + (uint32_t)num_channels)
 		return false;
 	FileFormatDecompress::alloc_palette(&color, num_channels, num_entries);
