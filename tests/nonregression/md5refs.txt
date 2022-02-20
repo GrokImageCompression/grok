@@ -348,6 +348,3 @@ d35710a9aa61cbefd464a68303ed211b  161388041dff7f85465687873c5a1d9680413331_0.pgx
 291acf81bd6ca9b690666ff5da3fe581  mono_icc.tif
 da9fdf369cee75617555cd36b2f8346b  mono_icc_0.pgx
 6fd6d70a1a23998e82848f03a99a50f5  mono_icc_force.tif
-06bfbd42b03b7f3ca5cbf36949e2c27a  sycc_420_odd_origin_x_coord.tif
-c3fde9b1554345959ad7350ef14ca2a7  sycc_420_odd_origin_x_coord.png
-c0461fa6e16317953036e4f478226851  sycc_420_odd_origin_x_coord.bmp
