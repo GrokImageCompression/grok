@@ -714,3 +714,8 @@ grk_compress -i @INPUT_NR_PATH@/signed-4bpp.tif -o @TEMP_PATH@/signed-4bpp.j2k
 grk_decompress -i @INPUT_NR_PATH@/mono_icc.jp2 -o @TEMP_PATH@/mono_icc.tif
 grk_decompress -i @INPUT_NR_PATH@/mono_icc.jp2 -o @TEMP_PATH@/mono_icc_force.tif -force-rgb
 grk_decompress -i @INPUT_NR_PATH@/mono_icc.jp2 -o @TEMP_PATH@/mono_icc.pgx
+
+grk_decompress -i @INPUT_NR_PATH@/sycc_420_odd_origin_x_coord.j2k -o @TEMP_PATH@/sycc_420_odd_origin_x_coord.tif
+grk_decompress -i @INPUT_NR_PATH@/sycc_420_odd_origin_x_coord.j2k -o @TEMP_PATH@/sycc_420_odd_origin_x_coord.png
+grk_decompress -i @INPUT_NR_PATH@/sycc_420_odd_origin_x_coord.j2k -o @TEMP_PATH@/sycc_420_odd_origin_x_coord.bmp
+
