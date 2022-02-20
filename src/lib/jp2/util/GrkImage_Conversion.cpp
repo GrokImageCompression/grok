@@ -1006,7 +1006,7 @@ bool GrkImage::applyColourManagement(void)
 /*#define DEBUG_PROFILE*/
 bool GrkImage::applyICC(void)
 {
-	cmsColorSpaceSignature out_space;
+	cmsUInt32Number out_space;
 	cmsUInt32Number intent = 0;
 	cmsHTRANSFORM transform = nullptr;
 	cmsHPROFILE in_prof = nullptr;
