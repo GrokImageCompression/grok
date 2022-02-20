@@ -165,12 +165,12 @@ void FileUringIO::enqueue(io_uring* ring, io_data* data, bool readop, int fd)
 			}
 			else
 			{
-				grk::grkAlignedFree((uint8_t*)data->iov.iov_base);
+				grk_bin::grkAlignedFree((uint8_t*)data->iov.iov_base);
 			}
 		}
 		else
 		{
-			grk::grkAlignedFree((uint8_t*)data->iov.iov_base);
+			grk_bin::grkAlignedFree((uint8_t*)data->iov.iov_base);
 		}
 		delete data;
 	}
@@ -238,7 +238,7 @@ bool FileUringIO::close(void)
 			{
 				// if (debugUring)
 				//	printf("Close: deallocating  %p\n", data->iov.iov_base);
-				grk::grkAlignedFree(data->iov.iov_base);
+				grk_bin::grkAlignedFree(data->iov.iov_base);
 				delete data;
 			}
 		}
@@ -271,7 +271,7 @@ uint64_t FileUringIO::write(GrkSerializeBuf buffer)
 	io_data* data = new io_data();
 	if(!buffer.pooled)
 	{
-		auto b = (uint8_t*)grk::grkAlignedMalloc(buffer.dataLen);
+		auto b = (uint8_t*)grk_bin::grkAlignedMalloc(buffer.dataLen);
 		if(!b)
 			return false;
 		memcpy(b, buffer.data, buffer.dataLen);

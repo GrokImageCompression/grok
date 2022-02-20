@@ -33,7 +33,7 @@ const bool debugMemory = false;
 #define SIZE_MAX ((size_t)-1)
 #endif
 
-namespace grk
+namespace grk_bin
 {
 const uint32_t grkWidthAlignment = 32;
 const size_t grkBufferALignment = 64;

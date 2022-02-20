@@ -48,7 +48,7 @@ struct GrkSerializeBuf : public grk_serialize_buf
 	bool alloc(uint64_t len)
 	{
 		dealloc();
-		data = (uint8_t*)grk::grkAlignedMalloc(len);
+		data = (uint8_t*)grk_bin::grkAlignedMalloc(len);
 		if(data)
 		{
 			// printf("Allocated  %p\n", data);
@@ -63,7 +63,7 @@ struct GrkSerializeBuf : public grk_serialize_buf
 	{
 		if(data)
 		{
-			grk::grkAlignedFree(data);
+			grk_bin::grkAlignedFree(data);
 			// printf("Deallocated  %p\n", data);
 		}
 		data = nullptr;
