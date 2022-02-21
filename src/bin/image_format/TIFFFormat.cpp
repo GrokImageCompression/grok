@@ -344,6 +344,12 @@ bool TIFFFormat::encodePixels()
 		if(!encodeHeader())
 			return false;
 	}
+	for(uint32_t i = 0U; i < image_->numcomps; ++i) {
+		if (!image_->comps[i].data){
+			spdlog::error("encodePixels: component {} has null data.",i);
+			return false;
+		}
+	}
 	bool success = false;
 	serializeRegisterApplicationClient();
 

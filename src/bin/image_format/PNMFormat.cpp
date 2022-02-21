@@ -162,6 +162,12 @@ bool PNMFormat::encodePixels(void)
 		if(!encodeHeader())
 			return false;
 	}
+	for(uint32_t i = 0U; i < image_->numcomps; ++i) {
+		if (!image_->comps[i].data){
+			spdlog::error("encodePixels: component {} has null data.",i);
+			return false;
+		}
+	}
 
 	return (image_->decompressPrec > 8U) ? encodeRows<uint16_t>(image_->decompressHeight)
 										 : encodeRows<uint8_t>(image_->decompressHeight);
