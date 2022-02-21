@@ -41,6 +41,7 @@ class GrkImage : public grk_image
 	 *
 	 * @return 		      true if successful
 	 */
+	static bool allocData(grk_image_comp* imageComp, bool clear);
 	static bool allocData(grk_image_comp* imageComp);
 	/**
 	 * Allocate data for tile compositing
@@ -79,6 +80,7 @@ class GrkImage : public grk_image
 	void postReadHeader(CodingParams* cp);
 	void validateColourSpace(void);
 	bool isSubsampled();
+	bool validateZeroed(void);
 
   private:
 	~GrkImage();

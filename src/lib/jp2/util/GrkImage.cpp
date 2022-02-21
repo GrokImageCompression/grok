@@ -236,8 +236,10 @@ void GrkImage::createMeta()
 	if(!meta)
 		meta = new GrkImageMeta();
 }
-
-bool GrkImage::allocData(grk_image_comp* comp)
+bool GrkImage::allocData(grk_image_comp* comp){
+	return allocData(comp,false);
+}
+bool GrkImage::allocData(grk_image_comp* comp, bool clear)
 {
 	if(!comp || comp->w == 0 || comp->h == 0)
 		return false;
@@ -253,8 +255,11 @@ bool GrkImage::allocData(grk_image_comp* comp)
 					   comp->stride, comp->h);
 		return false;
 	}
+	if (clear)
+		memset(data,0,dataSize);
 	grk_image_single_component_data_free(comp);
 	comp->data = data;
+
 	return true;
 }
 
@@ -374,6 +379,21 @@ void GrkImage::postReadHeader(CodingParams* cp)
 	if(rowsPerStrip > y1 - y0)
 		rowsPerStrip = y1 - y0;
 }
+bool GrkImage::validateZeroed(void){
+	for(uint16_t compno = 0; compno < numcomps; compno++)
+	{
+		auto comp = comps + compno;
+		if (comp->data){
+			for (uint32_t j = 0; j < comp->stride * comp->h; ++j){
+				assert(comp->data[j] == 0);
+				if (comp->data[j] != 0)
+					return false;
+			}
+		}
+	}
+
+	return true;
+}
 bool GrkImage::allocCompositeData(CodingParams* cp)
 {
 	// only allocate data if there are multiple tiles. Otherwise, the single tile data
@@ -404,6 +424,7 @@ bool GrkImage::allocCompositeData(CodingParams* cp)
 			}
 		}
 	}
+
 
 	return true;
 }
@@ -542,7 +563,6 @@ bool GrkImage::compositeInterleaved(const GrkImage* srcImg)
 		grk::PtoI<int32_t>::getPackedBytes(srcImg->decompressNumComps, destComp->w, prec);
 	auto destx0 = grk::PtoI<int32_t>::getPackedBytes(srcImg->decompressNumComps, destWin.x0, prec);
 	auto destIndex = (uint64_t)destWin.y0 * destStride + (uint64_t)destx0;
-
 	auto iter = InterleaverFactory<int32_t>::makeInterleaver(prec == 16 ? packer16BitBE : prec);
 	if(!iter)
 		return false;
@@ -591,7 +611,6 @@ bool GrkImage::compositePlanar(const GrkImage* srcImg)
 			GRK_WARN("GrkImage::compositePlanar: null data for source component %d", compno);
 			continue;
 		}
-
 		size_t srcIndex = 0;
 		auto destIndex = (size_t)destWin.x0 + (size_t)destWin.y0 * destComp->stride;
 		size_t destLineOffset = (size_t)destComp->stride - (size_t)destWin.width();

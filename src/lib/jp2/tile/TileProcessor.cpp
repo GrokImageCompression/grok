@@ -739,9 +739,7 @@ bool TileProcessor::encodeT2(uint32_t* tileBytesWritten)
 		delete l_t2;
 		return false;
 	}
-
 	delete l_t2;
-
 #ifdef DEBUG_LOSSLESS_T2
 	for(uint16_t compno = 0; compno < p_image->numcomps_; ++compno)
 	{
@@ -785,7 +783,6 @@ bool TileProcessor::preCompressTile()
 		return false;
 	uint32_t numTiles = (uint32_t)cp_->t_grid_height * cp_->t_grid_width;
 	bool transfer_image_to_tile = (numTiles == 1);
-
 	/* if we only have one tile, then simply set tile component data equal to
 	 * image component data. Otherwise, allocate tile data and copy */
 	for(uint32_t j = 0; j < headerImage->numcomps; ++j)
@@ -793,16 +790,10 @@ bool TileProcessor::preCompressTile()
 		auto tilec = tile->comps + j;
 		auto imagec = headerImage->comps + j;
 		if(transfer_image_to_tile && imagec->data)
-		{
 			tilec->getBuffer()->attach(imagec->data, imagec->stride);
-		}
-		else
-		{
-			if(!tilec->getBuffer()->alloc())
-			{
-				GRK_ERROR("Error allocating tile component data.");
-				return false;
-			}
+		else if(!tilec->getBuffer()->alloc()) {
+			GRK_ERROR("Error allocating tile component data.");
+			return false;
 		}
 	}
 	if(!transfer_image_to_tile)
@@ -822,9 +813,7 @@ void grk_copy_strided(uint32_t w, uint32_t stride, uint32_t h, T* src, int32_t* 
 	for(uint32_t j = 0; j < h; ++j)
 	{
 		for(uint32_t i = 0; i < w; ++i)
-		{
 			dest[dest_ind++] = src[src_ind++];
-		}
 		dest_ind += stride_diff;
 	}
 }
@@ -845,7 +834,6 @@ bool TileProcessor::ingestUncompressedData(uint8_t* p_src, uint64_t src_length)
 	{
 		auto tilec = tile->comps + i;
 		auto img_comp = headerImage->comps + i;
-
 		uint32_t size_comp = (uint32_t)((img_comp->prec + 7) >> 3);
 		auto dest_ptr = tilec->getBuffer()->getResWindowBufferHighestREL()->getBuffer();
 		uint32_t w = (uint32_t)tilec->getBuffer()->bounds().width();
@@ -883,6 +871,7 @@ bool TileProcessor::ingestUncompressedData(uint8_t* p_src, uint64_t src_length)
 				break;
 		}
 	}
+
 	return true;
 }
 bool TileProcessor::prepareSodDecompress(CodeStreamDecompress* codeStream)
@@ -892,14 +881,9 @@ bool TileProcessor::prepareSodDecompress(CodeStreamDecompress* codeStream)
 	// note: we subtract 2 to account for SOD marker
 	auto tcp = codeStream->get_current_decode_tcp();
 	if(codeStream->getDecompressorState()->lastTilePartInCodeStream)
-	{
 		tilePartDataLength = (uint32_t)(stream_->numBytesLeft() - 2);
-	}
-	else
-	{
-		if(tilePartDataLength >= 2)
+	else if(tilePartDataLength >= 2)
 			tilePartDataLength -= 2;
-	}
 	if(tilePartDataLength)
 	{
 		auto bytesLeftInStream = stream_->numBytesLeft();
@@ -921,6 +905,7 @@ bool TileProcessor::prepareSodDecompress(CodeStreamDecompress* codeStream)
 
 			// sanitize tilePartDataLength
 			tilePartDataLength = (uint32_t)bytesLeftInStream;
+			truncated = true;
 		}
 	}
 	/* Index */
@@ -931,20 +916,20 @@ bool TileProcessor::prepareSodDecompress(CodeStreamDecompress* codeStream)
 		if(current_pos < 2)
 		{
 			GRK_ERROR("Stream too short");
+
 			return false;
 		}
 		current_pos = (uint64_t)(current_pos - 2);
-
 		auto tileInfo = codeStreamInfo->getTileInfo(tileIndex_);
 		uint8_t current_tile_part = tileInfo->currentTilePart;
 		auto tilePartInfo = tileInfo->getTilePartInfo(current_tile_part);
 		tilePartInfo->endHeaderPosition = current_pos;
 		tilePartInfo->endPosition = current_pos + tilePartDataLength + 2;
-
 		if(!TileLengthMarkers::addTileMarkerInfo(tileIndex_, codeStreamInfo, J2K_MS_SOD,
 												 current_pos, 0))
 		{
 			GRK_ERROR("Not enough memory to add tl marker");
+
 			return false;
 		}
 	}
@@ -953,7 +938,6 @@ bool TileProcessor::prepareSodDecompress(CodeStreamDecompress* codeStream)
 	{
 		if(!tcp->compressedTileData_)
 			tcp->compressedTileData_ = new SparseBuffer();
-
 		auto len = tilePartDataLength;
 		uint8_t* buff = nullptr;
 		auto zeroCopy = stream_->supportsZeroCopy();
@@ -971,6 +955,7 @@ bool TileProcessor::prepareSodDecompress(CodeStreamDecompress* codeStream)
 			{
 				GRK_UNUSED(ex);
 				GRK_ERROR("Not enough memory to allocate segment");
+
 				return false;
 			}
 		}
@@ -1023,8 +1008,10 @@ bool TileProcessor::makeSingleLosslessLayer()
 	if(tcp_->numlayers == 1 && !layerNeedsRateControl(0))
 	{
 		makeLayerFinal(0);
+
 		return true;
 	}
+
 	return false;
 }
 void TileProcessor::makeLayerFeasible(uint32_t layno, uint16_t thresh, bool finalAttempt)
@@ -1057,7 +1044,6 @@ void TileProcessor::makeLayerFeasible(uint32_t layno, uint16_t thresh, bool fina
 							passno < cblk->numPassesTotal; passno++)
 						{
 							auto pass = &cblk->passes[passno];
-
 							// truncate or include feasible, otherwise ignore
 							if(pass->slope)
 							{
@@ -1066,16 +1052,13 @@ void TileProcessor::makeLayerFeasible(uint32_t layno, uint16_t thresh, bool fina
 								cumulative_included_passes_in_block = passno + 1;
 							}
 						}
-
 						layer->numpasses =
 							cumulative_included_passes_in_block - cblk->numPassesInPreviousPackets;
-
 						if(!layer->numpasses)
 						{
 							layer->distortion = 0;
 							continue;
 						}
-
 						// update layer
 						if(cblk->numPassesInPreviousPackets == 0)
 						{
@@ -1158,7 +1141,6 @@ bool TileProcessor::pcrdBisectFeasible(uint32_t* allPacketBytes)
 					 (double)numpix;
 		}
 	} /* compno */
-
 	auto t2 = T2Compress(this);
 	if(single_lossless)
 	{
@@ -1170,7 +1152,6 @@ bool TileProcessor::pcrdBisectFeasible(uint32_t* allPacketBytes)
 										  newTilePartProgressionPosition,
 										  packetLengthCache.getMarkers(), true);
 	}
-
 	uint32_t min_slope = rateInfo.getMinimumThresh();
 	uint32_t max_slope = USHRT_MAX;
 	double cumulativeDistortion[maxCompressLayersGRK];
@@ -1201,7 +1182,6 @@ bool TileProcessor::pcrdBisectFeasible(uint32_t* allPacketBytes)
 					double distoachieved = layno == 0 ? tile->layerDistoration[0]
 													  : cumulativeDistortion[layno - 1] +
 															tile->layerDistoration[layno];
-
 					if(distoachieved < distortionTarget)
 					{
 						upperBound = thresh;
@@ -1285,7 +1265,6 @@ bool TileProcessor::pcrdBisectSimple(uint32_t* allPacketBytes)
 								auto pass = cblk->passes + passno;
 								int32_t dr;
 								double dd, rdslope;
-
 								if(passno == 0)
 								{
 									dr = (int32_t)pass->rate;
@@ -1297,10 +1276,8 @@ bool TileProcessor::pcrdBisectSimple(uint32_t* allPacketBytes)
 									dd = pass->distortiondec -
 										 cblk->passes[passno - 1].distortiondec;
 								}
-
 								if(dr == 0)
 									continue;
-
 								rdslope = dd / dr;
 								if(rdslope < min_slope)
 									min_slope = rdslope;
@@ -1313,7 +1290,6 @@ bool TileProcessor::pcrdBisectSimple(uint32_t* allPacketBytes)
 				} /* precinctIndex */
 			} /* bandIndex */
 		} /* resno */
-
 		if(!single_lossless)
 			maxSE += (double)(((uint64_t)1 << headerImage->comps[compno].prec) - 1) *
 					 (double)(((uint64_t)1 << headerImage->comps[compno].prec) - 1) *
@@ -1342,17 +1318,14 @@ bool TileProcessor::pcrdBisectSimple(uint32_t* allPacketBytes)
 		if(layerNeedsRateControl(layno))
 		{
 			double lowerBound = min_slope;
-
 			/* Threshold for Marcela Index */
 			// start by including everything in this layer
 			double goodthresh = 0;
-
 			// thresh from previous iteration - starts off uninitialized
 			// used to bail out if difference with current thresh is small enough
 			double prevthresh = -1;
 			double distortionTarget =
 				tile->distortion - ((K * maxSE) / pow(10.0, tcp_->distortion[layno] / 10.0));
-
 			double thresh;
 			for(uint32_t i = 0; i < 128; ++i)
 			{
@@ -1402,6 +1375,7 @@ bool TileProcessor::pcrdBisectSimple(uint32_t* allPacketBytes)
 			assert(layno == tcp_->numlayers - 1);
 		}
 	}
+
 	// final simulation will generate correct PLT lengths
 	// and correct tile length
 	// GRK_INFO("Rate control final simulation");
@@ -1586,10 +1560,9 @@ PacketTracker::~PacketTracker()
 void PacketTracker::init(uint32_t numcomps, uint32_t numres, uint64_t numprec, uint32_t numlayers)
 {
 	uint64_t len = get_buffer_len(numcomps, numres, numprec, numlayers);
-	if(!bits)
+	if(!bits) {
 		bits = new uint8_t[len];
-	else
-	{
+	} else {
 		uint64_t currentLen = get_buffer_len(numcomps_, numres_, numprec_, numlayers_);
 		if(len > currentLen)
 		{
@@ -1618,9 +1591,7 @@ uint64_t PacketTracker::get_buffer_len(uint32_t numcomps, uint32_t numres, uint6
 void PacketTracker::packet_encoded(uint32_t comps, uint32_t res, uint64_t prec, uint32_t layer)
 {
 	if(comps >= numcomps_ || prec >= numprec_ || res >= numres_ || layer >= numlayers_)
-	{
 		return;
-	}
 
 	uint64_t ind = index(comps, res, prec, layer);
 	uint64_t ind_maj = ind >> 3;
@@ -1631,9 +1602,8 @@ void PacketTracker::packet_encoded(uint32_t comps, uint32_t res, uint64_t prec, 
 bool PacketTracker::is_packet_encoded(uint32_t comps, uint32_t res, uint64_t prec, uint32_t layer)
 {
 	if(comps >= numcomps_ || prec >= numprec_ || res >= numres_ || layer >= numlayers_)
-	{
 		return true;
-	}
+
 	uint64_t ind = index(comps, res, prec, layer);
 	uint64_t ind_maj = ind >> 3;
 	uint64_t ind_min = ind & 7;
