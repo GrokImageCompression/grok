@@ -414,7 +414,7 @@ bool GrkImage::allocCompositeData(CodingParams* cp)
 			}
 			if(!destComp->data)
 			{
-				if(!GrkImage::allocData(destComp))
+				if(!GrkImage::allocData(destComp,true))
 				{
 					GRK_ERROR(
 						"Failed to allocate pixel data for component %d, with dimensions %u x %u",
