@@ -500,6 +500,7 @@ void GrkImage::transferDataFrom(const Tile* tile_src_data)
 		auto destComp = comps + compno;
 
 		// transfer memory from tile component to output image
+		grk_image_single_component_data_free(destComp);
 		srcComp->getBuffer()->transfer(&destComp->data, &destComp->stride);
 		if(destComp->data)
 			assert(destComp->stride >= destComp->w);

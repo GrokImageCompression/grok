@@ -154,11 +154,12 @@ struct grkBuffer : A<T>
 		buffer = buf;
 		owns_data = true;
 	}
-	// transfer buf to buf, and cease owning it
+	// transfer buf to buffer, and cease owning it
 	void transfer(T** buffer)
 	{
 		if(buffer)
 		{
+			assert(!buf || owns_data);
 			*buffer = buf;
 			buf = nullptr;
 			owns_data = false;
