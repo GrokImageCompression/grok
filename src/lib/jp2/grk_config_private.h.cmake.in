@@ -38,3 +38,5 @@ On other platforms we use the result of the TRY_RUN. */
 #elif defined(__BIG_ENDIAN__)
 # define GROK_BIG_ENDIAN
 #endif
+
+#cmakedefine GROK_BUILD_THIRDPARTY @GROK_BUILD_THIRDPARTY@

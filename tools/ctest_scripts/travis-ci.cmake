@@ -103,7 +103,7 @@ CMAKE_CXX_FLAGS:STRING= ${CCFLAGS_ARCH} ${CCFLAGS_WARNING}
 BUILD_TESTING:BOOL=${BUILD_TESTING}
 
 # Build Thirdparty, useful but not required for test suite
-BUILD_THIRDPARTY:BOOL=TRUE
+GROK_BUILD_THIRDPARTY:BOOL=TRUE
 
 # JPEG2000 test files are available with git clone https://github.com/GrokImageCompression/grok-test-data
 GRK_DATA_ROOT:PATH=$ENV{PWD}/data

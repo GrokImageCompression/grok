@@ -196,7 +196,7 @@ endif(PERLLIBS_FOUND)
 if(BUILD_CODEC)
   # OFF: 3rd party libs will only be built if not found in system
   # ON:  3rd party libs will always be built
-  option(BUILD_THIRDPARTY "Build the thirdparty executables if it is needed" OFF)
+  option(GROK_BUILD_THIRDPARTY "Build the thirdparty executables if it is needed" OFF)
   # OFF: libjpeg library wil not be used to support JPEG file format
   # ON:  libjpeg library will be used to support JPEG file format,
   #      if found in system

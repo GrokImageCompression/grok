@@ -126,7 +126,7 @@ set_property(TEST rta5 APPEND PROPERTY DEPENDS tte5)
 
 # No image is sent to dashboard if libpng is not available.
 if(NOT GROK_HAVE_LIBPNG)
-  message(WARNING "libpng seems to be not available: if you want run the non-regression tests with images reported to the dashboard, you need BUILD_THIRDPARTY")
+  message(WARNING "libpng seems to be not available: if you want run the non-regression tests with images reported to the dashboard, you need GROK_BUILD_THIRDPARTY")
 endif()
 
 add_subdirectory(conformance)

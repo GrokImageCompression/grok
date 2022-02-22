@@ -150,7 +150,7 @@ Type `cmake --help` for available generators on your platform.
 
 Make sure to build the third party libs (`libpng`, `zlib` etc.) :
 
-  `-DBUILD_THIRDPARTY:BOOL=ON`
+  `-DGROK_BUILD_THIRDPARTY:BOOL=ON`
 
 #### JPEG Support
 
