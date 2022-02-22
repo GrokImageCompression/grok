@@ -21,13 +21,16 @@
 
 #ifdef GROK_HAVE_LIBTIFF
 
+#ifdef GROK_BUILD_THIRDPARTY
 #include "tiffiop.h"
+#endif
+
 #include "grok.h"
 #include "TIFFFormat.h"
 #include "convert.h"
 #include "common.h"
 
-#ifndef _WIN32
+#ifdef GRK_CUSTOM_TIFF_IO
 #define IO_MAX 2147483647U
 
 static tmsize_t TiffRead(thandle_t handle, void* buf, tmsize_t size)
@@ -81,16 +84,6 @@ static uint64_t TiffSize(thandle_t handle)
 	return 0U;
 }
 
-#endif
-
-TIFFFormat::TIFFFormat() : tif(nullptr), chroma_subsample_x(1), chroma_subsample_y(1), units(0) {}
-TIFFFormat::~TIFFFormat()
-{
-	if(tif)
-		TIFFClose(tif);
-}
-#ifndef _WIN32
-
 TIFF* TIFFFormat::MyTIFFOpen(const char* name, const char* mode)
 {
 	if(!serializer.open(name, mode))
@@ -104,7 +97,15 @@ TIFF* TIFFFormat::MyTIFFOpen(const char* name, const char* mode)
 
 	return tif;
 }
+
 #endif
+
+TIFFFormat::TIFFFormat() : tif(nullptr), chroma_subsample_x(1), chroma_subsample_y(1), units(0) {}
+TIFFFormat::~TIFFFormat()
+{
+	if(tif)
+		TIFFClose(tif);
+}
 
 bool TIFFFormat::encodeHeader(void)
 {
@@ -223,10 +224,10 @@ bool TIFFFormat::encodeHeader(void)
 			numExtraChannels = 0;
 		}
 	}
-#ifdef _WIN32
-	tif = TIFFOpen(fileName_.c_str(), "wb");
-#else
+#ifdef GRK_CUSTOM_TIFF_IO
 	tif = MyTIFFOpen(fileName_.c_str(), "wb");
+#else
+	tif = TIFFOpen(fileName_.c_str(), "wb");
 #endif
 	if(!tif)
 	{

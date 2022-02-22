@@ -23,6 +23,10 @@
 #include "FileUringIO.h"
 #endif
 
+#if !defined(_WIN32) && defined(GROK_BUILD_THIRDPARTY)
+#define GRK_CUSTOM_TIFF_IO
+#endif
+
 #include "ImageFormat.h"
 #include <tiffio.h>
 #include "convert.h"
@@ -41,7 +45,7 @@ class TIFFFormat : public ImageFormat
 	grk_image* decode(const std::string& filename, grk_cparameters* parameters) override;
 
   private:
-#ifndef _WIN32
+#ifdef GRK_CUSTOM_TIFF_IO
 	TIFF* MyTIFFOpen(const char* name, const char* mode);
 #endif
 	bool encodePixelsCoreWrite(grk_serialize_buf pixels) override;
