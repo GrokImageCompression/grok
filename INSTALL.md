@@ -60,6 +60,12 @@ If both `BUILD_SHARED_LIBS` and `BUILD_STATIC_LIBS` `cmake` flags are set,
 then both dynamic and static builds are generated and installed.
 
 
+Note: for a static build on Fedora, the following library must be installed: 
+
+`sudo dnf install libstdc++-static-*.x86_64`
+
+where * refers to the library version.
+
 #### DEBUG/RELEASE
 
 Default build type is `Release`. For a `Debug` build, run:
