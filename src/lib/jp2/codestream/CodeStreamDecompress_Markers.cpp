@@ -1711,7 +1711,7 @@ bool CodeStreamDecompress::read_coc(uint8_t* headerData, uint16_t header_size)
 
 	tcp->tccps[comp_no].csty = *headerData++; /* Scoc */
 
-	if(!read_SPCod_SPCoc(comp_no, headerData, &header_size))
+	if(!read_SPCod_SPCoc((uint16_t)comp_no, headerData, &header_size))
 	{
 		return false;
 	}
@@ -1806,7 +1806,7 @@ bool CodeStreamDecompress::read_qcc(uint8_t* headerData, uint16_t header_size)
 		return false;
 	}
 
-	if(!read_SQcd_SQcc(true, comp_no, headerData, &header_size))
+	if(!read_SQcd_SQcc(true, (uint16_t)comp_no, headerData, &header_size))
 	{
 		return false;
 	}

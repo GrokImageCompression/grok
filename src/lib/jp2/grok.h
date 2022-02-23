@@ -729,6 +729,19 @@ typedef struct _grk_prec
  */
 typedef struct _grk_header_info
 {
+	/////////////////////////////////////////
+	// set by client
+	GRK_SUPPORTED_FILE_FMT decompressFormat;
+	bool forceRGB;
+	bool upsample;
+	grk_precision* precision;
+	uint32_t numPrecision;
+	bool splitByComponent;
+	bool singleTileDecompress;
+	//////////////////////////////////////////
+
+	//////////////////////////////////////////
+	// populated by codec after reading header
 	/** initial code block width, default to 64 */
 	uint32_t cblockw_init;
 	/** initial code block height, default to 64 */
@@ -768,7 +781,6 @@ typedef struct _grk_header_info
 	uint32_t t_grid_height;
 	/** number of layers */
 	uint16_t numlayers;
-
 	// note: xml_data will remain valid
 	// until codec is destroyed
 	uint8_t* xml_data;
@@ -780,13 +792,7 @@ typedef struct _grk_header_info
 
 	grk_asoc asocs[GRK_NUM_ASOC_BOXES_SUPPORTED];
 	uint32_t num_asocs;
-	GRK_SUPPORTED_FILE_FMT decompressFormat;
-	bool forceRGB;
-	bool upsample;
-	grk_precision* precision;
-	uint32_t numPrecision;
-	bool splitByComponent;
-
+	////////////////////////////////////////////////////////////////////////////////////////
 } grk_header_info;
 
 typedef struct _grk_serialize_buf

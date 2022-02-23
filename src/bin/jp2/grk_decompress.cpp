@@ -800,6 +800,7 @@ int GrkDecompress::decompress(const std::string& fileName, DecompressInitParams*
 	info.header_info.precision = info.decompressor_parameters->precision;
 	info.header_info.numPrecision = info.decompressor_parameters->numPrecision;
 	info.header_info.splitByComponent = info.decompressor_parameters->split_pnm;
+	info.header_info.singleTileDecompress = info.decompressor_parameters->singleTileDecompress;
 	if(preProcess(&info))
 	{
 		grk_object_unref(info.codec);

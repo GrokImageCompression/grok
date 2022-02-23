@@ -181,6 +181,8 @@ bool CodeStreamDecompress::readHeader(grk_header_info* header_info)
 			headerError_ = true;
 			return false;
 		}
+		if (header_info)
+			headerImage_->multiTile = headerImage_->multiTile && !header_info->singleTileDecompress;
 		auto composite = getCompositeImage();
 		headerImage_->copyHeader(composite);
 		if(header_info)
