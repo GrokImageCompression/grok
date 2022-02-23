@@ -1067,33 +1067,36 @@ int GrkDecompress::preProcess(grk_plugin_decompress_callback_info* info)
 		case GRK_BMP_FMT:
 			imageFormat = new BMPFormat();
 			break;
-#ifdef GROK_HAVE_LIBTIFF
 		case GRK_TIF_FMT:
+#ifdef GROK_HAVE_LIBTIFF
 			imageFormat = new TIFFFormat();
-			break;
 #else
 			spdlog::error("libtiff is missing");
+			goto cleanup;
 #endif
+			break;
 		case GRK_RAW_FMT:
 			imageFormat = new RAWFormat(true);
 			break;
 		case GRK_RAWL_FMT:
 			imageFormat = new RAWFormat(false);
 			break;
-#ifdef GROK_HAVE_LIBJPEG
 		case GRK_JPG_FMT:
+#ifdef GROK_HAVE_LIBJPEG
 			imageFormat = new JPEGFormat();
-			break;
 #else
 			spdlog::error("libjpeg is missing");
+			goto cleanup;
 #endif
-#ifdef GROK_HAVE_LIBPNG
-		case GRK_PNG_FMT:
-			imageFormat = new PNGFormat();
 			break;
+		case GRK_PNG_FMT:
+#ifdef GROK_HAVE_LIBPNG
+			imageFormat = new PNGFormat();
 #else
 			spdlog::error("libpng is missing");
+			goto cleanup;
 #endif
+			break;
 		default:
 			spdlog::error("Unsupported output format {}", convertFileFmtToString(info->cod_format));
 			goto cleanup;
