@@ -91,7 +91,7 @@ bool CodeStreamCompress::mct_validation(void)
 	return is_valid;
 }
 
-bool CodeStreamCompress::startCompress(void)
+bool CodeStreamCompress::start(void)
 {
 	/* customization of the validation */
 	validation_list_.push_back(std::bind(&CodeStreamCompress::compressValidation, this));
@@ -109,7 +109,7 @@ bool CodeStreamCompress::startCompress(void)
 	/* write header */
 	return exec(procedure_list_);
 }
-bool CodeStreamCompress::initCompress(grk_cparameters* parameters, GrkImage* image)
+bool CodeStreamCompress::init(grk_cparameters* parameters, GrkImage* image)
 {
 	if(!parameters || !image)
 		return false;
@@ -711,7 +711,7 @@ cleanup:
 
 	return rc;
 }
-bool CodeStreamCompress::endCompress(void)
+bool CodeStreamCompress::end(void)
 {
 	/* customization of the compressing */
 	procedure_list_.push_back(std::bind(&CodeStreamCompress::write_eoc, this));

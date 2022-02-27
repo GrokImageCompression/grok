@@ -28,11 +28,11 @@ class FileFormatCompress : public FileFormat, public ICodeStreamCompress
 	FileFormatCompress(IBufferedStream* stream);
 	virtual ~FileFormatCompress();
 
-	bool initCompress(grk_cparameters* p_param, GrkImage* p_image);
-	bool startCompress(void);
+	bool init(grk_cparameters* p_param, GrkImage* p_image);
+	bool start(void);
 	bool compress(grk_plugin_tile* tile);
 	bool compressTile(uint16_t tileIndex, uint8_t* p_data, uint64_t data_size);
-	bool endCompress(void);
+	bool end(void);
 
   private:
 	void find_cf(double x, uint32_t* num, uint32_t* den);

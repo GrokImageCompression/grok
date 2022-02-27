@@ -342,7 +342,7 @@ bool CodeStreamDecompress::setDecompressWindow(grkRectU32 window)
 
 	return true;
 }
-void CodeStreamDecompress::initDecompress(grk_decompress_core_params* parameters)
+void CodeStreamDecompress::init(grk_decompress_core_params* parameters)
 {
 	assert(parameters);
 
@@ -970,7 +970,7 @@ bool CodeStreamDecompress::readMarker(bool suppressWarning)
 }
 
 /** Reading function used after code stream if necessary */
-bool CodeStreamDecompress::endDecompress(void)
+bool CodeStreamDecompress::end(void)
 {
 	return true;
 }

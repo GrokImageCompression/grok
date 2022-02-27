@@ -34,11 +34,11 @@ class CodeStreamCompress : public CodeStream, public ICodeStreamCompress
 	static char* convertProgressionOrder(GRK_PROG_ORDER prg_order);
 	static uint16_t getPocSize(uint32_t numComponents, uint32_t l_nb_poc);
 
-	bool startCompress(void);
-	bool initCompress(grk_cparameters* p_param, GrkImage* p_image);
+	bool start(void);
+	bool init(grk_cparameters* p_param, GrkImage* p_image);
 	bool compress(grk_plugin_tile* tile);
 	bool compressTile(uint16_t tileIndex, uint8_t* p_data, uint64_t data_size);
-	bool endCompress(void);
+	bool end(void);
 
   private:
 	bool init_header_writing(void);

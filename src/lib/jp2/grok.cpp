@@ -234,7 +234,7 @@ bool GRK_CALLCONV grk_decompress_init(grk_codec* codecWrapper,
 		auto codec = GrkCodec::getImpl(codecWrapper);
 		if(codec->decompressor_)
 		{
-			codec->decompressor_->initDecompress(parameters);
+			codec->decompressor_->init(parameters);
 			return true;
 		}
 		return false;
@@ -295,7 +295,7 @@ bool GRK_CALLCONV grk_decompress_end(grk_codec* codecWrapper)
 	if(codecWrapper)
 	{
 		auto codec = GrkCodec::getImpl(codecWrapper);
-		return codec->decompressor_ ? codec->decompressor_->endDecompress() : false;
+		return codec->decompressor_ ? codec->decompressor_->end() : false;
 	}
 	return false;
 }
@@ -423,7 +423,7 @@ bool GRK_CALLCONV grk_compress_init(grk_codec* codecWrapper, grk_cparameters* pa
 	if(codecWrapper && parameters && p_image)
 	{
 		auto codec = GrkCodec::getImpl(codecWrapper);
-		return codec->compressor_ ? codec->compressor_->initCompress(parameters, (GrkImage*)p_image)
+		return codec->compressor_ ? codec->compressor_->init(parameters, (GrkImage*)p_image)
 								  : false;
 	}
 	return false;
@@ -433,7 +433,7 @@ bool GRK_CALLCONV grk_compress_start(grk_codec* codecWrapper)
 	if(codecWrapper)
 	{
 		auto codec = GrkCodec::getImpl(codecWrapper);
-		return codec->compressor_ ? codec->compressor_->startCompress() : false;
+		return codec->compressor_ ? codec->compressor_->start() : false;
 	}
 	return false;
 }
@@ -455,7 +455,7 @@ bool GRK_CALLCONV grk_compress_end(grk_codec* codecWrapper)
 	if(codecWrapper)
 	{
 		auto codec = GrkCodec::getImpl(codecWrapper);
-		return codec->compressor_ ? codec->compressor_->endCompress() : false;
+		return codec->compressor_ ? codec->compressor_->end() : false;
 	}
 	return false;
 }

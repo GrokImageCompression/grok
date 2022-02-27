@@ -100,11 +100,11 @@ typedef std::function<bool(void)> PROCEDURE_FUNC;
 struct ICodeStreamCompress
 {
 	virtual ~ICodeStreamCompress() = default;
-	virtual bool initCompress(grk_cparameters* p_param, GrkImage* p_image) = 0;
-	virtual bool startCompress(void) = 0;
+	virtual bool init(grk_cparameters* p_param, GrkImage* p_image) = 0;
+	virtual bool start(void) = 0;
 	virtual bool compress(grk_plugin_tile* tile) = 0;
 	virtual bool compressTile(uint16_t tileIndex, uint8_t* p_data, uint64_t data_size) = 0;
-	virtual bool endCompress(void) = 0;
+	virtual bool end(void) = 0;
 };
 
 struct ICodeStreamDecompress
@@ -114,11 +114,11 @@ struct ICodeStreamDecompress
 	virtual bool readHeader(grk_header_info* header_info) = 0;
 	virtual GrkImage* getImage(uint16_t tileIndex) = 0;
 	virtual GrkImage* getImage(void) = 0;
-	virtual void initDecompress(grk_decompress_core_params* p_param) = 0;
+	virtual void init(grk_decompress_core_params* p_param) = 0;
 	virtual bool setDecompressWindow(grkRectU32 window) = 0;
 	virtual bool decompress(grk_plugin_tile* tile) = 0;
 	virtual bool decompressTile(uint16_t tileIndex) = 0;
-	virtual bool endDecompress(void) = 0;
+	virtual bool end(void) = 0;
 	virtual bool preProcess(void) = 0;
 	virtual bool postProcess(void) = 0;
 	virtual void dump(uint32_t flag, FILE* outputFileStream) = 0;

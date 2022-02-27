@@ -320,10 +320,10 @@ bool FileFormatDecompress::setDecompressWindow(grkRectU32 window)
 	return codeStream->setDecompressWindow(window);
 }
 /** Set up decompressor function handler */
-void FileFormatDecompress::initDecompress(grk_decompress_core_params* parameters)
+void FileFormatDecompress::init(grk_decompress_core_params* parameters)
 {
 	/* set up the J2K codec */
-	codeStream->initDecompress(parameters);
+	codeStream->init(parameters);
 
 	/* further JP2 initializations go here */
 	color.has_colour_specification_box = false;
@@ -377,13 +377,13 @@ bool FileFormatDecompress::decompressTile(uint16_t tileIndex)
 	return applyColour();
 }
 /** Reading function used after code stream if necessary */
-bool FileFormatDecompress::endDecompress(void)
+bool FileFormatDecompress::end(void)
 {
 	init_end_header_reading();
 	if(!exec(procedure_list_))
 		return false;
 
-	return codeStream->endDecompress();
+	return codeStream->end();
 }
 bool FileFormatDecompress::applyColour(void)
 {

@@ -665,7 +665,7 @@ uint8_t* FileFormatCompress::write_ihdr(uint32_t* p_nb_bytes_written)
 
 	return ihdr_data;
 }
-bool FileFormatCompress::startCompress(void)
+bool FileFormatCompress::start(void)
 {
 	/* customization of the validation */
 	init_compressValidation();
@@ -691,9 +691,9 @@ bool FileFormatCompress::startCompress(void)
 	if(!exec(procedure_list_))
 		return false;
 
-	return codeStream->startCompress();
+	return codeStream->start();
 }
-bool FileFormatCompress::initCompress(grk_cparameters* parameters, GrkImage* image)
+bool FileFormatCompress::init(grk_cparameters* parameters, GrkImage* image)
 {
 	uint32_t i;
 	uint8_t depth_0;
@@ -706,7 +706,7 @@ bool FileFormatCompress::initCompress(grk_cparameters* parameters, GrkImage* ima
 
 	image_ = image;
 	grk_object_ref(&image->obj);
-	if(codeStream->initCompress(parameters, image_) == false)
+	if(codeStream->init(parameters, image_) == false)
 		return false;
 
 	/* Profile box */
@@ -900,11 +900,11 @@ bool FileFormatCompress::compressTile(uint16_t tileIndex, uint8_t* p_data, uint6
 {
 	return codeStream->compressTile(tileIndex, p_data, data_size);
 }
-bool FileFormatCompress::endCompress(void)
+bool FileFormatCompress::end(void)
 {
 	/* customization of the end compressing */
 	init_end_header_writing();
-	if(!codeStream->endCompress())
+	if(!codeStream->end())
 		return false;
 
 	/* write header */
