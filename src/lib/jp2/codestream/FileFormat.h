@@ -142,8 +142,6 @@ class FileFormat
 	/** list of execution procedures */
 	std::vector<PROCEDURE_FUNC>* procedure_list_;
 
-	grk_color* getColour(void);
-
 	/* width of image */
 	uint32_t w;
 	/* height of image */
@@ -163,8 +161,6 @@ class FileFormat
 	uint32_t numcl;
 	uint32_t* cl;
 	ComponentInfo* comps;
-	GrkImage *image_;
-	grk_color color;
 
 	bool has_capture_resolution;
 	double capture_resolution[2];

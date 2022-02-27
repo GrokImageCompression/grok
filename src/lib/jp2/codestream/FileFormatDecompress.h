@@ -46,6 +46,7 @@ class FileFormatDecompress : public FileFormat, public ICodeStreamDecompress
 	void dump(uint32_t flag, FILE* outputFileStream);
 
   private:
+	grk_color* getColour(void);
 	static void alloc_palette(grk_color* color, uint8_t num_channels, uint16_t num_entries);
 	static void free_palette_clr(grk_color* color);
 	uint32_t read_asoc(AsocBox* parent, uint8_t** header_data, uint32_t* header_data_size,
@@ -88,6 +89,7 @@ class FileFormatDecompress : public FileFormat, public ICodeStreamDecompress
 	AsocBox root_asoc;
 	CodeStreamDecompress* codeStream;
 	uint32_t jp2_state;
+	grk_color color;
 };
 
 } // namespace grk

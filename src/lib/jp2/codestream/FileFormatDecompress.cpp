@@ -42,9 +42,18 @@ FileFormatDecompress::FileFormatDecompress(IBufferedStream* stream)
 		{JP2_CDEF,
 		 [this](uint8_t* data, uint32_t len) { return read_channel_definition(data, len); }},
 		{JP2_RES, [this](uint8_t* data, uint32_t len) { return read_res(data, len); }}};
+
+
+	/* Color structure */
+	color.icc_profile_buf = nullptr;
+	color.icc_profile_len = 0;
+	color.channel_definition = nullptr;
+	color.palette = nullptr;
+	color.has_colour_specification_box = false;
 }
 FileFormatDecompress::~FileFormatDecompress()
 {
+	FileFormatDecompress::free_color(&color);
 	delete codeStream;
 }
 void FileFormatDecompress::alloc_palette(grk_color* color, uint8_t num_channels,
@@ -150,6 +159,14 @@ GrkImage* FileFormatDecompress::getImage(void)
 {
 	return codeStream->getImage();
 }
+grk_color* FileFormatDecompress::getColour(void){
+	auto image = codeStream->getCompositeImage();
+	if (!image || !image->meta)
+		return nullptr;
+
+	return &image->meta->color;
+}
+
 /** Main header reading function handler */
 bool FileFormatDecompress::readHeader(grk_header_info* header_info)
 {
@@ -190,7 +207,7 @@ bool FileFormatDecompress::readHeader(grk_header_info* header_info)
 	}
 	if(needsHeaderRead)
 	{
-		auto image = (GrkImage*)codeStream->getCompositeImage();
+		auto image = codeStream->getCompositeImage();
 		if(!check_color(image, &color))
 		{
 			headerError_ = true;

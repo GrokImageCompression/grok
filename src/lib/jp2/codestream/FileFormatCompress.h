@@ -35,6 +35,7 @@ class FileFormatCompress : public FileFormat, public ICodeStreamCompress
 	bool end(void);
 
   private:
+	grk_color* getColour(void);
 	void find_cf(double x, uint32_t* num, uint32_t* den);
 	void write_res_box(double resx, double resy, uint32_t box_id, uint8_t** current_res_ptr);
 	uint8_t* write_res(uint32_t* p_nb_bytes_written);
@@ -60,6 +61,7 @@ class FileFormatCompress : public FileFormat, public ICodeStreamCompress
 	CodeStreamCompress* codeStream;
 	bool needs_xl_jp2c_box_length;
 	uint64_t j2k_codestream_offset;
+	GrkImage *inputImage_;
 };
 
 } // namespace grk
