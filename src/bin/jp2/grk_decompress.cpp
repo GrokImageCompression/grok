@@ -972,7 +972,11 @@ static void cleanUpFile(const char* outfile)
 
 	bool allocated = false;
 	char* p = actual_path(outfile, &allocated);
-	GRK_UNUSED(remove)(p);
+	if (!p)
+		return;
+	int ret = (remove)(p);
+	if (ret)
+		spdlog::warn("Error code {} when removing file {} with actual path {}", ret,outfile,p);
 	if(allocated)
 		free(p);
 }

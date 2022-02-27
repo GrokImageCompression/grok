@@ -1107,7 +1107,7 @@ bool GrkImage::applyICC(void)
 	{ /* RGB, RGBA */
 		if(prec <= 8)
 		{
-			nr_samples = componentSize * 3U * sizeof(uint8_t);
+			nr_samples = componentSize * 3U;
 			auto inbuf = new uint8_t[nr_samples];
 			auto outbuf = new uint8_t[nr_samples];
 
@@ -1190,7 +1190,7 @@ bool GrkImage::applyICC(void)
 	}
 	else
 	{ /* GRAY, GRAYA */
-		nr_samples = componentSize * 3U * sizeof(uint8_t);
+		nr_samples = componentSize * 3U;
 		auto newComps = new grk_image_comp[numcomps + 2U];
 		for(uint32_t i = 0; i < numcomps + 2U; ++i)
 		{
