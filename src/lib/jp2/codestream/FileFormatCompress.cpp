@@ -190,15 +190,17 @@ bool FileFormatCompress::write_jp2h(void)
 			std::bind(&FileFormatCompress::write_bpc, this, std::placeholders::_1);
 	writers[nb_writers++].handler =
 		std::bind(&FileFormatCompress::write_colr, this, std::placeholders::_1);
-	if(color.channel_definition)
-		writers[nb_writers++].handler =
-			std::bind(&FileFormatCompress::write_channel_definition, this, std::placeholders::_1);
-	if(color.palette)
-	{
-		writers[nb_writers++].handler =
-			std::bind(&FileFormatCompress::write_palette_clr, this, std::placeholders::_1);
-		writers[nb_writers++].handler =
-			std::bind(&FileFormatCompress::write_component_mapping, this, std::placeholders::_1);
+	if (image_->meta) {
+		if(getColour()->channel_definition)
+			writers[nb_writers++].handler =
+				std::bind(&FileFormatCompress::write_channel_definition, this, std::placeholders::_1);
+		if(getColour()->palette)
+		{
+			writers[nb_writers++].handler =
+				std::bind(&FileFormatCompress::write_palette_clr, this, std::placeholders::_1);
+			writers[nb_writers++].handler =
+				std::bind(&FileFormatCompress::write_component_mapping, this, std::placeholders::_1);
+		}
 	}
 	if(has_display_resolution || has_capture_resolution)
 	{
@@ -264,7 +266,7 @@ bool FileFormatCompress::write_jp2h(void)
 }
 uint8_t* FileFormatCompress::write_palette_clr(uint32_t* p_nb_bytes_written)
 {
-	auto palette = color.palette;
+	auto palette = getColour()->palette;
 	assert(palette);
 
 	uint32_t bytesPerEntry = 0;
@@ -314,7 +316,7 @@ uint8_t* FileFormatCompress::write_palette_clr(uint32_t* p_nb_bytes_written)
 }
 uint8_t* FileFormatCompress::write_component_mapping(uint32_t* p_nb_bytes_written)
 {
-	auto palette = color.palette;
+	auto palette = getColour()->palette;
 	uint32_t boxSize = 4 + 4 + palette->num_channels * 4U;
 
 	uint8_t* cmapBuf = (uint8_t*)grkMalloc(boxSize);
@@ -354,8 +356,8 @@ uint8_t* FileFormatCompress::write_colr(uint32_t* p_nb_bytes_written)
 			colr_size += 4; /* EnumCS */
 			break;
 		case 2:
-			assert(color.icc_profile_len); /* ICC profile */
-			colr_size += color.icc_profile_len;
+			assert(getColour()->icc_profile_len); /* ICC profile */
+			colr_size += getColour()->icc_profile_len;
 			break;
 		default:
 			return nullptr;
@@ -393,8 +395,8 @@ uint8_t* FileFormatCompress::write_colr(uint32_t* p_nb_bytes_written)
 		/* ICC profile */
 		if(meth == 2)
 		{
-			memcpy(current_colr_ptr, color.icc_profile_buf, color.icc_profile_len);
-			current_colr_ptr += color.icc_profile_len;
+			memcpy(current_colr_ptr, getColour()->icc_profile_buf, getColour()->icc_profile_len);
+			current_colr_ptr += getColour()->icc_profile_len;
 		}
 	}
 	*p_nb_bytes_written = colr_size;
@@ -406,11 +408,11 @@ uint8_t* FileFormatCompress::write_channel_definition(uint32_t* p_nb_bytes_writt
 	/* 8 bytes for box, 2 for n */
 	uint32_t cdef_size = 10;
 	assert(p_nb_bytes_written != nullptr);
-	assert(color.channel_definition != nullptr);
-	assert(color.channel_definition->descriptions != nullptr);
-	assert(color.channel_definition->num_channel_descriptions > 0U);
+	assert(getColour()->channel_definition != nullptr);
+	assert(getColour()->channel_definition->descriptions != nullptr);
+	assert(getColour()->channel_definition->num_channel_descriptions > 0U);
 
-	cdef_size += 6U * color.channel_definition->num_channel_descriptions;
+	cdef_size += 6U * getColour()->channel_definition->num_channel_descriptions;
 
 	auto cdef_data = (uint8_t*)grkMalloc(cdef_size);
 	if(!cdef_data)
@@ -427,19 +429,19 @@ uint8_t* FileFormatCompress::write_channel_definition(uint32_t* p_nb_bytes_writt
 	current_cdef_ptr += 4;
 
 	/* N */
-	grk_write<uint16_t>(current_cdef_ptr, color.channel_definition->num_channel_descriptions);
+	grk_write<uint16_t>(current_cdef_ptr, getColour()->channel_definition->num_channel_descriptions);
 	current_cdef_ptr += 2;
 
-	for(uint16_t i = 0U; i < color.channel_definition->num_channel_descriptions; ++i)
+	for(uint16_t i = 0U; i < getColour()->channel_definition->num_channel_descriptions; ++i)
 	{
 		/* Cni */
-		grk_write<uint16_t>(current_cdef_ptr, color.channel_definition->descriptions[i].channel);
+		grk_write<uint16_t>(current_cdef_ptr, getColour()->channel_definition->descriptions[i].channel);
 		current_cdef_ptr += 2;
 		/* Typi */
-		grk_write<uint16_t>(current_cdef_ptr, color.channel_definition->descriptions[i].typ);
+		grk_write<uint16_t>(current_cdef_ptr, getColour()->channel_definition->descriptions[i].typ);
 		current_cdef_ptr += 2;
 		/* Asoci */
-		grk_write<uint16_t>(current_cdef_ptr, color.channel_definition->descriptions[i].asoc);
+		grk_write<uint16_t>(current_cdef_ptr, getColour()->channel_definition->descriptions[i].asoc);
 		current_cdef_ptr += 2;
 	}
 	*p_nb_bytes_written = cdef_size;
@@ -702,7 +704,9 @@ bool FileFormatCompress::initCompress(grk_cparameters* parameters, GrkImage* ima
 	if(!parameters || !image)
 		return false;
 
-	if(codeStream->initCompress(parameters, image) == false)
+	image_ = image;
+	grk_object_ref(&image->obj);
+	if(codeStream->initCompress(parameters, image_) == false)
 		return false;
 
 	/* Profile box */
@@ -719,18 +723,18 @@ bool FileFormatCompress::initCompress(grk_cparameters* parameters, GrkImage* ima
 	cl[0] = JP2_JP2; /* CL0 : JP2 */
 
 	/* Image Header box */
-	numcomps = image->numcomps; /* NC */
+	numcomps = image_->numcomps; /* NC */
 	comps = new ComponentInfo[numcomps];
 
-	h = image->y1 - image->y0;
-	w = image->x1 - image->x0;
-	depth_0 = (uint8_t)(image->comps[0].prec - 1);
-	sign = image->comps[0].sgnd;
+	h = image_->y1 - image_->y0;
+	w = image_->x1 - image_->x0;
+	depth_0 = (uint8_t)(image_->comps[0].prec - 1);
+	sign = image_->comps[0].sgnd;
 	bpc = (uint8_t)(depth_0 + (sign << 7));
-	for(i = 1; i < image->numcomps; i++)
+	for(i = 1; i < image_->numcomps; i++)
 	{
-		uint32_t depth = image->comps[i].prec - 1U;
-		sign = image->comps[i].sgnd;
+		uint32_t depth = image_->comps[i].prec - 1U;
+		sign = image_->comps[i].sgnd;
 		if(depth_0 != depth)
 			bpc = 0xFF;
 	}
@@ -739,83 +743,69 @@ bool FileFormatCompress::initCompress(grk_cparameters* parameters, GrkImage* ima
 	IPR = 0; /* IPR, no intellectual property */
 
 	/* bit per component box */
-	for(i = 0; i < image->numcomps; i++)
+	for(i = 0; i < image_->numcomps; i++)
 	{
-		comps[i].bpc = (uint8_t)(image->comps[i].prec - 1);
-		if(image->comps[i].sgnd)
+		comps[i].bpc = (uint8_t)(image_->comps[i].prec - 1);
+		if(image_->comps[i].sgnd)
 			comps[i].bpc = (uint8_t)(comps[i].bpc + (1 << 7));
 	}
 
 	/* Colour Specification box */
-	if(image->color_space == GRK_CLRSPC_ICC)
+	if(image_->color_space == GRK_CLRSPC_ICC)
 	{
 		meth = 2;
 		enumcs = GRK_ENUM_CLRSPC_UNKNOWN;
-		if(image->meta && image->meta->color.icc_profile_buf)
-		{
-			// clean up existing icc profile in this struct
-			if(color.icc_profile_buf)
-			{
-				delete[] color.icc_profile_buf;
-				color.icc_profile_buf = nullptr;
-			}
-			// copy icc profile from image to this struct
-			color.icc_profile_len = image->meta->color.icc_profile_len;
-			color.icc_profile_buf = new uint8_t[color.icc_profile_len];
-			memcpy(color.icc_profile_buf, image->meta->color.icc_profile_buf,
-				   color.icc_profile_len);
-		}
 	}
 	else
 	{
 		meth = 1;
-		if(image->color_space == GRK_CLRSPC_CMYK)
+		if(image_->color_space == GRK_CLRSPC_CMYK)
 			enumcs = GRK_ENUM_CLRSPC_CMYK;
-		else if(image->color_space == GRK_CLRSPC_DEFAULT_CIE)
+		else if(image_->color_space == GRK_CLRSPC_DEFAULT_CIE)
 			enumcs = GRK_ENUM_CLRSPC_CIE;
-		else if(image->color_space == GRK_CLRSPC_SRGB)
+		else if(image_->color_space == GRK_CLRSPC_SRGB)
 			enumcs = GRK_ENUM_CLRSPC_SRGB; /* sRGB as defined by IEC 61966-2-1 */
-		else if(image->color_space == GRK_CLRSPC_GRAY)
+		else if(image_->color_space == GRK_CLRSPC_GRAY)
 			enumcs = GRK_ENUM_CLRSPC_GRAY; /* greyscale */
-		else if(image->color_space == GRK_CLRSPC_SYCC)
+		else if(image_->color_space == GRK_CLRSPC_SYCC)
 			enumcs = GRK_ENUM_CLRSPC_SYCC; /* YUV */
-		else if(image->color_space == GRK_CLRSPC_EYCC)
+		else if(image_->color_space == GRK_CLRSPC_EYCC)
 			enumcs = GRK_ENUM_CLRSPC_EYCC; /* YUV */
 		else
 		{
-			GRK_ERROR("Unsupported colour space enumeration %d", image->color_space);
+			GRK_ERROR("Unsupported colour space enumeration %d", image_->color_space);
 			return false;
 		}
 	}
 
 	// transfer buffer to uuid
-	if(image->meta)
+	if(image_->meta)
 	{
-		if(image->meta->iptc_len && image->meta->iptc_buf)
+		if(image_->meta->iptc_len && image_->meta->iptc_buf)
 		{
 			uuids[numUuids++] =
-				UUIDBox(IPTC_UUID, image->meta->iptc_buf, image->meta->iptc_len, true);
-			image->meta->iptc_buf = nullptr;
-			image->meta->iptc_len = 0;
+				UUIDBox(IPTC_UUID, image_->meta->iptc_buf, image_->meta->iptc_len, true);
+			image_->meta->iptc_buf = nullptr;
+			image_->meta->iptc_len = 0;
 		}
 
 		// transfer buffer to uuid
-		if(image->meta->xmp_len && image->meta->xmp_buf)
+		if(image_->meta->xmp_len && image_->meta->xmp_buf)
 		{
-			uuids[numUuids++] = UUIDBox(XMP_UUID, image->meta->xmp_buf, image->meta->xmp_len, true);
-			image->meta->xmp_buf = nullptr;
-			image->meta->xmp_len = 0;
+			uuids[numUuids++] = UUIDBox(XMP_UUID, image_->meta->xmp_buf, image_->meta->xmp_len, true);
+			image_->meta->xmp_buf = nullptr;
+			image_->meta->xmp_len = 0;
 		}
 	}
 
 	/* Channel Definition box */
-	for(i = 0; i < image->numcomps; i++)
+	for(i = 0; i < image_->numcomps; i++)
 	{
-		if(image->comps[i].type != GRK_CHANNEL_TYPE_COLOUR)
+		if(image_->comps[i].type != GRK_CHANNEL_TYPE_COLOUR)
 		{
 			alpha_count++;
 			// technically, this is an error, but we will let it pass
-			if(image->comps[i].sgnd)
+			if(image_->comps[i].sgnd)
 				GRK_WARN("signed alpha channel %u", i);
 		}
 	}
@@ -839,37 +829,32 @@ bool FileFormatCompress::initCompress(grk_cparameters* parameters, GrkImage* ima
 	}
 	if(alpha_count)
 	{
-		color.channel_definition = new grk_channel_definition();
+		if (!image_->meta)
+			image_->meta = grk_image_meta_new();
+		getColour()->channel_definition = new grk_channel_definition();
 		/* no memset needed, all values will be overwritten except if
-		 * color.channel_definition->descriptions allocation fails, */
-		/* in which case color.channel_definition->descriptions will be nullptr => valid for
+		 * channel_definition->descriptions allocation fails, */
+		/* in which case channel_definition->descriptions will be nullptr => valid for
 		 * destruction */
-		color.channel_definition->descriptions = new grk_channel_description[image->numcomps];
-		/* cast is valid : image->numcomps [1,16384] */
-		color.channel_definition->num_channel_descriptions = (uint16_t)image->numcomps;
+		getColour()->channel_definition->descriptions = new grk_channel_description[image_->numcomps];
+		/* cast is valid : image_->numcomps [1,16384] */
+		getColour()->channel_definition->num_channel_descriptions = (uint16_t)image_->numcomps;
 		for(i = 0U; i < color_channels; i++)
 		{
-			/* cast is valid : image->numcomps [1,16384] */
-			color.channel_definition->descriptions[i].channel = (uint16_t)i;
-			color.channel_definition->descriptions[i].typ = GRK_CHANNEL_TYPE_COLOUR;
-			/* No overflow + cast is valid : image->numcomps [1,16384] */
-			color.channel_definition->descriptions[i].asoc = (uint16_t)(i + 1U);
+			/* cast is valid : image_->numcomps [1,16384] */
+			getColour()->channel_definition->descriptions[i].channel = (uint16_t)i;
+			getColour()->channel_definition->descriptions[i].typ = GRK_CHANNEL_TYPE_COLOUR;
+			/* No overflow + cast is valid : image_->numcomps [1,16384] */
+			getColour()->channel_definition->descriptions[i].asoc = (uint16_t)(i + 1U);
 		}
-		for(; i < image->numcomps; i++)
+		for(; i < image_->numcomps; i++)
 		{
-			/* cast is valid : image->numcomps [1,16384] */
-			color.channel_definition->descriptions[i].channel = (uint16_t)i;
-			color.channel_definition->descriptions[i].typ = image->comps[i].type;
-			color.channel_definition->descriptions[i].asoc = image->comps[i].association;
+			/* cast is valid : image_->numcomps [1,16384] */
+			getColour()->channel_definition->descriptions[i].channel = (uint16_t)i;
+			getColour()->channel_definition->descriptions[i].typ = image_->comps[i].type;
+			getColour()->channel_definition->descriptions[i].asoc = image_->comps[i].association;
 		}
 	}
-
-	if(image->meta && image->meta->color.palette)
-	{
-		color.palette = image->meta->color.palette;
-		image->meta->color.palette = nullptr;
-	}
-
 	precedence = 0; /* PRECEDENCE */
 	approx = 0; /* APPROX */
 	has_capture_resolution =
