@@ -104,11 +104,6 @@ class Graph {
     */
     size_t size() const;
 
-    /**
-    @brief clears the graph 
-    */
-    void clear();
-
   private:
 
     std::vector<Node*> _nodes;
@@ -174,8 +169,6 @@ class Runtime {
   /**
   @brief schedules an active task immediately to the worker's queue
 
-  @param task the given active task to schedule immediately
-
   This member function immediately schedules an active task to the
   task queue of the associated worker in the runtime task.
   An active task is a task in a running taskflow. 
@@ -206,7 +199,7 @@ class Runtime {
   At this moment, task @c C is active because its parent taskflow is running. 
   When the taskflow finishes, we will see both @c B and @c C in the output.
   */
-  void schedule(Task task);
+  void schedule(Task);
   
   /**
   @brief runs a task callable synchronously
@@ -718,11 +711,6 @@ inline Graph& Graph::operator = (Graph&& other) {
   _clear();
   _nodes = std::move(other._nodes);
   return *this;
-}
-
-// Procedure: clear
-inline void Graph::clear() {
-  _clear();
 }
 
 // Procedure: clear
