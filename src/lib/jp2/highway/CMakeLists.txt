@@ -19,11 +19,13 @@ if(POLICY CMP0083)
   cmake_policy(SET CMP0083 NEW)
 endif()
 
-project(hwy VERSION 0.15.0)  # Keep in sync with highway.h version
+project(hwy VERSION 0.16.0)  # Keep in sync with highway.h version
 
-set(CMAKE_CXX_STANDARD 11)
+# Directly define the ABI version from the cmake project() version values:
+set(LIBRARY_VERSION "${hwy_VERSION}")
+set(LIBRARY_SOVERSION ${hwy_VERSION_MAJOR})
+
 set(CMAKE_CXX_EXTENSIONS OFF)
-set(CMAKE_CXX_STANDARD_REQUIRED YES)
 
 # Enabled PIE binaries by default if supported.
 include(CheckPIESupported OPTIONAL RESULT_VARIABLE CHECK_PIE_SUPPORTED)
@@ -40,7 +42,7 @@ if (NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE RelWithDebInfo)
 endif()
 
-set(HWY_CMAKE_ARM7 OFF CACHE BOOL "Set copts for ARMv7 with NEON?")
+set(HWY_CMAKE_ARM7 OFF CACHE BOOL "Set copts for ARMv7 with NEON (requires vfpv4)?")
 
 # Unconditionally adding -Werror risks breaking the build when new warnings
 # arise due to compiler/platform changes. Enable this in CI/tests.
@@ -65,7 +67,32 @@ set(HWY_CONTRIB_SOURCES
     hwy/contrib/image/image.cc
     hwy/contrib/image/image.h
     hwy/contrib/math/math-inl.h
-    hwy/contrib/sort/sort-inl.h
+    hwy/contrib/sort/disabled_targets.h
+    hwy/contrib/sort/shared-inl.h
+    hwy/contrib/sort/sorting_networks-inl.h
+    hwy/contrib/sort/traits-inl.h
+    hwy/contrib/sort/traits128-inl.h
+    hwy/contrib/sort/vqsort-inl.h
+    hwy/contrib/sort/vqsort.cc
+    hwy/contrib/sort/vqsort.h
+    hwy/contrib/sort/vqsort_128a.cc
+    hwy/contrib/sort/vqsort_128d.cc
+    hwy/contrib/sort/vqsort_f32a.cc
+    hwy/contrib/sort/vqsort_f32d.cc
+    hwy/contrib/sort/vqsort_f64a.cc
+    hwy/contrib/sort/vqsort_f64d.cc
+    hwy/contrib/sort/vqsort_i16a.cc
+    hwy/contrib/sort/vqsort_i16d.cc
+    hwy/contrib/sort/vqsort_i32a.cc
+    hwy/contrib/sort/vqsort_i32d.cc
+    hwy/contrib/sort/vqsort_i64a.cc
+    hwy/contrib/sort/vqsort_i64d.cc
+    hwy/contrib/sort/vqsort_u16a.cc
+    hwy/contrib/sort/vqsort_u16d.cc
+    hwy/contrib/sort/vqsort_u32a.cc
+    hwy/contrib/sort/vqsort_u32d.cc
+    hwy/contrib/sort/vqsort_u64a.cc
+    hwy/contrib/sort/vqsort_u64d.cc
 )
 
 set(HWY_SOURCES
@@ -77,6 +104,7 @@ set(HWY_SOURCES
     hwy/detect_targets.h  # private
     hwy/foreach_target.h
     hwy/highway.h
+    hwy/highway_export.h
     hwy/nanobenchmark.cc
     hwy/nanobenchmark.h
     hwy/ops/arm_neon-inl.h
@@ -197,34 +225,3 @@ add_library(hwy STATIC ${HWY_SOURCES})
 target_compile_options(hwy PRIVATE ${HWY_FLAGS})
 set_property(TARGET hwy PROPERTY POSITION_INDEPENDENT_CODE ON)
 target_include_directories(hwy PUBLIC ${CMAKE_CURRENT_LIST_DIR})
-
-add_library(hwy_contrib STATIC ${HWY_CONTRIB_SOURCES})
-target_compile_options(hwy_contrib PRIVATE ${HWY_FLAGS})
-set_property(TARGET hwy_contrib PROPERTY POSITION_INDEPENDENT_CODE ON)
-target_include_directories(hwy_contrib PUBLIC ${CMAKE_CURRENT_LIST_DIR})
-
-add_library(hwy_test STATIC ${HWY_TEST_SOURCES})
-target_compile_options(hwy_test PRIVATE ${HWY_FLAGS})
-set_property(TARGET hwy_test PROPERTY POSITION_INDEPENDENT_CODE ON)
-target_include_directories(hwy_test PUBLIC ${CMAKE_CURRENT_LIST_DIR})
-
-# -------------------------------------------------------- hwy_list_targets
-# Generate a tool to print the compiled-in targets as defined by the current
-# flags. This tool will print to stderr at build time, after building hwy.
-add_executable(hwy_list_targets hwy/tests/list_targets.cc)
-target_compile_options(hwy_list_targets PRIVATE ${HWY_FLAGS})
-target_link_libraries(hwy_list_targets hwy)
-target_include_directories(hwy_list_targets PRIVATE
-  $<TARGET_PROPERTY:hwy,INCLUDE_DIRECTORIES>)
-# TARGET_FILE always returns the path to executable
-# Naked target also not always could be run (due to the lack of '.\' prefix)
-# Thus effective command to run should contain the full path
-# and emulator prefix (if any).
-if (NOT CMAKE_CROSSCOMPILING OR CMAKE_CROSSCOMPILING_EMULATOR)
-add_custom_command(TARGET hwy_list_targets POST_BUILD
-    COMMAND ${CMAKE_CROSSCOMPILING_EMULATOR} $<TARGET_FILE:hwy_list_targets> || (exit 0))
-endif()
-
-# --------------------------------------------------------
-# Allow skipping the following sections for projects that do not need them:
-# tests, examples, benchmarks and installation.

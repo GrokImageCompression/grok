@@ -74,7 +74,7 @@ class TestAES {
     }
 
     for (size_t i = 0; i < 256; i += N) {
-      const auto in = Iota(d, i);
+      const auto in = Iota(d, static_cast<T>(i));
       HWY_ASSERT_VEC_EQ(d, expected.get() + i, detail::SubBytes(in));
     }
   }
@@ -122,7 +122,7 @@ class TestAES {
     TestSBox(t, d);
   }
 };
-HWY_NOINLINE void TestAllAES() { ForGE128Vectors<TestAES>()(uint8_t()); }
+HWY_NOINLINE void TestAllAES() { ForGEVectors<128, TestAES>()(uint8_t()); }
 
 #else
 HWY_NOINLINE void TestAllAES() {}
@@ -132,7 +132,7 @@ struct TestCLMul {
   template <typename T, class D>
   HWY_NOINLINE void operator()(T /*unused*/, D d) {
     // needs 64 bit lanes and 128-bit result
-#if HWY_TARGET != HWY_SCALAR && HWY_CAP_INTEGER64
+#if HWY_TARGET != HWY_SCALAR && HWY_HAVE_INTEGER64
     const size_t N = Lanes(d);
     if (N == 1) return;
 
@@ -534,7 +534,7 @@ struct TestCLMul {
   }
 };
 
-HWY_NOINLINE void TestAllCLMul() { ForGE128Vectors<TestCLMul>()(uint64_t()); }
+HWY_NOINLINE void TestAllCLMul() { ForGEVectors<128, TestCLMul>()(uint64_t()); }
 
 // NOLINTNEXTLINE(google-readability-namespace-comments)
 }  // namespace HWY_NAMESPACE

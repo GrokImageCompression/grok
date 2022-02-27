@@ -60,7 +60,8 @@ HWY_AFTER_NAMESPACE();
 *   `T` denotes the type of a vector lane;
 *   `N` is a size_t value that governs (but is not necessarily identical to) the
     number of lanes;
-*   `D` is shorthand for `Simd<T, N>`;
+*   `D` is shorthand for `Simd<T, N, kPow2>` (use aliases such as `ScalableTag`
+    instead of referring to this type directly);
 *   `d` is an lvalue of type `D`, passed as a function argument e.g. to Zero;
 *   `V` is the type of a vector.
 
@@ -75,20 +76,23 @@ upper 16 bits of an IEEE binary32 float) only support load, store, and
 conversion to/from `float32_t`. The behavior of infinity and NaN in `float16_t`
 is implementation-defined due to ARMv7.
 
-On RVV, vectors are sizeless and cannot be wrapped inside a class. The Highway
-API allows using built-in types as vectors because operations are expressed as
-overloaded functions. Instead of constructors, overloaded initialization
-functions such as `Set` take a zero-sized tag argument called `d` of type `D =
-Simd<T, N>` and return an actual vector of unspecified type.
+On RVV/SVE, vectors are sizeless and cannot be wrapped inside a class. The
+Highway API allows using built-in types as vectors because operations are
+expressed as overloaded functions. Instead of constructors, overloaded
+initialization functions such as `Set` take a zero-sized tag argument called `d`
+of type `D` and return an actual vector of unspecified type.
 
 `T` is one of the lane types above, and may be retrieved via `TFromD<D>`.
 
-`N` is target-dependent and not directly user-specified. The actual lane count
-may not be known at compile time, but can be obtained via `Lanes(d)`. Use this
-value, which is potentially different from `N`, to increment loop counters etc.
+The actual lane count (used to increment loop counters etc.) can be obtained via
+`Lanes(d)`. This value might not be known at compile time, thus storage for
+vectors should be dynamically allocated, e.g. via `AllocateAligned(Lanes(d))`.
 Note that `Lanes(d)` could potentially change at runtime, upon user request via
 special CPU instructions. Thus we discourage caching the result; it is typically
 used inside a function or basic block.
+
+`MaxLanes(d)` returns a (potentially loose) upper bound on `Lanes(d)`, and is
+implemented as a constexpr function.
 
 The actual lane count is guaranteed to be a power of two, even on SVE hardware
 where vectors can be a multiple of 128 bits (there, the extra lanes remain
@@ -97,23 +101,23 @@ unused). This simplifies alignment: remainders can be computed as `count &
 that are a large power of two (at least `MaxLanes`) are evenly divisible by the
 lane count, thus avoiding the need for a second loop to handle remainders.
 
-`d` lvalues (a tag, NOT actual vector) are typically obtained using two aliases:
+`d` lvalues (a tag, NOT actual vector) are obtained using aliases:
 
-*   Most common: `ScalableTag<T[, shift]> d;` or the macro form `HWY_FULL(T[,
+*   Most common: `ScalableTag<T[, kPow2=0]> d;` or the macro form `HWY_FULL(T[,
     LMUL=1]) d;`. With the default value of the second argument, these both
     select full vectors which utilize all available lanes.
 
-    Only for targets (e.g. RVV) that support register groups, the shift (-3..3)
+    Only for targets (e.g. RVV) that support register groups, the kPow2 (-3..3)
     and LMUL argument (1, 2, 4, 8) specify `LMUL`, the number of registers in
     the group. This effectively multiplies the lane count in each operation by
-    `LMUL`, or shifts by `shift` (negative values are understood as
+    `LMUL`, or left-shifts by `kPow2` (negative values are understood as
     right-shifting by the absolute value). These arguments will eventually be
     optional hints that may improve performance on 1-2 wide machines (at the
-    cost of reducing the effective number of registers), but the experimental
-    GCC support for RVV does not support fractional `LMUL`. Thus,
-    mixed-precision code (e.g. demoting float to uint8_t) currently requires
-    `LMUL` to be at least the ratio of the sizes of the largest and smallest
-    type, and smaller `d` to be obtained via `Half<DLarger>`.
+    cost of reducing the effective number of registers), but RVV target does not
+    yet support fractional `LMUL`. Thus, mixed-precision code (e.g. demoting
+    float to uint8_t) currently requires `LMUL` to be at least the ratio of the
+    sizes of the largest and smallest type, and smaller `d` to be obtained via
+    `Half<DLarger>`.
 
 *   Less common: `CappedTag<T, kCap> d` or the macro form `HWY_CAPPED(T, kCap)
     d;`. These select vectors or masks where *no more than* the first `kCap` (a
@@ -124,10 +128,10 @@ lane count, thus avoiding the need for a second loop to handle remainders.
 *   For applications that require fixed-size vectors: `FixedTag<T, kCount> d;`
     will select vectors where exactly `kCount` lanes have observable effects.
     These may be implemented using full vectors plus additional runtime cost for
-    masking in `Load` etc. All targets except `HWY_SCALAR` allow any power of
-    two `kCount <= 16/sizeof(T)`. This tag can be used when the `HWY_SCALAR`
-    target is anyway disabled (superseded by a higher baseline) or unusable (due
-    to use of ops such as `TableLookupBytes`).
+    masking in `Load` etc. `HWY_SCALAR` only allows `kCount=1`; other targets
+    allow any power of two `kCount <= HWY_MAX_BYTES / sizeof(T)`. This tag can
+    be used when the `HWY_SCALAR` target is anyway disabled (superseded by a
+    higher baseline) or unusable (due to use of ops such as `TableLookupBytes`).
 
 *   The result of `UpperHalf`/`LowerHalf` has half the lanes. To obtain a
     corresponding `d`, use `Half<decltype(d)>`; the opposite is `Twice<>`.
@@ -136,15 +140,9 @@ User-specified lane counts or tuples of vectors could cause spills on targets
 with fewer or smaller vectors. By contrast, Highway encourages vector-length
 agnostic code, which is more performance-portable.
 
-Given that lane counts are potentially compile-time-unknown, storage for vectors
-should be dynamically allocated, e.g. via `AllocateAligned(Lanes(d))`. For
-applications that require a compile-time bound, `MaxLanes(d)` uses the `N` from
-`Simd<T, N>` to return a (loose) upper bound, NOT necessarily the actual lane
-count. Note that some compilers are not able to interpret it as constexpr.
-
 For mixed-precision code (e.g. `uint8_t` lanes promoted to `float`), tags for
 the smaller types must be obtained from those of the larger type (e.g. via
-`Rebind<uint8_t, HWY_FULL(float)>`).
+`Rebind<uint8_t, ScalableTag<float>>`).
 
 ## Using unspecified vector types
 
@@ -190,11 +188,11 @@ bits are allowed. Abbreviations of the form `u32 = {u}{32}` may also be used.
 
 Note that Highway functions reside in `hwy::HWY_NAMESPACE`, whereas user-defined
 functions reside in `project::[nested]::HWY_NAMESPACE`. Highway functions
-generally take either a `Simd` or vector/mask argument. For targets where
-vectors and masks are defined in namespace `hwy`, the functions will be found
-via Argument-Dependent Lookup. However, this does not work for function
-templates, and RVV and SVE both use builtin vectors. There are three options for
-portable code, in descending order of preference:
+generally take either a `D` or vector/mask argument. For targets where vectors
+and masks are defined in namespace `hwy`, the functions will be found via
+Argument-Dependent Lookup. However, this does not work for function templates,
+and RVV and SVE both use builtin vectors. There are three options for portable
+code, in descending order of preference:
 
 -   `namespace hn = hwy::HWY_NAMESPACE;` alias used to prefix ops, e.g.
     `hn::LoadDup128(..)`;
@@ -1052,103 +1050,6 @@ than normal SIMD operations and are typically used outside critical loops.
     <code>V **CLMulUpper**(V a, V b)</code>: as CLMulLower, but multiplies the
     upper 64 bits of each 128-bit block.
 
-### Deprecated
-
-*   <code>bool **AllTrue**(M m)</code>: returns whether all `m[i]` are true.
-    DEPRECATED, SVE needs an extra D argument.
-
-*   <code>bool **AllFalse**(M m)</code>: returns whether all `m[i]` are false.
-    DEPRECATED, SVE needs an extra D argument.
-
-*   <code>size_t **StoreMaskBits**(M m, uint8_t* p)</code>: stores a bit array
-    indicating whether `m[i]` is true, in ascending order of `i`, filling the
-    bits of each byte from least to most significant, then proceeding to the
-    next byte. Returns the number of (partial) bytes written. DEPRECATED, SVE
-    needs an extra D argument.
-
-*   <code>size_t **CountTrue**(M m)</code>: returns how many of `m[i]` are true
-    [0, N]. This is typically more expensive than AllTrue/False. DEPRECATED, SVE
-    needs an extra D argument.
-
-*   <code>void **StoreFence**()</code>: DEPRECATED, calls `FlushStream`.
-
-*   <code>void **LoadFence**()</code>: delays subsequent loads until prior loads
-    are visible. Also a full fence on Intel CPUs. No effect on non-x86.
-    DEPRECATED due to differing behavior across architectures AND vendors.
-
-*   <code>V2 **UpperHalf**(V)</code>: returns upper half of the vector `V`.
-    DEPRECATED, supporting partial vectors requires a D argument.
-
-*   `V`: `{u,i}` \
-    <code>V **ShiftRightBytes**&lt;int&gt;(V)</code>: returns the result of
-    shifting independent *blocks* right by `int` bytes \[1, 15\]. DEPRECATED,
-    supporting partial vectors requires a D argument.
-
-*   <code>V **ShiftRightLanes**&lt;int&gt;(V)</code>: returns the result of
-    shifting independent *blocks* right by `int` lanes. DEPRECATED, supporting
-    partial vectors requires a D argument.
-
-*   <code>V **ZeroExtendVector**(V2)</code>: returns vector whose `UpperHalf` is
-    zero and whose `LowerHalf` is the argument. DEPRECATED, supporting partial
-    vectors requires a D argument.
-
-*   <code>V **Combine**(V2, V2)</code>: returns vector whose `UpperHalf` is the
-    first argument and whose `LowerHalf` is the second argument. This is
-    currently only implemented for RVV, AVX2, AVX3*. DEPRECATED, supporting
-    partial vectors requires a D argument.
-
-*   <code>V **ConcatLowerLower**(V hi, V lo)</code>: returns the concatenation
-    of the lower halves of `hi` and `lo` without splitting into blocks.
-    DEPRECATED, supporting partial vectors requires a D argument.
-
-*   <code>V **ConcatUpperUpper**(V hi, V lo)</code>: returns the concatenation
-    of the upper halves of `hi` and `lo` without splitting into blocks.
-    DEPRECATED, supporting partial vectors requires a D argument.
-
-*   <code>V **ConcatLowerUpper**(V hi, V lo)</code>: returns the inner half of
-    the concatenation of `hi` and `lo` without splitting into blocks. Useful for
-    swapping the two blocks in 256-bit vectors. DEPRECATED, supporting partial
-    vectors requires a D argument.
-
-*   <code>V **ConcatUpperLower**(V hi, V lo)</code>: returns the outer quarters
-    of the concatenation of `hi` and `lo` without splitting into blocks. Unlike
-    the other variants, this does not incur a block-crossing penalty on AVX2.
-    DEPRECATED, supporting partial vectors requires a D argument.
-
-*   <code>V **InterleaveUpper**(V a, V b)</code>: returns *blocks* with
-    alternating lanes from the upper halves of `a` and `b` (`a[N/2]` in the
-    least-significant lane). DEPRECATED, supporting partial vectors requires a D
-    argument.
-
-*   `Ret`: `MakeWide<T>`; `V`: `{u,i}{8,16,32}` \
-    <code>Ret **ZipUpper**(V a, V b)</code>: returns the same bits as
-    `InterleaveUpper`, but repartitioned into double-width lanes (required in
-    order to use this operation with scalars). DEPRECATED, supporting partial
-    vectors requires a D argument.
-
-*   `V`: `{u,i}` \
-    <code>V **CombineShiftRightBytes**&lt;int&gt;(V hi, V lo)</code>: returns a
-    vector of *blocks* each the result of shifting two concatenated *blocks*
-    `hi[i] || lo[i]` right by `int` bytes \[1, 16). DEPRECATED, supporting
-    partial vectors requires a D argument.
-
-*   <code>V **CombineShiftRightLanes**&lt;int&gt;(V hi, V lo)</code>: returns a
-    vector of *blocks* each the result of shifting two concatenated *blocks*
-    `hi[i] || lo[i]` right by `int` lanes \[1, 16/sizeof(T)). DEPRECATED,
-    supporting partial vectors requires a D argument.
-
-*   `V`: `{u,i,f}{32,64}` \
-    <code>V **SumOfLanes**(V v)</code>: returns the sum of all lanes in each
-    lane. DEPRECATED, SVE/RVV require a D argument to support partial vectors.
-
-*   `V`: `{u,i,f}{32,64}` \
-    <code>V **MinOfLanes**(V v)</code>: returns the minimum-valued lane in each
-    lane. DEPRECATED, SVE/RVV require a D argument to support partial vectors.
-
-*   `V`: `{u,i,f}{32,64}` \
-    <code>V **MaxOfLanes**(V v)</code>: returns the maximum-valued lane in each
-    lane. DEPRECATED, SVE/RVV require a D argument to support partial vectors.
-
 ## Preprocessor macros
 
 *   `HWY_ALIGN`: Prefix for stack-allocated (i.e. automatic storage duration)
@@ -1198,17 +1099,22 @@ support them).
 *   `HWY_IDE` is 0 except when parsed by IDEs; adding it to conditions such as
     `#if HWY_TARGET != HWY_SCALAR || HWY_IDE` avoids code appearing greyed out.
 
-The following signal capabilities and expand to 1 or 0.
+The following indicate support for certain lane types and expand to 1 or 0:
 
-*   `HWY_CAP_INTEGER64`: support for 64-bit signed/unsigned integer lanes.
-*   `HWY_CAP_FLOAT16`: support for IEEE half-precision floating-point lanes.
-*   `HWY_CAP_FLOAT64`: support for double-precision floating-point lanes.
+*   `HWY_HAVE_INTEGER64`: support for 64-bit signed/unsigned integer lanes.
+*   `HWY_HAVE_FLOAT16`: support for 16-bit floating-point lanes.
+*   `HWY_HAVE_FLOAT64`: support for double-precision floating-point lanes.
+
+The above were previously known as `HWY_CAP_INTEGER64`, `HWY_CAP_FLOAT16`, and
+`HWY_CAP_FLOAT64`, respectively. Those `HWY_CAP_*` names are DEPRECATED.
+
+*   `HWY_HAVE_SCALABLE` indicates vector sizes are unknown at compile time, and
+    determined by the CPU.
 
 The following were used to signal the maximum number of lanes for certain
 operations, but this is no longer necessary (nor possible on SVE/RVV), so they
 are DEPRECATED:
 
-*   `HWY_GATHER_LANES(T)`.
 *   `HWY_CAP_GE256`: the current target supports vectors of >= 256 bits.
 *   `HWY_CAP_GE512`: the current target supports vectors of >= 512 bits.
 

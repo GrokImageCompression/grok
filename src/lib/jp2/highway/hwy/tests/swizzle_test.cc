@@ -19,6 +19,8 @@
 
 #include <array>  // IWYU pragma: keep
 
+#include "hwy/base.h"
+
 #undef HWY_TARGET_INCLUDE
 #define HWY_TARGET_INCLUDE "tests/swizzle_test.cc"
 #include "hwy/foreach_target.h"
@@ -85,7 +87,7 @@ struct TestOddEven {
   HWY_NOINLINE void operator()(T /*unused*/, D d) {
     const size_t N = Lanes(d);
     const auto even = Iota(d, 1);
-    const auto odd = Iota(d, 1 + N);
+    const auto odd = Iota(d, static_cast<T>(1 + N));
     auto expected = AllocateAligned<T>(N);
     for (size_t i = 0; i < N; ++i) {
       expected[i] = static_cast<T>(1 + i + ((i & 1) ? N : 0));
@@ -103,7 +105,7 @@ struct TestOddEvenBlocks {
   HWY_NOINLINE void operator()(T /*unused*/, D d) {
     const size_t N = Lanes(d);
     const auto even = Iota(d, 1);
-    const auto odd = Iota(d, 1 + N);
+    const auto odd = Iota(d, static_cast<T>(1 + N));
     auto expected = AllocateAligned<T>(N);
     for (size_t i = 0; i < N; ++i) {
       const size_t idx_block = i / (16 / sizeof(T));
@@ -114,7 +116,7 @@ struct TestOddEvenBlocks {
 };
 
 HWY_NOINLINE void TestAllOddEvenBlocks() {
-  ForAllTypes(ForShrinkableVectors<TestOddEvenBlocks>());
+  ForAllTypes(ForGEVectors<128, TestOddEvenBlocks>());
 }
 
 struct TestSwapAdjacentBlocks {
@@ -136,7 +138,7 @@ struct TestSwapAdjacentBlocks {
 };
 
 HWY_NOINLINE void TestAllSwapAdjacentBlocks() {
-  ForAllTypes(ForPartialVectors<TestSwapAdjacentBlocks>());
+  ForAllTypes(ForGEVectors<128, TestSwapAdjacentBlocks>());
 }
 
 struct TestTableLookupLanes {
@@ -296,25 +298,25 @@ HWY_NOINLINE void TestAllReverse() {
 HWY_NOINLINE void TestAllReverse2() {
   // 8-bit is not supported because Risc-V uses rgather of Lanes - Iota,
   // which requires 16 bits.
-  ForUIF64(ForGE128Vectors<TestReverse2>());
-  ForUIF32(ForGE64Vectors<TestReverse2>());
-  ForUIF16(ForGE32Vectors<TestReverse2>());
+  ForUIF64(ForGEVectors<128, TestReverse2>());
+  ForUIF32(ForGEVectors<64, TestReverse2>());
+  ForUIF16(ForGEVectors<32, TestReverse2>());
 }
 
 HWY_NOINLINE void TestAllReverse4() {
   // 8-bit is not supported because Risc-V uses rgather of Lanes - Iota,
   // which requires 16 bits.
-  ForUIF64(ForGE256Vectors<TestReverse4>());
-  ForUIF32(ForGE128Vectors<TestReverse4>());
-  ForUIF16(ForGE64Vectors<TestReverse4>());
+  ForUIF64(ForGEVectors<256, TestReverse4>());
+  ForUIF32(ForGEVectors<128, TestReverse4>());
+  ForUIF16(ForGEVectors<64, TestReverse4>());
 }
 
 HWY_NOINLINE void TestAllReverse8() {
   // 8-bit is not supported because Risc-V uses rgather of Lanes - Iota,
   // which requires 16 bits.
-  ForUIF64(ForGE512Vectors<TestReverse8>());
-  ForUIF32(ForGE256Vectors<TestReverse8>());
-  ForUIF16(ForGE128Vectors<TestReverse8>());
+  ForUIF64(ForGEVectors<512, TestReverse8>());
+  ForUIF32(ForGEVectors<256, TestReverse8>());
+  ForUIF16(ForGEVectors<128, TestReverse8>());
 }
 
 struct TestReverseBlocks {
@@ -342,20 +344,22 @@ struct TestReverseBlocks {
 };
 
 HWY_NOINLINE void TestAllReverseBlocks() {
-  ForAllTypes(ForGE128Vectors<TestReverseBlocks>());
+  ForAllTypes(ForGEVectors<128, TestReverseBlocks>());
 }
 
 class TestCompress {
-  template <typename T, typename TI, size_t N>
-  void CheckStored(Simd<T, N> d, Simd<TI, N> di, size_t expected_pos,
-                   size_t actual_pos, const AlignedFreeUniquePtr<T[]>& in,
+  template <class D, class DI, typename T = TFromD<D>, typename TI = TFromD<DI>>
+  void CheckStored(D d, DI di, size_t expected_pos, size_t actual_pos,
+                   const AlignedFreeUniquePtr<T[]>& in,
                    const AlignedFreeUniquePtr<TI[]>& mask_lanes,
                    const AlignedFreeUniquePtr<T[]>& expected, const T* actual_u,
                    int line) {
     if (expected_pos != actual_pos) {
-      hwy::Abort(__FILE__, line,
-                 "Size mismatch for %s: expected %" PRIu64 ", actual %" PRIu64 "\n",
-                 TypeName(T(), N).c_str(), static_cast<uint64_t>(expected_pos), static_cast<uint64_t>(actual_pos));
+      hwy::Abort(
+          __FILE__, line,
+          "Size mismatch for %s: expected %" PRIu64 ", actual %" PRIu64 "\n",
+          TypeName(T(), Lanes(d)).c_str(), static_cast<uint64_t>(expected_pos),
+          static_cast<uint64_t>(actual_pos));
     }
     // Upper lanes are undefined. Modified from AssertVecEqual.
     for (size_t i = 0; i < expected_pos; ++i) {
@@ -364,6 +368,7 @@ class TestCompress {
                 "Mismatch at i=%" PRIu64 " of %" PRIu64 ", line %d:\n\n",
                 static_cast<uint64_t>(i), static_cast<uint64_t>(expected_pos),
                 line);
+        const size_t N = Lanes(d);
         Print(di, "mask", Load(di, mask_lanes.get()), 0, N);
         Print(d, "in", Load(d, in.get()), 0, N);
         Print(d, "expect", Load(d, expected.get()), 0, N);
@@ -393,7 +398,10 @@ class TestCompress {
       auto expected = AllocateAligned<T>(N);
       auto actual_a = AllocateAligned<T>(misalign + N);
       T* actual_u = actual_a.get() + misalign;
-      auto bits = AllocateAligned<uint8_t>(HWY_MAX(8, (N + 7) / 8));
+
+      const size_t bits_size = RoundUpTo((N + 7) / 8, 8);
+      auto bits = AllocateAligned<uint8_t>(bits_size);
+      memset(bits.get(), 0, bits_size);  // for MSAN
 
       // Each lane should have a chance of having mask=true.
       for (size_t rep = 0; rep < AdjustedReps(200); ++rep) {
@@ -607,7 +615,7 @@ HWY_NOINLINE void TestAllCompress() {
 
   test(uint16_t());
   test(int16_t());
-#if HWY_CAP_FLOAT16
+#if HWY_HAVE_FLOAT16
   test(float16_t());
 #endif
 

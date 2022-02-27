@@ -57,9 +57,6 @@ HWY_BEFORE_NAMESPACE();
 namespace hwy {
 namespace HWY_NAMESPACE {
 
-template <typename T>
-using Full512 = Simd<T, 64 / sizeof(T)>;
-
 namespace detail {
 
 template <typename T>
@@ -2553,12 +2550,6 @@ HWY_API Vec512<double> InterleaveLower(const Vec512<double> a,
   return Vec512<double>{_mm512_unpacklo_pd(a.raw, b.raw)};
 }
 
-// Additional overload for the optional Simd<> tag.
-template <typename T, class V = Vec512<T>>
-HWY_API V InterleaveLower(Full512<T> /* tag */, V a, V b) {
-  return InterleaveLower(a, b);
-}
-
 // ------------------------------ InterleaveUpper
 
 // All functions inside detail lack the required D parameter.
@@ -2623,8 +2614,8 @@ HWY_API Vec512<TW> ZipLower(Vec512<T> a, Vec512<T> b) {
   return BitCast(Full512<TW>(), InterleaveLower(a, b));
 }
 template <typename T, typename TW = MakeWide<T>>
-HWY_API Vec512<TW> ZipLower(Full512<TW> d, Vec512<T> a, Vec512<T> b) {
-  return BitCast(Full512<TW>(), InterleaveLower(d, a, b));
+HWY_API Vec512<TW> ZipLower(Full512<TW> /* d */, Vec512<T> a, Vec512<T> b) {
+  return BitCast(Full512<TW>(), InterleaveLower(a, b));
 }
 
 template <typename T, typename TW = MakeWide<T>>
@@ -3785,103 +3776,6 @@ HWY_API Vec512<T> MaxOfLanes(Full512<T> d, Vec512<T> v) {
   const auto min = MaxOfLanes(d32, Max(even, odd));
   // Also broadcast into odd lanes.
   return BitCast(d, Or(min, ShiftLeft<16>(min)));
-}
-
-// ================================================== DEPRECATED
-
-template <typename T>
-HWY_API size_t StoreMaskBits(const Mask512<T> mask, uint8_t* bits) {
-  return StoreMaskBits(Full512<T>(), mask, bits);
-}
-
-template <typename T>
-HWY_API bool AllTrue(const Mask512<T> mask) {
-  return AllTrue(Full512<T>(), mask);
-}
-
-template <typename T>
-HWY_API bool AllFalse(const Mask512<T> mask) {
-  return AllFalse(Full512<T>(), mask);
-}
-
-template <typename T>
-HWY_API size_t CountTrue(const Mask512<T> mask) {
-  return CountTrue(Full512<T>(), mask);
-}
-
-template <typename T>
-HWY_API Vec512<T> SumOfLanes(Vec512<T> v) {
-  return SumOfLanes(Full512<T>(), v);
-}
-
-template <typename T>
-HWY_API Vec512<T> MinOfLanes(Vec512<T> v) {
-  return MinOfLanes(Full512<T>(), v);
-}
-
-template <typename T>
-HWY_API Vec512<T> MaxOfLanes(Vec512<T> v) {
-  return MaxOfLanes(Full512<T>(), v);
-}
-
-template <typename T>
-HWY_API Vec256<T> UpperHalf(Vec512<T> v) {
-  return UpperHalf(Full256<T>(), v);
-}
-
-template <int kBytes, typename T>
-HWY_API Vec512<T> ShiftRightBytes(const Vec512<T> v) {
-  return ShiftRightBytes<kBytes>(Full512<T>(), v);
-}
-
-template <int kLanes, typename T>
-HWY_API Vec512<T> ShiftRightLanes(const Vec512<T> v) {
-  return ShiftRightBytes<kLanes>(Full512<T>(), v);
-}
-
-template <size_t kBytes, typename T>
-HWY_API Vec512<T> CombineShiftRightBytes(Vec512<T> hi, Vec512<T> lo) {
-  return CombineShiftRightBytes<kBytes>(Full512<T>(), hi, lo);
-}
-
-template <typename T>
-HWY_API Vec512<T> InterleaveUpper(Vec512<T> a, Vec512<T> b) {
-  return InterleaveUpper(Full512<T>(), a, b);
-}
-
-template <typename T>
-HWY_API Vec512<MakeWide<T>> ZipUpper(Vec512<T> a, Vec512<T> b) {
-  return InterleaveUpper(Full512<MakeWide<T>>(), a, b);
-}
-
-template <typename T>
-HWY_API Vec512<T> Combine(Vec256<T> hi, Vec256<T> lo) {
-  return Combine(Full512<T>(), hi, lo);
-}
-
-template <typename T>
-HWY_API Vec512<T> ZeroExtendVector(Vec256<T> lo) {
-  return ZeroExtendVector(Full512<T>(), lo);
-}
-
-template <typename T>
-HWY_API Vec512<T> ConcatLowerLower(Vec512<T> hi, Vec512<T> lo) {
-  return ConcatLowerLower(Full512<T>(), hi, lo);
-}
-
-template <typename T>
-HWY_API Vec512<T> ConcatLowerUpper(Vec512<T> hi, Vec512<T> lo) {
-  return ConcatLowerUpper(Full512<T>(), hi, lo);
-}
-
-template <typename T>
-HWY_API Vec512<T> ConcatUpperLower(Vec512<T> hi, Vec512<T> lo) {
-  return ConcatUpperLower(Full512<T>(), hi, lo);
-}
-
-template <typename T>
-HWY_API Vec512<T> ConcatUpperUpper(Vec512<T> hi, Vec512<T> lo) {
-  return ConcatUpperUpper(Full512<T>(), hi, lo);
 }
 
 // NOLINTNEXTLINE(google-readability-namespace-comments)
