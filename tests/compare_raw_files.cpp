@@ -30,9 +30,9 @@
 
 typedef struct test_cmp_parameters {
   /**  */
-  char *base_filename;
+  char base_filename[4096];
   /**  */
-  char *test_filename;
+  char test_filename[4096];
 } test_cmp_parameters;
 
 /*******************************************************************************
@@ -56,10 +56,6 @@ static int parse_cmdline_cmp(int argc, char **argv,
                              test_cmp_parameters *param) {
   size_t sizemembasefile, sizememtestfile;
   int index = 0;
-
-  /* Init parameters*/
-  param->base_filename = nullptr;
-  param->test_filename = nullptr;
   try {
     TCLAP::CmdLine cmd("compare_raw_files command line", ' ', "");
 
@@ -73,7 +69,6 @@ static int parse_cmdline_cmp(int argc, char **argv,
 
     if (baseArg.isSet()) {
       sizemembasefile = baseArg.getValue().length() + 1;
-      param->base_filename = (char *)malloc(sizemembasefile);
       if (!param->base_filename) {
         spdlog::error("Out of memory");
         return 1;
@@ -86,7 +81,6 @@ static int parse_cmdline_cmp(int argc, char **argv,
 
     if (testArg.isSet()) {
       sizememtestfile = testArg.getValue().length() + 1;
-      param->test_filename = (char *)malloc(sizememtestfile);
       if (!param->test_filename) {
         spdlog::error("Out of memory");
         return 1;
@@ -194,10 +188,6 @@ cleanup:
     fclose(file_test);
   if (file_base)
     fclose(file_base);
-
-  /* Free Memory */
-  free(inParam.base_filename);
-  free(inParam.test_filename);
 
   return equal ? EXIT_SUCCESS : EXIT_FAILURE;
 }

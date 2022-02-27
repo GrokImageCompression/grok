@@ -61,11 +61,11 @@ class FileFormatDecompress : public FileFormat, public ICodeStreamDecompress
 	bool read_res(uint8_t* p_resolution_data, uint32_t resolution_size);
 	double calc_res(uint16_t num, uint16_t den, uint8_t exponent);
 	bool read_bpc(uint8_t* p_bpc_header_data, uint32_t bpc_header_size);
-	void apply_channel_definition(GrkImage* image, grk_color* color);
+	void apply_channel_definition(GrkImage* image);
 	bool read_channel_definition(uint8_t* p_cdef_header_data, uint32_t cdef_header_size);
 	bool read_colr(uint8_t* p_colr_header_data, uint32_t colr_header_size);
-	bool check_color(GrkImage* image, grk_color* color);
-	bool apply_palette_clr(GrkImage* image, grk_color* color);
+	bool check_color(GrkImage* image);
+	bool apply_palette_clr(GrkImage* image);
 	bool read_component_mapping(uint8_t* component_mapping_header_data,
 								uint32_t component_mapping_header_size);
 	bool read_palette_clr(uint8_t* p_pclr_header_data, uint32_t pclr_header_size);
@@ -89,7 +89,6 @@ class FileFormatDecompress : public FileFormat, public ICodeStreamDecompress
 	AsocBox root_asoc;
 	CodeStreamDecompress* codeStream;
 	uint32_t jp2_state;
-	grk_color color;
 };
 
 } // namespace grk

@@ -25,6 +25,7 @@ namespace grk
 {
 CodeStreamDecompress::CodeStreamDecompress(IBufferedStream* stream)
 	: CodeStream(stream), wholeTileDecompress(true), curr_marker_(0), headerError_(false),
+	  headerRead_(false),
 	  tile_ind_to_dec_(-1), marker_scratch_(nullptr), marker_scratch_size_(0),
 	  outputImage_(nullptr), tileCache_(new TileCache()), serializeBufferCallback(nullptr),
 	  serializeUserData(nullptr), serializeRegisterClientCallback(nullptr)
@@ -34,11 +35,8 @@ CodeStreamDecompress::CodeStreamDecompress(IBufferedStream* stream)
 
 	/* code stream index creation */
 	codeStreamInfo = new CodeStreamInfo(stream);
-	if(!codeStreamInfo)
-	{
-		delete decompressorState_.default_tcp_;
-		throw std::runtime_error("Out of memory");
-	}
+	headerImage_ = new GrkImage();
+	headerImage_->meta = grk_image_meta_new();
 	marker_map = {
 		{J2K_MS_SOT,
 		 new marker_handler(J2K_MS_SOT, DECOMPRESS_STATE_MH | DECOMPRESS_STATE_TPH_SOT,
@@ -111,6 +109,9 @@ CodeStreamDecompress::~CodeStreamDecompress()
 		grk_object_unref(&outputImage_->obj);
 	delete tileCache_;
 }
+bool CodeStreamDecompress::needsHeaderRead(void){
+	return !headerError_ && !headerRead_;
+}
 GrkImage* CodeStreamDecompress::getCompositeImage()
 {
 	return tileCache_->getComposite();
@@ -165,15 +166,15 @@ bool CodeStreamDecompress::readHeader(grk_header_info* header_info)
 	if(headerError_)
 		return false;
 
-	if(!headerImage_)
+	if(!headerRead_)
 	{
-		headerImage_ = new GrkImage();
 		validation_list_.push_back(std::bind(&CodeStreamDecompress::decompressValidation, this));
 		if(!exec(validation_list_))
 		{
 			headerError_ = true;
 			return false;
 		}
+		headerRead_= true;
 		procedure_list_.push_back(std::bind(&CodeStreamDecompress::readHeaderProcedure, this));
 		procedure_list_.push_back(std::bind(&CodeStreamDecompress::copy_default_tcp, this));
 		if(!exec(procedure_list_))

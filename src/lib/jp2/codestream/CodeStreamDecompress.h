@@ -63,6 +63,7 @@ class CodeStreamDecompress : public CodeStream, public ICodeStreamDecompress
 	int32_t tileIndexToDecode();
 	bool isWholeTileDecompress();
 	void dump(uint32_t flag, FILE* outputFileStream);
+	bool needsHeaderRead(void);
   protected:
 	void dump_MH_info(FILE* outputFileStream);
 	/**
@@ -301,8 +302,6 @@ class CodeStreamDecompress : public CodeStream, public ICodeStreamDecompress
 
 	 */
 	bool read_qcc(uint8_t* headerData, uint16_t header_size);
-
-  private:
 	/**
 	 * Reads the lookup table containing all the marker, status and action,
 	 * and returns the handler associated with the marker value.
@@ -319,6 +318,7 @@ class CodeStreamDecompress : public CodeStream, public ICodeStreamDecompress
 	bool wholeTileDecompress;
 	uint16_t curr_marker_;
 	bool headerError_;
+	bool headerRead_;
 	/** index of single tile to decompress;
 	 *  !!! initialized to -1 !!! */
 	int32_t tile_ind_to_dec_;
