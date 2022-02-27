@@ -579,7 +579,7 @@ LogLuvEncode32(TIFF* tif, uint8_t* bp, tmsize_t cc, uint16_t s)
 	uint32_t* tp;
 	uint32_t b;
 	tmsize_t occ;
-	int rc=0, mask;
+	int rc=0;
 	tmsize_t beg;
 
         (void)s;
@@ -603,6 +603,7 @@ LogLuvEncode32(TIFF* tif, uint8_t* bp, tmsize_t cc, uint16_t s)
 	op = tif->tif_rawcp;
 	occ = tif->tif_rawdatasize - tif->tif_rawcc;
 	for (shft = 24; shft >= 0; shft -=8) {
+		const uint32_t mask = 0xffU << shft;		/* find next run */
 		for (i = 0; i < npixels; i += rc) {
 			if (occ < 4) {
 				tif->tif_rawcp = op;
@@ -612,7 +613,6 @@ LogLuvEncode32(TIFF* tif, uint8_t* bp, tmsize_t cc, uint16_t s)
 				op = tif->tif_rawcp;
 				occ = tif->tif_rawdatasize - tif->tif_rawcc;
 			}
-			mask = 0xff << shft;		/* find next run */
 			for (beg = i; beg < npixels; beg += rc) {
 				b = tp[beg] & mask;
 				rc = 1;

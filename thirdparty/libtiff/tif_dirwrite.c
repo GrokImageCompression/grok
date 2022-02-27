@@ -1788,7 +1788,8 @@ static int _WriteAsType(TIFF* tif, uint64_t strile_size, uint64_t uncompressed_t
               compression == COMPRESSION_LZMA ||
               compression == COMPRESSION_LERC ||
               compression == COMPRESSION_ZSTD ||
-              compression == COMPRESSION_WEBP )
+              compression == COMPRESSION_WEBP ||
+              compression == COMPRESSION_JXL )
     {
         /* For a few select compression types, we assume that in the worst */
         /* case the compressed size will be 10 times the uncompressed size */
@@ -3069,7 +3070,12 @@ TIFFWriteDirectoryTagData(TIFF* tif, uint32_t* ndir, TIFFDirEntry* dir, uint16_t
 			TIFFErrorExt(tif->tif_clientdata,module,"IO error writing tag data");
 			return(0);
 		}
-		assert(datalength<0x80000000UL);
+		if (datalength >= 0x80000000UL)
+		{
+			TIFFErrorExt(tif->tif_clientdata,module,
+			             "libtiff does not allow writing more than 2147483647 bytes in a tag");
+			return(0);
+		}
 		if (!WriteOK(tif,data,(tmsize_t)datalength))
 		{
 			TIFFErrorExt(tif->tif_clientdata,module,"IO error writing tag data");

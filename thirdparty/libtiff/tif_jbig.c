@@ -209,6 +209,16 @@ int TIFFInitJBIG(TIFF* tif, int scheme)
 	 */
 	tif->tif_flags |= TIFF_NOBITREV;
 	tif->tif_flags &= ~TIFF_MAPPED;
+	/* We may have read from a previous IFD and thus set TIFF_BUFFERMMAP and
+	 * cleared TIFF_MYBUFFER. It is necessary to restore them to their initial
+	 * value to be consistent with the state of a non-memory mapped file.
+	 */
+	if (tif->tif_flags&TIFF_BUFFERMMAP) {
+		tif->tif_rawdata = NULL;
+		tif->tif_rawdatasize = 0;
+		tif->tif_flags &= ~TIFF_BUFFERMMAP;
+		tif->tif_flags |= TIFF_MYBUFFER;
+	}
 
 	/* Setup the function pointers for encode, decode, and cleanup. */
 	tif->tif_setupdecode = JBIGSetupDecode;
