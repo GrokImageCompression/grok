@@ -396,8 +396,6 @@ void GrkImage::alloc_palette(uint8_t num_channels, uint16_t num_entries){
 }
 bool GrkImage::applyColour(void)
 {
-	if(color_applied)
-		return true;
 	if(meta->color.palette)
 	{
 		/* Part 1, I.5.3.4: Either both or none : */
@@ -406,15 +404,16 @@ bool GrkImage::applyColour(void)
 		else if (!apply_palette_clr())
 			return false;
 	}
-	/* Apply channel definitions if needed */
 	if(meta->color.channel_definition)
 		apply_channel_definition();
-	color_applied = true;
 
 	return true;
 }
 void GrkImage::apply_channel_definition()
 {
+	if (channelDefinitionApplied_)
+		return;
+
 	auto info = meta->color.channel_definition->descriptions;
 	uint16_t n = meta->color.channel_definition->num_channel_descriptions;
 	for(uint16_t i = 0; i < n; ++i)
@@ -465,6 +464,7 @@ void GrkImage::apply_channel_definition()
 			}
 		}
 	}
+	channelDefinitionApplied_ = true;
 }
 bool GrkImage::check_color(void)
 {
@@ -618,6 +618,9 @@ bool GrkImage::check_color(void)
 }
 bool GrkImage::apply_palette_clr()
 {
+	if (paletteApplied_)
+		return true;
+
 	auto clr = &meta->color;
 	auto pal = clr->palette;
 	auto channel_prec = pal->channel_prec;
@@ -631,7 +634,6 @@ bool GrkImage::apply_palette_clr()
 	{
 		auto mapping = component_mapping + channel;
 		uint16_t compno = mapping->component_index;
-		uint16_t paletteColumn = mapping->palette_column;
 		auto comp = comps + compno;
 		if(compno >= numcomps)
 		{
@@ -654,6 +656,7 @@ bool GrkImage::apply_palette_clr()
 					  compno, comps[compno].prec, pal->num_entries);
 			return false;
 		}
+		uint16_t paletteColumn = mapping->palette_column;
 		switch(mapping->mapping_type)
 		{
 			case 0:
@@ -753,6 +756,7 @@ bool GrkImage::apply_palette_clr()
 	delete[] oldComps;
 	comps = newComps;
 	numcomps = num_channels;
+	paletteApplied_ = true;
 
 	return true;
 }
@@ -1059,6 +1063,9 @@ void GrkImageMeta::alloc_palette(uint8_t num_channels, uint16_t num_entries)
 {
 	assert(num_channels);
 	assert(num_entries);
+
+	if (!num_channels || !num_entries)
+		return;
 
 	free_palette_clr();
 	auto jp2_pclr = new grk_palette_data();

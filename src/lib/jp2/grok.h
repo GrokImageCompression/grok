@@ -988,7 +988,8 @@ typedef struct _grk_image
 	/** number of components in the image */
 	uint16_t numcomps;
 	GRK_COLOR_SPACE color_space;
-	bool color_applied;
+	bool paletteApplied_;
+	bool channelDefinitionApplied_;
 	bool has_capture_resolution;
 	double capture_resolution[2];
 	bool has_display_resolution;
