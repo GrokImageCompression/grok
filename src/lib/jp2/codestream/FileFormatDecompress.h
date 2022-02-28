@@ -44,7 +44,6 @@ class FileFormatDecompress : public FileFormat, public ICodeStreamDecompress
 
   private:
 	grk_color* getColour(void);
-	bool applyColour(void);
 	uint32_t read_asoc(AsocBox* parent, uint8_t** header_data, uint32_t* header_data_size,
 					   uint32_t asocSize);
 	bool readHeaderProcedureImpl(void);

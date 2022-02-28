@@ -404,17 +404,16 @@ bool GrkImage::applyColour(void)
 {
 	if(color_applied)
 		return true;
-	auto clr = &meta->color;
-	if(clr->palette)
+	if(meta->color.palette)
 	{
 		/* Part 1, I.5.3.4: Either both or none : */
-		if(!clr->palette->component_mapping)
+		if(!meta->color.palette->component_mapping)
 			((GrkImageMeta*)meta)->free_palette_clr();
 		else if (!apply_palette_clr())
 			return false;
 	}
 	/* Apply channel definitions if needed */
-	if(clr->channel_definition)
+	if(meta->color.channel_definition)
 		apply_channel_definition();
 	color_applied = true;
 

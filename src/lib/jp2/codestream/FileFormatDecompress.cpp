@@ -315,7 +315,7 @@ bool FileFormatDecompress::preProcess(void)
 }
 bool FileFormatDecompress::postProcess(void)
 {
-	return applyColour() ? codeStream->postProcess() : false;
+	return codeStream->postProcess();
 }
 bool FileFormatDecompress::decompressTile(uint16_t tileIndex)
 {
@@ -325,7 +325,7 @@ bool FileFormatDecompress::decompressTile(uint16_t tileIndex)
 		return false;
 	}
 
-	return applyColour();
+	return true;
 }
 /** Reading function used after code stream if necessary */
 bool FileFormatDecompress::end(void)
@@ -335,16 +335,6 @@ bool FileFormatDecompress::end(void)
 		return false;
 
 	return codeStream->end();
-}
-bool FileFormatDecompress::applyColour(void)
-{
-	for(auto& img : codeStream->getAllImages())
-	{
-		if(!img->applyColour())
-			return false;
-	}
-
-	return true;
 }
 uint32_t FileFormatDecompress::read_asoc(AsocBox* parent, uint8_t** header_data,
 										 uint32_t* header_data_size, uint32_t asocSize)
@@ -827,10 +817,11 @@ bool FileFormatDecompress::read_channel_definition(uint8_t* p_cdef_header_data,
 
 	GRK_UNUSED(cdef_header_size);
 	bool rc = false;
+	auto clr = getColour();
 
 	/* Part 1, I.5.3.6: 'The shall be at most one Channel Definition box
 	 * inside a JP2 Header box.'*/
-	if(getColour()->channel_definition)
+	if(clr->channel_definition)
 		return false;
 
 	if(cdef_header_size < 2)
@@ -852,10 +843,10 @@ bool FileFormatDecompress::read_channel_definition(uint8_t* p_cdef_header_data,
 		GRK_ERROR("CDEF box: Insufficient data.");
 		return false;
 	}
-	getColour()->channel_definition = new grk_channel_definition();
-	getColour()->channel_definition->descriptions = new grk_channel_description[num_channel_descriptions];
-	getColour()->channel_definition->num_channel_descriptions = (uint16_t)num_channel_descriptions;
-	auto cdef_info = getColour()->channel_definition->descriptions;
+	clr->channel_definition = new grk_channel_definition();
+	clr->channel_definition->descriptions = new grk_channel_description[num_channel_descriptions];
+	clr->channel_definition->num_channel_descriptions = (uint16_t)num_channel_descriptions;
+	auto cdef_info = clr->channel_definition->descriptions;
 	for(uint16_t i = 0; i < num_channel_descriptions; ++i)
 	{
 		grk_read<uint16_t>(p_cdef_header_data, &cdef_info[i].channel); /* Cn^i */
@@ -879,10 +870,10 @@ bool FileFormatDecompress::read_channel_definition(uint8_t* p_cdef_header_data,
 
 	// cdef sanity check
 	// 1. check for multiple descriptions of the same channel with different types
-	for(uint16_t i = 0; i < getColour()->channel_definition->num_channel_descriptions; ++i)
+	for(uint16_t i = 0; i < clr->channel_definition->num_channel_descriptions; ++i)
 	{
 		auto info_i = cdef_info[i];
-		for(uint16_t j = 0; j < getColour()->channel_definition->num_channel_descriptions; ++j)
+		for(uint16_t j = 0; j < clr->channel_definition->num_channel_descriptions; ++j)
 		{
 			auto info_j = cdef_info[j];
 			if(i != j && info_i.channel == info_j.channel && info_i.typ != info_j.typ)
@@ -896,10 +887,10 @@ bool FileFormatDecompress::read_channel_definition(uint8_t* p_cdef_header_data,
 	}
 
 	// 2. check that type/association pairs are unique
-	for(uint16_t i = 0; i < getColour()->channel_definition->num_channel_descriptions; ++i)
+	for(uint16_t i = 0; i < clr->channel_definition->num_channel_descriptions; ++i)
 	{
 		auto info_i = cdef_info[i];
-		for(uint16_t j = 0; j < getColour()->channel_definition->num_channel_descriptions; ++j)
+		for(uint16_t j = 0; j < clr->channel_definition->num_channel_descriptions; ++j)
 		{
 			auto info_j = cdef_info[j];
 			if(i != j && info_i.channel != info_j.channel && info_i.typ == info_j.typ &&
@@ -917,9 +908,9 @@ bool FileFormatDecompress::read_channel_definition(uint8_t* p_cdef_header_data,
 cleanup:
 	if(!rc)
 	{
-		delete[] getColour()->channel_definition->descriptions;
-		delete getColour()->channel_definition;
-		getColour()->channel_definition = nullptr;
+		delete[] clr->channel_definition->descriptions;
+		delete clr->channel_definition;
+		clr->channel_definition = nullptr;
 	}
 
 	return rc;
@@ -934,10 +925,12 @@ bool FileFormatDecompress::read_colr(uint8_t* p_colr_header_data, uint32_t colr_
 		return false;
 	}
 
+	auto clr = getColour();
+
 	/* Part 1, I.5.3.3 : 'A conforming JP2 reader shall ignore all colour
 	 * specification boxes after the first.'
 	 */
-	if(getColour()->has_colour_specification_box)
+	if(clr->has_colour_specification_box)
 	{
 		GRK_WARN("A conforming JP2 reader shall ignore all colour specification boxes after the "
 				 "first, so we ignore this one.");
@@ -1016,10 +1009,10 @@ bool FileFormatDecompress::read_colr(uint8_t* p_colr_header_data, uint32_t colr_
 			{
 				GRK_WARN("Bad COLR header box (CIELab, bad size: %u)", colr_header_size);
 			}
-			getColour()->icc_profile_buf = (uint8_t*)cielab;
-			getColour()->icc_profile_len = 0;
+			clr->icc_profile_buf = (uint8_t*)cielab;
+			clr->icc_profile_len = 0;
 		}
-		getColour()->has_colour_specification_box = true;
+		clr->has_colour_specification_box = true;
 	}
 	else if(meth == 2)
 	{
@@ -1030,10 +1023,10 @@ bool FileFormatDecompress::read_colr(uint8_t* p_colr_header_data, uint32_t colr_
 			GRK_ERROR("ICC profile buffer length equals zero");
 			return false;
 		}
-		getColour()->icc_profile_buf = new uint8_t[(size_t)icc_len];
-		memcpy(getColour()->icc_profile_buf, p_colr_header_data, icc_len);
-		getColour()->icc_profile_len = icc_len;
-		getColour()->has_colour_specification_box = true;
+		clr->icc_profile_buf = new uint8_t[(size_t)icc_len];
+		memcpy(clr->icc_profile_buf, p_colr_header_data, icc_len);
+		clr->icc_profile_len = icc_len;
+		clr->has_colour_specification_box = true;
 	}
 	else
 	{

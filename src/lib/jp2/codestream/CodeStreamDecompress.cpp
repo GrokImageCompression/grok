@@ -981,6 +981,12 @@ bool CodeStreamDecompress::preProcess(void)
 }
 bool CodeStreamDecompress::postProcess(void)
 {
+	for(auto& img : getAllImages())
+	{
+		if(!img->applyColour())
+			return false;
+	}
+
 	auto img = getCompositeImage();
 	img->applyColourManagement();
 	if(!img->convertToRGB(wholeTileDecompress))
