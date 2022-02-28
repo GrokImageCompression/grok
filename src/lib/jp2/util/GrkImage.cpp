@@ -233,12 +233,6 @@ void GrkImage::copyHeader(GrkImage* dest)
 	dest->rowsPerStrip = rowsPerStrip;
 	dest->packedRowBytes = packedRowBytes;
 }
-
-void GrkImage::createMeta()
-{
-	if(!meta)
-		meta = new GrkImageMeta();
-}
 bool GrkImage::allocData(grk_image_comp* comp){
 	return allocData(comp,false);
 }

@@ -236,8 +236,6 @@ bool FileFormatDecompress::readHeader(grk_header_info* header_info)
 			auto uuid = uuids + i;
 			if(memcmp(uuid->uuid, IPTC_UUID, 16) == 0)
 			{
-				// make sure image meta exists
-				image->createMeta();
 				if(image->meta->iptc_buf)
 				{
 					GRK_WARN("Attempt to set a second IPTC buffer. Ignoring");
@@ -251,8 +249,6 @@ bool FileFormatDecompress::readHeader(grk_header_info* header_info)
 			}
 			else if(memcmp(uuid->uuid, XMP_UUID, 16) == 0)
 			{
-				// make sure image meta exists
-				image->createMeta();
 				if(image->meta->xmp_buf)
 				{
 					GRK_WARN("Attempt to set a second XMP buffer. Ignoring");
