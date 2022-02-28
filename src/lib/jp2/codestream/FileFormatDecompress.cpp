@@ -47,49 +47,6 @@ FileFormatDecompress::~FileFormatDecompress()
 {
 	delete codeStream;
 }
-void FileFormatDecompress::alloc_palette(grk_color* color, uint8_t num_channels,
-										 uint16_t num_entries)
-{
-	assert(color);
-	assert(num_channels);
-	assert(num_entries);
-
-	free_palette_clr(color);
-	auto jp2_pclr = new grk_palette_data();
-	jp2_pclr->channel_sign = new bool[num_channels];
-	jp2_pclr->channel_prec = new uint8_t[num_channels];
-	jp2_pclr->lut = new int32_t[num_channels * num_entries];
-	jp2_pclr->num_entries = num_entries;
-	jp2_pclr->num_channels = num_channels;
-	jp2_pclr->component_mapping = nullptr;
-	color->palette = jp2_pclr;
-}
-void FileFormatDecompress::free_palette_clr(grk_color* color)
-{
-	if(color && color->palette)
-	{
-		delete[] color->palette->channel_sign;
-		delete[] color->palette->channel_prec;
-		delete[] color->palette->lut;
-		delete[] color->palette->component_mapping;
-		delete color->palette;
-		color->palette = nullptr;
-	}
-}
-void FileFormatDecompress::free_color(grk_color* color)
-{
-	assert(color);
-	free_palette_clr(color);
-	delete[] color->icc_profile_buf;
-	color->icc_profile_buf = nullptr;
-	color->icc_profile_len = 0;
-	if(color->channel_definition)
-	{
-		delete[] color->channel_definition->descriptions;
-		delete color->channel_definition;
-		color->channel_definition = nullptr;
-	}
-}
 void FileFormatDecompress::init_end_header_reading(void)
 {
 	procedure_list_->push_back(std::bind(&FileFormatDecompress::readHeaderProcedureImpl, this));
@@ -197,7 +154,7 @@ bool FileFormatDecompress::readHeader(grk_header_info* header_info)
 	if(needsHeaderRead)
 	{
 		auto image = codeStream->getCompositeImage();
-		if(!check_color(image))
+		if(!image->check_color())
 		{
 			headerError_ = true;
 			return false;
@@ -383,28 +340,9 @@ bool FileFormatDecompress::applyColour(void)
 {
 	for(auto& img : codeStream->getAllImages())
 	{
-		if(!applyColour(img))
+		if(!img->applyColour())
 			return false;
 	}
-
-	return true;
-}
-bool FileFormatDecompress::applyColour(GrkImage* img)
-{
-	if(!img || img->color_applied)
-		return true;
-	if(getColour()->palette)
-	{
-		/* Part 1, I.5.3.4: Either both or none : */
-		if(!getColour()->palette->component_mapping)
-			free_palette_clr(getColour());
-		else if (!apply_palette_clr(img))
-			return false;
-	}
-	/* Apply channel definitions if needed */
-	if(getColour()->channel_definition)
-		apply_channel_definition(img);
-	img->color_applied = true;
 
 	return true;
 }
@@ -882,59 +820,6 @@ bool FileFormatDecompress::read_bpc(uint8_t* p_bpc_header_data, uint32_t bpc_hea
 
 	return true;
 }
-void FileFormatDecompress::apply_channel_definition(GrkImage* image)
-{
-	auto info = getColour()->channel_definition->descriptions;
-	uint16_t n = getColour()->channel_definition->num_channel_descriptions;
-	for(uint16_t i = 0; i < n; ++i)
-	{
-		/* WATCH: asoc_index = asoc - 1 ! */
-		uint16_t asoc = info[i].asoc;
-		uint16_t channel = info[i].channel;
-
-		if(channel >= image->numcomps)
-		{
-			GRK_WARN("apply_channel_definition: channel=%u, numcomps=%u", channel, image->numcomps);
-			continue;
-		}
-		image->comps[channel].type = (GRK_CHANNEL_TYPE)info[i].typ;
-
-		// no need to do anything further if this is not a colour channel,
-		// or if this channel is associated with the whole image
-		if(info[i].typ != GRK_CHANNEL_TYPE_COLOUR || info[i].asoc == GRK_CHANNEL_ASSOC_WHOLE_IMAGE)
-			continue;
-
-		if(info[i].typ == GRK_CHANNEL_TYPE_COLOUR && asoc > image->numcomps)
-		{
-			GRK_WARN("apply_channel_definition: association=%u > numcomps=%u", asoc,
-					 image->numcomps);
-			continue;
-		}
-		uint16_t asoc_index = (uint16_t)(asoc - 1);
-
-		/* Swap only if color channel */
-		if((channel != asoc_index) && (info[i].typ == GRK_CHANNEL_TYPE_COLOUR))
-		{
-			grk_image_comp saved;
-			uint16_t j;
-
-			memcpy(&saved, &image->comps[channel], sizeof(grk_image_comp));
-			memcpy(&image->comps[channel], &image->comps[asoc_index], sizeof(grk_image_comp));
-			memcpy(&image->comps[asoc_index], &saved, sizeof(grk_image_comp));
-
-			/* Swap channels in following channel definitions, don't bother with j <= i that are
-			 * already processed */
-			for(j = (uint16_t)(i + 1U); j < n; ++j)
-			{
-				if(info[j].channel == channel)
-					info[j].channel = asoc_index;
-				else if(info[j].channel == asoc_index)
-					info[j].channel = channel;
-				/* asoc is related to color index. Do not update. */
-			}
-		}
-	}
-}
 bool FileFormatDecompress::read_channel_definition(uint8_t* p_cdef_header_data,
 												   uint32_t cdef_header_size)
 {
@@ -1161,294 +1046,6 @@ bool FileFormatDecompress::read_colr(uint8_t* p_colr_header_data, uint32_t colr_
 
 	return true;
 }
-bool FileFormatDecompress::check_color(GrkImage* image)
-{
-	uint16_t i;
-	/* testcase 4149.pdf.SIGSEGV.cf7.3501 */
-	if(getColour()->channel_definition)
-	{
-		auto info = getColour()->channel_definition->descriptions;
-		uint16_t n = getColour()->channel_definition->num_channel_descriptions;
-		uint32_t num_channels =
-			image->numcomps; /* FIXME image->numcomps == numcomps before color is applied ??? */
-
-		/* cdef applies to component_mapping channels if any */
-		if(getColour()->palette && getColour()->palette->component_mapping)
-			num_channels = (uint32_t)getColour()->palette->num_channels;
-		for(i = 0; i < n; i++)
-		{
-			if(info[i].channel >= num_channels)
-			{
-				GRK_ERROR("Invalid channel index %u (>= %u).", info[i].channel, num_channels);
-				return false;
-			}
-			if(info[i].asoc == GRK_CHANNEL_ASSOC_UNASSOCIATED)
-				continue;
-			if(info[i].asoc > 0 && (uint32_t)(info[i].asoc - 1) >= num_channels)
-			{
-				GRK_ERROR("Invalid component association %u  (>= %u).", info[i].asoc - 1,
-						  num_channels);
-				return false;
-			}
-		}
-		/* issue 397 */
-		/* ISO 15444-1 states that if cdef is present, it shall contain a complete list of channel
-		 * definitions. */
-		while(num_channels > 0)
-		{
-			for(i = 0; i < n; ++i)
-			{
-				if((uint32_t)info[i].channel == (num_channels - 1U))
-					break;
-			}
-			if(i == n)
-			{
-				GRK_ERROR("Incomplete channel definitions.");
-				return false;
-			}
-			--num_channels;
-		}
-	}
-
-	/* testcases 451.pdf.SIGSEGV.f4c.3723, 451.pdf.SIGSEGV.5b5.3723 and
-	 66ea31acbb0f23a2bbc91f64d69a03f5_signal_sigsegv_13937c0_7030_5725.pdf */
-	if(getColour()->palette && getColour()->palette->component_mapping)
-	{
-		uint16_t num_channels = getColour()->palette->num_channels;
-		auto component_mapping = getColour()->palette->component_mapping;
-		bool* pcol_usage = nullptr;
-		bool is_sane = true;
-
-		/* verify that all original components match an existing one */
-		for(i = 0; i < num_channels; i++)
-		{
-			if(component_mapping[i].component_index >= image->numcomps)
-			{
-				GRK_ERROR("Invalid component index %u (>= %u).",
-						  component_mapping[i].component_index, image->numcomps);
-				is_sane = false;
-				goto cleanup;
-			}
-		}
-		pcol_usage = (bool*)grkCalloc(num_channels, sizeof(bool));
-		if(!pcol_usage)
-		{
-			GRK_ERROR("Unexpected OOM.");
-			return false;
-		}
-		/* verify that no component is targeted more than once */
-		for(i = 0; i < num_channels; i++)
-		{
-			uint16_t palette_column = component_mapping[i].palette_column;
-			if(component_mapping[i].mapping_type != 0 && component_mapping[i].mapping_type != 1)
-			{
-				GRK_ERROR("Unexpected MTYP value.");
-				is_sane = false;
-				goto cleanup;
-			}
-			if(palette_column >= num_channels)
-			{
-				GRK_ERROR("Invalid component/palette index for direct mapping %u.", palette_column);
-				is_sane = false;
-				goto cleanup;
-			}
-			else if(pcol_usage[palette_column] && component_mapping[i].mapping_type == 1)
-			{
-				GRK_ERROR("Component %u is mapped twice.", palette_column);
-				is_sane = false;
-				goto cleanup;
-			}
-			else if(component_mapping[i].mapping_type == 0 &&
-					component_mapping[i].palette_column != 0)
-			{
-				/* I.5.3.5 PCOL: If the value of the MTYP field for this channel is 0, then
-				 * the value of this field shall be 0. */
-				GRK_ERROR("Direct use at #%u however palette_column=%u.", i, palette_column);
-				is_sane = false;
-				goto cleanup;
-			}
-			else
-				pcol_usage[palette_column] = true;
-		}
-		/* verify that all components are targeted at least once */
-		for(i = 0; i < num_channels; i++)
-		{
-			if(!pcol_usage[i] && component_mapping[i].mapping_type != 0)
-			{
-				GRK_ERROR("Component %u doesn't have a mapping.", i);
-				is_sane = false;
-				goto cleanup;
-			}
-		}
-		/* Issue 235/447 weird component_mapping */
-		if(is_sane && (image->numcomps == 1U))
-		{
-			for(i = 0; i < num_channels; i++)
-			{
-				if(!pcol_usage[i])
-				{
-					is_sane = false;
-					GRK_WARN("Component mapping seems wrong. Trying to correct.", i);
-					break;
-				}
-			}
-			if(!is_sane)
-			{
-				is_sane = true;
-				for(i = 0; i < num_channels; i++)
-				{
-					component_mapping[i].mapping_type = 1U;
-					component_mapping[i].palette_column = (uint8_t)i;
-				}
-			}
-		}
-	cleanup:
-		grkFree(pcol_usage);
-		if(!is_sane)
-			return false;
-	}
-
-	return true;
-}
-bool FileFormatDecompress::apply_palette_clr(GrkImage* image)
-{
-	auto pal = getColour()->palette;
-	auto channel_prec = pal->channel_prec;
-	auto channel_sign = pal->channel_sign;
-	auto lut = pal->lut;
-	auto component_mapping = pal->component_mapping;
-	uint16_t num_channels = pal->num_channels;
-
-	// sanity check on component mapping
-	for(uint16_t channel = 0; channel < num_channels; ++channel)
-	{
-		auto mapping = component_mapping + channel;
-		uint16_t compno = mapping->component_index;
-		uint16_t paletteColumn = mapping->palette_column;
-		auto comp = image->comps + compno;
-		if(compno >= image->numcomps)
-		{
-			GRK_ERROR("apply_palette_clr: component mapping component number %d for channel %d "
-					  "must be less than number of image components %d",
-					  compno, channel, image->numcomps);
-			return false;
-		}
-		if(comp->data == nullptr)
-		{
-			GRK_ERROR("image->comps[%u].data == nullptr"
-					  " in apply_palette_clr().",
-					  compno);
-			return false;
-		}
-		if(comp->prec > pal->num_entries)
-		{
-			GRK_ERROR("Precision %d of component %d is greater than "
-					  "number of palette entries %d",
-					  compno, image->comps[compno].prec, pal->num_entries);
-			return false;
-		}
-		switch(mapping->mapping_type)
-		{
-			case 0:
-				if(paletteColumn != 0)
-				{
-					GRK_ERROR("apply_palette_clr: channel %d with direct component mapping: "
-							  "non-zero palette column %d not allowed",
-							  channel, paletteColumn);
-					return false;
-				}
-				break;
-			case 1:
-				if(comp->sgnd)
-				{
-					GRK_ERROR("apply_palette_clr: channel %d with non-direct component mapping: "
-							  "cannot be signed");
-					return false;
-				}
-				break;
-		}
-	}
-	auto oldComps = image->comps;
-	auto newComps = new grk_image_comp[num_channels];
-	memset(newComps, 0, num_channels * sizeof(grk_image_comp));
-	for(uint16_t channel = 0; channel < num_channels; ++channel)
-	{
-		auto mapping = component_mapping + channel;
-		uint16_t palette_column = mapping->palette_column;
-		uint16_t compno = mapping->component_index;
-
-		/* Direct mapping */
-		if(mapping->mapping_type == 0)
-		{
-			newComps[channel] = oldComps[compno];
-			newComps[channel].data = nullptr;
-		}
-		else
-		{
-			newComps[palette_column] = oldComps[compno];
-			newComps[palette_column].data = nullptr;
-		}
-		if(!GrkImage::allocData(newComps + channel))
-		{
-			while(channel > 0)
-			{
-				--channel;
-				grkAlignedFree(newComps[channel].data);
-			}
-			delete[] newComps;
-			GRK_ERROR("Memory allocation failure in apply_palette_clr().");
-			return false;
-		}
-		newComps[channel].prec = channel_prec[channel];
-		newComps[channel].sgnd = channel_sign[channel];
-	}
-	int32_t top_k = pal->num_entries - 1;
-	for(uint16_t channel = 0; channel < num_channels; ++channel)
-	{
-		/* Palette mapping: */
-		auto mapping = component_mapping + channel;
-		uint16_t compno = mapping->component_index;
-		uint16_t palette_column = mapping->palette_column;
-		auto src = oldComps[compno].data;
-		switch(mapping->mapping_type)
-		{
-			case 0: {
-				auto src = oldComps[compno].data;
-				size_t num_pixels = (size_t)newComps[channel].stride * newComps[channel].h;
-				memcpy(newComps[channel].data, src, num_pixels * sizeof(int32_t));
-			}
-			break;
-			case 1: {
-				auto dst = newComps[palette_column].data;
-				uint32_t diff =
-					(uint32_t)(newComps[palette_column].stride - newComps[palette_column].w);
-				size_t ind = 0;
-				// note: 1 <= n <= 255
-				for(uint32_t n = 0; n < newComps[palette_column].h; ++n)
-				{
-					int32_t k = 0;
-					for(uint32_t m = 0; m < newComps[palette_column].w; ++m)
-					{
-						if((k = src[ind]) < 0)
-							k = 0;
-						else if(k > top_k)
-							k = top_k;
-						dst[ind++] = (int32_t)lut[k * num_channels + palette_column];
-					}
-					ind += diff;
-				}
-			}
-			break;
-		}
-	}
-	for(uint16_t i = 0; i < image->numcomps; ++i)
-		grk_image_single_component_data_free(oldComps + i);
-	delete[] oldComps;
-	image->comps = newComps;
-	image->numcomps = num_channels;
-
-	return true;
-}
 bool FileFormatDecompress::read_component_mapping(uint8_t* component_mapping_header_data,
 												  uint32_t component_mapping_header_size)
 {
@@ -1521,7 +1118,7 @@ bool FileFormatDecompress::read_palette_clr(uint8_t* p_pclr_header_data, uint32_
 	++p_pclr_header_data;
 	if(pclr_header_size < 3 + (uint32_t)num_channels)
 		return false;
-	FileFormatDecompress::alloc_palette(getColour(), num_channels, num_entries);
+	codeStream->getHeaderImage()->alloc_palette(num_channels, num_entries);
 	auto jp2_pclr = getColour()->palette;
 	for(uint8_t i = 0; i < num_channels; ++i)
 	{

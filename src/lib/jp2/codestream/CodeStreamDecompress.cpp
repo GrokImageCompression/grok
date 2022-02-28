@@ -890,9 +890,8 @@ bool CodeStreamDecompress::findNextTile(TileProcessor* tileProcessor)
 	bool doPost = !tileProcessor->current_plugin_tile ||
 				  (tileProcessor->current_plugin_tile->decompress_flags & GRK_DECODE_POST_T1);
 	if(doPost)
-	{
 		rc = decompressor->findNextTile(this);
-	}
+
 	return rc;
 }
 bool CodeStreamDecompress::decompressValidation(void)
@@ -936,6 +935,7 @@ bool CodeStreamDecompress::read_short(uint16_t* val)
 		return false;
 
 	grk_read<uint16_t>(temp, val);
+
 	return true;
 }
 const marker_handler* CodeStreamDecompress::get_marker_handler(uint16_t id)
@@ -982,12 +982,13 @@ bool CodeStreamDecompress::preProcess(void)
 bool CodeStreamDecompress::postProcess(void)
 {
 	auto img = getCompositeImage();
+	img->applyColourManagement();
 	if(!img->convertToRGB(wholeTileDecompress))
 		return false;
-	img->applyColourManagement();
 	if(!img->greyToRGB())
 		return false;
 	img->convertPrecision();
+
 	return img->execUpsample();
 }
 

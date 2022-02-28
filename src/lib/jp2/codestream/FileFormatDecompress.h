@@ -30,9 +30,6 @@ class FileFormatDecompress : public FileFormat, public ICodeStreamDecompress
   public:
 	FileFormatDecompress(IBufferedStream* stream);
 	virtual ~FileFormatDecompress();
-
-	static void free_color(grk_color* color);
-
 	bool readHeader(grk_header_info* header_info);
 	GrkImage* getImage(uint16_t tileIndex);
 	GrkImage* getImage(void);
@@ -47,8 +44,7 @@ class FileFormatDecompress : public FileFormat, public ICodeStreamDecompress
 
   private:
 	grk_color* getColour(void);
-	static void alloc_palette(grk_color* color, uint8_t num_channels, uint16_t num_entries);
-	static void free_palette_clr(grk_color* color);
+	bool applyColour(void);
 	uint32_t read_asoc(AsocBox* parent, uint8_t** header_data, uint32_t* header_data_size,
 					   uint32_t asocSize);
 	bool readHeaderProcedureImpl(void);
@@ -61,11 +57,8 @@ class FileFormatDecompress : public FileFormat, public ICodeStreamDecompress
 	bool read_res(uint8_t* p_resolution_data, uint32_t resolution_size);
 	double calc_res(uint16_t num, uint16_t den, uint8_t exponent);
 	bool read_bpc(uint8_t* p_bpc_header_data, uint32_t bpc_header_size);
-	void apply_channel_definition(GrkImage* image);
 	bool read_channel_definition(uint8_t* p_cdef_header_data, uint32_t cdef_header_size);
 	bool read_colr(uint8_t* p_colr_header_data, uint32_t colr_header_size);
-	bool check_color(GrkImage* image);
-	bool apply_palette_clr(GrkImage* image);
 	bool read_component_mapping(uint8_t* component_mapping_header_data,
 								uint32_t component_mapping_header_size);
 	bool read_palette_clr(uint8_t* p_pclr_header_data, uint32_t pclr_header_size);
@@ -79,9 +72,6 @@ class FileFormatDecompress : public FileFormat, public ICodeStreamDecompress
 	bool read_asoc(uint8_t* header_data, uint32_t header_data_size);
 	void serializeAsoc(AsocBox* asoc, grk_asoc* serial_asocs, uint32_t* num_asocs, uint32_t level);
 	void init_end_header_reading(void);
-
-	bool applyColour(GrkImage* img);
-	bool applyColour(void);
 	std::map<uint32_t, BOX_FUNC> header;
 	std::map<uint32_t, BOX_FUNC> img_header;
 
