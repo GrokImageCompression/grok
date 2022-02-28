@@ -69,10 +69,6 @@ static int parse_cmdline_cmp(int argc, char **argv,
 
     if (baseArg.isSet()) {
       sizemembasefile = baseArg.getValue().length() + 1;
-      if (!param->base_filename) {
-        spdlog::error("Out of memory");
-        return 1;
-      }
       strcpy(param->base_filename, baseArg.getValue().c_str());
       /*printf("param->base_filename = %s [%u / %u]\n", param->base_filename,
        * strlen(param->base_filename), sizemembasefile );*/
@@ -81,10 +77,6 @@ static int parse_cmdline_cmp(int argc, char **argv,
 
     if (testArg.isSet()) {
       sizememtestfile = testArg.getValue().length() + 1;
-      if (!param->test_filename) {
-        spdlog::error("Out of memory");
-        return 1;
-      }
       strcpy(param->test_filename, testArg.getValue().c_str());
       /*printf("param->test_filename = %s [%u / %u]\n", param->test_filename,
        * strlen(param->test_filename), sizememtestfile);*/

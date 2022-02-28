@@ -31,11 +31,21 @@ SPDLOG_INLINE rotating_file_sink<Mutex>::rotating_file_sink(
     , max_files_(max_files)
     , file_helper_{event_handlers}
 {
+    if (max_size == 0)
+    {
+        throw_spdlog_ex("rotating sink constructor: max_size arg cannot be zero");
+    }
+    
+    if (max_files > 200000)
+    {
+        throw_spdlog_ex("rotating sink constructor: max_files arg cannot exceed 200000");
+    }
     file_helper_.open(calc_filename(base_filename_, 0));
     current_size_ = file_helper_.size(); // expensive. called only once
     if (rotate_on_open && current_size_ > 0)
     {
         rotate_();
+        current_size_ = 0;
     }
 }
 
@@ -66,13 +76,22 @@ SPDLOG_INLINE void rotating_file_sink<Mutex>::sink_it_(const details::log_msg &m
 {
     memory_buf_t formatted;
     base_sink<Mutex>::formatter_->format(msg, formatted);
-    current_size_ += formatted.size();
-    if (current_size_ > max_size_)
+    auto new_size = current_size_ + formatted.size();
+
+    // rotate if the new estimated file size exceeds max size.
+    // rotate only if the real size > 0 to better deal with full disk (see issue #2261).
+    // we only check the real size when new_size > max_size_ because it is relatively expensive.
+    if (new_size > max_size_)
     {
-        rotate_();
-        current_size_ = formatted.size();
+        file_helper_.flush();
+        if (file_helper_.size() > 0)
+        {
+            rotate_();
+            new_size = formatted.size();
+        }
     }
     file_helper_.write(formatted);
+    current_size_ = new_size;
 }
 
 template<typename Mutex>
@@ -91,6 +110,7 @@ SPDLOG_INLINE void rotating_file_sink<Mutex>::rotate_()
 {
     using details::os::filename_to_str;
     using details::os::path_exists;
+
     file_helper_.close();
     for (auto i = max_files_; i > 0; --i)
     {
