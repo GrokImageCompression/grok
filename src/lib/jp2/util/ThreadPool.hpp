@@ -17,7 +17,17 @@
 
 #pragma once
 
+#ifndef _MSC_VER
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wsign-conversion"
+#ifdef __clang__
+#pragma GCC diagnostic ignored "-Wimplicit-int-float-conversion"
+#endif
+#endif
 #include <taskflow/taskflow.hpp>
+#ifndef _MSC_VER
+#pragma GCC diagnostic pop
+#endif
 
 class ExecSingleton {
 public:

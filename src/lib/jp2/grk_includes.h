@@ -87,14 +87,7 @@
 #define GRK_UNUSED(x) (void)x
 
 #include "simd.h"
-#ifndef _MSC_VER
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wsign-conversion"
-#endif
-#include <taskflow/taskflow.hpp>
-#ifndef _MSC_VER
-#pragma GCC diagnostic pop
-#endif
+#include "ThreadPool.hpp"
 #include "packer.h"
 #include "MinHeap.h"
 #include "SequentialCache.h"
@@ -108,7 +101,6 @@
 #include "GrkObjectWrapper.h"
 #include "logger.h"
 #include "testing.h"
-#include "ThreadPool.hpp"
 #include "MemStream.h"
 #include "GrkMappedFile.h"
 #include "GrkMatrix.h"
