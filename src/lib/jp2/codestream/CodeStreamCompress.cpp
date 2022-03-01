@@ -614,12 +614,12 @@ bool CodeStreamCompress::compress(grk_plugin_tile* tile)
 				  numTiles, maxNumTilesJ2K);
 		return false;
 	}
-	auto pool_size = std::min<uint32_t>((uint32_t)ThreadPool::get()->num_threads(), numTiles);
-	ThreadPool pool(pool_size);
-	std::vector<std::future<int>> results;
+	auto numRequiredThreads = std::min<uint32_t>((uint32_t)ThreadPool::get()->num_threads(), numTiles);
 	std::atomic<bool> success(true);
-	if(pool_size > 1)
+	if(numRequiredThreads > 1)
 	{
+		ThreadPool pool(numRequiredThreads);
+		std::vector<std::future<int>> results;
 		for(uint16_t i = 0; i < numTiles; ++i)
 		{
 			uint16_t tileIndex = i;
@@ -634,6 +634,10 @@ bool CodeStreamCompress::compress(grk_plugin_tile* tile)
 				}
 				return 0;
 			}));
+		}
+		for(auto& result : results)
+		{
+			result.get();
 		}
 	}
 	else
@@ -655,13 +659,6 @@ bool CodeStreamCompress::compress(grk_plugin_tile* tile)
 				success = false;
 				goto cleanup;
 			}
-		}
-	}
-	if(pool_size > 1)
-	{
-		for(auto& result : results)
-		{
-			result.get();
 		}
 	}
 cleanup:

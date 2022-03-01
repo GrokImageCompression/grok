@@ -130,11 +130,13 @@ bool T1DecompressScheduler::decompress(std::vector<DecompressBlockExec*>* blocks
 	for(uint64_t i = 0; i < maxBlocks; ++i)
 		decodeBlocks[i] = blocks->operator[](i);
 	std::atomic<int> blockCount(-1);
-	std::vector<std::future<int>> results;
-	for(size_t i = 0; i < num_threads; ++i)
-	{
-		results.emplace_back(ThreadPool::get()->enqueue([this, maxBlocks, &blockCount] {
-			auto threadnum = ThreadPool::get()->thread_number(std::this_thread::get_id());
+	tf::Taskflow taskflow;
+	tf::Task node[maxBlocks];
+	for (uint64_t i = 0; i < maxBlocks; i++)
+		node[i] = taskflow.placeholder();
+	for (uint64_t i = 0; i < maxBlocks; i++) {
+		node[i].work([this, maxBlocks, &blockCount] {
+			auto threadnum = ExecSingleton::get()->this_worker_id();
 			assert(threadnum >= 0);
 			while(true)
 			{
@@ -142,7 +144,7 @@ bool T1DecompressScheduler::decompress(std::vector<DecompressBlockExec*>* blocks
 				// note: even after failure, we continue to read and delete
 				// blocks until index is out of bounds. Otherwise, we leak blocks.
 				if(index >= maxBlocks)
-					return 0;
+					return;
 				auto block = decodeBlocks[index];
 				if(!success)
 				{
@@ -153,13 +155,10 @@ bool T1DecompressScheduler::decompress(std::vector<DecompressBlockExec*>* blocks
 				if(!decompressBlock(impl, block))
 					success = false;
 			}
-			return 0;
-		}));
+		});
 	}
-	for(auto& result : results)
-	{
-		result.get();
-	}
+	ExecSingleton::get()->run(taskflow).wait();
+
 	delete[] decodeBlocks;
 
 	return success;

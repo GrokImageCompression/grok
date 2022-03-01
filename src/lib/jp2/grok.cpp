@@ -33,6 +33,12 @@
 #include "grk_includes.h"
 using namespace grk;
 
+tf::Executor* ExecSingleton::singleton;
+std::mutex ExecSingleton::singleton_mutex;
+
+ThreadPool* ThreadPool::singleton = nullptr;
+std::mutex ThreadPool::singleton_mutex;
+
 struct GrkCodec;
 
 struct GrkCodec
@@ -66,13 +72,11 @@ GrkCodec::~GrkCodec()
 	delete decompressor_;
 }
 
-ThreadPool* ThreadPool::singleton = nullptr;
-std::mutex ThreadPool::singleton_mutex;
-
 static bool is_plugin_initialized = false;
 bool GRK_CALLCONV grk_initialize(const char* pluginPath, uint32_t numthreads)
 {
 	ThreadPool::instance(numthreads);
+	ExecSingleton::instance(numthreads);
 	if(!is_plugin_initialized)
 	{
 		grk_plugin_load_info info;

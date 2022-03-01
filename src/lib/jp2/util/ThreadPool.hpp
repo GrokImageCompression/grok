@@ -17,6 +17,32 @@
 
 #pragma once
 
+#include <taskflow/taskflow.hpp>
+
+class ExecSingleton {
+public:
+	static tf::Executor* instance(uint32_t numthreads)
+	{
+		std::unique_lock<std::mutex> lock(singleton_mutex);
+		if(!singleton) {
+			if (numthreads)
+				singleton = new tf::Executor(numthreads);
+			else
+				singleton = new tf::Executor();
+		}
+
+		return singleton;
+	}
+	static tf::Executor* get()
+	{
+		return instance(0);
+	}
+private:
+	static tf::Executor* singleton;
+	static std::mutex singleton_mutex;
+
+};
+
 #include <vector>
 #include <queue>
 #include <memory>

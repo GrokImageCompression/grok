@@ -116,21 +116,21 @@ void T1CompressScheduler::compress(std::vector<CompressBlockExec*>* blocks)
 	for(uint64_t i = 0; i < maxBlocks; ++i)
 		encodeBlocks[i] = blocks->operator[](i);
 	blocks->clear();
-	std::vector<std::future<int>> results;
-	for(size_t i = 0; i < num_threads; ++i)
-	{
-		results.emplace_back(ThreadPool::get()->enqueue([this, maxBlocks] {
-			auto threadnum = ThreadPool::get()->thread_number(std::this_thread::get_id());
+
+	tf::Taskflow taskflow;
+	tf::Task node[maxBlocks];
+	for (uint64_t i = 0; i < maxBlocks; i++)
+		node[i] = taskflow.placeholder();
+	for (uint64_t i = 0; i < maxBlocks; i++) {
+		node[i].work([this, maxBlocks] {
+			auto threadnum = ExecSingleton::get()->this_worker_id();
 			while(compress((size_t)threadnum, maxBlocks))
 			{
 			}
-			return 0;
-		}));
+		});
 	}
-	for(auto& result : results)
-	{
-		result.get();
-	}
+	ExecSingleton::get()->run(taskflow).wait();
+
 	delete[] encodeBlocks;
 }
 bool T1CompressScheduler::compress(size_t threadId, uint64_t maxBlocks)

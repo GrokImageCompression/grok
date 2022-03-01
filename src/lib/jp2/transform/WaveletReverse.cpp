@@ -704,7 +704,10 @@ static bool decompress_h_mt_53(uint32_t num_threads, size_t data_size, dwt_data<
 		if(rh < num_jobs)
 			num_jobs = rh;
 		uint32_t step_j = (rh / num_jobs);
-		std::vector<std::future<int>> results;
+		tf::Taskflow taskflow;
+		tf::Task node[num_jobs];
+		for (uint64_t i = 0; i < num_jobs; i++)
+			node[i] = taskflow.placeholder();
 		for(uint32_t j = 0; j < num_jobs; ++j)
 		{
 			auto min_j = j * step_j;
@@ -718,17 +721,15 @@ static bool decompress_h_mt_53(uint32_t num_threads, size_t data_size, dwt_data<
 				horiz.release();
 				return false;
 			}
-			results.emplace_back(ThreadPool::get()->enqueue([job] {
+			node[j].work([job] {
 				decompress_h_strip_53(&job->data, job->min_j, job->max_j, job->bandLL,
 									  job->strideLL, job->bandHL, job->strideHL, job->dest,
 									  job->strideDest);
 				job->data.release();
 				delete job;
-				return 0;
-			}));
+			});
 		}
-		for(auto& result : results)
-			result.get();
+		ExecSingleton::get()->run(taskflow).wait();
 	}
 	return true;
 }
@@ -773,7 +774,10 @@ static bool decompress_v_mt_53(uint32_t num_threads, size_t data_size, dwt_data<
 		if(rw < num_jobs)
 			num_jobs = rw;
 		uint32_t step_j = (rw / num_jobs);
-		std::vector<std::future<int>> results;
+		tf::Taskflow taskflow;
+		tf::Task node[num_jobs];
+		for (uint64_t i = 0; i < num_jobs; i++)
+			node[i] = taskflow.placeholder();
 		for(uint32_t j = 0; j < num_jobs; j++)
 		{
 			auto min_j = j * step_j;
@@ -786,17 +790,15 @@ static bool decompress_v_mt_53(uint32_t num_threads, size_t data_size, dwt_data<
 				vert.release();
 				return false;
 			}
-			results.emplace_back(ThreadPool::get()->enqueue([job] {
+			node[j].work([job] {
 				decompress_v_strip_53(&job->data, job->min_j, job->max_j, job->bandLL,
 									  job->strideLL, job->bandLH, job->strideLH, job->dest,
 									  job->strideDest);
 				job->data.release();
 				delete job;
-				return 0;
-			}));
+			});
 		}
-		for(auto& result : results)
-			result.get();
+		ExecSingleton::get()->run(taskflow).wait();
 	}
 	return true;
 }
