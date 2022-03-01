@@ -125,13 +125,13 @@ bool T1DecompressScheduler::decompress(std::vector<DecompressBlockExec*>* blocks
 		}
 		return success;
 	}
-	auto maxBlocks = blocks->size();
+	const size_t maxBlocks = blocks->size();
 	decodeBlocks = new DecompressBlockExec*[maxBlocks];
 	for(uint64_t i = 0; i < maxBlocks; ++i)
 		decodeBlocks[i] = blocks->operator[](i);
 	std::atomic<int> blockCount(-1);
 	tf::Taskflow taskflow;
-	tf::Task node[maxBlocks];
+	tf::Task *node = new tf::Task[maxBlocks];
 	for (uint64_t i = 0; i < maxBlocks; i++)
 		node[i] = taskflow.placeholder();
 	for (uint64_t i = 0; i < maxBlocks; i++) {
@@ -160,6 +160,7 @@ bool T1DecompressScheduler::decompress(std::vector<DecompressBlockExec*>* blocks
 	ExecSingleton::get()->run(taskflow).wait();
 
 	delete[] decodeBlocks;
+	delete[] node;
 
 	return success;
 }

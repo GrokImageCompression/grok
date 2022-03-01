@@ -111,14 +111,14 @@ void T1CompressScheduler::compress(std::vector<CompressBlockExec*>* blocks)
 		}
 		return;
 	}
-	auto maxBlocks = blocks->size();
+	const size_t maxBlocks = blocks->size();
 	encodeBlocks = new CompressBlockExec*[maxBlocks];
 	for(uint64_t i = 0; i < maxBlocks; ++i)
 		encodeBlocks[i] = blocks->operator[](i);
 	blocks->clear();
 
 	tf::Taskflow taskflow;
-	tf::Task node[maxBlocks];
+	tf::Task *node = new tf::Task[maxBlocks];
 	for (uint64_t i = 0; i < maxBlocks; i++)
 		node[i] = taskflow.placeholder();
 	for (uint64_t i = 0; i < maxBlocks; i++) {
@@ -131,6 +131,7 @@ void T1CompressScheduler::compress(std::vector<CompressBlockExec*>* blocks)
 	}
 	ExecSingleton::get()->run(taskflow).wait();
 
+	delete[] node;
 	delete[] encodeBlocks;
 }
 bool T1CompressScheduler::compress(size_t threadId, uint64_t maxBlocks)
