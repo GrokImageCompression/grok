@@ -23,7 +23,8 @@ class RAWFormat : public ImageFormat
   public:
 	explicit RAWFormat(bool isBig) : bigEndian(isBig) {}
 	bool encodeHeader(void) override;
-	bool encodePixels(void) override;
+	bool encodePixels() override;
+	using ImageFormat::encodePixels;
 	bool encodeFinish(void) override;
 	grk_image* decode(const std::string& filename, grk_cparameters* parameters) override;
 

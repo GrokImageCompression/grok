@@ -16,6 +16,7 @@
  */
 #pragma once
 
+
 #include "ImageFormat.h"
 #ifdef _WIN32
 #define HAVE_BOOLEAN
@@ -31,7 +32,8 @@ class JPEGFormat : public ImageFormat
   public:
 	JPEGFormat(void);
 	bool encodeHeader(void) override;
-	bool encodePixels(void) override;
+	bool encodePixels() override;
+	using ImageFormat::encodePixels;
 	bool encodeFinish(void) override;
 	grk_image* decode(const std::string& filename, grk_cparameters* parameters) override;
 

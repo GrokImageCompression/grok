@@ -22,7 +22,7 @@
 #include "MemManager.h"
 #include <cstdio>
 
-const bool debugMemory = false;
+//const bool debugMemory = false;
 
 // OSX is missing C++11 aligned_alloc (stdlib.h version)
 #if defined(__APPLE__)

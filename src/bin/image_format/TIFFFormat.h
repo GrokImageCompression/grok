@@ -41,6 +41,7 @@ class TIFFFormat : public ImageFormat
 	~TIFFFormat();
 	bool encodeHeader(void) override;
 	bool encodePixels() override;
+	using ImageFormat::encodePixels;
 	bool encodeFinish(void) override;
 	grk_image* decode(const std::string& filename, grk_cparameters* parameters) override;
 

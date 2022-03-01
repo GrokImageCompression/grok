@@ -450,7 +450,7 @@ cleanup:
 bool TIFFFormat::encodePixelsCoreWrite(grk_serialize_buf pixels)
 {
 	tmsize_t written =
-		TIFFWriteEncodedStrip(tif, (tmsize_t)pixels.index, pixels.data, (tmsize_t)pixels.dataLen);
+		TIFFWriteEncodedStrip(tif, pixels.index, pixels.data, (tmsize_t)pixels.dataLen);
 	return written != -1;
 }
 bool TIFFFormat::encodeFinish(void)
