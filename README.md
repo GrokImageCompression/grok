@@ -24,27 +24,28 @@
 
 Below is a benchmark comparing time and memory performance for **Kakadu 8.05**, **Grok 9.7.2** and **OpenJPEG 2.5** on the following workflows:
 
-1. decompress full [large single-tiled image of Mars](http://hirise-pds.lpl.arizona.edu/PDS/RDR/ESP/ORB_011200_011299/ESP_011277_1825/ESP_011277_1825_RED.JP2) to TIF output
-1. decompress region {1000,1000,5000,5000} from [large single-tiled image of Mars](http://hirise-pds.lpl.arizona.edu/PDS/RDR/ESP/ORB_011200_011299/ESP_011277_1825/ESP_011277_1825_RED.JP2) to TIF output
-1. decompress full [large multi-tiled Pleiades image](https://l3harrisgeospatial-webcontent.s3.amazonaws.com/MM_Samples/Pleiades_ORTHO_UTM_BUNDLE.zip) to TIF output.
-1. decompress full [large multi-tiled Pleiades image](https://l3harrisgeospatial-webcontent.s3.amazonaws.com/MM_Samples/Pleiades_ORTHO_UTM_BUNDLE.zip) to PGM output.
+1. decompress large single-tiled [image of Mars](https://hirise.lpl.arizona.edu/PDS/RDR/ESP/ORB_011200_011299/ESP_011277_1825/ESP_011277_1825_RED.JP2) to TIF output
+1. decompress region {1000,1000,5000,5000} from large single-tiled [image of Mars](https://hirise.lpl.arizona.edu/PDS/RDR/ESP/ORB_011200_011299/ESP_011277_1825/ESP_011277_1825_RED.JP2) to TIF output
+1. decompress large multi-tiled [Pleiades image](https://l3harrisgeospatial-webcontent.s3.amazonaws.com/MM_Samples/Pleiades_ORTHO_UTM_BUNDLE.zip) to TIF output.
+1. decompress large multi-tiled [Pleiades image](https://l3harrisgeospatial-webcontent.s3.amazonaws.com/MM_Samples/Pleiades_ORTHO_UTM_BUNDLE.zip) to PGM output.
 
 #### Benchmark Details
 
 * test system : 24 core / 48 thread `AMD Threadripper`
 running `Ubuntu 21.04` with `5.11` Linux kernel
 * codecs were configured to use all 48 threads
-* file cache was cleared between runs using `$ sudo sysctl vm.drop_caches=3`
+* file cache was cleared before each decompression using `$ sudo sysctl vm.drop_caches=3`
 * open source codecs were built in release mode using `GCC 11`
 
 #### Results
 
-| Test  | Kakadu             | Grok                 | OpenJPEG           |
+| Test  | Grok               | Kakadu                 | OpenJPEG           |
 | :---- | :-----             | :------:             | --------:          |
-| 1     | 9.81 s / 0.05 GB   | 17.0 s / 13.1 GB     | 17.8 s / 13.1 GB   |
-| 2     | 0.12 s             | 0.25 s / 0.4 GB      | 1.4 s  / 2 GB      |
-| 3     | 4.99 s / 0.1 GB    | 3.70 s / 1.8 GB      | 10.8 s / 4.3 GB    |
-| 4     | 4.19 s / 0.1 GB    | 4.0 s  / 2.0 GB      | 45.7 s / 4.3 GB    |
+| 1     | 17.0 s / 13.1 GB   | 9.81 s / 0.05 GB     | 17.8 s / 13.1 GB   |
+| 2     | 0.25 s / 0.4 GB    | 0.12 s               | 1.4 s  / 2 GB      |
+| 3     | 3.70 s / 1.8 GB    | 4.99 s / 0.1 GB      | 10.8 s / 4.3 GB    |
+| 4     | 4.0 s  / 2.0 GB    | 4.19 s / 0.1 GB      | 45.7 s / 4.3 GB    |
+
 
 ### Library Details
 
