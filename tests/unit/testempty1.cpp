@@ -64,6 +64,7 @@ int main(int argc, char *argv[]) {
   (void)argc;
   (void)argv;
 
+  int rc = 1;
   grk_compress_set_default_params(&parameters);
   parameters.cod_format = GRK_J2K_FMT;
   puts(v);
@@ -100,7 +101,8 @@ int main(int argc, char *argv[]) {
     grk_object_unref(l_stream);
     grk_object_unref(codec);
     grk_object_unref(&image->obj);
-    return 0;
+    rc = 0;
+    goto cleanup;
   }
 
   assert(bSuccess);
@@ -114,6 +116,7 @@ int main(int argc, char *argv[]) {
   grk_object_unref(codec);
   grk_object_unref(&image->obj);
 
+cleanup:
   puts("end");
-  return 0;
+  return rc;
 }

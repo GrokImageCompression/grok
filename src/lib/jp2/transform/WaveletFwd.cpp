@@ -407,7 +407,7 @@ bool WaveletFwdImpl::encode_procedure(TileComponent* tilec)
 	if(dataSize != 0 && !bj)
 		return false;
 	int32_t i = maxNumResolutions;
-	uint32_t num_threads = ThreadPool::get()->num_threads() > 1 ? 2 : 1;
+	uint32_t num_threads = ExecSingleton::get()->num_workers() > 1 ? 2 : 1;
 	DWT dwt;
 	while(i--)
 	{
@@ -451,7 +451,13 @@ bool WaveletFwdImpl::encode_procedure(TileComponent* tilec)
 			if(rw < num_jobs)
 				num_jobs = rw;
 			step_j = ((rw / num_jobs) / NB_ELTS_V8) * NB_ELTS_V8;
-			std::vector<std::future<int>> results;
+			tf::Taskflow taskflow;
+			tf::Task *node = nullptr;
+			if (num_jobs > 1) {
+				node = new tf::Task[num_jobs];
+				for (uint64_t i = 0; i < num_jobs; i++)
+					node[i] = taskflow.placeholder();
+			}
 			for(uint32_t j = 0; j < num_jobs; j++)
 			{
 				auto job = new encode_v_job<T, DWT>();
@@ -471,13 +477,19 @@ bool WaveletFwdImpl::encode_procedure(TileComponent* tilec)
 				job->tiledp = tiledp;
 				job->min_j = j * step_j;
 				job->max_j = (j + 1 == num_jobs) ? rw : (j + 1) * step_j;
-				results.emplace_back(ThreadPool::get()->enqueue([job] {
+				if (node) {
+					node[j].work([job] {
+						encode_v_func<T>(job);
+						return 0;
+					});
+				} else {
 					encode_v_func<T>(job);
-					return 0;
-				}));
+				}
 			}
-			for(auto& result : results)
-				result.get();
+			if (node){
+				ExecSingleton::get()->run(taskflow).wait();
+				delete[] node;
+			}
 			if(!rc)
 				return false;
 		}
@@ -504,7 +516,13 @@ bool WaveletFwdImpl::encode_procedure(TileComponent* tilec)
 			if(rh < num_jobs)
 				num_jobs = rh;
 			step_j = (rh / num_jobs);
-			std::vector<std::future<int>> results;
+			tf::Taskflow taskflow;
+			tf::Task *node = nullptr;
+			if (num_jobs > 1) {
+				node = new tf::Task[num_jobs];
+				for (uint64_t i = 0; i < num_jobs; i++)
+					node[i] = taskflow.placeholder();
+			}
 			for(uint32_t j = 0; j < num_jobs; j++)
 			{
 				auto job = new encode_h_job<T, DWT>();
@@ -528,13 +546,18 @@ bool WaveletFwdImpl::encode_procedure(TileComponent* tilec)
 				{ // this will take care of the overflow
 					job->max_j = rh;
 				}
-				results.emplace_back(ThreadPool::get()->enqueue([job] {
+				if (node) {
+					node[j].work([job] {
+						encode_h_func<T, DWT>(job);
+					});
+				} else {
 					encode_h_func<T, DWT>(job);
-					return 0;
-				}));
+				}
 			}
-			for(auto& result : results)
-				result.get();
+			if (node){
+				ExecSingleton::get()->run(taskflow).wait();
+				delete[] node;
+			}
 			if(!rc)
 				return false;
 		}

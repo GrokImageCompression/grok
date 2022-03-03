@@ -614,16 +614,19 @@ bool CodeStreamCompress::compress(grk_plugin_tile* tile)
 				  numTiles, maxNumTilesJ2K);
 		return false;
 	}
-	auto numRequiredThreads = std::min<uint32_t>((uint32_t)ThreadPool::get()->num_threads(), numTiles);
+	auto numRequiredThreads = std::min<uint32_t>((uint32_t)ExecSingleton::get()->num_workers(), numTiles);
 	std::atomic<bool> success(true);
 	if(numRequiredThreads > 1)
 	{
-		ThreadPool pool(numRequiredThreads);
-		std::vector<std::future<int>> results;
-		for(uint16_t i = 0; i < numTiles; ++i)
+		tf::Executor exec(numRequiredThreads);
+		tf::Taskflow taskflow;
+		tf::Task *node = new tf::Task[numTiles];
+		for (uint64_t i = 0; i < numTiles; i++)
+			node[i] = taskflow.placeholder();
+		for(uint16_t j = 0; j < numTiles; ++j)
 		{
-			uint16_t tileIndex = i;
-			results.emplace_back(pool.enqueue([this, tile, tileIndex, &heap, &success] {
+			uint16_t tileIndex = j;
+			node[j].work([this, tile, tileIndex, &heap, &success] {
 				if(success)
 				{
 					auto tileProcessor = new TileProcessor(tileIndex, this, stream_, true, false);
@@ -632,13 +635,10 @@ bool CodeStreamCompress::compress(grk_plugin_tile* tile)
 						success = false;
 					heap.push(tileProcessor);
 				}
-				return 0;
-			}));
+			});
 		}
-		for(auto& result : results)
-		{
-			result.get();
-		}
+		exec.run(taskflow).wait();
+		delete[] node;
 	}
 	else
 	{

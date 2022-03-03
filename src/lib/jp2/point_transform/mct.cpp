@@ -419,14 +419,20 @@ namespace HWY_NAMESPACE
 					  size_t numSamples)
 	{
 		size_t i = 0;
-		size_t num_threads = ThreadPool::get()->num_threads();
+		size_t num_threads = ExecSingleton::get()->num_workers();
 		size_t chunkSize = numSamples / num_threads;
 		const HWY_FULL(int32_t) di;
 		auto numLanes = Lanes(di);
 		chunkSize = (chunkSize / numLanes) * numLanes;
 		if(chunkSize > numLanes)
 		{
-			std::vector<std::future<int>> results;
+			tf::Taskflow taskflow;
+			tf::Task *node = nullptr;
+			if (num_threads > 1) {
+				node = new tf::Task[num_threads];
+				for (uint64_t i = 0; i < num_threads; i++)
+					node[i] = taskflow.placeholder();
+			}
 			for(size_t tr = 0; tr < num_threads; ++tr)
 			{
 				size_t index = tr;
@@ -435,14 +441,14 @@ namespace HWY_NAMESPACE
 					transform.vtrans(channels, shiftInfo, index, chunkSize);
 					return 0;
 				};
-				if(num_threads > 1)
-					results.emplace_back(ThreadPool::get()->enqueue(compressor));
+				if(node)
+					node[tr].work(compressor);
 				else
 					compressor();
 			}
-			for(auto& result : results)
-			{
-				result.get();
+			if (node) {
+				ExecSingleton::get()->run(taskflow).wait();
+				delete[] node;
 			}
 			i = chunkSize * num_threads;
 		}

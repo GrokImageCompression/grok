@@ -90,7 +90,7 @@ void T1CompressScheduler::scheduleCompress(TileCodingParams* tcp, const double* 
 			}
 		}
 	}
-	for(auto i = 0U; i < ThreadPool::get()->num_threads(); ++i)
+	for(auto i = 0U; i < ExecSingleton::get()->num_workers(); ++i)
 		t1Implementations.push_back(T1Factory::makeT1(true, tcp, maxCblkW, maxCblkH));
 	compress(&blocks);
 }
@@ -100,7 +100,7 @@ void T1CompressScheduler::compress(std::vector<CompressBlockExec*>* blocks)
 	if(!blocks || blocks->size() == 0)
 		return;
 
-	size_t num_threads = ThreadPool::get()->num_threads();
+	size_t num_threads = ExecSingleton::get()->num_workers();
 	if(num_threads == 1)
 	{
 		auto impl = t1Implementations[0];

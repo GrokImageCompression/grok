@@ -459,13 +459,22 @@ bool CodeStreamDecompress::decompressTiles(void)
 	stripCache_.init(cp_.t_grid_width, cp_.t_height, cp_.t_grid_height, outputImage_,
 					 serializeBufferCallback, serializeUserData, serializeRegisterClientCallback);
 
-	std::vector<std::future<int>> results;
 	std::atomic<bool> success(true);
 	std::atomic<uint32_t> numTilesDecompressed(0);
-	ThreadPool pool(
-		std::min<uint32_t>((uint32_t)ThreadPool::get()->num_threads(), numTilesToDecompress));
+
+	auto numRequiredThreads = std::min<uint32_t>((uint32_t)ExecSingleton::get()->num_workers(), numTilesToDecompress);
+	tf::Executor *executor = nullptr;
+	tf::Task *node = nullptr;
+	tf::Taskflow taskflow;
+	if (numRequiredThreads > 1) {
+	  executor = new tf::Executor(numRequiredThreads);
+	  node = new tf::Task[numTilesToDecompress];
+		for (uint64_t i = 0; i < numTilesToDecompress; i++)
+			node[i] = taskflow.placeholder();
+	}
 	bool breakAfterT1 = false;
 	bool canDecompress = true;
+	uint16_t tileCount = 0;
 	while(!endOfCodeStream() && !breakAfterT1)
 	{
 		// 1. read header
@@ -542,8 +551,8 @@ bool CodeStreamDecompress::decompressTiles(void)
 			}
 			return 0;
 		};
-		if(pool.num_threads() > 1)
-			results.emplace_back(pool.enqueue(exec));
+		if(node)
+			node[tileCount++].work(exec);
 		else
 		{
 			exec();
@@ -551,13 +560,16 @@ bool CodeStreamDecompress::decompressTiles(void)
 				goto cleanup;
 		}
 	}
-	for(auto& result : results)
-	{
-		result.get();
+	if (executor) {
+		executor->run(taskflow).wait();
+		delete executor;
+		executor = nullptr;
+		delete[] node;
+		node = nullptr;
 	}
-	results.clear();
+
 	if(!success)
-		return false;
+		goto cleanup;
 
 	// check if there is another tile that has not been processed
 	// we will reject if it has the TPSot problem
@@ -597,9 +609,12 @@ bool CodeStreamDecompress::decompressTiles(void)
 		GRK_WARN("Only %u out of %u tiles were decompressed", decompressed, numTilesToDecompress);
 	}
 cleanup:
-	for(auto& result : results)
-	{
-		result.get();
+	if (executor) {
+		executor->run(taskflow).wait();
+		delete executor;
+		executor = nullptr;
+		delete[] node;
+		node = nullptr;
 	}
 	return success;
 }

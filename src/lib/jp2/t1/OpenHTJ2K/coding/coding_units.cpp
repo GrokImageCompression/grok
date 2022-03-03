@@ -31,7 +31,7 @@
 #include <cstring>
 #include <cassert>
 #include "coding_units.hpp"
-#include "ThreadPool.hpp"
+
 
 /********************************************************************************
  * j2k_codeblock

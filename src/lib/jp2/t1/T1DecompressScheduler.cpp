@@ -78,7 +78,7 @@ bool T1DecompressScheduler::scheduleDecompress(TileCodingParams* tcp, uint16_t b
 	// nominal code block dimensions
 	uint16_t codeblock_width = (uint16_t)(blockw ? (uint32_t)1 << blockw : 0);
 	uint16_t codeblock_height = (uint16_t)(blockh ? (uint32_t)1 << blockh : 0);
-	for(auto i = 0U; i < ThreadPool::get()->num_threads(); ++i)
+	for(auto i = 0U; i < ExecSingleton::get()->num_workers(); ++i)
 		t1Implementations.push_back(
 			T1Factory::makeT1(false, tcp, codeblock_width, codeblock_height));
 
@@ -105,7 +105,7 @@ bool T1DecompressScheduler::decompress(std::vector<DecompressBlockExec*>* blocks
 {
 	if(!blocks || !blocks->size())
 		return true;
-	size_t num_threads = ThreadPool::get()->num_threads();
+	size_t num_threads = ExecSingleton::get()->num_workers();
 	success = true;
 	if(num_threads == 1)
 	{

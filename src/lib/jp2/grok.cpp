@@ -36,11 +36,6 @@ using namespace grk;
 tf::Executor* ExecSingleton::singleton;
 std::mutex ExecSingleton::singleton_mutex;
 
-ThreadPool* ThreadPool::singleton = nullptr;
-std::mutex ThreadPool::singleton_mutex;
-
-struct GrkCodec;
-
 struct GrkCodec
 {
 	GrkCodec();
@@ -75,7 +70,6 @@ GrkCodec::~GrkCodec()
 static bool is_plugin_initialized = false;
 bool GRK_CALLCONV grk_initialize(const char* pluginPath, uint32_t numthreads)
 {
-	ThreadPool::instance(numthreads);
 	ExecSingleton::instance(numthreads);
 	if(!is_plugin_initialized)
 	{
@@ -90,7 +84,7 @@ bool GRK_CALLCONV grk_initialize(const char* pluginPath, uint32_t numthreads)
 GRK_API void GRK_CALLCONV grk_deinitialize()
 {
 	grk_plugin_cleanup();
-	ThreadPool::release();
+	ExecSingleton::release();
 }
 
 GRK_API grk_object* GRK_CALLCONV grk_object_ref(grk_object* obj)
@@ -415,8 +409,6 @@ void GRK_CALLCONV grk_compress_set_default_params(grk_cparameters* parameters)
 		parameters->allocationByQuality = false;
 		parameters->writePLT = false;
 		parameters->writeTLM = false;
-		if(!parameters->numThreads)
-			parameters->numThreads = ThreadPool::hardware_concurrency();
 		parameters->deviceId = 0;
 		parameters->repeats = 1;
 	}

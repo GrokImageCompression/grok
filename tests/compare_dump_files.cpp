@@ -25,7 +25,6 @@
 #include <stdlib.h>
 #include <string.h>
 #define TCLAP_NAMESTARTSTRING "-"
-#include "grok.h"
 #include "tclap/CmdLine.h"
 #include "test_common.h"
 #include <sstream>

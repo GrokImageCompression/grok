@@ -813,7 +813,7 @@ static bool decompress_tile_53(TileComponent* tilec, uint32_t numres)
 	uint32_t rw = tr->width();
 	uint32_t rh = tr->height();
 
-	uint32_t num_threads = (uint32_t)ThreadPool::get()->num_threads();
+	uint32_t num_threads = (uint32_t)ExecSingleton::get()->num_workers();
 	size_t data_size = max_resolution(tr, numres);
 	/* overflow check */
 	if(data_size > (SIZE_MAX / PLL_COLS_53 / sizeof(int32_t)))
@@ -1142,7 +1142,10 @@ static bool decompress_h_mt_97(uint32_t num_threads, size_t data_size,
 	}
 	else
 	{
-		std::vector<std::future<int>> results;
+		tf::Taskflow taskflow;
+		tf::Task *node = new tf::Task[num_jobs];
+		for (uint64_t i = 0; i < num_jobs; i++)
+			node[i] = taskflow.placeholder();
 		for(uint32_t j = 0; j < num_jobs; ++j)
 		{
 			auto min_j = j * step_j;
@@ -1156,16 +1159,16 @@ static bool decompress_h_mt_97(uint32_t num_threads, size_t data_size,
 				horiz.release();
 				return false;
 			}
-			results.emplace_back(ThreadPool::get()->enqueue([job] {
+			node[j].work([job] {
 				decompress_h_strip_97(&job->data, job->max_j, job->bandLL, job->strideLL,
 									  job->bandHL, job->strideHL, job->dest, job->strideDest);
 				job->data.release();
 				delete job;
-				return 0;
-			}));
+			});
 		}
-		for(auto& result : results)
-			result.get();
+		ExecSingleton::get()->run(taskflow).wait();
+		delete[] node;
+
 	}
 	return true;
 }
@@ -1243,7 +1246,10 @@ static bool decompress_v_mt_97(uint32_t num_threads, size_t data_size,
 	}
 	else
 	{
-		std::vector<std::future<int>> results;
+		tf::Taskflow taskflow;
+		tf::Task *node = new tf::Task[num_jobs];
+		for (uint64_t i = 0; i < num_jobs; i++)
+			node[i] = taskflow.placeholder();
 		for(uint32_t j = 0; j < num_jobs; j++)
 		{
 			auto min_j = j * step_j;
@@ -1257,16 +1263,17 @@ static bool decompress_v_mt_97(uint32_t num_threads, size_t data_size,
 				vert.release();
 				return false;
 			}
-			results.emplace_back(ThreadPool::get()->enqueue([job, rh] {
+			node[j].work([job, rh] {
 				decompress_v_strip_97(&job->data, job->max_j, rh, job->bandLL, job->strideLL,
 									  job->bandLH, job->strideLH, job->dest, job->strideDest);
 				job->data.release();
 				delete job;
 				return 0;
-			}));
+			});
 		}
-		for(auto& result : results)
-			result.get();
+		ExecSingleton::get()->run(taskflow).wait();
+		delete[] node;
+
 	}
 
 	return true;
@@ -1293,7 +1300,7 @@ static bool decompress_tile_97(TileComponent* GRK_RESTRICT tilec, uint32_t numre
 		return false;
 	}
 	vert.mem = horiz.mem;
-	uint32_t num_threads = (uint32_t)ThreadPool::get()->num_threads();
+	uint32_t num_threads = (uint32_t)ExecSingleton::get()->num_workers();
 	for(uint8_t res = 1; res < numres; ++res)
 	{
 		horiz.sn_full = rw;
@@ -1931,7 +1938,7 @@ bool decompress_partial_tile(TileComponent* GRK_RESTRICT tilec, uint16_t compno,
 	}
 
 	D decompressor;
-	size_t num_threads = ThreadPool::get()->num_threads();
+	size_t num_threads = ExecSingleton::get()->num_workers();
 
 	for(uint8_t resno = 1; resno < numres; resno++)
 	{
@@ -2121,7 +2128,13 @@ bool decompress_partial_tile(TileComponent* GRK_RESTRICT tilec, uint16_t compno,
 			uint32_t step_j = num_jobs ? (num_rows / num_jobs) : 0;
 			if(num_threads == 1 || step_j < HORIZ_PASS_HEIGHT)
 				num_jobs = 1;
-			std::vector<std::future<int>> results;
+			tf::Taskflow taskflow;
+			tf::Task *node = nullptr;
+			if (num_jobs > 1) {
+				node = new tf::Task[num_jobs];
+				for (uint64_t i = 0; i < num_jobs; i++)
+					node[i] = taskflow.placeholder();
+			}
 			bool blockError = false;
 			for(uint32_t j = 0; j < num_jobs; ++j)
 			{
@@ -2135,23 +2148,15 @@ bool decompress_partial_tile(TileComponent* GRK_RESTRICT tilec, uint16_t compno,
 					delete job;
 					goto cleanup;
 				}
-				if(num_jobs > 1)
-				{
-					results.emplace_back(
-						ThreadPool::get()->enqueue([job, executor_h] { return executor_h(job); }));
-				}
+				if(node)
+					node[j].work([job, executor_h] { return executor_h(job); });
 				else
-				{
 					blockError = (executor_h(job) != 0);
-				}
 			}
-			for(auto& result : results)
-			{
-				if(result.get() != 0)
-					blockError = true;
+			if (node){
+				ExecSingleton::get()->run(taskflow).wait();
+				delete[] node;
 			}
-			if(blockError)
-				goto cleanup;
 		}
 
 		data_size = (resWindowRect.height() + 2 * FILTER_WIDTH) * VERT_PASS_WIDTH * sizeof(T) /
@@ -2168,7 +2173,13 @@ bool decompress_partial_tile(TileComponent* GRK_RESTRICT tilec, uint16_t compno,
 		if(num_threads == 1 || step_j < 4)
 			num_jobs = 1;
 		bool blockError = false;
-		std::vector<std::future<int>> results;
+		tf::Taskflow taskflow;
+		tf::Task *node = nullptr;
+		if (num_jobs > 1) {
+			node = new tf::Task[num_jobs];
+			for (uint64_t i = 0; i < num_jobs; i++)
+				node[i] = taskflow.placeholder();
+		}
 		for(uint32_t j = 0; j < num_jobs; ++j)
 		{
 			auto job = new decompress_job<T, dwt_data<T>>(
@@ -2180,20 +2191,14 @@ bool decompress_partial_tile(TileComponent* GRK_RESTRICT tilec, uint16_t compno,
 				delete job;
 				goto cleanup;
 			}
-			if(num_jobs > 1)
-			{
-				results.emplace_back(
-					ThreadPool::get()->enqueue([job, executor_v] { return executor_v(job); }));
-			}
+			if(node)
+				node[j].work([job, executor_v] { return executor_v(job); });
 			else
-			{
 				blockError = (executor_v(job) != 0);
-			}
 		}
-		for(auto& result : results)
-		{
-			if(result.get() != 0)
-				blockError = true;
+		if (node){
+			ExecSingleton::get()->run(taskflow).wait();
+			delete[] node;
 		}
 		if(blockError)
 			goto cleanup;
