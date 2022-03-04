@@ -1,10 +1,10 @@
 name: CMake
 
-on: [push]
+on: [push,pull_request,workflow_dispatch]
 
 env:
   BUILD_TYPE: Release
-  DATA_ROOT: ${{github.workspace}}/data
+  DATA_ROOT: ${{ github.workspace }}/data
   GENERATOR_PLATFORM:
 
 jobs:
@@ -35,6 +35,9 @@ jobs:
         sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-10 100 \
           --slave /usr/bin/g++ g++ /usr/bin/g++-10 --slave /usr/bin/gcov gcov /usr/bin/gcov-10
         python3 -m site &> /dev/null && PATH="$PATH:`python3 -m site --user-base`/bin"
+        wget -q http://kakadusoftware.com/wp-content/uploads/KDU805_Demo_Apps_for_Linux-x86-64_200602.zip
+        cmake -E tar -xzf KDU805_Demo_Apps_for_Linux-x86-64_200602.zip
+        mv KDU805_Demo_Apps_for_Linux-x86-64_200602 kdu
 
     - name: macos-dependencies
       if: startsWith(matrix.os, 'macos')
@@ -44,35 +47,41 @@ jobs:
     - name: windows-dependencies
       if: startsWith(matrix.os, 'windows')
       run: |
-        $env:Path += ";C:\Users\runneradmin\AppData\Roaming\Python\Python37\Scripts"
+        $env:Path += ";C:\Users\runneradmin\AppData\Roaming\Python\Python39\Scripts"
         $generator= "-DCMAKE_GENERATOR_PLATFORM=x64"
         echo "Generator: ${generator}"
         echo "GENERATOR_PLATFORM=$generator" >> $env:GITHUB_ENV
+        choco install wget --no-progress
+        wget -q http://kakadusoftware.com/wp-content/uploads/KDU805_Demo_Apps_for_Win64_200602.msi_.zip
+        cmake -E tar -xzf KDU805_Demo_Apps_for_Win64_200602.msi_.zip
+        msiexec /i KDU805_Demo_Apps_for_Win64_200602.msi /qn /norestart
+        #cp -r "C:\Program Files\Kakadu\Kakadu Demo-Apps" .\kdu
 
     - name: Create Build Environment
       # Some projects don't allow in-source building, so create a separate build directory
       # We'll use this as our working directory for all subsequent commands
-      run: cmake -E make_directory ${{github.workspace}}/build
+      run: cmake -E make_directory ${{ github.workspace }}/build
 
     - name: Configure CMake
       # Use a bash shell so we can use the same syntax for environment variable
       # access regardless of the host operating system
       shell: bash
-      working-directory: ${{github.workspace}}/build
+      working-directory: ${{ github.workspace }}/build
       # Note the current convention is to use the -S and -B options here to specify source 
       # and build directories, but this is only available with CMake 3.13 and higher.  
       # The CMake binaries on the Github Actions machines are (as of this writing) 3.12
       run: cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DGROK_BUILD_THIRDPARTY:BOOL=ON -DBUILD_TESTING:BOOL=ON -DGRK_DATA_ROOT=$DATA_ROOT $GENERATOR_PLATFORM
 
     - name: Build
-      working-directory: ${{github.workspace}}/build
+      working-directory: ${{ github.workspace }}/build
       shell: bash
       # Execute the build.  You can specify a specific target with "--target <NAME>"
       run: cmake --build . --config $BUILD_TYPE
 
     - name: Test
-      working-directory: ${{github.workspace}}/build
+      working-directory: ${{ github.workspace }}/build
       shell: bash
       # Execute tests defined by the CMake configuration.  
       # See https://cmake.org/cmake/help/latest/manual/ctest.1.html for more detail
       run: ctest --output-on-failure -C $BUILD_TYPE
+
