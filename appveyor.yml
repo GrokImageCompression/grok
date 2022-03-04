@@ -1,9 +1,9 @@
 version: 9.7.2.{build}
 clone_depth: 50
 environment:
-  VCVAR2019: 'C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Auxiliary\Build\vcvarsall.bat'
-  APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2019
-  GROK_CI_VCVARS: $(VCVAR2019)
+  VCVAR2022: 'C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Auxiliary\Build\vcvarsall.bat'
+  APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2022
+  GROK_CI_VCVARS: $(VCVAR2022)
   GROK_NONCOMMERCIAL: 1
   GROK_CI_INCLUDE_IF_DEPLOY: 1    
 install:
