@@ -33,8 +33,10 @@
 #include "grk_includes.h"
 using namespace grk;
 
+#ifdef _WIN32
 tf::Executor* ExecSingleton::singleton;
 std::mutex ExecSingleton::singleton_mutex;
+#endif
 
 struct GrkCodec
 {

@@ -29,6 +29,8 @@
 #pragma GCC diagnostic pop
 #endif
 
+#ifdef _WIN32
+
 class ExecSingleton {
 public:
 	static tf::Executor* instance(uint32_t numthreads)
@@ -58,3 +60,27 @@ private:
 	static std::mutex singleton_mutex;
 
 };
+
+#else
+
+class ExecSingleton {
+public:
+	static tf::Executor* instance(uint32_t numthreads)
+	{
+		static tf::Executor* singleton = new tf::Executor(numthreads ? numthreads : std::thread::hardware_concurrency());
+
+		return singleton;
+	}
+	static tf::Executor* get()
+	{
+		return instance(0);
+	}
+	static void release()
+	{
+		//no-op
+	}
+};
+
+
+#endif
+

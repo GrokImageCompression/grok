@@ -3,9 +3,10 @@ name: CMake
 on: [push,pull_request,workflow_dispatch]
 
 env:
-  BUILD_TYPE: Release
+  BUILD_TYPE: Debug
   DATA_ROOT: ${{ github.workspace }}/data
   GENERATOR_PLATFORM:
+  LD_LIBRARY_PATH: ${{ github.workspace }}/kdu
 
 jobs:
   build:
@@ -36,8 +37,15 @@ jobs:
           --slave /usr/bin/g++ g++ /usr/bin/g++-10 --slave /usr/bin/gcov gcov /usr/bin/gcov-10
         python3 -m site &> /dev/null && PATH="$PATH:`python3 -m site --user-base`/bin"
         wget -q http://kakadusoftware.com/wp-content/uploads/KDU805_Demo_Apps_for_Linux-x86-64_200602.zip
-        cmake -E tar -xzf KDU805_Demo_Apps_for_Linux-x86-64_200602.zip
+        cmake -E tar -xvf KDU805_Demo_Apps_for_Linux-x86-64_200602.zip
         mv KDU805_Demo_Apps_for_Linux-x86-64_200602 kdu
+        echo "${{ github.workspace }}/kdu" >> $GITHUB_PATH
+
+    - name: ubuntu-check
+      if: startsWith(matrix.os, 'ubuntu')
+      run: |
+        echo $PATH
+        kdu_expand -version
 
     - name: macos-dependencies
       if: startsWith(matrix.os, 'macos')
@@ -53,9 +61,10 @@ jobs:
         echo "GENERATOR_PLATFORM=$generator" >> $env:GITHUB_ENV
         choco install wget --no-progress
         wget -q http://kakadusoftware.com/wp-content/uploads/KDU805_Demo_Apps_for_Win64_200602.msi_.zip
-        cmake -E tar -xzf KDU805_Demo_Apps_for_Win64_200602.msi_.zip
-        msiexec /i KDU805_Demo_Apps_for_Win64_200602.msi /qn /norestart
-        #cp -r "C:\Program Files\Kakadu\Kakadu Demo-Apps" .\kdu
+        cmake -E tar -xvf KDU805_Demo_Apps_for_Win64_200602.msi_.zip
+        cmake -E make_directory ${{ github.workspace }}\kdu
+        msiexec /a KDU805_Demo_Apps_for_Win64_200602.msi /qn TARGETDIR=${{ github.workspace }}\kdu
+        $env:Path += ";${{ github.workspace }}\kdu"
 
     - name: Create Build Environment
       # Some projects don't allow in-source building, so create a separate build directory
