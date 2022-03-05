@@ -105,9 +105,12 @@ bool CodeStreamDecompress::parseTileHeaderMarkers(bool* canDecompress)
 				GRK_ERROR("Zero-size marker in header.");
 				return false;
 			}
-			// subtract tile part header and header marker size
-			if(decompressorState_.getState() & DECOMPRESS_STATE_TPH)
-				currentTileProcessor_->tilePartDataLength -= (uint32_t)(marker_size + 2);
+			// subtract marker id and marker size
+			if(decompressorState_.getState() & DECOMPRESS_STATE_TPH) {
+				if (!currentTileProcessor_->subtractMarkerLength(marker_size))
+					return false;
+
+			}
 
 			marker_size =
 				(uint16_t)(marker_size - 2); /* Subtract the size of the marker ID already read */
@@ -143,7 +146,7 @@ bool CodeStreamDecompress::parseTileHeaderMarkers(bool* canDecompress)
 					decompressorState_.lastSotReadPosition = sot_pos;
 				if(decompressorState_.skipTileData)
 				{
-					if(!stream_->skip(currentTileProcessor_->tilePartDataLength))
+					if(!stream_->skip(currentTileProcessor_->getTilePartDataLength()))
 					{
 						GRK_ERROR("Stream too short");
 						return false;

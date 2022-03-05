@@ -115,8 +115,6 @@ struct TileProcessor
 	 *  tilePartIndexCounter_ holds the total number of tile parts encoded thus far
 	 *  while the compressor is compressing the current tile part.*/
 	uint8_t tilePartIndexCounter_;
-	// Decompressing Only
-	uint32_t tilePartDataLength;
 	/** Compression Only
 	 *  Current packet iterator number */
 	uint32_t pino;
@@ -127,8 +125,12 @@ struct TileProcessor
 	bool wholeTileDecompress;
 	CodingParams* cp_;
 	PacketLengthCache packetLengthCache;
-
+	uint32_t getTilePartDataLength(void);
+	bool subtractMarkerLength(uint16_t markerLen);
+	bool setTilePartDataLength(uint32_t tilePartLength, bool lastTilePartInCodeStream);
   private:
+	// Decompressing Only
+	uint32_t tilePartDataLength;
 	/** index of tile being currently compressed/decompressed */
 	uint16_t tileIndex_;
 	// Compressing only - track which packets have already been written

@@ -23,11 +23,11 @@ namespace grk
 {
 TileProcessor::TileProcessor(uint16_t tileIndex, CodeStream* codeStream, IBufferedStream* stream,
 							 bool isCompressor, bool isWholeTileDecompress)
-	: first_poc_tile_part_(true), tilePartIndexCounter_(0), tilePartDataLength(0), pino(0),
+	: first_poc_tile_part_(true), tilePartIndexCounter_(0), pino(0),
 	  tile(nullptr), headerImage(codeStream->getHeaderImage()),
 	  current_plugin_tile(codeStream->getCurrentPluginTile()),
 	  wholeTileDecompress(isWholeTileDecompress), cp_(codeStream->getCodingParams()),
-	  packetLengthCache(PacketLengthCache(cp_)), tileIndex_(tileIndex), stream_(stream),
+	  packetLengthCache(PacketLengthCache(cp_)), tilePartDataLength(0), tileIndex_(tileIndex), stream_(stream),
 	  corrupt_packet_(false), newTilePartProgressionPosition(0), tcp_(nullptr), truncated(false),
 	  image_(nullptr), isCompressor_(isCompressor), preCalculatedTileLen(0)
 {
@@ -40,6 +40,34 @@ TileProcessor::TileProcessor(uint16_t tileIndex, CodeStream* codeStream, IBuffer
 TileProcessor::~TileProcessor()
 {
 	release(GRK_TILE_CACHE_NONE);
+}
+uint32_t TileProcessor::getTilePartDataLength(void){
+	return tilePartDataLength;
+}
+bool TileProcessor::subtractMarkerLength(uint16_t markerLen){
+	uint32_t sub = (uint32_t)(markerLen + 2);
+	if (tilePartDataLength > 0 && tilePartDataLength < sub ){
+		GRK_ERROR("Tile part data length %d smaller than marker length %d",tilePartDataLength, markerLen );
+		return false;
+	}
+	tilePartDataLength -= (uint32_t)(markerLen + 2);
+
+	return true;
+}
+bool TileProcessor::setTilePartDataLength(uint32_t tilePartLength,
+											bool lastTilePartInCodeStream){
+	if(!lastTilePartInCodeStream) {
+		if (tilePartLength < sot_marker_segment_len){
+			GRK_ERROR("Tile part data length %d is smaller than for marker segment length %d",tilePartDataLength, sot_marker_segment_len );
+			return false;
+		}
+		tilePartDataLength = tilePartLength - sot_marker_segment_len;
+	}
+	else {
+		tilePartDataLength = 0;
+	}
+
+	return true;
 }
 IBufferedStream* TileProcessor::getStream(void)
 {

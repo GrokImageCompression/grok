@@ -210,12 +210,8 @@ bool SOTMarker::read(CodeStreamDecompress* codeStream, uint8_t* headerData, uint
 		/* indicate that we are now ready to read the tile data */
 		codeStream->getDecompressorState()->lastTilePartWasRead = true;
 
-	if(!codeStream->getDecompressorState()->lastTilePartInCodeStream)
-		/* Keep the size of data to skip after this marker */
-		codeStream->currentProcessor()->tilePartDataLength =
-			tilePartLength - sot_marker_segment_len;
-	else
-		codeStream->currentProcessor()->tilePartDataLength = 0;
+	codeStream->currentProcessor()->setTilePartDataLength(tilePartLength,
+			codeStream->getDecompressorState()->lastTilePartInCodeStream);
 	codeStream->getDecompressorState()->setState(DECOMPRESS_STATE_TPH);
 
 	/* Check if the current tile is outside the area we want
