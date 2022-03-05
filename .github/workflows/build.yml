@@ -34,6 +34,7 @@ jobs:
         cmake -E tar -xvf KDU805_Demo_Apps_for_Linux-x86-64_200602.zip
         mv KDU805_Demo_Apps_for_Linux-x86-64_200602 kdu
         echo "${{ github.workspace }}/kdu" >> $GITHUB_PATH
+        git clone --depth=1 --branch=master https://github.com/GrokImageCompression/grok-test-data.git ${{ env.DATA_ROOT }}
 
     - name: macos-dependencies
       if: startsWith(matrix.os, 'macos')
@@ -47,8 +48,6 @@ jobs:
         7z e Payload~ 2>/dev/null || true
         chmod +x kdu_expand
         chmod +x kdu_compress
-        otool -L kdu_expand
-        otool -L kdu_compress
         install_name_tool -id ${PWD}/libkdu_v80R.dylib libkdu_v80R.dylib
         codesign -s - -f ${PWD}/libkdu_v80R.dylib
         install_name_tool -change /usr/local/lib/libkdu_v80R.dylib ${PWD}/libkdu_v80R.dylib kdu_compress
@@ -56,7 +55,8 @@ jobs:
         install_name_tool -change /usr/local/lib/libkdu_v80R.dylib ${PWD}/libkdu_v80R.dylib kdu_expand
         codesign -s - -f ${PWD}/kdu_expand
         echo "${{ github.workspace }}/kdu" >> $GITHUB_PATH
-        ./kdu_expand -version
+        echo {DATA_BRANCH=osx} >> $GITHUB_ENV
+        git clone --depth=1 --branch=osx https://github.com/GrokImageCompression/grok-test-data.git ${{ env.DATA_ROOT }}
 
     - name: windows-dependencies
       if: startsWith(matrix.os, 'windows')
@@ -72,16 +72,12 @@ jobs:
         mkdir kdu && cp KDU805_Demo_Apps_for_Win64_200602.msi kdu && cd kdu
         7z e KDU805_Demo_Apps_for_Win64_200602.msi && 7z e disk1.cab
         echo "${{ github.workspace }}/kdu" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+        git clone --depth=1 --branch=master https://github.com/GrokImageCompression/grok-test-data.git ${{ env.DATA_ROOT }}
 
     - name: dependencies
       run: |
-        git clone --depth=1 --branch=master https://github.com/GrokImageCompression/grok-test-data.git ${{ env.DATA_ROOT }}
         python3 -m pip install --upgrade pip
-
-    - name: Create Build Environment
-      # Some projects don't allow in-source building, so create a separate build directory
-      # We'll use this as our working directory for all subsequent commands
-      run: cmake -E make_directory ${{ github.workspace }}/build
+        cmake -E make_directory ${{ github.workspace }}/build
 
     - name: Configure CMake
       # Use a bash shell so we can use the same syntax for environment variable
