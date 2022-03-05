@@ -1,4 +1,4 @@
-name: CMake
+name: Build
 
 on: [push,pull_request,workflow_dispatch]
 
@@ -12,8 +12,7 @@ jobs:
   build:
     strategy:
        matrix:
-        os: [ubuntu-latest, windows-latest]
-  
+        os: [ubuntu-latest, windows-latest, macos-latest]
     # The CMake configure and build commands are platform agnostic and should work equally
     # well on Windows or Mac.  You can convert this to a matrix build if you need
     # cross-platform coverage.
@@ -23,48 +22,61 @@ jobs:
     steps:
     - uses: actions/checkout@v2
 
-    - name: dependencies
-      run: |
-        git clone --depth=1 --branch=master https://github.com/GrokImageCompression/grok-test-data.git ${{ env.DATA_ROOT }}
-        python3 -m pip install --upgrade pip
-        pip3 install --user jpylyzer
-
     - name: ubuntu-dependencies
       if: startsWith(matrix.os, 'ubuntu')
       run: |
         sudo apt-get install -y gcc-10 g++-10
         sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-10 100 \
           --slave /usr/bin/g++ g++ /usr/bin/g++-10 --slave /usr/bin/gcov gcov /usr/bin/gcov-10
+        pip3 install --user jpylyzer
         python3 -m site &> /dev/null && PATH="$PATH:`python3 -m site --user-base`/bin"
         wget -q http://kakadusoftware.com/wp-content/uploads/KDU805_Demo_Apps_for_Linux-x86-64_200602.zip
         cmake -E tar -xvf KDU805_Demo_Apps_for_Linux-x86-64_200602.zip
         mv KDU805_Demo_Apps_for_Linux-x86-64_200602 kdu
         echo "${{ github.workspace }}/kdu" >> $GITHUB_PATH
 
-    - name: ubuntu-check
-      if: startsWith(matrix.os, 'ubuntu')
-      run: |
-        echo $PATH
-        kdu_expand -version
-
     - name: macos-dependencies
       if: startsWith(matrix.os, 'macos')
       run: |
+        pip3 install --user jpylyzer
         python3 -m site &> /dev/null && PATH="$PATH:`python3 -m site --user-base`/bin"
+        wget -q http://kakadusoftware.com/wp-content/uploads/KDU805_Demo_Apps_for_MacOS_200602.dmg_.zip
+        mkdir kdu && mv KDU805_Demo_Apps_for_MacOS_200602.dmg_.zip kdu && cd kdu
+        7z e KDU805_Demo_Apps_for_MacOS_200602.dmg_.zip
+        7z e KDU805_Demo_Apps_for_MacOS_200602.dmg 2>/dev/null || true
+        7z e Payload~ 2>/dev/null || true
+        chmod +x kdu_expand
+        chmod +x kdu_compress
+        otool -L kdu_expand
+        otool -L kdu_compress
+        install_name_tool -id ${PWD}/libkdu_v80R.dylib libkdu_v80R.dylib
+        codesign -s - -f ${PWD}/libkdu_v80R.dylib
+        install_name_tool -change /usr/local/lib/libkdu_v80R.dylib ${PWD}/libkdu_v80R.dylib kdu_compress
+        codesign -s - -f ${PWD}/kdu_compress
+        install_name_tool -change /usr/local/lib/libkdu_v80R.dylib ${PWD}/libkdu_v80R.dylib kdu_expand
+        codesign -s - -f ${PWD}/kdu_expand
+        echo "${{ github.workspace }}/kdu" >> $GITHUB_PATH
+        ./kdu_expand -version
 
     - name: windows-dependencies
       if: startsWith(matrix.os, 'windows')
       run: |
-        $env:Path += ";C:\Users\runneradmin\AppData\Roaming\Python\Python39\Scripts"
+        echo "C:/Users/runneradmin/AppData/Roaming/Python/Python39/Scripts" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+        echo $env:GITHUB_PATH
         $generator= "-DCMAKE_GENERATOR_PLATFORM=x64"
         echo "Generator: ${generator}"
         echo "GENERATOR_PLATFORM=$generator" >> $env:GITHUB_ENV
-        choco install wget --no-progress
+        choco install wget 7zip --no-progress
         wget -q http://kakadusoftware.com/wp-content/uploads/KDU805_Demo_Apps_for_Win64_200602.msi_.zip
         cmake -E tar -xvf KDU805_Demo_Apps_for_Win64_200602.msi_.zip
-        cmake -E make_directory ${{ github.workspace }}\kdu
-        msiexec /a KDU805_Demo_Apps_for_Win64_200602.msi /qn TARGETDIR=${{ github.workspace }}\kdu
-        $env:Path += ";${{ github.workspace }}\kdu"
+        mkdir kdu && cp KDU805_Demo_Apps_for_Win64_200602.msi kdu && cd kdu
+        7z e KDU805_Demo_Apps_for_Win64_200602.msi && 7z e disk1.cab
+        echo "${{ github.workspace }}/kdu" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+    - name: dependencies
+      run: |
+        git clone --depth=1 --branch=master https://github.com/GrokImageCompression/grok-test-data.git ${{ env.DATA_ROOT }}
+        python3 -m pip install --upgrade pip
 
     - name: Create Build Environment
       # Some projects don't allow in-source building, so create a separate build directory
