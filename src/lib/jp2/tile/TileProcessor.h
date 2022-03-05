@@ -130,7 +130,7 @@ struct TileProcessor
 	bool setTilePartDataLength(uint32_t tilePartLength, bool lastTilePartInCodeStream);
   private:
 	// Decompressing Only
-	uint32_t tilePartDataLength;
+	uint64_t tilePartDataLength;
 	/** index of tile being currently compressed/decompressed */
 	uint16_t tileIndex_;
 	// Compressing only - track which packets have already been written
