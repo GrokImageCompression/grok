@@ -67,9 +67,9 @@ class ExecSingleton {
 public:
 	static tf::Executor* instance(uint32_t numthreads)
 	{
-		static tf::Executor* singleton = new tf::Executor(numthreads ? numthreads : std::thread::hardware_concurrency());
+		static tf::Executor singleton(numthreads ? numthreads : std::thread::hardware_concurrency());
 
-		return singleton;
+		return &singleton;
 	}
 	static tf::Executor* get()
 	{
