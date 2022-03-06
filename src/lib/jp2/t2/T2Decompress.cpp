@@ -158,13 +158,21 @@ bool T2Decompress::decompressPackets(uint16_t tile_no, SparseBuffer* srcBuf,
 			catch(CorruptPacketHeaderException& cex)
 			{
 				GRK_UNUSED(cex);
-				GRK_WARN("Corrupt packet: tile=%d component=%02d resolution=%02d precinct=%03d "
-						 "layer=%02d",
-						 tile_no, currPi->compno, currPi->resno, currPi->precinctIndex,
-						 currPi->layno);
-				// ToDo: skip corrupt packet if PLT marker is present
-				*stopProcessionPackets = true;
-				break;
+				// we can skip corrupt packet if PLT markers are present
+				if (!tileProcessor->packetLengthCache.getMarkers()) {
+					GRK_ERROR("Corrupt packet: tile=%d component=%02d resolution=%02d precinct=%03d "
+							 "layer=%02d",
+							 tile_no, currPi->compno, currPi->resno, currPi->precinctIndex,
+							 currPi->layno);
+					*stopProcessionPackets = true;
+					break;
+				} else {
+					GRK_WARN("Corrupt packet: tile=%d component=%02d resolution=%02d precinct=%03d "
+							 "layer=%02d",
+							 tile_no, currPi->compno, currPi->resno, currPi->precinctIndex,
+							 currPi->layno);
+				}
+				// ToDo: skip corrupt packet if SOP marker is present
 			}
 		}
 		if(*stopProcessionPackets)
@@ -476,7 +484,7 @@ bool T2Decompress::readPacketHeader(TileCodingParams* p_tcp, const PacketIter* p
 			(uint16_t)(((uint16_t)(*header_data) << 8) | (uint16_t)(*(header_data + 1)));
 		if(marker != J2K_MS_EPH)
 		{
-			GRK_ERROR("Expected EPH marker, but found 0x%x", marker);
+			GRK_WARN("Expected EPH marker, but found 0x%x", marker);
 			throw CorruptPacketHeaderException();
 		}
 		else
