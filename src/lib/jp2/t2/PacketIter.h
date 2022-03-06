@@ -214,7 +214,7 @@ struct PacketIter
 	bool handledFirstInner;
 	PacketManager* packetManager;
 	uint8_t maxNumDecompositionResolutions;
-	bool isSingleProgression(void);
+	bool singleProgression_;
 	bool generatePrecinctIndex(void);
 	grkRectU32 generatePrecinct(uint64_t precinctIndex);
 	void update_dxy_for_comp(PiComp* comp);

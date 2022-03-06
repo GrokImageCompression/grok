@@ -29,7 +29,7 @@ PacketIter::PacketIter()
 	: enableTilePartGeneration(false), step_l(0), step_r(0), step_c(0), step_p(0), compno(0),
 	  resno(0), precinctIndex(0), layno(0), numcomps(0), comps(nullptr), tx0(0), ty0(0), tx1(0),
 	  ty1(0), x(0), y(0), dx(0), dy(0), handledFirstInner(false), packetManager(nullptr),
-	  maxNumDecompositionResolutions(0)
+	  maxNumDecompositionResolutions(0), singleProgression_(false)
 {
 	memset(&prog, 0, sizeof(prog));
 }
@@ -47,6 +47,7 @@ void PacketIter::init(PacketManager* packetMan)
 	packetManager = packetMan;
 	maxNumDecompositionResolutions =
 		packetManager->getTileProcessor()->getMaxNumDecompressResolutions();
+	singleProgression_ = packetManager->getNumProgressions() == 1;
 }
 bool PacketIter::next_cprl(void)
 {
@@ -107,7 +108,7 @@ bool PacketIter::next_pcrl(void)
 			// windowed decode:
 			// bail out if we reach a precinct which is past the
 			// bottom, right hand corner of the tile window
-			if(isSingleProgression())
+			if(singleProgression_)
 			{
 				auto win = packetManager->getTileProcessor()->getUnreducedTileWindow();
 				if(win.non_empty() &&
@@ -144,7 +145,7 @@ bool PacketIter::next_lrcp(void)
 {
 	for(; layno < prog.layE; layno++)
 	{
-		if(isSingleProgression())
+		if(singleProgression_)
 		{
 			auto maxLayer =
 				packetManager->getTileProcessor()->getTileCodingParams()->numLayersToDecompress;
@@ -192,7 +193,7 @@ bool PacketIter::next_rlcp(void)
 	}
 	for(; resno < prog.resE; resno++)
 	{
-		if(isSingleProgression())
+		if(singleProgression_)
 		{
 			if(resno >= maxNumDecompositionResolutions)
 				return false;
@@ -230,11 +231,8 @@ bool PacketIter::next_rpcl(void)
 {
 	for(; resno < prog.resE; resno++)
 	{
-		if(isSingleProgression())
-		{
-			if(resno >= maxNumDecompositionResolutions)
-				return false;
-		}
+		if(singleProgression_ && resno >= maxNumDecompositionResolutions)
+			return false;
 
 		// if all remaining components have degenerate precinct grid, then
 		// skip this resolution
@@ -396,17 +394,13 @@ uint8_t* PacketIter::get_include(uint16_t layerno)
 }
 bool PacketIter::update_include(void)
 {
-	if(isSingleProgression())
+	if(singleProgression_)
 		return true;
 	return packetManager->getIncludeTracker()->update(layno, resno, compno, precinctIndex);
 }
 void PacketIter::destroy_include(void)
 {
 	packetManager->getIncludeTracker()->clear();
-}
-bool PacketIter::isSingleProgression(void)
-{
-	return packetManager->getNumProgressions() == 1;
 }
 
 } // namespace grk
