@@ -125,7 +125,7 @@ struct TileProcessor
 	bool wholeTileDecompress;
 	CodingParams* cp_;
 	PacketLengthCache packetLengthCache;
-	uint32_t getTilePartDataLength(void);
+	uint64_t getTilePartDataLength(void);
 	bool subtractMarkerLength(uint16_t markerLen);
 	bool setTilePartDataLength(uint32_t tilePartLength, bool lastTilePartInCodeStream);
   private:

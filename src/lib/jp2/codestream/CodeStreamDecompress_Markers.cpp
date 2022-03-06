@@ -146,7 +146,7 @@ bool CodeStreamDecompress::parseTileHeaderMarkers(bool* canDecompress)
 					decompressorState_.lastSotReadPosition = sot_pos;
 				if(decompressorState_.skipTileData)
 				{
-					if(!stream_->skip(currentTileProcessor_->getTilePartDataLength()))
+					if(!stream_->skip((int64_t)currentTileProcessor_->getTilePartDataLength()))
 					{
 						GRK_ERROR("Stream too short");
 						return false;

@@ -41,7 +41,7 @@ TileProcessor::~TileProcessor()
 {
 	release(GRK_TILE_CACHE_NONE);
 }
-uint32_t TileProcessor::getTilePartDataLength(void){
+uint64_t TileProcessor::getTilePartDataLength(void){
 	return tilePartDataLength;
 }
 bool TileProcessor::subtractMarkerLength(uint16_t markerLen){
@@ -67,7 +67,7 @@ bool TileProcessor::setTilePartDataLength(uint32_t tilePartLength,
 		tilePartDataLength = tilePartLength - sot_marker_segment_len;
 	}
 	else {
-		tilePartDataLength = 0;
+		tilePartDataLength = stream_->numBytesLeft();
 	}
 
 	return true;
@@ -911,16 +911,12 @@ bool TileProcessor::prepareSodDecompress(CodeStreamDecompress* codeStream)
 
 	// note: we subtract 2 to account for SOD marker
 	auto tcp = codeStream->get_current_decode_tcp();
-	if(codeStream->getDecompressorState()->lastTilePartInCodeStream){
-		if (stream_->numBytesLeft() < 2){
-			GRK_WARN("SOD marker truncated in final tile part.");
-			tilePartDataLength = 0;
-		} else {
-			tilePartDataLength = (uint64_t)(stream_->numBytesLeft() - 2);
-		}
+	if(tilePartDataLength >= 2) {
+		tilePartDataLength -= 2;
 	}
-	else if(tilePartDataLength >= 2) {
-			tilePartDataLength -= 2;
+	else {
+		GRK_WARN("SOD marker truncated in final tile part.");
+		tilePartDataLength = 0;
 	}
 	if(tilePartDataLength)
 	{
