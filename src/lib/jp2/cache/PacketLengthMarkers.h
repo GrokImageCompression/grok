@@ -20,6 +20,9 @@
 
 namespace grk
 {
+
+#define DEBUG_PACKET_LENGTH_MARKERS
+
 typedef std::vector<uint32_t> PL_INFO_VEC;
 
 struct PacketLengthMarkerInfo
@@ -41,13 +44,13 @@ struct PacketLengthMarkers
 	PacketLengthMarkers(IBufferedStream* strm);
 	~PacketLengthMarkers(void);
 
-	// decompressor  packet lengths
+	// decompres packet lengths
 	bool readPLT(uint8_t* headerData, uint16_t header_size);
 	bool readPLM(uint8_t* headerData, uint16_t header_size);
 	void rewind(void);
 	uint32_t popNextPacketLength(void);
 
-	// compressor packet lengths
+	// compress packet lengths
 	void pushInit(void);
 	void pushNextPacketLength(uint32_t len);
 	uint32_t write(bool simulate);
@@ -62,13 +65,16 @@ struct PacketLengthMarkers
 	PL_MAP* markers_;
 	uint8_t markerIndex_;
 	PL_INFO_VEC* curr_vec_;
+
+	// decompress
 	size_t packetIndex_;
 	uint32_t packet_len_;
+
+	// compress
 	uint32_t markerBytesWritten_;
 	uint32_t totalBytesWritten_;
 	uint64_t marker_len_cache_;
 	IBufferedStream* stream_;
-	bool preCalculatedMarkerLengths;
 };
 
 } // namespace grk
