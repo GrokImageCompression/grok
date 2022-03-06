@@ -2149,7 +2149,9 @@ bool decompress_partial_tile(TileComponent* GRK_RESTRICT tilec, uint16_t compno,
 					goto cleanup;
 				}
 				if(node)
-					node[j].work([job, executor_h] { return executor_h(job); });
+					node[j].work([job, executor_h, &blockError] {
+					 blockError =  executor_h(job);
+					});
 				else
 					blockError = (executor_h(job) != 0);
 			}
@@ -2157,6 +2159,8 @@ bool decompress_partial_tile(TileComponent* GRK_RESTRICT tilec, uint16_t compno,
 				ExecSingleton::get()->run(taskflow).wait();
 				delete[] node;
 			}
+			if(blockError)
+				goto cleanup;
 		}
 
 		data_size = (resWindowRect.height() + 2 * FILTER_WIDTH) * VERT_PASS_WIDTH * sizeof(T) /
@@ -2192,7 +2196,8 @@ bool decompress_partial_tile(TileComponent* GRK_RESTRICT tilec, uint16_t compno,
 				goto cleanup;
 			}
 			if(node)
-				node[j].work([job, executor_v] { return executor_v(job); });
+				node[j].work([job, executor_v, &blockError] {
+					blockError = executor_v(job); });
 			else
 				blockError = (executor_v(job) != 0);
 		}
