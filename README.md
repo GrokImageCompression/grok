@@ -55,14 +55,11 @@ running `Ubuntu 21.04` with `5.11` Linux kernel
 
 ### Current Build Status
 [![badge-actions]][link-actions]
-[![badge-msvc-build]][link-msvc-build]
 [![badge-oss-fuzz]][link-oss-fuzz]  
 
 [badge-license]: https://img.shields.io/badge/License-AGPL%20v3-blue.svg
 [link-license]: https://github.com/GrokImageCompression/grok/blob/master/LICENSE
 [badge-actions]: https://github.com/GrokImageCompression/grok/actions/workflows/cmake.yml/badge.svg?branch=master
 [link-actions]: https://github.com/GrokImageCompression/grok/actions
-[badge-msvc-build]: https://ci.appveyor.com/api/projects/status/github/GrokImageCompression/grok?branch=master&svg=true
-[link-msvc-build]: https://ci.appveyor.com/project/boxerab/grok/branch/master
 [badge-oss-fuzz]: https://oss-fuzz-build-logs.storage.googleapis.com/badges/grok.svg
 [link-oss-fuzz]: https://bugs.chromium.org/p/oss-fuzz/issues/list?sort=-opened&can=1&q=proj:grok
