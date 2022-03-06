@@ -12,7 +12,8 @@ jobs:
   build:
     strategy:
        matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        os: [ubuntu-latest, windows-latest]
+          #os: [ubuntu-latest, windows-latest, macos-latest]
     # The CMake configure and build commands are platform agnostic and should work equally
     # well on Windows or Mac.  You can convert this to a matrix build if you need
     # cross-platform coverage.
@@ -21,6 +22,11 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
+
+    - name: dependencies
+      run: |
+        python3 -m pip install --upgrade pip
+        cmake -E make_directory ${{ github.workspace }}/build
 
     - name: ubuntu-dependencies
       if: startsWith(matrix.os, 'ubuntu')
@@ -73,11 +79,6 @@ jobs:
         7z e KDU805_Demo_Apps_for_Win64_200602.msi && 7z e disk1.cab
         echo "${{ github.workspace }}/kdu" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
         git clone --depth=1 --branch=master https://github.com/GrokImageCompression/grok-test-data.git ${{ env.DATA_ROOT }}
-
-    - name: dependencies
-      run: |
-        python3 -m pip install --upgrade pip
-        cmake -E make_directory ${{ github.workspace }}/build
 
     - name: Configure CMake
       # Use a bash shell so we can use the same syntax for environment variable
