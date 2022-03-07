@@ -33,7 +33,7 @@ class PacketLengthCache
 
   private:
 	PacketLengthMarkers* pltMarkers;
-	SequentialCache<PacketInfo> packetInfoCache;
+	SequentialPtrCache<PacketInfo> packetInfoCache;
 	CodingParams* cp_;
 };
 

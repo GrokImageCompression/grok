@@ -20,16 +20,19 @@
 
 namespace grk
 {
+
+// dynamic array of pointers of type T
+// hybrid design : combination of std::vector and simple array
 template<typename T>
-class SequentialCache
+class SequentialPtrCache
 {
   public:
-	SequentialCache(void) : SequentialCache(kSequentialChunkSize) {}
-	SequentialCache(uint64_t maxChunkSize)
-		: chunkSize_(std::min<uint64_t>(maxChunkSize, kSequentialChunkSize)), currChunk_(nullptr),
+	SequentialPtrCache(void) : SequentialPtrCache(kSequentialChunkSize) {}
+	SequentialPtrCache(uint64_t maxChunkSize)
+		: currChunk_(nullptr),chunkSize_(std::min<uint64_t>(maxChunkSize, kSequentialChunkSize)),
 		  index_(0)
 	{}
-	virtual ~SequentialCache(void)
+	virtual ~SequentialPtrCache(void)
 	{
 		for(auto& ch : chunks)
 		{
@@ -45,20 +48,21 @@ class SequentialCache
 		index_ = 0;
 		currChunk_ = chunks[0];
 	}
+	// get next item
 	T* get()
 	{
 		uint64_t itemIndex = index_ % chunkSize_;
 		uint64_t chunkIndex = index_ / chunkSize_;
-		bool initialized = (currChunk_ != nullptr);
-		bool lastChunk = (chunkIndex == chunks.size() - 1);
-		bool endOfChunk = (itemIndex == chunkSize_ - 1);
-		bool createNew = !initialized || (lastChunk && endOfChunk);
+		bool isInitialized = (currChunk_ != nullptr);
+		bool isLastChunk = (chunkIndex == chunks.size() - 1);
+		bool isEndOfChunk = (itemIndex == chunkSize_ - 1);
+		bool createNewChunk = !isInitialized || (isLastChunk && isEndOfChunk);
 		itemIndex++;
-		if(createNew || endOfChunk)
+		if(createNewChunk || isEndOfChunk)
 		{
 			itemIndex = 0;
 			chunkIndex++;
-			if(createNew)
+			if(createNewChunk)
 			{
 				currChunk_ = new T*[chunkSize_];
 				memset(currChunk_, 0, chunkSize_ * sizeof(T*));
@@ -70,12 +74,13 @@ class SequentialCache
 			}
 		}
 		auto item = currChunk_[itemIndex];
+		// create new item if null
 		if(!item)
 		{
 			item = create();
 			currChunk_[itemIndex] = item;
 		}
-		if(initialized)
+		if(isInitialized)
 			index_++;
 		return item;
 	}
@@ -89,10 +94,80 @@ class SequentialCache
 
   private:
 	std::vector<T**> chunks;
-	uint64_t chunkSize_;
 	T** currChunk_;
+	uint64_t chunkSize_;
 	uint64_t index_;
 	static constexpr uint64_t kSequentialChunkSize = 1024;
 };
+
+// dynamic array of objects of type T
+// hybrid design : combination of std::vector and simple array
+template<typename T>
+class SequentialCache
+{
+  public:
+	SequentialCache(void) : SequentialCache(kSequentialChunkSize) {}
+	SequentialCache(uint64_t maxChunkSize)
+		: currChunk_(nullptr),chunkSize_(std::min<uint64_t>(maxChunkSize, kSequentialChunkSize)),
+		  index_(0)
+	{}
+	virtual ~SequentialCache(void)
+	{
+		for(auto& ch : chunks)
+			delete[] ch;
+	}
+	void rewind(void)
+	{
+		if(chunks.empty())
+			return;
+		index_ = 0;
+		currChunk_ = chunks[0];
+	}
+	// get pointer to next item
+	T* get()
+	{
+		uint64_t itemIndex = index_ % chunkSize_;
+		uint64_t chunkIndex = index_ / chunkSize_;
+		bool isInitialized = (currChunk_ != nullptr);
+		bool isLastChunk = (chunkIndex == chunks.size() - 1);
+		bool isEndOfChunk = (itemIndex == chunkSize_ - 1);
+		bool createNewChunk = !isInitialized || (isLastChunk && isEndOfChunk);
+		itemIndex++;
+		if(createNewChunk || isEndOfChunk)
+		{
+			itemIndex = 0;
+			chunkIndex++;
+			if(createNewChunk)
+			{
+				currChunk_ = new T[chunkSize_];
+				memset(currChunk_, 0, chunkSize_ * sizeof(T));
+				chunks.push_back(currChunk_);
+			}
+			else
+			{
+				currChunk_ = chunks[chunkIndex];
+			}
+		}
+		auto item = currChunk_ + itemIndex;
+		if(isInitialized)
+			index_++;
+		return item;
+	}
+
+  protected:
+	virtual T* create(void)
+	{
+		auto item = new T();
+		return item;
+	}
+
+  private:
+	std::vector<T*> chunks;
+	T* currChunk_;
+	uint64_t chunkSize_;
+	uint64_t index_;
+	static constexpr uint64_t kSequentialChunkSize = 1024;
+};
+
 
 } // namespace grk
