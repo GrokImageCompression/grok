@@ -92,8 +92,6 @@ class PacketManager
 	 * Check if there is a remaining valid progression order
 	 */
 	bool checkForRemainingValidProgression(int32_t prog, uint32_t pino, const char* progString);
-
-	void init(TileCodingParams* tcp, uint8_t max_res, uint64_t max_precincts);
 	GrkImage* image;
 	CodingParams* cp;
 	uint16_t tileno;

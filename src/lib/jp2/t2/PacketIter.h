@@ -204,7 +204,9 @@ struct PacketIter
 	PacketIter();
 	~PacketIter();
 
-	void init(PacketManager* packetMan, TileCodingParams* tcp);
+	void init(	PacketManager* packetMan,
+				TileCodingParams* tcp);
+
 	void genPrecinctInfo(TileCodingParams* tcp);
 
 	uint8_t* get_include(uint16_t layerIndex);
@@ -218,9 +220,6 @@ struct PacketIter
 	bool next(void);
 
 	void update_dxy(void);
-
-	/** Enabling Tile part generation*/
-	bool enableTilePartGeneration;
 
 	/** layer step used to localize the packet in the include vector */
 	uint64_t step_l;
@@ -263,7 +262,6 @@ struct PacketIter
 	bool genPrecinctX0Grid(ResPrecinctInfo *rpInfo);
 	bool genPrecinctResCheck(ResPrecinctInfo *rpInfo);
 	bool generatePrecinctIndex(void);
-	grkRectU32 generatePrecinct(uint64_t precinctIndex);
 	void update_dxy_for_comp(PiComp* comp);
 
 	/**
