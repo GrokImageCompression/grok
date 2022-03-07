@@ -21,9 +21,9 @@
 #include <assert.h>
 #include <ctype.h>
 #include <math.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
 
 #include "BMPFormat.h"
 #include "PGXFormat.h"
@@ -40,8 +40,8 @@
 
 #ifdef GROK_HAVE_LIBTIFF
 #include "TIFFFormat.h"
-#include <tiffio.h> /* TIFFSetWarningHandler */
-#endif              /* GROK_HAVE_LIBTIFF */
+#include <tiffio.h>
+#endif
 
 #include <string>
 #define TCLAP_NAMESTARTSTRING "-"
@@ -138,10 +138,6 @@ static char *createMultiComponentsFilename(std::string inFilename,
 
   return outFilename;
 }
-
-/*******************************************************************************
- *
- *******************************************************************************/
 static grk_image *readImageFromFilePPM(const char *filename,
                                        uint16_t nbFilenamePGX,
                                        const char *separator) {
@@ -158,13 +154,9 @@ static grk_image *readImageFromFilePPM(const char *filename,
 
   if (!nbFilenamePGX)
     return nullptr;
-
-  /* set encoding parameters to default values */
   grk_compress_set_default_params(&parameters);
   parameters.decod_format = GRK_PXM_FMT;
   strcpy(parameters.infile, filename);
-
-  /* Allocate memory*/
   src_param = (grk_image_comp *)malloc((size_t)nbFilenamePGX *
                                            sizeof(grk_image_comp));
   if (!src_param)
@@ -172,9 +164,7 @@ static grk_image *readImageFromFilePPM(const char *filename,
   dest_data = (int **)calloc((size_t)nbFilenamePGX, sizeof(*dest_data));
   if (!dest_data)
     goto cleanup;
-
   for (fileno = 0; fileno < nbFilenamePGX; fileno++) {
-    /* Create the right filename*/
     char *filenameComponentPGX = nullptr;
     if (strlen(separator) == 0) {
       filenameComponentPGX = (char *)malloc((strlen(filename) + 1) *
@@ -185,8 +175,6 @@ static grk_image *readImageFromFilePPM(const char *filename,
     } else
       filenameComponentPGX =
           createMultiComponentsFilename(filename, fileno, separator);
-
-    /* Read the file corresponding to the component */
     PNMFormat pnm(false);
     src = pnm.decode(filenameComponentPGX, &parameters);
     if (!src || !src->comps || !src->comps->h || !src->comps->w) {
@@ -194,8 +182,6 @@ static grk_image *readImageFromFilePPM(const char *filename,
       free(filenameComponentPGX);
       goto cleanup;
     }
-
-    /* Set the image_read parameters*/
     src_param[fileno].x0 = 0;
     src_param[fileno].y0 = 0;
     src_param[fileno].dx = 1;
@@ -205,8 +191,6 @@ static grk_image *readImageFromFilePPM(const char *filename,
     src_param[fileno].stride = src->comps->stride;
     src_param[fileno].prec = src->comps->prec;
     src_param[fileno].sgnd = src->comps->sgnd;
-
-    /* Copy data*/
     dest_data[fileno] = (int32_t *)malloc(
         src_param[fileno].h * src_param[fileno].stride * sizeof(int32_t));
     if (!dest_data[fileno]) {
@@ -216,12 +200,9 @@ static grk_image *readImageFromFilePPM(const char *filename,
     }
     memcpy(dest_data[fileno], src->comps->data,
            src->comps->h * src->comps->stride * sizeof(int));
-
-    /* Free memory*/
     grk_object_unref(&src->obj);
     free(filenameComponentPGX);
   }
-
   dest = grk_image_new((uint16_t)nbFilenamePGX, src_param, GRK_CLRSPC_UNKNOWN);
   if (!dest || !dest->comps)
     goto cleanup;
@@ -234,7 +215,6 @@ static grk_image *readImageFromFilePPM(const char *filename,
       dest_data[fileno] = nullptr;
     }
   }
-
 cleanup:
   free(src_param);
   if (dest_data) {
@@ -246,22 +226,14 @@ cleanup:
   return dest;
 }
 
-static grk_image *readImageFromFileBMP(const char *filename,
-                                       uint16_t nbFilenamePGX,
-                                       const char *separator) {
+static grk_image *readImageFromFileBMP(const char *filename) {
   grk_image *image_read = nullptr;
   grk_cparameters parameters;
-  (void)nbFilenamePGX;
-  (void)separator;
-
-  /* set encoding parameters to default values */
   grk_compress_set_default_params(&parameters);
   parameters.decod_format = GRK_BMP_FMT;
   strcpy(parameters.infile, filename);
-
   BMPFormat bmp;
   image_read = bmp.decode(filename, &parameters);
-
   if (!image_read) {
     spdlog::error("Unable to load BMP file");
     return nullptr;
@@ -270,15 +242,9 @@ static grk_image *readImageFromFileBMP(const char *filename,
   return image_read;
 }
 
-static grk_image *readImageFromFilePNG(const char *filename,
-                                       uint16_t nbFilenamePGX,
-                                       const char *separator) {
+static grk_image *readImageFromFilePNG(const char *filename) {
   grk_image *image_read = nullptr;
   grk_cparameters parameters;
-  (void)nbFilenamePGX;
-  (void)separator;
-
-  /* set encoding parameters to default values */
   grk_compress_set_default_params(&parameters);
   parameters.decod_format = GRK_PNG_FMT;
   strcpy(parameters.infile, filename);
@@ -296,12 +262,9 @@ static grk_image *readImageFromFilePNG(const char *filename,
 }
 
 static grk_image *readImageFromFileTIF(const char *filename,
-                                       uint16_t nbFilenamePGX,
                                        const char *separator) {
   grk_image *image_read = nullptr;
   grk_cparameters parameters;
-  (void)nbFilenamePGX;
-  (void)separator;
 
 #ifdef GROK_HAVE_LIBTIFF
   TIFFSetWarningHandler(nullptr);
@@ -310,8 +273,6 @@ static grk_image *readImageFromFileTIF(const char *filename,
 
   if (strlen(separator) != 0)
     return nullptr;
-
-  /* set encoding parameters to default values */
   grk_compress_set_default_params(&parameters);
   parameters.decod_format = GRK_TIF_FMT;
   strcpy(parameters.infile, filename);
@@ -344,8 +305,6 @@ static grk_image *readImageFromFilePGX(const char *filename,
 
   if (!nbFilenamePGX)
     return nullptr;
-
-  /* set encoding parameters to default values */
   grk_compress_set_default_params(&parameters);
   parameters.decod_format = GRK_PGX_FMT;
   strcpy(parameters.infile, filename);
@@ -384,8 +343,6 @@ static grk_image *readImageFromFilePGX(const char *filename,
         free(filenameComponentPGX);
       goto cleanup;
     }
-
-    /* Set the image_read parameters*/
     dest_param[fileno].x0 = 0;
     dest_param[fileno].y0 = 0;
     dest_param[fileno].dx = 1;
@@ -395,20 +352,15 @@ static grk_image *readImageFromFilePGX(const char *filename,
     dest_param[fileno].stride = src->comps->stride;
     dest_param[fileno].prec = src->comps->prec;
     dest_param[fileno].sgnd = src->comps->sgnd;
-
-    /* Copy data*/
     dest_data[fileno] = (int32_t *)malloc(
         dest_param[fileno].h * dest_param[fileno].stride * sizeof(int32_t));
     if (!dest_data[fileno])
       goto cleanup;
     memcpy(dest_data[fileno], src->comps->data,
            src->comps->h * src->comps->stride * sizeof(int));
-
-    /* Free memory*/
     grk_object_unref(&src->obj);
     free(filenameComponentPGX);
   }
-
   dest = grk_image_new(nbFilenamePGX, dest_param, GRK_CLRSPC_UNKNOWN);
   if (!dest || !dest->comps)
     goto cleanup;
@@ -433,9 +385,7 @@ cleanup:
 }
 
 #if defined(GROK_HAVE_LIBPNG)
-/*******************************************************************************
- *
- *******************************************************************************/
+
 static int imageToPNG(const grk_image *src, const char *filename,
                       uint16_t compno) {
   grk_image_comp dest_param;
@@ -476,28 +426,17 @@ static int imageToPNG(const grk_image *src, const char *filename,
 #endif
 
 struct test_cmp_parameters {
-  /**  */
   char *base_filename;
-  /**  */
   char *test_filename;
-  /** Number of components */
   uint16_t nbcomp;
-  /**  */
   double *tabMSEvalues;
-  /**  */
   double *tabPEAKvalues;
-  /**  */
   int nr_flag;
-  /**  */
   char separator_base[2];
-  /**  */
   char separator_test[2];
-
   uint32_t region[4];
   bool regionSet;
 };
-
-/* return decode format PGX / TIF / PPM , return GRK_UNK_FMT on error */
 static GRK_SUPPORTED_FILE_FMT get_decod_format(test_cmp_parameters *param) {
   auto base_format = grk::get_file_format(param->base_filename);
   auto test_format = grk::get_file_format(param->test_filename);
@@ -506,11 +445,6 @@ static GRK_SUPPORTED_FILE_FMT get_decod_format(test_cmp_parameters *param) {
 
   return base_format;
 }
-
-/*******************************************************************************
- * Parse command line
- *******************************************************************************/
-
 class GrokOutput : public TCLAP::StdOutput {
 public:
   virtual void usage(TCLAP::CmdLineInterface &c) {
@@ -518,15 +452,12 @@ public:
     compare_images_help_display();
   }
 };
-
 static int parse_cmdline_cmp(int argc, char **argv,
                              test_cmp_parameters *param) {
   char *MSElistvalues = nullptr;
   char *PEAKlistvalues = nullptr;
   char *separatorList = nullptr;
   int flagM = 0, flagP = 0;
-
-  /* Init parameters*/
   param->base_filename = nullptr;
   param->test_filename = nullptr;
   param->nbcomp = 0;
@@ -573,17 +504,12 @@ static int parse_cmdline_cmp(int argc, char **argv,
       if (!param->base_filename)
         return 1;
       strcpy(param->base_filename, baseImageArg.getValue().c_str());
-      /*spdlog::info("param->base_filename = %s [%u / %u]",
-       * param->base_filename, strlen(param->base_filename), sizemembasefile
-       * );*/
     }
     if (testImageArg.isSet()) {
       param->test_filename = (char *)malloc(testImageArg.getValue().size() + 1);
       if (!param->test_filename)
         return 1;
       strcpy(param->test_filename, testImageArg.getValue().c_str());
-      /*spdlog::info("param->test_filename = %s [%u / %u]",
-       * param->test_filename, strlen(param->test_filename), sizememtestfile);*/
     }
     if (numComponentsArg.isSet()) {
       param->nbcomp = (uint16_t)numComponentsArg.getValue();
@@ -639,9 +565,6 @@ static int parse_cmdline_cmp(int argc, char **argv,
         size_t sizeseplist = strlen(separatorList) + 1;
         char *separatorList2 = (char *)malloc(sizeseplist);
         strcpy(separatorList2, separatorList);
-        /*spdlog::info("separatorList2 = %s [%u / %u]", separatorList2,
-         * strlen(separatorList2), sizeseplist);*/
-
         if (strlen(separatorList) == 2) { /* one separator behind b or t*/
           char *resultT = nullptr;
           resultT = strtok(separatorList2, "t");
@@ -663,9 +586,6 @@ static int parse_cmdline_cmp(int argc, char **argv,
             param->separator_test[0] = separatorList[1];
             param->separator_test[1] = 0;
           }
-          /*spdlog::info("sep b = %s [%u] and sep t = %s
-           * [%u]",param->separator_base, strlen(param->separator_base),
-           * param->separator_test, strlen(param->separator_test) );*/
         } else { /* == 4 characters we must found t and b*/
           char *resultT = nullptr;
           resultT = strtok(separatorList2, "t");
@@ -727,10 +647,6 @@ static int parse_cmdline_cmp(int argc, char **argv,
 
   return 0;
 }
-
-/*******************************************************************************
- * MAIN
- *******************************************************************************/
 int main(int argc, char **argv) {
 
 #ifndef NDEBUG
@@ -739,7 +655,6 @@ int main(int argc, char **argv) {
     out += std::string(" ") + argv[i];
   spdlog::info("{}", out.c_str());
 #endif
-
   test_cmp_parameters inParam;
   uint16_t compno;
   int failed = 1;
@@ -754,14 +669,10 @@ int main(int argc, char **argv) {
   grk_image *imageBase = nullptr, *imageTest = nullptr, *imageDiff = nullptr;
   grk_image_comp *param_image_diff = nullptr;
   int decod_format;
-
-  /* Get parameters from command line*/
   if (parse_cmdline_cmp(argc, argv, &inParam)) {
     compare_images_help_display();
     goto cleanup;
   }
-
-  /* Display Parameters*/
   spdlog::info("******Parameters*********");
   spdlog::info("Base_filename = {}", inParam.base_filename);
   spdlog::info("Test_filename = {}", inParam.test_filename);
@@ -804,16 +715,14 @@ int main(int argc, char **argv) {
                                      inParam.separator_base);
   } else if (decod_format == GRK_TIF_FMT) {
     imageBase =
-        readImageFromFileTIF(inParam.base_filename, nbFilenamePGXbase, "");
+        readImageFromFileTIF(inParam.base_filename, "");
   } else if (decod_format == GRK_PXM_FMT) {
     imageBase = readImageFromFilePPM(inParam.base_filename, nbFilenamePGXbase,
                                      inParam.separator_base);
   } else if (decod_format == GRK_PNG_FMT) {
-    imageBase = readImageFromFilePNG(inParam.base_filename, nbFilenamePGXbase,
-                                     inParam.separator_base);
+    imageBase = readImageFromFilePNG(inParam.base_filename);
   } else if (decod_format == GRK_BMP_FMT) {
-    imageBase = readImageFromFileBMP(inParam.base_filename, nbFilenamePGXbase,
-                                     inParam.separator_base);
+    imageBase = readImageFromFileBMP(inParam.base_filename);
   } else {
     spdlog::error("compare_images does not support this base file format");
     goto cleanup;
@@ -835,16 +744,14 @@ int main(int argc, char **argv) {
                                      inParam.separator_test);
   } else if (decod_format == GRK_TIF_FMT) {
     imageTest =
-        readImageFromFileTIF(inParam.test_filename, nbFilenamePGXtest, "");
+        readImageFromFileTIF(inParam.test_filename, "");
   } else if (decod_format == GRK_PXM_FMT) {
     imageTest = readImageFromFilePPM(inParam.test_filename, nbFilenamePGXtest,
                                      inParam.separator_test);
   } else if (decod_format == GRK_PNG_FMT) {
-    imageTest = readImageFromFilePNG(inParam.test_filename, nbFilenamePGXtest,
-                                     inParam.separator_test);
+    imageTest = readImageFromFilePNG(inParam.test_filename);
   } else if (decod_format == GRK_BMP_FMT) {
-    imageTest = readImageFromFileBMP(inParam.test_filename, nbFilenamePGXbase,
-                                     inParam.separator_base);
+    imageTest = readImageFromFileBMP(inParam.test_filename);
   } else {
     spdlog::error("compare_images does not support this test file format");
     goto cleanup;
@@ -858,15 +765,9 @@ int main(int argc, char **argv) {
   strcat(testFileName, ".test");
 
   /*----------DIFF IMAGE--------*/
-
-  /* Allocate memory*/
   param_image_diff = (grk_image_comp *)malloc(imageBase->numcomps *
                                                   sizeof(grk_image_comp));
-
-  /* Comparison of header parameters*/
   spdlog::info("Step 1 -> Header comparison");
-
-  /* check dimensions (issue 286)*/
   if (imageBase->numcomps != imageTest->numcomps) {
     spdlog::error("dimension mismatch ({} != {})", imageBase->numcomps,
                   imageTest->numcomps);
@@ -929,21 +830,14 @@ int main(int argc, char **argv) {
 
   imageDiff = grk_image_new(imageBase->numcomps, param_image_diff,
                             GRK_CLRSPC_UNKNOWN);
-  /* Free memory*/
   free(param_image_diff);
   param_image_diff = nullptr;
-
-  /* Measurement computation*/
   spdlog::info("Step 2 -> measurement comparison");
 
   memsizedifffilename = strlen(inParam.test_filename) + 1 + 5 + 2 + 4;
   filenamePNGdiff = (char *)malloc(memsizedifffilename);
   strcpy(filenamePNGdiff, inParam.test_filename);
   strcat(filenamePNGdiff, ".diff");
-  /*spdlog::info("filenamePNGdiff = %s [%u / %u octets]",filenamePNGdiff,
-   * strlen(filenamePNGdiff),memsizedifffilename );*/
-
-  /* Compute pixel diff*/
   for (compno = 0; compno < imageDiff->numcomps; compno++) {
     double SE = 0, PEAK = 0;
     double MSE = 0;
@@ -1016,7 +910,6 @@ int main(int argc, char **argv) {
         spdlog::info("<DartMeasurement name=\"MSE_{}\" "
                      "type=\"numeric/double\"> {} </DartMeasurement>",
                      compno, MSE);
-
 #ifdef GROK_HAVE_LIBPNG
         {
           char *filenamePNGbase_it_comp = nullptr;
@@ -1043,43 +936,29 @@ int main(int argc, char **argv) {
             goto cleanup;
           }
           strcpy(filenamePNGdiff_it_comp, filenamePNGdiff);
-
           sprintf(it_compc, "_%i", compno);
           strcat(it_compc, ".png");
           strcat(filenamePNGbase_it_comp, it_compc);
-          /*spdlog::info("filenamePNGbase_it = %s [%u / %u
-           * octets]",filenamePNGbase_it_comp,
-           * strlen(filenamePNGbase_it_comp),memsizebasefilename );*/
           strcat(filenamePNGtest_it_comp, it_compc);
-          /*spdlog::info("filenamePNGtest_it = %s [%u / %u
-           * octets]",filenamePNGtest_it_comp,
-           * strlen(filenamePNGtest_it_comp),memsizetestfilename );*/
           strcat(filenamePNGdiff_it_comp, it_compc);
-          /*spdlog::info("filenamePNGdiff_it = %s [%u / %u
-           * octets]",filenamePNGdiff_it_comp,
-           * strlen(filenamePNGdiff_it_comp),memsizedifffilename );*/
-
           if (imageToPNG(imageBase, filenamePNGbase_it_comp, compno) ==
               EXIT_SUCCESS) {
             spdlog::info("<DartMeasurementFile name=\"BaselineImage_{}\" "
                          "type=\"image/png\"> {} </DartMeasurementFile>",
                          compno, filenamePNGbase_it_comp);
           }
-
           if (imageToPNG(imageTest, filenamePNGtest_it_comp, compno) ==
               EXIT_SUCCESS) {
             spdlog::info("<DartMeasurementFile name=\"TestImage_{}\" "
                          "type=\"image/png\"> {} </DartMeasurementFile>",
                          compno, filenamePNGtest_it_comp);
           }
-
           if (imageToPNG(imageDiff, filenamePNGdiff_it_comp, compno) ==
               EXIT_SUCCESS) {
             spdlog::info("<DartMeasurementFile name=\"DiffferenceImage_{}\" "
                          "type=\"image/png\"> {} </DartMeasurementFile>",
                          compno, filenamePNGdiff_it_comp);
           }
-
           free(filenamePNGbase_it_comp);
           free(filenamePNGtest_it_comp);
           free(filenamePNGdiff_it_comp);
@@ -1088,7 +967,6 @@ int main(int argc, char **argv) {
       }
     }
   } /* it_comp loop */
-
   spdlog::info("---- TEST SUCCEEDED ----");
   failed = 0;
 cleanup:

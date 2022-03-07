@@ -17,12 +17,6 @@
  *    This source code incorporates work covered by the BSD 2-clause license.
  *    Please see the LICENSE file in the root directory for details.
  */
-
-#define USE_GRK_DEPRECATED
-/* set this macro to enable profiling for the given test */
-/* warning : in order to be effective, Grok must have been built with profiling
- * enabled !! */
-/*#define _PROFILE*/
 #include "common.h"
 #include <math.h>
 #include <stdio.h>
@@ -36,7 +30,6 @@
 #endif
 
 #include "grk_config.h"
-#include <stdlib.h>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -109,21 +102,12 @@ int main(int argc, char *argv[]) {
     spdlog::error("failed to create a stream from file {}", input_file);
     goto beach;
   }
-
-  /* Set the default decoding parameters */
   grk_decompress_set_default_params(&param.core);
-
-  /* */
   if (!grk::jpeg2000_file_format(input_file, &param.decod_format)) {
     spdlog::error("failed to parse input file format");
     goto beach;
   }
-
-  /** you may here add custom decoding parameters */
-  /* do not use layer decoding limitations */
   param.core.max_layers = 0;
-
-  /* do not use resolutions reductions */
   param.core.reduce = 0;
 
   switch (param.decod_format) {
@@ -144,29 +128,21 @@ int main(int argc, char *argv[]) {
   grk_set_msg_handlers(grk::infoCallback, nullptr,
 						grk::warningCallback, nullptr,
 						grk::errorCallback, nullptr);
-
-  /* Set up the decompress parameters using user parameters */
   if (!grk_decompress_init(codec, &param.core)) {
     spdlog::error("test tile decoder: failed to set up decompressor\n");
     goto beach;
   }
-
-  /* Read the main header of the codestream and if necessary the JP2 boxes*/
   if (!grk_decompress_read_header(codec, nullptr)) {
     spdlog::error("test tile decoder: failed to read the header\n");
     goto beach;
   }
-
   if (!grk_decompress_set_window(codec, da_x0, da_y0, da_x1, da_y1)) {
     spdlog::error(
         "grk_decompress_set_window: failed to set decompress window\n");
     goto beach;
   }
-
   if (!grk_decompress_tile(codec, tile_index))
     goto beach;
-  // ToDo: inspect data
-
   if (!grk_decompress_end(codec))
     goto beach;
 

@@ -1,5 +1,3 @@
-# Tests
-
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
@@ -124,9 +122,8 @@ set_property(TEST rta4 APPEND PROPERTY DEPENDS tte4)
 add_test(NAME rta5 COMMAND j2k_random_tile_access tte5.j2k)
 set_property(TEST rta5 APPEND PROPERTY DEPENDS tte5)
 
-# No image is sent to dashboard if libpng is not available.
 if(NOT GROK_HAVE_LIBPNG)
-  message(WARNING "libpng seems to be not available: if you want run the non-regression tests with images reported to the dashboard, you need GROK_BUILD_THIRDPARTY")
+  message(WARNING "libpng is not available - running regression tests requires GROK_BUILD_THIRDPARTY enabled.")
 endif()
 
 add_subdirectory(conformance)

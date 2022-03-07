@@ -97,90 +97,30 @@ int main(int argc, char *argv[]) {
     data[i] = (uint8_t)i;
 
   grk_compress_set_default_params(&param);
-  /** you may here add custom encoding parameters */
-  /* rate specifications */
-  /** number of quality layers in the stream */
   param.numlayers = 1;
   param.allocationByQuality = true;
   param.layer_distortion[0] = 20;
-  /* is using others way of calculation */
-  /* param.cp_disto_alloc = 1 or param.cp_fixed_alloc = 1 */
-  /* param.tcp_rates[0] = ... */
-
-  /* tile definitions parameters */
-  /* position of the tile grid aligned with the image */
   param.tx0 = 0;
   param.ty0 = 0;
-  /* tile size, we are using tile based encoding */
   param.tile_size_on = true;
   param.t_width = tile_width;
   param.t_height = tile_height;
-
-  /* use irreversible encoding ?*/
   param.irreversible = irreversible;
-
-  /* do not bother with mct, the rsiz is set when calling grk_set_MCT*/
-  /*param.cp_rsiz = GRK_STD_RSIZ;*/
-
-  /* no cinema */
-  /*param.cp_cinema = 0;*/
-
-  /* do not bother using SOP or EPH markers, do not use custom size precinct */
-  /* number of precincts to specify */
-  /* param.csty = 0;*/
-  /* param.res_spec = ... */
-  /* param.prch_init[i] = .. */
-  /* param.prcw_init[i] = .. */
-
-  /* do not use progression order changes */
-  /*param.numpocs = 0;*/
-  /* param.POC[i].... */
-
-  /* do not restrain the size for a component.*/
-  /* param.max_comp_size = 0; */
-
-  /** block encoding style for each component, do not use at the moment */
-  /** J2K_CCP_CBLKSTY_TERMALL, J2K_CCP_CBLKSTY_LAZY, J2K_CCP_CBLKSTY_VSC,
-   * J2K_CCP_CBLKSTY_SEGSYM, J2K_CCP_CBLKSTY_RESET */
-  /* param.mode = 0;*/
-
-  /** number of resolutions */
   param.numresolution = 6;
-
-  /** progression order to use*/
-  /** GRK_LRCP, GRK_RLCP, GRK_RPCL, PCRL, CPRL */
   param.prog_order = GRK_LRCP;
-
-  /** no "region" of interest, more precisely component */
-  /* param.roi_compno = -1; */
-  /* param.roi_shift = 0; */
-
-  /* we are not using multiple tile parts for a tile. */
-  /* param.tp_on = 0; */
-  /* param.tp_flag = 0; */
-
-  /* if we are using mct */
 #ifdef USING_MCT
   grk_set_MCT(&param, mct, offsets, NUM_COMPS);
 #endif
-
-  /* image definition */
   current_param_ptr = params;
   for (i = 0; i < num_comps; ++i) {
-    /* do not bother bpp useless */
-    /*current_param_ptr->bpp = COMP_PREC;*/
     current_param_ptr->dx = 1;
     current_param_ptr->dy = 1;
-
     current_param_ptr->h = image_height;
     current_param_ptr->w = image_width;
-
     current_param_ptr->sgnd = false;
     current_param_ptr->prec = comp_prec;
-
     current_param_ptr->x0 = 0;
     current_param_ptr->y0 = 0;
-
     ++current_param_ptr;
   }
 
@@ -190,8 +130,6 @@ int main(int argc, char *argv[]) {
                   output_file);
     goto cleanup;
   }
-
-  /* should we do j2k or jp2 ?*/
   len = strlen(output_file);
   if (strcmp(output_file + len - 4, ".jp2") == 0) {
     codec = grk_compress_create(GRK_CODEC_JP2, stream);
@@ -201,12 +139,9 @@ int main(int argc, char *argv[]) {
   if (!codec) {
     goto cleanup;
   }
-
-  /* catch events using our callbacks and give a local context */
   grk_set_msg_handlers(grk::infoCallback, nullptr,
 						grk::warningCallback, nullptr,
 						grk::errorCallback, nullptr);
-
   image = grk_image_new(num_comps, params, GRK_CLRSPC_SRGB);
   if (!image)
     goto cleanup;

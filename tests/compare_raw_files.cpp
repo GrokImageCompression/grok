@@ -20,24 +20,19 @@
 
 #include "spdlog/spdlog.h"
 #include <ctype.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
 #define TCLAP_NAMESTARTSTRING "-"
 #include "tclap/CmdLine.h"
 #include "test_common.h"
 #include <string>
 
-typedef struct test_cmp_parameters {
-  /**  */
+struct test_cmp_parameters {
   char base_filename[4096];
-  /**  */
   char test_filename[4096];
-} test_cmp_parameters;
+};
 
-/*******************************************************************************
- * Command line help function
- *******************************************************************************/
 static void compare_raw_files_help_display(void) {
   fprintf(stdout,
           "\nList of parameters for the compare_raw_files function  \n");
@@ -48,10 +43,6 @@ static void compare_raw_files_help_display(void) {
   fprintf(stdout, "  -t \t REQUIRED \t filename to the test RAW image\n");
   fprintf(stdout, "\n");
 }
-
-/*******************************************************************************
- * Parse command line
- *******************************************************************************/
 static int parse_cmdline_cmp(int argc, char **argv,
                              test_cmp_parameters *param) {
   size_t sizemembasefile, sizememtestfile;
@@ -61,40 +52,29 @@ static int parse_cmdline_cmp(int argc, char **argv,
 
     TCLAP::ValueArg<std::string> baseArg("b", "base", "base file", false, "",
                                          "string", cmd);
-
     TCLAP::ValueArg<std::string> testArg("t", "test", "test file", false, "",
                                          "string", cmd);
-
     cmd.parse(argc, argv);
-
     if (baseArg.isSet()) {
       sizemembasefile = baseArg.getValue().length() + 1;
       strcpy(param->base_filename, baseArg.getValue().c_str());
-      /*printf("param->base_filename = %s [%u / %u]\n", param->base_filename,
-       * strlen(param->base_filename), sizemembasefile );*/
       index++;
     }
-
     if (testArg.isSet()) {
       sizememtestfile = testArg.getValue().length() + 1;
       strcpy(param->test_filename, testArg.getValue().c_str());
-      /*printf("param->test_filename = %s [%u / %u]\n", param->test_filename,
-       * strlen(param->test_filename), sizememtestfile);*/
       index++;
     }
-
   } catch (TCLAP::ArgException &e) // catch any exceptions
   {
     std::cerr << "error: " << e.error() << " for arg " << e.argId()
               << std::endl;
     return 0;
   }
+
   return index;
 }
 
-/*******************************************************************************
- * MAIN
- *******************************************************************************/
 int main(int argc, char **argv) {
 #ifndef NDEBUG
   std::string out;
@@ -104,13 +84,10 @@ int main(int argc, char **argv) {
   out += "\n";
   printf("%s", out.c_str());
 #endif
-
   int pos = 0;
   test_cmp_parameters inParam;
   FILE *file_test = nullptr, *file_base = nullptr;
-  unsigned char equal = 0U; /* returns error by default */
-
-  /* Get parameters from command line*/
+  bool equal = false;
   if (parse_cmdline_cmp(argc, argv, &inParam) == 1) {
     compare_raw_files_help_display();
     goto cleanup;
@@ -126,53 +103,40 @@ int main(int argc, char **argv) {
             inParam.test_filename);
     goto cleanup;
   }
-
   file_base = fopen(inParam.base_filename, "rb");
   if (!file_base) {
     fprintf(stderr, "Failed to open %s for reading !!\n",
             inParam.base_filename);
     goto cleanup;
   }
-
-  /* Read simultaneously the two files*/
-  equal = 1U;
+  equal = true;
   while (equal) {
-    unsigned char value_test = 0;
-    unsigned char eof_test = 0;
-    unsigned char value_base = 0;
-    unsigned char eof_base = 0;
+    bool value_test = false;
+    bool eof_test = false;
+    bool value_base = false;
+    bool eof_base = false;
 
-    /* Read one byte*/
-    if (!fread(&value_test, 1, 1, file_test)) {
-      eof_test = 1;
-    }
-
-    /* Read one byte*/
-    if (!fread(&value_base, 1, 1, file_base)) {
-      eof_base = 1;
-    }
-
-    /* End of file reached by the two files?*/
+    if (!fread(&value_test, 1, 1, file_test))
+      eof_test = true;
+    if (!fread(&value_base, 1, 1, file_base))
+      eof_base = true;
     if (eof_test && eof_base)
       break;
 
     /* End of file reached only by one file?*/
     if (eof_test || eof_base) {
       fprintf(stdout, "Files have different sizes.\n");
-      equal = 0;
+      equal = false;
     }
-
-    /* Binary values are equal?*/
     if (value_test != value_base) {
       fprintf(stdout,
               "Binary values read in the file are different %x vs %x at "
               "position %u.\n",
               value_test, value_base, pos);
-      equal = 0;
+      equal = false;
     }
     pos++;
   }
-
   if (equal)
     fprintf(stdout, "---- TEST SUCCEED: Files are equal ----\n");
 cleanup:
