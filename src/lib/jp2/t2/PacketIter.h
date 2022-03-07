@@ -173,8 +173,6 @@ struct ResPrecinctInfo {
 		return rhs &&
 				precinctWidthExp == rhs->precinctWidthExp &&
 				precinctHeightExp == rhs->precinctHeightExp &&
-				rpxshift == rhs->rpxshift &&
-				rpyshift == rhs->rpyshift &&
 				rpx0 == rhs->rpx0 &&
 				rpy0 == rhs->rpy0 &&
 				rpdx == rhs->rpdx &&
@@ -187,8 +185,6 @@ struct ResPrecinctInfo {
 	}
 	uint32_t precinctWidthExp;
 	uint32_t precinctHeightExp;
-	uint32_t rpxshift;
-	uint32_t rpyshift;
 	uint64_t rpx0;
 	uint64_t rpy0;
 	uint64_t rpdx;
@@ -262,16 +258,11 @@ struct PacketIter
 	bool singleProgression_;
 	ResPrecinctInfo * precinctInfo_;
 	uint32_t px0grid_;
-	bool px0gridFailed_;
 	uint32_t py0grid_;
-	bool py0gridFailed_;
-	bool resPrecinctFailed_;
-	void genPrecinctY0Grid(ResPrecinctInfo *rpInfo);
-	void genPrecinctX0Grid(ResPrecinctInfo *rpInfo);
-	void genPrecinctResCheck(ResPrecinctInfo *rpInfo);
+	bool genPrecinctY0Grid(ResPrecinctInfo *rpInfo);
+	bool genPrecinctX0Grid(ResPrecinctInfo *rpInfo);
+	bool genPrecinctResCheck(ResPrecinctInfo *rpInfo);
 	bool generatePrecinctIndex(void);
-	bool generatePrecinctIndexOpt(void);
-	bool generatePrecinctIndexUnopt(void);
 	grkRectU32 generatePrecinct(uint64_t precinctIndex);
 	void update_dxy_for_comp(PiComp* comp);
 
@@ -302,6 +293,8 @@ struct PacketIter
 	 @return returns false if pi pointed to the last packet or else returns true
 	 */
 	bool next_rpcl(void);
+	bool next_rpclUnopt(void);
+	bool next_rpclOpt(void);
 };
 
 /* ----------------------------------------------------------------------- */
