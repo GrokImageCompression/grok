@@ -29,8 +29,8 @@ PacketIter::PacketIter()
 	: enableTilePartGeneration(false), step_l(0), step_r(0), step_c(0), step_p(0), compno(0),
 	  resno(0), precinctIndex(0), layno(0), numcomps(0), comps(nullptr), tx0(0), ty0(0), tx1(0),
 	  ty1(0), x(0), y(0), dx(0), dy(0), handledFirstInner(false), packetManager(nullptr),
-	  maxNumDecompositionResolutions(0), singleProgression_(false), fixedNumResolutionsAcrossComponents_(false),
-	  fixedSubsamplingAcrossComponents_(false), precinctInfo_(nullptr)
+	  maxNumDecompositionResolutions(0), singleProgression_(false), precinctInfo_(nullptr),
+	  px0grid_(0), px0gridFailed_(false), py0grid_(0), py0gridFailed_(false), resPrecinctFailed_(false)
 {
 	memset(&prog, 0, sizeof(prog));
 }
@@ -53,8 +53,6 @@ void PacketIter::init(PacketManager* packetMan, TileCodingParams* tcp)
 	auto image = packetMan->getImage();
 	comps = new PiComp[image->numcomps];
 	numcomps = image->numcomps;
-	fixedNumResolutionsAcrossComponents_ = true;
-	fixedSubsamplingAcrossComponents_ = true;
 	for(uint16_t compno = 0; compno < numcomps; ++compno)
 	{
 		auto img_comp = image->comps + compno;
@@ -67,20 +65,24 @@ void PacketIter::init(PacketManager* packetMan, TileCodingParams* tcp)
 	}
 }
 void PacketIter::genPrecinctInfo(TileCodingParams* tcp){
-	fixedNumResolutionsAcrossComponents_ = true;
-	fixedSubsamplingAcrossComponents_ = true;
+     if (prog.progression != GRK_RPCL &&
+    		 prog.progression != GRK_PCRL &&
+			 	 prog.progression != GRK_CPRL)
+    	 return;
+	bool fixedNumResolutionsAcrossComponents = true;
+	bool fixedSubsamplingAcrossComponents = true;
 	for(uint16_t compno = 0; compno < numcomps; ++compno)
 	{
 		auto comp = comps + compno;
 		auto comp0 = comps;
 		if (compno > 0) {
 			 if (comp->numresolutions != comp0->numresolutions)
-				 fixedNumResolutionsAcrossComponents_ = false;
+				 fixedNumResolutionsAcrossComponents = false;
 			 if (comp->dx != comp0->dx || comp->dy != comp0->dy)
-				 fixedSubsamplingAcrossComponents_ = false;
+				 fixedSubsamplingAcrossComponents = false;
 		}
 	}
-	if (fixedNumResolutionsAcrossComponents_ && fixedSubsamplingAcrossComponents_){
+	if (fixedNumResolutionsAcrossComponents && fixedSubsamplingAcrossComponents){
 		precinctInfo_ = new ResPrecinctInfo[tcp->tccps->numresolutions];
 		for (uint8_t resno = 0; resno < tcp->tccps->numresolutions; ++resno){
 			auto inf = precinctInfo_ + resno;
@@ -296,8 +298,10 @@ bool PacketIter::next_rpcl(void)
 
 		for(; y < prog.ty1; y += dy - (y % dy))
 		{
+			// calculate y
 			for(; x < prog.tx1; x += dx - (x % dx))
 			{
+				// calculate x
 				for(; compno < prog.compE; compno++)
 				{
 					if(!generatePrecinctIndex())
@@ -387,36 +391,98 @@ void ResPrecinctInfo::init(uint8_t levelno,
 
 bool PacketIter::generatePrecinctIndex(void)
 {
-	bool isFixed = (fixedNumResolutionsAcrossComponents_ && fixedSubsamplingAcrossComponents_);
-	auto comp = isFixed ? comps : comps + compno;
+	return precinctInfo_ ? generatePrecinctIndexOpt() : generatePrecinctIndexUnopt();
+}
+bool PacketIter::generatePrecinctIndexUnopt(void)
+{
+	auto comp = comps + compno;
 	if(resno >= comp->numresolutions)
 		return false;
 	auto res = comp->resolutions + resno;
 	if(res->precinctGridWidth == 0 || res->precinctGridHeight == 0)
 		return false;
 
-	ResPrecinctInfo *rpInfo = precinctInfo_ ? precinctInfo_ + resno : new ResPrecinctInfo();
-	if (!precinctInfo_) {
-		rpInfo->precinctWidthExp = res->precinctWidthExp;
-		rpInfo->precinctHeightExp = res->precinctHeightExp;
-		rpInfo->init((uint8_t)(comp->numresolutions - 1U - resno), tx0, ty0, tx1, ty1, comp->dx, comp->dy);
-	}
+	auto rpInfo = new ResPrecinctInfo();
+	rpInfo->precinctWidthExp = res->precinctWidthExp;
+	rpInfo->precinctHeightExp = res->precinctHeightExp;
+	rpInfo->init((uint8_t)(comp->numresolutions - 1U - resno), tx0, ty0, tx1, ty1, comp->dx, comp->dy);
 	if (!rpInfo->valid)
 		return false;
-	if(!(((uint64_t)x % rpInfo->rpdx == 0) || ((x == tx0) && rpInfo->rpx0)) )
+
+	// generate index
+	genPrecinctY0Grid(rpInfo);
+	if (py0gridFailed_)
 		return false;
-	if(!(((uint64_t)y % rpInfo->rpdy == 0) || ((y == ty0) && rpInfo->rpy0)) )
+
+	genPrecinctX0Grid(rpInfo);
+	if (px0gridFailed_)
 		return false;
 
-	uint32_t currPrecinctX0Grid = floordivpow2(ceildiv<uint64_t>((uint64_t)x, rpInfo->rdx), rpInfo->precinctWidthExp) - rpInfo->px0;
-	uint32_t currPrecinctY0Grid = floordivpow2(ceildiv<uint64_t>((uint64_t)y, rpInfo->rdy), rpInfo->precinctHeightExp) - rpInfo->py0;
+	precinctIndex = (px0grid_ + (uint64_t)py0grid_ * res->precinctGridWidth);
+	delete rpInfo;
 
-	precinctIndex = (currPrecinctX0Grid + (uint64_t)currPrecinctY0Grid * res->precinctGridWidth);
-
-	if (!precinctInfo_)
-		delete rpInfo;
 	return true;
 }
+void PacketIter::genPrecinctResCheck(ResPrecinctInfo *rpInfo){
+	resPrecinctFailed_ = false;
+	if(resno >= comps->numresolutions) {
+		resPrecinctFailed_ = true;
+		return;
+	}
+	auto res = comps->resolutions + resno;
+	if(res->precinctGridWidth == 0 || res->precinctGridHeight == 0) {
+		resPrecinctFailed_ = true;
+		return;
+	}
+	if (!rpInfo->valid) {
+		resPrecinctFailed_ = true;
+		return;
+	}
+}
+bool PacketIter::generatePrecinctIndexOpt(void)
+{
+	auto rpInfo = precinctInfo_ + resno;
+	genPrecinctResCheck(rpInfo);
+	if (resPrecinctFailed_)
+		return false;
+
+	// generate index
+	genPrecinctY0Grid(rpInfo);
+	if (py0gridFailed_)
+		return false;
+
+	genPrecinctX0Grid(rpInfo);
+	if (px0gridFailed_)
+		return false;
+
+	auto res = comps->resolutions + resno;
+	precinctIndex = (px0grid_ + (uint64_t)py0grid_ * res->precinctGridWidth);
+
+	return true;
+}
+
+void PacketIter::genPrecinctY0Grid(ResPrecinctInfo *rpInfo){
+	py0gridFailed_ = false;
+	// generate y condition
+	if(!(((uint64_t)y % rpInfo->rpdy == 0) || ((y == ty0) && rpInfo->rpy0)) ){
+		py0gridFailed_ = true;
+	} else {
+		// generate ygrid0
+		py0grid_ = floordivpow2(ceildiv<uint64_t>((uint64_t)y, rpInfo->rdy), rpInfo->precinctHeightExp) - rpInfo->py0;
+	}
+}
+
+void PacketIter::genPrecinctX0Grid(ResPrecinctInfo *rpInfo){
+	px0gridFailed_ = false;
+	// generate x condition
+	if(!(((uint64_t)x % rpInfo->rpdx == 0) || ((x == tx0) && rpInfo->rpx0)) ) {
+		px0gridFailed_ = true;
+	} else {
+		px0grid_ = floordivpow2(ceildiv<uint64_t>((uint64_t)x, rpInfo->rdx), rpInfo->precinctWidthExp) - rpInfo->px0;
+	}
+}
+
+
 grkRectU32 PacketIter::generatePrecinct(uint64_t precinctIndex)
 {
 	auto comp = comps + compno;

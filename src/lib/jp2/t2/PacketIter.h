@@ -260,10 +260,18 @@ struct PacketIter
 	PacketManager* packetManager;
 	uint8_t maxNumDecompositionResolutions;
 	bool singleProgression_;
-	bool fixedNumResolutionsAcrossComponents_;
-	bool fixedSubsamplingAcrossComponents_;
 	ResPrecinctInfo * precinctInfo_;
+	uint32_t px0grid_;
+	bool px0gridFailed_;
+	uint32_t py0grid_;
+	bool py0gridFailed_;
+	bool resPrecinctFailed_;
+	void genPrecinctY0Grid(ResPrecinctInfo *rpInfo);
+	void genPrecinctX0Grid(ResPrecinctInfo *rpInfo);
+	void genPrecinctResCheck(ResPrecinctInfo *rpInfo);
 	bool generatePrecinctIndex(void);
+	bool generatePrecinctIndexOpt(void);
+	bool generatePrecinctIndexUnopt(void);
 	grkRectU32 generatePrecinct(uint64_t precinctIndex);
 	void update_dxy_for_comp(PiComp* comp);
 
