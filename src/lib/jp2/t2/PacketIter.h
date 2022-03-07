@@ -155,6 +155,50 @@ struct IncludeTracker
 };
 
 class PacketManager;
+class TileCodingParams;
+
+struct ResPrecinctInfo {
+	ResPrecinctInfo();
+	void init(uint8_t levelno,
+			uint32_t tx0,
+			uint32_t ty0,
+			uint32_t tx1,
+			uint32_t ty1,
+			uint32_t dx,
+			uint32_t dy);
+	bool operator==(ResPrecinctInfo &rhs){
+		return operator==(&rhs);
+	}
+	bool operator==(ResPrecinctInfo *rhs){
+		return rhs &&
+				precinctWidthExp == rhs->precinctWidthExp &&
+				precinctHeightExp == rhs->precinctHeightExp &&
+				rpxshift == rhs->rpxshift &&
+				rpyshift == rhs->rpyshift &&
+				rpx0 == rhs->rpx0 &&
+				rpy0 == rhs->rpy0 &&
+				rpdx == rhs->rpdx &&
+				rpdy == rhs->rpdy &&
+				rdx == rhs->rdx &&
+				rdy == rhs->rdy &&
+				px0 == rhs->px0 &&
+				py0 == rhs->py0 &&
+				valid == rhs->valid;
+	}
+	uint32_t precinctWidthExp;
+	uint32_t precinctHeightExp;
+	uint32_t rpxshift;
+	uint32_t rpyshift;
+	uint64_t rpx0;
+	uint64_t rpy0;
+	uint64_t rpdx;
+	uint64_t rpdy;
+	uint64_t rdx;
+	uint64_t rdy;
+	uint32_t px0;
+	uint32_t py0;
+	bool valid;
+};
 
 /**
  Packet iterator
@@ -164,7 +208,8 @@ struct PacketIter
 	PacketIter();
 	~PacketIter();
 
-	void init(PacketManager* packetMan);
+	void init(PacketManager* packetMan, TileCodingParams* tcp);
+	void genPrecinctInfo(TileCodingParams* tcp);
 
 	uint8_t* get_include(uint16_t layerIndex);
 	bool update_include(void);
@@ -215,6 +260,9 @@ struct PacketIter
 	PacketManager* packetManager;
 	uint8_t maxNumDecompositionResolutions;
 	bool singleProgression_;
+	bool fixedNumResolutionsAcrossComponents_;
+	bool fixedSubsamplingAcrossComponents_;
+	ResPrecinctInfo * precinctInfo_;
 	bool generatePrecinctIndex(void);
 	grkRectU32 generatePrecinct(uint64_t precinctIndex);
 	void update_dxy_for_comp(PiComp* comp);

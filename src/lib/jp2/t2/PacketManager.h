@@ -45,6 +45,7 @@ class PacketManager
 	IncludeTracker* getIncludeTracker(void);
 	uint32_t getNumProgressions(void);
 	TileProcessor* getTileProcessor(void);
+	GrkImage* getImage();
 
   private:
 	/**

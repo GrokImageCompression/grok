@@ -32,20 +32,7 @@ PacketManager::PacketManager(bool compression, GrkImage* img, CodingParams* cpar
 	uint32_t numProgressions = tcp->numpocs + 1;
 	pi_ = new PacketIter[numProgressions];
 	for(uint32_t i = 0; i < numProgressions; ++i)
-		pi_[i].init(this);
-	for(uint32_t pino = 0; pino < numProgressions; ++pino)
-	{
-		auto curPi = pi_ + pino;
-		curPi->comps = new PiComp[image->numcomps];
-		curPi->numcomps = image->numcomps;
-		for(uint16_t compno = 0; compno < image->numcomps; ++compno)
-		{
-			auto comp = curPi->comps + compno;
-			auto tccp = tcp->tccps + compno;
-			comp->resolutions = new PiResolution[tccp->numresolutions];
-			comp->numresolutions = tccp->numresolutions;
-		}
-	}
+		pi_[i].init(this,cp->tcps + tileno);
 	uint32_t data_stride = 4 * GRK_J2K_MAXRLVLS;
 	auto precinct = new uint32_t[data_stride * image->numcomps];
 	auto precinctByComponent = new uint32_t*[image->numcomps];
@@ -72,7 +59,7 @@ PacketManager::PacketManager(bool compression, GrkImage* img, CodingParams* cpar
 
 	/* set values for first packet iterator*/
 	pi_->enableTilePartGeneration = cp->coding_params_.enc_.enableTilePartGeneration_;
-	for(uint32_t pino = 0; pino < tcp->getNumProgressions(); ++pino)
+	for(uint32_t pino = 0; pino < numProgressions; ++pino)
 	{
 		auto cur_pi = pi_ + pino;
 
@@ -98,11 +85,7 @@ PacketManager::PacketManager(bool compression, GrkImage* img, CodingParams* cpar
 		for(uint16_t compno = 0; compno < cur_pi->numcomps; ++compno)
 		{
 			auto current_comp = cur_pi->comps + compno;
-			auto img_comp = image->comps + compno;
-
 			resolutionPrecinctGrid = precinctByComponent[compno];
-			current_comp->dx = img_comp->dx;
-			current_comp->dy = img_comp->dy;
 			/* resolutions have already been initialized */
 			for(uint32_t resno = 0; resno < current_comp->numresolutions; resno++)
 			{
@@ -114,6 +97,7 @@ PacketManager::PacketManager(bool compression, GrkImage* img, CodingParams* cpar
 				res->precinctGridHeight = *(resolutionPrecinctGrid++);
 			}
 		}
+		cur_pi->genPrecinctInfo(cp->tcps + tileno);
 		cur_pi->update_dxy();
 	}
 	delete[] precinct;
@@ -124,6 +108,9 @@ PacketManager::PacketManager(bool compression, GrkImage* img, CodingParams* cpar
 		updateCompressTcpProgressions(cp, image->numcomps, tileno, tileBounds, max_precincts,
 									  max_res, dx_min, dy_min, poc);
 	}
+}
+GrkImage* PacketManager::getImage(){
+	return image;
 }
 PacketManager::~PacketManager()
 {
