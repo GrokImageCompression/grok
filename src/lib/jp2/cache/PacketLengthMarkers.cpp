@@ -221,6 +221,7 @@ bool PacketLengthMarkers::readPLT(uint8_t* headerData, uint16_t header_size)
 	uint8_t Zpl = *headerData++;
 	--header_size;
 	readInit(Zpl);
+	//GRK_INFO("%d",Zpl);
 	for(uint32_t i = 0; i < header_size; ++i)
 	{
 		/* Iplt_ij */
@@ -261,7 +262,7 @@ void PacketLengthMarkers::readNext(uint8_t Iplm)
 	{
 		assert(curr_vec_);
 		curr_vec_->push_back(packet_len_);
-		// GRK_INFO("Packet length: (%u, %u)", Zpl, packet_len);
+		// GRK_INFO("Packet length: %u", packet_len_);
 		packet_len_ = 0;
 	}
 }
@@ -297,6 +298,7 @@ uint32_t PacketLengthMarkers::popNextPacketLength(void)
 			else
 			{
 				curr_vec_ = nullptr;
+				GRK_WARN("Attempt to pop PLT length beyond PLT marker range.");
 			}
 		}
 		if(curr_vec_)

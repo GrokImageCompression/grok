@@ -20,7 +20,7 @@
  */
 #include "grk_includes.h"
 
-//#define DEBUG_DECOMPRESS_PACKETS
+//#define DEBUG_PLT
 
 namespace grk
 {
@@ -54,11 +54,23 @@ void T2Decompress::initSegment(DecompressCodeblock* cblk, uint32_t index, uint8_
 }
 bool T2Decompress::processPacket(TileCodingParams* tcp, PacketIter* currPi, SparseBuffer* srcBuf)
 {
+#ifdef DEBUG_PLT
+	static int ct = -1;
+	ct++;
+	bool hasPLT = tileProcessor->packetLengthCache.getMarkers();
+#endif
+
 	auto tilec = tileProcessor->tile->comps + currPi->compno;
 	auto tilecBuffer = tilec->getBuffer();
 	auto packetInfo = tileProcessor->packetLengthCache.next();
 	if(!packetInfo)
 		return false;
+#ifdef DEBUG_PLT
+	auto packetCache = *packetInfo;
+	packetInfo->headerLength = 0;
+	packetInfo->packetLength = 0;
+	packetInfo->parsedData = false;
+#endif
 	auto res = tilec->tileCompResolution + currPi->resno;
 	auto skipPacket = currPi->layno >= tcp->numLayersToDecompress ||
 					  currPi->resno >= tilec->numResolutionsToDecompress;
@@ -113,6 +125,11 @@ bool T2Decompress::processPacket(TileCodingParams* tcp, PacketIter* currPi, Spar
 	}
 	tileProcessor->tile->numProcessedPackets++;
 
+#ifdef DEBUG_PLT
+	if (hasPLT && packetCache.packetLength != packetInfo->packetLength) {
+		printf("%d: parsed %d, PLT %d\n", ct,  packetInfo->packetLength, packetCache.packetLength);
+	}
+#endif
 	return true;
 }
 bool T2Decompress::decompressPackets(uint16_t tile_no, SparseBuffer* srcBuf,
