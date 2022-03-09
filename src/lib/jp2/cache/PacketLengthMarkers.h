@@ -21,26 +21,23 @@
 namespace grk
 {
 
-#define DEBUG_PACKET_LENGTH_MARKERS
-
-typedef std::vector<uint32_t> PL_INFO_VEC;
-
+typedef std::vector<uint32_t> PL_MARKER;
 struct PacketLengthMarkerInfo
 {
 	PacketLengthMarkerInfo() : PacketLengthMarkerInfo(nullptr) {}
-	PacketLengthMarkerInfo(PL_INFO_VEC* packetLengthVec)
-		: markerLength(0), packetLength(packetLengthVec)
+	PacketLengthMarkerInfo(PL_MARKER* marker)
+		: markerLength_(0), marker_(marker)
 	{}
-	uint64_t markerLength;
-	PL_INFO_VEC* packetLength;
+	uint64_t markerLength_;
+	PL_MARKER* marker_;
 };
-
-// map of (PLT/PLM marker id) => (packet length vector)
-typedef std::map<uint8_t, PacketLengthMarkerInfo> PL_MAP;
+typedef std::map<uint8_t, PacketLengthMarkerInfo> PL_MARKERS;
 
 struct PacketLengthMarkers
 {
+	// compress
 	PacketLengthMarkers(void);
+	// decompress
 	PacketLengthMarkers(IBufferedStream* strm);
 	~PacketLengthMarkers(void);
 
@@ -54,7 +51,6 @@ struct PacketLengthMarkers
 	void pushInit(void);
 	void pushNextPacketLength(uint32_t len);
 	uint32_t write(bool simulate);
-
   private:
 	void readInit(uint8_t index);
 	void readNext(uint8_t Iplm);
@@ -62,9 +58,10 @@ struct PacketLengthMarkers
 	void writeMarkerLength(PacketLengthMarkerInfo* markerInfo);
 	void writeIncrement(uint32_t bytes);
 
-	PL_MAP* markers_;
+	// compress / decompress
+	PL_MARKERS* markers_;
 	uint8_t markerIndex_;
-	PL_INFO_VEC* curr_vec_;
+	PL_MARKER* currMarker_;
 
 	// decompress
 	size_t packetIndex_;
