@@ -28,6 +28,9 @@ Below is a benchmark comparing time and memory performance for **Kakadu 8.05**, 
 1. decompress region {1000,1000,5000,5000} from large single-tiled [image of Mars](https://hirise.lpl.arizona.edu/PDS/RDR/ESP/ORB_011200_011299/ESP_011277_1825/ESP_011277_1825_RED.JP2) to TIF output
 1. decompress large multi-tiled [Pleiades image](https://l3harrisgeospatial-webcontent.s3.amazonaws.com/MM_Samples/Pleiades_ORTHO_UTM_BUNDLE.zip) to TIF output.
 1. decompress large multi-tiled [Pleiades image](https://l3harrisgeospatial-webcontent.s3.amazonaws.com/MM_Samples/Pleiades_ORTHO_UTM_BUNDLE.zip) to PGM output.
+1. decompress 6 resolutions of large single-tiled [map of Luxembourg](https://s3.eu-central-1.amazonaws.com/download.data.public.lu/resources/orthophoto-officelle-du-grand-duche-de-luxembourg-edition-2020/20210602-110516/Luxembourg-2020_ortho10cm_RVB_LUREF.jp2)
+1. decompress 7 resolutions of large single-tiled [map of Luxembourg](https://s3.eu-central-1.amazonaws.com/download.data.public.lu/resources/orthophoto-officelle-du-grand-duche-de-luxembourg-edition-2020/20210602-110516/Luxembourg-2020_ortho10cm_RVB_LUREF.jp2)
+1. decompress 8 resolutions of large single-tiled [map of Luxembourg](https://s3.eu-central-1.amazonaws.com/download.data.public.lu/resources/orthophoto-officelle-du-grand-duche-de-luxembourg-edition-2020/20210602-110516/Luxembourg-2020_ortho10cm_RVB_LUREF.jp2)
 
 #### Benchmark Details
 
@@ -39,13 +42,15 @@ running `Ubuntu 21.04` with `5.11` Linux kernel
 
 #### Results
 
-| Test  | Grok               | Kakadu                 | OpenJPEG           |
+| Test  | Grok               | Kakadu                 | OpenJPEG         |
 | :---- | :-----             | :------:             | --------:          |
 | 1     | 17.0 s / 13.1 GB   | 9.81 s / 0.05 GB     | 17.8 s / 13.1 GB   |
 | 2     | 0.25 s / 0.4 GB    | 0.12 s               | 1.4 s  / 2 GB      |
 | 3     | 3.70 s / 1.8 GB    | 4.99 s / 0.1 GB      | 10.8 s / 4.3 GB    |
 | 4     | 4.0 s  / 2.0 GB    | 4.19 s / 0.1 GB      | 45.7 s / 4.3 GB    |
-
+| 5     | 0.69 s / 0.7 GB    | 2.7 s / 1.0 GB       | unsupported        |
+| 6     | 1.04 s / 1.0 GB    | 3.07 s / 1.0 GB      | unsupported        |
+| 7     | 2.32 s / 1.8 GB    | 3.85 s / 1.1 GB      | unsupported        |
 
 ### Library Details
 
