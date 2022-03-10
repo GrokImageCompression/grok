@@ -18,6 +18,8 @@
 #include <vector>
 #include <map>
 
+//#define ENABLE_PACKET_CACHE
+
 namespace grk
 {
 class PacketLengthCache
@@ -28,12 +30,14 @@ class PacketLengthCache
 	PacketLengthMarkers* createMarkers(IBufferedStream* strm);
 	PacketLengthMarkers* getMarkers(void);
 	void deleteMarkers(void);
-	PacketInfo* next(void);
+	bool next(PacketInfo** p);
 	void rewind(void);
 
   private:
 	PacketLengthMarkers* pltMarkers;
+#ifdef ENABLE_PACKET_CACHE
 	SequentialPtrCache<PacketInfo> packetInfoCache;
+#endif
 	CodingParams* cp_;
 };
 

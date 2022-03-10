@@ -60,8 +60,10 @@ bool T2Decompress::processPacket(TileCodingParams* tcp, PacketIter* currPi, Spar
 
 	auto tilec = tileProcessor->tile->comps + currPi->compno;
 	auto tilecBuffer = tilec->getBuffer();
-	auto packetInfo = tileProcessor->packetLengthCache.next();
-	if(!packetInfo)
+
+	PacketInfo p;
+	auto packetInfo = &p;
+	if (!tileProcessor->packetLengthCache.next(&packetInfo))
 		return false;
 #ifdef DEBUG_PLT
 	auto packetCache = *packetInfo;

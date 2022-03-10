@@ -43,9 +43,15 @@ void PacketLengthCache::deleteMarkers(void)
 	pltMarkers = nullptr;
 }
 
-PacketInfo* PacketLengthCache::next(void)
+bool PacketLengthCache::next(PacketInfo** p)
 {
+	assert(p);
+
+#ifdef ENABLE_PACKET_CACHE
 	auto packetInfo = packetInfoCache.get();
+#else
+	auto packetInfo = *p;
+#endif
 	if(!packetInfo->packetLength)
 	{
 		// we don't currently support PLM markers,
@@ -58,12 +64,16 @@ PacketInfo* PacketLengthCache::next(void)
 			if(packetInfo->packetLength == 0)
 			{
 				GRK_ERROR("PLT marker: missing packet lengths.");
-				return nullptr;
+				return false;
 			}
 		}
 	}
 
-	return packetInfo;
+#ifdef ENABLE_PACKET_CACHE
+	*p = packetInfo;
+#endif
+
+	return true;
 }
 
 void PacketLengthCache::rewind(void)
