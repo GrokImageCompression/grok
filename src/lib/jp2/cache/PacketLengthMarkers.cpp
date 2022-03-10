@@ -28,8 +28,10 @@ const uint32_t available_packet_len_bytes_per_plt = USHRT_MAX - 1 - 4;
 // const uint32_t min_packets_per_full_plt = available_packet_len_bytes_per_plt / 5;
 
 PacketLengthMarkers::PacketLengthMarkers()
-	: markers_(new PL_MARKERS()), markerIndex_(0), currMarker_(nullptr), packetIndex_(0), packet_len_(0),
-	  markerBytesWritten_(0), totalBytesWritten_(0), marker_len_cache_(0), stream_(nullptr)
+	: markers_(new PL_MARKERS()), markerIndex_(0),
+	  currMarker_(nullptr),  sequential_(false),
+	  packetIndex_(0), packet_len_(0),
+	  markerBytesWritten_(0), totalBytesWritten_(0), markerLenCache_(0), stream_(nullptr)
 {}
 PacketLengthMarkers::PacketLengthMarkers(IBufferedStream* strm) : PacketLengthMarkers()
 {
@@ -48,10 +50,10 @@ PacketLengthMarkers::~PacketLengthMarkers()
 void PacketLengthMarkers::pushInit(void)
 {
 	markers_->clear();
-	readInit(0);
+	readInit(0, GRK_PL_MARKER_PLT);
 	totalBytesWritten_ = 0;
 	markerBytesWritten_ = 0;
-	marker_len_cache_ = 0;
+	markerLenCache_ = 0;
 }
 void PacketLengthMarkers::pushNextPacketLength(uint32_t len)
 {
@@ -73,14 +75,14 @@ void PacketLengthMarkers::writeMarkerLength(PacketLengthMarkerInfo* markerInfo)
 	{
 		markerInfo->markerLength_ = markerBytesWritten_;
 	}
-	else if(marker_len_cache_)
+	else if(markerLenCache_)
 	{
 		uint64_t current_pos = stream_->tell();
-		stream_->seek(marker_len_cache_);
+		stream_->seek(markerLenCache_);
 		// do not include 2 bytes for marker itself
 		stream_->writeShort((uint16_t)(markerBytesWritten_ - 2));
 		stream_->seek(current_pos);
-		marker_len_cache_ = 0;
+		markerLenCache_ = 0;
 	}
 }
 // check if we need to start a new marker
@@ -107,7 +109,7 @@ void PacketLengthMarkers::tryWriteMarkerHeader(PacketLengthMarkerInfo* markerInf
 			else
 			{
 				// cache location of marker length and skip over
-				marker_len_cache_ = stream_->tell();
+				markerLenCache_ = stream_->tell();
 				stream_->skip(2);
 			}
 		}
@@ -128,7 +130,7 @@ uint32_t PacketLengthMarkers::write(bool simulate)
 	{
 		// write marker index
 		if(!simulate)
-			stream_->writeByte(map_iter->first);
+			stream_->writeByte((uint8_t)map_iter->first);
 		writeIncrement(1);
 
 		// write packet lengths
@@ -184,7 +186,8 @@ bool PacketLengthMarkers::readPLM(uint8_t* headerData, uint16_t header_size)
 	// Zplm
 	uint8_t Zplm = *headerData++;
 	--header_size;
-	readInit(Zplm);
+	if (!readInit(Zplm,GRK_PL_MARKER_PLM))
+		return false;
 	while(header_size > 0)
 	{
 		// Nplm
@@ -220,8 +223,11 @@ bool PacketLengthMarkers::readPLT(uint8_t* headerData, uint16_t header_size)
 	/* Zplt */
 	uint8_t Zpl = *headerData++;
 	--header_size;
-	readInit(Zpl);
-	//GRK_INFO("%d",Zpl);
+	if (!readInit(Zpl,GRK_PL_MARKER_PLT ))
+		return false;
+#ifdef DEBUG_PLT
+	GRK_INFO("PLT marker %d", Zpl);
+#endif
 	for(uint32_t i = 0; i < header_size; ++i)
 	{
 		/* Iplt_ij */
@@ -235,9 +241,42 @@ bool PacketLengthMarkers::readPLT(uint8_t* headerData, uint16_t header_size)
 	}
 	return true;
 }
-void PacketLengthMarkers::readInit(uint8_t index)
+bool PacketLengthMarkers::readInit(uint8_t index, PL_MARKER_TYPE type)
 {
 	markerIndex_ = index;
+	if (markers_->empty()) {
+		sequential_ = index == 0;
+	}
+	else {
+		// once sequential_ becomes false, it never returns to true again
+		if (sequential_) {
+			sequential_ = markers_->size()%256 == index;
+			if (!sequential_ && markers_->size( ) > 256) {
+				GRK_ERROR("PLT: sequential marker assumption has been broken.");
+				return false;
+			}
+		}
+
+		// The code below handles the non-standard case where there are more
+		// than 256 markers, but their signaled indices are all sequential mod 256.
+		// Although this is an abuse of the standard, we interpret this to mean
+		// that the actual marker index is simply the marker count.
+		// Therefore, we do not concatenate any of the markers, even though
+		// they may share the same signaled marker index
+		if (sequential_) {
+			const char* mType = (type == GRK_PL_MARKER_PLM) ? "PLM" : "PLT";
+			markerIndex_ = (uint32_t)markers_->size();
+			if (markers_->size() == 256){
+				GRK_WARN("%s: 256+1 markers, with all 256+1 %s marker indices sequential mod 256.",mType,mType);
+				GRK_WARN("We will make the assumption that **all** %s markers are sequential,",mType);
+				GRK_WARN("and therefore will ignore the signaled %s marker index,",mType);
+				GRK_WARN("and use the marker count instead as the marker index.");
+				GRK_WARN("Decompression will fail if this assumption is broken for subsequent %s markers.", mType);
+			}
+		}
+	}
+
+	assert(packet_len_ == 0);
 	packet_len_ = 0;
 	auto pair = markers_->find(markerIndex_);
 	if(pair != markers_->end())
@@ -249,6 +288,8 @@ void PacketLengthMarkers::readInit(uint8_t index)
 		currMarker_ = new PL_MARKER();
 		markers_->operator[](markerIndex_) = PacketLengthMarkerInfo(currMarker_);
 	}
+
+	return true;
 }
 void PacketLengthMarkers::readNext(uint8_t Iplm)
 {

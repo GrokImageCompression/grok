@@ -18,8 +18,15 @@
 #include <vector>
 #include <map>
 
+//#define DEBUG_PLT
+
 namespace grk
 {
+
+enum PL_MARKER_TYPE{
+	GRK_PL_MARKER_PLM,
+	GRK_PL_MARKER_PLT,
+};
 
 typedef std::vector<uint32_t> PL_MARKER;
 struct PacketLengthMarkerInfo
@@ -31,7 +38,7 @@ struct PacketLengthMarkerInfo
 	uint64_t markerLength_;
 	PL_MARKER* marker_;
 };
-typedef std::map<uint8_t, PacketLengthMarkerInfo> PL_MARKERS;
+typedef std::map<uint32_t, PacketLengthMarkerInfo> PL_MARKERS;
 
 struct PacketLengthMarkers
 {
@@ -52,7 +59,7 @@ struct PacketLengthMarkers
 	void pushNextPacketLength(uint32_t len);
 	uint32_t write(bool simulate);
   private:
-	void readInit(uint8_t index);
+	bool readInit(uint8_t index, PL_MARKER_TYPE type);
 	void readNext(uint8_t Iplm);
 	void tryWriteMarkerHeader(PacketLengthMarkerInfo* markerInfo, bool simulate);
 	void writeMarkerLength(PacketLengthMarkerInfo* markerInfo);
@@ -60,17 +67,18 @@ struct PacketLengthMarkers
 
 	// compress / decompress
 	PL_MARKERS* markers_;
-	uint8_t markerIndex_;
+	uint32_t markerIndex_;
 	PL_MARKER* currMarker_;
 
 	// decompress
+	bool sequential_;
 	size_t packetIndex_;
 	uint32_t packet_len_;
 
 	// compress
 	uint32_t markerBytesWritten_;
 	uint32_t totalBytesWritten_;
-	uint64_t marker_len_cache_;
+	uint64_t markerLenCache_;
 	IBufferedStream* stream_;
 };
 

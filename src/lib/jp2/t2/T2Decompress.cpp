@@ -20,8 +20,6 @@
  */
 #include "grk_includes.h"
 
-//#define DEBUG_PLT
-
 namespace grk
 {
 T2Decompress::T2Decompress(TileProcessor* tileProc) : tileProcessor(tileProc) {}
@@ -128,6 +126,7 @@ bool T2Decompress::processPacket(TileCodingParams* tcp, PacketIter* currPi, Spar
 #ifdef DEBUG_PLT
 	if (hasPLT && packetCache.packetLength != packetInfo->packetLength) {
 		printf("%d: parsed %d, PLT %d\n", ct,  packetInfo->packetLength, packetCache.packetLength);
+		assert(0);
 	}
 #endif
 	return true;
