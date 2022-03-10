@@ -440,8 +440,8 @@ bool CodeStreamCompress::init(grk_cparameters* parameters, GrkImage* image)
 		}
 		if(parameters->mct_data)
 		{
-			uint32_t lMctSize =
-				(uint32_t)image->numcomps * image->numcomps * (uint32_t)sizeof(float);
+			uint64_t lMctSize =
+				(uint64_t)image->numcomps * image->numcomps * sizeof(float);
 			auto lTmpBuf = (float*)grkMalloc(lMctSize);
 			auto dc_shift = (int32_t*)((uint8_t*)parameters->mct_data + lMctSize);
 			if(!lTmpBuf)

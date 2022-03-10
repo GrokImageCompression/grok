@@ -369,7 +369,6 @@ bool CodeStreamDecompress::decompressTile(uint16_t tileIndex)
 	if(entry && entry->processor && entry->processor->getImage())
 		return true;
 
-
 	//2. otherwise, decompress tile
 	if(outputImage_)
 	{
@@ -757,7 +756,7 @@ bool CodeStreamDecompress::readHeaderProcedureImpl(void)
 	}
 	// we don't include the SOC marker, therefore subtract 2
 	if(codeStreamInfo)
-		codeStreamInfo->setMainHeaderEnd((uint32_t)stream_->tell() - 2U);
+		codeStreamInfo->setMainHeaderEnd(stream_->tell() - 2U);
 
 	/* Next step: read a tile-part header */
 	decompressorState_.setState(DECOMPRESS_STATE_TPH_SOT);
@@ -1098,9 +1097,9 @@ void CodeStreamDecompress::dump(uint32_t flag, FILE* outputFileStream)
 	auto cp = getCodingParams();
 	if(flag & GRK_J2K_TCH_INFO)
 	{
-		uint32_t numTiles = cp->t_grid_height * cp->t_grid_width;
 		if(getHeaderImage())
 		{
+			uint32_t numTiles = cp->t_grid_height * cp->t_grid_width;
 			for(uint16_t i = 0; i < numTiles; ++i)
 			{
 				auto tcp = cp->tcps + i;

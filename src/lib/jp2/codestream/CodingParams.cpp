@@ -111,7 +111,7 @@ TileCodingParams::~TileCodingParams()
 bool TileCodingParams::copy(const TileCodingParams* rhs, const GrkImage* image)
 {
 	uint32_t tccp_size = image->numcomps * (uint32_t)sizeof(TileComponentCodingParams);
-	uint32_t mct_size = (uint32_t)image->numcomps * image->numcomps * (uint32_t)sizeof(float);
+	uint64_t mct_size = (uint64_t)image->numcomps * image->numcomps * sizeof(float);
 
 	// cache tccps
 	auto cachedTccps = tccps;
