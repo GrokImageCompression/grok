@@ -1184,7 +1184,7 @@ bool TileProcessor::pcrdBisectFeasible(uint32_t* allPacketBytes)
 		// and correct tile length
 		return t2.compressPacketsSimulate(tileIndex_, 0 + 1U, allPacketBytes, UINT_MAX,
 										  newTilePartProgressionPosition,
-										  packetLengthCache.getMarkers(), true);
+										  packetLengthCache.getMarkers());
 	}
 	uint32_t min_slope = rateInfo.getMinimumThresh();
 	uint32_t max_slope = USHRT_MAX;
@@ -1227,7 +1227,7 @@ bool TileProcessor::pcrdBisectFeasible(uint32_t* allPacketBytes)
 				{
 					if(!t2.compressPacketsSimulate(tileIndex_, (uint16_t)(layno + 1U),
 												   allPacketBytes, maxLayerLength,
-												   newTilePartProgressionPosition, nullptr, false))
+												   newTilePartProgressionPosition, nullptr))
 					{
 						lowerBound = thresh;
 						continue;
@@ -1256,7 +1256,7 @@ bool TileProcessor::pcrdBisectFeasible(uint32_t* allPacketBytes)
 	// and correct tile length
 	return t2.compressPacketsSimulate(tileIndex_, tcp->numlayers, allPacketBytes, maxLayerLength,
 									  newTilePartProgressionPosition,
-									  packetLengthCache.getMarkers(), true);
+									  packetLengthCache.getMarkers());
 }
 /*
  Simple bisect algorithm to calculate optimal layer truncation points
@@ -1338,7 +1338,7 @@ bool TileProcessor::pcrdBisectSimple(uint32_t* allPacketBytes)
 		// and correct tile length
 		return t2.compressPacketsSimulate(tileIndex_, 0 + 1U, allPacketBytes, UINT_MAX,
 										  newTilePartProgressionPosition,
-										  packetLengthCache.getMarkers(), true);
+										  packetLengthCache.getMarkers());
 	}
 	double cumulativeDistortion[maxCompressLayersGRK];
 	double upperBound = max_slope;
@@ -1385,7 +1385,7 @@ bool TileProcessor::pcrdBisectSimple(uint32_t* allPacketBytes)
 				{
 					if(!t2.compressPacketsSimulate(tileIndex_, layno + 1U, allPacketBytes,
 												   maxLayerLength, newTilePartProgressionPosition,
-												   nullptr, false))
+												   nullptr))
 					{
 						lowerBound = thresh;
 						continue;
@@ -1415,7 +1415,7 @@ bool TileProcessor::pcrdBisectSimple(uint32_t* allPacketBytes)
 	// GRK_INFO("Rate control final simulation");
 	return t2.compressPacketsSimulate(tileIndex_, tcp_->numlayers, allPacketBytes, maxLayerLength,
 									  newTilePartProgressionPosition,
-									  packetLengthCache.getMarkers(), true);
+									  packetLengthCache.getMarkers());
 }
 static void prepareBlockForFirstLayer(CompressCodeblock* cblk)
 {

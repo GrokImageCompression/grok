@@ -61,7 +61,7 @@ bool T2Compress::compressPackets(uint16_t tile_no, uint16_t max_layers, IBuffere
 bool T2Compress::compressPacketsSimulate(uint16_t tile_no, uint16_t max_layers,
 										 uint32_t* allPacketBytes, uint32_t maxBytes,
 										 uint32_t newTilePartProgressionPosition,
-										 PacketLengthMarkers* markers, bool finalSimulation)
+										 PacketLengthMarkers* markers)
 {
 	assert(allPacketBytes);
 	auto cp = tileProcessor->cp_;
@@ -96,8 +96,7 @@ bool T2Compress::compressPacketsSimulate(uint16_t tile_no, uint16_t max_layers,
 				if(current_pi->layno < max_layers)
 				{
 					uint32_t bytesInPacket = 0;
-					if(!compressPacketSimulate(tcp, current_pi, &bytesInPacket, maxBytes, markers,
-											   finalSimulation))
+					if(!compressPacketSimulate(tcp, current_pi, &bytesInPacket, maxBytes, markers))
 						return false;
 
 					componentBytes += bytesInPacket;
@@ -363,10 +362,8 @@ bool T2Compress::compressPacket(TileCodingParams* tcp, PacketIter* pi, IBuffered
 
 bool T2Compress::compressPacketSimulate(TileCodingParams* tcp, PacketIter* pi,
 										uint32_t* packet_bytes_written,
-										uint32_t max_bytes_available, PacketLengthMarkers* markers,
-										bool finalSimulation)
+										uint32_t max_bytes_available, PacketLengthMarkers* markers)
 {
-	GRK_UNUSED(finalSimulation);
 	uint16_t compno = pi->compno;
 	uint32_t resno = pi->resno;
 	uint64_t precinctIndex = pi->precinctIndex;
