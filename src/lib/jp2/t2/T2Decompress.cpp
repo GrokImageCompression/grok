@@ -50,7 +50,7 @@ void T2Decompress::initSegment(DecompressCodeblock* cblk, uint32_t index, uint8_
 		seg->maxpasses = maxPassesPerSegmentJ2K;
 	}
 }
-bool T2Decompress::processPacket(TileCodingParams* tcp, PacketIter* currPi, SparseBuffer* srcBuf)
+bool T2Decompress::processPacket(TileCodingParams* tcp, PacketIter* pi, SparseBuffer* srcBuf)
 {
 #ifdef DEBUG_PLT
 	static int ct = -1;
@@ -58,7 +58,7 @@ bool T2Decompress::processPacket(TileCodingParams* tcp, PacketIter* currPi, Spar
 	bool hasPLT = tileProcessor->packetLengthCache.getMarkers();
 #endif
 
-	auto tilec = tileProcessor->tile->comps + currPi->compno;
+	auto tilec = tileProcessor->tile->comps + pi->compno;
 	auto tilecBuffer = tilec->getBuffer();
 
 	PacketInfo p;
@@ -71,57 +71,55 @@ bool T2Decompress::processPacket(TileCodingParams* tcp, PacketIter* currPi, Spar
 	packetInfo->packetLength = 0;
 	packetInfo->parsedData = false;
 #endif
-	auto res = tilec->tileCompResolution + currPi->resno;
-	auto skipPacket = currPi->layno >= tcp->numLayersToDecompress ||
-					  currPi->resno >= tilec->numResolutionsToDecompress;
-	if(!skipPacket)
+	auto res = tilec->tileCompResolution + pi->resno;
+	auto skip = pi->layno >= tcp->numLayersToDecompress ||
+					  pi->resno >= tilec->numResolutionsToDecompress;
+	if(!skip && !tilec->isWholeTileDecoding())
 	{
-		if(!tilec->isWholeTileDecoding())
+		skip = true;
+		for(uint8_t bandIndex = 0; bandIndex < res->numTileBandWindows; ++bandIndex)
 		{
-			skipPacket = true;
-			for(uint8_t bandIndex = 0; bandIndex < res->numTileBandWindows; ++bandIndex)
+			auto band = res->tileBand + bandIndex;
+			if(band->isEmpty())
+				continue;
+			auto paddedBandWindow =
+				tilecBuffer->getBandWindowPadded(pi->resno, band->orientation);
+			auto prec = band->generatePrecinctBounds(pi->precinctIndex, res->precinctPartitionTopLeft,
+													 res->precinctExpn, res->precinctGridWidth);
+			if(paddedBandWindow->non_empty_intersection(&prec))
 			{
-				auto band = res->tileBand + bandIndex;
-				if(band->isEmpty())
-					continue;
-				auto paddedBandWindow =
-					tilecBuffer->getBandWindowPadded(currPi->resno, band->orientation);
-				auto prec = band->generatePrecinctBounds(currPi->precinctIndex, res->precinctStart,
-														 res->precinctExpn, res->precinctGridWidth);
-				if(paddedBandWindow->non_empty_intersection(&prec))
-				{
-					skipPacket = false;
-					break;
-				}
+				skip = false;
+				break;
 			}
 		}
 	}
-	if(!skipPacket || !packetInfo->packetLength)
+
+	if(!skip || !packetInfo->packetLength)
 	{
 		for(uint32_t bandIndex = 0; bandIndex < res->numTileBandWindows; ++bandIndex)
 		{
 			auto band = res->tileBand + bandIndex;
 			if(band->isEmpty())
 				continue;
-			if(!band->createPrecinct(false, currPi->precinctIndex, res->precinctStart,
+			if(!band->createPrecinct(false, pi->precinctIndex, res->precinctPartitionTopLeft,
 									 res->precinctExpn, res->precinctGridWidth, res->cblkExpn))
 				return false;
 		}
 	}
-	if(!skipPacket)
-	{
-		if(!decompressPacket(tcp, currPi, srcBuf, packetInfo, false))
-			return false;
-		tilec->highestResolutionDecompressed =
-			std::max<uint8_t>(currPi->resno, tilec->highestResolutionDecompressed);
-		tileProcessor->tile->numDecompressedPackets++;
-	}
-	else
+	if(skip)
 	{
 		if(packetInfo->packetLength)
 			srcBuf->incrementCurrentChunkOffset(packetInfo->packetLength);
-		else if(!decompressPacket(tcp, currPi, srcBuf, packetInfo, true))
+		else if(!decompressPacket(tcp, pi, srcBuf, packetInfo, true))
 			return false;
+	}
+	else
+	{
+		if(!decompressPacket(tcp, pi, srcBuf, packetInfo, false))
+			return false;
+		tilec->highestResolutionDecompressed =
+			std::max<uint8_t>(pi->resno, tilec->highestResolutionDecompressed);
+		tileProcessor->tile->numDecompressedPackets++;
 	}
 	tileProcessor->tile->numProcessedPackets++;
 

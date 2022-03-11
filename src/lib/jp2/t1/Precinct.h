@@ -41,7 +41,7 @@ class BlockCache : public SparseCache<T>
 
 struct PrecinctImpl
 {
-	PrecinctImpl(bool isCompressor, grkRectU32* bounds, grkPointU32 cblk_expn)
+	PrecinctImpl(bool isCompressor, grkRectU32* bounds, grkpt cblk_expn)
 		: enc(nullptr), dec(nullptr), bounds_(*bounds), cblk_expn_(cblk_expn),
 		  isCompressor_(isCompressor), incltree(nullptr), imsbtree(nullptr)
 	{
@@ -59,7 +59,7 @@ struct PrecinctImpl
 	grkRectU32 getCodeBlockBounds(uint64_t cblkno)
 	{
 		auto cblk_start =
-			grkPointU32((cblk_grid_.x0 + (uint32_t)(cblkno % cblk_grid_.width())) << cblk_expn_.x,
+			grkpt((cblk_grid_.x0 + (uint32_t)(cblkno % cblk_grid_.width())) << cblk_expn_.x,
 						(cblk_grid_.y0 + (uint32_t)(cblkno / cblk_grid_.width())) << cblk_expn_.y);
 		auto cblk_bounds =
 			grkRectU32(cblk_start.x, cblk_start.y, cblk_start.x + (1U << cblk_expn_.x),
@@ -154,7 +154,7 @@ struct PrecinctImpl
 	BlockCache<DecompressCodeblock, PrecinctImpl>* dec;
 	grkRectU32 cblk_grid_;
 	grkRectU32 bounds_;
-	grkPointU32 cblk_expn_;
+	grkpt cblk_expn_;
 	bool isCompressor_;
 
   private:
@@ -163,7 +163,7 @@ struct PrecinctImpl
 };
 struct Precinct : public grkRectU32
 {
-	Precinct(const grkRectU32& bounds, bool isCompressor, grkPointU32 cblk_expn)
+	Precinct(const grkRectU32& bounds, bool isCompressor, grkpt cblk_expn)
 		: grkRectU32(bounds), precinctIndex(0),
 		  impl(new PrecinctImpl(isCompressor, this, cblk_expn)), cblk_expn_(cblk_expn)
 	{}
@@ -215,7 +215,7 @@ struct Precinct : public grkRectU32
 	{
 		return getImpl()->dec->tryGet(cblkno);
 	}
-	grkPointU32 getCblkExpn(void)
+	grkpt getCblkExpn(void)
 	{
 		return cblk_expn_;
 	}
@@ -227,7 +227,7 @@ struct Precinct : public grkRectU32
 
   private:
 	PrecinctImpl* impl;
-	grkPointU32 cblk_expn_;
+	grkpt cblk_expn_;
 	PrecinctImpl* getImpl(void)
 	{
 		impl->initCodeBlocks(this);

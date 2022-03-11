@@ -46,7 +46,7 @@ class PacketManager
 	uint32_t getNumProgressions(void);
 	TileProcessor* getTileProcessor(void);
 	GrkImage* getImage();
-
+	grkRectU32 getTileBounds(void);
   private:
 	/**
 	 * Updates the coding parameters
@@ -99,6 +99,7 @@ class PacketManager
 	PacketIter* pi_;
 	J2K_T2_MODE t2Mode;
 	TileProcessor* tileProcessor;
+	grkRectU32 tileBounds_;
 };
 
 } // namespace grk

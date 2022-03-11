@@ -34,7 +34,7 @@ struct grkPoint
 	T x;
 	T y;
 };
-using grkPointU32 = grkPoint<uint32_t>;
+using grkpt = grkPoint<uint32_t>;
 
 template<typename T>
 struct grkLine

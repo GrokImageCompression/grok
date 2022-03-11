@@ -62,18 +62,14 @@ struct PiComp
 	PiResolution* resolutions;
 };
 
-struct ResBuf;
-struct IncludeTracker;
-struct PacketIter;
-
-struct ResBuf
+struct ResIncludeBuffers
 {
-	ResBuf()
+	ResIncludeBuffers()
 	{
 		for(uint8_t i = 0; i < GRK_J2K_MAXRLVLS; ++i)
 			buffers[i] = nullptr;
 	}
-	~ResBuf()
+	~ResIncludeBuffers()
 	{
 		for(uint8_t i = 0; i < GRK_J2K_MAXRLVLS; ++i)
 			delete[] buffers[i];
@@ -84,8 +80,11 @@ struct IncludeTracker
 {
 	IncludeTracker(uint16_t numcomponents)
 		: numcomps(numcomponents), currentLayer(0), currentResBuf(nullptr),
-		  include(new std::map<uint16_t, ResBuf*>())
-	{}
+		  include(new std::map<uint16_t, ResIncludeBuffers*>())
+	{
+		for (uint8_t i = 0; i < GRK_J2K_MAXRLVLS; ++i)
+			numPrecinctsPerRes[i] = 0;
+	}
 	~IncludeTracker()
 	{
 		clear();
@@ -93,7 +92,7 @@ struct IncludeTracker
 	}
 	uint8_t* get_include(uint16_t layerno, uint8_t resno)
 	{
-		ResBuf* resBuf = nullptr;
+		ResIncludeBuffers* resBuf = nullptr;
 		if(layerno == currentLayer && currentResBuf)
 		{
 			resBuf = currentResBuf;
@@ -102,7 +101,7 @@ struct IncludeTracker
 		{
 			if(include->find(layerno) == include->end())
 			{
-				resBuf = new ResBuf;
+				resBuf = new ResIncludeBuffers;
 				include->operator[](layerno) = resBuf;
 			}
 			else
@@ -139,31 +138,26 @@ struct IncludeTracker
 
 		return false;
 	}
-
 	void clear()
 	{
 		for(auto it = include->begin(); it != include->end(); ++it)
 			delete it->second;
 		include->clear();
 	}
-
+	uint64_t numPrecinctsPerRes[GRK_J2K_MAXRLVLS];
+private:
 	uint16_t numcomps;
 	uint16_t currentLayer;
-	ResBuf* currentResBuf;
-	uint64_t numPrecinctsPerRes[GRK_J2K_MAXRLVLS];
-	std::map<uint16_t, ResBuf*>* include;
+	ResIncludeBuffers* currentResBuf;
+	std::map<uint16_t, ResIncludeBuffers*>* include;
 };
 
 class PacketManager;
-class TileCodingParams;
 
 struct ResPrecinctInfo {
 	ResPrecinctInfo();
 	void init(uint8_t levelno,
-			uint32_t tx0,
-			uint32_t ty0,
-			uint32_t tx1,
-			uint32_t ty1,
+			grkRectU32 tileBounds,
 			uint32_t dx,
 			uint32_t dy);
 	bool operator==(ResPrecinctInfo &rhs){
@@ -229,33 +223,24 @@ struct PacketIter
 	uint64_t step_c;
 	/** precinct step used to localize the packet in the include vector */
 	uint32_t step_p;
-	/** component that identify the packet */
 	uint16_t compno;
-	/** resolution that identify the packet */
 	uint8_t resno;
-	/** precinct that identify the packet */
 	uint64_t precinctIndex;
-	/** layer that identify the packet */
 	uint16_t layno;
-	/** progression order  */
 	grk_progression prog;
-	/** number of components in the image */
 	uint16_t numcomps;
-	/** Components*/
 	PiComp* comps;
-	/** tile bounds in canvas coordinates */
-	uint32_t tx0, ty0, tx1, ty1;
 	/** packet coordinates */
 	uint32_t x, y;
 	/** component sub-sampling */
 	uint32_t dx, dy;
-
   private:
 	bool handledFirstInner;
 	PacketManager* packetManager;
 	uint8_t maxNumDecompositionResolutions;
 	bool singleProgression_;
 	ResPrecinctInfo * precinctInfo_;
+	// precinct top,left grid coordinates
 	uint32_t px0grid_;
 	uint32_t py0grid_;
 	bool genPrecinctY0Grid(ResPrecinctInfo *rpInfo);

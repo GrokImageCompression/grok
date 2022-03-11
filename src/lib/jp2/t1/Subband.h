@@ -73,30 +73,29 @@ struct Subband : public grkRectU32
 
 		return precincts[index];
 	}
-	grkRectU32 generatePrecinctBounds(uint64_t precinctIndex, grkPointU32 precinctRegionStart,
-									  grkPointU32 precinct_expn, uint32_t precinctGridWidth)
+	grkRectU32 generatePrecinctBounds(uint64_t precinctIndex, grkpt precinctPartitionTopLeft,
+									  grkpt precinctExpn, uint32_t precinctGridWidth)
 	{
-		auto precinctStart =
-			grkPointU32(precinctRegionStart.x +
-							(uint32_t)((precinctIndex % precinctGridWidth) << precinct_expn.x),
-						precinctRegionStart.y +
-							(uint32_t)((precinctIndex / precinctGridWidth) << precinct_expn.y));
-		return grkRectU32(precinctStart.x, precinctStart.y,
-						  precinctStart.x + (1U << precinct_expn.x),
-						  precinctStart.y + (1U << precinct_expn.y))
-			.intersection(this);
+		auto precinctTopLeft =
+			grkpt(precinctPartitionTopLeft.x +
+							(uint32_t)((precinctIndex % precinctGridWidth) << precinctExpn.x),
+				precinctPartitionTopLeft.y +
+							(uint32_t)((precinctIndex / precinctGridWidth) << precinctExpn.y));
+		return grkRectU32(precinctTopLeft.x, precinctTopLeft.y,
+							precinctTopLeft.x + (1U << precinctExpn.x),
+								precinctTopLeft.y + (1U << precinctExpn.y)).intersection(this);
 	}
 	Precinct* createPrecinct(bool isCompressor, uint64_t precinctIndex,
-							 grkPointU32 precinctRegionStart, grkPointU32 precinct_expn,
-							 uint32_t precinctGridWidth, grkPointU32 cblk_expn)
+							 grkpt precinctPartitionTopLeft, grkpt precinctExpn,
+							 uint32_t precinctGridWidth, grkpt cblk_expn)
 	{
 		auto temp = precinctMap.find(precinctIndex);
 		if(temp != precinctMap.end())
 			return precincts[temp->second];
 
-		auto bandPrecinctBounds = generatePrecinctBounds(precinctIndex, precinctRegionStart,
-														 precinct_expn, precinctGridWidth);
-		auto currPrec = new Precinct(bandPrecinctBounds, isCompressor, cblk_expn);
+		auto bounds = generatePrecinctBounds(precinctIndex, precinctPartitionTopLeft,
+														 precinctExpn, precinctGridWidth);
+		auto currPrec = new Precinct(bounds, isCompressor, cblk_expn);
 		currPrec->precinctIndex = precinctIndex;
 		precincts.push_back(currPrec);
 		precinctMap[precinctIndex] = precincts.size() - 1;
@@ -105,7 +104,7 @@ struct Subband : public grkRectU32
 	}
 	eBandOrientation orientation;
 	std::vector<Precinct*> precincts;
-	// maps global precinct index to vector index
+	// maps global precinct index to precincts vector index
 	std::map<uint64_t, uint64_t> precinctMap;
 	uint64_t numPrecincts;
 	uint8_t numbps;

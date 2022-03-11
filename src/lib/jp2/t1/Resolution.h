@@ -44,21 +44,21 @@ struct Resolution : public grkRectU32
 		this->current_plugin_tile = current_plugin_tile;
 
 		/* p. 35, table A-23, ISO/IEC FDIS154444-1 : 2000 (18 august 2000) */
-		precinctExpn = grkPointU32(tccp->precinctWidthExp[resno], tccp->precinctHeightExp[resno]);
+		precinctExpn = grkpt(tccp->precinctWidthExp[resno], tccp->precinctHeightExp[resno]);
 
 		/* p. 64, B.6, ISO/IEC FDIS15444-1 : 2000 (18 august 2000)  */
-		precinctStart = grkPointU32(floordivpow2(x0, precinctExpn.x) << precinctExpn.x,
+		precinctPartitionTopLeft = grkpt(floordivpow2(x0, precinctExpn.x) << precinctExpn.x,
 									floordivpow2(y0, precinctExpn.y) << precinctExpn.y);
 
 		uint64_t num_precincts = (uint64_t)precinctGridWidth * precinctGridHeight;
 		if(resno != 0)
 		{
-			precinctStart = grkPointU32(ceildivpow2<uint32_t>(precinctStart.x, 1),
-										ceildivpow2<uint32_t>(precinctStart.y, 1));
+			precinctPartitionTopLeft = grkpt(ceildivpow2<uint32_t>(precinctPartitionTopLeft.x, 1),
+										ceildivpow2<uint32_t>(precinctPartitionTopLeft.y, 1));
 			precinctExpn.x--;
 			precinctExpn.y--;
 		}
-		cblkExpn = grkPointU32(std::min<uint32_t>(tccp->cblkw, precinctExpn.x),
+		cblkExpn = grkpt(std::min<uint32_t>(tccp->cblkw, precinctExpn.x),
 							   std::min<uint32_t>(tccp->cblkh, precinctExpn.y));
 		for(uint8_t bandIndex = 0; bandIndex < numTileBandWindows; ++bandIndex)
 		{
@@ -68,7 +68,7 @@ struct Resolution : public grkRectU32
 			{
 				for(uint64_t precinctIndex = 0; precinctIndex < num_precincts; ++precinctIndex)
 				{
-					if(!curr_band->createPrecinct(true, precinctIndex, precinctStart, precinctExpn,
+					if(!curr_band->createPrecinct(true, precinctIndex, precinctPartitionTopLeft, precinctExpn,
 												  precinctGridWidth, cblkExpn))
 						return false;
 				}
@@ -83,9 +83,9 @@ struct Resolution : public grkRectU32
 	Subband tileBand[BAND_NUM_INDICES]; // unreduced tile component bands in canvas coordinates
 	uint32_t numTileBandWindows; // 1 or 3
 	uint32_t precinctGridWidth, precinctGridHeight; /* dimensions of precinct grid */
-	grkPointU32 cblkExpn;
-	grkPointU32 precinctStart;
-	grkPointU32 precinctExpn;
+	grkpt cblkExpn;
+	grkpt precinctPartitionTopLeft;
+	grkpt precinctExpn;
 	grk_plugin_tile* current_plugin_tile;
 };
 

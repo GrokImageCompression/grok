@@ -211,7 +211,7 @@ class SparseCanvas : public ISparseCanvas
 			{
 				x_incr = (x == win.x0) ? block_width - (win.x0 & (block_width - 1)) : block_width;
 				x_incr = (std::min<uint32_t>)(x_incr, win.x1 - x);
-				if(!grid_bounds.contains(grkPointU32(block_x, block_y)))
+				if(!grid_bounds.contains(grkpt(block_x, block_y)))
 				{
 					GRK_ERROR("sparse buffer : attempt to allocate a block (%d,%d) outside block "
 							  "grid bounds",
@@ -223,7 +223,7 @@ class SparseCanvas : public ISparseCanvas
 				{
 					auto b = new SparseBlock();
 					b->alloc(block_width * block_height, zeroOutBuffer);
-					assert(grid_bounds.contains(grkPointU32(block_x, block_y)));
+					assert(grid_bounds.contains(grkpt(block_x, block_y)));
 					assert(b->data);
 					uint64_t index = (uint64_t)(block_y - grid_bounds.y0) * grid_bounds.width() +
 									 (block_x - grid_bounds.x0);
@@ -292,7 +292,7 @@ class SparseCanvas : public ISparseCanvas
 				x_incr = (x == win.x0) ? block_width - (win.x0 & (block_width - 1)) : block_width;
 				uint32_t block_x_offset = block_width - x_incr;
 				x_incr = (std::min<uint32_t>)(x_incr, win.x1 - x);
-				if(!grid_bounds.contains(grkPointU32(block_x, block_y)))
+				if(!grid_bounds.contains(grkpt(block_x, block_y)))
 				{
 					GRK_ERROR("sparse buffer @ resno %d, Attempt to access a block (%d,%d) outside "
 							  "block grid bounds",
@@ -356,7 +356,7 @@ class SparseCanvas : public ISparseCanvas
 #ifdef GRK_DEBUG_VALGRIND
 							if(src_ptr)
 							{
-								grkPointU32 pt((uint32_t)(x + k), y_);
+								grkpt pt((uint32_t)(x + k), y_);
 								size_t val = grk_memcheck<int32_t>(src_ptr + ind, 1);
 								if(val != grk_mem_ok)
 									GRK_ERROR("sparse buffer @ resno %d,  write block(%d,%d): "
