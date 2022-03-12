@@ -620,7 +620,7 @@ bool CodeStreamCompress::compress(grk_plugin_tile* tile)
 	{
 		tf::Executor exec(numRequiredThreads);
 		tf::Taskflow taskflow;
-		tf::Task *node = new tf::Task[numTiles];
+		auto node = new tf::Task[numTiles];
 		for (uint64_t i = 0; i < numTiles; i++)
 			node[i] = taskflow.placeholder();
 		for(uint16_t j = 0; j < numTiles; ++j)
