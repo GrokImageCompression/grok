@@ -547,20 +547,20 @@ void PacketManager::updateCompressTcpProgressions(CodingParams* p_cp, uint16_t n
 	auto tcp = p_cp->tcps + tileno;
 	for(uint32_t pino = 0; pino < tcp->getNumProgressions(); ++pino)
 	{
-		auto cur_prog = tcp->progressionOrderChange + pino;
-		cur_prog->progression = poc ? cur_prog->specifiedCompressionPocProg : tcp->prg;
-		cur_prog->tpLayE = poc ? cur_prog->layE : tcp->numlayers;
-		cur_prog->tpResS = poc ? cur_prog->resS : 0;
-		cur_prog->tpResE = poc ? cur_prog->resE : max_res;
-		cur_prog->tpCompS = poc ? cur_prog->compS : 0;
-		cur_prog->tpCompE = poc ? cur_prog->compE : num_comps;
-		cur_prog->tpPrecE = max_precincts;
-		cur_prog->tp_txS = tileBounds.x0;
-		cur_prog->tp_tyS = tileBounds.y0;
-		cur_prog->tp_txE = tileBounds.x1;
-		cur_prog->tp_tyE = tileBounds.y1;
-		cur_prog->dx = dx_min;
-		cur_prog->dy = dy_min;
+		auto prog = tcp->progressionOrderChange + pino;
+		prog->progression = poc ? prog->specifiedCompressionPocProg : tcp->prg;
+		prog->tpLayE = poc ? prog->layE : tcp->numlayers;
+		prog->tpResS = poc ? prog->resS : 0;
+		prog->tpResE = poc ? prog->resE : max_res;
+		prog->tpCompS = poc ? prog->compS : 0;
+		prog->tpCompE = poc ? prog->compE : num_comps;
+		prog->tpPrecE = max_precincts;
+		prog->tp_txS = tileBounds.x0;
+		prog->tp_tyS = tileBounds.y0;
+		prog->tp_txE = tileBounds.x1;
+		prog->tp_tyE = tileBounds.y1;
+		prog->dx = dx_min;
+		prog->dy = dy_min;
 	}
 }
 void PacketManager::updateCompressParams(const GrkImage* image, CodingParams* p_cp, uint16_t tileno)
