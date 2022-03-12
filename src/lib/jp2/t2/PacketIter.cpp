@@ -106,7 +106,7 @@ void PacketIter::genPrecinctInfo(void){
     	 return;
 
     auto tb = packetManager->getTileBounds();
-    // we want tile origin at (0,0) to simplify computations
+    // tile origin at (0,0) will simplify computations
     if (tb.x0 || tb.y0) {
     	return;
     }
@@ -420,12 +420,12 @@ bool PacketIter::next_rpclOPT(void)
 			continue;
 		for(; y < prog.ty1; y += dy)
 		{
-			if (!genPrecinctY0Grid(precInfo))
+			if (!genPrecinctY0GridOPT(precInfo))
 				continue;
 			uint64_t precIndexY = (uint64_t)py0grid_ * res->precinctGridWidth;
 			for(; x < prog.tx1; x += dx)
 			{
-				if (!genPrecinctX0Grid(precInfo) )
+				if (!genPrecinctX0GridOPT(precInfo) )
 					continue;
 				for(; compno < prog.compE; compno++)
 				{
@@ -484,9 +484,9 @@ bool PacketIter::generatePrecinctIndex(void)
 		auto rpInfo = precinctInfo_ + resno;
 		if (!rpInfo->valid)
 			return false;
-		if (!genPrecinctY0Grid(rpInfo))
+		if (!genPrecinctY0GridOPT(rpInfo))
 			return false;
-		if (!genPrecinctX0Grid(rpInfo))
+		if (!genPrecinctX0GridOPT(rpInfo))
 			return false;
 	} else {
 		ResPrecinctInfo rpInfo;
@@ -523,12 +523,27 @@ bool PacketIter::genPrecinctY0Grid(ResPrecinctInfo *rpInfo){
 
 	return true;
 }
-
 bool PacketIter::genPrecinctX0Grid(ResPrecinctInfo *rpInfo){
 	if(!(((uint64_t)x % rpInfo->rpdx == 0) || ((x == packetManager->getTileBounds().x0) && rpInfo->rpx0)) )
 		return false;
 
 	px0grid_ = floordivpow2(ceildiv<uint64_t>((uint64_t)x, rpInfo->rdx), rpInfo->precinctWidthExp) - rpInfo->px0;
+
+	return true;
+}
+bool PacketIter::genPrecinctY0GridOPT(ResPrecinctInfo *rpInfo){
+	if(!(((uint64_t)y % rpInfo->rpdy == 0) ))
+		return false;
+
+	py0grid_ = floordivpow2(ceildiv<uint64_t>((uint64_t)y, rpInfo->rdy), rpInfo->precinctHeightExp);
+
+	return true;
+}
+bool PacketIter::genPrecinctX0GridOPT(ResPrecinctInfo *rpInfo){
+	if(!(((uint64_t)x % rpInfo->rpdx == 0) ))
+		return false;
+
+	px0grid_ = floordivpow2(ceildiv<uint64_t>((uint64_t)x, rpInfo->rdx), rpInfo->precinctWidthExp);
 
 	return true;
 }

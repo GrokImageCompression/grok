@@ -250,7 +250,9 @@ struct PacketIter
 	uint32_t px0grid_;
 	uint32_t py0grid_;
 	bool genPrecinctY0Grid(ResPrecinctInfo *rpInfo);
+	bool genPrecinctY0GridOPT(ResPrecinctInfo *rpInfo);
 	bool genPrecinctX0Grid(ResPrecinctInfo *rpInfo);
+	bool genPrecinctX0GridOPT(ResPrecinctInfo *rpInfo);
 	bool genPrecinctResCheck(ResPrecinctInfo *rpInfo);
 	bool generatePrecinctIndex(void);
 	void update_dxy_for_comp(PiComp* comp);
