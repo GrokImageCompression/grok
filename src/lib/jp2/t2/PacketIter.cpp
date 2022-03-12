@@ -48,8 +48,8 @@ void ResPrecinctInfo::init(uint8_t decompLevel,
 		return;
 	uint32_t rpxshift  = precinctWidthExp + decompLevel;
 	uint32_t rpyshift  = precinctHeightExp + decompLevel;
-	rpx0 = ((uint64_t)resBounds.x0 << decompLevel) % ((uint64_t)1 << rpxshift);
-	rpy0 = ((uint64_t)resBounds.y0 << decompLevel) % ((uint64_t)1 << rpyshift);
+	rpx0 = (uint32_t)(((uint64_t)resBounds.x0 << decompLevel) % ((uint64_t)1 << rpxshift));
+	rpy0 = (uint32_t)(((uint64_t)resBounds.y0 << decompLevel) % ((uint64_t)1 << rpyshift));
 	rpdx = ((uint64_t)dx << rpxshift);
 	rpdy = ((uint64_t)dy << rpyshift);
 	rdx  = ((uint64_t)dx << decompLevel);
@@ -418,12 +418,12 @@ bool PacketIter::next_rpclOPT(void)
 		auto res = comps->resolutions + resno;
 		if (!genPrecinctResCheck(precInfo))
 			continue;
-		for(; y < prog.ty1; y += dy)
+		for(; y < prog.ty1; y += precInfo->rpdy)
 		{
 			if (!genPrecinctY0GridOPT(precInfo))
 				continue;
 			uint64_t precIndexY = (uint64_t)py0grid_ * res->precinctGridWidth;
-			for(; x < prog.tx1; x += dx)
+			for(; x < prog.tx1; x += precInfo->rpdx)
 			{
 				if (!genPrecinctX0GridOPT(precInfo) )
 					continue;

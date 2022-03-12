@@ -179,8 +179,8 @@ struct ResPrecinctInfo {
 	}
 	uint32_t precinctWidthExp;
 	uint32_t precinctHeightExp;
-	uint64_t rpx0;
-	uint64_t rpy0;
+	uint32_t rpx0;
+	uint32_t rpy0;
 	uint64_t rpdx;
 	uint64_t rpdy;
 	uint64_t rdx;
@@ -231,7 +231,7 @@ struct PacketIter
 	uint16_t numcomps;
 	PiComp* comps;
 	/** packet coordinates */
-	uint32_t x, y;
+	uint64_t x, y;
 	/** component sub-sampling */
 	uint32_t dx, dy;
   private:
