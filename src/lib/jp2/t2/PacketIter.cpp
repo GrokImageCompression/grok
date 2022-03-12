@@ -424,11 +424,12 @@ bool PacketIter::next_rpclOPT(void)
 				// windowed decode:
 				// bail out if we reach a precinct which is past the
 				// bottom, right hand corner of the tile window
-				if(singleProgression_ && resno == prog.resE - 1)
+				if(singleProgression_ && resno == maxNumDecompositionResolutions - 1)
 				{
 					if(win.non_empty() &&
-					   (y >= win.y1 || (win.y1 > 0 && y == win.y1 - 1 && x >= win.x1)))
+					   (y >= win.y1 || (win.y1 > 0 && y > win.y1 - 1 && x > win.x1))){
 						return false;
+					}
 				}
 				genPrecinctX0GridOPT(precInfo);
 				for(; compno < prog.compE; compno++)
