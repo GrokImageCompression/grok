@@ -283,7 +283,7 @@ struct PacketIter
 	 */
 	bool next_rpcl(void);
 	bool next_rpclUnopt(void);
-	bool next_rpclOpt(void);
+	bool next_rpclOPT(void);
 };
 
 /* ----------------------------------------------------------------------- */

@@ -104,6 +104,12 @@ void PacketIter::genPrecinctInfo(void){
     		 prog.progression != GRK_PCRL &&
 			 	 prog.progression != GRK_CPRL)
     	 return;
+
+    auto tb = packetManager->getTileBounds();
+    // we want tile origin at (0,0) to simplify computations
+    if (tb.x0 || tb.y0) {
+    	return;
+    }
 	bool fixedSubsamplingAcrossComponents = true;
 	uint16_t maxResolutions = 0;
 	for(uint16_t compno = 0; compno < numcomps; ++compno)
@@ -185,6 +191,8 @@ bool PacketIter::next_pcrl(void)
 	{
 		for(; x < prog.tx1; x += dx - (x % dx))
 		{
+			// disabling for now - need to take padding into account
+			/*
 			// windowed decode:
 			// bail out if we reach a precinct which is past the
 			// bottom, right hand corner of the tile window
@@ -195,6 +203,7 @@ bool PacketIter::next_pcrl(void)
 				   (y >= win.y1 || (win.y1 > 0 && y == win.y1 - 1 && x >= win.x1)))
 					return false;
 			}
+			*/
 			for(; compno < prog.compE; compno++)
 			{
 				for(; resno < prog.resE; resno++)
@@ -323,7 +332,7 @@ bool PacketIter::next_rlcp(void)
 }
 bool PacketIter::next_rpcl(void)
 {
-	return precinctInfo_ ? next_rpclOpt() : next_rpclUnopt();
+	return precinctInfo_ ? next_rpclOPT() : next_rpclUnopt();
 }
 bool PacketIter::next_rpclUnopt(void)
 {
@@ -380,7 +389,7 @@ bool PacketIter::next_rpclUnopt(void)
 
 	return false;
 }
-bool PacketIter::next_rpclOpt(void)
+bool PacketIter::next_rpclOPT(void)
 {
 	for(; resno < prog.resE; resno++)
 	{
@@ -409,12 +418,12 @@ bool PacketIter::next_rpclOpt(void)
 		auto res = comps->resolutions + resno;
 		if (!genPrecinctResCheck(precInfo))
 			continue;
-		for(; y < prog.ty1; y += dy - (y % dy))
+		for(; y < prog.ty1; y += dy)
 		{
 			if (!genPrecinctY0Grid(precInfo))
 				continue;
 			uint64_t precIndexY = (uint64_t)py0grid_ * res->precinctGridWidth;
-			for(; x < prog.tx1; x += dx - (x % dx))
+			for(; x < prog.tx1; x += dx)
 			{
 				if (!genPrecinctX0Grid(precInfo) )
 					continue;
