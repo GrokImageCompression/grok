@@ -244,6 +244,10 @@ bool PacketLengthMarkers::readPLT(uint8_t* headerData, uint16_t header_size)
 bool PacketLengthMarkers::readInit(uint8_t index, PL_MARKER_TYPE type)
 {
 	markerIndex_ = index;
+	if (markers_->size( ) == 255 && type == GRK_PL_MARKER_PLM){
+		GRK_ERROR("PLM: only 255 PLM markers are supported.");
+		return false;
+	}
 	if (markers_->empty()) {
 		sequential_ = index == 0;
 	}
@@ -264,14 +268,13 @@ bool PacketLengthMarkers::readInit(uint8_t index, PL_MARKER_TYPE type)
 		// Therefore, we do not concatenate any of the markers, even though
 		// they may share the same signaled marker index
 		if (sequential_) {
-			const char* mType = (type == GRK_PL_MARKER_PLM) ? "PLM" : "PLT";
 			markerIndex_ = (uint32_t)markers_->size();
 			if (markers_->size() == 256){
-				GRK_WARN("%s: 256+1 markers, with all 256+1 %s marker indices sequential mod 256.",mType,mType);
-				GRK_WARN("We will make the assumption that **all** %s markers are sequential,",mType);
-				GRK_WARN("and therefore will ignore the signaled %s marker index,",mType);
+				GRK_WARN("PLT: 256+1 markers, with all 256+1 PLT marker indices sequential mod 256.");
+				GRK_WARN("We will make the assumption that **all** PLT markers are sequential");
+				GRK_WARN("and therefore will ignore the signaled PLT marker index,");
 				GRK_WARN("and use the marker count instead as the marker index.");
-				GRK_WARN("Decompression will fail if this assumption is broken for subsequent %s markers.", mType);
+				GRK_WARN("Decompression will fail if this assumption is broken for subsequent PLT markers.");
 			}
 		}
 	}
