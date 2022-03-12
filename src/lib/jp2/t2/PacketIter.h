@@ -159,7 +159,9 @@ struct ResPrecinctInfo {
 	void init(uint8_t levelno,
 			grkRectU32 tileBounds,
 			uint32_t dx,
-			uint32_t dy);
+			uint32_t dy,
+			bool windowed,
+			grkRectU32  tileWindow);
 	bool operator==(ResPrecinctInfo &rhs){
 		return operator==(&rhs);
 	}
@@ -187,6 +189,7 @@ struct ResPrecinctInfo {
 	uint64_t rdy;
 	uint32_t px0;
 	uint32_t py0;
+	grkRectU32 window;
 	bool valid;
 };
 
