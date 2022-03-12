@@ -284,7 +284,6 @@ struct PacketIter
 	 @return returns false if pi pointed to the last packet, otherwise true
 	 */
 	bool next_rpcl(void);
-	bool next_rpclUnopt(void);
 	bool next_rpclOPT(void);
 };
 

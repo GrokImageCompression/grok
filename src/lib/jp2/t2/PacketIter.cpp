@@ -329,10 +329,9 @@ bool PacketIter::next_rlcp(void)
 }
 bool PacketIter::next_rpcl(void)
 {
-	return precinctInfo_ ? next_rpclOPT() : next_rpclUnopt();
-}
-bool PacketIter::next_rpclUnopt(void)
-{
+	if (precinctInfo_)
+		return next_rpclOPT();
+
 	for(; resno < prog.resE; resno++)
 	{
 		if(singleProgression_ && resno >= maxNumDecompositionResolutions)
@@ -415,6 +414,7 @@ bool PacketIter::next_rpclOPT(void)
 		auto res = comps->resolutions + resno;
 		if (!genPrecinctResCheck(precInfo))
 			continue;
+		auto win = packetManager->getTileProcessor()->getUnreducedTileWindow();
 		for(; y < prog.ty1; y += precInfo->rpdy)
 		{
 			genPrecinctY0GridOPT(precInfo);
@@ -426,7 +426,6 @@ bool PacketIter::next_rpclOPT(void)
 				// bottom, right hand corner of the tile window
 				if(singleProgression_ && resno == prog.resE - 1)
 				{
-					auto win = packetManager->getTileProcessor()->getUnreducedTileWindow();
 					if(win.non_empty() &&
 					   (y >= win.y1 || (win.y1 > 0 && y == win.y1 - 1 && x >= win.x1)))
 						return false;
