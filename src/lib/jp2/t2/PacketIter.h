@@ -235,7 +235,13 @@ struct PacketIter
 	/** component sub-sampling */
 	uint32_t dx, dy;
   private:
-	bool handledFirstInner;
+	// This packet iterator is designed so that the innermost progression
+	// is only incremented before the **next** packet has been processed.
+	// i.e. it is not incremented before the very first packet is processed,
+	// but rather before all subsequent packets.
+	// This flag keeps track of this state.
+	bool incrementInner;
+
 	PacketManager* packetManager;
 	uint8_t maxNumDecompositionResolutions;
 	bool singleProgression_;

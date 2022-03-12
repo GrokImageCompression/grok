@@ -62,7 +62,7 @@ void ResPrecinctInfo::init(uint8_t decompLevel,
 PacketIter::PacketIter()
 	: step_l(0), step_r(0), step_c(0), step_p(0), compno(0),
 	  resno(0), precinctIndex(0), layno(0), numcomps(0), comps(nullptr),
-	  x(0), y(0), dx(0), dy(0), handledFirstInner(false), packetManager(nullptr),
+	  x(0), y(0), dx(0), dy(0), incrementInner(false), packetManager(nullptr),
 	  maxNumDecompositionResolutions(0), singleProgression_(false), precinctInfo_(nullptr),
 	  px0grid_(0), py0grid_(0)
 {
@@ -152,16 +152,16 @@ bool PacketIter::next_cprl(void)
 				{
 					if(!generatePrecinctIndex())
 						continue;
-					if(handledFirstInner)
+					if(incrementInner)
 						layno++;
 					if(layno < prog.layE)
 					{
-						handledFirstInner = true;
+						incrementInner = true;
 						if(update_include())
 							return true;
 					}
 					layno = prog.layS;
-					handledFirstInner = false;
+					incrementInner = false;
 				}
 				resno = prog.resS;
 			}
@@ -201,16 +201,16 @@ bool PacketIter::next_pcrl(void)
 				{
 					if(!generatePrecinctIndex())
 						continue;
-					if(handledFirstInner)
+					if(incrementInner)
 						layno++;
 					if(layno < prog.layE)
 					{
-						handledFirstInner = true;
+						incrementInner = true;
 						if(update_include())
 							return true;
 					}
 					layno = prog.layS;
-					handledFirstInner = false;
+					incrementInner = false;
 				}
 				resno = prog.resS;
 			}
@@ -251,16 +251,16 @@ bool PacketIter::next_lrcp(void)
 					auto res = comp->resolutions + resno;
 					precE = (uint64_t)res->precinctGridWidth * res->precinctGridHeight;
 				}
-				if(handledFirstInner)
+				if(incrementInner)
 					precinctIndex++;
 				if(precinctIndex < precE)
 				{
-					handledFirstInner = true;
+					incrementInner = true;
 					if(update_include())
 						return true;
 				}
 				precinctIndex = prog.precS;
-				handledFirstInner = false;
+				incrementInner = false;
 			}
 			compno = prog.compS;
 		}
@@ -303,16 +303,16 @@ bool PacketIter::next_rlcp(void)
 					auto res = comp->resolutions + resno;
 					precE = (uint64_t)res->precinctGridWidth * res->precinctGridHeight;
 				}
-				if(handledFirstInner)
+				if(incrementInner)
 					precinctIndex++;
 				if(precinctIndex < precE)
 				{
-					handledFirstInner = true;
+					incrementInner = true;
 					if(update_include())
 						return true;
 				}
 				precinctIndex = prog.precS;
-				handledFirstInner = false;
+				incrementInner = false;
 			}
 			compno = prog.compS;
 		}
@@ -360,16 +360,16 @@ bool PacketIter::next_rpclUnopt(void)
 				{
 					if(!generatePrecinctIndex())
 						continue;
-					if(handledFirstInner)
+					if(incrementInner)
 						layno++;
 					if(layno < prog.layE)
 					{
-						handledFirstInner = true;
+						incrementInner = true;
 						if(update_include())
 							return true;
 					}
 					layno = prog.layS;
-					handledFirstInner = false;
+					incrementInner = false;
 				}
 				compno = prog.compS;
 			}
@@ -420,18 +420,18 @@ bool PacketIter::next_rpclOpt(void)
 					continue;
 				for(; compno < prog.compE; compno++)
 				{
-					if(handledFirstInner)
+					if(incrementInner)
 						layno++;
 					if(layno < prog.layE)
 					{
-						handledFirstInner = true;
+						incrementInner = true;
 						if(update_include()){
 							precinctIndex = px0grid_ + precIndexY;
 							return true;
 						}
 					}
 					layno = prog.layS;
-					handledFirstInner = false;
+					incrementInner = false;
 				}
 				compno = prog.compS;
 			}
