@@ -99,6 +99,11 @@ void PacketIter::init(PacketManager* packetMan,
 		comp->dy = img_comp->dy;
 	}
 }
+/***
+ * Generate and cache precinct info
+ *
+ * Assumptions: no subsampling and tile origin at (0,0)
+ */
 void PacketIter::genPrecinctInfo(void){
      if (prog.progression != GRK_RPCL &&
     		 prog.progression != GRK_PCRL &&
@@ -110,29 +115,22 @@ void PacketIter::genPrecinctInfo(void){
     if (tb.x0 || tb.y0) {
     	return;
     }
-	bool fixedSubsamplingAcrossComponents = true;
 	uint16_t maxResolutions = 0;
 	for(uint16_t compno = 0; compno < numcomps; ++compno)
 	{
 		auto comp = comps + compno;
-		auto comp0 = comps;
-		if (compno > 0) {
-			 if (comp->dx != comp0->dx || comp->dy != comp0->dy)
-				 fixedSubsamplingAcrossComponents = false;
-		}
+		 if (comp->dx != 1 || comp->dy != 1)
+			 return;
 		 if (maxResolutions < comp->numresolutions)
 			 maxResolutions = comp->numresolutions;
 	}
-	if (fixedSubsamplingAcrossComponents){
-		precinctInfo_ = new ResPrecinctInfo[maxResolutions];
-		auto tb = packetManager->getTileBounds();
-		for (uint8_t resno = 0; resno < maxResolutions; ++resno){
-			auto inf = precinctInfo_ + resno;
-			auto res = comps->resolutions + resno;
-			inf->precinctWidthExp = res->precinctWidthExp;
-			inf->precinctHeightExp = res->precinctHeightExp;
-			inf->init((uint8_t)(comps->numresolutions - 1U - resno), tb, comps->dx, comps->dy);
-		}
+	precinctInfo_ = new ResPrecinctInfo[maxResolutions];
+	for (uint8_t resno = 0; resno < maxResolutions; ++resno){
+		auto inf = precinctInfo_ + resno;
+		auto res = comps->resolutions + resno;
+		inf->precinctWidthExp = res->precinctWidthExp;
+		inf->precinctHeightExp = res->precinctHeightExp;
+		inf->init((uint8_t)(comps->numresolutions - 1U - resno), tb, comps->dx, comps->dy);
 	}
 }
 bool PacketIter::next_cprl(void)
