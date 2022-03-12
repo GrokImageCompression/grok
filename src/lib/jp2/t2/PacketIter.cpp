@@ -99,28 +99,28 @@ void PacketIter::init(PacketManager* packetMan,
 		comp->dy = img_comp->dy;
 	}
 }
-void PacketIter::genPrecinctInfo(TileCodingParams* tcp){
+void PacketIter::genPrecinctInfo(void){
      if (prog.progression != GRK_RPCL &&
     		 prog.progression != GRK_PCRL &&
 			 	 prog.progression != GRK_CPRL)
     	 return;
-	bool fixedNumResolutionsAcrossComponents = true;
 	bool fixedSubsamplingAcrossComponents = true;
+	uint16_t maxResolutions = 0;
 	for(uint16_t compno = 0; compno < numcomps; ++compno)
 	{
 		auto comp = comps + compno;
 		auto comp0 = comps;
 		if (compno > 0) {
-			 if (comp->numresolutions != comp0->numresolutions)
-				 fixedNumResolutionsAcrossComponents = false;
 			 if (comp->dx != comp0->dx || comp->dy != comp0->dy)
 				 fixedSubsamplingAcrossComponents = false;
 		}
+		 if (maxResolutions < comp->numresolutions)
+			 maxResolutions = comp->numresolutions;
 	}
-	if (fixedNumResolutionsAcrossComponents && fixedSubsamplingAcrossComponents){
-		precinctInfo_ = new ResPrecinctInfo[tcp->tccps->numresolutions];
+	if (fixedSubsamplingAcrossComponents){
+		precinctInfo_ = new ResPrecinctInfo[maxResolutions];
 		auto tb = packetManager->getTileBounds();
-		for (uint8_t resno = 0; resno < tcp->tccps->numresolutions; ++resno){
+		for (uint8_t resno = 0; resno < maxResolutions; ++resno){
 			auto inf = precinctInfo_ + resno;
 			auto res = comps->resolutions + resno;
 			inf->precinctWidthExp = res->precinctWidthExp;

@@ -99,7 +99,7 @@ PacketManager::PacketManager(bool compression, GrkImage* img, CodingParams* cpar
 				res->precinctGridHeight = *(resolutionPrecinctGrid++);
 			}
 		}
-		pi->genPrecinctInfo(tcp);
+		pi->genPrecinctInfo();
 		pi->update_dxy();
 	}
 	delete[] precinct;

@@ -201,7 +201,7 @@ struct PacketIter
 	void init(	PacketManager* packetMan,
 				TileCodingParams* tcp);
 
-	void genPrecinctInfo(TileCodingParams* tcp);
+	void genPrecinctInfo();
 
 	uint8_t* get_include(uint16_t layerIndex);
 	bool update_include(void);
@@ -209,7 +209,7 @@ struct PacketIter
 
 	/**
 	 Modify the packet iterator to point to the next packet
-	 @return false if pi pointed to the last packet or else returns true
+	 @return false if pi pointed to the last packet, otherwise true
 	 */
 	bool next(void);
 
@@ -236,9 +236,9 @@ struct PacketIter
 	uint32_t dx, dy;
   private:
 	// This packet iterator is designed so that the innermost progression
-	// is only incremented before the **next** packet has been processed.
+	// is only incremented before the **next** packet is processed.
 	// i.e. it is not incremented before the very first packet is processed,
-	// but rather before all subsequent packets.
+	// but rather before all subsequent packets are processed.
 	// This flag keeps track of this state.
 	bool incrementInner;
 
@@ -257,29 +257,29 @@ struct PacketIter
 
 	/**
 	 Get next packet in component-precinct-resolution-layer order.
-	 @return returns false if pi pointed to the last packet or else returns true
+	 @return returns false if pi pointed to the last packet, otherwise true
 	 */
 	bool next_cprl(void);
 
 	/**
 	 Get next packet in precinct-component-resolution-layer order.
-	 @return returns false if pi pointed to the last packet or else returns true
+	 @return returns false if pi pointed to the last packet, otherwise true
 	 */
 	bool next_pcrl(void);
 
 	/**
 	 Get next packet in layer-resolution-component-precinct order.
-	 @return returns false if pi pointed to the last packet or else returns true
+	 @return returns false if pi pointed to the last packet, otherwise true
 	 */
 	bool next_lrcp(void);
 	/**
 	 Get next packet in resolution-layer-component-precinct order.
-	 @return returns false if pi pointed to the last packet or else returns true
+	 @return returns false if pi pointed to the last packet, otherwise true
 	 */
 	bool next_rlcp(void);
 	/**
 	 Get next packet in resolution-precinct-component-layer order.
-	 @return returns false if pi pointed to the last packet or else returns true
+	 @return returns false if pi pointed to the last packet, otherwise true
 	 */
 	bool next_rpcl(void);
 	bool next_rpclUnopt(void);
