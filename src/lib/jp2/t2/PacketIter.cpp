@@ -191,8 +191,6 @@ bool PacketIter::next_pcrl(void)
 	{
 		for(; x < prog.tx1; x += dx - (x % dx))
 		{
-			// disabling for now - need to take padding into account
-			/*
 			// windowed decode:
 			// bail out if we reach a precinct which is past the
 			// bottom, right hand corner of the tile window
@@ -203,7 +201,6 @@ bool PacketIter::next_pcrl(void)
 				   (y >= win.y1 || (win.y1 > 0 && y == win.y1 - 1 && x >= win.x1)))
 					return false;
 			}
-			*/
 			for(; compno < prog.compE; compno++)
 			{
 				for(; resno < prog.resE; resno++)
@@ -420,13 +417,21 @@ bool PacketIter::next_rpclOPT(void)
 			continue;
 		for(; y < prog.ty1; y += precInfo->rpdy)
 		{
-			if (!genPrecinctY0GridOPT(precInfo))
-				continue;
+			genPrecinctY0GridOPT(precInfo);
 			uint64_t precIndexY = (uint64_t)py0grid_ * res->precinctGridWidth;
 			for(; x < prog.tx1; x += precInfo->rpdx)
 			{
-				if (!genPrecinctX0GridOPT(precInfo) )
-					continue;
+				// windowed decode:
+				// bail out if we reach a precinct which is past the
+				// bottom, right hand corner of the tile window
+				if(singleProgression_ && resno == prog.resE - 1)
+				{
+					auto win = packetManager->getTileProcessor()->getUnreducedTileWindow();
+					if(win.non_empty() &&
+					   (y >= win.y1 || (win.y1 > 0 && y == win.y1 - 1 && x >= win.x1)))
+						return false;
+				}
+				genPrecinctX0GridOPT(precInfo);
 				for(; compno < prog.compE; compno++)
 				{
 					if(incrementInner)
@@ -531,15 +536,11 @@ bool PacketIter::genPrecinctX0Grid(ResPrecinctInfo *rpInfo){
 
 	return true;
 }
-bool PacketIter::genPrecinctY0GridOPT(ResPrecinctInfo *rpInfo){
+void PacketIter::genPrecinctY0GridOPT(ResPrecinctInfo *rpInfo){
 	py0grid_ = floordivpow2(ceildiv<uint64_t>((uint64_t)y, rpInfo->rdy), rpInfo->precinctHeightExp);
-
-	return true;
 }
-bool PacketIter::genPrecinctX0GridOPT(ResPrecinctInfo *rpInfo){
+void PacketIter::genPrecinctX0GridOPT(ResPrecinctInfo *rpInfo){
 	px0grid_ = floordivpow2(ceildiv<uint64_t>((uint64_t)x, rpInfo->rdx), rpInfo->precinctWidthExp);
-
-	return true;
 }
 void PacketIter::update_dxy(void)
 {
