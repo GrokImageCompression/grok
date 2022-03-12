@@ -484,9 +484,9 @@ bool PacketIter::generatePrecinctIndex(void)
 		auto rpInfo = precinctInfo_ + resno;
 		if (!rpInfo->valid)
 			return false;
-		if (!genPrecinctY0GridOPT(rpInfo))
+		if (!genPrecinctY0Grid(rpInfo))
 			return false;
-		if (!genPrecinctX0GridOPT(rpInfo))
+		if (!genPrecinctX0Grid(rpInfo))
 			return false;
 	} else {
 		ResPrecinctInfo rpInfo;
@@ -532,17 +532,11 @@ bool PacketIter::genPrecinctX0Grid(ResPrecinctInfo *rpInfo){
 	return true;
 }
 bool PacketIter::genPrecinctY0GridOPT(ResPrecinctInfo *rpInfo){
-	if(!(((uint64_t)y % rpInfo->rpdy == 0) ))
-		return false;
-
 	py0grid_ = floordivpow2(ceildiv<uint64_t>((uint64_t)y, rpInfo->rdy), rpInfo->precinctHeightExp);
 
 	return true;
 }
 bool PacketIter::genPrecinctX0GridOPT(ResPrecinctInfo *rpInfo){
-	if(!(((uint64_t)x % rpInfo->rpdx == 0) ))
-		return false;
-
 	px0grid_ = floordivpow2(ceildiv<uint64_t>((uint64_t)x, rpInfo->rdx), rpInfo->precinctWidthExp);
 
 	return true;
