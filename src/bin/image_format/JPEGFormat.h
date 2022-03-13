@@ -16,7 +16,6 @@
  */
 #pragma once
 
-
 #include "ImageFormat.h"
 #ifdef _WIN32
 #define HAVE_BOOLEAN

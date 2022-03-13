@@ -82,7 +82,7 @@ struct IncludeTracker
 		: numcomps(numcomponents), currentLayer(0), currentResBuf(nullptr),
 		  include(new std::map<uint16_t, ResIncludeBuffers*>())
 	{
-		for (uint8_t i = 0; i < GRK_J2K_MAXRLVLS; ++i)
+		for(uint8_t i = 0; i < GRK_J2K_MAXRLVLS; ++i)
 			numPrecinctsPerRes[i] = 0;
 	}
 	~IncludeTracker()
@@ -145,7 +145,8 @@ struct IncludeTracker
 		include->clear();
 	}
 	uint64_t numPrecinctsPerRes[GRK_J2K_MAXRLVLS];
-private:
+
+  private:
 	uint16_t numcomps;
 	uint16_t currentLayer;
 	ResIncludeBuffers* currentResBuf;
@@ -154,30 +155,21 @@ private:
 
 class PacketManager;
 
-struct ResPrecinctInfo {
+struct ResPrecinctInfo
+{
 	ResPrecinctInfo();
-	void init(uint8_t levelno,
-			grkRectU32 tileBounds,
-			uint32_t dx,
-			uint32_t dy,
-			bool windowed,
-			grkRectU32  tileWindow);
-	bool operator==(ResPrecinctInfo &rhs){
+	void init(uint8_t levelno, grkRectU32 tileBounds, uint32_t dx, uint32_t dy, bool windowed,
+			  grkRectU32 tileWindow);
+	bool operator==(ResPrecinctInfo& rhs)
+	{
 		return operator==(&rhs);
 	}
-	bool operator==(ResPrecinctInfo *rhs){
-		return rhs &&
-				precinctWidthExp == rhs->precinctWidthExp &&
-				precinctHeightExp == rhs->precinctHeightExp &&
-				rpx0 == rhs->rpx0 &&
-				rpy0 == rhs->rpy0 &&
-				rpdx == rhs->rpdx &&
-				rpdy == rhs->rpdy &&
-				rdx == rhs->rdx &&
-				rdy == rhs->rdy &&
-				px0 == rhs->px0 &&
-				py0 == rhs->py0 &&
-				valid == rhs->valid;
+	bool operator==(ResPrecinctInfo* rhs)
+	{
+		return rhs && precinctWidthExp == rhs->precinctWidthExp &&
+			   precinctHeightExp == rhs->precinctHeightExp && rpx0 == rhs->rpx0 &&
+			   rpy0 == rhs->rpy0 && rpdx == rhs->rpdx && rpdy == rhs->rpdy && rdx == rhs->rdx &&
+			   rdy == rhs->rdy && px0 == rhs->px0 && py0 == rhs->py0 && valid == rhs->valid;
 	}
 	uint32_t precinctWidthExp;
 	uint32_t precinctHeightExp;
@@ -201,8 +193,7 @@ struct PacketIter
 	PacketIter();
 	~PacketIter();
 
-	void init(	PacketManager* packetMan,
-				TileCodingParams* tcp);
+	void init(PacketManager* packetMan, TileCodingParams* tcp);
 
 	void genPrecinctInfo();
 
@@ -237,6 +228,7 @@ struct PacketIter
 	uint64_t x, y;
 	/** component sub-sampling */
 	uint32_t dx, dy;
+
   private:
 	// This packet iterator is designed so that the innermost progression
 	// is only incremented before the **next** packet is processed.
@@ -248,15 +240,15 @@ struct PacketIter
 	PacketManager* packetManager;
 	uint8_t maxNumDecompositionResolutions;
 	bool singleProgression_;
-	ResPrecinctInfo * precinctInfo_;
+	ResPrecinctInfo* precinctInfo_;
 	// precinct top,left grid coordinates
 	uint32_t px0grid_;
 	uint32_t py0grid_;
-	bool genPrecinctY0Grid(ResPrecinctInfo *rpInfo);
-	bool genPrecinctX0Grid(ResPrecinctInfo *rpInfo);
-	void genPrecinctY0GridOPT(ResPrecinctInfo *rpInfo);
-	void genPrecinctX0GridOPT(ResPrecinctInfo *rpInfo);
-	bool genPrecinctResCheck(ResPrecinctInfo *rpInfo);
+	bool genPrecinctY0Grid(ResPrecinctInfo* rpInfo);
+	bool genPrecinctX0Grid(ResPrecinctInfo* rpInfo);
+	void genPrecinctY0GridOPT(ResPrecinctInfo* rpInfo);
+	void genPrecinctX0GridOPT(ResPrecinctInfo* rpInfo);
+	bool genPrecinctResCheck(ResPrecinctInfo* rpInfo);
 	bool generatePrecinctIndex(void);
 	void update_dxy_for_comp(PiComp* comp);
 

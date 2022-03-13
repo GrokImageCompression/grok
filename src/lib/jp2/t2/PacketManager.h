@@ -47,6 +47,7 @@ class PacketManager
 	TileProcessor* getTileProcessor(void);
 	GrkImage* getImage();
 	grkRectU32 getTileBounds(void);
+
   private:
 	/**
 	 * Updates the coding parameters

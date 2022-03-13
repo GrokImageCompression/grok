@@ -38,13 +38,14 @@ FileFormatCompress::FileFormatCompress(IBufferedStream* stream)
 {}
 FileFormatCompress::~FileFormatCompress()
 {
-	if (inputImage_)
+	if(inputImage_)
 		grk_object_unref(&inputImage_->obj);
 	delete codeStream;
 }
 
-grk_color* FileFormatCompress::getColour(void){
-	if (!inputImage_ || !inputImage_->meta)
+grk_color* FileFormatCompress::getColour(void)
+{
+	if(!inputImage_ || !inputImage_->meta)
 		return nullptr;
 
 	return &inputImage_->meta->color;
@@ -199,16 +200,17 @@ bool FileFormatCompress::write_jp2h(void)
 			std::bind(&FileFormatCompress::write_bpc, this, std::placeholders::_1);
 	writers[nb_writers++].handler =
 		std::bind(&FileFormatCompress::write_colr, this, std::placeholders::_1);
-	if (inputImage_->meta) {
+	if(inputImage_->meta)
+	{
 		if(getColour()->channel_definition)
-			writers[nb_writers++].handler =
-				std::bind(&FileFormatCompress::write_channel_definition, this, std::placeholders::_1);
+			writers[nb_writers++].handler = std::bind(&FileFormatCompress::write_channel_definition,
+													  this, std::placeholders::_1);
 		if(getColour()->palette)
 		{
 			writers[nb_writers++].handler =
 				std::bind(&FileFormatCompress::write_palette_clr, this, std::placeholders::_1);
-			writers[nb_writers++].handler =
-				std::bind(&FileFormatCompress::write_component_mapping, this, std::placeholders::_1);
+			writers[nb_writers++].handler = std::bind(&FileFormatCompress::write_component_mapping,
+													  this, std::placeholders::_1);
 		}
 	}
 	if(has_display_resolution || has_capture_resolution)
@@ -438,19 +440,22 @@ uint8_t* FileFormatCompress::write_channel_definition(uint32_t* p_nb_bytes_writt
 	current_cdef_ptr += 4;
 
 	/* N */
-	grk_write<uint16_t>(current_cdef_ptr, getColour()->channel_definition->num_channel_descriptions);
+	grk_write<uint16_t>(current_cdef_ptr,
+						getColour()->channel_definition->num_channel_descriptions);
 	current_cdef_ptr += 2;
 
 	for(uint16_t i = 0U; i < getColour()->channel_definition->num_channel_descriptions; ++i)
 	{
 		/* Cni */
-		grk_write<uint16_t>(current_cdef_ptr, getColour()->channel_definition->descriptions[i].channel);
+		grk_write<uint16_t>(current_cdef_ptr,
+							getColour()->channel_definition->descriptions[i].channel);
 		current_cdef_ptr += 2;
 		/* Typi */
 		grk_write<uint16_t>(current_cdef_ptr, getColour()->channel_definition->descriptions[i].typ);
 		current_cdef_ptr += 2;
 		/* Asoci */
-		grk_write<uint16_t>(current_cdef_ptr, getColour()->channel_definition->descriptions[i].asoc);
+		grk_write<uint16_t>(current_cdef_ptr,
+							getColour()->channel_definition->descriptions[i].asoc);
 		current_cdef_ptr += 2;
 	}
 	*p_nb_bytes_written = cdef_size;
@@ -801,7 +806,8 @@ bool FileFormatCompress::init(grk_cparameters* parameters, GrkImage* image)
 		// transfer buffer to uuid
 		if(inputImage_->meta->xmp_len && inputImage_->meta->xmp_buf)
 		{
-			uuids[numUuids++] = UUIDBox(XMP_UUID, inputImage_->meta->xmp_buf, inputImage_->meta->xmp_len, true);
+			uuids[numUuids++] =
+				UUIDBox(XMP_UUID, inputImage_->meta->xmp_buf, inputImage_->meta->xmp_len, true);
 			inputImage_->meta->xmp_buf = nullptr;
 			inputImage_->meta->xmp_len = 0;
 		}
@@ -838,14 +844,15 @@ bool FileFormatCompress::init(grk_cparameters* parameters, GrkImage* image)
 	}
 	if(alpha_count)
 	{
-		if (!inputImage_->meta)
+		if(!inputImage_->meta)
 			inputImage_->meta = grk_image_meta_new();
 		getColour()->channel_definition = new grk_channel_definition();
 		/* no memset needed, all values will be overwritten except if
 		 * channel_definition->descriptions allocation fails, */
 		/* in which case channel_definition->descriptions will be nullptr => valid for
 		 * destruction */
-		getColour()->channel_definition->descriptions = new grk_channel_description[inputImage_->numcomps];
+		getColour()->channel_definition->descriptions =
+			new grk_channel_description[inputImage_->numcomps];
 		/* cast is valid : image_->numcomps [1,16384] */
 		getColour()->channel_definition->num_channel_descriptions = (uint16_t)inputImage_->numcomps;
 		for(i = 0U; i < color_channels; i++)
@@ -861,7 +868,8 @@ bool FileFormatCompress::init(grk_cparameters* parameters, GrkImage* image)
 			/* cast is valid : image_->numcomps [1,16384] */
 			getColour()->channel_definition->descriptions[i].channel = (uint16_t)i;
 			getColour()->channel_definition->descriptions[i].typ = inputImage_->comps[i].type;
-			getColour()->channel_definition->descriptions[i].asoc = inputImage_->comps[i].association;
+			getColour()->channel_definition->descriptions[i].asoc =
+				inputImage_->comps[i].association;
 		}
 	}
 	precedence = 0; /* PRECEDENCE */

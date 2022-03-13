@@ -2,9 +2,6 @@
 
 namespace grk
 {
-
-
-
 GrkImage::GrkImage()
 {
 	memset((grk_image*)(this), 0, sizeof(grk_image));
@@ -233,8 +230,9 @@ void GrkImage::copyHeader(GrkImage* dest)
 	dest->rowsPerStrip = rowsPerStrip;
 	dest->packedRowBytes = packedRowBytes;
 }
-bool GrkImage::allocData(grk_image_comp* comp){
-	return allocData(comp,false);
+bool GrkImage::allocData(grk_image_comp* comp)
+{
+	return allocData(comp, false);
 }
 bool GrkImage::allocData(grk_image_comp* comp, bool clear)
 {
@@ -252,8 +250,8 @@ bool GrkImage::allocData(grk_image_comp* comp, bool clear)
 					   comp->stride, comp->h);
 		return false;
 	}
-	if (clear)
-		memset(data,0,dataSize);
+	if(clear)
+		memset(data, 0, dataSize);
 	grk_image_single_component_data_free(comp);
 	comp->data = data;
 
@@ -376,14 +374,17 @@ void GrkImage::postReadHeader(CodingParams* cp)
 	if(rowsPerStrip > y1 - y0)
 		rowsPerStrip = y1 - y0;
 }
-bool GrkImage::validateZeroed(void){
+bool GrkImage::validateZeroed(void)
+{
 	for(uint16_t compno = 0; compno < numcomps; compno++)
 	{
 		auto comp = comps + compno;
-		if (comp->data){
-			for (uint32_t j = 0; j < comp->stride * comp->h; ++j){
+		if(comp->data)
+		{
+			for(uint32_t j = 0; j < comp->stride * comp->h; ++j)
+			{
 				assert(comp->data[j] == 0);
-				if (comp->data[j] != 0)
+				if(comp->data[j] != 0)
 					return false;
 			}
 		}
@@ -391,7 +392,8 @@ bool GrkImage::validateZeroed(void){
 
 	return true;
 }
-void GrkImage::alloc_palette(uint8_t num_channels, uint16_t num_entries){
+void GrkImage::alloc_palette(uint8_t num_channels, uint16_t num_entries)
+{
 	((GrkImageMeta*)meta)->alloc_palette(num_channels, num_entries);
 }
 bool GrkImage::applyColour(void)
@@ -401,7 +403,7 @@ bool GrkImage::applyColour(void)
 		/* Part 1, I.5.3.4: Either both or none : */
 		if(!meta->color.palette->component_mapping)
 			((GrkImageMeta*)meta)->free_palette_clr();
-		else if (!apply_palette_clr())
+		else if(!apply_palette_clr())
 			return false;
 	}
 	if(meta->color.channel_definition)
@@ -411,7 +413,7 @@ bool GrkImage::applyColour(void)
 }
 void GrkImage::apply_channel_definition()
 {
-	if (channelDefinitionApplied_)
+	if(channelDefinitionApplied_)
 		return;
 
 	auto info = meta->color.channel_definition->descriptions;
@@ -436,8 +438,7 @@ void GrkImage::apply_channel_definition()
 
 		if(info[i].typ == GRK_CHANNEL_TYPE_COLOUR && asoc > numcomps)
 		{
-			GRK_WARN("apply_channel_definition: association=%u > numcomps=%u", asoc,
-					 numcomps);
+			GRK_WARN("apply_channel_definition: association=%u > numcomps=%u", asoc, numcomps);
 			continue;
 		}
 		uint16_t asoc_index = (uint16_t)(asoc - 1);
@@ -618,7 +619,7 @@ bool GrkImage::check_color(void)
 }
 bool GrkImage::apply_palette_clr()
 {
-	if (paletteApplied_)
+	if(paletteApplied_)
 		return true;
 
 	auto clr = &meta->color;
@@ -780,7 +781,7 @@ bool GrkImage::allocCompositeData(CodingParams* cp)
 			}
 			if(!destComp->data)
 			{
-				if(!GrkImage::allocData(destComp,true))
+				if(!GrkImage::allocData(destComp, true))
 				{
 					GRK_ERROR(
 						"Failed to allocate pixel data for component %d, with dimensions %u x %u",
@@ -790,7 +791,6 @@ bool GrkImage::allocCompositeData(CodingParams* cp)
 			}
 		}
 	}
-
 
 	return true;
 }
@@ -1064,7 +1064,7 @@ void GrkImageMeta::alloc_palette(uint8_t num_channels, uint16_t num_entries)
 	assert(num_channels);
 	assert(num_entries);
 
-	if (!num_channels || !num_entries)
+	if(!num_channels || !num_entries)
 		return;
 
 	free_palette_clr();

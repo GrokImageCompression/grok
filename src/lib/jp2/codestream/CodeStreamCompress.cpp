@@ -440,8 +440,7 @@ bool CodeStreamCompress::init(grk_cparameters* parameters, GrkImage* image)
 		}
 		if(parameters->mct_data)
 		{
-			uint64_t lMctSize =
-				(uint64_t)image->numcomps * image->numcomps * sizeof(float);
+			uint64_t lMctSize = (uint64_t)image->numcomps * image->numcomps * sizeof(float);
 			auto lTmpBuf = (float*)grkMalloc(lMctSize);
 			auto dc_shift = (int32_t*)((uint8_t*)parameters->mct_data + lMctSize);
 			if(!lTmpBuf)
@@ -614,14 +613,15 @@ bool CodeStreamCompress::compress(grk_plugin_tile* tile)
 				  numTiles, maxNumTilesJ2K);
 		return false;
 	}
-	auto numRequiredThreads = std::min<uint32_t>((uint32_t)ExecSingleton::get()->num_workers(), numTiles);
+	auto numRequiredThreads =
+		std::min<uint32_t>((uint32_t)ExecSingleton::get()->num_workers(), numTiles);
 	std::atomic<bool> success(true);
 	if(numRequiredThreads > 1)
 	{
 		tf::Executor exec(numRequiredThreads);
 		tf::Taskflow taskflow;
 		auto node = new tf::Task[numTiles];
-		for (uint64_t i = 0; i < numTiles; i++)
+		for(uint64_t i = 0; i < numTiles; i++)
 			node[i] = taskflow.placeholder();
 		for(uint16_t j = 0; j < numTiles; ++j)
 		{

@@ -78,12 +78,13 @@ struct Subband : public grkRectU32
 	{
 		auto precinctTopLeft =
 			grkpt(precinctPartitionTopLeft.x +
-							(uint32_t)((precinctIndex % precinctGridWidth) << precinctExpn.x),
-				precinctPartitionTopLeft.y +
-							(uint32_t)((precinctIndex / precinctGridWidth) << precinctExpn.y));
+					  (uint32_t)((precinctIndex % precinctGridWidth) << precinctExpn.x),
+				  precinctPartitionTopLeft.y +
+					  (uint32_t)((precinctIndex / precinctGridWidth) << precinctExpn.y));
 		return grkRectU32(precinctTopLeft.x, precinctTopLeft.y,
-							precinctTopLeft.x + (1U << precinctExpn.x),
-								precinctTopLeft.y + (1U << precinctExpn.y)).intersection(this);
+						  precinctTopLeft.x + (1U << precinctExpn.x),
+						  precinctTopLeft.y + (1U << precinctExpn.y))
+			.intersection(this);
 	}
 	Precinct* createPrecinct(bool isCompressor, uint64_t precinctIndex,
 							 grkpt precinctPartitionTopLeft, grkpt precinctExpn,
@@ -93,8 +94,8 @@ struct Subband : public grkRectU32
 		if(temp != precinctMap.end())
 			return precincts[temp->second];
 
-		auto bounds = generatePrecinctBounds(precinctIndex, precinctPartitionTopLeft,
-														 precinctExpn, precinctGridWidth);
+		auto bounds = generatePrecinctBounds(precinctIndex, precinctPartitionTopLeft, precinctExpn,
+											 precinctGridWidth);
 		auto currPrec = new Precinct(bounds, isCompressor, cblk_expn);
 		currPrec->precinctIndex = precinctIndex;
 		precincts.push_back(currPrec);

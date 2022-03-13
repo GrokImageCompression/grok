@@ -128,6 +128,7 @@ struct TileProcessor
 	uint64_t getTilePartDataLength(void);
 	bool subtractMarkerLength(uint16_t markerLen);
 	bool setTilePartDataLength(uint32_t tilePartLength, bool lastTilePartInCodeStream);
+
   private:
 	// Decompressing Only
 	uint64_t tilePartDataLength;

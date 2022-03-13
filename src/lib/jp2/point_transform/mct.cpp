@@ -427,10 +427,11 @@ namespace HWY_NAMESPACE
 		if(chunkSize > numLanes)
 		{
 			tf::Taskflow taskflow;
-			tf::Task *node = nullptr;
-			if (num_threads > 1) {
+			tf::Task* node = nullptr;
+			if(num_threads > 1)
+			{
 				node = new tf::Task[num_threads];
-				for (uint64_t i = 0; i < num_threads; i++)
+				for(uint64_t i = 0; i < num_threads; i++)
 					node[i] = taskflow.placeholder();
 			}
 			for(size_t tr = 0; tr < num_threads; ++tr)
@@ -446,7 +447,8 @@ namespace HWY_NAMESPACE
 				else
 					compressor();
 			}
-			if (node) {
+			if(node)
+			{
 				ExecSingleton::get()->run(taskflow).wait();
 				delete[] node;
 			}

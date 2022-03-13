@@ -22,7 +22,7 @@
 #include "MemManager.h"
 #include <cstdio>
 
-//const bool debugMemory = false;
+// const bool debugMemory = false;
 
 // OSX is missing C++11 aligned_alloc (stdlib.h version)
 #if defined(__APPLE__)
@@ -125,4 +125,4 @@ void grkAlignedFree(void* ptr)
 		free(((void**)ptr)[-1]);
 #endif
 }
-} // namespace grk
+} // namespace grk_bin

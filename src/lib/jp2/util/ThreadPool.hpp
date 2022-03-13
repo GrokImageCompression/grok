@@ -31,13 +31,15 @@
 
 #ifdef _WIN32
 
-class ExecSingleton {
-public:
+class ExecSingleton
+{
+  public:
 	static tf::Executor* instance(uint32_t numthreads)
 	{
 		std::unique_lock<std::mutex> lock(singleton_mutex);
-		if(!singleton) {
-			if (numthreads)
+		if(!singleton)
+		{
+			if(numthreads)
 				singleton = new tf::Executor(numthreads);
 			else
 				singleton = new tf::Executor();
@@ -55,19 +57,21 @@ public:
 		delete singleton;
 		singleton = nullptr;
 	}
-private:
+
+  private:
 	static tf::Executor* singleton;
 	static std::mutex singleton_mutex;
-
 };
 
 #else
 
-class ExecSingleton {
-public:
+class ExecSingleton
+{
+  public:
 	static tf::Executor* instance(uint32_t numthreads)
 	{
-		static tf::Executor singleton(numthreads ? numthreads : std::thread::hardware_concurrency());
+		static tf::Executor singleton(numthreads ? numthreads
+												 : std::thread::hardware_concurrency());
 
 		return &singleton;
 	}
@@ -77,10 +81,8 @@ public:
 	}
 	static void release()
 	{
-		//no-op
+		// no-op
 	}
 };
 
-
 #endif
-

@@ -25,8 +25,7 @@ namespace grk
 {
 CodeStreamDecompress::CodeStreamDecompress(IBufferedStream* stream)
 	: CodeStream(stream), wholeTileDecompress(true), curr_marker_(0), headerError_(false),
-	  headerRead_(false),
-	  tile_ind_to_dec_(-1), marker_scratch_(nullptr), marker_scratch_size_(0),
+	  headerRead_(false), tile_ind_to_dec_(-1), marker_scratch_(nullptr), marker_scratch_size_(0),
 	  outputImage_(nullptr), tileCache_(new TileCache()), serializeBufferCallback(nullptr),
 	  serializeUserData(nullptr), serializeRegisterClientCallback(nullptr)
 {
@@ -109,7 +108,8 @@ CodeStreamDecompress::~CodeStreamDecompress()
 		grk_object_unref(&outputImage_->obj);
 	delete tileCache_;
 }
-bool CodeStreamDecompress::needsHeaderRead(void){
+bool CodeStreamDecompress::needsHeaderRead(void)
+{
 	return !headerError_ && !headerRead_;
 }
 GrkImage* CodeStreamDecompress::getCompositeImage()
@@ -174,7 +174,7 @@ bool CodeStreamDecompress::readHeader(grk_header_info* header_info)
 			headerError_ = true;
 			return false;
 		}
-		headerRead_= true;
+		headerRead_ = true;
 		procedure_list_.push_back(std::bind(&CodeStreamDecompress::readHeaderProcedure, this));
 		procedure_list_.push_back(std::bind(&CodeStreamDecompress::copy_default_tcp, this));
 		if(!exec(procedure_list_))
@@ -182,7 +182,7 @@ bool CodeStreamDecompress::readHeader(grk_header_info* header_info)
 			headerError_ = true;
 			return false;
 		}
-		if (header_info)
+		if(header_info)
 			headerImage_->multiTile = headerImage_->multiTile && !header_info->singleTileDecompress;
 		auto composite = getCompositeImage();
 		headerImage_->copyHeader(composite);
@@ -369,7 +369,7 @@ bool CodeStreamDecompress::decompressTile(uint16_t tileIndex)
 	if(entry && entry->processor && entry->processor->getImage())
 		return true;
 
-	//2. otherwise, decompress tile
+	// 2. otherwise, decompress tile
 	if(outputImage_)
 	{
 		/* Copy code stream image information to composite image */
@@ -377,7 +377,8 @@ bool CodeStreamDecompress::decompressTile(uint16_t tileIndex)
 	}
 
 	uint16_t numTilesToDecompress = (uint16_t)(cp_.t_grid_width * cp_.t_grid_height);
-	if(codeStreamInfo && !codeStreamInfo->allocTileInfo(numTilesToDecompress)) {
+	if(codeStreamInfo && !codeStreamInfo->allocTileInfo(numTilesToDecompress))
+	{
 		headerError_ = true;
 		return false;
 	}
@@ -441,13 +442,12 @@ bool CodeStreamDecompress::decompressTile(uint16_t tileIndex)
 bool CodeStreamDecompress::endOfCodeStream(void)
 {
 	return decompressorState_.getState() == DECOMPRESS_STATE_EOC ||
-			decompressorState_.getState() == DECOMPRESS_STATE_NO_EOC ||
-				stream_->numBytesLeft() == 0;
+		   decompressorState_.getState() == DECOMPRESS_STATE_NO_EOC || stream_->numBytesLeft() == 0;
 }
 bool CodeStreamDecompress::decompressTiles(void)
 {
 	uint16_t numTilesToDecompress = (uint16_t)(cp_.t_grid_height * cp_.t_grid_width);
-	if(codeStreamInfo && !codeStreamInfo->allocTileInfo(numTilesToDecompress) )
+	if(codeStreamInfo && !codeStreamInfo->allocTileInfo(numTilesToDecompress))
 	{
 		headerError_ = true;
 		return false;
@@ -461,14 +461,16 @@ bool CodeStreamDecompress::decompressTiles(void)
 	std::atomic<bool> success(true);
 	std::atomic<uint32_t> numTilesDecompressed(0);
 
-	auto numRequiredThreads = std::min<uint32_t>((uint32_t)ExecSingleton::get()->num_workers(), numTilesToDecompress);
-	tf::Executor *executor = nullptr;
-	tf::Task *node = nullptr;
+	auto numRequiredThreads =
+		std::min<uint32_t>((uint32_t)ExecSingleton::get()->num_workers(), numTilesToDecompress);
+	tf::Executor* executor = nullptr;
+	tf::Task* node = nullptr;
 	tf::Taskflow taskflow;
-	if (numRequiredThreads > 1) {
-	  executor = new tf::Executor(numRequiredThreads);
-	  node = new tf::Task[numTilesToDecompress];
-		for (uint64_t i = 0; i < numTilesToDecompress; i++)
+	if(numRequiredThreads > 1)
+	{
+		executor = new tf::Executor(numRequiredThreads);
+		node = new tf::Task[numTilesToDecompress];
+		for(uint64_t i = 0; i < numTilesToDecompress; i++)
 			node[i] = taskflow.placeholder();
 	}
 	bool breakAfterT1 = false;
@@ -559,7 +561,8 @@ bool CodeStreamDecompress::decompressTiles(void)
 				goto cleanup;
 		}
 	}
-	if (executor) {
+	if(executor)
+	{
 		executor->run(taskflow).wait();
 		delete executor;
 		executor = nullptr;
@@ -608,7 +611,8 @@ bool CodeStreamDecompress::decompressTiles(void)
 		GRK_WARN("Only %u out of %u tiles were decompressed", decompressed, numTilesToDecompress);
 	}
 cleanup:
-	if (executor) {
+	if(executor)
+	{
 		executor->run(taskflow).wait();
 		delete executor;
 		executor = nullptr;

@@ -39,4 +39,4 @@ uint32_t grkMakeAlignedWidth(uint32_t width);
 void* grkAlignedMalloc(size_t size);
 void grkAlignedFree(void* ptr);
 
-} // namespace grk
+} // namespace grk_bin

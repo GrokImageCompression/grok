@@ -578,8 +578,9 @@ bool GrkImage::sycc422_to_rgb(bool oddFirstX)
 	uint32_t loopWidth = w;
 	if(oddFirstX)
 		loopWidth--;
-	//sanity check
-	if ((loopWidth + 1)/2 != comps[1].w){
+	// sanity check
+	if((loopWidth + 1) / 2 != comps[1].w)
+	{
 		GRK_WARN("incorrect subsampled width %d", comps[1].w);
 		return false;
 	}
@@ -674,16 +675,17 @@ bool GrkImage::sycc420_to_rgb(bool oddFirstX, bool oddFirstY)
 	if(oddFirstY)
 		loopHeight--;
 
-	//sanity check
-	if ((loopWidth + 1)/2 != comps[1].w){
+	// sanity check
+	if((loopWidth + 1) / 2 != comps[1].w)
+	{
 		GRK_WARN("incorrect subsampled width %d", comps[1].w);
 		return false;
 	}
-	if ((loopHeight + 1)/2 != comps[1].h){
+	if((loopHeight + 1) / 2 != comps[1].h)
+	{
 		GRK_WARN("incorrect subsampled height %d", comps[1].h);
 		return false;
 	}
-
 
 	auto dst = createRGB(3, w, h, comps[0].prec);
 	if(!dst)
@@ -712,7 +714,8 @@ bool GrkImage::sycc420_to_rgb(bool oddFirstX, bool oddFirstY)
 		dst->comps[i].data = nullptr;
 	}
 	// if img->y0 is odd, then first line shall use Cb/Cr = 0
-	if(oddFirstY){
+	if(oddFirstY)
+	{
 		for(size_t j = 0U; j < w; ++j)
 			sycc_to_rgb(offset, upb, *src[0]++, 0, 0, dest_ptr[0]++, dest_ptr[1]++, dest_ptr[2]++);
 		src[0] += stride_src_diff[0];
@@ -723,34 +726,39 @@ bool GrkImage::sycc420_to_rgb(bool oddFirstX, bool oddFirstY)
 	size_t i;
 	for(i = 0U; i < (loopHeight & ~(size_t)1U); i += 2U)
 	{
-		auto nextY 		= src[0] + stride_src[0];
-		auto nextRed 	= dest_ptr[0] + stride_dest;
-		auto nextGreen 	= dest_ptr[1] + stride_dest;
-		auto nextBlue 	= dest_ptr[2] + stride_dest;
+		auto nextY = src[0] + stride_src[0];
+		auto nextRed = dest_ptr[0] + stride_dest;
+		auto nextGreen = dest_ptr[1] + stride_dest;
+		auto nextBlue = dest_ptr[2] + stride_dest;
 		// if img->x0 is odd, then first column shall use Cb/Cr = 0
 		if(oddFirstX)
 		{
 			sycc_to_rgb(offset, upb, *src[0]++, 0, 0, dest_ptr[0]++, dest_ptr[1]++, dest_ptr[2]++);
-			sycc_to_rgb(offset, upb, *nextY++, *src[1], *src[2], nextRed++, nextGreen++, nextBlue++);
+			sycc_to_rgb(offset, upb, *nextY++, *src[1], *src[2], nextRed++, nextGreen++,
+						nextBlue++);
 		}
 		uint32_t j;
 		for(j = 0U; j < (loopWidth & ~(size_t)1U); j += 2U)
 		{
 			sycc_to_rgb(offset, upb, *src[0]++, *src[1], *src[2], dest_ptr[0]++, dest_ptr[1]++,
 						dest_ptr[2]++);
-			sycc_to_rgb(offset, upb, *nextY++, *src[1], *src[2], nextRed++, nextGreen++, nextBlue++);
+			sycc_to_rgb(offset, upb, *nextY++, *src[1], *src[2], nextRed++, nextGreen++,
+						nextBlue++);
 
 			sycc_to_rgb(offset, upb, *src[0]++, *src[1], *src[2], dest_ptr[0]++, dest_ptr[1]++,
 						dest_ptr[2]++);
-			sycc_to_rgb(offset, upb, *nextY++, *src[1]++, *src[2]++, nextRed++, nextGreen++, nextBlue++);
+			sycc_to_rgb(offset, upb, *nextY++, *src[1]++, *src[2]++, nextRed++, nextGreen++,
+						nextBlue++);
 		}
 		if(j < loopWidth)
 		{
 			sycc_to_rgb(offset, upb, *src[0]++, *src[1], *src[2], dest_ptr[0]++, dest_ptr[1]++,
 						dest_ptr[2]++);
-			sycc_to_rgb(offset, upb, *nextY++, *src[1]++, *src[2]++, nextRed++, nextGreen++, nextBlue++);
+			sycc_to_rgb(offset, upb, *nextY++, *src[1]++, *src[2]++, nextRed++, nextGreen++,
+						nextBlue++);
 		}
-		for(uint32_t k = 0; k < 3; ++k) {
+		for(uint32_t k = 0; k < 3; ++k)
+		{
 			dest_ptr[k] += stride_dest_diff + stride_dest;
 			src[k] += stride_src_diff[k];
 		}

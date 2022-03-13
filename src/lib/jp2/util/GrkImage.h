@@ -88,6 +88,7 @@ class GrkImage : public grk_image
 	bool check_color(void);
 	void apply_channel_definition(void);
 	void alloc_palette(uint8_t num_channels, uint16_t num_entries);
+
   private:
 	~GrkImage();
 	bool needsConversionToRGB(void);

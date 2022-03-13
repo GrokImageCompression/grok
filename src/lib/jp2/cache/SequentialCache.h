@@ -28,7 +28,7 @@ class SequentialPtrCache
   public:
 	SequentialPtrCache(void) : SequentialPtrCache(kSequentialChunkSize) {}
 	SequentialPtrCache(uint64_t maxChunkSize)
-		: currChunk_(nullptr),chunkSize_(std::min<uint64_t>(maxChunkSize, kSequentialChunkSize)),
+		: currChunk_(nullptr), chunkSize_(std::min<uint64_t>(maxChunkSize, kSequentialChunkSize)),
 		  index_(0)
 	{}
 	virtual ~SequentialPtrCache(void)
@@ -83,12 +83,14 @@ class SequentialPtrCache
 			index_++;
 		return item;
 	}
+
   protected:
 	virtual T* create(void)
 	{
 		auto item = new T();
 		return item;
 	}
+
   private:
 	std::vector<T**> chunks;
 	T** currChunk_;

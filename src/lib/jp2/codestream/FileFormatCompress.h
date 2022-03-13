@@ -61,7 +61,7 @@ class FileFormatCompress : public FileFormat, public ICodeStreamCompress
 	CodeStreamCompress* codeStream;
 	bool needs_xl_jp2c_box_length;
 	uint64_t j2k_codestream_offset;
-	GrkImage *inputImage_;
+	GrkImage* inputImage_;
 };
 
 } // namespace grk

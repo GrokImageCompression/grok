@@ -64,6 +64,7 @@ class CodeStreamDecompress : public CodeStream, public ICodeStreamDecompress
 	bool isWholeTileDecompress();
 	void dump(uint32_t flag, FILE* outputFileStream);
 	bool needsHeaderRead(void);
+
   protected:
 	void dump_MH_info(FILE* outputFileStream);
 	/**

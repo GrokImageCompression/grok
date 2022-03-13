@@ -23,13 +23,13 @@ namespace grk
 {
 TileProcessor::TileProcessor(uint16_t tileIndex, CodeStream* codeStream, IBufferedStream* stream,
 							 bool isCompressor, bool isWholeTileDecompress)
-	: first_poc_tile_part_(true), tilePartIndexCounter_(0), pino(0),
-	  tile(nullptr), headerImage(codeStream->getHeaderImage()),
+	: first_poc_tile_part_(true), tilePartIndexCounter_(0), pino(0), tile(nullptr),
+	  headerImage(codeStream->getHeaderImage()),
 	  current_plugin_tile(codeStream->getCurrentPluginTile()),
 	  wholeTileDecompress(isWholeTileDecompress), cp_(codeStream->getCodingParams()),
-	  packetLengthCache(PacketLengthCache(cp_)), tilePartDataLength(0), tileIndex_(tileIndex), stream_(stream),
-	  corrupt_packet_(false), newTilePartProgressionPosition(0), tcp_(nullptr), truncated(false),
-	  image_(nullptr), isCompressor_(isCompressor), preCalculatedTileLen(0)
+	  packetLengthCache(PacketLengthCache(cp_)), tilePartDataLength(0), tileIndex_(tileIndex),
+	  stream_(stream), corrupt_packet_(false), newTilePartProgressionPosition(0), tcp_(nullptr),
+	  truncated(false), image_(nullptr), isCompressor_(isCompressor), preCalculatedTileLen(0)
 {
 	tile = new Tile();
 	tile->comps = new TileComponent[headerImage->numcomps];
@@ -41,32 +41,40 @@ TileProcessor::~TileProcessor()
 {
 	release(GRK_TILE_CACHE_NONE);
 }
-uint64_t TileProcessor::getTilePartDataLength(void){
+uint64_t TileProcessor::getTilePartDataLength(void)
+{
 	return tilePartDataLength;
 }
-bool TileProcessor::subtractMarkerLength(uint16_t markerLen){
-	if (tilePartDataLength == 0)
+bool TileProcessor::subtractMarkerLength(uint16_t markerLen)
+{
+	if(tilePartDataLength == 0)
 		return true;
 
 	uint32_t sub = (uint32_t)(markerLen + 2);
-	if (tilePartDataLength > 0 && tilePartDataLength < sub ){
-		GRK_ERROR("Tile part data length %d smaller than marker length %d",tilePartDataLength, markerLen );
+	if(tilePartDataLength > 0 && tilePartDataLength < sub)
+	{
+		GRK_ERROR("Tile part data length %d smaller than marker length %d", tilePartDataLength,
+				  markerLen);
 		return false;
 	}
 	tilePartDataLength -= (uint64_t)(markerLen + 2);
 
 	return true;
 }
-bool TileProcessor::setTilePartDataLength(uint32_t tilePartLength,
-											bool lastTilePartInCodeStream){
-	if(!lastTilePartInCodeStream) {
-		if (tilePartLength < sot_marker_segment_len){
-			GRK_ERROR("Tile part data length %d is smaller than for marker segment length %d",tilePartDataLength, sot_marker_segment_len );
+bool TileProcessor::setTilePartDataLength(uint32_t tilePartLength, bool lastTilePartInCodeStream)
+{
+	if(!lastTilePartInCodeStream)
+	{
+		if(tilePartLength < sot_marker_segment_len)
+		{
+			GRK_ERROR("Tile part data length %d is smaller than for marker segment length %d",
+					  tilePartDataLength, sot_marker_segment_len);
 			return false;
 		}
 		tilePartDataLength = tilePartLength - sot_marker_segment_len;
 	}
-	else {
+	else
+	{
 		tilePartDataLength = stream_->numBytesLeft();
 	}
 
@@ -106,7 +114,8 @@ GrkImage* TileProcessor::getImage(void)
 void TileProcessor::release(GRK_TILE_CACHE_STRATEGY strategy)
 {
 	// delete image in absence of tile cache strategy
-	if (strategy == GRK_TILE_CACHE_NONE) {
+	if(strategy == GRK_TILE_CACHE_NONE)
+	{
 		if(image_)
 			grk_object_unref(&image_->obj);
 		image_ = nullptr;
@@ -822,7 +831,8 @@ bool TileProcessor::preCompressTile()
 		auto imagec = headerImage->comps + j;
 		if(transfer_image_to_tile && imagec->data)
 			tilec->getBuffer()->attach(imagec->data, imagec->stride);
-		else if(!tilec->getBuffer()->alloc()) {
+		else if(!tilec->getBuffer()->alloc())
+		{
 			GRK_ERROR("Error allocating tile component data.");
 			return false;
 		}
@@ -911,10 +921,12 @@ bool TileProcessor::prepareSodDecompress(CodeStreamDecompress* codeStream)
 
 	// note: we subtract 2 to account for SOD marker
 	auto tcp = codeStream->get_current_decode_tcp();
-	if(tilePartDataLength >= 2) {
+	if(tilePartDataLength >= 2)
+	{
 		tilePartDataLength -= 2;
 	}
-	else {
+	else
+	{
 		GRK_WARN("SOD marker truncated in final tile part.");
 		tilePartDataLength = 0;
 	}
@@ -1594,9 +1606,12 @@ PacketTracker::~PacketTracker()
 void PacketTracker::init(uint32_t numcomps, uint32_t numres, uint64_t numprec, uint32_t numlayers)
 {
 	uint64_t len = get_buffer_len(numcomps, numres, numprec, numlayers);
-	if(!bits) {
+	if(!bits)
+	{
 		bits = new uint8_t[len];
-	} else {
+	}
+	else
+	{
 		uint64_t currentLen = get_buffer_len(numcomps_, numres_, numprec_, numlayers_);
 		if(len > currentLen)
 		{

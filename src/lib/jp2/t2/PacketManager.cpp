@@ -50,22 +50,22 @@ PacketManager::PacketManager(bool compression, GrkImage* img, CodingParams* cpar
 	uint64_t step_r = image->numcomps * step_c;
 	uint64_t step_l = max_res * step_r;
 	pi_ = new PacketIter[numProgressions];
-	for(uint32_t pino = 0; pino < numProgressions; ++pino) {
+	for(uint32_t pino = 0; pino < numProgressions; ++pino)
+	{
 		auto pi = pi_ + pino;
-		pi->init(this,tcp);
-		if (!compression){
+		pi->init(this, tcp);
+		if(!compression)
+		{
 			auto poc = tcp->progressionOrderChange + pino;
 			auto prog = &pi->prog;
 
 			prog->progression = hasPoc ? poc->progression : tcp->prg;
 			prog->layS = 0;
-			prog->layE =
-				hasPoc ? std::min<uint16_t>(poc->layE, tcp->numlayers) : tcp->numlayers;
+			prog->layE = hasPoc ? std::min<uint16_t>(poc->layE, tcp->numlayers) : tcp->numlayers;
 			prog->resS = hasPoc ? poc->resS : 0;
 			prog->resE = hasPoc ? poc->resE : max_res;
 			prog->compS = hasPoc ? poc->compS : 0;
-			prog->compE =
-				std::min<uint16_t>(hasPoc ? poc->compE : pi->numcomps, image->numcomps);
+			prog->compE = std::min<uint16_t>(hasPoc ? poc->compE : pi->numcomps, image->numcomps);
 			prog->precS = 0;
 			prog->precE = max_precincts;
 		}
@@ -111,10 +111,12 @@ PacketManager::PacketManager(bool compression, GrkImage* img, CodingParams* cpar
 									  max_res, dx_min, dy_min, poc);
 	}
 }
-GrkImage* PacketManager::getImage(){
+GrkImage* PacketManager::getImage()
+{
 	return image;
 }
-grkRectU32 PacketManager::getTileBounds(void){
+grkRectU32 PacketManager::getTileBounds(void)
+{
 	return tileBounds_;
 }
 PacketManager::~PacketManager()
@@ -526,14 +528,13 @@ void PacketManager::getParams(const GrkImage* image, const CodingParams* p_cp, u
 			// 3. precinct subsampling factors
 			uint64_t pdx =
 				comp->dx * ((uint64_t)1u << (precinctWidthExp + tccp->numresolutions - 1U - resno));
-			uint64_t pdy = comp->dy *
-						  ((uint64_t)1u << (precinctHeightExp + tccp->numresolutions - 1U - resno));
+			uint64_t pdy = comp->dy * ((uint64_t)1u
+									   << (precinctHeightExp + tccp->numresolutions - 1U - resno));
 			// sanity check
 			if(pdx < UINT_MAX)
 				*dx_min = std::min<uint32_t>(*dx_min, (uint32_t)pdx);
 			if(pdy < UINT_MAX)
 				*dy_min = std::min<uint32_t>(*dy_min, (uint32_t)pdy);
-
 		}
 	}
 }

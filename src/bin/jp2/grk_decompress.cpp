@@ -972,11 +972,11 @@ static void cleanUpFile(const char* outfile)
 
 	bool allocated = false;
 	char* p = actual_path(outfile, &allocated);
-	if (!p)
+	if(!p)
 		return;
 	int ret = (remove)(p);
-	if (ret)
-		spdlog::warn("Error code {} when removing file {}; actual file path {}", ret,outfile,p);
+	if(ret)
+		spdlog::warn("Error code {} when removing file {}; actual file path {}", ret, outfile, p);
 	if(allocated)
 		free(p);
 }

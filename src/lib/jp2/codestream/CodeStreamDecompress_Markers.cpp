@@ -106,10 +106,10 @@ bool CodeStreamDecompress::parseTileHeaderMarkers(bool* canDecompress)
 				return false;
 			}
 			// subtract marker id and marker size
-			if(decompressorState_.getState() & DECOMPRESS_STATE_TPH) {
-				if (!currentTileProcessor_->subtractMarkerLength(marker_size))
+			if(decompressorState_.getState() & DECOMPRESS_STATE_TPH)
+			{
+				if(!currentTileProcessor_->subtractMarkerLength(marker_size))
 					return false;
-
 			}
 
 			marker_size =

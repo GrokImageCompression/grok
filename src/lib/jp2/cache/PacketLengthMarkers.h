@@ -22,8 +22,8 @@
 
 namespace grk
 {
-
-enum PL_MARKER_TYPE{
+enum PL_MARKER_TYPE
+{
 	GRK_PL_MARKER_PLM,
 	GRK_PL_MARKER_PLT,
 };
@@ -32,9 +32,7 @@ typedef std::vector<uint32_t> PL_MARKER;
 struct PacketLengthMarkerInfo
 {
 	PacketLengthMarkerInfo() : PacketLengthMarkerInfo(nullptr) {}
-	PacketLengthMarkerInfo(PL_MARKER* marker)
-		: markerLength_(0), marker_(marker)
-	{}
+	PacketLengthMarkerInfo(PL_MARKER* marker) : markerLength_(0), marker_(marker) {}
 	uint64_t markerLength_;
 	PL_MARKER* marker_;
 };
@@ -58,6 +56,7 @@ struct PacketLengthMarkers
 	void pushInit(void);
 	void pushNextPacketLength(uint32_t len);
 	uint32_t write(bool simulate);
+
   private:
 	bool readInit(uint8_t index, PL_MARKER_TYPE type);
 	void readNext(uint8_t Iplm);

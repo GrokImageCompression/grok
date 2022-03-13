@@ -133,9 +133,10 @@ bool T1DecompressScheduler::decompress(std::vector<DecompressBlockExec*>* blocks
 	tf::Taskflow taskflow;
 	auto numThreads = ExecSingleton::get()->num_workers();
 	auto node = new tf::Task[numThreads];
-	for (uint64_t i = 0; i < numThreads; i++)
+	for(uint64_t i = 0; i < numThreads; i++)
 		node[i] = taskflow.placeholder();
-	for (uint64_t i = 0; i < numThreads; i++) {
+	for(uint64_t i = 0; i < numThreads; i++)
+	{
 		node[i].work([this, maxBlocks, &blockCount] {
 			auto threadnum = ExecSingleton::get()->this_worker_id();
 			assert(threadnum >= 0);

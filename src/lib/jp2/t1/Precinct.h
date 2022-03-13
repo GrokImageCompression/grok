@@ -60,7 +60,7 @@ struct PrecinctImpl
 	{
 		auto cblk_start =
 			grkpt((cblk_grid_.x0 + (uint32_t)(cblkno % cblk_grid_.width())) << cblk_expn_.x,
-						(cblk_grid_.y0 + (uint32_t)(cblkno / cblk_grid_.width())) << cblk_expn_.y);
+				  (cblk_grid_.y0 + (uint32_t)(cblkno / cblk_grid_.width())) << cblk_expn_.y);
 		auto cblk_bounds =
 			grkRectU32(cblk_start.x, cblk_start.y, cblk_start.x + (1U << cblk_expn_.x),
 					   cblk_start.y + (1U << cblk_expn_.y));

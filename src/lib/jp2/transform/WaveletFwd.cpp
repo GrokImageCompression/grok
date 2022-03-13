@@ -452,10 +452,11 @@ bool WaveletFwdImpl::encode_procedure(TileComponent* tilec)
 				num_jobs = rw;
 			step_j = ((rw / num_jobs) / NB_ELTS_V8) * NB_ELTS_V8;
 			tf::Taskflow taskflow;
-			tf::Task *node = nullptr;
-			if (num_jobs > 1) {
+			tf::Task* node = nullptr;
+			if(num_jobs > 1)
+			{
 				node = new tf::Task[num_jobs];
-				for (uint64_t i = 0; i < num_jobs; i++)
+				for(uint64_t i = 0; i < num_jobs; i++)
 					node[i] = taskflow.placeholder();
 			}
 			for(uint32_t j = 0; j < num_jobs; j++)
@@ -477,16 +478,20 @@ bool WaveletFwdImpl::encode_procedure(TileComponent* tilec)
 				job->tiledp = tiledp;
 				job->min_j = j * step_j;
 				job->max_j = (j + 1 == num_jobs) ? rw : (j + 1) * step_j;
-				if (node) {
+				if(node)
+				{
 					node[j].work([job] {
 						encode_v_func<T>(job);
 						return 0;
 					});
-				} else {
+				}
+				else
+				{
 					encode_v_func<T>(job);
 				}
 			}
-			if (node){
+			if(node)
+			{
 				ExecSingleton::get()->run(taskflow).wait();
 				delete[] node;
 			}
@@ -517,10 +522,11 @@ bool WaveletFwdImpl::encode_procedure(TileComponent* tilec)
 				num_jobs = rh;
 			step_j = (rh / num_jobs);
 			tf::Taskflow taskflow;
-			tf::Task *node = nullptr;
-			if (num_jobs > 1) {
+			tf::Task* node = nullptr;
+			if(num_jobs > 1)
+			{
 				node = new tf::Task[num_jobs];
-				for (uint64_t i = 0; i < num_jobs; i++)
+				for(uint64_t i = 0; i < num_jobs; i++)
 					node[i] = taskflow.placeholder();
 			}
 			for(uint32_t j = 0; j < num_jobs; j++)
@@ -546,15 +552,17 @@ bool WaveletFwdImpl::encode_procedure(TileComponent* tilec)
 				{ // this will take care of the overflow
 					job->max_j = rh;
 				}
-				if (node) {
-					node[j].work([job] {
-						encode_h_func<T, DWT>(job);
-					});
-				} else {
+				if(node)
+				{
+					node[j].work([job] { encode_h_func<T, DWT>(job); });
+				}
+				else
+				{
 					encode_h_func<T, DWT>(job);
 				}
 			}
-			if (node){
+			if(node)
+			{
 				ExecSingleton::get()->run(taskflow).wait();
 				delete[] node;
 			}
