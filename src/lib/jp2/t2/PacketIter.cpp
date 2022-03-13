@@ -440,11 +440,20 @@ bool PacketIter::next_rpclOPT(void)
 				// bottom, right hand corner of the tile window
 				if(singleProgression_ && resno == maxNumDecompositionResolutions - 1)
 				{
-					if(win.non_empty() &&
+					if(win.is_valid() &&
 					   (y >= win.y1 || (win.y1 > 0 && y > win.y1 - 1 && x > win.x1))){
 						return false;
 					}
 				}
+
+				/*
+				auto xx = (x / precInfo->rpdx) * precInfo->rpdx;
+				auto yy = (y / precInfo->rpdy) * precInfo->rpdy;
+				auto r = grkRectU32(xx,yy,xx+precInfo->rpdx,yy+precInfo->rpdy );
+				valid = true;
+				if (resno == maxNumDecompositionResolutions-1 && !r.intersection(precInfo->window).is_valid())
+					valid = false;
+				 is_valid*/
 
 				genPrecinctX0GridOPT(precInfo);
 				for(; compno < prog.compE; compno++)
