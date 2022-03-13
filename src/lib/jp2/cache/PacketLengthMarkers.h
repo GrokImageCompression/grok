@@ -28,7 +28,7 @@ enum PL_MARKER_TYPE
 	GRK_PL_MARKER_PLT,
 };
 
-typedef std::vector<grkBufferU8> PL_RAW_MARKER;
+typedef std::vector<grkBufferU8*> PL_RAW_MARKER;
 typedef std::map<uint32_t, PL_RAW_MARKER*> PL_RAW_MARKERS;
 
 typedef std::vector<uint32_t> PL_MARKER;
@@ -43,48 +43,61 @@ typedef std::map<uint32_t, PacketLengthMarkerInfo> PL_MARKERS;
 
 struct PacketLengthMarkers
 {
-	// compress
-	PacketLengthMarkers(void);
-	// decompress
-	PacketLengthMarkers(IBufferedStream* strm);
 	~PacketLengthMarkers(void);
 
-	// decompres packet lengths
+	//////////////////////////////////////////
+	// compress
+	PacketLengthMarkers(void);
+	void pushInit(void);
+	void pushNextPacketLength(uint32_t len);
+	uint32_t write(bool simulate);
+	/////////////////////////////////////////
+
+	/////////////////////////////////////////////
+	// decompress
+	PacketLengthMarkers(IBufferedStream* strm);
 	bool readPLT(uint8_t* headerData, uint16_t header_size);
 	bool readPLM(uint8_t* headerData, uint16_t header_size);
 	void rewind(void);
 	uint32_t popNextPacketLength(void);
-
-	// compress packet lengths
-	void pushInit(void);
-	void pushNextPacketLength(uint32_t len);
-	uint32_t write(bool simulate);
-
+	////////////////////////////////////////////
   private:
-	bool readInit(uint8_t index, PL_MARKER_TYPE type);
-	void readNextByte(uint8_t Iplm);
-	void tryWriteMarkerHeader(PacketLengthMarkerInfo* markerInfo, bool simulate);
-	void writeMarkerLength(PacketLengthMarkerInfo* markerInfo);
-	void writeIncrement(uint32_t bytes);
-
+	////////////////////////
 	// compress / decompress
 	PL_MARKERS *markers_;
 	uint32_t markerIndex_;
 	PL_MARKER *currMarker_;
+	////////////////////////
 
+	//////////////////////////
 	// decompress
+	bool readInit(uint8_t index, PL_MARKER_TYPE type);
+	bool readNextByte(uint8_t Iplm, uint32_t *packetLength);
 	bool sequential_;
-	size_t packetIndex_;
+	// preprocessed
 	uint32_t packetLen_;
+	size_t currPacketIndex_;
+	// raw
 	PL_RAW_MARKERS *rawMarkers_;
 	PL_RAW_MARKER *currRawMarker_;
+	// index of current raw buffer
+	uint32_t currRawBufIndex_;
+	// current raw buffer
+	grkBufferU8 *currRawBuf;
+	// offset into current raw buffer
+	uint16_t currRawBufOffset_;
+	///////////////////////////////
 
-
+	////////////////////////////////
 	// compress
+	void tryWriteMarkerHeader(PacketLengthMarkerInfo* markerInfo, bool simulate);
+	void writeMarkerLength(PacketLengthMarkerInfo* markerInfo);
+	void writeIncrement(uint32_t bytes);
 	uint32_t markerBytesWritten_;
 	uint32_t totalBytesWritten_;
 	uint64_t markerLenLocationCache_;
 	IBufferedStream* stream_;
+	////////////////////////////////
 };
 
 } // namespace grk

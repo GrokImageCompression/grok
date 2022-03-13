@@ -30,8 +30,8 @@ const uint32_t available_packet_len_bytes_per_plt = USHRT_MAX - 1 - 4;
 // decompression
 PacketLengthMarkers::PacketLengthMarkers()
 	: markers_(new PL_MARKERS()), markerIndex_(0), currMarker_(nullptr), sequential_(false),
-	  packetIndex_(0), packetLen_(0), rawMarkers_(new PL_RAW_MARKERS()), currRawMarker_(nullptr),
-	  markerBytesWritten_(0), totalBytesWritten_(0),
+	  currPacketIndex_(0), packetLen_(0), rawMarkers_(new PL_RAW_MARKERS()), currRawMarker_(nullptr),
+	  currRawBufIndex_(0), currRawBuf(nullptr), currRawBufOffset_(0), markerBytesWritten_(0), totalBytesWritten_(0),
 	  markerLenLocationCache_(0), stream_(nullptr)
 {}
 // compression
@@ -50,8 +50,12 @@ PacketLengthMarkers::~PacketLengthMarkers()
 	}
 	if(rawMarkers_)
 	{
-		for(auto it = rawMarkers_->begin(); it != rawMarkers_->end(); it++)
+		for(auto it = rawMarkers_->begin(); it != rawMarkers_->end(); it++){
+			auto v = it->second;
+			for (auto itv = v->begin(); itv != v->end(); ++itv)
+				delete *itv;
 			delete it->second;
+		}
 		delete rawMarkers_;
 	}
 }
@@ -198,6 +202,7 @@ bool PacketLengthMarkers::readPLM(uint8_t* headerData, uint16_t header_size)
 	--header_size;
 	if(!readInit(Zplm, GRK_PL_MARKER_PLM))
 		return false;
+	uint32_t len;
 	while(header_size > 0)
 	{
 		// Nplm
@@ -207,11 +212,11 @@ bool PacketLengthMarkers::readPLM(uint8_t* headerData, uint16_t header_size)
 			GRK_ERROR("Malformed PLM marker segment");
 			return false;
 		}
-		for(uint32_t i = 0; i < Nplm; ++i)
-		{
-			uint8_t tmp = *headerData;
-			++headerData;
-			readNextByte(tmp);
+		uint32_t i = 0;
+		while (i < header_size){
+			while (!readNextByte(*headerData++, &len) && (i < header_size))
+				i++;
+			i++;
 		}
 		header_size = (uint16_t)(header_size - (1 + Nplm));
 		if(packetLen_ != 0)
@@ -235,15 +240,16 @@ bool PacketLengthMarkers::readPLT(uint8_t* headerData, uint16_t header_size)
 	--header_size;
 	if(!readInit(Zpl, GRK_PL_MARKER_PLT))
 		return false;
-	currRawMarker_->push_back(grkBufferU8(headerData,header_size));
+	currRawMarker_->push_back(new grkBufferU8(headerData,header_size));
 #ifdef DEBUG_PLT
 	GRK_INFO("PLT marker %d", Zpl);
 #endif
-	for(uint32_t i = 0; i < header_size; ++i)
-	{
-		/* Iplt_ij */
-		uint8_t tmp = *headerData++;
-		readNextByte(tmp);
+	uint32_t len;
+	uint32_t i = 0;
+	while (i < header_size){
+		while (!readNextByte(*headerData++, &len) && (i < header_size))
+			i++;
+		i++;
 	}
 	if(packetLen_ != 0)
 	{
@@ -314,7 +320,7 @@ bool PacketLengthMarkers::readInit(uint8_t index, PL_MARKER_TYPE type)
 		markers_->operator[](markerIndex_) = PacketLengthMarkerInfo(currMarker_);
 	}
 
-	// 1. update markers
+	// 2. update raw markers
 	auto rawPair = rawMarkers_->find(markerIndex_);
 	if(rawPair != rawMarkers_->end())
 	{
@@ -329,7 +335,7 @@ bool PacketLengthMarkers::readInit(uint8_t index, PL_MARKER_TYPE type)
 
 	return true;
 }
-void PacketLengthMarkers::readNextByte(uint8_t Iplm)
+bool PacketLengthMarkers::readNextByte(uint8_t Iplm, uint32_t *packetLength)
 {
 	/* take only the lower seven bits */
 	packetLen_ |= (Iplm & 0x7f);
@@ -341,21 +347,31 @@ void PacketLengthMarkers::readNextByte(uint8_t Iplm)
 	{
 		assert(currMarker_);
 		currMarker_->push_back(packetLen_);
-		// GRK_INFO("Packet length: %u", packet_len_);
+		if (packetLength)
+			*packetLength = packetLen_;
 		packetLen_ = 0;
 	}
+
+	return packetLen_ == 0;
 }
 void PacketLengthMarkers::rewind(void)
 {
-	packetIndex_ = 0;
+	assert(currPacketIndex_ == 0);
 	markerIndex_ = 0;
 	currMarker_ = nullptr;
+	currRawMarker_ = nullptr;
 	if(markers_ && !markers_->empty())
 	{
 		auto pair = markers_->begin();
 		if(pair != markers_->end()) {
 			currMarker_ = pair->second.marker_;
 			markerIndex_ = pair->first;
+		}
+		auto rawPair = rawMarkers_->begin();
+		if(rawPair != rawMarkers_->end()) {
+			currRawMarker_ = rawPair->second;
+			currRawBuf = currRawMarker_->front();
+			markerIndex_ = rawPair->first;
 		}
 	}
 }
@@ -368,13 +384,13 @@ uint32_t PacketLengthMarkers::popNextPacketLength(void)
 	uint32_t rc = 0;
 	if(currMarker_)
 	{
-		if(packetIndex_ == currMarker_->size())
+		if(currPacketIndex_ == currMarker_->size())
 		{
 			markerIndex_++;
 			if(markerIndex_ < markers_->size())
 			{
 				currMarker_ = markers_->operator[](markerIndex_).marker_;
-				packetIndex_ = 0;
+				currPacketIndex_ = 0;
 			}
 			else
 			{
@@ -383,8 +399,30 @@ uint32_t PacketLengthMarkers::popNextPacketLength(void)
 			}
 		}
 		if(currMarker_)
-			rc = currMarker_->operator[](packetIndex_++);
+			rc = currMarker_->operator[](currPacketIndex_++);
 	}
+/*
+	if(currRawMarker_)
+	{
+		if(currRawBufIndex_ == currRawMarker_->size())
+		{
+			markerIndex_++;
+			if(markerIndex_ < rawMarkers_->size())
+			{
+				currRawMarker_ = rawMarkers_->operator[](markerIndex_).marker_;
+				currRawBufIndex_ = 0;
+			}
+			else
+			{
+				currRawMarker_ = nullptr;
+				GRK_WARN("Attempt to pop PLT length beyond PLT marker range.");
+			}
+		}
+		if(currRawMarker_)
+			rc = currRawMarker_->operator[](packetIndex_++);
+	}
+	*/
+
 	// GRK_INFO("Read packet length: %d", rc);
 	return rc;
 }
