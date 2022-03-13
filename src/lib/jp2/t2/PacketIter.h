@@ -228,7 +228,8 @@ struct PacketIter
 	uint64_t x, y;
 	/** component sub-sampling */
 	uint32_t dx, dy;
-
+	bool valid;
+	bool optimized;
   private:
 	// This packet iterator is designed so that the innermost progression
 	// is only incremented before the **next** packet is processed.

@@ -49,19 +49,16 @@ void ResPrecinctInfo::init(uint8_t decompLevel, grkRectU32 tileBounds, uint32_t 
 	py0 = floordivpow2(resBounds.y0, precinctHeightExp);
 	if(windowed)
 	{
-		uint64_t px = (uint64_t)1 << rpxshift;
-		uint64_t py = (uint64_t)1 << rpyshift;
-		window = grkRectU32(((uint64_t)tileWindow.x0 / px) << rpxshift,
-							((uint64_t)tileWindow.y0 / py) << rpyshift,
-							(((uint64_t)tileWindow.x1 + px - 1) / px) << rpxshift,
-							(((uint64_t)tileWindow.y1 + py - 1) / py) << rpyshift);
+		window = tileWindow;
+		window.grow(10);
 	}
 	valid = true;
 }
 
 PacketIter::PacketIter()
 	: step_l(0), step_r(0), step_c(0), step_p(0), compno(0), resno(0), precinctIndex(0), layno(0),
-	  numcomps(0), comps(nullptr), x(0), y(0), dx(0), dy(0), incrementInner(false),
+	  numcomps(0), comps(nullptr), x(0), y(0), dx(0), dy(0),valid(true),optimized(false),
+	  incrementInner(false),
 	  packetManager(nullptr), maxNumDecompositionResolutions(0), singleProgression_(false),
 	  precinctInfo_(nullptr), px0grid_(0), py0grid_(0)
 {
@@ -133,6 +130,7 @@ void PacketIter::genPrecinctInfo(void)
 				  !packetManager->getTileProcessor()->wholeTileDecompress,
 				  packetManager->getTileProcessor()->getUnreducedTileWindow());
 	}
+	optimized = prog.progression == GRK_RPCL;
 }
 bool PacketIter::next_cprl(void)
 {
@@ -390,6 +388,8 @@ bool PacketIter::next_rpcl(void)
 }
 bool PacketIter::next_rpclOPT(void)
 {
+	auto wholeTile = packetManager->getTileProcessor()->wholeTileDecompress;
+	valid = true;
 	for(; resno < prog.resE; resno++)
 	{
 		if(singleProgression_ && resno >= maxNumDecompositionResolutions)
@@ -435,15 +435,6 @@ bool PacketIter::next_rpclOPT(void)
 						return false;
 					}
 				}
-
-				/*
-				auto xx = (x / precInfo->rpdx) * precInfo->rpdx;
-				auto yy = (y / precInfo->rpdy) * precInfo->rpdy;
-				auto r = grkRectU32(xx,yy,xx+precInfo->rpdx,yy+precInfo->rpdy );
-				valid = true;
-				if (resno == maxNumDecompositionResolutions-1 &&
-				!r.intersection(precInfo->window).is_valid()) valid = false; is_valid*/
-
 				genPrecinctX0GridOPT(precInfo);
 				for(; compno < prog.compE; compno++)
 				{
@@ -452,6 +443,11 @@ bool PacketIter::next_rpclOPT(void)
 					if(layno < prog.layE)
 					{
 						incrementInner = true;
+						if (!wholeTile) {
+							auto r = grkRectU32(x,y,x+ precInfo->rpdx,y+ precInfo->rpdy);
+							if (!r.intersection(precInfo->window).is_valid())
+								valid = false;
+						}
 						if(update_include())
 						{
 							precinctIndex = px0grid_ + precIndexY;

@@ -57,8 +57,6 @@ bool T2Decompress::processPacket(TileCodingParams* tcp, PacketIter* pi, SparseBu
 	ct++;
 	bool hasPLT = tileProcessor->packetLengthCache.getMarkers();
 #endif
-	auto tilec = tileProcessor->tile->comps + pi->compno;
-	auto tilecBuffer = tilec->getBuffer();
 	PacketInfo p;
 	auto packetInfo = &p;
 	if(!tileProcessor->packetLengthCache.next(&packetInfo))
@@ -69,25 +67,31 @@ bool T2Decompress::processPacket(TileCodingParams* tcp, PacketIter* pi, SparseBu
 	packetInfo->packetLength = 0;
 	packetInfo->parsedData = false;
 #endif
+	auto tilec = tileProcessor->tile->comps + pi->compno;
 	auto res = tilec->tileCompResolution + pi->resno;
 	auto skip =
 		pi->layno >= tcp->numLayersToDecompress || pi->resno >= tilec->numResolutionsToDecompress;
 	if(!skip && !tilec->isWholeTileDecoding())
 	{
-		skip = true;
-		for(uint8_t bandIndex = 0; bandIndex < res->numTileBandWindows; ++bandIndex)
-		{
-			auto band = res->tileBand + bandIndex;
-			if(band->isEmpty())
-				continue;
-			auto paddedBandWindow = tilecBuffer->getBandWindowPadded(pi->resno, band->orientation);
-			auto prec =
-				band->generatePrecinctBounds(pi->precinctIndex, res->precinctPartitionTopLeft,
-											 res->precinctExpn, res->precinctGridWidth);
-			if(paddedBandWindow->non_empty_intersection(&prec))
+		if (pi->optimized)
+			skip = !pi->valid;
+		else {
+			skip = true;
+			auto tilecBuffer = tilec->getBuffer();
+			for(uint8_t bandIndex = 0; bandIndex < res->numTileBandWindows; ++bandIndex)
 			{
-				skip = false;
-				break;
+				auto band = res->tileBand + bandIndex;
+				if(band->isEmpty())
+					continue;
+				auto paddedBandWindow = tilecBuffer->getBandWindowPadded(pi->resno, band->orientation);
+				auto prec =
+					band->generatePrecinctBounds(pi->precinctIndex, res->precinctPartitionTopLeft,
+												 res->precinctExpn, res->precinctGridWidth);
+				if(paddedBandWindow->non_empty_intersection(&prec))
+				{
+					skip = false;
+					break;
+				}
 			}
 		}
 	}
@@ -129,7 +133,7 @@ bool T2Decompress::processPacket(TileCodingParams* tcp, PacketIter* pi, SparseBu
 
 	return true;
 }
-bool T2Decompress::decompressPackets(uint16_t tile_no, SparseBuffer* srcBuf,
+bool T2Decompress::decompressPackets(uint16_t tile_no, SparseBuffer* src,
 									 bool* stopProcessionPackets)
 {
 	auto cp = tileProcessor->cp_;
@@ -148,7 +152,7 @@ bool T2Decompress::decompressPackets(uint16_t tile_no, SparseBuffer* srcBuf,
 		}
 		while(currPi->next())
 		{
-			if(srcBuf->getCurrentChunkLength() == 0)
+			if(src->getCurrentChunkLength() == 0)
 			{
 				GRK_WARN("Tile %d is truncated.", tile_no);
 				*stopProcessionPackets = true;
@@ -156,7 +160,7 @@ bool T2Decompress::decompressPackets(uint16_t tile_no, SparseBuffer* srcBuf,
 			}
 			try
 			{
-				if(!processPacket(tcp, currPi, srcBuf))
+				if(!processPacket(tcp, currPi, src))
 					return false;
 			}
 			catch(TruncatedPacketHeaderException& tex)

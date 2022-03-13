@@ -46,7 +46,6 @@ void PacketLengthCache::deleteMarkers(void)
 bool PacketLengthCache::next(PacketInfo** p)
 {
 	assert(p);
-
 #ifdef ENABLE_PACKET_CACHE
 	auto packetInfo = packetInfoCache.get();
 #else
@@ -68,7 +67,6 @@ bool PacketLengthCache::next(PacketInfo** p)
 			}
 		}
 	}
-
 #ifdef ENABLE_PACKET_CACHE
 	*p = packetInfo;
 #endif

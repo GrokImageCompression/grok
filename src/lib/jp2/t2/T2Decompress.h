@@ -32,10 +32,10 @@ struct T2Decompress
 	/**
 	 Decompress the packets of a tile from a source buffer
 	 @param tileno 		number that identifies the tile for which to decompress the packets
-	 @param srcBuf     source buffer
+	 @param src     source buffer
 	 @return true if successful
 	 */
-	bool decompressPackets(uint16_t tileno, SparseBuffer* srcBuf, bool* truncated);
+	bool decompressPackets(uint16_t tileno, SparseBuffer* src, bool* truncated);
 
   private:
 	TileProcessor* tileProcessor;
