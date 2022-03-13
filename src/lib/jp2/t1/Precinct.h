@@ -119,6 +119,7 @@ struct PrecinctImpl
 				{
 					GRK_UNUSED(e);
 					GRK_WARN("No incltree created.");
+					throw;
 				}
 			}
 			return incltree;
@@ -144,6 +145,7 @@ struct PrecinctImpl
 				{
 					GRK_UNUSED(e);
 					GRK_WARN("No imsbtree created.");
+					throw;
 				}
 			}
 			return imsbtree;
