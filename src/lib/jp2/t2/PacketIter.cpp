@@ -23,30 +23,36 @@
 namespace grk
 {
 ResPrecinctInfo::ResPrecinctInfo()
-	: precinctWidthExp(0), precinctHeightExp(0), rpx0(0), rpy0(0), rpdx(0), rpdy(0), rdx(0), rdy(0),
-	  px0(0), py0(0), valid(false)
+	: precinctWidthExp(0), precinctHeightExp(0), canvasResOffsetX0(0), canvasResOffsetY0(0), canvasPrecWidth(0), canvasPrecHeight(0), canvasDx(0), canvasDy(0),
+	  canvasResInPrecGridX0(0), canvasResInPrecGridY0(0), decompLevel_(0), valid(false)
 {}
-void ResPrecinctInfo::init(uint8_t decompLevel, grkRectU32 tileBounds, uint32_t dx, uint32_t dy,
+void ResPrecinctInfo::init(uint8_t decompLevel, grkRectU32 tileBounds, uint32_t compDx, uint32_t compDy,
 						   bool windowed, grkRectU32 tileWindow)
 {
 	valid = false;
-	uint64_t resDivisor = ((uint64_t)dx << decompLevel);
+	uint64_t resDivisor = ((uint64_t)compDx << decompLevel);
 	grkRectU32 resBounds(ceildiv<uint64_t>((uint64_t)tileBounds.x0, resDivisor),
 						 ceildiv<uint64_t>((uint64_t)tileBounds.y0, resDivisor),
 						 ceildiv<uint64_t>((uint64_t)tileBounds.x1, resDivisor),
 						 ceildiv<uint64_t>((uint64_t)tileBounds.y1, resDivisor));
 	if(resBounds.x0 == resBounds.x1 || resBounds.y0 == resBounds.y1)
 		return;
-	uint32_t rpxshift = precinctWidthExp + decompLevel;
-	uint32_t rpyshift = precinctHeightExp + decompLevel;
-	rpx0 = (uint32_t)(((uint64_t)resBounds.x0 << decompLevel) % ((uint64_t)1 << rpxshift));
-	rpy0 = (uint32_t)(((uint64_t)resBounds.y0 << decompLevel) % ((uint64_t)1 << rpyshift));
-	rpdx = ((uint64_t)dx << rpxshift);
-	rpdy = ((uint64_t)dy << rpyshift);
-	rdx = ((uint64_t)dx << decompLevel);
-	rdy = ((uint64_t)dy << decompLevel);
-	px0 = floordivpow2(resBounds.x0, precinctWidthExp);
-	py0 = floordivpow2(resBounds.y0, precinctHeightExp);
+
+	decompLevel_ = decompLevel;
+	uint32_t canvasPrecShiftX = precinctWidthExp + decompLevel_;
+	uint32_t canvasPrecShiftY = precinctHeightExp + decompLevel_;
+
+	// offset of projected resolution relative to projected precinct grid
+	// these are both zero when tile origin equals (0,0)
+	canvasResOffsetX0 = (uint32_t)(((uint64_t)resBounds.x0 << decompLevel) % ((uint64_t)1 << canvasPrecShiftX));
+	canvasResOffsetY0 = (uint32_t)(((uint64_t)resBounds.y0 << decompLevel) % ((uint64_t)1 << canvasPrecShiftY));
+
+	canvasPrecWidth = ((uint64_t)compDx << canvasPrecShiftX);
+	canvasPrecHeight = ((uint64_t)compDy << canvasPrecShiftY);
+	canvasDx = ((uint64_t)compDx << decompLevel_);
+	canvasDy = ((uint64_t)compDy << decompLevel_);
+	canvasResInPrecGridX0 = floordivpow2(resBounds.x0, precinctWidthExp);
+	canvasResInPrecGridY0 = floordivpow2(resBounds.y0, precinctHeightExp);
 	if(windowed)
 	{
 		window = tileWindow;
@@ -389,7 +395,6 @@ bool PacketIter::next_rpcl(void)
 bool PacketIter::next_rpclOPT(void)
 {
 	auto wholeTile = packetManager->getTileProcessor()->wholeTileDecompress;
-	valid = true;
 	for(; resno < prog.resE; resno++)
 	{
 		if(singleProgression_ && resno >= maxNumDecompositionResolutions)
@@ -418,11 +423,11 @@ bool PacketIter::next_rpclOPT(void)
 		if(!genPrecinctResCheck(precInfo))
 			continue;
 		auto win = packetManager->getTileProcessor()->getUnreducedTileWindow();
-		for(; y < prog.ty1; y += precInfo->rpdy)
+		for(; y < prog.ty1; y += precInfo->canvasPrecHeight)
 		{
 			genPrecinctY0GridOPT(precInfo);
 			uint64_t precIndexY = (uint64_t)py0grid_ * res->precinctGridWidth;
-			for(; x < prog.tx1; x += precInfo->rpdx)
+			for(; x < prog.tx1; x += precInfo->canvasPrecWidth)
 			{
 				// windowed decode:
 				// bail out if we reach a precinct which is past the
@@ -435,13 +440,13 @@ bool PacketIter::next_rpclOPT(void)
 						return false;
 					}
 				}
-				bool localValid = true;
+				valid = true;
 				if (!wholeTile) {
-					auto r = grkRectU32(x,y,x+ precInfo->rpdx,y+ precInfo->rpdy);
+					auto r = grkRectU32(x,y,x+ precInfo->canvasPrecWidth,y+ precInfo->canvasPrecHeight);
 					if (!r.intersection(precInfo->window).is_valid())
-						localValid = false;
+						valid = false;
 				}
-				if (localValid)
+				if (valid)
 					genPrecinctX0GridOPT(precInfo);
 				for(; compno < prog.compE; compno++)
 				{
@@ -452,7 +457,6 @@ bool PacketIter::next_rpclOPT(void)
 						incrementInner = true;
 						if(update_include())
 						{
-							valid = localValid;
 							precinctIndex = px0grid_ + precIndexY;
 							return true;
 						}
@@ -462,9 +466,9 @@ bool PacketIter::next_rpclOPT(void)
 				}
 				compno = prog.compS;
 			}
-			x = prog.tx0;
+			x = 0;
 		}
-		y = prog.ty0;
+		y = 0;
 	}
 
 	return false;
@@ -541,34 +545,35 @@ bool PacketIter::genPrecinctResCheck(ResPrecinctInfo* rpInfo)
 
 bool PacketIter::genPrecinctY0Grid(ResPrecinctInfo* rpInfo)
 {
-	if(!(((uint64_t)y % rpInfo->rpdy == 0) ||
-		 ((y == packetManager->getTileBounds().y0) && rpInfo->rpy0)))
+	if(!(((uint64_t)y % rpInfo->canvasPrecHeight == 0) ||
+		 ((y == packetManager->getTileBounds().y0) && rpInfo->canvasResOffsetY0)))
 		return false;
 
 	py0grid_ =
-		floordivpow2(ceildiv<uint64_t>((uint64_t)y, rpInfo->rdy), rpInfo->precinctHeightExp) -
-		rpInfo->py0;
+		floordivpow2(ceildiv<uint64_t>((uint64_t)y, rpInfo->canvasDy), rpInfo->precinctHeightExp) -
+		rpInfo->canvasResInPrecGridY0;
 
 	return true;
 }
 bool PacketIter::genPrecinctX0Grid(ResPrecinctInfo* rpInfo)
 {
-	if(!(((uint64_t)x % rpInfo->rpdx == 0) ||
-		 ((x == packetManager->getTileBounds().x0) && rpInfo->rpx0)))
+	if(!(((uint64_t)x % rpInfo->canvasPrecWidth == 0) ||
+		 ((x == packetManager->getTileBounds().x0) && rpInfo->canvasResOffsetX0)))
 		return false;
 
-	px0grid_ = floordivpow2(ceildiv<uint64_t>((uint64_t)x, rpInfo->rdx), rpInfo->precinctWidthExp) -
-			   rpInfo->px0;
+	px0grid_ = floordivpow2(ceildiv<uint64_t>((uint64_t)x, rpInfo->canvasDx), rpInfo->precinctWidthExp) -
+			   rpInfo->canvasResInPrecGridX0;
 
 	return true;
 }
 void PacketIter::genPrecinctY0GridOPT(ResPrecinctInfo* rpInfo)
 {
-	py0grid_ = floordivpow2(ceildiv<uint64_t>((uint64_t)y, rpInfo->rdy), rpInfo->precinctHeightExp);
+	py0grid_ = ceildiv<uint64_t>((uint64_t)y, rpInfo->canvasDy) >> rpInfo->precinctHeightExp;
 }
 void PacketIter::genPrecinctX0GridOPT(ResPrecinctInfo* rpInfo)
 {
-	px0grid_ = floordivpow2(ceildiv<uint64_t>((uint64_t)x, rpInfo->rdx), rpInfo->precinctWidthExp);
+	px0grid_ = ceildiv<uint64_t>((uint64_t)x, rpInfo->canvasDx) >> rpInfo->precinctWidthExp;
+
 }
 void PacketIter::update_dxy(void)
 {

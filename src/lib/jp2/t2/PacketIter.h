@@ -160,27 +160,17 @@ struct ResPrecinctInfo
 	ResPrecinctInfo();
 	void init(uint8_t levelno, grkRectU32 tileBounds, uint32_t dx, uint32_t dy, bool windowed,
 			  grkRectU32 tileWindow);
-	bool operator==(ResPrecinctInfo& rhs)
-	{
-		return operator==(&rhs);
-	}
-	bool operator==(ResPrecinctInfo* rhs)
-	{
-		return rhs && precinctWidthExp == rhs->precinctWidthExp &&
-			   precinctHeightExp == rhs->precinctHeightExp && rpx0 == rhs->rpx0 &&
-			   rpy0 == rhs->rpy0 && rpdx == rhs->rpdx && rpdy == rhs->rpdy && rdx == rhs->rdx &&
-			   rdy == rhs->rdy && px0 == rhs->px0 && py0 == rhs->py0 && valid == rhs->valid;
-	}
 	uint32_t precinctWidthExp;
 	uint32_t precinctHeightExp;
-	uint32_t rpx0;
-	uint32_t rpy0;
-	uint64_t rpdx;
-	uint64_t rpdy;
-	uint64_t rdx;
-	uint64_t rdy;
-	uint32_t px0;
-	uint32_t py0;
+	uint32_t canvasResOffsetX0;
+	uint32_t canvasResOffsetY0;
+	uint64_t canvasPrecWidth;
+	uint64_t canvasPrecHeight;
+	uint64_t canvasDx;
+	uint64_t canvasDy;
+	uint32_t canvasResInPrecGridX0;
+	uint32_t canvasResInPrecGridY0;
+	uint8_t decompLevel_;
 	grkRectU32 window;
 	bool valid;
 };
