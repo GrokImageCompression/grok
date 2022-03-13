@@ -435,7 +435,14 @@ bool PacketIter::next_rpclOPT(void)
 						return false;
 					}
 				}
-				genPrecinctX0GridOPT(precInfo);
+				bool localValid = true;
+				if (!wholeTile) {
+					auto r = grkRectU32(x,y,x+ precInfo->rpdx,y+ precInfo->rpdy);
+					if (!r.intersection(precInfo->window).is_valid())
+						localValid = false;
+				}
+				if (localValid)
+					genPrecinctX0GridOPT(precInfo);
 				for(; compno < prog.compE; compno++)
 				{
 					if(incrementInner)
@@ -443,13 +450,9 @@ bool PacketIter::next_rpclOPT(void)
 					if(layno < prog.layE)
 					{
 						incrementInner = true;
-						if (!wholeTile) {
-							auto r = grkRectU32(x,y,x+ precInfo->rpdx,y+ precInfo->rpdy);
-							if (!r.intersection(precInfo->window).is_valid())
-								valid = false;
-						}
 						if(update_include())
 						{
+							valid = localValid;
 							precinctIndex = px0grid_ + precIndexY;
 							return true;
 						}
