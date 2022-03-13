@@ -365,11 +365,15 @@ void GrkImage::postReadHeader(CodingParams* cp)
 				packedRowBytes = grk::PtoI<int32_t>::getPackedBytes(ncmp, decompressWidth, prec);
 				break;
 		}
-		if(multiTile && canAllocInterleaved(cp))
+		if(multiTile && canAllocInterleaved(cp)) {
 			rowsPerStrip = cp->t_height;
-		else
+		}
+		else {
 			rowsPerStrip =
 				packedRowBytes ? (uint32_t)((16 * 1024 * 1024) / packedRowBytes) : y1 - y0;
+			if (rowsPerStrip == 0)
+				rowsPerStrip = y1 - y0;
+		}
 	}
 	if(rowsPerStrip > y1 - y0)
 		rowsPerStrip = y1 - y0;
