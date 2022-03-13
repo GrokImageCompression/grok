@@ -436,9 +436,7 @@ bool PacketIter::next_rpclOPT(void)
 				{
 					if(win.is_valid() &&
 					   (y >= win.y1 || (win.y1 > 0 && y > win.y1 - 1 && x > win.x1)))
-					{
 						return false;
-					}
 				}
 				valid = true;
 				if (!wholeTile) {

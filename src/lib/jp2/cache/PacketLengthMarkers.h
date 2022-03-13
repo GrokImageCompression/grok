@@ -28,6 +28,9 @@ enum PL_MARKER_TYPE
 	GRK_PL_MARKER_PLT,
 };
 
+typedef std::vector<grkBufferU8> PL_RAW_MARKER;
+typedef std::map<uint32_t, PL_RAW_MARKER*> PL_RAW_MARKERS;
+
 typedef std::vector<uint32_t> PL_MARKER;
 struct PacketLengthMarkerInfo
 {
@@ -59,25 +62,28 @@ struct PacketLengthMarkers
 
   private:
 	bool readInit(uint8_t index, PL_MARKER_TYPE type);
-	void readNext(uint8_t Iplm);
+	void readNextByte(uint8_t Iplm);
 	void tryWriteMarkerHeader(PacketLengthMarkerInfo* markerInfo, bool simulate);
 	void writeMarkerLength(PacketLengthMarkerInfo* markerInfo);
 	void writeIncrement(uint32_t bytes);
 
 	// compress / decompress
-	PL_MARKERS* markers_;
+	PL_MARKERS *markers_;
 	uint32_t markerIndex_;
-	PL_MARKER* currMarker_;
+	PL_MARKER *currMarker_;
 
 	// decompress
 	bool sequential_;
 	size_t packetIndex_;
-	uint32_t packet_len_;
+	uint32_t packetLen_;
+	PL_RAW_MARKERS *rawMarkers_;
+	PL_RAW_MARKER *currRawMarker_;
+
 
 	// compress
 	uint32_t markerBytesWritten_;
 	uint32_t totalBytesWritten_;
-	uint64_t markerLenCache_;
+	uint64_t markerLenLocationCache_;
 	IBufferedStream* stream_;
 };
 
