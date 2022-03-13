@@ -49,6 +49,10 @@ struct PrecinctImpl
 			grkRectU32(floordivpow2(bounds->x0, cblk_expn.x), floordivpow2(bounds->y0, cblk_expn.y),
 					   ceildivpow2<uint32_t>(bounds->x1, cblk_expn.x),
 					   ceildivpow2<uint32_t>(bounds->y1, cblk_expn.y));
+		if (!cblk_grid_.is_valid()){
+			GRK_ERROR("Invalid code block grid");
+			throw std::exception();
+		}
 	}
 	~PrecinctImpl()
 	{

@@ -64,6 +64,10 @@ class TagTree
 		uint64_t n;
 		do
 		{
+			if (numlvls == 32){
+				GRK_ERROR("TagTree constructor: num level overflow");
+				throw std::exception();
+			}
 			n = (uint64_t)nplh[numlvls] * nplv[numlvls];
 			nplh[numlvls + 1] = (uint32_t)(((uint64_t)nplh[numlvls] + 1) / 2);
 			nplv[numlvls + 1] = (uint32_t)(((uint64_t)nplv[numlvls] + 1) / 2);
