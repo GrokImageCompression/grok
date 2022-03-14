@@ -172,8 +172,8 @@ struct ResPrecinctInfo
 	uint32_t canvasResInPrecGridY0;
 	uint8_t decompLevel_;
 	grkRectU32 window;
-	uint32_t winPrecGridX0;
-	uint32_t winPrecX0;
+	grkRectU32 windowPrec;
+	grkRectU32 windowPrecGrid;
 	bool valid;
 };
 

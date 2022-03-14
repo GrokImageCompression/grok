@@ -25,7 +25,7 @@ namespace grk
 ResPrecinctInfo::ResPrecinctInfo()
 	: precinctWidthExp(0), precinctHeightExp(0), canvasResOffsetX0(0), canvasResOffsetY0(0), canvasPrecWidth(0), canvasPrecHeight(0), canvasDx(0), canvasDy(0),
 	  canvasResInPrecGridX0(0), canvasResInPrecGridY0(0), decompLevel_(0),
-	  winPrecGridX0(0), winPrecX0(0), valid(false)
+	  valid(false)
 {}
 void ResPrecinctInfo::init(uint8_t decompLevel, grkRectU32 tileBounds, uint32_t compDx, uint32_t compDy,
 						   bool windowed, grkRectU32 tileWindow)
@@ -58,8 +58,14 @@ void ResPrecinctInfo::init(uint8_t decompLevel, grkRectU32 tileBounds, uint32_t 
 	{
 		window = tileWindow;
 		window.grow(10);
-		winPrecGridX0 = (window.x0 / canvasPrecWidth);
-		winPrecX0 = winPrecGridX0 *  canvasPrecWidth;
+		windowPrecGrid = grkRectU32(window.x0 / canvasPrecWidth,
+									window.y0 / canvasPrecHeight,
+									ceildiv<uint64_t>(window.x1, canvasPrecWidth),
+									ceildiv<uint64_t>(window.y1, canvasPrecHeight));
+		windowPrec =  grkRectU32(windowPrecGrid.x0 * canvasPrecWidth,
+								 windowPrecGrid.y0 * canvasPrecHeight,
+								 windowPrecGrid.x1 * canvasPrecWidth,
+								 windowPrecGrid.y1 * canvasPrecHeight);
 	}
 	valid = true;
 }
@@ -425,8 +431,17 @@ bool PacketIter::next_rpclOPT(SparseBuffer* src)
 			auto precWin = &precInfo->window;
 			auto res = comps->resolutions + resno;
 			if (!wholeTile && src){
-				// skip packets above and below window
-				if (y > precWin->y1 || (y + precInfo->canvasPrecHeight < precWin->y0)){
+				// skip all precincts above window
+				if (y < precInfo->windowPrec.y0){
+					auto len = markers->pop(precInfo->windowPrecGrid.y0 * res->precinctGridWidth * prog.compE * prog.layE);
+					auto skipLen = src->skip(len);
+					if (len != skipLen)
+						return false;
+					y = precInfo->windowPrec.y0;
+				}
+
+				// skip precincts below window
+				if (y >= precInfo->windowPrec.y1){
 					auto len = markers->pop(res->precinctGridWidth * prog.compE * prog.layE);
 					auto skipLen = src->skip(len);
 					if (len != skipLen)
@@ -434,14 +449,14 @@ bool PacketIter::next_rpclOPT(SparseBuffer* src)
 					continue;
 				}
 
-				// skip packets to the left of window
+				// skip precincts to the left of window
 				if (!skippedLeft_) {
-					if (x < precInfo->winPrecX0){
-						auto len = markers->pop(precInfo->winPrecGridX0 * prog.compE * prog.layE);
+					if (x < precInfo->windowPrec.x0){
+						auto len = markers->pop(precInfo->windowPrecGrid.x0 * prog.compE * prog.layE);
 						auto skipLen = src->skip(len);
 						if (len != skipLen)
 							return false;
-						x = precInfo->winPrecX0;
+						x = precInfo->windowPrec.x0;
 					}
 					skippedLeft_ = true;
 				}
