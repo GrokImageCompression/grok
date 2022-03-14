@@ -74,18 +74,13 @@ struct PacketLengthMarkers
 	bool readInit(uint8_t index, PL_MARKER_TYPE type);
 	bool readNextByte(uint8_t Iplm, uint32_t *packetLength);
 	bool sequential_;
-	// preprocessed
 	uint32_t packetLen_;
-	size_t currPacketIndex_;
-	// raw
 	PL_RAW_MARKERS *rawMarkers_;
 	PL_RAW_MARKER *currRawMarker_;
-	// index of current raw buffer
-	uint32_t currRawBufIndex_;
-	// current raw buffer
-	grkBufferU8 *currRawBuf;
-	// offset into current raw buffer
-	uint16_t currRawBufOffset_;
+	// current raw marker buffer index
+	uint32_t currRawMarkerBufIndex_;
+	// current raw marker buffer
+	grkBufferU8 *currRawMarkerBuf_;
 	///////////////////////////////
 
 	////////////////////////////////
@@ -95,7 +90,7 @@ struct PacketLengthMarkers
 	void writeIncrement(uint32_t bytes);
 	uint32_t markerBytesWritten_;
 	uint32_t totalBytesWritten_;
-	uint64_t markerLenLocationCache_;
+	uint64_t cachedMarkerLenLocation_;
 	IBufferedStream* stream_;
 	////////////////////////////////
 };

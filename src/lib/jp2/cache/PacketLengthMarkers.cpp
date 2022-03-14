@@ -18,6 +18,7 @@
 
 namespace grk
 {
+
 // bytes available in PLT marker to store packet lengths
 // (4 bytes are reserved for (marker + marker length), and 1 byte for index)
 const uint32_t available_packet_len_bytes_per_plt = USHRT_MAX - 1 - 4;
@@ -30,9 +31,9 @@ const uint32_t available_packet_len_bytes_per_plt = USHRT_MAX - 1 - 4;
 // decompression
 PacketLengthMarkers::PacketLengthMarkers()
 	: markers_(new PL_MARKERS()), markerIndex_(0), currMarker_(nullptr), sequential_(false),
-	  currPacketIndex_(0), packetLen_(0), rawMarkers_(new PL_RAW_MARKERS()), currRawMarker_(nullptr),
-	  currRawBufIndex_(0), currRawBuf(nullptr), currRawBufOffset_(0), markerBytesWritten_(0), totalBytesWritten_(0),
-	  markerLenLocationCache_(0), stream_(nullptr)
+	  packetLen_(0), rawMarkers_(new PL_RAW_MARKERS()), currRawMarker_(nullptr),
+	  currRawMarkerBufIndex_(0), currRawMarkerBuf_(nullptr), markerBytesWritten_(0), totalBytesWritten_(0),
+	  cachedMarkerLenLocation_(0), stream_(nullptr)
 {}
 // compression
 PacketLengthMarkers::PacketLengthMarkers(IBufferedStream* strm) : PacketLengthMarkers()
@@ -65,7 +66,7 @@ void PacketLengthMarkers::pushInit(void)
 	readInit(0, GRK_PL_MARKER_PLT);
 	totalBytesWritten_ = 0;
 	markerBytesWritten_ = 0;
-	markerLenLocationCache_ = 0;
+	cachedMarkerLenLocation_ = 0;
 }
 void PacketLengthMarkers::pushNextPacketLength(uint32_t len)
 {
@@ -87,14 +88,14 @@ void PacketLengthMarkers::writeMarkerLength(PacketLengthMarkerInfo* markerInfo)
 	{
 		markerInfo->markerLength_ = markerBytesWritten_;
 	}
-	else if(markerLenLocationCache_)
+	else if(cachedMarkerLenLocation_)
 	{
 		uint64_t current_pos = stream_->tell();
-		stream_->seek(markerLenLocationCache_);
+		stream_->seek(cachedMarkerLenLocation_);
 		// do not include 2 bytes for marker itself
 		stream_->writeShort((uint16_t)(markerBytesWritten_ - 2));
 		stream_->seek(current_pos);
-		markerLenLocationCache_ = 0;
+		cachedMarkerLenLocation_ = 0;
 	}
 }
 // check if we need to start a new marker
@@ -121,7 +122,7 @@ void PacketLengthMarkers::tryWriteMarkerHeader(PacketLengthMarkerInfo* markerInf
 			else
 			{
 				// cache location of marker length and skip over
-				markerLenLocationCache_ = stream_->tell();
+				cachedMarkerLenLocation_ = stream_->tell();
 				stream_->skip(2);
 			}
 		}
@@ -234,28 +235,20 @@ bool PacketLengthMarkers::readPLT(uint8_t* headerData, uint16_t header_size)
 		GRK_ERROR("PLT marker segment too short");
 		return false;
 	}
-
 	/* Zplt */
 	uint8_t Zpl = *headerData++;
 	--header_size;
 	if(!readInit(Zpl, GRK_PL_MARKER_PLT))
 		return false;
-	currRawMarker_->push_back(new grkBufferU8(headerData,header_size));
+
+	auto b = new grkBufferU8();
+	b->alloc(header_size);
+	memcpy(b->buf, headerData, header_size);
+	currRawMarker_->push_back(b);
 #ifdef DEBUG_PLT
 	GRK_INFO("PLT marker %d", Zpl);
 #endif
-	uint32_t len;
-	uint32_t i = 0;
-	while (i < header_size){
-		while (!readNextByte(*headerData++, &len) && (i < header_size))
-			i++;
-		i++;
-	}
-	if(packetLen_ != 0)
-	{
-		GRK_ERROR("Malformed PLT marker segment");
-		return false;
-	}
+
 	return true;
 }
 bool PacketLengthMarkers::readInit(uint8_t index, PL_MARKER_TYPE type)
@@ -345,8 +338,6 @@ bool PacketLengthMarkers::readNextByte(uint8_t Iplm, uint32_t *packetLength)
 	}
 	else
 	{
-		assert(currMarker_);
-		currMarker_->push_back(packetLen_);
 		if (packetLength)
 			*packetLength = packetLen_;
 		packetLen_ = 0;
@@ -356,25 +347,19 @@ bool PacketLengthMarkers::readNextByte(uint8_t Iplm, uint32_t *packetLength)
 }
 void PacketLengthMarkers::rewind(void)
 {
-	assert(currPacketIndex_ == 0);
 	markerIndex_ = 0;
-	currMarker_ = nullptr;
-	currRawMarker_ = nullptr;
-	if(markers_ && !markers_->empty())
+	if(rawMarkers_ && !rawMarkers_->empty())
 	{
-		auto pair = markers_->begin();
-		if(pair != markers_->end()) {
-			currMarker_ = pair->second.marker_;
-			markerIndex_ = pair->first;
-		}
 		auto rawPair = rawMarkers_->begin();
 		if(rawPair != rawMarkers_->end()) {
 			currRawMarker_ = rawPair->second;
-			currRawBuf = currRawMarker_->front();
+			currRawMarkerBuf_ = currRawMarker_->front();
 			markerIndex_ = rawPair->first;
 		}
 	}
 }
+
+
 // note: packet length must be at least 1, so 0 indicates
 // no packet length available
 uint32_t PacketLengthMarkers::popNextPacketLength(void)
@@ -382,46 +367,41 @@ uint32_t PacketLengthMarkers::popNextPacketLength(void)
 	if(!markers_)
 		return 0;
 	uint32_t rc = 0;
-	if(currMarker_)
-	{
-		if(currPacketIndex_ == currMarker_->size())
-		{
-			markerIndex_++;
-			if(markerIndex_ < markers_->size())
+	if(currRawMarker_ && currRawMarkerBuf_){
+
+		// read next packet length
+		while (!readNextByte(currRawMarkerBuf_->buf[currRawMarkerBuf_->offset], &rc) &&
+									(currRawMarkerBuf_->offset < currRawMarkerBuf_->len))
+			currRawMarkerBuf_->offset++;
+		currRawMarkerBuf_->offset++;
+
+		// advance to next buffer
+		if (currRawMarkerBuf_->offset == currRawMarkerBuf_->len){
+			currRawMarkerBufIndex_++;
+			if(currRawMarkerBufIndex_ < currRawMarker_->size())
 			{
-				currMarker_ = markers_->operator[](markerIndex_).marker_;
-				currPacketIndex_ = 0;
+				currRawMarkerBuf_ = currRawMarker_->operator[](currRawMarkerBufIndex_);
 			}
 			else
 			{
-				currMarker_ = nullptr;
-				GRK_WARN("Attempt to pop PLT length beyond PLT marker range.");
+				// advance to next marker
+				markerIndex_++;
+				if(markerIndex_ < rawMarkers_->size())
+				{
+					currRawMarker_ = rawMarkers_->operator[](markerIndex_);
+					currRawMarkerBufIndex_ = 0;
+					currRawMarkerBuf_ = currRawMarker_->front();
+				}
+				else
+				{
+					// shouldn't get here
+					currRawMarker_ = nullptr;
+					currRawMarkerBuf_ = nullptr;
+					GRK_WARN("Attempt to pop PLT length beyond PLT marker range.");
+				}
 			}
 		}
-		if(currMarker_)
-			rc = currMarker_->operator[](currPacketIndex_++);
 	}
-/*
-	if(currRawMarker_)
-	{
-		if(currRawBufIndex_ == currRawMarker_->size())
-		{
-			markerIndex_++;
-			if(markerIndex_ < rawMarkers_->size())
-			{
-				currRawMarker_ = rawMarkers_->operator[](markerIndex_).marker_;
-				currRawBufIndex_ = 0;
-			}
-			else
-			{
-				currRawMarker_ = nullptr;
-				GRK_WARN("Attempt to pop PLT length beyond PLT marker range.");
-			}
-		}
-		if(currRawMarker_)
-			rc = currRawMarker_->operator[](packetIndex_++);
-	}
-	*/
 
 	// GRK_INFO("Read packet length: %d", rc);
 	return rc;
