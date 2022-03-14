@@ -103,11 +103,14 @@ void PacketIter::init(PacketManager* packetMan, TileCodingParams* tcp)
 /***
  * Generate and cache precinct info
  *
- * Assumptions: no subsampling and tile origin at (0,0)
+ * Assumptions: single progression, no subsampling and tile origin at (0,0)
  */
 void PacketIter::genPrecinctInfo(void)
 {
 	if(prog.progression != GRK_RPCL && prog.progression != GRK_PCRL && prog.progression != GRK_CPRL)
+		return;
+
+	if (!singleProgression_)
 		return;
 
 	auto tb = packetManager->getTileBounds();
@@ -397,30 +400,12 @@ bool PacketIter::next_rpclOPT(void)
 	auto wholeTile = packetManager->getTileProcessor()->wholeTileDecompress;
 	for(; resno < prog.resE; resno++)
 	{
-		if(singleProgression_ && resno >= maxNumDecompositionResolutions)
+		if(resno >= maxNumDecompositionResolutions)
 			return false;
-
-		// if all remaining components have degenerate precinct grid, then
-		// skip this resolution
-		bool sane = false;
-		for(uint16_t compnoTmp = compno; compnoTmp < prog.compE; compnoTmp++)
-		{
-			auto comp = comps + compnoTmp;
-			if(resno >= comp->numresolutions)
-				continue;
-			auto res = comp->resolutions + resno;
-			if(res->precinctGridWidth > 0 && res->precinctGridHeight > 0)
-			{
-				sane = true;
-				break;
-			}
-		}
-		if(!sane)
-			continue;
 
 		auto precInfo = precinctInfo_ + resno;
 		auto res = comps->resolutions + resno;
-		if(!genPrecinctResCheck(precInfo))
+		if(!precInfoCheck(precInfo))
 			continue;
 		auto win = packetManager->getTileProcessor()->getUnreducedTileWindow();
 		for(; y < prog.ty1; y += precInfo->canvasPrecHeight)
@@ -432,7 +417,7 @@ bool PacketIter::next_rpclOPT(void)
 				// windowed decode:
 				// bail out if we reach a precinct which is past the
 				// bottom, right hand corner of the tile window
-				if(singleProgression_ && resno == maxNumDecompositionResolutions - 1)
+				if(resno == maxNumDecompositionResolutions - 1)
 				{
 					if(win.is_valid() &&
 					   (y >= win.y1 || (win.y1 > 0 && y > win.y1 - 1 && x > win.x1)))
@@ -440,9 +425,9 @@ bool PacketIter::next_rpclOPT(void)
 				}
 				valid = true;
 				if (!wholeTile) {
-					auto r = grkRectU32(x,y,x+ precInfo->canvasPrecWidth,y+ precInfo->canvasPrecHeight);
-					if (!r.intersection(precInfo->window).is_valid())
-						valid = false;
+					auto precWin = &precInfo->window;
+					valid =  (x <= precWin->x1 && (x + precInfo->canvasPrecWidth >= precWin->x0) &&
+							y <= precWin->y1 && (y + precInfo->canvasPrecHeight >= precWin->y0));
 				}
 				if (valid)
 					genPrecinctX0GridOPT(precInfo);
@@ -453,11 +438,8 @@ bool PacketIter::next_rpclOPT(void)
 					if(layno < prog.layE)
 					{
 						incrementInner = true;
-						if(update_include())
-						{
-							precinctIndex = px0grid_ + precIndexY;
-							return true;
-						}
+						precinctIndex = px0grid_ + precIndexY;
+						return true;
 					}
 					layno = prog.layS;
 					incrementInner = false;
@@ -530,7 +512,7 @@ bool PacketIter::generatePrecinctIndex(void)
 
 	return true;
 }
-bool PacketIter::genPrecinctResCheck(ResPrecinctInfo* rpInfo)
+bool PacketIter::precInfoCheck(ResPrecinctInfo* rpInfo)
 {
 	if(!rpInfo->valid)
 		return false;

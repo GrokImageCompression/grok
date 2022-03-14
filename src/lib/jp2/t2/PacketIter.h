@@ -239,7 +239,7 @@ struct PacketIter
 	bool genPrecinctX0Grid(ResPrecinctInfo* rpInfo);
 	void genPrecinctY0GridOPT(ResPrecinctInfo* rpInfo);
 	void genPrecinctX0GridOPT(ResPrecinctInfo* rpInfo);
-	bool genPrecinctResCheck(ResPrecinctInfo* rpInfo);
+	bool precInfoCheck(ResPrecinctInfo* rpInfo);
 	bool generatePrecinctIndex(void);
 	void update_dxy_for_comp(PiComp* comp);
 
