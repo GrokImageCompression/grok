@@ -172,6 +172,8 @@ struct ResPrecinctInfo
 	uint32_t canvasResInPrecGridY0;
 	uint8_t decompLevel_;
 	grkRectU32 window;
+	uint32_t winPrecGridX0;
+	uint32_t winPrecX0;
 	bool valid;
 };
 
@@ -195,7 +197,7 @@ struct PacketIter
 	 Modify the packet iterator to point to the next packet
 	 @return false if pi pointed to the last packet, otherwise true
 	 */
-	bool next(void);
+	bool next(SparseBuffer* src);
 
 	void update_dxy(void);
 
@@ -235,6 +237,7 @@ struct PacketIter
 	// precinct top,left grid coordinates
 	uint32_t px0grid_;
 	uint32_t py0grid_;
+	bool skippedLeft_;
 	bool genPrecinctY0Grid(ResPrecinctInfo* rpInfo);
 	bool genPrecinctX0Grid(ResPrecinctInfo* rpInfo);
 	void genPrecinctY0GridOPT(ResPrecinctInfo* rpInfo);
@@ -269,8 +272,8 @@ struct PacketIter
 	 Get next packet in resolution-precinct-component-layer order.
 	 @return returns false if pi pointed to the last packet, otherwise true
 	 */
-	bool next_rpcl(void);
-	bool next_rpclOPT(void);
+	bool next_rpcl(SparseBuffer* src);
+	bool next_rpclOPT(SparseBuffer* src);
 };
 
 /* ----------------------------------------------------------------------- */

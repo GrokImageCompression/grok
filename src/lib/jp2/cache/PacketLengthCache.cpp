@@ -59,7 +59,7 @@ bool PacketLengthCache::next(PacketInfo** p)
 		bool usePlt = packetLengths && !cp_->plm_markers;
 		if(usePlt)
 		{
-			packetInfo->packetLength = packetLengths->popNextPacketLength();
+			packetInfo->packetLength = packetLengths->pop();
 			if(packetInfo->packetLength == 0)
 			{
 				GRK_ERROR("PLT marker: missing packet lengths.");

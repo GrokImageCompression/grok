@@ -42,7 +42,7 @@ bool T2Compress::compressPackets(uint16_t tile_no, uint16_t max_layers, IBuffere
 		GRK_ERROR("compressPackets: Unknown progression order");
 		return false;
 	}
-	while(current_pi->next())
+	while(current_pi->next(nullptr))
 	{
 		if(current_pi->layno < max_layers)
 		{
@@ -91,7 +91,7 @@ bool T2Compress::compressPacketsSimulate(uint16_t tile_no, uint16_t max_layers,
 				GRK_ERROR("decompress_packets_simulate: Unknown progression order");
 				return false;
 			}
-			while(current_pi->next())
+			while(current_pi->next(nullptr))
 			{
 				if(current_pi->layno < max_layers)
 				{

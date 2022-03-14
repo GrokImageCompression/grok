@@ -43,12 +43,12 @@ struct T2Decompress
 	 Decompress a packet of a tile from a source buffer
 	 @param tcp 		Tile coding parameters
 	 @param pi 			Packet iterator
-	 @param srcBuf 	source buffer
+	 @param src 	source buffer
 	 @return  true if packet was successfully decompressed
 	 */
 	bool decompressPacket(TileCodingParams* tcp, const PacketIter* pi, SparseBuffer* srcBuf,
 						  PacketInfo* packetInfo, bool skipData);
-	bool processPacket(TileCodingParams* tcp, PacketIter* pi, SparseBuffer* srcBuf);
+	bool processPacket(TileCodingParams* tcp, PacketIter* pi, SparseBuffer* src);
 	bool readPacketHeader(TileCodingParams* p_tcp, const PacketIter* p_pi, bool* dataPresent,
 						  SparseBuffer* srcBuf, uint32_t* dataRead, uint32_t* packetDataBytes);
 	bool readPacketData(Resolution* l_res, const PacketIter* p_pi, SparseBuffer* srcBuf);

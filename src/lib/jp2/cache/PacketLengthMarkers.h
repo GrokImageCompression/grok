@@ -59,7 +59,8 @@ struct PacketLengthMarkers
 	bool readPLT(uint8_t* headerData, uint16_t header_size);
 	bool readPLM(uint8_t* headerData, uint16_t header_size);
 	void rewind(void);
-	uint32_t popNextPacketLength(void);
+	uint32_t pop(void);
+	uint64_t pop(uint64_t numPackets);
 	////////////////////////////////////////////
   private:
 	////////////////////////
@@ -77,9 +78,7 @@ struct PacketLengthMarkers
 	uint32_t packetLen_;
 	PL_RAW_MARKERS *rawMarkers_;
 	PL_RAW_MARKER *currRawMarker_;
-	// current raw marker buffer index
 	uint32_t currRawMarkerBufIndex_;
-	// current raw marker buffer
 	grkBufferU8 *currRawMarkerBuf_;
 	///////////////////////////////
 

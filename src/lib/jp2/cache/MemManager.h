@@ -118,6 +118,12 @@ struct grkBuffer : A<T>
 		}
 		return *this;
 	}
+	inline bool canRead(void){
+		return offset < len;
+	}
+	inline T read(void){
+		return buf[offset++];
+	}
 	virtual bool alloc(size_t length)
 	{
 		if(buf && len > length)

@@ -345,36 +345,25 @@ bool PacketLengthMarkers::readNextByte(uint8_t Iplm, uint32_t *packetLength)
 
 	return packetLen_ == 0;
 }
-void PacketLengthMarkers::rewind(void)
-{
-	markerIndex_ = 0;
-	if(rawMarkers_ && !rawMarkers_->empty())
-	{
-		auto rawPair = rawMarkers_->begin();
-		if(rawPair != rawMarkers_->end()) {
-			currRawMarker_ = rawPair->second;
-			currRawMarkerBuf_ = currRawMarker_->front();
-			markerIndex_ = rawPair->first;
-		}
-	}
-}
 
+uint64_t PacketLengthMarkers::pop(uint64_t numPackets){
+	uint32_t total = 0;
+	for (uint64_t i = 0; i < numPackets; ++i)
+		total += pop();
+
+	return total;
+}
 
 // note: packet length must be at least 1, so 0 indicates
 // no packet length available
-uint32_t PacketLengthMarkers::popNextPacketLength(void)
+uint32_t PacketLengthMarkers::pop(void)
 {
-	if(!markers_)
-		return 0;
 	uint32_t rc = 0;
 	if(currRawMarker_ && currRawMarkerBuf_){
 
 		// read next packet length
-		while (!readNextByte(currRawMarkerBuf_->buf[currRawMarkerBuf_->offset], &rc) &&
-									(currRawMarkerBuf_->offset < currRawMarkerBuf_->len))
-			currRawMarkerBuf_->offset++;
-		currRawMarkerBuf_->offset++;
-
+		while (currRawMarkerBuf_->canRead() && !readNextByte(currRawMarkerBuf_->read(), &rc)) {
+		}
 		// advance to next buffer
 		if (currRawMarkerBuf_->offset == currRawMarkerBuf_->len){
 			currRawMarkerBufIndex_++;
@@ -397,7 +386,7 @@ uint32_t PacketLengthMarkers::popNextPacketLength(void)
 					// shouldn't get here
 					currRawMarker_ = nullptr;
 					currRawMarkerBuf_ = nullptr;
-					GRK_WARN("Attempt to pop PLT length beyond PLT marker range.");
+					GRK_WARN("Attempt to pop PLT beyond PLT marker range.");
 				}
 			}
 		}
@@ -406,5 +395,20 @@ uint32_t PacketLengthMarkers::popNextPacketLength(void)
 	// GRK_INFO("Read packet length: %d", rc);
 	return rc;
 }
+
+void PacketLengthMarkers::rewind(void)
+{
+	markerIndex_ = 0;
+	if(rawMarkers_ && !rawMarkers_->empty())
+	{
+		auto rawPair = rawMarkers_->begin();
+		if(rawPair != rawMarkers_->end()) {
+			currRawMarker_ = rawPair->second;
+			currRawMarkerBuf_ = currRawMarker_->front();
+			markerIndex_ = rawPair->first;
+		}
+	}
+}
+
 
 } // namespace grk

@@ -50,7 +50,7 @@ void T2Decompress::initSegment(DecompressCodeblock* cblk, uint32_t index, uint8_
 		seg->maxpasses = maxPassesPerSegmentJ2K;
 	}
 }
-bool T2Decompress::processPacket(TileCodingParams* tcp, PacketIter* pi, SparseBuffer* srcBuf)
+bool T2Decompress::processPacket(TileCodingParams* tcp, PacketIter* pi, SparseBuffer* src)
 {
 #ifdef DEBUG_PLT
 	static int ct = -1;
@@ -110,13 +110,13 @@ bool T2Decompress::processPacket(TileCodingParams* tcp, PacketIter* pi, SparseBu
 	if(skip)
 	{
 		if(packetInfo->packetLength)
-			srcBuf->incrementCurrentChunkOffset(packetInfo->packetLength);
-		else if(!decompressPacket(tcp, pi, srcBuf, packetInfo, true))
+			src->incrementCurrentChunkOffset(packetInfo->packetLength);
+		else if(!decompressPacket(tcp, pi, src, packetInfo, true))
 			return false;
 	}
 	else
 	{
-		if(!decompressPacket(tcp, pi, srcBuf, packetInfo, false))
+		if(!decompressPacket(tcp, pi, src, packetInfo, false))
 			return false;
 		tilec->highestResolutionDecompressed =
 			std::max<uint8_t>(pi->resno, tilec->highestResolutionDecompressed);
@@ -150,7 +150,7 @@ bool T2Decompress::decompressPackets(uint16_t tile_no, SparseBuffer* src,
 			GRK_ERROR("decompressPackets: Unknown progression order");
 			return false;
 		}
-		while(currPi->next())
+		while(currPi->next(tileProcessor->packetLengthCache.getMarkers() ? src : nullptr))
 		{
 			if(src->getCurrentChunkLength() == 0)
 			{
