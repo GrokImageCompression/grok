@@ -63,7 +63,10 @@ PacketLengthMarkers::~PacketLengthMarkers()
 void PacketLengthMarkers::pushInit(void)
 {
 	markers_->clear();
-	readInit(0, GRK_PL_MARKER_PLT);
+
+	currMarker_ = new PL_MARKER();
+	markers_->operator[](0) = PacketLengthMarkerInfo(currMarker_);
+
 	totalBytesWritten_ = 0;
 	markerBytesWritten_ = 0;
 	cachedMarkerLenLocation_ = 0;
@@ -253,12 +256,12 @@ bool PacketLengthMarkers::readPLT(uint8_t* headerData, uint16_t header_size)
 }
 bool PacketLengthMarkers::readInit(uint32_t nextIndex, PL_MARKER_TYPE type)
 {
-	if(markers_->size() == 255 && type == GRK_PL_MARKER_PLM)
+	if(rawMarkers_->size() == 255 && type == GRK_PL_MARKER_PLM)
 	{
 		GRK_ERROR("PLM: only 255 PLM markers are supported.");
 		return false;
 	}
-	if(markers_->empty())
+	if(rawMarkers_->empty())
 	{
 		sequential_ = nextIndex == 0;
 	}
@@ -267,8 +270,8 @@ bool PacketLengthMarkers::readInit(uint32_t nextIndex, PL_MARKER_TYPE type)
 		// once sequential_ becomes false, it never returns to true again
 		if(sequential_)
 		{
-			sequential_ = (markers_->size() % 256) == nextIndex;
-			if(!sequential_ && markers_->size() > 256)
+			sequential_ = (rawMarkers_->size() % 256) == nextIndex;
+			if(!sequential_ && rawMarkers_->size() > 256)
 			{
 				GRK_ERROR("PLT: sequential marker assumption has been broken.");
 				return false;
@@ -283,8 +286,8 @@ bool PacketLengthMarkers::readInit(uint32_t nextIndex, PL_MARKER_TYPE type)
 		// they may share the same signaled marker index
 		if(sequential_)
 		{
-			nextIndex = (uint32_t)markers_->size();
-			if(markers_->size() == 256)
+			nextIndex = (uint32_t)rawMarkers_->size();
+			if(rawMarkers_->size() == 256)
 			{
 				GRK_WARN(
 					"PLT: 256+1 markers, with all 256+1 PLT marker indices sequential mod 256.");
@@ -299,18 +302,6 @@ bool PacketLengthMarkers::readInit(uint32_t nextIndex, PL_MARKER_TYPE type)
 
 	assert(packetLen_ == 0);
 	packetLen_ = 0;
-
-	// 1. update markers
-	auto pair = markers_->find(nextIndex);
-	if(pair != markers_->end())
-	{
-		currMarker_ = pair->second.marker_;
-	}
-	else
-	{
-		currMarker_ = new PL_MARKER();
-		markers_->operator[](nextIndex) = PacketLengthMarkerInfo(currMarker_);
-	}
 
 	// 2. update raw markers
 	auto rawPair = rawMarkers_->find(nextIndex);

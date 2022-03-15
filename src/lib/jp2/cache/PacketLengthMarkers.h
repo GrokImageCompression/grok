@@ -63,12 +63,18 @@ struct PacketLengthMarkers
 	uint64_t pop(uint64_t numPackets);
 	////////////////////////////////////////////
   private:
-	////////////////////////
-	// compress / decompress
+	////////////////////////////////
+	// compress
+	void tryWriteMarkerHeader(PacketLengthMarkerInfo* markerInfo, bool simulate);
+	void writeMarkerLength(PacketLengthMarkerInfo* markerInfo);
+	void writeIncrement(uint32_t bytes);
 	PL_MARKERS *markers_;
-	uint32_t markerIndex_;
 	PL_MARKER *currMarker_;
-	////////////////////////
+	uint32_t markerBytesWritten_;
+	uint32_t totalBytesWritten_;
+	uint64_t cachedMarkerLenLocation_;
+	IBufferedStream* stream_;
+	////////////////////////////////
 
 	//////////////////////////
 	// decompress
@@ -77,21 +83,11 @@ struct PacketLengthMarkers
 	bool sequential_;
 	uint32_t packetLen_;
 	PL_RAW_MARKERS *rawMarkers_;
+	uint32_t markerIndex_;
 	PL_RAW_MARKER *currRawMarker_;
 	uint32_t currRawMarkerBufIndex_;
 	grkBufferU8 *currRawMarkerBuf_;
 	///////////////////////////////
-
-	////////////////////////////////
-	// compress
-	void tryWriteMarkerHeader(PacketLengthMarkerInfo* markerInfo, bool simulate);
-	void writeMarkerLength(PacketLengthMarkerInfo* markerInfo);
-	void writeIncrement(uint32_t bytes);
-	uint32_t markerBytesWritten_;
-	uint32_t totalBytesWritten_;
-	uint64_t cachedMarkerLenLocation_;
-	IBufferedStream* stream_;
-	////////////////////////////////
 };
 
 } // namespace grk
