@@ -51,10 +51,10 @@ running `Ubuntu 21.04` with `5.11` Linux kernel
 | 2     | 0.25 s / 0.4 GB    | 0.12 s               | 1.4 s  / 2 GB      |
 | 3     | 3.70 s / 1.8 GB    | 4.99 s / 0.1 GB      | 10.8 s / 4.3 GB    |
 | 4     | 4.0 s  / 2.0 GB    | 4.19 s / 0.1 GB      | 45.7 s / 4.3 GB    |
-| 5     | 0.69 s / 0.7 GB    | 2.7 s / 1.0 GB       | unsupported        |
-| 6     | 1.04 s / 1.0 GB    | 3.07 s / 1.0 GB      | unsupported        |
-| 7     | 2.32 s / 1.8 GB    | 3.85 s / 1.1 GB      | unsupported        |
-| 8     | 6.48 s / 3.3 GB    | crashes              | unsupported        |
+| 5     | 0.30 s / 0.7 GB    | 2.7 s / 1.0 GB       | unsupported        |
+| 6     | 0.64 s / 1.0 GB    | 3.07 s / 1.0 GB      | unsupported        |
+| 7     | 1.90 s / 1.8 GB    | 3.85 s / 1.1 GB      | unsupported        |
+| 8     | 1.33 s / 3.3 GB    | crashes              | unsupported        |
 
 ### Library Details
 
