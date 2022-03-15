@@ -204,36 +204,39 @@ bool PacketLengthMarkers::readPLM(uint8_t* headerData, uint16_t header_size)
 	// Zplm
 	uint8_t Zplm = *headerData++;
 	--header_size;
-	if(!readInit(Zplm, GRK_PL_MARKER_PLM))
+	if(rawMarkers_->size() == 256)
+	{
+		GRK_ERROR("PLM: only 256 PLM markers are allowed by the standard.");
 		return false;
-	uint32_t len;
+	}
+	if(!readInit(Zplm))
+		return false;
 	while(header_size > 0)
 	{
-		// Nplm
+		// 1. read Nplm
 		uint8_t Nplm = *headerData++;
-		if(header_size < (1 + Nplm))
+		uint16_t segmentLength = (uint16_t)Nplm + 1;
+		if(header_size < segmentLength)
 		{
 			GRK_ERROR("Malformed PLM marker segment");
 			return false;
 		}
-		uint32_t i = 0;
-		while (i < header_size){
-			while (!readNextByte(*headerData++, &len) && (i < header_size))
-				i++;
-			i++;
-		}
-		header_size = (uint16_t)(header_size - (1 + Nplm));
-		if(packetLen_ != 0)
-		{
-			GRK_ERROR("Malformed PLM marker segment");
-			return false;
-		}
+		// 2. push packets for nth tile part into current raw marker
+		auto b = new grkBufferU8();
+		b->alloc(header_size);
+		memcpy(b->buf, headerData, segmentLength);
+		currRawMarkerIter_->second->push_back(b);
+
+		// 3. advance src buffer
+		header_size = (uint16_t)(header_size - segmentLength);
+		headerData += Nplm;
 	}
+
 	return true;
 }
 bool PacketLengthMarkers::readPLT(uint8_t* headerData, uint16_t header_size)
 {
-	if(header_size < 1)
+	if(header_size <= 1)
 	{
 		GRK_ERROR("PLT marker segment too short");
 		return false;
@@ -241,7 +244,7 @@ bool PacketLengthMarkers::readPLT(uint8_t* headerData, uint16_t header_size)
 	/* Zplt */
 	uint8_t Zpl = *headerData++;
 	--header_size;
-	if(!readInit(Zpl, GRK_PL_MARKER_PLT))
+	if(!readInit(Zpl))
 		return false;
 
 	auto b = new grkBufferU8();
@@ -254,13 +257,8 @@ bool PacketLengthMarkers::readPLT(uint8_t* headerData, uint16_t header_size)
 
 	return true;
 }
-bool PacketLengthMarkers::readInit(uint32_t nextIndex, PL_MARKER_TYPE type)
+bool PacketLengthMarkers::readInit(uint32_t nextIndex)
 {
-	if(rawMarkers_->size() == 255 && type == GRK_PL_MARKER_PLM)
-	{
-		GRK_ERROR("PLM: only 255 PLM markers are supported.");
-		return false;
-	}
 	if(rawMarkers_->empty())
 	{
 		sequential_ = nextIndex == 0;
