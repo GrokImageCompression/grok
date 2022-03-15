@@ -83,8 +83,7 @@ struct PacketLengthMarkers
 	bool sequential_;
 	uint32_t packetLen_;
 	PL_RAW_MARKERS *rawMarkers_;
-	uint32_t markerIndex_;
-	PL_RAW_MARKER *currRawMarker_;
+	PL_RAW_MARKERS::iterator currRawMarkerIter_;
 	uint32_t currRawMarkerBufIndex_;
 	grkBufferU8 *currRawMarkerBuf_;
 	///////////////////////////////
