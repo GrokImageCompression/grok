@@ -72,7 +72,7 @@ struct PacketLengthMarkers
 
 	//////////////////////////
 	// decompress
-	bool readInit(uint8_t index, PL_MARKER_TYPE type);
+	bool readInit(uint32_t index, PL_MARKER_TYPE type);
 	bool readNextByte(uint8_t Iplm, uint32_t *packetLength);
 	bool sequential_;
 	uint32_t packetLen_;
