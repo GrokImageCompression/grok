@@ -117,11 +117,10 @@ struct UUIDBox : public FileFormatBox, grkBufferU8
 	{
 		memset(uuid, 0, sizeof(uuid));
 	}
-	UUIDBox(const uint8_t myuuid[16], uint8_t* buf, size_t size, bool owns)
-		: FileFormatBox(), grkBufferU8(buf, size, owns)
+	UUIDBox(const uint8_t myuuid[16], uint8_t* buf, size_t size)
+		: FileFormatBox(), grkBufferU8(buf, size, false)
 	{
-		for(int i = 0; i < 16; ++i)
-			uuid[i] = myuuid[i];
+		memcpy(uuid,myuuid,16);
 	}
 	uint8_t uuid[16];
 };

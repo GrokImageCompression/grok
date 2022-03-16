@@ -53,7 +53,7 @@ grk_color* FileFormatCompress::getColour(void)
 bool FileFormatCompress::write_jp(void)
 {
 	auto stream = codeStream->getStream();
-	assert(stream != nullptr);
+	assert(stream);
 
 	/* write box length */
 	if(!stream->writeInt(12))
@@ -69,7 +69,7 @@ bool FileFormatCompress::write_jp(void)
 bool FileFormatCompress::write_jp2c(void)
 {
 	auto stream = codeStream->getStream();
-	assert(stream != nullptr);
+	assert(stream);
 
 	assert(stream->hasSeek());
 
@@ -113,9 +113,8 @@ bool FileFormatCompress::write_jp2c(void)
 bool FileFormatCompress::write_ftyp(void)
 {
 	auto stream = codeStream->getStream();
-	assert(stream != nullptr);
+	assert(stream);
 
-	uint32_t i;
 	uint32_t ftyp_size = 16 + 4 * numcl;
 	bool result = true;
 
@@ -142,7 +141,7 @@ bool FileFormatCompress::write_ftyp(void)
 	}
 
 	/* CL */
-	for(i = 0; i < numcl; i++)
+	for(uint32_t i = 0; i < numcl; i++)
 	{
 		if(!stream->writeInt(cl[i]))
 		{
@@ -160,7 +159,6 @@ bool FileFormatCompress::write_uuids(void)
 {
 	auto stream = codeStream->getStream();
 	assert(stream != nullptr);
-	;
 
 	// write the uuids
 	for(size_t i = 0; i < numUuids; ++i)
@@ -266,7 +264,6 @@ bool FileFormatCompress::write_jp2h(void)
 			}
 		}
 	}
-	/* cleanup */
 	for(i = 0; i < nb_writers; ++i)
 	{
 		auto current_writer = writers + i;
@@ -607,7 +604,7 @@ uint8_t* FileFormatCompress::write_xml(uint32_t* p_nb_bytes_written)
 uint8_t* FileFormatCompress::write_buffer(uint32_t boxId, grkBufferU8* buffer,
 										  uint32_t* p_nb_bytes_written)
 {
-	assert(p_nb_bytes_written != nullptr);
+	assert(p_nb_bytes_written);
 
 	/* need 8 bytes for box plus buffer->len bytes for buffer*/
 	uint32_t total_size = 8 + (uint32_t)buffer->len;
@@ -634,7 +631,7 @@ uint8_t* FileFormatCompress::write_buffer(uint32_t boxId, grkBufferU8* buffer,
 }
 uint8_t* FileFormatCompress::write_ihdr(uint32_t* p_nb_bytes_written)
 {
-	assert(p_nb_bytes_written != nullptr);
+	assert(p_nb_bytes_written);
 
 	/* default image header is 22 bytes wide */
 	auto ihdr_data = (uint8_t*)grkCalloc(1, 22);
@@ -709,22 +706,22 @@ bool FileFormatCompress::start(void)
 }
 bool FileFormatCompress::init(grk_cparameters* parameters, GrkImage* image)
 {
-	uint32_t i;
+	uint16_t i;
 	uint8_t depth_0;
 	uint32_t sign = 0;
 	uint32_t alpha_count = 0;
-	uint32_t color_channels = 0U;
+	uint16_t color_channels = 0U;
 
 	if(!parameters || !image)
 		return false;
 
 	inputImage_ = image;
 	grk_object_ref(&image->obj);
+
 	if(codeStream->init(parameters, inputImage_) == false)
 		return false;
 
 	/* Profile box */
-
 	brand = JP2_JP2; /* BR */
 	minversion = 0; /* MinV */
 	numcl = 1;
@@ -796,23 +793,13 @@ bool FileFormatCompress::init(grk_cparameters* parameters, GrkImage* image)
 	if(inputImage_->meta)
 	{
 		if(inputImage_->meta->iptc_len && inputImage_->meta->iptc_buf)
-		{
 			uuids[numUuids++] =
-				UUIDBox(IPTC_UUID, inputImage_->meta->iptc_buf, inputImage_->meta->iptc_len, true);
-			inputImage_->meta->iptc_buf = nullptr;
-			inputImage_->meta->iptc_len = 0;
-		}
+				UUIDBox(IPTC_UUID, inputImage_->meta->iptc_buf, inputImage_->meta->iptc_len);
 
-		// transfer buffer to uuid
 		if(inputImage_->meta->xmp_len && inputImage_->meta->xmp_buf)
-		{
 			uuids[numUuids++] =
-				UUIDBox(XMP_UUID, inputImage_->meta->xmp_buf, inputImage_->meta->xmp_len, true);
-			inputImage_->meta->xmp_buf = nullptr;
-			inputImage_->meta->xmp_len = 0;
-		}
+				UUIDBox(XMP_UUID, inputImage_->meta->xmp_buf, inputImage_->meta->xmp_len);
 	}
-
 	/* Channel Definition box */
 	for(i = 0; i < inputImage_->numcomps; i++)
 	{
@@ -824,7 +811,6 @@ bool FileFormatCompress::init(grk_cparameters* parameters, GrkImage* image)
 				GRK_WARN("signed alpha channel %u", i);
 		}
 	}
-
 	switch(enumcs)
 	{
 		case GRK_ENUM_CLRSPC_CMYK:
@@ -847,26 +833,18 @@ bool FileFormatCompress::init(grk_cparameters* parameters, GrkImage* image)
 		if(!inputImage_->meta)
 			inputImage_->meta = grk_image_meta_new();
 		getColour()->channel_definition = new grk_channel_definition();
-		/* no memset needed, all values will be overwritten except if
-		 * channel_definition->descriptions allocation fails, */
-		/* in which case channel_definition->descriptions will be nullptr => valid for
-		 * destruction */
 		getColour()->channel_definition->descriptions =
 			new grk_channel_description[inputImage_->numcomps];
-		/* cast is valid : image_->numcomps [1,16384] */
-		getColour()->channel_definition->num_channel_descriptions = (uint16_t)inputImage_->numcomps;
+		getColour()->channel_definition->num_channel_descriptions = inputImage_->numcomps;
 		for(i = 0U; i < color_channels; i++)
 		{
-			/* cast is valid : image_->numcomps [1,16384] */
-			getColour()->channel_definition->descriptions[i].channel = (uint16_t)i;
+			getColour()->channel_definition->descriptions[i].channel = i;
 			getColour()->channel_definition->descriptions[i].typ = GRK_CHANNEL_TYPE_COLOUR;
-			/* No overflow + cast is valid : image_->numcomps [1,16384] */
 			getColour()->channel_definition->descriptions[i].asoc = (uint16_t)(i + 1U);
 		}
 		for(; i < inputImage_->numcomps; i++)
 		{
-			/* cast is valid : image_->numcomps [1,16384] */
-			getColour()->channel_definition->descriptions[i].channel = (uint16_t)i;
+			getColour()->channel_definition->descriptions[i].channel = i;
 			getColour()->channel_definition->descriptions[i].typ = inputImage_->comps[i].type;
 			getColour()->channel_definition->descriptions[i].asoc =
 				inputImage_->comps[i].association;
@@ -976,13 +954,11 @@ bool FileFormatCompress::default_validation(void)
 	/* number of components */
 	/* precision */
 	for(i = 0; i < numcomps; ++i)
-		is_valid &= ((comps[i].bpc & 0x7FU) < 38U); /* 0 is valid, ignore sign for check */
+		is_valid &= ((comps[i].bpc & 0x7FU) < maxPrecisionJ2K); /* 0 is valid, ignore sign for check */
 
 	/* METH */
 	is_valid &= ((meth > 0) && (meth < 3));
 
-	/* stream validation */
-	/* back and forth is needed */
 	is_valid &= stream->hasSeek();
 
 	return is_valid;
