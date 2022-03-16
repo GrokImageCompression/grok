@@ -112,7 +112,8 @@ void PacketIter::init(PacketManager* packetMan, TileCodingParams* tcp)
 /***
  * Generate and cache precinct info
  *
- * Assumptions: single progression, no subsampling and tile origin at (0,0)
+ * Assumptions: single progression, no subsampling, constant number of resolutions across components,
+ * and tile origin at (0,0)
  */
 void PacketIter::genPrecinctInfo(void)
 {
@@ -134,11 +135,12 @@ void PacketIter::genPrecinctInfo(void)
 		auto comp = comps + compno;
 		if(comp->dx != 1 || comp->dy != 1)
 			return;
-		if(maxResolutions < comp->numresolutions)
-			maxResolutions = comp->numresolutions;
+		if (compno > 0 && comp->numresolutions != comps->numresolutions){
+			return;
+		}
 	}
-	precinctInfo_ = new ResPrecinctInfo[maxResolutions];
-	for(uint8_t resno = 0; resno < maxResolutions; ++resno)
+	precinctInfo_ = new ResPrecinctInfo[comps->numresolutions];
+	for(uint8_t resno = 0; resno < comps->numresolutions; ++resno)
 	{
 		auto inf = precinctInfo_ + resno;
 		auto res = comps->resolutions + resno;
