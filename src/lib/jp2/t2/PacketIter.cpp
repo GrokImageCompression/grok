@@ -71,7 +71,7 @@ void ResPrecinctInfo::init(uint8_t decompLevel, grkRectU32 tileBounds, uint32_t 
 }
 
 PacketIter::PacketIter()
-	: step_l(0), step_r(0), step_c(0), step_p(0), compno(0), resno(0), precinctIndex(0), layno(0),
+	: compno(0), resno(0), precinctIndex(0), layno(0),
 	  numcomps(0), comps(nullptr), x(0), y(0), dx(0), dy(0),valid(true),optimized(false),
 	  incrementInner(false),
 	  packetManager(nullptr), maxNumDecompositionResolutions(0), singleProgression_(false),
@@ -89,7 +89,17 @@ PacketIter::~PacketIter()
 	}
 	delete[] precinctInfo_;
 }
-void PacketIter::init(PacketManager* packetMan, TileCodingParams* tcp)
+void PacketIter::init(PacketManager* packetMan,
+						uint32_t pino,
+						TileCodingParams* tcp,
+						grkRectU32 tileBounds,
+						bool compression,
+						uint8_t max_res,
+						uint64_t max_precincts,
+						uint32_t dx_min,
+						uint32_t dy_min,
+						uint32_t *resolutionPrecinctGrid,
+						uint32_t** precinctByComponent)
 {
 	packetManager = packetMan;
 	maxNumDecompositionResolutions =
@@ -103,10 +113,72 @@ void PacketIter::init(PacketManager* packetMan, TileCodingParams* tcp)
 		auto img_comp = image->comps + compno;
 		auto comp = comps + compno;
 		auto tccp = tcp->tccps + compno;
+
 		comp->resolutions = new PiResolution[tccp->numresolutions];
 		comp->numresolutions = tccp->numresolutions;
 		comp->dx = img_comp->dx;
 		comp->dy = img_comp->dy;
+	}
+	bool hasPoc = tcp->hasPoc();
+	if(!compression)
+	{
+		auto poc = tcp->progressionOrderChange + pino;
+
+		prog.progression = hasPoc ? poc->progression : tcp->prg;
+		prog.layS = 0;
+		prog.layE = hasPoc ? std::min<uint16_t>(poc->layE, tcp->numlayers) : tcp->numlayers;
+		prog.resS = hasPoc ? poc->resS : 0;
+		prog.resE = hasPoc ? poc->resE : max_res;
+		prog.compS = hasPoc ? poc->compS : 0;
+		prog.compE = std::min<uint16_t>(hasPoc ? poc->compE : numcomps, image->numcomps);
+		prog.precS = 0;
+		prog.precE = max_precincts;
+	}
+	prog.tx0 = tileBounds.x0;
+	prog.ty0 = tileBounds.y0;
+	prog.tx1 = tileBounds.x1;
+	prog.ty1 = tileBounds.y1;
+	y = prog.ty0;
+	x = prog.tx0;
+	dx = dx_min;
+	dy = dy_min;
+
+	// generate precinct grids
+	for(uint16_t compno = 0; compno < numcomps; ++compno)
+	{
+		auto current_comp = comps + compno;
+		resolutionPrecinctGrid = precinctByComponent[compno];
+		/* resolutions have already been initialized */
+		for(uint32_t resno = 0; resno < current_comp->numresolutions; resno++)
+		{
+			auto res = current_comp->resolutions + resno;
+
+			res->precinctWidthExp = *(resolutionPrecinctGrid++);
+			res->precinctHeightExp = *(resolutionPrecinctGrid++);
+			res->precinctGridWidth = *(resolutionPrecinctGrid++);
+			res->precinctGridHeight = *(resolutionPrecinctGrid++);
+		}
+	}
+	genPrecinctInfo();
+	update_dxy();
+
+	if (singleProgression_){
+		switch(prog.progression)
+		{
+			case GRK_LRCP:
+				prog.layE =
+						(std::min)(prog.layE, packetManager->getTileProcessor()->getTileCodingParams()->numLayersToDecompress);
+				break;
+			case GRK_RLCP:
+			case GRK_RPCL:
+				prog.resE = (std::min)(prog.resE, maxNumDecompositionResolutions);
+				break;
+			case GRK_PCRL:
+			case GRK_CPRL:
+				break;
+			default:
+				break;
+		}
 	}
 }
 /***
@@ -129,7 +201,6 @@ void PacketIter::genPrecinctInfo(void)
 	{
 		return;
 	}
-	uint16_t maxResolutions = 0;
 	for(uint16_t compno = 0; compno < numcomps; ++compno)
 	{
 		auto comp = comps + compno;
@@ -248,13 +319,6 @@ bool PacketIter::next_lrcp(void)
 {
 	for(; layno < prog.layE; layno++)
 	{
-		if(singleProgression_)
-		{
-			auto maxLayer =
-				packetManager->getTileProcessor()->getTileCodingParams()->numLayersToDecompress;
-			if(maxLayer > 0 && layno >= maxLayer)
-				return false;
-		}
 		for(; resno < prog.resE; resno++)
 		{
 			uint64_t precE = 0;
@@ -305,11 +369,6 @@ bool PacketIter::next_rlcp(void)
 	}
 	for(; resno < prog.resE; resno++)
 	{
-		if(singleProgression_)
-		{
-			if(resno >= maxNumDecompositionResolutions)
-				return false;
-		}
 		uint64_t precE = 0;
 		if(precinctInfo_)
 		{
@@ -355,9 +414,6 @@ bool PacketIter::next_rpcl(SparseBuffer* src)
 
 	for(; resno < prog.resE; resno++)
 	{
-		if(singleProgression_ && resno >= maxNumDecompositionResolutions)
-			return false;
-
 		// if all remaining components have degenerate precinct grid, then
 		// skip this resolution
 		bool sane = false;
@@ -410,9 +466,6 @@ bool PacketIter::next_rpclOPT(SparseBuffer* src)
 {
 	for(; resno < prog.resE; resno++)
 	{
-		if(resno >= maxNumDecompositionResolutions)
-			return false;
-
 		auto precInfo = precinctInfo_ + resno;
 		if(!precInfoCheck(precInfo))
 			continue;
@@ -426,7 +479,7 @@ bool PacketIter::next_rpclOPT(SparseBuffer* src)
 			// windowed decode:
 			// bail out if we reach a precinct which is past the
 			// bottom of the tile window
-			if(resno == maxNumDecompositionResolutions - 1 && y >= win.y1)
+			if(!wholeTile && resno == maxNumDecompositionResolutions - 1 && y >= win.y1)
 				return false;
 
 			// skip over packets outside of window
@@ -471,7 +524,7 @@ bool PacketIter::next_rpclOPT(SparseBuffer* src)
 				// windowed decode:
 				// bail out if we reach a precinct which is past the
 				// bottom, right hand corner of the tile window
-				if(resno == maxNumDecompositionResolutions - 1)
+				if(!wholeTile && resno == maxNumDecompositionResolutions - 1)
 				{
 					if(win.y1 > 0 && y == win.y1 - 1 && x > win.x1)
 						return false;

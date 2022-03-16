@@ -41,66 +41,24 @@ PacketManager::PacketManager(bool compression, GrkImage* img, CodingParams* cpar
 	}
 	uint8_t max_res;
 	uint64_t max_precincts;
-	uint32_t dx_min, dy_min;
-	getParams(image, cp, tileno, &tileBounds_, &dx_min, &dy_min, includeTracker->numPrecinctsPerRes,
+	uint32_t dx_min;
+	uint32_t dy_min;
+	getParams(image, cp, tileno, &tileBounds_,
+			  &dx_min, &dy_min, includeTracker->numPrecinctsPerRes,
 			  &max_precincts, &max_res, precinctByComponent);
-	bool hasPoc = tcp->hasPoc();
-	uint32_t step_p = 1;
-	uint64_t step_c = max_precincts * step_p;
-	uint64_t step_r = image->numcomps * step_c;
-	uint64_t step_l = max_res * step_r;
+
 	pi_ = new PacketIter[numProgressions];
 	for(uint32_t pino = 0; pino < numProgressions; ++pino)
 	{
 		auto pi = pi_ + pino;
-		pi->init(this, tcp);
-		if(!compression)
-		{
-			auto poc = tcp->progressionOrderChange + pino;
-			auto prog = &pi->prog;
-
-			prog->progression = hasPoc ? poc->progression : tcp->prg;
-			prog->layS = 0;
-			prog->layE = hasPoc ? std::min<uint16_t>(poc->layE, tcp->numlayers) : tcp->numlayers;
-			prog->resS = hasPoc ? poc->resS : 0;
-			prog->resE = hasPoc ? poc->resE : max_res;
-			prog->compS = hasPoc ? poc->compS : 0;
-			prog->compE = std::min<uint16_t>(hasPoc ? poc->compE : pi->numcomps, image->numcomps);
-			prog->precS = 0;
-			prog->precE = max_precincts;
-		}
-		pi->prog.tx0 = tileBounds_.x0;
-		pi->prog.ty0 = tileBounds_.y0;
-		pi->prog.tx1 = tileBounds_.x1;
-		pi->prog.ty1 = tileBounds_.y1;
-		pi->y = pi->prog.ty0;
-		pi->x = pi->prog.tx0;
-		pi->dx = dx_min;
-		pi->dy = dy_min;
-		pi->step_p = step_p;
-		pi->step_c = step_c;
-		pi->step_r = step_r;
-		pi->step_l = step_l;
-
-		/* allocation for components and number of components
-		 *  has already been calculated by pi_create */
-		for(uint16_t compno = 0; compno < pi->numcomps; ++compno)
-		{
-			auto current_comp = pi->comps + compno;
-			resolutionPrecinctGrid = precinctByComponent[compno];
-			/* resolutions have already been initialized */
-			for(uint32_t resno = 0; resno < current_comp->numresolutions; resno++)
-			{
-				auto res = current_comp->resolutions + resno;
-
-				res->precinctWidthExp = *(resolutionPrecinctGrid++);
-				res->precinctHeightExp = *(resolutionPrecinctGrid++);
-				res->precinctGridWidth = *(resolutionPrecinctGrid++);
-				res->precinctGridHeight = *(resolutionPrecinctGrid++);
-			}
-		}
-		pi->genPrecinctInfo();
-		pi->update_dxy();
+		pi->init(this, pino,
+					tcp,
+					tileBounds_,
+					compression,
+					max_res,max_precincts,
+					dx_min,dy_min,
+					resolutionPrecinctGrid,
+					precinctByComponent);
 	}
 	delete[] precinct;
 	delete[] precinctByComponent;
@@ -108,7 +66,8 @@ PacketManager::PacketManager(bool compression, GrkImage* img, CodingParams* cpar
 	{
 		bool poc = tcp->hasPoc() && (GRK_IS_CINEMA(cp->rsiz) || t2_mode == FINAL_PASS);
 		updateCompressTcpProgressions(cp, image->numcomps, tileno, tileBounds_, max_precincts,
-									  max_res, dx_min, dy_min, poc);
+									  max_res, dx_min, dy_min,
+									  poc);
 	}
 }
 GrkImage* PacketManager::getImage()

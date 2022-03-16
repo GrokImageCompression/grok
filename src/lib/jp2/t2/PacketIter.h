@@ -185,7 +185,17 @@ struct PacketIter
 	PacketIter();
 	~PacketIter();
 
-	void init(PacketManager* packetMan, TileCodingParams* tcp);
+	void init(PacketManager* packetMan,
+				uint32_t pino,
+				TileCodingParams* tcp,
+				grkRectU32 tileBounds,
+				bool compression,
+				uint8_t max_res,
+				uint64_t max_precincts,
+				uint32_t dx_min,
+				uint32_t dy_min,
+				uint32_t *resolutionPrecinctGrid,
+				uint32_t** precinctByComponent);
 
 	void genPrecinctInfo();
 
@@ -201,14 +211,6 @@ struct PacketIter
 
 	void update_dxy(void);
 
-	/** layer step used to localize the packet in the include vector */
-	uint64_t step_l;
-	/** resolution step used to localize the packet in the include vector */
-	uint64_t step_r;
-	/** component step used to localize the packet in the include vector */
-	uint64_t step_c;
-	/** precinct step used to localize the packet in the include vector */
-	uint32_t step_p;
 	uint16_t compno;
 	uint8_t resno;
 	uint64_t precinctIndex;
