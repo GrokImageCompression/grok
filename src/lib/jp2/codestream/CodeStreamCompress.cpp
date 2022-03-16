@@ -331,7 +331,7 @@ bool CodeStreamCompress::init(grk_cparameters* parameters, GrkImage* image)
 	else
 	{
 		/* Create default comment for code stream */
-		const char comment[] = "Created by Grok     version ";
+		const char comment[] = "Created by Grok version ";
 		const size_t clen = strlen(comment);
 		const char* version = grk_version();
 
