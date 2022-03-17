@@ -197,6 +197,14 @@ struct PacketIter
 				uint32_t *resolutionPrecinctGrid,
 				uint32_t** precinctByComponent);
 
+	/**
+	 Modify the packet iterator for enabling tile part generation
+	 @param pino   	packet iterator number
+	 @param first_poc_tile_part true for first POC tile part
+	 @param tppos 	The position of the tile part flag in the progression order
+	 */
+	void enableTilePartGeneration(uint32_t pino, bool first_poc_tile_part, uint32_t tppos);
+
 	void genPrecinctInfo();
 
 	uint8_t* get_include(uint16_t layerIndex);
@@ -208,9 +216,14 @@ struct PacketIter
 	 @return false if pi pointed to the last packet, otherwise true
 	 */
 	bool next(SparseBuffer* src);
-
-	void update_dxy(void);
-
+	bool isValid(void) const;
+	bool isOptimized(void) const;
+	GRK_PROG_ORDER getProgression(void) const;
+	uint16_t getCompno(void) const;
+	uint8_t getResno(void) const;
+	uint64_t getPrecinctIndex(void) const;
+	uint16_t getLayno(void) const;
+private:
 	uint16_t compno;
 	uint8_t resno;
 	uint64_t precinctIndex;
@@ -218,13 +231,16 @@ struct PacketIter
 	grk_progression prog;
 	uint16_t numcomps;
 	PiComp* comps;
+
 	/** packet coordinates */
 	uint64_t x, y;
 	/** component sub-sampling */
 	uint32_t dx, dy;
 	bool valid;
 	bool optimized;
-  private:
+	void update_dxy(void);
+	bool checkForRemainingValidProgression(int32_t prog, uint32_t pino,
+														  const char* progString);
 	// This packet iterator is designed so that the innermost progression
 	// is only incremented before the **next** packet is processed.
 	// i.e. it is not incremented before the very first packet is processed,

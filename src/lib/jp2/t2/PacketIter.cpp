@@ -181,6 +181,383 @@ void PacketIter::init(PacketManager* packetMan,
 		}
 	}
 }
+/**
+ * Check if there is a remaining valid progression order
+ */
+bool PacketIter::checkForRemainingValidProgression(	int32_t prog, uint32_t pino,
+													  const char* progString)
+{
+	auto tcps = packetManager->getCodingParams()->tcps + packetManager->getTileProcessor()->getIndex();
+	auto poc = tcps->progressionOrderChange + pino;
+
+	if(prog >= 0)
+	{
+		switch(progString[prog])
+		{
+			case 'R':
+				if(poc->res_temp == poc->tpResE)
+					return checkForRemainingValidProgression(prog - 1, pino, progString);
+				else
+					return true;
+				break;
+			case 'C':
+				if(poc->comp_temp == poc->tpCompE)
+					return checkForRemainingValidProgression(prog - 1, pino, progString);
+				else
+					return true;
+				break;
+			case 'L':
+				if(poc->lay_temp == poc->tpLayE)
+					return checkForRemainingValidProgression(prog - 1, pino, progString);
+				else
+					return true;
+				break;
+			case 'P':
+				switch(poc->progression)
+				{
+					case GRK_LRCP: /* fall through */
+					case GRK_RLCP:
+						if(poc->prec_temp == poc->tpPrecE)
+							return checkForRemainingValidProgression(prog - 1, pino, progString);
+						else
+							return true;
+						break;
+					default:
+						if(poc->tx0_temp == poc->tp_txE)
+						{
+							/*TY*/
+							if(poc->ty0_temp == poc->tp_tyE)
+								return checkForRemainingValidProgression(prog - 1, pino,
+																		 progString);
+							else
+								return true;
+							/*TY*/
+						}
+						else
+						{
+							return true;
+						}
+						break;
+				}
+		}
+	}
+	return false;
+}
+void PacketIter::enableTilePartGeneration(uint32_t pino, bool first_poc_tile_part,
+											 uint32_t newTilePartProgressionPosition)
+{
+	auto cp = packetManager->getCodingParams();
+	auto tcp = cp->tcps + packetManager->getTileProcessor()->getIndex();
+	auto poc = tcp->progressionOrderChange + pino;
+	auto pocProg = CodeStreamCompress::convertProgressionOrder(poc->progression);
+	prog.progression = poc->progression;
+
+	if(cp->coding_params_.enc_.enableTilePartGeneration_ &&
+	   (GRK_IS_CINEMA(cp->rsiz) || GRK_IS_IMF(cp->rsiz) || packetManager->getT2Mode() == FINAL_PASS))
+	{
+		for(uint32_t i = newTilePartProgressionPosition + 1; i < 4; i++)
+		{
+			switch(pocProg[i])
+			{
+				case 'R':
+					prog.resS = poc->tpResS;
+					prog.resE = poc->tpResE;
+					break;
+				case 'C':
+					prog.compS = poc->tpCompS;
+					prog.compE = poc->tpCompE;
+					break;
+				case 'L':
+					prog.layS = 0;
+					prog.layE = poc->tpLayE;
+					break;
+				case 'P':
+					switch(poc->progression)
+					{
+						case GRK_LRCP:
+						case GRK_RLCP:
+							prog.precS = 0;
+							prog.precE = poc->tpPrecE;
+							break;
+						default:
+							prog.tx0 = poc->tp_txS;
+							prog.ty0 = poc->tp_tyS;
+							prog.tx1 = poc->tp_txE;
+							prog.ty1 = poc->tp_tyE;
+							break;
+					}
+					break;
+			}
+		}
+		if(first_poc_tile_part)
+		{
+			for(int32_t i = (int32_t)newTilePartProgressionPosition; i >= 0; i--)
+			{
+				switch(pocProg[i])
+				{
+					case 'C':
+						poc->comp_temp = poc->tpCompS;
+						prog.compS = poc->comp_temp;
+						prog.compE = poc->comp_temp + 1U;
+						poc->comp_temp = poc->comp_temp + 1U;
+						break;
+					case 'R':
+						poc->res_temp = poc->tpResS;
+						prog.resS = poc->res_temp;
+						prog.resE = poc->res_temp + 1U;
+						poc->res_temp = poc->res_temp + 1U;
+						break;
+					case 'L':
+						poc->lay_temp = 0;
+						prog.layS = poc->lay_temp;
+						prog.layE = poc->lay_temp + 1U;
+						poc->lay_temp = poc->lay_temp + 1U;
+						break;
+					case 'P':
+						switch(poc->progression)
+						{
+							case GRK_LRCP:
+							case GRK_RLCP:
+								poc->prec_temp = 0;
+								prog.precS = poc->prec_temp;
+								prog.precE = poc->prec_temp + 1U;
+								poc->prec_temp += 1;
+								break;
+							default:
+								poc->tx0_temp = poc->tp_txS;
+								poc->ty0_temp = poc->tp_tyS;
+								prog.tx0 = poc->tx0_temp;
+								prog.tx1 =
+									(poc->tx0_temp + poc->dx - (poc->tx0_temp % poc->dx));
+								prog.ty0 = poc->ty0_temp;
+								prog.ty1 =
+									(poc->ty0_temp + poc->dy - (poc->ty0_temp % poc->dy));
+								poc->tx0_temp = prog.tx1;
+								poc->ty0_temp = prog.ty1;
+								break;
+						}
+						break;
+				}
+			}
+		}
+		else
+		{
+			uint32_t incr_top = 1;
+			uint32_t resetX = 0;
+			for(int32_t i = (int32_t)newTilePartProgressionPosition; i >= 0; i--)
+			{
+				switch(pocProg[i])
+				{
+					case 'C':
+						prog.compS = uint16_t(poc->comp_temp - 1);
+						prog.compE = poc->comp_temp;
+						break;
+					case 'R':
+						prog.resS = uint8_t(poc->res_temp - 1);
+						prog.resE = poc->res_temp;
+						break;
+					case 'L':
+						prog.layS = uint16_t(poc->lay_temp - 1);
+						prog.layE = poc->lay_temp;
+						break;
+					case 'P':
+						switch(poc->progression)
+						{
+							case GRK_LRCP:
+							case GRK_RLCP:
+								prog.precS = poc->prec_temp - 1;
+								prog.precE = poc->prec_temp;
+								break;
+							default:
+								prog.tx0 =
+									(poc->tx0_temp - poc->dx - (poc->tx0_temp % poc->dx));
+								prog.tx1 = poc->tx0_temp;
+								prog.ty0 =
+									(poc->ty0_temp - poc->dy - (poc->ty0_temp % poc->dy));
+								prog.ty1 = poc->ty0_temp;
+								break;
+						}
+						break;
+				}
+				if(incr_top == 1)
+				{
+					switch(pocProg[i])
+					{
+						case 'R':
+							if(poc->res_temp == poc->tpResE)
+							{
+								if(checkForRemainingValidProgression(i - 1, pino, pocProg))
+								{
+									poc->res_temp = poc->tpResS;
+									prog.resS = poc->res_temp;
+									prog.resE = poc->res_temp + 1U;
+									poc->res_temp = poc->res_temp + 1U;
+									incr_top = 1;
+								}
+								else
+								{
+									incr_top = 0;
+								}
+							}
+							else
+							{
+								prog.resS = poc->res_temp;
+								prog.resE = poc->res_temp + 1U;
+								poc->res_temp = poc->res_temp + 1U;
+								incr_top = 0;
+							}
+							break;
+						case 'C':
+							if(poc->comp_temp == poc->tpCompE)
+							{
+								if(checkForRemainingValidProgression(i - 1, pino, pocProg))
+								{
+									poc->comp_temp = poc->tpCompS;
+									prog.compS = poc->comp_temp;
+									prog.compE = poc->comp_temp + 1U;
+									poc->comp_temp = poc->comp_temp + 1U;
+									incr_top = 1;
+								}
+								else
+								{
+									incr_top = 0;
+								}
+							}
+							else
+							{
+								prog.compS = poc->comp_temp;
+								prog.compE = poc->comp_temp + 1U;
+								poc->comp_temp = poc->comp_temp + 1U;
+								incr_top = 0;
+							}
+							break;
+						case 'L':
+							if(poc->lay_temp == poc->tpLayE)
+							{
+								if(checkForRemainingValidProgression(i - 1, pino, pocProg))
+								{
+									poc->lay_temp = 0;
+									prog.layS = poc->lay_temp;
+									prog.layE = poc->lay_temp + 1U;
+									poc->lay_temp = poc->lay_temp + 1U;
+									incr_top = 1;
+								}
+								else
+								{
+									incr_top = 0;
+								}
+							}
+							else
+							{
+								prog.layS = poc->lay_temp;
+								prog.layE = poc->lay_temp + 1U;
+								poc->lay_temp = poc->lay_temp + 1U;
+								incr_top = 0;
+							}
+							break;
+						case 'P':
+							switch(poc->progression)
+							{
+								case GRK_LRCP:
+								case GRK_RLCP:
+									if(poc->prec_temp == poc->tpPrecE)
+									{
+										if(checkForRemainingValidProgression(i - 1, pino, pocProg))
+										{
+											poc->prec_temp = 0;
+											prog.precS = poc->prec_temp;
+											prog.precE = poc->prec_temp + 1;
+											poc->prec_temp += 1;
+											incr_top = 1;
+										}
+										else
+										{
+											incr_top = 0;
+										}
+									}
+									else
+									{
+										prog.precS = poc->prec_temp;
+										prog.precE = poc->prec_temp + 1;
+										poc->prec_temp += 1;
+										incr_top = 0;
+									}
+									break;
+								default:
+									if(poc->tx0_temp >= poc->tp_txE)
+									{
+										if(poc->ty0_temp >= poc->tp_tyE)
+										{
+											if(checkForRemainingValidProgression(i - 1, pino, pocProg))
+											{
+												poc->ty0_temp = poc->tp_tyS;
+												prog.ty0 = poc->ty0_temp;
+												prog.ty1 =
+													(uint32_t)(poc->ty0_temp + poc->dy -
+															   (poc->ty0_temp % poc->dy));
+												poc->ty0_temp = prog.ty1;
+												incr_top = 1;
+												resetX = 1;
+											}
+											else
+											{
+												incr_top = 0;
+												resetX = 0;
+											}
+										}
+										else
+										{
+											prog.ty0 = poc->ty0_temp;
+											prog.ty1 = (poc->ty0_temp + poc->dy -
+																(poc->ty0_temp % poc->dy));
+											poc->ty0_temp = prog.ty1;
+											incr_top = 0;
+											resetX = 1;
+										}
+										if(resetX == 1)
+										{
+											poc->tx0_temp = poc->tp_txS;
+											prog.tx0 = poc->tx0_temp;
+											prog.tx1 =
+												(uint32_t)(poc->tx0_temp + poc->dx -
+														   (poc->tx0_temp % poc->dx));
+											poc->tx0_temp = prog.tx1;
+										}
+									}
+									else
+									{
+										prog.tx0 = poc->tx0_temp;
+										prog.tx1 = (uint32_t)(poc->tx0_temp + poc->dx -
+																	  (poc->tx0_temp % poc->dx));
+										poc->tx0_temp = prog.tx1;
+										incr_top = 0;
+									}
+									break;
+							}
+							break;
+					}
+				}
+			}
+		}
+	}
+	else
+	{
+		prog.layS = 0;
+		prog.layE = poc->tpLayE;
+		prog.resS = poc->tpResS;
+		prog.resE = poc->tpResE;
+		prog.compS = poc->tpCompS;
+		prog.compE = poc->tpCompE;
+		prog.precS = 0;
+		prog.precE = poc->tpPrecE;
+		prog.tx0 = poc->tp_txS;
+		prog.ty0 = poc->tp_tyS;
+		prog.tx1 = poc->tp_txE;
+		prog.ty1 = poc->tp_tyE;
+	}
+}
+
+
 /***
  * Generate and cache precinct info
  *
@@ -579,6 +956,28 @@ bool PacketIter::next(SparseBuffer* src)
 	}
 
 	return false;
+}
+bool PacketIter::isValid(void) const{
+	return valid;
+}
+bool PacketIter::isOptimized(void) const{
+	return optimized;
+}
+GRK_PROG_ORDER PacketIter::getProgression(void) const{
+	return prog.progression;
+}
+uint16_t PacketIter::getCompno(void) const{
+	return compno;
+}
+uint8_t PacketIter::getResno(void) const{
+	return resno;
+
+}
+uint64_t PacketIter::getPrecinctIndex(void) const {
+	return precinctIndex;
+}
+uint16_t PacketIter::getLayno(void) const {
+	return layno;
 }
 bool PacketIter::generatePrecinctIndex(void)
 {

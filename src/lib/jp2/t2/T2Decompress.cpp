@@ -67,14 +67,14 @@ bool T2Decompress::processPacket(TileCodingParams* tcp, PacketIter* pi, SparseBu
 	packetInfo->packetLength = 0;
 	packetInfo->parsedData = false;
 #endif
-	auto tilec = tileProcessor->tile->comps + pi->compno;
-	auto res = tilec->tileCompResolution + pi->resno;
+	auto tilec = tileProcessor->tile->comps + pi->getCompno();
+	auto res = tilec->tileCompResolution + pi->getResno();
 	auto skip =
-		pi->layno >= tcp->numLayersToDecompress || pi->resno >= tilec->numResolutionsToDecompress;
+		pi->getLayno() >= tcp->numLayersToDecompress || pi->getResno() >= tilec->numResolutionsToDecompress;
 	if(!skip && !tilec->isWholeTileDecoding())
 	{
-		if (pi->optimized)
-			skip = !pi->valid;
+		if (pi->isOptimized())
+			skip = !pi->isValid();
 		else {
 			skip = true;
 			auto tilecBuffer = tilec->getBuffer();
@@ -83,9 +83,9 @@ bool T2Decompress::processPacket(TileCodingParams* tcp, PacketIter* pi, SparseBu
 				auto band = res->tileBand + bandIndex;
 				if(band->isEmpty())
 					continue;
-				auto paddedBandWindow = tilecBuffer->getBandWindowPadded(pi->resno, band->orientation);
+				auto paddedBandWindow = tilecBuffer->getBandWindowPadded(pi->getResno(), band->orientation);
 				auto prec =
-					band->generatePrecinctBounds(pi->precinctIndex, res->precinctPartitionTopLeft,
+					band->generatePrecinctBounds(pi->getPrecinctIndex(), res->precinctPartitionTopLeft,
 												 res->precinctExpn, res->precinctGridWidth);
 				if(paddedBandWindow->non_empty_intersection(&prec))
 				{
@@ -102,7 +102,7 @@ bool T2Decompress::processPacket(TileCodingParams* tcp, PacketIter* pi, SparseBu
 			auto band = res->tileBand + bandIndex;
 			if(band->isEmpty())
 				continue;
-			if(!band->createPrecinct(false, pi->precinctIndex, res->precinctPartitionTopLeft,
+			if(!band->createPrecinct(false, pi->getPrecinctIndex(), res->precinctPartitionTopLeft,
 									 res->precinctExpn, res->precinctGridWidth, res->cblkExpn))
 				return false;
 		}
@@ -119,7 +119,7 @@ bool T2Decompress::processPacket(TileCodingParams* tcp, PacketIter* pi, SparseBu
 		if(!decompressPacket(tcp, pi, src, packetInfo, false))
 			return false;
 		tilec->highestResolutionDecompressed =
-			std::max<uint8_t>(pi->resno, tilec->highestResolutionDecompressed);
+			std::max<uint8_t>(pi->getResno(), tilec->highestResolutionDecompressed);
 		tileProcessor->tile->numDecompressedPackets++;
 	}
 	tileProcessor->tile->numProcessedPackets++;
@@ -145,7 +145,7 @@ bool T2Decompress::decompressPackets(uint16_t tile_no, SparseBuffer* src,
 	for(uint32_t pino = 0; pino < tcp->getNumProgressions(); ++pino)
 	{
 		auto currPi = packetManager.getPacketIter(pino);
-		if(currPi->prog.progression == GRK_PROG_UNKNOWN)
+		if(currPi->getProgression() == GRK_PROG_UNKNOWN)
 		{
 			GRK_ERROR("decompressPackets: Unknown progression order");
 			return false;
@@ -168,8 +168,8 @@ bool T2Decompress::decompressPackets(uint16_t tile_no, SparseBuffer* src,
 				GRK_UNUSED(tex);
 				GRK_WARN("Truncated packet: tile=%d component=%02d resolution=%02d precinct=%03d "
 						 "layer=%02d",
-						 tile_no, currPi->compno, currPi->resno, currPi->precinctIndex,
-						 currPi->layno);
+						 tile_no, currPi->getCompno(), currPi->getResno(), currPi->getPrecinctIndex(),
+						 currPi->getLayno());
 				*stopProcessionPackets = true;
 				break;
 			}
@@ -182,8 +182,8 @@ bool T2Decompress::decompressPackets(uint16_t tile_no, SparseBuffer* src,
 					GRK_ERROR(
 						"Corrupt packet: tile=%d component=%02d resolution=%02d precinct=%03d "
 						"layer=%02d",
-						tile_no, currPi->compno, currPi->resno, currPi->precinctIndex,
-						currPi->layno);
+						tile_no, currPi->getCompno(), currPi->getResno(), currPi->getPrecinctIndex(),
+						currPi->getLayno());
 					*stopProcessionPackets = true;
 					break;
 				}
@@ -191,8 +191,8 @@ bool T2Decompress::decompressPackets(uint16_t tile_no, SparseBuffer* src,
 				{
 					GRK_WARN("Corrupt packet: tile=%d component=%02d resolution=%02d precinct=%03d "
 							 "layer=%02d",
-							 tile_no, currPi->compno, currPi->resno, currPi->precinctIndex,
-							 currPi->layno);
+							 tile_no, currPi->getCompno(), currPi->getResno(), currPi->getPrecinctIndex(),
+							 currPi->getLayno());
 				}
 				// ToDo: skip corrupt packet if SOP marker is present
 			}
@@ -209,7 +209,7 @@ bool T2Decompress::decompressPacket(TileCodingParams* tcp, const PacketIter* pi,
 									SparseBuffer* srcBuf, PacketInfo* packetInfo, bool skipData)
 {
 	auto tile = tileProcessor->tile;
-	auto res = tile->comps[pi->compno].tileCompResolution + pi->resno;
+	auto res = tile->comps[pi->getCompno()].tileCompResolution + pi->getResno();
 	bool dataPresent;
 	uint32_t packetDataBytes = 0;
 	uint32_t packetBytes = 0;
@@ -249,7 +249,7 @@ bool T2Decompress::readPacketHeader(TileCodingParams* p_tcp, const PacketIter* p
 									uint32_t* dataRead, uint32_t* packetDataBytes)
 {
 	auto tilePtr = tileProcessor->tile;
-	auto res = tilePtr->comps[p_pi->compno].tileCompResolution + p_pi->resno;
+	auto res = tilePtr->comps[p_pi->getCompno()].tileCompResolution + p_pi->getResno();
 	auto p_src_data = srcBuf->getCurrentChunkPtr();
 	size_t available_bytes = srcBuf->getCurrentChunkLength();
 	auto active_src = p_src_data;
@@ -304,7 +304,7 @@ bool T2Decompress::readPacketHeader(TileCodingParams* p_tcp, const PacketIter* p
 	auto header_data = *header_data_start;
 	uint32_t present = 0;
 	std::unique_ptr<BitIO> bio(new BitIO(header_data, *remaining_length, false));
-	auto tccp = p_tcp->tccps + p_pi->compno;
+	auto tccp = p_tcp->tccps + p_pi->getCompno();
 	try
 	{
 		bio->read(&present, 1);
@@ -316,7 +316,7 @@ bool T2Decompress::readPacketHeader(TileCodingParams* p_tcp, const PacketIter* p
 				auto band = res->tileBand + bandIndex;
 				if(band->isEmpty())
 					continue;
-				auto prc = band->getPrecinct(p_pi->precinctIndex);
+				auto prc = band->getPrecinct(p_pi->getPrecinctIndex());
 				if(!prc)
 					continue;
 				for(uint64_t cblkno = 0; cblkno < prc->getNumCblks(); cblkno++)
@@ -327,9 +327,9 @@ bool T2Decompress::readPacketHeader(TileCodingParams* p_tcp, const PacketIter* p
 					if(!cblk || !cblk->numlenbits)
 					{
 						uint16_t value;
-						prc->getInclTree()->decodeValue(bio.get(), cblkno, p_pi->layno + 1, &value);
+						prc->getInclTree()->decodeValue(bio.get(), cblkno, p_pi->getLayno() + 1, &value);
 						if(value != prc->getInclTree()->getUninitializedValue() &&
-						   value != p_pi->layno)
+						   value != p_pi->getLayno())
 						{
 							GRK_WARN("Tile number: %u", tileProcessor->getIndex() + 1);
 							std::string msg =
@@ -348,7 +348,7 @@ bool T2Decompress::readPacketHeader(TileCodingParams* p_tcp, const PacketIter* p
 							GRK_WARN("%s", msg.c_str());
 							tileProcessor->setCorruptPacket();
 						}
-						included = (value <= p_pi->layno) ? 1 : 0;
+						included = (value <= p_pi->getLayno()) ? 1 : 0;
 					}
 					/* else one bit */
 					else
@@ -530,7 +530,7 @@ bool T2Decompress::readPacketData(Resolution* res, const PacketIter* p_pi, Spars
 		auto band = res->tileBand + bandIndex;
 		if(band->isEmpty())
 			continue;
-		auto prc = band->getPrecinct(p_pi->precinctIndex);
+		auto prc = band->getPrecinct(p_pi->getPrecinctIndex());
 		if(!prc)
 			continue;
 		for(uint64_t cblkno = 0; cblkno < prc->getNumCblks(); ++cblkno)

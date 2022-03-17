@@ -47,6 +47,8 @@ class PacketManager
 	TileProcessor* getTileProcessor(void);
 	GrkImage* getImage();
 	grkRectU32 getTileBounds(void);
+	CodingParams* getCodingParams(void);
+	J2K_T2_MODE getT2Mode(void);
 
   private:
 	/**
@@ -89,10 +91,6 @@ class PacketManager
 						  grkRectU32* tileBounds, uint32_t* dx_min, uint32_t* dy_min,
 						  uint64_t* precincts, uint64_t* max_precincts, uint8_t* max_res,
 						  uint32_t** precinctByComponent);
-	/**
-	 * Check if there is a remaining valid progression order
-	 */
-	bool checkForRemainingValidProgression(int32_t prog, uint32_t pino, const char* progString);
 	GrkImage* image;
 	CodingParams* cp;
 	uint16_t tileno;

@@ -37,14 +37,14 @@ bool T2Compress::compressPackets(uint16_t tile_no, uint16_t max_layers, IBuffere
 	packetManager.enableTilePartGeneration(pino, first_poc_tile_part,
 										   newTilePartProgressionPosition);
 	auto current_pi = packetManager.getPacketIter(pino);
-	if(current_pi->prog.progression == GRK_PROG_UNKNOWN)
+	if(current_pi->getProgression() == GRK_PROG_UNKNOWN)
 	{
 		GRK_ERROR("compressPackets: Unknown progression order");
 		return false;
 	}
 	while(current_pi->next(nullptr))
 	{
-		if(current_pi->layno < max_layers)
+		if(current_pi->getLayno() < max_layers)
 		{
 			uint32_t numBytes = 0;
 			if(!compressPacket(tcp, current_pi, stream, &numBytes))
@@ -86,14 +86,14 @@ bool T2Compress::compressPacketsSimulate(uint16_t tile_no, uint16_t max_layers,
 			packetManager.enableTilePartGeneration(poc, (compno == 0),
 												   newTilePartProgressionPosition);
 
-			if(current_pi->prog.progression == GRK_PROG_UNKNOWN)
+			if(current_pi->getProgression() == GRK_PROG_UNKNOWN)
 			{
 				GRK_ERROR("decompress_packets_simulate: Unknown progression order");
 				return false;
 			}
 			while(current_pi->next(nullptr))
 			{
-				if(current_pi->layno < max_layers)
+				if(current_pi->getLayno() < max_layers)
 				{
 					uint32_t bytesInPacket = 0;
 					if(!compressPacketSimulate(tcp, current_pi, &bytesInPacket, maxBytes, markers))
@@ -266,10 +266,10 @@ bool T2Compress::compressPacket(TileCodingParams* tcp, PacketIter* pi, IBuffered
 {
 	assert(stream);
 
-	uint16_t compno = pi->compno;
-	uint32_t resno = pi->resno;
-	uint64_t precinctIndex = pi->precinctIndex;
-	uint16_t layno = pi->layno;
+	uint16_t compno = pi->getCompno();
+	uint32_t resno = pi->getResno();
+	uint64_t precinctIndex = pi->getPrecinctIndex();
+	uint16_t layno = pi->getLayno();
 	auto tile = tileProcessor->tile;
 	auto tilec = tile->comps + compno;
 	size_t stream_start = stream->tell();
@@ -364,10 +364,10 @@ bool T2Compress::compressPacketSimulate(TileCodingParams* tcp, PacketIter* pi,
 										uint32_t* packet_bytes_written,
 										uint32_t max_bytes_available, PacketLengthMarkers* markers)
 {
-	uint16_t compno = pi->compno;
-	uint32_t resno = pi->resno;
-	uint64_t precinctIndex = pi->precinctIndex;
-	uint16_t layno = pi->layno;
+	uint16_t compno = pi->getCompno();
+	uint32_t resno = pi->getResno();
+	uint64_t precinctIndex = pi->getPrecinctIndex();
+	uint16_t layno = pi->getLayno();
 	uint64_t nb_blocks;
 	auto tile = tileProcessor->tile;
 	auto tilec = tile->comps + compno;
@@ -506,7 +506,7 @@ if(rc)
 						   "original num passes %u at layer %u, component %u, band %u, "
 						   "precinct %u, resolution %u\n",
 						   roundTripCblk->numPassesInPacket, layer->numpasses, layno, compno,
-						   bandIndex, (uint32_t)precinctIndex, pi->resno);
+						   bandIndex, (uint32_t)precinctIndex, pi->getResno());
 				}
 				// compare number of bit planes
 				if(roundTripCblk->numbps != originalCblk->numbps)
@@ -529,7 +529,7 @@ if(rc)
 						   "inclusion %u at layer %u, component %u, band %u, precinct %u, "
 						   "resolution %u\n",
 						   roundTripCblk->included, originalCblk->included, layno, compno,
-						   bandIndex, (uint32_t)precinctIndex, pi->resno);
+						   bandIndex, (uint32_t)precinctIndex, pi->getResno());
 				}
 
 				// compare lengths
@@ -540,7 +540,7 @@ if(rc)
 						   "at layer %u, component %u, band %u, precinct %u, resolution %u\n",
 						   (uint32_t)roundTripCblk->packet_length_info.size(),
 						   (uint32_t)originalCblk->packet_length_info.size(), layno, compno,
-						   bandIndex, (uint32_t)precinctIndex, pi->resno);
+						   bandIndex, (uint32_t)precinctIndex, pi->getResno());
 				}
 				else
 				{
@@ -554,7 +554,7 @@ if(rc)
 								   "original %u at layer %u, component %u, band %u, precinct "
 								   "%u, resolution %u\n",
 								   roundTrip.len, original.len, layno, compno, bandIndex,
-								   (uint32_t)precinctIndex, pi->resno);
+								   (uint32_t)precinctIndex, pi->getResno());
 						}
 					}
 				}
