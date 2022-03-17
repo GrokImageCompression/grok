@@ -600,8 +600,12 @@ void PacketIter::genPrecinctInfo(void)
 	}
 	optimized = prog.progression == GRK_RPCL;
 }
-bool PacketIter::next_cprl(void)
+
+
+bool PacketIter::next_cprl(SparseBuffer* src)
 {
+	if(precinctInfo_)
+		return next_cprlOPT(src);
 	if(compno >= numcomps)
 	{
 		GRK_ERROR("Packet iterator component %d must be strictly less than "
@@ -643,8 +647,11 @@ bool PacketIter::next_cprl(void)
 
 	return false;
 }
-bool PacketIter::next_pcrl(void)
+bool PacketIter::next_pcrl(SparseBuffer* src)
 {
+	if(precinctInfo_)
+		return next_pcrlOPT(src);
+
 	if(compno >= numcomps)
 	{
 		GRK_ERROR("Packet iterator component %d must be strictly less than "
@@ -692,8 +699,11 @@ bool PacketIter::next_pcrl(void)
 
 	return false;
 }
-bool PacketIter::next_lrcp(void)
+bool PacketIter::next_lrcp(SparseBuffer* src)
 {
+	if(precinctInfo_)
+		return next_lrcpOPT(src);
+
 	for(; layno < prog.layE; layno++)
 	{
 		for(; resno < prog.resE; resno++)
@@ -735,8 +745,11 @@ bool PacketIter::next_lrcp(void)
 
 	return false;
 }
-bool PacketIter::next_rlcp(void)
+bool PacketIter::next_rlcp(SparseBuffer* src)
 {
+	if(precinctInfo_)
+		return next_rlcpOPT(src);
+
 	if(compno >= numcomps)
 	{
 		GRK_ERROR("Packet iterator component %d must be strictly less than "
@@ -839,6 +852,202 @@ bool PacketIter::next_rpcl(SparseBuffer* src)
 
 	return false;
 }
+
+//////////////////////////////////////////////////////////////////////////////////////
+
+bool PacketIter::next_cprlOPT(SparseBuffer* src)
+{
+	if(compno >= numcomps)
+	{
+		GRK_ERROR("Packet iterator component %d must be strictly less than "
+				  "total number of components %d",
+				  compno, numcomps);
+		return false;
+	}
+	for(; compno < prog.compE; compno++)
+	{
+		auto comp = comps + compno;
+		dx = 0;
+		dy = 0;
+		update_dxy_for_comp(comp);
+		for(; y < prog.ty1; y += dy)
+		{
+			for(; x < prog.tx1; x += dx)
+			{
+				for(; resno < prog.resE; resno++)
+				{
+					if(!generatePrecinctIndex())
+						continue;
+					if(incrementInner)
+						layno++;
+					if(layno < prog.layE)
+					{
+						incrementInner = true;
+						if(update_include())
+							return true;
+					}
+					layno = prog.layS;
+					incrementInner = false;
+				}
+				resno = prog.resS;
+			}
+			x = prog.tx0;
+		}
+		y = prog.ty0;
+	}
+
+	return false;
+}
+bool PacketIter::next_pcrlOPT(SparseBuffer* src)
+{
+	if(compno >= numcomps)
+	{
+		GRK_ERROR("Packet iterator component %d must be strictly less than "
+				  "total number of components %d",
+				  compno, numcomps);
+		return false;
+	}
+	for(; y < prog.ty1; y += dy)
+	{
+		for(; x < prog.tx1; x += dx)
+		{
+			// windowed decode:
+			// bail out if we reach a precinct which is past the
+			// bottom, right hand corner of the tile window
+			if(singleProgression_)
+			{
+				auto win = packetManager->getTileProcessor()->getUnreducedTileWindow();
+				if(win.non_empty() &&
+				   (y >= win.y1 || (win.y1 > 0 && y == win.y1 - 1 && x >= win.x1)))
+					return false;
+			}
+			for(; compno < prog.compE; compno++)
+			{
+				for(; resno < prog.resE; resno++)
+				{
+					if(!generatePrecinctIndex())
+						continue;
+					if(incrementInner)
+						layno++;
+					if(layno < prog.layE)
+					{
+						incrementInner = true;
+						if(update_include())
+							return true;
+					}
+					layno = prog.layS;
+					incrementInner = false;
+				}
+				resno = prog.resS;
+			}
+			compno = prog.compS;
+		}
+		x = prog.tx0;
+	}
+
+	return false;
+}
+bool PacketIter::next_lrcpOPT(SparseBuffer* src)
+{
+	for(; layno < prog.layE; layno++)
+	{
+		for(; resno < prog.resE; resno++)
+		{
+			auto precInfo = precinctInfo_ + resno;
+			if(!precInfoCheck(precInfo))
+				continue;
+
+			uint64_t precE = 0;
+			if(precinctInfo_)
+			{
+				if(resno >= comps->numresolutions)
+					continue;
+				auto res = comps->resolutions + resno;
+				precE = (uint64_t)res->precinctGridWidth * res->precinctGridHeight;
+			}
+			for(; compno < prog.compE; compno++)
+			{
+				auto comp = comps + compno;
+				if(!precinctInfo_)
+				{
+					// skip resolutions greater than current component resolution
+					if(resno >= comp->numresolutions)
+						continue;
+					auto res = comp->resolutions + resno;
+					precE = (uint64_t)res->precinctGridWidth * res->precinctGridHeight;
+				}
+				if(incrementInner)
+					precinctIndex++;
+				if(precinctIndex < precE)
+				{
+					incrementInner = true;
+					if(update_include())
+						return true;
+				}
+				precinctIndex = prog.precS;
+				incrementInner = false;
+			}
+			compno = prog.compS;
+		}
+		resno = prog.resS;
+	}
+
+	return false;
+}
+bool PacketIter::next_rlcpOPT(SparseBuffer* src)
+{
+	if(compno >= numcomps)
+	{
+		GRK_ERROR("Packet iterator component %d must be strictly less than "
+				  "total number of components %d",
+				  compno, numcomps);
+		return false;
+	}
+	for(; resno < prog.resE; resno++)
+	{
+		auto precInfo = precinctInfo_ + resno;
+		if(!precInfoCheck(precInfo))
+			continue;
+
+		uint64_t precE = 0;
+		if(precinctInfo_)
+		{
+			if(resno >= comps->numresolutions)
+				continue;
+			auto res = comps->resolutions + resno;
+			precE = (uint64_t)res->precinctGridWidth * res->precinctGridHeight;
+		}
+		for(; layno < prog.layE; layno++)
+		{
+			for(; compno < prog.compE; compno++)
+			{
+				auto comp = comps + compno;
+				if(!precinctInfo_)
+				{
+					if(resno >= comp->numresolutions)
+						continue;
+					auto res = comp->resolutions + resno;
+					precE = (uint64_t)res->precinctGridWidth * res->precinctGridHeight;
+				}
+				if(incrementInner)
+					precinctIndex++;
+				if(precinctIndex < precE)
+				{
+					incrementInner = true;
+					if(update_include())
+						return true;
+				}
+				precinctIndex = prog.precS;
+				incrementInner = false;
+			}
+			compno = prog.compS;
+		}
+		layno = prog.layS;
+	}
+
+	return false;
+}
+
 bool PacketIter::next_rpclOPT(SparseBuffer* src)
 {
 	for(; resno < prog.resE; resno++)
@@ -929,10 +1138,10 @@ bool PacketIter::next_rpclOPT(SparseBuffer* src)
 				}
 				compno = prog.compS;
 			}
-			x = 0;
+			x = prog.tx0;
 			skippedLeft_ = false;
 		}
-		y = 0;
+		y = prog.ty0;
 	}
 
 	return false;
@@ -942,15 +1151,15 @@ bool PacketIter::next(SparseBuffer* src)
 	switch(prog.progression)
 	{
 		case GRK_LRCP:
-			return next_lrcp();
+			return next_lrcp(src);
 		case GRK_RLCP:
-			return next_rlcp();
+			return next_rlcp(src);
 		case GRK_RPCL:
 			return next_rpcl(src);
 		case GRK_PCRL:
-			return next_pcrl();
+			return next_pcrl(src);
 		case GRK_CPRL:
-			return next_cprl();
+			return next_cprl(src);
 		default:
 			return false;
 	}

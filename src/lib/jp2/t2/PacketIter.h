@@ -268,24 +268,28 @@ private:
 	 Get next packet in component-precinct-resolution-layer order.
 	 @return returns false if pi pointed to the last packet, otherwise true
 	 */
-	bool next_cprl(void);
+	bool next_cprl(SparseBuffer* src);
+	bool next_cprlOPT(SparseBuffer* src);
 
 	/**
 	 Get next packet in precinct-component-resolution-layer order.
 	 @return returns false if pi pointed to the last packet, otherwise true
 	 */
-	bool next_pcrl(void);
+	bool next_pcrl(SparseBuffer* src);
+	bool next_pcrlOPT(SparseBuffer* src);
 
 	/**
 	 Get next packet in layer-resolution-component-precinct order.
 	 @return returns false if pi pointed to the last packet, otherwise true
 	 */
-	bool next_lrcp(void);
+	bool next_lrcp(SparseBuffer* src);
+	bool next_lrcpOPT(SparseBuffer* src);
 	/**
 	 Get next packet in resolution-layer-component-precinct order.
 	 @return returns false if pi pointed to the last packet, otherwise true
 	 */
-	bool next_rlcp(void);
+	bool next_rlcp(SparseBuffer* src);
+	bool next_rlcpOPT(SparseBuffer* src);
 	/**
 	 Get next packet in resolution-precinct-component-layer order.
 	 @return returns false if pi pointed to the last packet, otherwise true
