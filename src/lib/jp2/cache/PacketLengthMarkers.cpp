@@ -326,7 +326,7 @@ bool PacketLengthMarkers::readNextByte(uint8_t Iplm, uint32_t *packetLength)
 }
 
 uint64_t PacketLengthMarkers::pop(uint64_t numPackets){
-	uint32_t total = 0;
+	uint64_t total = 0;
 	for (uint64_t i = 0; i < numPackets; ++i)
 		total += pop();
 
