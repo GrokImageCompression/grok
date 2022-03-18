@@ -251,6 +251,7 @@ private:
 	PacketManager* packetManager;
 	uint8_t maxNumDecompositionResolutions;
 	bool singleProgression_;
+	bool compression_;
 	ResPrecinctInfo* precinctInfo_;
 	// precinct top,left grid coordinates
 	uint32_t px0grid_;
