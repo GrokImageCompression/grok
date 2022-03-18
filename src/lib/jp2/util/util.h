@@ -35,6 +35,7 @@ struct grkPoint
 	T y;
 };
 using grkpt = grkPoint<uint32_t>;
+using grkpt8 = grkPoint<uint8_t>;
 
 template<typename T>
 struct grkLine
@@ -170,6 +171,25 @@ struct grkRect
 		return grkRect<T>(ceildiv(x0, denx), ceildiv(y0, deny), ceildiv(x1, denx),
 						  ceildiv(y1, deny));
 	}
+	grkRect<T> scale(uint32_t scalex, uint32_t scaley) const
+	{
+		return grkRect<T>(x0*scalex,y0*scaley,x1*scalex,y1*scaley);
+	}
+	grkRect<T> scaleDown(uint64_t divx, uint64_t divy) const
+	{
+		return grkRect<T>((uint32_t)(x0/divx),
+						 (uint32_t)(y0/divy),
+						 ceildiv<uint64_t>(x1, divx),
+						 ceildiv<uint64_t>(y1, divy));
+	}
+	grkRect<T> scaleDownCeil(uint64_t divx, uint64_t divy) const
+	{
+		return grkRect<T>(ceildiv<uint64_t>(x0, divx),
+						 ceildiv<uint64_t>(y0, divy),
+						 ceildiv<uint64_t>(x1, divx),
+						 ceildiv<uint64_t>(y1, divy));
+	}
+
 	grkRect<T> intersection(const grkRect<T> rhs) const
 	{
 		return intersection(&rhs);

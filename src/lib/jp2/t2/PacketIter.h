@@ -168,12 +168,17 @@ struct ResPrecinctInfo
 	uint64_t canvasPrecHeight;
 	uint64_t canvasDx;
 	uint64_t canvasDy;
-	uint32_t canvasResInPrecGridX0;
-	uint32_t canvasResInPrecGridY0;
+	uint32_t resInPrecGridX0;
+	uint32_t resInPrecGridY0;
 	uint8_t decompLevel_;
-	grkRectU32 window;
-	grkRectU32 windowPrec;
-	grkRectU32 windowPrecGrid;
+	grkRectU32 canvasTileBoundsPrec;
+	grkRectU32 canvasTileBoundsPrecGrid;
+	grkRectU32 canvasWindowPrec;
+	grkRectU32 canvasWindowPrecGrid;
+	uint64_t winPrecinctsLeft_;
+	uint64_t winPrecinctsRight_;
+	uint64_t winPrecinctsTop_;
+	uint64_t winPrecinctsBottom_;
 	bool valid;
 };
 

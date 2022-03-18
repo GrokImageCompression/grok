@@ -338,6 +338,7 @@ uint64_t PacketLengthMarkers::pop(uint64_t numPackets){
 uint32_t PacketLengthMarkers::pop(void)
 {
 	uint32_t rc = 0;
+	assert(rawMarkers_);
 	if(currRawMarkerIter_ != rawMarkers_->end() && currRawMarkerBuf_){
 
 		// read next packet length
