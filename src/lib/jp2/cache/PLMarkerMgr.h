@@ -22,35 +22,26 @@
 
 namespace grk
 {
+// raw markers - PL is stored using comma code
+typedef std::vector<grkBufferU8*> PL_MARKER;
+typedef std::map<uint32_t, PL_MARKER*> PL_MARKERS;
 
-typedef std::vector<grkBufferU8*> PL_RAW_MARKER;
-typedef std::map<uint32_t, PL_RAW_MARKER*> PL_RAW_MARKERS;
-
-typedef std::vector<uint32_t> PL_MARKER;
-struct PacketLengthMarkerInfo
+struct PLMarkerMgr
 {
-	PacketLengthMarkerInfo() : PacketLengthMarkerInfo(nullptr) {}
-	PacketLengthMarkerInfo(PL_MARKER* marker) : markerLength_(0), marker_(marker) {}
-	uint64_t markerLength_;
-	PL_MARKER* marker_;
-};
-typedef std::map<uint32_t, PacketLengthMarkerInfo> PL_MARKERS;
-
-struct PacketLengthMarkers
-{
-	~PacketLengthMarkers(void);
+	PLMarkerMgr(void);
+	~PLMarkerMgr(void);
 
 	//////////////////////////////////////////
 	// compress
-	PacketLengthMarkers(void);
-	void pushInit(void);
-	void pushNextPacketLength(uint32_t len);
-	uint32_t write(bool simulate);
+	void pushInit(bool isFinal);
+	void pushPL(uint32_t len);
+	bool write(void);
+	uint32_t getTotalBytesWritten(void);
 	/////////////////////////////////////////
 
 	/////////////////////////////////////////////
 	// decompress
-	PacketLengthMarkers(IBufferedStream* strm);
+	PLMarkerMgr(IBufferedStream* strm);
 	bool readPLT(uint8_t* headerData, uint16_t header_size);
 	bool readPLM(uint8_t* headerData, uint16_t header_size);
 	void rewind(void);
@@ -58,29 +49,26 @@ struct PacketLengthMarkers
 	uint64_t pop(uint64_t numPackets);
 	////////////////////////////////////////////
   private:
+	void clearMarkers(void);
+	bool findMarker(uint32_t index, bool compress);
+	grkBufferU8* addNewMarker(uint8_t *data, uint16_t len);
+	PL_MARKERS *rawMarkers_;
+	PL_MARKERS::iterator currMarkerIter_;
+
 	////////////////////////////////
 	// compress
-	void tryWriteMarkerHeader(PacketLengthMarkerInfo* markerInfo, bool simulate);
-	void writeMarkerLength(PacketLengthMarkerInfo* markerInfo);
-	void writeIncrement(uint32_t bytes);
-	PL_MARKERS *markers_;
-	PL_MARKER *currMarker_;
-	uint32_t markerBytesWritten_;
 	uint32_t totalBytesWritten_;
-	uint64_t cachedMarkerLenLocation_;
+	bool isFinal_;
 	IBufferedStream* stream_;
 	////////////////////////////////
 
 	//////////////////////////
 	// decompress
-	bool readInit(uint32_t index);
 	bool readNextByte(uint8_t Iplm, uint32_t *packetLength);
 	bool sequential_;
 	uint32_t packetLen_;
-	PL_RAW_MARKERS *rawMarkers_;
-	PL_RAW_MARKERS::iterator currRawMarkerIter_;
-	uint32_t currRawMarkerBufIndex_;
-	grkBufferU8 *currRawMarkerBuf_;
+	uint32_t currMarkerBufIndex_;
+	grkBufferU8 *currMarkerBuf_;
 	///////////////////////////////
 };
 

@@ -18,32 +18,32 @@
 
 namespace grk
 {
-PacketLengthCache::PacketLengthCache(CodingParams* cp) : pltMarkers(nullptr), cp_(cp) {}
-PacketLengthCache::~PacketLengthCache()
+PLCache::PLCache(CodingParams* cp) : pltMarkers(nullptr), cp_(cp) {}
+PLCache::~PLCache()
 {
 	delete pltMarkers;
 }
 
-PacketLengthMarkers* PacketLengthCache::createMarkers(IBufferedStream* strm)
+PLMarkerMgr* PLCache::createMarkers(IBufferedStream* strm)
 {
 	if(!pltMarkers)
-		pltMarkers = strm ? new PacketLengthMarkers(strm) : new PacketLengthMarkers();
+		pltMarkers = strm ? new PLMarkerMgr(strm) : new PLMarkerMgr();
 
 	return pltMarkers;
 }
 
-PacketLengthMarkers* PacketLengthCache::getMarkers(void)
+PLMarkerMgr* PLCache::getMarkers(void)
 {
 	return pltMarkers;
 }
 
-void PacketLengthCache::deleteMarkers(void)
+void PLCache::deleteMarkers(void)
 {
 	delete pltMarkers;
 	pltMarkers = nullptr;
 }
 
-bool PacketLengthCache::next(PacketInfo** p)
+bool PLCache::next(PacketInfo** p)
 {
 	assert(p);
 #ifdef ENABLE_PACKET_CACHE
@@ -74,7 +74,7 @@ bool PacketLengthCache::next(PacketInfo** p)
 	return true;
 }
 
-void PacketLengthCache::rewind(void)
+void PLCache::rewind(void)
 {
 	// we don't currently support PLM markers,
 	// so we disable packet length markers if we have both PLT and PLM

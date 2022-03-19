@@ -124,7 +124,7 @@ struct TileProcessor
 	// true if whole tile will be decoded; false if tile window will be decoded
 	bool wholeTileDecompress;
 	CodingParams* cp_;
-	PacketLengthCache packetLengthCache;
+	PLCache packetLengthCache;
 	uint64_t getTilePartDataLength(void);
 	bool subtractMarkerLength(uint16_t markerLen);
 	bool setTilePartDataLength(uint32_t tilePartLength, bool lastTilePartInCodeStream);

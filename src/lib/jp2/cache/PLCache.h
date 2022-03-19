@@ -22,19 +22,19 @@
 
 namespace grk
 {
-class PacketLengthCache
+class PLCache
 {
   public:
-	PacketLengthCache(CodingParams* cp);
-	virtual ~PacketLengthCache();
-	PacketLengthMarkers* createMarkers(IBufferedStream* strm);
-	PacketLengthMarkers* getMarkers(void);
+	PLCache(CodingParams* cp);
+	virtual ~PLCache();
+	PLMarkerMgr* createMarkers(IBufferedStream* strm);
+	PLMarkerMgr* getMarkers(void);
 	void deleteMarkers(void);
 	bool next(PacketInfo** p);
 	void rewind(void);
 
   private:
-	PacketLengthMarkers* pltMarkers;
+	PLMarkerMgr* pltMarkers;
 #ifdef ENABLE_PACKET_CACHE
 	SequentialPtrCache<PacketInfo> packetInfoCache;
 #endif

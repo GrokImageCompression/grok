@@ -124,6 +124,21 @@ struct grkBuffer : A<T>
 	inline T read(void){
 		return buf[offset++];
 	}
+	inline bool write(T val){
+		if (offset == len)
+			return false;
+		buf[offset++] = val;
+
+		return true;
+	}
+	inline bool write(T* b, size_t size){
+		if (offset + size > len)
+			return false;
+		memcpy(buf+offset,b,size);
+		offset += size;
+
+		return true;
+	}
 	virtual bool alloc(size_t length)
 	{
 		if(buf && len > length)

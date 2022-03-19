@@ -27,7 +27,7 @@ TileProcessor::TileProcessor(uint16_t tileIndex, CodeStream* codeStream, IBuffer
 	  headerImage(codeStream->getHeaderImage()),
 	  current_plugin_tile(codeStream->getCurrentPluginTile()),
 	  wholeTileDecompress(isWholeTileDecompress), cp_(codeStream->getCodingParams()),
-	  packetLengthCache(PacketLengthCache(cp_)), tilePartDataLength(0), tileIndex_(tileIndex),
+	  packetLengthCache(PLCache(cp_)), tilePartDataLength(0), tileIndex_(tileIndex),
 	  stream_(stream), corrupt_packet_(false), newTilePartProgressionPosition(0), tcp_(nullptr),
 	  truncated(false), image_(nullptr), isCompressor_(isCompressor), preCalculatedTileLen(0)
 {
@@ -305,39 +305,21 @@ bool TileProcessor::doCompress(void)
 	{
 		// SOT marker
 		preCalculatedTileLen = sot_marker_segment_len;
-		// if (tileIndex_ == 3)
-		//	GRK_INFO("Precalc: Tile %d, SOT marker seg len : %d", tileIndex_,
-		// sot_marker_segment_len);
 		// POC marker
 		if(canWritePocMarker())
 		{
 			uint32_t pocSize =
 				CodeStreamCompress::getPocSize(tile->numcomps, tcp_->getNumProgressions());
-			// if (tileIndex_ == 3)
-			//	GRK_INFO("Precalc: Tile %d, POC size len : %d", tileIndex_, pocSize);
 			preCalculatedTileLen += pocSize;
 		}
 		// calculate PLT marker length
 		if(packetLengthCache.getMarkers())
-		{
-			{
-				uint32_t pltMarkerLength = packetLengthCache.getMarkers()->write(true);
-				// if (tileIndex_ == 3)
-				//	GRK_INFO("Precalc: Tile %d, PLT marker len : %d", tileIndex_, pltMarkerLength);
-				preCalculatedTileLen += pltMarkerLength;
-			}
-		}
+			preCalculatedTileLen += packetLengthCache.getMarkers()->getTotalBytesWritten();
+
 		// calculate SOD marker length
 		preCalculatedTileLen += 2;
-		// if (tileIndex_ == 3)
-		//	GRK_INFO("Precalc: Tile %d, SOD marker len : %d", tileIndex_, 2);
 		// calculate packets length
 		preCalculatedTileLen += allPacketBytes;
-		// if (tileIndex_ == 3)
-		//	GRK_INFO("Precalc: Tile %d, all packet bytes : %d", tileIndex_, allPacketBytes);
-
-		// if (tileIndex_ == 3)
-		//	GRK_INFO("Precalc: Tile %d, Total len : %d\n", tileIndex_, preCalculatedTileLen);
 	}
 	return true;
 }
@@ -351,8 +333,11 @@ bool TileProcessor::canWritePocMarker(void)
 bool TileProcessor::writeTilePartT2(uint32_t* tileBytesWritten)
 {
 	// write entire PLT marker in first tile part header
-	if(tilePartIndexCounter_ == 0 && packetLengthCache.getMarkers())
-		*tileBytesWritten += packetLengthCache.getMarkers()->write(false);
+	if(tilePartIndexCounter_ == 0 && packetLengthCache.getMarkers()){
+		 if (!packetLengthCache.getMarkers()->write())
+			 return false;
+		 *tileBytesWritten += packetLengthCache.getMarkers()->getTotalBytesWritten();
+	}
 
 	// write SOD
 	if(!stream_->writeShort(J2K_MS_SOD))
@@ -1196,7 +1181,7 @@ bool TileProcessor::pcrdBisectFeasible(uint32_t* allPacketBytes)
 		// and correct tile length
 		return t2.compressPacketsSimulate(tileIndex_, 0 + 1U, allPacketBytes, UINT_MAX,
 										  newTilePartProgressionPosition,
-										  packetLengthCache.getMarkers());
+										  packetLengthCache.getMarkers(), true);
 	}
 	uint32_t min_slope = rateInfo.getMinimumThresh();
 	uint32_t max_slope = USHRT_MAX;
@@ -1239,7 +1224,8 @@ bool TileProcessor::pcrdBisectFeasible(uint32_t* allPacketBytes)
 				{
 					if(!t2.compressPacketsSimulate(tileIndex_, (uint16_t)(layno + 1U),
 												   allPacketBytes, maxLayerLength,
-												   newTilePartProgressionPosition, nullptr))
+												   newTilePartProgressionPosition,
+												   packetLengthCache.getMarkers(),false))
 					{
 						lowerBound = thresh;
 						continue;
@@ -1268,7 +1254,7 @@ bool TileProcessor::pcrdBisectFeasible(uint32_t* allPacketBytes)
 	// and correct tile length
 	return t2.compressPacketsSimulate(tileIndex_, tcp->numlayers, allPacketBytes, maxLayerLength,
 									  newTilePartProgressionPosition,
-									  packetLengthCache.getMarkers());
+									  packetLengthCache.getMarkers(),true);
 }
 /*
  Simple bisect algorithm to calculate optimal layer truncation points
@@ -1350,12 +1336,10 @@ bool TileProcessor::pcrdBisectSimple(uint32_t* allPacketBytes)
 		// and correct tile length
 		return t2.compressPacketsSimulate(tileIndex_, 0 + 1U, allPacketBytes, UINT_MAX,
 										  newTilePartProgressionPosition,
-										  packetLengthCache.getMarkers());
+										  packetLengthCache.getMarkers(),true);
 	}
 	double cumulativeDistortion[maxCompressLayersGRK];
 	double upperBound = max_slope;
-	if(packetLengthCache.getMarkers())
-		packetLengthCache.getMarkers()->pushInit();
 	uint32_t maxLayerLength = UINT_MAX;
 	for(uint16_t layno = 0; layno < tcp_->numlayers; layno++)
 	{
@@ -1397,7 +1381,7 @@ bool TileProcessor::pcrdBisectSimple(uint32_t* allPacketBytes)
 				{
 					if(!t2.compressPacketsSimulate(tileIndex_, layno + 1U, allPacketBytes,
 												   maxLayerLength, newTilePartProgressionPosition,
-												   nullptr))
+												   packetLengthCache.getMarkers(), false))
 					{
 						lowerBound = thresh;
 						continue;
@@ -1427,7 +1411,7 @@ bool TileProcessor::pcrdBisectSimple(uint32_t* allPacketBytes)
 	// GRK_INFO("Rate control final simulation");
 	return t2.compressPacketsSimulate(tileIndex_, tcp_->numlayers, allPacketBytes, maxLayerLength,
 									  newTilePartProgressionPosition,
-									  packetLengthCache.getMarkers());
+									  packetLengthCache.getMarkers(), true);
 }
 static void prepareBlockForFirstLayer(CompressCodeblock* cblk)
 {

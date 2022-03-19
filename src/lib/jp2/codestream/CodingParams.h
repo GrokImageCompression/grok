@@ -277,7 +277,7 @@ struct CodingParams
 		EncodingParams enc_;
 	} coding_params_;
 	TileLengthMarkers* tlm_markers;
-	PacketLengthMarkers* plm_markers;
+	PLMarkerMgr* plm_markers;
 };
 
 /**

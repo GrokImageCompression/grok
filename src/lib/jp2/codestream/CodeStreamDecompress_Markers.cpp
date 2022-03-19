@@ -442,7 +442,7 @@ bool CodeStreamDecompress::read_plm(uint8_t* headerData, uint16_t header_size)
 {
 	assert(headerData != nullptr);
 	if(!cp_.plm_markers)
-		cp_.plm_markers = new PacketLengthMarkers();
+		cp_.plm_markers = new PLMarkerMgr();
 
 	return cp_.plm_markers->readPLM(headerData, header_size);
 }
