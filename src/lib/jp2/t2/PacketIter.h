@@ -302,6 +302,8 @@ private:
 	 */
 	bool next_rpcl(SparseBuffer* src);
 	bool next_rpclOPT(SparseBuffer* src);
+
+	bool skip(SparseBuffer* src, uint64_t numPrecincts);
 };
 
 /* ----------------------------------------------------------------------- */

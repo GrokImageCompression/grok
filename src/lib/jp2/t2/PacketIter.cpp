@@ -1020,6 +1020,18 @@ bool PacketIter::next_rpcl(SparseBuffer* src)
 
 //////////////////////////////////////////////////////////////////////////////////////
 
+bool PacketIter::skip(SparseBuffer* src, uint64_t numPrecincts){
+	auto markers = packetManager->getTileProcessor()->packetLengthCache.getMarkers();
+	auto len = markers->pop(numPrecincts );
+	auto skipLen = src->skip(len);
+	if (len != skipLen){
+		GRK_ERROR("Packet iterator: unable to skip precincts.");
+		return false;
+	}
+
+	return true;
+}
+
 bool PacketIter::next_cprlOPT(SparseBuffer* src)
 {
 	GRK_UNUSED(src);
@@ -1166,11 +1178,9 @@ bool PacketIter::next_rlcpOPT(SparseBuffer* src)
 
 	return false;
 }
-
 bool PacketIter::next_rpclOPT(SparseBuffer* src)
 {
 	auto wholeTile = packetManager->getTileProcessor()->wholeTileDecompress;
-	auto markers = packetManager->getTileProcessor()->packetLengthCache.getMarkers();
 	for(; resno < prog.resE; resno++)
 	{
 		auto precInfo = precinctInfo_ + resno;
@@ -1192,33 +1202,21 @@ bool PacketIter::next_rpclOPT(SparseBuffer* src)
 				if (src){
 					// skip all precincts above window
 					if (y < win->y0){
-						auto len = markers->pop(precInfo->winPrecinctsTop_);
-						auto skipLen = src->skip(len);
-						if (len != skipLen){
-							GRK_ERROR("Packet iterator: unable to skip precincts.");
+						if (!skip(src,precInfo->winPrecinctsTop_))
 							return false;
-						}
 						y = win->y0;
 					}
 					// skip all precincts below window
 					else if (y == win->y1 && precInfo->winPrecinctsBottom_){
-						auto len = markers->pop(precInfo->winPrecinctsBottom_);
-						auto skipLen = src->skip(len);
-						if (len != skipLen){
-							GRK_ERROR("Packet iterator: unable to skip precincts.");
+						if (!skip(src,precInfo->winPrecinctsBottom_))
 							return false;
-						}
 						break;
 					}
 					// skip precincts to the left of window
 					if (!skippedLeft_ && precInfo->winPrecinctsLeft_) {
 						if (x < win->x0){
-							auto len = markers->pop(precInfo->winPrecinctsLeft_);
-							auto skipLen = src->skip(len);
-							if (len != skipLen){
-								GRK_ERROR("Packet iterator: unable to skip precincts.");
+							if (!skip(src,precInfo->winPrecinctsLeft_))
 								return false;
-							}
 							x = win->x0;
 						}
 						skippedLeft_ = true;
@@ -1227,8 +1225,9 @@ bool PacketIter::next_rpclOPT(SparseBuffer* src)
 			}
 			genPrecinctY0GridOPT(precInfo);
 			uint64_t precIndexY = (uint64_t)py0grid_ * res->precinctGridWidth;
-			for(; x < (wholeTile ? precInfo->canvasTileBoundsPrec.x1 : win->x1); x += precInfo->canvasPrecWidth)
+			for(; x < (wholeTile || !src ? precInfo->canvasTileBoundsPrec.x1 : win->x1); x += precInfo->canvasPrecWidth)
 			{
+
 				// windowed decode:
 				// bail out if we reach a precinct which is past the
 				// bottom, right hand corner of the tile window
@@ -1237,11 +1236,17 @@ bool PacketIter::next_rpclOPT(SparseBuffer* src)
 					if( (win->y1 == 0 || (win->y1 > 0 && y == win->y1 - 1)) && x >= win->x1)
 						return false;
 				}
+
 				valid = true;
 				if (!wholeTile)
 					valid =  x >= win->x0 && x < win->x1;
-				if (valid)
-					genPrecinctX0GridOPT(precInfo);
+				if (!valid && src){
+					if (!skip(src,prog.compE *prog.layE))
+							return false;
+					continue;
+				}
+
+				genPrecinctX0GridOPT(precInfo);
 				for(; compno < prog.compE; compno++)
 				{
 					if(incrementInner)
@@ -1259,12 +1264,8 @@ bool PacketIter::next_rpclOPT(SparseBuffer* src)
 			}
 			x = precInfo->canvasTileBoundsPrec.x0;
 			if (!wholeTile && src && precInfo->winPrecinctsRight_){
-				auto len = markers->pop(precInfo->winPrecinctsRight_);
-				auto skipLen = src->skip(len);
-				if (len != skipLen) {
-					GRK_ERROR("Packet iterator: unable to skip precincts.");
-					return false;
-				}
+				if (!skip(src,precInfo->winPrecinctsRight_))
+						return false;
 			}
 			skippedLeft_ = false;
 		}
@@ -1273,5 +1274,6 @@ bool PacketIter::next_rpclOPT(SparseBuffer* src)
 
 	return false;
 }
+
 
 } // namespace grk
