@@ -24,7 +24,7 @@ namespace grk
 {
 ResPrecinctInfo::ResPrecinctInfo()
 	: precinctWidthExp(0), precinctHeightExp(0), canvasResOffsetX0(0), canvasResOffsetY0(0),
-	  canvasPrecWidth(0), canvasPrecHeight(0), canvasDx(0), canvasDy(0),
+	  canvasPrecWidth(0), canvasPrecHeight(0), numPrecincts_(0), canvasDx(0), canvasDy(0),
 	  resInPrecGridX0(0), resInPrecGridY0(0), decompLevel_(0),innerPrecincts_(0),
 	  winPrecinctsLeft_(0), winPrecinctsRight_(0), winPrecinctsTop_(0), winPrecinctsBottom_(0),
 	  valid(false)
@@ -63,6 +63,7 @@ void ResPrecinctInfo::init(	uint8_t decompLevel, grkRectU32 tileBounds, uint32_t
 		canvasWindowPrec = canvasWindowPrecGrid.scale((uint32_t)canvasPrecWidth,(uint32_t)canvasPrecHeight);
 	}
 	canvasTileBoundsPrecGrid = res.scaleDown(1<<precinctWidthExp, 1<<precinctHeightExp);
+	numPrecincts_ = canvasTileBoundsPrecGrid.area();
 	canvasTileBoundsPrec = canvasTileBoundsPrecGrid.scale((uint32_t)canvasPrecWidth,(uint32_t)canvasPrecHeight);
 	valid = true;
 }
@@ -1097,8 +1098,7 @@ bool PacketIter::next_cprlOPT(SparseBuffer* src)
 					if(layno < prog.layE)
 					{
 						incrementInner = true;
-						if(update_include())
-							return true;
+						return true;
 					}
 					layno = prog.layS;
 					incrementInner = false;
@@ -1123,8 +1123,7 @@ bool PacketIter::next_lrcpOPT(SparseBuffer* src)
 			if(!precInfoCheck(precInfo))
 				continue;
 
-			auto res = comps->resolutions + resno;
-			uint64_t precE = (uint64_t)res->precinctGridWidth * res->precinctGridHeight;
+			uint64_t precE = precInfo->numPrecincts_;
 			for(; compno < prog.compE; compno++)
 			{
 				if(incrementInner)
@@ -1132,8 +1131,7 @@ bool PacketIter::next_lrcpOPT(SparseBuffer* src)
 				if(precinctIndex < precE)
 				{
 					incrementInner = true;
-					if(update_include())
-						return true;
+					return true;
 				}
 				precinctIndex = prog.precS;
 				incrementInner = false;
@@ -1154,8 +1152,7 @@ bool PacketIter::next_rlcpOPT(SparseBuffer* src)
 		if(!precInfoCheck(precInfo))
 			continue;
 
-		auto res = comps->resolutions + resno;
-		uint64_t precE = (uint64_t)res->precinctGridWidth * res->precinctGridHeight;
+		uint64_t precE = precInfo->numPrecincts_;
 		for(; layno < prog.layE; layno++)
 		{
 			for(; compno < prog.compE; compno++)
@@ -1165,8 +1162,7 @@ bool PacketIter::next_rlcpOPT(SparseBuffer* src)
 				if(precinctIndex < precE)
 				{
 					incrementInner = true;
-					if(update_include())
-						return true;
+					return true;
 				}
 				precinctIndex = prog.precS;
 				incrementInner = false;

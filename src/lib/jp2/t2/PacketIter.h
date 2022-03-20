@@ -166,6 +166,7 @@ struct ResPrecinctInfo
 	uint32_t canvasResOffsetY0;
 	uint64_t canvasPrecWidth;
 	uint64_t canvasPrecHeight;
+	uint64_t numPrecincts_;
 	uint64_t canvasDx;
 	uint64_t canvasDy;
 	uint32_t resInPrecGridX0;
