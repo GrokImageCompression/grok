@@ -160,7 +160,6 @@ struct ResPrecinctInfo
 	ResPrecinctInfo();
 	void init(uint8_t levelno, grkRectU32 tileBounds, uint32_t dx, uint32_t dy, bool windowed,
 			  grkRectU32 tileWindow);
-	void update(grk_progression prog);
 	uint32_t precinctWidthExp;
 	uint32_t precinctHeightExp;
 	uint32_t canvasResOffsetX0;
@@ -273,6 +272,7 @@ private:
 	bool precInfoCheck(ResPrecinctInfo* rpInfo);
 	bool generatePrecinctIndex(void);
 	void update_dxy_for_comp(PiComp* comp);
+	uint64_t genLineCountPCRL(uint64_t yy) const;
 
 	/**
 	 Get next packet in component-precinct-resolution-layer order.

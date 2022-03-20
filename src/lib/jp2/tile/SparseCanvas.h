@@ -214,8 +214,12 @@ class SparseCanvas : public ISparseCanvas
 				if(!grid_bounds.contains(grkpt(block_x, block_y)))
 				{
 					GRK_ERROR("sparse buffer : attempt to allocate a block (%d,%d) outside block "
-							  "grid bounds",
-							  block_x, block_y);
+							  "grid bounds (%d,%d,%d,%d)",
+							  block_x, block_y,
+							  grid_bounds.x0,
+							  grid_bounds.y0,
+							  grid_bounds.x1,
+							  grid_bounds.y1);
 					return false;
 				}
 				auto src_block = getBlock(block_x, block_y);
