@@ -160,6 +160,7 @@ struct ResPrecinctInfo
 	ResPrecinctInfo();
 	void init(uint8_t levelno, grkRectU32 tileBounds, uint32_t dx, uint32_t dy, bool windowed,
 			  grkRectU32 tileWindow);
+	void update(grk_progression prog);
 	uint32_t precinctWidthExp;
 	uint32_t precinctHeightExp;
 	uint32_t canvasResOffsetX0;
@@ -175,6 +176,7 @@ struct ResPrecinctInfo
 	grkRectU32 canvasTileBoundsPrecGrid;
 	grkRectU32 canvasWindowPrec;
 	grkRectU32 canvasWindowPrecGrid;
+	uint64_t innerPrecincts_;
 	uint64_t winPrecinctsLeft_;
 	uint64_t winPrecinctsRight_;
 	uint64_t winPrecinctsTop_;

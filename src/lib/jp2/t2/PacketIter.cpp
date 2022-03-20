@@ -25,7 +25,7 @@ namespace grk
 ResPrecinctInfo::ResPrecinctInfo()
 	: precinctWidthExp(0), precinctHeightExp(0), canvasResOffsetX0(0), canvasResOffsetY0(0),
 	  canvasPrecWidth(0), canvasPrecHeight(0), canvasDx(0), canvasDy(0),
-	  resInPrecGridX0(0), resInPrecGridY0(0), decompLevel_(0),
+	  resInPrecGridX0(0), resInPrecGridY0(0), decompLevel_(0),innerPrecincts_(0),
 	  winPrecinctsLeft_(0), winPrecinctsRight_(0), winPrecinctsTop_(0), winPrecinctsBottom_(0),
 	  valid(false)
 {}
@@ -64,6 +64,30 @@ void ResPrecinctInfo::init(	uint8_t decompLevel, grkRectU32 tileBounds, uint32_t
 	canvasTileBoundsPrecGrid = res.scaleDown(1<<precinctWidthExp, 1<<precinctHeightExp);
 	canvasTileBoundsPrec = canvasTileBoundsPrecGrid.scale((uint32_t)canvasPrecWidth,(uint32_t)canvasPrecHeight);
 	valid = true;
+}
+void ResPrecinctInfo::update(grk_progression prog){
+	switch(prog.progression)
+	{
+		case GRK_LRCP:
+		case GRK_RLCP:
+			innerPrecincts_ = 1;
+			break;
+		case GRK_RPCL:
+			innerPrecincts_ = prog.compE * prog.layE;
+			break;
+		case GRK_PCRL:
+			innerPrecincts_ = prog.compE * prog.resE * prog.layE;
+			break;
+		case GRK_CPRL:
+			innerPrecincts_ = prog.resE * prog.layE;
+			break;
+		default:
+			break;
+	}
+	winPrecinctsLeft_   = canvasWindowPrecGrid.x0 * innerPrecincts_;
+	winPrecinctsRight_  = (uint64_t)(canvasTileBoundsPrecGrid.x1 - canvasWindowPrecGrid.x1) * innerPrecincts_;
+	winPrecinctsTop_    =  (uint64_t)canvasWindowPrecGrid.y0 * canvasTileBoundsPrecGrid.width() * innerPrecincts_;
+	winPrecinctsBottom_ = (uint64_t)(canvasTileBoundsPrecGrid.y1 - canvasWindowPrecGrid.y1) * canvasTileBoundsPrecGrid.width()  * innerPrecincts_;
 }
 
 PacketIter::PacketIter()
@@ -739,6 +763,24 @@ void PacketIter::init(PacketManager* packetMan,
 		for(uint8_t resno = 0; resno < comps->numresolutions; ++resno)
 		{
 			auto inf = precinctInfo_ + resno;
+
+
+			switch(prog.progression)
+			{
+				case GRK_LRCP:
+					break;
+				case GRK_RLCP:
+				case GRK_RPCL:
+					break;
+				case GRK_PCRL:
+				case GRK_CPRL:
+					break;
+				default:
+					break;
+			}
+
+
+			inf->innerPrecincts_ = prog.compE * prog.layE;
 			inf->winPrecinctsLeft_   = inf->canvasWindowPrecGrid.x0 * prog.compE * prog.layE;
 			inf->winPrecinctsRight_  = (uint64_t)(inf->canvasTileBoundsPrecGrid.x1 - inf->canvasWindowPrecGrid.x1) * prog.compE * prog.layE;
 			inf->winPrecinctsTop_    =  (uint64_t)inf->canvasWindowPrecGrid.y0 * inf->canvasTileBoundsPrecGrid.width() * prog.compE * prog.layE;
@@ -1241,7 +1283,7 @@ bool PacketIter::next_rpclOPT(SparseBuffer* src)
 				if (!wholeTile)
 					valid =  x >= win->x0 && x < win->x1;
 				if (!valid && src){
-					if (!skip(src,prog.compE *prog.layE))
+					if (!skip(src,precInfo->innerPrecincts_))
 							return false;
 					continue;
 				}
