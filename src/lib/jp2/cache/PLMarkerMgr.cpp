@@ -47,6 +47,8 @@ void PLMarkerMgr::clearMarkers(void){
 		delete it->second;
 	}
 	rawMarkers_->clear();
+	currMarkerIter_ = rawMarkers_->end();
+	currMarkerBuf_ = nullptr;
 }
 void PLMarkerMgr::pushInit(bool isFinal)
 {
@@ -67,9 +69,10 @@ void PLMarkerMgr::pushPL(uint32_t len)
 	auto marker = currMarkerIter_->second;
 	grkBufferU8 *buf = nullptr;
 	if (marker->empty() || marker->front()->offset + numBytes > marker->front()->len) {
-		buf = addNewMarker(nullptr, isFinal_ ? plWriteBufferLen : 0);
-		if (isFinal_)
+		if (isFinal_){
+			buf = addNewMarker(nullptr, plWriteBufferLen);
 			buf->write((uint8_t)currMarkerIter_->first);
+		}
 		// account for marker header
 		totalBytesWritten_ += 2 + 2 + 1;
 	}
