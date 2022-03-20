@@ -57,7 +57,7 @@ void ResPrecinctInfo::init(	uint8_t decompLevel, grkRectU32 tileBounds, uint32_t
 	{
 		auto window = tileWindow;
 		window.grow(10);
-		auto resWindow = window.scaleDownCeil(resDivisor,resDivisor);
+		auto resWindow = window.scaleDown(resDivisor,resDivisor);
 		canvasWindowPrecGrid = resWindow.scaleDown(1<<precinctWidthExp, 1<<precinctHeightExp);
 		canvasWindowPrec = canvasWindowPrecGrid.scale((uint32_t)canvasPrecWidth,(uint32_t)canvasPrecHeight);
 	}
@@ -73,13 +73,13 @@ void ResPrecinctInfo::update(grk_progression prog){
 			innerPrecincts_ = 1;
 			break;
 		case GRK_RPCL:
-			innerPrecincts_ = prog.compE * prog.layE;
+			innerPrecincts_ = (uint64_t)prog.compE * prog.layE;
 			break;
 		case GRK_PCRL:
-			innerPrecincts_ = prog.compE * prog.resE * prog.layE;
+			innerPrecincts_ = (uint64_t)prog.compE * prog.resE * prog.layE;
 			break;
 		case GRK_CPRL:
-			innerPrecincts_ = prog.resE * prog.layE;
+			innerPrecincts_ = (uint64_t)prog.resE * prog.layE;
 			break;
 		default:
 			break;
@@ -561,6 +561,7 @@ void PacketIter::genPrecinctInfo(void)
 	optimized = prog.progression == GRK_RPCL;
 }
 
+
 bool PacketIter::generatePrecinctIndex(void)
 {
 	auto comp = comps + compno;
@@ -634,13 +635,37 @@ bool PacketIter::genPrecinctX0Grid(ResPrecinctInfo* rpInfo)
 
 	return true;
 }
-void PacketIter::genPrecinctY0GridOPT(ResPrecinctInfo* rpInfo)
+
+bool PacketIter::genPrecinctY0GridPCRL_OPT(ResPrecinctInfo* rpInfo)
 {
-	py0grid_ = ceildivpow2<uint64_t>((uint64_t)y, rpInfo->decompLevel_) >> rpInfo->precinctHeightExp;
+	if(!((((uint64_t)y & (rpInfo->canvasPrecHeight-1)) == 0) ||
+		 ((y == packetManager->getTileBounds().y0) && rpInfo->canvasResOffsetY0)))
+		return false;
+
+	py0grid_ =
+		floordivpow2(ceildiv<uint64_t>((uint64_t)y, rpInfo->canvasDy), rpInfo->precinctHeightExp) -
+		rpInfo->resInPrecGridY0;
+
+	return true;
 }
-void PacketIter::genPrecinctX0GridOPT(ResPrecinctInfo* rpInfo)
+bool PacketIter::genPrecinctX0GridPCRL_OPT(ResPrecinctInfo* rpInfo)
 {
-	px0grid_ = ceildivpow2<uint64_t>((uint64_t)x, rpInfo->decompLevel_) >> rpInfo->precinctWidthExp;
+	if(!((((uint64_t)x & (rpInfo->canvasPrecWidth-1)) == 0) ||
+		 ((x == packetManager->getTileBounds().x0) && rpInfo->canvasResOffsetX0)))
+		return false;
+
+	px0grid_ = floordivpow2(ceildiv<uint64_t>((uint64_t)x, rpInfo->canvasDx), rpInfo->precinctWidthExp) -
+			   rpInfo->resInPrecGridX0;
+
+	return true;
+}
+void PacketIter::genPrecinctY0GridRPCL_OPT(ResPrecinctInfo* rpInfo)
+{
+	py0grid_ = (uint32_t)(ceildivpow2<uint64_t>((uint64_t)y, rpInfo->decompLevel_) >> rpInfo->precinctHeightExp);
+}
+void PacketIter::genPrecinctX0GridRPCL_OPT(ResPrecinctInfo* rpInfo)
+{
+	px0grid_ = (uint32_t)(ceildivpow2<uint64_t>((uint64_t)x, rpInfo->decompLevel_) >> rpInfo->precinctWidthExp);
 
 }
 void PacketIter::update_dxy(void)
@@ -748,10 +773,13 @@ void PacketIter::init(PacketManager* packetMan,
 						(std::min)(prog.layE, packetManager->getTileProcessor()->getTileCodingParams()->numLayersToDecompress);
 				break;
 			case GRK_RLCP:
+				prog.resE = (std::min)(prog.resE, maxNumDecompositionResolutions);
+				break;
 			case GRK_RPCL:
 				prog.resE = (std::min)(prog.resE, maxNumDecompositionResolutions);
 				break;
 			case GRK_PCRL:
+				break;
 			case GRK_CPRL:
 				break;
 			default:
@@ -763,23 +791,6 @@ void PacketIter::init(PacketManager* packetMan,
 		for(uint8_t resno = 0; resno < comps->numresolutions; ++resno)
 		{
 			auto inf = precinctInfo_ + resno;
-
-
-			switch(prog.progression)
-			{
-				case GRK_LRCP:
-					break;
-				case GRK_RLCP:
-				case GRK_RPCL:
-					break;
-				case GRK_PCRL:
-				case GRK_CPRL:
-					break;
-				default:
-					break;
-			}
-
-
 			inf->innerPrecincts_ = prog.compE * prog.layE;
 			inf->winPrecinctsLeft_   = inf->canvasWindowPrecGrid.x0 * prog.compE * prog.layE;
 			inf->winPrecinctsRight_  = (uint64_t)(inf->canvasTileBoundsPrecGrid.x1 - inf->canvasWindowPrecGrid.x1) * prog.compE * prog.layE;
@@ -1111,49 +1122,6 @@ bool PacketIter::next_cprlOPT(SparseBuffer* src)
 
 	return false;
 }
-bool PacketIter::next_pcrlOPT(SparseBuffer* src)
-{
-	GRK_UNUSED(src);
-	for(; y < prog.ty1; y += dy)
-	{
-		for(; x < prog.tx1; x += dx)
-		{
-			// windowed decode:
-			// bail out if we reach a precinct which is past the
-			// bottom, right hand corner of the tile window
-			if(singleProgression_)
-			{
-				auto win = packetManager->getTileProcessor()->getUnreducedTileWindow();
-				if(win.non_empty() &&
-				   (y >= win.y1 || (win.y1 > 0 && y == win.y1 - 1 && x >= win.x1)))
-					return false;
-			}
-			for(; compno < prog.compE; compno++)
-			{
-				for(; resno < prog.resE; resno++)
-				{
-					if(!generatePrecinctIndex())
-						continue;
-					if(incrementInner)
-						layno++;
-					if(layno < prog.layE)
-					{
-						incrementInner = true;
-						if(update_include())
-							return true;
-					}
-					layno = prog.layS;
-					incrementInner = false;
-				}
-				resno = prog.resS;
-			}
-			compno = prog.compS;
-		}
-		x = prog.tx0;
-	}
-
-	return false;
-}
 bool PacketIter::next_lrcpOPT(SparseBuffer* src)
 {
 	GRK_UNUSED(src);
@@ -1220,6 +1188,76 @@ bool PacketIter::next_rlcpOPT(SparseBuffer* src)
 
 	return false;
 }
+bool PacketIter::next_pcrlOPT(SparseBuffer* src)
+{
+	auto wholeTile = packetManager->getTileProcessor()->wholeTileDecompress;
+	auto precInfo = precinctInfo_ + prog.resE - 1;
+	if(!precInfoCheck(precInfo))
+		return false;
+	auto win = &precInfo->canvasWindowPrec;
+	for(; y < precInfo->canvasTileBoundsPrec.y1; y += precInfo->canvasPrecHeight)
+	{
+		// skip over packets outside of window
+		if (!wholeTile){
+			// windowed decode:
+			// bail out if we reach row of precincts that are out of bound of the window
+			if(y == win->y1)
+				return false;
+
+			if (src){
+				// skip all precincts above window
+				/*
+				if (y < win->y0){
+					if (!skip(src,precInfo->winPrecinctsTop_))
+						return false;
+					y = win->y0;
+				}
+				*/
+			}
+		}
+		for(; x < precInfo->canvasTileBoundsPrec.x1; x += precInfo->canvasPrecWidth)
+		{
+			// windowed decode:
+			// bail out if we reach a precinct which is past the
+			// bottom, right hand corner of the tile window
+			if(!wholeTile)
+			{
+				if((y >= win->y1 || (win->y1 > 0 && y == win->y1 - 1 && x >= win->x1)))
+					return false;
+			}
+			for(; compno < prog.compE; compno++)
+			{
+				for(; resno < prog.resE; resno++)
+				{
+					auto comp = comps + compno;
+					auto res = comp->resolutions + resno;
+					auto rpInfo = precinctInfo_ + resno;
+					if(!rpInfo->valid)
+						continue;
+					if(!genPrecinctY0GridPCRL_OPT(rpInfo))
+						continue;
+					if(!genPrecinctX0GridPCRL_OPT(rpInfo))
+						continue;
+					precinctIndex = px0grid_ + (uint64_t)py0grid_ * res->precinctGridWidth;
+					if(incrementInner)
+						layno++;
+					if(layno < prog.layE)
+					{
+						incrementInner = true;
+						return true;
+					}
+					layno = prog.layS;
+					incrementInner = false;
+				}
+				resno = prog.resS;
+			}
+			compno = prog.compS;
+		}
+		x = precInfo->canvasTileBoundsPrec.x0;
+	}
+
+	return false;
+}
 bool PacketIter::next_rpclOPT(SparseBuffer* src)
 {
 	auto wholeTile = packetManager->getTileProcessor()->wholeTileDecompress;
@@ -1228,10 +1266,7 @@ bool PacketIter::next_rpclOPT(SparseBuffer* src)
 		auto precInfo = precinctInfo_ + resno;
 		if(!precInfoCheck(precInfo))
 			continue;
-
 		auto win = &precInfo->canvasWindowPrec;
-		auto res = comps->resolutions + resno;
-
 		for(; y < precInfo->canvasTileBoundsPrec.y1; y += precInfo->canvasPrecHeight)
 		{
 			// skip over packets outside of window
@@ -1265,8 +1300,8 @@ bool PacketIter::next_rpclOPT(SparseBuffer* src)
 					}
 				}
 			}
-			genPrecinctY0GridOPT(precInfo);
-			uint64_t precIndexY = (uint64_t)py0grid_ * res->precinctGridWidth;
+			genPrecinctY0GridRPCL_OPT(precInfo);
+			uint64_t precIndexY = (uint64_t)py0grid_ * precInfo->canvasTileBoundsPrecGrid.width();
 			for(; x < (wholeTile || !src ? precInfo->canvasTileBoundsPrec.x1 : win->x1); x += precInfo->canvasPrecWidth)
 			{
 
@@ -1288,7 +1323,7 @@ bool PacketIter::next_rpclOPT(SparseBuffer* src)
 					continue;
 				}
 
-				genPrecinctX0GridOPT(precInfo);
+				genPrecinctX0GridRPCL_OPT(precInfo);
 				for(; compno < prog.compE; compno++)
 				{
 					if(incrementInner)

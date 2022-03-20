@@ -266,8 +266,10 @@ private:
 	bool skippedLeft_;
 	bool genPrecinctY0Grid(ResPrecinctInfo* rpInfo);
 	bool genPrecinctX0Grid(ResPrecinctInfo* rpInfo);
-	void genPrecinctY0GridOPT(ResPrecinctInfo* rpInfo);
-	void genPrecinctX0GridOPT(ResPrecinctInfo* rpInfo);
+	void genPrecinctY0GridRPCL_OPT(ResPrecinctInfo* rpInfo);
+	void genPrecinctX0GridRPCL_OPT(ResPrecinctInfo* rpInfo);
+	bool genPrecinctX0GridPCRL_OPT(ResPrecinctInfo* rpInfo);
+	bool genPrecinctY0GridPCRL_OPT(ResPrecinctInfo* rpInfo);
 	bool precInfoCheck(ResPrecinctInfo* rpInfo);
 	bool generatePrecinctIndex(void);
 	void update_dxy_for_comp(PiComp* comp);
