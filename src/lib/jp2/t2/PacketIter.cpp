@@ -1082,14 +1082,25 @@ bool PacketIter::skip(SparseBuffer* src, uint64_t numPrecincts){
 bool PacketIter::next_cprlOPT(SparseBuffer* src)
 {
 	GRK_UNUSED(src);
+	auto wholeTile = isWholeTile();
+	auto precInfo = precinctInfo_ + prog.resE - 1;
+	if(!precInfoCheck(precInfo))
+		return false;
+	auto win = &precInfo->canvasWindowPrec;
 	for(; compno < prog.compE; compno++)
 	{
-		auto comp = comps + compno;
-		dx = 0;
-		dy = 0;
-		update_dxy_for_comp(comp);
+		// note: no need to update dx and dy here since all components
+		// have the same number of resolutions and subsampling factors
 		for(; y < prog.ty1; y += dy)
 		{
+			// skip over packets outside of window
+			if (!wholeTile){
+				// windowed decode:
+				// bail out if we reach row of precincts that are out of bound of the window
+				if(y == win->y1)
+					return false;
+			}
+
 			for(; x < prog.tx1; x += dx)
 			{
 				for(; resno < prog.resE; resno++)
@@ -1185,7 +1196,7 @@ bool PacketIter::next_pcrlOPT(SparseBuffer* src)
 	if(!precInfoCheck(precInfo))
 		return false;
 	auto win = &precInfo->canvasWindowPrec;
-	for(; y < precInfo->canvasTileBoundsPrec.y1; y += precInfo->canvasPrecHeight)
+	for(; y < precInfo->canvasTileBoundsPrec.y1; y += dy)
 	{
 		// skip over packets outside of window
 		if (!wholeTile){
@@ -1206,7 +1217,7 @@ bool PacketIter::next_pcrlOPT(SparseBuffer* src)
 				}
 			}
 		}
-		for(; x < precInfo->canvasTileBoundsPrec.x1; x += precInfo->canvasPrecWidth)
+		for(; x < precInfo->canvasTileBoundsPrec.x1; x += dx)
 		{
 			// windowed decode:
 			// bail out if we reach a precinct which is past the

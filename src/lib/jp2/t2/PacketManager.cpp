@@ -181,16 +181,15 @@ void PacketManager::getParams(const GrkImage* image, const CodingParams* p_cp, u
 			if(numPrecincts > *max_precincts)
 				*max_precincts = numPrecincts;
 
-			// 3. precinct subsampling factors
-			uint64_t pdx =
+			// 3. find minimal precinct subsampling factors over all components and resolutions
+			uint64_t compResDx =
 				comp->dx * ((uint64_t)1u << (precinctWidthExp + tccp->numresolutions - 1U - resno));
-			uint64_t pdy = comp->dy * ((uint64_t)1u
+			uint64_t compResDy = comp->dy * ((uint64_t)1u
 									   << (precinctHeightExp + tccp->numresolutions - 1U - resno));
-			// sanity check
-			if(pdx < UINT_MAX)
-				*dx_min = std::min<uint32_t>(*dx_min, (uint32_t)pdx);
-			if(pdy < UINT_MAX)
-				*dy_min = std::min<uint32_t>(*dy_min, (uint32_t)pdy);
+			if(compResDx < UINT_MAX)
+				*dx_min = std::min<uint32_t>(*dx_min, (uint32_t)compResDx);
+			if(compResDy < UINT_MAX)
+				*dy_min = std::min<uint32_t>(*dy_min, (uint32_t)compResDy);
 		}
 	}
 }
