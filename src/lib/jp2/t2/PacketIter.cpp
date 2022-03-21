@@ -67,6 +67,22 @@ void ResPrecinctInfo::init(	uint8_t decompLevel, grkRectU32 tileBounds, uint32_t
 	tileBoundsPrecCanvas = tileBoundsPrecGridCanvas.scale((uint32_t)precWidthCanvas,(uint32_t)precHeightCanvas);
 	valid = true;
 }
+void ResPrecinctInfo::print(void){
+	GRK_INFO("Resolution Precinct Info");
+	GRK_INFO("decomposition level: %d", decompLevel_);
+	GRK_INFO("precinct exponents: (%d,%d)",precWidthExp,precHeightExp);
+	GRK_INFO("precinct dimensions (projected): (%d,%d)",precWidthCanvas,precHeightCanvas);
+	GRK_INFO("number of precincts: %d",numPrecincts_ );
+	GRK_INFO("subsampling (projected): (%d,%d)",dxCanvas, dyCanvas);
+	GRK_INFO("tile bounds aligned to precincts (projected)");
+	tileBoundsPrecCanvas.print();
+	GRK_INFO("tile bounds mapped to precinct grid (projected)");
+	tileBoundsPrecGridCanvas.print();
+	GRK_INFO("window bounds aligned to precincts (projected)");
+	winPrecCanvas.print();
+	GRK_INFO("window bounds mapped to precinct grid (projected)");
+	winPrecGridCanvas.print();
+}
 
 PacketIter::PacketIter()
 	: compno(0), resno(0), precinctIndex(0), layno(0),
@@ -1225,6 +1241,7 @@ bool PacketIter::next_cprlOPT(SparseBuffer* src)
 }
 bool PacketIter::next_pcrlOPT(SparseBuffer* src)
 {
+	GRK_UNUSED(src);
 	auto wholeTile = isWholeTile();
 	auto precInfo = precinctInfo_ + prog.resE - 1;
 	if(!precInfoCheck(precInfo))

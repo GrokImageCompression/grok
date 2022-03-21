@@ -160,6 +160,7 @@ struct ResPrecinctInfo
 	ResPrecinctInfo();
 	void init(uint8_t levelno, grkRectU32 tileBounds, uint32_t dx, uint32_t dy, bool windowed,
 			  grkRectU32 tileWindow);
+	void print(void);
 	uint32_t precWidthExp;
 	uint32_t precHeightExp;
 	uint32_t resOffsetX0Canvas;
@@ -203,6 +204,20 @@ struct PacketIter
 				uint32_t dy_min,
 				uint32_t *resolutionPrecinctGrid,
 				uint32_t** precinctByComponent);
+
+	void print(void){
+		if (precinctInfo_){
+			GRK_INFO("Packet Iterator");
+			GRK_INFO("progression bounds [C-R-P-L] : [%d %d %d %d] ", prog.compE, prog.resE, prog.precE, prog.layE);
+			GRK_INFO("progression state [C-R-P-L] : [%d %d (%d,%d) %d] ", compno, resno, x,y, layno);
+			GRK_INFO("precinct index:" PRId64 "",precinctIndex);
+			for(uint32_t resno = 0; resno < comps->numresolutions; resno++)
+			{
+				auto inf = precinctInfo_ + resno;
+				inf->print();
+			}
+		}
+	}
 
 	/**
 	 Modify the packet iterator for enabling tile part generation

@@ -415,7 +415,10 @@ typedef struct _grk_object
  */
 typedef struct _grk_progression
 {
-	/** Tile number */
+	GRK_PROG_ORDER progression;
+	char progressionString[5];
+	GRK_PROG_ORDER specifiedCompressionPocProg;
+
 	uint32_t tileno;
 
 	/** tile dimensions */
@@ -424,26 +427,22 @@ typedef struct _grk_progression
 	uint32_t tx1;
 	uint32_t ty1;
 
-	GRK_PROG_ORDER specifiedCompressionPocProg;
-	GRK_PROG_ORDER progression;
-	char progressionString[5];
-
 	/** progression order bounds specified by POC */
-	uint16_t layS;
-	uint16_t layE;
-	uint8_t resS;
-	uint8_t resE;
 	uint16_t compS;
 	uint16_t compE;
+	uint8_t resS;
+	uint8_t resE;
 	uint64_t precS;
 	uint64_t precE;
+	uint16_t layS;
+	uint16_t layE;
 
-	uint16_t tpLayE;
-	uint8_t tpResS;
-	uint8_t tpResE;
 	uint16_t tpCompS;
 	uint16_t tpCompE;
+	uint8_t  tpResS;
+	uint8_t  tpResE;
 	uint64_t tpPrecE;
+	uint16_t tpLayE;
 
 	uint32_t tp_txS;
 	uint32_t tp_txE;
@@ -452,10 +451,11 @@ typedef struct _grk_progression
 	uint32_t dx;
 	uint32_t dy;
 
-	uint16_t lay_temp;
-	uint8_t res_temp;
 	uint16_t comp_temp;
+	uint8_t res_temp;
 	uint64_t prec_temp;
+	uint16_t lay_temp;
+
 	uint32_t tx0_temp;
 	uint32_t ty0_temp;
 } grk_progression;

@@ -107,7 +107,7 @@ struct grkRect
 	grkRect(void) : x0(0), y0(0), x1(0), y1(0) {}
 	void print(void) const
 	{
-		std::cout << "[" << x0 << "," << y0 << "," << x1 << "," << y1 << "]" << std::endl;
+		GRK_INFO("[%d,%d,%d,%d]",x0,y0,x1,y1);
 	}
 	std::string boundsString()
 	{
