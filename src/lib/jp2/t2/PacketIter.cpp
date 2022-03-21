@@ -93,6 +93,7 @@ PacketIter::~PacketIter()
  *
  * Assumptions: single progression, no subsampling,
  * constant number of resolutions across components,
+ * non-decreasing projected precinct size as resolution decreases,
  * and tile origin at (0,0)
  */
 void PacketIter::genPrecinctInfo(void)
@@ -116,6 +117,16 @@ void PacketIter::genPrecinctInfo(void)
 		if (compno > 0 && comp->numresolutions != comps->numresolutions){
 			return;
 		}
+	}
+	auto highestRes = comps->resolutions + comps->numresolutions - 1;
+	for(uint8_t resno = 0; resno < comps->numresolutions - 1; ++resno)
+	{
+		auto res = comps->resolutions + resno;
+		auto decompLevel = (uint8_t)(comps->numresolutions - 1U - resno);
+		if (res->precinctWidthExp + decompLevel < highestRes->precinctWidthExp ||
+				res->precinctHeightExp + decompLevel < highestRes->precinctHeightExp)
+			return;
+
 	}
 	precinctInfo_ = new ResPrecinctInfo[comps->numresolutions];
 	for(uint8_t resno = 0; resno < comps->numresolutions; ++resno)
