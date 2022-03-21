@@ -1173,8 +1173,16 @@ bool PacketIter::next_cprlOPT(SparseBuffer* src)
 			{
 				for(; resno < prog.resE; resno++)
 				{
-					if(!generatePrecinctIndex())
+					auto comp = comps + compno;
+					auto res = comp->resolutions + resno;
+					auto rpInfo = precinctInfo_ + resno;
+					if (!rpInfo->valid)
 						continue;
+					if(!genPrecinctY0GridPCRL_OPT(rpInfo))
+						continue;
+					if(!genPrecinctX0GridPCRL_OPT(rpInfo))
+						continue;
+					precinctIndex = px0grid_ + (uint64_t)py0grid_ * res->precinctGridWidth;
 					if(incrementInner)
 						layno++;
 					if(layno < prog.layE)
@@ -1239,6 +1247,8 @@ bool PacketIter::next_pcrlOPT(SparseBuffer* src)
 					auto comp = comps + compno;
 					auto res = comp->resolutions + resno;
 					auto rpInfo = precinctInfo_ + resno;
+					if (!rpInfo->valid)
+						continue;
 					if(!genPrecinctY0GridPCRL_OPT(rpInfo))
 						continue;
 					if(!genPrecinctX0GridPCRL_OPT(rpInfo))
