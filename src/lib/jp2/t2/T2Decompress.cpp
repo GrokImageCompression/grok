@@ -87,6 +87,9 @@ bool T2Decompress::processPacket(TileCodingParams* tcp, PacketIter* pi, SparseBu
 			if(paddedBandWindow->non_empty_intersection(&prec))
 			{
 				skip = false;
+				//GRK_INFO("Overlap detected with band %d",bandIndex);
+				//paddedBandWindow->print();
+				//pi->print();
 				break;
 			}
 		}

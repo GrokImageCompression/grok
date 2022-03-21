@@ -844,7 +844,7 @@ GrkImage* GrkImage::duplicate(const Tile* src_tile)
 	destImage->x1 = src_tile->x1;
 	destImage->y1 = src_tile->y1;
 
-	for(uint16_t compno = 0; compno < src_tile->numcomps; ++compno)
+	for(uint16_t compno = 0; compno < src_tile->numcomps_; ++compno)
 	{
 		auto srcComp = src_tile->comps + compno;
 		auto src_buffer = srcComp->getBuffer();

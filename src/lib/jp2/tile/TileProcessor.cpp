@@ -23,20 +23,17 @@ namespace grk
 {
 TileProcessor::TileProcessor(uint16_t tileIndex, CodeStream* codeStream, IBufferedStream* stream,
 							 bool isCompressor, bool isWholeTileDecompress)
-	: first_poc_tile_part_(true), tilePartIndexCounter_(0), pino(0), tile(nullptr),
-	  headerImage(codeStream->getHeaderImage()),
+	: first_poc_tile_part_(true), tilePartIndexCounter_(0), pino(0),
+	  headerImage(codeStream->getHeaderImage()), tile(new Tile(headerImage->numcomps)),
 	  current_plugin_tile(codeStream->getCurrentPluginTile()),
 	  wholeTileDecompress(isWholeTileDecompress), cp_(codeStream->getCodingParams()),
-	  packetLengthCache(PLCache(cp_)), tilePartDataLength(0),
-	  numProcessedPackets(0), numDecompressedPackets(0), tileIndex_(tileIndex),
-	  stream_(stream), corrupt_packet_(false), newTilePartProgressionPosition(0), tcp_(nullptr),
+	  packetLengthCache(PLCache(cp_)),
+	  numProcessedPackets(0), numDecompressedPackets(0), tilePartDataLength(0), tileIndex_(tileIndex),
+	  stream_(stream), corrupt_packet_(false),
+	  newTilePartProgressionPosition(cp_->coding_params_.enc_.newTilePartProgressionPosition),
+	  tcp_(nullptr),
 	  truncated(false), image_(nullptr), isCompressor_(isCompressor), preCalculatedTileLen(0)
 {
-	tile = new Tile();
-	tile->comps = new TileComponent[headerImage->numcomps];
-	tile->numcomps = headerImage->numcomps;
-
-	newTilePartProgressionPosition = cp_->coding_params_.enc_.newTilePartProgressionPosition;
 }
 TileProcessor::~TileProcessor()
 {
@@ -154,7 +151,7 @@ uint8_t TileProcessor::getMaxNumDecompressResolutions(void)
 {
 	uint8_t rc = 0;
 	auto tcp = cp_->tcps + tileIndex_;
-	for(uint16_t compno = 0; compno < tile->numcomps; ++compno)
+	for(uint16_t compno = 0; compno < tile->numcomps_; ++compno)
 	{
 		auto tccp = tcp->tccps + compno;
 		auto numresolutions = tccp->numresolutions;
@@ -186,7 +183,7 @@ bool TileProcessor::init(void)
 		return false;
 	}
 
-	for(uint16_t compno = 0; compno < tile->numcomps; ++compno)
+	for(uint16_t compno = 0; compno < tile->numcomps_; ++compno)
 	{
 		auto imageComp = headerImage->comps + compno;
 		/*fprintf(stderr, "compno = %u/%u\n", compno, tile->numcomps);*/
@@ -228,7 +225,7 @@ bool TileProcessor::init(void)
 															res->precinctGridHeight);
 			}
 		}
-		packetTracker_.init(tile->numcomps, tile->comps->numresolutions, max_precincts,
+		packetTracker_.init(tile->numcomps_, tile->comps->numresolutions, max_precincts,
 							tcp->numlayers);
 	}
 
@@ -236,7 +233,7 @@ bool TileProcessor::init(void)
 }
 bool TileProcessor::allocWindowBuffers(const GrkImage* outputImage)
 {
-	for(uint16_t compno = 0; compno < tile->numcomps; ++compno)
+	for(uint16_t compno = 0; compno < tile->numcomps_; ++compno)
 	{
 		auto imageComp = headerImage->comps + compno;
 		if(imageComp->dx == 0 || imageComp->dy == 0)
@@ -267,7 +264,7 @@ grkRectU32 TileProcessor::getUnreducedTileWindow(void)
 
 void TileProcessor::deallocBuffers()
 {
-	for(uint16_t compno = 0; compno < (int64_t)tile->numcomps; ++compno)
+	for(uint16_t compno = 0; compno < (int64_t)tile->numcomps_; ++compno)
 	{
 		auto tile_comp = tile->comps + compno;
 		tile_comp->deallocBuffers();
@@ -322,7 +319,7 @@ bool TileProcessor::doCompress(void)
 		if(canWritePocMarker())
 		{
 			uint32_t pocSize =
-				CodeStreamCompress::getPocSize(tile->numcomps, tcp_->getNumProgressions());
+				CodeStreamCompress::getPocSize(tile->numcomps_, tcp_->getNumProgressions());
 			preCalculatedTileLen += pocSize;
 		}
 		// calculate PLT marker length
@@ -418,7 +415,7 @@ bool TileProcessor::decompressT1(void)
 		!current_plugin_tile || (current_plugin_tile->decompress_flags & GRK_DECODE_POST_T1);
 	if(doT1)
 	{
-		for(uint16_t compno = 0; compno < tile->numcomps; ++compno)
+		for(uint16_t compno = 0; compno < tile->numcomps_; ++compno)
 		{
 			auto tilec = tile->comps + compno;
 			auto tccp = tcp_->tccps + compno;
@@ -519,10 +516,10 @@ bool TileProcessor::needsMctDecompress(uint16_t compno)
 {
 	if(!tcp_->mct)
 		return false;
-	if(tile->numcomps < 3)
+	if(tile->numcomps_ < 3)
 	{
 		GRK_WARN("Number of components (%u) is inconsistent with a MCT. Skip the MCT step.",
-				 tile->numcomps);
+				 tile->numcomps_);
 		return false;
 	}
 	/* testcase 1336.pdf.asan.47.376 */
@@ -547,15 +544,15 @@ bool TileProcessor::mctDecompress()
 	// custom MCT
 	if(tcp_->mct == 2)
 	{
-		auto data = new uint8_t*[tile->numcomps];
-		for(uint16_t i = 0; i < tile->numcomps; ++i)
+		auto data = new uint8_t*[tile->numcomps_];
+		for(uint16_t i = 0; i < tile->numcomps_; ++i)
 		{
 			auto tile_comp = tile->comps + i;
 			data[i] = (uint8_t*)tile_comp->getBuffer()->getResWindowBufferHighestREL()->getBuffer();
 		}
 		uint64_t samples = tile->comps->getBuffer()->stridedArea();
 		bool rc = mct::decompress_custom((uint8_t*)tcp_->mct_decoding_matrix_, samples, data,
-										 tile->numcomps, headerImage->comps->sgnd);
+										 tile->numcomps_, headerImage->comps->sgnd);
 		delete[] data;
 		return rc;
 	}
@@ -572,7 +569,7 @@ bool TileProcessor::mctDecompress()
 
 bool TileProcessor::dcLevelShiftDecompress()
 {
-	for(uint16_t compno = 0; compno < tile->numcomps; compno++)
+	for(uint16_t compno = 0; compno < tile->numcomps_; compno++)
 	{
 		// use with either custom MCT, or no MCT
 		if(!needsMctDecompress(compno) || tcp_->mct == 2)
@@ -589,7 +586,7 @@ bool TileProcessor::dcLevelShiftDecompress()
 
 bool TileProcessor::dcLevelShiftCompress()
 {
-	for(uint16_t compno = 0; compno < tile->numcomps; compno++)
+	for(uint16_t compno = 0; compno < tile->numcomps_; compno++)
 	{
 		auto tile_comp = tile->comps + compno;
 		auto tccp = tcp_->tccps + compno;
@@ -640,14 +637,14 @@ bool TileProcessor::mct_encode()
 	{
 		if(!tcp_->mct_coding_matrix_)
 			return true;
-		auto data = new uint8_t*[tile->numcomps];
-		for(uint32_t i = 0; i < tile->numcomps; ++i)
+		auto data = new uint8_t*[tile->numcomps_];
+		for(uint32_t i = 0; i < tile->numcomps_; ++i)
 		{
 			auto tile_comp = tile->comps + i;
 			data[i] = (uint8_t*)tile_comp->getBuffer()->getResWindowBufferHighestREL()->getBuffer();
 		}
 		bool rc = mct::compress_custom((uint8_t*)tcp_->mct_coding_matrix_, samples, data,
-									   tile->numcomps, headerImage->comps->sgnd);
+									   tile->numcomps_, headerImage->comps->sgnd);
 		delete[] data;
 		return rc;
 	}
@@ -665,7 +662,7 @@ bool TileProcessor::mct_encode()
 bool TileProcessor::dwt_encode()
 {
 	bool rc = true;
-	for(uint16_t compno = 0; compno < tile->numcomps; ++compno)
+	for(uint16_t compno = 0; compno < tile->numcomps_; ++compno)
 	{
 		auto tile_comp = tile->comps + compno;
 		auto tccp = tcp_->tccps + compno;
@@ -1062,7 +1059,7 @@ void TileProcessor::makeLayerFeasible(uint32_t layno, uint16_t thresh, bool fina
 {
 	uint32_t passno;
 	tile->layerDistoration[layno] = 0;
-	for(uint16_t compno = 0; compno < tile->numcomps; compno++)
+	for(uint16_t compno = 0; compno < tile->numcomps_; compno++)
 	{
 		auto tilec = tile->comps + compno;
 		for(uint8_t resno = 0; resno < tilec->numresolutions; resno++)
@@ -1144,7 +1141,7 @@ bool TileProcessor::pcrdBisectFeasible(uint32_t* allPacketBytes)
 	auto tcp = tcp_;
 	uint32_t state = grk_plugin_get_debug_state();
 	RateInfo rateInfo;
-	for(uint16_t compno = 0; compno < tile->numcomps; compno++)
+	for(uint16_t compno = 0; compno < tile->numcomps_; compno++)
 	{
 		auto tilec = &tile->comps[compno];
 		uint64_t numpix = 0;
@@ -1281,7 +1278,7 @@ bool TileProcessor::pcrdBisectSimple(uint32_t* allPacketBytes)
 	double max_slope = -1;
 	uint32_t state = grk_plugin_get_debug_state();
 	bool single_lossless = makeSingleLosslessLayer();
-	for(uint16_t compno = 0; compno < tile->numcomps; compno++)
+	for(uint16_t compno = 0; compno < tile->numcomps_; compno++)
 	{
 		auto tilec = &tile->comps[compno];
 		uint64_t numpix = 0;
@@ -1438,7 +1435,7 @@ static void prepareBlockForFirstLayer(CompressCodeblock* cblk)
 void TileProcessor::makeLayerSimple(uint32_t layno, double thresh, bool finalAttempt)
 {
 	tile->layerDistoration[layno] = 0;
-	for(uint16_t compno = 0; compno < tile->numcomps; compno++)
+	for(uint16_t compno = 0; compno < tile->numcomps_; compno++)
 	{
 		auto tilec = tile->comps + compno;
 		for(uint8_t resno = 0; resno < tilec->numresolutions; resno++)
@@ -1531,7 +1528,7 @@ void TileProcessor::makeLayerSimple(uint32_t layno, double thresh, bool finalAtt
 void TileProcessor::makeLayerFinal(uint32_t layno)
 {
 	tile->layerDistoration[layno] = 0;
-	for(uint16_t compno = 0; compno < tile->numcomps; compno++)
+	for(uint16_t compno = 0; compno < tile->numcomps_; compno++)
 	{
 		auto tilec = tile->comps + compno;
 		for(uint8_t resno = 0; resno < tilec->numresolutions; resno++)
@@ -1585,10 +1582,17 @@ void TileProcessor::makeLayerFinal(uint32_t layno)
 	}
 }
 Tile::Tile()
-	: numcomps(0), comps(nullptr), distortion(0)
+	: numcomps_(0), comps(nullptr), distortion(0)
 {
 	for(uint32_t i = 0; i < maxCompressLayersGRK; ++i)
 		layerDistoration[i] = 0;
+}
+Tile::Tile(uint16_t numcomps) : Tile()
+{
+	assert(numcomps);
+	numcomps_ = numcomps;
+	if (numcomps)
+		comps = new TileComponent[numcomps];
 }
 Tile::~Tile()
 {

@@ -174,9 +174,9 @@ struct ResPrecinctInfo
 	uint32_t resInPrecGridY0;
 	uint8_t decompLevel_;
 	grkRectU32 tileBoundsPrecCanvas;
-	grkRectU32 tileBoundsPrecGridCanvas;
+	grkRectU32 tileBoundsPrecGrid;
 	grkRectU32 winPrecCanvas;
-	grkRectU32 winPrecGridCanvas;
+	grkRectU32 winPrecGrid;
 	uint64_t innerPrecincts_;
 	uint64_t winPrecinctsLeft_;
 	uint64_t winPrecinctsRight_;
@@ -210,7 +210,7 @@ struct PacketIter
 			GRK_INFO("Packet Iterator");
 			GRK_INFO("progression bounds [C-R-P-L] : [%d %d %d %d] ", prog.compE, prog.resE, prog.precE, prog.layE);
 			GRK_INFO("progression state [C-R-P-L] : [%d %d (%d,%d) %d] ", compno, resno, x,y, layno);
-			GRK_INFO("precinct index:" PRId64 "",precinctIndex);
+			GRK_INFO("precinct index: %" PRIu64 ".", precinctIndex);
 			for(uint32_t resno = 0; resno < comps->numresolutions; resno++)
 			{
 				auto inf = precinctInfo_ + resno;

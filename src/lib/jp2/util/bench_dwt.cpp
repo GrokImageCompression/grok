@@ -264,7 +264,7 @@ int main(int argc, char** argv)
 		tile.y0 = tilec.y0;
 		tile.x1 = tilec.x1;
 		tile.y1 = tilec.y1;
-		tile.numcomps = 1;
+		tile.numcomps_ = 1;
 		tile.comps = &tilec;
 
 		std::chrono::time_point<std::chrono::high_resolution_clock> start, finish;

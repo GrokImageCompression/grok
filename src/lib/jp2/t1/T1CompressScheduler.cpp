@@ -38,7 +38,7 @@ void T1CompressScheduler::scheduleCompress(TileCodingParams* tcp, const double* 
 	uint32_t maxCblkW = 0;
 	uint32_t maxCblkH = 0;
 
-	for(compno = 0; compno < tile->numcomps; ++compno)
+	for(compno = 0; compno < tile->numcomps_; ++compno)
 	{
 		auto tilec = tile->comps + compno;
 		auto tccp = tcp->tccps + compno;

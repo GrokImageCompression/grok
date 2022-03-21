@@ -59,29 +59,29 @@ void ResPrecinctInfo::init(	uint8_t decompLevel, grkRectU32 tileBounds, uint32_t
 		auto resWindow = window.scaleDown(resDivisor,resDivisor);
 		// pad resolution window
 		resWindow.grow(10).clip(&res);
-		winPrecGridCanvas = resWindow.scaleDown(1<<precWidthExp, 1<<precHeightExp);
-		winPrecCanvas = winPrecGridCanvas.scale((uint32_t)precWidthCanvas,(uint32_t)precHeightCanvas);
+		winPrecGrid = resWindow.scaleDown(1<<precWidthExp, 1<<precHeightExp);
+		winPrecCanvas = winPrecGrid.scale((uint32_t)precWidthCanvas,(uint32_t)precHeightCanvas);
 	}
-	tileBoundsPrecGridCanvas = res.scaleDown(1<<precWidthExp, 1<<precHeightExp);
-	numPrecincts_ = tileBoundsPrecGridCanvas.area();
-	tileBoundsPrecCanvas = tileBoundsPrecGridCanvas.scale((uint32_t)precWidthCanvas,(uint32_t)precHeightCanvas);
+	tileBoundsPrecGrid = res.scaleDown(1<<precWidthExp, 1<<precHeightExp);
+	numPrecincts_ = tileBoundsPrecGrid.area();
+	tileBoundsPrecCanvas = tileBoundsPrecGrid.scale((uint32_t)precWidthCanvas,(uint32_t)precHeightCanvas);
 	valid = true;
 }
 void ResPrecinctInfo::print(void){
-	GRK_INFO("Resolution Precinct Info");
-	GRK_INFO("decomposition level: %d", decompLevel_);
+	GRK_INFO("\n");
+	GRK_INFO("RESOLUTION PRECINCT INFO for level %d",decompLevel_);
 	GRK_INFO("precinct exponents: (%d,%d)",precWidthExp,precHeightExp);
 	GRK_INFO("precinct dimensions (projected): (%d,%d)",precWidthCanvas,precHeightCanvas);
 	GRK_INFO("number of precincts: %d",numPrecincts_ );
 	GRK_INFO("subsampling (projected): (%d,%d)",dxCanvas, dyCanvas);
-	GRK_INFO("tile bounds aligned to precincts (projected)");
+	GRK_INFO("tile bounds aligned to precincts (projected) =>");
 	tileBoundsPrecCanvas.print();
-	GRK_INFO("tile bounds mapped to precinct grid (projected)");
-	tileBoundsPrecGridCanvas.print();
-	GRK_INFO("window bounds aligned to precincts (projected)");
+	GRK_INFO("tile bounds mapped to precinct grid (resolution) =>");
+	tileBoundsPrecGrid.print();
+	GRK_INFO("window bounds aligned to precincts (projected) =>");
 	winPrecCanvas.print();
-	GRK_INFO("window bounds mapped to precinct grid (projected)");
-	winPrecGridCanvas.print();
+	GRK_INFO("window bounds mapped to precinct grid (resolution) =>");
+	winPrecGrid.print();
 }
 
 PacketIter::PacketIter()
@@ -800,11 +800,11 @@ void PacketIter::init(PacketManager* packetMan,
 						auto inf = precinctInfo_ + resno;
 						inf->innerPrecincts_ = prog.compE * prog.layE;
 						auto compLayer = inf->innerPrecincts_;
-						inf->winPrecinctsLeft_   = inf->winPrecGridCanvas.x0 * compLayer;
-						inf->winPrecinctsRight_  = (uint64_t)(inf->tileBoundsPrecGridCanvas.x1 - inf->winPrecGridCanvas.x1) * compLayer;
-						inf->winPrecinctsTop_    =  (uint64_t)inf->winPrecGridCanvas.y0 * inf->tileBoundsPrecGridCanvas.width() * compLayer;
-						inf->winPrecinctsBottom_ = (uint64_t)(inf->tileBoundsPrecGridCanvas.y1 - inf->winPrecGridCanvas.y1) *
-														inf->tileBoundsPrecGridCanvas.width()  * compLayer;
+						inf->winPrecinctsLeft_   = inf->winPrecGrid.x0 * compLayer;
+						inf->winPrecinctsRight_  = (uint64_t)(inf->tileBoundsPrecGrid.x1 - inf->winPrecGrid.x1) * compLayer;
+						inf->winPrecinctsTop_    =  (uint64_t)inf->winPrecGrid.y0 * inf->tileBoundsPrecGrid.width() * compLayer;
+						inf->winPrecinctsBottom_ = (uint64_t)(inf->tileBoundsPrecGrid.y1 - inf->winPrecGrid.y1) *
+														inf->tileBoundsPrecGrid.width()  * compLayer;
 					}
 				}
 				break;
@@ -1353,7 +1353,7 @@ bool PacketIter::next_rpclOPT(SparseBuffer* src)
 				}
 			}
 			genPrecinctY0GridRPCL_OPT(precInfo);
-			uint64_t precIndexY = (uint64_t)py0grid_ * precInfo->tileBoundsPrecGridCanvas.width();
+			uint64_t precIndexY = (uint64_t)py0grid_ * precInfo->tileBoundsPrecGrid.width();
 			for(; x < (wholeTile || !src ? precInfo->tileBoundsPrecCanvas.x1 : win->x1); x += precInfo->precWidthCanvas)
 			{
 

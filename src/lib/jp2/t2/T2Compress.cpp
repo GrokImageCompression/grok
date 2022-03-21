@@ -96,11 +96,11 @@ bool T2Compress::compressPacketSimulate(TileCodingParams* tcp, PacketIter* pi,
 	uint64_t byteCount = 0;
 	*packet_bytes_written = 0;
 
-	if(compno >= tile->numcomps)
+	if(compno >= tile->numcomps_)
 	{
 		GRK_ERROR("compress packet simulate: component number %d must be less than total number "
 				  "of components %d",
-				  compno, tile->numcomps);
+				  compno, tile->numcomps_);
 		return false;
 	}
 	if(tileProcessor->getPacketTracker()->is_packet_encoded(compno, resno, precinctIndex, layno))
@@ -347,11 +347,11 @@ bool T2Compress::compressPacket(TileCodingParams* tcp, PacketIter* pi, IBuffered
 	auto tilec = tile->comps + compno;
 	size_t stream_start = stream->tell();
 
-	if(compno >= tile->numcomps)
+	if(compno >= tile->numcomps_)
 	{
 		GRK_ERROR("compress packet simulate: component number %d must be less than total number "
 				  "of components %d",
-				  compno, tile->numcomps);
+				  compno, tile->numcomps_);
 		return false;
 	}
 	if(tileProcessor->getPacketTracker()->is_packet_encoded(compno, resno, precinctIndex, layno))

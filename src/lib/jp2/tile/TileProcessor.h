@@ -38,8 +38,9 @@ namespace grk
 struct Tile : public grkRectU32
 {
 	Tile();
+	explicit Tile(uint16_t numcomps);
 	~Tile();
-	uint16_t numcomps;
+	uint16_t numcomps_;
 	TileComponent* comps;
 	double distortion;
 	double layerDistoration[maxCompressLayersGRK];
@@ -115,8 +116,8 @@ struct TileProcessor
 	/** Compression Only
 	 *  Current packet iterator number */
 	uint32_t pino;
-	Tile* tile;
 	GrkImage* headerImage;
+	Tile* tile;
 	grk_plugin_tile* current_plugin_tile;
 	// true if whole tile will be decoded; false if tile window will be decoded
 	bool wholeTileDecompress;
