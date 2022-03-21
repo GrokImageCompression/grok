@@ -93,7 +93,7 @@ PacketIter::~PacketIter()
  *
  * Assumptions: single progression, no subsampling,
  * constant number of resolutions across components,
- * non-decreasing projected precinct size as resolution decreases,
+ * non-decreasing projected precinct size as resolution decreases (CPRL and PCRL),
  * and tile origin at (0,0)
  */
 void PacketIter::genPrecinctInfo(void)
@@ -109,6 +109,7 @@ void PacketIter::genPrecinctInfo(void)
 	// tile origin at (0,0) will simplify computations
 	if(tb.x0 || tb.y0)
 		return;
+	// no subsampling
 	for(uint16_t compno = 0; compno < numcomps; ++compno)
 	{
 		auto comp = comps + compno;
@@ -118,16 +119,34 @@ void PacketIter::genPrecinctInfo(void)
 			return;
 		}
 	}
-	auto highestRes = comps->resolutions + comps->numresolutions - 1;
-	for(uint8_t resno = 0; resno < comps->numresolutions - 1; ++resno)
+	switch(prog.progression)
 	{
-		auto res = comps->resolutions + resno;
-		auto decompLevel = (uint8_t)(comps->numresolutions - 1U - resno);
-		if (res->precWidthExp + decompLevel < highestRes->precWidthExp ||
-				res->precHeightExp + decompLevel < highestRes->precHeightExp)
-			return;
+		case GRK_LRCP:
+		case GRK_RLCP:
+		case GRK_RPCL:
+			break;
+		case GRK_PCRL:
+		case GRK_CPRL:
+			// if P occurs before R, then we must ensure that for all resolutions, the precinct
+			// projected onto canvas is a "multiple" of the highest resolution precinct,
+			// so that the P loops covers all precincts from all resolutions
+			{
+			auto highestRes = comps->resolutions + comps->numresolutions - 1;
+			for(uint8_t resno = 0; resno < comps->numresolutions - 1; ++resno)
+			{
+				auto res = comps->resolutions + resno;
+				auto decompLevel = (uint8_t)(comps->numresolutions - 1U - resno);
+				if (res->precWidthExp + decompLevel < highestRes->precWidthExp ||
+						res->precHeightExp + decompLevel < highestRes->precHeightExp)
+					return;
 
+			}
+			}
+			break;
+		default:
+			break;
 	}
+
 	precinctInfo_ = new ResPrecinctInfo[comps->numresolutions];
 	for(uint8_t resno = 0; resno < comps->numresolutions; ++resno)
 	{
@@ -1073,14 +1092,16 @@ bool PacketIter::next_rpcl(SparseBuffer* src)
 
 //////////////////////////////////////////////////////////////////////////////////////
 
-bool PacketIter::skip(SparseBuffer* src, uint64_t numPrecincts){
-	auto markers = packetManager->getTileProcessor()->packetLengthCache.getMarkers();
-	auto len = markers->pop(numPrecincts );
+bool PacketIter::skipPackets(SparseBuffer* src, uint64_t numPackets){
+	auto tp = packetManager->getTileProcessor();
+	auto markers = tp->packetLengthCache.getMarkers();
+	auto len = markers->pop(numPackets );
 	auto skipLen = src->skip(len);
 	if (len != skipLen){
 		GRK_ERROR("Packet iterator: unable to skip precincts.");
 		return false;
 	}
+	tp->incNumProcessedPackets(numPackets);
 
 	return true;
 }
@@ -1217,18 +1238,17 @@ bool PacketIter::next_pcrlOPT(SparseBuffer* src)
 			// bail out if we reach row of precincts that are out of bound of the window
 			if(y == win->y1)
 				return false;
-
+/*
 			if (src){
 				if (y < win->y0){
-/*
 					auto sk = genLineCountPCRL(y) *  prog.compE * prog.layE;
-					GRK_INFO("Generated count %d for %d", sk, y);
-					if (!skip(src,sk))
+					//GRK_INFO("Generated count %d for %d", sk, y);
+					if (!skipPackets(src,sk))
 						return false;
 					continue;
-					*/
 				}
 			}
+*/
 		}
 		for(; x < precInfo->tileBoundsPrecCanvas.x1; x += dx)
 		{
@@ -1294,20 +1314,20 @@ bool PacketIter::next_rpclOPT(SparseBuffer* src)
 				if (src){
 					// skip all precincts above window
 					if (y < win->y0){
-						if (!skip(src,precInfo->winPrecinctsTop_))
+						if (!skipPackets(src,precInfo->winPrecinctsTop_))
 							return false;
 						y = win->y0;
 					}
 					// skip all precincts below window
 					else if (y == win->y1 && precInfo->winPrecinctsBottom_){
-						if (!skip(src,precInfo->winPrecinctsBottom_))
+						if (!skipPackets(src,precInfo->winPrecinctsBottom_))
 							return false;
 						break;
 					}
 					// skip precincts to the left of window
 					if (!skippedLeft_ && precInfo->winPrecinctsLeft_) {
 						if (x < win->x0){
-							if (!skip(src,precInfo->winPrecinctsLeft_))
+							if (!skipPackets(src,precInfo->winPrecinctsLeft_))
 								return false;
 							x = win->x0;
 						}
@@ -1346,7 +1366,7 @@ bool PacketIter::next_rpclOPT(SparseBuffer* src)
 			}
 			x = precInfo->tileBoundsPrecCanvas.x0;
 			if (!wholeTile && src && precInfo->winPrecinctsRight_){
-				if (!skip(src,precInfo->winPrecinctsRight_))
+				if (!skipPackets(src,precInfo->winPrecinctsRight_))
 						return false;
 			}
 			skippedLeft_ = false;

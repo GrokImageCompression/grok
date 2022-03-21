@@ -27,7 +27,8 @@ TileProcessor::TileProcessor(uint16_t tileIndex, CodeStream* codeStream, IBuffer
 	  headerImage(codeStream->getHeaderImage()),
 	  current_plugin_tile(codeStream->getCurrentPluginTile()),
 	  wholeTileDecompress(isWholeTileDecompress), cp_(codeStream->getCodingParams()),
-	  packetLengthCache(PLCache(cp_)), tilePartDataLength(0), tileIndex_(tileIndex),
+	  packetLengthCache(PLCache(cp_)), tilePartDataLength(0),
+	  numProcessedPackets(0), numDecompressedPackets(0), tileIndex_(tileIndex),
 	  stream_(stream), corrupt_packet_(false), newTilePartProgressionPosition(0), tcp_(nullptr),
 	  truncated(false), image_(nullptr), isCompressor_(isCompressor), preCalculatedTileLen(0)
 {
@@ -79,6 +80,18 @@ bool TileProcessor::setTilePartDataLength(uint32_t tilePartLength, bool lastTile
 	}
 
 	return true;
+}
+uint64_t TileProcessor::getNumProcessedPackets(void){
+	return numProcessedPackets;
+}
+void TileProcessor::incNumProcessedPackets(uint64_t numPackets){
+	numProcessedPackets += numPackets;
+}
+uint64_t TileProcessor::getNumDecompressedPackets(void){
+	return numDecompressedPackets;
+}
+void TileProcessor::incNumDecompressedPackets(uint64_t numPackets){
+	numDecompressedPackets += numPackets;
 }
 IBufferedStream* TileProcessor::getStream(void)
 {
@@ -199,7 +212,7 @@ bool TileProcessor::init(void)
 				GRK_WARN("plugin tile differs from grok tile", nullptr);
 		}
 	}
-	tile->numProcessedPackets = 0;
+	numProcessedPackets = 0;
 
 	if(isCompressor_)
 	{
@@ -1572,7 +1585,7 @@ void TileProcessor::makeLayerFinal(uint32_t layno)
 	}
 }
 Tile::Tile()
-	: numcomps(0), comps(nullptr), distortion(0), numProcessedPackets(0), numDecompressedPackets(0)
+	: numcomps(0), comps(nullptr), distortion(0)
 {
 	for(uint32_t i = 0; i < maxCompressLayersGRK; ++i)
 		layerDistoration[i] = 0;

@@ -172,7 +172,6 @@ bool T2Compress::compressPackets(uint16_t tile_no, uint16_t max_layers, IBuffere
 {
 	auto cp = tileProcessor->cp_;
 	auto image = tileProcessor->headerImage;
-	auto tilePtr = tileProcessor->tile;
 	auto tcp = &cp->tcps[tile_no];
 	PacketManager packetManager(true, image, cp, tile_no, FINAL_PASS, tileProcessor);
 	packetManager.enableTilePartGeneration(pino, first_poc_tile_part,
@@ -191,7 +190,7 @@ bool T2Compress::compressPackets(uint16_t tile_no, uint16_t max_layers, IBuffere
 			if(!compressPacket(tcp, current_pi, stream, &numBytes))
 				return false;
 			*tileBytesWritten += numBytes;
-			tilePtr->numProcessedPackets++;
+			tileProcessor->incNumProcessedPackets(1);
 		}
 	}
 
@@ -373,7 +372,7 @@ bool T2Compress::compressPacket(TileCodingParams* tcp, PacketIter* pi, IBuffered
 		/* numProcessedPackets is uint64_t modulo 65536, in big endian format */
 		// note - when compressing, numProcessedPackets in fact equals packet index,
 		// i.e. one less than number of processed packets
-		uint16_t numProcessedPackets = (uint16_t)(tile->numProcessedPackets & 0xFFFF);
+		uint16_t numProcessedPackets = (uint16_t)(tileProcessor->getNumProcessedPackets() & 0xFFFF);
 		if(!stream->writeByte((uint8_t)(numProcessedPackets >> 8)))
 			return false;
 		if(!stream->writeByte((uint8_t)(numProcessedPackets & 0xff)))

@@ -116,9 +116,9 @@ bool T2Decompress::processPacket(TileCodingParams* tcp, PacketIter* pi, SparseBu
 			return false;
 		tilec->highestResolutionDecompressed =
 			std::max<uint8_t>(pi->getResno(), tilec->highestResolutionDecompressed);
-		tileProcessor->tile->numDecompressedPackets++;
+		tileProcessor->incNumDecompressedPackets(1);
 	}
-	tileProcessor->tile->numProcessedPackets++;
+	tileProcessor->incNumProcessedPackets(1);
 #ifdef DEBUG_PLT
 	if(hasPLT && packetCache.packetLength != packetInfo->packetLength)
 	{
@@ -196,10 +196,10 @@ bool T2Decompress::decompressPackets(uint16_t tile_no, SparseBuffer* src,
 		if(*stopProcessionPackets)
 			break;
 	}
-	if(tileProcessor->tile->numDecompressedPackets == 0)
+	if(tileProcessor->getNumDecompressedPackets() == 0)
 		GRK_WARN("T2Decompress: no packets for tile %d were successfully read", tile_no);
 
-	return tileProcessor->tile->numDecompressedPackets > 0;
+	return tileProcessor->getNumDecompressedPackets() > 0;
 }
 bool T2Decompress::decompressPacket(TileCodingParams* tcp, const PacketIter* pi,
 									SparseBuffer* srcBuf, PacketInfo* packetInfo, bool skipData)
@@ -265,10 +265,10 @@ bool T2Decompress::readPacketHeader(TileCodingParams* p_tcp, const PacketIter* p
 		{
 			uint16_t numIteratedPackets =
 				(uint16_t)(((uint16_t)active_src[4] << 8) | active_src[5]);
-			if(numIteratedPackets != (tilePtr->numProcessedPackets % 0x10000))
+			if(numIteratedPackets != (tileProcessor->getNumProcessedPackets() % 0x10000))
 			{
 				GRK_WARN("SOP marker packet counter %u does not match expected counter %u",
-						 numIteratedPackets, tilePtr->numProcessedPackets);
+						 numIteratedPackets, tileProcessor->getNumProcessedPackets());
 				throw CorruptPacketHeaderException();
 			}
 			active_src += 6;

@@ -43,8 +43,6 @@ struct Tile : public grkRectU32
 	TileComponent* comps;
 	double distortion;
 	double layerDistoration[maxCompressLayersGRK];
-	uint64_t numProcessedPackets;
-	uint64_t numDecompressedPackets;
 };
 
 struct PacketTracker
@@ -103,7 +101,6 @@ struct TileProcessor
 	IBufferedStream* getStream(void);
 	uint32_t getPreCalculatedTileLen(void);
 	bool canPreCalculateTileLen(void);
-
 	uint16_t getIndex(void) const;
 	void incrementIndex(void);
 
@@ -128,21 +125,11 @@ struct TileProcessor
 	uint64_t getTilePartDataLength(void);
 	bool subtractMarkerLength(uint16_t markerLen);
 	bool setTilePartDataLength(uint32_t tilePartLength, bool lastTilePartInCodeStream);
-
+	uint64_t getNumProcessedPackets(void);
+	void incNumProcessedPackets(uint64_t numPackets);
+	uint64_t getNumDecompressedPackets(void);
+	void incNumDecompressedPackets(uint64_t numPackets);
   private:
-	// Decompressing Only
-	uint64_t tilePartDataLength;
-	/** index of tile being currently compressed/decompressed */
-	uint16_t tileIndex_;
-	// Compressing only - track which packets have already been written
-	// to the code stream
-	PacketTracker packetTracker_;
-	IBufferedStream* stream_;
-	bool corrupt_packet_;
-	/** position of the tile part flag in progression order*/
-	uint32_t newTilePartProgressionPosition;
-	// coding/decoding parameters for this tile
-	TileCodingParams* tcp_;
 	bool isWholeTileDecompress(uint16_t compno);
 	bool needsMctDecompress(uint16_t compno);
 	bool mctDecompress();
@@ -160,6 +147,22 @@ struct TileProcessor
 	void makeLayerSimple(uint32_t layno, double thresh, bool finalAttempt);
 	bool pcrdBisectFeasible(uint32_t* p_data_written);
 	void makeLayerFeasible(uint32_t layno, uint16_t thresh, bool finalAttempt);
+
+	uint64_t numProcessedPackets;
+	uint64_t numDecompressedPackets;
+	// Decompressing Only
+	uint64_t tilePartDataLength;
+	/** index of tile being currently compressed/decompressed */
+	uint16_t tileIndex_;
+	// Compressing only - track which packets have already been written
+	// to the code stream
+	PacketTracker packetTracker_;
+	IBufferedStream* stream_;
+	bool corrupt_packet_;
+	/** position of the tile part flag in progression order*/
+	uint32_t newTilePartProgressionPosition;
+	// coding/decoding parameters for this tile
+	TileCodingParams* tcp_;
 	bool truncated;
 	GrkImage* image_;
 	bool isCompressor_;
