@@ -70,7 +70,7 @@ void ResPrecinctInfo::init(	uint8_t decompLevel, grkRectU32 tileBounds, uint32_t
 
 PacketIter::PacketIter()
 	: compno(0), resno(0), precinctIndex(0), layno(0),
-	  numcomps(0), comps(nullptr), x(0), y(0), dx(0), dy(0),valid(true),optimized(false),
+	  numcomps(0), comps(nullptr), x(0), y(0), dx(0), dy(0),
 	  incrementInner(false),
 	  packetManager(nullptr), maxNumDecompositionResolutions(0), singleProgression_(false), compression_(false),
 	  precinctInfo_(nullptr), px0grid_(0), py0grid_(0), skippedLeft_(false)
@@ -462,13 +462,6 @@ void PacketIter::enableTilePartGeneration(uint32_t pino, bool first_poc_tile_par
 		prog.ty1 = poc->tp_tyE;
 	}
 }
-
-bool PacketIter::isValid(void) const{
-	return valid;
-}
-bool PacketIter::isOptimized(void) const{
-	return optimized;
-}
 GRK_PROG_ORDER PacketIter::getProgression(void) const{
 	return prog.progression;
 }
@@ -536,7 +529,6 @@ void PacketIter::genPrecinctInfo(void)
 				  !isWholeTile(),
 				  packetManager->getTileProcessor()->getUnreducedTileWindow());
 	}
-	optimized = prog.progression == GRK_RPCL;
 }
 
 
@@ -1313,16 +1305,6 @@ bool PacketIter::next_rpclOPT(SparseBuffer* src)
 					if( (win->y1 == 0 || (win->y1 > 0 && y == win->y1 - 1)) && x >= win->x1)
 						return false;
 				}
-
-				valid = true;
-				if (!wholeTile)
-					valid =  x >= win->x0 && x < win->x1;
-				if (!valid && src){
-					if (!skip(src,precInfo->innerPrecincts_))
-							return false;
-					continue;
-				}
-
 				genPrecinctX0GridRPCL_OPT(precInfo);
 				for(; compno < prog.compE; compno++)
 				{

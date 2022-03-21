@@ -73,25 +73,21 @@ bool T2Decompress::processPacket(TileCodingParams* tcp, PacketIter* pi, SparseBu
 		pi->getLayno() >= tcp->numLayersToDecompress || pi->getResno() >= tilec->numResolutionsToDecompress;
 	if(!skip && !tilec->isWholeTileDecoding())
 	{
-		if (pi->isOptimized())
-			skip = !pi->isValid();
-		else {
-			skip = true;
-			auto tilecBuffer = tilec->getBuffer();
-			for(uint8_t bandIndex = 0; bandIndex < res->numTileBandWindows; ++bandIndex)
+		skip = true;
+		auto tilecBuffer = tilec->getBuffer();
+		for(uint8_t bandIndex = 0; bandIndex < res->numTileBandWindows; ++bandIndex)
+		{
+			auto band = res->tileBand + bandIndex;
+			if(band->isEmpty())
+				continue;
+			auto paddedBandWindow = tilecBuffer->getBandWindowPadded(pi->getResno(), band->orientation);
+			auto prec =
+				band->generatePrecinctBounds(pi->getPrecinctIndex(), res->precinctPartitionTopLeft,
+											 res->precinctExpn, res->precinctGridWidth);
+			if(paddedBandWindow->non_empty_intersection(&prec))
 			{
-				auto band = res->tileBand + bandIndex;
-				if(band->isEmpty())
-					continue;
-				auto paddedBandWindow = tilecBuffer->getBandWindowPadded(pi->getResno(), band->orientation);
-				auto prec =
-					band->generatePrecinctBounds(pi->getPrecinctIndex(), res->precinctPartitionTopLeft,
-												 res->precinctExpn, res->precinctGridWidth);
-				if(paddedBandWindow->non_empty_intersection(&prec))
-				{
-					skip = false;
-					break;
-				}
+				skip = false;
+				break;
 			}
 		}
 	}

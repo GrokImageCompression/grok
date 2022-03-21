@@ -223,8 +223,6 @@ struct PacketIter
 	 @return false if pi pointed to the last packet, otherwise true
 	 */
 	bool next(SparseBuffer* src);
-	bool isValid(void) const;
-	bool isOptimized(void) const;
 	GRK_PROG_ORDER getProgression(void) const;
 	uint16_t getCompno(void) const;
 	uint8_t getResno(void) const;
@@ -243,8 +241,6 @@ private:
 	uint64_t x, y;
 	/** component sub-sampling */
 	uint32_t dx, dy;
-	bool valid;
-	bool optimized;
 	void update_dxy(void);
 	bool checkForRemainingValidProgression(int32_t prog, uint32_t pino,
 														  const char* progString);
