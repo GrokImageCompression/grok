@@ -274,6 +274,7 @@ private:
 	bool generatePrecinctIndex(void);
 	void update_dxy_for_comp(PiComp* comp);
 	uint64_t genLineCountPCRL(uint64_t yy) const;
+	bool isWholeTile(void);
 
 	/**
 	 Get next packet in component-precinct-resolution-layer order.

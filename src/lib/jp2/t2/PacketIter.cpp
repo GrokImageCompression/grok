@@ -533,7 +533,7 @@ void PacketIter::genPrecinctInfo(void)
 		inf->precinctWidthExp = res->precinctWidthExp;
 		inf->precinctHeightExp = res->precinctHeightExp;
 		inf->init((uint8_t)(comps->numresolutions - 1U - resno), tb, comps->dx, comps->dy,
-				  !packetManager->getTileProcessor()->wholeTileDecompress,
+				  !isWholeTile(),
 				  packetManager->getTileProcessor()->getUnreducedTileWindow());
 	}
 	optimized = prog.progression == GRK_RPCL;
@@ -565,7 +565,7 @@ bool PacketIter::generatePrecinctIndex(void)
 		rpInfo.precinctWidthExp = res->precinctWidthExp;
 		rpInfo.precinctHeightExp = res->precinctHeightExp;
 		rpInfo.init((uint8_t)(comp->numresolutions - 1U - resno), packetManager->getTileBounds(),
-					comp->dx, comp->dy, !packetManager->getTileProcessor()->wholeTileDecompress,
+					comp->dx, comp->dy, !isWholeTile(),
 					packetManager->getTileProcessor()->getUnreducedTileWindow());
 
 		if(!rpInfo.valid)
@@ -789,6 +789,9 @@ uint64_t PacketIter::genLineCountPCRL(uint64_t yy) const{
 	}
 
 	return c;
+}
+bool PacketIter::isWholeTile(void){
+	return compression_ || packetManager->getTileProcessor()->wholeTileDecompress;
 }
 bool PacketIter::next(SparseBuffer* src)
 {
@@ -1174,9 +1177,10 @@ bool PacketIter::next_rlcpOPT(SparseBuffer* src)
 
 	return false;
 }
+
 bool PacketIter::next_pcrlOPT(SparseBuffer* src)
 {
-	auto wholeTile = packetManager->getTileProcessor()->wholeTileDecompress;
+	auto wholeTile = isWholeTile();
 	auto precInfo = precinctInfo_ + prog.resE - 1;
 	if(!precInfoCheck(precInfo))
 		return false;
@@ -1245,7 +1249,7 @@ bool PacketIter::next_pcrlOPT(SparseBuffer* src)
 }
 bool PacketIter::next_rpclOPT(SparseBuffer* src)
 {
-	auto wholeTile = packetManager->getTileProcessor()->wholeTileDecompress;
+	auto wholeTile = isWholeTile();
 	for(; resno < prog.resE; resno++)
 	{
 		auto precInfo = precinctInfo_ + resno;
