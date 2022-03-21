@@ -214,8 +214,8 @@ bool CodeStreamDecompress::readHeader(grk_header_info* header_info)
 		header_info->cblk_sty = tccp->cblk_sty;
 		for(uint32_t i = 0; i < header_info->numresolutions; ++i)
 		{
-			header_info->prcw_init[i] = 1U << tccp->precinctWidthExp[i];
-			header_info->prch_init[i] = 1U << tccp->precinctHeightExp[i];
+			header_info->prcw_init[i] = 1U << tccp->precWidthExp[i];
+			header_info->prch_init[i] = 1U << tccp->precHeightExp[i];
 		}
 		header_info->tx0 = cp_.tx0;
 		header_info->ty0 = cp_.ty0;
@@ -1047,8 +1047,8 @@ void CodeStreamDecompress::dump_tile_info(TileCodingParams* default_tile, uint32
 			fprintf(outputFileStream, "\t\t\t preccintsize (w,h)=");
 			for(resno = 0; resno < tccp->numresolutions; resno++)
 			{
-				fprintf(outputFileStream, "(%d,%d) ", tccp->precinctWidthExp[resno],
-						tccp->precinctHeightExp[resno]);
+				fprintf(outputFileStream, "(%d,%d) ", tccp->precWidthExp[resno],
+						tccp->precHeightExp[resno]);
 			}
 			fprintf(outputFileStream, "\n");
 

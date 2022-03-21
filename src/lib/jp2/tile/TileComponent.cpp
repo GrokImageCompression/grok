@@ -91,21 +91,21 @@ bool TileComponent::init(bool isCompressor, bool whole_tile, grkRectU32 unreduce
 														 BAND_ORIENT_LL, unreducedTileComp));
 
 		/* p. 35, table A-23, ISO/IEC FDIS154444-1 : 2000 (18 august 2000) */
-		uint32_t precinctWidthExp = tccp_->precinctWidthExp[resno];
-		uint32_t precinctHeightExp = tccp_->precinctHeightExp[resno];
+		uint32_t precWidthExp = tccp_->precWidthExp[resno];
+		uint32_t precHeightExp = tccp_->precHeightExp[resno];
 		/* p. 64, B.6, ISO/IEC FDIS15444-1 : 2000 (18 august 2000)  */
 		grkRectU32 allPrecinctsBounds;
-		allPrecinctsBounds.x0 = floordivpow2(res->x0, precinctWidthExp) << precinctWidthExp;
-		allPrecinctsBounds.y0 = floordivpow2(res->y0, precinctHeightExp) << precinctHeightExp;
-		uint64_t temp = (uint64_t)ceildivpow2<uint32_t>(res->x1, precinctWidthExp)
-						<< precinctWidthExp;
+		allPrecinctsBounds.x0 = floordivpow2(res->x0, precWidthExp) << precWidthExp;
+		allPrecinctsBounds.y0 = floordivpow2(res->y0, precHeightExp) << precHeightExp;
+		uint64_t temp = (uint64_t)ceildivpow2<uint32_t>(res->x1, precWidthExp)
+						<< precWidthExp;
 		if(temp > UINT_MAX)
 		{
 			GRK_ERROR("Resolution x1 value %u must be less than 2^32", temp);
 			return false;
 		}
 		allPrecinctsBounds.x1 = (uint32_t)temp;
-		temp = (uint64_t)ceildivpow2<uint32_t>(res->y1, precinctHeightExp) << precinctHeightExp;
+		temp = (uint64_t)ceildivpow2<uint32_t>(res->y1, precHeightExp) << precHeightExp;
 		if(temp > UINT_MAX)
 		{
 			GRK_ERROR("Resolution y1 value %u must be less than 2^32", temp);
@@ -113,9 +113,9 @@ bool TileComponent::init(bool isCompressor, bool whole_tile, grkRectU32 unreduce
 		}
 		allPrecinctsBounds.y1 = (uint32_t)temp;
 		res->precinctGridWidth =
-			(res->x0 == res->x1) ? 0 : (allPrecinctsBounds.width() >> precinctWidthExp);
+			(res->x0 == res->x1) ? 0 : (allPrecinctsBounds.width() >> precWidthExp);
 		res->precinctGridHeight =
-			(res->y0 == res->y1) ? 0 : (allPrecinctsBounds.height() >> precinctHeightExp);
+			(res->y0 == res->y1) ? 0 : (allPrecinctsBounds.height() >> precHeightExp);
 		res->numTileBandWindows = (resno == 0) ? 1 : 3;
 		if(DEBUG_TILE_COMPONENT)
 		{

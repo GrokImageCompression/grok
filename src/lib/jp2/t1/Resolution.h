@@ -44,7 +44,7 @@ struct Resolution : public grkRectU32
 		this->current_plugin_tile = current_plugin_tile;
 
 		/* p. 35, table A-23, ISO/IEC FDIS154444-1 : 2000 (18 august 2000) */
-		precinctExpn = grkpt(tccp->precinctWidthExp[resno], tccp->precinctHeightExp[resno]);
+		precinctExpn = grkpt(tccp->precWidthExp[resno], tccp->precHeightExp[resno]);
 
 		/* p. 64, B.6, ISO/IEC FDIS15444-1 : 2000 (18 august 2000)  */
 		precinctPartitionTopLeft = grkpt(floordivpow2(x0, precinctExpn.x) << precinctExpn.x,

@@ -41,10 +41,10 @@ enum J2K_T2_MODE
 struct PiResolution
 {
 	PiResolution()
-		: precinctWidthExp(0), precinctHeightExp(0), precinctGridWidth(0), precinctGridHeight(0)
+		: precWidthExp(0), precHeightExp(0), precinctGridWidth(0), precinctGridHeight(0)
 	{}
-	uint32_t precinctWidthExp;
-	uint32_t precinctHeightExp;
+	uint32_t precWidthExp;
+	uint32_t precHeightExp;
 	uint32_t precinctGridWidth;
 	uint32_t precinctGridHeight;
 };
@@ -160,22 +160,22 @@ struct ResPrecinctInfo
 	ResPrecinctInfo();
 	void init(uint8_t levelno, grkRectU32 tileBounds, uint32_t dx, uint32_t dy, bool windowed,
 			  grkRectU32 tileWindow);
-	uint32_t precinctWidthExp;
-	uint32_t precinctHeightExp;
-	uint32_t canvasResOffsetX0;
-	uint32_t canvasResOffsetY0;
-	uint64_t canvasPrecWidth;
-	uint64_t canvasPrecHeight;
+	uint32_t precWidthExp;
+	uint32_t precHeightExp;
+	uint32_t resOffsetX0Canvas;
+	uint32_t resOffsetY0Canvas;
+	uint64_t precWidthCanvas;
+	uint64_t precHeightCanvas;
 	uint64_t numPrecincts_;
-	uint64_t canvasDx;
-	uint64_t canvasDy;
+	uint64_t dxCanvas;
+	uint64_t dyCanvas;
 	uint32_t resInPrecGridX0;
 	uint32_t resInPrecGridY0;
 	uint8_t decompLevel_;
-	grkRectU32 canvasTileBoundsPrec;
-	grkRectU32 canvasTileBoundsPrecGrid;
-	grkRectU32 canvasWindowPrec;
-	grkRectU32 canvasWindowPrecGrid;
+	grkRectU32 tileBoundsPrecCanvas;
+	grkRectU32 tileBoundsPrecGridCanvas;
+	grkRectU32 winPrecCanvas;
+	grkRectU32 winPrecGridCanvas;
 	uint64_t innerPrecincts_;
 	uint64_t winPrecinctsLeft_;
 	uint64_t winPrecinctsRight_;

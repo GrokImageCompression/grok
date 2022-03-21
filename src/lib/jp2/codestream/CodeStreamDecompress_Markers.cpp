@@ -1134,8 +1134,8 @@ bool CodeStreamDecompress::read_SPCod_SPCoc(uint16_t compno, uint8_t* headerData
 				GRK_ERROR("Invalid precinct size");
 				return false;
 			}
-			tccp->precinctWidthExp[i] = tmp & 0xf;
-			tccp->precinctHeightExp[i] = (uint32_t)(tmp >> 4U);
+			tccp->precWidthExp[i] = tmp & 0xf;
+			tccp->precHeightExp[i] = (uint32_t)(tmp >> 4U);
 		}
 
 		*header_size = (uint16_t)(*header_size - tccp->numresolutions);
@@ -1145,8 +1145,8 @@ bool CodeStreamDecompress::read_SPCod_SPCoc(uint16_t compno, uint8_t* headerData
 		/* set default size for the precinct width and height */
 		for(i = 0; i < tccp->numresolutions; ++i)
 		{
-			tccp->precinctWidthExp[i] = 15;
-			tccp->precinctHeightExp[i] = 15;
+			tccp->precWidthExp[i] = 15;
+			tccp->precHeightExp[i] = 15;
 		}
 	}
 
@@ -1673,8 +1673,8 @@ bool CodeStreamDecompress::read_cod(uint8_t* headerData, uint16_t header_size)
 		copied_tccp->cblkh = ref_tccp->cblkh;
 		copied_tccp->cblk_sty = ref_tccp->cblk_sty;
 		copied_tccp->qmfbid = ref_tccp->qmfbid;
-		memcpy(copied_tccp->precinctWidthExp, ref_tccp->precinctWidthExp, prc_size);
-		memcpy(copied_tccp->precinctHeightExp, ref_tccp->precinctHeightExp, prc_size);
+		memcpy(copied_tccp->precWidthExp, ref_tccp->precWidthExp, prc_size);
+		memcpy(copied_tccp->precHeightExp, ref_tccp->precHeightExp, prc_size);
 	}
 
 	return true;

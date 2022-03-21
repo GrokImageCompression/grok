@@ -151,25 +151,25 @@ void PacketManager::getParams(const GrkImage* image, const CodingParams* p_cp, u
 		for(uint8_t resno = 0; resno < tccp->numresolutions; ++resno)
 		{
 			// 1. precinct dimensions
-			uint32_t precinctWidthExp = tccp->precinctWidthExp[resno];
-			uint32_t precinctHeightExp = tccp->precinctHeightExp[resno];
+			uint32_t precWidthExp = tccp->precWidthExp[resno];
+			uint32_t precHeightExp = tccp->precHeightExp[resno];
 			if(precinctInfo)
 			{
-				*precinctInfo++ = precinctWidthExp;
-				*precinctInfo++ = precinctHeightExp;
+				*precinctInfo++ = precWidthExp;
+				*precinctInfo++ = precHeightExp;
 			}
 
 			// 2. precinct grid
 			auto resBounds = tileCompBounds.rectceildivpow2(tccp->numresolutions - 1U - resno);
 			auto resBoundsAdjusted = grkRectU32(
-				floordivpow2(resBounds.x0, precinctWidthExp) << precinctWidthExp,
-				floordivpow2(resBounds.y0, precinctHeightExp) << precinctHeightExp,
-				ceildivpow2<uint32_t>(resBounds.x1, precinctWidthExp) << precinctWidthExp,
-				ceildivpow2<uint32_t>(resBounds.y1, precinctHeightExp) << precinctHeightExp);
+				floordivpow2(resBounds.x0, precWidthExp) << precWidthExp,
+				floordivpow2(resBounds.y0, precHeightExp) << precHeightExp,
+				ceildivpow2<uint32_t>(resBounds.x1, precWidthExp) << precWidthExp,
+				ceildivpow2<uint32_t>(resBounds.y1, precHeightExp) << precHeightExp);
 			uint32_t precinctGridWidth =
-				resBounds.width() == 0 ? 0 : (resBoundsAdjusted.width() >> precinctWidthExp);
+				resBounds.width() == 0 ? 0 : (resBoundsAdjusted.width() >> precWidthExp);
 			uint32_t precinctGridHeight =
-				resBounds.height() == 0 ? 0 : (resBoundsAdjusted.height() >> precinctHeightExp);
+				resBounds.height() == 0 ? 0 : (resBoundsAdjusted.height() >> precHeightExp);
 			if(precinctInfo)
 			{
 				*precinctInfo++ = precinctGridWidth;
@@ -183,9 +183,9 @@ void PacketManager::getParams(const GrkImage* image, const CodingParams* p_cp, u
 
 			// 3. find minimal precinct subsampling factors over all components and resolutions
 			uint64_t compResDx =
-				comp->dx * ((uint64_t)1u << (precinctWidthExp + tccp->numresolutions - 1U - resno));
+				comp->dx * ((uint64_t)1u << (precWidthExp + tccp->numresolutions - 1U - resno));
 			uint64_t compResDy = comp->dy * ((uint64_t)1u
-									   << (precinctHeightExp + tccp->numresolutions - 1U - resno));
+									   << (precHeightExp + tccp->numresolutions - 1U - resno));
 			if(compResDx < UINT_MAX)
 				*dx_min = std::min<uint32_t>(*dx_min, (uint32_t)compResDx);
 			if(compResDy < UINT_MAX)

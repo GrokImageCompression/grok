@@ -220,8 +220,8 @@ TileComponentCodingParams::TileComponentCodingParams()
 {
 	for(uint32_t i = 0; i < GRK_J2K_MAXRLVLS; ++i)
 	{
-		precinctWidthExp[i] = 0;
-		precinctHeightExp[i] = 0;
+		precWidthExp[i] = 0;
+		precHeightExp[i] = 0;
 	}
 }
 

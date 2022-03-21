@@ -23,8 +23,8 @@
 namespace grk
 {
 ResPrecinctInfo::ResPrecinctInfo()
-	: precinctWidthExp(0), precinctHeightExp(0), canvasResOffsetX0(0), canvasResOffsetY0(0),
-	  canvasPrecWidth(0), canvasPrecHeight(0), numPrecincts_(0), canvasDx(0), canvasDy(0),
+	: precWidthExp(0), precHeightExp(0), resOffsetX0Canvas(0), resOffsetY0Canvas(0),
+	  precWidthCanvas(0), precHeightCanvas(0), numPrecincts_(0), dxCanvas(0), dyCanvas(0),
 	  resInPrecGridX0(0), resInPrecGridY0(0), decompLevel_(0),innerPrecincts_(0),
 	  winPrecinctsLeft_(0), winPrecinctsRight_(0), winPrecinctsTop_(0), winPrecinctsBottom_(0),
 	  valid(false)
@@ -39,32 +39,32 @@ void ResPrecinctInfo::init(	uint8_t decompLevel, grkRectU32 tileBounds, uint32_t
 		return;
 
 	decompLevel_ = decompLevel;
-	uint32_t canvasPrecShiftX = precinctWidthExp + decompLevel_;
-	uint32_t canvasPrecShiftY = precinctHeightExp + decompLevel_;
+	uint32_t canvasPrecShiftX = precWidthExp + decompLevel_;
+	uint32_t canvasPrecShiftY = precHeightExp + decompLevel_;
 
 	// offset of projected resolution relative to projected precinct grid
 	// these are both zero when tile origin equals (0,0)
-	canvasResOffsetX0 = (uint32_t)(((uint64_t)res.x0 << decompLevel) % ((uint64_t)1 << canvasPrecShiftX));
-	canvasResOffsetY0 = (uint32_t)(((uint64_t)res.y0 << decompLevel) % ((uint64_t)1 << canvasPrecShiftY));
+	resOffsetX0Canvas = (uint32_t)(((uint64_t)res.x0 << decompLevel) % ((uint64_t)1 << canvasPrecShiftX));
+	resOffsetY0Canvas = (uint32_t)(((uint64_t)res.y0 << decompLevel) % ((uint64_t)1 << canvasPrecShiftY));
 
-	canvasPrecWidth = ((uint64_t)compDx << canvasPrecShiftX);
-	canvasPrecHeight = ((uint64_t)compDy << canvasPrecShiftY);
-	canvasDx = ((uint64_t)compDx << decompLevel_);
-	canvasDy = ((uint64_t)compDy << decompLevel_);
-	resInPrecGridX0 = floordivpow2(res.x0, precinctWidthExp);
-	resInPrecGridY0 = floordivpow2(res.y0, precinctHeightExp);
+	precWidthCanvas = ((uint64_t)compDx << canvasPrecShiftX);
+	precHeightCanvas = ((uint64_t)compDy << canvasPrecShiftY);
+	dxCanvas = ((uint64_t)compDx << decompLevel_);
+	dyCanvas = ((uint64_t)compDy << decompLevel_);
+	resInPrecGridX0 = floordivpow2(res.x0, precWidthExp);
+	resInPrecGridY0 = floordivpow2(res.y0, precHeightExp);
 	if(windowed)
 	{
 		auto window = tileWindow;
 		auto resWindow = window.scaleDown(resDivisor,resDivisor);
 		// pad resolution window
 		resWindow.grow(10).clip(&res);
-		canvasWindowPrecGrid = resWindow.scaleDown(1<<precinctWidthExp, 1<<precinctHeightExp);
-		canvasWindowPrec = canvasWindowPrecGrid.scale((uint32_t)canvasPrecWidth,(uint32_t)canvasPrecHeight);
+		winPrecGridCanvas = resWindow.scaleDown(1<<precWidthExp, 1<<precHeightExp);
+		winPrecCanvas = winPrecGridCanvas.scale((uint32_t)precWidthCanvas,(uint32_t)precHeightCanvas);
 	}
-	canvasTileBoundsPrecGrid = res.scaleDown(1<<precinctWidthExp, 1<<precinctHeightExp);
-	numPrecincts_ = canvasTileBoundsPrecGrid.area();
-	canvasTileBoundsPrec = canvasTileBoundsPrecGrid.scale((uint32_t)canvasPrecWidth,(uint32_t)canvasPrecHeight);
+	tileBoundsPrecGridCanvas = res.scaleDown(1<<precWidthExp, 1<<precHeightExp);
+	numPrecincts_ = tileBoundsPrecGridCanvas.area();
+	tileBoundsPrecCanvas = tileBoundsPrecGridCanvas.scale((uint32_t)precWidthCanvas,(uint32_t)precHeightCanvas);
 	valid = true;
 }
 
@@ -123,8 +123,8 @@ void PacketIter::genPrecinctInfo(void)
 	{
 		auto res = comps->resolutions + resno;
 		auto decompLevel = (uint8_t)(comps->numresolutions - 1U - resno);
-		if (res->precinctWidthExp + decompLevel < highestRes->precinctWidthExp ||
-				res->precinctHeightExp + decompLevel < highestRes->precinctHeightExp)
+		if (res->precWidthExp + decompLevel < highestRes->precWidthExp ||
+				res->precHeightExp + decompLevel < highestRes->precHeightExp)
 			return;
 
 	}
@@ -133,8 +133,8 @@ void PacketIter::genPrecinctInfo(void)
 	{
 		auto inf = precinctInfo_ + resno;
 		auto res = comps->resolutions + resno;
-		inf->precinctWidthExp = res->precinctWidthExp;
-		inf->precinctHeightExp = res->precinctHeightExp;
+		inf->precWidthExp = res->precWidthExp;
+		inf->precHeightExp = res->precHeightExp;
 		inf->init((uint8_t)(comps->numresolutions - 1U - resno), tb, comps->dx, comps->dy,
 				  !isWholeTile(),
 				  packetManager->getTileProcessor()->getUnreducedTileWindow());
@@ -162,8 +162,8 @@ bool PacketIter::generatePrecinctIndex(void)
 	else
 	{
 		ResPrecinctInfo rpInfo;
-		rpInfo.precinctWidthExp = res->precinctWidthExp;
-		rpInfo.precinctHeightExp = res->precinctHeightExp;
+		rpInfo.precWidthExp = res->precWidthExp;
+		rpInfo.precHeightExp = res->precHeightExp;
 		rpInfo.init((uint8_t)(comp->numresolutions - 1U - resno), packetManager->getTileBounds(),
 					comp->dx, comp->dy, !isWholeTile(),
 					packetManager->getTileProcessor()->getUnreducedTileWindow());
@@ -598,23 +598,23 @@ bool PacketIter::precInfoCheck(ResPrecinctInfo* rpInfo)
 
 bool PacketIter::genPrecinctY0Grid(ResPrecinctInfo* rpInfo)
 {
-	if(!(((uint64_t)y % rpInfo->canvasPrecHeight == 0) ||
-		 ((y == packetManager->getTileBounds().y0) && rpInfo->canvasResOffsetY0)))
+	if(!(((uint64_t)y % rpInfo->precHeightCanvas == 0) ||
+		 ((y == packetManager->getTileBounds().y0) && rpInfo->resOffsetY0Canvas)))
 		return false;
 
 	py0grid_ =
-		floordivpow2(ceildiv<uint64_t>((uint64_t)y, rpInfo->canvasDy), rpInfo->precinctHeightExp) -
+		floordivpow2(ceildiv<uint64_t>((uint64_t)y, rpInfo->dyCanvas), rpInfo->precHeightExp) -
 		rpInfo->resInPrecGridY0;
 
 	return true;
 }
 bool PacketIter::genPrecinctX0Grid(ResPrecinctInfo* rpInfo)
 {
-	if(!(((uint64_t)x % rpInfo->canvasPrecWidth == 0) ||
-		 ((x == packetManager->getTileBounds().x0) && rpInfo->canvasResOffsetX0)))
+	if(!(((uint64_t)x % rpInfo->precWidthCanvas == 0) ||
+		 ((x == packetManager->getTileBounds().x0) && rpInfo->resOffsetX0Canvas)))
 		return false;
 
-	px0grid_ = floordivpow2(ceildiv<uint64_t>((uint64_t)x, rpInfo->canvasDx), rpInfo->precinctWidthExp) -
+	px0grid_ = floordivpow2(ceildiv<uint64_t>((uint64_t)x, rpInfo->dxCanvas), rpInfo->precWidthExp) -
 			   rpInfo->resInPrecGridX0;
 
 	return true;
@@ -622,32 +622,32 @@ bool PacketIter::genPrecinctX0Grid(ResPrecinctInfo* rpInfo)
 
 bool PacketIter::genPrecinctY0GridPCRL_OPT(ResPrecinctInfo* rpInfo)
 {
-	if(((((uint64_t)y & (rpInfo->canvasPrecHeight-1)) != 0)))
+	if(((((uint64_t)y & (rpInfo->precHeightCanvas-1)) != 0)))
 		return false;
 
 	py0grid_ =
-		floordivpow2(ceildiv<uint64_t>((uint64_t)y, rpInfo->canvasDy), rpInfo->precinctHeightExp) -
+		floordivpow2(ceildiv<uint64_t>((uint64_t)y, rpInfo->dyCanvas), rpInfo->precHeightExp) -
 		rpInfo->resInPrecGridY0;
 
 	return true;
 }
 bool PacketIter::genPrecinctX0GridPCRL_OPT(ResPrecinctInfo* rpInfo)
 {
-	if(((((uint64_t)x & (rpInfo->canvasPrecWidth-1)) != 0) ))
+	if(((((uint64_t)x & (rpInfo->precWidthCanvas-1)) != 0) ))
 		return false;
 
-	px0grid_ = floordivpow2(ceildiv<uint64_t>((uint64_t)x, rpInfo->canvasDx), rpInfo->precinctWidthExp) -
+	px0grid_ = floordivpow2(ceildiv<uint64_t>((uint64_t)x, rpInfo->dxCanvas), rpInfo->precWidthExp) -
 			   rpInfo->resInPrecGridX0;
 
 	return true;
 }
 void PacketIter::genPrecinctY0GridRPCL_OPT(ResPrecinctInfo* rpInfo)
 {
-	py0grid_ = (uint32_t)(ceildivpow2<uint64_t>((uint64_t)y, rpInfo->decompLevel_) >> rpInfo->precinctHeightExp);
+	py0grid_ = (uint32_t)(ceildivpow2<uint64_t>((uint64_t)y, rpInfo->decompLevel_) >> rpInfo->precHeightExp);
 }
 void PacketIter::genPrecinctX0GridRPCL_OPT(ResPrecinctInfo* rpInfo)
 {
-	px0grid_ = (uint32_t)(ceildivpow2<uint64_t>((uint64_t)x, rpInfo->decompLevel_) >> rpInfo->precinctWidthExp);
+	px0grid_ = (uint32_t)(ceildivpow2<uint64_t>((uint64_t)x, rpInfo->decompLevel_) >> rpInfo->precWidthExp);
 
 }
 void PacketIter::update_dxy(void)
@@ -663,10 +663,10 @@ void PacketIter::update_dxy_for_comp(PiComp* comp)
 	{
 		auto res = comp->resolutions + resno;
 		uint64_t dx_temp =
-			comp->dx * ((uint64_t)1u << (res->precinctWidthExp + comp->numresolutions - 1 - resno));
+			comp->dx * ((uint64_t)1u << (res->precWidthExp + comp->numresolutions - 1 - resno));
 		uint64_t dy_temp =
 			comp->dy *
-			((uint64_t)1u << (res->precinctHeightExp + comp->numresolutions - 1 - resno));
+			((uint64_t)1u << (res->precHeightExp + comp->numresolutions - 1 - resno));
 		if(dx_temp < UINT_MAX)
 			dx = !dx ? (uint32_t)dx_temp : std::min<uint32_t>(dx, (uint32_t)dx_temp);
 		if(dy_temp < UINT_MAX)
@@ -738,8 +738,8 @@ void PacketIter::init(PacketManager* packetMan,
 		{
 			auto res = current_comp->resolutions + resno;
 
-			res->precinctWidthExp = *(resolutionPrecinctGrid++);
-			res->precinctHeightExp = *(resolutionPrecinctGrid++);
+			res->precWidthExp = *(resolutionPrecinctGrid++);
+			res->precHeightExp = *(resolutionPrecinctGrid++);
 			res->precinctGridWidth = *(resolutionPrecinctGrid++);
 			res->precinctGridHeight = *(resolutionPrecinctGrid++);
 		}
@@ -765,11 +765,11 @@ void PacketIter::init(PacketManager* packetMan,
 						auto inf = precinctInfo_ + resno;
 						inf->innerPrecincts_ = prog.compE * prog.layE;
 						auto compLayer = inf->innerPrecincts_;
-						inf->winPrecinctsLeft_   = inf->canvasWindowPrecGrid.x0 * compLayer;
-						inf->winPrecinctsRight_  = (uint64_t)(inf->canvasTileBoundsPrecGrid.x1 - inf->canvasWindowPrecGrid.x1) * compLayer;
-						inf->winPrecinctsTop_    =  (uint64_t)inf->canvasWindowPrecGrid.y0 * inf->canvasTileBoundsPrecGrid.width() * compLayer;
-						inf->winPrecinctsBottom_ = (uint64_t)(inf->canvasTileBoundsPrecGrid.y1 - inf->canvasWindowPrecGrid.y1) *
-														inf->canvasTileBoundsPrecGrid.width()  * compLayer;
+						inf->winPrecinctsLeft_   = inf->winPrecGridCanvas.x0 * compLayer;
+						inf->winPrecinctsRight_  = (uint64_t)(inf->tileBoundsPrecGridCanvas.x1 - inf->winPrecGridCanvas.x1) * compLayer;
+						inf->winPrecinctsTop_    =  (uint64_t)inf->winPrecGridCanvas.y0 * inf->tileBoundsPrecGridCanvas.width() * compLayer;
+						inf->winPrecinctsBottom_ = (uint64_t)(inf->tileBoundsPrecGridCanvas.y1 - inf->winPrecGridCanvas.y1) *
+														inf->tileBoundsPrecGridCanvas.width()  * compLayer;
 					}
 				}
 				break;
@@ -785,11 +785,11 @@ void PacketIter::init(PacketManager* packetMan,
 uint64_t PacketIter::genLineCountPCRL(uint64_t yy) const{
 	uint64_t c = 0;
 	auto finalInf = precinctInfo_ + comps->numresolutions - 1;
-	for(uint64_t xx = finalInf->canvasTileBoundsPrec.x0; xx < finalInf->canvasTileBoundsPrec.x1; xx += finalInf->canvasPrecWidth){
+	for(uint64_t xx = finalInf->tileBoundsPrecCanvas.x0; xx < finalInf->tileBoundsPrecCanvas.x1; xx += finalInf->precWidthCanvas){
 		for(uint8_t resno = 0; resno < comps->numresolutions; ++resno)
 		{
 			auto inf = precinctInfo_ + resno;
-			if ( (xx & (inf->canvasPrecWidth-1)) == 0 && (yy & (inf->canvasPrecHeight-1)) == 0)
+			if ( (xx & (inf->precWidthCanvas-1)) == 0 && (yy & (inf->precHeightCanvas-1)) == 0)
 			 c++;
 		}
 	}
@@ -1084,54 +1084,6 @@ bool PacketIter::skip(SparseBuffer* src, uint64_t numPrecincts){
 
 	return true;
 }
-
-bool PacketIter::next_cprlOPT(SparseBuffer* src)
-{
-	GRK_UNUSED(src);
-	auto wholeTile = isWholeTile();
-	auto precInfo = precinctInfo_ + prog.resE - 1;
-	if(!precInfoCheck(precInfo))
-		return false;
-	auto win = &precInfo->canvasWindowPrec;
-	for(; compno < prog.compE; compno++)
-	{
-		// note: no need to update dx and dy here since all components
-		// have the same number of resolutions and subsampling factors
-		for(; y < prog.ty1; y += dy)
-		{
-			// skip over packets outside of window
-			if (!wholeTile){
-				// windowed decode:
-				// bail out if we reach row of precincts that are out of bound of the window
-				if(y == win->y1)
-					return false;
-			}
-
-			for(; x < prog.tx1; x += dx)
-			{
-				for(; resno < prog.resE; resno++)
-				{
-					if(!generatePrecinctIndex())
-						continue;
-					if(incrementInner)
-						layno++;
-					if(layno < prog.layE)
-					{
-						incrementInner = true;
-						return true;
-					}
-					layno = prog.layS;
-					incrementInner = false;
-				}
-				resno = prog.resS;
-			}
-			x = prog.tx0;
-		}
-		y = prog.ty0;
-	}
-
-	return false;
-}
 bool PacketIter::next_lrcpOPT(SparseBuffer* src)
 {
 	GRK_UNUSED(src);
@@ -1195,14 +1147,61 @@ bool PacketIter::next_rlcpOPT(SparseBuffer* src)
 	return false;
 }
 
+bool PacketIter::next_cprlOPT(SparseBuffer* src)
+{
+	GRK_UNUSED(src);
+	auto wholeTile = isWholeTile();
+	auto precInfo = precinctInfo_ + prog.resE - 1;
+	if(!precInfoCheck(precInfo))
+		return false;
+	auto win = &precInfo->winPrecCanvas;
+	for(; compno < prog.compE; compno++)
+	{
+		// note: no need to update dx and dy here since all components
+		// have the same number of resolutions and subsampling factors
+		for(; y < prog.ty1; y += dy)
+		{
+			// skip over packets outside of window
+			if (!wholeTile){
+				// windowed decode:
+				// bail out if we reach row of precincts that are out of bound of the window
+				if(y == win->y1)
+					return false;
+			}
+
+			for(; x < prog.tx1; x += dx)
+			{
+				for(; resno < prog.resE; resno++)
+				{
+					if(!generatePrecinctIndex())
+						continue;
+					if(incrementInner)
+						layno++;
+					if(layno < prog.layE)
+					{
+						incrementInner = true;
+						return true;
+					}
+					layno = prog.layS;
+					incrementInner = false;
+				}
+				resno = prog.resS;
+			}
+			x = prog.tx0;
+		}
+		y = prog.ty0;
+	}
+
+	return false;
+}
 bool PacketIter::next_pcrlOPT(SparseBuffer* src)
 {
 	auto wholeTile = isWholeTile();
 	auto precInfo = precinctInfo_ + prog.resE - 1;
 	if(!precInfoCheck(precInfo))
 		return false;
-	auto win = &precInfo->canvasWindowPrec;
-	for(; y < precInfo->canvasTileBoundsPrec.y1; y += dy)
+	auto win = &precInfo->winPrecCanvas;
+	for(; y < precInfo->tileBoundsPrecCanvas.y1; y += dy)
 	{
 		// skip over packets outside of window
 		if (!wholeTile){
@@ -1223,7 +1222,7 @@ bool PacketIter::next_pcrlOPT(SparseBuffer* src)
 				}
 			}
 		}
-		for(; x < precInfo->canvasTileBoundsPrec.x1; x += dx)
+		for(; x < precInfo->tileBoundsPrecCanvas.x1; x += dx)
 		{
 			// windowed decode:
 			// bail out if we reach a precinct which is past the
@@ -1259,7 +1258,7 @@ bool PacketIter::next_pcrlOPT(SparseBuffer* src)
 			}
 			compno = prog.compS;
 		}
-		x = precInfo->canvasTileBoundsPrec.x0;
+		x = precInfo->tileBoundsPrecCanvas.x0;
 	}
 
 	return false;
@@ -1272,8 +1271,8 @@ bool PacketIter::next_rpclOPT(SparseBuffer* src)
 		auto precInfo = precinctInfo_ + resno;
 		if(!precInfoCheck(precInfo))
 			continue;
-		auto win = &precInfo->canvasWindowPrec;
-		for(; y < precInfo->canvasTileBoundsPrec.y1; y += precInfo->canvasPrecHeight)
+		auto win = &precInfo->winPrecCanvas;
+		for(; y < precInfo->tileBoundsPrecCanvas.y1; y += precInfo->precHeightCanvas)
 		{
 			// skip over packets outside of window
 			if (!wholeTile){
@@ -1307,8 +1306,8 @@ bool PacketIter::next_rpclOPT(SparseBuffer* src)
 				}
 			}
 			genPrecinctY0GridRPCL_OPT(precInfo);
-			uint64_t precIndexY = (uint64_t)py0grid_ * precInfo->canvasTileBoundsPrecGrid.width();
-			for(; x < (wholeTile || !src ? precInfo->canvasTileBoundsPrec.x1 : win->x1); x += precInfo->canvasPrecWidth)
+			uint64_t precIndexY = (uint64_t)py0grid_ * precInfo->tileBoundsPrecGridCanvas.width();
+			for(; x < (wholeTile || !src ? precInfo->tileBoundsPrecCanvas.x1 : win->x1); x += precInfo->precWidthCanvas)
 			{
 
 				// windowed decode:
@@ -1335,14 +1334,14 @@ bool PacketIter::next_rpclOPT(SparseBuffer* src)
 				}
 				compno = prog.compS;
 			}
-			x = precInfo->canvasTileBoundsPrec.x0;
+			x = precInfo->tileBoundsPrecCanvas.x0;
 			if (!wholeTile && src && precInfo->winPrecinctsRight_){
 				if (!skip(src,precInfo->winPrecinctsRight_))
 						return false;
 			}
 			skippedLeft_ = false;
 		}
-		y = precInfo->canvasTileBoundsPrec.y0;
+		y = precInfo->tileBoundsPrecCanvas.y0;
 	}
 
 	return false;

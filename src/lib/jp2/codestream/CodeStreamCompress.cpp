@@ -558,13 +558,13 @@ bool CodeStreamCompress::init(grk_cparameters* parameters, GrkImage* image)
 					if(p < parameters->res_spec)
 					{
 						if(parameters->prcw_init[p] < 1)
-							tccp->precinctWidthExp[it_res] = 1;
+							tccp->precWidthExp[it_res] = 1;
 						else
-							tccp->precinctWidthExp[it_res] = floorlog2(parameters->prcw_init[p]);
+							tccp->precWidthExp[it_res] = floorlog2(parameters->prcw_init[p]);
 						if(parameters->prch_init[p] < 1)
-							tccp->precinctHeightExp[it_res] = 1;
+							tccp->precHeightExp[it_res] = 1;
 						else
-							tccp->precinctHeightExp[it_res] = floorlog2(parameters->prch_init[p]);
+							tccp->precHeightExp[it_res] = floorlog2(parameters->prch_init[p]);
 					}
 					else
 					{
@@ -574,25 +574,25 @@ bool CodeStreamCompress::init(grk_cparameters* parameters, GrkImage* image)
 						size_prcw = parameters->prcw_init[res_spec - 1] >> (p - (res_spec - 1));
 						size_prch = parameters->prch_init[res_spec - 1] >> (p - (res_spec - 1));
 						if(size_prcw < 1)
-							tccp->precinctWidthExp[it_res] = 1;
+							tccp->precWidthExp[it_res] = 1;
 						else
-							tccp->precinctWidthExp[it_res] = floorlog2(size_prcw);
+							tccp->precWidthExp[it_res] = floorlog2(size_prcw);
 						if(size_prch < 1)
-							tccp->precinctHeightExp[it_res] = 1;
+							tccp->precHeightExp[it_res] = 1;
 						else
-							tccp->precinctHeightExp[it_res] = floorlog2(size_prch);
+							tccp->precHeightExp[it_res] = floorlog2(size_prch);
 					}
 					p++;
 					/*printf("\nsize precinct for level %u : %u,%u\n",
-					 * it_res,tccp->precinctWidthExp[it_res], tccp->precinctHeightExp[it_res]); */
+					 * it_res,tccp->precWidthExp[it_res], tccp->precHeightExp[it_res]); */
 				} /*end for*/
 			}
 			else
 			{
 				for(uint32_t j = 0; j < tccp->numresolutions; j++)
 				{
-					tccp->precinctWidthExp[j] = 15;
-					tccp->precinctHeightExp[j] = 15;
+					tccp->precWidthExp[j] = 15;
+					tccp->precHeightExp[j] = 15;
 				}
 			}
 		}
@@ -1541,9 +1541,9 @@ bool CodeStreamCompress::compare_SPCod_SPCoc(uint32_t first_comp_no, uint32_t se
 		return false;
 	for(uint32_t i = 0U; i < tccp0->numresolutions; ++i)
 	{
-		if(tccp0->precinctWidthExp[i] != tccp1->precinctWidthExp[i])
+		if(tccp0->precWidthExp[i] != tccp1->precWidthExp[i])
 			return false;
-		if(tccp0->precinctHeightExp[i] != tccp1->precinctHeightExp[i])
+		if(tccp0->precHeightExp[i] != tccp1->precHeightExp[i])
 			return false;
 	}
 
@@ -1579,7 +1579,7 @@ bool CodeStreamCompress::write_SPCod_SPCoc(uint32_t comp_no)
 		{
 			/* SPcoc (I_i) */
 			if(!stream_->writeByte(
-				   (uint8_t)(tccp->precinctWidthExp[i] + (tccp->precinctHeightExp[i] << 4))))
+				   (uint8_t)(tccp->precWidthExp[i] + (tccp->precHeightExp[i] << 4))))
 			{
 				return false;
 			}
