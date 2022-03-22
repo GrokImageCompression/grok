@@ -85,13 +85,16 @@ bool T2Decompress::processPacket(TileCodingParams* tcp, PacketIter* pi, SparseBu
 			auto prec =
 				band->generatePrecinctBounds(pi->getPrecinctIndex(), res->precinctPartitionTopLeft,
 											 res->precinctExpn, res->precinctGridWidth);
-			if(paddedBandWindow->non_empty_intersection(&prec))
+			if(paddedBandWindow->nonEmptyIntersection(&prec))
 			{
 				skip = false;
 #ifdef DEBUG_PACKET_ITERATOR
 				GRK_INFO("");
-				GRK_INFO("Overlap detected with band %d",bandIndex);
+				GRK_INFO("Overlap detected with band %d =>",bandIndex);
 				paddedBandWindow->print();
+				GRK_INFO("Precinct bounds =>");
+				prec.print();
+				GRK_INFO("");
 				pi->printDynamicState();
 #endif
 				break;

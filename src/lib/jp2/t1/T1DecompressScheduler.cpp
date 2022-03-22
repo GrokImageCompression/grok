@@ -40,12 +40,12 @@ bool T1DecompressScheduler::prepareScheduleDecompress(TileComponent* tilec,
 				tilec->getBuffer()->getBandWindowPadded(resno, band->orientation);
 			for(auto precinct : band->precincts)
 			{
-				if(!wholeTileDecoding && !paddedBandWindow->non_empty_intersection(precinct))
+				if(!wholeTileDecoding && !paddedBandWindow->nonEmptyIntersection(precinct))
 					continue;
 				for(uint64_t cblkno = 0; cblkno < precinct->getNumCblks(); ++cblkno)
 				{
 					auto cblkBounds = precinct->getCodeBlockBounds(cblkno);
-					if(wholeTileDecoding || paddedBandWindow->non_empty_intersection(&cblkBounds))
+					if(wholeTileDecoding || paddedBandWindow->nonEmptyIntersection(&cblkBounds))
 					{
 						auto cblk = precinct->getDecompressedBlockPtr(cblkno);
 						auto block = new DecompressBlockExec();

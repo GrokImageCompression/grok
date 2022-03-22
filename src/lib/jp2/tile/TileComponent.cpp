@@ -188,7 +188,7 @@ bool TileComponent::init(bool isCompressor, bool whole_tile, grkRectU32 unreduce
 bool TileComponent::subbandIntersectsAOI(uint8_t resno, eBandOrientation orient,
 										 const grkRectU32* aoi) const
 {
-	return buf->getBandWindowPadded(resno, orient)->non_empty_intersection(aoi);
+	return buf->getBandWindowPadded(resno, orient)->nonEmptyIntersection(aoi);
 }
 bool TileComponent::allocSparseCanvas(uint32_t numres, bool truncatedTile)
 {

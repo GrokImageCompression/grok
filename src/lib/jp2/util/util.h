@@ -208,7 +208,7 @@ struct grkRect
 		return grkRect<T>(std::max<T>(x0, rhs->x0), std::max<T>(y0, rhs->y0),
 						  std::min<T>(x1, rhs->x1), std::min<T>(y1, rhs->y1));
 	}
-	inline bool non_empty_intersection(const grkRect<T>* rhs) const
+	inline bool nonEmptyIntersection(const grkRect<T>* rhs) const
 	{
 		return std::max<T>(x0, rhs->x0) < std::min<T>(x1, rhs->x1) &&
 			   std::max<T>(y0, rhs->y0) < std::min<T>(y1, rhs->y1);
