@@ -57,8 +57,8 @@ void ResPrecinctInfo::init(	uint8_t decompLevel, grkRectU32 tileBounds, uint32_t
 	{
 		auto window = tileWindow;
 		auto resWindow = window.scaleDownCeil(resDivisor,resDivisor);
-		// pad resolution window
-		resWindow.grow(10).clip(&res);
+		// pad resolution window to next precinct
+		resWindow.grow(1<<precWidthExp, 1<<precHeightExp).clip(&res);
 		winPrecGrid = resWindow.scaleDown(1<<precWidthExp, 1<<precHeightExp);
 		winPrecCanvas = winPrecGrid.scale((uint32_t)precWidthCanvas,(uint32_t)precHeightCanvas);
 	}

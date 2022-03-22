@@ -19,7 +19,7 @@
  *
  */
 #include "grk_includes.h"
-#define DEBUG_PACKET_ITERATOR
+//#define DEBUG_PACKET_ITERATOR
 
 namespace grk
 {
