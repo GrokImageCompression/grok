@@ -56,7 +56,7 @@ void ResPrecinctInfo::init(	uint8_t decompLevel, grkRectU32 tileBounds, uint32_t
 	if(windowed)
 	{
 		auto window = tileWindow;
-		auto resWindow = window.scaleDown(resDivisor,resDivisor);
+		auto resWindow = window.scaleDownCeil(resDivisor,resDivisor);
 		// pad resolution window
 		resWindow.grow(10).clip(&res);
 		winPrecGrid = resWindow.scaleDown(1<<precWidthExp, 1<<precHeightExp);
@@ -102,6 +102,24 @@ PacketIter::~PacketIter()
 		delete[] comps;
 	}
 	delete[] precinctInfo_;
+}
+void PacketIter::printStaticState(void){
+	if (precinctInfo_){
+		GRK_INFO("Packet Iterator Static State");
+		GRK_INFO("progression bounds [C-R-P-L] : [%d %d %d %d] ", prog.compE, prog.resE, prog.precE, prog.layE);
+		for(uint32_t resno = 0; resno < comps->numresolutions; resno++)
+		{
+			auto inf = precinctInfo_ + resno;
+			inf->print();
+		}
+	}
+}
+void PacketIter::printDynamicState(void){
+	if (precinctInfo_){
+		GRK_INFO("Packet Iterator Dynamic State");
+		GRK_INFO("progression state [C-R-P-L] : [%d %d (%d,%d) %d] ", compno, resno, x,y, layno);
+		GRK_INFO("precinct index: %" PRIu64 ".", precinctIndex);
+	}
 }
 
 /***

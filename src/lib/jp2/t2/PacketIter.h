@@ -205,19 +205,8 @@ struct PacketIter
 				uint32_t *resolutionPrecinctGrid,
 				uint32_t** precinctByComponent);
 
-	void print(void){
-		if (precinctInfo_){
-			GRK_INFO("Packet Iterator");
-			GRK_INFO("progression bounds [C-R-P-L] : [%d %d %d %d] ", prog.compE, prog.resE, prog.precE, prog.layE);
-			GRK_INFO("progression state [C-R-P-L] : [%d %d (%d,%d) %d] ", compno, resno, x,y, layno);
-			GRK_INFO("precinct index: %" PRIu64 ".", precinctIndex);
-			for(uint32_t resno = 0; resno < comps->numresolutions; resno++)
-			{
-				auto inf = precinctInfo_ + resno;
-				inf->print();
-			}
-		}
-	}
+	void printStaticState(void);
+	void printDynamicState(void);
 
 	/**
 	 Modify the packet iterator for enabling tile part generation

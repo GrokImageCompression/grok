@@ -19,6 +19,7 @@
  *
  */
 #include "grk_includes.h"
+#define DEBUG_PACKET_ITERATOR
 
 namespace grk
 {
@@ -87,9 +88,12 @@ bool T2Decompress::processPacket(TileCodingParams* tcp, PacketIter* pi, SparseBu
 			if(paddedBandWindow->non_empty_intersection(&prec))
 			{
 				skip = false;
-				//GRK_INFO("Overlap detected with band %d",bandIndex);
-				//paddedBandWindow->print();
-				//pi->print();
+#ifdef DEBUG_PACKET_ITERATOR
+				GRK_INFO("");
+				GRK_INFO("Overlap detected with band %d",bandIndex);
+				paddedBandWindow->print();
+				pi->printDynamicState();
+#endif
 				break;
 			}
 		}
@@ -149,6 +153,9 @@ bool T2Decompress::decompressPackets(uint16_t tile_no, SparseBuffer* src,
 			GRK_ERROR("decompressPackets: Unknown progression order");
 			return false;
 		}
+#ifdef DEBUG_PACKET_ITERATOR
+		currPi->printStaticState();
+#endif
 		while(currPi->next(tileProcessor->packetLengthCache.getMarkers() ? src : nullptr))
 		{
 			if(src->getCurrentChunkLength() == 0)
