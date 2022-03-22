@@ -155,6 +155,11 @@ struct IncludeTracker
 
 class PacketManager;
 
+/***
+ * Cache state of a tile component's resolution
+ * relative to the precinct grid in that resolution, and also
+ * projected onto the tile's highest resolution (PRJ)
+ */
 struct ResPrecinctInfo
 {
 	ResPrecinctInfo();
@@ -163,19 +168,19 @@ struct ResPrecinctInfo
 	void print(void);
 	uint32_t precWidthExp;
 	uint32_t precHeightExp;
-	uint32_t resOffsetX0Canvas;
-	uint32_t resOffsetY0Canvas;
-	uint64_t precWidthCanvas;
-	uint64_t precHeightCanvas;
+	uint32_t resOffsetX0PRJ;
+	uint32_t resOffsetY0PRJ;
+	uint64_t precWidthPRJ;
+	uint64_t precHeightPRJ;
 	uint64_t numPrecincts_;
-	uint64_t dxCanvas;
-	uint64_t dyCanvas;
+	uint64_t dxPRJ;
+	uint64_t dyPRJ;
 	uint32_t resInPrecGridX0;
 	uint32_t resInPrecGridY0;
 	uint8_t decompLevel_;
-	grkRectU32 tileBoundsPrecCanvas;
+	grkRectU32 tileBoundsPrecPRJ;
 	grkRectU32 tileBoundsPrecGrid;
-	grkRectU32 winPrecCanvas;
+	grkRectU32 winPrecPRJ;
 	grkRectU32 winPrecGrid;
 	uint64_t innerPrecincts_;
 	uint64_t winPrecinctsLeft_;
