@@ -115,7 +115,7 @@ struct grkRect
 		os << "[" << x0 << "," << y0 << "," << x1 << "," << y1 << "]";
 		return os.str();
 	}
-	bool is_valid(void) const
+	bool isValid(void) const
 	{
 		return x0 <= x1 && y0 <= y1;
 	}

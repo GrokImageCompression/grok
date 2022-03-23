@@ -61,11 +61,11 @@ struct ResWindowBuffer
 	ResWindowBuffer(uint8_t numresolutions, uint8_t resno,
 					grkBuffer2d<T, AllocatorAligned>* resWindowTopLevelREL,
 					Resolution* tileCompAtRes, Resolution* tileCompAtLowerRes,
-					grkRectU32 tileCompWindow, grkRectU32 tileCompWindowUnreduced,
+					grkRectU32 resWindow, grkRectU32 tileCompWindowUnreduced,
 					grkRectU32 tileCompUnreduced, uint32_t FILTER_WIDTH)
 		: allocated_(false), tileCompRes_(tileCompAtRes), tileCompResLower_(tileCompAtLowerRes),
-		  resWindowBufferREL_(new grkBuffer2d<T, AllocatorAligned>(tileCompWindow.width(),
-																   tileCompWindow.height())),
+		  resWindowBufferREL_(new grkBuffer2d<T, AllocatorAligned>(resWindow.width(),
+																   resWindow.height())),
 		  resWindowBufferTopLevelREL_(resWindowTopLevelREL), filterWidth_(FILTER_WIDTH)
 	{
 		for(uint32_t i = 0; i < SPLIT_NUM_ORIENTATIONS; ++i)
@@ -153,7 +153,7 @@ struct ResWindowBuffer
 				// coordinates
 				for(uint32_t i = 0; i < SPLIT_NUM_ORIENTATIONS; ++i)
 					resWindowBufferSplitREL_[i] = new grkBuffer2d<T, AllocatorAligned>(
-						tileCompWindow.width(), tileCompWindow.height() / 2);
+						resWindow.width(), resWindow.height() / 2);
 			}
 		}
 	}
@@ -353,9 +353,9 @@ struct TileComponentWindowBuffer
 			bounds_ = unreducedImageCompWindow.rectceildivpow2(
 				(uint32_t)(numResolutions_ - reducedNumResolutions));
 			bounds_ = bounds_.intersection(tileCompReduced);
-			assert(bounds_.is_valid());
+			assert(bounds_.isValid());
 			unreducedBounds_ = unreducedImageCompWindow.intersection(tileCompUnreduced);
-			assert(unreducedBounds_.is_valid());
+			assert(unreducedBounds_.isValid());
 		}
 		// fill resolutions vector
 		assert(reducedNumResolutions > 0);
@@ -377,12 +377,12 @@ struct TileComponentWindowBuffer
 		for(uint8_t resno = 0; resno < reducedNumResolutions - 1; ++resno)
 		{
 			// resolution window ==  next resolution band window at orientation 0
-			auto resDims = ResWindowBuffer<T>::getBandWindow((uint32_t)(numresolutions - 1 - resno),
+			auto resWindow = ResWindowBuffer<T>::getBandWindow((uint32_t)(numresolutions - 1 - resno),
 															 0, unreducedBounds_);
 			resWindowBufferREL_.push_back(new ResWindowBuffer<T>(
 				numresolutions, resno, useBandWindows() ? nullptr : topLevel->resWindowBufferREL_,
 				tileCompResolution + resno, resno > 0 ? tileCompResolution + resno - 1 : nullptr,
-				resDims, unreducedBounds_, tileCompUnreduced,
+				resWindow, unreducedBounds_, tileCompUnreduced,
 				wholeTileDecompress ? 0 : getFilterPad<uint32_t>(lossless)));
 		}
 		resWindowBufferREL_.push_back(topLevel);

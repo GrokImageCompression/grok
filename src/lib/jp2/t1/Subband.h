@@ -96,7 +96,7 @@ struct Subband : public grkRectU32
 
 		auto bounds = generatePrecinctBounds(precinctIndex, precinctPartitionTopLeft, precinctExpn,
 											 precinctGridWidth);
-		if (!bounds.is_valid()){
+		if (!bounds.isValid()){
 			GRK_ERROR("createPrecinct: invalid precinct bounds.");
 			return nullptr;
 		}

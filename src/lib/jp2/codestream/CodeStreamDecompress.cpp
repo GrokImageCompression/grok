@@ -914,10 +914,10 @@ bool CodeStreamDecompress::findNextTile(TileProcessor* tileProcessor)
 }
 bool CodeStreamDecompress::decompressValidation(void)
 {
-	bool is_valid = true;
-	is_valid &= (decompressorState_.getState() == DECOMPRESS_STATE_NONE);
+	bool isValid = true;
+	isValid &= (decompressorState_.getState() == DECOMPRESS_STATE_NONE);
 
-	return is_valid;
+	return isValid;
 }
 bool CodeStreamDecompress::process_marker(const marker_handler* marker_handler,
 										  uint16_t marker_size)
