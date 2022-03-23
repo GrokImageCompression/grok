@@ -27,21 +27,20 @@
 namespace grk
 {
 template<typename T>
-struct grkPoint
+struct grk_pt
 {
-	grkPoint() : x(0), y(0) {}
-	grkPoint(T _x, T _y) : x(_x), y(_y) {}
+	grk_pt() : x(0), y(0) {}
+	grk_pt(T _x, T _y) : x(_x), y(_y) {}
 	T x;
 	T y;
 };
-using grkpt = grkPoint<uint32_t>;
-using grkpt8 = grkPoint<uint8_t>;
+using grk_pt32 = grk_pt<uint32_t>;
 
 template<typename T>
-struct grkLine
+struct grk_line
 {
-	grkLine() : x0(0), x1(0) {}
-	grkLine(T _x0, T _x1) : x0(_x0), x1(_x1) {}
+	grk_line() : x0(0), x1(0) {}
+	grk_line(T _x0, T _x1) : x0(_x0), x1(_x1) {}
 	T x0;
 	T x1;
 	T length()
@@ -50,11 +49,11 @@ struct grkLine
 		return (T)(x1 - x0);
 	}
 };
-using grkLineU32 = grkLine<uint32_t>;
+using grk_line32 = grk_line<uint32_t>;
 
 template<typename T>
-struct grkRect;
-using grkRectU32 = grkRect<uint32_t>;
+struct grk_rect;
+using grk_rect32 = grk_rect<uint32_t>;
 
 template<typename T>
 T clip(int64_t val)
@@ -92,19 +91,19 @@ T satSub(int64_t lhs, int64_t rhs)
 }
 
 template<typename T>
-struct grkRect
+struct grk_rect
 {
 	T x0, y0, x1, y1;
 
-	grkRect(T x0, T y0, T x1, T y1) : x0(x0), y0(y0), x1(x1), y1(y1) {}
-	grkRect(const grkRect& rhs)
+	grk_rect(T x0, T y0, T x1, T y1) : x0(x0), y0(y0), x1(x1), y1(y1) {}
+	grk_rect(const grk_rect& rhs)
 	{
 		x0 = rhs.x0;
 		y0 = rhs.y0;
 		x1 = rhs.x1;
 		y1 = rhs.y1;
 	}
-	grkRect(void) : x0(0), y0(0), x1(0), y1(0) {}
+	grk_rect(void) : x0(0), y0(0), x1(0), y1(0) {}
 	void print(void) const
 	{
 		GRK_INFO("[%d,%d,%d,%d]",x0,y0,x1,y1);
@@ -123,15 +122,15 @@ struct grkRect
 	{
 		return x0 < x1 && y0 < y1;
 	}
-	bool contains(grkPoint<T> pt)
+	bool contains(grk_pt<T> pt)
 	{
 		return pt.x >= x0 && pt.y >= y0 && pt.x < x1 && pt.y < y1;
 	}
-	grkRect<T>& operator=(const grkRect<T>& rhs)
+	grk_rect<T>& operator=(const grk_rect<T>& rhs)
 	{
 		return operator=(&rhs);
 	}
-	grkRect<T>& operator=(const grkRect<T>* rhs)
+	grk_rect<T>& operator=(const grk_rect<T>* rhs)
 	{
 		assert(rhs);
 		if(rhs && (this != rhs))
@@ -143,82 +142,82 @@ struct grkRect
 		}
 		return *this;
 	}
-	bool operator==(const grkRect<T>& rhs) const
+	bool operator==(const grk_rect<T>& rhs) const
 	{
 		if(this == &rhs)
 			return true;
 		return x0 == rhs.x0 && y0 == rhs.y0 && x1 == rhs.x1 && y1 == rhs.y1;
 	}
-	void set(grkRect<T>* rhs)
+	void set(grk_rect<T>* rhs)
 	{
 		*this = *rhs;
 	}
-	void set(grkRect<T> rhs)
+	void set(grk_rect<T> rhs)
 	{
 		set(&rhs);
 	}
-	grkRect<T> rectceildivpow2(uint32_t power) const
+	grk_rect<T> rectceildivpow2(uint32_t power) const
 	{
-		return grkRect<T>(ceildivpow2(x0, power), ceildivpow2(y0, power), ceildivpow2(x1, power),
+		return grk_rect<T>(ceildivpow2(x0, power), ceildivpow2(y0, power), ceildivpow2(x1, power),
 						  ceildivpow2(y1, power));
 	}
-	grkRect<T> rectceildiv(uint32_t den) const
+	grk_rect<T> rectceildiv(uint32_t den) const
 	{
-		return grkRect<T>(ceildiv(x0, den), ceildiv(y0, den), ceildiv(x1, den), ceildiv(y1, den));
+		return grk_rect<T>(ceildiv(x0, den), ceildiv(y0, den), ceildiv(x1, den), ceildiv(y1, den));
 	}
-	grkRect<T> rectceildiv(uint32_t denx, uint32_t deny) const
+	grk_rect<T> rectceildiv(uint32_t denx, uint32_t deny) const
 	{
-		return grkRect<T>(ceildiv(x0, denx), ceildiv(y0, deny), ceildiv(x1, denx),
+		return grk_rect<T>(ceildiv(x0, denx), ceildiv(y0, deny), ceildiv(x1, denx),
 						  ceildiv(y1, deny));
 	}
-	grkRect<T> scale(uint32_t scalex, uint32_t scaley) const
+	grk_rect<T> scale(uint32_t scalex, uint32_t scaley) const
 	{
-		return grkRect<T>(x0*scalex,y0*scaley,x1*scalex,y1*scaley);
+		return grk_rect<T>(x0*scalex,y0*scaley,x1*scalex,y1*scaley);
 	}
-	grkRect<T> scaleDown(uint64_t divx, uint64_t divy) const
+	grk_rect<T> scaleDown(uint64_t divx, uint64_t divy) const
 	{
-		return grkRect<T>((uint32_t)(x0/divx),
+		return grk_rect<T>((uint32_t)(x0/divx),
 						 (uint32_t)(y0/divy),
 						 ceildiv<uint64_t>(x1, divx),
 						 ceildiv<uint64_t>(y1, divy));
 	}
-	grkRect<T> scaleDownCeil(uint64_t divx, uint64_t divy) const
+	grk_rect<T> scaleDownCeil(uint64_t divx, uint64_t divy) const
 	{
-		return grkRect<T>(ceildiv<uint64_t>(x0, divx),
+		return grk_rect<T>(ceildiv<uint64_t>(x0, divx),
 						 ceildiv<uint64_t>(y0, divy),
 						 ceildiv<uint64_t>(x1, divx),
 						 ceildiv<uint64_t>(y1, divy));
 	}
 
-	grkRect<T> intersection(const grkRect<T> rhs) const
+	grk_rect<T> intersection(const grk_rect<T> rhs) const
 	{
 		return intersection(&rhs);
 	}
-	bool isContainedIn(const grkRect<T> rhs) const
+	bool isContainedIn(const grk_rect<T> rhs) const
 	{
 		return (intersection(&rhs) == *this);
 	}
-	void clip(const grkRect<T>* rhs)
+	void clip(const grk_rect<T>* rhs)
 	{
-		*this = grkRect<T>(std::max<T>(x0, rhs->x0), std::max<T>(y0, rhs->y0),
+		*this = grk_rect<T>(std::max<T>(x0, rhs->x0), std::max<T>(y0, rhs->y0),
 						   std::min<T>(x1, rhs->x1), std::min<T>(y1, rhs->y1));
 	}
-	grkRect<T> intersection(const grkRect<T>* rhs) const
+	grk_rect<T> intersection(const grk_rect<T>* rhs) const
 	{
-		return grkRect<T>(std::max<T>(x0, rhs->x0), std::max<T>(y0, rhs->y0),
+		return grk_rect<T>(std::max<T>(x0, rhs->x0), std::max<T>(y0, rhs->y0),
 						  std::min<T>(x1, rhs->x1), std::min<T>(y1, rhs->y1));
 	}
-	inline bool nonEmptyIntersection(const grkRect<T>* rhs) const
+	inline bool nonEmptyIntersection(const grk_rect<T>* rhs) const
 	{
 		return std::max<T>(x0, rhs->x0) < std::min<T>(x1, rhs->x1) &&
 			   std::max<T>(y0, rhs->y0) < std::min<T>(y1, rhs->y1);
 	}
-	grkRect<T> rectUnion(const grkRect<T>* rhs) const
+	grk_rect<T> rectUnion(const grk_rect<T>* rhs) const
 	{
-		return grkRect<T>(std::min<T>(x0, rhs->x0), std::min<T>(y0, rhs->y0),
+		return grk_rect<T>(std::min<T>(x0, rhs->x0), std::min<T>(y0, rhs->y0),
 						  std::max<T>(x1, rhs->x1), std::max<T>(y1, rhs->y1));
 	}
-	grkRect<T> rectUnion(const grkRect<T>& rhs) const
+	grk_rect<T> rectUnion(const grk_rect<T>& rhs) const
 	{
 		return rectUnion(&rhs);
 	}
@@ -234,15 +233,15 @@ struct grkRect
 	{
 		return y1 - y0;
 	}
-	grkLine<T> dimX()
+	grk_line<T> dimX()
 	{
-		return grkLine<T>(x0, x1);
+		return grk_line<T>(x0, x1);
 	}
-	grkLine<T> dimY()
+	grk_line<T> dimY()
 	{
-		return grkLine<T>(y0, y1);
+		return grk_line<T>(y0, y1);
 	}
-	grkRect<T> pan(int64_t x, int64_t y) const
+	grk_rect<T> pan(int64_t x, int64_t y) const
 	{
 		auto rc = *this;
 		rc.panInplace(x, y);
@@ -255,29 +254,29 @@ struct grkRect
 		x1 = satAdd<T>((int64_t)x1, (int64_t)x);
 		y1 = satAdd<T>((int64_t)y1, (int64_t)y);
 	}
-	grkRect<T>& grow(T boundary)
+	grk_rect<T>& grow(T boundary)
 	{
 		return grow(boundary, boundary, (std::numeric_limits<T>::max)(),
 					(std::numeric_limits<T>::max)());
 	}
-	grkRect<T>& grow(T boundaryx, T boundaryy)
+	grk_rect<T>& grow(T boundaryx, T boundaryy)
 	{
 		return grow(boundaryx, boundaryy, (std::numeric_limits<T>::max)(),
 					(std::numeric_limits<T>::max)());
 	}
-	grkRect<T>& grow(T boundary, T maxX, T maxY)
+	grk_rect<T>& grow(T boundary, T maxX, T maxY)
 	{
 		return grow(boundary, boundary, maxX, maxY);
 	}
-	grkRect<T>& grow(T boundaryx, T boundaryy, T maxX, T maxY)
+	grk_rect<T>& grow(T boundaryx, T boundaryy, T maxX, T maxY)
 	{
-		return grow(boundaryx, boundaryy, grkRect<T>((T)0, (T)0, maxX, maxY));
+		return grow(boundaryx, boundaryy, grk_rect<T>((T)0, (T)0, maxX, maxY));
 	}
-	grkRect<T>& grow(T boundary, grkRect<T> bounds)
+	grk_rect<T>& grow(T boundary, grk_rect<T> bounds)
 	{
 		return grow(boundary, boundary, bounds);
 	}
-	grkRect<T>& grow(T boundaryx, T boundaryy, grkRect<T> bounds)
+	grk_rect<T>& grow(T boundaryx, T boundaryy, grk_rect<T> bounds)
 	{
 		x0 = std::max<T>(satSub<T>(x0, boundaryx), bounds.x0);
 		y0 = std::max<T>(satSub<T>(y0, boundaryy), bounds.y0);
@@ -296,6 +295,6 @@ struct grkRect
 	}
 };
 
-using grkRectU32 = grkRect<uint32_t>;
+using grk_rect32 = grk_rect<uint32_t>;
 
 } // namespace grk

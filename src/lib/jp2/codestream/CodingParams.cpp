@@ -42,10 +42,10 @@ CodingParams::~CodingParams()
 }
 
 // (canvas coordinates)
-grkRectU32 CodingParams::getTileBounds(const GrkImage* p_image, uint32_t tile_x,
+grk_rect32 CodingParams::getTileBounds(const GrkImage* p_image, uint32_t tile_x,
 									   uint32_t tile_y) const
 {
-	grkRectU32 rc;
+	grk_rect32 rc;
 
 	/* find extent of tile */
 	assert(tx0 + (uint64_t)tile_x * t_width < UINT_MAX);

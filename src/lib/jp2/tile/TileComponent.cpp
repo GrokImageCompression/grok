@@ -67,7 +67,7 @@ void TileComponent::deallocBuffers(void)
  * (tile component coordinates take sub-sampling into account).
  *
  */
-bool TileComponent::init(bool isCompressor, bool whole_tile, grkRectU32 unreducedTileComp,
+bool TileComponent::init(bool isCompressor, bool whole_tile, grk_rect32 unreducedTileComp,
 						 uint8_t prec, CodingParams* cp, TileComponentCodingParams* tccp,
 						 grk_plugin_tile* current_plugin_tile)
 {
@@ -94,7 +94,7 @@ bool TileComponent::init(bool isCompressor, bool whole_tile, grkRectU32 unreduce
 		uint32_t precWidthExp = tccp_->precWidthExp[resno];
 		uint32_t precHeightExp = tccp_->precHeightExp[resno];
 		/* p. 64, B.6, ISO/IEC FDIS15444-1 : 2000 (18 august 2000)  */
-		grkRectU32 allPrecinctsBounds;
+		grk_rect32 allPrecinctsBounds;
 		allPrecinctsBounds.x0 = floordivpow2(res->x0, precWidthExp) << precWidthExp;
 		allPrecinctsBounds.y0 = floordivpow2(res->y0, precHeightExp) << precHeightExp;
 		uint64_t temp = (uint64_t)ceildivpow2<uint32_t>(res->x1, precWidthExp)
@@ -186,13 +186,13 @@ bool TileComponent::init(bool isCompressor, bool whole_tile, grkRectU32 unreduce
 	return true;
 }
 bool TileComponent::subbandIntersectsAOI(uint8_t resno, eBandOrientation orient,
-										 const grkRectU32* aoi) const
+										 const grk_rect32* aoi) const
 {
 	return buf->getBandWindowPadded(resno, orient)->nonEmptyIntersection(aoi);
 }
 bool TileComponent::allocSparseCanvas(uint32_t numres, bool truncatedTile)
 {
-	grkRectU32 temp(0, 0, 0, 0);
+	grk_rect32 temp(0, 0, 0, 0);
 	bool first = true;
 
 	// 1. find outside bounds of all relevant code blocks, in relative coordinates
@@ -209,7 +209,7 @@ bool TileComponent::allocSparseCanvas(uint32_t numres, bool truncatedTile)
 					continue;
 				auto cblk_grid = precinct->getCblkGrid();
 				auto cblk_expn = precinct->getCblkExpn();
-				grkRectU32 roi_grid = grkRectU32(
+				grk_rect32 roi_grid = grk_rect32(
 					floordivpow2(roi->x0, cblk_expn.x), floordivpow2(roi->y0, cblk_expn.y),
 					ceildivpow2(roi->x1, cblk_expn.x), ceildivpow2(roi->y1, cblk_expn.y));
 				roi_grid.clip(&cblk_grid);
@@ -240,13 +240,13 @@ bool TileComponent::allocSparseCanvas(uint32_t numres, bool truncatedTile)
 						if(first)
 						{
 							temp =
-								grkRectU32(x, y, x + cblkBounds.width(), y + cblkBounds.height());
+								grk_rect32(x, y, x + cblkBounds.width(), y + cblkBounds.height());
 							first = false;
 						}
 						else
 						{
 							temp = temp.rectUnion(
-								grkRectU32(x, y, x + cblkBounds.width(), y + cblkBounds.height()));
+								grk_rect32(x, y, x + cblkBounds.width(), y + cblkBounds.height()));
 						}
 						cblkno++;
 					}
@@ -273,7 +273,7 @@ bool TileComponent::allocSparseCanvas(uint32_t numres, bool truncatedTile)
 					continue;
 				auto cblk_grid = precinct->getCblkGrid();
 				auto cblk_expn = precinct->getCblkExpn();
-				grkRectU32 roi_grid = grkRectU32(
+				grk_rect32 roi_grid = grk_rect32(
 					floordivpow2(roi->x0, cblk_expn.x), floordivpow2(roi->y0, cblk_expn.y),
 					ceildivpow2(roi->x1, cblk_expn.x), ceildivpow2(roi->y1, cblk_expn.y));
 				roi_grid.clip(&cblk_grid);
@@ -302,7 +302,7 @@ bool TileComponent::allocSparseCanvas(uint32_t numres, bool truncatedTile)
 						}
 
 						if(!sa->alloc(
-							   grkRectU32(x, y, x + cblkBounds.width(), y + cblkBounds.height()),
+							   grk_rect32(x, y, x + cblkBounds.width(), y + cblkBounds.height()),
 							   truncatedTile))
 						{
 							delete sa;
@@ -321,7 +321,7 @@ bool TileComponent::allocSparseCanvas(uint32_t numres, bool truncatedTile)
 
 	return true;
 }
-bool TileComponent::allocWindowBuffer(grkRectU32 unreducedTileCompOrImageCompWindow)
+bool TileComponent::allocWindowBuffer(grk_rect32 unreducedTileCompOrImageCompWindow)
 {
 	deallocBuffers();
 	auto highestNumberOfResolutions = (!is_encoder_) ? numResolutionsToDecompress : numresolutions;
@@ -335,8 +335,8 @@ bool TileComponent::allocWindowBuffer(grkRectU32 unreducedTileCompOrImageCompWin
 		return false;
 	}
 	buf = new TileComponentWindowBuffer<int32_t>(
-		is_encoder_, tccp_->qmfbid == 1, wholeTileDecompress, *(grkRectU32*)maxResolution,
-		*(grkRectU32*)this, unreducedTileCompOrImageCompWindow, tileCompResolution, numresolutions,
+		is_encoder_, tccp_->qmfbid == 1, wholeTileDecompress, *(grk_rect32*)maxResolution,
+		*(grk_rect32*)this, unreducedTileCompOrImageCompWindow, tileCompResolution, numresolutions,
 		highestNumberOfResolutions);
 
 	return true;
@@ -429,7 +429,7 @@ bool TileComponent::postDecompressImpl(int32_t* srcData, DecompressBlockExec* bl
 	else
 	{
 		src.set(
-			grkRectU32(block->x, block->y, block->x + cblk->width(), block->y + cblk->height()));
+			grk_rect32(block->x, block->y, block->x + cblk->width(), block->y + cblk->height()));
 		dest = buf->getCodeBlockDestWindowREL(block->resno, block->bandOrientation);
 	}
 
@@ -447,7 +447,7 @@ bool TileComponent::postDecompressImpl(int32_t* srcData, DecompressBlockExec* bl
 	{
 		if(!sa_->write(
 			   block->resno, BAND_ORIENT_LL,
-			   grkRectU32(block->x, block->y, block->x + cblk->width(), block->y + cblk->height()),
+			   grk_rect32(block->x, block->y, block->x + cblk->width(), block->y + cblk->height()),
 			   srcData, 1, cblk->width(), true))
 		{
 			return false;

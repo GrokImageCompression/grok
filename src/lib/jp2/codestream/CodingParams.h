@@ -242,7 +242,7 @@ struct CodingParams
 {
 	CodingParams();
 	~CodingParams();
-	grkRectU32 getTileBounds(const GrkImage* p_image, uint32_t tile_x, uint32_t tile_y) const;
+	grk_rect32 getTileBounds(const GrkImage* p_image, uint32_t tile_x, uint32_t tile_y) const;
 
 	/** Rsiz*/
 	uint16_t rsiz;

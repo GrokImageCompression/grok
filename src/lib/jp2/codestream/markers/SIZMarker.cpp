@@ -43,7 +43,7 @@ void SIZMarker::subsampleAndReduceHeaderImageComponents(GrkImage* headerImage,
 	x1 = std::min<uint32_t>(satAdd<uint32_t>(x1, p_cp->t_width), headerImage->x1);
 	y1 = std::min<uint32_t>(satAdd<uint32_t>(y1, p_cp->t_height), headerImage->y1);
 
-	auto imageBounds = grkRectU32(x0, y0, x1, y1);
+	auto imageBounds = grk_rect32(x0, y0, x1, y1);
 
 	// 2. sub-sample and apply resolution reduction
 	uint32_t reduce = p_cp->coding_params_.dec_.reduce_;

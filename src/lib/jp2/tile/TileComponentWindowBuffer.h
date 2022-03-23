@@ -61,8 +61,8 @@ struct ResWindowBuffer
 	ResWindowBuffer(uint8_t numresolutions, uint8_t resno,
 					grkBuffer2d<T, AllocatorAligned>* resWindowTopLevelREL,
 					Resolution* tileCompAtRes, Resolution* tileCompAtLowerRes,
-					grkRectU32 resWindow, grkRectU32 tileCompWindowUnreduced,
-					grkRectU32 tileCompUnreduced, uint32_t FILTER_WIDTH)
+					grk_rect32 resWindow, grk_rect32 tileCompWindowUnreduced,
+					grk_rect32 tileCompUnreduced, uint32_t FILTER_WIDTH)
 		: allocated_(false), tileCompRes_(tileCompAtRes), tileCompResLower_(tileCompAtLowerRes),
 		  resWindowBufferREL_(new grkBuffer2d<T, AllocatorAligned>(resWindow.width(),
 																   resWindow.height())),
@@ -95,7 +95,7 @@ struct ResWindowBuffer
 					// todo: should only need padding equal to FILTER_WIDTH, not 2*FILTER_WIDTH
 					auto bandWindow = getBandWindow(numDecomps, orient, tileCompWindowUnreduced,
 													tileCompUnreduced, 2 * FILTER_WIDTH);
-					auto bandFull = orient == BAND_ORIENT_LL ? *((grkRectU32*)tileCompResLower_)
+					auto bandFull = orient == BAND_ORIENT_LL ? *((grk_rect32*)tileCompResLower_)
 															 : tileCompRes_->tileBand[orient - 1];
 					auto bandWindowREL =
 						bandWindow.pan(-(int64_t)bandFull.x0, -(int64_t)bandFull.y0);
@@ -112,20 +112,20 @@ struct ResWindowBuffer
 				resWindowBufferREL_->y1 = (std::max<uint32_t>)(2 * winLow->y1, 2 * winHigh->y1 + 1);
 
 				// todo: shouldn't need to clip
-				auto resBounds = grkRectU32(0, 0, tileCompRes_->width(), tileCompRes_->height());
+				auto resBounds = grk_rect32(0, 0, tileCompRes_->width(), tileCompRes_->height());
 				resWindowBufferREL_->clip(&resBounds);
 
 				// two windows formed by horizontal pass and used as input for vertical pass
-				grkRectU32 splitResWindowREL[SPLIT_NUM_ORIENTATIONS];
+				grk_rect32 splitResWindowREL[SPLIT_NUM_ORIENTATIONS];
 
-				splitResWindowREL[SPLIT_L] = grkRectU32(
+				splitResWindowREL[SPLIT_L] = grk_rect32(
 					resWindowBufferREL_->x0, bandWindowBufferPaddedREL_[BAND_ORIENT_LL]->y0,
 					resWindowBufferREL_->x1, bandWindowBufferPaddedREL_[BAND_ORIENT_LL]->y1);
 
 				resWindowBufferSplitREL_[SPLIT_L] =
 					new grkBuffer2d<T, AllocatorAligned>(&splitResWindowREL[SPLIT_L]);
 
-				splitResWindowREL[SPLIT_H] = grkRectU32(
+				splitResWindowREL[SPLIT_H] = grk_rect32(
 					resWindowBufferREL_->x0,
 					bandWindowBufferPaddedREL_[BAND_ORIENT_LH]->y0 + tileCompResLower_->height(),
 					resWindowBufferREL_->x1,
@@ -264,8 +264,8 @@ struct ResWindowBuffer
 	 * See table F-1 in JPEG 2000 standard
 	 *
 	 */
-	static grkRectU32 getBandWindow(uint32_t numDecomps, uint8_t orientation,
-									grkRectU32 tileCompWindowUnreduced)
+	static grk_rect32 getBandWindow(uint32_t numDecomps, uint8_t orientation,
+									grk_rect32 tileCompWindowUnreduced)
 	{
 		assert(orientation < BAND_NUM_ORIENTATIONS);
 		if(numDecomps == 0)
@@ -284,7 +284,7 @@ struct ResWindowBuffer
 		uint32_t bx0Shift = (1U << (numDecomps - 1)) * bx0;
 		uint32_t by0Shift = (1U << (numDecomps - 1)) * by0;
 
-		return grkRectU32(
+		return grk_rect32(
 			(tcx0 <= bx0Shift) ? 0 : ceildivpow2<uint32_t>(tcx0 - bx0Shift, numDecomps),
 			(tcy0 <= by0Shift) ? 0 : ceildivpow2<uint32_t>(tcy0 - by0Shift, numDecomps),
 			(tcx1 <= bx0Shift) ? 0 : ceildivpow2<uint32_t>(tcx1 - bx0Shift, numDecomps),
@@ -297,9 +297,9 @@ struct ResWindowBuffer
 	 * Note: if numDecomps is zero, then the band window (and there is only one)
 	 * is equal to the unreduced tile component window (with padding)
 	 */
-	static grkRectU32 getBandWindow(uint32_t numDecomps, uint8_t orientation,
-									grkRectU32 unreducedTileCompWindow,
-									grkRectU32 unreducedTileComp, uint32_t padding)
+	static grk_rect32 getBandWindow(uint32_t numDecomps, uint8_t orientation,
+									grk_rect32 unreducedTileCompWindow,
+									grk_rect32 unreducedTileComp, uint32_t padding)
 	{
 		assert(orientation < BAND_NUM_ORIENTATIONS);
 		if(numDecomps == 0)
@@ -325,7 +325,7 @@ struct ResWindowBuffer
 	Resolution* tileCompResLower_; // null for lowest resolution
 
 	std::vector<grkBuffer2d<T, AllocatorAligned>*> bandWindowBufferPaddedREL_;
-	std::vector<grkRectU32> bandWindowPadded_;
+	std::vector<grk_rect32> bandWindowPadded_;
 
 	grkBuffer2d<T, AllocatorAligned>* resWindowBufferSplitREL_[SPLIT_NUM_ORIENTATIONS];
 	grkBuffer2d<T, AllocatorAligned>* resWindowBufferREL_;
@@ -338,8 +338,8 @@ template<typename T>
 struct TileComponentWindowBuffer
 {
 	TileComponentWindowBuffer(bool isCompressor, bool lossless, bool wholeTileDecompress,
-							  grkRectU32 tileCompUnreduced, grkRectU32 tileCompReduced,
-							  grkRectU32 unreducedTileCompOrImageCompWindow,
+							  grk_rect32 tileCompUnreduced, grk_rect32 tileCompReduced,
+							  grk_rect32 unreducedTileCompOrImageCompWindow,
 							  Resolution* tileCompResolution, uint8_t numresolutions,
 							  uint8_t reducedNumResolutions)
 		: unreducedBounds_(tileCompUnreduced), bounds_(tileCompReduced),
@@ -473,7 +473,7 @@ struct TileComponentWindowBuffer
 	 * @param orientation band orientation {0,1,2,3} for {LL,HL,LH,HH} band windows
 	 *
 	 */
-	const grkRectU32* getBandWindowPadded(uint8_t resno, eBandOrientation orientation) const
+	const grk_rect32* getBandWindowPadded(uint8_t resno, eBandOrientation orientation) const
 	{
 		if(resWindowBufferREL_[resno]->bandWindowPadded_.empty())
 			return nullptr;
@@ -525,11 +525,11 @@ struct TileComponentWindowBuffer
 	 * decompress: reduced canvas coordinates of window
 	 * compress: unreduced canvas coordinates of entire tile
 	 */
-	grkRectU32 bounds() const
+	grk_rect32 bounds() const
 	{
 		return bounds_;
 	}
-	grkRectU32 unreducedBounds() const
+	grk_rect32 unreducedBounds() const
 	{
 		return unreducedBounds_;
 	}
@@ -571,8 +571,8 @@ struct TileComponentWindowBuffer
 	/******************************************************/
 	// decompress: unreduced/reduced image component window
 	// compress:  unreduced/reduced tile component
-	grkRectU32 unreducedBounds_;
-	grkRectU32 bounds_;
+	grk_rect32 unreducedBounds_;
+	grk_rect32 bounds_;
 	/******************************************************/
 
 	std::vector<Resolution*> resolution_;

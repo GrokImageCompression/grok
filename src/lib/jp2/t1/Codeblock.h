@@ -104,9 +104,9 @@ struct Codeblock : public grkBuffer2d<int32_t, AllocatorAligned>, public ICachea
 		}
 		return *this;
 	}
-	void setRect(grkRectU32 r)
+	void setRect(grk_rect32 r)
 	{
-		(*(grkRectU32*)this) = r;
+		(*(grk_rect32*)this) = r;
 	}
 	grkBufferU8 compressedStream;
 	uint8_t numbps;

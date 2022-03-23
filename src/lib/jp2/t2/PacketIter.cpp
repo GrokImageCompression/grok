@@ -29,8 +29,8 @@ ResPrecinctInfo::ResPrecinctInfo()
 	  winPrecinctsLeft_(0), winPrecinctsRight_(0), winPrecinctsTop_(0), winPrecinctsBottom_(0),
 	  valid(false)
 {}
-void ResPrecinctInfo::init(	uint8_t decompLevel, grkRectU32 tileBounds, uint32_t compDx, uint32_t compDy,
-						   bool windowed, grkRectU32 tileWindow)
+void ResPrecinctInfo::init(	uint8_t decompLevel, grk_rect32 tileBounds, uint32_t compDx, uint32_t compDy,
+						   bool windowed, grk_rect32 tileWindow)
 {
 	valid = false;
 	uint64_t resDivisor = ((uint64_t)compDx << decompLevel);
@@ -729,7 +729,7 @@ void PacketIter::update_dxy_for_comp(PiComp* comp)
 void PacketIter::init(PacketManager* packetMan,
 						uint32_t pino,
 						TileCodingParams* tcp,
-						grkRectU32 tileBounds,
+						grk_rect32 tileBounds,
 						bool compression,
 						uint8_t max_res,
 						uint64_t max_precincts,

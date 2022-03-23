@@ -55,7 +55,7 @@ constexpr T getHorizontalPassHeight(bool lossless)
 class WaveletReverse
 {
   public:
-	bool decompress(TileProcessor* p_tcd, TileComponent* tilec, uint16_t compno, grkRectU32 window,
+	bool decompress(TileProcessor* p_tcd, TileComponent* tilec, uint16_t compno, grk_rect32 window,
 					uint8_t numres, uint8_t qmfbid);
 };
 

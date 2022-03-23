@@ -41,12 +41,12 @@ enum eBandIndex
 	BAND_NUM_INDICES
 };
 
-struct Subband : public grkRectU32
+struct Subband : public grk_rect32
 {
 	Subband() : orientation(BAND_ORIENT_LL), numPrecincts(0), numbps(0), stepsize(0) {}
 	// note: don't copy precinct array
 	Subband(const Subband& rhs)
-		: grkRectU32(rhs), orientation(rhs.orientation), numPrecincts(0), numbps(rhs.numbps),
+		: grk_rect32(rhs), orientation(rhs.orientation), numPrecincts(0), numbps(rhs.numbps),
 		  stepsize(rhs.stepsize)
 	{}
 	Subband& operator=(const Subband& rhs)
@@ -59,7 +59,7 @@ struct Subband : public grkRectU32
 	}
 	void print()
 	{
-		grkRectU32::print();
+		grk_rect32::print();
 	}
 	bool isEmpty()
 	{
@@ -73,22 +73,22 @@ struct Subband : public grkRectU32
 
 		return precincts[index];
 	}
-	grkRectU32 generatePrecinctBounds(uint64_t precinctIndex, grkpt precinctPartitionTopLeft,
-									  grkpt precinctExpn, uint32_t precinctGridWidth)
+	grk_rect32 generatePrecinctBounds(uint64_t precinctIndex, grk_pt32 precinctPartitionTopLeft,
+									  grk_pt32 precinctExpn, uint32_t precinctGridWidth)
 	{
 		auto precinctTopLeft =
-			grkpt(precinctPartitionTopLeft.x +
+			grk_pt32(precinctPartitionTopLeft.x +
 					  (uint32_t)((precinctIndex % precinctGridWidth) << precinctExpn.x),
 				  precinctPartitionTopLeft.y +
 					  (uint32_t)((precinctIndex / precinctGridWidth) << precinctExpn.y));
-		return grkRectU32(precinctTopLeft.x, precinctTopLeft.y,
+		return grk_rect32(precinctTopLeft.x, precinctTopLeft.y,
 						  precinctTopLeft.x + (1U << precinctExpn.x),
 						  precinctTopLeft.y + (1U << precinctExpn.y))
 			.intersection(this);
 	}
 	Precinct* createPrecinct(bool isCompressor, uint64_t precinctIndex,
-							 grkpt precinctPartitionTopLeft, grkpt precinctExpn,
-							 uint32_t precinctGridWidth, grkpt cblk_expn)
+							 grk_pt32 precinctPartitionTopLeft, grk_pt32 precinctExpn,
+							 uint32_t precinctGridWidth, grk_pt32 cblk_expn)
 	{
 		auto temp = precinctMap.find(precinctIndex);
 		if(temp != precinctMap.end())

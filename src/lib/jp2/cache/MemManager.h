@@ -241,19 +241,19 @@ using grkBufferU8 = grkBuffer<uint8_t, AllocatorVanilla>;
 using grkBufferU8Aligned = grkBuffer<uint8_t, AllocatorAligned>;
 
 template<typename T, template<typename TT> typename A>
-struct grkBuffer2d : protected grkBuffer<T, A>, public grkRectU32
+struct grkBuffer2d : protected grkBuffer<T, A>, public grk_rect32
 {
 	grkBuffer2d(T* buffer, bool ownsData, uint32_t w, uint32_t strd, uint32_t h)
-		: grkBuffer<T, A>(buffer, ownsData), grkRectU32(0, 0, w, h), stride(strd)
+		: grkBuffer<T, A>(buffer, ownsData), grk_rect32(0, 0, w, h), stride(strd)
 	{}
 	grkBuffer2d(uint32_t w, uint32_t strd, uint32_t h) : grkBuffer2d(nullptr, false, w, strd, h) {}
 	grkBuffer2d(uint32_t w, uint32_t h) : grkBuffer2d(w, 0, h) {}
-	explicit grkBuffer2d(const grkRectU32* b)
-		: grkBuffer<T, A>(nullptr, false), grkRectU32(b->x0, b->y0, b->x1, b->y1), stride(0)
+	explicit grkBuffer2d(const grk_rect32* b)
+		: grkBuffer<T, A>(nullptr, false), grk_rect32(b->x0, b->y0, b->x1, b->y1), stride(0)
 	{}
 	grkBuffer2d(void) : grkBuffer2d(nullptr, 0, 0, 0, false) {}
 	explicit grkBuffer2d(const grkBuffer2d& rhs)
-		: grkBuffer<T, A>(rhs), grkRectU32(rhs), stride(rhs.stride)
+		: grkBuffer<T, A>(rhs), grk_rect32(rhs), stride(rhs.stride)
 	{}
 	grkBuffer2d& operator=(const grkBuffer2d& rhs) // copy assignment
 	{
@@ -264,7 +264,7 @@ struct grkBuffer2d : protected grkBuffer<T, A>, public grkRectU32
 		if(this != rhs)
 		{ // self-assignment check expected
 			grkBuffer<T, A>::operator=(rhs);
-			grkRectU32::operator=(rhs);
+			grk_rect32::operator=(rhs);
 			stride = rhs->stride;
 		}
 		return *this;
@@ -318,7 +318,7 @@ struct grkBuffer2d : protected grkBuffer<T, A>, public grkRectU32
 	 * @param win window.
 	 * @return true or false.
 	 */
-	bool isWindowValid(grkRectU32 win)
+	bool isWindowValid(grk_rect32 win)
 	{
 		return !(win.x0 >= x1 || win.x1 <= x0 || win.x1 > x1 || win.y0 >= y1 || win.y1 <= win.y0 ||
 				 win.y1 > y1);
@@ -334,7 +334,7 @@ struct grkBuffer2d : protected grkBuffer<T, A>, public grkRectU32
 	 * @param dest_line_stride spacing (in elements, not in bytes) in y dimension between
 	 * consecutive elements of the user buffer.
 	 */
-	bool read(grkRectU32 window, int32_t* dest, const uint32_t destColStride,
+	bool read(grk_rect32 window, int32_t* dest, const uint32_t destColStride,
 			  const uint32_t destStride)
 	{
 		GRK_UNUSED(dest);
@@ -358,7 +358,7 @@ struct grkBuffer2d : protected grkBuffer<T, A>, public grkRectU32
 	 * @param src_line_stride spacing (in elements, not in bytes) in y dimension between consecutive
 	 * elements of the user buffer.
 	 */
-	bool write(grkRectU32 window, const int32_t* src, const uint32_t srcColStride,
+	bool write(grk_rect32 window, const int32_t* src, const uint32_t srcColStride,
 			   const uint32_t srcStride)
 	{
 		GRK_UNUSED(src);

@@ -346,8 +346,8 @@ struct dwt_data
 	uint32_t dn_full; /* number of elements in high pass band */
 	uint32_t sn_full; /* number of elements in low pass band */
 	uint32_t parity; /* 0 = start on even coord, 1 = start on odd coord */
-	grkLineU32 win_l;
-	grkLineU32 win_h;
+	grk_line32 win_l;
+	grk_line32 win_h;
 	uint8_t resno;
 };
 
@@ -1310,8 +1310,8 @@ static bool decompress_tile_97(TileComponent* GRK_RESTRICT tilec, uint32_t numre
 			continue;
 		horiz.dn_full = rw - horiz.sn_full;
 		horiz.parity = tr->x0 & 1;
-		horiz.win_l = grkLineU32(0, horiz.sn_full);
-		horiz.win_h = grkLineU32(0, horiz.dn_full);
+		horiz.win_l = grk_line32(0, horiz.sn_full);
+		horiz.win_h = grk_line32(0, horiz.dn_full);
 		if(!decompress_h_mt_97(
 			   num_threads, data_size, horiz, vert.sn_full,
 			   // LL
@@ -1344,8 +1344,8 @@ static bool decompress_tile_97(TileComponent* GRK_RESTRICT tilec, uint32_t numre
 			return false;
 		vert.dn_full = rh - vert.sn_full;
 		vert.parity = tr->y0 & 1;
-		vert.win_l = grkLineU32(0, vert.sn_full);
-		vert.win_h = grkLineU32(0, vert.dn_full);
+		vert.win_l = grk_line32(0, vert.sn_full);
+		vert.win_h = grk_line32(0, vert.dn_full);
 		if(!decompress_v_mt_97(
 			   num_threads, data_size, vert, rw, rh,
 			   // lower split window
@@ -1407,7 +1407,7 @@ class PartialInterleaver
 			{
 				ret = sa->read(
 					dwt->resno, BAND_ORIENT_LL,
-					grkRectU32(dwt->win_l.x0, y_offset + i,
+					grk_rect32(dwt->win_l.x0, y_offset + i,
 							   std::min<uint32_t>(dwt->win_l.x1 + FILTER_WIDTH, dwt->sn_full),
 							   y_offset + i + 1),
 					(int32_t*)dwt->memL + i, 2 * h_chunk, 0, true);
@@ -1418,7 +1418,7 @@ class PartialInterleaver
 			{
 				ret = sa->read(
 					dwt->resno, BAND_ORIENT_LL,
-					grkRectU32(dwt->sn_full + dwt->win_h.x0, y_offset + i,
+					grk_rect32(dwt->sn_full + dwt->win_h.x0, y_offset + i,
 							   dwt->sn_full +
 								   std::min<uint32_t>(dwt->win_h.x1 + FILTER_WIDTH, dwt->dn_full),
 							   y_offset + i + 1),
@@ -1444,7 +1444,7 @@ class PartialInterleaver
 		{
 			ret =
 				sa->read(dwt->resno, BAND_ORIENT_LL,
-						 grkRectU32(x_offset, dwt->win_l.x0, x_offset + x_num_elements,
+						 grk_rect32(x_offset, dwt->win_l.x0, x_offset + x_num_elements,
 									std::min<uint32_t>(dwt->win_l.x1 + FILTER_WIDTH, dwt->sn_full)),
 						 (int32_t*)dwt->memL, 1, 2 * v_chunk, true);
 			assert(ret);
@@ -1455,7 +1455,7 @@ class PartialInterleaver
 		{
 			ret = sa->read(
 				dwt->resno, BAND_ORIENT_LL,
-				grkRectU32(x_offset, dwt->sn_full + dwt->win_h.x0, x_offset + x_num_elements,
+				grk_rect32(x_offset, dwt->sn_full + dwt->win_h.x0, x_offset + x_num_elements,
 						   dwt->sn_full +
 							   std::min<uint32_t>(dwt->win_h.x1 + FILTER_WIDTH, dwt->dn_full)),
 				(int32_t*)dwt->memH, 1, 2 * v_chunk, true);
@@ -1898,7 +1898,7 @@ static Params97 makeParams97(dwt_data<vec4f>* dwt, bool isBandL, bool step1)
  */
 template<typename T, uint32_t FILTER_WIDTH, uint32_t VERT_PASS_WIDTH, typename D>
 
-bool decompress_partial_tile(TileComponent* GRK_RESTRICT tilec, uint16_t compno, grkRectU32 bounds,
+bool decompress_partial_tile(TileComponent* GRK_RESTRICT tilec, uint16_t compno, grk_rect32 bounds,
 							 uint8_t numres, ISparseCanvas* sa)
 {
 	bool rc = false;
@@ -1953,18 +1953,18 @@ bool decompress_partial_tile(TileComponent* GRK_RESTRICT tilec, uint16_t compno,
 		vert.parity = fullRes->y0 & 1;
 
 		// 1. set up windows for horizontal and vertical passes
-		grkRectU32 bandWindowRect[BAND_NUM_ORIENTATIONS];
+		grk_rect32 bandWindowRect[BAND_NUM_ORIENTATIONS];
 		bandWindowRect[BAND_ORIENT_LL] =
-			*((grkRectU32*)tilec->getBuffer()->getBandWindowBufferPaddedREL(resno, BAND_ORIENT_LL));
+			*((grk_rect32*)tilec->getBuffer()->getBandWindowBufferPaddedREL(resno, BAND_ORIENT_LL));
 		bandWindowRect[BAND_ORIENT_HL] =
-			*((grkRectU32*)tilec->getBuffer()->getBandWindowBufferPaddedREL(resno, BAND_ORIENT_HL));
+			*((grk_rect32*)tilec->getBuffer()->getBandWindowBufferPaddedREL(resno, BAND_ORIENT_HL));
 		bandWindowRect[BAND_ORIENT_LH] =
-			*((grkRectU32*)tilec->getBuffer()->getBandWindowBufferPaddedREL(resno, BAND_ORIENT_LH));
+			*((grk_rect32*)tilec->getBuffer()->getBandWindowBufferPaddedREL(resno, BAND_ORIENT_LH));
 		bandWindowRect[BAND_ORIENT_HH] =
-			*((grkRectU32*)tilec->getBuffer()->getBandWindowBufferPaddedREL(resno, BAND_ORIENT_HH));
+			*((grk_rect32*)tilec->getBuffer()->getBandWindowBufferPaddedREL(resno, BAND_ORIENT_HH));
 
 		// band windows in band coordinates - needed to pre-allocate sparse blocks
-		grkRectU32 tileBandWindowRect[BAND_NUM_ORIENTATIONS];
+		grk_rect32 tileBandWindowRect[BAND_NUM_ORIENTATIONS];
 		tileBandWindowRect[BAND_ORIENT_LL] = bandWindowRect[BAND_ORIENT_LL];
 		tileBandWindowRect[BAND_ORIENT_HL] =
 			bandWindowRect[BAND_ORIENT_HL].pan(fullRes->tileBand[BAND_INDEX_LH].width(), 0);
@@ -1979,15 +1979,15 @@ bool decompress_partial_tile(TileComponent* GRK_RESTRICT tilec, uint16_t compno,
 			if(!sa->alloc(temp.grow(2 * FILTER_WIDTH, fullRes->width(), fullRes->height()), false))
 				goto cleanup;
 		}
-		auto resWindowRect = *((grkRectU32*)tilec->getBuffer()->getResWindowBufferREL(resno));
+		auto resWindowRect = *((grk_rect32*)tilec->getBuffer()->getResWindowBufferREL(resno));
 		if(!sa->alloc(resWindowRect, false))
 			goto cleanup;
 		// two windows formed by horizontal pass and used as input for vertical pass
-		grkRectU32 splitWindowRect[SPLIT_NUM_ORIENTATIONS];
+		grk_rect32 splitWindowRect[SPLIT_NUM_ORIENTATIONS];
 		splitWindowRect[SPLIT_L] =
-			*((grkRectU32*)tilec->getBuffer()->getResWindowBufferSplitREL(resno, SPLIT_L));
+			*((grk_rect32*)tilec->getBuffer()->getResWindowBufferSplitREL(resno, SPLIT_L));
 		splitWindowRect[SPLIT_H] =
-			*((grkRectU32*)tilec->getBuffer()->getResWindowBufferSplitREL(resno, SPLIT_H));
+			*((grk_rect32*)tilec->getBuffer()->getResWindowBufferSplitREL(resno, SPLIT_H));
 		for(uint32_t k = 0; k < SPLIT_NUM_ORIENTATIONS; ++k)
 		{
 			auto temp = splitWindowRect[k];
@@ -2034,7 +2034,7 @@ bool decompress_partial_tile(TileComponent* GRK_RESTRICT tilec, uint16_t compno,
 				grk_memcheck_all<int32_t>((int32_t*)job->data.mem, len, ss.str());
 #endif
 				if(!sa->write(resno, BAND_ORIENT_LL,
-							  grkRectU32(resWindowRect.x0, j, resWindowRect.x1, j + height),
+							  grk_rect32(resWindowRect.x0, j, resWindowRect.x1, j + height),
 							  (int32_t*)(job->data.mem + (int64_t)resWindowRect.x0 -
 										 2 * (int64_t)job->data.win_l.x0),
 							  HORIZ_PASS_HEIGHT, 1, true))
@@ -2092,7 +2092,7 @@ bool decompress_partial_tile(TileComponent* GRK_RESTRICT tilec, uint16_t compno,
 				grk_memcheck_all<int32_t>((int32_t*)job->data.mem, len, ss.str());
 #endif
 				if(!sa->write(resno, BAND_ORIENT_LL,
-							  grkRectU32(j, resWindowRect.y0, j + width,
+							  grk_rect32(j, resWindowRect.y0, j + width,
 										 resWindowRect.y0 + job->data.win_l.length() +
 											 job->data.win_h.length()),
 							  (int32_t*)(job->data.mem + ((int64_t)resWindowRect.y0 -
@@ -2246,7 +2246,7 @@ cleanup:
 }
 
 bool WaveletReverse::decompress(TileProcessor* p_tcd, TileComponent* tilec, uint16_t compno,
-								grkRectU32 window, uint8_t numres, uint8_t qmfbid)
+								grk_rect32 window, uint8_t numres, uint8_t qmfbid)
 {
 	if(qmfbid == 1)
 	{

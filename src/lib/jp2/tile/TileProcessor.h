@@ -35,7 +35,7 @@ namespace grk
  * if there is a resolution reduction.
  *
  */
-struct Tile : public grkRectU32
+struct Tile : public grk_rect32
 {
 	Tile();
 	explicit Tile(uint16_t numcomps);
@@ -96,7 +96,7 @@ struct TileProcessor
 	void release(GRK_TILE_CACHE_STRATEGY strategy);
 	void setCorruptPacket(void);
 	PacketTracker* getPacketTracker(void);
-	grkRectU32 getUnreducedImageWindow(void);
+	grk_rect32 getUnreducedImageWindow(void);
 	TileCodingParams* getTileCodingParams(void);
 	uint8_t getMaxNumDecompressResolutions(void);
 	IBufferedStream* getStream(void);
@@ -167,7 +167,7 @@ struct TileProcessor
 	bool truncated;
 	GrkImage* image_;
 	bool isCompressor_;
-	grkRectU32 unreducedImageWindow;
+	grk_rect32 unreducedImageWindow;
 	uint32_t preCalculatedTileLen;
 };
 

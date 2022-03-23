@@ -262,7 +262,7 @@ bool GRK_CALLCONV grk_decompress_set_window(grk_codec* codecWrapper, uint32_t st
 	{
 		auto codec = GrkCodec::getImpl(codecWrapper);
 		return codec->decompressor_ ? codec->decompressor_->setDecompressWindow(
-										  grkRectU32(start_x, start_y, end_x, end_y))
+										  grk_rect32(start_x, start_y, end_x, end_y))
 									: false;
 	}
 	return false;

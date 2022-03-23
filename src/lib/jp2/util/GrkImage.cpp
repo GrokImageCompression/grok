@@ -877,10 +877,10 @@ void GrkImage::transferDataFrom(const Tile* tile_src_data)
 	}
 }
 bool GrkImage::generateCompositeBounds(const grk_image_comp* srcComp, uint16_t compno,
-									   grkRectU32* destWin, uint32_t* srcLineOffset)
+									   grk_rect32* destWin, uint32_t* srcLineOffset)
 {
 	auto src =
-		grkRectU32(srcComp->x0, srcComp->y0, srcComp->x0 + srcComp->w, srcComp->y0 + srcComp->h);
+		grk_rect32(srcComp->x0, srcComp->y0, srcComp->x0 + srcComp->w, srcComp->y0 + srcComp->h);
 
 	return generateCompositeBounds(compno, src, srcComp->stride, destWin, srcLineOffset);
 }
@@ -901,7 +901,7 @@ bool GrkImage::compositeInterleaved(const GrkImage* srcImg)
 {
 	auto srcComp = srcImg->comps;
 	auto destComp = comps;
-	grkRectU32 destWin;
+	grk_rect32 destWin;
 	uint32_t srcLineOffset;
 
 	if(!generateCompositeBounds(srcComp, 0, &destWin, &srcLineOffset))
@@ -962,7 +962,7 @@ bool GrkImage::compositePlanar(const GrkImage* srcImg)
 		auto srcComp = srcImg->comps + compno;
 		auto destComp = comps + compno;
 
-		grkRectU32 destWin;
+		grk_rect32 destWin;
 		uint32_t srcLineOffset;
 
 		if(!generateCompositeBounds(srcComp, compno, &destWin, &srcLineOffset))
@@ -997,11 +997,11 @@ bool GrkImage::compositePlanar(const GrkImage* srcImg)
 
 	return true;
 }
-bool GrkImage::generateCompositeBounds(uint16_t compno, grkRectU32 src, uint32_t src_stride,
-									   grkRectU32* destWin, uint32_t* srcLineOffset)
+bool GrkImage::generateCompositeBounds(uint16_t compno, grk_rect32 src, uint32_t src_stride,
+									   grk_rect32* destWin, uint32_t* srcLineOffset)
 {
 	auto destComp = comps + compno;
-	grkRectU32 destCompRect = grkRectU32(destComp->x0, destComp->y0, destComp->x0 + destComp->w,
+	grk_rect32 destCompRect = grk_rect32(destComp->x0, destComp->y0, destComp->x0 + destComp->w,
 										 destComp->y0 + destComp->h);
 	*srcLineOffset = src_stride - src.width();
 	if(destCompRect.x0 < src.x0)

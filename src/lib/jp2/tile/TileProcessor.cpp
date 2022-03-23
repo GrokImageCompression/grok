@@ -175,7 +175,7 @@ bool TileProcessor::init(void)
 	// generate tile bounds from tile grid coordinates
 	uint32_t tile_x = tileIndex_ % cp_->t_grid_width;
 	uint32_t tile_y = tileIndex_ / cp_->t_grid_width;
-	*((grkRectU32*)tile) = cp_->getTileBounds(headerImage, tile_x, tile_y);
+	*((grk_rect32*)tile) = cp_->getTileBounds(headerImage, tile_x, tile_y);
 
 	if(tcp->tccps->numresolutions == 0)
 	{
@@ -190,7 +190,7 @@ bool TileProcessor::init(void)
 		if(imageComp->dx == 0 || imageComp->dy == 0)
 			return false;
 		auto tilec = tile->comps + compno;
-		grkRectU32 unreducedTileComp = grkRectU32(
+		grk_rect32 unreducedTileComp = grk_rect32(
 			ceildiv<uint32_t>(tile->x0, imageComp->dx), ceildiv<uint32_t>(tile->y0, imageComp->dy),
 			ceildiv<uint32_t>(tile->x1, imageComp->dx), ceildiv<uint32_t>(tile->y1, imageComp->dy));
 		if(!tilec->init(isCompressor_, wholeTileDecompress, unreducedTileComp, imageComp->prec, cp_,
@@ -242,14 +242,14 @@ bool TileProcessor::allocWindowBuffers(const GrkImage* outputImage)
 		{
 			// for the compressor, the "window" comprises the full tile component
 			auto tileComp = tile->comps + compno;
-			if(!tileComp->allocWindowBuffer(*((grkRectU32*)tileComp)))
+			if(!tileComp->allocWindowBuffer(*((grk_rect32*)tileComp)))
 				return false;
 		}
 		else
 		{
 			// outputImage equals full image clipped to decode window
-			unreducedImageWindow = grkRectU32(outputImage->x0, outputImage->y0, outputImage->x1, outputImage->y1);
-			grkRectU32 unreducedImageCompWindow =
+			unreducedImageWindow = grk_rect32(outputImage->x0, outputImage->y0, outputImage->x1, outputImage->y1);
+			grk_rect32 unreducedImageCompWindow =
 					unreducedImageWindow.rectceildiv(imageComp->dx, imageComp->dy);
 			if(!(tile->comps + compno)->allocWindowBuffer(unreducedImageCompWindow))
 				return false;
@@ -259,7 +259,7 @@ bool TileProcessor::allocWindowBuffers(const GrkImage* outputImage)
 	return true;
 }
 
-grkRectU32 TileProcessor::getUnreducedImageWindow(void)
+grk_rect32 TileProcessor::getUnreducedImageWindow(void)
 {
 	return unreducedImageWindow;
 }

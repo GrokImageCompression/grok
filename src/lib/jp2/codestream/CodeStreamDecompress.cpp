@@ -238,7 +238,7 @@ bool CodeStreamDecompress::readHeader(grk_header_info* header_info)
 	}
 	return true;
 }
-bool CodeStreamDecompress::setDecompressWindow(grkRectU32 window)
+bool CodeStreamDecompress::setDecompressWindow(grk_rect32 window)
 {
 	auto image = headerImage_;
 	auto compositeImage = getCompositeImage();
@@ -251,7 +251,7 @@ bool CodeStreamDecompress::setDecompressWindow(grkRectU32 window)
 		return false;
 	}
 
-	if(window == grkRectU32(0, 0, 0, 0))
+	if(window == grk_rect32(0, 0, 0, 0))
 	{
 		decompressor->start_tile_x_index_ = 0;
 		decompressor->start_tile_y_index_ = 0;
@@ -396,7 +396,7 @@ bool CodeStreamDecompress::decompressTile(uint16_t tileIndex)
 	uint32_t tile_y = tileIndex / cp_.t_grid_width;
 
 	auto imageBounds =
-		grkRectU32(compositeImage->x0, compositeImage->y0, compositeImage->x1, compositeImage->y1);
+		grk_rect32(compositeImage->x0, compositeImage->y0, compositeImage->x1, compositeImage->y1);
 	auto tileBounds = cp_.getTileBounds(compositeImage, tile_x, tile_y);
 	// crop tile bounds with image bounds
 	auto croppedImageBounds = imageBounds.intersection(tileBounds);

@@ -95,9 +95,9 @@ class GrkImage : public grk_image
 	bool isOpacity(uint16_t compno);
 	bool compositePlanar(const GrkImage* srcImg);
 	bool generateCompositeBounds(const grk_image_comp* srcComp, uint16_t compno,
-								 grkRectU32* destWin, uint32_t* srcLineOffset);
-	bool generateCompositeBounds(uint16_t compno, grkRectU32 src, uint32_t src_stride,
-								 grkRectU32* destWin, uint32_t* srcLineOffset);
+								 grk_rect32* destWin, uint32_t* srcLineOffset);
+	bool generateCompositeBounds(uint16_t compno, grk_rect32 src, uint32_t src_stride,
+								 grk_rect32* destWin, uint32_t* srcLineOffset);
 	bool allComponentsSanityCheck(bool equalPrecision);
 	grk_image* createRGB(uint16_t numcmpts, uint32_t w, uint32_t h, uint8_t prec);
 	void sycc_to_rgb(int32_t offset, int32_t upb, int32_t y, int32_t cb, int32_t cr, int32_t* out_r,

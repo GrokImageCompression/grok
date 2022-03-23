@@ -163,8 +163,8 @@ class PacketManager;
 struct ResPrecinctInfo
 {
 	ResPrecinctInfo();
-	void init(uint8_t levelno, grkRectU32 tileBounds, uint32_t dx, uint32_t dy, bool windowed,
-			  grkRectU32 tileWindow);
+	void init(uint8_t levelno, grk_rect32 tileBounds, uint32_t dx, uint32_t dy, bool windowed,
+			  grk_rect32 tileWindow);
 	void print(void);
 	uint32_t precWidthExp;
 	uint32_t precHeightExp;
@@ -178,10 +178,10 @@ struct ResPrecinctInfo
 	uint32_t resInPrecGridX0;
 	uint32_t resInPrecGridY0;
 	uint8_t decompLevel_;
-	grkRectU32 tileBoundsPrecPRJ;
-	grkRectU32 tileBoundsPrecGrid;
-	grkRectU32 winPrecPRJ;
-	grkRectU32 winPrecGrid;
+	grk_rect32 tileBoundsPrecPRJ;
+	grk_rect32 tileBoundsPrecGrid;
+	grk_rect32 winPrecPRJ;
+	grk_rect32 winPrecGrid;
 	uint64_t innerPrecincts_;
 	uint64_t winPrecinctsLeft_;
 	uint64_t winPrecinctsRight_;
@@ -201,7 +201,7 @@ struct PacketIter
 	void init(PacketManager* packetMan,
 				uint32_t pino,
 				TileCodingParams* tcp,
-				grkRectU32 tileBounds,
+				grk_rect32 tileBounds,
 				bool compression,
 				uint8_t max_res,
 				uint64_t max_precincts,

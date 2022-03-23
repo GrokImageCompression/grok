@@ -46,7 +46,7 @@ class PacketManager
 	uint32_t getNumProgressions(void);
 	TileProcessor* getTileProcessor(void);
 	GrkImage* getImage();
-	grkRectU32 getTileBounds(void);
+	grk_rect32 getTileBounds(void);
 	CodingParams* getCodingParams(void);
 	J2K_T2_MODE getT2Mode(void);
 
@@ -66,7 +66,7 @@ class PacketManager
 	 * tile.
 	 */
 	static void updateCompressTcpProgressions(CodingParams* p_cp, uint16_t num_comps,
-											  uint16_t tileno, grkRectU32 tileBounds,
+											  uint16_t tileno, grk_rect32 tileBounds,
 											  uint64_t max_precincts, uint8_t max_res,
 											  uint32_t dx_min, uint32_t dy_min, bool poc);
 	/**
@@ -88,7 +88,7 @@ class PacketManager
 	 * @param	precinctByComponent	stores log2 precinct grid dimensions by component
 	 */
 	static void getParams(const GrkImage* image, const CodingParams* p_cp, uint16_t tileno,
-						  grkRectU32* tileBounds, uint32_t* dx_min, uint32_t* dy_min,
+						  grk_rect32* tileBounds, uint32_t* dx_min, uint32_t* dy_min,
 						  uint64_t* precincts, uint64_t* max_precincts, uint8_t* max_res,
 						  uint32_t** precinctByComponent);
 	GrkImage* image;
@@ -98,7 +98,7 @@ class PacketManager
 	PacketIter* pi_;
 	J2K_T2_MODE t2Mode;
 	TileProcessor* tileProcessor;
-	grkRectU32 tileBounds_;
+	grk_rect32 tileBounds_;
 };
 
 } // namespace grk

@@ -74,7 +74,7 @@ GrkImage* PacketManager::getImage()
 {
 	return image;
 }
-grkRectU32 PacketManager::getTileBounds(void)
+grk_rect32 PacketManager::getTileBounds(void)
 {
 	return tileBounds_;
 }
@@ -111,7 +111,7 @@ void PacketManager::enableTilePartGeneration(uint32_t pino, bool first_poc_tile_
 	(pi_ + pino)->enableTilePartGeneration(pino, first_poc_tile_part, newTilePartProgressionPosition);
 }
 void PacketManager::getParams(const GrkImage* image, const CodingParams* p_cp, uint16_t tileno,
-							  grkRectU32* tileBounds, uint32_t* dx_min, uint32_t* dy_min,
+							  grk_rect32* tileBounds, uint32_t* dx_min, uint32_t* dy_min,
 							  uint64_t* numPrecinctsPerRes, uint64_t* max_precincts,
 							  uint8_t* max_res, uint32_t** precinctInfoByComponent)
 {
@@ -161,7 +161,7 @@ void PacketManager::getParams(const GrkImage* image, const CodingParams* p_cp, u
 
 			// 2. precinct grid
 			auto resBounds = tileCompBounds.rectceildivpow2(tccp->numresolutions - 1U - resno);
-			auto resBoundsAdjusted = grkRectU32(
+			auto resBoundsAdjusted = grk_rect32(
 				floordivpow2(resBounds.x0, precWidthExp) << precWidthExp,
 				floordivpow2(resBounds.y0, precHeightExp) << precHeightExp,
 				ceildivpow2<uint32_t>(resBounds.x1, precWidthExp) << precWidthExp,
@@ -194,7 +194,7 @@ void PacketManager::getParams(const GrkImage* image, const CodingParams* p_cp, u
 	}
 }
 void PacketManager::updateCompressTcpProgressions(CodingParams* p_cp, uint16_t num_comps,
-												  uint16_t tileno, grkRectU32 tileBounds,
+												  uint16_t tileno, grk_rect32 tileBounds,
 												  uint64_t max_precincts, uint8_t max_res,
 												  uint32_t dx_min, uint32_t dy_min, bool poc)
 {
@@ -229,7 +229,7 @@ void PacketManager::updateCompressParams(const GrkImage* image, CodingParams* p_
 
 	uint8_t max_res;
 	uint64_t max_precincts;
-	grkRectU32 tileBounds;
+	grk_rect32 tileBounds;
 	uint32_t dx_min, dy_min;
 	getParams(image, p_cp, tileno, &tileBounds, &dx_min, &dy_min, nullptr, &max_precincts, &max_res,
 			  nullptr);
