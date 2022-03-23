@@ -71,6 +71,8 @@ struct ResWindowBuffer
 	{
 		for(uint32_t i = 0; i < SPLIT_NUM_ORIENTATIONS; ++i)
 			resWindowBufferSplitREL_[i] = nullptr;
+
+		resWindowPadded_ = resWindow.grow(2 * FILTER_WIDTH).intersection(tileCompAtRes);
 		// windowed decompression
 		if(FILTER_WIDTH)
 		{
@@ -324,6 +326,7 @@ struct ResWindowBuffer
 	Resolution* tileCompRes_; // non-null will trigger creation of band window buffers
 	Resolution* tileCompResLower_; // null for lowest resolution
 
+	grk_rect32 resWindowPadded_;
 	std::vector<grkBuffer2d<T, AllocatorAligned>*> bandWindowBufferPaddedREL_;
 	std::vector<grk_rect32> bandWindowPadded_;
 
@@ -478,6 +481,11 @@ struct TileComponentWindowBuffer
 		if(resWindowBuffers[resno]->bandWindowPadded_.empty())
 			return nullptr;
 		return &resWindowBuffers[resno]->bandWindowPadded_[orientation];
+	}
+
+	const grk_rect32* getResWindowPadded(uint8_t resno) const
+	{
+		return &resWindowBuffers[resno]->resWindowPadded_;
 	}
 	/*
 	 * Get intermediate split window
