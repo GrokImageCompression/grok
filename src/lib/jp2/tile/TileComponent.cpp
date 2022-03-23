@@ -335,8 +335,8 @@ bool TileComponent::allocWindowBuffer(grk_rect32 unreducedTileCompOrImageCompWin
 		return false;
 	}
 	buf = new TileComponentWindowBuffer<int32_t>(
-		is_encoder_, tccp_->qmfbid == 1, wholeTileDecompress, *(grk_rect32*)maxResolution,
-		*(grk_rect32*)this, unreducedTileCompOrImageCompWindow, tileCompResolution, numresolutions,
+		is_encoder_, tccp_->qmfbid == 1, wholeTileDecompress, grk_rect32(maxResolution),
+		grk_rect32(this), unreducedTileCompOrImageCompWindow, tileCompResolution, numresolutions,
 		highestNumberOfResolutions);
 
 	return true;

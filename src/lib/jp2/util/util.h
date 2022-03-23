@@ -96,12 +96,15 @@ struct grk_rect
 	T x0, y0, x1, y1;
 
 	grk_rect(T x0, T y0, T x1, T y1) : x0(x0), y0(y0), x1(x1), y1(y1) {}
-	grk_rect(const grk_rect& rhs)
+	grk_rect(const grk_rect& rhs) : grk_rect(&rhs)
 	{
-		x0 = rhs.x0;
-		y0 = rhs.y0;
-		x1 = rhs.x1;
-		y1 = rhs.y1;
+	}
+	grk_rect(const grk_rect* rhs)
+	{
+		x0 = rhs->x0;
+		y0 = rhs->y0;
+		x1 = rhs->x1;
+		y1 = rhs->y1;
 	}
 	grk_rect(void) : x0(0), y0(0), x1(0), y1(0) {}
 	void print(void) const

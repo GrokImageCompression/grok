@@ -24,10 +24,10 @@ namespace grk
 TileProcessor::TileProcessor(uint16_t tileIndex, CodeStream* codeStream, IBufferedStream* stream,
 							 bool isCompressor, bool isWholeTileDecompress)
 	: first_poc_tile_part_(true), tilePartIndexCounter_(0), pino(0),
-	  headerImage(codeStream->getHeaderImage()), tile(new Tile(headerImage->numcomps)),
+	  headerImage(codeStream->getHeaderImage()),
 	  current_plugin_tile(codeStream->getCurrentPluginTile()),
 	  wholeTileDecompress(isWholeTileDecompress), cp_(codeStream->getCodingParams()),
-	  packetLengthCache(PLCache(cp_)),
+	  packetLengthCache(PLCache(cp_)), tile(new Tile(headerImage->numcomps)),
 	  numProcessedPackets(0), numDecompressedPackets(0), tilePartDataLength(0), tileIndex_(tileIndex),
 	  stream_(stream), corrupt_packet_(false),
 	  newTilePartProgressionPosition(cp_->coding_params_.enc_.newTilePartProgressionPosition),
@@ -110,6 +110,9 @@ uint16_t TileProcessor::getIndex(void) const
 void TileProcessor::incrementIndex(void)
 {
 	tileIndex_++;
+}
+Tile* TileProcessor::getTile(void){
+	return tile;
 }
 void TileProcessor::generateImage(GrkImage* src_image, Tile* src_tile)
 {
@@ -242,7 +245,7 @@ bool TileProcessor::allocWindowBuffers(const GrkImage* outputImage)
 		{
 			// for the compressor, the "window" comprises the full tile component
 			auto tileComp = tile->comps + compno;
-			if(!tileComp->allocWindowBuffer(*((grk_rect32*)tileComp)))
+			if(!tileComp->allocWindowBuffer(grk_rect32(tileComp)))
 				return false;
 		}
 		else
@@ -259,9 +262,12 @@ bool TileProcessor::allocWindowBuffers(const GrkImage* outputImage)
 	return true;
 }
 
-grk_rect32 TileProcessor::getUnreducedImageWindow(void)
+grk_rect32 TileProcessor::getUnreducedTileWindow(void)
 {
-	return unreducedImageWindow;
+	auto temp = unreducedImageWindow;
+	temp.clip(tile);
+
+	return temp;
 }
 
 void TileProcessor::deallocBuffers()

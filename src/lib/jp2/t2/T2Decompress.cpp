@@ -68,7 +68,7 @@ bool T2Decompress::processPacket(TileCodingParams* tcp, PacketIter* pi, SparseBu
 	packetInfo->packetLength = 0;
 	packetInfo->parsedData = false;
 #endif
-	auto tilec = tileProcessor->tile->comps + pi->getCompno();
+	auto tilec = tileProcessor->getTile()->comps + pi->getCompno();
 	auto res = tilec->tileCompResolution + pi->getResno();
 	auto skip =
 		pi->getLayno() >= tcp->numLayersToDecompress || pi->getResno() >= tilec->numResolutionsToDecompress;
@@ -217,7 +217,7 @@ bool T2Decompress::decompressPackets(uint16_t tile_no, SparseBuffer* src,
 bool T2Decompress::decompressPacket(TileCodingParams* tcp, const PacketIter* pi,
 									SparseBuffer* srcBuf, PacketInfo* packetInfo, bool skipData)
 {
-	auto tile = tileProcessor->tile;
+	auto tile = tileProcessor->getTile();
 	auto res = tile->comps[pi->getCompno()].tileCompResolution + pi->getResno();
 	bool dataPresent;
 	uint32_t packetDataBytes = 0;
@@ -257,7 +257,7 @@ bool T2Decompress::readPacketHeader(TileCodingParams* p_tcp, const PacketIter* p
 									bool* p_is_data_present, SparseBuffer* srcBuf,
 									uint32_t* dataRead, uint32_t* packetDataBytes)
 {
-	auto tilePtr = tileProcessor->tile;
+	auto tilePtr = tileProcessor->getTile();
 	auto res = tilePtr->comps[p_pi->getCompno()].tileCompResolution + p_pi->getResno();
 	auto p_src_data = srcBuf->getCurrentChunkPtr();
 	size_t available_bytes = srcBuf->getCurrentChunkLength();

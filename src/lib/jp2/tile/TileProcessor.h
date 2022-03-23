@@ -96,7 +96,7 @@ struct TileProcessor
 	void release(GRK_TILE_CACHE_STRATEGY strategy);
 	void setCorruptPacket(void);
 	PacketTracker* getPacketTracker(void);
-	grk_rect32 getUnreducedImageWindow(void);
+	grk_rect32 getUnreducedTileWindow(void);
 	TileCodingParams* getTileCodingParams(void);
 	uint8_t getMaxNumDecompressResolutions(void);
 	IBufferedStream* getStream(void);
@@ -104,6 +104,7 @@ struct TileProcessor
 	bool canPreCalculateTileLen(void);
 	uint16_t getIndex(void) const;
 	void incrementIndex(void);
+	Tile* getTile(void);
 
 	/** Compression Only
 	 *  true for first POC tile part, otherwise false*/
@@ -117,7 +118,6 @@ struct TileProcessor
 	 *  Current packet iterator number */
 	uint32_t pino;
 	GrkImage* headerImage;
-	Tile* tile;
 	grk_plugin_tile* current_plugin_tile;
 	// true if whole tile will be decoded; false if tile window will be decoded
 	bool wholeTileDecompress;
@@ -149,6 +149,7 @@ struct TileProcessor
 	bool pcrdBisectFeasible(uint32_t* p_data_written);
 	void makeLayerFeasible(uint32_t layno, uint16_t thresh, bool finalAttempt);
 
+	Tile* tile;
 	uint64_t numProcessedPackets;
 	uint64_t numDecompressedPackets;
 	// Decompressing Only

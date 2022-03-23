@@ -90,7 +90,7 @@ bool T2Compress::compressPacketSimulate(TileCodingParams* tcp, PacketIter* pi,
 	uint64_t precinctIndex = pi->getPrecinctIndex();
 	uint16_t layno = pi->getLayno();
 	uint64_t nb_blocks;
-	auto tile = tileProcessor->tile;
+	auto tile = tileProcessor->getTile();
 	auto tilec = tile->comps + compno;
 	auto res = tilec->tileCompResolution + resno;
 	uint64_t byteCount = 0;
@@ -343,7 +343,7 @@ bool T2Compress::compressPacket(TileCodingParams* tcp, PacketIter* pi, IBuffered
 	uint32_t resno = pi->getResno();
 	uint64_t precinctIndex = pi->getPrecinctIndex();
 	uint16_t layno = pi->getLayno();
-	auto tile = tileProcessor->tile;
+	auto tile = tileProcessor->getTile();
 	auto tilec = tile->comps + compno;
 	size_t stream_start = stream->tell();
 
