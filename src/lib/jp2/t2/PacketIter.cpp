@@ -33,8 +33,9 @@ void ResPrecinctInfo::init(	uint8_t decompLevel, grk_rect32 tileBounds, uint32_t
 						   bool windowed, grk_rect32 tileWindow)
 {
 	valid = false;
-	uint64_t resDivisor = ((uint64_t)compDx << decompLevel);
-	auto res = tileBounds.scaleDownCeil(resDivisor,resDivisor);
+	uint64_t resDivisorX = ((uint64_t)compDx << decompLevel);
+	uint64_t resDivisorY = ((uint64_t)compDy << decompLevel);
+	auto res = tileBounds.scaleDownCeil(resDivisorX,resDivisorY);
 	if(res.x0 == res.x1 || res.y0 == res.y1)
 		return;
 
@@ -56,7 +57,7 @@ void ResPrecinctInfo::init(	uint8_t decompLevel, grk_rect32 tileBounds, uint32_t
 	if(windowed)
 	{
 		auto window = tileWindow;
-		auto resWindow = window.scaleDownCeil(resDivisor,resDivisor);
+		auto resWindow = window.scaleDownCeil(resDivisorX,resDivisorY);
 		// pad resolution window to next precinct
 		resWindow.grow(1<<precWidthExp, 1<<precHeightExp).clip(&res);
 		winPrecGrid = resWindow.scaleDown(1<<precWidthExp, 1<<precHeightExp);
@@ -877,13 +878,6 @@ bool PacketIter::next_cprl(SparseBuffer* src)
 {
 	if(precinctInfo_)
 		return next_cprlOPT(src);
-	if(compno >= numcomps)
-	{
-		GRK_ERROR("Packet iterator component %d must be strictly less than "
-				  "total number of components %d",
-				  compno, numcomps);
-		return false;
-	}
 	for(; compno < prog.compE; compno++)
 	{
 		auto comp = comps + compno;
@@ -922,14 +916,6 @@ bool PacketIter::next_pcrl(SparseBuffer* src)
 {
 	if(precinctInfo_)
 		return next_pcrlOPT(src);
-
-	if(compno >= numcomps)
-	{
-		GRK_ERROR("Packet iterator component %d must be strictly less than "
-				  "total number of components %d",
-				  compno, numcomps);
-		return false;
-	}
 	for(; y < prog.ty1; y += dy - (y % dy))
 	{
 		for(; x < prog.tx1; x += dx - (x % dx))
@@ -1020,14 +1006,6 @@ bool PacketIter::next_rlcp(SparseBuffer* src)
 {
 	if(precinctInfo_)
 		return next_rlcpOPT(src);
-
-	if(compno >= numcomps)
-	{
-		GRK_ERROR("Packet iterator component %d must be strictly less than "
-				  "total number of components %d",
-				  compno, numcomps);
-		return false;
-	}
 	for(; resno < prog.resE; resno++)
 	{
 		uint64_t precE = 0;
@@ -1400,6 +1378,7 @@ bool PacketIter::next_rpclOPT(SparseBuffer* src)
 				compno = prog.compS;
 			}
 			x = precInfo->tileBoundsPrecPRJ.x0;
+			// skip precincts to the right of window
 			if (!wholeTile && src && precInfo->winPrecinctsRight_){
 				if (!skipPackets(src,precInfo->winPrecinctsRight_))
 						return false;
