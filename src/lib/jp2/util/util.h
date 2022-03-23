@@ -107,7 +107,7 @@ struct grk_rect
 		y1 = rhs->y1;
 	}
 	grk_rect(void) : x0(0), y0(0), x1(0), y1(0) {}
-	void print(void) const
+	virtual void print(void) const
 	{
 		GRK_INFO("[%d,%d,%d,%d]",x0,y0,x1,y1);
 	}

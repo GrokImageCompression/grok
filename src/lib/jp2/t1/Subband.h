@@ -49,6 +49,7 @@ struct Subband : public grk_rect32
 		: grk_rect32(rhs), orientation(rhs.orientation), numPrecincts(0), numbps(rhs.numbps),
 		  stepsize(rhs.stepsize)
 	{}
+	virtual ~Subband() = default;
 	Subband& operator=(const Subband& rhs)
 	{
 		if(this != &rhs)
@@ -57,7 +58,7 @@ struct Subband : public grk_rect32
 		}
 		return *this;
 	}
-	void print()
+	void print() const override
 	{
 		grk_rect32::print();
 	}

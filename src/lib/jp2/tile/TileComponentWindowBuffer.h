@@ -81,11 +81,12 @@ struct ResWindowBuffer
 			bandWindowPadded_ is used for determining which precincts and code blocks overlap
 			the window of interest, in each respective resolution
 			*/
-			for(uint8_t orient = 0; orient < ((resno) > 0 ? BAND_NUM_ORIENTATIONS : 1); orient++)
-				bandWindowPadded_.push_back(getBandWindow(numDecomps, orient,
-														  tileCompWindowUnreduced,
-														  tileCompUnreduced, 2 * FILTER_WIDTH));
-
+			for(uint8_t orient = 0; orient < ((resno) > 0 ? BAND_NUM_ORIENTATIONS : 1); orient++){
+				auto padded = getBandWindow(numDecomps, orient,
+						  tileCompWindowUnreduced,
+						  tileCompUnreduced, 2 * FILTER_WIDTH);
+				bandWindowPadded_.push_back(padded);
+			}
 			if(tileCompResLower_)
 			{
 				assert(resno > 0);

@@ -26,7 +26,7 @@ struct Resolution : public grk_rect32
 		: initialized(false), numTileBandWindows(0), precinctGridWidth(0), precinctGridHeight(0),
 		  current_plugin_tile(nullptr)
 	{}
-	void print()
+	virtual void print() const override
 	{
 		grk_rect32::print();
 		for(uint32_t i = 0; i < numTileBandWindows; ++i)
