@@ -190,7 +190,7 @@ void PacketIter::genPrecinctInfo(void)
 		inf->precHeightExp = res->precHeightExp;
 		inf->init((uint8_t)(comps->numresolutions - 1U - resno), tb, comps->dx, comps->dy,
 				  !isWholeTile(),
-				  packetManager->getTileProcessor()->getUnreducedTileWindow());
+				  packetManager->getTileProcessor()->getUnreducedImageWindow());
 	}
 }
 bool PacketIter::generatePrecinctIndex(void)
@@ -219,7 +219,7 @@ bool PacketIter::generatePrecinctIndex(void)
 		rpInfo.precHeightExp = res->precHeightExp;
 		rpInfo.init((uint8_t)(comp->numresolutions - 1U - resno), packetManager->getTileBounds(),
 					comp->dx, comp->dy, !isWholeTile(),
-					packetManager->getTileProcessor()->getUnreducedTileWindow());
+					packetManager->getTileProcessor()->getUnreducedImageWindow());
 
 		if(!rpInfo.valid)
 			return false;
@@ -939,7 +939,7 @@ bool PacketIter::next_pcrl(SparseBuffer* src)
 			// bottom, right hand corner of the tile window
 			if(singleProgression_)
 			{
-				auto win = packetManager->getTileProcessor()->getUnreducedTileWindow();
+				auto win = packetManager->getTileProcessor()->getUnreducedImageWindow();
 				if(win.non_empty() &&
 				   (y >= win.y1 || (win.y1 > 0 && y == win.y1 - 1 && x >= win.x1)))
 					return false;

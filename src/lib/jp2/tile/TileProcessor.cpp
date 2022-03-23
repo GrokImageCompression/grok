@@ -238,28 +238,30 @@ bool TileProcessor::allocWindowBuffers(const GrkImage* outputImage)
 		auto imageComp = headerImage->comps + compno;
 		if(imageComp->dx == 0 || imageComp->dy == 0)
 			return false;
-		grkRectU32 rct;
 		if(isCompressor_)
 		{
-			rct = *((grkRectU32*)tile);
+			// for the compressor, the "window" comprises the full tile component
+			auto tileComp = tile->comps + compno;
+			if(!tileComp->allocWindowBuffer(*((grkRectU32*)tileComp)))
+				return false;
 		}
 		else
 		{
-			rct = grkRectU32(outputImage->x0, outputImage->y0, outputImage->x1, outputImage->y1);
-			unreducedTileWindow = rct.intersection(tile);
+			// outputImage equals full image clipped to decode window
+			unreducedImageWindow = grkRectU32(outputImage->x0, outputImage->y0, outputImage->x1, outputImage->y1);
+			grkRectU32 unreducedImageCompWindow =
+					unreducedImageWindow.rectceildiv(imageComp->dx, imageComp->dy);
+			if(!(tile->comps + compno)->allocWindowBuffer(unreducedImageCompWindow))
+				return false;
 		}
-		grkRectU32 unreducedTileCompOrImageCompWindow =
-			rct.rectceildiv(imageComp->dx, imageComp->dy);
-		if(!(tile->comps + compno)->allocWindowBuffer(unreducedTileCompOrImageCompWindow))
-			return false;
 	}
 
 	return true;
 }
 
-grkRectU32 TileProcessor::getUnreducedTileWindow(void)
+grkRectU32 TileProcessor::getUnreducedImageWindow(void)
 {
-	return unreducedTileWindow;
+	return unreducedImageWindow;
 }
 
 void TileProcessor::deallocBuffers()

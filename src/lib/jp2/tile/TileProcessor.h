@@ -96,7 +96,7 @@ struct TileProcessor
 	void release(GRK_TILE_CACHE_STRATEGY strategy);
 	void setCorruptPacket(void);
 	PacketTracker* getPacketTracker(void);
-	grkRectU32 getUnreducedTileWindow(void);
+	grkRectU32 getUnreducedImageWindow(void);
 	TileCodingParams* getTileCodingParams(void);
 	uint8_t getMaxNumDecompressResolutions(void);
 	IBufferedStream* getStream(void);
@@ -167,7 +167,7 @@ struct TileProcessor
 	bool truncated;
 	GrkImage* image_;
 	bool isCompressor_;
-	grkRectU32 unreducedTileWindow;
+	grkRectU32 unreducedImageWindow;
 	uint32_t preCalculatedTileLen;
 };
 
