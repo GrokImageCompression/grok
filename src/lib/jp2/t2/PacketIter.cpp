@@ -25,11 +25,11 @@ namespace grk
 ResPrecinctInfo::ResPrecinctInfo()
 	: precWidthExp(0), precHeightExp(0), resOffsetX0PRJ(0), resOffsetY0PRJ(0),
 	  precWidthPRJ(0), precHeightPRJ(0), numPrecincts_(0), dxPRJ(0), dyPRJ(0),
-	  resInPrecGridX0(0), resInPrecGridY0(0), decompLevel_(0),innerPrecincts_(0),
+	  resInPrecGridX0(0), resInPrecGridY0(0), resno_(0), decompLevel_(0),innerPrecincts_(0),
 	  winPrecinctsLeft_(0), winPrecinctsRight_(0), winPrecinctsTop_(0), winPrecinctsBottom_(0),
 	  valid(false)
 {}
-void ResPrecinctInfo::init(	uint8_t decompLevel, grk_rect32 tileBounds, uint32_t compDx, uint32_t compDy,
+void ResPrecinctInfo::init(	uint8_t resno, uint8_t decompLevel, grk_rect32 tileBounds, uint32_t compDx, uint32_t compDy,
 						   bool windowed, grk_rect32 tileWindow)
 {
 	valid = false;
@@ -39,6 +39,7 @@ void ResPrecinctInfo::init(	uint8_t decompLevel, grk_rect32 tileBounds, uint32_t
 	if(res.x0 == res.x1 || res.y0 == res.y1)
 		return;
 
+	resno_ = resno;
 	decompLevel_ = decompLevel;
 	uint32_t canvasPrecShiftX = precWidthExp + decompLevel_;
 	uint32_t canvasPrecShiftY = precHeightExp + decompLevel_;
@@ -70,7 +71,7 @@ void ResPrecinctInfo::init(	uint8_t decompLevel, grk_rect32 tileBounds, uint32_t
 }
 void ResPrecinctInfo::print(void){
 	GRK_INFO("\n");
-	GRK_INFO("RESOLUTION PRECINCT INFO for level %d",decompLevel_);
+	GRK_INFO("RESOLUTION PRECINCT INFO for resolution level %d", resno_);
 	GRK_INFO("precinct exponents: (%d,%d)",precWidthExp,precHeightExp);
 	GRK_INFO("precinct dimensions (projected): (%d,%d)",precWidthPRJ,precHeightPRJ);
 	GRK_INFO("number of precincts: %d",numPrecincts_ );
@@ -189,7 +190,7 @@ void PacketIter::genPrecinctInfo(void)
 		auto res = comps->resolutions + resno;
 		inf->precWidthExp = res->precWidthExp;
 		inf->precHeightExp = res->precHeightExp;
-		inf->init((uint8_t)(comps->numresolutions - 1U - resno), tb, comps->dx, comps->dy,
+		inf->init(resno, (uint8_t)(comps->numresolutions - 1U - resno), tb, comps->dx, comps->dy,
 				  !isWholeTile(),
 				  packetManager->getTileProcessor()->getUnreducedTileWindow());
 	}
@@ -218,7 +219,7 @@ bool PacketIter::generatePrecinctIndex(void)
 		ResPrecinctInfo rpInfo;
 		rpInfo.precWidthExp = res->precWidthExp;
 		rpInfo.precHeightExp = res->precHeightExp;
-		rpInfo.init((uint8_t)(comp->numresolutions - 1U - resno), packetManager->getTileBounds(),
+		rpInfo.init(resno, (uint8_t)(comp->numresolutions - 1U - resno), packetManager->getTileBounds(),
 					comp->dx, comp->dy, !isWholeTile(),
 					packetManager->getTileProcessor()->getUnreducedTileWindow());
 

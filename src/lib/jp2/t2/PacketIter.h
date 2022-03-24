@@ -163,7 +163,7 @@ class PacketManager;
 struct ResPrecinctInfo
 {
 	ResPrecinctInfo();
-	void init(uint8_t levelno, grk_rect32 tileBounds, uint32_t dx, uint32_t dy, bool windowed,
+	void init(uint8_t resno, uint8_t decomplevel, grk_rect32 tileBounds, uint32_t dx, uint32_t dy, bool windowed,
 			  grk_rect32 tileWindow);
 	void print(void);
 	uint32_t precWidthExp;
@@ -177,6 +177,7 @@ struct ResPrecinctInfo
 	uint64_t dyPRJ;
 	uint32_t resInPrecGridX0;
 	uint32_t resInPrecGridY0;
+	uint8_t resno_;
 	uint8_t decompLevel_;
 	grk_rect32 tileBoundsPrecPRJ;
 	grk_rect32 tileBoundsPrecGrid;

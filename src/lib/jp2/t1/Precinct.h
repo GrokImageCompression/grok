@@ -173,7 +173,7 @@ struct Precinct : public grk_rect32
 		: grk_rect32(bounds), precinctIndex(0),
 		  impl(new PrecinctImpl(isCompressor, this, cblk_expn)), cblk_expn_(cblk_expn)
 	{}
-	~Precinct()
+	virtual ~Precinct()
 	{
 		delete impl;
 	}

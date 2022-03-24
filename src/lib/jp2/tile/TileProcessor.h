@@ -39,7 +39,7 @@ struct Tile : public grk_rect32
 {
 	Tile();
 	explicit Tile(uint16_t numcomps);
-	~Tile();
+	virtual ~Tile();
 	uint16_t numcomps_;
 	TileComponent* comps;
 	double distortion;
