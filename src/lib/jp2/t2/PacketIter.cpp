@@ -134,12 +134,12 @@ void PacketIter::printDynamicState(void){
  */
 void PacketIter::genPrecinctInfo(void)
 {
-	if (compression_ || !singleProgression_)
-		return;
-
 	if (precinctInfo_)
 		delete[] precinctInfo_;
 	precinctInfo_ = nullptr;
+
+	if (compression_ || !singleProgression_)
+		return;
 
 	auto tb = packetManager->getTileBounds();
 	// tile origin at (0,0) will simplify computations
@@ -837,20 +837,6 @@ void PacketIter::init(PacketManager* packetMan,
 		}
 	}
 }
-uint64_t PacketIter::genLineCountPCRL(uint64_t yy) const{
-	uint64_t c = 0;
-	auto finalInf = precinctInfo_ + comps->numresolutions - 1;
-	for(uint64_t xx = finalInf->tileBoundsPrecPRJ.x0; xx < finalInf->tileBoundsPrecPRJ.x1; xx += finalInf->precWidthPRJ){
-		for(uint8_t resno = 0; resno < comps->numresolutions; ++resno)
-		{
-			auto inf = precinctInfo_ + resno;
-			if ( (xx & (inf->precWidthPRJ-1)) == 0 && (yy & (inf->precHeightPRJ-1)) == 0)
-			 c++;
-		}
-	}
-
-	return c;
-}
 bool PacketIter::isWholeTile(void){
 	return compression_ || packetManager->getTileProcessor()->wholeTileDecompress;
 }
@@ -1252,17 +1238,6 @@ bool PacketIter::next_pcrlOPT(SparseBuffer* src)
 			// bail out if we reach row of precincts that are out of bound of the window
 			if(y == win->y1)
 				return false;
-/*
-			if (src){
-				if (y < win->y0){
-					auto sk = genLineCountPCRL(y) *  prog.compE * prog.layE;
-					//GRK_INFO("Generated count %d for %d", sk, y);
-					if (!skipPackets(src,sk))
-						return false;
-					continue;
-				}
-			}
-*/
 		}
 		for(; x < precInfo->tileBoundsPrecPRJ.x1; x += dx)
 		{

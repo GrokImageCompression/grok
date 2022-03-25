@@ -279,7 +279,6 @@ private:
 	bool precInfoCheck(ResPrecinctInfo* rpInfo);
 	bool generatePrecinctIndex(void);
 	void update_dxy_for_comp(PiComp* comp);
-	uint64_t genLineCountPCRL(uint64_t yy) const;
 	bool isWholeTile(void);
 
 	/**
