@@ -18,6 +18,12 @@ GrkImage::~GrkImage()
 		grk_object_unref(&meta->obj);
 	grkAlignedFree(interleavedData.data);
 }
+uint32_t GrkImage::width(void) const{
+	return x1 - x0;
+}
+uint32_t GrkImage::height(void) const{
+	return y1 - y0;
+}
 
 void GrkImage::copyComponent(grk_image_comp* src, grk_image_comp* dest)
 {
