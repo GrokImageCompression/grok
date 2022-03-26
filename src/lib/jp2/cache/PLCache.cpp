@@ -55,11 +55,10 @@ bool PLCache::next(PacketInfo** p)
 	{
 		// we don't currently support PLM markers,
 		// so we disable packet length markers if we have both PLT and PLM
-		auto packetLengths = pltMarkers;
-		bool usePlt = packetLengths && (!cp_->plm_markers || (pltMarkers && pltMarkers->isEnabled()));
+		bool usePlt = pltMarkers && !cp_->plm_markers && pltMarkers->isEnabled();
 		if(usePlt)
 		{
-			packetInfo->packetLength = packetLengths->pop();
+			packetInfo->packetLength = pltMarkers->pop();
 			if(packetInfo->packetLength == 0)
 			{
 				GRK_ERROR("PLT marker: missing packet lengths.");
