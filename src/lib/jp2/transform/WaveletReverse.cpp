@@ -1976,11 +1976,11 @@ bool decompress_partial_tile(TileComponent* GRK_RESTRICT tilec, uint16_t compno,
 		for(uint32_t i = 0; i < BAND_NUM_ORIENTATIONS; ++i)
 		{
 			auto temp = tileBandWindowRect[i];
-			if(!sa->alloc(temp.grow(2 * FILTER_WIDTH, fullRes->width(), fullRes->height()), false))
+			if(!sa->alloc(temp.grow(2 * FILTER_WIDTH, fullRes->width(), fullRes->height()), true))
 				goto cleanup;
 		}
 		auto resWindowRect = *((grk_rect32*)tilec->getBuffer()->getResWindowBufferREL(resno));
-		if(!sa->alloc(resWindowRect, false))
+		if(!sa->alloc(resWindowRect, true))
 			goto cleanup;
 		// two windows formed by horizontal pass and used as input for vertical pass
 		grk_rect32 splitWindowRect[SPLIT_NUM_ORIENTATIONS];
@@ -1991,7 +1991,7 @@ bool decompress_partial_tile(TileComponent* GRK_RESTRICT tilec, uint16_t compno,
 		for(uint32_t k = 0; k < SPLIT_NUM_ORIENTATIONS; ++k)
 		{
 			auto temp = splitWindowRect[k];
-			if(!sa->alloc(temp.grow(2 * FILTER_WIDTH, fullRes->width(), fullRes->height()), false))
+			if(!sa->alloc(temp.grow(2 * FILTER_WIDTH, fullRes->width(), fullRes->height()), true))
 				goto cleanup;
 		}
 
