@@ -1212,10 +1212,10 @@ int GrkDecompress::preProcess(grk_plugin_decompress_callback_info* info)
 				allLessThanOne = false;
 		}
 		if (allLessThanOne){
-			info->decompressor_parameters->dw_x0 = (float)(uint32_t)(val[0] * (img->x1 - img->x0));
-			info->decompressor_parameters->dw_y0 = (float)(uint32_t)(val[1] * (img->y1 - img->y0));
-			info->decompressor_parameters->dw_x1 = (float)(uint32_t)(val[2] * (img->x1 - img->x0));
-			info->decompressor_parameters->dw_y1 = (float)(uint32_t)(val[3] * (img->y1 - img->y0));
+			info->decompressor_parameters->dw_x0 = floor(val[0] * (img->x1 - img->x0));
+			info->decompressor_parameters->dw_y0 = floor(val[1] * (img->y1 - img->y0));
+			info->decompressor_parameters->dw_x1 = ceil(val[2] * (img->x1 - img->x0));
+			info->decompressor_parameters->dw_y1 = ceil(val[3] * (img->y1 - img->y0));
 		}
 
 		// do not allow odd top left window coordinates for SYCC
