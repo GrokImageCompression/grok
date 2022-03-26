@@ -256,8 +256,9 @@ bool TileComponent::allocSparseCanvas(uint32_t numres, bool truncatedTile)
 	}
 
 	// 2. create (padded) sparse canvas, in buffer space,
-	temp.grow(5);
-	auto sa = new SparseCanvas<6, 6>(temp);
+	const uint32_t blockSizeExp = 6;
+	temp.grow(2 * (1 << blockSizeExp));
+	auto sa = new SparseCanvas<blockSizeExp, blockSizeExp>(temp);
 
 	// 3. allocate sparse blocks
 	for(uint8_t resno = 0; resno < numres; ++resno)
