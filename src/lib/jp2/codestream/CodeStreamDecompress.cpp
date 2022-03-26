@@ -359,6 +359,7 @@ void CodeStreamDecompress::init(grk_decompress_core_params* parameters)
 
 	cp_.coding_params_.dec_.layer_ = parameters->max_layers;
 	cp_.coding_params_.dec_.reduce_ = parameters->reduce;
+	cp_.coding_params_.dec_.randomAccessFlags_ = parameters->randomAccessFlags_;
 	tileCache_->setStrategy(parameters->tileCacheStrategy);
 
 	serializeBufferCallback = parameters->serialize_buffer_callback;
@@ -836,6 +837,7 @@ bool CodeStreamDecompress::decompressTile()
 										codeStreamInfo->getMainHeaderEnd() + 2))
 			{
 				useTLM = false;
+				GRK_WARN("TLM: invalid marker detected. Disabling TLM");
 				cp_.tlm_markers->invalidate();
 				if(!stream_->seek(currentPosition))
 					return false;

@@ -224,6 +224,9 @@ void GRK_CALLCONV grk_decompress_set_default_params(grk_decompress_core_params* 
 	{
 		memset(parameters, 0, sizeof(grk_decompress_core_params));
 		parameters->tileCacheStrategy = GRK_TILE_CACHE_NONE;
+		parameters->randomAccessFlags_ = 	GRK_RANDOM_ACCESS_TLM |
+											GRK_RANDOM_ACCESS_PLM |
+											GRK_RANDOM_ACCESS_PLT;
 	}
 }
 bool GRK_CALLCONV grk_decompress_init(grk_codec* codecWrapper,

@@ -56,7 +56,7 @@ bool PLCache::next(PacketInfo** p)
 		// we don't currently support PLM markers,
 		// so we disable packet length markers if we have both PLT and PLM
 		auto packetLengths = pltMarkers;
-		bool usePlt = packetLengths && !cp_->plm_markers;
+		bool usePlt = packetLengths && (!cp_->plm_markers || (pltMarkers && pltMarkers->isEnabled()));
 		if(usePlt)
 		{
 			packetInfo->packetLength = packetLengths->pop();

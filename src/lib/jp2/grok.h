@@ -391,6 +391,12 @@ typedef enum GRK_TILE_CACHE_STRATEGY
 	GRK_TILE_CACHE_IMAGE // cache final tile image
 } GRK_TILE_CACHE_STRATEGY;
 
+
+#define	GRK_RANDOM_ACCESS_PLT  1   // use PLT marker if present
+#define	GRK_RANDOM_ACCESS_TLM  2  // use TLM marker if present
+#define	GRK_RANDOM_ACCESS_PLM  4   // use PLM marker if present
+
+
 /**
  * Callback function prototype for logging
  *
@@ -833,6 +839,8 @@ typedef struct _grk_decompress_core_params
 	 */
 	uint16_t max_layers;
 	GRK_TILE_CACHE_STRATEGY tileCacheStrategy;
+
+	uint32_t randomAccessFlags_;
 
 	grk_serialize_pixels_callback serialize_buffer_callback;
 	void* serialize_user_data;

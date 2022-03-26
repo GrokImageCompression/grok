@@ -233,6 +233,8 @@ struct DecodingParams
 	/** if != 0, then only the first "layer" layers are decompressed; if == 0 or not used, all the
 	 * quality layers are decompressed */
 	uint16_t layer_;
+
+	uint32_t randomAccessFlags_;
 };
 
 /**

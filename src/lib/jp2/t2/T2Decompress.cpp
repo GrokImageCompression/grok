@@ -56,7 +56,7 @@ bool T2Decompress::processPacket(TileCodingParams* tcp, PacketIter* pi, SparseBu
 #ifdef DEBUG_PLT
 	static int ct = -1;
 	ct++;
-	bool hasPLT = tileProcessor->packetLengthCache.getMarkers();
+	bool hasPLT = tileProcessor->packetLengthCache.getMarkers() != nullptr;
 #endif
 	// read from PL marker, if available
 	PacketInfo p;
@@ -149,6 +149,9 @@ bool T2Decompress::decompressPackets(uint16_t tile_no, SparseBuffer* src,
 	PacketManager packetManager(false, tileProcessor->headerImage, cp, tile_no, FINAL_PASS,
 								tileProcessor);
 	tileProcessor->packetLengthCache.rewind();
+	auto markers = tileProcessor->packetLengthCache.getMarkers();
+	if (markers && !markers->isEnabled())
+		markers = nullptr;
 	for(uint32_t pino = 0; pino < tcp->getNumProgressions(); ++pino)
 	{
 		auto currPi = packetManager.getPacketIter(pino);
@@ -160,7 +163,7 @@ bool T2Decompress::decompressPackets(uint16_t tile_no, SparseBuffer* src,
 #ifdef DEBUG_PACKET_ITERATOR
 		currPi->printStaticState();
 #endif
-		while(currPi->next(tileProcessor->packetLengthCache.getMarkers() ? src : nullptr))
+		while(currPi->next(markers ? src : nullptr))
 		{
 			if(src->getCurrentChunkLength() == 0)
 			{

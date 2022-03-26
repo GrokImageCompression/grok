@@ -27,7 +27,8 @@ PLMarkerMgr::PLMarkerMgr()
 	  currMarkerIter_(rawMarkers_->end()),
 	  totalBytesWritten_(0), isFinal_(false), stream_(nullptr),
 	  sequential_(false), packetLen_(0),
-	  currMarkerBufIndex_(0), currMarkerBuf_(nullptr)
+	  currMarkerBufIndex_(0), currMarkerBuf_(nullptr),
+	  enabled_(true)
 {}
 // compression
 PLMarkerMgr::PLMarkerMgr(IBufferedStream* strm) : PLMarkerMgr()
@@ -38,6 +39,12 @@ PLMarkerMgr::~PLMarkerMgr()
 {
 	clearMarkers();
 	delete rawMarkers_;
+}
+void PLMarkerMgr::disable(void){
+	enabled_ = false;
+}
+bool PLMarkerMgr::isEnabled(void){
+	return enabled_;
 }
 void PLMarkerMgr::clearMarkers(void){
 	for(auto it = rawMarkers_->begin(); it != rawMarkers_->end(); it++){

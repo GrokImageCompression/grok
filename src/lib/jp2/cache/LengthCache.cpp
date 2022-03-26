@@ -291,7 +291,6 @@ bool TileLengthMarkers::isValid(void)
 }
 void TileLengthMarkers::invalidate(void)
 {
-	GRK_WARN("TLM: invalid marker detected. Disabling TLM");
 	valid_ = false;
 }
 

@@ -31,6 +31,9 @@ struct PLMarkerMgr
 	PLMarkerMgr(void);
 	~PLMarkerMgr(void);
 
+	void disable(void);
+	bool isEnabled(void);
+
 	//////////////////////////////////////////
 	// compress
 	void pushInit(bool isFinal);
@@ -70,6 +73,8 @@ struct PLMarkerMgr
 	uint32_t currMarkerBufIndex_;
 	grkBufferU8 *currMarkerBuf_;
 	///////////////////////////////
+
+	bool enabled_;
 };
 
 } // namespace grk

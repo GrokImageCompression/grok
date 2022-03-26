@@ -458,8 +458,13 @@ bool CodeStreamDecompress::read_plt(uint8_t* headerData, uint16_t header_size)
 	assert(headerData != nullptr);
 	auto tileProcessor = currentProcessor();
 
-	return tileProcessor->packetLengthCache.createMarkers(nullptr)->readPLT(headerData,
+	bool rc =  tileProcessor->packetLengthCache.createMarkers(nullptr)->readPLT(headerData,
 																			header_size);
+	// disable
+	if (rc &&  (cp_.coding_params_.dec_.randomAccessFlags_&GRK_RANDOM_ACCESS_PLT) == 0)
+		tileProcessor->packetLengthCache.getMarkers()->disable();
+
+	return rc;
 }
 /**
  * Reads a PPM marker (Packed packet headers, main header)
@@ -867,7 +872,13 @@ bool CodeStreamDecompress::read_tlm(uint8_t* headerData, uint16_t header_size)
 	if(!cp_.tlm_markers)
 		cp_.tlm_markers = new TileLengthMarkers();
 
-	return cp_.tlm_markers->read(headerData, header_size);
+	bool rc = cp_.tlm_markers->read(headerData, header_size);
+
+	// disable
+	if (rc &&  (cp_.coding_params_.dec_.randomAccessFlags_&GRK_RANDOM_ACCESS_TLM) == 0)
+		cp_.tlm_markers->invalidate();
+
+	return rc;
 }
 bool CodeStreamDecompress::read_SQcd_SQcc(bool fromQCC, uint16_t comp_no, uint8_t* headerData,
 										  uint16_t* header_size)
