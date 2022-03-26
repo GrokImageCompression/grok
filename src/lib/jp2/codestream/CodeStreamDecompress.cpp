@@ -338,11 +338,16 @@ bool CodeStreamDecompress::setDecompressWindow(grk_rect_single window)
 				 	 	 	 	 	 	 	 	 	 	 compositeImage->y0,
 														 compositeImage->x1,
 														 compositeImage->y1);
-		GRK_INFO("decompress window scaled coordinates set to (%f,%f,%f,%f)",
+		GRK_INFO("window scaled coordinates : (%f,%f,%f,%f)",
 															 float(compositeImage->x0 - image->x0)/image->width(),
 															 float(compositeImage->y0 - image->x0)/image->height(),
 															 float(compositeImage->x1 - image->x0)/image->width(),
 															 float(compositeImage->y1 - image->x0)/image->height());
+		GRK_INFO("window scaled coordinates in ROW-COLUMN format : \"{%f,%f},{%f,%f}\"",
+				 	 	 	 	 	 	 	 	 	 	 	 float(compositeImage->y0 - image->x0)/image->height(),
+															 float(compositeImage->x0 - image->x0)/image->width(),
+															 float(compositeImage->y1 - image->x0)/image->height(),
+															 float(compositeImage->x1 - image->x0)/image->width() );
 		GRK_INFO("image canvas coordinates :  (%d,%d,%d,%d)", image->x0,
 				 	 	 	 	 	 	 	 	 	 	  image->y0,
 														  image->x1,
