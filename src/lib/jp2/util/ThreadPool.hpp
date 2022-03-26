@@ -29,42 +29,6 @@
 #pragma GCC diagnostic pop
 #endif
 
-#ifdef _WIN32
-
-class ExecSingleton
-{
-  public:
-	static tf::Executor* instance(uint32_t numthreads)
-	{
-		std::unique_lock<std::mutex> lock(singleton_mutex);
-		if(!singleton)
-		{
-			if(numthreads)
-				singleton = new tf::Executor(numthreads);
-			else
-				singleton = new tf::Executor();
-		}
-
-		return singleton;
-	}
-	static tf::Executor* get()
-	{
-		return instance(0);
-	}
-	static void release()
-	{
-		std::unique_lock<std::mutex> lock(singleton_mutex);
-		delete singleton;
-		singleton = nullptr;
-	}
-
-  private:
-	static tf::Executor* singleton;
-	static std::mutex singleton_mutex;
-};
-
-#else
-
 class ExecSingleton
 {
   public:
@@ -84,5 +48,3 @@ class ExecSingleton
 		// no-op
 	}
 };
-
-#endif
