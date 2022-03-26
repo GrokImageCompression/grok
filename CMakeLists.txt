@@ -127,10 +127,6 @@ CHECK_INCLUDE_FILE("sys/stat.h"     HAVE_SYS_STAT_H)
 CHECK_INCLUDE_FILE("sys/types.h"    HAVE_SYS_TYPES_H)
 CHECK_INCLUDE_FILE("unistd.h"       HAVE_UNISTD_H)
 
-# Enable Large file support
-include(TestLargeFiles)
-GROK_TEST_LARGE_FILES(GROK_HAVE_LARGEFILES)
-
 # Allocating Aligned Memory Blocks
 include(CheckIncludeFiles)
 check_include_files(malloc.h GROK_HAVE_MALLOC_H)
