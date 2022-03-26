@@ -76,6 +76,15 @@ class Executor {
     ~Executor();
 
     /**
+    @brief destructs the executor
+
+    Shutdown calls Executor::wait_for_all to wait for all submitted
+    taskflows to complete and then notifies all worker threads to stop
+    and join these threads.
+    */
+    void shutdown(void);
+
+    /**
     @brief runs a taskflow once
     
     @param taskflow a tf::Taskflow object
@@ -701,17 +710,25 @@ inline Executor::Executor(size_t N) :
 // Destructor
 inline Executor::~Executor() {
   
+  shutdown();
+}
+
+inline void Executor::shutdown() {
+
+  if (_done)
+	  return;
+
   // wait for all topologies to complete
   wait_for_all();
-  
+
   // shut down the scheduler
   _done = true;
 
   _notifier.notify(true);
-  
+
   for(auto& t : _threads){
-    t.join();
-  } 
+	t.join();
+  }
 }
 
 // Function: num_workers

@@ -45,6 +45,6 @@ class ExecSingleton
 	}
 	static void release()
 	{
-		// no-op
+		get()->shutdown();
 	}
 };
