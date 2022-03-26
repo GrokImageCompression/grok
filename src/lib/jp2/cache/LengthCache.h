@@ -149,6 +149,8 @@ struct PacketInfo
 {
 	PacketInfo(void);
 	uint32_t getPacketDataLength(void);
+	// header length only available when packet header is parsed
+	// not available from PL marker
 	uint32_t headerLength;
 	uint32_t packetLength;
 	bool parsedData;

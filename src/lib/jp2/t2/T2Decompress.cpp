@@ -58,6 +58,7 @@ bool T2Decompress::processPacket(TileCodingParams* tcp, PacketIter* pi, SparseBu
 	ct++;
 	bool hasPLT = tileProcessor->packetLengthCache.getMarkers();
 #endif
+	// read from PL marker, if available
 	PacketInfo p;
 	auto packetInfo = &p;
 	if(!tileProcessor->packetLengthCache.next(&packetInfo))
@@ -222,6 +223,7 @@ bool T2Decompress::decompressPacket(TileCodingParams* tcp, const PacketIter* pi,
 	bool dataPresent;
 	uint32_t packetDataBytes = 0;
 	uint32_t packetBytes = 0;
+	// 1. header has already been parsed
 	if(packetInfo->headerLength)
 	{
 		srcBuf->incrementCurrentChunkOffset(packetInfo->headerLength);
@@ -229,13 +231,22 @@ bool T2Decompress::decompressPacket(TileCodingParams* tcp, const PacketIter* pi,
 		dataPresent = packetDataBytes > 0;
 		packetBytes = packetInfo->headerLength + packetDataBytes;
 	}
+	// 2. otherwise parse the header
 	else
 	{
 		if(!readPacketHeader(tcp, pi, &dataPresent, srcBuf, &packetBytes, &packetDataBytes))
 			return false;
 		packetInfo->headerLength = packetBytes;
+		packetBytes += packetDataBytes;
+		// validate PL marker against parsed packet
+		if (packetInfo->packetLength){
+			if (packetInfo->packetLength != packetBytes){
+				GRK_ERROR("Corrupt PL marker reports %d bytes for packet;"
+						" parsed bytes are in fact %d",packetInfo->packetLength,packetBytes);
+				return false;
+			}
+		}
 		packetInfo->packetLength = packetBytes + packetDataBytes;
-		packetBytes = packetInfo->packetLength;
 	}
 	if(dataPresent)
 	{
