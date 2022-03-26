@@ -54,6 +54,7 @@ using grk_line32 = grk_line<uint32_t>;
 template<typename T>
 struct grk_rect;
 using grk_rect32 = grk_rect<uint32_t>;
+using grk_rect_single = grk_rect<float>;
 
 template<typename T>
 T clip(int64_t val)

@@ -92,18 +92,17 @@ std::string convertFileFmtToString(GRK_SUPPORTED_FILE_FMT fmt)
  * separator = ","
  */
 /* -------------------------------------------------------------------------- */
-int parseWindowBounds(char* inArg, uint32_t* dw_x0, uint32_t* dw_y0, uint32_t* dw_x1,
-					  uint32_t* dw_y1)
+bool parseWindowBounds(char* inArg, float* dw_x0, float* dw_y0, float* dw_x1,	float* dw_y1)
 {
 	int it = 0;
-	int values[4];
+	float val[4];
 	char delims[] = ",";
 	char* result = nullptr;
 	result = strtok(inArg, delims);
 
 	while((result != nullptr) && (it < 4))
 	{
-		values[it] = atoi(result);
+		val[it] = (float)atof(result);
 		result = strtok(nullptr, delims);
 		it++;
 	}
@@ -113,30 +112,47 @@ int parseWindowBounds(char* inArg, uint32_t* dw_x0, uint32_t* dw_y0, uint32_t* d
 	{
 		spdlog::warn("Decompress window must be specified by exactly "
 					 "four coordinates. Ignoring specified region.");
-		return EXIT_FAILURE;
+		return false;
 	}
 
 	// don't allow negative values
-	if((values[0] < 0 || values[1] < 0 || values[2] < 0 || values[3] < 0))
+	if((val[0] < 0 || val[1] < 0 || val[2] < 0 || val[3] < 0))
 	{
 		spdlog::warn("Decompress window cannot contain negative "
 					 "values.\n Ignoring specified region ({},{},{},{}).",
-					 values[0], values[1], values[2], values[3]);
-		return EXIT_FAILURE;
+					 val[0], val[1], val[2], val[3]);
+		return false;
 	}
-	if(values[2] <= values[0] || values[3] <= values[1])
+	if(val[2] <= val[0] || val[3] <= val[1])
 	{
 		spdlog::warn("Decompress window must have strictly "
 					 "positive area.\n Ignoring specified window ({},{},{},{}).",
-					 values[0], values[1], values[2], values[3]);
-		return EXIT_FAILURE;
+					 val[0], val[1], val[2], val[3]);
+		return false;
 	}
 
-	*dw_x0 = (uint32_t)values[0];
-	*dw_y0 = (uint32_t)values[1];
-	*dw_x1 = (uint32_t)values[2];
-	*dw_y1 = (uint32_t)values[3];
-	return EXIT_SUCCESS;
+	//sanity check
+	bool allLessThanOne = true;
+	for (uint8_t i = 0; i < 4; ++i){
+		if (val[i] > 1.0f)
+			allLessThanOne = false;
+	}
+	// note: special case of [0,0,1,1] is interpreted as relative coordinates
+	if (!allLessThanOne && (val[0] != 0 || val[1]!= 0 || val[2] != 1 || val[3] != 1)){
+		for (uint8_t i = 0; i < 4; ++i){
+			if (val[i] != (uint32_t)val[i]){
+				spdlog::warn("Decompress window in absolute coordinates must only contain integers."
+						"\n Ignoring specified window ({},{},{},{}).", 	 val[0], val[1], val[2], val[3]);
+			}
+		}
+	}
+
+	*dw_x0 = val[0];
+	*dw_y0 = val[1];
+	*dw_x1 = val[2];
+	*dw_y1 = val[3];
+
+	return true;
 }
 
 bool safe_fclose(FILE* file)

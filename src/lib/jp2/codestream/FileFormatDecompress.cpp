@@ -266,7 +266,7 @@ bool FileFormatDecompress::readHeader(grk_header_info* header_info)
 
 	return true;
 }
-bool FileFormatDecompress::setDecompressWindow(grk_rect32 window)
+bool FileFormatDecompress::setDecompressWindow(grk_rect_single window)
 {
 	return codeStream->setDecompressWindow(window);
 }

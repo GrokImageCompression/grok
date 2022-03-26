@@ -238,7 +238,7 @@ bool CodeStreamDecompress::readHeader(grk_header_info* header_info)
 	}
 	return true;
 }
-bool CodeStreamDecompress::setDecompressWindow(grk_rect32 window)
+bool CodeStreamDecompress::setDecompressWindow(grk_rect_single window)
 {
 	auto image = headerImage_;
 	auto compositeImage = getCompositeImage();
@@ -251,7 +251,7 @@ bool CodeStreamDecompress::setDecompressWindow(grk_rect32 window)
 		return false;
 	}
 
-	if(window == grk_rect32(0, 0, 0, 0))
+	if(window == grk_rect_single(0, 0, 0, 0))
 	{
 		decompressor->start_tile_x_index_ = 0;
 		decompressor->start_tile_y_index_ = 0;
@@ -261,10 +261,10 @@ bool CodeStreamDecompress::setDecompressWindow(grk_rect32 window)
 	else
 	{
 		/* Check if the window provided by the user are correct */
-		uint32_t start_x = window.x0 + image->x0;
-		uint32_t start_y = window.y0 + image->y0;
-		uint32_t end_x = window.x1 + image->x0;
-		uint32_t end_y = window.y1 + image->y0;
+		uint32_t start_x = (uint32_t)window.x0 + image->x0;
+		uint32_t start_y = (uint32_t)window.y0 + image->y0;
+		uint32_t end_x   = (uint32_t)window.x1 + image->x0;
+		uint32_t end_y   = (uint32_t)window.y1 + image->y0;
 		/* Left */
 		if(start_x > image->x1)
 		{
@@ -334,9 +334,14 @@ bool CodeStreamDecompress::setDecompressWindow(grk_rect32 window)
 		if(!compositeImage->subsampleAndReduce(cp_.coding_params_.dec_.reduce_))
 			return false;
 
-		GRK_INFO("Decompress window set to (%d,%d,%d,%d)", compositeImage->x0 - image->x0,
-				 compositeImage->y0 - image->y0, compositeImage->x1 - image->x0,
-				 compositeImage->y1 - image->y0);
+		GRK_INFO("decompress window set to (%d,%d,%d,%d)", compositeImage->x0,
+				 	 	 	 	 	 	 	 	 	 	 compositeImage->y0,
+														 compositeImage->x1,
+														 compositeImage->y1);
+		GRK_INFO("full image dimensions :  (%d,%d,%d,%d)", image->x0,
+				 	 	 	 	 	 	 	 	 	 	  image->y0,
+														  image->x1,
+														  image->y1);
 	}
 	compositeImage->validateColourSpace();
 	compositeImage->postReadHeader(&cp_);

@@ -434,7 +434,7 @@ struct test_cmp_parameters {
   int nr_flag;
   char separator_base[2];
   char separator_test[2];
-  uint32_t region[4];
+  float region[4];
   bool regionSet;
 };
 static GRK_SUPPORTED_FILE_FMT get_decod_format(test_cmp_parameters *param) {
@@ -529,7 +529,7 @@ static int parse_cmdline_cmp(int argc, char **argv,
       separatorList = (char *)separatorArg.getValue().c_str();
     }
     if (regionArg.isSet()) {
-      uint32_t x0 = 0, y0 = 0, x1 = 0, y1 = 0;
+      float x0 = 0, y0 = 0, x1 = 0, y1 = 0;
       if (grk::parseWindowBounds((char *)regionArg.getValue().c_str(), &x0, &y0,
                                  &x1, &y1) == EXIT_SUCCESS) {
         param->region[0] = x0;

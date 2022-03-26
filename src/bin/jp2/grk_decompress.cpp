@@ -666,20 +666,15 @@ int GrkDecompress::parseCommandLine(int argc, char** argv, DecompressInitParams*
 		if(decodeRegionArg.isSet())
 		{
 			size_t size_optarg = (size_t)strlen(decodeRegionArg.getValue().c_str()) + 1U;
-			char* ROI_values = (char*)malloc(size_optarg);
-			if(ROI_values == nullptr)
-			{
-				spdlog::error("Couldn't allocate memory");
-				return 1;
-			}
+			char* ROI_values = new char[size_optarg];
 			ROI_values[0] = '\0';
 			memcpy(ROI_values, decodeRegionArg.getValue().c_str(), size_optarg);
 			/*printf("ROI_values = %s [%d / %d]\n", ROI_values, strlen(ROI_values), size_optarg );
 			 */
-			int rc = parseWindowBounds(ROI_values, &parameters->dw_x0, &parameters->dw_y0,
+			bool rc = parseWindowBounds(ROI_values, &parameters->dw_x0, &parameters->dw_y0,
 									   &parameters->dw_x1, &parameters->dw_y1);
-			free(ROI_values);
-			if(rc)
+			delete[] ROI_values;
+			if(!rc)
 				return 1;
 		}
 
@@ -1205,14 +1200,31 @@ int GrkDecompress::preProcess(grk_plugin_decompress_callback_info* info)
 			goto cleanup;
 		}
 		info->image = grk_decompress_get_composited_image(info->codec);
+		auto img = info->image;
+
+		float val[4] = {info->decompressor_parameters->dw_x0,
+						info->decompressor_parameters->dw_y0,
+						info->decompressor_parameters->dw_x1,
+						info->decompressor_parameters->dw_y1};
+		bool allLessThanOne = true;
+		for (uint8_t i = 0; i < 4; ++i){
+			if (val[i] > 1.0f)
+				allLessThanOne = false;
+		}
+		if (allLessThanOne){
+			info->decompressor_parameters->dw_x0 = (float)(uint32_t)(val[0] * (img->x1 - img->x0));
+			info->decompressor_parameters->dw_y0 = (float)(uint32_t)(val[1] * (img->y1 - img->y0));
+			info->decompressor_parameters->dw_x1 = (float)(uint32_t)(val[2] * (img->x1 - img->x0));
+			info->decompressor_parameters->dw_y1 = (float)(uint32_t)(val[3] * (img->y1 - img->y0));
+		}
 
 		// do not allow odd top left window coordinates for SYCC
 		if(info->image->color_space == GRK_CLRSPC_SYCC)
 		{
 			bool adjustX = (info->decompressor_parameters->dw_x0 != info->full_image_x0) &&
-						   (info->decompressor_parameters->dw_x0 & 1);
+						   ((uint32_t)info->decompressor_parameters->dw_x0 & 1);
 			bool adjustY = (info->decompressor_parameters->dw_y0 != info->full_image_y0) &&
-						   (info->decompressor_parameters->dw_y0 & 1);
+						   ((uint32_t)info->decompressor_parameters->dw_y0 & 1);
 			if(adjustX || adjustY)
 			{
 				spdlog::error(

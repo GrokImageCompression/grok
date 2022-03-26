@@ -1185,7 +1185,7 @@ bool PacketIter::next_cprlOPT(SparseBuffer* src)
 			if (!wholeTile){
 				// windowed decode:
 				// bail out if we reach row of precincts that are out of bound of the window
-				if(y == win->y1)
+				if(y == win->y1 && compno == prog.compE-1)
 					return false;
 			}
 

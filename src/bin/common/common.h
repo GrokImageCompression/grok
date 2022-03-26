@@ -129,8 +129,8 @@ struct grk_img_fol
 };
 
 std::string convertFileFmtToString(GRK_SUPPORTED_FILE_FMT fmt);
-int parseWindowBounds(char* inArg, uint32_t* dw_x0, uint32_t* dw_y0, uint32_t* dw_x1,
-					  uint32_t* dw_y1);
+bool parseWindowBounds(char* inArg, float* dw_x0, float* dw_y0, float* dw_x1,
+		float* dw_y1);
 bool safe_fclose(FILE* fd);
 bool useStdio(std::string filename);
 bool supportedStdioFormat(GRK_SUPPORTED_FILE_FMT format);

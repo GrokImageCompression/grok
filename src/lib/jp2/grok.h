@@ -857,13 +857,13 @@ typedef struct _grk_decompress_params
 	/** output file format*/
 	GRK_SUPPORTED_FILE_FMT cod_format;
 	/** Decompress window left boundary */
-	uint32_t dw_x0;
+	float dw_x0;
 	/** Decompress window right boundary */
-	uint32_t dw_x1;
+	float dw_x1;
 	/** Decompress window up boundary */
-	uint32_t dw_y0;
+	float dw_y0;
 	/** Decompress window bottom boundary */
-	uint32_t dw_y1;
+	float dw_y1;
 	/** tile number of the decompressed tile*/
 	uint16_t tileIndex;
 	bool singleTileDecompress;
@@ -1328,9 +1328,9 @@ GRK_API grk_image* GRK_CALLCONV grk_decompress_get_composited_image(grk_codec* c
  *
  * @return	true			if the area could be set.
  */
-GRK_API bool GRK_CALLCONV grk_decompress_set_window(grk_codec* codec, uint32_t start_x,
-													uint32_t start_y, uint32_t end_x,
-													uint32_t end_y);
+GRK_API bool GRK_CALLCONV grk_decompress_set_window(grk_codec* codec, float start_x,
+													float start_y, float end_x,
+													float end_y);
 
 /**
  * Decompress image from a JPEG 2000 code stream

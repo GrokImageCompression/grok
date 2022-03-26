@@ -34,7 +34,7 @@ class FileFormatDecompress : public FileFormat, public ICodeStreamDecompress
 	GrkImage* getImage(uint16_t tileIndex);
 	GrkImage* getImage(void);
 	void init(grk_decompress_core_params* p_param);
-	bool setDecompressWindow(grk_rect32 window);
+	bool setDecompressWindow(grk_rect_single window);
 	bool decompress(grk_plugin_tile* tile);
 	bool decompressTile(uint16_t tileIndex);
 	bool end(void);

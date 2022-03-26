@@ -255,14 +255,14 @@ bool GRK_CALLCONV grk_decompress_read_header(grk_codec* codecWrapper, grk_header
 	}
 	return false;
 }
-bool GRK_CALLCONV grk_decompress_set_window(grk_codec* codecWrapper, uint32_t start_x,
-											uint32_t start_y, uint32_t end_x, uint32_t end_y)
+bool GRK_CALLCONV grk_decompress_set_window(grk_codec* codecWrapper, float start_x,
+											float start_y, float end_x, float end_y)
 {
 	if(codecWrapper)
 	{
 		auto codec = GrkCodec::getImpl(codecWrapper);
 		return codec->decompressor_ ? codec->decompressor_->setDecompressWindow(
-										  grk_rect32(start_x, start_y, end_x, end_y))
+										  grk_rect_single(start_x, start_y, end_x, end_y))
 									: false;
 	}
 	return false;
