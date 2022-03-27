@@ -94,6 +94,7 @@ T satSub(int64_t lhs, int64_t rhs)
 template<typename T>
 struct grk_rect
 {
+	virtual ~grk_rect() = default;
 	T x0, y0, x1, y1;
 
 	grk_rect(T x0, T y0, T x1, T y1) : x0(x0), y0(y0), x1(x1), y1(y1) {}
