@@ -466,138 +466,109 @@ static int parseCommandLine(int argc, char** argv, CompressInitParams* initParam
 		GrokOutput output;
 		cmd.setOutput(&output);
 
-		TCLAP::ValueArg<std::string> logfileArg("W", "logfile", "Log file", false, "", "string",
-												cmd);
+		TCLAP::ValueArg<std::string> outDirArg("a", "OutDir", "Output directory", false, "",
+											   "string", cmd);
+		TCLAP::ValueArg<uint32_t> rateControlAlgoArg("A", "RateControlAlgorithm",
+													 "Rate control algorithm", false, 0,
+													 "unsigned integer", cmd);
+		TCLAP::ValueArg<std::string> codeBlockDimArg("b", "CodeBlockDim", "Code block dimension",
+													 false, "", "string", cmd);
 
+		TCLAP::ValueArg<std::string> precinctDimArg("c", "PrecinctDims", "Precinct dimensions",
+													false, "", "string", cmd);
+
+		TCLAP::ValueArg<std::string> commentArg("C", "Comment", "Add a comment", false, "",
+												"string", cmd);
+		TCLAP::ValueArg<std::string> imageOffsetArg("d", "ImageOffset",
+													"Image offset in reference grid coordinates",
+													false, "", "string", cmd);
+		TCLAP::ValueArg<std::string> displayResArg("D", "DisplayRes", "Display resolution", false,
+												   "", "string", cmd);
+		TCLAP::ValueArg<uint32_t> repetitionsArg(
+			"e", "Repetitions",
+			"Number of compress repetitions, for either a folder or a single file", false, 0,
+			"unsigned integer", cmd);
+		TCLAP::SwitchArg ephArg("E", "EPH", "Add EPH markers", cmd);
+
+		TCLAP::ValueArg<std::string> rawFormatArg("F", "Raw", "Raw image format parameters", false,
+												  "", "string", cmd);
+		TCLAP::ValueArg<std::string> pluginPathArg("g", "PluginPath", "Plugin path", false, "",
+												   "string", cmd);
+		TCLAP::ValueArg<int32_t> deviceIdArg("G", "DeviceId", "Device ID", false, 0, "integer",
+											 cmd);
+		TCLAP::ValueArg<uint32_t> numThreadsArg("H", "num_threads", "Number of threads", false, 0,
+												"unsigned integer", cmd);
+		TCLAP::ValueArg<std::string> inputFileArg("i", "InputFile", "Input file", false, "",
+												  "string", cmd);
+		TCLAP::SwitchArg irreversibleArg("I", "Irreversible", "Irreversible", cmd);
+		TCLAP::ValueArg<uint32_t> durationArg("J", "Duration", "Duration in seconds", false, 0,
+											  "unsigned integer", cmd);
 		// Kernel build flags:
 		// 1 indicates build binary, otherwise load binary
 		// 2 indicates generate binaries
 		TCLAP::ValueArg<uint32_t> kernelBuildOptionsArg("k", "KernelBuild", "Kernel build options",
 														false, 0, "unsigned integer", cmd);
-
-		TCLAP::ValueArg<uint32_t> repetitionsArg(
-			"e", "Repetitions",
-			"Number of compress repetitions, for either a folder or a single file", false, 0,
-			"unsigned integer", cmd);
-
-		TCLAP::ValueArg<uint16_t> rsizArg("Z", "RSIZ", "RSIZ", false, 0, "unsigned integer", cmd);
-
-		TCLAP::ValueArg<uint32_t> cinema2KArg("w", "cinema2K", "Digital cinema 2K profile", false,
-											  24, "unsigned integer", cmd);
-		TCLAP::ValueArg<uint32_t> cinema4KArg("x", "cinema4K", "Digital cinema 2K profile", false,
-											  24, "unsigned integer", cmd);
-		TCLAP::ValueArg<std::string> IMFArg("z", "IMF", "IMF profile", false, "", "string", cmd);
-		TCLAP::ValueArg<std::string> BroadcastArg("U", "BROADCAST", "Broadcast profile", false, "",
-												  "string", cmd);
-		TCLAP::ValueArg<std::string> imgDirArg("y", "ImgDir", "Image directory", false, "",
-											   "string", cmd);
-		TCLAP::ValueArg<std::string> outDirArg("a", "OutDir", "Output directory", false, "",
-											   "string", cmd);
-
-		TCLAP::ValueArg<std::string> pluginPathArg("g", "PluginPath", "Plugin path", false, "",
-												   "string", cmd);
-		TCLAP::ValueArg<uint32_t> numThreadsArg("H", "num_threads", "Number of threads", false, 0,
-												"unsigned integer", cmd);
-
-		TCLAP::ValueArg<int32_t> deviceIdArg("G", "DeviceId", "Device ID", false, 0, "integer",
-											 cmd);
-
-		TCLAP::ValueArg<std::string> inputFileArg("i", "InputFile", "Input file", false, "",
-												  "string", cmd);
-		TCLAP::ValueArg<std::string> outputFileArg("o", "OutputFile", "Output file", false, "",
-												   "string", cmd);
-
-		TCLAP::ValueArg<std::string> outForArg("O", "OutFor", "Output format", false, "", "string",
-											   cmd);
-
 		TCLAP::ValueArg<std::string> inForArg("K", "InFor", "InputFormat format", false, "",
 											  "string", cmd);
-
-		TCLAP::SwitchArg sopArg("S", "SOP", "Add SOP markers", cmd);
-
-		TCLAP::SwitchArg ephArg("E", "EPH", "Add EPH markers", cmd);
-
-		TCLAP::ValueArg<std::string> pocArg("P", "POC", "Progression order changes", false, "",
-											"string", cmd);
-
-		TCLAP::ValueArg<std::string> roiArg("R", "ROI", "Region of interest", false, "", "string",
-											cmd);
-
-		TCLAP::ValueArg<uint32_t> mctArg("Y", "mct", "Multi component transform", false, 0,
-										 "unsigned integer", cmd);
-
-		TCLAP::ValueArg<std::string> captureResArg("Q", "CaptureRes", "Capture resolution", false,
-												   "", "string", cmd);
-
-		TCLAP::ValueArg<std::string> displayResArg("D", "DisplayRes", "Display resolution", false,
-												   "", "string", cmd);
-
-		TCLAP::ValueArg<std::string> compressionRatiosArg(
-			"r", "CompressionRatios", "Layer rates expressed as compression ratios", false, "",
-			"string", cmd);
-
-		TCLAP::ValueArg<std::string> qualityArg("q", "Quality", "Layer rates expressed as quality",
-												false, "", "string", cmd);
-
-		TCLAP::ValueArg<std::string> rawFormatArg("F", "Raw", "Raw image format parameters", false,
-												  "", "string", cmd);
+		TCLAP::SwitchArg pltArg("L", "PLT", "PLT marker", cmd);
+		TCLAP::ValueArg<std::string> customMCTArg("m", "CustomMCT", "MCT input file", false, "",
+												  "string", cmd);
+		TCLAP::ValueArg<uint32_t> cblkSty("M", "Mode", "Mode", false, 0, "unsigned integer", cmd);
 
 		TCLAP::ValueArg<uint32_t> resolutionArg("n", "Resolutions", "Resolution", false, 0,
 												"unsigned integer", cmd);
-
-		TCLAP::ValueArg<std::string> precinctDimArg("c", "PrecinctDims", "Precinct dimensions",
-													false, "", "string", cmd);
-
-		TCLAP::ValueArg<std::string> codeBlockDimArg("b", "CodeBlockDim", "Code block dimension",
-													 false, "", "string", cmd);
-
+		TCLAP::ValueArg<uint32_t> guardBits("N", "GuardBits", "Number of guard bits", false, 2,
+											"unsigned integer", cmd);
+		TCLAP::ValueArg<std::string> outputFileArg("o", "OutputFile", "Output file", false, "",
+												   "string", cmd);
+		TCLAP::ValueArg<std::string> outForArg("O", "OutFor", "Output format", false, "", "string",
+											   cmd);
 		TCLAP::ValueArg<std::string> progressionOrderArg(
 			"p", "ProgressionOrder", "Progression order", false, "", "string", cmd);
 
+		TCLAP::ValueArg<std::string> pocArg("P", "POC", "Progression order changes", false, "",
+											"string", cmd);
+		TCLAP::ValueArg<std::string> qualityArg("q", "Quality", "Layer rates expressed as quality",
+												false, "", "string", cmd);
+		TCLAP::ValueArg<std::string> captureResArg("Q", "CaptureRes", "Capture resolution", false,
+												   "", "string", cmd);
+		TCLAP::ValueArg<std::string> compressionRatiosArg(
+			"r", "CompressionRatios", "Layer rates expressed as compression ratios", false, "",
+			"string", cmd);
+		TCLAP::ValueArg<std::string> roiArg("R", "ROI", "Region of interest", false, "", "string",
+											cmd);
 		// this flag is currently disabled
 		TCLAP::ValueArg<std::string> subsamplingFactorArg(
 			"s", "SubsamplingFactor", "Subsampling factor", false, "", "string" /*, cmd*/);
-
-		TCLAP::ValueArg<uint8_t> tpArg("u", "TP", "Tile part generation", false, 0, "uint8_t", cmd);
+		TCLAP::SwitchArg sopArg("S", "SOP", "Add SOP markers", cmd);
 
 		TCLAP::ValueArg<std::string> tileOffsetArg("T", "TileOffset", "Tile offset", false, "",
 												   "string", cmd);
 
 		TCLAP::ValueArg<std::string> tilesArg("t", "TileDim", "Tile parameters", false, "",
 											  "string", cmd);
-
-		TCLAP::ValueArg<std::string> imageOffsetArg("d", "ImageOffset",
-													"Image offset in reference grid coordinates",
-													false, "", "string", cmd);
-
-		TCLAP::ValueArg<uint32_t> cblkSty("M", "Mode", "Mode", false, 0, "unsigned integer", cmd);
-		TCLAP::ValueArg<uint32_t> guardBits("N", "GuardBits", "Number of guard bits", false, 2,
-											"unsigned integer", cmd);
-		TCLAP::ValueArg<std::string> commentArg("C", "Comment", "Add a comment", false, "",
-												"string", cmd);
-
-		TCLAP::SwitchArg irreversibleArg("I", "Irreversible", "Irreversible", cmd);
-
-		TCLAP::SwitchArg pltArg("L", "PLT", "PLT marker", cmd);
-		TCLAP::SwitchArg tlmArg("X", "TLM", "TLM marker", cmd);
-
-		TCLAP::ValueArg<std::string> customMCTArg("m", "CustomMCT", "MCT input file", false, "",
-												  "string", cmd);
-
-		TCLAP::ValueArg<uint32_t> durationArg("J", "Duration", "Duration in seconds", false, 0,
-											  "unsigned integer", cmd);
-
-		TCLAP::ValueArg<uint32_t> rateControlAlgoArg("A", "RateControlAlgorithm",
-													 "Rate control algorithm", false, 0,
-													 "unsigned integer", cmd);
-
+		TCLAP::ValueArg<uint8_t> tpArg("u", "TP", "Tile part generation", false, 0, "uint8_t", cmd);
 		TCLAP::SwitchArg verboseArg("v", "verbose", "Verbose", cmd);
 		TCLAP::SwitchArg transferExifTagsArg("V", "TransferExifTags", "Transfer Exif tags", cmd);
+		TCLAP::ValueArg<std::string> logfileArg("W", "logfile", "Log file", false, "", "string",
+												cmd);
+		TCLAP::ValueArg<uint32_t> cinema2KArg("w", "cinema2K", "Digital cinema 2K profile", false,
+											  24, "unsigned integer", cmd);
+		TCLAP::ValueArg<uint32_t> cinema4KArg("x", "cinema4K", "Digital cinema 2K profile", false,
+											  24, "unsigned integer", cmd);
+		TCLAP::SwitchArg tlmArg("X", "TLM", "TLM marker", cmd);
+		TCLAP::ValueArg<std::string> imgDirArg("y", "ImgDir", "Image directory", false, "",
+											   "string", cmd);
+		TCLAP::ValueArg<uint32_t> mctArg("Y", "mct", "Multi component transform", false, 0,
+										 "unsigned integer", cmd);
+		TCLAP::ValueArg<uint16_t> rsizArg("Z", "RSIZ", "RSIZ", false, 0, "unsigned integer", cmd);
+		TCLAP::ValueArg<std::string> IMFArg("z", "IMF", "IMF profile", false, "", "string", cmd);
 
+		TCLAP::ValueArg<std::string> BroadcastArg("U", "BROADCAST", "Broadcast profile", false, "",
+												  "string", cmd);
 		cmd.parse(argc, argv);
 
 		initParams->transferExifTags = transferExifTagsArg.isSet();
-
 		if(logfileArg.isSet())
 		{
 			auto file_logger = spdlog::basic_logger_mt("grk_compress", logfileArg.getValue());
