@@ -447,6 +447,19 @@ TilePartLengthInfo* TileLengthMarkers::getNext(void)
 	}
 	return nullptr;
 }
+TilePartLengthInfo* TileLengthMarkers::peekNext(void)
+{
+	assert(markers_);
+	if(!valid_)
+	{
+		GRK_WARN("Attempt to peek next marker from invalid TLM marker");
+		return nullptr;
+	}
+	if(curr_vec_)
+		return &curr_vec_->operator[](markerTilePartIndex_);
+
+	return nullptr;
+}
 bool TileLengthMarkers::seekTo(uint16_t tileIndex, IBufferedStream* stream, uint64_t firstSotPos)
 {
 	assert(stream);
@@ -463,7 +476,7 @@ bool TileLengthMarkers::seekTo(uint16_t tileIndex, IBufferedStream* stream, uint
 		skip += tl->length;
 		tl = getNext();
 	}
-
+	markerTilePartIndex_--;
 	return tl && tl->tileIndex == tileIndex && stream->seek(firstSotPos + skip);
 }
 bool TileLengthMarkers::writeBegin(uint16_t numTilePartsTotal)

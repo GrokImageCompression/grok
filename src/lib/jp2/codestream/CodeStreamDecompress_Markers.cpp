@@ -76,6 +76,9 @@ bool CodeStreamDecompress::parseTileHeaderMarkers(bool* canDecompress)
 		GRK_ERROR("parse_markers: no SOT marker found");
 		return false;
 	}
+
+	auto tilePartLengthInfo  = cp_.tlm_markers && cp_.tlm_markers->isValid() ? cp_.tlm_markers->peekNext() : nullptr;
+	auto sotStart = stream_->tell();
 	/* Seek in code stream for next SOT marker. If we don't find it,
 	 *  we stop when we either read the EOC or run out of data */
 	while(!decompressorState_.lastTilePartWasRead && (curr_marker_ != J2K_MS_EOC))
@@ -192,6 +195,18 @@ bool CodeStreamDecompress::parseTileHeaderMarkers(bool* canDecompress)
 		GRK_ERROR("Missing SOT marker");
 		return false;
 	}
+	// validate TLM
+	if (tilePartLengthInfo){
+		auto diff = stream_->tell() - sotStart;
+		if (diff + 2 != tilePartLengthInfo->length){
+			GRK_WARN("TLM marker tile part length %d differs from actual"
+					" tile part length %d. Disabling TLM.",tilePartLengthInfo->length, diff+2);
+			cp_.tlm_markers->invalidate();
+
+		}
+	}
+
+
 	// ensure lossy wavelet has quantization set
 	auto tcp = get_current_decode_tcp();
 	auto numComps = headerImage_->numcomps;

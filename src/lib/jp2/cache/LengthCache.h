@@ -113,6 +113,7 @@ struct TileLengthMarkers
 	bool read(uint8_t* headerData, uint16_t header_size);
 	void rewind(void);
 	TilePartLengthInfo* getNext(void);
+	TilePartLengthInfo* peekNext(void);
 	void invalidate(void);
 	bool isValid(void);
 	bool seekTo(uint16_t skipTileIndex, IBufferedStream* stream, uint64_t firstSotPos);
