@@ -778,6 +778,10 @@ bool CodeStreamDecompress::readHeaderProcedureImpl(void)
 	if(codeStreamInfo)
 		codeStreamInfo->setMainHeaderEnd(stream_->tell() - 2U);
 
+	//rewind TLM marker if present
+	if (cp_.tlm_markers)
+		cp_.tlm_markers->rewind();
+
 	/* Next step: read a tile-part header */
 	decompressorState_.setState(DECOMPRESS_STATE_TPH_SOT);
 
