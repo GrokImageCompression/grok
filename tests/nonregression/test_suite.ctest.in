@@ -719,9 +719,14 @@ grk_decompress -i @INPUT_NR_PATH@/sycc_420_odd_origin_x_coord.jp2 -o @TEMP_PATH@
 grk_decompress -i @INPUT_NR_PATH@/sycc_420_odd_origin_x_coord.jp2 -o @TEMP_PATH@/sycc_420_odd_origin_x_coord.png
 grk_decompress -i @INPUT_NR_PATH@/sycc_420_odd_origin_x_coord.jp2 -o @TEMP_PATH@/sycc_420_odd_origin_x_coord.bmp
 
-grk_decompress -i @INPUT_NR_PATH@/lrcp.j2k -o @TEMP_PATH@/lrcp.tif
-grk_decompress -i @INPUT_NR_PATH@/lrcp_plt.j2k -o @TEMP_PATH@/lrcp_plt.tif
-grk_decompress -i @INPUT_NR_PATH@/rlcp.j2k -o @TEMP_PATH@/rlcp.tif
-grk_decompress -i @INPUT_NR_PATH@/rlcp_plt.j2k -o @TEMP_PATH@/rlcp_plt.tif
-
+grk_decompress -i @INPUT_NR_PATH@/boats_plt_tlm_rlcp.j2k -o @TEMP_PATH@/boats_plt_tlm_rlcp.tif -d 300,200,400,300
+grk_decompress -i @INPUT_NR_PATH@/boats_plt_tlm_lrcp.j2k -o @TEMP_PATH@/boats_plt_tlm_lrcp.tif -d 300,200,400,300
+grk_decompress -i @INPUT_NR_PATH@/boats_plt_tlm_pcrl.j2k -o @TEMP_PATH@/boats_plt_tlm_pcrl.tif -d 300,200,400,300
+grk_decompress -i @INPUT_NR_PATH@/boats_plt_tlm_cprl.j2k -o @TEMP_PATH@/boats_plt_tlm_cprl.tif -d 300,200,400,300
+grk_decompress -i @INPUT_NR_PATH@/boats_plt_tlm_rpcl.j2k -o @TEMP_PATH@/boats_plt_tlm_rpcl.tif -d 300,200,400,300
+grk_decompress -i @INPUT_NR_PATH@/boats_rlcp.j2k -o @TEMP_PATH@/boats_rlcp.tif -d 300,200,400,300
+grk_decompress -i @INPUT_NR_PATH@/boats_lrcp.j2k -o @TEMP_PATH@/boats_lrcp.tif -d 300,200,400,300
+grk_decompress -i @INPUT_NR_PATH@/boats_pcrl.j2k -o @TEMP_PATH@/boats_pcrl.tif -d 300,200,400,300
+grk_decompress -i @INPUT_NR_PATH@/boats_cprl.j2k -o @TEMP_PATH@/boats_cprl.tif -d 300,200,400,300
+grk_decompress -i @INPUT_NR_PATH@/boats_rpcl.j2k -o @TEMP_PATH@/boats_rpcl.tif -d 300,200,400,300
 
