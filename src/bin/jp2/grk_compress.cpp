@@ -346,10 +346,7 @@ CompressInitParams::CompressInitParams() : initialized(false), transferExifTags(
 CompressInitParams::~CompressInitParams()
 {
 	for(size_t i = 0; i < parameters.num_comments; ++i)
-	{
-		if(parameters.comment[i])
-			delete[]((uint8_t*)parameters.comment[i]);
-	}
+		delete[] parameters.comment[i];
 	free(parameters.raw_cp.comps);
 	free(inputFolder.imgdirpath);
 	free(outFolder.imgdirpath);
