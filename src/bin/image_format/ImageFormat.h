@@ -59,8 +59,6 @@ class ImageFormat : public IImageFormat
 	void allocPalette(grk_color* color, uint8_t num_channels, uint16_t num_entries);
 	void copy_icc(grk_image* dest, uint8_t* iccbuf, uint32_t icclen);
 	void create_meta(grk_image* img);
-	bool validate_icc(GRK_COLOR_SPACE colourSpace, uint8_t* iccbuf, uint32_t icclen);
-
 	bool allComponentsSanityCheck(grk_image* image, bool equalPrecision);
 	bool isFinalOutputSubsampled(grk_image* image);
 	bool isChromaSubsampled(grk_image* image);

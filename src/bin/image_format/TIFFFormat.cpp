@@ -1199,13 +1199,7 @@ grk_image* TIFFFormat::decode(const std::string& filename, grk_cparameters* para
 	{
 		if((TIFFGetFieldDefaulted(tif, TIFFTAG_ICCPROFILE, &icclen, &iccbuf) == 1) && icclen > 0 &&
 		   icclen < grk::maxICCProfileBufferLen)
-		{
-			if(validate_icc(color_space, iccbuf, icclen))
-				copy_icc(image, iccbuf, icclen);
-			else
-				spdlog::warn("TIFFFormat::decode: ICC profile does not match underlying colour "
-							 "space. Ignoring");
-		}
+			copy_icc(image, iccbuf, icclen);
 	}
 	// 7. extract IPTC meta-data
 	if(TIFFGetFieldDefaulted(tif, TIFFTAG_RICHTIFFIPTC, &iptc_len, &iptc_buf) == 1)

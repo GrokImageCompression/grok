@@ -211,15 +211,8 @@ grk_image* JPEGFormat::jpegtoimage(const char* filename, grk_cparameters* parame
 	}
 	if(icc_data_ptr && icc_data_len)
 	{
-		if(validate_icc(color_space, icc_data_ptr, icc_data_len))
-		{
-			copy_icc(image_, icc_data_ptr, icc_data_len);
-			icc_data_len = 0;
-		}
-		else
-		{
-			spdlog::warn("ICC profile does not match underlying colour space. Ignoring");
-		}
+		copy_icc(image_, icc_data_ptr, icc_data_len);
+		icc_data_len = 0;
 	}
 	free(icc_data_ptr);
 	icc_data_ptr = nullptr;

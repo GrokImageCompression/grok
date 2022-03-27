@@ -20,9 +20,19 @@
  */
 
 #include "grk_includes.h"
+#include "lcms2.h"
 
 namespace grk
 {
+
+void MycmsLogErrorHandlerFunction(cmsContext ContextID, cmsUInt32Number ErrorCode, const char* Text)
+{
+	GRK_UNUSED(ContextID);
+	GRK_UNUSED(ErrorCode);
+	GRK_WARN(" LCMS error: {}", Text);
+}
+
+
 typedef std::function<uint8_t*(uint32_t* len)> WRITE_FUNC;
 struct BoxWriteHandler
 {
@@ -704,6 +714,40 @@ bool FileFormatCompress::start(void)
 
 	return codeStream->start();
 }
+bool FileFormatCompress::validate_icc(GRK_COLOR_SPACE colourSpace, uint8_t* iccbuf, uint32_t icclen)
+{
+	bool rc = true;
+	auto in_prof = cmsOpenProfileFromMem(iccbuf, icclen);
+	if(in_prof)
+	{
+		auto cmsColorSpaceSignature = cmsGetColorSpace(in_prof);
+		switch(cmsColorSpaceSignature)
+		{
+			case cmsSigLabData:
+				rc =
+					(colourSpace == GRK_CLRSPC_DEFAULT_CIE || colourSpace == GRK_CLRSPC_CUSTOM_CIE);
+				break;
+			case cmsSigYCbCrData:
+				rc = (colourSpace == GRK_CLRSPC_SYCC || colourSpace == GRK_CLRSPC_EYCC);
+				break;
+			case cmsSigRgbData:
+				rc = colourSpace == GRK_CLRSPC_SRGB;
+				break;
+			case cmsSigGrayData:
+				rc = colourSpace == GRK_CLRSPC_GRAY;
+				break;
+			case cmsSigCmykData:
+				rc = colourSpace == GRK_CLRSPC_CMYK;
+				break;
+			default:
+				rc = false;
+				break;
+		}
+		cmsCloseProfile(in_prof);
+	}
+
+	return rc;
+}
 bool FileFormatCompress::init(grk_cparameters* parameters, GrkImage* image)
 {
 	uint16_t i;
@@ -717,6 +761,8 @@ bool FileFormatCompress::init(grk_cparameters* parameters, GrkImage* image)
 
 	inputImage_ = image;
 	grk_object_ref(&image->obj);
+
+	cmsSetLogErrorHandler(MycmsLogErrorHandlerFunction);
 
 	if(codeStream->init(parameters, inputImage_) == false)
 		return false;
@@ -759,6 +805,13 @@ bool FileFormatCompress::init(grk_cparameters* parameters, GrkImage* image)
 		comps[i].bpc = (uint8_t)(inputImage_->comps[i].prec - 1);
 		if(inputImage_->comps[i].sgnd)
 			comps[i].bpc = (uint8_t)(comps[i].bpc + (1 << 7));
+	}
+
+	if (inputImage_->meta && inputImage_->meta->color.icc_profile_buf) {
+		if (validate_icc(inputImage_->color_space, inputImage_->meta->color.icc_profile_buf,inputImage_->meta->color.icc_profile_len))
+			inputImage_->color_space = GRK_CLRSPC_ICC;
+		else
+			GRK_WARN("ICC profile does not match underlying colour space. Ignoring");
 	}
 
 	/* Colour Specification box */

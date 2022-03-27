@@ -26,8 +26,6 @@
 #include "PNGFormat.h"
 #include "convert.h"
 #include <cstring>
-
-#include <lcms2.h>
 #include <memory>
 #include <iostream>
 #include <string>
@@ -235,29 +233,8 @@ bool PNGFormat::encodeHeader(void)
 	// Set iCCP chunk
 	if(image_->meta && image_->meta->color.icc_profile_buf && image_->meta->color.icc_profile_len)
 	{
-		std::string profileName = "Unknown";
-		// if lcms is present, try to extract the description tag from the ICC header,
-		// and use this tag as the profile name
-		auto in_prof = cmsOpenProfileFromMem(image_->meta->color.icc_profile_buf,
-											 image_->meta->color.icc_profile_len);
-		if(in_prof)
-		{
-			cmsUInt32Number bufferSize = cmsGetProfileInfoASCII(
-				in_prof, cmsInfoDescription, cmsNoLanguage, cmsNoCountry, nullptr, 0);
-			if(bufferSize)
-			{
-				std::unique_ptr<char[]> description(new char[bufferSize]);
-				cmsUInt32Number result =
-					cmsGetProfileInfoASCII(in_prof, cmsInfoDescription, cmsNoLanguage, cmsNoCountry,
-										   description.get(), bufferSize);
-				if(result)
-				{
-					profileName = description.get();
-				}
-			}
-			cmsCloseProfile(in_prof);
-		}
-		png_set_iCCP(png, info_, profileName.c_str(), PNG_COMPRESSION_TYPE_BASE,
+		const char* profileName = image_->meta->color.icc_profile_name ? image_->meta->color.icc_profile_name : "Unknown";
+		png_set_iCCP(png, info_, profileName, PNG_COMPRESSION_TYPE_BASE,
 					 image_->meta->color.icc_profile_buf, image_->meta->color.icc_profile_len);
 	}
 
@@ -580,12 +557,7 @@ grk_image* PNGFormat::do_decode(grk_cparameters* params)
 		png_charp ProfileName = nullptr;
 		if(png_get_iCCP(png, info_, &ProfileName, &Compression, &ProfileData, &ProfileLen) ==
 		   PNG_INFO_iCCP)
-		{
-			if(validate_icc(colorSpace_, ProfileData, ProfileLen))
-				copy_icc(image_, ProfileData, ProfileLen);
-			else
-				spdlog::warn("ICC profile does not match underlying colour space. Ignoring");
-		}
+			copy_icc(image_, ProfileData, ProfileLen);
 	}
 
 	if(png_get_valid(png, info_, PNG_INFO_gAMA))

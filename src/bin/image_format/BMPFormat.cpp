@@ -888,10 +888,7 @@ grk_image* BMPFormat::decode(const std::string& fname, grk_cparameters* paramete
 			delete[] iccbuf;
 			goto cleanup;
 		}
-		if(validate_icc(colour_space, iccbuf, infoHeader_.biIccProfileSize))
-			copy_icc(image, iccbuf, infoHeader_.biIccProfileSize);
-		else
-			spdlog::warn("ICC profile does not match underlying colour space. Ignoring");
+		copy_icc(image, iccbuf, infoHeader_.biIccProfileSize);
 		delete[] iccbuf;
 	}
 	if(numcmpts == 4U)

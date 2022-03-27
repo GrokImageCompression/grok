@@ -1,4 +1,5 @@
 #include <grk_includes.h>
+#include "lcms2.h"
 
 namespace grk
 {
@@ -383,6 +384,35 @@ void GrkImage::postReadHeader(CodingParams* cp)
 	}
 	if(rowsPerStrip > y1 - y0)
 		rowsPerStrip = y1 - y0;
+
+	if (meta && meta->color.icc_profile_buf && meta->color.icc_profile_len && decompressFormat == GRK_PNG_FMT){
+
+		// if lcms is present, try to extract the description tag from the ICC header,
+		// and use this tag as the profile name
+		auto in_prof = cmsOpenProfileFromMem(meta->color.icc_profile_buf,
+											 meta->color.icc_profile_len);
+		if(in_prof)
+		{
+			cmsUInt32Number bufferSize = cmsGetProfileInfoASCII(
+				in_prof, cmsInfoDescription, cmsNoLanguage, cmsNoCountry, nullptr, 0);
+			if(bufferSize)
+			{
+				std::unique_ptr<char[]> description(new char[bufferSize]);
+				cmsUInt32Number result =
+					cmsGetProfileInfoASCII(in_prof, cmsInfoDescription, cmsNoLanguage, cmsNoCountry,
+										   description.get(), bufferSize);
+				if(result)
+				{
+					std::string profileName = description.get();
+					auto len = profileName.length();
+					meta->color.icc_profile_name = new char[len+1];
+					memcpy(meta->color.icc_profile_name, profileName.c_str(),len );
+					meta->color.icc_profile_name[len] = 0;
+				}
+			}
+			cmsCloseProfile(in_prof);
+		}
+	}
 }
 bool GrkImage::validateZeroed(void)
 {
@@ -1105,6 +1135,8 @@ void GrkImageMeta::free_color()
 	delete[] color.icc_profile_buf;
 	color.icc_profile_buf = nullptr;
 	color.icc_profile_len = 0;
+	delete color.icc_profile_name;
+	color.icc_profile_name = nullptr;
 	if(color.channel_definition)
 	{
 		delete[] color.channel_definition->descriptions;

@@ -699,6 +699,7 @@ typedef struct _grk_color
 {
 	uint8_t* icc_profile_buf;
 	uint32_t icc_profile_len;
+	char*    icc_profile_name;
 	grk_channel_definition* channel_definition;
 	grk_palette_data* palette;
 	bool has_colour_specification_box;

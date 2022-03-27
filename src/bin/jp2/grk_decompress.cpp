@@ -57,7 +57,6 @@
 #endif
 #include "convert.h"
 
-#include <lcms2.h>
 #include "grk_string.h"
 #include <climits>
 #include <string>
@@ -755,12 +754,6 @@ void GrkDecompress::destoryParams(grk_decompress_parameters* parameters)
 	}
 }
 
-void MycmsLogErrorHandlerFunction(cmsContext ContextID, cmsUInt32Number ErrorCode, const char* Text)
-{
-	GRK_UNUSED(ContextID);
-	GRK_UNUSED(ErrorCode);
-	spdlog::warn(" LCMS error: {}", Text);
-}
 
 static int decompress_callback(grk_plugin_decompress_callback_info* info);
 
@@ -819,8 +812,6 @@ int GrkDecompress::pluginMain(int argc, char** argv, DecompressInitParams* initP
 	uint32_t numDecompressed = 0;
 	bool isBatch = false;
 	std::chrono::time_point<std::chrono::high_resolution_clock> start;
-
-	cmsSetLogErrorHandler(MycmsLogErrorHandlerFunction);
 	setDefaultParams(&initParams->parameters);
 	if(parseCommandLine(argc, argv, initParams) == 1)
 		return EXIT_FAILURE;

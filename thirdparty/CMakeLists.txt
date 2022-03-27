@@ -47,7 +47,6 @@ else(GROK_BUILD_THIRDPARTY)
 endif(GROK_BUILD_THIRDPARTY)
 
 # Try to find lib TIFF
-
 if(GROK_BUILD_THIRDPARTY)
   # Try to build it
   message(STATUS "libtiff will be built to support TIFF files.")
@@ -83,9 +82,35 @@ else(GROK_BUILD_THIRDPARTY)
   endif(TIFF_FOUND)
 endif(GROK_BUILD_THIRDPARTY)
 
-add_subdirectory(liblcms2)
-set(LCMS_LIBNAME lcms2 PARENT_SCOPE)
-set(LCMS_INCLUDE_DIRNAME ${GROK_SOURCE_DIR}/thirdparty/liblcms2/include PARENT_SCOPE)
+if(GROK_BUILD_THIRDPARTY)
+  message(STATUS "We will build LCMS2 lib from thirdparty")
+  add_subdirectory(liblcms2)
+  set(LCMS_LIBNAME lcms2 PARENT_SCOPE)
+  set(LCMS_INCLUDE_DIRNAME ${GROK_SOURCE_DIR}/thirdparty/liblcms2/include PARENT_SCOPE)
+else(GROK_BUILD_THIRDPARTY)
+  find_package(LCMS2)
+  # Static only build:
+  #   it is necessary to invoke pkg_check_module on lcms2 since it may have
+  #   several other dependencies not declared by its cmake module, but they are
+  #   in the its pkgconfig module.
+  if(PKG_CONFIG_FOUND)
+    pkg_check_modules(PC_LCMS2 QUIET lcms2)
+  endif(PKG_CONFIG_FOUND)
+  if(LCMS2_FOUND)
+    message(STATUS "Your system seems to have a LCMS2 lib available, we will use it")
+    set(LCMS_LIBNAME ${LCMS2_LIBRARIES} ${PC_LCMS2_STATIC_LIBRARIES} PARENT_SCOPE)
+    set(LCMS_INCLUDE_DIRNAME ${LCMS2_INCLUDE_DIRS} ${PC_LCMS2_STATIC_INCLUDE_DIRS} PARENT_SCOPE)
+  else(LCMS2_FOUND)
+    find_package(LCMS)
+    if(LCMS_FOUND)
+      message(STATUS "Your system seems to have a LCMS lib available, we will use it")
+      set(LCMS_LIBNAME ${LCMS_LIBRARIES} PARENT_SCOPE)
+      set(LCMS_INCLUDE_DIRNAME ${LCMS_INCLUDE_DIRS} PARENT_SCOPE)
+    else(LCMS_FOUND) # not found lcms
+      message(STATUS "LCMS2 or LCMS lib not found, activate GROK_BUILD_THIRDPARTY if you want to build it")
+    endif(LCMS_FOUND)
+  endif(LCMS2_FOUND)
+endif(GROK_BUILD_THIRDPARTY)
 
 # JPEG library
 find_package(JPEG)

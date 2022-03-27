@@ -19,7 +19,6 @@
 #include <algorithm>
 #include "common.h"
 #include "FileStreamIO.h"
-#include <lcms2.h>
 
 static bool reclaimCallback(grk_serialize_buf buffer, void* serialize_user_data)
 {
@@ -226,46 +225,11 @@ void ImageFormat::copy_icc(grk_image* dest, uint8_t* iccbuf, uint32_t icclen)
 	dest->meta->color.icc_profile_buf = new uint8_t[icclen];
 	memcpy(dest->meta->color.icc_profile_buf, iccbuf, icclen);
 	dest->meta->color.icc_profile_len = icclen;
-	dest->color_space = GRK_CLRSPC_ICC;
 }
 void ImageFormat::create_meta(grk_image* img)
 {
 	if(img && !img->meta)
 		img->meta = grk_image_meta_new();
-}
-bool ImageFormat::validate_icc(GRK_COLOR_SPACE colourSpace, uint8_t* iccbuf, uint32_t icclen)
-{
-	bool rc = true;
-	auto in_prof = cmsOpenProfileFromMem(iccbuf, icclen);
-	if(in_prof)
-	{
-		auto cmsColorSpaceSignature = cmsGetColorSpace(in_prof);
-		switch(cmsColorSpaceSignature)
-		{
-			case cmsSigLabData:
-				rc =
-					(colourSpace == GRK_CLRSPC_DEFAULT_CIE || colourSpace == GRK_CLRSPC_CUSTOM_CIE);
-				break;
-			case cmsSigYCbCrData:
-				rc = (colourSpace == GRK_CLRSPC_SYCC || colourSpace == GRK_CLRSPC_EYCC);
-				break;
-			case cmsSigRgbData:
-				rc = colourSpace == GRK_CLRSPC_SRGB;
-				break;
-			case cmsSigGrayData:
-				rc = colourSpace == GRK_CLRSPC_GRAY;
-				break;
-			case cmsSigCmykData:
-				rc = colourSpace == GRK_CLRSPC_CMYK;
-				break;
-			default:
-				rc = false;
-				break;
-		}
-		cmsCloseProfile(in_prof);
-	}
-
-	return rc;
 }
 /**
  * return false if :
