@@ -27,7 +27,7 @@ build_fuzzer()
     echo "Building fuzzer $fuzzerName"
     $CXX $CXXFLAGS -std=c++20 -I$SRC/grok/src/lib/jp2 -I$SRC/grok/build/src/lib/jp2 \
         $sourceFilename $* -o $OUT/$fuzzerName \
-        $LIB_FUZZING_ENGINE $SRC/grok/build/bin/libgrokj2k.a $SRC/grok/build/bin/libhwy.a -lm -lpthread
+        $LIB_FUZZING_ENGINE $SRC/grok/build/bin/libgrokj2k.a $SRC/grok/build/bin/libhwy.a $SRC/grok/build/bin/liblcms2.a -lm -lpthread
 }
 
 fuzzerFiles=$(dirname $0)/*.cpp
