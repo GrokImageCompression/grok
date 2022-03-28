@@ -94,15 +94,19 @@ struct CodeStreamInfo
 };
 struct TilePartLengthInfo
 {
-	explicit TilePartLengthInfo() : tileIndex(0), length(0) {}
-	explicit TilePartLengthInfo(uint16_t tileno, uint32_t len) : tileIndex(tileno), length(len) {}
-	uint16_t tileIndex;
-	uint32_t length;
+	explicit TilePartLengthInfo() ;
+	TilePartLengthInfo(uint16_t tileno, uint32_t len);
+	TilePartLengthInfo(uint16_t tileno,
+						uint16_t signalledTilePartIndex,
+						uint16_t signalledNumTileParts,
+						uint32_t len) ;
+	uint16_t tileIndex_;
+	uint16_t signalledTilePartIndex_;
+	uint16_t signalledNumTileParts_;
+	uint32_t length_;
 };
 typedef std::vector<TilePartLengthInfo> TL_INFO_VEC;
-
-// map of (TLM marker id) => (tile part length vector)
-typedef std::map<uint8_t, TL_INFO_VEC*> TL_MAP;
+typedef std::map<uint16_t, TL_INFO_VEC*> TL_MAP;
 
 struct TileLengthMarkers
 {
@@ -134,8 +138,8 @@ struct TileLengthMarkers
   private:
 	void push(uint8_t i_TLM, TilePartLengthInfo curr_vec);
 	TL_MAP* markers_;
-	uint8_t markerIndex_;
-	uint8_t markerTilePartIndex_;
+	TL_MAP::iterator markerIt_;
+	uint16_t markerTilePartIndex_;
 	TL_INFO_VEC* curr_vec_;
 	IBufferedStream* stream_;
 	uint64_t streamStart;
