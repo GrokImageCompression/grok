@@ -171,7 +171,9 @@ struct ResPrecinctInfo
 	uint32_t resOffsetX0PRJ;
 	uint32_t resOffsetY0PRJ;
 	uint64_t precWidthPRJ;
+	uint64_t precWidthPRJMinusOne;
 	uint64_t precHeightPRJ;
+	uint64_t precHeightPRJMinusOne;
 	uint64_t numPrecincts_;
 	uint64_t dxPRJ;
 	uint64_t dyPRJ;
