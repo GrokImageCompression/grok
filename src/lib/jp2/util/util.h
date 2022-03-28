@@ -163,8 +163,10 @@ struct grk_rect
 	}
 	grk_rect<T> rectceildivpow2(uint32_t power) const
 	{
-		return grk_rect<T>(ceildivpow2(x0, power), ceildivpow2(y0, power), ceildivpow2(x1, power),
-						  ceildivpow2(y1, power));
+		return grk_rect<T>(ceildivpow2(x0, power),
+							ceildivpow2(y0, power),
+							ceildivpow2(x1, power),
+							ceildivpow2(y1, power));
 	}
 	grk_rect<T> rectceildiv(uint32_t den) const
 	{
@@ -172,8 +174,10 @@ struct grk_rect
 	}
 	grk_rect<T> rectceildiv(uint32_t denx, uint32_t deny) const
 	{
-		return grk_rect<T>(ceildiv(x0, denx), ceildiv(y0, deny), ceildiv(x1, denx),
-						  ceildiv(y1, deny));
+		return grk_rect<T>(ceildiv(x0, denx),
+							ceildiv(y0, deny),
+							ceildiv(x1, denx),
+							ceildiv(y1, deny));
 	}
 	grk_rect<T> scale(uint32_t scalex, uint32_t scaley) const
 	{
@@ -193,7 +197,13 @@ struct grk_rect
 						 ceildiv<uint64_t>(x1, divx),
 						 ceildiv<uint64_t>(y1, divy));
 	}
-
+	grk_rect<T> scaleDownCeilPow2(uint32_t powx, uint32_t powy) const
+	{
+		return grk_rect<T>(ceildivpow2<uint64_t>(x0, powx),
+							ceildivpow2<uint64_t>(y0, powy),
+							ceildivpow2<uint64_t>(x1, powx),
+							ceildivpow2<uint64_t>(y1, powy));
+	}
 	grk_rect<T> intersection(const grk_rect<T> rhs) const
 	{
 		return intersection(&rhs);
@@ -249,10 +259,10 @@ struct grk_rect
 	grk_rect<T> pan(int64_t x, int64_t y) const
 	{
 		auto rc = *this;
-		rc.panInplace(x, y);
+		rc.panIPL(x, y);
 		return rc;
 	}
-	void panInplace(int64_t x, int64_t y)
+	void panIPL(int64_t x, int64_t y)
 	{
 		x0 = satAdd<T>((int64_t)x0, (int64_t)x);
 		y0 = satAdd<T>((int64_t)y0, (int64_t)y);
