@@ -268,8 +268,8 @@ TilePartLengthInfo::TilePartLengthInfo() : TilePartLengthInfo(0,0,0,0) {}
 TilePartLengthInfo::TilePartLengthInfo(uint16_t tileno, uint32_t len) : TilePartLengthInfo(tileno,0,0,len)
 {}
 TilePartLengthInfo::TilePartLengthInfo(uint16_t tileno,
-				uint16_t signalledTilePartIndex,
-				uint16_t signalledNumTileParts,
+				uint8_t signalledTilePartIndex,
+				uint8_t signalledNumTileParts,
 				uint32_t len) : tileIndex_(tileno), signalledTilePartIndex_(signalledTilePartIndex),
 								signalledNumTileParts_(signalledNumTileParts),length_(len)
 {}
@@ -514,7 +514,7 @@ bool TileLengthMarkers::writeBegin(uint16_t numTilePartsTotal)
 }
 void TileLengthMarkers::push(uint16_t tileIndex, uint32_t tile_part_size)
 {
-	push(markerIt_->first, TilePartLengthInfo(tileIndex, tile_part_size));
+	push((uint8_t)markerIt_->first, TilePartLengthInfo(tileIndex, tile_part_size));
 }
 bool TileLengthMarkers::writeEnd(void)
 {

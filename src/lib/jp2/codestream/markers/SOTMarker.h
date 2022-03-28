@@ -59,13 +59,13 @@ class SOTMarker
 	 *
 	 * @param       headerData   the data contained in the SOT marker.
 	 * @param       header_size   the size of the data contained in the SOT marker.
-	 * @param       p_tot_len       Psot.
-	 * @param       p_current_part  TPsot.
-	 * @param       p_num_parts     TNsot.
+	 * @param       tot_len       Psot.
+	 * @param       current_part  TPsot.
+	 * @param       num_parts     TNsot.
 
 	 */
 	bool read(CodeStreamDecompress* codeStream, uint8_t* headerData, uint32_t header_size,
-			  uint32_t* p_tot_len, uint8_t* p_current_part, uint8_t* p_num_parts);
+			  uint32_t* tot_len, uint16_t *tileIndex, uint8_t* current_part, uint8_t* num_parts);
 };
 
 } /* namespace grk */

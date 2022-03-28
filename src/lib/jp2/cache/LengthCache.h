@@ -97,12 +97,12 @@ struct TilePartLengthInfo
 	explicit TilePartLengthInfo() ;
 	TilePartLengthInfo(uint16_t tileno, uint32_t len);
 	TilePartLengthInfo(uint16_t tileno,
-						uint16_t signalledTilePartIndex,
-						uint16_t signalledNumTileParts,
+						uint8_t signalledTilePartIndex,
+						uint8_t signalledNumTileParts,
 						uint32_t len) ;
 	uint16_t tileIndex_;
-	uint16_t signalledTilePartIndex_;
-	uint16_t signalledNumTileParts_;
+	uint8_t signalledTilePartIndex_;
+	uint8_t signalledNumTileParts_;
 	uint32_t length_;
 };
 typedef std::vector<TilePartLengthInfo> TL_INFO_VEC;
