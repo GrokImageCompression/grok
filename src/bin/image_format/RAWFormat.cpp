@@ -269,8 +269,8 @@ grk_image* RAWFormat::rawtoimage(const char* filename, grk_cparameters* paramete
 	{
 		cmptparm[i].prec = raw_cp->prec;
 		cmptparm[i].sgnd = raw_cp->sgnd;
-		cmptparm[i].dx = subsampling_dx * raw_cp->comps[i].dx;
-		cmptparm[i].dy = subsampling_dy * raw_cp->comps[i].dy;
+		cmptparm[i].dx = (uint8_t)(subsampling_dx * raw_cp->comps[i].dx);
+		cmptparm[i].dy = (uint8_t)(subsampling_dy * raw_cp->comps[i].dy);
 		cmptparm[i].w = w;
 		cmptparm[i].h = h;
 

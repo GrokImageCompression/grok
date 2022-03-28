@@ -537,9 +537,6 @@ static int parseCommandLine(int argc, char** argv, CompressInitParams* initParam
 			"string", cmd);
 		TCLAP::ValueArg<std::string> roiArg("R", "ROI", "Region of interest", false, "", "string",
 											cmd);
-		// this flag is currently disabled
-		TCLAP::ValueArg<std::string> subsamplingFactorArg(
-			"s", "SubsamplingFactor", "Subsampling factor", false, "", "string" /*, cmd*/);
 		TCLAP::SwitchArg sopArg("S", "SOP", "Add SOP markers", cmd);
 
 		TCLAP::ValueArg<std::string> tileOffsetArg("T", "TileOffset", "Tile offset", false, "",
@@ -859,8 +856,8 @@ static int parseCommandLine(int argc, char** argv, CompressInitParams* initParam
 				{
 					if(substr2 == nullptr)
 					{
-						raw_cp->comps[compno].dx = (uint32_t)lastdx;
-						raw_cp->comps[compno].dy = (uint32_t)lastdy;
+						raw_cp->comps[compno].dx = (uint8_t)lastdx;
+						raw_cp->comps[compno].dy = (uint8_t)lastdy;
 					}
 					else
 					{
@@ -872,8 +869,8 @@ static int parseCommandLine(int argc, char** argv, CompressInitParams* initParam
 							{
 								lastdx = dx;
 								lastdy = dy;
-								raw_cp->comps[compno].dx = (uint32_t)dx;
-								raw_cp->comps[compno].dy = (uint32_t)dy;
+								raw_cp->comps[compno].dx = (uint8_t)dx;
+								raw_cp->comps[compno].dy = (uint8_t)dy;
 								substr2 = nullptr;
 							}
 							else
@@ -885,8 +882,8 @@ static int parseCommandLine(int argc, char** argv, CompressInitParams* initParam
 						{
 							if(sscanf(substr2, "%dx%d:%s", &dx, &dy, substr2) == 3)
 							{
-								raw_cp->comps[compno].dx = (uint32_t)dx;
-								raw_cp->comps[compno].dy = (uint32_t)dy;
+								raw_cp->comps[compno].dx = (uint8_t)dx;
+								raw_cp->comps[compno].dy = (uint8_t)dy;
 							}
 							else
 							{
@@ -955,16 +952,6 @@ static int parseCommandLine(int argc, char** argv, CompressInitParams* initParam
 			}
 			parameters->cblockw_init = (uint32_t)cblockw_init;
 			parameters->cblockh_init = (uint32_t)cblockh_init;
-		}
-
-		if(subsamplingFactorArg.isSet())
-		{
-			if(sscanf(subsamplingFactorArg.getValue().c_str(), "%d,%d", &parameters->subsampling_dx,
-					  &parameters->subsampling_dy) != 2)
-			{
-				spdlog::error("'-s' sub-sampling argument error !  [-s dx,dy]");
-				return 1;
-			}
 		}
 		if(pocArg.isSet())
 		{

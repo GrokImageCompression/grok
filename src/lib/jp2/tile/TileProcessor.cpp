@@ -23,7 +23,7 @@ namespace grk
 {
 TileProcessor::TileProcessor(uint16_t tileIndex, CodeStream* codeStream, IBufferedStream* stream,
 							 bool isCompressor, bool isWholeTileDecompress)
-	: first_poc_tile_part_(true), tilePartIndexCounter_(0), pino(0),
+	: first_poc_tile_part_(true), tilePartCounter_(0), pino(0),
 	  headerImage(codeStream->getHeaderImage()),
 	  current_plugin_tile(codeStream->getCurrentPluginTile()),
 	  wholeTileDecompress(isWholeTileDecompress), cp_(codeStream->getCodingParams()),
@@ -343,7 +343,7 @@ bool TileProcessor::doCompress(void)
 }
 bool TileProcessor::canWritePocMarker(void)
 {
-	bool firstTilePart = (tilePartIndexCounter_ == 0);
+	bool firstTilePart = (tilePartCounter_ == 0);
 
 	// note: DCP standard does not allow POC marker
 	return cp_->tcps[tileIndex_].hasPoc() && firstTilePart && !GRK_IS_CINEMA(cp_->rsiz);
@@ -351,7 +351,7 @@ bool TileProcessor::canWritePocMarker(void)
 bool TileProcessor::writeTilePartT2(uint32_t* tileBytesWritten)
 {
 	// write entire PLT marker in first tile part header
-	if(tilePartIndexCounter_ == 0 && packetLengthCache.getMarkers()){
+	if(tilePartCounter_ == 0 && packetLengthCache.getMarkers()){
 		 if (!packetLengthCache.getMarkers()->write())
 			 return false;
 		 *tileBytesWritten += packetLengthCache.getMarkers()->getTotalBytesWritten();
@@ -814,7 +814,7 @@ bool TileProcessor::encodeT2(uint32_t* tileBytesWritten)
 }
 bool TileProcessor::preCompressTile()
 {
-	tilePartIndexCounter_ = 0;
+	tilePartCounter_ = 0;
 	first_poc_tile_part_ = true;
 
 	/* initialization before tile compressing  */
@@ -940,7 +940,7 @@ bool TileProcessor::prepareSodDecompress(CodeStreamDecompress* codeStream)
 		{
 			GRK_ERROR("Tile %d, tile part %d: stream has been truncated and "
 					  "there is no tile data available",
-					  tileIndex_, tcp->tilePartIndexCounter_);
+					  tileIndex_, tcp->tilePartCounter_-1);
 			return false;
 		}
 		// check that there are enough bytes in stream to fill tile data
@@ -950,7 +950,7 @@ bool TileProcessor::prepareSodDecompress(CodeStreamDecompress* codeStream)
 					 "stream length %lld\n"
 					 "(tile: %u, tile part: %d). Tile has been truncated.",
 					 tilePartDataLength, stream_->numBytesLeft(), tileIndex_,
-					 tcp->tilePartIndexCounter_);
+					 tcp->tilePartCounter_-1);
 
 			// sanitize tilePartDataLength
 			tilePartDataLength = (uint64_t)bytesLeftInStream;

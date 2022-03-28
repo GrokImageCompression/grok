@@ -1616,7 +1616,7 @@ bool CodeStreamDecompress::read_cod(uint8_t* headerData, uint16_t header_size)
 	{
 		GRK_WARN("Multiple COD markers detected for tile part %u."
 				 " The JPEG 2000 standard does not allow more than one COD marker per tile.",
-				 tcp->tilePartIndexCounter_);
+				 tcp->tilePartCounter_-1);
 	}
 	tcp->cod = true;
 

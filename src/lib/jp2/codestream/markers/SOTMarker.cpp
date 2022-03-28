@@ -66,7 +66,7 @@ bool SOTMarker::write(TileProcessor* proc, uint32_t tileLength)
 	}
 
 	/* TPsot */
-	if(!stream->writeByte(proc->tilePartIndexCounter_))
+	if(!stream->writeByte(proc->tilePartCounter_))
 		return false;
 
 	/* TNsot */
@@ -145,14 +145,14 @@ bool SOTMarker::read(CodeStreamDecompress* codeStream, uint8_t* headerData, uint
 	/* to avoid various issues, like grk_j2k_merge_ppt being called several times. */
 	/* ISO 15444-1 A.4.2 Start of tile-part (SOT) mandates that tile parts */
 	/* should appear in increasing order. */
-	if(uint8_t(tcp->tilePartIndexCounter_ + 1) != currentTilePart)
+	if(uint8_t(tcp->tilePartCounter_) != currentTilePart)
 	{
 		GRK_ERROR("Invalid tile part index for tile number %u. "
 				  "Got %u, expected %u",
-				  tileIndex, currentTilePart, tcp->tilePartIndexCounter_ + 1);
+				  tileIndex, currentTilePart, tcp->tilePartCounter_);
 		return false;
 	}
-	tcp->tilePartIndexCounter_++;
+	tcp->tilePartCounter_++;
 
 
 	/* PSot should be equal to zero or >=14 and <= 2^32-1 */

@@ -66,7 +66,7 @@ TileCodingParams::TileCodingParams()
 	: csty(0), prg(GRK_PROG_UNKNOWN), numlayers(0), numLayersToDecompress(0), mct(0), numpocs(0),
 	  ppt_markers_count(0), ppt_markers(nullptr), ppt_data(nullptr), ppt_buffer(nullptr),
 	  ppt_data_size(0), ppt_len(0), main_qcd_qntsty(0), main_qcd_numStepSizes(0), tccps(nullptr),
-	  tilePartIndexCounter_(-1), numTileParts_(0), compressedTileData_(nullptr), mct_norms(nullptr),
+	  tilePartCounter_(0), numTileParts_(0), compressedTileData_(nullptr), mct_norms(nullptr),
 	  mct_decoding_matrix_(nullptr), mct_coding_matrix_(nullptr), mct_records_(nullptr),
 	  nb_mct_records_(0), nb_max_mct_records_(0), mcc_records_(nullptr), nb_mcc_records_(0),
 	  nb_max_mcc_records_(0), cod(false), ppt(false), qcd_(nullptr), ht_(false)

@@ -169,8 +169,8 @@ struct TileCodingParams
 	// NOTES:
 	// 1. tile parts must appear in code stream in strictly increasing
 	// order
-	// 2. tile part index must be  <= 254
-	int16_t tilePartIndexCounter_;
+	// 2. tile part index must be  <= 255
+	uint8_t tilePartCounter_;
 	/** number of tile parts for the tile. */
 	uint8_t numTileParts_;
 	SparseBuffer* compressedTileData_;

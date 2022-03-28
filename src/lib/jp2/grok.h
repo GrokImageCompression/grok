@@ -470,8 +470,8 @@ typedef struct _grk_progression
 /*@{*/
 typedef struct _grk_raw_comp_cparameters
 {
-	uint32_t dx; /** subsampling in X direction */
-	uint32_t dy; /** subsampling in Y direction */
+	uint8_t dx; /** subsampling in X direction */
+	uint8_t dy; /** subsampling in Y direction */
 	/*@}*/
 } grk_raw_comp_cparameters;
 
@@ -561,9 +561,9 @@ typedef struct _grk_cparameters
 	/** subimage compressing: origin image offset in y direction */
 	uint32_t image_offset_y0;
 	/** subsampling value for dx */
-	uint32_t subsampling_dx;
+	uint8_t subsampling_dx;
 	/** subsampling value for dy */
-	uint32_t subsampling_dy;
+	uint8_t subsampling_dy;
 	/** input file format*/
 	GRK_SUPPORTED_FILE_FMT decod_format;
 	/** output file format*/
@@ -953,10 +953,10 @@ typedef struct _grk_image_comp
 	uint32_t h;
 	/** XRsiz: horizontal separation of a sample of component with respect to the reference
 	 * grid */
-	uint32_t dx;
+	uint8_t dx;
 	/** YRsiz: vertical separation of a sample of component with respect to the reference grid
 	 */
-	uint32_t dy;
+	uint8_t dy;
 	/** precision */
 	uint8_t prec;
 	/* signed */

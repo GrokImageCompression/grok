@@ -992,6 +992,14 @@ grk_image* TIFFFormat::decode(const std::string& filename, grk_cparameters* para
 			numcomps = (uint16_t)(numcomps + 3);
 			TIFFGetFieldDefaulted(tif, TIFFTAG_YCBCRSUBSAMPLING, &chroma_subsample_x,
 								  &chroma_subsample_y);
+			if (chroma_subsample_x == 0 || chroma_subsample_y == 0){
+				spdlog::error("TIFFFormat::decode: chroma subsampling factors must be positive.");
+				goto cleanup;
+			}
+			if (chroma_subsample_x > 255 || chroma_subsample_y > 255){
+				spdlog::error("TIFFFormat::decode: chroma subsampling factors must each be less than 256.");
+				goto cleanup;
+			}
 			if(chroma_subsample_x != 1 || chroma_subsample_y != 1)
 			{
 				if(isSigned)
@@ -1061,8 +1069,8 @@ grk_image* TIFFFormat::decode(const std::string& filename, grk_cparameters* para
 		auto img_comp = cmptparm + j;
 		img_comp->prec = (uint8_t)tiBps;
 		bool chroma = (j == 1 || j == 2);
-		img_comp->dx = chroma ? chroma_subsample_x : 1;
-		img_comp->dy = chroma ? chroma_subsample_y : 1;
+		img_comp->dx = chroma ? (uint8_t)chroma_subsample_x : 1;
+		img_comp->dy = chroma ? (uint8_t)chroma_subsample_y : 1;
 		img_comp->w = grk::ceildiv<uint32_t>(w, img_comp->dx);
 		img_comp->h = grk::ceildiv<uint32_t>(h, img_comp->dy);
 	}

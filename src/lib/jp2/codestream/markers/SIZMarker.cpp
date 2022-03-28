@@ -63,13 +63,11 @@ bool SIZMarker::read(CodeStreamDecompress* codeStream, uint8_t* headerData, uint
 	assert(codeStream != nullptr);
 	assert(headerData != nullptr);
 
-	uint32_t i;
 	uint32_t numComps;
 	uint32_t nb_comp_remain;
 	uint32_t remaining_size;
 	uint16_t numTiles;
 	auto decompressor = codeStream->getDecompressorState();
-
 	auto image = codeStream->getHeaderImage();
 	auto cp = codeStream->getCodingParams();
 
@@ -89,10 +87,9 @@ bool SIZMarker::read(CodeStreamDecompress* codeStream, uint8_t* headerData, uint
 		return false;
 	}
 
-	uint32_t tmp;
-	grk_read<uint32_t>(headerData, &tmp, 2); /* Rsiz (capabilities) */
+	uint16_t tmp;
+	grk_read(headerData, &tmp); /* Rsiz (capabilities) */
 	headerData += 2;
-
 	// sanity check on RSIZ
 	if(tmp & GRK_PROFILE_PART2)
 	{
@@ -115,24 +112,24 @@ bool SIZMarker::read(CodeStreamDecompress* codeStream, uint8_t* headerData, uint
 		}
 	}
 
-	cp->rsiz = (uint16_t)tmp;
-	grk_read<uint32_t>(headerData, &image->x1); /* Xsiz */
+	cp->rsiz = tmp;
+	grk_read(headerData, &image->x1); /* Xsiz */
 	headerData += 4;
-	grk_read<uint32_t>(headerData, &image->y1); /* Ysiz */
+	grk_read(headerData, &image->y1); /* Ysiz */
 	headerData += 4;
-	grk_read<uint32_t>(headerData, &image->x0); /* X0siz */
+	grk_read(headerData, &image->x0); /* X0siz */
 	headerData += 4;
-	grk_read<uint32_t>(headerData, &image->y0); /* Y0siz */
+	grk_read(headerData, &image->y0); /* Y0siz */
 	headerData += 4;
-	grk_read<uint32_t>(headerData, &cp->t_width); /* XTsiz */
+	grk_read(headerData, &cp->t_width); /* XTsiz */
 	headerData += 4;
-	grk_read<uint32_t>(headerData, &cp->t_height); /* YTsiz */
+	grk_read(headerData, &cp->t_height); /* YTsiz */
 	headerData += 4;
-	grk_read<uint32_t>(headerData, &cp->tx0); /* XT0siz */
+	grk_read(headerData, &cp->tx0); /* XT0siz */
 	headerData += 4;
-	grk_read<uint32_t>(headerData, &cp->ty0); /* YT0siz */
+	grk_read(headerData, &cp->ty0); /* YT0siz */
 	headerData += 4;
-	grk_read<uint32_t>(headerData, &tmp, 2); /* Csiz */
+	grk_read(headerData, &tmp); /* Csiz */
 	headerData += 2;
 	if(tmp == 0)
 	{
@@ -140,7 +137,7 @@ bool SIZMarker::read(CodeStreamDecompress* codeStream, uint8_t* headerData, uint
 		return false;
 	}
 	if(tmp <= maxNumComponentsJ2K)
-		image->numcomps = (uint16_t)tmp;
+		image->numcomps = tmp;
 	else
 	{
 		GRK_ERROR("SIZ marker: number of components %u is greater than maximum allowed number of "
@@ -148,7 +145,6 @@ bool SIZMarker::read(CodeStreamDecompress* codeStream, uint8_t* headerData, uint
 				  tmp, maxNumComponentsJ2K);
 		return false;
 	}
-
 	if(image->numcomps != numComps)
 	{
 		GRK_ERROR("SIZ marker: signalled number of components is not compatible with remaining "
@@ -156,9 +152,6 @@ bool SIZMarker::read(CodeStreamDecompress* codeStream, uint8_t* headerData, uint
 				  image->numcomps, numComps);
 		return false;
 	}
-
-	/* testcase 4035.pdf.SIGSEGV.d8b.3375 */
-	/* testcase issue427-null-image-size.jp2 */
 	if((image->x0 >= image->x1) || (image->y0 >= image->y1))
 	{
 		std::stringstream ss;
@@ -167,15 +160,11 @@ bool SIZMarker::read(CodeStreamDecompress* codeStream, uint8_t* headerData, uint
 		GRK_ERROR("%s", ss.str().c_str());
 		return false;
 	}
-	/* testcase 2539.pdf.SIGFPE.706.1712 (also 3622.pdf.SIGFPE.706.2916 and 4008.pdf.SIGFPE.706.3345
-	 * and maybe more) */
 	if((cp->t_width == 0U) || (cp->t_height == 0U))
 	{
 		GRK_ERROR("SIZ marker: invalid tile size (%u, %u)", cp->t_width, cp->t_height);
 		return false;
 	}
-
-	/* testcase issue427-illegal-tile-offset.jp2 */
 	if(cp->tx0 > image->x0 || cp->ty0 > image->y0)
 	{
 		GRK_ERROR("SIZ marker: tile origin (%u,%u) cannot lie in the region"
@@ -183,8 +172,8 @@ bool SIZMarker::read(CodeStreamDecompress* codeStream, uint8_t* headerData, uint
 				  cp->tx0, cp->ty0, image->x0, image->y0);
 		return false;
 	}
-	uint32_t tx1 = satAdd<uint32_t>(cp->tx0, cp->t_width); /* manage overflow */
-	uint32_t ty1 = satAdd<uint32_t>(cp->ty0, cp->t_height); /* manage overflow */
+	uint32_t tx1 = satAdd<uint32_t>(cp->tx0, cp->t_width);
+	uint32_t ty1 = satAdd<uint32_t>(cp->ty0, cp->t_height);
 	if(tx1 <= image->x0 || ty1 <= image->y0)
 	{
 		GRK_ERROR("SIZ marker: first tile (%u,%u,%u,%u) must overlap"
@@ -192,25 +181,24 @@ bool SIZMarker::read(CodeStreamDecompress* codeStream, uint8_t* headerData, uint
 				  cp->tx0, cp->ty0, tx1, ty1, image->x0, image->y0, image->x1, image->y1);
 		return false;
 	}
-
-	/* Allocate the resulting image components */
 	image->comps = new grk_image_comp[image->numcomps];
 	memset(image->comps, 0, image->numcomps * sizeof(grk_image_comp));
 	auto img_comp = image->comps;
 
 	/* Read the component information */
-	for(i = 0; i < image->numcomps; ++i)
+	for(uint16_t i = 0; i < image->numcomps; ++i)
 	{
-		grk_read<uint32_t>(headerData++, &tmp, 1); /* Ssiz_i */
+		uint8_t  tmp;
+		grk_read(headerData++, &tmp); /* Ssiz_i */
 		img_comp->prec = (uint8_t)((tmp & 0x7f) + 1);
 		img_comp->sgnd = tmp >> 7;
-		grk_read<uint32_t>(headerData++, &tmp, 1); /* XRsiz_i */
+		grk_read(headerData++, &tmp); /* XRsiz_i */
 		img_comp->dx = tmp; /* should be between 1 and 255 */
-		grk_read<uint32_t>(headerData++, &tmp, 1); /* YRsiz_i */
+		grk_read(headerData++, &tmp); /* YRsiz_i */
 		img_comp->dy = tmp; /* should be between 1 and 255 */
-		if(img_comp->dx < 1 || img_comp->dx > 255 || img_comp->dy < 1 || img_comp->dy > 255)
+		if(img_comp->dx == 0 || img_comp->dy == 0)
 		{
-			GRK_ERROR("Invalid values for comp = %u : dx=%u dy=%u\n (should be between 1 and 255 "
+			GRK_ERROR("Invalid values for comp = %u : dx=%u dy=%u\n (should be positive "
 					  "according to the JPEG2000 standard)",
 					  i, img_comp->dx, img_comp->dy);
 			return false;
@@ -225,9 +213,8 @@ bool SIZMarker::read(CodeStreamDecompress* codeStream, uint8_t* headerData, uint
 		}
 		++img_comp;
 	}
-
 	/* Compute the number of tiles */
-	uint32_t t_grid_width = ceildiv<uint32_t>(image->x1 - cp->tx0, cp->t_width);
+	uint32_t t_grid_width  = ceildiv<uint32_t>(image->x1 - cp->tx0, cp->t_width);
 	uint32_t t_grid_height = ceildiv<uint32_t>(image->y1 - cp->ty0, cp->t_height);
 	if(t_grid_width == 0 || t_grid_height == 0)
 	{
@@ -252,39 +239,30 @@ bool SIZMarker::read(CodeStreamDecompress* codeStream, uint8_t* headerData, uint
 	decompressor->end_tile_x_index_ = cp->t_grid_width;
 	decompressor->end_tile_y_index_ = cp->t_grid_height;
 
-	/* memory allocations */
 	cp->tcps = new TileCodingParams[numTiles];
 	decompressor->default_tcp_->tccps = new TileComponentCodingParams[image->numcomps];
 	decompressor->default_tcp_->mct_records_ =
 		(grk_mct_data*)grkCalloc(default_number_mct_records, sizeof(grk_mct_data));
-
 	if(!decompressor->default_tcp_->mct_records_)
 	{
 		GRK_ERROR("Not enough memory to take in charge SIZ marker");
 		return false;
 	}
 	decompressor->default_tcp_->nb_max_mct_records_ = default_number_mct_records;
-
 	decompressor->default_tcp_->mcc_records_ = (grk_simple_mcc_decorrelation_data*)grkCalloc(
 		default_number_mcc_records, sizeof(grk_simple_mcc_decorrelation_data));
-
 	if(!decompressor->default_tcp_->mcc_records_)
 	{
 		GRK_ERROR("Not enough memory to take in charge SIZ marker");
 		return false;
 	}
 	decompressor->default_tcp_->nb_max_mcc_records_ = default_number_mcc_records;
-
 	/* set up default dc level shift */
-	for(i = 0; i < image->numcomps; ++i)
-	{
+	for(uint16_t i = 0; i < image->numcomps; ++i)
 		if(!image->comps[i].sgnd)
 			decompressor->default_tcp_->tccps[i].dc_level_shift_ = 1 << (image->comps[i].prec - 1);
-	}
-
-	for(i = 0; i < numTiles; ++i)
+	for(uint16_t i = 0; i < numTiles; ++i)
 		(cp->tcps + i)->tccps = new TileComponentCodingParams[image->numcomps];
-
 	decompressor->setState(DECOMPRESS_STATE_MH);
 	subsampleAndReduceHeaderImageComponents(image, cp);
 

@@ -111,9 +111,9 @@ struct TileProcessor
 	bool first_poc_tile_part_;
 	/** Compressing Only
 	 *  index of tile part being currently coding.
-	 *  tilePartIndexCounter_ holds the total number of tile parts encoded thus far
+	 *  tilePartCounter_ holds the total number of tile parts encoded thus far
 	 *  while the compressor is compressing the current tile part.*/
-	uint8_t tilePartIndexCounter_;
+	uint8_t tilePartCounter_;
 	/** Compression Only
 	 *  Current packet iterator number */
 	uint32_t pino;

@@ -448,7 +448,7 @@ bool CodeStreamDecompress::decompressTile(uint16_t tileIndex)
 	// reset tile part numbers, in case we are re-using the same codec object
 	// from previous decompress
 	for(uint32_t i = 0; i < numTilesToDecompress; ++i)
-		cp_.tcps[i].tilePartIndexCounter_ = -1;
+		cp_.tcps[i].tilePartCounter_ = 0;
 
 	/* customization of the decoding */
 	procedure_list_.push_back([this] { return decompressTile(); });

@@ -873,14 +873,14 @@ bool CodeStreamCompress::writeTilePart(TileProcessor* tileProcessor)
 	}
 	if(cp_.tlm_markers)
 		cp_.tlm_markers->push(currentTileIndex, tilePartBytesWritten);
-	++tileProcessor->tilePartIndexCounter_;
+	++tileProcessor->tilePartCounter_;
 
 	return true;
 }
 bool CodeStreamCompress::writeTileParts(TileProcessor* tileProcessor)
 {
 	currentTileProcessor_ = tileProcessor;
-	assert(tileProcessor->tilePartIndexCounter_ == 0);
+	assert(tileProcessor->tilePartCounter_ == 0);
 	// 1. write first tile part
 	tileProcessor->pino = 0;
 	tileProcessor->first_poc_tile_part_ = true;
@@ -936,7 +936,7 @@ bool CodeStreamCompress::updateRates(void)
 	if(width <= 0 || height <= 0)
 		return false;
 
-	uint32_t bits_empty = 8 * image->comps->dx * image->comps->dy;
+	uint32_t bits_empty = 8 * (uint32_t)image->comps->dx * image->comps->dy;
 	uint32_t size_pixel = (uint32_t)image->numcomps * image->comps->prec;
 	auto header_size = (double)stream_->tell();
 
