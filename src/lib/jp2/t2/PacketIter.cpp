@@ -23,7 +23,7 @@
 namespace grk
 {
 ResPrecinctInfo::ResPrecinctInfo()
-	: precWidthExp(0), precHeightExp(0), resOffsetX0PRJ(0), resOffsetY0PRJ(0),
+	: precWidthExp(0), precHeightExp(0), precWidthExpPRJ(0), precHeightExpPRJ(0),resOffsetX0PRJ(0), resOffsetY0PRJ(0),
 	  precWidthPRJ(0),precWidthPRJMinusOne(0), precHeightPRJ(0),precHeightPRJMinusOne(0),
 	  numPrecincts_(0), dxPRJ(0), dyPRJ(0),
 	  resInPrecGridX0(0), resInPrecGridY0(0), resno_(0), decompLevel_(0),innerPrecincts_(0),
@@ -42,17 +42,17 @@ void ResPrecinctInfo::init(	uint8_t resno, uint8_t decompLevel, grk_rect32 tileB
 
 	resno_ = resno;
 	decompLevel_ = decompLevel;
-	uint32_t canvasPrecShiftX = precWidthExp + decompLevel_;
-	uint32_t canvasPrecShiftY = precHeightExp + decompLevel_;
+	precWidthExpPRJ = precWidthExp + decompLevel_;
+	precHeightExpPRJ = precHeightExp + decompLevel_;
 
 	// offset of projected resolution relative to projected precinct grid
 	// these are both zero when tile origin equals (0,0)
-	resOffsetX0PRJ = (uint32_t)(((uint64_t)res.x0 << decompLevel) % ((uint64_t)1 << canvasPrecShiftX));
-	resOffsetY0PRJ = (uint32_t)(((uint64_t)res.y0 << decompLevel) % ((uint64_t)1 << canvasPrecShiftY));
+	resOffsetX0PRJ = (uint32_t)(((uint64_t)res.x0 << decompLevel) % ((uint64_t)1 << precWidthExpPRJ));
+	resOffsetY0PRJ = (uint32_t)(((uint64_t)res.y0 << decompLevel) % ((uint64_t)1 << precHeightExpPRJ));
 
-	precWidthPRJ = ((uint64_t)compDx << canvasPrecShiftX);
+	precWidthPRJ = ((uint64_t)compDx << precWidthExpPRJ);
 	precWidthPRJMinusOne = precWidthPRJ-1;
-	precHeightPRJ = ((uint64_t)compDy << canvasPrecShiftY);
+	precHeightPRJ = ((uint64_t)compDy << precHeightExpPRJ);
 	precHeightPRJMinusOne = precHeightPRJ-1;
 	dxPRJ = ((uint64_t)compDx << decompLevel_);
 	dyPRJ = ((uint64_t)compDy << decompLevel_);
@@ -1183,14 +1183,25 @@ bool PacketIter::next_cprlOPT(SparseBuffer* src)
 		{
 			// skip over packets outside of window
 			if (!wholeTile){
-				// bail out if we reach row of precincts that are out of bound of the window
-				if(y == win->y1 && compno == prog.compE-1)
-					return false;
+				if(y == win->y1) {
+					// bail out if we reach row of precincts that are out of bound of the window
+					if (compno == prog.compE-1)
+						return false;
 
-				//otherwise, skip remaining lines for this component
-				if (src){
-
-
+					//otherwise, skip remaining precincts for this component
+					if (src){
+						uint64_t precCount = 0;
+						for (uint8_t i = 0; i < prog.resE; ++i){
+							auto info = precinctInfo_+i;
+							auto reg = grk_rect<uint64_t>(0U,y,precInfo->tileBoundsPrecPRJ.x1,precInfo->tileBoundsPrecPRJ.y1);
+							reg = reg.scaleDownCeilPow2((uint32_t)info->precWidthExpPRJ,(uint32_t)info->precHeightExpPRJ);
+							precCount += reg.area();
+						}
+						precCount *= prog.layE;
+						if (!skipPackets(src,precCount))
+							return false;
+						break;
+					}
 				}
 			}
 			for(; x < precInfo->tileBoundsPrecPRJ.x1; x += dx)
@@ -1238,8 +1249,7 @@ bool PacketIter::next_pcrlOPT(SparseBuffer* src)
 	{
 		// skip over packets outside of window
 		if (!wholeTile){
-			// windowed decode:
-			// bail out if we reach row of precincts that are out of bound of the window
+			// bail out if we reach row of precincts that are out of bounds of the window
 			if(y == win->y1)
 				return false;
 		}

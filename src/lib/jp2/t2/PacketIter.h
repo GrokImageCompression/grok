@@ -168,6 +168,8 @@ struct ResPrecinctInfo
 	void print(void);
 	uint32_t precWidthExp;
 	uint32_t precHeightExp;
+	uint32_t precWidthExpPRJ;
+	uint32_t precHeightExpPRJ;
 	uint32_t resOffsetX0PRJ;
 	uint32_t resOffsetY0PRJ;
 	uint64_t precWidthPRJ;
