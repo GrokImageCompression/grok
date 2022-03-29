@@ -13,7 +13,6 @@
  *    You should have received a copy of the GNU Affero General Public License
  *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-
 #include "grk_includes.h"
 
 namespace grk
@@ -109,7 +108,6 @@ void PLMarkerMgr::pushPL(uint32_t len)
 		GRK_UNUSED(rc);
 		assert(rc);
 	}
-
 	totalBytesWritten_ += numBytes;
 }
 uint32_t PLMarkerMgr::getTotalBytesWritten(void){
@@ -134,8 +132,7 @@ bool PLMarkerMgr::write(void)
 
 	return true;
 }
-////////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////
 
 bool PLMarkerMgr::readPLM(uint8_t* headerData, uint16_t header_size)
 {
@@ -174,7 +171,6 @@ bool PLMarkerMgr::readPLM(uint8_t* headerData, uint16_t header_size)
 
 	return true;
 }
-
 grkBufferU8* PLMarkerMgr::addNewMarker(uint8_t *data, uint16_t len){
 	auto b = new grkBufferU8();
 	if (data || len)
@@ -185,7 +181,6 @@ grkBufferU8* PLMarkerMgr::addNewMarker(uint8_t *data, uint16_t len){
 
 	return b;
 }
-
 bool PLMarkerMgr::readPLT(uint8_t* headerData, uint16_t header_size)
 {
 	if(header_size <= 1)
@@ -276,7 +271,6 @@ bool PLMarkerMgr::readNextByte(uint8_t Iplm, uint32_t *packetLength)
 
 	return packetLen_ == 0;
 }
-
 uint64_t PLMarkerMgr::pop(uint64_t numPackets){
 	uint64_t total = 0;
 	for (uint64_t i = 0; i < numPackets; ++i)
@@ -284,7 +278,6 @@ uint64_t PLMarkerMgr::pop(uint64_t numPackets){
 
 	return total;
 }
-
 // note: packet length must be at least 1, so 0 indicates
 // no packet length available
 uint32_t PLMarkerMgr::pop(void)
@@ -296,9 +289,7 @@ uint32_t PLMarkerMgr::pop(void)
 		GRK_ERROR("Attempt to pop PLT beyond PLT marker range.");
 		return 0;
 	}
-
 	if(currMarkerIter_ != rawMarkers_->end() && currMarkerBuf_){
-
 		// read next packet length
 		while (currMarkerBuf_->canRead() && !readNextByte(currMarkerBuf_->read(), &rc)) {
 		}
@@ -311,7 +302,6 @@ uint32_t PLMarkerMgr::pop(void)
 			}
 			else
 			{
-				// advance to next marker
 				currMarkerIter_++;
 				if(currMarkerIter_ != rawMarkers_->end())
 				{
@@ -320,7 +310,6 @@ uint32_t PLMarkerMgr::pop(void)
 				}
 				else
 				{
-					currMarkerIter_ = rawMarkers_->end();
 					currMarkerBuf_ = nullptr;
 				}
 			}
@@ -340,6 +329,5 @@ void PLMarkerMgr::rewind(void)
 		currMarkerBuf_ = currMarkerIter_->second->front();
 	}
 }
-
 
 } // namespace grk
