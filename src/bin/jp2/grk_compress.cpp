@@ -1101,8 +1101,8 @@ static int parseCommandLine(int argc, char** argv, CompressInitParams* initParam
 				if(!validateCinema(&cinema2KArg, GRK_PROFILE_CINEMA_2K, parameters))
 					return 1;
 				parameters->writeTLM = true;
-				spdlog::warn("CINEMA 2K profile activated\n"
-							 "Other options specified may be overridden");
+				spdlog::warn("CINEMA 2K profile activated");
+				spdlog::warn("Other options specified may be overridden\n");
 			}
 			else if(cinema4KArg.isSet())
 			{

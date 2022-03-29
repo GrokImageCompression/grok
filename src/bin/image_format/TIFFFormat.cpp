@@ -938,10 +938,10 @@ grk_image* TIFFFormat::decode(const std::string& filename, grk_cparameters* para
 	memset(&cmptparm[0], 0, grk::maxNumPackComponents * sizeof(grk_image_comp));
 	if((tiPhoto == PHOTOMETRIC_RGB) && (is_cinema) && (tiBps != 12U))
 	{
-		spdlog::warn("TIFFFormat::decode: Input image bitdepth is {} bits\n"
-					 "TIF conversion has automatically rescaled to 12-bits\n"
-					 "to comply with cinema profiles.",
+		spdlog::warn("TIFFFormat::decode: Input image bitdepth is {} bits.",
 					 tiBps);
+		spdlog::warn("TIF conversion has automatically rescaled to 12-bits");
+		spdlog::warn("to comply with cinema profiles.\n");
 	}
 	else
 	{
