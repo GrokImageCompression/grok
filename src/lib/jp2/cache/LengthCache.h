@@ -96,15 +96,10 @@ struct TilePartLengthInfo
 {
 	explicit TilePartLengthInfo() ;
 	TilePartLengthInfo(uint16_t tileno, uint32_t len);
-	TilePartLengthInfo(uint16_t tileno,
-						uint8_t signalledTilePartIndex,
-						uint8_t signalledNumTileParts,
-						uint32_t len) ;
 	uint16_t tileIndex_;
-	uint8_t signalledTilePartIndex_;
-	uint8_t signalledNumTileParts_;
 	uint32_t length_;
 };
+
 typedef std::vector<TilePartLengthInfo> TL_INFO_VEC;
 typedef std::map<uint16_t, TL_INFO_VEC*> TL_MAP;
 
@@ -117,7 +112,6 @@ struct TileLengthMarkers
 	bool read(uint8_t* headerData, uint16_t header_size);
 	void rewind(void);
 	TilePartLengthInfo* getNext(void);
-	TilePartLengthInfo* peekNext(void);
 	void invalidate(void);
 	bool isValid(void);
 	bool seekTo(uint16_t skipTileIndex, IBufferedStream* stream, uint64_t firstSotPos);

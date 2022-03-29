@@ -264,14 +264,8 @@ bool CodeStreamInfo::seekToFirstTilePart(uint16_t tileIndex)
 
 	return true;
 }
-TilePartLengthInfo::TilePartLengthInfo() : TilePartLengthInfo(0,0,0,0) {}
-TilePartLengthInfo::TilePartLengthInfo(uint16_t tileno, uint32_t len) : TilePartLengthInfo(tileno,0,0,len)
-{}
-TilePartLengthInfo::TilePartLengthInfo(uint16_t tileno,
-				uint8_t signalledTilePartIndex,
-				uint8_t signalledNumTileParts,
-				uint32_t len) : tileIndex_(tileno), signalledTilePartIndex_(signalledTilePartIndex),
-								signalledNumTileParts_(signalledNumTileParts),length_(len)
+TilePartLengthInfo::TilePartLengthInfo() : TilePartLengthInfo(0,0) {}
+TilePartLengthInfo::TilePartLengthInfo(uint16_t tileno,	uint32_t len) : tileIndex_(tileno),length_(len)
 {}
 TileLengthMarkers::TileLengthMarkers()
 	: markers_(new TL_MAP()), markerIt_(markers_->end()), markerTilePartIndex_(0), curr_vec_(nullptr),
@@ -454,19 +448,6 @@ TilePartLengthInfo* TileLengthMarkers::getNext(void)
 		if(curr_vec_)
 			return &curr_vec_->operator[](markerTilePartIndex_++);
 	}
-	return nullptr;
-}
-TilePartLengthInfo* TileLengthMarkers::peekNext(void)
-{
-	assert(markers_);
-	if(!valid_)
-	{
-		GRK_WARN("Attempt to peek next marker from invalid TLM marker");
-		return nullptr;
-	}
-	if(curr_vec_)
-		return &curr_vec_->operator[](markerTilePartIndex_);
-
 	return nullptr;
 }
 bool TileLengthMarkers::seekTo(uint16_t tileIndex, IBufferedStream* stream, uint64_t firstSotPos)
