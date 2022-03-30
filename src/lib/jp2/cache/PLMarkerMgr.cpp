@@ -234,26 +234,13 @@ bool PLMarkerMgr::findMarker(uint32_t nextIndex, bool compress)
 				}
 			}
 
-			// The code below handles the non-standard case where there are more
+			// The code below handles the case where there are more
 			// than 256 markers, but their signaled indices are all sequential mod 256.
-			// Although this is an abuse of the standard, we interpret this to mean
-			// that the actual marker index is simply the marker count.
+			// We interpret this to mean that the actual marker index is simply the marker count.
 			// Therefore, we do not concatenate any of the markers, even though
 			// they may share the same signaled marker index
 			if(sequential_)
-			{
 				nextIndex = (uint32_t)rawMarkers_->size();
-				if(rawMarkers_->size() == 256)
-				{
-					GRK_WARN(
-						"PLT: 256+1 markers, with all 256+1 PLT marker indices sequential mod 256.");
-					GRK_WARN("We will make the assumption that **all** PLT markers are sequential");
-					GRK_WARN("and therefore will ignore the signaled PLT marker index,");
-					GRK_WARN("and use the marker count instead as the marker index.");
-					GRK_WARN("Decompression will fail if this assumption is broken for subsequent PLT "
-							 "markers.");
-				}
-			}
 		}
 	}
 
