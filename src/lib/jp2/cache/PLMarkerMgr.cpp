@@ -74,17 +74,37 @@ void PLMarkerMgr::pushPL(uint32_t len)
 
 	auto marker = currMarkerIter_->second;
 	grkBufferU8 *buf = nullptr;
-	if (marker->empty() || marker->back()->offset + numBytes > marker->back()->len) {
-		if (isFinal_){
+	bool newMarker = false;
+	uint8_t newMarkerId;
+	if (marker->empty()){
+		newMarker = true;
+		newMarkerId = (uint8_t)(currMarkerIter_->first);
+	} else if (marker->back()->offset + numBytes > marker->back()->len){
+		newMarker = true;
+		// advance marker id
+		if (rawMarkers_->size() < 256) {
+			newMarkerId = (uint8_t)rawMarkers_->size();
+			findMarker(newMarkerId,true);
+		}
+		// or keep marker id at 0xFF
+		else {
+			newMarkerId = 0xFF;
+		}
+	} else {
+		buf = marker->back();
+	}
+
+	if (newMarker){
+		if (isFinal_) {
 			buf = addNewMarker(nullptr, plWriteBufferLen);
-			buf->write((uint8_t)currMarkerIter_->first);
+			buf->write(newMarkerId);
 		}
 		// account for marker header
 		totalBytesWritten_ += 2 + 2 + 1;
-	}
-	else {
+	} else {
 		buf = marker->back();
 	}
+
 	assert(buf);
 
 	if (isFinal_){
