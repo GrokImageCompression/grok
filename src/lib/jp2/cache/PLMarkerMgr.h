@@ -37,7 +37,7 @@ struct PLMarkerMgr
 	//////////////////////////////////////////
 	// compress
 	void pushInit(bool isFinal);
-	void pushPL(uint32_t len);
+	bool pushPL(uint32_t len);
 	bool write(void);
 	uint32_t getTotalBytesWritten(void);
 	/////////////////////////////////////////

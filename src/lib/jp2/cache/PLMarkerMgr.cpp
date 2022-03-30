@@ -61,32 +61,35 @@ void PLMarkerMgr::pushInit(bool isFinal)
 	clearMarkers();
 	totalBytesWritten_ = 0;
 	isFinal_ = isFinal;
-    findMarker(0,true);
 }
-void PLMarkerMgr::pushPL(uint32_t len)
+bool PLMarkerMgr::pushPL(uint32_t len)
 {
 	assert(len);
-
 	// GRK_INFO("Push packet length: %d", len);
 	uint32_t numbits = floorlog2(len) + 1;
 	uint32_t numBytes = (numbits + 6) / 7;
 	assert(numBytes <= 5);
 
-	auto marker = currMarkerIter_->second;
+	auto marker = rawMarkers_->empty() ? nullptr : currMarkerIter_->second;
 	grkBufferU8 *buf = nullptr;
 	bool newMarker = false;
 	uint8_t newMarkerId;
-	if (marker->empty()){
+	if (rawMarkers_->empty()){
 		newMarker = true;
-		newMarkerId = (uint8_t)(currMarkerIter_->first);
+		newMarkerId = 0;
+	    if (!findMarker(newMarkerId,true))
+	    	return false;
+	    marker = currMarkerIter_->second;
 	} else if (marker->back()->offset + numBytes > marker->back()->len){
 		newMarker = true;
-		newMarkerId = rawMarkers_->size() & 255;
-		findMarker((uint32_t)rawMarkers_->size(),true);
+		newMarkerId = rawMarkers_->size() & 0xFF;
+		if (!findMarker((uint32_t)rawMarkers_->size(),true))
+			return false;
+	    marker = currMarkerIter_->second;
 	} else {
+		newMarkerId = currMarkerIter_->first & 0xFF;
 		buf = marker->back();
 	}
-
 	if (newMarker){
 		if (isFinal_) {
 			buf = addNewMarker(nullptr, plWriteBufferLen);
@@ -94,12 +97,8 @@ void PLMarkerMgr::pushPL(uint32_t len)
 		}
 		// account for marker header
 		totalBytesWritten_ += 2 + 2 + 1;
-	} else {
-		buf = marker->back();
 	}
-
 	assert(buf);
-
 	if (isFinal_){
 		// write period
 		//static int count = 0;
@@ -117,11 +116,13 @@ void PLMarkerMgr::pushPL(uint32_t len)
 			len = (uint32_t)(len >> 7);
 		}
 		assert(counter == -1);
-		bool rc = buf->write(temp, numBytes);
-		GRK_UNUSED(rc);
-		assert(rc);
+		if (!buf->write(temp, numBytes))
+			return false;
+
 	}
 	totalBytesWritten_ += numBytes;
+
+	return true;
 }
 uint32_t PLMarkerMgr::getTotalBytesWritten(void){
 	return totalBytesWritten_;
@@ -226,7 +227,7 @@ bool PLMarkerMgr::findMarker(uint32_t nextIndex, bool compress)
 			// once sequential_ becomes false, it never returns to true again
 			if(sequential_)
 			{
-				sequential_ = (rawMarkers_->size() % 256) == nextIndex;
+				sequential_ = (rawMarkers_->size() & 0xFF) == nextIndex;
 				if(!sequential_ && rawMarkers_->size() > 256)
 				{
 					GRK_ERROR("PLT: sequential marker assumption has been broken.");
@@ -244,7 +245,7 @@ bool PLMarkerMgr::findMarker(uint32_t nextIndex, bool compress)
 		}
 	}
 
-	// 2. update raw markers
+	// update raw markers
 	currMarkerIter_ = rawMarkers_->find(nextIndex);
 	if(currMarkerIter_ == rawMarkers_->end())
 	{

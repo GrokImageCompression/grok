@@ -159,8 +159,10 @@ bool T2Compress::compressPacketSimulate(TileCodingParams* tcp, PacketIter* pi,
 		return false;
 	}
 	*packet_bytes_written = (uint32_t)byteCount;
-	if(markers)
-		markers->pushPL(*packet_bytes_written);
+	if(markers) {
+		if (!markers->pushPL(*packet_bytes_written))
+			return false;
+	}
 
 	return true;
 }
