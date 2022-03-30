@@ -81,15 +81,8 @@ void PLMarkerMgr::pushPL(uint32_t len)
 		newMarkerId = (uint8_t)(currMarkerIter_->first);
 	} else if (marker->back()->offset + numBytes > marker->back()->len){
 		newMarker = true;
-		// advance marker id
-		if (rawMarkers_->size() < 256) {
-			newMarkerId = (uint8_t)rawMarkers_->size();
-			findMarker(newMarkerId,true);
-		}
-		// or keep marker id at 0xFF
-		else {
-			newMarkerId = 0xFF;
-		}
+		newMarkerId = rawMarkers_->size() & 255;
+		findMarker((uint32_t)rawMarkers_->size(),true);
 	} else {
 		buf = marker->back();
 	}
