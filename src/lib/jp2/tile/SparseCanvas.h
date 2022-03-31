@@ -12,41 +12,7 @@
  *
  *    You should have received a copy of the GNU Affero General Public License
  *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
- *
- *
- *    This source code incorporates work covered by the following copyright and
- *    permission notice:
- *
- * The copyright in this software is being made available under the 2-clauses
- * BSD License, included below. This software may be subject to other third
- * party and contributor rights, including patent rights, and no such rights
- * are granted under this license.
- *
- * Copyright (c) 2017, IntoPix SA <contact@intopix.com>
- * All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the distribution.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS `AS IS'
- * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
- * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
- * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
- * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
- * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
- * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
- * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
- * POSSIBILITY OF SUCH DAMAGE.
  */
-
 #pragma once
 
 #include <cstdint>
@@ -61,54 +27,12 @@ class ISparseCanvas
 {
   public:
 	virtual ~ISparseCanvas() = default;
-	/** Read the content of a rectangular window of the sparse buffer into a
-	 * user buffer.
-	 *
-	 * Windows not written with write() are read as 0.
-	 *
-	 * @param window window to read from sparse buffer.
-	 * @param dest user buffer to fill. Must be at least
-	 * sizeof(int32) * ( (y1 - y0 - 1) * dest_line_stride + (x1 - x0 - 1) * dest_col_stride + 1)
-	 * bytes large.
-	 * @param dest_col_stride spacing (in elements, not in bytes) in x dimension between consecutive
-	 * elements of the user buffer.
-	 * @param dest_line_stride spacing (in elements, not in bytes) in y dimension between
-	 * consecutive elements of the user buffer.
-	 * @param forgiving if set to TRUE and the window is invalid, true will still be returned.
-	 * @return true in case of success.
-	 */
 	virtual bool read(uint8_t resno, eBandOrientation bandOrientation, grk_rect32 window,
-					  int32_t* dest, const uint32_t dest_col_stride,
-					  const uint32_t dest_line_stride, bool forgiving) = 0;
-	/** Write the content of a rectangular window into the sparse buffer from a
-	 * user buffer.
-	 *
-	 * Blocks intersecting the window are allocated, if not already done.
-	 *
-	 * @param window : window to write to buffer
-	 * @param src user buffer to fill. Must be at least
-	 * sizeof(int32) * ( (y1 - y0 - 1) * src_line_stride + (x1 - x0 - 1) * src_col_stride + 1) bytes
-	 * large.
-	 * @param src_col_stride spacing (in elements, not in bytes) in x dimension between consecutive
-	 * elements of the user buffer.
-	 * @param src_line_stride spacing (in elements, not in bytes) in y dimension between consecutive
-	 * elements of the user buffer.
-	 * @param forgiving if set to TRUE and the window is invalid, true will still be returned.
-	 * @return true in case of success.
-	 */
+					  int32_t* dest, const uint32_t destinationColumnStride,
+					  const uint32_t destinationLineStride, bool forceReturnTrue) = 0;
 	virtual bool write(uint8_t resno, eBandOrientation bandOrientation, grk_rect32 window,
-					   const int32_t* src, const uint32_t src_col_stride,
-					   const uint32_t src_line_stride, bool forgiving) = 0;
-	/** Allocate all blocks for a rectangular window into the sparse buffer from a
-	 * user buffer.
-	 *
-	 * Blocks intersecting the window are allocated
-	 *
-	 * @param window window to write into the sparse buffer.
-	 * @param zeroOutBuffer memset buffer to zero if true
-	 *
-	 * @return true in case of success.
-	 */
+					   const int32_t* src, const uint32_t src_columnStride,
+					   const uint32_t src_lineStride, bool forceReturnTrue) = 0;
 	virtual bool alloc(grk_rect32 window, bool zeroOutBuffer) = 0;
 };
 struct SparseBlock
@@ -123,272 +47,234 @@ struct SparseBlock
 		data = new int32_t[block_area];
 		if(zeroOutBuffer)
 			memset(data, 0, block_area * sizeof(int32_t));
-		// else
-		//	memset(data, 0xFF, block_area * sizeof(int32_t));
 	}
 	int32_t* data;
 };
-
 template<uint32_t LBW, uint32_t LBH>
 class SparseCanvas : public ISparseCanvas
 {
   public:
-	/**
-	 * SparseCanvas constructor
-	 *
-	 * @param bds bounds
-	 *
-	 * @return a new sparse buffer instance, or nullptr in case of failure.
-	 */
 	SparseCanvas(grk_rect32 bds)
-		: block_width(1 << LBW), block_height(1 << LBH), data_blocks(nullptr), bounds(bds)
+		: blockWidth(1 << LBW), blockHeight(1 << LBH), blocks(nullptr), bounds(bds)
 	{
 		if(!bounds.width() || !bounds.height() || !LBW || !LBH)
 			throw std::runtime_error("invalid window for sparse buffer");
-
 		uint32_t grid_off_x = floordivpow2(bounds.x0, LBW);
 		uint32_t grid_off_y = floordivpow2(bounds.y0, LBH);
-		uint32_t grid_x = ceildivpow2<uint32_t>(bounds.x1, LBW);
-		uint32_t grid_y = ceildivpow2<uint32_t>(bounds.y1, LBH);
-		grid_bounds = grk_rect32(grid_off_x, grid_off_y, grid_x, grid_y);
-		auto block_count = grid_bounds.area();
-		data_blocks = new SparseBlock*[block_count];
-		for(uint64_t i = 0; i < block_count; ++i)
-			data_blocks[i] = nullptr;
+		uint32_t grid_x 	= ceildivpow2<uint32_t>(bounds.x1, LBW);
+		uint32_t grid_y 	= ceildivpow2<uint32_t>(bounds.y1, LBH);
+		gridBounds 			= grk_rect32(grid_off_x, grid_off_y, grid_x, grid_y);
+		auto blockCount 	= gridBounds.area();
+		blocks = new SparseBlock*[blockCount];
+		for(uint64_t i = 0; i < blockCount; ++i)
+			blocks[i] = nullptr;
 	}
-
-	/**
-	 *
-	 * SparseCanvas constructor
-	 *
-	 * @param width total width of the array.
-	 * @param height total height of the array
-	 *
-	 * @return a new sparse buffer instance, or nullptr in case of failure.
-	 */
 	SparseCanvas(uint32_t width, uint32_t height) : SparseCanvas(grk_rect32(0, 0, width, height)) {}
 	~SparseCanvas()
 	{
-		if(data_blocks)
+		if(blocks)
 		{
-			for(uint64_t i = 0; i < (uint64_t)grid_bounds.width() * grid_bounds.height(); i++)
+			for(uint64_t i = 0; i < (uint64_t)gridBounds.width() * gridBounds.height(); i++)
 			{
-				delete(data_blocks[i]);
-				data_blocks[i] = nullptr;
+				delete(blocks[i]);
+				blocks[i] = nullptr;
 			}
-			delete[] data_blocks;
+			delete[] blocks;
 		}
 	}
 	bool read(uint8_t resno, eBandOrientation bandOrientation, grk_rect32 window, int32_t* dest,
-			  const uint32_t dest_col_stride, const uint32_t dest_line_stride, bool forgiving)
+			  const uint32_t destinationColumnStride, const uint32_t destinationLineStride, bool forceReturnTrue)
 	{
 		GRK_UNUSED(bandOrientation);
-		return read_or_write(resno, window, dest, dest_col_stride, dest_line_stride, forgiving,
+		return readWrite(resno, window, dest, destinationColumnStride, destinationLineStride, forceReturnTrue,
 							 true);
 	}
 	bool write(uint8_t resno, eBandOrientation bandOrientation, grk_rect32 window,
-			   const int32_t* src, const uint32_t src_col_stride, const uint32_t src_line_stride,
-			   bool forgiving)
+			   const int32_t* src, const uint32_t src_columnStride, const uint32_t src_lineStride,
+			   bool forceReturnTrue)
 	{
 		GRK_UNUSED(bandOrientation);
-		return read_or_write(resno, window, (int32_t*)src, src_col_stride, src_line_stride,
-							 forgiving, false);
+		return readWrite(resno, window, (int32_t*)src, src_columnStride, src_lineStride,
+							 forceReturnTrue, false);
 	}
 	bool alloc(grk_rect32 win, bool zeroOutBuffer)
 	{
-		if(!SparseCanvas::is_window_valid(win))
+		if(!SparseCanvas::isWindowValid(win))
 			return true;
-
-		uint32_t y_incr = 0;
+		uint32_t yIncrement = 0;
 		uint32_t block_y = win.y0 >> LBH;
-		for(uint32_t y = win.y0; y < win.y1; block_y++, y += y_incr)
+		for(uint32_t y = win.y0; y < win.y1; block_y++, y += yIncrement)
 		{
-			y_incr = (y == win.y0) ? block_height - (win.y0 & (block_height - 1)) : block_height;
-			y_incr = (std::min<uint32_t>)(y_incr, win.y1 - y);
+			yIncrement = (y == win.y0) ? blockHeight - (win.y0 & (blockHeight - 1)) : blockHeight;
+			yIncrement = (std::min<uint32_t>)(yIncrement, win.y1 - y);
 			uint32_t block_x = win.x0 >> LBW;
-			uint32_t x_incr = 0;
-			for(uint32_t x = win.x0; x < win.x1; block_x++, x += x_incr)
+			uint32_t xIncrement = 0;
+			for(uint32_t x = win.x0; x < win.x1; block_x++, x += xIncrement)
 			{
-				x_incr = (x == win.x0) ? block_width - (win.x0 & (block_width - 1)) : block_width;
-				x_incr = (std::min<uint32_t>)(x_incr, win.x1 - x);
-				if(!grid_bounds.contains(grk_pt32(block_x, block_y)))
+				xIncrement = (x == win.x0) ? blockWidth - (win.x0 & (blockWidth - 1)) : blockWidth;
+				xIncrement = (std::min<uint32_t>)(xIncrement, win.x1 - x);
+				if(!gridBounds.contains(grk_pt32(block_x, block_y)))
 				{
 					GRK_ERROR("sparse buffer : attempt to allocate a block (%d,%d) outside block "
 							  "grid bounds (%d,%d,%d,%d)",
 							  block_x, block_y,
-							  grid_bounds.x0,
-							  grid_bounds.y0,
-							  grid_bounds.x1,
-							  grid_bounds.y1);
+							  gridBounds.x0,
+							  gridBounds.y0,
+							  gridBounds.x1,
+							  gridBounds.y1);
 					return false;
 				}
-				auto src_block = getBlock(block_x, block_y);
-				if(!src_block)
+				auto srcBlock = getBlock(block_x, block_y);
+				if(!srcBlock)
 				{
 					auto b = new SparseBlock();
-					b->alloc(block_width * block_height, zeroOutBuffer);
-					assert(grid_bounds.contains(grk_pt32(block_x, block_y)));
+					b->alloc(blockWidth * blockHeight, zeroOutBuffer);
+					assert(gridBounds.contains(grk_pt32(block_x, block_y)));
 					assert(b->data);
-					uint64_t index = (uint64_t)(block_y - grid_bounds.y0) * grid_bounds.width() +
-									 (block_x - grid_bounds.x0);
-					data_blocks[index] = b;
+					uint64_t index = (uint64_t)(block_y - gridBounds.y0) * gridBounds.width() +
+									 (block_x - gridBounds.x0);
+					blocks[index] = b;
 				}
 			}
 		}
-
 		return true;
 	}
-
   private:
 	inline SparseBlock* getBlock(uint32_t block_x, uint32_t block_y)
 	{
 		uint64_t index =
-			(uint64_t)(block_y - grid_bounds.y0) * grid_bounds.width() + (block_x - grid_bounds.x0);
-		return data_blocks[index];
+			(uint64_t)(block_y - gridBounds.y0) * gridBounds.width() + (block_x - gridBounds.x0);
+		return blocks[index];
 	}
-	/** Returns whether window bounds are valid (non empty and within bounds)
-	 * @param win window bounds
-	 * @return true or false.
-	 */
-	bool is_window_valid(grk_rect32 win)
+	bool isWindowValid(grk_rect32 win)
 	{
 		return !(win.x0 >= bounds.x1 || win.x1 <= win.x0 || win.x1 > bounds.x1 ||
 				 win.y0 >= bounds.y1 || win.y1 <= win.y0 || win.y1 > bounds.y1);
 	}
-	bool read_or_write(uint8_t resno, grk_rect32 win, int32_t* buf, const uint32_t buf_col_stride,
-					   const uint32_t buf_line_stride, bool forgiving, bool is_read_op)
+	bool readWrite(uint8_t resno, grk_rect32 win, int32_t* buf, const uint32_t buf_columnStride,
+					   const uint32_t buf_lineStride, bool forceReturnTrue, bool isReadOperation)
 	{
-		if(!is_window_valid(win))
+		if(!isWindowValid(win))
 		{
 			// fill the client buffer with zeros in this case
-			if(forgiving && is_read_op)
+			if(forceReturnTrue && isReadOperation)
 			{
 				GRK_WARN("Sparse buffer @ res %d, attempt to read invalid window (%d,%d,%d,%d). "
 						 "Filling with zeros.",
 						 resno, win.x0, win.y0, win.x1, win.y1);
 				for(uint32_t y = win.y0; y < win.y1; ++y)
 				{
-					int32_t* bufPtr = buf + (y - win.y0) * buf_line_stride;
+					auto bufPtr = buf + (y - win.y0) * buf_lineStride;
 					for(uint32_t x = win.x0; x < win.x1; ++x)
 					{
 						*bufPtr = 0;
-						bufPtr += buf_col_stride;
+						bufPtr += buf_columnStride;
 					}
 				}
 			}
-			return forgiving;
+			return forceReturnTrue;
 		}
-		// if (!buf)
-		//	GRK_WARN("Empty block at %s, res: %d",win.boundsString().c_str(), resno);
-		const uint64_t line_stride = buf_line_stride;
-		const uint64_t col_stride = buf_col_stride;
+		const uint64_t lineStride = buf_lineStride;
+		const uint64_t columnStride = buf_columnStride;
 		uint32_t block_y = win.y0 >> LBH;
-		uint32_t y_incr = 0;
-		for(uint32_t y = win.y0; y < win.y1; block_y++, y += y_incr)
+		uint32_t yIncrement = 0;
+		for(uint32_t y = win.y0; y < win.y1; block_y++, y += yIncrement)
 		{
-			y_incr = (y == win.y0) ? block_height - (win.y0 & (block_height - 1)) : block_height;
-			uint32_t block_y_offset = block_height - y_incr;
-			y_incr = (std::min<uint32_t>)(y_incr, win.y1 - y);
+			yIncrement = (y == win.y0) ? blockHeight - (win.y0 & (blockHeight - 1)) : blockHeight;
+			uint32_t blockYOffset = blockHeight - yIncrement;
+			yIncrement = (std::min<uint32_t>)(yIncrement, win.y1 - y);
 			uint32_t block_x = win.x0 >> LBW;
-			uint32_t x_incr = 0;
-			for(uint32_t x = win.x0; x < win.x1; block_x++, x += x_incr)
+			uint32_t xIncrement = 0;
+			for(uint32_t x = win.x0; x < win.x1; block_x++, x += xIncrement)
 			{
-				x_incr = (x == win.x0) ? block_width - (win.x0 & (block_width - 1)) : block_width;
-				uint32_t block_x_offset = block_width - x_incr;
-				x_incr = (std::min<uint32_t>)(x_incr, win.x1 - x);
-				if(!grid_bounds.contains(grk_pt32(block_x, block_y)))
+				xIncrement = (x == win.x0) ? blockWidth - (win.x0 & (blockWidth - 1)) : blockWidth;
+				uint32_t blockXOffset = blockWidth - xIncrement;
+				xIncrement = (std::min<uint32_t>)(xIncrement, win.x1 - x);
+				if(!gridBounds.contains(grk_pt32(block_x, block_y)))
 				{
 					GRK_ERROR("sparse buffer @ resno %d, Attempt to access a block (%d,%d) outside "
 							  "block grid bounds",
 							  resno, block_x, block_y);
 					return false;
 				}
-				auto src_block = getBlock(block_x, block_y);
-				// all blocks should be allocated first before read/write is called
-				if(!src_block)
+				auto srcBlock = getBlock(block_x, block_y);
+				if(!srcBlock)
 				{
 					GRK_WARN("sparse buffer @ resno %d, %s op: missing block (%d,%d,%d,%d) for %s "
 							 "(%d,%d,%d,%d)",
-							 resno, is_read_op ? "read" : "write",
-							 bounds.x0 + block_x * block_width, bounds.y0 + block_y * block_height,
-							 bounds.x0 + (block_x + 1) * block_width,
-							 bounds.y0 + (block_y + 1) * block_height,
-							 is_read_op ? "read" : "write", win.x0, win.y0, win.x1, win.y1);
+							 resno, isReadOperation ? "read" : "write",
+							 bounds.x0 + block_x * blockWidth, bounds.y0 + block_y * blockHeight,
+							 bounds.x0 + (block_x + 1) * blockWidth,
+							 bounds.y0 + (block_y + 1) * blockHeight,
+							 isReadOperation ? "read" : "write", win.x0, win.y0, win.x1, win.y1);
 					continue;
 				}
-				if(is_read_op)
+				if(isReadOperation)
 				{
-					const int32_t* GRK_RESTRICT src_ptr =
-						src_block->data + ((uint64_t)block_y_offset << LBW) + block_x_offset;
-					int32_t* GRK_RESTRICT dest_ptr =
-						buf + (y - win.y0) * line_stride + (x - win.x0) * col_stride;
-					uint32_t y_ = y;
-					for(uint32_t j = 0; j < y_incr; j++)
+					const int32_t*  src =
+						srcBlock->data + ((uint64_t)blockYOffset << LBW) + blockXOffset;
+					auto  dest =
+						buf + (y - win.y0) * lineStride + (x - win.x0) * columnStride;
+					for(uint32_t j = 0; j < yIncrement; j++)
 					{
-						uint64_t ind = 0;
-						for(uint32_t k = 0; k < x_incr; k++)
+						uint64_t index = 0;
+						for(uint32_t k = 0; k < xIncrement; k++)
 						{
 #ifdef GRK_DEBUG_VALGRIND
-							size_t val = grk_memcheck<int32_t>(src_ptr + k, 1);
+							size_t val = grk_memcheck<int32_t>(src + k, 1);
 							if(val != grk_mem_ok)
 								GRK_ERROR("sparse buffer @resno %d, read block(%d,%d) : "
 										  "uninitialized at location (%d,%d)",
 										  resno, block_x, block_y, x + k, y_);
 #endif
-							dest_ptr[ind] = src_ptr[k];
-							ind += col_stride;
+							dest[index] = src[k];
+							index += columnStride;
 						}
-						dest_ptr += line_stride;
-						y_++;
-						src_ptr += block_width;
+						dest += lineStride;
+						src += blockWidth;
 					}
 				}
 				else
 				{
-					const int32_t* GRK_RESTRICT src_ptr = nullptr;
+					const int32_t*  src = nullptr;
 					if(buf)
-						src_ptr = buf + (y - win.y0) * line_stride + (x - win.x0) * col_stride;
-					int32_t* GRK_RESTRICT dest_ptr =
-						src_block->data + ((uint64_t)block_y_offset << LBW) + block_x_offset;
-
-					uint32_t y_ = y;
-					for(uint32_t j = 0; j < y_incr; j++)
+						src = buf + (y - win.y0) * lineStride + (x - win.x0) * columnStride;
+					auto  dest =
+						srcBlock->data + ((uint64_t)blockYOffset << LBW) + blockXOffset;
+					for(uint32_t j = 0; j < yIncrement; j++)
 					{
-						uint64_t ind = 0;
-						for(uint32_t k = 0; k < x_incr; k++)
+						uint64_t index = 0;
+						for(uint32_t k = 0; k < xIncrement; k++)
 						{
 #ifdef GRK_DEBUG_VALGRIND
-							if(src_ptr)
+							if(src)
 							{
 								grk_pt32 pt((uint32_t)(x + k), y_);
-								size_t val = grk_memcheck<int32_t>(src_ptr + ind, 1);
+								size_t val = grk_memcheck<int32_t>(src + index, 1);
 								if(val != grk_mem_ok)
 									GRK_ERROR("sparse buffer @ resno %d,  write block(%d,%d): "
 											  "uninitialized at location (%d,%d)",
 											  resno, block_x, block_y, x + k, y_);
 							}
 #endif
-							dest_ptr[k] = src_ptr ? src_ptr[ind] : 0;
-							ind += col_stride;
+							dest[k] = src ? src[index] : 0;
+							index += columnStride;
 						}
-						if(src_ptr)
-							src_ptr += line_stride;
-						y_++;
-						dest_ptr += block_width;
+						if(src)
+							src += lineStride;
+						dest += blockWidth;
 					}
 				}
 			}
 		}
-
 		return true;
 	}
-
   private:
-	const uint32_t block_width;
-	const uint32_t block_height;
-	SparseBlock** data_blocks;
+	const uint32_t blockWidth;
+	const uint32_t blockHeight;
+	SparseBlock** blocks;
 	grk_rect32 bounds;
-	grk_rect32 grid_bounds;
+	grk_rect32 gridBounds;
 };
 
 } // namespace grk
