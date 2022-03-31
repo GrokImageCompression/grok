@@ -751,8 +751,8 @@ inline bool readBytes(FILE* fp, grk_image* image, size_t area)
 
 grk_image* PNMFormat::decode(grk_cparameters* parameters)
 {
-	uint32_t subsampling_dx = parameters->subsampling_dx;
-	uint32_t subsampling_dy = parameters->subsampling_dy;
+	uint8_t subsampling_dx = parameters->subsampling_dx;
+	uint8_t subsampling_dy = parameters->subsampling_dy;
 	uint16_t decompressNumComps;
 	uint16_t compno;
 	uint32_t w, stride_diff, width, counter, h, format;
