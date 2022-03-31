@@ -358,9 +358,12 @@ bool TIFFFormat::encodePixels()
 
 	uint32_t height = image_->decompressHeight;
 	int32_t const* planes[grk::maxNumPackComponents];
+	int32_t const* planesBegin[grk::maxNumPackComponents];
 	uint16_t numcomps = image_->decompressNumComps;
-	for(uint32_t i = 0U; i < numcomps; ++i)
+	for(uint32_t i = 0U; i < numcomps; ++i){
 		planes[i] = image_->comps[i].data;
+		planesBegin[i] = planes[i];
+	}
 	uint32_t h = 0;
 	GrkSerializeBuf packedBuf;
 
@@ -387,13 +390,14 @@ bool TIFFFormat::encodePixels()
 				bufPtr = (int8_t*)(packedBuf.data);
 				bytesToWrite = 0;
 			}
-			size_t xpos = 0;
+			size_t xposLuma = 0;
+			size_t xposChroma = 0;
 			for(uint32_t u = 0; u < units; ++u)
 			{
 				// 1. luma
 				for(size_t sub_h = 0; sub_h < chroma_subsample_y; ++sub_h)
 				{
-					for(size_t sub_x = xpos; sub_x < xpos + chroma_subsample_x; ++sub_x)
+					for(size_t sub_x = xposLuma; sub_x < xposLuma + chroma_subsample_x; ++sub_x)
 					{
 						bool accept = (h + sub_h) < height && sub_x < image_->decompressWidth;
 						*bufPtr++ =
@@ -401,15 +405,22 @@ bool TIFFFormat::encodePixels()
 						bytesToWrite++;
 					}
 				}
+				if (xposChroma >= image_->comps[1].stride || xposChroma >= image_->comps[2].stride){
+					spdlog::warn("TIFFFormat::encodePixels: chroma channel width is too short - skipping out of bounds pixel location.");
+					break;
+				}
 				// 2. chroma
 				*bufPtr++ = (int8_t)*planes[1]++;
 				*bufPtr++ = (int8_t)*planes[2]++;
 				bytesToWrite += 2;
-				xpos += chroma_subsample_x;
+				xposChroma++;
+				xposLuma += chroma_subsample_x;
 			}
 			planes[0] += image_->comps[0].stride * chroma_subsample_y;
-			planes[1] += image_->comps[1].stride - image_->comps[1].w;
-			planes[2] += image_->comps[2].stride - image_->comps[2].w;
+			planesBegin[1] += image_->comps[1].stride;
+			planes[1] = planesBegin[1];
+			planesBegin[2] += image_->comps[2].stride;
+			planes[2] = planesBegin[2];
 		}
 		if(h != rowsWritten)
 			rowsWritten += h - chroma_subsample_y - rowsWritten;
