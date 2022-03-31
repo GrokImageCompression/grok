@@ -10,10 +10,6 @@ IF(MSVC)
     string(APPEND CMAKE_CXX_FLAGS " /EHsc")
 ENDIF(MSVC)
 
-if(BUILD_UNIT_TESTS)
-    SET(BUILD_STATIC_LIBS ON)
-ENDIF()
-
 IF(UNIX)
 find_package(Valgrind)
 if (Valgrind_FOUND)
@@ -285,17 +281,3 @@ add_executable(t1_generate_luts ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_part1/t1_gener
     target_link_libraries(t1_generate_luts)
   endif()
 endif()
-
-if(BUILD_UNIT_TESTS)
-    add_executable(bench_dwt 
-				    util/bench_dwt.cpp
-				    ${GROK_SOURCE_DIR}/src/bin/common/spdlog/spdlog.cpp
-				    ${GROK_SOURCE_DIR}/src/bin/common/spdlog/color_sinks.cpp
-				    ${GROK_SOURCE_DIR}/src/bin/common/spdlog/stdout_sinks.cpp
-				    ${GROK_SOURCE_DIR}/src/bin/common/spdlog/fmt.cpp
-				    ${GROK_SOURCE_DIR}/src/bin/common/spdlog/async.cpp     
-				    ${GROK_SOURCE_DIR}/src/bin/common/spdlog/file_sinks.cpp )
-    if(UNIX)
-        target_link_libraries(bench_dwt m ${GROK_LIBRARY_NAME})
-    endif()
-endif(BUILD_UNIT_TESTS)
