@@ -418,7 +418,8 @@ int GrkDecompress::parseCommandLine(int argc, char** argv, DecompressInitParams*
 													"", "string", cmd);
 		TCLAP::ValueArg<std::string> decodeRegionArg("d", "DecodeRegion", "Decompress Region",
 													 false, "", "string", cmd);
-		TCLAP::ValueArg<uint32_t> repetitionsArg("e", "Repetitions",
+		TCLAP::ValueArg<uint32_t> repetitionsArg(
+			"e", "Repetitions",
 			"Number of compress repetitions, for either a folder or a single file", false, 0,
 			"unsigned integer", cmd);
 		TCLAP::SwitchArg forceRgbArg("f", "force-rgb", "Force RGB", cmd);
@@ -432,8 +433,10 @@ int GrkDecompress::parseCommandLine(int argc, char** argv, DecompressInitParams*
 												  "string", cmd);
 		TCLAP::ValueArg<uint16_t> layerArg("l", "Layer", "Layer", false, 0, "unsigned integer",
 										   cmd);
-		TCLAP::ValueArg<uint32_t> randomAccessArg("m", "RandomAccess", "Toggle support for random access"
-												 " into code stream", false, 0, "unsigned integer",  cmd);
+		TCLAP::ValueArg<uint32_t> randomAccessArg("m", "RandomAccess",
+												  "Toggle support for random access"
+												  " into code stream",
+												  false, 0, "unsigned integer", cmd);
 		// Kernel build flags:
 		// 1 indicates build binary, otherwise load binary
 		// 2 indicates generate binaries
@@ -668,7 +671,7 @@ int GrkDecompress::parseCommandLine(int argc, char** argv, DecompressInitParams*
 			/*printf("ROI_values = %s [%d / %d]\n", ROI_values, strlen(ROI_values), size_optarg );
 			 */
 			bool rc = parseWindowBounds(ROI_values, &parameters->dw_x0, &parameters->dw_y0,
-									   &parameters->dw_x1, &parameters->dw_y1);
+										&parameters->dw_x1, &parameters->dw_y1);
 			delete[] ROI_values;
 			if(!rc)
 				return 1;
@@ -753,7 +756,6 @@ void GrkDecompress::destoryParams(grk_decompress_parameters* parameters)
 		parameters->precision = nullptr;
 	}
 }
-
 
 static int decompress_callback(grk_plugin_decompress_callback_info* info);
 
@@ -1190,16 +1192,16 @@ int GrkDecompress::preProcess(grk_plugin_decompress_callback_info* info)
 		info->image = grk_decompress_get_composited_image(info->codec);
 		auto img = info->image;
 
-		float val[4] = {info->decompressor_parameters->dw_x0,
-						info->decompressor_parameters->dw_y0,
-						info->decompressor_parameters->dw_x1,
-						info->decompressor_parameters->dw_y1};
+		float val[4] = {info->decompressor_parameters->dw_x0, info->decompressor_parameters->dw_y0,
+						info->decompressor_parameters->dw_x1, info->decompressor_parameters->dw_y1};
 		bool allLessThanOne = true;
-		for (uint8_t i = 0; i < 4; ++i){
-			if (val[i] > 1.0f)
+		for(uint8_t i = 0; i < 4; ++i)
+		{
+			if(val[i] > 1.0f)
 				allLessThanOne = false;
 		}
-		if (allLessThanOne){
+		if(allLessThanOne)
+		{
 			info->decompressor_parameters->dw_x0 = floor(val[0] * (img->x1 - img->x0));
 			info->decompressor_parameters->dw_y0 = floor(val[1] * (img->y1 - img->y0));
 			info->decompressor_parameters->dw_x1 = ceil(val[2] * (img->x1 - img->x0));

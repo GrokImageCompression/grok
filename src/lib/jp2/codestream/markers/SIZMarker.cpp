@@ -188,7 +188,7 @@ bool SIZMarker::read(CodeStreamDecompress* codeStream, uint8_t* headerData, uint
 	/* Read the component information */
 	for(uint16_t i = 0; i < image->numcomps; ++i)
 	{
-		uint8_t  tmp;
+		uint8_t tmp;
 		grk_read(headerData++, &tmp); /* Ssiz_i */
 		img_comp->prec = (uint8_t)((tmp & 0x7f) + 1);
 		img_comp->sgnd = tmp >> 7;
@@ -214,7 +214,7 @@ bool SIZMarker::read(CodeStreamDecompress* codeStream, uint8_t* headerData, uint
 		++img_comp;
 	}
 	/* Compute the number of tiles */
-	uint32_t t_grid_width  = ceildiv<uint32_t>(image->x1 - cp->tx0, cp->t_width);
+	uint32_t t_grid_width = ceildiv<uint32_t>(image->x1 - cp->tx0, cp->t_width);
 	uint32_t t_grid_height = ceildiv<uint32_t>(image->y1 - cp->ty0, cp->t_height);
 	if(t_grid_width == 0 || t_grid_height == 0)
 	{

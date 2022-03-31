@@ -54,8 +54,8 @@ struct PLMarkerMgr
   private:
 	void clearMarkers(void);
 	bool findMarker(uint32_t index, bool compress);
-	grkBufferU8* addNewMarker(uint8_t *data, uint16_t len);
-	PL_MARKERS *rawMarkers_;
+	grkBufferU8* addNewMarker(uint8_t* data, uint16_t len);
+	PL_MARKERS* rawMarkers_;
 	PL_MARKERS::iterator currMarkerIter_;
 
 	////////////////////////////////
@@ -67,11 +67,11 @@ struct PLMarkerMgr
 
 	//////////////////////////
 	// decompress
-	bool readNextByte(uint8_t Iplm, uint32_t *packetLength);
+	bool readNextByte(uint8_t Iplm, uint32_t* packetLength);
 	bool sequential_;
 	uint32_t packetLen_;
 	uint32_t currMarkerBufIndex_;
-	grkBufferU8 *currMarkerBuf_;
+	grkBufferU8* currMarkerBuf_;
 	///////////////////////////////
 
 	bool enabled_;

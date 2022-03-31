@@ -264,12 +264,14 @@ bool CodeStreamInfo::seekToFirstTilePart(uint16_t tileIndex)
 
 	return true;
 }
-TilePartLengthInfo::TilePartLengthInfo() : TilePartLengthInfo(0,0) {}
-TilePartLengthInfo::TilePartLengthInfo(uint16_t tileno,	uint32_t len) : tileIndex_(tileno),length_(len)
+TilePartLengthInfo::TilePartLengthInfo() : TilePartLengthInfo(0, 0) {}
+TilePartLengthInfo::TilePartLengthInfo(uint16_t tileno, uint32_t len)
+	: tileIndex_(tileno), length_(len)
 {}
 TileLengthMarkers::TileLengthMarkers()
-	: markers_(new TL_MAP()), markerIt_(markers_->end()), markerTilePartIndex_(0), curr_vec_(nullptr),
-	  stream_(nullptr), streamStart(0), valid_(true), hasTileIndices_(false), tileCount_(0)
+	: markers_(new TL_MAP()), markerIt_(markers_->end()), markerTilePartIndex_(0),
+	  curr_vec_(nullptr), stream_(nullptr), streamStart(0), valid_(true), hasTileIndices_(false),
+	  tileCount_(0)
 {}
 TileLengthMarkers::TileLengthMarkers(IBufferedStream* stream) : TileLengthMarkers()
 {
@@ -435,7 +437,7 @@ TilePartLengthInfo* TileLengthMarkers::getNext(void)
 		if(markerTilePartIndex_ == curr_vec_->size())
 		{
 			markerIt_++;
-			if(markerIt_ !=  markers_->end())
+			if(markerIt_ != markers_->end())
 			{
 				curr_vec_ = markerIt_->second;
 				markerTilePartIndex_ = 0;

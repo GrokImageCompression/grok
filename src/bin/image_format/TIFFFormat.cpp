@@ -360,7 +360,8 @@ bool TIFFFormat::encodePixels()
 	int32_t const* planes[grk::maxNumPackComponents];
 	int32_t const* planesBegin[grk::maxNumPackComponents];
 	uint16_t numcomps = image_->decompressNumComps;
-	for(uint32_t i = 0U; i < numcomps; ++i){
+	for(uint32_t i = 0U; i < numcomps; ++i)
+	{
 		planes[i] = image_->comps[i].data;
 		planesBegin[i] = planes[i];
 	}
@@ -405,8 +406,10 @@ bool TIFFFormat::encodePixels()
 						bytesToWrite++;
 					}
 				}
-				if (xposChroma >= image_->comps[1].stride || xposChroma >= image_->comps[2].stride){
-					spdlog::warn("TIFFFormat::encodePixels: chroma channel width is too short - skipping out of bounds pixel location.");
+				if(xposChroma >= image_->comps[1].stride || xposChroma >= image_->comps[2].stride)
+				{
+					spdlog::warn("TIFFFormat::encodePixels: chroma channel width is too short - "
+								 "skipping out of bounds pixel location.");
 					break;
 				}
 				// 2. chroma
@@ -949,8 +952,7 @@ grk_image* TIFFFormat::decode(const std::string& filename, grk_cparameters* para
 	memset(&cmptparm[0], 0, grk::maxNumPackComponents * sizeof(grk_image_comp));
 	if((tiPhoto == PHOTOMETRIC_RGB) && (is_cinema) && (tiBps != 12U))
 	{
-		spdlog::warn("TIFFFormat::decode: Input image bitdepth is {} bits.",
-					 tiBps);
+		spdlog::warn("TIFFFormat::decode: Input image bitdepth is {} bits.", tiBps);
 		spdlog::warn("TIF conversion has automatically rescaled to 12-bits");
 		spdlog::warn("to comply with cinema profiles.\n");
 	}
@@ -1003,12 +1005,15 @@ grk_image* TIFFFormat::decode(const std::string& filename, grk_cparameters* para
 			numcomps = (uint16_t)(numcomps + 3);
 			TIFFGetFieldDefaulted(tif, TIFFTAG_YCBCRSUBSAMPLING, &chroma_subsample_x,
 								  &chroma_subsample_y);
-			if (chroma_subsample_x == 0 || chroma_subsample_y == 0){
+			if(chroma_subsample_x == 0 || chroma_subsample_y == 0)
+			{
 				spdlog::error("TIFFFormat::decode: chroma subsampling factors must be positive.");
 				goto cleanup;
 			}
-			if (chroma_subsample_x > 255 || chroma_subsample_y > 255){
-				spdlog::error("TIFFFormat::decode: chroma subsampling factors must each be less than 256.");
+			if(chroma_subsample_x > 255 || chroma_subsample_y > 255)
+			{
+				spdlog::error(
+					"TIFFFormat::decode: chroma subsampling factors must each be less than 256.");
 				goto cleanup;
 			}
 			if(chroma_subsample_x != 1 || chroma_subsample_y != 1)

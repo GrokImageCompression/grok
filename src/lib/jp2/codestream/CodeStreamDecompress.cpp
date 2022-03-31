@@ -263,8 +263,8 @@ bool CodeStreamDecompress::setDecompressWindow(grk_rect_single window)
 		/* Check if the window provided by the user are correct */
 		uint32_t start_x = (uint32_t)window.x0 + image->x0;
 		uint32_t start_y = (uint32_t)window.y0 + image->y0;
-		uint32_t end_x   = (uint32_t)window.x1 + image->x0;
-		uint32_t end_y   = (uint32_t)window.y1 + image->y0;
+		uint32_t end_x = (uint32_t)window.x1 + image->x0;
+		uint32_t end_y = (uint32_t)window.y1 + image->y0;
 		/* Left */
 		if(start_x > image->x1)
 		{
@@ -335,23 +335,19 @@ bool CodeStreamDecompress::setDecompressWindow(grk_rect_single window)
 			return false;
 
 		GRK_INFO("decompress window canvas coordinates set to (%d,%d,%d,%d)", compositeImage->x0,
-				 	 	 	 	 	 	 	 	 	 	 compositeImage->y0,
-														 compositeImage->x1,
-														 compositeImage->y1);
+				 compositeImage->y0, compositeImage->x1, compositeImage->y1);
 		GRK_INFO("window scaled coordinates : (%f,%f,%f,%f)",
-															 float(compositeImage->x0 - image->x0)/image->width(),
-															 float(compositeImage->y0 - image->x0)/image->height(),
-															 float(compositeImage->x1 - image->x0)/image->width(),
-															 float(compositeImage->y1 - image->x0)/image->height());
+				 float(compositeImage->x0 - image->x0) / image->width(),
+				 float(compositeImage->y0 - image->x0) / image->height(),
+				 float(compositeImage->x1 - image->x0) / image->width(),
+				 float(compositeImage->y1 - image->x0) / image->height());
 		GRK_INFO("window scaled coordinates in ROW-COLUMN format : \"{%f,%f},{%f,%f}\"",
-				 	 	 	 	 	 	 	 	 	 	 	 float(compositeImage->y0 - image->x0)/image->height(),
-															 float(compositeImage->x0 - image->x0)/image->width(),
-															 float(compositeImage->y1 - image->x0)/image->height(),
-															 float(compositeImage->x1 - image->x0)/image->width() );
-		GRK_INFO("image canvas coordinates :  (%d,%d,%d,%d)", image->x0,
-				 	 	 	 	 	 	 	 	 	 	  image->y0,
-														  image->x1,
-														  image->y1);
+				 float(compositeImage->y0 - image->x0) / image->height(),
+				 float(compositeImage->x0 - image->x0) / image->width(),
+				 float(compositeImage->y1 - image->x0) / image->height(),
+				 float(compositeImage->x1 - image->x0) / image->width());
+		GRK_INFO("image canvas coordinates :  (%d,%d,%d,%d)", image->x0, image->y0, image->x1,
+				 image->y1);
 	}
 	compositeImage->validateColourSpace();
 	compositeImage->postReadHeader(&cp_);
@@ -778,8 +774,8 @@ bool CodeStreamDecompress::readHeaderProcedureImpl(void)
 	if(codeStreamInfo)
 		codeStreamInfo->setMainHeaderEnd(stream_->tell() - 2U);
 
-	//rewind TLM marker if present
-	if (cp_.tlm_markers)
+	// rewind TLM marker if present
+	if(cp_.tlm_markers)
 		cp_.tlm_markers->rewind();
 
 	/* Next step: read a tile-part header */

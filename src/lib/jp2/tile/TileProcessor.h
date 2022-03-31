@@ -130,6 +130,7 @@ struct TileProcessor
 	void incNumProcessedPackets(uint64_t numPackets);
 	uint64_t getNumDecompressedPackets(void);
 	void incNumDecompressedPackets(uint64_t numPackets);
+
   private:
 	bool isWholeTileDecompress(uint16_t compno);
 	bool needsMctDecompress(uint16_t compno);

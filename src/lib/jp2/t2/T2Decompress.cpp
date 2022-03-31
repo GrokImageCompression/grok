@@ -71,8 +71,8 @@ bool T2Decompress::processPacket(TileCodingParams* tcp, PacketIter* pi, SparseBu
 #endif
 	auto tilec = tileProcessor->getTile()->comps + pi->getCompno();
 	auto res = tilec->tileCompResolution + pi->getResno();
-	auto skip =
-		pi->getLayno() >= tcp->numLayersToDecompress || pi->getResno() >= tilec->numResolutionsToDecompress;
+	auto skip = pi->getLayno() >= tcp->numLayersToDecompress ||
+				pi->getResno() >= tilec->numResolutionsToDecompress;
 	if(!skip && !tilec->isWholeTileDecoding())
 	{
 		skip = true;
@@ -82,7 +82,8 @@ bool T2Decompress::processPacket(TileCodingParams* tcp, PacketIter* pi, SparseBu
 			auto band = res->tileBand + bandIndex;
 			if(band->isEmpty())
 				continue;
-			auto paddedBandWindow = tilecBuffer->getBandWindowPadded(pi->getResno(), band->orientation);
+			auto paddedBandWindow =
+				tilecBuffer->getBandWindowPadded(pi->getResno(), band->orientation);
 			auto prec =
 				band->generatePrecinctBounds(pi->getPrecinctIndex(), res->precinctPartitionTopLeft,
 											 res->precinctExpn, res->precinctGridWidth);
@@ -91,7 +92,7 @@ bool T2Decompress::processPacket(TileCodingParams* tcp, PacketIter* pi, SparseBu
 				skip = false;
 #ifdef DEBUG_PACKET_ITERATOR
 				GRK_INFO("");
-				GRK_INFO("Overlap detected with band %d =>",bandIndex);
+				GRK_INFO("Overlap detected with band %d =>", bandIndex);
 				paddedBandWindow->print();
 				GRK_INFO("Precinct bounds =>");
 				prec.print();
@@ -150,7 +151,7 @@ bool T2Decompress::decompressPackets(uint16_t tile_no, SparseBuffer* src,
 								tileProcessor);
 	tileProcessor->packetLengthCache.rewind();
 	auto markers = tileProcessor->packetLengthCache.getMarkers();
-	if (markers && !markers->isEnabled())
+	if(markers && !markers->isEnabled())
 		markers = nullptr;
 	for(uint32_t pino = 0; pino < tcp->getNumProgressions(); ++pino)
 	{
@@ -181,8 +182,8 @@ bool T2Decompress::decompressPackets(uint16_t tile_no, SparseBuffer* src,
 				GRK_UNUSED(tex);
 				GRK_WARN("Truncated packet: tile=%d component=%02d resolution=%02d precinct=%03d "
 						 "layer=%02d",
-						 tile_no, currPi->getCompno(), currPi->getResno(), currPi->getPrecinctIndex(),
-						 currPi->getLayno());
+						 tile_no, currPi->getCompno(), currPi->getResno(),
+						 currPi->getPrecinctIndex(), currPi->getLayno());
 				*stopProcessionPackets = true;
 				break;
 			}
@@ -195,8 +196,8 @@ bool T2Decompress::decompressPackets(uint16_t tile_no, SparseBuffer* src,
 					GRK_ERROR(
 						"Corrupt packet: tile=%d component=%02d resolution=%02d precinct=%03d "
 						"layer=%02d",
-						tile_no, currPi->getCompno(), currPi->getResno(), currPi->getPrecinctIndex(),
-						currPi->getLayno());
+						tile_no, currPi->getCompno(), currPi->getResno(),
+						currPi->getPrecinctIndex(), currPi->getLayno());
 					*stopProcessionPackets = true;
 					break;
 				}
@@ -204,8 +205,8 @@ bool T2Decompress::decompressPackets(uint16_t tile_no, SparseBuffer* src,
 				{
 					GRK_WARN("Corrupt packet: tile=%d component=%02d resolution=%02d precinct=%03d "
 							 "layer=%02d",
-							 tile_no, currPi->getCompno(), currPi->getResno(), currPi->getPrecinctIndex(),
-							 currPi->getLayno());
+							 tile_no, currPi->getCompno(), currPi->getResno(),
+							 currPi->getPrecinctIndex(), currPi->getLayno());
 				}
 				// ToDo: skip corrupt packet if SOP marker is present
 			}
@@ -242,10 +243,13 @@ bool T2Decompress::decompressPacket(TileCodingParams* tcp, const PacketIter* pi,
 		packetInfo->headerLength = packetBytes;
 		packetBytes += packetDataBytes;
 		// validate PL marker against parsed packet
-		if (packetInfo->packetLength){
-			if (packetInfo->packetLength != packetBytes){
+		if(packetInfo->packetLength)
+		{
+			if(packetInfo->packetLength != packetBytes)
+			{
 				GRK_ERROR("Corrupt PL marker reports %d bytes for packet;"
-						" parsed bytes are in fact %d",packetInfo->packetLength,packetBytes);
+						  " parsed bytes are in fact %d",
+						  packetInfo->packetLength, packetBytes);
 				return false;
 			}
 		}
@@ -350,7 +354,8 @@ bool T2Decompress::readPacketHeader(TileCodingParams* p_tcp, const PacketIter* p
 					if(!cblk || !cblk->numlenbits)
 					{
 						uint16_t value;
-						prc->getInclTree()->decodeValue(bio.get(), cblkno, p_pi->getLayno() + 1, &value);
+						prc->getInclTree()->decodeValue(bio.get(), cblkno, p_pi->getLayno() + 1,
+														&value);
 						if(value != prc->getInclTree()->getUninitializedValue() &&
 						   value != p_pi->getLayno())
 						{

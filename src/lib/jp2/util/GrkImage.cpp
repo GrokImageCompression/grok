@@ -19,10 +19,12 @@ GrkImage::~GrkImage()
 		grk_object_unref(&meta->obj);
 	grkAlignedFree(interleavedData.data);
 }
-uint32_t GrkImage::width(void) const{
+uint32_t GrkImage::width(void) const
+{
 	return x1 - x0;
 }
-uint32_t GrkImage::height(void) const{
+uint32_t GrkImage::height(void) const
+{
 	return y1 - y0;
 }
 
@@ -372,25 +374,28 @@ void GrkImage::postReadHeader(CodingParams* cp)
 				packedRowBytes = grk::PtoI<int32_t>::getPackedBytes(ncmp, decompressWidth, prec);
 				break;
 		}
-		if(multiTile && canAllocInterleaved(cp)) {
+		if(multiTile && canAllocInterleaved(cp))
+		{
 			rowsPerStrip = cp->t_height;
 		}
-		else {
+		else
+		{
 			rowsPerStrip =
 				packedRowBytes ? (uint32_t)((16 * 1024 * 1024) / packedRowBytes) : y1 - y0;
-			if (rowsPerStrip == 0)
+			if(rowsPerStrip == 0)
 				rowsPerStrip = y1 - y0;
 		}
 	}
 	if(rowsPerStrip > y1 - y0)
 		rowsPerStrip = y1 - y0;
 
-	if (meta && meta->color.icc_profile_buf && meta->color.icc_profile_len && decompressFormat == GRK_PNG_FMT){
-
+	if(meta && meta->color.icc_profile_buf && meta->color.icc_profile_len &&
+	   decompressFormat == GRK_PNG_FMT)
+	{
 		// if lcms is present, try to extract the description tag from the ICC header,
 		// and use this tag as the profile name
-		auto in_prof = cmsOpenProfileFromMem(meta->color.icc_profile_buf,
-											 meta->color.icc_profile_len);
+		auto in_prof =
+			cmsOpenProfileFromMem(meta->color.icc_profile_buf, meta->color.icc_profile_len);
 		if(in_prof)
 		{
 			cmsUInt32Number bufferSize = cmsGetProfileInfoASCII(
@@ -405,8 +410,8 @@ void GrkImage::postReadHeader(CodingParams* cp)
 				{
 					std::string profileName = description.get();
 					auto len = profileName.length();
-					meta->color.icc_profile_name = new char[len+1];
-					memcpy(meta->color.icc_profile_name, profileName.c_str(),len );
+					meta->color.icc_profile_name = new char[len + 1];
+					memcpy(meta->color.icc_profile_name, profileName.c_str(), len);
 					meta->color.icc_profile_name[len] = 0;
 				}
 			}
@@ -1135,7 +1140,7 @@ void GrkImageMeta::free_color()
 	delete[] color.icc_profile_buf;
 	color.icc_profile_buf = nullptr;
 	color.icc_profile_len = 0;
-	delete color.icc_profile_name;
+	delete[] color.icc_profile_name;
 	color.icc_profile_name = nullptr;
 	if(color.channel_definition)
 	{

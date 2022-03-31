@@ -159,8 +159,9 @@ bool T2Compress::compressPacketSimulate(TileCodingParams* tcp, PacketIter* pi,
 		return false;
 	}
 	*packet_bytes_written = (uint32_t)byteCount;
-	if(markers) {
-		if (!markers->pushPL(*packet_bytes_written))
+	if(markers)
+	{
+		if(!markers->pushPL(*packet_bytes_written))
 			return false;
 	}
 
@@ -421,7 +422,5 @@ bool T2Compress::compressPacket(TileCodingParams* tcp, PacketIter* pi, IBuffered
 
 	return true;
 }
-
-
 
 } // namespace grk

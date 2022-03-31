@@ -40,8 +40,7 @@ enum J2K_T2_MODE
  */
 struct PiResolution
 {
-	PiResolution()
-		: precWidthExp(0), precHeightExp(0), precinctGridWidth(0), precinctGridHeight(0)
+	PiResolution() : precWidthExp(0), precHeightExp(0), precinctGridWidth(0), precinctGridHeight(0)
 	{}
 	uint32_t precWidthExp;
 	uint32_t precHeightExp;
@@ -163,8 +162,8 @@ class PacketManager;
 struct ResPrecinctInfo
 {
 	ResPrecinctInfo();
-	void init(uint8_t resno, uint8_t decomplevel, grk_rect32 tileBounds, uint32_t dx, uint32_t dy, bool windowed,
-			  grk_rect32 tileWindow);
+	void init(uint8_t resno, uint8_t decomplevel, grk_rect32 tileBounds, uint32_t dx, uint32_t dy,
+			  bool windowed, grk_rect32 tileWindow);
 	void print(void);
 	uint32_t precWidthExp;
 	uint32_t precHeightExp;
@@ -203,17 +202,9 @@ struct PacketIter
 	PacketIter();
 	~PacketIter();
 
-	void init(PacketManager* packetMan,
-				uint32_t pino,
-				TileCodingParams* tcp,
-				grk_rect32 tileBounds,
-				bool compression,
-				uint8_t max_res,
-				uint64_t max_precincts,
-				uint32_t dx_min,
-				uint32_t dy_min,
-				uint32_t *resolutionPrecinctGrid,
-				uint32_t** precinctByComponent);
+	void init(PacketManager* packetMan, uint32_t pino, TileCodingParams* tcp, grk_rect32 tileBounds,
+			  bool compression, uint8_t max_res, uint64_t max_precincts, uint32_t dx_min,
+			  uint32_t dy_min, uint32_t* resolutionPrecinctGrid, uint32_t** precinctByComponent);
 
 	void printStaticState(void);
 	void printDynamicState(void);
@@ -242,7 +233,8 @@ struct PacketIter
 	uint8_t getResno(void) const;
 	uint64_t getPrecinctIndex(void) const;
 	uint16_t getLayno(void) const;
-private:
+
+  private:
 	uint16_t compno;
 	uint8_t resno;
 	uint64_t precinctIndex;
@@ -256,8 +248,7 @@ private:
 	/** component sub-sampling */
 	uint32_t dx, dy;
 	void update_dxy(void);
-	bool checkForRemainingValidProgression(int32_t prog, uint32_t pino,
-														  const char* progString);
+	bool checkForRemainingValidProgression(int32_t prog, uint32_t pino, const char* progString);
 	// This packet iterator is designed so that the innermost progression
 	// is only incremented before the **next** packet is processed.
 	// i.e. it is not incremented before the very first packet is processed,

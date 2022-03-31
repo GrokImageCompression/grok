@@ -193,18 +193,20 @@ bool CodeStreamDecompress::parseTileHeaderMarkers(bool* canDecompress)
 		GRK_ERROR("Missing SOT marker");
 		return false;
 	}
-	if (cp_.tlm_markers && cp_.tlm_markers->isValid() ){
+	if(cp_.tlm_markers && cp_.tlm_markers->isValid())
+	{
 		// advance TLM to correct position
-		auto tilePartLengthInfo  = cp_.tlm_markers->getNext();
+		auto tilePartLengthInfo = cp_.tlm_markers->getNext();
 		// validate TLM
 		auto actualTileLength = stream_->tell() - decompressorState_.lastSotReadPosition;
-		if (actualTileLength != tilePartLengthInfo->length_){
+		if(actualTileLength != tilePartLengthInfo->length_)
+		{
 			GRK_WARN("TLM marker tile part length %d differs from actual"
-					" tile part length %d. Disabling TLM.",tilePartLengthInfo->length_, actualTileLength);
+					 " tile part length %d. Disabling TLM.",
+					 tilePartLengthInfo->length_, actualTileLength);
 			cp_.tlm_markers->invalidate();
 		}
 	}
-
 
 	// ensure lossy wavelet has quantization set
 	auto tcp = get_current_decode_tcp();
@@ -472,10 +474,10 @@ bool CodeStreamDecompress::read_plt(uint8_t* headerData, uint16_t header_size)
 	assert(headerData != nullptr);
 	auto tileProcessor = currentProcessor();
 
-	bool rc =  tileProcessor->packetLengthCache.createMarkers(nullptr)->readPLT(headerData,
-																			header_size);
+	bool rc =
+		tileProcessor->packetLengthCache.createMarkers(nullptr)->readPLT(headerData, header_size);
 	// disable
-	if (rc &&  (cp_.coding_params_.dec_.randomAccessFlags_&GRK_RANDOM_ACCESS_PLT) == 0)
+	if(rc && (cp_.coding_params_.dec_.randomAccessFlags_ & GRK_RANDOM_ACCESS_PLT) == 0)
 		tileProcessor->packetLengthCache.getMarkers()->disable();
 
 	return rc;
@@ -889,7 +891,7 @@ bool CodeStreamDecompress::read_tlm(uint8_t* headerData, uint16_t header_size)
 	bool rc = cp_.tlm_markers->read(headerData, header_size);
 
 	// disable
-	if (rc &&  (cp_.coding_params_.dec_.randomAccessFlags_&GRK_RANDOM_ACCESS_TLM) == 0)
+	if(rc && (cp_.coding_params_.dec_.randomAccessFlags_ & GRK_RANDOM_ACCESS_TLM) == 0)
 		cp_.tlm_markers->invalidate();
 
 	return rc;
@@ -1616,7 +1618,7 @@ bool CodeStreamDecompress::read_cod(uint8_t* headerData, uint16_t header_size)
 	{
 		GRK_WARN("Multiple COD markers detected for tile part %u."
 				 " The JPEG 2000 standard does not allow more than one COD marker per tile.",
-				 tcp->tilePartCounter_-1);
+				 tcp->tilePartCounter_ - 1);
 	}
 	tcp->cod = true;
 

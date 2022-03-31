@@ -98,9 +98,7 @@ struct grk_rect
 	T x0, y0, x1, y1;
 
 	grk_rect(T x0, T y0, T x1, T y1) : x0(x0), y0(y0), x1(x1), y1(y1) {}
-	grk_rect(const grk_rect& rhs) : grk_rect(&rhs)
-	{
-	}
+	grk_rect(const grk_rect& rhs) : grk_rect(&rhs) {}
 	grk_rect(const grk_rect* rhs)
 	{
 		x0 = rhs->x0;
@@ -111,7 +109,7 @@ struct grk_rect
 	grk_rect(void) : x0(0), y0(0), x1(0), y1(0) {}
 	virtual void print(void) const
 	{
-		GRK_INFO("[%d,%d,%d,%d]",x0,y0,x1,y1);
+		GRK_INFO("[%d,%d,%d,%d]", x0, y0, x1, y1);
 	}
 	std::string boundsString()
 	{
@@ -163,10 +161,8 @@ struct grk_rect
 	}
 	grk_rect<T> rectceildivpow2(uint32_t power) const
 	{
-		return grk_rect<T>(ceildivpow2(x0, power),
-							ceildivpow2(y0, power),
-							ceildivpow2(x1, power),
-							ceildivpow2(y1, power));
+		return grk_rect<T>(ceildivpow2(x0, power), ceildivpow2(y0, power), ceildivpow2(x1, power),
+						   ceildivpow2(y1, power));
 	}
 	grk_rect<T> rectceildiv(uint32_t den) const
 	{
@@ -174,35 +170,27 @@ struct grk_rect
 	}
 	grk_rect<T> rectceildiv(uint32_t denx, uint32_t deny) const
 	{
-		return grk_rect<T>(ceildiv(x0, denx),
-							ceildiv(y0, deny),
-							ceildiv(x1, denx),
-							ceildiv(y1, deny));
+		return grk_rect<T>(ceildiv(x0, denx), ceildiv(y0, deny), ceildiv(x1, denx),
+						   ceildiv(y1, deny));
 	}
 	grk_rect<T> scale(uint32_t scalex, uint32_t scaley) const
 	{
-		return grk_rect<T>(x0*scalex,y0*scaley,x1*scalex,y1*scaley);
+		return grk_rect<T>(x0 * scalex, y0 * scaley, x1 * scalex, y1 * scaley);
 	}
 	grk_rect<T> scaleDown(uint64_t divx, uint64_t divy) const
 	{
-		return grk_rect<T>((uint32_t)(x0/divx),
-						 (uint32_t)(y0/divy),
-						 ceildiv<uint64_t>(x1, divx),
-						 ceildiv<uint64_t>(y1, divy));
+		return grk_rect<T>((uint32_t)(x0 / divx), (uint32_t)(y0 / divy),
+						   ceildiv<uint64_t>(x1, divx), ceildiv<uint64_t>(y1, divy));
 	}
 	grk_rect<T> scaleDownCeil(uint64_t divx, uint64_t divy) const
 	{
-		return grk_rect<T>(ceildiv<uint64_t>(x0, divx),
-						 ceildiv<uint64_t>(y0, divy),
-						 ceildiv<uint64_t>(x1, divx),
-						 ceildiv<uint64_t>(y1, divy));
+		return grk_rect<T>(ceildiv<uint64_t>(x0, divx), ceildiv<uint64_t>(y0, divy),
+						   ceildiv<uint64_t>(x1, divx), ceildiv<uint64_t>(y1, divy));
 	}
 	grk_rect<T> scaleDownCeilPow2(uint32_t powx, uint32_t powy) const
 	{
-		return grk_rect<T>(ceildivpow2<uint64_t>(x0, powx),
-							ceildivpow2<uint64_t>(y0, powy),
-							ceildivpow2<uint64_t>(x1, powx),
-							ceildivpow2<uint64_t>(y1, powy));
+		return grk_rect<T>(ceildivpow2<uint64_t>(x0, powx), ceildivpow2<uint64_t>(y0, powy),
+						   ceildivpow2<uint64_t>(x1, powx), ceildivpow2<uint64_t>(y1, powy));
 	}
 	grk_rect<T> intersection(const grk_rect<T> rhs) const
 	{
@@ -215,12 +203,12 @@ struct grk_rect
 	void clip(const grk_rect<T>* rhs)
 	{
 		*this = grk_rect<T>(std::max<T>(x0, rhs->x0), std::max<T>(y0, rhs->y0),
-						   std::min<T>(x1, rhs->x1), std::min<T>(y1, rhs->y1));
+							std::min<T>(x1, rhs->x1), std::min<T>(y1, rhs->y1));
 	}
 	grk_rect<T> intersection(const grk_rect<T>* rhs) const
 	{
 		return grk_rect<T>(std::max<T>(x0, rhs->x0), std::max<T>(y0, rhs->y0),
-						  std::min<T>(x1, rhs->x1), std::min<T>(y1, rhs->y1));
+						   std::min<T>(x1, rhs->x1), std::min<T>(y1, rhs->y1));
 	}
 	inline bool nonEmptyIntersection(const grk_rect<T>* rhs) const
 	{
@@ -230,7 +218,7 @@ struct grk_rect
 	grk_rect<T> rectUnion(const grk_rect<T>* rhs) const
 	{
 		return grk_rect<T>(std::min<T>(x0, rhs->x0), std::min<T>(y0, rhs->y0),
-						  std::max<T>(x1, rhs->x1), std::max<T>(y1, rhs->y1));
+						   std::max<T>(x1, rhs->x1), std::max<T>(y1, rhs->y1));
 	}
 	grk_rect<T> rectUnion(const grk_rect<T>& rhs) const
 	{

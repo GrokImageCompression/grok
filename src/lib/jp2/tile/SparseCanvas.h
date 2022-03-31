@@ -61,10 +61,10 @@ class SparseCanvas : public ISparseCanvas
 			throw std::runtime_error("invalid window for sparse buffer");
 		uint32_t grid_off_x = floordivpow2(bounds.x0, LBW);
 		uint32_t grid_off_y = floordivpow2(bounds.y0, LBH);
-		uint32_t grid_x 	= ceildivpow2<uint32_t>(bounds.x1, LBW);
-		uint32_t grid_y 	= ceildivpow2<uint32_t>(bounds.y1, LBH);
-		gridBounds 			= grk_rect32(grid_off_x, grid_off_y, grid_x, grid_y);
-		auto blockCount 	= gridBounds.area();
+		uint32_t grid_x = ceildivpow2<uint32_t>(bounds.x1, LBW);
+		uint32_t grid_y = ceildivpow2<uint32_t>(bounds.y1, LBH);
+		gridBounds = grk_rect32(grid_off_x, grid_off_y, grid_x, grid_y);
+		auto blockCount = gridBounds.area();
 		blocks = new SparseBlock*[blockCount];
 		for(uint64_t i = 0; i < blockCount; ++i)
 			blocks[i] = nullptr;
@@ -83,11 +83,12 @@ class SparseCanvas : public ISparseCanvas
 		}
 	}
 	bool read(uint8_t resno, eBandOrientation bandOrientation, grk_rect32 window, int32_t* dest,
-			  const uint32_t destinationColumnStride, const uint32_t destinationLineStride, bool forceReturnTrue)
+			  const uint32_t destinationColumnStride, const uint32_t destinationLineStride,
+			  bool forceReturnTrue)
 	{
 		GRK_UNUSED(bandOrientation);
-		return readWrite(resno, window, dest, destinationColumnStride, destinationLineStride, forceReturnTrue,
-							 true);
+		return readWrite(resno, window, dest, destinationColumnStride, destinationLineStride,
+						 forceReturnTrue, true);
 	}
 	bool write(uint8_t resno, eBandOrientation bandOrientation, grk_rect32 window,
 			   const int32_t* src, const uint32_t src_columnStride, const uint32_t src_lineStride,
@@ -95,7 +96,7 @@ class SparseCanvas : public ISparseCanvas
 	{
 		GRK_UNUSED(bandOrientation);
 		return readWrite(resno, window, (int32_t*)src, src_columnStride, src_lineStride,
-							 forceReturnTrue, false);
+						 forceReturnTrue, false);
 	}
 	bool alloc(grk_rect32 win, bool zeroOutBuffer)
 	{
@@ -117,10 +118,7 @@ class SparseCanvas : public ISparseCanvas
 				{
 					GRK_ERROR("sparse buffer : attempt to allocate a block (%d,%d) outside block "
 							  "grid bounds (%d,%d,%d,%d)",
-							  block_x, block_y,
-							  gridBounds.x0,
-							  gridBounds.y0,
-							  gridBounds.x1,
+							  block_x, block_y, gridBounds.x0, gridBounds.y0, gridBounds.x1,
 							  gridBounds.y1);
 					return false;
 				}
@@ -139,6 +137,7 @@ class SparseCanvas : public ISparseCanvas
 		}
 		return true;
 	}
+
   private:
 	inline SparseBlock* getBlock(uint32_t block_x, uint32_t block_y)
 	{
@@ -152,7 +151,7 @@ class SparseCanvas : public ISparseCanvas
 				 win.y0 >= bounds.y1 || win.y1 <= win.y0 || win.y1 > bounds.y1);
 	}
 	bool readWrite(uint8_t resno, grk_rect32 win, int32_t* buf, const uint32_t buf_columnStride,
-					   const uint32_t buf_lineStride, bool forceReturnTrue, bool isReadOperation)
+				   const uint32_t buf_lineStride, bool forceReturnTrue, bool isReadOperation)
 	{
 		if(!isWindowValid(win))
 		{
@@ -211,10 +210,9 @@ class SparseCanvas : public ISparseCanvas
 				}
 				if(isReadOperation)
 				{
-					const int32_t*  src =
+					const int32_t* src =
 						srcBlock->data + ((uint64_t)blockYOffset << LBW) + blockXOffset;
-					auto  dest =
-						buf + (y - win.y0) * lineStride + (x - win.x0) * columnStride;
+					auto dest = buf + (y - win.y0) * lineStride + (x - win.x0) * columnStride;
 					for(uint32_t j = 0; j < yIncrement; j++)
 					{
 						uint64_t index = 0;
@@ -236,11 +234,10 @@ class SparseCanvas : public ISparseCanvas
 				}
 				else
 				{
-					const int32_t*  src = nullptr;
+					const int32_t* src = nullptr;
 					if(buf)
 						src = buf + (y - win.y0) * lineStride + (x - win.x0) * columnStride;
-					auto  dest =
-						srcBlock->data + ((uint64_t)blockYOffset << LBW) + blockXOffset;
+					auto dest = srcBlock->data + ((uint64_t)blockYOffset << LBW) + blockXOffset;
 					for(uint32_t j = 0; j < yIncrement; j++)
 					{
 						uint64_t index = 0;
@@ -269,6 +266,7 @@ class SparseCanvas : public ISparseCanvas
 		}
 		return true;
 	}
+
   private:
 	const uint32_t blockWidth;
 	const uint32_t blockHeight;

@@ -94,7 +94,7 @@ struct CodeStreamInfo
 };
 struct TilePartLengthInfo
 {
-	explicit TilePartLengthInfo() ;
+	explicit TilePartLengthInfo();
 	TilePartLengthInfo(uint16_t tileno, uint32_t len);
 	uint16_t tileIndex_;
 	uint32_t length_;

@@ -24,14 +24,12 @@
 
 namespace grk
 {
-
 void MycmsLogErrorHandlerFunction(cmsContext ContextID, cmsUInt32Number ErrorCode, const char* Text)
 {
 	GRK_UNUSED(ContextID);
 	GRK_UNUSED(ErrorCode);
 	GRK_WARN(" LCMS error: {}", Text);
 }
-
 
 typedef std::function<uint8_t*(uint32_t* len)> WRITE_FUNC;
 struct BoxWriteHandler
@@ -807,8 +805,10 @@ bool FileFormatCompress::init(grk_cparameters* parameters, GrkImage* image)
 			comps[i].bpc = (uint8_t)(comps[i].bpc + (1 << 7));
 	}
 
-	if (inputImage_->meta && inputImage_->meta->color.icc_profile_buf) {
-		if (validate_icc(inputImage_->color_space, inputImage_->meta->color.icc_profile_buf,inputImage_->meta->color.icc_profile_len))
+	if(inputImage_->meta && inputImage_->meta->color.icc_profile_buf)
+	{
+		if(validate_icc(inputImage_->color_space, inputImage_->meta->color.icc_profile_buf,
+						inputImage_->meta->color.icc_profile_len))
 			inputImage_->color_space = GRK_CLRSPC_ICC;
 		else
 			GRK_WARN("ICC profile does not match underlying colour space. Ignoring");
@@ -1007,7 +1007,8 @@ bool FileFormatCompress::default_validation(void)
 	/* number of components */
 	/* precision */
 	for(i = 0; i < numcomps; ++i)
-		isValid &= ((comps[i].bpc & 0x7FU) < maxPrecisionJ2K); /* 0 is valid, ignore sign for check */
+		isValid &=
+			((comps[i].bpc & 0x7FU) < maxPrecisionJ2K); /* 0 is valid, ignore sign for check */
 
 	/* METH */
 	isValid &= ((meth > 0) && (meth < 3));

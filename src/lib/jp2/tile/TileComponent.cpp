@@ -97,8 +97,7 @@ bool TileComponent::init(bool isCompressor, bool whole_tile, grk_rect32 unreduce
 		grk_rect32 allPrecinctsBounds;
 		allPrecinctsBounds.x0 = floordivpow2(res->x0, precWidthExp) << precWidthExp;
 		allPrecinctsBounds.y0 = floordivpow2(res->y0, precHeightExp) << precHeightExp;
-		uint64_t temp = (uint64_t)ceildivpow2<uint32_t>(res->x1, precWidthExp)
-						<< precWidthExp;
+		uint64_t temp = (uint64_t)ceildivpow2<uint32_t>(res->x1, precWidthExp) << precWidthExp;
 		if(temp > UINT_MAX)
 		{
 			GRK_ERROR("Resolution x1 value %u must be less than 2^32", temp);

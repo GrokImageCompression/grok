@@ -79,9 +79,9 @@ struct Subband : public grk_rect32
 	{
 		auto precinctTopLeft =
 			grk_pt32(precinctPartitionTopLeft.x +
-					  (uint32_t)((precinctIndex % precinctGridWidth) << precinctExpn.x),
-				  precinctPartitionTopLeft.y +
-					  (uint32_t)((precinctIndex / precinctGridWidth) << precinctExpn.y));
+						 (uint32_t)((precinctIndex % precinctGridWidth) << precinctExpn.x),
+					 precinctPartitionTopLeft.y +
+						 (uint32_t)((precinctIndex / precinctGridWidth) << precinctExpn.y));
 		return grk_rect32(precinctTopLeft.x, precinctTopLeft.y,
 						  precinctTopLeft.x + (1U << precinctExpn.x),
 						  precinctTopLeft.y + (1U << precinctExpn.y))
@@ -97,7 +97,8 @@ struct Subband : public grk_rect32
 
 		auto bounds = generatePrecinctBounds(precinctIndex, precinctPartitionTopLeft, precinctExpn,
 											 precinctGridWidth);
-		if (!bounds.isValid()){
+		if(!bounds.isValid())
+		{
 			GRK_ERROR("createPrecinct: invalid precinct bounds.");
 			return nullptr;
 		}

@@ -17,17 +17,13 @@
 
 namespace grk
 {
-
 // includes single byte index and bytes for PLs
 const uint16_t plWriteBufferLen = USHRT_MAX - 4;
 
 PLMarkerMgr::PLMarkerMgr()
-	: rawMarkers_(new PL_MARKERS()),
-	  currMarkerIter_(rawMarkers_->end()),
-	  totalBytesWritten_(0), isFinal_(false), stream_(nullptr),
-	  sequential_(false), packetLen_(0),
-	  currMarkerBufIndex_(0), currMarkerBuf_(nullptr),
-	  enabled_(true)
+	: rawMarkers_(new PL_MARKERS()), currMarkerIter_(rawMarkers_->end()), totalBytesWritten_(0),
+	  isFinal_(false), stream_(nullptr), sequential_(false), packetLen_(0), currMarkerBufIndex_(0),
+	  currMarkerBuf_(nullptr), enabled_(true)
 {}
 // compression
 PLMarkerMgr::PLMarkerMgr(IBufferedStream* strm) : PLMarkerMgr()
@@ -39,16 +35,20 @@ PLMarkerMgr::~PLMarkerMgr()
 	clearMarkers();
 	delete rawMarkers_;
 }
-void PLMarkerMgr::disable(void){
+void PLMarkerMgr::disable(void)
+{
 	enabled_ = false;
 }
-bool PLMarkerMgr::isEnabled(void){
+bool PLMarkerMgr::isEnabled(void)
+{
 	return enabled_;
 }
-void PLMarkerMgr::clearMarkers(void){
-	for(auto it = rawMarkers_->begin(); it != rawMarkers_->end(); it++){
+void PLMarkerMgr::clearMarkers(void)
+{
+	for(auto it = rawMarkers_->begin(); it != rawMarkers_->end(); it++)
+	{
 		auto v = it->second;
-		for (auto itv = v->begin(); itv != v->end(); ++itv)
+		for(auto itv = v->begin(); itv != v->end(); ++itv)
 			delete *itv;
 		delete it->second;
 	}
@@ -71,27 +71,34 @@ bool PLMarkerMgr::pushPL(uint32_t len)
 	assert(numBytes <= 5);
 
 	auto marker = rawMarkers_->empty() ? nullptr : currMarkerIter_->second;
-	grkBufferU8 *buf = nullptr;
+	grkBufferU8* buf = nullptr;
 	bool newMarker = false;
 	uint8_t newMarkerId;
-	if (rawMarkers_->empty()){
+	if(rawMarkers_->empty())
+	{
 		newMarker = true;
 		newMarkerId = 0;
-	    if (!findMarker(newMarkerId,true))
-	    	return false;
-	    marker = currMarkerIter_->second;
-	} else if (marker->back()->offset + numBytes > marker->back()->len){
+		if(!findMarker(newMarkerId, true))
+			return false;
+		marker = currMarkerIter_->second;
+	}
+	else if(marker->back()->offset + numBytes > marker->back()->len)
+	{
 		newMarker = true;
 		newMarkerId = rawMarkers_->size() & 0xFF;
-		if (!findMarker((uint32_t)rawMarkers_->size(),true))
+		if(!findMarker((uint32_t)rawMarkers_->size(), true))
 			return false;
-	    marker = currMarkerIter_->second;
-	} else {
+		marker = currMarkerIter_->second;
+	}
+	else
+	{
 		newMarkerId = currMarkerIter_->first & 0xFF;
 		buf = marker->back();
 	}
-	if (newMarker){
-		if (isFinal_) {
+	if(newMarker)
+	{
+		if(isFinal_)
+		{
 			buf = addNewMarker(nullptr, plWriteBufferLen);
 			buf->write(newMarkerId);
 		}
@@ -99,10 +106,11 @@ bool PLMarkerMgr::pushPL(uint32_t len)
 		totalBytesWritten_ += 2 + 2 + 1;
 	}
 	assert(buf);
-	if (isFinal_){
+	if(isFinal_)
+	{
 		// write period
-		//static int count = 0;
-		//GRK_INFO("Wrote PLT packet %d, length %d", count++,len);
+		// static int count = 0;
+		// GRK_INFO("Wrote PLT packet %d, length %d", count++,len);
 		uint8_t temp[5];
 		int32_t counter = (int32_t)(numBytes - 1);
 		temp[counter--] = (len & 0x7F);
@@ -116,15 +124,15 @@ bool PLMarkerMgr::pushPL(uint32_t len)
 			len = (uint32_t)(len >> 7);
 		}
 		assert(counter == -1);
-		if (!buf->write(temp, numBytes))
+		if(!buf->write(temp, numBytes))
 			return false;
-
 	}
 	totalBytesWritten_ += numBytes;
 
 	return true;
 }
-uint32_t PLMarkerMgr::getTotalBytesWritten(void){
+uint32_t PLMarkerMgr::getTotalBytesWritten(void)
+{
 	return totalBytesWritten_;
 }
 bool PLMarkerMgr::write(void)
@@ -133,13 +141,14 @@ bool PLMarkerMgr::write(void)
 	for(auto it = rawMarkers_->begin(); it != rawMarkers_->end(); ++it)
 	{
 		auto v = it->second;
-		for (auto itv = v->begin(); itv != v->end(); ++itv){
+		for(auto itv = v->begin(); itv != v->end(); ++itv)
+		{
 			auto b = *itv;
-			if (!stream_->writeShort(J2K_MS_PLT))
+			if(!stream_->writeShort(J2K_MS_PLT))
 				return false;
-			if (!stream_->writeShort((uint16_t)(b->offset + 2)))
+			if(!stream_->writeShort((uint16_t)(b->offset + 2)))
 				return false;
-			if (!stream_->writeBytes(b->buf, b->offset))
+			if(!stream_->writeBytes(b->buf, b->offset))
 				return false;
 		}
 	}
@@ -163,7 +172,7 @@ bool PLMarkerMgr::readPLM(uint8_t* headerData, uint16_t header_size)
 		GRK_ERROR("PLM: only 256 PLM markers are allowed by the standard.");
 		return false;
 	}
-	if(!findMarker(Zplm,false))
+	if(!findMarker(Zplm, false))
 		return false;
 	while(header_size > 0)
 	{
@@ -176,7 +185,7 @@ bool PLMarkerMgr::readPLM(uint8_t* headerData, uint16_t header_size)
 			return false;
 		}
 		// 2. push packets for nth tile part into current raw marker
-		addNewMarker(headerData,segmentLength);
+		addNewMarker(headerData, segmentLength);
 
 		// 3. advance src buffer
 		header_size = (uint16_t)(header_size - segmentLength);
@@ -185,11 +194,12 @@ bool PLMarkerMgr::readPLM(uint8_t* headerData, uint16_t header_size)
 
 	return true;
 }
-grkBufferU8* PLMarkerMgr::addNewMarker(uint8_t *data, uint16_t len){
+grkBufferU8* PLMarkerMgr::addNewMarker(uint8_t* data, uint16_t len)
+{
 	auto b = new grkBufferU8();
-	if (data || len)
+	if(data || len)
 		b->alloc(len);
-	if (data)
+	if(data)
 		memcpy(b->buf, data, len);
 	currMarkerIter_->second->push_back(b);
 
@@ -205,10 +215,10 @@ bool PLMarkerMgr::readPLT(uint8_t* headerData, uint16_t header_size)
 	/* Zplt */
 	uint8_t Zpl = *headerData++;
 	--header_size;
-	if(!findMarker(Zpl,false))
+	if(!findMarker(Zpl, false))
 		return false;
 
-	addNewMarker(headerData,header_size);
+	addNewMarker(headerData, header_size);
 #ifdef DEBUG_PLT
 	GRK_INFO("PLT marker %d", Zpl);
 #endif
@@ -217,7 +227,8 @@ bool PLMarkerMgr::readPLT(uint8_t* headerData, uint16_t header_size)
 }
 bool PLMarkerMgr::findMarker(uint32_t nextIndex, bool compress)
 {
-	if (!compress) {
+	if(!compress)
+	{
 		if(rawMarkers_->empty())
 		{
 			sequential_ = nextIndex == 0;
@@ -255,7 +266,7 @@ bool PLMarkerMgr::findMarker(uint32_t nextIndex, bool compress)
 
 	return true;
 }
-bool PLMarkerMgr::readNextByte(uint8_t Iplm, uint32_t *packetLength)
+bool PLMarkerMgr::readNextByte(uint8_t Iplm, uint32_t* packetLength)
 {
 	/* take only the lower seven bits */
 	packetLen_ |= (Iplm & 0x7f);
@@ -265,16 +276,17 @@ bool PLMarkerMgr::readNextByte(uint8_t Iplm, uint32_t *packetLength)
 	}
 	else
 	{
-		if (packetLength)
+		if(packetLength)
 			*packetLength = packetLen_;
 		packetLen_ = 0;
 	}
 
 	return packetLen_ == 0;
 }
-uint64_t PLMarkerMgr::pop(uint64_t numPackets){
+uint64_t PLMarkerMgr::pop(uint64_t numPackets)
+{
 	uint64_t total = 0;
-	for (uint64_t i = 0; i < numPackets; ++i)
+	for(uint64_t i = 0; i < numPackets; ++i)
 		total += pop();
 
 	return total;
@@ -286,16 +298,20 @@ uint32_t PLMarkerMgr::pop(void)
 	uint32_t rc = 0;
 	assert(rawMarkers_);
 
-	if (currMarkerIter_ == rawMarkers_->end()) {
+	if(currMarkerIter_ == rawMarkers_->end())
+	{
 		GRK_ERROR("Attempt to pop PLT beyond PLT marker range.");
 		return 0;
 	}
-	if(currMarkerIter_ != rawMarkers_->end() && currMarkerBuf_){
+	if(currMarkerIter_ != rawMarkers_->end() && currMarkerBuf_)
+	{
 		// read next packet length
-		while (currMarkerBuf_->canRead() && !readNextByte(currMarkerBuf_->read(), &rc)) {
+		while(currMarkerBuf_->canRead() && !readNextByte(currMarkerBuf_->read(), &rc))
+		{
 		}
 		// advance to next buffer
-		if (currMarkerBuf_->offset == currMarkerBuf_->len){
+		if(currMarkerBuf_->offset == currMarkerBuf_->len)
+		{
 			currMarkerBufIndex_++;
 			if(currMarkerBufIndex_ < currMarkerIter_->second->size())
 			{
@@ -317,8 +333,8 @@ uint32_t PLMarkerMgr::pop(void)
 		}
 	}
 
-	//static int count = 0;
-	//GRK_INFO("Read PLT packet %d, length %d", count++,rc);
+	// static int count = 0;
+	// GRK_INFO("Read PLT packet %d, length %d", count++,rc);
 	return rc;
 }
 

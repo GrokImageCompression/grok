@@ -23,20 +23,19 @@
 namespace grk
 {
 ResPrecinctInfo::ResPrecinctInfo()
-	: precWidthExp(0), precHeightExp(0), precWidthExpPRJ(0), precHeightExpPRJ(0),resOffsetX0PRJ(0), resOffsetY0PRJ(0),
-	  precWidthPRJ(0),precWidthPRJMinusOne(0), precHeightPRJ(0),precHeightPRJMinusOne(0),
-	  numPrecincts_(0), dxPRJ(0), dyPRJ(0),
-	  resInPrecGridX0(0), resInPrecGridY0(0), resno_(0), decompLevel_(0),innerPrecincts_(0),
-	  winPrecinctsLeft_(0), winPrecinctsRight_(0), winPrecinctsTop_(0), winPrecinctsBottom_(0),
-	  valid(false)
+	: precWidthExp(0), precHeightExp(0), precWidthExpPRJ(0), precHeightExpPRJ(0), resOffsetX0PRJ(0),
+	  resOffsetY0PRJ(0), precWidthPRJ(0), precWidthPRJMinusOne(0), precHeightPRJ(0),
+	  precHeightPRJMinusOne(0), numPrecincts_(0), dxPRJ(0), dyPRJ(0), resInPrecGridX0(0),
+	  resInPrecGridY0(0), resno_(0), decompLevel_(0), innerPrecincts_(0), winPrecinctsLeft_(0),
+	  winPrecinctsRight_(0), winPrecinctsTop_(0), winPrecinctsBottom_(0), valid(false)
 {}
-void ResPrecinctInfo::init(	uint8_t resno, uint8_t decompLevel, grk_rect32 tileBounds, uint32_t compDx, uint32_t compDy,
-						   bool windowed, grk_rect32 tileWindow)
+void ResPrecinctInfo::init(uint8_t resno, uint8_t decompLevel, grk_rect32 tileBounds,
+						   uint32_t compDx, uint32_t compDy, bool windowed, grk_rect32 tileWindow)
 {
 	valid = false;
 	uint64_t resDivisorX = ((uint64_t)compDx << decompLevel);
 	uint64_t resDivisorY = ((uint64_t)compDy << decompLevel);
-	auto res = tileBounds.scaleDownCeil(resDivisorX,resDivisorY);
+	auto res = tileBounds.scaleDownCeil(resDivisorX, resDivisorY);
 	if(res.x0 == res.x1 || res.y0 == res.y1)
 		return;
 
@@ -47,13 +46,15 @@ void ResPrecinctInfo::init(	uint8_t resno, uint8_t decompLevel, grk_rect32 tileB
 
 	// offset of projected resolution relative to projected precinct grid
 	// these are both zero when tile origin equals (0,0)
-	resOffsetX0PRJ = (uint32_t)(((uint64_t)res.x0 << decompLevel) % ((uint64_t)1 << precWidthExpPRJ));
-	resOffsetY0PRJ = (uint32_t)(((uint64_t)res.y0 << decompLevel) % ((uint64_t)1 << precHeightExpPRJ));
+	resOffsetX0PRJ =
+		(uint32_t)(((uint64_t)res.x0 << decompLevel) % ((uint64_t)1 << precWidthExpPRJ));
+	resOffsetY0PRJ =
+		(uint32_t)(((uint64_t)res.y0 << decompLevel) % ((uint64_t)1 << precHeightExpPRJ));
 
 	precWidthPRJ = ((uint64_t)compDx << precWidthExpPRJ);
-	precWidthPRJMinusOne = precWidthPRJ-1;
+	precWidthPRJMinusOne = precWidthPRJ - 1;
 	precHeightPRJ = ((uint64_t)compDy << precHeightExpPRJ);
-	precHeightPRJMinusOne = precHeightPRJ-1;
+	precHeightPRJMinusOne = precHeightPRJ - 1;
 	dxPRJ = ((uint64_t)compDx << decompLevel_);
 	dyPRJ = ((uint64_t)compDy << decompLevel_);
 	resInPrecGridX0 = floordivpow2(res.x0, precWidthExp);
@@ -61,24 +62,25 @@ void ResPrecinctInfo::init(	uint8_t resno, uint8_t decompLevel, grk_rect32 tileB
 	if(windowed)
 	{
 		auto window = tileWindow;
-		auto resWindow = window.scaleDownCeil(resDivisorX,resDivisorY);
+		auto resWindow = window.scaleDownCeil(resDivisorX, resDivisorY);
 		// pad resolution window to next precinct
-		resWindow.grow(1<<precWidthExp, 1<<precHeightExp).clip(&res);
-		winPrecGrid = resWindow.scaleDown(1<<precWidthExp, 1<<precHeightExp);
-		winPrecPRJ = winPrecGrid.scale((uint32_t)precWidthPRJ,(uint32_t)precHeightPRJ);
+		resWindow.grow(1 << precWidthExp, 1 << precHeightExp).clip(&res);
+		winPrecGrid = resWindow.scaleDown(1 << precWidthExp, 1 << precHeightExp);
+		winPrecPRJ = winPrecGrid.scale((uint32_t)precWidthPRJ, (uint32_t)precHeightPRJ);
 	}
-	tileBoundsPrecGrid = res.scaleDown(1<<precWidthExp, 1<<precHeightExp);
+	tileBoundsPrecGrid = res.scaleDown(1 << precWidthExp, 1 << precHeightExp);
 	numPrecincts_ = tileBoundsPrecGrid.area();
-	tileBoundsPrecPRJ = tileBoundsPrecGrid.scale((uint32_t)precWidthPRJ,(uint32_t)precHeightPRJ);
+	tileBoundsPrecPRJ = tileBoundsPrecGrid.scale((uint32_t)precWidthPRJ, (uint32_t)precHeightPRJ);
 	valid = true;
 }
-void ResPrecinctInfo::print(void){
+void ResPrecinctInfo::print(void)
+{
 	GRK_INFO("\n");
 	GRK_INFO("RESOLUTION PRECINCT INFO for resolution level %d", resno_);
-	GRK_INFO("precinct exponents: (%d,%d)",precWidthExp,precHeightExp);
-	GRK_INFO("precinct dimensions (projected): (%d,%d)",precWidthPRJ,precHeightPRJ);
-	GRK_INFO("number of precincts: %d",numPrecincts_ );
-	GRK_INFO("subsampling (projected): (%d,%d)",dxPRJ, dyPRJ);
+	GRK_INFO("precinct exponents: (%d,%d)", precWidthExp, precHeightExp);
+	GRK_INFO("precinct dimensions (projected): (%d,%d)", precWidthPRJ, precHeightPRJ);
+	GRK_INFO("number of precincts: %d", numPrecincts_);
+	GRK_INFO("subsampling (projected): (%d,%d)", dxPRJ, dyPRJ);
 	GRK_INFO("tile bounds aligned to precincts (projected) =>");
 	tileBoundsPrecPRJ.print();
 	GRK_INFO("tile bounds mapped to precinct grid (resolution) =>");
@@ -90,10 +92,9 @@ void ResPrecinctInfo::print(void){
 }
 
 PacketIter::PacketIter()
-	: compno(0), resno(0), precinctIndex(0), layno(0),
-	  numcomps(0), comps(nullptr), x(0), y(0), dx(0), dy(0),
-	  incrementInner(false),
-	  packetManager(nullptr), maxNumDecompositionResolutions(0), singleProgression_(false), compression_(false),
+	: compno(0), resno(0), precinctIndex(0), layno(0), numcomps(0), comps(nullptr), x(0), y(0),
+	  dx(0), dy(0), incrementInner(false), packetManager(nullptr),
+	  maxNumDecompositionResolutions(0), singleProgression_(false), compression_(false),
 	  precinctInfo_(nullptr), px0grid_(0), py0grid_(0), skippedLeft_(false)
 {
 	memset(&prog, 0, sizeof(prog));
@@ -108,10 +109,13 @@ PacketIter::~PacketIter()
 	}
 	delete[] precinctInfo_;
 }
-void PacketIter::printStaticState(void){
-	if (precinctInfo_){
+void PacketIter::printStaticState(void)
+{
+	if(precinctInfo_)
+	{
 		GRK_INFO("Packet Iterator Static State");
-		GRK_INFO("progression bounds [C-R-P-L] : [%d %d %d %d] ", prog.compE, prog.resE, prog.precE, prog.layE);
+		GRK_INFO("progression bounds [C-R-P-L] : [%d %d %d %d] ", prog.compE, prog.resE, prog.precE,
+				 prog.layE);
 		for(uint32_t resno = 0; resno < comps->numresolutions; resno++)
 		{
 			auto inf = precinctInfo_ + resno;
@@ -119,10 +123,12 @@ void PacketIter::printStaticState(void){
 		}
 	}
 }
-void PacketIter::printDynamicState(void){
-	if (precinctInfo_){
+void PacketIter::printDynamicState(void)
+{
+	if(precinctInfo_)
+	{
 		GRK_INFO("Packet Iterator Dynamic State");
-		GRK_INFO("progression state [C-R-P-L] : [%d %d (%d,%d) %d] ", compno, resno, x,y, layno);
+		GRK_INFO("progression state [C-R-P-L] : [%d %d (%d,%d) %d] ", compno, resno, x, y, layno);
 		GRK_INFO("precinct index: %" PRIu64 ".", precinctIndex);
 	}
 }
@@ -137,11 +143,11 @@ void PacketIter::printDynamicState(void){
  */
 void PacketIter::genPrecinctInfo(void)
 {
-	if (precinctInfo_)
+	if(precinctInfo_)
 		delete[] precinctInfo_;
 	precinctInfo_ = nullptr;
 
-	if (compression_ || !singleProgression_)
+	if(compression_ || !singleProgression_)
 		return;
 
 	auto tb = packetManager->getTileBounds();
@@ -154,7 +160,8 @@ void PacketIter::genPrecinctInfo(void)
 		auto comp = comps + compno;
 		if(comp->dx != 1 || comp->dy != 1)
 			return;
-		if (compno > 0 && comp->numresolutions != comps->numresolutions){
+		if(compno > 0 && comp->numresolutions != comps->numresolutions)
+		{
 			return;
 		}
 	}
@@ -170,16 +177,15 @@ void PacketIter::genPrecinctInfo(void)
 			// projected onto canvas is a "multiple" of the highest resolution precinct,
 			// so that the P loops covers all precincts from all resolutions
 			{
-			auto highestRes = comps->resolutions + comps->numresolutions - 1;
-			for(uint8_t resno = 0; resno < comps->numresolutions - 1; ++resno)
-			{
-				auto res = comps->resolutions + resno;
-				auto decompLevel = (uint8_t)(comps->numresolutions - 1U - resno);
-				if (res->precWidthExp + decompLevel < highestRes->precWidthExp ||
-						res->precHeightExp + decompLevel < highestRes->precHeightExp)
-					return;
-
-			}
+				auto highestRes = comps->resolutions + comps->numresolutions - 1;
+				for(uint8_t resno = 0; resno < comps->numresolutions - 1; ++resno)
+				{
+					auto res = comps->resolutions + resno;
+					auto decompLevel = (uint8_t)(comps->numresolutions - 1U - resno);
+					if(res->precWidthExp + decompLevel < highestRes->precWidthExp ||
+					   res->precHeightExp + decompLevel < highestRes->precHeightExp)
+						return;
+				}
 			}
 			break;
 		default:
@@ -194,8 +200,7 @@ void PacketIter::genPrecinctInfo(void)
 		inf->precWidthExp = res->precWidthExp;
 		inf->precHeightExp = res->precHeightExp;
 		inf->init(resno, (uint8_t)(comps->numresolutions - 1U - resno), tb, comps->dx, comps->dy,
-				  !isWholeTile(),
-				  packetManager->getTileProcessor()->getUnreducedTileWindow());
+				  !isWholeTile(), packetManager->getTileProcessor()->getUnreducedTileWindow());
 	}
 }
 bool PacketIter::generatePrecinctIndex(void)
@@ -222,8 +227,8 @@ bool PacketIter::generatePrecinctIndex(void)
 		ResPrecinctInfo rpInfo;
 		rpInfo.precWidthExp = res->precWidthExp;
 		rpInfo.precHeightExp = res->precHeightExp;
-		rpInfo.init(resno, (uint8_t)(comp->numresolutions - 1U - resno), packetManager->getTileBounds(),
-					comp->dx, comp->dy, !isWholeTile(),
+		rpInfo.init(resno, (uint8_t)(comp->numresolutions - 1U - resno),
+					packetManager->getTileBounds(), comp->dx, comp->dy, !isWholeTile(),
 					packetManager->getTileProcessor()->getUnreducedTileWindow());
 
 		if(!rpInfo.valid)
@@ -238,14 +243,14 @@ bool PacketIter::generatePrecinctIndex(void)
 	return true;
 }
 
-
 /**
  * Check if there is a remaining valid progression order
  */
-bool PacketIter::checkForRemainingValidProgression(	int32_t prog, uint32_t pino,
-													  const char* progString)
+bool PacketIter::checkForRemainingValidProgression(int32_t prog, uint32_t pino,
+												   const char* progString)
 {
-	auto tcps = packetManager->getCodingParams()->tcps + packetManager->getTileProcessor()->getIndex();
+	auto tcps =
+		packetManager->getCodingParams()->tcps + packetManager->getTileProcessor()->getIndex();
 	auto poc = tcps->progressionOrderChange + pino;
 
 	if(prog >= 0)
@@ -302,7 +307,7 @@ bool PacketIter::checkForRemainingValidProgression(	int32_t prog, uint32_t pino,
 	return false;
 }
 void PacketIter::enableTilePartGeneration(uint32_t pino, bool first_poc_tile_part,
-											 uint32_t newTilePartProgressionPosition)
+										  uint32_t newTilePartProgressionPosition)
 {
 	auto cp = packetManager->getCodingParams();
 	auto tcp = cp->tcps + packetManager->getTileProcessor()->getIndex();
@@ -311,7 +316,8 @@ void PacketIter::enableTilePartGeneration(uint32_t pino, bool first_poc_tile_par
 	prog.progression = poc->progression;
 
 	if(cp->coding_params_.enc_.enableTilePartGeneration_ &&
-	   (GRK_IS_CINEMA(cp->rsiz) || GRK_IS_IMF(cp->rsiz) || packetManager->getT2Mode() == FINAL_PASS))
+	   (GRK_IS_CINEMA(cp->rsiz) || GRK_IS_IMF(cp->rsiz) ||
+		packetManager->getT2Mode() == FINAL_PASS))
 	{
 		for(uint32_t i = newTilePartProgressionPosition + 1; i < 4; i++)
 		{
@@ -385,11 +391,9 @@ void PacketIter::enableTilePartGeneration(uint32_t pino, bool first_poc_tile_par
 								poc->tx0_temp = poc->tp_txS;
 								poc->ty0_temp = poc->tp_tyS;
 								prog.tx0 = poc->tx0_temp;
-								prog.tx1 =
-									(poc->tx0_temp + poc->dx - (poc->tx0_temp % poc->dx));
+								prog.tx1 = (poc->tx0_temp + poc->dx - (poc->tx0_temp % poc->dx));
 								prog.ty0 = poc->ty0_temp;
-								prog.ty1 =
-									(poc->ty0_temp + poc->dy - (poc->ty0_temp % poc->dy));
+								prog.ty1 = (poc->ty0_temp + poc->dy - (poc->ty0_temp % poc->dy));
 								poc->tx0_temp = prog.tx1;
 								poc->ty0_temp = prog.ty1;
 								break;
@@ -427,11 +431,9 @@ void PacketIter::enableTilePartGeneration(uint32_t pino, bool first_poc_tile_par
 								prog.precE = poc->prec_temp;
 								break;
 							default:
-								prog.tx0 =
-									(poc->tx0_temp - poc->dx - (poc->tx0_temp % poc->dx));
+								prog.tx0 = (poc->tx0_temp - poc->dx - (poc->tx0_temp % poc->dx));
 								prog.tx1 = poc->tx0_temp;
-								prog.ty0 =
-									(poc->ty0_temp - poc->dy - (poc->ty0_temp % poc->dy));
+								prog.ty0 = (poc->ty0_temp - poc->dy - (poc->ty0_temp % poc->dy));
 								prog.ty1 = poc->ty0_temp;
 								break;
 						}
@@ -546,13 +548,13 @@ void PacketIter::enableTilePartGeneration(uint32_t pino, bool first_poc_tile_par
 									{
 										if(poc->ty0_temp >= poc->tp_tyE)
 										{
-											if(checkForRemainingValidProgression(i - 1, pino, pocProg))
+											if(checkForRemainingValidProgression(i - 1, pino,
+																				 pocProg))
 											{
 												poc->ty0_temp = poc->tp_tyS;
 												prog.ty0 = poc->ty0_temp;
-												prog.ty1 =
-													(uint32_t)(poc->ty0_temp + poc->dy -
-															   (poc->ty0_temp % poc->dy));
+												prog.ty1 = (uint32_t)(poc->ty0_temp + poc->dy -
+																	  (poc->ty0_temp % poc->dy));
 												poc->ty0_temp = prog.ty1;
 												incr_top = 1;
 												resetX = 1;
@@ -567,7 +569,7 @@ void PacketIter::enableTilePartGeneration(uint32_t pino, bool first_poc_tile_par
 										{
 											prog.ty0 = poc->ty0_temp;
 											prog.ty1 = (poc->ty0_temp + poc->dy -
-																(poc->ty0_temp % poc->dy));
+														(poc->ty0_temp % poc->dy));
 											poc->ty0_temp = prog.ty1;
 											incr_top = 0;
 											resetX = 1;
@@ -576,9 +578,8 @@ void PacketIter::enableTilePartGeneration(uint32_t pino, bool first_poc_tile_par
 										{
 											poc->tx0_temp = poc->tp_txS;
 											prog.tx0 = poc->tx0_temp;
-											prog.tx1 =
-												(uint32_t)(poc->tx0_temp + poc->dx -
-														   (poc->tx0_temp % poc->dx));
+											prog.tx1 = (uint32_t)(poc->tx0_temp + poc->dx -
+																  (poc->tx0_temp % poc->dx));
 											poc->tx0_temp = prog.tx1;
 										}
 									}
@@ -586,7 +587,7 @@ void PacketIter::enableTilePartGeneration(uint32_t pino, bool first_poc_tile_par
 									{
 										prog.tx0 = poc->tx0_temp;
 										prog.tx1 = (uint32_t)(poc->tx0_temp + poc->dx -
-																	  (poc->tx0_temp % poc->dx));
+															  (poc->tx0_temp % poc->dx));
 										poc->tx0_temp = prog.tx1;
 										incr_top = 0;
 									}
@@ -614,19 +615,24 @@ void PacketIter::enableTilePartGeneration(uint32_t pino, bool first_poc_tile_par
 		prog.ty1 = poc->tp_tyE;
 	}
 }
-GRK_PROG_ORDER PacketIter::getProgression(void) const{
+GRK_PROG_ORDER PacketIter::getProgression(void) const
+{
 	return prog.progression;
 }
-uint16_t PacketIter::getCompno(void) const{
+uint16_t PacketIter::getCompno(void) const
+{
 	return compno;
 }
-uint8_t PacketIter::getResno(void) const{
+uint8_t PacketIter::getResno(void) const
+{
 	return resno;
 }
-uint64_t PacketIter::getPrecinctIndex(void) const {
+uint64_t PacketIter::getPrecinctIndex(void) const
+{
 	return precinctIndex;
 }
-uint16_t PacketIter::getLayno(void) const {
+uint16_t PacketIter::getLayno(void) const
+{
 	return layno;
 }
 uint8_t* PacketIter::get_include(uint16_t layerno)
@@ -661,8 +667,7 @@ bool PacketIter::genPrecinctY0Grid(ResPrecinctInfo* rpInfo)
 		return false;
 
 	py0grid_ =
-		floordivpow2(ceildiv(y, rpInfo->dyPRJ), rpInfo->precHeightExp) -
-		rpInfo->resInPrecGridY0;
+		floordivpow2(ceildiv(y, rpInfo->dyPRJ), rpInfo->precHeightExp) - rpInfo->resInPrecGridY0;
 
 	return true;
 }
@@ -672,8 +677,8 @@ bool PacketIter::genPrecinctX0Grid(ResPrecinctInfo* rpInfo)
 		 ((x == packetManager->getTileBounds().x0) && rpInfo->resOffsetX0PRJ)))
 		return false;
 
-	px0grid_ = floordivpow2(ceildiv(x, rpInfo->dxPRJ), rpInfo->precWidthExp) -
-			   rpInfo->resInPrecGridX0;
+	px0grid_ =
+		floordivpow2(ceildiv(x, rpInfo->dxPRJ), rpInfo->precWidthExp) - rpInfo->resInPrecGridX0;
 
 	return true;
 }
@@ -683,19 +688,17 @@ bool PacketIter::genPrecinctY0GridPCRL_OPT(ResPrecinctInfo* rpInfo)
 	if((((y & rpInfo->precHeightPRJMinusOne) != 0)))
 		return false;
 
-	py0grid_ =
-		((uint32_t)ceildivpow2(y, (uint32_t)rpInfo->decompLevel_) >> rpInfo->precHeightExp) -
-																							rpInfo->resInPrecGridY0;
+	py0grid_ = ((uint32_t)ceildivpow2(y, (uint32_t)rpInfo->decompLevel_) >> rpInfo->precHeightExp) -
+			   rpInfo->resInPrecGridY0;
 	return true;
 }
 bool PacketIter::genPrecinctX0GridPCRL_OPT(ResPrecinctInfo* rpInfo)
 {
-	if((((x & rpInfo->precWidthPRJMinusOne) != 0) ))
+	if((((x & rpInfo->precWidthPRJMinusOne) != 0)))
 		return false;
 
-	px0grid_ =
-		((uint32_t)ceildivpow2(x, (uint32_t)rpInfo->decompLevel_) >> rpInfo->precWidthExp) -
-																							rpInfo->resInPrecGridX0;
+	px0grid_ = ((uint32_t)ceildivpow2(x, (uint32_t)rpInfo->decompLevel_) >> rpInfo->precWidthExp) -
+			   rpInfo->resInPrecGridX0;
 	return true;
 }
 void PacketIter::genPrecinctY0GridRPCL_OPT(ResPrecinctInfo* rpInfo)
@@ -721,25 +724,17 @@ void PacketIter::update_dxy_for_comp(PiComp* comp)
 		uint64_t dx_temp =
 			comp->dx * ((uint64_t)1u << (res->precWidthExp + comp->numresolutions - 1 - resno));
 		uint64_t dy_temp =
-			comp->dy *
-			((uint64_t)1u << (res->precHeightExp + comp->numresolutions - 1 - resno));
+			comp->dy * ((uint64_t)1u << (res->precHeightExp + comp->numresolutions - 1 - resno));
 		if(dx_temp < UINT_MAX)
 			dx = !dx ? (uint32_t)dx_temp : std::min<uint32_t>(dx, (uint32_t)dx_temp);
 		if(dy_temp < UINT_MAX)
 			dy = !dy ? (uint32_t)dy_temp : std::min<uint32_t>(dy, (uint32_t)dy_temp);
 	}
 }
-void PacketIter::init(PacketManager* packetMan,
-						uint32_t pino,
-						TileCodingParams* tcp,
-						grk_rect32 tileBounds,
-						bool compression,
-						uint8_t max_res,
-						uint64_t max_precincts,
-						uint32_t dx_min,
-						uint32_t dy_min,
-						uint32_t *resolutionPrecinctGrid,
-						uint32_t** precinctByComponent)
+void PacketIter::init(PacketManager* packetMan, uint32_t pino, TileCodingParams* tcp,
+					  grk_rect32 tileBounds, bool compression, uint8_t max_res,
+					  uint64_t max_precincts, uint32_t dx_min, uint32_t dy_min,
+					  uint32_t* resolutionPrecinctGrid, uint32_t** precinctByComponent)
 {
 	packetManager = packetMan;
 	maxNumDecompositionResolutions =
@@ -803,29 +798,36 @@ void PacketIter::init(PacketManager* packetMan,
 	genPrecinctInfo();
 	update_dxy();
 
-	if (singleProgression_){
+	if(singleProgression_)
+	{
 		switch(prog.progression)
 		{
 			case GRK_LRCP:
-				prog.layE =
-						(std::min)(prog.layE, packetManager->getTileProcessor()->getTileCodingParams()->numLayersToDecompress);
+				prog.layE = (std::min)(prog.layE, packetManager->getTileProcessor()
+													  ->getTileCodingParams()
+													  ->numLayersToDecompress);
 				break;
 			case GRK_RLCP:
 				prog.resE = (std::min)(prog.resE, maxNumDecompositionResolutions);
 				break;
 			case GRK_RPCL:
 				prog.resE = (std::min)(prog.resE, maxNumDecompositionResolutions);
-				if (precinctInfo_) {
+				if(precinctInfo_)
+				{
 					for(uint8_t resno = 0; resno < comps->numresolutions; ++resno)
 					{
 						auto inf = precinctInfo_ + resno;
 						inf->innerPrecincts_ = prog.compE * prog.layE;
 						auto compLayer = inf->innerPrecincts_;
-						inf->winPrecinctsLeft_   = inf->winPrecGrid.x0 * compLayer;
-						inf->winPrecinctsRight_  = (uint64_t)(inf->tileBoundsPrecGrid.x1 - inf->winPrecGrid.x1) * compLayer;
-						inf->winPrecinctsTop_    =  (uint64_t)inf->winPrecGrid.y0 * inf->tileBoundsPrecGrid.width() * compLayer;
-						inf->winPrecinctsBottom_ = (uint64_t)(inf->tileBoundsPrecGrid.y1 - inf->winPrecGrid.y1) *
-														inf->tileBoundsPrecGrid.width()  * compLayer;
+						inf->winPrecinctsLeft_ = inf->winPrecGrid.x0 * compLayer;
+						inf->winPrecinctsRight_ =
+							(uint64_t)(inf->tileBoundsPrecGrid.x1 - inf->winPrecGrid.x1) *
+							compLayer;
+						inf->winPrecinctsTop_ = (uint64_t)inf->winPrecGrid.y0 *
+												inf->tileBoundsPrecGrid.width() * compLayer;
+						inf->winPrecinctsBottom_ =
+							(uint64_t)(inf->tileBoundsPrecGrid.y1 - inf->winPrecGrid.y1) *
+							inf->tileBoundsPrecGrid.width() * compLayer;
 					}
 				}
 				break;
@@ -838,7 +840,8 @@ void PacketIter::init(PacketManager* packetMan,
 		}
 	}
 }
-bool PacketIter::isWholeTile(void){
+bool PacketIter::isWholeTile(void)
+{
 	return compression_ || packetManager->getTileProcessor()->wholeTileDecompress;
 }
 bool PacketIter::next(SparseBuffer* src)
@@ -1092,12 +1095,14 @@ bool PacketIter::next_rpcl(SparseBuffer* src)
 
 //////////////////////////////////////////////////////////////////////////////////////
 
-bool PacketIter::skipPackets(SparseBuffer* src, uint64_t numPackets){
+bool PacketIter::skipPackets(SparseBuffer* src, uint64_t numPackets)
+{
 	auto tp = packetManager->getTileProcessor();
 	auto markers = tp->packetLengthCache.getMarkers();
-	auto len = markers->pop(numPackets );
+	auto len = markers->pop(numPackets);
 	auto skipLen = src->skip(len);
-	if (len != skipLen){
+	if(len != skipLen)
+	{
 		GRK_ERROR("Packet iterator: unable to skip precincts.");
 		return false;
 	}
@@ -1182,23 +1187,29 @@ bool PacketIter::next_cprlOPT(SparseBuffer* src)
 		for(; y < precInfo->tileBoundsPrecPRJ.y1; y += dy)
 		{
 			// skip over packets outside of window
-			if (!wholeTile){
-				if(y == win->y1) {
+			if(!wholeTile)
+			{
+				if(y == win->y1)
+				{
 					// bail out if we reach row of precincts that are out of bound of the window
-					if (compno == prog.compE-1)
+					if(compno == prog.compE - 1)
 						return false;
 
-					//otherwise, skip remaining precincts for this component
-					if (src){
+					// otherwise, skip remaining precincts for this component
+					if(src)
+					{
 						uint64_t precCount = 0;
-						for (uint8_t i = 0; i < prog.resE; ++i){
-							auto info = precinctInfo_+i;
-							auto reg = grk_rect<uint64_t>(0U,y,precInfo->tileBoundsPrecPRJ.x1,precInfo->tileBoundsPrecPRJ.y1);
-							reg = reg.scaleDownCeilPow2((uint32_t)info->precWidthExpPRJ,(uint32_t)info->precHeightExpPRJ);
+						for(uint8_t i = 0; i < prog.resE; ++i)
+						{
+							auto info = precinctInfo_ + i;
+							auto reg = grk_rect<uint64_t>(0U, y, precInfo->tileBoundsPrecPRJ.x1,
+														  precInfo->tileBoundsPrecPRJ.y1);
+							reg = reg.scaleDownCeilPow2((uint32_t)info->precWidthExpPRJ,
+														(uint32_t)info->precHeightExpPRJ);
 							precCount += reg.area();
 						}
 						precCount *= prog.layE;
-						if (!skipPackets(src,precCount))
+						if(!skipPackets(src, precCount))
 							return false;
 						break;
 					}
@@ -1211,7 +1222,7 @@ bool PacketIter::next_cprlOPT(SparseBuffer* src)
 					auto comp = comps + compno;
 					auto res = comp->resolutions + resno;
 					auto rpInfo = precinctInfo_ + resno;
-					if (!rpInfo->valid)
+					if(!rpInfo->valid)
 						continue;
 					if(!genPrecinctY0GridPCRL_OPT(rpInfo))
 						continue;
@@ -1248,7 +1259,8 @@ bool PacketIter::next_pcrlOPT(SparseBuffer* src)
 	for(; y < precInfo->tileBoundsPrecPRJ.y1; y += dy)
 	{
 		// skip over packets outside of window
-		if (!wholeTile){
+		if(!wholeTile)
+		{
 			// bail out if we reach row of precincts that are out of bounds of the window
 			if(y == win->y1)
 				return false;
@@ -1270,7 +1282,7 @@ bool PacketIter::next_pcrlOPT(SparseBuffer* src)
 					auto comp = comps + compno;
 					auto res = comp->resolutions + resno;
 					auto rpInfo = precinctInfo_ + resno;
-					if (!rpInfo->valid)
+					if(!rpInfo->valid)
 						continue;
 					if(!genPrecinctY0GridPCRL_OPT(rpInfo))
 						continue;
@@ -1308,29 +1320,35 @@ bool PacketIter::next_rpclOPT(SparseBuffer* src)
 		for(; y < precInfo->tileBoundsPrecPRJ.y1; y += precInfo->precHeightPRJ)
 		{
 			// skip over packets outside of window
-			if (!wholeTile){
+			if(!wholeTile)
+			{
 				// windowed decode:
 				// bail out if we reach row of precincts that are out of bound of the window
 				if(resno == maxNumDecompositionResolutions - 1 && y == win->y1)
 					return false;
 
-				if (src){
+				if(src)
+				{
 					// skip all precincts above window
-					if (y < win->y0){
-						if (!skipPackets(src,precInfo->winPrecinctsTop_))
+					if(y < win->y0)
+					{
+						if(!skipPackets(src, precInfo->winPrecinctsTop_))
 							return false;
 						y = win->y0;
 					}
 					// skip all precincts below window
-					else if (y == win->y1 && precInfo->winPrecinctsBottom_){
-						if (!skipPackets(src,precInfo->winPrecinctsBottom_))
+					else if(y == win->y1 && precInfo->winPrecinctsBottom_)
+					{
+						if(!skipPackets(src, precInfo->winPrecinctsBottom_))
 							return false;
 						break;
 					}
 					// skip precincts to the left of window
-					if (!skippedLeft_ && precInfo->winPrecinctsLeft_) {
-						if (x < win->x0){
-							if (!skipPackets(src,precInfo->winPrecinctsLeft_))
+					if(!skippedLeft_ && precInfo->winPrecinctsLeft_)
+					{
+						if(x < win->x0)
+						{
+							if(!skipPackets(src, precInfo->winPrecinctsLeft_))
 								return false;
 							x = win->x0;
 						}
@@ -1340,15 +1358,15 @@ bool PacketIter::next_rpclOPT(SparseBuffer* src)
 			}
 			genPrecinctY0GridRPCL_OPT(precInfo);
 			uint64_t precIndexY = (uint64_t)py0grid_ * precInfo->tileBoundsPrecGrid.width();
-			for(; x < (wholeTile || !src ? precInfo->tileBoundsPrecPRJ.x1 : win->x1); x += precInfo->precWidthPRJ)
+			for(; x < (wholeTile || !src ? precInfo->tileBoundsPrecPRJ.x1 : win->x1);
+				x += precInfo->precWidthPRJ)
 			{
-
 				// windowed decode:
 				// bail out if we reach a precinct which is past the
 				// bottom, right hand corner of the tile window
 				if(!wholeTile && resno == maxNumDecompositionResolutions - 1)
 				{
-					if( (win->y1 == 0 || (win->y1 > 0 && y == win->y1 - 1)) && x >= win->x1)
+					if((win->y1 == 0 || (win->y1 > 0 && y == win->y1 - 1)) && x >= win->x1)
 						return false;
 				}
 				genPrecinctX0GridRPCL_OPT(precInfo);
@@ -1369,9 +1387,10 @@ bool PacketIter::next_rpclOPT(SparseBuffer* src)
 			}
 			x = precInfo->tileBoundsPrecPRJ.x0;
 			// skip precincts to the right of window
-			if (!wholeTile && src && precInfo->winPrecinctsRight_){
-				if (!skipPackets(src,precInfo->winPrecinctsRight_))
-						return false;
+			if(!wholeTile && src && precInfo->winPrecinctsRight_)
+			{
+				if(!skipPackets(src, precInfo->winPrecinctsRight_))
+					return false;
 			}
 			skippedLeft_ = false;
 		}
@@ -1380,6 +1399,5 @@ bool PacketIter::next_rpclOPT(SparseBuffer* src)
 
 	return false;
 }
-
 
 } // namespace grk

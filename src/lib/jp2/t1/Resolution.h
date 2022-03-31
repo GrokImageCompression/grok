@@ -48,18 +48,19 @@ struct Resolution : public grk_rect32
 
 		/* p. 64, B.6, ISO/IEC FDIS15444-1 : 2000 (18 august 2000)  */
 		precinctPartitionTopLeft = grk_pt32(floordivpow2(x0, precinctExpn.x) << precinctExpn.x,
-										 floordivpow2(y0, precinctExpn.y) << precinctExpn.y);
+											floordivpow2(y0, precinctExpn.y) << precinctExpn.y);
 
 		uint64_t num_precincts = (uint64_t)precinctGridWidth * precinctGridHeight;
 		if(resno != 0)
 		{
-			precinctPartitionTopLeft = grk_pt32(ceildivpow2<uint32_t>(precinctPartitionTopLeft.x, 1),
-											 ceildivpow2<uint32_t>(precinctPartitionTopLeft.y, 1));
+			precinctPartitionTopLeft =
+				grk_pt32(ceildivpow2<uint32_t>(precinctPartitionTopLeft.x, 1),
+						 ceildivpow2<uint32_t>(precinctPartitionTopLeft.y, 1));
 			precinctExpn.x--;
 			precinctExpn.y--;
 		}
 		cblkExpn = grk_pt32(std::min<uint32_t>(tccp->cblkw, precinctExpn.x),
-						 std::min<uint32_t>(tccp->cblkh, precinctExpn.y));
+							std::min<uint32_t>(tccp->cblkh, precinctExpn.y));
 		for(uint8_t bandIndex = 0; bandIndex < numTileBandWindows; ++bandIndex)
 		{
 			auto curr_band = tileBand + bandIndex;

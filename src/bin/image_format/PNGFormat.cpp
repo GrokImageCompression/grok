@@ -233,7 +233,8 @@ bool PNGFormat::encodeHeader(void)
 	// Set iCCP chunk
 	if(image_->meta && image_->meta->color.icc_profile_buf && image_->meta->color.icc_profile_len)
 	{
-		const char* profileName = image_->meta->color.icc_profile_name ? image_->meta->color.icc_profile_name : "Unknown";
+		const char* profileName =
+			image_->meta->color.icc_profile_name ? image_->meta->color.icc_profile_name : "Unknown";
 		png_set_iCCP(png, info_, profileName, PNG_COMPRESSION_TYPE_BASE,
 					 image_->meta->color.icc_profile_buf, image_->meta->color.icc_profile_len);
 	}
