@@ -14,32 +14,14 @@
  *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
-
-#pragma once
-
 #include "grk_includes.h"
 
 namespace grk
 {
 
-typedef std::vector<DecompressBlockExec*> ResDecompressBlocks;
-typedef std::vector< ResDecompressBlocks > DecompressBlocks;
+Scheduler::~Scheduler() {
+	for(auto& t : t1Implementations)
+		delete t;
+}
 
-class DecompressScheduler
-{
-  public:
-	DecompressScheduler(void);
-	~DecompressScheduler();
-	bool decompress(DecompressBlocks &blocks);
-	bool prepareScheduleDecompress(TileComponent* tilec, TileComponentCodingParams* tccp,
-									DecompressBlocks &blocks, uint8_t prec);
-	bool scheduleDecompress(TileCodingParams* tcp, uint16_t blockw, uint16_t blockh,
-									DecompressBlocks &blocks);
-  private:
-	bool decompressBlock(T1Interface* impl, DecompressBlockExec *block);
-	std::vector<T1Interface*> t1Implementations;
-	std::atomic_bool success;
-	DecompressBlockExec** decodeBlocks;
-};
-
-} // namespace grk
+}

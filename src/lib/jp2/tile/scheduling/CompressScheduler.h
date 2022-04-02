@@ -14,28 +14,22 @@
  *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
-
 #pragma once
-
-#include <thread>
 
 namespace grk
 {
-class CompressScheduler
+class CompressScheduler : public Scheduler
 {
   public:
 	CompressScheduler(Tile* tile, bool needsRateControl);
-	~CompressScheduler();
-	void compress(std::vector<CompressBlockExec*>* blocks);
-
+	~CompressScheduler() = default;
 	void scheduleCompress(TileCodingParams* tcp, const double* mct_norms, uint16_t mct_numcomps);
-
+	void compress(std::vector<CompressBlockExec*>* blocks);
   private:
 	bool compress(size_t threadId, uint64_t maxBlocks);
 	void compress(T1Interface* impl, CompressBlockExec* block);
 
 	Tile* tile;
-	std::vector<T1Interface*> t1Implementations;
 	mutable std::mutex distortion_mutex;
 	bool needsRateControl;
 	mutable std::mutex block_mutex;

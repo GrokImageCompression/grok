@@ -21,11 +21,6 @@ namespace grk
 const uint8_t gain_b[4] = {0, 1, 1, 2};
 
 DecompressScheduler::DecompressScheduler() : success(true), decodeBlocks(nullptr) {}
-DecompressScheduler::~DecompressScheduler()
-{
-	for(auto& t : t1Implementations)
-		delete t;
-}
 bool DecompressScheduler::prepareScheduleDecompress(TileComponent* tilec,
 													  TileComponentCodingParams* tccp,
 													  DecompressBlocks &blocks,
