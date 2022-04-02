@@ -20,8 +20,10 @@ namespace grk
 {
 const uint8_t gain_b[4] = {0, 1, 1, 2};
 
-DecompressScheduler::DecompressScheduler() : success(true), decodeBlocks(nullptr) {}
-bool DecompressScheduler::prepareScheduleDecompress(TileComponent* tilec,
+DecompressScheduler::DecompressScheduler() : success(true), decodeBlocks(nullptr)
+{}
+
+void DecompressScheduler::prepareScheduleDecompress(TileComponent* tilec,
 													  TileComponentCodingParams* tccp,
 													  DecompressBlocks &blocks,
 													  uint8_t prec)
@@ -69,37 +71,21 @@ bool DecompressScheduler::prepareScheduleDecompress(TileComponent* tilec,
 		if (!resBlocks.empty())
 			blocks.push_back(resBlocks);
 	}
-	return true;
 }
-bool DecompressScheduler::scheduleDecompress(TileCodingParams* tcp, uint16_t blockw,
-											   uint16_t blockh,
-											   DecompressBlocks &blocks)
+bool DecompressScheduler::scheduleDecompress(TileComponent* tilec,TileCodingParams* tcp,
+												TileComponentCodingParams* tccp,
+											   DecompressBlocks &blocks,
+											   uint8_t prec)
 {
+	prepareScheduleDecompress(tilec, tccp, blocks,prec);
 	// nominal code block dimensions
-	uint16_t codeblock_width = (uint16_t)(blockw ? (uint32_t)1 << blockw : 0);
-	uint16_t codeblock_height = (uint16_t)(blockh ? (uint32_t)1 << blockh : 0);
+	uint16_t codeblock_width = (uint16_t)(tccp->cblkw ? (uint32_t)1 << tccp->cblkw : 0);
+	uint16_t codeblock_height = (uint16_t)(tccp->cblkh ? (uint32_t)1 << tccp->cblkh : 0);
 	for(auto i = 0U; i < ExecSingleton::get()->num_workers(); ++i)
 		t1Implementations.push_back(
 			T1Factory::makeT1(false, tcp, codeblock_width, codeblock_height));
 
 	return decompress(blocks);
-}
-bool DecompressScheduler::decompressBlock(T1Interface* impl, DecompressBlockExec* block)
-{
-	try
-	{
-		bool rc = block->open(impl);
-		delete block;
-		return rc;
-	}
-	catch(std::runtime_error& rerr)
-	{
-		delete block;
-		GRK_ERROR(rerr.what());
-		return false;
-	}
-
-	return true;
 }
 bool DecompressScheduler::decompress(DecompressBlocks &blocks)
 {
@@ -139,12 +125,12 @@ bool DecompressScheduler::decompress(DecompressBlocks &blocks)
 	std::atomic<int> blockCount(-1);
 	tf::Taskflow taskflow;
 	auto numThreads = ExecSingleton::get()->num_workers();
-	auto node = new tf::Task[numThreads];
+	auto tasks = new tf::Task[numThreads];
 	for(uint64_t i = 0; i < numThreads; i++)
-		node[i] = taskflow.placeholder();
+		tasks[i] = taskflow.placeholder();
 	for(uint64_t i = 0; i < numThreads; i++)
 	{
-		node[i].work([this, maxBlocks, &blockCount] {
+		tasks[i].work([this, maxBlocks, &blockCount] {
 			auto threadnum = ExecSingleton::get()->this_worker_id();
 			assert(threadnum >= 0);
 			while(true)
@@ -169,9 +155,26 @@ bool DecompressScheduler::decompress(DecompressBlocks &blocks)
 	ExecSingleton::get()->run(taskflow).wait();
 
 	delete[] decodeBlocks;
-	delete[] node;
+	delete[] tasks;
 
 	return success;
+}
+bool DecompressScheduler::decompressBlock(T1Interface* impl, DecompressBlockExec* block)
+{
+	try
+	{
+		bool rc = block->open(impl);
+		delete block;
+		return rc;
+	}
+	catch(std::runtime_error& rerr)
+	{
+		delete block;
+		GRK_ERROR(rerr.what());
+		return false;
+	}
+
+	return true;
 }
 
 } // namespace grk
