@@ -18,13 +18,15 @@
 
 namespace grk
 {
-T1DecompressScheduler::T1DecompressScheduler() : success(true), decodeBlocks(nullptr) {}
-T1DecompressScheduler::~T1DecompressScheduler()
+const uint8_t gain_b[4] = {0, 1, 1, 2};
+
+DecompressScheduler::DecompressScheduler() : success(true), decodeBlocks(nullptr) {}
+DecompressScheduler::~DecompressScheduler()
 {
 	for(auto& t : t1Implementations)
 		delete t;
 }
-bool T1DecompressScheduler::prepareScheduleDecompress(TileComponent* tilec,
+bool DecompressScheduler::prepareScheduleDecompress(TileComponent* tilec,
 													  TileComponentCodingParams* tccp,
 													  DecompressBlocks &blocks,
 													  uint8_t prec)
@@ -74,7 +76,7 @@ bool T1DecompressScheduler::prepareScheduleDecompress(TileComponent* tilec,
 	}
 	return true;
 }
-bool T1DecompressScheduler::scheduleDecompress(TileCodingParams* tcp, uint16_t blockw,
+bool DecompressScheduler::scheduleDecompress(TileCodingParams* tcp, uint16_t blockw,
 											   uint16_t blockh,
 											   DecompressBlocks &blocks)
 {
@@ -87,7 +89,7 @@ bool T1DecompressScheduler::scheduleDecompress(TileCodingParams* tcp, uint16_t b
 
 	return decompress(blocks);
 }
-bool T1DecompressScheduler::decompressBlock(T1Interface* impl, DecompressBlockExec* block)
+bool DecompressScheduler::decompressBlock(T1Interface* impl, DecompressBlockExec* block)
 {
 	try
 	{
@@ -104,7 +106,7 @@ bool T1DecompressScheduler::decompressBlock(T1Interface* impl, DecompressBlockEx
 
 	return true;
 }
-bool T1DecompressScheduler::decompress(DecompressBlocks &blocks)
+bool DecompressScheduler::decompress(DecompressBlocks &blocks)
 {
 	if(!blocks.size())
 		return true;

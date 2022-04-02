@@ -17,30 +17,29 @@
 
 #pragma once
 
-#include <thread>
+#include "grk_includes.h"
 
 namespace grk
 {
-class T1CompressScheduler
+
+typedef std::vector<DecompressBlockExec*> ResDecompressBlocks;
+typedef std::vector< ResDecompressBlocks > DecompressBlocks;
+
+class DecompressScheduler
 {
   public:
-	T1CompressScheduler(Tile* tile, bool needsRateControl);
-	~T1CompressScheduler();
-	void compress(std::vector<CompressBlockExec*>* blocks);
-
-	void scheduleCompress(TileCodingParams* tcp, const double* mct_norms, uint16_t mct_numcomps);
-
+	DecompressScheduler(void);
+	~DecompressScheduler();
+	bool decompress(DecompressBlocks &blocks);
+	bool prepareScheduleDecompress(TileComponent* tilec, TileComponentCodingParams* tccp,
+									DecompressBlocks &blocks, uint8_t prec);
+	bool scheduleDecompress(TileCodingParams* tcp, uint16_t blockw, uint16_t blockh,
+									DecompressBlocks &blocks);
   private:
-	bool compress(size_t threadId, uint64_t maxBlocks);
-	void compress(T1Interface* impl, CompressBlockExec* block);
-
-	Tile* tile;
+	bool decompressBlock(T1Interface* impl, DecompressBlockExec *block);
 	std::vector<T1Interface*> t1Implementations;
-	mutable std::mutex distortion_mutex;
-	bool needsRateControl;
-	mutable std::mutex block_mutex;
-	CompressBlockExec** encodeBlocks;
-	std::atomic<int64_t> blockCount;
+	std::atomic_bool success;
+	DecompressBlockExec** decodeBlocks;
 };
 
 } // namespace grk

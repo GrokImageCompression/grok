@@ -138,7 +138,7 @@ void PacketManager::getParams(const GrkImage* image, const CodingParams* p_cp, u
 		auto tccp = tcp->tccps + compno;
 		auto comp = image->comps + compno;
 
-		auto tileCompBounds = tileBounds->rectceildiv(comp->dx, comp->dy);
+		auto tileCompBounds = tileBounds->scaleDownCeil(comp->dx, comp->dy);
 		if(tccp->numresolutions > *max_res)
 			*max_res = tccp->numresolutions;
 
@@ -155,7 +155,7 @@ void PacketManager::getParams(const GrkImage* image, const CodingParams* p_cp, u
 			}
 
 			// 2. precinct grid
-			auto resBounds = tileCompBounds.rectceildivpow2(tccp->numresolutions - 1U - resno);
+			auto resBounds = tileCompBounds.scaleDownCeilPow2(tccp->numresolutions - 1U - resno);
 			auto resBoundsAdjusted =
 				grk_rect32(floordivpow2(resBounds.x0, precWidthExp) << precWidthExp,
 						   floordivpow2(resBounds.y0, precHeightExp) << precHeightExp,

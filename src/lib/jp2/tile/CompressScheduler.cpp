@@ -19,16 +19,16 @@
 
 namespace grk
 {
-T1CompressScheduler::T1CompressScheduler(Tile* tile, bool needsRateControl)
+CompressScheduler::CompressScheduler(Tile* tile, bool needsRateControl)
 	: tile(tile), needsRateControl(needsRateControl), encodeBlocks(nullptr), blockCount(-1)
 {}
-T1CompressScheduler::~T1CompressScheduler()
+CompressScheduler::~CompressScheduler()
 {
 	for(auto& t : t1Implementations)
 		delete t;
 }
 
-void T1CompressScheduler::scheduleCompress(TileCodingParams* tcp, const double* mct_norms,
+void CompressScheduler::scheduleCompress(TileCodingParams* tcp, const double* mct_norms,
 										   uint16_t mct_numcomps)
 {
 	uint16_t compno;
@@ -95,7 +95,7 @@ void T1CompressScheduler::scheduleCompress(TileCodingParams* tcp, const double* 
 	compress(&blocks);
 }
 
-void T1CompressScheduler::compress(std::vector<CompressBlockExec*>* blocks)
+void CompressScheduler::compress(std::vector<CompressBlockExec*>* blocks)
 {
 	if(!blocks || blocks->size() == 0)
 		return;
@@ -136,7 +136,7 @@ void T1CompressScheduler::compress(std::vector<CompressBlockExec*>* blocks)
 	delete[] node;
 	delete[] encodeBlocks;
 }
-bool T1CompressScheduler::compress(size_t threadId, uint64_t maxBlocks)
+bool CompressScheduler::compress(size_t threadId, uint64_t maxBlocks)
 {
 	auto impl = t1Implementations[threadId];
 	uint64_t index = (uint64_t)++blockCount;
@@ -148,7 +148,7 @@ bool T1CompressScheduler::compress(size_t threadId, uint64_t maxBlocks)
 
 	return true;
 }
-void T1CompressScheduler::compress(T1Interface* impl, CompressBlockExec* block)
+void CompressScheduler::compress(T1Interface* impl, CompressBlockExec* block)
 {
 	block->open(impl);
 	if(needsRateControl)

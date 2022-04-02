@@ -258,7 +258,7 @@ bool TileProcessor::allocWindowBuffers(const GrkImage* outputImage)
 			unreducedImageWindow =
 				grk_rect32(outputImage->x0, outputImage->y0, outputImage->x1, outputImage->y1);
 			grk_rect32 unreducedImageCompWindow =
-				unreducedImageWindow.rectceildiv(imageComp->dx, imageComp->dy);
+				unreducedImageWindow.scaleDownCeil(imageComp->dx, imageComp->dy);
 			if(!(tile->comps + compno)->allocWindowBuffer(unreducedImageCompWindow))
 				return false;
 		}
@@ -269,10 +269,7 @@ bool TileProcessor::allocWindowBuffers(const GrkImage* outputImage)
 
 grk_rect32 TileProcessor::getUnreducedTileWindow(void)
 {
-	auto temp = unreducedImageWindow;
-	temp.clip(tile);
-
-	return temp;
+	return unreducedImageWindow.clip(tile);
 }
 
 void TileProcessor::deallocBuffers()
@@ -447,7 +444,7 @@ bool TileProcessor::decompressT1(void)
 				}
 			}
 			DecompressBlocks blocks;
-			auto scheduler = std::unique_ptr<T1DecompressScheduler>(new T1DecompressScheduler());
+			auto scheduler = std::unique_ptr<DecompressScheduler>(new DecompressScheduler());
 			if(!scheduler->prepareScheduleDecompress(tilec, tccp, blocks,
 													 headerImage->comps->prec))
 				return false;
@@ -713,7 +710,7 @@ void TileProcessor::t1_encode()
 	}
 
 	auto scheduler =
-		std::unique_ptr<T1CompressScheduler>(new T1CompressScheduler(tile, needsRateControl()));
+		std::unique_ptr<CompressScheduler>(new CompressScheduler(tile, needsRateControl()));
 	scheduler->scheduleCompress(tcp, mct_norms, mct_numcomps);
 }
 bool TileProcessor::encodeT2(uint32_t* tileBytesWritten)

@@ -431,8 +431,8 @@ bool CodeStreamDecompress::decompressTile(uint16_t tileIndex)
 	for(uint16_t compno = 0; compno < compositeImage->numcomps; ++compno)
 	{
 		auto comp = compositeImage->comps + compno;
-		auto compBounds = croppedImageBounds.rectceildiv(comp->dx, comp->dy);
-		auto reducedCompBounds = compBounds.rectceildivpow2(reduce);
+		auto compBounds = croppedImageBounds.scaleDownCeil(comp->dx, comp->dy);
+		auto reducedCompBounds = compBounds.scaleDownCeilPow2(reduce);
 		comp->x0 = reducedCompBounds.x0;
 		comp->y0 = reducedCompBounds.y0;
 		comp->w = reducedCompBounds.width();

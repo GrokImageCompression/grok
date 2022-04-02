@@ -1918,7 +1918,7 @@ bool decompress_partial_tile(TileComponent* GRK_RESTRICT tilec, uint16_t compno,
 						 sizeof(T) / sizeof(int32_t);
 
 	auto synthesisWindow = bounds;
-	synthesisWindow = synthesisWindow.rectceildivpow2(numresolutions - 1U - (numres - 1U));
+	synthesisWindow = synthesisWindow.scaleDownCeilPow2(numresolutions - 1U - (numres - 1U));
 
 	assert(fullResTopLevel->intersection(synthesisWindow) == synthesisWindow);
 	synthesisWindow =
@@ -1976,7 +1976,7 @@ bool decompress_partial_tile(TileComponent* GRK_RESTRICT tilec, uint16_t compno,
 		for(uint32_t i = 0; i < BAND_NUM_ORIENTATIONS; ++i)
 		{
 			auto temp = tileBandWindowRect[i];
-			if(!sa->alloc(temp.grow(2 * FILTER_WIDTH, fullRes->width(), fullRes->height()), true))
+			if(!sa->alloc(temp.growIPL(2 * FILTER_WIDTH, fullRes->width(), fullRes->height()), true))
 				goto cleanup;
 		}
 		auto resWindowRect = *((grk_rect32*)tilec->getBuffer()->getResWindowBufferREL(resno));
@@ -1991,7 +1991,7 @@ bool decompress_partial_tile(TileComponent* GRK_RESTRICT tilec, uint16_t compno,
 		for(uint32_t k = 0; k < SPLIT_NUM_ORIENTATIONS; ++k)
 		{
 			auto temp = splitWindowRect[k];
-			if(!sa->alloc(temp.grow(2 * FILTER_WIDTH, fullRes->width(), fullRes->height()), true))
+			if(!sa->alloc(temp.growIPL(2 * FILTER_WIDTH, fullRes->width(), fullRes->height()), true))
 				goto cleanup;
 		}
 

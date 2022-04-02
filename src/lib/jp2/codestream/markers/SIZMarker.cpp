@@ -50,7 +50,7 @@ void SIZMarker::subsampleAndReduceHeaderImageComponents(GrkImage* headerImage,
 	for(uint32_t i = 0; i < headerImage->numcomps; ++i)
 	{
 		auto comp = headerImage->comps + i;
-		auto compBounds = imageBounds.rectceildiv(comp->dx, comp->dy);
+		auto compBounds = imageBounds.scaleDownCeil(comp->dx, comp->dy);
 		comp->w = ceildivpow2<uint32_t>(compBounds.width(), reduce);
 		comp->h = ceildivpow2<uint32_t>(compBounds.height(), reduce);
 		comp->x0 = ceildivpow2<uint32_t>(compBounds.x0, reduce);

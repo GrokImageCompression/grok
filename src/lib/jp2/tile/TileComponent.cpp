@@ -33,7 +33,7 @@ TileComponent::TileComponent()
 #ifdef DEBUG_LOSSLESS_T2
 	  round_trip_resolutions(nullptr),
 #endif
-	  sa_(nullptr), wholeTileDecompress(true), is_encoder_(false), buf(nullptr), tccp_(nullptr)
+	  sa_(nullptr), wholeTileDecompress(true), isCompressor_(false), buf(nullptr), tccp_(nullptr)
 {}
 
 TileComponent::~TileComponent()
@@ -71,17 +71,15 @@ bool TileComponent::init(bool isCompressor, bool whole_tile, grk_rect32 unreduce
 						 uint8_t prec, CodingParams* cp, TileComponentCodingParams* tccp,
 						 grk_plugin_tile* current_plugin_tile)
 {
-	is_encoder_ = isCompressor;
+	isCompressor_ = isCompressor;
 	wholeTileDecompress = whole_tile;
 	tccp_ = tccp;
 
 	// 1. calculate resolution bounds, precinct bounds and precinct grid
 	// all in canvas coordinates (with subsampling)
 	numresolutions = tccp_->numresolutions;
-	if(numresolutions < cp->coding_params_.dec_.reduce_)
-		numResolutionsToDecompress = 1;
-	else
-		numResolutionsToDecompress = (uint8_t)(numresolutions - cp->coding_params_.dec_.reduce_);
+	numResolutionsToDecompress = numresolutions < cp->coding_params_.dec_.reduce_ ? 1 :
+									(uint8_t)(numresolutions - cp->coding_params_.dec_.reduce_);
 	tileCompResolution = new Resolution[numresolutions];
 	for(uint8_t resno = 0; resno < numresolutions; ++resno)
 	{
@@ -124,7 +122,7 @@ bool TileComponent::init(bool isCompressor, bool whole_tile, grk_rect32 unreduce
 	}
 
 	// 2. set tile component and band bounds
-	auto highestNumberOfResolutions = (!is_encoder_) ? numResolutionsToDecompress : numresolutions;
+	auto highestNumberOfResolutions = (!isCompressor_) ? numResolutionsToDecompress : numresolutions;
 	auto hightestResolution = tileCompResolution + highestNumberOfResolutions - 1;
 	set(hightestResolution);
 	for(uint8_t resno = 0; resno < numresolutions; ++resno)
@@ -152,9 +150,9 @@ bool TileComponent::init(bool isCompressor, bool whole_tile, grk_rect32 unreduce
 
 			/* Table E-1 - Sub-band gains */
 			/* BUG_WEIRD_TWO_INVK (look for this identifier in dwt.c): */
-			/* the test (!isEncoder && l_tccp->qmfbid == 0) is strongly */
+			/* the test (!isCompressor_ && l_tccp->qmfbid == 0) is strongly */
 			/* linked to the use of two_invK instead of invK */
-			const uint32_t log2_gain = (!is_encoder_ && tccp->qmfbid == 0) ? 0
+			const uint32_t log2_gain = (!isCompressor_ && tccp->qmfbid == 0) ? 0
 									   : (band->orientation == 0)		   ? 0
 									   : (band->orientation == 3)		   ? 2
 																		   : 1;
@@ -208,10 +206,7 @@ bool TileComponent::allocSparseCanvas(uint32_t numres, bool truncatedTile)
 					continue;
 				auto cblk_grid = precinct->getCblkGrid();
 				auto cblk_expn = precinct->getCblkExpn();
-				grk_rect32 roi_grid = grk_rect32(
-					floordivpow2(roi->x0, cblk_expn.x), floordivpow2(roi->y0, cblk_expn.y),
-					ceildivpow2(roi->x1, cblk_expn.x), ceildivpow2(roi->y1, cblk_expn.y));
-				roi_grid.clip(&cblk_grid);
+				auto roi_grid = roi->scaleDownPow2(cblk_expn).clip(cblk_grid);
 				auto w = cblk_grid.width();
 				for(uint32_t j = roi_grid.y0; j < roi_grid.y1; ++j)
 				{
@@ -256,7 +251,7 @@ bool TileComponent::allocSparseCanvas(uint32_t numres, bool truncatedTile)
 
 	// 2. create (padded) sparse canvas, in buffer space,
 	const uint32_t blockSizeExp = 6;
-	temp.grow(2 * (1 << blockSizeExp));
+	temp.growIPL(2 * (1 << blockSizeExp));
 	auto sa = new SparseCanvas<blockSizeExp, blockSizeExp>(temp);
 
 	// 3. allocate sparse blocks
@@ -273,10 +268,7 @@ bool TileComponent::allocSparseCanvas(uint32_t numres, bool truncatedTile)
 					continue;
 				auto cblk_grid = precinct->getCblkGrid();
 				auto cblk_expn = precinct->getCblkExpn();
-				grk_rect32 roi_grid = grk_rect32(
-					floordivpow2(roi->x0, cblk_expn.x), floordivpow2(roi->y0, cblk_expn.y),
-					ceildivpow2(roi->x1, cblk_expn.x), ceildivpow2(roi->y1, cblk_expn.y));
-				roi_grid.clip(&cblk_grid);
+				auto roi_grid = roi->scaleDownPow2(cblk_expn).clip(cblk_grid);
 				auto w = cblk_grid.width();
 				for(uint32_t j = cblk_grid.y0; j < cblk_grid.y1; ++j)
 				{
@@ -324,7 +316,7 @@ bool TileComponent::allocSparseCanvas(uint32_t numres, bool truncatedTile)
 bool TileComponent::allocWindowBuffer(grk_rect32 unreducedTileCompOrImageCompWindow)
 {
 	deallocBuffers();
-	auto highestNumberOfResolutions = (!is_encoder_) ? numResolutionsToDecompress : numresolutions;
+	auto highestNumberOfResolutions = (!isCompressor_) ? numResolutionsToDecompress : numresolutions;
 	auto maxResolution = tileCompResolution + numresolutions - 1;
 	if(!maxResolution->intersection(unreducedTileCompOrImageCompWindow).isValid())
 	{
@@ -335,7 +327,7 @@ bool TileComponent::allocWindowBuffer(grk_rect32 unreducedTileCompOrImageCompWin
 		return false;
 	}
 	buf = new TileComponentWindowBuffer<int32_t>(
-		is_encoder_, tccp_->qmfbid == 1, wholeTileDecompress, grk_rect32(maxResolution),
+		isCompressor_, tccp_->qmfbid == 1, wholeTileDecompress, grk_rect32(maxResolution),
 		grk_rect32(this), unreducedTileCompOrImageCompWindow, tileCompResolution, numresolutions,
 		highestNumberOfResolutions);
 

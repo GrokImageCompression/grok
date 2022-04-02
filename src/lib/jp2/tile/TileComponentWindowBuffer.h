@@ -72,7 +72,7 @@ struct ResWindowBuffer
 		for(uint32_t i = 0; i < SPLIT_NUM_ORIENTATIONS; ++i)
 			resWindowBufferSplitREL_[i] = nullptr;
 
-		resWindowPadded_ = resWindow.grow(2 * FILTER_WIDTH).intersection(tileCompAtRes);
+		resWindowPadded_ = resWindow.growIPL(2 * FILTER_WIDTH).intersection(tileCompAtRes);
 		// windowed decompression
 		if(FILTER_WIDTH)
 		{
@@ -115,7 +115,7 @@ struct ResWindowBuffer
 
 				// todo: shouldn't need to clip
 				auto resBounds = grk_rect32(0, 0, tileCompRes_->width(), tileCompRes_->height());
-				resWindowBufferREL_->clip(&resBounds);
+				resWindowBufferREL_->clipIPL(&resBounds);
 
 				// two windows formed by horizontal pass and used as input for vertical pass
 				grk_rect32 splitResWindowREL[SPLIT_NUM_ORIENTATIONS];
@@ -307,7 +307,7 @@ struct ResWindowBuffer
 		if(numDecomps == 0)
 		{
 			assert(orientation == 0);
-			return unreducedTileCompWindow.grow(padding).intersection(&unreducedTileComp);
+			return unreducedTileCompWindow.growIPL(padding).intersection(&unreducedTileComp);
 		}
 		auto oneLessDecompWindow = unreducedTileCompWindow;
 		auto oneLessDecompTile = unreducedTileComp;
@@ -318,7 +318,7 @@ struct ResWindowBuffer
 		}
 
 		return getBandWindow(
-			1, orientation, oneLessDecompWindow.grow(2 * padding).intersection(&oneLessDecompTile));
+			1, orientation, oneLessDecompWindow.growIPL(2 * padding).intersection(&oneLessDecompTile));
 	}
 
 	bool allocated_;
@@ -353,7 +353,7 @@ struct TileComponentWindowBuffer
 		{
 			// for decompress, we are passed the unreduced image component window
 			auto unreducedImageCompWindow = unreducedTileCompOrImageCompWindow;
-			bounds_ = unreducedImageCompWindow.rectceildivpow2(
+			bounds_ = unreducedImageCompWindow.scaleDownCeilPow2(
 				(uint32_t)(numResolutions_ - reducedNumResolutions));
 			bounds_ = bounds_.intersection(tileCompReduced);
 			assert(bounds_.isValid());

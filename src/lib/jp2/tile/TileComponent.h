@@ -54,7 +54,7 @@ struct TileComponent : public grk_rect32
 	bool postDecompressImpl(int32_t* srcData, DecompressBlockExec* block, uint16_t stride);
 	ISparseCanvas* sa_;
 	bool wholeTileDecompress;
-	bool is_encoder_;
+	bool isCompressor_;
 	TileComponentWindowBuffer<int32_t>* buf;
 	TileComponentCodingParams* tccp_;
 };

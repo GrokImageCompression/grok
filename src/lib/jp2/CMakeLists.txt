@@ -166,6 +166,10 @@ set(GROK_LIBRARY_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/tile/TileProcessor.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/tile/TileProcessor.h
   ${CMAKE_CURRENT_SOURCE_DIR}/tile/SparseCanvas.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/tile/DecompressScheduler.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/tile/DecompressScheduler.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/tile/CompressScheduler.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/tile/CompressScheduler.cpp
 
   ${CMAKE_CURRENT_SOURCE_DIR}/transform/WaveletFwd.h
   ${CMAKE_CURRENT_SOURCE_DIR}/transform/WaveletFwd.cpp
@@ -173,10 +177,6 @@ set(GROK_LIBRARY_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/transform/WaveletReverse.h
 
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/BlockExec.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/T1DecompressScheduler.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/T1DecompressScheduler.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/T1CompressScheduler.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/T1CompressScheduler.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/T1Factory.cpp  
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/T1Factory.h
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/T1Interface.h
