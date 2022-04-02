@@ -56,7 +56,7 @@ namespace HWY_NAMESPACE
 	}
 	/** Vertical inverse 5x3 wavelet transform for 8 columns in SSE2, or
 	 * 16 in AVX2, when top-most pixel is on even coordinate */
-	static void hwy_decompress_v_cas0_mcols_53(int32_t* buf, int32_t* bandL, /* even */
+	static void hwy_decompress_v_parity_even_mcols_53(int32_t* buf, int32_t* bandL, /* even */
 											   const uint32_t hL, const size_t strideL,
 											   int32_t* bandH, /* odd */
 											   const uint32_t hH, const size_t strideH,
@@ -144,7 +144,7 @@ namespace HWY_NAMESPACE
 
 	/** Vertical inverse 5x3 wavelet transform for 8 columns in SSE2, or
 	 * 16 in AVX2, when top-most pixel is on odd coordinate */
-	static void hwy_decompress_v_cas1_mcols_53(int32_t* buf, int32_t* bandL, const uint32_t hL,
+	static void hwy_decompress_v_parity_odd_mcols_53(int32_t* buf, int32_t* bandL, const uint32_t hL,
 											   const uint32_t strideL, int32_t* bandH,
 											   const uint32_t hH, const uint32_t strideH,
 											   int32_t* dest, const uint32_t strideDest)
@@ -234,8 +234,8 @@ HWY_AFTER_NAMESPACE();
 namespace grk
 {
 HWY_EXPORT(hwy_num_lanes);
-HWY_EXPORT(hwy_decompress_v_cas0_mcols_53);
-HWY_EXPORT(hwy_decompress_v_cas1_mcols_53);
+HWY_EXPORT(hwy_decompress_v_parity_even_mcols_53);
+HWY_EXPORT(hwy_decompress_v_parity_odd_mcols_53);
 /* <summary>                             */
 /* Determine maximum computed resolution level for inverse wavelet transform */
 /* </summary>                            */
@@ -257,29 +257,30 @@ uint32_t max_resolution(Resolution* GRK_RESTRICT r, uint32_t i)
 template<typename T, typename S>
 struct decompress_job
 {
-	decompress_job(S data, T* GRK_RESTRICT LL, uint32_t sLL, T* GRK_RESTRICT HL, uint32_t sHL,
-				   T* GRK_RESTRICT LH, uint32_t sLH, T* GRK_RESTRICT HH, uint32_t sHH,
-				   T* GRK_RESTRICT destination, uint32_t strideDestination, uint32_t min_j,
-				   uint32_t max_j)
-		: data(data), bandLL(LL), strideLL(sLL), bandHL(HL), strideHL(sHL), bandLH(LH),
-		  strideLH(sLH), bandHH(HH), strideHH(sHH), dest(destination),
-		  strideDest(strideDestination), min_j(min_j), max_j(max_j)
+	decompress_job(S data,
+					grkSimpleBuf2d<T> winLL,
+				   grkSimpleBuf2d<T>  winHL,
+				   grkSimpleBuf2d<T>  winLH,
+				   grkSimpleBuf2d<T>  winHH,
+				   grkSimpleBuf2d<T> winDest,
+				   uint32_t min_j, uint32_t max_j)
+		: data(data),
+		  winLL(winLL),
+		  winHL(winHL),
+		  winLH(winLH),
+		  winHH(winHH),
+		  winDest(winDest),
+		  min_j(min_j), max_j(max_j)
 	{}
 	decompress_job(S data, uint32_t min_j, uint32_t max_j)
-		: decompress_job(data, nullptr, 0, nullptr, 0, nullptr, 0, nullptr, 0, nullptr, 0, min_j,
-						 max_j)
+		: data(data),  min_j(min_j), max_j(max_j)
 	{}
 	S data;
-	T* GRK_RESTRICT bandLL;
-	uint32_t strideLL;
-	T* GRK_RESTRICT bandHL;
-	uint32_t strideHL;
-	T* GRK_RESTRICT bandLH;
-	uint32_t strideLH;
-	T* GRK_RESTRICT bandHH;
-	uint32_t strideHH;
-	T* GRK_RESTRICT dest;
-	uint32_t strideDest;
+	grkSimpleBuf2d<T> winLL;
+   grkSimpleBuf2d<T>  winHL;
+   grkSimpleBuf2d<T>  winLH;
+   grkSimpleBuf2d<T>  winHH;
+   grkSimpleBuf2d<T> winDest;
 
 	uint32_t min_j;
 	uint32_t max_j;
@@ -293,11 +294,11 @@ struct dwt_data
 {
 	dwt_data()
 		: allocatedMem(nullptr), lenBytes_(0), paddingBytes_(0), mem(nullptr), memL(nullptr),
-		  memH(nullptr), dn_full(0), sn_full(0), parity(0), resno(0)
+		  memH(nullptr), sn_full(0), dn_full(0), parity(0), resno(0)
 	{}
 	dwt_data(const dwt_data& rhs)
 		: allocatedMem(nullptr), lenBytes_(0), paddingBytes_(0), mem(nullptr), memL(nullptr),
-		  memH(nullptr), dn_full(rhs.dn_full), sn_full(rhs.sn_full), parity(rhs.parity),
+		  memH(nullptr), sn_full(rhs.sn_full), dn_full(rhs.dn_full), parity(rhs.parity),
 		  win_l(rhs.win_l), win_h(rhs.win_h), resno(rhs.resno)
 	{}
 	bool alloc(size_t len)
@@ -322,8 +323,8 @@ struct dwt_data
 			GRK_ERROR("Failed to allocate %d bytes", lenBytes_);
 			return false;
 		}
-		// memset(allocatedMem, 128, lenBytes_);
 		mem = allocatedMem + paddingBytes_ / sizeof(T);
+
 		return (allocatedMem != nullptr) ? true : false;
 	}
 	void release()
@@ -340,8 +341,8 @@ struct dwt_data
 	T* mem;
 	T* memL;
 	T* memH;
-	uint32_t dn_full; /* number of elements in high pass band */
 	uint32_t sn_full; /* number of elements in low pass band */
+	uint32_t dn_full; /* number of elements in high pass band */
 	uint32_t parity; /* 0 = start on even coord, 1 = start on odd coord */
 	grk_line32 win_l;
 	grk_line32 win_h;
@@ -364,7 +365,7 @@ static const float dwt_delta = -0.443506852f; /*  -3633 */
 static const float K = 1.230174105f; /*  10078 */
 static const float twice_invK = 1.625732422f;
 
-static void decompress_h_cas0_53(int32_t* buf, int32_t* bandL, /* even */
+static void decompress_h_parity_even_53(int32_t* buf, int32_t* bandL, /* even */
 								 const uint32_t wL, int32_t* bandH, const uint32_t wH,
 								 int32_t* dest)
 { /* odd */
@@ -405,7 +406,7 @@ static void decompress_h_cas0_53(int32_t* buf, int32_t* bandL, /* even */
 	memcpy(dest, buf, total_width * sizeof(int32_t));
 }
 
-static void decompress_h_cas1_53(int32_t* buf, int32_t* bandL, /* odd */
+static void decompress_h_parity_odd_53(int32_t* buf, int32_t* bandL, /* odd */
 								 const uint32_t wL, int32_t* bandH, const uint32_t wH,
 								 int32_t* dest)
 { /* even */
@@ -445,7 +446,7 @@ static void decompress_h_cas1_53(int32_t* buf, int32_t* bandL, /* odd */
 
 /** Vertical inverse 5x3 wavelet transform for one column, when top-most
  * pixel is on even coordinate */
-static void decompress_v_cas0_53(int32_t* buf, int32_t* bandL, const uint32_t hL,
+static void decompress_v_parity_even_53(int32_t* buf, int32_t* bandL, const uint32_t hL,
 								 const uint32_t strideL, int32_t* bandH, const uint32_t hH,
 								 const uint32_t strideH, int32_t* dest, const uint32_t strideDest)
 {
@@ -494,7 +495,7 @@ static void decompress_v_cas0_53(int32_t* buf, int32_t* bandL, const uint32_t hL
 }
 /** Vertical inverse 5x3 wavelet transform for one column, when top-most
  * pixel is on odd coordinate */
-static void decompress_v_cas1_53(int32_t* buf, int32_t* bandL, const uint32_t hL,
+static void decompress_v_parity_odd_53(int32_t* buf, int32_t* bandL, const uint32_t hL,
 								 const uint32_t strideL, int32_t* bandH, const uint32_t hH,
 								 const uint32_t strideH, int32_t* dest, const uint32_t strideDest)
 {
@@ -552,7 +553,7 @@ static void decompress_h_53(const dwt_data<int32_t>* dwt, int32_t* bandL, int32_
 	{ /* Left-most sample is on even coordinate */
 		if(total_width > 1)
 		{
-			decompress_h_cas0_53(dwt->mem, bandL, dwt->sn_full, bandH, dwt->dn_full, dest);
+			decompress_h_parity_even_53(dwt->mem, bandL, dwt->sn_full, bandH, dwt->dn_full, dest);
 		}
 		else
 		{
@@ -577,7 +578,7 @@ static void decompress_h_53(const dwt_data<int32_t>* dwt, int32_t* bandL, int32_
 		}
 		else
 		{
-			decompress_h_cas1_53(dwt->mem, bandL, dwt->sn_full, bandH, dwt->dn_full, dest);
+			decompress_h_parity_odd_53(dwt->mem, bandL, dwt->sn_full, bandH, dwt->dn_full, dest);
 		}
 	}
 }
@@ -586,9 +587,11 @@ static void decompress_h_53(const dwt_data<int32_t>* dwt, int32_t* bandL, int32_
 /* Inverse vertical 5-3 wavelet transform in 1-D for several columns. */
 /* </summary>                           */
 /* Performs interleave, inverse wavelet transform and copy back to buffer */
-static void decompress_v_53(const dwt_data<int32_t>* dwt, int32_t* bandL, const uint32_t strideL,
-							int32_t* bandH, const uint32_t strideH, int32_t* dest,
-							const uint32_t strideDest, uint32_t nb_cols)
+static void decompress_v_53(const dwt_data<int32_t>* dwt,
+							grkSimpleBuf2d<int32_t> winL,
+						   grkSimpleBuf2d<int32_t>  winH,
+						   grkSimpleBuf2d<int32_t> winDest,
+							uint32_t nb_cols)
 {
 	const uint32_t total_height = dwt->sn_full + dwt->dn_full;
 	assert(total_height != 0);
@@ -596,8 +599,8 @@ static void decompress_v_53(const dwt_data<int32_t>* dwt, int32_t* bandL, const 
 	{
 		if(total_height == 1)
 		{
-			for(uint32_t c = 0; c < nb_cols; c++, bandL++, dest++)
-				dest[0] = bandL[0];
+			for(uint32_t c = 0; c < nb_cols; c++, winL.buf_++, winDest.buf_++)
+				winDest.buf_[0] = winL.buf_[0];
 		}
 		else
 		{
@@ -605,15 +608,15 @@ static void decompress_v_53(const dwt_data<int32_t>* dwt, int32_t* bandL, const 
 			{
 				/* Same as below general case, except that thanks to SSE2/AVX2 */
 				/* we can efficiently process 8/16 columns in parallel */
-				HWY_DYNAMIC_DISPATCH(hwy_decompress_v_cas0_mcols_53)
-				(dwt->mem, bandL, dwt->sn_full, strideL, bandH, dwt->dn_full, strideH, dest,
-				 strideDest);
+				HWY_DYNAMIC_DISPATCH(hwy_decompress_v_parity_even_mcols_53)
+				(dwt->mem, winL.buf_, dwt->sn_full, winL.stride_, winH.buf_, dwt->dn_full, winH.stride_, winDest.buf_,
+				 winDest.stride_);
 			}
 			else
 			{
-				for(uint32_t c = 0; c < nb_cols; c++, bandL++, bandH++, dest++)
-					decompress_v_cas0_53(dwt->mem, bandL, dwt->sn_full, strideL, bandH,
-										 dwt->dn_full, strideH, dest, strideDest);
+				for(uint32_t c = 0; c < nb_cols; c++, winL.buf_++,  winH.buf_++, winDest.buf_++)
+					decompress_v_parity_even_53(dwt->mem, winL.buf_, dwt->sn_full, winL.stride_,  winH.buf_,
+										 dwt->dn_full, winL.stride_, winDest.buf_, winDest.stride_);
 			}
 		}
 	}
@@ -621,17 +624,17 @@ static void decompress_v_53(const dwt_data<int32_t>* dwt, int32_t* bandL, const 
 	{
 		if(total_height == 1)
 		{
-			for(uint32_t c = 0; c < nb_cols; c++, bandL++, dest++)
-				dest[0] = bandL[0] >> 1;
+			for(uint32_t c = 0; c < nb_cols; c++, winL.buf_++, winDest.buf_++)
+				winDest.buf_[0] = winL.buf_[0] >> 1;
 		}
 		else if(total_height == 2)
 		{
 			auto out = dwt->mem;
-			for(uint32_t c = 0; c < nb_cols; c++, bandL++, bandH++, dest++)
+			for(uint32_t c = 0; c < nb_cols; c++, winL.buf_++,  winH.buf_++, winDest.buf_++)
 			{
-				out[1] = bandL[0] - ((bandH[0] + 1) >> 1);
-				dest[0] = bandH[0] + out[1];
-				dest[1] = out[1];
+				out[1] = winL.buf_[0] - (( winH.buf_[0] + 1) >> 1);
+				winDest.buf_[0] =  winH.buf_[0] + out[1];
+				winDest.buf_[1] = out[1];
 			}
 		}
 		else
@@ -640,46 +643,41 @@ static void decompress_v_53(const dwt_data<int32_t>* dwt, int32_t* bandL, const 
 			{
 				/* Same as below general case, except that thanks to SSE2/AVX2 */
 				/* we can efficiently process 8/16 columns in parallel */
-				HWY_DYNAMIC_DISPATCH(hwy_decompress_v_cas1_mcols_53)
-				(dwt->mem, bandL, dwt->sn_full, strideL, bandH, dwt->dn_full, strideH, dest,
-				 strideDest);
+				HWY_DYNAMIC_DISPATCH(hwy_decompress_v_parity_odd_mcols_53)
+				(dwt->mem, winL.buf_, dwt->sn_full, winL.stride_,  winH.buf_, dwt->dn_full, winH.stride_, winDest.buf_,
+						winDest.stride_);
 			}
 			else
 			{
-				for(uint32_t c = 0; c < nb_cols; c++, bandL++, bandH++, dest++)
-					decompress_v_cas1_53(dwt->mem, bandL, dwt->sn_full, strideL, bandH,
-										 dwt->dn_full, strideH, dest, strideDest);
+				for(uint32_t c = 0; c < nb_cols; c++, winL.buf_++, winH.buf_++, winDest.buf_++)
+					decompress_v_parity_odd_53(dwt->mem, winL.buf_, dwt->sn_full, winL.stride_,  winH.buf_,
+										 dwt->dn_full, winH.stride_, winDest.buf_, winDest.stride_);
 			}
 		}
 	}
 }
 
 static void decompress_h_strip_53(const dwt_data<int32_t>* horiz, uint32_t hMin, uint32_t hMax,
-								  int32_t* bandL, const uint32_t strideL, int32_t* bandH,
-								  const uint32_t strideH, int32_t* dest, const uint32_t strideDest)
+		 	 	 	 	 	 	 	 grkSimpleBuf2d<int32_t> winL,
+									   grkSimpleBuf2d<int32_t>  winH,
+									   grkSimpleBuf2d<int32_t> winDest)
 {
 	for(uint32_t j = hMin; j < hMax; ++j)
 	{
-		decompress_h_53(horiz, bandL, bandH, dest);
-		bandL += strideL;
-		bandH += strideH;
-		dest += strideDest;
+		decompress_h_53(horiz, winL.buf_, winH.buf_, winDest.buf_);
+		winL = winL.incY_IPL(1);
+		winL = winH.incY_IPL(1);
+		winL = winDest.incY_IPL(1);
 	}
 }
 
-static bool decompress_h_mt_53(uint32_t num_threads, size_t data_size, dwt_data<int32_t>& horiz,
-							   dwt_data<int32_t>& vert, uint32_t rh,
-							   const grkBuffer2d<int32_t, AllocatorAligned> *winL,
-							   const grkBuffer2d<int32_t, AllocatorAligned> *winH,
-							   const grkBuffer2d<int32_t, AllocatorAligned> *winDest)
+static bool decompress_h_53(uint32_t numThreads, size_t data_size, dwt_data<int32_t>& horiz,
+							   dwt_data<int32_t>& vert, uint32_t resHeight,
+							   grkSimpleBuf2d<int32_t> winL,
+							   grkSimpleBuf2d<int32_t>  winH,
+							   grkSimpleBuf2d<int32_t> winDest)
 {
-	auto bandL = winL->getBuffer();
-	const uint32_t  strideL = winL->stride;
-	auto bandH = winH->getBuffer();
-	const uint32_t  strideH = winH->stride;
-	auto dest = winDest->getBuffer();
-	const uint32_t strideDest = winDest->stride;
-	if(num_threads == 1 || rh <= 1)
+	if(numThreads == 1 || resHeight <= 1)
 	{
 		if(!horiz.mem)
 		{
@@ -690,65 +688,73 @@ static bool decompress_h_mt_53(uint32_t num_threads, size_t data_size, dwt_data<
 			}
 			vert.mem = horiz.mem;
 		}
-		decompress_h_strip_53(&horiz, 0, rh, bandL, strideL, bandH, strideH, dest, strideDest);
+		decompress_h_strip_53(&horiz, 0, resHeight, winL,winH, winDest);
 	}
 	else
 	{
-		const uint32_t num_jobs = rh < (uint32_t)num_threads ? rh : (uint32_t)num_threads;
-		uint32_t step_j = (rh / num_jobs);
+		const uint32_t numJobs = resHeight < (uint32_t)numThreads ? resHeight : (uint32_t)numThreads;
+		uint32_t incrPerJob = (resHeight / numJobs);
 		tf::Taskflow taskflow;
-		auto node = new tf::Task[num_jobs];
-		for(uint64_t i = 0; i < num_jobs; i++)
-			node[i] = taskflow.placeholder();
-		for(uint32_t j = 0; j < num_jobs; ++j)
+		auto tasks = new tf::Task[numJobs];
+		for(uint64_t i = 0; i < numJobs; i++)
+			tasks[i] = taskflow.placeholder();
+		for(uint32_t j = 0; j < numJobs; ++j)
 		{
-			auto min_j = j * step_j;
+			auto min_j = j * incrPerJob;
 			auto job = new decompress_job<int32_t, dwt_data<int32_t>>(
-				horiz, bandL + min_j * strideL, strideL, bandH + min_j * strideH, strideH, nullptr,
-				0, nullptr, 0, dest + min_j * strideDest, strideDest, j * step_j,
-				j < (num_jobs - 1U) ? (j + 1U) * step_j : rh);
+				horiz,
+				winL.incY(min_j),
+				winH.incY(min_j),
+				grkSimpleBuf2d<int32_t>(),
+				grkSimpleBuf2d<int32_t>(),
+				winDest.incY(min_j),
+				j * incrPerJob,
+				j < (numJobs - 1U) ? (j + 1U) * incrPerJob : resHeight);
 			if(!job->data.alloc(data_size))
 			{
 				GRK_ERROR("Out of memory");
 				horiz.release();
 				return false;
 			}
-			node[j].work([job] {
-				decompress_h_strip_53(&job->data, job->min_j, job->max_j, job->bandLL,
-									  job->strideLL, job->bandHL, job->strideHL, job->dest,
-									  job->strideDest);
+			tasks[j].work([job] {
+				decompress_h_strip_53(&job->data, job->min_j, job->max_j,
+										job->winLL,
+										job->winHL,
+										job->winDest);
 				job->data.release();
 				delete job;
 			});
 		}
 		ExecSingleton::get()->run(taskflow).wait();
-		delete[] node;
+		delete[] tasks;
 	}
 	return true;
 }
 
 static void decompress_v_strip_53(const dwt_data<int32_t>* vert, uint32_t wMin, uint32_t wMax,
-								  int32_t* bandL, const uint32_t strideL, int32_t* bandH,
-								  const uint32_t strideH, int32_t* dest, const uint32_t strideDest)
+		 	 	 	 	 	 	 	  grkSimpleBuf2d<int32_t> winL,
+									   grkSimpleBuf2d<int32_t>  winH,
+									   grkSimpleBuf2d<int32_t> winDest)
 {
 	uint32_t j;
 	for(j = wMin; j + PLL_COLS_53 <= wMax; j += PLL_COLS_53)
 	{
-		decompress_v_53(vert, bandL, strideL, bandH, strideH, dest, strideDest, PLL_COLS_53);
-		bandL += PLL_COLS_53;
-		bandH += PLL_COLS_53;
-		dest += PLL_COLS_53;
+		decompress_v_53(vert, winL,winH,winDest, PLL_COLS_53);
+		winL.incX_IPL(PLL_COLS_53);
+		winH.incX_IPL(PLL_COLS_53);
+		winDest.incX_IPL(PLL_COLS_53);
 	}
 	if(j < wMax)
-		decompress_v_53(vert, bandL, strideL, bandH, strideH, dest, strideDest, wMax - j);
+		decompress_v_53(vert,winL,winH,winDest, wMax - j);
 }
 
-static bool decompress_v_mt_53(uint32_t num_threads, size_t data_size, dwt_data<int32_t>& horiz,
-							   dwt_data<int32_t>& vert, uint32_t rw, int32_t* bandL,
-							   const uint32_t strideL, int32_t* bandH, const uint32_t strideH,
-							   int32_t* dest, const uint32_t strideDest)
+static bool decompress_v_53(uint32_t numThreads, size_t data_size, dwt_data<int32_t>& horiz,
+							   dwt_data<int32_t>& vert, uint32_t resWidth,
+							   grkSimpleBuf2d<int32_t> winL,
+							   grkSimpleBuf2d<int32_t>  winH,
+							   grkSimpleBuf2d<int32_t> winDest)
 {
-	if(num_threads == 1 || rw <= 1)
+	if(numThreads == 1 || resWidth <= 1)
 	{
 		if(!horiz.mem)
 		{
@@ -759,38 +765,44 @@ static bool decompress_v_mt_53(uint32_t num_threads, size_t data_size, dwt_data<
 			}
 			vert.mem = horiz.mem;
 		}
-		decompress_v_strip_53(&vert, 0, rw, bandL, strideL, bandH, strideH, dest, strideDest);
+		decompress_v_strip_53(&vert, 0,resWidth, winL,winH,winDest);
 	}
 	else
 	{
-		const uint32_t num_jobs = rw < (uint32_t)num_threads ? rw : (uint32_t)num_threads;
-		uint32_t step_j = (rw / num_jobs);
+		const uint32_t numJobs = resWidth < (uint32_t)numThreads ? resWidth : (uint32_t)numThreads;
+		uint32_t step = resWidth / numJobs;
 		tf::Taskflow taskflow;
-		auto node = new tf::Task[num_jobs];
-		for(uint64_t i = 0; i < num_jobs; i++)
-			node[i] = taskflow.placeholder();
-		for(uint32_t j = 0; j < num_jobs; j++)
+		auto tasks = new tf::Task[numJobs];
+		for(uint64_t i = 0; i < numJobs; i++)
+			tasks[i] = taskflow.placeholder();
+		for(uint32_t j = 0; j < numJobs; j++)
 		{
-			auto min_j = j * step_j;
+			auto min_j = j * step;
 			auto job = new decompress_job<int32_t, dwt_data<int32_t>>(
-				vert, bandL + min_j, strideL, nullptr, 0, bandH + min_j, strideH, nullptr, 0,
-				dest + min_j, strideDest, j * step_j, j < (num_jobs - 1U) ? (j + 1U) * step_j : rw);
+				vert,
+				winL.incX(min_j),
+				grkSimpleBuf2d<int32_t>(),
+				winH.incX(min_j),
+				grkSimpleBuf2d<int32_t>(),
+				winDest.incX(min_j),
+				j * step, j < (numJobs - 1U) ? (j + 1U) * step : resWidth);
 			if(!job->data.alloc(data_size))
 			{
 				GRK_ERROR("Out of memory");
 				vert.release();
 				return false;
 			}
-			node[j].work([job] {
-				decompress_v_strip_53(&job->data, job->min_j, job->max_j, job->bandLL,
-									  job->strideLL, job->bandLH, job->strideLH, job->dest,
-									  job->strideDest);
+			tasks[j].work([job] {
+				decompress_v_strip_53(&job->data, job->min_j, job->max_j,
+										job->winLL,
+										job->winLH,
+										job->winDest);
 				job->data.release();
 				delete job;
 			});
 		}
 		ExecSingleton::get()->run(taskflow).wait();
-		delete[] node;
+		delete[] tasks;
 	}
 	return true;
 }
@@ -804,10 +816,10 @@ static bool decompress_tile_53(TileComponent* tilec, uint32_t numres)
 
 	auto tr = tilec->tileCompResolution;
 	auto buf = tilec->getBuffer();
-	uint32_t rw = tr->width();
-	uint32_t rh = tr->height();
+	uint32_t resWidth = tr->width();
+	uint32_t resHeight = tr->height();
 
-	uint32_t num_threads = (uint32_t)ExecSingleton::get()->num_workers();
+	uint32_t numThreads = (uint32_t)ExecSingleton::get()->num_workers();
 	size_t data_size = max_resolution(tr, numres);
 	/* overflow check */
 	if(data_size > (SIZE_MAX / PLL_COLS_53 / sizeof(int32_t)))
@@ -824,48 +836,38 @@ static bool decompress_tile_53(TileComponent* tilec, uint32_t numres)
 	bool rc = true;
 	for(uint8_t res = 1; res < numres; ++res)
 	{
-		horiz.sn_full = rw;
-		vert.sn_full = rh;
+		horiz.sn_full = resWidth;
+		vert.sn_full = resHeight;
 		++tr;
-		rw = tr->width();
-		rh = tr->height();
-		if(rw == 0 || rh == 0)
+		resWidth = tr->width();
+		resHeight = tr->height();
+		if(resWidth == 0 || resHeight == 0)
 			continue;
-		horiz.dn_full = rw - horiz.sn_full;
+		horiz.dn_full = resWidth - horiz.sn_full;
 		horiz.parity = tr->x0 & 1;
 		auto winLL = buf->getResWindowBufferREL(res - 1U);
 		auto winHL = buf->getBandWindowBufferPaddedREL(res, BAND_ORIENT_HL);
 		auto winSplitL = buf->getResWindowBufferSplitREL(res, SPLIT_L);
-		if(!decompress_h_mt_53(num_threads, data_size, horiz, vert, vert.sn_full,
-							   // LL
-								winLL,
-							   // HL
-							   winHL,
-							   // lower split window
-							   winSplitL))
+		if(!decompress_h_53(numThreads, data_size, horiz, vert, vert.sn_full,
+								winLL->simple(),
+							   winHL->simple(),
+							   winSplitL->simple()))
 			return false;
 		auto winLH = buf->getBandWindowBufferPaddedREL(res, BAND_ORIENT_LH);
 		auto winHH = buf->getBandWindowBufferPaddedREL(res, BAND_ORIENT_HH);
 		auto winSplitH = buf->getResWindowBufferSplitREL(res, SPLIT_H);
-		if(!decompress_h_mt_53(num_threads, data_size, horiz, vert, rh - vert.sn_full,
-								winLH,
-								winHH,
-							   // higher split window
-							   winSplitH))
+		if(!decompress_h_53(numThreads, data_size, horiz, vert, resHeight - vert.sn_full,
+								winLH->simple(),
+								winHH->simple(),
+							   winSplitH->simple()))
 			return false;
-		vert.dn_full = rh - vert.sn_full;
+		vert.dn_full = resHeight - vert.sn_full;
 		vert.parity = tr->y0 & 1;
 		auto winRes = buf->getResWindowBufferREL(res);
-		if(!decompress_v_mt_53(num_threads, data_size, horiz, vert, rw,
-							   // lower split window
-								winSplitL->getBuffer(),
-								winSplitL->stride,
-							   // higher split window
-							   winSplitH->getBuffer(),
-							   winSplitH->stride,
-							   // resolution buffer
-							   winRes->getBuffer(),
-							   winRes->stride))
+		if(!decompress_v_53(numThreads, data_size, horiz, vert, resWidth,
+								winSplitL->simple(),
+							   winSplitH->simple(),
+							   winRes->simple()))
 			return false;
 	}
 	horiz.release();
@@ -1015,9 +1017,10 @@ static void decompress_step_97(dwt_data<vec4f>* GRK_RESTRICT dwt)
 	decompress_step2_97(makeParams97(dwt, true, false), dwt_beta);
 	decompress_step2_97(makeParams97(dwt, false, false), dwt_alpha);
 }
-static void interleave_h_97(dwt_data<vec4f>* GRK_RESTRICT dwt, float* GRK_RESTRICT bandL,
-							const uint32_t strideL, float* GRK_RESTRICT bandH,
-							const uint32_t strideH, uint32_t remaining_height)
+static void interleave_h_97(dwt_data<vec4f>* GRK_RESTRICT dwt,
+		 	 	 	 	 	 grkSimpleBuf2d<float> winL,
+							 grkSimpleBuf2d<float>  winH,
+							 uint32_t remaining_height)
 {
 	float* GRK_RESTRICT bi = (float*)(dwt->mem + dwt->parity);
 	uint32_t x0 = dwt->win_l.x0;
@@ -1025,8 +1028,8 @@ static void interleave_h_97(dwt_data<vec4f>* GRK_RESTRICT dwt, float* GRK_RESTRI
 	const size_t vec4f_elts = sizeof(vec4f) / sizeof(float);
 	for(uint32_t k = 0; k < 2; ++k)
 	{
-		auto band = (k == 0) ? bandL : bandH;
-		uint32_t stride = (k == 0) ? strideL : strideH;
+		auto band = (k == 0) ? winL.buf_ : winH.buf_;
+		uint32_t stride = (k == 0) ? winL.stride_ : winH.stride_;
 		if(remaining_height >= vec4f_elts && ((size_t)band & 0x0f) == 0 &&
 		   ((size_t)bi & 0x0f) == 0 && (stride & 0x0f) == 0)
 		{
@@ -1069,16 +1072,18 @@ static void interleave_h_97(dwt_data<vec4f>* GRK_RESTRICT dwt, float* GRK_RESTRI
 		x1 = dwt->win_h.x1;
 	}
 }
-static void decompress_h_strip_97(dwt_data<vec4f>* GRK_RESTRICT horiz, const uint32_t rh,
-								  float* GRK_RESTRICT bandL, const uint32_t strideL,
-								  float* GRK_RESTRICT bandH, const uint32_t strideH, float* dest,
-								  const size_t strideDest)
+static void decompress_h_strip_97(dwt_data<vec4f>* GRK_RESTRICT horiz, const uint32_t resHeight,
+		 	 	 	 	 	 	 	 grkSimpleBuf2d<float> winL,
+									   grkSimpleBuf2d<float>  winH,
+									   grkSimpleBuf2d<float> winDest)
 {
+    float* GRK_RESTRICT dest = winDest.buf_;
+	const uint32_t strideDest = winDest.stride_;
 	uint32_t j;
 	const size_t vec4f_elts = sizeof(vec4f) / sizeof(float);
-	for(j = 0; j < (rh & (uint32_t)(~(vec4f_elts - 1))); j += vec4f_elts)
+	for(j = 0; j < (resHeight & (uint32_t)(~(vec4f_elts - 1))); j += vec4f_elts)
 	{
-		interleave_h_97(horiz, bandL, strideL, bandH, strideH, rh - j);
+		interleave_h_97(horiz, winL,winH, resHeight - j);
 		decompress_step_97(horiz);
 		for(uint32_t k = 0; k < horiz->sn_full + horiz->dn_full; k++)
 		{
@@ -1087,20 +1092,20 @@ static void decompress_h_strip_97(dwt_data<vec4f>* GRK_RESTRICT horiz, const uin
 			dest[k + (size_t)strideDest * 2] = horiz->mem[k].f[2];
 			dest[k + (size_t)strideDest * 3] = horiz->mem[k].f[3];
 		}
-		bandL += strideL << 2;
-		bandH += strideH << 2;
+		winL.buf_ += winL.stride_ << 2;
+		winH.buf_ += winH.stride_ << 2;
 		dest += strideDest << 2;
 	}
-	if(j < rh)
+	if(j < resHeight)
 	{
-		interleave_h_97(horiz, bandL, strideL, bandH, strideH, rh - j);
+		interleave_h_97(horiz, winL,winH, resHeight - j);
 		decompress_step_97(horiz);
 		for(uint32_t k = 0; k < horiz->sn_full + horiz->dn_full; k++)
 		{
-			switch(rh - j)
+			switch(resHeight - j)
 			{
 				case 3:
-					dest[k + strideDest * 2] = horiz->mem[k].f[2];
+					dest[k + (strideDest << 1)] = horiz->mem[k].f[2];
 				/* FALLTHRU */
 				case 2:
 					dest[k + strideDest] = horiz->mem[k].f[1];
@@ -1111,150 +1116,168 @@ static void decompress_h_strip_97(dwt_data<vec4f>* GRK_RESTRICT horiz, const uin
 		}
 	}
 }
-static bool decompress_h_mt_97(uint32_t num_threads, size_t data_size,
-							   dwt_data<vec4f>& GRK_RESTRICT horiz, const uint32_t rh,
-							   float* GRK_RESTRICT bandL, const uint32_t strideL,
-							   float* GRK_RESTRICT bandH, const uint32_t strideH,
-							   float* GRK_RESTRICT dest, const uint32_t strideDest)
+static bool decompress_h_97(uint32_t numThreads, size_t data_size,
+							   dwt_data<vec4f>& GRK_RESTRICT horiz, const uint32_t resHeight,
+							   grkSimpleBuf2d<float> winL,
+							   grkSimpleBuf2d<float>  winH,
+							   grkSimpleBuf2d<float> winDest)
 {
-	uint32_t num_jobs = num_threads;
-	if(rh < num_jobs)
-		num_jobs = rh;
-	uint32_t step_j = num_jobs ? (rh / num_jobs) : 0;
+	uint32_t numJobs = numThreads;
+	if(resHeight < numJobs)
+		numJobs = resHeight;
+	if (numJobs == 0)
+		return true;
+	uint32_t incrPerJob = resHeight / numJobs;
 	const size_t vec4f_elts = sizeof(vec4f) / sizeof(float);
-	if(num_threads == 1 || step_j < vec4f_elts)
+	if(numThreads == 1 || incrPerJob < vec4f_elts)
 	{
-		decompress_h_strip_97(&horiz, rh, bandL, strideL, bandH, strideH, dest, strideDest);
+		decompress_h_strip_97(&horiz, resHeight,winL,winH,winDest);
 	}
 	else
 	{
 		tf::Taskflow taskflow;
-		auto node = new tf::Task[num_jobs];
-		for(uint64_t i = 0; i < num_jobs; i++)
-			node[i] = taskflow.placeholder();
-		for(uint32_t j = 0; j < num_jobs; ++j)
+		auto tasks = new tf::Task[numJobs];
+		for(uint32_t i = 0; i < numJobs; i++)
+			tasks[i] = taskflow.placeholder();
+		for(uint32_t j = 0; j < numJobs; ++j)
 		{
-			auto min_j = j * step_j;
+			auto min_j = j * incrPerJob;
 			auto job = new decompress_job<float, dwt_data<vec4f>>(
-				horiz, bandL + min_j * strideL, strideL, bandH + min_j * strideH, strideH, nullptr,
-				0, nullptr, 0, dest + min_j * strideDest, strideDest, 0,
-				(j < (num_jobs - 1U) ? (j + 1U) * step_j : rh) - min_j);
+											horiz,
+											winL.incY(min_j),
+											winH.incY(min_j),
+											grkSimpleBuf2d<float>(),
+											grkSimpleBuf2d<float>(),
+											winDest.incY(min_j),
+											0,
+											(j < (numJobs - 1U) ? (j + 1U) * incrPerJob : resHeight) - min_j);
 			if(!job->data.alloc(data_size))
 			{
 				GRK_ERROR("Out of memory");
 				horiz.release();
 				return false;
 			}
-			node[j].work([job] {
-				decompress_h_strip_97(&job->data, job->max_j, job->bandLL, job->strideLL,
-									  job->bandHL, job->strideHL, job->dest, job->strideDest);
+			tasks[j].work([job] {
+				decompress_h_strip_97(&job->data, job->max_j,
+										job->winLL,
+										job->winHL,
+										job->winDest);
 				job->data.release();
 				delete job;
 			});
 		}
 		ExecSingleton::get()->run(taskflow).wait();
-		delete[] node;
+		delete[] tasks;
 	}
 	return true;
 }
-static void interleave_v_97(dwt_data<vec4f>* GRK_RESTRICT dwt, float* GRK_RESTRICT bandL,
-							const uint32_t strideL, float* GRK_RESTRICT bandH,
-							const uint32_t strideH, uint32_t nb_elts_read)
+static void interleave_v_97(dwt_data<vec4f>* GRK_RESTRICT dwt,
+							grkSimpleBuf2d<float> winL,
+						    grkSimpleBuf2d<float>  winH,
+							uint32_t nb_elts_read)
 {
-	vec4f* GRK_RESTRICT bi = dwt->mem + dwt->parity;
-	auto band = bandL + dwt->win_l.x0 * strideL;
+	auto bi = dwt->mem + dwt->parity;
+	auto band = winL.buf_ + dwt->win_l.x0 * winL.stride_;
 	for(uint32_t i = dwt->win_l.x0; i < dwt->win_l.x1; ++i, bi += 2)
 	{
 		memcpy((float*)bi, band, nb_elts_read * sizeof(float));
-		band += strideL;
+		band += winL.stride_;
 	}
 	bi = dwt->mem + 1 - dwt->parity;
-	band = bandH + dwt->win_h.x0 * strideH;
+	band = winH.buf_ + dwt->win_h.x0 * winH.stride_;
 	for(uint32_t i = dwt->win_h.x0; i < dwt->win_h.x1; ++i, bi += 2)
 	{
 		memcpy((float*)bi, band, nb_elts_read * sizeof(float));
-		band += strideH;
+		band += winH.stride_;
 	}
 }
-static void decompress_v_strip_97(dwt_data<vec4f>* GRK_RESTRICT vert, const uint32_t rw,
-								  const uint32_t rh, float* GRK_RESTRICT bandL,
-								  const uint32_t strideL, float* GRK_RESTRICT bandH,
-								  const uint32_t strideH, float* GRK_RESTRICT dest,
-								  const uint32_t strideDest)
+static void decompress_v_strip_97(dwt_data<vec4f>* GRK_RESTRICT vert, const uint32_t resWidth,
+								  const uint32_t resHeight,
+								  grkSimpleBuf2d<float> winL,
+								   grkSimpleBuf2d<float>  winH,
+								   grkSimpleBuf2d<float> winDest)
 {
 	uint32_t j;
 	const size_t vec4f_elts = sizeof(vec4f) / sizeof(float);
-	for(j = 0; j < (rw & (uint32_t) ~(vec4f_elts - 1)); j += vec4f_elts)
+	for(j = 0; j < (resWidth & (uint32_t) ~(vec4f_elts - 1)); j += vec4f_elts)
 	{
-		interleave_v_97(vert, bandL, strideL, bandH, strideH, vec4f_elts);
+		interleave_v_97(vert,winL,winH, vec4f_elts);
 		decompress_step_97(vert);
-		auto destPtr = dest;
-		for(uint32_t k = 0; k < rh; ++k)
+		auto destPtr = winDest.buf_;
+		for(uint32_t k = 0; k < resHeight; ++k)
 		{
 			memcpy(destPtr, vert->mem + k, sizeof(vec4f));
-			destPtr += strideDest;
+			destPtr += winDest.stride_;
 		}
-		bandL += vec4f_elts;
-		bandH += vec4f_elts;
-		dest += vec4f_elts;
+		winL.buf_ += vec4f_elts;
+		winH.buf_ += vec4f_elts;
+		winDest.buf_ += vec4f_elts;
 	}
-	if(j < rw)
+	if(j < resWidth)
 	{
-		j = rw & (vec4f_elts - 1);
-		interleave_v_97(vert, bandL, strideL, bandH, strideH, j);
+		j = resWidth & (vec4f_elts - 1);
+		interleave_v_97(vert,winL,winH, j);
 		decompress_step_97(vert);
-		auto destPtr = dest;
-		for(uint32_t k = 0; k < rh; ++k)
+		auto destPtr = winDest.buf_;
+		for(uint32_t k = 0; k < resHeight; ++k)
 		{
 			memcpy(destPtr, vert->mem + k, j * sizeof(float));
-			destPtr += strideDest;
+			destPtr += winDest.stride_;
 		}
 	}
 }
-static bool decompress_v_mt_97(uint32_t num_threads, size_t data_size,
-							   dwt_data<vec4f>& GRK_RESTRICT vert, const uint32_t rw,
-							   const uint32_t rh, float* GRK_RESTRICT bandL, const uint32_t strideL,
-							   float* GRK_RESTRICT bandH, const uint32_t strideH,
-							   float* GRK_RESTRICT dest, const uint32_t strideDest)
+static bool decompress_v_97(uint32_t numThreads, size_t data_size,
+							   dwt_data<vec4f>& GRK_RESTRICT vert, const uint32_t resWidth,
+							   const uint32_t resHeight,
+							   grkSimpleBuf2d<float> winL,
+							   grkSimpleBuf2d<float>  winH,
+							   grkSimpleBuf2d<float> winDest)
 {
-	auto num_jobs = (uint32_t)num_threads;
-	if(rw < num_jobs)
-		num_jobs = rw;
+	auto numJobs = numThreads;
+	if(resWidth < numJobs)
+		numJobs = resWidth;
 	const size_t vec4f_elts = sizeof(vec4f) / sizeof(float);
-	auto step_j = num_jobs ? (rw / num_jobs) : 0;
-	if(num_threads == 1 || step_j < vec4f_elts)
+	auto incrPerJob = numJobs ? (resWidth / numJobs) : 0;
+	if(numThreads == 1 || incrPerJob < vec4f_elts)
 	{
-		decompress_v_strip_97(&vert, rw, rh, bandL, strideL, bandH, strideH, dest, strideDest);
+		decompress_v_strip_97(&vert, resWidth, resHeight, winL,winH,winDest);
 	}
 	else
 	{
 		tf::Taskflow taskflow;
-		auto node = new tf::Task[num_jobs];
-		for(uint64_t i = 0; i < num_jobs; i++)
-			node[i] = taskflow.placeholder();
-		for(uint32_t j = 0; j < num_jobs; j++)
+		auto tasks = new tf::Task[numJobs];
+		for(uint64_t i = 0; i < numJobs; i++)
+			tasks[i] = taskflow.placeholder();
+		for(uint32_t j = 0; j < numJobs; j++)
 		{
-			auto min_j = j * step_j;
+			auto min_j = j * incrPerJob;
 			auto job = new decompress_job<float, dwt_data<vec4f>>(
-				vert, bandL + min_j, strideL, nullptr, 0, bandH + min_j, strideH, nullptr, 0,
-				dest + min_j, strideDest, 0,
-				(j < (num_jobs - 1U) ? (j + 1U) * step_j : rw) - min_j);
+							vert,
+							winL.incX(min_j),
+							grkSimpleBuf2d<float>(),
+							winH.incX(min_j),
+							grkSimpleBuf2d<float>(),
+							winDest.incX(min_j),
+							0,
+							(j < (numJobs - 1U) ? (j + 1U) * incrPerJob : resWidth) - min_j);
 			if(!job->data.alloc(data_size))
 			{
 				GRK_ERROR("Out of memory");
 				vert.release();
 				return false;
 			}
-			node[j].work([job, rh] {
-				decompress_v_strip_97(&job->data, job->max_j, rh, job->bandLL, job->strideLL,
-									  job->bandLH, job->strideLH, job->dest, job->strideDest);
+			tasks[j].work([job, resHeight] {
+				decompress_v_strip_97(&job->data, job->max_j, resHeight,
+						 	 	 job->winLL,
+								 job->winLH,
+								 job->winDest);
 				job->data.release();
 				delete job;
 				return 0;
 			});
 		}
 		ExecSingleton::get()->run(taskflow).wait();
-		delete[] node;
+		delete[] tasks;
 	}
 
 	return true;
@@ -1269,70 +1292,52 @@ static bool decompress_tile_97(TileComponent* GRK_RESTRICT tilec, uint32_t numre
 
 	auto tr = tilec->tileCompResolution;
 	auto buf = tilec->getBuffer();
-	uint32_t rw = tr->width();
-	uint32_t rh = tr->height();
+	uint32_t resWidth = tr->width();
+	uint32_t resHeight = tr->height();
 
 	size_t data_size = max_resolution(tr, numres);
 	dwt_data<vec4f> horiz;
 	dwt_data<vec4f> vert;
 	if(!horiz.alloc(data_size))
 	{
-		GRK_ERROR("Out of memory");
+		GRK_ERROR("decompress_tile_97: out of memory");
 		return false;
 	}
 	vert.mem = horiz.mem;
-	uint32_t num_threads = (uint32_t)ExecSingleton::get()->num_workers();
+	uint32_t numThreads = (uint32_t)ExecSingleton::get()->num_workers();
 	for(uint8_t res = 1; res < numres; ++res)
 	{
-		horiz.sn_full = rw;
-		vert.sn_full = rh;
+		horiz.sn_full = resWidth;
+		vert.sn_full = resHeight;
 		++tr;
-		rw = tr->width();
-		rh = tr->height();
-		if(rw == 0 || rh == 0)
+		resWidth = tr->width();
+		resHeight = tr->height();
+		if(resWidth == 0 || resHeight == 0)
 			continue;
-		horiz.dn_full = rw - horiz.sn_full;
+		horiz.dn_full = resWidth - horiz.sn_full;
 		horiz.parity = tr->x0 & 1;
 		horiz.win_l = grk_line32(0, horiz.sn_full);
 		horiz.win_h = grk_line32(0, horiz.dn_full);
-		if(!decompress_h_mt_97(
-			   num_threads, data_size, horiz, vert.sn_full,
-			   // LL
-			   (float*)buf->getResWindowBufferREL(res - 1U)->getBuffer(),
-			   buf->getResWindowBufferREL(res - 1U)->stride,
-			   // HL
-			   (float*)buf->getBandWindowBufferPaddedREL(res, BAND_ORIENT_HL)->getBuffer(),
-			   buf->getBandWindowBufferPaddedREL(res, BAND_ORIENT_HL)->stride,
-			   // lower split window
-			   (float*)buf->getResWindowBufferSplitREL(res, SPLIT_L)->getBuffer(),
-			   buf->getResWindowBufferSplitREL(res, SPLIT_L)->stride))
+		if(!decompress_h_97(
+			   numThreads, data_size, horiz, vert.sn_full,
+			   buf->getResWindowBufferREL(res - 1U)->simpleF(),
+			   buf->getBandWindowBufferPaddedREL(res, BAND_ORIENT_HL)->simpleF(),
+			   buf->getResWindowBufferSplitREL(res, SPLIT_L)->simpleF()))
 			return false;
-		if(!decompress_h_mt_97(
-			   num_threads, data_size, horiz, rh - vert.sn_full,
-			   // LH
-			   (float*)buf->getBandWindowBufferPaddedREL(res, BAND_ORIENT_LH)->getBuffer(),
-			   buf->getBandWindowBufferPaddedREL(res, BAND_ORIENT_LH)->stride,
-			   // HH
-			   (float*)buf->getBandWindowBufferPaddedREL(res, BAND_ORIENT_HH)->getBuffer(),
-			   buf->getBandWindowBufferPaddedREL(res, BAND_ORIENT_HH)->stride,
-			   // higher split window
-			   (float*)buf->getResWindowBufferSplitREL(res, SPLIT_H)->getBuffer(),
-			   buf->getResWindowBufferSplitREL(res, SPLIT_H)->stride))
+		if(!decompress_h_97(
+			   numThreads, data_size, horiz, resHeight - vert.sn_full,
+			   buf->getBandWindowBufferPaddedREL(res, BAND_ORIENT_LH)->simpleF(),
+			   buf->getBandWindowBufferPaddedREL(res, BAND_ORIENT_HH)->simpleF(),
+			   buf->getResWindowBufferSplitREL(res, SPLIT_H)->simpleF()))
 			return false;
-		vert.dn_full = rh - vert.sn_full;
+		vert.dn_full = resHeight - vert.sn_full;
 		vert.parity = tr->y0 & 1;
 		vert.win_l = grk_line32(0, vert.sn_full);
 		vert.win_h = grk_line32(0, vert.dn_full);
-		if(!decompress_v_mt_97(num_threads, data_size, vert, rw, rh,
-							   // lower split window
-							   (float*)buf->getResWindowBufferSplitREL(res, SPLIT_L)->getBuffer(),
-							   buf->getResWindowBufferSplitREL(res, SPLIT_L)->stride,
-							   // higher split window
-							   (float*)buf->getResWindowBufferSplitREL(res, SPLIT_H)->getBuffer(),
-							   buf->getResWindowBufferSplitREL(res, SPLIT_H)->stride,
-							   // resolution window
-							   (float*)buf->getResWindowBufferREL(res)->getBuffer(),
-							   buf->getResWindowBufferREL(res)->stride))
+		if(!decompress_v_97(numThreads, data_size, vert, resWidth, resHeight,
+							   buf->getResWindowBufferSplitREL(res, SPLIT_L)->simpleF(),
+							   buf->getResWindowBufferSplitREL(res, SPLIT_H)->simpleF(),
+							   buf->getResWindowBufferREL(res)->simpleF()))
 			return false;
 	}
 	horiz.release();
@@ -1427,11 +1432,11 @@ class PartialInterleaver
 		if(dwt->dn_full)
 		{
 			ret = sa->read(
-				dwt->resno, BAND_ORIENT_LL,
-				grk_rect32(x_offset, dwt->sn_full + dwt->win_h.x0, x_offset + x_num_elements,
-						   dwt->sn_full +
-							   std::min<uint32_t>(dwt->win_h.x1 + FILTER_WIDTH, dwt->dn_full)),
-				(int32_t*)dwt->memH, 1, 2 * v_chunk, true);
+						dwt->resno, BAND_ORIENT_LL,
+						grk_rect32(x_offset, dwt->sn_full + dwt->win_h.x0, x_offset + x_num_elements,
+								   dwt->sn_full +
+									   std::min<uint32_t>(dwt->win_h.x1 + FILTER_WIDTH, dwt->dn_full)),
+									   (int32_t*)dwt->memH, 1, 2 * v_chunk, true);
 			assert(ret);
 		}
 		GRK_UNUSED(ret);
@@ -1898,7 +1903,7 @@ bool decompress_partial_tile(TileComponent* GRK_RESTRICT tilec, uint16_t compno,
 		return true;
 	}
 	D decompressor;
-	size_t num_threads = ExecSingleton::get()->num_workers();
+	uint32_t numThreads = (uint32_t)ExecSingleton::get()->num_workers();
 	for(uint8_t resno = 1; resno < numres; resno++)
 	{
 		auto fullResLower = fullRes;
@@ -2079,27 +2084,27 @@ bool decompress_partial_tile(TileComponent* GRK_RESTRICT tilec, uint16_t compno,
 
 		for(uint32_t k = 0; k < 2; ++k)
 		{
-			uint32_t num_jobs = (uint32_t)num_threads;
+			uint32_t numJobs = numThreads;
 			uint32_t num_rows = splitWindowRect[k].height();
-			if(num_rows < num_jobs)
-				num_jobs = num_rows;
-			uint32_t step_j = num_jobs ? (num_rows / num_jobs) : 0;
-			if(num_threads == 1 || step_j < HORIZ_PASS_HEIGHT)
-				num_jobs = 1;
+			if(num_rows < numJobs)
+				numJobs = num_rows;
+			uint32_t incrPerJob = numJobs ? (num_rows / numJobs) : 0;
+			if(numThreads == 1 || incrPerJob < HORIZ_PASS_HEIGHT)
+				numJobs = 1;
 			tf::Taskflow taskflow;
 			tf::Task* tasks = nullptr;
-			if(num_jobs > 1)
+			if(numJobs > 1)
 			{
-				tasks = new tf::Task[num_jobs];
-				for(uint64_t i = 0; i < num_jobs; i++)
+				tasks = new tf::Task[numJobs];
+				for(uint64_t i = 0; i < numJobs; i++)
 					tasks[i] = taskflow.placeholder();
 			}
 			bool blockError = false;
-			for(uint32_t j = 0; j < num_jobs; ++j)
+			for(uint32_t j = 0; j < numJobs; ++j)
 			{
 				auto job = new decompress_job<T, dwt_data<T>>(
-					horiz, splitWindowRect[k].y0 + j * step_j,
-					j < (num_jobs - 1U) ? splitWindowRect[k].y0 + (j + 1U) * step_j
+					horiz, splitWindowRect[k].y0 + j * incrPerJob,
+					j < (numJobs - 1U) ? splitWindowRect[k].y0 + (j + 1U) * incrPerJob
 										: splitWindowRect[k].y1);
 				if(!job->data.alloc(data_size, pad))
 				{
@@ -2125,27 +2130,27 @@ bool decompress_partial_tile(TileComponent* GRK_RESTRICT tilec, uint16_t compno,
 		vert.win_l = bandWindowRect[BAND_ORIENT_LL].dimY();
 		vert.win_h = bandWindowRect[BAND_ORIENT_LH].dimY();
 		vert.resno = resno;
-		uint32_t num_jobs = (uint32_t)num_threads;
-		uint32_t num_cols = resWindowRect.width();
-		if(num_cols < num_jobs)
-			num_jobs = num_cols;
-		uint32_t step_j = num_jobs ? (num_cols / num_jobs) : 0;
-		if(num_threads == 1 || step_j < 4)
-			num_jobs = 1;
+		uint32_t numJobs = numThreads;
+		uint32_t numColumns = resWindowRect.width();
+		if(numColumns < numJobs)
+			numJobs = numColumns;
+		uint32_t incrPerJob = numJobs ? (numColumns / numJobs) : 0;
+		if(numThreads == 1 || incrPerJob < 4)
+			numJobs = 1;
 		bool blockError = false;
 		tf::Taskflow taskflow;
 		tf::Task* node = nullptr;
-		if(num_jobs > 1)
+		if(numJobs > 1)
 		{
-			node = new tf::Task[num_jobs];
-			for(uint64_t i = 0; i < num_jobs; i++)
+			node = new tf::Task[numJobs];
+			for(uint64_t i = 0; i < numJobs; i++)
 				node[i] = taskflow.placeholder();
 		}
-		for(uint32_t j = 0; j < num_jobs; ++j)
+		for(uint32_t j = 0; j < numJobs; ++j)
 		{
 			auto job = new decompress_job<T, dwt_data<T>>(
-				vert, resWindowRect.x0 + j * step_j,
-				j < (num_jobs - 1U) ? resWindowRect.x0 + (j + 1U) * step_j : resWindowRect.x1);
+				vert, resWindowRect.x0 + j * incrPerJob,
+				j < (numJobs - 1U) ? resWindowRect.x0 + (j + 1U) * incrPerJob : resWindowRect.x1);
 			if(!job->data.alloc(data_size, pad))
 			{
 				GRK_ERROR("Out of memory");

@@ -244,6 +244,29 @@ struct grkBuffer : A<T>
 using grkBufferU8 = grkBuffer<uint8_t, AllocatorVanilla>;
 using grkBufferU8Aligned = grkBuffer<uint8_t, AllocatorAligned>;
 
+template<typename T> struct grkSimpleBuf2d {
+	grkSimpleBuf2d() : grkSimpleBuf2d(nullptr,0){}
+	grkSimpleBuf2d(T *buf, uint32_t stride) :  buf_(buf), stride_(stride){}
+	grkSimpleBuf2d incX_IPL(size_t deltaX){
+		buf_ += deltaX;
+
+		return *this;
+	}
+	grkSimpleBuf2d incX(size_t deltaX){
+		return grkSimpleBuf2d(buf_ + deltaX, stride_);
+	}
+	grkSimpleBuf2d incY_IPL(size_t deltaY){
+		buf_ += deltaY * stride_;
+
+		return *this;
+	}
+	grkSimpleBuf2d incY(size_t deltaY){
+		return grkSimpleBuf2d(buf_ + deltaY * stride_, stride_);
+	}
+	T *buf_;
+	uint32_t stride_;
+};
+
 template<typename T, template<typename TT> typename A>
 struct grkBuffer2d : protected grkBuffer<T, A>, public grk_rect32
 {
@@ -259,6 +282,12 @@ struct grkBuffer2d : protected grkBuffer<T, A>, public grk_rect32
 	explicit grkBuffer2d(const grkBuffer2d& rhs)
 		: grkBuffer<T, A>(rhs), grk_rect32(rhs), stride(rhs.stride)
 	{}
+	grkSimpleBuf2d<T> simple(void) const{
+		return grkSimpleBuf2d<T>(this->buf, this->stride);
+	}
+	grkSimpleBuf2d<float> simpleF(void) const{
+		return grkSimpleBuf2d<float>((float*)this->buf, this->stride);
+	}
 	grkBuffer2d& operator=(const grkBuffer2d& rhs) // copy assignment
 	{
 		return operator=(&rhs);
