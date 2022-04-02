@@ -18,13 +18,14 @@
 
 namespace grk
 {
-
-class Scheduler {
-public:
+class Scheduler
+{
+  public:
 	Scheduler() = default;
 	virtual ~Scheduler();
-protected:
+
+  protected:
 	std::vector<T1Interface*> t1Implementations;
 };
 
-}
+} // namespace grk

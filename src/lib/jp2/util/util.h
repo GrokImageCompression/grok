@@ -170,17 +170,17 @@ struct grk_rect
 	}
 	grk_rect<T> scaleDown(uint64_t denx, uint64_t deny) const
 	{
-		return grk_rect<T>((T)(x0 / denx), (T)(y0 / deny),
-				(T)ceildiv<uint64_t>(x1, denx), (T)ceildiv<uint64_t>(y1, deny));
+		return grk_rect<T>((T)(x0 / denx), (T)(y0 / deny), (T)ceildiv<uint64_t>(x1, denx),
+						   (T)ceildiv<uint64_t>(y1, deny));
 	}
 	grk_rect<T> scaleDownPow2(uint32_t powx, uint32_t powy) const
 	{
-		return grk_rect<T>((T)(x0 >> powx), (T)(y0 >> powy),
-						   (T)ceildivpow2<uint64_t>(x1, powx), (T)ceildivpow2<uint64_t>(y1, powy));
+		return grk_rect<T>((T)(x0 >> powx), (T)(y0 >> powy), (T)ceildivpow2<uint64_t>(x1, powx),
+						   (T)ceildivpow2<uint64_t>(y1, powy));
 	}
 	grk_rect<T> scaleDownPow2(grk_pt<T> pow) const
 	{
-		return scaleDownPow2(pow.x,pow.y);
+		return scaleDownPow2(pow.x, pow.y);
 	}
 	grk_rect<T> scaleDownCeil(uint64_t denx, uint64_t deny) const
 	{
@@ -208,9 +208,9 @@ struct grk_rect
 	grk_rect<T> clip(const grk_rect<T>* rhs) const
 	{
 		return grk_rect<T>(std::max<T>(x0, rhs->x0), std::max<T>(y0, rhs->y0),
-							std::min<T>(x1, rhs->x1), std::min<T>(y1, rhs->y1));
+						   std::min<T>(x1, rhs->x1), std::min<T>(y1, rhs->y1));
 	}
-	grk_rect<T> clip(const grk_rect<T> &rhs) const
+	grk_rect<T> clip(const grk_rect<T>& rhs) const
 	{
 		return clip(&rhs);
 	}
@@ -261,21 +261,19 @@ struct grk_rect
 	}
 	grk_rect<T> pan(int64_t x, int64_t y) const
 	{
-		return grk_rect<T>(satAdd<T>((int64_t)x0, (int64_t)x),
-							satAdd<T>((int64_t)y0, (int64_t)y),
-							satAdd<T>((int64_t)x1, (int64_t)x),
-							satAdd<T>((int64_t)y1, (int64_t)y));
+		return grk_rect<T>(satAdd<T>((int64_t)x0, (int64_t)x), satAdd<T>((int64_t)y0, (int64_t)y),
+						   satAdd<T>((int64_t)x1, (int64_t)x), satAdd<T>((int64_t)y1, (int64_t)y));
 	}
 	// IPL stands for in place
 	grk_rect<T>& growIPL(T boundary)
 	{
 		return growIPL(boundary, boundary, (std::numeric_limits<T>::max)(),
-					(std::numeric_limits<T>::max)());
+					   (std::numeric_limits<T>::max)());
 	}
 	grk_rect<T>& growIPL(T boundaryx, T boundaryy)
 	{
 		return growIPL(boundaryx, boundaryy, (std::numeric_limits<T>::max)(),
-					(std::numeric_limits<T>::max)());
+					   (std::numeric_limits<T>::max)());
 	}
 	grk_rect<T>& growIPL(T boundary, T maxX, T maxY)
 	{

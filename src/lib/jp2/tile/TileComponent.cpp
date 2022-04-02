@@ -78,8 +78,9 @@ bool TileComponent::init(bool isCompressor, bool whole_tile, grk_rect32 unreduce
 	// 1. calculate resolution bounds, precinct bounds and precinct grid
 	// all in canvas coordinates (with subsampling)
 	numresolutions = tccp_->numresolutions;
-	numResolutionsToDecompress = numresolutions < cp->coding_params_.dec_.reduce_ ? 1 :
-									(uint8_t)(numresolutions - cp->coding_params_.dec_.reduce_);
+	numResolutionsToDecompress = numresolutions < cp->coding_params_.dec_.reduce_
+									 ? 1
+									 : (uint8_t)(numresolutions - cp->coding_params_.dec_.reduce_);
 	tileCompResolution = new Resolution[numresolutions];
 	for(uint8_t resno = 0; resno < numresolutions; ++resno)
 	{
@@ -122,7 +123,8 @@ bool TileComponent::init(bool isCompressor, bool whole_tile, grk_rect32 unreduce
 	}
 
 	// 2. set tile component and band bounds
-	auto highestNumberOfResolutions = (!isCompressor_) ? numResolutionsToDecompress : numresolutions;
+	auto highestNumberOfResolutions =
+		(!isCompressor_) ? numResolutionsToDecompress : numresolutions;
 	auto hightestResolution = tileCompResolution + highestNumberOfResolutions - 1;
 	set(hightestResolution);
 	for(uint8_t resno = 0; resno < numresolutions; ++resno)
@@ -153,9 +155,9 @@ bool TileComponent::init(bool isCompressor, bool whole_tile, grk_rect32 unreduce
 			/* the test (!isCompressor_ && l_tccp->qmfbid == 0) is strongly */
 			/* linked to the use of two_invK instead of invK */
 			const uint32_t log2_gain = (!isCompressor_ && tccp->qmfbid == 0) ? 0
-									   : (band->orientation == 0)		   ? 0
-									   : (band->orientation == 3)		   ? 2
-																		   : 1;
+									   : (band->orientation == 0)			 ? 0
+									   : (band->orientation == 3)			 ? 2
+																			 : 1;
 			uint32_t numbps = prec + log2_gain;
 			auto offset = (resno == 0) ? 0 : 3 * resno - 2;
 			auto step_size = tccp->stepsizes + offset + bandIndex;
@@ -316,7 +318,8 @@ bool TileComponent::allocSparseCanvas(uint32_t numres, bool truncatedTile)
 bool TileComponent::allocWindowBuffer(grk_rect32 unreducedTileCompOrImageCompWindow)
 {
 	deallocBuffers();
-	auto highestNumberOfResolutions = (!isCompressor_) ? numResolutionsToDecompress : numresolutions;
+	auto highestNumberOfResolutions =
+		(!isCompressor_) ? numResolutionsToDecompress : numresolutions;
 	auto maxResolution = tileCompResolution + numresolutions - 1;
 	if(!maxResolution->intersection(unreducedTileCompOrImageCompWindow).isValid())
 	{

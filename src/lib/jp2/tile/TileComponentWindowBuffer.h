@@ -318,7 +318,8 @@ struct ResWindowBuffer
 		}
 
 		return getBandWindow(
-			1, orientation, oneLessDecompWindow.growIPL(2 * padding).intersection(&oneLessDecompTile));
+			1, orientation,
+			oneLessDecompWindow.growIPL(2 * padding).intersection(&oneLessDecompTile));
 	}
 
 	bool allocated_;

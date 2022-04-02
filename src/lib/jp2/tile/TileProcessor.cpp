@@ -449,8 +449,7 @@ bool TileProcessor::decompressT1(void)
 				return false;
 			}
 			auto scheduler = std::unique_ptr<DecompressScheduler>(new DecompressScheduler());
-			if(!scheduler->scheduleDecompress(tilec, tcp_, tccp,
-											  headerImage->comps->prec))
+			if(!scheduler->scheduleDecompress(tilec, tcp_, tccp, headerImage->comps->prec))
 				return false;
 
 			if(doPostT1)

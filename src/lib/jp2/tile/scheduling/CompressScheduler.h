@@ -25,6 +25,7 @@ class CompressScheduler : public Scheduler
 	~CompressScheduler() = default;
 	void scheduleCompress(TileCodingParams* tcp, const double* mct_norms, uint16_t mct_numcomps);
 	void compress(std::vector<CompressBlockExec*>* blocks);
+
   private:
 	bool compress(size_t threadId, uint64_t maxBlocks);
 	void compress(T1Interface* impl, CompressBlockExec* block);

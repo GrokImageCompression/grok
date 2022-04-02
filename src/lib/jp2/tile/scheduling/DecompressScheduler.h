@@ -21,23 +21,21 @@
 
 namespace grk
 {
-
 typedef std::vector<DecompressBlockExec*> ResDecompressBlocks;
-typedef std::vector< ResDecompressBlocks > DecompressBlocks;
+typedef std::vector<ResDecompressBlocks> DecompressBlocks;
 
 class DecompressScheduler : public Scheduler
 {
   public:
 	DecompressScheduler(void);
 	~DecompressScheduler() = default;
-	bool scheduleDecompress(TileComponent* tilec,
-							TileCodingParams* tcp,
-							TileComponentCodingParams* tccp,
-							uint8_t prec);
+	bool scheduleDecompress(TileComponent* tilec, TileCodingParams* tcp,
+							TileComponentCodingParams* tccp, uint8_t prec);
+
   private:
 	void prepareScheduleDecompress(TileComponent* tilec, TileComponentCodingParams* tccp,
-									uint8_t prec);
-	bool decompressBlock(T1Interface* impl, DecompressBlockExec *block);
+								   uint8_t prec);
+	bool decompressBlock(T1Interface* impl, DecompressBlockExec* block);
 	bool decompress(void);
 	std::atomic_bool success;
 	DecompressBlocks blocks;

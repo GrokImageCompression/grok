@@ -18,10 +18,10 @@
 
 namespace grk
 {
-
-Scheduler::~Scheduler() {
+Scheduler::~Scheduler()
+{
 	for(auto& t : t1Implementations)
 		delete t;
 }
 
-}
+} // namespace grk
