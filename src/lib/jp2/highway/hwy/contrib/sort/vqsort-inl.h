@@ -1,4 +1,5 @@
 // Copyright 2021 Google LLC
+// SPDX-License-Identifier: Apache-2.0
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -189,9 +190,8 @@ HWY_NOINLINE void BaseCase(D d, Traits st, T* HWY_RESTRICT keys, size_t num,
   for (i = 0; i + N <= num; i += N) {
     Store(LoadU(d, keys + i), d, buf + i);
   }
-  for (; i < num; ++i) {
-    buf[i] = keys[i];
-  }
+  SafeCopyN(num - i, d, keys + i, buf + i);
+  i = num;
 
   // Fill with padding - last in sort order, not copied to keys.
   const V kPadding = st.LastValue(d);
@@ -206,9 +206,7 @@ HWY_NOINLINE void BaseCase(D d, Traits st, T* HWY_RESTRICT keys, size_t num,
   for (i = 0; i + N <= num; i += N) {
     StoreU(Load(d, buf + i), d, keys + i);
   }
-  for (; i < num; ++i) {
-    keys[i] = buf[i];
-  }
+  SafeCopyN(num - i, d, buf + i, keys + i);
 }
 
 // ------------------------------ Partition
@@ -272,11 +270,32 @@ HWY_INLINE void StoreLeftRight(D d, Traits st, const Vec<D> v,
   const size_t N = Lanes(d);
 
   const auto comp = st.Compare(d, pivot, v);
-  const size_t num_left = CompressBlendedStore(v, Not(comp), d, keys + writeL);
-  writeL += num_left;
 
-  writeR -= (N - num_left);
-  (void)CompressBlendedStore(v, comp, d, keys + writeR);
+  if (hwy::HWY_NAMESPACE::CompressIsPartition<T>::value) {
+    // Non-native Compress (e.g. AVX2): we are able to partition a vector using
+    // a single Compress+two StoreU instead of two Compress[Blended]Store. The
+    // latter are more expensive. Because we store entire vectors, the contents
+    // between the updated writeL and writeR are ignored and will be overwritten
+    // by subsequent calls. This works because writeL and writeR are at least
+    // two vectors apart.
+    const auto mask = Not(comp);
+    const auto lr = Compress(v, mask);
+    const size_t num_left = CountTrue(d, mask);
+    StoreU(lr, d, keys + writeL);
+    writeL += num_left;
+    // Now write the right-side elements (if any), such that the previous writeR
+    // is one past the end of the newly written right elements, then advance.
+    StoreU(lr, d, keys + writeR - N);
+    writeR -= (N - num_left);
+  } else {
+    // Native Compress[Store] (e.g. AVX3), which only keep the left or right
+    // side, not both, hence we require two calls.
+    const size_t num_left = CompressStore(v, Not(comp), d, keys + writeL);
+    writeL += num_left;
+
+    writeR -= (N - num_left);
+    (void)CompressBlendedStore(v, comp, d, keys + writeR);
+  }
 }
 
 template <class D, class Traits, typename T>
@@ -683,8 +702,8 @@ bool HandleSpecialCases(D d, Traits st, T* HWY_RESTRICT keys, size_t num,
 // sampling only from the first 256 GiB.
 //
 // `d` is typically SortTag<T> (chooses between full and partial vectors).
-// `st` is SharedTraits<{LaneTraits|Traits128}<Order*>>. This abstraction layer
-//   bridges differences in sort order and single-lane vs 128-bit keys.
+// `st` is SharedTraits<Traits*<Order*>>. This abstraction layer bridges
+//   differences in sort order and single-lane vs 128-bit keys.
 template <class D, class Traits, typename T>
 void Sort(D d, Traits st, T* HWY_RESTRICT keys, size_t num,
           T* HWY_RESTRICT buf) {
@@ -694,6 +713,16 @@ void Sort(D d, Traits st, T* HWY_RESTRICT keys, size_t num,
   // PERFORMANCE WARNING: vqsort is not enabled for the non-SIMD target
   return detail::HeapSort(st, keys, num);
 #else
+#if !HWY_HAVE_SCALABLE
+  // On targets with fixed-size vectors, avoid _using_ the allocated memory.
+  // We avoid (potentially expensive for small input sizes) allocations on
+  // platforms where no targets are scalable. For 512-bit vectors, this fits on
+  // the stack (several KiB).
+  HWY_ALIGN T storage[SortConstants::BufNum<T>(HWY_LANES(T))] = {};
+  static_assert(sizeof(storage) <= 8192, "Unexpectedly large, check size");
+  buf = storage;
+#endif  // !HWY_HAVE_SCALABLE
+
   if (detail::HandleSpecialCases(d, st, keys, num, buf)) return;
 
 #if HWY_MAX_BYTES > 64

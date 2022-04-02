@@ -1,4 +1,5 @@
 // Copyright 2021 Google LLC
+// SPDX-License-Identifier: Apache-2.0
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -243,7 +244,7 @@ struct OrderDescending : public KeyLane {
 
 // Shared code that depends on Order.
 template <class Base>
-struct LaneTraits : public Base {
+struct TraitsLane : public Base {
   constexpr bool Is128() const { return false; }
 
   // For each lane i: replaces a[i] with the first and b[i] with the second

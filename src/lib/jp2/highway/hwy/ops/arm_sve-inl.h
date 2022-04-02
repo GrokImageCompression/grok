@@ -1,4 +1,5 @@
 // Copyright 2021 Google LLC
+// SPDX-License-Identifier: Apache-2.0
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -601,6 +602,26 @@ HWY_SVE_FOREACH_UI32(HWY_SVE_RETV_ARGPVV, MulHigh, mulh)
 HWY_SVE_FOREACH_U64(HWY_SVE_RETV_ARGPVV, MulHigh, mulh)
 }  // namespace detail
 
+// ------------------------------ MulFixedPoint15
+HWY_API svint16_t MulFixedPoint15(svint16_t a, svint16_t b) {
+#if HWY_TARGET == HWY_SVE2
+  return svqrdmulh_s16(a, b);
+#else
+  const DFromV<decltype(a)> d;
+  const RebindToUnsigned<decltype(d)> du;
+
+  const svuint16_t lo = BitCast(du, Mul(a, b));
+  const svint16_t hi = MulHigh(a, b);
+  // We want (lo + 0x4000) >> 15, but that can overflow, and if it does we must
+  // carry that into the result. Instead isolate the top two bits because only
+  // they can influence the result.
+  const svuint16_t lo_top2 = ShiftRight<14>(lo);
+  // Bits 11: add 2, 10: add 1, 01: add 1, 00: add 0.
+  const svuint16_t rounding = ShiftRight<1>(detail::AddN(lo_top2, 1));
+  return Add(Add(hi, hi), BitCast(d, rounding));
+#endif
+}
+
 // ------------------------------ Div
 HWY_SVE_FOREACH_F(HWY_SVE_RETV_ARGPVV, Div, div)
 
@@ -854,12 +875,12 @@ HWY_API V IfVecThenElse(const V mask, const V yes, const V no) {
     sv##OP##_##CHAR##BITS(detail::MakeMask(d), p, v);         \
   }
 
-#define HWY_SVE_MASKED_STORE(BASE, CHAR, BITS, HALF, NAME, OP) \
-  template <size_t N, int kPow2>                               \
-  HWY_API void NAME(svbool_t m, HWY_SVE_V(BASE, BITS) v,       \
-                    HWY_SVE_D(BASE, BITS, N, kPow2) /* d */,   \
-                    HWY_SVE_T(BASE, BITS) * HWY_RESTRICT p) {  \
-    sv##OP##_##CHAR##BITS(m, p, v);                            \
+#define HWY_SVE_BLENDED_STORE(BASE, CHAR, BITS, HALF, NAME, OP) \
+  template <size_t N, int kPow2>                                \
+  HWY_API void NAME(HWY_SVE_V(BASE, BITS) v, svbool_t m,        \
+                    HWY_SVE_D(BASE, BITS, N, kPow2) /* d */,    \
+                    HWY_SVE_T(BASE, BITS) * HWY_RESTRICT p) {   \
+    sv##OP##_##CHAR##BITS(m, p, v);                             \
   }
 
 HWY_SVE_FOREACH(HWY_SVE_LOAD, Load, ld1)
@@ -867,13 +888,13 @@ HWY_SVE_FOREACH(HWY_SVE_MASKED_LOAD, MaskedLoad, ld1)
 HWY_SVE_FOREACH(HWY_SVE_LOAD_DUP128, LoadDup128, ld1rq)
 HWY_SVE_FOREACH(HWY_SVE_STORE, Store, st1)
 HWY_SVE_FOREACH(HWY_SVE_STORE, Stream, stnt1)
-HWY_SVE_FOREACH(HWY_SVE_MASKED_STORE, MaskedStore, st1)
+HWY_SVE_FOREACH(HWY_SVE_BLENDED_STORE, BlendedStore, st1)
 
 #undef HWY_SVE_LOAD
 #undef HWY_SVE_MASKED_LOAD
 #undef HWY_SVE_LOAD_DUP128
 #undef HWY_SVE_STORE
-#undef HWY_SVE_MASKED_STORE
+#undef HWY_SVE_BLENDED_STORE
 
 // BF16 is the same as svuint16_t because BF16 is optional before v8.6.
 template <size_t N, int kPow2>
@@ -1012,10 +1033,6 @@ template <size_t N, int kPow2>
 HWY_API svint32_t PromoteTo(Simd<int32_t, N, kPow2> dto, svint8_t vfrom) {
   const RepartitionToWide<DFromV<decltype(vfrom)>> d2;
   return PromoteTo(dto, PromoteTo(d2, vfrom));
-}
-template <size_t N, int kPow2>
-HWY_API svuint32_t U32FromU8(svuint8_t v) {
-  return PromoteTo(Simd<uint32_t, N, kPow2>(), v);
 }
 
 // Sign change
@@ -1566,6 +1583,11 @@ HWY_API VFromD<D> Reverse8(D d, const VFromD<D> v) {
 
 // ------------------------------ Compress (PromoteTo)
 
+template <typename T>
+struct CompressIsPartition {
+  enum { value = 0 };
+};
+
 #define HWY_SVE_COMPRESS(BASE, CHAR, BITS, HALF, NAME, OP)                     \
   HWY_API HWY_SVE_V(BASE, BITS) NAME(HWY_SVE_V(BASE, BITS) v, svbool_t mask) { \
     return sv##OP##_##CHAR##BITS(mask, v);                                     \
@@ -1626,7 +1648,7 @@ HWY_API size_t CompressBlendedStore(const V v, const M mask, const D d,
                                     TFromD<D>* HWY_RESTRICT unaligned) {
   const size_t count = CountTrue(d, mask);
   const svbool_t store_mask = FirstN(d, count);
-  MaskedStore(store_mask, Compress(v, mask), d, unaligned);
+  BlendedStore(Compress(v, mask), store_mask, d, unaligned);
   return count;
 }
 

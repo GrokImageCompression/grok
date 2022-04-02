@@ -1,4 +1,5 @@
 // Copyright 2019 Google LLC
+// SPDX-License-Identifier: Apache-2.0
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -601,6 +602,10 @@ HWY_API Vec1<uint16_t> MulHigh(const Vec1<uint16_t> a, const Vec1<uint16_t> b) {
       (static_cast<uint32_t>(a.raw) * static_cast<uint32_t>(b.raw)) >> 16));
 }
 
+HWY_API Vec1<int16_t> MulFixedPoint15(Vec1<int16_t> a, Vec1<int16_t> b) {
+  return Vec1<int16_t>(static_cast<int16_t>((2 * a.raw * b.raw + 32768) >> 16));
+}
+
 // Multiplies even lanes (0, 2 ..) and returns the double-wide result.
 HWY_API Vec1<int64_t> MulEven(const Vec1<int32_t> a, const Vec1<int32_t> b) {
   const int64_t a64 = a.raw;
@@ -881,6 +886,13 @@ HWY_API void Store(const Vec1<T> v, Sisd<T> /* tag */,
 template <typename T>
 HWY_API void StoreU(const Vec1<T> v, Sisd<T> d, T* HWY_RESTRICT p) {
   return Store(v, d, p);
+}
+
+template <typename T>
+HWY_API void BlendedStore(const Vec1<T> v, Mask1<T> m, Sisd<T> d,
+                          T* HWY_RESTRICT p) {
+  if (!m.bits) return;
+  StoreU(v, d, p);
 }
 
 // ------------------------------ StoreInterleaved3
@@ -1303,6 +1315,11 @@ HWY_API intptr_t FindFirstTrue(Sisd<T> /* tag */, const Mask1<T> mask) {
 }
 
 // ------------------------------ Compress, CompressBits
+
+template <typename T>
+struct CompressIsPartition {
+  enum { value = 1 };
+};
 
 template <typename T>
 HWY_API Vec1<T> Compress(Vec1<T> v, const Mask1<T> /* mask */) {

@@ -1,4 +1,5 @@
 // Copyright 2021 Google LLC
+// SPDX-License-Identifier: Apache-2.0
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -31,7 +32,7 @@ void SortF64Asc(double* HWY_RESTRICT keys, size_t num,
                 double* HWY_RESTRICT buf) {
 #if HWY_HAVE_FLOAT64
   SortTag<double> d;
-  detail::SharedTraits<detail::LaneTraits<detail::OrderAscending>> st;
+  detail::SharedTraits<detail::TraitsLane<detail::OrderAscending>> st;
   Sort(d, st, keys, num, buf);
 #else
   (void)keys;

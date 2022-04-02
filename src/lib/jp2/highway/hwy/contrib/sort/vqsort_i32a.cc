@@ -1,4 +1,5 @@
 // Copyright 2021 Google LLC
+// SPDX-License-Identifier: Apache-2.0
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -30,7 +31,7 @@ namespace HWY_NAMESPACE {
 void SortI32Asc(int32_t* HWY_RESTRICT keys, size_t num,
                 int32_t* HWY_RESTRICT buf) {
   SortTag<int32_t> d;
-  detail::SharedTraits<detail::LaneTraits<detail::OrderAscending>> st;
+  detail::SharedTraits<detail::TraitsLane<detail::OrderAscending>> st;
   Sort(d, st, keys, num, buf);
 }
 

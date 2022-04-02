@@ -1,4 +1,5 @@
 // Copyright 2019 Google LLC
+// SPDX-License-Identifier: Apache-2.0
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -264,7 +265,7 @@ struct TestNaN {
 
     // Reduction
     HWY_ASSERT_NAN(d, SumOfLanes(d, nan));
-// TODO(janwas): re-enable after QEMU is fixed
+// TODO(janwas): re-enable after QEMU/Spike are fixed
 #if HWY_TARGET != HWY_RVV
     HWY_ASSERT_NAN(d, MinOfLanes(d, nan));
     HWY_ASSERT_NAN(d, MaxOfLanes(d, nan));
@@ -381,11 +382,5 @@ HWY_EXPORT_AND_TEST_P(HighwayTest, TestAllCopyAndAssign);
 HWY_EXPORT_AND_TEST_P(HighwayTest, TestAllGetLane);
 HWY_EXPORT_AND_TEST_P(HighwayTest, TestAllDFromV);
 }  // namespace hwy
-
-// Ought not to be necessary, but without this, no tests run on RVV.
-int main(int argc, char** argv) {
-  ::testing::InitGoogleTest(&argc, argv);
-  return RUN_ALL_TESTS();
-}
 
 #endif

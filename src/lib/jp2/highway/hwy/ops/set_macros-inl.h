@@ -1,4 +1,5 @@
 // Copyright 2020 Google LLC
+// SPDX-License-Identifier: Apache-2.0
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -36,6 +37,7 @@
 #undef HWY_HAVE_INTEGER64
 #undef HWY_HAVE_FLOAT16
 #undef HWY_HAVE_FLOAT64
+#undef HWY_MEM_OPS_MIGHT_FAULT
 #undef HWY_CAP_GE256
 #undef HWY_CAP_GE512
 
@@ -84,6 +86,7 @@
 #define HWY_HAVE_INTEGER64 1
 #define HWY_HAVE_FLOAT16 1
 #define HWY_HAVE_FLOAT64 1
+#define HWY_MEM_OPS_MIGHT_FAULT 1
 #define HWY_CAP_AES 0
 #define HWY_CAP_GE256 0
 #define HWY_CAP_GE512 0
@@ -102,6 +105,7 @@
 #define HWY_HAVE_INTEGER64 1
 #define HWY_HAVE_FLOAT16 1
 #define HWY_HAVE_FLOAT64 1
+#define HWY_MEM_OPS_MIGHT_FAULT 1
 #define HWY_CAP_GE256 0
 #define HWY_CAP_GE512 0
 
@@ -120,6 +124,7 @@
 #define HWY_HAVE_INTEGER64 1
 #define HWY_HAVE_FLOAT16 1
 #define HWY_HAVE_FLOAT64 1
+#define HWY_MEM_OPS_MIGHT_FAULT 1
 #define HWY_CAP_GE256 1
 #define HWY_CAP_GE512 0
 
@@ -137,6 +142,7 @@
 #define HWY_HAVE_INTEGER64 1
 #define HWY_HAVE_FLOAT16 1
 #define HWY_HAVE_FLOAT64 1
+#define HWY_MEM_OPS_MIGHT_FAULT 0
 #define HWY_CAP_GE256 1
 #define HWY_CAP_GE512 1
 
@@ -168,6 +174,7 @@
 #define HWY_HAVE_INTEGER64 1
 #define HWY_HAVE_FLOAT16 0
 #define HWY_HAVE_FLOAT64 1
+#define HWY_MEM_OPS_MIGHT_FAULT 1
 #define HWY_CAP_GE256 0
 #define HWY_CAP_GE512 0
 
@@ -194,6 +201,7 @@
 #else
 #define HWY_HAVE_FLOAT64 0
 #endif
+#define HWY_MEM_OPS_MIGHT_FAULT 1
 
 #define HWY_NAMESPACE N_NEON
 
@@ -216,6 +224,7 @@
 #define HWY_HAVE_INTEGER64 1
 #define HWY_HAVE_FLOAT16 1
 #define HWY_HAVE_FLOAT64 1
+#define HWY_MEM_OPS_MIGHT_FAULT 0
 #define HWY_CAP_GE256 0
 #define HWY_CAP_GE512 0
 
@@ -239,6 +248,7 @@
 #define HWY_HAVE_INTEGER64 1
 #define HWY_HAVE_FLOAT16 1
 #define HWY_HAVE_FLOAT64 0
+#define HWY_MEM_OPS_MIGHT_FAULT 1
 #define HWY_CAP_GE256 0
 #define HWY_CAP_GE512 0
 
@@ -258,6 +268,7 @@
 #define HWY_HAVE_INTEGER64 1
 #define HWY_HAVE_FLOAT16 1
 #define HWY_HAVE_FLOAT64 0
+#define HWY_MEM_OPS_MIGHT_FAULT 1
 #define HWY_CAP_GE256 0
 #define HWY_CAP_GE512 0
 
@@ -283,6 +294,7 @@
 #define HWY_HAVE_SCALABLE 1
 #define HWY_HAVE_INTEGER64 1
 #define HWY_HAVE_FLOAT64 1
+#define HWY_MEM_OPS_MIGHT_FAULT 0
 #define HWY_CAP_GE256 0
 #define HWY_CAP_GE512 0
 
@@ -309,6 +321,7 @@
 #define HWY_HAVE_INTEGER64 1
 #define HWY_HAVE_FLOAT16 1
 #define HWY_HAVE_FLOAT64 1
+#define HWY_MEM_OPS_MIGHT_FAULT 0
 #define HWY_CAP_GE256 0
 #define HWY_CAP_GE512 0
 
@@ -319,6 +332,12 @@
 #else
 #pragma message("HWY_TARGET does not match any known target")
 #endif  // HWY_TARGET
+
+// Override this to 1 in asan/msan builds, which will still fault.
+#if HWY_IS_ASAN || HWY_IS_MSAN
+#undef HWY_MEM_OPS_MIGHT_FAULT
+#define HWY_MEM_OPS_MIGHT_FAULT 1
+#endif
 
 // Clang <9 requires this be invoked at file scope, before any namespace.
 #undef HWY_BEFORE_NAMESPACE

@@ -1,4 +1,5 @@
 // Copyright 2019 Google LLC
+// SPDX-License-Identifier: Apache-2.0
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -327,8 +328,8 @@ uint32_t SupportedTargets() {
     if (!IsBitSet(xcr0, 2)) {
       bits &= ~uint32_t(HWY_AVX2 | HWY_AVX3 | HWY_AVX3_DL);
     }
-    // ZMM + opmask
-    if ((xcr0 & 0x70) != 0x70) {
+    // opmask, ZMM lo/hi
+    if (!IsBitSet(xcr0, 5) || !IsBitSet(xcr0, 6) || !IsBitSet(xcr0, 7)) {
       bits &= ~uint32_t(HWY_AVX3 | HWY_AVX3_DL);
     }
   }
@@ -359,7 +360,7 @@ void ChosenTarget::Update() {
   // fallback mechanism to the baseline target.
   uint32_t supported = HWY_CHOSEN_TARGET_SHIFT(hwy::SupportedTargets()) |
                        HWY_CHOSEN_TARGET_MASK_SCALAR;
-  mask_.store(supported);
+  StoreMask(supported);
 }
 
 }  // namespace hwy

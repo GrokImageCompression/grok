@@ -1,4 +1,5 @@
 // Copyright 2021 Google LLC
+// SPDX-License-Identifier: Apache-2.0
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -588,6 +589,10 @@ HWY_API Vec256<int16_t> MulHigh(const Vec256<int16_t> a,
   const auto h = wasm_i32x4_mul(ah, bh);
   // TODO(eustas): shift-right + narrow?
   return Vec256<int16_t>{wasm_i16x8_shuffle(l, h, 1, 3, 5, 7, 9, 11, 13, 15)};
+}
+
+HWY_API Vec256<int16_t> MulFixedPoint15(Vec256<int16_t>, Vec256<int16_t>) {
+  HWY_ASSERT(0);
 }
 
 // Multiplies even lanes (0, 2 ..) and returns the double-width result.
@@ -1199,6 +1204,12 @@ HWY_API void Store(Vec256<T> v, Full256<T> /* tag */, T* HWY_RESTRICT aligned) {
 template <typename T>
 HWY_API void StoreU(Vec256<T> v, Full256<T> d, T* HWY_RESTRICT p) {
   Store(v, d, p);
+}
+
+template <typename T>
+HWY_API void BlendedStore(Vec256<T> v, Mask256<T> m, Full256<T> d,
+                          T* HWY_RESTRICT p) {
+  StoreU(IfThenElse(m, v, LoadU(d, p)), d, p);
 }
 
 // ------------------------------ Non-temporal stores
@@ -2686,6 +2697,11 @@ HWY_INLINE Vec256<uint64_t> Compress(hwy::SizeTag<8> /*tag*/,
 #endif
 
 }  // namespace detail
+
+template <typename T>
+struct CompressIsPartition {
+  enum { value = 1 };
+};
 
 template <typename T>
 HWY_API Vec256<T> Compress(Vec256<T> v, const Mask256<T> mask) {

@@ -36,8 +36,10 @@ The public headers are:
 *   hwy/nanobenchmark.h: library for precisely measuring elapsed time (under
     varying inputs) for benchmarking small/medium regions of code.
 
+*   hwy/print-inl.h: defines Print() for writing vector lanes to stderr.
+
 *   hwy/tests/test_util-inl.h: defines macros for invoking tests on all
-    available targets, plus per-target functions useful in tests (e.g. Print).
+    available targets, plus per-target functions useful in tests.
 
 SIMD implementations must be preceded and followed by the following:
 
@@ -177,6 +179,47 @@ auto v = Mul4(Set(d2, 2));
 Store(v, d2, ptr);  // Use d2, NOT DFromV<decltype(v)>()
 ```
 
+## Targets
+
+Let `Target` denote an instruction set, one of
+`SCALAR/SSSE3/SSE4/AVX2/AVX3/AVX3_DL/NEON/SVE/SVE2/WASM/RVV`. Each of these is
+represented by a `HWY_Target` (for example, `HWY_SSE4`) macro which expands to a
+unique power-of-two value.
+
+Note that x86 CPUs are segmented into dozens of feature flags and capabilities,
+which are often used together because they were introduced in the same CPU
+(example: AVX2 and FMA). To keep the number of targets and thus compile time and
+code size manageable, we define targets as 'clusters' of related features. To
+use `HWY_AVX2`, it is therefore insufficient to pass -mavx2. For definitions of
+the clusters, see `kGroup*` in `targets.cc`. The corresponding Clang/GCC
+compiler options to enable them (without -m prefix) are defined by
+`HWY_TARGET_STR*` in `set_macros-inl.h`.
+
+Targets are only used if enabled (i.e. not broken nor disabled). Baseline
+targets are those for which the compiler is unconditionally allowed to generate
+instructions (implying the target CPU must support them).
+
+*   `HWY_STATIC_TARGET` is the best enabled baseline `HWY_Target`, and matches
+    `HWY_TARGET` in static dispatch mode. This is useful even in dynamic
+    dispatch mode for deducing and printing the compiler flags.
+
+*   `HWY_TARGETS` indicates which targets to generate for dynamic dispatch, and
+    which headers to include. It is determined by configuration macros and
+    always includes `HWY_STATIC_TARGET`.
+
+*   `HWY_SUPPORTED_TARGETS` is the set of targets available at runtime. Expands
+    to a literal if only a single target is enabled, or SupportedTargets().
+
+*   `HWY_TARGET`: which `HWY_Target` is currently being compiled. This is
+    initially identical to `HWY_STATIC_TARGET` and remains so in static dispatch
+    mode. For dynamic dispatch, this changes before each re-inclusion and
+    finally reverts to `HWY_STATIC_TARGET`. Can be used in `#if` expressions to
+    provide an alternative to functions which are not supported by `HWY_SCALAR`.
+
+*   `HWY_WANT_AVX3_DL`: additional opt-in for `HWY_AVX3`, which is disabled
+    unless this is defined by the app before including highway.h, OR all AVX3_DL
+    compiler flags are specified.
+
 ## Operations
 
 In the following, the argument or return type `V` denotes a vector with `N`
@@ -222,7 +265,8 @@ wishes to run on all targets until that is resolved can use functions such as
 *   <code>V **Print**(D, const char* caption, V [, size_t lane][, size_t
     max_lanes])</code>: prints `caption` followed by up to `max_lanes`
     comma-separated lanes from the vector argument, starting at index `lane`.
-    Defined in test_util-inl.h.
+    Defined in hwy/print-inl.h, also available if hwy/tests/test_util-inl.h has
+    been included.
 
 ### Arithmetic
 
@@ -307,6 +351,12 @@ is qNaN, and NaN if both are.
 *   `V`: `i16` \
     <code>V **MulHigh**(V a, V b)</code>: returns the upper half of `a[i] *
     b[i]` in each lane.
+
+*   `V`: `i16` \
+    <code>V **MulFixedPoint15**(V a, V b)</code>: returns the result of
+    multiplying two 1.15 fixed-point numbers. This corresponds to doubling the
+    multiplication result and storing the upper half. Results are
+    implementation-defined iff both inputs are -32768.
 
 *   `V`: `{u,i}{32},u64` \
     <code>V2 **MulEven**(V a, V b)</code>: returns double-wide result of `a[i] *
@@ -549,7 +599,10 @@ false is zero, true has all bits set:
 *   `V`: `{u,i,f}{16,32,64}` \
     <code>V **Compress**(V v, M m)</code>: returns `r` such that `r[n]` is
     `v[i]`, with `i` the n-th lane index (starting from 0) where `m[i]` is true.
-    Compacts lanes whose mask is true into the lower lanes; upper lanes are
+    Compacts lanes whose mask is true into the lower lanes. For targets and lane
+    type `T` where `CompressIsPartition<T>::value` is true, the upper lanes are
+    those whose mask is false (thus `Compress` corresponds to partitioning
+    according to the mask). Otherwise, the upper lanes are
     implementation-defined. Slow with 16-bit lanes. Use this form when the input
     is already a mask, e.g. returned by a comparison.
 
@@ -573,7 +626,9 @@ false is zero, true has all bits set:
     `bits` is as specified for `LoadMaskBits`. If called multiple times, the
     `bits` pointer passed to this function must also be marked `HWY_RESTRICT` to
     avoid repeated work. Note that if the vector has less than 8 elements,
-    incrementing `bits` will not work as intended for packed bit arrays.
+    incrementing `bits` will not work as intended for packed bit arrays. As with
+    `Compress`, `CompressIsPartition` indicates the mask=false lanes are moved
+    to the upper lanes; this op is also slow for 16-bit lanes.
 
 *   `V`: `{u,i,f}{16,32,64}` \
     <code>size_t **CompressBitsStore**(V v, const uint8_t* HWY_RESTRICT bits, D
@@ -619,19 +674,11 @@ are naturally aligned. An unaligned access may require two load ports.
 
 #### Load
 
-Requires naturally-aligned vectors (e.g. from aligned_allocator.h):
-
 *   <code>Vec&lt;D&gt; **Load**(D, const T* aligned)</code>: returns
-    `aligned[i]`. May fault if the pointer is not aligned to the vector size.
-    Using this whenever possible improves codegen on SSSE3/SSE4: unlike `LoadU`,
-    `Load` can be fused into a memory operand, which reduces register pressure.
-
-*   <code>Vec&lt;D&gt; **MaskedLoad**(M mask, D, const T* aligned)</code>:
-    returns `aligned[i]` or zero if the `mask` governing element `i` is false.
-    May fault if the pointer is not aligned to the vector size. The alignment
-    requirement prevents differing behavior for "masked off" elements at invalid
-    addresses. Equivalent to, and potentially more efficient than,
-    `IfThenElseZero(mask, Load(D(), aligned))`.
+    `aligned[i]`. May fault if the pointer is not aligned to the vector size
+    (using aligned_allocator.h is safe). Using this whenever possible improves
+    codegen on SSSE3/SSE4: unlike `LoadU`, `Load` can be fused into a memory
+    operand, which reduces register pressure.
 
 Requires only *element-aligned* vectors (e.g. from malloc/std::vector, or
 aligned memory at indices which are not a multiple of the vector length):
@@ -641,7 +688,15 @@ aligned memory at indices which are not a multiple of the vector length):
 *   <code>Vec&lt;D&gt; **LoadDup128**(D, const T* p)</code>: returns one 128-bit
     block loaded from `p` and broadcasted into all 128-bit block\[s\]. This may
     be faster than broadcasting single values, and is more convenient than
-    preparing constants for the actual vector length.
+    preparing constants for the actual vector length. Only available if
+    `HWY_TARGET != HWY_SCALAR`.
+
+*   <code>Vec&lt;D&gt; **MaskedLoad**(M mask, D, const T* p)</code>: returns
+    `p[i]` or zero if the `mask` governing element `i` is false. May fault even
+    where `mask` is false `#if HWY_MEM_OPS_MIGHT_FAULT`. If `p` is aligned,
+    faults cannot happen unless the entire vector is inaccessible. Equivalent
+    to, and potentially more efficient than, `IfThenElseZero(mask, Load(D(),
+    aligned))`.
 
 #### Scatter/Gather
 
@@ -671,12 +726,27 @@ F(src[tbl[i]])` because `Scatter` is more expensive than `Gather`.
 
 #### Store
 
-*   <code>void **Store**(Vec&lt;D&gt; a, D, T* aligned)</code>: copies `a[i]`
-    into `aligned[i]`, which must be naturally aligned. Writes exactly N *
-    sizeof(T) bytes.
+*   <code>void **Store**(Vec&lt;D&gt; v, D, T* aligned)</code>: copies `v[i]`
+    into `aligned[i]`, which must be naturally aligned. Writes exactly `N *
+    sizeof(T)` bytes.
 
-*   <code>void **StoreU**(Vec&lt;D&gt; a, D, T* p)</code>: as Store, but without
-    the alignment requirement.
+*   <code>void **StoreU**(Vec&lt;D&gt; v, D, T* p)</code>: as `Store`, but
+    without the alignment requirement.
+
+*   <code>void **BlendedStore**(Vec&lt;D&gt; v, M m, D d, T* p)</code>: as
+    `StoreU`, but only updates `p` where `m` is true. May fault even where
+    `mask` is false `#if HWY_MEM_OPS_MIGHT_FAULT`. If `p` is aligned, faults
+    cannot happen unless the entire vector is inaccessible. Equivalent to, and
+    potentially more efficient than, `StoreU(IfThenElse(m, v, LoadU(d, p)), d,
+    p)`. "Blended" indicates this may not be atomic; other threads must not
+    concurrently update `[p, p + Lanes(d))` without sychronization.
+
+*   <code>void **SafeCopyN**(size_t num, D d, const T* HWY_RESTRICT from, T*
+    HWY_RESTRICT to)</code>: Copies `from[0, num)` to `to`. If `num` exceeds
+    `Lanes(d)`, the behavior is target-dependent (either copying all, or no more
+    than one vector). Potentially more efficient than a scalar loop, but will
+    not fault, unlike `BlendedStore`. No alignment requirement. Potentially
+    non-atomic, like `BlendedStore`.
 
 *   `D`: `u8` \
     <code>void **StoreInterleaved3**(Vec&lt;D&gt; v0, Vec&lt;D&gt; v1,
@@ -768,7 +838,8 @@ if the input exceeds the destination range.
 *   `V`,`D`: (`f32,bf16`) \
     <code>Vec&lt;D&gt; **ReorderDemote2To**(D, V a, V b)</code>: as above, but
     converts two inputs, `D` and the output have twice as many lanes as `V`, and
-    the output order is some permutation of the inputs.
+    the output order is some permutation of the inputs. Only available if
+    `HWY_TARGET != HWY_SCALAR`.
 
 *   `V`,`D`: (`i32`,`f32`), (`i64`,`f64`) \
     <code>Vec&lt;D&gt; **ConvertTo**(D, V)</code>: converts an integer value to
@@ -789,7 +860,8 @@ if the input exceeds the destination range.
     `Half<DFromV<V>>`.
 
 *   <code>V2 **UpperHalf**(D, V)</code>: returns upper half of the vector `V`,
-    where `D` is `Half<DFromV<V>>`.
+    where `D` is `Half<DFromV<V>>`. Only available if `HWY_TARGET !=
+    HWY_SCALAR`.
 
 *   <code>V **ZeroExtendVector**(D, V2)</code>: returns vector whose `UpperHalf`
     is zero and whose `LowerHalf` is the argument; `D` is `Twice<DFromV<V2>>`.
@@ -819,12 +891,14 @@ more expensive on AVX2/AVX-512 than per-block operations.
     penalty on AVX2/3. `D` is `DFromV<V>`.
 
 *   `V`: `{u,i,f}{32,64}` \
-    <code>V **ConcatOdd**(V hi, V lo)</code>: returns the concatenation of the
-    odd lanes of `hi` and the odd lanes of `lo`.
+    <code>V **ConcatOdd**(D, V hi, V lo)</code>: returns the concatenation of
+    the odd lanes of `hi` and the odd lanes of `lo`. Only available if
+    `HWY_TARGET != HWY_SCALAR`.
 
 *   `V`: `{u,i,f}{32,64}` \
-    <code>V **ConcatEven**(V hi, V lo)</code>: returns the concatenation of the
-    even lanes of `hi` and the even lanes of `lo`.
+    <code>V **ConcatEven**(D, V hi, V lo)</code>: returns the concatenation of
+    the even lanes of `hi` and the even lanes of `lo`. Only available if
+    `HWY_TARGET != HWY_SCALAR`.
 
 ### Blockwise
 
@@ -842,7 +916,7 @@ their operands into independently processed 128-bit *blocks*.
     HWY_MIN(Lanes(DFromV<V>()), 16)`. `VI` are integers with the same bit width
     as a lane in `V`. The number of lanes in `V` and `VI` may differ, e.g. a
     full-length table vector loaded via `LoadDup128`, plus partial vector `VI`
-    of 4-bit indices.
+    of 4-bit indices. Only available if `HWY_TARGET != HWY_SCALAR`.
 
 *   `V`: `{u,i}` \
     <code>VI **TableLookupBytesOr0**(V bytes, VI indices)</code>: returns
@@ -852,18 +926,21 @@ their operands into independently processed 128-bit *blocks*.
     zeroing behavior has zero cost on x86 and ARM. For vectors of >= 256 bytes
     (can happen on SVE and RVV), this will set all lanes after the first 128
     to 0. `VI` are integers with the same bit width as a lane in `V`. The number
-    of lanes in `V` and `VI` may differ.
+    of lanes in `V` and `VI` may differ. Only available if `HWY_TARGET !=
+    HWY_SCALAR`.
 
 #### Zip/Interleave
 
 *   <code>V **InterleaveLower**([D, ] V a, V b)</code>: returns *blocks* with
     alternating lanes from the lower halves of `a` and `b` (`a[0]` in the
     least-significant lane). The optional `D` (provided for consistency with
-    `InterleaveUpper`) is `DFromV<V>`.
+    `InterleaveUpper`) is `DFromV<V>`. Only available if `HWY_TARGET !=
+    HWY_SCALAR`, but note that `ZipLower` works on all targets.
 
 *   <code>V **InterleaveUpper**(D, V a, V b)</code>: returns *blocks* with
     alternating lanes from the upper halves of `a` and `b` (`a[N/2]` in the
-    least-significant lane). `D` is `DFromV<V>`.
+    least-significant lane). `D` is `DFromV<V>`. Only available if `HWY_TARGET
+    != HWY_SCALAR`.
 
 *   `Ret`: `MakeWide<T>`; `V`: `{u,i}{8,16,32}` \
     <code>Ret **ZipLower**([D, ] V a, V b)</code>: returns the same bits as
@@ -875,9 +952,12 @@ their operands into independently processed 128-bit *blocks*.
     <code>Ret **ZipUpper**(D, V a, V b)</code>: returns the same bits as
     `InterleaveUpper`, but repartitioned into double-width lanes (required in
     order to use this operation with scalars). `D` is
-    `RepartitionToWide<DFromV<V>>`.
+    `RepartitionToWide<DFromV<V>>`. Only available if `HWY_TARGET !=
+    HWY_SCALAR`.
 
 #### Shift
+
+The following are only available if `HWY_TARGET != HWY_SCALAR`:
 
 *   `V`: `{u,i}` \
     <code>V **ShiftLeftBytes**&lt;int&gt;([D, ] V)</code>: returns the result of
@@ -949,7 +1029,7 @@ instead because they are more general:
 *   `V`: `{u,i,f}{32,64}` \
     <code>V **DupOdd**(V v)</code>: returns `r`, the result of copying odd lanes
     to the previous lower-indexed lane. For each odd lane index `i`, `r[i] ==
-    v[i]` and `r[i - 1] == v[i]`.
+    v[i]` and `r[i - 1] == v[i]`. Only available if `HWY_TARGET != HWY_SCALAR`.
 
 *   <code>V **OddEven**(V a, V b)</code>: returns a vector whose odd lanes are
     taken from `a` and the even lanes from `b`.
@@ -1067,35 +1147,6 @@ than normal SIMD operations and are typically used outside critical loops.
 
 ## Advanced macros
 
-Let `Target` denote an instruction set:
-`SCALAR/SSSE3/SSE4/AVX2/AVX3/AVX3_DL/PPC8/NEON/WASM/RVV`. Targets are only used
-if enabled (i.e. not broken nor disabled). Baseline means the compiler is
-allowed to generate such instructions (implying the target CPU would have to
-support them).
-
-*   `HWY_Target=##` are powers of two uniquely identifying `Target`.
-
-*   `HWY_STATIC_TARGET` is the best enabled baseline `HWY_Target`, and matches
-    `HWY_TARGET` in static dispatch mode. This is useful even in dynamic
-    dispatch mode for deducing and printing the compiler flags.
-
-*   `HWY_TARGETS` indicates which targets to generate for dynamic dispatch, and
-    which headers to include. It is determined by configuration macros and
-    always includes `HWY_STATIC_TARGET`.
-
-*   `HWY_SUPPORTED_TARGETS` is the set of targets available at runtime. Expands
-    to a literal if only a single target is enabled, or SupportedTargets().
-
-*   `HWY_TARGET`: which `HWY_Target` is currently being compiled. This is
-    initially identical to `HWY_STATIC_TARGET` and remains so in static dispatch
-    mode. For dynamic dispatch, this changes before each re-inclusion and
-    finally reverts to `HWY_STATIC_TARGET`. Can be used in `#if` expressions to
-    provide an alternative to functions which are not supported by HWY_SCALAR.
-
-*   `HWY_WANT_AVX3_DL`: additional opt-in for HWY_AVX3, which is disabled unless
-    this is defined by the app before including highway.h, OR all AVX3_DL
-    compiler flags are specified.
-
 *   `HWY_IDE` is 0 except when parsed by IDEs; adding it to conditions such as
     `#if HWY_TARGET != HWY_SCALAR || HWY_IDE` avoids code appearing greyed out.
 
@@ -1110,6 +1161,13 @@ The above were previously known as `HWY_CAP_INTEGER64`, `HWY_CAP_FLOAT16`, and
 
 *   `HWY_HAVE_SCALABLE` indicates vector sizes are unknown at compile time, and
     determined by the CPU.
+
+*   `HWY_MEM_OPS_MIGHT_FAULT` is 1 iff `MaskedLoad` may trigger a (page) fault
+    when attempting to load lanes from unmapped memory, even if the
+    corresponding mask element is false. This is the case on ASAN/MSAN builds,
+    AMD x86 prior to AVX-512, and ARM NEON. If so, users can prevent faults by
+    ensuring memory addresses are naturally aligned or at least padded
+    (allocation size increased by at least `Lanes(d)`.
 
 The following were used to signal the maximum number of lanes for certain
 operations, but this is no longer necessary (nor possible on SVE/RVV), so they

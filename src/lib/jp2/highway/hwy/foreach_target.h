@@ -1,4 +1,5 @@
 // Copyright 2020 Google LLC
+// SPDX-License-Identifier: Apache-2.0
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -66,6 +67,17 @@
 #if (HWY_TARGETS & HWY_NEON) && (HWY_STATIC_TARGET != HWY_NEON)
 #undef HWY_TARGET
 #define HWY_TARGET HWY_NEON
+#include HWY_TARGET_INCLUDE
+#ifdef HWY_TARGET_TOGGLE
+#undef HWY_TARGET_TOGGLE
+#else
+#define HWY_TARGET_TOGGLE
+#endif
+#endif
+
+#if (HWY_TARGETS & HWY_RVV) && (HWY_STATIC_TARGET != HWY_RVV)
+#undef HWY_TARGET
+#define HWY_TARGET HWY_RVV
 #include HWY_TARGET_INCLUDE
 #ifdef HWY_TARGET_TOGGLE
 #undef HWY_TARGET_TOGGLE

@@ -1,4 +1,5 @@
 // Copyright 2019 Google LLC
+// SPDX-License-Identifier: Apache-2.0
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -53,26 +54,28 @@ struct TestFirstN {
   template <class T, class D>
   HWY_NOINLINE void operator()(T /*unused*/, D d) {
     const size_t N = Lanes(d);
-    const RebindToSigned<D> di;
-    using TI = TFromD<decltype(di)>;
-    using TN = SignedFromSize<HWY_MIN(sizeof(size_t), sizeof(TI))>;
+    auto bool_lanes = AllocateAligned<T>(N);
+
+    using TN = SignedFromSize<HWY_MIN(sizeof(size_t), sizeof(T))>;
     const size_t max_len = static_cast<size_t>(LimitsMax<TN>());
 
-// TODO(janwas): 8-bit FirstN (using SlideUp) causes spike to freeze.
-#if HWY_TARGET == HWY_RVV
-    if (sizeof(T) == 1) return;
-#endif
-
-    const size_t max_lanes = AdjustedReps(HWY_MIN(2 * N, size_t(64)));
+    const size_t max_lanes = HWY_MIN(2 * N, AdjustedReps(512));
     for (size_t len = 0; len <= HWY_MIN(max_lanes, max_len); ++len) {
-      const auto expected =
-          RebindMask(d, Lt(Iota(di, 0), Set(di, static_cast<TI>(len))));
-      const auto actual = FirstN(d, len);
-      HWY_ASSERT_MASK_EQ(d, expected, actual);
+      // Loop instead of Iota+Lt to avoid wraparound for 8-bit T.
+      for (size_t i = 0; i < N; ++i) {
+        bool_lanes[i] = (i < len) ? T{1} : 0;
+      }
+      const auto expected = Eq(Load(d, bool_lanes.get()), Set(d, T{1}));
+      HWY_ASSERT_MASK_EQ(d, expected, FirstN(d, len));
     }
 
-    // Also ensure huge values yield all-true.
-    HWY_ASSERT_MASK_EQ(d, MaskTrue(d), FirstN(d, max_len));
+    // Also ensure huge values yield all-true (unless the vector is actually
+    // larger than max_len).
+    for (size_t i = 0; i < N; ++i) {
+      bool_lanes[i] = (i < max_len) ? T{1} : 0;
+    }
+    const auto expected = Eq(Load(d, bool_lanes.get()), Set(d, T{1}));
+    HWY_ASSERT_MASK_EQ(d, expected, FirstN(d, max_len));
   }
 };
 
@@ -190,6 +193,40 @@ HWY_NOINLINE void TestAllMaskedLoad() {
   ForAllTypes(ForPartialVectors<TestMaskedLoad>());
 }
 
+struct TestBlendedStore {
+  template <class T, class D>
+  HWY_NOINLINE void operator()(T /*unused*/, D d) {
+    RandomState rng;
+
+    using TI = MakeSigned<T>;  // For mask > 0 comparison
+    const Rebind<TI, D> di;
+    const size_t N = Lanes(d);
+    auto bool_lanes = AllocateAligned<TI>(N);
+
+    const Vec<D> v = Iota(d, T{1});
+    auto actual = AllocateAligned<T>(N);
+    auto expected = AllocateAligned<T>(N);
+
+    // Each lane should have a chance of having mask=true.
+    for (size_t rep = 0; rep < AdjustedReps(200); ++rep) {
+      for (size_t i = 0; i < N; ++i) {
+        bool_lanes[i] = (Random32(&rng) & 1024) ? TI(1) : TI(0);
+        // Re-initialize to something distinct from v[i].
+        actual[i] = static_cast<T>(127 - (i & 127));
+        expected[i] = bool_lanes[i] ? static_cast<T>(i + 1) : actual[i];
+      }
+
+      const auto mask = RebindMask(d, Gt(Load(di, bool_lanes.get()), Zero(di)));
+      BlendedStore(v, mask, d, actual.get());
+      HWY_ASSERT_VEC_EQ(d, expected.get(), Load(d, actual.get()));
+    }
+  }
+};
+
+HWY_NOINLINE void TestAllBlendedStore() {
+  ForAllTypes(ForPartialVectors<TestBlendedStore>());
+}
+
 struct TestAllTrueFalse {
   template <class T, class D>
   HWY_NOINLINE void operator()(T /*unused*/, D d) {
@@ -244,8 +281,6 @@ class TestStoreMaskBits {
  public:
   template <class T, class D>
   HWY_NOINLINE void operator()(T /*t*/, D /*d*/) {
-    // TODO(janwas): remove once implemented (cast or vse1)
-#if HWY_TARGET != HWY_RVV
     RandomState rng;
     using TI = MakeSigned<T>;  // For mask > 0 comparison
     const Rebind<TI, D> di;
@@ -276,12 +311,9 @@ class TestStoreMaskBits {
         HWY_ASSERT(false);
       }
 
-// TODO(janwas): enable after implemented
-#if HWY_TARGET != HWY_RVV
       // Requires at least 8 bytes, ensured above.
       const auto mask2 = LoadMaskBits(di, actual.get());
       HWY_ASSERT_MASK_EQ(di, mask, mask2);
-#endif
 
       memset(expected.get(), 0, expected_num_bytes);
       for (size_t i = 0; i < N; ++i) {
@@ -321,7 +353,6 @@ class TestStoreMaskBits {
         }
       }
     }
-#endif
   }
 };
 
@@ -452,17 +483,12 @@ HWY_EXPORT_AND_TEST_P(HwyMaskTest, TestAllFirstN);
 HWY_EXPORT_AND_TEST_P(HwyMaskTest, TestAllIfThenElse);
 HWY_EXPORT_AND_TEST_P(HwyMaskTest, TestAllMaskVec);
 HWY_EXPORT_AND_TEST_P(HwyMaskTest, TestAllMaskedLoad);
+HWY_EXPORT_AND_TEST_P(HwyMaskTest, TestAllBlendedStore);
 HWY_EXPORT_AND_TEST_P(HwyMaskTest, TestAllAllTrueFalse);
 HWY_EXPORT_AND_TEST_P(HwyMaskTest, TestAllStoreMaskBits);
 HWY_EXPORT_AND_TEST_P(HwyMaskTest, TestAllCountTrue);
 HWY_EXPORT_AND_TEST_P(HwyMaskTest, TestAllFindFirstTrue);
 HWY_EXPORT_AND_TEST_P(HwyMaskTest, TestAllLogicalMask);
 }  // namespace hwy
-
-// Ought not to be necessary, but without this, no tests run on RVV.
-int main(int argc, char **argv) {
-  ::testing::InitGoogleTest(&argc, argv);
-  return RUN_ALL_TESTS();
-}
 
 #endif

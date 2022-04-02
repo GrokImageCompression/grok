@@ -1,4 +1,5 @@
 // Copyright 2021 Google LLC
+// SPDX-License-Identifier: Apache-2.0
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -35,9 +36,12 @@
 
 HWY_BEFORE_NAMESPACE();
 namespace hwy {
+// Defined within HWY_ONCE, used by BenchAllSort.
+extern bool first_sort_run;
+
 namespace HWY_NAMESPACE {
 namespace {
-using detail::LaneTraits;
+using detail::TraitsLane;
 using detail::OrderAscending;
 using detail::OrderDescending;
 using detail::SharedTraits;
@@ -84,13 +88,12 @@ HWY_NOINLINE void BenchPartition() {
 
 HWY_NOINLINE void BenchAllPartition() {
   // Not interested in benchmark results for these targets
-  if (HWY_TARGET == HWY_SSSE3 || HWY_TARGET == HWY_SSE4 ||
-      HWY_TARGET == HWY_AVX2) {
+  if (HWY_TARGET == HWY_SSSE3 || HWY_TARGET == HWY_SSE4) {
     return;
   }
 
-  BenchPartition<LaneTraits<OrderDescending>, float>();
-  BenchPartition<LaneTraits<OrderAscending>, int64_t>();
+  BenchPartition<TraitsLane<OrderDescending>, float>();
+  BenchPartition<TraitsLane<OrderAscending>, int64_t>();
   BenchPartition<Traits128<OrderDescending128>, uint64_t>();
 }
 
@@ -139,8 +142,8 @@ HWY_NOINLINE void BenchAllBase() {
   }
 
   std::vector<Result> results;
-  BenchBase<LaneTraits<OrderAscending>, float>(results);
-  BenchBase<LaneTraits<OrderDescending>, int64_t>(results);
+  BenchBase<TraitsLane<OrderAscending>, float>(results);
+  BenchBase<TraitsLane<OrderDescending>, int64_t>(results);
   BenchBase<Traits128<OrderAscending128>, uint64_t>(results);
   for (const Result& r : results) {
     r.Print();
@@ -164,8 +167,13 @@ std::vector<Algo> AlgoForBench() {
 #if HAVE_SORT512
         Algo::kSort512,
 #endif
-        // Algo::kStd,  // too slow to always benchmark
-        // Algo::kHeap,  // too slow to always benchmark
+
+// These are 10-20x slower, but that's OK for the default size when we are
+// not testing the parallel mode.
+#if !HAVE_PARALLEL_IPS4O
+        Algo::kStd, Algo::kHeap,
+#endif
+
         Algo::kVQSort,
   };
 }
@@ -176,6 +184,10 @@ HWY_NOINLINE void BenchSort(size_t num) {
   detail::SharedTraits<Traits> st;
   auto aligned = hwy::AllocateAligned<T>(num);
   for (Algo algo : AlgoForBench()) {
+    // Other algorithms don't depend on the vector instructions, so only run
+    // them once. (This flag is more future-proof than comparing HWY_TARGET.)
+    if (algo != Algo::kVQSort && !first_sort_run) continue;
+
     for (Dist dist : AllDist()) {
       std::vector<double> seconds;
       for (size_t rep = 0; rep < kReps; ++rep) {
@@ -194,6 +206,8 @@ HWY_NOINLINE void BenchSort(size_t num) {
           .Print();
     }  // dist
   }    // algo
+
+  first_sort_run = false;
 }
 
 HWY_NOINLINE void BenchAllSort() {
@@ -213,17 +227,16 @@ HWY_NOINLINE void BenchAllSort() {
          AdjustedReps(1 * M),
 #endif
        }) {
-    // BenchSort<LaneTraits<OrderAscending>, float>(num);
-    // BenchSort<LaneTraits<OrderDescending>, double>(num);
-    // BenchSort<LaneTraits<OrderAscending>, int16_t>(num);
-    BenchSort<LaneTraits<OrderDescending>, int32_t>(num);
-    BenchSort<LaneTraits<OrderAscending>, int64_t>(num);
-    // BenchSort<LaneTraits<OrderDescending>, uint16_t>(num);
-    // BenchSort<LaneTraits<OrderDescending>, uint32_t>(num);
-    // BenchSort<LaneTraits<OrderAscending>, uint64_t>(num);
+    // BenchSort<TraitsLane<OrderAscending>, float>(num);
+    // BenchSort<TraitsLane<OrderDescending>, double>(num);
+    // BenchSort<TraitsLane<OrderAscending>, int16_t>(num);
+    BenchSort<TraitsLane<OrderDescending>, int32_t>(num);
+    BenchSort<TraitsLane<OrderAscending>, int64_t>(num);
+    // BenchSort<TraitsLane<OrderDescending>, uint16_t>(num);
+    // BenchSort<TraitsLane<OrderDescending>, uint32_t>(num);
+    // BenchSort<TraitsLane<OrderAscending>, uint64_t>(num);
 
     BenchSort<Traits128<OrderAscending128>, uint64_t>(num);
-    // BenchSort<Traits128<OrderAscending128>, uint64_t>(num);
   }
 }
 
@@ -242,6 +255,7 @@ HWY_AFTER_NAMESPACE();
 #if HWY_ONCE
 
 namespace hwy {
+bool first_sort_run = true;
 namespace {
 HWY_BEFORE_TEST(BenchSort);
 HWY_EXPORT_AND_TEST_P(BenchSort, BenchAllPartition);
@@ -249,11 +263,5 @@ HWY_EXPORT_AND_TEST_P(BenchSort, BenchAllBase);
 HWY_EXPORT_AND_TEST_P(BenchSort, BenchAllSort);
 }  // namespace
 }  // namespace hwy
-
-// Ought not to be necessary, but without this, no tests run on RVV.
-int main(int argc, char** argv) {
-  ::testing::InitGoogleTest(&argc, argv);
-  return RUN_ALL_TESTS();
-}
 
 #endif  // HWY_ONCE

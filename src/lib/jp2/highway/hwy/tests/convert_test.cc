@@ -1,4 +1,5 @@
 // Copyright 2019 Google LLC
+// SPDX-License-Identifier: Apache-2.0
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -336,8 +337,10 @@ struct TestConvertU8 {
     const Rebind<uint8_t, D> du8;
     auto lanes8 = AllocateAligned<uint8_t>(Lanes(du8));
     Store(Iota(du8, 0), du8, lanes8.get());
-    HWY_ASSERT_VEC_EQ(du8, Iota(du8, 0), U8FromU32(Iota(du32, 0)));
-    HWY_ASSERT_VEC_EQ(du8, Iota(du8, 0x7F), U8FromU32(Iota(du32, 0x7F)));
+    const auto wrap = Set(du32, 0xFF);
+    HWY_ASSERT_VEC_EQ(du8, Iota(du8, 0), U8FromU32(And(Iota(du32, 0), wrap)));
+    HWY_ASSERT_VEC_EQ(du8, Iota(du8, 0x7F),
+                      U8FromU32(And(Iota(du32, 0x7F), wrap)));
   }
 };
 
@@ -555,11 +558,5 @@ HWY_EXPORT_AND_TEST_P(HwyConvertTest, TestAllIntFromFloat);
 HWY_EXPORT_AND_TEST_P(HwyConvertTest, TestAllFloatFromInt);
 HWY_EXPORT_AND_TEST_P(HwyConvertTest, TestAllI32F64);
 }  // namespace hwy
-
-// Ought not to be necessary, but without this, no tests run on RVV.
-int main(int argc, char** argv) {
-  ::testing::InitGoogleTest(&argc, argv);
-  return RUN_ALL_TESTS();
-}
 
 #endif

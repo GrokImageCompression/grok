@@ -1,4 +1,5 @@
 // Copyright 2021 Google LLC
+// SPDX-License-Identifier: Apache-2.0
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -38,7 +39,7 @@ HWY_PUSH_ATTRIBUTES("avx2,avx")
 #include "avx2sort.h"
 HWY_POP_ATTRIBUTES
 #endif
-#if HAVE_IPS4O
+#if HAVE_IPS4O || HAVE_PARALLEL_IPS4O
 #include "third_party/ips4o/include/ips4o.hpp"
 #include "third_party/ips4o/include/ips4o/thread_pool.hpp"
 #endif
@@ -54,7 +55,7 @@ namespace hwy {
 enum class Dist { kUniform8, kUniform16, kUniform32 };
 
 std::vector<Dist> AllDist() {
-  return {/*Dist::kUniform8,*/ Dist::kUniform16, Dist::kUniform32};
+  return {/*Dist::kUniform8, Dist::kUniform16,*/ Dist::kUniform32};
 }
 
 const char* DistName(Dist dist) {
@@ -309,7 +310,7 @@ struct ThreadLocal {
 struct SharedState {
 #if HAVE_PARALLEL_IPS4O
   ips4o::StdThreadPool pool{
-      HWY_MIN(16, static_cast<int>(std::thread::hardware_concurrency() / 2))};
+      static_cast<int>(std::thread::hardware_concurrency() / 2)};
 #endif
   std::vector<ThreadLocal> tls{1};
 };
@@ -318,7 +319,7 @@ template <class Order, typename T>
 void Run(Algo algo, T* HWY_RESTRICT inout, size_t num, SharedState& shared,
          size_t thread) {
   using detail::HeapSort;
-  using detail::LaneTraits;
+  using detail::TraitsLane;
   using detail::SharedTraits;
 
   switch (algo) {
@@ -339,9 +340,11 @@ void Run(Algo algo, T* HWY_RESTRICT inout, size_t num, SharedState& shared,
 #if HAVE_PARALLEL_IPS4O
     case Algo::kParallelIPS4O:
       if (Order().IsAscending()) {
-        return ips4o::parallel::sort(inout, inout + num, std::less<T>());
+        return ips4o::parallel::sort(inout, inout + num, std::less<T>(),
+                                     shared.pool);
       } else {
-        return ips4o::parallel::sort(inout, inout + num, std::greater<T>());
+        return ips4o::parallel::sort(inout, inout + num, std::greater<T>(),
+                                     shared.pool);
       }
 #endif
 
@@ -375,10 +378,10 @@ void Run(Algo algo, T* HWY_RESTRICT inout, size_t num, SharedState& shared,
     case Algo::kHeap:
       HWY_ASSERT(sizeof(T) < 16);
       if (Order().IsAscending()) {
-        const SharedTraits<LaneTraits<detail::OrderAscending>> st;
+        const SharedTraits<TraitsLane<detail::OrderAscending>> st;
         return HeapSort(st, inout, num);
       } else {
-        const SharedTraits<LaneTraits<detail::OrderDescending>> st;
+        const SharedTraits<TraitsLane<detail::OrderDescending>> st;
         return HeapSort(st, inout, num);
       }
 

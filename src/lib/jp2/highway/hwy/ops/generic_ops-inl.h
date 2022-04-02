@@ -1,4 +1,5 @@
 // Copyright 2021 Google LLC
+// SPDX-License-Identifier: Apache-2.0
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -70,6 +71,21 @@ HWY_API Vec<D> NaN(D d) {
   // LimitsMax sets all exponent and mantissa bits to 1. The exponent plus
   // mantissa MSB (to indicate quiet) would be sufficient.
   return BitCast(d, Set(di, LimitsMax<TFromD<decltype(di)>>()));
+}
+
+// ------------------------------ SafeCopyN
+
+template <class D, typename T = TFromD<D>>
+HWY_API void SafeCopyN(const size_t num, D d, const T* HWY_RESTRICT from,
+                       T* HWY_RESTRICT to) {
+#if HWY_MEM_OPS_MIGHT_FAULT
+  (void)d;
+  for (size_t i = 0; i < num; ++i) {
+    to[i] = from[i];
+  }
+#else
+  BlendedStore(LoadU(d, from), FirstN(d, num), d, to);
+#endif
 }
 
 // ------------------------------ AESRound

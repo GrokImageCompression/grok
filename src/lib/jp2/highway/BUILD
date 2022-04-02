@@ -1,7 +1,9 @@
 load("@bazel_skylib//lib:selects.bzl", "selects")
 
 load("@rules_cc//cc:defs.bzl", "cc_test")
-package(default_visibility = ["//visibility:public"])
+package(
+    default_visibility = ["//visibility:public"],
+)
 
 licenses(["notice"])
 
@@ -11,6 +13,11 @@ exports_files(["LICENSE"])
 config_setting(
     name = "compiler_clang",
     flag_values = {"@bazel_tools//tools/cpp:compiler": "clang"},
+)
+
+config_setting(
+    name = "compiler_clangcl",
+    flag_values = {"@bazel_tools//tools/cpp:compiler": "lexan"},
 )
 
 config_setting(
@@ -54,8 +61,8 @@ CLANG_GCC_COPTS = [
     "-Wunreachable-code",
 ]
 
-# Additional warnings only supported by Clang
-CLANG_ONLY_COPTS = [
+# Warnings supported by Clang and Clang-cl
+CLANG_OR_CLANGCL_OPTS = CLANG_GCC_COPTS + [
     "-Wfloat-overflow-conversion",
     "-Wfloat-zero-conversion",
     "-Wfor-loop-analysis",
@@ -73,11 +80,19 @@ CLANG_ONLY_COPTS = [
     "-Wunused-comparison",
 ]
 
+# Warnings only supported by Clang, but not Clang-cl
+CLANG_ONLY_COPTS = CLANG_OR_CLANGCL_OPTS + [
+    # Do not treat the third_party headers as system headers when building
+    # highway - the errors are pertinent.
+    "--no-system-header-prefix=third_party/highway",
+]
+
 COPTS = select({
     ":compiler_msvc": [],
     ":compiler_gcc": CLANG_GCC_COPTS,
+    ":compiler_clangcl": CLANG_OR_CLANGCL_OPTS,
     # Default to clang because compiler detection only works in Bazel
-    "//conditions:default": CLANG_GCC_COPTS + CLANG_ONLY_COPTS,
+    "//conditions:default": CLANG_ONLY_COPTS,
 }) + select({
     "@platforms//cpu:riscv64": [
         "-march=rv64gcv1p0",
@@ -102,6 +117,7 @@ cc_library(
     name = "hwy",
     srcs = [
         "hwy/aligned_allocator.cc",
+        "hwy/print.cc",
         "hwy/targets.cc",
     ],
     # Normal headers with include guards
@@ -111,6 +127,7 @@ cc_library(
         "hwy/cache_control.h",
         "hwy/detect_compiler_arch.h",  # private
         "hwy/highway_export.h",
+        "hwy/print.h",
     ],
     compatible_with = [],
     copts = COPTS,
@@ -121,6 +138,7 @@ cc_library(
         # End of list
         "hwy/highway.h",  # public
         "hwy/foreach_target.h",  # public
+        "hwy/print-inl.h",  # public
         "hwy/ops/arm_neon-inl.h",
         "hwy/ops/arm_sve-inl.h",
         "hwy/ops/generic_ops-inl.h",
@@ -138,6 +156,18 @@ cc_library(
         "@platforms//cpu:riscv64": ["hwy/ops/rvv-inl.h"],
         "//conditions:default": [],
     }),
+)
+
+cc_library(
+    name = "algo",
+    compatible_with = [],
+    textual_hdrs = [
+        "hwy/contrib/algo/copy-inl.h",
+        "hwy/contrib/algo/transform-inl.h",
+    ],
+    deps = [
+        ":hwy",
+    ],
 )
 
 cc_library(
@@ -226,6 +256,8 @@ cc_binary(
 
 # path, name
 HWY_TESTS = [
+    ("hwy/contrib/algo/", "copy_test"),
+    ("hwy/contrib/algo/", "transform_test"),
     ("hwy/contrib/dot/", "dot_test"),
     ("hwy/contrib/image/", "image_test"),
     ("hwy/contrib/math/", "math_test"),
@@ -240,18 +272,21 @@ HWY_TESTS = [
     ("hwy/tests/", "blockwise_test"),
     ("hwy/tests/", "combine_test"),
     ("hwy/tests/", "compare_test"),
+    ("hwy/tests/", "compress_test"),
     ("hwy/tests/", "convert_test"),
     ("hwy/tests/", "crypto_test"),
     ("hwy/tests/", "demote_test"),
     ("hwy/tests/", "logical_test"),
     ("hwy/tests/", "mask_test"),
     ("hwy/tests/", "memory_test"),
+    ("hwy/tests/", "reverse_test"),
     ("hwy/tests/", "shift_test"),
     ("hwy/tests/", "swizzle_test"),
     ("hwy/tests/", "test_util_test"),
 ]
 
 HWY_TEST_DEPS = [
+    ":algo",
     ":dot",
     ":hwy",
     ":hwy_test_util",

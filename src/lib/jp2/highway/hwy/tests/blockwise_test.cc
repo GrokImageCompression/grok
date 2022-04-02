@@ -1,4 +1,5 @@
 // Copyright 2019 Google LLC
+// SPDX-License-Identifier: Apache-2.0
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -85,7 +86,7 @@ HWY_NOINLINE void TestAllShiftBytes() {
   ForIntegerTypes(ForPartialVectors<TestShiftBytes>());
 }
 
-struct TestShiftLanes {
+struct TestShiftLeftLanes {
   template <class T, class D>
   HWY_NOINLINE void operator()(T /*unused*/, D d) {
     // Scalar does not define Shift*Lanes.
@@ -96,7 +97,6 @@ struct TestShiftLanes {
 
     HWY_ASSERT_VEC_EQ(d, v, ShiftLeftLanes<0>(v));
     HWY_ASSERT_VEC_EQ(d, v, ShiftLeftLanes<0>(d, v));
-    HWY_ASSERT_VEC_EQ(d, v, ShiftRightLanes<0>(d, v));
 
     constexpr size_t kLanesPerBlock = 16 / sizeof(T);
 
@@ -105,6 +105,24 @@ struct TestShiftLanes {
     }
     HWY_ASSERT_VEC_EQ(d, expected.get(), ShiftLeftLanes<1>(v));
     HWY_ASSERT_VEC_EQ(d, expected.get(), ShiftLeftLanes<1>(d, v));
+#else
+    (void)d;
+#endif  // #if HWY_TARGET != HWY_SCALAR
+  }
+};
+
+struct TestShiftRightLanes {
+  template <class T, class D>
+  HWY_NOINLINE void operator()(T /*unused*/, D d) {
+    // Scalar does not define Shift*Lanes.
+#if HWY_TARGET != HWY_SCALAR || HWY_IDE
+    const auto v = Iota(d, T(1));
+    const size_t N = Lanes(d);
+    auto expected = AllocateAligned<T>(N);
+
+    HWY_ASSERT_VEC_EQ(d, v, ShiftRightLanes<0>(d, v));
+
+    constexpr size_t kLanesPerBlock = 16 / sizeof(T);
 
     for (size_t i = 0; i < N; ++i) {
       const size_t mod = i % kLanesPerBlock;
@@ -117,8 +135,12 @@ struct TestShiftLanes {
   }
 };
 
-HWY_NOINLINE void TestAllShiftLanes() {
-  ForAllTypes(ForPartialVectors<TestShiftLanes>());
+HWY_NOINLINE void TestAllShiftLeftLanes() {
+  ForAllTypes(ForPartialVectors<TestShiftLeftLanes>());
+}
+
+HWY_NOINLINE void TestAllShiftRightLanes() {
+  ForAllTypes(ForPartialVectors<TestShiftRightLanes>());
 }
 
 template <typename D, int kLane>
@@ -185,12 +207,12 @@ struct TestTableLookupBytes {
   HWY_NOINLINE void operator()(T /*unused*/, D d) {
 #if HWY_TARGET != HWY_SCALAR
     RandomState rng;
+
     const typename ChooseTableSize<kFull>::template type<T, D> d_tbl;
     const Repartition<uint8_t, decltype(d_tbl)> d_tbl8;
     const size_t NT8 = Lanes(d_tbl8);
 
     const Repartition<uint8_t, D> d8;
-    const size_t N = Lanes(d);
     const size_t N8 = Lanes(d8);
 
     // Random input bytes
@@ -208,7 +230,7 @@ struct TestTableLookupBytes {
         11, 10, 3, 4, 5,  8,  7,  6,  14, 13, 12, 15, 2,  1,  2,  0,
         4,  3,  2, 2, 5,  6,  7,  7,  15, 15, 15, 15, 15, 15, 0,  1};
     auto index_bytes = AllocateAligned<uint8_t>(N8);
-    const size_t max_index = HWY_MIN(N8, 16) - 1;
+    const size_t max_index = HWY_MIN(NT8, 16) - 1;
     for (size_t i = 0; i < N8; ++i) {
       index_bytes[i] = (i < 64) ? index_bytes_source[i] : 0;
       // Avoid asan error for partial vectors.
@@ -216,15 +238,21 @@ struct TestTableLookupBytes {
     }
     const auto indices = Load(d, reinterpret_cast<const T*>(index_bytes.get()));
 
+    const size_t N = Lanes(d);
     auto expected = AllocateAligned<T>(N);
     uint8_t* expected_bytes = reinterpret_cast<uint8_t*>(expected.get());
 
     for (size_t block = 0; block < N8; block += 16) {
       for (size_t i = 0; i < 16 && (block + i) < N8; ++i) {
         const uint8_t index = index_bytes[block + i];
-        HWY_ASSERT(block + index < N8);  // indices were already capped to N8.
-        // For large vectors, the lane index may wrap around due to block.
-        expected_bytes[block + i] = in_bytes[(block & 0xFF) + index];
+        HWY_ASSERT(index <= max_index);
+        // Note that block + index may exceed NT8 on RVV, which is fine because
+        // the operation uses the larger of the table and index vector size.
+        HWY_ASSERT(block + index < HWY_MAX(N8, NT8));
+        // For large vectors, the lane index may wrap around due to block,
+        // also wrap around after 8-bit overflow.
+        expected_bytes[block + i] =
+            in_bytes[(block + index) % HWY_MIN(NT8, 256)];
       }
     }
     HWY_ASSERT_VEC_EQ(d, expected.get(), TableLookupBytes(in, indices));
@@ -251,15 +279,14 @@ struct TestTableLookupBytes {
   }
 };
 
-HWY_NOINLINE void TestAllTableLookupBytes() {
+HWY_NOINLINE void TestAllTableLookupBytesSame() {
   // Partial index, same-sized table.
   ForIntegerTypes(ForPartialVectors<TestTableLookupBytes<false>>());
+}
 
-// TODO(janwas): requires LMUL trunc/ext, which is not yet implemented.
-#if HWY_TARGET != HWY_RVV
+HWY_NOINLINE void TestAllTableLookupBytesMixed() {
   // Partial index, full-size table.
   ForIntegerTypes(ForPartialVectors<TestTableLookupBytes<true>>());
-#endif
 }
 
 struct TestInterleaveLower {
@@ -327,28 +354,29 @@ struct TestZipLower {
     const size_t N = Lanes(d);
     auto even_lanes = AllocateAligned<T>(N);
     auto odd_lanes = AllocateAligned<T>(N);
+    // At least 2 lanes for HWY_SCALAR
+    auto zip_lanes = AllocateAligned<T>(HWY_MAX(N, 2));
+    const T kMaxT = LimitsMax<T>();
     for (size_t i = 0; i < N; ++i) {
-      even_lanes[i] = static_cast<T>(2 * i + 0);
-      odd_lanes[i] = static_cast<T>(2 * i + 1);
+      even_lanes[i] = static_cast<T>((2 * i + 0) & kMaxT);
+      odd_lanes[i] = static_cast<T>((2 * i + 1) & kMaxT);
     }
     const auto even = Load(d, even_lanes.get());
     const auto odd = Load(d, odd_lanes.get());
 
-    const Repartition<WideT, D> dw;
-    const size_t NW = Lanes(dw);
-    auto expected = AllocateAligned<WideT>(NW);
-    const size_t blockN = HWY_MIN(size_t(16) / sizeof(WideT), NW);
+    const size_t blockN = HWY_MIN(size_t(16) / sizeof(T), N);
 
-    for (size_t i = 0; i < NW; ++i) {
-      const size_t block = i / blockN;
-      // Value of least-significant lane in lo-vector.
-      const size_t lo = 2u * (i % blockN) + 4u * block * blockN;
-      const size_t kBits = sizeof(T) * 8;
-      expected[i] = static_cast<WideT>((static_cast<WideT>(lo + 1) << kBits) +
-                                       static_cast<WideT>(lo));
+    for (size_t i = 0; i < N; i += 2) {
+      const size_t base = (i / blockN) * blockN;
+      const size_t mod = i % blockN;
+      zip_lanes[i + 0] = even_lanes[mod / 2 + base];
+      zip_lanes[i + 1] = odd_lanes[mod / 2 + base];
     }
-    HWY_ASSERT_VEC_EQ(dw, expected.get(), ZipLower(even, odd));
-    HWY_ASSERT_VEC_EQ(dw, expected.get(), ZipLower(dw, even, odd));
+    const Repartition<WideT, D> dw;
+    const auto expected =
+        Load(dw, reinterpret_cast<const WideT*>(zip_lanes.get()));
+    HWY_ASSERT_VEC_EQ(dw, expected, ZipLower(even, odd));
+    HWY_ASSERT_VEC_EQ(dw, expected, ZipLower(dw, even, odd));
   }
 };
 
@@ -362,63 +390,54 @@ struct TestZipUpper {
     if (N < 16 / sizeof(T)) return;
     auto even_lanes = AllocateAligned<T>(N);
     auto odd_lanes = AllocateAligned<T>(N);
-    for (size_t i = 0; i < Lanes(d); ++i) {
-      even_lanes[i] = static_cast<T>(2 * i + 0);
-      odd_lanes[i] = static_cast<T>(2 * i + 1);
+    auto zip_lanes = AllocateAligned<T>(N);
+    const T kMaxT = LimitsMax<T>();
+    for (size_t i = 0; i < N; ++i) {
+      even_lanes[i] = static_cast<T>((2 * i + 0) & kMaxT);
+      odd_lanes[i] = static_cast<T>((2 * i + 1) & kMaxT);
     }
     const auto even = Load(d, even_lanes.get());
     const auto odd = Load(d, odd_lanes.get());
 
-        const Repartition<WideT, D> dw;
-    const size_t NW = Lanes(dw);
-    auto expected = AllocateAligned<WideT>(NW);
-    const size_t blockN = HWY_MIN(size_t(16) / sizeof(WideT), NW);
+    const size_t blockN = HWY_MIN(size_t(16) / sizeof(T), N);
 
-    for (size_t i = 0; i < NW; ++i) {
-      const size_t block = i / blockN;
-      const size_t lo = 2u * (i % blockN) + 4u * block * blockN;
-      const size_t kBits = sizeof(T) * 8;
-      expected[i] = static_cast<WideT>(
-          (static_cast<WideT>(lo + 2 * blockN + 1) << kBits) +
-          static_cast<WideT>(lo + 2 * blockN));
+    for (size_t i = 0; i < N; i += 2) {
+      const size_t base = (i / blockN) * blockN + blockN / 2;
+      const size_t mod = i % blockN;
+      zip_lanes[i + 0] = even_lanes[mod / 2 + base];
+      zip_lanes[i + 1] = odd_lanes[mod / 2 + base];
     }
-    HWY_ASSERT_VEC_EQ(dw, expected.get(), ZipUpper(dw, even, odd));
+    const Repartition<WideT, D> dw;
+    const auto expected =
+        Load(dw, reinterpret_cast<const WideT*>(zip_lanes.get()));
+    HWY_ASSERT_VEC_EQ(dw, expected, ZipUpper(dw, even, odd));
   }
 };
 
 HWY_NOINLINE void TestAllZip() {
   const ForDemoteVectors<TestZipLower> lower_unsigned;
-  // TODO(janwas): enable after LowerHalf available
-#if HWY_TARGET != HWY_RVV
   lower_unsigned(uint8_t());
-#endif
   lower_unsigned(uint16_t());
 #if HWY_HAVE_INTEGER64
   lower_unsigned(uint32_t());  // generates u64
 #endif
 
   const ForDemoteVectors<TestZipLower> lower_signed;
-#if HWY_TARGET != HWY_RVV
   lower_signed(int8_t());
-#endif
   lower_signed(int16_t());
 #if HWY_HAVE_INTEGER64
   lower_signed(int32_t());  // generates i64
 #endif
 
   const ForShrinkableVectors<TestZipUpper> upper_unsigned;
-#if HWY_TARGET != HWY_RVV
   upper_unsigned(uint8_t());
-#endif
   upper_unsigned(uint16_t());
 #if HWY_HAVE_INTEGER64
   upper_unsigned(uint32_t());  // generates u64
 #endif
 
   const ForShrinkableVectors<TestZipUpper> upper_signed;
-#if HWY_TARGET != HWY_RVV
   upper_signed(int8_t());
-#endif
   upper_signed(int16_t());
 #if HWY_HAVE_INTEGER64
   upper_signed(int32_t());  // generates i64
@@ -620,19 +639,15 @@ HWY_AFTER_NAMESPACE();
 namespace hwy {
 HWY_BEFORE_TEST(HwyBlockwiseTest);
 HWY_EXPORT_AND_TEST_P(HwyBlockwiseTest, TestAllShiftBytes);
-HWY_EXPORT_AND_TEST_P(HwyBlockwiseTest, TestAllShiftLanes);
+HWY_EXPORT_AND_TEST_P(HwyBlockwiseTest, TestAllShiftLeftLanes);
+HWY_EXPORT_AND_TEST_P(HwyBlockwiseTest, TestAllShiftRightLanes);
 HWY_EXPORT_AND_TEST_P(HwyBlockwiseTest, TestAllBroadcast);
-HWY_EXPORT_AND_TEST_P(HwyBlockwiseTest, TestAllTableLookupBytes);
+HWY_EXPORT_AND_TEST_P(HwyBlockwiseTest, TestAllTableLookupBytesSame);
+HWY_EXPORT_AND_TEST_P(HwyBlockwiseTest, TestAllTableLookupBytesMixed);
 HWY_EXPORT_AND_TEST_P(HwyBlockwiseTest, TestAllInterleave);
 HWY_EXPORT_AND_TEST_P(HwyBlockwiseTest, TestAllZip);
 HWY_EXPORT_AND_TEST_P(HwyBlockwiseTest, TestAllCombineShiftRight);
 HWY_EXPORT_AND_TEST_P(HwyBlockwiseTest, TestAllSpecialShuffles);
 }  // namespace hwy
-
-// Ought not to be necessary, but without this, no tests run on RVV.
-int main(int argc, char** argv) {
-  ::testing::InitGoogleTest(&argc, argv);
-  return RUN_ALL_TESTS();
-}
 
 #endif
