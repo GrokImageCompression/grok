@@ -30,7 +30,7 @@ bool T1DecompressScheduler::prepareScheduleDecompress(TileComponent* tilec,
 													  uint8_t prec)
 {
 	bool wholeTileDecoding = tilec->isWholeTileDecoding();
-	for(uint8_t resno = 0; resno < tilec->numResolutionsToDecompress; ++resno)
+	for(uint8_t resno = 0; resno <= tilec->highestResolutionDecompressed; ++resno)
 	{
 		auto res = tilec->tileCompResolution + resno;
 		for(uint8_t bandIndex = 0; bandIndex < res->numTileBandWindows; ++bandIndex)
