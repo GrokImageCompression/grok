@@ -146,10 +146,7 @@ void CompressScheduler::compress(T1Interface* impl, CompressBlockExec* block)
 {
 	block->open(impl);
 	if(needsRateControl)
-	{
-		std::unique_lock<std::mutex> lk(distortion_mutex);
 		tile->distortion += block->distortion;
-	}
 }
 
 } // namespace grk

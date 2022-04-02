@@ -42,7 +42,7 @@ struct Tile : public grk_rect32
 	virtual ~Tile();
 	uint16_t numcomps_;
 	TileComponent* comps;
-	double distortion;
+	std::atomic<double> distortion;
 	double layerDistoration[maxCompressLayersGRK];
 };
 
