@@ -113,7 +113,6 @@ namespace HWY_NAMESPACE
 					  buf + HWY_PLL_COLS_53 * (i + 1) + Lanes(di));
 			}
 		}
-
 		Store(s0n_0, di, buf + HWY_PLL_COLS_53 * (i + 0) + 0);
 		Store(s0n_1, di, buf + HWY_PLL_COLS_53 * (i + 0) + Lanes(di));
 
@@ -163,11 +162,12 @@ namespace HWY_NAMESPACE
 		const int32_t* in_even = bandH;
 		const int32_t* in_odd = bandL;
 		auto s1_0 = LoadU(di, in_even + strideH);
+
 		/* in_odd[0] - ((in_even[0] + s1 + 2) >> 2); */
 		auto dc_0 = LoadU(di, in_odd + 0) - ShiftRight<2>(LoadU(di, in_even + 0) + s1_0 + two);
 		Store(LoadU(di, in_even + 0) + dc_0, di, buf + HWY_PLL_COLS_53 * 0);
-
 		auto s1_1 = LoadU(di, in_even + strideH + Lanes(di));
+
 		/* in_odd[0] - ((in_even[0] + s1 + 2) >> 2); */
 		auto dc_1 = LoadU(di, in_odd + Lanes(di)) -
 					ShiftRight<2>(LoadU(di, in_even + Lanes(di)) + s1_1 + two);
@@ -295,18 +295,15 @@ struct dwt_data
 		: allocatedMem(nullptr), lenBytes_(0), paddingBytes_(0), mem(nullptr), memL(nullptr),
 		  memH(nullptr), dn_full(0), sn_full(0), parity(0), resno(0)
 	{}
-
 	dwt_data(const dwt_data& rhs)
 		: allocatedMem(nullptr), lenBytes_(0), paddingBytes_(0), mem(nullptr), memL(nullptr),
 		  memH(nullptr), dn_full(rhs.dn_full), sn_full(rhs.sn_full), parity(rhs.parity),
 		  win_l(rhs.win_l), win_h(rhs.win_h), resno(rhs.resno)
 	{}
-
 	bool alloc(size_t len)
 	{
 		return alloc(len, 0);
 	}
-
 	bool alloc(size_t len, size_t padding)
 	{
 		release();
@@ -350,7 +347,6 @@ struct dwt_data
 	grk_line32 win_h;
 	uint8_t resno;
 };
-
 struct Params97
 {
 	Params97() : dataPrev(nullptr), data(nullptr), len(0), lenMax(0) {}
@@ -359,14 +355,12 @@ struct Params97
 	uint32_t len;
 	uint32_t lenMax;
 };
-
 static Params97 makeParams97(dwt_data<vec4f>* dwt, bool isBandL, bool step1);
 
 static const float dwt_alpha = 1.586134342f; /*  12994 */
 static const float dwt_beta = 0.052980118f; /*    434 */
 static const float dwt_gamma = -0.882911075f; /*  -7233 */
 static const float dwt_delta = -0.443506852f; /*  -3633 */
-
 static const float K = 1.230174105f; /*  10078 */
 static const float twice_invK = 1.625732422f;
 
@@ -383,9 +377,7 @@ static void decompress_h_cas0_53(int32_t* buf, int32_t* bandL, /* even */
 	int32_t s1n = bandL[0];
 	int32_t d1n = bandH[0];
 	int32_t s0n = s1n - ((d1n + 1) >> 1);
-
 	uint32_t i = 0;
-
 	if(total_width > 2)
 	{
 		for(uint32_t j = 1; i < (total_width - 3); i += 2, j++)
@@ -400,7 +392,6 @@ static void decompress_h_cas0_53(int32_t* buf, int32_t* bandL, /* even */
 			buf[i + 1] = d1c + ((s0c + s0n) >> 1);
 		}
 	}
-
 	buf[i] = s0n;
 	if(total_width & 1)
 	{
@@ -438,9 +429,7 @@ static void decompress_h_cas1_53(int32_t* buf, int32_t* bandL, /* odd */
 		dc = dn;
 		s1 = s2;
 	}
-
 	buf[i] = dc;
-
 	if(!(total_width & 1))
 	{
 		int32_t dn = bandL[total_width / 2 - 1] - ((s1 + 1) >> 1);
@@ -503,7 +492,6 @@ static void decompress_v_cas0_53(int32_t* buf, int32_t* bandL, const uint32_t hL
 		dest += strideDest;
 	}
 }
-
 /** Vertical inverse 5x3 wavelet transform for one column, when top-most
  * pixel is on odd coordinate */
 static void decompress_v_cas1_53(int32_t* buf, int32_t* bandL, const uint32_t hL,
@@ -551,7 +539,6 @@ static void decompress_v_cas1_53(int32_t* buf, int32_t* bandL, const uint32_t hL
 		dest += strideDest;
 	}
 }
-
 /* <summary>                            */
 /* Inverse 5-3 wavelet transform in 1-D for one row. */
 /* </summary>                           */
@@ -800,7 +787,6 @@ static bool decompress_v_mt_53(uint32_t num_threads, size_t data_size, dwt_data<
 	}
 	return true;
 }
-
 /* <summary>                            */
 /* Inverse wavelet transform in 2-D.    */
 /* </summary>                           */
@@ -1009,7 +995,6 @@ static void decompress_step2_97(const Params97& d, float c)
 	}
 #endif
 }
-
 /* <summary>                             */
 /* Inverse 9-7 wavelet transform in 1-D. */
 /* </summary>                            */
@@ -1026,7 +1011,6 @@ static void decompress_step_97(dwt_data<vec4f>* GRK_RESTRICT dwt)
 	decompress_step2_97(makeParams97(dwt, true, false), dwt_beta);
 	decompress_step2_97(makeParams97(dwt, false, false), dwt_alpha);
 }
-
 static void interleave_h_97(dwt_data<vec4f>* GRK_RESTRICT dwt, float* GRK_RESTRICT bandL,
 							const uint32_t strideL, float* GRK_RESTRICT bandH,
 							const uint32_t strideH, uint32_t remaining_height)
@@ -1076,13 +1060,11 @@ static void interleave_h_97(dwt_data<vec4f>* GRK_RESTRICT dwt, float* GRK_RESTRI
 				bi[3] = band[j];
 			}
 		}
-
 		bi = (float*)(dwt->mem + 1 - dwt->parity);
 		x0 = dwt->win_h.x0;
 		x1 = dwt->win_h.x1;
 	}
 }
-
 static void decompress_h_strip_97(dwt_data<vec4f>* GRK_RESTRICT horiz, const uint32_t rh,
 								  float* GRK_RESTRICT bandL, const uint32_t strideL,
 								  float* GRK_RESTRICT bandH, const uint32_t strideH, float* dest,
@@ -1171,7 +1153,6 @@ static bool decompress_h_mt_97(uint32_t num_threads, size_t data_size,
 	}
 	return true;
 }
-
 static void interleave_v_97(dwt_data<vec4f>* GRK_RESTRICT dwt, float* GRK_RESTRICT bandL,
 							const uint32_t strideL, float* GRK_RESTRICT bandH,
 							const uint32_t strideH, uint32_t nb_elts_read)
@@ -1183,7 +1164,6 @@ static void interleave_v_97(dwt_data<vec4f>* GRK_RESTRICT dwt, float* GRK_RESTRI
 		memcpy((float*)bi, band, nb_elts_read * sizeof(float));
 		band += strideL;
 	}
-
 	bi = dwt->mem + 1 - dwt->parity;
 	band = bandH + dwt->win_h.x0 * strideH;
 	for(uint32_t i = dwt->win_h.x0; i < dwt->win_h.x1; ++i, bi += 2)
@@ -1227,7 +1207,6 @@ static void decompress_v_strip_97(dwt_data<vec4f>* GRK_RESTRICT vert, const uint
 		}
 	}
 }
-
 static bool decompress_v_mt_97(uint32_t num_threads, size_t data_size,
 							   dwt_data<vec4f>& GRK_RESTRICT vert, const uint32_t rw,
 							   const uint32_t rh, float* GRK_RESTRICT bandL, const uint32_t strideL,
@@ -1276,7 +1255,6 @@ static bool decompress_v_mt_97(uint32_t num_threads, size_t data_size,
 
 	return true;
 }
-
 /* <summary>                             */
 /* Inverse 9-7 wavelet transform in 2-D. */
 /* </summary>                            */
@@ -1362,7 +1340,6 @@ static bool decompress_tile_97(TileComponent* GRK_RESTRICT tilec, uint32_t numre
 	horiz.release();
 	return true;
 }
-
 /**
  * ************************************************************************************
  *
@@ -1401,7 +1378,6 @@ class PartialInterleaver
 		for(uint32_t i = 0; i < height; i++)
 		{
 			bool ret = false;
-
 			// read one row of L band and write interleaved
 			if(dwt->sn_full)
 			{
@@ -1439,7 +1415,6 @@ class PartialInterleaver
 		// read one vertical strip (of width x_num_elements <= v_chunk) of L band and write
 		// interleaved
 		bool ret = false;
-
 		if(dwt->sn_full)
 		{
 			ret =
@@ -1464,7 +1439,6 @@ class PartialInterleaver
 		GRK_UNUSED(ret);
 	}
 };
-
 template<typename T, uint32_t FILTER_WIDTH, uint32_t VERT_PASS_WIDTH>
 class Partial53 : public PartialInterleaver<T, FILTER_WIDTH, VERT_PASS_WIDTH>
 {
@@ -1767,7 +1741,6 @@ class Partial53 : public PartialInterleaver<T, FILTER_WIDTH, VERT_PASS_WIDTH>
 			}
 		}
 	}
-
   private:
 	void adjust_bounds(dwt_data<T>* dwt, int64_t sn_full, int64_t dn_full, int64_t* sn, int64_t* dn)
 	{
@@ -1784,7 +1757,6 @@ class Partial53 : public PartialInterleaver<T, FILTER_WIDTH, VERT_PASS_WIDTH>
 			(*sn)--;
 		}
 	}
-
 #ifdef GRK_DEBUG_SPARSE
 	inline T get_S(T* buf, int64_t i)
 	{
@@ -1812,7 +1784,6 @@ class Partial53 : public PartialInterleaver<T, FILTER_WIDTH, VERT_PASS_WIDTH>
 	}
 #endif
 };
-
 template<typename T, uint32_t FILTER_WIDTH, uint32_t VERT_PASS_WIDTH>
 class Partial97 : public PartialInterleaver<T, FILTER_WIDTH, VERT_PASS_WIDTH>
 {
@@ -1826,7 +1797,6 @@ class Partial97 : public PartialInterleaver<T, FILTER_WIDTH, VERT_PASS_WIDTH>
 		decompress_step_97(dwt);
 	}
 };
-
 // Notes:
 // 1. line buffer 0 offset == dwt->win_l.x0
 // 2. dwt->memL and dwt->memH are only set for partial decode
@@ -1858,7 +1828,6 @@ static Params97 makeParams97(dwt_data<vec4f>* dwt, bool isBandL, bool step1)
 		rc.dataPrev = parityOffset ? rc.data - 2 : rc.data;
 		rc.lenMax = (uint32_t)lenMax;
 	}
-
 	if(memPartial)
 	{
 		assert((uint64_t)rc.data >= (uint64_t)dwt->allocatedMem);
@@ -1867,7 +1836,6 @@ static Params97 makeParams97(dwt_data<vec4f>* dwt, bool isBandL, bool step1)
 
 	return rc;
 };
-
 /**
  * ************************************************************************************
  *
@@ -1907,23 +1875,18 @@ bool decompress_partial_tile(TileComponent* GRK_RESTRICT tilec, uint16_t compno,
 	auto fullRes = tilec->tileCompResolution;
 	auto fullResTopLevel = tilec->tileCompResolution + numres - 1;
 	if(!fullResTopLevel->width() || !fullResTopLevel->height())
-	{
 		return true;
-	}
 
 	const uint16_t debug_compno = 0;
 	GRK_UNUSED(debug_compno);
 	const uint32_t HORIZ_PASS_HEIGHT = sizeof(T) / sizeof(int32_t);
 	const uint32_t pad = FILTER_WIDTH * std::max<uint32_t>(HORIZ_PASS_HEIGHT, VERT_PASS_WIDTH) *
 						 sizeof(T) / sizeof(int32_t);
-
 	auto synthesisWindow = bounds;
 	synthesisWindow = synthesisWindow.scaleDownCeilPow2(numresolutions - 1U - (numres - 1U));
-
 	assert(fullResTopLevel->intersection(synthesisWindow) == synthesisWindow);
 	synthesisWindow =
 		synthesisWindow.pan(-(int64_t)fullResTopLevel->x0, -(int64_t)fullResTopLevel->y0);
-
 	if(numres == 1U)
 	{
 		// simply copy into tile component buffer
@@ -1934,10 +1897,8 @@ bool decompress_partial_tile(TileComponent* GRK_RESTRICT tilec, uint16_t compno,
 		GRK_UNUSED(ret);
 		return true;
 	}
-
 	D decompressor;
 	size_t num_threads = ExecSingleton::get()->num_workers();
-
 	for(uint8_t resno = 1; resno < numres; resno++)
 	{
 		auto fullResLower = fullRes;
@@ -1955,13 +1916,13 @@ bool decompress_partial_tile(TileComponent* GRK_RESTRICT tilec, uint16_t compno,
 		// 1. set up windows for horizontal and vertical passes
 		grk_rect32 bandWindowRect[BAND_NUM_ORIENTATIONS];
 		bandWindowRect[BAND_ORIENT_LL] =
-			*((grk_rect32*)tilec->getBuffer()->getBandWindowBufferPaddedREL(resno, BAND_ORIENT_LL));
+			grk_rect32(tilec->getBuffer()->getBandWindowBufferPaddedREL(resno, BAND_ORIENT_LL));
 		bandWindowRect[BAND_ORIENT_HL] =
-			*((grk_rect32*)tilec->getBuffer()->getBandWindowBufferPaddedREL(resno, BAND_ORIENT_HL));
+			grk_rect32(tilec->getBuffer()->getBandWindowBufferPaddedREL(resno, BAND_ORIENT_HL));
 		bandWindowRect[BAND_ORIENT_LH] =
-			*((grk_rect32*)tilec->getBuffer()->getBandWindowBufferPaddedREL(resno, BAND_ORIENT_LH));
+			grk_rect32(tilec->getBuffer()->getBandWindowBufferPaddedREL(resno, BAND_ORIENT_LH));
 		bandWindowRect[BAND_ORIENT_HH] =
-			*((grk_rect32*)tilec->getBuffer()->getBandWindowBufferPaddedREL(resno, BAND_ORIENT_HH));
+			grk_rect32(tilec->getBuffer()->getBandWindowBufferPaddedREL(resno, BAND_ORIENT_HH));
 
 		// band windows in band coordinates - needed to pre-allocate sparse blocks
 		grk_rect32 tileBandWindowRect[BAND_NUM_ORIENTATIONS];
@@ -1979,15 +1940,15 @@ bool decompress_partial_tile(TileComponent* GRK_RESTRICT tilec, uint16_t compno,
 			if(!sa->alloc(temp.growIPL(2 * FILTER_WIDTH, fullRes->width(), fullRes->height()), true))
 				goto cleanup;
 		}
-		auto resWindowRect = *((grk_rect32*)tilec->getBuffer()->getResWindowBufferREL(resno));
+		auto resWindowRect = grk_rect32(tilec->getBuffer()->getResWindowBufferREL(resno));
 		if(!sa->alloc(resWindowRect, true))
 			goto cleanup;
 		// two windows formed by horizontal pass and used as input for vertical pass
 		grk_rect32 splitWindowRect[SPLIT_NUM_ORIENTATIONS];
 		splitWindowRect[SPLIT_L] =
-			*((grk_rect32*)tilec->getBuffer()->getResWindowBufferSplitREL(resno, SPLIT_L));
+			grk_rect32(tilec->getBuffer()->getResWindowBufferSplitREL(resno, SPLIT_L));
 		splitWindowRect[SPLIT_H] =
-			*((grk_rect32*)tilec->getBuffer()->getResWindowBufferSplitREL(resno, SPLIT_H));
+			grk_rect32(tilec->getBuffer()->getResWindowBufferSplitREL(resno, SPLIT_H));
 		for(uint32_t k = 0; k < SPLIT_NUM_ORIENTATIONS; ++k)
 		{
 			auto temp = splitWindowRect[k];
@@ -2049,7 +2010,6 @@ bool decompress_partial_tile(TileComponent* GRK_RESTRICT tilec, uint16_t compno,
 			delete job;
 			return 0;
 		};
-
 		auto executor_v = [compno, resno, sa, resWindowRect,
 						   &decompressor](decompress_job<T, dwt_data<T>>* job) {
 			GRK_UNUSED(compno);
@@ -2127,12 +2087,12 @@ bool decompress_partial_tile(TileComponent* GRK_RESTRICT tilec, uint16_t compno,
 			if(num_threads == 1 || step_j < HORIZ_PASS_HEIGHT)
 				num_jobs = 1;
 			tf::Taskflow taskflow;
-			tf::Task* node = nullptr;
+			tf::Task* tasks = nullptr;
 			if(num_jobs > 1)
 			{
-				node = new tf::Task[num_jobs];
+				tasks = new tf::Task[num_jobs];
 				for(uint64_t i = 0; i < num_jobs; i++)
-					node[i] = taskflow.placeholder();
+					tasks[i] = taskflow.placeholder();
 			}
 			bool blockError = false;
 			for(uint32_t j = 0; j < num_jobs; ++j)
@@ -2147,23 +2107,21 @@ bool decompress_partial_tile(TileComponent* GRK_RESTRICT tilec, uint16_t compno,
 					delete job;
 					goto cleanup;
 				}
-				if(node)
-					node[j].work([job, executor_h, &blockError] { blockError = executor_h(job); });
+				if(tasks)
+					tasks[j].work([job, executor_h, &blockError] { blockError = executor_h(job); });
 				else
 					blockError = (executor_h(job) != 0);
 			}
-			if(node)
+			if(tasks)
 			{
 				ExecSingleton::get()->run(taskflow).wait();
-				delete[] node;
+				delete[] tasks;
 			}
 			if(blockError)
 				goto cleanup;
 		}
-
 		data_size = (resWindowRect.height() + 2 * FILTER_WIDTH) * VERT_PASS_WIDTH * sizeof(T) /
 					sizeof(int32_t);
-
 		vert.win_l = bandWindowRect[BAND_ORIENT_LL].dimY();
 		vert.win_h = bandWindowRect[BAND_ORIENT_LH].dimY();
 		vert.resno = resno;
@@ -2213,7 +2171,6 @@ bool decompress_partial_tile(TileComponent* GRK_RESTRICT tilec, uint16_t compno,
 				   tilec->getBuffer()->getResWindowBufferHighestREL()->stride, true);
 	assert(ret);
 	GRK_UNUSED(ret);
-
 #ifdef GRK_DEBUG_VALGRIND
 	{
 		GRK_INFO("Final synthesis window for component %d", compno);
@@ -2244,7 +2201,6 @@ bool decompress_partial_tile(TileComponent* GRK_RESTRICT tilec, uint16_t compno,
 cleanup:
 	return rc;
 }
-
 bool WaveletReverse::decompress(TileProcessor* p_tcd, TileComponent* tilec, uint16_t compno,
 								grk_rect32 window, uint8_t numres, uint8_t qmfbid)
 {
