@@ -20,12 +20,11 @@ namespace grk
 {
 const uint8_t gain_b[4] = {0, 1, 1, 2};
 
-DecompressScheduler::DecompressScheduler() : success(true), decodeBlocks(nullptr)
+DecompressScheduler::DecompressScheduler() : success(true)
 {}
 
 void DecompressScheduler::prepareScheduleDecompress(TileComponent* tilec,
 													  TileComponentCodingParams* tccp,
-													  DecompressBlocks &blocks,
 													  uint8_t prec)
 {
 	bool wholeTileDecoding = tilec->isWholeTileDecoding();
@@ -74,10 +73,9 @@ void DecompressScheduler::prepareScheduleDecompress(TileComponent* tilec,
 }
 bool DecompressScheduler::scheduleDecompress(TileComponent* tilec,TileCodingParams* tcp,
 												TileComponentCodingParams* tccp,
-											   DecompressBlocks &blocks,
 											   uint8_t prec)
 {
-	prepareScheduleDecompress(tilec, tccp, blocks,prec);
+	prepareScheduleDecompress(tilec, tccp, prec);
 	// nominal code block dimensions
 	uint16_t codeblock_width = (uint16_t)(tccp->cblkw ? (uint32_t)1 << tccp->cblkw : 0);
 	uint16_t codeblock_height = (uint16_t)(tccp->cblkh ? (uint32_t)1 << tccp->cblkh : 0);
@@ -85,9 +83,9 @@ bool DecompressScheduler::scheduleDecompress(TileComponent* tilec,TileCodingPara
 		t1Implementations.push_back(
 			T1Factory::makeT1(false, tcp, codeblock_width, codeblock_height));
 
-	return decompress(blocks);
+	return decompress();
 }
-bool DecompressScheduler::decompress(DecompressBlocks &blocks)
+bool DecompressScheduler::decompress()
 {
 	if(!blocks.size())
 		return true;
@@ -112,39 +110,39 @@ bool DecompressScheduler::decompress(DecompressBlocks &blocks)
 
 		return success;
 	}
-	size_t maxBlocks = 0;
-	for(auto& rb : blocks)
-		maxBlocks += rb.size();
-	decodeBlocks = new DecompressBlockExec*[maxBlocks];
-	size_t ct = 0;
-	for(auto& rb : blocks){
-		for (auto& block : rb) {
-			decodeBlocks[ct++] = block;
-		}
-	}
 	tf::Taskflow taskflow;
-	auto tasks = new tf::Task[maxBlocks];
-	for(uint64_t i = 0; i < maxBlocks; i++)
-		tasks[i] = taskflow.placeholder();
-	for(uint64_t i = 0; i < maxBlocks; i++)
-	{
-		auto block = decodeBlocks[i];
-		tasks[i].work([this, block] {
-			if(!success)
-			{
-				delete block;
-			} else {
-				auto threadnum = ExecSingleton::get()->this_worker_id();
-				auto impl = t1Implementations[(size_t)threadnum];
-				if(!decompressBlock(impl, block))
-					success = false;
-			}
-		});
+	auto resTasks = new tf::Task*[blocks.size()];
+	size_t resno = 0;
+	for(auto& rb : blocks){
+		auto resTaskArray = new tf::Task[rb.size()];
+		for (size_t blockno = 0; blockno < rb.size(); ++blockno)
+			resTaskArray[blockno] =  taskflow.placeholder();
+		resTasks[resno++] = resTaskArray;
+	}
+
+	resno = 0;
+	for(auto& rb : blocks){
+		size_t blockno = 0;
+		for (auto& block : rb) {
+			resTasks[resno][blockno++].work([this, block] {
+				if(!success)
+				{
+					delete block;
+				} else {
+					auto threadnum = ExecSingleton::get()->this_worker_id();
+					auto impl = t1Implementations[(size_t)threadnum];
+					if(!decompressBlock(impl, block))
+						success = false;
+				}
+			});
+		}
+		resno++;
 	}
 	ExecSingleton::get()->run(taskflow).wait();
 
-	delete[] decodeBlocks;
-	delete[] tasks;
+	for(size_t resno = 0; resno < blocks.size(); ++resno)
+		delete[] resTasks[resno];
+	delete[] resTasks;
 
 	return success;
 }

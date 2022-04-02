@@ -31,7 +31,6 @@ class CompressScheduler : public Scheduler
 
 	Tile* tile;
 	bool needsRateControl;
-	mutable std::mutex block_mutex;
 	CompressBlockExec** encodeBlocks;
 	std::atomic<int64_t> blockCount;
 };

@@ -33,15 +33,14 @@ class DecompressScheduler : public Scheduler
 	bool scheduleDecompress(TileComponent* tilec,
 							TileCodingParams* tcp,
 							TileComponentCodingParams* tccp,
-							DecompressBlocks &blocks,
 							uint8_t prec);
-	bool decompress(DecompressBlocks &blocks);
+	bool decompress(void);
   private:
 	void prepareScheduleDecompress(TileComponent* tilec, TileComponentCodingParams* tccp,
-									DecompressBlocks &blocks, uint8_t prec);
+									uint8_t prec);
 	bool decompressBlock(T1Interface* impl, DecompressBlockExec *block);
 	std::atomic_bool success;
-	DecompressBlockExec** decodeBlocks;
+	DecompressBlocks blocks;
 };
 
 } // namespace grk
