@@ -26,12 +26,13 @@ T1DecompressScheduler::~T1DecompressScheduler()
 }
 bool T1DecompressScheduler::prepareScheduleDecompress(TileComponent* tilec,
 													  TileComponentCodingParams* tccp,
-													  std::vector<DecompressBlockExec*>* blocks,
+													  DecompressBlocks &blocks,
 													  uint8_t prec)
 {
 	bool wholeTileDecoding = tilec->isWholeTileDecoding();
 	for(uint8_t resno = 0; resno <= tilec->highestResolutionDecompressed; ++resno)
 	{
+		ResDecompressBlocks resBlocks;
 		auto res = tilec->tileCompResolution + resno;
 		for(uint8_t bandIndex = 0; bandIndex < res->numTileBandWindows; ++bandIndex)
 		{
@@ -63,17 +64,19 @@ bool T1DecompressScheduler::prepareScheduleDecompress(TileComponent* tilec,
 						block->stepsize = band->stepsize;
 						block->k_msbs = (uint8_t)(band->numbps - cblk->numbps);
 						block->R_b = prec + gain_b[band->orientation];
-						blocks->push_back(block);
+						resBlocks.push_back(block);
 					}
 				}
 			}
 		}
+		if (!resBlocks.empty())
+			blocks.push_back(resBlocks);
 	}
 	return true;
 }
 bool T1DecompressScheduler::scheduleDecompress(TileCodingParams* tcp, uint16_t blockw,
 											   uint16_t blockh,
-											   std::vector<DecompressBlockExec*>* blocks)
+											   DecompressBlocks &blocks)
 {
 	// nominal code block dimensions
 	uint16_t codeblock_width = (uint16_t)(blockw ? (uint32_t)1 << blockw : 0);
@@ -101,34 +104,41 @@ bool T1DecompressScheduler::decompressBlock(T1Interface* impl, DecompressBlockEx
 
 	return true;
 }
-bool T1DecompressScheduler::decompress(std::vector<DecompressBlockExec*>* blocks)
+bool T1DecompressScheduler::decompress(DecompressBlocks &blocks)
 {
-	if(!blocks || !blocks->size())
+	if(!blocks.size())
 		return true;
 	size_t num_threads = ExecSingleton::get()->num_workers();
 	success = true;
 	if(num_threads == 1)
 	{
-		for(size_t i = 0; i < blocks->size(); ++i)
-		{
-			auto block = blocks->operator[](i);
-			if(!success)
-			{
-				delete block;
-			}
-			else
-			{
-				auto impl = t1Implementations[(size_t)0];
-				if(!decompressBlock(impl, block))
-					success = false;
+		for(auto& rb : blocks){
+			for (auto& block : rb) {
+				if(!success)
+				{
+					delete block;
+				}
+				else
+				{
+					auto impl = t1Implementations[(size_t)0];
+					if(!decompressBlock(impl, block))
+						success = false;
+				}
 			}
 		}
+
 		return success;
 	}
-	const size_t maxBlocks = blocks->size();
+	size_t maxBlocks = 0;
+	for(auto& rb : blocks)
+		maxBlocks += rb.size();
 	decodeBlocks = new DecompressBlockExec*[maxBlocks];
-	for(uint64_t i = 0; i < maxBlocks; ++i)
-		decodeBlocks[i] = blocks->operator[](i);
+	size_t ct = 0;
+	for(auto& rb : blocks){
+		for (auto& block : rb) {
+			decodeBlocks[ct++] = block;
+		}
+	}
 	std::atomic<int> blockCount(-1);
 	tf::Taskflow taskflow;
 	auto numThreads = ExecSingleton::get()->num_workers();

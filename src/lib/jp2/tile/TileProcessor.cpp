@@ -446,21 +446,23 @@ bool TileProcessor::decompressT1(void)
 					continue;
 				}
 			}
-			std::vector<DecompressBlockExec*> blocks;
+			DecompressBlocks blocks;
 			auto scheduler = std::unique_ptr<T1DecompressScheduler>(new T1DecompressScheduler());
-			if(!scheduler->prepareScheduleDecompress(tilec, tccp, &blocks,
+			if(!scheduler->prepareScheduleDecompress(tilec, tccp, blocks,
 													 headerImage->comps->prec))
 				return false;
 			if(!tilec->getBuffer()->alloc())
 			{
 				// clean up
-				for(auto& b : blocks)
-					delete b;
+				for(auto& rb : blocks){
+					for (auto& b : rb)
+						delete b;
+				}
 				GRK_ERROR("Not enough memory for tile data");
 				return false;
 			}
 			if(!scheduler->scheduleDecompress(tcp_, (uint16_t)tccp->cblkw, (uint16_t)tccp->cblkh,
-											  &blocks))
+											  blocks))
 				return false;
 
 			if(doPostT1)
