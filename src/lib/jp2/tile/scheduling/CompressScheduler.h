@@ -30,6 +30,7 @@ class CompressScheduler : public Scheduler
 	void compress(T1Interface* impl, CompressBlockExec* block);
 
 	Tile* tile;
+	mutable std::mutex distortion_mutex;
 	bool needsRateControl;
 	CompressBlockExec** encodeBlocks;
 	std::atomic<int64_t> blockCount;
