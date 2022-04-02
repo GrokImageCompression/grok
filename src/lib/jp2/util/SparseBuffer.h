@@ -28,7 +28,7 @@ struct SparseBuffer
 {
 	SparseBuffer();
 	~SparseBuffer();
-	grkBufferU8* pushBack(uint8_t* buf, size_t len, bool ownsData);
+	grk_buf8* pushBack(uint8_t* buf, size_t len, bool ownsData);
 	void incrementCurrentChunkOffset(size_t offset);
 	size_t getCurrentChunkLength(void);
 	// Treat segmented buffer as single contiguous buffer, and get current pointer
@@ -52,10 +52,10 @@ struct SparseBuffer
 	 */
 	bool zeroCopyRead(uint8_t** ptr, size_t chunk_len);
 	size_t getCurrentChunkOffset(void);
-	void pushBack(grkBufferU8* chunk);
+	void pushBack(grk_buf8* chunk);
 	size_t dataLen; /* total length of all chunks*/
 	size_t currentChunkId; /* current index into chunk vector */
-	std::vector<grkBufferU8*> chunks;
+	std::vector<grk_buf8*> chunks;
 };
 
 } // namespace grk

@@ -194,7 +194,7 @@ struct BufferedStream : public IBufferedStream
 	 */
 	uint32_t status_;
 
-	grkBufferU8* buf_;
+	grk_buf8* buf_;
 
 	// number of bytes read in, or slated for write
 	size_t buffered_bytes_;

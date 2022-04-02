@@ -600,7 +600,7 @@ bool T2Decompress::readPacketData(Resolution* res, const PacketIter* p_pi, Spars
 					// correct for truncated packet
 					if(seg->numBytesInPacket > maxSegmentLength)
 						seg->numBytesInPacket = (uint32_t)maxSegmentLength;
-					cblk->seg_buffers.push_back(new grkBufferU8(srcBuf->getCurrentChunkPtr(),
+					cblk->seg_buffers.push_back(new grk_buf8(srcBuf->getCurrentChunkPtr(),
 																seg->numBytesInPacket, false));
 					srcBuf->incrementCurrentChunkOffset(seg->numBytesInPacket);
 					cblk->compressedStream.len += seg->numBytesInPacket;

@@ -99,13 +99,13 @@ size_t SparseBuffer::skip(size_t numBytes)
 	}
 	return numBytes;
 }
-grkBufferU8* SparseBuffer::pushBack(uint8_t* buf, size_t len, bool ownsData)
+grk_buf8* SparseBuffer::pushBack(uint8_t* buf, size_t len, bool ownsData)
 {
-	auto new_chunk = new grkBufferU8(buf, len, ownsData);
+	auto new_chunk = new grk_buf8(buf, len, ownsData);
 	pushBack(new_chunk);
 	return new_chunk;
 }
-void SparseBuffer::pushBack(grkBufferU8* chunk)
+void SparseBuffer::pushBack(grk_buf8* chunk)
 {
 	if(!chunk)
 		return;

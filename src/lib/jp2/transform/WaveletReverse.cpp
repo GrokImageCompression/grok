@@ -258,11 +258,11 @@ template<typename T, typename S>
 struct decompress_job
 {
 	decompress_job(S data,
-					grkSimpleBuf2d<T> winLL,
-				   grkSimpleBuf2d<T>  winHL,
-				   grkSimpleBuf2d<T>  winLH,
-				   grkSimpleBuf2d<T>  winHH,
-				   grkSimpleBuf2d<T> winDest,
+					grk_buf2d_simple<T> winLL,
+				   grk_buf2d_simple<T>  winHL,
+				   grk_buf2d_simple<T>  winLH,
+				   grk_buf2d_simple<T>  winHH,
+				   grk_buf2d_simple<T> winDest,
 				   uint32_t min_j, uint32_t max_j)
 		: data(data),
 		  winLL(winLL),
@@ -276,11 +276,11 @@ struct decompress_job
 		: data(data),  min_j(min_j), max_j(max_j)
 	{}
 	S data;
-	grkSimpleBuf2d<T> winLL;
-   grkSimpleBuf2d<T>  winHL;
-   grkSimpleBuf2d<T>  winLH;
-   grkSimpleBuf2d<T>  winHH;
-   grkSimpleBuf2d<T> winDest;
+	grk_buf2d_simple<T> winLL;
+   grk_buf2d_simple<T>  winHL;
+   grk_buf2d_simple<T>  winLH;
+   grk_buf2d_simple<T>  winHH;
+   grk_buf2d_simple<T> winDest;
 
 	uint32_t min_j;
 	uint32_t max_j;
@@ -588,9 +588,9 @@ static void decompress_h_53(const dwt_data<int32_t>* dwt, int32_t* bandL, int32_
 /* </summary>                           */
 /* Performs interleave, inverse wavelet transform and copy back to buffer */
 static void decompress_v_53(const dwt_data<int32_t>* dwt,
-							grkSimpleBuf2d<int32_t> winL,
-						   grkSimpleBuf2d<int32_t>  winH,
-						   grkSimpleBuf2d<int32_t> winDest,
+							grk_buf2d_simple<int32_t> winL,
+						   grk_buf2d_simple<int32_t>  winH,
+						   grk_buf2d_simple<int32_t> winDest,
 							uint32_t nb_cols)
 {
 	const uint32_t total_height = dwt->sn_full + dwt->dn_full;
@@ -658,9 +658,9 @@ static void decompress_v_53(const dwt_data<int32_t>* dwt,
 }
 
 static void decompress_h_strip_53(const dwt_data<int32_t>* horiz, uint32_t hMin, uint32_t hMax,
-		 	 	 	 	 	 	 	 grkSimpleBuf2d<int32_t> winL,
-									   grkSimpleBuf2d<int32_t>  winH,
-									   grkSimpleBuf2d<int32_t> winDest)
+		 	 	 	 	 	 	 	 grk_buf2d_simple<int32_t> winL,
+									   grk_buf2d_simple<int32_t>  winH,
+									   grk_buf2d_simple<int32_t> winDest)
 {
 	for(uint32_t j = hMin; j < hMax; ++j)
 	{
@@ -673,9 +673,9 @@ static void decompress_h_strip_53(const dwt_data<int32_t>* horiz, uint32_t hMin,
 
 static bool decompress_h_53(uint32_t numThreads, size_t data_size, dwt_data<int32_t>& horiz,
 							   dwt_data<int32_t>& vert, uint32_t resHeight,
-							   grkSimpleBuf2d<int32_t> winL,
-							   grkSimpleBuf2d<int32_t>  winH,
-							   grkSimpleBuf2d<int32_t> winDest)
+							   grk_buf2d_simple<int32_t> winL,
+							   grk_buf2d_simple<int32_t>  winH,
+							   grk_buf2d_simple<int32_t> winDest)
 {
 	if(numThreads == 1 || resHeight <= 1)
 	{
@@ -705,8 +705,8 @@ static bool decompress_h_53(uint32_t numThreads, size_t data_size, dwt_data<int3
 				horiz,
 				winL.incY(min_j),
 				winH.incY(min_j),
-				grkSimpleBuf2d<int32_t>(),
-				grkSimpleBuf2d<int32_t>(),
+				grk_buf2d_simple<int32_t>(),
+				grk_buf2d_simple<int32_t>(),
 				winDest.incY(min_j),
 				j * incrPerJob,
 				j < (numJobs - 1U) ? (j + 1U) * incrPerJob : resHeight);
@@ -732,9 +732,9 @@ static bool decompress_h_53(uint32_t numThreads, size_t data_size, dwt_data<int3
 }
 
 static void decompress_v_strip_53(const dwt_data<int32_t>* vert, uint32_t wMin, uint32_t wMax,
-		 	 	 	 	 	 	 	  grkSimpleBuf2d<int32_t> winL,
-									   grkSimpleBuf2d<int32_t>  winH,
-									   grkSimpleBuf2d<int32_t> winDest)
+		 	 	 	 	 	 	 	  grk_buf2d_simple<int32_t> winL,
+									   grk_buf2d_simple<int32_t>  winH,
+									   grk_buf2d_simple<int32_t> winDest)
 {
 	uint32_t j;
 	for(j = wMin; j + PLL_COLS_53 <= wMax; j += PLL_COLS_53)
@@ -750,9 +750,9 @@ static void decompress_v_strip_53(const dwt_data<int32_t>* vert, uint32_t wMin, 
 
 static bool decompress_v_53(uint32_t numThreads, size_t data_size, dwt_data<int32_t>& horiz,
 							   dwt_data<int32_t>& vert, uint32_t resWidth,
-							   grkSimpleBuf2d<int32_t> winL,
-							   grkSimpleBuf2d<int32_t>  winH,
-							   grkSimpleBuf2d<int32_t> winDest)
+							   grk_buf2d_simple<int32_t> winL,
+							   grk_buf2d_simple<int32_t>  winH,
+							   grk_buf2d_simple<int32_t> winDest)
 {
 	if(numThreads == 1 || resWidth <= 1)
 	{
@@ -781,9 +781,9 @@ static bool decompress_v_53(uint32_t numThreads, size_t data_size, dwt_data<int3
 			auto job = new decompress_job<int32_t, dwt_data<int32_t>>(
 				vert,
 				winL.incX(min_j),
-				grkSimpleBuf2d<int32_t>(),
+				grk_buf2d_simple<int32_t>(),
 				winH.incX(min_j),
-				grkSimpleBuf2d<int32_t>(),
+				grk_buf2d_simple<int32_t>(),
 				winDest.incX(min_j),
 				j * step, j < (numJobs - 1U) ? (j + 1U) * step : resWidth);
 			if(!job->data.alloc(data_size))
@@ -1018,8 +1018,8 @@ static void decompress_step_97(dwt_data<vec4f>* GRK_RESTRICT dwt)
 	decompress_step2_97(makeParams97(dwt, false, false), dwt_alpha);
 }
 static void interleave_h_97(dwt_data<vec4f>* GRK_RESTRICT dwt,
-		 	 	 	 	 	 grkSimpleBuf2d<float> winL,
-							 grkSimpleBuf2d<float>  winH,
+		 	 	 	 	 	 grk_buf2d_simple<float> winL,
+							 grk_buf2d_simple<float>  winH,
 							 uint32_t remaining_height)
 {
 	float* GRK_RESTRICT bi = (float*)(dwt->mem + dwt->parity);
@@ -1073,9 +1073,9 @@ static void interleave_h_97(dwt_data<vec4f>* GRK_RESTRICT dwt,
 	}
 }
 static void decompress_h_strip_97(dwt_data<vec4f>* GRK_RESTRICT horiz, const uint32_t resHeight,
-		 	 	 	 	 	 	 	 grkSimpleBuf2d<float> winL,
-									   grkSimpleBuf2d<float>  winH,
-									   grkSimpleBuf2d<float> winDest)
+		 	 	 	 	 	 	 	 grk_buf2d_simple<float> winL,
+									   grk_buf2d_simple<float>  winH,
+									   grk_buf2d_simple<float> winDest)
 {
     float* GRK_RESTRICT dest = winDest.buf_;
 	const uint32_t strideDest = winDest.stride_;
@@ -1118,9 +1118,9 @@ static void decompress_h_strip_97(dwt_data<vec4f>* GRK_RESTRICT horiz, const uin
 }
 static bool decompress_h_97(uint32_t numThreads, size_t data_size,
 							   dwt_data<vec4f>& GRK_RESTRICT horiz, const uint32_t resHeight,
-							   grkSimpleBuf2d<float> winL,
-							   grkSimpleBuf2d<float>  winH,
-							   grkSimpleBuf2d<float> winDest)
+							   grk_buf2d_simple<float> winL,
+							   grk_buf2d_simple<float>  winH,
+							   grk_buf2d_simple<float> winDest)
 {
 	uint32_t numJobs = numThreads;
 	if(resHeight < numJobs)
@@ -1146,8 +1146,8 @@ static bool decompress_h_97(uint32_t numThreads, size_t data_size,
 											horiz,
 											winL.incY(min_j),
 											winH.incY(min_j),
-											grkSimpleBuf2d<float>(),
-											grkSimpleBuf2d<float>(),
+											grk_buf2d_simple<float>(),
+											grk_buf2d_simple<float>(),
 											winDest.incY(min_j),
 											0,
 											(j < (numJobs - 1U) ? (j + 1U) * incrPerJob : resHeight) - min_j);
@@ -1172,8 +1172,8 @@ static bool decompress_h_97(uint32_t numThreads, size_t data_size,
 	return true;
 }
 static void interleave_v_97(dwt_data<vec4f>* GRK_RESTRICT dwt,
-							grkSimpleBuf2d<float> winL,
-						    grkSimpleBuf2d<float>  winH,
+							grk_buf2d_simple<float> winL,
+						    grk_buf2d_simple<float>  winH,
 							uint32_t nb_elts_read)
 {
 	auto bi = dwt->mem + dwt->parity;
@@ -1193,9 +1193,9 @@ static void interleave_v_97(dwt_data<vec4f>* GRK_RESTRICT dwt,
 }
 static void decompress_v_strip_97(dwt_data<vec4f>* GRK_RESTRICT vert, const uint32_t resWidth,
 								  const uint32_t resHeight,
-								  grkSimpleBuf2d<float> winL,
-								   grkSimpleBuf2d<float>  winH,
-								   grkSimpleBuf2d<float> winDest)
+								  grk_buf2d_simple<float> winL,
+								   grk_buf2d_simple<float>  winH,
+								   grk_buf2d_simple<float> winDest)
 {
 	uint32_t j;
 	const size_t vec4f_elts = sizeof(vec4f) / sizeof(float);
@@ -1229,9 +1229,9 @@ static void decompress_v_strip_97(dwt_data<vec4f>* GRK_RESTRICT vert, const uint
 static bool decompress_v_97(uint32_t numThreads, size_t data_size,
 							   dwt_data<vec4f>& GRK_RESTRICT vert, const uint32_t resWidth,
 							   const uint32_t resHeight,
-							   grkSimpleBuf2d<float> winL,
-							   grkSimpleBuf2d<float>  winH,
-							   grkSimpleBuf2d<float> winDest)
+							   grk_buf2d_simple<float> winL,
+							   grk_buf2d_simple<float>  winH,
+							   grk_buf2d_simple<float> winDest)
 {
 	auto numJobs = numThreads;
 	if(resWidth < numJobs)
@@ -1254,9 +1254,9 @@ static bool decompress_v_97(uint32_t numThreads, size_t data_size,
 			auto job = new decompress_job<float, dwt_data<vec4f>>(
 							vert,
 							winL.incX(min_j),
-							grkSimpleBuf2d<float>(),
+							grk_buf2d_simple<float>(),
 							winH.incX(min_j),
-							grkSimpleBuf2d<float>(),
+							grk_buf2d_simple<float>(),
 							winDest.incX(min_j),
 							0,
 							(j < (numJobs - 1U) ? (j + 1U) * incrPerJob : resWidth) - min_j);

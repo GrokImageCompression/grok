@@ -62,7 +62,7 @@ struct Layer
 };
 
 // note: block lives in canvas coordinates
-struct Codeblock : public grkBuffer2d<int32_t, AllocatorAligned>, public ICacheable
+struct Codeblock : public grk_buf2d<int32_t, AllocatorAligned>, public ICacheable
 {
 	Codeblock()
 		: numbps(0), numlenbits(0), numPassesInPacket(0)
@@ -76,7 +76,7 @@ struct Codeblock : public grkBuffer2d<int32_t, AllocatorAligned>, public ICachea
 		compressedStream.dealloc();
 	}
 	Codeblock(const Codeblock& rhs)
-		: grkBuffer2d(rhs), numbps(rhs.numbps), numlenbits(rhs.numlenbits),
+		: grk_buf2d(rhs), numbps(rhs.numbps), numlenbits(rhs.numlenbits),
 		  numPassesInPacket(rhs.numPassesInPacket)
 #ifdef DEBUG_LOSSLESS_T2
 		  ,
@@ -108,7 +108,7 @@ struct Codeblock : public grkBuffer2d<int32_t, AllocatorAligned>, public ICachea
 	{
 		(*(grk_rect32*)this) = r;
 	}
-	grkBufferU8 compressedStream;
+	grk_buf8 compressedStream;
 	uint8_t numbps;
 	uint8_t numlenbits;
 	uint32_t numPassesInPacket; /* number of passes encoded in current packet */
@@ -238,7 +238,7 @@ struct DecompressCodeblock : public Codeblock
 	size_t getSegBuffersLen()
 	{
 		return std::accumulate(seg_buffers.begin(), seg_buffers.end(), (size_t)0,
-							   [](const size_t s, grkBufferU8* a) { return (s + a->len); });
+							   [](const size_t s, grk_buf8* a) { return (s + a->len); });
 	}
 	bool copyToContiguousBuffer(uint8_t* buffer)
 	{
@@ -260,9 +260,9 @@ struct DecompressCodeblock : public Codeblock
 		cleanUpSegBuffers();
 		delete[] segs;
 		segs = nullptr;
-		grkBuffer2d::dealloc();
+		grk_buf2d::dealloc();
 	}
-	std::vector<grkBufferU8*> seg_buffers;
+	std::vector<grk_buf8*> seg_buffers;
 
   private:
 	Segment* segs; /* information on segments */

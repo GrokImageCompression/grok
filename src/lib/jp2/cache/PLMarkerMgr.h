@@ -23,7 +23,7 @@
 namespace grk
 {
 // raw markers - PL is stored using comma code
-typedef std::vector<grkBufferU8*> PL_MARKER;
+typedef std::vector<grk_buf8*> PL_MARKER;
 typedef std::map<uint32_t, PL_MARKER*> PL_MARKERS;
 
 struct PLMarkerMgr
@@ -54,7 +54,7 @@ struct PLMarkerMgr
   private:
 	void clearMarkers(void);
 	bool findMarker(uint32_t index, bool compress);
-	grkBufferU8* addNewMarker(uint8_t* data, uint16_t len);
+	grk_buf8* addNewMarker(uint8_t* data, uint16_t len);
 	PL_MARKERS* rawMarkers_;
 	PL_MARKERS::iterator currMarkerIter_;
 
@@ -71,7 +71,7 @@ struct PLMarkerMgr
 	bool sequential_;
 	uint32_t packetLen_;
 	uint32_t currMarkerBufIndex_;
-	grkBufferU8* currMarkerBuf_;
+	grk_buf8* currMarkerBuf_;
 	///////////////////////////////
 
 	bool enabled_;

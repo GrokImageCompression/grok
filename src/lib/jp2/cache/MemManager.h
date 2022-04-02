@@ -87,27 +87,27 @@ struct AllocatorAligned
 	}
 };
 template<typename T, template<typename TT> typename A>
-struct grkBuffer : A<T>
+struct grk_buf : A<T>
 {
-	grkBuffer(T* buffer, size_t off, size_t length, bool ownsData)
+	grk_buf(T* buffer, size_t off, size_t length, bool ownsData)
 		: buf(buffer), offset(off), len(length), owns_data(ownsData)
 	{}
-	grkBuffer(T* buffer, size_t length) : grkBuffer(buffer, 0, length, false) {}
-	grkBuffer() : grkBuffer(0, 0, 0, false) {}
-	grkBuffer(T* buffer, size_t length, bool ownsData) : grkBuffer(buffer, 0, length, ownsData) {}
-	virtual ~grkBuffer()
+	grk_buf(T* buffer, size_t length) : grk_buf(buffer, 0, length, false) {}
+	grk_buf() : grk_buf(0, 0, 0, false) {}
+	grk_buf(T* buffer, size_t length, bool ownsData) : grk_buf(buffer, 0, length, ownsData) {}
+	virtual ~grk_buf()
 	{
 		dealloc();
 	}
-	explicit grkBuffer(const grkBuffer& rhs)
+	explicit grk_buf(const grk_buf& rhs)
 	{
 		this->operator=(rhs);
 	}
-	grkBuffer& operator=(const grkBuffer& rhs) // copy assignment
+	grk_buf& operator=(const grk_buf& rhs) // copy assignment
 	{
 		return operator=(&rhs);
 	}
-	grkBuffer& operator=(const grkBuffer* rhs) // copy assignment
+	grk_buf& operator=(const grk_buf* rhs) // copy assignment
 	{
 		if(this != rhs)
 		{ // self-assignment check expected
@@ -169,13 +169,13 @@ struct grkBuffer : A<T>
 	// set buf to buf without owning it
 	void attach(T* buffer)
 	{
-		grkBuffer<T, A>::dealloc();
+		grk_buf<T, A>::dealloc();
 		buf = buffer;
 	}
 	// set buf to buf and own it
 	void acquire(T* buffer)
 	{
-		grkBuffer<T, A>::dealloc();
+		grk_buf<T, A>::dealloc();
 		buffer = buf;
 		owns_data = true;
 	}
@@ -201,13 +201,13 @@ struct grkBuffer : A<T>
 		{
 			if(offset > (size_t)(SIZE_MAX - (size_t)off))
 			{
-				GRK_WARN("grkBufferU8: overflow");
+				GRK_WARN("grk_buf8: overflow");
 				offset = len;
 			}
 			else if(offset + (size_t)off > len)
 			{
 #ifdef DEBUG_SEG_BUF
-				GRK_WARN("grkBufferU8: attempt to increment buffer offset out of bounds");
+				GRK_WARN("grk_buf8: attempt to increment buffer offset out of bounds");
 #endif
 				offset = len;
 			}
@@ -220,7 +220,7 @@ struct grkBuffer : A<T>
 		{
 			if(offset < (size_t)(-off))
 			{
-				GRK_WARN("grkBufferU8: underflow");
+				GRK_WARN("grk_buf8: underflow");
 				offset = 0;
 			}
 			else
@@ -241,68 +241,68 @@ struct grkBuffer : A<T>
 	bool owns_data; /* true if buffer manages the buf array */
 };
 
-using grkBufferU8 = grkBuffer<uint8_t, AllocatorVanilla>;
-using grkBufferU8Aligned = grkBuffer<uint8_t, AllocatorAligned>;
+using grk_buf8 = grk_buf<uint8_t, AllocatorVanilla>;
+using grk_buf8_aligned = grk_buf<uint8_t, AllocatorAligned>;
 
-template<typename T> struct grkSimpleBuf2d {
-	grkSimpleBuf2d() : grkSimpleBuf2d(nullptr,0){}
-	grkSimpleBuf2d(T *buf, uint32_t stride) :  buf_(buf), stride_(stride){}
-	grkSimpleBuf2d incX_IPL(size_t deltaX){
+template<typename T> struct grk_buf2d_simple {
+	grk_buf2d_simple() : grk_buf2d_simple(nullptr,0){}
+	grk_buf2d_simple(T *buf, uint32_t stride) :  buf_(buf), stride_(stride){}
+	grk_buf2d_simple incX_IPL(size_t deltaX){
 		buf_ += deltaX;
 
 		return *this;
 	}
-	grkSimpleBuf2d incX(size_t deltaX){
-		return grkSimpleBuf2d(buf_ + deltaX, stride_);
+	grk_buf2d_simple incX(size_t deltaX){
+		return grk_buf2d_simple(buf_ + deltaX, stride_);
 	}
-	grkSimpleBuf2d incY_IPL(size_t deltaY){
+	grk_buf2d_simple incY_IPL(size_t deltaY){
 		buf_ += deltaY * stride_;
 
 		return *this;
 	}
-	grkSimpleBuf2d incY(size_t deltaY){
-		return grkSimpleBuf2d(buf_ + deltaY * stride_, stride_);
+	grk_buf2d_simple incY(size_t deltaY){
+		return grk_buf2d_simple(buf_ + deltaY * stride_, stride_);
 	}
 	T *buf_;
 	uint32_t stride_;
 };
 
 template<typename T, template<typename TT> typename A>
-struct grkBuffer2d : protected grkBuffer<T, A>, public grk_rect32
+struct grk_buf2d : protected grk_buf<T, A>, public grk_rect32
 {
-	grkBuffer2d(T* buffer, bool ownsData, uint32_t w, uint32_t strd, uint32_t h)
-		: grkBuffer<T, A>(buffer, ownsData), grk_rect32(0, 0, w, h), stride(strd)
+	grk_buf2d(T* buffer, bool ownsData, uint32_t w, uint32_t strd, uint32_t h)
+		: grk_buf<T, A>(buffer, ownsData), grk_rect32(0, 0, w, h), stride(strd)
 	{}
-	grkBuffer2d(uint32_t w, uint32_t strd, uint32_t h) : grkBuffer2d(nullptr, false, w, strd, h) {}
-	grkBuffer2d(uint32_t w, uint32_t h) : grkBuffer2d(w, 0, h) {}
-	explicit grkBuffer2d(const grk_rect32* b)
-		: grkBuffer<T, A>(nullptr, false), grk_rect32(b->x0, b->y0, b->x1, b->y1), stride(0)
+	grk_buf2d(uint32_t w, uint32_t strd, uint32_t h) : grk_buf2d(nullptr, false, w, strd, h) {}
+	grk_buf2d(uint32_t w, uint32_t h) : grk_buf2d(w, 0, h) {}
+	explicit grk_buf2d(const grk_rect32* b)
+		: grk_buf<T, A>(nullptr, false), grk_rect32(b->x0, b->y0, b->x1, b->y1), stride(0)
 	{}
-	grkBuffer2d(void) : grkBuffer2d(nullptr, 0, 0, 0, false) {}
-	explicit grkBuffer2d(const grkBuffer2d& rhs)
-		: grkBuffer<T, A>(rhs), grk_rect32(rhs), stride(rhs.stride)
+	grk_buf2d(void) : grk_buf2d(nullptr, 0, 0, 0, false) {}
+	explicit grk_buf2d(const grk_buf2d& rhs)
+		: grk_buf<T, A>(rhs), grk_rect32(rhs), stride(rhs.stride)
 	{}
-	grkSimpleBuf2d<T> simple(void) const{
-		return grkSimpleBuf2d<T>(this->buf, this->stride);
+	grk_buf2d_simple<T> simple(void) const{
+		return grk_buf2d_simple<T>(this->buf, this->stride);
 	}
-	grkSimpleBuf2d<float> simpleF(void) const{
-		return grkSimpleBuf2d<float>((float*)this->buf, this->stride);
+	grk_buf2d_simple<float> simpleF(void) const{
+		return grk_buf2d_simple<float>((float*)this->buf, this->stride);
 	}
-	grkBuffer2d& operator=(const grkBuffer2d& rhs) // copy assignment
+	grk_buf2d& operator=(const grk_buf2d& rhs) // copy assignment
 	{
 		return operator=(&rhs);
 	}
-	grkBuffer2d& operator=(const grkBuffer2d* rhs) // copy assignment
+	grk_buf2d& operator=(const grk_buf2d* rhs) // copy assignment
 	{
 		if(this != rhs)
 		{ // self-assignment check expected
-			grkBuffer<T, A>::operator=(rhs);
+			grk_buf<T, A>::operator=(rhs);
 			grk_rect32::operator=(rhs);
 			stride = rhs->stride;
 		}
 		return *this;
 	}
-	virtual ~grkBuffer2d() = default;
+	virtual ~grk_buf2d() = default;
 	bool alloc2d(bool clear)
 	{
 		if(!this->buf && width() && height())
@@ -312,7 +312,7 @@ struct grkBuffer2d : protected grkBuffer<T, A>, public grk_rect32
 			uint64_t data_size_needed = (uint64_t)stride * height() * sizeof(T);
 			if(!data_size_needed)
 				return true;
-			if(!grkBuffer<T, A>::alloc(data_size_needed))
+			if(!grk_buf<T, A>::alloc(data_size_needed))
 			{
 				grk::GRK_ERROR("Failed to allocate aligned memory buffer of dimensions %u x %u",
 							   stride, height());
@@ -327,13 +327,13 @@ struct grkBuffer2d : protected grkBuffer<T, A>, public grk_rect32
 	// set buf to buf without owning it
 	void attach(T* buffer, uint32_t strd)
 	{
-		grkBuffer<T, A>::attach(buffer);
+		grk_buf<T, A>::attach(buffer);
 		stride = strd;
 	}
 	// set buf to buf and own it
 	void acquire(T* buffer, uint32_t strd)
 	{
-		grkBuffer<T, A>::acquire(buffer);
+		grk_buf<T, A>::acquire(buffer);
 		stride = strd;
 	}
 	// transfer buf to buf, and cease owning it
@@ -341,7 +341,7 @@ struct grkBuffer2d : protected grkBuffer<T, A>, public grk_rect32
 	{
 		if(buffer)
 		{
-			grkBuffer<T, A>::transfer(buffer);
+			grk_buf<T, A>::transfer(buffer);
 			*strd = stride;
 		}
 	}
@@ -425,7 +425,7 @@ struct grkBuffer2d : protected grkBuffer<T, A>, public grk_rect32
 	}
 	// rhs coordinates are in "this" coordinate system
 	template<typename F>
-	void copy(const grkBuffer2d& rhs, F filter)
+	void copy(const grk_buf2d& rhs, F filter)
 	{
 		auto inter = this->intersection(rhs);
 		if(!inter.non_empty())

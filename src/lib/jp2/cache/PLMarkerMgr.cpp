@@ -71,7 +71,7 @@ bool PLMarkerMgr::pushPL(uint32_t len)
 	assert(numBytes <= 5);
 
 	auto marker = rawMarkers_->empty() ? nullptr : currMarkerIter_->second;
-	grkBufferU8* buf = nullptr;
+	grk_buf8* buf = nullptr;
 	bool newMarker = false;
 	uint8_t newMarkerId;
 	if(rawMarkers_->empty())
@@ -194,9 +194,9 @@ bool PLMarkerMgr::readPLM(uint8_t* headerData, uint16_t header_size)
 
 	return true;
 }
-grkBufferU8* PLMarkerMgr::addNewMarker(uint8_t* data, uint16_t len)
+grk_buf8* PLMarkerMgr::addNewMarker(uint8_t* data, uint16_t len)
 {
-	auto b = new grkBufferU8();
+	auto b = new grk_buf8();
 	if(data || len)
 		b->alloc(len);
 	if(data)

@@ -92,7 +92,7 @@ struct ComponentInfo
 /**
 	Association box (defined in ITU 15444-2 Annex M 11.1 )
 */
-struct AsocBox : FileFormatBox, grkBufferU8
+struct AsocBox : FileFormatBox, grk_buf8
 {
 	~AsocBox() override
 	{
@@ -100,7 +100,7 @@ struct AsocBox : FileFormatBox, grkBufferU8
 	}
 	void dealloc() override
 	{
-		grkBufferU8::dealloc();
+		grk_buf8::dealloc();
 		for(auto& as : children)
 		{
 			delete as;
@@ -111,14 +111,14 @@ struct AsocBox : FileFormatBox, grkBufferU8
 	std::vector<AsocBox*> children;
 };
 
-struct UUIDBox : public FileFormatBox, grkBufferU8
+struct UUIDBox : public FileFormatBox, grk_buf8
 {
 	UUIDBox()
 	{
 		memset(uuid, 0, sizeof(uuid));
 	}
 	UUIDBox(const uint8_t myuuid[16], uint8_t* buf, size_t size)
-		: FileFormatBox(), grkBufferU8(buf, size, false)
+		: FileFormatBox(), grk_buf8(buf, size, false)
 	{
 		memcpy(uuid, myuuid, 16);
 	}
@@ -166,7 +166,7 @@ class FileFormat
 	bool has_display_resolution;
 	double display_resolution[2];
 
-	grkBufferU8 xml;
+	grk_buf8 xml;
 
 	UUIDBox uuids[JP2_MAX_NUM_UUIDS];
 	uint32_t numUuids;
