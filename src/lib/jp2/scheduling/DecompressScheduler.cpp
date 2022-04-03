@@ -24,7 +24,6 @@ DecompressScheduler::DecompressScheduler(TileComponent* tilec,
 		 	 	 	 	 	 	 	 	 TileCodingParams* tcp,
 										TileComponentCodingParams* tccp,
 										uint8_t prec) : Scheduler(tilec->highestResolutionDecompressed+1),
-												success(true),
 												tilec_(tilec),
 												tcp_(tcp),
 												tccp_(tccp),
@@ -33,29 +32,16 @@ DecompressScheduler::DecompressScheduler(TileComponent* tilec,
 
 bool DecompressScheduler::schedule(void)
 {
-	prepareScheduleDecompress(tilec_, tccp_, prec_);
-	// nominal code block dimensions
-	uint16_t codeblock_width = (uint16_t)(tccp_->cblkw ? (uint32_t)1 << tccp_->cblkw : 0);
-	uint16_t codeblock_height = (uint16_t)(tccp_->cblkh ? (uint32_t)1 << tccp_->cblkh : 0);
-	for(auto i = 0U; i < ExecSingleton::get()->num_workers(); ++i)
-		t1Implementations.push_back(
-			T1Factory::makeT1(false, tcp_, codeblock_width, codeblock_height));
-
-	return decompress();
-}
-void DecompressScheduler::prepareScheduleDecompress(TileComponent* tilec,
-													TileComponentCodingParams* tccp, uint8_t prec)
-{
-	bool wholeTileDecoding = tilec->isWholeTileDecoding();
-	for(uint8_t resno = 0; resno <= tilec->highestResolutionDecompressed; ++resno)
+	bool wholeTileDecoding = tilec_->isWholeTileDecoding();
+	for(uint8_t resno = 0; resno <= tilec_->highestResolutionDecompressed; ++resno)
 	{
 		ResDecompressBlocks resBlocks;
-		auto res = tilec->tileCompResolution + resno;
+		auto res = tilec_->tileCompResolution + resno;
 		for(uint8_t bandIndex = 0; bandIndex < res->numTileBandWindows; ++bandIndex)
 		{
 			auto band = res->tileBand + bandIndex;
 			auto paddedBandWindow =
-				tilec->getBuffer()->getBandWindowPadded(resno, band->orientation);
+				tilec_->getBuffer()->getBandWindowPadded(resno, band->orientation);
 			for(auto precinct : band->precincts)
 			{
 				if(!wholeTileDecoding && !paddedBandWindow->nonEmptyIntersection(precinct))
@@ -69,18 +55,18 @@ void DecompressScheduler::prepareScheduleDecompress(TileComponent* tilec,
 						auto block = new DecompressBlockExec();
 						block->x = cblk->x0;
 						block->y = cblk->y0;
-						block->tilec = tilec;
+						block->tilec = tilec_;
 						block->bandIndex = bandIndex;
 						block->bandNumbps = band->numbps;
 						block->bandOrientation = band->orientation;
 						block->cblk = cblk;
-						block->cblk_sty = tccp->cblk_sty;
-						block->qmfbid = tccp->qmfbid;
+						block->cblk_sty = tccp_->cblk_sty;
+						block->qmfbid = tccp_->qmfbid;
 						block->resno = resno;
-						block->roishift = tccp->roishift;
+						block->roishift = tccp_->roishift;
 						block->stepsize = band->stepsize;
 						block->k_msbs = (uint8_t)(band->numbps - cblk->numbps);
-						block->R_b = prec + gain_b[band->orientation];
+						block->R_b = prec_ + gain_b[band->orientation];
 						resBlocks.push_back(block);
 					}
 				}
@@ -89,9 +75,13 @@ void DecompressScheduler::prepareScheduleDecompress(TileComponent* tilec,
 		if(!resBlocks.empty())
 			blocks.push_back(resBlocks);
 	}
-}
-bool DecompressScheduler::decompress()
-{
+	// nominal code block dimensions
+	uint16_t codeblock_width = (uint16_t)(tccp_->cblkw ? (uint32_t)1 << tccp_->cblkw : 0);
+	uint16_t codeblock_height = (uint16_t)(tccp_->cblkh ? (uint32_t)1 << tccp_->cblkh : 0);
+	for(auto i = 0U; i < ExecSingleton::get()->num_workers(); ++i)
+		t1Implementations.push_back(
+			T1Factory::makeT1(false, tcp_, codeblock_width, codeblock_height));
+
 	if(!blocks.size())
 		return true;
 	size_t num_threads = ExecSingleton::get()->num_workers();
@@ -152,9 +142,8 @@ bool DecompressScheduler::decompress()
 		}
 		resno++;
 	}
-	ExecSingleton::get()->run(state_->codecFlow_).wait();
 
-	return success;
+	return true;
 }
 bool DecompressScheduler::decompressBlock(T1Interface* impl, DecompressBlockExec* block)
 {

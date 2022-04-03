@@ -450,7 +450,7 @@ bool TileProcessor::decompressT1(void)
 				return false;
 			}
 			scheduler_ = new DecompressScheduler(tilec, tcp_, tccp, headerImage->comps->prec);
-			if(!scheduler_->schedule())
+			if(!scheduler_->schedule() || !scheduler_->run())
 				return false;
 
 			if(doPostT1)

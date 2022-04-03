@@ -34,11 +34,7 @@ class DecompressScheduler : public Scheduler
 	~DecompressScheduler() = default;
 	bool schedule(void) override;
   private:
-	void prepareScheduleDecompress(TileComponent* tilec, TileComponentCodingParams* tccp,
-								   uint8_t prec);
 	bool decompressBlock(T1Interface* impl, DecompressBlockExec* block);
-	bool decompress(void);
-	std::atomic_bool success;
 	DecompressBlocks blocks;
 	TileComponent* tilec_;
 	TileCodingParams* tcp_;

@@ -24,9 +24,11 @@ class Scheduler
 	Scheduler(uint8_t numResolutions);
 	virtual ~Scheduler();
 	virtual bool schedule(void) = 0;
+	bool run(void);
 
 	ScheduleState* getState(void);
   protected:
+	std::atomic_bool success;
 	std::vector<T1Interface*> t1Implementations;
 	ScheduleState *state_;
 };
