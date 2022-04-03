@@ -119,6 +119,9 @@ Tile* TileProcessor::getTile(void)
 {
 	return tile;
 }
+Scheduler* TileProcessor::getScheduler(void){
+	return scheduler_;
+}
 void TileProcessor::generateImage(GrkImage* src_image, Tile* src_tile)
 {
 	if(image_)

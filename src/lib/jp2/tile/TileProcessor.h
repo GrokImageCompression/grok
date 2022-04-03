@@ -105,6 +105,7 @@ struct TileProcessor
 	uint16_t getIndex(void) const;
 	void incrementIndex(void);
 	Tile* getTile(void);
+	Scheduler* getScheduler(void);
 
 	/** Compression Only
 	 *  true for first POC tile part, otherwise false*/

@@ -16,36 +16,29 @@
  */
 #include "grk_includes.h"
 
+ResState::ResState(void) : blockTasks_(nullptr){
+}
+ResState::~ResState(void){
+	delete[] blockTasks_;
+}
 
 ScheduleState::ScheduleState(uint8_t numResolutions) : numResFlows_(numResolutions),
-														blockTasks_(nullptr),
-														resBlockTasks_(nullptr),
-														resBlockFlows_(nullptr)
+														resStates_(nullptr)
 {
 	codecFlow_.name("codecFlow");
 	if (numResFlows_){
 		// lowest two resolutions are grouped together
 		if (numResFlows_ > 1)
 			numResFlows_--;
-		blockTasks_ = new tf::Task*[numResFlows_];
-		for (uint8_t i = 0; i < numResFlows_; ++i)
-			blockTasks_[i] = nullptr;
-		resBlockTasks_ = new tf::Task[numResFlows_];
-		resBlockFlows_ = new tf::Taskflow[numResFlows_];
+		resStates_ = new ResState[numResFlows_];
 	}
 }
 ScheduleState::~ScheduleState() {
-	if (blockTasks_){
-		for(uint8_t i = 0; i < numResFlows_; ++i)
-			delete[] blockTasks_[i];
-		delete[] blockTasks_;
-	}
-	delete[] resBlockTasks_;
-	delete[] resBlockFlows_;
+	delete[] resStates_;
 }
-std::string ScheduleState::genResBlockTaskName(uint8_t resno){
+std::string ScheduleState::genBlockFlowTaskName(uint8_t resno){
 	std::stringstream ss;
-	ss << "resBlockTask-" << resno;
+	ss << "blockFlowTask-" << resno;
 
 	return ss.str();
 }

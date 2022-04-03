@@ -17,18 +17,27 @@
 
 #pragma once
 
+struct ResState{
+	ResState(void);
+	~ResState(void);
+
+	// create one tf::Taskflow for all blocks in a given resolution, and create one single
+	// tf::Taskflow object codecFlow_, composed of all resolution block flows
+	tf::Task *blockTasks_;
+	tf::Taskflow blockFlow_;
+	tf::Task blockFlowTask_;
+};
+
 class ScheduleState {
 public:
 	ScheduleState(uint8_t numResolutions);
 	virtual ~ScheduleState();
-	std::string genResBlockTaskName(uint8_t resno);
+	std::string genBlockFlowTaskName(uint8_t resno);
 
 	uint8_t numResFlows_;
 
 	// create one tf::Taskflow for all blocks in a given resolution, and create one single
 	// tf::Taskflow object codecFlow_, composed of all resolution block flows
-	tf::Task **blockTasks_;
-	tf::Task *resBlockTasks_;
-	tf::Taskflow *resBlockFlows_;
+	ResState *resStates_;
 	tf::Taskflow codecFlow_;
 };
