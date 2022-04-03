@@ -21,11 +21,16 @@ struct ResState{
 	ResState(void);
 	~ResState(void);
 
-	// create one tf::Taskflow for all blocks in a given resolution, and create one single
-	// tf::Taskflow object codecFlow_, composed of all resolution block flows
+	void allocBlockTasks(uint64_t numBlocks);
+	void allocWaveletTasks(uint64_t numWaveletStrips);
+
 	tf::Task *blockTasks_;
 	tf::Taskflow blockFlow_;
 	tf::Task blockFlowTask_;
+
+	tf::Task *waveletTasks_;
+	tf::Taskflow waveletFlow_;
+	tf::Task waveletFlowTask_;
 };
 
 class ScheduleState {

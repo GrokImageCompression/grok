@@ -16,10 +16,21 @@
  */
 #include "grk_includes.h"
 
-ResState::ResState(void) : blockTasks_(nullptr){
+ResState::ResState(void) : blockTasks_(nullptr), waveletTasks_(nullptr){
 }
 ResState::~ResState(void){
 	delete[] blockTasks_;
+	delete[] waveletTasks_;
+}
+void ResState::allocBlockTasks(uint64_t numBlocks){
+	if (blockTasks_)
+		delete[] blockTasks_;
+	blockTasks_ = new tf::Task[numBlocks];
+}
+void ResState::allocWaveletTasks(uint64_t numWaveletStrips){
+	if (waveletTasks_)
+		delete[] waveletTasks_;
+	waveletTasks_ = new tf::Task[numWaveletStrips];
 }
 
 ScheduleState::ScheduleState(uint8_t numResolutions) : numResFlows_(numResolutions),

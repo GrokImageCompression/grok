@@ -1164,18 +1164,14 @@ static bool decompress_h_53(Scheduler *scheduler,
 	uint32_t numThreads = (uint32_t)ExecSingleton::get()->num_workers();
 	grk_buf2d_simple<int32_t> winL,winH,winDest;
 	tf::Task *resTasksWaveletH[2] ={nullptr,nullptr};
-	uint32_t numJobs[2];
-	uint32_t height[2];
+	uint32_t numJobs[2] = {0,0};
+	uint32_t height[2] = {0,0};
 	tf::Taskflow &comp = scheduler->getState()->codecFlow_;
 	comp.clear();
 	for (uint32_t orient = 0; orient < 2; ++orient){
 		height[orient] = (orient == 0) ? vert.sn_full : resHeight - vert.sn_full;
-		if(numThreads > 1 && height[orient] > 1) {
+		if(numThreads > 1 && height[orient] > 1)
 			numJobs[orient] = height[orient] < numThreads ? height[orient] : numThreads;
-			resTasksWaveletH[orient] = new tf::Task[numJobs[orient]];
-			for(uint32_t i = 0; i < numJobs[orient]; i++)
-				resTasksWaveletH[orient][i] = comp.placeholder();
-		}
 	}
 	for (uint32_t orient = 0; orient < 2; ++orient){
 		if (orient == 0) {
@@ -1202,9 +1198,11 @@ static bool decompress_h_53(Scheduler *scheduler,
 		}
 		else
 		{
+			resTasksWaveletH[orient] = new tf::Task[numJobs[orient]];
 			uint32_t incrPerJob = height[orient] / numJobs[orient];
 			for(uint32_t j = 0; j < numJobs[orient]; ++j)
 			{
+				resTasksWaveletH[orient][j] = comp.placeholder();
 				auto indexMin = j * incrPerJob;
 				auto job = new decompress_job<int32_t, dwt_data<int32_t>>(
 					horiz,
@@ -1235,9 +1233,11 @@ static bool decompress_h_53(Scheduler *scheduler,
 			}
 		}
 	}
-	ExecSingleton::get()->run(comp).wait();
-	for (uint32_t orient = 0; orient < 2; ++orient)
-		delete[] resTasksWaveletH[orient];
+	if (numJobs[0] || numJobs[1]) {
+		ExecSingleton::get()->run(comp).wait();
+		for (uint32_t orient = 0; orient < 2; ++orient)
+			delete[] resTasksWaveletH[orient];
+	}
 
 	return true;
 }
