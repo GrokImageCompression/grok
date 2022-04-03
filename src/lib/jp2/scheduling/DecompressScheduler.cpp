@@ -122,10 +122,10 @@ bool DecompressScheduler::decompress()
 	for(auto& resBlocks : blocks)
 	{
 		assert(resBlocks.size());
-		auto resTaskArray = new tf::Task[resBlocks.size()];
+		auto resTasks = new tf::Task[resBlocks.size()];
 		for(size_t blockno = 0; blockno < resBlocks.size(); ++blockno)
-			resTaskArray[blockno] = state_->resBlockFlows_[resno].placeholder();
-		state_->blockTasks_[resno] = resTaskArray;
+			resTasks[blockno] = state_->resBlockFlows_[resno].placeholder();
+		state_->blockTasks_[resno] = resTasks;
 		auto name = state_->genResBlockTaskName(resno);
 		state_->resBlockTasks_[resno] = state_->codecFlow_.composed_of(state_->resBlockFlows_[resno]).name(name);
 		resno++;

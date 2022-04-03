@@ -33,198 +33,198 @@ namespace grk
 {
 namespace HWY_NAMESPACE
 {
-	using namespace hwy::HWY_NAMESPACE;
+using namespace hwy::HWY_NAMESPACE;
 
-	static size_t hwy_num_lanes(void)
-	{
-		const HWY_FULL(int32_t) di;
-		return Lanes(di);
-	}
+static size_t hwy_num_lanes(void)
+{
+	const HWY_FULL(int32_t) di;
+	return Lanes(di);
+}
 
 #define HWY_PLL_COLS_53 (2 * Lanes(di))
 
-	static void hwy_decompress_v_final_memcpy_53(const int32_t* buf, const uint32_t height,
-												 int32_t* dest, const size_t strideDest)
+static void hwy_decompress_v_final_memcpy_53(const int32_t* buf, const uint32_t height,
+											 int32_t* dest, const size_t strideDest)
+{
+	const HWY_FULL(int32_t) di;
+	for(uint32_t i = 0; i < height; ++i)
 	{
-		const HWY_FULL(int32_t) di;
-		for(uint32_t i = 0; i < height; ++i)
-		{
-			StoreU(Load(di, buf + HWY_PLL_COLS_53 * i + 0), di, &dest[(size_t)i * strideDest + 0]);
-			StoreU(Load(di, buf + HWY_PLL_COLS_53 * i + Lanes(di)), di,
-				   dest + (size_t)i * strideDest + Lanes(di));
-		}
+		StoreU(Load(di, buf + HWY_PLL_COLS_53 * i + 0), di, &dest[(size_t)i * strideDest + 0]);
+		StoreU(Load(di, buf + HWY_PLL_COLS_53 * i + Lanes(di)), di,
+			   dest + (size_t)i * strideDest + Lanes(di));
 	}
-	/** Vertical inverse 5x3 wavelet transform for 8 columns in SSE2, or
-	 * 16 in AVX2, when top-most pixel is on even coordinate */
-	static void hwy_decompress_v_parity_even_mcols_53(int32_t* buf, int32_t* bandL, /* even */
-											   const uint32_t hL, const size_t strideL,
-											   int32_t* bandH, /* odd */
-											   const uint32_t hH, const size_t strideH,
-											   int32_t* dest, const uint32_t strideDest)
+}
+/** Vertical inverse 5x3 wavelet transform for 8 columns in SSE2, or
+ * 16 in AVX2, when top-most pixel is on even coordinate */
+static void hwy_decompress_v_parity_even_mcols_53(int32_t* buf, int32_t* bandL, /* even */
+										   const uint32_t hL, const size_t strideL,
+										   int32_t* bandH, /* odd */
+										   const uint32_t hH, const size_t strideH,
+										   int32_t* dest, const uint32_t strideDest)
+{
+	const HWY_FULL(int32_t) di;
+	auto two = Set(di, 2);
+
+	const uint32_t total_height = hL + hH;
+	assert(total_height > 1);
+
+	/* Note: loads of input even/odd values must be done in a unaligned */
+	/* fashion. But stores in tmp can be done with aligned store, since */
+	/* the temporary buffer is properly aligned */
+	assert((size_t)buf % (sizeof(int32_t) * Lanes(di)) == 0);
+
+	auto s1n_0 = LoadU(di, bandL + 0);
+	auto s1n_1 = LoadU(di, bandL + Lanes(di));
+	auto d1n_0 = LoadU(di, bandH);
+	auto d1n_1 = LoadU(di, bandH + Lanes(di));
+
+	/* s0n = s1n - ((d1n + 1) >> 1); <==> */
+	/* s0n = s1n - ((d1n + d1n + 2) >> 2); */
+	auto s0n_0 = s1n_0 - ShiftRight<2>(d1n_0 + d1n_0 + two);
+	auto s0n_1 = s1n_1 - ShiftRight<2>(d1n_1 + d1n_1 + two);
+
+	uint32_t i = 0;
+	if(total_height > 3)
 	{
-		const HWY_FULL(int32_t) di;
-		auto two = Set(di, 2);
-
-		const uint32_t total_height = hL + hH;
-		assert(total_height > 1);
-
-		/* Note: loads of input even/odd values must be done in a unaligned */
-		/* fashion. But stores in tmp can be done with aligned store, since */
-		/* the temporary buffer is properly aligned */
-		assert((size_t)buf % (sizeof(int32_t) * Lanes(di)) == 0);
-
-		auto s1n_0 = LoadU(di, bandL + 0);
-		auto s1n_1 = LoadU(di, bandL + Lanes(di));
-		auto d1n_0 = LoadU(di, bandH);
-		auto d1n_1 = LoadU(di, bandH + Lanes(di));
-
-		/* s0n = s1n - ((d1n + 1) >> 1); <==> */
-		/* s0n = s1n - ((d1n + d1n + 2) >> 2); */
-		auto s0n_0 = s1n_0 - ShiftRight<2>(d1n_0 + d1n_0 + two);
-		auto s0n_1 = s1n_1 - ShiftRight<2>(d1n_1 + d1n_1 + two);
-
-		uint32_t i = 0;
-		if(total_height > 3)
+		uint32_t j;
+		for(i = 0, j = 1; i < (total_height - 3); i += 2, j++)
 		{
-			uint32_t j;
-			for(i = 0, j = 1; i < (total_height - 3); i += 2, j++)
-			{
-				auto d1c_0 = d1n_0;
-				auto s0c_0 = s0n_0;
-				auto d1c_1 = d1n_1;
-				auto s0c_1 = s0n_1;
+			auto d1c_0 = d1n_0;
+			auto s0c_0 = s0n_0;
+			auto d1c_1 = d1n_1;
+			auto s0c_1 = s0n_1;
 
-				s1n_0 = LoadU(di, bandL + j * strideL);
-				s1n_1 = LoadU(di, bandL + j * strideL + Lanes(di));
-				d1n_0 = LoadU(di, bandH + j * strideH);
-				d1n_1 = LoadU(di, bandH + j * strideH + Lanes(di));
+			s1n_0 = LoadU(di, bandL + j * strideL);
+			s1n_1 = LoadU(di, bandL + j * strideL + Lanes(di));
+			d1n_0 = LoadU(di, bandH + j * strideH);
+			d1n_1 = LoadU(di, bandH + j * strideH + Lanes(di));
 
-				/*s0n = s1n - ((d1c + d1n + 2) >> 2);*/
-				s0n_0 = s1n_0 - ShiftRight<2>(d1c_0 + d1n_0 + two);
-				s0n_1 = s1n_1 - ShiftRight<2>(d1c_1 + d1n_1 + two);
+			/*s0n = s1n - ((d1c + d1n + 2) >> 2);*/
+			s0n_0 = s1n_0 - ShiftRight<2>(d1c_0 + d1n_0 + two);
+			s0n_1 = s1n_1 - ShiftRight<2>(d1c_1 + d1n_1 + two);
 
-				Store(s0c_0, di, buf + HWY_PLL_COLS_53 * (i + 0));
-				Store(s0c_1, di, buf + HWY_PLL_COLS_53 * (i + 0) + Lanes(di));
+			Store(s0c_0, di, buf + HWY_PLL_COLS_53 * (i + 0));
+			Store(s0c_1, di, buf + HWY_PLL_COLS_53 * (i + 0) + Lanes(di));
 
-				/* d1c + ((s0c + s0n) >> 1) */
-				Store(d1c_0 + ShiftRight<1>(s0c_0 + s0n_0), di,
-					  buf + HWY_PLL_COLS_53 * (i + 1) + 0);
-				Store(d1c_1 + ShiftRight<1>(s0c_1 + s0n_1), di,
-					  buf + HWY_PLL_COLS_53 * (i + 1) + Lanes(di));
-			}
-		}
-		Store(s0n_0, di, buf + HWY_PLL_COLS_53 * (i + 0) + 0);
-		Store(s0n_1, di, buf + HWY_PLL_COLS_53 * (i + 0) + Lanes(di));
-
-		if(total_height & 1)
-		{
-			s1n_0 = LoadU(di, bandL + (size_t)((total_height - 1) / 2) * strideL);
-			/* tmp_len_minus_1 = s1n - ((d1n + 1) >> 1); */
-			auto tmp_len_minus_1 = s1n_0 - ShiftRight<2>(d1n_0 + d1n_0 + two);
-			Store(tmp_len_minus_1, di, buf + HWY_PLL_COLS_53 * (total_height - 1));
-			/* d1n + ((s0n + tmp_len_minus_1) >> 1) */
-			Store(d1n_0 + ShiftRight<1>(s0n_0 + tmp_len_minus_1), di,
-				  buf + HWY_PLL_COLS_53 * (total_height - 2));
-
-			s1n_1 = LoadU(di, bandL + (size_t)((total_height - 1) / 2) * strideL + Lanes(di));
-			/* tmp_len_minus_1 = s1n - ((d1n + 1) >> 1); */
-			tmp_len_minus_1 = s1n_1 - ShiftRight<2>(d1n_1 + d1n_1 + two);
-			Store(tmp_len_minus_1, di, buf + HWY_PLL_COLS_53 * (total_height - 1) + Lanes(di));
-			/* d1n + ((s0n + tmp_len_minus_1) >> 1) */
-			Store(d1n_1 + ShiftRight<1>(s0n_1 + tmp_len_minus_1), di,
-				  buf + HWY_PLL_COLS_53 * (total_height - 2) + Lanes(di));
-		}
-		else
-		{
-			Store(d1n_0 + s0n_0, di, buf + HWY_PLL_COLS_53 * (total_height - 1) + 0);
-			Store(d1n_1 + s0n_1, di, buf + HWY_PLL_COLS_53 * (total_height - 1) + Lanes(di));
-		}
-		hwy_decompress_v_final_memcpy_53(buf, total_height, dest, strideDest);
-	}
-
-	/** Vertical inverse 5x3 wavelet transform for 8 columns in SSE2, or
-	 * 16 in AVX2, when top-most pixel is on odd coordinate */
-	static void hwy_decompress_v_parity_odd_mcols_53(int32_t* buf, int32_t* bandL, const uint32_t hL,
-											   const uint32_t strideL, int32_t* bandH,
-											   const uint32_t hH, const uint32_t strideH,
-											   int32_t* dest, const uint32_t strideDest)
-	{
-		const HWY_FULL(int32_t) di;
-		auto two = Set(di, 2);
-
-		const uint32_t total_height = hL + hH;
-		assert(total_height > 2);
-		/* Note: loads of input even/odd values must be done in a unaligned */
-		/* fashion. But stores in buf can be done with aligned store, since */
-		/* the temporary buffer is properly aligned */
-		assert((size_t)buf % (sizeof(int32_t) * Lanes(di)) == 0);
-
-		const int32_t* in_even = bandH;
-		const int32_t* in_odd = bandL;
-		auto s1_0 = LoadU(di, in_even + strideH);
-
-		/* in_odd[0] - ((in_even[0] + s1 + 2) >> 2); */
-		auto dc_0 = LoadU(di, in_odd + 0) - ShiftRight<2>(LoadU(di, in_even + 0) + s1_0 + two);
-		Store(LoadU(di, in_even + 0) + dc_0, di, buf + HWY_PLL_COLS_53 * 0);
-		auto s1_1 = LoadU(di, in_even + strideH + Lanes(di));
-
-		/* in_odd[0] - ((in_even[0] + s1 + 2) >> 2); */
-		auto dc_1 = LoadU(di, in_odd + Lanes(di)) -
-					ShiftRight<2>(LoadU(di, in_even + Lanes(di)) + s1_1 + two);
-		Store(LoadU(di, in_even + Lanes(di)) + dc_1, di, buf + HWY_PLL_COLS_53 * 0 + Lanes(di));
-
-		uint32_t i;
-		size_t j;
-		for(i = 1, j = 1; i < (total_height - 2 - !(total_height & 1)); i += 2, j++)
-		{
-			auto s2_0 = LoadU(di, in_even + (j + 1) * strideH);
-			auto s2_1 = LoadU(di, in_even + (j + 1) * strideH + Lanes(di));
-
-			/* dn = in_odd[j * stride] - ((s1 + s2 + 2) >> 2); */
-			auto dn_0 = LoadU(di, in_odd + j * strideL) - ShiftRight<2>(s1_0 + s2_0 + two);
-			auto dn_1 =
-				LoadU(di, in_odd + j * strideL + Lanes(di)) - ShiftRight<2>(s1_1 + s2_1 + two);
-
-			Store(dc_0, di, buf + HWY_PLL_COLS_53 * i);
-			Store(dc_1, di, buf + HWY_PLL_COLS_53 * i + Lanes(di));
-
-			/* buf[i + 1] = s1 + ((dn + dc) >> 1); */
-			Store(s1_0 + ShiftRight<1>(dn_0 + dc_0), di, buf + HWY_PLL_COLS_53 * (i + 1) + 0);
-			Store(s1_1 + ShiftRight<1>(dn_1 + dc_1), di,
+			/* d1c + ((s0c + s0n) >> 1) */
+			Store(d1c_0 + ShiftRight<1>(s0c_0 + s0n_0), di,
+				  buf + HWY_PLL_COLS_53 * (i + 1) + 0);
+			Store(d1c_1 + ShiftRight<1>(s0c_1 + s0n_1), di,
 				  buf + HWY_PLL_COLS_53 * (i + 1) + Lanes(di));
-
-			dc_0 = dn_0;
-			s1_0 = s2_0;
-			dc_1 = dn_1;
-			s1_1 = s2_1;
 		}
+	}
+	Store(s0n_0, di, buf + HWY_PLL_COLS_53 * (i + 0) + 0);
+	Store(s0n_1, di, buf + HWY_PLL_COLS_53 * (i + 0) + Lanes(di));
+
+	if(total_height & 1)
+	{
+		s1n_0 = LoadU(di, bandL + (size_t)((total_height - 1) / 2) * strideL);
+		/* tmp_len_minus_1 = s1n - ((d1n + 1) >> 1); */
+		auto tmp_len_minus_1 = s1n_0 - ShiftRight<2>(d1n_0 + d1n_0 + two);
+		Store(tmp_len_minus_1, di, buf + HWY_PLL_COLS_53 * (total_height - 1));
+		/* d1n + ((s0n + tmp_len_minus_1) >> 1) */
+		Store(d1n_0 + ShiftRight<1>(s0n_0 + tmp_len_minus_1), di,
+			  buf + HWY_PLL_COLS_53 * (total_height - 2));
+
+		s1n_1 = LoadU(di, bandL + (size_t)((total_height - 1) / 2) * strideL + Lanes(di));
+		/* tmp_len_minus_1 = s1n - ((d1n + 1) >> 1); */
+		tmp_len_minus_1 = s1n_1 - ShiftRight<2>(d1n_1 + d1n_1 + two);
+		Store(tmp_len_minus_1, di, buf + HWY_PLL_COLS_53 * (total_height - 1) + Lanes(di));
+		/* d1n + ((s0n + tmp_len_minus_1) >> 1) */
+		Store(d1n_1 + ShiftRight<1>(s0n_1 + tmp_len_minus_1), di,
+			  buf + HWY_PLL_COLS_53 * (total_height - 2) + Lanes(di));
+	}
+	else
+	{
+		Store(d1n_0 + s0n_0, di, buf + HWY_PLL_COLS_53 * (total_height - 1) + 0);
+		Store(d1n_1 + s0n_1, di, buf + HWY_PLL_COLS_53 * (total_height - 1) + Lanes(di));
+	}
+	hwy_decompress_v_final_memcpy_53(buf, total_height, dest, strideDest);
+}
+
+/** Vertical inverse 5x3 wavelet transform for 8 columns in SSE2, or
+ * 16 in AVX2, when top-most pixel is on odd coordinate */
+static void hwy_decompress_v_parity_odd_mcols_53(int32_t* buf, int32_t* bandL, const uint32_t hL,
+										   const uint32_t strideL, int32_t* bandH,
+										   const uint32_t hH, const uint32_t strideH,
+										   int32_t* dest, const uint32_t strideDest)
+{
+	const HWY_FULL(int32_t) di;
+	auto two = Set(di, 2);
+
+	const uint32_t total_height = hL + hH;
+	assert(total_height > 2);
+	/* Note: loads of input even/odd values must be done in a unaligned */
+	/* fashion. But stores in buf can be done with aligned store, since */
+	/* the temporary buffer is properly aligned */
+	assert((size_t)buf % (sizeof(int32_t) * Lanes(di)) == 0);
+
+	const int32_t* in_even = bandH;
+	const int32_t* in_odd = bandL;
+	auto s1_0 = LoadU(di, in_even + strideH);
+
+	/* in_odd[0] - ((in_even[0] + s1 + 2) >> 2); */
+	auto dc_0 = LoadU(di, in_odd + 0) - ShiftRight<2>(LoadU(di, in_even + 0) + s1_0 + two);
+	Store(LoadU(di, in_even + 0) + dc_0, di, buf + HWY_PLL_COLS_53 * 0);
+	auto s1_1 = LoadU(di, in_even + strideH + Lanes(di));
+
+	/* in_odd[0] - ((in_even[0] + s1 + 2) >> 2); */
+	auto dc_1 = LoadU(di, in_odd + Lanes(di)) -
+				ShiftRight<2>(LoadU(di, in_even + Lanes(di)) + s1_1 + two);
+	Store(LoadU(di, in_even + Lanes(di)) + dc_1, di, buf + HWY_PLL_COLS_53 * 0 + Lanes(di));
+
+	uint32_t i;
+	size_t j;
+	for(i = 1, j = 1; i < (total_height - 2 - !(total_height & 1)); i += 2, j++)
+	{
+		auto s2_0 = LoadU(di, in_even + (j + 1) * strideH);
+		auto s2_1 = LoadU(di, in_even + (j + 1) * strideH + Lanes(di));
+
+		/* dn = in_odd[j * stride] - ((s1 + s2 + 2) >> 2); */
+		auto dn_0 = LoadU(di, in_odd + j * strideL) - ShiftRight<2>(s1_0 + s2_0 + two);
+		auto dn_1 =
+			LoadU(di, in_odd + j * strideL + Lanes(di)) - ShiftRight<2>(s1_1 + s2_1 + two);
+
 		Store(dc_0, di, buf + HWY_PLL_COLS_53 * i);
 		Store(dc_1, di, buf + HWY_PLL_COLS_53 * i + Lanes(di));
 
-		if(!(total_height & 1))
-		{
-			/*dn = in_odd[(len / 2 - 1) * stride] - ((s1 + 1) >> 1); */
-			auto dn_0 = LoadU(di, in_odd + (size_t)(total_height / 2 - 1) * strideL) -
-						ShiftRight<2>(s1_0 + s1_0 + two);
-			auto dn_1 = LoadU(di, in_odd + (size_t)(total_height / 2 - 1) * strideL + Lanes(di)) -
-						ShiftRight<2>(s1_1 + s1_1 + two);
+		/* buf[i + 1] = s1 + ((dn + dc) >> 1); */
+		Store(s1_0 + ShiftRight<1>(dn_0 + dc_0), di, buf + HWY_PLL_COLS_53 * (i + 1) + 0);
+		Store(s1_1 + ShiftRight<1>(dn_1 + dc_1), di,
+			  buf + HWY_PLL_COLS_53 * (i + 1) + Lanes(di));
 
-			/* buf[len - 2] = s1 + ((dn + dc) >> 1); */
-			Store(s1_0 + ShiftRight<1>(dn_0 + dc_0), di,
-				  buf + HWY_PLL_COLS_53 * (total_height - 2) + 0);
-			Store(s1_1 + ShiftRight<1>(dn_1 + dc_1), di,
-				  buf + HWY_PLL_COLS_53 * (total_height - 2) + Lanes(di));
-
-			Store(dn_0, di, buf + HWY_PLL_COLS_53 * (total_height - 1) + 0);
-			Store(dn_1, di, buf + HWY_PLL_COLS_53 * (total_height - 1) + Lanes(di));
-		}
-		else
-		{
-			Store(s1_0 + dc_0, di, buf + HWY_PLL_COLS_53 * (total_height - 1) + 0);
-			Store(s1_1 + dc_1, di, buf + HWY_PLL_COLS_53 * (total_height - 1) + Lanes(di));
-		}
-		hwy_decompress_v_final_memcpy_53(buf, total_height, dest, strideDest);
+		dc_0 = dn_0;
+		s1_0 = s2_0;
+		dc_1 = dn_1;
+		s1_1 = s2_1;
 	}
+	Store(dc_0, di, buf + HWY_PLL_COLS_53 * i);
+	Store(dc_1, di, buf + HWY_PLL_COLS_53 * i + Lanes(di));
+
+	if(!(total_height & 1))
+	{
+		/*dn = in_odd[(len / 2 - 1) * stride] - ((s1 + 1) >> 1); */
+		auto dn_0 = LoadU(di, in_odd + (size_t)(total_height / 2 - 1) * strideL) -
+					ShiftRight<2>(s1_0 + s1_0 + two);
+		auto dn_1 = LoadU(di, in_odd + (size_t)(total_height / 2 - 1) * strideL + Lanes(di)) -
+					ShiftRight<2>(s1_1 + s1_1 + two);
+
+		/* buf[len - 2] = s1 + ((dn + dc) >> 1); */
+		Store(s1_0 + ShiftRight<1>(dn_0 + dc_0), di,
+			  buf + HWY_PLL_COLS_53 * (total_height - 2) + 0);
+		Store(s1_1 + ShiftRight<1>(dn_1 + dc_1), di,
+			  buf + HWY_PLL_COLS_53 * (total_height - 2) + Lanes(di));
+
+		Store(dn_0, di, buf + HWY_PLL_COLS_53 * (total_height - 1) + 0);
+		Store(dn_1, di, buf + HWY_PLL_COLS_53 * (total_height - 1) + Lanes(di));
+	}
+	else
+	{
+		Store(s1_0 + dc_0, di, buf + HWY_PLL_COLS_53 * (total_height - 1) + 0);
+		Store(s1_1 + dc_1, di, buf + HWY_PLL_COLS_53 * (total_height - 1) + Lanes(di));
+	}
+	hwy_decompress_v_final_memcpy_53(buf, total_height, dest, strideDest);
+}
 
 } // namespace HWY_NAMESPACE
 } // namespace grk
@@ -286,9 +286,6 @@ struct decompress_job
 	uint32_t max_j;
 };
 
-/** Number of columns that we can process in parallel in the vertical pass */
-#undef PLL_COLS_53
-#define PLL_COLS_53 (2 * uint32_t(HWY_DYNAMIC_DISPATCH(hwy_num_lanes)()))
 template<typename T>
 struct dwt_data
 {
@@ -348,6 +345,15 @@ struct dwt_data
 	grk_line32 win_h;
 	uint8_t resno;
 };
+
+/**********************************************************************************
+ *
+ * Full 9/7 Inverse Wavelet
+ *
+ *
+ *
+ **********************************************************************************/
+
 struct Params97
 {
 	Params97() : dataPrev(nullptr), data(nullptr), len(0), lenMax(0) {}
@@ -365,514 +371,6 @@ static const float dwt_delta = -0.443506852f; /*  -3633 */
 static const float K = 1.230174105f; /*  10078 */
 static const float twice_invK = 1.625732422f;
 
-static void decompress_h_parity_even_53(int32_t* buf, int32_t* bandL, /* even */
-								 const uint32_t wL, int32_t* bandH, const uint32_t wH,
-								 int32_t* dest)
-{ /* odd */
-	const uint32_t total_width = wL + wH;
-	assert(total_width > 1);
-
-	/* Improved version of the TWO_PASS_VERSION: */
-	/* Performs lifting in one single iteration. Saves memory */
-	/* accesses and explicit interleaving. */
-	int32_t s1n = bandL[0];
-	int32_t d1n = bandH[0];
-	int32_t s0n = s1n - ((d1n + 1) >> 1);
-	uint32_t i = 0;
-	if(total_width > 2)
-	{
-		for(uint32_t j = 1; i < (total_width - 3); i += 2, j++)
-		{
-			int32_t d1c = d1n;
-			int32_t s0c = s0n;
-
-			s1n = bandL[j];
-			d1n = bandH[j];
-			s0n = s1n - ((d1c + d1n + 2) >> 2);
-			buf[i] = s0c;
-			buf[i + 1] = d1c + ((s0c + s0n) >> 1);
-		}
-	}
-	buf[i] = s0n;
-	if(total_width & 1)
-	{
-		buf[total_width - 1] = bandL[(total_width - 1) >> 1] - ((d1n + 1) >> 1);
-		buf[total_width - 2] = d1n + ((s0n + buf[total_width - 1]) >> 1);
-	}
-	else
-	{
-		buf[total_width - 1] = d1n + s0n;
-	}
-	memcpy(dest, buf, total_width * sizeof(int32_t));
-}
-
-static void decompress_h_parity_odd_53(int32_t* buf, int32_t* bandL, /* odd */
-								 const uint32_t wL, int32_t* bandH, const uint32_t wH,
-								 int32_t* dest)
-{ /* even */
-	const uint32_t total_width = wL + wH;
-	assert(total_width > 2);
-
-	/* Improved version of the TWO_PASS_VERSION:
-	   Performs lifting in one single iteration. Saves memory
-	   accesses and explicit interleaving. */
-	int32_t s1 = bandH[1];
-	int32_t dc = bandL[0] - ((bandH[0] + s1 + 2) >> 2);
-	buf[0] = bandH[0] + dc;
-	uint32_t i, j;
-	for(i = 1, j = 1; i < (total_width - 2 - !(total_width & 1)); i += 2, j++)
-	{
-		int32_t s2 = bandH[j + 1];
-		int32_t dn = bandL[j] - ((s1 + s2 + 2) >> 2);
-
-		buf[i] = dc;
-		buf[i + 1] = s1 + ((dn + dc) >> 1);
-		dc = dn;
-		s1 = s2;
-	}
-	buf[i] = dc;
-	if(!(total_width & 1))
-	{
-		int32_t dn = bandL[(total_width >> 1) - 1] - ((s1 + 1) >> 1);
-		buf[total_width - 2] = s1 + ((dn + dc) >> 1);
-		buf[total_width - 1] = dn;
-	}
-	else
-	{
-		buf[total_width - 1] = s1 + dc;
-	}
-	memcpy(dest, buf, total_width * sizeof(int32_t));
-}
-
-/** Vertical inverse 5x3 wavelet transform for one column, when top-most
- * pixel is on even coordinate */
-static void decompress_v_parity_even_53(int32_t* buf, int32_t* bandL, const uint32_t hL,
-								 const uint32_t strideL, int32_t* bandH, const uint32_t hH,
-								 const uint32_t strideH, int32_t* dest, const uint32_t strideDest)
-{
-	const uint32_t total_height = hL + hH;
-	assert(total_height > 1);
-
-	/* Performs lifting in one single iteration. Saves memory */
-	/* accesses and explicit interleaving. */
-	int32_t s1n = bandL[0];
-	int32_t d1n = bandH[0];
-	int32_t s0n = s1n - ((d1n + 1) >> 1);
-
-	uint32_t i = 0;
-	if(total_height > 2)
-	{
-		auto bL = bandL + strideL;
-		auto bH = bandH + strideH;
-		for(uint32_t j = 0; i < (total_height - 3); i += 2, j++)
-		{
-			int32_t d1c = d1n;
-			int32_t s0c = s0n;
-			s1n = *bL;
-			bL += strideL;
-			d1n = *bH;
-			bH += strideH;
-			s0n = s1n - ((d1c + d1n + 2) >> 2);
-			buf[i] = s0c;
-			buf[i + 1] = d1c + ((s0c + s0n) >> 1);
-		}
-	}
-	buf[i] = s0n;
-	if(total_height & 1)
-	{
-		buf[total_height - 1] = bandL[((total_height - 1) >> 1) * strideL] - ((d1n + 1) >> 1);
-		buf[total_height - 2] = d1n + ((s0n + buf[total_height - 1]) >> 1);
-	}
-	else
-	{
-		buf[total_height - 1] = d1n + s0n;
-	}
-	for(i = 0; i < total_height; ++i)
-	{
-		*dest = buf[i];
-		dest += strideDest;
-	}
-}
-/** Vertical inverse 5x3 wavelet transform for one column, when top-most
- * pixel is on odd coordinate */
-static void decompress_v_parity_odd_53(int32_t* buf, int32_t* bandL, const uint32_t hL,
-								 const uint32_t strideL, int32_t* bandH, const uint32_t hH,
-								 const uint32_t strideH, int32_t* dest, const uint32_t strideDest)
-{
-	const uint32_t total_height = hL + hH;
-	assert(total_height > 2);
-
-	/* Performs lifting in one single iteration. Saves memory */
-	/* accesses and explicit interleaving. */
-	int32_t s1 = bandH[strideH];
-	int32_t dc = bandL[0] - ((bandH[0] + s1 + 2) >> 2);
-	buf[0] = bandH[0] + dc;
-	auto s2_ptr = bandH + (strideH << 1);
-	auto dn_ptr = bandL + strideL;
-	uint32_t i, j;
-	for(i = 1, j = 1; i < (total_height - 2 - !(total_height & 1)); i += 2, j++)
-	{
-		int32_t s2 = *s2_ptr;
-		s2_ptr += strideH;
-
-		int32_t dn = *dn_ptr - ((s1 + s2 + 2) >> 2);
-		dn_ptr += strideL;
-
-		buf[i] = dc;
-		buf[i + 1] = s1 + ((dn + dc) >> 1);
-		dc = dn;
-		s1 = s2;
-	}
-	buf[i] = dc;
-	if(!(total_height & 1))
-	{
-		int32_t dn = bandL[((total_height >> 1) - 1) * strideL] - ((s1 + 1) >> 1);
-		buf[total_height - 2] = s1 + ((dn + dc) >> 1);
-		buf[total_height - 1] = dn;
-	}
-	else
-	{
-		buf[total_height - 1] = s1 + dc;
-	}
-	for(i = 0; i < total_height; ++i)
-	{
-		*dest = buf[i];
-		dest += strideDest;
-	}
-}
-/* <summary>                            */
-/* Inverse 5-3 wavelet transform in 1-D for one row. */
-/* </summary>                           */
-/* Performs interleave, inverse wavelet transform and copy back to buffer */
-static void decompress_h_53(const dwt_data<int32_t>* dwt, int32_t* bandL, int32_t* bandH,
-							int32_t* dest)
-{
-	const uint32_t total_width = dwt->sn_full + dwt->dn_full;
-	assert(total_width != 0);
-	if(dwt->parity == 0)
-	{ /* Left-most sample is on even coordinate */
-		if(total_width > 1)
-		{
-			decompress_h_parity_even_53(dwt->mem, bandL, dwt->sn_full, bandH, dwt->dn_full, dest);
-		}
-		else
-		{
-			assert(dwt->sn_full == 1);
-			// only L op: only one sample in L band and H band is empty
-			dest[0] = bandL[0];
-		}
-	}
-	else
-	{ /* Left-most sample is on odd coordinate */
-		if(total_width == 1)
-		{
-			assert(dwt->dn_full == 1);
-			// only H op: only one sample in H band and L band is empty
-			dest[0] = bandH[0] >> 1;
-		}
-		else if(total_width == 2)
-		{
-			dwt->mem[1] = bandL[0] - ((bandH[0] + 1) >> 1);
-			dest[0] = bandH[0] + dwt->mem[1];
-			dest[1] = dwt->mem[1];
-		}
-		else
-		{
-			decompress_h_parity_odd_53(dwt->mem, bandL, dwt->sn_full, bandH, dwt->dn_full, dest);
-		}
-	}
-}
-
-/* <summary>                            */
-/* Inverse vertical 5-3 wavelet transform in 1-D for several columns. */
-/* </summary>                           */
-/* Performs interleave, inverse wavelet transform and copy back to buffer */
-static void decompress_v_53(const dwt_data<int32_t>* dwt,
-							grk_buf2d_simple<int32_t> winL,
-						   grk_buf2d_simple<int32_t>  winH,
-						   grk_buf2d_simple<int32_t> winDest,
-							uint32_t nb_cols)
-{
-	const uint32_t total_height = dwt->sn_full + dwt->dn_full;
-	assert(total_height != 0);
-	if(dwt->parity == 0)
-	{
-		if(total_height == 1)
-		{
-			for(uint32_t c = 0; c < nb_cols; c++, winL.buf_++, winDest.buf_++)
-				winDest.buf_[0] = winL.buf_[0];
-		}
-		else
-		{
-			if(nb_cols == PLL_COLS_53)
-			{
-				/* Same as below general case, except that thanks to SSE2/AVX2 */
-				/* we can efficiently process 8/16 columns in parallel */
-				HWY_DYNAMIC_DISPATCH(hwy_decompress_v_parity_even_mcols_53)
-				(dwt->mem, winL.buf_, dwt->sn_full, winL.stride_, winH.buf_, dwt->dn_full, winH.stride_, winDest.buf_,
-				 winDest.stride_);
-			}
-			else
-			{
-				for(uint32_t c = 0; c < nb_cols; c++, winL.buf_++,  winH.buf_++, winDest.buf_++)
-					decompress_v_parity_even_53(dwt->mem, winL.buf_, dwt->sn_full, winL.stride_,  winH.buf_,
-										 dwt->dn_full, winL.stride_, winDest.buf_, winDest.stride_);
-			}
-		}
-	}
-	else
-	{
-		if(total_height == 1)
-		{
-			for(uint32_t c = 0; c < nb_cols; c++, winL.buf_++, winDest.buf_++)
-				winDest.buf_[0] = winL.buf_[0] >> 1;
-		}
-		else if(total_height == 2)
-		{
-			auto out = dwt->mem;
-			for(uint32_t c = 0; c < nb_cols; c++, winL.buf_++,  winH.buf_++, winDest.buf_++)
-			{
-				out[1] = winL.buf_[0] - (( winH.buf_[0] + 1) >> 1);
-				winDest.buf_[0] =  winH.buf_[0] + out[1];
-				winDest.buf_[1] = out[1];
-			}
-		}
-		else
-		{
-			if(nb_cols == PLL_COLS_53)
-			{
-				/* Same as below general case, except that thanks to SSE2/AVX2 */
-				/* we can efficiently process 8/16 columns in parallel */
-				HWY_DYNAMIC_DISPATCH(hwy_decompress_v_parity_odd_mcols_53)
-				(dwt->mem, winL.buf_, dwt->sn_full, winL.stride_,  winH.buf_, dwt->dn_full, winH.stride_, winDest.buf_,
-						winDest.stride_);
-			}
-			else
-			{
-				for(uint32_t c = 0; c < nb_cols; c++, winL.buf_++, winH.buf_++, winDest.buf_++)
-					decompress_v_parity_odd_53(dwt->mem, winL.buf_, dwt->sn_full, winL.stride_,  winH.buf_,
-										 dwt->dn_full, winH.stride_, winDest.buf_, winDest.stride_);
-			}
-		}
-	}
-}
-
-static void decompress_h_strip_53(const dwt_data<int32_t>* horiz, uint32_t hMin, uint32_t hMax,
-		 	 	 	 	 	 	 	 grk_buf2d_simple<int32_t> winL,
-									   grk_buf2d_simple<int32_t>  winH,
-									   grk_buf2d_simple<int32_t> winDest)
-{
-	for(uint32_t j = hMin; j < hMax; ++j)
-	{
-		decompress_h_53(horiz, winL.buf_, winH.buf_, winDest.buf_);
-		winL = winL.incY_IPL(1);
-		winL = winH.incY_IPL(1);
-		winL = winDest.incY_IPL(1);
-	}
-}
-
-static bool decompress_h_53(uint32_t numThreads, size_t data_size, dwt_data<int32_t>& horiz,
-							   dwt_data<int32_t>& vert, uint32_t resHeight,
-							   grk_buf2d_simple<int32_t> winL,
-							   grk_buf2d_simple<int32_t>  winH,
-							   grk_buf2d_simple<int32_t> winDest)
-{
-	if(numThreads == 1 || resHeight <= 1)
-	{
-		if(!horiz.mem)
-		{
-			if(!horiz.alloc(data_size))
-			{
-				GRK_ERROR("Out of memory");
-				return false;
-			}
-			vert.mem = horiz.mem;
-		}
-		decompress_h_strip_53(&horiz, 0, resHeight, winL,winH, winDest);
-	}
-	else
-	{
-		const uint32_t numJobs = resHeight < (uint32_t)numThreads ? resHeight : (uint32_t)numThreads;
-		uint32_t incrPerJob = (resHeight / numJobs);
-		tf::Taskflow taskflow;
-		auto tasks = new tf::Task[numJobs];
-		for(uint64_t i = 0; i < numJobs; i++)
-			tasks[i] = taskflow.placeholder();
-		for(uint32_t j = 0; j < numJobs; ++j)
-		{
-			auto min_j = j * incrPerJob;
-			auto job = new decompress_job<int32_t, dwt_data<int32_t>>(
-				horiz,
-				winL.incY(min_j),
-				winH.incY(min_j),
-				grk_buf2d_simple<int32_t>(),
-				grk_buf2d_simple<int32_t>(),
-				winDest.incY(min_j),
-				j * incrPerJob,
-				j < (numJobs - 1U) ? (j + 1U) * incrPerJob : resHeight);
-			if(!job->data.alloc(data_size))
-			{
-				GRK_ERROR("Out of memory");
-				horiz.release();
-				return false;
-			}
-			tasks[j].work([job] {
-				decompress_h_strip_53(&job->data, job->min_j, job->max_j,
-										job->winLL,
-										job->winHL,
-										job->winDest);
-				job->data.release();
-				delete job;
-			});
-		}
-		ExecSingleton::get()->run(taskflow).wait();
-		delete[] tasks;
-	}
-	return true;
-}
-
-static void decompress_v_strip_53(const dwt_data<int32_t>* vert, uint32_t wMin, uint32_t wMax,
-		 	 	 	 	 	 	 	  grk_buf2d_simple<int32_t> winL,
-									   grk_buf2d_simple<int32_t>  winH,
-									   grk_buf2d_simple<int32_t> winDest)
-{
-	uint32_t j;
-	for(j = wMin; j + PLL_COLS_53 <= wMax; j += PLL_COLS_53)
-	{
-		decompress_v_53(vert, winL,winH,winDest, PLL_COLS_53);
-		winL.incX_IPL(PLL_COLS_53);
-		winH.incX_IPL(PLL_COLS_53);
-		winDest.incX_IPL(PLL_COLS_53);
-	}
-	if(j < wMax)
-		decompress_v_53(vert,winL,winH,winDest, wMax - j);
-}
-
-static bool decompress_v_53(uint32_t numThreads, size_t data_size, dwt_data<int32_t>& horiz,
-							   dwt_data<int32_t>& vert, uint32_t resWidth,
-							   grk_buf2d_simple<int32_t> winL,
-							   grk_buf2d_simple<int32_t>  winH,
-							   grk_buf2d_simple<int32_t> winDest)
-{
-	if(numThreads == 1 || resWidth <= 1)
-	{
-		if(!horiz.mem)
-		{
-			if(!horiz.alloc(data_size))
-			{
-				GRK_ERROR("Out of memory");
-				return false;
-			}
-			vert.mem = horiz.mem;
-		}
-		decompress_v_strip_53(&vert, 0,resWidth, winL,winH,winDest);
-	}
-	else
-	{
-		const uint32_t numJobs = resWidth < (uint32_t)numThreads ? resWidth : (uint32_t)numThreads;
-		uint32_t step = resWidth / numJobs;
-		tf::Taskflow taskflow;
-		auto tasks = new tf::Task[numJobs];
-		for(uint64_t i = 0; i < numJobs; i++)
-			tasks[i] = taskflow.placeholder();
-		for(uint32_t j = 0; j < numJobs; j++)
-		{
-			auto min_j = j * step;
-			auto job = new decompress_job<int32_t, dwt_data<int32_t>>(
-				vert,
-				winL.incX(min_j),
-				grk_buf2d_simple<int32_t>(),
-				winH.incX(min_j),
-				grk_buf2d_simple<int32_t>(),
-				winDest.incX(min_j),
-				j * step, j < (numJobs - 1U) ? (j + 1U) * step : resWidth);
-			if(!job->data.alloc(data_size))
-			{
-				GRK_ERROR("Out of memory");
-				vert.release();
-				return false;
-			}
-			tasks[j].work([job] {
-				decompress_v_strip_53(&job->data, job->min_j, job->max_j,
-										job->winLL,
-										job->winLH,
-										job->winDest);
-				job->data.release();
-				delete job;
-			});
-		}
-		ExecSingleton::get()->run(taskflow).wait();
-		delete[] tasks;
-	}
-	return true;
-}
-/* <summary>                            */
-/* Inverse wavelet transform in 2-D.    */
-/* </summary>                           */
-static bool decompress_tile_53(TileComponent* tilec, uint32_t numres)
-{
-	if(numres == 1U)
-		return true;
-
-	auto tr = tilec->tileCompResolution;
-	auto buf = tilec->getBuffer();
-	uint32_t resWidth = tr->width();
-	uint32_t resHeight = tr->height();
-
-	uint32_t numThreads = (uint32_t)ExecSingleton::get()->num_workers();
-	size_t data_size = max_resolution(tr, numres);
-	/* overflow check */
-	if(data_size > (SIZE_MAX / PLL_COLS_53 / sizeof(int32_t)))
-	{
-		GRK_ERROR("Overflow");
-		return false;
-	}
-	/* We need PLL_COLS_53 times the height of the array, */
-	/* since for the vertical pass */
-	/* we process PLL_COLS_53 columns at a time */
-	dwt_data<int32_t> horiz;
-	dwt_data<int32_t> vert;
-	data_size *= PLL_COLS_53 * sizeof(int32_t);
-	bool rc = true;
-	for(uint8_t res = 1; res < numres; ++res)
-	{
-		horiz.sn_full = resWidth;
-		vert.sn_full = resHeight;
-		++tr;
-		resWidth = tr->width();
-		resHeight = tr->height();
-		if(resWidth == 0 || resHeight == 0)
-			continue;
-		horiz.dn_full = resWidth - horiz.sn_full;
-		horiz.parity = tr->x0 & 1;
-		auto winLL = buf->getResWindowBufferREL(res - 1U);
-		auto winHL = buf->getBandWindowBufferPaddedREL(res, BAND_ORIENT_HL);
-		auto winSplitL = buf->getResWindowBufferSplitREL(res, SPLIT_L);
-		if(!decompress_h_53(numThreads, data_size, horiz, vert, vert.sn_full,
-								winLL->simple(),
-							   winHL->simple(),
-							   winSplitL->simple()))
-			return false;
-		auto winLH = buf->getBandWindowBufferPaddedREL(res, BAND_ORIENT_LH);
-		auto winHH = buf->getBandWindowBufferPaddedREL(res, BAND_ORIENT_HH);
-		auto winSplitH = buf->getResWindowBufferSplitREL(res, SPLIT_H);
-		if(!decompress_h_53(numThreads, data_size, horiz, vert, resHeight - vert.sn_full,
-								winLH->simple(),
-								winHH->simple(),
-							   winSplitH->simple()))
-			return false;
-		vert.dn_full = resHeight - vert.sn_full;
-		vert.parity = tr->y0 & 1;
-		auto winRes = buf->getResWindowBufferREL(res);
-		if(!decompress_v_53(numThreads, data_size, horiz, vert, resWidth,
-								winSplitL->simple(),
-							   winSplitH->simple(),
-							   winRes->simple()))
-			return false;
-	}
-	horiz.release();
-	return rc;
-}
 
 //#undef __SSE__
 
@@ -1343,8 +841,532 @@ static bool decompress_tile_97(TileComponent* GRK_RESTRICT tilec, uint32_t numre
 	horiz.release();
 	return true;
 }
-/**
- * ************************************************************************************
+
+/**************************************************************************************
+ *
+ * Full 5/3 Inverse Wavelet
+ *
+ *
+ *************************************************************************************/
+
+static void decompress_h_parity_even_53(int32_t* buf, int32_t* bandL, /* even */
+								 const uint32_t wL, int32_t* bandH, const uint32_t wH,
+								 int32_t* dest)
+{ /* odd */
+	const uint32_t total_width = wL + wH;
+	assert(total_width > 1);
+
+	/* Improved version of the TWO_PASS_VERSION: */
+	/* Performs lifting in one single iteration. Saves memory */
+	/* accesses and explicit interleaving. */
+	int32_t s1n = bandL[0];
+	int32_t d1n = bandH[0];
+	int32_t s0n = s1n - ((d1n + 1) >> 1);
+	uint32_t i = 0;
+	if(total_width > 2)
+	{
+		for(uint32_t j = 1; i < (total_width - 3); i += 2, j++)
+		{
+			int32_t d1c = d1n;
+			int32_t s0c = s0n;
+
+			s1n = bandL[j];
+			d1n = bandH[j];
+			s0n = s1n - ((d1c + d1n + 2) >> 2);
+			buf[i] = s0c;
+			buf[i + 1] = d1c + ((s0c + s0n) >> 1);
+		}
+	}
+	buf[i] = s0n;
+	if(total_width & 1)
+	{
+		buf[total_width - 1] = bandL[(total_width - 1) >> 1] - ((d1n + 1) >> 1);
+		buf[total_width - 2] = d1n + ((s0n + buf[total_width - 1]) >> 1);
+	}
+	else
+	{
+		buf[total_width - 1] = d1n + s0n;
+	}
+	memcpy(dest, buf, total_width * sizeof(int32_t));
+}
+
+static void decompress_h_parity_odd_53(int32_t* buf, int32_t* bandL, /* odd */
+								 const uint32_t wL, int32_t* bandH, const uint32_t wH,
+								 int32_t* dest)
+{ /* even */
+	const uint32_t total_width = wL + wH;
+	assert(total_width > 2);
+
+	/* Improved version of the TWO_PASS_VERSION:
+	   Performs lifting in one single iteration. Saves memory
+	   accesses and explicit interleaving. */
+	int32_t s1 = bandH[1];
+	int32_t dc = bandL[0] - ((bandH[0] + s1 + 2) >> 2);
+	buf[0] = bandH[0] + dc;
+	uint32_t i, j;
+	for(i = 1, j = 1; i < (total_width - 2 - !(total_width & 1)); i += 2, j++)
+	{
+		int32_t s2 = bandH[j + 1];
+		int32_t dn = bandL[j] - ((s1 + s2 + 2) >> 2);
+
+		buf[i] = dc;
+		buf[i + 1] = s1 + ((dn + dc) >> 1);
+		dc = dn;
+		s1 = s2;
+	}
+	buf[i] = dc;
+	if(!(total_width & 1))
+	{
+		int32_t dn = bandL[(total_width >> 1) - 1] - ((s1 + 1) >> 1);
+		buf[total_width - 2] = s1 + ((dn + dc) >> 1);
+		buf[total_width - 1] = dn;
+	}
+	else
+	{
+		buf[total_width - 1] = s1 + dc;
+	}
+	memcpy(dest, buf, total_width * sizeof(int32_t));
+}
+
+/** Vertical inverse 5x3 wavelet transform for one column, when top-most
+ * pixel is on even coordinate */
+static void decompress_v_parity_even_53(int32_t* buf, int32_t* bandL, const uint32_t hL,
+								 const uint32_t strideL, int32_t* bandH, const uint32_t hH,
+								 const uint32_t strideH, int32_t* dest, const uint32_t strideDest)
+{
+	const uint32_t total_height = hL + hH;
+	assert(total_height > 1);
+
+	/* Performs lifting in one single iteration. Saves memory */
+	/* accesses and explicit interleaving. */
+	int32_t s1n = bandL[0];
+	int32_t d1n = bandH[0];
+	int32_t s0n = s1n - ((d1n + 1) >> 1);
+
+	uint32_t i = 0;
+	if(total_height > 2)
+	{
+		auto bL = bandL + strideL;
+		auto bH = bandH + strideH;
+		for(uint32_t j = 0; i < (total_height - 3); i += 2, j++)
+		{
+			int32_t d1c = d1n;
+			int32_t s0c = s0n;
+			s1n = *bL;
+			bL += strideL;
+			d1n = *bH;
+			bH += strideH;
+			s0n = s1n - ((d1c + d1n + 2) >> 2);
+			buf[i] = s0c;
+			buf[i + 1] = d1c + ((s0c + s0n) >> 1);
+		}
+	}
+	buf[i] = s0n;
+	if(total_height & 1)
+	{
+		buf[total_height - 1] = bandL[((total_height - 1) >> 1) * strideL] - ((d1n + 1) >> 1);
+		buf[total_height - 2] = d1n + ((s0n + buf[total_height - 1]) >> 1);
+	}
+	else
+	{
+		buf[total_height - 1] = d1n + s0n;
+	}
+	for(i = 0; i < total_height; ++i)
+	{
+		*dest = buf[i];
+		dest += strideDest;
+	}
+}
+/** Vertical inverse 5x3 wavelet transform for one column, when top-most
+ * pixel is on odd coordinate */
+static void decompress_v_parity_odd_53(int32_t* buf, int32_t* bandL, const uint32_t hL,
+								 const uint32_t strideL, int32_t* bandH, const uint32_t hH,
+								 const uint32_t strideH, int32_t* dest, const uint32_t strideDest)
+{
+	const uint32_t total_height = hL + hH;
+	assert(total_height > 2);
+
+	/* Performs lifting in one single iteration. Saves memory */
+	/* accesses and explicit interleaving. */
+	int32_t s1 = bandH[strideH];
+	int32_t dc = bandL[0] - ((bandH[0] + s1 + 2) >> 2);
+	buf[0] = bandH[0] + dc;
+	auto s2_ptr = bandH + (strideH << 1);
+	auto dn_ptr = bandL + strideL;
+	uint32_t i, j;
+	for(i = 1, j = 1; i < (total_height - 2 - !(total_height & 1)); i += 2, j++)
+	{
+		int32_t s2 = *s2_ptr;
+		s2_ptr += strideH;
+
+		int32_t dn = *dn_ptr - ((s1 + s2 + 2) >> 2);
+		dn_ptr += strideL;
+
+		buf[i] = dc;
+		buf[i + 1] = s1 + ((dn + dc) >> 1);
+		dc = dn;
+		s1 = s2;
+	}
+	buf[i] = dc;
+	if(!(total_height & 1))
+	{
+		int32_t dn = bandL[((total_height >> 1) - 1) * strideL] - ((s1 + 1) >> 1);
+		buf[total_height - 2] = s1 + ((dn + dc) >> 1);
+		buf[total_height - 1] = dn;
+	}
+	else
+	{
+		buf[total_height - 1] = s1 + dc;
+	}
+	for(i = 0; i < total_height; ++i)
+	{
+		*dest = buf[i];
+		dest += strideDest;
+	}
+}
+/* <summary>                            */
+/* Inverse 5-3 wavelet transform in 1-D for one row. */
+/* </summary>                           */
+/* Performs interleave, inverse wavelet transform and copy back to buffer */
+static void decompress_h_53(const dwt_data<int32_t>* dwt, int32_t* bandL, int32_t* bandH,
+							int32_t* dest)
+{
+	const uint32_t total_width = dwt->sn_full + dwt->dn_full;
+	assert(total_width != 0);
+	if(dwt->parity == 0)
+	{ /* Left-most sample is on even coordinate */
+		if(total_width > 1)
+		{
+			decompress_h_parity_even_53(dwt->mem, bandL, dwt->sn_full, bandH, dwt->dn_full, dest);
+		}
+		else
+		{
+			assert(dwt->sn_full == 1);
+			// only L op: only one sample in L band and H band is empty
+			dest[0] = bandL[0];
+		}
+	}
+	else
+	{ /* Left-most sample is on odd coordinate */
+		if(total_width == 1)
+		{
+			assert(dwt->dn_full == 1);
+			// only H op: only one sample in H band and L band is empty
+			dest[0] = bandH[0] >> 1;
+		}
+		else if(total_width == 2)
+		{
+			dwt->mem[1] = bandL[0] - ((bandH[0] + 1) >> 1);
+			dest[0] = bandH[0] + dwt->mem[1];
+			dest[1] = dwt->mem[1];
+		}
+		else
+		{
+			decompress_h_parity_odd_53(dwt->mem, bandL, dwt->sn_full, bandH, dwt->dn_full, dest);
+		}
+	}
+}
+
+/* <summary>                            */
+/* Inverse vertical 5-3 wavelet transform in 1-D for several columns. */
+/* </summary>                           */
+/* Performs interleave, inverse wavelet transform and copy back to buffer */
+/** Number of columns that we can process in parallel in the vertical pass */
+#define PLL_COLS_53 (2 * uint32_t(HWY_DYNAMIC_DISPATCH(hwy_num_lanes)()))
+static void decompress_v_53(const dwt_data<int32_t>* dwt,
+							grk_buf2d_simple<int32_t> winL,
+						   grk_buf2d_simple<int32_t>  winH,
+						   grk_buf2d_simple<int32_t> winDest,
+							uint32_t nb_cols)
+{
+	const uint32_t total_height = dwt->sn_full + dwt->dn_full;
+	assert(total_height != 0);
+	if(dwt->parity == 0)
+	{
+		if(total_height == 1)
+		{
+			for(uint32_t c = 0; c < nb_cols; c++, winL.buf_++, winDest.buf_++)
+				winDest.buf_[0] = winL.buf_[0];
+		}
+		else
+		{
+			if(nb_cols == PLL_COLS_53)
+			{
+				/* Same as below general case, except that thanks to SSE2/AVX2 */
+				/* we can efficiently process 8/16 columns in parallel */
+				HWY_DYNAMIC_DISPATCH(hwy_decompress_v_parity_even_mcols_53)
+				(dwt->mem, winL.buf_, dwt->sn_full, winL.stride_, winH.buf_, dwt->dn_full, winH.stride_, winDest.buf_,
+				 winDest.stride_);
+			}
+			else
+			{
+				for(uint32_t c = 0; c < nb_cols; c++, winL.buf_++,  winH.buf_++, winDest.buf_++)
+					decompress_v_parity_even_53(dwt->mem, winL.buf_, dwt->sn_full, winL.stride_,  winH.buf_,
+										 dwt->dn_full, winL.stride_, winDest.buf_, winDest.stride_);
+			}
+		}
+	}
+	else
+	{
+		if(total_height == 1)
+		{
+			for(uint32_t c = 0; c < nb_cols; c++, winL.buf_++, winDest.buf_++)
+				winDest.buf_[0] = winL.buf_[0] >> 1;
+		}
+		else if(total_height == 2)
+		{
+			auto out = dwt->mem;
+			for(uint32_t c = 0; c < nb_cols; c++, winL.buf_++,  winH.buf_++, winDest.buf_++)
+			{
+				out[1] = winL.buf_[0] - (( winH.buf_[0] + 1) >> 1);
+				winDest.buf_[0] =  winH.buf_[0] + out[1];
+				winDest.buf_[1] = out[1];
+			}
+		}
+		else
+		{
+			if(nb_cols == PLL_COLS_53)
+			{
+				/* Same as below general case, except that thanks to SSE2/AVX2 */
+				/* we can efficiently process 8/16 columns in parallel */
+				HWY_DYNAMIC_DISPATCH(hwy_decompress_v_parity_odd_mcols_53)
+				(dwt->mem, winL.buf_, dwt->sn_full, winL.stride_,  winH.buf_, dwt->dn_full, winH.stride_, winDest.buf_,
+						winDest.stride_);
+			}
+			else
+			{
+				for(uint32_t c = 0; c < nb_cols; c++, winL.buf_++, winH.buf_++, winDest.buf_++)
+					decompress_v_parity_odd_53(dwt->mem, winL.buf_, dwt->sn_full, winL.stride_,  winH.buf_,
+										 dwt->dn_full, winH.stride_, winDest.buf_, winDest.stride_);
+			}
+		}
+	}
+}
+
+static void decompress_h_strip_53(const dwt_data<int32_t>* horiz, uint32_t hMin, uint32_t hMax,
+		 	 	 	 	 	 	 	 grk_buf2d_simple<int32_t> winL,
+									   grk_buf2d_simple<int32_t>  winH,
+									   grk_buf2d_simple<int32_t> winDest)
+{
+	for(uint32_t j = hMin; j < hMax; ++j)
+	{
+		decompress_h_53(horiz, winL.buf_, winH.buf_, winDest.buf_);
+		winL.incY_IPL(1);
+		winH.incY_IPL(1);
+		winDest.incY_IPL(1);
+	}
+}
+
+static bool decompress_h_53(uint32_t numThreads, size_t data_size, dwt_data<int32_t>& horiz,
+							   dwt_data<int32_t>& vert, uint32_t resHeight,
+							   grk_buf2d_simple<int32_t> winL,
+							   grk_buf2d_simple<int32_t>  winH,
+							   grk_buf2d_simple<int32_t> winDest)
+{
+	if(numThreads == 1 || resHeight <= 1)
+	{
+		if(!horiz.mem)
+		{
+			if(!horiz.alloc(data_size))
+			{
+				GRK_ERROR("Out of memory");
+				return false;
+			}
+			vert.mem = horiz.mem;
+		}
+		decompress_h_strip_53(&horiz, 0, resHeight, winL,winH, winDest);
+	}
+	else
+	{
+		const uint32_t numJobs = resHeight < (uint32_t)numThreads ? resHeight : (uint32_t)numThreads;
+		uint32_t incrPerJob = (resHeight / numJobs);
+		tf::Taskflow taskflow;
+		auto tasks = new tf::Task[numJobs];
+		for(uint64_t i = 0; i < numJobs; i++)
+			tasks[i] = taskflow.placeholder();
+		for(uint32_t j = 0; j < numJobs; ++j)
+		{
+			auto min_j = j * incrPerJob;
+			auto job = new decompress_job<int32_t, dwt_data<int32_t>>(
+				horiz,
+				winL.incY(min_j),
+				winH.incY(min_j),
+				grk_buf2d_simple<int32_t>(),
+				grk_buf2d_simple<int32_t>(),
+				winDest.incY(min_j),
+				j * incrPerJob,
+				j < (numJobs - 1U) ? (j + 1U) * incrPerJob : resHeight);
+			if(!job->data.alloc(data_size))
+			{
+				GRK_ERROR("Out of memory");
+				horiz.release();
+				return false;
+			}
+			tasks[j].work([job] {
+				decompress_h_strip_53(&job->data, job->min_j, job->max_j,
+										job->winLL,
+										job->winHL,
+										job->winDest);
+				job->data.release();
+				delete job;
+			});
+		}
+		ExecSingleton::get()->run(taskflow).wait();
+		delete[] tasks;
+	}
+	return true;
+}
+
+static void decompress_v_strip_53(const dwt_data<int32_t>* vert, uint32_t wMin, uint32_t wMax,
+		 	 	 	 	 	 	 	  grk_buf2d_simple<int32_t> winL,
+									   grk_buf2d_simple<int32_t>  winH,
+									   grk_buf2d_simple<int32_t> winDest)
+{
+	uint32_t j;
+	for(j = wMin; j + PLL_COLS_53 <= wMax; j += PLL_COLS_53)
+	{
+		decompress_v_53(vert, winL,winH,winDest, PLL_COLS_53);
+		winL.incX_IPL(PLL_COLS_53);
+		winH.incX_IPL(PLL_COLS_53);
+		winDest.incX_IPL(PLL_COLS_53);
+	}
+	if(j < wMax)
+		decompress_v_53(vert,winL,winH,winDest, wMax - j);
+}
+
+static bool decompress_v_53(uint32_t numThreads, size_t data_size, dwt_data<int32_t>& horiz,
+							   dwt_data<int32_t>& vert, uint32_t resWidth,
+							   grk_buf2d_simple<int32_t> winL,
+							   grk_buf2d_simple<int32_t>  winH,
+							   grk_buf2d_simple<int32_t> winDest)
+{
+	if(numThreads == 1 || resWidth <= 1)
+	{
+		if(!horiz.mem)
+		{
+			if(!horiz.alloc(data_size))
+			{
+				GRK_ERROR("Out of memory");
+				return false;
+			}
+			vert.mem = horiz.mem;
+		}
+		decompress_v_strip_53(&vert, 0,resWidth, winL,winH,winDest);
+	}
+	else
+	{
+		const uint32_t numJobs = resWidth < (uint32_t)numThreads ? resWidth : (uint32_t)numThreads;
+		uint32_t step = resWidth / numJobs;
+		tf::Taskflow taskflow;
+		auto tasks = new tf::Task[numJobs];
+		for(uint64_t i = 0; i < numJobs; i++)
+			tasks[i] = taskflow.placeholder();
+		for(uint32_t j = 0; j < numJobs; j++)
+		{
+			auto min_j = j * step;
+			auto job = new decompress_job<int32_t, dwt_data<int32_t>>(
+				vert,
+				winL.incX(min_j),
+				grk_buf2d_simple<int32_t>(),
+				winH.incX(min_j),
+				grk_buf2d_simple<int32_t>(),
+				winDest.incX(min_j),
+				j * step, j < (numJobs - 1U) ? (j + 1U) * step : resWidth);
+			if(!job->data.alloc(data_size))
+			{
+				GRK_ERROR("Out of memory");
+				vert.release();
+				return false;
+			}
+			tasks[j].work([job] {
+				decompress_v_strip_53(&job->data, job->min_j, job->max_j,
+										job->winLL,
+										job->winLH,
+										job->winDest);
+				job->data.release();
+				delete job;
+			});
+		}
+		ExecSingleton::get()->run(taskflow).wait();
+		delete[] tasks;
+	}
+	return true;
+}
+/* <summary>                            */
+/* Inverse wavelet transform in 2-D.    */
+/* </summary>                           */
+static bool decompress_tile_53(TileComponent* tilec, uint32_t numres)
+{
+	if(numres == 1U)
+		return true;
+
+	auto tr = tilec->tileCompResolution;
+	auto buf = tilec->getBuffer();
+	uint32_t resWidth = tr->width();
+	uint32_t resHeight = tr->height();
+
+	uint32_t numThreads = (uint32_t)ExecSingleton::get()->num_workers();
+	size_t data_size = max_resolution(tr, numres);
+	/* overflow check */
+	if(data_size > (SIZE_MAX / PLL_COLS_53 / sizeof(int32_t)))
+	{
+		GRK_ERROR("Overflow");
+		return false;
+	}
+	/* We need PLL_COLS_53 times the height of the array, */
+	/* since for the vertical pass */
+	/* we process PLL_COLS_53 columns at a time */
+	dwt_data<int32_t> horiz;
+	dwt_data<int32_t> vert;
+	data_size *= PLL_COLS_53 * sizeof(int32_t);
+	bool rc = true;
+	for(uint8_t res = 1; res < numres; ++res)
+	{
+		horiz.sn_full = resWidth;
+		vert.sn_full = resHeight;
+		++tr;
+		resWidth = tr->width();
+		resHeight = tr->height();
+		if(resWidth == 0 || resHeight == 0)
+			continue;
+		horiz.dn_full = resWidth - horiz.sn_full;
+		horiz.parity = tr->x0 & 1;
+		auto winLL = buf->getResWindowBufferREL(res - 1U);
+		auto winHL = buf->getBandWindowBufferPaddedREL(res, BAND_ORIENT_HL);
+		auto winSplitL = buf->getResWindowBufferSplitREL(res, SPLIT_L);
+		if(!decompress_h_53(numThreads, data_size, horiz, vert, vert.sn_full,
+								winLL->simple(),
+							   winHL->simple(),
+							   winSplitL->simple()))
+			return false;
+		auto winLH = buf->getBandWindowBufferPaddedREL(res, BAND_ORIENT_LH);
+		auto winHH = buf->getBandWindowBufferPaddedREL(res, BAND_ORIENT_HH);
+		auto winSplitH = buf->getResWindowBufferSplitREL(res, SPLIT_H);
+		if(!decompress_h_53(numThreads, data_size, horiz, vert, resHeight - vert.sn_full,
+								winLH->simple(),
+								winHH->simple(),
+							   winSplitH->simple()))
+			return false;
+		vert.dn_full = resHeight - vert.sn_full;
+		vert.parity = tr->y0 & 1;
+		auto winRes = buf->getResWindowBufferREL(res);
+		if(!decompress_v_53(numThreads, data_size, horiz, vert, resWidth,
+								winSplitL->simple(),
+							   winSplitH->simple(),
+							   winRes->simple()))
+			return false;
+	}
+	horiz.release();
+	return rc;
+}
+
+
+/*************************************************************************************
+ *
+ * Partial 5/3 or 9/7 Inverse Wavelet
+ *
+ **************************************************************************************
+ *
  *
  * 5/3 operates on elements of type int32_t while 9/7 operates on elements of type vec4f
  *
