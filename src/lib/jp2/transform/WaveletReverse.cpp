@@ -1156,64 +1156,83 @@ static void decompress_h_strip_53(const dwt_data<int32_t>* horiz, uint32_t hMin,
 		winDest.incY_IPL(1);
 	}
 }
-
-static bool decompress_h_53(uint32_t numThreads, size_t data_size, dwt_data<int32_t>& horiz,
-							   dwt_data<int32_t>& vert, uint32_t resHeight,
-							   grk_buf2d_simple<int32_t> winL,
-							   grk_buf2d_simple<int32_t>  winH,
-							   grk_buf2d_simple<int32_t> winDest)
+static bool decompress_h_53(uint8_t res, TileComponentWindowBuffer<int32_t> *buf, uint32_t resHeight,
+								size_t data_size, dwt_data<int32_t>& horiz,
+							   dwt_data<int32_t>& vert)
 {
-	if(numThreads == 1 || resHeight <= 1)
-	{
-		if(!horiz.mem)
-		{
-			if(!horiz.alloc(data_size))
-			{
-				GRK_ERROR("Out of memory");
-				return false;
-			}
-			vert.mem = horiz.mem;
+	uint32_t numThreads = (uint32_t)ExecSingleton::get()->num_workers();
+	grk_buf2d_simple<int32_t> winL,winH,winDest;
+	uint32_t height;
+	tf::Taskflow taskflow;
+	tf::Task *tasks[2] ={nullptr,nullptr};
+	for (uint32_t orient = 0; orient < 2; ++orient){
+		if (orient == 0) {
+			winL = buf->getResWindowBufferREL(res - 1U)->simple();
+			winH = buf->getBandWindowBufferPaddedREL(res, BAND_ORIENT_HL)->simple();
+			winDest = buf->getResWindowBufferSplitREL(res, SPLIT_L)->simple();
+			height = vert.sn_full;
+		} else {
+			winL = buf->getBandWindowBufferPaddedREL(res, BAND_ORIENT_LH)->simple();
+			winH = buf->getBandWindowBufferPaddedREL(res, BAND_ORIENT_HH)->simple();
+			winDest = buf->getResWindowBufferSplitREL(res, SPLIT_H)->simple();
+			height = resHeight - vert.sn_full;
 		}
-		decompress_h_strip_53(&horiz, 0, resHeight, winL,winH, winDest);
-	}
-	else
-	{
-		const uint32_t numJobs = resHeight < (uint32_t)numThreads ? resHeight : (uint32_t)numThreads;
-		uint32_t incrPerJob = (resHeight / numJobs);
-		tf::Taskflow taskflow;
-		auto tasks = new tf::Task[numJobs];
-		for(uint64_t i = 0; i < numJobs; i++)
-			tasks[i] = taskflow.placeholder();
-		for(uint32_t j = 0; j < numJobs; ++j)
+		if(numThreads == 1 || height <= 1)
 		{
-			auto min_j = j * incrPerJob;
-			auto job = new decompress_job<int32_t, dwt_data<int32_t>>(
-				horiz,
-				winL.incY(min_j),
-				winH.incY(min_j),
-				grk_buf2d_simple<int32_t>(),
-				grk_buf2d_simple<int32_t>(),
-				winDest.incY(min_j),
-				j * incrPerJob,
-				j < (numJobs - 1U) ? (j + 1U) * incrPerJob : resHeight);
-			if(!job->data.alloc(data_size))
+			if(!horiz.mem)
 			{
-				GRK_ERROR("Out of memory");
-				horiz.release();
-				return false;
+				if(!horiz.alloc(data_size))
+				{
+					GRK_ERROR("Out of memory");
+					return false;
+				}
+				vert.mem = horiz.mem;
 			}
-			tasks[j].work([job] {
-				decompress_h_strip_53(&job->data, job->min_j, job->max_j,
-										job->winLL,
-										job->winHL,
-										job->winDest);
-				job->data.release();
-				delete job;
-			});
+			decompress_h_strip_53(&horiz, 0, height, winL,winH, winDest);
 		}
-		ExecSingleton::get()->run(taskflow).wait();
-		delete[] tasks;
+		else
+		{
+			const uint32_t numJobs = height < (uint32_t)numThreads ? height : (uint32_t)numThreads;
+			uint32_t incrPerJob = (height / numJobs);
+			tasks[orient] = new tf::Task[numJobs];
+			for(uint64_t i = 0; i < numJobs; i++)
+				tasks[orient][i] = taskflow.placeholder();
+			for(uint32_t j = 0; j < numJobs; ++j)
+			{
+				auto min_j = j * incrPerJob;
+				auto job = new decompress_job<int32_t, dwt_data<int32_t>>(
+					horiz,
+					winL.incY(min_j),
+					winH.incY(min_j),
+					grk_buf2d_simple<int32_t>(),
+					grk_buf2d_simple<int32_t>(),
+					winDest.incY(min_j),
+					j * incrPerJob,
+					j < (numJobs - 1U) ? (j + 1U) * incrPerJob : height);
+				if(!job->data.alloc(data_size))
+				{
+					GRK_ERROR("Out of memory");
+					horiz.release();
+					for (uint32_t orient = 0; orient < 2; ++orient)
+						delete[] tasks[orient];
+
+					return false;
+				}
+				tasks[orient][j].work([job] {
+					decompress_h_strip_53(&job->data, job->min_j, job->max_j,
+											job->winLL,
+											job->winHL,
+											job->winDest);
+					job->data.release();
+					delete job;
+				});
+			}
+		}
 	}
+	ExecSingleton::get()->run(taskflow).wait();
+	for (uint32_t orient = 0; orient < 2; ++orient)
+		delete[] tasks[orient];
+
 	return true;
 }
 
@@ -1331,24 +1350,12 @@ static bool decompress_tile_53(TileComponent* tilec, uint32_t numres)
 			continue;
 		horiz.dn_full = resWidth - horiz.sn_full;
 		horiz.parity = tr->x0 & 1;
-		auto winLL = buf->getResWindowBufferREL(res - 1U);
-		auto winHL = buf->getBandWindowBufferPaddedREL(res, BAND_ORIENT_HL);
-		auto winSplitL = buf->getResWindowBufferSplitREL(res, SPLIT_L);
-		if(!decompress_h_53(numThreads, data_size, horiz, vert, vert.sn_full,
-								winLL->simple(),
-							   winHL->simple(),
-							   winSplitL->simple()))
-			return false;
-		auto winLH = buf->getBandWindowBufferPaddedREL(res, BAND_ORIENT_LH);
-		auto winHH = buf->getBandWindowBufferPaddedREL(res, BAND_ORIENT_HH);
-		auto winSplitH = buf->getResWindowBufferSplitREL(res, SPLIT_H);
-		if(!decompress_h_53(numThreads, data_size, horiz, vert, resHeight - vert.sn_full,
-								winLH->simple(),
-								winHH->simple(),
-							   winSplitH->simple()))
-			return false;
 		vert.dn_full = resHeight - vert.sn_full;
 		vert.parity = tr->y0 & 1;
+		if(!decompress_h_53(res,buf,resHeight, data_size, horiz, vert))
+			return false;
+		auto winSplitH = buf->getResWindowBufferSplitREL(res, SPLIT_H);
+		auto winSplitL = buf->getResWindowBufferSplitREL(res, SPLIT_L);
 		auto winRes = buf->getResWindowBufferREL(res);
 		if(!decompress_v_53(numThreads, data_size, horiz, vert, resWidth,
 								winSplitL->simple(),
