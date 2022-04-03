@@ -27,11 +27,12 @@ typedef std::vector<ResDecompressBlocks> DecompressBlocks;
 class DecompressScheduler : public Scheduler
 {
   public:
-	DecompressScheduler(uint8_t numResolutions);
+	DecompressScheduler(TileComponent* tilec,
+			 	 	 	 TileCodingParams* tcp,
+						TileComponentCodingParams* tccp,
+						uint8_t prec);
 	~DecompressScheduler() = default;
-	bool scheduleDecompress(TileComponent* tilec, TileCodingParams* tcp,
-							TileComponentCodingParams* tccp, uint8_t prec);
-
+	bool schedule(void) override;
   private:
 	void prepareScheduleDecompress(TileComponent* tilec, TileComponentCodingParams* tccp,
 								   uint8_t prec);
@@ -39,6 +40,10 @@ class DecompressScheduler : public Scheduler
 	bool decompress(void);
 	std::atomic_bool success;
 	DecompressBlocks blocks;
+	TileComponent* tilec_;
+	TileCodingParams* tcp_;
+	TileComponentCodingParams* tccp_;
+	uint8_t prec_;
 };
 
 } // namespace grk

@@ -20,8 +20,29 @@ namespace grk
 {
 const uint8_t gain_b[4] = {0, 1, 1, 2};
 
-DecompressScheduler::DecompressScheduler(uint8_t numResolutions) : Scheduler(numResolutions), success(true) {}
+DecompressScheduler::DecompressScheduler(TileComponent* tilec,
+		 	 	 	 	 	 	 	 	 TileCodingParams* tcp,
+										TileComponentCodingParams* tccp,
+										uint8_t prec) : Scheduler(tilec->highestResolutionDecompressed+1),
+												success(true),
+												tilec_(tilec),
+												tcp_(tcp),
+												tccp_(tccp),
+												prec_(prec)
+{}
 
+bool DecompressScheduler::schedule(void)
+{
+	prepareScheduleDecompress(tilec_, tccp_, prec_);
+	// nominal code block dimensions
+	uint16_t codeblock_width = (uint16_t)(tccp_->cblkw ? (uint32_t)1 << tccp_->cblkw : 0);
+	uint16_t codeblock_height = (uint16_t)(tccp_->cblkh ? (uint32_t)1 << tccp_->cblkh : 0);
+	for(auto i = 0U; i < ExecSingleton::get()->num_workers(); ++i)
+		t1Implementations.push_back(
+			T1Factory::makeT1(false, tcp_, codeblock_width, codeblock_height));
+
+	return decompress();
+}
 void DecompressScheduler::prepareScheduleDecompress(TileComponent* tilec,
 													TileComponentCodingParams* tccp, uint8_t prec)
 {
@@ -68,19 +89,6 @@ void DecompressScheduler::prepareScheduleDecompress(TileComponent* tilec,
 		if(!resBlocks.empty())
 			blocks.push_back(resBlocks);
 	}
-}
-bool DecompressScheduler::scheduleDecompress(TileComponent* tilec, TileCodingParams* tcp,
-											 TileComponentCodingParams* tccp, uint8_t prec)
-{
-	prepareScheduleDecompress(tilec, tccp, prec);
-	// nominal code block dimensions
-	uint16_t codeblock_width = (uint16_t)(tccp->cblkw ? (uint32_t)1 << tccp->cblkw : 0);
-	uint16_t codeblock_height = (uint16_t)(tccp->cblkh ? (uint32_t)1 << tccp->cblkh : 0);
-	for(auto i = 0U; i < ExecSingleton::get()->num_workers(); ++i)
-		t1Implementations.push_back(
-			T1Factory::makeT1(false, tcp, codeblock_width, codeblock_height));
-
-	return decompress();
 }
 bool DecompressScheduler::decompress()
 {

@@ -27,7 +27,7 @@ TileProcessor::TileProcessor(uint16_t tileIndex, CodeStream* codeStream, IBuffer
 	  headerImage(codeStream->getHeaderImage()),
 	  current_plugin_tile(codeStream->getCurrentPluginTile()),
 	  wholeTileDecompress(isWholeTileDecompress), cp_(codeStream->getCodingParams()),
-	  packetLengthCache(PLCache(cp_)), tile(new Tile(headerImage->numcomps)),
+	  packetLengthCache(PLCache(cp_)), tile(new Tile(headerImage->numcomps)),scheduler_(nullptr),
 	  numProcessedPackets(0), numDecompressedPackets(0), tilePartDataLength(0),
 	  tileIndex_(tileIndex), stream_(stream), corrupt_packet_(false),
 	  newTilePartProgressionPosition(cp_->coding_params_.enc_.newTilePartProgressionPosition),
@@ -37,6 +37,7 @@ TileProcessor::TileProcessor(uint16_t tileIndex, CodeStream* codeStream, IBuffer
 TileProcessor::~TileProcessor()
 {
 	release(GRK_TILE_CACHE_NONE);
+	delete scheduler_;
 }
 uint64_t TileProcessor::getTilePartDataLength(void)
 {
@@ -448,8 +449,8 @@ bool TileProcessor::decompressT1(void)
 				GRK_ERROR("Not enough memory for tile data");
 				return false;
 			}
-			auto scheduler = std::unique_ptr<DecompressScheduler>(new DecompressScheduler(tilec->highestResolutionDecompressed+1));
-			if(!scheduler->scheduleDecompress(tilec, tcp_, tccp, headerImage->comps->prec))
+			scheduler_ = new DecompressScheduler(tilec, tcp_, tccp, headerImage->comps->prec);
+			if(!scheduler_->schedule())
 				return false;
 
 			if(doPostT1)
@@ -459,6 +460,9 @@ bool TileProcessor::decompressT1(void)
 								 tilec->highestResolutionDecompressed + 1U, tccp->qmfbid))
 					return false;
 			}
+
+			delete scheduler_;
+			scheduler_ = nullptr;
 		}
 	}
 	if(doPostT1)
@@ -699,9 +703,8 @@ void TileProcessor::t1_encode()
 		mct_norms = (const double*)(tcp->mct_norms);
 	}
 
-	auto scheduler =
-		std::unique_ptr<CompressScheduler>(new CompressScheduler(tile, needsRateControl()));
-	scheduler->scheduleCompress(tcp, mct_norms, mct_numcomps);
+	scheduler_ = new CompressScheduler(tile, needsRateControl(),tcp, mct_norms, mct_numcomps);
+	scheduler_->schedule();
 }
 bool TileProcessor::encodeT2(uint32_t* tileBytesWritten)
 {

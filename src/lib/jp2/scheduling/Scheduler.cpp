@@ -32,4 +32,8 @@ Scheduler::~Scheduler()
 		delete t;
 }
 
+ScheduleState* Scheduler::getState(void){
+	return state_;
+}
+
 } // namespace grk

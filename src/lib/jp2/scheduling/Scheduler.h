@@ -23,7 +23,9 @@ class Scheduler
   public:
 	Scheduler(uint8_t numResolutions);
 	virtual ~Scheduler();
+	virtual bool schedule(void) = 0;
 
+	ScheduleState* getState(void);
   protected:
 	std::vector<T1Interface*> t1Implementations;
 	ScheduleState *state_;

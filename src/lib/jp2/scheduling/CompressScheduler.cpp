@@ -19,11 +19,12 @@
 
 namespace grk
 {
-CompressScheduler::CompressScheduler(Tile* tile, bool needsRateControl)
-	: Scheduler(0), tile(tile), needsRateControl(needsRateControl), encodeBlocks(nullptr), blockCount(-1)
+CompressScheduler::CompressScheduler(Tile* tile, bool needsRateControl,TileCodingParams* tcp, const double* mct_norms,
+		 uint16_t mct_numcomps)
+	: Scheduler(0), tile(tile), needsRateControl(needsRateControl), encodeBlocks(nullptr), blockCount(-1),
+	  tcp_(tcp), mct_norms_(mct_norms), mct_numcomps_(mct_numcomps)
 {}
-void CompressScheduler::scheduleCompress(TileCodingParams* tcp, const double* mct_norms,
-										 uint16_t mct_numcomps)
+bool CompressScheduler::schedule(void)
 {
 	uint16_t compno;
 	uint8_t resno, bandIndex;
@@ -35,7 +36,7 @@ void CompressScheduler::scheduleCompress(TileCodingParams* tcp, const double* mc
 	for(compno = 0; compno < tile->numcomps_; ++compno)
 	{
 		auto tilec = tile->comps + compno;
-		auto tccp = tcp->tccps + compno;
+		auto tccp = tcp_->tccps + compno;
 		for(resno = 0; resno < tilec->numresolutions; ++resno)
 		{
 			auto res = &tilec->tileCompResolution[resno];
@@ -75,8 +76,8 @@ void CompressScheduler::scheduleCompress(TileCodingParams* tcp, const double* mc
 						block->resno = resno;
 						block->inv_step_ht = 1.0f / band->stepsize;
 						block->stepsize = band->stepsize;
-						block->mct_norms = mct_norms;
-						block->mct_numcomps = mct_numcomps;
+						block->mct_norms = mct_norms_;
+						block->mct_numcomps = mct_numcomps_;
 						block->k_msbs = (uint8_t)(band->numbps - cblk->numbps);
 						blocks.push_back(block);
 					}
@@ -85,8 +86,10 @@ void CompressScheduler::scheduleCompress(TileCodingParams* tcp, const double* mc
 		}
 	}
 	for(auto i = 0U; i < ExecSingleton::get()->num_workers(); ++i)
-		t1Implementations.push_back(T1Factory::makeT1(true, tcp, maxCblkW, maxCblkH));
+		t1Implementations.push_back(T1Factory::makeT1(true, tcp_, maxCblkW, maxCblkH));
 	compress(&blocks);
+
+	return true;
 }
 
 void CompressScheduler::compress(std::vector<CompressBlockExec*>* blocks)
