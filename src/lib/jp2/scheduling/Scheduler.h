@@ -14,14 +14,19 @@
  *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
-#include "grk_includes.h"
+#pragma once
 
 namespace grk
 {
-Scheduler::~Scheduler()
+class Scheduler
 {
-	for(auto& t : t1Implementations)
-		delete t;
-}
+  public:
+	Scheduler(uint8_t numResolutions);
+	virtual ~Scheduler();
+
+  protected:
+	std::vector<T1Interface*> t1Implementations;
+	ScheduleState *state_;
+};
 
 } // namespace grk

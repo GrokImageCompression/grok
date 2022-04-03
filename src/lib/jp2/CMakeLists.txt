@@ -49,7 +49,7 @@ include_directories(
   ${CMAKE_CURRENT_SOURCE_DIR}/point_transform
   ${CMAKE_CURRENT_SOURCE_DIR}/t2
   ${CMAKE_CURRENT_SOURCE_DIR}/tile
-  ${CMAKE_CURRENT_SOURCE_DIR}/tile/scheduling
+  ${CMAKE_CURRENT_SOURCE_DIR}/scheduling
   ${CMAKE_CURRENT_SOURCE_DIR}/filters
   ${CMAKE_CURRENT_SOURCE_DIR}/highway
   ${CMAKE_CURRENT_SOURCE_DIR}/cache
@@ -168,12 +168,14 @@ set(GROK_LIBRARY_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/tile/TileProcessor.h
   ${CMAKE_CURRENT_SOURCE_DIR}/tile/SparseCanvas.h
   
-  ${CMAKE_CURRENT_SOURCE_DIR}/tile/scheduling/Scheduler.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/tile/scheduling/Scheduler.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/tile/scheduling/DecompressScheduler.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/tile/scheduling/DecompressScheduler.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/tile/scheduling/CompressScheduler.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/tile/scheduling/CompressScheduler.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/scheduling/ScheduleState.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/scheduling/ScheduleState.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/scheduling/Scheduler.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/scheduling/Scheduler.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/scheduling/DecompressScheduler.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/scheduling/DecompressScheduler.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/scheduling/CompressScheduler.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/scheduling/CompressScheduler.cpp
 
   ${CMAKE_CURRENT_SOURCE_DIR}/transform/WaveletFwd.h
   ${CMAKE_CURRENT_SOURCE_DIR}/transform/WaveletFwd.cpp

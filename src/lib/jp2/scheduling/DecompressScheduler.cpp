@@ -20,7 +20,7 @@ namespace grk
 {
 const uint8_t gain_b[4] = {0, 1, 1, 2};
 
-DecompressScheduler::DecompressScheduler() : success(true) {}
+DecompressScheduler::DecompressScheduler(uint8_t numResolutions) : Scheduler(numResolutions), success(true) {}
 
 void DecompressScheduler::prepareScheduleDecompress(TileComponent* tilec,
 													TileComponentCodingParams* tccp, uint8_t prec)
@@ -110,20 +110,16 @@ bool DecompressScheduler::decompress()
 		return success;
 	}
 
-	// create one tf::Taskflow per resolution, and create one single
-	// tf::Taskflow object composedFlow, composed of all resolution flows
-	auto resFlow = new tf::Taskflow[blocks.size()];
-	tf::Taskflow composedFlow;
-	auto resBlockTasks = new tf::Task*[blocks.size()];
-	auto resTasks = new tf::Task[blocks.size()];
-	size_t resno = 0;
+	uint8_t resno = 0;
 	for(auto& resBlocks : blocks)
 	{
+		assert(resBlocks.size());
 		auto resTaskArray = new tf::Task[resBlocks.size()];
 		for(size_t blockno = 0; blockno < resBlocks.size(); ++blockno)
-			resTaskArray[blockno] = resFlow[resno].placeholder();
-		resBlockTasks[resno] = resTaskArray;
-		resTasks[resno] = composedFlow.composed_of(resFlow[resno]).name("module");
+			resTaskArray[blockno] = state_->resBlockFlows_[resno].placeholder();
+		state_->blockTasks_[resno] = resTaskArray;
+		auto name = state_->genResBlockTaskName(resno);
+		state_->resBlockTasks_[resno] = state_->codecFlow_.composed_of(state_->resBlockFlows_[resno]).name(name);
 		resno++;
 	}
 	resno = 0;
@@ -132,7 +128,7 @@ bool DecompressScheduler::decompress()
 		size_t blockno = 0;
 		for(auto& block : resBlocks)
 		{
-			resBlockTasks[resno][blockno++].work([this, block] {
+			state_->blockTasks_[resno][blockno++].work([this, block] {
 				if(!success)
 				{
 					delete block;
@@ -148,13 +144,7 @@ bool DecompressScheduler::decompress()
 		}
 		resno++;
 	}
-	ExecSingleton::get()->run(composedFlow).wait();
-
-	for(size_t resno = 0; resno < blocks.size(); ++resno)
-		delete[] resBlockTasks[resno];
-	delete[] resBlockTasks;
-	delete[] resTasks;
-	delete[] resFlow;
+	ExecSingleton::get()->run(state_->codecFlow_).wait();
 
 	return success;
 }

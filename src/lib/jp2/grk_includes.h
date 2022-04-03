@@ -149,6 +149,7 @@
 #include "RateControl.h"
 #include "RateInfo.h"
 #include "T1Factory.h"
+#include "ScheduleState.h"
 #include "Scheduler.h"
 #include "DecompressScheduler.h"
 #include "CompressScheduler.h"

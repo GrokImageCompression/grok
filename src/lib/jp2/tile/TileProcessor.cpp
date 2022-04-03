@@ -448,7 +448,7 @@ bool TileProcessor::decompressT1(void)
 				GRK_ERROR("Not enough memory for tile data");
 				return false;
 			}
-			auto scheduler = std::unique_ptr<DecompressScheduler>(new DecompressScheduler());
+			auto scheduler = std::unique_ptr<DecompressScheduler>(new DecompressScheduler(tilec->highestResolutionDecompressed+1));
 			if(!scheduler->scheduleDecompress(tilec, tcp_, tccp, headerImage->comps->prec))
 				return false;
 

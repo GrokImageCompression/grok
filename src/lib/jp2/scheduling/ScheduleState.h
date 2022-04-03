@@ -17,28 +17,18 @@
 
 #pragma once
 
-#include "grk_includes.h"
+class ScheduleState {
+public:
+	ScheduleState(uint8_t numResolutions);
+	virtual ~ScheduleState();
+	std::string genResBlockTaskName(uint8_t resno);
 
-namespace grk
-{
-typedef std::vector<DecompressBlockExec*> ResDecompressBlocks;
-typedef std::vector<ResDecompressBlocks> DecompressBlocks;
+	uint8_t numResolutions_;
 
-class DecompressScheduler : public Scheduler
-{
-  public:
-	DecompressScheduler(void);
-	~DecompressScheduler() = default;
-	bool scheduleDecompress(TileComponent* tilec, TileCodingParams* tcp,
-							TileComponentCodingParams* tccp, uint8_t prec);
-
-  private:
-	void prepareScheduleDecompress(TileComponent* tilec, TileComponentCodingParams* tccp,
-								   uint8_t prec);
-	bool decompressBlock(T1Interface* impl, DecompressBlockExec* block);
-	bool decompress(void);
-	std::atomic_bool success;
-	DecompressBlocks blocks;
+	// create one tf::Taskflow for all blocks in a given resolution, and create one single
+	// tf::Taskflow object codecFlow_, composed of all resolution block flows
+	tf::Task **blockTasks_;
+	tf::Task *resBlockTasks_;
+	tf::Taskflow *resBlockFlows_;
+	tf::Taskflow codecFlow_;
 };
-
-} // namespace grk
