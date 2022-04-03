@@ -90,9 +90,9 @@ bool DecompressScheduler::decompress()
 	success = true;
 	if(num_threads == 1)
 	{
-		for(auto& rb : blocks)
+		for(auto& resBlocks : blocks)
 		{
-			for(auto& block : rb)
+			for(auto& block : resBlocks)
 			{
 				if(!success)
 				{
@@ -109,24 +109,30 @@ bool DecompressScheduler::decompress()
 
 		return success;
 	}
-	tf::Taskflow taskflow;
-	auto resTasks = new tf::Task*[blocks.size()];
-	size_t resno = 0;
-	for(auto& rb : blocks)
-	{
-		auto resTaskArray = new tf::Task[rb.size()];
-		for(size_t blockno = 0; blockno < rb.size(); ++blockno)
-			resTaskArray[blockno] = taskflow.placeholder();
-		resTasks[resno++] = resTaskArray;
-	}
 
+	// create one tf::Taskflow per resolution, and create one single
+	// tf::Taskflow object composedFlow, composed of all resolution flows
+	auto resFlow = new tf::Taskflow[blocks.size()];
+	tf::Taskflow composedFlow;
+	auto resBlockTasks = new tf::Task*[blocks.size()];
+	auto resTasks = new tf::Task[blocks.size()];
+	size_t resno = 0;
+	for(auto& resBlocks : blocks)
+	{
+		auto resTaskArray = new tf::Task[resBlocks.size()];
+		for(size_t blockno = 0; blockno < resBlocks.size(); ++blockno)
+			resTaskArray[blockno] = resFlow[resno].placeholder();
+		resBlockTasks[resno] = resTaskArray;
+		resTasks[resno] = composedFlow.composed_of(resFlow[resno]).name("module");
+		resno++;
+	}
 	resno = 0;
-	for(auto& rb : blocks)
+	for(auto& resBlocks : blocks)
 	{
 		size_t blockno = 0;
-		for(auto& block : rb)
+		for(auto& block : resBlocks)
 		{
-			resTasks[resno][blockno++].work([this, block] {
+			resBlockTasks[resno][blockno++].work([this, block] {
 				if(!success)
 				{
 					delete block;
@@ -142,11 +148,13 @@ bool DecompressScheduler::decompress()
 		}
 		resno++;
 	}
-	ExecSingleton::get()->run(taskflow).wait();
+	ExecSingleton::get()->run(composedFlow).wait();
 
 	for(size_t resno = 0; resno < blocks.size(); ++resno)
-		delete[] resTasks[resno];
+		delete[] resBlockTasks[resno];
+	delete[] resBlockTasks;
 	delete[] resTasks;
+	delete[] resFlow;
 
 	return success;
 }
