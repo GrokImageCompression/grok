@@ -2228,12 +2228,12 @@ bool decompress_partial_tile(TileComponent* GRK_RESTRICT tilec, uint16_t compno,
 cleanup:
 	return rc;
 }
-bool WaveletReverse::decompress(TileProcessor* p_tcd, TileComponent* tilec, uint16_t compno,
+bool WaveletReverse::decompress(TileProcessor* tileProcessor, TileComponent* tilec, uint16_t compno,
 								grk_rect32 window, uint8_t numres, uint8_t qmfbid)
 {
 	if(qmfbid == 1)
 	{
-		if(p_tcd->wholeTileDecompress)
+		if(tileProcessor->wholeTileDecompress)
 			return decompress_tile_53(tilec, numres);
 		else
 		{
@@ -2246,7 +2246,7 @@ bool WaveletReverse::decompress(TileProcessor* p_tcd, TileComponent* tilec, uint
 	}
 	else
 	{
-		if(p_tcd->wholeTileDecompress)
+		if(tileProcessor->wholeTileDecompress)
 			return decompress_tile_97(tilec, numres);
 		else
 		{

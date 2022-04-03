@@ -33,9 +33,9 @@ DecompressScheduler::DecompressScheduler(TileComponent* tilec,
 bool DecompressScheduler::schedule(void)
 {
 	bool wholeTileDecoding = tilec_->isWholeTileDecoding();
+	ResDecompressBlocks resBlocks;
 	for(uint8_t resno = 0; resno <= tilec_->highestResolutionDecompressed; ++resno)
 	{
-		ResDecompressBlocks resBlocks;
 		auto res = tilec_->tileCompResolution + resno;
 		for(uint8_t bandIndex = 0; bandIndex < res->numTileBandWindows; ++bandIndex)
 		{
@@ -72,8 +72,14 @@ bool DecompressScheduler::schedule(void)
 				}
 			}
 		}
-		if(!resBlocks.empty())
+		if(!resBlocks.empty() && resno > 0) {
 			blocks.push_back(resBlocks);
+			resBlocks.clear();
+		}
+	}
+	if(!resBlocks.empty()) {
+		blocks.push_back(resBlocks);
+		resBlocks.clear();
 	}
 	// nominal code block dimensions
 	uint16_t codeblock_width = (uint16_t)(tccp_->cblkw ? (uint32_t)1 << tccp_->cblkw : 0);

@@ -23,7 +23,7 @@ public:
 	virtual ~ScheduleState();
 	std::string genResBlockTaskName(uint8_t resno);
 
-	uint8_t numResolutions_;
+	uint8_t numResFlows_;
 
 	// create one tf::Taskflow for all blocks in a given resolution, and create one single
 	// tf::Taskflow object codecFlow_, composed of all resolution block flows

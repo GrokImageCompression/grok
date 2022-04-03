@@ -17,24 +17,27 @@
 #include "grk_includes.h"
 
 
-ScheduleState::ScheduleState(uint8_t numResolutions) : numResolutions_(numResolutions),
+ScheduleState::ScheduleState(uint8_t numResolutions) : numResFlows_(numResolutions),
 														blockTasks_(nullptr),
 														resBlockTasks_(nullptr),
 														resBlockFlows_(nullptr)
 {
 	codecFlow_.name("codecFlow");
-	if (numResolutions){
-		blockTasks_ = new tf::Task*[numResolutions];
-		for (uint8_t i = 0; i < numResolutions; ++i)
+	if (numResFlows_){
+		// lowest two resolutions are grouped together
+		if (numResFlows_ > 1)
+			numResFlows_--;
+		blockTasks_ = new tf::Task*[numResFlows_];
+		for (uint8_t i = 0; i < numResFlows_; ++i)
 			blockTasks_[i] = nullptr;
-		resBlockTasks_ = new tf::Task[numResolutions];
-		resBlockFlows_ = new tf::Taskflow[numResolutions];
+		resBlockTasks_ = new tf::Task[numResFlows_];
+		resBlockFlows_ = new tf::Taskflow[numResFlows_];
 	}
 }
 ScheduleState::~ScheduleState() {
 	if (blockTasks_){
-		for(uint8_t resno = 0; resno < numResolutions_; ++resno)
-			delete[] blockTasks_[resno];
+		for(uint8_t i = 0; i < numResFlows_; ++i)
+			delete[] blockTasks_[i];
 		delete[] blockTasks_;
 	}
 	delete[] resBlockTasks_;
