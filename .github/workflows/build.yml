@@ -80,7 +80,7 @@ jobs:
         cmake -E make_directory ${{ github.workspace }}/build
         git clone --depth=1 --branch=${{ env.DATA_BRANCH }} https://github.com/GrokImageCompression/grok-test-data.git ${{ env.DATA_ROOT }}
 
-    - name: Configure CMake
+    - name: configure cmake
       # Use a bash shell so we can use the same syntax for environment variable
       # access regardless of the host operating system
       shell: bash
@@ -90,15 +90,28 @@ jobs:
       # The CMake binaries on the Github Actions machines are (as of this writing) 3.12
       run: cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DGROK_BUILD_THIRDPARTY:BOOL=ON -DBUILD_TESTING:BOOL=ON -DGRK_DATA_ROOT=$DATA_ROOT $GENERATOR_PLATFORM
 
-    - name: Build
+    - name: build
       working-directory: ${{ github.workspace }}/build
       shell: bash
       # Execute the build.  You can specify a specific target with "--target <NAME>"
       run: cmake --build . --config $BUILD_TYPE
 
-    - name: Test
+    - name: test
       working-directory: ${{ github.workspace }}/build
       shell: bash
       if: "!startsWith(matrix.os, 'windows')"
       run: ctest --output-on-failure -C $BUILD_TYPE
+
+    - name: package
+      working-directory: ${{ github.workspace }}/build
+      shell: bash
+      run: |
+        cmake -Wno-dev -D CPACK_GENERATOR:STRING=ZIP -D CPACK_PACKAGE_FILE_NAME:STRING=grok-${{ matrix.os }} .
+        cmake --build . --config $BUILD_TYPE --target package
+
+    - name: publish
+      uses: actions/upload-artifact@v3
+      with:
+        name: grok-${{ matrix.os }}.zip
+        path: ${{ github.workspace }}/build/grok-${{ matrix.os }}.zip
 
