@@ -30,7 +30,7 @@ class Scheduler
   protected:
 	std::atomic_bool success;
 	std::vector<T1Interface*> t1Implementations;
-	ScheduleState *state_;
+	ScheduleState *scheduleState_;
 };
 
 } // namespace grk

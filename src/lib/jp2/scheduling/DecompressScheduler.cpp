@@ -117,23 +117,22 @@ bool DecompressScheduler::schedule(void)
 	uint8_t resno = 0;
 	for(auto& resBlocks : blocks)
 	{
-		assert(resBlocks.size());
-		auto state = state_->resStates_ + resno;
-		state->allocBlockTasks(resBlocks.size());
-		for(size_t blockno = 0; blockno < resBlocks.size(); ++blockno)
-			state->blockTasks_[blockno] = state_->resStates_[resno].blockFlow_.placeholder();
-		auto blockFlowName = state_->genBlockFlowTaskName(resno);
-		state_->resStates_[resno].blockFlowTask_ =
-				state_->codecFlow_.composed_of(state_->resStates_[resno].blockFlow_).name(blockFlowName);
+		auto resFlow = scheduleState_->resFlows_ + resno;
+		auto flow = resFlow->blockFlow_;
+		flow->alloc(resBlocks.size());
+		auto blockFlowName = scheduleState_->genBlockFlowTaskName(resno);
+		flow->composedFlowTask_ =
+				scheduleState_->codecFlow_.composed_of(flow->flow_).name(blockFlowName);
 		resno++;
 	}
 	resno = 0;
 	for(auto& resBlocks : blocks)
 	{
 		size_t blockno = 0;
+		auto resFlow = scheduleState_->resFlows_ + resno;
 		for(auto& block : resBlocks)
 		{
-			state_->resStates_[resno].blockTasks_[blockno++].work([this, block] {
+			resFlow->blockFlow_->tasks_[blockno++].work([this, block] {
 				if(!success)
 				{
 					delete block;

@@ -17,20 +17,24 @@
 
 #pragma once
 
-struct ResState{
-	ResState(void);
-	~ResState(void);
 
-	void allocBlockTasks(uint64_t numBlocks);
-	void allocWaveletTasks(uint64_t numWaveletStrips);
+struct ComposedFlow{
+	ComposedFlow(void);
+	~ComposedFlow(void);
 
-	tf::Task *blockTasks_;
-	tf::Taskflow blockFlow_;
-	tf::Task blockFlowTask_;
+	void alloc(uint64_t numTasks);
 
-	tf::Task *waveletTasks_;
-	tf::Taskflow waveletFlow_;
-	tf::Task waveletFlowTask_;
+	tf::Task *tasks_;
+	tf::Taskflow flow_;
+	tf::Task composedFlowTask_;
+};
+
+struct ResFlow{
+	ResFlow(void);
+	~ResFlow(void);
+
+	ComposedFlow *blockFlow_;
+	ComposedFlow *waveletFlow_;
 };
 
 class ScheduleState {
@@ -43,6 +47,6 @@ public:
 
 	// create one tf::Taskflow for all blocks in a given resolution, and create one single
 	// tf::Taskflow object codecFlow_, composed of all resolution block flows
-	ResState *resStates_;
+	ResFlow *resFlows_;
 	tf::Taskflow codecFlow_;
 };

@@ -20,21 +20,21 @@ namespace grk
 {
 
 Scheduler::Scheduler(uint8_t numResolutions) : success(true),
-												state_(numResolutions ? new ScheduleState(numResolutions) : nullptr){
+		scheduleState_(numResolutions ? new ScheduleState(numResolutions) : nullptr){
 }
 Scheduler::~Scheduler()
 {
-	delete state_;
+	delete scheduleState_;
 	for(auto& t : t1Implementations)
 		delete t;
 }
 bool Scheduler::run(void) {
-	ExecSingleton::get()->run(state_->codecFlow_).wait();
+	ExecSingleton::get()->run(scheduleState_->codecFlow_).wait();
 
 	return success;
 }
 ScheduleState* Scheduler::getState(void){
-	return state_;
+	return scheduleState_;
 }
 
 } // namespace grk

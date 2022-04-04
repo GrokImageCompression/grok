@@ -16,36 +16,40 @@
  */
 #include "grk_includes.h"
 
-ResState::ResState(void) : blockTasks_(nullptr), waveletTasks_(nullptr){
+ComposedFlow::ComposedFlow(void) : tasks_(nullptr){
 }
-ResState::~ResState(void){
-	delete[] blockTasks_;
-	delete[] waveletTasks_;
+ComposedFlow::~ComposedFlow(void){
+	delete[] tasks_;
 }
-void ResState::allocBlockTasks(uint64_t numBlocks){
-	if (blockTasks_)
-		delete[] blockTasks_;
-	blockTasks_ = new tf::Task[numBlocks];
+void ComposedFlow::alloc(uint64_t numTasks){
+	if (tasks_)
+		delete[] tasks_;
+	tasks_ = new tf::Task[numTasks];
+	for(uint64_t i = 0; i < numTasks; i++)
+		tasks_[i] = flow_.placeholder();
 }
-void ResState::allocWaveletTasks(uint64_t numWaveletStrips){
-	if (waveletTasks_)
-		delete[] waveletTasks_;
-	waveletTasks_ = new tf::Task[numWaveletStrips];
+
+ResFlow::ResFlow(void) : blockFlow_(new ComposedFlow()),
+						   waveletFlow_(new ComposedFlow()) {
+}
+ResFlow::~ResFlow(void){
+	delete blockFlow_;
+	delete waveletFlow_;
 }
 
 ScheduleState::ScheduleState(uint8_t numResolutions) : numResFlows_(numResolutions),
-														resStates_(nullptr)
+														resFlows_(nullptr)
 {
 	codecFlow_.name("codecFlow");
 	if (numResFlows_){
 		// lowest two resolutions are grouped together
 		if (numResFlows_ > 1)
 			numResFlows_--;
-		resStates_ = new ResState[numResFlows_];
+		resFlows_ = new ResFlow[numResFlows_];
 	}
 }
 ScheduleState::~ScheduleState() {
-	delete[] resStates_;
+	delete[] resFlows_;
 }
 std::string ScheduleState::genBlockFlowTaskName(uint8_t resno){
 	std::stringstream ss;
