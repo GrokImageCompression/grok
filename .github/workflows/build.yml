@@ -108,10 +108,11 @@ jobs:
       run: |
         cmake -Wno-dev -D CPACK_GENERATOR:STRING=ZIP -D CPACK_PACKAGE_FILE_NAME:STRING=grok-${{ matrix.os }} .
         cmake --build . --config $BUILD_TYPE --target package
+        7z x grok-${{ matrix.os }}.zip
 
     - name: publish
       uses: actions/upload-artifact@v3
       with:
-        name: grok-${{ matrix.os }}.zip
-        path: ${{ github.workspace }}/build/grok-${{ matrix.os }}.zip
+        name: grok-${{ matrix.os }}
+        path: ${{ github.workspace }}/build/grok-${{ matrix.os }}
 
