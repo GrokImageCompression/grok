@@ -16,21 +16,28 @@
  */
 #include "grk_includes.h"
 
-ComposedFlow::ComposedFlow(void) : tasks_(nullptr){
+Composee::Composee(void) : tasks_(nullptr){
 }
-ComposedFlow::~ComposedFlow(void){
+Composee::~Composee(void){
 	delete[] tasks_;
 }
-void ComposedFlow::alloc(uint64_t numTasks){
+Composee* Composee::alloc(uint64_t numTasks){
 	if (tasks_)
 		delete[] tasks_;
 	tasks_ = new tf::Task[numTasks];
 	for(uint64_t i = 0; i < numTasks; i++)
 		tasks_[i] = flow_.placeholder();
+
+	return this;
+}
+Composee* Composee::composed_by(tf::Taskflow &composer, std::string name){
+	composedFlowTask_ = composer.composed_of(flow_).name(name);
+
+	return this;
 }
 
-ResFlow::ResFlow(void) : blockFlow_(new ComposedFlow()),
-						   waveletFlow_(new ComposedFlow()) {
+ResFlow::ResFlow(void) : blockFlow_(new Composee()),
+						   waveletFlow_(new Composee()) {
 }
 ResFlow::~ResFlow(void){
 	delete blockFlow_;

@@ -18,11 +18,12 @@
 #pragma once
 
 
-struct ComposedFlow{
-	ComposedFlow(void);
-	~ComposedFlow(void);
+struct Composee{
+	Composee(void);
+	~Composee(void);
 
-	void alloc(uint64_t numTasks);
+	Composee* alloc(uint64_t numTasks);
+	Composee* composed_by(tf::Taskflow &composer, std::string name);
 
 	tf::Task *tasks_;
 	tf::Taskflow flow_;
@@ -33,8 +34,8 @@ struct ResFlow{
 	ResFlow(void);
 	~ResFlow(void);
 
-	ComposedFlow *blockFlow_;
-	ComposedFlow *waveletFlow_;
+	Composee *blockFlow_;
+	Composee *waveletFlow_;
 };
 
 class ScheduleState {

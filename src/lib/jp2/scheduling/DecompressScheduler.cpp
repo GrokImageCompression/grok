@@ -119,10 +119,8 @@ bool DecompressScheduler::schedule(void)
 	{
 		auto resFlow = scheduleState_->resFlows_ + resno;
 		auto flow = resFlow->blockFlow_;
-		flow->alloc(resBlocks.size());
 		auto blockFlowName = scheduleState_->genBlockFlowTaskName(resno);
-		flow->composedFlowTask_ =
-				scheduleState_->codecFlow_.composed_of(flow->flow_).name(blockFlowName);
+		flow->alloc(resBlocks.size())->composed_by(scheduleState_->codecFlow_, blockFlowName);
 		resno++;
 	}
 	resno = 0;
