@@ -452,8 +452,8 @@ bool TileProcessor::decompressT1(void)
 				GRK_ERROR("Not enough memory for tile data");
 				return false;
 			}
-			scheduler_ = new DecompressScheduler(tilec, tcp_, tccp, headerImage->comps->prec);
-			if(!scheduler_->schedule() || !scheduler_->run())
+			scheduler_ = new DecompressScheduler(tile, tcp_, headerImage->comps->prec);
+			if(!scheduler_->schedule(compno) || !scheduler_->run())
 				return false;
 
 			if(doPostT1)
@@ -707,7 +707,7 @@ void TileProcessor::t1_encode()
 	}
 
 	scheduler_ = new CompressScheduler(tile, needsRateControl(),tcp, mct_norms, mct_numcomps);
-	scheduler_->schedule();
+	scheduler_->schedule(0);
 }
 bool TileProcessor::encodeT2(uint32_t* tileBytesWritten)
 {

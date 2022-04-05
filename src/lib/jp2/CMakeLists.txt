@@ -168,8 +168,8 @@ set(GROK_LIBRARY_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/tile/TileProcessor.h
   ${CMAKE_CURRENT_SOURCE_DIR}/tile/SparseCanvas.h
   
-  ${CMAKE_CURRENT_SOURCE_DIR}/scheduling/ScheduleState.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/scheduling/ScheduleState.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/scheduling/ComponentFlow.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/scheduling/ComponentFlow.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/scheduling/Scheduler.h
   ${CMAKE_CURRENT_SOURCE_DIR}/scheduling/Scheduler.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/scheduling/DecompressScheduler.h

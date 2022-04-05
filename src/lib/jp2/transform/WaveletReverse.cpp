@@ -1166,7 +1166,7 @@ static bool decompress_h_53(Scheduler *scheduler,
 	tf::Task *resTasksWaveletH[2] ={nullptr,nullptr};
 	uint32_t numJobs[2] = {0,0};
 	uint32_t height[2] = {0,0};
-	tf::Taskflow &comp = scheduler->getState()->codecFlow_;
+	tf::Taskflow &comp = scheduler->getCodecFlow();
 	comp.clear();
 	for (uint32_t orient = 0; orient < 2; ++orient){
 		height[orient] = (orient == 0) ? vert.sn_full : resHeight - vert.sn_full;
@@ -1284,7 +1284,7 @@ static bool decompress_v_53(Scheduler *scheduler,
 	}
 	else
 	{
-		tf::Taskflow &comp = scheduler->getState()->codecFlow_;
+		tf::Taskflow &comp = scheduler->getCodecFlow();
 		comp.clear();
 		const uint32_t numJobs = resWidth < numThreads ? resWidth : numThreads;
 		uint32_t step = resWidth / numJobs;

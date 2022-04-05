@@ -137,7 +137,7 @@
 #include "PacketIter.h"
 #include "PacketManager.h"
 #include "SparseCanvas.h"
-#include "ScheduleState.h"
+#include "ComponentFlow.h"
 #include "Scheduler.h"
 #include "TileComponent.h"
 #include "TileProcessor.h"

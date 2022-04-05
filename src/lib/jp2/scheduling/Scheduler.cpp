@@ -19,22 +19,29 @@
 namespace grk
 {
 
-Scheduler::Scheduler(uint8_t numResolutions) : success(true),
-		scheduleState_(numResolutions ? new ScheduleState(numResolutions) : nullptr){
+Scheduler::Scheduler(Tile* tile) : success(true),tile_(tile), numcomps_(tile->numcomps_){
+	assert(tile);
+	componentFlows_ = new ComponentFlow*[numcomps_];
+	for (uint16_t compno = 0; compno < numcomps_; ++compno){
+		uint8_t numResolutions = (tile->comps+compno)->highestResolutionDecompressed+1;
+		componentFlows_[compno] = numResolutions ? new ComponentFlow(numResolutions) : nullptr;
+	}
 }
 Scheduler::~Scheduler()
 {
-	delete scheduleState_;
+	for (uint16_t compno = 0; compno < numcomps_; ++compno)
+		delete componentFlows_[compno];
+	delete[] componentFlows_;
 	for(auto& t : t1Implementations)
 		delete t;
 }
 bool Scheduler::run(void) {
-	ExecSingleton::get()->run(scheduleState_->codecFlow_).wait();
+	ExecSingleton::get()->run(codecFlow_).wait();
 
 	return success;
 }
-ScheduleState* Scheduler::getState(void){
-	return scheduleState_;
+tf::Taskflow& Scheduler::getCodecFlow(void){
+	return codecFlow_;
 }
 
 } // namespace grk

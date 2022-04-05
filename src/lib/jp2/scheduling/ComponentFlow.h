@@ -38,10 +38,10 @@ struct ResFlow{
 	Composee *waveletFlow_;
 };
 
-class ScheduleState {
+class ComponentFlow {
 public:
-	ScheduleState(uint8_t numResolutions);
-	virtual ~ScheduleState();
+	ComponentFlow(uint8_t numResolutions);
+	virtual ~ComponentFlow();
 	std::string genBlockFlowTaskName(uint8_t resno);
 
 	uint8_t numResFlows_;
@@ -49,5 +49,4 @@ public:
 	// create one tf::Taskflow for all blocks in a given resolution, and create one single
 	// tf::Taskflow object codecFlow_, composed of all resolution block flows
 	ResFlow *resFlows_;
-	tf::Taskflow codecFlow_;
 };

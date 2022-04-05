@@ -44,10 +44,9 @@ ResFlow::~ResFlow(void){
 	delete waveletFlow_;
 }
 
-ScheduleState::ScheduleState(uint8_t numResolutions) : numResFlows_(numResolutions),
+ComponentFlow::ComponentFlow(uint8_t numResolutions) : numResFlows_(numResolutions),
 														resFlows_(nullptr)
 {
-	codecFlow_.name("codecFlow");
 	if (numResFlows_){
 		// lowest two resolutions are grouped together
 		if (numResFlows_ > 1)
@@ -55,10 +54,10 @@ ScheduleState::ScheduleState(uint8_t numResolutions) : numResFlows_(numResolutio
 		resFlows_ = new ResFlow[numResFlows_];
 	}
 }
-ScheduleState::~ScheduleState() {
+ComponentFlow::~ComponentFlow() {
 	delete[] resFlows_;
 }
-std::string ScheduleState::genBlockFlowTaskName(uint8_t resno){
+std::string ComponentFlow::genBlockFlowTaskName(uint8_t resno){
 	std::stringstream ss;
 	ss << "blockFlowTask-" << resno;
 

@@ -21,16 +21,19 @@ namespace grk
 class Scheduler
 {
   public:
-	Scheduler(uint8_t numResolutions);
+	Scheduler(Tile* tile);
 	virtual ~Scheduler();
-	virtual bool schedule(void) = 0;
+	virtual bool schedule(uint16_t compno) = 0;
 	bool run(void);
 
-	ScheduleState* getState(void);
+	tf::Taskflow& getCodecFlow(void);
   protected:
 	std::atomic_bool success;
 	std::vector<T1Interface*> t1Implementations;
-	ScheduleState *scheduleState_;
+	ComponentFlow **componentFlows_;
+	tf::Taskflow codecFlow_;
+	Tile* tile_;
+	uint16_t numcomps_;
 };
 
 } // namespace grk
