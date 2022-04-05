@@ -34,7 +34,6 @@ class DecompressScheduler : public Scheduler
 	bool schedule(uint16_t compno) override;
   private:
 	bool decompressBlock(T1Interface* impl, DecompressBlockExec* block);
-	DecompressBlocks blocks;
 	TileCodingParams* tcp_;
 	uint8_t prec_;
 };

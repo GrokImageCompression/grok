@@ -29,6 +29,7 @@ DecompressScheduler::DecompressScheduler(Tile* tile,
 
 bool DecompressScheduler::schedule(uint16_t compno)
 {
+	DecompressBlocks blocks;
 	ResDecompressBlocks resBlocks;
 	auto tccp = tcp_->tccps + compno;
 	auto tilec = tile_->comps + compno;

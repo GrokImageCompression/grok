@@ -430,6 +430,7 @@ bool TileProcessor::decompressT1(void)
 		!current_plugin_tile || (current_plugin_tile->decompress_flags & GRK_DECODE_POST_T1);
 	if(doT1)
 	{
+		scheduler_ = new DecompressScheduler(tile, tcp_, headerImage->comps->prec);
 		for(uint16_t compno = 0; compno < tile->numcomps_; ++compno)
 		{
 			auto tilec = tile->comps + compno;
@@ -452,10 +453,8 @@ bool TileProcessor::decompressT1(void)
 				GRK_ERROR("Not enough memory for tile data");
 				return false;
 			}
-			scheduler_ = new DecompressScheduler(tile, tcp_, headerImage->comps->prec);
 			if(!scheduler_->schedule(compno) || !scheduler_->run())
 				return false;
-
 			if(doPostT1)
 			{
 				WaveletReverse w;
@@ -463,10 +462,11 @@ bool TileProcessor::decompressT1(void)
 								 tilec->highestResolutionDecompressed + 1U, tccp->qmfbid))
 					return false;
 			}
-
-			delete scheduler_;
-			scheduler_ = nullptr;
+			scheduler_->getCodecFlow().clear();
 		}
+
+		delete scheduler_;
+		scheduler_ = nullptr;
 	}
 	if(doPostT1)
 	{
