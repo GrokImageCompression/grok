@@ -14,26 +14,29 @@
  *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
+
 #pragma once
 
-namespace grk
-{
-class Scheduler
-{
-  public:
-	Scheduler(Tile* tile);
-	virtual ~Scheduler();
-	virtual bool schedule(uint16_t compno) = 0;
-	bool run(void);
-	ImageComponentFlow* getImageComponentFlow(uint16_t compno);
-	tf::Taskflow& getCodecFlow(void);
-  protected:
-	std::atomic_bool success;
-	std::vector<T1Interface*> t1Implementations;
-	ImageComponentFlow **imageComponentFlows_;
-	tf::Taskflow codecFlow_;
-	Tile* tile_;
-	uint16_t numcomps_;
+#include "FlowComponent.h"
+
+struct ResFlow{
+	ResFlow(void);
+	~ResFlow(void);
+
+	FlowComponent *blocks_;
+	FlowComponent *waveletHorizL_;
+	FlowComponent *waveletHorizH_;
+	FlowComponent *waveletVert_;
 };
 
-} // namespace grk
+class ImageComponentFlow {
+public:
+	ImageComponentFlow(uint8_t numResolutions);
+	virtual ~ImageComponentFlow();
+	std::string genBlockFlowTaskName(uint8_t resFlowNo);
+	ResFlow *getResFlow(uint8_t resFlowNo);
+
+	uint8_t numResFlows_;
+	ResFlow *resFlows_;
+	FlowComponent *waveletFinalCopy_;
+};

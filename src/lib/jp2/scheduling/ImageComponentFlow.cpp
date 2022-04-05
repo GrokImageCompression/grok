@@ -16,44 +16,22 @@
  */
 #include "grk_includes.h"
 
-Composee::Composee(void) : tasks_(nullptr){
-}
-Composee::~Composee(void){
-	delete[] tasks_;
-}
-Composee* Composee::alloc(uint64_t numTasks){
-	if (tasks_)
-		delete[] tasks_;
-	tasks_ = new tf::Task[numTasks];
-	for(uint64_t i = 0; i < numTasks; i++)
-		tasks_[i] = flow_.placeholder();
 
-	return this;
-}
-Composee* Composee::composed_by(tf::Taskflow &composer){
-	composedFlowTask_ = composer.composed_of(flow_);
-
-	return this;
-}
-Composee* Composee::name(const std::string& name) {
-  composedFlowTask_.name(name);
-  return this;
-}
-ResFlow::ResFlow(void) : blockFlow_(new Composee()),
-									waveletHorizLFlow_(new Composee()),
-									waveletHorizHFlow_(new Composee()),
-									waveletVertFlow_(new Composee())
+ResFlow::ResFlow(void) : blocks_(new FlowComponent()),
+									waveletHorizL_(new FlowComponent()),
+									waveletHorizH_(new FlowComponent()),
+									waveletVert_(new FlowComponent())
 {
 }
 ResFlow::~ResFlow(void){
-	delete blockFlow_;
-	delete waveletHorizLFlow_;
-	delete waveletHorizHFlow_;
-	delete waveletVertFlow_;
+	delete blocks_;
+	delete waveletHorizL_;
+	delete waveletHorizH_;
+	delete waveletVert_;
 }
-ComponentFlow::ComponentFlow(uint8_t numResolutions) : numResFlows_(numResolutions),
+ImageComponentFlow::ImageComponentFlow(uint8_t numResolutions) : numResFlows_(numResolutions),
 														resFlows_(nullptr),
-														waveletFinalCopyFlow_(new Composee())
+														waveletFinalCopy_(new FlowComponent())
 {
 	if (numResFlows_){
 		// lowest two resolutions are grouped together
@@ -62,14 +40,14 @@ ComponentFlow::ComponentFlow(uint8_t numResolutions) : numResFlows_(numResolutio
 		resFlows_ = new ResFlow[numResFlows_];
 	}
 }
-ComponentFlow::~ComponentFlow() {
+ImageComponentFlow::~ImageComponentFlow() {
 	delete[] resFlows_;
-	delete waveletFinalCopyFlow_;
+	delete waveletFinalCopy_;
 }
-ResFlow* ComponentFlow::getResFlow(uint8_t resFlowNo){
+ResFlow* ImageComponentFlow::getResFlow(uint8_t resFlowNo){
 	return (resFlows_ && resFlowNo < numResFlows_) ? resFlows_ + resFlowNo : nullptr;
 }
-std::string ComponentFlow::genBlockFlowTaskName(uint8_t resFlowNo){
+std::string ImageComponentFlow::genBlockFlowTaskName(uint8_t resFlowNo){
 	std::stringstream ss;
 	ss << "blockFlowTask-" << resFlowNo;
 

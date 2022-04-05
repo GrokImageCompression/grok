@@ -530,11 +530,11 @@ bool WaveletReverse::decompress_h_97(bool low, uint8_t res, uint32_t numThreads,
 		if(resHeight < numJobs)
 			numJobs = resHeight;
 		uint32_t incrPerJob = resHeight / numJobs;
-		auto componentFlow = scheduler_->getComponentFlow(compno_);
-		auto resFlow = componentFlow->getResFlow(res - 1);
-		auto composee = low ? resFlow->waveletHorizLFlow_ : resFlow->waveletHorizHFlow_;
+		auto imageComponentFlow = scheduler_->getImageComponentFlow(compno_);
+		auto resFlow = imageComponentFlow->getResFlow(res - 1);
+		auto flowComponent = low ? resFlow->waveletHorizL_ : resFlow->waveletHorizH_;
 		tf::Taskflow &codecFlow = scheduler_->getCodecFlow();
-		composee->alloc(numJobs)->composed_by(codecFlow);
+		flowComponent->alloc(numJobs)->add_to(codecFlow);
 		for(uint32_t j = 0; j < numJobs; ++j)
 		{
 			auto indexMin = j * incrPerJob;
@@ -552,7 +552,7 @@ bool WaveletReverse::decompress_h_97(bool low, uint8_t res, uint32_t numThreads,
 				GRK_ERROR("Out of memory");
 				return false;
 			}
-			composee->tasks_[j].work([this,job] {
+			flowComponent->tasks_[j].work([this,job] {
 				decompress_h_strip_97(&job->data, job->indexMax_,
 										job->winLL,
 										job->winHL,
@@ -638,11 +638,11 @@ bool WaveletReverse::decompress_v_97(uint8_t res, uint32_t numThreads, size_t da
 		if(resWidth < numJobs)
 			numJobs = resWidth;
 		auto incrPerJob = resWidth / numJobs;
-		auto componentFlow = scheduler_->getComponentFlow(compno_);
-		auto resFlow = componentFlow->getResFlow(res - 1);
-		auto composee = resFlow->waveletVertFlow_;
+		auto imageComponentFlow = scheduler_->getImageComponentFlow(compno_);
+		auto resFlow = imageComponentFlow->getResFlow(res - 1);
+		auto flowComponent = resFlow->waveletVert_;
 		tf::Taskflow &codecFlow = scheduler_->getCodecFlow();
-		composee->alloc(numJobs)->composed_by(codecFlow);
+		flowComponent->alloc(numJobs)->add_to(codecFlow);
 		for(uint32_t j = 0; j < numJobs; j++)
 		{
 			auto indexMin = j * incrPerJob;
@@ -660,7 +660,7 @@ bool WaveletReverse::decompress_v_97(uint8_t res, uint32_t numThreads, size_t da
 				GRK_ERROR("Out of memory");
 				return false;
 			}
-			composee->tasks_[j].work([this,job, resHeight] {
+			flowComponent->tasks_[j].work([this,job, resHeight] {
 				decompress_v_strip_97(&job->data, job->indexMax_, resHeight,
 						 	 	 job->winLL,
 								 job->winLH,
@@ -1053,9 +1053,9 @@ bool WaveletReverse::decompress_h_53(uint8_t res, TileComponentWindowBuffer<int3
 {
 	uint32_t numThreads = (uint32_t)ExecSingleton::get()->num_workers();
 	grk_buf2d_simple<int32_t> winL,winH,winDest;
-	auto componentFlow = scheduler_->getComponentFlow(compno_);
-	auto resFlow = componentFlow->getResFlow(res - 1);
-	Composee *composee[2] ={resFlow->waveletHorizLFlow_ ,resFlow->waveletHorizHFlow_};
+	auto imageComponentFlow = scheduler_->getImageComponentFlow(compno_);
+	auto resFlow = imageComponentFlow->getResFlow(res - 1);
+	FlowComponent *flowComponent[2] ={resFlow->waveletHorizL_ ,resFlow->waveletHorizH_};
 	tf::Taskflow &codecFlow = scheduler_->getCodecFlow();
 	uint32_t numJobs[2] = {0,0};
 	uint32_t height[2] = {0,0};
@@ -1091,7 +1091,7 @@ bool WaveletReverse::decompress_h_53(uint8_t res, TileComponentWindowBuffer<int3
 		}
 		else
 		{
-			composee[orient]->alloc(numJobs[orient])->composed_by(codecFlow);
+			flowComponent[orient]->alloc(numJobs[orient])->add_to(codecFlow);
 			uint32_t incrPerJob = height[orient] / numJobs[orient];
 			for(uint32_t j = 0; j < numJobs[orient]; ++j)
 			{
@@ -1110,7 +1110,7 @@ bool WaveletReverse::decompress_h_53(uint8_t res, TileComponentWindowBuffer<int3
 					GRK_ERROR("Out of memory");
 					return false;
 				}
-				composee[orient]->tasks_[j].work([this,job] {
+				flowComponent[orient]->tasks_[j].work([this,job] {
 					decompress_h_strip_53(&job->data, job->indexMin_, job->indexMax_,
 											job->winLL,
 											job->winHL,
@@ -1167,13 +1167,13 @@ bool WaveletReverse::decompress_v_53(uint8_t res, TileComponentWindowBuffer<int3
 	}
 	else
 	{
-		auto componentFlow = scheduler_->getComponentFlow(compno_);
-		auto resFlow = componentFlow->getResFlow(res - 1);
+		auto imageComponentFlow = scheduler_->getImageComponentFlow(compno_);
+		auto resFlow = imageComponentFlow->getResFlow(res - 1);
 		tf::Taskflow &codecFlow = scheduler_->getCodecFlow();
-		auto composee = resFlow->waveletVertFlow_;
+		auto flowComponent = resFlow->waveletVert_;
 		const uint32_t numJobs = resWidth < numThreads ? resWidth : numThreads;
 		uint32_t step = resWidth / numJobs;
-		composee->alloc(numJobs)->composed_by(codecFlow);
+		flowComponent->alloc(numJobs)->add_to(codecFlow);
 		for(uint32_t j = 0; j < numJobs; j++)
 		{
 			auto indexMin = j * step;
@@ -1190,7 +1190,7 @@ bool WaveletReverse::decompress_v_53(uint8_t res, TileComponentWindowBuffer<int3
 				GRK_ERROR("Out of memory");
 				return false;
 			}
-			composee->tasks_[j].work([this,job] {
+			flowComponent->tasks_[j].work([this,job] {
 				decompress_v_strip_53(&job->data, job->indexMin_, job->indexMax_,
 										job->winLL,
 										job->winLH,
@@ -1203,8 +1203,8 @@ bool WaveletReverse::decompress_v_53(uint8_t res, TileComponentWindowBuffer<int3
 	return true;
 }
 void WaveletReverse::run(void){
+	scheduler_->run();
 	tf::Taskflow &codecFlow = scheduler_->getCodecFlow();
-	ExecSingleton::get()->run(codecFlow).wait();
 	codecFlow.clear();
 }
 /* <summary>                            */
@@ -1814,7 +1814,7 @@ bool WaveletReverse::decompress_partial_tile(ISparseCanvas* sa)
 	}
 	D decompressor;
 	uint32_t numThreads = (uint32_t)ExecSingleton::get()->num_workers();
-	auto componentFlow = scheduler_->getComponentFlow(compno_);
+	auto flowComponent = scheduler_->getImageComponentFlow(compno_);
 	tf::Taskflow &codecFlow = scheduler_->getCodecFlow();
 	auto final_read = [this,sa,synthesisWindow,buf] () {
 		// final read into tile buffer
@@ -1996,8 +1996,8 @@ bool WaveletReverse::decompress_partial_tile(ISparseCanvas* sa)
 		horiz.win_h = bandWindowRect[BAND_ORIENT_HL].dimX();
 		horiz.resno = resno;
 		size_t dataLength = (splitWindowRect[0].width() + 2 * FILTER_WIDTH) * HORIZ_PASS_HEIGHT;
-		auto resFlow = componentFlow->getResFlow(resno - 1);
-		Composee *composee[2] ={resFlow->waveletHorizLFlow_ ,resFlow->waveletHorizHFlow_};
+		auto resFlow = flowComponent->getResFlow(resno - 1);
+		FlowComponent *flowComponent[2] ={resFlow->waveletHorizL_ ,resFlow->waveletHorizH_};
 
 		for(uint32_t k = 0; k < 2; ++k)
 		{
@@ -2009,7 +2009,7 @@ bool WaveletReverse::decompress_partial_tile(ISparseCanvas* sa)
 			if(numThreads == 1)
 				numJobs = 1;
 			if(numJobs > 1)
-				composee[k]->alloc(numJobs)->composed_by(codecFlow);
+				flowComponent[k]->alloc(numJobs)->add_to(codecFlow);
 			bool blockError = false;
 			for(uint32_t j = 0; j < numJobs; ++j)
 			{
@@ -2024,7 +2024,7 @@ bool WaveletReverse::decompress_partial_tile(ISparseCanvas* sa)
 					goto cleanup;
 				}
 				if(numJobs > 1)
-					composee[k]->tasks_[j].work([job, executor_h, &blockError] { blockError = executor_h(job); });
+					flowComponent[k]->tasks_[j].work([job, executor_h, &blockError] { blockError = executor_h(job); });
 				else
 					blockError = (executor_h(job) != 0);
 			}
@@ -2046,9 +2046,9 @@ bool WaveletReverse::decompress_partial_tile(ISparseCanvas* sa)
 		if(numThreads == 1)
 			numJobs = 1;
 		bool blockError = false;
-		composee[0] = resFlow->waveletVertFlow_;
+		flowComponent[0] = resFlow->waveletVert_;
 		if(numJobs > 1)
-			composee[0]->alloc(numJobs)->composed_by(codecFlow);
+			flowComponent[0]->alloc(numJobs)->add_to(codecFlow);
 		for(uint32_t j = 0; j < numJobs; ++j)
 		{
 			auto job = new decompress_job<T, dwt_data<T>>(
@@ -2061,7 +2061,7 @@ bool WaveletReverse::decompress_partial_tile(ISparseCanvas* sa)
 				goto cleanup;
 			}
 			if(numJobs > 1)
-				composee[0]->tasks_[j].work([job, executor_v, &blockError] { blockError = executor_v(job); });
+				flowComponent[0]->tasks_[j].work([job, executor_v, &blockError] { blockError = executor_v(job); });
 			else
 				blockError = (executor_v(job) != 0);
 		}
@@ -2072,8 +2072,8 @@ bool WaveletReverse::decompress_partial_tile(ISparseCanvas* sa)
 	}
 
 	if (numThreads > 1) {
-		auto finalFlow = componentFlow->waveletFinalCopyFlow_;
-		finalFlow->alloc(1)->composed_by(codecFlow);
+		auto finalFlow = flowComponent->waveletFinalCopy_;
+		finalFlow->alloc(1)->add_to(codecFlow);
 		finalFlow->tasks_[0].work([final_read] { final_read(); });
 		run();
 	} else {

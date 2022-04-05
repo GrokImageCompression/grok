@@ -117,20 +117,19 @@ bool DecompressScheduler::schedule(uint16_t compno)
 	uint8_t resno = 0;
 	for(auto& resBlocks : blocks)
 	{
-		auto resFlow = componentFlows_[compno]->resFlows_ + resno;
-		auto flow = resFlow->blockFlow_;
-		auto blockFlowName = componentFlows_[compno]->genBlockFlowTaskName(resno);
-		flow->alloc(resBlocks.size())->composed_by(codecFlow_)->name(blockFlowName);
+		auto resFlow = imageComponentFlows_[compno]->resFlows_ + resno;
+		auto blockFlowName = imageComponentFlows_[compno]->genBlockFlowTaskName(resno);
+		resFlow->blocks_->alloc(resBlocks.size())->add_to(codecFlow_)->name(blockFlowName);
 		resno++;
 	}
 	resno = 0;
 	for(auto& resBlocks : blocks)
 	{
 		size_t blockno = 0;
-		auto resFlow = componentFlows_[compno]->resFlows_ + resno;
+		auto resFlow = imageComponentFlows_[compno]->resFlows_ + resno;
 		for(auto& block : resBlocks)
 		{
-			resFlow->blockFlow_->tasks_[blockno++].work([this, block] {
+			resFlow->blocks_->tasks_[blockno++].work([this, block] {
 				if(!success)
 				{
 					delete block;

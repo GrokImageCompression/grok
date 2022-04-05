@@ -18,40 +18,32 @@
 #pragma once
 
 
-struct Composee{
-	Composee(void);
-	~Composee(void);
+struct FlowComponent{
+	FlowComponent(void) : tasks_(nullptr){
+	}
+	~FlowComponent(void){
+		delete[] tasks_;
+	}
+	FlowComponent* alloc(uint64_t numTasks){
+		if (tasks_)
+			delete[] tasks_;
+		tasks_ = new tf::Task[numTasks];
+		for(uint64_t i = 0; i < numTasks; i++)
+			tasks_[i] = flow_.placeholder();
 
-	Composee* alloc(uint64_t numTasks);
-	Composee* composed_by(tf::Taskflow &composer);
-	Composee* name(const std::string& name);
+		return this;
+	}
+	FlowComponent* add_to(tf::Taskflow &composition){
+		composedFlowTask_ = composition.composed_of(flow_);
+
+		return this;
+	}
+	FlowComponent* name(const std::string& name) {
+	  composedFlowTask_.name(name);
+	  return this;
+	}
 
 	tf::Task *tasks_;
 	tf::Taskflow flow_;
 	tf::Task composedFlowTask_;
-};
-
-struct ResFlow{
-	ResFlow(void);
-	~ResFlow(void);
-
-	Composee *blockFlow_;
-	Composee *waveletHorizLFlow_;
-	Composee *waveletHorizHFlow_;
-	Composee *waveletVertFlow_;
-};
-
-class ComponentFlow {
-public:
-	ComponentFlow(uint8_t numResolutions);
-	virtual ~ComponentFlow();
-	std::string genBlockFlowTaskName(uint8_t resFlowNo);
-	ResFlow *getResFlow(uint8_t resFlowNo);
-
-	uint8_t numResFlows_;
-
-	// create one tf::Taskflow for all blocks in a given resolution, and create one single
-	// tf::Taskflow object codecFlow_, composed of all resolution block flows
-	ResFlow *resFlows_;
-	Composee *waveletFinalCopyFlow_;
 };

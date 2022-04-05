@@ -21,17 +21,17 @@ namespace grk
 
 Scheduler::Scheduler(Tile* tile) : success(true),tile_(tile), numcomps_(tile->numcomps_){
 	assert(tile);
-	componentFlows_ = new ComponentFlow*[numcomps_];
+	imageComponentFlows_ = new ImageComponentFlow*[numcomps_];
 	for (uint16_t compno = 0; compno < numcomps_; ++compno){
 		uint8_t numResolutions = (tile->comps+compno)->highestResolutionDecompressed+1;
-		componentFlows_[compno] = numResolutions ? new ComponentFlow(numResolutions) : nullptr;
+		imageComponentFlows_[compno] = numResolutions ? new ImageComponentFlow(numResolutions) : nullptr;
 	}
 }
 Scheduler::~Scheduler()
 {
 	for (uint16_t compno = 0; compno < numcomps_; ++compno)
-		delete componentFlows_[compno];
-	delete[] componentFlows_;
+		delete imageComponentFlows_[compno];
+	delete[] imageComponentFlows_;
 	for(auto& t : t1Implementations)
 		delete t;
 }
@@ -40,8 +40,8 @@ bool Scheduler::run(void) {
 
 	return success;
 }
-ComponentFlow* Scheduler::getComponentFlow(uint16_t compno){
-	return (componentFlows_ && compno < numcomps_) ? componentFlows_[compno] : nullptr;
+ImageComponentFlow* Scheduler::getImageComponentFlow(uint16_t compno){
+	return (imageComponentFlows_ && compno < numcomps_) ? imageComponentFlows_[compno] : nullptr;
 }
 tf::Taskflow& Scheduler::getCodecFlow(void){
 	return codecFlow_;
