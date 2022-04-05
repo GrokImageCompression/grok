@@ -23,7 +23,8 @@ struct Composee{
 	~Composee(void);
 
 	Composee* alloc(uint64_t numTasks);
-	Composee* composed_by(tf::Taskflow &composer, std::string name);
+	Composee* composed_by(tf::Taskflow &composer);
+	Composee* name(const std::string& name);
 
 	tf::Task *tasks_;
 	tf::Taskflow flow_;
@@ -35,18 +36,22 @@ struct ResFlow{
 	~ResFlow(void);
 
 	Composee *blockFlow_;
-	Composee *waveletFlow_;
+	Composee *waveletHorizLFlow_;
+	Composee *waveletHorizHFlow_;
+	Composee *waveletVertFlow_;
 };
 
 class ComponentFlow {
 public:
 	ComponentFlow(uint8_t numResolutions);
 	virtual ~ComponentFlow();
-	std::string genBlockFlowTaskName(uint8_t resno);
+	std::string genBlockFlowTaskName(uint8_t resFlowNo);
+	ResFlow *getResFlow(uint8_t resFlowNo);
 
 	uint8_t numResFlows_;
 
 	// create one tf::Taskflow for all blocks in a given resolution, and create one single
 	// tf::Taskflow object codecFlow_, composed of all resolution block flows
 	ResFlow *resFlows_;
+	Composee *waveletFinalCopyFlow_;
 };

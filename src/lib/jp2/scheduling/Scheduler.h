@@ -25,7 +25,7 @@ class Scheduler
 	virtual ~Scheduler();
 	virtual bool schedule(uint16_t compno) = 0;
 	bool run(void);
-
+	ComponentFlow* getComponentFlow(uint16_t compno);
 	tf::Taskflow& getCodecFlow(void);
   protected:
 	std::atomic_bool success;

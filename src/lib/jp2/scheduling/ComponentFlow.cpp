@@ -30,22 +30,30 @@ Composee* Composee::alloc(uint64_t numTasks){
 
 	return this;
 }
-Composee* Composee::composed_by(tf::Taskflow &composer, std::string name){
-	composedFlowTask_ = composer.composed_of(flow_).name(name);
+Composee* Composee::composed_by(tf::Taskflow &composer){
+	composedFlowTask_ = composer.composed_of(flow_);
 
 	return this;
 }
-
+Composee* Composee::name(const std::string& name) {
+  composedFlowTask_.name(name);
+  return this;
+}
 ResFlow::ResFlow(void) : blockFlow_(new Composee()),
-						   waveletFlow_(new Composee()) {
+									waveletHorizLFlow_(new Composee()),
+									waveletHorizHFlow_(new Composee()),
+									waveletVertFlow_(new Composee())
+{
 }
 ResFlow::~ResFlow(void){
 	delete blockFlow_;
-	delete waveletFlow_;
+	delete waveletHorizLFlow_;
+	delete waveletHorizHFlow_;
+	delete waveletVertFlow_;
 }
-
 ComponentFlow::ComponentFlow(uint8_t numResolutions) : numResFlows_(numResolutions),
-														resFlows_(nullptr)
+														resFlows_(nullptr),
+														waveletFinalCopyFlow_(new Composee())
 {
 	if (numResFlows_){
 		// lowest two resolutions are grouped together
@@ -56,11 +64,14 @@ ComponentFlow::ComponentFlow(uint8_t numResolutions) : numResFlows_(numResolutio
 }
 ComponentFlow::~ComponentFlow() {
 	delete[] resFlows_;
+	delete waveletFinalCopyFlow_;
 }
-std::string ComponentFlow::genBlockFlowTaskName(uint8_t resno){
+ResFlow* ComponentFlow::getResFlow(uint8_t resFlowNo){
+	return (resFlows_ && resFlowNo < numResFlows_) ? resFlows_ + resFlowNo : nullptr;
+}
+std::string ComponentFlow::genBlockFlowTaskName(uint8_t resFlowNo){
 	std::stringstream ss;
-	ss << "blockFlowTask-" << resno;
+	ss << "blockFlowTask-" << resFlowNo;
 
 	return ss.str();
 }
-

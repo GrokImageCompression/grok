@@ -120,7 +120,7 @@ bool DecompressScheduler::schedule(uint16_t compno)
 		auto resFlow = componentFlows_[compno]->resFlows_ + resno;
 		auto flow = resFlow->blockFlow_;
 		auto blockFlowName = componentFlows_[compno]->genBlockFlowTaskName(resno);
-		flow->alloc(resBlocks.size())->composed_by(codecFlow_, blockFlowName);
+		flow->alloc(resBlocks.size())->composed_by(codecFlow_)->name(blockFlowName);
 		resno++;
 	}
 	resno = 0;

@@ -47,6 +47,13 @@ enum eSplitOrientation
 	SPLIT_NUM_ORIENTATIONS
 };
 
+template<class T>
+constexpr T getFilterPad(bool lossless)
+{
+	return lossless ? 1 : 2;
+}
+
+
 /**
  * Class: ResWindowBuffer
  *

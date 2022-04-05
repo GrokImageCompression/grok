@@ -40,6 +40,9 @@ bool Scheduler::run(void) {
 
 	return success;
 }
+ComponentFlow* Scheduler::getComponentFlow(uint16_t compno){
+	return (componentFlows_ && compno < numcomps_) ? componentFlows_[compno] : nullptr;
+}
 tf::Taskflow& Scheduler::getCodecFlow(void){
 	return codecFlow_;
 }
