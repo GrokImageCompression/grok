@@ -23,6 +23,9 @@ struct ResFlow{
 	ResFlow(void);
 	~ResFlow(void);
 
+	void graph(void);
+	ResFlow* precede(ResFlow *successor);
+	ResFlow* precede(FlowComponent *successor);
 	FlowComponent *blocks_;
 	FlowComponent *waveletHorizL_;
 	FlowComponent *waveletHorizH_;
@@ -35,6 +38,7 @@ public:
 	virtual ~ImageComponentFlow();
 	std::string genBlockFlowTaskName(uint8_t resFlowNo);
 	ResFlow *getResFlow(uint8_t resFlowNo);
+	void graph(void);
 
 	uint8_t numResFlows_;
 	ResFlow *resFlows_;

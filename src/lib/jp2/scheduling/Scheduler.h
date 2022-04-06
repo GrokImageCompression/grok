@@ -24,6 +24,7 @@ class Scheduler
 	Scheduler(Tile* tile);
 	virtual ~Scheduler();
 	virtual bool schedule(uint16_t compno) = 0;
+	void graph(uint16_t compno);
 	bool run(void);
 	ImageComponentFlow* getImageComponentFlow(uint16_t compno);
 	tf::Taskflow& getCodecFlow(void);

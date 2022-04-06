@@ -2072,7 +2072,7 @@ bool WaveletReverse::decompress_partial_tile(ISparseCanvas* sa)
 	}
 
 	if (numThreads > 1) {
-		auto finalFlow = flowComponent->waveletFinalCopy_;
+		auto finalFlow = flowComponent->waveletFinalCopy_ = new FlowComponent();
 		finalFlow->alloc(1)->add_to(codecFlow);
 		finalFlow->tasks_[0].work([final_read] { final_read(); });
 		run();

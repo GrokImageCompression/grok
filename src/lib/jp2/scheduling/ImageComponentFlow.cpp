@@ -18,10 +18,26 @@
 
 
 ResFlow::ResFlow(void) : blocks_(new FlowComponent()),
-									waveletHorizL_(new FlowComponent()),
-									waveletHorizH_(new FlowComponent()),
-									waveletVert_(new FlowComponent())
+						waveletHorizL_(new FlowComponent()),
+						waveletHorizH_(new FlowComponent()),
+						waveletVert_(new FlowComponent())
 {
+}
+void ResFlow::graph(void){
+	blocks_->precede(waveletHorizL_);
+	blocks_->precede(waveletHorizH_);
+	waveletHorizL_->precede(waveletVert_);
+	waveletHorizH_->precede(waveletVert_);
+}
+ResFlow* ResFlow::precede(ResFlow *successor){
+	waveletVert_->precede(successor->blocks_);
+
+	return this;
+}
+ResFlow* ResFlow::precede(FlowComponent *successor){
+	waveletVert_->precede(successor);
+
+	return this;
 }
 ResFlow::~ResFlow(void){
 	delete blocks_;
@@ -31,7 +47,7 @@ ResFlow::~ResFlow(void){
 }
 ImageComponentFlow::ImageComponentFlow(uint8_t numResolutions) : numResFlows_(numResolutions),
 														resFlows_(nullptr),
-														waveletFinalCopy_(new FlowComponent())
+														waveletFinalCopy_(nullptr)
 {
 	if (numResFlows_){
 		// lowest two resolutions are grouped together
@@ -43,6 +59,14 @@ ImageComponentFlow::ImageComponentFlow(uint8_t numResolutions) : numResFlows_(nu
 ImageComponentFlow::~ImageComponentFlow() {
 	delete[] resFlows_;
 	delete waveletFinalCopy_;
+}
+void ImageComponentFlow::graph(void){
+	for (uint8_t i = 0; i < numResFlows_; ++i)
+		(resFlows_ + i)->graph();
+	for (uint8_t i = 1; i < numResFlows_; ++i)
+		(resFlows_ + i)->precede(resFlows_ + i - 1);
+	if (waveletFinalCopy_)
+		(resFlows_ + numResFlows_ - 1)->precede(waveletFinalCopy_);
 }
 ResFlow* ImageComponentFlow::getResFlow(uint8_t resFlowNo){
 	return (resFlows_ && resFlowNo < numResFlows_) ? resFlows_ + resFlowNo : nullptr;

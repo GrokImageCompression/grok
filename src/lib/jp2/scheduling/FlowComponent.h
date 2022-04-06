@@ -35,7 +35,10 @@ struct FlowComponent{
 	}
 	FlowComponent* add_to(tf::Taskflow &composition){
 		composedFlowTask_ = composition.composed_of(flow_);
-
+		return this;
+	}
+	FlowComponent* precede(FlowComponent *successor){
+		composedFlowTask_.precede(successor->composedFlowTask_);
 		return this;
 	}
 	FlowComponent* name(const std::string& name) {

@@ -40,6 +40,10 @@ bool Scheduler::run(void) {
 
 	return success;
 }
+void Scheduler::graph(uint16_t compno){
+	assert(compno < numcomps_);
+	imageComponentFlows_[compno]->graph();
+}
 ImageComponentFlow* Scheduler::getImageComponentFlow(uint16_t compno){
 	return (imageComponentFlows_ && compno < numcomps_) ? imageComponentFlows_[compno] : nullptr;
 }
