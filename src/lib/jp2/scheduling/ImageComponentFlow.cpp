@@ -18,16 +18,13 @@
 
 
 ResFlow::ResFlow(void) : blocks_(new FlowComponent()),
-						waveletHorizL_(new FlowComponent()),
-						waveletHorizH_(new FlowComponent()),
+						waveletHoriz_(new FlowComponent()),
 						waveletVert_(new FlowComponent())
 {
 }
 void ResFlow::graph(void){
-	blocks_->precede(waveletHorizL_);
-	blocks_->precede(waveletHorizH_);
-	waveletHorizL_->precede(waveletVert_);
-	waveletHorizH_->precede(waveletVert_);
+	blocks_->precede(waveletHoriz_);
+	waveletHoriz_->precede(waveletVert_);
 }
 ResFlow* ResFlow::precede(ResFlow *successor){
 	waveletVert_->precede(successor->blocks_);
@@ -41,8 +38,7 @@ ResFlow* ResFlow::precede(FlowComponent *successor){
 }
 ResFlow::~ResFlow(void){
 	delete blocks_;
-	delete waveletHorizL_;
-	delete waveletHorizH_;
+	delete waveletHoriz_;
 	delete waveletVert_;
 }
 ImageComponentFlow::ImageComponentFlow(uint8_t numResolutions) : numResFlows_(numResolutions),
@@ -63,8 +59,8 @@ ImageComponentFlow::~ImageComponentFlow() {
 void ImageComponentFlow::graph(void){
 	for (uint8_t i = 0; i < numResFlows_; ++i)
 		(resFlows_ + i)->graph();
-	for (uint8_t i = 1; i < numResFlows_; ++i)
-		(resFlows_ + i)->precede(resFlows_ + i - 1);
+	for (uint8_t i = 0; 0 < numResFlows_-1; ++i)
+		(resFlows_ + i)->precede(resFlows_ + i + 1);
 	if (waveletFinalCopy_)
 		(resFlows_ + numResFlows_ - 1)->precede(waveletFinalCopy_);
 }

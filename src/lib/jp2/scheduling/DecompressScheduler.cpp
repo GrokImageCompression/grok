@@ -119,7 +119,7 @@ bool DecompressScheduler::schedule(uint16_t compno)
 	{
 		auto resFlow = imageComponentFlows_[compno]->resFlows_ + resno;
 		auto blockFlowName = imageComponentFlows_[compno]->genBlockFlowTaskName(resno);
-		resFlow->blocks_->alloc(resBlocks.size())->add_to(codecFlow_)->name(blockFlowName);
+		resFlow->blocks_->push_tasks(resBlocks.size())->add_to(codecFlow_)->name(blockFlowName);
 		resno++;
 	}
 	resno = 0;

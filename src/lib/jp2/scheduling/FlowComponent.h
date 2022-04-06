@@ -19,17 +19,13 @@
 
 
 struct FlowComponent{
-	FlowComponent(void) : tasks_(nullptr){
+	FlowComponent(void) : current_(0) {
 	}
 	~FlowComponent(void){
-		delete[] tasks_;
 	}
-	FlowComponent* alloc(uint64_t numTasks){
-		if (tasks_)
-			delete[] tasks_;
-		tasks_ = new tf::Task[numTasks];
+	FlowComponent* push_tasks(uint64_t numTasks){
 		for(uint64_t i = 0; i < numTasks; i++)
-			tasks_[i] = flow_.placeholder();
+			tasks_.push_back(flow_.placeholder());
 
 		return this;
 	}
@@ -46,7 +42,16 @@ struct FlowComponent{
 	  return this;
 	}
 
-	tf::Task *tasks_;
+	tf::Task* get(size_t i){
+		return &tasks_[i];
+	}
+
+	tf::Task* get(){
+		return &tasks_[current_++];
+	}
+
+	std::vector<tf::Task> tasks_;
+	size_t current_;
 	tf::Taskflow flow_;
 	tf::Task composedFlowTask_;
 };

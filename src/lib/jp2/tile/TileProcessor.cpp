@@ -458,12 +458,17 @@ bool TileProcessor::decompressT1(void)
 			 if (!scheduler_->run())
 				return false;
 			scheduler_->getCodecFlow().clear();
-			if(doPostT1)
+			uint8_t numRes = tilec->highestResolutionDecompressed + 1U;
+			if(doPostT1 && numRes > 1)
 			{
 				WaveletReverse w(this, tilec, compno, tilec->getBuffer()->unreducedBounds(),
-								 tilec->highestResolutionDecompressed + 1U, tccp->qmfbid);
+								 numRes, tccp->qmfbid);
 				if(!w.decompress())
 					return false;
+				//scheduler_->graph(compno);
+				if (!scheduler_->run())
+					return false;
+				scheduler_->getCodecFlow().clear();
 			}
 		}
 

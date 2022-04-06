@@ -27,8 +27,7 @@ struct ResFlow{
 	ResFlow* precede(ResFlow *successor);
 	ResFlow* precede(FlowComponent *successor);
 	FlowComponent *blocks_;
-	FlowComponent *waveletHorizL_;
-	FlowComponent *waveletHorizH_;
+	FlowComponent *waveletHoriz_;
 	FlowComponent *waveletVert_;
 };
 
