@@ -17,36 +17,40 @@
 
 #pragma once
 
-
-struct FlowComponent{
-	FlowComponent(void) : current_(0) {
-	}
-	~FlowComponent(void){
-	}
-	FlowComponent* push_tasks(uint64_t numTasks){
+struct FlowComponent
+{
+	FlowComponent(void) : current_(0) {}
+	~FlowComponent(void) {}
+	FlowComponent* push_tasks(uint64_t numTasks)
+	{
 		for(uint64_t i = 0; i < numTasks; i++)
 			tasks_.push_back(flow_.placeholder());
 
 		return this;
 	}
-	FlowComponent* add_to(tf::Taskflow &composition){
+	FlowComponent* add_to(tf::Taskflow& composition)
+	{
 		composedFlowTask_ = composition.composed_of(flow_);
 		return this;
 	}
-	FlowComponent* precede(FlowComponent *successor){
+	FlowComponent* precede(FlowComponent* successor)
+	{
 		composedFlowTask_.precede(successor->composedFlowTask_);
 		return this;
 	}
-	FlowComponent* name(const std::string& name) {
-	  composedFlowTask_.name(name);
-	  return this;
+	FlowComponent* name(const std::string& name)
+	{
+		composedFlowTask_.name(name);
+		return this;
 	}
 
-	tf::Task* get(size_t i){
+	tf::Task* get(size_t i)
+	{
 		return &tasks_[i];
 	}
 
-	tf::Task* get(){
+	tf::Task* get()
+	{
 		return &tasks_[current_++];
 	}
 

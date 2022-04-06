@@ -33,8 +33,8 @@ BufferedStream::BufferedStream(uint8_t* buffer, size_t buffer_size, bool is_inpu
 	  status_(is_input ? GROK_STREAM_STATUS_INPUT : GROK_STREAM_STATUS_OUTPUT), buf_(nullptr),
 	  buffered_bytes_(0), read_bytes_seekable_(0), stream_offset_(0)
 {
-	buf_ = new grk_buf8((!buffer && buffer_size) ? new uint8_t[buffer_size] : buffer,
-						   buffer_size, buffer == nullptr);
+	buf_ = new grk_buf8((!buffer && buffer_size) ? new uint8_t[buffer_size] : buffer, buffer_size,
+						buffer == nullptr);
 	obj.wrapper = new GrkObjectWrapperImpl(this);
 }
 

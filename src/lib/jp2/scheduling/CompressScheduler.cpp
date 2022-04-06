@@ -19,10 +19,10 @@
 
 namespace grk
 {
-CompressScheduler::CompressScheduler(Tile* tile, bool needsRateControl,TileCodingParams* tcp, const double* mct_norms,
-		 uint16_t mct_numcomps)
-	: Scheduler(tile), tile(tile), needsRateControl(needsRateControl), encodeBlocks(nullptr), blockCount(-1),
-	  tcp_(tcp), mct_norms_(mct_norms), mct_numcomps_(mct_numcomps)
+CompressScheduler::CompressScheduler(Tile* tile, bool needsRateControl, TileCodingParams* tcp,
+									 const double* mct_norms, uint16_t mct_numcomps)
+	: Scheduler(tile), tile(tile), needsRateControl(needsRateControl), encodeBlocks(nullptr),
+	  blockCount(-1), tcp_(tcp), mct_norms_(mct_norms), mct_numcomps_(mct_numcomps)
 {}
 bool CompressScheduler::schedule(uint16_t compno)
 {

@@ -20,11 +20,8 @@ namespace grk
 {
 const uint8_t gain_b[4] = {0, 1, 1, 2};
 
-DecompressScheduler::DecompressScheduler(Tile* tile,
-		 	 	 	 	 	 	 	 	 TileCodingParams* tcp,
-										uint8_t prec) : Scheduler(tile),
-												tcp_(tcp),
-												prec_(prec)
+DecompressScheduler::DecompressScheduler(Tile* tile, TileCodingParams* tcp, uint8_t prec)
+	: Scheduler(tile), tcp_(tcp), prec_(prec)
 {}
 
 bool DecompressScheduler::schedule(uint16_t compno)
@@ -72,12 +69,14 @@ bool DecompressScheduler::schedule(uint16_t compno)
 				}
 			}
 		}
-		if(!resBlocks.empty() && resno > 0) {
+		if(!resBlocks.empty() && resno > 0)
+		{
 			blocks.push_back(resBlocks);
 			resBlocks.clear();
 		}
 	}
-	if(!resBlocks.empty()) {
+	if(!resBlocks.empty())
+	{
 		blocks.push_back(resBlocks);
 		resBlocks.clear();
 	}

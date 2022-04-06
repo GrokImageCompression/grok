@@ -28,10 +28,11 @@ class Scheduler
 	bool run(void);
 	ImageComponentFlow* getImageComponentFlow(uint16_t compno);
 	tf::Taskflow& getCodecFlow(void);
+
   protected:
 	std::atomic_bool success;
 	std::vector<T1Interface*> t1Implementations;
-	ImageComponentFlow **imageComponentFlows_;
+	ImageComponentFlow** imageComponentFlows_;
 	tf::Taskflow codecFlow_;
 	Tile* tile_;
 	uint16_t numcomps_;

@@ -53,7 +53,6 @@ constexpr T getFilterPad(bool lossless)
 	return lossless ? 1 : 2;
 }
 
-
 /**
  * Class: ResWindowBuffer
  *
@@ -67,8 +66,8 @@ template<typename T>
 struct ResWindowBuffer
 {
 	ResWindowBuffer(uint8_t numresolutions, uint8_t resno,
-					grk_buf2d<T, AllocatorAligned>* resWindowTopLevelREL,
-					Resolution* tileCompAtRes, Resolution* tileCompAtLowerRes, grk_rect32 resWindow,
+					grk_buf2d<T, AllocatorAligned>* resWindowTopLevelREL, Resolution* tileCompAtRes,
+					Resolution* tileCompAtLowerRes, grk_rect32 resWindow,
 					grk_rect32 tileCompWindowUnreduced, grk_rect32 tileCompUnreduced,
 					uint32_t FILTER_WIDTH)
 		: allocated_(false), tileCompRes_(tileCompAtRes), tileCompResLower_(tileCompAtLowerRes),

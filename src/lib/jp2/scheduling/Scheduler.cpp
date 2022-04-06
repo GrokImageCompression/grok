@@ -18,36 +18,42 @@
 
 namespace grk
 {
-
-Scheduler::Scheduler(Tile* tile) : success(true),tile_(tile), numcomps_(tile->numcomps_){
+Scheduler::Scheduler(Tile* tile) : success(true), tile_(tile), numcomps_(tile->numcomps_)
+{
 	assert(tile);
 	imageComponentFlows_ = new ImageComponentFlow*[numcomps_];
-	for (uint16_t compno = 0; compno < numcomps_; ++compno){
-		uint8_t numResolutions = (tile->comps+compno)->highestResolutionDecompressed+1;
-		imageComponentFlows_[compno] = numResolutions ? new ImageComponentFlow(numResolutions) : nullptr;
+	for(uint16_t compno = 0; compno < numcomps_; ++compno)
+	{
+		uint8_t numResolutions = (tile->comps + compno)->highestResolutionDecompressed + 1;
+		imageComponentFlows_[compno] =
+			numResolutions ? new ImageComponentFlow(numResolutions) : nullptr;
 	}
 }
 Scheduler::~Scheduler()
 {
-	for (uint16_t compno = 0; compno < numcomps_; ++compno)
+	for(uint16_t compno = 0; compno < numcomps_; ++compno)
 		delete imageComponentFlows_[compno];
 	delete[] imageComponentFlows_;
 	for(auto& t : t1Implementations)
 		delete t;
 }
-bool Scheduler::run(void) {
+bool Scheduler::run(void)
+{
 	ExecSingleton::get()->run(codecFlow_).wait();
 
 	return success;
 }
-void Scheduler::graph(uint16_t compno){
+void Scheduler::graph(uint16_t compno)
+{
 	assert(compno < numcomps_);
 	imageComponentFlows_[compno]->graph();
 }
-ImageComponentFlow* Scheduler::getImageComponentFlow(uint16_t compno){
+ImageComponentFlow* Scheduler::getImageComponentFlow(uint16_t compno)
+{
 	return (imageComponentFlows_ && compno < numcomps_) ? imageComponentFlows_[compno] : nullptr;
 }
-tf::Taskflow& Scheduler::getCodecFlow(void){
+tf::Taskflow& Scheduler::getCodecFlow(void)
+{
 	return codecFlow_;
 }
 

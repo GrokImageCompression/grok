@@ -16,58 +16,64 @@
  */
 #include "grk_includes.h"
 
-
-ResFlow::ResFlow(void) : blocks_(new FlowComponent()),
-						waveletHoriz_(new FlowComponent()),
-						waveletVert_(new FlowComponent())
+ResFlow::ResFlow(void)
+	: blocks_(new FlowComponent()), waveletHoriz_(new FlowComponent()),
+	  waveletVert_(new FlowComponent())
+{}
+void ResFlow::graph(void)
 {
-}
-void ResFlow::graph(void){
 	blocks_->precede(waveletHoriz_);
 	waveletHoriz_->precede(waveletVert_);
 }
-ResFlow* ResFlow::precede(ResFlow *successor){
+ResFlow* ResFlow::precede(ResFlow* successor)
+{
 	waveletVert_->precede(successor->blocks_);
 
 	return this;
 }
-ResFlow* ResFlow::precede(FlowComponent *successor){
+ResFlow* ResFlow::precede(FlowComponent* successor)
+{
 	waveletVert_->precede(successor);
 
 	return this;
 }
-ResFlow::~ResFlow(void){
+ResFlow::~ResFlow(void)
+{
 	delete blocks_;
 	delete waveletHoriz_;
 	delete waveletVert_;
 }
-ImageComponentFlow::ImageComponentFlow(uint8_t numResolutions) : numResFlows_(numResolutions),
-														resFlows_(nullptr),
-														waveletFinalCopy_(nullptr)
+ImageComponentFlow::ImageComponentFlow(uint8_t numResolutions)
+	: numResFlows_(numResolutions), resFlows_(nullptr), waveletFinalCopy_(nullptr)
 {
-	if (numResFlows_){
+	if(numResFlows_)
+	{
 		// lowest two resolutions are grouped together
-		if (numResFlows_ > 1)
+		if(numResFlows_ > 1)
 			numResFlows_--;
 		resFlows_ = new ResFlow[numResFlows_];
 	}
 }
-ImageComponentFlow::~ImageComponentFlow() {
+ImageComponentFlow::~ImageComponentFlow()
+{
 	delete[] resFlows_;
 	delete waveletFinalCopy_;
 }
-void ImageComponentFlow::graph(void){
-	for (uint8_t i = 0; i < numResFlows_; ++i)
+void ImageComponentFlow::graph(void)
+{
+	for(uint8_t i = 0; i < numResFlows_; ++i)
 		(resFlows_ + i)->graph();
-	for (uint8_t i = 0; 0 < numResFlows_-1; ++i)
+	for(uint8_t i = 0; 0 < numResFlows_ - 1; ++i)
 		(resFlows_ + i)->precede(resFlows_ + i + 1);
-	if (waveletFinalCopy_)
+	if(waveletFinalCopy_)
 		(resFlows_ + numResFlows_ - 1)->precede(waveletFinalCopy_);
 }
-ResFlow* ImageComponentFlow::getResFlow(uint8_t resFlowNo){
+ResFlow* ImageComponentFlow::getResFlow(uint8_t resFlowNo)
+{
 	return (resFlows_ && resFlowNo < numResFlows_) ? resFlows_ + resFlowNo : nullptr;
 }
-std::string ImageComponentFlow::genBlockFlowTaskName(uint8_t resFlowNo){
+std::string ImageComponentFlow::genBlockFlowTaskName(uint8_t resFlowNo)
+{
 	std::stringstream ss;
 	ss << "blockFlowTask-" << resFlowNo;
 

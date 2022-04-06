@@ -152,7 +152,7 @@ struct TileProcessor
 	void makeLayerFeasible(uint32_t layno, uint16_t thresh, bool finalAttempt);
 
 	Tile* tile;
-	Scheduler *scheduler_;
+	Scheduler* scheduler_;
 	uint64_t numProcessedPackets;
 	uint64_t numDecompressedPackets;
 	// Decompressing Only

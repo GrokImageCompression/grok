@@ -27,7 +27,7 @@ TileProcessor::TileProcessor(uint16_t tileIndex, CodeStream* codeStream, IBuffer
 	  headerImage(codeStream->getHeaderImage()),
 	  current_plugin_tile(codeStream->getCurrentPluginTile()),
 	  wholeTileDecompress(isWholeTileDecompress), cp_(codeStream->getCodingParams()),
-	  packetLengthCache(PLCache(cp_)), tile(new Tile(headerImage->numcomps)),scheduler_(nullptr),
+	  packetLengthCache(PLCache(cp_)), tile(new Tile(headerImage->numcomps)), scheduler_(nullptr),
 	  numProcessedPackets(0), numDecompressedPackets(0), tilePartDataLength(0),
 	  tileIndex_(tileIndex), stream_(stream), corrupt_packet_(false),
 	  newTilePartProgressionPosition(cp_->coding_params_.enc_.newTilePartProgressionPosition),
@@ -119,7 +119,8 @@ Tile* TileProcessor::getTile(void)
 {
 	return tile;
 }
-Scheduler* TileProcessor::getScheduler(void){
+Scheduler* TileProcessor::getScheduler(void)
+{
 	return scheduler_;
 }
 void TileProcessor::generateImage(GrkImage* src_image, Tile* src_tile)
@@ -455,18 +456,18 @@ bool TileProcessor::decompressT1(void)
 			}
 			if(!scheduler_->schedule(compno))
 				return false;
-			 if (!scheduler_->run())
+			if(!scheduler_->run())
 				return false;
 			scheduler_->getCodecFlow().clear();
 			uint8_t numRes = tilec->highestResolutionDecompressed + 1U;
 			if(doPostT1 && numRes > 1)
 			{
-				WaveletReverse w(this, tilec, compno, tilec->getBuffer()->unreducedBounds(),
-								 numRes, tccp->qmfbid);
+				WaveletReverse w(this, tilec, compno, tilec->getBuffer()->unreducedBounds(), numRes,
+								 tccp->qmfbid);
 				if(!w.decompress())
 					return false;
-				//scheduler_->graph(compno);
-				if (!scheduler_->run())
+				// scheduler_->graph(compno);
+				if(!scheduler_->run())
 					return false;
 				scheduler_->getCodecFlow().clear();
 			}
@@ -713,7 +714,7 @@ void TileProcessor::t1_encode()
 		mct_norms = (const double*)(tcp->mct_norms);
 	}
 
-	scheduler_ = new CompressScheduler(tile, needsRateControl(),tcp, mct_norms, mct_numcomps);
+	scheduler_ = new CompressScheduler(tile, needsRateControl(), tcp, mct_norms, mct_numcomps);
 	scheduler_->schedule(0);
 }
 bool TileProcessor::encodeT2(uint32_t* tileBytesWritten)

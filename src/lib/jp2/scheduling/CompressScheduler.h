@@ -21,10 +21,11 @@ namespace grk
 class CompressScheduler : public Scheduler
 {
   public:
-	CompressScheduler(Tile* tile, bool needsRateControl,TileCodingParams* tcp,
-						const double* mct_norms, uint16_t mct_numcomps);
+	CompressScheduler(Tile* tile, bool needsRateControl, TileCodingParams* tcp,
+					  const double* mct_norms, uint16_t mct_numcomps);
 	~CompressScheduler() = default;
 	bool schedule(uint16_t compno) override;
+
   private:
 	void compress(std::vector<CompressBlockExec*>* blocks);
 	bool compress(size_t threadId, uint64_t maxBlocks);

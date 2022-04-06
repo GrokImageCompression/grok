@@ -19,27 +19,29 @@
 
 #include "FlowComponent.h"
 
-struct ResFlow{
+struct ResFlow
+{
 	ResFlow(void);
 	~ResFlow(void);
 
 	void graph(void);
-	ResFlow* precede(ResFlow *successor);
-	ResFlow* precede(FlowComponent *successor);
-	FlowComponent *blocks_;
-	FlowComponent *waveletHoriz_;
-	FlowComponent *waveletVert_;
+	ResFlow* precede(ResFlow* successor);
+	ResFlow* precede(FlowComponent* successor);
+	FlowComponent* blocks_;
+	FlowComponent* waveletHoriz_;
+	FlowComponent* waveletVert_;
 };
 
-class ImageComponentFlow {
-public:
+class ImageComponentFlow
+{
+  public:
 	ImageComponentFlow(uint8_t numResolutions);
 	virtual ~ImageComponentFlow();
 	std::string genBlockFlowTaskName(uint8_t resFlowNo);
-	ResFlow *getResFlow(uint8_t resFlowNo);
+	ResFlow* getResFlow(uint8_t resFlowNo);
 	void graph(void);
 
 	uint8_t numResFlows_;
-	ResFlow *resFlows_;
-	FlowComponent *waveletFinalCopy_;
+	ResFlow* resFlows_;
+	FlowComponent* waveletFinalCopy_;
 };

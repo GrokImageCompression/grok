@@ -27,11 +27,10 @@ typedef std::vector<ResDecompressBlocks> DecompressBlocks;
 class DecompressScheduler : public Scheduler
 {
   public:
-	DecompressScheduler(Tile* tile,
-			 	 	 	 TileCodingParams* tcp,
-						uint8_t prec);
+	DecompressScheduler(Tile* tile, TileCodingParams* tcp, uint8_t prec);
 	~DecompressScheduler() = default;
 	bool schedule(uint16_t compno) override;
+
   private:
 	bool decompressBlock(T1Interface* impl, DecompressBlockExec* block);
 	TileCodingParams* tcp_;
