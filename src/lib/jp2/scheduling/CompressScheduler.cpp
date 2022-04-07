@@ -21,9 +21,18 @@ namespace grk
 {
 CompressScheduler::CompressScheduler(Tile* tile, bool needsRateControl, TileCodingParams* tcp,
 									 const double* mct_norms, uint16_t mct_numcomps)
-	: Scheduler(tile,false), tile(tile), needsRateControl(needsRateControl), encodeBlocks(nullptr),
+	: Scheduler(tile), tile(tile), needsRateControl(needsRateControl), encodeBlocks(nullptr),
 	  blockCount(-1), tcp_(tcp), mct_norms_(mct_norms), mct_numcomps_(mct_numcomps)
-{}
+{
+	for(uint16_t compno = 0; compno < numcomps_; ++compno)
+	{
+		uint8_t numResolutions = (tile->comps + compno)->highestResolutionDecompressed + 1;
+		imageComponentFlows_[compno] = new ImageComponentFlow(numResolutions);
+	}
+}
+bool CompressScheduler::schedule(uint16_t compno) {
+	return scheduleBlocks(compno);
+}
 bool CompressScheduler::scheduleBlocks(uint16_t compno)
 {
 	uint8_t resno, bandIndex;

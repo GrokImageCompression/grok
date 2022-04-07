@@ -431,7 +431,7 @@ bool TileProcessor::decompressT1(void)
 		!current_plugin_tile || (current_plugin_tile->decompress_flags & GRK_DECODE_POST_T1);
 	if(doT1)
 	{
-		scheduler_ = new DecompressScheduler(this, tile, tcp_, headerImage->comps->prec);
+		scheduler_ = new DecompressScheduler(this, tile, tcp_, headerImage->comps->prec, doPostT1);
 		for(uint16_t compno = 0; compno < tile->numcomps_; ++compno)
 		{
 			auto tilec = tile->comps + compno;
@@ -452,30 +452,8 @@ bool TileProcessor::decompressT1(void)
 				GRK_ERROR("Not enough memory for tile data");
 				return false;
 			}
-			if(!scheduler_->scheduleBlocks(compno))
+			if (!scheduler_->schedule(compno))
 				return false;
-			if (!includeBlocks) {
-				scheduler_->getImageComponentFlow(compno)->addTo(scheduler_->getCodecFlow());
-				scheduler_->getImageComponentFlow(compno)->graph();
-				if(!scheduler_->run())
-					return false;
-				scheduler_->getCodecFlow().clear();
-			} else {
-				scheduler_->graph(compno);
-			}
-			if (!includeBlocks) {
-				scheduler_->getImageComponentFlow(compno)->addTo(scheduler_->getCodecFlow());
-				scheduler_->getImageComponentFlow(compno)->graph();
-			}
-			uint8_t numRes = tilec->highestResolutionDecompressed + 1U;
-			if(doPostT1 && numRes > 1)
-			{
-				if (!scheduler_->scheduleWavelet(compno))
-					return false;
-			}
-			if(!scheduler_->run())
-				return false;
-			scheduler_->getCodecFlow().clear();
 		}
 
 		delete scheduler_;
@@ -720,7 +698,7 @@ void TileProcessor::t1_encode()
 	}
 
 	scheduler_ = new CompressScheduler(tile, needsRateControl(), tcp, mct_norms, mct_numcomps);
-	scheduler_->scheduleBlocks(0);
+	scheduler_->schedule(0);
 }
 bool TileProcessor::encodeT2(uint32_t* tileBytesWritten)
 {

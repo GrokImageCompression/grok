@@ -31,14 +31,56 @@ bool ResDecompressBlocks::empty(void) const{
 	return blocks_.empty();
 }
 
-DecompressScheduler::DecompressScheduler(TileProcessor* tileProcessor, Tile* tile, TileCodingParams* tcp, uint8_t prec)
-	: Scheduler(tile,true), tileProcessor_(tileProcessor), tcp_(tcp), prec_(prec)
+DecompressScheduler::DecompressScheduler(TileProcessor* tileProcessor,
+										Tile* tile, TileCodingParams* tcp, uint8_t prec, bool doPostT1)
+	: Scheduler(tile), tileProcessor_(tileProcessor), tcp_(tcp), prec_(prec), doPostT1_(doPostT1)
 {
+}
+
+bool DecompressScheduler::schedule(uint16_t compno){
+	auto tilec = tile_->comps + compno;
+
+	if(!scheduleBlocks(compno))
+		return false;
+	auto  imageFlow = getImageComponentFlow(compno);
+	if (imageFlow) {
+		if (!includeBlocks) {
+			if (!includeBlocks) {
+				for(uint8_t resFlowNum = 0;resFlowNum <  blocks.size(); ++resFlowNum)
+				{
+					auto resFlow = imageFlow->resFlows_ + resFlowNum;
+					resFlow->blocks_->addTo(codecFlow_);
+				}
+			}
+			imageFlow->addTo(codecFlow_);
+			graph(compno);
+			if(!run())
+				return false;
+			getCodecFlow().clear();
+		} else {
+			graph(compno);
+		}
+		if (!includeBlocks) {
+			imageFlow->addTo(codecFlow_);
+			graph(compno);
+		}
+	}
+	uint8_t numRes = tilec->highestResolutionDecompressed + 1U;
+	if(doPostT1_ && numRes > 1)
+	{
+		if (!scheduleWavelet(compno))
+			return false;
+	}
+	if(!run())
+		return false;
+	getCodecFlow().clear();
+
+	return true;
 }
 
 bool DecompressScheduler::scheduleBlocks(uint16_t compno)
 {
-	DecompressBlocks blocks;
+	blocks.clear();
 	ResDecompressBlocks resBlocks;
 	auto tccp = tcp_->tccps + compno;
 	auto tilec = tile_->comps + compno;
@@ -102,6 +144,12 @@ bool DecompressScheduler::scheduleBlocks(uint16_t compno)
 	}
 	if(!blocks.size())
 		return true;
+
+	uint8_t numResolutions = (tile_->comps + compno)->highestResolutionDecompressed + 1;
+	imageComponentFlows_[compno] = new ImageComponentFlow(numResolutions);
+	if (!tile_->comps->isWholeTileDecoding())
+		imageComponentFlows_[compno]->setRegionDecompression();
+
 	// nominal code block dimensions
 	uint16_t codeblock_width = (uint16_t)(tccp->cblkw ? (uint32_t)1 << tccp->cblkw : 0);
 	uint16_t codeblock_height = (uint16_t)(tccp->cblkh ? (uint32_t)1 << tccp->cblkh : 0);
@@ -132,10 +180,10 @@ bool DecompressScheduler::scheduleBlocks(uint16_t compno)
 
 		return success;
 	}
-	resno = 0;
+	uint8_t resFlowNum = 0;
 	for(auto& resBlocks : blocks)
 	{
-		auto resFlow = imageComponentFlows_[compno]->resFlows_ + resno;
+		auto resFlow = imageComponentFlows_[compno]->resFlows_ + resFlowNum;
 		for(auto& block : resBlocks.blocks_)
 		{
 			resFlow->blocks_->nextTask()->work([this, block] {
@@ -152,14 +200,7 @@ bool DecompressScheduler::scheduleBlocks(uint16_t compno)
 				}
 			});
 		}
-		resno++;
-	}
-	if (!includeBlocks) {
-		for(uint8_t resFlowNum = 0;resFlowNum <  blocks.size(); ++resFlowNum)
-		{
-			auto resFlow = imageComponentFlows_[compno]->resFlows_ + resFlowNum;
-			resFlow->blocks_->addTo(codecFlow_);
-		}
+		resFlowNum++;
 	}
 
 	return true;

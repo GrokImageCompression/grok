@@ -24,10 +24,9 @@ class CompressScheduler : public Scheduler
 	CompressScheduler(Tile* tile, bool needsRateControl, TileCodingParams* tcp,
 					  const double* mct_norms, uint16_t mct_numcomps);
 	~CompressScheduler() = default;
-	bool scheduleBlocks(uint16_t compno) override;
-	bool scheduleWavelet(uint16_t compno) override {return false; };
-
+	bool schedule(uint16_t compno) override;
   private:
+	bool scheduleBlocks(uint16_t compno);
 	void compress(std::vector<CompressBlockExec*>* blocks);
 	bool compress(size_t threadId, uint64_t maxBlocks);
 	void compress(T1Interface* impl, CompressBlockExec* block);

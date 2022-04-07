@@ -37,15 +37,19 @@ typedef std::vector<ResDecompressBlocks> DecompressBlocks;
 class DecompressScheduler : public Scheduler
 {
   public:
-	DecompressScheduler(TileProcessor* tileProcessor, Tile* tile, TileCodingParams* tcp, uint8_t prec);
+	DecompressScheduler(TileProcessor* tileProcessor, Tile* tile, TileCodingParams* tcp, uint8_t prec,bool doPostT1);
 	~DecompressScheduler() = default;
-	bool scheduleBlocks(uint16_t compno) override;
-	bool scheduleWavelet(uint16_t compno) override;
+
+	bool schedule(uint16_t compno) override;
   private:
+	bool scheduleBlocks(uint16_t compno);
+	bool scheduleWavelet(uint16_t compno);
 	bool decompressBlock(T1Interface* impl, DecompressBlockExec* block);
 	TileProcessor* tileProcessor_;
 	TileCodingParams* tcp_;
 	uint8_t prec_;
+	DecompressBlocks blocks;
+	bool doPostT1_;
 };
 
 } // namespace grk
