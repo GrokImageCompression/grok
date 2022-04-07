@@ -687,8 +687,11 @@ bool WaveletReverse::decompress_tile_97(void)
 		horizF_.win_l = grk_line32(0, horizF_.sn_full);
 		horizF_.win_h = grk_line32(0, horizF_.dn_full);
 		auto resFlow = imageComponentFlow->getResFlow(res - 1);
-		if(numThreads > 1)
+		if(numThreads > 1) {
 			resFlow->waveletHoriz_->add_to(codecFlow);
+			resFlow->waveletVert_->add_to(codecFlow);
+			resFlow->graph();
+		}
 		auto winSplitL = buf->getResWindowBufferSplitREL(res, SPLIT_L)->simpleF();
 		auto winSplitH = buf->getResWindowBufferSplitREL(res, SPLIT_H)->simpleF();
 		if(!decompress_h_97(res, numThreads, dataLength, horizF_, vertF_.sn_full,
@@ -701,14 +704,10 @@ bool WaveletReverse::decompress_tile_97(void)
 							buf->getBandWindowBufferPaddedREL(res, BAND_ORIENT_HH)->simpleF(),
 							winSplitH))
 			return false;
-		if(numThreads > 1)
-			run();
 		vertF_.dn_full = resHeight - vertF_.sn_full;
 		vertF_.parity = tr->y0 & 1;
 		vertF_.win_l = grk_line32(0, vertF_.sn_full);
 		vertF_.win_h = grk_line32(0, vertF_.dn_full);
-		if (numThreads > 1)
-			resFlow->waveletVert_->add_to(codecFlow);
 		if(!decompress_v_97(res, numThreads, dataLength, vertF_, resWidth, resHeight,
 							winSplitL,
 							winSplitH,
