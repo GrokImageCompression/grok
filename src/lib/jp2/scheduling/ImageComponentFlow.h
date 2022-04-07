@@ -25,6 +25,7 @@ struct ResFlow
 	~ResFlow(void);
 
 	void graph(void);
+	ResFlow* add_to(tf::Taskflow& composition);
 	ResFlow* precede(ResFlow* successor);
 	ResFlow* precede(FlowComponent* successor);
 	FlowComponent* blocks_;
@@ -40,6 +41,7 @@ class ImageComponentFlow
 	std::string genBlockFlowTaskName(uint8_t resFlowNo);
 	ResFlow* getResFlow(uint8_t resFlowNo);
 	void graph(void);
+	ImageComponentFlow* add_to(tf::Taskflow& composition);
 
 	uint8_t numResFlows_;
 	ResFlow* resFlows_;

@@ -689,8 +689,7 @@ bool WaveletReverse::decompress_tile_97(void)
 		horizF_.win_h = grk_line32(0, horizF_.dn_full);
 		auto resFlow = imageComponentFlow->getResFlow(res - 1);
 		if(numThreads > 1) {
-			resFlow->waveletHoriz_->add_to(codecFlow);
-			resFlow->waveletVert_->add_to(codecFlow);
+			resFlow->add_to(codecFlow);
 			resFlow->graph();
 		}
 		auto winSplitL = buf->getResWindowBufferSplitREL(res, SPLIT_L)->simpleF();
