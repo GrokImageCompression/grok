@@ -46,33 +46,6 @@ constexpr T getHorizontalPassHeight(bool lossless)
 	return T(lossless ? (sizeof(int32_t) / sizeof(int32_t)) : (sizeof(vec4f) / sizeof(float)));
 }
 
-template<typename T, typename S>
-struct decompress_job
-{
-	decompress_job(S data, grk_buf2d_simple<T> winLL, grk_buf2d_simple<T> winHL,
-				   grk_buf2d_simple<T> winLH, grk_buf2d_simple<T> winHH,
-				   grk_buf2d_simple<T> winDest, uint32_t indexMin, uint32_t indexMax)
-		: data(data), winLL(winLL), winHL(winHL), winLH(winLH), winHH(winHH), winDest(winDest),
-		  indexMin_(indexMin), indexMax_(indexMax)
-	{}
-	decompress_job(S data, uint32_t indexMin, uint32_t indexMax)
-		: data(data), indexMin_(indexMin), indexMax_(indexMax)
-	{}
-	~decompress_job()
-	{
-		data.release();
-	}
-	S data;
-	grk_buf2d_simple<T> winLL;
-	grk_buf2d_simple<T> winHL;
-	grk_buf2d_simple<T> winLH;
-	grk_buf2d_simple<T> winHH;
-	grk_buf2d_simple<T> winDest;
-
-	uint32_t indexMin_;
-	uint32_t indexMax_;
-};
-
 template<typename T>
 struct dwt_data
 {

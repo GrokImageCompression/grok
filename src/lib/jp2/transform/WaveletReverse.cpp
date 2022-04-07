@@ -524,17 +524,17 @@ bool WaveletReverse::decompress_h_97(uint8_t res, uint32_t numThreads, size_t da
 	}
 	else
 	{
-		uint32_t numJobs = numThreads;
-		if(resHeight < numJobs)
-			numJobs = resHeight;
-		uint32_t incrPerJob = resHeight / numJobs;
+		uint32_t numTasks = numThreads;
+		if(resHeight < numTasks)
+			numTasks = resHeight;
+		uint32_t incrPerJob = resHeight / numTasks;
 		auto imageComponentFlow = scheduler_->getImageComponentFlow(compno_);
 		auto resFlow = imageComponentFlow->getResFlow(res - 1);
-		resFlow->waveletHoriz_->push_tasks(numJobs);
-		for(uint32_t j = 0; j < numJobs; ++j)
+		resFlow->waveletHoriz_->push_tasks(numTasks);
+		for(uint32_t j = 0; j < numTasks; ++j)
 		{
 			auto indexMin = j * incrPerJob;
-			auto indexMax = (j < (numJobs - 1U) ? (j + 1U) * incrPerJob : resHeight) - indexMin;
+			auto indexMax = (j < (numTasks - 1U) ? (j + 1U) * incrPerJob : resHeight) - indexMin;
 			auto myhoriz = new dwt_data<vec4f>(horiz);
 			if(!myhoriz->alloc(dataLength))
 			{
@@ -620,21 +620,22 @@ bool WaveletReverse::decompress_v_97(uint8_t res, uint32_t numThreads, size_t da
 	}
 	else
 	{
-		auto numJobs = numThreads;
-		if(resWidth < numJobs)
-			numJobs = resWidth;
-		auto incrPerJob = resWidth / numJobs;
+		auto numTasks = numThreads;
+		if(resWidth < numTasks)
+			numTasks = resWidth;
+		auto incrPerJob = resWidth / numTasks;
 		auto imageComponentFlow = scheduler_->getImageComponentFlow(compno_);
 		auto resFlow = imageComponentFlow->getResFlow(res - 1);
-		resFlow->waveletVert_->push_tasks(numJobs);
-		for(uint32_t j = 0; j < numJobs; j++)
+		resFlow->waveletVert_->push_tasks(numTasks);
+		for(uint32_t j = 0; j < numTasks; j++)
 		{
 			auto indexMin = j * incrPerJob;
-			auto indexMax = (j < (numJobs - 1U) ? (j + 1U) * incrPerJob : resWidth) - indexMin;
+			auto indexMax = (j < (numTasks - 1U) ? (j + 1U) * incrPerJob : resWidth) - indexMin;
 			auto myvert = new dwt_data<vec4f>(vert);
 			if(!myvert->alloc(dataLength))
 			{
 				GRK_ERROR("Out of memory");
+				delete myvert;
 				return false;
 			}
 			resFlow->waveletVert_->get()->work([this, myvert,resHeight, indexMax, winL,winH,winDest] {
@@ -1046,13 +1047,13 @@ bool WaveletReverse::decompress_h_53(uint8_t res, TileComponentWindowBuffer<int3
 	FlowComponent* flowComponent = resFlow->waveletHoriz_;
 	tf::Taskflow& codecFlow = scheduler_->getCodecFlow();
 	flowComponent->add_to(codecFlow);
-	uint32_t numJobs[2] = {0, 0};
+	uint32_t numTasks[2] = {0, 0};
 	uint32_t height[2] = {0, 0};
 	for(uint32_t orient = 0; orient < 2; ++orient)
 	{
 		height[orient] = (orient == 0) ? vert_.sn_full : resHeight - vert_.sn_full;
 		if(numThreads > 1)
-			numJobs[orient] = height[orient] < numThreads ? height[orient] : numThreads;
+			numTasks[orient] = height[orient] < numThreads ? height[orient] : numThreads;
 	}
 	for(uint32_t orient = 0; orient < 2; ++orient)
 	{
@@ -1085,29 +1086,31 @@ bool WaveletReverse::decompress_h_53(uint8_t res, TileComponentWindowBuffer<int3
 		}
 		else
 		{
-			flowComponent->push_tasks(numJobs[orient]);
-			uint32_t incrPerJob = height[orient] / numJobs[orient];
-			for(uint32_t j = 0; j < numJobs[orient]; ++j)
+			flowComponent->push_tasks(numTasks[orient]);
+			uint32_t incrPerJob = height[orient] / numTasks[orient];
+			for(uint32_t j = 0; j < numTasks[orient]; ++j)
 			{
 				auto indexMin = j * incrPerJob;
-				auto job = new decompress_job<int32_t, dwt_data<int32_t>>(
-					horiz_, winL.incY(indexMin), winH.incY(indexMin), grk_buf2d_simple<int32_t>(),
-					grk_buf2d_simple<int32_t>(), winDest.incY(indexMin), j * incrPerJob,
-					j < (numJobs[orient] - 1U) ? (j + 1U) * incrPerJob : height[orient]);
-				if(!job->data.alloc(dataLength))
+				auto indexMax = j < (numTasks[orient] - 1U) ? (j + 1U) * incrPerJob : height[orient];
+				auto horiz = new dwt_data<int32_t>(horiz_);
+				if(!horiz->alloc(dataLength))
 				{
 					GRK_ERROR("Out of memory");
+					delete horiz;
 					return false;
 				}
-				flowComponent->get()->work([this, job] {
-					decompress_h_strip_53(&job->data, job->indexMin_, job->indexMax_, job->winLL,
-										  job->winHL, job->winDest);
-					delete job;
+				flowComponent->get()->work([this, horiz, winL,winH,winDest,indexMin,indexMax] {
+					decompress_h_strip_53(horiz, indexMin, indexMax, winL,
+										  winH, winDest);
+					delete horiz;
 				});
+				winL.incY_IPL(incrPerJob);
+				winH.incY_IPL(incrPerJob);
+				winDest.incY_IPL(incrPerJob);
 			}
 		}
 	}
-	if(numJobs[0] || numJobs[1])
+	if(numTasks[0] || numTasks[1])
 		run();
 
 	return true;
@@ -1158,26 +1161,28 @@ bool WaveletReverse::decompress_v_53(uint8_t res, TileComponentWindowBuffer<int3
 		auto resFlow = imageComponentFlow->getResFlow(res - 1);
 		tf::Taskflow& codecFlow = scheduler_->getCodecFlow();
 		auto flowComponent = resFlow->waveletVert_;
-		const uint32_t numJobs = resWidth < numThreads ? resWidth : numThreads;
-		uint32_t step = resWidth / numJobs;
-		flowComponent->push_tasks(numJobs)->add_to(codecFlow);
-		for(uint32_t j = 0; j < numJobs; j++)
+		const uint32_t numTasks = resWidth < numThreads ? resWidth : numThreads;
+		uint32_t step = resWidth / numTasks;
+		flowComponent->push_tasks(numTasks)->add_to(codecFlow);
+		for(uint32_t j = 0; j < numTasks; j++)
 		{
 			auto indexMin = j * step;
-			auto job = new decompress_job<int32_t, dwt_data<int32_t>>(
-				vert_, winL.incX(indexMin), grk_buf2d_simple<int32_t>(), winH.incX(indexMin),
-				grk_buf2d_simple<int32_t>(), winDest.incX(indexMin), j * step,
-				j < (numJobs - 1U) ? (j + 1U) * step : resWidth);
-			if(!job->data.alloc(dataLength))
+			auto indexMax = j < (numTasks - 1U) ? (j + 1U) * step : resWidth;
+			auto vert = new dwt_data<int32_t>(vert_);
+			if(!vert->alloc(dataLength))
 			{
 				GRK_ERROR("Out of memory");
+				delete vert;
 				return false;
 			}
-			flowComponent->get()->work([this, job] {
-				decompress_v_strip_53(&job->data, job->indexMin_, job->indexMax_, job->winLL,
-									  job->winLH, job->winDest);
-				delete job;
+			flowComponent->get()->work([this, vert,indexMin,indexMax,winL,winH,winDest] {
+				decompress_v_strip_53(vert, indexMin, indexMax, winL,
+									  winH, winDest);
+				delete vert;
 			});
+			winL.incX_IPL(step);
+			winH.incX_IPL(step);
+			winDest.incX_IPL(step);
 		}
 		run();
 	}
@@ -1733,6 +1738,34 @@ Params97 WaveletReverse::makeParams97(dwt_data<vec4f>* dwt, bool isBandL, bool s
 
 	return rc;
 };
+
+template<typename T, typename S>
+struct decompress_job
+{
+	decompress_job(S data, grk_buf2d_simple<T> winLL, grk_buf2d_simple<T> winHL,
+				   grk_buf2d_simple<T> winLH, grk_buf2d_simple<T> winHH,
+				   grk_buf2d_simple<T> winDest, uint32_t indexMin, uint32_t indexMax)
+		: data(data), winLL(winLL), winHL(winHL), winLH(winLH), winHH(winHH), winDest(winDest),
+		  indexMin_(indexMin), indexMax_(indexMax)
+	{}
+	decompress_job(S data, uint32_t indexMin, uint32_t indexMax)
+		: data(data), indexMin_(indexMin), indexMax_(indexMax)
+	{}
+	~decompress_job()
+	{
+		data.release();
+	}
+	S data;
+	grk_buf2d_simple<T> winLL;
+	grk_buf2d_simple<T> winHL;
+	grk_buf2d_simple<T> winLH;
+	grk_buf2d_simple<T> winHH;
+	grk_buf2d_simple<T> winDest;
+
+	uint32_t indexMin_;
+	uint32_t indexMax_;
+};
+
 /**
  * ************************************************************************************
  *
@@ -1982,21 +2015,21 @@ bool WaveletReverse::decompress_partial_tile(ISparseCanvas* sa)
 
 		for(uint32_t k = 0; k < 2; ++k)
 		{
-			uint32_t numJobs = numThreads;
+			uint32_t numTasks = numThreads;
 			uint32_t num_rows = splitWindowRect[k].height();
-			if(num_rows < numJobs)
-				numJobs = num_rows;
-			uint32_t incrPerJob = numJobs ? (num_rows / numJobs) : 0;
+			if(num_rows < numTasks)
+				numTasks = num_rows;
+			uint32_t incrPerJob = numTasks ? (num_rows / numTasks) : 0;
 			if(numThreads == 1)
-				numJobs = 1;
+				numTasks = 1;
 			if(numThreads > 1)
-				resFlow->waveletHoriz_->push_tasks(numJobs);
+				resFlow->waveletHoriz_->push_tasks(numTasks);
 			bool blockError = false;
-			for(uint32_t j = 0; j < numJobs; ++j)
+			for(uint32_t j = 0; j < numTasks; ++j)
 			{
 				auto job = new decompress_job<T, dwt_data<T>>(
 					horiz, splitWindowRect[k].y0 + j * incrPerJob,
-					j < (numJobs - 1U) ? splitWindowRect[k].y0 + (j + 1U) * incrPerJob
+					j < (numTasks - 1U) ? splitWindowRect[k].y0 + (j + 1U) * incrPerJob
 									   : splitWindowRect[k].y1);
 				if(!job->data.alloc(dataLength, pad))
 				{
@@ -2020,21 +2053,21 @@ bool WaveletReverse::decompress_partial_tile(ISparseCanvas* sa)
 		vert.win_l = bandWindowRect[BAND_ORIENT_LL].dimY();
 		vert.win_h = bandWindowRect[BAND_ORIENT_LH].dimY();
 		vert.resno = resno;
-		uint32_t numJobs = numThreads;
+		uint32_t numTasks = numThreads;
 		uint32_t numColumns = resWindowRect.width();
-		if(numColumns < numJobs)
-			numJobs = numColumns;
-		uint32_t incrPerJob = numJobs ? (numColumns / numJobs) : 0;
+		if(numColumns < numTasks)
+			numTasks = numColumns;
+		uint32_t incrPerJob = numTasks ? (numColumns / numTasks) : 0;
 		bool blockError = false;
 		if(numThreads == 1)
-			numJobs = 1;
+			numTasks = 1;
 		else
-			resFlow->waveletVert_->push_tasks(numJobs)->add_to(codecFlow);
-		for(uint32_t j = 0; j < numJobs; ++j)
+			resFlow->waveletVert_->push_tasks(numTasks)->add_to(codecFlow);
+		for(uint32_t j = 0; j < numTasks; ++j)
 		{
 			auto job = new decompress_job<T, dwt_data<T>>(
 				vert, resWindowRect.x0 + j * incrPerJob,
-				j < (numJobs - 1U) ? resWindowRect.x0 + (j + 1U) * incrPerJob : resWindowRect.x1);
+				j < (numTasks - 1U) ? resWindowRect.x0 + (j + 1U) * incrPerJob : resWindowRect.x1);
 			if(!job->data.alloc(dataLength, pad))
 			{
 				GRK_ERROR("Out of memory");
