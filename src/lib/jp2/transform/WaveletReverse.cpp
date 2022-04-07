@@ -530,25 +530,25 @@ bool WaveletReverse::decompress_h_97(uint8_t res, uint32_t numThreads, size_t da
 		uint32_t incrPerJob = resHeight / numJobs;
 		auto imageComponentFlow = scheduler_->getImageComponentFlow(compno_);
 		auto resFlow = imageComponentFlow->getResFlow(res - 1);
-		auto flowComponent = resFlow->waveletHoriz_;
-		flowComponent->push_tasks(numJobs);
+		resFlow->waveletHoriz_->push_tasks(numJobs);
 		for(uint32_t j = 0; j < numJobs; ++j)
 		{
 			auto indexMin = j * incrPerJob;
-			auto job = new decompress_job<float, dwt_data<vec4f>>(
-				horiz, winL.incY(indexMin), winH.incY(indexMin), grk_buf2d_simple<float>(),
-				grk_buf2d_simple<float>(), winDest.incY(indexMin), 0,
-				(j < (numJobs - 1U) ? (j + 1U) * incrPerJob : resHeight) - indexMin);
-			if(!job->data.alloc(dataLength))
+			auto indexMax = (j < (numJobs - 1U) ? (j + 1U) * incrPerJob : resHeight) - indexMin;
+			auto myhoriz = new dwt_data<vec4f>(horiz);
+			if(!myhoriz->alloc(dataLength))
 			{
 				GRK_ERROR("Out of memory");
 				return false;
 			}
-			flowComponent->get()->work([this, job] {
-				decompress_h_strip_97(&job->data, job->indexMax_, job->winLL, job->winHL,
-									  job->winDest);
-				delete job;
+			resFlow->waveletHoriz_->get()->work([this, myhoriz,indexMax, winL,winH,winDest] {
+				decompress_h_strip_97(myhoriz, indexMax, winL, winH,
+									  winDest);
+				delete myhoriz;
 			});
+			winL.incY_IPL(incrPerJob);
+			winH.incY_IPL(incrPerJob);
+			winDest.incY_IPL(incrPerJob);
 		}
 	}
 	return true;
@@ -626,29 +626,26 @@ bool WaveletReverse::decompress_v_97(uint8_t res, uint32_t numThreads, size_t da
 		auto incrPerJob = resWidth / numJobs;
 		auto imageComponentFlow = scheduler_->getImageComponentFlow(compno_);
 		auto resFlow = imageComponentFlow->getResFlow(res - 1);
-		auto flowComponent = resFlow->waveletVert_;
-		tf::Taskflow& codecFlow = scheduler_->getCodecFlow();
-		flowComponent->push_tasks(numJobs)->add_to(codecFlow);
+		resFlow->waveletVert_->push_tasks(numJobs);
 		for(uint32_t j = 0; j < numJobs; j++)
 		{
 			auto indexMin = j * incrPerJob;
-			auto job = new decompress_job<float, dwt_data<vec4f>>(
-				vert, winL.incX(indexMin), grk_buf2d_simple<float>(), winH.incX(indexMin),
-				grk_buf2d_simple<float>(), winDest.incX(indexMin), 0,
-				(j < (numJobs - 1U) ? (j + 1U) * incrPerJob : resWidth) - indexMin);
-			if(!job->data.alloc(dataLength))
+			auto indexMax = (j < (numJobs - 1U) ? (j + 1U) * incrPerJob : resWidth) - indexMin;
+			auto myvert = new dwt_data<vec4f>(vert);
+			if(!myvert->alloc(dataLength))
 			{
 				GRK_ERROR("Out of memory");
 				return false;
 			}
-			flowComponent->get()->work([this, job, resHeight] {
-				decompress_v_strip_97(&job->data, job->indexMax_, resHeight, job->winLL, job->winLH,
-									  job->winDest);
-				delete job;
-				return 0;
+			resFlow->waveletVert_->get()->work([this, myvert,resHeight, indexMax, winL,winH,winDest] {
+				decompress_v_strip_97(myvert, indexMax, resHeight, winL, winH,
+									  winDest);
+				delete myvert;
 			});
+			winL.incX_IPL(incrPerJob);
+			winH.incX_IPL(incrPerJob);
+			winDest.incX_IPL(incrPerJob);
 		}
-		run();
 	}
 
 	return true;
@@ -674,6 +671,8 @@ bool WaveletReverse::decompress_tile_97(void)
 	}
 	vertF_.mem = horizF_.mem;
 	uint32_t numThreads = (uint32_t)ExecSingleton::get()->num_workers();
+	auto imageComponentFlow = scheduler_->getImageComponentFlow(compno_);
+	tf::Taskflow& codecFlow = scheduler_->getCodecFlow();
 	for(uint8_t res = 1; res < numres_; ++res)
 	{
 		horizF_.sn_full = resWidth;
@@ -687,36 +686,36 @@ bool WaveletReverse::decompress_tile_97(void)
 		horizF_.parity = tr->x0 & 1;
 		horizF_.win_l = grk_line32(0, horizF_.sn_full);
 		horizF_.win_h = grk_line32(0, horizF_.dn_full);
+		auto resFlow = imageComponentFlow->getResFlow(res - 1);
 		if(numThreads > 1)
-		{
-			auto imageComponentFlow = scheduler_->getImageComponentFlow(compno_);
-			auto resFlow = imageComponentFlow->getResFlow(res - 1);
-			tf::Taskflow& codecFlow = scheduler_->getCodecFlow();
 			resFlow->waveletHoriz_->add_to(codecFlow);
-		}
+		auto winSplitL = buf->getResWindowBufferSplitREL(res, SPLIT_L)->simpleF();
+		auto winSplitH = buf->getResWindowBufferSplitREL(res, SPLIT_H)->simpleF();
 		if(!decompress_h_97(res, numThreads, dataLength, horizF_, vertF_.sn_full,
 							buf->getResWindowBufferREL(res - 1U)->simpleF(),
 							buf->getBandWindowBufferPaddedREL(res, BAND_ORIENT_HL)->simpleF(),
-							buf->getResWindowBufferSplitREL(res, SPLIT_L)->simpleF()))
+							winSplitL))
 			return false;
 		if(!decompress_h_97(res, numThreads, dataLength, horizF_, resHeight - vertF_.sn_full,
 							buf->getBandWindowBufferPaddedREL(res, BAND_ORIENT_LH)->simpleF(),
 							buf->getBandWindowBufferPaddedREL(res, BAND_ORIENT_HH)->simpleF(),
-							buf->getResWindowBufferSplitREL(res, SPLIT_H)->simpleF()))
+							winSplitH))
 			return false;
 		if(numThreads > 1)
-		{
 			run();
-		}
 		vertF_.dn_full = resHeight - vertF_.sn_full;
 		vertF_.parity = tr->y0 & 1;
 		vertF_.win_l = grk_line32(0, vertF_.sn_full);
 		vertF_.win_h = grk_line32(0, vertF_.dn_full);
+		if (numThreads > 1)
+			resFlow->waveletVert_->add_to(codecFlow);
 		if(!decompress_v_97(res, numThreads, dataLength, vertF_, resWidth, resHeight,
-							buf->getResWindowBufferSplitREL(res, SPLIT_L)->simpleF(),
-							buf->getResWindowBufferSplitREL(res, SPLIT_H)->simpleF(),
+							winSplitL,
+							winSplitH,
 							buf->getResWindowBufferREL(res)->simpleF()))
 			return false;
+		if (numThreads > 1)
+			run();
 	}
 
 	return true;
@@ -2027,10 +2026,10 @@ bool WaveletReverse::decompress_partial_tile(ISparseCanvas* sa)
 		if(numColumns < numJobs)
 			numJobs = numColumns;
 		uint32_t incrPerJob = numJobs ? (numColumns / numJobs) : 0;
+		bool blockError = false;
 		if(numThreads == 1)
 			numJobs = 1;
-		bool blockError = false;
-		if(numThreads > 1)
+		else
 			resFlow->waveletVert_->push_tasks(numJobs)->add_to(codecFlow);
 		for(uint32_t j = 0; j < numJobs; ++j)
 		{

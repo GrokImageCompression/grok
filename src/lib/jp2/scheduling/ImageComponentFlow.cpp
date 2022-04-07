@@ -22,12 +22,12 @@ ResFlow::ResFlow(void)
 {}
 void ResFlow::graph(void)
 {
-	blocks_->precede(waveletHoriz_);
+	//blocks_->precede(waveletHoriz_);
 	waveletHoriz_->precede(waveletVert_);
 }
 ResFlow* ResFlow::precede(ResFlow* successor)
 {
-	waveletVert_->precede(successor->blocks_);
+	//waveletVert_->precede(successor->blocks_);
 
 	return this;
 }
