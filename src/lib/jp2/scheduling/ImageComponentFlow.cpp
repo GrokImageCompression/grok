@@ -35,6 +35,7 @@ ResFlow* ResFlow::add_to(tf::Taskflow& composition){
 ResFlow* ResFlow::precede(ResFlow* successor)
 {
 	//waveletVert_->precede(successor->blocks_);
+	waveletVert_->precede(successor->waveletHoriz_);
 
 	return this;
 }
@@ -70,8 +71,11 @@ void ImageComponentFlow::graph(void)
 {
 	for(uint8_t i = 0; i < numResFlows_; ++i)
 		(resFlows_ + i)->graph();
-	for(uint8_t i = 0; 0 < numResFlows_ - 1; ++i)
+	for(uint8_t i = 0; i < numResFlows_ - 1; ++i)
 		(resFlows_ + i)->precede(resFlows_ + i + 1);
+}
+void ImageComponentFlow::graph_final(void)
+{
 	if(waveletFinalCopy_)
 		(resFlows_ + numResFlows_ - 1)->precede(waveletFinalCopy_);
 }

@@ -674,6 +674,8 @@ bool WaveletReverse::decompress_tile_97(void)
 	uint32_t numThreads = (uint32_t)ExecSingleton::get()->num_workers();
 	auto imageComponentFlow = scheduler_->getImageComponentFlow(compno_);
 	tf::Taskflow& codecFlow = scheduler_->getCodecFlow();
+	imageComponentFlow->add_to(codecFlow);
+	imageComponentFlow->graph();
 	for(uint8_t res = 1; res < numres_; ++res)
 	{
 		horizF_.sn_full = resWidth;
@@ -687,11 +689,6 @@ bool WaveletReverse::decompress_tile_97(void)
 		horizF_.parity = tr->x0 & 1;
 		horizF_.win_l = grk_line32(0, horizF_.sn_full);
 		horizF_.win_h = grk_line32(0, horizF_.dn_full);
-		auto resFlow = imageComponentFlow->getResFlow(res - 1);
-		if(numThreads > 1) {
-			resFlow->add_to(codecFlow);
-			resFlow->graph();
-		}
 		auto winSplitL = buf->getResWindowBufferSplitREL(res, SPLIT_L)->simpleF();
 		auto winSplitH = buf->getResWindowBufferSplitREL(res, SPLIT_H)->simpleF();
 		if(!decompress_h_97(res, numThreads, dataLength, horizF_, vertF_.sn_full,
@@ -713,9 +710,9 @@ bool WaveletReverse::decompress_tile_97(void)
 							winSplitH,
 							buf->getResWindowBufferREL(res)->simpleF()))
 			return false;
-		if (numThreads > 1)
-			run();
 	}
+	if (numThreads > 1)
+		run();
 
 	return true;
 }
@@ -1209,6 +1206,8 @@ bool WaveletReverse::decompress_tile_53(void)
 	auto imageComponentFlow = scheduler_->getImageComponentFlow(compno_);
 	tf::Taskflow& codecFlow = scheduler_->getCodecFlow();
 	uint32_t numThreads = (uint32_t)ExecSingleton::get()->num_workers();
+	imageComponentFlow->add_to(codecFlow);
+	imageComponentFlow->graph();
 	for(uint8_t res = 1; res < numres_; ++res)
 	{
 		horiz_.sn_full = tileCompRes->width();
@@ -1222,18 +1221,13 @@ bool WaveletReverse::decompress_tile_53(void)
 		horiz_.parity = tileCompRes->x0 & 1;
 		vert_.dn_full = resHeight - vert_.sn_full;
 		vert_.parity = tileCompRes->y0 & 1;
-		auto resFlow = imageComponentFlow->getResFlow(res - 1);
-		if(numThreads > 1) {
-			resFlow->add_to(codecFlow);
-			resFlow->graph();
-		}
 		if(!decompress_h_53(res, buf, resHeight, dataLength))
 			return false;
 		if(!decompress_v_53(res, buf, resWidth, dataLength))
 			return false;
-		if(numThreads > 1)
-			run();
 	}
+	if(numThreads > 1)
+		run();
 
 	return true;
 }
