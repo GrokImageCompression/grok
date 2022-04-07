@@ -45,32 +45,28 @@ bool DecompressScheduler::schedule(uint16_t compno){
 	auto  imageFlow = getImageComponentFlow(compno);
 	if (imageFlow) {
 		if (!includeBlocks) {
-			if (!includeBlocks) {
-				for(uint8_t resFlowNum = 0;resFlowNum <  blocks.size(); ++resFlowNum)
-				{
-					auto resFlow = imageFlow->resFlows_ + resFlowNum;
-					resFlow->blocks_->addTo(codecFlow_);
-				}
+			//  1. composite blocks
+			for(uint8_t resFlowNum = 0;resFlowNum <  blocks.size(); ++resFlowNum)
+			{
+				auto resFlow = imageFlow->resFlows_ + resFlowNum;
+				resFlow->blocks_->addTo(codecFlow_);
 			}
+			// 2. composite wavelet
 			imageFlow->addTo(codecFlow_);
+			// 3. generate dependency graph
 			graph(compno);
+			// 4. run
 			if(!run())
 				return false;
 			getCodecFlow().clear();
-		} else {
-			graph(compno);
 		}
-		if (!includeBlocks) {
-			imageFlow->addTo(codecFlow_);
-			graph(compno);
-		}
+		// composite and graph dependencies
+		imageFlow->addTo(codecFlow_);
+		graph(compno);
 	}
 	uint8_t numRes = tilec->highestResolutionDecompressed + 1U;
-	if(doPostT1_ && numRes > 1)
-	{
-		if (!scheduleWavelet(compno))
-			return false;
-	}
+	if(doPostT1_ && numRes > 1 && !scheduleWavelet(compno))
+		return false;
 	if(!run())
 		return false;
 	getCodecFlow().clear();
@@ -225,7 +221,7 @@ bool DecompressScheduler::decompressBlock(T1Interface* impl, DecompressBlockExec
 
 bool DecompressScheduler::scheduleWavelet(uint16_t compno) {
 	auto tilec = tile_->comps + compno;
-	auto numRes = tilec->highestResolutionDecompressed + 1U;
+	uint8_t numRes = tilec->highestResolutionDecompressed + 1U;
 	WaveletReverse w(tileProcessor_, tilec,
 					compno, tilec->getBuffer()->unreducedBounds(), numRes,
 					 (tcp_->tccps + compno)->qmfbid);

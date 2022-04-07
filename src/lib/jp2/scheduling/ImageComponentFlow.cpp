@@ -31,7 +31,8 @@ void ResFlow::graph(void)
 		waveletHoriz_->precede(waveletVert_);
 }
 ResFlow* ResFlow::addTo(tf::Taskflow& composition){
-	if (includeBlocks && blocks_)
+	assert(blocks_);
+	if (includeBlocks)
 	  blocks_->addTo(composition);
 	waveletHoriz_->addTo(composition);
 	waveletVert_->addTo(composition);
