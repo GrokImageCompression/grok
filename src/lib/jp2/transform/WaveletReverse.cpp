@@ -1043,9 +1043,6 @@ bool WaveletReverse::decompress_h_53(uint8_t res, TileComponentWindowBuffer<int3
 	grk_buf2d_simple<int32_t> winL, winH, winDest;
 	auto imageComponentFlow = scheduler_->getImageComponentFlow(compno_);
 	auto resFlow = imageComponentFlow->getResFlow(res - 1);
-	FlowComponent* flowComponent = resFlow->waveletHoriz_;
-	tf::Taskflow& codecFlow = scheduler_->getCodecFlow();
-	flowComponent->add_to(codecFlow);
 	uint32_t numTasks[2] = {0, 0};
 	uint32_t height[2] = {0, 0};
 	for(uint32_t orient = 0; orient < 2; ++orient)
@@ -1085,7 +1082,7 @@ bool WaveletReverse::decompress_h_53(uint8_t res, TileComponentWindowBuffer<int3
 		}
 		else
 		{
-			flowComponent->push_tasks(numTasks[orient]);
+			resFlow->waveletHoriz_->push_tasks(numTasks[orient]);
 			uint32_t incrPerJob = height[orient] / numTasks[orient];
 			for(uint32_t j = 0; j < numTasks[orient]; ++j)
 			{
@@ -1098,7 +1095,7 @@ bool WaveletReverse::decompress_h_53(uint8_t res, TileComponentWindowBuffer<int3
 					delete horiz;
 					return false;
 				}
-				flowComponent->get()->work([this, horiz, winL,winH,winDest,indexMin,indexMax] {
+				resFlow->waveletHoriz_->get()->work([this, horiz, winL,winH,winDest,indexMin,indexMax] {
 					decompress_h_strip_53(horiz, indexMin, indexMax, winL,
 										  winH, winDest);
 					delete horiz;
@@ -1109,8 +1106,6 @@ bool WaveletReverse::decompress_h_53(uint8_t res, TileComponentWindowBuffer<int3
 			}
 		}
 	}
-	if(numTasks[0] || numTasks[1])
-		run();
 
 	return true;
 }
@@ -1158,11 +1153,9 @@ bool WaveletReverse::decompress_v_53(uint8_t res, TileComponentWindowBuffer<int3
 	{
 		auto imageComponentFlow = scheduler_->getImageComponentFlow(compno_);
 		auto resFlow = imageComponentFlow->getResFlow(res - 1);
-		tf::Taskflow& codecFlow = scheduler_->getCodecFlow();
-		auto flowComponent = resFlow->waveletVert_;
 		const uint32_t numTasks = resWidth < numThreads ? resWidth : numThreads;
 		uint32_t step = resWidth / numTasks;
-		flowComponent->push_tasks(numTasks)->add_to(codecFlow);
+		resFlow->waveletVert_->push_tasks(numTasks);
 		for(uint32_t j = 0; j < numTasks; j++)
 		{
 			auto indexMin = j * step;
@@ -1174,7 +1167,7 @@ bool WaveletReverse::decompress_v_53(uint8_t res, TileComponentWindowBuffer<int3
 				delete vert;
 				return false;
 			}
-			flowComponent->get()->work([this, vert,indexMin,indexMax,winL,winH,winDest] {
+			resFlow->waveletVert_->get()->work([this, vert,indexMin,indexMax,winL,winH,winDest] {
 				decompress_v_strip_53(vert, indexMin, indexMax, winL,
 									  winH, winDest);
 				delete vert;
@@ -1183,7 +1176,6 @@ bool WaveletReverse::decompress_v_53(uint8_t res, TileComponentWindowBuffer<int3
 			winH.incX_IPL(step);
 			winDest.incX_IPL(step);
 		}
-		run();
 	}
 	return true;
 }
@@ -1214,6 +1206,9 @@ bool WaveletReverse::decompress_tile_53(void)
 	/* since for the vertical pass */
 	/* we process PLL_COLS_53 columns at a time */
 	dataLength *= PLL_COLS_53 * sizeof(int32_t);
+	auto imageComponentFlow = scheduler_->getImageComponentFlow(compno_);
+	tf::Taskflow& codecFlow = scheduler_->getCodecFlow();
+	uint32_t numThreads = (uint32_t)ExecSingleton::get()->num_workers();
 	for(uint8_t res = 1; res < numres_; ++res)
 	{
 		horiz_.sn_full = tileCompRes->width();
@@ -1227,10 +1222,17 @@ bool WaveletReverse::decompress_tile_53(void)
 		horiz_.parity = tileCompRes->x0 & 1;
 		vert_.dn_full = resHeight - vert_.sn_full;
 		vert_.parity = tileCompRes->y0 & 1;
+		auto resFlow = imageComponentFlow->getResFlow(res - 1);
+		if(numThreads > 1) {
+			resFlow->add_to(codecFlow);
+			resFlow->graph();
+		}
 		if(!decompress_h_53(res, buf, resHeight, dataLength))
 			return false;
 		if(!decompress_v_53(res, buf, resWidth, dataLength))
 			return false;
+		if(numThreads > 1)
+			run();
 	}
 
 	return true;
