@@ -19,13 +19,18 @@
 
 #include "FlowComponent.h"
 
+namespace grk
+{
+
+const bool includeBlocks = false;
+
 struct ResFlow
 {
 	ResFlow(void);
 	~ResFlow(void);
 
 	void graph(void);
-	ResFlow* add_to(tf::Taskflow& composition);
+	ResFlow* addTo(tf::Taskflow& composition);
 	ResFlow* precede(ResFlow* successor);
 	ResFlow* precede(FlowComponent* successor);
 	FlowComponent* blocks_;
@@ -37,14 +42,16 @@ class ImageComponentFlow
 {
   public:
 	ImageComponentFlow(uint8_t numResolutions);
-	virtual ~ImageComponentFlow();
+	virtual ~ImageComponentFlow(void);
+	void setRegionDecompression(void);
 	std::string genBlockFlowTaskName(uint8_t resFlowNo);
 	ResFlow* getResFlow(uint8_t resFlowNo);
 	void graph(void);
-	void graph_final(void);
-	ImageComponentFlow* add_to(tf::Taskflow& composition);
+	ImageComponentFlow* addTo(tf::Taskflow& composition);
 
 	uint8_t numResFlows_;
 	ResFlow* resFlows_;
 	FlowComponent* waveletFinalCopy_;
 };
+
+}

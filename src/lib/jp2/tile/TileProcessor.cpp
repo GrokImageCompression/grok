@@ -431,12 +431,10 @@ bool TileProcessor::decompressT1(void)
 		!current_plugin_tile || (current_plugin_tile->decompress_flags & GRK_DECODE_POST_T1);
 	if(doT1)
 	{
-		scheduler_ = new DecompressScheduler(tile, tcp_, headerImage->comps->prec);
+		scheduler_ = new DecompressScheduler(this, tile, tcp_, headerImage->comps->prec);
 		for(uint16_t compno = 0; compno < tile->numcomps_; ++compno)
 		{
 			auto tilec = tile->comps + compno;
-			auto tccp = tcp_->tccps + compno;
-
 			if(!wholeTileDecompress)
 			{
 				try
@@ -454,23 +452,30 @@ bool TileProcessor::decompressT1(void)
 				GRK_ERROR("Not enough memory for tile data");
 				return false;
 			}
-			if(!scheduler_->schedule(compno))
+			if(!scheduler_->scheduleBlocks(compno))
 				return false;
-			if(!scheduler_->run())
-				return false;
-			scheduler_->getCodecFlow().clear();
-			uint8_t numRes = tilec->highestResolutionDecompressed + 1U;
-			if(doPostT1 && numRes > 1)
-			{
-				WaveletReverse w(this, tilec, compno, tilec->getBuffer()->unreducedBounds(), numRes,
-								 tccp->qmfbid);
-				if(!w.decompress())
-					return false;
-				// scheduler_->graph(compno);
+			if (!includeBlocks) {
+				scheduler_->getImageComponentFlow(compno)->addTo(scheduler_->getCodecFlow());
+				scheduler_->getImageComponentFlow(compno)->graph();
 				if(!scheduler_->run())
 					return false;
 				scheduler_->getCodecFlow().clear();
+			} else {
+				scheduler_->graph(compno);
 			}
+			if (!includeBlocks) {
+				scheduler_->getImageComponentFlow(compno)->addTo(scheduler_->getCodecFlow());
+				scheduler_->getImageComponentFlow(compno)->graph();
+			}
+			uint8_t numRes = tilec->highestResolutionDecompressed + 1U;
+			if(doPostT1 && numRes > 1)
+			{
+				if (!scheduler_->scheduleWavelet(compno))
+					return false;
+			}
+			if(!scheduler_->run())
+				return false;
+			scheduler_->getCodecFlow().clear();
 		}
 
 		delete scheduler_;
@@ -715,7 +720,7 @@ void TileProcessor::t1_encode()
 	}
 
 	scheduler_ = new CompressScheduler(tile, needsRateControl(), tcp, mct_norms, mct_numcomps);
-	scheduler_->schedule(0);
+	scheduler_->scheduleBlocks(0);
 }
 bool TileProcessor::encodeT2(uint32_t* tileBytesWritten)
 {

@@ -129,7 +129,6 @@ class WaveletReverse
 	static void decompress_step_97(dwt_data<vec4f>* GRK_RESTRICT dwt);
 
   private:
-	void run(void);
 	template<typename T, uint32_t FILTER_WIDTH, uint32_t VERT_PASS_WIDTH, typename D>
 	bool decompress_partial_tile(ISparseCanvas* sa);
 	static void decompress_step1_97(const Params97& d, const float c);

@@ -16,26 +16,34 @@
  */
 #include "grk_includes.h"
 
+namespace grk
+{
+
 ResFlow::ResFlow(void)
 	: blocks_(new FlowComponent()), waveletHoriz_(new FlowComponent()),
 	  waveletVert_(new FlowComponent())
 {}
 void ResFlow::graph(void)
 {
-	//blocks_->precede(waveletHoriz_);
-	waveletHoriz_->precede(waveletVert_);
+	if (includeBlocks && blocks_)
+		blocks_->precede(waveletHoriz_);
+	else
+		waveletHoriz_->precede(waveletVert_);
 }
-ResFlow* ResFlow::add_to(tf::Taskflow& composition){
-	//blocks_->add_to(composition);
-	waveletHoriz_->add_to(composition);
-	waveletVert_->add_to(composition);
+ResFlow* ResFlow::addTo(tf::Taskflow& composition){
+	if (includeBlocks && blocks_)
+	  blocks_->addTo(composition);
+	waveletHoriz_->addTo(composition);
+	waveletVert_->addTo(composition);
 
 	return this;
 }
 ResFlow* ResFlow::precede(ResFlow* successor)
 {
-	//waveletVert_->precede(successor->blocks_);
-	waveletVert_->precede(successor->waveletHoriz_);
+	if (includeBlocks && successor->blocks_)
+		waveletVert_->precede(successor->blocks_);
+	else
+		waveletVert_->precede(successor->waveletHoriz_);
 
 	return this;
 }
@@ -67,21 +75,23 @@ ImageComponentFlow::~ImageComponentFlow()
 	delete[] resFlows_;
 	delete waveletFinalCopy_;
 }
+void ImageComponentFlow::setRegionDecompression(void){
+	waveletFinalCopy_ = new FlowComponent();
+}
 void ImageComponentFlow::graph(void)
 {
 	for(uint8_t i = 0; i < numResFlows_; ++i)
 		(resFlows_ + i)->graph();
 	for(uint8_t i = 0; i < numResFlows_ - 1; ++i)
 		(resFlows_ + i)->precede(resFlows_ + i + 1);
-}
-void ImageComponentFlow::graph_final(void)
-{
 	if(waveletFinalCopy_)
 		(resFlows_ + numResFlows_ - 1)->precede(waveletFinalCopy_);
 }
-ImageComponentFlow* ImageComponentFlow::add_to(tf::Taskflow& composition){
+ImageComponentFlow* ImageComponentFlow::addTo(tf::Taskflow& composition){
 	for(uint8_t i = 0; i < numResFlows_; ++i)
-		(resFlows_ + i)->add_to(composition);
+		(resFlows_ + i)->addTo(composition);
+	if (waveletFinalCopy_)
+		waveletFinalCopy_->addTo(composition);
 
 	return this;
 }
@@ -95,4 +105,6 @@ std::string ImageComponentFlow::genBlockFlowTaskName(uint8_t resFlowNo)
 	ss << "blockFlowTask-" << resFlowNo;
 
 	return ss.str();
+}
+
 }

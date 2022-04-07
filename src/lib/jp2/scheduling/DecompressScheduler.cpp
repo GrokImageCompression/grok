@@ -20,18 +20,31 @@ namespace grk
 {
 const uint8_t gain_b[4] = {0, 1, 1, 2};
 
-DecompressScheduler::DecompressScheduler(Tile* tile, TileCodingParams* tcp, uint8_t prec)
-	: Scheduler(tile), tcp_(tcp), prec_(prec)
+ResDecompressBlocks::ResDecompressBlocks(void) : res_(0), waveletTransform_(true)
 {}
+void ResDecompressBlocks::clear(void){
+	res_ = 0;
+	blocks_.clear();
+}
 
-bool DecompressScheduler::schedule(uint16_t compno)
+bool ResDecompressBlocks::empty(void) const{
+	return blocks_.empty();
+}
+
+DecompressScheduler::DecompressScheduler(TileProcessor* tileProcessor, Tile* tile, TileCodingParams* tcp, uint8_t prec)
+	: Scheduler(tile,true), tileProcessor_(tileProcessor), tcp_(tcp), prec_(prec)
+{
+}
+
+bool DecompressScheduler::scheduleBlocks(uint16_t compno)
 {
 	DecompressBlocks blocks;
 	ResDecompressBlocks resBlocks;
 	auto tccp = tcp_->tccps + compno;
 	auto tilec = tile_->comps + compno;
 	bool wholeTileDecoding = tilec->isWholeTileDecoding();
-	for(uint8_t resno = 0; resno <= tilec->highestResolutionDecompressed; ++resno)
+	uint8_t resno = 0;
+	for(; resno <= tilec->highestResolutionDecompressed; ++resno)
 	{
 		auto res = tilec->tileCompResolution + resno;
 		for(uint8_t bandIndex = 0; bandIndex < res->numTileBandWindows; ++bandIndex)
@@ -64,22 +77,31 @@ bool DecompressScheduler::schedule(uint16_t compno)
 						block->stepsize = band->stepsize;
 						block->k_msbs = (uint8_t)(band->numbps - cblk->numbps);
 						block->R_b = prec_ + gain_b[band->orientation];
-						resBlocks.push_back(block);
+						resBlocks.blocks_.push_back(block);
 					}
 				}
 			}
 		}
-		if(!resBlocks.empty() && resno > 0)
+		// combine first two resolutions together into single resBlock
+		if(!resBlocks.blocks_.empty() && resno > 0)
 		{
+			resBlocks.res_ = resno-1;
 			blocks.push_back(resBlocks);
 			resBlocks.clear();
 		}
 	}
+	// handle case where only one resolution is decompressed
+	// (in this case, there will be no wavelet transform)
 	if(!resBlocks.empty())
 	{
+		assert(tilec->highestResolutionDecompressed == 0);
+		resBlocks.res_ = 0;
+		resBlocks.waveletTransform_ = false;
 		blocks.push_back(resBlocks);
 		resBlocks.clear();
 	}
+	if(!blocks.size())
+		return true;
 	// nominal code block dimensions
 	uint16_t codeblock_width = (uint16_t)(tccp->cblkw ? (uint32_t)1 << tccp->cblkw : 0);
 	uint16_t codeblock_height = (uint16_t)(tccp->cblkh ? (uint32_t)1 << tccp->cblkh : 0);
@@ -87,15 +109,13 @@ bool DecompressScheduler::schedule(uint16_t compno)
 		t1Implementations.push_back(
 			T1Factory::makeT1(false, tcp_, codeblock_width, codeblock_height));
 
-	if(!blocks.size())
-		return true;
 	size_t num_threads = ExecSingleton::get()->num_workers();
 	success = true;
 	if(num_threads == 1)
 	{
 		for(auto& resBlocks : blocks)
 		{
-			for(auto& block : resBlocks)
+			for(auto& block : resBlocks.blocks_)
 			{
 				if(!success)
 				{
@@ -112,23 +132,13 @@ bool DecompressScheduler::schedule(uint16_t compno)
 
 		return success;
 	}
-
-	uint8_t resno = 0;
-	for(auto& resBlocks : blocks)
-	{
-		auto resFlow = imageComponentFlows_[compno]->resFlows_ + resno;
-		auto blockFlowName = imageComponentFlows_[compno]->genBlockFlowTaskName(resno);
-		resFlow->blocks_->push_tasks(resBlocks.size())->add_to(codecFlow_)->name(blockFlowName);
-		resno++;
-	}
 	resno = 0;
 	for(auto& resBlocks : blocks)
 	{
-		size_t blockno = 0;
 		auto resFlow = imageComponentFlows_[compno]->resFlows_ + resno;
-		for(auto& block : resBlocks)
+		for(auto& block : resBlocks.blocks_)
 		{
-			resFlow->blocks_->tasks_[blockno++].work([this, block] {
+			resFlow->blocks_->nextTask()->work([this, block] {
 				if(!success)
 				{
 					delete block;
@@ -143,6 +153,13 @@ bool DecompressScheduler::schedule(uint16_t compno)
 			});
 		}
 		resno++;
+	}
+	if (!includeBlocks) {
+		for(uint8_t resFlowNum = 0;resFlowNum <  blocks.size(); ++resFlowNum)
+		{
+			auto resFlow = imageComponentFlows_[compno]->resFlows_ + resFlowNum;
+			resFlow->blocks_->addTo(codecFlow_);
+		}
 	}
 
 	return true;
@@ -164,5 +181,18 @@ bool DecompressScheduler::decompressBlock(T1Interface* impl, DecompressBlockExec
 
 	return true;
 }
+
+bool DecompressScheduler::scheduleWavelet(uint16_t compno) {
+	auto tilec = tile_->comps + compno;
+	auto numRes = tilec->highestResolutionDecompressed + 1U;
+	WaveletReverse w(tileProcessor_, tilec,
+					compno, tilec->getBuffer()->unreducedBounds(), numRes,
+					 (tcp_->tccps + compno)->qmfbid);
+
+	return w.decompress();
+
+	return false;
+}
+
 
 } // namespace grk

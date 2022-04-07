@@ -19,16 +19,9 @@
 
 struct FlowComponent
 {
-	FlowComponent(void) : current_(0) {}
+	FlowComponent(void) = default;
 	~FlowComponent(void) {}
-	FlowComponent* push_tasks(uint64_t numTasks)
-	{
-		for(uint64_t i = 0; i < numTasks; i++)
-			tasks_.push_back(flow_.placeholder());
-
-		return this;
-	}
-	FlowComponent* add_to(tf::Taskflow& composition)
+	FlowComponent* addTo(tf::Taskflow& composition)
 	{
 		composedFlowTask_ = composition.composed_of(flow_);
 		return this;
@@ -43,19 +36,13 @@ struct FlowComponent
 		composedFlowTask_.name(name);
 		return this;
 	}
-
-	tf::Task* get(size_t i)
+	tf::Task* nextTask()
 	{
-		return &tasks_[i];
+		tasks_.push(flow_.placeholder());
+		return &tasks_.back();
 	}
 
-	tf::Task* get()
-	{
-		return &tasks_[current_++];
-	}
-
-	std::vector<tf::Task> tasks_;
-	size_t current_;
+	std::queue<tf::Task> tasks_;
 	tf::Taskflow flow_;
 	tf::Task composedFlowTask_;
 };

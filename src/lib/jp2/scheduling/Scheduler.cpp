@@ -18,15 +18,16 @@
 
 namespace grk
 {
-Scheduler::Scheduler(Tile* tile) : success(true), tile_(tile), numcomps_(tile->numcomps_)
+Scheduler::Scheduler(Tile* tile, bool decompress) : success(true), tile_(tile), numcomps_(tile->numcomps_)
 {
-	assert(tile);
+	assert(tile && tile->comps && tile->numcomps_);
 	imageComponentFlows_ = new ImageComponentFlow*[numcomps_];
 	for(uint16_t compno = 0; compno < numcomps_; ++compno)
 	{
 		uint8_t numResolutions = (tile->comps + compno)->highestResolutionDecompressed + 1;
-		imageComponentFlows_[compno] =
-			numResolutions ? new ImageComponentFlow(numResolutions) : nullptr;
+		imageComponentFlows_[compno] = new ImageComponentFlow(numResolutions);
+		if (decompress && !tile->comps->isWholeTileDecoding())
+			imageComponentFlows_[compno]->setRegionDecompression();
 	}
 }
 Scheduler::~Scheduler()

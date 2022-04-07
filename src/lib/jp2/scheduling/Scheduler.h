@@ -21,9 +21,10 @@ namespace grk
 class Scheduler
 {
   public:
-	Scheduler(Tile* tile);
+	Scheduler(Tile* tile, bool decompress);
 	virtual ~Scheduler();
-	virtual bool schedule(uint16_t compno) = 0;
+	virtual bool scheduleBlocks(uint16_t compno) = 0;
+	virtual bool scheduleWavelet(uint16_t compno) = 0;
 	void graph(uint16_t compno);
 	bool run(void);
 	ImageComponentFlow* getImageComponentFlow(uint16_t compno);

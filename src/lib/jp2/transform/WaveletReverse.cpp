@@ -530,7 +530,6 @@ bool WaveletReverse::decompress_h_97(uint8_t res, uint32_t numThreads, size_t da
 		uint32_t incrPerJob = resHeight / numTasks;
 		auto imageComponentFlow = scheduler_->getImageComponentFlow(compno_);
 		auto resFlow = imageComponentFlow->getResFlow(res - 1);
-		resFlow->waveletHoriz_->push_tasks(numTasks);
 		for(uint32_t j = 0; j < numTasks; ++j)
 		{
 			auto indexMin = j * incrPerJob;
@@ -541,7 +540,7 @@ bool WaveletReverse::decompress_h_97(uint8_t res, uint32_t numThreads, size_t da
 				GRK_ERROR("Out of memory");
 				return false;
 			}
-			resFlow->waveletHoriz_->get()->work([this, myhoriz,indexMax, winL,winH,winDest] {
+			resFlow->waveletHoriz_->nextTask()->work([this, myhoriz,indexMax, winL,winH,winDest] {
 				decompress_h_strip_97(myhoriz, indexMax, winL, winH,
 									  winDest);
 				delete myhoriz;
@@ -626,7 +625,6 @@ bool WaveletReverse::decompress_v_97(uint8_t res, uint32_t numThreads, size_t da
 		auto incrPerJob = resWidth / numTasks;
 		auto imageComponentFlow = scheduler_->getImageComponentFlow(compno_);
 		auto resFlow = imageComponentFlow->getResFlow(res - 1);
-		resFlow->waveletVert_->push_tasks(numTasks);
 		for(uint32_t j = 0; j < numTasks; j++)
 		{
 			auto indexMin = j * incrPerJob;
@@ -638,7 +636,7 @@ bool WaveletReverse::decompress_v_97(uint8_t res, uint32_t numThreads, size_t da
 				delete myvert;
 				return false;
 			}
-			resFlow->waveletVert_->get()->work([this, myvert,resHeight, indexMax, winL,winH,winDest] {
+			resFlow->waveletVert_->nextTask()->work([this, myvert,resHeight, indexMax, winL,winH,winDest] {
 				decompress_v_strip_97(myvert, indexMax, resHeight, winL, winH,
 									  winDest);
 				delete myvert;
@@ -672,10 +670,6 @@ bool WaveletReverse::decompress_tile_97(void)
 	}
 	vertF_.mem = horizF_.mem;
 	uint32_t numThreads = (uint32_t)ExecSingleton::get()->num_workers();
-	auto imageComponentFlow = scheduler_->getImageComponentFlow(compno_);
-	tf::Taskflow& codecFlow = scheduler_->getCodecFlow();
-	imageComponentFlow->add_to(codecFlow);
-	imageComponentFlow->graph();
 	for(uint8_t res = 1; res < numres_; ++res)
 	{
 		horizF_.sn_full = resWidth;
@@ -711,8 +705,6 @@ bool WaveletReverse::decompress_tile_97(void)
 							buf->getResWindowBufferREL(res)->simpleF()))
 			return false;
 	}
-	if (numThreads > 1)
-		run();
 
 	return true;
 }
@@ -1079,7 +1071,6 @@ bool WaveletReverse::decompress_h_53(uint8_t res, TileComponentWindowBuffer<int3
 		}
 		else
 		{
-			resFlow->waveletHoriz_->push_tasks(numTasks[orient]);
 			uint32_t incrPerJob = height[orient] / numTasks[orient];
 			for(uint32_t j = 0; j < numTasks[orient]; ++j)
 			{
@@ -1092,7 +1083,7 @@ bool WaveletReverse::decompress_h_53(uint8_t res, TileComponentWindowBuffer<int3
 					delete horiz;
 					return false;
 				}
-				resFlow->waveletHoriz_->get()->work([this, horiz, winL,winH,winDest,indexMin,indexMax] {
+				resFlow->waveletHoriz_->nextTask()->work([this, horiz, winL,winH,winDest,indexMin,indexMax] {
 					decompress_h_strip_53(horiz, indexMin, indexMax, winL,
 										  winH, winDest);
 					delete horiz;
@@ -1152,7 +1143,6 @@ bool WaveletReverse::decompress_v_53(uint8_t res, TileComponentWindowBuffer<int3
 		auto resFlow = imageComponentFlow->getResFlow(res - 1);
 		const uint32_t numTasks = resWidth < numThreads ? resWidth : numThreads;
 		uint32_t step = resWidth / numTasks;
-		resFlow->waveletVert_->push_tasks(numTasks);
 		for(uint32_t j = 0; j < numTasks; j++)
 		{
 			auto indexMin = j * step;
@@ -1164,7 +1154,7 @@ bool WaveletReverse::decompress_v_53(uint8_t res, TileComponentWindowBuffer<int3
 				delete vert;
 				return false;
 			}
-			resFlow->waveletVert_->get()->work([this, vert,indexMin,indexMax,winL,winH,winDest] {
+			resFlow->waveletVert_->nextTask()->work([this, vert,indexMin,indexMax,winL,winH,winDest] {
 				decompress_v_strip_53(vert, indexMin, indexMax, winL,
 									  winH, winDest);
 				delete vert;
@@ -1175,12 +1165,6 @@ bool WaveletReverse::decompress_v_53(uint8_t res, TileComponentWindowBuffer<int3
 		}
 	}
 	return true;
-}
-void WaveletReverse::run(void)
-{
-	scheduler_->run();
-	tf::Taskflow& codecFlow = scheduler_->getCodecFlow();
-	codecFlow.clear();
 }
 /* <summary>                            */
 /* Inverse wavelet transform in 2-D.    */
@@ -1203,11 +1187,6 @@ bool WaveletReverse::decompress_tile_53(void)
 	/* since for the vertical pass */
 	/* we process PLL_COLS_53 columns at a time */
 	dataLength *= PLL_COLS_53 * sizeof(int32_t);
-	auto imageComponentFlow = scheduler_->getImageComponentFlow(compno_);
-	tf::Taskflow& codecFlow = scheduler_->getCodecFlow();
-	uint32_t numThreads = (uint32_t)ExecSingleton::get()->num_workers();
-	imageComponentFlow->add_to(codecFlow);
-	imageComponentFlow->graph();
 	for(uint8_t res = 1; res < numres_; ++res)
 	{
 		horiz_.sn_full = tileCompRes->width();
@@ -1226,8 +1205,6 @@ bool WaveletReverse::decompress_tile_53(void)
 		if(!decompress_v_53(res, buf, resWidth, dataLength))
 			return false;
 	}
-	if(numThreads > 1)
-		run();
 
 	return true;
 }
@@ -1823,8 +1800,6 @@ bool WaveletReverse::decompress_partial_tile(ISparseCanvas* sa)
 	}
 	D decompressor;
 	uint32_t numThreads = (uint32_t)ExecSingleton::get()->num_workers();
-	auto flowComponent = scheduler_->getImageComponentFlow(compno_);
-	tf::Taskflow& codecFlow = scheduler_->getCodecFlow();
 	auto final_read = [this, sa, synthesisWindow, buf]() {
 		// final read into tile buffer
 		bool ret = sa->read(numres_ - 1, BAND_ORIENT_LL, synthesisWindow,
@@ -1833,6 +1808,9 @@ bool WaveletReverse::decompress_partial_tile(ISparseCanvas* sa)
 		assert(ret);
 		GRK_UNUSED(ret);
 	};
+	auto imageComponentFlow = scheduler_->getImageComponentFlow(compno_);
+	if(numThreads > 1)
+		imageComponentFlow->waveletFinalCopy_->nextTask()->work([final_read] { final_read(); });
 	for(uint8_t resno = 1; resno < numres_; resno++)
 	{
 		auto fullResLower = fullRes;
@@ -2005,9 +1983,7 @@ bool WaveletReverse::decompress_partial_tile(ISparseCanvas* sa)
 		horiz.win_h = bandWindowRect[BAND_ORIENT_HL].dimX();
 		horiz.resno = resno;
 		size_t dataLength = (splitWindowRect[0].width() + 2 * FILTER_WIDTH) * HORIZ_PASS_HEIGHT;
-		auto resFlow = flowComponent->getResFlow(resno - 1);
-		resFlow->waveletHoriz_->add_to(codecFlow);
-
+		auto resFlow = imageComponentFlow->getResFlow(resno - 1);
 		for(uint32_t k = 0; k < 2; ++k)
 		{
 			uint32_t numTasks = numThreads;
@@ -2017,8 +1993,6 @@ bool WaveletReverse::decompress_partial_tile(ISparseCanvas* sa)
 			uint32_t incrPerJob = numTasks ? (num_rows / numTasks) : 0;
 			if(numThreads == 1)
 				numTasks = 1;
-			if(numThreads > 1)
-				resFlow->waveletHoriz_->push_tasks(numTasks);
 			bool blockError = false;
 			for(uint32_t j = 0; j < numTasks; ++j)
 			{
@@ -2033,7 +2007,7 @@ bool WaveletReverse::decompress_partial_tile(ISparseCanvas* sa)
 					goto cleanup;
 				}
 				if(numThreads > 1)
-					resFlow->waveletHoriz_->get()->work(
+					resFlow->waveletHoriz_->nextTask()->work(
 						[job, executor_h, &blockError] { blockError = executor_h(job); });
 				else
 					blockError = (executor_h(job) != 0);
@@ -2041,8 +2015,6 @@ bool WaveletReverse::decompress_partial_tile(ISparseCanvas* sa)
 			if(blockError)
 				goto cleanup;
 		}
-		if(numThreads > 1)
-			run();
 		dataLength = (resWindowRect.height() + 2 * FILTER_WIDTH) * VERT_PASS_WIDTH * sizeof(T) /
 					 sizeof(int32_t);
 		vert.win_l = bandWindowRect[BAND_ORIENT_LL].dimY();
@@ -2056,8 +2028,6 @@ bool WaveletReverse::decompress_partial_tile(ISparseCanvas* sa)
 		bool blockError = false;
 		if(numThreads == 1)
 			numTasks = 1;
-		else
-			resFlow->waveletVert_->push_tasks(numTasks)->add_to(codecFlow);
 		for(uint32_t j = 0; j < numTasks; ++j)
 		{
 			auto job = new decompress_job<T, dwt_data<T>>(
@@ -2070,28 +2040,17 @@ bool WaveletReverse::decompress_partial_tile(ISparseCanvas* sa)
 				goto cleanup;
 			}
 			if(numThreads > 1)
-				resFlow->waveletVert_->get()->work(
+				resFlow->waveletVert_->nextTask()->work(
 					[job, executor_v, &blockError] { blockError = executor_v(job); });
 			else
 				blockError = (executor_v(job) != 0);
 		}
-		if(numThreads > 1)
-			run();
 		if(blockError)
 			goto cleanup;
 	}
 
-	if(numThreads > 1)
-	{
-		auto finalFlow = flowComponent->waveletFinalCopy_ = new FlowComponent();
-		finalFlow->push_tasks(1)->add_to(codecFlow);
-		finalFlow->get()->work([final_read] { final_read(); });
-		run();
-	}
-	else
-	{
+	if(numThreads == 1)
 		final_read();
-	}
 
 #ifdef GRK_DEBUG_VALGRIND
 	{
