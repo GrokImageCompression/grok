@@ -1202,18 +1202,18 @@ int GrkDecompress::preProcess(grk_plugin_decompress_callback_info* info)
 		}
 		if(allLessThanOne)
 		{
-			info->decompressor_parameters->dw_x0 = floor(val[0] * (img->x1 - img->x0));
-			info->decompressor_parameters->dw_y0 = floor(val[1] * (img->y1 - img->y0));
-			info->decompressor_parameters->dw_x1 = ceil(val[2] * (img->x1 - img->x0));
-			info->decompressor_parameters->dw_y1 = ceil(val[3] * (img->y1 - img->y0));
+			info->decompressor_parameters->dw_x0 = (float)floor(val[0] * double(img->x1 - img->x0));
+			info->decompressor_parameters->dw_y0 = (float)floor(val[1] * double(img->y1 - img->y0));
+			info->decompressor_parameters->dw_x1 = (float)ceil( val[2] * double(img->x1 - img->x0));
+			info->decompressor_parameters->dw_y1 = (float)ceil( val[3] * double(img->y1 - img->y0));
 		}
 
 		// do not allow odd top left window coordinates for SYCC
 		if(info->image->color_space == GRK_CLRSPC_SYCC)
 		{
-			bool adjustX = (info->decompressor_parameters->dw_x0 != info->full_image_x0) &&
+			bool adjustX = (info->decompressor_parameters->dw_x0 != (float)info->full_image_x0) &&
 						   ((uint32_t)info->decompressor_parameters->dw_x0 & 1);
-			bool adjustY = (info->decompressor_parameters->dw_y0 != info->full_image_y0) &&
+			bool adjustY = (info->decompressor_parameters->dw_y0 != (float)info->full_image_y0) &&
 						   ((uint32_t)info->decompressor_parameters->dw_y0 & 1);
 			if(adjustX || adjustY)
 			{
