@@ -35,7 +35,7 @@ include_directories(
   ${GROK_SOURCE_DIR}/src/include
   ${CMAKE_CURRENT_SOURCE_DIR}
   ${CMAKE_CURRENT_SOURCE_DIR}/plugin
-  ${CMAKE_CURRENT_SOURCE_DIR}/transform
+  ${CMAKE_CURRENT_SOURCE_DIR}/wavelet
   ${CMAKE_CURRENT_SOURCE_DIR}/t1
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/part1
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/part1/impl
@@ -177,10 +177,10 @@ set(GROK_LIBRARY_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/scheduling/CompressScheduler.h
   ${CMAKE_CURRENT_SOURCE_DIR}/scheduling/CompressScheduler.cpp
 
-  ${CMAKE_CURRENT_SOURCE_DIR}/transform/WaveletFwd.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/transform/WaveletFwd.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/transform/WaveletReverse.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/transform/WaveletReverse.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/wavelet/WaveletFwd.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/wavelet/WaveletFwd.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/wavelet/WaveletReverse.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/wavelet/WaveletReverse.h
 
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/BlockExec.h
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/T1Factory.cpp  
