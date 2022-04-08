@@ -20,13 +20,9 @@ namespace grk
 {
 const uint8_t gain_b[4] = {0, 1, 1, 2};
 
-ResDecompressBlocks::ResDecompressBlocks(void) : res_(0), waveletTransform_(true)
-{}
 void ResDecompressBlocks::clear(void){
-	res_ = 0;
 	blocks_.clear();
 }
-
 bool ResDecompressBlocks::empty(void) const{
 	return blocks_.empty();
 }
@@ -61,7 +57,7 @@ bool DecompressScheduler::schedule(uint16_t compno){
 
 bool DecompressScheduler::scheduleBlocks(uint16_t compno)
 {
-	blocks.clear();
+	DecompressBlocks blocks;
 	ResDecompressBlocks resBlocks;
 	auto tccp = tcp_->tccps + compno;
 	auto tilec = tile_->comps + compno;
@@ -108,7 +104,6 @@ bool DecompressScheduler::scheduleBlocks(uint16_t compno)
 		// combine first two resolutions together into single resBlock
 		if(!resBlocks.blocks_.empty() && resno > 0)
 		{
-			resBlocks.res_ = resno-1;
 			blocks.push_back(resBlocks);
 			resBlocks.clear();
 		}
@@ -118,8 +113,6 @@ bool DecompressScheduler::scheduleBlocks(uint16_t compno)
 	if(!resBlocks.empty())
 	{
 		assert(tilec->highestResolutionDecompressed == 0);
-		resBlocks.res_ = 0;
-		resBlocks.waveletTransform_ = false;
 		blocks.push_back(resBlocks);
 		resBlocks.clear();
 	}
