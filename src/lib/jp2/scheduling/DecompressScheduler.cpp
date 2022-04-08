@@ -44,24 +44,9 @@ bool DecompressScheduler::schedule(uint16_t compno){
 		return false;
 	auto  imageFlow = getImageComponentFlow(compno);
 	if (imageFlow) {
-		if (!includeBlocks) {
-			//  1. composite blocks
-			for(uint8_t resFlowNum = 0;resFlowNum <  blocks.size(); ++resFlowNum)
-			{
-				auto resFlow = imageFlow->resFlows_ + resFlowNum;
-				resFlow->blocks_->addTo(codecFlow_);
-			}
-			// 2. composite wavelet
-			imageFlow->addTo(codecFlow_);
-			// 3. generate dependency graph
-			graph(compno);
-			// 4. run
-			if(!run())
-				return false;
-			getCodecFlow().clear();
-		}
-		// composite and graph dependencies
+		// composite blocks and wavelet
 		imageFlow->addTo(codecFlow_);
+		// generate dependency graph
 		graph(compno);
 	}
 	uint8_t numRes = tilec->highestResolutionDecompressed + 1U;

@@ -21,9 +21,6 @@
 
 namespace grk
 {
-
-const bool includeBlocks = false;
-
 struct ResFlow
 {
 	ResFlow(void);

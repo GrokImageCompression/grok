@@ -25,15 +25,12 @@ ResFlow::ResFlow(void)
 {}
 void ResFlow::graph(void)
 {
-	if (includeBlocks && blocks_)
-		blocks_->precede(waveletHoriz_);
-	else
-		waveletHoriz_->precede(waveletVert_);
+	blocks_->precede(waveletHoriz_);
+	waveletHoriz_->precede(waveletVert_);
 }
 ResFlow* ResFlow::addTo(tf::Taskflow& composition){
 	assert(blocks_);
-	if (includeBlocks)
-	  blocks_->addTo(composition);
+  blocks_->addTo(composition);
 	waveletHoriz_->addTo(composition);
 	waveletVert_->addTo(composition);
 
@@ -41,10 +38,7 @@ ResFlow* ResFlow::addTo(tf::Taskflow& composition){
 }
 ResFlow* ResFlow::precede(ResFlow* successor)
 {
-	if (includeBlocks && successor->blocks_)
-		waveletVert_->precede(successor->blocks_);
-	else
-		waveletVert_->precede(successor->waveletHoriz_);
+	waveletVert_->precede(successor->blocks_);
 
 	return this;
 }
