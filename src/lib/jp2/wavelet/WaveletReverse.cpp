@@ -1913,11 +1913,10 @@ bool WaveletReverse::decompress_partial_tile(ISparseCanvas* sa)
 				{
 					GRK_ERROR("sparse array write failure");
 					delete taskInfo;
-					return 1;
+					return;
 				}
 			}
 			delete taskInfo;
-			return 0;
 		};
 		auto executor_v = [this, resno, sa, resWindowRect,
 						   &decompressor](TaskInfo<T, dwt_data<T>>* taskInfo) {
@@ -1971,11 +1970,10 @@ bool WaveletReverse::decompress_partial_tile(ISparseCanvas* sa)
 				{
 					GRK_ERROR("Sparse array write failure");
 					delete taskInfo;
-					return 1;
+					return;
 				}
 			}
 			delete taskInfo;
-			return 0;
 		};
 
 		// 3. calculate synthesis
@@ -1993,7 +1991,6 @@ bool WaveletReverse::decompress_partial_tile(ISparseCanvas* sa)
 			uint32_t incrPerJob = numTasks ? (num_rows / numTasks) : 0;
 			if(numThreads == 1)
 				numTasks = 1;
-			bool blockError = false;
 			for(uint32_t j = 0; j < numTasks; ++j)
 			{
 				auto taskInfo = new TaskInfo<T, dwt_data<T>>(
@@ -2008,12 +2005,10 @@ bool WaveletReverse::decompress_partial_tile(ISparseCanvas* sa)
 				}
 				if(numThreads > 1)
 					resFlow->waveletHoriz_->nextTask()->work(
-						[taskInfo, executor_h, &blockError] { blockError = executor_h(taskInfo); });
+						[taskInfo, executor_h] { executor_h(taskInfo); });
 				else
-					blockError = (executor_h(taskInfo) != 0);
+					executor_h(taskInfo);
 			}
-			if(blockError)
-				goto cleanup;
 		}
 		dataLength = (resWindowRect.height() + 2 * FILTER_WIDTH) * VERT_PASS_WIDTH * sizeof(T) /
 					 sizeof(int32_t);
@@ -2025,7 +2020,6 @@ bool WaveletReverse::decompress_partial_tile(ISparseCanvas* sa)
 		if(numColumns < numTasks)
 			numTasks = numColumns;
 		uint32_t incrPerJob = numTasks ? (numColumns / numTasks) : 0;
-		bool blockError = false;
 		if(numThreads == 1)
 			numTasks = 1;
 		for(uint32_t j = 0; j < numTasks; ++j)
@@ -2041,12 +2035,10 @@ bool WaveletReverse::decompress_partial_tile(ISparseCanvas* sa)
 			}
 			if(numThreads > 1)
 				resFlow->waveletVert_->nextTask()->work(
-					[taskInfo, executor_v, &blockError] { blockError = executor_v(taskInfo); });
+					[taskInfo, executor_v] { executor_v(taskInfo); });
 			else
-				blockError = (executor_v(taskInfo) != 0);
+				executor_v(taskInfo);
 		}
-		if(blockError)
-			goto cleanup;
 	}
 
 	if(numThreads == 1)
