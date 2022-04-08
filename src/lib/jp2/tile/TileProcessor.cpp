@@ -422,10 +422,19 @@ bool TileProcessor::decompressT2(SparseBuffer* srcBuf)
 		// decompress_synch_plugin_with_host(this);
 	}
 
-	return true;
+	return !corrupt_packet_;
 }
-bool TileProcessor::decompressT1(void)
+bool TileProcessor::decompressT2T1(TileCodingParams* tcp, GrkImage* outputImage, bool doPost)
 {
+	if(!allocWindowBuffers(outputImage))
+		return false;
+	// T2
+	if(!decompressT2(tcp->compressedTileData_))
+	{
+		GRK_WARN("Tile %d was not decompressed", tileIndex_);
+		return outputImage->multiTile;
+	}
+	// T1
 	bool doT1 = !current_plugin_tile || (current_plugin_tile->decompress_flags & GRK_DECODE_T1);
 	bool doPostT1 =
 		!current_plugin_tile || (current_plugin_tile->decompress_flags & GRK_DECODE_POST_T1);
@@ -459,6 +468,7 @@ bool TileProcessor::decompressT1(void)
 		delete scheduler_;
 		scheduler_ = nullptr;
 	}
+	// post T1
 	if(doPostT1)
 	{
 		if(!mctDecompress())
@@ -466,19 +476,6 @@ bool TileProcessor::decompressT1(void)
 		if(!dcLevelShiftDecompress())
 			return false;
 	}
-	return true;
-}
-bool TileProcessor::decompressT2T1(TileCodingParams* tcp, GrkImage* outputImage, bool doPost)
-{
-	if(!allocWindowBuffers(outputImage))
-		return false;
-	if(!decompressT2(tcp->compressedTileData_) || corrupt_packet_)
-	{
-		GRK_WARN("Tile %d was not decompressed", tileIndex_);
-		return outputImage->multiTile;
-	}
-	if(!decompressT1())
-		return false;
 	if(doPost)
 	{
 		if(outputImage->multiTile)
