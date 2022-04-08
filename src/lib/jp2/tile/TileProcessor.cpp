@@ -464,9 +464,8 @@ bool TileProcessor::decompressT2T1(TileCodingParams* tcp, GrkImage* outputImage,
 			if (!scheduler_->schedule(compno))
 				return false;
 		}
-
-		delete scheduler_;
-		scheduler_ = nullptr;
+		if(!scheduler_->run())
+			return false;
 	}
 	// post T1
 	if(doPostT1)

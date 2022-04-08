@@ -48,9 +48,6 @@ bool DecompressScheduler::schedule(uint16_t compno){
 	uint8_t numRes = tilec->highestResolutionDecompressed + 1U;
 	if(doPostT1_ && numRes > 1 && !scheduleWavelet(compno))
 		return false;
-	if(!run())
-		return false;
-	getCodecFlow().clear();
 
 	return true;
 }
