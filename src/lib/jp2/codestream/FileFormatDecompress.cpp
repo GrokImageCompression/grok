@@ -78,7 +78,7 @@ void FileFormatDecompress::serializeAsoc(AsocBox* asoc, grk_asoc* serial_asocs, 
 {
 	if(*num_asocs == GRK_NUM_ASOC_BOXES_SUPPORTED)
 	{
-		GRK_WARN("Image contains more than maximum supported number of ASOC boxes (%d). Ignoring "
+		GRK_WARN("Image contains more than maximum supported number of ASOC boxes (%u). Ignoring "
 				 "the rest",
 				 GRK_NUM_ASOC_BOXES_SUPPORTED);
 		return;
@@ -1071,7 +1071,7 @@ bool FileFormatDecompress::read_component_mapping(uint8_t* component_mapping_hea
 		grk_read<uint8_t>(component_mapping_header_data++, &mapping->mapping_type); /* MTYP^i */
 		if(mapping->mapping_type > 1)
 		{
-			GRK_ERROR("Component mapping type %d for channel %d is greater than 1.",
+			GRK_ERROR("Component mapping type %u for channel %u is greater than 1.",
 					  mapping->mapping_type, channel);
 			delete[] component_mapping;
 			return false;
@@ -1117,8 +1117,8 @@ bool FileFormatDecompress::read_palette_clr(uint8_t* p_pclr_header_data, uint32_
 		jp2_pclr->channel_prec[i] = (uint8_t)((val & 0x7f) + 1);
 		if(jp2_pclr->channel_prec[i] > GRK_MAX_SUPPORTED_IMAGE_PRECISION)
 		{
-			GRK_ERROR("Palette : channel precision %d is greater than supported palette channel "
-					  "precision %d",
+			GRK_ERROR("Palette : channel precision %u is greater than supported palette channel "
+					  "precision %u",
 					  jp2_pclr->channel_prec[i], GRK_MAX_SUPPORTED_IMAGE_PRECISION);
 			return false;
 		}

@@ -65,7 +65,7 @@ void PLMarkerMgr::pushInit(bool isFinal)
 bool PLMarkerMgr::pushPL(uint32_t len)
 {
 	assert(len);
-	// GRK_INFO("Push packet length: %d", len);
+	// GRK_INFO("Push packet length: %u", len);
 	uint32_t numbits = floorlog2(len) + 1;
 	uint32_t numBytes = (numbits + 6) / 7;
 	assert(numBytes <= 5);
@@ -110,7 +110,7 @@ bool PLMarkerMgr::pushPL(uint32_t len)
 	{
 		// write period
 		// static int count = 0;
-		// GRK_INFO("Wrote PLT packet %d, length %d", count++,len);
+		// GRK_INFO("Wrote PLT packet %u, length %u", count++,len);
 		uint8_t temp[5];
 		int32_t counter = (int32_t)(numBytes - 1);
 		temp[counter--] = (len & 0x7F);
@@ -220,7 +220,7 @@ bool PLMarkerMgr::readPLT(uint8_t* headerData, uint16_t header_size)
 
 	addNewMarker(headerData, header_size);
 #ifdef DEBUG_PLT
-	GRK_INFO("PLT marker %d", Zpl);
+	GRK_INFO("PLT marker %u", Zpl);
 #endif
 
 	return true;
@@ -334,7 +334,7 @@ uint32_t PLMarkerMgr::pop(void)
 	}
 
 	// static int count = 0;
-	// GRK_INFO("Read PLT packet %d, length %d", count++,rc);
+	// GRK_INFO("Read PLT packet %u, length %u", count++,rc);
 	return rc;
 }
 

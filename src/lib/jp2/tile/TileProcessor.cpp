@@ -51,7 +51,7 @@ bool TileProcessor::subtractMarkerLength(uint16_t markerLen)
 	uint32_t sub = (uint32_t)(markerLen + 2);
 	if(tilePartDataLength > 0 && tilePartDataLength < sub)
 	{
-		GRK_ERROR("Tile part data length %d smaller than marker length %d", tilePartDataLength,
+		GRK_ERROR("Tile part data length %u smaller than marker length %u", tilePartDataLength,
 				  markerLen);
 		return false;
 	}
@@ -65,7 +65,7 @@ bool TileProcessor::setTilePartDataLength(uint32_t tilePartLength, bool lastTile
 	{
 		if(tilePartLength < sot_marker_segment_len)
 		{
-			GRK_ERROR("Tile part data length %d is smaller than for marker segment length %d",
+			GRK_ERROR("Tile part data length %u is smaller than for marker segment length %u",
 					  tilePartDataLength, sot_marker_segment_len);
 			return false;
 		}
@@ -431,7 +431,7 @@ bool TileProcessor::decompressT2T1(TileCodingParams* tcp, GrkImage* outputImage,
 	// T2
 	if(!decompressT2(tcp->compressedTileData_))
 	{
-		GRK_WARN("Tile %d was not decompressed", tileIndex_);
+		GRK_WARN("Tile %u was not decompressed", tileIndex_);
 		return outputImage->multiTile;
 	}
 	// T1
@@ -927,7 +927,7 @@ bool TileProcessor::prepareSodDecompress(CodeStreamDecompress* codeStream)
 		auto bytesLeftInStream = stream_->numBytesLeft();
 		if(bytesLeftInStream == 0)
 		{
-			GRK_ERROR("Tile %d, tile part %d: stream has been truncated and "
+			GRK_ERROR("Tile %u, tile part %u: stream has been truncated and "
 					  "there is no tile data available",
 					  tileIndex_, tcp->tilePartCounter_ - 1);
 			return false;
@@ -937,7 +937,7 @@ bool TileProcessor::prepareSodDecompress(CodeStreamDecompress* codeStream)
 		{
 			GRK_WARN("Tile part length %lld greater than "
 					 "stream length %lld\n"
-					 "(tile: %u, tile part: %d). Tile has been truncated.",
+					 "(tile: %u, tile part: %u). Tile has been truncated.",
 					 tilePartDataLength, stream_->numBytesLeft(), tileIndex_,
 					 tcp->tilePartCounter_ - 1);
 

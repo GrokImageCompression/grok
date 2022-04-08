@@ -97,7 +97,7 @@ bool CodeStreamDecompress::parseTileHeaderMarkers(bool* canDecompress)
 			}
 			else if(marker_size < 2)
 			{
-				GRK_ERROR("Marker size %d for marker 0x%x is less than 2", marker_size,
+				GRK_ERROR("Marker size %u for marker 0x%x is less than 2", marker_size,
 						  curr_marker_);
 				return false;
 			}
@@ -201,8 +201,8 @@ bool CodeStreamDecompress::parseTileHeaderMarkers(bool* canDecompress)
 		auto actualTileLength = stream_->tell() - decompressorState_.lastSotReadPosition;
 		if(tilePartLengthInfo && actualTileLength != tilePartLengthInfo->length_)
 		{
-			GRK_WARN("TLM marker tile part length %d differs from actual"
-					 " tile part length %d. Disabling TLM.",
+			GRK_WARN("TLM marker tile part length %u differs from actual"
+					 " tile part length %u. Disabling TLM.",
 					 tilePartLengthInfo->length_, actualTileLength);
 			cp_.tlm_markers->invalidate();
 		}
@@ -359,7 +359,7 @@ bool CodeStreamDecompress::read_poc(uint8_t* headerData, uint16_t header_size)
 	currentNumProgressions += oldNumProgressions;
 	if(currentNumProgressions > GRK_J2K_MAXRLVLS)
 	{
-		GRK_ERROR("read_poc: number of progressions %u exceeds Grok maximum number %d",
+		GRK_ERROR("read_poc: number of progressions %u exceeds Grok maximum number %u",
 				  currentNumProgressions, GRK_J2K_MAXRLVLS);
 		return false;
 	}
@@ -372,7 +372,7 @@ bool CodeStreamDecompress::read_poc(uint8_t* headerData, uint16_t header_size)
 		++headerData;
 		if(current_prog->resS >= maxNumResLevels)
 		{
-			GRK_ERROR("read_poc: invalid POC start resolution number %d", current_prog->resS);
+			GRK_ERROR("read_poc: invalid POC start resolution number %u", current_prog->resS);
 			return false;
 		}
 		/* CSpoc_i */
@@ -380,7 +380,7 @@ bool CodeStreamDecompress::read_poc(uint8_t* headerData, uint16_t header_size)
 		headerData += componentRoom;
 		if(current_prog->compS > image->numcomps)
 		{
-			GRK_ERROR("read_poc: invalid POC start component %d", current_prog->compS);
+			GRK_ERROR("read_poc: invalid POC start component %u", current_prog->compS);
 			return false;
 		}
 		/* LYEpoc_i */
@@ -393,7 +393,7 @@ bool CodeStreamDecompress::read_poc(uint8_t* headerData, uint16_t header_size)
 		++headerData;
 		if(current_prog->resE <= current_prog->resS)
 		{
-			GRK_ERROR("read_poc: invalid POC end resolution %d", current_prog->compS);
+			GRK_ERROR("read_poc: invalid POC end resolution %u", current_prog->compS);
 			return false;
 		}
 		/* CEpoc_i */
@@ -402,7 +402,7 @@ bool CodeStreamDecompress::read_poc(uint8_t* headerData, uint16_t header_size)
 		current_prog->compE = std::min<uint16_t>(current_prog->compE, numComps);
 		if(current_prog->compE <= current_prog->compS)
 		{
-			GRK_ERROR("read_poc: invalid POC end component %d", current_prog->compS);
+			GRK_ERROR("read_poc: invalid POC end component %u", current_prog->compS);
 			return false;
 		}
 		/* Ppoc_i */
@@ -410,7 +410,7 @@ bool CodeStreamDecompress::read_poc(uint8_t* headerData, uint16_t header_size)
 		grk_read<uint8_t>(headerData++, &tmp);
 		if(tmp >= GRK_NUM_PROGRESSION_ORDERS)
 		{
-			GRK_ERROR("read_poc: unknown POC progression order %d", tmp);
+			GRK_ERROR("read_poc: unknown POC progression order %u", tmp);
 			return false;
 		}
 		current_prog->progression = (GRK_PROG_ORDER)tmp;
@@ -917,7 +917,7 @@ bool CodeStreamDecompress::read_SQcd_SQcc(bool fromQCC, uint16_t comp_no, uint8_
 	*header_size = (uint16_t)(*header_size - 1);
 	if(qntsty > J2K_CCP_QNTSTY_SEQNT)
 	{
-		GRK_ERROR("Undefined quantization style %d", qntsty);
+		GRK_ERROR("Undefined quantization style %u", qntsty);
 		return false;
 	}
 
@@ -1085,8 +1085,8 @@ bool CodeStreamDecompress::read_SPCod_SPCoc(uint16_t compno, uint8_t* headerData
 	if(cp->coding_params_.dec_.reduce_ >= tccp->numresolutions)
 	{
 		GRK_ERROR("Error decoding component %u.\nThe number of resolutions "
-				  " to remove (%d) must be strictly less than the number "
-				  "of resolutions (%d) of this component.\n"
+				  " to remove (%u) must be strictly less than the number "
+				  "of resolutions (%u) of this component.\n"
 				  "Please decrease the reduce parameter.",
 				  compno, cp->coding_params_.dec_.reduce_, tccp->numresolutions);
 		return false;
@@ -1098,7 +1098,7 @@ bool CodeStreamDecompress::read_SPCod_SPCoc(uint16_t compno, uint8_t* headerData
 
 	if(tccp->cblkw > 8 || tccp->cblkh > 8 || (tccp->cblkw + tccp->cblkh) > 8)
 	{
-		GRK_ERROR("Illegal code-block width/height (2^%d, 2^%d) found in COD/COC marker segment.\n"
+		GRK_ERROR("Illegal code-block width/height (2^%u, 2^%u) found in COD/COC marker segment.\n"
 				  "Code-block dimensions must be powers of 2, must be in the range 4-1024, and "
 				  "their product must "
 				  "lie in the range 16-4096.",
@@ -1640,7 +1640,7 @@ bool CodeStreamDecompress::read_cod(uint8_t* headerData, uint16_t header_size)
 	/* Make sure progression order is valid */
 	if(tmp >= GRK_NUM_PROGRESSION_ORDERS)
 	{
-		GRK_ERROR("Unknown progression order %d in COD marker", tmp);
+		GRK_ERROR("Unknown progression order %u in COD marker", tmp);
 		return false;
 	}
 	tcp->prg = (GRK_PROG_ORDER)tmp;
@@ -1735,7 +1735,7 @@ bool CodeStreamDecompress::read_coc(uint8_t* headerData, uint16_t header_size)
 	headerData += comp_room;
 	if(comp_no >= image->numcomps)
 	{
-		GRK_ERROR("Error reading COC marker : invalid component number %d", comp_no);
+		GRK_ERROR("Error reading COC marker : invalid component number %u", comp_no);
 		return false;
 	}
 
@@ -1907,7 +1907,7 @@ bool CodeStreamDecompress::read_cap(uint8_t* headerData, uint16_t header_size)
 	uint32_t expected_size = (uint32_t)sizeof(cp->pcap) + 2U * count;
 	if(header_size != expected_size)
 	{
-		GRK_ERROR("CAP marker size %d != expected size %d", header_size, expected_size);
+		GRK_ERROR("CAP marker size %u != expected size %u", header_size, expected_size);
 		return false;
 	}
 	for(uint32_t i = 0; i < count; ++i)

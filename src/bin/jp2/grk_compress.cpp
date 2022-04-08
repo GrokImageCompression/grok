@@ -596,7 +596,7 @@ static int parseCommandLine(int argc, char** argv, CompressInitParams* initParam
 		{
 			uint32_t algo = rateControlAlgoArg.getValue();
 			if(algo > GRK_RATE_CONTROL_PCRD_OPT)
-				spdlog::warn("Rate control algorithm %d is not valid. Using default");
+				spdlog::warn("Rate control algorithm %u is not valid. Using default");
 			else
 				parameters->rateControlAlgorithm =
 					(GRK_RATE_CONTROL_ALGORITHM)rateControlAlgoArg.getValue();
@@ -815,7 +815,7 @@ static int parseCommandLine(int argc, char** argv, CompressInitParams* initParam
 			memcpy(substr1, rawFormatArg.getValue().c_str(), len);
 			substr1[len] = '\0';
 			char signo;
-			if(sscanf(substr1, "%d,%d,%d,%d,%c", &width, &height, &ncomp, &bitdepth, &signo) == 5)
+			if(sscanf(substr1, "%u,%u,%u,%u,%c", &width, &height, &ncomp, &bitdepth, &signo) == 5)
 			{
 				if(signo == 's')
 				{
@@ -865,7 +865,7 @@ static int parseCommandLine(int argc, char** argv, CompressInitParams* initParam
 						char* sep = strchr(substr2, ':');
 						if(sep == nullptr)
 						{
-							if(sscanf(substr2, "%dx%d", &dx, &dy) == 2)
+							if(sscanf(substr2, "%ux%u", &dx, &dy) == 2)
 							{
 								lastdx = dx;
 								lastdy = dy;
@@ -880,7 +880,7 @@ static int parseCommandLine(int argc, char** argv, CompressInitParams* initParam
 						}
 						else
 						{
-							if(sscanf(substr2, "%dx%d:%s", &dx, &dy, substr2) == 3)
+							if(sscanf(substr2, "%ux%u:%s", &dx, &dy, substr2) == 3)
 							{
 								raw_cp->comps[compno].dx = (uint8_t)dx;
 								raw_cp->comps[compno].dy = (uint8_t)dy;
@@ -919,7 +919,7 @@ static int parseCommandLine(int argc, char** argv, CompressInitParams* initParam
 			do
 			{
 				sep = 0;
-				int ret = sscanf(s, "[%d,%d]%c", &parameters->prcw_init[res_spec],
+				int ret = sscanf(s, "[%u,%u]%c", &parameters->prcw_init[res_spec],
 								 &parameters->prch_init[res_spec], &sep);
 				if(!(ret == 2 && sep == 0) && !(ret == 3 && sep == ','))
 				{
@@ -937,7 +937,7 @@ static int parseCommandLine(int argc, char** argv, CompressInitParams* initParam
 		if(codeBlockDimArg.isSet())
 		{
 			int cblockw_init = 0, cblockh_init = 0;
-			if(sscanf(codeBlockDimArg.getValue().c_str(), "%d,%d", &cblockw_init, &cblockh_init) ==
+			if(sscanf(codeBlockDimArg.getValue().c_str(), "%u,%u", &cblockw_init, &cblockh_init) ==
 			   EOF)
 			{
 				spdlog::error("sscanf failed for code block dimension argument");
@@ -1126,13 +1126,13 @@ static int parseCommandLine(int argc, char** argv, CompressInitParams* initParam
 				char* comma;
 
 				comma = strstr(arg, ",mainlevel=");
-				if(comma && sscanf(comma + 1, "mainlevel=%d", &mainlevel) != 1)
+				if(comma && sscanf(comma + 1, "mainlevel=%u", &mainlevel) != 1)
 				{
 					spdlog::error("{}", msg);
 					return 1;
 				}
 				comma = strstr(arg, ",framerate=");
-				if(comma && sscanf(comma + 1, "framerate=%d", &framerate) != 1)
+				if(comma && sscanf(comma + 1, "framerate=%u", &framerate) != 1)
 				{
 					spdlog::error("{}", msg);
 					return 1;
@@ -1207,21 +1207,21 @@ static int parseCommandLine(int argc, char** argv, CompressInitParams* initParam
 				char* comma;
 
 				comma = strstr(arg, ",mainlevel=");
-				if(comma && sscanf(comma + 1, "mainlevel=%d", &mainlevel) != 1)
+				if(comma && sscanf(comma + 1, "mainlevel=%u", &mainlevel) != 1)
 				{
 					spdlog::error("{}", msg);
 					return 1;
 				}
 
 				comma = strstr(arg, ",sublevel=");
-				if(comma && sscanf(comma + 1, "sublevel=%d", &sublevel) != 1)
+				if(comma && sscanf(comma + 1, "sublevel=%u", &sublevel) != 1)
 				{
 					spdlog::error("{}", msg);
 					return 1;
 				}
 
 				comma = strstr(arg, ",framerate=");
-				if(comma && sscanf(comma + 1, "framerate=%d", &framerate) != 1)
+				if(comma && sscanf(comma + 1, "framerate=%u", &framerate) != 1)
 				{
 					spdlog::error("{}", msg);
 					return 1;
@@ -1441,7 +1441,7 @@ static int parseCommandLine(int argc, char** argv, CompressInitParams* initParam
 
 		if(roiArg.isSet())
 		{
-			if(sscanf(roiArg.getValue().c_str(), "c=%d,U=%d", &parameters->roi_compno,
+			if(sscanf(roiArg.getValue().c_str(), "c=%u,U=%u", &parameters->roi_compno,
 					  &parameters->roi_shift) != 2)
 			{
 				spdlog::error("ROI argument must be of the form: [-ROI c='compno',U='shift']");
@@ -1452,7 +1452,7 @@ static int parseCommandLine(int argc, char** argv, CompressInitParams* initParam
 		if(tilesArg.isSet())
 		{
 			int32_t t_width = 0, t_height = 0;
-			if(sscanf(tilesArg.getValue().c_str(), "%d,%d", &t_width, &t_height) == EOF)
+			if(sscanf(tilesArg.getValue().c_str(), "%u,%u", &t_width, &t_height) == EOF)
 			{
 				spdlog::error("sscanf failed for tiles argument");
 				return 1;
@@ -1472,7 +1472,7 @@ static int parseCommandLine(int argc, char** argv, CompressInitParams* initParam
 		if(tileOffsetArg.isSet())
 		{
 			int32_t off1, off2;
-			if(sscanf(tileOffsetArg.getValue().c_str(), "%d,%d", &off1, &off2) != 2)
+			if(sscanf(tileOffsetArg.getValue().c_str(), "%u,%u", &off1, &off2) != 2)
 			{
 				spdlog::error("-T 'tile offset' argument must be in the form: -T X0,Y0");
 				return 1;
@@ -1488,7 +1488,7 @@ static int parseCommandLine(int argc, char** argv, CompressInitParams* initParam
 		if(imageOffsetArg.isSet())
 		{
 			int32_t off1, off2;
-			if(sscanf(imageOffsetArg.getValue().c_str(), "%d,%d", &off1, &off2) != 2)
+			if(sscanf(imageOffsetArg.getValue().c_str(), "%u,%u", &off1, &off2) != 2)
 			{
 				spdlog::error("-d 'image offset' argument must be specified as:  -d x0,y0");
 				return 1;

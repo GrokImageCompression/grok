@@ -26,7 +26,7 @@ MarkerInfo::MarkerInfo(uint16_t _id, uint64_t _pos, uint32_t _len) : id(_id), po
 {}
 void MarkerInfo::dump(FILE* outputFileStream)
 {
-	fprintf(outputFileStream, "\t\t type=%#x, pos=%" PRIu64 ", len=%d\n", id, pos, len);
+	fprintf(outputFileStream, "\t\t type=%#x, pos=%" PRIu64 ", len=%u\n", id, pos, len);
 }
 TilePartInfo::TilePartInfo(uint64_t start, uint64_t endHeader, uint64_t end)
 	: startPosition(start), endHeaderPosition(endHeader), endPosition(end)
@@ -386,7 +386,7 @@ bool TileLengthMarkers::read(uint8_t* headerData, uint16_t header_size)
 		{
 			if(valid_)
 			{
-				GRK_WARN("TLM: tile part length %d is less than 14. Disabling TLM", Ptlm_i);
+				GRK_WARN("TLM: tile part length %u is less than 14. Disabling TLM", Ptlm_i);
 				valid_ = false;
 			}
 		}

@@ -81,7 +81,7 @@ struct dwt_data
 		allocatedMem = (T*)grkAlignedMalloc(lenBytes_);
 		if(!allocatedMem)
 		{
-			GRK_ERROR("Failed to allocate %d bytes", lenBytes_);
+			GRK_ERROR("Failed to allocate %u bytes", lenBytes_);
 			return false;
 		}
 		mem = allocatedMem + paddingBytes_ / sizeof(T);

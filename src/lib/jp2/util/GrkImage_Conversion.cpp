@@ -581,7 +581,7 @@ bool GrkImage::sycc422_to_rgb(bool oddFirstX)
 	// sanity check
 	if((loopWidth + 1) / 2 != comps[1].w)
 	{
-		GRK_WARN("incorrect subsampled width %d", comps[1].w);
+		GRK_WARN("incorrect subsampled width %u", comps[1].w);
 		return false;
 	}
 
@@ -678,12 +678,12 @@ bool GrkImage::sycc420_to_rgb(bool oddFirstX, bool oddFirstY)
 	// sanity check
 	if((loopWidth + 1) / 2 != comps[1].w)
 	{
-		GRK_WARN("incorrect subsampled width %d", comps[1].w);
+		GRK_WARN("incorrect subsampled width %u", comps[1].w);
 		return false;
 	}
 	if((loopHeight + 1) / 2 != comps[1].h)
 	{
-		GRK_WARN("incorrect subsampled height %d", comps[1].h);
+		GRK_WARN("incorrect subsampled height %u", comps[1].h);
 		return false;
 	}
 

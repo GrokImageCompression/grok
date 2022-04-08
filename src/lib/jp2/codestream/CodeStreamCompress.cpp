@@ -381,7 +381,7 @@ bool CodeStreamCompress::init(grk_cparameters* parameters, GrkImage* image)
 	uint8_t numgbits = parameters->numgbits;
 	if(parameters->numgbits > 7)
 	{
-		GRK_ERROR("Number of guard bits %d is greater than 7", numgbits);
+		GRK_ERROR("Number of guard bits %u is greater than 7", numgbits);
 		return false;
 	}
 	cp_.tcps = new TileCodingParams[cp_.t_grid_width * cp_.t_grid_height];
@@ -861,7 +861,7 @@ bool CodeStreamCompress::writeTilePart(TileProcessor* tileProcessor)
 	if(tileProcessor->canPreCalculateTileLen())
 	{
 		auto actualBytes = stream_->tell() - currentPos;
-		// GRK_INFO("Tile %d: precalculated / actual : %d / %d",
+		// GRK_INFO("Tile %u: precalculated / actual : %u / %u",
 		//		tileProcessor->getIndex(), calculatedBytesWritten, actualBytes);
 		if(actualBytes != calculatedBytesWritten)
 		{
@@ -893,7 +893,7 @@ bool CodeStreamCompress::writeTileParts(TileProcessor* tileProcessor)
 	uint64_t numTileParts = getNumTilePartsForProgression(0, tileProcessor->getIndex());
 	if(numTileParts > maxTilePartsPerTileJ2K)
 	{
-		GRK_ERROR("Number of tile parts %d for first POC exceeds maximum number of tile parts %d",
+		GRK_ERROR("Number of tile parts %u for first POC exceeds maximum number of tile parts %u",
 				  numTileParts, maxTilePartsPerTileJ2K);
 		return false;
 	}
@@ -910,8 +910,8 @@ bool CodeStreamCompress::writeTileParts(TileProcessor* tileProcessor)
 		numTileParts = getNumTilePartsForProgression(pino, tileProcessor->getIndex());
 		if(numTileParts > maxTilePartsPerTileJ2K)
 		{
-			GRK_ERROR("Number of tile parts %d exceeds maximum number of "
-					  "tile parts %d",
+			GRK_ERROR("Number of tile parts %u exceeds maximum number of "
+					  "tile parts %u",
 					  numTileParts, maxTilePartsPerTileJ2K);
 			return false;
 		}
@@ -1707,7 +1707,7 @@ bool CodeStreamCompress::validateProgressionOrders(const grk_progression* progre
 				{
 					/*index = step_r * resno + step_c * compno + step_l * layno;*/
 					packet_array[comp_index] = 1;
-					// printf("%d %d\n",i,comp_index);
+					// printf("%u %u\n",i,comp_index);
 					comp_index += step_l;
 				}
 				res_index += step_c;
@@ -1968,8 +1968,8 @@ bool CodeStreamCompress::getNumTileParts(uint16_t* numTilePartsForAllTiles, GrkI
 				uint16_t(numTilePartsForProgression + totalTilePartsForTile);
 			if(newTotalTilePartsForTile > maxTilePartsPerTileJ2K)
 			{
-				GRK_ERROR("Number of tile parts %d exceeds maximum number of "
-						  "tile parts %d",
+				GRK_ERROR("Number of tile parts %u exceeds maximum number of "
+						  "tile parts %u",
 						  (uint16_t)newTotalTilePartsForTile, maxTilePartsPerTileJ2K);
 				return false;
 			}
@@ -1979,9 +1979,9 @@ bool CodeStreamCompress::getNumTileParts(uint16_t* numTilePartsForAllTiles, GrkI
 				(uint32_t)(*numTilePartsForAllTiles + numTilePartsForProgression);
 			if(newTotalTilePartsForAllTiles > maxTotalTilePartsJ2K)
 			{
-				GRK_ERROR("Total number of tile parts %d for image exceeds JPEG 2000 maximum total "
+				GRK_ERROR("Total number of tile parts %u for image exceeds JPEG 2000 maximum total "
 						  "number of "
-						  "tile parts %d",
+						  "tile parts %u",
 						  newTotalTilePartsForAllTiles, maxTotalTilePartsJ2K);
 				return false;
 			}

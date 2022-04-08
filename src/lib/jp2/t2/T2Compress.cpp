@@ -98,8 +98,8 @@ bool T2Compress::compressPacketSimulate(TileCodingParams* tcp, PacketIter* pi,
 
 	if(compno >= tile->numcomps_)
 	{
-		GRK_ERROR("compress packet simulate: component number %d must be less than total number "
-				  "of components %d",
+		GRK_ERROR("compress packet simulate: component number %u must be less than total number "
+				  "of components %u",
 				  compno, tile->numcomps_);
 		return false;
 	}
@@ -153,7 +153,7 @@ bool T2Compress::compressPacketSimulate(TileCodingParams* tcp, PacketIter* pi,
 	}
 	if(byteCount > UINT_MAX)
 	{
-		GRK_ERROR("Tile part size exceeds standard maximum value of %d."
+		GRK_ERROR("Tile part size exceeds standard maximum value of %u."
 				  "Please enable tile part generation to keep tile part size below max",
 				  UINT_MAX);
 		return false;
@@ -208,8 +208,8 @@ bool T2Compress::compressHeader(BitIO* bio, Resolution* res, uint16_t layno, uin
 			auto band = res->tileBand + bandIndex;
 			if(precinctIndex >= band->precincts.size())
 			{
-				GRK_ERROR("compress packet simulate: precinct index %d must be less than total "
-						  "number of precincts %d",
+				GRK_ERROR("compress packet simulate: precinct index %u must be less than total "
+						  "number of precincts %u",
 						  precinctIndex, band->precincts.size());
 				return false;
 			}
@@ -229,7 +229,7 @@ bool T2Compress::compressHeader(BitIO* bio, Resolution* res, uint16_t layno, uin
 				cblk->numPassesInPacket = 0;
 				assert(band->numbps >= cblk->numbps);
 				if(cblk->numbps > band->numbps)
-					GRK_WARN("Code block %u bps %d greater than band bps %d. Skipping.", cblkno,
+					GRK_WARN("Code block %u bps %u greater than band bps %u. Skipping.", cblkno,
 							 cblk->numbps, band->numbps);
 				else
 					prc->getImsbTree()->setvalue(cblkno, band->numbps - cblk->numbps);
@@ -352,8 +352,8 @@ bool T2Compress::compressPacket(TileCodingParams* tcp, PacketIter* pi, IBuffered
 
 	if(compno >= tile->numcomps_)
 	{
-		GRK_ERROR("compress packet simulate: component number %d must be less than total number "
-				  "of components %d",
+		GRK_ERROR("compress packet simulate: component number %u must be less than total number "
+				  "of components %u",
 				  compno, tile->numcomps_);
 		return false;
 	}

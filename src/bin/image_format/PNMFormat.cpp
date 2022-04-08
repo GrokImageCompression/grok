@@ -74,7 +74,7 @@ bool PNMFormat::encodeHeader(void)
 	uint16_t ncomp = image_->decompressNumComps;
 	if(ncomp > 4)
 	{
-		spdlog::error("PNMFormat::encodeHeader: Number of components cannot be greater than 4; %d "
+		spdlog::error("PNMFormat::encodeHeader: Number of components cannot be greater than 4; %u "
 					  "number of components not supported.",
 					  image_->decompressNumComps);
 		return false;

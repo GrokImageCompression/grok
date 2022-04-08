@@ -141,7 +141,7 @@ bool SIZMarker::read(CodeStreamDecompress* codeStream, uint8_t* headerData, uint
 	else
 	{
 		GRK_ERROR("SIZ marker: number of components %u is greater than maximum allowed number of "
-				  "components %d",
+				  "components %u",
 				  tmp, maxNumComponentsJ2K);
 		return false;
 	}

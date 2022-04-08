@@ -163,7 +163,7 @@ bool TileComponent::init(bool isCompressor, bool whole_tile, grk_rect32 unreduce
 			auto step_size = tccp->stepsizes + offset + bandIndex;
 			band->stepsize = (float)(((1.0 + step_size->mant / 2048.0) *
 									  pow(2.0, (int32_t)(numbps - step_size->expn))));
-			// printf("res=%d, band=%d, mant=%d,expn=%d, numbps=%d, step size=
+			// printf("res=%u, band=%u, mant=%u,expn=%u, numbps=%u, step size=
 			// %f\n",resno,band->orientation,step_size->mant,step_size->expn,numbps,
 			// band->stepsize);
 
@@ -323,7 +323,7 @@ bool TileComponent::allocWindowBuffer(grk_rect32 unreducedTileCompOrImageCompWin
 	auto maxResolution = tileCompResolution + numresolutions - 1;
 	if(!maxResolution->intersection(unreducedTileCompOrImageCompWindow).isValid())
 	{
-		GRK_ERROR("Decompress window (%d,%d,%d,%d) must overlap image bounds (%d,%d,%d,%d)",
+		GRK_ERROR("Decompress window (%u,%u,%u,%u) must overlap image bounds (%u,%u,%u,%u)",
 				  unreducedTileCompOrImageCompWindow.x0, unreducedTileCompOrImageCompWindow.y0,
 				  unreducedTileCompOrImageCompWindow.x1, unreducedTileCompOrImageCompWindow.y1,
 				  maxResolution->x0, maxResolution->y0, maxResolution->x1, maxResolution->y1);

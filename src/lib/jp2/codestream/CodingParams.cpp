@@ -296,7 +296,7 @@ bool DecompressorState::findNextTile(CodeStreamDecompress* codeStream)
 				auto bytesLeft = stream->numBytesLeft();
 				setState(DECOMPRESS_STATE_NO_EOC);
 				GRK_WARN("findNextTile: expected EOC or SOT "
-						 "but found marker 0x%x.\nIgnoring %d bytes "
+						 "but found marker 0x%x.\nIgnoring %u bytes "
 						 "remaining in the stream.",
 						 codeStream->getCurrentMarker(), bytesLeft + 2);
 				throw DecodeUnknownMarkerAtEndOfTileException();

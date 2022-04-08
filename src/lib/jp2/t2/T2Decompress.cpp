@@ -92,7 +92,7 @@ bool T2Decompress::processPacket(TileCodingParams* tcp, PacketIter* pi, SparseBu
 				skip = false;
 #ifdef DEBUG_PACKET_ITERATOR
 				GRK_INFO("");
-				GRK_INFO("Overlap detected with band %d =>", bandIndex);
+				GRK_INFO("Overlap detected with band %u =>", bandIndex);
 				paddedBandWindow->print();
 				GRK_INFO("Precinct bounds =>");
 				prec.print();
@@ -134,7 +134,7 @@ bool T2Decompress::processPacket(TileCodingParams* tcp, PacketIter* pi, SparseBu
 #ifdef DEBUG_PLT
 	if(hasPLT && packetCache.packetLength != packetInfo->packetLength)
 	{
-		printf("%d: parsed %d, PLT %d\n", ct, packetInfo->packetLength, packetCache.packetLength);
+		printf("%u: parsed %u, PLT %u\n", ct, packetInfo->packetLength, packetCache.packetLength);
 		assert(0);
 	}
 #endif
@@ -168,7 +168,7 @@ bool T2Decompress::decompressPackets(uint16_t tile_no, SparseBuffer* src,
 		{
 			if(src->getCurrentChunkLength() == 0)
 			{
-				GRK_WARN("Tile %d is truncated.", tile_no);
+				GRK_WARN("Tile %u is truncated.", tile_no);
 				*stopProcessionPackets = true;
 				break;
 			}
@@ -180,7 +180,7 @@ bool T2Decompress::decompressPackets(uint16_t tile_no, SparseBuffer* src,
 			catch(TruncatedPacketHeaderException& tex)
 			{
 				GRK_UNUSED(tex);
-				GRK_WARN("Truncated packet: tile=%d component=%02d resolution=%02d precinct=%03d "
+				GRK_WARN("Truncated packet: tile=%u component=%02d resolution=%02d precinct=%03d "
 						 "layer=%02d",
 						 tile_no, currPi->getCompno(), currPi->getResno(),
 						 currPi->getPrecinctIndex(), currPi->getLayno());
@@ -194,7 +194,7 @@ bool T2Decompress::decompressPackets(uint16_t tile_no, SparseBuffer* src,
 				if(!tileProcessor->packetLengthCache.getMarkers())
 				{
 					GRK_ERROR(
-						"Corrupt packet: tile=%d component=%02d resolution=%02d precinct=%03d "
+						"Corrupt packet: tile=%u component=%02d resolution=%02d precinct=%03d "
 						"layer=%02d",
 						tile_no, currPi->getCompno(), currPi->getResno(),
 						currPi->getPrecinctIndex(), currPi->getLayno());
@@ -203,7 +203,7 @@ bool T2Decompress::decompressPackets(uint16_t tile_no, SparseBuffer* src,
 				}
 				else
 				{
-					GRK_WARN("Corrupt packet: tile=%d component=%02d resolution=%02d precinct=%03d "
+					GRK_WARN("Corrupt packet: tile=%u component=%02d resolution=%02d precinct=%03d "
 							 "layer=%02d",
 							 tile_no, currPi->getCompno(), currPi->getResno(),
 							 currPi->getPrecinctIndex(), currPi->getLayno());
@@ -215,7 +215,7 @@ bool T2Decompress::decompressPackets(uint16_t tile_no, SparseBuffer* src,
 			break;
 	}
 	if(tileProcessor->getNumDecompressedPackets() == 0)
-		GRK_WARN("T2Decompress: no packets for tile %d were successfully read", tile_no);
+		GRK_WARN("T2Decompress: no packets for tile %u were successfully read", tile_no);
 
 	return tileProcessor->getNumDecompressedPackets() > 0;
 }
@@ -247,8 +247,8 @@ bool T2Decompress::decompressPacket(TileCodingParams* tcp, const PacketIter* pi,
 		{
 			if(packetInfo->packetLength != packetBytes)
 			{
-				GRK_ERROR("Corrupt PL marker reports %d bytes for packet;"
-						  " parsed bytes are in fact %d",
+				GRK_ERROR("Corrupt PL marker reports %u bytes for packet;"
+						  " parsed bytes are in fact %u",
 						  packetInfo->packetLength, packetBytes);
 				return false;
 			}
@@ -313,7 +313,7 @@ bool T2Decompress::readPacketHeader(TileCodingParams* p_tcp, const PacketIter* p
 	{
 		if(tileProcessor->getIndex() >= cp->ppm_marker->tile_packet_headers_.size())
 		{
-			GRK_ERROR("PPM marker has no packed packet header data for tile %d",
+			GRK_ERROR("PPM marker has no packed packet header data for tile %u",
 					  tileProcessor->getIndex() + 1);
 			return false;
 		}
@@ -591,7 +591,7 @@ bool T2Decompress::readPacketData(Resolution* res, const PacketIter* p_pi, Spars
 					// sanity check on seg->numBytesInPacket
 					if(UINT_MAX - seg->numBytesInPacket < seg->len)
 					{
-						GRK_ERROR("Segment packet length %d plus total segment length %d must be "
+						GRK_ERROR("Segment packet length %u plus total segment length %u must be "
 								  "less than 2^32",
 								  seg->numBytesInPacket, seg->len);
 						return false;

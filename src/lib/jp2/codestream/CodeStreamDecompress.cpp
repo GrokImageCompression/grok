@@ -334,19 +334,19 @@ bool CodeStreamDecompress::setDecompressWindow(grk_rect_single window)
 		if(!compositeImage->subsampleAndReduce(cp_.coding_params_.dec_.reduce_))
 			return false;
 
-		GRK_INFO("decompress window canvas coordinates set to (%d,%d,%d,%d)", compositeImage->x0,
+		GRK_INFO("decompress window canvas coordinates set to (%u,%u,%u,%u)", compositeImage->x0,
 				 compositeImage->y0, compositeImage->x1, compositeImage->y1);
 		GRK_INFO("window scaled coordinates : (%f,%f,%f,%f)",
-				 float(compositeImage->x0 - image->x0) / image->width(),
-				 float(compositeImage->y0 - image->x0) / image->height(),
-				 float(compositeImage->x1 - image->x0) / image->width(),
-				 float(compositeImage->y1 - image->x0) / image->height());
+				 float(compositeImage->x0 - image->x0) / float(image->width()),
+				 float(compositeImage->y0 - image->x0) / float(image->height()),
+				 float(compositeImage->x1 - image->x0) / float(image->width()),
+				 float(compositeImage->y1 - image->x0) / float(image->height()));
 		GRK_INFO("window scaled coordinates in ROW-COLUMN format : \"{%f,%f},{%f,%f}\"",
-				 float(compositeImage->y0 - image->x0) / image->height(),
-				 float(compositeImage->x0 - image->x0) / image->width(),
-				 float(compositeImage->y1 - image->x0) / image->height(),
-				 float(compositeImage->x1 - image->x0) / image->width());
-		GRK_INFO("image canvas coordinates :  (%d,%d,%d,%d)", image->x0, image->y0, image->x1,
+				 float(compositeImage->y0 - image->x0) / float(image->height()),
+				 float(compositeImage->x0 - image->x0) / float(image->width()),
+				 float(compositeImage->y1 - image->x0) / float(image->height()),
+				 float(compositeImage->x1 - image->x0) / float(image->width()));
+		GRK_INFO("image canvas coordinates :  (%u,%u,%u,%u)", image->x0, image->y0, image->x1,
 				 image->y1);
 	}
 	compositeImage->validateColourSpace();
@@ -601,7 +601,7 @@ bool CodeStreamDecompress::decompressTiles(void)
 		auto marker_handler = get_marker_handler(curr_marker_);
 		if(!(decompressorState_.getState() & marker_handler->states))
 		{
-			GRK_ERROR("Marker %d is not compliant with its position", curr_marker_);
+			GRK_ERROR("Marker %u is not compliant with its position", curr_marker_);
 			success = false;
 			goto cleanup;
 		}
@@ -726,7 +726,7 @@ bool CodeStreamDecompress::readHeaderProcedureImpl(void)
 		 * (main, tile, end of code stream)*/
 		if(!(decompressorState_.getState() & marker_handler->states))
 		{
-			GRK_ERROR("Marker %d is not compliant with its position", curr_marker_);
+			GRK_ERROR("Marker %u is not compliant with its position", curr_marker_);
 			return false;
 		}
 
@@ -895,7 +895,7 @@ bool CodeStreamDecompress::decompressT2T1(TileProcessor* tileProcessor)
 	auto tcp = cp_.tcps + tileProcessor->getIndex();
 	if(!tcp->compressedTileData_)
 	{
-		GRK_ERROR("Decompress: Tile %d has no compressed data", tileProcessor->getIndex());
+		GRK_ERROR("Decompress: Tile %u has no compressed data", tileProcessor->getIndex());
 		return false;
 	}
 	bool doPost =
@@ -1041,7 +1041,7 @@ void CodeStreamDecompress::dump_tile_info(TileCodingParams* default_tile, uint32
 		fprintf(outputFileStream, "\t default tile {\n");
 		fprintf(outputFileStream, "\t\t csty=%#x\n", default_tile->csty);
 		fprintf(outputFileStream, "\t\t prg=%#x\n", default_tile->prg);
-		fprintf(outputFileStream, "\t\t numlayers=%d\n", default_tile->numlayers);
+		fprintf(outputFileStream, "\t\t numlayers=%u\n", default_tile->numlayers);
 		fprintf(outputFileStream, "\t\t mct=%x\n", default_tile->mct);
 
 		for(uint16_t compno = 0; compno < numcomps; compno++)
@@ -1055,36 +1055,36 @@ void CodeStreamDecompress::dump_tile_info(TileCodingParams* default_tile, uint32
 			/* coding style*/
 			fprintf(outputFileStream, "\t\t comp %u {\n", compno);
 			fprintf(outputFileStream, "\t\t\t csty=%#x\n", tccp->csty);
-			fprintf(outputFileStream, "\t\t\t numresolutions=%d\n", tccp->numresolutions);
-			fprintf(outputFileStream, "\t\t\t cblkw=2^%d\n", tccp->cblkw);
-			fprintf(outputFileStream, "\t\t\t cblkh=2^%d\n", tccp->cblkh);
+			fprintf(outputFileStream, "\t\t\t numresolutions=%u\n", tccp->numresolutions);
+			fprintf(outputFileStream, "\t\t\t cblkw=2^%u\n", tccp->cblkw);
+			fprintf(outputFileStream, "\t\t\t cblkh=2^%u\n", tccp->cblkh);
 			fprintf(outputFileStream, "\t\t\t cblksty=%#x\n", tccp->cblk_sty);
-			fprintf(outputFileStream, "\t\t\t qmfbid=%d\n", tccp->qmfbid);
+			fprintf(outputFileStream, "\t\t\t qmfbid=%u\n", tccp->qmfbid);
 
 			fprintf(outputFileStream, "\t\t\t preccintsize (w,h)=");
 			for(resno = 0; resno < tccp->numresolutions; resno++)
 			{
-				fprintf(outputFileStream, "(%d,%d) ", tccp->precWidthExp[resno],
+				fprintf(outputFileStream, "(%u,%u) ", tccp->precWidthExp[resno],
 						tccp->precHeightExp[resno]);
 			}
 			fprintf(outputFileStream, "\n");
 
 			/* quantization style*/
-			fprintf(outputFileStream, "\t\t\t qntsty=%d\n", tccp->qntsty);
-			fprintf(outputFileStream, "\t\t\t numgbits=%d\n", tccp->numgbits);
+			fprintf(outputFileStream, "\t\t\t qntsty=%u\n", tccp->qntsty);
+			fprintf(outputFileStream, "\t\t\t numgbits=%u\n", tccp->numgbits);
 			fprintf(outputFileStream, "\t\t\t stepsizes (m,e)=");
 			numBandWindows = (tccp->qntsty == J2K_CCP_QNTSTY_SIQNT)
 								 ? 1
 								 : (uint32_t)(tccp->numresolutions * 3 - 2);
 			for(bandIndex = 0; bandIndex < numBandWindows; bandIndex++)
 			{
-				fprintf(outputFileStream, "(%d,%d) ", tccp->stepsizes[bandIndex].mant,
+				fprintf(outputFileStream, "(%u,%u) ", tccp->stepsizes[bandIndex].mant,
 						tccp->stepsizes[bandIndex].expn);
 			}
 			fprintf(outputFileStream, "\n");
 
 			/* RGN value*/
-			fprintf(outputFileStream, "\t\t\t roishift=%d\n", tccp->roishift);
+			fprintf(outputFileStream, "\t\t\t roishift=%u\n", tccp->roishift);
 
 			fprintf(outputFileStream, "\t\t }\n");
 		} /*end of component of default tile*/
@@ -1136,9 +1136,9 @@ void CodeStreamDecompress::dump(uint32_t flag, FILE* outputFileStream)
 void CodeStreamDecompress::dump_MH_info(FILE* outputFileStream)
 {
 	fprintf(outputFileStream, "Codestream info from main header: {\n");
-	fprintf(outputFileStream, "\t tx0=%d, ty0=%d\n", cp_.tx0, cp_.ty0);
-	fprintf(outputFileStream, "\t tdx=%d, tdy=%d\n", cp_.t_width, cp_.t_height);
-	fprintf(outputFileStream, "\t tw=%d, th=%d\n", cp_.t_grid_width, cp_.t_grid_height);
+	fprintf(outputFileStream, "\t tx0=%u, ty0=%u\n", cp_.tx0, cp_.ty0);
+	fprintf(outputFileStream, "\t tdx=%u, tdy=%u\n", cp_.t_width, cp_.t_height);
+	fprintf(outputFileStream, "\t tw=%u, th=%u\n", cp_.t_grid_width, cp_.t_grid_height);
 	CodeStreamDecompress::dump_tile_info(getDecompressorState()->default_tcp_,
 										 getHeaderImage()->numcomps, outputFileStream);
 	fprintf(outputFileStream, "}\n");
@@ -1158,9 +1158,9 @@ void CodeStreamDecompress::dump_image_header(GrkImage* img_header, bool dev_dump
 		tab[0] = '\t';
 		tab[1] = '\0';
 	}
-	fprintf(outputFileStream, "%s x0=%d, y0=%d\n", tab, img_header->x0, img_header->y0);
-	fprintf(outputFileStream, "%s x1=%d, y1=%d\n", tab, img_header->x1, img_header->y1);
-	fprintf(outputFileStream, "%s numcomps=%d\n", tab, img_header->numcomps);
+	fprintf(outputFileStream, "%s x0=%u, y0=%u\n", tab, img_header->x0, img_header->y0);
+	fprintf(outputFileStream, "%s x1=%u, y1=%u\n", tab, img_header->x1, img_header->y1);
+	fprintf(outputFileStream, "%s numcomps=%u\n", tab, img_header->numcomps);
 	if(img_header->comps)
 	{
 		uint16_t compno;
@@ -1190,9 +1190,9 @@ void CodeStreamDecompress::dump_image_comp_header(grk_image_comp* comp_header, b
 		tab[2] = '\0';
 	}
 
-	fprintf(outputFileStream, "%s dx=%d, dy=%d\n", tab, comp_header->dx, comp_header->dy);
-	fprintf(outputFileStream, "%s prec=%d\n", tab, comp_header->prec);
-	fprintf(outputFileStream, "%s sgnd=%d\n", tab, comp_header->sgnd ? 1 : 0);
+	fprintf(outputFileStream, "%s dx=%u, dy=%u\n", tab, comp_header->dx, comp_header->dy);
+	fprintf(outputFileStream, "%s prec=%u\n", tab, comp_header->prec);
+	fprintf(outputFileStream, "%s sgnd=%u\n", tab, comp_header->sgnd ? 1 : 0);
 
 	if(dev_dump_flag)
 		fprintf(outputFileStream, "}\n");

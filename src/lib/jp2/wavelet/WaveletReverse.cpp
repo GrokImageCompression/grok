@@ -1876,7 +1876,7 @@ bool WaveletReverse::decompress_partial_tile(ISparseCanvas* sa)
 			{
 				auto height = std::min<uint32_t>((uint32_t)HORIZ_PASS_HEIGHT, taskInfo->indexMax_ - j);
 #ifdef GRK_DEBUG_VALGRIND
-				// GRK_INFO("H: compno = %d, resno = %d,y begin = %d, height = %d,", compno, resno,
+				// GRK_INFO("H: compno = %u, resno = %u,y begin = %u, height = %u,", compno, resno,
 				// j, height);
 				uint32_t len =
 					(taskInfo->data.win_l.length() + taskInfo->data.win_h.length()) * HORIZ_PASS_HEIGHT;
@@ -1927,7 +1927,7 @@ bool WaveletReverse::decompress_partial_tile(ISparseCanvas* sa)
 			{
 				auto width = std::min<uint32_t>(VERT_PASS_WIDTH, (taskInfo->indexMax_ - j));
 #ifdef GRK_DEBUG_VALGRIND
-				// GRK_INFO("V: compno = %d, resno = %d, x begin = %d, width = %d", compno, resno,
+				// GRK_INFO("V: compno = %u, resno = %u, x begin = %u, width = %u", compno, resno,
 				// j, width);
 				uint32_t len =
 					(taskInfo->data.win_l.length() + taskInfo->data.win_h.length()) * VERT_PASS_WIDTH;
@@ -2056,7 +2056,7 @@ bool WaveletReverse::decompress_partial_tile(ISparseCanvas* sa)
 
 #ifdef GRK_DEBUG_VALGRIND
 	{
-		GRK_INFO("Final synthesis window for component %d", compno);
+		GRK_INFO("Final synthesis window for component %u", compno);
 		auto tileSynthesisWindow = synthesisWindow.pan(tilec->x0, tilec->y0);
 		if(compno == debug_compno)
 		{
@@ -2070,7 +2070,7 @@ bool WaveletReverse::decompress_partial_tile(ISparseCanvas* sa)
 					if(val != grk_mem_ok)
 					{
 						GRK_ERROR("***** Partial wavelet after final read: uninitialized memory at "
-								  "(x,y) =  (%d,%d) ******",
+								  "(x,y) =  (%u,%u) ******",
 								  tileSynthesisWindow.x0 + i, tileSynthesisWindow.y0 + j);
 					}
 					bufPtr += buf->getResWindowBufferHighestREL()->stride;

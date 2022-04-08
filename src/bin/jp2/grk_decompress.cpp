@@ -223,7 +223,7 @@ bool GrkDecompress::parsePrecision(const char* option, grk_decompress_parameters
 		char comma;
 		int count;
 
-		count = sscanf(remaining, "%d%c%c", &prec, &mode, &comma);
+		count = sscanf(remaining, "%u%c%c", &prec, &mode, &comma);
 		if(count == 1)
 		{
 			mode = 'C';
@@ -645,7 +645,7 @@ int GrkDecompress::parseCommandLine(int argc, char** argv, DecompressInitParams*
 		if(reduceArg.isSet())
 		{
 			if(reduceArg.getValue() >= GRK_J2K_MAXRLVLS)
-				spdlog::warn("Resolution level reduction %d must be strictly less than the "
+				spdlog::warn("Resolution level reduction %u must be strictly less than the "
 							 "maximum number of resolutions %u. Ignoring",
 							 reduceArg.getValue(), GRK_J2K_MAXRLVLS);
 			else
@@ -668,7 +668,7 @@ int GrkDecompress::parseCommandLine(int argc, char** argv, DecompressInitParams*
 			char* ROI_values = new char[size_optarg];
 			ROI_values[0] = '\0';
 			memcpy(ROI_values, decodeRegionArg.getValue().c_str(), size_optarg);
-			/*printf("ROI_values = %s [%d / %d]\n", ROI_values, strlen(ROI_values), size_optarg );
+			/*printf("ROI_values = %s [%u / %u]\n", ROI_values, strlen(ROI_values), size_optarg );
 			 */
 			bool rc = parseWindowBounds(ROI_values, &parameters->dw_x0, &parameters->dw_y0,
 										&parameters->dw_x1, &parameters->dw_y1);

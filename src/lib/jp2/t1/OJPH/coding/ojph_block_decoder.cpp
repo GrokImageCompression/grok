@@ -344,7 +344,7 @@ namespace ojph {
         //// We pad the data by 8 bytes at the beginning of the code stream 
         //// buffer
         //if (vlcp->size < -4) 
-        //  grk::GRK_ERROR( "Error in reading VLC data: vlcp size %d "
+        //  grk::GRK_ERROR( "Error in reading VLC data: vlcp size %u "
         //             "less than -4 before rev_read", vlcp->size);
       }
 
@@ -1022,7 +1022,7 @@ namespace ojph {
       if (num_passes > 3)
       {
         grk::GRK_ERROR( "We do not support more than 3 coding passes; "
-                               "This codeblocks has %d passes.\n",
+                               "This codeblocks has %u passes.\n",
                                num_passes);
         return false;
       }

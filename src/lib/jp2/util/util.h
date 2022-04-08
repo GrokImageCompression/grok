@@ -110,7 +110,7 @@ struct grk_rect
 
 	virtual void print(void) const
 	{
-		GRK_INFO("[%d,%d,%d,%d]", x0, y0, x1, y1);
+		GRK_INFO("[%u,%u,%u,%u]", x0, y0, x1, y1);
 	}
 	std::string boundsString() const
 	{

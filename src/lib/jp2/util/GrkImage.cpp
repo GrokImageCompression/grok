@@ -156,7 +156,7 @@ bool GrkImage::subsampleAndReduce(uint32_t reduce)
 		comp_x1 = ceildivpow2<uint32_t>(comp_x1, reduce);
 		if(comp_x1 <= comp->x0)
 		{
-			GRK_ERROR("component %d: x1 (%d) is <= x0 (%d).", compno, comp_x1, comp->x0);
+			GRK_ERROR("component %u: x1 (%u) is <= x0 (%u).", compno, comp_x1, comp->x0);
 			return false;
 		}
 		comp->w = (uint32_t)(comp_x1 - comp->x0);
@@ -166,7 +166,7 @@ bool GrkImage::subsampleAndReduce(uint32_t reduce)
 		comp_y1 = ceildivpow2<uint32_t>(comp_y1, reduce);
 		if(comp_y1 <= comp->y0)
 		{
-			GRK_ERROR("component %d: y1 (%d) is <= y0 (%d).", compno, comp_y1, comp->y0);
+			GRK_ERROR("component %u: y1 (%u) is <= y0 (%u).", compno, comp_y1, comp->y0);
 			return false;
 		}
 		comp->h = (uint32_t)(comp_y1 - comp->y0);
@@ -683,8 +683,8 @@ bool GrkImage::apply_palette_clr()
 		auto comp = comps + compno;
 		if(compno >= numcomps)
 		{
-			GRK_ERROR("apply_palette_clr: component mapping component number %d for channel %d "
-					  "must be less than number of image components %d",
+			GRK_ERROR("apply_palette_clr: component mapping component number %u for channel %u "
+					  "must be less than number of image components %u",
 					  compno, channel, numcomps);
 			return false;
 		}
@@ -697,8 +697,8 @@ bool GrkImage::apply_palette_clr()
 		}
 		if(comp->prec > pal->num_entries)
 		{
-			GRK_ERROR("Precision %d of component %d is greater than "
-					  "number of palette entries %d",
+			GRK_ERROR("Precision %u of component %u is greater than "
+					  "number of palette entries %u",
 					  compno, comps[compno].prec, pal->num_entries);
 			return false;
 		}
@@ -708,8 +708,8 @@ bool GrkImage::apply_palette_clr()
 			case 0:
 				if(paletteColumn != 0)
 				{
-					GRK_ERROR("apply_palette_clr: channel %d with direct component mapping: "
-							  "non-zero palette column %d not allowed",
+					GRK_ERROR("apply_palette_clr: channel %u with direct component mapping: "
+							  "non-zero palette column %u not allowed",
 							  channel, paletteColumn);
 					return false;
 				}
@@ -717,7 +717,7 @@ bool GrkImage::apply_palette_clr()
 			case 1:
 				if(comp->sgnd)
 				{
-					GRK_ERROR("apply_palette_clr: channel %d with non-direct component mapping: "
+					GRK_ERROR("apply_palette_clr: channel %u with non-direct component mapping: "
 							  "cannot be signed");
 					return false;
 				}
@@ -820,7 +820,7 @@ bool GrkImage::allocCompositeData(CodingParams* cp)
 			auto destComp = comps + i;
 			if(destComp->w == 0 || destComp->h == 0)
 			{
-				GRK_ERROR("Output component %d has invalid dimensions %u x %u", i, destComp->w,
+				GRK_ERROR("Output component %u has invalid dimensions %u x %u", i, destComp->w,
 						  destComp->h);
 				return false;
 			}
@@ -829,7 +829,7 @@ bool GrkImage::allocCompositeData(CodingParams* cp)
 				if(!GrkImage::allocData(destComp, true))
 				{
 					GRK_ERROR(
-						"Failed to allocate pixel data for component %d, with dimensions %u x %u",
+						"Failed to allocate pixel data for component %u, with dimensions %u x %u",
 						i, destComp->w, destComp->h);
 					return false;
 				}
@@ -954,7 +954,7 @@ bool GrkImage::compositeInterleaved(const GrkImage* srcImg)
 	{
 		if(!(srcImg->comps + i)->data)
 		{
-			GRK_WARN("GrkImage::compositeInterleaved: null data for source component %d", i);
+			GRK_WARN("GrkImage::compositeInterleaved: null data for source component %u", i);
 			return false;
 		}
 	}
@@ -1008,19 +1008,19 @@ bool GrkImage::compositePlanar(const GrkImage* srcImg)
 
 		if(!generateCompositeBounds(srcComp, compno, &destWin, &srcLineOffset))
 		{
-			GRK_WARN("GrkImage::compositePlanar: cannot generate composite bounds for component %d",
+			GRK_WARN("GrkImage::compositePlanar: cannot generate composite bounds for component %u",
 					 compno);
 			continue;
 		}
 		if(!destComp->data)
 		{
-			GRK_WARN("GrkImage::compositePlanar: null data for destination component %d", compno);
+			GRK_WARN("GrkImage::compositePlanar: null data for destination component %u", compno);
 			continue;
 		}
 
 		if(!srcComp->data)
 		{
-			GRK_WARN("GrkImage::compositePlanar: null data for source component %d", compno);
+			GRK_WARN("GrkImage::compositePlanar: null data for source component %u", compno);
 			continue;
 		}
 		size_t srcIndex = 0;

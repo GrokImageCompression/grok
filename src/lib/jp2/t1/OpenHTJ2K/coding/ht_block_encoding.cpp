@@ -884,7 +884,7 @@ int32_t htj2k_encode(j2k_codeblock *const block, const uint8_t ROIshift) noexcep
   fwd_buf[Lcup - 1] = Scup >> 4;
   fwd_buf[Lcup - 2] = (fwd_buf[Lcup - 2] & 0xF0) | (Scup & 0x0f);
 
-  // printf("Lcup %d\n", Lcup);
+  // printf("Lcup %u\n", Lcup);
 
   // transfer Dcup[] to block->compressed_data
   block->set_compressed_data(fwd_buf.get(), Lcup);

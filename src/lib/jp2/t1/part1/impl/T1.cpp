@@ -333,7 +333,7 @@ bool T1::alloc(uint32_t width, uint32_t height)
 {
 	if(width == 0 || height == 0)
 	{
-		GRK_ERROR("Unable to allocated memory for degenerate code block of dimensions %dx%d", width,
+		GRK_ERROR("Unable to allocated memory for degenerate code block of dimensions %ux%u", width,
 				  height);
 		return false;
 	}

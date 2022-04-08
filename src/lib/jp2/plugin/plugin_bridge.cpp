@@ -159,13 +159,13 @@ void compress_synch_with_plugin(TileProcessor* tcd, uint16_t compno, uint32_t re
 		{
 			if(band->stepsize != plugin_band->stepsize)
 			{
-				GRK_WARN("ojp band step size %d differs from plugin step size %d", band->stepsize,
+				GRK_WARN("ojp band step size %u differs from plugin step size %u", band->stepsize,
 						 plugin_band->stepsize);
 			}
 			if(cblk->numPassesTotal != plugin_cblk->numPasses)
 				GRK_WARN(
-					"CPU total number of passes (%d) differs from "
-					"plugin total number of passes (%d) : component=%d, res=%d, band=%d, block=%d",
+					"CPU total number of passes (%u) differs from "
+					"plugin total number of passes (%u) : component=%u, res=%u, band=%u, block=%u",
 					cblk->numPassesTotal, (uint32_t)plugin_cblk->numPasses, compno, resno,
 					bandIndex, cblkno);
 		}
@@ -193,7 +193,7 @@ void compress_synch_with_plugin(TileProcessor* tcd, uint16_t compno, uint32_t re
 				totalRate = (cblk->passes + cblk->numPassesTotal - 1)->rate;
 				if(totalRatePlugin != totalRate)
 				{
-					GRK_WARN("CPU rate %d differs from plugin rate %d", totalRate, totalRatePlugin);
+					GRK_WARN("CPU rate %u differs from plugin rate %u", totalRate, totalRatePlugin);
 				}
 			}
 
@@ -201,8 +201,8 @@ void compress_synch_with_plugin(TileProcessor* tcd, uint16_t compno, uint32_t re
 			{
 				if(cblk->paddedCompressedStream[p] != plugin_cblk->compressedData[p])
 				{
-					GRK_WARN("data differs at position=%d, component=%d, res=%d, band=%d, "
-							 "block=%d, CPU rate =%d, plugin rate=%d",
+					GRK_WARN("data differs at position=%u, component=%u, res=%u, band=%u, "
+							 "block=%u, CPU rate =%u, plugin rate=%u",
 							 p, compno, resno, bandIndex, cblkno, totalRate, totalRatePlugin);
 					goodData = false;
 					break;
@@ -239,8 +239,8 @@ void compress_synch_with_plugin(TileProcessor* tcd, uint16_t compno, uint32_t re
 						   fabs(pass->distortiondec) >
 					   0.01)
 					{
-						GRK_WARN("distortion decrease for pass %d differs between plugin and OPJ:  "
-								 "plugin: %d, OPJ : %d",
+						GRK_WARN("distortion decrease for pass %u differs between plugin and OPJ:  "
+								 "plugin: %u, OPJ : %u",
 								 passno, pluginPass->distortionDecrease, pass->distortiondec);
 					}
 				}
@@ -260,7 +260,7 @@ void compress_synch_with_plugin(TileProcessor* tcd, uint16_t compno, uint32_t re
 			{
 				if(pluginRate != pass->rate)
 				{
-					GRK_WARN("CPU rate %d differs from plugin rate %d", pass->rate, pluginRate);
+					GRK_WARN("CPU rate %u differs from plugin rate %u", pass->rate, pluginRate);
 				}
 			}
 

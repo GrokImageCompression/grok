@@ -76,11 +76,11 @@ void ResPrecinctInfo::init(uint8_t resno, uint8_t decompLevel, grk_rect32 tileBo
 void ResPrecinctInfo::print(void)
 {
 	GRK_INFO("\n");
-	GRK_INFO("RESOLUTION PRECINCT INFO for resolution level %d", resno_);
-	GRK_INFO("precinct exponents: (%d,%d)", precWidthExp, precHeightExp);
-	GRK_INFO("precinct dimensions (projected): (%d,%d)", precWidthPRJ, precHeightPRJ);
-	GRK_INFO("number of precincts: %d", numPrecincts_);
-	GRK_INFO("subsampling (projected): (%d,%d)", dxPRJ, dyPRJ);
+	GRK_INFO("RESOLUTION PRECINCT INFO for resolution level %u", resno_);
+	GRK_INFO("precinct exponents: (%u,%u)", precWidthExp, precHeightExp);
+	GRK_INFO("precinct dimensions (projected): (%u,%u)", precWidthPRJ, precHeightPRJ);
+	GRK_INFO("number of precincts: %u", numPrecincts_);
+	GRK_INFO("subsampling (projected): (%u,%u)", dxPRJ, dyPRJ);
 	GRK_INFO("tile bounds aligned to precincts (projected) =>");
 	tileBoundsPrecPRJ.print();
 	GRK_INFO("tile bounds mapped to precinct grid (resolution) =>");
@@ -114,7 +114,7 @@ void PacketIter::printStaticState(void)
 	if(precinctInfo_)
 	{
 		GRK_INFO("Packet Iterator Static State");
-		GRK_INFO("progression bounds [C-R-P-L] : [%d %d %d %d] ", prog.compE, prog.resE, prog.precE,
+		GRK_INFO("progression bounds [C-R-P-L] : [%u %u %u %u] ", prog.compE, prog.resE, prog.precE,
 				 prog.layE);
 		for(uint32_t resno = 0; resno < comps->numresolutions; resno++)
 		{
@@ -128,7 +128,7 @@ void PacketIter::printDynamicState(void)
 	if(precinctInfo_)
 	{
 		GRK_INFO("Packet Iterator Dynamic State");
-		GRK_INFO("progression state [C-R-P-L] : [%d %d (%d,%d) %d] ", compno, resno, x, y, layno);
+		GRK_INFO("progression state [C-R-P-L] : [%u %u (%u,%u) %u] ", compno, resno, x, y, layno);
 		GRK_INFO("precinct index: %" PRIu64 ".", precinctIndex);
 	}
 }

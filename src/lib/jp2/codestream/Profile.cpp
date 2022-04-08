@@ -376,7 +376,7 @@ bool Profile::is_imf_compliant(grk_cparameters* parameters, GrkImage* image)
 	if(parameters->cblockw_init != 32 || parameters->cblockh_init != 32)
 	{
 		GRK_WARN("IMF profile requires code block size to be 32x32.\n"
-				 "-> Compression parameter set to %dx%u.\n"
+				 "-> Compression parameter set to %ux%u.\n"
 				 "-> Non-IMF code stream will be generated",
 				 parameters->cblockw_init, parameters->cblockh_init);
 		ret = false;
@@ -873,7 +873,7 @@ bool Profile::is_broadcast_compliant(grk_cparameters* parameters, GrkImage* imag
 		 (parameters->cblockw_init == 128 && parameters->cblockh_init == 128)))
 	{
 		GRK_WARN("Broadcast profile require each code block dimension to be in [32,64,128].\n"
-				 "-> %dx%u is not valid.\n"
+				 "-> %ux%u is not valid.\n"
 				 "-> Non-broadcast code stream will be generated",
 				 parameters->cblockw_init, parameters->cblockh_init);
 		ret = false;
