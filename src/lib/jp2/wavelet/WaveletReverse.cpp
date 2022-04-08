@@ -1712,18 +1712,18 @@ Params97 WaveletReverse::makeParams97(dwt_data<vec4f>* dwt, bool isBandL, bool s
 };
 
 template<typename T, typename S>
-struct TaskInfo
+struct decompress_job
 {
-	TaskInfo(S data, grk_buf2d_simple<T> winLL, grk_buf2d_simple<T> winHL,
+	decompress_job(S data, grk_buf2d_simple<T> winLL, grk_buf2d_simple<T> winHL,
 				   grk_buf2d_simple<T> winLH, grk_buf2d_simple<T> winHH,
 				   grk_buf2d_simple<T> winDest, uint32_t indexMin, uint32_t indexMax)
 		: data(data), winLL(winLL), winHL(winHL), winLH(winLH), winHH(winHH), winDest(winDest),
 		  indexMin_(indexMin), indexMax_(indexMax)
 	{}
-	TaskInfo(S data, uint32_t indexMin, uint32_t indexMax)
+	decompress_job(S data, uint32_t indexMin, uint32_t indexMax)
 		: data(data), indexMin_(indexMin), indexMax_(indexMax)
 	{}
-	~TaskInfo()
+	~decompress_job()
 	{
 		data.release();
 	}
@@ -1868,120 +1868,114 @@ bool WaveletReverse::decompress_partial_tile(ISparseCanvas* sa)
 				goto cleanup;
 		}
 		auto executor_h = [this, resno, sa, resWindowRect,
-						   &decompressor](TaskInfo<T, dwt_data<T>>* taskInfo) {
+						   &decompressor](decompress_job<T, dwt_data<T>>* job) {
+			GRK_UNUSED(compno_);
 			GRK_UNUSED(resno);
-			if (!success_){
-				delete taskInfo;
-				return;
-			}
-			for(uint32_t j = taskInfo->indexMin_; j < taskInfo->indexMax_; j += HORIZ_PASS_HEIGHT)
+			for(uint32_t j = job->indexMin_; j < job->indexMax_; j += HORIZ_PASS_HEIGHT)
 			{
-				auto height = std::min<uint32_t>((uint32_t)HORIZ_PASS_HEIGHT, taskInfo->indexMax_ - j);
+				auto height = std::min<uint32_t>((uint32_t)HORIZ_PASS_HEIGHT, job->indexMax_ - j);
 #ifdef GRK_DEBUG_VALGRIND
 				// GRK_INFO("H: compno = %d, resno = %d,y begin = %d, height = %d,", compno, resno,
 				// j, height);
 				uint32_t len =
-					(taskInfo->data.win_l.length() + taskInfo->data.win_h.length()) * HORIZ_PASS_HEIGHT;
+					(job->data.win_l.length() + job->data.win_h.length()) * HORIZ_PASS_HEIGHT;
 				GRK_UNUSED(len);
 				std::ostringstream ss;
 #endif
-				taskInfo->data.memL = taskInfo->data.mem + taskInfo->data.parity;
-				taskInfo->data.memH = taskInfo->data.mem + (int64_t)(!taskInfo->data.parity) +
-								 2 * ((int64_t)taskInfo->data.win_h.x0 - (int64_t)taskInfo->data.win_l.x0);
-				decompressor.interleave_h(&taskInfo->data, sa, j, height);
+				job->data.memL = job->data.mem + job->data.parity;
+				job->data.memH = job->data.mem + (int64_t)(!job->data.parity) +
+								 2 * ((int64_t)job->data.win_h.x0 - (int64_t)job->data.win_l.x0);
+				decompressor.interleave_h(&job->data, sa, j, height);
 #ifdef GRK_DEBUG_VALGRIND
-				auto ptr = ((uint64_t)taskInfo->data.memL < (uint64_t)taskInfo->data.memH) ? taskInfo->data.memL
-																				 : taskInfo->data.memH;
+				auto ptr = ((uint64_t)job->data.memL < (uint64_t)job->data.memH) ? job->data.memL
+																				 : job->data.memH;
 				ss << "H interleave : compno = " << (uint32_t)compno
 				   << ", resno= " << (uint32_t)(resno) << ", x begin = " << j
 				   << ", total samples = " << len;
 				grk_memcheck_all<int32_t>((int32_t*)ptr, len, ss.str());
 #endif
-				taskInfo->data.memL = taskInfo->data.mem;
-				taskInfo->data.memH =
-					taskInfo->data.mem + ((int64_t)taskInfo->data.win_h.x0 - (int64_t)taskInfo->data.win_l.x0);
-				decompressor.decompress_h(&taskInfo->data);
+				job->data.memL = job->data.mem;
+				job->data.memH =
+					job->data.mem + ((int64_t)job->data.win_h.x0 - (int64_t)job->data.win_l.x0);
+				decompressor.decompress_h(&job->data);
 #ifdef GRK_DEBUG_VALGRIND
 				ss.clear();
 				ss << "H decompress uninitialized value: compno = " << (uint32_t)compno
 				   << ", resno= " << (uint32_t)(resno) << ", x begin = " << j
 				   << ", total samples = " << len;
-				grk_memcheck_all<int32_t>((int32_t*)taskInfo->data.mem, len, ss.str());
+				grk_memcheck_all<int32_t>((int32_t*)job->data.mem, len, ss.str());
 #endif
 				if(!sa->write(resno, BAND_ORIENT_LL,
 							  grk_rect32(resWindowRect.x0, j, resWindowRect.x1, j + height),
-							  (int32_t*)(taskInfo->data.mem + (int64_t)resWindowRect.x0 -
-										 2 * (int64_t)taskInfo->data.win_l.x0),
+							  (int32_t*)(job->data.mem + (int64_t)resWindowRect.x0 -
+										 2 * (int64_t)job->data.win_l.x0),
 							  HORIZ_PASS_HEIGHT, 1, true))
 				{
 					GRK_ERROR("sparse array write failure");
-					delete taskInfo;
-					success_ = false;
-					return;
+					delete job;
+					return 1;
 				}
 			}
-			delete taskInfo;
+			delete job;
+			return 0;
 		};
 		auto executor_v = [this, resno, sa, resWindowRect,
-						   &decompressor](TaskInfo<T, dwt_data<T>>* taskInfo) {
+						   &decompressor](decompress_job<T, dwt_data<T>>* job) {
+			GRK_UNUSED(compno_);
 			GRK_UNUSED(resno);
-			if (!success_){
-				delete taskInfo;
-				return;
-			}
-			for(uint32_t j = taskInfo->indexMin_; j < taskInfo->indexMax_; j += VERT_PASS_WIDTH)
+			for(uint32_t j = job->indexMin_; j < job->indexMax_; j += VERT_PASS_WIDTH)
 			{
-				auto width = std::min<uint32_t>(VERT_PASS_WIDTH, (taskInfo->indexMax_ - j));
+				auto width = std::min<uint32_t>(VERT_PASS_WIDTH, (job->indexMax_ - j));
 #ifdef GRK_DEBUG_VALGRIND
 				// GRK_INFO("V: compno = %d, resno = %d, x begin = %d, width = %d", compno, resno,
 				// j, width);
 				uint32_t len =
-					(taskInfo->data.win_l.length() + taskInfo->data.win_h.length()) * VERT_PASS_WIDTH;
+					(job->data.win_l.length() + job->data.win_h.length()) * VERT_PASS_WIDTH;
 				GRK_UNUSED(len);
 				std::ostringstream ss;
 #endif
-				taskInfo->data.memL = taskInfo->data.mem + (taskInfo->data.parity) * VERT_PASS_WIDTH;
-				taskInfo->data.memH = taskInfo->data.mem +
-								 ((!taskInfo->data.parity) +
-								  2 * ((int64_t)taskInfo->data.win_h.x0 - (int64_t)taskInfo->data.win_l.x0)) *
+				job->data.memL = job->data.mem + (job->data.parity) * VERT_PASS_WIDTH;
+				job->data.memH = job->data.mem +
+								 ((!job->data.parity) +
+								  2 * ((int64_t)job->data.win_h.x0 - (int64_t)job->data.win_l.x0)) *
 									 VERT_PASS_WIDTH;
-				decompressor.interleave_v(&taskInfo->data, sa, j, width);
+				decompressor.interleave_v(&job->data, sa, j, width);
 #ifdef GRK_DEBUG_VALGRIND
-				auto ptr = ((uint64_t)taskInfo->data.memL < (uint64_t)taskInfo->data.memH) ? taskInfo->data.memL
-																				 : taskInfo->data.memH;
+				auto ptr = ((uint64_t)job->data.memL < (uint64_t)job->data.memH) ? job->data.memL
+																				 : job->data.memH;
 				ss << "V interleave: compno = " << (uint32_t)compno
 				   << ", resno= " << (uint32_t)(resno) << ", x begin = " << j
 				   << ", total samples = " << len;
 				grk_memcheck_all<int32_t>((int32_t*)ptr, len, ss.str());
 #endif
-				taskInfo->data.memL = taskInfo->data.mem;
-				taskInfo->data.memH =
-					taskInfo->data.mem +
-					((int64_t)taskInfo->data.win_h.x0 - (int64_t)taskInfo->data.win_l.x0) * VERT_PASS_WIDTH;
-				decompressor.decompress_v(&taskInfo->data);
+				job->data.memL = job->data.mem;
+				job->data.memH =
+					job->data.mem +
+					((int64_t)job->data.win_h.x0 - (int64_t)job->data.win_l.x0) * VERT_PASS_WIDTH;
+				decompressor.decompress_v(&job->data);
 #ifdef GRK_DEBUG_VALGRIND
 				ss.clear();
 				ss << "V decompress: compno = " << (uint32_t)compno
 				   << ", resno= " << (uint32_t)(resno) << ", x begin = " << j
 				   << ", total samples = " << len;
-				grk_memcheck_all<int32_t>((int32_t*)taskInfo->data.mem, len, ss.str());
+				grk_memcheck_all<int32_t>((int32_t*)job->data.mem, len, ss.str());
 #endif
 				if(!sa->write(resno, BAND_ORIENT_LL,
 							  grk_rect32(j, resWindowRect.y0, j + width,
-										 resWindowRect.y0 + taskInfo->data.win_l.length() +
-											 taskInfo->data.win_h.length()),
-							  (int32_t*)(taskInfo->data.mem + ((int64_t)resWindowRect.y0 -
-														  2 * (int64_t)taskInfo->data.win_l.x0) *
+										 resWindowRect.y0 + job->data.win_l.length() +
+											 job->data.win_h.length()),
+							  (int32_t*)(job->data.mem + ((int64_t)resWindowRect.y0 -
+														  2 * (int64_t)job->data.win_l.x0) *
 															 VERT_PASS_WIDTH),
 							  1, VERT_PASS_WIDTH * sizeof(T) / sizeof(int32_t), true))
 				{
 					GRK_ERROR("Sparse array write failure");
-					delete taskInfo;
-					success_ = false;
-					return;
+					delete job;
+					return 1;
 				}
 			}
-			delete taskInfo;
+			delete job;
+			return 0;
 		};
 
 		// 3. calculate synthesis
@@ -1996,30 +1990,29 @@ bool WaveletReverse::decompress_partial_tile(ISparseCanvas* sa)
 			uint32_t num_rows = splitWindowRect[k].height();
 			if(num_rows < numTasks)
 				numTasks = num_rows;
-			if (numTasks == 0)
-				continue;
 			uint32_t incrPerJob = numTasks ? (num_rows / numTasks) : 0;
 			if(numThreads == 1)
 				numTasks = 1;
+			bool blockError = false;
 			for(uint32_t j = 0; j < numTasks; ++j)
 			{
-				auto taskInfo = new TaskInfo<T, dwt_data<T>>(
+				auto job = new decompress_job<T, dwt_data<T>>(
 					horiz, splitWindowRect[k].y0 + j * incrPerJob,
 					j < (numTasks - 1U) ? splitWindowRect[k].y0 + (j + 1U) * incrPerJob
 									   : splitWindowRect[k].y1);
-				if(!taskInfo->data.alloc(dataLength, pad))
+				if(!job->data.alloc(dataLength, pad))
 				{
 					GRK_ERROR("Out of memory");
-					delete taskInfo;
+					delete job;
 					goto cleanup;
 				}
 				if(numThreads > 1)
 					resFlow->waveletHoriz_->nextTask()->work(
-						[taskInfo, executor_h] { executor_h(taskInfo); });
+						[job, executor_h, &blockError] { blockError = executor_h(job); });
 				else
-					executor_h(taskInfo);
+					blockError = (executor_h(job) != 0);
 			}
-			if(!success_)
+			if(blockError)
 				goto cleanup;
 		}
 		dataLength = (resWindowRect.height() + 2 * FILTER_WIDTH) * VERT_PASS_WIDTH * sizeof(T) /
@@ -2037,22 +2030,22 @@ bool WaveletReverse::decompress_partial_tile(ISparseCanvas* sa)
 			numTasks = 1;
 		for(uint32_t j = 0; j < numTasks; ++j)
 		{
-			auto taskInfo = new TaskInfo<T, dwt_data<T>>(
+			auto job = new decompress_job<T, dwt_data<T>>(
 				vert, resWindowRect.x0 + j * incrPerJob,
 				j < (numTasks - 1U) ? resWindowRect.x0 + (j + 1U) * incrPerJob : resWindowRect.x1);
-			if(!taskInfo->data.alloc(dataLength, pad))
+			if(!job->data.alloc(dataLength, pad))
 			{
 				GRK_ERROR("Out of memory");
-				delete taskInfo;
+				delete job;
 				goto cleanup;
 			}
 			if(numThreads > 1)
 				resFlow->waveletVert_->nextTask()->work(
-					[taskInfo, executor_v, &blockError] { executor_v(taskInfo); });
+					[job, executor_v, &blockError] { blockError = executor_v(job); });
 			else
-				executor_v(taskInfo);
+				blockError = (executor_v(job) != 0);
 		}
-		if(!success_)
+		if(blockError)
 			goto cleanup;
 	}
 
@@ -2092,7 +2085,7 @@ cleanup:
 WaveletReverse::WaveletReverse(TileProcessor* tileProcessor, TileComponent* tilec, uint16_t compno,
 							   grk_rect32 window, uint8_t numres, uint8_t qmfbid)
 	: tileProcessor_(tileProcessor), scheduler_(tileProcessor->getScheduler()), tilec_(tilec),
-	  compno_(compno), window_(window), numres_(numres), qmfbid_(qmfbid), success_(true)
+	  compno_(compno), window_(window), numres_(numres), qmfbid_(qmfbid)
 {}
 bool WaveletReverse::decompress(void)
 {

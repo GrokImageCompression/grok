@@ -199,8 +199,6 @@ class WaveletReverse
 
 	dwt_data<vec4f> horizF_;
 	dwt_data<vec4f> vertF_;
-
-	std::atomic<bool> success_;
 };
 
 } // namespace grk
