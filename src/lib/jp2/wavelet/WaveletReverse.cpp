@@ -1770,7 +1770,6 @@ template<typename T, uint32_t FILTER_WIDTH, uint32_t VERT_PASS_WIDTH, typename D
 
 bool WaveletReverse::decompress_partial_tile(ISparseCanvas* sa)
 {
-	bool rc = false;
 	uint8_t numresolutions = tilec_->numresolutions;
 	auto buf = tilec_->getBuffer();
 	auto fullRes = tilec_->tileCompResolution;
@@ -1788,6 +1787,8 @@ bool WaveletReverse::decompress_partial_tile(ISparseCanvas* sa)
 	assert(fullResTopLevel->intersection(synthesisWindow) == synthesisWindow);
 	synthesisWindow =
 		synthesisWindow.pan(-(int64_t)fullResTopLevel->x0, -(int64_t)fullResTopLevel->y0);
+	if (!synthesisWindow.non_empty())
+		return true;
 	if(numres_ == 1U)
 	{
 		// simply copy into tile component buffer
@@ -1851,11 +1852,11 @@ bool WaveletReverse::decompress_partial_tile(ISparseCanvas* sa)
 			auto temp = tileBandWindowRect[i];
 			if(!sa->alloc(temp.growIPL(2 * FILTER_WIDTH, fullRes->width(), fullRes->height()),
 						  true))
-				goto cleanup;
+				return false;
 		}
 		auto resWindowRect = grk_rect32(buf->getResWindowBufferREL(resno));
 		if(!sa->alloc(resWindowRect, true))
-			goto cleanup;
+			return false;
 		// two windows formed by horizontal pass and used as input for vertical pass
 		grk_rect32 splitWindowRect[SPLIT_NUM_ORIENTATIONS];
 		splitWindowRect[SPLIT_L] = grk_rect32(buf->getResWindowBufferSplitREL(resno, SPLIT_L));
@@ -1865,7 +1866,7 @@ bool WaveletReverse::decompress_partial_tile(ISparseCanvas* sa)
 			auto temp = splitWindowRect[k];
 			if(!sa->alloc(temp.growIPL(2 * FILTER_WIDTH, fullRes->width(), fullRes->height()),
 						  true))
-				goto cleanup;
+				return false;
 		}
 		auto executor_h = [this, resno, sa, resWindowRect,
 						   &decompressor](TaskInfo<T, dwt_data<T>>* taskInfo) {
@@ -1982,7 +1983,7 @@ bool WaveletReverse::decompress_partial_tile(ISparseCanvas* sa)
 		horiz.resno = resno;
 		size_t dataLength = (splitWindowRect[0].width() + 2 * FILTER_WIDTH) * HORIZ_PASS_HEIGHT;
 		auto resFlow = imageComponentFlow->getResFlow(resno - 1);
-		for(uint32_t k = 0; k < 2; ++k)
+		for(uint32_t k = 0; k < 2 && dataLength; ++k)
 		{
 			uint32_t numTasks = numThreads;
 			uint32_t num_rows = splitWindowRect[k].height();
@@ -1991,17 +1992,24 @@ bool WaveletReverse::decompress_partial_tile(ISparseCanvas* sa)
 			uint32_t incrPerJob = numTasks ? (num_rows / numTasks) : 0;
 			if(numThreads == 1)
 				numTasks = 1;
+			if (incrPerJob == 0)
+				continue;
 			for(uint32_t j = 0; j < numTasks; ++j)
 			{
+				uint32_t indexMin = splitWindowRect[k].y0 + j * incrPerJob;
+				uint32_t indexMax = j < (numTasks - 1U) ? splitWindowRect[k].y0 + (j + 1U) * incrPerJob
+						   : splitWindowRect[k].y1;
+				if (indexMin == indexMax)
+					continue;
 				auto taskInfo = new TaskInfo<T, dwt_data<T>>(
-					horiz, splitWindowRect[k].y0 + j * incrPerJob,
-					j < (numTasks - 1U) ? splitWindowRect[k].y0 + (j + 1U) * incrPerJob
-									   : splitWindowRect[k].y1);
+					horiz,
+					indexMin,
+					indexMax);
 				if(!taskInfo->data.alloc(dataLength, pad))
 				{
 					GRK_ERROR("Out of memory");
 					delete taskInfo;
-					goto cleanup;
+					return false;
 				}
 				if(numThreads > 1)
 					resFlow->waveletHoriz_->nextTask()->work(
@@ -2022,16 +2030,18 @@ bool WaveletReverse::decompress_partial_tile(ISparseCanvas* sa)
 		uint32_t incrPerJob = numTasks ? (numColumns / numTasks) : 0;
 		if(numThreads == 1)
 			numTasks = 1;
-		for(uint32_t j = 0; j < numTasks; ++j)
+		for(uint32_t j = 0; j < numTasks && incrPerJob > 0 && dataLength; ++j)
 		{
+			uint32_t indexMin = resWindowRect.x0 + j * incrPerJob;
+			uint32_t indexMax = j < (numTasks - 1U) ? resWindowRect.x0 + (j + 1U) * incrPerJob : resWindowRect.x1;
 			auto taskInfo = new TaskInfo<T, dwt_data<T>>(
-				vert, resWindowRect.x0 + j * incrPerJob,
-				j < (numTasks - 1U) ? resWindowRect.x0 + (j + 1U) * incrPerJob : resWindowRect.x1);
+				vert, indexMin,
+				indexMax);
 			if(!taskInfo->data.alloc(dataLength, pad))
 			{
 				GRK_ERROR("Out of memory");
 				delete taskInfo;
-				goto cleanup;
+				return false;;
 			}
 			if(numThreads > 1)
 				resFlow->waveletVert_->nextTask()->work(
@@ -2069,10 +2079,8 @@ bool WaveletReverse::decompress_partial_tile(ISparseCanvas* sa)
 		}
 	}
 #endif
-	rc = true;
 
-cleanup:
-	return rc;
+	return true;
 }
 WaveletReverse::WaveletReverse(TileProcessor* tileProcessor, TileComponent* tilec, uint16_t compno,
 							   grk_rect32 window, uint8_t numres, uint8_t qmfbid)
