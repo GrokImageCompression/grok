@@ -336,16 +336,14 @@ bool CodeStreamDecompress::setDecompressWindow(grk_rect_single window)
 
 		GRK_INFO("decompress window canvas coordinates set to (%u,%u,%u,%u)", compositeImage->x0,
 				 compositeImage->y0, compositeImage->x1, compositeImage->y1);
+		auto scaledX0 = float(compositeImage->x0 - image->x0) / float(image->width());
+		auto scaledY0 = float(compositeImage->y0 - image->y0) / float(image->height());
+		auto scaledX1 = float(compositeImage->x1 - image->x0) / float(image->width());
+		auto scaledY1 = float(compositeImage->y1 - image->y0) / float(image->height());
 		GRK_INFO("window scaled coordinates : (%f,%f,%f,%f)",
-				 float(compositeImage->x0 - image->x0) / float(image->width()),
-				 float(compositeImage->y0 - image->x0) / float(image->height()),
-				 float(compositeImage->x1 - image->x0) / float(image->width()),
-				 float(compositeImage->y1 - image->x0) / float(image->height()));
+				scaledX0,scaledY0,scaledX1,	scaledY1);
 		GRK_INFO("window scaled coordinates in ROW-COLUMN format : \"{%f,%f},{%f,%f}\"",
-				 float(compositeImage->y0 - image->x0) / float(image->height()),
-				 float(compositeImage->x0 - image->x0) / float(image->width()),
-				 float(compositeImage->y1 - image->x0) / float(image->height()),
-				 float(compositeImage->x1 - image->x0) / float(image->width()));
+				scaledX0,scaledY0,scaledX1,	scaledY1);
 		GRK_INFO("image canvas coordinates :  (%u,%u,%u,%u)", image->x0, image->y0, image->x1,
 				 image->y1);
 	}
