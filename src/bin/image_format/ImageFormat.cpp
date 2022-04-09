@@ -32,7 +32,7 @@ static bool reclaimCallback(grk_serialize_buf buffer, void* serialize_user_data)
 ImageFormat::ImageFormat()
 	: image_(nullptr), fileIO_(new FileStreamIO()), fileStream_(nullptr), fileName_(""),
 	  compressionLevel_(GRK_DECOMPRESS_COMPRESSION_LEVEL_DEFAULT), useStdIO_(false),
-	  encodeState(IMAGE_FORMAT_UNENCODED)
+	  encodeState(IMAGE_FORMAT_UNENCODED), applicationOrchestratedEncoding_(false)
 {}
 ImageFormat::~ImageFormat()
 {
@@ -106,7 +106,7 @@ bool ImageFormat::encodePixelsCore(grk_serialize_buf pixels)
 		// for synchronous encode, we immediately return the pixel buffer to the pool
 		reclaim(GrkSerializeBuf(pixels));
 #endif
-		if(serializer.allPooledRequestsComplete())
+		if(!applicationOrchestratedEncoding_ &&  serializer.allPooledRequestsComplete())
 			encodeFinish();
 	}
 

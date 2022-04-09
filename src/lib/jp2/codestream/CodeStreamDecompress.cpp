@@ -465,8 +465,11 @@ bool CodeStreamDecompress::decompressTiles(void)
 	if(!createOutputImage())
 		return false;
 
-	stripCache_.init(cp_.t_grid_width, cp_.t_height, cp_.t_grid_height, outputImage_,
-					 serializeBufferCallback, serializeUserData, serializeRegisterClientCallback);
+	if (outputImage_->canAllocInterleaved(&cp_)) {
+		stripCache_.init(cp_.t_grid_width, cp_.t_grid_height,cp_.t_height,
+						cp_.coding_params_.dec_.reduce_, outputImage_,
+						 serializeBufferCallback, serializeUserData, serializeRegisterClientCallback);
+	}
 
 	std::atomic<bool> success(true);
 	std::atomic<uint32_t> numTilesDecompressed(0);

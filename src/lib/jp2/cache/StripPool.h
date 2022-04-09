@@ -56,12 +56,14 @@ struct GrkSerializeBuf : public grk_serialize_buf
 
 struct Strip
 {
-	Strip(GrkImage* outputImage, uint16_t index, uint32_t tileHeight);
+	Strip(GrkImage* outputImage, uint16_t index, uint32_t tileHeight, uint8_t reduce);
 	~Strip(void);
 	uint32_t getIndex(void);
+	uint32_t reduceDim(uint32_t dim);
 	GrkImage* stripImg;
 	std::atomic<uint32_t> tileCounter;
 	uint32_t index_;
+	uint8_t reduce_;
 };
 
 class StripPool
@@ -70,21 +72,20 @@ class StripPool
 	StripPool(void);
 	virtual ~StripPool();
 
-	void init(uint16_t tgrid_w, uint32_t th, uint16_t tgrid_h, GrkImage* outputImg,
+	void init(uint16_t tgrid_w, uint16_t tgrid_h, uint32_t tileHeight, uint8_t reduce,
+			GrkImage* outputImg,
 			  grk_serialize_pixels_callback serializeBufferCallback, void* serializeUserData,
 			  grk_serialize_register_client_callback serializeRegisterClientCallback);
 	bool composite(GrkImage* tileImage);
 	void putBuffer(GrkSerializeBuf b);
-
   private:
 	GrkSerializeBuf getBuffer(uint64_t len);
 	std::map<uint8_t*, GrkSerializeBuf> pool;
-
 	Strip** strips;
 	uint16_t tgrid_w_;
-	uint32_t y0_;
-	uint32_t th_;
 	uint16_t tgrid_h_;
+	uint32_t tileHeight_;
+	uint32_t imageY0_;
 	uint64_t packedRowBytes_;
 
 	mutable std::mutex poolMutex;

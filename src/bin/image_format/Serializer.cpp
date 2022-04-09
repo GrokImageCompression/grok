@@ -12,7 +12,9 @@ Serializer::Serializer(void)
 {}
 void Serializer::init(grk_image* image)
 {
-	maxPooledRequests_ = ((image->y1 - image->y0) + image->rowsPerStrip - 1) / image->rowsPerStrip;
+	// we can ignore subsampling since it is disabled for library-orchestrated encoding,
+	// which is the only case where maxPooledRequests_ is utilized
+	maxPooledRequests_ = (image->comps->h + image->rowsPerStrip - 1) / image->rowsPerStrip;
 }
 void Serializer::serializeRegisterClientCallback(grk_serialize_callback reclaim_callback,
 												 void* user_data)

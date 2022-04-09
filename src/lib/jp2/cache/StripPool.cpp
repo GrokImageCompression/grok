@@ -11,15 +11,16 @@ static bool reclaimCallback(grk_serialize_buf buffer, void* serialize_user_data)
 	return true;
 }
 
-Strip::Strip(GrkImage* outputImage, uint16_t index, uint32_t tileHeight)
-	: stripImg(nullptr), tileCounter(0), index_(index)
+Strip::Strip(GrkImage* outputImage, uint16_t index, uint32_t tileHeight, uint8_t reduce)
+	: stripImg(nullptr), tileCounter(0), index_(index), reduce_(reduce)
 {
 	stripImg = new GrkImage();
 	outputImage->copyHeader(stripImg);
+
 	stripImg->y0 = outputImage->y0 + index * tileHeight;
 	stripImg->y1 = std::min<uint32_t>(outputImage->y1, stripImg->y0 + tileHeight);
-	stripImg->comps->y0 = stripImg->y0;
-	stripImg->comps->h = stripImg->y1 - stripImg->y0;
+	stripImg->comps->y0 = reduceDim(stripImg->y0);
+	stripImg->comps->h = reduceDim(stripImg->y1 - stripImg->y0);
 }
 Strip::~Strip(void)
 {
@@ -29,8 +30,11 @@ uint32_t Strip::getIndex(void)
 {
 	return index_;
 }
+uint32_t Strip::reduceDim(uint32_t dim){
+	return reduce_ ? ceildivpow2<uint32_t>( dim, reduce_) : dim;
+}
 StripPool::StripPool()
-	: strips(nullptr), tgrid_w_(0), y0_(0), th_(0), tgrid_h_(0), packedRowBytes_(0),
+	: strips(nullptr), tgrid_w_(0),tgrid_h_(0), tileHeight_(0), imageY0_(0), packedRowBytes_(0),
 	  serializeUserData_(nullptr), serializeBufferCallback_(nullptr)
 {}
 StripPool::~StripPool()
@@ -41,7 +45,8 @@ StripPool::~StripPool()
 		delete strips[i];
 	delete[] strips;
 }
-void StripPool::init(uint16_t tgrid_w, uint32_t th, uint16_t tgrid_h, GrkImage* outputImage,
+void StripPool::init(uint16_t tgrid_w, uint16_t tgrid_h,uint32_t tileHeight,uint8_t reduce,
+					GrkImage* outputImage,
 					 grk_serialize_pixels_callback serializeBufferCallback, void* serializeUserData,
 					 grk_serialize_register_client_callback serializeRegisterClientCallback)
 {
@@ -53,21 +58,21 @@ void StripPool::init(uint16_t tgrid_w, uint32_t th, uint16_t tgrid_h, GrkImage* 
 	if(serializeRegisterClientCallback)
 		serializeRegisterClientCallback(reclaimCallback, serializeUserData, this);
 	tgrid_w_ = tgrid_w;
-	y0_ = outputImage->y0;
-	th_ = th;
 	tgrid_h_ = tgrid_h;
+	imageY0_ = outputImage->y0;
+	tileHeight_ = tileHeight;
 	packedRowBytes_ = outputImage->packedRowBytes;
 	strips = new Strip*[tgrid_h];
 	for(uint16_t i = 0; i < tgrid_h_; ++i)
-		strips[i] = new Strip(outputImage, i, th_);
+		strips[i] = new Strip(outputImage, i, tileHeight,reduce);
 }
 bool StripPool::composite(GrkImage* tileImage)
 {
-	uint16_t stripId = (uint16_t)(((tileImage->y0 - y0_) + th_ - 1) / th_);
+	uint16_t stripId = (uint16_t)((tileImage->y0 - imageY0_ + tileHeight_ - 1) / tileHeight_);
 	assert(stripId < tgrid_h_);
 	auto strip = strips[stripId];
 	auto img = strip->stripImg;
-	uint64_t dataLen = packedRowBytes_ * (tileImage->y1 - tileImage->y0);
+	uint64_t dataLen = packedRowBytes_ * tileImage->comps->h;
 	if(strip->tileCounter == 0)
 	{
 		std::unique_lock<std::mutex> lk(poolMutex);
@@ -83,7 +88,7 @@ bool StripPool::composite(GrkImage* tileImage)
 		return false;
 	if(++(strip->tileCounter) == tgrid_w_)
 	{
-		GrkSerializeBuf buf = GrkSerializeBuf(img->interleavedData);
+		auto buf = GrkSerializeBuf(img->interleavedData);
 		buf.index = stripId;
 		buf.dataLen = dataLen;
 		img->interleavedData.data = nullptr;

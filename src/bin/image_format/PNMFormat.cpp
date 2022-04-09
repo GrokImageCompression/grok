@@ -162,6 +162,7 @@ bool PNMFormat::encodePixels(void)
 		if(!encodeHeader())
 			return false;
 	}
+	applicationOrchestratedEncoding_ = true;
 	for(uint32_t i = 0U; i < image_->numcomps; ++i)
 	{
 		if(!image_->comps[i].data)

@@ -731,3 +731,6 @@ grk_decompress -i @INPUT_NR_PATH@/boats_cprl.j2k -o @TEMP_PATH@/boats_cprl.tif -
 grk_decompress -i @INPUT_NR_PATH@/boats_rpcl.j2k -o @TEMP_PATH@/boats_rpcl.tif -d 300,200,400,300
 
 grk_decompress -i @INPUT_NR_PATH@/crash-0a.jp2 -o @TEMP_PATH@/crash-0a.tif
+
+grk_decompress -i  @INPUT_NR_PATH@/issue205.jp2 -o @TEMP_PATH@/issue205.jp2_r0.tif
+grk_decompress -i  @INPUT_NR_PATH@/issue205.jp2 -o @TEMP_PATH@/issue205.jp2_r1.tif -r 1

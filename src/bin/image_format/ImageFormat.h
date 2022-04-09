@@ -76,4 +76,5 @@ class ImageFormat : public IImageFormat
 	mutable std::mutex encodePixelmutex;
 	BufferPool pool;
 	Serializer serializer;
+	bool applicationOrchestratedEncoding_;
 };

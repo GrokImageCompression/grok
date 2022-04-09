@@ -354,6 +354,7 @@ bool TIFFFormat::encodePixels()
 		}
 	}
 	bool success = false;
+	applicationOrchestratedEncoding_ = true;
 	serializeRegisterApplicationClient();
 
 	uint32_t height = image_->decompressHeight;

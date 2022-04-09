@@ -90,6 +90,7 @@ class GrkImage : public grk_image
 	void alloc_palette(uint8_t num_channels, uint16_t num_entries);
 	uint32_t width(void) const;
 	uint32_t height(void) const;
+	void print(void) const;
 
   private:
 	~GrkImage();

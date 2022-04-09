@@ -28,6 +28,14 @@ uint32_t GrkImage::height(void) const
 	return y1 - y0;
 }
 
+void GrkImage::print(void) const{
+	GRK_INFO("bounds: [%u,%u,%u,%u]", x0, y0, x1, y1);
+	for (uint16_t i = 0; i < numcomps; ++i){
+		auto comp = comps + i;
+		GRK_INFO("component %d bounds : [%u,%u,%u,%u]", i, comp->x0, comp->y0, comp->w, comp->h);
+	}
+}
+
 void GrkImage::copyComponent(grk_image_comp* src, grk_image_comp* dest)
 {
 	dest->dx = src->dx;
@@ -272,8 +280,8 @@ bool GrkImage::canAllocInterleaved(CodingParams* cp)
 	// packed tile width bits must be divisible by 8
 	if(((cp->t_width * numcomps * comps->prec) & 7) != 0)
 		return false;
-	// tile origin and image origin must coincide
-	if(cp->tx0 != x0 || cp->ty0 != y0)
+	// tile origin y coordinate and image origin y coordinate must coincide
+	if(cp->ty0 != y0)
 		return false;
 
 	bool supportedFileFormat =
@@ -376,7 +384,7 @@ void GrkImage::postReadHeader(CodingParams* cp)
 		}
 		if(multiTile && canAllocInterleaved(cp))
 		{
-			rowsPerStrip = cp->t_height;
+			rowsPerStrip = ceildivpow2(cp->t_height, cp->coding_params_.dec_.reduce_);
 		}
 		else
 		{
