@@ -343,7 +343,7 @@ bool CodeStreamDecompress::setDecompressWindow(grk_rect_single window)
 		GRK_INFO("window scaled coordinates : (%f,%f,%f,%f)",
 				scaledX0,scaledY0,scaledX1,	scaledY1);
 		GRK_INFO("window scaled coordinates in ROW-COLUMN format : \"{%f,%f},{%f,%f}\"",
-				scaledX0,scaledY0,scaledX1,	scaledY1);
+				scaledY0,scaledX0,scaledY1,	scaledX1);
 		GRK_INFO("image canvas coordinates :  (%u,%u,%u,%u)", image->x0, image->y0, image->x1,
 				 image->y1);
 	}
