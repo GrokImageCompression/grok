@@ -994,11 +994,13 @@ bool GrkImage::applyColourManagement(void)
 		{
 			if(!forceRGB)
 			{
-				GRK_WARN(" Input file contains a color profile,\n"
-						 "but the codec is unable to store this profile"
-						 " in the output file .\n"
-						 "The profile will therefore be applied to the output"
+				GRK_WARN("");
+				GRK_WARN("The input file contains a color profile");
+				GRK_WARN("but the codec is unable to store this profile"
+						 " in the output file.");
+				GRK_WARN("The profile will therefore be applied to the output"
 						 " image before saving.");
+				GRK_WARN("");
 			}
 			if(!applyICC())
 			{
