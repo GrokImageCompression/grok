@@ -1738,6 +1738,16 @@ struct TaskInfo
 	uint32_t indexMax_;
 };
 
+struct PartialBandInfo {
+	// 1. set up windows for horizontal and vertical passes
+	grk_rect32 bandWindowRect[BAND_NUM_ORIENTATIONS];
+	// band windows in band coordinates - needed to pre-allocate sparse blocks
+	grk_rect32 tileBandWindowRect[BAND_NUM_ORIENTATIONS];
+	// two windows formed by horizontal pass and used as input for vertical pass
+	grk_rect32 splitWindowRect[SPLIT_NUM_ORIENTATIONS];
+	grk_rect32 resWindowRect;
+};
+
 /**
  * ************************************************************************************
  *
@@ -1812,6 +1822,44 @@ bool WaveletReverse::decompress_partial_tile(ISparseCanvas* sa)
 	auto imageComponentFlow = scheduler_->getImageComponentFlow(compno_);
 	if(numThreads > 1)
 		imageComponentFlow->waveletFinalCopy_->nextTask()->work([final_read] { final_read(); });
+	// pre-allocate all blocks
+	std::vector<PartialBandInfo> resBandInfo;
+	for(uint8_t resno = 1; resno < numres_; resno++){
+		PartialBandInfo bandInfo;
+
+		bandInfo.bandWindowRect[BAND_ORIENT_LL] =
+			grk_rect32(buf->getBandWindowBufferPaddedREL(resno, BAND_ORIENT_LL));
+		bandInfo.bandWindowRect[BAND_ORIENT_HL] =
+			grk_rect32(buf->getBandWindowBufferPaddedREL(resno, BAND_ORIENT_HL));
+		bandInfo.bandWindowRect[BAND_ORIENT_LH] =
+			grk_rect32(buf->getBandWindowBufferPaddedREL(resno, BAND_ORIENT_LH));
+		bandInfo.bandWindowRect[BAND_ORIENT_HH] =
+			grk_rect32(buf->getBandWindowBufferPaddedREL(resno, BAND_ORIENT_HH));
+
+		bandInfo.tileBandWindowRect[BAND_ORIENT_LL] = bandInfo.bandWindowRect[BAND_ORIENT_LL];
+		bandInfo.tileBandWindowRect[BAND_ORIENT_HL] =
+				bandInfo.bandWindowRect[BAND_ORIENT_HL].pan(fullRes->tileBand[BAND_INDEX_LH].width(), 0);
+		bandInfo.tileBandWindowRect[BAND_ORIENT_LH] =
+				bandInfo.bandWindowRect[BAND_ORIENT_LH].pan(0, fullRes->tileBand[BAND_INDEX_HL].height());
+		bandInfo.tileBandWindowRect[BAND_ORIENT_HH] = bandInfo.bandWindowRect[BAND_ORIENT_HH].pan(
+			fullRes->tileBand[BAND_INDEX_LH].width(), fullRes->tileBand[BAND_INDEX_HL].height());
+		// 2. pre-allocate sparse blocks
+		for(uint32_t i = 0; i < BAND_NUM_ORIENTATIONS; ++i)
+		{
+			auto temp = bandInfo.tileBandWindowRect[i];
+			if(!sa->alloc(temp.growIPL(2 * FILTER_WIDTH, fullRes->width(), fullRes->height()),
+						  true))
+				return false;
+		}
+		bandInfo.resWindowRect = grk_rect32(buf->getResWindowBufferREL(resno));
+		if(!sa->alloc(bandInfo.resWindowRect, true))
+			return false;
+		bandInfo.splitWindowRect[SPLIT_L] = grk_rect32(buf->getResWindowBufferSplitREL(resno, SPLIT_L));
+		bandInfo.splitWindowRect[SPLIT_H] = grk_rect32(buf->getResWindowBufferSplitREL(resno, SPLIT_H));
+
+		resBandInfo.push_back(bandInfo);
+	}
+
 	for(uint8_t resno = 1; resno < numres_; resno++)
 	{
 		auto fullResLower = fullRes;
@@ -1825,50 +1873,15 @@ bool WaveletReverse::decompress_partial_tile(ISparseCanvas* sa)
 		horiz.parity = fullRes->x0 & 1;
 		vert.dn_full = fullRes->height() - vert.sn_full;
 		vert.parity = fullRes->y0 & 1;
-
-		// 1. set up windows for horizontal and vertical passes
-		grk_rect32 bandWindowRect[BAND_NUM_ORIENTATIONS];
-		bandWindowRect[BAND_ORIENT_LL] =
-			grk_rect32(buf->getBandWindowBufferPaddedREL(resno, BAND_ORIENT_LL));
-		bandWindowRect[BAND_ORIENT_HL] =
-			grk_rect32(buf->getBandWindowBufferPaddedREL(resno, BAND_ORIENT_HL));
-		bandWindowRect[BAND_ORIENT_LH] =
-			grk_rect32(buf->getBandWindowBufferPaddedREL(resno, BAND_ORIENT_LH));
-		bandWindowRect[BAND_ORIENT_HH] =
-			grk_rect32(buf->getBandWindowBufferPaddedREL(resno, BAND_ORIENT_HH));
-
-		// band windows in band coordinates - needed to pre-allocate sparse blocks
-		grk_rect32 tileBandWindowRect[BAND_NUM_ORIENTATIONS];
-		tileBandWindowRect[BAND_ORIENT_LL] = bandWindowRect[BAND_ORIENT_LL];
-		tileBandWindowRect[BAND_ORIENT_HL] =
-			bandWindowRect[BAND_ORIENT_HL].pan(fullRes->tileBand[BAND_INDEX_LH].width(), 0);
-		tileBandWindowRect[BAND_ORIENT_LH] =
-			bandWindowRect[BAND_ORIENT_LH].pan(0, fullRes->tileBand[BAND_INDEX_HL].height());
-		tileBandWindowRect[BAND_ORIENT_HH] = bandWindowRect[BAND_ORIENT_HH].pan(
-			fullRes->tileBand[BAND_INDEX_LH].width(), fullRes->tileBand[BAND_INDEX_HL].height());
-		// 2. pre-allocate sparse blocks
-		for(uint32_t i = 0; i < BAND_NUM_ORIENTATIONS; ++i)
-		{
-			auto temp = tileBandWindowRect[i];
-			if(!sa->alloc(temp.growIPL(2 * FILTER_WIDTH, fullRes->width(), fullRes->height()),
-						  true))
-				return false;
-		}
-		auto resWindowRect = grk_rect32(buf->getResWindowBufferREL(resno));
-		if(!sa->alloc(resWindowRect, true))
-			return false;
-		// two windows formed by horizontal pass and used as input for vertical pass
-		grk_rect32 splitWindowRect[SPLIT_NUM_ORIENTATIONS];
-		splitWindowRect[SPLIT_L] = grk_rect32(buf->getResWindowBufferSplitREL(resno, SPLIT_L));
-		splitWindowRect[SPLIT_H] = grk_rect32(buf->getResWindowBufferSplitREL(resno, SPLIT_H));
+		PartialBandInfo &bandInfo = resBandInfo[resno-1];
 		for(uint32_t k = 0; k < SPLIT_NUM_ORIENTATIONS; ++k)
 		{
-			auto temp = splitWindowRect[k];
+			auto temp = bandInfo.splitWindowRect[k];
 			if(!sa->alloc(temp.growIPL(2 * FILTER_WIDTH, fullRes->width(), fullRes->height()),
 						  true))
 				return false;
 		}
-		auto executor_h = [this, resno, sa, resWindowRect,
+		auto executor_h = [this, resno, sa, bandInfo,
 						   &decompressor](TaskInfo<T, dwt_data<T>>* taskInfo) {
 			GRK_UNUSED(compno_);
 			GRK_UNUSED(resno);
@@ -1907,8 +1920,8 @@ bool WaveletReverse::decompress_partial_tile(ISparseCanvas* sa)
 				grk_memcheck_all<int32_t>((int32_t*)taskInfo->data.mem, len, ss.str());
 #endif
 				if(!sa->write(resno, BAND_ORIENT_LL,
-							  grk_rect32(resWindowRect.x0, j, resWindowRect.x1, j + height),
-							  (int32_t*)(taskInfo->data.mem + (int64_t)resWindowRect.x0 -
+							  grk_rect32(bandInfo.resWindowRect.x0, j, bandInfo.resWindowRect.x1, j + height),
+							  (int32_t*)(taskInfo->data.mem + (int64_t)bandInfo.resWindowRect.x0 -
 										 2 * (int64_t)taskInfo->data.win_l.x0),
 							  HORIZ_PASS_HEIGHT, 1, true))
 				{
@@ -1919,7 +1932,7 @@ bool WaveletReverse::decompress_partial_tile(ISparseCanvas* sa)
 			}
 			delete taskInfo;
 		};
-		auto executor_v = [this, resno, sa, resWindowRect,
+		auto executor_v = [this, resno, sa, bandInfo,
 						   &decompressor](TaskInfo<T, dwt_data<T>>* taskInfo) {
 			GRK_UNUSED(compno_);
 			GRK_UNUSED(resno);
@@ -1961,10 +1974,10 @@ bool WaveletReverse::decompress_partial_tile(ISparseCanvas* sa)
 				grk_memcheck_all<int32_t>((int32_t*)taskInfo->data.mem, len, ss.str());
 #endif
 				if(!sa->write(resno, BAND_ORIENT_LL,
-							  grk_rect32(j, resWindowRect.y0, j + width,
-										 resWindowRect.y0 + taskInfo->data.win_l.length() +
+							  grk_rect32(j, bandInfo.resWindowRect.y0, j + width,
+									  bandInfo.resWindowRect.y0 + taskInfo->data.win_l.length() +
 											 taskInfo->data.win_h.length()),
-							  (int32_t*)(taskInfo->data.mem + ((int64_t)resWindowRect.y0 -
+							  (int32_t*)(taskInfo->data.mem + ((int64_t)bandInfo.resWindowRect.y0 -
 														  2 * (int64_t)taskInfo->data.win_l.x0) *
 															 VERT_PASS_WIDTH),
 							  1, VERT_PASS_WIDTH * sizeof(T) / sizeof(int32_t), true))
@@ -1978,15 +1991,15 @@ bool WaveletReverse::decompress_partial_tile(ISparseCanvas* sa)
 		};
 
 		// 3. calculate synthesis
-		horiz.win_l = bandWindowRect[BAND_ORIENT_LL].dimX();
-		horiz.win_h = bandWindowRect[BAND_ORIENT_HL].dimX();
+		horiz.win_l = bandInfo.bandWindowRect[BAND_ORIENT_LL].dimX();
+		horiz.win_h = bandInfo.bandWindowRect[BAND_ORIENT_HL].dimX();
 		horiz.resno = resno;
-		size_t dataLength = (splitWindowRect[0].width() + 2 * FILTER_WIDTH) * HORIZ_PASS_HEIGHT;
+		size_t dataLength = (bandInfo.splitWindowRect[0].width() + 2 * FILTER_WIDTH) * HORIZ_PASS_HEIGHT;
 		auto resFlow = imageComponentFlow->getResFlow(resno - 1);
 		for(uint32_t k = 0; k < 2 && dataLength; ++k)
 		{
 			uint32_t numTasks = numThreads;
-			uint32_t num_rows = splitWindowRect[k].height();
+			uint32_t num_rows = bandInfo.splitWindowRect[k].height();
 			if(num_rows < numTasks)
 				numTasks = num_rows;
 			uint32_t incrPerJob = numTasks ? (num_rows / numTasks) : 0;
@@ -1996,9 +2009,9 @@ bool WaveletReverse::decompress_partial_tile(ISparseCanvas* sa)
 				continue;
 			for(uint32_t j = 0; j < numTasks; ++j)
 			{
-				uint32_t indexMin = splitWindowRect[k].y0 + j * incrPerJob;
-				uint32_t indexMax = j < (numTasks - 1U) ? splitWindowRect[k].y0 + (j + 1U) * incrPerJob
-						   : splitWindowRect[k].y1;
+				uint32_t indexMin = bandInfo.splitWindowRect[k].y0 + j * incrPerJob;
+				uint32_t indexMax = j < (numTasks - 1U) ? bandInfo.splitWindowRect[k].y0 + (j + 1U) * incrPerJob
+						   : bandInfo.splitWindowRect[k].y1;
 				if (indexMin == indexMax)
 					continue;
 				auto taskInfo = new TaskInfo<T, dwt_data<T>>(
@@ -2018,13 +2031,13 @@ bool WaveletReverse::decompress_partial_tile(ISparseCanvas* sa)
 					executor_h(taskInfo);
 			}
 		}
-		dataLength = (resWindowRect.height() + 2 * FILTER_WIDTH) * VERT_PASS_WIDTH * sizeof(T) /
+		dataLength = (bandInfo.resWindowRect.height() + 2 * FILTER_WIDTH) * VERT_PASS_WIDTH * sizeof(T) /
 					 sizeof(int32_t);
-		vert.win_l = bandWindowRect[BAND_ORIENT_LL].dimY();
-		vert.win_h = bandWindowRect[BAND_ORIENT_LH].dimY();
+		vert.win_l = bandInfo.bandWindowRect[BAND_ORIENT_LL].dimY();
+		vert.win_h = bandInfo.bandWindowRect[BAND_ORIENT_LH].dimY();
 		vert.resno = resno;
 		uint32_t numTasks = numThreads;
-		uint32_t numColumns = resWindowRect.width();
+		uint32_t numColumns = bandInfo.resWindowRect.width();
 		if(numColumns < numTasks)
 			numTasks = numColumns;
 		uint32_t incrPerJob = numTasks ? (numColumns / numTasks) : 0;
@@ -2032,8 +2045,8 @@ bool WaveletReverse::decompress_partial_tile(ISparseCanvas* sa)
 			numTasks = 1;
 		for(uint32_t j = 0; j < numTasks && incrPerJob > 0 && dataLength; ++j)
 		{
-			uint32_t indexMin = resWindowRect.x0 + j * incrPerJob;
-			uint32_t indexMax = j < (numTasks - 1U) ? resWindowRect.x0 + (j + 1U) * incrPerJob : resWindowRect.x1;
+			uint32_t indexMin = bandInfo.resWindowRect.x0 + j * incrPerJob;
+			uint32_t indexMax = j < (numTasks - 1U) ? bandInfo.resWindowRect.x0 + (j + 1U) * incrPerJob : bandInfo.resWindowRect.x1;
 			auto taskInfo = new TaskInfo<T, dwt_data<T>>(
 				vert, indexMin,
 				indexMax);
