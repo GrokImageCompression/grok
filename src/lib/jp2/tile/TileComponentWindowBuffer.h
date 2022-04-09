@@ -363,9 +363,9 @@ struct TileComponentWindowBuffer
 			bounds_ = unreducedImageCompWindow.scaleDownCeilPow2(
 				(uint32_t)(numResolutions_ - reducedNumResolutions));
 			bounds_ = bounds_.intersection(tileCompReduced);
-			assert(bounds_.isValid());
+			assert(bounds_.valid());
 			unreducedBounds_ = unreducedImageCompWindow.intersection(tileCompUnreduced);
-			assert(unreducedBounds_.isValid());
+			assert(unreducedBounds_.valid());
 		}
 		// fill resolutions vector
 		assert(reducedNumResolutions > 0);

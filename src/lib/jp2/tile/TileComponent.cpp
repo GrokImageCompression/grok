@@ -204,7 +204,7 @@ bool TileComponent::allocSparseCanvas(uint32_t numres, bool truncatedTile)
 			auto roi = buf->getBandWindowPadded(resno, band->orientation);
 			for(auto precinct : band->precincts)
 			{
-				if(!precinct->non_empty())
+				if(precinct->empty())
 					continue;
 				auto cblk_grid = precinct->getCblkGrid();
 				auto cblk_expn = precinct->getCblkExpn();
@@ -266,7 +266,7 @@ bool TileComponent::allocSparseCanvas(uint32_t numres, bool truncatedTile)
 			auto roi = buf->getBandWindowPadded(resno, band->orientation);
 			for(auto precinct : band->precincts)
 			{
-				if(!precinct->non_empty())
+				if(precinct->empty())
 					continue;
 				auto cblk_grid = precinct->getCblkGrid();
 				auto cblk_expn = precinct->getCblkExpn();
@@ -321,7 +321,7 @@ bool TileComponent::allocWindowBuffer(grk_rect32 unreducedTileCompOrImageCompWin
 	auto highestNumberOfResolutions =
 		(!isCompressor_) ? numResolutionsToDecompress : numresolutions;
 	auto maxResolution = tileCompResolution + numresolutions - 1;
-	if(!maxResolution->intersection(unreducedTileCompOrImageCompWindow).isValid())
+	if(!maxResolution->intersection(unreducedTileCompOrImageCompWindow).valid())
 	{
 		GRK_ERROR("Decompress window (%u,%u,%u,%u) must overlap image bounds (%u,%u,%u,%u)",
 				  unreducedTileCompOrImageCompWindow.x0, unreducedTileCompOrImageCompWindow.y0,

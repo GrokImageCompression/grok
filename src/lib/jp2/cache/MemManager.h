@@ -436,7 +436,7 @@ struct grk_buf2d : protected grk_buf<T, A>, public grk_rect32
 	void copy(const grk_buf2d& rhs, F filter)
 	{
 		auto inter = this->intersection(rhs);
-		if(!inter.non_empty())
+		if(inter.empty())
 			return;
 
 		T* dest = this->buf + (inter.y0 * stride + inter.x0);

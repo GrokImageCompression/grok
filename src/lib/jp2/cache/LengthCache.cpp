@@ -290,7 +290,7 @@ TileLengthMarkers::~TileLengthMarkers()
 // second validation level should be to compare TLM tile length against length
 // signaled in SOT marker - they should be equal. We don't do this for performance
 // reasons.
-bool TileLengthMarkers::isValid(void)
+bool TileLengthMarkers::valid(void)
 {
 	return valid_;
 }

@@ -69,7 +69,7 @@ char* CodeStreamCompress::convertProgressionOrder(GRK_PROG_ORDER prg_order)
 }
 bool CodeStreamCompress::mct_validation(void)
 {
-	bool isValid = true;
+	bool valid = true;
 	if((cp_.rsiz & 0x8200) == 0x8200)
 	{
 		uint32_t numTiles = cp_.t_grid_height * cp_.t_grid_width;
@@ -78,17 +78,17 @@ bool CodeStreamCompress::mct_validation(void)
 			auto tcp = cp_.tcps + i;
 			if(tcp->mct == 2)
 			{
-				isValid &= (tcp->mct_coding_matrix_ != nullptr);
+				valid &= (tcp->mct_coding_matrix_ != nullptr);
 				for(uint32_t j = 0; j < headerImage_->numcomps; ++j)
 				{
 					auto tccp = tcp->tccps + j;
-					isValid &= !(tccp->qmfbid & 1);
+					valid &= !(tccp->qmfbid & 1);
 				}
 			}
 		}
 	}
 
-	return isValid;
+	return valid;
 }
 
 bool CodeStreamCompress::start(void)
@@ -1005,7 +1005,7 @@ bool CodeStreamCompress::updateRates(void)
 }
 bool CodeStreamCompress::compressValidation()
 {
-	bool isValid = true;
+	bool valid = true;
 
 	/* ISO 15444-1:2004 states between 1 & 33
 	 * ergo (number of decomposition levels between 0 -> 32) */
@@ -1027,7 +1027,7 @@ bool CodeStreamCompress::compressValidation()
 		return false;
 	}
 
-	return isValid;
+	return valid;
 }
 bool CodeStreamCompress::write_soc()
 {

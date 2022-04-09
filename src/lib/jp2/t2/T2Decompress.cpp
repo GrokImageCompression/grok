@@ -80,7 +80,7 @@ bool T2Decompress::processPacket(TileCodingParams* tcp, PacketIter* pi, SparseBu
 		for(uint8_t bandIndex = 0; bandIndex < res->numTileBandWindows; ++bandIndex)
 		{
 			auto band = res->tileBand + bandIndex;
-			if(band->isEmpty())
+			if(band->empty())
 				continue;
 			auto paddedBandWindow =
 				tilecBuffer->getBandWindowPadded(pi->getResno(), band->orientation);
@@ -108,7 +108,7 @@ bool T2Decompress::processPacket(TileCodingParams* tcp, PacketIter* pi, SparseBu
 		for(uint32_t bandIndex = 0; bandIndex < res->numTileBandWindows; ++bandIndex)
 		{
 			auto band = res->tileBand + bandIndex;
-			if(band->isEmpty())
+			if(band->empty())
 				continue;
 			if(!band->createPrecinct(false, pi->getPrecinctIndex(), res->precinctPartitionTopLeft,
 									 res->precinctExpn, res->precinctGridWidth, res->cblkExpn))
@@ -341,7 +341,7 @@ bool T2Decompress::readPacketHeader(TileCodingParams* p_tcp, const PacketIter* p
 			for(uint32_t bandIndex = 0; bandIndex < res->numTileBandWindows; ++bandIndex)
 			{
 				auto band = res->tileBand + bandIndex;
-				if(band->isEmpty())
+				if(band->empty())
 					continue;
 				auto prc = band->getPrecinct(p_pi->getPrecinctIndex());
 				if(!prc)
@@ -556,7 +556,7 @@ bool T2Decompress::readPacketData(Resolution* res, const PacketIter* p_pi, Spars
 	for(uint32_t bandIndex = 0; bandIndex < res->numTileBandWindows; ++bandIndex)
 	{
 		auto band = res->tileBand + bandIndex;
-		if(band->isEmpty())
+		if(band->empty())
 			continue;
 		auto prc = band->getPrecinct(p_pi->getPrecinctIndex());
 		if(!prc)

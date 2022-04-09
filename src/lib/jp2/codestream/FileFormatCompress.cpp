@@ -986,7 +986,7 @@ bool FileFormatCompress::skip_jp2c(void)
 }
 bool FileFormatCompress::default_validation(void)
 {
-	bool isValid = true;
+	bool valid = true;
 	uint32_t i;
 	auto stream = codeStream->getStream();
 	assert(stream != nullptr);
@@ -995,26 +995,26 @@ bool FileFormatCompress::default_validation(void)
 
 	/* POINTER validation */
 	/* make sure a j2k codec is present */
-	isValid &= (codeStream != nullptr);
+	valid &= (codeStream != nullptr);
 
 	/* make sure a procedure list is present */
-	isValid &= (procedure_list_ != nullptr);
+	valid &= (procedure_list_ != nullptr);
 
 	/* make sure a validation list is present */
-	isValid &= (validation_list_ != nullptr);
+	valid &= (validation_list_ != nullptr);
 
 	/* PARAMETER VALIDATION */
 	/* number of components */
 	/* precision */
 	for(i = 0; i < numcomps; ++i)
-		isValid &=
+		valid &=
 			((comps[i].bpc & 0x7FU) < maxPrecisionJ2K); /* 0 is valid, ignore sign for check */
 
 	/* METH */
-	isValid &= ((meth > 0) && (meth < 3));
+	valid &= ((meth > 0) && (meth < 3));
 
-	isValid &= stream->hasSeek();
+	valid &= stream->hasSeek();
 
-	return isValid;
+	return valid;
 }
 } // namespace grk

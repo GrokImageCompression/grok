@@ -118,13 +118,13 @@ struct grk_rect
 		os << "[" << x0 << "," << y0 << "," << x1 << "," << y1 << "]";
 		return os.str();
 	}
-	bool isValid(void) const
+	bool valid(void) const
 	{
 		return x0 <= x1 && y0 <= y1;
 	}
-	bool non_empty(void) const
+	bool empty(void) const
 	{
-		return x0 < x1 && y0 < y1;
+		return x0 >= x1 || y0 >= y1;
 	}
 	bool contains(grk_pt<T> pt)
 	{

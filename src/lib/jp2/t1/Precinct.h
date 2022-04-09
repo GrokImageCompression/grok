@@ -49,7 +49,7 @@ struct PrecinctImpl
 			grk_rect32(floordivpow2(bounds->x0, cblk_expn.x), floordivpow2(bounds->y0, cblk_expn.y),
 					   ceildivpow2<uint32_t>(bounds->x1, cblk_expn.x),
 					   ceildivpow2<uint32_t>(bounds->y1, cblk_expn.y));
-		if(!cblk_grid_.isValid())
+		if(!cblk_grid_.valid())
 		{
 			GRK_ERROR("Invalid code block grid");
 			throw std::exception();
@@ -90,7 +90,7 @@ struct PrecinctImpl
 	template<typename T>
 	bool initCodeBlock(T* block, uint64_t cblkno)
 	{
-		if(block->non_empty())
+		if(!block->empty())
 			return true;
 		if(!block->init())
 			return false;

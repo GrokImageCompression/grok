@@ -389,7 +389,7 @@ bool TileProcessor::isWholeTileDecompress(uint16_t compno)
 	uint32_t shift = (uint32_t)(tilec->numresolutions - tilec->numResolutionsToDecompress);
 	/* Tolerate small margin within the reduced resolution factor to consider if */
 	/* the whole tile path must be taken */
-	return (dims.isValid() &&
+	return (dims.valid() &&
 			(shift >= 32 ||
 			 (((dims.x0 - tilec->x0) >> shift) == 0 && ((dims.y0 - tilec->y0) >> shift) == 0 &&
 			  ((tilec->x1 - dims.x1) >> shift) == 0 && ((tilec->y1 - dims.y1) >> shift) == 0)));

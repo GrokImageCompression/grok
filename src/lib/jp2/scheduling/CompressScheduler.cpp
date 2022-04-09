@@ -57,7 +57,7 @@ bool CompressScheduler::scheduleBlocks(uint16_t compno)
 					for(uint64_t cblkno = 0; cblkno < prc->getNumCblks(); ++cblkno)
 					{
 						auto cblk = prc->getCompressedBlockPtr(cblkno);
-						if(!cblk->non_empty())
+						if(cblk->empty())
 							continue;
 						if(!cblk->allocData(nominalBlockSize))
 							continue;

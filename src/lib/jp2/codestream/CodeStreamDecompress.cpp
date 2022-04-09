@@ -410,7 +410,7 @@ bool CodeStreamDecompress::decompressTile(uint16_t tileIndex)
 	auto tileBounds = cp_.getTileBounds(compositeImage, tile_x, tile_y);
 	// crop tile bounds with image bounds
 	auto croppedImageBounds = imageBounds.intersection(tileBounds);
-	if(imageBounds.non_empty() && tileBounds.non_empty() && croppedImageBounds.non_empty())
+	if(!imageBounds.empty() && !tileBounds.empty() && !croppedImageBounds.empty())
 	{
 		compositeImage->x0 = (uint32_t)croppedImageBounds.x0;
 		compositeImage->y0 = (uint32_t)croppedImageBounds.y0;
@@ -834,7 +834,7 @@ bool CodeStreamDecompress::decompressTile()
 	{
 		// if we have a TLM marker, then we can skip tiles until
 		// we get to desired tile
-		bool useTLM = cp_.tlm_markers && cp_.tlm_markers->isValid();
+		bool useTLM = cp_.tlm_markers && cp_.tlm_markers->valid();
 		if(useTLM)
 		{
 			auto currentPosition = stream_->tell();
@@ -932,10 +932,10 @@ bool CodeStreamDecompress::findNextTile(TileProcessor* tileProcessor)
 }
 bool CodeStreamDecompress::decompressValidation(void)
 {
-	bool isValid = true;
-	isValid &= (decompressorState_.getState() == DECOMPRESS_STATE_NONE);
+	bool valid = true;
+	valid &= (decompressorState_.getState() == DECOMPRESS_STATE_NONE);
 
-	return isValid;
+	return valid;
 }
 bool CodeStreamDecompress::process_marker(const marker_handler* marker_handler,
 										  uint16_t marker_size)

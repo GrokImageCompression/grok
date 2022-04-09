@@ -1797,7 +1797,7 @@ bool WaveletReverse::decompress_partial_tile(ISparseCanvas* sa)
 	assert(fullResTopLevel->intersection(synthesisWindow) == synthesisWindow);
 	synthesisWindow =
 		synthesisWindow.pan(-(int64_t)fullResTopLevel->x0, -(int64_t)fullResTopLevel->y0);
-	if (!synthesisWindow.non_empty())
+	if (synthesisWindow.empty())
 		return true;
 	if(numres_ == 1U)
 	{

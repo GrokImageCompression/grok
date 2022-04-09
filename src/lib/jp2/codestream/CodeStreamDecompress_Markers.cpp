@@ -193,7 +193,7 @@ bool CodeStreamDecompress::parseTileHeaderMarkers(bool* canDecompress)
 		GRK_ERROR("Missing SOT marker");
 		return false;
 	}
-	if(cp_.tlm_markers && cp_.tlm_markers->isValid())
+	if(cp_.tlm_markers && cp_.tlm_markers->valid())
 	{
 		// advance TLM to correct position
 		auto tilePartLengthInfo = cp_.tlm_markers->getNext();

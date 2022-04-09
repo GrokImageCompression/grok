@@ -62,7 +62,7 @@ struct Subband : public grk_rect32
 	{
 		grk_rect32::print();
 	}
-	bool isEmpty()
+	bool empty()
 	{
 		return ((x1 - x0 == 0) || (y1 - y0 == 0));
 	}
@@ -97,7 +97,7 @@ struct Subband : public grk_rect32
 
 		auto bounds = generatePrecinctBounds(precinctIndex, precinctPartitionTopLeft, precinctExpn,
 											 precinctGridWidth);
-		if(!bounds.isValid())
+		if(!bounds.valid())
 		{
 			GRK_ERROR("createPrecinct: invalid precinct bounds.");
 			return nullptr;

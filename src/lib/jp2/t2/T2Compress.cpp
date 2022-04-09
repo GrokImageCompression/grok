@@ -216,7 +216,7 @@ bool T2Compress::compressHeader(BitIO* bio, Resolution* res, uint16_t layno, uin
 			auto prc = band->precincts[precinctIndex];
 			uint64_t nb_blocks = prc->getNumCblks();
 
-			if(band->isEmpty() || !nb_blocks)
+			if(band->empty() || !nb_blocks)
 				continue;
 
 			if(prc->getInclTree())
@@ -249,7 +249,7 @@ bool T2Compress::compressHeader(BitIO* bio, Resolution* res, uint16_t layno, uin
 		auto prc = band->precincts[precinctIndex];
 		uint64_t nb_blocks = prc->getNumCblks();
 
-		if(band->isEmpty() || !nb_blocks)
+		if(band->empty() || !nb_blocks)
 			continue;
 		for(uint64_t cblkno = 0; cblkno < nb_blocks; ++cblkno)
 		{
@@ -405,7 +405,7 @@ bool T2Compress::compressPacket(TileCodingParams* tcp, PacketIter* pi, IBuffered
 		auto prc = band->precincts[precinctIndex];
 		uint64_t nb_blocks = prc->getNumCblks();
 
-		if(band->isEmpty() || !nb_blocks)
+		if(band->empty() || !nb_blocks)
 			continue;
 		for(uint64_t cblkno = 0; cblkno < nb_blocks; ++cblkno)
 		{
