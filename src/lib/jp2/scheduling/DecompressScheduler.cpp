@@ -26,6 +26,11 @@ void ResDecompressBlocks::clear(void){
 bool ResDecompressBlocks::empty(void) const{
 	return blocks_.empty();
 }
+void ResDecompressBlocks::release(void){
+	for (auto &b : blocks_)
+		delete b;
+	blocks_.clear();
+}
 
 DecompressScheduler::DecompressScheduler(TileProcessor* tileProcessor,
 										Tile* tile, TileCodingParams* tcp, uint8_t prec, bool doPostT1)
@@ -46,8 +51,11 @@ bool DecompressScheduler::schedule(uint16_t compno){
 		graph(compno);
 	}
 	uint8_t numRes = tilec->highestResolutionDecompressed + 1U;
-	if(doPostT1_ && numRes > 1 && !scheduleWavelet(compno))
+	if(doPostT1_ && numRes > 1 && !scheduleWavelet(compno)){
+		for (auto &rb : allBlocks_)
+			rb.release();
 		return false;
+	}
 
 	return true;
 }
@@ -173,6 +181,9 @@ bool DecompressScheduler::scheduleBlocks(uint16_t compno)
 		}
 		resFlowNum++;
 	}
+
+	for (auto rb : blocks)
+		allBlocks_.push_back(rb);
 
 	return true;
 }

@@ -26,6 +26,7 @@ struct ResDecompressBlocks {
 	ResDecompressBlocks(void) = default;
 	void clear(void);
 	bool empty(void) const;
+	void release(void);
 
 	std::vector<DecompressBlockExec*> blocks_;
 };
@@ -47,6 +48,7 @@ class DecompressScheduler : public Scheduler
 	TileCodingParams* tcp_;
 	uint8_t prec_;
 	bool doPostT1_;
+	DecompressBlocks allBlocks_;
 };
 
 } // namespace grk
