@@ -76,11 +76,11 @@ class StripCache
 			  GrkImage* outputImg, grk_serialize_pixels_callback serializeBufferCallback,
 			  void* serializeUserData,
 			  grk_serialize_register_client_callback serializeRegisterClientCallback);
-	bool composite(GrkImage* src);
-	void putBuffer(GrkSerializeBuf b);
+	bool ingestTile(GrkImage* src);
+	void returnBufferToPool(GrkSerializeBuf b);
 
   private:
-	GrkSerializeBuf getBuffer(uint64_t len);
+	GrkSerializeBuf getBufferFromPool(uint64_t len);
 	std::map<uint8_t*, GrkSerializeBuf> pool;
 	Strip** strips;
 	uint16_t tgrid_w_;

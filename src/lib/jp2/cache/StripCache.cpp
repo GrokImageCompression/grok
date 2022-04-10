@@ -6,7 +6,7 @@ static bool reclaimCallback(grk_serialize_buf buffer, void* serialize_user_data)
 {
 	auto pool = (StripCache*)serialize_user_data;
 	if(pool)
-		pool->putBuffer(GrkSerializeBuf(buffer));
+		pool->returnBufferToPool(GrkSerializeBuf(buffer));
 
 	return true;
 }
@@ -67,7 +67,7 @@ void StripCache::init(uint16_t tgrid_w, uint16_t tgrid_h, uint32_t tileHeight, u
 	for(uint16_t i = 0; i < tgrid_h_; ++i)
 		strips[i] = new Strip(outputImage, i, tileHeight_, reduce);
 }
-bool StripCache::composite(GrkImage* src)
+bool StripCache::ingestTile(GrkImage* src)
 {
 	uint16_t stripId = (uint16_t)((src->y0 - imageY0_ + tileHeight_ - 1) / tileHeight_);
 	assert(stripId < tgrid_h_);
@@ -81,14 +81,13 @@ bool StripCache::composite(GrkImage* src)
 		if(tileCount == 1) {
 			if(!dest->interleavedData.data)
 			{
-				dest->interleavedData = getBuffer(dataLen);
+				dest->interleavedData = getBufferFromPool(dataLen);
 				if(!dest->interleavedData.data)
 					return false;
 			}
 		}
 	}
-	bool rc = dest->compositeInterleaved(src);
-	if(!rc)
+	if(!dest->compositeInterleaved(src))
 		return false;
 	if(tileCount == tgrid_w_)
 	{
@@ -97,6 +96,7 @@ bool StripCache::composite(GrkImage* src)
 		buf.dataLen = dataLen;
 		dest->interleavedData.data = nullptr;
 		std::unique_lock<std::mutex> lk(cacheMutex_);
+		// serialize all sequential buffers in heap
 		serializeHeap.push(buf);
 		buf = serializeHeap.pop();
 		while(buf.data)
@@ -107,9 +107,9 @@ bool StripCache::composite(GrkImage* src)
 		}
 	}
 
-	return rc;
+	return true;
 }
-GrkSerializeBuf StripCache::getBuffer(uint64_t len)
+GrkSerializeBuf StripCache::getBufferFromPool(uint64_t len)
 {
 	for(auto iter = pool.begin(); iter != pool.end(); ++iter)
 	{
@@ -126,7 +126,7 @@ GrkSerializeBuf StripCache::getBuffer(uint64_t len)
 
 	return rc;
 }
-void StripCache::putBuffer(GrkSerializeBuf b)
+void StripCache::returnBufferToPool(GrkSerializeBuf b)
 {
 	assert(b.data);
 	assert(pool.find(b.data) == pool.end());

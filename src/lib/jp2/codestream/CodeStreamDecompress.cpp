@@ -552,7 +552,7 @@ bool CodeStreamDecompress::decompressTiles(void)
 					{
 						if(wholeTileDecompress && outputImage_->canAllocInterleaved(&cp_))
 						{
-							if(!stripCache_.composite(processor->getImage()))
+							if(!stripCache_.ingestTile(processor->getImage()))
 								success = false;
 						}
 						else
