@@ -323,7 +323,7 @@ bool TileComponent::allocWindowBuffer(grk_rect32 unreducedTileCompOrImageCompWin
 	auto maxResolution = tileCompResolution + numresolutions - 1;
 	if(!maxResolution->intersection(unreducedTileCompOrImageCompWindow).valid())
 	{
-		GRK_ERROR("Decompress window (%u,%u,%u,%u) must overlap image bounds (%u,%u,%u,%u)",
+		GRK_ERROR("Decompress region (%u,%u,%u,%u) must overlap image bounds (%u,%u,%u,%u)",
 				  unreducedTileCompOrImageCompWindow.x0, unreducedTileCompOrImageCompWindow.y0,
 				  unreducedTileCompOrImageCompWindow.x1, unreducedTileCompOrImageCompWindow.y1,
 				  maxResolution->x0, maxResolution->y0, maxResolution->x1, maxResolution->y1);

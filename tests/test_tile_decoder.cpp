@@ -138,7 +138,7 @@ int main(int argc, char *argv[]) {
   }
   if (!grk_decompress_set_window(codec, da_x0, da_y0, da_x1, da_y1)) {
     spdlog::error(
-        "grk_decompress_set_window: failed to set decompress window\n");
+        "grk_decompress_set_window: failed to set decompress region\n");
     goto beach;
   }
   if (!grk_decompress_tile(codec, tile_index))

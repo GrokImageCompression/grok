@@ -81,7 +81,7 @@ static void decompress_help_display(void)
 	fprintf(stdout, "Parameters:\n");
 	fprintf(stdout, "-----------\n");
 	fprintf(stdout, "\n");
-	fprintf(stdout, "  -ImgDir <directory>\n");
+	fprintf(stdout, "  -in_dir <directory>\n");
 	fprintf(stdout, "	Image file Directory path \n");
 	fprintf(stdout, "  -i <compressed file>\n");
 	fprintf(stdout, "    REQUIRED only if an Input image directory not specified\n");
@@ -179,7 +179,7 @@ static int parseCommandLine(int argc, char** argv, grk_decompress_parameters* pa
 		TCLAP::ValueArg<std::string> outputArg("o", "output", "output file", false, "", "string",
 											   cmd);
 
-		TCLAP::ValueArg<std::string> imgDirArg("y", "ImgDir", "image directory", false, "",
+		TCLAP::ValueArg<std::string> inDirArg("y", "in_dir", "image directory", false, "",
 											   "string", cmd);
 
 		TCLAP::SwitchArg verboseArg("v", "verbose", "verbose", cmd);
@@ -214,12 +214,12 @@ static int parseCommandLine(int argc, char** argv, grk_decompress_parameters* pa
 			}
 		}
 
-		if(imgDirArg.isSet())
+		if(inDirArg.isSet())
 		{
-			inputFolder->imgdirpath = (char*)malloc(imgDirArg.getValue().length() + 1);
+			inputFolder->imgdirpath = (char*)malloc(inDirArg.getValue().length() + 1);
 			if(!inputFolder->imgdirpath)
 				return 1;
-			strcpy(inputFolder->imgdirpath, imgDirArg.getValue().c_str());
+			strcpy(inputFolder->imgdirpath, inDirArg.getValue().c_str());
 			inputFolder->set_imgdir = true;
 		}
 		if(flagArg.isSet())
@@ -236,19 +236,19 @@ static int parseCommandLine(int argc, char** argv, grk_decompress_parameters* pa
 	{
 		if(!(parameters->infile[0] == 0))
 		{
-			spdlog::error("options -ImgDir and -i cannot be used together.");
+			spdlog::error("options -in_dir and -i cannot be used together.");
 			return 1;
 		}
 		if(!inputFolder->set_out_format)
 		{
-			spdlog::error("When -ImgDir is used, -OutFor <FORMAT> must be used.");
+			spdlog::error("When -in_dir is used, -out_fmt <FORMAT> must be used.");
 			spdlog::error("Only one format allowed.\n"
 						  "Valid format are PGM, PPM, PNM, PGX, BMP, TIF and RAW.");
 			return 1;
 		}
 		if(!(parameters->outfile[0] == 0))
 		{
-			spdlog::error("options -ImgDir and -o cannot be used together");
+			spdlog::error("options -in_dir and -o cannot be used together");
 			return 1;
 		}
 	}

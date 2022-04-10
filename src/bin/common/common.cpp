@@ -110,7 +110,7 @@ bool parseWindowBounds(char* inArg, float* dw_x0, float* dw_y0, float* dw_x1,	fl
 	// region must be specified by 4 values exactly
 	if(it != 4)
 	{
-		spdlog::warn("Decompress window must be specified by exactly "
+		spdlog::warn("Decompress region must be specified by exactly "
 					 "four coordinates. Ignoring specified region.");
 		return false;
 	}
@@ -118,15 +118,15 @@ bool parseWindowBounds(char* inArg, float* dw_x0, float* dw_y0, float* dw_x1,	fl
 	// don't allow negative values
 	if((val[0] < 0 || val[1] < 0 || val[2] < 0 || val[3] < 0))
 	{
-		spdlog::warn("Decompress window cannot contain negative "
+		spdlog::warn("Decompress region cannot contain negative "
 					 "values.\n Ignoring specified region ({},{},{},{}).",
 					 val[0], val[1], val[2], val[3]);
 		return false;
 	}
 	if(val[2] <= val[0] || val[3] <= val[1])
 	{
-		spdlog::warn("Decompress window must have strictly "
-					 "positive area.\n Ignoring specified window ({},{},{},{}).",
+		spdlog::warn("Decompress region must have strictly "
+					 "positive area.\n Ignoring specified region ({},{},{},{}).",
 					 val[0], val[1], val[2], val[3]);
 		return false;
 	}
@@ -141,8 +141,8 @@ bool parseWindowBounds(char* inArg, float* dw_x0, float* dw_y0, float* dw_x1,	fl
 	if (!allLessThanOne && (val[0] != 0 || val[1]!= 0 || val[2] != 1 || val[3] != 1)){
 		for (uint8_t i = 0; i < 4; ++i){
 			if (val[i] != (uint32_t)val[i]){
-				spdlog::warn("Decompress window in absolute coordinates must only contain integers."
-						"\n Ignoring specified window ({},{},{},{}).", 	 val[0], val[1], val[2], val[3]);
+				spdlog::warn("Decompress region in absolute coordinates must only contain integers."
+						"\n Ignoring specified region ({},{},{},{}).", 	 val[0], val[1], val[2], val[3]);
 			}
 		}
 	}

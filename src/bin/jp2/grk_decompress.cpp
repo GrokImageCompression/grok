@@ -121,55 +121,55 @@ static void decompress_help_display(void)
 					"Parameters:\n"
 					"-----------\n"
 					"\n"
-					"  [-y | -ImgDir] <directory> \n"
+					"  [-y | -in_dir] <directory> \n"
 					"	Compressed image file directory\n"
-					"  [-O | -OutFor] <PBM|PGM|PPM|PNM|PAM|PGX|PNG|BMP|TIF|RAW|RAWL>\n"
-					"    REQUIRED only if [ImgDir] option is used\n"
+					"  [-O | -out_fmt] <PBM|PGM|PPM|PNM|PAM|PGX|PNG|BMP|TIF|RAW|RAWL>\n"
+					"    REQUIRED only if [in_dir] option is used\n"
 					"	Output format for decompressed images.\n");
-	fprintf(stdout, "  [-i | -InputFile] <compressed file>\n"
-					"    REQUIRED only if [ImgDir] option is not specified\n"
+	fprintf(stdout, "  [-i | -in_file] <compressed file>\n"
+					"    REQUIRED only if [in_dir] option is not specified\n"
 					"    Currently accepts J2K and JP2 files. The file type\n"
 					"    is identified by parsing the beginning of the file.\n");
-	fprintf(stdout, "  [-o | -OutputFile] <decompressed file>\n"
+	fprintf(stdout, "  [-o | -out_file] <decompressed file>\n"
 					"    REQUIRED\n"
-					"    Currently accepts formats specified above (see OutFor option)\n"
+					"    Currently accepts formats specified above (see out_fmt option)\n"
 					"    Binary data is written to the file (not ascii). If a PGX\n"
 					"    filename is given, there will be as many output files as there are\n"
 					"    components: an index starting from 0 will then be appended to the\n"
 					"    output filename, just before the \"pgx\" extension. If a PGM filename\n"
 					"    is given and there are more than one component, only the first component\n"
 					"    will be written to the file.\n");
-	fprintf(stdout, "  [-a | -OutDir] <output directory>\n"
+	fprintf(stdout, "  [-a | -out_dir] <output directory>\n"
 					"    Output directory where decompressed files will be stored.\n");
-	fprintf(stdout, "  [-g | -PluginPath] <plugin path>\n"
+	fprintf(stdout, "  [-g | -plugin_path] <plugin path>\n"
 					"    Path to T1 plugin.\n");
 	fprintf(stdout, "  [-H | -num_threads] <number of threads>\n"
 					"    Number of threads used by libgrokj2k library.\n");
 	fprintf(stdout,
-			"  [-c|-Compression] <compression method>\n"
+			"  [-c|-compression] <compression method>\n"
 			"	Compress output image data. Currently, this option is only applicable when\n"
 			"	output format is set to TIF. Possible values are:\n"
 			"	{NONE, LZW,JPEG, PACKBITS. ZIP,LZMA,ZSTD,WEBP}. Default value is NONE.\n");
-	fprintf(stdout, "   [L|-CompressionLevel] <compression level>\n"
+	fprintf(stdout, "   [L|-compression_level] <compression level>\n"
 					"    \"Quality\" of compression. Currently only implemented for PNG format.\n"
 					"	Default value is set to 9 (Z_BEST_COMPRESSION).\n"
 					"	Other options are 0 (Z_NO_COMPRESSION) and 1 (Z_BEST_SPEED)\n");
-	fprintf(stdout, "  [-t | -TileInfo] <tile index>\n"
+	fprintf(stdout, "  [-t | -tile_info] <tile index>\n"
 					"    Index of tile to be decompressed\n");
 	fprintf(
 		stdout,
-		"  [-d | -DecodeWindow] <x0,y0,x1,y1>\n"
-		"    Top left-hand corner and bottom right-hand corner of window to be decompressed.\n");
-	fprintf(stdout, "  [-r | -Reduce] <reduce factor>\n"
+		"  [-d | -region] <x0,y0,x1,y1>\n"
+		"    Top left-hand corner and bottom right-hand corner of region to be decompressed.\n");
+	fprintf(stdout, "  [-r | -reduce] <reduce factor>\n"
 					"    Set the number of highest resolution levels to be discarded. The\n"
 					"    image resolution is effectively divided by 2 to the power of the\n"
 					"    number of discarded levels. The reduce factor is limited by the\n"
 					"    smallest total number of decomposition levels among tiles.\n"
-					"  [-l | -Layer] <number of quality layers to decompress>\n"
+					"  [-l | -layer] <number of quality layers to decompress>\n"
 					"    Set the maximum number of quality layers to decompress. If there are\n"
 					"    fewer quality layers than the specified number, all the quality layers\n"
 					"    are decompressed.\n");
-	fprintf(stdout, "  [-p | -Precision] <comp 0 precision>[C|S][,<comp 1 precision>[C|S][,...]]\n"
+	fprintf(stdout, "  [-p | -precision] <comp 0 precision>[C|S][,<comp 1 precision>[C|S][,...]]\n"
 					"    OPTIONAL\n"
 					"    Force the precision (bit depth) of components.\n");
 	fprintf(stdout,
@@ -180,16 +180,16 @@ static void decompress_help_display(void)
 			"    If 'C' is specified (default), values are clipped.\n"
 			"    If 'S' is specified, values are scaled.\n"
 			"    A 0 value can be specified (meaning original bit depth).\n");
-	fprintf(stdout, "  [-f | -force-rgb]\n"
+	fprintf(stdout, "  [-f | -force_rgb]\n"
 					"    Force output image colorspace to RGB\n"
 					"  [-u | -upsample]\n"
 					"    components will be upsampled to image size\n"
-					"  [-s | -split-pnm]\n"
+					"  [-s | -split_pnm]\n"
 					"    Split output components to different files when writing to PNM\n");
 	fprintf(
 		stdout,
-		"  [-X | -XML] <xml file name> \n"
-		"    Store XML metadata to file. File name will be set to \"xml file name\" + \".xml\"\n");
+		"  [-X | -xml] <xml file name> \n"
+		"    Store xml metadata to file. File name will be set to \"xml file name\" + \".xml\"\n");
 	fprintf(stdout, "  [-W | -logfile] <log file name>\n"
 					"    log to file. File name will be set to \"log file name\"\n");
 	fprintf(stdout, "\n");
@@ -412,56 +412,56 @@ int GrkDecompress::parseCommandLine(int argc, char** argv, DecompressInitParams*
 		GrokOutput output;
 		cmd.setOutput(&output);
 
-		TCLAP::ValueArg<std::string> outDirArg("a", "OutDir", "Output Directory", false, "",
+		TCLAP::ValueArg<std::string> outDirArg("a", "out_dir", "Output Directory", false, "",
 											   "string", cmd);
-		TCLAP::ValueArg<std::string> compressionArg("c", "Compression", "Compression Type", false,
+		TCLAP::ValueArg<std::string> compressionArg("c", "compression", "compression Type", false,
 													"", "string", cmd);
-		TCLAP::ValueArg<std::string> decodeRegionArg("d", "DecodeRegion", "Decompress Region",
+		TCLAP::ValueArg<std::string> decodeRegionArg("d", "region", "Decompress Region",
 													 false, "", "string", cmd);
 		TCLAP::ValueArg<uint32_t> repetitionsArg(
-			"e", "Repetitions",
+			"e", "repetitions",
 			"Number of compress repetitions, for either a folder or a single file", false, 0,
 			"unsigned integer", cmd);
-		TCLAP::SwitchArg forceRgbArg("f", "force-rgb", "Force RGB", cmd);
-		TCLAP::ValueArg<std::string> pluginPathArg("g", "PluginPath", "Plugin path", false, "",
+		TCLAP::SwitchArg forceRgbArg("f", "force_rgb", "Force RGB", cmd);
+		TCLAP::ValueArg<std::string> pluginPathArg("g", "plugin_path", "Plugin path", false, "",
 												   "string", cmd);
-		TCLAP::ValueArg<int32_t> deviceIdArg("G", "DeviceId", "Device ID", false, 0, "integer",
+		TCLAP::ValueArg<int32_t> deviceIdArg("G", "device_id", "Device ID", false, 0, "integer",
 											 cmd);
 		TCLAP::ValueArg<uint32_t> numThreadsArg("H", "num_threads", "Number of threads", false, 0,
 												"unsigned integer", cmd);
-		TCLAP::ValueArg<std::string> inputFileArg("i", "InputFile", "Input file", false, "",
+		TCLAP::ValueArg<std::string> inputFileArg("i", "in_file", "Input file", false, "",
 												  "string", cmd);
-		TCLAP::ValueArg<uint16_t> layerArg("l", "Layer", "Layer", false, 0, "unsigned integer",
+		TCLAP::ValueArg<uint16_t> layerArg("l", "layer", "layer", false, 0, "unsigned integer",
 										   cmd);
-		TCLAP::ValueArg<uint32_t> randomAccessArg("m", "RandomAccess",
+		TCLAP::ValueArg<uint32_t> randomAccessArg("m", "random_access",
 												  "Toggle support for random access"
 												  " into code stream",
 												  false, 0, "unsigned integer", cmd);
 		// Kernel build flags:
 		// 1 indicates build binary, otherwise load binary
 		// 2 indicates generate binaries
-		TCLAP::ValueArg<uint32_t> kernelBuildOptionsArg("k", "KernelBuild", "Kernel build options",
+		TCLAP::ValueArg<uint32_t> kernelBuildOptionsArg("k", "kernel_build", "Kernel build options",
 														false, 0, "unsigned integer", cmd);
-		TCLAP::ValueArg<uint32_t> compressionLevelArg("L", "CompressionLevel", "Compression Level",
+		TCLAP::ValueArg<uint32_t> compressionLevelArg("L", "compression_level", "compression Level",
 													  false, UINT_MAX, "unsigned integer", cmd);
-		TCLAP::ValueArg<std::string> outputFileArg("o", "OutputFile", "Output file", false, "",
+		TCLAP::ValueArg<std::string> outputFileArg("o", "out_file", "Output file", false, "",
 												   "string", cmd);
-		TCLAP::ValueArg<std::string> outForArg("O", "OutFor", "Output Format", false, "", "string",
+		TCLAP::ValueArg<std::string> outForArg("O", "out_fmt", "Output Format", false, "", "string",
 											   cmd);
-		TCLAP::ValueArg<std::string> precisionArg("p", "Precision", "Force precision", false, "",
+		TCLAP::ValueArg<std::string> precisionArg("p", "precision", "Force precision", false, "",
 												  "string", cmd);
-		TCLAP::ValueArg<uint32_t> reduceArg("r", "Reduce", "Reduce resolutions", false, 0,
+		TCLAP::ValueArg<uint32_t> reduceArg("r", "reduce", "reduce resolutions", false, 0,
 											"unsigned integer", cmd);
-		TCLAP::SwitchArg splitPnmArg("s", "split-pnm", "Split PNM", cmd);
-		TCLAP::ValueArg<uint32_t> tileArg("t", "TileInfo", "Input tile index", false, 0,
+		TCLAP::SwitchArg splitPnmArg("s", "split_pnm", "Split PNM", cmd);
+		TCLAP::ValueArg<uint32_t> tileArg("t", "tile_info", "Input tile index", false, 0,
 										  "unsigned integer", cmd);
 		TCLAP::SwitchArg upsampleArg("u", "upsample", "Upsample", cmd);
 		TCLAP::SwitchArg verboseArg("v", "verbose", "Verbose", cmd);
-		TCLAP::SwitchArg transferExifTagsArg("V", "TransferExifTags", "Transfer Exif tags", cmd);
+		TCLAP::SwitchArg transferExifTagsArg("V", "transfer_exif_tags", "Transfer Exif tags", cmd);
 		TCLAP::ValueArg<std::string> logfileArg("W", "logfile", "Log file", false, "", "string",
 												cmd);
-		TCLAP::SwitchArg xmlArg("X", "XML", "XML metadata", cmd);
-		TCLAP::ValueArg<std::string> imgDirArg("y", "ImgDir", "Image Directory", false, "",
+		TCLAP::SwitchArg xmlArg("X", "xml", "xml metadata", cmd);
+		TCLAP::ValueArg<std::string> inDirArg("y", "in_dir", "Image Directory", false, "",
 											   "string", cmd);
 		TCLAP::ValueArg<uint32_t> durationArg("z", "Duration", "Duration in seconds", false, 0,
 											  "unsigned integer", cmd);
@@ -613,7 +613,7 @@ int GrkDecompress::parseCommandLine(int argc, char** argv, DecompressInitParams*
 		else
 		{
 			// check for possible output to STDOUT
-			if(!imgDirArg.isSet())
+			if(!inDirArg.isSet())
 			{
 				bool toStdout =
 					outForArg.isSet() &&
@@ -635,10 +635,10 @@ int GrkDecompress::parseCommandLine(int argc, char** argv, DecompressInitParams*
 			}
 		}
 
-		if(imgDirArg.isSet())
+		if(inDirArg.isSet())
 		{
-			inputFolder->imgdirpath = (char*)malloc(strlen(imgDirArg.getValue().c_str()) + 1);
-			strcpy(inputFolder->imgdirpath, imgDirArg.getValue().c_str());
+			inputFolder->imgdirpath = (char*)malloc(strlen(inDirArg.getValue().c_str()) + 1);
+			strcpy(inputFolder->imgdirpath, inDirArg.getValue().c_str());
 			inputFolder->set_imgdir = true;
 		}
 
@@ -704,19 +704,19 @@ int GrkDecompress::parseCommandLine(int argc, char** argv, DecompressInitParams*
 	{
 		if(!(parameters->infile[0] == 0))
 		{
-			spdlog::error("options -ImgDir and -i cannot be used together.");
+			spdlog::error("options -in_dir and -i cannot be used together.");
 			return 1;
 		}
 		if(!inputFolder->set_out_format)
 		{
-			spdlog::error("When -ImgDir is used, -OutFor <FORMAT> must be used.");
+			spdlog::error("When -in_dir is used, -out_fmt <FORMAT> must be used.");
 			spdlog::error("Only one format allowed.\n"
 						  "Valid format are PGM, PPM, PNM, PGX, BMP, TIF and RAW.");
 			return 1;
 		}
 		if(!((parameters->outfile[0] == 0)))
 		{
-			spdlog::error("options -ImgDir and -o cannot be used together.");
+			spdlog::error("options -in_dir and -o cannot be used together.");
 			return 1;
 		}
 	}
@@ -1208,7 +1208,7 @@ int GrkDecompress::preProcess(grk_plugin_decompress_callback_info* info)
 			info->decompressor_parameters->dw_y1 = (float)ceil( val[3] * double(img->y1 - img->y0));
 		}
 
-		// do not allow odd top left window coordinates for SYCC
+		// do not allow odd top left region coordinates for SYCC
 		if(info->image->color_space == GRK_CLRSPC_SYCC)
 		{
 			bool adjustX = (info->decompressor_parameters->dw_x0 != (float)info->full_image_x0) &&
@@ -1218,13 +1218,13 @@ int GrkDecompress::preProcess(grk_plugin_decompress_callback_info* info)
 			if(adjustX || adjustY)
 			{
 				spdlog::error(
-					"grk_decompress: Top left-hand window coordinates that do not coincide\n"
+					"grk_decompress: Top left-hand region coordinates that do not coincide\n"
 					"with respective top left-hand image coordinates must be even");
 				goto cleanup;
 			}
 		}
 
-		// store XML to file
+		// store xml to file
 		if(info->header_info.xml_data && info->header_info.xml_data_len &&
 		   parameters->serialize_xml)
 		{
@@ -1269,7 +1269,7 @@ int GrkDecompress::preProcess(grk_plugin_decompress_callback_info* info)
 	{
 		if(info->image->comps[i].prec > 16)
 		{
-			spdlog::error("grk_decompress: Precision = {} not supported:",
+			spdlog::error("grk_decompress: precision = {} not supported:",
 						  info->image->comps[i].prec);
 			goto cleanup;
 		}

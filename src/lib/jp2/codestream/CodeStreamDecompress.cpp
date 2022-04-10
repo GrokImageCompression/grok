@@ -238,7 +238,7 @@ bool CodeStreamDecompress::readHeader(grk_header_info* header_info)
 	}
 	return true;
 }
-bool CodeStreamDecompress::setDecompressWindow(grk_rect_single window)
+bool CodeStreamDecompress::setDecompressRegion(grk_rect_single region)
 {
 	auto image = headerImage_;
 	auto compositeImage = getCompositeImage();
@@ -247,11 +247,11 @@ bool CodeStreamDecompress::setDecompressWindow(grk_rect_single window)
 	/* Check if we have read the main header */
 	if(decompressor->getState() != DECOMPRESS_STATE_TPH_SOT)
 	{
-		GRK_ERROR("Need to read the main header before setting decompress window");
+		GRK_ERROR("Need to read the main header before setting decompress region");
 		return false;
 	}
 
-	if(window == grk_rect_single(0, 0, 0, 0))
+	if(region == grk_rect_single(0, 0, 0, 0))
 	{
 		decompressor->start_tile_x_index_ = 0;
 		decompressor->start_tile_y_index_ = 0;
@@ -260,15 +260,15 @@ bool CodeStreamDecompress::setDecompressWindow(grk_rect_single window)
 	}
 	else
 	{
-		/* Check if the window provided by the user are correct */
-		uint32_t start_x = (uint32_t)window.x0 + image->x0;
-		uint32_t start_y = (uint32_t)window.y0 + image->y0;
-		uint32_t end_x = (uint32_t)window.x1 + image->x0;
-		uint32_t end_y = (uint32_t)window.y1 + image->y0;
+		/* Check if the region provided by the user are correct */
+		uint32_t start_x = (uint32_t)region.x0 + image->x0;
+		uint32_t start_y = (uint32_t)region.y0 + image->y0;
+		uint32_t end_x = (uint32_t)region.x1 + image->x0;
+		uint32_t end_y = (uint32_t)region.y1 + image->y0;
 		/* Left */
 		if(start_x > image->x1)
 		{
-			GRK_ERROR("Left position of the decompress window (%u)"
+			GRK_ERROR("Left position of the decompress region (%u)"
 					  " is outside of the image area (Xsiz=%u).",
 					  start_x, image->x1);
 			return false;
@@ -282,7 +282,7 @@ bool CodeStreamDecompress::setDecompressWindow(grk_rect_single window)
 		/* Up */
 		if(start_y > image->y1)
 		{
-			GRK_ERROR("Top position of the decompress window (%u)"
+			GRK_ERROR("Top position of the decompress region (%u)"
 					  " is outside of the image area (Ysiz=%u).",
 					  start_y, image->y1);
 			return false;
@@ -298,7 +298,7 @@ bool CodeStreamDecompress::setDecompressWindow(grk_rect_single window)
 		assert(end_y > 0);
 		if(end_x > image->x1)
 		{
-			GRK_WARN("Right position of the decompress window (%u)"
+			GRK_WARN("Right position of the decompress region (%u)"
 					 " is outside the image area (Xsiz=%u).",
 					 end_x, image->x1);
 			decompressor->end_tile_x_index_ = cp_.t_grid_width;
@@ -316,7 +316,7 @@ bool CodeStreamDecompress::setDecompressWindow(grk_rect_single window)
 		/* Bottom */
 		if(end_y > image->y1)
 		{
-			GRK_WARN("Bottom position of the decompress window (%u)"
+			GRK_WARN("Bottom position of the decompress region (%u)"
 					 " is outside of the image area (Ysiz=%u).",
 					 end_y, image->y1);
 			decompressor->end_tile_y_index_ = cp_.t_grid_height;
@@ -334,15 +334,15 @@ bool CodeStreamDecompress::setDecompressWindow(grk_rect_single window)
 		if(!compositeImage->subsampleAndReduce(cp_.coding_params_.dec_.reduce_))
 			return false;
 
-		GRK_INFO("decompress window canvas coordinates set to (%u,%u,%u,%u)", compositeImage->x0,
+		GRK_INFO("decompress region canvas coordinates set to (%u,%u,%u,%u)", compositeImage->x0,
 				 compositeImage->y0, compositeImage->x1, compositeImage->y1);
 		auto scaledX0 = float(compositeImage->x0 - image->x0) / float(image->width());
 		auto scaledY0 = float(compositeImage->y0 - image->y0) / float(image->height());
 		auto scaledX1 = float(compositeImage->x1 - image->x0) / float(image->width());
 		auto scaledY1 = float(compositeImage->y1 - image->y0) / float(image->height());
-		GRK_INFO("window scaled coordinates : (%f,%f,%f,%f)",
+		GRK_INFO("Region scaled coordinates : (%f,%f,%f,%f)",
 				scaledX0,scaledY0,scaledX1,	scaledY1);
-		GRK_INFO("window scaled coordinates in ROW-COLUMN format : \"{%f,%f},{%f,%f}\"",
+		GRK_INFO("Region scaled coordinates in ROW-COLUMN format : \"{%f,%f},{%f,%f}\"",
 				scaledY0,scaledX0,scaledY1,	scaledX1);
 		GRK_INFO("image canvas coordinates :  (%u,%u,%u,%u)", image->x0, image->y0, image->x1,
 				 image->y1);

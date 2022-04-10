@@ -54,7 +54,7 @@ grk_compress -i @INPUT_NR_PATH@/X_6_2K_24_FULL_CBR_CIRCLE_000.tif -o @TEMP_PATH@
 grk_compress -i @INPUT_NR_PATH@/X_4_2K_24_185_CBR_WB_000.tif -o @TEMP_PATH@/X_4_2K_24_185_CBR_WB_000_C2K_48.j2k -cinema2K 48
 grk_compress -i @INPUT_NR_PATH@/X_5_2K_24_235_CBR_STEM24_000.tif -o @TEMP_PATH@/X_5_2K_24_235_CBR_STEM24_000_C2K_48.j2k -cinema2K 48
 grk_compress -i @INPUT_NR_PATH@/X_6_2K_24_FULL_CBR_CIRCLE_000.tif -o @TEMP_PATH@/X_6_2K_24_FULL_CBR_CIRCLE_000_C2K_48.j2k -cinema2K 48
-grk_compress -i @INPUT_NR_PATH@/ElephantDream_4K.tif -o @TEMP_PATH@/ElephantDream_4K_C4K.j2k -cinema4K 24
+grk_compress -i @INPUT_NR_PATH@/ElephantDream_4K.tif -o @TEMP_PATH@/ElephantDream_4K_C4K.j2k -cinema4k 24
 # issue 141
 grk_compress -i @INPUT_NR_PATH@/issue141.rawl -o @TEMP_PATH@/issue141.rawl.j2k   -F 2048,32,1,16,u
 grk_compress -i @INPUT_NR_PATH@/issue141.rawl -o @TEMP_PATH@/issue141-I.rawl.j2k -F 2048,32,1,16,u -I
@@ -697,13 +697,13 @@ grk_compress -i @BASELINE_CONF_PATH@/c0p0_03r0.pgx -o @TEMP_PATH@/signed_ht_mono
 grk_compress -i @BASELINE_CONF_PATH@/c0p0_03r0.pgx -o @TEMP_PATH@/signed_ht_mono_lossy.j2k -M 64 -I
 
 # RGB
-grk_compress -i @INPUT_NR_PATH@/basn6a08.tif -o @TEMP_PATH@/rgb_lossy_no_mct_no_transform.jp2 -I -mct 0 -n 1
-grk_compress -i @INPUT_NR_PATH@/basn6a08.tif -o @TEMP_PATH@/rgb_lossy_no_mct.jp2 -I -mct 0
+grk_compress -i @INPUT_NR_PATH@/basn6a08.tif -o @TEMP_PATH@/rgb_lossy_no_mct_no_transform.jp2 -I -MCT 0 -n 1
+grk_compress -i @INPUT_NR_PATH@/basn6a08.tif -o @TEMP_PATH@/rgb_lossy_no_mct.jp2 -I -MCT 0
 grk_compress -i @INPUT_NR_PATH@/basn6a08.tif -o @TEMP_PATH@/rgb_lossy_no_transform.jp2 -I -n 1
 grk_compress -i @INPUT_NR_PATH@/basn6a08.tif -o @TEMP_PATH@/rgb_lossy.jp2 -I
 
-grk_compress -i @INPUT_NR_PATH@/basn6a08.tif -o @TEMP_PATH@/ht_rgb_lossy_no_mct_no_transform.j2k -M 64 -I -mct 0 -n 1
-grk_compress -i @INPUT_NR_PATH@/basn6a08.tif -o @TEMP_PATH@/ht_rgb_lossy_no_mct.j2k -M 64 -I -mct 0
+grk_compress -i @INPUT_NR_PATH@/basn6a08.tif -o @TEMP_PATH@/ht_rgb_lossy_no_mct_no_transform.j2k -M 64 -I -MCT 0 -n 1
+grk_compress -i @INPUT_NR_PATH@/basn6a08.tif -o @TEMP_PATH@/ht_rgb_lossy_no_mct.j2k -M 64 -I -MCT 0
 grk_compress -i @INPUT_NR_PATH@/basn6a08.tif -o @TEMP_PATH@/ht_rgb_lossy_no_transform.j2k -M 64 -I -n 1
 grk_compress -i @INPUT_NR_PATH@/basn6a08.tif -o @TEMP_PATH@/ht_rgb_lossy.j2k -M 64 -I
 
@@ -712,7 +712,7 @@ grk_compress -i @INPUT_NR_PATH@/signed-4bpp.tif -o @TEMP_PATH@/signed-4bpp.j2k
 
 # mono with ICC profile
 grk_decompress -i @INPUT_NR_PATH@/mono_icc.jp2 -o @TEMP_PATH@/mono_icc.tif
-grk_decompress -i @INPUT_NR_PATH@/mono_icc.jp2 -o @TEMP_PATH@/mono_icc_force.tif -force-rgb
+grk_decompress -i @INPUT_NR_PATH@/mono_icc.jp2 -o @TEMP_PATH@/mono_icc_force.tif -force_rgb
 grk_decompress -i @INPUT_NR_PATH@/mono_icc.jp2 -o @TEMP_PATH@/mono_icc.pgx
 
 grk_decompress -i @INPUT_NR_PATH@/sycc_420_odd_origin_x_coord.jp2 -o @TEMP_PATH@/sycc_420_odd_origin_x_coord.tif

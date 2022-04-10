@@ -266,9 +266,9 @@ bool FileFormatDecompress::readHeader(grk_header_info* header_info)
 
 	return true;
 }
-bool FileFormatDecompress::setDecompressWindow(grk_rect_single window)
+bool FileFormatDecompress::setDecompressRegion(grk_rect_single region)
 {
-	return codeStream->setDecompressWindow(window);
+	return codeStream->setDecompressRegion(region);
 }
 /** Set up decompressor function handler */
 void FileFormatDecompress::init(grk_decompress_core_params* parameters)
