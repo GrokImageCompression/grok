@@ -67,42 +67,43 @@ void StripCache::init(uint16_t tgrid_w, uint16_t tgrid_h, uint32_t tileHeight, u
 	for(uint16_t i = 0; i < tgrid_h_; ++i)
 		strips[i] = new Strip(outputImage, i, tileHeight_, reduce);
 }
-bool StripCache::composite(GrkImage* tileImage)
+bool StripCache::composite(GrkImage* src)
 {
-	uint16_t stripId = (uint16_t)((tileImage->y0 - imageY0_ + tileHeight_ - 1) / tileHeight_);
+	uint16_t stripId = (uint16_t)((src->y0 - imageY0_ + tileHeight_ - 1) / tileHeight_);
 	assert(stripId < tgrid_h_);
 	auto strip = strips[stripId];
-	auto img = strip->stripImg;
-	uint64_t dataLen = packedRowBytes_ * tileImage->comps->h;
-	if(strip->tileCounter == 0)
+	auto dest = strip->stripImg;
+	uint64_t dataLen = packedRowBytes_ * src->comps->h;
+	uint32_t tileCount = 0;
 	{
-		std::unique_lock<std::mutex> lk(poolMutex);
-		if(!img->interleavedData.data)
-		{
-			img->interleavedData = getBuffer(dataLen);
-			if(!img->interleavedData.data)
-				return false;
+		std::unique_lock<std::mutex> lk(cacheMutex_);
+		tileCount = ++strip->tileCounter;
+		if(tileCount == 1) {
+			if(!dest->interleavedData.data)
+			{
+				dest->interleavedData = getBuffer(dataLen);
+				if(!dest->interleavedData.data)
+					return false;
+			}
 		}
 	}
-	bool rc = img->compositeInterleaved(tileImage);
+	bool rc = dest->compositeInterleaved(src);
 	if(!rc)
 		return false;
-	if(++(strip->tileCounter) == tgrid_w_)
+	if(tileCount == tgrid_w_)
 	{
-		auto buf = GrkSerializeBuf(img->interleavedData);
+		auto buf = GrkSerializeBuf(dest->interleavedData);
 		buf.index = stripId;
 		buf.dataLen = dataLen;
-		img->interleavedData.data = nullptr;
+		dest->interleavedData.data = nullptr;
+		std::unique_lock<std::mutex> lk(cacheMutex_);
+		serializeHeap.push(buf);
+		buf = serializeHeap.pop();
+		while(buf.data)
 		{
-			std::unique_lock<std::mutex> lk(poolMutex);
-			serializeHeap.push(buf);
+			if(!serializeBufferCallback_(buf, serializeUserData_))
+				return false;
 			buf = serializeHeap.pop();
-			while(buf.data)
-			{
-				if(!serializeBufferCallback_(buf, serializeUserData_))
-					return false;
-				buf = serializeHeap.pop();
-			}
 		}
 	}
 

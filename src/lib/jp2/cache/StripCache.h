@@ -61,9 +61,9 @@ struct Strip
 	uint32_t getIndex(void);
 	uint32_t reduceDim(uint32_t dim);
 	GrkImage* stripImg;
-	std::atomic<uint32_t> tileCounter;
-	uint32_t index_;
-	uint8_t reduce_;
+	uint32_t tileCounter; 	// count number of tiles added to strip
+	uint32_t index_;	    // index of strip
+	uint8_t reduce_;   	    // resolution reduction
 };
 
 class StripCache
@@ -76,7 +76,7 @@ class StripCache
 			  GrkImage* outputImg, grk_serialize_pixels_callback serializeBufferCallback,
 			  void* serializeUserData,
 			  grk_serialize_register_client_callback serializeRegisterClientCallback);
-	bool composite(GrkImage* tileImage);
+	bool composite(GrkImage* src);
 	void putBuffer(GrkSerializeBuf b);
 
   private:
@@ -89,7 +89,7 @@ class StripCache
 	uint32_t imageY0_;
 	uint64_t packedRowBytes_;
 
-	mutable std::mutex poolMutex;
+	mutable std::mutex cacheMutex_;
 
 	void* serializeUserData_;
 	grk_serialize_pixels_callback serializeBufferCallback_;
