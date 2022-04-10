@@ -1,6 +1,7 @@
 #pragma once
 
 #include "grk_includes.h"
+#include "lcms2.h"
 
 namespace grk
 {
@@ -76,6 +77,7 @@ class GrkImage : public grk_image
 	bool greyToRGB(void);
 	bool convertToRGB(bool wholeTileDecompress);
 	bool applyColourManagement(void);
+	bool validateICC(void);
 	void convertPrecision(void);
 	bool execUpsample(void);
 	void all_components_data_free(void);
@@ -94,6 +96,8 @@ class GrkImage : public grk_image
 
   private:
 	~GrkImage();
+	std::string getColourSpaceString(void);
+	std::string getICCColourSpaceString(cmsColorSpaceSignature color_space);
 	bool needsConversionToRGB(void);
 	bool isOpacity(uint16_t compno);
 	bool compositePlanar(const GrkImage* srcImg);

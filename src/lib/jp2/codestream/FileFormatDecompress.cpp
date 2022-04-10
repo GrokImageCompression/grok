@@ -172,7 +172,7 @@ bool FileFormatDecompress::readHeader(grk_header_info* header_info)
 			for(int i = 0; i < 2; ++i)
 				image->display_resolution[i] = display_resolution[i];
 		}
-		/* Set Image Color Space */
+
 		switch(enumcs)
 		{
 			case GRK_ENUM_CLRSPC_CMYK:
@@ -210,7 +210,11 @@ bool FileFormatDecompress::readHeader(grk_header_info* header_info)
 				break;
 		}
 		if(meth == 2 && getColour()->icc_profile_buf)
-			image->color_space = GRK_CLRSPC_ICC;
+		{
+			// validate
+			if(image->validateICC())
+				image->color_space = GRK_CLRSPC_ICC;
+		}
 		// check RGB subsampling
 		if(image->color_space == GRK_CLRSPC_SRGB)
 		{

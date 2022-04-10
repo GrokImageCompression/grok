@@ -35,7 +35,6 @@ class FileFormatCompress : public FileFormat, public ICodeStreamCompress
 	bool end(void);
 
   private:
-	bool validate_icc(GRK_COLOR_SPACE colourSpace, uint8_t* iccbuf, uint32_t icclen);
 	grk_color* getColour(void);
 	void find_cf(double x, uint32_t* num, uint32_t* den);
 	void write_res_box(double resx, double resy, uint32_t box_id, uint8_t** current_res_ptr);
