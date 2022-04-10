@@ -30,7 +30,8 @@ CompressScheduler::CompressScheduler(Tile* tile, bool needsRateControl, TileCodi
 		imageComponentFlows_[compno] = new ImageComponentFlow(numResolutions);
 	}
 }
-bool CompressScheduler::schedule(uint16_t compno) {
+bool CompressScheduler::schedule(uint16_t compno)
+{
 	return scheduleBlocks(compno);
 }
 bool CompressScheduler::scheduleBlocks(uint16_t compno)

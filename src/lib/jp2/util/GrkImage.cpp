@@ -28,9 +28,11 @@ uint32_t GrkImage::height(void) const
 	return y1 - y0;
 }
 
-void GrkImage::print(void) const{
+void GrkImage::print(void) const
+{
 	GRK_INFO("bounds: [%u,%u,%u,%u]", x0, y0, x1, y1);
-	for (uint16_t i = 0; i < numcomps; ++i){
+	for(uint16_t i = 0; i < numcomps; ++i)
+	{
 		auto comp = comps + i;
 		GRK_INFO("component %d bounds : [%u,%u,%u,%u]", i, comp->x0, comp->y0, comp->w, comp->h);
 	}

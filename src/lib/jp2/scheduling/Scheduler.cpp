@@ -21,9 +21,8 @@ namespace grk
 Scheduler::Scheduler(Tile* tile) : success(true), tile_(tile), numcomps_(tile->numcomps_)
 {
 	imageComponentFlows_ = new ImageComponentFlow*[numcomps_];
-	for (uint16_t compno = 0; compno < numcomps_; ++compno)
+	for(uint16_t compno = 0; compno < numcomps_; ++compno)
 		imageComponentFlows_[compno] = nullptr;
-
 }
 Scheduler::~Scheduler()
 {

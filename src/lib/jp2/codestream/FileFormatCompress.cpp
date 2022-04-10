@@ -1007,8 +1007,7 @@ bool FileFormatCompress::default_validation(void)
 	/* number of components */
 	/* precision */
 	for(i = 0; i < numcomps; ++i)
-		valid &=
-			((comps[i].bpc & 0x7FU) < maxPrecisionJ2K); /* 0 is valid, ignore sign for check */
+		valid &= ((comps[i].bpc & 0x7FU) < maxPrecisionJ2K); /* 0 is valid, ignore sign for check */
 
 	/* METH */
 	valid &= ((meth > 0) && (meth < 3));

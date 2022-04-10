@@ -18,7 +18,6 @@
 
 namespace grk
 {
-
 ResFlow::ResFlow(void)
 	: blocks_(new FlowComponent()), waveletHoriz_(new FlowComponent()),
 	  waveletVert_(new FlowComponent())
@@ -28,9 +27,10 @@ void ResFlow::graph(void)
 	blocks_->precede(waveletHoriz_);
 	waveletHoriz_->precede(waveletVert_);
 }
-ResFlow* ResFlow::addTo(tf::Taskflow& composition){
+ResFlow* ResFlow::addTo(tf::Taskflow& composition)
+{
 	assert(blocks_);
-  blocks_->addTo(composition);
+	blocks_->addTo(composition);
 	waveletHoriz_->addTo(composition);
 	waveletVert_->addTo(composition);
 
@@ -70,7 +70,8 @@ ImageComponentFlow::~ImageComponentFlow()
 	delete[] resFlows_;
 	delete waveletFinalCopy_;
 }
-void ImageComponentFlow::setRegionDecompression(void){
+void ImageComponentFlow::setRegionDecompression(void)
+{
 	waveletFinalCopy_ = new FlowComponent();
 }
 void ImageComponentFlow::graph(void)
@@ -82,10 +83,11 @@ void ImageComponentFlow::graph(void)
 	if(waveletFinalCopy_)
 		(resFlows_ + numResFlows_ - 1)->precede(waveletFinalCopy_);
 }
-ImageComponentFlow* ImageComponentFlow::addTo(tf::Taskflow& composition){
+ImageComponentFlow* ImageComponentFlow::addTo(tf::Taskflow& composition)
+{
 	for(uint8_t i = 0; i < numResFlows_; ++i)
 		(resFlows_ + i)->addTo(composition);
-	if (waveletFinalCopy_)
+	if(waveletFinalCopy_)
 		waveletFinalCopy_->addTo(composition);
 
 	return this;
@@ -102,4 +104,4 @@ std::string ImageComponentFlow::genBlockFlowTaskName(uint8_t resFlowNo)
 	return ss.str();
 }
 
-}
+} // namespace grk

@@ -73,11 +73,12 @@ class StripPool
 	virtual ~StripPool();
 
 	void init(uint16_t tgrid_w, uint16_t tgrid_h, uint32_t tileHeight, uint8_t reduce,
-			GrkImage* outputImg,
-			  grk_serialize_pixels_callback serializeBufferCallback, void* serializeUserData,
+			  GrkImage* outputImg, grk_serialize_pixels_callback serializeBufferCallback,
+			  void* serializeUserData,
 			  grk_serialize_register_client_callback serializeRegisterClientCallback);
 	bool composite(GrkImage* tileImage);
 	void putBuffer(GrkSerializeBuf b);
+
   private:
 	GrkSerializeBuf getBuffer(uint64_t len);
 	std::map<uint8_t*, GrkSerializeBuf> pool;

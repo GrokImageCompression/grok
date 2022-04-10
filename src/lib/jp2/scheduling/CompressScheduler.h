@@ -25,6 +25,7 @@ class CompressScheduler : public Scheduler
 					  const double* mct_norms, uint16_t mct_numcomps);
 	~CompressScheduler() = default;
 	bool schedule(uint16_t compno) override;
+
   private:
 	bool scheduleBlocks(uint16_t compno);
 	void compress(std::vector<CompressBlockExec*>* blocks);

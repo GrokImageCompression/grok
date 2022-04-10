@@ -179,8 +179,8 @@ static int parseCommandLine(int argc, char** argv, grk_decompress_parameters* pa
 		TCLAP::ValueArg<std::string> outputArg("o", "output", "output file", false, "", "string",
 											   cmd);
 
-		TCLAP::ValueArg<std::string> inDirArg("y", "in_dir", "image directory", false, "",
-											   "string", cmd);
+		TCLAP::ValueArg<std::string> inDirArg("y", "in_dir", "image directory", false, "", "string",
+											  cmd);
 
 		TCLAP::SwitchArg verboseArg("v", "verbose", "verbose", cmd);
 		TCLAP::ValueArg<uint32_t> flagArg("f", "flag", "flag", false, 0, "unsigned integer", cmd);

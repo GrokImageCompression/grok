@@ -471,8 +471,8 @@ static int parseCommandLine(int argc, char** argv, CompressInitParams* initParam
 		TCLAP::ValueArg<uint32_t> rateControlAlgoArg("A", "rate_control_algorithm",
 													 "Rate control algorithm", false, 0,
 													 "unsigned integer", cmd);
-		TCLAP::ValueArg<std::string> codeBlockDimArg("b", "code_block_dims", "Code block dimensions",
-													 false, "", "string", cmd);
+		TCLAP::ValueArg<std::string> codeBlockDimArg(
+			"b", "code_block_dims", "Code block dimensions", false, "", "string", cmd);
 
 		TCLAP::ValueArg<std::string> precinctDimArg("c", "precinct_dims", "Precinct dimensions",
 													false, "", "string", cmd);
@@ -498,8 +498,8 @@ static int parseCommandLine(int argc, char** argv, CompressInitParams* initParam
 											 cmd);
 		TCLAP::ValueArg<uint32_t> numThreadsArg("H", "num_threads", "Number of threads", false, 0,
 												"unsigned integer", cmd);
-		TCLAP::ValueArg<std::string> inputFileArg("i", "in_file", "Input file", false, "",
-												  "string", cmd);
+		TCLAP::ValueArg<std::string> inputFileArg("i", "in_file", "Input file", false, "", "string",
+												  cmd);
 		TCLAP::SwitchArg irreversibleArg("I", "irreversible", "Irreversible", cmd);
 		TCLAP::ValueArg<uint32_t> durationArg("J", "duration", "Duration in seconds", false, 0,
 											  "unsigned integer", cmd);
@@ -544,7 +544,8 @@ static int parseCommandLine(int argc, char** argv, CompressInitParams* initParam
 
 		TCLAP::ValueArg<std::string> tilesArg("t", "tile_dims", "Tile dimensions", false, "",
 											  "string", cmd);
-		TCLAP::ValueArg<uint8_t> tpArg("u", "tile_parts", "Tile part generation", false, 0, "uint8_t", cmd);
+		TCLAP::ValueArg<uint8_t> tpArg("u", "tile_parts", "Tile part generation", false, 0,
+									   "uint8_t", cmd);
 		TCLAP::SwitchArg verboseArg("v", "verbose", "Verbose", cmd);
 		TCLAP::SwitchArg transferExifTagsArg("V", "transfer_exif_tags", "Transfer Exif tags", cmd);
 		TCLAP::ValueArg<std::string> logfileArg("W", "logfile", "Log file", false, "", "string",
@@ -554,8 +555,8 @@ static int parseCommandLine(int argc, char** argv, CompressInitParams* initParam
 		TCLAP::ValueArg<uint32_t> cinema4KArg("x", "cinema4k", "Digital cinema 2K profile", false,
 											  24, "unsigned integer", cmd);
 		TCLAP::SwitchArg tlmArg("X", "TLM", "TLM marker", cmd);
-		TCLAP::ValueArg<std::string> inDirArg("y", "in_dir", "Image directory", false, "",
-											   "string", cmd);
+		TCLAP::ValueArg<std::string> inDirArg("y", "in_dir", "Image directory", false, "", "string",
+											  cmd);
 		TCLAP::ValueArg<uint32_t> mctArg("Y", "MCT", "Multi component transform", false, 0,
 										 "unsigned integer", cmd);
 		TCLAP::ValueArg<uint16_t> rsizArg("Z", "rsiz", "rsiz", false, 0, "unsigned integer", cmd);

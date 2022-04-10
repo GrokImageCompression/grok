@@ -340,10 +340,10 @@ bool CodeStreamDecompress::setDecompressRegion(grk_rect_single region)
 		auto scaledY0 = float(compositeImage->y0 - image->y0) / float(image->height());
 		auto scaledX1 = float(compositeImage->x1 - image->x0) / float(image->width());
 		auto scaledY1 = float(compositeImage->y1 - image->y0) / float(image->height());
-		GRK_INFO("Region scaled coordinates : (%f,%f,%f,%f)",
-				scaledX0,scaledY0,scaledX1,	scaledY1);
-		GRK_INFO("Region scaled coordinates in ROW-COLUMN format : \"{%f,%f},{%f,%f}\"",
-				scaledY0,scaledX0,scaledY1,	scaledX1);
+		GRK_INFO("Region scaled coordinates : (%f,%f,%f,%f)", scaledX0, scaledY0, scaledX1,
+				 scaledY1);
+		GRK_INFO("Region scaled coordinates in ROW-COLUMN format : \"{%f,%f},{%f,%f}\"", scaledY0,
+				 scaledX0, scaledY1, scaledX1);
 		GRK_INFO("image canvas coordinates :  (%u,%u,%u,%u)", image->x0, image->y0, image->x1,
 				 image->y1);
 	}
@@ -465,10 +465,11 @@ bool CodeStreamDecompress::decompressTiles(void)
 	if(!createOutputImage())
 		return false;
 
-	if (outputImage_->canAllocInterleaved(&cp_)) {
-		stripCache_.init(cp_.t_grid_width, cp_.t_grid_height,cp_.t_height,
-						cp_.coding_params_.dec_.reduce_, outputImage_,
-						 serializeBufferCallback, serializeUserData, serializeRegisterClientCallback);
+	if(outputImage_->canAllocInterleaved(&cp_))
+	{
+		stripCache_.init(cp_.t_grid_width, cp_.t_grid_height, cp_.t_height,
+						 cp_.coding_params_.dec_.reduce_, outputImage_, serializeBufferCallback,
+						 serializeUserData, serializeRegisterClientCallback);
 	}
 
 	std::atomic<bool> success(true);

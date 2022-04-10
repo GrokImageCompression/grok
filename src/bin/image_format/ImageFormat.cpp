@@ -106,7 +106,7 @@ bool ImageFormat::encodePixelsCore(grk_serialize_buf pixels)
 		// for synchronous encode, we immediately return the pixel buffer to the pool
 		reclaim(GrkSerializeBuf(pixels));
 #endif
-		if(!applicationOrchestratedEncoding_ &&  serializer.allPooledRequestsComplete())
+		if(!applicationOrchestratedEncoding_ && serializer.allPooledRequestsComplete())
 			encodeFinish();
 	}
 

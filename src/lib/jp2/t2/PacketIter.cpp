@@ -917,8 +917,7 @@ bool PacketIter::next_pcrl(SparseBuffer* src)
 			if(singleProgression_)
 			{
 				auto win = packetManager->getTileProcessor()->getUnreducedTileWindow();
-				if(!win.empty() &&
-				   (y >= win.y1 || (win.y1 > 0 && y == win.y1 - 1 && x >= win.x1)))
+				if(!win.empty() && (y >= win.y1 || (win.y1 > 0 && y == win.y1 - 1 && x >= win.x1)))
 					return false;
 			}
 			for(; compno < prog.compE; compno++)

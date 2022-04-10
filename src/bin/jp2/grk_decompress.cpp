@@ -416,8 +416,8 @@ int GrkDecompress::parseCommandLine(int argc, char** argv, DecompressInitParams*
 											   "string", cmd);
 		TCLAP::ValueArg<std::string> compressionArg("c", "compression", "compression Type", false,
 													"", "string", cmd);
-		TCLAP::ValueArg<std::string> decodeRegionArg("d", "region", "Decompress Region",
-													 false, "", "string", cmd);
+		TCLAP::ValueArg<std::string> decodeRegionArg("d", "region", "Decompress Region", false, "",
+													 "string", cmd);
 		TCLAP::ValueArg<uint32_t> repetitionsArg(
 			"e", "repetitions",
 			"Number of compress repetitions, for either a folder or a single file", false, 0,
@@ -429,8 +429,8 @@ int GrkDecompress::parseCommandLine(int argc, char** argv, DecompressInitParams*
 											 cmd);
 		TCLAP::ValueArg<uint32_t> numThreadsArg("H", "num_threads", "Number of threads", false, 0,
 												"unsigned integer", cmd);
-		TCLAP::ValueArg<std::string> inputFileArg("i", "in_file", "Input file", false, "",
-												  "string", cmd);
+		TCLAP::ValueArg<std::string> inputFileArg("i", "in_file", "Input file", false, "", "string",
+												  cmd);
 		TCLAP::ValueArg<uint16_t> layerArg("l", "layer", "layer", false, 0, "unsigned integer",
 										   cmd);
 		TCLAP::ValueArg<uint32_t> randomAccessArg("m", "random_access",
@@ -461,8 +461,8 @@ int GrkDecompress::parseCommandLine(int argc, char** argv, DecompressInitParams*
 		TCLAP::ValueArg<std::string> logfileArg("W", "logfile", "Log file", false, "", "string",
 												cmd);
 		TCLAP::SwitchArg xmlArg("X", "xml", "xml metadata", cmd);
-		TCLAP::ValueArg<std::string> inDirArg("y", "in_dir", "Image Directory", false, "",
-											   "string", cmd);
+		TCLAP::ValueArg<std::string> inDirArg("y", "in_dir", "Image Directory", false, "", "string",
+											  cmd);
 		TCLAP::ValueArg<uint32_t> durationArg("z", "Duration", "Duration in seconds", false, 0,
 											  "unsigned integer", cmd);
 
@@ -1204,8 +1204,8 @@ int GrkDecompress::preProcess(grk_plugin_decompress_callback_info* info)
 		{
 			info->decompressor_parameters->dw_x0 = (float)floor(val[0] * double(img->x1 - img->x0));
 			info->decompressor_parameters->dw_y0 = (float)floor(val[1] * double(img->y1 - img->y0));
-			info->decompressor_parameters->dw_x1 = (float)ceil( val[2] * double(img->x1 - img->x0));
-			info->decompressor_parameters->dw_y1 = (float)ceil( val[3] * double(img->y1 - img->y0));
+			info->decompressor_parameters->dw_x1 = (float)ceil(val[2] * double(img->x1 - img->x0));
+			info->decompressor_parameters->dw_y1 = (float)ceil(val[3] * double(img->y1 - img->y0));
 		}
 
 		// do not allow odd top left region coordinates for SYCC

@@ -51,4 +51,4 @@ class ImageComponentFlow
 	FlowComponent* waveletFinalCopy_;
 };
 
-}
+} // namespace grk

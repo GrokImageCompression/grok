@@ -461,7 +461,7 @@ bool TileProcessor::decompressT2T1(TileCodingParams* tcp, GrkImage* outputImage,
 				GRK_ERROR("Not enough memory for tile data");
 				return false;
 			}
-			if (!scheduler_->schedule(compno))
+			if(!scheduler_->schedule(compno))
 				return false;
 		}
 		if(!scheduler_->run())

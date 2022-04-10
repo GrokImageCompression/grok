@@ -21,8 +21,8 @@
 
 namespace grk
 {
-
-struct ResDecompressBlocks {
+struct ResDecompressBlocks
+{
 	ResDecompressBlocks(void) = default;
 	void clear(void);
 	bool empty(void) const;
@@ -36,10 +36,12 @@ typedef std::vector<ResDecompressBlocks> DecompressBlocks;
 class DecompressScheduler : public Scheduler
 {
   public:
-	DecompressScheduler(TileProcessor* tileProcessor, Tile* tile, TileCodingParams* tcp, uint8_t prec,bool doPostT1);
+	DecompressScheduler(TileProcessor* tileProcessor, Tile* tile, TileCodingParams* tcp,
+						uint8_t prec, bool doPostT1);
 	~DecompressScheduler() = default;
 
 	bool schedule(uint16_t compno) override;
+
   private:
 	bool scheduleBlocks(uint16_t compno);
 	bool scheduleWavelet(uint16_t compno);
