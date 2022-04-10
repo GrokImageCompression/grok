@@ -440,9 +440,9 @@ bool TileProcessor::decompressT2T1(TileCodingParams* tcp, GrkImage* outputImage,
 		!current_plugin_tile || (current_plugin_tile->decompress_flags & GRK_DECODE_POST_T1);
 	if(doT1)
 	{
+		scheduler_ = new DecompressScheduler(this, tile, tcp_, headerImage->comps->prec, doPostT1);
 		for(uint16_t compno = 0; compno < tile->numcomps_; ++compno)
 		{
-			scheduler_ = new DecompressScheduler(this, tile, tcp_, headerImage->comps->prec, doPostT1);
 			auto tilec = tile->comps + compno;
 			if(!wholeTileDecompress)
 			{
@@ -463,9 +463,11 @@ bool TileProcessor::decompressT2T1(TileCodingParams* tcp, GrkImage* outputImage,
 			}
 			if(!scheduler_->schedule(compno))
 				return false;
-			delete scheduler_;
-			scheduler_ = nullptr;
 		}
+		if(!scheduler_->run())
+			return false;
+		delete scheduler_;
+		scheduler_ = nullptr;
 	}
 	// post T1
 	if(doPostT1)

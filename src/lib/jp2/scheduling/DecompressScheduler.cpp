@@ -61,9 +61,6 @@ bool DecompressScheduler::schedule(uint16_t compno)
 			rb.release();
 		return false;
 	}
-	if(!run())
-		return false;
-	getCodecFlow().clear();
 
 	return true;
 }
