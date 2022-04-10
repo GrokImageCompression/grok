@@ -328,7 +328,7 @@ class CodeStreamDecompress : public CodeStream, public ICodeStreamDecompress
 	GrkImage* outputImage_;
 	TileCache* tileCache_;
 
-	StripPool stripCache_;
+	StripCache stripCache_;
 
 	grk_serialize_pixels_callback serializeBufferCallback;
 	void* serializeUserData;

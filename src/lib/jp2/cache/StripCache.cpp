@@ -4,7 +4,7 @@ namespace grk
 {
 static bool reclaimCallback(grk_serialize_buf buffer, void* serialize_user_data)
 {
-	auto pool = (StripPool*)serialize_user_data;
+	auto pool = (StripCache*)serialize_user_data;
 	if(pool)
 		pool->putBuffer(GrkSerializeBuf(buffer));
 
@@ -34,11 +34,11 @@ uint32_t Strip::reduceDim(uint32_t dim)
 {
 	return reduce_ ? ceildivpow2<uint32_t>(dim, reduce_) : dim;
 }
-StripPool::StripPool()
+StripCache::StripCache()
 	: strips(nullptr), tgrid_w_(0), tgrid_h_(0), tileHeight_(0), imageY0_(0), packedRowBytes_(0),
 	  serializeUserData_(nullptr), serializeBufferCallback_(nullptr)
 {}
-StripPool::~StripPool()
+StripCache::~StripCache()
 {
 	for(auto& b : pool)
 		b.second.dealloc();
@@ -46,7 +46,7 @@ StripPool::~StripPool()
 		delete strips[i];
 	delete[] strips;
 }
-void StripPool::init(uint16_t tgrid_w, uint16_t tgrid_h, uint32_t tileHeight, uint8_t reduce,
+void StripCache::init(uint16_t tgrid_w, uint16_t tgrid_h, uint32_t tileHeight, uint8_t reduce,
 					 GrkImage* outputImage, grk_serialize_pixels_callback serializeBufferCallback,
 					 void* serializeUserData,
 					 grk_serialize_register_client_callback serializeRegisterClientCallback)
@@ -65,9 +65,9 @@ void StripPool::init(uint16_t tgrid_w, uint16_t tgrid_h, uint32_t tileHeight, ui
 	packedRowBytes_ = outputImage->packedRowBytes;
 	strips = new Strip*[tgrid_h];
 	for(uint16_t i = 0; i < tgrid_h_; ++i)
-		strips[i] = new Strip(outputImage, i, tileHeight, reduce);
+		strips[i] = new Strip(outputImage, i, tileHeight_, reduce);
 }
-bool StripPool::composite(GrkImage* tileImage)
+bool StripCache::composite(GrkImage* tileImage)
 {
 	uint16_t stripId = (uint16_t)((tileImage->y0 - imageY0_ + tileHeight_ - 1) / tileHeight_);
 	assert(stripId < tgrid_h_);
@@ -108,7 +108,7 @@ bool StripPool::composite(GrkImage* tileImage)
 
 	return rc;
 }
-GrkSerializeBuf StripPool::getBuffer(uint64_t len)
+GrkSerializeBuf StripCache::getBuffer(uint64_t len)
 {
 	for(auto iter = pool.begin(); iter != pool.end(); ++iter)
 	{
@@ -125,7 +125,7 @@ GrkSerializeBuf StripPool::getBuffer(uint64_t len)
 
 	return rc;
 }
-void StripPool::putBuffer(GrkSerializeBuf b)
+void StripCache::putBuffer(GrkSerializeBuf b)
 {
 	assert(b.data);
 	assert(pool.find(b.data) == pool.end());

@@ -66,11 +66,11 @@ struct Strip
 	uint8_t reduce_;
 };
 
-class StripPool
+class StripCache
 {
   public:
-	StripPool(void);
-	virtual ~StripPool();
+	StripCache(void);
+	virtual ~StripCache();
 
 	void init(uint16_t tgrid_w, uint16_t tgrid_h, uint32_t tileHeight, uint8_t reduce,
 			  GrkImage* outputImg, grk_serialize_pixels_callback serializeBufferCallback,
