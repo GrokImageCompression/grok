@@ -82,18 +82,18 @@ class StripCache
   private:
 	GrkSerializeBuf getBufferFromPool(uint64_t len);
 	std::map<uint8_t*, GrkSerializeBuf> pool;
+	mutable std::mutex poolMutex_;
 	Strip** strips;
 	uint16_t tgrid_w_;
 	uint16_t tgrid_h_;
 	uint32_t tileHeight_;
 	uint32_t imageY0_;
 	uint64_t packedRowBytes_;
-
-	mutable std::mutex cacheMutex_;
-
 	void* serializeUserData_;
 	grk_serialize_pixels_callback serializeBufferCallback_;
+	mutable std::mutex serializeMutex_;
 	MinHeap<GrkSerializeBuf, uint32_t, MinHeapFakeLocker> serializeHeap;
+	mutable std::mutex heapMutex_;
 };
 
 } // namespace grk

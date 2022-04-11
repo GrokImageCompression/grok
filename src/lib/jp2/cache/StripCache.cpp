@@ -76,15 +76,13 @@ bool StripCache::ingestTile(GrkImage* src)
 	uint64_t dataLen = packedRowBytes_ * src->comps->h;
 	uint32_t tileCount = 0;
 	{
-		std::unique_lock<std::mutex> lk(cacheMutex_);
+		std::unique_lock<std::mutex> lk(poolMutex_);
 		tileCount = ++strip->tileCounter;
 		if(tileCount == 1) {
+			assert(!dest->interleavedData.data);
+			dest->interleavedData = getBufferFromPool(dataLen);
 			if(!dest->interleavedData.data)
-			{
-				dest->interleavedData = getBufferFromPool(dataLen);
-				if(!dest->interleavedData.data)
-					return false;
-			}
+				return false;
 		}
 	}
 	if(!dest->compositeInterleaved(src))
@@ -95,15 +93,39 @@ bool StripCache::ingestTile(GrkImage* src)
 		buf.index = stripId;
 		buf.dataLen = dataLen;
 		dest->interleavedData.data = nullptr;
-		std::unique_lock<std::mutex> lk(cacheMutex_);
-		// serialize all sequential buffers in heap
-		serializeHeap.push(buf);
-		buf = serializeHeap.pop();
-		while(buf.data)
+		std::queue <GrkSerializeBuf> buffersToSerialize;
 		{
-			if(!serializeBufferCallback_(buf, serializeUserData_))
-				return false;
+			std::unique_lock<std::mutex> lk(heapMutex_);
+			// 1. push to heap
+			serializeHeap.push(buf);
+			// 2. get all sequential buffers in heap
 			buf = serializeHeap.pop();
+			while(buf.data) {
+				buffersToSerialize.push(buf);
+				buf = serializeHeap.pop();
+			}
+		}
+		// 3. serialize buffers
+		if (!buffersToSerialize.empty()) {
+			{
+				std::unique_lock<std::mutex> lk(serializeMutex_);
+				while (!buffersToSerialize.empty()){
+					auto b = buffersToSerialize.front();
+					if(!serializeBufferCallback_(b, serializeUserData_))
+						break;
+					buffersToSerialize.pop();
+				}
+			}
+			// if non empty, then there has been a serialize failure
+			if (!buffersToSerialize.empty()){
+				// cleanup
+				while (!buffersToSerialize.empty()){
+					auto b = buffersToSerialize.front();
+					b.dealloc();
+					buffersToSerialize.pop();
+				}
+				return false;
+			}
 		}
 	}
 
