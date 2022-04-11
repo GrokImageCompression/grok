@@ -116,3 +116,9 @@ jobs:
         name: grok-${{ matrix.os }}
         path: ${{ github.workspace }}/build/grok-${{ matrix.os }}
 
+    - name: Upload binaries to release
+      uses: softprops/action-gh-release@v1
+      if: ${{startsWith(github.ref, 'refs/tags/') }}
+      with:
+          files: build/grok-${{ matrix.os }}.zip 
+
