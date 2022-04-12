@@ -190,7 +190,7 @@ class WaveletReverse
 	Scheduler* scheduler_;
 	TileComponent* tilec_;
 	uint16_t compno_;
-	grk_rect32 window_;
+	grk_rect32 unreducedWindow_;
 	uint8_t numres_;
 	uint8_t qmfbid_;
 

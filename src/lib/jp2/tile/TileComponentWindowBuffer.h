@@ -405,8 +405,11 @@ struct TileComponentWindowBuffer
 
 	/**
 	 * Transform code block offsets from canvas coordinates
-	 * to either band coordinates (relative to sub band origin)
-	 * or buffer coordinates (relative to associated resolution origin)
+	 * to either band coordinates (relative to sub band origin),
+	 * in the case of whole tile decompression,
+	 *
+	 * or buffer coordinates (relative to associated resolution origin),
+	 * in the case of compression or region decompression
 	 *
 	 * @param resno resolution number
 	 * @param orientation band orientation {LL,HL,LH,HH}

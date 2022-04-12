@@ -370,22 +370,22 @@ struct grk_buf2d : protected grk_buf<T, A>, public grk_rect32
 	 *
 	 * @param window window to read from.
 	 * @param dest user buffer to fill
-	 * @param dest_col_stride spacing (in elements, not in bytes) in x dimension between consecutive
+	 * @param spacingX spacing (in elements, not in bytes) in x dimension between consecutive
 	 * elements of the user buffer.
-	 * @param dest_line_stride spacing (in elements, not in bytes) in y dimension between
+	 * @param spacingY spacing (in elements, not in bytes) in y dimension between
 	 * consecutive elements of the user buffer.
 	 */
-	bool read(grk_rect32 window, int32_t* dest, const uint32_t destColStride,
-			  const uint32_t destStride)
+	bool read(grk_rect32 window, int32_t* dest, const uint32_t spacingX,
+			  const uint32_t spacingY)
 	{
 		GRK_UNUSED(dest);
-		GRK_UNUSED(destColStride);
-		GRK_UNUSED(destStride);
+		GRK_UNUSED(spacingX);
+		GRK_UNUSED(spacingY);
 
 		if(!isWindowValid(window))
 			return false;
 
-		// 1. calculate overlap
+		auto inter = intersection(window);
 
 		return true;
 	}
@@ -394,48 +394,48 @@ struct grk_buf2d : protected grk_buf<T, A>, public grk_rect32
 	 *
 	 * @param window : window to write to buffer
 	 * @param src user buffer to fill.
-	 * @param src_col_stride spacing (in elements, not in bytes) in x dimension between consecutive
+	 * @param spacingX spacing (in elements, not in bytes) in x dimension between consecutive
 	 * elements of the user buffer.
-	 * @param src_line_stride spacing (in elements, not in bytes) in y dimension between consecutive
+	 * @param spacingY spacing (in elements, not in bytes) in y dimension between consecutive
 	 * elements of the user buffer.
 	 */
-	bool write(grk_rect32 window, const int32_t* src, const uint32_t srcColStride,
-			   const uint32_t srcStride)
+	bool write(grk_rect32 srcWin, const int32_t* src, const uint32_t spacingX,
+			   const uint32_t spacingY)
 	{
 		GRK_UNUSED(src);
-		GRK_UNUSED(srcColStride);
-		GRK_UNUSED(srcStride);
+		GRK_UNUSED(spacingX);
+		GRK_UNUSED(spacingY);
 
-		if(!isWindowValid(window))
+		if(!isWindowValid(srcWin))
 			return false;
 
-		return true;
-	}
+		assert(spacingY != 0 || srcWin.height() == 1);
+		assert((spacingY <= 1 && spacingX >= 1) || (spacingY >=1 && spacingX == 1));
 
-	bool copy_data(T* dest, uint32_t dest_w, uint32_t dest_h, uint32_t dest_stride) const
-	{
-		assert(dest_w <= width());
-		assert(dest_h <= height());
-		assert(dest_stride <= stride);
-		if(dest_w > width() || dest_h > height() || dest_stride > stride)
-			return false;
-		if(!this->buf)
-			return false;
-		auto src_ptr = this->buf;
-		auto dest_ptr = dest;
-		for(uint32_t j = 0; j < dest_h; ++j)
-		{
-			memcpy(dest_ptr, src_ptr, dest_w * sizeof(T));
-			dest_ptr += dest_stride;
-			src_ptr += stride;
+		auto inter = intersection(srcWin);
+
+		auto srcOffX = inter.x0 < x0 ? x0 - inter.x0 : 0;
+		auto srcOffY = inter.y0 < y0 ? y0 - inter.y0 : 0;
+		src += srcOffY * spacingY + srcOffX;
+
+		auto destOffX = inter.x0 < x0 ? 0 : inter.x0 - x0;
+		auto destOffY = inter.y0 < y0 ? 0 : inter.y0 - y0;
+		auto destPtr = this->buf + destOffY * this->stride + destOffX;
+
+		for (uint32_t y = inter.y0; y < inter.y1; y++){
+			for (uint32_t x = inter.x0; x < inter.x1; x++){
+
+
+			}
 		}
+
 		return true;
 	}
 	// rhs coordinates are in "this" coordinate system
 	template<typename F>
 	void copy(const grk_buf2d& rhs, F filter)
 	{
-		auto inter = this->intersection(rhs);
+		auto inter = intersection(rhs);
 		if(inter.empty())
 			return;
 

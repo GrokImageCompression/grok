@@ -21,18 +21,35 @@
 // SparseCanvas stores blocks in the canvas coordinate system. It covers the active sub-bands for
 // all (reduced) resolutions
 
+/***
+ *
+ * SparseCanvas stores blocks of size LBW x LBH in canvase coordinate system (with offset)
+ * Blocks are only allocated for active sub-bands for reduced resolutions
+ *
+ * Data is pass in and out in a linear array, chunked either along the y axis
+ * or along the x axis, depending on whether we are working with a horizontal strip
+ * or a vertical strip of data.
+ *
+ *
+ */
+
 namespace grk
 {
 class ISparseCanvas
 {
   public:
 	virtual ~ISparseCanvas() = default;
-	virtual bool read(uint8_t resno, eBandOrientation bandOrientation, grk_rect32 window,
-					  int32_t* dest, const uint32_t destinationColumnStride,
-					  const uint32_t destinationLineStride, bool forceReturnTrue) = 0;
-	virtual bool write(uint8_t resno, eBandOrientation bandOrientation, grk_rect32 window,
-					   const int32_t* src, const uint32_t src_columnStride,
-					   const uint32_t src_lineStride, bool forceReturnTrue) = 0;
+	/**
+	 * Read window of data into dest buffer.
+	 */
+	virtual bool read(uint8_t resno, grk_rect32 window, int32_t* dest, const uint32_t destChunkY,
+					  const uint32_t destChunkX, bool forceReturnTrue) = 0;
+	/**
+	 * Write window of data from src buffer
+	 */
+	virtual bool write(uint8_t resno, grk_rect32 window, const int32_t* src,
+					   const uint32_t srcChunkY, const uint32_t srcChunkX,
+					   bool forceReturnTrue) = 0;
 	virtual bool alloc(grk_rect32 window, bool zeroOutBuffer) = 0;
 };
 struct SparseBlock
@@ -59,12 +76,8 @@ class SparseCanvas : public ISparseCanvas
 	{
 		if(!bounds.width() || !bounds.height() || !LBW || !LBH)
 			throw std::runtime_error("invalid window for sparse buffer");
-		uint32_t grid_off_x = floordivpow2(bounds.x0, LBW);
-		uint32_t grid_off_y = floordivpow2(bounds.y0, LBH);
-		uint32_t grid_x = ceildivpow2<uint32_t>(bounds.x1, LBW);
-		uint32_t grid_y = ceildivpow2<uint32_t>(bounds.y1, LBH);
-		gridBounds = grk_rect32(grid_off_x, grid_off_y, grid_x, grid_y);
-		auto blockCount = gridBounds.area();
+		grid = bounds.scaleDownPow2(LBW, LBH);
+		auto blockCount = grid.area();
 		blocks = new SparseBlock*[blockCount];
 		for(uint64_t i = 0; i < blockCount; ++i)
 			blocks[i] = nullptr;
@@ -74,7 +87,7 @@ class SparseCanvas : public ISparseCanvas
 	{
 		if(blocks)
 		{
-			for(uint64_t i = 0; i < (uint64_t)gridBounds.width() * gridBounds.height(); i++)
+			for(uint64_t i = 0; i < (uint64_t)grid.width() * grid.height(); i++)
 			{
 				delete(blocks[i]);
 				blocks[i] = nullptr;
@@ -82,56 +95,52 @@ class SparseCanvas : public ISparseCanvas
 			delete[] blocks;
 		}
 	}
-	bool read(uint8_t resno, eBandOrientation bandOrientation, grk_rect32 window, int32_t* dest,
-			  const uint32_t destinationColumnStride, const uint32_t destinationLineStride,
-			  bool forceReturnTrue)
+	bool read(uint8_t resno, grk_rect32 window, int32_t* dest, const uint32_t destChunkY,
+			  const uint32_t destChunkX, bool forceReturnTrue)
 	{
-		GRK_UNUSED(bandOrientation);
-		return readWrite(resno, window, dest, destinationColumnStride, destinationLineStride,
-						 forceReturnTrue, true);
+		return readWrite(resno, window, dest, destChunkY, destChunkX, forceReturnTrue, true);
 	}
-	bool write(uint8_t resno, eBandOrientation bandOrientation, grk_rect32 window,
-			   const int32_t* src, const uint32_t src_columnStride, const uint32_t src_lineStride,
-			   bool forceReturnTrue)
+	bool write(uint8_t resno, grk_rect32 window, const int32_t* src, const uint32_t srcChunkY,
+			   const uint32_t srcChunkX, bool forceReturnTrue)
 	{
-		GRK_UNUSED(bandOrientation);
-		return readWrite(resno, window, (int32_t*)src, src_columnStride, src_lineStride,
-						 forceReturnTrue, false);
+		return readWrite(resno, window, (int32_t*)src, srcChunkY, srcChunkX, forceReturnTrue,
+						 false);
 	}
 	bool alloc(grk_rect32 win, bool zeroOutBuffer)
 	{
 		if(!SparseCanvas::isWindowValid(win))
 			return true;
-		uint32_t yIncrement = 0;
-		uint32_t block_y = win.y0 >> LBH;
-		for(uint32_t y = win.y0; y < win.y1; block_y++, y += yIncrement)
+		uint32_t blockWinHeight = 0;
+		uint32_t gridY = win.y0 >> LBH;
+		for(uint32_t y = win.y0; y < win.y1; gridY++, y += blockWinHeight)
 		{
-			yIncrement = (y == win.y0) ? blockHeight - (win.y0 & (blockHeight - 1)) : blockHeight;
-			yIncrement = (std::min<uint32_t>)(yIncrement, win.y1 - y);
-			uint32_t block_x = win.x0 >> LBW;
-			uint32_t xIncrement = 0;
-			for(uint32_t x = win.x0; x < win.x1; block_x++, x += xIncrement)
+			blockWinHeight =
+				(y == win.y0) ? blockHeight - (win.y0 & (blockHeight - 1)) : blockHeight;
+			blockWinHeight = (std::min<uint32_t>)(blockWinHeight, win.y1 - y);
+			uint32_t gridX = win.x0 >> LBW;
+			uint32_t blockWinWidth = 0;
+			for(uint32_t x = win.x0; x < win.x1; gridX++, x += blockWinWidth)
 			{
-				xIncrement = (x == win.x0) ? blockWidth - (win.x0 & (blockWidth - 1)) : blockWidth;
-				xIncrement = (std::min<uint32_t>)(xIncrement, win.x1 - x);
-				if(!gridBounds.contains(grk_pt32(block_x, block_y)))
+				blockWinWidth =
+					(x == win.x0) ? blockWidth - (win.x0 & (blockWidth - 1)) : blockWidth;
+				blockWinWidth = (std::min<uint32_t>)(blockWinWidth, win.x1 - x);
+				if(!grid.contains(gridX, gridY))
 				{
 					GRK_ERROR("sparse buffer : attempt to allocate a block (%u,%u) outside block "
 							  "grid bounds (%u,%u,%u,%u)",
-							  block_x, block_y, gridBounds.x0, gridBounds.y0, gridBounds.x1,
-							  gridBounds.y1);
+							  gridX, gridY, grid.x0, grid.y0, grid.x1, grid.y1);
 					return false;
 				}
-				auto srcBlock = getBlock(block_x, block_y);
+				auto srcBlock = getBlock(gridX, gridY);
 				if(!srcBlock)
 				{
 					auto b = new SparseBlock();
 					b->alloc(blockWidth * blockHeight, zeroOutBuffer);
-					assert(gridBounds.contains(grk_pt32(block_x, block_y)));
+					assert(grid.contains(gridX, gridY));
 					assert(b->data);
-					uint64_t index = (uint64_t)(block_y - gridBounds.y0) * gridBounds.width() +
-									 (block_x - gridBounds.x0);
-					blocks[index] = b;
+					uint64_t blockInd =
+						(uint64_t)(gridY - grid.y0) * grid.width() + (gridX - grid.x0);
+					blocks[blockInd] = b;
 				}
 			}
 		}
@@ -141,8 +150,7 @@ class SparseCanvas : public ISparseCanvas
   private:
 	inline SparseBlock* getBlock(uint32_t block_x, uint32_t block_y)
 	{
-		uint64_t index =
-			(uint64_t)(block_y - gridBounds.y0) * gridBounds.width() + (block_x - gridBounds.x0);
+		uint64_t index = (uint64_t)(block_y - grid.y0) * grid.width() + (block_x - grid.x0);
 		return blocks[index];
 	}
 	bool isWindowValid(grk_rect32 win)
@@ -150,9 +158,13 @@ class SparseCanvas : public ISparseCanvas
 		return !(win.x0 >= bounds.x1 || win.x1 <= win.x0 || win.x1 > bounds.x1 ||
 				 win.y0 >= bounds.y1 || win.y1 <= win.y0 || win.y1 > bounds.y1);
 	}
-	bool readWrite(uint8_t resno, grk_rect32 win, int32_t* buf, const uint32_t buf_columnStride,
-				   const uint32_t buf_lineStride, bool forceReturnTrue, bool isReadOperation)
+	bool readWrite(uint8_t resno, grk_rect32 win, int32_t* buf, const uint32_t spacingX,
+				   const uint32_t spacingY, bool forceReturnTrue, bool isReadOperation)
 	{
+		if(!win.valid())
+			return forceReturnTrue;
+		assert(!isReadOperation || buf);
+
 		if(!isWindowValid(win))
 		{
 			// fill the client buffer with zeros in this case
@@ -161,74 +173,69 @@ class SparseCanvas : public ISparseCanvas
 				GRK_WARN("Sparse buffer @ res %u, attempt to read invalid window (%u,%u,%u,%u). "
 						 "Filling with zeros.",
 						 resno, win.x0, win.y0, win.x1, win.y1);
-				for(uint32_t y = win.y0; y < win.y1; ++y)
-				{
-					auto bufPtr = buf + (y - win.y0) * buf_lineStride;
-					for(uint32_t x = win.x0; x < win.x1; ++x)
-					{
-						*bufPtr = 0;
-						bufPtr += buf_columnStride;
-					}
-				}
+				if(buf)
+					memset(buf, 0, win.area() * sizeof(int32_t));
 			}
 			return forceReturnTrue;
 		}
-		const uint64_t lineStride = buf_lineStride;
-		const uint64_t columnStride = buf_columnStride;
-		uint32_t block_y = win.y0 >> LBH;
-		uint32_t yIncrement = 0;
-		for(uint32_t y = win.y0; y < win.y1; block_y++, y += yIncrement)
+		assert(spacingY != 0 || win.height() == 1);
+		assert((spacingY <= 1 && spacingX >= 1) || (spacingY >=1 && spacingX == 1));
+
+		uint32_t gridY = win.y0 >> LBH;
+		uint32_t blockWinHeight = 0;
+		for(uint32_t y = win.y0; y < win.y1; gridY++, y += blockWinHeight)
 		{
-			yIncrement = (y == win.y0) ? blockHeight - (win.y0 & (blockHeight - 1)) : blockHeight;
-			uint32_t blockYOffset = blockHeight - yIncrement;
-			yIncrement = (std::min<uint32_t>)(yIncrement, win.y1 - y);
-			uint32_t block_x = win.x0 >> LBW;
-			uint32_t xIncrement = 0;
-			for(uint32_t x = win.x0; x < win.x1; block_x++, x += xIncrement)
+			blockWinHeight =
+				(y == win.y0) ? blockHeight - (win.y0 & (blockHeight - 1)) : blockHeight;
+			uint32_t blockOffsetY = blockHeight - blockWinHeight;
+			blockWinHeight = (std::min<uint32_t>)(blockWinHeight, win.y1 - y);
+			uint32_t gridX = win.x0 >> LBW;
+			uint32_t blockWinWidth = 0;
+			for(uint32_t x = win.x0; x < win.x1; gridX++, x += blockWinWidth)
 			{
-				xIncrement = (x == win.x0) ? blockWidth - (win.x0 & (blockWidth - 1)) : blockWidth;
-				uint32_t blockXOffset = blockWidth - xIncrement;
-				xIncrement = (std::min<uint32_t>)(xIncrement, win.x1 - x);
-				if(!gridBounds.contains(grk_pt32(block_x, block_y)))
+				blockWinWidth =
+					(x == win.x0) ? blockWidth - (win.x0 & (blockWidth - 1)) : blockWidth;
+				uint32_t blockOffsetX = blockWidth - blockWinWidth;
+				blockWinWidth = (std::min<uint32_t>)(blockWinWidth, win.x1 - x);
+				if(!grid.contains(gridX, gridY))
 				{
 					GRK_ERROR("sparse buffer @ resno %u, Attempt to access a block (%u,%u) outside "
 							  "block grid bounds",
-							  resno, block_x, block_y);
+							  resno, gridX, gridY);
 					return false;
 				}
-				auto srcBlock = getBlock(block_x, block_y);
+				auto srcBlock = getBlock(gridX, gridY);
 				if(!srcBlock)
 				{
 					GRK_WARN("sparse buffer @ resno %u, %s op: missing block (%u,%u,%u,%u) for %s "
-							 "(%u,%u,%u,%u)",
+							 "(%u,%u,%u,%u). Skipping.",
 							 resno, isReadOperation ? "read" : "write",
-							 bounds.x0 + block_x * blockWidth, bounds.y0 + block_y * blockHeight,
-							 bounds.x0 + (block_x + 1) * blockWidth,
-							 bounds.y0 + (block_y + 1) * blockHeight,
+							 bounds.x0 + gridX * blockWidth, bounds.y0 + gridY * blockHeight,
+							 bounds.x0 + (gridX + 1) * blockWidth,
+							 bounds.y0 + (gridY + 1) * blockHeight,
 							 isReadOperation ? "read" : "write", win.x0, win.y0, win.x1, win.y1);
 					continue;
 				}
 				if(isReadOperation)
 				{
-					const int32_t* src =
-						srcBlock->data + ((uint64_t)blockYOffset << LBW) + blockXOffset;
-					auto dest = buf + (y - win.y0) * lineStride + (x - win.x0) * columnStride;
-					for(uint32_t j = 0; j < yIncrement; j++)
+					auto src = srcBlock->data + ((uint64_t)blockOffsetY << LBW) + blockOffsetX;
+					auto dest = buf + (y - win.y0) * spacingY + (x - win.x0) * spacingX;
+					for(uint32_t blockY = 0; blockY < blockWinHeight; blockY++)
 					{
-						uint64_t index = 0;
-						for(uint32_t k = 0; k < xIncrement; k++)
+						uint64_t destInd = 0;
+						for(uint32_t blockX = 0; blockX < blockWinWidth; blockX++)
 						{
 #ifdef GRK_DEBUG_VALGRIND
-							size_t val = grk_memcheck<int32_t>(src + k, 1);
+							size_t val = grk_memcheck<int32_t>(src + blockX, 1);
 							if(val != grk_mem_ok)
 								GRK_ERROR("sparse buffer @resno %u, read block(%u,%u) : "
 										  "uninitialized at location (%u,%u)",
-										  resno, block_x, block_y, x + k, y_);
+										  resno, gridX, gridY, x + blockX, y_);
 #endif
-							dest[index] = src[k];
-							index += columnStride;
+							dest[destInd] = src[blockX];
+							destInd += spacingX;
 						}
-						dest += lineStride;
+						dest += spacingY;
 						src += blockWidth;
 					}
 				}
@@ -236,29 +243,29 @@ class SparseCanvas : public ISparseCanvas
 				{
 					const int32_t* src = nullptr;
 					if(buf)
-						src = buf + (y - win.y0) * lineStride + (x - win.x0) * columnStride;
-					auto dest = srcBlock->data + ((uint64_t)blockYOffset << LBW) + blockXOffset;
-					for(uint32_t j = 0; j < yIncrement; j++)
+						src = buf + (y - win.y0) * spacingY + (x - win.x0) * spacingX;
+					auto dest = srcBlock->data + ((uint64_t)blockOffsetY << LBW) + blockOffsetX;
+					for(uint32_t blockY = 0; blockY < blockWinHeight; blockY++)
 					{
-						uint64_t index = 0;
-						for(uint32_t k = 0; k < xIncrement; k++)
+						uint64_t srcInd = 0;
+						for(uint32_t blockX = 0; blockX < blockWinWidth; blockX++)
 						{
 #ifdef GRK_DEBUG_VALGRIND
 							if(src)
 							{
-								grk_pt32 pt((uint32_t)(x + k), y_);
-								size_t val = grk_memcheck<int32_t>(src + index, 1);
+								grk_pt32 pt((uint32_t)(x + blockX), y_);
+								size_t val = grk_memcheck<int32_t>(src + srcInd, 1);
 								if(val != grk_mem_ok)
 									GRK_ERROR("sparse buffer @ resno %u,  write block(%u,%u): "
 											  "uninitialized at location (%u,%u)",
-											  resno, block_x, block_y, x + k, y_);
+											  resno, gridX, gridY, x + blockX, y_);
 							}
 #endif
-							dest[k] = src ? src[index] : 0;
-							index += columnStride;
+							dest[blockX] = src ? src[srcInd] : 0;
+							srcInd += spacingX;
 						}
 						if(src)
-							src += lineStride;
+							src += spacingY;
 						dest += blockWidth;
 					}
 				}
@@ -271,8 +278,8 @@ class SparseCanvas : public ISparseCanvas
 	const uint32_t blockWidth;
 	const uint32_t blockHeight;
 	SparseBlock** blocks;
-	grk_rect32 bounds;
-	grk_rect32 gridBounds;
+	grk_rect32 bounds; // canvas bounds
+	grk_rect32 grid; // block grid bounds
 };
 
 } // namespace grk

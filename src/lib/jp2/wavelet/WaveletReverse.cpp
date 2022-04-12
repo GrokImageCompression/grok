@@ -1241,74 +1241,67 @@ template<typename T, uint32_t FILTER_WIDTH, uint32_t VERT_PASS_WIDTH>
 class PartialInterleaver
 {
   public:
-	/**
-	 * interleaved data is laid out in the dwt->mem buffer in increments of h_chunk
-	 */
-	void interleave_h(dwt_data<T>* dwt, ISparseCanvas* sa, uint32_t y_offset, uint32_t height)
+	bool interleave_h(dwt_data<T>* dwt, ISparseCanvas* sa, uint32_t y_offset, uint32_t height)
 	{
-		const uint32_t h_chunk = (uint32_t)(sizeof(T) / sizeof(int32_t));
-		for(uint32_t i = 0; i < height; i++)
+		const uint32_t stripHeight = (uint32_t)(sizeof(T) / sizeof(int32_t));
+		for(uint32_t y = 0; y < height; y++)
 		{
 			bool ret = false;
-			// read one row of L band and write interleaved
+			// read one row of L band
 			if(dwt->sn_full)
 			{
 				ret = sa->read(
-					dwt->resno, BAND_ORIENT_LL,
-					grk_rect32(dwt->win_l.x0, y_offset + i,
+					dwt->resno,
+					grk_rect32(dwt->win_l.x0, y_offset + y,
 							   std::min<uint32_t>(dwt->win_l.x1 + FILTER_WIDTH, dwt->sn_full),
-							   y_offset + i + 1),
-					(int32_t*)dwt->memL + i, 2 * h_chunk, 0, true);
+							   y_offset + y + 1),
+					(int32_t*)dwt->memL + y, 2 * stripHeight, 0, true);
 				assert(ret);
 			}
-			// read one row of H band and write interleaved
+			// read one row of H band
 			if(dwt->dn_full)
 			{
 				ret = sa->read(
-					dwt->resno, BAND_ORIENT_LL,
-					grk_rect32(dwt->sn_full + dwt->win_h.x0, y_offset + i,
+					dwt->resno,
+					grk_rect32(dwt->sn_full + dwt->win_h.x0, y_offset + y,
 							   dwt->sn_full +
 								   std::min<uint32_t>(dwt->win_h.x1 + FILTER_WIDTH, dwt->dn_full),
-							   y_offset + i + 1),
-					(int32_t*)dwt->memH + i, 2 * h_chunk, 0, true);
+							   y_offset + y + 1),
+					(int32_t*)dwt->memH + y, 2 * stripHeight, 0, true);
 				assert(ret);
 			}
-			GRK_UNUSED(ret);
+			if(!ret)
+				return false;
 		}
+
+		return true;
 	}
-	/*
-	 * interleaved data is laid out in the dwt->mem buffer in
-	 * v_chunk lines
-	 */
-	void interleave_v(dwt_data<T>* GRK_RESTRICT dwt, ISparseCanvas* sa, uint32_t x_offset,
-					  uint32_t x_num_elements)
+	bool interleave_v(dwt_data<T>* GRK_RESTRICT dwt, ISparseCanvas* sa, uint32_t x_offset,
+					  uint32_t xWidth)
 	{
-		const uint32_t v_chunk = (uint32_t)(sizeof(T) / sizeof(int32_t)) * VERT_PASS_WIDTH;
-		// read one vertical strip (of width x_num_elements <= v_chunk) of L band and write
-		// interleaved
+		const uint32_t stripWidth = (sizeof(T) / sizeof(int32_t)) * VERT_PASS_WIDTH;
+		// read one vertical strip (of width xWidth <= stripWidth) of L band
 		bool ret = false;
 		if(dwt->sn_full)
 		{
 			ret =
-				sa->read(dwt->resno, BAND_ORIENT_LL,
-						 grk_rect32(x_offset, dwt->win_l.x0, x_offset + x_num_elements,
+				sa->read(dwt->resno,
+						 grk_rect32(x_offset, dwt->win_l.x0, x_offset + xWidth,
 									std::min<uint32_t>(dwt->win_l.x1 + FILTER_WIDTH, dwt->sn_full)),
-						 (int32_t*)dwt->memL, 1, 2 * v_chunk, true);
-			assert(ret);
+						 (int32_t*)dwt->memL, 1, 2 * stripWidth, true);
 		}
-		// read one vertical strip (of width x_num_elements <= v_chunk) of H band and write
-		// interleaved
+		// read one vertical strip (of width x_num_elements <= stripWidth) of H band
 		if(dwt->dn_full)
 		{
-			ret = sa->read(
-				dwt->resno, BAND_ORIENT_LL,
-				grk_rect32(x_offset, dwt->sn_full + dwt->win_h.x0, x_offset + x_num_elements,
-						   dwt->sn_full +
-							   std::min<uint32_t>(dwt->win_h.x1 + FILTER_WIDTH, dwt->dn_full)),
-				(int32_t*)dwt->memH, 1, 2 * v_chunk, true);
-			assert(ret);
+			ret =
+				sa->read(dwt->resno,
+						 grk_rect32(x_offset, dwt->sn_full + dwt->win_h.x0, x_offset + xWidth,
+									dwt->sn_full + std::min<uint32_t>(dwt->win_h.x1 + FILTER_WIDTH,
+																	  dwt->dn_full)),
+						 (int32_t*)dwt->memH, 1, 2 * stripWidth, true);
 		}
-		GRK_UNUSED(ret);
+
+		return ret;
 	}
 };
 template<typename T, uint32_t FILTER_WIDTH, uint32_t VERT_PASS_WIDTH>
@@ -1737,6 +1730,7 @@ struct TaskInfo
 	uint32_t indexMax_;
 };
 
+template<uint32_t FILTER_WIDTH>
 struct PartialBandInfo
 {
 	// 1. set up windows for horizontal and vertical passes
@@ -1746,6 +1740,52 @@ struct PartialBandInfo
 	// two windows formed by horizontal pass and used as input for vertical pass
 	grk_rect32 splitWindowRect[SPLIT_NUM_ORIENTATIONS];
 	grk_rect32 resWindowRect;
+
+	bool alloc(ISparseCanvas* sa, uint8_t resno, Resolution* fullRes,
+			   TileComponentWindowBuffer<int32_t>* buf)
+	{
+		bandWindowRect[BAND_ORIENT_LL] =
+			grk_rect32(buf->getBandWindowBufferPaddedREL(resno, BAND_ORIENT_LL));
+		bandWindowRect[BAND_ORIENT_HL] =
+			grk_rect32(buf->getBandWindowBufferPaddedREL(resno, BAND_ORIENT_HL));
+		bandWindowRect[BAND_ORIENT_LH] =
+			grk_rect32(buf->getBandWindowBufferPaddedREL(resno, BAND_ORIENT_LH));
+		bandWindowRect[BAND_ORIENT_HH] =
+			grk_rect32(buf->getBandWindowBufferPaddedREL(resno, BAND_ORIENT_HH));
+
+		tileBandWindowRect[BAND_ORIENT_LL] = bandWindowRect[BAND_ORIENT_LL];
+		tileBandWindowRect[BAND_ORIENT_HL] =
+			bandWindowRect[BAND_ORIENT_HL].pan(fullRes->tileBand[BAND_INDEX_LH].width(), 0);
+		tileBandWindowRect[BAND_ORIENT_LH] =
+			bandWindowRect[BAND_ORIENT_LH].pan(0, fullRes->tileBand[BAND_INDEX_HL].height());
+		tileBandWindowRect[BAND_ORIENT_HH] = bandWindowRect[BAND_ORIENT_HH].pan(
+			fullRes->tileBand[BAND_INDEX_LH].width(), fullRes->tileBand[BAND_INDEX_HL].height());
+		// 2. pre-allocate sparse blocks
+		for(uint32_t i = 0; i < BAND_NUM_ORIENTATIONS; ++i)
+		{
+			auto temp = tileBandWindowRect[i];
+			if(!sa->alloc(temp.growIPL(2 * FILTER_WIDTH, fullRes->width(), fullRes->height()),
+						  true))
+				return false;
+		}
+		resWindowRect = grk_rect32(buf->getResWindowBufferREL(resno));
+		if(!sa->alloc(resWindowRect, true))
+			return false;
+		splitWindowRect[SPLIT_L] = grk_rect32(buf->getResWindowBufferSplitREL(resno, SPLIT_L));
+		splitWindowRect[SPLIT_H] = grk_rect32(buf->getResWindowBufferSplitREL(resno, SPLIT_H));
+
+		auto fullResNext = fullRes + 1;
+		for(uint32_t k = 0; k < SPLIT_NUM_ORIENTATIONS; ++k)
+		{
+			auto temp = splitWindowRect[k];
+			if(!sa->alloc(
+				   temp.growIPL(2 * FILTER_WIDTH, fullResNext->width(), fullResNext->height()),
+				   true))
+				return false;
+		}
+
+		return true;
+	}
 };
 
 /**
@@ -1792,9 +1832,10 @@ bool WaveletReverse::decompress_partial_tile(ISparseCanvas* sa)
 	const uint32_t HORIZ_PASS_HEIGHT = sizeof(T) / sizeof(int32_t);
 	const uint32_t pad = FILTER_WIDTH * std::max<uint32_t>(HORIZ_PASS_HEIGHT, VERT_PASS_WIDTH) *
 						 sizeof(T) / sizeof(int32_t);
-	auto synthesisWindow = window_;
-	synthesisWindow = synthesisWindow.scaleDownCeilPow2(numresolutions - 1U - (numres_ - 1U));
+	// reduce window
+	auto synthesisWindow = unreducedWindow_.scaleDownCeilPow2(numresolutions - numres_);
 	assert(fullResTopLevel->intersection(synthesisWindow) == synthesisWindow);
+	// shift to relative coordinates
 	synthesisWindow =
 		synthesisWindow.pan(-(int64_t)fullResTopLevel->x0, -(int64_t)fullResTopLevel->y0);
 	if(synthesisWindow.empty())
@@ -1802,158 +1843,84 @@ bool WaveletReverse::decompress_partial_tile(ISparseCanvas* sa)
 	if(numres_ == 1U)
 	{
 		// simply copy into tile component buffer
-		bool ret = sa->read(0, BAND_ORIENT_LL, synthesisWindow,
-							buf->getResWindowBufferHighestREL()->getBuffer(), 1,
+		bool ret = sa->read(0, synthesisWindow, buf->getResWindowBufferHighestREL()->getBuffer(), 1,
 							buf->getResWindowBufferHighestREL()->stride, true);
-		assert(ret);
-		GRK_UNUSED(ret);
-		return true;
+
+		return ret;
 	}
-	D decompressor;
-	uint32_t numThreads = (uint32_t)ExecSingleton::get()->num_workers();
 	auto final_read = [this, sa, synthesisWindow, buf]() {
 		// final read into tile buffer
-		bool ret = sa->read(numres_ - 1, BAND_ORIENT_LL, synthesisWindow,
-							buf->getResWindowBufferHighestREL()->getBuffer(), 1,
-							buf->getResWindowBufferHighestREL()->stride, true);
+		bool ret =
+			sa->read(numres_ - 1, synthesisWindow, buf->getResWindowBufferHighestREL()->getBuffer(),
+					 1, buf->getResWindowBufferHighestREL()->stride, true);
 		assert(ret);
 		GRK_UNUSED(ret);
 	};
 	auto imageComponentFlow = scheduler_->getImageComponentFlow(compno_);
+	uint32_t numThreads = (uint32_t)ExecSingleton::get()->num_workers();
 	if(numThreads > 1)
 		imageComponentFlow->waveletFinalCopy_->nextTask()->work([final_read] { final_read(); });
 	// pre-allocate all blocks
-	std::vector<PartialBandInfo> resBandInfo;
+	std::vector<PartialBandInfo<FILTER_WIDTH>> resBandInfo;
 	for(uint8_t resno = 1; resno < numres_; resno++)
 	{
-		PartialBandInfo bandInfo;
-
-		bandInfo.bandWindowRect[BAND_ORIENT_LL] =
-			grk_rect32(buf->getBandWindowBufferPaddedREL(resno, BAND_ORIENT_LL));
-		bandInfo.bandWindowRect[BAND_ORIENT_HL] =
-			grk_rect32(buf->getBandWindowBufferPaddedREL(resno, BAND_ORIENT_HL));
-		bandInfo.bandWindowRect[BAND_ORIENT_LH] =
-			grk_rect32(buf->getBandWindowBufferPaddedREL(resno, BAND_ORIENT_LH));
-		bandInfo.bandWindowRect[BAND_ORIENT_HH] =
-			grk_rect32(buf->getBandWindowBufferPaddedREL(resno, BAND_ORIENT_HH));
-
-		bandInfo.tileBandWindowRect[BAND_ORIENT_LL] = bandInfo.bandWindowRect[BAND_ORIENT_LL];
-		bandInfo.tileBandWindowRect[BAND_ORIENT_HL] = bandInfo.bandWindowRect[BAND_ORIENT_HL].pan(
-			fullRes->tileBand[BAND_INDEX_LH].width(), 0);
-		bandInfo.tileBandWindowRect[BAND_ORIENT_LH] = bandInfo.bandWindowRect[BAND_ORIENT_LH].pan(
-			0, fullRes->tileBand[BAND_INDEX_HL].height());
-		bandInfo.tileBandWindowRect[BAND_ORIENT_HH] = bandInfo.bandWindowRect[BAND_ORIENT_HH].pan(
-			fullRes->tileBand[BAND_INDEX_LH].width(), fullRes->tileBand[BAND_INDEX_HL].height());
-		// 2. pre-allocate sparse blocks
-		for(uint32_t i = 0; i < BAND_NUM_ORIENTATIONS; ++i)
-		{
-			auto temp = bandInfo.tileBandWindowRect[i];
-			if(!sa->alloc(temp.growIPL(2 * FILTER_WIDTH, fullRes->width(), fullRes->height()),
-						  true))
-				return false;
-		}
-		bandInfo.resWindowRect = grk_rect32(buf->getResWindowBufferREL(resno));
-		if(!sa->alloc(bandInfo.resWindowRect, true))
+		PartialBandInfo<FILTER_WIDTH> bandInfo;
+		if(!bandInfo.alloc(sa, resno, fullRes + resno - 1, buf))
 			return false;
-		bandInfo.splitWindowRect[SPLIT_L] =
-			grk_rect32(buf->getResWindowBufferSplitREL(resno, SPLIT_L));
-		bandInfo.splitWindowRect[SPLIT_H] =
-			grk_rect32(buf->getResWindowBufferSplitREL(resno, SPLIT_H));
-
 		resBandInfo.push_back(bandInfo);
 	}
-
+	D decompressor;
 	for(uint8_t resno = 1; resno < numres_; resno++)
 	{
-		auto fullResLower = fullRes;
 		dwt_data<T> horiz;
 		dwt_data<T> vert;
-
-		horiz.sn_full = fullResLower->width();
-		vert.sn_full = fullResLower->height();
-		++fullRes;
+		horiz.sn_full = fullRes->width();
+		vert.sn_full = fullRes->height();
+		fullRes++;
 		horiz.dn_full = fullRes->width() - horiz.sn_full;
 		horiz.parity = fullRes->x0 & 1;
 		vert.dn_full = fullRes->height() - vert.sn_full;
 		vert.parity = fullRes->y0 & 1;
-		PartialBandInfo& bandInfo = resBandInfo[resno - 1];
-		for(uint32_t k = 0; k < SPLIT_NUM_ORIENTATIONS; ++k)
-		{
-			auto temp = bandInfo.splitWindowRect[k];
-			if(!sa->alloc(temp.growIPL(2 * FILTER_WIDTH, fullRes->width(), fullRes->height()),
-						  true))
-				return false;
-		}
+		PartialBandInfo<FILTER_WIDTH>& bandInfo = resBandInfo[resno - 1];
+
 		auto executor_h = [this, resno, sa, bandInfo,
 						   &decompressor](TaskInfo<T, dwt_data<T>>* taskInfo) {
-			GRK_UNUSED(compno_);
-			GRK_UNUSED(resno);
-			for(uint32_t j = taskInfo->indexMin_; j < taskInfo->indexMax_; j += HORIZ_PASS_HEIGHT)
+			for(uint32_t yPos = taskInfo->indexMin_; yPos < taskInfo->indexMax_;
+				yPos += HORIZ_PASS_HEIGHT)
 			{
 				auto height =
-					std::min<uint32_t>((uint32_t)HORIZ_PASS_HEIGHT, taskInfo->indexMax_ - j);
-#ifdef GRK_DEBUG_VALGRIND
-				// GRK_INFO("H: compno = %u, resno = %u,y begin = %u, height = %u,", compno, resno,
-				// j, height);
-				uint32_t len = (taskInfo->data.win_l.length() + taskInfo->data.win_h.length()) *
-							   HORIZ_PASS_HEIGHT;
-				GRK_UNUSED(len);
-				std::ostringstream ss;
-#endif
+					std::min<uint32_t>((uint32_t)HORIZ_PASS_HEIGHT, taskInfo->indexMax_ - yPos);
 				taskInfo->data.memL = taskInfo->data.mem + taskInfo->data.parity;
 				taskInfo->data.memH =
 					taskInfo->data.mem + (int64_t)(!taskInfo->data.parity) +
 					2 * ((int64_t)taskInfo->data.win_h.x0 - (int64_t)taskInfo->data.win_l.x0);
-				decompressor.interleave_h(&taskInfo->data, sa, j, height);
-#ifdef GRK_DEBUG_VALGRIND
-				auto ptr = ((uint64_t)taskInfo->data.memL < (uint64_t)taskInfo->data.memH)
-							   ? taskInfo->data.memL
-							   : taskInfo->data.memH;
-				ss << "H interleave : compno = " << (uint32_t)compno
-				   << ", resno= " << (uint32_t)(resno) << ", x begin = " << j
-				   << ", total samples = " << len;
-				grk_memcheck_all<int32_t>((int32_t*)ptr, len, ss.str());
-#endif
+				if(!decompressor.interleave_h(&taskInfo->data, sa, yPos, height))
+					return false;
 				taskInfo->data.memL = taskInfo->data.mem;
 				taskInfo->data.memH = taskInfo->data.mem + ((int64_t)taskInfo->data.win_h.x0 -
 															(int64_t)taskInfo->data.win_l.x0);
 				decompressor.decompress_h(&taskInfo->data);
-#ifdef GRK_DEBUG_VALGRIND
-				ss.clear();
-				ss << "H decompress uninitialized value: compno = " << (uint32_t)compno
-				   << ", resno= " << (uint32_t)(resno) << ", x begin = " << j
-				   << ", total samples = " << len;
-				grk_memcheck_all<int32_t>((int32_t*)taskInfo->data.mem, len, ss.str());
-#endif
-				if(!sa->write(resno, BAND_ORIENT_LL,
-							  grk_rect32(bandInfo.resWindowRect.x0, j, bandInfo.resWindowRect.x1,
-										 j + height),
+				if(!sa->write(resno,
+							  grk_rect32(bandInfo.resWindowRect.x0, yPos, bandInfo.resWindowRect.x1,
+										 yPos + height),
 							  (int32_t*)(taskInfo->data.mem + (int64_t)bandInfo.resWindowRect.x0 -
 										 2 * (int64_t)taskInfo->data.win_l.x0),
 							  HORIZ_PASS_HEIGHT, 1, true))
 				{
-					GRK_ERROR("sparse array write failure");
 					delete taskInfo;
-					return;
+					return false;
 				}
 			}
 			delete taskInfo;
+
+			return true;
 		};
 		auto executor_v = [this, resno, sa, bandInfo,
 						   &decompressor](TaskInfo<T, dwt_data<T>>* taskInfo) {
-			GRK_UNUSED(compno_);
-			GRK_UNUSED(resno);
-			for(uint32_t j = taskInfo->indexMin_; j < taskInfo->indexMax_; j += VERT_PASS_WIDTH)
+			for(uint32_t xPos = taskInfo->indexMin_; xPos < taskInfo->indexMax_;
+				xPos += VERT_PASS_WIDTH)
 			{
-				auto width = std::min<uint32_t>(VERT_PASS_WIDTH, (taskInfo->indexMax_ - j));
-#ifdef GRK_DEBUG_VALGRIND
-				// GRK_INFO("V: compno = %u, resno = %u, x begin = %u, width = %u", compno, resno,
-				// j, width);
-				uint32_t len = (taskInfo->data.win_l.length() + taskInfo->data.win_h.length()) *
-							   VERT_PASS_WIDTH;
-				GRK_UNUSED(len);
-				std::ostringstream ss;
-#endif
+				auto width = std::min<uint32_t>(VERT_PASS_WIDTH, (taskInfo->indexMax_ - xPos));
 				taskInfo->data.memL =
 					taskInfo->data.mem + (taskInfo->data.parity) * VERT_PASS_WIDTH;
 				taskInfo->data.memH =
@@ -1961,44 +1928,31 @@ bool WaveletReverse::decompress_partial_tile(ISparseCanvas* sa)
 					((!taskInfo->data.parity) +
 					 2 * ((int64_t)taskInfo->data.win_h.x0 - (int64_t)taskInfo->data.win_l.x0)) *
 						VERT_PASS_WIDTH;
-				decompressor.interleave_v(&taskInfo->data, sa, j, width);
-#ifdef GRK_DEBUG_VALGRIND
-				auto ptr = ((uint64_t)taskInfo->data.memL < (uint64_t)taskInfo->data.memH)
-							   ? taskInfo->data.memL
-							   : taskInfo->data.memH;
-				ss << "V interleave: compno = " << (uint32_t)compno
-				   << ", resno= " << (uint32_t)(resno) << ", x begin = " << j
-				   << ", total samples = " << len;
-				grk_memcheck_all<int32_t>((int32_t*)ptr, len, ss.str());
-#endif
+				if(!decompressor.interleave_v(&taskInfo->data, sa, xPos, width))
+					return false;
 				taskInfo->data.memL = taskInfo->data.mem;
 				taskInfo->data.memH = taskInfo->data.mem + ((int64_t)taskInfo->data.win_h.x0 -
 															(int64_t)taskInfo->data.win_l.x0) *
 															   VERT_PASS_WIDTH;
 				decompressor.decompress_v(&taskInfo->data);
-#ifdef GRK_DEBUG_VALGRIND
-				ss.clear();
-				ss << "V decompress: compno = " << (uint32_t)compno
-				   << ", resno= " << (uint32_t)(resno) << ", x begin = " << j
-				   << ", total samples = " << len;
-				grk_memcheck_all<int32_t>((int32_t*)taskInfo->data.mem, len, ss.str());
-#endif
 				if(!sa->write(
-					   resno, BAND_ORIENT_LL,
-					   grk_rect32(j, bandInfo.resWindowRect.y0, j + width,
+					   resno,
+					   grk_rect32(xPos, bandInfo.resWindowRect.y0, xPos + width,
 								  bandInfo.resWindowRect.y0 + taskInfo->data.win_l.length() +
 									  taskInfo->data.win_h.length()),
 					   (int32_t*)(taskInfo->data.mem + ((int64_t)bandInfo.resWindowRect.y0 -
 														2 * (int64_t)taskInfo->data.win_l.x0) *
 														   VERT_PASS_WIDTH),
-					   1, VERT_PASS_WIDTH * sizeof(T) / sizeof(int32_t), true))
+					   1, VERT_PASS_WIDTH * (sizeof(T) / sizeof(int32_t)), true))
 				{
 					GRK_ERROR("Sparse array write failure");
 					delete taskInfo;
-					return;
+					return false;
 				}
 			}
 			delete taskInfo;
+
+			return true;
 		};
 
 		// 3. calculate synthesis
@@ -2030,7 +1984,6 @@ bool WaveletReverse::decompress_partial_tile(ISparseCanvas* sa)
 				auto taskInfo = new TaskInfo<T, dwt_data<T>>(horiz, indexMin, indexMax);
 				if(!taskInfo->data.alloc(dataLength, pad))
 				{
-					GRK_ERROR("Out of memory");
 					delete taskInfo;
 					return false;
 				}
@@ -2059,13 +2012,13 @@ bool WaveletReverse::decompress_partial_tile(ISparseCanvas* sa)
 			uint32_t indexMax = j < (numTasks - 1U)
 									? bandInfo.resWindowRect.x0 + (j + 1U) * incrPerJob
 									: bandInfo.resWindowRect.x1;
+			if(indexMin == indexMax)
+				continue;
 			auto taskInfo = new TaskInfo<T, dwt_data<T>>(vert, indexMin, indexMax);
 			if(!taskInfo->data.alloc(dataLength, pad))
 			{
-				GRK_ERROR("Out of memory");
 				delete taskInfo;
 				return false;
-				;
 			}
 			if(numThreads > 1)
 				resFlow->waveletVert_->nextTask()->work(
@@ -2078,38 +2031,12 @@ bool WaveletReverse::decompress_partial_tile(ISparseCanvas* sa)
 	if(numThreads == 1)
 		final_read();
 
-#ifdef GRK_DEBUG_VALGRIND
-	{
-		GRK_INFO("Final synthesis window for component %u", compno);
-		auto tileSynthesisWindow = synthesisWindow.pan(tilec->x0, tilec->y0);
-		if(compno == debug_compno)
-		{
-			for(uint32_t j = 0; j < tileSynthesisWindow.height(); j++)
-			{
-				auto bufPtr = buf->getResWindowBufferHighestREL()->buf +
-							  j * buf->getResWindowBufferHighestREL()->stride;
-				for(uint32_t i = 0; i < tileSynthesisWindow.width(); i++)
-				{
-					auto val = grk_memcheck(bufPtr, 1);
-					if(val != grk_mem_ok)
-					{
-						GRK_ERROR("***** Partial wavelet after final read: uninitialized memory at "
-								  "(x,y) =  (%u,%u) ******",
-								  tileSynthesisWindow.x0 + i, tileSynthesisWindow.y0 + j);
-					}
-					bufPtr += buf->getResWindowBufferHighestREL()->stride;
-				}
-			}
-		}
-	}
-#endif
-
 	return true;
 }
 WaveletReverse::WaveletReverse(TileProcessor* tileProcessor, TileComponent* tilec, uint16_t compno,
-							   grk_rect32 window, uint8_t numres, uint8_t qmfbid)
+							   grk_rect32 unreducedWindow, uint8_t numres, uint8_t qmfbid)
 	: tileProcessor_(tileProcessor), scheduler_(tileProcessor->getScheduler()), tilec_(tilec),
-	  compno_(compno), window_(window), numres_(numres), qmfbid_(qmfbid)
+	  compno_(compno), unreducedWindow_(unreducedWindow), numres_(numres), qmfbid_(qmfbid)
 {}
 bool WaveletReverse::decompress(void)
 {
@@ -2142,4 +2069,76 @@ bool WaveletReverse::decompress(void)
 }
 
 } // namespace grk
+#endif
+
+#ifdef GRK_DEBUG_VALGRIND
+  // GRK_INFO("H: compno = %u, resno = %u,y begin = %u, height = %u,", compno, resno,
+// j, height);
+uint32_t len = (taskInfo->data.win_l.length() + taskInfo->data.win_h.length()) * HORIZ_PASS_HEIGHT;
+GRK_UNUSED(len);
+std::ostringstream ss;
+#endif
+
+#ifdef GRK_DEBUG_VALGRIND
+auto ptr = ((uint64_t)taskInfo->data.memL < (uint64_t)taskInfo->data.memH) ? taskInfo -> data.memL
+																		   : taskInfo -> data.memH;
+ss << "H interleave : compno = " << (uint32_t)compno << ", resno= " << (uint32_t)(resno)
+   << ", x begin = " << j << ", total samples = " << len;
+grk_memcheck_all<int32_t>((int32_t*)ptr, len, ss.str());
+#endif
+
+#ifdef GRK_DEBUG_VALGRIND
+ss.clear();
+ss << "H decompress uninitialized value: compno = " << (uint32_t)compno
+   << ", resno= " << (uint32_t)(resno) << ", x begin = " << j << ", total samples = " << len;
+grk_memcheck_all<int32_t>((int32_t*)taskInfo->data.mem, len, ss.str());
+#endif
+
+#ifdef GRK_DEBUG_VALGRIND
+// GRK_INFO("V: compno = %u, resno = %u, x begin = %u, width = %u", compno, resno,
+// j, width);
+uint32_t len = (taskInfo->data.win_l.length() + taskInfo->data.win_h.length()) * VERT_PASS_WIDTH;
+GRK_UNUSED(len);
+std::ostringstream ss;
+#endif
+
+#ifdef GRK_DEBUG_VALGRIND
+auto ptr = ((uint64_t)taskInfo->data.memL < (uint64_t)taskInfo->data.memH) ? taskInfo -> data.memL
+																		   : taskInfo -> data.memH;
+ss << "V interleave: compno = " << (uint32_t)compno << ", resno= " << (uint32_t)(resno)
+   << ", x begin = " << j << ", total samples = " << len;
+grk_memcheck_all<int32_t>((int32_t*)ptr, len, ss.str());
+#endif
+
+#ifdef GRK_DEBUG_VALGRIND
+ss.clear();
+ss << "V decompress: compno = " << (uint32_t)compno << ", resno= " << (uint32_t)(resno)
+   << ", x begin = " << j << ", total samples = " << len;
+grk_memcheck_all<int32_t>((int32_t*)taskInfo->data.mem, len, ss.str());
+#endif
+
+#ifdef GRK_DEBUG_VALGRIND
+{
+	GRK_INFO("Final synthesis window for component %u", compno);
+	auto tileSynthesisWindow = synthesisWindow.pan(tilec->x0, tilec->y0);
+	if(compno == debug_compno)
+	{
+		for(uint32_t j = 0; j < tileSynthesisWindow.height(); j++)
+		{
+			auto bufPtr = buf->getResWindowBufferHighestREL()->buf +
+						  j * buf->getResWindowBufferHighestREL()->stride;
+			for(uint32_t i = 0; i < tileSynthesisWindow.width(); i++)
+			{
+				auto val = grk_memcheck(bufPtr, 1);
+				if(val != grk_mem_ok)
+				{
+					GRK_ERROR("***** Partial wavelet after final read: uninitialized memory at "
+							  "(x,y) =  (%u,%u) ******",
+							  tileSynthesisWindow.x0 + i, tileSynthesisWindow.y0 + j);
+				}
+				bufPtr += buf->getResWindowBufferHighestREL()->stride;
+			}
+		}
+	}
+}
 #endif

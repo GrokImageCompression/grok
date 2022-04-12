@@ -128,7 +128,11 @@ struct grk_rect
 	}
 	bool contains(grk_pt<T> pt)
 	{
-		return pt.x >= x0 && pt.y >= y0 && pt.x < x1 && pt.y < y1;
+		return contains(pt.x, pt.y);
+	}
+	bool contains(T x, T y)
+	{
+		return x >= x0 && y >= y0 && x < x1 && y < y1;
 	}
 	grk_rect<T>& operator=(const grk_rect<T>& rhs)
 	{

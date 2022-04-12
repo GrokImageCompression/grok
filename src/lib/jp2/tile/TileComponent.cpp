@@ -438,16 +438,11 @@ bool TileComponent::postDecompressImpl(int32_t* srcData, DecompressBlockExec* bl
 		srcData = nullptr;
 	}
 
-	if(sa_)
-	{
-		if(!sa_->write(
-			   block->resno, BAND_ORIENT_LL,
-			   grk_rect32(block->x, block->y, block->x + cblk->width(), block->y + cblk->height()),
-			   srcData, 1, cblk->width(), true))
-		{
-			return false;
-		}
-	}
+	if(sa_ && !sa_->write(block->resno,
+						  grk_rect32(block->x, block->y, block->x + cblk->width(),
+									 block->y + cblk->height()),
+						  srcData, 1, cblk->width(), true))
+		return false;
 
 	return true;
 }

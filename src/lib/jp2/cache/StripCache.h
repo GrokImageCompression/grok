@@ -61,9 +61,9 @@ struct Strip
 	uint32_t getIndex(void);
 	uint32_t reduceDim(uint32_t dim);
 	GrkImage* stripImg;
-	uint32_t tileCounter; 	// count number of tiles added to strip
-	uint32_t index_;	    // index of strip
-	uint8_t reduce_;   	    // resolution reduction
+	uint32_t tileCounter; // count number of tiles added to strip
+	uint32_t index_; // index of strip
+	uint8_t reduce_; // resolution reduction
 };
 
 class StripCache
