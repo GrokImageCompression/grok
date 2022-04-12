@@ -94,6 +94,7 @@ class StripCache
 	mutable std::mutex serializeMutex_;
 	MinHeap<GrkSerializeBuf, uint32_t, MinHeapFakeLocker> serializeHeap;
 	mutable std::mutex heapMutex_;
+	mutable std::mutex interleaveMutex_;
 };
 
 } // namespace grk

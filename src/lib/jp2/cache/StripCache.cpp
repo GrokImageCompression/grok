@@ -74,19 +74,22 @@ bool StripCache::ingestTile(GrkImage* src)
 	auto strip = strips[stripId];
 	auto dest = strip->stripImg;
 	uint64_t dataLen = packedRowBytes_ * src->comps->h;
-	uint32_t tileCount = 0;
 	{
 		std::unique_lock<std::mutex> lk(poolMutex_);
-		tileCount = ++strip->tileCounter;
-		if(tileCount == 1) {
-			assert(!dest->interleavedData.data);
+		if(!dest->interleavedData.data) {
 			dest->interleavedData = getBufferFromPool(dataLen);
 			if(!dest->interleavedData.data)
 				return false;
 		}
 	}
-	if(!dest->compositeInterleaved(src))
-		return false;
+	uint32_t tileCount = 0;
+	{
+		std::unique_lock<std::mutex> lk(interleaveMutex_);
+		tileCount = ++strip->tileCounter;
+		if(!dest->compositeInterleaved(src))
+			return false;
+	}
+
 	if(tileCount == tgrid_w_)
 	{
 		auto buf = GrkSerializeBuf(dest->interleavedData);
@@ -131,6 +134,11 @@ bool StripCache::ingestTile(GrkImage* src)
 
 	return true;
 }
+/***
+ * Get buffer from pool
+ *
+ * not thread safe, but it is always called from within a lock
+ */
 GrkSerializeBuf StripCache::getBufferFromPool(uint64_t len)
 {
 	for(auto iter = pool.begin(); iter != pool.end(); ++iter)
@@ -148,8 +156,14 @@ GrkSerializeBuf StripCache::getBufferFromPool(uint64_t len)
 
 	return rc;
 }
+/***
+ * return buffer to pool
+ *
+ * thread-safe
+ */
 void StripCache::returnBufferToPool(GrkSerializeBuf b)
 {
+	std::unique_lock<std::mutex> lk(poolMutex_);
 	assert(b.data);
 	assert(pool.find(b.data) == pool.end());
 	pool[b.data] = b;
