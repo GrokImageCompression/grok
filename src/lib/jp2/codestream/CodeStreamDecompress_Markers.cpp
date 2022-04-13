@@ -152,6 +152,8 @@ bool CodeStreamDecompress::parseTileHeaderMarkers(bool* canDecompress)
 						GRK_ERROR("Stream too short");
 						return false;
 					}
+					// read next TLM, even though we skip this tile
+					nextTLM();
 					break;
 				}
 			}
@@ -193,21 +195,7 @@ bool CodeStreamDecompress::parseTileHeaderMarkers(bool* canDecompress)
 		GRK_ERROR("Missing SOT marker");
 		return false;
 	}
-	if(cp_.tlm_markers && cp_.tlm_markers->valid())
-	{
-		// advance TLM to correct position
-		auto tilePartLengthInfo = cp_.tlm_markers->getNext();
-		// validate TLM
-		auto actualTileLength = stream_->tell() - decompressorState_.lastSotReadPosition;
-		if(tilePartLengthInfo && actualTileLength != tilePartLengthInfo->length_)
-		{
-			GRK_WARN("TLM marker tile part length %u differs from actual"
-					 " tile part length %u. Disabling TLM.",
-					 tilePartLengthInfo->length_, actualTileLength);
-			cp_.tlm_markers->invalidate();
-		}
-	}
-
+	nextTLM();
 	// ensure lossy wavelet has quantization set
 	auto tcp = get_current_decode_tcp();
 	auto numComps = headerImage_->numcomps;
@@ -324,6 +312,34 @@ bool CodeStreamDecompress::parseTileHeaderMarkers(bool* canDecompress)
 	decompressorState_.orState(DECOMPRESS_STATE_DATA);
 
 	return true;
+}
+
+TilePartLengthInfo* CodeStreamDecompress::nextTLM(void){
+	TilePartLengthInfo* tilePartLengthInfo = nullptr;
+	if(cp_.tlm_markers && cp_.tlm_markers->valid())
+	{
+		// advance TLM to correct position
+		tilePartLengthInfo = cp_.tlm_markers->getNext();
+		// validate TLM
+		auto actualTileLength = stream_->tell() - decompressorState_.lastSotReadPosition;
+		if(tilePartLengthInfo )
+		{
+			if (actualTileLength != tilePartLengthInfo->length_) {
+				GRK_WARN("TLM marker tile part length %u differs from actual"
+						 " tile part length %u; %u,%u. Disabling TLM.",
+						 tilePartLengthInfo->length_, actualTileLength,
+						 decompressorState_.lastSotReadPosition, stream_->tell());
+				cp_.tlm_markers->invalidate();
+			} else {
+				GRK_INFO("TLM marker tile part length %u equals actual"
+						 " tile part length %u; %u,%u.",
+						 tilePartLengthInfo->length_, actualTileLength,
+						 decompressorState_.lastSotReadPosition, stream_->tell());
+			}
+		}
+	}
+
+	return tilePartLengthInfo;
 }
 
 /**
