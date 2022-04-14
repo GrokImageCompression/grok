@@ -1840,13 +1840,27 @@ bool WaveletReverse::decompress_partial_tile(ISparseCanvas* sa)
 		synthesisWindow.pan(-(int64_t)fullResTopLevel->x0, -(int64_t)fullResTopLevel->y0);
 	if(synthesisWindow.empty())
 		return true;
+	uint32_t numThreads = (uint32_t)ExecSingleton::get()->num_workers();
+	auto imageComponentFlow = scheduler_->getImageComponentFlow(compno_);
+	// imageComponentFlow == nullptr ==> no blocks were decompressed for this component
+	if (!imageComponentFlow)
+		return true;
 	if(numres_ == 1U)
 	{
-		// simply copy into tile component buffer
-		bool ret = sa->read(0, synthesisWindow, buf->getResWindowBufferHighestREL()->getBuffer(), 1,
-							buf->getResWindowBufferHighestREL()->stride, true);
+		auto final_read = [this, sa, synthesisWindow, buf]() {
+			// final read into tile buffer
+			bool ret =
+				sa->read(0, synthesisWindow, buf->getResWindowBufferHighestREL()->getBuffer(),
+						 1, buf->getResWindowBufferHighestREL()->stride, true);
+			assert(ret);
+			GRK_UNUSED(ret);
+		};
+		if(numThreads > 1)
+			imageComponentFlow->waveletFinalCopy_->nextTask()->work([final_read] { final_read(); });
+		else
+			final_read();
 
-		return ret;
+		return true;
 	}
 	auto final_read = [this, sa, synthesisWindow, buf]() {
 		// final read into tile buffer
@@ -1856,8 +1870,6 @@ bool WaveletReverse::decompress_partial_tile(ISparseCanvas* sa)
 		assert(ret);
 		GRK_UNUSED(ret);
 	};
-	auto imageComponentFlow = scheduler_->getImageComponentFlow(compno_);
-	uint32_t numThreads = (uint32_t)ExecSingleton::get()->num_workers();
 	if(numThreads > 1)
 		imageComponentFlow->waveletFinalCopy_->nextTask()->work([final_read] { final_read(); });
 	// pre-allocate all blocks
@@ -1935,6 +1947,7 @@ bool WaveletReverse::decompress_partial_tile(ISparseCanvas* sa)
 															(int64_t)taskInfo->data.win_l.x0) *
 															   VERT_PASS_WIDTH;
 				decompressor.decompress_v(&taskInfo->data);
+				// write to buffer for final res
 				if(!sa->write(
 					   resno,
 					   grk_rect32(xPos, bandInfo.resWindowRect.y0, xPos + width,

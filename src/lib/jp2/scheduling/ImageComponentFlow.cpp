@@ -20,31 +20,42 @@ namespace grk
 {
 ResFlow::ResFlow(void)
 	: blocks_(new FlowComponent()), waveletHoriz_(new FlowComponent()),
-	  waveletVert_(new FlowComponent())
+	  waveletVert_(new FlowComponent()), doWavelet_(true)
 {}
+void ResFlow::disableWavelet(void){
+	doWavelet_ = false;
+}
 void ResFlow::graph(void)
 {
-	blocks_->precede(waveletHoriz_);
-	waveletHoriz_->precede(waveletVert_);
+	if (doWavelet_){
+		blocks_->precede(waveletHoriz_);
+		waveletHoriz_->precede(waveletVert_);
+	}
 }
 ResFlow* ResFlow::addTo(tf::Taskflow& composition)
 {
 	assert(blocks_);
 	blocks_->addTo(composition);
-	waveletHoriz_->addTo(composition);
-	waveletVert_->addTo(composition);
+	if (doWavelet_){
+		waveletHoriz_->addTo(composition);
+		waveletVert_->addTo(composition);
+	}
 
 	return this;
 }
 ResFlow* ResFlow::precede(ResFlow* successor)
 {
-	waveletVert_->precede(successor->blocks_);
+	if (doWavelet_)
+		waveletVert_->precede(successor->blocks_);
 
 	return this;
 }
 ResFlow* ResFlow::precede(FlowComponent* successor)
 {
-	waveletVert_->precede(successor);
+	if (doWavelet_)
+		waveletVert_->precede(successor);
+	else
+		blocks_->precede(successor);
 
 	return this;
 }
@@ -59,10 +70,14 @@ ImageComponentFlow::ImageComponentFlow(uint8_t numResolutions)
 {
 	if(numResFlows_)
 	{
+		bool noWavelet = numResFlows_ == 1;
+
 		// lowest two resolutions are grouped together
 		if(numResFlows_ > 1)
 			numResFlows_--;
 		resFlows_ = new ResFlow[numResFlows_];
+		if (noWavelet)
+			resFlows_[0].disableWavelet();
 	}
 }
 ImageComponentFlow::~ImageComponentFlow()

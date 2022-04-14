@@ -26,6 +26,7 @@ struct ResFlow
 	ResFlow(void);
 	~ResFlow(void);
 
+	void disableWavelet(void);
 	void graph(void);
 	ResFlow* addTo(tf::Taskflow& composition);
 	ResFlow* precede(ResFlow* successor);
@@ -33,6 +34,7 @@ struct ResFlow
 	FlowComponent* blocks_;
 	FlowComponent* waveletHoriz_;
 	FlowComponent* waveletVert_;
+	bool doWavelet_;
 };
 
 class ImageComponentFlow

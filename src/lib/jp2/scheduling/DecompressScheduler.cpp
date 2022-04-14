@@ -55,7 +55,7 @@ bool DecompressScheduler::schedule(uint16_t compno)
 		graph(compno);
 	}
 	uint8_t numRes = tilec->highestResolutionDecompressed + 1U;
-	if(doPostT1_ && numRes > 1 && !scheduleWavelet(compno))
+	if(doPostT1_ && numRes > 0 && !scheduleWavelet(compno))
 	{
 		for(auto& rb : allBlocks_)
 			rb.release();
@@ -126,7 +126,7 @@ bool DecompressScheduler::scheduleBlocks(uint16_t compno)
 		blocks.push_back(resBlocks);
 		resBlocks.clear();
 	}
-	if(!blocks.size())
+	if(blocks.empty())
 		return true;
 
 	uint8_t numResolutions = (tile_->comps + compno)->highestResolutionDecompressed + 1;
