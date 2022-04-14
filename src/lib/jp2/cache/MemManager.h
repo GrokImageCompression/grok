@@ -402,10 +402,6 @@ struct grk_buf2d : protected grk_buf<T, A>, public grk_rect32
 	bool write(grk_rect32 srcWin, const int32_t* src, const uint32_t spacingX,
 			   const uint32_t spacingY)
 	{
-		GRK_UNUSED(src);
-		GRK_UNUSED(spacingX);
-		GRK_UNUSED(spacingY);
-
 		if(!isWindowValid(srcWin))
 			return false;
 
@@ -416,17 +412,21 @@ struct grk_buf2d : protected grk_buf<T, A>, public grk_rect32
 
 		auto srcOffX = inter.x0 < x0 ? x0 - inter.x0 : 0;
 		auto srcOffY = inter.y0 < y0 ? y0 - inter.y0 : 0;
-		src += srcOffY * spacingY + srcOffX;
+		src += srcOffY * spacingY + srcOffX * spacingX;
 
 		auto destOffX = inter.x0 < x0 ? 0 : inter.x0 - x0;
 		auto destOffY = inter.y0 < y0 ? 0 : inter.y0 - y0;
-		auto destPtr = this->buf + destOffY * this->stride + destOffX;
+		auto dest = this->buf + destOffY * this->stride + destOffX;
 
 		for (uint32_t y = inter.y0; y < inter.y1; y++){
+			uint64_t srcInd = 0;
 			for (uint32_t x = inter.x0; x < inter.x1; x++){
-
-
+				dest[x] = src ? src[srcInd] : 0;
+				srcInd += spacingX;
 			}
+			if(src)
+				src += spacingY;
+			dest += stride;
 		}
 
 		return true;
