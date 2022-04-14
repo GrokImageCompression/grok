@@ -253,7 +253,7 @@ bool TileComponent::allocSparseCanvas(uint32_t numres, bool truncatedTile)
 
 	// 2. create (padded) sparse canvas, in buffer space,
 	const uint32_t blockSizeExp = 6;
-	temp.growIPL(2 * (1 << blockSizeExp));
+	temp.growIPL(8);
 	auto sa = new SparseCanvas<blockSizeExp, blockSizeExp>(temp);
 
 	// 3. allocate sparse blocks
@@ -272,11 +272,11 @@ bool TileComponent::allocSparseCanvas(uint32_t numres, bool truncatedTile)
 				auto cblk_expn = precinct->getCblkExpn();
 				auto roi_grid = roi->scaleDownPow2(cblk_expn).clip(cblk_grid);
 				auto w = cblk_grid.width();
-				for(uint32_t j = cblk_grid.y0; j < cblk_grid.y1; ++j)
+				for(uint32_t gridY = roi_grid.y0; gridY < roi_grid.y1; ++gridY)
 				{
 					uint64_t cblkno =
-						(roi_grid.x0 - cblk_grid.x0) + (uint64_t)(j - cblk_grid.y0) * w;
-					for(uint32_t i = roi_grid.x0; i < roi_grid.x1; ++i)
+						(roi_grid.x0 - cblk_grid.x0) + (uint64_t)(gridY - cblk_grid.y0) * w;
+					for(uint32_t gridX = roi_grid.x0; gridX < roi_grid.x1; ++gridX)
 					{
 						auto cblkBounds = precinct->getCodeBlockBounds(cblkno);
 
