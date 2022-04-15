@@ -1,2 +1,0 @@
-find_program(JPYLYZER_EXECUTABLE jpylyzer)
-mark_as_advanced(JPYLYZER_EXECUTABLE)

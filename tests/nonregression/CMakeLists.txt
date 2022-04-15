@@ -12,8 +12,6 @@ set(BASELINE_CONF_PATH ${GRK_DATA_ROOT}/baseline/conformance)
 
 # need kdu_expand if available
 find_package(KAKADU)
-# need jpylyzer if available
-find_package(JPYLYZER)
 
 #########################################################################
 # GENERATION OF THE TEST SUITE (DUMP)
@@ -282,18 +280,6 @@ foreach(TEST_CMD_LINE ${TEST_CMD_LINE_LIST})
                                     NR-ENC-${INPUT_FILENAME_NAME}-${IT_TEST_ENC}-decode-ref)
             endif()
           endif()
-
-          # Test the encoded file is a valid JP2 file
-          if (JPYLYZER_EXECUTABLE)
-            if (${OUTPUT_FILENAME} MATCHES "\\.jp2$")
-              add_test(NAME NR-ENC-${INPUT_FILENAME_NAME}-${IT_TEST_ENC}-jpylyser
-                COMMAND ${JPYLYZER_EXECUTABLE}
-                ${OUTPUT_FILENAME})
-              set_tests_properties(NR-ENC-${INPUT_FILENAME_NAME}-${IT_TEST_ENC}-jpylyser PROPERTIES
-                DEPENDS NR-ENC-${INPUT_FILENAME_NAME}-${IT_TEST_ENC}-encode
-                PASS_REGULAR_EXPRESSION "<isValid format=\"jp2\">True</isValid>")		
-            endif()
-          endif(JPYLYZER_EXECUTABLE)
 
           # If lossless compression (simple test is 4 arguments), decompress & compare
           list(LENGTH CMD_ARG_LIST_2 ARG_COUNT)
