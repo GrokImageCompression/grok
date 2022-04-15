@@ -734,3 +734,8 @@ grk_decompress -i @INPUT_NR_PATH@/crash-0a.jp2 -o @TEMP_PATH@/crash-0a.tif
 
 grk_decompress -i  @INPUT_NR_PATH@/issue205.jp2 -o @TEMP_PATH@/issue205.jp2_r0.tif
 grk_decompress -i  @INPUT_NR_PATH@/issue205.jp2 -o @TEMP_PATH@/issue205.jp2_r1.tif -r 1
+
+# commented out due to erroneous failure of jpylyzer on CMYK enumcs
+#grk_compress -i @INPUT_NR_PATH@/cmyk.tif -o @TEMP_PATH@/cmyk.jp2 -n 1
+grk_decompress -i  @INPUT_NR_PATH@/cmyk_no_wavelet.jp2 -o @TEMP_PATH@/cmyk_no_wavelet.tif
+grk_decompress -i  @INPUT_NR_PATH@/cmyk_no_wavelet.jp2 -o @TEMP_PATH@/cmyk_no_wavelet_region.tif -d 64,64,256,256
