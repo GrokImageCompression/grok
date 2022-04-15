@@ -455,6 +455,10 @@ bool TileProcessor::decompressT2T1(TileCodingParams* tcp, GrkImage* outputImage,
 					GRK_UNUSED(ex);
 					continue;
 				}
+				catch(std::bad_alloc& baex){
+					GRK_UNUSED(baex);
+					return false;
+				}
 			}
 			if(!tilec->getBuffer()->alloc())
 			{
