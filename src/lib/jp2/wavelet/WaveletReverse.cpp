@@ -1906,8 +1906,10 @@ bool WaveletReverse::decompress_partial_tile(ISparseCanvas* sa)
 				taskInfo->data.memH =
 					taskInfo->data.mem + (int64_t)(!taskInfo->data.parity) +
 					2 * ((int64_t)taskInfo->data.win_h.x0 - (int64_t)taskInfo->data.win_l.x0);
-				if(!decompressor.interleave_h(&taskInfo->data, sa, yPos, height))
+				if(!decompressor.interleave_h(&taskInfo->data, sa, yPos, height)){
+					delete taskInfo;
 					return false;
+				}
 				taskInfo->data.memL = taskInfo->data.mem;
 				taskInfo->data.memH = taskInfo->data.mem + ((int64_t)taskInfo->data.win_h.x0 -
 															(int64_t)taskInfo->data.win_l.x0);
@@ -1940,8 +1942,10 @@ bool WaveletReverse::decompress_partial_tile(ISparseCanvas* sa)
 					((!taskInfo->data.parity) +
 					 2 * ((int64_t)taskInfo->data.win_h.x0 - (int64_t)taskInfo->data.win_l.x0)) *
 						VERT_PASS_WIDTH;
-				if(!decompressor.interleave_v(&taskInfo->data, sa, xPos, width))
+				if(!decompressor.interleave_v(&taskInfo->data, sa, xPos, width)){
+					delete taskInfo;
 					return false;
+				}
 				taskInfo->data.memL = taskInfo->data.mem;
 				taskInfo->data.memH = taskInfo->data.mem + ((int64_t)taskInfo->data.win_h.x0 -
 															(int64_t)taskInfo->data.win_l.x0) *
