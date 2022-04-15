@@ -185,6 +185,9 @@ bool PNMFormat::encodeFinish(void)
 	return serializer.close() && closeStream();
 }
 
+/***
+ * application-orchestrated pixel encoding of entire image
+ */
 template<typename T>
 bool PNMFormat::encodeRows(uint32_t rows)
 {
@@ -222,9 +225,11 @@ bool PNMFormat::encodeRows(uint32_t rows)
 			if(!encodePixelsCore(packedBuf))
 			{
 				delete iter;
+				pool.put(packedBuf);
 				goto cleanup;
 			}
 			h += stripRows;
+			pool.put(packedBuf);
 		}
 		delete iter;
 
