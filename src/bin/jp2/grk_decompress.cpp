@@ -1267,7 +1267,7 @@ int GrkDecompress::preProcess(grk_plugin_decompress_callback_info* info)
 	// limit to 16 bit precision
 	for(uint32_t i = 0; i < info->image->numcomps; ++i)
 	{
-		if(info->image->comps[i].prec > 16)
+		if(info->image->comps[i].prec > GRK_MAX_SUPPORTED_IMAGE_PRECISION)
 		{
 			spdlog::error("grk_decompress: precision = {} not supported:",
 						  info->image->comps[i].prec);

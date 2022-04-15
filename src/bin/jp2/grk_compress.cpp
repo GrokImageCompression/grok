@@ -1925,7 +1925,7 @@ static bool pluginCompressCallback(grk_plugin_compress_user_callback_info* info)
 	// limit to 16 bit precision
 	for(uint32_t i = 0; i < image->numcomps; ++i)
 	{
-		if(image->comps[i].prec > 16)
+		if(image->comps[i].prec > GRK_MAX_SUPPORTED_IMAGE_PRECISION)
 		{
 			spdlog::error("precision = {} not supported:", image->comps[i].prec);
 			bSuccess = false;
