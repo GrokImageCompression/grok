@@ -32,6 +32,12 @@ namespace HWY_NAMESPACE
 {
 	using namespace hwy::HWY_NAMESPACE;
 
+	static size_t hwy_num_lanes(void)
+	{
+		const HWY_FULL(int32_t) di;
+		return Lanes(di);
+	}
+
 	/**
 	 * Apply dc shift for irreversible decompressed image.
 	 * (assumes mono with no  MCT)
@@ -43,16 +49,16 @@ namespace HWY_NAMESPACE
 		/**
 		 * vector version
 		 */
-		int32_t vtrans(std::vector<int32_t*> channels, std::vector<ShiftInfo> shiftInfo,
+		int32_t vtrans(Tile* tile,uint16_t compno, std::vector<ShiftInfo> shiftInfo,
 					   size_t index, size_t chunkSize)
 		{
-			float* GRK_RESTRICT chan0 = (float*)channels[0];
-			size_t begin = (size_t)index * chunkSize;
+			auto chan0 = (float*)tile->comps[compno].getBuffer()->getResWindowBufferHighestREL()->getBuffer();
 			const HWY_FULL(int32_t) di;
 			const HWY_FULL(float) df;
 			auto vshift = Set(di, shiftInfo[0]._shift);
 			auto vmin = Set(di, shiftInfo[0]._min);
 			auto vmax = Set(di, shiftInfo[0]._max);
+			size_t begin = (size_t)index * chunkSize;
 			for(auto j = begin; j < begin + chunkSize; j += Lanes(di))
 			{
 				auto ni = Clamp(NearestInt(Load(df, chan0 + j)) + vshift, vmin, vmax);
@@ -63,11 +69,11 @@ namespace HWY_NAMESPACE
 		/**
 		 * scalar version
 		 */
-		void trans(std::vector<int32_t*> channels, std::vector<ShiftInfo> shiftInfo, size_t i,
+		void trans( Tile* tile,uint16_t compno,std::vector<ShiftInfo> shiftInfo, size_t i,
 				   size_t n)
 		{
-			float* GRK_RESTRICT chan0 = (float*)channels[0];
-			int32_t* GRK_RESTRICT c0 = channels[0];
+			auto chan0 = (float*)tile->comps[compno].getBuffer()->getResWindowBufferHighestREL()->getBuffer();
+			auto c0 = (int32_t*)chan0;
 			int32_t shift = shiftInfo[0]._shift;
 			int32_t _min = shiftInfo[0]._min;
 			int32_t _max = shiftInfo[0]._max;
@@ -87,15 +93,15 @@ namespace HWY_NAMESPACE
 		/**
 		 * vector version
 		 */
-		int32_t vtrans(std::vector<int32_t*> channels, std::vector<ShiftInfo> shiftInfo,
+		int32_t vtrans(Tile* tile, uint16_t compno,std::vector<ShiftInfo> shiftInfo,
 					   size_t index, size_t chunkSize)
 		{
-			int32_t* GRK_RESTRICT chan0 = channels[0];
-			size_t begin = (size_t)index * chunkSize;
+			auto chan0 = tile->comps[compno].getBuffer()->getResWindowBufferHighestREL()->getBuffer();
 			const HWY_FULL(int32_t) di;
 			auto vshift = Set(di, shiftInfo[0]._shift);
 			auto vmin = Set(di, shiftInfo[0]._min);
 			auto vmax = Set(di, shiftInfo[0]._max);
+			size_t begin = (size_t)index * chunkSize;
 			for(auto j = begin; j < begin + chunkSize; j += Lanes(di))
 			{
 				auto ni = Clamp(Load(di, chan0 + j) + vshift, vmin, vmax);
@@ -106,10 +112,10 @@ namespace HWY_NAMESPACE
 		/**
 		 * scalar version
 		 */
-		void trans(std::vector<int32_t*> channels, std::vector<ShiftInfo> shiftInfo, size_t index,
+		void trans(Tile* tile,uint16_t compno,std::vector<ShiftInfo> shiftInfo, size_t index,
 				   size_t numSamples)
 		{
-			int32_t* GRK_RESTRICT chan0 = channels[0];
+			auto chan0 = tile->comps[compno].getBuffer()->getResWindowBufferHighestREL()->getBuffer();
 			int32_t shift = shiftInfo[0]._shift;
 			int32_t _min = shiftInfo[0]._min;
 			int32_t _max = shiftInfo[0]._max;
@@ -124,12 +130,13 @@ namespace HWY_NAMESPACE
 	class DecompressRev
 	{
 	  public:
-		int32_t vtrans(std::vector<int32_t*> channels, std::vector<ShiftInfo> shiftInfo,
+		int32_t vtrans(Tile* tile, uint16_t compno,std::vector<ShiftInfo> shiftInfo,
 					   size_t index, size_t chunkSize)
 		{
-			int32_t* GRK_RESTRICT chan0 = channels[0];
-			int32_t* GRK_RESTRICT chan1 = channels[1];
-			int32_t* GRK_RESTRICT chan2 = channels[2];
+			GRK_UNUSED(compno);
+			auto chan0 = tile->comps[0].getBuffer()->getResWindowBufferHighestREL()->getBuffer();
+			auto chan1 = tile->comps[1].getBuffer()->getResWindowBufferHighestREL()->getBuffer();
+			auto chan2 = tile->comps[2].getBuffer()->getResWindowBufferHighestREL()->getBuffer();
 			int32_t shift[3] = {shiftInfo[0]._shift, shiftInfo[1]._shift, shiftInfo[2]._shift};
 			int32_t _min[3] = {shiftInfo[0]._min, shiftInfo[1]._min, shiftInfo[2]._min};
 			int32_t _max[3] = {shiftInfo[0]._max, shiftInfo[1]._max, shiftInfo[2]._max};
@@ -160,12 +167,13 @@ namespace HWY_NAMESPACE
 			}
 			return 0;
 		}
-		void trans(std::vector<int32_t*> channels, std::vector<ShiftInfo> shiftInfo, size_t index,
+		void trans(Tile* tile, uint16_t compno,std::vector<ShiftInfo> shiftInfo, size_t index,
 				   size_t numSamples)
 		{
-			int32_t* GRK_RESTRICT chan0 = channels[0];
-			int32_t* GRK_RESTRICT chan1 = channels[1];
-			int32_t* GRK_RESTRICT chan2 = channels[2];
+			GRK_UNUSED(compno);
+			auto chan0 = tile->comps[0].getBuffer()->getResWindowBufferHighestREL()->getBuffer();
+			auto chan1 = tile->comps[1].getBuffer()->getResWindowBufferHighestREL()->getBuffer();
+			auto chan2 = tile->comps[2].getBuffer()->getResWindowBufferHighestREL()->getBuffer();
 
 			int32_t shift[3] = {shiftInfo[0]._shift, shiftInfo[1]._shift, shiftInfo[2]._shift};
 			int32_t _min[3] = {shiftInfo[0]._min, shiftInfo[1]._min, shiftInfo[2]._min};
@@ -191,16 +199,17 @@ namespace HWY_NAMESPACE
 	class DecompressIrrev
 	{
 	  public:
-		int32_t vtrans(std::vector<int32_t*> channels, std::vector<ShiftInfo> shiftInfo,
+		int32_t vtrans(Tile* tile,uint16_t compno, std::vector<ShiftInfo> shiftInfo,
 					   size_t index, size_t chunkSize)
 		{
-			float* GRK_RESTRICT chan0 = (float*)channels[0];
-			float* GRK_RESTRICT chan1 = (float*)channels[1];
-			float* GRK_RESTRICT chan2 = (float*)channels[2];
+			GRK_UNUSED(compno);
+			auto chan0 = (float*)tile->comps[0].getBuffer()->getResWindowBufferHighestREL()->getBuffer();
+			auto chan1 = (float*)tile->comps[1].getBuffer()->getResWindowBufferHighestREL()->getBuffer();
+			auto chan2 = (float*)tile->comps[2].getBuffer()->getResWindowBufferHighestREL()->getBuffer();
 
-			int32_t* GRK_RESTRICT c0 = channels[0];
-			int32_t* GRK_RESTRICT c1 = channels[1];
-			int32_t* GRK_RESTRICT c2 = channels[2];
+			auto c0 = (int32_t*)chan0;
+			auto c1 = (int32_t*)chan1;
+			auto c2 = (int32_t*)chan2;
 
 			const HWY_FULL(float) df;
 			const HWY_FULL(int32_t) di;
@@ -239,16 +248,17 @@ namespace HWY_NAMESPACE
 			}
 			return 0;
 		}
-		void trans(std::vector<int32_t*> channels, std::vector<ShiftInfo> shiftInfo, size_t index,
+		void trans(Tile* tile,uint16_t compno, std::vector<ShiftInfo> shiftInfo, size_t index,
 				   size_t numSamples)
 		{
-			float* GRK_RESTRICT chan0 = (float*)channels[0];
-			float* GRK_RESTRICT chan1 = (float*)channels[1];
-			float* GRK_RESTRICT chan2 = (float*)channels[2];
+			GRK_UNUSED(compno);
+			auto chan0 = (float*)tile->comps[0].getBuffer()->getResWindowBufferHighestREL()->getBuffer();
+			auto chan1 = (float*)tile->comps[1].getBuffer()->getResWindowBufferHighestREL()->getBuffer();
+			auto chan2 = (float*)tile->comps[2].getBuffer()->getResWindowBufferHighestREL()->getBuffer();
 
-			int32_t* GRK_RESTRICT c0 = channels[0];
-			int32_t* GRK_RESTRICT c1 = channels[1];
-			int32_t* GRK_RESTRICT c2 = channels[2];
+			auto c0 = (int32_t*)chan0;
+			auto c1 = (int32_t*)chan1;
+			auto c2 = (int32_t*)chan2;
 
 			int32_t shift[3] = {shiftInfo[0]._shift, shiftInfo[1]._shift, shiftInfo[2]._shift};
 			int32_t _min[3] = {shiftInfo[0]._min, shiftInfo[1]._min, shiftInfo[2]._min};
@@ -279,12 +289,13 @@ namespace HWY_NAMESPACE
 	class CompressRev
 	{
 	  public:
-		int32_t vtrans(std::vector<int32_t*> channels, std::vector<ShiftInfo> shiftInfo,
+		int32_t vtrans(Tile* tile,uint16_t compno, std::vector<ShiftInfo> shiftInfo,
 					   size_t index, size_t chunkSize)
 		{
-			int32_t* GRK_RESTRICT chan0 = channels[0];
-			int32_t* GRK_RESTRICT chan1 = channels[1];
-			int32_t* GRK_RESTRICT chan2 = channels[2];
+			GRK_UNUSED(compno);
+			auto chan0 = tile->comps[0].getBuffer()->getResWindowBufferHighestREL()->getBuffer();
+			auto chan1 = tile->comps[1].getBuffer()->getResWindowBufferHighestREL()->getBuffer();
+			auto chan2 = tile->comps[2].getBuffer()->getResWindowBufferHighestREL()->getBuffer();
 
 			const HWY_FULL(int32_t) di;
 			int32_t shift[3] = {shiftInfo[0]._shift, shiftInfo[1]._shift, shiftInfo[2]._shift};
@@ -308,12 +319,13 @@ namespace HWY_NAMESPACE
 			}
 			return 0;
 		}
-		void trans(std::vector<int32_t*> channels, std::vector<ShiftInfo> shiftInfo, size_t index,
+		void trans( Tile* tile,uint16_t compno,std::vector<ShiftInfo> shiftInfo, size_t index,
 				   size_t numSamples)
 		{
-			int32_t* GRK_RESTRICT chan0 = channels[0];
-			int32_t* GRK_RESTRICT chan1 = channels[1];
-			int32_t* GRK_RESTRICT chan2 = channels[2];
+			GRK_UNUSED(compno);
+			auto chan0 = tile->comps[0].getBuffer()->getResWindowBufferHighestREL()->getBuffer();
+			auto chan1 = tile->comps[1].getBuffer()->getResWindowBufferHighestREL()->getBuffer();
+			auto chan2 = tile->comps[2].getBuffer()->getResWindowBufferHighestREL()->getBuffer();
 			int32_t shift[3] = {shiftInfo[0]._shift, shiftInfo[1]._shift, shiftInfo[2]._shift};
 
 			for(; index < numSamples; ++index)
@@ -337,12 +349,13 @@ namespace HWY_NAMESPACE
 	class CompressIrrev
 	{
 	  public:
-		int32_t vtrans(std::vector<int32_t*> channels, std::vector<ShiftInfo> shiftInfo,
+		int32_t vtrans(Tile* tile,uint16_t compno,std::vector<ShiftInfo> shiftInfo,
 					   size_t index, size_t chunkSize)
 		{
-			int32_t* GRK_RESTRICT chan0 = channels[0];
-			int32_t* GRK_RESTRICT chan1 = channels[1];
-			int32_t* GRK_RESTRICT chan2 = channels[2];
+			GRK_UNUSED(compno);
+			auto chan0 = tile->comps[0].getBuffer()->getResWindowBufferHighestREL()->getBuffer();
+			auto chan1 = tile->comps[1].getBuffer()->getResWindowBufferHighestREL()->getBuffer();
+			auto chan2 = tile->comps[2].getBuffer()->getResWindowBufferHighestREL()->getBuffer();
 
 			int32_t shift[3] = {shiftInfo[0]._shift, shiftInfo[1]._shift, shiftInfo[2]._shift};
 
@@ -377,12 +390,13 @@ namespace HWY_NAMESPACE
 
 			return 0;
 		}
-		void trans(std::vector<int32_t*> channels, std::vector<ShiftInfo> shiftInfo, size_t index,
+		void trans(Tile* tile, uint16_t compno,std::vector<ShiftInfo> shiftInfo, size_t index,
 				   size_t numSamples)
 		{
-			int32_t* GRK_RESTRICT chan0 = channels[0];
-			int32_t* GRK_RESTRICT chan1 = channels[1];
-			int32_t* GRK_RESTRICT chan2 = channels[2];
+			GRK_UNUSED(compno);
+			auto chan0 = tile->comps[0].getBuffer()->getResWindowBufferHighestREL()->getBuffer();
+			auto chan1 = tile->comps[1].getBuffer()->getResWindowBufferHighestREL()->getBuffer();
+			auto chan2 = tile->comps[2].getBuffer()->getResWindowBufferHighestREL()->getBuffer();
 
 			int32_t shift[3] = {shiftInfo[0]._shift, shiftInfo[1]._shift, shiftInfo[2]._shift};
 
@@ -415,7 +429,7 @@ namespace HWY_NAMESPACE
 	};
 
 	template<class T>
-	size_t vscheduler(std::vector<int32_t*> channels, std::vector<ShiftInfo> shiftInfo,
+	size_t vscheduler( Tile* tile,uint16_t compno,std::vector<ShiftInfo> shiftInfo,
 			grk_buf2d<int32_t, AllocatorAligned> *buf)
 	{
 		size_t i = 0;
@@ -438,9 +452,9 @@ namespace HWY_NAMESPACE
 			for(size_t tr = 0; tr < num_threads; ++tr)
 			{
 				size_t index = tr;
-				auto compressor = [index, chunkSize, channels, shiftInfo]() {
+				auto compressor = [index, chunkSize, tile,compno,shiftInfo]() {
 					T transform;
-					transform.vtrans(channels, shiftInfo, index, chunkSize);
+					transform.vtrans( tile,compno,shiftInfo, index, chunkSize);
 					return 0;
 				};
 				if(node)
@@ -456,45 +470,44 @@ namespace HWY_NAMESPACE
 			i = chunkSize * num_threads;
 		}
 		T transform;
-		transform.trans(channels, shiftInfo, i, numSamples);
+		transform.trans( tile,compno,shiftInfo, i, numSamples);
 
 		return i;
 	}
 
-	size_t hwy_compress_rev(std::vector<int32_t*> channels, std::vector<ShiftInfo> shiftInfo,
+	size_t hwy_compress_rev( Tile* tile,uint16_t compno,std::vector<ShiftInfo> shiftInfo,
 			grk_buf2d<int32_t, AllocatorAligned> *buf)
 	{
-		return vscheduler<CompressRev>(channels, shiftInfo, buf);
+		return vscheduler<CompressRev>( tile,compno,shiftInfo, buf);
 	}
 
-	size_t hwy_compress_irrev(std::vector<int32_t*> channels, std::vector<ShiftInfo> shiftInfo,
+	size_t hwy_compress_irrev( Tile* tile,uint16_t compno,std::vector<ShiftInfo> shiftInfo,
 			grk_buf2d<int32_t, AllocatorAligned> *buf)
 	{
-		return vscheduler<CompressIrrev>(channels, shiftInfo, buf);
+		return vscheduler<CompressIrrev>( tile,compno,shiftInfo, buf);
 	}
 
-	size_t hwy_decompress_rev(std::vector<int32_t*> channels, std::vector<ShiftInfo> shiftInfo,
+	size_t hwy_decompress_rev( Tile* tile,uint16_t compno,std::vector<ShiftInfo> shiftInfo,
 			grk_buf2d<int32_t, AllocatorAligned> *buf)
 	{
-		return vscheduler<DecompressRev>(channels, shiftInfo, buf);
+		return vscheduler<DecompressRev>( tile,compno,shiftInfo, buf);
 	}
 
-	size_t hwy_decompress_irrev(std::vector<int32_t*> channels, std::vector<ShiftInfo> shiftInfo,
+	size_t hwy_decompress_irrev( Tile* tile,uint16_t compno,std::vector<ShiftInfo> shiftInfo,
 			grk_buf2d<int32_t, AllocatorAligned> *buf)
 	{
-		return vscheduler<DecompressIrrev>(channels, shiftInfo, buf);
+		return vscheduler<DecompressIrrev>( tile,compno,shiftInfo, buf);
 	}
 
-	size_t hwy_decompress_dc_shift_irrev(std::vector<int32_t*> channels,
+	size_t hwy_decompress_dc_shift_irrev(Tile* tile,uint16_t compno,
 										 std::vector<ShiftInfo> shiftInfo, grk_buf2d<int32_t, AllocatorAligned> *buf)
 	{
-		return vscheduler<DecompressDcShiftIrrev>(channels, shiftInfo, buf);
+		return vscheduler<DecompressDcShiftIrrev>( tile,compno, shiftInfo, buf);
 	}
 
-	size_t hwy_decompress_dc_shift_rev(std::vector<int32_t*> channels,
-									   std::vector<ShiftInfo> shiftInfo, grk_buf2d<int32_t, AllocatorAligned> *buf)
+	size_t hwy_decompress_dc_shift_rev(Tile* tile,uint16_t compno,std::vector<ShiftInfo> shiftInfo, grk_buf2d<int32_t, AllocatorAligned> *buf)
 	{
-		return vscheduler<DecompressDcShiftRev>(channels, shiftInfo, buf);
+		return vscheduler<DecompressDcShiftRev>(tile,compno,shiftInfo, buf);
 	}
 } // namespace HWY_NAMESPACE
 } // namespace grk
@@ -503,6 +516,7 @@ HWY_AFTER_NAMESPACE();
 #if HWY_ONCE
 namespace grk
 {
+HWY_EXPORT(hwy_num_lanes);
 HWY_EXPORT(hwy_compress_rev);
 HWY_EXPORT(hwy_compress_irrev);
 HWY_EXPORT(hwy_decompress_rev);
@@ -514,10 +528,9 @@ void mct::decompress_dc_shift_irrev(Tile* tile, GrkImage* image, TileComponentCo
 									uint16_t compno)
 {
 	auto highestResBuffer = tile->comps[compno].getBuffer()->getResWindowBufferHighestREL();
-	int32_t* GRK_RESTRICT c0 = highestResBuffer->getBuffer();
 	std::vector<ShiftInfo> shiftInfo;
 	genShift(compno, image, tccps, 1, shiftInfo);
-	HWY_DYNAMIC_DISPATCH(hwy_decompress_dc_shift_irrev)({c0}, shiftInfo, highestResBuffer);
+	HWY_DYNAMIC_DISPATCH(hwy_decompress_dc_shift_irrev)(tile, compno,shiftInfo, highestResBuffer);
 }
 
 /**
@@ -527,28 +540,23 @@ void mct::decompress_dc_shift_irrev(Tile* tile, GrkImage* image, TileComponentCo
 void mct::decompress_irrev(Tile* tile, GrkImage* image, TileComponentCodingParams* tccps)
 {
 	auto highestResBuffer = tile->comps[0].getBuffer()->getResWindowBufferHighestREL();
-	int32_t* c0_i = tile->comps[0].getBuffer()->getResWindowBufferHighestREL()->getBuffer();
-	int32_t* c1_i = tile->comps[1].getBuffer()->getResWindowBufferHighestREL()->getBuffer();
-	int32_t* c2_i = tile->comps[2].getBuffer()->getResWindowBufferHighestREL()->getBuffer();
 	std::vector<ShiftInfo> shiftInfo;
 
 	hwy::DisableTargets(uint32_t(~HWY_SCALAR));
 
 	genShift(image, tccps, 1, shiftInfo);
 	HWY_DYNAMIC_DISPATCH(hwy_decompress_irrev)
-	({c0_i, c1_i, c2_i}, shiftInfo, highestResBuffer);
+	(tile,0, shiftInfo, highestResBuffer);
 }
 
 void mct::decompress_dc_shift_rev(Tile* tile, GrkImage* image, TileComponentCodingParams* tccps,
 								  uint16_t compno)
 {
-	int32_t* GRK_RESTRICT c0 =
-		tile->comps[compno].getBuffer()->getResWindowBufferHighestREL()->getBuffer();
 	std::vector<ShiftInfo> shiftInfo;
 
 	auto highestResBuffer = tile->comps[compno].getBuffer()->getResWindowBufferHighestREL();
 	genShift(compno, image, tccps, 1, shiftInfo);
-	HWY_DYNAMIC_DISPATCH(hwy_decompress_dc_shift_rev)({c0}, shiftInfo, highestResBuffer);
+	HWY_DYNAMIC_DISPATCH(hwy_decompress_dc_shift_rev)(tile,compno,shiftInfo, highestResBuffer);
 }
 
 /* <summary> */
@@ -556,58 +564,36 @@ void mct::decompress_dc_shift_rev(Tile* tile, GrkImage* image, TileComponentCodi
 /* </summary> */
 void mct::decompress_rev(Tile* tile, GrkImage* image, TileComponentCodingParams* tccps)
 {
-	int32_t* GRK_RESTRICT c0 =
-		tile->comps[0].getBuffer()->getResWindowBufferHighestREL()->getBuffer();
-	int32_t* GRK_RESTRICT c1 =
-		tile->comps[1].getBuffer()->getResWindowBufferHighestREL()->getBuffer();
-	int32_t* GRK_RESTRICT c2 =
-		tile->comps[2].getBuffer()->getResWindowBufferHighestREL()->getBuffer();
 	auto highestResBuffer = tile->comps[0].getBuffer()->getResWindowBufferHighestREL();
-
 	std::vector<ShiftInfo> shiftInfo;
 
 	genShift(image, tccps, 1, shiftInfo);
 	HWY_DYNAMIC_DISPATCH(hwy_decompress_rev)
-	({c0, c1, c2}, shiftInfo, highestResBuffer);
+	(tile, 0,shiftInfo, highestResBuffer);
 }
 /* <summary> */
 /* Forward reversible MCT. */
 /* </summary> */
 void mct::compress_rev(Tile* tile, GrkImage* image, TileComponentCodingParams* tccps)
 {
-	int32_t* GRK_RESTRICT c0 =
-		tile->comps[0].getBuffer()->getResWindowBufferHighestREL()->getBuffer();
-	int32_t* GRK_RESTRICT c1 =
-		tile->comps[1].getBuffer()->getResWindowBufferHighestREL()->getBuffer();
-	int32_t* GRK_RESTRICT c2 =
-		tile->comps[2].getBuffer()->getResWindowBufferHighestREL()->getBuffer();
-
 	auto highestResBuffer = tile->comps[0].getBuffer()->getResWindowBufferHighestREL();
 	std::vector<ShiftInfo> shiftInfo;
 
 	genShift(image, tccps, -1, shiftInfo);
 	HWY_DYNAMIC_DISPATCH(hwy_compress_rev)
-	({c0, c1, c2}, shiftInfo, highestResBuffer);
+	(tile,0,shiftInfo, highestResBuffer);
 }
 /* <summary> */
 /* Forward irreversible MCT. */
 /* </summary> */
 void mct::compress_irrev(Tile* tile, GrkImage* image, TileComponentCodingParams* tccps)
 {
-	int32_t* GRK_RESTRICT c0 =
-		tile->comps[0].getBuffer()->getResWindowBufferHighestREL()->getBuffer();
-	int32_t* GRK_RESTRICT c1 =
-		tile->comps[1].getBuffer()->getResWindowBufferHighestREL()->getBuffer();
-	int32_t* GRK_RESTRICT c2 =
-		tile->comps[2].getBuffer()->getResWindowBufferHighestREL()->getBuffer();
-
 	auto highestResBuffer = tile->comps[0].getBuffer()->getResWindowBufferHighestREL();
 	std::vector<ShiftInfo> shiftInfo;
 
 	genShift(image, tccps, -1, shiftInfo);
-
 	HWY_DYNAMIC_DISPATCH(hwy_compress_irrev)
-	({c0, c1, c2}, shiftInfo, highestResBuffer);
+	(tile,0,shiftInfo, highestResBuffer);
 }
 
 void mct::genShift(uint16_t compno, GrkImage* image, TileComponentCodingParams* tccps, int32_t sign,
