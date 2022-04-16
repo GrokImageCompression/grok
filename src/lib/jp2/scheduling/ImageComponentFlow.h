@@ -49,6 +49,7 @@ class ImageComponentFlow
 	void graph(void);
 	ImageComponentFlow* addTo(tf::Taskflow& composition);
 	FlowComponent* getFinalFlow(void);
+	FlowComponent* getPrePostProc(tf::Taskflow& codecFlow);
 
 	uint8_t numResFlows_;
 	ResFlow* resFlows_;

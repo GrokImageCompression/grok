@@ -121,6 +121,14 @@ ResFlow* ImageComponentFlow::getResFlow(uint8_t resFlowNo)
 {
 	return (resFlows_ && resFlowNo < numResFlows_) ? resFlows_ + resFlowNo : nullptr;
 }
+FlowComponent* ImageComponentFlow::getPrePostProc(tf::Taskflow& codecFlow){
+	if (!prePostProc_) {
+		prePostProc_ = new FlowComponent();
+		prePostProc_->addTo(codecFlow);
+	}
+
+	return prePostProc_;
+}
 std::string ImageComponentFlow::genBlockFlowTaskName(uint8_t resFlowNo)
 {
 	std::stringstream ss;
