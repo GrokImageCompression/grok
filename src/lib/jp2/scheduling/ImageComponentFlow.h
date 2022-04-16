@@ -51,6 +51,7 @@ class ImageComponentFlow
 	uint8_t numResFlows_;
 	ResFlow* resFlows_;
 	FlowComponent* waveletFinalCopy_;
+	FlowComponent* prePostProc_;
 };
 
 } // namespace grk

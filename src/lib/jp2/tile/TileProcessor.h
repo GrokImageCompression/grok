@@ -136,6 +136,7 @@ struct TileProcessor
   private:
 	bool isWholeTileDecompress(uint16_t compno);
 	bool needsMctDecompress(uint16_t compno);
+	bool needsMctDecompress(void);
 	bool mctDecompress();
 	bool dcLevelShiftDecompress();
 	bool dcLevelShiftCompress();

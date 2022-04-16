@@ -35,41 +35,53 @@ struct ShiftInfo
 
 struct ScheduleInfo
 {
-	ScheduleInfo(Tile* t, Scheduler* sch) : tile(t), compno(0), scheduler(sch), linesPerTask_(32) {}
+	ScheduleInfo(Tile* t, FlowComponent *flow ) : tile(t), compno(0), flow_(flow), linesPerTask_(32) {}
 	Tile* tile;
 	uint16_t compno;
 	std::vector<ShiftInfo> shiftInfo;
-	Scheduler* scheduler;
+	FlowComponent* flow_;
 	uint32_t linesPerTask_;
 };
 
 class mct
 {
   public:
-	mct(Tile* tile, GrkImage* image, TileCodingParams* tcp, Scheduler* scheduler);
+	mct(Tile* tile, GrkImage* image, TileCodingParams* tcp);
 
 	/**
 	 Apply a reversible multi-component transform to an image
 	 */
-	void compress_rev(void);
+	void compress_rev(FlowComponent *flow);
 	/**
 	 Apply a reversible multi-component inverse transform to an image
 	 */
-	void decompress_rev(void);
+	void decompress_rev(FlowComponent *flow);
+
+	/**
+	 Apply an irreversible multi-component transform to an image
+	 */
+	void compress_irrev(FlowComponent *flow);
+	/**
+	 Apply an irreversible multi-component inverse transform to an image
+	 */
+	void decompress_irrev(FlowComponent *flow);
+
+	/**
+	 Apply a reversible inverse dc shift to an image
+	 */
+	void decompress_dc_shift_rev(FlowComponent *flow, uint16_t compno);
+
+	/**
+	 Apply an irreversible inverse dc shift to an image
+	 */
+	void decompress_dc_shift_irrev(FlowComponent *flow, uint16_t compno);
+
 
 	/**
 	 Get wavelet norms for reversible transform
 	 */
 	static const double* get_norms_rev(void);
 
-	/**
-	 Apply an irreversible multi-component transform to an image
-	 */
-	void compress_irrev(void);
-	/**
-	 Apply an irreversible multi-component inverse transform to an image
-	 */
-	void decompress_irrev(void);
 
 	/**
 	 Get wavelet norms for irreversible transform
@@ -105,17 +117,6 @@ class mct
 	 @param pMatrix        components
 	 */
 	static void calculate_norms(double* pNorms, uint16_t nb_comps, float* pMatrix);
-
-	/**
-	 Apply a reversible inverse dc shift to an image
-	 */
-	void decompress_dc_shift_rev(uint16_t compno);
-
-	/**
-	 Apply an irreversible inverse dc shift to an image
-	 */
-	void decompress_dc_shift_irrev(uint16_t compno);
-
   private:
 	static void genShift(uint16_t compno, GrkImage* image, TileComponentCodingParams* tccps,
 						 int32_t sign, std::vector<ShiftInfo>& shiftInfo);
@@ -125,7 +126,6 @@ class mct
 	Tile* tile_;
 	GrkImage* image_;
 	TileCodingParams* tcp_;
-	Scheduler* scheduler_;
 };
 
 /* ----------------------------------------------------------------------- */

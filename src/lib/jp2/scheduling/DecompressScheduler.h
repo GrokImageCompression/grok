@@ -37,7 +37,7 @@ class DecompressScheduler : public Scheduler
 {
   public:
 	DecompressScheduler(TileProcessor* tileProcessor, Tile* tile, TileCodingParams* tcp,
-						uint8_t prec, bool doPostT1);
+						uint8_t prec);
 	~DecompressScheduler() = default;
 
 	bool schedule(uint16_t compno) override;
@@ -49,7 +49,6 @@ class DecompressScheduler : public Scheduler
 	TileProcessor* tileProcessor_;
 	TileCodingParams* tcp_;
 	uint8_t prec_;
-	bool doPostT1_;
 	DecompressBlocks allBlocks_;
 };
 

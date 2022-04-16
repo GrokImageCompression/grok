@@ -36,10 +36,9 @@ void ResDecompressBlocks::release(void)
 }
 
 DecompressScheduler::DecompressScheduler(TileProcessor* tileProcessor, Tile* tile,
-										 TileCodingParams* tcp, uint8_t prec, bool doPostT1)
-	: Scheduler(tile), tileProcessor_(tileProcessor), tcp_(tcp), prec_(prec), doPostT1_(doPostT1)
+										 TileCodingParams* tcp, uint8_t prec)
+	: Scheduler(tile), tileProcessor_(tileProcessor), tcp_(tcp), prec_(prec)
 {}
-
 bool DecompressScheduler::schedule(uint16_t compno)
 {
 	auto tilec = tile_->comps + compno;
@@ -55,7 +54,7 @@ bool DecompressScheduler::schedule(uint16_t compno)
 		graph(compno);
 	}
 	uint8_t numRes = tilec->highestResolutionDecompressed + 1U;
-	if(doPostT1_ && numRes > 0 && !scheduleWavelet(compno))
+	if(numRes > 0 && !scheduleWavelet(compno))
 	{
 		for(auto& rb : allBlocks_)
 			rb.release();

@@ -69,7 +69,7 @@ ResFlow::~ResFlow(void)
 	delete waveletVert_;
 }
 ImageComponentFlow::ImageComponentFlow(uint8_t numResolutions)
-	: numResFlows_(numResolutions), resFlows_(nullptr), waveletFinalCopy_(nullptr)
+	: numResFlows_(numResolutions), resFlows_(nullptr), waveletFinalCopy_(nullptr),prePostProc_(nullptr)
 {
 	if(numResFlows_)
 	{
@@ -87,6 +87,7 @@ ImageComponentFlow::~ImageComponentFlow()
 {
 	delete[] resFlows_;
 	delete waveletFinalCopy_;
+	delete prePostProc_;
 }
 void ImageComponentFlow::setRegionDecompression(void)
 {

@@ -32,7 +32,7 @@ TileProcessor::TileProcessor(uint16_t tileIndex, CodeStream* codeStream, IBuffer
 	  tileIndex_(tileIndex), stream_(stream), corrupt_packet_(false),
 	  newTilePartProgressionPosition(cp_->coding_params_.enc_.newTilePartProgressionPosition),
 	  tcp_(cp_->tcps + tileIndex_), truncated(false), image_(nullptr), isCompressor_(isCompressor),
-	  preCalculatedTileLen(0), mct_(new mct(tile, headerImage, tcp_, scheduler_))
+	  preCalculatedTileLen(0), mct_(new mct(tile, headerImage, tcp_))
 {}
 TileProcessor::~TileProcessor()
 {
@@ -439,7 +439,16 @@ bool TileProcessor::decompressT2T1(TileCodingParams* tcp, GrkImage* outputImage,
 		!current_plugin_tile || (current_plugin_tile->decompress_flags & GRK_DECODE_POST_T1);
 	if(doT1)
 	{
-		scheduler_ = new DecompressScheduler(this, tile, tcp_, headerImage->comps->prec, doPostT1);
+		scheduler_ = new DecompressScheduler(this, tile, tcp_, headerImage->comps->prec);
+		FlowComponent *postProc = nullptr;
+		// schedule MCT post processing
+		if(doPostT1)
+		{
+			// schedule MCT if applicable
+			if(needsMctDecompress()) {
+				postProc = scheduler_->getPrePostProc();
+			}
+		}
 		for(uint16_t compno = 0; compno < tile->numcomps_; ++compno)
 		{
 			auto tilec = tile->comps + compno;
@@ -467,6 +476,8 @@ bool TileProcessor::decompressT2T1(TileCodingParams* tcp, GrkImage* outputImage,
 			}
 			if(!scheduler_->schedule(compno))
 				return false;
+
+			// link to MCT
 		}
 		if(!scheduler_->run())
 			return false;
@@ -476,8 +487,12 @@ bool TileProcessor::decompressT2T1(TileCodingParams* tcp, GrkImage* outputImage,
 	// post T1
 	if(doPostT1)
 	{
-		if(!mctDecompress())
-			return false;
+		// schedule MCT if applicable
+		if(needsMctDecompress()) {
+			if(!mctDecompress())
+				return false;
+		}
+		// schedule DC shift on remaining channels
 		if(!dcLevelShiftDecompress())
 			return false;
 	}
@@ -515,8 +530,7 @@ void TileProcessor::ingestImage()
 		}
 	}
 }
-bool TileProcessor::needsMctDecompress(uint16_t compno)
-{
+bool TileProcessor::needsMctDecompress(void){
 	if(!tcp_->mct)
 		return false;
 	if(tile->numcomps_ < 3)
@@ -533,17 +547,23 @@ bool TileProcessor::needsMctDecompress(uint16_t compno)
 		GRK_WARN("Not all tiles components have the same dimension: skipping MCT.");
 		return false;
 	}
-	if(compno > 2)
-		return false;
 	if(tcp_->mct == 2 && !tcp_->mct_decoding_matrix_)
+		return false;
+
+	return true;
+}
+bool TileProcessor::needsMctDecompress(uint16_t compno)
+{
+	if (!needsMctDecompress())
+		return false;
+
+	if(compno > 2)
 		return false;
 
 	return true;
 }
 bool TileProcessor::mctDecompress()
 {
-	if(!needsMctDecompress(0))
-		return true;
 	// custom MCT
 	if(tcp_->mct == 2)
 	{
@@ -561,9 +581,9 @@ bool TileProcessor::mctDecompress()
 	else
 	{
 		if(tcp_->tccps->qmfbid == 1)
-			mct_->decompress_rev();
+			mct_->decompress_rev(nullptr);
 		else
-			mct_->decompress_irrev();
+			mct_->decompress_irrev(nullptr);
 	}
 
 	return true;
@@ -578,9 +598,9 @@ bool TileProcessor::dcLevelShiftDecompress()
 		{
 			auto tccp = tcp_->tccps + compno;
 			if(tccp->qmfbid == 1)
-				mct_->decompress_dc_shift_rev(compno);
+				mct_->decompress_dc_shift_rev(nullptr,compno);
 			else
-				mct_->decompress_dc_shift_irrev(compno);
+				mct_->decompress_dc_shift_irrev(nullptr,compno);
 		}
 	}
 	return true;
@@ -651,9 +671,9 @@ bool TileProcessor::mct_encode()
 		return rc;
 	}
 	else if(tcp_->tccps->qmfbid == 0)
-		mct_->compress_irrev();
+		mct_->compress_irrev(nullptr);
 	else
-		mct_->compress_rev();
+		mct_->compress_rev(nullptr);
 
 	return true;
 }

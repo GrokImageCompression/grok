@@ -29,6 +29,7 @@ class Scheduler
 	bool run(void);
 	ImageComponentFlow* getImageComponentFlow(uint16_t compno);
 	tf::Taskflow& getCodecFlow(void);
+	FlowComponent *getPrePostProc(void);
 
   protected:
 	std::atomic_bool success;
@@ -37,6 +38,7 @@ class Scheduler
 	tf::Taskflow codecFlow_;
 	Tile* tile_;
 	uint16_t numcomps_;
+	FlowComponent* prePostProc_;
 };
 
 } // namespace grk
