@@ -179,7 +179,7 @@ class SparseCanvas : public ISparseCanvas
 			return forceReturnTrue;
 		}
 		assert(spacingY != 0 || win.height() == 1);
-		assert((spacingY <= 1 && spacingX >= 1) || (spacingY >=1 && spacingX == 1));
+		assert((spacingY <= 1 && spacingX >= 1) || (spacingY >= 1 && spacingX == 1));
 
 		uint32_t gridY = win.y0 >> LBH;
 		uint32_t blockWinHeight = 0;

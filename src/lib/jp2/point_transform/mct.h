@@ -36,7 +36,7 @@ struct ShiftInfo
 class mct
 {
   public:
-	mct(Tile* tile, GrkImage* image, TileCodingParams* tcp,Scheduler *scheduler);
+	mct(Tile* tile, GrkImage* image, TileCodingParams* tcp, Scheduler* scheduler);
 
 	/**
 	 Apply a reversible multi-component transform to an image
@@ -115,7 +115,7 @@ class mct
 	Tile* tile_;
 	GrkImage* image_;
 	TileCodingParams* tcp_;
-	Scheduler *scheduler_;
+	Scheduler* scheduler_;
 };
 
 /* ----------------------------------------------------------------------- */

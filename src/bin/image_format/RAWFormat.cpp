@@ -156,7 +156,8 @@ bool RAWFormat::encodePixels(void)
 		}
 		else if(comp->prec <= 32)
 		{
-			spdlog::error("imagetoraw: more than %d bits per component not supported.",GRK_MAX_SUPPORTED_IMAGE_PRECISION);
+			spdlog::error("imagetoraw: more than %d bits per component not supported.",
+						  GRK_MAX_SUPPORTED_IMAGE_PRECISION);
 			goto beach;
 		}
 		else
@@ -336,7 +337,8 @@ grk_image* RAWFormat::rawtoimage(const char* filename, grk_cparameters* paramete
 	}
 	else
 	{
-		spdlog::error("Grok cannot encode raw components with bit depth higher than %d bits.",GRK_MAX_SUPPORTED_IMAGE_PRECISION);
+		spdlog::error("Grok cannot encode raw components with bit depth higher than %d bits.",
+					  GRK_MAX_SUPPORTED_IMAGE_PRECISION);
 		goto cleanup;
 	}
 

@@ -375,8 +375,7 @@ struct grk_buf2d : protected grk_buf<T, A>, public grk_rect32
 	 * @param spacingY spacing (in elements, not in bytes) in y dimension between
 	 * consecutive elements of the user buffer.
 	 */
-	bool read(grk_rect32 window, int32_t* dest, const uint32_t spacingX,
-			  const uint32_t spacingY)
+	bool read(grk_rect32 window, int32_t* dest, const uint32_t spacingX, const uint32_t spacingY)
 	{
 		GRK_UNUSED(dest);
 		GRK_UNUSED(spacingX);
@@ -406,7 +405,7 @@ struct grk_buf2d : protected grk_buf<T, A>, public grk_rect32
 			return false;
 
 		assert(spacingY != 0 || srcWin.height() == 1);
-		assert((spacingY <= 1 && spacingX >= 1) || (spacingY >=1 && spacingX == 1));
+		assert((spacingY <= 1 && spacingX >= 1) || (spacingY >= 1 && spacingX == 1));
 
 		auto inter = intersection(srcWin);
 
@@ -418,9 +417,11 @@ struct grk_buf2d : protected grk_buf<T, A>, public grk_rect32
 		auto destOffY = inter.y0 < y0 ? 0 : inter.y0 - y0;
 		auto dest = this->buf + destOffY * this->stride + destOffX;
 
-		for (uint32_t y = inter.y0; y < inter.y1; y++){
+		for(uint32_t y = inter.y0; y < inter.y1; y++)
+		{
 			uint64_t srcInd = 0;
-			for (uint32_t x = inter.x0; x < inter.x1; x++){
+			for(uint32_t x = inter.x0; x < inter.x1; x++)
+			{
 				dest[x] = src ? src[srcInd] : 0;
 				srcInd += spacingX;
 			}

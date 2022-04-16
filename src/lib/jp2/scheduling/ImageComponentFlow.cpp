@@ -22,12 +22,14 @@ ResFlow::ResFlow(void)
 	: blocks_(new FlowComponent()), waveletHoriz_(new FlowComponent()),
 	  waveletVert_(new FlowComponent()), doWavelet_(true)
 {}
-void ResFlow::disableWavelet(void){
+void ResFlow::disableWavelet(void)
+{
 	doWavelet_ = false;
 }
 void ResFlow::graph(void)
 {
-	if (doWavelet_){
+	if(doWavelet_)
+	{
 		blocks_->precede(waveletHoriz_);
 		waveletHoriz_->precede(waveletVert_);
 	}
@@ -36,7 +38,8 @@ ResFlow* ResFlow::addTo(tf::Taskflow& composition)
 {
 	assert(blocks_);
 	blocks_->addTo(composition);
-	if (doWavelet_){
+	if(doWavelet_)
+	{
 		waveletHoriz_->addTo(composition);
 		waveletVert_->addTo(composition);
 	}
@@ -45,14 +48,14 @@ ResFlow* ResFlow::addTo(tf::Taskflow& composition)
 }
 ResFlow* ResFlow::precede(ResFlow* successor)
 {
-	if (doWavelet_)
+	if(doWavelet_)
 		waveletVert_->precede(successor->blocks_);
 
 	return this;
 }
 ResFlow* ResFlow::precede(FlowComponent* successor)
 {
-	if (doWavelet_)
+	if(doWavelet_)
 		waveletVert_->precede(successor);
 	else
 		blocks_->precede(successor);
@@ -76,7 +79,7 @@ ImageComponentFlow::ImageComponentFlow(uint8_t numResolutions)
 		if(numResFlows_ > 1)
 			numResFlows_--;
 		resFlows_ = new ResFlow[numResFlows_];
-		if (noWavelet)
+		if(noWavelet)
 			resFlows_[0].disableWavelet();
 	}
 }

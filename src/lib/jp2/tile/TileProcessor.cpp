@@ -32,7 +32,7 @@ TileProcessor::TileProcessor(uint16_t tileIndex, CodeStream* codeStream, IBuffer
 	  tileIndex_(tileIndex), stream_(stream), corrupt_packet_(false),
 	  newTilePartProgressionPosition(cp_->coding_params_.enc_.newTilePartProgressionPosition),
 	  tcp_(cp_->tcps + tileIndex_), truncated(false), image_(nullptr), isCompressor_(isCompressor),
-	  preCalculatedTileLen(0), mct_(new mct(tile,headerImage,tcp_,scheduler_))
+	  preCalculatedTileLen(0), mct_(new mct(tile, headerImage, tcp_, scheduler_))
 {}
 TileProcessor::~TileProcessor()
 {
@@ -454,7 +454,8 @@ bool TileProcessor::decompressT2T1(TileCodingParams* tcp, GrkImage* outputImage,
 					GRK_UNUSED(ex);
 					continue;
 				}
-				catch(std::bad_alloc& baex){
+				catch(std::bad_alloc& baex)
+				{
 					GRK_UNUSED(baex);
 					return false;
 				}

@@ -984,7 +984,7 @@ grk_image* BMPFormat::decode(const std::string& fname, grk_cparameters* paramete
 							{
 								spdlog::error("RGB(A) bit mask with precision ({0:d}) greater than "
 											  "%d is not supported",
-											  cnt,GRK_MAX_SUPPORTED_IMAGE_PRECISION);
+											  cnt, GRK_MAX_SUPPORTED_IMAGE_PRECISION);
 								fail = true;
 							}
 						}

@@ -811,7 +811,8 @@ grk_image* PNMFormat::decode(grk_cparameters* parameters)
 	prec = (uint8_t)(uint_floorlog2(header_info.maxval) + 1);
 	if(prec > GRK_MAX_SUPPORTED_IMAGE_PRECISION)
 	{
-		spdlog::error("Precision {} is greater than max supported precision (%d)", prec, GRK_MAX_SUPPORTED_IMAGE_PRECISION);
+		spdlog::error("Precision {} is greater than max supported precision (%d)", prec,
+					  GRK_MAX_SUPPORTED_IMAGE_PRECISION);
 		goto cleanup;
 	}
 	w = header_info.width;

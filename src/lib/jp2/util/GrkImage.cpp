@@ -126,7 +126,7 @@ GrkImage* GrkImage::create(grk_image* src, uint16_t numcmpts, grk_image_comp* cm
 			default:
 				comp->association = GRK_CHANNEL_ASSOC_UNASSOCIATED;
 				// CMKY component 3 type equals GRK_CHANNEL_TYPE_COLOUR
-				if (clrspc != GRK_CLRSPC_CMYK || compno != 3)
+				if(clrspc != GRK_CLRSPC_CMYK || compno != 3)
 					comp->type = GRK_CHANNEL_TYPE_UNSPECIFIED;
 				break;
 		}

@@ -314,7 +314,8 @@ bool CodeStreamDecompress::parseTileHeaderMarkers(bool* canDecompress)
 	return true;
 }
 
-TilePartLengthInfo* CodeStreamDecompress::nextTLM(void){
+TilePartLengthInfo* CodeStreamDecompress::nextTLM(void)
+{
 	TilePartLengthInfo* tilePartLengthInfo = nullptr;
 	if(cp_.tlm_markers && cp_.tlm_markers->valid())
 	{
@@ -322,15 +323,18 @@ TilePartLengthInfo* CodeStreamDecompress::nextTLM(void){
 		tilePartLengthInfo = cp_.tlm_markers->getNext();
 		// validate TLM
 		auto actualTileLength = stream_->tell() - decompressorState_.lastSotReadPosition;
-		if(tilePartLengthInfo )
+		if(tilePartLengthInfo)
 		{
-			if (actualTileLength != tilePartLengthInfo->length_) {
+			if(actualTileLength != tilePartLengthInfo->length_)
+			{
 				GRK_WARN("TLM marker tile part length %u differs from actual"
 						 " tile part length %u; %u,%u. Disabling TLM.",
 						 tilePartLengthInfo->length_, actualTileLength,
 						 decompressorState_.lastSotReadPosition, stream_->tell());
 				cp_.tlm_markers->invalidate();
-			} else {
+			}
+			else
+			{
 				GRK_INFO("TLM marker tile part length %u equals actual"
 						 " tile part length %u; %u,%u.",
 						 tilePartLengthInfo->length_, actualTileLength,

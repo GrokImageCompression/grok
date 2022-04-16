@@ -1843,15 +1843,15 @@ bool WaveletReverse::decompress_partial_tile(ISparseCanvas* sa)
 	uint32_t numThreads = (uint32_t)ExecSingleton::get()->num_workers();
 	auto imageComponentFlow = scheduler_->getImageComponentFlow(compno_);
 	// imageComponentFlow == nullptr ==> no blocks were decompressed for this component
-	if (!imageComponentFlow)
+	if(!imageComponentFlow)
 		return true;
 	if(numres_ == 1U)
 	{
 		auto final_read = [this, sa, synthesisWindow, buf]() {
 			// final read into tile buffer
 			bool ret =
-				sa->read(0, synthesisWindow, buf->getResWindowBufferHighestREL()->getBuffer(),
-						 1, buf->getResWindowBufferHighestREL()->stride, true);
+				sa->read(0, synthesisWindow, buf->getResWindowBufferHighestREL()->getBuffer(), 1,
+						 buf->getResWindowBufferHighestREL()->stride, true);
 			assert(ret);
 			GRK_UNUSED(ret);
 		};
@@ -1906,7 +1906,8 @@ bool WaveletReverse::decompress_partial_tile(ISparseCanvas* sa)
 				taskInfo->data.memH =
 					taskInfo->data.mem + (int64_t)(!taskInfo->data.parity) +
 					2 * ((int64_t)taskInfo->data.win_h.x0 - (int64_t)taskInfo->data.win_l.x0);
-				if(!decompressor.interleave_h(&taskInfo->data, sa, yPos, height)){
+				if(!decompressor.interleave_h(&taskInfo->data, sa, yPos, height))
+				{
 					delete taskInfo;
 					return false;
 				}
@@ -1942,7 +1943,8 @@ bool WaveletReverse::decompress_partial_tile(ISparseCanvas* sa)
 					((!taskInfo->data.parity) +
 					 2 * ((int64_t)taskInfo->data.win_h.x0 - (int64_t)taskInfo->data.win_l.x0)) *
 						VERT_PASS_WIDTH;
-				if(!decompressor.interleave_v(&taskInfo->data, sa, xPos, width)){
+				if(!decompressor.interleave_v(&taskInfo->data, sa, xPos, width))
+				{
 					delete taskInfo;
 					return false;
 				}
