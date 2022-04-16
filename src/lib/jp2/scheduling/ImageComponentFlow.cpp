@@ -62,6 +62,9 @@ ResFlow* ResFlow::precede(FlowComponent* successor)
 
 	return this;
 }
+FlowComponent* ResFlow::getFinalFlow(void){
+	return doWavelet_ ? waveletVert_ : blocks_;
+}
 ResFlow::~ResFlow(void)
 {
 	delete blocks_;
@@ -101,6 +104,9 @@ void ImageComponentFlow::graph(void)
 		(resFlows_ + i)->precede(resFlows_ + i + 1);
 	if(waveletFinalCopy_)
 		(resFlows_ + numResFlows_ - 1)->precede(waveletFinalCopy_);
+}
+FlowComponent* ImageComponentFlow::getFinalFlow(void){
+	return waveletFinalCopy_ ? waveletFinalCopy_ :  (resFlows_ + numResFlows_ - 1)->getFinalFlow();
 }
 ImageComponentFlow* ImageComponentFlow::addTo(tf::Taskflow& composition)
 {

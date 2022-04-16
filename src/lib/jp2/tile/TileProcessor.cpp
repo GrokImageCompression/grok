@@ -441,6 +441,7 @@ bool TileProcessor::decompressT2T1(TileCodingParams* tcp, GrkImage* outputImage,
 	{
 		scheduler_ = new DecompressScheduler(this, tile, tcp_, headerImage->comps->prec);
 		FlowComponent *postProc = nullptr;
+		uint32_t mctCount = 0;
 		// schedule MCT post processing
 		if(doPostT1)
 		{
@@ -478,7 +479,14 @@ bool TileProcessor::decompressT2T1(TileCodingParams* tcp, GrkImage* outputImage,
 				return false;
 
 			// link to MCT
+			auto compFlow = scheduler_->getImageComponentFlow(compno);
+			if (compFlow && postProc && compno < 3){
+				compFlow->getFinalFlow()->precede(postProc);
+				mctCount++;
+			}
 		}
+		if(mctCount == 3 && postProc && !mctDecompress(postProc))
+			return false;
 		if(!scheduler_->run())
 			return false;
 		delete scheduler_;
@@ -487,11 +495,6 @@ bool TileProcessor::decompressT2T1(TileCodingParams* tcp, GrkImage* outputImage,
 	// post T1
 	if(doPostT1)
 	{
-		// schedule MCT if applicable
-		if(needsMctDecompress()) {
-			if(!mctDecompress())
-				return false;
-		}
 		// schedule DC shift on remaining channels
 		if(!dcLevelShiftDecompress())
 			return false;
@@ -562,7 +565,7 @@ bool TileProcessor::needsMctDecompress(uint16_t compno)
 
 	return true;
 }
-bool TileProcessor::mctDecompress()
+bool TileProcessor::mctDecompress(FlowComponent *flow)
 {
 	// custom MCT
 	if(tcp_->mct == 2)
@@ -581,9 +584,9 @@ bool TileProcessor::mctDecompress()
 	else
 	{
 		if(tcp_->tccps->qmfbid == 1)
-			mct_->decompress_rev(nullptr);
+			mct_->decompress_rev(flow);
 		else
-			mct_->decompress_irrev(nullptr);
+			mct_->decompress_irrev(flow);
 	}
 
 	return true;
