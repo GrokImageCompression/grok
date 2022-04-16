@@ -553,7 +553,7 @@ struct TileComponentWindowBuffer
 	}
 	uint64_t stridedArea(void) const
 	{
-		return getResWindowBufferHighestREL()->stride * bounds_.height();
+		return getResWindowBufferHighestREL()->stride * getResWindowBufferHighestREL()->height();
 	}
 
 	// set data to buf without owning it

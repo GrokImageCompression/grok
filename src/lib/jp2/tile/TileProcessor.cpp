@@ -556,7 +556,6 @@ bool TileProcessor::mctDecompress()
 		uint64_t samples = tile->comps->getBuffer()->stridedArea();
 		bool rc = mct::decompress_custom((uint8_t*)tcp_->mct_decoding_matrix_, samples, data,
 										 tile->numcomps_, headerImage->comps->sgnd);
-		delete[] data;
 		return rc;
 	}
 	else
