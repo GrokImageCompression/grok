@@ -33,6 +33,16 @@ struct ShiftInfo
 	int32_t _shift;
 };
 
+
+struct ScheduleInfo{
+	ScheduleInfo(Tile* t, Scheduler *sch) : tile(t),compno(0),scheduler(sch){}
+	Tile* tile;
+	uint16_t compno;
+	std::vector<ShiftInfo> shiftInfo;
+	Scheduler *scheduler;
+};
+
+
 class mct
 {
   public:
