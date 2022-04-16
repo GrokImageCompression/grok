@@ -36,20 +36,16 @@ struct ShiftInfo
 class mct
 {
   public:
+	mct(Tile* tile, GrkImage* image, TileCodingParams* tcp,Scheduler *scheduler);
+
 	/**
 	 Apply a reversible multi-component transform to an image
-	 @param tile tile
-	 @param image image
-	 @param tccps tile component coding parameters
 	 */
-	static void compress_rev(Tile* tile, GrkImage* image, TileComponentCodingParams* tccps);
+	void compress_rev(void);
 	/**
 	 Apply a reversible multi-component inverse transform to an image
-	 @param tile tile
-	 @param image image
-	 @param tccps tile component coding parameters
 	 */
-	static void decompress_rev(Tile* tile, GrkImage* image, TileComponentCodingParams* tccps);
+	void decompress_rev(void);
 
 	/**
 	 Get wavelet norms for reversible transform
@@ -58,18 +54,12 @@ class mct
 
 	/**
 	 Apply an irreversible multi-component transform to an image
-	 @param tile tile
-	 @param image image
-	 @param tccps tile component coding parameters
 	 */
-	static void compress_irrev(Tile* tile, GrkImage* image, TileComponentCodingParams* tccps);
+	void compress_irrev(void);
 	/**
 	 Apply an irreversible multi-component inverse transform to an image
-	 @param tile tile
-	 @param image image
-	 @param tccps tile component coding parameters
 	 */
-	static void decompress_irrev(Tile* tile, GrkImage* image, TileComponentCodingParams* tccps);
+	void decompress_irrev(void);
 
 	/**
 	 Get wavelet norms for irreversible transform
@@ -108,27 +98,24 @@ class mct
 
 	/**
 	 Apply a reversible inverse dc shift to an image
-	 @param tile tile
-	 @param image image
-	 @param tccps tile component coding parameters
 	 */
-	static void decompress_dc_shift_rev(Tile* tile, GrkImage* image,
-										TileComponentCodingParams* tccps, uint16_t compno);
+	void decompress_dc_shift_rev(uint16_t compno);
 
 	/**
 	 Apply an irreversible inverse dc shift to an image
-	 @param tile tile
-	 @param image image
-	 @param tccps tile component coding parameters
 	 */
-	static void decompress_dc_shift_irrev(Tile* tile, GrkImage* image,
-										  TileComponentCodingParams* tccps, uint16_t compno);
+	void decompress_dc_shift_irrev(uint16_t compno);
 
   private:
 	static void genShift(uint16_t compno, GrkImage* image, TileComponentCodingParams* tccps,
 						 int32_t sign, std::vector<ShiftInfo>& shiftInfo);
 	static void genShift(GrkImage* image, TileComponentCodingParams* tccps, int32_t sign,
 						 std::vector<ShiftInfo>& shiftInfo);
+
+	Tile* tile_;
+	GrkImage* image_;
+	TileCodingParams* tcp_;
+	Scheduler *scheduler_;
 };
 
 /* ----------------------------------------------------------------------- */

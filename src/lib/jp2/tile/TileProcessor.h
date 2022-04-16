@@ -72,6 +72,9 @@ struct PacketTracker
  Tile processor for decompression and compression
  */
 
+
+class mct;
+
 struct TileProcessor
 {
 	explicit TileProcessor(uint16_t index, CodeStream* codeStream, IBufferedStream* stream,
@@ -172,6 +175,7 @@ struct TileProcessor
 	bool isCompressor_;
 	grk_rect32 unreducedImageWindow;
 	uint32_t preCalculatedTileLen;
+	mct *mct_;
 };
 
 } // namespace grk

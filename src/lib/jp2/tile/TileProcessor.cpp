@@ -31,13 +31,14 @@ TileProcessor::TileProcessor(uint16_t tileIndex, CodeStream* codeStream, IBuffer
 	  numProcessedPackets(0), numDecompressedPackets(0), tilePartDataLength(0),
 	  tileIndex_(tileIndex), stream_(stream), corrupt_packet_(false),
 	  newTilePartProgressionPosition(cp_->coding_params_.enc_.newTilePartProgressionPosition),
-	  tcp_(nullptr), truncated(false), image_(nullptr), isCompressor_(isCompressor),
-	  preCalculatedTileLen(0)
+	  tcp_(cp_->tcps + tileIndex_), truncated(false), image_(nullptr), isCompressor_(isCompressor),
+	  preCalculatedTileLen(0), mct_(new mct(tile,headerImage,tcp_,scheduler_))
 {}
 TileProcessor::~TileProcessor()
 {
 	release(GRK_TILE_CACHE_NONE);
 	delete scheduler_;
+	delete mct_;
 }
 uint64_t TileProcessor::getTilePartDataLength(void)
 {
@@ -397,8 +398,6 @@ bool TileProcessor::isWholeTileDecompress(uint16_t compno)
 
 bool TileProcessor::decompressT2(SparseBuffer* srcBuf)
 {
-	tcp_ = cp_->tcps + tileIndex_;
-
 	// optimization for regions that are close to largest decompressed resolution
 	// (currently breaks tests, so disabled)
 	for(uint16_t compno = 0; compno < headerImage->numcomps; compno++)
@@ -561,9 +560,9 @@ bool TileProcessor::mctDecompress()
 	else
 	{
 		if(tcp_->tccps->qmfbid == 1)
-			mct::decompress_rev(tile, headerImage, tcp_->tccps);
+			mct_->decompress_rev();
 		else
-			mct::decompress_irrev(tile, headerImage, tcp_->tccps);
+			mct_->decompress_irrev();
 	}
 
 	return true;
@@ -578,9 +577,9 @@ bool TileProcessor::dcLevelShiftDecompress()
 		{
 			auto tccp = tcp_->tccps + compno;
 			if(tccp->qmfbid == 1)
-				mct::decompress_dc_shift_rev(tile, headerImage, tcp_->tccps, compno);
+				mct_->decompress_dc_shift_rev(compno);
 			else
-				mct::decompress_dc_shift_irrev(tile, headerImage, tcp_->tccps, compno);
+				mct_->decompress_dc_shift_irrev(compno);
 		}
 	}
 	return true;
@@ -651,13 +650,9 @@ bool TileProcessor::mct_encode()
 		return rc;
 	}
 	else if(tcp_->tccps->qmfbid == 0)
-	{
-		mct::compress_irrev(tile, headerImage, tcp_->tccps);
-	}
+		mct_->compress_irrev();
 	else
-	{
-		mct::compress_rev(tile, headerImage, tcp_->tccps);
-	}
+		mct_->compress_rev();
 
 	return true;
 }
