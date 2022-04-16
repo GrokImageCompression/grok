@@ -392,14 +392,11 @@ void GrkImage::postReadHeader(CodingParams* cp)
 		}
 		else
 		{
-			rowsPerStrip =
-				packedRowBytes ? (uint32_t)((16 * 1024 * 1024) / packedRowBytes) : y1 - y0;
-			if(rowsPerStrip == 0)
-				rowsPerStrip = y1 - y0;
+			rowsPerStrip = 32;
 		}
 	}
-	if(rowsPerStrip > y1 - y0)
-		rowsPerStrip = y1 - y0;
+	if(rowsPerStrip > height())
+		rowsPerStrip = height();
 
 	if(meta && meta->color.icc_profile_buf && meta->color.icc_profile_len &&
 	   decompressFormat == GRK_PNG_FMT)
