@@ -30,8 +30,6 @@ namespace grk
 {
 namespace HWY_NAMESPACE
 {
-	using namespace hwy::HWY_NAMESPACE;
-
 	/**
 	 * Apply dc shift for irreversible decompressed image.
 	 * (assumes mono with no  MCT)
@@ -40,10 +38,9 @@ namespace HWY_NAMESPACE
 	class DecompressDcShiftIrrev
 	{
 	  public:
-		void vtrans(ScheduleInfo info, size_t index,
-					   size_t chunkSize)
+		void vtrans(ScheduleInfo info, size_t index, size_t chunkSize)
 		{
-			std::vector<ShiftInfo> &shiftInfo = info.shiftInfo;
+			std::vector<ShiftInfo>& shiftInfo = info.shiftInfo;
 			auto chan0 = (float*)info.tile->comps[info.compno]
 							 .getBuffer()
 							 ->getResWindowBufferHighestREL()
@@ -73,12 +70,13 @@ namespace HWY_NAMESPACE
 		/**
 		 * vector version
 		 */
-		void vtrans(ScheduleInfo info,  size_t index,
-					   size_t chunkSize)
+		void vtrans(ScheduleInfo info, size_t index, size_t chunkSize)
 		{
-			std::vector<ShiftInfo> &shiftInfo = info.shiftInfo;
-			auto chan0 =
-					info.tile->comps[info.compno].getBuffer()->getResWindowBufferHighestREL()->getBuffer();
+			std::vector<ShiftInfo>& shiftInfo = info.shiftInfo;
+			auto chan0 = info.tile->comps[info.compno]
+							 .getBuffer()
+							 ->getResWindowBufferHighestREL()
+							 ->getBuffer();
 			const HWY_FULL(int32_t) di;
 			auto vshift = Set(di, shiftInfo[0]._shift);
 			auto vmin = Set(di, shiftInfo[0]._min);
@@ -98,13 +96,15 @@ namespace HWY_NAMESPACE
 	class DecompressRev
 	{
 	  public:
-		void vtrans(ScheduleInfo info,  size_t index,
-					   size_t chunkSize)
+		void vtrans(ScheduleInfo info, size_t index, size_t chunkSize)
 		{
-			std::vector<ShiftInfo> &shiftInfo = info.shiftInfo;
-			auto chan0 = info.tile->comps[0].getBuffer()->getResWindowBufferHighestREL()->getBuffer();
-			auto chan1 = info.tile->comps[1].getBuffer()->getResWindowBufferHighestREL()->getBuffer();
-			auto chan2 = info.tile->comps[2].getBuffer()->getResWindowBufferHighestREL()->getBuffer();
+			std::vector<ShiftInfo>& shiftInfo = info.shiftInfo;
+			auto chan0 =
+				info.tile->comps[0].getBuffer()->getResWindowBufferHighestREL()->getBuffer();
+			auto chan1 =
+				info.tile->comps[1].getBuffer()->getResWindowBufferHighestREL()->getBuffer();
+			auto chan2 =
+				info.tile->comps[2].getBuffer()->getResWindowBufferHighestREL()->getBuffer();
 			int32_t shift[3] = {shiftInfo[0]._shift, shiftInfo[1]._shift, shiftInfo[2]._shift};
 			int32_t _min[3] = {shiftInfo[0]._min, shiftInfo[1]._min, shiftInfo[2]._min};
 			int32_t _max[3] = {shiftInfo[0]._max, shiftInfo[1]._max, shiftInfo[2]._max};
@@ -142,16 +142,21 @@ namespace HWY_NAMESPACE
 	class DecompressIrrev
 	{
 	  public:
-		void vtrans(ScheduleInfo info,  size_t index,
-					   size_t chunkSize)
+		void vtrans(ScheduleInfo info, size_t index, size_t chunkSize)
 		{
-			std::vector<ShiftInfo> &shiftInfo = info.shiftInfo;
-			auto chan0 =
-				(float*)info.tile->comps[0].getBuffer()->getResWindowBufferHighestREL()->getBuffer();
-			auto chan1 =
-				(float*)info.tile->comps[1].getBuffer()->getResWindowBufferHighestREL()->getBuffer();
-			auto chan2 =
-				(float*)info.tile->comps[2].getBuffer()->getResWindowBufferHighestREL()->getBuffer();
+			std::vector<ShiftInfo>& shiftInfo = info.shiftInfo;
+			auto chan0 = (float*)info.tile->comps[0]
+							 .getBuffer()
+							 ->getResWindowBufferHighestREL()
+							 ->getBuffer();
+			auto chan1 = (float*)info.tile->comps[1]
+							 .getBuffer()
+							 ->getResWindowBufferHighestREL()
+							 ->getBuffer();
+			auto chan2 = (float*)info.tile->comps[2]
+							 .getBuffer()
+							 ->getResWindowBufferHighestREL()
+							 ->getBuffer();
 
 			auto c0 = (int32_t*)chan0;
 			auto c1 = (int32_t*)chan1;
@@ -201,13 +206,15 @@ namespace HWY_NAMESPACE
 	class CompressRev
 	{
 	  public:
-		void vtrans(ScheduleInfo info,  size_t index,
-					   size_t chunkSize)
+		void vtrans(ScheduleInfo info, size_t index, size_t chunkSize)
 		{
-			std::vector<ShiftInfo> &shiftInfo = info.shiftInfo;
-			auto chan0 = info.tile->comps[0].getBuffer()->getResWindowBufferHighestREL()->getBuffer();
-			auto chan1 = info.tile->comps[1].getBuffer()->getResWindowBufferHighestREL()->getBuffer();
-			auto chan2 = info.tile->comps[2].getBuffer()->getResWindowBufferHighestREL()->getBuffer();
+			std::vector<ShiftInfo>& shiftInfo = info.shiftInfo;
+			auto chan0 =
+				info.tile->comps[0].getBuffer()->getResWindowBufferHighestREL()->getBuffer();
+			auto chan1 =
+				info.tile->comps[1].getBuffer()->getResWindowBufferHighestREL()->getBuffer();
+			auto chan2 =
+				info.tile->comps[2].getBuffer()->getResWindowBufferHighestREL()->getBuffer();
 
 			const HWY_FULL(int32_t) di;
 			int32_t shift[3] = {shiftInfo[0]._shift, shiftInfo[1]._shift, shiftInfo[2]._shift};
@@ -238,13 +245,15 @@ namespace HWY_NAMESPACE
 	class CompressIrrev
 	{
 	  public:
-		void vtrans(ScheduleInfo info, size_t index,
-					   size_t chunkSize)
+		void vtrans(ScheduleInfo info, size_t index, size_t chunkSize)
 		{
-			std::vector<ShiftInfo> &shiftInfo = info.shiftInfo;
-			auto chan0 = info.tile->comps[0].getBuffer()->getResWindowBufferHighestREL()->getBuffer();
-			auto chan1 = info.tile->comps[1].getBuffer()->getResWindowBufferHighestREL()->getBuffer();
-			auto chan2 = info.tile->comps[2].getBuffer()->getResWindowBufferHighestREL()->getBuffer();
+			std::vector<ShiftInfo>& shiftInfo = info.shiftInfo;
+			auto chan0 =
+				info.tile->comps[0].getBuffer()->getResWindowBufferHighestREL()->getBuffer();
+			auto chan1 =
+				info.tile->comps[1].getBuffer()->getResWindowBufferHighestREL()->getBuffer();
+			auto chan2 =
+				info.tile->comps[2].getBuffer()->getResWindowBufferHighestREL()->getBuffer();
 
 			int32_t shift[3] = {shiftInfo[0]._shift, shiftInfo[1]._shift, shiftInfo[2]._shift};
 
@@ -277,6 +286,7 @@ namespace HWY_NAMESPACE
 				Store(v, df, (float*)(chan2 + j));
 			}
 		}
+
 	  private:
 		const float a_r = 0.299f;
 		const float a_g = 0.587f;
@@ -288,8 +298,10 @@ namespace HWY_NAMESPACE
 	template<class T>
 	void vscheduler(ScheduleInfo info)
 	{
-		auto highestResBuffer = info.tile->comps[info.compno].getBuffer()->getResWindowBufferHighestREL();
-		uint32_t numTasks = (highestResBuffer->height() + 31)/32;
+		auto highestResBuffer =
+			info.tile->comps[info.compno].getBuffer()->getResWindowBufferHighestREL();
+		uint32_t numTasks =
+			(highestResBuffer->height() + info.linesPerTask_ - 1) / info.linesPerTask_;
 		size_t num_threads = ExecSingleton::get()->num_workers();
 		size_t numSamples = highestResBuffer->stride * highestResBuffer->height();
 		if(num_threads > 1)
@@ -300,20 +312,22 @@ namespace HWY_NAMESPACE
 				node[i] = taskflow.placeholder();
 			for(size_t t = 0; t < numTasks; ++t)
 			{
-				size_t index = t * 32 * highestResBuffer->stride;
-				uint64_t chunkSize = (t != numTasks - 1) ? 32 * highestResBuffer->stride : (highestResBuffer->height() - t*32) *  highestResBuffer->stride ;
+				size_t index = t * info.linesPerTask_ * highestResBuffer->stride;
+				uint64_t chunkSize = (t != numTasks - 1)
+										 ? 32 * highestResBuffer->stride
+										 : (highestResBuffer->height() - t * info.linesPerTask_) *
+											   highestResBuffer->stride;
 				auto compressor = [index, chunkSize, info]() {
 					T transform;
 					transform.vtrans(info, index, chunkSize);
 				};
 				node[t].work(compressor);
 			}
-			if(node)
-			{
-				ExecSingleton::get()->run(taskflow).wait();
-				delete[] node;
-			}
-		} else {
+			ExecSingleton::get()->run(taskflow).wait();
+			delete[] node;
+		}
+		else
+		{
 			T transform;
 			transform.vtrans(info, 0, numSamples);
 		}
@@ -367,7 +381,7 @@ mct::mct(Tile* tile, GrkImage* image, TileCodingParams* tcp, Scheduler* schedule
 {}
 void mct::decompress_dc_shift_irrev(uint16_t compno)
 {
-	ScheduleInfo info(tile_,scheduler_);
+	ScheduleInfo info(tile_, scheduler_);
 	info.compno = compno;
 	genShift(compno, image_, tcp_->tccps, 1, info.shiftInfo);
 	HWY_DYNAMIC_DISPATCH(hwy_decompress_dc_shift_irrev)(info);
@@ -379,7 +393,7 @@ void mct::decompress_dc_shift_irrev(uint16_t compno)
  */
 void mct::decompress_irrev(void)
 {
-	ScheduleInfo info(tile_,scheduler_);
+	ScheduleInfo info(tile_, scheduler_);
 	hwy::DisableTargets(uint32_t(~HWY_SCALAR));
 
 	genShift(image_, tcp_->tccps, 1, info.shiftInfo);
@@ -389,7 +403,7 @@ void mct::decompress_irrev(void)
 
 void mct::decompress_dc_shift_rev(uint16_t compno)
 {
-	ScheduleInfo info(tile_,scheduler_);
+	ScheduleInfo info(tile_, scheduler_);
 	info.compno = compno;
 	genShift(compno, image_, tcp_->tccps, 1, info.shiftInfo);
 	HWY_DYNAMIC_DISPATCH(hwy_decompress_dc_shift_rev)(info);
@@ -400,7 +414,7 @@ void mct::decompress_dc_shift_rev(uint16_t compno)
 /* </summary> */
 void mct::decompress_rev(void)
 {
-	ScheduleInfo info(tile_,scheduler_);
+	ScheduleInfo info(tile_, scheduler_);
 	genShift(image_, tcp_->tccps, 1, info.shiftInfo);
 	HWY_DYNAMIC_DISPATCH(hwy_decompress_rev)
 	(info);
@@ -410,7 +424,7 @@ void mct::decompress_rev(void)
 /* </summary> */
 void mct::compress_rev(void)
 {
-	ScheduleInfo info(tile_,scheduler_);
+	ScheduleInfo info(tile_, scheduler_);
 	genShift(image_, tcp_->tccps, -1, info.shiftInfo);
 	HWY_DYNAMIC_DISPATCH(hwy_compress_rev)
 	(info);
@@ -420,7 +434,7 @@ void mct::compress_rev(void)
 /* </summary> */
 void mct::compress_irrev()
 {
-	ScheduleInfo info(tile_,scheduler_);
+	ScheduleInfo info(tile_, scheduler_);
 
 	genShift(image_, tcp_->tccps, -1, info.shiftInfo);
 	HWY_DYNAMIC_DISPATCH(hwy_compress_irrev)
