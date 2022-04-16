@@ -32,12 +32,6 @@ namespace HWY_NAMESPACE
 {
 	using namespace hwy::HWY_NAMESPACE;
 
-	static size_t hwy_num_lanes(void)
-	{
-		const HWY_FULL(int32_t) di;
-		return Lanes(di);
-	}
-
 	/**
 	 * Apply dc shift for irreversible decompressed image.
 	 * (assumes mono with no  MCT)
@@ -46,10 +40,7 @@ namespace HWY_NAMESPACE
 	class DecompressDcShiftIrrev
 	{
 	  public:
-		/**
-		 * vector version
-		 */
-		int32_t vtrans(ScheduleInfo info, size_t index,
+		void vtrans(ScheduleInfo info, size_t index,
 					   size_t chunkSize)
 		{
 			std::vector<ShiftInfo> &shiftInfo = info.shiftInfo;
@@ -62,31 +53,12 @@ namespace HWY_NAMESPACE
 			auto vshift = Set(di, shiftInfo[0]._shift);
 			auto vmin = Set(di, shiftInfo[0]._min);
 			auto vmax = Set(di, shiftInfo[0]._max);
-			size_t begin = (size_t)index * chunkSize;
+			size_t begin = index;
 			for(auto j = begin; j < begin + chunkSize; j += Lanes(di))
 			{
 				auto ni = Clamp(NearestInt(Load(df, chan0 + j)) + vshift, vmin, vmax);
 				Store(ni, di, (int32_t*)(chan0 + j));
 			}
-			return 0;
-		}
-		/**
-		 * scalar version
-		 */
-		void trans(ScheduleInfo info, size_t i,
-				   size_t n)
-		{
-			std::vector<ShiftInfo> &shiftInfo = info.shiftInfo;
-			auto chan0 = (float*)info.tile->comps[info.compno]
-							 .getBuffer()
-							 ->getResWindowBufferHighestREL()
-							 ->getBuffer();
-			auto c0 = (int32_t*)chan0;
-			int32_t shift = shiftInfo[0]._shift;
-			int32_t _min = shiftInfo[0]._min;
-			int32_t _max = shiftInfo[0]._max;
-			for(; i < n; ++i)
-				c0[i] = std::clamp<int32_t>((int32_t)grk_lrintf(chan0[i]) + shift, _min, _max);
 		}
 	};
 
@@ -101,7 +73,7 @@ namespace HWY_NAMESPACE
 		/**
 		 * vector version
 		 */
-		int32_t vtrans(ScheduleInfo info,  size_t index,
+		void vtrans(ScheduleInfo info,  size_t index,
 					   size_t chunkSize)
 		{
 			std::vector<ShiftInfo> &shiftInfo = info.shiftInfo;
@@ -111,28 +83,12 @@ namespace HWY_NAMESPACE
 			auto vshift = Set(di, shiftInfo[0]._shift);
 			auto vmin = Set(di, shiftInfo[0]._min);
 			auto vmax = Set(di, shiftInfo[0]._max);
-			size_t begin = (size_t)index * chunkSize;
+			size_t begin = index;
 			for(auto j = begin; j < begin + chunkSize; j += Lanes(di))
 			{
 				auto ni = Clamp(Load(di, chan0 + j) + vshift, vmin, vmax);
 				Store(ni, di, chan0 + j);
 			}
-			return 0;
-		}
-		/**
-		 * scalar version
-		 */
-		void trans(ScheduleInfo info,  size_t index,
-				   size_t numSamples)
-		{
-			std::vector<ShiftInfo> &shiftInfo = info.shiftInfo;
-			auto chan0 =
-					info.tile->comps[info.compno].getBuffer()->getResWindowBufferHighestREL()->getBuffer();
-			int32_t shift = shiftInfo[0]._shift;
-			int32_t _min = shiftInfo[0]._min;
-			int32_t _max = shiftInfo[0]._max;
-			for(; index < numSamples; ++index)
-				chan0[index] = std::clamp<int32_t>(chan0[index] + shift, _min, _max);
 		}
 	};
 
@@ -142,7 +98,7 @@ namespace HWY_NAMESPACE
 	class DecompressRev
 	{
 	  public:
-		int32_t vtrans(ScheduleInfo info,  size_t index,
+		void vtrans(ScheduleInfo info,  size_t index,
 					   size_t chunkSize)
 		{
 			std::vector<ShiftInfo> &shiftInfo = info.shiftInfo;
@@ -164,7 +120,7 @@ namespace HWY_NAMESPACE
 			auto maxg = Set(di, _max[1]);
 			auto maxb = Set(di, _max[2]);
 
-			size_t begin = (size_t)index * chunkSize;
+			size_t begin = index;
 			for(auto j = begin; j < begin + chunkSize; j += Lanes(di))
 			{
 				auto y = Load(di, chan0 + j);
@@ -177,31 +133,6 @@ namespace HWY_NAMESPACE
 				Store(Clamp(g + vdcg, ming, maxg), di, chan1 + j);
 				Store(Clamp(b + vdcb, minb, maxb), di, chan2 + j);
 			}
-			return 0;
-		}
-		void trans(ScheduleInfo info,  size_t index,
-				   size_t numSamples)
-		{
-			std::vector<ShiftInfo> &shiftInfo = info.shiftInfo;
-			auto chan0 = info.tile->comps[0].getBuffer()->getResWindowBufferHighestREL()->getBuffer();
-			auto chan1 = info.tile->comps[1].getBuffer()->getResWindowBufferHighestREL()->getBuffer();
-			auto chan2 = info.tile->comps[2].getBuffer()->getResWindowBufferHighestREL()->getBuffer();
-
-			int32_t shift[3] = {shiftInfo[0]._shift, shiftInfo[1]._shift, shiftInfo[2]._shift};
-			int32_t _min[3] = {shiftInfo[0]._min, shiftInfo[1]._min, shiftInfo[2]._min};
-			int32_t _max[3] = {shiftInfo[0]._max, shiftInfo[1]._max, shiftInfo[2]._max};
-			for(; index < numSamples; ++index)
-			{
-				int32_t y = chan0[index];
-				int32_t u = chan1[index];
-				int32_t v = chan2[index];
-				int32_t g = y - ((u + v) >> 2);
-				int32_t r = v + g;
-				int32_t b = u + g;
-				chan0[index] = std::clamp<int32_t>(r + shift[0], _min[0], _max[0]);
-				chan1[index] = std::clamp<int32_t>(g + shift[1], _min[1], _max[1]);
-				chan2[index] = std::clamp<int32_t>(b + shift[2], _min[2], _max[2]);
-			}
 		}
 	};
 
@@ -211,7 +142,7 @@ namespace HWY_NAMESPACE
 	class DecompressIrrev
 	{
 	  public:
-		int32_t vtrans(ScheduleInfo info,  size_t index,
+		void vtrans(ScheduleInfo info,  size_t index,
 					   size_t chunkSize)
 		{
 			std::vector<ShiftInfo> &shiftInfo = info.shiftInfo;
@@ -247,7 +178,7 @@ namespace HWY_NAMESPACE
 			auto vgv = Set(df, 0.71414f);
 			auto vbu = Set(df, 1.772f);
 
-			size_t begin = (size_t)index * chunkSize;
+			size_t begin = index;
 			for(auto j = begin; j < begin + chunkSize; j += Lanes(di))
 			{
 				auto vy = Load(df, chan0 + j);
@@ -261,43 +192,6 @@ namespace HWY_NAMESPACE
 				Store(Clamp(NearestInt(vg) + vdcg, ming, maxg), di, c1 + j);
 				Store(Clamp(NearestInt(vb) + vdcb, minb, maxb), di, c2 + j);
 			}
-			return 0;
-		}
-		void trans(ScheduleInfo info,  size_t index,
-				   size_t numSamples)
-		{
-			std::vector<ShiftInfo> &shiftInfo = info.shiftInfo;
-			auto chan0 =
-				(float*)info.tile->comps[0].getBuffer()->getResWindowBufferHighestREL()->getBuffer();
-			auto chan1 =
-				(float*)info.tile->comps[1].getBuffer()->getResWindowBufferHighestREL()->getBuffer();
-			auto chan2 =
-				(float*)info.tile->comps[2].getBuffer()->getResWindowBufferHighestREL()->getBuffer();
-
-			auto c0 = (int32_t*)chan0;
-			auto c1 = (int32_t*)chan1;
-			auto c2 = (int32_t*)chan2;
-
-			int32_t shift[3] = {shiftInfo[0]._shift, shiftInfo[1]._shift, shiftInfo[2]._shift};
-			int32_t _min[3] = {shiftInfo[0]._min, shiftInfo[1]._min, shiftInfo[2]._min};
-			int32_t _max[3] = {shiftInfo[0]._max, shiftInfo[1]._max, shiftInfo[2]._max};
-
-			for(; index < numSamples; ++index)
-			{
-				float y = chan0[index];
-				float u = chan1[index];
-				float v = chan2[index];
-				float r = y + (v * 1.402f);
-				float g = y - (u * 0.34413f) - (v * (0.71414f));
-				float b = y + (u * 1.772f);
-
-				c0[index] =
-					std::clamp<int32_t>((int32_t)grk_lrintf(r) + shift[0], _min[0], _max[0]);
-				c1[index] =
-					std::clamp<int32_t>((int32_t)grk_lrintf(g) + shift[1], _min[1], _max[1]);
-				c2[index] =
-					std::clamp<int32_t>((int32_t)grk_lrintf(b) + shift[2], _min[2], _max[2]);
-			}
 		}
 	};
 
@@ -307,7 +201,7 @@ namespace HWY_NAMESPACE
 	class CompressRev
 	{
 	  public:
-		int32_t vtrans(ScheduleInfo info,  size_t index,
+		void vtrans(ScheduleInfo info,  size_t index,
 					   size_t chunkSize)
 		{
 			std::vector<ShiftInfo> &shiftInfo = info.shiftInfo;
@@ -322,7 +216,7 @@ namespace HWY_NAMESPACE
 			auto vdcg = Set(di, shift[1]);
 			auto vdcb = Set(di, shift[2]);
 
-			size_t begin = (size_t)index * chunkSize;
+			size_t begin = index;
 			for(auto j = begin; j < begin + chunkSize; j += Lanes(di))
 			{
 				auto r = Load(di, chan0 + j) + vdcr;
@@ -335,29 +229,6 @@ namespace HWY_NAMESPACE
 				Store(u, di, chan1 + j);
 				Store(v, di, chan2 + j);
 			}
-			return 0;
-		}
-		void trans(ScheduleInfo info,  size_t index,
-				   size_t numSamples)
-		{
-			std::vector<ShiftInfo> &shiftInfo = info.shiftInfo;
-			auto chan0 = info.tile->comps[0].getBuffer()->getResWindowBufferHighestREL()->getBuffer();
-			auto chan1 = info.tile->comps[1].getBuffer()->getResWindowBufferHighestREL()->getBuffer();
-			auto chan2 = info.tile->comps[2].getBuffer()->getResWindowBufferHighestREL()->getBuffer();
-			int32_t shift[3] = {shiftInfo[0]._shift, shiftInfo[1]._shift, shiftInfo[2]._shift};
-
-			for(; index < numSamples; ++index)
-			{
-				int32_t r = chan0[index] + shift[0];
-				int32_t g = chan1[index] + shift[1];
-				int32_t b = chan2[index] + shift[2];
-				int32_t y = (r + (g * 2) + b) >> 2;
-				int32_t u = b - g;
-				int32_t v = r - g;
-				chan0[index] = y;
-				chan1[index] = u;
-				chan2[index] = v;
-			}
 		}
 	};
 
@@ -367,7 +238,7 @@ namespace HWY_NAMESPACE
 	class CompressIrrev
 	{
 	  public:
-		int32_t vtrans(ScheduleInfo info, size_t index,
+		void vtrans(ScheduleInfo info, size_t index,
 					   size_t chunkSize)
 		{
 			std::vector<ShiftInfo> &shiftInfo = info.shiftInfo;
@@ -390,7 +261,7 @@ namespace HWY_NAMESPACE
 			auto vdcg = Set(di, shift[1]);
 			auto vdcb = Set(di, shift[2]);
 
-			size_t begin = (size_t)index * chunkSize;
+			size_t begin = index;
 			for(auto j = begin; j < begin + chunkSize; j += Lanes(di))
 			{
 				auto r = ConvertTo(df, Load(di, chan0 + j) + vdcr);
@@ -405,39 +276,7 @@ namespace HWY_NAMESPACE
 				Store(u, df, (float*)(chan1 + j));
 				Store(v, df, (float*)(chan2 + j));
 			}
-
-			return 0;
 		}
-		void trans(ScheduleInfo info, size_t index,
-				   size_t numSamples)
-		{
-			std::vector<ShiftInfo> &shiftInfo = info.shiftInfo;
-			auto chan0 = info.tile->comps[0].getBuffer()->getResWindowBufferHighestREL()->getBuffer();
-			auto chan1 = info.tile->comps[1].getBuffer()->getResWindowBufferHighestREL()->getBuffer();
-			auto chan2 = info.tile->comps[2].getBuffer()->getResWindowBufferHighestREL()->getBuffer();
-
-			int32_t shift[3] = {shiftInfo[0]._shift, shiftInfo[1]._shift, shiftInfo[2]._shift};
-
-			float* GRK_RESTRICT chan0f = (float*)chan0;
-			float* GRK_RESTRICT chan1f = (float*)chan1;
-			float* GRK_RESTRICT chan2f = (float*)chan2;
-
-			for(; index < numSamples; ++index)
-			{
-				float r = (float)(chan0[index] + shift[0]);
-				float g = (float)(chan1[index] + shift[1]);
-				float b = (float)(chan2[index] + shift[2]);
-
-				float y = a_r * r + a_g * g + a_b * b;
-				float u = cb * (b - y);
-				float v = cr * (r - y);
-
-				chan0f[index] = y;
-				chan1f[index] = u;
-				chan2f[index] = v;
-			}
-		}
-
 	  private:
 		const float a_r = 0.299f;
 		const float a_g = 0.587f;
@@ -447,80 +286,67 @@ namespace HWY_NAMESPACE
 	};
 
 	template<class T>
-	size_t vscheduler(ScheduleInfo info)
+	void vscheduler(ScheduleInfo info)
 	{
-		size_t i = 0;
 		auto highestResBuffer = info.tile->comps[info.compno].getBuffer()->getResWindowBufferHighestREL();
-		size_t numSamples = highestResBuffer->stride * highestResBuffer->height();
+		uint32_t numTasks = (highestResBuffer->height() + 31)/32;
 		size_t num_threads = ExecSingleton::get()->num_workers();
-		size_t chunkSize = numSamples / num_threads;
-		const HWY_FULL(int32_t) di;
-		auto numLanes = Lanes(di);
-		chunkSize = (chunkSize / numLanes) * numLanes;
-		if(chunkSize > numLanes)
+		size_t numSamples = highestResBuffer->stride * highestResBuffer->height();
+		if(num_threads > 1)
 		{
 			tf::Taskflow taskflow;
-			tf::Task* node = nullptr;
-			if(num_threads > 1)
+			auto node = new tf::Task[numTasks];
+			for(uint64_t i = 0; i < numTasks; i++)
+				node[i] = taskflow.placeholder();
+			for(size_t t = 0; t < numTasks; ++t)
 			{
-				node = new tf::Task[num_threads];
-				for(uint64_t i = 0; i < num_threads; i++)
-					node[i] = taskflow.placeholder();
-			}
-			for(size_t tr = 0; tr < num_threads; ++tr)
-			{
-				size_t index = tr;
+				size_t index = t * 32 * highestResBuffer->stride;
+				uint64_t chunkSize = (t != numTasks - 1) ? 32 * highestResBuffer->stride : (highestResBuffer->height() - t*32) *  highestResBuffer->stride ;
 				auto compressor = [index, chunkSize, info]() {
 					T transform;
 					transform.vtrans(info, index, chunkSize);
-					return 0;
 				};
-				if(node)
-					node[tr].work(compressor);
-				else
-					compressor();
+				node[t].work(compressor);
 			}
 			if(node)
 			{
 				ExecSingleton::get()->run(taskflow).wait();
 				delete[] node;
 			}
-			i = chunkSize * num_threads;
+		} else {
+			T transform;
+			transform.vtrans(info, 0, numSamples);
 		}
-		T transform;
-		transform.trans(info, i, numSamples);
-
-		return i;
 	}
 
-	size_t hwy_compress_rev(ScheduleInfo info)
+	void hwy_compress_rev(ScheduleInfo info)
 	{
-		return vscheduler<CompressRev>(info);
+		vscheduler<CompressRev>(info);
 	}
 
-	size_t hwy_compress_irrev(ScheduleInfo info)
+	void hwy_compress_irrev(ScheduleInfo info)
 	{
-		return vscheduler<CompressIrrev>(info);
+		vscheduler<CompressIrrev>(info);
 	}
 
-	size_t hwy_decompress_rev(ScheduleInfo info)
+	void hwy_decompress_rev(ScheduleInfo info)
 	{
-		return vscheduler<DecompressRev>(info);
+		vscheduler<DecompressRev>(info);
 	}
 
-	size_t hwy_decompress_irrev(ScheduleInfo info)
+	void hwy_decompress_irrev(ScheduleInfo info)
 	{
-		return vscheduler<DecompressIrrev>(info);
+		vscheduler<DecompressIrrev>(info);
 	}
 
-	size_t hwy_decompress_dc_shift_irrev(ScheduleInfo info)
+	void hwy_decompress_dc_shift_irrev(ScheduleInfo info)
 	{
-		return vscheduler<DecompressDcShiftIrrev>(info);
+		vscheduler<DecompressDcShiftIrrev>(info);
 	}
 
-	size_t hwy_decompress_dc_shift_rev(ScheduleInfo info)
+	void hwy_decompress_dc_shift_rev(ScheduleInfo info)
 	{
-		return vscheduler<DecompressDcShiftRev>(info);
+		vscheduler<DecompressDcShiftRev>(info);
 	}
 } // namespace HWY_NAMESPACE
 } // namespace grk
@@ -529,7 +355,6 @@ HWY_AFTER_NAMESPACE();
 #if HWY_ONCE
 namespace grk
 {
-HWY_EXPORT(hwy_num_lanes);
 HWY_EXPORT(hwy_compress_rev);
 HWY_EXPORT(hwy_compress_irrev);
 HWY_EXPORT(hwy_decompress_rev);
