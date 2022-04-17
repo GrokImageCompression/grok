@@ -540,11 +540,10 @@ bool WaveletReverse::decompress_h_97(uint8_t res, uint32_t numThreads, size_t da
 				GRK_ERROR("Out of memory");
 				return false;
 			}
-			resFlow->waveletHoriz_->nextTask().work(
-				[this, myhoriz, indexMax, winL, winH, winDest] {
-					decompress_h_strip_97(myhoriz, indexMax, winL, winH, winDest);
-					delete myhoriz;
-				});
+			resFlow->waveletHoriz_->nextTask().work([this, myhoriz, indexMax, winL, winH, winDest] {
+				decompress_h_strip_97(myhoriz, indexMax, winL, winH, winDest);
+				delete myhoriz;
+			});
 			winL.incY_IPL(incrPerJob);
 			winH.incY_IPL(incrPerJob);
 			winDest.incY_IPL(incrPerJob);

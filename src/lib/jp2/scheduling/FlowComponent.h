@@ -19,7 +19,7 @@
 
 class FlowComponent
 {
-public:
+  public:
 	FlowComponent* addTo(tf::Taskflow& composition)
 	{
 		compositionTask_ = composition.composed_of(componentFlow_);
@@ -45,7 +45,8 @@ public:
 		componentTasks_.push(componentFlow_.placeholder());
 		return componentTasks_.back();
 	}
-private:
+
+  private:
 	std::queue<tf::Task> componentTasks_;
 	tf::Taskflow componentFlow_;
 	tf::Task compositionTask_;
