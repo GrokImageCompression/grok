@@ -9,6 +9,8 @@ struct Tile;
 struct CodingParams;
 struct TileComponent;
 
+const uint32_t singleTileRowsPerStrip = 32;
+
 class GrkImageMeta : public grk_image_meta
 {
   public:

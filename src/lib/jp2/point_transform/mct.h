@@ -35,7 +35,7 @@ struct ShiftInfo
 
 struct ScheduleInfo
 {
-	ScheduleInfo(Tile* t, FlowComponent* flow) : tile(t), compno(0), flow_(flow), linesPerTask_(32)
+	ScheduleInfo(Tile* t, FlowComponent* flow) : tile(t), compno(0), flow_(flow), linesPerTask_(singleTileRowsPerStrip)
 	{}
 	Tile* tile;
 	uint16_t compno;

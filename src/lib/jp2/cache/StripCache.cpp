@@ -11,14 +11,14 @@ static bool reclaimCallback(grk_serialize_buf buffer, void* serialize_user_data)
 	return true;
 }
 
-Strip::Strip(GrkImage* outputImage, uint16_t index, uint32_t tileHeight, uint8_t reduce)
+Strip::Strip(GrkImage* outputImage, uint16_t index, uint32_t height, uint8_t reduce)
 	: stripImg(nullptr), tileCounter(0), index_(index), reduce_(reduce)
 {
 	stripImg = new GrkImage();
 	outputImage->copyHeader(stripImg);
 
-	stripImg->y0 = outputImage->y0 + index * tileHeight;
-	stripImg->y1 = std::min<uint32_t>(outputImage->y1, stripImg->y0 + tileHeight);
+	stripImg->y0 = outputImage->y0 + index * height;
+	stripImg->y1 = std::min<uint32_t>(outputImage->y1, stripImg->y0 + height);
 	stripImg->comps->y0 = reduceDim(stripImg->y0);
 	stripImg->comps->h = reduceDim(stripImg->y1 - stripImg->y0);
 }
@@ -35,44 +35,45 @@ uint32_t Strip::reduceDim(uint32_t dim)
 	return reduce_ ? ceildivpow2<uint32_t>(dim, reduce_) : dim;
 }
 StripCache::StripCache()
-	: strips(nullptr), tgrid_w_(0), tgrid_h_(0), tileHeight_(0), imageY0_(0), packedRowBytes_(0),
+	: strips(nullptr), numTilesWidth_(0), numStrips_(0), stripHeight_(0), imageY0_(0), packedRowBytes_(0),
 	  serializeUserData_(nullptr), serializeBufferCallback_(nullptr)
 {}
 StripCache::~StripCache()
 {
 	for(auto& b : pool)
 		b.second.dealloc();
-	for(uint16_t i = 0; i < tgrid_h_; ++i)
+	for(uint16_t i = 0; i < numStrips_; ++i)
 		delete strips[i];
 	delete[] strips;
 }
-void StripCache::init(uint16_t tgrid_w, uint16_t tgrid_h, uint32_t tileHeight, uint8_t reduce,
+void StripCache::init(uint16_t numTilesWidth, uint16_t numStrips, uint32_t stripHeight, uint8_t reduce,
 					  GrkImage* outputImage, grk_serialize_pixels_callback serializeBufferCallback,
 					  void* serializeUserData,
 					  grk_serialize_register_client_callback serializeRegisterClientCallback)
 {
 	assert(outputImage);
-	if(!tgrid_h || !outputImage)
+	if(!numStrips || !outputImage)
 		return;
 	serializeBufferCallback_ = serializeBufferCallback;
 	serializeUserData_ = serializeUserData;
 	if(serializeRegisterClientCallback)
 		serializeRegisterClientCallback(reclaimCallback, serializeUserData, this);
-	tgrid_w_ = tgrid_w;
-	tgrid_h_ = tgrid_h;
+	numTilesWidth_ = numTilesWidth;
+	numStrips_ = numStrips;
 	imageY0_ = outputImage->y0;
-	tileHeight_ = tileHeight;
+	stripHeight_ = stripHeight;
 	packedRowBytes_ = outputImage->packedRowBytes;
-	strips = new Strip*[tgrid_h];
-	for(uint16_t i = 0; i < tgrid_h_; ++i)
-		strips[i] = new Strip(outputImage, i, tileHeight_, reduce);
+	strips = new Strip*[numStrips];
+	for(uint16_t i = 0; i < numStrips_; ++i)
+		strips[i] = new Strip(outputImage, i, stripHeight_, reduce);
 }
 bool StripCache::ingestTile(GrkImage* src)
 {
-	uint16_t stripId = (uint16_t)((src->y0 - imageY0_ + tileHeight_ - 1) / tileHeight_);
-	assert(stripId < tgrid_h_);
+	uint16_t stripId = (uint16_t)((src->y0 - imageY0_ + stripHeight_ - 1) / stripHeight_);
+	assert(stripId < numStrips_);
 	auto strip = strips[stripId];
 	auto dest = strip->stripImg;
+	// use height of first component, because no subsampling
 	uint64_t dataLen = packedRowBytes_ * src->comps->h;
 	{
 		std::unique_lock<std::mutex> lk(poolMutex_);
@@ -91,7 +92,7 @@ bool StripCache::ingestTile(GrkImage* src)
 			return false;
 	}
 
-	if(tileCount == tgrid_w_)
+	if(tileCount == numTilesWidth_)
 	{
 		auto buf = GrkSerializeBuf(dest->interleavedData);
 		buf.index = stripId;

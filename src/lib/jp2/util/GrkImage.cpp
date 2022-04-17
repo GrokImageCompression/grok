@@ -386,14 +386,8 @@ void GrkImage::postReadHeader(CodingParams* cp)
 				packedRowBytes = grk::PtoI<int32_t>::getPackedBytes(ncmp, decompressWidth, prec);
 				break;
 		}
-		if(multiTile && canAllocInterleaved(cp))
-		{
-			rowsPerStrip = ceildivpow2(cp->t_height, cp->coding_params_.dec_.reduce_);
-		}
-		else
-		{
-			rowsPerStrip = 32;
-		}
+		rowsPerStrip =
+				multiTile ? ceildivpow2(cp->t_height, cp->coding_params_.dec_.reduce_) : singleTileRowsPerStrip;
 	}
 	if(rowsPerStrip > height())
 		rowsPerStrip = height();

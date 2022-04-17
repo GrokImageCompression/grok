@@ -72,7 +72,7 @@ class StripCache
 	StripCache(void);
 	virtual ~StripCache();
 
-	void init(uint16_t tgrid_w, uint16_t tgrid_h, uint32_t tileHeight, uint8_t reduce,
+	void init(uint16_t numTilesWidth_, uint16_t tgrid_h, uint32_t tileHeight, uint8_t reduce,
 			  GrkImage* outputImg, grk_serialize_pixels_callback serializeBufferCallback,
 			  void* serializeUserData,
 			  grk_serialize_register_client_callback serializeRegisterClientCallback);
@@ -84,9 +84,9 @@ class StripCache
 	std::map<uint8_t*, GrkSerializeBuf> pool;
 	mutable std::mutex poolMutex_;
 	Strip** strips;
-	uint16_t tgrid_w_;
-	uint16_t tgrid_h_;
-	uint32_t tileHeight_;
+	uint16_t numTilesWidth_;
+	uint16_t numStrips_;
+	uint32_t stripHeight_;
 	uint32_t imageY0_;
 	uint64_t packedRowBytes_;
 	void* serializeUserData_;

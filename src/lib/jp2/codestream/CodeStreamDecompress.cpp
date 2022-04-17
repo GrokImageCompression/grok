@@ -385,7 +385,6 @@ bool CodeStreamDecompress::decompressTile(uint16_t tileIndex)
 		/* Copy code stream image information to composite image */
 		headerImage_->copyHeader(getCompositeImage());
 	}
-
 	uint16_t numTilesToDecompress = (uint16_t)(cp_.t_grid_width * cp_.t_grid_height);
 	if(codeStreamInfo && !codeStreamInfo->allocTileInfo(numTilesToDecompress))
 	{
@@ -467,9 +466,14 @@ bool CodeStreamDecompress::decompressTiles(void)
 
 	if(outputImage_->canAllocInterleaved(&cp_))
 	{
-		stripCache_.init(cp_.t_grid_width, cp_.t_grid_height, cp_.t_height,
-						 cp_.coding_params_.dec_.reduce_, outputImage_, serializeBufferCallback,
-						 serializeUserData, serializeRegisterClientCallback);
+		stripCache_.init(numTilesToDecompress ? cp_.t_grid_width : 1,
+						numTilesToDecompress ? cp_.t_grid_height : 1,
+						cp_.t_height,
+						cp_.coding_params_.dec_.reduce_,
+						outputImage_,
+						serializeBufferCallback,
+						serializeUserData,
+						serializeRegisterClientCallback);
 	}
 
 	std::atomic<bool> success(true);
@@ -886,6 +890,19 @@ bool CodeStreamDecompress::decompressTile()
 		{
 			GRK_UNUSED(e);
 		}
+
+		if(outputImage_->canAllocInterleaved(&cp_))
+		{
+			stripCache_.init(1,
+							 1,
+							cp_.t_height,
+							cp_.coding_params_.dec_.reduce_,
+							outputImage_,
+							serializeBufferCallback,
+							serializeUserData,
+							serializeRegisterClientCallback);
+		}
+
 		if(!decompressT2T1(tileProcessor))
 			return false;
 	}
