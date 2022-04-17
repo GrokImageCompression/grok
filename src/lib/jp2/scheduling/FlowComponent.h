@@ -17,32 +17,36 @@
 
 #pragma once
 
-struct FlowComponent
+class FlowComponent
 {
-	FlowComponent(void) = default;
-	~FlowComponent(void) {}
+public:
 	FlowComponent* addTo(tf::Taskflow& composition)
 	{
-		composedFlowTask_ = composition.composed_of(flow_);
+		compositionTask_ = composition.composed_of(componentFlow_);
 		return this;
+	}
+	FlowComponent* precede(FlowComponent& successor)
+	{
+		return precede(&successor);
 	}
 	FlowComponent* precede(FlowComponent* successor)
 	{
-		composedFlowTask_.precede(successor->composedFlowTask_);
+		assert(successor);
+		compositionTask_.precede(successor->compositionTask_);
 		return this;
 	}
 	FlowComponent* name(const std::string& name)
 	{
-		composedFlowTask_.name(name);
+		compositionTask_.name(name);
 		return this;
 	}
-	tf::Task* nextTask()
+	tf::Task& nextTask()
 	{
-		tasks_.push(flow_.placeholder());
-		return &tasks_.back();
+		componentTasks_.push(componentFlow_.placeholder());
+		return componentTasks_.back();
 	}
-
-	std::queue<tf::Task> tasks_;
-	tf::Taskflow flow_;
-	tf::Task composedFlowTask_;
+private:
+	std::queue<tf::Task> componentTasks_;
+	tf::Taskflow componentFlow_;
+	tf::Task compositionTask_;
 };

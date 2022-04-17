@@ -31,7 +31,7 @@ struct ResFlow
 	ResFlow* addTo(tf::Taskflow& composition);
 	ResFlow* precede(ResFlow* successor);
 	ResFlow* precede(FlowComponent* successor);
-	FlowComponent* getFinalFlow(void);
+	FlowComponent* getFinalFlowT1(void);
 	FlowComponent* blocks_;
 	FlowComponent* waveletHoriz_;
 	FlowComponent* waveletVert_;
@@ -48,7 +48,7 @@ class ImageComponentFlow
 	ResFlow* getResFlow(uint8_t resFlowNo);
 	void graph(void);
 	ImageComponentFlow* addTo(tf::Taskflow& composition);
-	FlowComponent* getFinalFlow(void);
+	FlowComponent* getFinalFlowT1(void);
 	FlowComponent* getPrePostProc(tf::Taskflow& codecFlow);
 
 	uint8_t numResFlows_;

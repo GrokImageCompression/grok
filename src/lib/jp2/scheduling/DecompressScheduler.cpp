@@ -169,7 +169,7 @@ bool DecompressScheduler::scheduleBlocks(uint16_t compno)
 		auto resFlow = imageComponentFlows_[compno]->resFlows_ + resFlowNum;
 		for(auto& block : resBlocks.blocks_)
 		{
-			resFlow->blocks_->nextTask()->work([this, block] {
+			resFlow->blocks_->nextTask().work([this, block] {
 				if(!success)
 				{
 					delete block;

@@ -322,7 +322,7 @@ namespace HWY_NAMESPACE
 				};
 				if(info.flow_)
 				{
-					info.flow_->nextTask()->work([compressor] { compressor(); });
+					info.flow_->nextTask().work([compressor] { compressor(); });
 				}
 				else
 					tasks[t].work(compressor);
@@ -385,6 +385,9 @@ HWY_EXPORT(hwy_decompress_dc_shift_rev);
 
 mct::mct(Tile* tile, GrkImage* image, TileCodingParams* tcp) : tile_(tile), image_(image), tcp_(tcp)
 {}
+/***
+ * decompress dc shift only - irreversible
+ */
 void mct::decompress_dc_shift_irrev(FlowComponent* flow, uint16_t compno)
 {
 	ScheduleInfo info(tile_, flow);
@@ -392,21 +395,9 @@ void mct::decompress_dc_shift_irrev(FlowComponent* flow, uint16_t compno)
 	genShift(compno, image_, tcp_->tccps, 1, info.shiftInfo);
 	HWY_DYNAMIC_DISPATCH(hwy_decompress_dc_shift_irrev)(info);
 }
-
-/**
- * inverse irreversible MCT
- * (vector routines are disabled)
+/***
+ * decompress dc shift only - reversible
  */
-void mct::decompress_irrev(FlowComponent* flow)
-{
-	ScheduleInfo info(tile_, flow);
-	hwy::DisableTargets(uint32_t(~HWY_SCALAR));
-
-	genShift(image_, tcp_->tccps, 1, info.shiftInfo);
-	HWY_DYNAMIC_DISPATCH(hwy_decompress_irrev)
-	(info);
-}
-
 void mct::decompress_dc_shift_rev(FlowComponent* flow, uint16_t compno)
 {
 	ScheduleInfo info(tile_, flow);
@@ -415,9 +406,22 @@ void mct::decompress_dc_shift_rev(FlowComponent* flow, uint16_t compno)
 	HWY_DYNAMIC_DISPATCH(hwy_decompress_dc_shift_rev)(info);
 }
 
-/* <summary> */
-/* Inverse reversible MCT. */
-/* </summary> */
+/**
+ * inverse irreversible MCT (with dc shift)
+ * (vector routines are disabled)
+ */
+void mct::decompress_irrev(FlowComponent* flow)
+{
+	ScheduleInfo info(tile_, flow);
+	hwy::DisableTargets(uint32_t(~HWY_SCALAR));
+	genShift(image_, tcp_->tccps, 1, info.shiftInfo);
+	HWY_DYNAMIC_DISPATCH(hwy_decompress_irrev)
+	(info);
+}
+
+/***
+ * inverse reversible MCT (with dc shift)
+ */
 void mct::decompress_rev(FlowComponent* flow)
 {
 	ScheduleInfo info(tile_, flow);
@@ -441,7 +445,6 @@ void mct::compress_rev(FlowComponent* flow)
 void mct::compress_irrev(FlowComponent* flow)
 {
 	ScheduleInfo info(tile_, flow);
-
 	genShift(image_, tcp_->tccps, -1, info.shiftInfo);
 	HWY_DYNAMIC_DISPATCH(hwy_compress_irrev)
 	(info);

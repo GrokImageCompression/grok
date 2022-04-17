@@ -486,7 +486,7 @@ bool TileProcessor::decompressT2T1(TileCodingParams* tcp, GrkImage* outputImage,
 				if(mctPostProc && compno < 3)
 				{
 					// link to MCT
-					compFlow->getFinalFlow()->precede(mctPostProc);
+					compFlow->getFinalFlowT1()->precede(mctPostProc);
 					mctCount++;
 				}
 				else if(doPostT1)
@@ -495,7 +495,7 @@ bool TileProcessor::decompressT2T1(TileCodingParams* tcp, GrkImage* outputImage,
 					if(!needsMctDecompress(compno) || tcp_->mct == 2)
 					{
 						auto dcPostProc = compFlow->getPrePostProc(scheduler_->getCodecFlow());
-						compFlow->getFinalFlow()->precede(dcPostProc);
+						compFlow->getFinalFlowT1()->precede(dcPostProc);
 						auto tccp = tcp_->tccps + compno;
 						if(tccp->qmfbid == 1)
 							mct_->decompress_dc_shift_rev(dcPostProc, compno);

@@ -540,7 +540,7 @@ bool WaveletReverse::decompress_h_97(uint8_t res, uint32_t numThreads, size_t da
 				GRK_ERROR("Out of memory");
 				return false;
 			}
-			resFlow->waveletHoriz_->nextTask()->work(
+			resFlow->waveletHoriz_->nextTask().work(
 				[this, myhoriz, indexMax, winL, winH, winDest] {
 					decompress_h_strip_97(myhoriz, indexMax, winL, winH, winDest);
 					delete myhoriz;
@@ -636,7 +636,7 @@ bool WaveletReverse::decompress_v_97(uint8_t res, uint32_t numThreads, size_t da
 				delete myvert;
 				return false;
 			}
-			resFlow->waveletVert_->nextTask()->work(
+			resFlow->waveletVert_->nextTask().work(
 				[this, myvert, resHeight, indexMax, winL, winH, winDest] {
 					decompress_v_strip_97(myvert, indexMax, resHeight, winL, winH, winDest);
 					delete myvert;
@@ -1082,7 +1082,7 @@ bool WaveletReverse::decompress_h_53(uint8_t res, TileComponentWindowBuffer<int3
 					delete horiz;
 					return false;
 				}
-				resFlow->waveletHoriz_->nextTask()->work(
+				resFlow->waveletHoriz_->nextTask().work(
 					[this, horiz, winL, winH, winDest, indexMin, indexMax] {
 						decompress_h_strip_53(horiz, indexMin, indexMax, winL, winH, winDest);
 						delete horiz;
@@ -1153,7 +1153,7 @@ bool WaveletReverse::decompress_v_53(uint8_t res, TileComponentWindowBuffer<int3
 				delete vert;
 				return false;
 			}
-			resFlow->waveletVert_->nextTask()->work(
+			resFlow->waveletVert_->nextTask().work(
 				[this, vert, indexMin, indexMax, winL, winH, winDest] {
 					decompress_v_strip_53(vert, indexMin, indexMax, winL, winH, winDest);
 					delete vert;
@@ -1856,7 +1856,7 @@ bool WaveletReverse::decompress_partial_tile(ISparseCanvas* sa)
 			GRK_UNUSED(ret);
 		};
 		if(numThreads > 1)
-			imageComponentFlow->waveletFinalCopy_->nextTask()->work([final_read] { final_read(); });
+			imageComponentFlow->waveletFinalCopy_->nextTask().work([final_read] { final_read(); });
 		else
 			final_read();
 
@@ -1871,7 +1871,7 @@ bool WaveletReverse::decompress_partial_tile(ISparseCanvas* sa)
 		GRK_UNUSED(ret);
 	};
 	if(numThreads > 1)
-		imageComponentFlow->waveletFinalCopy_->nextTask()->work([final_read] { final_read(); });
+		imageComponentFlow->waveletFinalCopy_->nextTask().work([final_read] { final_read(); });
 	// pre-allocate all blocks
 	std::vector<PartialBandInfo<FILTER_WIDTH>> resBandInfo;
 	for(uint8_t resno = 1; resno < numres_; resno++)
@@ -2007,7 +2007,7 @@ bool WaveletReverse::decompress_partial_tile(ISparseCanvas* sa)
 					return false;
 				}
 				if(numThreads > 1)
-					resFlow->waveletHoriz_->nextTask()->work(
+					resFlow->waveletHoriz_->nextTask().work(
 						[taskInfo, executor_h] { executor_h(taskInfo); });
 				else
 					executor_h(taskInfo);
@@ -2040,7 +2040,7 @@ bool WaveletReverse::decompress_partial_tile(ISparseCanvas* sa)
 				return false;
 			}
 			if(numThreads > 1)
-				resFlow->waveletVert_->nextTask()->work(
+				resFlow->waveletVert_->nextTask().work(
 					[taskInfo, executor_v] { executor_v(taskInfo); });
 			else
 				executor_v(taskInfo);
