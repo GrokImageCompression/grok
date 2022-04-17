@@ -29,7 +29,7 @@ class Scheduler
 	bool run(void);
 	ImageComponentFlow* getImageComponentFlow(uint16_t compno);
 	tf::Taskflow& getCodecFlow(void);
-	FlowComponent *getPrePostProc(void);
+	FlowComponent* getPrePostProc(void);
 
   protected:
 	std::atomic_bool success;

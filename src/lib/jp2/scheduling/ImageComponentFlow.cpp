@@ -62,7 +62,8 @@ ResFlow* ResFlow::precede(FlowComponent* successor)
 
 	return this;
 }
-FlowComponent* ResFlow::getFinalFlow(void){
+FlowComponent* ResFlow::getFinalFlow(void)
+{
 	return doWavelet_ ? waveletVert_ : blocks_;
 }
 ResFlow::~ResFlow(void)
@@ -72,7 +73,8 @@ ResFlow::~ResFlow(void)
 	delete waveletVert_;
 }
 ImageComponentFlow::ImageComponentFlow(uint8_t numResolutions)
-	: numResFlows_(numResolutions), resFlows_(nullptr), waveletFinalCopy_(nullptr),prePostProc_(nullptr)
+	: numResFlows_(numResolutions), resFlows_(nullptr), waveletFinalCopy_(nullptr),
+	  prePostProc_(nullptr)
 {
 	if(numResFlows_)
 	{
@@ -105,8 +107,9 @@ void ImageComponentFlow::graph(void)
 	if(waveletFinalCopy_)
 		(resFlows_ + numResFlows_ - 1)->precede(waveletFinalCopy_);
 }
-FlowComponent* ImageComponentFlow::getFinalFlow(void){
-	return waveletFinalCopy_ ? waveletFinalCopy_ :  (resFlows_ + numResFlows_ - 1)->getFinalFlow();
+FlowComponent* ImageComponentFlow::getFinalFlow(void)
+{
+	return waveletFinalCopy_ ? waveletFinalCopy_ : (resFlows_ + numResFlows_ - 1)->getFinalFlow();
 }
 ImageComponentFlow* ImageComponentFlow::addTo(tf::Taskflow& composition)
 {
@@ -121,8 +124,10 @@ ResFlow* ImageComponentFlow::getResFlow(uint8_t resFlowNo)
 {
 	return (resFlows_ && resFlowNo < numResFlows_) ? resFlows_ + resFlowNo : nullptr;
 }
-FlowComponent* ImageComponentFlow::getPrePostProc(tf::Taskflow& codecFlow){
-	if (!prePostProc_) {
+FlowComponent* ImageComponentFlow::getPrePostProc(tf::Taskflow& codecFlow)
+{
+	if(!prePostProc_)
+	{
 		prePostProc_ = new FlowComponent();
 		prePostProc_->addTo(codecFlow);
 	}

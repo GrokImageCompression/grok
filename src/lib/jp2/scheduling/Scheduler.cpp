@@ -18,7 +18,8 @@
 
 namespace grk
 {
-Scheduler::Scheduler(Tile* tile) : success(true), tile_(tile), numcomps_(tile->numcomps_), prePostProc_(nullptr)
+Scheduler::Scheduler(Tile* tile)
+	: success(true), tile_(tile), numcomps_(tile->numcomps_), prePostProc_(nullptr)
 {
 	imageComponentFlows_ = new ImageComponentFlow*[numcomps_];
 	for(uint16_t compno = 0; compno < numcomps_; ++compno)
@@ -53,8 +54,10 @@ tf::Taskflow& Scheduler::getCodecFlow(void)
 	return codecFlow_;
 }
 
-FlowComponent *Scheduler::getPrePostProc(void){
-	if (!prePostProc_) {
+FlowComponent* Scheduler::getPrePostProc(void)
+{
+	if(!prePostProc_)
+	{
 		prePostProc_ = new FlowComponent();
 		prePostProc_->addTo(codecFlow_);
 	}

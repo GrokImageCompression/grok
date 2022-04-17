@@ -440,13 +440,14 @@ bool TileProcessor::decompressT2T1(TileCodingParams* tcp, GrkImage* outputImage,
 	if(doT1)
 	{
 		scheduler_ = new DecompressScheduler(this, tile, tcp_, headerImage->comps->prec);
-		FlowComponent *mctPostProc = nullptr;
+		FlowComponent* mctPostProc = nullptr;
 		uint32_t mctCount = 0;
 		// schedule MCT post processing
 		if(doPostT1)
 		{
 			// schedule MCT if applicable
-			if(needsMctDecompress()) {
+			if(needsMctDecompress())
+			{
 				mctPostProc = scheduler_->getPrePostProc();
 			}
 		}
@@ -480,12 +481,16 @@ bool TileProcessor::decompressT2T1(TileCodingParams* tcp, GrkImage* outputImage,
 
 			// post processing
 			auto compFlow = scheduler_->getImageComponentFlow(compno);
-			if (compFlow) {
-				if (mctPostProc && compno < 3){
+			if(compFlow)
+			{
+				if(mctPostProc && compno < 3)
+				{
 					// link to MCT
 					compFlow->getFinalFlow()->precede(mctPostProc);
 					mctCount++;
-				} else if (doPostT1) {
+				}
+				else if(doPostT1)
+				{
 					// use with either custom MCT, or no MCT
 					if(!needsMctDecompress(compno) || tcp_->mct == 2)
 					{
@@ -493,9 +498,9 @@ bool TileProcessor::decompressT2T1(TileCodingParams* tcp, GrkImage* outputImage,
 						compFlow->getFinalFlow()->precede(dcPostProc);
 						auto tccp = tcp_->tccps + compno;
 						if(tccp->qmfbid == 1)
-							mct_->decompress_dc_shift_rev(dcPostProc,compno);
+							mct_->decompress_dc_shift_rev(dcPostProc, compno);
 						else
-							mct_->decompress_dc_shift_irrev(dcPostProc,compno);
+							mct_->decompress_dc_shift_irrev(dcPostProc, compno);
 					}
 				}
 			}
@@ -542,7 +547,8 @@ void TileProcessor::ingestImage()
 		}
 	}
 }
-bool TileProcessor::needsMctDecompress(void){
+bool TileProcessor::needsMctDecompress(void)
+{
 	if(!tcp_->mct)
 		return false;
 	if(tile->numcomps_ < 3)
@@ -566,12 +572,12 @@ bool TileProcessor::needsMctDecompress(void){
 }
 bool TileProcessor::needsMctDecompress(uint16_t compno)
 {
-	if (!needsMctDecompress())
+	if(!needsMctDecompress())
 		return false;
 
 	return (compno <= 2);
 }
-bool TileProcessor::mctDecompress(FlowComponent *flow)
+bool TileProcessor::mctDecompress(FlowComponent* flow)
 {
 	// custom MCT
 	if(tcp_->mct == 2)

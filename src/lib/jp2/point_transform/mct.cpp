@@ -38,7 +38,7 @@ namespace HWY_NAMESPACE
 	class DecompressDcShiftIrrev
 	{
 	  public:
-		void vtrans(ScheduleInfo info, size_t index, size_t chunkSize)
+		void transform(ScheduleInfo info, size_t index, size_t chunkSize)
 		{
 			std::vector<ShiftInfo>& shiftInfo = info.shiftInfo;
 			auto chan0 = (float*)info.tile->comps[info.compno]
@@ -67,10 +67,7 @@ namespace HWY_NAMESPACE
 	class DecompressDcShiftRev
 	{
 	  public:
-		/**
-		 * vector version
-		 */
-		void vtrans(ScheduleInfo info, size_t index, size_t chunkSize)
+		void transform(ScheduleInfo info, size_t index, size_t chunkSize)
 		{
 			std::vector<ShiftInfo>& shiftInfo = info.shiftInfo;
 			auto chan0 = info.tile->comps[info.compno]
@@ -96,7 +93,7 @@ namespace HWY_NAMESPACE
 	class DecompressRev
 	{
 	  public:
-		void vtrans(ScheduleInfo info, size_t index, size_t chunkSize)
+		void transform(ScheduleInfo info, size_t index, size_t chunkSize)
 		{
 			std::vector<ShiftInfo>& shiftInfo = info.shiftInfo;
 			auto chan0 =
@@ -142,7 +139,7 @@ namespace HWY_NAMESPACE
 	class DecompressIrrev
 	{
 	  public:
-		void vtrans(ScheduleInfo info, size_t index, size_t chunkSize)
+		void transform(ScheduleInfo info, size_t index, size_t chunkSize)
 		{
 			std::vector<ShiftInfo>& shiftInfo = info.shiftInfo;
 			auto chan0 = (float*)info.tile->comps[0]
@@ -206,7 +203,7 @@ namespace HWY_NAMESPACE
 	class CompressRev
 	{
 	  public:
-		void vtrans(ScheduleInfo info, size_t index, size_t chunkSize)
+		void transform(ScheduleInfo info, size_t index, size_t chunkSize)
 		{
 			std::vector<ShiftInfo>& shiftInfo = info.shiftInfo;
 			auto chan0 =
@@ -245,7 +242,7 @@ namespace HWY_NAMESPACE
 	class CompressIrrev
 	{
 	  public:
-		void vtrans(ScheduleInfo info, size_t index, size_t chunkSize)
+		void transform(ScheduleInfo info, size_t index, size_t chunkSize)
 		{
 			std::vector<ShiftInfo>& shiftInfo = info.shiftInfo;
 			auto chan0 =
@@ -302,87 +299,47 @@ namespace HWY_NAMESPACE
 			info.tile->comps[info.compno].getBuffer()->getResWindowBufferHighestREL();
 		uint32_t numTasks =
 			(highestResBuffer->height() + info.linesPerTask_ - 1) / info.linesPerTask_;
-		size_t num_threads = ExecSingleton::get()->num_workers();
-		size_t numSamples = highestResBuffer->stride * highestResBuffer->height();
-		if(num_threads > 1)
+		if(ExecSingleton::get()->num_workers() > 1)
 		{
-			tf::Task* node = nullptr;
+			tf::Task* tasks = nullptr;
 			tf::Taskflow taskflow;
-			if (!info.flow_){
-				node = new tf::Task[numTasks];
+			if(!info.flow_)
+			{
+				tasks = new tf::Task[numTasks];
 				for(uint64_t i = 0; i < numTasks; i++)
-					node[i] = taskflow.placeholder();
+					tasks[i] = taskflow.placeholder();
 			}
 			for(size_t t = 0; t < numTasks; ++t)
 			{
 				size_t index = t * info.linesPerTask_ * highestResBuffer->stride;
 				uint64_t chunkSize = (t != numTasks - 1)
-										 ? 32 * highestResBuffer->stride
+										 ? info.linesPerTask_ * highestResBuffer->stride
 										 : (highestResBuffer->height() - t * info.linesPerTask_) *
 											   highestResBuffer->stride;
 				auto compressor = [index, chunkSize, info]() {
 					T transform;
-					transform.vtrans(info, index, chunkSize);
+					transform.transform(info, index, chunkSize);
 				};
-				if (info.flow_) {
-					info.flow_->nextTask()->work([compressor] {
-						compressor();
-					});
+				if(info.flow_)
+				{
+					info.flow_->nextTask()->work([compressor] { compressor(); });
 				}
 				else
-					node[t].work(compressor);
+					tasks[t].work(compressor);
 			}
-			if (node) {
-				ExecSingleton::get()->run(taskflow).wait();
-				delete[] node;
-			}
-		}
-		else
-		{
-			T transform;
-			transform.vtrans(info, 0, numSamples);
-		}
-	}
-
-
-	template<class T>
-	void vschedulerII(ScheduleInfo info)
-	{
-		auto highestResBuffer =
-			info.tile->comps[info.compno].getBuffer()->getResWindowBufferHighestREL();
-		uint32_t numTasks =
-			(highestResBuffer->height() + info.linesPerTask_ - 1) / info.linesPerTask_;
-		size_t num_threads = ExecSingleton::get()->num_workers();
-		size_t numSamples = highestResBuffer->stride * highestResBuffer->height();
-		if(num_threads > 1)
-		{
-			tf::Taskflow taskflow;
-			auto node = new tf::Task[numTasks];
-			for(uint64_t i = 0; i < numTasks; i++)
-				node[i] = taskflow.placeholder();
-			for(size_t t = 0; t < numTasks; ++t)
+			if(tasks)
 			{
-				size_t index = t * info.linesPerTask_ * highestResBuffer->stride;
-				uint64_t chunkSize = (t != numTasks - 1)
-										 ? 32 * highestResBuffer->stride
-										 : (highestResBuffer->height() - t * info.linesPerTask_) *
-											   highestResBuffer->stride;
-				auto compressor = [index, chunkSize, info]() {
-					T transform;
-					transform.vtrans(info, index, chunkSize);
-				};
-				node[t].work(compressor);
+				ExecSingleton::get()->run(taskflow).wait();
+				delete[] tasks;
 			}
-			ExecSingleton::get()->run(taskflow).wait();
-			delete[] node;
 		}
 		else
 		{
+			size_t numSamples = highestResBuffer->stride * highestResBuffer->height();
 			T transform;
-			transform.vtrans(info, 0, numSamples);
+			transform.transform(info, 0, numSamples);
 		}
 	}
-
 	void hwy_compress_rev(ScheduleInfo info)
 	{
 		vscheduler<CompressRev>(info);
@@ -426,10 +383,9 @@ HWY_EXPORT(hwy_decompress_irrev);
 HWY_EXPORT(hwy_decompress_dc_shift_irrev);
 HWY_EXPORT(hwy_decompress_dc_shift_rev);
 
-mct::mct(Tile* tile, GrkImage* image, TileCodingParams* tcp)
-	: tile_(tile), image_(image), tcp_(tcp)
+mct::mct(Tile* tile, GrkImage* image, TileCodingParams* tcp) : tile_(tile), image_(image), tcp_(tcp)
 {}
-void mct::decompress_dc_shift_irrev(FlowComponent *flow, uint16_t compno)
+void mct::decompress_dc_shift_irrev(FlowComponent* flow, uint16_t compno)
 {
 	ScheduleInfo info(tile_, flow);
 	info.compno = compno;
@@ -441,7 +397,7 @@ void mct::decompress_dc_shift_irrev(FlowComponent *flow, uint16_t compno)
  * inverse irreversible MCT
  * (vector routines are disabled)
  */
-void mct::decompress_irrev(FlowComponent *flow)
+void mct::decompress_irrev(FlowComponent* flow)
 {
 	ScheduleInfo info(tile_, flow);
 	hwy::DisableTargets(uint32_t(~HWY_SCALAR));
@@ -451,7 +407,7 @@ void mct::decompress_irrev(FlowComponent *flow)
 	(info);
 }
 
-void mct::decompress_dc_shift_rev(FlowComponent *flow, uint16_t compno)
+void mct::decompress_dc_shift_rev(FlowComponent* flow, uint16_t compno)
 {
 	ScheduleInfo info(tile_, flow);
 	info.compno = compno;
@@ -462,7 +418,7 @@ void mct::decompress_dc_shift_rev(FlowComponent *flow, uint16_t compno)
 /* <summary> */
 /* Inverse reversible MCT. */
 /* </summary> */
-void mct::decompress_rev(FlowComponent *flow)
+void mct::decompress_rev(FlowComponent* flow)
 {
 	ScheduleInfo info(tile_, flow);
 	genShift(image_, tcp_->tccps, 1, info.shiftInfo);
@@ -472,9 +428,9 @@ void mct::decompress_rev(FlowComponent *flow)
 /* <summary> */
 /* Forward reversible MCT. */
 /* </summary> */
-void mct::compress_rev(FlowComponent *flow)
+void mct::compress_rev(FlowComponent* flow)
 {
-	ScheduleInfo info(tile_,flow);
+	ScheduleInfo info(tile_, flow);
 	genShift(image_, tcp_->tccps, -1, info.shiftInfo);
 	HWY_DYNAMIC_DISPATCH(hwy_compress_rev)
 	(info);
@@ -482,9 +438,9 @@ void mct::compress_rev(FlowComponent *flow)
 /* <summary> */
 /* Forward irreversible MCT. */
 /* </summary> */
-void mct::compress_irrev(FlowComponent *flow)
+void mct::compress_irrev(FlowComponent* flow)
 {
-	ScheduleInfo info(tile_,flow);
+	ScheduleInfo info(tile_, flow);
 
 	genShift(image_, tcp_->tccps, -1, info.shiftInfo);
 	HWY_DYNAMIC_DISPATCH(hwy_compress_irrev)
