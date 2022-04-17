@@ -35,7 +35,7 @@ uint32_t Strip::reduceDim(uint32_t dim)
 	return reduce_ ? ceildivpow2<uint32_t>(dim, reduce_) : dim;
 }
 StripCache::StripCache()
-	: strips(nullptr), numTilesWidth_(0), numStrips_(0), stripHeight_(0), imageY0_(0), packedRowBytes_(0),
+	: strips(nullptr), numTilesX_(0), numStrips_(0), stripHeight_(0), imageY0_(0), packedRowBytes_(0),
 	  serializeUserData_(nullptr), serializeBufferCallback_(nullptr)
 {}
 StripCache::~StripCache()
@@ -46,7 +46,7 @@ StripCache::~StripCache()
 		delete strips[i];
 	delete[] strips;
 }
-void StripCache::init(uint16_t numTilesWidth, uint16_t numStrips, uint32_t stripHeight, uint8_t reduce,
+void StripCache::init(uint16_t numTilesX, uint32_t numStrips, uint32_t stripHeight, uint8_t reduce,
 					  GrkImage* outputImage, grk_serialize_pixels_callback serializeBufferCallback,
 					  void* serializeUserData,
 					  grk_serialize_register_client_callback serializeRegisterClientCallback)
@@ -58,7 +58,7 @@ void StripCache::init(uint16_t numTilesWidth, uint16_t numStrips, uint32_t strip
 	serializeUserData_ = serializeUserData;
 	if(serializeRegisterClientCallback)
 		serializeRegisterClientCallback(reclaimCallback, serializeUserData, this);
-	numTilesWidth_ = numTilesWidth;
+	numTilesX_ = numTilesX;
 	numStrips_ = numStrips;
 	imageY0_ = outputImage->y0;
 	stripHeight_ = stripHeight;
@@ -92,7 +92,7 @@ bool StripCache::ingestTile(GrkImage* src)
 			return false;
 	}
 
-	if(tileCount == numTilesWidth_)
+	if(tileCount == numTilesX_)
 	{
 		auto buf = GrkSerializeBuf(dest->interleavedData);
 		buf.index = stripId;

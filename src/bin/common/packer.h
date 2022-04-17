@@ -103,9 +103,9 @@ const uint8_t packer16BitBE = 0xFF;
 		NEXT_PACK() \
 		uint32_t src3 = next;
 
-template <typename T> class PtoI {
+template <typename T> class PlanarToInterleaved {
 public:
-	virtual ~PtoI() = default;
+	virtual ~PlanarToInterleaved() = default;
 	virtual void interleave(T ** src,
 							const uint32_t numPlanes,
 							uint8_t* dest,
@@ -120,7 +120,7 @@ public:
 };
 
 
-template <typename T> class PlanarToInterleaved1: public PtoI<T>{
+template <typename T> class PlanarToInterleaved1: public PlanarToInterleaved<T>{
 public:
 	void interleave(T **src,
 					const uint32_t numPlanes,
@@ -195,7 +195,7 @@ public:
 };
 
 
-template <typename T> class PlanarToInterleaved2: public PtoI<T>{
+template <typename T> class PlanarToInterleaved2: public PlanarToInterleaved<T>{
 public:
 	void interleave(T **src,
 					const uint32_t numPlanes,
@@ -244,7 +244,7 @@ public:
 	}
 };
 
-template <typename T> class PlanarToInterleaved3: public PtoI<T>{
+template <typename T> class PlanarToInterleaved3: public PlanarToInterleaved<T>{
 public:
 	void interleave(T **src,
 					const uint32_t numPlanes,
@@ -287,7 +287,7 @@ public:
 };
 
 
-template <typename T> class PlanarToInterleaved4: public PtoI<T>{
+template <typename T> class PlanarToInterleaved4: public PlanarToInterleaved<T>{
 public:
 	void interleave(T **src,
 					const uint32_t numPlanes,
@@ -329,7 +329,7 @@ public:
 	}
 };
 
-template <typename T> class PlanarToInterleaved5: public PtoI<T>{
+template <typename T> class PlanarToInterleaved5: public PlanarToInterleaved<T>{
 public:
 	void interleave(T **src,
 					const uint32_t numPlanes,
@@ -373,7 +373,7 @@ public:
 	}
 };
 
-template <typename T> class PlanarToInterleaved6: public PtoI<T>{
+template <typename T> class PlanarToInterleaved6: public PlanarToInterleaved<T>{
 public:
 	void interleave(T **src,
 					const uint32_t numPlanes,
@@ -431,7 +431,7 @@ public:
 	}
 };
 
-template <typename T> class PlanarToInterleaved7: public PtoI<T>{
+template <typename T> class PlanarToInterleaved7: public PlanarToInterleaved<T>{
 public:
 	void interleave(T **src,
 					const uint32_t numPlanes,
@@ -478,7 +478,7 @@ public:
 };
 
 
-template <typename T> class PlanarToInterleaved8: public PtoI<T>{
+template <typename T> class PlanarToInterleaved8: public PlanarToInterleaved<T>{
 public:
 	void interleave(T **src,
 					const uint32_t numPlanes,
@@ -502,7 +502,7 @@ public:
 };
 
 
-template <typename T> class PlanarToInterleaved9: public PtoI<T>{
+template <typename T> class PlanarToInterleaved9: public PlanarToInterleaved<T>{
 public:
 	void interleave(T **src,
 					const uint32_t numPlanes,
@@ -551,7 +551,7 @@ public:
 };
 
 
-template <typename T> class PlanarToInterleaved10: public PtoI<T>{
+template <typename T> class PlanarToInterleaved10: public PlanarToInterleaved<T>{
 public:
 	void interleave(T **src,
 					const uint32_t numPlanes,
@@ -612,7 +612,7 @@ public:
 };
 
 
-template <typename T> class PlanarToInterleaved11: public PtoI<T>{
+template <typename T> class PlanarToInterleaved11: public PlanarToInterleaved<T>{
 public:
 	void interleave(T **src,
 					const uint32_t numPlanes,
@@ -662,7 +662,7 @@ public:
 	}
 };
 
-template <typename T> class PlanarToInterleaved12: public PtoI<T>{
+template <typename T> class PlanarToInterleaved12: public PlanarToInterleaved<T>{
 public:
 	void interleave(T **src,
 					const uint32_t numPlanes,
@@ -704,7 +704,7 @@ public:
 	}
 };
 
-template <typename T> class PlanarToInterleaved13: public PtoI<T>{
+template <typename T> class PlanarToInterleaved13: public PlanarToInterleaved<T>{
 public:
 	void interleave(T **src,
 					const uint32_t numPlanes,
@@ -756,7 +756,7 @@ public:
 	}
 };
 
-template <typename T> class PlanarToInterleaved14: public PtoI<T>{
+template <typename T> class PlanarToInterleaved14: public PlanarToInterleaved<T>{
 public:
 	void interleave(T **src,
 					const uint32_t numPlanes,
@@ -822,7 +822,7 @@ public:
 	}
 };
 
-template <typename T> class PlanarToInterleaved15: public PtoI<T>{
+template <typename T> class PlanarToInterleaved15: public PlanarToInterleaved<T>{
 public:
 	void interleave(T **src,
 					const uint32_t numPlanes,
@@ -876,7 +876,7 @@ public:
 	}
 };
 
-template <typename T> class PlanarToInterleaved16 : public PtoI<T>{
+template <typename T> class PlanarToInterleaved16 : public PlanarToInterleaved<T>{
 public:
 	void interleave(T **src,
 					const uint32_t numPlanes,
@@ -901,7 +901,7 @@ public:
 	}
 };
 
-template <typename T> class PlanarToInterleaved16BE : public PtoI<T>{
+template <typename T> class PlanarToInterleaved16BE : public PlanarToInterleaved<T>{
 public:
 	void interleave(T **src,
 					const uint32_t numPlanes,
@@ -929,7 +929,7 @@ public:
 
 template<typename T> class InterleaverFactory {
 public:
-	static PtoI<T>* makeInterleaver(uint8_t prec){
+	static PlanarToInterleaved<T>* makeInterleaver(uint8_t prec){
 		switch(prec){
 		case 1:
 			return new PlanarToInterleaved1<T>();

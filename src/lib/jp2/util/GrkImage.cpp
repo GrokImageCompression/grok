@@ -279,12 +279,15 @@ bool GrkImage::allocData(grk_image_comp* comp, bool clear)
 	return true;
 }
 
-bool GrkImage::canAllocInterleaved(CodingParams* cp)
+bool GrkImage::supportsStripCache(CodingParams* cp)
 {
 	// packed tile width bits must be divisible by 8
 	if(((cp->t_width * numcomps * comps->prec) & 7) != 0)
 		return false;
-	// tile origin y coordinate and image origin y coordinate must coincide
+	// difference between image origin y coordinate and tile origin y coordinate
+	// must be multiple of the tile height, so that only the final strip may have
+	// different height than the rest. Otherwise, TIFF will not be successfully
+	// created
 	if( ((y0 - cp->ty0) % cp->t_height) != 0 )
 		return false;
 
@@ -295,7 +298,7 @@ bool GrkImage::canAllocInterleaved(CodingParams* cp)
 	{
 		return false;
 	}
-	// check that all components are equal
+	// check that all components dimensions etc. are equal
 	for(uint16_t compno = 1; compno < numcomps; compno++)
 	{
 		if(!componentsEqual(comps, comps + compno))
@@ -380,10 +383,10 @@ void GrkImage::postReadHeader(CodingParams* cp)
 				break;
 			case GRK_PXM_FMT:
 				packedRowBytes =
-					grk::PtoI<int32_t>::getPackedBytes(ncmp, decompressWidth, prec > 8 ? 16 : 8);
+					grk::PlanarToInterleaved<int32_t>::getPackedBytes(ncmp, decompressWidth, prec > 8 ? 16 : 8);
 				break;
 			default:
-				packedRowBytes = grk::PtoI<int32_t>::getPackedBytes(ncmp, decompressWidth, prec);
+				packedRowBytes = grk::PlanarToInterleaved<int32_t>::getPackedBytes(ncmp, decompressWidth, prec);
 				break;
 		}
 		rowsPerStrip =
@@ -816,7 +819,7 @@ bool GrkImage::allocCompositeData(CodingParams* cp)
 	if(!multiTile)
 		return true;
 
-	if(!canAllocInterleaved(cp))
+	if(!supportsStripCache(cp))
 	{
 		for(uint32_t i = 0; i < numcomps; i++)
 		{
@@ -920,13 +923,15 @@ void GrkImage::transferDataFrom(const Tile* tile_src_data)
 			assert(destComp->stride >= destComp->w);
 	}
 }
-bool GrkImage::generateCompositeBounds(const grk_image_comp* srcComp, uint16_t compno,
-									   grk_rect32* destWin, uint32_t* srcLineOffset)
+bool GrkImage::generateCompositeBounds(const grk_image_comp* srcComp,
+		 	 	 	 	 	 	 	 	 uint32_t* srcLineOffset,
+										 uint16_t destCompno,
+										 grk_rect32* destWin)
 {
 	auto src =
 		grk_rect32(srcComp->x0, srcComp->y0, srcComp->x0 + srcComp->w, srcComp->y0 + srcComp->h);
 
-	return generateCompositeBounds(compno, src, srcComp->stride, destWin, srcLineOffset);
+	return generateCompositeBounds(src, srcComp->stride,srcLineOffset, destCompno, destWin);
 }
 
 bool GrkImage::composite(const GrkImage* srcImg)
@@ -948,7 +953,7 @@ bool GrkImage::compositeInterleaved(const GrkImage* srcImg)
 	grk_rect32 destWin;
 	uint32_t srcLineOffset;
 
-	if(!generateCompositeBounds(srcComp, 0, &destWin, &srcLineOffset))
+	if(!generateCompositeBounds(srcComp, &srcLineOffset, 0, &destWin))
 	{
 		GRK_WARN("GrkImage::compositeInterleaved: cannot generate composite bounds");
 		return false;
@@ -975,8 +980,8 @@ bool GrkImage::compositeInterleaved(const GrkImage* srcImg)
 			break;
 	}
 	auto destStride =
-		grk::PtoI<int32_t>::getPackedBytes(srcImg->decompressNumComps, destComp->w, prec);
-	auto destx0 = grk::PtoI<int32_t>::getPackedBytes(srcImg->decompressNumComps, destWin.x0, prec);
+		grk::PlanarToInterleaved<int32_t>::getPackedBytes(srcImg->decompressNumComps, destComp->w, prec);
+	auto destx0 = grk::PlanarToInterleaved<int32_t>::getPackedBytes(srcImg->decompressNumComps, destWin.x0, prec);
 	auto destIndex = (uint64_t)destWin.y0 * destStride + (uint64_t)destx0;
 	auto iter = InterleaverFactory<int32_t>::makeInterleaver(prec == 16 ? packer16BitBE : prec);
 	if(!iter)
@@ -984,7 +989,7 @@ bool GrkImage::compositeInterleaved(const GrkImage* srcImg)
 	int32_t const* planes[grk::maxNumPackComponents];
 	for(uint16_t i = 0; i < srcImg->decompressNumComps; ++i)
 		planes[i] = (srcImg->comps + i)->data;
-	iter->interleave((int32_t**)planes, srcImg->decompressNumComps,
+	iter->interleave(const_cast<int32_t**>(planes), srcImg->decompressNumComps,
 					 interleavedData.data + destIndex, destWin.width(), srcComp->stride, destStride,
 					 destWin.height(), 0);
 	delete iter;
@@ -1009,7 +1014,7 @@ bool GrkImage::compositePlanar(const GrkImage* srcImg)
 		grk_rect32 destWin;
 		uint32_t srcLineOffset;
 
-		if(!generateCompositeBounds(srcComp, compno, &destWin, &srcLineOffset))
+		if(!generateCompositeBounds(srcComp, &srcLineOffset, compno, &destWin))
 		{
 			GRK_WARN("GrkImage::compositePlanar: cannot generate composite bounds for component %u",
 					 compno);
@@ -1041,13 +1046,15 @@ bool GrkImage::compositePlanar(const GrkImage* srcImg)
 
 	return true;
 }
-bool GrkImage::generateCompositeBounds(uint16_t compno, grk_rect32 src, uint32_t src_stride,
-									   grk_rect32* destWin, uint32_t* srcLineOffset)
+bool GrkImage::generateCompositeBounds(grk_rect32 src, uint32_t srcStride,
+										uint32_t* srcLineOffset,
+										uint16_t destCompno,
+									   grk_rect32* destWin)
 {
-	auto destComp = comps + compno;
+	auto destComp = comps + destCompno;
 	grk_rect32 destCompRect = grk_rect32(destComp->x0, destComp->y0, destComp->x0 + destComp->w,
 										 destComp->y0 + destComp->h);
-	*srcLineOffset = src_stride - src.width();
+	*srcLineOffset = srcStride - src.width();
 	if(destCompRect.x0 < src.x0)
 	{
 		destWin->x0 = (uint32_t)(src.x0 - destCompRect.x0);
@@ -1058,7 +1065,7 @@ bool GrkImage::generateCompositeBounds(uint16_t compno, grk_rect32 src, uint32_t
 		else
 		{
 			destWin->x1 = destWin->x0 + (uint32_t)(destCompRect.x1 - src.x0);
-			*srcLineOffset = src_stride - destWin->width();
+			*srcLineOffset = srcStride - destWin->width();
 		}
 	}
 	else

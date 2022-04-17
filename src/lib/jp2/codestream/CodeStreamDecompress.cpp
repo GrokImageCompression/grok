@@ -464,11 +464,15 @@ bool CodeStreamDecompress::decompressTiles(void)
 	if(!createOutputImage())
 		return false;
 
-	if(outputImage_->canAllocInterleaved(&cp_))
+	if(outputImage_->supportsStripCache(&cp_))
 	{
-		stripCache_.init(numTilesToDecompress ? cp_.t_grid_width : 1,
-						numTilesToDecompress ? cp_.t_grid_height : 1,
-						cp_.t_height,
+		uint32_t numStrips = cp_.t_grid_height;
+		if (numTilesToDecompress == 1){
+			numStrips =  (outputImage_->height() +singleTileRowsPerStrip - 1)/singleTileRowsPerStrip;
+		}
+		stripCache_.init(cp_.t_grid_width,
+						numStrips,
+						numTilesToDecompress ? cp_.t_height : singleTileRowsPerStrip,
 						cp_.coding_params_.dec_.reduce_,
 						outputImage_,
 						serializeBufferCallback,
@@ -554,7 +558,7 @@ bool CodeStreamDecompress::decompressTiles(void)
 					numTilesDecompressed++;
 					if(outputImage_->multiTile && processor->getImage())
 					{
-						if(wholeTileDecompress && outputImage_->canAllocInterleaved(&cp_))
+						if(wholeTileDecompress && outputImage_->supportsStripCache(&cp_))
 						{
 							if(!stripCache_.ingestTile(processor->getImage()))
 								success = false;
@@ -891,11 +895,12 @@ bool CodeStreamDecompress::decompressTile()
 			GRK_UNUSED(e);
 		}
 
-		if(outputImage_->canAllocInterleaved(&cp_))
+		if(outputImage_->supportsStripCache(&cp_))
 		{
+			uint32_t numStrips = (outputImage_->height() +singleTileRowsPerStrip - 1)/singleTileRowsPerStrip;
 			stripCache_.init(1,
-							 1,
-							cp_.t_height,
+							numStrips,
+							singleTileRowsPerStrip,
 							cp_.coding_params_.dec_.reduce_,
 							outputImage_,
 							serializeBufferCallback,

@@ -56,7 +56,7 @@ class GrkImage : public grk_image
 	 */
 	bool allocCompositeData(CodingParams* cp);
 
-	bool canAllocInterleaved(CodingParams* cp);
+	bool supportsStripCache(CodingParams* cp);
 
 	/**
 	 * Copy only header of image and its component header (no data are copied)
@@ -103,10 +103,12 @@ class GrkImage : public grk_image
 	bool needsConversionToRGB(void);
 	bool isOpacity(uint16_t compno);
 	bool compositePlanar(const GrkImage* srcImg);
-	bool generateCompositeBounds(const grk_image_comp* srcComp, uint16_t compno,
-								 grk_rect32* destWin, uint32_t* srcLineOffset);
-	bool generateCompositeBounds(uint16_t compno, grk_rect32 src, uint32_t src_stride,
-								 grk_rect32* destWin, uint32_t* srcLineOffset);
+	bool generateCompositeBounds(const grk_image_comp* srcComp,uint32_t* srcLineOffset,
+								uint16_t destCompno,
+								 grk_rect32* destWin);
+	bool generateCompositeBounds(grk_rect32 src, uint32_t src_stride,
+								uint32_t* srcLineOffset, uint16_t destCompno,
+								 grk_rect32* destWin);
 	bool allComponentsSanityCheck(bool equalPrecision);
 	grk_image* createRGB(uint16_t numcmpts, uint32_t w, uint32_t h, uint8_t prec);
 	void sycc_to_rgb(int32_t offset, int32_t upb, int32_t y, int32_t cb, int32_t cr, int32_t* out_r,
