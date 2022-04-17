@@ -285,7 +285,7 @@ bool GrkImage::canAllocInterleaved(CodingParams* cp)
 	if(((cp->t_width * numcomps * comps->prec) & 7) != 0)
 		return false;
 	// tile origin y coordinate and image origin y coordinate must coincide
-	if(cp->ty0 != y0)
+	if( ((y0 - cp->ty0) % cp->t_height) != 0 )
 		return false;
 
 	bool supportedFileFormat =
