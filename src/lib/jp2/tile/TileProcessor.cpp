@@ -22,11 +22,10 @@
 namespace grk
 {
 TileProcessor::TileProcessor(uint16_t tileIndex, CodeStream* codeStream, IBufferedStream* stream,
-							 bool isCompressor, StripCache *stripCache)
+							 bool isCompressor, StripCache* stripCache)
 	: first_poc_tile_part_(true), tilePartCounter_(0), pino(0),
 	  headerImage(codeStream->getHeaderImage()),
-	  current_plugin_tile(codeStream->getCurrentPluginTile()),
-	  cp_(codeStream->getCodingParams()),
+	  current_plugin_tile(codeStream->getCurrentPluginTile()), cp_(codeStream->getCodingParams()),
 	  packetLengthCache(PLCache(cp_)), tile(new Tile(headerImage->numcomps)), scheduler_(nullptr),
 	  numProcessedPackets(0), numDecompressedPackets(0), tilePartDataLength(0),
 	  tileIndex_(tileIndex), stream_(stream), corrupt_packet_(false),
@@ -206,8 +205,8 @@ bool TileProcessor::init(void)
 		grk_rect32 unreducedTileComp = grk_rect32(
 			ceildiv<uint32_t>(tile->x0, imageComp->dx), ceildiv<uint32_t>(tile->y0, imageComp->dy),
 			ceildiv<uint32_t>(tile->x1, imageComp->dx), ceildiv<uint32_t>(tile->y1, imageComp->dy));
-		if(!tilec->init(isCompressor_, cp_->wholeTileDecompress_, unreducedTileComp, imageComp->prec, cp_,
-						tcp->tccps + compno, current_plugin_tile))
+		if(!tilec->init(isCompressor_, cp_->wholeTileDecompress_, unreducedTileComp,
+						imageComp->prec, cp_, tcp->tccps + compno, current_plugin_tile))
 		{
 			return false;
 		}

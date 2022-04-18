@@ -26,7 +26,7 @@ namespace grk
 CodingParams::CodingParams()
 	: rsiz(0), pcap(0), tx0(0), ty0(0), t_width(0), t_height(0), num_comments(0), t_grid_width(0),
 	  t_grid_height(0), ppm_marker(nullptr), tcps(nullptr), tlm_markers(nullptr),
-	  plm_markers(nullptr),wholeTileDecompress_(true)
+	  plm_markers(nullptr), wholeTileDecompress_(true)
 {
 	memset(&coding_params_, 0, sizeof(coding_params_));
 }

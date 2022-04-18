@@ -54,7 +54,8 @@ static j2k_prog_order j2k_prog_order_list[] = {{GRK_CPRL, "CPRL"}, {GRK_LRCP, "L
 											   {GRK_PCRL, "PCRL"}, {GRK_RLCP, "RLCP"},
 											   {GRK_RPCL, "RPCL"}, {(GRK_PROG_ORDER)-1, ""}};
 
-CodeStreamCompress::CodeStreamCompress(IBufferedStream* stream) : CodeStream(stream) {
+CodeStreamCompress::CodeStreamCompress(IBufferedStream* stream) : CodeStream(stream)
+{
 	cp_.wholeTileDecompress_ = false;
 }
 

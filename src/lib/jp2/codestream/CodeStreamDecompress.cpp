@@ -24,8 +24,8 @@
 namespace grk
 {
 CodeStreamDecompress::CodeStreamDecompress(IBufferedStream* stream)
-	: CodeStream(stream), curr_marker_(0), headerError_(false),
-	  headerRead_(false), tile_ind_to_dec_(-1), marker_scratch_(nullptr), marker_scratch_size_(0),
+	: CodeStream(stream), curr_marker_(0), headerError_(false), headerRead_(false),
+	  tile_ind_to_dec_(-1), marker_scratch_(nullptr), marker_scratch_size_(0),
 	  outputImage_(nullptr), tileCache_(new TileCache()), serializeBufferCallback(nullptr),
 	  serializeUserData(nullptr), serializeRegisterClientCallback(nullptr)
 {
@@ -557,11 +557,13 @@ bool CodeStreamDecompress::decompressTiles(void)
 					auto img = processor->getImage();
 					if(outputImage_->multiTile && img)
 					{
-						if(outputImage_->supportsStripCache(&cp_)){
-							if (!stripCache_.ingestTile(img))
+						if(outputImage_->supportsStripCache(&cp_))
+						{
+							if(!stripCache_.ingestTile(img))
 								success = false;
 						}
-						else {
+						else
+						{
 							if(!outputImage_->composite(img))
 								success = false;
 						}
