@@ -122,7 +122,7 @@ TileProcessor* CodeStreamDecompress::allocateProcessor(uint16_t tileIndex)
 	auto tileProcessor = tileCache ? tileCache->processor : nullptr;
 	if(!tileProcessor)
 	{
-		tileProcessor = new TileProcessor(tileIndex, this, stream_, false, wholeTileDecompress);
+		tileProcessor = new TileProcessor(tileIndex, this, stream_, false, wholeTileDecompress, &stripCache_);
 		tileCache_->put(tileIndex, tileProcessor);
 	}
 	currentTileProcessor_ = tileProcessor;

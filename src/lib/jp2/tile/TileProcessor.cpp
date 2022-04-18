@@ -22,7 +22,7 @@
 namespace grk
 {
 TileProcessor::TileProcessor(uint16_t tileIndex, CodeStream* codeStream, IBufferedStream* stream,
-							 bool isCompressor, bool isWholeTileDecompress)
+							 bool isCompressor, bool isWholeTileDecompress, StripCache *stripCache)
 	: first_poc_tile_part_(true), tilePartCounter_(0), pino(0),
 	  headerImage(codeStream->getHeaderImage()),
 	  current_plugin_tile(codeStream->getCurrentPluginTile()),
@@ -32,7 +32,7 @@ TileProcessor::TileProcessor(uint16_t tileIndex, CodeStream* codeStream, IBuffer
 	  tileIndex_(tileIndex), stream_(stream), corrupt_packet_(false),
 	  newTilePartProgressionPosition(cp_->coding_params_.enc_.newTilePartProgressionPosition),
 	  tcp_(cp_->tcps + tileIndex_), truncated(false), image_(nullptr), isCompressor_(isCompressor),
-	  preCalculatedTileLen(0), mct_(new mct(tile, headerImage, tcp_))
+	  preCalculatedTileLen(0), mct_(new mct(tile, headerImage, tcp_, stripCache))
 {}
 TileProcessor::~TileProcessor()
 {

@@ -629,7 +629,7 @@ bool CodeStreamCompress::compress(grk_plugin_tile* tile)
 			node[j].work([this, tile, tileIndex, &heap, &success] {
 				if(success)
 				{
-					auto tileProcessor = new TileProcessor(tileIndex, this, stream_, true, false);
+					auto tileProcessor = new TileProcessor(tileIndex, this, stream_, true, false,nullptr);
 					tileProcessor->current_plugin_tile = tile;
 					if(!tileProcessor->preCompressTile() || !tileProcessor->doCompress())
 						success = false;
@@ -644,7 +644,7 @@ bool CodeStreamCompress::compress(grk_plugin_tile* tile)
 	{
 		for(uint16_t i = 0; i < numTiles; ++i)
 		{
-			auto tileProcessor = new TileProcessor(i, this, stream_, true, false);
+			auto tileProcessor = new TileProcessor(i, this, stream_, true, false,nullptr);
 			tileProcessor->current_plugin_tile = tile;
 			if(!tileProcessor->preCompressTile() || !tileProcessor->doCompress())
 			{
@@ -683,7 +683,7 @@ bool CodeStreamCompress::compressTile(uint16_t tileIndex, uint8_t* p_data,
 		return false;
 	bool rc = false;
 
-	auto currentTileProcessor = new TileProcessor(tileIndex, this, stream_, true, false);
+	auto currentTileProcessor = new TileProcessor(tileIndex, this, stream_, true, false,nullptr);
 	if(!currentTileProcessor->preCompressTile())
 	{
 		GRK_ERROR("Error while preCompressTile with tile index = %u", tileIndex);

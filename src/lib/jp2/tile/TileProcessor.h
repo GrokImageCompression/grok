@@ -77,7 +77,7 @@ class mct;
 struct TileProcessor
 {
 	explicit TileProcessor(uint16_t index, CodeStream* codeStream, IBufferedStream* stream,
-						   bool isCompressor, bool isWholeTileDecompress);
+						   bool isCompressor, bool isWholeTileDecompress, StripCache* stripCache);
 	~TileProcessor();
 	bool init(void);
 	bool allocWindowBuffers(const GrkImage* outputImage);
