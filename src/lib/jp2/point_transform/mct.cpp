@@ -39,9 +39,13 @@ namespace HWY_NAMESPACE
 	class DecompressDcShiftIrrev
 	{
 	  public:
-		void transform(ScheduleInfo info, size_t index, size_t chunkSize)
+		void transform(ScheduleInfo info)
 		{
+			auto highestResBuffer =
+				info.tile->comps[info.compno].getBuffer()->getResWindowBufferHighestREL();
 			std::vector<ShiftInfo>& shiftInfo = info.shiftInfo;
+			auto index = (uint64_t)info.yBegin * highestResBuffer->stride;
+			auto chunkSize = (uint64_t)(info.yEnd - info.yBegin) * highestResBuffer->stride;
 			auto chan0 = (float*)info.tile->comps[info.compno]
 							 .getBuffer()
 							 ->getResWindowBufferHighestREL()
@@ -68,8 +72,12 @@ namespace HWY_NAMESPACE
 	class DecompressDcShiftRev
 	{
 	  public:
-		void transform(ScheduleInfo info, size_t index, size_t chunkSize)
+		void transform(ScheduleInfo info)
 		{
+			auto highestResBuffer =
+				info.tile->comps[info.compno].getBuffer()->getResWindowBufferHighestREL();
+			auto index = (uint64_t)info.yBegin * highestResBuffer->stride;
+			auto chunkSize = (uint64_t)(info.yEnd - info.yBegin) * highestResBuffer->stride;
 			std::vector<ShiftInfo>& shiftInfo = info.shiftInfo;
 			auto chan0 = info.tile->comps[info.compno]
 							 .getBuffer()
@@ -94,8 +102,12 @@ namespace HWY_NAMESPACE
 	class DecompressRev
 	{
 	  public:
-		void transform(ScheduleInfo info, size_t index, size_t chunkSize)
+		void transform(ScheduleInfo info)
 		{
+			auto highestResBuffer =
+				info.tile->comps[info.compno].getBuffer()->getResWindowBufferHighestREL();
+			auto index = (uint64_t)info.yBegin * highestResBuffer->stride;
+			auto chunkSize = (uint64_t)(info.yEnd - info.yBegin) * highestResBuffer->stride;
 			std::vector<ShiftInfo>& shiftInfo = info.shiftInfo;
 			auto chan0 =
 				info.tile->comps[0].getBuffer()->getResWindowBufferHighestREL()->getBuffer();
@@ -140,8 +152,12 @@ namespace HWY_NAMESPACE
 	class DecompressIrrev
 	{
 	  public:
-		void transform(ScheduleInfo info, size_t index, size_t chunkSize)
+		void transform(ScheduleInfo info)
 		{
+			auto highestResBuffer =
+				info.tile->comps[info.compno].getBuffer()->getResWindowBufferHighestREL();
+			auto index = (uint64_t)info.yBegin * highestResBuffer->stride;
+			auto chunkSize = (uint64_t)(info.yEnd - info.yBegin) * highestResBuffer->stride;
 			std::vector<ShiftInfo>& shiftInfo = info.shiftInfo;
 			auto chan0 = (float*)info.tile->comps[0]
 							 .getBuffer()
@@ -204,8 +220,12 @@ namespace HWY_NAMESPACE
 	class CompressRev
 	{
 	  public:
-		void transform(ScheduleInfo info, size_t index, size_t chunkSize)
+		void transform(ScheduleInfo info)
 		{
+			auto highestResBuffer =
+				info.tile->comps[info.compno].getBuffer()->getResWindowBufferHighestREL();
+			auto index = (uint64_t)info.yBegin * highestResBuffer->stride;
+			auto chunkSize = (uint64_t)(info.yEnd - info.yBegin) * highestResBuffer->stride;
 			std::vector<ShiftInfo>& shiftInfo = info.shiftInfo;
 			auto chan0 =
 				info.tile->comps[0].getBuffer()->getResWindowBufferHighestREL()->getBuffer();
@@ -243,8 +263,12 @@ namespace HWY_NAMESPACE
 	class CompressIrrev
 	{
 	  public:
-		void transform(ScheduleInfo info, size_t index, size_t chunkSize)
+		void transform(ScheduleInfo info)
 		{
+			auto highestResBuffer =
+				info.tile->comps[info.compno].getBuffer()->getResWindowBufferHighestREL();
+			auto index = (uint64_t)info.yBegin * highestResBuffer->stride;
+			auto chunkSize = (uint64_t)(info.yEnd - info.yBegin) * highestResBuffer->stride;
 			std::vector<ShiftInfo>& shiftInfo = info.shiftInfo;
 			auto chan0 =
 				info.tile->comps[0].getBuffer()->getResWindowBufferHighestREL()->getBuffer();
@@ -312,14 +336,12 @@ namespace HWY_NAMESPACE
 			}
 			for(size_t t = 0; t < numTasks; ++t)
 			{
-				size_t index = t * info.linesPerTask_ * highestResBuffer->stride;
-				uint64_t chunkSize = (t != numTasks - 1)
-										 ? info.linesPerTask_ * highestResBuffer->stride
-										 : (highestResBuffer->height() - t * info.linesPerTask_) *
-											   highestResBuffer->stride;
-				auto compressor = [index, chunkSize, info]() {
+				info.yBegin = t * info.linesPerTask_;
+				info.yEnd =
+					(t != numTasks - 1) ? (t + 1) * info.linesPerTask_ : highestResBuffer->height();
+				auto compressor = [info]() {
 					T transform;
-					transform.transform(info, index, chunkSize);
+					transform.transform(info);
 
 					// write to strip cache
 				};
@@ -338,9 +360,10 @@ namespace HWY_NAMESPACE
 		}
 		else
 		{
-			size_t numSamples = highestResBuffer->stride * highestResBuffer->height();
 			T transform;
-			transform.transform(info, 0, numSamples);
+			info.yBegin = 0;
+			info.yEnd = highestResBuffer->height();
+			transform.transform(info);
 		}
 	}
 	void hwy_compress_rev(ScheduleInfo info)
@@ -386,8 +409,8 @@ HWY_EXPORT(hwy_decompress_irrev);
 HWY_EXPORT(hwy_decompress_dc_shift_irrev);
 HWY_EXPORT(hwy_decompress_dc_shift_rev);
 
-mct::mct(Tile* tile, GrkImage* image, TileCodingParams* tcp, StripCache *stripCache) :
-		tile_(tile), image_(image), tcp_(tcp), stripCache_(stripCache)
+mct::mct(Tile* tile, GrkImage* image, TileCodingParams* tcp, StripCache* stripCache)
+	: tile_(tile), image_(image), tcp_(tcp), stripCache_(stripCache)
 {}
 /***
  * decompress dc shift only - irreversible
