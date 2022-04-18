@@ -123,10 +123,8 @@ class mct
 	static void calculate_norms(double* pNorms, uint16_t nb_comps, float* pMatrix);
 
   private:
-	static void genShift(uint16_t compno, GrkImage* image, TileComponentCodingParams* tccps,
-						 int32_t sign, std::vector<ShiftInfo>& shiftInfo);
-	static void genShift(GrkImage* image, TileComponentCodingParams* tccps, int32_t sign,
-						 std::vector<ShiftInfo>& shiftInfo);
+	void genShift(uint16_t compno, int32_t sign, std::vector<ShiftInfo>& shiftInfo);
+	void genShift(int32_t sign, std::vector<ShiftInfo>& shiftInfo);
 
 	Tile* tile_;
 	GrkImage* image_;
