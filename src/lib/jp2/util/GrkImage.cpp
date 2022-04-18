@@ -985,7 +985,8 @@ bool GrkImage::compositeInterleaved(const Tile* src, uint32_t yBegin, uint32_t y
 	auto destx0 =
 		grk::PlanarToInterleaved<int32_t>::getPackedBytes(src->numcomps_, destWin.x0, prec);
 	auto destIndex = (uint64_t)destWin.y0 * destStride + (uint64_t)destx0;
-	auto iter = InterleaverFactory<int32_t>::makeInterleaver(prec == 16 ? packer16BitBE : prec);
+	auto iter = InterleaverFactory<int32_t>::makeInterleaver(
+			prec == 16 && decompressFormat != GRK_TIF_FMT ? packer16BitBE : prec);
 	if(!iter)
 		return false;
 	int32_t const* planes[grk::maxNumPackComponents];
