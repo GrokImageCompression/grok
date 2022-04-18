@@ -79,6 +79,7 @@ class StripCache
 	bool ingestTile(GrkImage* src);
 	bool ingestStrip(Tile* src, uint32_t yBegin, uint32_t yEnd);
 	void returnBufferToPool(GrkSerializeBuf b);
+	bool isInitialized(void);
 
   private:
 	GrkSerializeBuf getBufferFromPool(uint64_t len);
@@ -96,6 +97,7 @@ class StripCache
 	MinHeap<GrkSerializeBuf, uint32_t, MinHeapFakeLocker> serializeHeap;
 	mutable std::mutex heapMutex_;
 	mutable std::mutex interleaveMutex_;
+	bool initialized_;
 };
 
 } // namespace grk

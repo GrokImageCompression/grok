@@ -36,7 +36,8 @@ uint32_t Strip::reduceDim(uint32_t dim)
 }
 StripCache::StripCache()
 	: strips(nullptr), numTilesX_(0), numStrips_(0), stripHeight_(0), imageY0_(0),
-	  packedRowBytes_(0), serializeUserData_(nullptr), serializeBufferCallback_(nullptr)
+	  packedRowBytes_(0), serializeUserData_(nullptr), serializeBufferCallback_(nullptr),
+	  initialized_(false)
 {}
 StripCache::~StripCache()
 {
@@ -45,6 +46,10 @@ StripCache::~StripCache()
 	for(uint16_t i = 0; i < numStrips_; ++i)
 		delete strips[i];
 	delete[] strips;
+}
+bool StripCache::isInitialized(void)
+{
+	return initialized_;
 }
 void StripCache::init(uint16_t numTilesX, uint32_t numStrips, uint32_t stripHeight, uint8_t reduce,
 					  GrkImage* outputImage, grk_serialize_pixels_callback serializeBufferCallback,
@@ -66,9 +71,13 @@ void StripCache::init(uint16_t numTilesX, uint32_t numStrips, uint32_t stripHeig
 	strips = new Strip*[numStrips];
 	for(uint16_t i = 0; i < numStrips_; ++i)
 		strips[i] = new Strip(outputImage, i, stripHeight_, reduce);
+	initialized_ = true;
 }
 bool StripCache::ingestStrip(Tile* src, uint32_t yBegin, uint32_t yEnd)
 {
+	if(!initialized_)
+		return false;
+
 	uint16_t stripId = (uint16_t)((yBegin + stripHeight_ - 1) / stripHeight_);
 	assert(stripId < numStrips_);
 	auto strip = strips[stripId];
@@ -136,6 +145,9 @@ bool StripCache::ingestStrip(Tile* src, uint32_t yBegin, uint32_t yEnd)
 }
 bool StripCache::ingestTile(GrkImage* src)
 {
+	if(!initialized_)
+		return false;
+
 	uint16_t stripId = (uint16_t)((src->y0 - imageY0_ + stripHeight_ - 1) / stripHeight_);
 	assert(stripId < numStrips_);
 	auto strip = strips[stripId];
