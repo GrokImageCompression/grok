@@ -989,8 +989,10 @@ bool GrkImage::compositeInterleaved(const Tile* src, uint32_t yBegin, uint32_t y
 	if(!iter)
 		return false;
 	int32_t const* planes[grk::maxNumPackComponents];
-	for(uint16_t i = 0; i < src->numcomps_; ++i)
-		planes[i] = (src->comps + i)->getBuffer()->getResWindowBufferHighestREL()->getBuffer();
+	for(uint16_t i = 0; i < src->numcomps_; ++i){
+		auto b = (src->comps + i)->getBuffer()->getResWindowBufferHighestREL();
+		planes[i] = b->getBuffer() + yBegin * b->stride;
+	}
 	iter->interleave(const_cast<int32_t**>(planes), src->numcomps_,
 					 interleavedData.data + destIndex, destWin.width(),
 					 srcComp->getBuffer()->getResWindowBufferHighestREL()->stride, destStride,

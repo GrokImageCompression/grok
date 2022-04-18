@@ -1846,7 +1846,7 @@ bool WaveletReverse::decompress_partial_tile(ISparseCanvas* sa)
 		return true;
 	if(numres_ == 1U)
 	{
-		auto final_read = [this, sa, synthesisWindow, buf]() {
+		auto final_read = [sa, synthesisWindow, buf]() {
 			// final read into tile buffer
 			bool ret =
 				sa->read(0, synthesisWindow, buf->getResWindowBufferHighestREL()->getBuffer(), 1,
@@ -1894,7 +1894,7 @@ bool WaveletReverse::decompress_partial_tile(ISparseCanvas* sa)
 		vert.parity = fullRes->y0 & 1;
 		PartialBandInfo<FILTER_WIDTH>& bandInfo = resBandInfo[resno - 1];
 
-		auto executor_h = [this, resno, sa, bandInfo,
+		auto executor_h = [resno, sa, bandInfo,
 						   &decompressor](TaskInfo<T, dwt_data<T>>* taskInfo) {
 			for(uint32_t yPos = taskInfo->indexMin_; yPos < taskInfo->indexMax_;
 				yPos += HORIZ_PASS_HEIGHT)
@@ -1929,7 +1929,7 @@ bool WaveletReverse::decompress_partial_tile(ISparseCanvas* sa)
 
 			return true;
 		};
-		auto executor_v = [this, resno, sa, bandInfo,
+		auto executor_v = [resno, sa, bandInfo,
 						   &decompressor](TaskInfo<T, dwt_data<T>>* taskInfo) {
 			for(uint32_t xPos = taskInfo->indexMin_; xPos < taskInfo->indexMax_;
 				xPos += VERT_PASS_WIDTH)
