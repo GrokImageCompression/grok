@@ -225,11 +225,11 @@ bool PNMFormat::encodeRows(uint32_t rows)
 			if(!encodePixelsCore(packedBuf))
 			{
 				delete iter;
-				pool.put(packedBuf);
+				applicationOrchestratedReclaim(packedBuf);
 				goto cleanup;
 			}
 			h += stripRows;
-			pool.put(packedBuf);
+			applicationOrchestratedReclaim(packedBuf);
 		}
 		delete iter;
 

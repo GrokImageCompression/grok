@@ -46,6 +46,7 @@ class ImageFormat : public IImageFormat
 	bool openFile(void);
 
   protected:
+	void applicationOrchestratedReclaim(GrkSerializeBuf buf);
 	virtual bool encodePixelsCore(grk_serialize_buf pixels);
 	virtual bool encodePixelsCoreWrite(grk_serialize_buf pixels);
 	bool open(std::string fname, std::string mode);

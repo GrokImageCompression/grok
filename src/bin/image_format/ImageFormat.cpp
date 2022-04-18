@@ -112,6 +112,12 @@ bool ImageFormat::encodePixelsCore(grk_serialize_buf pixels)
 
 	return success;
 }
+// reclaim to local pool if library reclamation is not enabled
+void ImageFormat::applicationOrchestratedReclaim(GrkSerializeBuf buf){
+	if (!serializer.getSerializerReclaimCallback()){
+		pool.put(buf);
+	}
+}
 bool ImageFormat::encodePixelsCoreWrite(grk_serialize_buf pixels)
 {
 	return (serializer.write(pixels.data, pixels.dataLen) == pixels.dataLen);
