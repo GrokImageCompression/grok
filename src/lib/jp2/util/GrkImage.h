@@ -75,6 +75,7 @@ class GrkImage : public grk_image
 	GrkImage* duplicate(const Tile* tile_src);
 	bool composite(const GrkImage* srcImg);
 	bool compositeInterleaved(const GrkImage* srcImg);
+	bool compositeInterleaved(const Tile* src);
 	bool greyToRGB(void);
 	bool convertToRGB(bool wholeTileDecompress);
 	bool applyColourManagement(void);

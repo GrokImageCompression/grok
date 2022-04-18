@@ -928,6 +928,65 @@ bool GrkImage::composite(const GrkImage* srcImg)
 }
 
 /**
+ * Copy tile data to composite image
+ *
+ * @param srcImg 	source image
+ *
+ * @return:			true if successful
+ */
+bool GrkImage::compositeInterleaved(const Tile* src)
+{
+	auto srcComp = src->comps;
+	auto destComp = comps;
+	grk_rect32 destWin;
+
+	if(!generateCompositeBounds(srcComp, 0, &destWin))
+	{
+		GRK_WARN("GrkImage::compositeInterleaved: cannot generate composite bounds");
+		return false;
+	}
+	for(uint16_t i = 0; i < src->numcomps_; ++i)
+	{
+		if(!(src->comps + i)->getBuffer()->getResWindowBufferHighestREL()->getBuffer())
+		{
+			GRK_WARN("GrkImage::compositeInterleaved: null data for source component %u", i);
+			return false;
+		}
+	}
+	uint8_t prec = 0;
+	switch(decompressFormat)
+	{
+		case GRK_TIF_FMT:
+			prec = destComp->prec;
+			break;
+		case GRK_PXM_FMT:
+			prec = destComp->prec > 8 ? 16 : 8;
+			break;
+		default:
+			return false;
+			break;
+	}
+	auto destStride = grk::PlanarToInterleaved<int32_t>::getPackedBytes(src->numcomps_,
+																		destComp->w, prec);
+	auto destx0 = grk::PlanarToInterleaved<int32_t>::getPackedBytes(src->numcomps_,
+																	destWin.x0, prec);
+	auto destIndex = (uint64_t)destWin.y0 * destStride + (uint64_t)destx0;
+	auto iter = InterleaverFactory<int32_t>::makeInterleaver(prec == 16 ? packer16BitBE : prec);
+	if(!iter)
+		return false;
+	int32_t const* planes[grk::maxNumPackComponents];
+	for(uint16_t i = 0; i < src->numcomps_; ++i)
+		planes[i] = (src->comps + i)->getBuffer()->getResWindowBufferHighestREL()->getBuffer();
+	iter->interleave(const_cast<int32_t**>(planes), src->numcomps_,
+					 interleavedData.data + destIndex, destWin.width(),
+					 srcComp->getBuffer()->getResWindowBufferHighestREL()->stride, destStride,
+					 destWin.height(), 0);
+	delete iter;
+
+	return true;
+}
+
+/**
  * Copy image data to composite image
  *
  * @param srcImg 	source image
@@ -945,7 +1004,7 @@ bool GrkImage::compositeInterleaved(const GrkImage* src)
 		GRK_WARN("GrkImage::compositeInterleaved: cannot generate composite bounds");
 		return false;
 	}
-	for(uint16_t i = 0; i < src->decompressNumComps; ++i)
+	for(uint16_t i = 0; i < src->numcomps; ++i)
 	{
 		if(!(src->comps + i)->data)
 		{
@@ -966,18 +1025,18 @@ bool GrkImage::compositeInterleaved(const GrkImage* src)
 			return false;
 			break;
 	}
-	auto destStride = grk::PlanarToInterleaved<int32_t>::getPackedBytes(src->decompressNumComps,
+	auto destStride = grk::PlanarToInterleaved<int32_t>::getPackedBytes(src->numcomps,
 																		destComp->w, prec);
-	auto destx0 = grk::PlanarToInterleaved<int32_t>::getPackedBytes(src->decompressNumComps,
+	auto destx0 = grk::PlanarToInterleaved<int32_t>::getPackedBytes(src->numcomps,
 																	destWin.x0, prec);
 	auto destIndex = (uint64_t)destWin.y0 * destStride + (uint64_t)destx0;
 	auto iter = InterleaverFactory<int32_t>::makeInterleaver(prec == 16 ? packer16BitBE : prec);
 	if(!iter)
 		return false;
 	int32_t const* planes[grk::maxNumPackComponents];
-	for(uint16_t i = 0; i < src->decompressNumComps; ++i)
+	for(uint16_t i = 0; i < src->numcomps; ++i)
 		planes[i] = (src->comps + i)->data;
-	iter->interleave(const_cast<int32_t**>(planes), src->decompressNumComps,
+	iter->interleave(const_cast<int32_t**>(planes), src->numcomps,
 					 interleavedData.data + destIndex, destWin.width(), srcComp->stride, destStride,
 					 destWin.height(), 0);
 	delete iter;

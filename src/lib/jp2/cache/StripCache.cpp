@@ -88,8 +88,8 @@ bool StripCache::ingestStrip(Tile* src)
 	{
 		std::unique_lock<std::mutex> lk(interleaveMutex_);
 		tileCount = ++strip->tileCounter;
-		//if(!dest->compositeInterleaved(src))
-		//	return false;
+		if(!dest->compositeInterleaved(src))
+			return false;
 	}
 
 	if(tileCount == numTilesX_)
