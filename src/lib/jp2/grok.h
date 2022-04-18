@@ -1002,7 +1002,8 @@ typedef struct _grk_image
 	uint8_t decompressPrec;
 	GRK_COLOR_SPACE decompressColourSpace;
 	grk_serialize_buf interleavedData;
-	uint32_t rowsPerStrip;
+	uint32_t rowsPerStrip; // for storage to output format
+	uint32_t rowsPerTask; // for scheduling
 	uint64_t packedRowBytes;
 	grk_image_meta* meta;
 	grk_image_comp* comps;

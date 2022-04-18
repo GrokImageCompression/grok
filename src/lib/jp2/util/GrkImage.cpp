@@ -7,6 +7,7 @@ GrkImage::GrkImage()
 {
 	memset((grk_image*)(this), 0, sizeof(grk_image));
 	obj.wrapper = new GrkObjectWrapperImpl(this);
+	rowsPerTask = singleTileRowsPerStrip;
 }
 GrkImage::~GrkImage()
 {

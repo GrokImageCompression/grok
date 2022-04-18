@@ -469,11 +469,11 @@ bool CodeStreamDecompress::decompressTiles(void)
 		uint32_t numStrips = cp_.t_grid_height;
 		if(numTilesToDecompress == 1)
 		{
-			numStrips =
-				(outputImage_->height() + singleTileRowsPerStrip - 1) / singleTileRowsPerStrip;
+			numStrips = (outputImage_->height() + outputImage_->rowsPerStrip - 1) /
+						outputImage_->rowsPerStrip;
 		}
 		stripCache_.init(cp_.t_grid_width, numStrips,
-						 numTilesToDecompress ? cp_.t_height : singleTileRowsPerStrip,
+						 numTilesToDecompress ? cp_.t_height : outputImage_->rowsPerStrip,
 						 cp_.coding_params_.dec_.reduce_, outputImage_, serializeBufferCallback,
 						 serializeUserData, serializeRegisterClientCallback);
 	}
@@ -890,11 +890,11 @@ bool CodeStreamDecompress::decompressTile()
 
 		if(outputImage_->supportsStripCache(&cp_))
 		{
-			uint32_t numStrips =
-				(outputImage_->height() + singleTileRowsPerStrip - 1) / singleTileRowsPerStrip;
-			stripCache_.init(1, numStrips, singleTileRowsPerStrip, cp_.coding_params_.dec_.reduce_,
-							 outputImage_, serializeBufferCallback, serializeUserData,
-							 serializeRegisterClientCallback);
+			uint32_t numStrips = (outputImage_->height() + outputImage_->rowsPerStrip - 1) /
+								 outputImage_->rowsPerStrip;
+			stripCache_.init(1, numStrips, outputImage_->rowsPerStrip,
+							 cp_.coding_params_.dec_.reduce_, outputImage_, serializeBufferCallback,
+							 serializeUserData, serializeRegisterClientCallback);
 		}
 
 		if(!decompressT2T1(tileProcessor))
