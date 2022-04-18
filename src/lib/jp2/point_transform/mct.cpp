@@ -61,6 +61,7 @@ namespace HWY_NAMESPACE
 				auto ni = Clamp(NearestInt(Load(df, chan0 + j)) + vshift, vmin, vmax);
 				Store(ni, di, (int32_t*)(chan0 + j));
 			}
+			//info.stripCache_->ingestStrip(info.tile, info.yBegin, info.yEnd);
 		}
 	};
 
@@ -322,12 +323,12 @@ namespace HWY_NAMESPACE
 	{
 		auto highestResBuffer =
 			info.tile->comps[info.compno].getBuffer()->getResWindowBufferHighestREL();
-		uint32_t numTasks =
-			(highestResBuffer->height() + info.linesPerTask_ - 1) / info.linesPerTask_;
 		if(ExecSingleton::get()->num_workers() > 1)
 		{
 			tf::Task* tasks = nullptr;
 			tf::Taskflow taskflow;
+			uint32_t numTasks =
+				(highestResBuffer->height() + info.linesPerTask_ - 1) / info.linesPerTask_;
 			if(!info.flow_)
 			{
 				tasks = new tf::Task[numTasks];
@@ -342,8 +343,6 @@ namespace HWY_NAMESPACE
 				auto compressor = [info]() {
 					T transform;
 					transform.transform(info);
-
-					// write to strip cache
 				};
 				if(info.flow_)
 				{

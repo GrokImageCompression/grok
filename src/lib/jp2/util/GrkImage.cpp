@@ -934,19 +934,20 @@ bool GrkImage::composite(const GrkImage* srcImg)
 }
 
 /**
- * Interleave tile data and coy to interleaved composite image
+ * Interleave strip of tile data and copy to interleaved composite image
  *
  * @param srcImg 	source image
  *
  * @return:			true if successful
  */
-bool GrkImage::compositeInterleaved(const Tile* src)
+bool GrkImage::compositeInterleaved(const Tile* src, uint32_t yBegin, uint32_t yEnd)
 {
 	auto srcComp = src->comps;
 	auto destComp = comps;
 	grk_rect32 destWin;
+	grk_rect32 srcWin(srcComp->x0, yBegin, srcComp->x0 + srcComp->width(), yEnd);
 
-	if(!generateCompositeBounds(srcComp, 0, &destWin))
+	if(!generateCompositeBounds(srcWin, 0, &destWin))
 	{
 		GRK_WARN("GrkImage::compositeInterleaved: cannot generate composite bounds");
 		return false;

@@ -77,7 +77,7 @@ class StripCache
 			  void* serializeUserData,
 			  grk_serialize_register_client_callback serializeRegisterClientCallback);
 	bool ingestTile(GrkImage* src);
-	bool ingestStrip(Tile* src);
+	bool ingestStrip(Tile* src, uint32_t yBegin, uint32_t yEnd);
 	void returnBufferToPool(GrkSerializeBuf b);
 
   private:

@@ -67,14 +67,14 @@ void StripCache::init(uint16_t numTilesX, uint32_t numStrips, uint32_t stripHeig
 	for(uint16_t i = 0; i < numStrips_; ++i)
 		strips[i] = new Strip(outputImage, i, stripHeight_, reduce);
 }
-bool StripCache::ingestStrip(Tile* src)
+bool StripCache::ingestStrip(Tile* src, uint32_t yBegin, uint32_t yEnd)
 {
-	uint16_t stripId = (uint16_t)((src->y0 - imageY0_ + stripHeight_ - 1) / stripHeight_);
+	uint16_t stripId = (uint16_t)((yBegin + stripHeight_ - 1) / stripHeight_);
 	assert(stripId < numStrips_);
 	auto strip = strips[stripId];
 	auto dest = strip->stripImg;
 	// use height of first component, because no subsampling
-	uint64_t dataLen = packedRowBytes_ * src->comps->height();
+	uint64_t dataLen = packedRowBytes_ * (yEnd - yBegin);
 	{
 		std::unique_lock<std::mutex> lk(poolMutex_);
 		if(!dest->interleavedData.data)
@@ -88,7 +88,7 @@ bool StripCache::ingestStrip(Tile* src)
 	{
 		std::unique_lock<std::mutex> lk(interleaveMutex_);
 		tileCount = ++strip->tileCounter;
-		if(!dest->compositeInterleaved(src))
+		if(!dest->compositeInterleaved(src, yBegin, yEnd))
 			return false;
 	}
 
