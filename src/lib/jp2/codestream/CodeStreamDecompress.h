@@ -61,7 +61,6 @@ class CodeStreamDecompress : public CodeStream, public ICodeStreamDecompress
 	GrkImage* getHeaderImage(void);
 	uint16_t getCurrentMarker();
 	int32_t tileIndexToDecode();
-	bool isWholeTileDecompress();
 	void dump(uint32_t flag, FILE* outputFileStream);
 	bool needsHeaderRead(void);
 
@@ -88,7 +87,6 @@ class CodeStreamDecompress : public CodeStream, public ICodeStreamDecompress
 	void dump_image_comp_header(grk_image_comp* comp, bool dev_dump_flag, FILE* outputFileStream);
 
   private:
-	bool supportsStripCache(void);
 	bool endOfCodeStream(void);
 	bool read_short(uint16_t* val);
 	bool process_marker(const marker_handler* marker_handler, uint16_t marker_size);
@@ -318,7 +316,6 @@ class CodeStreamDecompress : public CodeStream, public ICodeStreamDecompress
 
 	std::map<uint16_t, marker_handler*> marker_map;
 	DecompressorState decompressorState_;
-	bool wholeTileDecompress;
 	uint16_t curr_marker_;
 	bool headerError_;
 	bool headerRead_;

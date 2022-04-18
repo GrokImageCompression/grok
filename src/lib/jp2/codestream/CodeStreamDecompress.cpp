@@ -24,7 +24,7 @@
 namespace grk
 {
 CodeStreamDecompress::CodeStreamDecompress(IBufferedStream* stream)
-	: CodeStream(stream), wholeTileDecompress(true), curr_marker_(0), headerError_(false),
+	: CodeStream(stream), curr_marker_(0), headerError_(false),
 	  headerRead_(false), tile_ind_to_dec_(-1), marker_scratch_(nullptr), marker_scratch_size_(0),
 	  outputImage_(nullptr), tileCache_(new TileCache()), serializeBufferCallback(nullptr),
 	  serializeUserData(nullptr), serializeRegisterClientCallback(nullptr)
@@ -122,7 +122,7 @@ TileProcessor* CodeStreamDecompress::allocateProcessor(uint16_t tileIndex)
 	auto tileProcessor = tileCache ? tileCache->processor : nullptr;
 	if(!tileProcessor)
 	{
-		tileProcessor = new TileProcessor(tileIndex, this, stream_, false, wholeTileDecompress, &stripCache_);
+		tileProcessor = new TileProcessor(tileIndex, this, stream_, false, &stripCache_);
 		tileCache_->put(tileIndex, tileProcessor);
 	}
 	currentTileProcessor_ = tileProcessor;
@@ -330,7 +330,7 @@ bool CodeStreamDecompress::setDecompressRegion(grk_rect_single region)
 			decompressor->end_tile_y_index_ = ceildiv<uint32_t>(end_y - cp_.ty0, cp_.t_height);
 			compositeImage->y1 = end_y;
 		}
-		wholeTileDecompress = false;
+		cp_.wholeTileDecompress_ = false;
 		if(!compositeImage->subsampleAndReduce(cp_.coding_params_.dec_.reduce_))
 			return false;
 
@@ -453,9 +453,6 @@ bool CodeStreamDecompress::endOfCodeStream(void)
 	return decompressorState_.getState() == DECOMPRESS_STATE_EOC ||
 		   decompressorState_.getState() == DECOMPRESS_STATE_NO_EOC || stream_->numBytesLeft() == 0;
 }
-bool CodeStreamDecompress::supportsStripCache(void){
-	return wholeTileDecompress && outputImage_->supportsStripCache(&cp_);
-}
 bool CodeStreamDecompress::decompressTiles(void)
 {
 	uint16_t numTilesToDecompress = (uint16_t)(cp_.t_grid_height * cp_.t_grid_width);
@@ -467,7 +464,7 @@ bool CodeStreamDecompress::decompressTiles(void)
 	if(!createOutputImage())
 		return false;
 
-	if(supportsStripCache())
+	if(outputImage_->supportsStripCache(&cp_))
 	{
 		uint32_t numStrips = cp_.t_grid_height;
 		if(numTilesToDecompress == 1)
@@ -560,7 +557,7 @@ bool CodeStreamDecompress::decompressTiles(void)
 					auto img = processor->getImage();
 					if(outputImage_->multiTile && img)
 					{
-						if(supportsStripCache()){
+						if(outputImage_->supportsStripCache(&cp_)){
 							if (!stripCache_.ingestTile(img))
 								success = false;
 						}
@@ -627,7 +624,7 @@ bool CodeStreamDecompress::decompressTiles(void)
 		success = false;
 		goto cleanup;
 	}
-	else if(numTilesDecompressed < numTilesToDecompress && wholeTileDecompress)
+	else if(numTilesDecompressed < numTilesToDecompress && cp_.wholeTileDecompress_)
 	{
 		uint32_t decompressed = numTilesDecompressed;
 		GRK_WARN("Only %u out of %u tiles were decompressed", decompressed, numTilesToDecompress);
@@ -662,10 +659,6 @@ void CodeStreamDecompress::addMarker(uint16_t id, uint64_t pos, uint32_t len)
 uint16_t CodeStreamDecompress::getCurrentMarker()
 {
 	return curr_marker_;
-}
-bool CodeStreamDecompress::isWholeTileDecompress()
-{
-	return wholeTileDecompress;
 }
 GrkImage* CodeStreamDecompress::getHeaderImage(void)
 {
@@ -818,7 +811,7 @@ bool CodeStreamDecompress::createOutputImage(void)
 		getCompositeImage()->copyHeader(outputImage_);
 	}
 
-	return supportsStripCache() || outputImage_->allocCompositeData();
+	return outputImage_->supportsStripCache(&cp_) || outputImage_->allocCompositeData();
 }
 
 /*
@@ -893,7 +886,7 @@ bool CodeStreamDecompress::decompressTile()
 			GRK_UNUSED(e);
 		}
 
-		if(supportsStripCache())
+		if(outputImage_->supportsStripCache(&cp_))
 		{
 			uint32_t numStrips =
 				(outputImage_->height() + singleTileRowsPerStrip - 1) / singleTileRowsPerStrip;
@@ -1042,7 +1035,7 @@ bool CodeStreamDecompress::postProcess(void)
 
 	auto img = getCompositeImage();
 	img->applyColourManagement();
-	if(!img->convertToRGB(wholeTileDecompress))
+	if(!img->convertToRGB(cp_.wholeTileDecompress_))
 		return false;
 	if(!img->greyToRGB())
 		return false;

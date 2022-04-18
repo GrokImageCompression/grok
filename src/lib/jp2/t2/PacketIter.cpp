@@ -842,7 +842,7 @@ void PacketIter::init(PacketManager* packetMan, uint32_t pino, TileCodingParams*
 }
 bool PacketIter::isWholeTile(void)
 {
-	return compression_ || packetManager->getTileProcessor()->wholeTileDecompress;
+	return compression_ || packetManager->getTileProcessor()->cp_->wholeTileDecompress_;
 }
 bool PacketIter::next(SparseBuffer* src)
 {

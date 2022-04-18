@@ -2060,7 +2060,7 @@ bool WaveletReverse::decompress(void)
 {
 	if(qmfbid_ == 1)
 	{
-		if(tileProcessor_->wholeTileDecompress)
+		if(tileProcessor_->cp_->wholeTileDecompress_)
 			return decompress_tile_53();
 		else
 		{
@@ -2073,7 +2073,7 @@ bool WaveletReverse::decompress(void)
 	}
 	else
 	{
-		if(tileProcessor_->wholeTileDecompress)
+		if(tileProcessor_->cp_->wholeTileDecompress_)
 			return decompress_tile_97();
 		else
 		{

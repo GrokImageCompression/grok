@@ -281,6 +281,9 @@ bool GrkImage::allocData(grk_image_comp* comp, bool clear)
 
 bool GrkImage::supportsStripCache(CodingParams* cp)
 {
+	if (!cp->wholeTileDecompress_)
+		return false;
+
 	// packed tile width bits must be divisible by 8
 	if(((cp->t_width * numcomps * comps->prec) & 7) != 0)
 		return false;
@@ -399,7 +402,7 @@ void GrkImage::postReadHeader(CodingParams* cp)
 	if(meta && meta->color.icc_profile_buf && meta->color.icc_profile_len &&
 	   decompressFormat == GRK_PNG_FMT)
 	{
-		// if lcms is present, try to extract the description tag from the ICC header,
+		// extract the description tag from the ICC header,
 		// and use this tag as the profile name
 		auto in_prof =
 			cmsOpenProfileFromMem(meta->color.icc_profile_buf, meta->color.icc_profile_len);
@@ -875,23 +878,23 @@ void GrkImage::transferDataTo(GrkImage* dest)
 /**
  * Create new image and transfer tile buffer data
  *
- * @param tile_src_data	tile source data
+ * @param src	tile source
  *
  * @return new GrkImage if successful
  *
  */
-GrkImage* GrkImage::duplicate(const Tile* src_tile)
+GrkImage* GrkImage::duplicate(const Tile* src)
 {
 	auto destImage = new GrkImage();
 	copyHeader(destImage);
-	destImage->x0 = src_tile->x0;
-	destImage->y0 = src_tile->y0;
-	destImage->x1 = src_tile->x1;
-	destImage->y1 = src_tile->y1;
+	destImage->x0 = src->x0;
+	destImage->y0 = src->y0;
+	destImage->x1 = src->x1;
+	destImage->y1 = src->y1;
 
-	for(uint16_t compno = 0; compno < src_tile->numcomps_; ++compno)
+	for(uint16_t compno = 0; compno < src->numcomps_; ++compno)
 	{
-		auto srcComp = src_tile->comps + compno;
+		auto srcComp = src->comps + compno;
 		auto src_buffer = srcComp->getBuffer();
 		auto src_bounds = src_buffer->bounds();
 
@@ -902,7 +905,7 @@ GrkImage* GrkImage::duplicate(const Tile* src_tile)
 		destComp->h = src_bounds.height();
 	}
 
-	destImage->transferDataFrom(src_tile);
+	destImage->transferDataFrom(src);
 
 	return destImage;
 }

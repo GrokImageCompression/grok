@@ -77,7 +77,7 @@ class mct;
 struct TileProcessor
 {
 	explicit TileProcessor(uint16_t index, CodeStream* codeStream, IBufferedStream* stream,
-						   bool isCompressor, bool isWholeTileDecompress, StripCache* stripCache);
+						   bool isCompressor, StripCache* stripCache);
 	~TileProcessor();
 	bool init(void);
 	bool allocWindowBuffers(const GrkImage* outputImage);
@@ -121,8 +121,6 @@ struct TileProcessor
 	uint32_t pino;
 	GrkImage* headerImage;
 	grk_plugin_tile* current_plugin_tile;
-	// true if whole tile will be decoded; false if tile window will be decoded
-	bool wholeTileDecompress;
 	CodingParams* cp_;
 	PLCache packetLengthCache;
 	uint64_t getTilePartDataLength(void);

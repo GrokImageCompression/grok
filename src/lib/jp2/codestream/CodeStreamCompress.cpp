@@ -54,7 +54,9 @@ static j2k_prog_order j2k_prog_order_list[] = {{GRK_CPRL, "CPRL"}, {GRK_LRCP, "L
 											   {GRK_PCRL, "PCRL"}, {GRK_RLCP, "RLCP"},
 											   {GRK_RPCL, "RPCL"}, {(GRK_PROG_ORDER)-1, ""}};
 
-CodeStreamCompress::CodeStreamCompress(IBufferedStream* stream) : CodeStream(stream) {}
+CodeStreamCompress::CodeStreamCompress(IBufferedStream* stream) : CodeStream(stream) {
+	cp_.wholeTileDecompress_ = false;
+}
 
 CodeStreamCompress::~CodeStreamCompress() {}
 char* CodeStreamCompress::convertProgressionOrder(GRK_PROG_ORDER prg_order)
@@ -629,7 +631,7 @@ bool CodeStreamCompress::compress(grk_plugin_tile* tile)
 			node[j].work([this, tile, tileIndex, &heap, &success] {
 				if(success)
 				{
-					auto tileProcessor = new TileProcessor(tileIndex, this, stream_, true, false,nullptr);
+					auto tileProcessor = new TileProcessor(tileIndex, this, stream_, true, nullptr);
 					tileProcessor->current_plugin_tile = tile;
 					if(!tileProcessor->preCompressTile() || !tileProcessor->doCompress())
 						success = false;
@@ -644,7 +646,7 @@ bool CodeStreamCompress::compress(grk_plugin_tile* tile)
 	{
 		for(uint16_t i = 0; i < numTiles; ++i)
 		{
-			auto tileProcessor = new TileProcessor(i, this, stream_, true, false,nullptr);
+			auto tileProcessor = new TileProcessor(i, this, stream_, true, nullptr);
 			tileProcessor->current_plugin_tile = tile;
 			if(!tileProcessor->preCompressTile() || !tileProcessor->doCompress())
 			{
@@ -683,7 +685,7 @@ bool CodeStreamCompress::compressTile(uint16_t tileIndex, uint8_t* p_data,
 		return false;
 	bool rc = false;
 
-	auto currentTileProcessor = new TileProcessor(tileIndex, this, stream_, true, false,nullptr);
+	auto currentTileProcessor = new TileProcessor(tileIndex, this, stream_, true, nullptr);
 	if(!currentTileProcessor->preCompressTile())
 	{
 		GRK_ERROR("Error while preCompressTile with tile index = %u", tileIndex);

@@ -280,6 +280,7 @@ struct CodingParams
 	} coding_params_;
 	TileLengthMarkers* tlm_markers;
 	PLMarkerMgr* plm_markers;
+	bool wholeTileDecompress_;
 };
 
 /**
