@@ -16,9 +16,9 @@ class GrkImageMeta : public grk_image_meta
   public:
 	GrkImageMeta();
 	virtual ~GrkImageMeta();
-	void free_color(void);
-	void free_palette_clr();
-	void alloc_palette(uint8_t num_channels, uint16_t num_entries);
+	void releaseColor(void);
+	void releaseColorPalatte();
+	void allocPalette(uint8_t num_channels, uint16_t num_entries);
 };
 
 class GrkImage : public grk_image
@@ -91,7 +91,7 @@ class GrkImage : public grk_image
 	bool apply_palette_clr(void);
 	bool check_color(void);
 	void apply_channel_definition(void);
-	void alloc_palette(uint8_t num_channels, uint16_t num_entries);
+	void allocPalette(uint8_t num_channels, uint16_t num_entries);
 	uint32_t width(void) const;
 	uint32_t height(void) const;
 	void print(void) const;

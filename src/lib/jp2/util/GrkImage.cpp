@@ -444,9 +444,9 @@ bool GrkImage::validateZeroed(void)
 
 	return true;
 }
-void GrkImage::alloc_palette(uint8_t num_channels, uint16_t num_entries)
+void GrkImage::allocPalette(uint8_t num_channels, uint16_t num_entries)
 {
-	((GrkImageMeta*)meta)->alloc_palette(num_channels, num_entries);
+	((GrkImageMeta*)meta)->allocPalette(num_channels, num_entries);
 }
 bool GrkImage::applyColour(void)
 {
@@ -454,7 +454,7 @@ bool GrkImage::applyColour(void)
 	{
 		/* Part 1, I.5.3.4: Either both or none : */
 		if(!meta->color.palette->component_mapping)
-			((GrkImageMeta*)meta)->free_palette_clr();
+			((GrkImageMeta*)meta)->releaseColorPalatte();
 		else if(!apply_palette_clr())
 			return false;
 	}
@@ -928,7 +928,7 @@ bool GrkImage::composite(const GrkImage* srcImg)
 }
 
 /**
- * Copy tile data to composite image
+ * Interleave tile data and coy to interleaved composite image
  *
  * @param srcImg 	source image
  *
@@ -987,9 +987,9 @@ bool GrkImage::compositeInterleaved(const Tile* src)
 }
 
 /**
- * Copy image data to composite image
+ * Interleave image data and copy to interleaved composite image
  *
- * @param srcImg 	source image
+ * @param src 	source image
  *
  * @return:			true if successful
  */
@@ -1045,19 +1045,17 @@ bool GrkImage::compositeInterleaved(const GrkImage* src)
 }
 
 /**
- * Copy image data to composite image
+ * Copy planar image data to planar composite image
  *
- * @param srcImg 	source image
+ * @param src 	source image
  *
  * @return:			true if successful
  */
-bool GrkImage::compositePlanar(const GrkImage* srcImg)
+bool GrkImage::compositePlanar(const GrkImage* src)
 {
-	for(uint16_t compno = 0; compno < srcImg->numcomps; compno++)
+	for(uint16_t compno = 0; compno < src->numcomps; compno++)
 	{
-		auto srcComp = srcImg->comps + compno;
-		auto destComp = comps + compno;
-
+		auto srcComp = src->comps + compno;
 		grk_rect32 destWin;
 		if(!generateCompositeBounds(srcComp, compno, &destWin))
 		{
@@ -1065,6 +1063,7 @@ bool GrkImage::compositePlanar(const GrkImage* srcImg)
 					 compno);
 			continue;
 		}
+		auto destComp = comps + compno;
 		if(!destComp->data)
 		{
 			GRK_WARN("GrkImage::compositePlanar: null data for destination component %u", compno);
@@ -1094,20 +1093,19 @@ bool GrkImage::compositePlanar(const GrkImage* srcImg)
 }
 /***
  * Generate destination window (relative to destination component bounds)
- * If source rectangle is not
+ * Assumption: source region is wholly contained inside destinatin component region
  */
 bool GrkImage::generateCompositeBounds(grk_rect32 src, uint16_t destCompno, grk_rect32* destWin)
 {
 	auto destComp = comps + destCompno;
 	*destWin = src.intersection(grk_rect32(destComp->x0, destComp->y0, destComp->x0 + destComp->w,
-										   destComp->y0 + destComp->h));
-	destWin->x0 -= destComp->x0;
-	destWin->y0 -= destComp->y0;
-	destWin->x1 -= destComp->x0;
-	destWin->y1 -= destComp->y0;
-
+							   destComp->y0 + destComp->h)).pan(-(int64_t)destComp->x0,-(int64_t)destComp->y0);
 	return true;
 }
+/***
+ * Generate destination window (relative to destination component bounds)
+ * Assumption: source region is wholly contained inside destinatin component region
+ */
 bool GrkImage::generateCompositeBounds(const grk_image_comp* srcComp, uint16_t destCompno,
 									   grk_rect32* destWin)
 {
@@ -1115,6 +1113,7 @@ bool GrkImage::generateCompositeBounds(const grk_image_comp* srcComp, uint16_t d
 		grk_rect32(srcComp->x0, srcComp->y0, srcComp->x0 + srcComp->w, srcComp->y0 + srcComp->h),
 		destCompno, destWin);
 }
+///////////////////////////////////////////////////////////////////////////////////////////////
 GrkImageMeta::GrkImageMeta()
 {
 	obj.wrapper = new GrkObjectWrapperImpl(this);
@@ -1127,11 +1126,11 @@ GrkImageMeta::GrkImageMeta()
 
 GrkImageMeta::~GrkImageMeta()
 {
-	free_color();
+	releaseColor();
 	delete[] iptc_buf;
 	delete[] xmp_buf;
 }
-void GrkImageMeta::alloc_palette(uint8_t num_channels, uint16_t num_entries)
+void GrkImageMeta::allocPalette(uint8_t num_channels, uint16_t num_entries)
 {
 	assert(num_channels);
 	assert(num_entries);
@@ -1139,7 +1138,7 @@ void GrkImageMeta::alloc_palette(uint8_t num_channels, uint16_t num_entries)
 	if(!num_channels || !num_entries)
 		return;
 
-	free_palette_clr();
+	releaseColorPalatte();
 	auto jp2_pclr = new grk_palette_data();
 	jp2_pclr->channel_sign = new bool[num_channels];
 	jp2_pclr->channel_prec = new uint8_t[num_channels];
@@ -1149,7 +1148,7 @@ void GrkImageMeta::alloc_palette(uint8_t num_channels, uint16_t num_entries)
 	jp2_pclr->component_mapping = nullptr;
 	color.palette = jp2_pclr;
 }
-void GrkImageMeta::free_palette_clr()
+void GrkImageMeta::releaseColorPalatte()
 {
 	if(color.palette)
 	{
@@ -1161,9 +1160,9 @@ void GrkImageMeta::free_palette_clr()
 		color.palette = nullptr;
 	}
 }
-void GrkImageMeta::free_color()
+void GrkImageMeta::releaseColor()
 {
-	free_palette_clr();
+	releaseColorPalatte();
 	delete[] color.icc_profile_buf;
 	color.icc_profile_buf = nullptr;
 	color.icc_profile_len = 0;

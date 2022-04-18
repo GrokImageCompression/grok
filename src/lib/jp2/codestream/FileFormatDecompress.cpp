@@ -1112,7 +1112,7 @@ bool FileFormatDecompress::read_palette_clr(uint8_t* p_pclr_header_data, uint32_
 	++p_pclr_header_data;
 	if(pclr_header_size < 3 + (uint32_t)num_channels)
 		return false;
-	codeStream->getHeaderImage()->alloc_palette(num_channels, num_entries);
+	codeStream->getHeaderImage()->allocPalette(num_channels, num_entries);
 	auto jp2_pclr = getColour()->palette;
 	for(uint8_t i = 0; i < num_channels; ++i)
 	{
