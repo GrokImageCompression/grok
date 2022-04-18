@@ -813,33 +813,30 @@ bool GrkImage::apply_palette_clr()
 
 	return true;
 }
-bool GrkImage::allocCompositeData(CodingParams* cp)
+bool GrkImage::allocCompositeData(void)
 {
 	// only allocate data if there are multiple tiles. Otherwise, the single tile data
 	// will simply be transferred to the output image
 	if(!multiTile)
 		return true;
 
-	if(!supportsStripCache(cp))
+	for(uint32_t i = 0; i < numcomps; i++)
 	{
-		for(uint32_t i = 0; i < numcomps; i++)
+		auto destComp = comps + i;
+		if(destComp->w == 0 || destComp->h == 0)
 		{
-			auto destComp = comps + i;
-			if(destComp->w == 0 || destComp->h == 0)
+			GRK_ERROR("Output component %u has invalid dimensions %u x %u", i, destComp->w,
+					  destComp->h);
+			return false;
+		}
+		if(!destComp->data)
+		{
+			if(!GrkImage::allocData(destComp, true))
 			{
-				GRK_ERROR("Output component %u has invalid dimensions %u x %u", i, destComp->w,
-						  destComp->h);
+				GRK_ERROR(
+					"Failed to allocate pixel data for component %u, with dimensions %u x %u",
+					i, destComp->w, destComp->h);
 				return false;
-			}
-			if(!destComp->data)
-			{
-				if(!GrkImage::allocData(destComp, true))
-				{
-					GRK_ERROR(
-						"Failed to allocate pixel data for component %u, with dimensions %u x %u",
-						i, destComp->w, destComp->h);
-					return false;
-				}
 			}
 		}
 	}

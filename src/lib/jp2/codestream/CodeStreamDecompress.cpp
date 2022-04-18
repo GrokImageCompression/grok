@@ -453,6 +453,9 @@ bool CodeStreamDecompress::endOfCodeStream(void)
 	return decompressorState_.getState() == DECOMPRESS_STATE_EOC ||
 		   decompressorState_.getState() == DECOMPRESS_STATE_NO_EOC || stream_->numBytesLeft() == 0;
 }
+bool CodeStreamDecompress::supportsStripCache(void){
+	return wholeTileDecompress && outputImage_->supportsStripCache(&cp_);
+}
 bool CodeStreamDecompress::decompressTiles(void)
 {
 	uint16_t numTilesToDecompress = (uint16_t)(cp_.t_grid_height * cp_.t_grid_width);
@@ -464,7 +467,7 @@ bool CodeStreamDecompress::decompressTiles(void)
 	if(!createOutputImage())
 		return false;
 
-	if(outputImage_->supportsStripCache(&cp_))
+	if(supportsStripCache())
 	{
 		uint32_t numStrips = cp_.t_grid_height;
 		if(numTilesToDecompress == 1)
@@ -556,7 +559,7 @@ bool CodeStreamDecompress::decompressTiles(void)
 					numTilesDecompressed++;
 					if(outputImage_->multiTile && processor->getImage())
 					{
-						if(wholeTileDecompress && outputImage_->supportsStripCache(&cp_))
+						if(supportsStripCache())
 						{
 							if(!stripCache_.ingestTile(processor->getImage()))
 								success = false;
@@ -815,10 +818,8 @@ bool CodeStreamDecompress::createOutputImage(void)
 		outputImage_ = new GrkImage();
 		getCompositeImage()->copyHeader(outputImage_);
 	}
-	if(!outputImage_->allocCompositeData(&cp_))
-		return false;
 
-	return true;
+	return supportsStripCache() || outputImage_->allocCompositeData();
 }
 
 /*
@@ -893,7 +894,7 @@ bool CodeStreamDecompress::decompressTile()
 			GRK_UNUSED(e);
 		}
 
-		if(outputImage_->supportsStripCache(&cp_))
+		if(supportsStripCache())
 		{
 			uint32_t numStrips =
 				(outputImage_->height() + singleTileRowsPerStrip - 1) / singleTileRowsPerStrip;

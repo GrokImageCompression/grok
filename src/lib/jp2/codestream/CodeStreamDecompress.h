@@ -88,6 +88,7 @@ class CodeStreamDecompress : public CodeStream, public ICodeStreamDecompress
 	void dump_image_comp_header(grk_image_comp* comp, bool dev_dump_flag, FILE* outputFileStream);
 
   private:
+	bool supportsStripCache(void);
 	bool endOfCodeStream(void);
 	bool read_short(uint16_t* val);
 	bool process_marker(const marker_handler* marker_handler, uint16_t marker_size);

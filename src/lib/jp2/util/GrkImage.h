@@ -54,8 +54,7 @@ class GrkImage : public grk_image
 	 *
 	 * @return true if successful
 	 */
-	bool allocCompositeData(CodingParams* cp);
-
+	bool allocCompositeData(void);
 	bool supportsStripCache(CodingParams* cp);
 
 	/**
