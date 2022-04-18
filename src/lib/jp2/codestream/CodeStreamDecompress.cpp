@@ -473,7 +473,7 @@ bool CodeStreamDecompress::decompressTiles(void)
 						outputImage_->rowsPerStrip;
 		}
 		stripCache_.init(cp_.t_grid_width, numStrips,
-						 numTilesToDecompress ? cp_.t_height : outputImage_->rowsPerStrip,
+						 numTilesToDecompress > 1 ? cp_.t_height : outputImage_->rowsPerStrip,
 						 cp_.coding_params_.dec_.reduce_, outputImage_, serializeBufferCallback,
 						 serializeUserData, serializeRegisterClientCallback);
 	}

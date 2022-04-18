@@ -285,13 +285,19 @@ bool GrkImage::supportsStripCache(CodingParams* cp)
 	if(!cp->wholeTileDecompress_)
 		return false;
 
-	// only mono supported
-	if(!multiTile && numcomps > 1)
-		return false;
+	if(multiTile)
+	{
+		// packed tile width bits must be divisible by 8
+		if(((cp->t_width * numcomps * comps->prec) & 7) != 0)
+			return false;
+	}
+	else
+	{
+		// only mono supported
+		if(numcomps > 1)
+			return false;
+	}
 
-	// packed tile width bits must be divisible by 8
-	if(((cp->t_width * numcomps * comps->prec) & 7) != 0)
-		return false;
 	// difference between image origin y coordinate and tile origin y coordinate
 	// must be multiple of the tile height, so that only the final strip may have
 	// different height than the rest. Otherwise, TIFF will not be successfully

@@ -61,7 +61,6 @@ namespace HWY_NAMESPACE
 				auto ni = Clamp(NearestInt(Load(df, chan0 + j)) + vshift, vmin, vmax);
 				Store(ni, di, (int32_t*)(chan0 + j));
 			}
-			// info.stripCache_->ingestStrip(info.tile, info.yBegin, info.yEnd);
 		}
 	};
 
@@ -94,6 +93,7 @@ namespace HWY_NAMESPACE
 				auto ni = Clamp(Load(di, chan0 + j) + vshift, vmin, vmax);
 				Store(ni, di, chan0 + j);
 			}
+			// info.stripCache_->ingestStrip(info.tile, info.yBegin, info.yEnd);
 		}
 	};
 
@@ -359,10 +359,25 @@ namespace HWY_NAMESPACE
 		}
 		else
 		{
-			T transform;
-			info.yBegin = 0;
-			info.yEnd = highestResBuffer->height();
-			transform.transform(info);
+			uint32_t numTasks =
+				(highestResBuffer->height() + info.linesPerTask_ - 1) / info.linesPerTask_;
+			for(uint32_t t = 0; t < numTasks; ++t)
+			{
+				info.yBegin = t * info.linesPerTask_;
+				info.yEnd =
+					(t != numTasks - 1) ? (t + 1) * info.linesPerTask_ : highestResBuffer->height();
+				auto compressor = [info]() {
+					T transform;
+					transform.transform(info);
+				};
+				compressor();
+			}
+			/*
+					T transform;
+					info.yBegin = 0;
+					info.yEnd = highestResBuffer->height();
+					transform.transform(info);
+					*/
 		}
 	}
 	void hwy_compress_rev(ScheduleInfo info)

@@ -84,58 +84,51 @@ bool StripCache::ingestStrip(Tile* src, uint32_t yBegin, uint32_t yEnd)
 				return false;
 		}
 	}
-	uint32_t tileCount = 0;
-	{
-		std::unique_lock<std::mutex> lk(interleaveMutex_);
-		tileCount = ++strip->tileCounter;
-		if(!dest->compositeInterleaved(src, yBegin, yEnd))
-			return false;
-	}
 
-	if(tileCount == numTilesX_)
+	if(!dest->compositeInterleaved(src, yBegin, yEnd))
+		return false;
+
+	auto buf = GrkSerializeBuf(dest->interleavedData);
+	buf.index = stripId;
+	buf.dataLen = dataLen;
+	dest->interleavedData.data = nullptr;
+	std::queue<GrkSerializeBuf> buffersToSerialize;
 	{
-		auto buf = GrkSerializeBuf(dest->interleavedData);
-		buf.index = stripId;
-		buf.dataLen = dataLen;
-		dest->interleavedData.data = nullptr;
-		std::queue<GrkSerializeBuf> buffersToSerialize;
+		std::unique_lock<std::mutex> lk(heapMutex_);
+		// 1. push to heap
+		serializeHeap.push(buf);
+		// 2. get all sequential buffers in heap
+		buf = serializeHeap.pop();
+		while(buf.data)
 		{
-			std::unique_lock<std::mutex> lk(heapMutex_);
-			// 1. push to heap
-			serializeHeap.push(buf);
-			// 2. get all sequential buffers in heap
+			buffersToSerialize.push(buf);
 			buf = serializeHeap.pop();
-			while(buf.data)
+		}
+	}
+	// 3. serialize buffers
+	if(!buffersToSerialize.empty())
+	{
+		{
+			std::unique_lock<std::mutex> lk(serializeMutex_);
+			while(!buffersToSerialize.empty())
 			{
-				buffersToSerialize.push(buf);
-				buf = serializeHeap.pop();
+				auto b = buffersToSerialize.front();
+				if(!serializeBufferCallback_(b, serializeUserData_))
+					break;
+				buffersToSerialize.pop();
 			}
 		}
-		// 3. serialize buffers
+		// if non empty, then there has been a serialize failure
 		if(!buffersToSerialize.empty())
 		{
+			// cleanup
+			while(!buffersToSerialize.empty())
 			{
-				std::unique_lock<std::mutex> lk(serializeMutex_);
-				while(!buffersToSerialize.empty())
-				{
-					auto b = buffersToSerialize.front();
-					if(!serializeBufferCallback_(b, serializeUserData_))
-						break;
-					buffersToSerialize.pop();
-				}
+				auto b = buffersToSerialize.front();
+				b.dealloc();
+				buffersToSerialize.pop();
 			}
-			// if non empty, then there has been a serialize failure
-			if(!buffersToSerialize.empty())
-			{
-				// cleanup
-				while(!buffersToSerialize.empty())
-				{
-					auto b = buffersToSerialize.front();
-					b.dealloc();
-					buffersToSerialize.pop();
-				}
-				return false;
-			}
+			return false;
 		}
 	}
 
