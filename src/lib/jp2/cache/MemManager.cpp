@@ -32,7 +32,6 @@
 
 namespace grk
 {
-const uint32_t grkWidthAlignment = 32;
 const size_t grkBufferALignment = 64;
 
 // const bool debugMemory = false;
@@ -40,8 +39,8 @@ const size_t grkBufferALignment = 64;
 uint32_t grkMakeAlignedWidth(uint32_t width)
 {
 	assert(width);
-	return (uint32_t)((((uint64_t)width + grkWidthAlignment - 1) / grkWidthAlignment) *
-					  grkWidthAlignment);
+	return  (uint32_t)((((uint64_t)width + grkBufferALignment - 1) / grkBufferALignment) *
+			grkBufferALignment);
 }
 static inline void* grkAlignedAllocN(size_t alignment, size_t size)
 {
