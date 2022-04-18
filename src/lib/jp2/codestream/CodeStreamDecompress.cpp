@@ -557,16 +557,15 @@ bool CodeStreamDecompress::decompressTiles(void)
 				else
 				{
 					numTilesDecompressed++;
-					if(outputImage_->multiTile && processor->getImage())
+					auto img = processor->getImage();
+					if(outputImage_->multiTile && img)
 					{
-						if(supportsStripCache())
-						{
-							if(!stripCache_.ingestTile(processor->getImage()))
+						if(supportsStripCache()){
+							if (!stripCache_.ingestTile(img))
 								success = false;
 						}
-						else
-						{
-							if(!outputImage_->composite(processor->getImage()))
+						else {
+							if(!outputImage_->composite(img))
 								success = false;
 						}
 					}

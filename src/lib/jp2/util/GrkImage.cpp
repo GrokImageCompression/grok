@@ -934,9 +934,9 @@ bool GrkImage::composite(const GrkImage* srcImg)
  *
  * @return:			true if successful
  */
-bool GrkImage::compositeInterleaved(const GrkImage* srcImg)
+bool GrkImage::compositeInterleaved(const GrkImage* src)
 {
-	auto srcComp = srcImg->comps;
+	auto srcComp = src->comps;
 	auto destComp = comps;
 	grk_rect32 destWin;
 
@@ -945,9 +945,9 @@ bool GrkImage::compositeInterleaved(const GrkImage* srcImg)
 		GRK_WARN("GrkImage::compositeInterleaved: cannot generate composite bounds");
 		return false;
 	}
-	for(uint16_t i = 0; i < srcImg->decompressNumComps; ++i)
+	for(uint16_t i = 0; i < src->decompressNumComps; ++i)
 	{
-		if(!(srcImg->comps + i)->data)
+		if(!(src->comps + i)->data)
 		{
 			GRK_WARN("GrkImage::compositeInterleaved: null data for source component %u", i);
 			return false;
@@ -966,18 +966,18 @@ bool GrkImage::compositeInterleaved(const GrkImage* srcImg)
 			return false;
 			break;
 	}
-	auto destStride = grk::PlanarToInterleaved<int32_t>::getPackedBytes(srcImg->decompressNumComps,
+	auto destStride = grk::PlanarToInterleaved<int32_t>::getPackedBytes(src->decompressNumComps,
 																		destComp->w, prec);
-	auto destx0 = grk::PlanarToInterleaved<int32_t>::getPackedBytes(srcImg->decompressNumComps,
+	auto destx0 = grk::PlanarToInterleaved<int32_t>::getPackedBytes(src->decompressNumComps,
 																	destWin.x0, prec);
 	auto destIndex = (uint64_t)destWin.y0 * destStride + (uint64_t)destx0;
 	auto iter = InterleaverFactory<int32_t>::makeInterleaver(prec == 16 ? packer16BitBE : prec);
 	if(!iter)
 		return false;
 	int32_t const* planes[grk::maxNumPackComponents];
-	for(uint16_t i = 0; i < srcImg->decompressNumComps; ++i)
-		planes[i] = (srcImg->comps + i)->data;
-	iter->interleave(const_cast<int32_t**>(planes), srcImg->decompressNumComps,
+	for(uint16_t i = 0; i < src->decompressNumComps; ++i)
+		planes[i] = (src->comps + i)->data;
+	iter->interleave(const_cast<int32_t**>(planes), src->decompressNumComps,
 					 interleavedData.data + destIndex, destWin.width(), srcComp->stride, destStride,
 					 destWin.height(), 0);
 	delete iter;

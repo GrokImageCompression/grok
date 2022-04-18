@@ -329,9 +329,7 @@ class CodeStreamDecompress : public CodeStream, public ICodeStreamDecompress
 	uint16_t marker_scratch_size_;
 	GrkImage* outputImage_;
 	TileCache* tileCache_;
-
 	StripCache stripCache_;
-
 	grk_serialize_pixels_callback serializeBufferCallback;
 	void* serializeUserData;
 	grk_serialize_register_client_callback serializeRegisterClientCallback;

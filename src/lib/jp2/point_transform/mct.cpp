@@ -319,6 +319,8 @@ namespace HWY_NAMESPACE
 				auto compressor = [index, chunkSize, info]() {
 					T transform;
 					transform.transform(info, index, chunkSize);
+
+					// write to strip cache
 				};
 				if(info.flow_)
 				{
