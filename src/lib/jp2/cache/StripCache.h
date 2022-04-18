@@ -80,6 +80,7 @@ class StripCache
 	bool ingestStrip(Tile* src, uint32_t yBegin, uint32_t yEnd);
 	void returnBufferToPool(GrkSerializeBuf b);
 	bool isInitialized(void);
+	bool isMultiTile(void);
 
   private:
 	GrkSerializeBuf getBufferFromPool(uint64_t len);
@@ -98,6 +99,7 @@ class StripCache
 	mutable std::mutex heapMutex_;
 	mutable std::mutex interleaveMutex_;
 	bool initialized_;
+	bool multiTile_;
 };
 
 } // namespace grk

@@ -183,7 +183,7 @@ bool CodeStreamDecompress::readHeader(grk_header_info* header_info)
 			return false;
 		}
 		if(header_info)
-			headerImage_->multiTile = headerImage_->multiTile && !header_info->singleTileDecompress;
+			headerImage_->hasMultipleTiles = headerImage_->hasMultipleTiles && !header_info->singleTileDecompress;
 		auto composite = getCompositeImage();
 		headerImage_->copyHeader(composite);
 		if(header_info)
@@ -555,7 +555,7 @@ bool CodeStreamDecompress::decompressTiles(void)
 				{
 					numTilesDecompressed++;
 					auto img = processor->getImage();
-					if(outputImage_->multiTile && img)
+					if(outputImage_->hasMultipleTiles && img)
 					{
 						if(outputImage_->supportsStripCache(&cp_))
 						{
@@ -801,7 +801,7 @@ bool CodeStreamDecompress::decompressExec(void)
 
 bool CodeStreamDecompress::createOutputImage(void)
 {
-	if(!headerImage_->multiTile)
+	if(!headerImage_->hasMultipleTiles)
 	{
 		if(outputImage_)
 			grk_object_unref(&outputImage_->obj);
@@ -829,7 +829,7 @@ bool CodeStreamDecompress::decompressTile()
 				  "since first tile SOT has not been detected");
 		return false;
 	}
-	outputImage_->multiTile = false;
+	outputImage_->hasMultipleTiles = false;
 	auto tileCache = tileCache_->get((uint16_t)tileIndexToDecode());
 	auto tileProcessor = tileCache ? tileCache->processor : nullptr;
 	if(!tileCache || !tileCache->processor->getImage())

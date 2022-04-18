@@ -247,7 +247,7 @@ void GrkImage::copyHeader(GrkImage* dest)
 	dest->forceRGB = forceRGB;
 	dest->upsample = upsample;
 	dest->precision = precision;
-	dest->multiTile = multiTile;
+	dest->hasMultipleTiles = hasMultipleTiles;
 	dest->numPrecision = numPrecision;
 	dest->rowsPerStrip = rowsPerStrip;
 	dest->packedRowBytes = packedRowBytes;
@@ -285,7 +285,7 @@ bool GrkImage::supportsStripCache(CodingParams* cp)
 	if(!cp->wholeTileDecompress_)
 		return false;
 
-	if(multiTile)
+	if(hasMultipleTiles)
 	{
 		// packed tile width bits must be divisible by 8
 		if(((cp->t_width * numcomps * comps->prec) & 7) != 0)
@@ -404,7 +404,7 @@ void GrkImage::postReadHeader(CodingParams* cp)
 					grk::PlanarToInterleaved<int32_t>::getPackedBytes(ncmp, decompressWidth, prec);
 				break;
 		}
-		rowsPerStrip = multiTile ? ceildivpow2(cp->t_height, cp->coding_params_.dec_.reduce_)
+		rowsPerStrip = hasMultipleTiles ? ceildivpow2(cp->t_height, cp->coding_params_.dec_.reduce_)
 								 : singleTileRowsPerStrip;
 	}
 	if(rowsPerStrip > height())
@@ -831,7 +831,7 @@ bool GrkImage::allocCompositeData(void)
 {
 	// only allocate data if there are multiple tiles. Otherwise, the single tile data
 	// will simply be transferred to the output image
-	if(!multiTile)
+	if(!hasMultipleTiles)
 		return true;
 
 	for(uint32_t i = 0; i < numcomps; i++)

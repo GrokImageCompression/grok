@@ -994,7 +994,7 @@ typedef struct _grk_image
 	bool upsample;
 	grk_precision* precision;
 	uint32_t numPrecision;
-	bool multiTile;
+	bool hasMultipleTiles;
 	bool splitByComponent;
 	uint16_t decompressNumComps;
 	uint32_t decompressWidth;

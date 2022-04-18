@@ -430,7 +430,7 @@ bool TileProcessor::decompressT2T1(TileCodingParams* tcp, GrkImage* outputImage,
 	if(!decompressT2(tcp->compressedTileData_))
 	{
 		GRK_WARN("Tile %u was not decompressed", tileIndex_);
-		return outputImage->multiTile;
+		return outputImage->hasMultipleTiles;
 	}
 	// T1
 	bool doT1 = !current_plugin_tile || (current_plugin_tile->decompress_flags & GRK_DECODE_T1);
@@ -514,7 +514,7 @@ bool TileProcessor::decompressT2T1(TileCodingParams* tcp, GrkImage* outputImage,
 	}
 	if(doPost)
 	{
-		if(outputImage->multiTile)
+		if(outputImage->hasMultipleTiles)
 			generateImage(outputImage, tile);
 		else
 			outputImage->transferDataFrom(tile);
