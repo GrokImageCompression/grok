@@ -61,8 +61,8 @@ namespace HWY_NAMESPACE
 				auto ni = Clamp(NearestInt(Load(df, chan0 + j)) + vshift, vmin, vmax);
 				Store(ni, di, (int32_t*)(chan0 + j));
 			}
-			//if (info.stripCache_->isInitialized() && !info.stripCache_->isMultiTile())
-			//	info.stripCache_->ingestStrip(info.tile, info.yBegin, info.yEnd);
+			if (info.stripCache_->isInitialized() && !info.stripCache_->isMultiTile())
+				info.stripCache_->ingestStrip(info.tile, info.yBegin, info.yEnd);
 		}
 	};
 
