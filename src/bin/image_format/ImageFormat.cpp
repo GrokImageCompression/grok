@@ -20,7 +20,7 @@
 #include "common.h"
 #include "FileStreamIO.h"
 
-static bool reclaimCallback(grk_serialize_buf buffer, void* serialize_user_data)
+static bool applicationReclaimCallback(grk_serialize_buf buffer, void* serialize_user_data)
 {
 	auto pool = (BufferPool*)serialize_user_data;
 	if(pool)
@@ -45,7 +45,7 @@ void ImageFormat::serializeRegisterClientCallback(grk_serialize_callback reclaim
 }
 void ImageFormat::serializeRegisterApplicationClient(void)
 {
-	serializeRegisterClientCallback(reclaimCallback, &pool);
+	serializeRegisterClientCallback(applicationReclaimCallback, &pool);
 }
 void ImageFormat::serializeReclaimBuffer(grk_serialize_buf buffer)
 {
@@ -67,7 +67,11 @@ bool ImageFormat::encodeInit(grk_image* image, const std::string& filename,
 	fileName_ = filename;
 	image_ = image;
 	useStdIO_ = grk::useStdio(fileName_);
-	serializer.init(image_);
+
+	// we can ignore subsampling since it is disabled for library-orchestrated encoding,
+	// which is the only case where maxPooledRequests_ is utilized
+	auto maxRequests = (image_->comps->h + image_->rowsPerStrip - 1) / image_->rowsPerStrip;
+	serializer.setMaxPooledRequests(maxRequests);
 
 	return true;
 }
@@ -94,12 +98,7 @@ bool ImageFormat::encodePixelsCore(grk_serialize_buf pixels)
 	serializer.initPooledRequest();
 #endif
 	bool success = encodePixelsCoreWrite(pixels);
-	if(!success)
-	{
-		spdlog::error("TIFFFormat::encodePixelsCore: error in pixels encode");
-		encodeState |= IMAGE_FORMAT_ERROR;
-	}
-	else
+	if(success)
 	{
 #ifndef GROK_HAVE_URING
 		serializer.incrementPooled();
@@ -109,16 +108,25 @@ bool ImageFormat::encodePixelsCore(grk_serialize_buf pixels)
 		if(!applicationOrchestratedEncoding_ && serializer.allPooledRequestsComplete())
 			encodeFinish();
 	}
+	else
+	{
+		spdlog::error("TIFFFormat::encodePixelsCore: error in pixels encode");
+		encodeState |= IMAGE_FORMAT_ERROR;
+	}
 
 	return success;
 }
 // reclaim to local pool if library reclamation is not enabled
 void ImageFormat::applicationOrchestratedReclaim(GrkSerializeBuf buf)
 {
+#ifndef GROK_HAVE_URING
 	if(!serializer.getSerializerReclaimCallback())
 	{
 		pool.put(buf);
 	}
+#else
+	GRK_UNUSED(buf);
+#endif
 }
 bool ImageFormat::encodePixelsCoreWrite(grk_serialize_buf pixels)
 {

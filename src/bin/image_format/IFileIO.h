@@ -22,8 +22,6 @@
 #include "grok.h"
 #include "MemManager.h"
 
-typedef bool (*process_read_func)(void);
-
 struct GrkSerializeBuf : public grk_serialize_buf
 {
   public:

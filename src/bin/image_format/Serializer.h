@@ -14,7 +14,7 @@
 struct Serializer
 {
 	Serializer(void);
-	void init(grk_image* image);
+	void setMaxPooledRequests(uint32_t maxRequests);
 	void serializeRegisterClientCallback(grk_serialize_callback reclaim_callback, void* user_data);
 	grk_serialize_callback getSerializerReclaimCallback(void);
 	void* getSerializerReclaimUserData(void);

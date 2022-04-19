@@ -98,7 +98,7 @@ bool FileUringIO::initQueue(void)
 	int ret = io_uring_queue_init(QD, &ring, 0);
 	if(ret < 0)
 	{
-		spdlog::error("queue_init: %s\n", strerror(-ret));
+		spdlog::error("queue_init: {}\n", strerror(-ret));
 		close();
 		return false;
 	}
@@ -201,7 +201,7 @@ io_data* FileUringIO::retrieveCompletion(bool peek, bool& success)
 	if(cqe->res < 0)
 	{
 		spdlog::error("The system call invoked asynchronously has failed with the following error:"
-					  " \n%s",
+					  " \n{}",
 					  strerror(cqe->res));
 		success = false;
 		return nullptr;

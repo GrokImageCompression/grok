@@ -10,11 +10,9 @@ Serializer::Serializer(void)
 	  numPooledRequests_(0), maxPooledRequests_(0), asynchActive_(false), off_(0),
 	  reclaim_callback_(nullptr), reclaim_user_data_(nullptr)
 {}
-void Serializer::init(grk_image* image)
+void Serializer::setMaxPooledRequests(uint32_t maxRequests)
 {
-	// we can ignore subsampling since it is disabled for library-orchestrated encoding,
-	// which is the only case where maxPooledRequests_ is utilized
-	maxPooledRequests_ = (image->comps->h + image->rowsPerStrip - 1) / image->rowsPerStrip;
+	maxPooledRequests_ = maxRequests;
 }
 void Serializer::serializeRegisterClientCallback(grk_serialize_callback reclaim_callback,
 												 void* user_data)
@@ -148,24 +146,25 @@ uint64_t Serializer::seek(int64_t off, int32_t whence)
 size_t Serializer::write(uint8_t* buf, size_t bytes_total)
 {
 #ifdef GROK_HAVE_URING
+	// asynchronous write
 	if(asynchActive_)
 	{
+		// 1. schedule buffer
 		scheduled_.data = buf;
 		scheduled_.dataLen = bytes_total;
 		scheduled_.offset = off_;
 		uring.write(scheduled_);
 		off_ += scheduled_.dataLen;
+		// 2. close if this is final buffer to schedule
 		if(scheduled_.pooled && (++numPooledRequests_ == maxPooledRequests_))
-		{
-			uring.close();
-			asynchActive_ = false;
-		}
-		// clear
+			close();
+		// 3. clear scheduled
 		scheduled_ = GrkSerializeBuf();
 
 		return bytes_total;
 	}
 #endif
+	// synchronous write
 	ssize_t count = 0;
 	size_t bytes_written = 0;
 	for(; bytes_written < bytes_total; bytes_written += (size_t)count)
