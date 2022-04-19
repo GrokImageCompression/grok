@@ -405,7 +405,7 @@ void GrkImage::postReadHeader(CodingParams* cp)
 				break;
 		}
 		rowsPerStrip = hasMultipleTiles ? ceildivpow2(cp->t_height, cp->coding_params_.dec_.reduce_)
-								 : singleTileRowsPerStrip;
+										: singleTileRowsPerStrip;
 	}
 	if(rowsPerStrip > height())
 		rowsPerStrip = height();
@@ -986,7 +986,7 @@ bool GrkImage::compositeInterleaved(const Tile* src, uint32_t yBegin, uint32_t y
 		grk::PlanarToInterleaved<int32_t>::getPackedBytes(src->numcomps_, destWin.x0, prec);
 	auto destIndex = (uint64_t)destWin.y0 * destStride + (uint64_t)destx0;
 	auto iter = InterleaverFactory<int32_t>::makeInterleaver(
-			prec == 16 && decompressFormat != GRK_TIF_FMT ? packer16BitBE : prec);
+		prec == 16 && decompressFormat != GRK_TIF_FMT ? packer16BitBE : prec);
 	if(!iter)
 		return false;
 	int32_t const* planes[grk::maxNumPackComponents];

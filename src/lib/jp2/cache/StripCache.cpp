@@ -37,7 +37,7 @@ uint32_t Strip::reduceDim(uint32_t dim)
 StripCache::StripCache()
 	: strips(nullptr), numTilesX_(0), numStrips_(0), stripHeight_(0), imageY0_(0),
 	  packedRowBytes_(0), serializeUserData_(nullptr), serializeBufferCallback_(nullptr),
-	  initialized_(false),multiTile_(true)
+	  initialized_(false), multiTile_(true)
 {}
 StripCache::~StripCache()
 {
@@ -51,7 +51,8 @@ bool StripCache::isInitialized(void)
 {
 	return initialized_;
 }
-bool StripCache::isMultiTile(void){
+bool StripCache::isMultiTile(void)
+{
 	return multiTile_;
 }
 void StripCache::init(uint16_t numTilesX, uint32_t numStrips, uint32_t stripHeight, uint8_t reduce,

@@ -39,8 +39,8 @@ const size_t grkBufferALignment = 64;
 uint32_t grkMakeAlignedWidth(uint32_t width)
 {
 	assert(width);
-	return  (uint32_t)((((uint64_t)width + grkBufferALignment - 1) / grkBufferALignment) *
-			grkBufferALignment);
+	return (uint32_t)((((uint64_t)width + grkBufferALignment - 1) / grkBufferALignment) *
+					  grkBufferALignment);
 }
 static inline void* grkAlignedAllocN(size_t alignment, size_t size)
 {
