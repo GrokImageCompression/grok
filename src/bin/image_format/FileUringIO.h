@@ -60,7 +60,6 @@ class FileUringIO : public IFileIO
 	bool initQueue(void);
 
 	const uint32_t QD = 1024;
-	const uint32_t BS = (32 * 1024);
 	grk_serialize_callback reclaim_callback_;
 	void* reclaim_user_data_;
 };
