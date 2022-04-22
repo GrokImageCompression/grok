@@ -249,11 +249,7 @@ bool FileUringIO::close(void)
 	}
 	requestsSubmitted = 0;
 	requestsCompleted = 0;
-	bool rc = false;
-	if(!ownsDescriptor)
-		rc = true;
-	else if(fd_ && ::close(fd_) == 0)
-		rc = true;
+	bool rc = !ownsDescriptor || (fd_ && ::close(fd_) == 0);
 	fd_ = 0;
 	ownsDescriptor = false;
 
