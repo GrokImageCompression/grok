@@ -23,7 +23,7 @@ static int32_t get_file_open_mode(const char* mode)
 			break;
 		case 'w':
 		case 'a':
-			m = O_RDWR | O_CREAT;
+			m = O_WRONLY | O_CREAT;
 			if(mode[0] == 'w')
 				m |= O_TRUNC;
 			break;
@@ -89,15 +89,11 @@ static grk_handle open_fd(const char* fname, const char* mode)
 			dwMode = OPEN_EXISTING;
 			break;
 		case O_RDWR:
+		case O_WRONLY | O_CREAT:
 			dwMode = OPEN_ALWAYS;
 			break;
-		case O_RDWR | O_CREAT:
-			dwMode = OPEN_ALWAYS;
-			break;
-		case O_RDWR | O_TRUNC:
-			dwMode = CREATE_ALWAYS;
-			break;
-		case O_RDWR | O_CREAT | O_TRUNC:
+		case O_WRONLY | O_TRUNC:
+		case O_WRONLY | O_CREAT | O_TRUNC:
 			dwMode = CREATE_ALWAYS;
 			break;
 		default:

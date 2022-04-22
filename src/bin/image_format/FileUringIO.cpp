@@ -121,7 +121,7 @@ int FileUringIO::getMode(const char* mode)
 			m = O_WRONLY | O_CREAT | O_TRUNC;
 			break;
 		case 'a':
-			m = O_RDWR | O_CREAT;
+			m = O_WRONLY | O_CREAT;
 			break;
 		default:
 			spdlog::error("Bad mode {}", mode);
