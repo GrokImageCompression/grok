@@ -82,7 +82,7 @@ int Serializer::getMode(std::string mode)
 bool Serializer::open(std::string name, std::string mode)
 {
 	bool useStdio = grk::useStdio(name);
-	bool doRead = mode[0] == -'r';
+	bool doRead = mode[0] == 'r';
 	int fd = 0;
 	if(useStdio)
 	{
