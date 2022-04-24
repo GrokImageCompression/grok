@@ -38,7 +38,7 @@ class DecompressScheduler : public Scheduler
   public:
 	DecompressScheduler(TileProcessor* tileProcessor, Tile* tile, TileCodingParams* tcp,
 						uint8_t prec);
-	~DecompressScheduler() = default;
+	~DecompressScheduler();
 
 	bool schedule(uint16_t compno) override;
 
@@ -50,6 +50,7 @@ class DecompressScheduler : public Scheduler
 	TileCodingParams* tcp_;
 	uint8_t prec_;
 	DecompressBlocks allBlocks_;
+	WaveletReverse **waveletReverse_;
 };
 
 } // namespace grk
