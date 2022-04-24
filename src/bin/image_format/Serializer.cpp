@@ -33,8 +33,9 @@ void* Serializer::getSerializerReclaimUserData(void)
 }
 #ifdef _WIN32
 
-bool Serializer::open(std::string name, std::string mode)
+bool Serializer::open(std::string name, std::string mode, bool asynch)
 {
+	GRK_UNUSED(asynch);
 	return fileStreamIO.open(name, mode);
 }
 bool Serializer::close(void)
