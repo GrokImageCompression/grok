@@ -90,9 +90,7 @@ TIFF* TIFFFormat::MyTIFFOpen(const char* name, const char* mode)
 		return ((TIFF*)0);
 	auto tif = TIFFClientOpen(name, mode, &serializer, TiffRead, TiffWrite, TiffSeek, TiffClose,
 							  TiffSize, nullptr, nullptr);
-	if(tif)
-		tif->tif_fd = serializer.getFd();
-	else
+	if(!tif)
 		serializer.close();
 
 	return tif;
