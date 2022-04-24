@@ -282,6 +282,18 @@ bool BMPFormat::encodePixels()
 		if(write(destBuff) != destBuff.dataLen)
 			goto cleanup;
 		destBuff = pool.get(packedLen);
+		// pooled buffer may not have been zero-padded
+#ifdef GROK_HAVE_URING
+		if(pad_dest)
+		{
+			uint8_t* ptr = destBuff.data + w_dest - pad_dest;
+			for(uint32_t m = 0; m < image_->rowsPerStrip; ++m)
+			{
+				memset(ptr, 0, pad_dest);
+				ptr += w_dest;
+			}
+		}
+#endif
 		off_ += destInd;
 		rowCount += k_max;
 	}
