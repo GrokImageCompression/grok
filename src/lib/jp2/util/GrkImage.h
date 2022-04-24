@@ -95,6 +95,8 @@ class GrkImage : public grk_image
 	uint32_t width(void) const;
 	uint32_t height(void) const;
 	void print(void) const;
+	bool componentsEqual(bool checkPrecision);
+	bool componentsEqual(uint16_t firstNComponents, bool checkPrecision);
 
   private:
 	~GrkImage();
@@ -118,7 +120,7 @@ class GrkImage : public grk_image
 	bool color_esycc_to_rgb(void);
 	bool applyICC(void);
 	bool cieLabToRGB(void);
-	bool componentsEqual(grk_image_comp* src, grk_image_comp* dest);
+	bool componentsEqual(grk_image_comp* src, grk_image_comp* dest, bool checkPrecision);
 	static void copyComponent(grk_image_comp* src, grk_image_comp* dest);
 	void scaleComponent(grk_image_comp* component, uint8_t precision);
 };

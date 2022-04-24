@@ -552,16 +552,13 @@ bool TileProcessor::needsMctDecompress(void)
 		return false;
 	if(tile->numcomps_ < 3)
 	{
-		GRK_WARN("Number of components (%u) is inconsistent with a MCT. Skip the MCT step.",
+		GRK_WARN("Number of components (%u) is less than 3 - skipping MCT.",
 				 tile->numcomps_);
 		return false;
 	}
-	/* testcase 1336.pdf.asan.47.376 */
-	uint64_t samples = tile->comps->getBuffer()->stridedArea();
-	if(tile->comps[1].getBuffer()->stridedArea() != samples ||
-	   tile->comps[2].getBuffer()->stridedArea() != samples)
+	if (!headerImage->componentsEqual(3,false))
 	{
-		GRK_WARN("Not all tiles components have the same dimension: skipping MCT.");
+		GRK_WARN("Not all tiles components have the same dimensions - skipping MCT.");
 		return false;
 	}
 	if(tcp_->mct == 2 && !tcp_->mct_decoding_matrix_)
@@ -647,8 +644,6 @@ bool TileProcessor::dcLevelShiftCompress()
 }
 bool TileProcessor::mct_encode()
 {
-	uint64_t samples = tile->comps->getBuffer()->stridedArea();
-
 	if(!tcp_->mct)
 		return true;
 	if(tcp_->mct == 2)
@@ -661,6 +656,7 @@ bool TileProcessor::mct_encode()
 			auto tile_comp = tile->comps + i;
 			data[i] = (uint8_t*)tile_comp->getBuffer()->getResWindowBufferHighestREL()->getBuffer();
 		}
+		uint64_t samples = tile->comps->getBuffer()->stridedArea();
 		bool rc = mct::compress_custom((uint8_t*)tcp_->mct_coding_matrix_, samples, data,
 									   tile->numcomps_, headerImage->comps->sgnd);
 		delete[] data;

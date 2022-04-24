@@ -54,14 +54,32 @@ void GrkImage::copyComponent(grk_image_comp* src, grk_image_comp* dest)
 	dest->type = src->type;
 }
 
-bool GrkImage::componentsEqual(grk_image_comp* src, grk_image_comp* dest)
+bool GrkImage::componentsEqual(uint16_t firstNComponents, bool checkPrecision){
+	if (firstNComponents <= 1)
+		return true;
+
+	// check that all components dimensions etc. are equal
+	for(uint16_t compno = 1; compno < firstNComponents; compno++)
+	{
+		if(!componentsEqual(comps, comps + compno, checkPrecision))
+			return false;
+	}
+
+	return true;
+}
+bool GrkImage::componentsEqual(bool checkPrecision){
+	return componentsEqual(numcomps, checkPrecision);
+}
+bool GrkImage::componentsEqual(grk_image_comp* src, grk_image_comp* dest, bool checkPrecision)
 {
+	if (checkPrecision && dest->prec != src->prec)
+		return false;
+
 	return (dest->dx == src->dx && dest->dy == src->dy && dest->w == src->w &&
 			dest->stride == src->stride && dest->h == src->h && dest->x0 == src->x0 &&
 			dest->y0 == src->y0 && dest->Xcrg == src->Xcrg && dest->Ycrg == src->Ycrg &&
-			dest->prec == src->prec && dest->sgnd == src->sgnd && dest->type == src->type);
+			dest->sgnd == src->sgnd && dest->type == src->type);
 }
-
 GrkImage* GrkImage::create(grk_image* src, uint16_t numcmpts, grk_image_comp* cmptparms,
 						   GRK_COLOR_SPACE clrspc, bool doAllocation)
 {
@@ -312,14 +330,8 @@ bool GrkImage::supportsStripCache(CodingParams* cp)
 	{
 		return false;
 	}
-	// check that all components dimensions etc. are equal
-	for(uint16_t compno = 1; compno < numcomps; compno++)
-	{
-		if(!componentsEqual(comps, comps + compno))
-			return false;
-	}
 
-	return true;
+	return componentsEqual(true);
 }
 
 bool GrkImage::isSubsampled()
