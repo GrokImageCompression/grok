@@ -92,7 +92,7 @@ bool PNMFormat::encodeHeader(void)
 	// write first header if we start with non-split encode
 	if(doNonSplitEncode())
 	{
-		if(!serializer.open(fileName_, "wb"))
+		if(!serializer.open(fileName_, "wb",true))
 			return false;
 		if(!writeHeader(false))
 			return false;

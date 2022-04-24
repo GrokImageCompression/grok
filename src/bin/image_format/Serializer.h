@@ -21,7 +21,7 @@ struct Serializer
 #ifndef _WIN32
 	int getFd(void);
 #endif
-	bool open(std::string name, std::string mode);
+	bool open(std::string name, std::string mode, bool asynch);
 	bool close(void);
 	size_t write(uint8_t* buf, size_t size);
 	uint64_t seek(int64_t off, int32_t whence);
@@ -52,4 +52,6 @@ struct Serializer
 	uint64_t off_;
 	grk_serialize_callback reclaim_callback_;
 	void* reclaim_user_data_;
+	std::string filename_;
+	std::string mode_;
 };

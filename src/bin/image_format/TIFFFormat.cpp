@@ -86,7 +86,7 @@ static uint64_t TiffSize(thandle_t handle)
 
 TIFF* TIFFFormat::MyTIFFOpen(const char* name, const char* mode)
 {
-	if(!serializer.open(name, mode))
+	if(!serializer.open(name, mode,true))
 		return ((TIFF*)0);
 	auto tif = TIFFClientOpen(name, mode, &serializer, TiffRead, TiffWrite, TiffSeek, TiffClose,
 							  TiffSize, nullptr, nullptr);

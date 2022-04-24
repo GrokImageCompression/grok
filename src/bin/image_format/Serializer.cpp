@@ -67,10 +67,10 @@ int Serializer::getMode(std::string mode)
 				m = O_RDWR;
 			break;
 		case 'w':
+			m = O_WRONLY | O_CREAT | O_TRUNC;
+			break;
 		case 'a':
-			m = O_RDWR | O_CREAT;
-			if(mode[0] == 'w')
-				m |= O_TRUNC;
+			m = O_WRONLY | O_CREAT;
 			break;
 		default:
 			spdlog::error("Bad mode {}", mode);
@@ -79,7 +79,7 @@ int Serializer::getMode(std::string mode)
 	return (m);
 }
 
-bool Serializer::open(std::string name, std::string mode)
+bool Serializer::open(std::string name, std::string mode, bool asynch)
 {
 	bool useStdio = grk::useStdio(name);
 	bool doRead = mode[0] == 'r';
@@ -105,11 +105,15 @@ bool Serializer::open(std::string name, std::string mode)
 		}
 	}
 #ifdef GROK_HAVE_URING
-	if(!uring.attach(name, mode, fd))
-		return false;
-	asynchActive_ = true;
+	if (asynch) {
+		if(!uring.attach(name, mode, fd))
+			return false;
+		asynchActive_ = true;
+	}
 #endif
 	fd_ = fd;
+	filename_ = name;
+	mode_ = mode;
 
 	return true;
 }
@@ -158,6 +162,9 @@ size_t Serializer::write(uint8_t* buf, size_t bytes_total)
 			// todo: handle return value
 			assert(rc);
 			GRK_UNUSED(rc);
+			close();
+			// todo: re-open in buffered mode
+			open(filename_,"a",false);
 		}
 		// 3. clear scheduled
 		scheduled_ = GrkSerializeBuf();
