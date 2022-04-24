@@ -115,10 +115,6 @@ bool Serializer::open(std::string name, std::string mode)
 }
 bool Serializer::close(void)
 {
-#ifdef GROK_HAVE_URING
-	asynchActive_ = false;
-	return uring.close();
-#endif
 	if(fd_ < 0)
 		return true;
 
@@ -155,9 +151,14 @@ size_t Serializer::write(uint8_t* buf, size_t bytes_total)
 		scheduled_.offset = off_;
 		uring.write(scheduled_);
 		off_ += scheduled_.dataLen;
-		// 2. close if this is final buffer to schedule
-		if(scheduled_.pooled && (++numPooledRequests_ == maxPooledRequests_))
-			close();
+		// 2. close uring if this is final buffer to schedule
+		if(scheduled_.pooled && (++numPooledRequests_ == maxPooledRequests_)){
+			asynchActive_ = false;
+			bool rc =  uring.close();
+			// todo: handle return value
+			assert(rc);
+			GRK_UNUSED(rc);
+		}
 		// 3. clear scheduled
 		scheduled_ = GrkSerializeBuf();
 
