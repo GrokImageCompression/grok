@@ -51,6 +51,7 @@ class DecompressScheduler : public Scheduler
 	uint8_t prec_;
 	DecompressBlocks allBlocks_;
 	WaveletReverse **waveletReverse_;
+	uint16_t numcomps_;
 };
 
 } // namespace grk
