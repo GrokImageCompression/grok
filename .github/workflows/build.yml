@@ -97,7 +97,7 @@ jobs:
     - name: test
       working-directory: ${{ github.workspace }}/build
       shell: bash
-        # if: "!startsWith(matrix.os, 'windows')"
+      if: "!startsWith(matrix.os, 'windows')"
       run: ctest --output-on-failure -C $BUILD_TYPE
 
     - name: package
