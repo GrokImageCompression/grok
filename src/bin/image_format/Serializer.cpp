@@ -132,7 +132,7 @@ bool Serializer::close(void)
 uint64_t Serializer::seek(int64_t off, int32_t whence)
 {
 	if(asynchActive_)
-		return 0;
+		return off_;
 	off_t rc = lseek(getFd(), off, whence);
 	if(rc == (off_t)-1)
 	{
