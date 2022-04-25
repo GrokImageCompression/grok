@@ -97,7 +97,7 @@ jobs:
     - name: test
       working-directory: ${{ github.workspace }}/build
       shell: bash
-      if: "!startsWith(matrix.os, 'windows')"
+        # if: "!startsWith(matrix.os, 'windows')"
       run: ctest --output-on-failure -C $BUILD_TYPE
 
     - name: package
@@ -116,7 +116,7 @@ jobs:
 
     - name: Upload binaries to release
       uses: softprops/action-gh-release@v1
-        # if: ${{startsWith(github.ref, 'refs/tags/') }}
+      if: ${{startsWith(github.ref, 'refs/tags/') }}
       with:
           files: build/grok-${{ matrix.os }}.zip 
 
