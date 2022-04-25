@@ -82,6 +82,7 @@ int Serializer::getMode(std::string mode)
 
 bool Serializer::open(std::string name, std::string mode, bool asynch)
 {
+	GRK_UNUSED(asynch);
 	bool useStdio = grk::useStdio(name);
 	bool doRead = mode[0] == 'r';
 	int fd = 0;
@@ -131,7 +132,7 @@ bool Serializer::close(void)
 uint64_t Serializer::seek(int64_t off, int32_t whence)
 {
 	if(asynchActive_)
-		return off_;
+		return 0;
 	off_t rc = lseek(getFd(), off, whence);
 	if(rc == (off_t)-1)
 	{
@@ -185,6 +186,7 @@ size_t Serializer::write(uint8_t* buf, size_t bytes_total)
 		count = ::write(fd_, buf_offset, io_size);
 		if(count <= 0)
 			break;
+		off_ += (uint64_t)count;
 	}
 
 	return (size_t)count;
