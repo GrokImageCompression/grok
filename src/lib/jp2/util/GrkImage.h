@@ -102,6 +102,7 @@ class GrkImage : public grk_image
 	~GrkImage();
 	std::string getColourSpaceString(void);
 	std::string getICCColourSpaceString(cmsColorSpaceSignature color_space);
+	bool isValidICCColourSpace(uint32_t signature);
 	bool needsConversionToRGB(void);
 	bool isOpacity(uint16_t compno);
 	bool compositePlanar(const GrkImage* srcImg);

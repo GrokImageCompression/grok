@@ -1020,51 +1020,108 @@ std::string GrkImage::getICCColourSpaceString(cmsColorSpaceSignature color_space
 
 	return rc;
 }
+bool GrkImage::isValidICCColourSpace(uint32_t signature){
+	return    (signature == cmsSigXYZData ) ||
+				(signature == cmsSigLabData ) ||
+				(signature == cmsSigLuvData ) ||
+				(signature == cmsSigYCbCrData ) ||
+				(signature == cmsSigYxyData ) ||
+				(signature == cmsSigRgbData ) ||
+				(signature == cmsSigGrayData ) ||
+				(signature == cmsSigHsvData ) ||
+				(signature == cmsSigHlsData ) ||
+				(signature == cmsSigCmykData ) ||
+				(signature == cmsSigCmyData ) ||
+				(signature == cmsSigMCH1Data ) ||
+				(signature == cmsSigMCH2Data ) ||
+				(signature == cmsSigMCH3Data ) ||
+				(signature == cmsSigMCH4Data ) ||
+				(signature == cmsSigMCH5Data ) ||
+				(signature == cmsSigMCH6Data ) ||
+				(signature == cmsSigMCH7Data ) ||
+				(signature == cmsSigMCH8Data ) ||
+				(signature == cmsSigMCH9Data ) ||
+				(signature == cmsSigMCHAData ) ||
+				(signature == cmsSigMCHBData ) ||
+				(signature == cmsSigMCHCData ) ||
+				(signature == cmsSigMCHDData ) ||
+				(signature == cmsSigMCHEData ) ||
+				(signature == cmsSigMCHFData ) ||
+				(signature == cmsSigNamedData ) ||
+				(signature == cmsSig1colorData ) ||
+				(signature == cmsSig2colorData ) ||
+				(signature == cmsSig3colorData ) ||
+				(signature == cmsSig4colorData ) ||
+				(signature == cmsSig5colorData ) ||
+				(signature == cmsSig6colorData ) ||
+				(signature == cmsSig7colorData ) ||
+				(signature == cmsSig8colorData ) ||
+				(signature == cmsSig9colorData ) ||
+				(signature == cmsSig10colorData ) ||
+				(signature == cmsSig11colorData ) ||
+				(signature == cmsSig12colorData ) ||
+				(signature == cmsSig13colorData ) ||
+				(signature == cmsSig14colorData ) ||
+				(signature == cmsSig15colorData ) ||
+				(signature == cmsSigLuvKData );
+}
 bool GrkImage::validateICC(void)
 {
 	// check if already validated
 	if(color_space == GRK_CLRSPC_ICC)
 		return true;
 
-	bool colourSpaceValid = false;
-	bool imageValid = false;
-	bool colourSpaceSupported = false;
-	cmsColorSpaceSignature cmsColorSpaceSignature;
+	// image colour space matches ICC colour space
+	bool imageColourSpaceMatchesICCColourSpace = false;
+
+	// image properties such as subsampling and number of components
+	// are consistent with colour space
+	bool imagePropertiesMatchColourSpace = false;
+
+	// ICC colour space conversion is supported for this colour space
+	bool iccColourSpaceCanBeConverted = false;
+
+	uint32_t iccColourSpace = 0;
 	auto in_prof = cmsOpenProfileFromMem(meta->color.icc_profile_buf, meta->color.icc_profile_len);
 	if(in_prof)
 	{
-		cmsColorSpaceSignature = cmsGetColorSpace(in_prof);
-		switch(cmsColorSpaceSignature)
+		iccColourSpace = cmsGetColorSpace(in_prof);
+		if(!isValidICCColourSpace(iccColourSpace))
+		{
+			GRK_WARN("Invalid ICC colour space 0x%x. Ignoring",iccColourSpace);
+			return false;
+		}
+		switch(iccColourSpace)
 		{
 			case cmsSigLabData:
-				colourSpaceValid =
+				imageColourSpaceMatchesICCColourSpace =
 					(color_space == GRK_CLRSPC_DEFAULT_CIE || color_space == GRK_CLRSPC_CUSTOM_CIE);
-				imageValid = numcomps >= 3;
+				imagePropertiesMatchColourSpace = numcomps >= 3;
 				break;
 			case cmsSigYCbCrData:
-				colourSpaceValid =
+				imageColourSpaceMatchesICCColourSpace =
 					(color_space == GRK_CLRSPC_SYCC || color_space == GRK_CLRSPC_EYCC);
 				if(numcomps < 3)
-					imageValid = false;
+					imagePropertiesMatchColourSpace = false;
 				else
 				{
 					auto compLuma = comps;
-					imageValid = compLuma->dx == 1 && compLuma->dy == 1 && isSubsampled();
+					imagePropertiesMatchColourSpace = compLuma->dx == 1 && compLuma->dy == 1 && isSubsampled();
 				}
 				break;
 			case cmsSigRgbData:
-				colourSpaceValid = color_space == GRK_CLRSPC_SRGB;
-				imageValid = numcomps >= 3 && !isSubsampled();
-				colourSpaceSupported = true;
+				imageColourSpaceMatchesICCColourSpace = color_space == GRK_CLRSPC_SRGB;
+				imagePropertiesMatchColourSpace = numcomps >= 3 && !isSubsampled();
+				iccColourSpaceCanBeConverted = true;
 				break;
 			case cmsSigGrayData:
-				colourSpaceValid = color_space == GRK_CLRSPC_GRAY;
-				imageValid = numcomps <= 2;
-				colourSpaceSupported = true;
+				imageColourSpaceMatchesICCColourSpace = color_space == GRK_CLRSPC_GRAY;
+				imagePropertiesMatchColourSpace = numcomps <= 2;
+				iccColourSpaceCanBeConverted = true;
 				break;
 			case cmsSigCmykData:
-				colourSpaceValid = color_space == GRK_CLRSPC_CMYK;
-				imageValid = numcomps == 4 && !isSubsampled();
+				imageColourSpaceMatchesICCColourSpace = color_space == GRK_CLRSPC_CMYK;
+				imagePropertiesMatchColourSpace = numcomps == 4 && !isSubsampled();
 				break;
 			default:
 				break;
@@ -1073,27 +1130,27 @@ bool GrkImage::validateICC(void)
 	}
 	else
 	{
-		GRK_WARN("Unable to parse ICC colour space. Ignoring");
+		GRK_WARN("Unable to parse ICC profile. Ignoring");
 		return false;
 	}
-	if(!colourSpaceSupported)
+	if(!iccColourSpaceCanBeConverted)
 	{
 		GRK_WARN("Unsupported ICC colour space %s. Ignoring",
-				 getICCColourSpaceString(cmsColorSpaceSignature).c_str());
+				 getICCColourSpaceString((cmsColorSpaceSignature)iccColourSpace).c_str());
 		return false;
 	}
-	if(color_space != GRK_CLRSPC_UNKNOWN && !colourSpaceValid)
+	if(color_space != GRK_CLRSPC_UNKNOWN && !imageColourSpaceMatchesICCColourSpace)
 	{
-		GRK_WARN("Image signaled colour space %s doesn't match ICC colour space %s. Ignoring",
+		GRK_WARN("Signaled colour space %s doesn't match ICC colour space %s. Ignoring",
 				 getColourSpaceString().c_str(),
-				 getICCColourSpaceString(cmsColorSpaceSignature).c_str());
+				 getICCColourSpaceString((cmsColorSpaceSignature)iccColourSpace).c_str());
 		return false;
 	}
-	if(!imageValid)
-		GRK_WARN("Image properties do not match ICC colour space %s. Ignoring",
-				 getICCColourSpaceString(cmsColorSpaceSignature).c_str());
+	if(!imageColourSpaceMatchesICCColourSpace)
+		GRK_WARN("Image subsampling / number of components do not match ICC colour space %s. Ignoring",
+				 getICCColourSpaceString((cmsColorSpaceSignature)iccColourSpace).c_str());
 
-	return imageValid;
+	return imagePropertiesMatchColourSpace;
 }
 
 bool GrkImage::applyColourManagement(void)
