@@ -1089,6 +1089,8 @@ bool GrkImage::validateICC(void)
 		if(!isValidICCColourSpace(iccColourSpace))
 		{
 			GRK_WARN("Invalid ICC colour space 0x%x. Ignoring",iccColourSpace);
+			cmsCloseProfile(in_prof);
+
 			return false;
 		}
 		switch(iccColourSpace)
