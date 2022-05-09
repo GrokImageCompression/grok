@@ -356,7 +356,7 @@ bool CodeStreamDecompress::read_poc(uint8_t* headerData, uint16_t header_size)
 {
 	assert(headerData != nullptr);
 	auto image = getHeaderImage();
-	uint16_t maxNumResLevels = 0;
+	uint8_t maxNumResLevels = 0;
 	auto tcp = get_current_decode_tcp();
 	for(uint16_t i = 0; i < image->numcomps; ++i)
 	{
@@ -411,6 +411,7 @@ bool CodeStreamDecompress::read_poc(uint8_t* headerData, uint16_t header_size)
 		/* REpoc_i */
 		grk_read<uint8_t>(headerData, &current_prog->resE);
 		++headerData;
+		current_prog->resE = std::min<uint8_t>(current_prog->resE, maxNumResLevels);
 		if(current_prog->resE <= current_prog->resS)
 		{
 			GRK_ERROR("read_poc: invalid POC end resolution %u", current_prog->compS);
