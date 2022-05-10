@@ -232,7 +232,7 @@ bool PacketIter::genPrecinctInfoOPT(void)
 
 	return true;
 }
-bool PacketIter::generatePrecinctIndex(void)
+bool PacketIter::validatePrecinct(void)
 {
 	auto comp = comps + compno;
 	if(resno >= comp->numresolutions)
@@ -276,9 +276,13 @@ bool PacketIter::generatePrecinctIndex(void)
 				return false;
 		}
 	}
-	precinctIndex = px0grid_ + (uint64_t)py0grid_ * res->precinctGridWidth;
-
 	return true;
+}
+void PacketIter::generatePrecinctIndex(void)
+{
+	auto comp = comps + compno;
+	auto res = comp->resolutions + resno;
+	precinctIndex = px0grid_ + (uint64_t)py0grid_ * res->precinctGridWidth;
 }
 
 /**
@@ -920,15 +924,17 @@ bool PacketIter::next_cprl(SparseBuffer* src)
 			{
 				for(; resno < prog.resE; resno++)
 				{
-					if(!generatePrecinctIndex())
+					if (!validatePrecinct())
 						continue;
 					if(incrementInner)
 						layno++;
 					if(layno < prog.layE)
 					{
 						incrementInner = true;
-						if(update_include())
+						generatePrecinctIndex();
+						if(update_include()){
 							return true;
+						}
 					}
 					layno = prog.layS;
 					incrementInner = false;
@@ -967,13 +973,14 @@ bool PacketIter::next_pcrl(SparseBuffer* src)
 			{
 				for(; resno < prog.resE; resno++)
 				{
-					if(!generatePrecinctIndex())
+					if (!validatePrecinct())
 						continue;
 					if(incrementInner)
 						layno++;
 					if(layno < prog.layE)
 					{
 						incrementInner = true;
+						generatePrecinctIndex();
 						if(update_include())
 							return true;
 					}
@@ -1112,13 +1119,14 @@ bool PacketIter::next_rpcl(SparseBuffer* src)
 				// calculate x
 				for(; compno < prog.compE; compno++)
 				{
-					if(!generatePrecinctIndex())
+					if (!validatePrecinct())
 						continue;
 					if(incrementInner)
 						layno++;
 					if(layno < prog.layE)
 					{
 						incrementInner = true;
+						generatePrecinctIndex();
 						if(update_include())
 							return true;
 					}

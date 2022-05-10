@@ -288,7 +288,8 @@ struct PacketIter
 	bool genPrecinctX0GridPCRL_OPT(ResPrecinctInfo* rpInfo);
 	bool genPrecinctY0GridPCRL_OPT(ResPrecinctInfo* rpInfo);
 	bool precInfoCheck(ResPrecinctInfo* rpInfo);
-	bool generatePrecinctIndex(void);
+	void generatePrecinctIndex(void);
+	bool validatePrecinct(void);
 	void update_dxy_for_comp(PiComp* comp, bool updateActive);
 	bool isWholeTile(void);
 
