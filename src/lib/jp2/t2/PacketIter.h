@@ -261,7 +261,7 @@ struct PacketIter
 	uint8_t maxNumDecompositionResolutions;
 	bool singleProgression_;
 	bool compression_;
-	ResPrecinctInfo* precinctInfo_;
+	ResPrecinctInfo* precinctInfoOPT_;
 	// precinct top,left grid coordinates
 	uint32_t px0grid_;
 	uint32_t py0grid_;
