@@ -50,7 +50,7 @@ PacketManager::PacketManager(bool compression, GrkImage* img, CodingParams* cpar
 	for(uint32_t pino = 0; pino < numProgressions; ++pino)
 	{
 		auto pi = pi_ + pino;
-		pi->init(this, pino, tcp, tileBounds_, compression, max_res, max_precincts, dx_min, dy_min,
+		pi->init(this, pino, tcp, tileBounds_, compression, max_res, max_precincts,
 				 resolutionPrecinctGrid, precinctByComponent);
 	}
 	delete[] precinct;

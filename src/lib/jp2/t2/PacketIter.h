@@ -162,7 +162,7 @@ class PacketManager;
 struct ResPrecinctInfo
 {
 	ResPrecinctInfo();
-	void init(uint8_t resno, uint8_t decomplevel, grk_rect32 tileBounds, uint32_t dx, uint32_t dy,
+	bool init(uint8_t resno, uint8_t decomplevel, grk_rect32 tileBounds, uint32_t dx, uint32_t dy,
 			  bool windowed, grk_rect32 tileWindow);
 	void print(void);
 	uint32_t precWidthExp;
@@ -203,8 +203,8 @@ struct PacketIter
 	~PacketIter();
 
 	void init(PacketManager* packetMan, uint32_t pino, TileCodingParams* tcp, grk_rect32 tileBounds,
-			  bool compression, uint8_t max_res, uint64_t max_precincts, uint32_t dx_min,
-			  uint32_t dy_min, uint32_t* resolutionPrecinctGrid, uint32_t** precinctByComponent);
+			  bool compression, uint8_t max_res, uint64_t max_precincts,
+			  uint32_t* resolutionPrecinctGrid, uint32_t** precinctByComponent);
 
 	void printStaticState(void);
 	void printDynamicState(void);
@@ -225,7 +225,7 @@ struct PacketIter
 
 	/**
 	 Modify the packet iterator to point to the next packet
-	 @return false if pi pointed to the last packet, otherwise true
+	 @return false if pi pointed to the final packet, otherwise true
 	 */
 	bool next(SparseBuffer* src);
 	GRK_PROG_ORDER getProgression(void) const;
@@ -247,6 +247,7 @@ struct PacketIter
 	uint64_t x, y;
 	/** component sub-sampling */
 	uint32_t dx, dy;
+	uint32_t dxActive, dyActive;
 	void update_dxy(void);
 	bool checkForRemainingValidProgression(int32_t prog, uint32_t pino, const char* progString);
 	// This packet iterator is designed so that the innermost progression
@@ -273,38 +274,38 @@ struct PacketIter
 	bool genPrecinctY0GridPCRL_OPT(ResPrecinctInfo* rpInfo);
 	bool precInfoCheck(ResPrecinctInfo* rpInfo);
 	bool generatePrecinctIndex(void);
-	void update_dxy_for_comp(PiComp* comp);
+	void update_dxy_for_comp(PiComp* comp, bool updateActive);
 	bool isWholeTile(void);
 
 	/**
 	 Get next packet in component-precinct-resolution-layer order.
-	 @return returns false if pi pointed to the last packet, otherwise true
+	 @return returns false if pi pointed to the final packet, otherwise true
 	 */
 	bool next_cprl(SparseBuffer* src);
 	bool next_cprlOPT(SparseBuffer* src);
 
 	/**
 	 Get next packet in precinct-component-resolution-layer order.
-	 @return returns false if pi pointed to the last packet, otherwise true
+	 @return returns false if pi pointed to the final packet, otherwise true
 	 */
 	bool next_pcrl(SparseBuffer* src);
 	bool next_pcrlOPT(SparseBuffer* src);
 
 	/**
 	 Get next packet in layer-resolution-component-precinct order.
-	 @return returns false if pi pointed to the last packet, otherwise true
+	 @return returns false if pi pointed to the final packet, otherwise true
 	 */
 	bool next_lrcp(SparseBuffer* src);
 	bool next_lrcpOPT(SparseBuffer* src);
 	/**
 	 Get next packet in resolution-layer-component-precinct order.
-	 @return returns false if pi pointed to the last packet, otherwise true
+	 @return returns false if pi pointed to the final packet, otherwise true
 	 */
 	bool next_rlcp(SparseBuffer* src);
 	bool next_rlcpOPT(SparseBuffer* src);
 	/**
 	 Get next packet in resolution-precinct-component-layer order.
-	 @return returns false if pi pointed to the last packet, otherwise true
+	 @return returns false if pi pointed to the final packet, otherwise true
 	 */
 	bool next_rpcl(SparseBuffer* src);
 	bool next_rpclOPT(SparseBuffer* src);
