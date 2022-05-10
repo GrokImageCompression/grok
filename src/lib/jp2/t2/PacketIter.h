@@ -35,31 +35,6 @@ enum J2K_T2_MODE
 	FINAL_PASS = 1 /** Function called in Tier 2 process*/
 };
 
-/***
- * Packet iterator resolution
- */
-struct PiResolution
-{
-	PiResolution() : precWidthExp(0), precHeightExp(0), precinctGridWidth(0), precinctGridHeight(0)
-	{}
-	uint32_t precWidthExp;
-	uint32_t precHeightExp;
-	uint32_t precinctGridWidth;
-	uint32_t precinctGridHeight;
-};
-
-/**
- * Packet iterator component
- */
-struct PiComp
-{
-	PiComp() : dx(0), dy(0), numresolutions(0), resolutions(nullptr) {}
-	// component sub-sampling factors
-	uint32_t dx;
-	uint32_t dy;
-	uint8_t numresolutions;
-	PiResolution* resolutions;
-};
 
 struct ResIncludeBuffers
 {
@@ -152,6 +127,7 @@ struct IncludeTracker
 	std::map<uint16_t, ResIncludeBuffers*>* include;
 };
 
+
 class PacketManager;
 
 /***
@@ -194,6 +170,43 @@ struct ResPrecinctInfo
 	bool valid;
 };
 
+/***
+ * Packet iterator resolution
+ */
+struct PiResolution
+{
+	PiResolution() : precWidthExp(0), precHeightExp(0),
+					precinctGridWidth(0), precinctGridHeight(0),
+					precinctInfo(nullptr)
+	{}
+	~PiResolution(){
+		delete precinctInfo;
+	}
+	uint32_t precWidthExp;
+	uint32_t precHeightExp;
+	uint32_t precinctGridWidth;
+	uint32_t precinctGridHeight;
+	ResPrecinctInfo *precinctInfo;
+};
+
+/**
+ * Packet iterator component
+ */
+struct PiComp
+{
+	PiComp() : dx(0), dy(0), numresolutions(0), resolutions(nullptr)
+	{}
+	~PiComp(){
+		delete[] resolutions;
+	}
+
+	// component sub-sampling factors
+	uint32_t dx;
+	uint32_t dy;
+	uint8_t numresolutions;
+	PiResolution* resolutions;
+};
+
 /**
  Packet iterator
  */
@@ -217,7 +230,9 @@ struct PacketIter
 	 */
 	void enableTilePartGeneration(uint32_t pino, bool first_poc_tile_part, uint32_t tppos);
 
+	bool genPrecinctInfoOPT();
 	void genPrecinctInfo();
+	void genPrecinctInfo(PiComp* comp, PiResolution* res, uint8_t resNumber);
 
 	uint8_t* get_include(uint16_t layerIndex);
 	bool update_include(void);

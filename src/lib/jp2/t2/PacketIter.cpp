@@ -108,8 +108,6 @@ PacketIter::~PacketIter()
 {
 	if(comps)
 	{
-		for(uint16_t compno = 0; compno < numcomps; compno++)
-			delete[](comps + compno)->resolutions;
 		delete[] comps;
 	}
 	delete[] precinctInfoOPT_;
@@ -138,37 +136,61 @@ void PacketIter::printDynamicState(void)
 	}
 }
 
+void PacketIter::genPrecinctInfo(){
+	if (!genPrecinctInfoOPT()){
+		for (uint16_t c = 0; c < numcomps; ++c){
+			auto comp = comps + c;
+			for (uint8_t r = 0; r < comp->numresolutions; ++r){
+				auto res = comp->resolutions + r;
+				genPrecinctInfo(comp,res, r);
+			}
+		}
+	}
+}
+void PacketIter::genPrecinctInfo(PiComp* comp, PiResolution* res, uint8_t resNumber){
+	if(res->precinctGridWidth == 0 || res->precinctGridHeight == 0)
+		return;
+
+	if (compression_)
+		return;
+
+	ResPrecinctInfo *rpInfo = new ResPrecinctInfo();
+	rpInfo->precWidthExp  = res->precWidthExp;
+	rpInfo->precHeightExp = res->precHeightExp;
+	if (rpInfo->init(resNumber, (uint8_t)(comp->numresolutions - 1U - resNumber),
+				packetManager->getTileBounds(), comp->dx, comp->dy, !isWholeTile(),
+				packetManager->getTileProcessor()->getUnreducedTileWindow())){
+		res->precinctInfo = rpInfo;
+	} else {
+		delete rpInfo;
+	}
+}
+
 /***
  * Generate and cache precinct info
  *
- * Assumptions: single progression, no subsampling,
+ * Assumptions: decompression, single progression, no subsampling,
  * constant number of resolutions across components,
  * non-decreasing projected precinct size as resolution decreases (CPRL and PCRL),
  * and tile origin at (0,0)
  */
-void PacketIter::genPrecinctInfo(void)
+bool PacketIter::genPrecinctInfoOPT(void)
 {
-	if(precinctInfoOPT_)
-		delete[] precinctInfoOPT_;
-	precinctInfoOPT_ = nullptr;
-
 	if(compression_ || !singleProgression_)
-		return;
+		return false;
 
 	auto tb = packetManager->getTileBounds();
 	// tile origin at (0,0) will simplify computations
 	if(tb.x0 || tb.y0)
-		return;
+		return false;
 	// no subsampling
 	for(uint16_t compno = 0; compno < numcomps; ++compno)
 	{
 		auto comp = comps + compno;
 		if(comp->dx != 1 || comp->dy != 1)
-			return;
+			return false;
 		if(compno > 0 && comp->numresolutions != comps->numresolutions)
-		{
-			return;
-		}
+			return false;
 	}
 	switch(prog.progression)
 	{
@@ -189,7 +211,7 @@ void PacketIter::genPrecinctInfo(void)
 					auto decompLevel = (uint8_t)(comps->numresolutions - 1U - resno);
 					if(res->precWidthExp + decompLevel < highestRes->precWidthExp ||
 					   res->precHeightExp + decompLevel < highestRes->precHeightExp)
-						return;
+						return false;
 				}
 			}
 			break;
@@ -207,6 +229,8 @@ void PacketIter::genPrecinctInfo(void)
 		inf->init(resno, (uint8_t)(comps->numresolutions - 1U - resno), tb, comps->dx, comps->dy,
 				  !isWholeTile(), packetManager->getTileProcessor()->getUnreducedTileWindow());
 	}
+
+	return true;
 }
 bool PacketIter::generatePrecinctIndex(void)
 {
@@ -229,17 +253,28 @@ bool PacketIter::generatePrecinctIndex(void)
 	}
 	else
 	{
-		ResPrecinctInfo rpInfo;
-		rpInfo.precWidthExp  = res->precWidthExp;
-		rpInfo.precHeightExp = res->precHeightExp;
-		if (!rpInfo.init(resno, (uint8_t)(comp->numresolutions - 1U - resno),
-					packetManager->getTileBounds(), comp->dx, comp->dy, !isWholeTile(),
-					packetManager->getTileProcessor()->getUnreducedTileWindow()))
-			return false;
-		if(!genPrecinctY0Grid(&rpInfo))
-			return false;
-		if(!genPrecinctX0Grid(&rpInfo))
-			return false;
+		if (compression_){
+			ResPrecinctInfo rpInfo;
+			rpInfo.precWidthExp  = res->precWidthExp;
+			rpInfo.precHeightExp = res->precHeightExp;
+			if (!rpInfo.init(resno, (uint8_t)(comp->numresolutions - 1U - resno),
+						packetManager->getTileBounds(), comp->dx, comp->dy, !isWholeTile(),
+						packetManager->getTileProcessor()->getUnreducedTileWindow())){
+				return false;
+			}
+			if(!genPrecinctY0Grid(&rpInfo))
+				return false;
+			if(!genPrecinctX0Grid(&rpInfo))
+				return false;
+		} else {
+			auto rpInfo = res->precinctInfo;
+			if (!rpInfo)
+				return false;
+			if(!genPrecinctY0Grid(rpInfo))
+				return false;
+			if(!genPrecinctX0Grid(rpInfo))
+				return false;
+		}
 	}
 	precinctIndex = px0grid_ + (uint64_t)py0grid_ * res->precinctGridWidth;
 
