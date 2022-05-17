@@ -315,6 +315,18 @@ HWY_API Vec512<double> Xor(const Vec512<double> a, const Vec512<double> b) {
   return Vec512<double>{_mm512_xor_pd(a.raw, b.raw)};
 }
 
+// ------------------------------ Or3
+
+template <typename T>
+HWY_API Vec512<T> Or3(Vec512<T> o1, Vec512<T> o2, Vec512<T> o3) {
+  const Full512<T> d;
+  const RebindToUnsigned<decltype(d)> du;
+  using VU = VFromD<decltype(du)>;
+  const __m512i ret = _mm512_ternarylogic_epi64(
+      BitCast(du, o1).raw, BitCast(du, o2).raw, BitCast(du, o3).raw, 0xFE);
+  return BitCast(d, VU{ret});
+}
+
 // ------------------------------ OrAnd
 
 template <typename T>
@@ -1775,6 +1787,31 @@ HWY_API Vec512<int64_t> BroadcastSignBit(const Vec512<int64_t> v) {
   return Vec512<int64_t>{_mm512_srai_epi64(v.raw, 63)};
 }
 
+// ------------------------------ Floating-point classification (Not)
+
+HWY_API Mask512<float> IsNaN(const Vec512<float> v) {
+  return Mask512<float>{_mm512_fpclass_ps_mask(v.raw, 0x81)};
+}
+HWY_API Mask512<double> IsNaN(const Vec512<double> v) {
+  return Mask512<double>{_mm512_fpclass_pd_mask(v.raw, 0x81)};
+}
+
+HWY_API Mask512<float> IsInf(const Vec512<float> v) {
+  return Mask512<float>{_mm512_fpclass_ps_mask(v.raw, 0x18)};
+}
+HWY_API Mask512<double> IsInf(const Vec512<double> v) {
+  return Mask512<double>{_mm512_fpclass_pd_mask(v.raw, 0x18)};
+}
+
+// Returns whether normal/subnormal/zero. fpclass doesn't have a flag for
+// positive, so we have to check for inf/NaN and negate.
+HWY_API Mask512<float> IsFinite(const Vec512<float> v) {
+  return Not(Mask512<float>{_mm512_fpclass_ps_mask(v.raw, 0x99)});
+}
+HWY_API Mask512<double> IsFinite(const Vec512<double> v) {
+  return Not(Mask512<double>{_mm512_fpclass_pd_mask(v.raw, 0x99)});
+}
+
 // ================================================== MEMORY
 
 // ------------------------------ Load
@@ -2143,6 +2180,27 @@ HWY_API Vec256<double> UpperHalf(Full256<double> /* tag */, Vec512<double> v) {
   return Vec256<double>{_mm512_extractf64x4_pd(v.raw, 1)};
 }
 
+// ------------------------------ ExtractLane (Store)
+template <typename T>
+HWY_API T ExtractLane(const Vec512<T> v, size_t i) {
+  const Full512<T> d;
+  HWY_DASSERT(i < Lanes(d));
+  alignas(64) T lanes[64 / sizeof(T)];
+  Store(v, d, lanes);
+  return lanes[i];
+}
+
+// ------------------------------ InsertLane (Store)
+template <typename T>
+HWY_API Vec512<T> InsertLane(const Vec512<T> v, size_t i, T t) {
+  const Full512<T> d;
+  HWY_DASSERT(i < Lanes(d));
+  alignas(64) T lanes[64 / sizeof(T)];
+  Store(v, d, lanes);
+  lanes[i] = t;
+  return Load(d, lanes);
+}
+
 // ------------------------------ GetLane (LowerHalf)
 template <typename T>
 HWY_API T GetLane(const Vec512<T> v) {
@@ -2331,15 +2389,42 @@ HWY_API Vec512<double> Broadcast(const Vec512<double> v) {
 // the shuffle_abcd notation is more convenient.
 
 // Swap 32-bit halves in 64-bit halves.
-HWY_API Vec512<uint32_t> Shuffle2301(const Vec512<uint32_t> v) {
-  return Vec512<uint32_t>{_mm512_shuffle_epi32(v.raw, _MM_PERM_CDAB)};
-}
-HWY_API Vec512<int32_t> Shuffle2301(const Vec512<int32_t> v) {
-  return Vec512<int32_t>{_mm512_shuffle_epi32(v.raw, _MM_PERM_CDAB)};
+template <typename T, HWY_IF_LANE_SIZE(T, 4)>
+HWY_API Vec512<T> Shuffle2301(const Vec512<T> v) {
+  return Vec512<T>{_mm512_shuffle_epi32(v.raw, _MM_PERM_CDAB)};
 }
 HWY_API Vec512<float> Shuffle2301(const Vec512<float> v) {
   return Vec512<float>{_mm512_shuffle_ps(v.raw, v.raw, _MM_PERM_CDAB)};
 }
+
+namespace detail {
+
+template <typename T, HWY_IF_LANE_SIZE(T, 4)>
+HWY_API Vec512<T> Shuffle2301(const Vec512<T> a, const Vec512<T> b) {
+  const Full512<T> d;
+  const RebindToFloat<decltype(d)> df;
+  return BitCast(
+      d, Vec512<float>{_mm512_shuffle_ps(BitCast(df, a).raw, BitCast(df, b).raw,
+                                         _MM_PERM_CDAB)});
+}
+template <typename T, HWY_IF_LANE_SIZE(T, 4)>
+HWY_API Vec512<T> Shuffle1230(const Vec512<T> a, const Vec512<T> b) {
+  const Full512<T> d;
+  const RebindToFloat<decltype(d)> df;
+  return BitCast(
+      d, Vec512<float>{_mm512_shuffle_ps(BitCast(df, a).raw, BitCast(df, b).raw,
+                                         _MM_PERM_BCDA)});
+}
+template <typename T, HWY_IF_LANE_SIZE(T, 4)>
+HWY_API Vec512<T> Shuffle3012(const Vec512<T> a, const Vec512<T> b) {
+  const Full512<T> d;
+  const RebindToFloat<decltype(d)> df;
+  return BitCast(
+      d, Vec512<float>{_mm512_shuffle_ps(BitCast(df, a).raw, BitCast(df, b).raw,
+                                         _MM_PERM_DABC)});
+}
+
+}  // namespace detail
 
 // Swap 64-bit halves
 HWY_API Vec512<uint32_t> Shuffle1032(const Vec512<uint32_t> v) {
@@ -2736,6 +2821,44 @@ HWY_API Vec512<double> ConcatUpperLower(Full512<double> /* tag */,
 
 // ------------------------------ ConcatOdd
 
+template <typename T, HWY_IF_LANE_SIZE(T, 1)>
+HWY_API Vec512<T> ConcatOdd(Full512<T> d, Vec512<T> hi, Vec512<T> lo) {
+  const RebindToUnsigned<decltype(d)> du;
+#if HWY_TARGET == HWY_AVX3_DL
+  alignas(64) constexpr uint8_t kIdx[64] = {
+      1,   3,   5,   7,   9,   11,  13,  15,  17,  19,  21,  23,  25,
+      27,  29,  31,  33,  35,  37,  39,  41,  43,  45,  47,  49,  51,
+      53,  55,  57,  59,  61,  63,  65,  67,  69,  71,  73,  75,  77,
+      79,  81,  83,  85,  87,  89,  91,  93,  95,  97,  99,  101, 103,
+      105, 107, 109, 111, 113, 115, 117, 119, 121, 123, 125, 127};
+  return BitCast(d,
+                 Vec512<uint8_t>{_mm512_mask2_permutex2var_epi8(
+                     BitCast(du, lo).raw, Load(du, kIdx).raw,
+                     __mmask64{0xFFFFFFFFFFFFFFFFull}, BitCast(du, hi).raw)});
+#else
+  const RepartitionToWide<decltype(du)> dw;
+  // Right-shift 8 bits per u16 so we can pack.
+  const Vec512<uint16_t> uH = ShiftRight<8>(BitCast(dw, hi));
+  const Vec512<uint16_t> uL = ShiftRight<8>(BitCast(dw, lo));
+  const Vec512<uint64_t> u8{_mm512_packus_epi16(uL.raw, uH.raw)};
+  // Undo block interleave: lower half = even u64 lanes, upper = odd u64 lanes.
+  const Full512<uint64_t> du64;
+  alignas(64) constexpr uint64_t kIdx[8] = {0, 2, 4, 6, 1, 3, 5, 7};
+  return BitCast(d, TableLookupLanes(u8, SetTableIndices(du64, kIdx)));
+#endif
+}
+
+template <typename T, HWY_IF_LANE_SIZE(T, 2)>
+HWY_API Vec512<T> ConcatOdd(Full512<T> d, Vec512<T> hi, Vec512<T> lo) {
+  const RebindToUnsigned<decltype(d)> du;
+  alignas(64) constexpr uint16_t kIdx[32] = {
+      1,  3,  5,  7,  9,  11, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31,
+      33, 35, 37, 39, 41, 43, 45, 47, 49, 51, 53, 55, 57, 59, 61, 63};
+  return BitCast(d, Vec512<uint16_t>{_mm512_mask2_permutex2var_epi16(
+                        BitCast(du, lo).raw, Load(du, kIdx).raw,
+                        __mmask32{0xFFFFFFFFu}, BitCast(du, hi).raw)});
+}
+
 template <typename T, HWY_IF_LANE_SIZE(T, 4)>
 HWY_API Vec512<T> ConcatOdd(Full512<T> d, Vec512<T> hi, Vec512<T> lo) {
   const RebindToUnsigned<decltype(d)> du;
@@ -2773,6 +2896,45 @@ HWY_API Vec512<double> ConcatOdd(Full512<double> d, Vec512<double> hi,
 }
 
 // ------------------------------ ConcatEven
+
+template <typename T, HWY_IF_LANE_SIZE(T, 1)>
+HWY_API Vec512<T> ConcatEven(Full512<T> d, Vec512<T> hi, Vec512<T> lo) {
+  const RebindToUnsigned<decltype(d)> du;
+#if HWY_TARGET == HWY_AVX3_DL
+  alignas(64) constexpr uint8_t kIdx[64] = {
+      0,   2,   4,   6,   8,   10,  12,  14,  16,  18,  20,  22,  24,
+      26,  28,  30,  32,  34,  36,  38,  40,  42,  44,  46,  48,  50,
+      52,  54,  56,  58,  60,  62,  64,  66,  68,  70,  72,  74,  76,
+      78,  80,  82,  84,  86,  88,  90,  92,  94,  96,  98,  100, 102,
+      104, 106, 108, 110, 112, 114, 116, 118, 120, 122, 124, 126};
+  return BitCast(d,
+                 Vec512<uint32_t>{_mm512_mask2_permutex2var_epi8(
+                     BitCast(du, lo).raw, Load(du, kIdx).raw,
+                     __mmask64{0xFFFFFFFFFFFFFFFFull}, BitCast(du, hi).raw)});
+#else
+  const RepartitionToWide<decltype(du)> dw;
+  // Isolate lower 8 bits per u16 so we can pack.
+  const Vec512<uint16_t> mask = Set(dw, 0x00FF);
+  const Vec512<uint16_t> uH = And(BitCast(dw, hi), mask);
+  const Vec512<uint16_t> uL = And(BitCast(dw, lo), mask);
+  const Vec512<uint64_t> u8{_mm512_packus_epi16(uL.raw, uH.raw)};
+  // Undo block interleave: lower half = even u64 lanes, upper = odd u64 lanes.
+  const Full512<uint64_t> du64;
+  alignas(64) constexpr uint64_t kIdx[8] = {0, 2, 4, 6, 1, 3, 5, 7};
+  return BitCast(d, TableLookupLanes(u8, SetTableIndices(du64, kIdx)));
+#endif
+}
+
+template <typename T, HWY_IF_LANE_SIZE(T, 2)>
+HWY_API Vec512<T> ConcatEven(Full512<T> d, Vec512<T> hi, Vec512<T> lo) {
+  const RebindToUnsigned<decltype(d)> du;
+  alignas(64) constexpr uint16_t kIdx[32] = {
+      0,  2,  4,  6,  8,  10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30,
+      32, 34, 36, 38, 40, 42, 44, 46, 48, 50, 52, 54, 56, 58, 60, 62};
+  return BitCast(d, Vec512<uint32_t>{_mm512_mask2_permutex2var_epi16(
+                        BitCast(du, lo).raw, Load(du, kIdx).raw,
+                        __mmask32{0xFFFFFFFFu}, BitCast(du, hi).raw)});
+}
 
 template <typename T, HWY_IF_LANE_SIZE(T, 4)>
 HWY_API Vec512<T> ConcatEven(Full512<T> d, Vec512<T> hi, Vec512<T> lo) {
@@ -3632,99 +3794,173 @@ HWY_API size_t CompressBitsStore(Vec512<T> v, const uint8_t* HWY_RESTRICT bits,
   return CompressStore(v, LoadMaskBits(d, bits), d, unaligned);
 }
 
-// ------------------------------ StoreInterleaved3 (CombineShiftRightBytes,
-// TableLookupBytes)
+// ------------------------------ LoadInterleaved4
 
-HWY_API void StoreInterleaved3(const Vec512<uint8_t> a, const Vec512<uint8_t> b,
-                               const Vec512<uint8_t> c, Full512<uint8_t> d,
-                               uint8_t* HWY_RESTRICT unaligned) {
-  const auto k5 = Set(d, 5);
-  const auto k6 = Set(d, 6);
+// Actually implemented in generic_ops, we just overload LoadTransposedBlocks4.
+namespace detail {
 
-  // Shuffle (a,b,c) vector bytes to (MSB on left): r5, bgr[4:0].
-  // 0x80 so lanes to be filled from other vectors are 0 for blending.
-  alignas(16) static constexpr uint8_t tbl_r0[16] = {
-      0, 0x80, 0x80, 1, 0x80, 0x80, 2, 0x80, 0x80,  //
-      3, 0x80, 0x80, 4, 0x80, 0x80, 5};
-  alignas(16) static constexpr uint8_t tbl_g0[16] = {
-      0x80, 0, 0x80, 0x80, 1, 0x80,  //
-      0x80, 2, 0x80, 0x80, 3, 0x80, 0x80, 4, 0x80, 0x80};
-  const auto shuf_r0 = LoadDup128(d, tbl_r0);
-  const auto shuf_g0 = LoadDup128(d, tbl_g0);  // cannot reuse r0 due to 5
-  const auto shuf_b0 = CombineShiftRightBytes<15>(d, shuf_g0, shuf_g0);
-  const auto r0 = TableLookupBytes(a, shuf_r0);  // 5..4..3..2..1..0
-  const auto g0 = TableLookupBytes(b, shuf_g0);  // ..4..3..2..1..0.
-  const auto b0 = TableLookupBytes(c, shuf_b0);  // .4..3..2..1..0..
-  const auto i = (r0 | g0 | b0).raw;  // low byte in each 128bit: 30 20 10 00
-
-  // Second vector: g10,r10, bgr[9:6], b5,g5
-  const auto shuf_r1 = shuf_b0 + k6;  // .A..9..8..7..6..
-  const auto shuf_g1 = shuf_r0 + k5;  // A..9..8..7..6..5
-  const auto shuf_b1 = shuf_g0 + k5;  // ..9..8..7..6..5.
-  const auto r1 = TableLookupBytes(a, shuf_r1);
-  const auto g1 = TableLookupBytes(b, shuf_g1);
-  const auto b1 = TableLookupBytes(c, shuf_b1);
-  const auto j = (r1 | g1 | b1).raw;  // low byte in each 128bit: 35 25 15 05
-
-  // Third vector: bgr[15:11], b10
-  const auto shuf_r2 = shuf_b1 + k6;  // ..F..E..D..C..B.
-  const auto shuf_g2 = shuf_r1 + k5;  // .F..E..D..C..B..
-  const auto shuf_b2 = shuf_g1 + k5;  // F..E..D..C..B..A
-  const auto r2 = TableLookupBytes(a, shuf_r2);
-  const auto g2 = TableLookupBytes(b, shuf_g2);
-  const auto b2 = TableLookupBytes(c, shuf_b2);
-  const auto k = (r2 | g2 | b2).raw;  // low byte in each 128bit: 3A 2A 1A 0A
-
-  // To obtain 10 0A 05 00 in one vector, transpose "rows" into "columns".
-  const auto k3_k0_i3_i0 = _mm512_shuffle_i64x2(i, k, _MM_PERM_DADA);
-  const auto i1_i2_j0_j1 = _mm512_shuffle_i64x2(j, i, _MM_PERM_BCAB);
-  const auto j2_j3_k1_k2 = _mm512_shuffle_i64x2(k, j, _MM_PERM_CDBC);
-
-  // Alternating order, most-significant 128 bits from the second arg.
-  const __mmask8 m = 0xCC;
-  const auto i1_k0_j0_i0 = _mm512_mask_blend_epi64(m, k3_k0_i3_i0, i1_i2_j0_j1);
-  const auto j2_i2_k1_j1 = _mm512_mask_blend_epi64(m, i1_i2_j0_j1, j2_j3_k1_k2);
-  const auto k3_j3_i3_k2 = _mm512_mask_blend_epi64(m, j2_j3_k1_k2, k3_k0_i3_i0);
-
-  StoreU(Vec512<uint8_t>{i1_k0_j0_i0}, d, unaligned + 0 * 64);  //  10 0A 05 00
-  StoreU(Vec512<uint8_t>{j2_i2_k1_j1}, d, unaligned + 1 * 64);  //  25 20 1A 15
-  StoreU(Vec512<uint8_t>{k3_j3_i3_k2}, d, unaligned + 2 * 64);  //  3A 35 30 2A
+// Type-safe wrapper.
+template <_MM_PERM_ENUM kPerm, typename T>
+Vec512<T> Shuffle128(const Vec512<T> lo, const Vec512<T> hi) {
+  return Vec512<T>{_mm512_shuffle_i64x2(lo.raw, hi.raw, kPerm)};
+}
+template <_MM_PERM_ENUM kPerm>
+Vec512<float> Shuffle128(const Vec512<float> lo, const Vec512<float> hi) {
+  return Vec512<float>{_mm512_shuffle_f32x4(lo.raw, hi.raw, kPerm)};
+}
+template <_MM_PERM_ENUM kPerm>
+Vec512<double> Shuffle128(const Vec512<double> lo, const Vec512<double> hi) {
+  return Vec512<double>{_mm512_shuffle_f64x2(lo.raw, hi.raw, kPerm)};
 }
 
-// ------------------------------ StoreInterleaved4
+// Input (128-bit blocks):
+// 3 2 1 0 (<- first block in unaligned)
+// 7 6 5 4
+// b a 9 8
+// Output:
+// 9 6 3 0 (LSB of A)
+// a 7 4 1
+// b 8 5 2
+template <typename T>
+HWY_API void LoadTransposedBlocks3(Full512<T> d,
+                                   const T* HWY_RESTRICT unaligned,
+                                   Vec512<T>& A, Vec512<T>& B, Vec512<T>& C) {
+  constexpr size_t N = 64 / sizeof(T);
+  const Vec512<T> v3210 = LoadU(d, unaligned + 0 * N);
+  const Vec512<T> v7654 = LoadU(d, unaligned + 1 * N);
+  const Vec512<T> vba98 = LoadU(d, unaligned + 2 * N);
 
-HWY_API void StoreInterleaved4(const Vec512<uint8_t> v0,
-                               const Vec512<uint8_t> v1,
-                               const Vec512<uint8_t> v2,
-                               const Vec512<uint8_t> v3, Full512<uint8_t> d8,
-                               uint8_t* HWY_RESTRICT unaligned) {
-  const RepartitionToWide<decltype(d8)> d16;
-  const RepartitionToWide<decltype(d16)> d32;
-  // let a,b,c,d denote v0..3.
-  const auto ba0 = ZipLower(d16, v0, v1);  // b7 a7 .. b0 a0
-  const auto dc0 = ZipLower(d16, v2, v3);  // d7 c7 .. d0 c0
-  const auto ba8 = ZipUpper(d16, v0, v1);
-  const auto dc8 = ZipUpper(d16, v2, v3);
-  const auto i = ZipLower(d32, ba0, dc0).raw;  // 4x128bit: d..a3 d..a0
-  const auto j = ZipUpper(d32, ba0, dc0).raw;  // 4x128bit: d..a7 d..a4
-  const auto k = ZipLower(d32, ba8, dc8).raw;  // 4x128bit: d..aB d..a8
-  const auto l = ZipUpper(d32, ba8, dc8).raw;  // 4x128bit: d..aF d..aC
-  // 128-bit blocks were independent until now; transpose 4x4.
-  const auto j1_j0_i1_i0 = _mm512_shuffle_i64x2(i, j, _MM_PERM_BABA);
-  const auto l1_l0_k1_k0 = _mm512_shuffle_i64x2(k, l, _MM_PERM_BABA);
-  const auto j3_j2_i3_i2 = _mm512_shuffle_i64x2(i, j, _MM_PERM_DCDC);
-  const auto l3_l2_k3_k2 = _mm512_shuffle_i64x2(k, l, _MM_PERM_DCDC);
-  constexpr _MM_PERM_ENUM k20 = _MM_PERM_CACA;
-  constexpr _MM_PERM_ENUM k31 = _MM_PERM_DBDB;
-  const auto l0_k0_j0_i0 = _mm512_shuffle_i64x2(j1_j0_i1_i0, l1_l0_k1_k0, k20);
-  const auto l1_k1_j1_i1 = _mm512_shuffle_i64x2(j1_j0_i1_i0, l1_l0_k1_k0, k31);
-  const auto l2_k2_j2_i2 = _mm512_shuffle_i64x2(j3_j2_i3_i2, l3_l2_k3_k2, k20);
-  const auto l3_k3_j3_i3 = _mm512_shuffle_i64x2(j3_j2_i3_i2, l3_l2_k3_k2, k31);
-  StoreU(Vec512<uint8_t>{l0_k0_j0_i0}, d8, unaligned + 0 * 64);
-  StoreU(Vec512<uint8_t>{l1_k1_j1_i1}, d8, unaligned + 1 * 64);
-  StoreU(Vec512<uint8_t>{l2_k2_j2_i2}, d8, unaligned + 2 * 64);
-  StoreU(Vec512<uint8_t>{l3_k3_j3_i3}, d8, unaligned + 3 * 64);
+  const Vec512<T> v5421 = detail::Shuffle128<_MM_PERM_BACB>(v3210, v7654);
+  const Vec512<T> va976 = detail::Shuffle128<_MM_PERM_CBDC>(v7654, vba98);
+
+  A = detail::Shuffle128<_MM_PERM_CADA>(v3210, va976);
+  B = detail::Shuffle128<_MM_PERM_DBCA>(v5421, va976);
+  C = detail::Shuffle128<_MM_PERM_DADB>(v5421, vba98);
 }
+
+// Input (128-bit blocks):
+// 3 2 1 0 (<- first block in unaligned)
+// 7 6 5 4
+// b a 9 8
+// f e d c
+// Output:
+// c 8 4 0 (LSB of A)
+// d 9 5 1
+// e a 6 2
+// f b 7 3
+template <typename T>
+HWY_API void LoadTransposedBlocks4(Full512<T> d,
+                                   const T* HWY_RESTRICT unaligned,
+                                   Vec512<T>& A, Vec512<T>& B, Vec512<T>& C,
+                                   Vec512<T>& D) {
+  constexpr size_t N = 64 / sizeof(T);
+  const Vec512<T> v3210 = LoadU(d, unaligned + 0 * N);
+  const Vec512<T> v7654 = LoadU(d, unaligned + 1 * N);
+  const Vec512<T> vba98 = LoadU(d, unaligned + 2 * N);
+  const Vec512<T> vfedc = LoadU(d, unaligned + 3 * N);
+
+  const Vec512<T> v5410 = detail::Shuffle128<_MM_PERM_BABA>(v3210, v7654);
+  const Vec512<T> vdc98 = detail::Shuffle128<_MM_PERM_BABA>(vba98, vfedc);
+  const Vec512<T> v7632 = detail::Shuffle128<_MM_PERM_DCDC>(v3210, v7654);
+  const Vec512<T> vfeba = detail::Shuffle128<_MM_PERM_DCDC>(vba98, vfedc);
+  A = detail::Shuffle128<_MM_PERM_CACA>(v5410, vdc98);
+  B = detail::Shuffle128<_MM_PERM_DBDB>(v5410, vdc98);
+  C = detail::Shuffle128<_MM_PERM_CACA>(v7632, vfeba);
+  D = detail::Shuffle128<_MM_PERM_DBDB>(v7632, vfeba);
+}
+
+}  // namespace detail
+
+// ------------------------------ StoreInterleaved2
+
+// Implemented in generic_ops, we just overload StoreTransposedBlocks2/3/4.
+
+namespace detail {
+
+// Input (128-bit blocks):
+// 6 4 2 0 (LSB of i)
+// 7 5 3 1
+// Output:
+// 3 2 1 0
+// 7 6 5 4
+template <typename T>
+HWY_API void StoreTransposedBlocks2(const Vec512<T> i, const Vec512<T> j,
+                                    const Full512<T> d,
+                                    T* HWY_RESTRICT unaligned) {
+  constexpr size_t N = 64 / sizeof(T);
+  const auto j1_j0_i1_i0 = detail::Shuffle128<_MM_PERM_BABA>(i, j);
+  const auto j3_j2_i3_i2 = detail::Shuffle128<_MM_PERM_DCDC>(i, j);
+  const auto j1_i1_j0_i0 =
+      detail::Shuffle128<_MM_PERM_DBCA>(j1_j0_i1_i0, j1_j0_i1_i0);
+  const auto j3_i3_j2_i2 =
+      detail::Shuffle128<_MM_PERM_DBCA>(j3_j2_i3_i2, j3_j2_i3_i2);
+  StoreU(j1_i1_j0_i0, d, unaligned + 0 * N);
+  StoreU(j3_i3_j2_i2, d, unaligned + 1 * N);
+}
+
+// Input (128-bit blocks):
+// 9 6 3 0 (LSB of i)
+// a 7 4 1
+// b 8 5 2
+// Output:
+// 3 2 1 0
+// 7 6 5 4
+// b a 9 8
+template <typename T>
+HWY_API void StoreTransposedBlocks3(const Vec512<T> i, const Vec512<T> j,
+                                    const Vec512<T> k, Full512<T> d,
+                                    T* HWY_RESTRICT unaligned) {
+  constexpr size_t N = 64 / sizeof(T);
+  const Vec512<T> j2_j0_i2_i0 = detail::Shuffle128<_MM_PERM_CACA>(i, j);
+  const Vec512<T> i3_i1_k2_k0 = detail::Shuffle128<_MM_PERM_DBCA>(k, i);
+  const Vec512<T> j3_j1_k3_k1 = detail::Shuffle128<_MM_PERM_DBDB>(k, j);
+
+  const Vec512<T> out0 =  // i1 k0 j0 i0
+      detail::Shuffle128<_MM_PERM_CACA>(j2_j0_i2_i0, i3_i1_k2_k0);
+  const Vec512<T> out1 =  // j2 i2 k1 j1
+      detail::Shuffle128<_MM_PERM_DBAC>(j3_j1_k3_k1, j2_j0_i2_i0);
+  const Vec512<T> out2 =  // k3 j3 i3 k2
+      detail::Shuffle128<_MM_PERM_BDDB>(i3_i1_k2_k0, j3_j1_k3_k1);
+
+  StoreU(out0, d, unaligned + 0 * N);
+  StoreU(out1, d, unaligned + 1 * N);
+  StoreU(out2, d, unaligned + 2 * N);
+}
+
+// Input (128-bit blocks):
+// c 8 4 0 (LSB of i)
+// d 9 5 1
+// e a 6 2
+// f b 7 3
+// Output:
+// 3 2 1 0
+// 7 6 5 4
+// b a 9 8
+// f e d c
+template <typename T>
+HWY_API void StoreTransposedBlocks4(const Vec512<T> i, const Vec512<T> j,
+                                    const Vec512<T> k, const Vec512<T> l,
+                                    Full512<T> d, T* HWY_RESTRICT unaligned) {
+  constexpr size_t N = 64 / sizeof(T);
+  const Vec512<T> j1_j0_i1_i0 = detail::Shuffle128<_MM_PERM_BABA>(i, j);
+  const Vec512<T> l1_l0_k1_k0 = detail::Shuffle128<_MM_PERM_BABA>(k, l);
+  const Vec512<T> j3_j2_i3_i2 = detail::Shuffle128<_MM_PERM_DCDC>(i, j);
+  const Vec512<T> l3_l2_k3_k2 = detail::Shuffle128<_MM_PERM_DCDC>(k, l);
+  const Vec512<T> out0 =
+      detail::Shuffle128<_MM_PERM_CACA>(j1_j0_i1_i0, l1_l0_k1_k0);
+  const Vec512<T> out1 =
+      detail::Shuffle128<_MM_PERM_DBDB>(j1_j0_i1_i0, l1_l0_k1_k0);
+  const Vec512<T> out2 =
+      detail::Shuffle128<_MM_PERM_CACA>(j3_j2_i3_i2, l3_l2_k3_k2);
+  const Vec512<T> out3 =
+      detail::Shuffle128<_MM_PERM_DBDB>(j3_j2_i3_i2, l3_l2_k3_k2);
+  StoreU(out0, d, unaligned + 0 * N);
+  StoreU(out1, d, unaligned + 1 * N);
+  StoreU(out2, d, unaligned + 2 * N);
+  StoreU(out3, d, unaligned + 3 * N);
+}
+
+}  // namespace detail
 
 // ------------------------------ MulEven/Odd (Shuffle2301, InterleaveLower)
 

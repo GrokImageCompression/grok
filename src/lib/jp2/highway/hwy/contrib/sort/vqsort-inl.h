@@ -57,7 +57,7 @@ namespace hwy {
 namespace HWY_NAMESPACE {
 namespace detail {
 
-#if HWY_TARGET == HWY_SCALAR
+#if HWY_TARGET == HWY_SCALAR || HWY_TARGET == HWY_EMU128
 
 template <typename T>
 void Swap(T* a, T* b) {
@@ -472,6 +472,11 @@ class Generator {
     k_ = 1;  // stream index: must be odd
   }
 
+  explicit Generator(uint64_t seed) {
+    a_ = b_ = w_ = seed;
+    k_ = 1;
+  }
+
   uint64_t operator()() {
     const uint64_t b = b_;
     w_ += k_;
@@ -668,7 +673,8 @@ bool HandleSpecialCases(D d, Traits st, T* HWY_RESTRICT keys, size_t num,
   const bool partial_128 = N < 2 && st.Is128();
   // Partition assumes its input is at least two vectors. If vectors are huge,
   // base_case_num may actually be smaller. If so, which is only possible on
-  // RVV, pass a capped or partial d (LMUL < 1).
+  // RVV, pass a capped or partial d (LMUL < 1). Use HWY_MAX_BYTES instead of
+  // HWY_LANES to account for the largest possible LMUL.
   constexpr bool kPotentiallyHuge =
       HWY_MAX_BYTES / sizeof(T) > Constants::kMaxRows * Constants::kMaxCols;
   const bool huge_vec = kPotentiallyHuge && (2 * N > base_case_num);
@@ -690,7 +696,7 @@ bool HandleSpecialCases(D d, Traits st, T* HWY_RESTRICT keys, size_t num,
   return false;  // not finished sorting
 }
 
-#endif  // HWY_TARGET != HWY_SCALAR
+#endif  // HWY_TARGET
 }  // namespace detail
 
 // Sorts `keys[0..num-1]` according to the order defined by `st.Compare`.
@@ -707,7 +713,7 @@ bool HandleSpecialCases(D d, Traits st, T* HWY_RESTRICT keys, size_t num,
 template <class D, class Traits, typename T>
 void Sort(D d, Traits st, T* HWY_RESTRICT keys, size_t num,
           T* HWY_RESTRICT buf) {
-#if HWY_TARGET == HWY_SCALAR
+#if HWY_TARGET == HWY_SCALAR || HWY_TARGET == HWY_EMU128
   (void)d;
   (void)buf;
   // PERFORMANCE WARNING: vqsort is not enabled for the non-SIMD target
@@ -740,7 +746,7 @@ void Sort(D d, Traits st, T* HWY_RESTRICT keys, size_t num,
   const size_t max_levels = 2 * hwy::CeilLog2(num) + 4;
 
   detail::Recurse(d, st, keys, 0, num, pivot, buf, rng, max_levels);
-#endif  // HWY_TARGET == HWY_SCALAR
+#endif  // HWY_TARGET
 }
 
 // NOLINTNEXTLINE(google-readability-namespace-comments)

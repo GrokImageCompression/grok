@@ -78,7 +78,11 @@ HWY_NOINLINE void AssertMaskEqual(D d, VecArg<Mask<D>> a, VecArg<Mask<D>> b,
   AssertEqual(AllFalse(d, a), AllFalse(d, b), target_name, filename, line);
 
   const size_t N = Lanes(d);
+#if HWY_TARGET == HWY_SCALAR
+  const Rebind<uint8_t, D> d8;
+#else
   const Repartition<uint8_t, D> d8;
+#endif
   const size_t N8 = Lanes(d8);
   auto bits_a = AllocateAligned<uint8_t>(HWY_MAX(8, N8));
   auto bits_b = AllocateAligned<uint8_t>(HWY_MAX(8, N8));
@@ -134,6 +138,10 @@ HWY_INLINE Mask<D> MaskFalse(const D d) {
 #define HWY_ASSERT_EQ(expected, actual)                                     \
   hwy::AssertEqual(expected, actual, hwy::TargetName(HWY_TARGET), __FILE__, \
                    __LINE__)
+
+#define HWY_ASSERT_ARRAY_EQ(expected, actual, count)                          \
+  hwy::AssertArrayEqual(expected, actual, count, hwy::TargetName(HWY_TARGET), \
+                        __FILE__, __LINE__)
 
 #define HWY_ASSERT_STRING_EQ(expected, actual)                          \
   hwy::AssertStringEqual(expected, actual, hwy::TargetName(HWY_TARGET), \
@@ -497,7 +505,12 @@ class ForPartialVectors {
   template <typename T>
   void operator()(T t) const {
     called_ = true;
+#if HWY_TARGET == HWY_SCALAR
+    (void)t;
+    detail::ForeachCappedR<T, 1, 1, Test>::Do(1, 1);
+#else
     ForExtendableVectors<Test, 0>()(t);
+#endif
   }
 };
 

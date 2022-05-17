@@ -131,31 +131,44 @@ namespace detail {  // for code folding
   X_MACRO(BASE, CHAR, 64, __, 32, m4, m8, m2, 2, /*MLEN=*/16, NAME, OP)  \
   X_MACRO(BASE, CHAR, 64, __, 32, m8, __, m4, 3, /*MLEN=*/8, NAME, OP)
 
-// LMULS = _EXT: not the largest LMUL
-#define HWY_RVV_FOREACH_08_EXT(X_MACRO, BASE, CHAR, NAME, OP)              \
+// LMULS = _LE2: <= 2
+#define HWY_RVV_FOREACH_08_LE2(X_MACRO, BASE, CHAR, NAME, OP)              \
   X_MACRO(BASE, CHAR, 8, 16, __, mf8, mf4, __, -3, /*MLEN=*/64, NAME, OP)  \
   X_MACRO(BASE, CHAR, 8, 16, __, mf4, mf2, mf8, -2, /*MLEN=*/32, NAME, OP) \
   X_MACRO(BASE, CHAR, 8, 16, __, mf2, m1, mf4, -1, /*MLEN=*/16, NAME, OP)  \
   X_MACRO(BASE, CHAR, 8, 16, __, m1, m2, mf2, 0, /*MLEN=*/8, NAME, OP)     \
-  X_MACRO(BASE, CHAR, 8, 16, __, m2, m4, m1, 1, /*MLEN=*/4, NAME, OP)      \
-  X_MACRO(BASE, CHAR, 8, 16, __, m4, m8, m2, 2, /*MLEN=*/2, NAME, OP)
+  X_MACRO(BASE, CHAR, 8, 16, __, m2, m4, m1, 1, /*MLEN=*/4, NAME, OP)
 
-#define HWY_RVV_FOREACH_16_EXT(X_MACRO, BASE, CHAR, NAME, OP)              \
+#define HWY_RVV_FOREACH_16_LE2(X_MACRO, BASE, CHAR, NAME, OP)              \
   X_MACRO(BASE, CHAR, 16, 32, 8, mf4, mf2, mf8, -2, /*MLEN=*/64, NAME, OP) \
   X_MACRO(BASE, CHAR, 16, 32, 8, mf2, m1, mf4, -1, /*MLEN=*/32, NAME, OP)  \
   X_MACRO(BASE, CHAR, 16, 32, 8, m1, m2, mf2, 0, /*MLEN=*/16, NAME, OP)    \
-  X_MACRO(BASE, CHAR, 16, 32, 8, m2, m4, m1, 1, /*MLEN=*/8, NAME, OP)      \
-  X_MACRO(BASE, CHAR, 16, 32, 8, m4, m8, m2, 2, /*MLEN=*/4, NAME, OP)
+  X_MACRO(BASE, CHAR, 16, 32, 8, m2, m4, m1, 1, /*MLEN=*/8, NAME, OP)
 
-#define HWY_RVV_FOREACH_32_EXT(X_MACRO, BASE, CHAR, NAME, OP)              \
+#define HWY_RVV_FOREACH_32_LE2(X_MACRO, BASE, CHAR, NAME, OP)              \
   X_MACRO(BASE, CHAR, 32, 64, 16, mf2, m1, mf4, -1, /*MLEN=*/64, NAME, OP) \
   X_MACRO(BASE, CHAR, 32, 64, 16, m1, m2, mf2, 0, /*MLEN=*/32, NAME, OP)   \
-  X_MACRO(BASE, CHAR, 32, 64, 16, m2, m4, m1, 1, /*MLEN=*/16, NAME, OP)    \
+  X_MACRO(BASE, CHAR, 32, 64, 16, m2, m4, m1, 1, /*MLEN=*/16, NAME, OP)
+
+#define HWY_RVV_FOREACH_64_LE2(X_MACRO, BASE, CHAR, NAME, OP)            \
+  X_MACRO(BASE, CHAR, 64, __, 32, m1, m2, mf2, 0, /*MLEN=*/64, NAME, OP) \
+  X_MACRO(BASE, CHAR, 64, __, 32, m2, m4, m1, 1, /*MLEN=*/32, NAME, OP)
+
+// LMULS = _EXT: not the largest LMUL
+#define HWY_RVV_FOREACH_08_EXT(X_MACRO, BASE, CHAR, NAME, OP) \
+  HWY_RVV_FOREACH_08_LE2(X_MACRO, BASE, CHAR, NAME, OP)       \
+  X_MACRO(BASE, CHAR, 8, 16, __, m4, m8, m2, 2, /*MLEN=*/2, NAME, OP)
+
+#define HWY_RVV_FOREACH_16_EXT(X_MACRO, BASE, CHAR, NAME, OP) \
+  HWY_RVV_FOREACH_16_LE2(X_MACRO, BASE, CHAR, NAME, OP)       \
+  X_MACRO(BASE, CHAR, 16, 32, 8, m4, m8, m2, 2, /*MLEN=*/4, NAME, OP)
+
+#define HWY_RVV_FOREACH_32_EXT(X_MACRO, BASE, CHAR, NAME, OP) \
+  HWY_RVV_FOREACH_32_LE2(X_MACRO, BASE, CHAR, NAME, OP)       \
   X_MACRO(BASE, CHAR, 32, 64, 16, m4, m8, m2, 2, /*MLEN=*/8, NAME, OP)
 
-#define HWY_RVV_FOREACH_64_EXT(X_MACRO, BASE, CHAR, NAME, OP)            \
-  X_MACRO(BASE, CHAR, 64, __, 32, m1, m2, mf2, 0, /*MLEN=*/64, NAME, OP) \
-  X_MACRO(BASE, CHAR, 64, __, 32, m2, m4, m1, 1, /*MLEN=*/32, NAME, OP)  \
+#define HWY_RVV_FOREACH_64_EXT(X_MACRO, BASE, CHAR, NAME, OP) \
+  HWY_RVV_FOREACH_64_LE2(X_MACRO, BASE, CHAR, NAME, OP)       \
   X_MACRO(BASE, CHAR, 64, __, 32, m4, m8, m2, 2, /*MLEN=*/16, NAME, OP)
 
 // LMULS = _ALL (2^MinPow2() <= LMUL <= 8)
@@ -217,6 +230,23 @@ namespace detail {  // for code folding
 
 #define HWY_RVV_FOREACH_64_ALL_VIRT(X_MACRO, BASE, CHAR, NAME, OP) \
   HWY_RVV_FOREACH_64_ALL(X_MACRO, BASE, CHAR, NAME, OP)            \
+  HWY_RVV_FOREACH_64_VIRT(X_MACRO, BASE, CHAR, NAME, OP)
+
+// LE2 + VIRT
+#define HWY_RVV_FOREACH_08_LE2_VIRT(X_MACRO, BASE, CHAR, NAME, OP) \
+  HWY_RVV_FOREACH_08_LE2(X_MACRO, BASE, CHAR, NAME, OP)            \
+  HWY_RVV_FOREACH_08_VIRT(X_MACRO, BASE, CHAR, NAME, OP)
+
+#define HWY_RVV_FOREACH_16_LE2_VIRT(X_MACRO, BASE, CHAR, NAME, OP) \
+  HWY_RVV_FOREACH_16_LE2(X_MACRO, BASE, CHAR, NAME, OP)            \
+  HWY_RVV_FOREACH_16_VIRT(X_MACRO, BASE, CHAR, NAME, OP)
+
+#define HWY_RVV_FOREACH_32_LE2_VIRT(X_MACRO, BASE, CHAR, NAME, OP) \
+  HWY_RVV_FOREACH_32_LE2(X_MACRO, BASE, CHAR, NAME, OP)            \
+  HWY_RVV_FOREACH_32_VIRT(X_MACRO, BASE, CHAR, NAME, OP)
+
+#define HWY_RVV_FOREACH_64_LE2_VIRT(X_MACRO, BASE, CHAR, NAME, OP) \
+  HWY_RVV_FOREACH_64_LE2(X_MACRO, BASE, CHAR, NAME, OP)            \
   HWY_RVV_FOREACH_64_VIRT(X_MACRO, BASE, CHAR, NAME, OP)
 
 // EXT + VIRT
@@ -427,6 +457,12 @@ HWY_API size_t Lanes(Simd<bfloat16_t, N, kPow2> /* tag*/) {
   HWY_API HWY_RVV_V(BASE, SEW, LMUL)                                        \
       NAME(HWY_RVV_V(BASE, SEW, LMUL) a, HWY_RVV_V(BASE, SEW, LMUL) b) {    \
     return v##OP##_vv_##CHAR##SEW##LMUL(a, b, HWY_RVV_AVL(SEW, SHIFT));     \
+  }
+
+// mask = f(mask)
+#define HWY_RVV_RETM_ARGM(SEW, SHIFT, MLEN, NAME, OP) \
+  HWY_API HWY_RVV_M(MLEN) NAME(HWY_RVV_M(MLEN) m) {   \
+    return vm##OP##_m_b##MLEN(m, ~0ull);              \
   }
 
 // ================================================== INIT
@@ -742,6 +778,13 @@ HWY_API V AndNot(const V not_a, const V b) {
   return And(Not(not_a), b);
 }
 
+// ------------------------------ Or3
+
+template <class V>
+HWY_API V Or3(V o1, V o2, V o3) {
+  return Or(o1, Or(o2, o3));
+}
+
 // ------------------------------ OrAnd
 
 template <class V>
@@ -1044,16 +1087,8 @@ HWY_API auto TestBit(const V a, const V bit) -> decltype(Eq(a, bit)) {
 }
 
 // ------------------------------ Not
-
-// mask = f(mask)
-#define HWY_RVV_RETM_ARGM(SEW, SHIFT, MLEN, NAME, OP) \
-  HWY_API HWY_RVV_M(MLEN) NAME(HWY_RVV_M(MLEN) m) {   \
-    return vm##OP##_m_b##MLEN(m, ~0ull);              \
-  }
-
 HWY_RVV_FOREACH_B(HWY_RVV_RETM_ARGM, Not, not )
 
-#undef HWY_RVV_RETM_ARGM
 
 // ------------------------------ And
 
@@ -1388,6 +1423,76 @@ HWY_API VFromD<D> GatherIndex(D d, const TFromD<D>* HWY_RESTRICT base,
   return GatherOffset(d, base, ShiftLeft<3>(index));
 }
 
+// ------------------------------ LoadInterleaved2
+
+// Per-target flag to prevent generic_ops-inl.h from defining LoadInterleaved2.
+#ifdef HWY_NATIVE_LOAD_STORE_INTERLEAVED
+#undef HWY_NATIVE_LOAD_STORE_INTERLEAVED
+#else
+#define HWY_NATIVE_LOAD_STORE_INTERLEAVED
+#endif
+
+#define HWY_RVV_LOAD2(BASE, CHAR, SEW, SEWD, SEWH, LMUL, LMULD, LMULH, SHIFT, \
+                      MLEN, NAME, OP)                                         \
+  template <size_t N>                                                         \
+  HWY_API void NAME(HWY_RVV_D(BASE, SEW, N, SHIFT) d,                         \
+                    const HWY_RVV_T(BASE, SEW) * HWY_RESTRICT unaligned,      \
+                    HWY_RVV_V(BASE, SEW, LMUL) & v0,                          \
+                    HWY_RVV_V(BASE, SEW, LMUL) & v1) {                        \
+    v##OP##e##SEW##_v_##CHAR##SEW##LMUL(&v0, &v1, unaligned, Lanes(d));       \
+  }
+// Segments are limited to 8 registers, so we can only go up to LMUL=2.
+HWY_RVV_FOREACH(HWY_RVV_LOAD2, LoadInterleaved2, lseg2, _LE2_VIRT)
+#undef HWY_RVV_LOAD2
+
+// ------------------------------ LoadInterleaved3
+
+#define HWY_RVV_LOAD3(BASE, CHAR, SEW, SEWD, SEWH, LMUL, LMULD, LMULH, SHIFT, \
+                      MLEN, NAME, OP)                                         \
+  template <size_t N>                                                         \
+  HWY_API void NAME(HWY_RVV_D(BASE, SEW, N, SHIFT) d,                         \
+                    const HWY_RVV_T(BASE, SEW) * HWY_RESTRICT unaligned,      \
+                    HWY_RVV_V(BASE, SEW, LMUL) & v0,                          \
+                    HWY_RVV_V(BASE, SEW, LMUL) & v1,                          \
+                    HWY_RVV_V(BASE, SEW, LMUL) & v2) {                        \
+    v##OP##e##SEW##_v_##CHAR##SEW##LMUL(&v0, &v1, &v2, unaligned, Lanes(d));  \
+  }
+// Segments are limited to 8 registers, so we can only go up to LMUL=2.
+HWY_RVV_FOREACH(HWY_RVV_LOAD3, LoadInterleaved3, lseg3, _LE2_VIRT)
+#undef HWY_RVV_LOAD3
+
+// ------------------------------ LoadInterleaved4
+
+#define HWY_RVV_LOAD4(BASE, CHAR, SEW, SEWD, SEWH, LMUL, LMULD, LMULH, SHIFT, \
+                      MLEN, NAME, OP)                                         \
+  template <size_t N>                                                         \
+  HWY_API void NAME(                                                          \
+      HWY_RVV_D(BASE, SEW, N, SHIFT) d,                                       \
+      const HWY_RVV_T(BASE, SEW) * HWY_RESTRICT aligned,                      \
+      HWY_RVV_V(BASE, SEW, LMUL) & v0, HWY_RVV_V(BASE, SEW, LMUL) & v1,       \
+      HWY_RVV_V(BASE, SEW, LMUL) & v2, HWY_RVV_V(BASE, SEW, LMUL) & v3) {     \
+    v##OP##e##SEW##_v_##CHAR##SEW##LMUL(&v0, &v1, &v2, &v3, aligned,          \
+                                        Lanes(d));                            \
+  }
+// Segments are limited to 8 registers, so we can only go up to LMUL=2.
+HWY_RVV_FOREACH(HWY_RVV_LOAD4, LoadInterleaved4, lseg4, _LE2_VIRT)
+#undef HWY_RVV_LOAD4
+
+// ------------------------------ StoreInterleaved2
+
+#define HWY_RVV_STORE2(BASE, CHAR, SEW, SEWD, SEWH, LMUL, LMULD, LMULH, SHIFT, \
+                       MLEN, NAME, OP)                                         \
+  template <size_t N>                                                          \
+  HWY_API void NAME(HWY_RVV_V(BASE, SEW, LMUL) v0,                             \
+                    HWY_RVV_V(BASE, SEW, LMUL) v1,                             \
+                    HWY_RVV_D(BASE, SEW, N, SHIFT) d,                          \
+                    HWY_RVV_T(BASE, SEW) * HWY_RESTRICT unaligned) {           \
+    v##OP##e##SEW##_v_##CHAR##SEW##LMUL(unaligned, v0, v1, Lanes(d));          \
+  }
+// Segments are limited to 8 registers, so we can only go up to LMUL=2.
+HWY_RVV_FOREACH(HWY_RVV_STORE2, StoreInterleaved2, sseg2, _LE2_VIRT)
+#undef HWY_RVV_STORE2
+
 // ------------------------------ StoreInterleaved3
 
 #define HWY_RVV_STORE3(BASE, CHAR, SEW, SEWD, SEWH, LMUL, LMULD, LMULH, SHIFT, \
@@ -1397,19 +1502,10 @@ HWY_API VFromD<D> GatherIndex(D d, const TFromD<D>* HWY_RESTRICT base,
       HWY_RVV_V(BASE, SEW, LMUL) v0, HWY_RVV_V(BASE, SEW, LMUL) v1,            \
       HWY_RVV_V(BASE, SEW, LMUL) v2, HWY_RVV_D(BASE, SEW, N, SHIFT) d,         \
       HWY_RVV_T(BASE, SEW) * HWY_RESTRICT unaligned) {                         \
-    return v##OP##e8_v_##CHAR##SEW##LMUL(unaligned, v0, v1, v2, Lanes(d));     \
+    v##OP##e##SEW##_v_##CHAR##SEW##LMUL(unaligned, v0, v1, v2, Lanes(d));      \
   }
 // Segments are limited to 8 registers, so we can only go up to LMUL=2.
-HWY_RVV_STORE3(uint, u, 8, _, _, mf8, _, _, /*kShift=*/-3, 64,
-               StoreInterleaved3, sseg3)
-HWY_RVV_STORE3(uint, u, 8, _, _, mf4, _, _, /*kShift=*/-2, 32,
-               StoreInterleaved3, sseg3)
-HWY_RVV_STORE3(uint, u, 8, _, _, mf2, _, _, /*kShift=*/-1, 16,
-               StoreInterleaved3, sseg3)
-HWY_RVV_STORE3(uint, u, 8, _, _, m1, _, _, /*kShift=*/0, 8, StoreInterleaved3,
-               sseg3)
-HWY_RVV_STORE3(uint, u, 8, _, _, m2, _, _, /*kShift=*/1, 4, StoreInterleaved3,
-               sseg3)
+HWY_RVV_FOREACH(HWY_RVV_STORE3, StoreInterleaved3, sseg3, _LE2_VIRT)
 #undef HWY_RVV_STORE3
 
 // ------------------------------ StoreInterleaved4
@@ -1422,20 +1518,10 @@ HWY_RVV_STORE3(uint, u, 8, _, _, m2, _, _, /*kShift=*/1, 4, StoreInterleaved3,
       HWY_RVV_V(BASE, SEW, LMUL) v2, HWY_RVV_V(BASE, SEW, LMUL) v3,            \
       HWY_RVV_D(BASE, SEW, N, SHIFT) d,                                        \
       HWY_RVV_T(BASE, SEW) * HWY_RESTRICT aligned) {                           \
-    return v##OP##e8_v_##CHAR##SEW##LMUL(aligned, v0, v1, v2, v3, Lanes(d));   \
+    v##OP##e##SEW##_v_##CHAR##SEW##LMUL(aligned, v0, v1, v2, v3, Lanes(d));    \
   }
 // Segments are limited to 8 registers, so we can only go up to LMUL=2.
-HWY_RVV_STORE4(uint, u, 8, _, _, mf8, _, _, /*kShift=*/-3, 64,
-               StoreInterleaved4, sseg4)
-HWY_RVV_STORE4(uint, u, 8, _, _, mf4, _, _, /*kShift=*/-2, 32,
-               StoreInterleaved4, sseg4)
-HWY_RVV_STORE4(uint, u, 8, _, _, mf2, _, _, /*kShift=*/-1, 16,
-               StoreInterleaved4, sseg4)
-HWY_RVV_STORE4(uint, u, 8, _, _, m1, _, _, /*kShift=*/0, 8, StoreInterleaved4,
-               sseg4)
-HWY_RVV_STORE4(uint, u, 8, _, _, m2, _, _, /*kShift=*/1, 4, StoreInterleaved4,
-               sseg4)
-
+HWY_RVV_FOREACH(HWY_RVV_STORE4, StoreInterleaved4, sseg4, _LE2_VIRT)
 #undef HWY_RVV_STORE4
 
 // ================================================== CONVERT
@@ -1870,6 +1956,38 @@ HWY_RVV_FOREACH_F3264(HWY_RVV_SLIDE1, Slide1Down, fslide1down_vf, _ALL)
 HWY_RVV_FOREACH_UI(HWY_RVV_GET_LANE, GetLane, mv_x, _ALL)
 HWY_RVV_FOREACH_F(HWY_RVV_GET_LANE, GetLane, fmv_f, _ALL)
 #undef HWY_RVV_GET_LANE
+
+// ------------------------------ ExtractLane
+template <class V>
+HWY_API TFromV<V> ExtractLane(const V v, size_t i) {
+  return GetLane(detail::SlideDown(v, v, i));
+}
+
+// ------------------------------ InsertLane
+
+template <class V, HWY_IF_NOT_LANE_SIZE_V(V, 1)>
+HWY_API V InsertLane(const V v, size_t i, TFromV<V> t) {
+  const DFromV<V> d;
+  const RebindToUnsigned<decltype(d)> du;  // Iota0 is unsigned only
+  using TU = TFromD<decltype(du)>;
+  const auto is_i = detail::EqS(detail::Iota0(du), static_cast<TU>(i));
+  return IfThenElse(RebindMask(d, is_i), Set(d, t), v);
+}
+
+namespace detail {
+HWY_RVV_FOREACH_B(HWY_RVV_RETM_ARGM, SetOnlyFirst, sof)
+}  // namespace detail
+
+// For 8-bit lanes, Iota0 might overflow.
+template <class V, HWY_IF_LANE_SIZE_V(V, 1)>
+HWY_API V InsertLane(const V v, size_t i, TFromV<V> t) {
+  const DFromV<V> d;
+  const auto zero = Zero(d);
+  const auto one = Set(d, 1);
+  const auto ge_i = Eq(detail::SlideUp(zero, one, i), one);
+  const auto is_i = detail::SetOnlyFirst(ge_i);
+  return IfThenElse(RebindMask(d, is_i), Set(d, t), v);
+}
 
 // ------------------------------ OddEven
 template <class V>
@@ -2622,6 +2740,42 @@ HWY_API V Floor(const V v) {
   return ret;
 }
 
+// ------------------------------ Floating-point classification (Ne)
+
+// vfclass does not help because it would require 3 instructions (to AND and
+// then compare the bits), whereas these are just 1-3 integer instructions.
+
+template <class V>
+HWY_API MFromD<DFromV<V>> IsNaN(const V v) {
+  return Ne(v, v);
+}
+
+template <class V, class D = DFromV<V>>
+HWY_API MFromD<D> IsInf(const V v) {
+  const D d;
+  const RebindToSigned<decltype(d)> di;
+  using T = TFromD<D>;
+  const VFromD<decltype(di)> vi = BitCast(di, v);
+  // 'Shift left' to clear the sign bit, check for exponent=max and mantissa=0.
+  return RebindMask(d, detail::EqS(Add(vi, vi), hwy::MaxExponentTimes2<T>()));
+}
+
+// Returns whether normal/subnormal/zero.
+template <class V, class D = DFromV<V>>
+HWY_API MFromD<D> IsFinite(const V v) {
+  const D d;
+  const RebindToUnsigned<decltype(d)> du;
+  const RebindToSigned<decltype(d)> di;  // cheaper than unsigned comparison
+  using T = TFromD<D>;
+  const VFromD<decltype(du)> vu = BitCast(du, v);
+  // 'Shift left' to clear the sign bit, then right so we can compare with the
+  // max exponent (cannot compare with MaxExponentTimes2 directly because it is
+  // negative and non-negative floats would be greater).
+  const VFromD<decltype(di)> exp =
+      BitCast(di, ShiftRight<hwy::MantissaBits<T>() + 1>(Add(vu, vu)));
+  return RebindMask(d, detail::LtS(exp, hwy::MaxExponentField<T>()));
+}
+
 // ------------------------------ Iota (ConvertTo)
 
 template <class D, HWY_IF_UNSIGNED_D(D)>
@@ -2824,6 +2978,7 @@ namespace detail {  // for code folding
 #undef HWY_RVV_FOREACH_UI3264
 #undef HWY_RVV_FOREACH_UI64
 #undef HWY_RVV_M
+#undef HWY_RVV_RETM_ARGM
 #undef HWY_RVV_RETV_ARGV
 #undef HWY_RVV_RETV_ARGVS
 #undef HWY_RVV_RETV_ARGVV

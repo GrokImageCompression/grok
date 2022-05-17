@@ -21,8 +21,6 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include <cfloat>
-
 #include "hwy/detect_compiler_arch.h"
 #include "hwy/highway_export.h"
 
@@ -312,6 +310,9 @@ HWY_API constexpr bool IsSame() {
 #define HWY_IF_NOT_LANE_SIZE(T, bytes) \
   hwy::EnableIf<sizeof(T) != (bytes)>* = nullptr
 
+#define HWY_IF_LANES_PER_BLOCK(T, N, LANES) \
+  hwy::EnableIf<HWY_MIN(sizeof(T) * N, 16) / sizeof(T) == (LANES)>* = nullptr
+
 // Empty struct used as a size tag type.
 template <size_t N>
 struct SizeTag {};
@@ -514,11 +515,11 @@ HWY_API constexpr T LowestValue() {
 }
 template <>
 constexpr float LowestValue<float>() {
-  return -FLT_MAX;
+  return -3.402823466e+38F;
 }
 template <>
 constexpr double LowestValue<double>() {
-  return -DBL_MAX;
+  return -1.7976931348623158e+308;
 }
 
 template <typename T>
@@ -527,41 +528,51 @@ HWY_API constexpr T HighestValue() {
 }
 template <>
 constexpr float HighestValue<float>() {
-  return FLT_MAX;
+  return 3.402823466e+38F;
 }
 template <>
 constexpr double HighestValue<double>() {
-  return DBL_MAX;
+  return 1.7976931348623158e+308;
+}
+
+// Returns width in bits of the mantissa field in IEEE binary32/64.
+template <typename T>
+constexpr int MantissaBits() {
+  static_assert(sizeof(T) == 0, "Only instantiate the specializations");
+  return 0;
+}
+template <>
+constexpr int MantissaBits<float>() {
+  return 23;
+}
+template <>
+constexpr int MantissaBits<double>() {
+  return 52;
+}
+
+// Returns the (left-shifted by one bit) IEEE binary32/64 representation with
+// the largest possible (biased) exponent field. Used by IsInf.
+template <typename T>
+constexpr MakeSigned<T> MaxExponentTimes2() {
+  return -(MakeSigned<T>{1} << (MantissaBits<T>() + 1));
+}
+
+// Returns bitmask of the sign bit in IEEE binary32/64.
+template <typename T>
+constexpr MakeUnsigned<T> SignMask() {
+  return MakeUnsigned<T>{1} << (sizeof(T) * 8 - 1);
 }
 
 // Returns bitmask of the exponent field in IEEE binary32/64.
 template <typename T>
-constexpr T ExponentMask() {
-  static_assert(sizeof(T) == 0, "Only instantiate the specializations");
-  return 0;
-}
-template <>
-constexpr uint32_t ExponentMask<uint32_t>() {
-  return 0x7F800000;
-}
-template <>
-constexpr uint64_t ExponentMask<uint64_t>() {
-  return 0x7FF0000000000000ULL;
+constexpr MakeUnsigned<T> ExponentMask() {
+  return (~(MakeUnsigned<T>{1} << MantissaBits<T>()) + 1) & ~SignMask<T>();
 }
 
 // Returns bitmask of the mantissa field in IEEE binary32/64.
 template <typename T>
-constexpr T MantissaMask() {
-  static_assert(sizeof(T) == 0, "Only instantiate the specializations");
-  return 0;
-}
-template <>
-constexpr uint32_t MantissaMask<uint32_t>() {
-  return 0x007FFFFF;
-}
-template <>
-constexpr uint64_t MantissaMask<uint64_t>() {
-  return 0x000FFFFFFFFFFFFFULL;
+constexpr MakeUnsigned<T> MantissaMask() {
+  return (MakeUnsigned<T>{1} << MantissaBits<T>()) - 1;
 }
 
 // Returns 1 << mantissa_bits as a floating-point number. All integers whose
@@ -579,6 +590,21 @@ template <>
 constexpr double MantissaEnd<double>() {
   // floating point literal with p52 requires C++17.
   return 4503599627370496.0;  // 1 << 52
+}
+
+// Returns width in bits of the exponent field in IEEE binary32/64.
+template <typename T>
+constexpr int ExponentBits() {
+  // Exponent := remaining bits after deducting sign and mantissa.
+  return 8 * sizeof(T) - 1 - MantissaBits<T>();
+}
+
+// Returns largest value of the biased exponent field in IEEE binary32/64,
+// right-shifted so that the LSB is bit zero. Example: 0xFF for float.
+// This is expressed as a signed integer for more efficient comparison.
+template <typename T>
+constexpr MakeSigned<T> MaxExponentField() {
+  return (MakeSigned<T>{1} << ExponentBits<T>()) - 1;
 }
 
 //------------------------------------------------------------------------------
@@ -727,19 +753,27 @@ HWY_API uint64_t Mul128(uint64_t a, uint64_t b, uint64_t* HWY_RESTRICT upper) {
 #endif
 }
 
+#if HWY_COMPILER_MSVC
+#pragma intrinsic(memcpy)
+#pragma intrinsic(memset)
+#endif
+
 // The source/destination must not overlap/alias.
 template <size_t kBytes, typename From, typename To>
 HWY_API void CopyBytes(const From* from, To* to) {
 #if HWY_COMPILER_MSVC
-  const uint8_t* HWY_RESTRICT from_bytes =
-      reinterpret_cast<const uint8_t*>(from);
-  uint8_t* HWY_RESTRICT to_bytes = reinterpret_cast<uint8_t*>(to);
-  for (size_t i = 0; i < kBytes; ++i) {
-    to_bytes[i] = from_bytes[i];
-  }
+  memcpy(to, from, kBytes);
 #else
-  // Avoids horrible codegen on Clang (series of PINSRB)
   __builtin_memcpy(to, from, kBytes);
+#endif
+}
+
+template <size_t kBytes, typename To>
+HWY_API void ZeroBytes(To* to) {
+#if HWY_COMPILER_MSVC
+  memset(to, 0, kBytes);
+#else
+  __builtin_memset(to, 0, kBytes);
 #endif
 }
 

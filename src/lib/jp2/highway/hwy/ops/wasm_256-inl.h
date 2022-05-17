@@ -722,6 +722,37 @@ HWY_API Vec256<float> Floor(const Vec256<float> v) {
   return Vec256<float>{wasm_f32x4_floor(v.raw)};
 }
 
+// ------------------------------ Floating-point classification
+
+template <typename T>
+HWY_API Mask256<T> IsNaN(const Vec256<T> v) {
+  return v != v;
+}
+
+template <typename T, HWY_IF_FLOAT(T)>
+HWY_API Mask256<T> IsInf(const Vec256<T> v) {
+  const Full256<T> d;
+  const RebindToSigned<decltype(d)> di;
+  const VFromD<decltype(di)> vi = BitCast(di, v);
+  // 'Shift left' to clear the sign bit, check for exponent=max and mantissa=0.
+  return RebindMask(d, Eq(Add(vi, vi), Set(di, hwy::MaxExponentTimes2<T>())));
+}
+
+// Returns whether normal/subnormal/zero.
+template <typename T, HWY_IF_FLOAT(T)>
+HWY_API Mask256<T> IsFinite(const Vec256<T> v) {
+  const Full256<T> d;
+  const RebindToUnsigned<decltype(d)> du;
+  const RebindToSigned<decltype(d)> di;  // cheaper than unsigned comparison
+  const VFromD<decltype(du)> vu = BitCast(du, v);
+  // 'Shift left' to clear the sign bit, then right so we can compare with the
+  // max exponent (cannot compare with MaxExponentTimes2 directly because it is
+  // negative and non-negative floats would be greater).
+  const VFromD<decltype(di)> exp =
+      BitCast(di, ShiftRight<hwy::MantissaBits<T>() + 1>(Add(vu, vu)));
+  return RebindMask(d, Lt(exp, Set(di, hwy::MaxExponentField<T>())));
+}
+
 // ================================================== COMPARE
 
 // Comparisons fill a lane with 1-bits if the condition is true, else 0.
@@ -913,6 +944,13 @@ HWY_API Vec256<T> Or(Vec256<T> a, Vec256<T> b) {
 template <typename T>
 HWY_API Vec256<T> Xor(Vec256<T> a, Vec256<T> b) {
   return Vec256<T>{wasm_v128_xor(a.raw, b.raw)};
+}
+
+// ------------------------------ Or3
+
+template <typename T>
+HWY_API Vec256<T> Or3(Vec256<T> o1, Vec256<T> o2, Vec256<T> o3) {
+  return Or(o1, Or(o2, o3));
 }
 
 // ------------------------------ OrAnd
@@ -1292,8 +1330,19 @@ HWY_API Vec256<T> GatherIndex(const Full256<T> d, const T* HWY_RESTRICT base,
 
 // ================================================== SWIZZLE
 
-// ------------------------------ Extract lane
+// ------------------------------ ExtractLane
+template <typename T, size_t N>
+HWY_API T ExtractLane(const Vec128<T, N> v, size_t i) {
+  HWY_ASSERT(0);
+}
 
+// ------------------------------ InsertLane
+template <typename T, size_t N>
+HWY_API Vec128<T, N> InsertLane(const Vec128<T, N> v, size_t i, T t) {
+  HWY_ASSERT(0);
+}
+
+// ------------------------------ GetLane
 // Gets the single value stored in a vector/part.
 HWY_API uint8_t GetLane(const Vec256<uint8_t> v) {
   return wasm_i8x16_extract_lane(v.raw, 0);
@@ -2766,76 +2815,10 @@ HWY_API size_t CompressBitsStore(Vec256<T> v, const uint8_t* HWY_RESTRICT bits,
   return PopCount(mask_bits);
 }
 
-// ------------------------------ StoreInterleaved3 (CombineShiftRightBytes,
-// TableLookupBytes)
+// ------------------------------ StoreInterleaved2/3/4
 
-HWY_API void StoreInterleaved3(const Vec256<uint8_t> a, const Vec256<uint8_t> b,
-                               const Vec256<uint8_t> c, Full256<uint8_t> d,
-                               uint8_t* HWY_RESTRICT unaligned) {
-  const auto k5 = Set(d, 5);
-  const auto k6 = Set(d, 6);
-
-  // Shuffle (a,b,c) vector bytes to (MSB on left): r5, bgr[4:0].
-  // 0x80 so lanes to be filled from other vectors are 0 for blending.
-  alignas(32) static constexpr uint8_t tbl_r0[16] = {
-      0, 0x80, 0x80, 1, 0x80, 0x80, 2, 0x80, 0x80,  //
-      3, 0x80, 0x80, 4, 0x80, 0x80, 5};
-  alignas(32) static constexpr uint8_t tbl_g0[16] = {
-      0x80, 0, 0x80, 0x80, 1, 0x80,  //
-      0x80, 2, 0x80, 0x80, 3, 0x80, 0x80, 4, 0x80, 0x80};
-  const auto shuf_r0 = Load(d, tbl_r0);
-  const auto shuf_g0 = Load(d, tbl_g0);  // cannot reuse r0 due to 5 in MSB
-  const auto shuf_b0 = CombineShiftRightBytes<15>(d, shuf_g0, shuf_g0);
-  const auto r0 = TableLookupBytes(a, shuf_r0);  // 5..4..3..2..1..0
-  const auto g0 = TableLookupBytes(b, shuf_g0);  // ..4..3..2..1..0.
-  const auto b0 = TableLookupBytes(c, shuf_b0);  // .4..3..2..1..0..
-  const auto int0 = r0 | g0 | b0;
-  StoreU(int0, d, unaligned + 0 * 16);
-
-  // Second vector: g10,r10, bgr[9:6], b5,g5
-  const auto shuf_r1 = shuf_b0 + k6;  // .A..9..8..7..6..
-  const auto shuf_g1 = shuf_r0 + k5;  // A..9..8..7..6..5
-  const auto shuf_b1 = shuf_g0 + k5;  // ..9..8..7..6..5.
-  const auto r1 = TableLookupBytes(a, shuf_r1);
-  const auto g1 = TableLookupBytes(b, shuf_g1);
-  const auto b1 = TableLookupBytes(c, shuf_b1);
-  const auto int1 = r1 | g1 | b1;
-  StoreU(int1, d, unaligned + 1 * 16);
-
-  // Third vector: bgr[15:11], b10
-  const auto shuf_r2 = shuf_b1 + k6;  // ..F..E..D..C..B.
-  const auto shuf_g2 = shuf_r1 + k5;  // .F..E..D..C..B..
-  const auto shuf_b2 = shuf_g1 + k5;  // F..E..D..C..B..A
-  const auto r2 = TableLookupBytes(a, shuf_r2);
-  const auto g2 = TableLookupBytes(b, shuf_g2);
-  const auto b2 = TableLookupBytes(c, shuf_b2);
-  const auto int2 = r2 | g2 | b2;
-  StoreU(int2, d, unaligned + 2 * 16);
-}
-
-// ------------------------------ StoreInterleaved4
-
-HWY_API void StoreInterleaved4(const Vec256<uint8_t> v0,
-                               const Vec256<uint8_t> v1,
-                               const Vec256<uint8_t> v2,
-                               const Vec256<uint8_t> v3, Full256<uint8_t> d8,
-                               uint8_t* HWY_RESTRICT unaligned) {
-  const RepartitionToWide<decltype(d8)> d16;
-  const RepartitionToWide<decltype(d16)> d32;
-  // let a,b,c,d denote v0..3.
-  const auto ba0 = ZipLower(d16, v0, v1);  // b7 a7 .. b0 a0
-  const auto dc0 = ZipLower(d16, v2, v3);  // d7 c7 .. d0 c0
-  const auto ba8 = ZipUpper(d16, v0, v1);
-  const auto dc8 = ZipUpper(d16, v2, v3);
-  const auto dcba_0 = ZipLower(d32, ba0, dc0);  // d..a3 d..a0
-  const auto dcba_4 = ZipUpper(d32, ba0, dc0);  // d..a7 d..a4
-  const auto dcba_8 = ZipLower(d32, ba8, dc8);  // d..aB d..a8
-  const auto dcba_C = ZipUpper(d32, ba8, dc8);  // d..aF d..aC
-  StoreU(BitCast(d8, dcba_0), d8, unaligned + 0 * 16);
-  StoreU(BitCast(d8, dcba_4), d8, unaligned + 1 * 16);
-  StoreU(BitCast(d8, dcba_8), d8, unaligned + 2 * 16);
-  StoreU(BitCast(d8, dcba_C), d8, unaligned + 3 * 16);
-}
+// HWY_NATIVE_LOAD_STORE_INTERLEAVED not set, hence defined in
+// generic_ops-inl.h.
 
 // ------------------------------ MulEven/Odd (Load)
 

@@ -40,6 +40,43 @@ HWY_NOINLINE void TestAllGetLane() {
   ForAllTypes(ForPartialVectors<TestGetLane>());
 }
 
+struct TestExtractLane {
+  template <class T, class D>
+  HWY_NOINLINE void operator()(T /*unused*/, D d) {
+    const auto v = Iota(d, T(1));
+    for (size_t i = 0; i < Lanes(d); ++i) {
+      const T actual = ExtractLane(v, i);
+      HWY_ASSERT_EQ(static_cast<T>(i + 1), actual);
+    }
+  }
+};
+
+HWY_NOINLINE void TestAllExtractLane() {
+  ForAllTypes(ForPartialVectors<TestExtractLane>());
+}
+
+struct TestInsertLane {
+  template <class T, class D>
+  HWY_NOINLINE void operator()(T /*unused*/, D d) {
+    using V = Vec<D>;
+    const V v = Iota(d, T(1));
+    const size_t N = Lanes(d);
+    auto lanes = AllocateAligned<T>(N);
+    Store(v, d, lanes.get());
+
+    for (size_t i = 0; i < Lanes(d); ++i) {
+      lanes[i] = T{0};
+      const V actual = InsertLane(v, i, static_cast<T>(i + 1));
+      HWY_ASSERT_VEC_EQ(d, v, actual);
+      Store(v, d, lanes.get());  // restore lane i
+    }
+  }
+};
+
+HWY_NOINLINE void TestAllInsertLane() {
+  ForAllTypes(ForPartialVectors<TestInsertLane>());
+}
+
 struct TestDupEven {
   template <class T, class D>
   HWY_NOINLINE void operator()(T /*unused*/, D d) {
@@ -138,10 +175,10 @@ HWY_NOINLINE void TestAllSwapAdjacentBlocks() {
 struct TestTableLookupLanes {
   template <class T, class D>
   HWY_NOINLINE void operator()(T /*unused*/, D d) {
-    using TI = MakeSigned<T>;
+    const RebindToSigned<D> di;
+    using TI = TFromD<decltype(di)>;
 #if HWY_TARGET != HWY_SCALAR
     const size_t N = Lanes(d);
-    const Rebind<TI, D> di;
     auto idx = AllocateAligned<TI>(N);
     memset(idx.get(), 0, N * sizeof(TI));
     auto expected = AllocateAligned<T>(N);
@@ -201,7 +238,7 @@ struct TestTableLookupLanes {
     const auto v = Set(d, 1);
     const auto opaque1 = SetTableIndices(d, &index);
     HWY_ASSERT_VEC_EQ(d, v, TableLookupLanes(v, opaque1));
-    const auto opaque2 = IndicesFromVec(d, Zero(d));
+    const auto opaque2 = IndicesFromVec(d, Zero(di));
     HWY_ASSERT_VEC_EQ(d, v, TableLookupLanes(v, opaque2));
 #endif
   }
@@ -222,6 +259,8 @@ HWY_AFTER_NAMESPACE();
 namespace hwy {
 HWY_BEFORE_TEST(HwySwizzleTest);
 HWY_EXPORT_AND_TEST_P(HwySwizzleTest, TestAllGetLane);
+HWY_EXPORT_AND_TEST_P(HwySwizzleTest, TestAllExtractLane);
+HWY_EXPORT_AND_TEST_P(HwySwizzleTest, TestAllInsertLane);
 HWY_EXPORT_AND_TEST_P(HwySwizzleTest, TestAllDupEven);
 HWY_EXPORT_AND_TEST_P(HwySwizzleTest, TestAllDupOdd);
 HWY_EXPORT_AND_TEST_P(HwySwizzleTest, TestAllOddEven);

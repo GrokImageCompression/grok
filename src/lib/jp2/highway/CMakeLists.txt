@@ -48,6 +48,7 @@ set(HWY_CMAKE_ARM7 OFF CACHE BOOL "Set copts for ARMv7 with NEON (requires vfpv4
 # arise due to compiler/platform changes. Enable this in CI/tests.
 set(HWY_WARNINGS_ARE_ERRORS OFF CACHE BOOL "Add -Werror flag?")
 
+set(HWY_ENABLE_CONTRIB ON CACHE BOOL "Include contrib/")
 set(HWY_ENABLE_EXAMPLES ON CACHE BOOL "Build examples")
 set(HWY_ENABLE_INSTALL ON CACHE BOOL "Install library")
 
@@ -62,6 +63,7 @@ check_cxx_source_compiles(
   HWY_EMSCRIPTEN
 )
 
+if (HWY_ENABLE_CONTRIB)
 set(HWY_CONTRIB_SOURCES
     hwy/contrib/dot/dot-inl.h
     hwy/contrib/image/image.cc
@@ -94,6 +96,7 @@ set(HWY_CONTRIB_SOURCES
     hwy/contrib/sort/vqsort_u64a.cc
     hwy/contrib/sort/vqsort_u64d.cc
 )
+endif()  # HWY_ENABLE_CONTRIB
 
 set(HWY_SOURCES
     hwy/aligned_allocator.cc
@@ -109,6 +112,7 @@ set(HWY_SOURCES
     hwy/nanobenchmark.h
     hwy/ops/arm_neon-inl.h
     hwy/ops/arm_sve-inl.h
+    hwy/ops/emu128-inl.h
     hwy/ops/generic_ops-inl.h
     hwy/ops/scalar-inl.h
     hwy/ops/set_macros-inl.h
@@ -132,7 +136,10 @@ set(HWY_TEST_SOURCES
 )
 
 if (MSVC)
-  # TODO(janwas): add flags
+  set(HWY_FLAGS
+    # fix build error C1128 in blockwise*_test & arithmetic_test
+    /bigobj
+  )
 else()
   set(HWY_FLAGS
     # Avoid changing binaries based on the current time and date.

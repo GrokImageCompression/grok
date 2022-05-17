@@ -2,15 +2,23 @@
 
 [[_TOC_]]
 
-## Usage modes
+## High-level overview
 
-Highway can compile for multiple CPU targets, choosing the best available at
-runtime (dynamic dispatch), or compile for a single CPU target without runtime
-overhead (static dispatch). Examples of both are provided in examples/.
+Highway is a collection of 'ops': platform-agnostic pure functions that operate
+on tuples (multiple values of the same type). These functions are implemented
+using platform-specific intrinsics, which map to SIMD/vector instructions.
+`hwy/contrib` also includes higher-level algorithms such as `FindIf` or `Sorter`
+implemented using these ops.
 
-Dynamic dispatch uses the same source code as static, plus `#define
-HWY_TARGET_INCLUDE`, `#include "hwy/foreach_target.h"`
-(which must come before any inclusion of highway.h) and `HWY_DYNAMIC_DISPATCH`.
+Highyway can use dynamic dispatch, which chooses the best available
+implementation at runtime, or static dispatch which has no runtime overhead.
+Dynamic dispatch works by compiling your code once per target CPU and then
+selecting (via indirect call) at runtime.
+
+Examples of both are provided in examples/. Dynamic dispatch uses the same
+source code as static, plus `#define HWY_TARGET_INCLUDE`, `#include
+"third_party/highway/hwy/foreach_target.h"` (which must come before any
+inclusion of highway.h) and `HWY_DYNAMIC_DISPATCH`.
 
 ## Headers
 
@@ -25,7 +33,7 @@ The public headers are:
 
 *   hwy/foreach_target.h: re-includes the translation unit (specified by
     `HWY_TARGET_INCLUDE`) once per enabled target to generate code from the same
-    source code. highway.h must still be included, either before or after.
+    source code. highway.h must still be included.
 
 *   hwy/aligned_allocator.h: defines functions for allocating memory with
     alignment suitable for `Load`/`Store`.
@@ -59,19 +67,25 @@ HWY_AFTER_NAMESPACE();
 
 ## Notation in this doc
 
-*   `T` denotes the type of a vector lane;
+*   `T` denotes the type of a vector lane (integer or floating-point);
 *   `N` is a size_t value that governs (but is not necessarily identical to) the
     number of lanes;
-*   `D` is shorthand for `Simd<T, N, kPow2>` (use aliases such as `ScalableTag`
-    instead of referring to this type directly);
+*   `D` is shorthand for a zero-sized tag type `Simd<T, N, kPow2>`, used to
+    select the desired overloaded function (see next section). Use aliases such
+    as `ScalableTag` instead of referring to this type directly;
 *   `d` is an lvalue of type `D`, passed as a function argument e.g. to Zero;
-*   `V` is the type of a vector.
+*   `V` is the type of a vector, which may be a class or built-in type.
 
 ## Vector and tag types
 
 Highway vectors consist of one or more 'lanes' of the same built-in type
 `uint##_t, int##_t` for `## = 8, 16, 32, 64`, plus `float##_t` for `## = 16, 32,
 64` and `bfloat16_t`.
+
+Beware that `char` may differ from these types, and is not supported directly.
+If your code loads from/stores to `char*`, use `T=uint8_t` for Highway's `d`
+tags (see below) or `T=int8_t` (which may enable faster less-than/greater-than
+comparisons), and cast your `char*` pointers to your `T*`.
 
 In Highway, `float16_t` (an IEEE binary16 half-float) and `bfloat16_t` (the
 upper 16 bits of an IEEE binary32 float) only support load, store, and
@@ -130,10 +144,10 @@ lane count, thus avoiding the need for a second loop to handle remainders.
 *   For applications that require fixed-size vectors: `FixedTag<T, kCount> d;`
     will select vectors where exactly `kCount` lanes have observable effects.
     These may be implemented using full vectors plus additional runtime cost for
-    masking in `Load` etc. `HWY_SCALAR` only allows `kCount=1`; other targets
-    allow any power of two `kCount <= HWY_MAX_BYTES / sizeof(T)`. This tag can
-    be used when the `HWY_SCALAR` target is anyway disabled (superseded by a
-    higher baseline) or unusable (due to use of ops such as `TableLookupBytes`).
+    masking in `Load` etc. `kCount` must be a power of two not exceeding
+    `HWY_LANES(T)`, which is one for `HWY_SCALAR`. This tag can be used when the
+    `HWY_SCALAR` target is anyway disabled (superseded by a higher baseline) or
+    unusable (due to use of ops such as `TableLookupBytes`).
 
 *   The result of `UpperHalf`/`LowerHalf` has half the lanes. To obtain a
     corresponding `d`, use `Half<decltype(d)>`; the opposite is `Twice<>`.
@@ -150,7 +164,8 @@ the smaller types must be obtained from those of the larger type (e.g. via
 
 Vector types are unspecified and depend on the target. User code could define
 them as `auto`, but it is more readable (due to making the type visible) to use
-an alias such as `Vec<D>`, or `decltype(Zero(d))`.
+an alias such as `Vec<D>`, or `decltype(Zero(d))`. Similarly, the mask type can
+be obtained via `Mask<D>`.
 
 Vectors are sizeless types on RVV/SVE. Therefore, vectors must not be used in
 arrays/STL containers (use the lane type `T` instead), class members,
@@ -182,9 +197,9 @@ Store(v, d2, ptr);  // Use d2, NOT DFromV<decltype(v)>()
 ## Targets
 
 Let `Target` denote an instruction set, one of
-`SCALAR/SSSE3/SSE4/AVX2/AVX3/AVX3_DL/NEON/SVE/SVE2/WASM/RVV`. Each of these is
-represented by a `HWY_Target` (for example, `HWY_SSE4`) macro which expands to a
-unique power-of-two value.
+`SCALAR/EMU128/SSSE3/SSE4/AVX2/AVX3/AVX3_DL/NEON/SVE/SVE2/WASM/RVV`. Each of
+these is represented by a `HWY_Target` (for example, `HWY_SSE4`) macro which
+expands to a unique power-of-two value.
 
 Note that x86 CPUs are segmented into dozens of feature flags and capabilities,
 which are often used together because they were introduced in the same CPU
@@ -216,9 +231,12 @@ instructions (implying the target CPU must support them).
     finally reverts to `HWY_STATIC_TARGET`. Can be used in `#if` expressions to
     provide an alternative to functions which are not supported by `HWY_SCALAR`.
 
-*   `HWY_WANT_AVX3_DL`: additional opt-in for `HWY_AVX3`, which is disabled
-    unless this is defined by the app before including highway.h, OR all AVX3_DL
-    compiler flags are specified.
+*   `HWY_WANT_SSSE3`, `HWY_WANT_SSE4`: add SSSE3 and SSE4 to the baseline even
+    if they are not marked as available by the compiler. On MSVC, the only ways
+    to enable SSSE3 and SSE4 are defining these, or enabling AVX.
+
+*   `HWY_WANT_AVX3_DL`: opt-in for dynamic dispatch to `HWY_AVX3_DL`. This is
+    unnecessary if the baseline already includes AVX3_DL.
 
 ## Operations
 
@@ -244,8 +262,8 @@ code, in descending order of preference:
     especially for SIMD code residing in a header.
 
 Note that overloaded operators are not yet supported on RVV and SVE; code that
-wishes to run on all targets until that is resolved can use functions such as
-`Eq`, `Lt`, `Add`, `Div` etc.
+wishes to run on all targets until that is resolved can use the corresponding
+equivalents functions such as `Eq`, `Lt`, `Add`, `Div` etc.
 
 ### Initialization
 
@@ -260,6 +278,23 @@ wishes to run on all targets until that is resolved can use functions such as
 *   <code>V **SignBit**(D, T)</code>: returns N-lane vector with all lanes set
     to a value whose representation has only the most-significant bit set.
 
+### Getting/setting lanes
+
+*   <code>T **GetLane**(V)</code>: returns lane 0 within `V`. This is useful for
+    extracting `SumOfLanes` results.
+
+The following may be slow on some platforms (e.g. x86) and should not be used in
+time-critical code:
+
+*   <code>T **ExtractLane**(V, size_t i)</code>: returns lane `i` within `V`.
+    `i` must be in `[0, Lanes(DFromV<V>()))`. Potentially slow, it may be better
+    to store an entire vector to an array and then operate on its elements.
+
+*   <code>V **InsertLane**(V, size_t i, T t)</code>: returns a copy of V whose
+    lane `i` is set to `t`. `i` must be in `[0, Lanes(DFromV<V>()))`.
+    Potentially slow, it may be better set all elements of an aligned array and
+    then `Load` it.
+
 ### Printing
 
 *   <code>V **Print**(D, const char* caption, V [, size_t lane][, size_t
@@ -271,7 +306,9 @@ wishes to run on all targets until that is resolved can use functions such as
 ### Arithmetic
 
 *   <code>V **operator+**(V a, V b)</code>: returns `a[i] + b[i]` (mod 2^bits).
+    Currently unavailable on SVE/RVV; use the equivalent `Add` instead.
 *   <code>V **operator-**(V a, V b)</code>: returns `a[i] - b[i]` (mod 2^bits).
+    Currently unavailable on SVE/RVV; use the equivalent `Sub` instead.
 
 *   `V`: `{i,f}` \
     <code>V **Neg**(V a)</code>: returns `-a[i]`.
@@ -303,6 +340,7 @@ wishes to run on all targets until that is resolved can use functions such as
 
 *   `V`: `{f}` \
     <code>V **operator/**(V a, V b)</code>: returns `a[i] / b[i]` in each lane.
+    Currently unavailable on SVE/RVV; use the equivalent `Div` instead.
 
 *   `V`: `{f}` \
     <code>V **Sqrt**(V a)</code>: returns `sqrt(a[i])`.
@@ -328,6 +366,8 @@ is qNaN, and NaN if both are.
 
 *   <code>V **Max**(V a, V b)</code>: returns `max(a[i], b[i])`.
 
+All other ops in this section are only available if `HWY_TARGET != HWY_SCALAR`:
+
 *   `V`: `u64` \
     <code>M **Min128**(D, V a, V b)</code>: returns the minimum of unsigned
     128-bit values, each stored as an adjacent pair of 64-bit lanes (e.g.
@@ -342,11 +382,12 @@ is qNaN, and NaN if both are.
 
 *   `V`: `{u,i}{16,32}` \
     <code>V <b>operator*</b>(V a, V b)</code>: returns the lower half of `a[i] *
-    b[i]` in each lane.
+    b[i]` in each lane. Currently unavailable on SVE/RVV; use the equivalent
+    `Mul` instead.
 
 *   `V`: `{f}` \
     <code>V <b>operator*</b>(V a, V b)</code>: returns `a[i] * b[i]` in each
-    lane.
+    lane. Currently unavailable on SVE/RVV; use the equivalent `Mul` instead.
 
 *   `V`: `i16` \
     <code>V **MulHigh**(V a, V b)</code>: returns the upper half of `a[i] *
@@ -370,12 +411,12 @@ is qNaN, and NaN if both are.
     supported if `HWY_TARGET != HWY_SCALAR`.
 
 *   `V`: `bf16`; `D`: `f32` \
-    <code>Vec<D> **ReorderWidenMulAccumulate**(D, V a, V b, Vec<D> sum0, Vec<D>&
-    sum1)</code>: widens `a` and `b` to `TFromD<D>`, then adds `a[i] * b[i]` to
-    either `sum1[j]` or lane `j` of the return value, where `j = P(i)` and `P`
-    is a permutation. The only guarantee is that `SumOfLanes(Add(return_value,
-    sum1))` is the sum of all `a[i] * b[i]`. This is useful for computing dot
-    products and the L2 norm.
+    <code>Vec<D> **ReorderWidenMulAccumulate**(D d, V a, V b, Vec<D> sum0,
+    Vec<D>& sum1)</code>: widens `a` and `b` to `TFromD<D>`, then adds `a[i] *
+    b[i]` to either `sum1[j]` or lane `j` of the return value, where `j = P(i)`
+    and `P` is a permutation. The only guarantee is that `SumOfLanes(d,
+    Add(return_value, sum1))` is the sum of all `a[i] * b[i]`. This is useful
+    for computing dot products and the L2 norm.
 
 #### Fused multiply-add
 
@@ -428,28 +469,36 @@ Shift all lanes by the same (not necessarily compile-time constant) amount:
 Per-lane variable shifts (slow if SSSE3/SSE4, or 16-bit, or Shr i64 on AVX2):
 
 *   `V`: `{u,i}{16,32,64}` \
-    <code>V **operator<<**(V a, V b)</code> returns `a[i] << b[i]`.
+    <code>V **operator<<**(V a, V b)</code> returns `a[i] << b[i]`. Currently
+    unavailable on SVE/RVV; use the equivalent `Shl` instead.
 
 *   `V`: `{u,i}{16,32,64}` \
-    <code>V **operator>>**(V a, V b)</code> returns `a[i] >> b[i]`.
+    <code>V **operator>>**(V a, V b)</code> returns `a[i] >> b[i]`. Currently
+    unavailable on SVE/RVV; use the equivalent `Shr` instead.
 
 #### Floating-point rounding
 
 *   `V`: `{f}` \
-    <code>V **Round**(V a)</code>: returns `a[i]` rounded towards the nearest
+    <code>V **Round**(V v)</code>: returns `v[i]` rounded towards the nearest
     integer, with ties to even.
 
 *   `V`: `{f}` \
-    <code>V **Trunc**(V a)</code>: returns `a[i]` rounded towards zero
+    <code>V **Trunc**(V v)</code>: returns `v[i]` rounded towards zero
     (truncate).
 
 *   `V`: `{f}` \
-    <code>V **Ceil**(V a)</code>: returns `a[i]` rounded towards positive
+    <code>V **Ceil**(V v)</code>: returns `v[i]` rounded towards positive
     infinity (ceiling).
 
 *   `V`: `{f}` \
-    <code>V **Floor**(V a)</code>: returns `a[i]` rounded towards negative
+    <code>V **Floor**(V v)</code>: returns `v[i]` rounded towards negative
     infinity.
+
+#### Floating-point classification
+
+*   `V`: `{f}` \
+    <code>M **IsNaN**(V v)</code>: returns mask indicating whether `v[i]` is
+    "not a number" (unordered).
 
 ### Logical
 
@@ -457,34 +506,31 @@ Per-lane variable shifts (slow if SSSE3/SSE4, or 16-bit, or Shr i64 on AVX2):
     <code>V **PopulationCount**(V a)</code>: returns the number of 1-bits in
     each lane, i.e. `PopCount(a[i])`.
 
-The following operate on individual bits within each lane:
+The following operate on individual bits within each lane. Note that the
+non-operator functions (`And` instead of `&`) must be used for floating-point
+types, and on SVE/RVV.
 
 *   `V`: `{u,i}` \
-    <code>V **operator&**(V a, V b)</code>: returns `a[i] & b[i]`.
+    <code>V **operator&**(V a, V b)</code>: returns `a[i] & b[i]`. Currently
+    unavailable on SVE/RVV; use the equivalent `And` instead.
 
 *   `V`: `{u,i}` \
-    <code>V **operator|**(V a, V b)</code>: returns `a[i] | b[i]`.
+    <code>V **operator|**(V a, V b)</code>: returns `a[i] | b[i]`. Currently
+    unavailable on SVE/RVV; use the equivalent `Or` instead.
 
 *   `V`: `{u,i}` \
-    <code>V **operator^**(V a, V b)</code>: returns `a[i] ^ b[i]`.
+    <code>V **operator^**(V a, V b)</code>: returns `a[i] ^ b[i]`. Currently
+    unavailable on SVE/RVV; use the equivalent `Xor` instead.
 
 *   `V`: `{u,i}` \
     <code>V **Not**(V v)</code>: returns `~v[i]`.
-
-For floating-point types, builtin operators are not always available, so
-non-operator functions (also available for integers) must be used:
-
-*   <code>V **And**(V a, V b)</code>: returns `a[i] & b[i]`.
-
-*   <code>V **Or**(V a, V b)</code>: returns `a[i] | b[i]`.
-
-*   <code>V **Xor**(V a, V b)</code>: returns `a[i] ^ b[i]`.
 
 *   <code>V **AndNot**(V a, V b)</code>: returns `~a[i] & b[i]`.
 
 The following three-argument functions may be more efficient than assembling
 them from 2-argument functions:
 
+*   <code>V **Or3**(V o1, V o2, V o3)</code>: returns `o1[i] | o2[i] | o3[i]`.
 *   <code>V **OrAnd**(V o, V a1, V a2)</code>: returns `o[i] | (a1[i] & a2[i])`.
 
 Special functions for signed types:
@@ -635,22 +681,28 @@ false is zero, true has all bits set:
     d, T* p)</code>: combination of `CompressStore` and `CompressBits`, see
     remarks there.
 
-#### Comparisons
+### Comparisons
 
 These return a mask (see above) indicating whether the condition is true.
 
-*   <code>M **operator==**(V a, V b)</code>: returns `a[i] == b[i]`.
-*   <code>M **operator!=**(V a, V b)</code>: returns `a[i] != b[i]`.
+*   <code>M **operator==**(V a, V b)</code>: returns `a[i] == b[i]`. Currently
+    unavailable on SVE/RVV; use the equivalent `Eq` instead.
+*   <code>M **operator!=**(V a, V b)</code>: returns `a[i] != b[i]`. Currently
+    unavailable on SVE/RVV; use the equivalent `Ne` instead.
 
-*   <code>M **operator&lt;**(V a, V b)</code>: returns `a[i] < b[i]`.
+*   <code>M **operator&lt;**(V a, V b)</code>: returns `a[i] < b[i]`. Currently
+    unavailable on SVE/RVV; use the equivalent `Lt` instead.
 
-*   <code>M **operator&gt;**(V a, V b)</code>: returns `a[i] > b[i]`.
+*   <code>M **operator&gt;**(V a, V b)</code>: returns `a[i] > b[i]`. Currently
+    unavailable on SVE/RVV; use the equivalent `Gt` instead.
 
 *   `V`: `{f}` \
     <code>M **operator&lt;=**(V a, V b)</code>: returns `a[i] <= b[i]`.
+    Currently unavailable on SVE/RVV; use the equivalent `Le` instead.
 
 *   `V`: `{f}` \
     <code>M **operator&gt;=**(V a, V b)</code>: returns `a[i] >= b[i]`.
+    Currently unavailable on SVE/RVV; use the equivalent `Ge` instead.
 
 *   `V`: `{u,i}` \
     <code>M **TestBit**(V v, V bit)</code>: returns `(v[i] & bit[i]) == bit[i]`.
@@ -661,6 +713,7 @@ These return a mask (see above) indicating whether the condition is true.
     lanes (e.g. indices 1,0), returns whether a[1]:a[0] concatenated to an
     unsigned 128-bit integer (least significant bits in a[0]) is less than
     b[1]:b[0]. For each pair, the mask lanes are either both true or both false.
+    Only available if `HWY_TARGET != HWY_SCALAR`.
 
 ### Memory
 
@@ -697,6 +750,18 @@ aligned memory at indices which are not a multiple of the vector length):
     faults cannot happen unless the entire vector is inaccessible. Equivalent
     to, and potentially more efficient than, `IfThenElseZero(mask, Load(D(),
     aligned))`.
+
+*   <code>void **LoadInterleaved2**(D, const T* p, Vec&lt;D&gt;&amp; v0,
+    Vec&lt;D&gt;&amp; v1)</code>: equivalent to `LoadU` into `v0, v1` followed
+    by shuffling, such that `v0[0] == p[0], v1[0] == p[1]`.
+
+*   <code>void **LoadInterleaved3**(D, const T* p, Vec&lt;D&gt;&amp; v0,
+    Vec&lt;D&gt;&amp; v1, Vec&lt;D&gt;&amp; v2)</code>: as above, but for three
+    vectors (e.g. RGB samples).
+
+*   <code>void **LoadInterleaved4**(D, const T* p, Vec&lt;D&gt;&amp; v0,
+    Vec&lt;D&gt;&amp; v1, Vec&lt;D&gt;&amp; v2, Vec&lt;D&gt;&amp; v3)</code>: as
+    above, but for four vectors (e.g. RGBA).
 
 #### Scatter/Gather
 
@@ -741,6 +806,13 @@ F(src[tbl[i]])` because `Scatter` is more expensive than `Gather`.
     p)`. "Blended" indicates this may not be atomic; other threads must not
     concurrently update `[p, p + Lanes(d))` without sychronization.
 
+*   <code>void **SafeFillN**(size_t num, T value, D d, T* HWY_RESTRICT
+    to)</code>: Sets `to[0, num)` to `value`. If `num` exceeds `Lanes(d)`, the
+    behavior is target-dependent (either filling all, or no more than one
+    vector). Potentially more efficient than a scalar loop, but will not fault,
+    unlike `BlendedStore`. No alignment requirement. Potentially non-atomic,
+    like `BlendedStore`.
+
 *   <code>void **SafeCopyN**(size_t num, D d, const T* HWY_RESTRICT from, T*
     HWY_RESTRICT to)</code>: Copies `from[0, num)` to `to`. If `num` exceeds
     `Lanes(d)`, the behavior is target-dependent (either copying all, or no more
@@ -748,14 +820,15 @@ F(src[tbl[i]])` because `Scatter` is more expensive than `Gather`.
     not fault, unlike `BlendedStore`. No alignment requirement. Potentially
     non-atomic, like `BlendedStore`.
 
-*   `D`: `u8` \
-    <code>void **StoreInterleaved3**(Vec&lt;D&gt; v0, Vec&lt;D&gt; v1,
-    Vec&lt;D&gt; v2, D, T* p)</code>: equivalent to shuffling `v0, v1, v2`
-    followed by three `StoreU()`, such that `p[0] == v0[0], p[1] == v1[0],
-    p[2] == v1[0]`. Useful for RGB samples.
+*   <code>void **StoreInterleaved2**(Vec&lt;D&gt; v0, Vec&lt;D&gt; v1, D, T*
+    p)</code>: equivalent to shuffling `v0, v1` followed by two `StoreU()`, such
+    that `p[0] == v0[0], p[1] == v1[0]`.
 
-*   `D`: `u8` \
-    <code>void **StoreInterleaved4**(Vec&lt;D&gt; v0, Vec&lt;D&gt; v1,
+*   <code>void **StoreInterleaved3**(Vec&lt;D&gt; v0, Vec&lt;D&gt; v1,
+    Vec&lt;D&gt; v2, D, T* p)</code>: as above, but for three vectors (e.g. RGB
+    samples).
+
+*   <code>void **StoreInterleaved4**(Vec&lt;D&gt; v0, Vec&lt;D&gt; v1,
     Vec&lt;D&gt; v2, Vec&lt;D&gt; v3, D, T* p)</code>: as above, but for four
     vectors (e.g. RGBA samples).
 
@@ -859,16 +932,17 @@ if the input exceeds the destination range.
     `V`. The optional `D` (provided for consistency with `UpperHalf`) is
     `Half<DFromV<V>>`.
 
+All other ops in this section are only available if `HWY_TARGET != HWY_SCALAR`:
+
 *   <code>V2 **UpperHalf**(D, V)</code>: returns upper half of the vector `V`,
-    where `D` is `Half<DFromV<V>>`. Only available if `HWY_TARGET !=
-    HWY_SCALAR`.
+    where `D` is `Half<DFromV<V>>`.
 
 *   <code>V **ZeroExtendVector**(D, V2)</code>: returns vector whose `UpperHalf`
     is zero and whose `LowerHalf` is the argument; `D` is `Twice<DFromV<V2>>`.
 
 *   <code>V **Combine**(D, V2, V2)</code>: returns vector whose `UpperHalf` is
-    the first argument and whose `LowerHalf` is the second argument. This is
-    currently only implemented for RVV, AVX2, AVX3*. `D` is `Twice<DFromV<V2>>`.
+    the first argument and whose `LowerHalf` is the second argument; `D` is
+    `Twice<DFromV<V2>>`.
 
 **Note**: the following operations cross block boundaries, which is typically
 more expensive on AVX2/AVX-512 than per-block operations.
@@ -890,15 +964,11 @@ more expensive on AVX2/AVX-512 than per-block operations.
     blocks. Unlike the other variants, this does not incur a block-crossing
     penalty on AVX2/3. `D` is `DFromV<V>`.
 
-*   `V`: `{u,i,f}{32,64}` \
-    <code>V **ConcatOdd**(D, V hi, V lo)</code>: returns the concatenation of
-    the odd lanes of `hi` and the odd lanes of `lo`. Only available if
-    `HWY_TARGET != HWY_SCALAR`.
+*   <code>V **ConcatOdd**(D, V hi, V lo)</code>: returns the concatenation of
+    the odd lanes of `hi` and the odd lanes of `lo`.
 
-*   `V`: `{u,i,f}{32,64}` \
-    <code>V **ConcatEven**(D, V hi, V lo)</code>: returns the concatenation of
-    the even lanes of `hi` and the even lanes of `lo`. Only available if
-    `HWY_TARGET != HWY_SCALAR`.
+*   <code>V **ConcatEven**(D, V hi, V lo)</code>: returns the concatenation of
+    the even lanes of `hi` and the even lanes of `lo`.
 
 ### Blockwise
 
@@ -909,14 +979,16 @@ their operands into independently processed 128-bit *blocks*.
     <code>V **Broadcast**&lt;int i&gt;(V)</code>: returns individual *blocks*,
     each with lanes set to `input_block[i]`, `i = [0, 16/sizeof(T))`.
 
+All other ops in this section are only available if `HWY_TARGET != HWY_SCALAR`:
+
 *   `V`: `{u,i}` \
     <code>VI **TableLookupBytes**(V bytes, VI indices)</code>: returns
     `bytes[indices[i]]`. Uses byte lanes regardless of the actual vector types.
     Results are implementation-defined if `indices[i] < 0` or `indices[i] >=
-    HWY_MIN(Lanes(DFromV<V>()), 16)`. `VI` are integers with the same bit width
-    as a lane in `V`. The number of lanes in `V` and `VI` may differ, e.g. a
-    full-length table vector loaded via `LoadDup128`, plus partial vector `VI`
-    of 4-bit indices. Only available if `HWY_TARGET != HWY_SCALAR`.
+    HWY_MIN(Lanes(DFromV<V>()), 16)`. `VI` are integers, possibly of a different
+    type than those in `V`. The number of lanes in `V` and `VI` may differ, e.g.
+    a full-length table vector loaded via `LoadDup128`, plus partial vector `VI`
+    of 4-bit indices.
 
 *   `V`: `{u,i}` \
     <code>VI **TableLookupBytesOr0**(V bytes, VI indices)</code>: returns
@@ -925,22 +997,23 @@ their operands into independently processed 128-bit *blocks*.
     `indices[i] < 0` or in `[HWY_MIN(Lanes(DFromV<V>()), 16), 0x80)`. The
     zeroing behavior has zero cost on x86 and ARM. For vectors of >= 256 bytes
     (can happen on SVE and RVV), this will set all lanes after the first 128
-    to 0. `VI` are integers with the same bit width as a lane in `V`. The number
-    of lanes in `V` and `VI` may differ. Only available if `HWY_TARGET !=
-    HWY_SCALAR`.
+    to 0. `VI` are integers, possibly of a different type than those in `V`. The
+    number of lanes in `V` and `VI` may differ.
 
-#### Zip/Interleave
+#### Interleave
+
+Ops in this section are only available if `HWY_TARGET != HWY_SCALAR`:
 
 *   <code>V **InterleaveLower**([D, ] V a, V b)</code>: returns *blocks* with
     alternating lanes from the lower halves of `a` and `b` (`a[0]` in the
     least-significant lane). The optional `D` (provided for consistency with
-    `InterleaveUpper`) is `DFromV<V>`. Only available if `HWY_TARGET !=
-    HWY_SCALAR`, but note that `ZipLower` works on all targets.
+    `InterleaveUpper`) is `DFromV<V>`.
 
 *   <code>V **InterleaveUpper**(D, V a, V b)</code>: returns *blocks* with
     alternating lanes from the upper halves of `a` and `b` (`a[N/2]` in the
-    least-significant lane). `D` is `DFromV<V>`. Only available if `HWY_TARGET
-    != HWY_SCALAR`.
+    least-significant lane). `D` is `DFromV<V>`.
+
+#### Zip
 
 *   `Ret`: `MakeWide<T>`; `V`: `{u,i}{8,16,32}` \
     <code>Ret **ZipLower**([D, ] V a, V b)</code>: returns the same bits as
@@ -957,7 +1030,7 @@ their operands into independently processed 128-bit *blocks*.
 
 #### Shift
 
-The following are only available if `HWY_TARGET != HWY_SCALAR`:
+Ops in this section are only available if `HWY_TARGET != HWY_SCALAR`:
 
 *   `V`: `{u,i}` \
     <code>V **ShiftLeftBytes**&lt;int&gt;([D, ] V)</code>: returns the result of
@@ -989,6 +1062,8 @@ The following are only available if `HWY_TARGET != HWY_SCALAR`:
 
 #### Shuffle
 
+Ops in this section are only available if `HWY_TARGET != HWY_SCALAR`:
+
 *   `V`: `{u,i,f}{32}` \
     <code>V **Shuffle1032**(V)</code>: returns *blocks* with 64-bit halves
     swapped.
@@ -1018,19 +1093,6 @@ instead because they are more general:
 
 ### Swizzle
 
-*   <code>T **GetLane**(V)</code>: returns lane 0 within `V`. This is useful for
-    extracting `SumOfLanes` results.
-
-*   `V`: `{u,i,f}{32,64}` \
-    <code>V **DupEven**(V v)</code>: returns `r`, the result of copying even
-    lanes to the next higher-indexed lane. For each even lane index `i`,
-    `r[i] == v[i]` and `r[i + 1] == v[i]`.
-
-*   `V`: `{u,i,f}{32,64}` \
-    <code>V **DupOdd**(V v)</code>: returns `r`, the result of copying odd lanes
-    to the previous lower-indexed lane. For each odd lane index `i`, `r[i] ==
-    v[i]` and `r[i - 1] == v[i]`. Only available if `HWY_TARGET != HWY_SCALAR`.
-
 *   <code>V **OddEven**(V a, V b)</code>: returns a vector whose odd lanes are
     taken from `a` and the even lanes from `b`.
 
@@ -1038,21 +1100,22 @@ instead because they are more general:
     blocks are taken from `a` and the even blocks from `b`. Returns `b` if the
     vector has no more than one block (i.e. is 128 bits or scalar).
 
-*   <code>V **SwapAdjacentBlocks**(V v)</code>: returns a vector where blocks of
-    index `2*i` and `2*i+1` are swapped. Results are undefined for vectors with
-    less than two blocks; callers must first check that via `Lanes`.
+*   `V`: `{u,i,f}{32,64}` \
+    <code>V **DupEven**(V v)</code>: returns `r`, the result of copying even
+    lanes to the next higher-indexed lane. For each even lane index `i`,
+    `r[i] == v[i]` and `r[i + 1] == v[i]`.
 
 *   <code>V **ReverseBlocks**(V v)</code>: returns a vector with blocks in
     reversed order.
 
 *   `V`: `{u,i,f}{32,64}` \
-    <code>V **TableLookupLanes**(V a, unspecified)</code> returns a vector of
-    `a[indices[i]]`, where `unspecified` is the return value of
-    `SetTableIndices(D, &indices[0])` or `IndicesFromVec`. The indices are not
-    limited to blocks, hence this is slower than `TableLookupBytes*` on
-    AVX2/AVX-512. Results are implementation-defined unless `0 <= indices[i] <
-    Lanes(D())`. `indices` are always integers, even if `V` is a floating-point
-    type.
+    <code>V **TableLookupLanes**(V a, unspecified)</code> returns a vector
+    of `a[indices[i]]`, where `unspecified` is the return value of
+    `SetTableIndices(D, &indices[0])` or `IndicesFromVec`. The indices are
+    not limited to blocks, hence this is slower than `TableLookupBytes*` on
+    AVX2/AVX-512. Results are implementation-defined unless `0 <= indices[i]
+    < Lanes(D())`. `indices` are always integers, even if `V` is a
+    floating-point type.
 
 *   `D`: `{u,i}{32,64}` \
     <code>unspecified **IndicesFromVec**(D d, V idx)</code> prepares for
@@ -1084,6 +1147,17 @@ The following `ReverseN` must not be called if `Lanes(D()) > N`:
     <code>V **Reverse8**(D, V a)</code> returns a vector with each group of 8
     contiguous lanes in reversed order (`out[i] == a[i ^ 7]`).
 
+All other ops in this section are only available if `HWY_TARGET != HWY_SCALAR`:
+
+*   `V`: `{u,i,f}{32,64}` \
+    <code>V **DupOdd**(V v)</code>: returns `r`, the result of copying odd lanes
+    to the previous lower-indexed lane. For each odd lane index `i`, `r[i] ==
+    v[i]` and `r[i - 1] == v[i]`.
+
+*   <code>V **SwapAdjacentBlocks**(V v)</code>: returns a vector where blocks of
+    index `2*i` and `2*i+1` are swapped. Results are undefined for vectors with
+    less than two blocks; callers must first check that via `Lanes`.
+
 ### Reductions
 
 **Note**: these 'reduce' all lanes to a single result (e.g. sum), which is
@@ -1106,17 +1180,17 @@ than normal SIMD operations and are typically used outside critical loops.
 
 ### Crypto
 
+Ops in this section are only available if `HWY_TARGET != HWY_SCALAR`:
+
 *   `V`: `u8` \
     <code>V **AESRound**(V state, V round_key)</code>: one round of AES
     encrytion: `MixColumns(SubBytes(ShiftRows(state))) ^ round_key`. This
-    matches x86 AES-NI. The latency is independent of the input values. Only
-    available if `HWY_TARGET != HWY_SCALAR`.
+    matches x86 AES-NI. The latency is independent of the input values.
 
 *   `V`: `u8` \
     <code>V **AESLastRound**(V state, V round_key)</code>: the last round of AES
     encrytion: `SubBytes(ShiftRows(state)) ^ round_key`. This matches x86
-    AES-NI. The latency is independent of the input values. Only available if
-    `HWY_TARGET != HWY_SCALAR`.
+    AES-NI. The latency is independent of the input values.
 
 *   `V`: `u64` \
     <code>V **CLMulLower**(V a, V b)</code>: carryless multiplication of the
@@ -1168,6 +1242,11 @@ The above were previously known as `HWY_CAP_INTEGER64`, `HWY_CAP_FLOAT16`, and
     AMD x86 prior to AVX-512, and ARM NEON. If so, users can prevent faults by
     ensuring memory addresses are naturally aligned or at least padded
     (allocation size increased by at least `Lanes(d)`.
+
+*   `HWY_NATIVE_FMA` expands to 1 if the `MulAdd` etc. ops use native fused
+    multiply-add. Otherwise, `MulAdd(f, m, a)` is implemented as
+    `Add(Mul(f, m), a)`. Checking this can be useful for increasing the
+    tolerance of expected results (around 1E-5 or 1E-6).
 
 The following were used to signal the maximum number of lanes for certain
 operations, but this is no longer necessary (nor possible on SVE/RVV), so they
@@ -1225,7 +1304,8 @@ policy for selecting `HWY_TARGETS`:
     effectively disables dynamic dispatch.
 *   `HWY_COMPILE_ALL_ATTAINABLE` selects all attainable targets (i.e. enabled
     and permitted by the compiler, independently of autovectorization), which
-    maximizes coverage in tests.
+    maximizes coverage in tests. This may also be defined even if one of
+    `HWY_COMPILE_ONLY_*` is, but will then be ignored.
 
 If none are defined, but `HWY_IS_TEST` is defined, the default is
 `HWY_COMPILE_ALL_ATTAINABLE`. Otherwise, the default is to select all attainable

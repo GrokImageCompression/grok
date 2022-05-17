@@ -30,6 +30,7 @@
 // Third-party algorithms
 #define HAVE_AVX2SORT 0
 #define HAVE_IPS4O 0
+// When enabling, consider changing max_threads (required for Table 1a)
 #define HAVE_PARALLEL_IPS4O (HAVE_IPS4O && 1)
 #define HAVE_PDQSORT 0
 #define HAVE_SORT512 0
@@ -76,7 +77,13 @@ class InputStats {
   void Notify(T value) {
     min_ = std::min(min_, value);
     max_ = std::max(max_, value);
-    sumf_ += static_cast<double>(value);
+    // Converting to integer would truncate floats, multiplying to save digits
+    // risks overflow especially when casting, so instead take the sum of the
+    // bit representations as the checksum.
+    uint64_t bits = 0;
+    static_assert(sizeof(T) <= 8, "Expected a built-in type");
+    CopyBytes<sizeof(T)>(&value, &bits);
+    sum_ += bits;
     count_ += 1;
   }
 
@@ -92,15 +99,8 @@ class InputStats {
     }
 
     // Sum helps detect duplicated/lost values
-    if (sumf_ != other.sumf_) {
-      // Allow some tolerance because kUniform32 * num can exceed double
-      // precision.
-      const double mul = 1E-9;  // prevent destructive cancellation
-      const double err = std::abs(sumf_ * mul - other.sumf_ * mul);
-      if (err > 1E-3) {
-        HWY_ABORT("Sum mismatch %.15e %.15e (%f) min %g max %g\n", sumf_,
-                  other.sumf_, err, double(min_), double(max_));
-      }
+    if (sum_ != other.sum_) {
+      HWY_ABORT("Sum mismatch; min %g max %g\n", double(min_), double(max_));
     }
 
     return true;
@@ -109,7 +109,7 @@ class InputStats {
  private:
   T min_ = hwy::HighestValue<T>();
   T max_ = hwy::LowestValue<T>();
-  double sumf_ = 0.0;
+  uint64_t sum_ = 0;
   size_t count_ = 0;
 };
 
@@ -239,9 +239,11 @@ Vec<DU64> RandomValues(DU64 du64, Vec<DU64>& s0, Vec<DU64>& s1,
   const Repartition<MakeSigned<T>, DU64> di;
 #endif
   const RebindToFloat<decltype(di)> df;
+  const RebindToUnsigned<decltype(di)> du;
+  const auto k1 = BitCast(du64, Set(df, T{1.0}));
+  const auto mantissa = BitCast(du64, Set(du, MantissaMask<T>()));
   // Avoid NaN/denormal by converting from (range-limited) integer.
-  const Vec<DU64> no_nan =
-      And(values, Set(du64, MantissaMask<MakeUnsigned<T>>()));
+  const Vec<DU64> no_nan = OrAnd(k1, values, mantissa);
   return BitCast(du64, ConvertTo(df, BitCast(di, no_nan)));
 }
 
@@ -309,8 +311,9 @@ struct ThreadLocal {
 
 struct SharedState {
 #if HAVE_PARALLEL_IPS4O
-  ips4o::StdThreadPool pool{
-      static_cast<int>(std::thread::hardware_concurrency() / 2)};
+  const unsigned max_threads = hwy::LimitsMax<unsigned>();  // 16 for Table 1a
+  ips4o::StdThreadPool pool{static_cast<int>(
+      HWY_MIN(max_threads, std::thread::hardware_concurrency() / 2))};
 #endif
   std::vector<ThreadLocal> tls{1};
 };

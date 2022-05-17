@@ -64,7 +64,7 @@ via the below email)
 *   [iresearch database index](https://github.com/iresearch-toolkit/iresearch/blob/e7638e7a4b99136ca41f82be6edccf01351a7223/core/utils/simd_utils.hpp)
 *   [JPEG XL image codec](https://github.com/libjxl/libjxl)
 *   [Grok JPEG 2000 image codec](https://github.com/GrokImageCompression/grok)
-*   [vectorized Quicksort](https://github.com/google/highway/tree/master/hwy/contrib/sort)
+*   [vectorized Quicksort](https://github.com/google/highway/tree/master/hwy/contrib/sort) ([paper](https://arxiv.org/abs/2205.05982))
 
 ## Current status
 
@@ -235,9 +235,12 @@ Highway offers several ways to express loops where `N` need not divide `count`:
     input arrays, and returns the value to write to the input/output array.
 
     Here is an example implementing the BLAS function SAXPY (`alpha * x + y`):
-    `Transform1(d, x, n, y, [](auto d, const auto v, const auto v1) HWY_ATTR {
+
+    ```
+    Transform1(d, x, n, y, [](auto d, const auto v, const auto v1) HWY_ATTR {
       return MulAdd(Set(d, alpha), v, v1);
-    });``
+    });
+    ```
 
 *   Process whole vectors as above, followed by a scalar loop:
 

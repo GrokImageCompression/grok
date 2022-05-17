@@ -91,8 +91,6 @@ bool GrkImage::execUpsample(void)
 
 	for(uint16_t compno = 0U; compno < numcomps; ++compno)
 	{
-		if(!(comps + compno))
-			return false;
 		if((comps[compno].dx > 1U) || (comps[compno].dy > 1U))
 		{
 			upsampleNeeded = true;

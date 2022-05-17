@@ -15,6 +15,7 @@
 
 // Ensure incompabilities with Windows macros (e.g. #define StoreFence) are
 // detected. Must come before Highway headers.
+#include "hwy/base.h"
 #if defined(_WIN32) || defined(_WIN64)
 #include <windows.h>
 #endif
@@ -131,7 +132,7 @@ HWY_NOINLINE void TestAllSafeCopyN() {
   ForAllTypes(ForPartialVectors<TestSafeCopyN>());
 }
 
-struct TestStoreInterleaved3 {
+struct TestLoadStoreInterleaved2 {
   template <class T, class D>
   HWY_NOINLINE void operator()(T /*unused*/, D d) {
     const size_t N = Lanes(d);
@@ -139,9 +140,72 @@ struct TestStoreInterleaved3 {
     RandomState rng;
 
     // Data to be interleaved
-    auto bytes = AllocateAligned<uint8_t>(3 * N);
+    auto bytes = AllocateAligned<T>(2 * N);
+    for (size_t i = 0; i < 2 * N; ++i) {
+      bytes[i] = static_cast<T>(Random32(&rng) & 0xFF);
+    }
+    const auto in0 = Load(d, &bytes[0 * N]);
+    const auto in1 = Load(d, &bytes[1 * N]);
+
+    // Interleave here, ensure vector results match scalar
+    auto expected = AllocateAligned<T>(3 * N);
+    auto actual_aligned = AllocateAligned<T>(3 * N + 1);
+    T* actual = actual_aligned.get() + 1;
+
+    for (size_t rep = 0; rep < 100; ++rep) {
+      for (size_t i = 0; i < N; ++i) {
+        expected[2 * i + 0] = bytes[0 * N + i];
+        expected[2 * i + 1] = bytes[1 * N + i];
+        // Ensure we do not write more than 2*N bytes
+        expected[2 * N + i] = actual[2 * N + i] = 0;
+      }
+      StoreInterleaved2(in0, in1, d, actual);
+      size_t pos = 0;
+      if (!BytesEqual(expected.get(), actual, 3 * N * sizeof(T), &pos)) {
+        Print(d, "in0", in0, pos / 4);
+        Print(d, "in1", in1, pos / 4);
+        const size_t i = pos;
+        fprintf(stderr, "interleaved i=%d %f %f %f %f  %f %f %f %f\n",
+                static_cast<int>(i), static_cast<double>(actual[i]),
+                static_cast<double>(actual[i + 1]),
+                static_cast<double>(actual[i + 2]),
+                static_cast<double>(actual[i + 3]),
+                static_cast<double>(actual[i + 4]),
+                static_cast<double>(actual[i + 5]),
+                static_cast<double>(actual[i + 6]),
+                static_cast<double>(actual[i + 7]));
+        HWY_ASSERT(false);
+      }
+
+      Vec<D> out0, out1;
+      LoadInterleaved2(d, actual, out0, out1);
+      HWY_ASSERT_VEC_EQ(d, in0, out0);
+      HWY_ASSERT_VEC_EQ(d, in1, out1);
+    }
+  }
+};
+
+HWY_NOINLINE void TestAllLoadStoreInterleaved2() {
+#if HWY_TARGET == HWY_RVV
+  // Segments are limited to 8 registers, so we can only go up to LMUL=2.
+  const ForExtendableVectors<TestLoadStoreInterleaved2, 2> test;
+#else
+  const ForPartialVectors<TestLoadStoreInterleaved2> test;
+#endif
+  ForAllTypes(test);
+}
+
+struct TestLoadStoreInterleaved3 {
+  template <class T, class D>
+  HWY_NOINLINE void operator()(T /*unused*/, D d) {
+    const size_t N = Lanes(d);
+
+    RandomState rng;
+
+    // Data to be interleaved
+    auto bytes = AllocateAligned<T>(3 * N);
     for (size_t i = 0; i < 3 * N; ++i) {
-      bytes[i] = static_cast<uint8_t>(Random32(&rng) & 0xFF);
+      bytes[i] = static_cast<T>(Random32(&rng) & 0xFF);
     }
     const auto in0 = Load(d, &bytes[0 * N]);
     const auto in1 = Load(d, &bytes[1 * N]);
@@ -162,31 +226,41 @@ struct TestStoreInterleaved3 {
       }
       StoreInterleaved3(in0, in1, in2, d, actual);
       size_t pos = 0;
-      if (!BytesEqual(expected.get(), actual, 4 * N, &pos)) {
-        Print(d, "in0", in0, pos / 3);
-        Print(d, "in1", in1, pos / 3);
-        Print(d, "in2", in2, pos / 3);
-        const size_t i = pos - pos % 3;
-        fprintf(stderr, "interleaved %d %d %d  %d %d %d\n", actual[i],
-                actual[i + 1], actual[i + 2], actual[i + 3], actual[i + 4],
-                actual[i + 5]);
+      if (!BytesEqual(expected.get(), actual, 4 * N * sizeof(T), &pos)) {
+        Print(d, "in0", in0, pos / 3, N);
+        Print(d, "in1", in1, pos / 3, N);
+        Print(d, "in2", in2, pos / 3, N);
+        const size_t i = pos;
+        fprintf(stderr, "interleaved i=%d %f %f %f  %f %f %f\n",
+                static_cast<int>(i), static_cast<double>(actual[i]),
+                static_cast<double>(actual[i + 1]),
+                static_cast<double>(actual[i + 2]),
+                static_cast<double>(actual[i + 3]),
+                static_cast<double>(actual[i + 4]),
+                static_cast<double>(actual[i + 5]));
         HWY_ASSERT(false);
       }
+
+      Vec<D> out0, out1, out2;
+      LoadInterleaved3(d, actual, out0, out1, out2);
+      HWY_ASSERT_VEC_EQ(d, in0, out0);
+      HWY_ASSERT_VEC_EQ(d, in1, out1);
+      HWY_ASSERT_VEC_EQ(d, in2, out2);
     }
   }
 };
 
-HWY_NOINLINE void TestAllStoreInterleaved3() {
+HWY_NOINLINE void TestAllLoadStoreInterleaved3() {
 #if HWY_TARGET == HWY_RVV
   // Segments are limited to 8 registers, so we can only go up to LMUL=2.
-  const ForExtendableVectors<TestStoreInterleaved3, 2> test;
+  const ForExtendableVectors<TestLoadStoreInterleaved3, 2> test;
 #else
-  const ForPartialVectors<TestStoreInterleaved3> test;
+  const ForPartialVectors<TestLoadStoreInterleaved3> test;
 #endif
-  test(uint8_t());
+  ForAllTypes(test);
 }
 
-struct TestStoreInterleaved4 {
+struct TestLoadStoreInterleaved4 {
   template <class T, class D>
   HWY_NOINLINE void operator()(T /*unused*/, D d) {
     const size_t N = Lanes(d);
@@ -194,9 +268,10 @@ struct TestStoreInterleaved4 {
     RandomState rng;
 
     // Data to be interleaved
-    auto bytes = AllocateAligned<uint8_t>(4 * N);
+    auto bytes = AllocateAligned<T>(4 * N);
+
     for (size_t i = 0; i < 4 * N; ++i) {
-      bytes[i] = static_cast<uint8_t>(Random32(&rng) & 0xFF);
+      bytes[i] = static_cast<T>(Random32(&rng) & 0xFF);
     }
     const auto in0 = Load(d, &bytes[0 * N]);
     const auto in1 = Load(d, &bytes[1 * N]);
@@ -219,29 +294,42 @@ struct TestStoreInterleaved4 {
       }
       StoreInterleaved4(in0, in1, in2, in3, d, actual);
       size_t pos = 0;
-      if (!BytesEqual(expected.get(), actual, 5 * N, &pos)) {
+      if (!BytesEqual(expected.get(), actual, 5 * N * sizeof(T), &pos)) {
         Print(d, "in0", in0, pos / 4);
         Print(d, "in1", in1, pos / 4);
         Print(d, "in2", in2, pos / 4);
         Print(d, "in3", in3, pos / 4);
         const size_t i = pos;
-        fprintf(stderr, "interleaved %d %d %d %d  %d %d %d %d\n", actual[i],
-                actual[i + 1], actual[i + 2], actual[i + 3], actual[i + 4],
-                actual[i + 5], actual[i + 6], actual[i + 7]);
+        fprintf(stderr, "interleaved i=%d %f %f %f %f  %f %f %f %f\n",
+                static_cast<int>(i), static_cast<double>(actual[i]),
+                static_cast<double>(actual[i + 1]),
+                static_cast<double>(actual[i + 2]),
+                static_cast<double>(actual[i + 3]),
+                static_cast<double>(actual[i + 4]),
+                static_cast<double>(actual[i + 5]),
+                static_cast<double>(actual[i + 6]),
+                static_cast<double>(actual[i + 7]));
         HWY_ASSERT(false);
       }
+
+      Vec<D> out0, out1, out2, out3;
+      LoadInterleaved4(d, actual, out0, out1, out2, out3);
+      HWY_ASSERT_VEC_EQ(d, in0, out0);
+      HWY_ASSERT_VEC_EQ(d, in1, out1);
+      HWY_ASSERT_VEC_EQ(d, in2, out2);
+      HWY_ASSERT_VEC_EQ(d, in3, out3);
     }
   }
 };
 
-HWY_NOINLINE void TestAllStoreInterleaved4() {
+HWY_NOINLINE void TestAllLoadStoreInterleaved4() {
 #if HWY_TARGET == HWY_RVV
   // Segments are limited to 8 registers, so we can only go up to LMUL=2.
-  const ForExtendableVectors<TestStoreInterleaved4, 2> test;
+  const ForExtendableVectors<TestLoadStoreInterleaved4, 2> test;
 #else
-  const ForPartialVectors<TestStoreInterleaved4> test;
+  const ForPartialVectors<TestLoadStoreInterleaved4> test;
 #endif
-  test(uint8_t());
+  ForAllTypes(test);
 }
 
 struct TestLoadDup128 {
@@ -443,8 +531,9 @@ namespace hwy {
 HWY_BEFORE_TEST(HwyMemoryTest);
 HWY_EXPORT_AND_TEST_P(HwyMemoryTest, TestAllLoadStore);
 HWY_EXPORT_AND_TEST_P(HwyMemoryTest, TestAllSafeCopyN);
-HWY_EXPORT_AND_TEST_P(HwyMemoryTest, TestAllStoreInterleaved3);
-HWY_EXPORT_AND_TEST_P(HwyMemoryTest, TestAllStoreInterleaved4);
+HWY_EXPORT_AND_TEST_P(HwyMemoryTest, TestAllLoadStoreInterleaved2);
+HWY_EXPORT_AND_TEST_P(HwyMemoryTest, TestAllLoadStoreInterleaved3);
+HWY_EXPORT_AND_TEST_P(HwyMemoryTest, TestAllLoadStoreInterleaved4);
 HWY_EXPORT_AND_TEST_P(HwyMemoryTest, TestAllLoadDup128);
 HWY_EXPORT_AND_TEST_P(HwyMemoryTest, TestAllStream);
 HWY_EXPORT_AND_TEST_P(HwyMemoryTest, TestAllScatter);

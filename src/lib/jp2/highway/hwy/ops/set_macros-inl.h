@@ -38,6 +38,7 @@
 #undef HWY_HAVE_FLOAT16
 #undef HWY_HAVE_FLOAT64
 #undef HWY_MEM_OPS_MIGHT_FAULT
+#undef HWY_NATIVE_FMA
 #undef HWY_CAP_GE256
 #undef HWY_CAP_GE512
 
@@ -73,6 +74,7 @@
 
 // Before include guard so we redefine HWY_TARGET_STR on each include,
 // governed by the current HWY_TARGET.
+
 //-----------------------------------------------------------------------------
 // SSSE3
 #if HWY_TARGET == HWY_SSSE3
@@ -87,11 +89,12 @@
 #define HWY_HAVE_FLOAT16 1
 #define HWY_HAVE_FLOAT64 1
 #define HWY_MEM_OPS_MIGHT_FAULT 1
-#define HWY_CAP_AES 0
+#define HWY_NATIVE_FMA 0
 #define HWY_CAP_GE256 0
 #define HWY_CAP_GE512 0
 
 #define HWY_TARGET_STR HWY_TARGET_STR_SSSE3
+
 //-----------------------------------------------------------------------------
 // SSE4
 #elif HWY_TARGET == HWY_SSE4
@@ -106,6 +109,7 @@
 #define HWY_HAVE_FLOAT16 1
 #define HWY_HAVE_FLOAT64 1
 #define HWY_MEM_OPS_MIGHT_FAULT 1
+#define HWY_NATIVE_FMA 0
 #define HWY_CAP_GE256 0
 #define HWY_CAP_GE512 0
 
@@ -125,6 +129,13 @@
 #define HWY_HAVE_FLOAT16 1
 #define HWY_HAVE_FLOAT64 1
 #define HWY_MEM_OPS_MIGHT_FAULT 1
+
+#ifdef HWY_DISABLE_BMI2_FMA
+#define HWY_NATIVE_FMA 0
+#else
+#define HWY_NATIVE_FMA 1
+#endif
+
 #define HWY_CAP_GE256 1
 #define HWY_CAP_GE512 0
 
@@ -143,6 +154,7 @@
 #define HWY_HAVE_FLOAT16 1
 #define HWY_HAVE_FLOAT64 1
 #define HWY_MEM_OPS_MIGHT_FAULT 0
+#define HWY_NATIVE_FMA 1
 #define HWY_CAP_GE256 1
 #define HWY_CAP_GE512 1
 
@@ -154,9 +166,10 @@
 #elif HWY_TARGET == HWY_AVX3_DL
 
 #define HWY_NAMESPACE N_AVX3_DL
-#define HWY_TARGET_STR \
-  HWY_TARGET_STR_AVX3  \
-      ",vpclmulqdq,avx512vbmi2,vaes,avxvnni,avx512bitalg,avx512vpopcntdq"
+#define HWY_TARGET_STR                                            \
+  HWY_TARGET_STR_AVX3                                             \
+  ",vpclmulqdq,avx512vbmi,avx512vbmi2,vaes,avxvnni,avx512bitalg," \
+  "avx512vpopcntdq"
 
 #else
 #error "Logic error"
@@ -175,6 +188,7 @@
 #define HWY_HAVE_FLOAT16 0
 #define HWY_HAVE_FLOAT64 1
 #define HWY_MEM_OPS_MIGHT_FAULT 1
+#define HWY_NATIVE_FMA 1
 #define HWY_CAP_GE256 0
 #define HWY_CAP_GE512 0
 
@@ -193,15 +207,23 @@
 #define HWY_HAVE_SCALABLE 0
 #define HWY_HAVE_INTEGER64 1
 #define HWY_HAVE_FLOAT16 1
-#define HWY_CAP_GE256 0
-#define HWY_CAP_GE512 0
 
 #if HWY_ARCH_ARM_A64
 #define HWY_HAVE_FLOAT64 1
 #else
 #define HWY_HAVE_FLOAT64 0
 #endif
+
 #define HWY_MEM_OPS_MIGHT_FAULT 1
+
+#if defined(__ARM_VFPV4__) || HWY_ARCH_ARM_A64
+#define HWY_NATIVE_FMA 1
+#else
+#define HWY_NATIVE_FMA 0
+#endif
+
+#define HWY_CAP_GE256 0
+#define HWY_CAP_GE512 0
 
 #define HWY_NAMESPACE N_NEON
 
@@ -225,6 +247,7 @@
 #define HWY_HAVE_FLOAT16 1
 #define HWY_HAVE_FLOAT64 1
 #define HWY_MEM_OPS_MIGHT_FAULT 0
+#define HWY_NATIVE_FMA 1
 #define HWY_CAP_GE256 0
 #define HWY_CAP_GE512 0
 
@@ -249,6 +272,7 @@
 #define HWY_HAVE_FLOAT16 1
 #define HWY_HAVE_FLOAT64 0
 #define HWY_MEM_OPS_MIGHT_FAULT 1
+#define HWY_NATIVE_FMA 0
 #define HWY_CAP_GE256 0
 #define HWY_CAP_GE512 0
 
@@ -269,6 +293,7 @@
 #define HWY_HAVE_FLOAT16 1
 #define HWY_HAVE_FLOAT64 0
 #define HWY_MEM_OPS_MIGHT_FAULT 1
+#define HWY_NATIVE_FMA 0
 #define HWY_CAP_GE256 0
 #define HWY_CAP_GE512 0
 
@@ -295,6 +320,7 @@
 #define HWY_HAVE_INTEGER64 1
 #define HWY_HAVE_FLOAT64 1
 #define HWY_MEM_OPS_MIGHT_FAULT 0
+#define HWY_NATIVE_FMA 1
 #define HWY_CAP_GE256 0
 #define HWY_CAP_GE512 0
 
@@ -310,6 +336,27 @@
 // (rv64gcv is not a valid target)
 
 //-----------------------------------------------------------------------------
+// EMU128
+#elif HWY_TARGET == HWY_EMU128
+
+#define HWY_ALIGN alignas(16)
+#define HWY_MAX_BYTES 16
+#define HWY_LANES(T) (16 / sizeof(T))
+
+#define HWY_HAVE_SCALABLE 0
+#define HWY_HAVE_INTEGER64 1
+#define HWY_HAVE_FLOAT16 1
+#define HWY_HAVE_FLOAT64 1
+#define HWY_MEM_OPS_MIGHT_FAULT 1
+#define HWY_NATIVE_FMA 0
+#define HWY_CAP_GE256 0
+#define HWY_CAP_GE512 0
+
+#define HWY_NAMESPACE N_EMU128
+
+// HWY_TARGET_STR remains undefined so HWY_ATTR is a no-op.
+
+//-----------------------------------------------------------------------------
 // SCALAR
 #elif HWY_TARGET == HWY_SCALAR
 
@@ -322,6 +369,7 @@
 #define HWY_HAVE_FLOAT16 1
 #define HWY_HAVE_FLOAT64 1
 #define HWY_MEM_OPS_MIGHT_FAULT 0
+#define HWY_NATIVE_FMA 0
 #define HWY_CAP_GE256 0
 #define HWY_CAP_GE512 0
 

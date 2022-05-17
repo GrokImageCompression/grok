@@ -38,6 +38,10 @@
 // AVX2 target for VMs which support AVX2 but not the other instruction sets)
 // #define HWY_DISABLE_BMI2_FMA
 
+// Uncomment to enable SSSE3/SSE4 on MSVC even if AVX is not enabled
+// #define HWY_WANT_SSSE3
+// #define HWY_WANT_SSE4
+
 //------------------------------------------------------------------------------
 // Targets
 
@@ -52,9 +56,9 @@
 
 // 1,2: reserved
 
-// Currently satisfiable by Ice Lake (VNNI, VPCLMULQDQ, VBMI2, VAES). Later to
-// be added: BF16 (Cooper Lake). VP2INTERSECT is only in Tiger Lake? We do not
-// yet have uses for VBMI, VPOPCNTDQ, BITALG, GFNI.
+// Currently satisfiable by Ice Lake (VNNI, VPCLMULQDQ, VPOPCNTDQ, VBMI, VBMI2,
+// VAES, BITALG). Later to be added: BF16 (Cooper Lake). VP2INTERSECT is only in
+// Tiger Lake? We do not yet have uses for GFNI.
 #define HWY_AVX3_DL 4  // see HWY_WANT_AVX3_DL below
 #define HWY_AVX3 8
 #define HWY_AVX2 16
@@ -93,8 +97,9 @@
 
 #define HWY_HIGHEST_TARGET_BIT_RVV 24
 
-// 0x2000000, 0x4000000, 0x8000000, 0x10000000 reserved
+// 0x2000000, 0x4000000, 0x8000000 reserved
 
+#define HWY_EMU128 0x10000000
 #define HWY_SCALAR 0x20000000
 
 #define HWY_HIGHEST_TARGET_BIT_SCALAR 29
@@ -157,13 +162,17 @@
 // Detect baseline targets using predefined macros
 
 // Baseline means the targets for which the compiler is allowed to generate
-// instructions, implying the target CPU would have to support them. Do not use
-// this directly because it does not take the blocklist into account. Allow the
-// user to override this without any guarantee of success.
-#ifndef HWY_BASELINE_TARGETS
+// instructions, implying the target CPU would have to support them. This does
+// not take the blocklist into account.
+
+#if defined(HWY_COMPILE_ONLY_SCALAR)
+#define HWY_BASELINE_SCALAR HWY_SCALAR
+#else
+#define HWY_BASELINE_SCALAR HWY_EMU128
+#endif
 
 // Also check HWY_ARCH to ensure that simulating unknown platforms ends up with
-// HWY_TARGET == HWY_SCALAR.
+// HWY_TARGET == HWY_BASELINE_SCALAR.
 
 #if HWY_ARCH_WASM && defined(__wasm_simd128__)
 #if defined(HWY_WANT_WASM2)
@@ -182,7 +191,6 @@
 #define HWY_BASELINE_PPC8 0
 #endif
 
-// SVE2 compiles, but is not yet tested.
 #if HWY_ARCH_ARM && defined(__ARM_FEATURE_SVE2)
 #define HWY_BASELINE_SVE2 HWY_SVE2
 #else
@@ -202,11 +210,11 @@
 #define HWY_BASELINE_NEON 0
 #endif
 
-// Special handling for MSVC because it has fewer predefined macros
+// Special handling for MSVC because it has fewer predefined macros:
 #if HWY_COMPILER_MSVC && !HWY_COMPILER_CLANG
 
-// We can only be sure SSSE3/SSE4 are enabled if AVX is
-// (https://stackoverflow.com/questions/18563978/)
+// 1) We can only be sure SSSE3/SSE4 are enabled if AVX is:
+//    https://stackoverflow.com/questions/18563978/.
 #if defined(__AVX__)
 #define HWY_CHECK_SSSE3 1
 #define HWY_CHECK_SSE4 1
@@ -215,8 +223,8 @@
 #define HWY_CHECK_SSE4 0
 #endif
 
-// Cannot check for PCLMUL/AES and BMI2/FMA/F16C individually; we assume
-// PCLMUL/AES are available if SSE4 is, and BMI2/FMA/F16C if AVX2 is.
+// 2) Cannot check for PCLMUL/AES and BMI2/FMA/F16C individually; we assume
+//    PCLMUL/AES are available if SSE4 is, and BMI2/FMA/F16C if AVX2 is.
 #define HWY_CHECK_PCLMUL_AES 1
 #define HWY_CHECK_BMI2_FMA 1
 #define HWY_CHECK_F16C 1
@@ -256,13 +264,13 @@
 
 #endif  // non-MSVC
 
-#if HWY_ARCH_X86 && HWY_CHECK_SSSE3
+#if HWY_ARCH_X86 && (HWY_WANT_SSSE3 || HWY_CHECK_SSSE3)
 #define HWY_BASELINE_SSSE3 HWY_SSSE3
 #else
 #define HWY_BASELINE_SSSE3 0
 #endif
 
-#if HWY_ARCH_X86 && HWY_CHECK_SSE4 && HWY_CHECK_PCLMUL_AES
+#if HWY_ARCH_X86 && (HWY_WANT_SSE4 || (HWY_CHECK_SSE4 && HWY_CHECK_PCLMUL_AES))
 #define HWY_BASELINE_SSE4 HWY_SSE4
 #else
 #define HWY_BASELINE_SSE4 0
@@ -285,7 +293,9 @@
 
 // TODO(janwas): not yet known whether these will be set by MSVC
 #if HWY_BASELINE_AVX3 != 0 && defined(__AVXVNNI__) && defined(__VAES__) && \
-    defined(__VPCLMULQDQ__)
+    defined(__VPCLMULQDQ__) && defined(__AVX512VBMI__) &&                  \
+    defined(__AVX512VBMI2__) && defined(__AVX512VPOPCNTDQ__) &&            \
+    defined(__AVX512BITALG__)
 #define HWY_BASELINE_AVX3_DL HWY_AVX3_DL
 #else
 #define HWY_BASELINE_AVX3_DL 0
@@ -297,16 +307,13 @@
 #define HWY_BASELINE_RVV 0
 #endif
 
-#define HWY_BASELINE_TARGETS                                                \
-  (HWY_SCALAR | HWY_BASELINE_WASM | HWY_BASELINE_PPC8 | HWY_BASELINE_SVE2 | \
-   HWY_BASELINE_SVE | HWY_BASELINE_NEON | HWY_BASELINE_SSSE3 |              \
-   HWY_BASELINE_SSE4 | HWY_BASELINE_AVX2 | HWY_BASELINE_AVX3 |              \
-   HWY_BASELINE_AVX3_DL | HWY_BASELINE_RVV)
-
-#else
-// User already defined HWY_BASELINE_TARGETS, but we still need to define
-// HWY_BASELINE_AVX3 (matching user's definition) for HWY_CHECK_AVX3_DL.
-#define HWY_BASELINE_AVX3_DL (HWY_BASELINE_TARGETS & HWY_AVX3_DL)
+// Allow the user to override this without any guarantee of success.
+#ifndef HWY_BASELINE_TARGETS
+#define HWY_BASELINE_TARGETS                                     \
+  (HWY_BASELINE_SCALAR | HWY_BASELINE_WASM | HWY_BASELINE_PPC8 | \
+   HWY_BASELINE_SVE2 | HWY_BASELINE_SVE | HWY_BASELINE_NEON |    \
+   HWY_BASELINE_SSSE3 | HWY_BASELINE_SSE4 | HWY_BASELINE_AVX2 |  \
+   HWY_BASELINE_AVX3 | HWY_BASELINE_AVX3_DL | HWY_BASELINE_RVV)
 #endif  // HWY_BASELINE_TARGETS
 
 //------------------------------------------------------------------------------
@@ -330,26 +337,26 @@
 //------------------------------------------------------------------------------
 // Choose targets for dynamic dispatch according to one of four policies
 
-#if (defined(HWY_COMPILE_ONLY_SCALAR) + defined(HWY_COMPILE_ONLY_STATIC) + \
-     defined(HWY_COMPILE_ALL_ATTAINABLE)) > 1
-#error "Invalid config: can only define a single policy for targets"
+#if defined(HWY_COMPILE_ONLY_SCALAR) && defined(HWY_COMPILE_ONLY_STATIC)
+#error "Defined both HWY_COMPILE_ONLY_{SCALAR|STATIC} - bug?"
 #endif
+// Defining either HWY_COMPILE_ONLY_* will trump HWY_COMPILE_ALL_ATTAINABLE.
 
-// Further to checking for disabled/broken targets, we only use AVX3_DL after
-// explicit opt-in (via this macro OR baseline compiler flags) to avoid
-// generating a codepath which is only helpful if the app uses AVX3_DL features.
-#if defined(HWY_WANT_AVX3_DL)
-#define HWY_CHECK_AVX3_DL HWY_AVX3_DL
+// AVX3_DL is not widely available yet. To reduce code size and compile time,
+// only include it in the set of attainable targets (for dynamic dispatch) if
+// the user opts in, OR it is in the baseline (we check whether enabled below).
+#if defined(HWY_WANT_AVX3_DL) || (HWY_BASELINE & HWY_AVX3_DL)
+#define HWY_ATTAINABLE_AVX3_DL HWY_AVX3_DL
 #else
-#define HWY_CHECK_AVX3_DL HWY_BASELINE_AVX3_DL
+#define HWY_ATTAINABLE_AVX3_DL 0
 #endif
 
 // Attainable means enabled and the compiler allows intrinsics (even when not
 // allowed to autovectorize). Used in 3 and 4.
 #if HWY_ARCH_X86
-#define HWY_ATTAINABLE_TARGETS                                          \
-  HWY_ENABLED(HWY_SCALAR | HWY_SSSE3 | HWY_SSE4 | HWY_AVX2 | HWY_AVX3 | \
-              HWY_CHECK_AVX3_DL)
+#define HWY_ATTAINABLE_TARGETS                                        \
+  HWY_ENABLED(HWY_BASELINE_SCALAR | HWY_SSSE3 | HWY_SSE4 | HWY_AVX2 | \
+              HWY_AVX3 | HWY_ATTAINABLE_AVX3_DL)
 #else
 #define HWY_ATTAINABLE_TARGETS HWY_ENABLED_BASELINE
 #endif

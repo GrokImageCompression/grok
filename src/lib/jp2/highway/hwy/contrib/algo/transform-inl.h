@@ -43,6 +43,42 @@ namespace HWY_NAMESPACE {
 // we used `MaskedLoad` and `BlendedStore` to read/write the final partial
 // vector.
 
+// Fills `out[0, count)` with the vectors returned by `func(d, index_vec)`,
+// where `index_vec` is `Vec<RebindToUnsigned<D>>`. On the first call to `func`,
+// the value of its lane i is i, and increases by `Lanes(d)` after every call.
+// Note that some of these indices may be `>= count`, but the elements that
+// `func` returns in those lanes will not be written to `out`.
+template <class D, class Func, typename T = TFromD<D>>
+void Generate(D d, T* HWY_RESTRICT out, size_t count, const Func& func) {
+  const RebindToUnsigned<D> du;
+  using TU = TFromD<decltype(du)>;
+  const size_t N = Lanes(d);
+
+  size_t idx = 0;
+  Vec<decltype(du)> vidx = Iota(du, 0);
+  for (; idx + N <= count; idx += N) {
+    StoreU(func(d, vidx), d, out + idx);
+    vidx = Add(vidx, Set(du, static_cast<TU>(N)));
+  }
+
+  // `count` was a multiple of the vector length `N`: already done.
+  if (HWY_UNLIKELY(idx == count)) return;
+
+#if HWY_MEM_OPS_MIGHT_FAULT
+  // Proceed one by one.
+  const CappedTag<T, 1> d1;
+  const RebindToUnsigned<decltype(d1)> du1;
+  for (; idx < count; ++idx) {
+    StoreU(func(d1, Set(du1, static_cast<TU>(idx))), d1, out + idx);
+  }
+#else
+  const size_t remaining = count - idx;
+  HWY_DASSERT(0 != remaining && remaining < N);
+  const Mask<D> mask = FirstN(d, remaining);
+  BlendedStore(func(d, vidx), mask, d, out + idx);
+#endif
+}
+
 // Replaces `inout[idx]` with `func(d, inout[idx])`. Example usage: multiplying
 // array elements by a constant.
 template <class D, class Func, typename T = TFromD<D>>
@@ -148,6 +184,73 @@ void Transform2(D d, T* HWY_RESTRICT inout, size_t count,
   const Vec<D> v1 = MaskedLoad(mask, d, in1 + idx);
   const Vec<D> v2 = MaskedLoad(mask, d, in2 + idx);
   BlendedStore(func(d, v, v1, v2), mask, d, inout + idx);
+#endif
+}
+
+template <class D, typename T = TFromD<D>>
+void Replace(D d, T* HWY_RESTRICT inout, size_t count, T new_t, T old_t) {
+  const size_t N = Lanes(d);
+  const Vec<D> old_v = Set(d, old_t);
+  const Vec<D> new_v = Set(d, new_t);
+
+  size_t idx = 0;
+  for (; idx + N <= count; idx += N) {
+    Vec<D> v = LoadU(d, inout + idx);
+    StoreU(IfThenElse(Eq(v, old_v), new_v, v), d, inout + idx);
+  }
+
+  // `count` was a multiple of the vector length `N`: already done.
+  if (HWY_UNLIKELY(idx == count)) return;
+
+#if HWY_MEM_OPS_MIGHT_FAULT
+  // Proceed one by one.
+  const CappedTag<T, 1> d1;
+  const Vec<decltype(d1)> old_v1 = Set(d1, old_t);
+  const Vec<decltype(d1)> new_v1 = Set(d1, new_t);
+  for (; idx < count; ++idx) {
+    using V1 = Vec<decltype(d1)>;
+    const V1 v1 = LoadU(d1, inout + idx);
+    StoreU(IfThenElse(Eq(v1, old_v1), new_v1, v1), d1, inout + idx);
+  }
+#else
+  const size_t remaining = count - idx;
+  HWY_DASSERT(0 != remaining && remaining < N);
+  const Mask<D> mask = FirstN(d, remaining);
+  const Vec<D> v = MaskedLoad(mask, d, inout + idx);
+  BlendedStore(IfThenElse(Eq(v, old_v), new_v, v), mask, d, inout + idx);
+#endif
+}
+
+template <class D, class Func, typename T = TFromD<D>>
+void ReplaceIf(D d, T* HWY_RESTRICT inout, size_t count, T new_t,
+               const Func& func) {
+  const size_t N = Lanes(d);
+  const Vec<D> new_v = Set(d, new_t);
+
+  size_t idx = 0;
+  for (; idx + N <= count; idx += N) {
+    Vec<D> v = LoadU(d, inout + idx);
+    StoreU(IfThenElse(func(d, v), new_v, v), d, inout + idx);
+  }
+
+  // `count` was a multiple of the vector length `N`: already done.
+  if (HWY_UNLIKELY(idx == count)) return;
+
+#if HWY_MEM_OPS_MIGHT_FAULT
+  // Proceed one by one.
+  const CappedTag<T, 1> d1;
+  const Vec<decltype(d1)> new_v1 = Set(d1, new_t);
+  for (; idx < count; ++idx) {
+    using V1 = Vec<decltype(d1)>;
+    const V1 v = LoadU(d1, inout + idx);
+    StoreU(IfThenElse(func(d1, v), new_v1, v), d1, inout + idx);
+  }
+#else
+  const size_t remaining = count - idx;
+  HWY_DASSERT(0 != remaining && remaining < N);
+  const Mask<D> mask = FirstN(d, remaining);
+  const Vec<D> v = MaskedLoad(mask, d, inout + idx);
+  BlendedStore(IfThenElse(func(d, v), new_v, v), mask, d, inout + idx);
 #endif
 }
 
