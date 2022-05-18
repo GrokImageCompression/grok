@@ -232,11 +232,11 @@ else()
 endif()  # !MSVC
 
 # By default prefer STATIC build (legacy behavior)
-option(BUILD_SHARED_LIBS "Build shared libraries" OFF)
-option(HWY_FORCE_STATIC_LIBS "Ignore BUILD_SHARED_LIBS" ON)
+#option(BUILD_SHARED_LIBS "Build shared libraries" OFF)
+#option(HWY_FORCE_STATIC_LIBS "Ignore BUILD_SHARED_LIBS" ON)
 # only expose shared/static options to advanced users:
-mark_as_advanced(BUILD_SHARED_LIBS)
-mark_as_advanced(HWY_FORCE_STATIC_LIBS)
+#mark_as_advanced(BUILD_SHARED_LIBS)
+#mark_as_advanced(HWY_FORCE_STATIC_LIBS)
 # Define visibility settings globally:
 set(CMAKE_CXX_VISIBILITY_PRESET hidden)
 set(CMAKE_VISIBILITY_INLINES_HIDDEN 1)
