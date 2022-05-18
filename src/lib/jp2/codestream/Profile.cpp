@@ -167,7 +167,7 @@ bool Profile::is_imf_compliant(grk_cparameters* parameters, GrkImage* image)
 	/* Validate mainlevel */
 	if(mainlevel > GRK_LEVEL_MAX)
 	{
-		GRK_WARN("IMF profile requires mainlevel <= 11.\n"
+		GRK_WARN("IMF profiles require mainlevel <= 11.\n"
 				 "-> %u is thus not compliant\n"
 				 "-> Non-IMF code stream will be generated",
 				 mainlevel);
@@ -179,7 +179,7 @@ bool Profile::is_imf_compliant(grk_cparameters* parameters, GrkImage* image)
 		   (GRK_LEVEL_MAX + 1) * sizeof(tabMaxSubLevelFromMainLevel[0]));
 	if(sublevel > tabMaxSubLevelFromMainLevel[mainlevel])
 	{
-		GRK_WARN("IMF profile requires sublevel <= %u for mainlevel = %u.\n"
+		GRK_WARN("IMF profiles require sublevel <= %u for mainlevel = %u.\n"
 				 "-> %u is thus not compliant\n"
 				 "-> Non-IMF code stream will be generated",
 				 tabMaxSubLevelFromMainLevel[mainlevel], mainlevel, sublevel);
@@ -328,7 +328,7 @@ bool Profile::is_imf_compliant(grk_cparameters* parameters, GrkImage* image)
 		case GRK_PROFILE_IMF_2K_R:
 			if(((image->comps[0].w > 2048) | (image->comps[0].h > 1556)))
 			{
-				GRK_WARN("IMF 2K/2K_R profile require:\n"
+				GRK_WARN("IMF 2K/2K_R profiles require:\n"
 						 "width <= 2048 and height <= 1556\n"
 						 "-> Input image size %u x %u is not compliant\n"
 						 "-> Non-IMF code stream will be generated",
@@ -340,7 +340,7 @@ bool Profile::is_imf_compliant(grk_cparameters* parameters, GrkImage* image)
 		case GRK_PROFILE_IMF_4K_R:
 			if(((image->comps[0].w > 4096) | (image->comps[0].h > 3112)))
 			{
-				GRK_WARN("IMF 4K/4K_R profile require:\n"
+				GRK_WARN("IMF 4K/4K_R profiles require:\n"
 						 "width <= 4096 and height <= 3112\n"
 						 "-> Input image size %u x %u is not compliant\n"
 						 "-> Non-IMF code stream will be generated",
@@ -352,7 +352,7 @@ bool Profile::is_imf_compliant(grk_cparameters* parameters, GrkImage* image)
 		case GRK_PROFILE_IMF_8K_R:
 			if(((image->comps[0].w > 8192) | (image->comps[0].h > 6224)))
 			{
-				GRK_WARN("IMF 8K/8K_R profile require:\n"
+				GRK_WARN("IMF 8K/8K_R profiles require:\n"
 						 "width <= 8192 and height <= 6224\n"
 						 "-> Input image size %u x %u is not compliant\n"
 						 "-> Non-IMF code stream will be generated",
@@ -367,7 +367,7 @@ bool Profile::is_imf_compliant(grk_cparameters* parameters, GrkImage* image)
 
 	if(parameters->roi_compno != -1)
 	{
-		GRK_WARN("IMF profile forbid RGN / region of interest marker.\n"
+		GRK_WARN("IMF profiles forbid RGN / region of interest marker.\n"
 				 "-> Compression parameters specify a ROI\n"
 				 "-> Non-IMF code stream will be generated");
 		ret = false;
@@ -375,7 +375,7 @@ bool Profile::is_imf_compliant(grk_cparameters* parameters, GrkImage* image)
 
 	if(parameters->cblockw_init != 32 || parameters->cblockh_init != 32)
 	{
-		GRK_WARN("IMF profile requires code block size to be 32x32.\n"
+		GRK_WARN("IMF profiles require code block size to be 32x32.\n"
 				 "-> Compression parameter set to %ux%u.\n"
 				 "-> Non-IMF code stream will be generated",
 				 parameters->cblockw_init, parameters->cblockh_init);
@@ -384,7 +384,7 @@ bool Profile::is_imf_compliant(grk_cparameters* parameters, GrkImage* image)
 
 	if(parameters->prog_order != GRK_CPRL)
 	{
-		GRK_WARN("IMF profile requires progression order to be CPRL.\n"
+		GRK_WARN("IMF profiles require progression order to be CPRL.\n"
 				 "-> Compression parameter set to %u.\n"
 				 "-> Non-IMF code stream will be generated",
 				 parameters->prog_order);
@@ -729,7 +729,7 @@ bool Profile::is_broadcast_compliant(grk_cparameters* parameters, GrkImage* imag
 	/* Validate mainlevel */
 	if(mainlevel > GRK_LEVEL_MAX)
 	{
-		GRK_WARN("Broadcast profile require mainlevel <= 11.\n"
+		GRK_WARN("Broadcast profiles require mainlevel <= 11.\n"
 				 "-> %u is thus not compliant\n"
 				 "-> Non-broadcast code stream will be generated",
 				 mainlevel);
@@ -872,7 +872,7 @@ bool Profile::is_broadcast_compliant(grk_cparameters* parameters, GrkImage* imag
 		 (parameters->cblockw_init == 64 && parameters->cblockh_init == 64) ||
 		 (parameters->cblockw_init == 128 && parameters->cblockh_init == 128)))
 	{
-		GRK_WARN("Broadcast profile require each code block dimension to be in [32,64,128].\n"
+		GRK_WARN("Broadcast profiles require each code block dimension to be in [32,64,128].\n"
 				 "-> %ux%u is not valid.\n"
 				 "-> Non-broadcast code stream will be generated",
 				 parameters->cblockw_init, parameters->cblockh_init);
@@ -881,7 +881,7 @@ bool Profile::is_broadcast_compliant(grk_cparameters* parameters, GrkImage* imag
 
 	if(parameters->prog_order != GRK_CPRL)
 	{
-		GRK_WARN("Broadcast profile require progression order to be CPRL.\n"
+		GRK_WARN("Broadcast profiles require progression order to be CPRL.\n"
 				 "-> Compression parameter set to %u.\n"
 				 "-> Non-broadcast code stream will be generated",
 				 parameters->prog_order);
@@ -890,7 +890,7 @@ bool Profile::is_broadcast_compliant(grk_cparameters* parameters, GrkImage* imag
 
 	if(parameters->numpocs != 0)
 	{
-		GRK_WARN("Broadcast profile forbid POC markers.\n"
+		GRK_WARN("Broadcast profiles forbid POC markers.\n"
 				 "-> Compression parameters set %u POC.\n"
 				 "-> Non-broadcast code stream will be generated",
 				 parameters->numpocs);
@@ -900,7 +900,7 @@ bool Profile::is_broadcast_compliant(grk_cparameters* parameters, GrkImage* imag
 	/* Codeblock style: no mode switch enabled */
 	if(parameters->cblk_sty != 0)
 	{
-		GRK_WARN("Broadcast profile forbid mode switch in code block style.\n"
+		GRK_WARN("Broadcast profiles forbid mode switch in code block style.\n"
 				 "-> Compression parameters set code block style to %u.\n"
 				 "-> Non-broadcast code stream will be generated",
 				 parameters->cblk_sty);
@@ -943,7 +943,7 @@ bool Profile::is_broadcast_compliant(grk_cparameters* parameters, GrkImage* imag
 	/* Decomposition levels */
 	if(!(NL >= 1 && NL <= 5))
 	{
-		GRK_WARN("Broadcast profile requires 1 <= NL <= 5:\n"
+		GRK_WARN("Broadcast profiles requires 1 <= NL <= 5:\n"
 				 "-> Number of decomposition levels is %u.\n"
 				 "-> Non-broadcast code stream will be generated",
 				 NL);

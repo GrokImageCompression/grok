@@ -213,7 +213,7 @@ template<typename T>
 void clip(grk_image_comp* component, uint8_t precision)
 {
 	uint32_t stride_diff = component->stride - component->w;
-	assert(precision <= 16);
+	assert(precision <= GRK_MAX_SUPPORTED_IMAGE_PRECISION);
 	auto data = component->data;
 	T maximum = (std::numeric_limits<T>::max)();
 	T minimum = (std::numeric_limits<T>::min)();
