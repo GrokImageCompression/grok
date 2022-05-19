@@ -526,8 +526,6 @@ typedef struct _grk_cparameters
 	uint32_t cblockh_init;
 	/** code block style */
 	uint8_t cblk_sty;
-	/* flag for high throughput */
-	bool isHT;
 	/** 1 : use the irreversible DWT 9-7, 0 :
 	 *  use lossless compression (default) */
 	bool irreversible;

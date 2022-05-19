@@ -183,10 +183,12 @@ static void compress_help_display(void)
 	fprintf(stdout, "            quality layer 1: compress 20x, \n");
 	fprintf(stdout, "            quality layer 2: compress 10x \n");
 	fprintf(stdout, "            quality layer 3: compress lossless\n");
+	fprintf(stdout, "    Not supported for Part 15 HTJ2K compression.\n");
 	fprintf(stdout, "    Options -r and -q cannot be used together.\n");
 	fprintf(stdout, "[-q|-quality] <psnr value>,<psnr value>,<psnr value>,...\n");
 	fprintf(stdout, "    Specify PSNR for successive layers (-q 30,40,50).\n");
 	fprintf(stdout, "    Increasing PSNR values required.\n");
+	fprintf(stdout, "    Not supported for Part 15 HTJ2K compression.\n");
 	fprintf(stdout, "    Note: options -r and -q cannot be used together.\n");
 	fprintf(stdout, "[-A|-rate_control_algorithm] <0|1>\n");
 	fprintf(stdout, "    Select algorithm used for rate control\n");
@@ -703,12 +705,35 @@ static int parseCommandLine(int argc, char** argv, CompressInitParams* initParam
 				return 1;
 			}
 		}
-		if(compressionRatiosArg.isSet() && qualityArg.isSet())
+		bool isHT = false;
+		if(cblkSty.isSet())
+		{
+			parameters->cblk_sty = cblkSty.getValue() & 0X7F;
+			if(parameters->cblk_sty & GRK_CBLKSTY_HT)
+			{
+				if(parameters->cblk_sty != GRK_CBLKSTY_HT)
+				{
+					spdlog::error("High throughput compressing mode cannot be combined"
+								  " with any other block mode switches. Ignoring mode switch");
+					parameters->cblk_sty = 0;
+				}
+				else
+				{
+					isHT = true;
+					parameters->numgbits = 1;
+					if (compressionRatiosArg.isSet() || qualityArg.isSet()){
+						spdlog::warn("HTJ2K compression using rate distortion or quality"
+									" is not currently supported.");
+					}
+				}
+			}
+		}
+		if(!isHT && compressionRatiosArg.isSet() && qualityArg.isSet())
 		{
 			spdlog::error("compression by both rate distortion and quality is not allowed");
 			return 1;
 		}
-		if(compressionRatiosArg.isSet())
+		if(!isHT && compressionRatiosArg.isSet())
 		{
 			char* s = (char*)compressionRatiosArg.getValue().c_str();
 			parameters->numlayers = 0;
@@ -749,7 +774,7 @@ static int parseCommandLine(int argc, char** argv, CompressInitParams* initParam
 					parameters->layer_rate[i] = 0;
 			}
 		}
-		else if(qualityArg.isSet())
+		else if(!isHT && qualityArg.isSet())
 		{
 			char* s = (char*)qualityArg.getValue().c_str();
 			;
@@ -1066,25 +1091,6 @@ static int parseCommandLine(int argc, char** argv, CompressInitParams* initParam
 				outFolder->set_imgdir = true;
 			}
 		}
-		if(cblkSty.isSet())
-		{
-			parameters->cblk_sty = cblkSty.getValue() & 0X7F;
-			if(parameters->cblk_sty & GRK_CBLKSTY_HT)
-			{
-				if(parameters->cblk_sty != GRK_CBLKSTY_HT)
-				{
-					spdlog::error("High throughput compressing mode cannot be combined"
-								  " with any other block mode switches. Ignoring mode switch");
-					parameters->cblk_sty = 0;
-				}
-				else
-				{
-					parameters->isHT = true;
-					parameters->numgbits = 1;
-				}
-			}
-		}
-
 		if(guardBits.isSet())
 		{
 			if(guardBits.getValue() > 7)
@@ -1095,7 +1101,7 @@ static int parseCommandLine(int argc, char** argv, CompressInitParams* initParam
 			parameters->numgbits = (uint8_t)guardBits.getValue();
 		}
 		// profiles
-		if(!parameters->isHT)
+		if(!isHT)
 		{
 			if(cinema2KArg.isSet())
 			{

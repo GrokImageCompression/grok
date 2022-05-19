@@ -117,6 +117,8 @@ bool CodeStreamCompress::init(grk_cparameters* parameters, GrkImage* image)
 	if(!parameters || !image)
 		return false;
 
+	bool isHT = (parameters->cblk_sty  & 0X7F) ==GRK_CBLKSTY_HT;
+
 	// sanity check on image
 	if(image->numcomps < 1 || image->numcomps > maxNumComponentsJ2K)
 	{
@@ -160,6 +162,15 @@ bool CodeStreamCompress::init(grk_cparameters* parameters, GrkImage* image)
 				image->comps[compno].data = nullptr;
 			}
 		}
+	}
+
+	if (isHT){
+		if (parameters->numlayers > 1 || parameters->layer_rate[0] != 0) {
+			GRK_WARN("Rate control not supported for HTJ2K compression.");
+			parameters->numlayers = 1;
+			parameters->layer_rate[0] = 0;
+		}
+		parameters->allocationByRateDistoration = true;
 	}
 
 	if((parameters->numresolution == 0) || (parameters->numresolution > GRK_J2K_MAXRLVLS))
@@ -219,10 +230,8 @@ bool CodeStreamCompress::init(grk_cparameters* parameters, GrkImage* image)
 
 	/* Manage profiles and applications and set RSIZ */
 	/* set cinema parameters if required */
-	if(parameters->isHT)
-	{
+	if(isHT)
 		parameters->rsiz |= GRK_JPH_RSIZ_FLAG;
-	}
 	if(GRK_IS_CINEMA(parameters->rsiz))
 	{
 		if((parameters->rsiz == GRK_PROFILE_CINEMA_S2K) ||
@@ -393,7 +402,7 @@ bool CodeStreamCompress::init(grk_cparameters* parameters, GrkImage* image)
 		auto tcp = cp_.tcps + tileno;
 		tcp->tccps = new TileComponentCodingParams[image->numcomps];
 
-		tcp->setIsHT(parameters->isHT, !parameters->irreversible, numgbits);
+		tcp->setIsHT(isHT, !parameters->irreversible, numgbits);
 		tcp->qcd_->generate((uint32_t)(parameters->numresolution - 1), image->comps[0].prec,
 							parameters->mct > 0, image->comps[0].sgnd);
 		for(uint32_t i = 0; i < image->numcomps; i++)
