@@ -484,7 +484,7 @@ int GrkDecompress::parseCommandLine(int argc, char** argv, DecompressInitParams*
 			spdlog::set_default_logger(file_logger);
 		}
 
-		parameters->serialize_xml = xmlArg.isSet();
+		parameters->io_xml = xmlArg.isSet();
 		parameters->force_rgb = forceRgbArg.isSet();
 		if(upsampleArg.isSet())
 		{
@@ -966,17 +966,17 @@ static void cleanUpFile(const char* outfile)
 		free(p);
 }
 
-static void grkSerializeRegisterClientCallback(grk_serialize_callback reclaim_callback,
-											   void* serialize_user_data, void* reclaim_user_data)
+static void grkSerializeRegisterClientCallback(grk_io_callback reclaim_callback,
+											   void* io_user_data, void* reclaim_user_data)
 {
-	if(!serialize_user_data || !reclaim_user_data)
+	if(!io_user_data || !reclaim_user_data)
 		return;
-	auto imageFormat = (IImageFormat*)serialize_user_data;
+	auto imageFormat = (IImageFormat*)io_user_data;
 
-	imageFormat->serializeRegisterClientCallback(reclaim_callback, reclaim_user_data);
+	imageFormat->ioRegisterClientCallback(reclaim_callback, reclaim_user_data);
 }
 
-static bool grkSerializeBufferCallback(grk_serialize_buf buffer, void* user_data)
+static bool grkSerializeBufferCallback(grk_io_buf buffer, void* user_data)
 {
 	if(!user_data)
 		return false;
@@ -1091,9 +1091,9 @@ int GrkDecompress::preProcess(grk_plugin_decompress_callback_info* info)
 			goto cleanup;
 			break;
 	}
-	parameters->core.serialize_buffer_callback = grkSerializeBufferCallback;
-	parameters->core.serialize_user_data = imageFormat;
-	parameters->core.serialize_register_client_callback = grkSerializeRegisterClientCallback;
+	parameters->core.io_buffer_callback = grkSerializeBufferCallback;
+	parameters->core.io_user_data = imageFormat;
+	parameters->core.io_register_client_callback = grkSerializeRegisterClientCallback;
 
 	// 1. initialize
 	if(!info->stream)
@@ -1226,7 +1226,7 @@ int GrkDecompress::preProcess(grk_plugin_decompress_callback_info* info)
 
 		// store xml to file
 		if(info->header_info.xml_data && info->header_info.xml_data_len &&
-		   parameters->serialize_xml)
+		   parameters->io_xml)
 		{
 			std::string xmlFile = std::string(parameters->outfile) + ".xml";
 			auto fp = fopen(xmlFile.c_str(), "wb");

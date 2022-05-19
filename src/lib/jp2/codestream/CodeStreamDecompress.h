@@ -327,9 +327,9 @@ class CodeStreamDecompress : public CodeStream, public ICodeStreamDecompress
 	GrkImage* outputImage_;
 	TileCache* tileCache_;
 	StripCache stripCache_;
-	grk_serialize_pixels_callback serializeBufferCallback;
-	void* serializeUserData;
-	grk_serialize_register_client_callback serializeRegisterClientCallback;
+	grk_io_pixels_callback ioBufferCallback;
+	void* ioUserData;
+	grk_io_register_client_callback ioRegisterClientCallback;
 };
 
 } // namespace grk

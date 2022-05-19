@@ -47,7 +47,7 @@ FileUringIO::~FileUringIO()
 {
 	close();
 }
-void FileUringIO::serializeRegisterClientCallback(grk_serialize_callback reclaim_callback,
+void FileUringIO::ioRegisterClientCallback(grk_io_callback reclaim_callback,
 												  void* user_data)
 {
 	reclaim_callback_ = reclaim_callback;
@@ -258,11 +258,11 @@ bool FileUringIO::close(void)
 
 uint64_t FileUringIO::write(uint8_t* buf, uint64_t offset, size_t len, size_t maxLen, bool pooled)
 {
-	GrkSerializeBuf b = GrkSerializeBuf(buf, offset, len, maxLen, pooled);
+	GrkIOBuf b = GrkIOBuf(buf, offset, len, maxLen, pooled);
 
 	return write(b);
 }
-uint64_t FileUringIO::write(GrkSerializeBuf buffer)
+uint64_t FileUringIO::write(GrkIOBuf buffer)
 {
 	io_data* data = new io_data();
 	if(!buffer.pooled)

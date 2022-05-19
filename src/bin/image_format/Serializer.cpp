@@ -14,20 +14,20 @@ void Serializer::setMaxPooledRequests(uint32_t maxRequests)
 {
 	maxPooledRequests_ = maxRequests;
 }
-void Serializer::serializeRegisterClientCallback(grk_serialize_callback reclaim_callback,
+void Serializer::ioRegisterClientCallback(grk_io_callback reclaim_callback,
 												 void* user_data)
 {
 	reclaim_callback_ = reclaim_callback;
 	reclaim_user_data_ = user_data;
 #ifdef GROK_HAVE_URING
-	uring.serializeRegisterClientCallback(reclaim_callback, user_data);
+	uring.ioRegisterClientCallback(reclaim_callback, user_data);
 #endif
 }
-grk_serialize_callback Serializer::getSerializerReclaimCallback(void)
+grk_io_callback Serializer::getIOReclaimCallback(void)
 {
 	return reclaim_callback_;
 }
-void* Serializer::getSerializerReclaimUserData(void)
+void* Serializer::getIOReclaimUserData(void)
 {
 	return reclaim_user_data_;
 }
@@ -169,7 +169,7 @@ size_t Serializer::write(uint8_t* buf, size_t bytes_total)
 			open(filename_,"a",false);
 		}
 		// 3. clear scheduled
-		scheduled_ = GrkSerializeBuf();
+		scheduled_ = GrkIOBuf();
 
 		return bytes_total;
 	}

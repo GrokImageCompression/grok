@@ -26,8 +26,8 @@ namespace grk
 CodeStreamDecompress::CodeStreamDecompress(IBufferedStream* stream)
 	: CodeStream(stream), curr_marker_(0), headerError_(false), headerRead_(false),
 	  tile_ind_to_dec_(-1), marker_scratch_(nullptr), marker_scratch_size_(0),
-	  outputImage_(nullptr), tileCache_(new TileCache()), serializeBufferCallback(nullptr),
-	  serializeUserData(nullptr), serializeRegisterClientCallback(nullptr)
+	  outputImage_(nullptr), tileCache_(new TileCache()), ioBufferCallback(nullptr),
+	  ioUserData(nullptr), ioRegisterClientCallback(nullptr)
 {
 	decompressorState_.default_tcp_ = new TileCodingParams();
 	decompressorState_.lastSotReadPosition = 0;
@@ -362,9 +362,9 @@ void CodeStreamDecompress::init(grk_decompress_core_params* parameters)
 	cp_.coding_params_.dec_.randomAccessFlags_ = parameters->randomAccessFlags_;
 	tileCache_->setStrategy(parameters->tileCacheStrategy);
 
-	serializeBufferCallback = parameters->serialize_buffer_callback;
-	serializeUserData = parameters->serialize_user_data;
-	serializeRegisterClientCallback = parameters->serialize_register_client_callback;
+	ioBufferCallback = parameters->io_buffer_callback;
+	ioUserData = parameters->io_user_data;
+	ioRegisterClientCallback = parameters->io_register_client_callback;
 }
 bool CodeStreamDecompress::decompress(grk_plugin_tile* tile)
 {
@@ -475,8 +475,8 @@ bool CodeStreamDecompress::decompressTiles(void)
 		}
 		stripCache_.init(cp_.t_grid_width, numStrips,
 						 numTilesToDecompress > 1 ? cp_.t_height : outputImage_->rowsPerStrip,
-						 cp_.coding_params_.dec_.reduce_, outputImage_, serializeBufferCallback,
-						 serializeUserData, serializeRegisterClientCallback);
+						 cp_.coding_params_.dec_.reduce_, outputImage_, ioBufferCallback,
+						 ioUserData, ioRegisterClientCallback);
 	}
 
 	std::atomic<bool> success(true);
@@ -894,8 +894,8 @@ bool CodeStreamDecompress::decompressTile()
 			uint32_t numStrips = (outputImage_->height() + outputImage_->rowsPerStrip - 1) /
 								 outputImage_->rowsPerStrip;
 			stripCache_.init(1, numStrips, outputImage_->rowsPerStrip,
-							 cp_.coding_params_.dec_.reduce_, outputImage_, serializeBufferCallback,
-							 serializeUserData, serializeRegisterClientCallback);
+							 cp_.coding_params_.dec_.reduce_, outputImage_, ioBufferCallback,
+							 ioUserData, ioRegisterClientCallback);
 		}
 
 		if(!decompressT2T1(tileProcessor))

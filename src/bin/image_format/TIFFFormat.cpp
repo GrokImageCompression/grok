@@ -353,7 +353,7 @@ bool TIFFFormat::encodePixels()
 	}
 	bool success = false;
 	applicationOrchestratedEncoding_ = true;
-	serializeRegisterApplicationClient();
+	ioRegisterApplicationClient();
 
 	uint32_t height = image_->decompressHeight;
 	int32_t const* planes[grk::maxNumPackComponents];
@@ -365,7 +365,7 @@ bool TIFFFormat::encodePixels()
 		planesBegin[i] = planes[i];
 	}
 	uint32_t h = 0;
-	GrkSerializeBuf packedBuf;
+	GrkIOBuf packedBuf;
 
 	if(isFinalOutputSubsampled(image_))
 	{
@@ -462,7 +462,7 @@ cleanup:
 
 	return success;
 }
-bool TIFFFormat::encodePixelsCoreWrite(grk_serialize_buf pixels)
+bool TIFFFormat::encodePixelsCoreWrite(grk_io_buf pixels)
 {
 	tmsize_t written =
 		TIFFWriteEncodedStrip(tif, pixels.index, pixels.data, (tmsize_t)pixels.dataLen);

@@ -92,7 +92,7 @@ bool BMPFormat::encodeHeader(void)
 	uint32_t full_header_size, info_header_size, icc_size = 0;
 	uint32_t header_plus_lut = 0;
 	uint8_t* header_ptr = nullptr;
-	GrkSerializeBuf destBuff;
+	GrkIOBuf destBuff;
 
 	if(!allComponentsSanityCheck(image_, false))
 		goto cleanup;
@@ -308,7 +308,7 @@ bool BMPFormat::encodeFinish(void)
 {
 	if(image_->meta && image_->meta->color.icc_profile_buf)
 	{
-		GrkSerializeBuf destBuff;
+		GrkIOBuf destBuff;
 		destBuff.data = image_->meta->color.icc_profile_buf;
 		destBuff.offset = off_;
 		destBuff.pooled = false;

@@ -805,7 +805,7 @@ typedef struct _grk_header_info
 	uint32_t num_asocs;
 } grk_header_info;
 
-typedef struct _grk_serialize_buf
+typedef struct _grk_io_buf
 {
 	uint8_t* data;
 	uint64_t offset;
@@ -813,14 +813,13 @@ typedef struct _grk_serialize_buf
 	uint64_t allocLen;
 	bool pooled;
 	uint32_t index;
-} grk_serialize_buf;
+} grk_io_buf;
 
-typedef bool (*grk_serialize_callback)(grk_serialize_buf buffer, void* serialize_user_data);
-typedef void (*grk_serialize_register_client_callback)(grk_serialize_callback reclaim_callback,
-													   void* serialize_user_data,
-													   void* reclaim_user_data);
-
-typedef bool (*grk_serialize_pixels_callback)(grk_serialize_buf buffer, void* user_data);
+typedef bool (*grk_io_callback)(grk_io_buf buffer, void* io_user_data);
+typedef void (*grk_io_register_client_callback)(grk_io_callback reclaim_callback,
+												   void* io_user_data,
+												   void* reclaim_user_data);
+typedef bool (*grk_io_pixels_callback)(grk_io_buf buffer, void* user_data);
 
 /**
  * Core decompress parameters
@@ -846,9 +845,9 @@ typedef struct _grk_decompress_core_params
 
 	uint32_t randomAccessFlags_;
 
-	grk_serialize_pixels_callback serialize_buffer_callback;
-	void* serialize_user_data;
-	grk_serialize_register_client_callback serialize_register_client_callback;
+	grk_io_pixels_callback io_buffer_callback;
+	void* io_user_data;
+	grk_io_register_client_callback io_register_client_callback;
 } grk_decompress_core_params;
 
 #define GRK_DECOMPRESS_COMPRESSION_LEVEL_DEFAULT (UINT_MAX)
@@ -888,7 +887,7 @@ typedef struct _grk_decompress_params
 	/* split output components to different files */
 	bool split_pnm;
 	/* serialize XML metadata to disk */
-	bool serialize_xml;
+	bool io_xml;
 	uint32_t compression;
 	/*****************************************************
 	compression "quality". Meaning of "quality" depends
@@ -1001,7 +1000,7 @@ typedef struct _grk_image
 	uint32_t decompressHeight;
 	uint8_t decompressPrec;
 	GRK_COLOR_SPACE decompressColourSpace;
-	grk_serialize_buf interleavedData;
+	grk_io_buf interleavedData;
 	uint32_t rowsPerStrip; // for storage to output format
 	uint32_t rowsPerTask; // for scheduling
 	uint64_t packedRowBytes;

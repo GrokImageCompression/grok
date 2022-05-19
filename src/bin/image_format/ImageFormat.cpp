@@ -20,11 +20,11 @@
 #include "common.h"
 #include "FileStreamIO.h"
 
-static bool applicationReclaimCallback(grk_serialize_buf buffer, void* serialize_user_data)
+static bool applicationReclaimCallback(grk_io_buf buffer, void* io_user_data)
 {
-	auto pool = (BufferPool*)serialize_user_data;
+	auto pool = (BufferPool*)io_user_data;
 	if(pool)
-		pool->put(GrkSerializeBuf(buffer));
+		pool->put(GrkIOBuf(buffer));
 
 	return true;
 }
@@ -38,26 +38,26 @@ ImageFormat::~ImageFormat()
 {
 	delete fileIO_;
 }
-void ImageFormat::serializeRegisterClientCallback(grk_serialize_callback reclaim_callback,
+void ImageFormat::ioRegisterClientCallback(grk_io_callback reclaim_callback,
 												  void* user_data)
 {
-	serializer.serializeRegisterClientCallback(reclaim_callback, user_data);
+	serializer.ioRegisterClientCallback(reclaim_callback, user_data);
 }
-void ImageFormat::serializeRegisterApplicationClient(void)
+void ImageFormat::ioRegisterApplicationClient(void)
 {
-	serializeRegisterClientCallback(applicationReclaimCallback, &pool);
+	ioRegisterClientCallback(applicationReclaimCallback, &pool);
 }
-void ImageFormat::serializeReclaimBuffer(grk_serialize_buf buffer)
+void ImageFormat::ioReclaimBuffer(grk_io_buf buffer)
 {
-	auto cb = serializer.getSerializerReclaimCallback();
+	auto cb = serializer.getIOReclaimCallback();
 	if(cb)
-		cb(buffer, serializer.getSerializerReclaimUserData());
+		cb(buffer, serializer.getIOReclaimUserData());
 }
 #ifndef GROK_HAVE_URING
-void ImageFormat::reclaim(grk_serialize_buf pixels)
+void ImageFormat::reclaim(grk_io_buf pixels)
 {
 	// for synchronous encode, we immediately return the pixel buffer to the pool
-	serializeReclaimBuffer(GrkSerializeBuf(pixels));
+	ioReclaimBuffer(GrkIOBuf(pixels));
 }
 #endif
 bool ImageFormat::encodeInit(grk_image* image, const std::string& filename,
@@ -78,7 +78,7 @@ bool ImageFormat::encodeInit(grk_image* image, const std::string& filename,
 /***
  * library-orchestrated pixel encoding
  */
-bool ImageFormat::encodePixels(grk_serialize_buf pixels)
+bool ImageFormat::encodePixels(grk_io_buf pixels)
 {
 	std::unique_lock<std::mutex> lk(encodePixelmutex);
 	if(encodeState & IMAGE_FORMAT_ENCODED_PIXELS)
@@ -91,7 +91,7 @@ bool ImageFormat::encodePixels(grk_serialize_buf pixels)
 /***
  * Common core pixel encoding
  */
-bool ImageFormat::encodePixelsCore(grk_serialize_buf pixels)
+bool ImageFormat::encodePixelsCore(grk_io_buf pixels)
 {
 	GRK_UNUSED(pixels);
 #ifdef GROK_HAVE_URING
@@ -103,7 +103,7 @@ bool ImageFormat::encodePixelsCore(grk_serialize_buf pixels)
 #ifndef GROK_HAVE_URING
 		serializer.incrementPooled();
 		// for synchronous encode, we immediately return the pixel buffer to the pool
-		reclaim(GrkSerializeBuf(pixels));
+		reclaim(GrkIOBuf(pixels));
 #endif
 		if(!applicationOrchestratedEncoding_ && serializer.allPooledRequestsComplete())
 			encodeFinish();
@@ -117,10 +117,10 @@ bool ImageFormat::encodePixelsCore(grk_serialize_buf pixels)
 	return success;
 }
 // reclaim to local pool if library reclamation is not enabled
-void ImageFormat::applicationOrchestratedReclaim(GrkSerializeBuf buf)
+void ImageFormat::applicationOrchestratedReclaim(GrkIOBuf buf)
 {
 #ifndef GROK_HAVE_URING
-	if(!serializer.getSerializerReclaimCallback())
+	if(!serializer.getIOReclaimCallback())
 	{
 		pool.put(buf);
 	}
@@ -128,7 +128,7 @@ void ImageFormat::applicationOrchestratedReclaim(GrkSerializeBuf buf)
 	GRK_UNUSED(buf);
 #endif
 }
-bool ImageFormat::encodePixelsCoreWrite(grk_serialize_buf pixels)
+bool ImageFormat::encodePixelsCoreWrite(grk_io_buf pixels)
 {
 	return (serializer.write(pixels.data, pixels.dataLen) == pixels.dataLen);
 }
@@ -150,7 +150,7 @@ bool ImageFormat::open(std::string fileName, std::string mode)
 {
 	return fileIO_->open(fileName, mode);
 }
-uint64_t ImageFormat::write(GrkSerializeBuf buffer)
+uint64_t ImageFormat::write(GrkIOBuf buffer)
 {
 	auto rc = fileIO_->write(buffer);
 #ifndef GROK_HAVE_URING

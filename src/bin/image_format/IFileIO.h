@@ -22,11 +22,11 @@
 #include "grok.h"
 #include "MemManager.h"
 
-struct GrkSerializeBuf : public grk_serialize_buf
+struct GrkIOBuf : public grk_io_buf
 {
   public:
-	GrkSerializeBuf() : GrkSerializeBuf(nullptr, 0, 0, 0, false) {}
-	GrkSerializeBuf(uint8_t* data, uint64_t offset, uint64_t dataLen, uint64_t allocLen,
+	GrkIOBuf() : GrkIOBuf(nullptr, 0, 0, 0, false) {}
+	GrkIOBuf(uint8_t* data, uint64_t offset, uint64_t dataLen, uint64_t allocLen,
 					bool pooled)
 	{
 		this->data = data;
@@ -35,7 +35,7 @@ struct GrkSerializeBuf : public grk_serialize_buf
 		this->allocLen = allocLen;
 		this->pooled = pooled;
 	}
-	explicit GrkSerializeBuf(const grk_serialize_buf rhs)
+	explicit GrkIOBuf(const grk_io_buf rhs)
 	{
 		data = rhs.data;
 		offset = rhs.offset;
@@ -76,7 +76,7 @@ class IFileIO
 	virtual bool close(void) = 0;
 	virtual uint64_t write(uint8_t* buf, uint64_t offset, size_t len, size_t maxLen,
 						   bool pooled) = 0;
-	virtual uint64_t write(GrkSerializeBuf buffer) = 0;
+	virtual uint64_t write(GrkIOBuf buffer) = 0;
 	virtual bool read(uint8_t* buf, size_t len) = 0;
 	virtual uint64_t seek(int64_t off, int whence) = 0;
 };

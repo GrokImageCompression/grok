@@ -8,11 +8,11 @@
 
 namespace grk
 {
-struct GrkSerializeBuf : public grk_serialize_buf
+struct GrkIOBuf : public grk_io_buf
 {
   public:
-	GrkSerializeBuf() : GrkSerializeBuf(nullptr, 0, 0, 0, false, 0) {}
-	GrkSerializeBuf(uint8_t* data, uint64_t offset, uint64_t dataLen, uint64_t allocLen,
+	GrkIOBuf() : GrkIOBuf(nullptr, 0, 0, 0, false, 0) {}
+	GrkIOBuf(uint8_t* data, uint64_t offset, uint64_t dataLen, uint64_t allocLen,
 					bool pooled, uint32_t index)
 	{
 		this->data = data;
@@ -22,7 +22,7 @@ struct GrkSerializeBuf : public grk_serialize_buf
 		this->pooled = pooled;
 		this->index = index;
 	}
-	explicit GrkSerializeBuf(const grk_serialize_buf rhs)
+	explicit GrkIOBuf(const grk_io_buf rhs)
 	{
 		data = rhs.data;
 		offset = rhs.offset;
@@ -73,18 +73,18 @@ class StripCache
 	virtual ~StripCache();
 
 	void init(uint16_t numTilesX_, uint32_t numStrips, uint32_t stripHeight, uint8_t reduce,
-			  GrkImage* outputImg, grk_serialize_pixels_callback serializeBufferCallback,
-			  void* serializeUserData,
-			  grk_serialize_register_client_callback serializeRegisterClientCallback);
+			  GrkImage* outputImg, grk_io_pixels_callback ioBufferCallback,
+			  void* ioUserData,
+			  grk_io_register_client_callback ioRegisterClientCallback);
 	bool ingestTile(GrkImage* src);
 	bool ingestStrip(Tile* src, uint32_t yBegin, uint32_t yEnd);
-	void returnBufferToPool(GrkSerializeBuf b);
+	void returnBufferToPool(GrkIOBuf b);
 	bool isInitialized(void);
 	bool isMultiTile(void);
 
   private:
-	GrkSerializeBuf getBufferFromPool(uint64_t len);
-	std::map<uint8_t*, GrkSerializeBuf> pool;
+	GrkIOBuf getBufferFromPool(uint64_t len);
+	std::map<uint8_t*, GrkIOBuf> pool;
 	mutable std::mutex poolMutex_;
 	Strip** strips;
 	uint16_t numTilesX_;
@@ -92,10 +92,10 @@ class StripCache
 	uint32_t stripHeight_;
 	uint32_t imageY0_;
 	uint64_t packedRowBytes_;
-	void* serializeUserData_;
-	grk_serialize_pixels_callback serializeBufferCallback_;
+	void* ioUserData_;
+	grk_io_pixels_callback ioBufferCallback_;
 	mutable std::mutex serializeMutex_;
-	MinHeap<GrkSerializeBuf, uint32_t, MinHeapFakeLocker> serializeHeap;
+	MinHeap<GrkIOBuf, uint32_t, MinHeapFakeLocker> serializeHeap;
 	mutable std::mutex heapMutex_;
 	mutable std::mutex interleaveMutex_;
 	bool initialized_;

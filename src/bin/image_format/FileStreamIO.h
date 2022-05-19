@@ -28,7 +28,7 @@ class FileStreamIO : public IFileIO
 	bool open(std::string fileName, std::string mode) override;
 	bool close(void) override;
 	uint64_t write(uint8_t* buf, uint64_t offset, size_t len, size_t maxLen, bool pooled) override;
-	uint64_t write(GrkSerializeBuf buffer) override;
+	uint64_t write(GrkIOBuf buffer) override;
 	bool read(uint8_t* buf, size_t len) override;
 	uint64_t seek(int64_t off, int whence) override;
 	FILE* getFileStream(void);

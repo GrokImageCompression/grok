@@ -204,7 +204,7 @@ bool PNMFormat::encodeRows(uint32_t rows)
 		for(uint32_t i = 0U; i < decompressNumComps; ++i)
 			planes[i] = image_->comps[i].data;
 		uint32_t h = 0;
-		GrkSerializeBuf packedBuf;
+		GrkIOBuf packedBuf;
 		int32_t adjust = (image_->comps[0].sgnd ? 1 << (image_->decompressPrec - 1) : 0);
 		auto iter = grk::InterleaverFactory<int32_t>::makeInterleaver(
 			image_->decompressPrec > 8U ? grk::packer16BitBE : 8);

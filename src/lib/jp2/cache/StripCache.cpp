@@ -2,11 +2,11 @@
 
 namespace grk
 {
-static bool reclaimCallback(grk_serialize_buf buffer, void* serialize_user_data)
+static bool reclaimCallback(grk_io_buf buffer, void* io_user_data)
 {
-	auto pool = (StripCache*)serialize_user_data;
+	auto pool = (StripCache*)io_user_data;
 	if(pool)
-		pool->returnBufferToPool(GrkSerializeBuf(buffer));
+		pool->returnBufferToPool(GrkIOBuf(buffer));
 
 	return true;
 }
@@ -36,7 +36,7 @@ uint32_t Strip::reduceDim(uint32_t dim)
 }
 StripCache::StripCache()
 	: strips(nullptr), numTilesX_(0), numStrips_(0), stripHeight_(0), imageY0_(0),
-	  packedRowBytes_(0), serializeUserData_(nullptr), serializeBufferCallback_(nullptr),
+	  packedRowBytes_(0), ioUserData_(nullptr), ioBufferCallback_(nullptr),
 	  initialized_(false), multiTile_(true)
 {}
 StripCache::~StripCache()
@@ -56,18 +56,18 @@ bool StripCache::isMultiTile(void)
 	return multiTile_;
 }
 void StripCache::init(uint16_t numTilesX, uint32_t numStrips, uint32_t stripHeight, uint8_t reduce,
-					  GrkImage* outputImage, grk_serialize_pixels_callback serializeBufferCallback,
-					  void* serializeUserData,
-					  grk_serialize_register_client_callback serializeRegisterClientCallback)
+					  GrkImage* outputImage, grk_io_pixels_callback ioBufferCallback,
+					  void* ioUserData,
+					  grk_io_register_client_callback ioRegisterClientCallback)
 {
 	assert(outputImage);
 	if(!numStrips || !outputImage)
 		return;
 	multiTile_ = outputImage->hasMultipleTiles;
-	serializeBufferCallback_ = serializeBufferCallback;
-	serializeUserData_ = serializeUserData;
-	if(serializeRegisterClientCallback)
-		serializeRegisterClientCallback(reclaimCallback, serializeUserData, this);
+	ioBufferCallback_ = ioBufferCallback;
+	ioUserData_ = ioUserData;
+	if(ioRegisterClientCallback)
+		ioRegisterClientCallback(reclaimCallback, ioUserData, this);
 	numTilesX_ = numTilesX;
 	numStrips_ = numStrips;
 	imageY0_ = outputImage->y0;
@@ -102,11 +102,11 @@ bool StripCache::ingestStrip(Tile* src, uint32_t yBegin, uint32_t yEnd)
 	if(!dest->compositeInterleaved(src, yBegin, yEnd))
 		return false;
 
-	auto buf = GrkSerializeBuf(dest->interleavedData);
+	auto buf = GrkIOBuf(dest->interleavedData);
 	buf.index = stripId;
 	buf.dataLen = dataLen;
 	dest->interleavedData.data = nullptr;
-	std::queue<GrkSerializeBuf> buffersToSerialize;
+	std::queue<GrkIOBuf> buffersToSerialize;
 	{
 		std::unique_lock<std::mutex> lk(heapMutex_);
 		// 1. push to heap
@@ -127,7 +127,7 @@ bool StripCache::ingestStrip(Tile* src, uint32_t yBegin, uint32_t yEnd)
 			while(!buffersToSerialize.empty())
 			{
 				auto b = buffersToSerialize.front();
-				if(!serializeBufferCallback_(b, serializeUserData_))
+				if(!ioBufferCallback_(b, ioUserData_))
 					break;
 				buffersToSerialize.pop();
 			}
@@ -178,11 +178,11 @@ bool StripCache::ingestTile(GrkImage* src)
 
 	if(tileCount == numTilesX_)
 	{
-		auto buf = GrkSerializeBuf(dest->interleavedData);
+		auto buf = GrkIOBuf(dest->interleavedData);
 		buf.index = stripId;
 		buf.dataLen = dataLen;
 		dest->interleavedData.data = nullptr;
-		std::queue<GrkSerializeBuf> buffersToSerialize;
+		std::queue<GrkIOBuf> buffersToSerialize;
 		{
 			std::unique_lock<std::mutex> lk(heapMutex_);
 			// 1. push to heap
@@ -203,7 +203,7 @@ bool StripCache::ingestTile(GrkImage* src)
 				while(!buffersToSerialize.empty())
 				{
 					auto b = buffersToSerialize.front();
-					if(!serializeBufferCallback_(b, serializeUserData_))
+					if(!ioBufferCallback_(b, ioUserData_))
 						break;
 					buffersToSerialize.pop();
 				}
@@ -230,7 +230,7 @@ bool StripCache::ingestTile(GrkImage* src)
  *
  * not thread safe, but it is always called from within a lock
  */
-GrkSerializeBuf StripCache::getBufferFromPool(uint64_t len)
+GrkIOBuf StripCache::getBufferFromPool(uint64_t len)
 {
 	for(auto iter = pool.begin(); iter != pool.end(); ++iter)
 	{
@@ -242,7 +242,7 @@ GrkSerializeBuf StripCache::getBufferFromPool(uint64_t len)
 			return b;
 		}
 	}
-	GrkSerializeBuf rc;
+	GrkIOBuf rc;
 	rc.alloc(len);
 
 	return rc;
@@ -252,7 +252,7 @@ GrkSerializeBuf StripCache::getBufferFromPool(uint64_t len)
  *
  * thread-safe
  */
-void StripCache::returnBufferToPool(GrkSerializeBuf b)
+void StripCache::returnBufferToPool(GrkIOBuf b)
 {
 	std::unique_lock<std::mutex> lk(poolMutex_);
 	assert(b.data);

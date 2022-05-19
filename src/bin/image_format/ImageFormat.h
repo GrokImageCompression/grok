@@ -31,26 +31,26 @@ class ImageFormat : public IImageFormat
   public:
 	ImageFormat();
 	virtual ~ImageFormat();
-	void serializeRegisterClientCallback(grk_serialize_callback reclaim_callback,
+	void ioRegisterClientCallback(grk_io_callback reclaim_callback,
 										 void* user_data) override;
-	void serializeReclaimBuffer(grk_serialize_buf buffer);
-	void serializeRegisterApplicationClient(void);
+	void ioReclaimBuffer(grk_io_buf buffer);
+	void ioRegisterApplicationClient(void);
 #ifndef GROK_HAVE_URING
-	void reclaim(grk_serialize_buf pixels);
+	void reclaim(grk_io_buf pixels);
 #endif
 	virtual bool encodeInit(grk_image* image, const std::string& filename,
 							uint32_t compressionLevel) override;
-	bool encodePixels(grk_serialize_buf pixels) override;
+	bool encodePixels(grk_io_buf pixels) override;
 	virtual bool encodeFinish(void) override;
 	uint32_t getEncodeState(void) override;
 	bool openFile(void);
 
   protected:
-	void applicationOrchestratedReclaim(GrkSerializeBuf buf);
-	virtual bool encodePixelsCore(grk_serialize_buf pixels);
-	virtual bool encodePixelsCoreWrite(grk_serialize_buf pixels);
+	void applicationOrchestratedReclaim(GrkIOBuf buf);
+	virtual bool encodePixelsCore(grk_io_buf pixels);
+	virtual bool encodePixelsCoreWrite(grk_io_buf pixels);
 	bool open(std::string fname, std::string mode);
-	uint64_t write(GrkSerializeBuf buffer);
+	uint64_t write(GrkIOBuf buffer);
 	bool read(uint8_t* buf, size_t len);
 	bool seek(int64_t pos, int whence);
 	uint32_t maxY(uint32_t rows);

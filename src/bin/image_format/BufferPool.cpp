@@ -8,7 +8,7 @@ BufferPool::~BufferPool()
 		p.second.dealloc();
 }
 
-GrkSerializeBuf BufferPool::get(uint64_t len)
+GrkIOBuf BufferPool::get(uint64_t len)
 {
 	for(auto iter = pool.begin(); iter != pool.end(); ++iter)
 	{
@@ -21,12 +21,12 @@ GrkSerializeBuf BufferPool::get(uint64_t len)
 			return b;
 		}
 	}
-	GrkSerializeBuf rc;
+	GrkIOBuf rc;
 	rc.alloc(len);
 
 	return rc;
 }
-void BufferPool::put(GrkSerializeBuf b)
+void BufferPool::put(GrkIOBuf b)
 {
 	assert(b.data);
 	assert(pool.find(b.data) == pool.end());

@@ -49,7 +49,7 @@ class TIFFFormat : public ImageFormat
 #ifdef GRK_CUSTOM_TIFF_IO
 	TIFF* MyTIFFOpen(const char* name, const char* mode);
 #endif
-	bool encodePixelsCoreWrite(grk_serialize_buf pixels) override;
+	bool encodePixelsCoreWrite(grk_io_buf pixels) override;
 	TIFF* tif;
 	uint32_t chroma_subsample_x;
 	uint32_t chroma_subsample_y;

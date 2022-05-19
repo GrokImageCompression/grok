@@ -15,9 +15,9 @@ struct Serializer
 {
 	Serializer(void);
 	void setMaxPooledRequests(uint32_t maxRequests);
-	void serializeRegisterClientCallback(grk_serialize_callback reclaim_callback, void* user_data);
-	grk_serialize_callback getSerializerReclaimCallback(void);
-	void* getSerializerReclaimUserData(void);
+	void ioRegisterClientCallback(grk_io_callback reclaim_callback, void* user_data);
+	grk_io_callback getIOReclaimCallback(void);
+	void* getIOReclaimUserData(void);
 #ifndef _WIN32
 	int getFd(void);
 #endif
@@ -38,7 +38,7 @@ struct Serializer
 #ifndef _WIN32
 #ifdef GROK_HAVE_URING
 	FileUringIO uring;
-	GrkSerializeBuf scheduled_;
+	GrkIOBuf scheduled_;
 #endif
 	int getMode(std::string mode);
 	int fd_;
@@ -50,7 +50,7 @@ struct Serializer
 	uint32_t maxPooledRequests_;
 	bool asynchActive_;
 	uint64_t off_;
-	grk_serialize_callback reclaim_callback_;
+	grk_io_callback reclaim_callback_;
 	void* reclaim_user_data_;
 	std::string filename_;
 	std::string mode_;

@@ -29,7 +29,7 @@ class IImageFormat
 {
   public:
 	virtual ~IImageFormat() = default;
-	virtual void serializeRegisterClientCallback(grk_serialize_callback reclaim_callback,
+	virtual void ioRegisterClientCallback(grk_io_callback reclaim_callback,
 												 void* user_data) = 0;
 	virtual bool encodeInit(grk_image* image, const std::string& filename,
 							uint32_t compressionLevel) = 0;
@@ -41,7 +41,7 @@ class IImageFormat
 	/***
 	 * library-orchestrated pixel encoding
 	 */
-	virtual bool encodePixels(grk_serialize_buf pixels) = 0;
+	virtual bool encodePixels(grk_io_buf pixels) = 0;
 	virtual bool encodeFinish(void) = 0;
 	virtual grk_image* decode(const std::string& filename, grk_cparameters* parameters) = 0;
 	virtual uint32_t getEncodeState(void) = 0;

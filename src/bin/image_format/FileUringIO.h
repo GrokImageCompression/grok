@@ -29,7 +29,7 @@
 struct io_data
 {
 	io_data() : iov{0, 0} {}
-	GrkSerializeBuf buf;
+	GrkIOBuf buf;
 	iovec iov;
 };
 
@@ -38,12 +38,12 @@ class FileUringIO : public IFileIO
   public:
 	FileUringIO();
 	virtual ~FileUringIO() override;
-	void serializeRegisterClientCallback(grk_serialize_callback reclaim_callback, void* user_data);
+	void ioRegisterClientCallback(grk_io_callback reclaim_callback, void* user_data);
 	bool open(std::string fileName, std::string mode) override;
 	bool attach(std::string fileName, std::string mode, int fd);
 	bool close(void) override;
 	uint64_t write(uint8_t* buf, uint64_t offset, size_t len, size_t maxLen, bool pooled) override;
-	uint64_t write(GrkSerializeBuf buffer) override;
+	uint64_t write(GrkIOBuf buffer) override;
 	bool read(uint8_t* buf, size_t len) override;
 	uint64_t seek(int64_t pos, int whence) override;
 	io_data* retrieveCompletion(bool peek, bool& success);
@@ -60,7 +60,7 @@ class FileUringIO : public IFileIO
 	bool initQueue(void);
 
 	const uint32_t QD = 1024;
-	grk_serialize_callback reclaim_callback_;
+	grk_io_callback reclaim_callback_;
 	void* reclaim_user_data_;
 };
 

@@ -76,7 +76,7 @@ uint64_t FileStreamIO::write(uint8_t* buf, uint64_t offset, size_t len, size_t m
 
 	return (uint64_t)actual;
 }
-uint64_t FileStreamIO::write(GrkSerializeBuf buffer)
+uint64_t FileStreamIO::write(GrkIOBuf buffer)
 {
 	auto actual = fwrite(buffer.data, 1, buffer.dataLen, fileHandle_);
 	if(actual < buffer.dataLen)

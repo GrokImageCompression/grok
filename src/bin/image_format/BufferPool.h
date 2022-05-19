@@ -10,9 +10,9 @@ class BufferPool
 	BufferPool();
 	virtual ~BufferPool();
 	void init(uint64_t allocLen);
-	GrkSerializeBuf get(uint64_t len);
-	void put(GrkSerializeBuf b);
+	GrkIOBuf get(uint64_t len);
+	void put(GrkIOBuf b);
 
   private:
-	std::map<uint8_t*, GrkSerializeBuf> pool;
+	std::map<uint8_t*, GrkIOBuf> pool;
 };
