@@ -91,10 +91,10 @@ bool StripCache::ingestStrip(Tile* src, uint32_t yBegin, uint32_t yEnd)
 	uint64_t dataLen = packedRowBytes_ * (yEnd - yBegin);
 	{
 		std::unique_lock<std::mutex> lk(poolMutex_);
-		if(!dest->interleavedData.data)
+		if(!dest->interleavedData.data_)
 		{
 			dest->interleavedData = getBufferFromPool(dataLen);
-			if(!dest->interleavedData.data)
+			if(!dest->interleavedData.data_)
 				return false;
 		}
 	}
@@ -103,9 +103,9 @@ bool StripCache::ingestStrip(Tile* src, uint32_t yBegin, uint32_t yEnd)
 		return false;
 
 	auto buf = GrkIOBuf(dest->interleavedData);
-	buf.index = stripId;
-	buf.dataLen = dataLen;
-	dest->interleavedData.data = nullptr;
+	buf.index_ = stripId;
+	buf.dataLen_ = dataLen;
+	dest->interleavedData.data_ = nullptr;
 	std::queue<GrkIOBuf> buffersToSerialize;
 	{
 		std::unique_lock<std::mutex> lk(heapMutex_);
@@ -113,7 +113,7 @@ bool StripCache::ingestStrip(Tile* src, uint32_t yBegin, uint32_t yEnd)
 		serializeHeap.push(buf);
 		// 2. get all sequential buffers in heap
 		buf = serializeHeap.pop();
-		while(buf.data)
+		while(buf.data_)
 		{
 			buffersToSerialize.push(buf);
 			buf = serializeHeap.pop();
@@ -161,10 +161,10 @@ bool StripCache::ingestTile(GrkImage* src)
 	uint64_t dataLen = packedRowBytes_ * src->comps->h;
 	{
 		std::unique_lock<std::mutex> lk(poolMutex_);
-		if(!dest->interleavedData.data)
+		if(!dest->interleavedData.data_)
 		{
 			dest->interleavedData = getBufferFromPool(dataLen);
-			if(!dest->interleavedData.data)
+			if(!dest->interleavedData.data_)
 				return false;
 		}
 	}
@@ -179,9 +179,9 @@ bool StripCache::ingestTile(GrkImage* src)
 	if(tileCount == numTilesX_)
 	{
 		auto buf = GrkIOBuf(dest->interleavedData);
-		buf.index = stripId;
-		buf.dataLen = dataLen;
-		dest->interleavedData.data = nullptr;
+		buf.index_ = stripId;
+		buf.dataLen_ = dataLen;
+		dest->interleavedData.data_ = nullptr;
 		std::queue<GrkIOBuf> buffersToSerialize;
 		{
 			std::unique_lock<std::mutex> lk(heapMutex_);
@@ -189,7 +189,7 @@ bool StripCache::ingestTile(GrkImage* src)
 			serializeHeap.push(buf);
 			// 2. get all sequential buffers in heap
 			buf = serializeHeap.pop();
-			while(buf.data)
+			while(buf.data_)
 			{
 				buffersToSerialize.push(buf);
 				buf = serializeHeap.pop();
@@ -234,10 +234,10 @@ GrkIOBuf StripCache::getBufferFromPool(uint64_t len)
 {
 	for(auto iter = pool.begin(); iter != pool.end(); ++iter)
 	{
-		if(iter->second.allocLen >= len)
+		if(iter->second.allocLen_ >= len)
 		{
 			auto b = iter->second;
-			b.dataLen = len;
+			b.dataLen_ = len;
 			pool.erase(iter);
 			return b;
 		}
@@ -255,9 +255,9 @@ GrkIOBuf StripCache::getBufferFromPool(uint64_t len)
 void StripCache::returnBufferToPool(GrkIOBuf b)
 {
 	std::unique_lock<std::mutex> lk(poolMutex_);
-	assert(b.data);
-	assert(pool.find(b.data) == pool.end());
-	pool[b.data] = b;
+	assert(b.data_);
+	assert(pool.find(b.data_) == pool.end());
+	pool[b.data_] = b;
 }
 
 } // namespace grk

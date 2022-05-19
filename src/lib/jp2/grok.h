@@ -807,12 +807,12 @@ typedef struct _grk_header_info
 
 typedef struct _grk_io_buf
 {
-	uint8_t* data;
-	uint64_t offset;
-	uint64_t dataLen;
-	uint64_t allocLen;
-	bool pooled;
-	uint32_t index;
+	uint8_t* data_;
+	uint64_t offset_;
+	uint64_t dataLen_;
+	uint64_t allocLen_;
+	bool pooled_;
+	uint32_t index_;
 } grk_io_buf;
 
 typedef bool (*grk_io_callback)(grk_io_buf buffer, void* io_user_data);

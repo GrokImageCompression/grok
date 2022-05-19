@@ -130,7 +130,7 @@ void ImageFormat::applicationOrchestratedReclaim(GrkIOBuf buf)
 }
 bool ImageFormat::encodePixelsCoreWrite(grk_io_buf pixels)
 {
-	return (serializer.write(pixels.data, pixels.dataLen) == pixels.dataLen);
+	return (serializer.write(pixels.data_, pixels.dataLen_) == pixels.dataLen_);
 }
 bool ImageFormat::encodeFinish(void)
 {
@@ -154,7 +154,7 @@ uint64_t ImageFormat::write(GrkIOBuf buffer)
 {
 	auto rc = fileIO_->write(buffer);
 #ifndef GROK_HAVE_URING
-	if(buffer.pooled)
+	if(buffer.pooled_)
 		pool.put(buffer);
 #endif
 

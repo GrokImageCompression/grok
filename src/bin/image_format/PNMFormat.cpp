@@ -215,13 +215,13 @@ bool PNMFormat::encodeRows(uint32_t rows)
 		{
 			uint32_t stripRows = (std::min)(image_->rowsPerStrip, height - h);
 			packedBuf = pool.get(image_->packedRowBytes * stripRows);
-			iter->interleave((int32_t**)planes, decompressNumComps, packedBuf.data,
+			iter->interleave((int32_t**)planes, decompressNumComps, packedBuf.data_,
 							 image_->decompressWidth, image_->comps[0].stride,
 							 image_->packedRowBytes, stripRows, adjust);
-			packedBuf.pooled = true;
-			packedBuf.offset = serializer.getOffset();
-			packedBuf.dataLen = image_->packedRowBytes * stripRows;
-			packedBuf.index = serializer.getNumPooledRequests();
+			packedBuf.pooled_ = true;
+			packedBuf.offset_ = serializer.getOffset();
+			packedBuf.dataLen_ = image_->packedRowBytes * stripRows;
+			packedBuf.index_ = serializer.getNumPooledRequests();
 			if(!encodePixelsCore(packedBuf))
 			{
 				delete iter;
