@@ -19,16 +19,21 @@
 // WARNING: most operations do not cross 128-bit block boundaries. In
 // particular, "Broadcast", pack and zip behavior may be surprising.
 
+// Must come before HWY_DIAGNOSTICS and HWY_COMPILER_CLANGCL
+#include "hwy/base.h"
+
+// Avoid uninitialized warnings in GCC's avx512fintrin.h - see
+// https://github.com/google/highway/issues/710)
+HWY_DIAGNOSTICS(push)
+// This one is GCC-only.
+#if HWY_COMPILER_GCC && !HWY_COMPILER_CLANG
+HWY_DIAGNOSTICS_OFF(disable : 4703 6001 26494, ignored "-Wmaybe-uninitialized")
+#endif
+HWY_DIAGNOSTICS_OFF(disable : 4701, ignored "-Wuninitialized")
 
 #include <immintrin.h>  // AVX2+
 
-#include "hwy/base.h"
-
-#if HWY_IS_MSAN
-#include <sanitizer/msan_interface.h>
-#endif
-
-#if defined(_MSC_VER) && defined(__clang__)
+#if HWY_COMPILER_CLANGCL
 // Including <immintrin.h> should be enough, but Clang's headers helpfully skip
 // including these headers when _MSC_VER is defined, like when using clang-cl.
 // Include these directly here.
@@ -51,10 +56,15 @@
 #include <avx512vpopcntdqintrin.h>
 #include <avx512vpopcntdqvlintrin.h>
 // clang-format on
-#endif
+#endif  // HWY_COMPILER_CLANGCL
+
 
 #include <stddef.h>
 #include <stdint.h>
+
+#if HWY_IS_MSAN
+#include <sanitizer/msan_interface.h>
+#endif
 
 // For half-width vectors. Already includes base.h and shared-inl.h.
 #include "hwy/ops/x86_256-inl.h"
@@ -4121,6 +4131,8 @@ HWY_API Vec512<T> MaxOfLanes(Full512<T> d, Vec512<T> v) {
   // Also broadcast into odd lanes.
   return BitCast(d, Or(min, ShiftLeft<16>(min)));
 }
+
+HWY_DIAGNOSTICS(pop)
 
 // NOLINTNEXTLINE(google-readability-namespace-comments)
 }  // namespace HWY_NAMESPACE
