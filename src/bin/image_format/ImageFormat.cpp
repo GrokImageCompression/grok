@@ -93,7 +93,6 @@ bool ImageFormat::encodePixels(grk_io_buf pixels)
  */
 bool ImageFormat::encodePixelsCore(grk_io_buf pixels)
 {
-	GRK_UNUSED(pixels);
 #ifdef GROK_HAVE_URING
 	serializer.initPooledRequest();
 #endif

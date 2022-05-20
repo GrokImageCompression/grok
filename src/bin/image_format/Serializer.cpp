@@ -1,3 +1,7 @@
+#ifndef _WIN32
+#include <unistd.h>
+#endif
+
 #include "Serializer.h"
 #include "common.h"
 #define IO_MAX 2147483647U

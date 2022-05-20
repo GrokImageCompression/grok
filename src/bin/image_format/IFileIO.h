@@ -29,11 +29,11 @@ struct GrkIOBuf : public grk_io_buf
 	GrkIOBuf(uint8_t* data, uint64_t offset, uint64_t dataLen, uint64_t allocLen,
 					bool pooled)
 	{
-		this->data_ = data;
-		this->offset_ = offset;
-		this->dataLen_ = dataLen;
-		this->allocLen_ = allocLen;
-		this->pooled_ = pooled;
+		data_ = data;
+		offset_ = offset;
+		dataLen_ = dataLen;
+		allocLen_ = allocLen;
+		pooled_ = pooled;
 	}
 	explicit GrkIOBuf(const grk_io_buf rhs)
 	{
@@ -55,7 +55,6 @@ struct GrkIOBuf : public grk_io_buf
 		}
 
 		return data_ != nullptr;
-		;
 	}
 	void dealloc()
 	{

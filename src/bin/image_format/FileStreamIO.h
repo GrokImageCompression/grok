@@ -32,7 +32,6 @@ class FileStreamIO : public IFileIO
 	bool read(uint8_t* buf, size_t len) override;
 	uint64_t seek(int64_t off, int whence) override;
 	FILE* getFileStream(void);
-	int getFileDescriptor(void);
 
   private:
 	FILE* fileHandle_;

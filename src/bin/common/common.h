@@ -29,24 +29,18 @@
 #include <io.h>
 #include <fcntl.h>
 #else
-#include <strings.h>
-#include <sys/time.h>
-#include <sys/resource.h>
-#include <sys/times.h>
-#include <unistd.h>
-#include <signal.h>
-#include <sys/types.h>
-#include <sys/stat.h>
+#include <cstring>
 #include <fcntl.h>
 #endif /* _WIN32 */
-#include "spdlog/spdlog.h"
 #include <cstdint>
 #include <cstddef>
 #include <cstdio>
 #include <cassert>
-#include "grok.h"
 #include <algorithm>
 #include <chrono>
+
+#include "spdlog/spdlog.h"
+#include "grok.h"
 #include "Serializer.h"
 
 #if defined(_WIN32)

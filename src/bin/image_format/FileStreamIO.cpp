@@ -109,11 +109,4 @@ FILE* FileStreamIO::getFileStream()
 {
 	return fileHandle_;
 }
-int FileStreamIO::getFileDescriptor(void)
-{
-#ifndef __WIN32__
-	if(fileHandle_)
-		return fileno(fileHandle_);
-#endif
-	return 0;
-}
+
