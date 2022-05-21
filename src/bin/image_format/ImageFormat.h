@@ -40,6 +40,9 @@ class ImageFormat : public IImageFormat
 #endif
 	virtual bool encodeInit(grk_image* image, const std::string& filename,
 							uint32_t compressionLevel) override;
+	/***
+	 * library-orchestrated pixel encoding
+	 */
 	bool encodePixels(grk_io_buf pixels) override;
 	virtual bool encodeFinish(void) override;
 	uint32_t getEncodeState(void) override;
@@ -47,7 +50,13 @@ class ImageFormat : public IImageFormat
 
   protected:
 	void applicationOrchestratedReclaim(GrkIOBuf buf);
+	/***
+	 * Common core pixel encoding
+	 */
 	virtual bool encodePixelsCore(grk_io_buf pixels);
+	/***
+	 * Common core pixel encoding write to disk
+	 */
 	virtual bool encodePixelsCoreWrite(grk_io_buf pixels);
 	bool open(std::string fname, std::string mode);
 	uint64_t write(GrkIOBuf buffer);

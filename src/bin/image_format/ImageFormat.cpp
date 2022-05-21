@@ -127,6 +127,9 @@ void ImageFormat::applicationOrchestratedReclaim(GrkIOBuf buf)
 	GRK_UNUSED(buf);
 #endif
 }
+/***
+ * Common core pixel encoding write to disk
+ */
 bool ImageFormat::encodePixelsCoreWrite(grk_io_buf pixels)
 {
 	return (serializer.write(pixels.data_, pixels.dataLen_) == pixels.dataLen_);

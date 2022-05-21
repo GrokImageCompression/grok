@@ -462,6 +462,9 @@ cleanup:
 
 	return success;
 }
+/***
+ * Common core pixel encoding write to disk
+ */
 bool TIFFFormat::encodePixelsCoreWrite(grk_io_buf pixels)
 {
 	tmsize_t written =

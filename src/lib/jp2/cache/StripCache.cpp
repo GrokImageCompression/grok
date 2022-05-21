@@ -127,7 +127,7 @@ bool StripCache::ingestStrip(Tile* src, uint32_t yBegin, uint32_t yEnd)
 			while(!buffersToSerialize.empty())
 			{
 				auto b = buffersToSerialize.front();
-				if(!ioBufferCallback_(b, ioUserData_))
+				if(!ioBufferCallback_(0,b, ioUserData_))
 					break;
 				buffersToSerialize.pop();
 			}
@@ -148,7 +148,7 @@ bool StripCache::ingestStrip(Tile* src, uint32_t yBegin, uint32_t yEnd)
 
 	return true;
 }
-bool StripCache::ingestTile(GrkImage* src)
+bool StripCache::ingestTile(uint32_t threadId,GrkImage* src)
 {
 	if(!initialized_)
 		return false;
@@ -203,7 +203,7 @@ bool StripCache::ingestTile(GrkImage* src)
 				while(!buffersToSerialize.empty())
 				{
 					auto b = buffersToSerialize.front();
-					if(!ioBufferCallback_(b, ioUserData_))
+					if(!ioBufferCallback_(threadId, b, ioUserData_))
 						break;
 					buffersToSerialize.pop();
 				}

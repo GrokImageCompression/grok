@@ -543,7 +543,7 @@ bool CodeStreamDecompress::decompressTiles(void)
 		// 3. T2 + T1 decompress
 		// once we schedule a processor for T1 compression, we will destroy it
 		// regardless of success or not
-		auto exec = [this, processor, numTilesToDecompress, &numTilesDecompressed, &success] {
+		auto exec = [this, executor, processor, numTilesToDecompress, &numTilesDecompressed, &success] {
 			if(success)
 			{
 				if(!decompressT2T1(processor))
@@ -560,7 +560,7 @@ bool CodeStreamDecompress::decompressTiles(void)
 					{
 						if(outputImage_->supportsStripCache(&cp_))
 						{
-							if(!stripCache_.ingestTile(img))
+							if(!stripCache_.ingestTile((uint32_t)executor->this_worker_id(),img))
 								success = false;
 						}
 						else

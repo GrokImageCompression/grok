@@ -40,6 +40,9 @@ class TIFFFormat : public ImageFormat
 	TIFFFormat();
 	~TIFFFormat();
 	bool encodeHeader(void) override;
+	/***
+	 * application-orchestrated pixel encoding
+	 */
 	bool encodePixels() override;
 	using ImageFormat::encodePixels;
 	bool encodeFinish(void) override;
@@ -49,6 +52,9 @@ class TIFFFormat : public ImageFormat
 #ifdef GRK_CUSTOM_TIFF_IO
 	TIFF* MyTIFFOpen(const char* name, const char* mode);
 #endif
+	/***
+	 * Common core pixel encoding write to disk
+	 */
 	bool encodePixelsCoreWrite(grk_io_buf pixels) override;
 	TIFF* tif;
 	uint32_t chroma_subsample_x;

@@ -76,7 +76,7 @@ class StripCache
 			  GrkImage* outputImg, grk_io_pixels_callback ioBufferCallback,
 			  void* ioUserData,
 			  grk_io_register_client_callback ioRegisterClientCallback);
-	bool ingestTile(GrkImage* src);
+	bool ingestTile(uint32_t threadId, GrkImage* src);
 	bool ingestStrip(Tile* src, uint32_t yBegin, uint32_t yEnd);
 	void returnBufferToPool(GrkIOBuf b);
 	bool isInitialized(void);
