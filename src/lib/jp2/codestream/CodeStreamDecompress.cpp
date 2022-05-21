@@ -475,7 +475,7 @@ bool CodeStreamDecompress::decompressTiles(void)
 			numStrips = (outputImage_->height() + outputImage_->rowsPerStrip - 1) /
 						outputImage_->rowsPerStrip;
 		}
-		stripCache_.init(numRequiredThreads,
+		stripCache_.init((uint32_t)ExecSingleton::get()->num_workers(),
 						cp_.t_grid_width,
 						numStrips,
 						numTilesToDecompress > 1 ? cp_.t_height : outputImage_->rowsPerStrip,

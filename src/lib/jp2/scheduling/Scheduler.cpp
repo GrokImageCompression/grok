@@ -34,9 +34,6 @@ Scheduler::~Scheduler()
 		delete t;
 	delete prePostProc_;
 }
-uint32_t Scheduler::threadId(void){
-	return (uint32_t)ExecSingleton::get()->this_worker_id();
-}
 bool Scheduler::run(void)
 {
 	ExecSingleton::get()->run(codecFlow_).wait();

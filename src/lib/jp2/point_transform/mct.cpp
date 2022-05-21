@@ -62,7 +62,8 @@ namespace HWY_NAMESPACE
 				Store(ni, di, (int32_t*)(chan0 + j));
 			}
 			if(info.stripCache_->isInitialized() && !info.stripCache_->isMultiTile())
-				info.stripCache_->ingestStrip(info.threadId_,info.tile, info.yBegin, info.yEnd);
+				info.stripCache_->ingestStrip(ExecSingleton::get()->this_worker_id(),
+												info.tile, info.yBegin, info.yEnd);
 		}
 	};
 
@@ -96,7 +97,8 @@ namespace HWY_NAMESPACE
 				Store(ni, di, chan0 + j);
 			}
 			if(info.stripCache_->isInitialized() && !info.stripCache_->isMultiTile())
-				info.stripCache_->ingestStrip(info.threadId_,info.tile, info.yBegin, info.yEnd);
+				info.stripCache_->ingestStrip(ExecSingleton::get()->this_worker_id(),
+												info.tile, info.yBegin, info.yEnd);
 		}
 	};
 
@@ -375,12 +377,6 @@ namespace HWY_NAMESPACE
 				};
 				compressor();
 			}
-			/*
-					T transform;
-					info.yBegin = 0;
-					info.yEnd = highestResBuffer->height();
-					transform.transform(info);
-					*/
 		}
 	}
 	void hwy_compress_rev(ScheduleInfo info)
@@ -432,9 +428,9 @@ mct::mct(Tile* tile, GrkImage* image, TileCodingParams* tcp, StripCache* stripCa
 /***
  * decompress dc shift only - irreversible
  */
-void mct::decompress_dc_shift_irrev(uint32_t threadId, FlowComponent* flow, uint16_t compno)
+void mct::decompress_dc_shift_irrev(FlowComponent* flow, uint16_t compno)
 {
-	ScheduleInfo info(threadId, tile_, flow, stripCache_, image_->rowsPerTask);
+	ScheduleInfo info(tile_, flow, stripCache_, image_->rowsPerTask);
 	info.compno = compno;
 	genShift(compno, 1, info.shiftInfo);
 	HWY_DYNAMIC_DISPATCH(hwy_decompress_dc_shift_irrev)(info);
@@ -442,9 +438,9 @@ void mct::decompress_dc_shift_irrev(uint32_t threadId, FlowComponent* flow, uint
 /***
  * decompress dc shift only - reversible
  */
-void mct::decompress_dc_shift_rev(uint32_t threadId, FlowComponent* flow, uint16_t compno)
+void mct::decompress_dc_shift_rev(FlowComponent* flow, uint16_t compno)
 {
-	ScheduleInfo info(threadId, tile_, flow, stripCache_, image_->rowsPerTask);
+	ScheduleInfo info(tile_, flow, stripCache_, image_->rowsPerTask);
 	info.compno = compno;
 	genShift(compno, 1, info.shiftInfo);
 	HWY_DYNAMIC_DISPATCH(hwy_decompress_dc_shift_rev)(info);
@@ -454,9 +450,9 @@ void mct::decompress_dc_shift_rev(uint32_t threadId, FlowComponent* flow, uint16
  * inverse irreversible MCT (with dc shift)
  * (vector routines are disabled)
  */
-void mct::decompress_irrev(uint32_t threadId, FlowComponent* flow)
+void mct::decompress_irrev(FlowComponent* flow)
 {
-	ScheduleInfo info(threadId, tile_, flow, stripCache_, image_->rowsPerTask);
+	ScheduleInfo info(tile_, flow, stripCache_, image_->rowsPerTask);
 	hwy::DisableTargets(uint32_t(~HWY_SCALAR));
 	genShift(1, info.shiftInfo);
 	HWY_DYNAMIC_DISPATCH(hwy_decompress_irrev)
@@ -466,9 +462,9 @@ void mct::decompress_irrev(uint32_t threadId, FlowComponent* flow)
 /***
  * inverse reversible MCT (with dc shift)
  */
-void mct::decompress_rev(uint32_t threadId, FlowComponent* flow)
+void mct::decompress_rev(FlowComponent* flow)
 {
-	ScheduleInfo info(threadId, tile_, flow, stripCache_, image_->rowsPerTask);
+	ScheduleInfo info(tile_, flow, stripCache_, image_->rowsPerTask);
 	genShift(1, info.shiftInfo);
 	HWY_DYNAMIC_DISPATCH(hwy_decompress_rev)
 	(info);
@@ -476,9 +472,9 @@ void mct::decompress_rev(uint32_t threadId, FlowComponent* flow)
 /* <summary> */
 /* Forward reversible MCT. */
 /* </summary> */
-void mct::compress_rev(uint32_t threadId, FlowComponent* flow)
+void mct::compress_rev(FlowComponent* flow)
 {
-	ScheduleInfo info(threadId, tile_, flow, nullptr, singleTileRowsPerStrip);
+	ScheduleInfo info(tile_, flow, nullptr, singleTileRowsPerStrip);
 	genShift(-1, info.shiftInfo);
 	HWY_DYNAMIC_DISPATCH(hwy_compress_rev)
 	(info);
@@ -486,9 +482,9 @@ void mct::compress_rev(uint32_t threadId, FlowComponent* flow)
 /* <summary> */
 /* Forward irreversible MCT. */
 /* </summary> */
-void mct::compress_irrev(uint32_t threadId, FlowComponent* flow)
+void mct::compress_irrev(FlowComponent* flow)
 {
-	ScheduleInfo info(threadId,tile_, flow, nullptr, singleTileRowsPerStrip);
+	ScheduleInfo info(tile_, flow, nullptr, singleTileRowsPerStrip);
 	genShift(-1, info.shiftInfo);
 	HWY_DYNAMIC_DISPATCH(hwy_compress_irrev)
 	(info);

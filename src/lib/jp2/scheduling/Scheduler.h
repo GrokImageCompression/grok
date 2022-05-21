@@ -24,7 +24,6 @@ class Scheduler
 	Scheduler(Tile* tile);
 	virtual ~Scheduler();
 
-	uint32_t threadId(void);
 	virtual bool schedule(uint16_t compno) = 0;
 	void graph(uint16_t compno);
 	bool run(void);

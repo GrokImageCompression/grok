@@ -8,6 +8,7 @@
 
 namespace grk
 {
+
 struct GrkIOBuf : public grk_io_buf
 {
   public:
@@ -54,6 +55,38 @@ struct GrkIOBuf : public grk_io_buf
 	}
 };
 
+class BufPool {
+public:
+	~BufPool(void){
+		for(auto& b : pool)
+			b.second.dealloc();
+	}
+	GrkIOBuf get(uint64_t len){
+		for(auto iter = pool.begin(); iter != pool.end(); ++iter)
+		{
+			if(iter->second.allocLen_ >= len)
+			{
+				auto b = iter->second;
+				b.dataLen_ = len;
+				pool.erase(iter);
+				return b;
+			}
+		}
+		GrkIOBuf rc;
+		rc.alloc(len);
+
+		return rc;
+	}
+	void put(GrkIOBuf b){
+		assert(b.data_);
+		assert(pool.find(b.data_) == pool.end());
+		pool[b.data_] = b;
+	}
+private:
+	std::map<uint8_t*, GrkIOBuf> pool;
+};
+
+
 struct Strip
 {
 	Strip(GrkImage* outputImage, uint16_t index, uint32_t tileHeight, uint8_t reduce);
@@ -83,9 +116,7 @@ class StripCache
 	bool isMultiTile(void);
 
   private:
-	GrkIOBuf getBufferFromPool(uint64_t len);
-	std::map<uint8_t*, GrkIOBuf> pool;
-	mutable std::mutex poolMutex_;
+	std::vector<BufPool*> pools_;
 	Strip** strips;
 	uint16_t numTilesX_;
 	uint32_t numStrips_;

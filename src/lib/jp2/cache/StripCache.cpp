@@ -41,8 +41,8 @@ StripCache::StripCache()
 {}
 StripCache::~StripCache()
 {
-	for(auto& b : pool)
-		b.second.dealloc();
+	for (auto& p : pools_)
+		delete p;
 	for(uint16_t i = 0; i < numStrips_; ++i)
 		delete strips[i];
 	delete[] strips;
@@ -78,6 +78,8 @@ void StripCache::init(uint32_t concurrency,
 	for(uint16_t i = 0; i < numStrips_; ++i)
 		strips[i] = new Strip(outputImage, i, stripHeight_, reduce);
 	initialized_ = true;
+	for (uint32_t i = 0; i < concurrency; ++i)
+		pools_.push_back(new BufPool());
 }
 bool StripCache::ingestStrip(uint32_t threadId, Tile* src, uint32_t yBegin, uint32_t yEnd)
 {
@@ -91,10 +93,9 @@ bool StripCache::ingestStrip(uint32_t threadId, Tile* src, uint32_t yBegin, uint
 	// use height of first component, because no subsampling
 	uint64_t dataLen = packedRowBytes_ * (yEnd - yBegin);
 	{
-		std::unique_lock<std::mutex> lk(poolMutex_);
 		if(!dest->interleavedData.data_)
 		{
-			dest->interleavedData = getBufferFromPool(dataLen);
+			dest->interleavedData = pools_[threadId]->get(dataLen);
 			if(!dest->interleavedData.data_)
 				return false;
 		}
@@ -161,10 +162,9 @@ bool StripCache::ingestTile(uint32_t threadId,GrkImage* src)
 	// use height of first component, because no subsampling
 	uint64_t dataLen = packedRowBytes_ * src->comps->h;
 	{
-		std::unique_lock<std::mutex> lk(poolMutex_);
 		if(!dest->interleavedData.data_)
 		{
-			dest->interleavedData = getBufferFromPool(dataLen);
+			dest->interleavedData = pools_[threadId]->get(dataLen);
 			if(!dest->interleavedData.data_)
 				return false;
 		}
@@ -226,39 +226,9 @@ bool StripCache::ingestTile(uint32_t threadId,GrkImage* src)
 
 	return true;
 }
-/***
- * Get buffer from pool
- *
- * not thread safe, but it is always called from within a lock
- */
-GrkIOBuf StripCache::getBufferFromPool(uint64_t len)
-{
-	for(auto iter = pool.begin(); iter != pool.end(); ++iter)
-	{
-		if(iter->second.allocLen_ >= len)
-		{
-			auto b = iter->second;
-			b.dataLen_ = len;
-			pool.erase(iter);
-			return b;
-		}
-	}
-	GrkIOBuf rc;
-	rc.alloc(len);
 
-	return rc;
-}
-/***
- * return buffer to pool
- *
- * thread-safe
- */
-void StripCache::returnBufferToPool(uint32_t threadId, GrkIOBuf b)
-{
-	std::unique_lock<std::mutex> lk(poolMutex_);
-	assert(b.data_);
-	assert(pool.find(b.data_) == pool.end());
-	pool[b.data_] = b;
+void StripCache::returnBufferToPool(uint32_t threadId, GrkIOBuf b){
+	pools_[threadId]->put(b);
 }
 
 } // namespace grk
