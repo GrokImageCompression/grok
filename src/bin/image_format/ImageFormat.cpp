@@ -20,7 +20,7 @@
 #include "common.h"
 #include "FileStreamIO.h"
 
-static bool applicationReclaimCallback(grk_io_buf buffer, void* io_user_data)
+static bool applicationReclaimCallback(uint32_t threadId, grk_io_buf buffer, void* io_user_data)
 {
 	auto pool = (BufferPool*)io_user_data;
 	if(pool)
@@ -47,17 +47,17 @@ void ImageFormat::ioRegisterApplicationClient(void)
 {
 	ioRegisterClientCallback(applicationReclaimCallback, &pool);
 }
-void ImageFormat::ioReclaimBuffer(grk_io_buf buffer)
+void ImageFormat::ioReclaimBuffer(uint32_t threadId, grk_io_buf buffer)
 {
 	auto cb = serializer.getIOReclaimCallback();
 	if(cb)
-		cb(buffer, serializer.getIOReclaimUserData());
+		cb(threadId,buffer, serializer.getIOReclaimUserData());
 }
 #ifndef GROK_HAVE_URING
-void ImageFormat::reclaim(grk_io_buf pixels)
+void ImageFormat::reclaim(uint32_t threadId, grk_io_buf pixels)
 {
 	// for synchronous encode, we immediately return the pixel buffer to the pool
-	ioReclaimBuffer(GrkIOBuf(pixels));
+	ioReclaimBuffer(threadId, GrkIOBuf(pixels));
 }
 #endif
 bool ImageFormat::encodeInit(grk_image* image, const std::string& filename,
@@ -78,7 +78,7 @@ bool ImageFormat::encodeInit(grk_image* image, const std::string& filename,
 /***
  * library-orchestrated pixel encoding
  */
-bool ImageFormat::encodePixels(grk_io_buf pixels)
+bool ImageFormat::encodePixels(uint32_t threadId, grk_io_buf pixels)
 {
 	std::unique_lock<std::mutex> lk(encodePixelmutex);
 	if(encodeState & IMAGE_FORMAT_ENCODED_PIXELS)
@@ -86,12 +86,12 @@ bool ImageFormat::encodePixels(grk_io_buf pixels)
 	if(!isHeaderEncoded() && !encodeHeader())
 		return false;
 
-	return encodePixelsCore(pixels);
+	return encodePixelsCore(threadId, pixels);
 }
 /***
  * Common core pixel encoding
  */
-bool ImageFormat::encodePixelsCore(grk_io_buf pixels)
+bool ImageFormat::encodePixelsCore(uint32_t threadId, grk_io_buf pixels)
 {
 #ifdef GROK_HAVE_URING
 	serializer.initPooledRequest();
@@ -102,7 +102,7 @@ bool ImageFormat::encodePixelsCore(grk_io_buf pixels)
 #ifndef GROK_HAVE_URING
 		serializer.incrementPooled();
 		// for synchronous encode, we immediately return the pixel buffer to the pool
-		reclaim(GrkIOBuf(pixels));
+		reclaim(threadId, GrkIOBuf(pixels));
 #endif
 		if(!applicationOrchestratedEncoding_ && serializer.allPooledRequestsComplete())
 			encodeFinish();

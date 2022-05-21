@@ -72,13 +72,13 @@ class StripCache
 	StripCache(void);
 	virtual ~StripCache();
 
-	void init(uint16_t numTilesX_, uint32_t numStrips, uint32_t stripHeight, uint8_t reduce,
+	void init(uint32_t concurrency, uint16_t numTilesX_, uint32_t numStrips, uint32_t stripHeight, uint8_t reduce,
 			  GrkImage* outputImg, grk_io_pixels_callback ioBufferCallback,
 			  void* ioUserData,
 			  grk_io_register_client_callback ioRegisterClientCallback);
 	bool ingestTile(uint32_t threadId, GrkImage* src);
 	bool ingestStrip(Tile* src, uint32_t yBegin, uint32_t yEnd);
-	void returnBufferToPool(GrkIOBuf b);
+	void returnBufferToPool(uint32_t threadId, GrkIOBuf b);
 	bool isInitialized(void);
 	bool isMultiTile(void);
 

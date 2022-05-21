@@ -813,7 +813,7 @@ typedef struct _grk_io_buf
 	uint32_t index_;
 } grk_io_buf;
 
-typedef bool (*grk_io_callback)(grk_io_buf buffer, void* io_user_data);
+typedef bool (*grk_io_callback)(uint32_t threadId, grk_io_buf buffer, void* io_user_data);
 typedef void (*grk_io_register_client_callback)(grk_io_callback reclaim_callback,
 												   void* io_user_data,
 												   void* reclaim_user_data);

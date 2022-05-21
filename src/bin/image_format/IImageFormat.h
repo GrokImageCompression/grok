@@ -41,7 +41,7 @@ class IImageFormat
 	/***
 	 * library-orchestrated pixel encoding
 	 */
-	virtual bool encodePixels(grk_io_buf pixels) = 0;
+	virtual bool encodePixels(uint32_t threadId, grk_io_buf pixels) = 0;
 	virtual bool encodeFinish(void) = 0;
 	virtual grk_image* decode(const std::string& filename, grk_cparameters* parameters) = 0;
 	virtual uint32_t getEncodeState(void) = 0;

@@ -982,7 +982,7 @@ static bool grkSerializeBufferCallback(uint32_t threadId, grk_io_buf buffer, voi
 		return false;
 	auto imageFormat = (IImageFormat*)user_data;
 
-	return imageFormat->encodePixels(buffer);
+	return imageFormat->encodePixels(threadId, buffer);
 }
 
 bool GrkDecompress::encodeHeader(grk_plugin_decompress_callback_info* info)

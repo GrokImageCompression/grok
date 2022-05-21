@@ -465,6 +465,8 @@ bool CodeStreamDecompress::decompressTiles(void)
 	if(!createOutputImage())
 		return false;
 
+	auto numRequiredThreads =
+		std::min<uint32_t>((uint32_t)ExecSingleton::get()->num_workers(), numTilesToDecompress);
 	if(outputImage_->supportsStripCache(&cp_))
 	{
 		uint32_t numStrips = cp_.t_grid_height;
@@ -473,17 +475,20 @@ bool CodeStreamDecompress::decompressTiles(void)
 			numStrips = (outputImage_->height() + outputImage_->rowsPerStrip - 1) /
 						outputImage_->rowsPerStrip;
 		}
-		stripCache_.init(cp_.t_grid_width, numStrips,
-						 numTilesToDecompress > 1 ? cp_.t_height : outputImage_->rowsPerStrip,
-						 cp_.coding_params_.dec_.reduce_, outputImage_, ioBufferCallback,
-						 ioUserData, ioRegisterClientCallback);
+		stripCache_.init(numRequiredThreads,
+						cp_.t_grid_width,
+						numStrips,
+						numTilesToDecompress > 1 ? cp_.t_height : outputImage_->rowsPerStrip,
+						cp_.coding_params_.dec_.reduce_,
+						outputImage_,
+						ioBufferCallback,
+						ioUserData,
+						ioRegisterClientCallback);
 	}
 
 	std::atomic<bool> success(true);
 	std::atomic<uint32_t> numTilesDecompressed(0);
 
-	auto numRequiredThreads =
-		std::min<uint32_t>((uint32_t)ExecSingleton::get()->num_workers(), numTilesToDecompress);
 	tf::Executor* executor = nullptr;
 	tf::Task* node = nullptr;
 	tf::Taskflow taskflow;
@@ -893,7 +898,7 @@ bool CodeStreamDecompress::decompressTile()
 		{
 			uint32_t numStrips = (outputImage_->height() + outputImage_->rowsPerStrip - 1) /
 								 outputImage_->rowsPerStrip;
-			stripCache_.init(1, numStrips, outputImage_->rowsPerStrip,
+			stripCache_.init(1,1, numStrips, outputImage_->rowsPerStrip,
 							 cp_.coding_params_.dec_.reduce_, outputImage_, ioBufferCallback,
 							 ioUserData, ioRegisterClientCallback);
 		}

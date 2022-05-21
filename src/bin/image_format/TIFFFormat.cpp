@@ -384,7 +384,7 @@ bool TIFFFormat::encodePixels()
 				packedBuf.dataLen_ = bytesToWrite;
 				packedBuf.offset_ = serializer.getOffset();
 				packedBuf.index_ = serializer.getNumPooledRequests();
-				if(bytesToWrite && !encodePixelsCore(packedBuf))
+				if(bytesToWrite && !encodePixelsCore(-1,packedBuf))
 					goto cleanup;
 				packedBuf = pool.get(packedLengthEncoded);
 				bufPtr = (int8_t*)(packedBuf.data_);
@@ -430,7 +430,7 @@ bool TIFFFormat::encodePixels()
 		packedBuf.dataLen_ = bytesToWrite;
 		packedBuf.offset_ = serializer.getOffset();
 		packedBuf.index_ = serializer.getNumPooledRequests();
-		if(bytesToWrite && !encodePixelsCore(packedBuf))
+		if(bytesToWrite && !encodePixelsCore(-1,packedBuf))
 			goto cleanup;
 	}
 	else
@@ -448,7 +448,7 @@ bool TIFFFormat::encodePixels()
 			packedBuf.offset_ = serializer.getOffset();
 			packedBuf.dataLen_ = image_->packedRowBytes * stripRows;
 			packedBuf.index_ = serializer.getNumPooledRequests();
-			if(!encodePixelsCore(packedBuf))
+			if(!encodePixelsCore(-1,packedBuf))
 			{
 				delete iter;
 				goto cleanup;

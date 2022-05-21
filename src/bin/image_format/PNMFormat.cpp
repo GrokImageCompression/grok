@@ -222,7 +222,7 @@ bool PNMFormat::encodeRows(uint32_t rows)
 			packedBuf.offset_ = serializer.getOffset();
 			packedBuf.dataLen_ = image_->packedRowBytes * stripRows;
 			packedBuf.index_ = serializer.getNumPooledRequests();
-			if(!encodePixelsCore(packedBuf))
+			if(!encodePixelsCore(-1,packedBuf))
 			{
 				delete iter;
 				applicationOrchestratedReclaim(packedBuf);

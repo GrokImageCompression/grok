@@ -2,11 +2,11 @@
 
 namespace grk
 {
-static bool reclaimCallback(grk_io_buf buffer, void* io_user_data)
+static bool reclaimCallback(uint32_t threadId, grk_io_buf buffer, void* io_user_data)
 {
-	auto pool = (StripCache*)io_user_data;
-	if(pool)
-		pool->returnBufferToPool(GrkIOBuf(buffer));
+	auto stripCache = (StripCache*)io_user_data;
+	if(stripCache)
+		stripCache->returnBufferToPool(threadId, GrkIOBuf(buffer));
 
 	return true;
 }
@@ -55,7 +55,8 @@ bool StripCache::isMultiTile(void)
 {
 	return multiTile_;
 }
-void StripCache::init(uint16_t numTilesX, uint32_t numStrips, uint32_t stripHeight, uint8_t reduce,
+void StripCache::init(uint32_t concurrency,
+					uint16_t numTilesX, uint32_t numStrips, uint32_t stripHeight, uint8_t reduce,
 					  GrkImage* outputImage, grk_io_pixels_callback ioBufferCallback,
 					  void* ioUserData,
 					  grk_io_register_client_callback ioRegisterClientCallback)
@@ -252,7 +253,7 @@ GrkIOBuf StripCache::getBufferFromPool(uint64_t len)
  *
  * thread-safe
  */
-void StripCache::returnBufferToPool(GrkIOBuf b)
+void StripCache::returnBufferToPool(uint32_t threadId, GrkIOBuf b)
 {
 	std::unique_lock<std::mutex> lk(poolMutex_);
 	assert(b.data_);

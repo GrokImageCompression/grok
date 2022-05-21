@@ -33,17 +33,17 @@ class ImageFormat : public IImageFormat
 	virtual ~ImageFormat();
 	void ioRegisterClientCallback(grk_io_callback reclaim_callback,
 										 void* user_data) override;
-	void ioReclaimBuffer(grk_io_buf buffer);
+	void ioReclaimBuffer(uint32_t threadId, grk_io_buf buffer);
 	void ioRegisterApplicationClient(void);
 #ifndef GROK_HAVE_URING
-	void reclaim(grk_io_buf pixels);
+	void reclaim(uint32_t threadId, grk_io_buf pixels);
 #endif
 	virtual bool encodeInit(grk_image* image, const std::string& filename,
 							uint32_t compressionLevel) override;
 	/***
 	 * library-orchestrated pixel encoding
 	 */
-	bool encodePixels(grk_io_buf pixels) override;
+	bool encodePixels(uint32_t threadId, grk_io_buf pixels) override;
 	virtual bool encodeFinish(void) override;
 	uint32_t getEncodeState(void) override;
 	bool openFile(void);
@@ -53,7 +53,7 @@ class ImageFormat : public IImageFormat
 	/***
 	 * Common core pixel encoding
 	 */
-	virtual bool encodePixelsCore(grk_io_buf pixels);
+	virtual bool encodePixelsCore(uint32_t threadId, grk_io_buf pixels);
 	/***
 	 * Common core pixel encoding write to disk
 	 */
