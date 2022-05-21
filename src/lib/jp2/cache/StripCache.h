@@ -77,7 +77,7 @@ class StripCache
 			  void* ioUserData,
 			  grk_io_register_client_callback ioRegisterClientCallback);
 	bool ingestTile(uint32_t threadId, GrkImage* src);
-	bool ingestStrip(Tile* src, uint32_t yBegin, uint32_t yEnd);
+	bool ingestStrip(uint32_t threadId, Tile* src, uint32_t yBegin, uint32_t yEnd);
 	void returnBufferToPool(uint32_t threadId, GrkIOBuf b);
 	bool isInitialized(void);
 	bool isMultiTile(void);

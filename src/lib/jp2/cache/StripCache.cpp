@@ -79,7 +79,7 @@ void StripCache::init(uint32_t concurrency,
 		strips[i] = new Strip(outputImage, i, stripHeight_, reduce);
 	initialized_ = true;
 }
-bool StripCache::ingestStrip(Tile* src, uint32_t yBegin, uint32_t yEnd)
+bool StripCache::ingestStrip(uint32_t threadId, Tile* src, uint32_t yBegin, uint32_t yEnd)
 {
 	if(!initialized_)
 		return false;
@@ -128,7 +128,7 @@ bool StripCache::ingestStrip(Tile* src, uint32_t yBegin, uint32_t yEnd)
 			while(!buffersToSerialize.empty())
 			{
 				auto b = buffersToSerialize.front();
-				if(!ioBufferCallback_(0,b, ioUserData_))
+				if(!ioBufferCallback_(threadId,b, ioUserData_))
 					break;
 				buffersToSerialize.pop();
 			}

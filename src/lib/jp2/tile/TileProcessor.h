@@ -135,7 +135,7 @@ struct TileProcessor
 	bool isWholeTileDecompress(uint16_t compno);
 	bool needsMctDecompress(uint16_t compno);
 	bool needsMctDecompress(void);
-	bool mctDecompress(FlowComponent* flow);
+	bool mctDecompress(uint32_t threadId, FlowComponent* flow);
 	bool dcLevelShiftCompress();
 	bool mct_encode();
 	bool dwt_encode();

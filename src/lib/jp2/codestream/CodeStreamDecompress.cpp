@@ -898,7 +898,8 @@ bool CodeStreamDecompress::decompressTile()
 		{
 			uint32_t numStrips = (outputImage_->height() + outputImage_->rowsPerStrip - 1) /
 								 outputImage_->rowsPerStrip;
-			stripCache_.init(1,1, numStrips, outputImage_->rowsPerStrip,
+			stripCache_.init((uint32_t)ExecSingleton::get()->num_workers(),
+							1, numStrips, outputImage_->rowsPerStrip,
 							 cp_.coding_params_.dec_.reduce_, outputImage_, ioBufferCallback,
 							 ioUserData, ioRegisterClientCallback);
 		}

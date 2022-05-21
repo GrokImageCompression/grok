@@ -35,10 +35,13 @@ struct ShiftInfo
 
 struct ScheduleInfo
 {
-	ScheduleInfo(Tile* t, FlowComponent* flow, StripCache* stripCache, uint32_t linesPerTask)
-		: tile(t), compno(0), flow_(flow), linesPerTask_(linesPerTask), stripCache_(stripCache),
+	ScheduleInfo(uint32_t threadId,
+				Tile* t, FlowComponent* flow, StripCache* stripCache, uint32_t linesPerTask)
+		: threadId_(threadId),
+		  tile(t), compno(0), flow_(flow), linesPerTask_(linesPerTask), stripCache_(stripCache),
 		  yBegin(0), yEnd(0)
 	{}
+	uint32_t threadId_;
 	Tile* tile;
 	uint16_t compno;
 	std::vector<ShiftInfo> shiftInfo;
@@ -57,30 +60,30 @@ class mct
 	/**
 	 Apply a reversible multi-component transform to an image
 	 */
-	void compress_rev(FlowComponent* flow);
+	void compress_rev(uint32_t threadId, FlowComponent* flow);
 	/**
 	 Apply a reversible multi-component inverse transform to an image
 	 */
-	void decompress_rev(FlowComponent* flow);
+	void decompress_rev(uint32_t threadId, FlowComponent* flow);
 
 	/**
 	 Apply an irreversible multi-component transform to an image
 	 */
-	void compress_irrev(FlowComponent* flow);
+	void compress_irrev(uint32_t threadId, FlowComponent* flow);
 	/**
 	 Apply an irreversible multi-component inverse transform to an image
 	 */
-	void decompress_irrev(FlowComponent* flow);
+	void decompress_irrev(uint32_t threadId, FlowComponent* flow);
 
 	/**
 	 Apply a reversible inverse dc shift to an image
 	 */
-	void decompress_dc_shift_rev(FlowComponent* flow, uint16_t compno);
+	void decompress_dc_shift_rev(uint32_t threadId, FlowComponent* flow, uint16_t compno);
 
 	/**
 	 Apply an irreversible inverse dc shift to an image
 	 */
-	void decompress_dc_shift_irrev(FlowComponent* flow, uint16_t compno);
+	void decompress_dc_shift_irrev(uint32_t threadId, FlowComponent* flow, uint16_t compno);
 
 	/**
 	 Get wavelet norms for reversible transform
