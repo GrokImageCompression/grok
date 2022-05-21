@@ -137,11 +137,11 @@ void FileUringIO::enqueue(io_uring* ring, io_data* data, bool readop, int fd)
 
 	// grk::ChronoTimer timer("uring: time to enque");
 	// timer.start();
-	assert(data->buf.data == data->iov.iov_base);
+	assert(data->buf.data_ == data->iov.iov_base);
 	if(readop)
-		io_uring_prep_readv(sqe, fd, &data->iov, 1, data->buf.offset);
+		io_uring_prep_readv(sqe, fd, &data->iov, 1, data->buf.offset_);
 	else
-		io_uring_prep_writev(sqe, fd, &data->iov, 1, data->buf.offset);
+		io_uring_prep_writev(sqe, fd, &data->iov, 1, data->buf.offset_);
 	io_uring_sqe_set_data(sqe, data);
 	int ret = io_uring_submit(ring);
 	// if (debugUring)
@@ -157,11 +157,11 @@ void FileUringIO::enqueue(io_uring* ring, io_data* data, bool readop, int fd)
 		auto data = retrieveCompletion(true, success);
 		if(!success || !data)
 			break;
-		if(data->buf.pooled)
+		if(data->buf.pooled_)
 		{
 			if(reclaim_callback_)
 			{
-				reclaim_callback_(data->buf, reclaim_user_data_);
+				reclaim_callback_(0,data->buf, reclaim_user_data_);
 			}
 			else
 			{
@@ -265,20 +265,20 @@ uint64_t FileUringIO::write(uint8_t* buf, uint64_t offset, size_t len, size_t ma
 uint64_t FileUringIO::write(GrkIOBuf buffer)
 {
 	io_data* data = new io_data();
-	if(!buffer.pooled)
+	if(!buffer.pooled_)
 	{
-		auto b = (uint8_t*)grk_bin::grkAlignedMalloc(buffer.dataLen);
+		auto b = (uint8_t*)grk_bin::grkAlignedMalloc(buffer.dataLen_);
 		if(!b)
 			return false;
-		memcpy(b, buffer.data, buffer.dataLen);
-		buffer.data = b;
+		memcpy(b, buffer.data_, buffer.dataLen_);
+		buffer.data_ = b;
 	}
 	data->buf = buffer;
-	data->iov.iov_base = buffer.data;
-	data->iov.iov_len = buffer.dataLen;
+	data->iov.iov_base = buffer.data_;
+	data->iov.iov_len = buffer.dataLen_;
 	enqueue(&ring, data, false, fd_);
 
-	return buffer.dataLen;
+	return buffer.dataLen_;
 }
 bool FileUringIO::read(uint8_t* buf, size_t len)
 {

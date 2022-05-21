@@ -286,7 +286,7 @@ bool BMPFormat::encodePixels()
 #ifdef GROK_HAVE_URING
 		if(pad_dest)
 		{
-			uint8_t* ptr = destBuff.data + w_dest - pad_dest;
+			uint8_t* ptr = destBuff.data_ + w_dest - pad_dest;
 			for(uint32_t m = 0; m < image_->rowsPerStrip; ++m)
 			{
 				memset(ptr, 0, pad_dest);

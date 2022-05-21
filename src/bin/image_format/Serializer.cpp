@@ -156,13 +156,13 @@ size_t Serializer::write(uint8_t* buf, size_t bytes_total)
 	if(asynchActive_)
 	{
 		// 1. schedule buffer
-		scheduled_.data = buf;
-		scheduled_.dataLen = bytes_total;
-		scheduled_.offset = off_;
+		scheduled_.data_ = buf;
+		scheduled_.dataLen_ = bytes_total;
+		scheduled_.offset_ = off_;
 		uring.write(scheduled_);
-		off_ += scheduled_.dataLen;
+		off_ += scheduled_.dataLen_;
 		// 2. close uring if this is final buffer to schedule
-		if(scheduled_.pooled && (++numPooledRequests_ == maxPooledRequests_)){
+		if(scheduled_.pooled_ && (++numPooledRequests_ == maxPooledRequests_)){
 			asynchActive_ = false;
 			bool rc =  uring.close();
 			// todo: handle return value
@@ -200,7 +200,7 @@ size_t Serializer::write(uint8_t* buf, size_t bytes_total)
 #ifdef GROK_HAVE_URING
 void Serializer::initPooledRequest(void)
 {
-	scheduled_.pooled = true;
+	scheduled_.pooled_ = true;
 }
 #else
 void Serializer::incrementPooled(void)
