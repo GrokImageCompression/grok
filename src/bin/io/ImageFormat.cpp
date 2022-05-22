@@ -134,6 +134,7 @@ bool ImageFormat::encodePixels(uint32_t threadId,StripChunkArray * chunkArray){
 bool ImageFormat::encodePixels(uint32_t threadId,
 								IOBuf **buffers,
 								uint32_t numBuffers){
+	assert(numBuffers);
 	auto ser = workerSerializers_[threadId];
 	uint64_t toWrite = 0;
 	for (uint32_t i = 0; i < numBuffers; ++i)
@@ -147,7 +148,7 @@ bool ImageFormat::encodePixels(uint32_t threadId,
 				toWrite - written);
 		return false;
 	}
-	uint64_t writes;
+	uint64_t writes = 0;
 	for (uint32_t i = 0; i < numBuffers; ++i)
 	   writes = ++numPixelWrites_;
 	if (writes == maxPixelWrites_)
