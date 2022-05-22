@@ -2,7 +2,7 @@
 
 namespace grk
 {
-static bool reclaimCallback(uint32_t threadId, grk_io_buf buffer, void* io_user_data)
+static bool grkReclaimCallback(uint32_t threadId, grk_io_buf buffer, void* io_user_data)
 {
 	auto stripCache = (StripCache*)io_user_data;
 	if(stripCache)
@@ -59,7 +59,7 @@ void StripCache::init(uint32_t concurrency,
 					uint16_t numTilesX, uint32_t numStrips, uint32_t stripHeight, uint8_t reduce,
 					  GrkImage* outputImage, grk_io_pixels_callback ioBufferCallback,
 					  void* ioUserData,
-					  grk_io_register_client_callback ioRegisterClientCallback)
+					  grk_io_register_reclaim_callback registerGrkReclaimCallback)
 {
 	assert(outputImage);
 	if(!numStrips || !outputImage)
@@ -67,8 +67,8 @@ void StripCache::init(uint32_t concurrency,
 	multiTile_ = outputImage->hasMultipleTiles;
 	ioBufferCallback_ = ioBufferCallback;
 	ioUserData_ = ioUserData;
-	if(ioRegisterClientCallback)
-		ioRegisterClientCallback(reclaimCallback, ioUserData, this);
+	if(registerGrkReclaimCallback)
+		registerGrkReclaimCallback(grkReclaimCallback, ioUserData, this);
 	numTilesX_ = numTilesX;
 	numStrips_ = numStrips;
 	imageY0_ = outputImage->y0;

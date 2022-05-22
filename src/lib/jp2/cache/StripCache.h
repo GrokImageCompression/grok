@@ -108,7 +108,7 @@ class StripCache
 	void init(uint32_t concurrency, uint16_t numTilesX_, uint32_t numStrips, uint32_t stripHeight, uint8_t reduce,
 			  GrkImage* outputImg, grk_io_pixels_callback ioBufferCallback,
 			  void* ioUserData,
-			  grk_io_register_client_callback ioRegisterClientCallback);
+			  grk_io_register_reclaim_callback grkRegisterReclaimCallback);
 	bool ingestTile(uint32_t threadId, GrkImage* src);
 	bool ingestStrip(uint32_t threadId, Tile* src, uint32_t yBegin, uint32_t yEnd);
 	void returnBufferToPool(uint32_t threadId, GrkIOBuf b);

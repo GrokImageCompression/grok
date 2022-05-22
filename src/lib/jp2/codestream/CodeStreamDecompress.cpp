@@ -27,7 +27,7 @@ CodeStreamDecompress::CodeStreamDecompress(IBufferedStream* stream)
 	: CodeStream(stream), curr_marker_(0), headerError_(false), headerRead_(false),
 	  tile_ind_to_dec_(-1), marker_scratch_(nullptr), marker_scratch_size_(0),
 	  outputImage_(nullptr), tileCache_(new TileCache()), ioBufferCallback(nullptr),
-	  ioUserData(nullptr), ioRegisterClientCallback(nullptr)
+	  ioUserData(nullptr), grkRegisterReclaimCallback_(nullptr)
 {
 	decompressorState_.default_tcp_ = new TileCodingParams();
 	decompressorState_.lastSotReadPosition = 0;
@@ -364,7 +364,7 @@ void CodeStreamDecompress::init(grk_decompress_core_params* parameters)
 
 	ioBufferCallback = parameters->io_buffer_callback;
 	ioUserData = parameters->io_user_data;
-	ioRegisterClientCallback = parameters->io_register_client_callback;
+	grkRegisterReclaimCallback_ = parameters->io_register_client_callback;
 }
 bool CodeStreamDecompress::decompress(grk_plugin_tile* tile)
 {
@@ -483,7 +483,7 @@ bool CodeStreamDecompress::decompressTiles(void)
 						outputImage_,
 						ioBufferCallback,
 						ioUserData,
-						ioRegisterClientCallback);
+						grkRegisterReclaimCallback_);
 	}
 
 	std::atomic<bool> success(true);
@@ -901,7 +901,7 @@ bool CodeStreamDecompress::decompressTile()
 			stripCache_.init((uint32_t)ExecSingleton::get()->num_workers(),
 							1, numStrips, outputImage_->rowsPerStrip,
 							 cp_.coding_params_.dec_.reduce_, outputImage_, ioBufferCallback,
-							 ioUserData, ioRegisterClientCallback);
+							 ioUserData, grkRegisterReclaimCallback_);
 		}
 
 		if(!decompressT2T1(tileProcessor))

@@ -814,7 +814,7 @@ typedef struct _grk_io_buf
 } grk_io_buf;
 
 typedef bool (*grk_io_callback)(uint32_t threadId, grk_io_buf buffer, void* io_user_data);
-typedef void (*grk_io_register_client_callback)(grk_io_callback reclaim_callback,
+typedef void (*grk_io_register_reclaim_callback)(grk_io_callback reclaim_callback,
 												   void* io_user_data,
 												   void* reclaim_user_data);
 typedef bool (*grk_io_pixels_callback)(uint32_t threadId, grk_io_buf buffer, void* user_data);
@@ -845,7 +845,7 @@ typedef struct _grk_decompress_core_params
 
 	grk_io_pixels_callback io_buffer_callback;
 	void* io_user_data;
-	grk_io_register_client_callback io_register_client_callback;
+	grk_io_register_reclaim_callback io_register_client_callback;
 } grk_decompress_core_params;
 
 #define GRK_DECOMPRESS_COMPRESSION_LEVEL_DEFAULT (UINT_MAX)

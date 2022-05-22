@@ -973,7 +973,7 @@ static void grkSerializeRegisterClientCallback(grk_io_callback reclaim_callback,
 		return;
 	auto imageFormat = (IImageFormat*)io_user_data;
 
-	imageFormat->ioRegisterClientCallback(reclaim_callback, reclaim_user_data);
+	imageFormat->registerGrkReclaimCallback(reclaim_callback, reclaim_user_data);
 }
 
 static bool grkSerializeBufferCallback(uint32_t threadId, grk_io_buf buffer, void* user_data)

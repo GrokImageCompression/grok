@@ -47,7 +47,7 @@ FileUringIO::~FileUringIO()
 {
 	close();
 }
-void FileUringIO::ioRegisterClientCallback(grk_io_callback reclaim_callback,
+void FileUringIO::registerGrkReclaimCallback(grk_io_callback reclaim_callback,
 												  void* user_data)
 {
 	reclaim_callback_ = reclaim_callback;

@@ -33,6 +33,14 @@
 #ifdef GRK_CUSTOM_TIFF_IO
 #define IO_MAX 2147483647U
 
+static bool ioReclaimCallback(uint32_t threadId,
+		                               io::io_buf *buffer, void* io_user_data)
+{
+	auto tiffFormat = (TIFFFormat*)io_user_data;
+
+	return tiffFormat->ioReclaim(threadId, buffer);
+}
+
 static tmsize_t TiffRead(thandle_t handle, void* buf, tmsize_t size)
 {
 	GRK_UNUSED(handle);
@@ -103,6 +111,10 @@ TIFFFormat::TIFFFormat() : tif_(nullptr), chroma_subsample_x(1),
 	ioTiffFormat.setHeaderWriter([this](TIFF *tif){
 		return encodeHeader(tif);
 	});
+
+	// register callback with ioTiffFormat
+	ioTiffFormat.registerReclaimCallback(ioReclaimCallback,this);
+
 }
 TIFFFormat::~TIFFFormat()
 {
@@ -110,10 +122,24 @@ TIFFFormat::~TIFFFormat()
 		TIFFClose(tif_);
 }
 
-void TIFFFormat::ioRegisterClientCallback(grk_io_callback reclaim_callback,
+void TIFFFormat::registerGrkReclaimCallback(grk_io_callback reclaim_callback,
 												  void* user_data)
 {
-	serializer.ioRegisterClientCallback(reclaim_callback, user_data);
+	grkReclaimCallback_ = reclaim_callback;
+	grkReclaimUserData_ = user_data;
+
+}
+bool TIFFFormat::ioReclaim(uint32_t threadId, io::io_buf *buffer){
+
+	 if (!grkReclaimCallback_)
+		 return false;
+
+	 grk_io_buf b;
+	 b.data_ = buffer->data_;
+	 b.allocLen_ = buffer->allocLen_;
+	 grkReclaimCallback_(threadId, b, grkReclaimUserData_);
+
+	 return true;
 }
 bool TIFFFormat::encodeHeader(void){
 	if(isHeaderEncoded())

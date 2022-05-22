@@ -20,7 +20,7 @@
 #include "common.h"
 #include "FileStreamIO.h"
 
-static bool applicationReclaimCallback(uint32_t threadId, grk_io_buf buffer, void* io_user_data)
+static bool grkReclaimCallback(uint32_t threadId, grk_io_buf buffer, void* io_user_data)
 {
 	auto pool = (BufferPool*)io_user_data;
 	if(pool)
@@ -34,16 +34,16 @@ ImageFormat::ImageFormat()
 	  compressionLevel_(GRK_DECOMPRESS_COMPRESSION_LEVEL_DEFAULT), useStdIO_(false),
 	  encodeState(IMAGE_FORMAT_UNENCODED)
 {
-	ioRegisterClientCallback(applicationReclaimCallback, &pool);
+	registerGrkReclaimCallback(grkReclaimCallback, &pool);
 }
 ImageFormat::~ImageFormat()
 {
 	delete fileIO_;
 }
-void ImageFormat::ioRegisterClientCallback(grk_io_callback reclaim_callback,
+void ImageFormat::registerGrkReclaimCallback(grk_io_callback reclaim_callback,
 												  void* user_data)
 {
-	serializer.ioRegisterClientCallback(reclaim_callback, user_data);
+	serializer.registerGrkReclaimCallback(reclaim_callback, user_data);
 }
 void ImageFormat::ioReclaimBuffer(uint32_t threadId, grk_io_buf buffer)
 {

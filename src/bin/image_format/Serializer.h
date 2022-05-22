@@ -15,7 +15,7 @@ struct Serializer
 {
 	Serializer(void);
 	void setMaxPooledRequests(uint32_t maxRequests);
-	void ioRegisterClientCallback(grk_io_callback reclaim_callback, void* user_data);
+	void registerGrkReclaimCallback(grk_io_callback reclaim_callback, void* user_data);
 	grk_io_callback getIOReclaimCallback(void);
 	void* getIOReclaimUserData(void);
 #ifndef _WIN32

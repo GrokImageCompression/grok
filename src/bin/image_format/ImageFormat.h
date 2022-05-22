@@ -31,7 +31,7 @@ class ImageFormat : public IImageFormat
   public:
 	ImageFormat();
 	virtual ~ImageFormat();
-	virtual void ioRegisterClientCallback(grk_io_callback reclaim_callback,
+	virtual void registerGrkReclaimCallback(grk_io_callback reclaim_callback,
 										 void* user_data) override;
 	void ioReclaimBuffer(uint32_t threadId, grk_io_buf buffer);
 #ifndef GROK_HAVE_URING

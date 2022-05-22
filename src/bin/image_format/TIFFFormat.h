@@ -41,7 +41,7 @@ class TIFFFormat : public ImageFormat
   public:
 	TIFFFormat();
 	~TIFFFormat();
-	void ioRegisterClientCallback(grk_io_callback reclaim_callback,
+	void registerGrkReclaimCallback(grk_io_callback reclaim_callback,
 										 void* user_data) override;
 	bool encodeHeader(void) override;
 	/***
@@ -55,6 +55,7 @@ class TIFFFormat : public ImageFormat
 	bool encodeFinish(void) override;
 	grk_image* decode(const std::string& filename, grk_cparameters* parameters) override;
 
+	bool ioReclaim(uint32_t threadId, io::io_buf *buffer);
   private:
 #ifdef GRK_CUSTOM_TIFF_IO
 	TIFF* MyTIFFOpen(const char* name, const char* mode);
@@ -69,6 +70,8 @@ class TIFFFormat : public ImageFormat
 	uint32_t chroma_subsample_y;
 	size_t units;
 	io::TIFFFormat ioTiffFormat;
+	grk_io_callback grkReclaimCallback_;
+	void* grkReclaimUserData_;
 };
 
 #endif

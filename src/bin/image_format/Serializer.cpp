@@ -18,13 +18,13 @@ void Serializer::setMaxPooledRequests(uint32_t maxRequests)
 {
 	maxPooledRequests_ = maxRequests;
 }
-void Serializer::ioRegisterClientCallback(grk_io_callback reclaim_callback,
+void Serializer::registerGrkReclaimCallback(grk_io_callback reclaim_callback,
 												 void* user_data)
 {
 	reclaim_callback_ = reclaim_callback;
 	reclaim_user_data_ = user_data;
 #ifdef GROK_HAVE_URING
-	uring.ioRegisterClientCallback(reclaim_callback, user_data);
+	uring.registerGrkReclaimCallback(reclaim_callback, user_data);
 #endif
 }
 grk_io_callback Serializer::getIOReclaimCallback(void)

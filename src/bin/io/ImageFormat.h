@@ -36,6 +36,7 @@ public:
 				uint8_t *header,
 				size_t headerLength);
 	virtual ~ImageFormat();
+	void registerReclaimCallback(io_callback reclaim_callback, void* user_data);
 	virtual bool close(void);
 	virtual void init(uint32_t width,
 						uint32_t height,

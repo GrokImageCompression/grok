@@ -29,7 +29,7 @@ class IImageFormat
 {
   public:
 	virtual ~IImageFormat() = default;
-	virtual void ioRegisterClientCallback(grk_io_callback reclaim_callback,
+	virtual void registerGrkReclaimCallback(grk_io_callback reclaim_callback,
 												 void* user_data) = 0;
 	virtual bool encodeInit(grk_image* image, const std::string& filename,
 							uint32_t compressionLevel) = 0;
