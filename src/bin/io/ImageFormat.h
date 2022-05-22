@@ -43,7 +43,7 @@ public:
 	virtual void init(uint32_t width,
 						uint32_t height,
 						uint16_t numcomps,
-						uint64_t packedByteWidth,
+						uint64_t packedRowBytes,
 						uint32_t nominalStripHeight,
 						bool chunked);
 	virtual bool encodeInit(std::string filename,

@@ -59,9 +59,11 @@ void ImageFormat::reclaim(uint32_t threadId, grk_io_buf pixels)
 }
 #endif
 bool ImageFormat::encodeInit(grk_image* image, const std::string& filename,
-							 uint32_t compressionLevel)
+							 uint32_t compressionLevel,
+							 uint32_t concurrency)
 {
 	compressionLevel_ = compressionLevel;
+	concurrency_ = concurrency;
 	fileName_ = filename;
 	image_ = image;
 	useStdIO_ = grk::useStdio(fileName_);

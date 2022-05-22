@@ -471,7 +471,7 @@ struct ImageStripper{
 	ImageStripper(uint32_t width,
 				uint32_t height,
 				uint16_t numcomps,
-				uint64_t packedByteWidth,
+				uint64_t packedRowBytes,
 				uint32_t nominalStripHeight,
 				uint64_t headerSize,
 				uint64_t writeSize,
@@ -482,7 +482,7 @@ struct ImageStripper{
 		nominalStripHeight_(nominalStripHeight),
 		numStrips_(nominalStripHeight ?
 				(height  + nominalStripHeight - 1)/ nominalStripHeight : 0),
-		packedByteWidth_(packedByteWidth),
+		packedRowBytes_(packedRowBytes),
 		finalStripHeight_((nominalStripHeight && (height % nominalStripHeight != 0)) ?
 							height - ((height / nominalStripHeight) * nominalStripHeight) :
 								nominalStripHeight),
@@ -494,8 +494,8 @@ struct ImageStripper{
 		for (uint32_t i = 0; i < numStrips_; ++i){
 			auto neighbour = (i > 0) ? strips_[i-1] : nullptr;
 			strips_[i] =
-					new Strip(i * nominalStripHeight_ * packedByteWidth_,
-								stripHeight(i) * packedByteWidth_,
+					new Strip(i * nominalStripHeight_ * packedRowBytes_,
+								stripHeight(i) * packedRowBytes_,
 								neighbour);
 			if (pool)
 				strips_[i]->generateChunks(getChunkInfo(i), pool);
@@ -533,7 +533,7 @@ private:
 		return (strip < numStrips_-1) ? nominalStripHeight_ : finalStripHeight_;
 	}
 	uint32_t numStrips_;
-	uint64_t packedByteWidth_;
+	uint64_t packedRowBytes_;
 	uint32_t finalStripHeight_;
 	uint64_t headerSize_;
 	uint64_t writeSize_;

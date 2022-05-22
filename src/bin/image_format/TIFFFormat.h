@@ -45,7 +45,8 @@ class TIFFFormat : public ImageFormat
 										 void* user_data) override;
 
 	bool encodeInit(grk_image* image, const std::string& filename,
-							uint32_t compressionLevel) override;
+							uint32_t compressionLevel,
+							uint32_t concurrency) override;
 	bool encodeHeader(void) override;
 	/***
 	 * application-orchestrated pixel encoding

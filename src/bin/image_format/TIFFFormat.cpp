@@ -144,9 +144,10 @@ bool TIFFFormat::ioReclaim(uint32_t threadId, io::io_buf *buffer){
 }
 
 bool TIFFFormat::encodeInit(grk_image* image, const std::string& filename,
-						uint32_t compressionLevel) {
+						uint32_t compressionLevel,
+						uint32_t concurrency) {
 
-	if (!ImageFormat::encodeInit(image, filename, compressionLevel))
+	if (!ImageFormat::encodeInit(image, filename, compressionLevel, concurrency))
 		return false;
 
     if (grokNewIO) {
@@ -159,16 +160,25 @@ bool TIFFFormat::encodeInit(grk_image* image, const std::string& filename,
 			});
 
 		// initialize
-		//ioTiffFormat.init(image_->, height, numcomps, packedByteWidth, nominalStripHeight, false);
+		ioTiffFormat.init(image_->comps->w,
+						  image_->comps->h,
+						  image_->numcomps,
+						  image_->packedRowBytes,
+						  image->rowsPerStrip,
+						  false);
 
-
+		if (!ioTiffFormat.encodeInit(fileName_, false, concurrency, false))
+			return false;
 		ioTiffFormat.registerReclaimCallback(ioReclaimCallback,this);
-
     }
 
 	return true;
 }
 bool TIFFFormat::encodeHeader(void){
+    if (grokNewIO) {
+    	return true;
+    }
+
 	if(isHeaderEncoded())
 		return true;
 

@@ -1017,7 +1017,11 @@ bool GrkDecompress::encodeInit(grk_plugin_decompress_callback_info* info)
 		compressionLevel = parameters->compression;
 	else if(cod_format == GRK_JPG_FMT || cod_format == GRK_PNG_FMT)
 		compressionLevel = parameters->compressionLevel;
-	if(!imageFormat->encodeInit(info->image, outfileStr, compressionLevel))
+	if(!imageFormat->encodeInit(info->image, outfileStr,
+			compressionLevel,
+			info->decompressor_parameters->numThreads ?
+					info->decompressor_parameters->numThreads :
+						std::thread::hardware_concurrency()))
 	{
 		spdlog::error("Outfile {} not generated", outfileStr);
 		return false;

@@ -38,7 +38,8 @@ class ImageFormat : public IImageFormat
 	void reclaim(uint32_t threadId, grk_io_buf pixels);
 #endif
 	virtual bool encodeInit(grk_image* image, const std::string& filename,
-							uint32_t compressionLevel) override;
+							uint32_t compressionLevel,
+							uint32_t concurrency) override;
 	/***
 	 * library-orchestrated pixel encoding
 	 */
@@ -79,6 +80,7 @@ class ImageFormat : public IImageFormat
 	FILE* fileStream_;
 	std::string fileName_;
 	uint32_t compressionLevel_;
+	uint32_t concurrency_;
 
 	bool useStdIO_;
 	uint32_t encodeState;

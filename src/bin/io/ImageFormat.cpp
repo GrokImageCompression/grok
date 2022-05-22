@@ -51,11 +51,11 @@ void ImageFormat::setEncodeFinisher(std::function<bool(void)> finisher){
 	encodeFinisher_ = finisher;
 }
 void ImageFormat::init(uint32_t width, uint32_t height,
-						uint16_t numcomps, uint64_t packedByteWidth,
+						uint16_t numcomps, uint64_t packedRowBytes,
 						uint32_t nominalStripHeight,
 						bool chunked){
 	imageStripper_ = new ImageStripper(width, height,numcomps,
-						packedByteWidth,nominalStripHeight,
+						packedRowBytes,nominalStripHeight,
 						headerLength_,
 						WRTSIZE, chunked ? serializer_.getPool(): nullptr);
 }

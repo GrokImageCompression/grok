@@ -32,7 +32,7 @@ class IImageFormat
 	virtual void registerGrkReclaimCallback(grk_io_callback reclaim_callback,
 												 void* user_data) = 0;
 	virtual bool encodeInit(grk_image* image, const std::string& filename,
-							uint32_t compressionLevel) = 0;
+							uint32_t compressionLevel, uint32_t concurrency) = 0;
 	virtual bool encodeHeader(void) = 0;
 	/***
 	 * application-orchestrated pixel encoding
