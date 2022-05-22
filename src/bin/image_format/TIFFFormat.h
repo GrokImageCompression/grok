@@ -31,6 +31,8 @@
 #include <tiffio.h>
 #include "convert.h"
 
+#include "../io/TIFFFormat.h"
+
 /* TIFF conversion*/
 void tiffSetErrorAndWarningHandlers(bool verbose);
 
@@ -57,14 +59,16 @@ class TIFFFormat : public ImageFormat
 #ifdef GRK_CUSTOM_TIFF_IO
 	TIFF* MyTIFFOpen(const char* name, const char* mode);
 #endif
+	bool encodeHeader(TIFF *tif);
 	/***
 	 * Common core pixel encoding write to disk
 	 */
 	bool encodePixelsCoreWrite(grk_io_buf pixels) override;
-	TIFF* tif;
+	TIFF* tif_;
 	uint32_t chroma_subsample_x;
 	uint32_t chroma_subsample_y;
 	size_t units;
+	io::TIFFFormat ioTiffFormat;
 };
 
 #endif

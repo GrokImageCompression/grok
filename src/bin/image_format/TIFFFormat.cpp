@@ -98,11 +98,16 @@ TIFF* TIFFFormat::MyTIFFOpen(const char* name, const char* mode)
 
 #endif
 
-TIFFFormat::TIFFFormat() : tif(nullptr), chroma_subsample_x(1), chroma_subsample_y(1), units(0) {}
+TIFFFormat::TIFFFormat() : tif_(nullptr), chroma_subsample_x(1),
+							chroma_subsample_y(1), units(0) {
+	ioTiffFormat.setHeaderWriter([this](TIFF *tif){
+		return encodeHeader(tif);
+	});
+}
 TIFFFormat::~TIFFFormat()
 {
-	if(tif)
-		TIFFClose(tif);
+	if(tif_)
+		TIFFClose(tif_);
 }
 
 void TIFFFormat::ioRegisterClientCallback(grk_io_callback reclaim_callback,
@@ -110,7 +115,24 @@ void TIFFFormat::ioRegisterClientCallback(grk_io_callback reclaim_callback,
 {
 	serializer.ioRegisterClientCallback(reclaim_callback, user_data);
 }
-bool TIFFFormat::encodeHeader(void)
+bool TIFFFormat::encodeHeader(void){
+	if(isHeaderEncoded())
+		return true;
+
+#ifdef GRK_CUSTOM_TIFF_IO
+	tif_ = MyTIFFOpen(fileName_.c_str(), "wb");
+#else
+	tif_ = TIFFOpen(fileName_.c_str(), "wb");
+#endif
+	if(!tif_)
+	{
+		spdlog::error("TIFFFormat::encodeHeader:failed to open {} for writing", fileName_.c_str());
+		return false;
+	}
+
+	return encodeHeader(tif_);
+}
+bool TIFFFormat::encodeHeader(TIFF *tif)
 {
 	if(isHeaderEncoded())
 		return true;
@@ -227,16 +249,7 @@ bool TIFFFormat::encodeHeader(void)
 			numExtraChannels = 0;
 		}
 	}
-#ifdef GRK_CUSTOM_TIFF_IO
-	tif = MyTIFFOpen(fileName_.c_str(), "wb");
-#else
-	tif = TIFFOpen(fileName_.c_str(), "wb");
-#endif
-	if(!tif)
-	{
-		spdlog::error("TIFFFormat::encodeHeader:failed to open {} for writing", fileName_.c_str());
-		goto cleanup;
-	}
+
 	if(subsampled)
 		units = (width + chroma_subsample_x - 1) / chroma_subsample_x;
 	TIFFSetField(tif, TIFFTAG_IMAGEWIDTH, width);
@@ -386,7 +399,7 @@ bool TIFFFormat::encodePixels()
 	{
 		// TIFF-specific
 		uint64_t packedLengthEncoded =
-			(uint64_t)TIFFVStripSize(tif, (uint32_t)image_->rowsPerStrip);
+			(uint64_t)TIFFVStripSize(tif_, (uint32_t)image_->rowsPerStrip);
 		packedBuf = pool.get(packedLengthEncoded);
 		auto bufPtr = (int8_t*)packedBuf.data_;
 		uint32_t bytesToWrite = 0;
@@ -483,19 +496,19 @@ cleanup:
 bool TIFFFormat::encodePixelsCoreWrite(grk_io_buf pixels)
 {
 	tmsize_t written =
-		TIFFWriteEncodedStrip(tif, pixels.index_, pixels.data_, (tmsize_t)pixels.dataLen_);
+		TIFFWriteEncodedStrip(tif_, pixels.index_, pixels.data_, (tmsize_t)pixels.dataLen_);
 	return written != -1;
 }
 bool TIFFFormat::encodeFinish(void)
 {
 	if(encodeState & IMAGE_FORMAT_ENCODED_PIXELS)
 	{
-		assert(!tif);
+		assert(!tif_);
 		return true;
 	}
-	if(tif)
-		TIFFClose(tif);
-	tif = nullptr;
+	if(tif_)
+		TIFFClose(tif_);
+	tif_ = nullptr;
 	encodeState |= IMAGE_FORMAT_ENCODED_PIXELS;
 
 	return true;
@@ -876,23 +889,23 @@ grk_image* TIFFFormat::decode(const std::string& filename, grk_cparameters* para
 	float *luma = nullptr, *refBlackWhite = nullptr;
 	uint16_t *red_orig = nullptr, *green_orig = nullptr, *blue_orig = nullptr;
 
-	tif = TIFFOpen(filename.c_str(), "r");
-	if(!tif)
+	tif_ = TIFFOpen(filename.c_str(), "r");
+	if(!tif_)
 	{
 		spdlog::error("TIFFFormat::decode: Failed to open {} for reading", filename);
 		return 0;
 	}
 
-	TIFFGetField(tif, TIFFTAG_COMPRESSION, &compress);
-	TIFFGetFieldDefaulted(tif, TIFFTAG_IMAGEWIDTH, &tiWidth);
-	TIFFGetFieldDefaulted(tif, TIFFTAG_IMAGELENGTH, &tiHeight);
-	TIFFGetFieldDefaulted(tif, TIFFTAG_BITSPERSAMPLE, &tiBps);
-	TIFFGetFieldDefaulted(tif, TIFFTAG_SAMPLESPERPIXEL, &tiSpp);
-	TIFFGetFieldDefaulted(tif, TIFFTAG_PHOTOMETRIC, &tiPhoto);
-	TIFFGetFieldDefaulted(tif, TIFFTAG_PLANARCONFIG, &tiPC);
-	hasTiSf = TIFFGetFieldDefaulted(tif, TIFFTAG_SAMPLEFORMAT, &tiSf) == 1;
+	TIFFGetField(tif_, TIFFTAG_COMPRESSION, &compress);
+	TIFFGetFieldDefaulted(tif_, TIFFTAG_IMAGEWIDTH, &tiWidth);
+	TIFFGetFieldDefaulted(tif_, TIFFTAG_IMAGELENGTH, &tiHeight);
+	TIFFGetFieldDefaulted(tif_, TIFFTAG_BITSPERSAMPLE, &tiBps);
+	TIFFGetFieldDefaulted(tif_, TIFFTAG_SAMPLESPERPIXEL, &tiSpp);
+	TIFFGetFieldDefaulted(tif_, TIFFTAG_PHOTOMETRIC, &tiPhoto);
+	TIFFGetFieldDefaulted(tif_, TIFFTAG_PLANARCONFIG, &tiPC);
+	hasTiSf = TIFFGetFieldDefaulted(tif_, TIFFTAG_SAMPLEFORMAT, &tiSf) == 1;
 
-	TIFFGetFieldDefaulted(tif, TIFFTAG_REFERENCEBLACKWHITE, &refBlackWhite);
+	TIFFGetFieldDefaulted(tif_, TIFFTAG_REFERENCEBLACKWHITE, &refBlackWhite);
 
 	uint32_t w = tiWidth;
 	uint32_t h = tiHeight;
@@ -925,7 +938,7 @@ grk_image* TIFFFormat::decode(const std::string& filename, grk_cparameters* para
 	// check for rec601
 	if(tiPhoto == PHOTOMETRIC_YCBCR)
 	{
-		TIFFGetFieldDefaulted(tif, TIFFTAG_YCBCRCOEFFICIENTS, &luma);
+		TIFFGetFieldDefaulted(tif_, TIFFTAG_YCBCRCOEFFICIENTS, &luma);
 		for(size_t i = 0; i < 3; ++i)
 		{
 			if((uint32_t)(luma[i] * 1000.0f + 0.5f) != rec_601_luma[i])
@@ -963,7 +976,7 @@ grk_image* TIFFFormat::decode(const std::string& filename, grk_cparameters* para
 					  tiWidth, tiHeight);
 		goto cleanup;
 	}
-	TIFFGetFieldDefaulted(tif, TIFFTAG_EXTRASAMPLES, &extrasamples, &sampleinfo);
+	TIFFGetFieldDefaulted(tif_, TIFFTAG_EXTRASAMPLES, &extrasamples, &sampleinfo);
 
 	// 2. initialize image components and signed/unsigned
 	memset(&cmptparm[0], 0, grk::maxNumPackComponents * sizeof(grk_image_comp));
@@ -1020,7 +1033,7 @@ grk_image* TIFFFormat::decode(const std::string& filename, grk_cparameters* para
 			}
 			color_space = GRK_CLRSPC_SYCC;
 			numcomps = (uint16_t)(numcomps + 3);
-			TIFFGetFieldDefaulted(tif, TIFFTAG_YCBCRSUBSAMPLING, &chroma_subsample_x,
+			TIFFGetFieldDefaulted(tif_, TIFFTAG_YCBCRSUBSAMPLING, &chroma_subsample_x,
 								  &chroma_subsample_y);
 			if(chroma_subsample_x == 0 || chroma_subsample_y == 0)
 			{
@@ -1132,7 +1145,7 @@ grk_image* TIFFFormat::decode(const std::string& filename, grk_cparameters* para
 	}
 	if(tiPhoto == PHOTOMETRIC_PALETTE)
 	{
-		if(!TIFFGetField(tif, TIFFTAG_COLORMAP, &red_orig, &green_orig, &blue_orig))
+		if(!TIFFGetField(tif_, TIFFTAG_COLORMAP, &red_orig, &green_orig, &blue_orig))
 		{
 			spdlog::error("TIFFFormat::decode: Missing required \"Colormap\" tag");
 			goto cleanup;
@@ -1223,9 +1236,9 @@ grk_image* TIFFFormat::decode(const std::string& filename, grk_cparameters* para
 	}
 
 	// 5. extract capture resolution
-	hasXRes = TIFFGetFieldDefaulted(tif, TIFFTAG_XRESOLUTION, &tiXRes) == 1;
-	hasYRes = TIFFGetFieldDefaulted(tif, TIFFTAG_YRESOLUTION, &tiYRes) == 1;
-	hasResUnit = TIFFGetFieldDefaulted(tif, TIFFTAG_RESOLUTIONUNIT, &tiResUnit) == 1;
+	hasXRes = TIFFGetFieldDefaulted(tif_, TIFFTAG_XRESOLUTION, &tiXRes) == 1;
+	hasYRes = TIFFGetFieldDefaulted(tif_, TIFFTAG_YRESOLUTION, &tiYRes) == 1;
+	hasResUnit = TIFFGetFieldDefaulted(tif_, TIFFTAG_RESOLUTIONUNIT, &tiResUnit) == 1;
 	if(hasXRes && hasYRes && hasResUnit && tiResUnit != RESUNIT_NONE)
 	{
 		set_resolution(parameters->capture_resolution_from_file, tiXRes, tiYRes, tiResUnit);
@@ -1238,14 +1251,14 @@ grk_image* TIFFFormat::decode(const std::string& filename, grk_cparameters* para
 	// CIE and ICC
 	if(!isCIE)
 	{
-		if((TIFFGetFieldDefaulted(tif, TIFFTAG_ICCPROFILE, &icclen, &iccbuf) == 1) && icclen > 0 &&
+		if((TIFFGetFieldDefaulted(tif_, TIFFTAG_ICCPROFILE, &icclen, &iccbuf) == 1) && icclen > 0 &&
 		   icclen < grk::maxICCProfileBufferLen)
 			copy_icc(image, iccbuf, icclen);
 	}
 	// 7. extract IPTC meta-data
-	if(TIFFGetFieldDefaulted(tif, TIFFTAG_RICHTIFFIPTC, &iptc_len, &iptc_buf) == 1)
+	if(TIFFGetFieldDefaulted(tif_, TIFFTAG_RICHTIFFIPTC, &iptc_len, &iptc_buf) == 1)
 	{
-		if(TIFFIsByteSwapped(tif))
+		if(TIFFIsByteSwapped(tif_))
 			TIFFSwabArrayOfLong((uint32_t*)iptc_buf, iptc_len);
 		// since TIFFTAG_RICHTIFFIPTC is of type TIFF_LONG, we must multiply
 		// by 4 to get the length in bytes
@@ -1255,7 +1268,7 @@ grk_image* TIFFFormat::decode(const std::string& filename, grk_cparameters* para
 		memcpy(image->meta->iptc_buf, iptc_buf, iptc_len);
 	}
 	// 8. extract XML meta-data
-	if(TIFFGetFieldDefaulted(tif, TIFFTAG_XMLPACKET, &xmp_len, &xmp_buf) == 1)
+	if(TIFFGetFieldDefaulted(tif_, TIFFTAG_XMLPACKET, &xmp_len, &xmp_buf) == 1)
 	{
 		create_meta(image);
 		image->meta->xmp_len = xmp_len;
@@ -1266,19 +1279,19 @@ grk_image* TIFFFormat::decode(const std::string& filename, grk_cparameters* para
 	if(needSignedPixelReader)
 	{
 		if(tiBps == 8)
-			success = readTiffPixelsSigned<int8_t>(tif, image->comps, numcomps, tiSpp, tiPC);
+			success = readTiffPixelsSigned<int8_t>(tif_, image->comps, numcomps, tiSpp, tiPC);
 		else
-			success = readTiffPixelsSigned<int16_t>(tif, image->comps, numcomps, tiSpp, tiPC);
+			success = readTiffPixelsSigned<int16_t>(tif_, image->comps, numcomps, tiSpp, tiPC);
 	}
 	else
 	{
-		success = readTiffPixels(tif, image->comps, numcomps, tiSpp, tiPC, tiPhoto,
+		success = readTiffPixels(tif_, image->comps, numcomps, tiSpp, tiPC, tiPhoto,
 								 chroma_subsample_x, chroma_subsample_y);
 	}
 cleanup:
-	if(tif)
-		TIFFClose(tif);
-	tif = nullptr;
+	if(tif_)
+		TIFFClose(tif_);
+	tif_ = nullptr;
 	if(success)
 	{
 		if(is_cinema)

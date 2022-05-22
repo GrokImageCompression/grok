@@ -46,6 +46,13 @@ set(compare_images_SRCS compare_images.cpp
   ${GROK_SOURCE_DIR}/src/bin/image_format/BMPFormat.h  
   ${GROK_SOURCE_DIR}/src/bin/image_format/PGXFormat.cpp
   ${GROK_SOURCE_DIR}/src/bin/image_format/PGXFormat.h
+  ${GROK_SOURCE_DIR}/src/bin/io/FileIO.cpp
+  ${GROK_SOURCE_DIR}/src/bin/io/FileIOUnix.cpp
+  ${GROK_SOURCE_DIR}/src/bin/io/FileIOWin32.cpp
+  ${GROK_SOURCE_DIR}/src/bin/io/FileIOUring.cpp
+  ${GROK_SOURCE_DIR}/src/bin/io/Serializer.cpp
+  ${GROK_SOURCE_DIR}/src/bin/io/ImageFormat.cpp
+  ${GROK_SOURCE_DIR}/src/bin/io/TIFFFormat.cpp
   )
 
 if(GROK_HAVE_LIBTIFF)
