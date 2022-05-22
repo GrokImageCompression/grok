@@ -19,6 +19,8 @@
 
 #ifdef IOBENCH_HAVE_URING
 
+
+#include <unistd.h>
 #include <fcntl.h>
 #include <cassert>
 
