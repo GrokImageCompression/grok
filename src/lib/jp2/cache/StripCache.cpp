@@ -34,6 +34,16 @@ uint32_t Strip::reduceDim(uint32_t dim)
 {
 	return reduce_ ? ceildivpow2<uint32_t>(dim, reduce_) : dim;
 }
+bool Strip::allocInterleaved(uint64_t len,BufPool *pool){
+	if (stripImg->interleavedData.data_)
+		return true;
+	std::unique_lock<std::mutex> lk(interleaveMutex_);
+	if (stripImg->interleavedData.data_)
+		return true;
+	stripImg->interleavedData = pool->get(len);
+
+	return stripImg->interleavedData.data_;
+}
 StripCache::StripCache()
 	: strips(nullptr), numTilesX_(0), numStrips_(0), stripHeight_(0), imageY0_(0),
 	  packedRowBytes_(0), ioUserData_(nullptr), ioBufferCallback_(nullptr),
@@ -92,14 +102,8 @@ bool StripCache::ingestStrip(uint32_t threadId, Tile* src, uint32_t yBegin, uint
 	auto dest = strip->stripImg;
 	// use height of first component, because no subsampling
 	uint64_t dataLen = packedRowBytes_ * (yEnd - yBegin);
-	{
-		if(!dest->interleavedData.data_)
-		{
-			dest->interleavedData = pools_[threadId]->get(dataLen);
-			if(!dest->interleavedData.data_)
-				return false;
-		}
-	}
+	if (!strip->allocInterleaved(dataLen, pools_[threadId]))
+		return false;
 
 	if(!dest->compositeInterleaved(src, yBegin, yEnd))
 		return false;
@@ -161,14 +165,8 @@ bool StripCache::ingestTile(uint32_t threadId,GrkImage* src)
 	auto dest = strip->stripImg;
 	// use height of first component, because no subsampling
 	uint64_t dataLen = packedRowBytes_ * src->comps->h;
-	{
-		if(!dest->interleavedData.data_)
-		{
-			dest->interleavedData = pools_[threadId]->get(dataLen);
-			if(!dest->interleavedData.data_)
-				return false;
-		}
-	}
+	if (!strip->allocInterleaved(dataLen, pools_[threadId]))
+		return false;
 	if(!dest->compositeInterleaved(src))
 		return false;
 
