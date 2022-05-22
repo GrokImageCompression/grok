@@ -25,7 +25,7 @@
 #include "IFileIO.h"
 #include "IBufferPool.h"
 
-namespace iobench {
+namespace io {
 
 class BufferPool : public IBufferPool
 {

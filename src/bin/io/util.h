@@ -19,7 +19,7 @@
 
 #include <cstdint>
 
-namespace iobench {
+namespace io {
 
 struct BufDim {
 	BufDim() : BufDim(0,0)

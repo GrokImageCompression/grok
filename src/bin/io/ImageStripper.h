@@ -26,7 +26,7 @@
 #include "RefCounted.h"
 #include "util.h"
 
-namespace iobench {
+namespace io {
 
 /*
  * Each strip is divided into a collection of IOChunks, and

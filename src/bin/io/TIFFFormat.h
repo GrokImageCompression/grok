@@ -22,7 +22,7 @@
 
 #include "ImageFormat.h"
 
-namespace iobench {
+namespace io {
 
 struct TIFFFormatHeaderClassic {
 	TIFFFormatHeaderClassic() : tiff_magic(0x4949),

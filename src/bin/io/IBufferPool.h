@@ -19,7 +19,7 @@
 
 #include "IFileIO.h"
 
-namespace iobench {
+namespace io {
 
 class IBufferPool
 {

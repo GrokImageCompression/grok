@@ -24,7 +24,7 @@
 #include "FileIOUring.h"
 #include "BufferPool.h"
 
-namespace iobench {
+namespace io {
 
 class FileIOUnix : public FileIO
 {

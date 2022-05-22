@@ -26,7 +26,7 @@
 
 #include "FileIOUnix.h"
 
-namespace iobench {
+namespace io {
 
 FileIOUnix::FileIOUnix(uint32_t threadId, bool flushOnClose) :
 	  FileIO(threadId, flushOnClose),

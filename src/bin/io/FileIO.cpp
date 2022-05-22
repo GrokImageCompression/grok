@@ -17,7 +17,7 @@
 
 #include "FileIO.h"
 
-namespace iobench {
+namespace io {
 
 FileIO::FileIO(uint32_t threadId, bool flushOnClose) :
 							numSimulatedWrites_(0),

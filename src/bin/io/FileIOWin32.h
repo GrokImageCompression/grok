@@ -22,7 +22,7 @@
 #include "config.h"
 #include "FileIO.h"
 
-namespace iobench {
+namespace io {
 
 class FileIOWin32 : public FileIO
 {

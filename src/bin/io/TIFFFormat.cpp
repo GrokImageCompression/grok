@@ -20,7 +20,7 @@
 
 #include <climits>
 
-namespace iobench {
+namespace io {
 
 static tmsize_t TiffRead(thandle_t handle, void* buf, tmsize_t size)
 {

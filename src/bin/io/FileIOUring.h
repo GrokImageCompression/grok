@@ -25,7 +25,7 @@
 
 #include "IFileIO.h"
 
-namespace iobench {
+namespace io {
 
 class FileIOUring : public IFileIO
 {

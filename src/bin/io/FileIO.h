@@ -23,7 +23,7 @@
 #include "config.h"
 #include "IFileIO.h"
 
-namespace iobench {
+namespace io {
 
 class FileIO : public IFileIO {
 public:

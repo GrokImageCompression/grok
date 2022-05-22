@@ -21,7 +21,7 @@
 #include "FileIOWin32.h"
 
 
-namespace iobench {
+namespace io {
 
 FileIOWin32::FileIOWin32(uint32_t threadId, bool flushOnClose) : FileIO(threadId, flushOnClose)
 {

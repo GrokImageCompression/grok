@@ -23,7 +23,7 @@
 #include "FileIOUring.h"
 #include "FileIOUnix.h"
 
-namespace iobench {
+namespace io {
 
 class Serializer
 {

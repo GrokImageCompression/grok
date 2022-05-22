@@ -27,7 +27,7 @@
 
 #include "RefCounted.h"
 
-namespace iobench {
+namespace io {
 
 #define K 1024
 #define ALIGNMENT (512)

@@ -24,7 +24,7 @@
 
 #include "FileIOUring.h"
 
-namespace iobench {
+namespace io {
 
 FileIOUring::FileIOUring(uint32_t threadId)
 	: fd_(-1), ownsDescriptor(false), requestsSubmitted(0), requestsCompleted(0),

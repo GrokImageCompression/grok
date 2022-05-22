@@ -20,7 +20,7 @@
 #include <cstdint>
 #include <atomic>
 
-namespace iobench {
+namespace io {
 
 class RefCounted {
 friend class RefReaper;

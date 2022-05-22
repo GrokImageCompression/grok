@@ -17,7 +17,7 @@
 
 #include "Serializer.h"
 
-namespace iobench {
+namespace io {
 
 static bool applicationReclaimCallback(uint32_t threadId,
 										io_buf *buffer,

@@ -23,7 +23,7 @@
 #include "Serializer.h"
 #include "BufferPool.h"
 
-namespace iobench {
+namespace io {
 
 const uint32_t IMAGE_FORMAT_UNENCODED = 1;
 const uint32_t IMAGE_FORMAT_ENCODED_HEADER = 2;
