@@ -173,7 +173,11 @@ bool TIFFFormat::encodeInit(grk_image* image, const std::string& filename,
 						  image->rowsPerStrip,
 						  false);
 
-		if (!ioTiffFormat.encodeInit(fileName_, false, concurrency, false))
+		bool asynch = false;
+#ifdef GROK_HAVE_URING
+		asynch = true;
+#endif
+		if (!ioTiffFormat.encodeInit(fileName_, false, concurrency, asynch))
 			return false;
 		ioTiffFormat.registerReclaimCallback(ioReclaimCallback,this);
     }
