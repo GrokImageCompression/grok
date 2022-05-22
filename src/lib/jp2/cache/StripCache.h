@@ -89,7 +89,7 @@ private:
 
 struct Strip
 {
-	Strip(GrkImage* outputImage, uint16_t index, uint32_t tileHeight, uint8_t reduce);
+	Strip(GrkImage* outputImage, uint16_t index, uint32_t nominalHeight, uint8_t reduce);
 	~Strip(void);
 	uint32_t getIndex(void);
 	uint32_t reduceDim(uint32_t dim);
@@ -107,10 +107,15 @@ class StripCache
 	StripCache(void);
 	virtual ~StripCache();
 
-	void init(uint32_t concurrency, uint16_t numTilesX_, uint32_t numStrips, uint32_t stripHeight, uint8_t reduce,
-			  GrkImage* outputImg, grk_io_pixels_callback ioBufferCallback,
-			  void* ioUserData,
-			  grk_io_register_reclaim_callback grkRegisterReclaimCallback);
+	void init(uint32_t concurrency,
+			uint16_t numTilesX_,
+			uint32_t numStrips,
+			uint32_t nominalStripHeight,
+			uint8_t reduce,
+			GrkImage* outputImg,
+			grk_io_pixels_callback ioBufferCallback,
+			void* ioUserData,
+			grk_io_register_reclaim_callback grkRegisterReclaimCallback);
 	bool ingestTile(uint32_t threadId, GrkImage* src);
 	bool ingestStrip(uint32_t threadId, Tile* src, uint32_t yBegin, uint32_t yEnd);
 	void returnBufferToPool(uint32_t threadId, GrkIOBuf b);
@@ -122,7 +127,7 @@ class StripCache
 	Strip** strips;
 	uint16_t numTilesX_;
 	uint32_t numStrips_;
-	uint32_t stripHeight_;
+	uint32_t nominalStripHeight_;
 	uint32_t imageY0_;
 	uint64_t packedRowBytes_;
 	void* ioUserData_;
