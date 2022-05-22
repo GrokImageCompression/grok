@@ -38,6 +38,13 @@ set(common_SRCS
   ${GROK_SOURCE_DIR}/src/bin/common/spdlog/fmt.cpp
   ${GROK_SOURCE_DIR}/src/bin/common/spdlog/async.cpp     
   ${GROK_SOURCE_DIR}/src/bin/common/spdlog/file_sinks.cpp
+  ${GROK_SOURCE_DIR}/src/bin/io/FileIO.cpp
+  ${GROK_SOURCE_DIR}/src/bin/io/FileIOUnix.cpp
+  ${GROK_SOURCE_DIR}/src/bin/io/FileIOWin32.cpp
+  ${GROK_SOURCE_DIR}/src/bin/io/FileIOUring.cpp
+  ${GROK_SOURCE_DIR}/src/bin/io/Serializer.cpp
+  ${GROK_SOURCE_DIR}/src/bin/io/ImageFormat.cpp
+  ${GROK_SOURCE_DIR}/src/bin/io/TIFFFormat.cpp
   )
 
 if(GROK_HAVE_LIBTIFF)
