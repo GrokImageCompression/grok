@@ -69,7 +69,8 @@ protected:
 	std::string mode_;
 	uint32_t concurrency_;
 	Serializer **workerSerializers_;
-	std::atomic<uint32_t> numPixelWrites_;
+	std::atomic<uint64_t> numPixelWrites_;
+	uint64_t maxPixelWrites_;
 	std::function<bool(void)> encodeFinisher_;
 };
 

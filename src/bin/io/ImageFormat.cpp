@@ -29,7 +29,8 @@ ImageFormat::ImageFormat(bool flushOnClose, uint8_t *header, size_t headerLength
 							imageStripper_(nullptr),
 							concurrency_(0),
 							workerSerializers_(nullptr),
-							numPixelWrites_(0)
+							numPixelWrites_(0),
+							maxPixelWrites_(0)
 {}
 ImageFormat::~ImageFormat() {
 	close();
@@ -58,6 +59,10 @@ void ImageFormat::init(uint32_t width, uint32_t height,
 						packedRowBytes,nominalStripHeight,
 						headerLength_,
 						WRTSIZE, chunked ? serializer_.getPool(): nullptr);
+
+	maxPixelWrites_ = chunked ?
+						imageStripper_->numUniqueChunks() :
+							imageStripper_->numStrips();
 }
 bool ImageFormat::encodeInit(std::string filename,
 							bool direct,
@@ -142,7 +147,10 @@ bool ImageFormat::encodePixels(uint32_t threadId,
 				toWrite - written);
 		return false;
 	}
-	if (++numPixelWrites_ == imageStripper_->numStrips())
+	uint64_t writes;
+	for (uint32_t i = 0; i < numBuffers; ++i)
+	   writes = ++numPixelWrites_;
+	if (writes == maxPixelWrites_)
 		encodeFinish();
 
 	return true;

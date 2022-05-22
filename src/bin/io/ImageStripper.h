@@ -161,7 +161,7 @@ struct IOChunk : public RefCounted {
 		allocLen_(allocLen),
 		buf_(nullptr),
 		acquireCount_(0),
-		acquireTarget_(1)
+		shareCount_(1)
 	{
 		if (pool){
 			alloc(pool);
@@ -174,21 +174,21 @@ private:
 	}
 public:
 	IOChunk* share(void){
-		acquireTarget_++;
+		shareCount_++;
 		assert(buf_->data_);
 		ref();
 
 		return this;
 	}
 	bool isShared(void){
-		return acquireTarget_ > 1;
+		return shareCount_ > 1;
 	}
 	void setHeader(uint8_t *headerData, uint64_t headerSize){
 		memcpy(buf_->data_ , headerData, headerSize);
 		buf_->skip_ = headerSize;
 	}
 	bool acquire(void){
-		 return (++acquireCount_ == acquireTarget_);
+		 return (++acquireCount_ == shareCount_);
 	}
 	IOBuf* buf(void) const{
 		return buf_;
@@ -214,7 +214,7 @@ private:
 	uint64_t allocLen_;
 	IOBuf *buf_;
 	std::atomic<uint32_t> acquireCount_;
-	uint32_t acquireTarget_;
+	uint32_t shareCount_;
 };
 
 
@@ -387,6 +387,7 @@ struct Strip  {
 			}
 			writeableTotal += writeableLen;
 
+			// first seam can never be last seam
 			assert(!lastSeam || !firstSeam);
 			assert(IOBuf::isAlignedToWriteSize(off));
 			assert(lastChunkOfAll || IOBuf::isAlignedToWriteSize(len));
@@ -513,6 +514,9 @@ struct ImageStripper{
 	}
 	uint32_t numStrips(void) const{
 		return numStrips_;
+	}
+	uint64_t numUniqueChunks(void) const{
+		return (packedRowBytes_ * height_ + writeSize_ - 1)/writeSize_;
 	}
 	ChunkInfo getChunkInfo(uint32_t strip){
 		return ChunkInfo(strip == 0,
