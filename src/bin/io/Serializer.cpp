@@ -42,9 +42,9 @@ Serializer::~Serializer(void){
 	close();
 	delete pool_;
 }
-void Serializer::setMaxPooledRequests(uint32_t maxRequests)
+void Serializer::setMaxSimulatedWrites(uint32_t maxRequests)
 {
-	fileIO_.setMaxPooledRequests(maxRequests);
+	fileIO_.setMaxSimulatedWrites(maxRequests);
 }
 void Serializer::registerReclaimCallback(io_callback reclaim_callback,
 												 void* user_data)

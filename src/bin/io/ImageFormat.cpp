@@ -66,7 +66,7 @@ bool ImageFormat::encodeInit(std::string filename,
 	filename_ = filename;
 	concurrency_ = concurrency;
 	auto maxRequests = imageStripper_->numStrips();
-	serializer_.setMaxPooledRequests(maxRequests);
+	serializer_.setMaxSimulatedWrites(maxRequests);
 	mode_ = direct ? "wd" : "w";
 	if(!serializer_.open(filename_, mode_,asynch))
 		return false;
@@ -142,6 +142,8 @@ bool ImageFormat::encodePixels(uint32_t threadId,
 				toWrite - written);
 		return false;
 	}
+	if (++numPixelWrites_ == imageStripper_->numStrips())
+		encodeFinish();
 
 	return true;
 }

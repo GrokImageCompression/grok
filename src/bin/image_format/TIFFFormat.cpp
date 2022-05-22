@@ -147,6 +147,12 @@ bool TIFFFormat::encodeInit(grk_image* image, const std::string& filename,
 						uint32_t compressionLevel,
 						uint32_t concurrency) {
 
+	if(encodeState & IMAGE_FORMAT_ENCODED_PIXELS)
+	{
+		assert(!tif_);
+		return true;
+	}
+
 	if (!ImageFormat::encodeInit(image, filename, compressionLevel, concurrency))
 		return false;
 

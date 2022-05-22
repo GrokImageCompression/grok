@@ -43,7 +43,7 @@ public:
 	using ImageFormat::encodeInit;
 	using ImageFormat::encodePixels;
 	void setHeaderWriter(std::function<bool(TIFF* tif)> writer);
-	bool encodeFinish(void);
+	bool encodeFinish(void) override;
 	bool close(void) override;
 
 private:

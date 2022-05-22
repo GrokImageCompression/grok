@@ -54,6 +54,7 @@ public:
 								IOBuf **buffers,
 								uint32_t numBuffers);
 	virtual bool encodePixels(uint32_t threadId,StripChunkArray * chunkArray);
+	virtual bool encodeFinish(void) = 0;
 	IOBuf* getPoolBuffer(uint32_t threadId,uint32_t strip);
 	StripChunkArray* getStripChunkArray(uint32_t threadId,uint32_t strip);
 	ImageStripper* getImageStripper(void);

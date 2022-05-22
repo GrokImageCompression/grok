@@ -30,9 +30,9 @@ FileIO::FileIO(uint32_t threadId, bool flushOnClose) :
 							threadId_(threadId)
 {
 }
-void FileIO::setMaxPooledRequests(uint32_t maxRequests)
+void FileIO::setMaxSimulatedWrites(uint32_t maxWrites)
 {
-	maxSimulatedWrites_ = maxRequests;
+	maxSimulatedWrites_ = maxWrites;
 }
 void FileIO::registerReclaimCallback(io_callback reclaim_callback,
 												 void* user_data)

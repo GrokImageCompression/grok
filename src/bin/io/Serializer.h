@@ -30,7 +30,7 @@ class Serializer
 public:
 	Serializer(uint32_t threadId, bool flushOnClose);
 	~Serializer(void);
-	void setMaxPooledRequests(uint32_t maxRequests);
+	void setMaxSimulatedWrites(uint32_t maxRequests);
 	void registerReclaimCallback(io_callback reclaim_callback, void* user_data);
 	bool attach(Serializer *parent);
 	bool open(std::string name, std::string mode, bool asynch);
