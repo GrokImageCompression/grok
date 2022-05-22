@@ -33,6 +33,8 @@
 #ifdef GRK_CUSTOM_TIFF_IO
 #define IO_MAX 2147483647U
 
+const bool grokNewIO = false;
+
 static bool ioReclaimCallback(uint32_t threadId,
 		                               io::io_buf *buffer, void* io_user_data)
 {
@@ -107,15 +109,11 @@ TIFF* TIFFFormat::MyTIFFOpen(const char* name, const char* mode)
 #endif
 
 TIFFFormat::TIFFFormat() : tif_(nullptr), chroma_subsample_x(1),
-							chroma_subsample_y(1), units(0) {
-	ioTiffFormat.setHeaderWriter([this](TIFF *tif){
-		return encodeHeader(tif);
-	});
+							chroma_subsample_y(1), units(0),
+							grkReclaimCallback_(nullptr),
+							grkReclaimUserData_(nullptr)
 
-	// register callback with ioTiffFormat
-	ioTiffFormat.registerReclaimCallback(ioReclaimCallback,this);
-
-}
+{}
 TIFFFormat::~TIFFFormat()
 {
 	if(tif_)
@@ -139,7 +137,36 @@ bool TIFFFormat::ioReclaim(uint32_t threadId, io::io_buf *buffer){
 	 b.allocLen_ = buffer->allocLen_;
 	 grkReclaimCallback_(threadId, b, grkReclaimUserData_);
 
+	 buffer->data_ = nullptr;
+	 io::RefReaper::unref((io::IOBuf*)buffer);
+
 	 return true;
+}
+
+bool TIFFFormat::encodeInit(grk_image* image, const std::string& filename,
+						uint32_t compressionLevel) {
+
+	if (!ImageFormat::encodeInit(image, filename, compressionLevel))
+		return false;
+
+    if (grokNewIO) {
+		ioTiffFormat.setHeaderWriter([this](TIFF *tif){
+			return encodeHeader(tif);
+		});
+
+		ioTiffFormat.setEncodeFinisher([this](void){
+				return encodeFinish();
+			});
+
+		// initialize
+		//ioTiffFormat.init(image_->, height, numcomps, packedByteWidth, nominalStripHeight, false);
+
+
+		ioTiffFormat.registerReclaimCallback(ioReclaimCallback,this);
+
+    }
+
+	return true;
 }
 bool TIFFFormat::encodeHeader(void){
 	if(isHeaderEncoded())
@@ -380,6 +407,17 @@ cleanup:
  */
 bool TIFFFormat::encodePixels(uint32_t threadId, grk_io_buf pixels)
 {
+    if (grokNewIO) {
+		auto b = new io::IOBuf();
+		b->index_ = pixels.index_;
+		b->data_ = pixels.data_;
+		b->len_ = pixels.dataLen_;
+		b->allocLen_ = pixels.allocLen_;
+		b->offset_ = pixels.offset_;
+
+		return ioTiffFormat.encodePixels(threadId, &b, 1);
+    }
+
 	std::unique_lock<std::mutex> lk(encodePixelmutex);
 	if(encodeState & IMAGE_FORMAT_ENCODED_PIXELS)
 		return true;

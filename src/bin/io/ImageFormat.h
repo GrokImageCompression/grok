@@ -18,6 +18,7 @@
 #pragma once
 
 #include <string>
+#include <functional>
 
 #include "ImageStripper.h"
 #include "Serializer.h"
@@ -38,6 +39,7 @@ public:
 	virtual ~ImageFormat();
 	void registerReclaimCallback(io_callback reclaim_callback, void* user_data);
 	virtual bool close(void);
+	void setEncodeFinisher(std::function<bool(void)> finisher);
 	virtual void init(uint32_t width,
 						uint32_t height,
 						uint16_t numcomps,
@@ -67,6 +69,7 @@ protected:
 	uint32_t concurrency_;
 	Serializer **workerSerializers_;
 	std::atomic<uint32_t> numPixelWrites_;
+	std::function<bool(void)> encodeFinisher_;
 };
 
 }

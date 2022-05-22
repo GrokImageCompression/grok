@@ -135,7 +135,7 @@ bool TIFFFormat::encodeFinish(void)
 	close();
 	encodeState_ |= IMAGE_FORMAT_ENCODED_PIXELS;
 
-	return true;
+	return encodeFinisher_ ? encodeFinisher_() : true;
 }
 
 }

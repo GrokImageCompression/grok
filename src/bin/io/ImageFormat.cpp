@@ -47,6 +47,9 @@ void ImageFormat::registerReclaimCallback(io_callback reclaim_callback, void* us
 			workerSerializers_[i]->registerReclaimCallback(reclaim_callback,user_data);
 	}
 }
+void ImageFormat::setEncodeFinisher(std::function<bool(void)> finisher){
+	encodeFinisher_ = finisher;
+}
 void ImageFormat::init(uint32_t width, uint32_t height,
 						uint16_t numcomps, uint64_t packedByteWidth,
 						uint32_t nominalStripHeight,
