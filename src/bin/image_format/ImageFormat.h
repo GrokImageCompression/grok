@@ -31,10 +31,9 @@ class ImageFormat : public IImageFormat
   public:
 	ImageFormat();
 	virtual ~ImageFormat();
-	void ioRegisterClientCallback(grk_io_callback reclaim_callback,
+	virtual void ioRegisterClientCallback(grk_io_callback reclaim_callback,
 										 void* user_data) override;
 	void ioReclaimBuffer(uint32_t threadId, grk_io_buf buffer);
-	void ioRegisterApplicationClient(void);
 #ifndef GROK_HAVE_URING
 	void reclaim(uint32_t threadId, grk_io_buf pixels);
 #endif
@@ -43,7 +42,7 @@ class ImageFormat : public IImageFormat
 	/***
 	 * library-orchestrated pixel encoding
 	 */
-	bool encodePixels(uint32_t threadId, grk_io_buf pixels) override;
+	virtual bool encodePixels(uint32_t threadId, grk_io_buf pixels) override;
 	virtual bool encodeFinish(void) override;
 	uint32_t getEncodeState(void) override;
 	bool openFile(void);
@@ -86,5 +85,4 @@ class ImageFormat : public IImageFormat
 	mutable std::mutex encodePixelmutex;
 	BufferPool pool;
 	Serializer serializer;
-	bool applicationOrchestratedEncoding_;
 };

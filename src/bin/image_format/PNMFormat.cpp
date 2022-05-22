@@ -162,7 +162,6 @@ bool PNMFormat::encodePixels(void)
 		if(!encodeHeader())
 			return false;
 	}
-	applicationOrchestratedEncoding_ = true;
 	for(uint32_t i = 0U; i < image_->numcomps; ++i)
 	{
 		if(!image_->comps[i].data)
@@ -222,7 +221,7 @@ bool PNMFormat::encodeRows(uint32_t rows)
 			packedBuf.offset_ = serializer.getOffset();
 			packedBuf.dataLen_ = image_->packedRowBytes * stripRows;
 			packedBuf.index_ = serializer.getNumPooledRequests();
-			if(!encodePixelsCore(-1,packedBuf))
+			if(!encodePixelsCore(UINT_MAX,packedBuf))
 			{
 				delete iter;
 				applicationOrchestratedReclaim(packedBuf);

@@ -39,12 +39,17 @@ class TIFFFormat : public ImageFormat
   public:
 	TIFFFormat();
 	~TIFFFormat();
+	void ioRegisterClientCallback(grk_io_callback reclaim_callback,
+										 void* user_data) override;
 	bool encodeHeader(void) override;
 	/***
 	 * application-orchestrated pixel encoding
 	 */
 	bool encodePixels() override;
-	using ImageFormat::encodePixels;
+	/***
+	 * library-orchestrated pixel encoding
+	 */
+	virtual bool encodePixels(uint32_t threadId, grk_io_buf pixels) override;
 	bool encodeFinish(void) override;
 	grk_image* decode(const std::string& filename, grk_cparameters* parameters) override;
 

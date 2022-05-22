@@ -105,6 +105,11 @@ TIFFFormat::~TIFFFormat()
 		TIFFClose(tif);
 }
 
+void TIFFFormat::ioRegisterClientCallback(grk_io_callback reclaim_callback,
+												  void* user_data)
+{
+	serializer.ioRegisterClientCallback(reclaim_callback, user_data);
+}
 bool TIFFFormat::encodeHeader(void)
 {
 	if(isHeaderEncoded())
@@ -332,6 +337,19 @@ cleanup:
 	return success;
 }
 /***
+ * library-orchestrated pixel encoding
+ */
+bool TIFFFormat::encodePixels(uint32_t threadId, grk_io_buf pixels)
+{
+	std::unique_lock<std::mutex> lk(encodePixelmutex);
+	if(encodeState & IMAGE_FORMAT_ENCODED_PIXELS)
+		return true;
+	if(!isHeaderEncoded() && !encodeHeader())
+		return false;
+
+	return encodePixelsCore(threadId, pixels);
+}
+/***
  * application-orchestrated pixel encoding
  */
 bool TIFFFormat::encodePixels()
@@ -352,9 +370,6 @@ bool TIFFFormat::encodePixels()
 		}
 	}
 	bool success = false;
-	applicationOrchestratedEncoding_ = true;
-	ioRegisterApplicationClient();
-
 	uint32_t height = image_->decompressHeight;
 	int32_t const* planes[grk::maxNumPackComponents];
 	int32_t const* planesBegin[grk::maxNumPackComponents];
@@ -384,7 +399,7 @@ bool TIFFFormat::encodePixels()
 				packedBuf.dataLen_ = bytesToWrite;
 				packedBuf.offset_ = serializer.getOffset();
 				packedBuf.index_ = serializer.getNumPooledRequests();
-				if(bytesToWrite && !encodePixelsCore(-1,packedBuf))
+				if(bytesToWrite && !encodePixelsCore(UINT_MAX,packedBuf))
 					goto cleanup;
 				packedBuf = pool.get(packedLengthEncoded);
 				bufPtr = (int8_t*)(packedBuf.data_);
@@ -430,7 +445,7 @@ bool TIFFFormat::encodePixels()
 		packedBuf.dataLen_ = bytesToWrite;
 		packedBuf.offset_ = serializer.getOffset();
 		packedBuf.index_ = serializer.getNumPooledRequests();
-		if(bytesToWrite && !encodePixelsCore(-1,packedBuf))
+		if(bytesToWrite && !encodePixelsCore(UINT_MAX,packedBuf))
 			goto cleanup;
 	}
 	else
@@ -448,7 +463,7 @@ bool TIFFFormat::encodePixels()
 			packedBuf.offset_ = serializer.getOffset();
 			packedBuf.dataLen_ = image_->packedRowBytes * stripRows;
 			packedBuf.index_ = serializer.getNumPooledRequests();
-			if(!encodePixelsCore(-1,packedBuf))
+			if(!encodePixelsCore(UINT_MAX,packedBuf))
 			{
 				delete iter;
 				goto cleanup;

@@ -32,8 +32,10 @@ static bool applicationReclaimCallback(uint32_t threadId, grk_io_buf buffer, voi
 ImageFormat::ImageFormat()
 	: image_(nullptr), fileIO_(new FileStreamIO()), fileStream_(nullptr), fileName_(""),
 	  compressionLevel_(GRK_DECOMPRESS_COMPRESSION_LEVEL_DEFAULT), useStdIO_(false),
-	  encodeState(IMAGE_FORMAT_UNENCODED), applicationOrchestratedEncoding_(false)
-{}
+	  encodeState(IMAGE_FORMAT_UNENCODED)
+{
+	ioRegisterClientCallback(applicationReclaimCallback, &pool);
+}
 ImageFormat::~ImageFormat()
 {
 	delete fileIO_;
@@ -42,10 +44,6 @@ void ImageFormat::ioRegisterClientCallback(grk_io_callback reclaim_callback,
 												  void* user_data)
 {
 	serializer.ioRegisterClientCallback(reclaim_callback, user_data);
-}
-void ImageFormat::ioRegisterApplicationClient(void)
-{
-	ioRegisterClientCallback(applicationReclaimCallback, &pool);
 }
 void ImageFormat::ioReclaimBuffer(uint32_t threadId, grk_io_buf buffer)
 {
@@ -104,7 +102,7 @@ bool ImageFormat::encodePixelsCore(uint32_t threadId, grk_io_buf pixels)
 		// for synchronous encode, we immediately return the pixel buffer to the pool
 		reclaim(threadId, GrkIOBuf(pixels));
 #endif
-		if(!applicationOrchestratedEncoding_ && serializer.allPooledRequestsComplete())
+		if(serializer.allPooledRequestsComplete())
 			encodeFinish();
 	}
 	else
