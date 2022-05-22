@@ -94,7 +94,7 @@ struct Strip
 	uint32_t getIndex(void);
 	uint32_t reduceDim(uint32_t dim);
 	GrkImage* stripImg;
-	uint32_t tileCounter; // count number of tiles added to strip
+	std::atomic<uint32_t> tileCounter; // count number of tiles added to strip
 	uint32_t index_; // index of strip
 	uint8_t reduce_; // resolution reduction
 };
@@ -128,7 +128,6 @@ class StripCache
 	mutable std::mutex serializeMutex_;
 	MinHeap<GrkIOBuf, uint32_t, MinHeapFakeLocker> serializeHeap;
 	mutable std::mutex heapMutex_;
-	mutable std::mutex interleaveMutex_;
 	bool initialized_;
 	bool multiTile_;
 };

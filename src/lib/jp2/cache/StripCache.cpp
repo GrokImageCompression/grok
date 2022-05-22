@@ -169,20 +169,17 @@ bool StripCache::ingestTile(uint32_t threadId,GrkImage* src)
 				return false;
 		}
 	}
-	uint32_t tileCount = 0;
-	{
-		std::unique_lock<std::mutex> lk(interleaveMutex_);
-		tileCount = ++strip->tileCounter;
-		if(!dest->compositeInterleaved(src))
-			return false;
-	}
+	if(!dest->compositeInterleaved(src))
+		return false;
 
-	if(tileCount == numTilesX_)
+	if(++strip->tileCounter == numTilesX_)
 	{
 		auto buf = GrkIOBuf(dest->interleavedData);
 		buf.index_ = stripId;
 		buf.dataLen_ = dataLen;
 		dest->interleavedData.data_ = nullptr;
+		//return ioBufferCallback_(threadId, buf, ioUserData_);
+
 		std::queue<GrkIOBuf> buffersToSerialize;
 		{
 			std::unique_lock<std::mutex> lk(heapMutex_);

@@ -33,7 +33,7 @@
 #ifdef GRK_CUSTOM_TIFF_IO
 #define IO_MAX 2147483647U
 
-const bool grokNewIO = false;
+static const bool grokNewIO = false;
 
 static bool ioReclaimCallback(uint32_t threadId,
 		                               io::io_buf *buffer, void* io_user_data)
