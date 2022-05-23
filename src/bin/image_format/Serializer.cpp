@@ -157,10 +157,10 @@ size_t Serializer::write(uint8_t* buf, size_t bytes_total)
 	{
 		// 1. schedule buffer
 		scheduled_.data_ = buf;
-		scheduled_.dataLen_ = bytes_total;
+		scheduled_.len_ = bytes_total;
 		scheduled_.offset_ = off_;
 		uring.write(scheduled_);
-		off_ += scheduled_.dataLen_;
+		off_ += scheduled_.len_;
 		// 2. close uring if this is final buffer to schedule
 		if(scheduled_.pooled_ && (++numPooledRequests_ == maxPooledRequests_)){
 			asynchActive_ = false;

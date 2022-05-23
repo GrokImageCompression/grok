@@ -114,7 +114,7 @@ bool StripCache::ingestStrip(uint32_t threadId, Tile* src, uint32_t yBegin, uint
 
 	auto buf = GrkIOBuf(dest->interleavedData);
 	buf.index_ = stripId;
-	buf.dataLen_ = dataLen;
+	buf.len_ = dataLen;
 	dest->interleavedData.data_ = nullptr;
 	std::queue<GrkIOBuf> buffersToSerialize;
 	{
@@ -181,7 +181,7 @@ bool StripCache::ingestTile(uint32_t threadId,GrkImage* src)
 		auto buf = GrkIOBuf(dest->interleavedData);
 		buf.index_ = stripId;
 		buf.offset_ = offset;
-		buf.dataLen_ = dataLen;
+		buf.len_ = dataLen;
 		dest->interleavedData.data_ = nullptr;
 		//return ioBufferCallback_(threadId, buf, ioUserData_);
 

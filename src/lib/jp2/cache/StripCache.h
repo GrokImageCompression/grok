@@ -18,7 +18,7 @@ struct GrkIOBuf : public grk_io_buf
 	{
 		this->data_ = data;
 		this->offset_ = offset;
-		this->dataLen_ = dataLen;
+		this->len_ = dataLen;
 		this->allocLen_ = allocLen;
 		this->pooled_ = pooled;
 		this->index_ = index;
@@ -27,7 +27,7 @@ struct GrkIOBuf : public grk_io_buf
 	{
 		data_ = rhs.data_;
 		offset_ = rhs.offset_;
-		dataLen_ = rhs.dataLen_;
+		len_ = rhs.len_;
 		allocLen_ = rhs.allocLen_;
 		pooled_ = rhs.pooled_;
 		index_ = rhs.index_;
@@ -42,7 +42,7 @@ struct GrkIOBuf : public grk_io_buf
 		data_ = (uint8_t*)grkAlignedMalloc(len);
 		if(data_)
 		{
-			dataLen_ = len;
+			len_ = len;
 			allocLen_ = len;
 		}
 
@@ -67,7 +67,7 @@ public:
 			if(iter->second.allocLen_ >= len)
 			{
 				auto b = iter->second;
-				b.dataLen_ = len;
+				b.len_ = len;
 				pool.erase(iter);
 				return b;
 			}

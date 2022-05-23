@@ -807,7 +807,7 @@ typedef struct _grk_io_buf
 {
 	uint8_t* data_;
 	uint64_t offset_;
-	uint64_t dataLen_;
+	uint64_t len_;
 	uint64_t allocLen_;
 	bool pooled_;
 	uint32_t index_;

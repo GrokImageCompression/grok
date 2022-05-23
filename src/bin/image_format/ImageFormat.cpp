@@ -22,6 +22,7 @@
 
 static bool grkReclaimCallback(uint32_t threadId, grk_io_buf buffer, void* io_user_data)
 {
+	GRK_UNUSED(threadId);
 	auto pool = (BufferPool*)io_user_data;
 	if(pool)
 		pool->put(GrkIOBuf(buffer));
@@ -93,6 +94,7 @@ bool ImageFormat::encodePixels(uint32_t threadId, grk_io_buf pixels)
  */
 bool ImageFormat::encodePixelsCore(uint32_t threadId, grk_io_buf pixels)
 {
+	GRK_UNUSED(threadId);
 #ifdef GROK_HAVE_URING
 	serializer.initPooledRequest();
 #endif
@@ -132,7 +134,7 @@ void ImageFormat::applicationOrchestratedReclaim(GrkIOBuf buf)
  */
 bool ImageFormat::encodePixelsCoreWrite(grk_io_buf pixels)
 {
-	return (serializer.write(pixels.data_, pixels.dataLen_) == pixels.dataLen_);
+	return (serializer.write(pixels.data_, pixels.len_) == pixels.len_);
 }
 bool ImageFormat::encodeFinish(void)
 {

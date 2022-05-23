@@ -219,7 +219,7 @@ bool PNMFormat::encodeRows(uint32_t rows)
 							 image_->packedRowBytes, stripRows, adjust);
 			packedBuf.pooled_ = true;
 			packedBuf.offset_ = serializer.getOffset();
-			packedBuf.dataLen_ = image_->packedRowBytes * stripRows;
+			packedBuf.len_ = image_->packedRowBytes * stripRows;
 			packedBuf.index_ = serializer.getNumPooledRequests();
 			if(!encodePixelsCore(UINT_MAX,packedBuf))
 			{

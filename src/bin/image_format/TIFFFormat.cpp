@@ -433,7 +433,7 @@ bool TIFFFormat::encodePixels(uint32_t threadId, grk_io_buf pixels)
 		auto b = new io::IOBuf();
 		b->index_ = pixels.index_;
 		b->data_ = pixels.data_;
-		b->len_ = pixels.dataLen_;
+		b->len_ = pixels.len_;
 		b->allocLen_ = pixels.allocLen_;
 		b->offset_ = pixels.offset_;
 
@@ -495,7 +495,7 @@ bool TIFFFormat::encodePixels()
 			uint32_t rowsSoFar = h - rowsWritten;
 			if(bytesToWrite > 0 && rowsSoFar > 0 && (rowsSoFar % image_->rowsPerStrip == 0))
 			{
-				packedBuf.dataLen_ = bytesToWrite;
+				packedBuf.len_ = bytesToWrite;
 				packedBuf.offset_ = serializer.getOffset();
 				packedBuf.index_ = serializer.getNumPooledRequests();
 				if(bytesToWrite && !encodePixelsCore(UINT_MAX,packedBuf))
@@ -541,7 +541,7 @@ bool TIFFFormat::encodePixels()
 		if(h != rowsWritten)
 			rowsWritten += h - chroma_subsample_y - rowsWritten;
 		// cleanup
-		packedBuf.dataLen_ = bytesToWrite;
+		packedBuf.len_ = bytesToWrite;
 		packedBuf.offset_ = serializer.getOffset();
 		packedBuf.index_ = serializer.getNumPooledRequests();
 		if(bytesToWrite && !encodePixelsCore(UINT_MAX,packedBuf))
@@ -560,7 +560,7 @@ bool TIFFFormat::encodePixels()
 							 image_->comps[0].stride, image_->packedRowBytes, stripRows, 0);
 			packedBuf.pooled_ = true;
 			packedBuf.offset_ = serializer.getOffset();
-			packedBuf.dataLen_ = image_->packedRowBytes * stripRows;
+			packedBuf.len_ = image_->packedRowBytes * stripRows;
 			packedBuf.index_ = serializer.getNumPooledRequests();
 			if(!encodePixelsCore(UINT_MAX,packedBuf))
 			{
@@ -582,7 +582,7 @@ cleanup:
 bool TIFFFormat::encodePixelsCoreWrite(grk_io_buf pixels)
 {
 	tmsize_t written =
-		TIFFWriteEncodedStrip(tif_, pixels.index_, pixels.data_, (tmsize_t)pixels.dataLen_);
+		TIFFWriteEncodedStrip(tif_, pixels.index_, pixels.data_, (tmsize_t)pixels.len_);
 	return written != -1;
 }
 bool TIFFFormat::encodeFinish(void)

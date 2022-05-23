@@ -31,7 +31,7 @@ struct GrkIOBuf : public grk_io_buf
 	{
 		data_ = data;
 		offset_ = offset;
-		dataLen_ = dataLen;
+		len_ = dataLen;
 		allocLen_ = allocLen;
 		pooled_ = pooled;
 	}
@@ -39,7 +39,7 @@ struct GrkIOBuf : public grk_io_buf
 	{
 		data_ = rhs.data_;
 		offset_ = rhs.offset_;
-		dataLen_ = rhs.dataLen_;
+		len_ = rhs.len_;
 		allocLen_ = rhs.allocLen_;
 		pooled_ = rhs.pooled_;
 	}
@@ -50,7 +50,7 @@ struct GrkIOBuf : public grk_io_buf
 		if(data_)
 		{
 			// printf("Allocated  %p\n", data);
-			dataLen_ = len;
+			len_ = len;
 			allocLen_ = len;
 		}
 

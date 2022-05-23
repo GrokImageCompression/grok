@@ -267,18 +267,18 @@ uint64_t FileUringIO::write(GrkIOBuf buffer)
 	io_data* data = new io_data();
 	if(!buffer.pooled_)
 	{
-		auto b = (uint8_t*)grk_bin::grkAlignedMalloc(buffer.dataLen_);
+		auto b = (uint8_t*)grk_bin::grkAlignedMalloc(buffer.len_);
 		if(!b)
 			return false;
-		memcpy(b, buffer.data_, buffer.dataLen_);
+		memcpy(b, buffer.data_, buffer.len_);
 		buffer.data_ = b;
 	}
 	data->buf = buffer;
 	data->iov.iov_base = buffer.data_;
-	data->iov.iov_len = buffer.dataLen_;
+	data->iov.iov_len = buffer.len_;
 	enqueue(&ring, data, false, fd_);
 
-	return buffer.dataLen_;
+	return buffer.len_;
 }
 bool FileUringIO::read(uint8_t* buf, size_t len)
 {

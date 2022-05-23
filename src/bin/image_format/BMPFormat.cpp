@@ -175,8 +175,8 @@ bool BMPFormat::encodeHeader(void)
 	destBuff.data_ = header_;
 	destBuff.offset_ = off_;
 	destBuff.pooled_ = false;
-	destBuff.dataLen_ = header_plus_lut;
-	if(write(destBuff) != destBuff.dataLen_)
+	destBuff.len_ = header_plus_lut;
+	if(write(destBuff) != destBuff.len_)
 		goto cleanup;
 	off_ += header_plus_lut;
 	ret = true;
@@ -278,8 +278,8 @@ bool BMPFormat::encodePixels()
 		}
 		destBuff.offset_ = off_;
 		destBuff.pooled_ = true;
-		destBuff.dataLen_ = destInd;
-		if(write(destBuff) != destBuff.dataLen_)
+		destBuff.len_ = destInd;
+		if(write(destBuff) != destBuff.len_)
 			goto cleanup;
 		destBuff = pool.get(packedLen);
 		// pooled buffer may not have been zero-padded
@@ -312,8 +312,8 @@ bool BMPFormat::encodeFinish(void)
 		destBuff.data_ = image_->meta->color.icc_profile_buf;
 		destBuff.offset_ = off_;
 		destBuff.pooled_ = false;
-		destBuff.dataLen_ = image_->meta->color.icc_profile_len;
-		if(write(destBuff) != destBuff.dataLen_)
+		destBuff.len_ = image_->meta->color.icc_profile_len;
+		if(write(destBuff) != destBuff.len_)
 			return false;
 		off_ += image_->meta->color.icc_profile_len;
 	}

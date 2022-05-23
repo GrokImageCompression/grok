@@ -15,7 +15,7 @@ GrkIOBuf BufferPool::get(uint64_t len)
 		if(iter->second.allocLen_ >= len)
 		{
 			auto b = iter->second;
-			b.dataLen_ = len;
+			b.len_ = len;
 			pool.erase(iter);
 			// printf("Buffer pool get  %p\n", b.data);
 			return b;
