@@ -33,16 +33,6 @@
 #ifdef GRK_CUSTOM_TIFF_IO
 #define IO_MAX 2147483647U
 
-static const bool grokNewIO = false;
-
-static bool ioReclaimCallback(uint32_t threadId,
-		                               io::io_buf *buffer, void* io_user_data)
-{
-	auto tiffFormat = (TIFFFormat*)io_user_data;
-
-	return tiffFormat->ioReclaim(threadId, buffer);
-}
-
 static tmsize_t TiffRead(thandle_t handle, void* buf, tmsize_t size)
 {
 	GRK_UNUSED(handle);
@@ -107,6 +97,18 @@ TIFF* TIFFFormat::MyTIFFOpen(const char* name, const char* mode)
 }
 
 #endif
+
+
+static const bool grokNewIO = false;
+
+static bool ioReclaimCallback(uint32_t threadId,
+		                               io::io_buf *buffer, void* io_user_data)
+{
+	auto tiffFormat = (TIFFFormat*)io_user_data;
+
+	return tiffFormat->ioReclaim(threadId, buffer);
+}
+
 
 TIFFFormat::TIFFFormat() : tif_(nullptr), chroma_subsample_x(1),
 							chroma_subsample_y(1), units(0),
