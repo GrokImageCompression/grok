@@ -99,6 +99,7 @@ struct Strip
 	uint32_t index_; // index of strip
 	uint8_t reduce_; // resolution reduction
 	mutable std::mutex interleaveMutex_;
+	mutable std::atomic<bool> allocatedInterleaved_;
 };
 
 class StripCache

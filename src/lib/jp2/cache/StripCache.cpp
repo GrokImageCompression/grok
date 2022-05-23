@@ -1,5 +1,7 @@
 #include "grk_includes.h"
 
+const bool grokNewIO = false;
+
 namespace grk
 {
 static bool grkReclaimCallback(uint32_t threadId, grk_io_buf buffer, void* io_user_data)
@@ -12,7 +14,8 @@ static bool grkReclaimCallback(uint32_t threadId, grk_io_buf buffer, void* io_us
 }
 
 Strip::Strip(GrkImage* outputImage, uint16_t index, uint32_t nominalHeight, uint8_t reduce)
-	: stripImg(nullptr), tileCounter(0), index_(index), reduce_(reduce)
+	: stripImg(nullptr), tileCounter(0), index_(index), reduce_(reduce),
+	  allocatedInterleaved_(false)
 {
 	stripImg = new GrkImage();
 	outputImage->copyHeader(stripImg);
@@ -35,12 +38,13 @@ uint32_t Strip::reduceDim(uint32_t dim)
 	return reduce_ ? ceildivpow2<uint32_t>(dim, reduce_) : dim;
 }
 bool Strip::allocInterleaved(uint64_t len,BufPool *pool){
-	if (stripImg->interleavedData.data_)
+	if (allocatedInterleaved_.load(std::memory_order_acquire))
 		return true;
 	std::unique_lock<std::mutex> lk(interleaveMutex_);
-	if (stripImg->interleavedData.data_)
+	if (allocatedInterleaved_.load(std::memory_order_relaxed))
 		return true;
 	stripImg->interleavedData = pool->get(len);
+	allocatedInterleaved_.store(true, std::memory_order_release);
 
 	return stripImg->interleavedData.data_;
 }
@@ -183,7 +187,8 @@ bool StripCache::ingestTile(uint32_t threadId,GrkImage* src)
 		buf.offset_ = offset;
 		buf.len_ = dataLen;
 		dest->interleavedData.data_ = nullptr;
-		//return ioBufferCallback_(threadId, buf, ioUserData_);
+		if (grokNewIO)
+			return ioBufferCallback_(threadId, buf, ioUserData_);
 
 		std::queue<GrkIOBuf> buffersToSerialize;
 		{

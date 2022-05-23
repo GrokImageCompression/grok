@@ -99,7 +99,7 @@ TIFF* TIFFFormat::MyTIFFOpen(const char* name, const char* mode)
 #endif
 
 
-static const bool grokNewIO = false;
+const bool grokNewIO = false;
 
 static bool ioReclaimCallback(uint32_t threadId,
 		                               io::io_buf *buffer, void* io_user_data)
