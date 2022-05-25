@@ -42,7 +42,7 @@ Serializer::~Serializer(void){
 	close();
 	delete pool_;
 }
-void Serializer::setMaxSimulatedWrites(uint32_t maxRequests)
+void Serializer::setMaxSimulatedWrites(uint64_t maxRequests)
 {
 	fileIO_.setMaxSimulatedWrites(maxRequests);
 }

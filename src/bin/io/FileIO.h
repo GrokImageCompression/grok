@@ -30,11 +30,11 @@ public:
 	FileIO(uint32_t threadId, bool flushOnClose);
 	virtual ~FileIO() = default;
 	void enableSimulateWrite(void);
-	void setMaxSimulatedWrites(uint32_t maxRequests);
+	void setMaxSimulatedWrites(uint64_t maxRequests);
 	virtual void registerReclaimCallback(io_callback reclaim_callback, void* user_data);
 protected:
-	uint32_t numSimulatedWrites_;
-	uint32_t maxSimulatedWrites_;
+	uint64_t numSimulatedWrites_;
+	uint64_t maxSimulatedWrites_;
 	uint64_t off_;
 	io_callback reclaim_callback_;
 	void* reclaim_user_data_;

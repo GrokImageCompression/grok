@@ -131,6 +131,9 @@ void SparseBuffer::rewind(void)
 }
 void SparseBuffer::incrementCurrentChunkOffset(size_t offset)
 {
+	if (!offset)
+		return;
+
 	auto currentChunk = chunks[currentChunkId];
 	currentChunk->incrementOffset((ptrdiff_t)offset);
 	if(currentChunk->offset == currentChunk->len)

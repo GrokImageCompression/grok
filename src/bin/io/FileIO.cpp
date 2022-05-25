@@ -30,7 +30,7 @@ FileIO::FileIO(uint32_t threadId, bool flushOnClose) :
 							threadId_(threadId)
 {
 }
-void FileIO::setMaxSimulatedWrites(uint32_t maxWrites)
+void FileIO::setMaxSimulatedWrites(uint64_t maxWrites)
 {
 	maxSimulatedWrites_ = maxWrites;
 }
