@@ -39,12 +39,18 @@ class IBitIO
 	 @param n Number of bits to write
 	 */
 	virtual bool write(uint32_t v, uint32_t n) = 0;
+	virtual bool write(uint32_t v) = 0;
 	/**
 	 Read bits
 	 @param bits pointer to bits buffer
 	 @param n Number of bits to read
 	 */
-	virtual void read(uint32_t* bits, uint32_t n) = 0;
+	virtual void read(uint32_t* bits, uint8_t n) = 0;
+	/**
+	 Read bit
+	 @param bits pointer to bits buffer
+	 */
+	virtual uint8_t read(void) = 0;
 	/**
 	 Flush bits
 	 @return true if successful, returns false otherwise

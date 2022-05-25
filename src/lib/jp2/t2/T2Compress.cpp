@@ -239,7 +239,7 @@ bool T2Compress::compressHeader(BitIO* bio, Resolution* res, uint16_t layno, uin
 
 	// Empty header bit. Grok always sets this to 1,
 	// even though there is also an option to set it to zero.
-	if(!bio->write(1, 1))
+	if(!bio->write(1))
 		return false;
 
 	/* Writing Packet header */
@@ -274,7 +274,7 @@ bool T2Compress::compressHeader(BitIO* bio, Resolution* res, uint16_t layno, uin
 			}
 			else
 			{
-				if(!bio->write(layer->numpasses != 0, 1))
+				if(!bio->write(layer->numpasses != 0))
 					return false;
 			}
 			/* if cblk not included, go to next cblk  */

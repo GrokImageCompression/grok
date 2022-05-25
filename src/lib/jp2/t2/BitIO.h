@@ -39,31 +39,37 @@ class BitIO : public IBitIO
 	 Number of bytes written.
 	 @return the number of bytes written
 	 */
-	size_t numBytes();
+	size_t numBytes(void) override;
 
 	/*
 	 Write bits
 	 @param v Value of bits
 	 @param n Number of bits to write
 	 */
-	bool write(uint32_t v, uint32_t n);
+	bool write(uint32_t v, uint32_t n) override;
+	bool write(uint32_t v) override;
 	/*
 	 Read bits
 	 @param n Number of bits to read
 	 */
-	void read(uint32_t* bits, uint32_t n);
+	void read(uint32_t* bits, uint8_t n) override;
+
+	/*
+	 Read bit
+	 */
+	uint8_t read(void) override;
 	/*
 	 Flush bits
 	 @return true if successful, returns false otherwise
 	 */
-	bool flush();
+	bool flush(void) override;
 	/*
 	 Passes the ending bits (coming from flushing)
 	 */
-	void inalign();
+	void inalign(void) override;
 
 	bool putcommacode(uint8_t n);
-	void getcommacode(uint8_t* n);
+	uint8_t getcommacode(void);
 	bool putnumpasses(uint32_t n);
 	void getnumpasses(uint32_t* numpasses);
 
@@ -94,17 +100,20 @@ class BitIO : public IBitIO
 	 @param bio BIO handle
 	 */
 	void getbit(uint32_t* bits, uint8_t pos);
+
+	uint8_t getbit(void);
+
 	/*
 	 Write a byte
 	 @param bio BIO handle
 	 @return true if successful, returns false otherwise
 	 */
-	bool writeByte();
+	bool writeByte(void);
 	/*
 	 Read a byte
 	 @param bio BIO handle
 	 */
-	void bytein();
+	void bytein(void);
 };
 
 } // namespace grk

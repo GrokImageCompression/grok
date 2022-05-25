@@ -34,7 +34,7 @@ BitIO::BitIO(IBufferedStream* strm, bool isCompressor)
 	  read0xFF(false)
 {}
 
-bool BitIO::writeByte()
+bool BitIO::writeByte(void)
 {
 	if(stream)
 	{
@@ -51,10 +51,11 @@ bool BitIO::writeByte()
 	}
 	ct = buf == 0xff ? 7 : 8;
 	buf = 0;
+
 	return true;
 }
 
-void BitIO::bytein()
+void BitIO::bytein(void)
 {
 	if(offset == buf_len)
 		throw TruncatedPacketHeaderException();
@@ -62,13 +63,10 @@ void BitIO::bytein()
 	{
 		uint16_t marker = (uint16_t)(((uint16_t)0xFF << 8) | (uint16_t)buf);
 		if(marker != J2K_MS_EPH && marker != J2K_MS_SOP)
-		{
 			GRK_ERROR("Invalid marker 0x%x detected in packet header", marker);
-		}
 		else
-		{
 			GRK_ERROR("Unexpected SOP/EPH marker 0x%x detected in packet header", marker);
-		}
+
 		throw InvalidMarkerException(marker);
 	}
 	read0xFF = (buf == 0xff);
@@ -83,6 +81,7 @@ bool BitIO::putbit(uint8_t b)
 		return false;
 	ct--;
 	buf = static_cast<uint8_t>(buf | (b << ct));
+
 	return true;
 }
 
@@ -94,8 +93,17 @@ void BitIO::getbit(uint32_t* bits, uint8_t pos)
 	ct = (uint8_t)(ct - 1);
 	*bits |= (uint32_t)(((buf >> ct) & 1) << pos);
 }
+uint8_t BitIO::getbit(void)
+{
+	if(ct == 0)
+		bytein();
+	assert(ct > 0);
+	ct = (uint8_t)(ct - 1);
 
-size_t BitIO::numBytes()
+	return (buf >> ct) & 1;
+}
+
+size_t BitIO::numBytes(void)
 {
 	return offset;
 }
@@ -111,7 +119,17 @@ bool BitIO::write(uint32_t v, uint32_t n)
 	return true;
 }
 
-void BitIO::read(uint32_t* bits, uint32_t n)
+bool BitIO::write(uint32_t v)
+{
+	return putbit(v& 1);
+}
+
+uint8_t BitIO::read(void)
+{
+	return getbit();
+}
+
+void BitIO::read(uint32_t* bits, uint8_t n)
 {
 	assert(n != 0 && n <= 32U);
 #ifdef GRK_UBSAN_BUILD
@@ -122,7 +140,7 @@ void BitIO::read(uint32_t* bits, uint32_t n)
 	assert(n <= 32U);
 #endif
 	*bits = 0U;
-	for(int32_t i = (int32_t)(n - 1); i >= 0; i--)
+	for(int8_t i = (int8_t)(n - 1); i >= 0; i--)
 		getbit(bits, static_cast<uint8_t>(i));
 }
 
@@ -146,29 +164,31 @@ bool BitIO::putcommacode(uint8_t n)
 	int16_t nn = n;
 	while(--nn >= 0)
 	{
-		if(!write(1, 1))
+		if(!write(1))
 			return false;
 	}
-	return write(0, 1);
+
+	return write(0);
 }
 
-void BitIO::getcommacode(uint8_t* n)
+uint8_t BitIO::getcommacode(void)
 {
-	*n = 0;
-	uint32_t temp;
-	read(&temp, 1);
+	uint8_t n = 0;
+	uint8_t temp = read();
 	while(temp)
 	{
-		++*n;
-		read(&temp, 1);
+		n++;
+		temp = read();
 	}
+
+	return n;
 }
 
 bool BitIO::putnumpasses(uint32_t n)
 {
 	if(n == 1)
 	{
-		if(!write(0, 1))
+		if(!write(0))
 			return false;
 	}
 	else if(n == 2)
@@ -197,14 +217,13 @@ bool BitIO::putnumpasses(uint32_t n)
 
 void BitIO::getnumpasses(uint32_t* numpasses)
 {
-	uint32_t n = 0;
-	read(&n, 1);
+	uint32_t n = read();
 	if(!n)
 	{
 		*numpasses = 1;
 		return;
 	}
-	read(&n, 1);
+	n = read();
 	if(!n)
 	{
 		*numpasses = 2;

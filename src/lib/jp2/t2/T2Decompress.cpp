@@ -224,7 +224,7 @@ bool T2Decompress::decompressPacket(TileCodingParams* tcp, const PacketIter* pi,
 {
 	auto tile = tileProcessor->getTile();
 	auto res = tile->comps[pi->getCompno()].tileCompResolution + pi->getResno();
-	bool dataPresent;
+	bool tagBitsPresent;
 	uint32_t packetDataBytes = 0;
 	uint32_t packetBytes = 0;
 	// 1. header has already been parsed
@@ -232,13 +232,13 @@ bool T2Decompress::decompressPacket(TileCodingParams* tcp, const PacketIter* pi,
 	{
 		srcBuf->incrementCurrentChunkOffset(packetInfo->headerLength);
 		packetDataBytes = packetInfo->getPacketDataLength();
-		dataPresent = packetDataBytes > 0;
+		tagBitsPresent = packetDataBytes > 0;
 		packetBytes = packetInfo->headerLength + packetDataBytes;
 	}
 	// 2. otherwise parse the header
 	else
 	{
-		if(!readPacketHeader(tcp, pi, &dataPresent, srcBuf, &packetBytes, &packetDataBytes))
+		if(!readPacketHeader(tcp, pi, &tagBitsPresent, srcBuf, &packetBytes, &packetDataBytes))
 			return false;
 		packetInfo->headerLength = packetBytes;
 		packetBytes += packetDataBytes;
@@ -255,7 +255,7 @@ bool T2Decompress::decompressPacket(TileCodingParams* tcp, const PacketIter* pi,
 		}
 		packetInfo->packetLength = packetBytes + packetDataBytes;
 	}
-	if(dataPresent)
+	if(tagBitsPresent)
 	{
 		if(skipData || packetInfo->parsedData)
 		{
@@ -271,17 +271,20 @@ bool T2Decompress::decompressPacket(TileCodingParams* tcp, const PacketIter* pi,
 
 	return true;
 }
-bool T2Decompress::readPacketHeader(TileCodingParams* p_tcp, const PacketIter* p_pi,
-									bool* p_is_data_present, SparseBuffer* srcBuf,
-									uint32_t* dataRead, uint32_t* packetDataBytes)
+bool T2Decompress::readPacketHeader(TileCodingParams* tcp,
+									const PacketIter* pi,
+									bool* tagBitsPresent,
+									SparseBuffer* src,
+									uint32_t* dataRead,
+									uint32_t* packetDataBytes)
 {
 	auto tilePtr = tileProcessor->getTile();
-	auto res = tilePtr->comps[p_pi->getCompno()].tileCompResolution + p_pi->getResno();
-	auto p_src_data = srcBuf->getCurrentChunkPtr();
-	size_t available_bytes = srcBuf->getCurrentChunkLength();
-	auto active_src = p_src_data;
+	auto res = tilePtr->comps[pi->getCompno()].tileCompResolution + pi->getResno();
+	auto srcPtr = src->getCurrentChunkPtr();
+	size_t available_bytes = src->getCurrentChunkLength();
+	auto active_src = srcPtr;
 
-	if(p_tcp->csty & J2K_CP_CSTY_SOP)
+	if(tcp->csty & J2K_CP_CSTY_SOP)
 	{
 		if(available_bytes < 6)
 			throw TruncatedPacketHeaderException();
@@ -321,20 +324,20 @@ bool T2Decompress::readPacketHeader(TileCodingParams* p_tcp, const PacketIter* p
 		header_data_start = &tile_packet_header->buf;
 		remaining_length = &tile_packet_header->len;
 	}
-	else if(p_tcp->ppt)
+	else if(tcp->ppt)
 	{
-		header_data_start = &p_tcp->ppt_data;
-		remaining_length = &p_tcp->ppt_len;
+		header_data_start = &tcp->ppt_data;
+		remaining_length = &tcp->ppt_len;
 	}
 	if(*remaining_length == 0)
 		throw TruncatedPacketHeaderException();
 	auto header_data = *header_data_start;
-	uint32_t present = 0;
+	uint32_t present;
 	std::unique_ptr<BitIO> bio(new BitIO(header_data, *remaining_length, false));
-	auto tccp = p_tcp->tccps + p_pi->getCompno();
+	auto tccp = tcp->tccps + pi->getCompno();
 	try
 	{
-		bio->read(&present, 1);
+		present = bio->read();
 		// GRK_INFO("present=%u ", present);
 		if(present)
 		{
@@ -343,45 +346,33 @@ bool T2Decompress::readPacketHeader(TileCodingParams* p_tcp, const PacketIter* p
 				auto band = res->tileBand + bandIndex;
 				if(band->empty())
 					continue;
-				auto prc = band->getPrecinct(p_pi->getPrecinctIndex());
+				auto prc = band->getPrecinct(pi->getPrecinctIndex());
 				if(!prc)
 					continue;
 				for(uint64_t cblkno = 0; cblkno < prc->getNumCblks(); cblkno++)
 				{
 					auto cblk = prc->tryGetDecompressedBlockPtr(cblkno);
-					uint32_t included = 0;
-					uint8_t increment = 0;
+					uint8_t included;
 					if(!cblk || !cblk->numlenbits)
 					{
 						uint16_t value;
-						prc->getInclTree()->decodeValue(bio.get(), cblkno, p_pi->getLayno() + 1,
-														&value);
-						if(value != prc->getInclTree()->getUninitializedValue() &&
-						   value != p_pi->getLayno())
+						auto incl = prc->getInclTree();
+						incl->decodeValue(bio.get(), cblkno, pi->getLayno() + 1,&value);
+						if(value != incl->getUninitializedValue() &&
+						   value != pi->getLayno())
 						{
 							GRK_WARN("Tile number: %u", tileProcessor->getIndex() + 1);
 							std::string msg =
-								"Illegal inclusion tag tree found when decoding packet header.\n";
-							msg += "This problem can occur if empty packets are used (i.e., "
-								   "packets whose first header\n";
-							msg += "bit is 0) and the value coded by the inclusion tag tree in a "
-								   "subsequent packet\n";
-							msg += "is not exactly equal to the index of the quality layer in "
-								   "which each code-block\n";
-							msg +=
-								"makes its first contribution.  Such an error may occur from a\n";
-							msg += "mis-interpretation of the standard.  The problem may also "
-								   "occur as a result of\n";
-							msg += "a corrupted code-stream";
+								"Illegal inclusion tag tree found when decoding packet header.";
 							GRK_WARN("%s", msg.c_str());
 							tileProcessor->setCorruptPacket();
 						}
-						included = (value <= p_pi->getLayno()) ? 1 : 0;
+						included = (value <= pi->getLayno()) ? 1 : 0;
 					}
 					/* else one bit */
 					else
 					{
-						bio->read(&included, 1);
+						included = bio->read();
 					}
 					if(!included)
 					{
@@ -396,10 +387,11 @@ bool T2Decompress::readPacketHeader(TileCodingParams* p_tcp, const PacketIter* p
 					{
 						uint8_t K_msbs = 0;
 						uint8_t value;
+						auto imsb = prc->getImsbTree();
 
 						// see Taubman + Marcellin page 388
 						// loop below stops at (# of missing bit planes  + 1)
-						prc->getImsbTree()->decodeValue(bio.get(), cblkno, K_msbs, &value);
+						imsb->decodeValue(bio.get(), cblkno, K_msbs, &value);
 						while(value >= K_msbs)
 						{
 							++K_msbs;
@@ -410,7 +402,7 @@ bool T2Decompress::readPacketHeader(TileCodingParams* p_tcp, const PacketIter* p
 										 K_msbs, maxBitPlanesGRK);
 								break;
 							}
-							prc->getImsbTree()->decodeValue(bio.get(), cblkno, K_msbs, &value);
+							imsb->decodeValue(bio.get(), cblkno, K_msbs, &value);
 						}
 						assert(K_msbs >= 1);
 						K_msbs--;
@@ -436,7 +428,7 @@ bool T2Decompress::readPacketHeader(TileCodingParams* p_tcp, const PacketIter* p
 						cblk->numlenbits = 3;
 					}
 					bio->getnumpasses(&cblk->numPassesInPacket);
-					bio->getcommacode(&increment);
+					uint8_t increment = bio->getcommacode();
 					cblk->numlenbits += increment;
 					uint32_t segno = 0;
 					if(!cblk->getNumSegments())
@@ -481,7 +473,7 @@ bool T2Decompress::readPacketHeader(TileCodingParams* p_tcp, const PacketIter* p
 							seg->numPassesInPacket = (uint32_t)std::min<int32_t>(
 								(int32_t)(seg->maxpasses - seg->numpasses), blockPassesInPacket);
 						}
-						uint32_t bits_to_read =
+						uint8_t bits_to_read =
 							cblk->numlenbits + floorlog2(seg->numPassesInPacket);
 						if(bits_to_read > 32)
 						{
@@ -521,7 +513,7 @@ bool T2Decompress::readPacketHeader(TileCodingParams* p_tcp, const PacketIter* p
 		return false;
 	}
 	/* EPH markers */
-	if(p_tcp->csty & J2K_CP_CSTY_EPH)
+	if(tcp->csty & J2K_CP_CSTY_EPH)
 	{
 		if((*remaining_length - (uint32_t)(header_data - *header_data_start)) < 2U)
 			// GRK_WARN("Not enough space for expected EPH marker");
@@ -543,9 +535,9 @@ bool T2Decompress::readPacketHeader(TileCodingParams* p_tcp, const PacketIter* p
 	// GRK_INFO("packet body\n");
 	*remaining_length -= header_length;
 	*header_data_start += header_length;
-	*p_is_data_present = present;
-	*dataRead = (uint32_t)(active_src - p_src_data);
-	srcBuf->incrementCurrentChunkOffset(*dataRead);
+	*tagBitsPresent = present;
+	*dataRead = (uint32_t)(active_src - srcPtr);
+	src->incrementCurrentChunkOffset(*dataRead);
 	if(!present && !*dataRead)
 		throw TruncatedPacketHeaderException();
 

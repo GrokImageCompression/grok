@@ -70,8 +70,8 @@ class TagTree
 				throw std::exception();
 			}
 			n = (uint64_t)nplh[numlvls] * nplv[numlvls];
-			nplh[numlvls + 1] = (uint32_t)(((uint64_t)nplh[numlvls] + 1) / 2);
-			nplv[numlvls + 1] = (uint32_t)(((uint64_t)nplv[numlvls] + 1) / 2);
+			nplh[numlvls + 1] = (uint32_t)(((uint64_t)nplh[numlvls] + 1)>>1);
+			nplv[numlvls + 1] = (uint32_t)(((uint64_t)nplv[numlvls] + 1)>>1);
 			numnodes += n;
 			++numlvls;
 		} while(n > 1);
@@ -184,13 +184,13 @@ class TagTree
 				{
 					if(!node->known)
 					{
-						if(!bio->write(1, 1))
+						if(!bio->write(1))
 							return false;
 						node->known = true;
 					}
 					break;
 				}
-				if(!bio->write(0, 1))
+				if(!bio->write(0))
 					return false;
 				++low;
 			}
@@ -229,9 +229,8 @@ class TagTree
 				low = node->low;
 			while(low < threshold && low < node->value)
 			{
-				uint32_t temp = 0;
-				bio->read(&temp, 1);
-				if(temp)
+				uint8_t bit = bio->read();
+				if(bit)
 				{
 					node->value = T(low);
 					break;
