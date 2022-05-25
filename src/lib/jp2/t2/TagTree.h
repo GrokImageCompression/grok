@@ -48,73 +48,76 @@ class TagTree
   public:
 	/**
 	 Create a tag tree
-	 @param numleafsh Width of the array of leafs of the tree
-	 @param numleafsv Height of the array of leafs of the tree
+	 @param leavesWidth_ Width of the array of leaves of the tree
+	 @param leavesHeight_ Height of the array of leaves of the tree
 	 @return a new tag tree if successful, returns nullptr otherwise
 	 */
-	TagTree(uint32_t mynumleafsh, uint32_t mynumleafsv)
-		: numleafsh(mynumleafsh), numleafsv(mynumleafsv), numnodes(0), nodes(nullptr)
+	TagTree(uint32_t leavesWidth, uint32_t leavesHeight)
+		: leavesWidth_(leavesWidth), leavesHeight_(leavesHeight),
+		  nodeCount(0), nodes(nullptr)
 	{
-		uint32_t nplh[32];
-		uint32_t nplv[32];
-		int8_t numlvls = 0;
-		nplh[0] = numleafsh;
-		nplv[0] = numleafsv;
-		numnodes = 0;
-		uint64_t n;
+		uint32_t resLeavesWidth[32];
+		uint32_t resLeavesHeight[32];
+		int8_t numLevels = 0;
+		resLeavesWidth[0] = leavesWidth_;
+		resLeavesHeight[0] = leavesHeight_;
+		nodeCount = 0;
+		uint64_t nodesPerLevel;
 		do
 		{
-			if(numlvls == 32)
+			if(numLevels == 32)
 			{
 				GRK_ERROR("TagTree constructor: num level overflow");
 				throw std::exception();
 			}
-			n = (uint64_t)nplh[numlvls] * nplv[numlvls];
-			nplh[numlvls + 1] = (uint32_t)(((uint64_t)nplh[numlvls] + 1)>>1);
-			nplv[numlvls + 1] = (uint32_t)(((uint64_t)nplv[numlvls] + 1)>>1);
-			numnodes += n;
-			++numlvls;
-		} while(n > 1);
+			nodesPerLevel = (uint64_t)resLeavesWidth[numLevels] * resLeavesHeight[numLevels];
+			resLeavesWidth[numLevels + 1] =
+					(uint32_t)(((uint64_t)resLeavesWidth[numLevels] + 1)>>1);
+			resLeavesHeight[numLevels + 1] =
+					(uint32_t)(((uint64_t)resLeavesHeight[numLevels] + 1)>>1);
+			nodeCount += nodesPerLevel;
+			++numLevels;
+		} while(nodesPerLevel > 1);
 
-		if(numnodes == 0)
+		if(nodeCount == 0)
 		{
 			GRK_WARN("tgt_create numnodes == 0, no tree created.");
 			throw std::runtime_error("tgt_create numnodes == 0, no tree created");
 		}
 
-		nodes = new TagTreeNode<T>[numnodes];
-		auto node = nodes;
-		auto parent_node = nodes + (uint64_t)numleafsh * numleafsv;
-		auto parent_node0 = parent_node;
+		nodes = new TagTreeNode<T>[nodeCount];
+		auto currentNode = nodes;
+		auto parentNode = nodes + (uint64_t)leavesWidth_ * leavesHeight_;
+		auto parentNodeNext = parentNode;
 
-		for(int8_t i = 0; i < numlvls - 1; ++i)
+		for(int8_t i = 0; i < numLevels - 1; ++i)
 		{
-			for(uint32_t j = 0; j < nplv[i]; ++j)
+			for(uint32_t j = 0; j < resLeavesHeight[i]; ++j)
 			{
-				int64_t k = nplh[i];
+				int64_t k = resLeavesWidth[i];
 				while(--k >= 0)
 				{
-					node->parent = parent_node;
-					++node;
+					currentNode->parent = parentNode;
+					++currentNode;
 					if(--k >= 0)
 					{
-						node->parent = parent_node;
-						++node;
+						currentNode->parent = parentNode;
+						++currentNode;
 					}
-					++parent_node;
+					++parentNode;
 				}
-				if((j & 1) || j == nplv[i] - 1)
+				if((j&1) || j == resLeavesHeight[i] - 1)
 				{
-					parent_node0 = parent_node;
+					parentNodeNext = parentNode;
 				}
 				else
 				{
-					parent_node = parent_node0;
-					parent_node0 += nplh[i];
+					parentNode = parentNodeNext;
+					parentNodeNext += resLeavesWidth[i];
 				}
 			}
 		}
-		node->parent = 0;
+		currentNode->parent = nullptr;
 		reset();
 	}
 	~TagTree()
@@ -131,7 +134,7 @@ class TagTree
 	 */
 	void reset()
 	{
-		for(uint64_t i = 0; i < numnodes; ++i)
+		for(uint64_t i = 0; i < nodeCount; ++i)
 		{
 			auto current_node = nodes + i;
 			current_node->value = getUninitializedValue();
@@ -141,8 +144,8 @@ class TagTree
 	}
 	/**
 	 Set the value of a leaf of a tag tree
-	 @param leafno Number that identifies the leaf to modify
-	 @param value New value of the leaf
+	 @param leafno leaf to modify
+	 @param value  new value of leaf
 	 */
 	void setvalue(uint64_t leafno, T value)
 	{
@@ -155,19 +158,19 @@ class TagTree
 	}
 	/**
 	 Encode the value of a leaf of the tag tree up to a given threshold
-	 @param bio Pointer to a BIO handle
-	 @param leafno Number that identifies the leaf to compress
+	 @param bio BIO handle
+	 @param leafno leaf to compress
 	 @param threshold Threshold to use when compressing value of the leaf
 	 @return true if successful, otherwise false
 	 */
 	bool compress(BitIO* bio, uint64_t leafno, T threshold)
 	{
-		TagTreeNode<T>* stk[31];
-		auto stkptr = stk;
+		TagTreeNode<T>* nodeStack[31];
+		auto nodeStackPtr = nodeStack;
 		auto node = nodes + leafno;
 		while(node->parent)
 		{
-			*stkptr++ = node;
+			*nodeStackPtr++ = node;
 			node = node->parent;
 		}
 		T low = 0;
@@ -194,11 +197,10 @@ class TagTree
 					return false;
 				++low;
 			}
-
 			node->low = low;
-			if(stkptr == stk)
+			if(nodeStackPtr == nodeStack)
 				break;
-			node = *--stkptr;
+			node = *--nodeStackPtr;
 		}
 		return true;
 	}
@@ -211,15 +213,17 @@ class TagTree
 	 */
 	void decodeValue(BitIO* bio, uint64_t leafno, T threshold, T* value)
 	{
-		TagTreeNode<T>* stk[31];
+		TagTreeNode<T>* nodeStack[31];
 		*value = getUninitializedValue();
-		auto stkptr = stk;
+		auto nodeStackPtr = nodeStack;
 		auto node = nodes + leafno;
+		// climb to top of tree
 		while(node->parent)
 		{
-			*stkptr++ = node;
+			*nodeStackPtr++ = node;
 			node = node->parent;
 		}
+		// descend to bottom of tree
 		T low = 0;
 		while(true)
 		{
@@ -229,29 +233,25 @@ class TagTree
 				low = node->low;
 			while(low < threshold && low < node->value)
 			{
-				uint8_t bit = bio->read();
-				if(bit)
+				if(bio->read())
 				{
-					node->value = T(low);
+					node->value = low;
 					break;
 				}
-				else
-				{
-					++low;
-				}
+				low++;
 			}
 			node->low = low;
-			if(stkptr == stk)
+			if(nodeStackPtr == nodeStack)
 				break;
-			node = *--stkptr;
+			node = *--nodeStackPtr;
 		}
 		*value = node->value;
 	}
 
   private:
-	uint32_t numleafsh;
-	uint32_t numleafsv;
-	uint64_t numnodes;
+	uint32_t leavesWidth_;
+	uint32_t leavesHeight_;
+	uint64_t nodeCount;
 	TagTreeNode<T>* nodes;
 };
 
