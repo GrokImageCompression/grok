@@ -38,6 +38,7 @@ struct SparseBuffer
 	size_t skip(size_t numBytes);
 	void increment(void);
 	size_t read(void* buffer, size_t numBytes);
+	size_t totalLength(void) const;
 
   private:
 	// Treat segmented buffer as single contiguous buffer, and get current offset

@@ -35,6 +35,9 @@ void SparseBuffer::increment()
 		currentChunkId++;
 	}
 }
+size_t SparseBuffer::totalLength(void) const{
+	return dataLen;
+}
 size_t SparseBuffer::read(void* buffer, size_t numBytes)
 {
 	if(buffer == nullptr || numBytes == 0)

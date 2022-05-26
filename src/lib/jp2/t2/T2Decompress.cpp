@@ -349,7 +349,12 @@ bool T2Decompress::readPacketHeader(TileCodingParams* tcp,
 				auto prc = band->getPrecinct(pi->getPrecinctIndex());
 				if(!prc)
 					continue;
-				for(uint64_t cblkno = 0; cblkno < prc->getNumCblks(); cblkno++)
+				auto numPrecCodeBlocks = prc->getNumCblks();
+				// assuming 1 bit minimum encoded per code block,
+				// let's check if we have enough bytes
+				if ( (numPrecCodeBlocks >> 3) > src->totalLength())
+					throw TruncatedPacketHeaderException();
+				for(uint64_t cblkno = 0; cblkno < numPrecCodeBlocks; cblkno++)
 				{
 					auto cblk = prc->tryGetDecompressedBlockPtr(cblkno);
 					uint8_t included;
@@ -358,8 +363,7 @@ bool T2Decompress::readPacketHeader(TileCodingParams* tcp,
 						uint16_t value;
 						auto incl = prc->getInclTree();
 						incl->decodeValue(bio.get(), cblkno, pi->getLayno() + 1,&value);
-						if(value != incl->getUninitializedValue() &&
-						   value != pi->getLayno())
+						if(value != incl->getUninitializedValue() && value != pi->getLayno())
 						{
 							GRK_WARN("Tile number: %u", tileProcessor->getIndex() + 1);
 							std::string msg =
@@ -369,7 +373,6 @@ bool T2Decompress::readPacketHeader(TileCodingParams* tcp,
 						}
 						included = (value <= pi->getLayno()) ? 1 : 0;
 					}
-					/* else one bit */
 					else
 					{
 						included = bio->read();
