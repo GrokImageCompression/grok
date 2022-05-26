@@ -35,7 +35,7 @@ using namespace grk;
 
 struct GrkCodec
 {
-	GrkCodec();
+	GrkCodec(grk_stream* stream);
 	~GrkCodec();
 
 	static GrkCodec* getImpl(grk_codec* codec)
@@ -53,7 +53,9 @@ struct GrkCodec
 	grk_stream* stream_;
 };
 
-GrkCodec::GrkCodec() : compressor_(nullptr), decompressor_(nullptr), stream_(nullptr)
+GrkCodec::GrkCodec(grk_stream* stream) : compressor_(nullptr),
+										decompressor_(nullptr),
+										stream_(stream)
 {
 	obj.wrapper = new GrkObjectWrapperImpl<GrkCodec>(this);
 }
@@ -191,24 +193,18 @@ void GRK_CALLCONV grk_image_single_component_data_free(grk_image_comp* comp)
 /* DECOMPRESSION FUNCTIONS*/
 grk_codec* GRK_CALLCONV grk_decompress_create(GRK_CODEC_FORMAT p_format, grk_stream* stream)
 {
-	auto codec = new GrkCodec();
-	codec->stream_ = stream;
-
+	GrkCodec *codec = nullptr;
 	switch(p_format)
 	{
-		case GRK_CODEC_J2K: {
-			auto cstream = new CodeStreamDecompress(BufferedStream::getImpl(stream));
-			codec->decompressor_ = cstream;
-		}
-		break;
-		case GRK_CODEC_JP2: {
-			auto ff = new FileFormatDecompress(BufferedStream::getImpl(stream));
-			codec->decompressor_ = ff;
-		}
-		break;
-		case GRK_CODEC_UNKNOWN:
+		case GRK_CODEC_J2K:
+			codec = new GrkCodec(stream);
+			codec->decompressor_ = new CodeStreamDecompress(BufferedStream::getImpl(stream));
+			break;
+		case GRK_CODEC_JP2:
+			codec = new GrkCodec(stream);
+			codec->decompressor_ = new FileFormatDecompress(BufferedStream::getImpl(stream));
+			break;
 		default:
-			grkFree(codec);
 			return nullptr;
 	}
 	return &codec->obj;
@@ -362,23 +358,18 @@ grk_image* GRK_CALLCONV grk_decompress_get_composited_image(grk_codec* codecWrap
 
 grk_codec* GRK_CALLCONV grk_compress_create(GRK_CODEC_FORMAT p_format, grk_stream* stream)
 {
-	auto codec = new GrkCodec();
-	codec->stream_ = stream;
-
+	GrkCodec *codec = nullptr;
 	switch(p_format)
 	{
-		case GRK_CODEC_J2K: {
-			auto cstream = new CodeStreamCompress(BufferedStream::getImpl(stream));
-			codec->compressor_ = cstream;
-		}
-		break;
-		case GRK_CODEC_JP2:
-			codec->compressor_ = new FileFormatCompress(BufferedStream::getImpl(stream));
-			;
+		case GRK_CODEC_J2K:
+			codec = new GrkCodec(stream);
+			codec->compressor_ = new CodeStreamCompress(BufferedStream::getImpl(stream));
 			break;
-		case GRK_CODEC_UNKNOWN:
+		case GRK_CODEC_JP2:
+			codec = new GrkCodec(stream);
+			codec->compressor_ = new FileFormatCompress(BufferedStream::getImpl(stream));
+			break;
 		default:
-			grkFree(codec);
 			return nullptr;
 	}
 	return &codec->obj;
