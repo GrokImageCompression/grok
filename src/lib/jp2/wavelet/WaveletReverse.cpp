@@ -544,9 +544,9 @@ bool WaveletReverse::decompress_h_97(uint8_t res, uint32_t numThreads, size_t da
 				decompress_h_strip_97(myhoriz, indexMax, winL, winH, winDest);
 				delete myhoriz;
 			});
-			winL.incY_IPL(incrPerJob);
-			winH.incY_IPL(incrPerJob);
-			winDest.incY_IPL(incrPerJob);
+			winL.incY_IN_PLACE(incrPerJob);
+			winH.incY_IN_PLACE(incrPerJob);
+			winDest.incY_IN_PLACE(incrPerJob);
 		}
 	}
 	return true;
@@ -640,9 +640,9 @@ bool WaveletReverse::decompress_v_97(uint8_t res, uint32_t numThreads, size_t da
 					decompress_v_strip_97(myvert, indexMax, resHeight, winL, winH, winDest);
 					delete myvert;
 				});
-			winL.incX_IPL(incrPerJob);
-			winH.incX_IPL(incrPerJob);
-			winDest.incX_IPL(incrPerJob);
+			winL.incX_IN_PLACE(incrPerJob);
+			winH.incX_IN_PLACE(incrPerJob);
+			winDest.incX_IN_PLACE(incrPerJob);
 		}
 	}
 
@@ -1017,9 +1017,9 @@ void WaveletReverse::decompress_h_strip_53(const dwt_data<int32_t>* horiz, uint3
 	for(uint32_t j = hMin; j < hMax; ++j)
 	{
 		decompress_h_53(horiz, winL.buf_, winH.buf_, winDest.buf_);
-		winL.incY_IPL(1);
-		winH.incY_IPL(1);
-		winDest.incY_IPL(1);
+		winL.incY_IN_PLACE(1);
+		winH.incY_IN_PLACE(1);
+		winDest.incY_IN_PLACE(1);
 	}
 }
 bool WaveletReverse::decompress_h_53(uint8_t res, TileComponentWindowBuffer<int32_t>* buf,
@@ -1086,9 +1086,9 @@ bool WaveletReverse::decompress_h_53(uint8_t res, TileComponentWindowBuffer<int3
 						decompress_h_strip_53(horiz, indexMin, indexMax, winL, winH, winDest);
 						delete horiz;
 					});
-				winL.incY_IPL(incrPerJob);
-				winH.incY_IPL(incrPerJob);
-				winDest.incY_IPL(incrPerJob);
+				winL.incY_IN_PLACE(incrPerJob);
+				winH.incY_IN_PLACE(incrPerJob);
+				winDest.incY_IN_PLACE(incrPerJob);
 			}
 		}
 	}
@@ -1105,9 +1105,9 @@ void WaveletReverse::decompress_v_strip_53(const dwt_data<int32_t>* vert, uint32
 	for(j = wMin; j + PLL_COLS_53 <= wMax; j += PLL_COLS_53)
 	{
 		decompress_v_53(vert, winL, winH, winDest, PLL_COLS_53);
-		winL.incX_IPL(PLL_COLS_53);
-		winH.incX_IPL(PLL_COLS_53);
-		winDest.incX_IPL(PLL_COLS_53);
+		winL.incX_IN_PLACE(PLL_COLS_53);
+		winH.incX_IN_PLACE(PLL_COLS_53);
+		winDest.incX_IN_PLACE(PLL_COLS_53);
 	}
 	if(j < wMax)
 		decompress_v_53(vert, winL, winH, winDest, wMax - j);
@@ -1157,9 +1157,9 @@ bool WaveletReverse::decompress_v_53(uint8_t res, TileComponentWindowBuffer<int3
 					decompress_v_strip_53(vert, indexMin, indexMax, winL, winH, winDest);
 					delete vert;
 				});
-			winL.incX_IPL(step);
-			winH.incX_IPL(step);
-			winDest.incX_IPL(step);
+			winL.incX_IN_PLACE(step);
+			winH.incX_IN_PLACE(step);
+			winDest.incX_IN_PLACE(step);
 		}
 	}
 	return true;

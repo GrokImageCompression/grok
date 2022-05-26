@@ -249,25 +249,17 @@ struct grk_buf2d_simple
 {
 	grk_buf2d_simple() : grk_buf2d_simple(nullptr, 0) {}
 	grk_buf2d_simple(T* buf, uint32_t stride) : buf_(buf), stride_(stride) {}
-	grk_buf2d_simple incX_IPL(size_t deltaX)
+	grk_buf2d_simple incX_IN_PLACE(size_t deltaX)
 	{
 		buf_ += deltaX;
 
 		return *this;
 	}
-	grk_buf2d_simple incX(size_t deltaX)
-	{
-		return grk_buf2d_simple(buf_ + deltaX, stride_);
-	}
-	grk_buf2d_simple incY_IPL(size_t deltaY)
+	grk_buf2d_simple incY_IN_PLACE(size_t deltaY)
 	{
 		buf_ += deltaY * stride_;
 
 		return *this;
-	}
-	grk_buf2d_simple incY(size_t deltaY)
-	{
-		return grk_buf2d_simple(buf_ + deltaY * stride_, stride_);
 	}
 	T* buf_;
 	uint32_t stride_;

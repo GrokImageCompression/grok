@@ -80,7 +80,7 @@ struct TileProcessor
 						   bool isCompressor, StripCache* stripCache);
 	~TileProcessor();
 	bool init(void);
-	bool allocWindowBuffers(const GrkImage* outputImage);
+	bool createWindowBuffers(const GrkImage* outputImage);
 	void deallocBuffers();
 	bool preCompressTile(void);
 	bool canWritePocMarker(void);

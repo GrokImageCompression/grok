@@ -243,15 +243,12 @@ bool T2Decompress::decompressPacket(TileCodingParams* tcp, const PacketIter* pi,
 		packetInfo->headerLength = packetBytes;
 		packetBytes += packetDataBytes;
 		// validate PL marker against parsed packet
-		if(packetInfo->packetLength)
+		if(packetInfo->packetLength &&  packetInfo->packetLength != packetBytes)
 		{
-			if(packetInfo->packetLength != packetBytes)
-			{
-				GRK_ERROR("Corrupt PL marker reports %u bytes for packet;"
-						  " parsed bytes are in fact %u",
-						  packetInfo->packetLength, packetBytes);
-				return false;
-			}
+			GRK_ERROR("Corrupt PL marker reports %u bytes for packet;"
+					  " parsed bytes are in fact %u",
+					  packetInfo->packetLength, packetBytes);
+			return false;
 		}
 		packetInfo->packetLength = packetBytes + packetDataBytes;
 	}

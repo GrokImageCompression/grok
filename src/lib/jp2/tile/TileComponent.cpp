@@ -315,7 +315,7 @@ bool TileComponent::allocSparseCanvas(uint32_t numres, bool truncatedTile)
 
 	return true;
 }
-bool TileComponent::allocWindowBuffer(grk_rect32 unreducedTileCompOrImageCompWindow)
+bool TileComponent::createWindowBuffer(grk_rect32 unreducedTileCompOrImageCompWindow)
 {
 	deallocBuffers();
 	auto highestNumberOfResolutions =

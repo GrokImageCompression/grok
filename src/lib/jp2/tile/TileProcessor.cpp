@@ -243,7 +243,7 @@ bool TileProcessor::init(void)
 
 	return true;
 }
-bool TileProcessor::allocWindowBuffers(const GrkImage* outputImage)
+bool TileProcessor::createWindowBuffers(const GrkImage* outputImage)
 {
 	for(uint16_t compno = 0; compno < tile->numcomps_; ++compno)
 	{
@@ -254,7 +254,7 @@ bool TileProcessor::allocWindowBuffers(const GrkImage* outputImage)
 		{
 			// for the compressor, the "window" comprises the full tile component
 			auto tileComp = tile->comps + compno;
-			if(!tileComp->allocWindowBuffer(grk_rect32(tileComp)))
+			if(!tileComp->createWindowBuffer(grk_rect32(tileComp)))
 				return false;
 		}
 		else
@@ -264,7 +264,7 @@ bool TileProcessor::allocWindowBuffers(const GrkImage* outputImage)
 				grk_rect32(outputImage->x0, outputImage->y0, outputImage->x1, outputImage->y1);
 			grk_rect32 unreducedImageCompWindow =
 				unreducedImageWindow.scaleDownCeil(imageComp->dx, imageComp->dy);
-			if(!(tile->comps + compno)->allocWindowBuffer(unreducedImageCompWindow))
+			if(!(tile->comps + compno)->createWindowBuffer(unreducedImageCompWindow))
 				return false;
 		}
 	}
@@ -398,7 +398,6 @@ bool TileProcessor::isWholeTileDecompress(uint16_t compno)
 bool TileProcessor::decompressT2(SparseBuffer* srcBuf)
 {
 	// optimization for regions that are close to largest decompressed resolution
-	// (currently breaks tests, so disabled)
 	for(uint16_t compno = 0; compno < headerImage->numcomps; compno++)
 	{
 		if(!isWholeTileDecompress(compno))
@@ -410,9 +409,8 @@ bool TileProcessor::decompressT2(SparseBuffer* srcBuf)
 	bool doT2 = !current_plugin_tile || (current_plugin_tile->decompress_flags & GRK_DECODE_T2);
 	if(doT2)
 	{
-		auto t2 = new T2Decompress(this);
+		auto t2 = std::make_unique<T2Decompress>(this);
 		bool rc = t2->decompressPackets(tileIndex_, srcBuf, &truncated);
-		delete t2;
 		if(!rc)
 			return false;
 		// synch plugin with T2 data
@@ -424,32 +422,26 @@ bool TileProcessor::decompressT2(SparseBuffer* srcBuf)
 }
 bool TileProcessor::decompressT2T1(TileCodingParams* tcp, GrkImage* outputImage, bool doPost)
 {
-	if(!allocWindowBuffers(outputImage))
+	bool doT1 = !current_plugin_tile || (current_plugin_tile->decompress_flags & GRK_DECODE_T1);
+	bool doPostT1 =
+		!current_plugin_tile || (current_plugin_tile->decompress_flags & GRK_DECODE_POST_T1);
+
+	// create window buffers
+	// (no buffer allocation)
+	if(!createWindowBuffers(outputImage))
 		return false;
+
 	// T2
 	if(!decompressT2(tcp->compressedTileData_))
 	{
 		GRK_WARN("Tile %u was not decompressed", tileIndex_);
 		return outputImage->hasMultipleTiles;
 	}
+
 	// T1
-	bool doT1 = !current_plugin_tile || (current_plugin_tile->decompress_flags & GRK_DECODE_T1);
-	bool doPostT1 =
-		!current_plugin_tile || (current_plugin_tile->decompress_flags & GRK_DECODE_POST_T1);
+	// 1. allocate buffers
 	if(doT1)
 	{
-		scheduler_ = new DecompressScheduler(this, tile, tcp_, headerImage->comps->prec);
-		FlowComponent* mctPostProc = nullptr;
-		uint32_t mctCount = 0;
-		// schedule MCT post processing
-		if(doPostT1)
-		{
-			// schedule MCT if applicable
-			if(needsMctDecompress())
-			{
-				mctPostProc = scheduler_->getPrePostProc();
-			}
-		}
 		for(uint16_t compno = 0; compno < tile->numcomps_; ++compno)
 		{
 			auto tilec = tile->comps + compno;
@@ -475,6 +467,20 @@ bool TileProcessor::decompressT2T1(TileCodingParams* tcp, GrkImage* outputImage,
 				GRK_ERROR("Not enough memory for tile data");
 				return false;
 			}
+		}
+	}
+
+	// 2. schedule
+	if(doT1)
+	{
+		scheduler_ = new DecompressScheduler(this, tile, tcp_, headerImage->comps->prec);
+		FlowComponent* mctPostProc = nullptr;
+		// schedule MCT post processing
+		if(doPostT1 && needsMctDecompress())
+			mctPostProc = scheduler_->getPrePostProc();
+		uint16_t mctComponentCount = 0;
+		for(uint16_t compno = 0; compno < tile->numcomps_; ++compno)
+		{
 			if(!scheduler_->schedule(compno))
 				return false;
 
@@ -486,7 +492,7 @@ bool TileProcessor::decompressT2T1(TileCodingParams* tcp, GrkImage* outputImage,
 				{
 					// link to MCT
 					compFlow->getFinalFlowT1()->precede(mctPostProc);
-					mctCount++;
+					mctComponentCount++;
 				}
 				else if(doPostT1)
 				{
@@ -495,8 +501,7 @@ bool TileProcessor::decompressT2T1(TileCodingParams* tcp, GrkImage* outputImage,
 					{
 						auto dcPostProc = compFlow->getPrePostProc(scheduler_->getCodecFlow());
 						compFlow->getFinalFlowT1()->precede(dcPostProc);
-						auto tccp = tcp_->tccps + compno;
-						if(tccp->qmfbid == 1)
+						if((tcp_->tccps + compno)->qmfbid == 1)
 							mct_->decompress_dc_shift_rev(dcPostProc, compno);
 						else
 							mct_->decompress_dc_shift_irrev(dcPostProc, compno);
@@ -505,13 +510,20 @@ bool TileProcessor::decompressT2T1(TileCodingParams* tcp, GrkImage* outputImage,
 			}
 		}
 		// sanity check on MCT scheduling
-		if(doPostT1 && mctCount == 3 && mctPostProc && !mctDecompress(mctPostProc))
+		if(doPostT1 && mctComponentCount == 3 && mctPostProc && !mctDecompress(mctPostProc))
 			return false;
+	}
+
+	// 3. execute
+	if(doT1)
+	{
 		if(!scheduler_->run())
 			return false;
 		delete scheduler_;
 		scheduler_ = nullptr;
 	}
+
+	// 4. post T1
 	if(doPost)
 	{
 		if(outputImage->hasMultipleTiles)
@@ -822,7 +834,7 @@ bool TileProcessor::preCompressTile()
 	bool rc = init();
 	if(!rc)
 		return false;
-	rc = allocWindowBuffers(nullptr);
+	rc = createWindowBuffers(nullptr);
 	if(!rc)
 		return false;
 	uint32_t numTiles = (uint32_t)cp_->t_grid_height * cp_->t_grid_width;
