@@ -22,7 +22,7 @@
 
 ### Performance
 
-Below is a benchmark comparing time and memory performance for **Grok 9.7.6**, **Kakadu 8.05** and **OpenJPEG 2.5** on the following workflows:
+Below is a benchmark comparing time and memory performance for **Grok 9.7.7**, **Kakadu 8.05** and **OpenJPEG 2.5** on the following workflows:
 
 1. decompress large single-tiled [image of Mars](https://hirise.lpl.arizona.edu/PDS/RDR/ESP/ORB_011200_011299/ESP_011277_1825/ESP_011277_1825_RED.JP2) to TIF output
 1. decompress region `(1000,1000,5000,5000)` from large single-tiled [image of Mars](https://hirise.lpl.arizona.edu/PDS/RDR/ESP/ORB_011200_011299/ESP_011277_1825/ESP_011277_1825_RED.JP2) to TIF output
@@ -38,16 +38,16 @@ Below is a benchmark comparing time and memory performance for **Grok 9.7.6**, *
 #### Benchmark Details
 
 * test system : 24 core / 48 thread `AMD Threadripper`
-running `Ubuntu 21.04` with `5.11` Linux kernel
+running `Ubuntu 21.04` with `5.11` Linux kernel and `ext4` file system
 * codecs were configured to use all 48 threads
 * file cache was cleared before each decompression using `$ sudo sysctl vm.drop_caches=3`
-* open source codecs were built in release mode using `GCC 11`
+* open source codecs were built in release mode using `GCC 10`
 
 #### Results
 
 | Test  | Grok               | Kakadu                 | OpenJPEG         |
 | :---- | :-----             | :------:             | --------:          |
-| 1     | 15.19 s / 14.6 GB  | 10.28 s / 0.05 GB    | 17.8 s / 13.1 GB   |
+| 1     | 14.80 s / 16.6 GB  | 10.28 s / 0.05 GB    | 17.8 s / 13.1 GB   |
 | 2     | 0.25 s / 0.4 GB    | 0.12 s               | 1.4 s  / 2 GB      |
 | 3     | 3.45 s / 1.8 GB    | 4.99 s / 0.1 GB      | 10.8 s / 4.3 GB    |
 | 4     | 3.70 s / 2.0 GB    | 4.10 s / 0.1 GB      | 45.7 s / 4.3 GB    |
