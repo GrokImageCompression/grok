@@ -100,6 +100,7 @@
 #include "ICacheable.h"
 #include "GrkObjectWrapper.h"
 #include "logger.h"
+#include "ChronoTimer.h"
 #include "testing.h"
 #include "MemStream.h"
 #include "GrkMappedFile.h"
