@@ -122,8 +122,6 @@ bool StripCache::ingestStrip(uint32_t threadId, Tile* src, uint32_t yBegin, uint
 	buf.offset_ = offset;
 	buf.len_ = dataLen;
 	dest->interleavedData.data_ = nullptr;
-	if (grokNewIO)
-		return ioBufferCallback_(threadId, buf, ioUserData_);
 
 	return serialize(threadId, buf);
 }
@@ -162,6 +160,9 @@ bool StripCache::ingestTile(uint32_t threadId,GrkImage* src)
 }
 
 bool StripCache::serialize(uint32_t threadId,GrkIOBuf buf){
+	if (grokNewIO)
+		return ioBufferCallback_(threadId, buf, ioUserData_);
+
 	std::queue<GrkIOBuf> buffersToSerialize;
 	{
 		std::unique_lock<std::mutex> lk(heapMutex_);

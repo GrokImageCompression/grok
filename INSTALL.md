@@ -14,7 +14,7 @@ Grok releases can be found [here](https://github.com/GrokImageCompression/grok/r
 
 Grok uses [cmake](www.cmake.org) to configure builds across multiple platforms.
 
-### compilers
+### Compilers
 
 Supported compilers:
 
@@ -36,7 +36,7 @@ $ sudo update-alternatives --config c++
 The second line brings up a menu allowing a user to configure the default `c++` compiler, which is
 what is used by `cmake` to configure the project compiler.
 
-### configuration
+### Configuration
 
 To configure a build using the defaults:
 
@@ -46,27 +46,35 @@ To configure a build using the defaults:
    $ cmake /PATH/TO/SOURCE
 ```
 
-The `cmake` GUI is recommended, in order to easily view all `cmake` options. On headless systems, `ccmake` (an ncurses application) may be used to configure the build.
+The `cmake` GUI is recommended, in order to easily view all `cmake` options.
+On Linux distributions, `cmake-gui` will launch the cmake GUI.
+On system without a window manager, `ccmake` (an ncurses application)
+may be used to configure the build.
 
 
 ### *NIX
 
-#### SHARED/STATIC
+#### Shared vs. Static
 
-The `BUILD_SHARED_LIBS` `cmake` flag determines if the `grk_compress` and `grk_decompress` binaries
-are linked to dynamic or static builds of the codec library `libgrokj2k`.
+The `BUILD_SHARED_LIBS` `cmake` flag determines if the `grk_compress`
+and `grk_decompress` binaries are linked to dynamic or static builds
+of the library `libgrokj2k`.
 
 If both `BUILD_SHARED_LIBS` and `BUILD_STATIC_LIBS` `cmake` flags are set,
 then both dynamic and static builds are generated and installed.
 
+##### Fedora
 
-Note: for a static build on Fedora, the following library must be installed: 
-
+1. for a static build, the following library must be installed:
 `sudo dnf install libstdc++-static-*.x86_64`
+where * refers to the libstdc++ library version.
+1. if the library has been installed, then
+`export LD_LIBRARY_PATH=/PATH/TO/BUILD/bin:/usr/local/lib64`
+must be added to the `.bashrc` file. Note that the build binary folder is
+entered before the system binary folder, so that build shared libraries
+are given priority when loading at run time.
 
-where * refers to the library version.
-
-#### DEBUG/RELEASE
+#### Debug/Release
 
 Default build type is `Release`. For a `Debug` build, run:
 
@@ -80,7 +88,7 @@ for a machine with 8 logical cores.
 
 Binaries are located in the `bin` directory.
 
-#### INSTALL
+#### Install
 
 Root users may run:
 
@@ -100,7 +108,7 @@ Note: On Linux, after a shared library build, run
 
 to update the shared library cache.
 
-#### DOCUMENTATION
+#### Documentation
 
 To build the Doxygen documentation (Doxygen needs to be found on the system):
 
@@ -108,7 +116,7 @@ To build the Doxygen documentation (Doxygen needs to be found on the system):
 
 A `HTML` directory is generated in the `doc` directory
 
-#### CMAKE FLAGS
+#### Cmake Flags
 
 Important `cmake` flags:
 
@@ -118,32 +126,36 @@ Important `cmake` flags:
  `-DBUILD_SHARED_LIBS:bool=on` (default: `ON`)
 
   Note: when using this option, static libraries are not built and executables are dynamically linked.
-* To build the core codec : `-DBUILD_CODEC:bool=on` (default: `ON`)
-* To build the documentation: `-DBUILD_DOC:bool=on` (default: `OFF`)
-* To enable testing (with results automatically uploaded to http://my.cdash.org/index.php?project=grok)
+* To build the core codec : `-DBUILD_CODEC:bool=ON` (default: `ON`)
+* To build the documentation: `-DBUILD_DOC:bool=ON` (default: `OFF`)
+* To enable testing :
 
-      $  cmake . -DBUILD_TESTING:BOOL=ON -DGRK_DATA_ROOT:PATH='path/to/the/data/directory'
-      $  make
-      $  make Experimental
+      $  cmake . -DBUILD_TESTING:BOOL=ON -DGRK_DATA_ROOT:PATH='PATH/TO/DATA/DIRECTORY'
+      $  make -j8
+      $  ctest -D NightlyMemCheck
 
-Note : JPEG 2000 test files can be cloned [here](https://github.com/GrokImageCompression/grok-test-data.git)
-If the `-DGRK_DATA_ROOT:PATH` option is omitted, test files will be automatically searched for in
- `${CMAKE_SOURCE_DIR}/../grok-test-data`
+Note : JPEG 2000 test files can be cloned
+[here](https://github.com/GrokImageCompression/grok-test-data.git)
+If the `-DGRK_DATA_ROOT:PATH` option is omitted,
+test files will be automatically searched for in
+`${CMAKE_SOURCE_DIR}/../grok-test-data`
 
 
-## OSX
+## Macos
 
-OSX builds are configured similar to Unix builds.
+Macos builds are configured similar to *NIX builds.
 The Xcode project files can be generated using:
 
 `$ cmake -G Xcode ....`
 
 
-## WINDOWS
+## Windows
 
-### SHARED/STATIC
+### Shared vs. Static
 
-The `BUILD_SHARED_LIBS` `cmake` flag determines if the `grk_compress` and `grk_decompress` binaries are linked to dynamic or static builds of the codec library `libgrokj2k`, and also if a static or dynamic version of `libgrokj2k` is built on the system.
+The `BUILD_SHARED_LIBS` `cmake` flag determines if the `grk_compress` and `grk_decompress`
+binaries are linked to dynamic or static builds of the codec library `libgrokj2k`,
+and also if a static or dynamic version of `libgrokj2k` is built on the system.
 
 
 ### Compile
@@ -154,13 +166,15 @@ Type `cmake --help` for available generators on your platform.
 
 ### Third Party Libraries
 
-Make sure to build the third party libs (`libpng`, `zlib` etc.) :
+Third party libraries such as `libtiff` are built by default. To disable
+these library builds and use the version installed on your system, set :
 
-  `-DGROK_BUILD_THIRDPARTY:BOOL=ON`
+  `-DGROK_BUILD_THIRDPARTY:BOOL=OFF`
 
 #### JPEG Support
 
-To encode and decode JPEG files, a `libjpeg`-compatible library (`-dev` version) must be installed.
+To encode and decode JPEG files, a `libjpeg`-compatible library
+(`-dev` version) must be installed.
 Recommended library : [libjpeg-turbo](https://github.com/libjpeg-turbo/libjpeg-turbo)
 On Debian systems, the `libjpeg-turbo8-dev` package will provide a development
 version of the library.
