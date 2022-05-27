@@ -37,7 +37,7 @@ uint32_t Strip::reduceDim(uint32_t dim)
 {
 	return reduce_ ? ceildivpow2<uint32_t>(dim, reduce_) : dim;
 }
-bool Strip::allocInterleaved(uint64_t len,BufPool *pool){
+bool Strip::allocInterleavedLocked(uint64_t len,BufPool *pool){
 	if (allocatedInterleaved_.load(std::memory_order_acquire))
 		return true;
 	std::unique_lock<std::mutex> lk(interleaveMutex_);
@@ -45,6 +45,11 @@ bool Strip::allocInterleaved(uint64_t len,BufPool *pool){
 		return true;
 	stripImg->interleavedData = pool->get(len);
 	allocatedInterleaved_.store(true, std::memory_order_release);
+
+	return stripImg->interleavedData.data_;
+}
+bool Strip::allocInterleaved(uint64_t len,BufPool *pool){
+	stripImg->interleavedData = pool->get(len);
 
 	return stripImg->interleavedData.data_;
 }
@@ -179,7 +184,7 @@ bool StripCache::ingestTile(uint32_t threadId,GrkImage* src)
 	// use height of first component, because no subsampling
 	uint64_t dataLen = packedRowBytes_ * dest->comps->h;
 	uint64_t offset  = packedRowBytes_ * dest->comps->y0;
-	if (!strip->allocInterleaved(dataLen, pools_[threadId]))
+	if (!strip->allocInterleavedLocked(dataLen, pools_[threadId]))
 		return false;
 	if(!dest->compositeInterleaved(src))
 		return false;

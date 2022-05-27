@@ -1039,13 +1039,8 @@ bool TileProcessor::rateAllocate(uint32_t* allPacketBytes)
 	{
 		case 0:
 			return pcrdBisectSimple(allPacketBytes);
-			break;
-		case 1:
-			return pcrdBisectFeasible(allPacketBytes);
-			break;
 		default:
 			return pcrdBisectFeasible(allPacketBytes);
-			break;
 	}
 }
 bool TileProcessor::layerNeedsRateControl(uint32_t layno)

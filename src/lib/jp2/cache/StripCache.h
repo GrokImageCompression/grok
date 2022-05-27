@@ -93,6 +93,7 @@ struct Strip
 	~Strip(void);
 	uint32_t getIndex(void);
 	uint32_t reduceDim(uint32_t dim);
+	bool allocInterleavedLocked(uint64_t len,BufPool *pool);
 	bool allocInterleaved(uint64_t len,BufPool *pool);
 	GrkImage* stripImg;
 	std::atomic<uint32_t> tileCounter; // count number of tiles added to strip
