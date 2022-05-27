@@ -14,10 +14,9 @@ static bool grkReclaimCallback(uint32_t threadId, grk_io_buf buffer, void* io_us
 }
 
 Strip::Strip(GrkImage* outputImage, uint16_t index, uint32_t nominalHeight, uint8_t reduce)
-	: stripImg(nullptr), tileCounter(0), index_(index), reduce_(reduce),
+	: stripImg(new GrkImage()), tileCounter(0), reduce_(reduce),
 	  allocatedInterleaved_(false)
 {
-	stripImg = new GrkImage();
 	outputImage->copyHeader(stripImg);
 
 	stripImg->y0 = outputImage->y0 + index * nominalHeight;
@@ -28,10 +27,6 @@ Strip::Strip(GrkImage* outputImage, uint16_t index, uint32_t nominalHeight, uint
 Strip::~Strip(void)
 {
 	grk_object_unref(&stripImg->obj);
-}
-uint32_t Strip::getIndex(void)
-{
-	return index_;
 }
 uint32_t Strip::reduceDim(uint32_t dim)
 {
@@ -129,47 +124,8 @@ bool StripCache::ingestStrip(uint32_t threadId, Tile* src, uint32_t yBegin, uint
 	dest->interleavedData.data_ = nullptr;
 	if (grokNewIO)
 		return ioBufferCallback_(threadId, buf, ioUserData_);
-	std::queue<GrkIOBuf> buffersToSerialize;
-	{
-		std::unique_lock<std::mutex> lk(heapMutex_);
-		// 1. push to heap
-		serializeHeap.push(buf);
-		// 2. get all sequential buffers in heap
-		buf = serializeHeap.pop();
-		while(buf.data_)
-		{
-			buffersToSerialize.push(buf);
-			buf = serializeHeap.pop();
-		}
-	}
-	// 3. serialize buffers
-	if(!buffersToSerialize.empty())
-	{
-		{
-			std::unique_lock<std::mutex> lk(serializeMutex_);
-			while(!buffersToSerialize.empty())
-			{
-				auto b = buffersToSerialize.front();
-				if(!ioBufferCallback_(threadId,b, ioUserData_))
-					break;
-				buffersToSerialize.pop();
-			}
-		}
-		// if non empty, then there has been a serialize failure
-		if(!buffersToSerialize.empty())
-		{
-			// cleanup
-			while(!buffersToSerialize.empty())
-			{
-				auto b = buffersToSerialize.front();
-				b.dealloc();
-				buffersToSerialize.pop();
-			}
-			return false;
-		}
-	}
 
-	return true;
+	return serialize(threadId, buf);
 }
 bool StripCache::ingestTile(uint32_t threadId,GrkImage* src)
 {
@@ -198,45 +154,51 @@ bool StripCache::ingestTile(uint32_t threadId,GrkImage* src)
 		dest->interleavedData.data_ = nullptr;
 		if (grokNewIO)
 			return ioBufferCallback_(threadId, buf, ioUserData_);
+		if (!serialize(threadId, buf))
+			return false;
+	}
 
-		std::queue<GrkIOBuf> buffersToSerialize;
+	return true;
+}
+
+bool StripCache::serialize(uint32_t threadId,GrkIOBuf buf){
+	std::queue<GrkIOBuf> buffersToSerialize;
+	{
+		std::unique_lock<std::mutex> lk(heapMutex_);
+		// 1. push to heap
+		serializeHeap.push(buf);
+		// 2. get all sequential buffers in heap
+		buf = serializeHeap.pop();
+		while(buf.data_)
 		{
-			std::unique_lock<std::mutex> lk(heapMutex_);
-			// 1. push to heap
-			serializeHeap.push(buf);
-			// 2. get all sequential buffers in heap
+			buffersToSerialize.push(buf);
 			buf = serializeHeap.pop();
-			while(buf.data_)
+		}
+	}
+	// 3. serialize buffers
+	if(!buffersToSerialize.empty())
+	{
+		{
+			std::unique_lock<std::mutex> lk(serializeMutex_);
+			while(!buffersToSerialize.empty())
 			{
-				buffersToSerialize.push(buf);
-				buf = serializeHeap.pop();
+				auto b = buffersToSerialize.front();
+				if(!ioBufferCallback_(threadId, b, ioUserData_))
+					break;
+				buffersToSerialize.pop();
 			}
 		}
-		// 3. serialize buffers
+		// if non empty, then there has been a serialize failure
 		if(!buffersToSerialize.empty())
 		{
+			// cleanup
+			while(!buffersToSerialize.empty())
 			{
-				std::unique_lock<std::mutex> lk(serializeMutex_);
-				while(!buffersToSerialize.empty())
-				{
-					auto b = buffersToSerialize.front();
-					if(!ioBufferCallback_(threadId, b, ioUserData_))
-						break;
-					buffersToSerialize.pop();
-				}
+				auto b = buffersToSerialize.front();
+				b.dealloc();
+				buffersToSerialize.pop();
 			}
-			// if non empty, then there has been a serialize failure
-			if(!buffersToSerialize.empty())
-			{
-				// cleanup
-				while(!buffersToSerialize.empty())
-				{
-					auto b = buffersToSerialize.front();
-					b.dealloc();
-					buffersToSerialize.pop();
-				}
-				return false;
-			}
+			return false;
 		}
 	}
 

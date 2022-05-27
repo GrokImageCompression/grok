@@ -86,7 +86,6 @@ private:
 	std::map<uint8_t*, GrkIOBuf> pool;
 };
 
-
 struct Strip
 {
 	Strip(GrkImage* outputImage, uint16_t index, uint32_t nominalHeight, uint8_t reduce);
@@ -97,7 +96,6 @@ struct Strip
 	bool allocInterleaved(uint64_t len,BufPool *pool);
 	GrkImage* stripImg;
 	std::atomic<uint32_t> tileCounter; // count number of tiles added to strip
-	uint32_t index_; // index of strip
 	uint8_t reduce_; // resolution reduction
 	mutable std::mutex interleaveMutex_;
 	mutable std::atomic<bool> allocatedInterleaved_;
@@ -125,6 +123,7 @@ class StripCache
 	bool isMultiTile(void);
 
   private:
+	bool serialize(uint32_t threadId, GrkIOBuf buf);
 	std::vector<BufPool*> pools_;
 	Strip** strips;
 	uint16_t numTilesX_;
