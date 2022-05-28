@@ -291,7 +291,7 @@ bool T2Decompress::readPacketHeader(TileCodingParams* tcp,
 		{
 			uint16_t numIteratedPackets =
 				(uint16_t)(((uint16_t)active_src[4] << 8) | active_src[5]);
-			if(numIteratedPackets != (tileProcessor->getNumProcessedPackets() % 0x10000))
+			if(numIteratedPackets != (tileProcessor->getNumProcessedPackets() & 0xFFFF))
 			{
 				GRK_WARN("SOP marker packet counter %u does not match expected counter %u",
 						 numIteratedPackets, tileProcessor->getNumProcessedPackets());
@@ -490,10 +490,7 @@ bool T2Decompress::readPacketHeader(TileCodingParams* tcp,
 						 */
 						blockPassesInPacket -= (int32_t)seg->numPassesInPacket;
 						if(blockPassesInPacket > 0)
-						{
-							++segno;
-							initSegment(cblk, segno, tccp->cblk_sty, false);
-						}
+							initSegment(cblk, ++segno, tccp->cblk_sty, false);
 					} while(blockPassesInPacket > 0);
 				}
 			}
