@@ -86,7 +86,7 @@ static uint64_t TiffSize(thandle_t handle)
 
 TIFF* TIFFFormat::MyTIFFOpen(const char* name, const char* mode)
 {
-	if(!serializer.open(name, mode,true))
+	if(!serializer.open(name, mode, true))
 		return ((TIFF*)0);
 	auto tif = TIFFClientOpen(name, mode, &serializer, TiffRead, TiffWrite, TiffSeek, TiffClose,
 							  TiffSize, nullptr, nullptr);
@@ -98,22 +98,18 @@ TIFF* TIFFFormat::MyTIFFOpen(const char* name, const char* mode)
 
 #endif
 
-
 const bool grokNewIO = false;
 
-static bool ioReclaimCallback(uint32_t threadId,
-		                               io::io_buf *buffer, void* io_user_data)
+static bool ioReclaimCallback(uint32_t threadId, io::io_buf* buffer, void* io_user_data)
 {
 	auto tiffFormat = (TIFFFormat*)io_user_data;
 
 	return tiffFormat->ioReclaim(threadId, buffer);
 }
 
-
-TIFFFormat::TIFFFormat() : tif_(nullptr), chroma_subsample_x(1),
-							chroma_subsample_y(1), units(0),
-							grkReclaimCallback_(nullptr),
-							grkReclaimUserData_(nullptr)
+TIFFFormat::TIFFFormat()
+	: tif_(nullptr), chroma_subsample_x(1), chroma_subsample_y(1), units(0),
+	  grkReclaimCallback_(nullptr), grkReclaimUserData_(nullptr)
 
 {}
 TIFFFormat::~TIFFFormat()
@@ -122,74 +118,66 @@ TIFFFormat::~TIFFFormat()
 		TIFFClose(tif_);
 }
 
-void TIFFFormat::registerGrkReclaimCallback(grk_io_callback reclaim_callback,
-												  void* user_data)
+void TIFFFormat::registerGrkReclaimCallback(grk_io_callback reclaim_callback, void* user_data)
 {
 	grkReclaimCallback_ = reclaim_callback;
 	grkReclaimUserData_ = user_data;
-
 }
-bool TIFFFormat::ioReclaim(uint32_t threadId, io::io_buf *buffer){
+bool TIFFFormat::ioReclaim(uint32_t threadId, io::io_buf* buffer)
+{
+	if(!grkReclaimCallback_)
+		return false;
 
-	 if (!grkReclaimCallback_)
-		 return false;
+	grk_io_buf b;
+	b.data_ = buffer->data_;
+	b.allocLen_ = buffer->allocLen_;
+	grkReclaimCallback_(threadId, b, grkReclaimUserData_);
 
-	 grk_io_buf b;
-	 b.data_ = buffer->data_;
-	 b.allocLen_ = buffer->allocLen_;
-	 grkReclaimCallback_(threadId, b, grkReclaimUserData_);
+	buffer->data_ = nullptr;
+	io::RefReaper::unref((io::IOBuf*)buffer);
 
-	 buffer->data_ = nullptr;
-	 io::RefReaper::unref((io::IOBuf*)buffer);
-
-	 return true;
+	return true;
 }
 
 bool TIFFFormat::encodeInit(grk_image* image, const std::string& filename,
-						uint32_t compressionLevel,
-						uint32_t concurrency) {
-
+							uint32_t compressionLevel, uint32_t concurrency)
+{
 	if(encodeState & IMAGE_FORMAT_ENCODED_PIXELS)
 	{
 		assert(!tif_);
 		return true;
 	}
 
-	if (!ImageFormat::encodeInit(image, filename, compressionLevel, concurrency))
+	if(!ImageFormat::encodeInit(image, filename, compressionLevel, concurrency))
 		return false;
 
-    if (grokNewIO) {
-		ioTiffFormat.setHeaderWriter([this](TIFF *tif){
-			return encodeHeader(tif);
-		});
+	if(grokNewIO)
+	{
+		ioTiffFormat.setHeaderWriter([this](TIFF* tif) { return encodeHeader(tif); });
 
-		ioTiffFormat.setEncodeFinisher([this](void){
-				return encodeFinish();
-			});
+		ioTiffFormat.setEncodeFinisher([this](void) { return encodeFinish(); });
 
 		// initialize
-		ioTiffFormat.init(image_->comps->w,
-						  image_->comps->h,
-						  image_->numcomps,
-						  image_->packedRowBytes,
-						  image->rowsPerStrip,
-						  false);
+		ioTiffFormat.init(image_->comps->w, image_->comps->h, image_->numcomps,
+						  image_->packedRowBytes, image->rowsPerStrip, false);
 
 		bool asynch = false;
 #ifdef GROK_HAVE_URING
 		asynch = true;
 #endif
-		if (!ioTiffFormat.encodeInit(fileName_, false, concurrency, asynch))
+		if(!ioTiffFormat.encodeInit(fileName_, false, concurrency, asynch))
 			return false;
-		ioTiffFormat.registerReclaimCallback(ioReclaimCallback,this);
-    }
+		ioTiffFormat.registerReclaimCallback(ioReclaimCallback, this);
+	}
 
 	return true;
 }
-bool TIFFFormat::encodeHeader(void){
-    if (grokNewIO) {
-    	return true;
-    }
+bool TIFFFormat::encodeHeader(void)
+{
+	if(grokNewIO)
+	{
+		return true;
+	}
 
 	if(isHeaderEncoded())
 		return true;
@@ -207,7 +195,7 @@ bool TIFFFormat::encodeHeader(void){
 
 	return encodeHeader(tif_);
 }
-bool TIFFFormat::encodeHeader(TIFF *tif)
+bool TIFFFormat::encodeHeader(TIFF* tif)
 {
 	if(isHeaderEncoded())
 		return true;
@@ -429,7 +417,8 @@ cleanup:
  */
 bool TIFFFormat::encodePixels(uint32_t threadId, grk_io_buf pixels)
 {
-    if (grokNewIO) {
+	if(grokNewIO)
+	{
 		auto b = new io::IOBuf();
 		b->index_ = pixels.index_;
 		b->data_ = pixels.data_;
@@ -438,7 +427,7 @@ bool TIFFFormat::encodePixels(uint32_t threadId, grk_io_buf pixels)
 		b->offset_ = pixels.offset_;
 
 		return ioTiffFormat.encodePixels(threadId, &b, 1);
-    }
+	}
 
 	std::unique_lock<std::mutex> lk(encodePixelmutex);
 	if(encodeState & IMAGE_FORMAT_ENCODED_PIXELS)
@@ -498,7 +487,7 @@ bool TIFFFormat::encodePixels()
 				packedBuf.len_ = bytesToWrite;
 				packedBuf.offset_ = serializer.getOffset();
 				packedBuf.index_ = serializer.getNumPooledRequests();
-				if(bytesToWrite && !encodePixelsCore(UINT_MAX,packedBuf))
+				if(bytesToWrite && !encodePixelsCore(UINT_MAX, packedBuf))
 					goto cleanup;
 				packedBuf = pool.get(packedLengthEncoded);
 				bufPtr = (int8_t*)(packedBuf.data_);
@@ -544,7 +533,7 @@ bool TIFFFormat::encodePixels()
 		packedBuf.len_ = bytesToWrite;
 		packedBuf.offset_ = serializer.getOffset();
 		packedBuf.index_ = serializer.getNumPooledRequests();
-		if(bytesToWrite && !encodePixelsCore(UINT_MAX,packedBuf))
+		if(bytesToWrite && !encodePixelsCore(UINT_MAX, packedBuf))
 			goto cleanup;
 	}
 	else
@@ -562,7 +551,7 @@ bool TIFFFormat::encodePixels()
 			packedBuf.offset_ = serializer.getOffset();
 			packedBuf.len_ = image_->packedRowBytes * stripRows;
 			packedBuf.index_ = serializer.getNumPooledRequests();
-			if(!encodePixelsCore(UINT_MAX,packedBuf))
+			if(!encodePixelsCore(UINT_MAX, packedBuf))
 			{
 				delete iter;
 				goto cleanup;

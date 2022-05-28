@@ -121,7 +121,7 @@ bool BitIO::write(uint32_t v, uint32_t n)
 
 bool BitIO::write(uint32_t v)
 {
-	return putbit(v& 1);
+	return putbit(v & 1);
 }
 
 uint8_t BitIO::read(void)

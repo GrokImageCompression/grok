@@ -1018,50 +1018,30 @@ std::string GrkImage::getICCColourSpaceString(cmsColorSpaceSignature color_space
 
 	return rc;
 }
-bool GrkImage::isValidICCColourSpace(uint32_t signature){
-	return    (signature == cmsSigXYZData ) ||
-				(signature == cmsSigLabData ) ||
-				(signature == cmsSigLuvData ) ||
-				(signature == cmsSigYCbCrData ) ||
-				(signature == cmsSigYxyData ) ||
-				(signature == cmsSigRgbData ) ||
-				(signature == cmsSigGrayData ) ||
-				(signature == cmsSigHsvData ) ||
-				(signature == cmsSigHlsData ) ||
-				(signature == cmsSigCmykData ) ||
-				(signature == cmsSigCmyData ) ||
-				(signature == cmsSigMCH1Data ) ||
-				(signature == cmsSigMCH2Data ) ||
-				(signature == cmsSigMCH3Data ) ||
-				(signature == cmsSigMCH4Data ) ||
-				(signature == cmsSigMCH5Data ) ||
-				(signature == cmsSigMCH6Data ) ||
-				(signature == cmsSigMCH7Data ) ||
-				(signature == cmsSigMCH8Data ) ||
-				(signature == cmsSigMCH9Data ) ||
-				(signature == cmsSigMCHAData ) ||
-				(signature == cmsSigMCHBData ) ||
-				(signature == cmsSigMCHCData ) ||
-				(signature == cmsSigMCHDData ) ||
-				(signature == cmsSigMCHEData ) ||
-				(signature == cmsSigMCHFData ) ||
-				(signature == cmsSigNamedData ) ||
-				(signature == cmsSig1colorData ) ||
-				(signature == cmsSig2colorData ) ||
-				(signature == cmsSig3colorData ) ||
-				(signature == cmsSig4colorData ) ||
-				(signature == cmsSig5colorData ) ||
-				(signature == cmsSig6colorData ) ||
-				(signature == cmsSig7colorData ) ||
-				(signature == cmsSig8colorData ) ||
-				(signature == cmsSig9colorData ) ||
-				(signature == cmsSig10colorData ) ||
-				(signature == cmsSig11colorData ) ||
-				(signature == cmsSig12colorData ) ||
-				(signature == cmsSig13colorData ) ||
-				(signature == cmsSig14colorData ) ||
-				(signature == cmsSig15colorData ) ||
-				(signature == cmsSigLuvKData );
+bool GrkImage::isValidICCColourSpace(uint32_t signature)
+{
+	return (signature == cmsSigXYZData) || (signature == cmsSigLabData) ||
+		   (signature == cmsSigLuvData) || (signature == cmsSigYCbCrData) ||
+		   (signature == cmsSigYxyData) || (signature == cmsSigRgbData) ||
+		   (signature == cmsSigGrayData) || (signature == cmsSigHsvData) ||
+		   (signature == cmsSigHlsData) || (signature == cmsSigCmykData) ||
+		   (signature == cmsSigCmyData) || (signature == cmsSigMCH1Data) ||
+		   (signature == cmsSigMCH2Data) || (signature == cmsSigMCH3Data) ||
+		   (signature == cmsSigMCH4Data) || (signature == cmsSigMCH5Data) ||
+		   (signature == cmsSigMCH6Data) || (signature == cmsSigMCH7Data) ||
+		   (signature == cmsSigMCH8Data) || (signature == cmsSigMCH9Data) ||
+		   (signature == cmsSigMCHAData) || (signature == cmsSigMCHBData) ||
+		   (signature == cmsSigMCHCData) || (signature == cmsSigMCHDData) ||
+		   (signature == cmsSigMCHEData) || (signature == cmsSigMCHFData) ||
+		   (signature == cmsSigNamedData) || (signature == cmsSig1colorData) ||
+		   (signature == cmsSig2colorData) || (signature == cmsSig3colorData) ||
+		   (signature == cmsSig4colorData) || (signature == cmsSig5colorData) ||
+		   (signature == cmsSig6colorData) || (signature == cmsSig7colorData) ||
+		   (signature == cmsSig8colorData) || (signature == cmsSig9colorData) ||
+		   (signature == cmsSig10colorData) || (signature == cmsSig11colorData) ||
+		   (signature == cmsSig12colorData) || (signature == cmsSig13colorData) ||
+		   (signature == cmsSig14colorData) || (signature == cmsSig15colorData) ||
+		   (signature == cmsSigLuvKData);
 }
 bool GrkImage::validateICC(void)
 {
@@ -1086,7 +1066,7 @@ bool GrkImage::validateICC(void)
 		iccColourSpace = cmsGetColorSpace(in_prof);
 		if(!isValidICCColourSpace(iccColourSpace))
 		{
-			GRK_WARN("Invalid ICC colour space 0x%x. Ignoring",iccColourSpace);
+			GRK_WARN("Invalid ICC colour space 0x%x. Ignoring", iccColourSpace);
 			cmsCloseProfile(in_prof);
 
 			return false;
@@ -1106,7 +1086,8 @@ bool GrkImage::validateICC(void)
 				else
 				{
 					auto compLuma = comps;
-					imagePropertiesMatchColourSpace = compLuma->dx == 1 && compLuma->dy == 1 && isSubsampled();
+					imagePropertiesMatchColourSpace =
+						compLuma->dx == 1 && compLuma->dy == 1 && isSubsampled();
 				}
 				break;
 			case cmsSigRgbData:
@@ -1147,8 +1128,9 @@ bool GrkImage::validateICC(void)
 		return false;
 	}
 	if(!imageColourSpaceMatchesICCColourSpace)
-		GRK_WARN("Image subsampling / number of components do not match ICC colour space %s. Ignoring",
-				 getICCColourSpaceString((cmsColorSpaceSignature)iccColourSpace).c_str());
+		GRK_WARN(
+			"Image subsampling / number of components do not match ICC colour space %s. Ignoring",
+			getICCColourSpaceString((cmsColorSpaceSignature)iccColourSpace).c_str());
 
 	return imagePropertiesMatchColourSpace;
 }

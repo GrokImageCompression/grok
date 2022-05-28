@@ -26,8 +26,7 @@ struct GrkIOBuf : public grk_io_buf
 {
   public:
 	GrkIOBuf() : GrkIOBuf(nullptr, 0, 0, 0, false) {}
-	GrkIOBuf(uint8_t* data, uint64_t offset, uint64_t dataLen, uint64_t allocLen,
-					bool pooled)
+	GrkIOBuf(uint8_t* data, uint64_t offset, uint64_t dataLen, uint64_t allocLen, bool pooled)
 	{
 		data_ = data;
 		offset_ = offset;

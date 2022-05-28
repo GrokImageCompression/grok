@@ -307,8 +307,7 @@ uint32_t PLMarkerMgr::pop(void)
 	{
 		// read next packet length
 		while(currMarkerBuf_->canRead() && !readNextByte(currMarkerBuf_->read(), &rc))
-		{
-		}
+		{}
 		// advance to next buffer
 		if(currMarkerBuf_->offset == currMarkerBuf_->len)
 		{

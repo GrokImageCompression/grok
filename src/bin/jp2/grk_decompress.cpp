@@ -966,8 +966,8 @@ static void cleanUpFile(const char* outfile)
 		free(p);
 }
 
-static void grkSerializeRegisterClientCallback(grk_io_callback reclaim_callback,
-											   void* io_user_data, void* reclaim_user_data)
+static void grkSerializeRegisterClientCallback(grk_io_callback reclaim_callback, void* io_user_data,
+											   void* reclaim_user_data)
 {
 	if(!io_user_data || !reclaim_user_data)
 		return;
@@ -1017,11 +1017,10 @@ bool GrkDecompress::encodeInit(grk_plugin_decompress_callback_info* info)
 		compressionLevel = parameters->compression;
 	else if(cod_format == GRK_JPG_FMT || cod_format == GRK_PNG_FMT)
 		compressionLevel = parameters->compressionLevel;
-	if(!imageFormat->encodeInit(info->image, outfileStr,
-			compressionLevel,
-			info->decompressor_parameters->numThreads ?
-					info->decompressor_parameters->numThreads :
-						std::thread::hardware_concurrency()))
+	if(!imageFormat->encodeInit(info->image, outfileStr, compressionLevel,
+								info->decompressor_parameters->numThreads
+									? info->decompressor_parameters->numThreads
+									: std::thread::hardware_concurrency()))
 	{
 		spdlog::error("Outfile {} not generated", outfileStr);
 		return false;
@@ -1229,8 +1228,7 @@ int GrkDecompress::preProcess(grk_plugin_decompress_callback_info* info)
 		}
 
 		// store xml to file
-		if(info->header_info.xml_data && info->header_info.xml_data_len &&
-		   parameters->io_xml)
+		if(info->header_info.xml_data && info->header_info.xml_data_len && parameters->io_xml)
 		{
 			std::string xmlFile = std::string(parameters->outfile) + ".xml";
 			auto fp = fopen(xmlFile.c_str(), "wb");

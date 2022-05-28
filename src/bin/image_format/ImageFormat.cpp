@@ -41,8 +41,7 @@ ImageFormat::~ImageFormat()
 {
 	delete fileIO_;
 }
-void ImageFormat::registerGrkReclaimCallback(grk_io_callback reclaim_callback,
-												  void* user_data)
+void ImageFormat::registerGrkReclaimCallback(grk_io_callback reclaim_callback, void* user_data)
 {
 	serializer.registerGrkReclaimCallback(reclaim_callback, user_data);
 }
@@ -50,7 +49,7 @@ void ImageFormat::ioReclaimBuffer(uint32_t threadId, grk_io_buf buffer)
 {
 	auto cb = serializer.getIOReclaimCallback();
 	if(cb)
-		cb(threadId,buffer, serializer.getIOReclaimUserData());
+		cb(threadId, buffer, serializer.getIOReclaimUserData());
 }
 #ifndef GROK_HAVE_URING
 void ImageFormat::reclaim(uint32_t threadId, grk_io_buf pixels)
@@ -60,8 +59,7 @@ void ImageFormat::reclaim(uint32_t threadId, grk_io_buf pixels)
 }
 #endif
 bool ImageFormat::encodeInit(grk_image* image, const std::string& filename,
-							 uint32_t compressionLevel,
-							 uint32_t concurrency)
+							 uint32_t compressionLevel, uint32_t concurrency)
 {
 	compressionLevel_ = compressionLevel;
 	concurrency_ = concurrency;

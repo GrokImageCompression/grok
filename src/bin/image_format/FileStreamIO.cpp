@@ -109,4 +109,3 @@ FILE* FileStreamIO::getFileStream()
 {
 	return fileHandle_;
 }
-

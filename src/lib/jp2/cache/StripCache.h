@@ -13,8 +13,8 @@ struct GrkIOBuf : public grk_io_buf
 {
   public:
 	GrkIOBuf() : GrkIOBuf(nullptr, 0, 0, 0, false, 0) {}
-	GrkIOBuf(uint8_t* data, uint64_t offset, uint64_t dataLen, uint64_t allocLen,
-					bool pooled, uint32_t index)
+	GrkIOBuf(uint8_t* data, uint64_t offset, uint64_t dataLen, uint64_t allocLen, bool pooled,
+			 uint32_t index)
 	{
 		this->data_ = data;
 		this->offset_ = offset;
@@ -55,13 +55,16 @@ struct GrkIOBuf : public grk_io_buf
 	}
 };
 
-class BufPool {
-public:
-	~BufPool(void){
+class BufPool
+{
+  public:
+	~BufPool(void)
+	{
 		for(auto& b : pool)
 			b.second.dealloc();
 	}
-	GrkIOBuf get(uint64_t len){
+	GrkIOBuf get(uint64_t len)
+	{
 		for(auto iter = pool.begin(); iter != pool.end(); ++iter)
 		{
 			if(iter->second.allocLen_ >= len)
@@ -77,12 +80,14 @@ public:
 
 		return rc;
 	}
-	void put(GrkIOBuf b){
+	void put(GrkIOBuf b)
+	{
 		assert(b.data_);
 		assert(pool.find(b.data_) == pool.end());
 		pool[b.data_] = b;
 	}
-private:
+
+  private:
 	std::map<uint8_t*, GrkIOBuf> pool;
 };
 
@@ -92,8 +97,8 @@ struct Strip
 	~Strip(void);
 	uint32_t getIndex(void);
 	uint32_t reduceDim(uint32_t dim);
-	bool allocInterleavedLocked(uint64_t len,BufPool *pool);
-	bool allocInterleaved(uint64_t len,BufPool *pool);
+	bool allocInterleavedLocked(uint64_t len, BufPool* pool);
+	bool allocInterleaved(uint64_t len, BufPool* pool);
 	GrkImage* stripImg;
 	std::atomic<uint32_t> tileCounter; // count number of tiles added to strip
 	uint8_t reduce_; // resolution reduction
@@ -107,15 +112,10 @@ class StripCache
 	StripCache(void);
 	virtual ~StripCache();
 
-	void init(uint32_t concurrency,
-			uint16_t numTiles_,
-			uint32_t numStrips,
-			uint32_t nominalStripHeight,
-			uint8_t reduce,
-			GrkImage* outputImg,
-			grk_io_pixels_callback ioBufferCallback,
-			void* ioUserData,
-			grk_io_register_reclaim_callback grkRegisterReclaimCallback);
+	void init(uint32_t concurrency, uint16_t numTiles_, uint32_t numStrips,
+			  uint32_t nominalStripHeight, uint8_t reduce, GrkImage* outputImg,
+			  grk_io_pixels_callback ioBufferCallback, void* ioUserData,
+			  grk_io_register_reclaim_callback grkRegisterReclaimCallback);
 	bool ingestTile(uint32_t threadId, GrkImage* src);
 	bool ingestTile(GrkImage* src);
 	bool ingestStrip(uint32_t threadId, Tile* src, uint32_t yBegin, uint32_t yEnd);

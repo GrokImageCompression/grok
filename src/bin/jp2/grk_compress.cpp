@@ -721,9 +721,10 @@ static int parseCommandLine(int argc, char** argv, CompressInitParams* initParam
 				{
 					isHT = true;
 					parameters->numgbits = 1;
-					if (compressionRatiosArg.isSet() || qualityArg.isSet()){
+					if(compressionRatiosArg.isSet() || qualityArg.isSet())
+					{
 						spdlog::warn("HTJ2K compression using rate distortion or quality"
-									" is not currently supported.");
+									 " is not currently supported.");
 					}
 				}
 			}

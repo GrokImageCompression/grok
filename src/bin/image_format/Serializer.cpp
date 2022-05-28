@@ -18,8 +18,7 @@ void Serializer::setMaxPooledRequests(uint32_t maxRequests)
 {
 	maxPooledRequests_ = maxRequests;
 }
-void Serializer::registerGrkReclaimCallback(grk_io_callback reclaim_callback,
-												 void* user_data)
+void Serializer::registerGrkReclaimCallback(grk_io_callback reclaim_callback, void* user_data)
 {
 	reclaim_callback_ = reclaim_callback;
 	reclaim_user_data_ = user_data;
@@ -111,7 +110,8 @@ bool Serializer::open(std::string name, std::string mode, bool asynch)
 		}
 	}
 #ifdef GROK_HAVE_URING
-	if (asynch) {
+	if(asynch)
+	{
 		if(!uring.attach(name, mode, fd))
 			return false;
 		asynchActive_ = true;
@@ -162,15 +162,16 @@ size_t Serializer::write(uint8_t* buf, size_t bytes_total)
 		uring.write(scheduled_);
 		off_ += scheduled_.len_;
 		// 2. close uring if this is final buffer to schedule
-		if(scheduled_.pooled_ && (++numPooledRequests_ == maxPooledRequests_)){
+		if(scheduled_.pooled_ && (++numPooledRequests_ == maxPooledRequests_))
+		{
 			asynchActive_ = false;
-			bool rc =  uring.close();
+			bool rc = uring.close();
 			// todo: handle return value
 			assert(rc);
 			GRK_UNUSED(rc);
 			close();
 			// todo: re-open in buffered mode
-			open(filename_,"a",false);
+			open(filename_, "a", false);
 		}
 		// 3. clear scheduled
 		scheduled_ = GrkIOBuf();

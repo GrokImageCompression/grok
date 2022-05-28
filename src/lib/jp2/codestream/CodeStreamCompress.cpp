@@ -117,7 +117,7 @@ bool CodeStreamCompress::init(grk_cparameters* parameters, GrkImage* image)
 	if(!parameters || !image)
 		return false;
 
-	bool isHT = (parameters->cblk_sty  & 0X7F) ==GRK_CBLKSTY_HT;
+	bool isHT = (parameters->cblk_sty & 0X7F) == GRK_CBLKSTY_HT;
 
 	// sanity check on image
 	if(image->numcomps < 1 || image->numcomps > maxNumComponentsJ2K)
@@ -164,8 +164,10 @@ bool CodeStreamCompress::init(grk_cparameters* parameters, GrkImage* image)
 		}
 	}
 
-	if (isHT){
-		if (parameters->numlayers > 1 || parameters->layer_rate[0] != 0) {
+	if(isHT)
+	{
+		if(parameters->numlayers > 1 || parameters->layer_rate[0] != 0)
+		{
 			GRK_WARN("Rate control not supported for HTJ2K compression.");
 			parameters->numlayers = 1;
 			parameters->layer_rate[0] = 0;

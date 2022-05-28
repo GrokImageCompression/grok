@@ -14,13 +14,13 @@
  *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-
 #include "TIFFFormat.h"
 #include "tiffiop.h"
 
 #include <climits>
 
-namespace io {
+namespace io
+{
 
 static tmsize_t TiffRead(thandle_t handle, void* buf, tmsize_t size)
 {
@@ -43,7 +43,7 @@ static toff_t TiffSeek(thandle_t handle, toff_t off, int whence)
 {
 	auto* serializer_ = (Serializer*)handle;
 
-	if (off > LLONG_MAX)
+	if(off > LLONG_MAX)
 	{
 		errno = EINVAL;
 		return (uint64_t)-1;
@@ -64,39 +64,42 @@ static toff_t TiffSize(thandle_t handle)
 	return 0U;
 }
 
-TIFFFormat::TIFFFormat() : TIFFFormat(false)
+TIFFFormat::TIFFFormat() : TIFFFormat(false) {}
+
+TIFFFormat::TIFFFormat(bool flushOnClose)
+	: ImageFormat(flushOnClose, (uint8_t*)&header_, sizeof(header_)), tif_(nullptr)
 {}
 
-TIFFFormat::TIFFFormat(bool flushOnClose) :
-							ImageFormat(flushOnClose,
-										(uint8_t*)&header_,
-										sizeof(header_)),
-							tif_(nullptr)
-{}
-
-bool TIFFFormat::close(void){
-	if (!ImageFormat::close())
+bool TIFFFormat::close(void)
+{
+	if(!ImageFormat::close())
 		return false;
 
-	if(tif_) {
+	if(tif_)
+	{
 		TIFFClose(tif_);
 		tif_ = nullptr;
 	}
 
 	return true;
 }
-bool TIFFFormat::encodeHeader(void){
+bool TIFFFormat::encodeHeader(void)
+{
 	if(isHeaderEncoded())
 		return true;
 
-	if (headerWriter_) {
+	if(headerWriter_)
+	{
 		return headerWriter_(tif_);
-	} else {
+	}
+	else
+	{
 		TIFFSetField(tif_, TIFFTAG_IMAGEWIDTH, imageStripper_->width_);
 		TIFFSetField(tif_, TIFFTAG_IMAGELENGTH, imageStripper_->height_);
 		TIFFSetField(tif_, TIFFTAG_SAMPLESPERPIXEL, imageStripper_->numcomps_);
 		TIFFSetField(tif_, TIFFTAG_BITSPERSAMPLE, 8);
-		TIFFSetField(tif_, TIFFTAG_PHOTOMETRIC, imageStripper_->numcomps_ == 3 ? PHOTOMETRIC_RGB : PHOTOMETRIC_MINISBLACK);
+		TIFFSetField(tif_, TIFFTAG_PHOTOMETRIC,
+					 imageStripper_->numcomps_ == 3 ? PHOTOMETRIC_RGB : PHOTOMETRIC_MINISBLACK);
 		TIFFSetField(tif_, TIFFTAG_PLANARCONFIG, PLANARCONFIG_CONTIG);
 		TIFFSetField(tif_, TIFFTAG_ROWSPERSTRIP, imageStripper_->nominalStripHeight_);
 	}
@@ -104,7 +107,8 @@ bool TIFFFormat::encodeHeader(void){
 
 	return true;
 }
-void TIFFFormat::setHeaderWriter(std::function<bool(TIFF* tif)> writer){
+void TIFFFormat::setHeaderWriter(std::function<bool(TIFF* tif)> writer)
+{
 	headerWriter_ = writer;
 }
 bool TIFFFormat::encodeFinish(void)
@@ -114,20 +118,20 @@ bool TIFFFormat::encodeFinish(void)
 
 	serializer_.enableSimulateWrite();
 	// 1. open tiff and encode header
-	tif_ =   TIFFClientOpen(filename_.c_str(),
-			"w", &serializer_, TiffRead, TiffWrite,
-				TiffSeek, TiffClose,
-					TiffSize, nullptr, nullptr);
-	if (!tif_)
+	tif_ = TIFFClientOpen(filename_.c_str(), "w", &serializer_, TiffRead, TiffWrite, TiffSeek,
+						  TiffClose, TiffSize, nullptr, nullptr);
+	if(!tif_)
 		return false;
-	if (!encodeHeader())
+	if(!encodeHeader())
 		return false;
 
-	//2. simulate strip writes
-	for(uint32_t j = 0; j < imageStripper_->numStrips(); ++j){
-		tmsize_t written =
-			TIFFWriteEncodedStrip(tif_, j, nullptr, (tmsize_t)imageStripper_->getStrip(j)->logicalLen_);
-		if (written == -1){
+	// 2. simulate strip writes
+	for(uint32_t j = 0; j < imageStripper_->numStrips(); ++j)
+	{
+		tmsize_t written = TIFFWriteEncodedStrip(
+			tif_, j, nullptr, (tmsize_t)imageStripper_->getStrip(j)->logicalLen_);
+		if(written == -1)
+		{
 			printf("Error writing strip\n");
 			return false;
 		}
@@ -138,4 +142,4 @@ bool TIFFFormat::encodeFinish(void)
 	return encodeFinisher_ ? encodeFinisher_() : true;
 }
 
-}
+} // namespace io

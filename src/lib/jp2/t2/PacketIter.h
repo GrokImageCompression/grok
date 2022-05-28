@@ -35,7 +35,6 @@ enum J2K_T2_MODE
 	FINAL_PASS = 1 /** Function called in Tier 2 process*/
 };
 
-
 struct ResIncludeBuffers
 {
 	ResIncludeBuffers()
@@ -127,7 +126,6 @@ struct IncludeTracker
 	std::map<uint16_t, ResIncludeBuffers*>* include;
 };
 
-
 class PacketManager;
 
 /***
@@ -175,18 +173,19 @@ struct ResPrecinctInfo
  */
 struct PiResolution
 {
-	PiResolution() : precWidthExp(0), precHeightExp(0),
-					precinctGridWidth(0), precinctGridHeight(0),
-					precinctInfo(nullptr)
+	PiResolution()
+		: precWidthExp(0), precHeightExp(0), precinctGridWidth(0), precinctGridHeight(0),
+		  precinctInfo(nullptr)
 	{}
-	~PiResolution(){
+	~PiResolution()
+	{
 		delete precinctInfo;
 	}
 	uint32_t precWidthExp;
 	uint32_t precHeightExp;
 	uint32_t precinctGridWidth;
 	uint32_t precinctGridHeight;
-	ResPrecinctInfo *precinctInfo;
+	ResPrecinctInfo* precinctInfo;
 };
 
 /**
@@ -194,9 +193,9 @@ struct PiResolution
  */
 struct PiComp
 {
-	PiComp() : dx(0), dy(0), numresolutions(0), resolutions(nullptr)
-	{}
-	~PiComp(){
+	PiComp() : dx(0), dy(0), numresolutions(0), resolutions(nullptr) {}
+	~PiComp()
+	{
 		delete[] resolutions;
 	}
 

@@ -63,7 +63,7 @@ namespace HWY_NAMESPACE
 			}
 			if(info.stripCache_->isInitialized() && !info.stripCache_->isMultiTile())
 				info.stripCache_->ingestStrip((uint32_t)ExecSingleton::get()->this_worker_id(),
-												info.tile, info.yBegin, info.yEnd);
+											  info.tile, info.yBegin, info.yEnd);
 		}
 	};
 
@@ -98,7 +98,7 @@ namespace HWY_NAMESPACE
 			}
 			if(info.stripCache_->isInitialized() && !info.stripCache_->isMultiTile())
 				info.stripCache_->ingestStrip((uint32_t)ExecSingleton::get()->this_worker_id(),
-												info.tile, info.yBegin, info.yEnd);
+											  info.tile, info.yBegin, info.yEnd);
 		}
 	};
 

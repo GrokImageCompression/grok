@@ -154,8 +154,7 @@ static int32_t minpf_load(const char* path)
 
 	char fullPath[4096];
 	if(minpf_get_full_path(path, (void*)postLoadFunc, lib->handle, fullPath, 4096))
-	{
-	}
+	{}
 	else
 	{
 		minpf_unload_dynamic_library(lib);

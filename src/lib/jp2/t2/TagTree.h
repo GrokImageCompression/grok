@@ -53,8 +53,7 @@ class TagTree
 	 @return a new tag tree if successful, returns nullptr otherwise
 	 */
 	TagTree(uint32_t leavesWidth, uint32_t leavesHeight)
-		: leavesWidth_(leavesWidth), leavesHeight_(leavesHeight),
-		  nodeCount(0), nodes(nullptr)
+		: leavesWidth_(leavesWidth), leavesHeight_(leavesHeight), nodeCount(0), nodes(nullptr)
 	{
 		uint32_t resLeavesWidth[32];
 		uint32_t resLeavesHeight[32];
@@ -72,9 +71,9 @@ class TagTree
 			}
 			nodesPerLevel = (uint64_t)resLeavesWidth[numLevels] * resLeavesHeight[numLevels];
 			resLeavesWidth[numLevels + 1] =
-					(uint32_t)(((uint64_t)resLeavesWidth[numLevels] + 1)>>1);
+				(uint32_t)(((uint64_t)resLeavesWidth[numLevels] + 1) >> 1);
 			resLeavesHeight[numLevels + 1] =
-					(uint32_t)(((uint64_t)resLeavesHeight[numLevels] + 1)>>1);
+				(uint32_t)(((uint64_t)resLeavesHeight[numLevels] + 1) >> 1);
 			nodeCount += nodesPerLevel;
 			++numLevels;
 		} while(nodesPerLevel > 1);
@@ -106,7 +105,7 @@ class TagTree
 					}
 					++parentNode;
 				}
-				if((j&1) || j == resLeavesHeight[i] - 1)
+				if((j & 1) || j == resLeavesHeight[i] - 1)
 				{
 					parentNodeNext = parentNode;
 				}

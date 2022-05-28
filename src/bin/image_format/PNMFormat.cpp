@@ -92,7 +92,7 @@ bool PNMFormat::encodeHeader(void)
 	// write first header if we start with non-split encode
 	if(doNonSplitEncode())
 	{
-		if(!serializer.open(fileName_, "wb",true))
+		if(!serializer.open(fileName_, "wb", true))
 			return false;
 		if(!writeHeader(false))
 			return false;
@@ -221,7 +221,7 @@ bool PNMFormat::encodeRows(uint32_t rows)
 			packedBuf.offset_ = serializer.getOffset();
 			packedBuf.len_ = image_->packedRowBytes * stripRows;
 			packedBuf.index_ = serializer.getNumPooledRequests();
-			if(!encodePixelsCore(UINT_MAX,packedBuf))
+			if(!encodePixelsCore(UINT_MAX, packedBuf))
 			{
 				delete iter;
 				applicationOrchestratedReclaim(packedBuf);

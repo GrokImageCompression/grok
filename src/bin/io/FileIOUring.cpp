@@ -14,11 +14,9 @@
  *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-
 #include "config.h"
 
 #ifdef IOBENCH_HAVE_URING
-
 
 #include <unistd.h>
 #include <fcntl.h>
@@ -26,12 +24,12 @@
 
 #include "FileIOUring.h"
 
-namespace io {
+namespace io
+{
 
 FileIOUring::FileIOUring(uint32_t threadId)
 	: fd_(-1), ownsDescriptor(false), requestsSubmitted(0), requestsCompleted(0),
-	  reclaim_callback_(nullptr), reclaim_user_data_(nullptr),
-	  threadId_(threadId)
+	  reclaim_callback_(nullptr), reclaim_user_data_(nullptr), threadId_(threadId)
 {
 	memset(&ring, 0, sizeof(ring));
 }
@@ -40,11 +38,11 @@ FileIOUring::~FileIOUring()
 {
 	close();
 }
-bool FileIOUring::active(void) const{
+bool FileIOUring::active(void) const
+{
 	return ring.ring_fd != 0;
 }
-void FileIOUring::registerReclaimCallback(io_callback reclaim_callback,
-												  void* user_data)
+void FileIOUring::registerReclaimCallback(io_callback reclaim_callback, void* user_data)
 {
 	reclaim_callback_ = reclaim_callback;
 	reclaim_user_data_ = user_data;
@@ -60,27 +58,31 @@ bool FileIOUring::attach(std::string fileName, std::string mode, int fd, uint32_
 	return (doRead ? true : initQueue(shared_ring_fd));
 }
 
-bool FileIOUring::attach(const FileIOUring *parent){
-	if (!parent->active())
+bool FileIOUring::attach(const FileIOUring* parent)
+{
+	if(!parent->active())
 		return true;
-	return attach(parent->fileName_, parent->mode_, parent->fd_,(uint32_t)parent->ring.ring_fd);
+	return attach(parent->fileName_, parent->mode_, parent->fd_, (uint32_t)parent->ring.ring_fd);
 }
 
 bool FileIOUring::initQueue(uint32_t shared_ring_fd)
 {
-	if (shared_ring_fd){
+	if(shared_ring_fd)
+	{
 		struct io_uring_params p;
 		memset(&p, 0, sizeof(p));
 		p.flags = IORING_SETUP_ATTACH_WQ;
 		p.wq_fd = shared_ring_fd;
 		int ret = io_uring_queue_init_params(QD, &ring, &p);
-		if (ret < 0) {
+		if(ret < 0)
+		{
 			printf("io_uring_queue_init_params: %s\n", strerror(-ret));
 			close();
 			return false;
 		}
-
-	} else {
+	}
+	else
+	{
 		int ret = io_uring_queue_init(QD, &ring, 0);
 		if(ret < 0)
 		{
@@ -113,7 +115,8 @@ void FileIOUring::enqueue(io_uring* ring, IOScheduleData* data, bool readop, int
 		auto data = retrieveCompletion(true, success);
 		if(!success || !data)
 			break;
-		for (uint32_t i = 0; i < data->numBuffers_; ++i){
+		for(uint32_t i = 0; i < data->numBuffers_; ++i)
+		{
 			auto b = data->buffers_[i];
 			reclaim_callback_(threadId_, b, reclaim_user_data_);
 		}
@@ -143,8 +146,7 @@ IOScheduleData* FileIOUring::retrieveCompletion(bool peek, bool& success)
 	}
 	if(cqe->res < 0)
 	{
-		printf("Asynchronous system call failed with error:\n%s\n",
-					  strerror(cqe->res));
+		printf("Asynchronous system call failed with error:\n%s\n", strerror(cqe->res));
 		success = false;
 		return nullptr;
 	}
@@ -175,7 +177,7 @@ bool FileIOUring::close(void)
 				break;
 			if(data)
 			{
-				for (uint32_t j = 0; j < data->numBuffers_; ++j)
+				for(uint32_t j = 0; j < data->numBuffers_; ++j)
 					RefReaper::unref(data->buffers_[j]);
 				delete data;
 			}
@@ -192,17 +194,17 @@ bool FileIOUring::close(void)
 	return rc;
 }
 
-uint64_t FileIOUring::write(uint64_t offset, IOBuf **buffers, uint32_t numBuffers)
+uint64_t FileIOUring::write(uint64_t offset, IOBuf** buffers, uint32_t numBuffers)
 {
-	auto data = new IOScheduleData(offset,buffers,numBuffers);
+	auto data = new IOScheduleData(offset, buffers, numBuffers);
 	uint64_t totalBytes = 0;
-	for (uint32_t i = 0; i < numBuffers; ++i)
+	for(uint32_t i = 0; i < numBuffers; ++i)
 		totalBytes += buffers[i]->len_;
 	enqueue(&ring, data, false, fd_);
 
 	return totalBytes;
 }
 
-}
+} // namespace io
 
 #endif

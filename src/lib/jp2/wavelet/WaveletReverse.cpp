@@ -2096,8 +2096,8 @@ std::ostringstream ss;
 #endif
 
 #ifdef GRK_DEBUG_VALGRIND
-auto ptr = ((uint64_t)taskInfo->data.memL < (uint64_t)taskInfo->data.memH) ? taskInfo -> data.memL
-																		   : taskInfo -> data.memH;
+auto ptr = ((uint64_t)taskInfo->data.memL < (uint64_t)taskInfo->data.memH) ? taskInfo->data.memL
+																		   : taskInfo->data.memH;
 ss << "H interleave : compno = " << (uint32_t)compno << ", resno= " << (uint32_t)(resno)
    << ", x begin = " << j << ", total samples = " << len;
 grk_memcheck_all<int32_t>((int32_t*)ptr, len, ss.str());
@@ -2119,8 +2119,8 @@ std::ostringstream ss;
 #endif
 
 #ifdef GRK_DEBUG_VALGRIND
-auto ptr = ((uint64_t)taskInfo->data.memL < (uint64_t)taskInfo->data.memH) ? taskInfo -> data.memL
-																		   : taskInfo -> data.memH;
+auto ptr = ((uint64_t)taskInfo->data.memL < (uint64_t)taskInfo->data.memH) ? taskInfo->data.memL
+																		   : taskInfo->data.memH;
 ss << "V interleave: compno = " << (uint32_t)compno << ", resno= " << (uint32_t)(resno)
    << ", x begin = " << j << ", total samples = " << len;
 grk_memcheck_all<int32_t>((int32_t*)ptr, len, ss.str());

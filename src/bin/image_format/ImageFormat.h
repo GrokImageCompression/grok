@@ -32,14 +32,13 @@ class ImageFormat : public IImageFormat
 	ImageFormat();
 	virtual ~ImageFormat();
 	virtual void registerGrkReclaimCallback(grk_io_callback reclaim_callback,
-										 void* user_data) override;
+											void* user_data) override;
 	void ioReclaimBuffer(uint32_t threadId, grk_io_buf buffer);
 #ifndef GROK_HAVE_URING
 	void reclaim(uint32_t threadId, grk_io_buf pixels);
 #endif
 	virtual bool encodeInit(grk_image* image, const std::string& filename,
-							uint32_t compressionLevel,
-							uint32_t concurrency) override;
+							uint32_t compressionLevel, uint32_t concurrency) override;
 	/***
 	 * library-orchestrated pixel encoding
 	 */

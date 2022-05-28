@@ -14,19 +14,19 @@
  *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-
 #pragma once
 
 #include "IFileIO.h"
 
-namespace io {
+namespace io
+{
 
 class IBufferPool
 {
   public:
 	virtual ~IBufferPool() = default;
 	virtual IOBuf* get(uint64_t len) = 0;
-	virtual void put(IOBuf *b) = 0;
+	virtual void put(IOBuf* b) = 0;
 };
 
-}
+} // namespace io

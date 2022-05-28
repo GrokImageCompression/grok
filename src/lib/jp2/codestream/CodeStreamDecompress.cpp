@@ -475,15 +475,10 @@ bool CodeStreamDecompress::decompressTiles(void)
 			numStrips = (outputImage_->height() + outputImage_->rowsPerStrip - 1) /
 						outputImage_->rowsPerStrip;
 		}
-		stripCache_.init((uint32_t)ExecSingleton::get()->num_workers(),
-						cp_.t_grid_width,
-						numStrips,
-						numTilesToDecompress > 1 ? cp_.t_height : outputImage_->rowsPerStrip,
-						cp_.coding_params_.dec_.reduce_,
-						outputImage_,
-						ioBufferCallback,
-						ioUserData,
-						grkRegisterReclaimCallback_);
+		stripCache_.init((uint32_t)ExecSingleton::get()->num_workers(), cp_.t_grid_width, numStrips,
+						 numTilesToDecompress > 1 ? cp_.t_height : outputImage_->rowsPerStrip,
+						 cp_.coding_params_.dec_.reduce_, outputImage_, ioBufferCallback,
+						 ioUserData, grkRegisterReclaimCallback_);
 	}
 
 	std::atomic<bool> success(true);
@@ -548,7 +543,8 @@ bool CodeStreamDecompress::decompressTiles(void)
 		// 3. T2 + T1 decompress
 		// once we schedule a processor for T1 compression, we will destroy it
 		// regardless of success or not
-		auto exec = [this, executor, processor, numTilesToDecompress, &numTilesDecompressed, &success] {
+		auto exec = [this, executor, processor, numTilesToDecompress, &numTilesDecompressed,
+					 &success] {
 			if(success)
 			{
 				if(!decompressT2T1(processor))
@@ -565,10 +561,14 @@ bool CodeStreamDecompress::decompressTiles(void)
 					{
 						if(outputImage_->supportsStripCache(&cp_))
 						{
-							if (executor){
-								if(!stripCache_.ingestTile((uint32_t)executor->this_worker_id(), img))
+							if(executor)
+							{
+								if(!stripCache_.ingestTile((uint32_t)executor->this_worker_id(),
+														   img))
 									success = false;
-							} else {
+							}
+							else
+							{
 								if(!stripCache_.ingestTile(img))
 									success = false;
 							}
@@ -903,10 +903,10 @@ bool CodeStreamDecompress::decompressTile()
 		{
 			uint32_t numStrips = (outputImage_->height() + outputImage_->rowsPerStrip - 1) /
 								 outputImage_->rowsPerStrip;
-			stripCache_.init((uint32_t)ExecSingleton::get()->num_workers(),
-							1, numStrips, outputImage_->rowsPerStrip,
-							 cp_.coding_params_.dec_.reduce_, outputImage_, ioBufferCallback,
-							 ioUserData, grkRegisterReclaimCallback_);
+			stripCache_.init((uint32_t)ExecSingleton::get()->num_workers(), 1, numStrips,
+							 outputImage_->rowsPerStrip, cp_.coding_params_.dec_.reduce_,
+							 outputImage_, ioBufferCallback, ioUserData,
+							 grkRegisterReclaimCallback_);
 		}
 
 		if(!decompressT2T1(tileProcessor))

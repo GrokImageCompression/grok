@@ -52,10 +52,10 @@ bool ResPrecinctInfo::init(uint8_t resno, uint8_t decompLevel, grk_rect32 tileBo
 	resOffsetY0PRJ =
 		(uint32_t)(((uint64_t)res.y0 << decompLevel) % ((uint64_t)1 << precHeightExpPRJ));
 
-	precWidthPRJ 				= (uint64_t)compDx << precWidthExpPRJ;
-	precWidthPRJMinusOne 		= precWidthPRJ - 1;
-	precHeightPRJ 				= (uint64_t)compDy << precHeightExpPRJ;
-	precHeightPRJMinusOne 		= precHeightPRJ - 1;
+	precWidthPRJ = (uint64_t)compDx << precWidthExpPRJ;
+	precWidthPRJMinusOne = precWidthPRJ - 1;
+	precHeightPRJ = (uint64_t)compDy << precHeightExpPRJ;
+	precHeightPRJMinusOne = precHeightPRJ - 1;
 	dxPRJ = (uint64_t)compDx << decompLevel_;
 	dyPRJ = (uint64_t)compDy << decompLevel_;
 	resInPrecGridX0 = floordivpow2(res.x0, precWidthExp);
@@ -97,8 +97,7 @@ void ResPrecinctInfo::print(void)
 
 PacketIter::PacketIter()
 	: compno(0), resno(0), precinctIndex(0), layno(0), numcomps(0), comps(nullptr), x(0), y(0),
-	  dx(0), dy(0), dxActive(0), dyActive(0),
-	  incrementInner(false), packetManager(nullptr),
+	  dx(0), dy(0), dxActive(0), dyActive(0), incrementInner(false), packetManager(nullptr),
 	  maxNumDecompositionResolutions(0), singleProgression_(false), compression_(false),
 	  precinctInfoOPT_(nullptr), px0grid_(0), py0grid_(0), skippedLeft_(false)
 {
@@ -136,32 +135,40 @@ void PacketIter::printDynamicState(void)
 	}
 }
 
-void PacketIter::genPrecinctInfo(){
-	if (!genPrecinctInfoOPT()){
-		for (uint16_t c = 0; c < numcomps; ++c){
+void PacketIter::genPrecinctInfo()
+{
+	if(!genPrecinctInfoOPT())
+	{
+		for(uint16_t c = 0; c < numcomps; ++c)
+		{
 			auto comp = comps + c;
-			for (uint8_t r = 0; r < comp->numresolutions; ++r){
+			for(uint8_t r = 0; r < comp->numresolutions; ++r)
+			{
 				auto res = comp->resolutions + r;
-				genPrecinctInfo(comp,res, r);
+				genPrecinctInfo(comp, res, r);
 			}
 		}
 	}
 }
-void PacketIter::genPrecinctInfo(PiComp* comp, PiResolution* res, uint8_t resNumber){
+void PacketIter::genPrecinctInfo(PiComp* comp, PiResolution* res, uint8_t resNumber)
+{
 	if(res->precinctGridWidth == 0 || res->precinctGridHeight == 0)
 		return;
 
-	if (compression_)
+	if(compression_)
 		return;
 
-	ResPrecinctInfo *rpInfo = new ResPrecinctInfo();
-	rpInfo->precWidthExp  = res->precWidthExp;
+	ResPrecinctInfo* rpInfo = new ResPrecinctInfo();
+	rpInfo->precWidthExp = res->precWidthExp;
 	rpInfo->precHeightExp = res->precHeightExp;
-	if (rpInfo->init(resNumber, (uint8_t)(comp->numresolutions - 1U - resNumber),
-				packetManager->getTileBounds(), comp->dx, comp->dy, !isWholeTile(),
-				packetManager->getTileProcessor()->getUnreducedTileWindow())){
+	if(rpInfo->init(resNumber, (uint8_t)(comp->numresolutions - 1U - resNumber),
+					packetManager->getTileBounds(), comp->dx, comp->dy, !isWholeTile(),
+					packetManager->getTileProcessor()->getUnreducedTileWindow()))
+	{
 		res->precinctInfo = rpInfo;
-	} else {
+	}
+	else
+	{
 		delete rpInfo;
 	}
 }
@@ -253,22 +260,26 @@ bool PacketIter::validatePrecinct(void)
 	}
 	else
 	{
-		if (compression_){
+		if(compression_)
+		{
 			ResPrecinctInfo rpInfo;
-			rpInfo.precWidthExp  = res->precWidthExp;
+			rpInfo.precWidthExp = res->precWidthExp;
 			rpInfo.precHeightExp = res->precHeightExp;
-			if (!rpInfo.init(resno, (uint8_t)(comp->numresolutions - 1U - resno),
-						packetManager->getTileBounds(), comp->dx, comp->dy, !isWholeTile(),
-						packetManager->getTileProcessor()->getUnreducedTileWindow())){
+			if(!rpInfo.init(resno, (uint8_t)(comp->numresolutions - 1U - resno),
+							packetManager->getTileBounds(), comp->dx, comp->dy, !isWholeTile(),
+							packetManager->getTileProcessor()->getUnreducedTileWindow()))
+			{
 				return false;
 			}
 			if(!genPrecinctY0Grid(&rpInfo))
 				return false;
 			if(!genPrecinctX0Grid(&rpInfo))
 				return false;
-		} else {
+		}
+		else
+		{
 			auto rpInfo = res->precinctInfo;
-			if (!rpInfo)
+			if(!rpInfo)
 				return false;
 			if(!genPrecinctY0Grid(rpInfo))
 				return false;
@@ -757,8 +768,8 @@ void PacketIter::update_dxy(void)
 	dy = 0;
 	for(uint16_t compno = 0; compno < numcomps; compno++)
 		update_dxy_for_comp(comps + compno, false);
-	dxActive = (uint32_t)(dx - (x%dx));
-	dyActive = (uint32_t)(dy - (y%dy));
+	dxActive = (uint32_t)(dx - (x % dx));
+	dyActive = (uint32_t)(dy - (y % dy));
 }
 void PacketIter::update_dxy_for_comp(PiComp* comp, bool updateActive)
 {
@@ -774,15 +785,16 @@ void PacketIter::update_dxy_for_comp(PiComp* comp, bool updateActive)
 		if(dy_temp < UINT_MAX)
 			dy = !dy ? (uint32_t)dy_temp : std::min<uint32_t>(dy, (uint32_t)dy_temp);
 	}
-	if (updateActive) {
-		dxActive = (uint32_t)(dx - (x%dx));
-		dyActive = (uint32_t)(dy - (y%dy));
+	if(updateActive)
+	{
+		dxActive = (uint32_t)(dx - (x % dx));
+		dyActive = (uint32_t)(dy - (y % dy));
 	}
 }
 void PacketIter::init(PacketManager* packetMan, uint32_t pino, TileCodingParams* tcp,
 					  grk_rect32 tileBounds, bool compression, uint8_t max_res,
-					  uint64_t max_precincts,
-					  uint32_t* resolutionPrecinctGrid, uint32_t** precinctByComponent)
+					  uint64_t max_precincts, uint32_t* resolutionPrecinctGrid,
+					  uint32_t** precinctByComponent)
 {
 	packetManager = packetMan;
 	maxNumDecompositionResolutions =
@@ -833,11 +845,11 @@ void PacketIter::init(PacketManager* packetMan, uint32_t pino, TileCodingParams*
 		/* resolutions have already been initialized */
 		for(uint32_t resno = 0; resno < current_comp->numresolutions; resno++)
 		{
-			auto res                = current_comp->resolutions + resno;
+			auto res = current_comp->resolutions + resno;
 
-			res->precWidthExp       = *(resolutionPrecinctGrid++);
-			res->precHeightExp      = *(resolutionPrecinctGrid++);
-			res->precinctGridWidth  = *(resolutionPrecinctGrid++);
+			res->precWidthExp = *(resolutionPrecinctGrid++);
+			res->precHeightExp = *(resolutionPrecinctGrid++);
+			res->precinctGridWidth = *(resolutionPrecinctGrid++);
 			res->precinctGridHeight = *(resolutionPrecinctGrid++);
 		}
 	}
@@ -918,13 +930,13 @@ bool PacketIter::next_cprl(SparseBuffer* src)
 	for(; compno < prog.compE; compno++)
 	{
 		auto comp = comps + compno;
-		for(; y < prog.ty1; y += dyActive,dyActive = dy)
+		for(; y < prog.ty1; y += dyActive, dyActive = dy)
 		{
 			for(; x < prog.tx1; x += dxActive, dxActive = dx)
 			{
 				for(; resno < prog.resE; resno++)
 				{
-					if (!validatePrecinct())
+					if(!validatePrecinct())
 						continue;
 					if(incrementInner)
 						layno++;
@@ -932,7 +944,8 @@ bool PacketIter::next_cprl(SparseBuffer* src)
 					{
 						incrementInner = true;
 						generatePrecinctIndex();
-						if(update_include()){
+						if(update_include())
+						{
 							return true;
 						}
 					}
@@ -942,12 +955,12 @@ bool PacketIter::next_cprl(SparseBuffer* src)
 				resno = prog.resS;
 			}
 			x = prog.tx0;
-			dxActive = (uint32_t)(dx - (x%dx));
+			dxActive = (uint32_t)(dx - (x % dx));
 		}
 		y = prog.ty0;
 		dx = 0;
 		dy = 0;
-		update_dxy_for_comp(comp,true);
+		update_dxy_for_comp(comp, true);
 	}
 
 	return false;
@@ -973,7 +986,7 @@ bool PacketIter::next_pcrl(SparseBuffer* src)
 			{
 				for(; resno < prog.resE; resno++)
 				{
-					if (!validatePrecinct())
+					if(!validatePrecinct())
 						continue;
 					if(incrementInner)
 						layno++;
@@ -992,7 +1005,7 @@ bool PacketIter::next_pcrl(SparseBuffer* src)
 			compno = prog.compS;
 		}
 		x = prog.tx0;
-		dxActive = (uint32_t)(dx - (x%dx));
+		dxActive = (uint32_t)(dx - (x % dx));
 	}
 
 	return false;
@@ -1112,14 +1125,14 @@ bool PacketIter::next_rpcl(SparseBuffer* src)
 		if(!sane)
 			continue;
 
-		for(; y < prog.ty1;  y += dyActive, dyActive = dy)
+		for(; y < prog.ty1; y += dyActive, dyActive = dy)
 		{
-			for(; x < prog.tx1;  x += dxActive, dxActive = dx)
+			for(; x < prog.tx1; x += dxActive, dxActive = dx)
 			{
 				// calculate x
 				for(; compno < prog.compE; compno++)
 				{
-					if (!validatePrecinct())
+					if(!validatePrecinct())
 						continue;
 					if(incrementInner)
 						layno++;
@@ -1136,10 +1149,10 @@ bool PacketIter::next_rpcl(SparseBuffer* src)
 				compno = prog.compS;
 			}
 			x = prog.tx0;
-			dxActive = (uint32_t)(dx - (x%dx));
+			dxActive = (uint32_t)(dx - (x % dx));
 		}
 		y = prog.ty0;
-		dyActive = (uint32_t)(dy - (y%dy));
+		dyActive = (uint32_t)(dy - (y % dy));
 	}
 
 	return false;

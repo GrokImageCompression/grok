@@ -14,40 +14,47 @@
  *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-
 #pragma once
 
 #include <cstdint>
 #include <atomic>
 
-namespace io {
+namespace io
+{
 
-class RefCounted {
-friend class RefReaper;
-public:
-	RefCounted(void) : refCount_(1)
-	{}
-	uint32_t ref(void){
-	   return ++refCount_;
+class RefCounted
+{
+	friend class RefReaper;
+
+  public:
+	RefCounted(void) : refCount_(1) {}
+	uint32_t ref(void)
+	{
+		return ++refCount_;
 	}
-protected:
+
+  protected:
 	virtual ~RefCounted() = default;
-private:
-	uint32_t unref(void) {
+
+  private:
+	uint32_t unref(void)
+	{
 		assert(refCount_ > 0);
 		return --refCount_;
 	}
 	std::atomic<uint32_t> refCount_;
 };
 
-class RefReaper{
-public:
-	static void unref(RefCounted *refCounted){
-		if (!refCounted)
+class RefReaper
+{
+  public:
+	static void unref(RefCounted* refCounted)
+	{
+		if(!refCounted)
 			return;
-		if (refCounted->unref() == 0)
+		if(refCounted->unref() == 0)
 			delete refCounted;
 	}
 };
 
-}
+} // namespace io

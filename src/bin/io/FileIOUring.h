@@ -14,7 +14,6 @@
  *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-
 #pragma once
 
 #include "config.h"
@@ -25,7 +24,8 @@
 
 #include "IFileIO.h"
 
-namespace io {
+namespace io
+{
 
 class FileIOUring : public IFileIO
 {
@@ -33,12 +33,12 @@ class FileIOUring : public IFileIO
 	FileIOUring(uint32_t threadId);
 	virtual ~FileIOUring() override;
 	bool close(void) override;
-	uint64_t write(uint64_t offset, IOBuf **buffers, uint32_t numBuffers) override;
+	uint64_t write(uint64_t offset, IOBuf** buffers, uint32_t numBuffers) override;
 
 	// uring-specific
 	void registerReclaimCallback(io_callback reclaim_callback, void* user_data);
 	bool attach(std::string fileName, std::string mode, int fd, uint32_t shared_ring_fd);
-	bool attach(const FileIOUring *parent);
+	bool attach(const FileIOUring* parent);
 	bool active(void) const;
 
   private:
@@ -59,6 +59,6 @@ class FileIOUring : public IFileIO
 	uint32_t threadId_;
 };
 
-}
+} // namespace io
 
 #endif

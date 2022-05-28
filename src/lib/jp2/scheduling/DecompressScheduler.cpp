@@ -37,16 +37,18 @@ void ResDecompressBlocks::release(void)
 
 DecompressScheduler::DecompressScheduler(TileProcessor* tileProcessor, Tile* tile,
 										 TileCodingParams* tcp, uint8_t prec)
-	: Scheduler(tile), tileProcessor_(tileProcessor), tcp_(tcp), prec_(prec), waveletReverse_(nullptr),
-	  	  numcomps_(tile->numcomps_)
+	: Scheduler(tile), tileProcessor_(tileProcessor), tcp_(tcp), prec_(prec),
+	  waveletReverse_(nullptr), numcomps_(tile->numcomps_)
 {
 	waveletReverse_ = new WaveletReverse*[numcomps_];
-	for (uint16_t compno = 0; compno < numcomps_; ++compno)
+	for(uint16_t compno = 0; compno < numcomps_; ++compno)
 		waveletReverse_[compno] = nullptr;
 }
-DecompressScheduler::~DecompressScheduler(){
-	if (waveletReverse_){
-		for (uint16_t compno = 0; compno < numcomps_; ++compno)
+DecompressScheduler::~DecompressScheduler()
+{
+	if(waveletReverse_)
+	{
+		for(uint16_t compno = 0; compno < numcomps_; ++compno)
 			delete waveletReverse_[compno];
 		delete[] waveletReverse_;
 	}
@@ -225,8 +227,9 @@ bool DecompressScheduler::scheduleWavelet(uint16_t compno)
 {
 	auto tilec = tile_->comps + compno;
 	uint8_t numRes = tilec->highestResolutionDecompressed + 1U;
-	waveletReverse_[compno] = new WaveletReverse(tileProcessor_, tilec, compno, tilec->getBuffer()->unreducedBounds(), numRes,
-					 (tcp_->tccps + compno)->qmfbid);
+	waveletReverse_[compno] =
+		new WaveletReverse(tileProcessor_, tilec, compno, tilec->getBuffer()->unreducedBounds(),
+						   numRes, (tcp_->tccps + compno)->qmfbid);
 
 	return waveletReverse_[compno]->decompress();
 }

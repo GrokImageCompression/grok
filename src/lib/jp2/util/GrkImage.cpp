@@ -54,8 +54,9 @@ void GrkImage::copyComponent(grk_image_comp* src, grk_image_comp* dest)
 	dest->type = src->type;
 }
 
-bool GrkImage::componentsEqual(uint16_t firstNComponents, bool checkPrecision){
-	if (firstNComponents <= 1)
+bool GrkImage::componentsEqual(uint16_t firstNComponents, bool checkPrecision)
+{
+	if(firstNComponents <= 1)
 		return true;
 
 	// check that all components dimensions etc. are equal
@@ -67,12 +68,13 @@ bool GrkImage::componentsEqual(uint16_t firstNComponents, bool checkPrecision){
 
 	return true;
 }
-bool GrkImage::componentsEqual(bool checkPrecision){
+bool GrkImage::componentsEqual(bool checkPrecision)
+{
 	return componentsEqual(numcomps, checkPrecision);
 }
 bool GrkImage::componentsEqual(grk_image_comp* src, grk_image_comp* dest, bool checkPrecision)
 {
-	if (checkPrecision && dest->prec != src->prec)
+	if(checkPrecision && dest->prec != src->prec)
 		return false;
 
 	return (dest->dx == src->dx && dest->dy == src->dy && dest->w == src->w &&
@@ -1066,8 +1068,9 @@ bool GrkImage::compositeInterleaved(const GrkImage* src)
 	int32_t const* planes[grk::maxNumPackComponents];
 	for(uint16_t i = 0; i < src->numcomps; ++i)
 		planes[i] = (src->comps + i)->data;
-	iter->interleave(const_cast<int32_t**>(planes), src->numcomps, interleavedData.data_ + destIndex,
-					 destWin.width(), srcComp->stride, destStride, destWin.height(), 0);
+	iter->interleave(const_cast<int32_t**>(planes), src->numcomps,
+					 interleavedData.data_ + destIndex, destWin.width(), srcComp->stride,
+					 destStride, destWin.height(), 0);
 	delete iter;
 
 	return true;

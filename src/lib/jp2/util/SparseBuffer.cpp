@@ -35,7 +35,8 @@ void SparseBuffer::increment()
 		currentChunkId++;
 	}
 }
-size_t SparseBuffer::totalLength(void) const{
+size_t SparseBuffer::totalLength(void) const
+{
 	return dataLen;
 }
 size_t SparseBuffer::read(void* buffer, size_t numBytes)
@@ -134,7 +135,7 @@ void SparseBuffer::rewind(void)
 }
 void SparseBuffer::incrementCurrentChunkOffset(size_t delta)
 {
-	if (!delta)
+	if(!delta)
 		return;
 
 	auto currentChunk = chunks[currentChunkId];

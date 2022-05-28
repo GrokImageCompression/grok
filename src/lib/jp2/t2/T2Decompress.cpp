@@ -230,22 +230,14 @@ bool T2Decompress::decompressPacket(TileCodingParams* tcp, const PacketIter* pi,
 	uint32_t packetBytes;
 	auto tileBytes = srcBuf->totalLength();
 	size_t remainingTilePartBytes = srcBuf->getCurrentChunkLength();
-	if(!readPacketHeader(tcp,
-						pi->getCompno(),
-						pi->getResno(),
-						pi->getPrecinctIndex(),
-						pi->getLayno(),
-						&tagBitsPresent,
-						srcBuf->getCurrentChunkPtr(),
-						tileBytes,
-						remainingTilePartBytes,
-						&packetHeaderBytes,
-						&packetDataBytes))
+	if(!readPacketHeader(tcp, pi->getCompno(), pi->getResno(), pi->getPrecinctIndex(),
+						 pi->getLayno(), &tagBitsPresent, srcBuf->getCurrentChunkPtr(), tileBytes,
+						 remainingTilePartBytes, &packetHeaderBytes, &packetDataBytes))
 		return false;
 	srcBuf->incrementCurrentChunkOffset(packetHeaderBytes);
 	packetBytes = packetHeaderBytes + packetDataBytes;
 	// validate PL marker against parsed packet
-	if(packetInfo->packetLength &&  packetInfo->packetLength != packetBytes)
+	if(packetInfo->packetLength && packetInfo->packetLength != packetBytes)
 	{
 		GRK_ERROR("Corrupt PL marker reports %u bytes for packet;"
 				  " parsed bytes are in fact %u",
@@ -262,11 +254,8 @@ bool T2Decompress::decompressPacket(TileCodingParams* tcp, const PacketIter* pi,
 		else
 		{
 			uint32_t packetDataRead = 0;
-			if(!readPacketData(res,
-								pi->getPrecinctIndex(),
-								srcBuf->getCurrentChunkPtr(),
-								(uint32_t)srcBuf->getCurrentChunkLength(),
-								&packetDataRead))
+			if(!readPacketData(res, pi->getPrecinctIndex(), srcBuf->getCurrentChunkPtr(),
+							   (uint32_t)srcBuf->getCurrentChunkLength(), &packetDataRead))
 				return false;
 			srcBuf->incrementCurrentChunkOffset(packetDataRead);
 			packetInfo->parsedData = true;
@@ -275,17 +264,10 @@ bool T2Decompress::decompressPacket(TileCodingParams* tcp, const PacketIter* pi,
 
 	return true;
 }
-bool T2Decompress::readPacketHeader(TileCodingParams* tcp,
-									uint16_t compno,
-									uint8_t resno,
-									uint64_t precinctIndex,
-									uint16_t layno,
-									bool* tagBitsPresent,
-									uint8_t *src,
-									uint64_t tileBytes,
-									size_t remainingTilePartBytes,
-									uint32_t* packetHeaderBytes,
-									uint32_t* packetDataBytes)
+bool T2Decompress::readPacketHeader(TileCodingParams* tcp, uint16_t compno, uint8_t resno,
+									uint64_t precinctIndex, uint16_t layno, bool* tagBitsPresent,
+									uint8_t* src, uint64_t tileBytes, size_t remainingTilePartBytes,
+									uint32_t* packetHeaderBytes, uint32_t* packetDataBytes)
 {
 	assert(packetDataBytes);
 	assert(packetHeaderBytes);
@@ -366,7 +348,7 @@ bool T2Decompress::readPacketHeader(TileCodingParams* tcp,
 				auto numPrecCodeBlocks = prc->getNumCblks();
 				// assuming 1 bit minimum encoded per code block,
 				// let's check if we have enough bytes
-				if ( (numPrecCodeBlocks >> 3) > tileBytes)
+				if((numPrecCodeBlocks >> 3) > tileBytes)
 					throw TruncatedPacketHeaderException();
 				for(uint64_t cblkno = 0; cblkno < numPrecCodeBlocks; cblkno++)
 				{
@@ -376,7 +358,7 @@ bool T2Decompress::readPacketHeader(TileCodingParams* tcp,
 					{
 						uint16_t value;
 						auto incl = prc->getInclTree();
-						incl->decodeValue(bio.get(), cblkno, layno + 1,&value);
+						incl->decodeValue(bio.get(), cblkno, layno + 1, &value);
 						if(value != incl->getUninitializedValue() && value != layno)
 						{
 							GRK_WARN("Tile number: %u", tileProcessor->getIndex() + 1);
@@ -487,8 +469,7 @@ bool T2Decompress::readPacketHeader(TileCodingParams* tcp,
 							seg->numPassesInPacket = (uint32_t)std::min<int32_t>(
 								(int32_t)(seg->maxpasses - seg->numpasses), blockPassesInPacket);
 						}
-						uint8_t bits_to_read =
-							cblk->numlenbits + floorlog2(seg->numPassesInPacket);
+						uint8_t bits_to_read = cblk->numlenbits + floorlog2(seg->numPassesInPacket);
 						if(bits_to_read > 32)
 						{
 							GRK_ERROR("readPacketHeader: too many bits in segment length ");
@@ -551,11 +532,8 @@ bool T2Decompress::readPacketHeader(TileCodingParams* tcp,
 
 	return true;
 }
-bool T2Decompress::readPacketData(Resolution* res,
-								uint64_t precinctIndex,
-								uint8_t* src,
-								uint32_t maxLen,
-								uint32_t *packetDataRead)
+bool T2Decompress::readPacketData(Resolution* res, uint64_t precinctIndex, uint8_t* src,
+								  uint32_t maxLen, uint32_t* packetDataRead)
 {
 	*packetDataRead = 0;
 	uint32_t offset = 0;

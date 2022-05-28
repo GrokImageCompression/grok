@@ -14,35 +14,29 @@
  *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-
 #include "FileIO.h"
 
-namespace io {
-
-FileIO::FileIO(uint32_t threadId, bool flushOnClose) :
-							numSimulatedWrites_(0),
-							maxSimulatedWrites_(0),
-							off_(0),
-							reclaim_callback_(nullptr),
-							reclaim_user_data_(nullptr),
-							simulateWrite_(false),
-							flushOnClose_(flushOnClose),
-							threadId_(threadId)
+namespace io
 {
-}
+
+FileIO::FileIO(uint32_t threadId, bool flushOnClose)
+	: numSimulatedWrites_(0), maxSimulatedWrites_(0), off_(0), reclaim_callback_(nullptr),
+	  reclaim_user_data_(nullptr), simulateWrite_(false), flushOnClose_(flushOnClose),
+	  threadId_(threadId)
+{}
 void FileIO::setMaxSimulatedWrites(uint64_t maxWrites)
 {
 	maxSimulatedWrites_ = maxWrites;
 }
-void FileIO::registerReclaimCallback(io_callback reclaim_callback,
-												 void* user_data)
+void FileIO::registerReclaimCallback(io_callback reclaim_callback, void* user_data)
 {
 	reclaim_callback_ = reclaim_callback;
 	reclaim_user_data_ = user_data;
 }
 
-void FileIO::enableSimulateWrite(void){
+void FileIO::enableSimulateWrite(void)
+{
 	simulateWrite_ = true;
 }
 
-}
+} // namespace io

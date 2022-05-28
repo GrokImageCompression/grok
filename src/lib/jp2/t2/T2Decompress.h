@@ -49,22 +49,12 @@ struct T2Decompress
 	bool decompressPacket(TileCodingParams* tcp, const PacketIter* pi, SparseBuffer* srcBuf,
 						  PacketInfo* packetInfo, bool skipData);
 	bool processPacket(TileCodingParams* tcp, PacketIter* pi, SparseBuffer* src);
-	bool readPacketHeader(TileCodingParams* tcp,
-						uint16_t compno,
-						uint8_t resno,
-						uint64_t precinctIndex,
-						uint16_t layno,
-						bool* tagBitsPresent,
-						uint8_t *src,
-						uint64_t tileBytes,
-						size_t remainingTilePartBytes,
-						 uint32_t* packetHeaderBytes,
-						 uint32_t* packetDataBytes);
-	bool readPacketData(Resolution* res,
-						uint64_t precinctIndex,
-						uint8_t* src,
-						uint32_t maxLen,
-						uint32_t *packetDataRead);
+	bool readPacketHeader(TileCodingParams* tcp, uint16_t compno, uint8_t resno,
+						  uint64_t precinctIndex, uint16_t layno, bool* tagBitsPresent,
+						  uint8_t* src, uint64_t tileBytes, size_t remainingTilePartBytes,
+						  uint32_t* packetHeaderBytes, uint32_t* packetDataBytes);
+	bool readPacketData(Resolution* res, uint64_t precinctIndex, uint8_t* src, uint32_t maxLen,
+						uint32_t* packetDataRead);
 	void initSegment(DecompressCodeblock* cblk, uint32_t index, uint8_t cblk_sty, bool first);
 };
 

@@ -47,8 +47,7 @@ FileUringIO::~FileUringIO()
 {
 	close();
 }
-void FileUringIO::registerGrkReclaimCallback(grk_io_callback reclaim_callback,
-												  void* user_data)
+void FileUringIO::registerGrkReclaimCallback(grk_io_callback reclaim_callback, void* user_data)
 {
 	reclaim_callback_ = reclaim_callback;
 	reclaim_user_data_ = user_data;
@@ -161,7 +160,7 @@ void FileUringIO::enqueue(io_uring* ring, io_data* data, bool readop, int fd)
 		{
 			if(reclaim_callback_)
 			{
-				reclaim_callback_(0,data->buf, reclaim_user_data_);
+				reclaim_callback_(0, data->buf, reclaim_user_data_);
 			}
 			else
 			{

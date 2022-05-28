@@ -50,7 +50,7 @@ class DecompressScheduler : public Scheduler
 	TileCodingParams* tcp_;
 	uint8_t prec_;
 	DecompressBlocks allBlocks_;
-	WaveletReverse **waveletReverse_;
+	WaveletReverse** waveletReverse_;
 	uint16_t numcomps_;
 };
 

@@ -53,9 +53,8 @@ struct GrkCodec
 	grk_stream* stream_;
 };
 
-GrkCodec::GrkCodec(grk_stream* stream) : compressor_(nullptr),
-										decompressor_(nullptr),
-										stream_(stream)
+GrkCodec::GrkCodec(grk_stream* stream)
+	: compressor_(nullptr), decompressor_(nullptr), stream_(stream)
 {
 	obj.wrapper = new GrkObjectWrapperImpl<GrkCodec>(this);
 }
@@ -193,7 +192,7 @@ void GRK_CALLCONV grk_image_single_component_data_free(grk_image_comp* comp)
 /* DECOMPRESSION FUNCTIONS*/
 grk_codec* GRK_CALLCONV grk_decompress_create(GRK_CODEC_FORMAT p_format, grk_stream* stream)
 {
-	GrkCodec *codec = nullptr;
+	GrkCodec* codec = nullptr;
 	switch(p_format)
 	{
 		case GRK_CODEC_J2K:
@@ -358,7 +357,7 @@ grk_image* GRK_CALLCONV grk_decompress_get_composited_image(grk_codec* codecWrap
 
 grk_codec* GRK_CALLCONV grk_compress_create(GRK_CODEC_FORMAT p_format, grk_stream* stream)
 {
-	GrkCodec *codec = nullptr;
+	GrkCodec* codec = nullptr;
 	switch(p_format)
 	{
 		case GRK_CODEC_J2K:

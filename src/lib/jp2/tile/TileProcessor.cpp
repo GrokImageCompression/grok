@@ -564,11 +564,10 @@ bool TileProcessor::needsMctDecompress(void)
 		return false;
 	if(tile->numcomps_ < 3)
 	{
-		GRK_WARN("Number of components (%u) is less than 3 - skipping MCT.",
-				 tile->numcomps_);
+		GRK_WARN("Number of components (%u) is less than 3 - skipping MCT.", tile->numcomps_);
 		return false;
 	}
-	if (!headerImage->componentsEqual(3,false))
+	if(!headerImage->componentsEqual(3, false))
 	{
 		GRK_WARN("Not all tiles components have the same dimensions - skipping MCT.");
 		return false;

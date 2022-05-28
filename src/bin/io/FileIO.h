@@ -14,7 +14,6 @@
  *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-
 #pragma once
 
 #include <cstdint>
@@ -23,16 +22,19 @@
 #include "config.h"
 #include "IFileIO.h"
 
-namespace io {
+namespace io
+{
 
-class FileIO : public IFileIO {
-public:
+class FileIO : public IFileIO
+{
+  public:
 	FileIO(uint32_t threadId, bool flushOnClose);
 	virtual ~FileIO() = default;
 	void enableSimulateWrite(void);
 	void setMaxSimulatedWrites(uint64_t maxRequests);
 	virtual void registerReclaimCallback(io_callback reclaim_callback, void* user_data);
-protected:
+
+  protected:
 	uint64_t numSimulatedWrites_;
 	uint64_t maxSimulatedWrites_;
 	uint64_t off_;
@@ -45,5 +47,4 @@ protected:
 	uint32_t threadId_;
 };
 
-}
-
+} // namespace io

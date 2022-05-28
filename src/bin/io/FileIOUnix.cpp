@@ -14,7 +14,6 @@
  *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-
 #ifdef _WIN32
 #else
 #include <fcntl.h>
@@ -26,29 +25,29 @@
 
 #include "FileIOUnix.h"
 
-namespace io {
+namespace io
+{
 
-FileIOUnix::FileIOUnix(uint32_t threadId, bool flushOnClose) :
-	  FileIO(threadId, flushOnClose),
+FileIOUnix::FileIOUnix(uint32_t threadId, bool flushOnClose)
+	: FileIO(threadId, flushOnClose),
 #ifdef IOBENCH_HAVE_URING
 	  uring(threadId),
 #endif
-	  fd_(invalid_fd),
-	  ownsFileDescriptor_(false)
+	  fd_(invalid_fd), ownsFileDescriptor_(false)
+{}
+FileIOUnix::~FileIOUnix(void)
 {
-}
-FileIOUnix::~FileIOUnix(void){
 	close();
 }
-void FileIOUnix::registerReclaimCallback(io_callback reclaim_callback,
-												 void* user_data)
+void FileIOUnix::registerReclaimCallback(io_callback reclaim_callback, void* user_data)
 {
 	FileIO::registerReclaimCallback(reclaim_callback, user_data);
 #ifdef IOBENCH_HAVE_URING
 	uring.registerReclaimCallback(reclaim_callback, user_data);
 #endif
 }
-bool FileIOUnix::attach(FileIOUnix *parent){
+bool FileIOUnix::attach(FileIOUnix* parent)
+{
 	fd_ = parent->fd_;
 
 #ifdef IOBENCH_HAVE_URING
@@ -73,7 +72,7 @@ int FileIOUnix::getMode(std::string mode)
 		case 'w':
 			m = O_WRONLY | O_CREAT | O_TRUNC;
 #ifdef __linux__
-			if (mode[1] == 'd')
+			if(mode[1] == 'd')
 				m |= O_DIRECT;
 #endif
 			break;
@@ -92,7 +91,7 @@ int FileIOUnix::getMode(std::string mode)
 bool FileIOUnix::open(std::string name, std::string mode, bool asynch)
 {
 	(void)asynch;
-	if (!close())
+	if(!close())
 		return false;
 #ifdef _WIN32
 
@@ -111,10 +110,10 @@ bool FileIOUnix::open(std::string name, std::string mode, bool asynch)
 		return false;
 	}
 #ifdef __APPLE__
-	if (mode[1] == 'd')
+	if(mode[1] == 'd')
 		fcntl(fd, F_NOCACHE, 1);
 #elif defined(IOBENCH_HAVE_URING)
-	if (asynch && !uring.attach(name, mode, fd,0))
+	if(asynch && !uring.attach(name, mode, fd, 0))
 		return false;
 #endif
 	fd_ = fd;
@@ -134,15 +133,17 @@ bool FileIOUnix::close(void)
 	uring.close();
 #endif
 	int rc = 0;
-	if (ownsFileDescriptor_) {
+	if(ownsFileDescriptor_)
+	{
 		if(fd_ == invalid_fd)
 			return true;
 
-		if (flushOnClose_){
+		if(flushOnClose_)
+		{
 			int fret = fsync(fd_);
 			(void)fret;
 			assert(!fret);
-			//todo: check return value
+			// todo: check return value
 		}
 		rc = ::close(fd_);
 		fd_ = invalid_fd;
@@ -154,10 +155,9 @@ bool FileIOUnix::close(void)
 }
 uint64_t FileIOUnix::seek(int64_t off, int32_t whence)
 {
-	if (simulateWrite_)
+	if(simulateWrite_)
 		return off_;
 #ifdef _WIN32
-
 
 #else
 	off_t rc = lseek(fd_, off, whence);
@@ -173,8 +173,9 @@ uint64_t FileIOUnix::seek(int64_t off, int32_t whence)
 	return (uint64_t)rc;
 #endif
 }
-uint64_t FileIOUnix::write(uint64_t offset, IOBuf **buffers, uint32_t numBuffers){
-	if (!buffers || !numBuffers)
+uint64_t FileIOUnix::write(uint64_t offset, IOBuf** buffers, uint32_t numBuffers)
+{
+	if(!buffers || !numBuffers)
 		return 0;
 	uint64_t bytesWritten = 0;
 #ifdef _WIN32
@@ -182,11 +183,11 @@ uint64_t FileIOUnix::write(uint64_t offset, IOBuf **buffers, uint32_t numBuffers
 #else
 
 #ifdef IOBENCH_HAVE_URING
-	if (uring.active())
+	if(uring.active())
 		return uring.write(offset, buffers, numBuffers);
 #endif
 
-	auto io = new IOScheduleData(offset,buffers,numBuffers);
+	auto io = new IOScheduleData(offset, buffers, numBuffers);
 	ssize_t writtenInCall = 0;
 	for(; bytesWritten < io->totalBytes_; bytesWritten += (uint64_t)writtenInCall)
 	{
@@ -197,18 +198,21 @@ uint64_t FileIOUnix::write(uint64_t offset, IOBuf **buffers, uint32_t numBuffers
 	delete io;
 #endif
 
-	for (uint32_t i = 0; i < numBuffers; ++i){
+	for(uint32_t i = 0; i < numBuffers; ++i)
+	{
 		auto b = buffers[i];
 		assert(reclaim_callback_);
-		reclaim_callback_(threadId_,b, reclaim_user_data_);
+		reclaim_callback_(threadId_, b, reclaim_user_data_);
 	}
 	return bytesWritten;
 }
 uint64_t FileIOUnix::write(uint8_t* buf, uint64_t bytes_total)
 {
-	if (simulateWrite_){
+	if(simulateWrite_)
+	{
 		// offset 0 write is for file header
-		if (off_ != 0) {
+		if(off_ != 0)
+		{
 			if(++numSimulatedWrites_ == maxSimulatedWrites_)
 				simulateWrite_ = false;
 		}
@@ -233,4 +237,4 @@ uint64_t FileIOUnix::write(uint8_t* buf, uint64_t bytes_total)
 	return bytes_written;
 }
 
-}
+} // namespace io
