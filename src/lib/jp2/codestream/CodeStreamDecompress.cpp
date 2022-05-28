@@ -565,8 +565,13 @@ bool CodeStreamDecompress::decompressTiles(void)
 					{
 						if(outputImage_->supportsStripCache(&cp_))
 						{
-							if(!stripCache_.ingestTile((uint32_t)executor->this_worker_id(),img))
-								success = false;
+							if (executor){
+								if(!stripCache_.ingestTile((uint32_t)executor->this_worker_id(), img))
+									success = false;
+							} else {
+								if(!stripCache_.ingestTile(img))
+									success = false;
+							}
 						}
 						else
 						{

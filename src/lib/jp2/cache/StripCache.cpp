@@ -49,7 +49,7 @@ bool Strip::allocInterleaved(uint64_t len,BufPool *pool){
 	return stripImg->interleavedData.data_;
 }
 StripCache::StripCache()
-	: strips(nullptr), numTilesX_(0), numStrips_(0), nominalStripHeight_(0), imageY0_(0),
+	: strips(nullptr), numTiles_(0), numStrips_(0), nominalStripHeight_(0), imageY0_(0),
 	  packedRowBytes_(0), ioUserData_(nullptr), ioBufferCallback_(nullptr),
 	  initialized_(false), multiTile_(true)
 {}
@@ -70,7 +70,7 @@ bool StripCache::isMultiTile(void)
 	return multiTile_;
 }
 void StripCache::init(uint32_t concurrency,
-					uint16_t numTilesX,
+					uint16_t numTiles,
 					uint32_t numStrips,
 					uint32_t nominalStripHeight,
 					uint8_t reduce,
@@ -87,7 +87,7 @@ void StripCache::init(uint32_t concurrency,
 	ioUserData_ = ioUserData;
 	if(registerGrkReclaimCallback)
 		registerGrkReclaimCallback(grkReclaimCallback, ioUserData, this);
-	numTilesX_ = numTilesX;
+	numTiles_ = numTiles;
 	numStrips_ = numStrips;
 	imageY0_ = outputImage->y0;
 	nominalStripHeight_ = nominalStripHeight;
@@ -125,6 +125,11 @@ bool StripCache::ingestStrip(uint32_t threadId, Tile* src, uint32_t yBegin, uint
 
 	return serialize(threadId, buf);
 }
+// single threaded case
+bool StripCache::ingestTile(GrkImage* src)
+{
+	return ingestTile(0,src);
+}
 bool StripCache::ingestTile(uint32_t threadId,GrkImage* src)
 {
 	if(!initialized_)
@@ -143,7 +148,7 @@ bool StripCache::ingestTile(uint32_t threadId,GrkImage* src)
 	if(!dest->compositeInterleaved(src))
 		return false;
 
-	if(++strip->tileCounter == numTilesX_)
+	if(++strip->tileCounter == numTiles_)
 	{
 		auto buf = GrkIOBuf(dest->interleavedData);
 		buf.index_ = stripId;

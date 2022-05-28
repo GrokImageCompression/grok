@@ -108,7 +108,7 @@ class StripCache
 	virtual ~StripCache();
 
 	void init(uint32_t concurrency,
-			uint16_t numTilesX_,
+			uint16_t numTiles_,
 			uint32_t numStrips,
 			uint32_t nominalStripHeight,
 			uint8_t reduce,
@@ -117,6 +117,7 @@ class StripCache
 			void* ioUserData,
 			grk_io_register_reclaim_callback grkRegisterReclaimCallback);
 	bool ingestTile(uint32_t threadId, GrkImage* src);
+	bool ingestTile(GrkImage* src);
 	bool ingestStrip(uint32_t threadId, Tile* src, uint32_t yBegin, uint32_t yEnd);
 	void returnBufferToPool(uint32_t threadId, GrkIOBuf b);
 	bool isInitialized(void);
@@ -126,7 +127,7 @@ class StripCache
 	bool serialize(uint32_t threadId, GrkIOBuf buf);
 	std::vector<BufPool*> pools_;
 	Strip** strips;
-	uint16_t numTilesX_;
+	uint16_t numTiles_;
 	uint32_t numStrips_;
 	uint32_t nominalStripHeight_;
 	uint32_t imageY0_;
