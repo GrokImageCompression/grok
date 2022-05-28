@@ -132,31 +132,15 @@ void SparseBuffer::rewind(void)
 	}
 	currentChunkId = 0;
 }
-void SparseBuffer::incrementCurrentChunkOffset(size_t offset)
+void SparseBuffer::incrementCurrentChunkOffset(size_t delta)
 {
-	if (!offset)
+	if (!delta)
 		return;
 
 	auto currentChunk = chunks[currentChunkId];
-	currentChunk->incrementOffset((ptrdiff_t)offset);
+	currentChunk->incrementOffset((ptrdiff_t)delta);
 	if(currentChunk->offset == currentChunk->len)
 		increment();
-}
-/**
- * Zero copy read of contiguous chunk from current chunk.
- * Returns false if unable to get a contiguous chunk, true otherwise
- */
-bool SparseBuffer::zeroCopyRead(uint8_t** ptr, size_t chunk_len)
-{
-	auto currentChunk = chunks[currentChunkId];
-	if(!currentChunk)
-		return false;
-	if((size_t)currentChunk->offset + chunk_len <= currentChunk->len)
-	{
-		*ptr = currentChunk->buf + currentChunk->offset;
-		return (read(nullptr, chunk_len) == chunk_len);
-	}
-	return false;
 }
 bool SparseBuffer::copyToContiguousBuffer(uint8_t* buffer)
 {

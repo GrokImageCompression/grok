@@ -152,8 +152,8 @@ struct TileProcessor
 
 	Tile* tile;
 	Scheduler* scheduler_;
-	uint64_t numProcessedPackets;
-	uint64_t numDecompressedPackets;
+	std::atomic<uint64_t> numProcessedPackets;
+	std::atomic<uint64_t> numDecompressedPackets;
 	// Decompressing Only
 	uint64_t tilePartDataLength;
 	/** index of tile being currently compressed/decompressed */

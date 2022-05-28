@@ -47,11 +47,6 @@ struct SparseBuffer
 	bool copyToContiguousBuffer(uint8_t* buffer);
 	// Clean up internal resources
 	void cleanup(void);
-	/*
-	 Return current pointer, stored in ptr variable, and advance chunk buffer
-	 offset by chunk_len
-	 */
-	bool zeroCopyRead(uint8_t** ptr, size_t chunk_len);
 	size_t getCurrentChunkOffset(void);
 	void pushBack(grk_buf8* chunk);
 	size_t dataLen; /* total length of all chunks*/
