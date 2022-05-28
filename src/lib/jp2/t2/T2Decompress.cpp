@@ -434,10 +434,7 @@ bool T2Decompress::readPacketHeader(TileCodingParams* tcp,
 					{
 						segno = cblk->getNumSegments() - 1;
 						if(cblk->getSegment(segno)->numpasses == cblk->getSegment(segno)->maxpasses)
-						{
-							++segno;
-							initSegment(cblk, segno, tccp->cblk_sty, false);
-						}
+							initSegment(cblk, ++segno, tccp->cblk_sty, false);
 					}
 					auto blockPassesInPacket = (int32_t)cblk->numPassesInPacket;
 					do
