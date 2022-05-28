@@ -532,15 +532,11 @@ bool TileLengthMarkers::addTileMarkerInfo(uint16_t tileno, CodeStreamInfo* codes
 	return true;
 }
 
-PacketInfo::PacketInfo(void) : headerLength(0), packetLength(0), parsedData(false) {}
+PacketInfo::PacketInfo(void) : packetLength(0), parsedData(false) {}
 PacketInfoCache::~PacketInfoCache()
 {
 	for(auto& p : packetInfo)
 		delete p;
-}
-uint32_t PacketInfo::getPacketDataLength(void)
-{
-	return packetLength - headerLength;
 }
 
 } // namespace grk

@@ -227,31 +227,18 @@ bool T2Decompress::decompressPacket(TileCodingParams* tcp, const PacketIter* pi,
 	bool tagBitsPresent;
 	uint32_t packetDataBytes = 0;
 	uint32_t packetBytes = 0;
-	// 1. header has already been parsed
-	if(packetInfo->headerLength)
+	if(!readPacketHeader(tcp, pi, &tagBitsPresent, srcBuf, &packetBytes, &packetDataBytes))
+		return false;
+	packetBytes += packetDataBytes;
+	// validate PL marker against parsed packet
+	if(packetInfo->packetLength &&  packetInfo->packetLength != packetBytes)
 	{
-		srcBuf->incrementCurrentChunkOffset(packetInfo->headerLength);
-		packetDataBytes = packetInfo->getPacketDataLength();
-		tagBitsPresent = packetDataBytes > 0;
-		packetBytes = packetInfo->headerLength + packetDataBytes;
+		GRK_ERROR("Corrupt PL marker reports %u bytes for packet;"
+				  " parsed bytes are in fact %u",
+				  packetInfo->packetLength, packetBytes);
+		return false;
 	}
-	// 2. otherwise parse the header
-	else
-	{
-		if(!readPacketHeader(tcp, pi, &tagBitsPresent, srcBuf, &packetBytes, &packetDataBytes))
-			return false;
-		packetInfo->headerLength = packetBytes;
-		packetBytes += packetDataBytes;
-		// validate PL marker against parsed packet
-		if(packetInfo->packetLength &&  packetInfo->packetLength != packetBytes)
-		{
-			GRK_ERROR("Corrupt PL marker reports %u bytes for packet;"
-					  " parsed bytes are in fact %u",
-					  packetInfo->packetLength, packetBytes);
-			return false;
-		}
-		packetInfo->packetLength = packetBytes + packetDataBytes;
-	}
+	packetInfo->packetLength = packetBytes + packetDataBytes;
 	if(tagBitsPresent)
 	{
 		if(skipData || packetInfo->parsedData)
