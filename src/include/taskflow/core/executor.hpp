@@ -280,7 +280,7 @@ class Executor {
     eventually holds the result of the execution.
 
     @code{.cpp}
-    tf::Future<void> future = executor.run(
+    tf::Future<void> future = executor.run_n(
       // run the moved taskflow 2 times and invoke the lambda to print "done"
       std::move(taskflow), 2, [](){ std::cout << "done"; }
     );
@@ -307,7 +307,7 @@ class Executor {
     eventually holds the result of the execution.
 
     @code{.cpp}
-    tf::Future<void> future = executor.run(
+    tf::Future<void> future = executor.run_until(
       taskflow, [](){ return rand()%10 == 0 }
     );
     // do something else
@@ -339,7 +339,7 @@ class Executor {
     The executor will take care of the lifetime of the moved taskflow.
 
     @code{.cpp}
-    tf::Future<void> future = executor.run(
+    tf::Future<void> future = executor.run_until(
       std::move(taskflow), [](){ return rand()%10 == 0 }
     );
     // do something else
@@ -368,7 +368,7 @@ class Executor {
     eventually holds the result of the execution.
 
     @code{.cpp}
-    tf::Future<void> future = executor.run(
+    tf::Future<void> future = executor.run_until(
       taskflow, [](){ return rand()%10 == 0 }, [](){ std::cout << "done"; }
     );
     // do something else
@@ -402,7 +402,7 @@ class Executor {
     The executor will take care of the lifetime of the moved taskflow.
 
     @code{.cpp}
-    tf::Future<void> future = executor.run(
+    tf::Future<void> future = executor.run_until(
       std::move(taskflow),
       [](){ return rand()%10 == 0 }, [](){ std::cout << "done"; }
     );
@@ -414,6 +414,51 @@ class Executor {
     */
     template<typename P, typename C>
     tf::Future<void> run_until(Taskflow&& taskflow, P&& pred, C&& callable);
+    
+    /**
+    @brief runs a target graph and waits until it completes using 
+           an internal worker of this executor
+    
+    @tparam T target type which has `tf::Graph& T::graph()` defined
+    @param target the target task graph object
+
+    The method runs a target graph which has `tf::Graph& T::graph()` defined 
+    and waits until the execution completes.
+    Unlike the typical flow of calling `tf::Executor::run` series 
+    plus waiting on the result, this method must be called by an internal
+    worker of this executor. The caller worker will participate in
+    the work-stealing loop of the scheduler, therby avoiding potential
+    deadlock caused by blocked waiting.
+    
+    @code{.cpp}
+    tf::Executor executor(2);
+    tf::Taskflow taskflow;
+    std::array<tf::Taskflow, 1000> others;
+    
+    std::atomic<size_t> counter{0};
+    
+    for(size_t n=0; n<1000; n++) {
+      for(size_t i=0; i<1000; i++) {
+        others[n].emplace([&](){ counter++; });
+      }
+      taskflow.emplace([&executor, &tf=others[n]](){
+        executor.run_and_wait(tf);
+        //executor.run(tf).wait();  <- blocking the worker without doing anything
+        //                             will introduce deadlock
+      });
+    }
+    executor.run(taskflow).wait();
+    @endcode 
+
+    The method is thread-safe as long as the target is not concurrently
+    ran by two or more threads.
+
+    @attention
+    You must call tf::Executor::run_and_wait from a worker of the calling executor
+    or an exception will be thrown.
+    */
+    template<typename T>
+    void run_and_wait(T& target);
 
     /**
     @brief wait for all tasks to complete
@@ -667,8 +712,7 @@ class Executor {
     void _invoke(Worker&, Node*);
     void _invoke_static_task(Worker&, Node*);
     void _invoke_dynamic_task(Worker&, Node*);
-    void _join_dynamic_task_external(Worker&, Node*, Graph&);
-    void _join_dynamic_task_internal(Worker&, Node*, Graph&);
+    void _join_graph(Worker&, Node*, Graph&);
     void _detach_dynamic_task(Worker&, Node*, Graph&);
     void _invoke_condition_task(Worker&, Node*, SmallVector<int>&);
     void _invoke_multi_condition_task(Worker&, Node*, SmallVector<int>&);
@@ -903,7 +947,6 @@ inline void Executor::_consume_task(Worker& w, Node* p) {
     }
     else {
       size_t num_steals = 0;
-      //size_t num_pauses = 0;
       size_t max_steals = ((_workers.size() + 1) << 1);
 
       explore:
@@ -915,13 +958,9 @@ inline void Executor::_consume_task(Worker& w, Node* p) {
         goto exploit;
       }
       else if(p->_join_counter != 0){
-
         if(num_steals++ > max_steals) {
-          //(num_pauses++ < 100) ? relax_cpu() : std::this_thread::yield();
           std::this_thread::yield();
         }
-
-        //std::this_thread::yield();
         w._vtm = rdvtm(w._rdgen);
         goto explore;
       }
@@ -1281,15 +1320,18 @@ inline void Executor::_invoke(Worker& worker, Node* node) {
   if(node->_semaphores && !node->_semaphores->to_release.empty()) {
     _schedule(worker, node->_release_all());
   }
-
-  // We MUST recover the dependency since the graph may have cycles.
-  // This must be done before scheduling the successors, otherwise this might cause
-  // race condition on the _dependents
+  
+  // Reset the join counter to support the cyclic control flow.
+  // + We must do this before scheduling the successors to avoid race
+  //   condition on _dependents.
+  // + We must use fetch_add instead of direct assigning
+  //   because the user-space call on "invoke" may explicitly schedule 
+  //   this task again (e.g., pipeline) which can access the join_counter.
   if((node->_state.load(std::memory_order_relaxed) & Node::CONDITIONED)) {
-    node->_join_counter = node->num_strong_dependents();
+    node->_join_counter.fetch_add(node->num_strong_dependents());
   }
   else {
-    node->_join_counter = node->num_dependents();
+    node->_join_counter.fetch_add(node->num_dependents());
   }
 
   // acquire the parent flow counter
@@ -1430,7 +1472,7 @@ inline void Executor::_invoke_dynamic_task(Worker& w, Node* node) {
   handle->work(sf);
 
   if(sf._joinable) {
-    _join_dynamic_task_internal(w, node, handle->subgraph);
+    _join_graph(w, node, handle->subgraph);
   }
 
   _observer_epilogue(w, node);
@@ -1469,10 +1511,8 @@ inline void Executor::_detach_dynamic_task(
   _schedule(w, src);
 }
 
-// Procedure: _join_dynamic_task_external
-inline void Executor::_join_dynamic_task_external(
-  Worker& w, Node* p, Graph& g
-) {
+// Procedure: _join_graph
+inline void Executor::_join_graph(Worker& w, Node* p, Graph& g) {
 
   // graph is empty and has no async tasks
   if(g.empty() && p->_join_counter == 0) {
@@ -1482,37 +1522,9 @@ inline void Executor::_join_dynamic_task_external(
   SmallVector<Node*> src;
 
   for(auto n : g._nodes) {
-
     n->_state.store(0, std::memory_order_relaxed);
     n->_set_up_join_counter();
     n->_topology = p->_topology;
-    n->_parent = p;
-
-    if(n->num_dependents() == 0) {
-      src.push_back(n);
-    }
-  }
-  p->_join_counter.fetch_add(src.size());
-  _schedule(w, src);
-  _consume_task(w, p);
-}
-
-// Procedure: _join_dynamic_task_internal
-inline void Executor::_join_dynamic_task_internal(
-  Worker& w, Node* p, Graph& g
-) {
-
-  // graph is empty and has no async tasks
-  if(g.empty() && p->_join_counter == 0) {
-    return;
-  }
-
-  SmallVector<Node*> src;
-
-  for(auto n : g._nodes) {
-    n->_topology = p->_topology;
-    n->_state.store(0, std::memory_order_relaxed);
-    n->_set_up_join_counter();
     n->_parent = p;
     if(n->num_dependents() == 0) {
       src.push_back(n);
@@ -1558,7 +1570,7 @@ inline void Executor::_invoke_syclflow_task(Worker& worker, Node* node) {
 // Procedure: _invoke_module_task
 inline void Executor::_invoke_module_task(Worker& w, Node* node) {
   _observer_prologue(w, node);
-  _join_dynamic_task_internal(
+  _join_graph(
     w, node, std::get_if<Node::Module>(&node->_handle)->graph
   );
   _observer_epilogue(w, node);
@@ -1702,6 +1714,20 @@ tf::Future<void> Executor::run_until(Taskflow&& f, P&& pred, C&& c) {
   return run_until(*itr, std::forward<P>(pred), std::forward<C>(c));
 }
 
+// Function: run_and_wait
+template <typename T>
+void Executor::run_and_wait(T& target) {
+  
+  auto w = _this_worker();
+
+  if(w == nullptr) {
+    TF_THROW("run_and_wait must be called by a worker of the executor");
+  }
+
+  Node parent;  // dummy parent
+  _join_graph(*w, &parent, target.graph());
+}
+
 // Procedure: _increment_topology
 inline void Executor::_increment_topology() {
   std::lock_guard<std::mutex> lock(_topology_mutex);
@@ -1740,6 +1766,7 @@ inline void Executor::_set_up_topology(Worker* worker, Topology* tpg) {
   for(auto node : tpg->_taskflow._graph._nodes) {
 
     node->_topology = tpg;
+    node->_parent = nullptr;
     node->_state.store(0, std::memory_order_relaxed);
 
     if(node->num_dependents() == 0) {
@@ -1849,7 +1876,7 @@ inline void Subflow::join() {
   }
 
   // only the parent worker can join the subflow
-  _executor._join_dynamic_task_external(_worker, _parent, _graph);
+  _executor._join_graph(_worker, _parent, _graph);
   _joinable = false;
 }
 
@@ -1975,27 +2002,33 @@ inline void Runtime::schedule(Task task) {
   _executor._schedule(_worker, node);
 }
 
-// Procedure: run
-template <typename C>
-void Runtime::run(C&& callable) {
+// Procedure: emplace
+template <typename T>
+void Runtime::run_and_wait(T&& target) {
 
   // dynamic task (subflow)
-  if constexpr(is_dynamic_task_v<C>) {
+  if constexpr(is_dynamic_task_v<T>) {
     Graph graph;
     Subflow sf(_executor, _worker, _parent, graph);
-    callable(sf);
+    target(sf);
     if(sf._joinable) {
-      _executor._join_dynamic_task_internal(_worker, _parent, graph);
+      _executor._join_graph(_worker, _parent, graph);
     }
   }
+  // graph object
   else {
-    static_assert(dependent_false_v<C>, "unsupported task callable to run");
+    _executor._join_graph(_worker, _parent, target.graph());
   }
+  //// external graph target
+  //else if constexpr(std::is_same_v<T, Graph&>) {
+  //  _executor._join_graph_internal(_worker, _parent, target);
+  //}
+  //else {
+  //  static_assert(dependent_false_v<T>, "unsupported targetect to emplace");
+  //}
 }
 
 }  // end of namespace tf -----------------------------------------------------
-
-
 
 
 
