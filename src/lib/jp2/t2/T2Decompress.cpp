@@ -225,8 +225,8 @@ bool T2Decompress::decompressPacket(TileCodingParams* tcp, const PacketIter* pi,
 	auto tile = tileProcessor->getTile();
 	auto res = tile->comps[pi->getCompno()].tileCompResolution + pi->getResno();
 	bool tagBitsPresent;
-	uint32_t packetDataBytes = 0;
-	uint32_t packetBytes = 0;
+	uint32_t packetDataBytes;
+	uint32_t packetBytes;
 	if(!readPacketHeader(tcp, pi, &tagBitsPresent, srcBuf, &packetBytes, &packetDataBytes))
 		return false;
 	packetBytes += packetDataBytes;
@@ -238,7 +238,7 @@ bool T2Decompress::decompressPacket(TileCodingParams* tcp, const PacketIter* pi,
 				  packetInfo->packetLength, packetBytes);
 		return false;
 	}
-	packetInfo->packetLength = packetBytes + packetDataBytes;
+	packetInfo->packetLength = packetBytes;
 	if(tagBitsPresent)
 	{
 		if(skipData || packetInfo->parsedData)
@@ -259,14 +259,22 @@ bool T2Decompress::readPacketHeader(TileCodingParams* tcp,
 									const PacketIter* pi,
 									bool* tagBitsPresent,
 									SparseBuffer* src,
-									uint32_t* dataRead,
+									uint32_t* packetHeaderBytes,
 									uint32_t* packetDataBytes)
 {
+	assert(packetDataBytes);
+	assert(packetHeaderBytes);
+	assert(src);
+	assert(pi);
+	assert(tcp);
+	assert(tagBitsPresent);
 	auto tilePtr = tileProcessor->getTile();
 	auto res = tilePtr->comps[pi->getCompno()].tileCompResolution + pi->getResno();
 	auto srcPtr = src->getCurrentChunkPtr();
 	size_t available_bytes = src->getCurrentChunkLength();
 	auto active_src = srcPtr;
+	*packetHeaderBytes = 0;
+	*packetDataBytes = 0;
 
 	if(tcp->csty & J2K_CP_CSTY_SOP)
 	{
@@ -468,8 +476,7 @@ bool T2Decompress::readPacketHeader(TileCodingParams* tcp,
 							return false;
 						}
 						bio->read(&seg->numBytesInPacket, bits_to_read);
-						if(packetDataBytes)
-							*packetDataBytes += seg->numBytesInPacket;
+						*packetDataBytes += seg->numBytesInPacket;
 #ifdef DEBUG_LOSSLESS_T2
 						cblk->packet_length_info.push_back(
 							PacketLengthInfo(seg->numBytesInPacket,
@@ -523,9 +530,9 @@ bool T2Decompress::readPacketHeader(TileCodingParams* tcp,
 	*remaining_length -= header_length;
 	*header_data_start += header_length;
 	*tagBitsPresent = present;
-	*dataRead = (uint32_t)(active_src - srcPtr);
-	src->incrementCurrentChunkOffset(*dataRead);
-	if(!present && !*dataRead)
+	*packetHeaderBytes = (uint32_t)(active_src - srcPtr);
+	src->incrementCurrentChunkOffset(*packetHeaderBytes);
+	if(!present && !*packetHeaderBytes)
 		throw TruncatedPacketHeaderException();
 
 	return true;
