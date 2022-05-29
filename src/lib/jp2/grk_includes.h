@@ -144,6 +144,7 @@
 #include "TileComponent.h"
 #include "mct.h"
 #include "TileProcessor.h"
+#include "PacketParser.h"
 #include "TileCache.h"
 #include "WaveletFwd.h"
 #include "T2Compress.h"

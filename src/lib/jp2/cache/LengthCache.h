@@ -149,7 +149,6 @@ struct PacketInfo
 	PacketInfo(void);
 	uint32_t getPacketDataLength(void);
 	uint32_t packetLength;
-	bool parsedData;
 };
 
 struct PacketInfoCache
