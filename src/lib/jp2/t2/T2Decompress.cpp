@@ -51,7 +51,8 @@ void T2Decompress::initSegment(DecompressCodeblock* cblk, uint32_t index, uint8_
 		seg->maxpasses = maxPassesPerSegmentJ2K;
 	}
 }
-bool T2Decompress::processPacket(TileCodingParams* tcp, PacketIter* pi, SparseBuffer* src)
+bool T2Decompress::processPacket(TileCodingParams* tcp, uint16_t compno, uint8_t resno,
+								 uint64_t precinctIndex, uint16_t layno, SparseBuffer* src)
 {
 #ifdef DEBUG_PLT
 	static int ct = -1;
@@ -69,10 +70,9 @@ bool T2Decompress::processPacket(TileCodingParams* tcp, PacketIter* pi, SparseBu
 	packetInfo->packetLength = 0;
 	packetInfo->parsedData = false;
 #endif
-	auto tilec = tileProcessor->getTile()->comps + pi->getCompno();
-	auto res = tilec->tileCompResolution + pi->getResno();
-	auto skip = pi->getLayno() >= tcp->numLayersToDecompress ||
-				pi->getResno() >= tilec->numResolutionsToDecompress;
+	auto tilec = tileProcessor->getTile()->comps + compno;
+	auto res = tilec->tileCompResolution + resno;
+	auto skip = layno >= tcp->numLayersToDecompress || resno >= tilec->numResolutionsToDecompress;
 	if(!skip && !tilec->isWholeTileDecoding())
 	{
 		skip = true;
@@ -82,11 +82,9 @@ bool T2Decompress::processPacket(TileCodingParams* tcp, PacketIter* pi, SparseBu
 			auto band = res->tileBand + bandIndex;
 			if(band->empty())
 				continue;
-			auto paddedBandWindow =
-				tilecBuffer->getBandWindowPadded(pi->getResno(), band->orientation);
-			auto prec =
-				band->generatePrecinctBounds(pi->getPrecinctIndex(), res->precinctPartitionTopLeft,
-											 res->precinctExpn, res->precinctGridWidth);
+			auto paddedBandWindow = tilecBuffer->getBandWindowPadded(resno, band->orientation);
+			auto prec = band->generatePrecinctBounds(precinctIndex, res->precinctPartitionTopLeft,
+													 res->precinctExpn, res->precinctGridWidth);
 			if(paddedBandWindow->nonEmptyIntersection(&prec))
 			{
 				skip = false;
@@ -110,7 +108,7 @@ bool T2Decompress::processPacket(TileCodingParams* tcp, PacketIter* pi, SparseBu
 			auto band = res->tileBand + bandIndex;
 			if(band->empty())
 				continue;
-			if(!band->createPrecinct(false, pi->getPrecinctIndex(), res->precinctPartitionTopLeft,
+			if(!band->createPrecinct(false, precinctIndex, res->precinctPartitionTopLeft,
 									 res->precinctExpn, res->precinctGridWidth, res->cblkExpn))
 				return false;
 		}
@@ -119,15 +117,15 @@ bool T2Decompress::processPacket(TileCodingParams* tcp, PacketIter* pi, SparseBu
 	{
 		if(packetInfo->packetLength)
 			src->incrementCurrentChunkOffset(packetInfo->packetLength);
-		else if(!decompressPacket(tcp, pi, src, packetInfo, true))
+		else if(!decompressPacket(tcp, compno, resno, precinctIndex, layno, src, packetInfo, true))
 			return false;
 	}
 	else
 	{
-		if(!decompressPacket(tcp, pi, src, packetInfo, false))
+		if(!decompressPacket(tcp, compno, resno, precinctIndex, layno, src, packetInfo, false))
 			return false;
 		tilec->highestResolutionDecompressed =
-			std::max<uint8_t>(pi->getResno(), tilec->highestResolutionDecompressed);
+			std::max<uint8_t>(resno, tilec->highestResolutionDecompressed);
 		tileProcessor->incNumDecompressedPackets(1);
 	}
 	tileProcessor->incNumProcessedPackets(1);
@@ -145,7 +143,7 @@ bool T2Decompress::decompressPackets(uint16_t tile_no, SparseBuffer* src,
 									 bool* stopProcessionPackets)
 {
 	auto cp = tileProcessor->cp_;
-	auto tcp = cp->tcps + tile_no;
+	auto tcp = tileProcessor->getTileCodingParams();
 	*stopProcessionPackets = false;
 	PacketManager packetManager(false, tileProcessor->headerImage, cp, tile_no, FINAL_PASS,
 								tileProcessor);
@@ -174,7 +172,8 @@ bool T2Decompress::decompressPackets(uint16_t tile_no, SparseBuffer* src,
 			}
 			try
 			{
-				if(!processPacket(tcp, currPi, src))
+				if(!processPacket(tcp, currPi->getCompno(), currPi->getResno(),
+								  currPi->getPrecinctIndex(), currPi->getLayno(), src))
 					return false;
 			}
 			catch(TruncatedPacketHeaderException& tex)
@@ -219,20 +218,21 @@ bool T2Decompress::decompressPackets(uint16_t tile_no, SparseBuffer* src,
 
 	return tileProcessor->getNumDecompressedPackets() > 0;
 }
-bool T2Decompress::decompressPacket(TileCodingParams* tcp, const PacketIter* pi,
-									SparseBuffer* srcBuf, PacketInfo* packetInfo, bool skipData)
+bool T2Decompress::decompressPacket(TileCodingParams* tcp, uint16_t compno, uint8_t resno,
+									uint64_t precinctIndex, uint16_t layno, SparseBuffer* srcBuf,
+									PacketInfo* packetInfo, bool skipData)
 {
 	auto tile = tileProcessor->getTile();
-	auto res = tile->comps[pi->getCompno()].tileCompResolution + pi->getResno();
+	auto res = tile->comps[compno].tileCompResolution + resno;
 	bool tagBitsPresent;
 	uint32_t packetDataBytes;
 	uint32_t packetHeaderBytes;
 	uint32_t packetBytes;
 	auto tileBytes = srcBuf->totalLength();
 	size_t remainingTilePartBytes = srcBuf->getCurrentChunkLength();
-	if(!readPacketHeader(tcp, pi->getCompno(), pi->getResno(), pi->getPrecinctIndex(),
-						 pi->getLayno(), &tagBitsPresent, srcBuf->getCurrentChunkPtr(), tileBytes,
-						 remainingTilePartBytes, &packetHeaderBytes, &packetDataBytes))
+	if(!readPacketHeader(tcp, compno, resno, precinctIndex, layno, &tagBitsPresent,
+						 srcBuf->getCurrentChunkPtr(), tileBytes, remainingTilePartBytes,
+						 &packetHeaderBytes, &packetDataBytes))
 		return false;
 	srcBuf->incrementCurrentChunkOffset(packetHeaderBytes);
 	packetBytes = packetHeaderBytes + packetDataBytes;
@@ -254,7 +254,7 @@ bool T2Decompress::decompressPacket(TileCodingParams* tcp, const PacketIter* pi,
 		else
 		{
 			uint32_t packetDataRead = 0;
-			if(!readPacketData(res, pi->getPrecinctIndex(), srcBuf->getCurrentChunkPtr(),
+			if(!readPacketData(res, precinctIndex, srcBuf->getCurrentChunkPtr(),
 							   (uint32_t)srcBuf->getCurrentChunkLength(), &packetDataRead))
 				return false;
 			srcBuf->incrementCurrentChunkOffset(packetDataRead);
@@ -274,7 +274,7 @@ bool T2Decompress::readPacketHeader(TileCodingParams* tcp, uint16_t compno, uint
 	assert(src);
 	assert(tcp);
 	assert(tagBitsPresent);
-	auto srcPtr = src;
+
 	auto active_src = src;
 	auto tilePtr = tileProcessor->getTile();
 	auto res = tilePtr->comps[compno].tileCompResolution + resno;
@@ -526,7 +526,7 @@ bool T2Decompress::readPacketHeader(TileCodingParams* tcp, uint16_t compno, uint
 	// GRK_INFO("packet body\n");
 	*remaining_length -= header_length;
 	*header_data_start += header_length;
-	*packetHeaderBytes = (uint32_t)(active_src - srcPtr);
+	*packetHeaderBytes = (uint32_t)(active_src - src);
 	if(!*tagBitsPresent && !*packetHeaderBytes)
 		throw TruncatedPacketHeaderException();
 
