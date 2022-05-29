@@ -88,7 +88,7 @@ void TileProcessor::incNumProcessedPackets(void)
 }
 void TileProcessor::incNumProcessedPackets(uint64_t numPackets)
 {
-	numProcessedPackets.fetch_add(numPackets);
+	numProcessedPackets += numPackets;
 }
 uint64_t TileProcessor::getNumDecompressedPackets(void)
 {

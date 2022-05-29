@@ -20,6 +20,7 @@
 namespace grk {
 
 PacketParser::PacketParser(PrecinctParsers *container,
+							uint16_t packetSequenceNumber,
 							uint16_t compno,
 							uint8_t resno,
 							uint64_t precinctIndex,
@@ -28,6 +29,7 @@ PacketParser::PacketParser(PrecinctParsers *container,
 							size_t tileBytes,
 							size_t remainingTilePartBytes) :
 										     container_(container),
+											 packetSequenceNumber_(packetSequenceNumber),
 											compno_(compno),
 											resno_(resno),
 											precinctIndex_(precinctIndex),
@@ -64,12 +66,12 @@ bool PacketParser::readPacketHeader(bool* tagBitsPresent,
 		}
 		else
 		{
-			uint16_t numIteratedPackets =
+			uint16_t signalledPacketSequenceNumber =
 				(uint16_t)(((uint16_t)active_src[4] << 8) | active_src[5]);
-			if(numIteratedPackets != (container_->tileProcessor_->getNumProcessedPackets() & 0xFFFF))
+			if(signalledPacketSequenceNumber != (packetSequenceNumber_))
 			{
 				GRK_WARN("SOP marker packet counter %u does not match expected counter %u",
-						 numIteratedPackets, container_->tileProcessor_->getNumProcessedPackets());
+						signalledPacketSequenceNumber, packetSequenceNumber_);
 				throw CorruptPacketHeaderException();
 			}
 			active_src += 6;

@@ -153,7 +153,7 @@ struct TileProcessor
 
 	Tile* tile;
 	Scheduler* scheduler_;
-	std::atomic<uint64_t> numProcessedPackets;
+	uint64_t numProcessedPackets;
 	std::atomic<uint64_t> numDecompressedPackets;
 	// Decompressing Only
 	uint64_t tilePartDataLength;

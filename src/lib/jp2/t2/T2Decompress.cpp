@@ -193,25 +193,30 @@ bool T2Decompress::decompressPackets(uint16_t tile_no, SparseBuffer* src,
 
 	return tileProcessor->getNumDecompressedPackets() > 0;
 }
-bool T2Decompress::decompressPacket(uint16_t compno, uint8_t resno,
-									uint64_t precinctIndex, uint16_t layno, SparseBuffer* srcBuf,
-									PacketInfo* packetInfo, bool skipData)
+bool T2Decompress::decompressPacket(uint16_t compno,
+									uint8_t resno,
+									uint64_t precinctIndex,
+									uint16_t layno,
+									SparseBuffer* srcBuf,
+									PacketInfo* packetInfo,
+									bool skipData)
 {
-	bool tagBitsPresent;
-	uint32_t packetDataBytes;
-	uint32_t packetHeaderBytes;
-	uint32_t packetBytes;
 	auto container = PrecinctParsers(tileProcessor);
 	auto parser =
-			PacketParser(&container,compno,resno,precinctIndex,layno,
+			PacketParser(&container,
+					tileProcessor->getNumProcessedPackets() & 0xFFFF,
+					compno,resno,precinctIndex,layno,
 					srcBuf->getCurrentChunkPtr(), srcBuf->totalLength(),
 					srcBuf->getCurrentChunkLength());
 
+	bool tagBitsPresent;
+	uint32_t packetDataBytes;
+	uint32_t packetHeaderBytes;
 	if(!parser.readPacketHeader(&tagBitsPresent,
 						 &packetHeaderBytes, &packetDataBytes))
 		return false;
 	srcBuf->incrementCurrentChunkOffset(packetHeaderBytes);
-	packetBytes = packetHeaderBytes + packetDataBytes;
+	auto packetBytes = packetHeaderBytes + packetDataBytes;
 	// validate PL marker against parsed packet
 	if(packetInfo->packetLength && packetInfo->packetLength != packetBytes)
 	{

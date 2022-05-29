@@ -23,6 +23,7 @@ struct PrecinctParsers;
 class PacketParser {
 public:
 	PacketParser(PrecinctParsers *container,
+				uint16_t packetSequenceNumber,
 				uint16_t compno,
 				uint8_t resno,
 				uint64_t precinctIndex,
@@ -38,6 +39,7 @@ private:
 	void initSegment(DecompressCodeblock* cblk, uint32_t index, uint8_t cblk_sty,
 								   bool first);
 	 PrecinctParsers *container_;
+	 uint16_t packetSequenceNumber_;
 	 uint16_t compno_;
 	 uint8_t resno_;
 	 uint64_t precinctIndex_;
