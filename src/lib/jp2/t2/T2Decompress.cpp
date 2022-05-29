@@ -19,100 +19,12 @@
  *
  */
 #include "grk_includes.h"
-//#define DEBUG_PACKET_ITERATOR
 
 namespace grk
 {
 T2Decompress::T2Decompress(TileProcessor* tileProc) : tileProcessor(tileProc)
 {}
 
-bool T2Decompress::processPacket(uint16_t compno, uint8_t resno,
-								 uint64_t precinctIndex, uint16_t layno, SparseBuffer* src)
-{
-#ifdef DEBUG_PLT
-	static int ct = -1;
-	ct++;
-	bool hasPLT = tileProcessor->packetLengthCache.getMarkers() != nullptr;
-#endif
-	// read from PL marker, if available
-	PacketInfo p;
-	auto packetInfo = &p;
-	if(!tileProcessor->packetLengthCache.next(&packetInfo))
-		return false;
-#ifdef DEBUG_PLT
-	auto packetCache = *packetInfo;
-	packetInfo->headerLength = 0;
-	packetInfo->packetLength = 0;
-#endif
-	auto tilec = tileProcessor->getTile()->comps + compno;
-	auto res = tilec->tileCompResolution + resno;
-	auto tcp = tileProcessor->getTileCodingParams();
-	auto skip = layno >= tcp->numLayersToDecompress || resno >= tilec->numResolutionsToDecompress;
-	if(!skip && !tilec->isWholeTileDecoding())
-	{
-		skip = true;
-		auto tilecBuffer = tilec->getBuffer();
-		for(uint8_t bandIndex = 0; bandIndex < res->numTileBandWindows; ++bandIndex)
-		{
-			auto band = res->tileBand + bandIndex;
-			if(band->empty())
-				continue;
-			auto paddedBandWindow = tilecBuffer->getBandWindowPadded(resno, band->orientation);
-			auto prec = band->generatePrecinctBounds(precinctIndex, res->precinctPartitionTopLeft,
-													 res->precinctExpn, res->precinctGridWidth);
-			if(paddedBandWindow->nonEmptyIntersection(&prec))
-			{
-				skip = false;
-#ifdef DEBUG_PACKET_ITERATOR
-				GRK_INFO("");
-				GRK_INFO("Overlap detected with band %u =>", bandIndex);
-				paddedBandWindow->print();
-				GRK_INFO("Precinct bounds =>");
-				prec.print();
-				GRK_INFO("");
-				pi->printDynamicState();
-#endif
-				break;
-			}
-		}
-	}
-	if(!skip || !packetInfo->packetLength)
-	{
-		for(uint32_t bandIndex = 0; bandIndex < res->numTileBandWindows; ++bandIndex)
-		{
-			auto band = res->tileBand + bandIndex;
-			if(band->empty())
-				continue;
-			if(!band->createPrecinct(false, precinctIndex, res->precinctPartitionTopLeft,
-									 res->precinctExpn, res->precinctGridWidth, res->cblkExpn))
-				return false;
-		}
-	}
-	if(skip)
-	{
-		if(packetInfo->packetLength)
-			src->incrementCurrentChunkOffset(packetInfo->packetLength);
-		else if(!decompressPacket(compno, resno, precinctIndex, layno, src, packetInfo, true))
-			return false;
-	}
-	else
-	{
-		if(!decompressPacket(compno, resno, precinctIndex, layno, src, packetInfo, false))
-			return false;
-		update_maximum<uint8_t>(tilec->highestResolutionDecompressed, resno);
-		tileProcessor->incNumDecompressedPackets();
-	}
-	tileProcessor->incNumProcessedPackets();
-#ifdef DEBUG_PLT
-	if(hasPLT && packetCache.packetLength != packetInfo->packetLength)
-	{
-		printf("%u: parsed %u, PLT %u\n", ct, packetInfo->packetLength, packetCache.packetLength);
-		assert(0);
-	}
-#endif
-
-	return true;
-}
 bool T2Decompress::decompressPackets(uint16_t tile_no, SparseBuffer* src,
 									 bool* stopProcessionPackets)
 {
@@ -127,15 +39,13 @@ bool T2Decompress::decompressPackets(uint16_t tile_no, SparseBuffer* src,
 		markers = nullptr;
 	for(uint32_t pino = 0; pino < tcp->getNumProgressions(); ++pino)
 	{
+		PrecinctParsers container(tileProcessor);
 		auto currPi = packetManager.getPacketIter(pino);
 		if(currPi->getProgression() == GRK_PROG_UNKNOWN)
 		{
 			GRK_ERROR("decompressPackets: Unknown progression order");
 			return false;
 		}
-#ifdef DEBUG_PACKET_ITERATOR
-		currPi->printStaticState();
-#endif
 		while(currPi->next(markers ? src : nullptr))
 		{
 			if(src->getCurrentChunkLength() == 0)
@@ -146,8 +56,11 @@ bool T2Decompress::decompressPackets(uint16_t tile_no, SparseBuffer* src,
 			}
 			try
 			{
-				if(!processPacket(currPi->getCompno(), currPi->getResno(),
-								  currPi->getPrecinctIndex(), currPi->getLayno(), src))
+				if(!processPacket(&container,
+									currPi->getCompno(),
+									currPi->getResno(),
+								  currPi->getPrecinctIndex(),
+								  currPi->getLayno(), src))
 					return false;
 			}
 			catch(TruncatedPacketHeaderException& tex)
@@ -192,54 +105,88 @@ bool T2Decompress::decompressPackets(uint16_t tile_no, SparseBuffer* src,
 
 	return tileProcessor->getNumDecompressedPackets() > 0;
 }
-bool T2Decompress::decompressPacket(uint16_t compno,
-									uint8_t resno,
-									uint64_t precinctIndex,
-									uint16_t layno,
-									SparseBuffer* srcBuf,
-									PacketInfo* packetInfo,
-									bool skipData)
+
+bool T2Decompress::processPacket(PrecinctParsers *container,
+								uint16_t compno, uint8_t resno,
+								 uint64_t precinctIndex,
+								 uint16_t layno,
+								 SparseBuffer* src)
 {
-	auto container = PrecinctParsers(tileProcessor);
+	// read from PL marker, if available
+	PacketInfo p;
+	auto packetInfo = &p;
+	if(!tileProcessor->packetLengthCache.next(&packetInfo))
+		return false;
+	auto tilec = tileProcessor->getTile()->comps + compno;
+	auto res = tilec->tileCompResolution + resno;
+	auto tcp = tileProcessor->getTileCodingParams();
+	auto skip = layno >= tcp->numLayersToDecompress || resno >= tilec->numResolutionsToDecompress;
+	if(!skip && !tilec->isWholeTileDecoding())
+	{
+		skip = true;
+		auto tilecBuffer = tilec->getBuffer();
+		for(uint8_t bandIndex = 0; bandIndex < res->numTileBandWindows; ++bandIndex)
+		{
+			auto band = res->tileBand + bandIndex;
+			if(band->empty())
+				continue;
+			auto paddedBandWindow = tilecBuffer->getBandWindowPadded(resno, band->orientation);
+			auto prec = band->generatePrecinctBounds(precinctIndex, res->precinctPartitionTopLeft,
+													 res->precinctExpn, res->precinctGridWidth);
+			if(paddedBandWindow->nonEmptyIntersection(&prec))
+			{
+				skip = false;
+				break;
+			}
+		}
+	}
+	if(!skip || !packetInfo->packetLength)
+	{
+		for(uint32_t bandIndex = 0; bandIndex < res->numTileBandWindows; ++bandIndex)
+		{
+			auto band = res->tileBand + bandIndex;
+			if(band->empty())
+				continue;
+			if(!band->createPrecinct(false, precinctIndex, res->precinctPartitionTopLeft,
+									 res->precinctExpn, res->precinctGridWidth, res->cblkExpn))
+				return false;
+		}
+	}
 	auto parser =
-			PacketParser(&container,
+			PacketParser(container,
 					tileProcessor->getNumProcessedPackets() & 0xFFFF,
 					compno,resno,precinctIndex,layno,
-					srcBuf->getCurrentChunkPtr(), srcBuf->totalLength(),
-					srcBuf->getCurrentChunkLength());
+					src->getCurrentChunkPtr(),
+					packetInfo->packetLength,
+					src->totalLength(),
+					src->getCurrentChunkLength());
 
-	bool tagBitsPresent;
-	uint32_t packetDataBytes;
-	uint32_t packetHeaderBytes;
-	if(!parser.readPacketHeader(&tagBitsPresent,
-						 &packetHeaderBytes, &packetDataBytes))
-		return false;
-	srcBuf->incrementCurrentChunkOffset(packetHeaderBytes);
-	auto packetBytes = packetHeaderBytes + packetDataBytes;
-	// validate PL marker against parsed packet
-	if(packetInfo->packetLength && packetInfo->packetLength != packetBytes)
-	{
-		GRK_ERROR("Corrupt PL marker reports %u bytes for packet;"
-				  " parsed bytes are in fact %u",
-				  packetInfo->packetLength, packetBytes);
-		return false;
-	}
-	packetInfo->packetLength = packetBytes;
-	if(tagBitsPresent)
-	{
-		if(skipData)
-		{
-			srcBuf->incrementCurrentChunkOffset(packetDataBytes);
+	if(packetInfo->packetLength) {
+		if (skip) {
+			src->incrementCurrentChunkOffset(packetInfo->packetLength);
 		}
-		else
-		{
-			uint32_t packetDataRead = 0;
-			if(!parser.readPacketData(&packetDataRead))
+		else {
+			if (!decompressPacket(&parser, skip))
 				return false;
-			srcBuf->incrementCurrentChunkOffset(packetDataRead);
+			src->incrementCurrentChunkOffset(parser.numHeaderBytes() +
+					(skip ? parser.numSignalledDataBytes() : parser.numReadDataBytes()));
 		}
+	} else {
+		if (!decompressPacket(&parser, skip))
+			return false;
+		src->incrementCurrentChunkOffset(parser.numHeaderBytes() +
+				(skip ? parser.numSignalledDataBytes() : parser.numReadDataBytes()));
 	}
+	tileProcessor->incNumProcessedPackets();
 
 	return true;
+}
+bool T2Decompress::decompressPacket(PacketParser *parser,
+									bool skipData)
+{
+	if(!parser->readPacketHeader())
+		return false;
+
+	return skipData || parser->readPacketData();
 }
 } // namespace grk

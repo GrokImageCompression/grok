@@ -26,6 +26,7 @@ PacketParser::PacketParser(PrecinctParsers *container,
 							uint64_t precinctIndex,
 							uint16_t layno,
 							uint8_t *data,
+							uint32_t lengthFromMarker,
 							size_t tileBytes,
 							size_t remainingTilePartBytes) :
 										     container_(container),
@@ -36,23 +37,33 @@ PacketParser::PacketParser(PrecinctParsers *container,
 											layno_(layno),
 											data_(data),
 											tileBytes_(tileBytes),
-											remainingTilePartBytes_(remainingTilePartBytes)
+											remainingTilePartBytes_(remainingTilePartBytes),
+											tagBitsPresent_(false),
+											headerBytes_(0),
+											signalledDataBytes_(0),
+											readDataBytes_(0),
+											lengthFromMarker_(lengthFromMarker)
 {}
 
-bool PacketParser::readPacketHeader(bool* tagBitsPresent,
-									uint32_t* packetHeaderBytes, uint32_t* packetDataBytes)
-{
-	assert(packetDataBytes);
-	assert(packetHeaderBytes);
-	assert(tagBitsPresent);
+uint32_t PacketParser::numHeaderBytes(void){
+	return headerBytes_;
+}
+uint32_t PacketParser::numSignalledDataBytes(void){
+	return signalledDataBytes_;
+}
+uint32_t PacketParser::numReadDataBytes(void){
+	return readDataBytes_;
+}
+uint32_t PacketParser::numSignalledBytes(void){
+	return headerBytes_ + signalledDataBytes_;
+}
 
+bool PacketParser::readPacketHeader(void)
+{
 	auto active_src = data_;
 	auto tilePtr = container_->tileProcessor_->getTile();
 	auto res = tilePtr->comps[compno_].tileCompResolution + resno_;
-	*packetHeaderBytes = 0;
-	*packetDataBytes = 0;
-
-	auto tcp = container_->tileProcessor_->getTileCodingParams();
+	auto tcp = getTileProcessor()->getTileCodingParams();
 	if(tcp->csty & J2K_CP_CSTY_SOP)
 	{
 		if(remainingTilePartBytes_ < 6)
@@ -83,7 +94,7 @@ bool PacketParser::readPacketHeader(bool* tagBitsPresent,
 	auto cp = container_->tileProcessor_->cp_;
 	if(cp->ppm_marker)
 	{
-		if(container_->tileProcessor_->getIndex() >= cp->ppm_marker->tile_packet_headers_.size())
+		if(getTileProcessor()->getIndex() >= cp->ppm_marker->tile_packet_headers_.size())
 		{
 			GRK_ERROR("PPM marker has no packed packet header data for tile %u",
 					  container_->tileProcessor_->getIndex() + 1);
@@ -105,9 +116,9 @@ bool PacketParser::readPacketHeader(bool* tagBitsPresent,
 	auto tccp = tcp->tccps + compno_;
 	try
 	{
-		*tagBitsPresent = bio->read();
+		tagBitsPresent_= bio->read();
 		// GRK_INFO("present=%u ", present);
-		if(*tagBitsPresent)
+		if(tagBitsPresent_)
 		{
 			for(uint32_t bandIndex = 0; bandIndex < res->numTileBandWindows; ++bandIndex)
 			{
@@ -248,7 +259,7 @@ bool PacketParser::readPacketHeader(bool* tagBitsPresent,
 							return false;
 						}
 						bio->read(&seg->numBytesInPacket, bits_to_read);
-						*packetDataBytes += seg->numBytesInPacket;
+						signalledDataBytes_ += seg->numBytesInPacket;
 #ifdef DEBUG_LOSSLESS_T2
 						cblk->packet_length_info.push_back(
 							PacketLengthInfo(seg->numBytesInPacket,
@@ -298,12 +309,23 @@ bool PacketParser::readPacketHeader(bool* tagBitsPresent,
 	// GRK_INFO("packet body\n");
 	*remaining_length -= header_length;
 	*header_data_start += header_length;
-	*packetHeaderBytes = (uint32_t)(active_src - data_);
-	data_ += *packetHeaderBytes;
-	if(!*tagBitsPresent && !*packetHeaderBytes)
+	headerBytes_ = (uint32_t)(active_src - data_);
+	data_ += headerBytes_;
+	if(!tagBitsPresent_ && !headerBytes_)
 		throw TruncatedPacketHeaderException();
+	// validate PL marker against parsed packet
+	if(lengthFromMarker_ && lengthFromMarker_ != numSignalledBytes())
+	{
+		GRK_ERROR("Corrupt PL marker reports %u bytes for packet;"
+				  " parsed bytes are in fact %u",
+				  lengthFromMarker_, numSignalledBytes());
+		return false;
+	}
 
 	return true;
+}
+TileProcessor* PacketParser::getTileProcessor(void){
+	return container_->tileProcessor_;
 }
 void PacketParser::initSegment(DecompressCodeblock* cblk, uint32_t index, uint8_t cblk_sty,
 							   bool first)
@@ -332,11 +354,14 @@ void PacketParser::initSegment(DecompressCodeblock* cblk, uint32_t index, uint8_
 		seg->maxpasses = maxPassesPerSegmentJ2K;
 	}
 }
-bool PacketParser::readPacketData(uint32_t* packetDataRead)
+bool PacketParser::readPacketData()
 {
-	*packetDataRead = 0;
+	if (!tagBitsPresent_){
+		readPacketDataFinalize();
+		return true;
+	}
 	uint32_t offset = 0;
-	auto tile = container_->tileProcessor_->getTile();
+	auto tile = getTileProcessor()->getTile();
 	auto res = tile->comps[compno_].tileCompResolution + resno_;
 	for(uint32_t bandIndex = 0; bandIndex < res->numTileBandWindows; ++bandIndex)
 	{
@@ -359,7 +384,7 @@ bool PacketParser::readPacketData(uint32_t* packetDataRead)
 			do
 			{
 				if(remainingTilePartBytes_ == 0)
-					return true;
+					goto finish;
 				if(((seg->numBytesInPacket) > remainingTilePartBytes_))
 				{
 					// HT doesn't tolerate truncated code blocks since decoding runs both forward
@@ -397,9 +422,18 @@ bool PacketParser::readPacketData(uint32_t* packetDataRead)
 			} while(numPassesInPacket > 0);
 		} /* next code_block */
 	}
-	*packetDataRead = offset;
+
+finish:
+	readDataBytes_ = offset;
+	readPacketDataFinalize();
 
 	return true;
+}
+
+void PacketParser::readPacketDataFinalize(void){
+	auto tile = getTileProcessor()->getTile();
+	update_maximum<uint8_t>((tile->comps + compno_)->highestResolutionDecompressed, resno_);
+	getTileProcessor()->incNumDecompressedPackets();
 }
 
 PrecinctParsers::PrecinctParsers(TileProcessor* tileProcessor) :

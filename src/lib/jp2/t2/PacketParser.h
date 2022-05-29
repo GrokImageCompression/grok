@@ -29,15 +29,21 @@ public:
 				uint64_t precinctIndex,
 				uint16_t layno,
 				uint8_t *data,
+				uint32_t lengthFromMarker,
 				size_t tileBytes,
 				size_t remainingTilePartBytes);
-	virtual ~PacketParser() = default;
-	bool readPacketHeader(bool* tagBitsPresent,
-						  uint32_t* packetHeaderBytes, uint32_t* packetDataBytes);
-	bool readPacketData(uint32_t* packetDataRead);
+	virtual ~PacketParser(void) = default;
+	bool readPacketHeader(void);
+	bool readPacketData(void);
+	uint32_t numHeaderBytes(void);
+	uint32_t numSignalledDataBytes(void);
+	uint32_t numSignalledBytes(void);
+	uint32_t numReadDataBytes(void);
 private:
+	void readPacketDataFinalize(void);
 	void initSegment(DecompressCodeblock* cblk, uint32_t index, uint8_t cblk_sty,
 								   bool first);
+	 TileProcessor* getTileProcessor(void);
 	 PrecinctParsers *container_;
 	 uint16_t packetSequenceNumber_;
 	 uint16_t compno_;
@@ -47,6 +53,11 @@ private:
 	 uint8_t *data_;
 	 size_t tileBytes_;
 	 size_t remainingTilePartBytes_;
+	 bool tagBitsPresent_;
+	 uint32_t headerBytes_;
+	 uint32_t signalledDataBytes_;
+	 uint32_t readDataBytes_;
+	 uint32_t lengthFromMarker_;
 };
 
 struct PrecinctParsers{
