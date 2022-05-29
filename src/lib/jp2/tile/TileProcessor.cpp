@@ -82,17 +82,21 @@ uint64_t TileProcessor::getNumProcessedPackets(void)
 {
 	return numProcessedPackets;
 }
+void TileProcessor::incNumProcessedPackets(void)
+{
+	numProcessedPackets++;
+}
 void TileProcessor::incNumProcessedPackets(uint64_t numPackets)
 {
-	numProcessedPackets += numPackets;
+	numProcessedPackets.fetch_add(numPackets);
 }
 uint64_t TileProcessor::getNumDecompressedPackets(void)
 {
 	return numDecompressedPackets;
 }
-void TileProcessor::incNumDecompressedPackets(uint64_t numPackets)
+void TileProcessor::incNumDecompressedPackets(void)
 {
-	numDecompressedPackets += numPackets;
+	numDecompressedPackets++;
 }
 IBufferedStream* TileProcessor::getStream(void)
 {

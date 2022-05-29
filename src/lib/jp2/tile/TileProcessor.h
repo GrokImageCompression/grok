@@ -127,9 +127,10 @@ struct TileProcessor
 	bool subtractMarkerLength(uint16_t markerLen);
 	bool setTilePartDataLength(uint32_t tilePartLength, bool lastTilePartInCodeStream);
 	uint64_t getNumProcessedPackets(void);
+	void incNumProcessedPackets(void);
 	void incNumProcessedPackets(uint64_t numPackets);
 	uint64_t getNumDecompressedPackets(void);
-	void incNumDecompressedPackets(uint64_t numPackets);
+	void incNumDecompressedPackets(void);
 
   private:
 	bool isWholeTileDecompress(uint16_t compno);

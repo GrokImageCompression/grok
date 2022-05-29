@@ -126,9 +126,9 @@ bool T2Decompress::processPacket(TileCodingParams* tcp, uint16_t compno, uint8_t
 			return false;
 		tilec->highestResolutionDecompressed =
 			std::max<uint8_t>(resno, tilec->highestResolutionDecompressed);
-		tileProcessor->incNumDecompressedPackets(1);
+		tileProcessor->incNumDecompressedPackets();
 	}
-	tileProcessor->incNumProcessedPackets(1);
+	tileProcessor->incNumProcessedPackets();
 #ifdef DEBUG_PLT
 	if(hasPLT && packetCache.packetLength != packetInfo->packetLength)
 	{
