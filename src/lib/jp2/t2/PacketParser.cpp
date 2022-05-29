@@ -433,7 +433,7 @@ void PacketParser::readPacketDataFinalize(void){
 	tileProcessor_->incNumDecompressedPackets();
 }
 
-PrecinctParsers::PrecinctParsers(TileProcessor* tileProcessor) :
+PrecinctPacketParsers::PrecinctPacketParsers(TileProcessor* tileProcessor) :
 		tileProcessor_(tileProcessor),
 		parsers_(new PacketParser*[tileProcessor_->getTileCodingParams()->numlayers]),
 		numParsers_(0)
@@ -442,11 +442,38 @@ PrecinctParsers::PrecinctParsers(TileProcessor* tileProcessor) :
 		parsers_[i] = nullptr;
 }
 
-PrecinctParsers::~PrecinctParsers(void)
+PrecinctPacketParsers::~PrecinctPacketParsers(void)
 {
 	for (uint16_t i = 0; i < tileProcessor_->getTileCodingParams()->numlayers; ++i)
 		delete parsers_[i];
 	delete[] parsers_;
+}
+
+void PrecinctPacketParsers::pushParser(PacketParser *parser){
+	if (!parser)
+		return;
+	assert(numParsers_ < tileProcessor_->getTileCodingParams()->numlayers);
+	parsers_[numParsers_++] = parser;
+}
+
+ParserMap::ParserMap(TileProcessor* tileProcessor) : tileProcessor_(tileProcessor)
+{}
+
+ParserMap::~ParserMap(){
+	for(auto& p : precinctParsers_)
+		delete p.second;
+}
+
+void ParserMap::pushParser(uint64_t precinctIndex, PacketParser *parser){
+	PrecinctPacketParsers *ppp = nullptr;
+	auto it = precinctParsers_.find(precinctIndex);
+	if (it == precinctParsers_.end()){
+		ppp = new PrecinctPacketParsers(tileProcessor_);
+		precinctParsers_[precinctIndex] = ppp;
+	} else {
+		ppp = it->second;
+	}
+	ppp->pushParser(parser);
 }
 
 }

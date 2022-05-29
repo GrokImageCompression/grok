@@ -16,9 +16,10 @@
 
 #pragma once
 
-namespace grk {
+#include <cstdint>
+#include <map>
 
-struct PrecinctParsers;
+namespace grk {
 
 class PacketParser {
 public:
@@ -59,12 +60,24 @@ private:
 	 uint32_t lengthFromMarker_;
 };
 
-struct PrecinctParsers{
-	PrecinctParsers(TileProcessor* tileProcessor);
-	~PrecinctParsers(void);
+struct PrecinctPacketParsers{
+	PrecinctPacketParsers(TileProcessor* tileProcessor);
+	~PrecinctPacketParsers(void);
+	void pushParser(PacketParser *parser);
 	TileProcessor* tileProcessor_;
 	PacketParser **parsers_;
 	uint16_t numParsers_;
+};
+
+struct TileProcessor;
+
+struct ParserMap {
+	ParserMap(TileProcessor* tileProcessor);
+	~ParserMap();
+	void pushParser(uint64_t precinctIndex, PacketParser *parser);
+
+	TileProcessor* tileProcessor_;
+	std::map<uint64_t,PrecinctPacketParsers*> precinctParsers_;
 };
 
 }
