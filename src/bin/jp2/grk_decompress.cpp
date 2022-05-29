@@ -146,18 +146,17 @@ static void decompress_help_display(void)
 	fprintf(stdout, "  [-H | -num_threads] <number of threads>\n"
 					"    Number of threads used by libgrokj2k library.\n");
 	fprintf(stdout,
-			"  [-c|-compression] <compression method>\n"
-			"	Compress output image data. Currently, this option is only applicable when\n"
-			"	output format is set to TIF. Possible values are:\n"
-			"	{NONE, LZW,JPEG, PACKBITS. ZIP,LZMA,ZSTD,WEBP}. Default value is NONE.\n");
-	fprintf(stdout, "   [L|-compression_level] <compression level>\n"
+			"  [-c | -compression] <compression method>\n"
+			"    Compress output image data. Currently, this option is only applicable when\n"
+			"    output format is set to TIF. Possible values are:\n"
+			"    {NONE, LZW, JPEG, PACKBITS, ZIP, LZMA, ZSTD, WEBP}. Default value is NONE.\n");
+	fprintf(stdout, "  [-L | -compression_level] <compression level>\n"
 					"    \"Quality\" of compression. Currently only implemented for PNG format.\n"
-					"	Default value is set to 9 (Z_BEST_COMPRESSION).\n"
-					"	Other options are 0 (Z_NO_COMPRESSION) and 1 (Z_BEST_SPEED)\n");
+					"    Default value is set to 9 (Z_BEST_COMPRESSION).\n"
+					"    Other options are 0 (Z_NO_COMPRESSION) and 1 (Z_BEST_SPEED)\n");
 	fprintf(stdout, "  [-t | -tile_info] <tile index>\n"
 					"    Index of tile to be decompressed\n");
-	fprintf(
-		stdout,
+	fprintf(stdout,
 		"  [-d | -region] <x0,y0,x1,y1>\n"
 		"    Top left-hand corner and bottom right-hand corner of region to be decompressed.\n");
 	fprintf(stdout, "  [-r | -reduce] <reduce factor>\n"
