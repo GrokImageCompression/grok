@@ -33,8 +33,7 @@ struct T2Decompress
   private:
 	TileProcessor* tileProcessor;
 	bool decompressPacket(PacketParser *parser, bool skipData);
-	bool processPacket(PrecinctParsers *container,
-						uint16_t compno, uint8_t resno,
+	bool processPacket(	uint16_t compno, uint8_t resno,
 					   uint64_t precinctIndex, uint16_t layno, SparseBuffer* src);
 };
 

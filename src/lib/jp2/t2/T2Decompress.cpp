@@ -39,7 +39,6 @@ bool T2Decompress::decompressPackets(uint16_t tile_no, SparseBuffer* src,
 		markers = nullptr;
 	for(uint32_t pino = 0; pino < tcp->getNumProgressions(); ++pino)
 	{
-		PrecinctParsers container(tileProcessor);
 		auto currPi = packetManager.getPacketIter(pino);
 		if(currPi->getProgression() == GRK_PROG_UNKNOWN)
 		{
@@ -56,8 +55,7 @@ bool T2Decompress::decompressPackets(uint16_t tile_no, SparseBuffer* src,
 			}
 			try
 			{
-				if(!processPacket(&container,
-									currPi->getCompno(),
+				if(!processPacket(	currPi->getCompno(),
 									currPi->getResno(),
 								  currPi->getPrecinctIndex(),
 								  currPi->getLayno(), src))
@@ -106,8 +104,7 @@ bool T2Decompress::decompressPackets(uint16_t tile_no, SparseBuffer* src,
 	return tileProcessor->getNumDecompressedPackets() > 0;
 }
 
-bool T2Decompress::processPacket(PrecinctParsers *container,
-								uint16_t compno, uint8_t resno,
+bool T2Decompress::processPacket(uint16_t compno, uint8_t resno,
 								 uint64_t precinctIndex,
 								 uint16_t layno,
 								 SparseBuffer* src)
@@ -153,7 +150,7 @@ bool T2Decompress::processPacket(PrecinctParsers *container,
 		}
 	}
 	auto parser =
-			PacketParser(container,
+			PacketParser(tileProcessor,
 					tileProcessor->getNumProcessedPackets() & 0xFFFF,
 					compno,resno,precinctIndex,layno,
 					src->getCurrentChunkPtr(),

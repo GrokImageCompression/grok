@@ -19,7 +19,7 @@
 
 namespace grk {
 
-PacketParser::PacketParser(PrecinctParsers *container,
+PacketParser::PacketParser(TileProcessor* tileProcessor,
 							uint16_t packetSequenceNumber,
 							uint16_t compno,
 							uint8_t resno,
@@ -29,8 +29,8 @@ PacketParser::PacketParser(PrecinctParsers *container,
 							uint32_t lengthFromMarker,
 							size_t tileBytes,
 							size_t remainingTilePartBytes) :
-										     container_(container),
-											 packetSequenceNumber_(packetSequenceNumber),
+		                                    tileProcessor_(tileProcessor),
+											packetSequenceNumber_(packetSequenceNumber),
 											compno_(compno),
 											resno_(resno),
 											precinctIndex_(precinctIndex),
@@ -61,9 +61,9 @@ uint32_t PacketParser::numSignalledBytes(void){
 bool PacketParser::readPacketHeader(void)
 {
 	auto active_src = data_;
-	auto tilePtr = container_->tileProcessor_->getTile();
+	auto tilePtr = tileProcessor_->getTile();
 	auto res = tilePtr->comps[compno_].tileCompResolution + resno_;
-	auto tcp = getTileProcessor()->getTileCodingParams();
+	auto tcp = tileProcessor_->getTileCodingParams();
 	if(tcp->csty & J2K_CP_CSTY_SOP)
 	{
 		if(remainingTilePartBytes_ < 6)
@@ -91,16 +91,16 @@ bool PacketParser::readPacketHeader(void)
 	}
 	auto header_data_start = &active_src;
 	auto remaining_length = &remainingTilePartBytes_;
-	auto cp = container_->tileProcessor_->cp_;
+	auto cp = tileProcessor_->cp_;
 	if(cp->ppm_marker)
 	{
-		if(getTileProcessor()->getIndex() >= cp->ppm_marker->tile_packet_headers_.size())
+		if(tileProcessor_->getIndex() >= cp->ppm_marker->tile_packet_headers_.size())
 		{
 			GRK_ERROR("PPM marker has no packed packet header data for tile %u",
-					  container_->tileProcessor_->getIndex() + 1);
+					  tileProcessor_->getIndex() + 1);
 			return false;
 		}
-		auto tile_packet_header = &cp->ppm_marker->tile_packet_headers_[container_->tileProcessor_->getIndex()];
+		auto tile_packet_header = &cp->ppm_marker->tile_packet_headers_[tileProcessor_->getIndex()];
 		header_data_start = &tile_packet_header->buf;
 		remaining_length = &tile_packet_header->len;
 	}
@@ -144,11 +144,11 @@ bool PacketParser::readPacketHeader(void)
 						incl->decodeValue(bio.get(), cblkno, layno_ + 1, &value);
 						if(value != incl->getUninitializedValue() && value != layno_)
 						{
-							GRK_WARN("Tile number: %u", container_->tileProcessor_->getIndex() + 1);
+							GRK_WARN("Tile number: %u", tileProcessor_->getIndex() + 1);
 							std::string msg =
 								"Illegal inclusion tag tree found when decoding packet header.";
 							GRK_WARN("%s", msg.c_str());
-							container_->tileProcessor_->setCorruptPacket();
+							tileProcessor_->setCorruptPacket();
 						}
 						included = (value <= layno_) ? 1 : 0;
 					}
@@ -324,9 +324,6 @@ bool PacketParser::readPacketHeader(void)
 
 	return true;
 }
-TileProcessor* PacketParser::getTileProcessor(void){
-	return container_->tileProcessor_;
-}
 void PacketParser::initSegment(DecompressCodeblock* cblk, uint32_t index, uint8_t cblk_sty,
 							   bool first)
 {
@@ -361,7 +358,7 @@ bool PacketParser::readPacketData()
 		return true;
 	}
 	uint32_t offset = 0;
-	auto tile = getTileProcessor()->getTile();
+	auto tile = tileProcessor_->getTile();
 	auto res = tile->comps[compno_].tileCompResolution + resno_;
 	for(uint32_t bandIndex = 0; bandIndex < res->numTileBandWindows; ++bandIndex)
 	{
@@ -389,7 +386,7 @@ bool PacketParser::readPacketData()
 				{
 					// HT doesn't tolerate truncated code blocks since decoding runs both forward
 					// and reverse. So, in this case, we ignore the entire code block
-					if(container_->tileProcessor_->cp_->tcps[0].isHT())
+					if(tileProcessor_->cp_->tcps[0].isHT())
 						cblk->cleanUpSegBuffers();
 					seg->numBytesInPacket = 0;
 					seg->numpasses = 0;
@@ -431,9 +428,9 @@ finish:
 }
 
 void PacketParser::readPacketDataFinalize(void){
-	auto tile = getTileProcessor()->getTile();
+	auto tile = tileProcessor_->getTile();
 	update_maximum<uint8_t>((tile->comps + compno_)->highestResolutionDecompressed, resno_);
-	getTileProcessor()->incNumDecompressedPackets();
+	tileProcessor_->incNumDecompressedPackets();
 }
 
 PrecinctParsers::PrecinctParsers(TileProcessor* tileProcessor) :

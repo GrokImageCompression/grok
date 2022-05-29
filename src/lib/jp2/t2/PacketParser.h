@@ -22,7 +22,7 @@ struct PrecinctParsers;
 
 class PacketParser {
 public:
-	PacketParser(PrecinctParsers *container,
+	PacketParser(TileProcessor* tileProcessor,
 				uint16_t packetSequenceNumber,
 				uint16_t compno,
 				uint8_t resno,
@@ -43,8 +43,7 @@ private:
 	void readPacketDataFinalize(void);
 	void initSegment(DecompressCodeblock* cblk, uint32_t index, uint8_t cblk_sty,
 								   bool first);
-	 TileProcessor* getTileProcessor(void);
-	 PrecinctParsers *container_;
+	 TileProcessor* tileProcessor_;
 	 uint16_t packetSequenceNumber_;
 	 uint16_t compno_;
 	 uint8_t resno_;
