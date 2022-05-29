@@ -99,8 +99,7 @@ bool T2Decompress::processPacket(uint16_t compno, uint8_t resno,
 	{
 		if(!decompressPacket(compno, resno, precinctIndex, layno, src, packetInfo, false))
 			return false;
-		tilec->highestResolutionDecompressed =
-			std::max<uint8_t>(resno, tilec->highestResolutionDecompressed);
+		update_maximum<uint8_t>(tilec->highestResolutionDecompressed, resno);
 		tileProcessor->incNumDecompressedPackets();
 	}
 	tileProcessor->incNumProcessedPackets();

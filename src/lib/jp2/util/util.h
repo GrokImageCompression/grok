@@ -17,12 +17,15 @@
 #pragma once
 
 #include "grok.h"
-#include "logger.h"
+
 #include <iostream>
 #include <cstdint>
-#include "grk_intmath.h"
 #include <limits>
 #include <sstream>
+#include <atomic>
+
+#include "logger.h"
+#include "grk_intmath.h"
 
 namespace grk
 {
@@ -311,5 +314,14 @@ struct grk_rect
 };
 
 using grk_rect32 = grk_rect<uint32_t>;
+
+template<typename T>
+void update_maximum(std::atomic<T>& maximum_value, T const& value) noexcept
+{
+    T prev_value = maximum_value;
+    while(prev_value < value &&
+            !maximum_value.compare_exchange_weak(prev_value, value))
+        {}
+}
 
 } // namespace grk
