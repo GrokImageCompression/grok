@@ -22,8 +22,12 @@ namespace grk
 
 Resolution::Resolution(void)
 	: initialized(false), numTileBandWindows(0), precinctGridWidth(0), precinctGridHeight(0),
-	  current_plugin_tile(nullptr)
+	  current_plugin_tile(nullptr),
+	  parserMap_(nullptr)
 {}
+Resolution::~Resolution(void){
+	delete parserMap_;
+}
 void Resolution::print(void) const
 {
 	grk_rect32::print();
@@ -72,6 +76,9 @@ bool Resolution::init(TileProcessor *tileProcessor, TileComponentCodingParams* t
 			}
 		}
 	}
+
+	if (!tileProcessor->isCompressor())
+		parserMap_ = new ParserMap(tileProcessor);
 	initialized = true;
 
 	return true;

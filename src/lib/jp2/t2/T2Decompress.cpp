@@ -23,13 +23,8 @@
 namespace grk
 {
 T2Decompress::T2Decompress(TileProcessor* tileProc) :
-		tileProcessor(tileProc),
-		parserMap_(new ParserMap(tileProc))
+		tileProcessor(tileProc)
 {}
-
-T2Decompress::~T2Decompress(void){
-	delete parserMap_;
-}
 
 bool T2Decompress::decompressPackets(uint16_t tile_no, SparseBuffer* src,
 									 bool* stopProcessionPackets)
@@ -104,43 +99,68 @@ bool T2Decompress::decompressPackets(uint16_t tile_no, SparseBuffer* src,
 		if(*stopProcessionPackets)
 			break;
 	}
+
 	// run the parsers
-	if (!parserMap_->precinctParsers_.empty()) {
+
+	//1. count parsers
+	auto tile = tileProcessor->getTile();
+	uint64_t parserCount = 0;
+	for (uint16_t compno = 0; compno < tileProcessor->headerImage->numcomps; ++compno){
+		auto tilec = tile->comps + compno;
+		for (uint8_t resno = 0; resno < tilec->numResolutionsToDecompress; ++resno){
+			auto res =  tilec->tileCompResolution + resno;
+			parserCount += res->parserMap_->precinctParsers_.size();
+		}
+	}
+
+	//2.create and populate tasks, and execute
+	if (parserCount) {
 		auto numThreads =
-			std::min<size_t>(ExecSingleton::get()->num_workers(),
-					parserMap_->precinctParsers_.size());
-		if (numThreads == 1) {
-			for (std::pair<const uint64_t,PrecinctPacketParsers*>& pp :
-					parserMap_->precinctParsers_){
-				for (uint64_t i = 0; i < pp.second->numParsers_; ++i){
-					if (!decompressPacket(pp.second->parsers_[i], false))
-						return false;
+			std::min<size_t>(ExecSingleton::get()->num_workers(),parserCount);
+
+		if (numThreads == 1){
+			for (uint16_t compno = 0; compno < tileProcessor->headerImage->numcomps; ++compno){
+				auto tilec = tile->comps + compno;
+				for (uint8_t resno = 0; resno < tilec->numResolutionsToDecompress; ++resno){
+					auto res =  tilec->tileCompResolution + resno;
+					for (std::pair<const uint64_t,PrecinctPacketParsers*>& pp :
+									res->parserMap_->precinctParsers_){
+						for (uint64_t j = 0; j < pp.second->numParsers_; ++j){
+							if (!decompressPacket(pp.second->parsers_[j], false))
+								return false;
+						}
+					}
 				}
 			}
 		} else {
 			tf::Taskflow taskflow;
-			auto numTasks = parserMap_->precinctParsers_.size();
+			auto numTasks = parserCount;
 			auto tasks = new tf::Task[numTasks];
 			for(uint64_t i = 0; i < numTasks; i++)
 				tasks[i] = taskflow.placeholder();
 			uint64_t i = 0;
-			for (std::pair<const uint64_t,PrecinctPacketParsers*>& pp :
-					parserMap_->precinctParsers_){
-				std::pair<const uint64_t,PrecinctPacketParsers*>& ppair = pp;
-				auto decompressor = [this,ppair]() {
-					for (uint64_t j = 0; j < ppair.second->numParsers_; ++j){
-						if (!decompressPacket(ppair.second->parsers_[j], false))
-							return false;
+			for (uint16_t compno = 0; compno < tileProcessor->headerImage->numcomps; ++compno){
+				auto tilec = tile->comps + compno;
+				for (uint8_t resno = 0; resno < tilec->numResolutionsToDecompress; ++resno){
+					auto res =  tilec->tileCompResolution + resno;
+					for (std::pair<const uint64_t,PrecinctPacketParsers*>& pp :
+									res->parserMap_->precinctParsers_){
+						std::pair<const uint64_t,PrecinctPacketParsers*>& ppair = pp;
+						auto decompressor = [this,ppair]() {
+							for (uint64_t j = 0; j < ppair.second->numParsers_; ++j){
+								if (!decompressPacket(ppair.second->parsers_[j], false))
+									return false;
+							}
+							return true;
+						};
+						tasks[i++].work(decompressor);
 					}
-					return true;
-				};
-				tasks[i++].work(decompressor);
+				}
 			}
 			ExecSingleton::get()->run(taskflow).wait();
 			delete[] tasks;
 		}
 	}
-
 	if(tileProcessor->getNumDecompressedPackets() == 0)
 		GRK_WARN("T2Decompress: no packets for tile %u were successfully read", tile_no);
 
@@ -202,8 +222,10 @@ bool T2Decompress::processPacket(uint16_t compno, uint8_t resno,
 					src->getCurrentChunkLength());
 	if(packetInfo->packetLength) {
 		src->incrementCurrentChunkOffset(packetInfo->packetLength);
-		if (!skip)
-			parserMap_->pushParser(precinctIndex,parser);
+		if (!skip){
+			// push to res parser map
+			res->parserMap_->pushParser(precinctIndex,parser);
+		}
 	} else {
 		bool rc = false;
 		try {

@@ -24,7 +24,8 @@ namespace grk
 
 struct Resolution : public grk_rect32
 {
-	Resolution();
+	Resolution(void);
+	~Resolution(void);
 	virtual void print() const override;
 	bool init(TileProcessor *tileProcessor, TileComponentCodingParams* tccp, uint8_t resno);
 
@@ -36,6 +37,7 @@ struct Resolution : public grk_rect32
 	grk_pt32 precinctPartitionTopLeft;
 	grk_pt32 precinctExpn;
 	grk_plugin_tile* current_plugin_tile;
+	ParserMap *parserMap_;
 };
 
 } // namespace grk
