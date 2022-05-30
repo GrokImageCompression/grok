@@ -176,11 +176,18 @@ bool T2Decompress::processPacket(uint16_t compno, uint8_t resno,
 		if (!skip)
 			parserMap_->pushParser(precinctIndex,parser);
 	} else {
-		if (!decompressPacket(parser, skip))
+		bool rc = false;
+		try {
+		  rc = decompressPacket(parser, skip);
+		} catch (std::exception& ex){
+			delete parser;
+			throw;
+		}
+		delete parser;
+		if (!rc)
 			return false;
 		src->incrementCurrentChunkOffset(parser->numHeaderBytes() +
 				(skip ? parser->numSignalledDataBytes() : parser->numReadDataBytes()));
-		delete parser;
 	}
 	tileProcessor->incNumProcessedPackets();
 
