@@ -333,6 +333,7 @@ TilePartLengthInfo* CodeStreamDecompress::nextTLM(void)
 						 decompressorState_.lastSotReadPosition, stream_->tell());
 				cp_.tlm_markers->invalidate();
 			}
+			/*
 			else
 			{
 				GRK_INFO("TLM marker tile part length %u equals actual"
@@ -340,6 +341,7 @@ TilePartLengthInfo* CodeStreamDecompress::nextTLM(void)
 						 tilePartLengthInfo->length_, actualTileLength,
 						 decompressorState_.lastSotReadPosition, stream_->tell());
 			}
+			*/
 		}
 	}
 
