@@ -20,65 +20,13 @@
 
 namespace grk
 {
+
+
 struct Resolution : public grk_rect32
 {
-	Resolution()
-		: initialized(false), numTileBandWindows(0), precinctGridWidth(0), precinctGridHeight(0),
-		  current_plugin_tile(nullptr)
-	{}
-	virtual void print() const override
-	{
-		grk_rect32::print();
-		for(uint32_t i = 0; i < numTileBandWindows; ++i)
-		{
-			std::cout << "band " << i << " : ";
-			tileBand[i].print();
-		}
-	}
-	bool init(bool isCompressor, TileComponentCodingParams* tccp, uint8_t resno,
-			  grk_plugin_tile* current_plugin_tile)
-	{
-		if(initialized)
-			return true;
-
-		this->current_plugin_tile = current_plugin_tile;
-
-		/* p. 35, table A-23, ISO/IEC FDIS154444-1 : 2000 (18 august 2000) */
-		precinctExpn = grk_pt32(tccp->precWidthExp[resno], tccp->precHeightExp[resno]);
-
-		/* p. 64, B.6, ISO/IEC FDIS15444-1 : 2000 (18 august 2000)  */
-		precinctPartitionTopLeft = grk_pt32(floordivpow2(x0, precinctExpn.x) << precinctExpn.x,
-											floordivpow2(y0, precinctExpn.y) << precinctExpn.y);
-
-		uint64_t num_precincts = (uint64_t)precinctGridWidth * precinctGridHeight;
-		if(resno != 0)
-		{
-			precinctPartitionTopLeft =
-				grk_pt32(ceildivpow2<uint32_t>(precinctPartitionTopLeft.x, 1),
-						 ceildivpow2<uint32_t>(precinctPartitionTopLeft.y, 1));
-			precinctExpn.x--;
-			precinctExpn.y--;
-		}
-		cblkExpn = grk_pt32(std::min<uint32_t>(tccp->cblkw, precinctExpn.x),
-							std::min<uint32_t>(tccp->cblkh, precinctExpn.y));
-		for(uint8_t bandIndex = 0; bandIndex < numTileBandWindows; ++bandIndex)
-		{
-			auto curr_band = tileBand + bandIndex;
-			curr_band->numPrecincts = num_precincts;
-			if(isCompressor)
-			{
-				for(uint64_t precinctIndex = 0; precinctIndex < num_precincts; ++precinctIndex)
-				{
-					if(!curr_band->createPrecinct(true, precinctIndex, precinctPartitionTopLeft,
-												  precinctExpn, precinctGridWidth, cblkExpn))
-						return false;
-				}
-			}
-		}
-		initialized = true;
-
-		return true;
-	}
+	Resolution();
+	virtual void print() const override;
+	bool init(TileProcessor *tileProcessor, TileComponentCodingParams* tccp, uint8_t resno);
 
 	bool initialized;
 	Subband tileBand[BAND_NUM_INDICES]; // unreduced tile component bands in canvas coordinates

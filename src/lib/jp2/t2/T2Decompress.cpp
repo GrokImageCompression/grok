@@ -112,9 +112,8 @@ bool T2Decompress::decompressPackets(uint16_t tile_no, SparseBuffer* src,
 		if (numThreads == 1) {
 			for (std::pair<const uint64_t,PrecinctPacketParsers*>& pp :
 					parserMap_->precinctParsers_){
-				std::pair<const uint64_t,PrecinctPacketParsers*>& ppair = pp;
-				for (uint64_t i = 0; i < ppair.second->numParsers_; ++i){
-					if (!decompressPacket(ppair.second->parsers_[i], false))
+				for (uint64_t i = 0; i < pp.second->numParsers_; ++i){
+					if (!decompressPacket(pp.second->parsers_[i], false))
 						return false;
 				}
 			}
@@ -188,7 +187,7 @@ bool T2Decompress::processPacket(uint16_t compno, uint8_t resno,
 			auto band = res->tileBand + bandIndex;
 			if(band->empty())
 				continue;
-			if(!band->createPrecinct(false, precinctIndex, res->precinctPartitionTopLeft,
+			if(!band->createPrecinct(tileProcessor, precinctIndex, res->precinctPartitionTopLeft,
 									 res->precinctExpn, res->precinctGridWidth, res->cblkExpn))
 				return false;
 		}

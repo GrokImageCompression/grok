@@ -43,72 +43,18 @@ enum eBandIndex
 
 struct Subband : public grk_rect32
 {
-	Subband() : orientation(BAND_ORIENT_LL), numPrecincts(0), numbps(0), stepsize(0) {}
-	// note: don't copy precinct array
-	Subband(const Subband& rhs)
-		: grk_rect32(rhs), orientation(rhs.orientation), numPrecincts(0), numbps(rhs.numbps),
-		  stepsize(rhs.stepsize)
-	{}
+	Subband();
+	Subband(const Subband& rhs);
 	virtual ~Subband() = default;
-	Subband& operator=(const Subband& rhs)
-	{
-		if(this != &rhs)
-		{ // self-assignment check expected
-			*this = Subband(rhs);
-		}
-		return *this;
-	}
-	void print() const override
-	{
-		grk_rect32::print();
-	}
-	bool empty()
-	{
-		return ((x1 - x0 == 0) || (y1 - y0 == 0));
-	}
-	Precinct* getPrecinct(uint64_t precinctIndex)
-	{
-		if(precinctMap.find(precinctIndex) == precinctMap.end())
-			return nullptr;
-		uint64_t index = precinctMap[precinctIndex];
-
-		return precincts[index];
-	}
+	Subband& operator=(const Subband& rhs);
+	void print() const override;
+	bool empty();
+	Precinct* getPrecinct(uint64_t precinctIndex);
 	grk_rect32 generatePrecinctBounds(uint64_t precinctIndex, grk_pt32 precinctPartitionTopLeft,
-									  grk_pt32 precinctExpn, uint32_t precinctGridWidth)
-	{
-		auto precinctTopLeft =
-			grk_pt32(precinctPartitionTopLeft.x +
-						 (uint32_t)((precinctIndex % precinctGridWidth) << precinctExpn.x),
-					 precinctPartitionTopLeft.y +
-						 (uint32_t)((precinctIndex / precinctGridWidth) << precinctExpn.y));
-		return grk_rect32(precinctTopLeft.x, precinctTopLeft.y,
-						  precinctTopLeft.x + (1U << precinctExpn.x),
-						  precinctTopLeft.y + (1U << precinctExpn.y))
-			.intersection(this);
-	}
-	Precinct* createPrecinct(bool isCompressor, uint64_t precinctIndex,
+									  grk_pt32 precinctExpn, uint32_t precinctGridWidth);
+	Precinct* createPrecinct(TileProcessor *tileProcessor, uint64_t precinctIndex,
 							 grk_pt32 precinctPartitionTopLeft, grk_pt32 precinctExpn,
-							 uint32_t precinctGridWidth, grk_pt32 cblk_expn)
-	{
-		auto temp = precinctMap.find(precinctIndex);
-		if(temp != precinctMap.end())
-			return precincts[temp->second];
-
-		auto bounds = generatePrecinctBounds(precinctIndex, precinctPartitionTopLeft, precinctExpn,
-											 precinctGridWidth);
-		if(!bounds.valid())
-		{
-			GRK_ERROR("createPrecinct: invalid precinct bounds.");
-			return nullptr;
-		}
-		auto currPrec = new Precinct(bounds, isCompressor, cblk_expn);
-		currPrec->precinctIndex = precinctIndex;
-		precincts.push_back(currPrec);
-		precinctMap[precinctIndex] = precincts.size() - 1;
-
-		return currPrec;
-	}
+							 uint32_t precinctGridWidth, grk_pt32 cblk_expn);
 	eBandOrientation orientation;
 	std::vector<Precinct*> precincts;
 	// maps global precinct index to precincts vector index

@@ -107,6 +107,7 @@ struct TileProcessor
 	void incrementIndex(void);
 	Tile* getTile(void);
 	Scheduler* getScheduler(void);
+	bool isCompressor(void);
 
 	/** Compression Only
 	 *  true for first POC tile part, otherwise false*/

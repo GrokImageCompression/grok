@@ -127,6 +127,9 @@ Scheduler* TileProcessor::getScheduler(void)
 {
 	return scheduler_;
 }
+bool TileProcessor::isCompressor(void){
+	return isCompressor_;
+}
 void TileProcessor::generateImage(GrkImage* src_image, Tile* src_tile)
 {
 	if(image_)
@@ -209,8 +212,9 @@ bool TileProcessor::init(void)
 		grk_rect32 unreducedTileComp = grk_rect32(
 			ceildiv<uint32_t>(tile->x0, imageComp->dx), ceildiv<uint32_t>(tile->y0, imageComp->dy),
 			ceildiv<uint32_t>(tile->x1, imageComp->dx), ceildiv<uint32_t>(tile->y1, imageComp->dy));
-		if(!tilec->init(isCompressor_, cp_->wholeTileDecompress_, unreducedTileComp,
-						imageComp->prec, cp_, tcp->tccps + compno, current_plugin_tile))
+		if(!tilec->init(this,
+						unreducedTileComp,
+						imageComp->prec, tcp->tccps + compno))
 		{
 			return false;
 		}

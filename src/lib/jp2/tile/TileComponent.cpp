@@ -67,12 +67,13 @@ void TileComponent::deallocBuffers(void)
  * (tile component coordinates take sub-sampling into account).
  *
  */
-bool TileComponent::init(bool isCompressor, bool whole_tile, grk_rect32 unreducedTileComp,
-						 uint8_t prec, CodingParams* cp, TileComponentCodingParams* tccp,
-						 grk_plugin_tile* current_plugin_tile)
+bool TileComponent::init(TileProcessor *tileProcessor,
+						 grk_rect32 unreducedTileComp,
+						 uint8_t prec, TileComponentCodingParams* tccp)
 {
-	isCompressor_ = isCompressor;
-	wholeTileDecompress = whole_tile;
+	auto cp = tileProcessor->cp_;
+	isCompressor_ = tileProcessor->isCompressor();
+	wholeTileDecompress = cp->wholeTileDecompress_;
 	tccp_ = tccp;
 
 	// 1. calculate resolution bounds, precinct bounds and precinct grid
@@ -178,7 +179,7 @@ bool TileComponent::init(bool isCompressor, bool whole_tile, grk_rect32 unreduce
 	for(uint32_t resno = 0; resno < numresolutions; ++resno)
 	{
 		auto res = tileCompResolution + resno;
-		if(!res->init(isCompressor, tccp_, (uint8_t)resno, current_plugin_tile))
+		if(!res->init(tileProcessor, tccp_, (uint8_t)resno))
 			return false;
 	}
 

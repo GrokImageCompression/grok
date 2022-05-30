@@ -21,6 +21,8 @@
 
 namespace grk {
 
+struct TileProcessor;
+
 class PacketParser {
 public:
 	PacketParser(TileProcessor* tileProcessor,

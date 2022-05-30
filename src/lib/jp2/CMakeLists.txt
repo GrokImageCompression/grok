@@ -188,6 +188,9 @@ set(GROK_LIBRARY_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/T1Factory.cpp  
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/T1Factory.h
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/T1Interface.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/Resolution.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/Precinct.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/Subband.cpp
 
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/OpenHTJ2K/coding/coding_local.hpp
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/OpenHTJ2K/coding/coding_units.hpp
