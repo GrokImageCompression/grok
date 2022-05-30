@@ -435,16 +435,23 @@ void PacketParser::readPacketDataFinalize(void){
 
 PrecinctPacketParsers::PrecinctPacketParsers(TileProcessor* tileProcessor) :
 		tileProcessor_(tileProcessor),
-		parsers_(new PacketParser*[tileProcessor_->getTileCodingParams()->numlayers]),
+		parsers_(nullptr),
 		numParsers_(0)
 {
-	for (uint16_t i = 0; i < tileProcessor_->getTileCodingParams()->numlayers; ++i)
+	auto tcp = tileProcessor_->getTileCodingParams();
+	uint8_t maxResolutions = tcp->tccps->numresolutions;
+	for (uint16_t i = 1; i < tileProcessor_->headerImage->numcomps; ++i)
+		maxResolutions = (std::max)(maxResolutions, (tcp->tccps+i)->numresolutions);
+	uint64_t len = (uint64_t)tcp->numlayers *
+						tileProcessor_->headerImage->numcomps * maxResolutions;
+	parsers_ = new PacketParser*[len];
+	for (uint16_t i = 0; i < len; ++i)
 		parsers_[i] = nullptr;
 }
 
 PrecinctPacketParsers::~PrecinctPacketParsers(void)
 {
-	for (uint16_t i = 0; i < tileProcessor_->getTileCodingParams()->numlayers; ++i)
+	for (uint16_t i = 0; i < numParsers_; ++i)
 		delete parsers_[i];
 	delete[] parsers_;
 }
@@ -452,7 +459,6 @@ PrecinctPacketParsers::~PrecinctPacketParsers(void)
 void PrecinctPacketParsers::pushParser(PacketParser *parser){
 	if (!parser)
 		return;
-	assert(numParsers_ < tileProcessor_->getTileCodingParams()->numlayers);
 	parsers_[numParsers_++] = parser;
 }
 

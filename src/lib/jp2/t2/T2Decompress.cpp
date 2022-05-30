@@ -22,8 +22,14 @@
 
 namespace grk
 {
-T2Decompress::T2Decompress(TileProcessor* tileProc) : tileProcessor(tileProc)
+T2Decompress::T2Decompress(TileProcessor* tileProc) :
+		tileProcessor(tileProc),
+		parserMap_(new ParserMap(tileProc))
 {}
+
+T2Decompress::~T2Decompress(void){
+	delete parserMap_;
+}
 
 bool T2Decompress::decompressPackets(uint16_t tile_no, SparseBuffer* src,
 									 bool* stopProcessionPackets)
@@ -98,6 +104,14 @@ bool T2Decompress::decompressPackets(uint16_t tile_no, SparseBuffer* src,
 		if(*stopProcessionPackets)
 			break;
 	}
+	// run the parsers
+    for (auto& pp : parserMap_->precinctParsers_){
+    	for (uint64_t i = 0; i < pp.second->numParsers_; ++i){
+			if (!decompressPacket(pp.second->parsers_[i], false))
+				return false;
+    	}
+    }
+
 	if(tileProcessor->getNumDecompressedPackets() == 0)
 		GRK_WARN("T2Decompress: no packets for tile %u were successfully read", tile_no);
 
@@ -150,29 +164,23 @@ bool T2Decompress::processPacket(uint16_t compno, uint8_t resno,
 		}
 	}
 	auto parser =
-			PacketParser(tileProcessor,
+			new PacketParser(tileProcessor,
 					tileProcessor->getNumProcessedPackets() & 0xFFFF,
 					compno,resno,precinctIndex,layno,
 					src->getCurrentChunkPtr(),
 					packetInfo->packetLength,
 					src->totalLength(),
 					src->getCurrentChunkLength());
-
 	if(packetInfo->packetLength) {
-		if (skip) {
-			src->incrementCurrentChunkOffset(packetInfo->packetLength);
-		}
-		else {
-			if (!decompressPacket(&parser, skip))
-				return false;
-			src->incrementCurrentChunkOffset(parser.numHeaderBytes() +
-					(skip ? parser.numSignalledDataBytes() : parser.numReadDataBytes()));
-		}
+		src->incrementCurrentChunkOffset(packetInfo->packetLength);
+		if (!skip)
+			parserMap_->pushParser(precinctIndex,parser);
 	} else {
-		if (!decompressPacket(&parser, skip))
+		if (!decompressPacket(parser, skip))
 			return false;
-		src->incrementCurrentChunkOffset(parser.numHeaderBytes() +
-				(skip ? parser.numSignalledDataBytes() : parser.numReadDataBytes()));
+		src->incrementCurrentChunkOffset(parser->numHeaderBytes() +
+				(skip ? parser->numSignalledDataBytes() : parser->numReadDataBytes()));
+		delete parser;
 	}
 	tileProcessor->incNumProcessedPackets();
 
