@@ -183,11 +183,13 @@ bool T2Decompress::processPacket(uint16_t compno, uint8_t resno,
 			delete parser;
 			throw;
 		}
-		delete parser;
-		if (!rc)
+		if (!rc) {
+			delete parser;
 			return false;
+		}
 		src->incrementCurrentChunkOffset(parser->numHeaderBytes() +
 				(skip ? parser->numSignalledDataBytes() : parser->numReadDataBytes()));
+		delete parser;
 	}
 	tileProcessor->incNumProcessedPackets();
 
