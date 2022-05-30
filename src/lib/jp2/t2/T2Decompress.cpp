@@ -105,12 +105,42 @@ bool T2Decompress::decompressPackets(uint16_t tile_no, SparseBuffer* src,
 			break;
 	}
 	// run the parsers
-    for (auto& pp : parserMap_->precinctParsers_){
-    	for (uint64_t i = 0; i < pp.second->numParsers_; ++i){
-			if (!decompressPacket(pp.second->parsers_[i], false))
-				return false;
-    	}
-    }
+	if (!parserMap_->precinctParsers_.empty()) {
+		auto numThreads =
+			std::min<size_t>(ExecSingleton::get()->num_workers(),
+					parserMap_->precinctParsers_.size());
+		if (numThreads == 1) {
+			for (std::pair<const uint64_t,PrecinctPacketParsers*>& pp :
+					parserMap_->precinctParsers_){
+				std::pair<const uint64_t,PrecinctPacketParsers*>& ppair = pp;
+				for (uint64_t i = 0; i < ppair.second->numParsers_; ++i){
+					if (!decompressPacket(ppair.second->parsers_[i], false))
+						return false;
+				}
+			}
+		} else {
+			tf::Taskflow taskflow;
+			auto numTasks = parserMap_->precinctParsers_.size();
+			auto tasks = new tf::Task[numTasks];
+			for(uint64_t i = 0; i < numTasks; i++)
+				tasks[i] = taskflow.placeholder();
+			uint64_t i = 0;
+			for (std::pair<const uint64_t,PrecinctPacketParsers*>& pp :
+					parserMap_->precinctParsers_){
+				std::pair<const uint64_t,PrecinctPacketParsers*>& ppair = pp;
+				auto decompressor = [this,ppair]() {
+					for (uint64_t j = 0; j < ppair.second->numParsers_; ++j){
+						if (!decompressPacket(ppair.second->parsers_[j], false))
+							return false;
+					}
+					return true;
+				};
+				tasks[i++].work(decompressor);
+			}
+			ExecSingleton::get()->run(taskflow).wait();
+			delete[] tasks;
+		}
+	}
 
 	if(tileProcessor->getNumDecompressedPackets() == 0)
 		GRK_WARN("T2Decompress: no packets for tile %u were successfully read", tile_no);
