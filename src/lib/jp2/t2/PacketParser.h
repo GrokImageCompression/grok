@@ -36,14 +36,15 @@ public:
 				size_t tileBytes,
 				size_t remainingTilePartBytes);
 	virtual ~PacketParser(void) = default;
-	bool readPacketHeader(void);
-	bool readPacketData(void);
+	bool readHeader(void);
+	bool readData(void);
 	uint32_t numHeaderBytes(void);
 	uint32_t numSignalledDataBytes(void);
 	uint32_t numSignalledBytes(void);
 	uint32_t numReadDataBytes(void);
+	void print(void);
 private:
-	void readPacketDataFinalize(void);
+	void readDataFinalize(void);
 	void initSegment(DecompressCodeblock* cblk, uint32_t index, uint8_t cblk_sty,
 								   bool first);
 	 TileProcessor* tileProcessor_;
@@ -56,10 +57,13 @@ private:
 	 size_t tileBytes_;
 	 size_t remainingTilePartBytes_;
 	 bool tagBitsPresent_;
-	 uint32_t headerBytes_;
+	 // header bytes in packet - doesn't include packed header bytes
+	 uint32_t packetHeaderBytes_;
 	 uint32_t signalledDataBytes_;
 	 uint32_t readDataBytes_;
 	 uint32_t lengthFromMarker_;
+	 bool parsedHeader_;
+	 bool headerError_;
 };
 
 struct PrecinctPacketParsers{
@@ -69,6 +73,7 @@ struct PrecinctPacketParsers{
 	TileProcessor* tileProcessor_;
 	PacketParser **parsers_;
 	uint16_t numParsers_;
+	uint64_t allocatedParsers_;
 };
 
 struct TileProcessor;

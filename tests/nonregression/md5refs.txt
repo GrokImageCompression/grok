@@ -322,14 +322,15 @@ d5c155592a00f695dad564cf51e602f8  cinema129x129.bmp
 863f7371ac6946c61ff5205c227db78f  b1_mono_4k.tif
 90afe08c78791e48eeaf56c450d8fdba  issue432.jp2_0.pgx
 1bd39562880ff7ac0e8c5898223312b7  tnsot_zero_missing_eoc.tif
-6eadfb18267dadc247e023379caa9a56  clusterfuzz-29249-uninitialized-mem_0.pgx
+5df4122edbaec97a5f4e58d4047de289  clusterfuzz-29249-uninitialized-mem_0.pgx
 cdd0e6a6415ef0d36e423badbf35e2d6  ybr-cat.jp2_0.pgx
 ef9aa2e604d4b87a121a346113d805bb  ybr-cat.jp2_1.pgx
 0a112403ac67d89c1fa12e7ad48e69db  ybr-cat.jp2_2.pgx
 296381b31b6cf2b3725b25fba9d27efc  ybr-cat_0.pgx
 d41d8cd98f00b204e9800998ecf8427e  ybr-cat_1.pgx
 fc57ca26d22d7e909a6760c038b82eda  ybr-cat_2.pgx
-dafce6142411b1030f22ba48667813e7  clusterfuzz-testcase-grk_decompress_fuzzer-4634603289706496_0.pgx
+753ed9d1d825df84567cdb1fe89a0c7d  grk_decompress_fuzzer-5796072240840704.png
+117fcf7611ef79c4ddc1eb0153dce8e0  clusterfuzz-testcase-grk_decompress_fuzzer-4634603289706496_0.pgx
 9d0151e0e4dd8d47a569db5eb6815755  clusterfuzz-testcase-minimized-grk_decompress_fuzzer-4772443124269056_0.pgx
 9d0151e0e4dd8d47a569db5eb6815755  clusterfuzz-testcase-minimized-grk_decompress_fuzzer-4772443124269056_1.pgx
 9d0151e0e4dd8d47a569db5eb6815755  clusterfuzz-testcase-minimized-grk_decompress_fuzzer-4772443124269056_2.pgx

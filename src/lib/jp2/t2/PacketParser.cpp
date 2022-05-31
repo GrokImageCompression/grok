@@ -39,14 +39,30 @@ PacketParser::PacketParser(TileProcessor* tileProcessor,
 											tileBytes_(tileBytes),
 											remainingTilePartBytes_(remainingTilePartBytes),
 											tagBitsPresent_(false),
-											headerBytes_(0),
+											packetHeaderBytes_(0),
 											signalledDataBytes_(0),
 											readDataBytes_(0),
-											lengthFromMarker_(lengthFromMarker)
+											lengthFromMarker_(lengthFromMarker),
+											parsedHeader_(false),
+											headerError_(false)
 {}
+void PacketParser::print(void){
+	std::cout << "/////////////////////////////////" << compno_ << std::endl;
+	std::cout << "compno: " << compno_ << std::endl;
+	std::cout << "resno: " << resno_ << std::endl;
+	std::cout << "precinctIndex: " << precinctIndex_ << std::endl;
+	std::cout << "layno: " << layno_ << std::endl;
+	std::cout << "tileBytes: " << tileBytes_ << std::endl;
+	std::cout << "remainingTilePartBytes: " << remainingTilePartBytes_ << std::endl;
+	std::cout << "tagBitsPresent: " << tagBitsPresent_ << std::endl;
+	std::cout << "packetHeaderBytes: " << packetHeaderBytes_ << std::endl;
+	std::cout << "signalledDataBytes: " << signalledDataBytes_ << std::endl;
+	std::cout << "readDataBytes: " << readDataBytes_ <<  std::endl;
+	std::cout << "lengthFromMarker: " << lengthFromMarker_ << std::endl;
+}
 
 uint32_t PacketParser::numHeaderBytes(void){
-	return headerBytes_;
+	return packetHeaderBytes_;
 }
 uint32_t PacketParser::numSignalledDataBytes(void){
 	return signalledDataBytes_;
@@ -55,64 +71,76 @@ uint32_t PacketParser::numReadDataBytes(void){
 	return readDataBytes_;
 }
 uint32_t PacketParser::numSignalledBytes(void){
-	return headerBytes_ + signalledDataBytes_;
+	return packetHeaderBytes_ + signalledDataBytes_;
 }
 
-bool PacketParser::readPacketHeader(void)
+bool PacketParser::readHeader(void)
 {
-	auto active_src = data_;
+	if (parsedHeader_)
+		return !headerError_;
+
+	auto currentData = data_;
 	auto tilePtr = tileProcessor_->getTile();
 	auto res = tilePtr->comps[compno_].tileCompResolution + resno_;
 	auto tcp = tileProcessor_->getTileCodingParams();
-	if(tcp->csty & J2K_CP_CSTY_SOP)
+	bool hasSOP = tcp->csty & J2K_CP_CSTY_SOP;
+	bool hasEPH = tcp->csty & J2K_CP_CSTY_EPH;
+	parsedHeader_ = true;
+	// SOP marker (present in packet even with packed packet headers)
+	if(hasSOP)
 	{
-		if(remainingTilePartBytes_ < 6)
+		if(remainingTilePartBytes_ < 6){
+			headerError_ = true;
 			throw TruncatedPacketHeaderException();
+		}
 		uint16_t marker =
-			(uint16_t)(((uint16_t)(*active_src) << 8) | (uint16_t)(*(active_src + 1)));
+			(uint16_t)(((uint16_t)(*currentData) << 8) | (uint16_t)(*(currentData + 1)));
 		if(marker != J2K_MS_SOP)
 		{
 			GRK_WARN("Expected SOP marker, but found 0x%x", marker);
+			headerError_ = true;
 			throw CorruptPacketHeaderException();
 		}
 		else
 		{
 			uint16_t signalledPacketSequenceNumber =
-				(uint16_t)(((uint16_t)active_src[4] << 8) | active_src[5]);
+				(uint16_t)(((uint16_t)currentData[4] << 8) | currentData[5]);
 			if(signalledPacketSequenceNumber != (packetSequenceNumber_))
 			{
 				GRK_WARN("SOP marker packet counter %u does not match expected counter %u",
 						signalledPacketSequenceNumber, packetSequenceNumber_);
+				headerError_ = true;
 				throw CorruptPacketHeaderException();
 			}
-			active_src += 6;
+			currentData += 6;
 			remainingTilePartBytes_ -= 6;
 		}
 	}
-	auto header_data_start = &active_src;
-	auto remaining_length = &remainingTilePartBytes_;
+	auto headerStart = &currentData;
+	auto remainingBytes = &remainingTilePartBytes_;
 	auto cp = tileProcessor_->cp_;
 	if(cp->ppm_marker)
 	{
-		if(tileProcessor_->getIndex() >= cp->ppm_marker->tile_packet_headers_.size())
+		if(tileProcessor_->getIndex() >= cp->ppm_marker->packetHeaders.size())
 		{
 			GRK_ERROR("PPM marker has no packed packet header data for tile %u",
 					  tileProcessor_->getIndex() + 1);
+			headerError_ = true;
 			return false;
 		}
-		auto tile_packet_header = &cp->ppm_marker->tile_packet_headers_[tileProcessor_->getIndex()];
-		header_data_start = &tile_packet_header->buf;
-		remaining_length = &tile_packet_header->len;
+		auto header = &cp->ppm_marker->packetHeaders[tileProcessor_->getIndex()];
+		headerStart = &header->buf;
+		remainingBytes = &header->len;
 	}
 	else if(tcp->ppt)
 	{
-		header_data_start = &tcp->ppt_data;
-		remaining_length = &tcp->ppt_len;
+		headerStart = &tcp->ppt_data;
+		remainingBytes = &tcp->ppt_len;
 	}
-	if(*remaining_length == 0)
+	if(*remainingBytes == 0)
 		throw TruncatedPacketHeaderException();
-	auto header_data = *header_data_start;
-	std::unique_ptr<BitIO> bio(new BitIO(header_data, *remaining_length, false));
+	auto currentHeaderPtr = *headerStart;
+	std::unique_ptr<BitIO> bio(new BitIO(currentHeaderPtr, *remainingBytes, false));
 	auto tccp = tcp->tccps + compno_;
 	try
 	{
@@ -131,8 +159,10 @@ bool PacketParser::readPacketHeader(void)
 				auto numPrecCodeBlocks = prc->getNumCblks();
 				// assuming 1 bit minimum encoded per code block,
 				// let's check if we have enough bytes
-				if((numPrecCodeBlocks >> 3) > tileBytes_)
+				if((numPrecCodeBlocks >> 3) > tileBytes_){
+					headerError_ = true;
 					throw TruncatedPacketHeaderException();
+				}
 				for(uint64_t cblkno = 0; cblkno < numPrecCodeBlocks; cblkno++)
 				{
 					auto cblk = prc->tryGetDecompressedBlockPtr(cblkno);
@@ -255,7 +285,8 @@ bool PacketParser::readPacketHeader(void)
 						uint8_t bits_to_read = cblk->numlenbits + floorlog2(seg->numPassesInPacket);
 						if(bits_to_read > 32)
 						{
-							GRK_ERROR("readPacketHeader: too many bits in segment length ");
+							GRK_ERROR("readHeader: too many bits in segment length ");
+							headerError_ = true;
 							return false;
 						}
 						bio->read(&seg->numBytesInPacket, bits_to_read);
@@ -265,12 +296,6 @@ bool PacketParser::readPacketHeader(void)
 							PacketLengthInfo(seg->numBytesInPacket,
 											 cblk->numlenbits + floorlog2(seg->numPassesInPacket)));
 #endif
-						/*
-						 GRK_INFO(
-						 "included=%u numPassesInPacket=%u increment=%u len=%u ",
-						 included, seg->numPassesInPacket, increment,
-						 seg->newlen);
-						 */
 						blockPassesInPacket -= (int32_t)seg->numPassesInPacket;
 						if(blockPassesInPacket > 0)
 							initSegment(cblk, ++segno, tccp->cblk_sty, false);
@@ -279,48 +304,48 @@ bool PacketParser::readPacketHeader(void)
 			}
 		}
 		bio->inalign();
-		header_data += bio->numBytes();
+		currentHeaderPtr += bio->numBytes();
 	}
 	catch(InvalidMarkerException& ex)
 	{
 		GRK_UNUSED(ex);
+		headerError_ = true;
 		return false;
 	}
-	/* EPH markers */
-	if(tcp->csty & J2K_CP_CSTY_EPH)
+	// EPH marker (absent from packet in case of packet packet headers)
+	if(hasEPH)
 	{
-		if((*remaining_length - (uint32_t)(header_data - *header_data_start)) < 2U)
-			// GRK_WARN("Not enough space for expected EPH marker");
+		if((*remainingBytes - (uint32_t)(currentHeaderPtr - *headerStart)) < 2U){
+			headerError_ = true;
 			throw TruncatedPacketHeaderException();
+		}
 		uint16_t marker =
-			(uint16_t)(((uint16_t)(*header_data) << 8) | (uint16_t)(*(header_data + 1)));
+			(uint16_t)(((uint16_t)(*currentHeaderPtr) << 8) | (uint16_t)(*(currentHeaderPtr + 1)));
 		if(marker != J2K_MS_EPH)
 		{
 			GRK_WARN("Expected EPH marker, but found 0x%x", marker);
+			headerError_ = true;
 			throw CorruptPacketHeaderException();
 		}
 		else
 		{
-			header_data += 2;
+			currentHeaderPtr += 2;
 		}
 	}
-	auto header_length = (size_t)(header_data - *header_data_start);
-	// GRK_INFO("hdrlen=%u ", header_length);
-	// GRK_INFO("packet body\n");
-	*remaining_length -= header_length;
-	*header_data_start += header_length;
-	headerBytes_ = (uint32_t)(active_src - data_);
-	data_ += headerBytes_;
-	if(!tagBitsPresent_ && !headerBytes_)
-		throw TruncatedPacketHeaderException();
+	auto headerMinusSopBytes = (size_t)(currentHeaderPtr - *headerStart);
+	*remainingBytes -= headerMinusSopBytes;
+	*headerStart += headerMinusSopBytes;
+	packetHeaderBytes_ = (uint32_t)(currentData - data_);
 	// validate PL marker against parsed packet
 	if(lengthFromMarker_ && lengthFromMarker_ != numSignalledBytes())
 	{
 		GRK_ERROR("Corrupt PL marker reports %u bytes for packet;"
 				  " parsed bytes are in fact %u",
 				  lengthFromMarker_, numSignalledBytes());
+		headerError_ = true;
 		return false;
 	}
+	data_ += packetHeaderBytes_;
 
 	return true;
 }
@@ -351,10 +376,10 @@ void PacketParser::initSegment(DecompressCodeblock* cblk, uint32_t index, uint8_
 		seg->maxpasses = maxPassesPerSegmentJ2K;
 	}
 }
-bool PacketParser::readPacketData()
+bool PacketParser::readData(void)
 {
 	if (!tagBitsPresent_){
-		readPacketDataFinalize();
+		readDataFinalize();
 		return true;
 	}
 	uint32_t offset = 0;
@@ -380,8 +405,14 @@ bool PacketParser::readPacketData()
 			uint32_t numPassesInPacket = cblk->numPassesInPacket;
 			do
 			{
-				if(remainingTilePartBytes_ == 0)
+				if(remainingTilePartBytes_ == 0){
+					GRK_WARN("Packet data is truncated or packet header is corrupt :");
+					GRK_WARN("at component=%02d resolution=%02d precinct=%03d "
+							 "layer=%02d",
+							 compno_, resno_,
+							 precinctIndex_, layno_);
 					goto finish;
+				}
 				if(((seg->numBytesInPacket) > remainingTilePartBytes_))
 				{
 					// HT doesn't tolerate truncated code blocks since decoding runs both forward
@@ -422,12 +453,12 @@ bool PacketParser::readPacketData()
 
 finish:
 	readDataBytes_ = offset;
-	readPacketDataFinalize();
+	readDataFinalize();
 
 	return true;
 }
 
-void PacketParser::readPacketDataFinalize(void){
+void PacketParser::readDataFinalize(void){
 	auto tile = tileProcessor_->getTile();
 	update_maximum<uint8_t>((tile->comps + compno_)->highestResolutionDecompressed, resno_);
 	tileProcessor_->incNumDecompressedPackets();
@@ -436,16 +467,18 @@ void PacketParser::readPacketDataFinalize(void){
 PrecinctPacketParsers::PrecinctPacketParsers(TileProcessor* tileProcessor) :
 		tileProcessor_(tileProcessor),
 		parsers_(nullptr),
-		numParsers_(0)
+		numParsers_(0),
+		allocatedParsers_(0)
 {
 	auto tcp = tileProcessor_->getTileCodingParams();
 	uint8_t maxResolutions = tcp->tccps->numresolutions;
 	for (uint16_t i = 1; i < tileProcessor_->headerImage->numcomps; ++i)
 		maxResolutions = (std::max)(maxResolutions, (tcp->tccps+i)->numresolutions);
-	uint64_t len = (uint64_t)tcp->numlayers *
+	allocatedParsers_= (uint64_t)tcp->numlayers *
 						tileProcessor_->headerImage->numcomps * maxResolutions;
-	parsers_ = new PacketParser*[len];
-	for (uint16_t i = 0; i < len; ++i)
+	assert(allocatedParsers_);
+	parsers_ = new PacketParser*[allocatedParsers_];
+	for (uint16_t i = 0; i < allocatedParsers_; ++i)
 		parsers_[i] = nullptr;
 }
 
@@ -459,6 +492,7 @@ PrecinctPacketParsers::~PrecinctPacketParsers(void)
 void PrecinctPacketParsers::pushParser(PacketParser *parser){
 	if (!parser)
 		return;
+	assert(numParsers_  < allocatedParsers_);
 	parsers_[numParsers_++] = parser;
 }
 

@@ -52,7 +52,7 @@ class PPMMarker
 	 */
 	bool merge(void);
 
-	std::vector<grk_buf8> tile_packet_headers_;
+	std::vector<grk_buf8> packetHeaders;
 
   private:
 	/** number of ppm markers (reserved size) */

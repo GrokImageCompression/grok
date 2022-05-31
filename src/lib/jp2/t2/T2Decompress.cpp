@@ -100,6 +100,7 @@ bool T2Decompress::decompressPackets(uint16_t tile_no, SparseBuffer* src,
 			break;
 	}
 
+	/////////////////////
 	// run the parsers
 
 	//1. count parsers
@@ -126,7 +127,7 @@ bool T2Decompress::decompressPackets(uint16_t tile_no, SparseBuffer* src,
 					for (std::pair<const uint64_t,PrecinctPacketParsers*>& pp :
 									res->parserMap_->precinctParsers_){
 						for (uint64_t j = 0; j < pp.second->numParsers_; ++j){
-							if (!decompressPacket(pp.second->parsers_[j], false))
+							if (!decompressPacket(pp.second->parsers_[j]))
 								return false;
 						}
 					}
@@ -148,7 +149,7 @@ bool T2Decompress::decompressPackets(uint16_t tile_no, SparseBuffer* src,
 						std::pair<const uint64_t,PrecinctPacketParsers*>& ppair = pp;
 						auto decompressor = [this,ppair]() {
 							for (uint64_t j = 0; j < ppair.second->numParsers_; ++j){
-								if (!decompressPacket(ppair.second->parsers_[j], false))
+								if (!decompressPacket(ppair.second->parsers_[j]))
 									return false;
 							}
 							return true;
@@ -220,38 +221,63 @@ bool T2Decompress::processPacket(uint16_t compno, uint8_t resno,
 					packetInfo->packetLength,
 					src->totalLength(),
 					src->getCurrentChunkLength());
-	if(packetInfo->packetLength) {
-		src->incrementCurrentChunkOffset(packetInfo->packetLength);
-		if (!skip){
-			// push to res parser map
-			res->parserMap_->pushParser(precinctIndex,parser);
-		}
-	} else {
-		bool rc = false;
+	uint32_t packetLen = packetInfo->packetLength;
+	if(!packetInfo->packetLength) {
 		try {
-		  rc = decompressPacket(parser, skip);
+		  if(!parser->readHeader())
+		  {
+			delete parser;
+			return false;
+		  }
 		} catch (std::exception& ex){
 			delete parser;
 			throw;
 		}
-		if (!rc) {
-			delete parser;
-			return false;
-		}
-		src->incrementCurrentChunkOffset(parser->numHeaderBytes() +
-				(skip ? parser->numSignalledDataBytes() : parser->numReadDataBytes()));
-		delete parser;
+		packetLen = parser->numHeaderBytes() +	parser->numSignalledDataBytes();
 	}
+	try {
+		src->incrementCurrentChunkOffset(packetLen);
+	} catch (SparseBufferOverrunException &sboe){
+		GRK_UNUSED(sboe);
+		delete parser;
+		return false;
+	}
+	if (!skip)
+		readPacketData(res,parser,precinctIndex,false);
 	tileProcessor->incNumProcessedPackets();
 
 	return true;
 }
+bool T2Decompress::readPacketData(Resolution *res,
+									PacketParser *parser,
+									uint64_t precinctIndex,
+									bool defer){
+	if (defer) {
+		res->parserMap_->pushParser(precinctIndex,parser);
+	} else {
+		try {
+		  if (!parser->readHeader() || !parser->readData()) {
+			delete parser;
+			return false;
+		  }
+		} catch (std::exception& ex){
+			delete parser;
+			throw;
+		}
+		delete parser;
+	}
+
+	return true;
+}
+bool T2Decompress::decompressPacket(PacketParser *parser){
+	return decompressPacket(parser,false);
+}
 bool T2Decompress::decompressPacket(PacketParser *parser,
 									bool skipData)
 {
-	if(!parser->readPacketHeader())
+	if(!parser->readHeader())
 		return false;
 
-	return skipData || parser->readPacketData();
+	return skipData || parser->readData();
 }
 } // namespace grk

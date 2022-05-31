@@ -20,15 +20,18 @@
 
 namespace grk
 {
-SparseBuffer::SparseBuffer() : dataLen(0), currentChunkId(0) {}
+SparseBuffer::SparseBuffer() : dataLen(0), currentChunkId(0), reachedEnd_(false)
+{}
 SparseBuffer::~SparseBuffer()
 {
 	cleanup();
 }
 void SparseBuffer::increment()
 {
-	if(chunks.size() == 0 || currentChunkId == (size_t)(chunks.size() - 1))
+	if(chunks.size() == 0 || currentChunkId == (size_t)(chunks.size() - 1)){
+		reachedEnd_ = true;
 		return;
+	}
 	auto currentChunk = chunks[currentChunkId];
 	if(currentChunk->offset == currentChunk->len && currentChunkId < (size_t)(chunks.size() - 1))
 	{
@@ -132,11 +135,15 @@ void SparseBuffer::rewind(void)
 			chunk->offset = 0;
 	}
 	currentChunkId = 0;
+	reachedEnd_ = false;
 }
 void SparseBuffer::incrementCurrentChunkOffset(size_t delta)
 {
 	if(!delta)
 		return;
+
+	if (reachedEnd_)
+		throw SparseBufferOverrunException();
 
 	auto currentChunk = chunks[currentChunkId];
 	currentChunk->incrementOffset((ptrdiff_t)delta);

@@ -52,6 +52,7 @@ struct SparseBuffer
 	size_t dataLen; /* total length of all chunks*/
 	size_t currentChunkId; /* current index into chunk vector */
 	std::vector<grk_buf8*> chunks;
+	bool reachedEnd_;
 };
 
 } // namespace grk

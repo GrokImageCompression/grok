@@ -34,8 +34,10 @@ struct T2Decompress
   private:
 	TileProcessor* tileProcessor;
 	bool decompressPacket(PacketParser *parser, bool skipData);
+	bool decompressPacket(PacketParser *parser);
 	bool processPacket(	uint16_t compno, uint8_t resno,
 					   uint64_t precinctIndex, uint16_t layno, SparseBuffer* src);
+	bool readPacketData(Resolution *res, PacketParser *parser, uint64_t precinctIndex, bool defer);
 };
 
 } // namespace grk
