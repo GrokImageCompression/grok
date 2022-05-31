@@ -21,15 +21,15 @@
 namespace grk
 {
 // Limits defined in JPEG 2000 standard
-const uint32_t maxNumComponentsJ2K = 16384;
-const uint32_t maxPrecisionJ2K = 38;
-const uint32_t maxPassesPerSegmentJ2K = (maxPrecisionJ2K - 1) * 3 + 1;
-const uint32_t maxNumTilesJ2K = 65535;
-const uint32_t maxTilePartsPerTileJ2K = 255;
-const uint32_t maxTotalTilePartsJ2K = 65535;
+const uint16_t maxNumComponentsJ2K = 16384;
+const uint8_t maxPrecisionJ2K = 38;
+const uint8_t maxPassesPerSegmentJ2K = (maxPrecisionJ2K - 1) * 3 + 1;
+const uint16_t maxNumTilesJ2K = 65535;
+const uint8_t maxTilePartsPerTileJ2K = 255;
+const uint16_t maxTotalTilePartsJ2K = 65535;
 // note: includes tile part header
 const uint32_t maxTilePartSizeJ2K = UINT_MAX;
-const uint32_t maxNumLayersJ2K = 65535;
+const uint16_t maxNumLayersJ2K = 65535;
 
 // Limits in Grok library
 // We can have a maximum 31 bits in each 32 bit wavelet coefficient
