@@ -474,15 +474,12 @@ PrecinctPacketParsers::PrecinctPacketParsers(TileProcessor* tileProcessor) :
 		allocatedParsers_(0)
 {
 	auto tcp = tileProcessor_->getTileCodingParams();
-	uint8_t maxResolutions = tcp->tccps->numresolutions;
-	for (uint16_t i = 1; i < tileProcessor_->headerImage->numcomps; ++i)
-		maxResolutions = (std::max)(maxResolutions, (tcp->tccps+i)->numresolutions);
-	allocatedParsers_= (uint64_t)tcp->numlayers *
-						tileProcessor_->headerImage->numcomps * maxResolutions;
-	assert(allocatedParsers_);
-	parsers_ = new PacketParser*[allocatedParsers_];
-	for (uint16_t i = 0; i < allocatedParsers_; ++i)
-		parsers_[i] = nullptr;
+	allocatedParsers_= tcp->numlayers;
+	if (allocatedParsers_) {
+		parsers_ = new PacketParser*[allocatedParsers_];
+		for (uint16_t i = 0; i < allocatedParsers_; ++i)
+			parsers_[i] = nullptr;
+	}
 }
 
 PrecinctPacketParsers::~PrecinctPacketParsers(void)
@@ -495,7 +492,10 @@ PrecinctPacketParsers::~PrecinctPacketParsers(void)
 void PrecinctPacketParsers::pushParser(PacketParser *parser){
 	if (!parser)
 		return;
-	assert(numParsers_  < allocatedParsers_);
+	if (numParsers_  >= allocatedParsers_){
+		GRK_WARN("Attempt to add parser for layer larger than max number of layers.");
+		return;
+	}
 	parsers_[numParsers_++] = parser;
 }
 
@@ -508,6 +508,8 @@ ParserMap::~ParserMap(){
 }
 
 void ParserMap::pushParser(uint64_t precinctIndex, PacketParser *parser){
+	if (!parser)
+		return;
 	PrecinctPacketParsers *ppp = nullptr;
 	auto it = precinctParsers_.find(precinctIndex);
 	if (it == precinctParsers_.end()){

@@ -73,7 +73,7 @@ struct PrecinctPacketParsers{
 	TileProcessor* tileProcessor_;
 	PacketParser **parsers_;
 	uint16_t numParsers_;
-	uint64_t allocatedParsers_;
+	uint16_t allocatedParsers_;
 };
 
 struct TileProcessor;
