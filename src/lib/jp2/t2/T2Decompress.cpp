@@ -243,7 +243,7 @@ bool T2Decompress::processPacket(uint16_t compno, uint8_t resno,
 		return false;
 	}
 	if (!skip)
-		readPacketData(res,parser,precinctIndex,false);
+		readPacketData(res,parser,precinctIndex,packetInfo->packetLength);
 	tileProcessor->incNumProcessedPackets();
 
 	return true;
