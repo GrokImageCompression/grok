@@ -239,7 +239,9 @@ bool PacketParser::readHeader(void)
 						}
 						cblk->numlenbits = 3;
 					}
-					bio->getnumpasses(&cblk->numPassesInPacket);
+					uint32_t numPassesInPacket = 0;
+					bio->getnumpasses(&numPassesInPacket);
+					cblk->numPassesInPacket = (uint8_t)numPassesInPacket;
 					uint8_t increment = bio->getcommacode();
 					cblk->numlenbits += increment;
 					uint32_t segno = 0;

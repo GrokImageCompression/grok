@@ -111,7 +111,7 @@ struct Codeblock : public grk_buf2d<int32_t, AllocatorAligned>, public ICacheabl
 	grk_buf8 compressedStream;
 	uint8_t numbps;
 	uint8_t numlenbits;
-	uint32_t numPassesInPacket; /* number of passes encoded in current packet */
+	uint8_t numPassesInPacket; /* number of passes encoded in current packet */
   protected:
 #ifdef DEBUG_LOSSLESS_T2
 	uint32_t included;

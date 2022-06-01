@@ -145,7 +145,7 @@ bool T2Compress::compressPacketSimulate(TileCodingParams* tcp, PacketIter* pi,
 				continue;
 			if(layer->len > max_bytes_available)
 				return false;
-			cblk->numPassesInPacket += layer->numpasses;
+			cblk->numPassesInPacket += (uint8_t)layer->numpasses;
 			byteCount += layer->len;
 			if(max_bytes_available != UINT_MAX)
 				max_bytes_available -= layer->len;
@@ -415,7 +415,7 @@ bool T2Compress::compressPacket(TileCodingParams* tcp, PacketIter* pi, IBuffered
 				continue;
 			if(cblk_layer->len && !stream->writeBytes(cblk_layer->data, cblk_layer->len))
 				return false;
-			cblk->numPassesInPacket += cblk_layer->numpasses;
+			cblk->numPassesInPacket += (uint8_t)cblk_layer->numpasses;
 		}
 	}
 	*packet_bytes_written += (uint32_t)(stream->tell() - stream_start);
