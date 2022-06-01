@@ -1448,7 +1448,7 @@ bool TileProcessor::pcrdBisectSimple(uint32_t* allPacketBytes)
 static void prepareBlockForFirstLayer(CompressCodeblock* cblk)
 {
 	cblk->numPassesInPreviousPackets = 0;
-	cblk->numPassesInPacket = 0;
+	cblk->setNumPassesInPacket(0,0);
 	cblk->numlenbits = 0;
 }
 /*

@@ -111,8 +111,20 @@ struct Codeblock : public grk_buf2d<int32_t, AllocatorAligned>, public ICacheabl
 	grk_buf8 compressedStream;
 	uint8_t numbps;
 	uint8_t numlenbits;
-	uint8_t numPassesInPacket; /* number of passes encoded in current packet */
+	uint8_t getNumPassesInPacket(uint16_t layno){
+		GRK_UNUSED(layno);
+		return numPassesInPacket;
+	}
+	void setNumPassesInPacket(uint16_t layno, uint8_t passes){
+		GRK_UNUSED(layno);
+		numPassesInPacket = passes;
+	}
+	void incNumPassesInPacket(uint16_t layno, uint8_t delta){
+		GRK_UNUSED(layno);
+		numPassesInPacket += delta;
+	}
   protected:
+	uint8_t numPassesInPacket; /* number of passes encoded in current packet */
 #ifdef DEBUG_LOSSLESS_T2
 	uint32_t included;
 	std::vector<PacketLengthInfo> packet_length_info;

@@ -189,7 +189,7 @@ bool PacketParser::readHeader(void)
 					if(!included)
 					{
 						if(cblk)
-							cblk->numPassesInPacket = 0;
+							cblk->setNumPassesInPacket(layno_,0);
 						// GRK_INFO("included=%u ", included);
 						continue;
 					}
@@ -241,7 +241,7 @@ bool PacketParser::readHeader(void)
 					}
 					uint32_t numPassesInPacket = 0;
 					bio->getnumpasses(&numPassesInPacket);
-					cblk->numPassesInPacket = (uint8_t)numPassesInPacket;
+					cblk->setNumPassesInPacket(layno_,(uint8_t)numPassesInPacket);
 					uint8_t increment = bio->getcommacode();
 					cblk->numlenbits += increment;
 					uint32_t segno = 0;
@@ -255,7 +255,7 @@ bool PacketParser::readHeader(void)
 						if(cblk->getSegment(segno)->numpasses == cblk->getSegment(segno)->maxpasses)
 							initSegment(cblk, ++segno, tccp->cblk_sty, false);
 					}
-					auto blockPassesInPacket = (int32_t)cblk->numPassesInPacket;
+					auto blockPassesInPacket = (int32_t)cblk->getNumPassesInPacket(layno_);
 					do
 					{
 						auto seg = cblk->getSegment(segno);
@@ -398,13 +398,13 @@ bool PacketParser::readData(void)
 		for(uint64_t cblkno = 0; cblkno < prc->getNumCblks(); ++cblkno)
 		{
 			auto cblk = prc->getDecompressedBlockPtr(cblkno);
-			if(!cblk->numPassesInPacket)
+			if(!cblk->getNumPassesInPacket(layno_))
 				continue;
 
 			auto seg = cblk->getCurrentSegment();
 			if(!seg || (seg->numpasses == seg->maxpasses))
 				seg = cblk->nextSegment();
-			uint32_t numPassesInPacket = cblk->numPassesInPacket;
+			uint32_t numPassesInPacket = cblk->getNumPassesInPacket(layno_);
 			do
 			{
 				if(remainingTilePartBytes_ == 0){
