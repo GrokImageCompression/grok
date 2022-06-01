@@ -65,12 +65,14 @@ struct Layer
 struct Codeblock : public grk_buf2d<int32_t, AllocatorAligned>, public ICacheable
 {
 	Codeblock()
-		: numbps(0), numlenbits(0), numPassesInPacket(0)
+		: numbps(0), numlenbits(0)
 #ifdef DEBUG_LOSSLESS_T2
 		  ,
 		  included(false)
 #endif
-	{}
+	{
+		numPassesInPacket.push_back(0);
+	}
 	virtual ~Codeblock()
 	{
 		compressedStream.dealloc();
@@ -111,20 +113,24 @@ struct Codeblock : public grk_buf2d<int32_t, AllocatorAligned>, public ICacheabl
 	grk_buf8 compressedStream;
 	uint8_t numbps;
 	uint8_t numlenbits;
+	void setMaxLayers(uint16_t maxLayers){
+		numPassesInPacket = std::vector<uint8_t>(maxLayers);
+		std::fill(numPassesInPacket.begin(), numPassesInPacket.end(), 0);
+	}
 	uint8_t getNumPassesInPacket(uint16_t layno){
-		GRK_UNUSED(layno);
-		return numPassesInPacket;
+		assert(layno < numPassesInPacket.size());
+		return numPassesInPacket[layno];
 	}
 	void setNumPassesInPacket(uint16_t layno, uint8_t passes){
-		GRK_UNUSED(layno);
-		numPassesInPacket = passes;
+		assert(layno < numPassesInPacket.size());
+		numPassesInPacket[layno] = passes;
 	}
 	void incNumPassesInPacket(uint16_t layno, uint8_t delta){
-		GRK_UNUSED(layno);
-		numPassesInPacket += delta;
+		assert(layno < numPassesInPacket.size());
+		numPassesInPacket[layno] += delta;
 	}
   protected:
-	uint8_t numPassesInPacket; /* number of passes encoded in current packet */
+	std::vector<uint8_t> numPassesInPacket;
 #ifdef DEBUG_LOSSLESS_T2
 	uint32_t included;
 	std::vector<PacketLengthInfo> packet_length_info;

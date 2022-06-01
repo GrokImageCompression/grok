@@ -145,7 +145,7 @@ bool T2Compress::compressPacketSimulate(TileCodingParams* tcp, PacketIter* pi,
 				continue;
 			if(layer->len > max_bytes_available)
 				return false;
-			cblk->incNumPassesInPacket(layno,(uint8_t)layer->numpasses);
+			cblk->incNumPassesInPacket(0,(uint8_t)layer->numpasses);
 			byteCount += layer->len;
 			if(max_bytes_available != UINT_MAX)
 				max_bytes_available -= layer->len;
@@ -226,7 +226,7 @@ bool T2Compress::compressHeader(BitIO* bio, Resolution* res, uint16_t layno, uin
 			for(uint64_t cblkno = 0; cblkno < nb_blocks; ++cblkno)
 			{
 				auto cblk = prc->getCompressedBlockPtr(cblkno);
-				cblk->setNumPassesInPacket(layno,0);
+				cblk->setNumPassesInPacket(0,0);
 				assert(band->numbps >= cblk->numbps);
 				if(cblk->numbps > band->numbps)
 					GRK_WARN("Code block %u bps %u greater than band bps %u. Skipping.", cblkno,
@@ -255,7 +255,7 @@ bool T2Compress::compressHeader(BitIO* bio, Resolution* res, uint16_t layno, uin
 		{
 			auto cblk = prc->getCompressedBlockPtr(cblkno);
 			auto layer = cblk->layers + layno;
-			if(!cblk->getNumPassesInPacket(layno) && layer->numpasses)
+			if(!cblk->getNumPassesInPacket(0) && layer->numpasses)
 				prc->getInclTree()->setvalue(cblkno, layno);
 		}
 		for(uint64_t cblkno = 0; cblkno < nb_blocks; cblkno++)
@@ -267,7 +267,7 @@ bool T2Compress::compressHeader(BitIO* bio, Resolution* res, uint16_t layno, uin
 			uint32_t len = 0;
 
 			/* cblk inclusion bits */
-			if(!cblk->getNumPassesInPacket(layno))
+			if(!cblk->getNumPassesInPacket(0))
 			{
 				if(!prc->getInclTree()->compress(bio, cblkno, layno + 1))
 					return false;
@@ -281,7 +281,7 @@ bool T2Compress::compressHeader(BitIO* bio, Resolution* res, uint16_t layno, uin
 			if(!layer->numpasses)
 				continue;
 			/* if first instance of cblk --> zero bit-planes information */
-			if(!cblk->getNumPassesInPacket(layno))
+			if(!cblk->getNumPassesInPacket(0))
 			{
 				cblk->numlenbits = 3;
 				if(!prc->getImsbTree()->compress(bio, cblkno,
@@ -291,11 +291,11 @@ bool T2Compress::compressHeader(BitIO* bio, Resolution* res, uint16_t layno, uin
 			/* number of coding passes included */
 			if(!bio->putnumpasses(layer->numpasses))
 				return false;
-			uint32_t nb_passes = cblk->getNumPassesInPacket(layno) + layer->numpasses;
-			auto pass = cblk->passes + cblk->getNumPassesInPacket(layno);
+			uint32_t nb_passes = cblk->getNumPassesInPacket(0) + layer->numpasses;
+			auto pass = cblk->passes + cblk->getNumPassesInPacket(0);
 
 			/* computation of the increase of the length indicator and insertion in the header */
-			for(uint32_t passno = cblk->getNumPassesInPacket(layno); passno < nb_passes; ++passno)
+			for(uint32_t passno = cblk->getNumPassesInPacket(0); passno < nb_passes; ++passno)
 			{
 				++nump;
 				len += pass->len;
@@ -415,7 +415,7 @@ bool T2Compress::compressPacket(TileCodingParams* tcp, PacketIter* pi, IBuffered
 				continue;
 			if(cblk_layer->len && !stream->writeBytes(cblk_layer->data, cblk_layer->len))
 				return false;
-			cblk->incNumPassesInPacket(layno,(uint8_t)cblk_layer->numpasses);
+			cblk->incNumPassesInPacket(0,(uint8_t)cblk_layer->numpasses);
 		}
 	}
 	*packet_bytes_written += (uint32_t)(stream->tell() - stream_start);
