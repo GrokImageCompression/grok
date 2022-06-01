@@ -80,15 +80,8 @@ class SparseCache
 		}
 		return item;
 	}
-
   protected:
-	virtual T* create(uint64_t index)
-	{
-		GRK_UNUSED(index);
-		auto item = new T();
-		return item;
-	}
-
+	virtual T* create(uint64_t index) = 0;
   private:
 	std::map<uint64_t, T**> chunks;
 	uint64_t chunkSize_;

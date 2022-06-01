@@ -188,10 +188,8 @@ bool PacketParser::readHeader(void)
 					}
 					if(!included)
 						continue;
-					if(!cblk) {
+					if(!cblk)
 						cblk = prc->getDecompressedBlockPtr(cblkno);
-						cblk->setMaxLayers(tileProcessor_->getTileCodingParams()->numlayers);
-					}
 					if(!cblk->numlenbits)
 					{
 						uint8_t K_msbs = 0;
@@ -394,11 +392,7 @@ bool PacketParser::readData(void)
 			continue;
 		for(uint64_t cblkno = 0; cblkno < prc->getNumCblks(); ++cblkno)
 		{
-			auto cblk = prc->tryGetDecompressedBlockPtr(cblkno);
-			if (!cblk){
-				cblk = prc->getDecompressedBlockPtr(cblkno);
-				cblk->setMaxLayers(tileProcessor_->getTileCodingParams()->numlayers);
-			}
+			auto cblk = prc->getDecompressedBlockPtr(cblkno);
 			if(!cblk->getNumPassesInPacket(layno_))
 				continue;
 

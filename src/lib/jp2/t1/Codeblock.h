@@ -64,14 +64,15 @@ struct Layer
 // note: block lives in canvas coordinates
 struct Codeblock : public grk_buf2d<int32_t, AllocatorAligned>, public ICacheable
 {
-	Codeblock()
+	Codeblock(uint16_t numLayers)
 		: numbps(0), numlenbits(0)
 #ifdef DEBUG_LOSSLESS_T2
 		  ,
 		  included(false)
 #endif
 	{
-		numPassesInPacket.push_back(0);
+		numPassesInPacket = std::vector<uint8_t>(numLayers);
+		std::fill(numPassesInPacket.begin(), numPassesInPacket.end(), 0);
 	}
 	virtual ~Codeblock()
 	{
@@ -113,10 +114,6 @@ struct Codeblock : public grk_buf2d<int32_t, AllocatorAligned>, public ICacheabl
 	grk_buf8 compressedStream;
 	uint8_t numbps;
 	uint8_t numlenbits;
-	void setMaxLayers(uint16_t maxLayers){
-		numPassesInPacket = std::vector<uint8_t>(maxLayers);
-		std::fill(numPassesInPacket.begin(), numPassesInPacket.end(), 0);
-	}
 	uint8_t getNumPassesInPacket(uint16_t layno){
 		assert(layno < numPassesInPacket.size());
 		return numPassesInPacket[layno];
@@ -139,9 +136,14 @@ struct Codeblock : public grk_buf2d<int32_t, AllocatorAligned>, public ICacheabl
 
 struct CompressCodeblock : public Codeblock
 {
-	CompressCodeblock()
-		: paddedCompressedStream(nullptr), layers(nullptr), passes(nullptr),
-		  numPassesInPreviousPackets(0), numPassesTotal(0), contextStream(nullptr)
+	CompressCodeblock(uint16_t numLayers)
+		: Codeblock(numLayers),
+		  paddedCompressedStream(nullptr),
+		  layers(nullptr),
+		  passes(nullptr),
+		  numPassesInPreviousPackets(0),
+		  numPassesTotal(0),
+		  contextStream(nullptr)
 	{}
 	virtual ~CompressCodeblock()
 	{
@@ -198,8 +200,10 @@ struct CompressCodeblock : public Codeblock
 
 struct DecompressCodeblock : public Codeblock
 {
-	DecompressCodeblock()
-		: segs(nullptr), numSegments(0),
+	DecompressCodeblock(uint16_t numLayers)
+		: Codeblock(numLayers),
+		  segs(nullptr),
+		  numSegments(0),
 #ifdef DEBUG_LOSSLESS_T2
 		  included(0),
 #endif

@@ -50,7 +50,7 @@ grk_rect32 PrecinctImpl::getCodeBlockBounds(uint64_t cblkno)
 
 	return cblk_bounds.intersection(&bounds_);
 }
-bool PrecinctImpl::initCodeBlocks(grk_rect32* bounds)
+bool PrecinctImpl::initCodeBlocks(uint16_t numLayers,grk_rect32* bounds)
 {
 	if((isCompressor_ && enc) || (!isCompressor_ && dec))
 		return true;
@@ -59,9 +59,9 @@ bool PrecinctImpl::initCodeBlocks(grk_rect32* bounds)
 	if(!numBlocks)
 		return true;
 	if(isCompressor_)
-		enc = new BlockCache<CompressCodeblock, PrecinctImpl>(numBlocks, this);
+		enc = new BlockCache<CompressCodeblock, PrecinctImpl>(numLayers,numBlocks, this);
 	else
-		dec = new BlockCache<DecompressCodeblock, PrecinctImpl>(numBlocks, this);
+		dec = new BlockCache<DecompressCodeblock, PrecinctImpl>(numLayers,numBlocks, this);
 
 	return true;
 }
@@ -138,8 +138,10 @@ TagTreeU8* PrecinctImpl::getIMsbTagTree(void)
 
 Precinct::Precinct(TileProcessor *tileProcessor, const grk_rect32& bounds, grk_pt32 cblk_expn)
 	: grk_rect32(bounds), precinctIndex(0),
+	  numLayers_(tileProcessor->getTileCodingParams()->numlayers),
 	  impl(new PrecinctImpl(tileProcessor->isCompressor(), this, cblk_expn)),
 	  cblk_expn_(cblk_expn)
+
 {}
 Precinct::~Precinct()
 {

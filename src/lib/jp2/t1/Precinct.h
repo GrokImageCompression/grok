@@ -22,21 +22,24 @@ template<typename T, typename P>
 class BlockCache : public SparseCache<T>
 {
   public:
-	BlockCache(uint64_t maxChunkSize, P* blockInitializer)
-		: SparseCache<T>(maxChunkSize), blockInitializer_(blockInitializer)
+	BlockCache(uint16_t numLayers, uint64_t maxChunkSize, P* blockInitializer)
+		: SparseCache<T>(maxChunkSize),
+		  blockInitializer_(blockInitializer),
+		  numLayers_(numLayers)
 	{}
 	virtual ~BlockCache() = default;
 
   protected:
 	virtual T* create(uint64_t index) override
 	{
-		auto item = new T();
+		auto item = new T(numLayers_);
 		blockInitializer_->initCodeBlock(item, index);
 		return item;
 	}
 
   private:
 	P* blockInitializer_;
+	uint16_t numLayers_;
 };
 
 struct PrecinctImpl
@@ -44,7 +47,7 @@ struct PrecinctImpl
 	PrecinctImpl(bool isCompressor, grk_rect32* bounds, grk_pt32 cblk_expn);
 	~PrecinctImpl(void);
 	grk_rect32 getCodeBlockBounds(uint64_t cblkno);
-	bool initCodeBlocks(grk_rect32* bounds);
+	bool initCodeBlocks(uint16_t numLayers,grk_rect32* bounds);
 	template<typename T>
 	bool initCodeBlock(T* block, uint64_t cblkno);
 	void deleteTagTrees();
@@ -79,13 +82,14 @@ struct Precinct : public grk_rect32
 	grk_pt32 getCblkExpn(void);
 	grk_rect32 getCblkGrid(void);
 	uint64_t precinctIndex;
+	uint16_t numLayers_;
 
   private:
 	PrecinctImpl* impl;
 	grk_pt32 cblk_expn_;
 	PrecinctImpl* getImpl(void)
 	{
-		impl->initCodeBlocks(this);
+		impl->initCodeBlocks(numLayers_,this);
 		return impl;
 	}
 };
