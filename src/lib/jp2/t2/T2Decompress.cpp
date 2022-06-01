@@ -248,7 +248,7 @@ bool T2Decompress::processPacket(uint16_t compno, uint8_t resno,
 
 	return true;
 }
-bool T2Decompress::readPacketData(Resolution *res,
+void T2Decompress::readPacketData(Resolution *res,
 									PacketParser *parser,
 									uint64_t precinctIndex,
 									bool defer){
@@ -265,8 +265,6 @@ bool T2Decompress::readPacketData(Resolution *res,
 			throw;
 		}
 	}
-
-	return true;
 }
 void T2Decompress::decompressPacket(PacketParser *parser){
 	decompressPacket(parser,false);
