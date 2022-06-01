@@ -563,8 +563,8 @@ bool CodeStreamDecompress::decompressTiles(void)
 						{
 							if(executor)
 							{
-								if(!stripCache_.ingestTile((uint32_t)executor->this_worker_id(),
-														   img))
+								uint32_t threadId = executor->num_workers() > 1 ? (uint32_t)executor->this_worker_id() : 0;
+								if(!stripCache_.ingestTile(threadId ,img))
 									success = false;
 							}
 							else
