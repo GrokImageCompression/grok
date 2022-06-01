@@ -36,7 +36,13 @@ class TruncatedPacketHeaderException : public std::exception
 class SparseBufferOverrunException : public std::exception
 {
 };
-class CorruptPacketHeaderException : public std::exception
+class CorruptPacketException : public std::exception
+{
+};
+class CorruptPacketHeaderException : public CorruptPacketException
+{
+};
+class CorruptPacketDataException : public CorruptPacketException
 {
 };
 class InvalidMarkerException : public std::exception

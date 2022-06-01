@@ -28,7 +28,7 @@ TileProcessor::TileProcessor(uint16_t tileIndex, CodeStream* codeStream, IBuffer
 	  current_plugin_tile(codeStream->getCurrentPluginTile()), cp_(codeStream->getCodingParams()),
 	  packetLengthCache(PLCache(cp_)), tile(new Tile(headerImage->numcomps)), scheduler_(nullptr),
 	  numProcessedPackets(0), numDecompressedPackets(0), tilePartDataLength(0),
-	  tileIndex_(tileIndex), stream_(stream), corrupt_packet_(false),
+	  tileIndex_(tileIndex), stream_(stream),
 	  newTilePartProgressionPosition(cp_->coding_params_.enc_.newTilePartProgressionPosition),
 	  tcp_(cp_->tcps + tileIndex_), truncated(false), image_(nullptr), isCompressor_(isCompressor),
 	  preCalculatedTileLen(0), mct_(new mct(tile, headerImage, tcp_, stripCache))
@@ -153,10 +153,6 @@ void TileProcessor::release(GRK_TILE_CACHE_STRATEGY strategy)
 	// delete tile components
 	delete tile;
 	tile = nullptr;
-}
-void TileProcessor::setCorruptPacket(void)
-{
-	corrupt_packet_ = true;
 }
 PacketTracker* TileProcessor::getPacketTracker(void)
 {
@@ -415,18 +411,17 @@ bool TileProcessor::decompressT2(SparseBuffer* srcBuf)
 		}
 	}
 	bool doT2 = !current_plugin_tile || (current_plugin_tile->decompress_flags & GRK_DECODE_T2);
+	bool rc = true;
 	if(doT2)
 	{
 		auto t2 = std::make_unique<T2Decompress>(this);
-		bool rc = t2->decompressPackets(tileIndex_, srcBuf, &truncated);
-		if(!rc)
-			return false;
+		rc = t2->decompressPackets(tileIndex_, srcBuf, &truncated);
 		// synch plugin with T2 data
 		// todo re-enable decompress synch
 		// decompress_synch_plugin_with_host(this);
 	}
 
-	return !corrupt_packet_;
+	return rc;
 }
 bool TileProcessor::decompressT2T1(TileCodingParams* tcp, GrkImage* outputImage, bool doPost)
 {

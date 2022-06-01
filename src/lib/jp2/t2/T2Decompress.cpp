@@ -72,13 +72,13 @@ bool T2Decompress::decompressPackets(uint16_t tile_no, SparseBuffer* src,
 				*stopProcessionPackets = true;
 				break;
 			}
-			catch(CorruptPacketHeaderException& cex)
+			catch(CorruptPacketException& cex)
 			{
 				GRK_UNUSED(cex);
 				// we can skip corrupt packet if PLT markers are present
 				if(!tileProcessor->packetLengthCache.getMarkers())
 				{
-					GRK_ERROR(
+					GRK_WARN(
 						"Corrupt packet: tile=%u component=%02d resolution=%02d precinct=%03d "
 						"layer=%02d",
 						tile_no, currPi->getCompno(), currPi->getResno(),
@@ -102,7 +102,6 @@ bool T2Decompress::decompressPackets(uint16_t tile_no, SparseBuffer* src,
 
 	/////////////////////
 	// run the parsers
-
 	//1. count parsers
 	auto tile = tileProcessor->getTile();
 	uint64_t parserCount = 0;
@@ -113,22 +112,23 @@ bool T2Decompress::decompressPackets(uint16_t tile_no, SparseBuffer* src,
 			parserCount += res->parserMap_->precinctParsers_.size();
 		}
 	}
-
 	//2.create and populate tasks, and execute
 	if (parserCount) {
 		auto numThreads =
 			std::min<size_t>(ExecSingleton::get()->num_workers(),parserCount);
-
 		if (numThreads == 1){
 			for (uint16_t compno = 0; compno < tileProcessor->headerImage->numcomps; ++compno){
 				auto tilec = tile->comps + compno;
 				for (uint8_t resno = 0; resno < tilec->numResolutionsToDecompress; ++resno){
 					auto res =  tilec->tileCompResolution + resno;
-					for (std::pair<const uint64_t,PrecinctPacketParsers*>& pp :
-									res->parserMap_->precinctParsers_){
+					for (auto &pp : res->parserMap_->precinctParsers_){
 						for (uint64_t j = 0; j < pp.second->numParsers_; ++j){
-							if (!decompressPacket(pp.second->parsers_[j]))
-								return false;
+							try {
+								decompressPacket(pp.second->parsers_[j]);
+							} catch (std::exception &ex){
+								GRK_UNUSED(ex);
+								break;
+							}
 						}
 					}
 				}
@@ -144,15 +144,17 @@ bool T2Decompress::decompressPackets(uint16_t tile_no, SparseBuffer* src,
 				auto tilec = tile->comps + compno;
 				for (uint8_t resno = 0; resno < tilec->numResolutionsToDecompress; ++resno){
 					auto res =  tilec->tileCompResolution + resno;
-					for (std::pair<const uint64_t,PrecinctPacketParsers*>& pp :
-									res->parserMap_->precinctParsers_){
-						std::pair<const uint64_t,PrecinctPacketParsers*>& ppair = pp;
+					for (auto &pp : res->parserMap_->precinctParsers_){
+						auto &ppair = pp;
 						auto decompressor = [this,ppair]() {
 							for (uint64_t j = 0; j < ppair.second->numParsers_; ++j){
-								if (!decompressPacket(ppair.second->parsers_[j]))
-									return false;
+								try {
+									decompressPacket(ppair.second->parsers_[j]);
+								} catch (std::exception &ex){
+									GRK_UNUSED(ex);
+									break;
+								}
 							}
-							return true;
 						};
 						tasks[i++].work(decompressor);
 					}
@@ -162,6 +164,7 @@ bool T2Decompress::decompressPackets(uint16_t tile_no, SparseBuffer* src,
 			delete[] tasks;
 		}
 	}
+
 	if(tileProcessor->getNumDecompressedPackets() == 0)
 		GRK_WARN("T2Decompress: no packets for tile %u were successfully read", tile_no);
 
@@ -224,12 +227,9 @@ bool T2Decompress::processPacket(uint16_t compno, uint8_t resno,
 	uint32_t packetLen = packetInfo->packetLength;
 	if(!packetInfo->packetLength) {
 		try {
-		  if(!parser->readHeader())
-		  {
-			delete parser;
-			return false;
-		  }
+		  parser->readHeader();
 		} catch (std::exception& ex){
+			GRK_UNUSED(ex);
 			delete parser;
 			throw;
 		}
@@ -256,28 +256,26 @@ bool T2Decompress::readPacketData(Resolution *res,
 		res->parserMap_->pushParser(precinctIndex,parser);
 	} else {
 		try {
-		  if (!parser->readHeader() || !parser->readData()) {
-			delete parser;
-			return false;
-		  }
+		  parser->readHeader();
+		  parser->readData();
+		  delete parser;
 		} catch (std::exception& ex){
+			GRK_UNUSED(ex);
 			delete parser;
 			throw;
 		}
-		delete parser;
 	}
 
 	return true;
 }
-bool T2Decompress::decompressPacket(PacketParser *parser){
-	return decompressPacket(parser,false);
+void T2Decompress::decompressPacket(PacketParser *parser){
+	decompressPacket(parser,false);
 }
-bool T2Decompress::decompressPacket(PacketParser *parser,
+void T2Decompress::decompressPacket(PacketParser *parser,
 									bool skipData)
 {
-	if(!parser->readHeader())
-		return false;
-
-	return skipData || parser->readData();
+	parser->readHeader();
+	if (!skipData)
+		parser->readData();
 }
 } // namespace grk

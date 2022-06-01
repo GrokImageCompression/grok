@@ -74,10 +74,10 @@ uint32_t PacketParser::numSignalledBytes(void){
 	return packetHeaderBytes_ + signalledDataBytes_;
 }
 
-bool PacketParser::readHeader(void)
+void PacketParser::readHeader(void)
 {
 	if (parsedHeader_)
-		return !headerError_;
+		return;
 
 	auto currentData = data_;
 	auto tilePtr = tileProcessor_->getTile();
@@ -126,7 +126,7 @@ bool PacketParser::readHeader(void)
 			GRK_ERROR("PPM marker has no packed packet header data for tile %u",
 					  tileProcessor_->getIndex() + 1);
 			headerError_ = true;
-			return false;
+			throw CorruptPacketHeaderException();
 		}
 		auto header = &cp->ppm_marker->packetHeaders[tileProcessor_->getIndex()];
 		headerStart = &header->buf;
@@ -176,9 +176,10 @@ bool PacketParser::readHeader(void)
 						{
 							GRK_WARN("Tile number: %u", tileProcessor_->getIndex() + 1);
 							std::string msg =
-								"Illegal inclusion tag tree found when decoding packet header.";
+								"Corrupt inclusion tag tree found when decoding packet header.";
 							GRK_WARN("%s", msg.c_str());
-							tileProcessor_->setCorruptPacket();
+							headerError_ = true;
+							throw CorruptPacketHeaderException();
 						}
 						included = (value <= layno_) ? 1 : 0;
 					}
@@ -207,7 +208,8 @@ bool PacketParser::readHeader(void)
 								GRK_WARN("More missing code block bit planes (%u)"
 										 " than supported number of bit planes (%u) in library.",
 										 K_msbs, maxBitPlanesGRK);
-								break;
+								headerError_ = true;
+								throw CorruptPacketHeaderException();
 							}
 							imsb->decodeValue(bio.get(), cblkno, K_msbs, &value);
 						}
@@ -218,9 +220,8 @@ bool PacketParser::readHeader(void)
 							GRK_WARN("More missing code block bit planes (%u) than band bit planes "
 									 "(%u).",
 									 K_msbs, band->numbps);
-							// since we don't know how many bit planes are in this block, we
-							// set numbps to max - the t1 decoder will sort it out
-							cblk->numbps = maxBitPlanesGRK;
+							headerError_ = true;
+							throw CorruptPacketHeaderException();
 						}
 						else
 						{
@@ -230,7 +231,8 @@ bool PacketParser::readHeader(void)
 						{
 							GRK_WARN("Number of bit planes %u is larger than maximum %u",
 									 cblk->numbps, maxBitPlanesGRK);
-							cblk->numbps = maxBitPlanesGRK;
+							headerError_ = true;
+							throw CorruptPacketHeaderException();
 						}
 						cblk->numlenbits = 3;
 					}
@@ -262,11 +264,8 @@ bool PacketParser::readHeader(void)
 								GRK_WARN("Number of code block passes (%u) in packet is "
 										 "suspiciously large.",
 										 blockPassesInPacket);
-								// TODO - we are truncating the number of passes at an arbitrary
-								// value of maxPassesPerSegmentJ2K. We should probably either skip
-								// the rest of this block, if possible, or do further sanity check
-								// on packet
-								seg->numPassesInPacket = maxPassesPerSegmentJ2K;
+								headerError_ = true;
+								throw CorruptPacketHeaderException();
 							}
 							else
 							{
@@ -282,9 +281,9 @@ bool PacketParser::readHeader(void)
 						uint8_t bits_to_read = cblk->numlenbits + floorlog2(seg->numPassesInPacket);
 						if(bits_to_read > 32)
 						{
-							GRK_ERROR("readHeader: too many bits in segment length ");
+							GRK_WARN("readHeader: too many bits in segment length ");
 							headerError_ = true;
-							return false;
+							throw CorruptPacketHeaderException();
 						}
 						bio->read(&seg->numBytesInPacket, bits_to_read);
 						signalledDataBytes_ += seg->numBytesInPacket;
@@ -307,8 +306,9 @@ bool PacketParser::readHeader(void)
 	{
 		GRK_UNUSED(ex);
 		headerError_ = true;
-		return false;
+		throw CorruptPacketHeaderException();
 	}
+
 	// EPH marker (absent from packet in case of packet packet headers)
 	if(hasEPH)
 	{
@@ -340,11 +340,9 @@ bool PacketParser::readHeader(void)
 				  " parsed bytes are in fact %u",
 				  lengthFromMarker_, numSignalledBytes());
 		headerError_ = true;
-		return false;
+		throw CorruptPacketHeaderException();
 	}
 	data_ += packetHeaderBytes_;
-
-	return true;
 }
 void PacketParser::initSegment(DecompressCodeblock* cblk, uint32_t index, uint8_t cblk_sty,
 							   bool first)
@@ -373,11 +371,11 @@ void PacketParser::initSegment(DecompressCodeblock* cblk, uint32_t index, uint8_
 		seg->maxpasses = maxPassesPerSegmentJ2K;
 	}
 }
-bool PacketParser::readData(void)
+void PacketParser::readData(void)
 {
 	if (!tagBitsPresent_){
 		readDataFinalize();
-		return true;
+		return;
 	}
 	uint32_t offset = 0;
 	auto tile = tileProcessor_->getTile();
@@ -428,7 +426,7 @@ bool PacketParser::readData(void)
 						GRK_ERROR("Segment packet length %u plus total segment length %u must be "
 								  "less than 2^32",
 								  seg->numBytesInPacket, seg->len);
-						return false;
+						throw CorruptPacketDataException();
 					}
 					// correct for truncated packet
 					if(seg->numBytesInPacket > remainingTilePartBytes_)
@@ -451,8 +449,6 @@ bool PacketParser::readData(void)
 finish:
 	readDataBytes_ = offset;
 	readDataFinalize();
-
-	return true;
 }
 
 void PacketParser::readDataFinalize(void){

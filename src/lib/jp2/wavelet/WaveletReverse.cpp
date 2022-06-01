@@ -529,6 +529,10 @@ bool WaveletReverse::decompress_h_97(uint8_t res, uint32_t numThreads, size_t da
 			numTasks = resHeight;
 		uint32_t incrPerJob = resHeight / numTasks;
 		auto imageComponentFlow = scheduler_->getImageComponentFlow(compno_);
+		if (!imageComponentFlow){
+			GRK_WARN("Missing image component flow");
+			return true;
+		}
 		auto resFlow = imageComponentFlow->getResFlow(res - 1);
 		for(uint32_t j = 0; j < numTasks; ++j)
 		{
@@ -623,6 +627,10 @@ bool WaveletReverse::decompress_v_97(uint8_t res, uint32_t numThreads, size_t da
 			numTasks = resWidth;
 		auto incrPerJob = resWidth / numTasks;
 		auto imageComponentFlow = scheduler_->getImageComponentFlow(compno_);
+		if (!imageComponentFlow){
+			GRK_WARN("Missing image component flow");
+			return false;
+		}
 		auto resFlow = imageComponentFlow->getResFlow(res - 1);
 		for(uint32_t j = 0; j < numTasks; j++)
 		{

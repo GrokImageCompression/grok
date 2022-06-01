@@ -36,8 +36,8 @@ public:
 				size_t tileBytes,
 				size_t remainingTilePartBytes);
 	virtual ~PacketParser(void) = default;
-	bool readHeader(void);
-	bool readData(void);
+	void readHeader(void);
+	void readData(void);
 	uint32_t numHeaderBytes(void);
 	uint32_t numSignalledDataBytes(void);
 	uint32_t numSignalledBytes(void);
