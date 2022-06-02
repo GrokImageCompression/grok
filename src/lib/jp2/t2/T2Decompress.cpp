@@ -59,8 +59,10 @@ bool T2Decompress::decompressPackets(uint16_t tile_no, SparseBuffer* src,
 				if(!processPacket(	currPi->getCompno(),
 									currPi->getResno(),
 								  currPi->getPrecinctIndex(),
-								  currPi->getLayno(), src))
-					return false;
+								  currPi->getLayno(), src)){
+					*stopProcessionPackets = true;
+					break;
+				}
 			}
 			catch(TruncatedPacketHeaderException& tex)
 			{
