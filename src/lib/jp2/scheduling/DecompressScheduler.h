@@ -31,7 +31,8 @@ struct ResDecompressBlocks
 	std::vector<DecompressBlockExec*> blocks_;
 };
 
-typedef std::vector<ResDecompressBlocks> DecompressBlocks;
+typedef std::vector<ResDecompressBlocks> ComponentDecompressBlocks;
+typedef std::vector<ComponentDecompressBlocks> TileDecompressBlocks;
 
 class DecompressScheduler : public Scheduler
 {
@@ -49,9 +50,9 @@ class DecompressScheduler : public Scheduler
 	TileProcessor* tileProcessor_;
 	TileCodingParams* tcp_;
 	uint8_t prec_;
-	DecompressBlocks allBlocks_;
-	WaveletReverse** waveletReverse_;
 	uint16_t numcomps_;
+	TileDecompressBlocks tileBlocks_;
+	WaveletReverse** waveletReverse_;
 };
 
 } // namespace grk

@@ -38,7 +38,8 @@ void ResDecompressBlocks::release(void)
 DecompressScheduler::DecompressScheduler(TileProcessor* tileProcessor, Tile* tile,
 										 TileCodingParams* tcp, uint8_t prec)
 	: Scheduler(tile), tileProcessor_(tileProcessor), tcp_(tcp), prec_(prec),
-	  waveletReverse_(nullptr), numcomps_(tile->numcomps_)
+	  numcomps_(tile->numcomps_), 	tileBlocks_(TileDecompressBlocks(numcomps_)),
+	  waveletReverse_(nullptr)
 {
 	waveletReverse_ = new WaveletReverse*[numcomps_];
 	for(uint16_t compno = 0; compno < numcomps_; ++compno)
@@ -70,8 +71,10 @@ bool DecompressScheduler::schedule(uint16_t compno)
 	uint8_t numRes = tilec->highestResolutionDecompressed + 1U;
 	if(numRes > 0 && !scheduleWavelet(compno))
 	{
-		for(auto& rb : allBlocks_)
+		auto &componentBlocks = tileBlocks_[compno];
+		for(auto& rb : componentBlocks)
 			rb.release();
+		componentBlocks.clear();
 		return false;
 	}
 
@@ -80,7 +83,7 @@ bool DecompressScheduler::schedule(uint16_t compno)
 
 bool DecompressScheduler::scheduleBlocks(uint16_t compno)
 {
-	DecompressBlocks blocks;
+	ComponentDecompressBlocks blocks;
 	ResDecompressBlocks resBlocks;
 	auto tccp = tcp_->tccps + compno;
 	auto tilec = tile_->comps + compno;
@@ -199,9 +202,9 @@ bool DecompressScheduler::scheduleBlocks(uint16_t compno)
 		}
 		resFlowNum++;
 	}
-
+	auto &componentBlocks = tileBlocks_[compno];
 	for(auto rb : blocks)
-		allBlocks_.push_back(rb);
+		componentBlocks.push_back(rb);
 
 	return true;
 }

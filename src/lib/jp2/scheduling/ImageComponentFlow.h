@@ -32,6 +32,7 @@ struct ResFlow
 	ResFlow* precede(ResFlow* successor);
 	ResFlow* precede(FlowComponent* successor);
 	FlowComponent* getFinalFlowT1(void);
+	FlowComponent* packets_;
 	FlowComponent* blocks_;
 	FlowComponent* waveletHoriz_;
 	FlowComponent* waveletVert_;

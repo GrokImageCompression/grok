@@ -19,7 +19,8 @@
 namespace grk
 {
 ResFlow::ResFlow(void)
-	: blocks_(new FlowComponent()), waveletHoriz_(new FlowComponent()),
+	: packets_(new FlowComponent()),
+	  blocks_(new FlowComponent()), waveletHoriz_(new FlowComponent()),
 	  waveletVert_(new FlowComponent()), doWavelet_(true)
 {}
 void ResFlow::disableWavelet(void)
