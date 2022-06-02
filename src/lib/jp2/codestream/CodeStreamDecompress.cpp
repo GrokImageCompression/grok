@@ -547,7 +547,7 @@ bool CodeStreamDecompress::decompressTiles(void)
 					 &success] {
 			if(success)
 			{
-				if(!decompressT2T1(processor))
+				if(!processor->decompressT2T1(outputImage_))
 				{
 					GRK_ERROR("Failed to decompress tile %u/%u", processor->getIndex(),
 							  numTilesToDecompress);
@@ -909,24 +909,9 @@ bool CodeStreamDecompress::decompressTile()
 							 grkRegisterReclaimCallback_);
 		}
 
-		if(!decompressT2T1(tileProcessor))
+		if(!tileProcessor->decompressT2T1(outputImage_))
 			return false;
 	}
-
-	return true;
-}
-bool CodeStreamDecompress::decompressT2T1(TileProcessor* tileProcessor)
-{
-	auto tcp = cp_.tcps + tileProcessor->getIndex();
-	if(!tcp->compressedTileData_)
-	{
-		GRK_ERROR("Decompress: Tile %u has no compressed data", tileProcessor->getIndex());
-		return false;
-	}
-	bool doPost =
-		!current_plugin_tile || (current_plugin_tile->decompress_flags & GRK_DECODE_POST_T1);
-	if(!tileProcessor->decompressT2T1(tcp, outputImage_, doPost))
-		return false;
 
 	return true;
 }

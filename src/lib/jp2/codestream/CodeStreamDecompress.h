@@ -93,7 +93,6 @@ class CodeStreamDecompress : public CodeStream, public ICodeStreamDecompress
 	bool parseTileHeaderMarkers(bool* can_decode_tile_data);
 	bool readHeaderProcedureImpl(void);
 	bool decompressExec();
-	bool decompressT2T1(TileProcessor* tileProcessor);
 	bool decompressTile();
 	bool findNextTile(TileProcessor* tileProcessor);
 	TilePartLengthInfo* nextTLM(void);

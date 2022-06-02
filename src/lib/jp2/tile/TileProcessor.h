@@ -86,8 +86,7 @@ struct TileProcessor
 	bool canWritePocMarker(void);
 	bool writeTilePartT2(uint32_t* tileBytesWritten);
 	bool doCompress(void);
-	bool decompressT2(SparseBuffer* srcBuf);
-	bool decompressT2T1(TileCodingParams* tcp, GrkImage* outputImage, bool doPost);
+	bool decompressT2T1(GrkImage* outputImage);
 	bool ingestUncompressedData(uint8_t* p_src, uint64_t src_length);
 	bool needsRateControl();
 	void ingestImage();

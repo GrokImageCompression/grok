@@ -399,32 +399,15 @@ bool TileProcessor::isWholeTileDecompress(uint16_t compno)
 			  ((tilec->x1 - dims.x1) >> shift) == 0 && ((tilec->y1 - dims.y1) >> shift) == 0)));
 }
 
-bool TileProcessor::decompressT2(SparseBuffer* srcBuf)
+bool TileProcessor::decompressT2T1(GrkImage* outputImage)
 {
-	// optimization for regions that are close to largest decompressed resolution
-	for(uint16_t compno = 0; compno < headerImage->numcomps; compno++)
+	auto tcp = getTileCodingParams();
+	if(!tcp->compressedTileData_)
 	{
-		if(!isWholeTileDecompress(compno))
-		{
-			cp_->wholeTileDecompress_ = false;
-			break;
-		}
-	}
-	bool doT2 = !current_plugin_tile || (current_plugin_tile->decompress_flags & GRK_DECODE_T2);
-	bool rc = true;
-	if(doT2)
-	{
-		auto t2 = std::make_unique<T2Decompress>(this);
-		rc = t2->decompressPackets(tileIndex_, srcBuf, &truncated);
-		// synch plugin with T2 data
-		// todo re-enable decompress synch
-		// decompress_synch_plugin_with_host(this);
+		GRK_ERROR("Decompress: Tile %u has no compressed data", getIndex());
+		return false;
 	}
 
-	return rc;
-}
-bool TileProcessor::decompressT2T1(TileCodingParams* tcp, GrkImage* outputImage, bool doPost)
-{
 	bool doT1 = !current_plugin_tile || (current_plugin_tile->decompress_flags & GRK_DECODE_T1);
 	bool doPostT1 =
 		!current_plugin_tile || (current_plugin_tile->decompress_flags & GRK_DECODE_POST_T1);
@@ -435,10 +418,30 @@ bool TileProcessor::decompressT2T1(TileCodingParams* tcp, GrkImage* outputImage,
 		return false;
 
 	// T2
-	if(!decompressT2(tcp->compressedTileData_))
+	// optimization for regions that are close to largest decompressed resolution
+	for(uint16_t compno = 0; compno < headerImage->numcomps; compno++)
+	{
+		if(!isWholeTileDecompress(compno))
+		{
+			cp_->wholeTileDecompress_ = false;
+			break;
+		}
+	}
+	bool doT2 = !current_plugin_tile || (current_plugin_tile->decompress_flags & GRK_DECODE_T2);
+	bool success = true;
+	if(doT2)
+	{
+		auto t2 = std::make_unique<T2Decompress>(this);
+		success = t2->decompressPackets(tileIndex_, tcp->compressedTileData_, &truncated);
+		// synch plugin with T2 data
+		// todo re-enable decompress synch
+		// decompress_synch_plugin_with_host(this);
+	}
+	if(!success)
 	{
 		GRK_WARN("Tile %u was not decompressed", tileIndex_);
-		return outputImage->hasMultipleTiles;
+		if (!outputImage->hasMultipleTiles)
+			return false;
 	}
 
 	// T1
@@ -527,6 +530,8 @@ bool TileProcessor::decompressT2T1(TileCodingParams* tcp, GrkImage* outputImage,
 	}
 
 	// 4. post T1
+	bool doPost =
+		!current_plugin_tile || (current_plugin_tile->decompress_flags & GRK_DECODE_POST_T1);
 	if(doPost)
 	{
 		if(outputImage->hasMultipleTiles)
