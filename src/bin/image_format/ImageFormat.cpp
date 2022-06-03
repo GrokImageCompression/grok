@@ -35,15 +35,17 @@ ImageFormat::ImageFormat()
 	  compressionLevel_(GRK_DECOMPRESS_COMPRESSION_LEVEL_DEFAULT), useStdIO_(false),
 	  encodeState(IMAGE_FORMAT_UNENCODED)
 {
-	registerGrkReclaimCallback(grkReclaimCallback, &pool);
+	grk_io_init init;
+	init.maxPooledRequests_ = 0;
+	registerGrkReclaimCallback(init, grkReclaimCallback, &pool);
 }
 ImageFormat::~ImageFormat()
 {
 	delete fileIO_;
 }
-void ImageFormat::registerGrkReclaimCallback(grk_io_callback reclaim_callback, void* user_data)
+void ImageFormat::registerGrkReclaimCallback(grk_io_init io_init, grk_io_callback reclaim_callback, void* user_data)
 {
-	serializer.registerGrkReclaimCallback(reclaim_callback, user_data);
+	serializer.registerGrkReclaimCallback(io_init, reclaim_callback, user_data);
 }
 void ImageFormat::ioReclaimBuffer(uint32_t threadId, grk_io_buf buffer)
 {
@@ -66,11 +68,6 @@ bool ImageFormat::encodeInit(grk_image* image, const std::string& filename,
 	fileName_ = filename;
 	image_ = image;
 	useStdIO_ = grk::useStdio(fileName_);
-
-	// we can ignore subsampling since it is disabled for library-orchestrated encoding,
-	// which is the only case where maxPooledRequests_ is utilized
-	auto maxRequests = (image_->comps->h + image_->rowsPerStrip - 1) / image_->rowsPerStrip;
-	serializer.setMaxPooledRequests(maxRequests);
 
 	return true;
 }

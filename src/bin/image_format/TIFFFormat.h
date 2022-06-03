@@ -41,7 +41,7 @@ class TIFFFormat : public ImageFormat
   public:
 	TIFFFormat();
 	~TIFFFormat();
-	void registerGrkReclaimCallback(grk_io_callback reclaim_callback, void* user_data) override;
+	void registerGrkReclaimCallback(grk_io_init io_init, grk_io_callback reclaim_callback, void* user_data) override;
 
 	bool encodeInit(grk_image* image, const std::string& filename, uint32_t compressionLevel,
 					uint32_t concurrency) override;

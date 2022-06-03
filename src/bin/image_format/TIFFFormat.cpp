@@ -118,10 +118,12 @@ TIFFFormat::~TIFFFormat()
 		TIFFClose(tif_);
 }
 
-void TIFFFormat::registerGrkReclaimCallback(grk_io_callback reclaim_callback, void* user_data)
+void TIFFFormat::registerGrkReclaimCallback(grk_io_init io_init, grk_io_callback reclaim_callback, void* user_data)
 {
 	grkReclaimCallback_ = reclaim_callback;
 	grkReclaimUserData_ = user_data;
+	if (io_init.maxPooledRequests_)
+		serializer.setMaxPooledRequests(io_init.maxPooledRequests_);
 }
 bool TIFFFormat::ioReclaim(uint32_t threadId, io::io_buf* buffer)
 {
@@ -487,7 +489,7 @@ bool TIFFFormat::encodePixels()
 				packedBuf.len_ = bytesToWrite;
 				packedBuf.offset_ = serializer.getOffset();
 				packedBuf.index_ = serializer.getNumPooledRequests();
-				if(bytesToWrite && !encodePixelsCore(UINT_MAX, packedBuf))
+				if(bytesToWrite && !encodePixelsCore(0, packedBuf))
 					goto cleanup;
 				packedBuf = pool.get(packedLengthEncoded);
 				bufPtr = (int8_t*)(packedBuf.data_);
@@ -533,7 +535,7 @@ bool TIFFFormat::encodePixels()
 		packedBuf.len_ = bytesToWrite;
 		packedBuf.offset_ = serializer.getOffset();
 		packedBuf.index_ = serializer.getNumPooledRequests();
-		if(bytesToWrite && !encodePixelsCore(UINT_MAX, packedBuf))
+		if(bytesToWrite && !encodePixelsCore(0, packedBuf))
 			goto cleanup;
 	}
 	else
@@ -551,7 +553,7 @@ bool TIFFFormat::encodePixels()
 			packedBuf.offset_ = serializer.getOffset();
 			packedBuf.len_ = image_->packedRowBytes * stripRows;
 			packedBuf.index_ = serializer.getNumPooledRequests();
-			if(!encodePixelsCore(UINT_MAX, packedBuf))
+			if(!encodePixelsCore(0, packedBuf))
 			{
 				delete iter;
 				goto cleanup;

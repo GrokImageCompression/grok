@@ -966,14 +966,15 @@ static void cleanUpFile(const char* outfile)
 		free(p);
 }
 
-static void grkSerializeRegisterClientCallback(grk_io_callback reclaim_callback, void* io_user_data,
+static void grkSerializeRegisterClientCallback(grk_io_init io_init,
+												grk_io_callback reclaim_callback, void* io_user_data,
 											   void* reclaim_user_data)
 {
 	if(!io_user_data || !reclaim_user_data)
 		return;
 	auto imageFormat = (IImageFormat*)io_user_data;
 
-	imageFormat->registerGrkReclaimCallback(reclaim_callback, reclaim_user_data);
+	imageFormat->registerGrkReclaimCallback(io_init, reclaim_callback, reclaim_user_data);
 }
 
 static bool grkSerializeBufferCallback(uint32_t threadId, grk_io_buf buffer, void* user_data)
