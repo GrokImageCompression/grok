@@ -29,12 +29,10 @@ struct T2Decompress
 {
 	T2Decompress(TileProcessor* tileProc);
 	virtual ~T2Decompress(void) = default;
-	bool decompressPackets(uint16_t tileno, SparseBuffer* src, bool* truncated);
-
+	void decompressPackets(uint16_t tileno, SparseBuffer* src, bool* truncated);
   private:
 	TileProcessor* tileProcessor;
 	void decompressPacket(PacketParser *parser, bool skipData);
-	void decompressPacket(PacketParser *parser);
 	bool processPacket(	uint16_t compno, uint8_t resno,
 					   uint64_t precinctIndex, uint16_t layno, SparseBuffer* src);
 	void readPacketData(Resolution *res, PacketParser *parser, uint64_t precinctIndex, bool defer);

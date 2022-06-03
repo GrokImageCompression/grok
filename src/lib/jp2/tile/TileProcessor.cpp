@@ -407,7 +407,6 @@ bool TileProcessor::decompressT2T1(GrkImage* outputImage)
 		GRK_ERROR("Decompress: Tile %u has no compressed data", getIndex());
 		return false;
 	}
-
 	bool doT1 = !current_plugin_tile || (current_plugin_tile->decompress_flags & GRK_DECODE_T1);
 	bool doPostT1 =
 		!current_plugin_tile || (current_plugin_tile->decompress_flags & GRK_DECODE_POST_T1);
@@ -428,26 +427,91 @@ bool TileProcessor::decompressT2T1(GrkImage* outputImage)
 		}
 	}
 	bool doT2 = !current_plugin_tile || (current_plugin_tile->decompress_flags & GRK_DECODE_T2);
-	bool success = true;
 	if(doT2)
 	{
 		auto t2 = std::make_unique<T2Decompress>(this);
-		success = t2->decompressPackets(tileIndex_, tcp->compressedTileData_, &truncated);
+		t2->decompressPackets(tileIndex_, tcp->compressedTileData_, &truncated);
 		// synch plugin with T2 data
 		// todo re-enable decompress synch
 		// decompress_synch_plugin_with_host(this);
-	}
-	if(!success)
-	{
-		GRK_WARN("Tile %u was not decompressed", tileIndex_);
-		if (!outputImage->hasMultipleTiles)
-			return false;
-	}
 
+		//1. count parsers
+		auto tile = getTile();
+		uint64_t parserCount = 0;
+		for (uint16_t compno = 0; compno < headerImage->numcomps; ++compno){
+			auto tilec = tile->comps + compno;
+			for (uint8_t resno = 0; resno < tilec->numResolutionsToDecompress; ++resno){
+				auto res =  tilec->tileCompResolution + resno;
+				parserCount += res->parserMap_->precinctParsers_.size();
+			}
+		}
+		//2.create and populate tasks, and execute
+		if (parserCount) {
+			auto numThreads =
+				std::min<size_t>(ExecSingleton::get()->num_workers(),parserCount);
+			if (numThreads == 1){
+				for (uint16_t compno = 0; compno < headerImage->numcomps; ++compno){
+					auto tilec = tile->comps + compno;
+					for (uint8_t resno = 0; resno < tilec->numResolutionsToDecompress; ++resno){
+						auto res =  tilec->tileCompResolution + resno;
+						for (auto &pp : res->parserMap_->precinctParsers_){
+							for (uint64_t j = 0; j < pp.second->numParsers_; ++j){
+								try {
+									auto parser = pp.second->parsers_[j];
+									parser->readHeader();
+									parser->readData();
+								} catch (std::exception &ex){
+									GRK_UNUSED(ex);
+									break;
+								}
+							}
+						}
+					}
+				}
+			} else {
+				tf::Taskflow taskflow;
+				auto numTasks = parserCount;
+				auto tasks = new tf::Task[numTasks];
+				for(uint64_t i = 0; i < numTasks; i++)
+					tasks[i] = taskflow.placeholder();
+				uint64_t i = 0;
+				for (uint16_t compno = 0; compno < headerImage->numcomps; ++compno){
+					auto tilec = tile->comps + compno;
+					for (uint8_t resno = 0; resno < tilec->numResolutionsToDecompress; ++resno){
+						auto res =  tilec->tileCompResolution + resno;
+						for (auto &pp : res->parserMap_->precinctParsers_){
+							auto &ppair = pp;
+							auto decompressor = [this,ppair,&t2]() {
+								for (uint64_t j = 0; j < ppair.second->numParsers_; ++j){
+									try {
+										auto parser = ppair.second->parsers_[j];
+										parser->readHeader();
+										parser->readData();
+									} catch (std::exception &ex){
+										GRK_UNUSED(ex);
+										break;
+									}
+								}
+							};
+							tasks[i++].work(decompressor);
+						}
+					}
+				}
+				ExecSingleton::get()->run(taskflow).wait();
+				delete[] tasks;
+			}
+		}
+	}
 	// T1
-	// 1. allocate buffers
 	if(doT1)
 	{
+		scheduler_ = new DecompressScheduler(this, tile, tcp_, headerImage->comps->prec);
+		FlowComponent* mctPostProc = nullptr;
+		// schedule MCT post processing
+		if(doPostT1 && needsMctDecompress())
+			mctPostProc = scheduler_->getPrePostProc();
+		uint16_t mctComponentCount = 0;
+
 		for(uint16_t compno = 0; compno < tile->numcomps_; ++compno)
 		{
 			auto tilec = tile->comps + compno;
@@ -473,20 +537,6 @@ bool TileProcessor::decompressT2T1(GrkImage* outputImage)
 				GRK_ERROR("Not enough memory for tile data");
 				return false;
 			}
-		}
-	}
-
-	// 2. schedule
-	if(doT1)
-	{
-		scheduler_ = new DecompressScheduler(this, tile, tcp_, headerImage->comps->prec);
-		FlowComponent* mctPostProc = nullptr;
-		// schedule MCT post processing
-		if(doPostT1 && needsMctDecompress())
-			mctPostProc = scheduler_->getPrePostProc();
-		uint16_t mctComponentCount = 0;
-		for(uint16_t compno = 0; compno < tile->numcomps_; ++compno)
-		{
 			if(!scheduler_->schedule(compno))
 				return false;
 
@@ -518,17 +568,11 @@ bool TileProcessor::decompressT2T1(GrkImage* outputImage)
 		// sanity check on MCT scheduling
 		if(doPostT1 && mctComponentCount == 3 && mctPostProc && !mctDecompress(mctPostProc))
 			return false;
-	}
-
-	// 3. execute
-	if(doT1)
-	{
 		if(!scheduler_->run())
 			return false;
 		delete scheduler_;
 		scheduler_ = nullptr;
 	}
-
 	// 4. post T1
 	bool doPost =
 		!current_plugin_tile || (current_plugin_tile->decompress_flags & GRK_DECODE_POST_T1);
@@ -540,7 +584,12 @@ bool TileProcessor::decompressT2T1(GrkImage* outputImage)
 			outputImage->transferDataFrom(tile);
 		deallocBuffers();
 	}
-
+	if(doT1 && getNumDecompressedPackets() == 0)
+	{
+		GRK_WARN("Tile %u was not decompressed", tileIndex_);
+		if (!outputImage->hasMultipleTiles)
+			return false;
+	}
 	return true;
 }
 

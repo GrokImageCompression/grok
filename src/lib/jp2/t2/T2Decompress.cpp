@@ -26,7 +26,7 @@ T2Decompress::T2Decompress(TileProcessor* tileProc) :
 		tileProcessor(tileProc)
 {}
 
-bool T2Decompress::decompressPackets(uint16_t tile_no, SparseBuffer* src,
+void T2Decompress::decompressPackets(uint16_t tile_no, SparseBuffer* src,
 									 bool* stopProcessionPackets)
 {
 	auto cp = tileProcessor->cp_;
@@ -41,11 +41,6 @@ bool T2Decompress::decompressPackets(uint16_t tile_no, SparseBuffer* src,
 	for(uint32_t pino = 0; pino < tcp->getNumProgressions(); ++pino)
 	{
 		auto currPi = packetManager.getPacketIter(pino);
-		if(currPi->getProgression() == GRK_PROG_UNKNOWN)
-		{
-			GRK_ERROR("decompressPackets: Unknown progression order");
-			return false;
-		}
 		while(currPi->next(markers ? src : nullptr))
 		{
 			if(src->getCurrentChunkLength() == 0)
@@ -101,76 +96,6 @@ bool T2Decompress::decompressPackets(uint16_t tile_no, SparseBuffer* src,
 		if(*stopProcessionPackets)
 			break;
 	}
-
-	/////////////////////
-	// run the parsers
-	//1. count parsers
-	auto tile = tileProcessor->getTile();
-	uint64_t parserCount = 0;
-	for (uint16_t compno = 0; compno < tileProcessor->headerImage->numcomps; ++compno){
-		auto tilec = tile->comps + compno;
-		for (uint8_t resno = 0; resno < tilec->numResolutionsToDecompress; ++resno){
-			auto res =  tilec->tileCompResolution + resno;
-			parserCount += res->parserMap_->precinctParsers_.size();
-		}
-	}
-	//2.create and populate tasks, and execute
-	if (parserCount) {
-		auto numThreads =
-			std::min<size_t>(ExecSingleton::get()->num_workers(),parserCount);
-		if (numThreads == 1){
-			for (uint16_t compno = 0; compno < tileProcessor->headerImage->numcomps; ++compno){
-				auto tilec = tile->comps + compno;
-				for (uint8_t resno = 0; resno < tilec->numResolutionsToDecompress; ++resno){
-					auto res =  tilec->tileCompResolution + resno;
-					for (auto &pp : res->parserMap_->precinctParsers_){
-						for (uint64_t j = 0; j < pp.second->numParsers_; ++j){
-							try {
-								decompressPacket(pp.second->parsers_[j]);
-							} catch (std::exception &ex){
-								GRK_UNUSED(ex);
-								break;
-							}
-						}
-					}
-				}
-			}
-		} else {
-			tf::Taskflow taskflow;
-			auto numTasks = parserCount;
-			auto tasks = new tf::Task[numTasks];
-			for(uint64_t i = 0; i < numTasks; i++)
-				tasks[i] = taskflow.placeholder();
-			uint64_t i = 0;
-			for (uint16_t compno = 0; compno < tileProcessor->headerImage->numcomps; ++compno){
-				auto tilec = tile->comps + compno;
-				for (uint8_t resno = 0; resno < tilec->numResolutionsToDecompress; ++resno){
-					auto res =  tilec->tileCompResolution + resno;
-					for (auto &pp : res->parserMap_->precinctParsers_){
-						auto &ppair = pp;
-						auto decompressor = [this,ppair]() {
-							for (uint64_t j = 0; j < ppair.second->numParsers_; ++j){
-								try {
-									decompressPacket(ppair.second->parsers_[j]);
-								} catch (std::exception &ex){
-									GRK_UNUSED(ex);
-									break;
-								}
-							}
-						};
-						tasks[i++].work(decompressor);
-					}
-				}
-			}
-			ExecSingleton::get()->run(taskflow).wait();
-			delete[] tasks;
-		}
-	}
-
-	if(tileProcessor->getNumDecompressedPackets() == 0)
-		GRK_WARN("T2Decompress: no packets for tile %u were successfully read", tile_no);
-
-	return tileProcessor->getNumDecompressedPackets() > 0;
 }
 
 bool T2Decompress::processPacket(uint16_t compno, uint8_t resno,
@@ -267,9 +192,6 @@ void T2Decompress::readPacketData(Resolution *res,
 			throw;
 		}
 	}
-}
-void T2Decompress::decompressPacket(PacketParser *parser){
-	decompressPacket(parser,false);
 }
 void T2Decompress::decompressPacket(PacketParser *parser,
 									bool skipData)
