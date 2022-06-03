@@ -83,26 +83,21 @@ void PacketParser::readHeader(void)
 	auto tilePtr = tileProcessor_->getTile();
 	auto res = tilePtr->comps[compno_].tileCompResolution + resno_;
 	auto tcp = tileProcessor_->getTileCodingParams();
-	bool hasSOP = tcp->csty & J2K_CP_CSTY_SOP;
+	bool mayHaveSOP = tcp->csty & J2K_CP_CSTY_SOP;
 	bool hasEPH = tcp->csty & J2K_CP_CSTY_EPH;
 	parsedHeader_ = true;
-	// SOP marker (present in packet even with packed packet headers)
-	if(hasSOP)
+	// check for optional SOP marker
+	// (present in packet even with packed packet headers)
+	if(mayHaveSOP && remainingTilePartBytes_ >= 2)
 	{
-		if(remainingTilePartBytes_ < 6){
-			headerError_ = true;
-			throw TruncatedPacketHeaderException();
-		}
 		uint16_t marker =
 			(uint16_t)(((uint16_t)(*currentData) << 8) | (uint16_t)(*(currentData + 1)));
-		if(marker != J2K_MS_SOP)
+		if(marker == J2K_MS_SOP)
 		{
-			GRK_WARN("Expected SOP marker, but found 0x%x", marker);
-			headerError_ = true;
-			throw CorruptPacketHeaderException();
-		}
-		else
-		{
+			if(remainingTilePartBytes_ < 6){
+				headerError_ = true;
+				throw TruncatedPacketHeaderException();
+			}
 			uint16_t signalledPacketSequenceNumber =
 				(uint16_t)(((uint16_t)currentData[4] << 8) | currentData[5]);
 			if(signalledPacketSequenceNumber != (packetSequenceNumber_))
