@@ -26,6 +26,7 @@ struct ResFlow
 	ResFlow(void);
 	~ResFlow(void);
 
+	FlowComponent* getPacketsFlow(void);
 	void disableWavelet(void);
 	void graph(void);
 	ResFlow* addTo(tf::Taskflow& composition);
