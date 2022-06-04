@@ -725,24 +725,24 @@ bool CodeStreamDecompress::readHeaderProcedureImpl(void)
 			return false;
 		}
 
-		// 2. read marker body
-		uint16_t marker_size;
-		if(!read_short(&marker_size))
+		// 2. read rest of marker segment
+		uint16_t markerParametersLength;
+		if(!read_short(&markerParametersLength))
 			return false;
-		else if(marker_size == 2)
+		else if(markerParametersLength == MARKER_LENGTH_BYTES)
 		{
 			GRK_ERROR("Zero-size marker in header.");
 			return false;
 		}
-		 /* Subtract the size of the marker ID already read */
-		marker_size = (uint16_t)(marker_size - MARKER_ID_BYTES);
+		markerParametersLength = (uint16_t)(markerParametersLength - MARKER_LENGTH_BYTES);
 
 		// 3. handle marker
-		if(!process_marker(marker_handler, marker_size))
+		if(!process_marker(marker_handler, markerParametersLength))
 			return false;
 
-		// 4. add the marker to the code stream index
-		addMarker(marker_handler->id, stream_->tell() - marker_size - MARKER_LENGTH_BYTES, marker_size + MARKER_LENGTH_BYTES);
+		// 4. add the marker to code stream index
+		uint16_t markerSegmentLength = MARKER_BYTES + MARKER_LENGTH_BYTES + markerParametersLength;
+		addMarker(marker_handler->id, stream_->tell() - markerSegmentLength, markerSegmentLength);
 
 		// 5. read next marker
 		if(!readMarker())
@@ -768,9 +768,9 @@ bool CodeStreamDecompress::readHeaderProcedureImpl(void)
 		GRK_ERROR("Failed to merge PPM data");
 		return false;
 	}
-	// subtract bytes for already-read SOT marker length
+	// subtract bytes for already-read SOT marker
 	if(codeStreamInfo)
-		codeStreamInfo->setMainHeaderEnd(stream_->tell() - MARKER_ID_BYTES);
+		codeStreamInfo->setMainHeaderEnd(stream_->tell() - MARKER_BYTES);
 
 	// rewind TLM marker if present
 	if(cp_.tlm_markers)
@@ -817,9 +817,10 @@ bool CodeStreamDecompress::findTile(uint16_t tileIndex)
 	if(useTLM)
 	{
 		auto currentPosition = stream_->tell();
-		// for very first SOT position, we add two to skip SOC marker
+		// since the first SOT marker has already been read, we need to
+		// correct the offset by MARKER_BYTES
 		if(!cp_.tlm_markers->seek(tileIndex, stream_,
-									codeStreamInfo->getMainHeaderEnd() + MARKER_ID_BYTES))
+									codeStreamInfo->getMainHeaderEnd() + MARKER_BYTES))
 		{
 			useTLM = false;
 			GRK_WARN("TLM: invalid marker detected. Disabling TLM");

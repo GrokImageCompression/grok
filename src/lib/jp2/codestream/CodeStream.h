@@ -78,8 +78,10 @@ const uint16_t J2K_MS_MCT = 0xff74;  /**< MCT marker value */
 const uint16_t J2K_MS_MCO = 0xff77;  /**< MCO marker value */
 const uint16_t J2K_MS_UNK = 0;       /**< UNKNOWN marker value */
 
-const uint8_t MARKER_ID_BYTES = 2;
-const uint8_t MARKER_LENGTH_BYTES = 4;
+// number of bytes needed to store marker
+const uint8_t MARKER_BYTES = 2;
+// number of bytes neede to store length of marker (excluding marker itself)
+const uint8_t MARKER_LENGTH_BYTES = 2;
 
 class GrkImage;
 
