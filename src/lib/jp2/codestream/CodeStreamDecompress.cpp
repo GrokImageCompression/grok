@@ -812,8 +812,7 @@ bool CodeStreamDecompress::createOutputImage(void)
 bool CodeStreamDecompress::hasTLM(void){
 	return cp_.tlm_markers && cp_.tlm_markers->valid();
 }
-bool CodeStreamDecompress::findTile(uint16_t tileIndex)
-{
+bool CodeStreamDecompress::seekFirstTilePartTLM(uint16_t tileIndex){
 	// if we have a TLM marker, then we can skip tiles until
 	// we get to desired tile
 	bool useTLM = hasTLM();
@@ -832,17 +831,6 @@ bool CodeStreamDecompress::findTile(uint16_t tileIndex)
 				return false;
 		}
 	}
-	if(!useTLM)
-	{
-		if(!codeStreamInfo->allocTileInfo((uint16_t)(cp_.t_grid_width * cp_.t_grid_height)))
-			return false;
-		if(!codeStreamInfo->seekToFirstTilePart(tileIndex))
-			return false;
-	}
-	/* Special case if we have previously read the EOC marker
-	 * (if the previous tile decompressed is the last ) */
-	if(decompressorState_.getState() == DECOMPRESS_STATE_EOC)
-		decompressorState_.setState(DECOMPRESS_STATE_TPH_SOT);
 
 	return true;
 }
@@ -865,8 +853,19 @@ bool CodeStreamDecompress::decompressTile(void)
 	auto tileProcessor = tileCache ? tileCache->processor : nullptr;
 	if(!tileCache || !tileCache->processor->getImage())
 	{
-		if (!findTile(tile_ind_to_dec_))
-			return false;
+		// find first tile part
+		if(!seekFirstTilePartTLM(tile_ind_to_dec_))
+		{
+			if(!codeStreamInfo->allocTileInfo((uint16_t)(cp_.t_grid_width * cp_.t_grid_height)))
+				return false;
+			if(!codeStreamInfo->seekFirstTilePart(tile_ind_to_dec_))
+				return false;
+		}
+		/* Special case if we have previously read the EOC marker
+		 * (if the previous tile decompressed is the last ) */
+		if(decompressorState_.getState() == DECOMPRESS_STATE_EOC)
+			decompressorState_.setState(DECOMPRESS_STATE_TPH_SOT);
+
 		bool canDecompress = true;
 		try
 		{

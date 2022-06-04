@@ -79,7 +79,7 @@ struct CodeStreamInfo
 	void setMainHeaderStart(uint64_t start);
 	uint64_t getMainHeaderEnd(void);
 	void setMainHeaderEnd(uint64_t end);
-	bool seekToFirstTilePart(uint16_t tileIndex);
+	bool seekFirstTilePart(uint16_t tileIndex);
 
   private:
 	/** main header start position (SOC position) */

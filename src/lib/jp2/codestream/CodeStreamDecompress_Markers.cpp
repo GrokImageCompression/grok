@@ -66,10 +66,8 @@ static const j2k_mct_function j2k_mct_read_functions_to_int32[] = {
 bool CodeStreamDecompress::parseTileHeaderMarkers(bool* canDecompress)
 {
 	if(decompressorState_.getState() == DECOMPRESS_STATE_EOC)
-	{
-		curr_marker_ = J2K_MS_EOC;
 		return true;
-	}
+
 	/* We need to encounter a SOT marker (a new tile-part header) */
 	if(decompressorState_.getState() != DECOMPRESS_STATE_TPH_SOT)
 	{

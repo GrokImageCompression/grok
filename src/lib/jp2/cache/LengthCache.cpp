@@ -151,7 +151,7 @@ TilePartInfo* TileInfo::getTilePartInfo(uint8_t tilePart)
 {
 	if(!tilePartInfo)
 		return nullptr;
-	return &tilePartInfo[tilePart];
+	return tilePartInfo + tilePart;
 }
 void TileInfo::dump(FILE* outputFileStream, uint16_t tileNum)
 {
@@ -246,17 +246,19 @@ void CodeStreamInfo::setMainHeaderEnd(uint64_t end)
 {
 	mainHeaderEnd = end;
 }
-bool CodeStreamInfo::seekToFirstTilePart(uint16_t tileIndex)
+bool CodeStreamInfo::seekFirstTilePart(uint16_t tileIndex)
 {
 	// no need to seek if we haven't parsed any tiles yet
 	bool hasVeryFirstTilePartInfo = tileInfo && (tileInfo + 0)->hasTilePartInfo();
-	if(!hasVeryFirstTilePartInfo)
+	if(!hasVeryFirstTilePartInfo){
+		assert(tileIndex == 0);
 		return true;
+	}
 
 	auto tileInfoForTile = getTileInfo(tileIndex);
 	assert(tileInfoForTile && tileInfoForTile->numTileParts);
-	// move to first start of first tile part for this tile (skip 2 byte marker)
-	if(!(stream->seek(tileInfoForTile->getTilePartInfo(0)->startPosition + 2)))
+	// move just past SOT marker of first tile part for this tile
+	if(!(stream->seek(tileInfoForTile->getTilePartInfo(0)->startPosition + MARKER_BYTES)))
 	{
 		GRK_ERROR("Error in seek");
 		return false;
@@ -468,7 +470,7 @@ bool TileLengthMarkers::seek(uint16_t tileIndex, IBufferedStream* stream)
 		skip += tl->length_;
 		tl = getNext();
 	}
-	// reset to first tile part of target tile
+	// decrement tile part index to prepare for next TLM get
 	markerTilePartIndex_--;
 
 	return tl && (tl->tileIndex_ == tileIndex) && stream->seek(stream->tell() + skip);
