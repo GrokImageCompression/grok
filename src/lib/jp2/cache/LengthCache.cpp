@@ -454,16 +454,22 @@ TilePartLengthInfo* TileLengthMarkers::getNext(void)
 	}
 	return nullptr;
 }
+/**
+ *
+ * return true if the tile marker is found and TLM marker isn't corrupt, otherwise false
+ */
 bool TileLengthMarkers::seek(uint16_t tileIndex, IBufferedStream* stream)
 {
 	assert(stream);
 	rewind();
 	auto tl = getNext();
 	uint64_t skip = 0;
+	auto currentPosition = stream->tell();
 	while(tl && tl->tileIndex_ != tileIndex)
 	{
 		if(tl->length_ == 0)
 		{
+			stream->seek(currentPosition);
 			GRK_ERROR("corrupt TLM marker");
 			return false;
 		}

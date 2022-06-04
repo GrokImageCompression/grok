@@ -258,7 +258,7 @@ bool CodeStreamDecompress::setDecompressRegion(grk_rect_single region)
 	}
 	else
 	{
-		/* Check if the region provided by the user are correct */
+		/* Check if the region provided by the user is correct */
 		uint32_t start_x = (uint32_t)region.x0 + image->x0;
 		uint32_t start_y = (uint32_t)region.y0 + image->y0;
 		uint32_t end_x = (uint32_t)region.x1 + image->x0;
@@ -815,20 +815,16 @@ bool CodeStreamDecompress::hasTLM(void){
 bool CodeStreamDecompress::seekFirstTilePartTLM(uint16_t tileIndex){
 	// if we have a TLM marker, then we can skip tiles until
 	// we get to desired tile
-	bool useTLM = hasTLM();
-	if(useTLM)
+	if(hasTLM())
 	{
-		auto currentPosition = stream_->tell();
 		// since we have already read the first SOT marker, the TLM seek will
 		// put the stream at the same position (right after SOT marker)
 		// for the target tile
 		if(!cp_.tlm_markers->seek(tileIndex, stream_))
 		{
-			useTLM = false;
 			GRK_WARN("TLM: invalid marker detected. Disabling TLM");
 			cp_.tlm_markers->invalidate();
-			if(!stream_->seek(currentPosition))
-				return false;
+			return false;
 		}
 	}
 
