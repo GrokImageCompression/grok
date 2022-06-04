@@ -119,7 +119,7 @@ bool SOTMarker::read(CodeStreamDecompress* codeStream, uint8_t* headerData, uint
 	uint8_t numTileParts = 0;
 	uint16_t tileIndex;
 	uint8_t currentTilePart;
-	uint32_t tile_x, tile_y;
+	uint16_t tile_grid_x, tile_grid_y;
 
 	if(!read(codeStream, headerData, header_size, &tilePartLength, &tileIndex, &currentTilePart,
 			 &numTileParts))
@@ -137,8 +137,8 @@ bool SOTMarker::read(CodeStreamDecompress* codeStream, uint8_t* headerData, uint
 	}
 
 	auto tcp = &cp->tcps[tileIndex];
-	tile_x = tileIndex % cp->t_grid_width;
-	tile_y = tileIndex / cp->t_grid_width;
+	tile_grid_x = tileIndex % cp->t_grid_width;
+	tile_grid_y = tileIndex / cp->t_grid_width;
 
 	/* Fixes issue with id_000020,sig_06,src_001958,op_flip4,pos_149 */
 	/* of https://github.com/uclouvain/openjpeg/issues/939 */
@@ -166,8 +166,9 @@ bool SOTMarker::read(CodeStreamDecompress* codeStream, uint8_t* headerData, uint
 	}
 
 	/* Ref A.4.2: Psot may equal zero if it is the last tile-part of the code stream.*/
+	auto decompressState = codeStream->getDecompressorState();
 	if(!tilePartLength)
-		codeStream->getDecompressorState()->lastTilePartInCodeStream = true;
+		decompressState->lastTilePartInCodeStream = true;
 
 	// ensure that current tile part number read from SOT marker
 	// is not larger than total number of tile parts
@@ -177,7 +178,7 @@ bool SOTMarker::read(CodeStreamDecompress* codeStream, uint8_t* headerData, uint
 		GRK_ERROR("Current tile part number (%u) read from SOT marker is greater\n than total "
 				  "number of tile-parts (%u).",
 				  currentTilePart, tcp->numTileParts_);
-		codeStream->getDecompressorState()->lastTilePartInCodeStream = true;
+		decompressState->lastTilePartInCodeStream = true;
 		return false;
 	}
 
@@ -193,7 +194,7 @@ bool SOTMarker::read(CodeStreamDecompress* codeStream, uint8_t* headerData, uint
 				GRK_ERROR("In SOT marker, TPSot (%u) is not valid with regards to the current "
 						  "number of tile-part (%u)",
 						  currentTilePart, tcp->numTileParts_);
-				codeStream->getDecompressorState()->lastTilePartInCodeStream = true;
+				decompressState->lastTilePartInCodeStream = true;
 				return false;
 			}
 			if(numTileParts != tcp->numTileParts_)
@@ -210,7 +211,7 @@ bool SOTMarker::read(CodeStreamDecompress* codeStream, uint8_t* headerData, uint
 			GRK_ERROR("In SOT marker, TPSot (%u) is not valid with regards to the current "
 					  "number of tile-part (header) (%u)",
 					  currentTilePart, numTileParts);
-			codeStream->getDecompressorState()->lastTilePartInCodeStream = true;
+			decompressState->lastTilePartInCodeStream = true;
 			return false;
 		}
 		tcp->numTileParts_ = numTileParts;
@@ -219,23 +220,21 @@ bool SOTMarker::read(CodeStreamDecompress* codeStream, uint8_t* headerData, uint
 	/* If we know the number of tile part header we check whether we have read the last one*/
 	if(tcp->numTileParts_ && (tcp->numTileParts_ == (currentTilePart + 1)))
 		/* indicate that we are now ready to read the tile data */
-		codeStream->getDecompressorState()->lastTilePartWasRead = true;
+		decompressState->lastTilePartWasRead = true;
 
 	codeStream->currentProcessor()->setTilePartDataLength(
-		tilePartLength, codeStream->getDecompressorState()->lastTilePartInCodeStream);
-	codeStream->getDecompressorState()->setState(DECOMPRESS_STATE_TPH);
+		tilePartLength, decompressState->lastTilePartInCodeStream);
+	decompressState->setState(DECOMPRESS_STATE_TPH);
 
 	/* Check if the current tile is outside the area we want
 	 *  to decompress or not, corresponding to the tile index*/
+	grk_pt16 currTile(tile_grid_x,tile_grid_y);
+
 	if(codeStream->tileIndexToDecode() == -1)
-		codeStream->getDecompressorState()->skipTileData =
-			(tile_x < codeStream->getDecompressorState()->start_tile_x_index_) ||
-			(tile_x >= codeStream->getDecompressorState()->end_tile_x_index_) ||
-			(tile_y < codeStream->getDecompressorState()->start_tile_y_index_) ||
-			(tile_y >= codeStream->getDecompressorState()->end_tile_y_index_);
+		codeStream->getDecompressorState()->skipTileData  = !decompressState->tilesToDecompress_.contains(currTile);
 	else
-		codeStream->getDecompressorState()->skipTileData =
-			(tileIndex != (uint32_t)codeStream->tileIndexToDecode());
+		decompressState->skipTileData =
+			(tileIndex != (uint16_t)codeStream->tileIndexToDecode());
 	auto codeStreamInfo = codeStream->getCodeStreamInfo();
 
 	return !codeStreamInfo ||

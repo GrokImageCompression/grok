@@ -254,10 +254,7 @@ bool CodeStreamDecompress::setDecompressRegion(grk_rect_single region)
 
 	if(region == grk_rect_single(0, 0, 0, 0))
 	{
-		decompressor->start_tile_x_index_ = 0;
-		decompressor->start_tile_y_index_ = 0;
-		decompressor->end_tile_x_index_ = cp_.t_grid_width;
-		decompressor->end_tile_y_index_ = cp_.t_grid_height;
+		decompressor->tilesToDecompress_ = grk_rect16(0,0, cp_.t_grid_width, cp_.t_grid_height);
 	}
 	else
 	{
@@ -276,7 +273,7 @@ bool CodeStreamDecompress::setDecompressRegion(grk_rect_single region)
 		}
 		else
 		{
-			decompressor->start_tile_x_index_ = (start_x - cp_.tx0) / cp_.t_width;
+			decompressor->tilesToDecompress_.x0 = uint16_t((start_x - cp_.tx0) / cp_.t_width);
 			compositeImage->x0 = start_x;
 		}
 
@@ -290,7 +287,7 @@ bool CodeStreamDecompress::setDecompressRegion(grk_rect_single region)
 		}
 		else
 		{
-			decompressor->start_tile_y_index_ = (start_y - cp_.ty0) / cp_.t_height;
+			decompressor->tilesToDecompress_.y0 = uint16_t((start_y - cp_.ty0) / cp_.t_height);
 			compositeImage->y0 = start_y;
 		}
 
@@ -302,7 +299,7 @@ bool CodeStreamDecompress::setDecompressRegion(grk_rect_single region)
 			GRK_WARN("Right position of the decompress region (%u)"
 					 " is outside the image area (Xsiz=%u).",
 					 end_x, image->x1);
-			decompressor->end_tile_x_index_ = cp_.t_grid_width;
+			decompressor->tilesToDecompress_.x1 = cp_.t_grid_width;
 			compositeImage->x1 = image->x1;
 		}
 		else
@@ -310,7 +307,7 @@ bool CodeStreamDecompress::setDecompressRegion(grk_rect_single region)
 			// avoid divide by zero
 			if(cp_.t_width == 0)
 				return false;
-			decompressor->end_tile_x_index_ = ceildiv<uint32_t>(end_x - cp_.tx0, cp_.t_width);
+			decompressor->tilesToDecompress_.x1 = uint16_t(ceildiv<uint32_t>(end_x - cp_.tx0, cp_.t_width));
 			compositeImage->x1 = end_x;
 		}
 
@@ -320,7 +317,7 @@ bool CodeStreamDecompress::setDecompressRegion(grk_rect_single region)
 			GRK_WARN("Bottom position of the decompress region (%u)"
 					 " is outside of the image area (Ysiz=%u).",
 					 end_y, image->y1);
-			decompressor->end_tile_y_index_ = cp_.t_grid_height;
+			decompressor->tilesToDecompress_.y1 = cp_.t_grid_height;
 			compositeImage->y1 = image->y1;
 		}
 		else
@@ -328,7 +325,7 @@ bool CodeStreamDecompress::setDecompressRegion(grk_rect_single region)
 			// avoid divide by zero
 			if(cp_.t_height == 0)
 				return false;
-			decompressor->end_tile_y_index_ = ceildiv<uint32_t>(end_y - cp_.ty0, cp_.t_height);
+			decompressor->tilesToDecompress_.y1 = (uint16_t)(ceildiv<uint32_t>(end_y - cp_.ty0, cp_.t_height));
 			compositeImage->y1 = end_y;
 		}
 		cp_.wholeTileDecompress_ = false;

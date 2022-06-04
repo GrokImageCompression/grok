@@ -226,8 +226,7 @@ TileComponentCodingParams::TileComponentCodingParams()
 }
 
 DecompressorState::DecompressorState()
-	: default_tcp_(nullptr), start_tile_x_index_(0), start_tile_y_index_(0), end_tile_x_index_(0),
-	  end_tile_y_index_(0), lastSotReadPosition(0), lastTilePartInCodeStream(false),
+	: default_tcp_(nullptr), lastSotReadPosition(0), lastTilePartInCodeStream(false),
 	  lastTilePartWasRead(false), skipTileData(false), state_(DECOMPRESS_STATE_NONE)
 {}
 

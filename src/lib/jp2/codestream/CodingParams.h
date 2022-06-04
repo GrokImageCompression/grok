@@ -318,10 +318,7 @@ struct DecompressorState
 	// like COD, COC and RGN in main header)
 	TileCodingParams* default_tcp_;
 	/** Only tile indices in the correct range will be decompressed.*/
-	uint32_t start_tile_x_index_;
-	uint32_t start_tile_y_index_;
-	uint32_t end_tile_x_index_;
-	uint32_t end_tile_y_index_;
+	grk_rect16 tilesToDecompress_;
 	/** Position of the last SOT marker read */
 	uint64_t lastSotReadPosition;
 	/**

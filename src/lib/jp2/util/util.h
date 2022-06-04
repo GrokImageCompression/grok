@@ -38,6 +38,7 @@ struct grk_pt
 	T y;
 };
 using grk_pt32 = grk_pt<uint32_t>;
+using grk_pt16 = grk_pt<uint16_t>;
 
 template<typename T>
 struct grk_line
@@ -58,6 +59,7 @@ using grk_line32 = grk_line<uint32_t>;
 template<typename T>
 struct grk_rect;
 using grk_rect32 = grk_rect<uint32_t>;
+using grk_rect16 = grk_rect<uint16_t>;
 using grk_rect_single = grk_rect<float>;
 
 template<typename T>
@@ -314,6 +316,7 @@ struct grk_rect
 };
 
 using grk_rect32 = grk_rect<uint32_t>;
+using grk_rect16 = grk_rect<uint16_t>;
 
 template<typename T>
 void update_maximum(std::atomic<T>& maximum_value, T const& value) noexcept
