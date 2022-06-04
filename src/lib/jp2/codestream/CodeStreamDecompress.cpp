@@ -817,10 +817,10 @@ bool CodeStreamDecompress::findTile(uint16_t tileIndex)
 	if(useTLM)
 	{
 		auto currentPosition = stream_->tell();
-		// since the first SOT marker has already been read, we need to
-		// correct the offset by MARKER_BYTES
-		if(!cp_.tlm_markers->seek(tileIndex, stream_,
-									codeStreamInfo->getMainHeaderEnd() + MARKER_BYTES))
+		// since we have already read the first SOT marker, the TLM seek will
+		// put the stream at the same position (right after SOT marker)
+		// for the target tile
+		if(!cp_.tlm_markers->seek(tileIndex, stream_))
 		{
 			useTLM = false;
 			GRK_WARN("TLM: invalid marker detected. Disabling TLM");

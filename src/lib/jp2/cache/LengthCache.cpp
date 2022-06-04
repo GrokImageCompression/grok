@@ -452,7 +452,7 @@ TilePartLengthInfo* TileLengthMarkers::getNext(void)
 	}
 	return nullptr;
 }
-bool TileLengthMarkers::seek(uint16_t tileIndex, IBufferedStream* stream, uint64_t offset)
+bool TileLengthMarkers::seek(uint16_t tileIndex, IBufferedStream* stream)
 {
 	assert(stream);
 	rewind();
@@ -471,7 +471,7 @@ bool TileLengthMarkers::seek(uint16_t tileIndex, IBufferedStream* stream, uint64
 	// reset to first tile part of target tile
 	markerTilePartIndex_--;
 
-	return tl && (tl->tileIndex_ == tileIndex) && stream->seek(offset + skip);
+	return tl && (tl->tileIndex_ == tileIndex) && stream->seek(stream->tell() + skip);
 }
 bool TileLengthMarkers::writeBegin(uint16_t numTilePartsTotal)
 {

@@ -114,7 +114,7 @@ struct TileLengthMarkers
 	TilePartLengthInfo* getNext(void);
 	void invalidate(void);
 	bool valid(void);
-	bool seek(uint16_t skipTileIndex, IBufferedStream* stream, uint64_t offset);
+	bool seek(uint16_t skipTileIndex, IBufferedStream* stream);
 	bool writeBegin(uint16_t numTilePartsTotal);
 	void push(uint16_t tileIndex, uint32_t tile_part_size);
 	bool writeEnd(void);
