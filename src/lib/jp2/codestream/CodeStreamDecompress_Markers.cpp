@@ -1882,6 +1882,7 @@ bool CodeStreamDecompress::read_soc()
 
 	if(codeStreamInfo)
 	{
+		// subtract SOC length when caching header start
 		codeStreamInfo->setMainHeaderStart(stream_->tell() - MARKER_BYTES);
 		addMarker(J2K_MS_SOC, codeStreamInfo->getMainHeaderStart(), MARKER_BYTES);
 	}

@@ -697,7 +697,7 @@ bool CodeStreamDecompress::readHeaderProcedureImpl(void)
 		return false;
 	}
 
-	/* Try to read until the SOT is detected */
+	/* read until first SOT is detected */
 	while(curr_marker_ != J2K_MS_SOT)
 	{
 		auto marker_handler = get_marker_handler(curr_marker_);
@@ -764,9 +764,9 @@ bool CodeStreamDecompress::readHeaderProcedureImpl(void)
 		GRK_ERROR("Failed to merge PPM data");
 		return false;
 	}
-	// we don't include the SOC marker, therefore subtract 2
+	// subtract bytes for SOT marker, which has just been read
 	if(codeStreamInfo)
-		codeStreamInfo->setMainHeaderEnd(stream_->tell() - 2U);
+		codeStreamInfo->setMainHeaderEnd(stream_->tell() - MARKER_BYTES);
 
 	// rewind TLM marker if present
 	if(cp_.tlm_markers)
