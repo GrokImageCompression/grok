@@ -805,10 +805,44 @@ bool CodeStreamDecompress::createOutputImage(void)
 	return outputImage_->supportsStripCache(&cp_) || outputImage_->allocCompositeData();
 }
 
+bool CodeStreamDecompress::findTile(uint16_t tileIndex)
+{
+	// if we have a TLM marker, then we can skip tiles until
+	// we get to desired tile
+	bool useTLM = cp_.tlm_markers && cp_.tlm_markers->valid();
+	if(useTLM)
+	{
+		auto currentPosition = stream_->tell();
+		// for very first SOT position, we add two to skip SOC marker
+		if(!cp_.tlm_markers->seek(tileIndex, stream_,
+									codeStreamInfo->getMainHeaderEnd() + 2))
+		{
+			useTLM = false;
+			GRK_WARN("TLM: invalid marker detected. Disabling TLM");
+			cp_.tlm_markers->invalidate();
+			if(!stream_->seek(currentPosition))
+				return false;
+		}
+	}
+	if(!useTLM)
+	{
+		if(!codeStreamInfo->allocTileInfo((uint16_t)(cp_.t_grid_width * cp_.t_grid_height)))
+			return false;
+		if(!codeStreamInfo->seekToFirstTilePart(tileIndex))
+			return false;
+	}
+	/* Special case if we have previously read the EOC marker
+	 * (if the previous tile decompressed is the last ) */
+	if(decompressorState_.getState() == DECOMPRESS_STATE_EOC)
+		decompressorState_.setState(DECOMPRESS_STATE_TPH_SOT);
+
+	return true;
+}
+
 /*
  * Read and decompress one tile.
  */
-bool CodeStreamDecompress::decompressTile()
+bool CodeStreamDecompress::decompressTile(void)
 {
 	if(!createOutputImage())
 		return false;
@@ -823,35 +857,8 @@ bool CodeStreamDecompress::decompressTile()
 	auto tileProcessor = tileCache ? tileCache->processor : nullptr;
 	if(!tileCache || !tileCache->processor->getImage())
 	{
-		// if we have a TLM marker, then we can skip tiles until
-		// we get to desired tile
-		bool useTLM = cp_.tlm_markers && cp_.tlm_markers->valid();
-		if(useTLM)
-		{
-			auto currentPosition = stream_->tell();
-			// for very first SOT position, we add two to skip SOC marker
-			if(!cp_.tlm_markers->seekTo((uint16_t)tile_ind_to_dec_, stream_,
-										codeStreamInfo->getMainHeaderEnd() + 2))
-			{
-				useTLM = false;
-				GRK_WARN("TLM: invalid marker detected. Disabling TLM");
-				cp_.tlm_markers->invalidate();
-				if(!stream_->seek(currentPosition))
-					return false;
-			}
-		}
-		if(!useTLM)
-		{
-			if(!codeStreamInfo->allocTileInfo((uint16_t)(cp_.t_grid_width * cp_.t_grid_height)))
-				return false;
-			if(!codeStreamInfo->seekToFirstTilePart((uint16_t)tile_ind_to_dec_))
-				return false;
-		}
-		/* Special case if we have previously read the EOC marker
-		 * (if the previous tile decompressed is the last ) */
-		if(decompressorState_.getState() == DECOMPRESS_STATE_EOC)
-			decompressorState_.setState(DECOMPRESS_STATE_TPH_SOT);
-
+		if (!findTile((uint16_t)tile_ind_to_dec_))
+			return false;
 		bool canDecompress = true;
 		try
 		{

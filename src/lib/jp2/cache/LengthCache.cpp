@@ -244,7 +244,7 @@ uint64_t CodeStreamInfo::getMainHeaderEnd(void)
 }
 void CodeStreamInfo::setMainHeaderEnd(uint64_t end)
 {
-	this->mainHeaderEnd = end;
+	mainHeaderEnd = end;
 }
 bool CodeStreamInfo::seekToFirstTilePart(uint16_t tileIndex)
 {
@@ -452,7 +452,7 @@ TilePartLengthInfo* TileLengthMarkers::getNext(void)
 	}
 	return nullptr;
 }
-bool TileLengthMarkers::seekTo(uint16_t tileIndex, IBufferedStream* stream, uint64_t firstSotPos)
+bool TileLengthMarkers::seek(uint16_t tileIndex, IBufferedStream* stream, uint64_t offset)
 {
 	assert(stream);
 	rewind();
@@ -468,8 +468,10 @@ bool TileLengthMarkers::seekTo(uint16_t tileIndex, IBufferedStream* stream, uint
 		skip += tl->length_;
 		tl = getNext();
 	}
+	// reset to first tile part of target tile
 	markerTilePartIndex_--;
-	return tl && tl->tileIndex_ == tileIndex && stream->seek(firstSotPos + skip);
+
+	return tl && (tl->tileIndex_ == tileIndex) && stream->seek(offset + skip);
 }
 bool TileLengthMarkers::writeBegin(uint16_t numTilePartsTotal)
 {

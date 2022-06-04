@@ -95,6 +95,7 @@ class CodeStreamDecompress : public CodeStream, public ICodeStreamDecompress
 	bool decompressExec();
 	bool decompressTile();
 	bool findNextTile(TileProcessor* tileProcessor);
+	bool findTile(uint16_t tileIndex);
 	TilePartLengthInfo* nextTLM(void);
 	bool decompressTiles(void);
 	bool decompressValidation(void);
