@@ -368,3 +368,5 @@ d402c4aefdb7aa7d14696757a245cc38  issue205.jp2_r0.tif
 9a3743e3324fd6fc8f17f35267c37a83  cmyk_no_wavelet.tif
 3a93ed9d92b12549951198d45bc1fc09  cmyk_no_wavelet_region.tif
 736bce9529d10291df556b36218f2314  1802.pdf.SIGSEGV.36e.894.jp2_0.pgx
+f6c1fe3bc48d15e93cbf9052043b5931  mono_plt_tlm.tif
+a1e13f1bef73098e20611455cbd39472  mono_plt.tif

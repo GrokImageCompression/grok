@@ -738,3 +738,5 @@ grk_decompress -i  @INPUT_NR_PATH@/issue205.jp2 -o @TEMP_PATH@/issue205.jp2_r1.t
 grk_compress -i @INPUT_NR_PATH@/cmyk.tif -o @TEMP_PATH@/cmyk.jp2 -n 1
 grk_decompress -i  @INPUT_NR_PATH@/cmyk_no_wavelet.jp2 -o @TEMP_PATH@/cmyk_no_wavelet.tif
 grk_decompress -i  @INPUT_NR_PATH@/cmyk_no_wavelet.jp2 -o @TEMP_PATH@/cmyk_no_wavelet_region.tif -d 64,64,256,256
+grk_decompress -i  @INPUT_NR_PATH@/mono_plt.j2k -o @TEMP_PATH@/mono_plt.tif
+grk_decompress -i  @INPUT_NR_PATH@/mono_plt_tlm.j2k -o @TEMP_PATH@/mono_plt_tlm.tif -t 5
