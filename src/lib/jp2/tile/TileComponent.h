@@ -31,8 +31,7 @@ struct TileComponent : public grk_rect32
 	bool allocSparseCanvas(uint32_t numres, bool truncatedTile);
 	bool createWindowBuffer(grk_rect32 unreducedTileCompOrImageCompWindow);
 	void deallocBuffers(void);
-	bool init(TileProcessor *tileProcessor,
-			grk_rect32 unreducedTileComp, uint8_t prec,
+	bool init(TileProcessor* tileProcessor, grk_rect32 unreducedTileComp, uint8_t prec,
 			  TileComponentCodingParams* tccp);
 	bool subbandIntersectsAOI(uint8_t resno, eBandOrientation orient, const grk_rect32* aoi) const;
 

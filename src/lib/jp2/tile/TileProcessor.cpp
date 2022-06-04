@@ -127,7 +127,8 @@ Scheduler* TileProcessor::getScheduler(void)
 {
 	return scheduler_;
 }
-bool TileProcessor::isCompressor(void){
+bool TileProcessor::isCompressor(void)
+{
 	return isCompressor_;
 }
 void TileProcessor::generateImage(GrkImage* src_image, Tile* src_tile)
@@ -208,9 +209,7 @@ bool TileProcessor::init(void)
 		grk_rect32 unreducedTileComp = grk_rect32(
 			ceildiv<uint32_t>(tile->x0, imageComp->dx), ceildiv<uint32_t>(tile->y0, imageComp->dy),
 			ceildiv<uint32_t>(tile->x1, imageComp->dx), ceildiv<uint32_t>(tile->y1, imageComp->dy));
-		if(!tilec->init(this,
-						unreducedTileComp,
-						imageComp->prec, tcp->tccps + compno))
+		if(!tilec->init(this, unreducedTileComp, imageComp->prec, tcp->tccps + compno))
 		{
 			return false;
 		}
@@ -435,32 +434,42 @@ bool TileProcessor::decompressT2T1(GrkImage* outputImage)
 		// todo re-enable decompress synch
 		// decompress_synch_plugin_with_host(this);
 
-		//1. count parsers
+		// 1. count parsers
 		auto tile = getTile();
 		uint64_t parserCount = 0;
-		for (uint16_t compno = 0; compno < headerImage->numcomps; ++compno){
+		for(uint16_t compno = 0; compno < headerImage->numcomps; ++compno)
+		{
 			auto tilec = tile->comps + compno;
-			for (uint8_t resno = 0; resno < tilec->numResolutionsToDecompress; ++resno){
-				auto res =  tilec->tileCompResolution + resno;
+			for(uint8_t resno = 0; resno < tilec->numResolutionsToDecompress; ++resno)
+			{
+				auto res = tilec->tileCompResolution + resno;
 				parserCount += res->parserMap_->precinctParsers_.size();
 			}
 		}
-		//2.create and populate tasks, and execute
-		if (parserCount) {
-			auto numThreads =
-				std::min<size_t>(ExecSingleton::get()->num_workers(),parserCount);
-			if (numThreads == 1){
-				for (uint16_t compno = 0; compno < headerImage->numcomps; ++compno){
+		// 2.create and populate tasks, and execute
+		if(parserCount)
+		{
+			auto numThreads = std::min<size_t>(ExecSingleton::get()->num_workers(), parserCount);
+			if(numThreads == 1)
+			{
+				for(uint16_t compno = 0; compno < headerImage->numcomps; ++compno)
+				{
 					auto tilec = tile->comps + compno;
-					for (uint8_t resno = 0; resno < tilec->numResolutionsToDecompress; ++resno){
-						auto res =  tilec->tileCompResolution + resno;
-						for (auto &pp : res->parserMap_->precinctParsers_){
-							for (uint64_t j = 0; j < pp.second->numParsers_; ++j){
-								try {
+					for(uint8_t resno = 0; resno < tilec->numResolutionsToDecompress; ++resno)
+					{
+						auto res = tilec->tileCompResolution + resno;
+						for(auto& pp : res->parserMap_->precinctParsers_)
+						{
+							for(uint64_t j = 0; j < pp.second->numParsers_; ++j)
+							{
+								try
+								{
 									auto parser = pp.second->parsers_[j];
 									parser->readHeader();
 									parser->readData();
-								} catch (std::exception &ex){
+								}
+								catch(std::exception& ex)
+								{
 									GRK_UNUSED(ex);
 									break;
 								}
@@ -468,26 +477,35 @@ bool TileProcessor::decompressT2T1(GrkImage* outputImage)
 						}
 					}
 				}
-			} else {
+			}
+			else
+			{
 				tf::Taskflow taskflow;
 				auto numTasks = parserCount;
 				auto tasks = new tf::Task[numTasks];
 				for(uint64_t i = 0; i < numTasks; i++)
 					tasks[i] = taskflow.placeholder();
 				uint64_t i = 0;
-				for (uint16_t compno = 0; compno < headerImage->numcomps; ++compno){
+				for(uint16_t compno = 0; compno < headerImage->numcomps; ++compno)
+				{
 					auto tilec = tile->comps + compno;
-					for (uint8_t resno = 0; resno < tilec->numResolutionsToDecompress; ++resno){
-						auto res =  tilec->tileCompResolution + resno;
-						for (auto &pp : res->parserMap_->precinctParsers_){
-							auto &ppair = pp;
-							auto decompressor = [this,ppair,&t2]() {
-								for (uint64_t j = 0; j < ppair.second->numParsers_; ++j){
-									try {
+					for(uint8_t resno = 0; resno < tilec->numResolutionsToDecompress; ++resno)
+					{
+						auto res = tilec->tileCompResolution + resno;
+						for(auto& pp : res->parserMap_->precinctParsers_)
+						{
+							auto& ppair = pp;
+							auto decompressor = [this, ppair, &t2]() {
+								for(uint64_t j = 0; j < ppair.second->numParsers_; ++j)
+								{
+									try
+									{
 										auto parser = ppair.second->parsers_[j];
 										parser->readHeader();
 										parser->readData();
-									} catch (std::exception &ex){
+									}
+									catch(std::exception& ex)
+									{
 										GRK_UNUSED(ex);
 										break;
 									}
@@ -587,7 +605,7 @@ bool TileProcessor::decompressT2T1(GrkImage* outputImage)
 	if(doT1 && getNumDecompressedPackets() == 0)
 	{
 		GRK_WARN("Tile %u was not decompressed", tileIndex_);
-		if (!outputImage->hasMultipleTiles)
+		if(!outputImage->hasMultipleTiles)
 			return false;
 	}
 	return true;
@@ -1497,7 +1515,7 @@ bool TileProcessor::pcrdBisectSimple(uint32_t* allPacketBytes)
 static void prepareBlockForFirstLayer(CompressCodeblock* cblk)
 {
 	cblk->numPassesInPreviousPackets = 0;
-	cblk->setNumPassesInPacket(0,0);
+	cblk->setNumPassesInPacket(0, 0);
 	cblk->numlenbits = 0;
 }
 /*

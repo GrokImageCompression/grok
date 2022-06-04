@@ -967,7 +967,7 @@ static void cleanUpFile(const char* outfile)
 }
 
 static void grkSerializeRegisterClientCallback(grk_io_init io_init,
-												grk_io_callback reclaim_callback, void* io_user_data,
+											   grk_io_callback reclaim_callback, void* io_user_data,
 											   void* reclaim_user_data)
 {
 	if(!io_user_data || !reclaim_user_data)

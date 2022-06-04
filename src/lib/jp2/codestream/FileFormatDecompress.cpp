@@ -305,8 +305,8 @@ bool FileFormatDecompress::preProcess(void)
 			auto img = codeStream->getCompositeImage();
 			if(channel >= img->numcomps)
 			{
-				GRK_WARN("channel definition: channel=%u should be strictly less than numcomps=%u", channel,
-						 img->numcomps);
+				GRK_WARN("channel definition: channel=%u should be strictly less than numcomps=%u",
+						 channel, img->numcomps);
 				continue;
 			}
 			img->comps[channel].type = (GRK_CHANNEL_TYPE)info[i].typ;

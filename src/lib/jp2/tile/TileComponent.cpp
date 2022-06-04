@@ -67,9 +67,8 @@ void TileComponent::deallocBuffers(void)
  * (tile component coordinates take sub-sampling into account).
  *
  */
-bool TileComponent::init(TileProcessor *tileProcessor,
-						 grk_rect32 unreducedTileComp,
-						 uint8_t prec, TileComponentCodingParams* tccp)
+bool TileComponent::init(TileProcessor* tileProcessor, grk_rect32 unreducedTileComp, uint8_t prec,
+						 TileComponentCodingParams* tccp)
 {
 	auto cp = tileProcessor->cp_;
 	isCompressor_ = tileProcessor->isCompressor();

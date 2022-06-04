@@ -146,8 +146,7 @@ bool PPMMarker::merge()
 					grk_read<uint32_t>(data, &N_ppm);
 					data += 4;
 					data_size -= 4;
-					packetHeaders.push_back(
-						grk_buf8(nullptr, total_data_size, N_ppm, false));
+					packetHeaders.push_back(grk_buf8(nullptr, total_data_size, N_ppm, false));
 					total_data_size += N_ppm; /* can't overflow, max 256 markers of max 65536 bytes,
 												 that is when PPM markers are not corrupted
 												  which is checked elsewhere */

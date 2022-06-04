@@ -532,8 +532,7 @@ bool TileLengthMarkers::addTileMarkerInfo(uint16_t tileno, CodeStreamInfo* codes
 	return true;
 }
 
-PacketInfo::PacketInfo(void) : packetLength(0)
-{}
+PacketInfo::PacketInfo(void) : packetLength(0) {}
 PacketInfoCache::~PacketInfoCache()
 {
 	for(auto& p : packetInfo)

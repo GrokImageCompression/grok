@@ -118,11 +118,12 @@ TIFFFormat::~TIFFFormat()
 		TIFFClose(tif_);
 }
 
-void TIFFFormat::registerGrkReclaimCallback(grk_io_init io_init, grk_io_callback reclaim_callback, void* user_data)
+void TIFFFormat::registerGrkReclaimCallback(grk_io_init io_init, grk_io_callback reclaim_callback,
+											void* user_data)
 {
 	grkReclaimCallback_ = reclaim_callback;
 	grkReclaimUserData_ = user_data;
-	if (io_init.maxPooledRequests_)
+	if(io_init.maxPooledRequests_)
 		serializer.setMaxPooledRequests(io_init.maxPooledRequests_);
 }
 bool TIFFFormat::ioReclaim(uint32_t threadId, io::io_buf* buffer)

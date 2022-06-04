@@ -50,8 +50,9 @@ Precinct* Subband::getPrecinct(uint64_t precinctIndex)
 
 	return precincts[index];
 }
-grk_rect32 Subband::generatePrecinctBounds(uint64_t precinctIndex, grk_pt32 precinctPartitionTopLeft,
-								  grk_pt32 precinctExpn, uint32_t precinctGridWidth)
+grk_rect32 Subband::generatePrecinctBounds(uint64_t precinctIndex,
+										   grk_pt32 precinctPartitionTopLeft, grk_pt32 precinctExpn,
+										   uint32_t precinctGridWidth)
 {
 	auto precinctTopLeft =
 		grk_pt32(precinctPartitionTopLeft.x +
@@ -63,9 +64,9 @@ grk_rect32 Subband::generatePrecinctBounds(uint64_t precinctIndex, grk_pt32 prec
 					  precinctTopLeft.y + (1U << precinctExpn.y))
 		.intersection(this);
 }
-Precinct* Subband::createPrecinct(TileProcessor *tileProcessor, uint64_t precinctIndex,
-						 grk_pt32 precinctPartitionTopLeft, grk_pt32 precinctExpn,
-						 uint32_t precinctGridWidth, grk_pt32 cblk_expn)
+Precinct* Subband::createPrecinct(TileProcessor* tileProcessor, uint64_t precinctIndex,
+								  grk_pt32 precinctPartitionTopLeft, grk_pt32 precinctExpn,
+								  uint32_t precinctGridWidth, grk_pt32 cblk_expn)
 {
 	auto temp = precinctMap.find(precinctIndex);
 	if(temp != precinctMap.end())
@@ -85,6 +86,5 @@ Precinct* Subband::createPrecinct(TileProcessor *tileProcessor, uint64_t precinc
 
 	return currPrec;
 }
-
 
 } // namespace grk

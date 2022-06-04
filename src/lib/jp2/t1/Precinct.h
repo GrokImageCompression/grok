@@ -23,9 +23,7 @@ class BlockCache : public SparseCache<T>
 {
   public:
 	BlockCache(uint16_t numLayers, uint64_t maxChunkSize, P* blockInitializer)
-		: SparseCache<T>(maxChunkSize),
-		  blockInitializer_(blockInitializer),
-		  numLayers_(numLayers)
+		: SparseCache<T>(maxChunkSize), blockInitializer_(blockInitializer), numLayers_(numLayers)
 	{}
 	virtual ~BlockCache() = default;
 
@@ -47,7 +45,7 @@ struct PrecinctImpl
 	PrecinctImpl(bool isCompressor, grk_rect32* bounds, grk_pt32 cblk_expn);
 	~PrecinctImpl(void);
 	grk_rect32 getCodeBlockBounds(uint64_t cblkno);
-	bool initCodeBlocks(uint16_t numLayers,grk_rect32* bounds);
+	bool initCodeBlocks(uint16_t numLayers, grk_rect32* bounds);
 	template<typename T>
 	bool initCodeBlock(T* block, uint64_t cblkno);
 	void deleteTagTrees();
@@ -66,7 +64,7 @@ struct PrecinctImpl
 };
 struct Precinct : public grk_rect32
 {
-	Precinct(TileProcessor *tileProcessor, const grk_rect32& bounds, grk_pt32 cblk_expn);
+	Precinct(TileProcessor* tileProcessor, const grk_rect32& bounds, grk_pt32 cblk_expn);
 	virtual ~Precinct();
 	void deleteTagTrees();
 	grk_rect32 getCodeBlockBounds(uint64_t cblkno);
@@ -89,7 +87,7 @@ struct Precinct : public grk_rect32
 	grk_pt32 cblk_expn_;
 	PrecinctImpl* getImpl(void)
 	{
-		impl->initCodeBlocks(numLayers_,this);
+		impl->initCodeBlocks(numLayers_, this);
 		return impl;
 	}
 };

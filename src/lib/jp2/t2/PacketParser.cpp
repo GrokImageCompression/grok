@@ -14,39 +14,23 @@
  *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-
 #include "grk_includes.h"
 
-namespace grk {
+namespace grk
+{
 
-PacketParser::PacketParser(TileProcessor* tileProcessor,
-							uint16_t packetSequenceNumber,
-							uint16_t compno,
-							uint8_t resno,
-							uint64_t precinctIndex,
-							uint16_t layno,
-							uint8_t *data,
-							uint32_t lengthFromMarker,
-							size_t tileBytes,
-							size_t remainingTilePartBytes) :
-		                                    tileProcessor_(tileProcessor),
-											packetSequenceNumber_(packetSequenceNumber),
-											compno_(compno),
-											resno_(resno),
-											precinctIndex_(precinctIndex),
-											layno_(layno),
-											data_(data),
-											tileBytes_(tileBytes),
-											remainingTilePartBytes_(remainingTilePartBytes),
-											tagBitsPresent_(false),
-											packetHeaderBytes_(0),
-											signalledDataBytes_(0),
-											readDataBytes_(0),
-											lengthFromMarker_(lengthFromMarker),
-											parsedHeader_(false),
-											headerError_(false)
+PacketParser::PacketParser(TileProcessor* tileProcessor, uint16_t packetSequenceNumber,
+						   uint16_t compno, uint8_t resno, uint64_t precinctIndex, uint16_t layno,
+						   uint8_t* data, uint32_t lengthFromMarker, size_t tileBytes,
+						   size_t remainingTilePartBytes)
+	: tileProcessor_(tileProcessor), packetSequenceNumber_(packetSequenceNumber), compno_(compno),
+	  resno_(resno), precinctIndex_(precinctIndex), layno_(layno), data_(data),
+	  tileBytes_(tileBytes), remainingTilePartBytes_(remainingTilePartBytes),
+	  tagBitsPresent_(false), packetHeaderBytes_(0), signalledDataBytes_(0), readDataBytes_(0),
+	  lengthFromMarker_(lengthFromMarker), parsedHeader_(false), headerError_(false)
 {}
-void PacketParser::print(void){
+void PacketParser::print(void)
+{
 	std::cout << "/////////////////////////////////" << compno_ << std::endl;
 	std::cout << "compno: " << compno_ << std::endl;
 	std::cout << "resno: " << resno_ << std::endl;
@@ -57,26 +41,30 @@ void PacketParser::print(void){
 	std::cout << "tagBitsPresent: " << tagBitsPresent_ << std::endl;
 	std::cout << "packetHeaderBytes: " << packetHeaderBytes_ << std::endl;
 	std::cout << "signalledDataBytes: " << signalledDataBytes_ << std::endl;
-	std::cout << "readDataBytes: " << readDataBytes_ <<  std::endl;
+	std::cout << "readDataBytes: " << readDataBytes_ << std::endl;
 	std::cout << "lengthFromMarker: " << lengthFromMarker_ << std::endl;
 }
 
-uint32_t PacketParser::numHeaderBytes(void){
+uint32_t PacketParser::numHeaderBytes(void)
+{
 	return packetHeaderBytes_;
 }
-uint32_t PacketParser::numSignalledDataBytes(void){
+uint32_t PacketParser::numSignalledDataBytes(void)
+{
 	return signalledDataBytes_;
 }
-uint32_t PacketParser::numReadDataBytes(void){
+uint32_t PacketParser::numReadDataBytes(void)
+{
 	return readDataBytes_;
 }
-uint32_t PacketParser::numSignalledBytes(void){
+uint32_t PacketParser::numSignalledBytes(void)
+{
 	return packetHeaderBytes_ + signalledDataBytes_;
 }
 
 void PacketParser::readHeader(void)
 {
-	if (parsedHeader_)
+	if(parsedHeader_)
 		return;
 
 	auto currentData = data_;
@@ -94,7 +82,8 @@ void PacketParser::readHeader(void)
 			(uint16_t)(((uint16_t)(*currentData) << 8) | (uint16_t)(*(currentData + 1)));
 		if(marker == J2K_MS_SOP)
 		{
-			if(remainingTilePartBytes_ < 6){
+			if(remainingTilePartBytes_ < 6)
+			{
 				headerError_ = true;
 				throw TruncatedPacketHeaderException();
 			}
@@ -103,7 +92,7 @@ void PacketParser::readHeader(void)
 			if(signalledPacketSequenceNumber != (packetSequenceNumber_))
 			{
 				GRK_WARN("SOP marker packet counter %u does not match expected counter %u",
-						signalledPacketSequenceNumber, packetSequenceNumber_);
+						 signalledPacketSequenceNumber, packetSequenceNumber_);
 				headerError_ = true;
 				throw CorruptPacketHeaderException();
 			}
@@ -139,7 +128,7 @@ void PacketParser::readHeader(void)
 	auto tccp = tcp->tccps + compno_;
 	try
 	{
-		tagBitsPresent_= bio->read();
+		tagBitsPresent_ = bio->read();
 		// GRK_INFO("present=%u ", present);
 		if(tagBitsPresent_)
 		{
@@ -154,7 +143,8 @@ void PacketParser::readHeader(void)
 				auto numPrecCodeBlocks = prc->getNumCblks();
 				// assuming 1 bit minimum encoded per code block,
 				// let's check if we have enough bytes
-				if((numPrecCodeBlocks >> 3) > tileBytes_){
+				if((numPrecCodeBlocks >> 3) > tileBytes_)
+				{
 					headerError_ = true;
 					throw TruncatedPacketHeaderException();
 				}
@@ -233,7 +223,7 @@ void PacketParser::readHeader(void)
 					}
 					uint32_t numPassesInPacket = 0;
 					bio->getnumpasses(&numPassesInPacket);
-					cblk->setNumPassesInPacket(layno_,(uint8_t)numPassesInPacket);
+					cblk->setNumPassesInPacket(layno_, (uint8_t)numPassesInPacket);
 					uint8_t increment = bio->getcommacode();
 					cblk->numlenbits += increment;
 					uint32_t segno = 0;
@@ -307,7 +297,8 @@ void PacketParser::readHeader(void)
 	// EPH marker (absent from packet in case of packet packet headers)
 	if(hasEPH)
 	{
-		if((*remainingBytes - (uint32_t)(currentHeaderPtr - *headerStart)) < 2U){
+		if((*remainingBytes - (uint32_t)(currentHeaderPtr - *headerStart)) < 2U)
+		{
 			headerError_ = true;
 			throw TruncatedPacketHeaderException();
 		}
@@ -368,7 +359,8 @@ void PacketParser::initSegment(DecompressCodeblock* cblk, uint32_t index, uint8_
 }
 void PacketParser::readData(void)
 {
-	if (!tagBitsPresent_){
+	if(!tagBitsPresent_)
+	{
 		readDataFinalize();
 		return;
 	}
@@ -395,12 +387,12 @@ void PacketParser::readData(void)
 			uint32_t numPassesInPacket = cblk->getNumPassesInPacket(layno_);
 			do
 			{
-				if(remainingTilePartBytes_ == 0){
+				if(remainingTilePartBytes_ == 0)
+				{
 					GRK_WARN("Packet data is truncated or packet header is corrupt :");
 					GRK_WARN("at component=%02d resolution=%02d precinct=%03d "
 							 "layer=%02d",
-							 compno_, resno_,
-							 precinctIndex_, layno_);
+							 compno_, resno_, precinctIndex_, layno_);
 					goto finish;
 				}
 				if(((seg->numBytesInPacket) > remainingTilePartBytes_))
@@ -446,64 +438,69 @@ finish:
 	readDataFinalize();
 }
 
-void PacketParser::readDataFinalize(void){
+void PacketParser::readDataFinalize(void)
+{
 	auto tile = tileProcessor_->getTile();
 	update_maximum<uint8_t>((tile->comps + compno_)->highestResolutionDecompressed, resno_);
 	tileProcessor_->incNumDecompressedPackets();
 }
 
-PrecinctPacketParsers::PrecinctPacketParsers(TileProcessor* tileProcessor) :
-		tileProcessor_(tileProcessor),
-		parsers_(nullptr),
-		numParsers_(0),
-		allocatedParsers_(0)
+PrecinctPacketParsers::PrecinctPacketParsers(TileProcessor* tileProcessor)
+	: tileProcessor_(tileProcessor), parsers_(nullptr), numParsers_(0), allocatedParsers_(0)
 {
 	auto tcp = tileProcessor_->getTileCodingParams();
-	allocatedParsers_= tcp->numlayers;
-	if (allocatedParsers_) {
+	allocatedParsers_ = tcp->numlayers;
+	if(allocatedParsers_)
+	{
 		parsers_ = new PacketParser*[allocatedParsers_];
-		for (uint16_t i = 0; i < allocatedParsers_; ++i)
+		for(uint16_t i = 0; i < allocatedParsers_; ++i)
 			parsers_[i] = nullptr;
 	}
 }
 
 PrecinctPacketParsers::~PrecinctPacketParsers(void)
 {
-	for (uint16_t i = 0; i < numParsers_; ++i)
+	for(uint16_t i = 0; i < numParsers_; ++i)
 		delete parsers_[i];
 	delete[] parsers_;
 }
 
-void PrecinctPacketParsers::pushParser(PacketParser *parser){
-	if (!parser)
+void PrecinctPacketParsers::pushParser(PacketParser* parser)
+{
+	if(!parser)
 		return;
-	if (numParsers_  >= allocatedParsers_){
+	if(numParsers_ >= allocatedParsers_)
+	{
 		GRK_WARN("Attempt to add parser for layer larger than max number of layers.");
 		return;
 	}
 	parsers_[numParsers_++] = parser;
 }
 
-ParserMap::ParserMap(TileProcessor* tileProcessor) : tileProcessor_(tileProcessor)
-{}
+ParserMap::ParserMap(TileProcessor* tileProcessor) : tileProcessor_(tileProcessor) {}
 
-ParserMap::~ParserMap(){
+ParserMap::~ParserMap()
+{
 	for(auto& p : precinctParsers_)
 		delete p.second;
 }
 
-void ParserMap::pushParser(uint64_t precinctIndex, PacketParser *parser){
-	if (!parser)
+void ParserMap::pushParser(uint64_t precinctIndex, PacketParser* parser)
+{
+	if(!parser)
 		return;
-	PrecinctPacketParsers *ppp = nullptr;
+	PrecinctPacketParsers* ppp = nullptr;
 	auto it = precinctParsers_.find(precinctIndex);
-	if (it == precinctParsers_.end()){
+	if(it == precinctParsers_.end())
+	{
 		ppp = new PrecinctPacketParsers(tileProcessor_);
 		precinctParsers_[precinctIndex] = ppp;
-	} else {
+	}
+	else
+	{
 		ppp = it->second;
 	}
 	ppp->pushParser(parser);
 }
 
-}
+} // namespace grk

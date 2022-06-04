@@ -52,7 +52,7 @@ struct Subband : public grk_rect32
 	Precinct* getPrecinct(uint64_t precinctIndex);
 	grk_rect32 generatePrecinctBounds(uint64_t precinctIndex, grk_pt32 precinctPartitionTopLeft,
 									  grk_pt32 precinctExpn, uint32_t precinctGridWidth);
-	Precinct* createPrecinct(TileProcessor *tileProcessor, uint64_t precinctIndex,
+	Precinct* createPrecinct(TileProcessor* tileProcessor, uint64_t precinctIndex,
 							 grk_pt32 precinctPartitionTopLeft, grk_pt32 precinctExpn,
 							 uint32_t precinctGridWidth, grk_pt32 cblk_expn);
 	eBandOrientation orientation;

@@ -18,7 +18,6 @@
 namespace grk
 {
 
-
 PrecinctImpl::PrecinctImpl(bool isCompressor, grk_rect32* bounds, grk_pt32 cblk_expn)
 	: enc(nullptr), dec(nullptr), bounds_(*bounds), cblk_expn_(cblk_expn),
 	  isCompressor_(isCompressor), incltree(nullptr), imsbtree(nullptr)
@@ -44,13 +43,12 @@ grk_rect32 PrecinctImpl::getCodeBlockBounds(uint64_t cblkno)
 	auto cblk_start =
 		grk_pt32((cblk_grid_.x0 + (uint32_t)(cblkno % cblk_grid_.width())) << cblk_expn_.x,
 				 (cblk_grid_.y0 + (uint32_t)(cblkno / cblk_grid_.width())) << cblk_expn_.y);
-	auto cblk_bounds =
-		grk_rect32(cblk_start.x, cblk_start.y, cblk_start.x + (1U << cblk_expn_.x),
-				   cblk_start.y + (1U << cblk_expn_.y));
+	auto cblk_bounds = grk_rect32(cblk_start.x, cblk_start.y, cblk_start.x + (1U << cblk_expn_.x),
+								  cblk_start.y + (1U << cblk_expn_.y));
 
 	return cblk_bounds.intersection(&bounds_);
 }
-bool PrecinctImpl::initCodeBlocks(uint16_t numLayers,grk_rect32* bounds)
+bool PrecinctImpl::initCodeBlocks(uint16_t numLayers, grk_rect32* bounds)
 {
 	if((isCompressor_ && enc) || (!isCompressor_ && dec))
 		return true;
@@ -59,9 +57,9 @@ bool PrecinctImpl::initCodeBlocks(uint16_t numLayers,grk_rect32* bounds)
 	if(!numBlocks)
 		return true;
 	if(isCompressor_)
-		enc = new BlockCache<CompressCodeblock, PrecinctImpl>(numLayers,numBlocks, this);
+		enc = new BlockCache<CompressCodeblock, PrecinctImpl>(numLayers, numBlocks, this);
 	else
-		dec = new BlockCache<DecompressCodeblock, PrecinctImpl>(numLayers,numBlocks, this);
+		dec = new BlockCache<DecompressCodeblock, PrecinctImpl>(numLayers, numBlocks, this);
 
 	return true;
 }
@@ -136,11 +134,10 @@ TagTreeU8* PrecinctImpl::getIMsbTagTree(void)
 	return nullptr;
 }
 
-Precinct::Precinct(TileProcessor *tileProcessor, const grk_rect32& bounds, grk_pt32 cblk_expn)
+Precinct::Precinct(TileProcessor* tileProcessor, const grk_rect32& bounds, grk_pt32 cblk_expn)
 	: grk_rect32(bounds), precinctIndex(0),
 	  numLayers_(tileProcessor->getTileCodingParams()->numlayers),
-	  impl(new PrecinctImpl(tileProcessor->isCompressor(), this, cblk_expn)),
-	  cblk_expn_(cblk_expn)
+	  impl(new PrecinctImpl(tileProcessor->isCompressor(), this, cblk_expn)), cblk_expn_(cblk_expn)
 
 {}
 Precinct::~Precinct()
@@ -199,6 +196,5 @@ grk_rect32 Precinct::getCblkGrid(void)
 {
 	return impl->cblk_grid_;
 }
-
 
 } // namespace grk

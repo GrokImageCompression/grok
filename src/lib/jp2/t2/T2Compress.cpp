@@ -145,7 +145,7 @@ bool T2Compress::compressPacketSimulate(TileCodingParams* tcp, PacketIter* pi,
 				continue;
 			if(layer->len > max_bytes_available)
 				return false;
-			cblk->incNumPassesInPacket(0,(uint8_t)layer->numpasses);
+			cblk->incNumPassesInPacket(0, (uint8_t)layer->numpasses);
 			byteCount += layer->len;
 			if(max_bytes_available != UINT_MAX)
 				max_bytes_available -= layer->len;
@@ -226,7 +226,7 @@ bool T2Compress::compressHeader(BitIO* bio, Resolution* res, uint16_t layno, uin
 			for(uint64_t cblkno = 0; cblkno < nb_blocks; ++cblkno)
 			{
 				auto cblk = prc->getCompressedBlockPtr(cblkno);
-				cblk->setNumPassesInPacket(0,0);
+				cblk->setNumPassesInPacket(0, 0);
 				assert(band->numbps >= cblk->numbps);
 				if(cblk->numbps > band->numbps)
 					GRK_WARN("Code block %u bps %u greater than band bps %u. Skipping.", cblkno,
@@ -415,7 +415,7 @@ bool T2Compress::compressPacket(TileCodingParams* tcp, PacketIter* pi, IBuffered
 				continue;
 			if(cblk_layer->len && !stream->writeBytes(cblk_layer->data, cblk_layer->len))
 				return false;
-			cblk->incNumPassesInPacket(0,(uint8_t)cblk_layer->numpasses);
+			cblk->incNumPassesInPacket(0, (uint8_t)cblk_layer->numpasses);
 		}
 	}
 	*packet_bytes_written += (uint32_t)(stream->tell() - stream_start);

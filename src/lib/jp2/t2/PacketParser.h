@@ -19,22 +19,17 @@
 #include <cstdint>
 #include <map>
 
-namespace grk {
+namespace grk
+{
 
 struct TileProcessor;
 
-class PacketParser {
-public:
-	PacketParser(TileProcessor* tileProcessor,
-				uint16_t packetSequenceNumber,
-				uint16_t compno,
-				uint8_t resno,
-				uint64_t precinctIndex,
-				uint16_t layno,
-				uint8_t *data,
-				uint32_t lengthFromMarker,
-				size_t tileBytes,
-				size_t remainingTilePartBytes);
+class PacketParser
+{
+  public:
+	PacketParser(TileProcessor* tileProcessor, uint16_t packetSequenceNumber, uint16_t compno,
+				 uint8_t resno, uint64_t precinctIndex, uint16_t layno, uint8_t* data,
+				 uint32_t lengthFromMarker, size_t tileBytes, size_t remainingTilePartBytes);
 	virtual ~PacketParser(void) = default;
 	void readHeader(void);
 	void readData(void);
@@ -43,48 +38,50 @@ public:
 	uint32_t numSignalledBytes(void);
 	uint32_t numReadDataBytes(void);
 	void print(void);
-private:
+
+  private:
 	void readDataFinalize(void);
-	void initSegment(DecompressCodeblock* cblk, uint32_t index, uint8_t cblk_sty,
-								   bool first);
-	 TileProcessor* tileProcessor_;
-	 uint16_t packetSequenceNumber_;
-	 uint16_t compno_;
-	 uint8_t resno_;
-	 uint64_t precinctIndex_;
-	 uint16_t layno_;
-	 uint8_t *data_;
-	 size_t tileBytes_;
-	 size_t remainingTilePartBytes_;
-	 bool tagBitsPresent_;
-	 // header bytes in packet - doesn't include packed header bytes
-	 uint32_t packetHeaderBytes_;
-	 uint32_t signalledDataBytes_;
-	 uint32_t readDataBytes_;
-	 uint32_t lengthFromMarker_;
-	 bool parsedHeader_;
-	 bool headerError_;
+	void initSegment(DecompressCodeblock* cblk, uint32_t index, uint8_t cblk_sty, bool first);
+	TileProcessor* tileProcessor_;
+	uint16_t packetSequenceNumber_;
+	uint16_t compno_;
+	uint8_t resno_;
+	uint64_t precinctIndex_;
+	uint16_t layno_;
+	uint8_t* data_;
+	size_t tileBytes_;
+	size_t remainingTilePartBytes_;
+	bool tagBitsPresent_;
+	// header bytes in packet - doesn't include packed header bytes
+	uint32_t packetHeaderBytes_;
+	uint32_t signalledDataBytes_;
+	uint32_t readDataBytes_;
+	uint32_t lengthFromMarker_;
+	bool parsedHeader_;
+	bool headerError_;
 };
 
-struct PrecinctPacketParsers{
+struct PrecinctPacketParsers
+{
 	PrecinctPacketParsers(TileProcessor* tileProcessor);
 	~PrecinctPacketParsers(void);
-	void pushParser(PacketParser *parser);
+	void pushParser(PacketParser* parser);
 	TileProcessor* tileProcessor_;
-	PacketParser **parsers_;
+	PacketParser** parsers_;
 	uint16_t numParsers_;
 	uint16_t allocatedParsers_;
 };
 
 struct TileProcessor;
 
-struct ParserMap {
+struct ParserMap
+{
 	ParserMap(TileProcessor* tileProcessor);
 	~ParserMap();
-	void pushParser(uint64_t precinctIndex, PacketParser *parser);
+	void pushParser(uint64_t precinctIndex, PacketParser* parser);
 
 	TileProcessor* tileProcessor_;
-	std::map<uint64_t,PrecinctPacketParsers*> precinctParsers_;
+	std::map<uint64_t, PrecinctPacketParsers*> precinctParsers_;
 };
 
-}
+} // namespace grk

@@ -114,18 +114,22 @@ struct Codeblock : public grk_buf2d<int32_t, AllocatorAligned>, public ICacheabl
 	grk_buf8 compressedStream;
 	uint8_t numbps;
 	uint8_t numlenbits;
-	uint8_t getNumPassesInPacket(uint16_t layno){
+	uint8_t getNumPassesInPacket(uint16_t layno)
+	{
 		assert(layno < numPassesInPacket.size());
 		return numPassesInPacket[layno];
 	}
-	void setNumPassesInPacket(uint16_t layno, uint8_t passes){
+	void setNumPassesInPacket(uint16_t layno, uint8_t passes)
+	{
 		assert(layno < numPassesInPacket.size());
 		numPassesInPacket[layno] = passes;
 	}
-	void incNumPassesInPacket(uint16_t layno, uint8_t delta){
+	void incNumPassesInPacket(uint16_t layno, uint8_t delta)
+	{
 		assert(layno < numPassesInPacket.size());
 		numPassesInPacket[layno] += delta;
 	}
+
   protected:
 	std::vector<uint8_t> numPassesInPacket;
 #ifdef DEBUG_LOSSLESS_T2
@@ -137,13 +141,8 @@ struct Codeblock : public grk_buf2d<int32_t, AllocatorAligned>, public ICacheabl
 struct CompressCodeblock : public Codeblock
 {
 	CompressCodeblock(uint16_t numLayers)
-		: Codeblock(numLayers),
-		  paddedCompressedStream(nullptr),
-		  layers(nullptr),
-		  passes(nullptr),
-		  numPassesInPreviousPackets(0),
-		  numPassesTotal(0),
-		  contextStream(nullptr)
+		: Codeblock(numLayers), paddedCompressedStream(nullptr), layers(nullptr), passes(nullptr),
+		  numPassesInPreviousPackets(0), numPassesTotal(0), contextStream(nullptr)
 	{}
 	virtual ~CompressCodeblock()
 	{
@@ -201,9 +200,7 @@ struct CompressCodeblock : public Codeblock
 struct DecompressCodeblock : public Codeblock
 {
 	DecompressCodeblock(uint16_t numLayers)
-		: Codeblock(numLayers),
-		  segs(nullptr),
-		  numSegments(0),
+		: Codeblock(numLayers), segs(nullptr), numSegments(0),
 #ifdef DEBUG_LOSSLESS_T2
 		  included(0),
 #endif

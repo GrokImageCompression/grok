@@ -43,7 +43,8 @@ ImageFormat::~ImageFormat()
 {
 	delete fileIO_;
 }
-void ImageFormat::registerGrkReclaimCallback(grk_io_init io_init, grk_io_callback reclaim_callback, void* user_data)
+void ImageFormat::registerGrkReclaimCallback(grk_io_init io_init, grk_io_callback reclaim_callback,
+											 void* user_data)
 {
 	serializer.registerGrkReclaimCallback(io_init, reclaim_callback, user_data);
 }

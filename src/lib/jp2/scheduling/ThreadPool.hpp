@@ -47,7 +47,8 @@ class ExecSingleton
 	{
 		get()->shutdown();
 	}
-	static uint32_t threadId(void){
+	static uint32_t threadId(void)
+	{
 		return get()->num_workers() > 1 ? (uint32_t)ExecSingleton::get()->this_worker_id() : 0;
 	}
 };

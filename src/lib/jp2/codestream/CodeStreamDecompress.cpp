@@ -563,8 +563,10 @@ bool CodeStreamDecompress::decompressTiles(void)
 						{
 							if(executor)
 							{
-								uint32_t threadId = executor->num_workers() > 1 ? (uint32_t)executor->this_worker_id() : 0;
-								if(!stripCache_.ingestTile(threadId ,img))
+								uint32_t threadId = executor->num_workers() > 1
+														? (uint32_t)executor->this_worker_id()
+														: 0;
+								if(!stripCache_.ingestTile(threadId, img))
 									success = false;
 							}
 							else
@@ -917,9 +919,7 @@ bool CodeStreamDecompress::decompressTile()
 }
 bool CodeStreamDecompress::findNextTile(TileProcessor* tileProcessor)
 {
-	auto decompressor = &decompressorState_;
-
-	if(!(decompressor->getState() & DECOMPRESS_STATE_DATA))
+	if(!(decompressorState_.getState() & DECOMPRESS_STATE_DATA))
 	{
 		GRK_ERROR("no tile data.");
 		return false;
@@ -935,7 +935,7 @@ bool CodeStreamDecompress::findNextTile(TileProcessor* tileProcessor)
 	bool doPost = !tileProcessor->current_plugin_tile ||
 				  (tileProcessor->current_plugin_tile->decompress_flags & GRK_DECODE_POST_T1);
 	if(doPost)
-		rc = decompressor->findNextTile(this);
+		rc = decompressorState_.findNextTile(this);
 
 	return rc;
 }

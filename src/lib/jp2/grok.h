@@ -803,7 +803,6 @@ typedef struct _grk_header_info
 	uint32_t num_asocs;
 } grk_header_info;
 
-
 typedef struct _grk_io_buf
 {
 	uint8_t* data_;
@@ -822,7 +821,7 @@ typedef struct _grk_io_init
 
 typedef bool (*grk_io_callback)(uint32_t threadId, grk_io_buf buffer, void* io_user_data);
 typedef void (*grk_io_register_reclaim_callback)(grk_io_init io_init,
-												grk_io_callback reclaim_callback,
+												 grk_io_callback reclaim_callback,
 												 void* io_user_data, void* reclaim_user_data);
 typedef bool (*grk_io_pixels_callback)(uint32_t threadId, grk_io_buf buffer, void* user_data);
 

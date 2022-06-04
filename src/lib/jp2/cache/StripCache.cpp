@@ -84,7 +84,8 @@ void StripCache::init(uint32_t concurrency, uint16_t numTiles, uint32_t numStrip
 	grk_io_init io_init;
 	// we can ignore subsampling since it is disabled for library-orchestrated encoding,
 	// which is the only case where maxPooledRequests_ is utilized
-	io_init.maxPooledRequests_ = (outputImage->comps->h + outputImage->rowsPerStrip - 1) / outputImage->rowsPerStrip;
+	io_init.maxPooledRequests_ =
+		(outputImage->comps->h + outputImage->rowsPerStrip - 1) / outputImage->rowsPerStrip;
 	if(registerGrkReclaimCallback)
 		registerGrkReclaimCallback(io_init, grkReclaimCallback, ioUserData, this);
 	numTiles_ = numTiles;

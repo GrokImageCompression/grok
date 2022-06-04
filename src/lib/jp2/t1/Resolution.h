@@ -21,13 +21,12 @@
 namespace grk
 {
 
-
 struct Resolution : public grk_rect32
 {
 	Resolution(void);
 	~Resolution(void);
 	virtual void print() const override;
-	bool init(TileProcessor *tileProcessor, TileComponentCodingParams* tccp, uint8_t resno);
+	bool init(TileProcessor* tileProcessor, TileComponentCodingParams* tccp, uint8_t resno);
 
 	bool initialized;
 	Subband tileBand[BAND_NUM_INDICES]; // unreduced tile component bands in canvas coordinates
@@ -37,7 +36,7 @@ struct Resolution : public grk_rect32
 	grk_pt32 precinctPartitionTopLeft;
 	grk_pt32 precinctExpn;
 	grk_plugin_tile* current_plugin_tile;
-	ParserMap *parserMap_;
+	ParserMap* parserMap_;
 };
 
 } // namespace grk

@@ -22,10 +22,10 @@ namespace grk
 
 Resolution::Resolution(void)
 	: initialized(false), numTileBandWindows(0), precinctGridWidth(0), precinctGridHeight(0),
-	  current_plugin_tile(nullptr),
-	  parserMap_(nullptr)
+	  current_plugin_tile(nullptr), parserMap_(nullptr)
 {}
-Resolution::~Resolution(void){
+Resolution::~Resolution(void)
+{
 	delete parserMap_;
 }
 void Resolution::print(void) const
@@ -37,7 +37,7 @@ void Resolution::print(void) const
 		tileBand[i].print();
 	}
 }
-bool Resolution::init(TileProcessor *tileProcessor, TileComponentCodingParams* tccp, uint8_t resno)
+bool Resolution::init(TileProcessor* tileProcessor, TileComponentCodingParams* tccp, uint8_t resno)
 {
 	if(initialized)
 		return true;
@@ -54,9 +54,8 @@ bool Resolution::init(TileProcessor *tileProcessor, TileComponentCodingParams* t
 	uint64_t num_precincts = (uint64_t)precinctGridWidth * precinctGridHeight;
 	if(resno != 0)
 	{
-		precinctPartitionTopLeft =
-			grk_pt32(ceildivpow2<uint32_t>(precinctPartitionTopLeft.x, 1),
-					 ceildivpow2<uint32_t>(precinctPartitionTopLeft.y, 1));
+		precinctPartitionTopLeft = grk_pt32(ceildivpow2<uint32_t>(precinctPartitionTopLeft.x, 1),
+											ceildivpow2<uint32_t>(precinctPartitionTopLeft.y, 1));
 		precinctExpn.x--;
 		precinctExpn.y--;
 	}
@@ -70,19 +69,19 @@ bool Resolution::init(TileProcessor *tileProcessor, TileComponentCodingParams* t
 		{
 			for(uint64_t precinctIndex = 0; precinctIndex < num_precincts; ++precinctIndex)
 			{
-				if(!curr_band->createPrecinct(tileProcessor, precinctIndex, precinctPartitionTopLeft,
-											  precinctExpn, precinctGridWidth, cblkExpn))
+				if(!curr_band->createPrecinct(tileProcessor, precinctIndex,
+											  precinctPartitionTopLeft, precinctExpn,
+											  precinctGridWidth, cblkExpn))
 					return false;
 			}
 		}
 	}
 
-	if (!tileProcessor->isCompressor())
+	if(!tileProcessor->isCompressor())
 		parserMap_ = new ParserMap(tileProcessor);
 	initialized = true;
 
 	return true;
 }
-
 
 } // namespace grk

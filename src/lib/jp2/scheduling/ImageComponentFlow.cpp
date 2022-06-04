@@ -19,12 +19,13 @@
 namespace grk
 {
 ResFlow::ResFlow(void)
-	: packets_(nullptr),
-	  blocks_(new FlowComponent()), waveletHoriz_(new FlowComponent()),
+	: packets_(nullptr), blocks_(new FlowComponent()), waveletHoriz_(new FlowComponent()),
 	  waveletVert_(new FlowComponent()), doWavelet_(true)
 {}
-FlowComponent* ResFlow::getPacketsFlow(void){
-	if (!packets_){
+FlowComponent* ResFlow::getPacketsFlow(void)
+{
+	if(!packets_)
+	{
 		packets_ = new FlowComponent();
 		packets_->precede(blocks_);
 	}
@@ -45,7 +46,7 @@ void ResFlow::graph(void)
 }
 ResFlow* ResFlow::addTo(tf::Taskflow& composition)
 {
-	if (packets_)
+	if(packets_)
 		packets_->addTo(composition);
 	assert(blocks_);
 	blocks_->addTo(composition);
