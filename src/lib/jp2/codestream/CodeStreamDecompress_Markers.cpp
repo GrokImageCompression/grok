@@ -95,13 +95,13 @@ bool CodeStreamDecompress::parseTileHeaderMarkers(bool* canDecompress)
 			{
 				return false;
 			}
-			else if(marker_size < 2)
+			else if(marker_size < MARKER_BYTES)
 			{
 				GRK_ERROR("Marker size %u for marker 0x%x is less than 2", marker_size,
 						  curr_marker_);
 				return false;
 			}
-			else if(marker_size == 2)
+			else if(marker_size == MARKER_BYTES)
 			{
 				GRK_ERROR("Zero-size marker in header.");
 				return false;
@@ -114,7 +114,7 @@ bool CodeStreamDecompress::parseTileHeaderMarkers(bool* canDecompress)
 			}
 
 			marker_size =
-				(uint16_t)(marker_size - 2); /* Subtract the size of the marker ID already read */
+				(uint16_t)(marker_size - MARKER_BYTES); /* Subtract the size of the marker ID already read */
 			auto marker_handler = get_marker_handler(curr_marker_);
 			if(!marker_handler)
 			{
@@ -1575,7 +1575,7 @@ bool CodeStreamDecompress::read_mct(uint8_t* headerData, uint16_t header_size)
 }
 bool CodeStreamDecompress::read_unk(void)
 {
-	uint32_t size_unk = 2;
+	uint32_t size_unk = MARKER_BYTES;
 	uint16_t unknownMarker = curr_marker_;
 	while(true)
 	{
@@ -1591,15 +1591,15 @@ bool CodeStreamDecompress::read_unk(void)
 		}
 		catch(InvalidMarkerException&)
 		{
-			size_unk += 2;
+			size_unk += MARKER_BYTES;
 			continue;
 		}
-		addMarker(unknownMarker, stream_->tell() - 2 - size_unk, size_unk);
+		addMarker(unknownMarker, stream_->tell() - MARKER_BYTES - size_unk, size_unk);
 		auto marker_handler = get_marker_handler(curr_marker_);
 		// check if we need to process another unknown marker
 		if(!marker_handler)
 		{
-			size_unk = 2;
+			size_unk = MARKER_BYTES;
 			unknownMarker = curr_marker_;
 			continue;
 		}
@@ -1868,9 +1868,9 @@ bool CodeStreamDecompress::read_qcc(uint8_t* headerData, uint16_t header_size)
  */
 bool CodeStreamDecompress::read_soc()
 {
-	uint8_t data[2];
+	uint8_t data[MARKER_BYTES];
 	uint16_t marker;
-	if(stream_->read(data, 2) != 2)
+	if(stream_->read(data, MARKER_BYTES) != MARKER_BYTES)
 		return false;
 
 	grk_read<uint16_t>(data, &marker);
@@ -1882,8 +1882,8 @@ bool CodeStreamDecompress::read_soc()
 
 	if(codeStreamInfo)
 	{
-		codeStreamInfo->setMainHeaderStart(stream_->tell() - 2);
-		addMarker(J2K_MS_SOC, codeStreamInfo->getMainHeaderStart(), 2);
+		codeStreamInfo->setMainHeaderStart(stream_->tell() - MARKER_BYTES);
+		addMarker(J2K_MS_SOC, codeStreamInfo->getMainHeaderStart(), MARKER_BYTES);
 	}
 	return true;
 }

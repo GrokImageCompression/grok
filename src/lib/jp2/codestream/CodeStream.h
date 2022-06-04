@@ -51,32 +51,34 @@ const uint32_t GRK_COMP_PARAM_DEFAULT_NUMRESOLUTION = 6;
 #define J2K_CCP_QNTSTY_SIQNT 1 // derived quantization
 #define J2K_CCP_QNTSTY_SEQNT 2 // expounded quantization
 
-#define J2K_MS_SOC 0xff4f /**< SOC marker value */
-#define J2K_MS_SOT 0xff90 /**< SOT marker value */
-#define J2K_MS_SOD 0xff93 /**< SOD marker value */
-#define J2K_MS_EOC 0xffd9 /**< EOC marker value */
-#define J2K_MS_CAP 0xff50 /**< CAP marker value */
-#define J2K_MS_SIZ 0xff51 /**< SIZ marker value */
-#define J2K_MS_COD 0xff52 /**< COD marker value */
-#define J2K_MS_COC 0xff53 /**< COC marker value */
-#define J2K_MS_RGN 0xff5e /**< RGN marker value */
-#define J2K_MS_QCD 0xff5c /**< QCD marker value */
-#define J2K_MS_QCC 0xff5d /**< QCC marker value */
-#define J2K_MS_POC 0xff5f /**< POC marker value */
-#define J2K_MS_TLM 0xff55 /**< TLM marker value */
-#define J2K_MS_PLM 0xff57 /**< PLM marker value */
-#define J2K_MS_PLT 0xff58 /**< PLT marker value */
-#define J2K_MS_PPM 0xff60 /**< PPM marker value */
-#define J2K_MS_PPT 0xff61 /**< PPT marker value */
-#define J2K_MS_SOP 0xff91 /**< SOP marker value */
-#define J2K_MS_EPH 0xff92 /**< EPH marker value */
-#define J2K_MS_CRG 0xff63 /**< CRG marker value */
-#define J2K_MS_COM 0xff64 /**< COM marker value */
-#define J2K_MS_CBD 0xff78 /**< CBD marker value */
-#define J2K_MS_MCC 0xff75 /**< MCC marker value */
-#define J2K_MS_MCT 0xff74 /**< MCT marker value */
-#define J2K_MS_MCO 0xff77 /**< MCO marker value */
-#define J2K_MS_UNK 0 /**< UNKNOWN marker value */
+const uint16_t J2K_MS_SOC = 0xff4f;  /**< SOC marker value */
+const uint16_t J2K_MS_SOT = 0xff90;  /**< SOT marker value */
+const uint16_t J2K_MS_SOD = 0xff93;  /**< SOD marker value */
+const uint16_t J2K_MS_EOC = 0xffd9;  /**< EOC marker value */
+const uint16_t J2K_MS_CAP = 0xff50;  /**< CAP marker value */
+const uint16_t J2K_MS_SIZ = 0xff51;  /**< SIZ marker value */
+const uint16_t J2K_MS_COD = 0xff52;  /**< COD marker value */
+const uint16_t J2K_MS_COC = 0xff53;  /**< COC marker value */
+const uint16_t J2K_MS_RGN = 0xff5e;  /**< RGN marker value */
+const uint16_t J2K_MS_QCD = 0xff5c;  /**< QCD marker value */
+const uint16_t J2K_MS_QCC = 0xff5d;  /**< QCC marker value */
+const uint16_t J2K_MS_POC = 0xff5f;  /**< POC marker value */
+const uint16_t J2K_MS_TLM = 0xff55;  /**< TLM marker value */
+const uint16_t J2K_MS_PLM = 0xff57;  /**< PLM marker value */
+const uint16_t J2K_MS_PLT = 0xff58;  /**< PLT marker value */
+const uint16_t J2K_MS_PPM = 0xff60;  /**< PPM marker value */
+const uint16_t J2K_MS_PPT = 0xff61;  /**< PPT marker value */
+const uint16_t J2K_MS_SOP = 0xff91;  /**< SOP marker value */
+const uint16_t J2K_MS_EPH = 0xff92;  /**< EPH marker value */
+const uint16_t J2K_MS_CRG = 0xff63;  /**< CRG marker value */
+const uint16_t J2K_MS_COM = 0xff64;  /**< COM marker value */
+const uint16_t J2K_MS_CBD = 0xff78;  /**< CBD marker value */
+const uint16_t J2K_MS_MCC = 0xff75;  /**< MCC marker value */
+const uint16_t J2K_MS_MCT = 0xff74;  /**< MCT marker value */
+const uint16_t J2K_MS_MCO = 0xff77;  /**< MCO marker value */
+const uint16_t J2K_MS_UNK = 0;       /**< UNKNOWN marker value */
+
+const uint8_t MARKER_BYTES = 2;
 
 class GrkImage;
 

@@ -283,7 +283,7 @@ bool QuantizerOpenHTJ2K::write(grk::IBufferedStream* stream)
 	Ccap[0] = (uint16_t)(Ccap[0] | Bp);
 
 	/* CAP */
-	if(!stream->writeShort(J2K_MS_CAP))
+	if(!stream->writeShort(grk::J2K_MS_CAP))
 	{
 		return false;
 	}
