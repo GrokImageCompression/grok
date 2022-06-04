@@ -282,7 +282,7 @@ bool SIZMarker::write(CodeStreamCompress* codeStream, IBufferedStream* stream)
 		return false;
 
 	/* L_SIZ */
-	if(!stream->writeShort((uint16_t)(size_len - 2)))
+	if(!stream->writeShort((uint16_t)(size_len - MARKER_BYTES)))
 		return false;
 	/* Rsiz (capabilities) */
 	if(!stream->writeShort(cp->rsiz))

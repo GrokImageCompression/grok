@@ -452,10 +452,10 @@ bool CodeStreamDecompress::read_crg(uint8_t* headerData, uint16_t header_size)
 		auto comp = getHeaderImage()->comps + i;
 		// Xcrg_i
 		grk_read<uint16_t>(headerData, &comp->Xcrg);
-		headerData += 2;
+		headerData += sizeof(uint16_t);
 		// Xcrg_i
 		grk_read<uint16_t>(headerData, &comp->Ycrg);
-		headerData += 2;
+		headerData += sizeof(uint16_t);
 	}
 	return true;
 }
@@ -867,7 +867,7 @@ bool CodeStreamDecompress::read_cbd(uint8_t* headerData, uint16_t header_size)
 	/* Ncbd */
 	uint16_t numComps;
 	grk_read<uint16_t>(headerData, &numComps);
-	headerData += 2;
+	headerData += sizeof(uint16_t);
 
 	if(numComps != getHeaderImage()->numcomps)
 	{
@@ -1204,7 +1204,7 @@ bool CodeStreamDecompress::read_mcc(uint8_t* headerData, uint16_t header_size)
 	uint32_t tmp;
 	uint32_t index;
 	uint32_t nb_collections;
-	uint32_t nb_comps;
+	uint16_t nb_comps;
 
 	assert(headerData != nullptr);
 
@@ -1219,7 +1219,7 @@ bool CodeStreamDecompress::read_mcc(uint8_t* headerData, uint16_t header_size)
 	/* first marker */
 	/* Zmcc */
 	grk_read<uint32_t>(headerData, &tmp, 2);
-	headerData += 2;
+	headerData += sizeof(uint16_t);
 	if(tmp != 0)
 	{
 		GRK_WARN("Multiple data spanning not supported");
@@ -1281,7 +1281,7 @@ bool CodeStreamDecompress::read_mcc(uint8_t* headerData, uint16_t header_size)
 	/* only one marker atm */
 	/* Ymcc */
 	grk_read<uint32_t>(headerData, &tmp, 2);
-	headerData += 2;
+	headerData += sizeof(uint16_t);
 	if(tmp != 0)
 	{
 		GRK_WARN("Multiple data spanning not supported");
@@ -1315,9 +1315,8 @@ bool CodeStreamDecompress::read_mcc(uint8_t* headerData, uint16_t header_size)
 			GRK_WARN("Collections other than array decorrelations not supported");
 			return true;
 		}
-		grk_read<uint32_t>(headerData, &nb_comps, 2);
-
-		headerData += 2;
+		grk_read<uint16_t>(headerData, &nb_comps);
+		headerData += sizeof(uint16_t);
 		header_size = (uint16_t)(header_size - 3);
 
 		uint32_t nb_bytes_by_comp = 1 + (nb_comps >> 15);
@@ -1344,8 +1343,8 @@ bool CodeStreamDecompress::read_mcc(uint8_t* headerData, uint16_t header_size)
 			}
 		}
 
-		grk_read<uint32_t>(headerData, &nb_comps, 2);
-		headerData += 2;
+		grk_read<uint16_t>(headerData, &nb_comps);
+		headerData += sizeof(uint16_t);
 
 		nb_bytes_by_comp = 1 + (nb_comps >> 15);
 		nb_comps &= 0x7fff;

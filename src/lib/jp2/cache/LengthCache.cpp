@@ -309,10 +309,9 @@ bool TileLengthMarkers::read(uint8_t* headerData, uint16_t header_size)
 		GRK_ERROR("TLM: error reading marker");
 		return false;
 	}
-	// correct for length of marker
-	header_size = (uint16_t)(header_size - 2);
 	// read TLM marker segment index
 	uint8_t i_TLM = *headerData++;
+	header_size = (uint16_t)(header_size - 1);
 	markerIt_ = markers_->find(i_TLM);
 	if(markerIt_ != markers_->end())
 	{
@@ -326,6 +325,7 @@ bool TileLengthMarkers::read(uint8_t* headerData, uint16_t header_size)
 	// read and parse L parameter, which indicates number of bytes used to represent
 	// remaining parameters
 	uint8_t L = *headerData++;
+	header_size = (uint16_t)(header_size - 1);
 	// 0x70 ==  1110000
 	if((L & ~0x70) != 0)
 	{
@@ -485,7 +485,7 @@ bool TileLengthMarkers::writeBegin(uint16_t numTilePartsTotal)
 
 	/* Ltlm */
 	uint32_t tlm_size = tlm_marker_start_bytes + tlmMarkerBytesPerTilePart * numTilePartsTotal;
-	if(!stream_->writeShort((uint16_t)(tlm_size - 2)))
+	if(!stream_->writeShort((uint16_t)(tlm_size - MARKER_BYTES)))
 		return false;
 
 	/* Ztlm=0*/
