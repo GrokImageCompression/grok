@@ -607,32 +607,8 @@ bool CodeStreamDecompress::decompressTiles(void)
 	if(!success)
 		goto cleanup;
 
-	// check if there is another tile that has not been processed
-	// we will reject if it has the TPSot problem
+	// we will ignore TPSot problem
 	// (https://github.com/uclouvain/openjpeg/issues/254)
-	if(curr_marker_ == J2K_MS_SOT && stream_->numBytesLeft())
-	{
-		uint16_t marker_size;
-		if(!read_short(&marker_size))
-		{
-			success = false;
-			goto cleanup;
-		}
-		marker_size =
-			(uint16_t)(marker_size - 2); /* Subtract the size of the marker ID already read */
-		auto marker_handler = get_marker_handler(curr_marker_);
-		if(!(decompressorState_.getState() & marker_handler->states))
-		{
-			GRK_ERROR("Marker %u is not compliant with its position", curr_marker_);
-			success = false;
-			goto cleanup;
-		}
-		if(!process_marker(marker_handler, marker_size))
-		{
-			success = false;
-			goto cleanup;
-		}
-	}
 	if(numTilesDecompressed == 0)
 	{
 		GRK_ERROR("No tiles were decompressed.");
