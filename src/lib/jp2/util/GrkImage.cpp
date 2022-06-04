@@ -966,7 +966,7 @@ bool GrkImage::compositeInterleaved(const Tile* src, uint32_t yBegin, uint32_t y
 	auto srcComp = src->comps;
 	auto destComp = comps;
 	grk_rect32 destWin;
-	grk_rect32 srcWin(srcComp->x0, yBegin, srcComp->x0 + srcComp->width(), yEnd);
+	grk_rect32 srcWin(srcComp->x0, srcComp->y0 + yBegin, srcComp->x0 + srcComp->width(),srcComp->y0 + yEnd);
 
 	if(!generateCompositeBounds(srcWin, 0, &destWin))
 	{
@@ -1125,7 +1125,7 @@ bool GrkImage::compositePlanar(const GrkImage* src)
 }
 /***
  * Generate destination window (relative to destination component bounds)
- * Assumption: source region is wholly contained inside destinatin component region
+ * Assumption: source region is wholly contained inside destination component region
  */
 bool GrkImage::generateCompositeBounds(grk_rect32 src, uint16_t destCompno, grk_rect32* destWin)
 {

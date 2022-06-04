@@ -110,7 +110,7 @@ bool StripCache::ingestStrip(uint32_t threadId, Tile* src, uint32_t yBegin, uint
 	auto dest = strip->stripImg;
 	// use height of first component, because no subsampling
 	uint64_t dataLen = packedRowBytes_ * (yEnd - yBegin);
-	uint64_t offset = packedRowBytes_ * yBegin;
+	uint64_t dataOffset = packedRowBytes_ * yBegin;
 	if(!strip->allocInterleaved(dataLen, pools_[threadId]))
 		return false;
 	if(!dest->compositeInterleaved(src, yBegin, yEnd))
@@ -118,7 +118,7 @@ bool StripCache::ingestStrip(uint32_t threadId, Tile* src, uint32_t yBegin, uint
 
 	auto buf = GrkIOBuf(dest->interleavedData);
 	buf.index_ = stripId;
-	buf.offset_ = offset;
+	buf.offset_ = dataOffset;
 	buf.len_ = dataLen;
 	dest->interleavedData.data_ = nullptr;
 
