@@ -246,7 +246,8 @@ void DecompressorState::andState(uint16_t state)
 {
 	state_ &= state;
 }
-bool DecompressorState::findNextTile(CodeStreamDecompress* codeStream)
+// parse stream until EOC or next SOT
+bool DecompressorState::findNextSOT(CodeStreamDecompress* codeStream)
 {
 	auto stream = codeStream->getStream();
 	lastTilePartWasRead = false;

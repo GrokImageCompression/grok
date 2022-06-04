@@ -59,8 +59,9 @@ class CodeStreamDecompress : public CodeStream, public ICodeStreamDecompress
 	bool readMarker(void);
 	bool readMarker(bool suppressWarning);
 	GrkImage* getHeaderImage(void);
-	uint16_t getCurrentMarker();
-	int32_t tileIndexToDecode();
+	uint16_t getCurrentMarker(void);
+	uint16_t tileIndexToDecode(void);
+	bool isSingleTile(void);
 	void dump(uint32_t flag, FILE* outputFileStream);
 	bool needsHeaderRead(void);
 
@@ -94,8 +95,9 @@ class CodeStreamDecompress : public CodeStream, public ICodeStreamDecompress
 	bool readHeaderProcedureImpl(void);
 	bool decompressExec();
 	bool decompressTile();
-	bool findNextTile(TileProcessor* tileProcessor);
+	bool findNextSOT(TileProcessor* tileProcessor);
 	bool findTile(uint16_t tileIndex);
+	bool hasTLM(void);
 	TilePartLengthInfo* nextTLM(void);
 	bool decompressTiles(void);
 	bool decompressValidation(void);
@@ -319,9 +321,8 @@ class CodeStreamDecompress : public CodeStream, public ICodeStreamDecompress
 	uint16_t curr_marker_;
 	bool headerError_;
 	bool headerRead_;
-	/** index of single tile to decompress;
-	 *  !!! initialized to -1 !!! */
-	int32_t tile_ind_to_dec_;
+	uint16_t tile_ind_to_dec_;
+	bool    singleTile_;
 	uint8_t* marker_scratch_;
 	uint16_t marker_scratch_size_;
 	GrkImage* outputImage_;

@@ -32,7 +32,6 @@ const uint32_t default_number_mct_records = 10;
 
 // includes marker and marker length (4 bytes)
 const uint32_t sot_marker_segment_len = 12U;
-const uint32_t grk_marker_length = 4U;
 
 const uint32_t SPCod_SPCoc_len = 5U;
 const uint32_t cod_coc_len = 5U;
@@ -82,6 +81,7 @@ const uint16_t J2K_MS_UNK = 0;       /**< UNKNOWN marker value */
 const uint8_t MARKER_BYTES = 2;
 // number of bytes neede to store length of marker (excluding marker itself)
 const uint8_t MARKER_LENGTH_BYTES = 2;
+const uint8_t MARKER_PLUS_MARKER_LENGTH_BYTES = MARKER_BYTES + MARKER_LENGTH_BYTES;
 
 class GrkImage;
 

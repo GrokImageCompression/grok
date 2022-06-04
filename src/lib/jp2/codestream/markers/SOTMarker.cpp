@@ -81,7 +81,7 @@ bool SOTMarker::read(CodeStreamDecompress* codeStream, uint8_t* headerData, uint
 					 uint8_t* numTileParts)
 {
 	assert(headerData != nullptr);
-	if(headerSize != sot_marker_segment_len - grk_marker_length)
+	if(headerSize != sot_marker_segment_len - MARKER_PLUS_MARKER_LENGTH_BYTES)
 	{
 		GRK_ERROR("Error reading next SOT marker");
 		return false;
@@ -155,14 +155,11 @@ bool SOTMarker::read(CodeStreamDecompress* codeStream, uint8_t* headerData, uint
 	}
 	tcp->tilePartCounter_++;
 
-	/* PSot should be equal to zero or >=14 and <= 2^32-1 */
-	if((tilePartLength != 0) && (tilePartLength < 14))
+	/* PSot should be equal to zero or >=14, or equal to  sot_marker_segment_len */
+	if((tilePartLength != 0) && (tilePartLength < 14) && (tilePartLength != sot_marker_segment_len))
 	{
-		if(tilePartLength != sot_marker_segment_len)
-		{
 			GRK_ERROR("Illegal Psot value %u", tilePartLength);
 			return false;
-		}
 	}
 
 	/* Ref A.4.2: Psot may equal zero if it is the last tile-part of the code stream.*/
@@ -183,10 +180,9 @@ bool SOTMarker::read(CodeStreamDecompress* codeStream, uint8_t* headerData, uint
 	}
 
 	if(numTileParts)
-	{ /* Number of tile-part header is provided by this tile-part header */
-		/* Useful to manage the case of textGBR.jp2 file because two values
-		 * of TNSot are allowed: the correct numbers of
-		 * tile-parts for that tile and zero (A.4.2 of 15444-1 : 2002). */
+	{   /* Number of tile-part header is provided by this tile-part header */
+		/* tile-parts for that tile and zero (A.4.2 of 15444-1 : 2002). */
+
 		if(tcp->numTileParts_)
 		{
 			if(currentTilePart >= tcp->numTileParts_)
@@ -207,9 +203,7 @@ bool SOTMarker::read(CodeStreamDecompress* codeStream, uint8_t* headerData, uint
 		}
 		if(currentTilePart >= numTileParts)
 		{
-			/* testcase 451.pdf.SIGSEGV.ce9.3723 */
-			GRK_ERROR("In SOT marker, TPSot (%u) is not valid with regards to the current "
-					  "number of tile-part (header) (%u)",
+			GRK_ERROR("In SOT marker, TPSot (%u) must be less than number of tile-parts (%u)",
 					  currentTilePart, numTileParts);
 			decompressState->lastTilePartInCodeStream = true;
 			return false;
@@ -217,7 +211,7 @@ bool SOTMarker::read(CodeStreamDecompress* codeStream, uint8_t* headerData, uint
 		tcp->numTileParts_ = numTileParts;
 	}
 
-	/* If we know the number of tile part header we check whether we have read the last one*/
+	/* If we know the number of tile parts from the header, we check whether we have read the last one*/
 	if(tcp->numTileParts_ && (tcp->numTileParts_ == (currentTilePart + 1)))
 		/* indicate that we are now ready to read the tile data */
 		decompressState->lastTilePartWasRead = true;
@@ -226,15 +220,11 @@ bool SOTMarker::read(CodeStreamDecompress* codeStream, uint8_t* headerData, uint
 		tilePartLength, decompressState->lastTilePartInCodeStream);
 	decompressState->setState(DECOMPRESS_STATE_TPH);
 
-	/* Check if the current tile is outside the area we want
-	 *  to decompress or not, corresponding to the tile index*/
 	grk_pt16 currTile(tile_grid_x,tile_grid_y);
-
-	if(codeStream->tileIndexToDecode() == -1)
+	if(!codeStream->isSingleTile())
 		codeStream->getDecompressorState()->skipTileData  = !decompressState->tilesToDecompress_.contains(currTile);
 	else
-		decompressState->skipTileData =
-			(tileIndex != (uint16_t)codeStream->tileIndexToDecode());
+		decompressState->skipTileData = tileIndex != codeStream->tileIndexToDecode();
 	auto codeStreamInfo = codeStream->getCodeStreamInfo();
 
 	return !codeStreamInfo ||

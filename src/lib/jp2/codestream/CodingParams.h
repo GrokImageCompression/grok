@@ -308,7 +308,7 @@ class CodeStreamDecompress;
 struct DecompressorState
 {
 	DecompressorState();
-	bool findNextTile(CodeStreamDecompress* codeStream);
+	bool findNextSOT(CodeStreamDecompress* codeStream);
 	uint16_t getState(void);
 	void setState(uint16_t state);
 	void orState(uint16_t state);

@@ -133,8 +133,8 @@ bool CodeStreamDecompress::parseTileHeaderMarkers(bool* canDecompress)
 			{
 				if(!TileLengthMarkers::addTileMarkerInfo(
 					   currentTileProcessor_->getIndex(), codeStreamInfo, marker_handler->id,
-					   (uint32_t)stream_->tell() - marker_size - grk_marker_length,
-					   marker_size + grk_marker_length))
+					   (uint32_t)stream_->tell() - marker_size - MARKER_PLUS_MARKER_LENGTH_BYTES,
+					   marker_size + MARKER_PLUS_MARKER_LENGTH_BYTES))
 				{
 					GRK_ERROR("Not enough memory to add tl marker");
 					return false;
@@ -142,7 +142,7 @@ bool CodeStreamDecompress::parseTileHeaderMarkers(bool* canDecompress)
 			}
 			if(marker_handler->id == J2K_MS_SOT)
 			{
-				uint64_t sot_pos = stream_->tell() - marker_size - grk_marker_length;
+				uint64_t sot_pos = stream_->tell() - marker_size - MARKER_PLUS_MARKER_LENGTH_BYTES;
 				if(sot_pos > decompressorState_.lastSotReadPosition)
 					decompressorState_.lastSotReadPosition = sot_pos;
 				if(decompressorState_.skipTileData)
@@ -317,7 +317,7 @@ bool CodeStreamDecompress::parseTileHeaderMarkers(bool* canDecompress)
 TilePartLengthInfo* CodeStreamDecompress::nextTLM(void)
 {
 	TilePartLengthInfo* tilePartLengthInfo = nullptr;
-	if(cp_.tlm_markers && cp_.tlm_markers->valid())
+	if(hasTLM())
 	{
 		// advance TLM to correct position
 		tilePartLengthInfo = cp_.tlm_markers->getNext();

@@ -25,7 +25,7 @@ namespace grk
 {
 CodeStreamDecompress::CodeStreamDecompress(IBufferedStream* stream)
 	: CodeStream(stream), curr_marker_(0), headerError_(false), headerRead_(false),
-	  tile_ind_to_dec_(-1), marker_scratch_(nullptr), marker_scratch_size_(0),
+	  tile_ind_to_dec_(0),singleTile_(false), marker_scratch_(nullptr), marker_scratch_size_(0),
 	  outputImage_(nullptr), tileCache_(new TileCache()), ioBufferCallback(nullptr),
 	  ioUserData(nullptr), grkRegisterReclaimCallback_(nullptr)
 {
@@ -434,7 +434,8 @@ bool CodeStreamDecompress::decompressTile(uint16_t tileIndex)
 		comp->h = reducedCompBounds.height();
 	}
 	compositeImage->postReadHeader(&cp_);
-	tile_ind_to_dec_ = (int32_t)tileIndex;
+	tile_ind_to_dec_ = tileIndex;
+	singleTile_ = true;
 
 	// reset tile part numbers, in case we are re-using the same codec object
 	// from previous decompress
@@ -519,12 +520,12 @@ bool CodeStreamDecompress::decompressTiles(void)
 			success = false;
 			goto cleanup;
 		}
-		// 2. find next tile
+		// 2. find next tile (or EOC)
 		auto processor = currentTileProcessor_;
 		currentTileProcessor_ = nullptr;
 		try
 		{
-			if(!findNextTile(processor))
+			if(!findNextSOT(processor))
 			{
 				GRK_ERROR("Failed to decompress tile %u/%u", processor->getIndex(),
 						  numTilesToDecompress);
@@ -652,9 +653,12 @@ GrkImage* CodeStreamDecompress::getHeaderImage(void)
 {
 	return headerImage_;
 }
-int32_t CodeStreamDecompress::tileIndexToDecode()
+uint16_t CodeStreamDecompress::tileIndexToDecode()
 {
 	return tile_ind_to_dec_;
+}
+bool CodeStreamDecompress::isSingleTile(void){
+	return singleTile_;
 }
 bool CodeStreamDecompress::readHeaderProcedure(void)
 {
@@ -738,7 +742,7 @@ bool CodeStreamDecompress::readHeaderProcedureImpl(void)
 			return false;
 
 		// 4. add the marker to code stream index
-		uint16_t markerSegmentLength = MARKER_BYTES + MARKER_LENGTH_BYTES + markerParametersLength;
+		uint16_t markerSegmentLength = MARKER_PLUS_MARKER_LENGTH_BYTES + markerParametersLength;
 		addMarker(marker_handler->id, stream_->tell() - markerSegmentLength, markerSegmentLength);
 
 		// 5. read next marker
@@ -805,12 +809,14 @@ bool CodeStreamDecompress::createOutputImage(void)
 
 	return outputImage_->supportsStripCache(&cp_) || outputImage_->allocCompositeData();
 }
-
+bool CodeStreamDecompress::hasTLM(void){
+	return cp_.tlm_markers && cp_.tlm_markers->valid();
+}
 bool CodeStreamDecompress::findTile(uint16_t tileIndex)
 {
 	// if we have a TLM marker, then we can skip tiles until
 	// we get to desired tile
-	bool useTLM = cp_.tlm_markers && cp_.tlm_markers->valid();
+	bool useTLM = hasTLM();
 	if(useTLM)
 	{
 		auto currentPosition = stream_->tell();
@@ -848,18 +854,18 @@ bool CodeStreamDecompress::decompressTile(void)
 {
 	if(!createOutputImage())
 		return false;
-	if(tile_ind_to_dec_ == -1)
+	if(!singleTile_)
 	{
 		GRK_ERROR("decompressTile: Unable to decompress tile "
 				  "since first tile SOT has not been detected");
 		return false;
 	}
 	outputImage_->hasMultipleTiles = false;
-	auto tileCache = tileCache_->get((uint16_t)tileIndexToDecode());
+	auto tileCache = tileCache_->get(tileIndexToDecode());
 	auto tileProcessor = tileCache ? tileCache->processor : nullptr;
 	if(!tileCache || !tileCache->processor->getImage())
 	{
-		if (!findTile((uint16_t)tile_ind_to_dec_))
+		if (!findTile(tile_ind_to_dec_))
 			return false;
 		bool canDecompress = true;
 		try
@@ -873,19 +879,6 @@ bool CodeStreamDecompress::decompressTile(void)
 			return false;
 		}
 		tileProcessor = currentTileProcessor_;
-		try
-		{
-			if(!findNextTile(tileProcessor))
-			{
-				GRK_ERROR("Failed to decompress tile %u", tileProcessor->getIndex());
-				return false;
-			}
-		}
-		catch(DecodeUnknownMarkerAtEndOfTileException& e)
-		{
-			GRK_UNUSED(e);
-		}
-
 		if(outputImage_->supportsStripCache(&cp_))
 		{
 			uint32_t numStrips = (outputImage_->height() + outputImage_->rowsPerStrip - 1) /
@@ -902,7 +895,7 @@ bool CodeStreamDecompress::decompressTile(void)
 
 	return true;
 }
-bool CodeStreamDecompress::findNextTile(TileProcessor* tileProcessor)
+bool CodeStreamDecompress::findNextSOT(TileProcessor* tileProcessor)
 {
 	if(!(decompressorState_.getState() & DECOMPRESS_STATE_DATA))
 	{
@@ -920,7 +913,7 @@ bool CodeStreamDecompress::findNextTile(TileProcessor* tileProcessor)
 	bool doPost = !tileProcessor->current_plugin_tile ||
 				  (tileProcessor->current_plugin_tile->decompress_flags & GRK_DECODE_POST_T1);
 	if(doPost)
-		rc = decompressorState_.findNextTile(this);
+		rc = decompressorState_.findNextSOT(this);
 
 	return rc;
 }
