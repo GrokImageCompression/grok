@@ -213,8 +213,7 @@ bool SOTMarker::read(CodeStreamDecompress* codeStream, uint8_t* headerData, uint
 
 	/* If we know the number of tile parts from the header, we check whether we have read the last one*/
 	if(tcp->numTileParts_ && (tcp->numTileParts_ == (currentTilePart + 1)))
-		/* indicate that we are now ready to read the tile data */
-		decompressState->lastTilePartWasRead = true;
+		decompressState->setComplete(tileIndex);
 
 	codeStream->currentProcessor()->setTilePartDataLength(
 		tilePartLength, decompressState->lastTilePartInCodeStream);

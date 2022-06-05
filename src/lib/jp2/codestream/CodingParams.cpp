@@ -227,7 +227,7 @@ TileComponentCodingParams::TileComponentCodingParams()
 
 DecompressorState::DecompressorState()
 	: default_tcp_(nullptr), lastSotReadPosition(0), lastTilePartInCodeStream(false),
-	  lastTilePartWasRead(false), skipTileData(false), state_(DECOMPRESS_STATE_NONE)
+	  expectsAnotherTilePart(true), skipTileData(false), state_(DECOMPRESS_STATE_NONE)
 {}
 
 uint16_t DecompressorState::getState(void)
@@ -246,11 +246,15 @@ void DecompressorState::andState(uint16_t state)
 {
 	state_ &= state;
 }
+void DecompressorState::setComplete(uint16_t tileIndex){
+	expectsAnotherTilePart = false;
+	decompressTiles_.setComplete(tileIndex);
+}
 // parse stream until EOC or next SOT
 bool DecompressorState::findNextSOT(CodeStreamDecompress* codeStream)
 {
 	auto stream = codeStream->getStream();
-	lastTilePartWasRead = false;
+	expectsAnotherTilePart = true;
 	andState((uint16_t)(~DECOMPRESS_STATE_DATA));
 
 	// if there is no EOC marker and there is also no data left, then simply return true

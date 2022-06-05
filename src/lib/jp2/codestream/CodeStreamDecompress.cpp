@@ -131,9 +131,7 @@ TileProcessor* CodeStreamDecompress::allocateProcessor(uint16_t tileIndex)
 }
 TileCodingParams* CodeStreamDecompress::get_current_decode_tcp()
 {
-	auto tileProcessor = currentTileProcessor_;
-
-	return (isDecodingTilePartHeader()) ? cp_.tcps + tileProcessor->getIndex()
+	return (isDecodingTilePartHeader()) ? cp_.tcps + currentTileProcessor_->getIndex()
 										: decompressorState_.default_tcp_;
 }
 CodeStreamInfo* CodeStreamDecompress::getCodeStreamInfo(void)

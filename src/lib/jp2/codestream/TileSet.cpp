@@ -45,4 +45,18 @@ uint16_t TileSet::index(uint16_t x, uint16_t y){
 uint16_t TileSet::index(grk_pt16 tile){
 	return (uint16_t)(tile.x + tile.y * allTiles_.width());
 }
+void TileSet::setComplete(uint16_t tileIndex){
+	if (isScheduled(tileIndex)){
+		tilesDecompressed_.insert(tileIndex);
+		//GRK_INFO("Complete %d", tileIndex);
+		//if (allComplete())
+		//	GRK_INFO("Complete");
+	}
+}
+bool TileSet::isComplete(uint16_t tileIndex){
+	return tilesDecompressed_.contains(tileIndex);
+}
+bool TileSet::allComplete(void){
+	return tilesDecompressed_.size() == tilesToDecompress_.size();
+}
 }

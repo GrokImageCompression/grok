@@ -313,6 +313,7 @@ struct DecompressorState
 	void setState(uint16_t state);
 	void orState(uint16_t state);
 	void andState(uint16_t state);
+	void setComplete(uint16_t tileIndex);
 
 	// store decoding parameters common to all tiles (information
 	// like COD, COC and RGN in main header)
@@ -330,7 +331,7 @@ struct DecompressorState
 	bool lastTilePartInCodeStream;
 	// Indicates that the last tile part header has been read, so that
 	// the tile's data can now be decompressed
-	bool lastTilePartWasRead;
+	bool expectsAnotherTilePart;
 	bool skipTileData;
 
   private:
