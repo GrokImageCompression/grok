@@ -63,7 +63,7 @@ static const j2k_mct_function j2k_mct_read_functions_to_int32[] = {
 	j2k_read_int16_to_int32, j2k_read_int32_to_int32, j2k_read_float32_to_int32,
 	j2k_read_float64_to_int32};
 
-bool CodeStreamDecompress::parseTileHeaderMarkers(bool* canDecompress)
+bool CodeStreamDecompress::parseTileHeader(bool* canDecompress)
 {
 	if(decompressorState_.getState() == DECOMPRESS_STATE_EOC)
 		return true;
@@ -142,9 +142,11 @@ bool CodeStreamDecompress::parseTileHeaderMarkers(bool* canDecompress)
 			}
 			if(marker_handler->id == J2K_MS_SOT)
 			{
+				// cache SOT position
 				uint64_t sot_pos = stream_->tell() - marker_size - MARKER_PLUS_MARKER_LENGTH_BYTES;
 				if(sot_pos > decompressorState_.lastSotReadPosition)
 					decompressorState_.lastSotReadPosition = sot_pos;
+				// skip over data to beginning of next tile part if we are not interested in this one
 				if(decompressorState_.skipTileData)
 				{
 					if(!stream_->skip((int64_t)currentTileProcessor_->getTilePartDataLength()))
@@ -156,16 +158,19 @@ bool CodeStreamDecompress::parseTileHeaderMarkers(bool* canDecompress)
 					break;
 				}
 			}
+			// otherwise, read next marker. and break on reading SOD marker
 			if(!readMarker())
 				return false;
 		}
-		// no bytes left and no EOC marker : we're done!
+
+		// 1. no bytes left and no EOC marker : we're done!
 		if(!stream_->numBytesLeft() && decompressorState_.getState() == DECOMPRESS_STATE_NO_EOC)
 			break;
-		/* If we didn't skip data before, we need to read the SOD marker*/
+
+		/* 2. If we didn't skip data before, we need to read the SOD marker*/
 		if(!decompressorState_.skipTileData)
 		{
-			if(!currentTileProcessor_->prepareSodDecompress(this))
+			if(!currentTileProcessor_->cacheTilePartPackets(this))
 				return false;
 			nextTLM();
 			if(!decompressorState_.lastTilePartWasRead)

@@ -500,7 +500,7 @@ bool CodeStreamDecompress::decompressTiles(void)
 		// 1. read header
 		try
 		{
-			if(!parseTileHeaderMarkers(&canDecompress))
+			if(!parseTileHeader(&canDecompress))
 			{
 				success = false;
 				goto cleanup;
@@ -865,7 +865,7 @@ bool CodeStreamDecompress::decompressTile(void)
 		bool canDecompress = true;
 		try
 		{
-			if(!parseTileHeaderMarkers(&canDecompress))
+			if(!parseTileHeader(&canDecompress))
 				return false;
 		}
 		catch(InvalidMarkerException& ime)

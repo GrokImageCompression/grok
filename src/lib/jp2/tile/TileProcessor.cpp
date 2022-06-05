@@ -1005,11 +1005,11 @@ bool TileProcessor::ingestUncompressedData(uint8_t* p_src, uint64_t src_length)
 
 	return true;
 }
-bool TileProcessor::prepareSodDecompress(CodeStreamDecompress* codeStream)
+bool TileProcessor::cacheTilePartPackets(CodeStreamDecompress* codeStream)
 {
 	assert(codeStream);
 
-	// note: we subtract 2 to account for SOD marker
+	// note: we subtract MARKER_BYTES to account for SOD marker
 	auto tcp = codeStream->get_current_decode_tcp();
 	if(tilePartDataLength >= MARKER_BYTES)
 	{

@@ -90,7 +90,7 @@ struct TileProcessor
 	bool ingestUncompressedData(uint8_t* p_src, uint64_t src_length);
 	bool needsRateControl();
 	void ingestImage();
-	bool prepareSodDecompress(CodeStreamDecompress* codeStream);
+	bool cacheTilePartPackets(CodeStreamDecompress* codeStream);
 	void generateImage(GrkImage* src_image, Tile* src_tile);
 	GrkImage* getImage(void);
 	void release(GRK_TILE_CACHE_STRATEGY strategy);
