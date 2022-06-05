@@ -156,6 +156,7 @@ bool CodeStreamDecompress::parseTileParts(bool* canDecompress)
 			}
 			if(marker_handler->id == J2K_MS_SOT)
 			{
+				//GRK_INFO("Found SOT for tile %d",currentTileProcessor_->getIndex());
 				// cache SOT position
 				uint64_t sot_pos = stream_->tell() - marker_size - MARKER_PLUS_MARKER_LENGTH_BYTES;
 				if(sot_pos > decompressorState_.lastSotReadPosition)
@@ -574,7 +575,7 @@ bool CodeStreamDecompress::read_ppt(uint8_t* headerData, uint16_t header_size)
 		uint32_t newCount = Z_ppt + 1U; /* can't overflow, Z_ppt is UINT8 */
 		assert(tcp->ppt_markers_count == 0U);
 
-		tcp->ppt_markers = (grk_ppx*)grkCalloc(newCount, sizeof(grk_ppx));
+		tcp->ppt_markers = (grk_ppx*)grk_calloc(newCount, sizeof(grk_ppx));
 		if(tcp->ppt_markers == nullptr)
 		{
 			GRK_ERROR("Not enough memory to read PPT marker");
@@ -585,7 +586,7 @@ bool CodeStreamDecompress::read_ppt(uint8_t* headerData, uint16_t header_size)
 	else if(tcp->ppt_markers_count <= Z_ppt)
 	{
 		uint32_t newCount = Z_ppt + 1U; /* can't overflow, Z_ppt is UINT8 */
-		auto new_ppt_markers = (grk_ppx*)grkRealloc(tcp->ppt_markers, newCount * sizeof(grk_ppx));
+		auto new_ppt_markers = (grk_ppx*)grk_realloc(tcp->ppt_markers, newCount * sizeof(grk_ppx));
 
 		if(new_ppt_markers == nullptr)
 		{
@@ -606,7 +607,7 @@ bool CodeStreamDecompress::read_ppt(uint8_t* headerData, uint16_t header_size)
 		return false;
 	}
 
-	tcp->ppt_markers[Z_ppt].data_ = (uint8_t*)grkMalloc(header_size);
+	tcp->ppt_markers[Z_ppt].data_ = (uint8_t*)grk_malloc(header_size);
 	if(tcp->ppt_markers[Z_ppt].data_ == nullptr)
 	{
 		/* clean up to be done on tcp destruction */
@@ -656,14 +657,14 @@ bool CodeStreamDecompress::merge_ppt(TileCodingParams* p_tcp)
 				p_tcp->ppt_markers[i]
 					.data_size_; /* can't overflow, max 256 markers of max 65536 bytes */
 
-			grkFree(p_tcp->ppt_markers[i].data_);
+			grk_free(p_tcp->ppt_markers[i].data_);
 			p_tcp->ppt_markers[i].data_ = nullptr;
 			p_tcp->ppt_markers[i].data_size_ = 0U;
 		}
 	}
 
 	p_tcp->ppt_markers_count = 0U;
-	grkFree(p_tcp->ppt_markers);
+	grk_free(p_tcp->ppt_markers);
 	p_tcp->ppt_markers = nullptr;
 
 	p_tcp->ppt_data = p_tcp->ppt_buffer;
@@ -777,7 +778,7 @@ bool CodeStreamDecompress::read_mco(uint8_t* headerData, uint16_t header_size)
 		auto tccp = tcp->tccps + i;
 		tccp->dc_level_shift_ = 0;
 	}
-	grkFree(tcp->mct_decoding_matrix_);
+	grk_free(tcp->mct_decoding_matrix_);
 	tcp->mct_decoding_matrix_ = nullptr;
 
 	for(i = 0; i < nb_stages; ++i)
@@ -824,7 +825,7 @@ bool CodeStreamDecompress::add_mct(TileCodingParams* p_tcp, GrkImage* p_image, u
 
 		uint32_t nb_elem = (uint32_t)p_image->numcomps * p_image->numcomps;
 		uint32_t mct_size = nb_elem * (uint32_t)sizeof(float);
-		p_tcp->mct_decoding_matrix_ = (float*)grkMalloc(mct_size);
+		p_tcp->mct_decoding_matrix_ = (float*)grk_malloc(mct_size);
 
 		if(!p_tcp->mct_decoding_matrix_)
 			return false;
@@ -843,7 +844,7 @@ bool CodeStreamDecompress::add_mct(TileCodingParams* p_tcp, GrkImage* p_image, u
 
 		uint32_t nb_elem = p_image->numcomps;
 		uint32_t offset_size = nb_elem * (uint32_t)sizeof(uint32_t);
-		auto offset_data = (uint32_t*)grkMalloc(offset_size);
+		auto offset_data = (uint32_t*)grk_malloc(offset_size);
 
 		if(!offset_data)
 			return false;
@@ -858,7 +859,7 @@ bool CodeStreamDecompress::add_mct(TileCodingParams* p_tcp, GrkImage* p_image, u
 			auto tccp = p_tcp->tccps + i;
 			tccp->dc_level_shift_ = (int32_t) * (current_offset_data++);
 		}
-		grkFree(offset_data);
+		grk_free(offset_data);
 	}
 
 	return true;
@@ -1268,12 +1269,12 @@ bool CodeStreamDecompress::read_mcc(uint8_t* headerData, uint16_t header_size)
 			grk_simple_mcc_decorrelation_data* new_mcc_records;
 			tcp->nb_max_mcc_records_ += default_number_mcc_records;
 
-			new_mcc_records = (grk_simple_mcc_decorrelation_data*)grkRealloc(
+			new_mcc_records = (grk_simple_mcc_decorrelation_data*)grk_realloc(
 				tcp->mcc_records_,
 				tcp->nb_max_mcc_records_ * sizeof(grk_simple_mcc_decorrelation_data));
 			if(!new_mcc_records)
 			{
-				grkFree(tcp->mcc_records_);
+				grk_free(tcp->mcc_records_);
 				tcp->mcc_records_ = nullptr;
 				tcp->nb_max_mcc_records_ = 0;
 				tcp->nb_mcc_records_ = 0;
@@ -1505,11 +1506,11 @@ bool CodeStreamDecompress::read_mct(uint8_t* headerData, uint16_t header_size)
 			grk_mct_data* new_mct_records;
 			tcp->nb_max_mct_records_ += default_number_mct_records;
 
-			new_mct_records = (grk_mct_data*)grkRealloc(
+			new_mct_records = (grk_mct_data*)grk_realloc(
 				tcp->mct_records_, tcp->nb_max_mct_records_ * sizeof(grk_mct_data));
 			if(!new_mct_records)
 			{
-				grkFree(tcp->mct_records_);
+				grk_free(tcp->mct_records_);
 				tcp->mct_records_ = nullptr;
 				tcp->nb_max_mct_records_ = 0;
 				tcp->nb_mct_records_ = 0;
@@ -1549,7 +1550,7 @@ bool CodeStreamDecompress::read_mct(uint8_t* headerData, uint16_t header_size)
 	}
 	if(mct_data->data_)
 	{
-		grkFree(mct_data->data_);
+		grk_free(mct_data->data_);
 		mct_data->data_ = nullptr;
 		mct_data->data_size_ = 0;
 	}
@@ -1571,7 +1572,7 @@ bool CodeStreamDecompress::read_mct(uint8_t* headerData, uint16_t header_size)
 	}
 	header_size = (uint16_t)(header_size - 6);
 
-	mct_data->data_ = (uint8_t*)grkMalloc(header_size);
+	mct_data->data_ = (uint8_t*)grk_malloc(header_size);
 	if(!mct_data->data_)
 	{
 		GRK_ERROR("Error reading MCT marker");

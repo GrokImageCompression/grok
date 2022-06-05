@@ -76,9 +76,9 @@ struct dwt_data
 			GRK_ERROR("data size overflow");
 			return false;
 		}
-		paddingBytes_ = grkMakeAlignedWidth((uint32_t)padding * 2 + 32) * sizeof(T);
+		paddingBytes_ = grk_make_aligned_width((uint32_t)padding * 2 + 32) * sizeof(T);
 		lenBytes_ = len * sizeof(T) + 2 * paddingBytes_;
-		allocatedMem = (T*)grkAlignedMalloc(lenBytes_);
+		allocatedMem = (T*)grk_aligned_malloc(lenBytes_);
 		if(!allocatedMem)
 		{
 			GRK_ERROR("Failed to allocate %u bytes", lenBytes_);
@@ -90,7 +90,7 @@ struct dwt_data
 	}
 	void release()
 	{
-		grkAlignedFree(allocatedMem);
+		grk_aligned_free(allocatedMem);
 		allocatedMem = nullptr;
 		mem = nullptr;
 		memL = nullptr;

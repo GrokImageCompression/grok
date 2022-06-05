@@ -35,7 +35,7 @@ bool GrkMatrix::matrix_inversion_f(float* pSrcMatrix, float* pDestMatrix, uint32
 	uint32_t* lPermutations = nullptr;
 	float* double_data = nullptr;
 
-	data = (uint8_t*)grkMalloc(total_size);
+	data = (uint8_t*)grk_malloc(total_size);
 	if(data == 0)
 		return false;
 
@@ -45,13 +45,13 @@ bool GrkMatrix::matrix_inversion_f(float* pSrcMatrix, float* pDestMatrix, uint32
 
 	if(!lupDecompose(pSrcMatrix, lPermutations, double_data, nb_compo))
 	{
-		grkFree(data);
+		grk_free(data);
 		return false;
 	}
 
 	lupInvert(pSrcMatrix, pDestMatrix, nb_compo, lPermutations, double_data, double_data + nb_compo,
 			  double_data + 2 * nb_compo);
-	grkFree(data);
+	grk_free(data);
 
 	return true;
 }

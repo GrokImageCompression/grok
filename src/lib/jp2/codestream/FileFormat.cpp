@@ -39,7 +39,7 @@ FileFormat::FileFormat(void)
 FileFormat::~FileFormat()
 {
 	delete[] comps;
-	grkFree(cl);
+	grk_free(cl);
 	xml.dealloc();
 	for(uint32_t i = 0; i < numUuids; ++i)
 		(uuids + i)->dealloc();

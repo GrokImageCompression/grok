@@ -83,27 +83,27 @@ TileCodingParams::~TileCodingParams()
 	if(ppt_markers != nullptr)
 	{
 		for(uint32_t i = 0U; i < ppt_markers_count; ++i)
-			grkFree(ppt_markers[i].data_);
-		grkFree(ppt_markers);
+			grk_free(ppt_markers[i].data_);
+		grk_free(ppt_markers);
 	}
 
 	delete[] ppt_buffer;
 	delete[] tccps;
-	grkFree(mct_coding_matrix_);
-	grkFree(mct_decoding_matrix_);
+	grk_free(mct_coding_matrix_);
+	grk_free(mct_decoding_matrix_);
 	if(mcc_records_)
-		grkFree(mcc_records_);
+		grk_free(mcc_records_);
 	if(mct_records_)
 	{
 		auto mct_data = mct_records_;
 		for(uint32_t i = 0; i < nb_mct_records_; ++i)
 		{
-			grkFree(mct_data->data_);
+			grk_free(mct_data->data_);
 			++mct_data;
 		}
-		grkFree(mct_records_);
+		grk_free(mct_records_);
 	}
-	grkFree(mct_norms);
+	grk_free(mct_norms);
 	delete compressedTileData_;
 	delete qcd_;
 }
@@ -134,7 +134,7 @@ bool TileCodingParams::copy(const TileCodingParams* rhs, const GrkImage* image)
 	/* Get the mct_decoding_matrix of the dflt_tile_cp and copy them into the current tile cp*/
 	if(rhs->mct_decoding_matrix_)
 	{
-		mct_decoding_matrix_ = (float*)grkMalloc(mct_size);
+		mct_decoding_matrix_ = (float*)grk_malloc(mct_size);
 		if(!mct_decoding_matrix_)
 			return false;
 		memcpy(mct_decoding_matrix_, rhs->mct_decoding_matrix_, mct_size);
@@ -142,7 +142,7 @@ bool TileCodingParams::copy(const TileCodingParams* rhs, const GrkImage* image)
 
 	/* Get the mct_record of the dflt_tile_cp and copy them into the current tile cp*/
 	uint32_t mct_records_size = rhs->nb_max_mct_records_ * (uint32_t)sizeof(grk_mct_data);
-	mct_records_ = (grk_mct_data*)grkMalloc(mct_records_size);
+	mct_records_ = (grk_mct_data*)grk_malloc(mct_records_size);
 	if(!mct_records_)
 		return false;
 	memcpy(mct_records_, rhs->mct_records_, mct_records_size);
@@ -155,7 +155,7 @@ bool TileCodingParams::copy(const TileCodingParams* rhs, const GrkImage* image)
 		auto dest_mct_rec = mct_records_ + j;
 		if(src_mct_rec->data_)
 		{
-			dest_mct_rec->data_ = (uint8_t*)grkMalloc(src_mct_rec->data_size_);
+			dest_mct_rec->data_ = (uint8_t*)grk_malloc(src_mct_rec->data_size_);
 			if(!dest_mct_rec->data_)
 				return false;
 			memcpy(dest_mct_rec->data_, src_mct_rec->data_, src_mct_rec->data_size_);
@@ -167,7 +167,7 @@ bool TileCodingParams::copy(const TileCodingParams* rhs, const GrkImage* image)
 	/* Get the mcc_record of the dflt_tile_cp and copy them into the current tile cp*/
 	uint32_t mcc_records_size =
 		rhs->nb_max_mcc_records_ * (uint32_t)sizeof(grk_simple_mcc_decorrelation_data);
-	mcc_records_ = (grk_simple_mcc_decorrelation_data*)grkMalloc(mcc_records_size);
+	mcc_records_ = (grk_simple_mcc_decorrelation_data*)grk_malloc(mcc_records_size);
 	if(!mcc_records_)
 		return false;
 	memcpy(mcc_records_, rhs->mcc_records_, mcc_records_size);

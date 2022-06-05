@@ -426,7 +426,7 @@ bool FileFormatDecompress::readHeaderProcedureImpl(void)
 	auto stream = codeStream->getStream();
 	assert(stream != nullptr);
 	bool rc = false;
-	auto current_data = (uint8_t*)grkCalloc(1, last_data_size);
+	auto current_data = (uint8_t*)grk_calloc(1, last_data_size);
 	if(!current_data)
 	{
 		GRK_ERROR("Not enough memory to handle JPEG 2000 file header");
@@ -496,7 +496,7 @@ bool FileFormatDecompress::readHeaderProcedureImpl(void)
 				if(current_data_size > last_data_size)
 				{
 					uint8_t* new_current_data =
-						(uint8_t*)grkRealloc(current_data, current_data_size);
+						(uint8_t*)grk_realloc(current_data, current_data_size);
 					if(!new_current_data)
 					{
 						GRK_ERROR("Not enough memory to handle JPEG 2000 box");
@@ -551,7 +551,7 @@ bool FileFormatDecompress::readHeaderProcedureImpl(void)
 		rc = false;
 	}
 cleanup:
-	grkFree(current_data);
+	grk_free(current_data);
 
 	return rc;
 }
@@ -1244,7 +1244,7 @@ bool FileFormatDecompress::read_ftyp(uint8_t* headerData, uint32_t header_size)
 	numcl = remaining_bytes >> 2;
 	if(numcl)
 	{
-		cl = (uint32_t*)grkCalloc(numcl, sizeof(uint32_t));
+		cl = (uint32_t*)grk_calloc(numcl, sizeof(uint32_t));
 		if(cl == nullptr)
 		{
 			GRK_ERROR("Not enough memory with FTYP Box");

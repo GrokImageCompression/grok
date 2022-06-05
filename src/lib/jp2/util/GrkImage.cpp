@@ -18,7 +18,7 @@ GrkImage::~GrkImage()
 	}
 	if(meta)
 		grk_object_unref(&meta->obj);
-	grkAlignedFree(interleavedData.data_);
+	grk_aligned_free(interleavedData.data_);
 }
 uint32_t GrkImage::width(void) const
 {
@@ -280,12 +280,12 @@ bool GrkImage::allocData(grk_image_comp* comp, bool clear)
 {
 	if(!comp || comp->w == 0 || comp->h == 0)
 		return false;
-	comp->stride = grkMakeAlignedWidth(comp->w);
+	comp->stride = grk_make_aligned_width(comp->w);
 	assert(comp->stride);
 	assert(!comp->data);
 
 	size_t dataSize = (uint64_t)comp->stride * comp->h * sizeof(uint32_t);
-	auto data = (int32_t*)grkAlignedMalloc(dataSize);
+	auto data = (int32_t*)grk_aligned_malloc(dataSize);
 	if(!data)
 	{
 		grk::GRK_ERROR("Failed to allocate aligned memory buffer of dimensions %u x %u",
@@ -617,7 +617,7 @@ bool GrkImage::check_color(void)
 				goto cleanup;
 			}
 		}
-		pcol_usage = (bool*)grkCalloc(num_channels, sizeof(bool));
+		pcol_usage = (bool*)grk_calloc(num_channels, sizeof(bool));
 		if(!pcol_usage)
 		{
 			GRK_ERROR("Unexpected OOM.");
@@ -690,7 +690,7 @@ bool GrkImage::check_color(void)
 			}
 		}
 	cleanup:
-		grkFree(pcol_usage);
+		grk_free(pcol_usage);
 		if(!is_sane)
 			return false;
 	}
@@ -784,7 +784,7 @@ bool GrkImage::apply_palette_clr()
 			while(channel > 0)
 			{
 				--channel;
-				grkAlignedFree(newComps[channel].data);
+				grk_aligned_free(newComps[channel].data);
 			}
 			delete[] newComps;
 			GRK_ERROR("Memory allocation failure in apply_palette_clr().");

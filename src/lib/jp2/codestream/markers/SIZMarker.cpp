@@ -237,14 +237,14 @@ bool SIZMarker::read(CodeStreamDecompress* codeStream, uint8_t* headerData, uint
 	cp->tcps = new TileCodingParams[numTiles];
 	decompressor->default_tcp_->tccps = new TileComponentCodingParams[image->numcomps];
 	decompressor->default_tcp_->mct_records_ =
-		(grk_mct_data*)grkCalloc(default_number_mct_records, sizeof(grk_mct_data));
+		(grk_mct_data*)grk_calloc(default_number_mct_records, sizeof(grk_mct_data));
 	if(!decompressor->default_tcp_->mct_records_)
 	{
 		GRK_ERROR("Not enough memory to take in charge SIZ marker");
 		return false;
 	}
 	decompressor->default_tcp_->nb_max_mct_records_ = default_number_mct_records;
-	decompressor->default_tcp_->mcc_records_ = (grk_simple_mcc_decorrelation_data*)grkCalloc(
+	decompressor->default_tcp_->mcc_records_ = (grk_simple_mcc_decorrelation_data*)grk_calloc(
 		default_number_mcc_records, sizeof(grk_simple_mcc_decorrelation_data));
 	if(!decompressor->default_tcp_->mcc_records_)
 	{

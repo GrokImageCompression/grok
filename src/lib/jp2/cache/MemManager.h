@@ -28,39 +28,39 @@
 
 namespace grk
 {
-uint32_t grkMakeAlignedWidth(uint32_t width);
+uint32_t grk_make_aligned_width(uint32_t width);
 /**
  Allocate an uninitialized memory block
  @param size Bytes to allocate
  @return a void pointer to the allocated space, or nullptr if there is insufficient memory available
  */
-void* grkMalloc(size_t size);
+void* grk_malloc(size_t size);
 /**
  Allocate a memory block with elements initialized to 0
  @param numOfElements  Blocks to allocate
  @param sizeOfElements Bytes per block to allocate
  @return a void pointer to the allocated space, or nullptr if there is insufficient memory available
  */
-void* grkCalloc(size_t numOfElements, size_t sizeOfElements);
+void* grk_calloc(size_t numOfElements, size_t sizeOfElements);
 /**
  Allocate memory aligned to a 16 byte boundary
  @param size Bytes to allocate
  @return a void pointer to the allocated space, or nullptr if there is insufficient memory available
  */
-void* grkAlignedMalloc(size_t size);
-void grkAlignedFree(void* ptr);
+void* grk_aligned_malloc(size_t size);
+void grk_aligned_free(void* ptr);
 /**
  Reallocate memory blocks.
  @param m Pointer to previously allocated memory block
  @param s New size in bytes
  @return a void pointer to the reallocated (and possibly moved) memory block
  */
-void* grkRealloc(void* m, size_t s);
+void* grk_realloc(void* m, size_t s);
 /**
  Deallocates or frees a memory block.
  @param m Previously allocated memory block to be freed
  */
-void grkFree(void* m);
+void grk_free(void* m);
 
 template<typename T>
 struct AllocatorVanilla
@@ -79,11 +79,11 @@ struct AllocatorAligned
 {
 	T* alloc(size_t length)
 	{
-		return (T*)grkAlignedMalloc(length * sizeof(T));
+		return (T*)grk_aligned_malloc(length * sizeof(T));
 	}
 	void dealloc(T* buf)
 	{
-		grkAlignedFree(buf);
+		grk_aligned_free(buf);
 	}
 };
 template<typename T, template<typename TT> typename A>
@@ -308,7 +308,7 @@ struct grk_buf2d : protected grk_buf<T, A>, public grk_rect32
 		if(!this->buf && width() && height())
 		{
 			if(!stride)
-				stride = grkMakeAlignedWidth(width());
+				stride = grk_make_aligned_width(width());
 			uint64_t data_size_needed = (uint64_t)stride * height() * sizeof(T);
 			if(!data_size_needed)
 				return true;

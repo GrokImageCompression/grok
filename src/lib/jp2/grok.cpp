@@ -184,7 +184,7 @@ void GRK_CALLCONV grk_image_single_component_data_free(grk_image_comp* comp)
 {
 	if(!comp || !comp->data)
 		return;
-	grkAlignedFree(comp->data);
+	grk_aligned_free(comp->data);
 	comp->data = nullptr;
 }
 
@@ -323,7 +323,7 @@ bool GRK_CALLCONV grk_set_MCT(grk_cparameters* parameters, float* pEncodingMatri
 
 	/* use array based MCT */
 	parameters->mct = 2;
-	parameters->mct_data = grkMalloc(l_mct_total_size);
+	parameters->mct_data = grk_malloc(l_mct_total_size);
 	if(!parameters->mct_data)
 	{
 		return false;

@@ -252,7 +252,7 @@ T1::T1(bool isCompressor, uint32_t maxCblkW, uint32_t maxCblkH)
 T1::~T1()
 {
 	deallocUncompressedData();
-	grkAlignedFree(flags);
+	grk_aligned_free(flags);
 	delete[] compressedData;
 }
 double T1::getnorm(uint32_t level, uint8_t orientation, bool reversible)
@@ -305,7 +305,7 @@ bool T1::allocUncompressedData(size_t len)
 	if(uncompressedData && uncompressedDataLen > len)
 		return true;
 	deallocUncompressedData();
-	uncompressedData = (int32_t*)grk::grkAlignedMalloc(len);
+	uncompressedData = (int32_t*)grk::grk_aligned_malloc(len);
 	if(!uncompressedData)
 	{
 		GRK_ERROR("Out of memory");
@@ -319,7 +319,7 @@ bool T1::allocUncompressedData(size_t len)
 void T1::deallocUncompressedData(void)
 {
 	if(ownsUncompressedData)
-		grk::grkAlignedFree(uncompressedData);
+		grk::grk_aligned_free(uncompressedData);
 	uncompressedData = nullptr;
 	ownsUncompressedData = false;
 }
@@ -357,8 +357,8 @@ bool T1::alloc(uint32_t width, uint32_t height)
 	uint32_t flags_height = (height + 3U) / 4U;
 	if(newflagssize > flagssize)
 	{
-		grk::grkAlignedFree(flags);
-		flags = (grk_flag*)grk::grkAlignedMalloc(newflagssize * sizeof(grk_flag));
+		grk::grk_aligned_free(flags);
+		flags = (grk_flag*)grk::grk_aligned_malloc(newflagssize * sizeof(grk_flag));
 		if(!flags)
 		{
 			GRK_ERROR("Out of memory");
@@ -397,14 +397,14 @@ bool T1::alloc(uint32_t width, uint32_t height)
  */
 void T1::code_block_enc_deallocate(cblk_enc* code_block)
 {
-	grk::grkFree(code_block->passes);
+	grk::grk_free(code_block->passes);
 	code_block->passes = nullptr;
 }
 bool T1::code_block_enc_allocate(cblk_enc* p_code_block)
 {
 	if(!p_code_block->passes)
 	{
-		p_code_block->passes = (pass_enc*)grk::grkCalloc(100, sizeof(pass_enc));
+		p_code_block->passes = (pass_enc*)grk::grk_calloc(100, sizeof(pass_enc));
 		if(!p_code_block->passes)
 			return false;
 	}

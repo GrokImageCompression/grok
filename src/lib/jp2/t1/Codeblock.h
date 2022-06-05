@@ -147,20 +147,20 @@ struct CompressCodeblock : public Codeblock
 	virtual ~CompressCodeblock()
 	{
 		compressedStream.dealloc();
-		grkFree(layers);
-		grkFree(passes);
+		grk_free(layers);
+		grk_free(passes);
 	}
 	bool init()
 	{
 		if(!layers)
 		{
-			layers = (Layer*)grkCalloc(maxCompressLayersGRK, sizeof(Layer));
+			layers = (Layer*)grk_calloc(maxCompressLayersGRK, sizeof(Layer));
 			if(!layers)
 				return false;
 		}
 		if(!passes)
 		{
-			passes = (CodePass*)grkCalloc(100, sizeof(CodePass));
+			passes = (CodePass*)grk_calloc(100, sizeof(CodePass));
 			if(!passes)
 				return false;
 		}

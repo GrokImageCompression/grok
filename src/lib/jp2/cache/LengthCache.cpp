@@ -47,12 +47,12 @@ TileInfo::TileInfo(void)
 {
 	allocatedMarkers = 100;
 	numMarkers = 0;
-	markerInfo = (MarkerInfo*)grkCalloc(allocatedMarkers, sizeof(MarkerInfo));
+	markerInfo = (MarkerInfo*)grk_calloc(allocatedMarkers, sizeof(MarkerInfo));
 }
 TileInfo::~TileInfo(void)
 {
-	grkFree(tilePartInfo);
-	grkFree(markerInfo);
+	grk_free(tilePartInfo);
+	grk_free(markerInfo);
 }
 bool TileInfo::checkResize(void)
 {
@@ -61,10 +61,10 @@ bool TileInfo::checkResize(void)
 		auto oldMax = allocatedMarkers;
 		allocatedMarkers += 100U;
 		auto new_marker =
-			(MarkerInfo*)grkRealloc(markerInfo, allocatedMarkers * sizeof(MarkerInfo));
+			(MarkerInfo*)grk_realloc(markerInfo, allocatedMarkers * sizeof(MarkerInfo));
 		if(!new_marker)
 		{
-			grkFree(markerInfo);
+			grk_free(markerInfo);
 			markerInfo = nullptr;
 			allocatedMarkers = 0;
 			numMarkers = 0;
@@ -90,7 +90,7 @@ bool TileInfo::update(uint16_t tileIndex, uint8_t currentTilePart, uint8_t numTi
 		allocatedTileParts = numTileParts;
 		if(!tilePartInfo)
 		{
-			tilePartInfo = (TilePartInfo*)grkCalloc(numTileParts, sizeof(TilePartInfo));
+			tilePartInfo = (TilePartInfo*)grk_calloc(numTileParts, sizeof(TilePartInfo));
 			if(!tilePartInfo)
 			{
 				GRK_ERROR("Not enough memory to read SOT marker. "
@@ -101,10 +101,10 @@ bool TileInfo::update(uint16_t tileIndex, uint8_t currentTilePart, uint8_t numTi
 		else
 		{
 			auto newTilePartIndex =
-				(TilePartInfo*)grkRealloc(tilePartInfo, numTileParts * sizeof(TilePartInfo));
+				(TilePartInfo*)grk_realloc(tilePartInfo, numTileParts * sizeof(TilePartInfo));
 			if(!newTilePartIndex)
 			{
-				grkFree(tilePartInfo);
+				grk_free(tilePartInfo);
 				tilePartInfo = nullptr;
 				GRK_ERROR("Not enough memory to read SOT marker. "
 						  "Tile index allocation failed");
@@ -118,7 +118,7 @@ bool TileInfo::update(uint16_t tileIndex, uint8_t currentTilePart, uint8_t numTi
 		if(!tilePartInfo)
 		{
 			allocatedTileParts = 10;
-			tilePartInfo = (TilePartInfo*)grkCalloc(allocatedTileParts, sizeof(TilePartInfo));
+			tilePartInfo = (TilePartInfo*)grk_calloc(allocatedTileParts, sizeof(TilePartInfo));
 			if(!tilePartInfo)
 			{
 				allocatedTileParts = 0;
@@ -132,10 +132,10 @@ bool TileInfo::update(uint16_t tileIndex, uint8_t currentTilePart, uint8_t numTi
 		{
 			allocatedTileParts = currentTilePart + 1U;
 			auto newTilePartIndex =
-				(TilePartInfo*)grkRealloc(tilePartInfo, allocatedTileParts * sizeof(TilePartInfo));
+				(TilePartInfo*)grk_realloc(tilePartInfo, allocatedTileParts * sizeof(TilePartInfo));
 			if(!newTilePartIndex)
 			{
-				grkFree(tilePartInfo);
+				grk_free(tilePartInfo);
 				tilePartInfo = nullptr;
 				allocatedTileParts = 0;
 				GRK_ERROR("Not enough memory to read SOT marker. Tile index allocation failed");

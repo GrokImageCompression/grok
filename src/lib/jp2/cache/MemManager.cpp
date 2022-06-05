@@ -32,17 +32,17 @@
 
 namespace grk
 {
-const size_t grkBufferALignment = 64;
+const size_t grk_buffer_alignment = 64;
 
 // const bool debugMemory = false;
 
-uint32_t grkMakeAlignedWidth(uint32_t width)
+uint32_t grk_make_aligned_width(uint32_t width)
 {
 	assert(width);
-	return (uint32_t)((((uint64_t)width + grkBufferALignment - 1) / grkBufferALignment) *
-					  grkBufferALignment);
+	return (uint32_t)((((uint64_t)width + grk_buffer_alignment - 1) / grk_buffer_alignment) *
+					  grk_buffer_alignment);
 }
-static inline void* grkAlignedAllocN(size_t alignment, size_t size)
+static inline void* grk_aligned_alloc_N(size_t alignment, size_t size)
 {
 	void* ptr;
 
@@ -104,14 +104,14 @@ static inline void* grkAlignedAllocN(size_t alignment, size_t size)
 #endif
 	return ptr;
 }
-void* grkMalloc(size_t size)
+void* grk_malloc(size_t size)
 {
 	if(size == 0U) /* prevent implementation defined behavior of realloc */
 		return nullptr;
 
 	return malloc(size);
 }
-void* grkCalloc(size_t num, size_t size)
+void* grk_calloc(size_t num, size_t size)
 {
 	if(num == 0 || size == 0)
 		/* prevent implementation defined behavior of realloc */
@@ -119,11 +119,11 @@ void* grkCalloc(size_t num, size_t size)
 
 	return calloc(num, size);
 }
-void* grkAlignedMalloc(size_t size)
+void* grk_aligned_malloc(size_t size)
 {
-	return grkAlignedAllocN(grkBufferALignment, size);
+	return grk_aligned_alloc_N(grk_buffer_alignment, size);
 }
-void grkAlignedFree(void* ptr)
+void grk_aligned_free(void* ptr)
 {
 	// if (debugMemory && ptr)
 	//	printf("Lib Aligned dealloc  %p\n", ptr);
@@ -138,14 +138,14 @@ void grkAlignedFree(void* ptr)
 		free(((void**)ptr)[-1]);
 #endif
 }
-void* grkRealloc(void* ptr, size_t new_size)
+void* grk_realloc(void* ptr, size_t new_size)
 {
 	if(new_size == 0U) /* prevent implementation defined behavior of realloc */
 		return nullptr;
 
 	return realloc(ptr, new_size);
 }
-void grkFree(void* ptr)
+void grk_free(void* ptr)
 {
 	free(ptr);
 }

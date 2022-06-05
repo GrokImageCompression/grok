@@ -36,7 +36,7 @@ uint32_t grkMakeAlignedWidth(uint32_t width);
  @param size Bytes to allocate
  @return a void pointer to the allocated space, or nullptr if there is insufficient memory available
  */
-void* grkAlignedMalloc(size_t size);
-void grkAlignedFree(void* ptr);
+void* grk_aligned_malloc(size_t size);
+void grk_aligned_free(void* ptr);
 
 } // namespace grk_bin

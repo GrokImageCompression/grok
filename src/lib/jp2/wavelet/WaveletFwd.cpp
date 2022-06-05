@@ -188,7 +188,7 @@ void encode_h_func(encode_h_job<T, DWT>* job)
 		job->dwt.encode_and_deinterleave_h_one_row((T*)aj, (T*)job->h.mem, job->rw,
 												   job->h.parity == 0 ? true : false);
 	}
-	grkAlignedFree(job->h.mem);
+	grk_aligned_free(job->h.mem);
 	delete job;
 }
 
@@ -214,7 +214,7 @@ void encode_v_func(encode_v_job<T, DWT>* job)
 	if(j < job->max_j)
 		job->dwt.encode_and_deinterleave_v((T*)job->tiledp + j, (T*)job->v.mem, job->rh,
 										   job->v.parity == 0, job->w, job->max_j - j);
-	grkAlignedFree(job->v.mem);
+	grk_aligned_free(job->v.mem);
 	delete job;
 }
 
@@ -401,7 +401,7 @@ bool WaveletFwdImpl::encode_procedure(TileComponent* tilec)
 		return false;
 	}
 	dataSize *= NB_ELTS_V8 * sizeof(int32_t);
-	auto bj = (T*)grkAlignedMalloc(dataSize);
+	auto bj = (T*)grk_aligned_malloc(dataSize);
 	/* dataSize is equal to 0 when numresolutions == 1 but bj is not used */
 	/* in that case, so do not error out */
 	if(dataSize != 0 && !bj)
@@ -462,11 +462,11 @@ bool WaveletFwdImpl::encode_procedure(TileComponent* tilec)
 			for(uint32_t j = 0; j < num_jobs; j++)
 			{
 				auto job = new encode_v_job<T, DWT>();
-				job->v.mem = (T*)grkAlignedMalloc(dataSize);
+				job->v.mem = (T*)grk_aligned_malloc(dataSize);
 				if(!job->v.mem)
 				{
 					delete job;
-					grkAlignedFree(bj);
+					grk_aligned_free(bj);
 					rc = false;
 					break;
 				}
@@ -532,11 +532,11 @@ bool WaveletFwdImpl::encode_procedure(TileComponent* tilec)
 			for(uint32_t j = 0; j < num_jobs; j++)
 			{
 				auto job = new encode_h_job<T, DWT>();
-				job->h.mem = (T*)grkAlignedMalloc(dataSize);
+				job->h.mem = (T*)grk_aligned_malloc(dataSize);
 				if(!job->h.mem)
 				{
 					delete job;
-					grkAlignedFree(bj);
+					grk_aligned_free(bj);
 					rc = false;
 					break;
 				}
@@ -573,7 +573,7 @@ bool WaveletFwdImpl::encode_procedure(TileComponent* tilec)
 		--lastRes;
 	}
 
-	grkAlignedFree(bj);
+	grk_aligned_free(bj);
 	return true;
 }
 

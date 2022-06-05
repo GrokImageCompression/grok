@@ -39,7 +39,7 @@ struct GrkIOBuf : public grk_io_buf
 	bool alloc(uint64_t len)
 	{
 		dealloc();
-		data_ = (uint8_t*)grkAlignedMalloc(len);
+		data_ = (uint8_t*)grk_aligned_malloc(len);
 		if(data_)
 		{
 			len_ = len;
@@ -50,7 +50,7 @@ struct GrkIOBuf : public grk_io_buf
 	}
 	void dealloc()
 	{
-		grkAlignedFree(data_);
+		grk_aligned_free(data_);
 		data_ = nullptr;
 	}
 };

@@ -106,11 +106,11 @@ static inline void* grkAlignedAllocN(size_t alignment, size_t size)
 #endif
 	return ptr;
 }
-void* grkAlignedMalloc(size_t size)
+void* grk_aligned_malloc(size_t size)
 {
 	return grkAlignedAllocN(grkBufferALignment, size);
 }
-void grkAlignedFree(void* ptr)
+void grk_aligned_free(void* ptr)
 {
 	// if (debugMemory && ptr)
 	//	printf("Binary Aligned dealloc  %p\n", ptr);
