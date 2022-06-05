@@ -1011,9 +1011,9 @@ bool TileProcessor::prepareSodDecompress(CodeStreamDecompress* codeStream)
 
 	// note: we subtract 2 to account for SOD marker
 	auto tcp = codeStream->get_current_decode_tcp();
-	if(tilePartDataLength >= 2)
+	if(tilePartDataLength >= MARKER_BYTES)
 	{
-		tilePartDataLength -= 2;
+		tilePartDataLength -= MARKER_BYTES;
 	}
 	else
 	{
@@ -1049,18 +1049,18 @@ bool TileProcessor::prepareSodDecompress(CodeStreamDecompress* codeStream)
 	if(codeStreamInfo)
 	{
 		uint64_t current_pos = stream_->tell();
-		if(current_pos < 2)
+		if(current_pos < MARKER_BYTES)
 		{
 			GRK_ERROR("Stream too short");
 
 			return false;
 		}
-		current_pos = (uint64_t)(current_pos - 2);
+		current_pos = (uint64_t)(current_pos - MARKER_BYTES);
 		auto tileInfo = codeStreamInfo->getTileInfo(tileIndex_);
 		uint8_t current_tile_part = tileInfo->currentTilePart;
 		auto tilePartInfo = tileInfo->getTilePartInfo(current_tile_part);
 		tilePartInfo->endHeaderPosition = current_pos;
-		tilePartInfo->endPosition = current_pos + tilePartDataLength + 2;
+		tilePartInfo->endPosition = current_pos + tilePartDataLength + MARKER_BYTES;
 		if(!TileLengthMarkers::addTileMarkerInfo(tileIndex_, codeStreamInfo, J2K_MS_SOD,
 												 current_pos, 0))
 		{

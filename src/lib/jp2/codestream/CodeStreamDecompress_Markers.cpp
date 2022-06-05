@@ -152,7 +152,6 @@ bool CodeStreamDecompress::parseTileHeaderMarkers(bool* canDecompress)
 						GRK_ERROR("Stream too short");
 						return false;
 					}
-					// read next TLM, even though we skip this tile
 					nextTLM();
 					break;
 				}
@@ -168,6 +167,7 @@ bool CodeStreamDecompress::parseTileHeaderMarkers(bool* canDecompress)
 		{
 			if(!currentTileProcessor_->prepareSodDecompress(this))
 				return false;
+			nextTLM();
 			if(!decompressorState_.lastTilePartWasRead)
 			{
 				if(!readMarker())
@@ -195,7 +195,6 @@ bool CodeStreamDecompress::parseTileHeaderMarkers(bool* canDecompress)
 		GRK_ERROR("Missing SOT marker");
 		return false;
 	}
-	nextTLM();
 	// ensure lossy wavelet has quantization set
 	auto tcp = get_current_decode_tcp();
 	auto numComps = headerImage_->numcomps;
@@ -333,6 +332,7 @@ TilePartLengthInfo* CodeStreamDecompress::nextTLM(void)
 						 tilePartLengthInfo->length_, actualTileLength,
 						 decompressorState_.lastSotReadPosition, stream_->tell());
 				cp_.tlm_markers->invalidate();
+				return nullptr;
 			}
 		}
 	}
