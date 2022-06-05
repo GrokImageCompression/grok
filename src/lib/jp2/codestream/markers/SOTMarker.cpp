@@ -221,10 +221,7 @@ bool SOTMarker::read(CodeStreamDecompress* codeStream, uint8_t* headerData, uint
 	decompressState->setState(DECOMPRESS_STATE_TPH);
 
 	grk_pt16 currTile(tile_grid_x,tile_grid_y);
-	if(!codeStream->isSingleTile())
-		codeStream->getDecompressorState()->skipTileData  = !decompressState->tilesToDecompress_.contains(currTile);
-	else
-		decompressState->skipTileData = tileIndex != codeStream->tileIndexToDecode();
+	codeStream->getDecompressorState()->skipTileData  = !decompressState->decompressTiles_.isScheduled(currTile);
 	auto codeStreamInfo = codeStream->getCodeStreamInfo();
 
 	return !codeStreamInfo ||

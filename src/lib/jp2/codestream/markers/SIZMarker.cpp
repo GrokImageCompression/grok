@@ -67,7 +67,7 @@ bool SIZMarker::read(CodeStreamDecompress* codeStream, uint8_t* headerData, uint
 	uint32_t nb_comp_remain;
 	uint32_t remaining_size;
 	uint16_t numTiles;
-	auto decompressor = codeStream->getDecompressorState();
+	auto decompressState = codeStream->getDecompressorState();
 	auto image = codeStream->getHeaderImage();
 	auto cp = codeStream->getCodingParams();
 
@@ -233,32 +233,32 @@ bool SIZMarker::read(CodeStreamDecompress* codeStream, uint8_t* headerData, uint
 	cp->t_grid_width = (uint16_t)t_grid_width;
 	cp->t_grid_height = (uint16_t)t_grid_height;
 	numTiles = cp->t_grid_width * cp->t_grid_height;
-	decompressor->tilesToDecompress_ = grk_rect16(0,0, cp->t_grid_width, cp->t_grid_height);
+	decompressState->decompressTiles_.init(grk_rect16(0,0, cp->t_grid_width, cp->t_grid_height));
 	cp->tcps = new TileCodingParams[numTiles];
-	decompressor->default_tcp_->tccps = new TileComponentCodingParams[image->numcomps];
-	decompressor->default_tcp_->mct_records_ =
+	decompressState->default_tcp_->tccps = new TileComponentCodingParams[image->numcomps];
+	decompressState->default_tcp_->mct_records_ =
 		(grk_mct_data*)grk_calloc(default_number_mct_records, sizeof(grk_mct_data));
-	if(!decompressor->default_tcp_->mct_records_)
+	if(!decompressState->default_tcp_->mct_records_)
 	{
 		GRK_ERROR("Not enough memory to take in charge SIZ marker");
 		return false;
 	}
-	decompressor->default_tcp_->nb_max_mct_records_ = default_number_mct_records;
-	decompressor->default_tcp_->mcc_records_ = (grk_simple_mcc_decorrelation_data*)grk_calloc(
+	decompressState->default_tcp_->nb_max_mct_records_ = default_number_mct_records;
+	decompressState->default_tcp_->mcc_records_ = (grk_simple_mcc_decorrelation_data*)grk_calloc(
 		default_number_mcc_records, sizeof(grk_simple_mcc_decorrelation_data));
-	if(!decompressor->default_tcp_->mcc_records_)
+	if(!decompressState->default_tcp_->mcc_records_)
 	{
 		GRK_ERROR("Not enough memory to take in charge SIZ marker");
 		return false;
 	}
-	decompressor->default_tcp_->nb_max_mcc_records_ = default_number_mcc_records;
+	decompressState->default_tcp_->nb_max_mcc_records_ = default_number_mcc_records;
 	/* set up default dc level shift */
 	for(uint16_t i = 0; i < image->numcomps; ++i)
 		if(!image->comps[i].sgnd)
-			decompressor->default_tcp_->tccps[i].dc_level_shift_ = 1 << (image->comps[i].prec - 1);
+			decompressState->default_tcp_->tccps[i].dc_level_shift_ = 1 << (image->comps[i].prec - 1);
 	for(uint16_t i = 0; i < numTiles; ++i)
 		(cp->tcps + i)->tccps = new TileComponentCodingParams[image->numcomps];
-	decompressor->setState(DECOMPRESS_STATE_MH);
+	decompressState->setState(DECOMPRESS_STATE_MH);
 	subsampleAndReduceHeaderImageComponents(image, cp);
 
 	return true;

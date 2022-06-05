@@ -98,7 +98,9 @@ set(GROK_LIBRARY_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/plugin/plugin_interface.h
   ${CMAKE_CURRENT_SOURCE_DIR}/plugin/plugin_bridge.h
   ${CMAKE_CURRENT_SOURCE_DIR}/plugin/plugin_bridge.cpp
-      
+
+  ${CMAKE_CURRENT_SOURCE_DIR}/codestream/TileSet.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/codestream/TileSet.h
   ${CMAKE_CURRENT_SOURCE_DIR}/codestream/Profile.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/codestream/Profile.h
   ${CMAKE_CURRENT_SOURCE_DIR}/codestream/CodeStream.cpp

@@ -25,7 +25,7 @@ namespace grk
 {
 CodeStreamDecompress::CodeStreamDecompress(IBufferedStream* stream)
 	: CodeStream(stream), curr_marker_(0), headerError_(false), headerRead_(false),
-	  tile_ind_to_dec_(0),singleTile_(false), marker_scratch_(nullptr), marker_scratch_size_(0),
+	  marker_scratch_(nullptr), marker_scratch_size_(0),
 	  outputImage_(nullptr), tileCache_(new TileCache()), ioBufferCallback(nullptr),
 	  ioUserData(nullptr), grkRegisterReclaimCallback_(nullptr)
 {
@@ -252,12 +252,9 @@ bool CodeStreamDecompress::setDecompressRegion(grk_rect_single region)
 		return false;
 	}
 
-	if(region == grk_rect_single(0, 0, 0, 0))
+	if(region != grk_rect_single(0, 0, 0, 0))
 	{
-		decompressor->tilesToDecompress_ = grk_rect16(0,0, cp_.t_grid_width, cp_.t_grid_height);
-	}
-	else
-	{
+		grk_rect16 tilesToDecompress;
 		/* Check if the region provided by the user is correct */
 		uint32_t start_x = (uint32_t)region.x0 + image->x0;
 		uint32_t start_y = (uint32_t)region.y0 + image->y0;
@@ -273,7 +270,7 @@ bool CodeStreamDecompress::setDecompressRegion(grk_rect_single region)
 		}
 		else
 		{
-			decompressor->tilesToDecompress_.x0 = uint16_t((start_x - cp_.tx0) / cp_.t_width);
+			tilesToDecompress.x0 = uint16_t((start_x - cp_.tx0) / cp_.t_width);
 			compositeImage->x0 = start_x;
 		}
 
@@ -287,7 +284,7 @@ bool CodeStreamDecompress::setDecompressRegion(grk_rect_single region)
 		}
 		else
 		{
-			decompressor->tilesToDecompress_.y0 = uint16_t((start_y - cp_.ty0) / cp_.t_height);
+			tilesToDecompress.y0 = uint16_t((start_y - cp_.ty0) / cp_.t_height);
 			compositeImage->y0 = start_y;
 		}
 
@@ -299,7 +296,7 @@ bool CodeStreamDecompress::setDecompressRegion(grk_rect_single region)
 			GRK_WARN("Right position of the decompress region (%u)"
 					 " is outside the image area (Xsiz=%u).",
 					 end_x, image->x1);
-			decompressor->tilesToDecompress_.x1 = cp_.t_grid_width;
+			tilesToDecompress.x1 = cp_.t_grid_width;
 			compositeImage->x1 = image->x1;
 		}
 		else
@@ -307,7 +304,7 @@ bool CodeStreamDecompress::setDecompressRegion(grk_rect_single region)
 			// avoid divide by zero
 			if(cp_.t_width == 0)
 				return false;
-			decompressor->tilesToDecompress_.x1 = uint16_t(ceildiv<uint32_t>(end_x - cp_.tx0, cp_.t_width));
+			tilesToDecompress.x1 = uint16_t(ceildiv<uint32_t>(end_x - cp_.tx0, cp_.t_width));
 			compositeImage->x1 = end_x;
 		}
 
@@ -317,7 +314,7 @@ bool CodeStreamDecompress::setDecompressRegion(grk_rect_single region)
 			GRK_WARN("Bottom position of the decompress region (%u)"
 					 " is outside of the image area (Ysiz=%u).",
 					 end_y, image->y1);
-			decompressor->tilesToDecompress_.y1 = cp_.t_grid_height;
+			tilesToDecompress.y1 = cp_.t_grid_height;
 			compositeImage->y1 = image->y1;
 		}
 		else
@@ -325,9 +322,10 @@ bool CodeStreamDecompress::setDecompressRegion(grk_rect_single region)
 			// avoid divide by zero
 			if(cp_.t_height == 0)
 				return false;
-			decompressor->tilesToDecompress_.y1 = (uint16_t)(ceildiv<uint32_t>(end_y - cp_.ty0, cp_.t_height));
+			tilesToDecompress.y1 = (uint16_t)(ceildiv<uint32_t>(end_y - cp_.ty0, cp_.t_height));
 			compositeImage->y1 = end_y;
 		}
+		decompressor->decompressTiles_.schedule(tilesToDecompress);
 		cp_.wholeTileDecompress_ = false;
 		if(!compositeImage->subsampleAndReduce(cp_.coding_params_.dec_.reduce_))
 			return false;
@@ -434,8 +432,7 @@ bool CodeStreamDecompress::decompressTile(uint16_t tileIndex)
 		comp->h = reducedCompBounds.height();
 	}
 	compositeImage->postReadHeader(&cp_);
-	tile_ind_to_dec_ = tileIndex;
-	singleTile_ = true;
+	decompressorState_.decompressTiles_.schedule(tileIndex);
 
 	// reset tile part numbers, in case we are re-using the same codec object
 	// from previous decompress
@@ -653,13 +650,6 @@ GrkImage* CodeStreamDecompress::getHeaderImage(void)
 {
 	return headerImage_;
 }
-uint16_t CodeStreamDecompress::tileIndexToDecode()
-{
-	return tile_ind_to_dec_;
-}
-bool CodeStreamDecompress::isSingleTile(void){
-	return singleTile_;
-}
 bool CodeStreamDecompress::readHeaderProcedure(void)
 {
 	bool rc = false;
@@ -838,23 +828,24 @@ bool CodeStreamDecompress::decompressTile(void)
 {
 	if(!createOutputImage())
 		return false;
-	if(!singleTile_)
+	if(decompressorState_.decompressTiles_.numScheduled() != 1)
 	{
 		GRK_ERROR("decompressTile: Unable to decompress tile "
 				  "since first tile SOT has not been detected");
 		return false;
 	}
 	outputImage_->hasMultipleTiles = false;
-	auto tileCache = tileCache_->get(tileIndexToDecode());
+	uint16_t tileIndex = decompressorState_.decompressTiles_.getSingle();
+	auto tileCache = tileCache_->get(tileIndex);
 	auto tileProcessor = tileCache ? tileCache->processor : nullptr;
 	if(!tileCache || !tileCache->processor->getImage())
 	{
 		// find first tile part
-		if(!seekNextTilePartTLM(tile_ind_to_dec_))
+		if(!seekNextTilePartTLM(tileIndex))
 		{
 			if(!codeStreamInfo->allocTileInfo((uint16_t)(cp_.t_grid_width * cp_.t_grid_height)))
 				return false;
-			if(!codeStreamInfo->seekFirstTilePart(tile_ind_to_dec_))
+			if(!codeStreamInfo->seekFirstTilePart(tileIndex))
 				return false;
 		}
 		/* Special case if we have previously read the EOC marker
