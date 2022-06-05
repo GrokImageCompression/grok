@@ -73,6 +73,50 @@ bool CodeStreamDecompress::readSOTorEOC(void){
 
 	return true;
 }
+
+
+bool CodeStreamDecompress::readCurrentMarkerBody(uint16_t *markerSize){
+	if(!read_short(markerSize))
+	{
+		return false;
+	}
+	else if(*markerSize < MARKER_BYTES)
+	{
+		GRK_ERROR("Marker size %u for marker 0x%x is less than 2", *markerSize,
+				  curr_marker_);
+		return false;
+	}
+	else if(*markerSize == MARKER_BYTES)
+	{
+		GRK_ERROR("Zero-size marker in header.");
+		return false;
+	}
+	// subtract marker id and marker size
+	if(decompressorState_.getState() & DECOMPRESS_STATE_TPH)
+	{
+		if(!currentTileProcessor_->subtractMarkerLength(*markerSize))
+			return false;
+	}
+
+	*markerSize =
+		(uint16_t)(*markerSize - MARKER_BYTES); /* Subtract the size of the marker ID already read */
+	auto marker_handler = get_marker_handler(curr_marker_);
+	if(!marker_handler)
+	{
+		GRK_ERROR("Unknown marker 0x%x encountered",curr_marker_);
+		return false;
+	}
+	if(!(decompressorState_.getState() & marker_handler->states))
+	{
+		GRK_ERROR("Marker 0x%x is not compliant with its expected position", curr_marker_);
+		return false;
+	}
+
+	return process_marker(marker_handler, *markerSize);
+}
+
+
+
 /***
  * Parse all tile parts for current tile, skipping data for tile parts that
  * do not belong to the tile
@@ -104,61 +148,28 @@ bool CodeStreamDecompress::parseTileParts(bool* canDecompress)
 				decompressorState_.setState(DECOMPRESS_STATE_NO_EOC);
 				break;
 			}
-			uint16_t marker_size;
-			if(!read_short(&marker_size))
-			{
-				return false;
-			}
-			else if(marker_size < MARKER_BYTES)
-			{
-				GRK_ERROR("Marker size %u for marker 0x%x is less than 2", marker_size,
-						  curr_marker_);
-				return false;
-			}
-			else if(marker_size == MARKER_BYTES)
-			{
-				GRK_ERROR("Zero-size marker in header.");
-				return false;
-			}
-			// subtract marker id and marker size
-			if(decompressorState_.getState() & DECOMPRESS_STATE_TPH)
-			{
-				if(!currentTileProcessor_->subtractMarkerLength(marker_size))
-					return false;
-			}
 
-			marker_size =
-				(uint16_t)(marker_size - MARKER_BYTES); /* Subtract the size of the marker ID already read */
-			auto marker_handler = get_marker_handler(curr_marker_);
-			if(!marker_handler)
-			{
-				GRK_ERROR("Unknown marker encountered while seeking SOT marker");
+			uint16_t markerSize;
+			if (!readCurrentMarkerBody(&markerSize))
 				return false;
-			}
-			if(!(decompressorState_.getState() & marker_handler->states))
-			{
-				GRK_ERROR("Marker 0x%x is not compliant with its expected position", curr_marker_);
-				return false;
-			}
-			if(!process_marker(marker_handler, marker_size))
-				return false;
+
 			/* Add the marker to the code stream index*/
 			if(codeStreamInfo)
 			{
 				if(!TileLengthMarkers::addTileMarkerInfo(
-					   currentTileProcessor_->getIndex(), codeStreamInfo, marker_handler->id,
-					   (uint32_t)stream_->tell() - marker_size - MARKER_PLUS_MARKER_LENGTH_BYTES,
-					   marker_size + MARKER_PLUS_MARKER_LENGTH_BYTES))
+					   currentTileProcessor_->getIndex(), codeStreamInfo, curr_marker_,
+					   (uint32_t)stream_->tell() - markerSize - MARKER_PLUS_MARKER_LENGTH_BYTES,
+					   markerSize + MARKER_PLUS_MARKER_LENGTH_BYTES))
 				{
 					GRK_ERROR("Not enough memory to add tl marker");
 					return false;
 				}
 			}
-			if(marker_handler->id == J2K_MS_SOT)
+			if(curr_marker_ == J2K_MS_SOT)
 			{
 				//GRK_INFO("Found SOT for tile %d",currentTileProcessor_->getIndex());
 				// cache SOT position
-				uint64_t sot_pos = stream_->tell() - marker_size - MARKER_PLUS_MARKER_LENGTH_BYTES;
+				uint64_t sot_pos = stream_->tell() - markerSize - MARKER_PLUS_MARKER_LENGTH_BYTES;
 				if(sot_pos > decompressorState_.lastSotReadPosition)
 					decompressorState_.lastSotReadPosition = sot_pos;
 				// skip over data to beginning of next tile part if we are not interested in this one

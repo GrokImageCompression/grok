@@ -587,6 +587,16 @@ bool CodeStreamDecompress::decompressTiles(void)
 			if(!success)
 				goto cleanup;
 		}
+		if (decompressorState_.decompressTiles_.allComplete()){
+		   // check for corrupt Adobe files where 5 tile parts per tile are signaled
+		   // but there are actually 6
+		   if (curr_marker_ == J2K_MS_SOT){
+				uint16_t markerSize;
+				if (!readCurrentMarkerBody(&markerSize))
+					return false;
+		   }
+	   	   break;
+		}
 	}
 	if(executor)
 	{

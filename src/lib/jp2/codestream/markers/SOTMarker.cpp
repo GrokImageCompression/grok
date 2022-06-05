@@ -98,7 +98,9 @@ bool SOTMarker::read(CodeStreamDecompress* codeStream, uint8_t* headerData, uint
 
 	if(num_tile_parts && (tp_index >= num_tile_parts))
 	{
-		GRK_ERROR("Tile part index (%u) must be less than number of tile parts (%u)", tp_index,
+		GRK_ERROR("Tile %u: Tile part index (%u) must be less than number of tile parts (%u)",
+				  index,
+				  tp_index,
 				  num_tile_parts);
 		return false;
 	}
