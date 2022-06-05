@@ -812,9 +812,7 @@ bool CodeStreamDecompress::createOutputImage(void)
 bool CodeStreamDecompress::hasTLM(void){
 	return cp_.tlm_markers && cp_.tlm_markers->valid();
 }
-bool CodeStreamDecompress::seekFirstTilePartTLM(uint16_t tileIndex){
-	// if we have a TLM marker, then we can skip tiles until
-	// we get to desired tile
+bool CodeStreamDecompress::seekNextTilePartTLM(uint16_t tileIndex){
 	if(hasTLM())
 	{
 		// since we have already read the first SOT marker, the TLM seek will
@@ -826,9 +824,11 @@ bool CodeStreamDecompress::seekFirstTilePartTLM(uint16_t tileIndex){
 			cp_.tlm_markers->invalidate();
 			return false;
 		}
+
+		return true;
 	}
 
-	return true;
+	return false;
 }
 
 /*
@@ -850,7 +850,7 @@ bool CodeStreamDecompress::decompressTile(void)
 	if(!tileCache || !tileCache->processor->getImage())
 	{
 		// find first tile part
-		if(!seekFirstTilePartTLM(tile_ind_to_dec_))
+		if(!seekNextTilePartTLM(tile_ind_to_dec_))
 		{
 			if(!codeStreamInfo->allocTileInfo((uint16_t)(cp_.t_grid_width * cp_.t_grid_height)))
 				return false;

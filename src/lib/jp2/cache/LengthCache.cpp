@@ -251,7 +251,6 @@ bool CodeStreamInfo::seekFirstTilePart(uint16_t tileIndex)
 	// no need to seek if we haven't parsed any tiles yet
 	bool hasVeryFirstTilePartInfo = tileInfo && (tileInfo + 0)->hasTilePartInfo();
 	if(!hasVeryFirstTilePartInfo){
-		assert(tileIndex == 0);
 		return true;
 	}
 

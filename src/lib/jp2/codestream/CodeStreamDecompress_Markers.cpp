@@ -75,6 +75,8 @@ bool CodeStreamDecompress::parseTileHeaderMarkers(bool* canDecompress)
 		return false;
 	}
 
+	assert(curr_marker_ == J2K_MS_SOT);
+
 	/* Seek in code stream for next SOT marker. If we don't find it,
 	 *  we stop when we either read the EOC or run out of data */
 	while(!decompressorState_.lastTilePartWasRead && (curr_marker_ != J2K_MS_EOC))
@@ -325,8 +327,9 @@ TilePartLengthInfo* CodeStreamDecompress::nextTLM(void)
 		{
 			if(actualTileLength != tilePartLengthInfo->length_)
 			{
-				GRK_WARN("TLM marker tile part length %u differs from actual"
+				GRK_WARN("Tile %u: TLM marker tile part length %u differs from actual"
 						 " tile part length %u; %u,%u. Disabling TLM.",
+						 tilePartLengthInfo->tileIndex_,
 						 tilePartLengthInfo->length_, actualTileLength,
 						 decompressorState_.lastSotReadPosition, stream_->tell());
 				cp_.tlm_markers->invalidate();
