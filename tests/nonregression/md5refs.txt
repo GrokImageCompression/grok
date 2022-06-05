@@ -370,3 +370,12 @@ d402c4aefdb7aa7d14696757a245cc38  issue205.jp2_r0.tif
 736bce9529d10291df556b36218f2314  1802.pdf.SIGSEGV.36e.894.jp2_0.pgx
 f6c1fe3bc48d15e93cbf9052043b5931  mono_plt_tlm.tif
 a1e13f1bef73098e20611455cbd39472  mono_plt.tif
+9da8451c99d0f2e7df16d8a647ffa1d2  mono_plt_tlm_tp_region.tif
+2b4ed519757e91aa3a362b5efdf98c27  mono_plt_tlm_tp_tile5.tif
+a73ac19f0d62be1de1225b977e37c339  mono_plt_tlm_region.tif
+f6c1fe3bc48d15e93cbf9052043b5931  mono_plt_tlm_tile5.tif
+6b6674a5c134e3297103570507e6bad   mono_plt_region.tif
+f6b6674a5c134e3297103570507e6bad  mono_plt_region.tif
+
+
+

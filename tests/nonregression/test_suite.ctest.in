@@ -739,4 +739,8 @@ grk_compress -i @INPUT_NR_PATH@/cmyk.tif -o @TEMP_PATH@/cmyk.jp2 -n 1
 grk_decompress -i  @INPUT_NR_PATH@/cmyk_no_wavelet.jp2 -o @TEMP_PATH@/cmyk_no_wavelet.tif
 grk_decompress -i  @INPUT_NR_PATH@/cmyk_no_wavelet.jp2 -o @TEMP_PATH@/cmyk_no_wavelet_region.tif -d 64,64,256,256
 grk_decompress -i  @INPUT_NR_PATH@/mono_plt.j2k -o @TEMP_PATH@/mono_plt.tif
-grk_decompress -i  @INPUT_NR_PATH@/mono_plt_tlm.j2k -o @TEMP_PATH@/mono_plt_tlm.tif -t 5
+grk_decompress -i  @INPUT_NR_PATH@/mono_plt.j2k -o @TEMP_PATH@/mono_plt_region.tif -d 15,15,64,64
+grk_decompress -i  @INPUT_NR_PATH@/mono_plt_tlm.j2k -o @TEMP_PATH@/mono_plt_tlm_tile5.tif -t 5
+grk_decompress -i  @INPUT_NR_PATH@/mono_plt_tlm.j2k -o @TEMP_PATH@/mono_plt_tlm_region.tif -d 15,15,64,64
+grk_decompress -i  @INPUT_NR_PATH@/mono_plt_tlm_tp.j2k -o @TEMP_PATH@/mono_plt_tlm_tp_tile5.tif -t 5
+grk_decompress -i  @INPUT_NR_PATH@/mono_plt_tlm_tp.j2k -o @TEMP_PATH@/mono_plt_tlm_tp_region.tif -d 15,15,64,64
