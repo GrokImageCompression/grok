@@ -91,7 +91,8 @@ class CodeStreamDecompress : public CodeStream, public ICodeStreamDecompress
 	bool endOfCodeStream(void);
 	bool read_short(uint16_t* val);
 	bool process_marker(const marker_handler* marker_handler, uint16_t marker_size);
-	bool parseTileHeader(bool* can_decode_tile_data);
+	bool readSOTorEOC(void);
+	bool parseTileParts(bool* can_decode_tile_data);
 	bool readHeaderProcedureImpl(void);
 	bool decompressExec();
 	bool decompressTile();

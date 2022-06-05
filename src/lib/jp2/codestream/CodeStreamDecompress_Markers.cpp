@@ -63,7 +63,21 @@ static const j2k_mct_function j2k_mct_read_functions_to_int32[] = {
 	j2k_read_int16_to_int32, j2k_read_int32_to_int32, j2k_read_float32_to_int32,
 	j2k_read_float64_to_int32};
 
-bool CodeStreamDecompress::parseTileHeader(bool* canDecompress)
+bool CodeStreamDecompress::readSOTorEOC(void){
+	if(!readMarker())
+	{
+		decompressorState_.setState(DECOMPRESS_STATE_NO_EOC);
+		return false;
+	}
+	assert(curr_marker_ == J2K_MS_SOT || curr_marker_ == J2K_MS_EOC);
+
+	return true;
+}
+/***
+ * Parse all tile parts for current tile, skipping data for tile parts that
+ * do not belong to the tile
+ */
+bool CodeStreamDecompress::parseTileParts(bool* canDecompress)
 {
 	if(decompressorState_.getState() == DECOMPRESS_STATE_EOC)
 		return true;
@@ -71,7 +85,7 @@ bool CodeStreamDecompress::parseTileHeader(bool* canDecompress)
 	/* We need to encounter a SOT marker (a new tile-part header) */
 	if(decompressorState_.getState() != DECOMPRESS_STATE_TPH_SOT)
 	{
-		GRK_ERROR("parse_markers: no SOT marker found");
+		GRK_ERROR("parseTileParts: no SOT marker found");
 		return false;
 	}
 
@@ -154,11 +168,9 @@ bool CodeStreamDecompress::parseTileHeader(bool* canDecompress)
 						GRK_ERROR("Stream too short");
 						return false;
 					}
-					nextTLM();
 					break;
 				}
 			}
-			// otherwise, read next marker. and break on reading SOD marker
 			if(!readMarker())
 				return false;
 		}
@@ -167,32 +179,25 @@ bool CodeStreamDecompress::parseTileHeader(bool* canDecompress)
 		if(!stream_->numBytesLeft() && decompressorState_.getState() == DECOMPRESS_STATE_NO_EOC)
 			break;
 
-		/* 2. If we didn't skip data before, we need to read the SOD marker*/
-		if(!decompressorState_.skipTileData)
+		// 2. handle tile packets
+		if(decompressorState_.skipTileData)
 		{
-			if(!currentTileProcessor_->cacheTilePartPackets(this))
-				return false;
-			nextTLM();
-			if(!decompressorState_.lastTilePartWasRead)
-			{
-				if(!readMarker())
-				{
-					decompressorState_.setState(DECOMPRESS_STATE_NO_EOC);
-					break;
-				}
-			}
-		}
-		else
-		{
-			if(!readMarker())
-			{
-				decompressorState_.setState(DECOMPRESS_STATE_NO_EOC);
-				break;
-			}
-			/* Indicate we will try to read a new tile-part header*/
+			// prepare for next tile part
 			decompressorState_.skipTileData = false;
 			decompressorState_.lastTilePartWasRead = false;
 			decompressorState_.setState(DECOMPRESS_STATE_TPH_SOT);
+
+			nextTLM();
+			if(!readSOTorEOC())
+				break;
+
+		} else {
+			if(!currentTileProcessor_->cacheTilePartPackets(this))
+				return false;
+
+			nextTLM();
+			if(!decompressorState_.lastTilePartWasRead && !readSOTorEOC())
+				break;
 		}
 	}
 	if(!currentTileProcessor_)
@@ -337,6 +342,7 @@ TilePartLengthInfo* CodeStreamDecompress::nextTLM(void)
 						 tilePartLengthInfo->length_, actualTileLength,
 						 decompressorState_.lastSotReadPosition, stream_->tell());
 				cp_.tlm_markers->invalidate();
+				//assert(false);
 				return nullptr;
 			}
 		}

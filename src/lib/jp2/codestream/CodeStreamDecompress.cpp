@@ -497,10 +497,10 @@ bool CodeStreamDecompress::decompressTiles(void)
 	uint16_t tileCount = 0;
 	while(!endOfCodeStream() && !breakAfterT1)
 	{
-		// 1. read header
+		// 1. parse tile
 		try
 		{
-			if(!parseTileHeader(&canDecompress))
+			if(!parseTileParts(&canDecompress))
 			{
 				success = false;
 				goto cleanup;
@@ -527,7 +527,7 @@ bool CodeStreamDecompress::decompressTiles(void)
 		{
 			if(!findNextSOT(processor))
 			{
-				GRK_ERROR("Failed to decompress tile %u/%u", processor->getIndex(),
+				GRK_ERROR("Failed to find next SOT marker or EOC after tile %u/%u", processor->getIndex(),
 						  numTilesToDecompress);
 				success = false;
 				goto cleanup;
@@ -865,7 +865,7 @@ bool CodeStreamDecompress::decompressTile(void)
 		bool canDecompress = true;
 		try
 		{
-			if(!parseTileHeader(&canDecompress))
+			if(!parseTileParts(&canDecompress))
 				return false;
 		}
 		catch(InvalidMarkerException& ime)
