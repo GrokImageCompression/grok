@@ -43,23 +43,23 @@ uint64_t TileProcessor::getTilePartDataLength(void)
 {
 	return tilePartDataLength;
 }
-bool TileProcessor::subtractMarkerLength(uint16_t markerLen)
+bool TileProcessor::subtractMarkerSegmentLength(uint16_t markerLen)
 {
 	if(tilePartDataLength == 0)
 		return true;
 
-	uint32_t sub = (uint32_t)(markerLen + 2);
-	if(tilePartDataLength > 0 && tilePartDataLength < sub)
+	uint32_t segmentLength = (uint32_t)(markerLen + MARKER_LENGTH_BYTES);
+	if(tilePartDataLength > 0 && tilePartDataLength < segmentLength)
 	{
-		GRK_ERROR("Tile part data length %u smaller than marker length %u", tilePartDataLength,
+		GRK_ERROR("Tile part data length %u smaller than marker segment length %u", tilePartDataLength,
 				  markerLen);
 		return false;
 	}
-	tilePartDataLength -= (uint64_t)(markerLen + 2);
+	tilePartDataLength -= (uint64_t)segmentLength;
 
 	return true;
 }
-bool TileProcessor::setTilePartDataLength(uint32_t tilePartLength, bool lastTilePartInCodeStream)
+bool TileProcessor::setTilePartDataLength(uint16_t tilePart, uint32_t tilePartLength, bool lastTilePartInCodeStream)
 {
 	if(!lastTilePartInCodeStream)
 	{
@@ -70,6 +70,9 @@ bool TileProcessor::setTilePartDataLength(uint32_t tilePartLength, bool lastTile
 			return false;
 		}
 		tilePartDataLength = tilePartLength - sot_marker_segment_len;
+		if (tilePartDataLength < 2)
+			GRK_WARN("Tile %u: tile part %u data length %u is smaller than minimum size of 2 - room for single SOD marker. Ignoring.",
+					getIndex(), tilePart, tilePartDataLength);
 	}
 	else
 	{
@@ -1012,14 +1015,11 @@ bool TileProcessor::cacheTilePartPackets(CodeStreamDecompress* codeStream)
 	// note: we subtract MARKER_BYTES to account for SOD marker
 	auto tcp = codeStream->get_current_decode_tcp();
 	if(tilePartDataLength >= MARKER_BYTES)
-	{
 		tilePartDataLength -= MARKER_BYTES;
-	}
 	else
-	{
-		GRK_WARN("SOD marker truncated in final tile part.");
+		// illegal tile part data length, but we will allow it
 		tilePartDataLength = 0;
-	}
+
 	if(tilePartDataLength)
 	{
 		auto bytesLeftInStream = stream_->numBytesLeft();

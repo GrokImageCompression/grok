@@ -251,9 +251,7 @@ bool CodeStreamInfo::seekFirstTilePart(uint16_t tileIndex)
 	// no need to seek if we haven't parsed any tiles yet
 	bool hasVeryFirstTilePartInfo = tileInfo && (tileInfo + 0)->hasTilePartInfo();
 	if(!hasVeryFirstTilePartInfo)
-	{
 		return true;
-	}
 
 	auto tileInfoForTile = getTileInfo(tileIndex);
 	assert(tileInfoForTile && tileInfoForTile->numTileParts);
@@ -426,11 +424,18 @@ void TileLengthMarkers::rewind(void)
 			curr_vec_ = markerIt_->second;
 	}
 }
-TilePartLengthInfo* TileLengthMarkers::getNext(void)
+TilePartLengthInfo* TileLengthMarkers::next(void)
 {
-	return getNext(false);
+	return next(false);
 }
-TilePartLengthInfo* TileLengthMarkers::getNext(bool peek)
+/**
+ * Query next TLM entry
+ *
+ * @param peek if false, then move to next TLM entry.
+ * Otherwise, stay at current TLM entry
+ *
+ */
+TilePartLengthInfo* TileLengthMarkers::next(bool peek)
 {
 	assert(markers_);
 	if(!valid_)
@@ -463,32 +468,40 @@ TilePartLengthInfo* TileLengthMarkers::getNext(bool peek)
 	return nullptr;
 }
 /**
+ * Seek to next scheduled tile part.
  *
- * return true if the tile marker is found and TLM marker isn't corrupt, otherwise false
+ * return false if TLM marker is corrupt, otherwise false
  */
-bool TileLengthMarkers::seek(uint16_t tileIndex, IBufferedStream* stream)
+void TileLengthMarkers::seek(TileSet *tilesToDecompress,CodingParams *cp, IBufferedStream* stream)
 {
 	assert(stream);
-	rewind();
-	auto tl = getNext();
+	// peek at tile part
+	auto tilePart = next(true);
 	uint64_t skip = 0;
 	auto currentPosition = stream->tell();
-	while(tl && tl->tileIndex_ != tileIndex)
+	while(tilePart && !tilesToDecompress->isScheduled(tilePart->tileIndex_))
 	{
-		if(tl->length_ == 0)
+		if(tilePart->length_ == 0)
 		{
 			stream->seek(currentPosition);
 			GRK_ERROR("corrupt TLM marker");
-			return false;
+			throw CorruptTLMException();
 		}
-		skip += tl->length_;
-		tl = getNext();
+		skip += tilePart->length_;
+		//GRK_INFO("Skipped tile part from tile %u",tilePart->tileIndex_);
+		auto tcp = cp->tcps + tilePart->tileIndex_;
+		//increment tile part counter (unable to validate with SOT marker)
+		tcp->tilePartCounter_++;
+		// increment TLM
+		next(false);
+		// peek at next tile part
+		tilePart = next(true);
 	}
-	// decrement tile part index to prepare for next TLM get
-	markerTilePartIndex_--;
-
-	return tl && (tl->tileIndex_ == tileIndex) && stream->seek(stream->tell() + skip);
+	if (skip && !stream->seek(stream->tell() + skip))
+		throw CorruptTLMException();
 }
+
+
 bool TileLengthMarkers::writeBegin(uint16_t numTilePartsTotal)
 {
 	streamStart = stream_->tell();

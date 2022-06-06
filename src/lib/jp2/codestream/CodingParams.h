@@ -123,6 +123,7 @@ struct TileCodingParams
 	TileCodingParams();
 	~TileCodingParams();
 
+	bool advanceTilePartCounter(uint16_t tileIndex, uint8_t tilePartIndex);
 	bool copy(const TileCodingParams* rhs, const GrkImage* image);
 	void setIsHT(bool ht, bool reversible, uint8_t guardBits);
 	bool isHT(void);

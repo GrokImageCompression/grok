@@ -119,7 +119,6 @@ bool SOTMarker::read(CodeStreamDecompress* codeStream, uint8_t* headerData, uint
 	uint8_t numTileParts = 0;
 	uint16_t tileIndex;
 	uint8_t currentTilePart;
-	uint16_t tile_grid_x, tile_grid_y;
 
 	if(!read(codeStream, headerData, header_size, &tilePartLength, &tileIndex, &currentTilePart,
 			 &numTileParts))
@@ -136,24 +135,11 @@ bool SOTMarker::read(CodeStreamDecompress* codeStream, uint8_t* headerData, uint
 		return false;
 	}
 
-	auto tcp = &cp->tcps[tileIndex];
-	tile_grid_x = tileIndex % cp->t_grid_width;
-	tile_grid_y = tileIndex / cp->t_grid_width;
-
-	/* Fixes issue with id_000020,sig_06,src_001958,op_flip4,pos_149 */
-	/* of https://github.com/uclouvain/openjpeg/issues/939 */
-	/* We must avoid reading the same tile part number twice for a given tile */
-	/* to avoid various issues, like grk_j2k_merge_ppt being called several times. */
-	/* ISO 15444-1 A.4.2 Start of tile-part (SOT) mandates that tile parts */
-	/* should appear in increasing order. */
-	if(uint8_t(tcp->tilePartCounter_) != currentTilePart)
-	{
-		GRK_ERROR("Invalid tile part index for tile number %u. "
-				  "Got %u, expected %u",
-				  tileIndex, currentTilePart, tcp->tilePartCounter_);
+	auto tcp = cp->tcps + tileIndex;
+	if (!tcp->advanceTilePartCounter(tileIndex, currentTilePart))
 		return false;
-	}
-	tcp->tilePartCounter_++;
+
+	//GRK_INFO("SOT: Tile %u, tile part %u",tileIndex, currentTilePart);
 
 	/* PSot should be equal to zero or >=14, or equal to  sot_marker_segment_len */
 	if((tilePartLength != 0) && (tilePartLength < 14) && (tilePartLength != sot_marker_segment_len))
@@ -217,10 +203,10 @@ bool SOTMarker::read(CodeStreamDecompress* codeStream, uint8_t* headerData, uint
 		decompressState->setComplete(tileIndex);
 
 	codeStream->currentProcessor()->setTilePartDataLength(
-		tilePartLength, decompressState->lastTilePartInCodeStream);
+			currentTilePart, tilePartLength, decompressState->lastTilePartInCodeStream);
 	decompressState->setState(DECOMPRESS_STATE_TPH);
 
-	grk_pt16 currTile(tile_grid_x, tile_grid_y);
+	grk_pt16 currTile(tileIndex % cp->t_grid_width, tileIndex / cp->t_grid_width);
 	auto codeStreamInfo = codeStream->getCodeStreamInfo();
 
 	return !codeStreamInfo ||

@@ -55,4 +55,8 @@ class InvalidMarkerException : public std::exception
 class BadAsocException : public std::exception
 {
 };
+class CorruptTLMException : public CorruptPacketException
+{
+};
+
 } // namespace grk

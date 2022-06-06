@@ -813,24 +813,17 @@ bool CodeStreamDecompress::hasTLM(void)
 {
 	return cp_.tlm_markers && cp_.tlm_markers->valid();
 }
-bool CodeStreamDecompress::seekNextTilePartTLM(uint16_t tileIndex)
+/***
+ * Skip past non-scheduled tiles
+ */
+bool CodeStreamDecompress::skipNonScheduledTLM(CodingParams *cp)
 {
-	if(hasTLM())
-	{
-		// since we have already read the first SOT marker, the TLM seek will
-		// put the stream at the same position (right after SOT marker)
-		// for the target tile
-		if(!cp_.tlm_markers->seek(tileIndex, stream_))
-		{
-			GRK_WARN("TLM: invalid marker detected. Disabling TLM");
-			cp_.tlm_markers->invalidate();
-			return false;
-		}
+	if(!hasTLM())
+		return false;
 
-		return true;
-	}
+	cp_.tlm_markers->seek(&decompressorState_.tilesToDecompress_,cp, stream_);
 
-	return false;
+	return true;
 }
 
 /*
@@ -853,12 +846,18 @@ bool CodeStreamDecompress::decompressTile(void)
 	if(!tileCache || !tileCache->processor->getImage())
 	{
 		// find first tile part
-		if(!seekNextTilePartTLM(tileIndex))
-		{
-			if(!codeStreamInfo->allocTileInfo((uint16_t)(cp_.t_grid_width * cp_.t_grid_height)))
-				return false;
-			if(!codeStreamInfo->seekFirstTilePart(tileIndex))
-				return false;
+		try {
+			// try to skip non-scheduled tile parts using TLM marker if available
+			if(!skipNonScheduledTLM(&cp_))
+			{
+				// otherwise skip non-scheduled by reading tile headers
+				if(!codeStreamInfo->allocTileInfo((uint16_t)(cp_.t_grid_width * cp_.t_grid_height)))
+					return false;
+				if(!codeStreamInfo->seekFirstTilePart(tileIndex))
+					return false;
+			}
+		} catch (CorruptTLMException &cte){
+			return false;
 		}
 		/* Special case if we have previously read the EOC marker
 		 * (if the previous tile decompressed is the last ) */
@@ -951,8 +950,8 @@ bool CodeStreamDecompress::process_marker(const marker_handler* marker_handler,
 }
 bool CodeStreamDecompress::read_short(uint16_t* val)
 {
-	uint8_t temp[2];
-	if(stream_->read(temp, 2) != 2)
+	uint8_t temp[sizeof(uint16_t)];
+	if(stream_->read(temp, sizeof(uint16_t)) != sizeof(uint16_t))
 		return false;
 
 	grk_read<uint16_t>(temp, val);

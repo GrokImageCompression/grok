@@ -108,6 +108,25 @@ TileCodingParams::~TileCodingParams()
 	delete qcd_;
 }
 
+bool TileCodingParams::advanceTilePartCounter(uint16_t tileIndex, uint8_t tilePartIndex){
+	/* Fixes issue with id_000020,sig_06,src_001958,op_flip4,pos_149 */
+	/* of https://github.com/uclouvain/openjpeg/issues/939 */
+	/* We must avoid reading the same tile part number twice for a given tile */
+	/* to avoid various issues, like grk_j2k_merge_ppt being called several times. */
+	/* ISO 15444-1 A.4.2 Start of tile-part (SOT) mandates that tile parts */
+	/* should appear in increasing order. */
+	if(uint8_t(tilePartCounter_) != tilePartIndex)
+	{
+		GRK_ERROR("Invalid tile part index for tile number %u. "
+				  "Got %u, expected %u",
+				  tileIndex, tilePartIndex, tilePartCounter_);
+		return false;
+	}
+	tilePartCounter_++;
+
+	return true;
+}
+
 bool TileCodingParams::copy(const TileCodingParams* rhs, const GrkImage* image)
 {
 	uint32_t tccp_size = image->numcomps * (uint32_t)sizeof(TileComponentCodingParams);

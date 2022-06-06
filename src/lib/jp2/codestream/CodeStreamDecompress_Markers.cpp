@@ -75,31 +75,30 @@ bool CodeStreamDecompress::readSOTorEOC(void)
 	return true;
 }
 
-bool CodeStreamDecompress::readCurrentMarkerBody(uint16_t* markerSize)
+bool CodeStreamDecompress::readCurrentMarkerBody(uint16_t* markerLength)
 {
-	if(!read_short(markerSize))
+	if(!read_short(markerLength))
 	{
 		return false;
 	}
-	else if(*markerSize < MARKER_BYTES)
+	else if(*markerLength < MARKER_LENGTH_BYTES)
 	{
-		GRK_ERROR("Marker size %u for marker 0x%x is less than 2", *markerSize, curr_marker_);
+		GRK_ERROR("Marker length %u for marker 0x%x is less than marker length bytes (2)", *markerLength, curr_marker_);
 		return false;
 	}
-	else if(*markerSize == MARKER_BYTES)
+	else if(*markerLength == MARKER_LENGTH_BYTES)
 	{
 		GRK_ERROR("Zero-size marker in header.");
 		return false;
 	}
-	// subtract marker id and marker size
 	if(decompressorState_.getState() & DECOMPRESS_STATE_TPH)
 	{
-		if(!currentTileProcessor_->subtractMarkerLength(*markerSize))
+		if(!currentTileProcessor_->subtractMarkerSegmentLength(*markerLength))
 			return false;
 	}
 
-	*markerSize = (uint16_t)(*markerSize -
-							 MARKER_BYTES); /* Subtract the size of the marker ID already read */
+	/* Subtract number of bytes from marker length field*/
+	*markerLength = (uint16_t)(*markerLength - MARKER_LENGTH_BYTES);
 	auto marker_handler = get_marker_handler(curr_marker_);
 	if(!marker_handler)
 	{
@@ -112,7 +111,7 @@ bool CodeStreamDecompress::readCurrentMarkerBody(uint16_t* markerSize)
 		return false;
 	}
 
-	return process_marker(marker_handler, *markerSize);
+	return process_marker(marker_handler, *markerLength);
 }
 
 /***
@@ -132,6 +131,13 @@ bool CodeStreamDecompress::parseTileParts(bool* canDecompress)
 	}
 
 	assert(curr_marker_ == J2K_MS_SOT);
+
+	// try to skip non-scheduled tile parts using TLM marker if available
+	try {
+		skipNonScheduledTLM(&cp_);
+	} catch (CorruptTLMException &cte){
+		return false;
+	}
 
 	/* Seek in code stream for next SOT marker. If we don't find it,
 	 *  we stop when we either read the EOC or run out of data */
@@ -199,16 +205,17 @@ bool CodeStreamDecompress::parseTileParts(bool* canDecompress)
 			// prepare for next tile part
 			decompressorState_.setState(DECOMPRESS_STATE_TPH_SOT);
 
-			nextTLM(false);
+			nextTLM();
 			if(!readSOTorEOC())
 				break;
 		}
 		else
 		{
+			assert(curr_marker_ == J2K_MS_SOD);
 			if(!currentTileProcessor_->cacheTilePartPackets(this))
 				return false;
 
-			nextTLM(false);
+			nextTLM();
 			if(!decompressorState_.tilesToDecompress_.isComplete(
 				   currentTileProcessor_->getIndex()) &&
 			   !readSOTorEOC())
@@ -338,17 +345,17 @@ bool CodeStreamDecompress::parseTileParts(bool* canDecompress)
 	return true;
 }
 
-TilePartLengthInfo* CodeStreamDecompress::nextTLM(bool peek)
+void CodeStreamDecompress::nextTLM(void)
 {
-	TilePartLengthInfo* tilePartLengthInfo = nullptr;
 	if(hasTLM())
 	{
 		// advance TLM to correct position
-		tilePartLengthInfo = cp_.tlm_markers->getNext(peek);
+		auto tilePartLengthInfo = cp_.tlm_markers->next(false);
 		// validate TLM
 		auto actualTileLength = stream_->tell() - decompressorState_.lastSotReadPosition;
 		if(tilePartLengthInfo)
 		{
+			//GRK_INFO("TLM: tile %u", tilePartLengthInfo->tileIndex_);
 			if(actualTileLength != tilePartLengthInfo->length_)
 			{
 				GRK_WARN("Tile %u: TLM marker tile part length %u differs from actual"
@@ -356,13 +363,19 @@ TilePartLengthInfo* CodeStreamDecompress::nextTLM(bool peek)
 						 tilePartLengthInfo->tileIndex_, tilePartLengthInfo->length_,
 						 actualTileLength, decompressorState_.lastSotReadPosition, stream_->tell());
 				cp_.tlm_markers->invalidate();
-				// assert(false);
-				return nullptr;
+				 //assert(false);
+			}
+			else if(currentTileProcessor_->getIndex() != tilePartLengthInfo->tileIndex_)
+			{
+				GRK_WARN("Tile %u: TLM marker signalled tile index %u differs from actual"
+						 " tile index %u; %u,%u. Disabling TLM.",
+						 currentTileProcessor_->getIndex(), tilePartLengthInfo->tileIndex_,
+						 currentTileProcessor_->getIndex(), decompressorState_.lastSotReadPosition, stream_->tell());
+				cp_.tlm_markers->invalidate();
+				//assert(false);
 			}
 		}
 	}
-
-	return tilePartLengthInfo;
 }
 
 /**
