@@ -233,7 +233,7 @@ bool SIZMarker::read(CodeStreamDecompress* codeStream, uint8_t* headerData, uint
 	cp->t_grid_width = (uint16_t)t_grid_width;
 	cp->t_grid_height = (uint16_t)t_grid_height;
 	numTiles = cp->t_grid_width * cp->t_grid_height;
-	decompressState->tilesToDecompress_.init(grk_rect16(0,0, cp->t_grid_width, cp->t_grid_height));
+	decompressState->tilesToDecompress_.init(grk_rect16(0, 0, cp->t_grid_width, cp->t_grid_height));
 	cp->tcps = new TileCodingParams[numTiles];
 	decompressState->default_tcp_->tccps = new TileComponentCodingParams[image->numcomps];
 	decompressState->default_tcp_->mct_records_ =
@@ -255,7 +255,8 @@ bool SIZMarker::read(CodeStreamDecompress* codeStream, uint8_t* headerData, uint
 	/* set up default dc level shift */
 	for(uint16_t i = 0; i < image->numcomps; ++i)
 		if(!image->comps[i].sgnd)
-			decompressState->default_tcp_->tccps[i].dc_level_shift_ = 1 << (image->comps[i].prec - 1);
+			decompressState->default_tcp_->tccps[i].dc_level_shift_ = 1
+																	  << (image->comps[i].prec - 1);
 	for(uint16_t i = 0; i < numTiles; ++i)
 		(cp->tcps + i)->tccps = new TileComponentCodingParams[image->numcomps];
 	decompressState->setState(DECOMPRESS_STATE_MH);

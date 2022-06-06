@@ -63,7 +63,8 @@ static const j2k_mct_function j2k_mct_read_functions_to_int32[] = {
 	j2k_read_int16_to_int32, j2k_read_int32_to_int32, j2k_read_float32_to_int32,
 	j2k_read_float64_to_int32};
 
-bool CodeStreamDecompress::readSOTorEOC(void){
+bool CodeStreamDecompress::readSOTorEOC(void)
+{
 	if(!readMarker())
 	{
 		decompressorState_.setState(DECOMPRESS_STATE_NO_EOC);
@@ -74,16 +75,15 @@ bool CodeStreamDecompress::readSOTorEOC(void){
 	return true;
 }
 
-
-bool CodeStreamDecompress::readCurrentMarkerBody(uint16_t *markerSize){
+bool CodeStreamDecompress::readCurrentMarkerBody(uint16_t* markerSize)
+{
 	if(!read_short(markerSize))
 	{
 		return false;
 	}
 	else if(*markerSize < MARKER_BYTES)
 	{
-		GRK_ERROR("Marker size %u for marker 0x%x is less than 2", *markerSize,
-				  curr_marker_);
+		GRK_ERROR("Marker size %u for marker 0x%x is less than 2", *markerSize, curr_marker_);
 		return false;
 	}
 	else if(*markerSize == MARKER_BYTES)
@@ -98,12 +98,12 @@ bool CodeStreamDecompress::readCurrentMarkerBody(uint16_t *markerSize){
 			return false;
 	}
 
-	*markerSize =
-		(uint16_t)(*markerSize - MARKER_BYTES); /* Subtract the size of the marker ID already read */
+	*markerSize = (uint16_t)(*markerSize -
+							 MARKER_BYTES); /* Subtract the size of the marker ID already read */
 	auto marker_handler = get_marker_handler(curr_marker_);
 	if(!marker_handler)
 	{
-		GRK_ERROR("Unknown marker 0x%x encountered",curr_marker_);
+		GRK_ERROR("Unknown marker 0x%x encountered", curr_marker_);
 		return false;
 	}
 	if(!(decompressorState_.getState() & marker_handler->states))
@@ -114,8 +114,6 @@ bool CodeStreamDecompress::readCurrentMarkerBody(uint16_t *markerSize){
 
 	return process_marker(marker_handler, *markerSize);
 }
-
-
 
 /***
  * Parse all tile parts for current tile, skipping data for tile parts that
@@ -137,8 +135,9 @@ bool CodeStreamDecompress::parseTileParts(bool* canDecompress)
 
 	/* Seek in code stream for next SOT marker. If we don't find it,
 	 *  we stop when we either read the EOC or run out of data */
-	while( (!currentTileProcessor_ || !decompressorState_.tilesToDecompress_.isComplete(currentTileProcessor_->getIndex()))
-			&& (curr_marker_ != J2K_MS_EOC))
+	while((!currentTileProcessor_ ||
+		   !decompressorState_.tilesToDecompress_.isComplete(currentTileProcessor_->getIndex())) &&
+		  (curr_marker_ != J2K_MS_EOC))
 	{
 		/* read markers until SOD is detected */
 		while(curr_marker_ != J2K_MS_SOD)
@@ -151,7 +150,7 @@ bool CodeStreamDecompress::parseTileParts(bool* canDecompress)
 			}
 
 			uint16_t markerSize;
-			if (!readCurrentMarkerBody(&markerSize))
+			if(!readCurrentMarkerBody(&markerSize))
 				return false;
 
 			/* Add the marker to the code stream index*/
@@ -168,13 +167,15 @@ bool CodeStreamDecompress::parseTileParts(bool* canDecompress)
 			}
 			if(curr_marker_ == J2K_MS_SOT)
 			{
-				//GRK_INFO("Found SOT for tile %d",currentTileProcessor_->getIndex());
-				// cache SOT position
+				// GRK_INFO("Found SOT for tile %d",currentTileProcessor_->getIndex());
+				//  cache SOT position
 				uint64_t sot_pos = stream_->tell() - markerSize - MARKER_PLUS_MARKER_LENGTH_BYTES;
 				if(sot_pos > decompressorState_.lastSotReadPosition)
 					decompressorState_.lastSotReadPosition = sot_pos;
-				// skip over data to beginning of next tile part if we are not interested in this one
-				if(!decompressorState_.tilesToDecompress_.isScheduled(currentTileProcessor_->getIndex()))
+				// skip over data to beginning of next tile part if we are not interested in this
+				// one
+				if(!decompressorState_.tilesToDecompress_.isScheduled(
+					   currentTileProcessor_->getIndex()))
 				{
 					if(!stream_->skip((int64_t)currentTileProcessor_->getTilePartDataLength()))
 					{
@@ -201,13 +202,16 @@ bool CodeStreamDecompress::parseTileParts(bool* canDecompress)
 			nextTLM();
 			if(!readSOTorEOC())
 				break;
-
-		} else {
+		}
+		else
+		{
 			if(!currentTileProcessor_->cacheTilePartPackets(this))
 				return false;
 
 			nextTLM();
-			if(!decompressorState_.tilesToDecompress_.isComplete(currentTileProcessor_->getIndex()) && !readSOTorEOC())
+			if(!decompressorState_.tilesToDecompress_.isComplete(
+				   currentTileProcessor_->getIndex()) &&
+			   !readSOTorEOC())
 				break;
 		}
 	}
@@ -349,11 +353,10 @@ TilePartLengthInfo* CodeStreamDecompress::nextTLM(void)
 			{
 				GRK_WARN("Tile %u: TLM marker tile part length %u differs from actual"
 						 " tile part length %u; %u,%u. Disabling TLM.",
-						 tilePartLengthInfo->tileIndex_,
-						 tilePartLengthInfo->length_, actualTileLength,
-						 decompressorState_.lastSotReadPosition, stream_->tell());
+						 tilePartLengthInfo->tileIndex_, tilePartLengthInfo->length_,
+						 actualTileLength, decompressorState_.lastSotReadPosition, stream_->tell());
 				cp_.tlm_markers->invalidate();
-				//assert(false);
+				// assert(false);
 				return nullptr;
 			}
 		}

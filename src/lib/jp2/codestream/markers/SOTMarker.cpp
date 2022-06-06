@@ -99,9 +99,7 @@ bool SOTMarker::read(CodeStreamDecompress* codeStream, uint8_t* headerData, uint
 	if(num_tile_parts && (tp_index >= num_tile_parts))
 	{
 		GRK_ERROR("Tile %u: Tile part index (%u) must be less than number of tile parts (%u)",
-				  index,
-				  tp_index,
-				  num_tile_parts);
+				  index, tp_index, num_tile_parts);
 		return false;
 	}
 
@@ -160,8 +158,8 @@ bool SOTMarker::read(CodeStreamDecompress* codeStream, uint8_t* headerData, uint
 	/* PSot should be equal to zero or >=14, or equal to  sot_marker_segment_len */
 	if((tilePartLength != 0) && (tilePartLength < 14) && (tilePartLength != sot_marker_segment_len))
 	{
-			GRK_ERROR("Illegal Psot value %u", tilePartLength);
-			return false;
+		GRK_ERROR("Illegal Psot value %u", tilePartLength);
+		return false;
 	}
 
 	/* Ref A.4.2: Psot may equal zero if it is the last tile-part of the code stream.*/
@@ -182,7 +180,7 @@ bool SOTMarker::read(CodeStreamDecompress* codeStream, uint8_t* headerData, uint
 	}
 
 	if(numTileParts)
-	{   /* Number of tile-part header is provided by this tile-part header */
+	{ /* Number of tile-part header is provided by this tile-part header */
 		/* tile-parts for that tile and zero (A.4.2 of 15444-1 : 2002). */
 
 		if(tcp->numTileParts_)
@@ -213,7 +211,8 @@ bool SOTMarker::read(CodeStreamDecompress* codeStream, uint8_t* headerData, uint
 		tcp->numTileParts_ = numTileParts;
 	}
 
-	/* If we know the number of tile parts from the header, we check whether we have read the last one*/
+	/* If we know the number of tile parts from the header, we check whether we have read the last
+	 * one*/
 	if(tcp->numTileParts_ && (tcp->numTileParts_ == (currentTilePart + 1)))
 		decompressState->setComplete(tileIndex);
 
@@ -221,7 +220,7 @@ bool SOTMarker::read(CodeStreamDecompress* codeStream, uint8_t* headerData, uint
 		tilePartLength, decompressState->lastTilePartInCodeStream);
 	decompressState->setState(DECOMPRESS_STATE_TPH);
 
-	grk_pt16 currTile(tile_grid_x,tile_grid_y);
+	grk_pt16 currTile(tile_grid_x, tile_grid_y);
 	auto codeStreamInfo = codeStream->getCodeStreamInfo();
 
 	return !codeStreamInfo ||

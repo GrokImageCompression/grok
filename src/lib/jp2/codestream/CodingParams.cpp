@@ -246,7 +246,8 @@ void DecompressorState::andState(uint16_t state)
 {
 	state_ &= state;
 }
-void DecompressorState::setComplete(uint16_t tileIndex){
+void DecompressorState::setComplete(uint16_t tileIndex)
+{
 	tilesToDecompress_.setComplete(tileIndex);
 }
 // parse stream until EOC or next SOT

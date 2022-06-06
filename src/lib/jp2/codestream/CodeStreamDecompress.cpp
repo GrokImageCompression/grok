@@ -25,9 +25,9 @@ namespace grk
 {
 CodeStreamDecompress::CodeStreamDecompress(IBufferedStream* stream)
 	: CodeStream(stream), curr_marker_(0), headerError_(false), headerRead_(false),
-	  marker_scratch_(nullptr), marker_scratch_size_(0),
-	  outputImage_(nullptr), tileCache_(new TileCache()), ioBufferCallback(nullptr),
-	  ioUserData(nullptr), grkRegisterReclaimCallback_(nullptr)
+	  marker_scratch_(nullptr), marker_scratch_size_(0), outputImage_(nullptr),
+	  tileCache_(new TileCache()), ioBufferCallback(nullptr), ioUserData(nullptr),
+	  grkRegisterReclaimCallback_(nullptr)
 {
 	decompressorState_.default_tcp_ = new TileCodingParams();
 	decompressorState_.lastSotReadPosition = 0;
@@ -522,8 +522,8 @@ bool CodeStreamDecompress::decompressTiles(void)
 		{
 			if(!findNextSOT(processor))
 			{
-				GRK_ERROR("Failed to find next SOT marker or EOC after tile %u/%u", processor->getIndex(),
-						  numTilesToDecompress);
+				GRK_ERROR("Failed to find next SOT marker or EOC after tile %u/%u",
+						  processor->getIndex(), numTilesToDecompress);
 				success = false;
 				goto cleanup;
 			}
@@ -587,15 +587,17 @@ bool CodeStreamDecompress::decompressTiles(void)
 			if(!success)
 				goto cleanup;
 		}
-		if (decompressorState_.tilesToDecompress_.allComplete()){
-		   // check for corrupt Adobe files where 5 tile parts per tile are signaled
-		   // but there are actually 6
-		   if (curr_marker_ == J2K_MS_SOT){
+		if(decompressorState_.tilesToDecompress_.allComplete())
+		{
+			// check for corrupt Adobe files where 5 tile parts per tile are signaled
+			// but there are actually 6
+			if(curr_marker_ == J2K_MS_SOT)
+			{
 				uint16_t markerSize;
-				if (!readCurrentMarkerBody(&markerSize))
+				if(!readCurrentMarkerBody(&markerSize))
 					return false;
-		   }
-	   	   break;
+			}
+			break;
 		}
 	}
 	if(executor)
@@ -807,10 +809,12 @@ bool CodeStreamDecompress::createOutputImage(void)
 
 	return outputImage_->supportsStripCache(&cp_) || outputImage_->allocCompositeData();
 }
-bool CodeStreamDecompress::hasTLM(void){
+bool CodeStreamDecompress::hasTLM(void)
+{
 	return cp_.tlm_markers && cp_.tlm_markers->valid();
 }
-bool CodeStreamDecompress::seekNextTilePartTLM(uint16_t tileIndex){
+bool CodeStreamDecompress::seekNextTilePartTLM(uint16_t tileIndex)
+{
 	if(hasTLM())
 	{
 		// since we have already read the first SOT marker, the TLM seek will

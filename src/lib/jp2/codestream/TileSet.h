@@ -2,10 +2,12 @@
 
 #include <set>
 
-namespace grk {
+namespace grk
+{
 
-class TileSet {
-public:
+class TileSet
+{
+  public:
 	TileSet();
 	virtual ~TileSet() = default;
 	uint16_t numScheduled(void);
@@ -19,7 +21,8 @@ public:
 	bool isComplete(uint16_t tileIndex);
 	bool allComplete(void);
 	uint16_t getSingle(void);
-private:
+
+  private:
 	uint16_t index(uint16_t x, uint16_t y);
 	uint16_t index(grk_pt16 tile);
 	std::set<uint16_t> tilesToDecompress_;
@@ -28,4 +31,4 @@ private:
 	uint16_t lastTileToDecompress_;
 };
 
-}
+} // namespace grk
