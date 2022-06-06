@@ -199,7 +199,7 @@ bool CodeStreamDecompress::parseTileParts(bool* canDecompress)
 			// prepare for next tile part
 			decompressorState_.setState(DECOMPRESS_STATE_TPH_SOT);
 
-			nextTLM();
+			nextTLM(false);
 			if(!readSOTorEOC())
 				break;
 		}
@@ -208,7 +208,7 @@ bool CodeStreamDecompress::parseTileParts(bool* canDecompress)
 			if(!currentTileProcessor_->cacheTilePartPackets(this))
 				return false;
 
-			nextTLM();
+			nextTLM(false);
 			if(!decompressorState_.tilesToDecompress_.isComplete(
 				   currentTileProcessor_->getIndex()) &&
 			   !readSOTorEOC())
@@ -338,13 +338,13 @@ bool CodeStreamDecompress::parseTileParts(bool* canDecompress)
 	return true;
 }
 
-TilePartLengthInfo* CodeStreamDecompress::nextTLM(void)
+TilePartLengthInfo* CodeStreamDecompress::nextTLM(bool peek)
 {
 	TilePartLengthInfo* tilePartLengthInfo = nullptr;
 	if(hasTLM())
 	{
 		// advance TLM to correct position
-		tilePartLengthInfo = cp_.tlm_markers->getNext();
+		tilePartLengthInfo = cp_.tlm_markers->getNext(peek);
 		// validate TLM
 		auto actualTileLength = stream_->tell() - decompressorState_.lastSotReadPosition;
 		if(tilePartLengthInfo)

@@ -428,6 +428,10 @@ void TileLengthMarkers::rewind(void)
 }
 TilePartLengthInfo* TileLengthMarkers::getNext(void)
 {
+	return getNext(false);
+}
+TilePartLengthInfo* TileLengthMarkers::getNext(bool peek)
+{
 	assert(markers_);
 	if(!valid_)
 	{
@@ -449,8 +453,12 @@ TilePartLengthInfo* TileLengthMarkers::getNext(void)
 				curr_vec_ = nullptr;
 			}
 		}
-		if(curr_vec_)
-			return &curr_vec_->operator[](markerTilePartIndex_++);
+		if(curr_vec_) {
+			auto rc =  &curr_vec_->operator[](markerTilePartIndex_);
+			if (!peek)
+				markerTilePartIndex_++;
+			return rc;
+		}
 	}
 	return nullptr;
 }
