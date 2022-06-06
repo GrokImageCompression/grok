@@ -158,7 +158,7 @@ bool CodeStreamDecompress::parseTileParts(bool* canDecompress)
 			{
 				if(!TileLengthMarkers::addTileMarkerInfo(
 					   currentTileProcessor_->getIndex(), codeStreamInfo, curr_marker_,
-					   (uint32_t)stream_->tell() - markerSize - MARKER_PLUS_MARKER_LENGTH_BYTES,
+					   stream_->tell() - markerSize - MARKER_PLUS_MARKER_LENGTH_BYTES,
 					   markerSize + MARKER_PLUS_MARKER_LENGTH_BYTES))
 				{
 					GRK_ERROR("Not enough memory to add tl marker");
