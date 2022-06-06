@@ -233,7 +233,7 @@ bool SIZMarker::read(CodeStreamDecompress* codeStream, uint8_t* headerData, uint
 	cp->t_grid_width = (uint16_t)t_grid_width;
 	cp->t_grid_height = (uint16_t)t_grid_height;
 	numTiles = cp->t_grid_width * cp->t_grid_height;
-	decompressState->decompressTiles_.init(grk_rect16(0,0, cp->t_grid_width, cp->t_grid_height));
+	decompressState->tilesToDecompress_.init(grk_rect16(0,0, cp->t_grid_width, cp->t_grid_height));
 	cp->tcps = new TileCodingParams[numTiles];
 	decompressState->default_tcp_->tccps = new TileComponentCodingParams[image->numcomps];
 	decompressState->default_tcp_->mct_records_ =

@@ -137,7 +137,8 @@ bool CodeStreamDecompress::parseTileParts(bool* canDecompress)
 
 	/* Seek in code stream for next SOT marker. If we don't find it,
 	 *  we stop when we either read the EOC or run out of data */
-	while(decompressorState_.expectsAnotherTilePart && (curr_marker_ != J2K_MS_EOC))
+	while( (!currentTileProcessor_ || !decompressorState_.tilesToDecompress_.isComplete(currentTileProcessor_->getIndex()))
+			&& (curr_marker_ != J2K_MS_EOC))
 	{
 		/* read markers until SOD is detected */
 		while(curr_marker_ != J2K_MS_SOD)
@@ -173,7 +174,7 @@ bool CodeStreamDecompress::parseTileParts(bool* canDecompress)
 				if(sot_pos > decompressorState_.lastSotReadPosition)
 					decompressorState_.lastSotReadPosition = sot_pos;
 				// skip over data to beginning of next tile part if we are not interested in this one
-				if(decompressorState_.skipTileData)
+				if(!decompressorState_.tilesToDecompress_.isScheduled(currentTileProcessor_->getIndex()))
 				{
 					if(!stream_->skip((int64_t)currentTileProcessor_->getTilePartDataLength()))
 					{
@@ -192,11 +193,9 @@ bool CodeStreamDecompress::parseTileParts(bool* canDecompress)
 			break;
 
 		// 2. handle tile packets
-		if(decompressorState_.skipTileData)
+		if(!decompressorState_.tilesToDecompress_.isScheduled(currentTileProcessor_->getIndex()))
 		{
 			// prepare for next tile part
-			decompressorState_.skipTileData = false;
-			decompressorState_.expectsAnotherTilePart = true;
 			decompressorState_.setState(DECOMPRESS_STATE_TPH_SOT);
 
 			nextTLM();
@@ -208,7 +207,7 @@ bool CodeStreamDecompress::parseTileParts(bool* canDecompress)
 				return false;
 
 			nextTLM();
-			if(!decompressorState_.decompressTiles_.isComplete(currentTileProcessor_->getIndex()) && !readSOTorEOC())
+			if(!decompressorState_.tilesToDecompress_.isComplete(currentTileProcessor_->getIndex()) && !readSOTorEOC())
 				break;
 		}
 	}
@@ -310,7 +309,7 @@ bool CodeStreamDecompress::parseTileParts(bool* canDecompress)
 		decompressorState_.setState(DECOMPRESS_STATE_EOC);
 	// if we are not ready to decompress tile part data,
 	// then skip tiles with no tile data i.e. no SOD marker
-	if(decompressorState_.expectsAnotherTilePart)
+	if(!decompressorState_.tilesToDecompress_.isComplete(currentTileProcessor_->getIndex()))
 	{
 		tcp = cp_.tcps + currentTileProcessor_->getIndex();
 		if(!tcp->compressedTileData_)

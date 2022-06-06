@@ -323,7 +323,7 @@ bool CodeStreamDecompress::setDecompressRegion(grk_rect_single region)
 			tilesToDecompress.y1 = (uint16_t)(ceildiv<uint32_t>(end_y - cp_.ty0, cp_.t_height));
 			compositeImage->y1 = end_y;
 		}
-		decompressor->decompressTiles_.schedule(tilesToDecompress);
+		decompressor->tilesToDecompress_.schedule(tilesToDecompress);
 		cp_.wholeTileDecompress_ = false;
 		if(!compositeImage->subsampleAndReduce(cp_.coding_params_.dec_.reduce_))
 			return false;
@@ -430,7 +430,7 @@ bool CodeStreamDecompress::decompressTile(uint16_t tileIndex)
 		comp->h = reducedCompBounds.height();
 	}
 	compositeImage->postReadHeader(&cp_);
-	decompressorState_.decompressTiles_.schedule(tileIndex);
+	decompressorState_.tilesToDecompress_.schedule(tileIndex);
 
 	// reset tile part numbers, in case we are re-using the same codec object
 	// from previous decompress
@@ -587,7 +587,7 @@ bool CodeStreamDecompress::decompressTiles(void)
 			if(!success)
 				goto cleanup;
 		}
-		if (decompressorState_.decompressTiles_.allComplete()){
+		if (decompressorState_.tilesToDecompress_.allComplete()){
 		   // check for corrupt Adobe files where 5 tile parts per tile are signaled
 		   // but there are actually 6
 		   if (curr_marker_ == J2K_MS_SOT){
@@ -836,14 +836,14 @@ bool CodeStreamDecompress::decompressTile(void)
 {
 	if(!createOutputImage())
 		return false;
-	if(decompressorState_.decompressTiles_.numScheduled() != 1)
+	if(decompressorState_.tilesToDecompress_.numScheduled() != 1)
 	{
 		GRK_ERROR("decompressTile: Unable to decompress tile "
 				  "since first tile SOT has not been detected");
 		return false;
 	}
 	outputImage_->hasMultipleTiles = false;
-	uint16_t tileIndex = decompressorState_.decompressTiles_.getSingle();
+	uint16_t tileIndex = decompressorState_.tilesToDecompress_.getSingle();
 	auto tileCache = tileCache_->get(tileIndex);
 	auto tileProcessor = tileCache ? tileCache->processor : nullptr;
 	if(!tileCache || !tileCache->processor->getImage())

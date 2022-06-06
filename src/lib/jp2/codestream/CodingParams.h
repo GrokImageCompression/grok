@@ -319,7 +319,7 @@ struct DecompressorState
 	// like COD, COC and RGN in main header)
 	TileCodingParams* default_tcp_;
 
-	TileSet decompressTiles_;
+	TileSet tilesToDecompress_;
 
 	/** Position of the last SOT marker read */
 	uint64_t lastSotReadPosition;
@@ -329,10 +329,6 @@ struct DecompressorState
 	 * SOD reader function.
 	 */
 	bool lastTilePartInCodeStream;
-	// Indicates that the last tile part header has been read, so that
-	// the tile's data can now be decompressed
-	bool expectsAnotherTilePart;
-	bool skipTileData;
 
   private:
 	/** Decoder state: used to indicate in which part of the code stream
