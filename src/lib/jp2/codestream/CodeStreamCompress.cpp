@@ -852,7 +852,7 @@ bool CodeStreamCompress::writeTilePart(TileProcessor* tileProcessor)
 	SOTMarker sot;
 	if(!sot.write(tileProcessor, calculatedBytesWritten))
 		return false;
-	uint32_t tilePartBytesWritten = sot_marker_segment_len;
+	uint32_t tilePartBytesWritten = sot_marker_segment_len_minus_tile_data_len;
 	// 2. write POC marker to first tile part
 	if(tileProcessor->canWritePocMarker())
 	{

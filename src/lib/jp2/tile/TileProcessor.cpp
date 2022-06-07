@@ -63,13 +63,13 @@ bool TileProcessor::setTilePartDataLength(uint16_t tilePart, uint32_t tilePartLe
 {
 	if(!lastTilePartInCodeStream)
 	{
-		if(tilePartLength < sot_marker_segment_len)
+		if(tilePartLength < sot_marker_segment_len_minus_tile_data_len)
 		{
 			GRK_ERROR("Tile part data length %u is smaller than for marker segment length %u",
-					  tilePartDataLength, sot_marker_segment_len);
+					  tilePartDataLength, sot_marker_segment_len_minus_tile_data_len);
 			return false;
 		}
-		tilePartDataLength = tilePartLength - sot_marker_segment_len;
+		tilePartDataLength = tilePartLength - sot_marker_segment_len_minus_tile_data_len;
 		if (tilePartDataLength < 2)
 			GRK_WARN("Tile %u: tile part %u data length %u is smaller than minimum size of 2 - room for single SOD marker. Ignoring.",
 					getIndex(), tilePart, tilePartDataLength);
@@ -335,7 +335,7 @@ bool TileProcessor::doCompress(void)
 	if(canPreCalculateTileLen())
 	{
 		// SOT marker
-		preCalculatedTileLen = sot_marker_segment_len;
+		preCalculatedTileLen = sot_marker_segment_len_minus_tile_data_len;
 		// POC marker
 		if(canWritePocMarker())
 		{

@@ -70,7 +70,8 @@ bool CodeStreamDecompress::readSOTorEOC(void)
 		decompressorState_.setState(DECOMPRESS_STATE_NO_EOC);
 		return false;
 	}
-	assert(curr_marker_ == J2K_MS_SOT || curr_marker_ == J2K_MS_EOC);
+	if (curr_marker_ != J2K_MS_SOT && curr_marker_ != J2K_MS_EOC)
+		GRK_WARN("Expected SOT or EOC marker - read %s marker instead.",markerString(curr_marker_).c_str());
 
 	return true;
 }

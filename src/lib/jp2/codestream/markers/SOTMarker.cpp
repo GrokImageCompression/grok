@@ -81,7 +81,7 @@ bool SOTMarker::read(CodeStreamDecompress* codeStream, uint8_t* headerData, uint
 					 uint8_t* numTileParts)
 {
 	assert(headerData != nullptr);
-	if(headerSize != sot_marker_segment_len - MARKER_PLUS_MARKER_LENGTH_BYTES)
+	if(headerSize != sot_marker_segment_len_minus_tile_data_len - MARKER_PLUS_MARKER_LENGTH_BYTES)
 	{
 		GRK_ERROR("Error reading next SOT marker");
 		return false;
@@ -90,9 +90,9 @@ bool SOTMarker::read(CodeStreamDecompress* codeStream, uint8_t* headerData, uint
 	uint16_t index;
 	uint8_t tp_index, num_tile_parts;
 	grk_read<uint16_t>(headerData, &index);
-	headerData += 2;
+	headerData += sizeof(uint16_t);
 	grk_read<uint32_t>(headerData, &len);
-	headerData += 4;
+	headerData +=sizeof(uint32_t);
 	grk_read<uint8_t>(headerData++, &tp_index);
 	grk_read<uint8_t>(headerData++, &num_tile_parts);
 
@@ -141,8 +141,8 @@ bool SOTMarker::read(CodeStreamDecompress* codeStream, uint8_t* headerData, uint
 
 	//GRK_INFO("SOT: Tile %u, tile part %u",tileIndex, currentTilePart);
 
-	/* PSot should be equal to zero or >=14, or equal to  sot_marker_segment_len */
-	if((tilePartLength != 0) && (tilePartLength < 14) && (tilePartLength != sot_marker_segment_len))
+	/* PSot should be equal to zero, or greater than or equal to sot_marker_segment_min_len */
+	if(tilePartLength && tilePartLength < sot_marker_segment_min_len)
 	{
 		GRK_ERROR("Illegal Psot value %u", tilePartLength);
 		return false;

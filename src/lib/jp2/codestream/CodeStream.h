@@ -31,7 +31,8 @@ const uint32_t default_number_mcc_records = 10;
 const uint32_t default_number_mct_records = 10;
 
 // includes marker and marker length (4 bytes)
-const uint32_t sot_marker_segment_len = 12U;
+const uint32_t sot_marker_segment_len_minus_tile_data_len = 12U;
+const uint32_t sot_marker_segment_min_len = 14U;
 
 const uint32_t SPCod_SPCoc_len = 5U;
 const uint32_t cod_coc_len = 5U;
@@ -142,6 +143,7 @@ class CodeStream
 	GrkImage* getHeaderImage(void);
 	grk_plugin_tile* getCurrentPluginTile();
 	CodingParams* getCodingParams(void);
+	static std::string markerString(uint16_t marker);
 
   protected:
 	bool exec(std::vector<PROCEDURE_FUNC>& p_procedure_list);
