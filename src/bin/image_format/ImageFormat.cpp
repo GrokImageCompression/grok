@@ -47,6 +47,8 @@ void ImageFormat::registerGrkReclaimCallback(grk_io_init io_init, grk_io_callbac
 											 void* user_data)
 {
 	serializer.registerGrkReclaimCallback(io_init, reclaim_callback, user_data);
+	if(io_init.maxPooledRequests_)
+		serializer.setMaxPooledRequests(io_init.maxPooledRequests_);
 }
 void ImageFormat::ioReclaimBuffer(uint32_t threadId, grk_io_buf buffer)
 {
