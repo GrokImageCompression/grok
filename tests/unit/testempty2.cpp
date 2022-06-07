@@ -147,13 +147,8 @@ int main(int argc, char *argv[]) {
     bSuccess = grk_decompress(codec, nullptr);
     assert(bSuccess);
 
-    bSuccess = grk_decompress_end(codec);
-    assert(bSuccess);
-
     grk_object_unref(l_stream);
-
     grk_object_unref(d_codec);
-
     grk_object_unref(&image->obj);
   }
   rc = 0;

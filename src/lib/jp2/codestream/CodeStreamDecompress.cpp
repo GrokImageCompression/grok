@@ -989,12 +989,6 @@ bool CodeStreamDecompress::readMarker(bool suppressWarning)
 
 	return true;
 }
-
-/** Reading function used after code stream if necessary */
-bool CodeStreamDecompress::end(void)
-{
-	return true;
-}
 bool CodeStreamDecompress::preProcess(void)
 {
 	return true;

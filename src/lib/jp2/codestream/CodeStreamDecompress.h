@@ -51,7 +51,6 @@ class CodeStreamDecompress : public CodeStream, public ICodeStreamDecompress
 	bool setDecompressRegion(grk_rect_single region);
 	bool decompress(grk_plugin_tile* tile);
 	bool decompressTile(uint16_t tileIndex);
-	bool end(void);
 	bool preProcess(void);
 	bool postProcess(void);
 	CodeStreamInfo* getCodeStreamInfo(void);

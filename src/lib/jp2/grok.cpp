@@ -282,16 +282,6 @@ bool GRK_CALLCONV grk_decompress_tile(grk_codec* codecWrapper, uint16_t tileInde
 	}
 	return false;
 }
-bool GRK_CALLCONV grk_decompress_end(grk_codec* codecWrapper)
-{
-	if(codecWrapper)
-	{
-		auto codec = GrkCodec::getImpl(codecWrapper);
-		return codec->decompressor_ ? codec->decompressor_->end() : false;
-	}
-	return false;
-}
-
 void GRK_CALLCONV grk_dump_codec(grk_codec* codecWrapper, uint32_t info_flag, FILE* output_stream)
 {
 	assert(codecWrapper);

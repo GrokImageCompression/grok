@@ -1289,7 +1289,7 @@ int GrkDecompress::preProcess(grk_plugin_decompress_callback_info* info)
 	// decompress all tiles
 	if(!parameters->singleTileDecompress)
 	{
-		if(!(grk_decompress(info->codec, info->tile) && grk_decompress_end(info->codec)))
+		if(!(grk_decompress(info->codec, info->tile)))
 			goto cleanup;
 	}
 	// or, decompress one particular tile

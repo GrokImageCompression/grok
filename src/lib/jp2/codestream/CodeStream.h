@@ -124,7 +124,6 @@ struct ICodeStreamDecompress
 	virtual bool setDecompressRegion(grk_rect_single region) = 0;
 	virtual bool decompress(grk_plugin_tile* tile) = 0;
 	virtual bool decompressTile(uint16_t tileIndex) = 0;
-	virtual bool end(void) = 0;
 	virtual bool preProcess(void) = 0;
 	virtual bool postProcess(void) = 0;
 	virtual void dump(uint32_t flag, FILE* outputFileStream) = 0;

@@ -143,8 +143,6 @@ int main(int argc, char *argv[]) {
   }
   if (!grk_decompress_tile(codec, tile_index))
     goto beach;
-  if (!grk_decompress_end(codec))
-    goto beach;
 
   rc = EXIT_SUCCESS;
   grk_deinitialize();

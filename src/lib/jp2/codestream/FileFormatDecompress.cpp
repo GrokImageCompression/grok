@@ -47,10 +47,6 @@ FileFormatDecompress::~FileFormatDecompress()
 {
 	delete codeStream;
 }
-void FileFormatDecompress::init_end_header_reading(void)
-{
-	procedure_list_->push_back(std::bind(&FileFormatDecompress::readHeaderProcedureImpl, this));
-}
 bool FileFormatDecompress::read_asoc(uint8_t* header_data, uint32_t header_data_size)
 {
 	assert(header_data);
@@ -327,15 +323,6 @@ bool FileFormatDecompress::decompressTile(uint16_t tileIndex)
 	}
 
 	return true;
-}
-/** Reading function used after code stream if necessary */
-bool FileFormatDecompress::end(void)
-{
-	init_end_header_reading();
-	if(!exec(procedure_list_))
-		return false;
-
-	return codeStream->end();
 }
 uint32_t FileFormatDecompress::read_asoc(AsocBox* parent, uint8_t** header_data,
 										 uint32_t* header_data_size, uint32_t asocSize)

@@ -70,7 +70,6 @@ class FileFormatDecompress : public FileFormat, public ICodeStreamDecompress
 				  uint64_t p_box_max_size);
 	bool read_asoc(uint8_t* header_data, uint32_t header_data_size);
 	void serializeAsoc(AsocBox* asoc, grk_asoc* serial_asocs, uint32_t* num_asocs, uint32_t level);
-	void init_end_header_reading(void);
 	std::map<uint32_t, BOX_FUNC> header;
 	std::map<uint32_t, BOX_FUNC> img_header;
 
