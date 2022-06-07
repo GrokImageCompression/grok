@@ -891,6 +891,21 @@ bool CodeStreamDecompress::decompressTile(void)
 
 		if(!tileProcessor->decompressT2T1(outputImage_))
 			return false;
+
+		// check for corrupt Adobe images where a final tile part is not parsed
+		// due to incorrectly-signalled number of tile parts
+		try {
+			if (readSOTorEOC() && curr_marker_ == J2K_MS_SOT){
+				uint16_t markerSize;
+				if(!readCurrentMarkerBody(&markerSize))
+					return false;
+			}
+		}
+		catch(InvalidMarkerException& ime)
+		{
+			GRK_ERROR("Found invalid marker : 0x%x", ime.marker_);
+			return false;
+		}
 	}
 
 	return true;
