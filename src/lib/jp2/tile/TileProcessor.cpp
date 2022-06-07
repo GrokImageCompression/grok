@@ -70,9 +70,19 @@ bool TileProcessor::setTilePartDataLength(uint16_t tilePart, uint32_t tilePartLe
 			return false;
 		}
 		tilePartDataLength = tilePartLength - sot_marker_segment_len_minus_tile_data_len;
-		if (tilePartDataLength < 2)
-			GRK_WARN("Tile %u: tile part %u data length %u is smaller than minimum size of 2 - room for single SOD marker. Ignoring.",
+		// handle some edge cases
+		if (tilePartDataLength < 2) {
+			if (tilePartDataLength == 1) {
+				GRK_WARN("Tile %u: tile part %u data length %u is smaller than minimum size of 2 - room for single SOD marker. Ignoring.",
 					getIndex(), tilePart, tilePartDataLength);
+				tilePartDataLength = 0;
+			}
+			else {
+				// some non-compliant images do not add 2 bytes for SOD marker
+				// for an empty tile part
+				tilePartDataLength = 2;
+			}
+		}
 	}
 	else
 	{
