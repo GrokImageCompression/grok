@@ -61,6 +61,7 @@ class CodeStreamDecompress : public CodeStream, public ICodeStreamDecompress
 	uint16_t getCurrentMarker(void);
 	void dump(uint32_t flag, FILE* outputFileStream);
 	bool needsHeaderRead(void);
+	void setExpectSOD();
 
   protected:
 	void dump_MH_info(FILE* outputFileStream);
@@ -317,6 +318,7 @@ class CodeStreamDecompress : public CodeStream, public ICodeStreamDecompress
 
 	std::map<uint16_t, marker_handler*> marker_map;
 	DecompressorState decompressorState_;
+	bool expectSOD_;
 	uint16_t curr_marker_;
 	bool headerError_;
 	bool headerRead_;

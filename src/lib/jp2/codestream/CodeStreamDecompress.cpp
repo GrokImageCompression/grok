@@ -24,7 +24,7 @@
 namespace grk
 {
 CodeStreamDecompress::CodeStreamDecompress(IBufferedStream* stream)
-	: CodeStream(stream), curr_marker_(0), headerError_(false), headerRead_(false),
+	: CodeStream(stream),expectSOD_(false), curr_marker_(0), headerError_(false), headerRead_(false),
 	  marker_scratch_(nullptr), marker_scratch_size_(0), outputImage_(nullptr),
 	  tileCache_(new TileCache()), ioBufferCallback(nullptr), ioUserData(nullptr),
 	  grkRegisterReclaimCallback_(nullptr)
@@ -111,6 +111,9 @@ CodeStreamDecompress::~CodeStreamDecompress()
 bool CodeStreamDecompress::needsHeaderRead(void)
 {
 	return !headerError_ && !headerRead_;
+}
+void CodeStreamDecompress::setExpectSOD(){
+	expectSOD_ = true;
 }
 GrkImage* CodeStreamDecompress::getCompositeImage()
 {
@@ -977,6 +980,10 @@ bool CodeStreamDecompress::readMarker(bool suppressWarning)
 {
 	if(!read_short(&curr_marker_))
 		return false;
+
+	if (expectSOD_ && curr_marker_ != J2K_MS_SOD)
+		throw InvalidMarkerException(curr_marker_);
+	expectSOD_ = false;
 
 	/* Check if the current marker ID is valid */
 	if(curr_marker_ < 0xff00)

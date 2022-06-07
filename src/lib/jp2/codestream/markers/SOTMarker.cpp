@@ -141,17 +141,22 @@ bool SOTMarker::read(CodeStreamDecompress* codeStream, uint8_t* headerData, uint
 
 	//GRK_INFO("SOT: Tile %u, tile part %u",tileIndex, currentTilePart);
 
-	/* PSot should be equal to zero, or greater than or equal to sot_marker_segment_min_len.
-	 * There is a third, technically illegal case where PSot equals sot_marker_segment_len_minus_tile_data_len,
-	 * where there is just a single SOD marker, and the SOD marker length is excluded from the signalled
-	 * PSot, for some reason.
-	 */
-	if(tilePartLength && (tilePartLength < sot_marker_segment_min_len && tilePartLength != sot_marker_segment_len_minus_tile_data_len))
-	{
-		GRK_ERROR("Illegal Psot value %u", tilePartLength);
-		return false;
-	}
+	if (tilePartLength == sot_marker_segment_len_minus_tile_data_len) {
+		// next marker should be SOD
+		codeStream->setExpectSOD();
+	} else {
+		/* PSot should be equal to zero, or greater than or equal to sot_marker_segment_min_len.
+		 * There is a third, technically illegal case where PSot equals sot_marker_segment_len_minus_tile_data_len,
+		 * where there is just a single SOD marker, and the SOD marker length is excluded from the signalled
+		 * PSot, for some reason.
+		 */
+		if(tilePartLength && (tilePartLength < sot_marker_segment_min_len))
+		{
+			GRK_ERROR("Illegal Psot value %u", tilePartLength);
+			return false;
+		}
 
+	}
 	/* Ref A.4.2: Psot may equal zero if it is the last tile-part of the code stream.*/
 	auto decompressState = codeStream->getDecompressorState();
 	if(!tilePartLength)

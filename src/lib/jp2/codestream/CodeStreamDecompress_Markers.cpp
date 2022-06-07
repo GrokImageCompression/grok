@@ -189,6 +189,7 @@ bool CodeStreamDecompress::parseTileParts(bool* canDecompress)
 						GRK_ERROR("Stream too short");
 						return false;
 					}
+					expectSOD_ = false;
 					break;
 				}
 			}
