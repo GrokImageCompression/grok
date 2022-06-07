@@ -403,7 +403,7 @@ namespace ojph {
 
       int max_bits;  //maximum number of bits that can be store in tmp
       int used_bits; //number of occupied bits in tmp
-      int tmp;       //temporary storage of coded bits
+      ui32 tmp;      //temporary storage of coded bits
     };
 
     //////////////////////////////////////////////////////////////////////////
@@ -427,7 +427,7 @@ namespace ojph {
         if (msp->pos >= msp->buf_size)
           grk::GRK_ERROR( "magnitude sign encoder's buffer is full");
         int t = ojph_min(msp->max_bits - msp->used_bits, cwd_len);
-        msp->tmp = (int)((ui32)msp->tmp | ((cwd & ((1U << t) - 1)) << msp->used_bits));
+        msp->tmp |= (cwd & ((1U << t) - 1)) << msp->used_bits;
         msp->used_bits += t;
         cwd >>= t;
         cwd_len -= t;
@@ -448,7 +448,7 @@ namespace ojph {
       if (msp->used_bits)
       {
         int t = msp->max_bits - msp->used_bits; //unused bits
-        msp->tmp |= (0xFF & ((1 << t) - 1)) << msp->used_bits;
+        msp->tmp |= (0xFF & ((1U << t) - 1)) << msp->used_bits;
         msp->used_bits += t;
         if (msp->tmp != 0xFF)
         {
@@ -475,12 +475,12 @@ namespace ojph {
                                ojph::coded_lists *& coded)
     {
       assert(num_passes == 1);
-      (void)num_passes;
-      const int ms_size = 16384;         //more than enough
+      (void)num_passes;                      //currently not used
+      const int ms_size = (16384*16+14)/15;  //more than enough
       ui8 ms_buf[ms_size];
-      const int mel_vlc_size = 3072;     //more than enough
+      const int mel_vlc_size = 3072;         //more than enough
       ui8 mel_vlc_buf[mel_vlc_size];
-      const int mel_size = 128;
+      const int mel_size = 192;
       ui8 *mel_buf = mel_vlc_buf;
       const int vlc_size = mel_vlc_size - mel_size;
       ui8 *vlc_buf = mel_vlc_buf + mel_size;

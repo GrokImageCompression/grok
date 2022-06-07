@@ -157,7 +157,7 @@ bool T1OJPH::decompress(grk::DecompressBlockExec* block)
 		{
 			rc = ojph::local::ojph_decode_codeblock(
 				actual_coded_data, (uint32_t*)unencoded_data, block->k_msbs, (uint32_t)num_passes,
-				(uint32_t)offset, 0, cblk->width(), cblk->height(), stride);
+				(uint32_t)offset, 0, cblk->width(), cblk->height(), stride,false);
 		}
 		else
 		{

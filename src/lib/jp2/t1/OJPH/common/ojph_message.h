@@ -2,21 +2,21 @@
 // This software is released under the 2-Clause BSD license, included
 // below.
 //
-// Copyright (c) 2019, Aous Naman 
+// Copyright (c) 2019, Aous Naman
 // Copyright (c) 2019, Kakadu Software Pty Ltd, Australia
 // Copyright (c) 2019, The University of New South Wales, Australia
-// 
+//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are
 // met:
-// 
+//
 // 1. Redistributions of source code must retain the above copyright
 // notice, this list of conditions and the following disclaimer.
-// 
+//
 // 2. Redistributions in binary form must reproduce the above copyright
 // notice, this list of conditions and the following disclaimer in the
 // documentation and/or other materials provided with the distribution.
-// 
+//
 // THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS
 // IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
 // TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
@@ -30,92 +30,97 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //***************************************************************************/
 // This file is part of the OpenJPH software implementation.
-// File: ojph_mem.cpp
+// File: ojph_message.h
 // Author: Aous Naman
-// Date: 28 August 2019
+// Date: 29 August 2019
 //***************************************************************************/
 
+#ifndef OJPH_MESSAGE_H
+#define OJPH_MESSAGE_H 
 
-#include <new>
-#include "ojph_mem.h"
+#include <cstring>
+#include "ojph_arch.h"
 
 namespace ojph {
 
   ////////////////////////////////////////////////////////////////////////////
-  //
-  //
-  //
-  //
-  //
-  ////////////////////////////////////////////////////////////////////////////
-
-  ////////////////////////////////////////////////////////////////////////////
-  template<>
-  void line_buf::finalize_alloc<si32>(mem_fixed_allocator *p)
+  enum OJPH_MSG_LEVEL : int
   {
-    assert(p != 0 && size != 0);
-    i32 = p->post_alloc_data<si32>(size, pre_size);
-  }
+    NO_MSG = 0,
+    INFO = 1,
+    WARN = 2,
+    ERROR = 3
+  };
 
   ////////////////////////////////////////////////////////////////////////////
-  template<>
-  void line_buf::finalize_alloc<float>(mem_fixed_allocator *p)
+  class message_base {
+  public:
+    OJPH_EXPORT
+      virtual void operator() (int warn_code, const char* file_name,
+        int line_num, const char *fmt, ...) = 0;
+  };
+
+  ////////////////////////////////////////////////////////////////////////////
+  class message_info : public message_base
   {
-    assert(p != 0 && size != 0);
-    f32 = p->post_alloc_data<float>(size, pre_size);
-  }
+    public:
+      OJPH_EXPORT
+      virtual void operator() (int info_code, const char* file_name,
+        int line_num, const char* fmt, ...);
+  };
 
   ////////////////////////////////////////////////////////////////////////////
-  template<>
-  void line_buf::wrap(si32 *buffer, size_t num_ele, ui32 pre_size)
+  OJPH_EXPORT
+    void set_info_stream(FILE* s);
+  OJPH_EXPORT
+    void configure_info(message_info* info);
+  OJPH_EXPORT
+    message_info& get_info();
+
+  ////////////////////////////////////////////////////////////////////////////
+  class message_warning : public message_base
   {
-    i32 = buffer;
-    this->size = num_ele;
-    this->pre_size = pre_size;
-  }
+    public:
+      OJPH_EXPORT
+      virtual void operator() (int warn_code, const char* file_name,
+        int line_num, const char* fmt, ...);
+  };
 
   ////////////////////////////////////////////////////////////////////////////
-  template<>
-  void line_buf::wrap(float *buffer, size_t num_ele, ui32 pre_size)
+  OJPH_EXPORT
+    void set_warning_stream(FILE* s);
+  OJPH_EXPORT
+    void configure_warning(message_warning* warn);
+  OJPH_EXPORT
+    message_warning& get_warning();
+
+  ////////////////////////////////////////////////////////////////////////////
+  class message_error : public message_base
   {
-    f32 = buffer;
-    this->size = num_ele;
-    this->pre_size = pre_size;
-  }
+    public:
+      OJPH_EXPORT
+      virtual void operator() (int warn_code, const char* file_name,
+        int line_num, const char *fmt, ...);
+  };
 
   ////////////////////////////////////////////////////////////////////////////
-  //
-  //
-  //
-  //
-  //
-  ////////////////////////////////////////////////////////////////////////////
-
-  ////////////////////////////////////////////////////////////////////////////
-  void mem_elastic_allocator::get_buffer(ui32 needed_bytes, coded_lists* &p)
-  {
-    ui32 extended_bytes = needed_bytes + (ui32)sizeof(coded_lists);
-
-    if (store == NULL)
-    {
-      ui32 bytes = ojph_max(extended_bytes, chunk_size);
-      store = (stores_list*)malloc(bytes);
-      cur_store = store = new (store) stores_list(bytes);
-      total_allocated += bytes;
-    }
-
-    if (cur_store->available < extended_bytes)
-    {
-      ui32 bytes = ojph_max(extended_bytes, chunk_size);
-      cur_store->next_store = (stores_list*)malloc(bytes);
-      cur_store = new (cur_store->next_store) stores_list(bytes);
-      total_allocated += bytes;
-    }
-
-    p = new (cur_store->data) coded_lists(needed_bytes);
-
-    cur_store->available -= extended_bytes;
-    cur_store->data += extended_bytes;
-  }
-
+  OJPH_EXPORT
+  void set_error_stream(FILE *s);
+  OJPH_EXPORT
+  void configure_error(message_error* error);
+  OJPH_EXPORT
+  message_error& get_error();
 }
+
+//////////////////////////////////////////////////////////////////////////////
+#if (defined OJPH_OS_WINDOWS)
+  #define __OJPHFILE__ \
+    (strrchr(__FILE__, '\\') ? strrchr(__FILE__, '\\') + 1 : __FILE__)
+#else
+  #define __OJPHFILE__ \
+    (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
+#endif
+
+
+
+#endif // !OJPH_MESSAGE_H

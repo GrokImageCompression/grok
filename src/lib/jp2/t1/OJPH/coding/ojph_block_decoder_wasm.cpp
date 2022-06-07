@@ -2,9 +2,9 @@
 // This software is released under the 2-Clause BSD license, included
 // below.
 //
-// Copyright (c) 2019, Aous Naman 
-// Copyright (c) 2019, Kakadu Software Pty Ltd, Australia
-// Copyright (c) 2019, The University of New South Wales, Australia
+// Copyright (c) 2022, Aous Naman 
+// Copyright (c) 2022, Kakadu Software Pty Ltd, Australia
+// Copyright (c) 2022, The University of New South Wales, Australia
 // 
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are
@@ -30,14 +30,14 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //***************************************************************************/
 // This file is part of the OpenJPH software implementation.
-// File: ojph_block_decoder.cpp
+// File: ojph_block_decoder_wasm.cpp
 // Author: Aous Naman
 // Date: 13 May 2022
 //***************************************************************************/
 
 //***************************************************************************/
-/** @file ojph_block_decoder.cpp
- *  @brief implements a HTJ2K block decoder
+/** @file ojph_block_decoder_wasm.cpp
+ *  @brief implements a faster HTJ2K block decoder using wasm simd
  */
 
 #include <string>
@@ -45,16 +45,23 @@
 
 #include <cassert>
 #include <cstring>
-#include "grok.h"
-#include "logger.h"
-
 #include "ojph_block_common.h"
 #include "ojph_block_decoder.h"
 #include "ojph_arch.h"
 #include "ojph_message.h"
 
+#include <wasm_simd128.h>
+
 namespace ojph {
   namespace local {
+
+    //************************************************************************/
+    /** @brief Macros that help with typing and space
+     */
+    #define OJPH_REPEAT2(a) a,a
+    #define OJPH_REPEAT4(a) a,a,a,a
+    #define OJPH_REPEAT8(a) a,a,a,a,a,a,a,a
+    #define OJPH_REPEAT16(a) a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a
 
     //************************************************************************/
     /** @brief MEL state structure for reading and decoding the MEL bitstream
@@ -568,8 +575,7 @@ namespace ojph {
      *  @param [in]  mrp is a pointer to rev_struct structure
      *  @param [in]  num_bits is the number of bits to be removed
      */
-    static inline 
-    ui32 rev_advance_mrp(rev_struct *mrp, ui32 num_bits)
+    inline ui32 rev_advance_mrp(rev_struct *mrp, ui32 num_bits)
     {
       assert(num_bits <= mrp->bits); // we must not consume more than mrp->bits
       mrp->tmp >>= num_bits;  // discard the lowest num_bits bits
@@ -583,14 +589,14 @@ namespace ojph {
      */
     struct frwd_struct {
       const ui8* data;  //!<pointer to bitstream
-      ui64 tmp;         //!<temporary buffer of read data
+      ui8 tmp[48];      //!<temporary buffer of read data + 16 extra
       ui32 bits;        //!<number of bits stored in tmp
       ui32 unstuff;     //!<1 if a bit needs to be unstuffed from next byte
       int size;         //!<size of data
     };
 
     //************************************************************************/
-    /** @brief Read and unstuffs 32 bits from forward-growing bitstream
+    /** @brief Read and unstuffs 16 bytes from forward-growing bitstream
      *  
      *  A template is used to accommodate a different requirement for
      *  MagSgn and SPP bitstreams; in particular, when MagSgn bitstream is
@@ -601,58 +607,92 @@ namespace ojph {
      *  in the conpressed sequence.  So whenever a value of 0xFF is coded, the
      *  MSB of the next byte is set 0 and must be ignored during decoding.
      *
-     *  Reading can go beyond the end of buffer by up to 3 bytes.
+     *  Reading can go beyond the end of buffer by up to 16 bytes.
      *
      *  @tparam       X is the value fed in when the bitstream is exhausted
      *  @param  [in]  msp is a pointer to frwd_struct structure
      *
-     */ 
+     */
     template<int X>
     static inline 
     void frwd_read(frwd_struct *msp)
     {
-      assert(msp->bits <= 32); // assert that there is a space for 32 bits
+      assert(msp->bits <= 128);
 
-      ui32 val = 0;
-      if (msp->size > 3) {
-        val = *(ui32*)msp->data;  // read 32 bits
-        msp->data += 4;           // increment pointer
-        msp->size -= 4;           // reduce size
-      }
-      else if (msp->size > 0)
+      v128_t offset, val, validity, all_xff;
+      val = wasm_v128_load(msp->data);
+      int bytes = msp->size >= 16 ? 16 : msp->size;
+      validity = wasm_i8x16_splat((char)bytes);
+      msp->data += bytes;
+      msp->size -= bytes;
+      ui32 bits = 128;
+      offset = wasm_i64x2_const(0x0706050403020100,0x0F0E0D0C0B0A0908);
+      validity = wasm_i8x16_gt(validity, offset);
+      all_xff = wasm_i8x16_const(OJPH_REPEAT16(-1));
+      if (X == 0xFF) // the compiler should remove this if statement
       {
-        int i = 0;
-        val = X != 0 ? 0xFFFFFFFFu : 0;
-        while (msp->size > 0) {   
-          ui32 v = *msp->data++;    // read one byte at a time
-          ui32 m = ~(0xFFu << i);    // mask of location
-          val = (val & m) | (v << i);// put one byte in its correct location
-          --msp->size;
-          i += 8;          
-        }
+        v128_t t = wasm_v128_xor(validity, all_xff); // complement
+        val = wasm_v128_or(t, val); // fill with 0xFF
       }
+      else if (X == 0)
+        val = wasm_v128_and(validity, val); // fill with zeros 
       else
-        val = X != 0 ? 0xFFFFFFFFu : 0;
+        assert(0);
 
-      // we accumulate in t and keep a count of the number of bits in bits
-      ui32 bits = 8 - msp->unstuff;        
-      ui32 t = val & 0xFF;
-      bool unstuff = ((val & 0xFF) == 0xFF);  // Do we need unstuffing next?
+      v128_t ff_bytes;
+      ff_bytes = wasm_i8x16_eq(val, all_xff);
+      ff_bytes = wasm_v128_and(ff_bytes, validity);
+      ui32 flags = wasm_i8x16_bitmask(ff_bytes); 
+      flags <<= 1; // unstuff following byte
+      ui32 next_unstuff = flags >> 16;
+      flags |= msp->unstuff;
+      flags &= 0xFFFF;
+      while (flags) 
+      { // bit unstuffing occurs on average once every 256 bytes
+        // therefore it is not an issue if it is a bit slow
+        // here we process 16 bytes
+        --bits; // consuming one stuffing bit
 
-      t |= ((val >> 8) & 0xFF) << bits;
-      bits += 8 - unstuff;
-      unstuff = (((val >> 8) & 0xFF) == 0xFF);
+        ui32 loc = 31 - count_leading_zeros(flags);
+        flags ^= 1 << loc;
 
-      t |= ((val >> 16) & 0xFF) << bits;
-      bits += 8 - unstuff;
-      unstuff = (((val >> 16) & 0xFF) == 0xFF);
+        v128_t m, t, c;
+        t = wasm_i8x16_splat((char)loc);
+        m = wasm_i8x16_gt(offset, t);
 
-      t |= ((val >> 24) & 0xFF) << bits;
-      bits += 8 - unstuff;
-      msp->unstuff = (((val >> 24) & 0xFF) == 0xFF); // for next byte
+        t = wasm_v128_and(m, val);    // keep bits at locations larger than loc
+        c = wasm_u64x2_shr(t, 1);     // 1 bits left
+        t = wasm_i64x2_shuffle(t, wasm_i64x2_const(0, 0), 1, 2);
+        t = wasm_i64x2_shl(t, 63);    // keep the MSB only
+        t = wasm_v128_or(t, c);       // combine the above 3 steps
+                                    
+        val = wasm_v128_or(t, wasm_v128_andnot(val, m));
+      }
 
-      msp->tmp |= ((ui64)t) << msp->bits;  // move data to msp->tmp
+      // combine with earlier data
+      assert(msp->bits >= 0 && msp->bits <= 128);
+      int cur_bytes = msp->bits >> 3;
+      ui32 cur_bits = msp->bits & 7;
+      v128_t b1, b2;
+      b1 = wasm_i64x2_shl(val, cur_bits);
+      //next shift 8 bytes right
+      b2 = wasm_i64x2_shuffle(wasm_i64x2_const(0, 0), val, 1, 2);
+      b2 = wasm_u64x2_shr(b2, 64u - cur_bits);
+      b2 = (cur_bits > 0) ? b2 : wasm_i64x2_const(0, 0);
+      b1 = wasm_v128_or(b1, b2);
+      b2 = wasm_v128_load(msp->tmp + cur_bytes);
+      b2 = wasm_v128_or(b1, b2);
+      wasm_v128_store(msp->tmp + cur_bytes, b2);
+
+      ui32 consumed_bits = bits < 128u - cur_bits ? bits : 128u - cur_bits;
+      cur_bytes = (msp->bits + consumed_bits + 7) >> 3; // round up
+      int upper = wasm_u16x8_extract_lane(val, 7);
+      upper >>= consumed_bits + 16 - 128;
+      msp->tmp[cur_bytes] = (ui8)upper; // copy byte
+
       msp->bits += bits;
+      msp->unstuff = next_unstuff;   // next unstuff
+      assert(msp->unstuff == 0 || msp->unstuff == 1);
     }
 
     //************************************************************************/
@@ -665,30 +705,19 @@ namespace ojph {
      *  @param [in]  size is the number of byte in the bitstream
      */
     template<int X>
-    static inline
+    static inline 
     void frwd_init(frwd_struct *msp, const ui8* data, int size)
     {
       msp->data = data;
-      msp->tmp = 0;
+      wasm_v128_store(msp->tmp, wasm_i64x2_const(0, 0));
+      wasm_v128_store(msp->tmp + 16, wasm_i64x2_const(0, 0));
+      wasm_v128_store(msp->tmp + 32, wasm_i64x2_const(0, 0));
+
       msp->bits = 0;
       msp->unstuff = 0;
       msp->size = size;
 
-      //This code is designed for an architecture that read address should
-      // align to the read size (address multiple of 4 if read size is 4)
-      //These few lines take care of the case where data is not at a multiple
-      // of 4 boundary.  It reads 1,2,3 up to 4 bytes from the bitstream
-      int num = 4 - (int)(intptr_t(msp->data) & 0x3);
-      for (int i = 0; i < num; ++i)
-      {
-        ui64 d;
-        //read a byte if the buffer is not exhausted, otherwise set it to X
-        d = msp->size-- > 0 ? *msp->data++ : X;
-        msp->tmp |= (d << msp->bits);      // store data in msp->tmp
-        msp->bits += 8 - msp->unstuff;     // number of bits added to msp->tmp
-        msp->unstuff = ((d & 0xFF) == 0xFF); // unstuffing for next byte
-      }
-      frwd_read<X>(msp); // read 32 bits more
+      frwd_read<X>(msp); // read 128 bits more
     }
 
     //************************************************************************/
@@ -700,9 +729,36 @@ namespace ojph {
     static inline 
     void frwd_advance(frwd_struct *msp, ui32 num_bits)
     {
-      assert(num_bits <= msp->bits);
-      msp->tmp >>= num_bits;  // consume num_bits
+      assert(num_bits > 0 && num_bits <= msp->bits && num_bits < 128);
       msp->bits -= num_bits;
+
+      v128_t *p = (v128_t*)(msp->tmp + ((num_bits >> 3) & 0x18));
+      num_bits &= 63;
+
+      v128_t v0, v1, c0, c1, t;
+      v0 = wasm_v128_load(p);
+      v1 = wasm_v128_load(p + 1);
+
+      // shift right by num_bits
+      c0 = wasm_u64x2_shr(v0, num_bits);
+      t = wasm_i64x2_shuffle(v0, wasm_i64x2_const(0, 0), 1, 2);
+      t = wasm_i64x2_shl(t, 64 - num_bits);
+      t = (num_bits > 0) ? t : wasm_i64x2_const(0, 0);
+      c0 = wasm_v128_or(c0, t);
+      t = wasm_i64x2_shuffle(wasm_i64x2_const(0, 0), v1, 1, 2);
+      t = wasm_i64x2_shl(t, 64 - num_bits);
+      t = (num_bits > 0) ? t : wasm_i64x2_const(0, 0);
+      c0 = wasm_v128_or(c0, t);
+
+      wasm_v128_store(msp->tmp, c0);
+
+      c1 = wasm_u64x2_shr(v1, num_bits);
+      t = wasm_i64x2_shuffle(v1, wasm_i64x2_const(0, 0), 1, 2);
+      t = wasm_i64x2_shl(t, 64 - num_bits);
+      t = (num_bits > 0) ? t : wasm_i64x2_const(0, 0);
+      c1 = wasm_v128_or(c1, t);
+
+      wasm_v128_store(msp->tmp + 16, c1);
     }
 
     //************************************************************************/
@@ -713,17 +769,267 @@ namespace ojph {
      *  @param [in]  msp is a pointer to frwd_struct
      */
     template<int X>
-    static inline 
-    ui32 frwd_fetch(frwd_struct *msp)
+    static inline
+    v128_t frwd_fetch(frwd_struct *msp)
     {
-      if (msp->bits < 32)
+      if (msp->bits <= 128)
       {
         frwd_read<X>(msp);
-        if (msp->bits < 32) //need to test
+        if (msp->bits <= 128) //need to test
           frwd_read<X>(msp);
       }
-      return (ui32)msp->tmp;
+      v128_t t = wasm_v128_load(msp->tmp);
+      return t;
     }
+
+    //************************************************************************/
+    /** @brief decodes one quad, using 32 bit data
+     *
+     *  @tparam N       0 for the first quad and 1 for the second quad in an
+     *                  octet
+     *  @param inf_u_q  decoded VLC code, with interleaved u values
+     *  @param U_q      U values
+     *  @param magsgn   structure for forward data buffer
+     *  @param p        bitplane at which we are decoding
+     *  @param vn       used for handling E values (stores v_n values)
+     *  @return v128_t decoded quad
+     */
+    template <int N>
+    static inline 
+    v128_t decode_one_quad32(const v128_t inf_u_q, v128_t U_q,
+                              frwd_struct* magsgn, ui32 p, v128_t& vn)
+    {
+      v128_t w0;    // workers
+      v128_t insig; // lanes hold FF's if samples are insignificant
+      v128_t flags; // lanes hold e_k, e_1, and rho
+      v128_t row;   // decoded row
+
+      row = wasm_i64x2_const(0, 0);
+      w0 = wasm_i32x4_shuffle(inf_u_q, inf_u_q, N, N, N, N);
+      // we keeps e_k, e_1, and rho in w2
+      flags = wasm_v128_and(w0, wasm_i32x4_const(0x1110,0x2220,0x4440,0x8880));
+      insig = wasm_i32x4_eq(flags, wasm_i64x2_const(0, 0));
+      if (wasm_i8x16_bitmask(insig) != 0xFFFF) //are all insignificant?
+      {
+        U_q = wasm_i32x4_shuffle(U_q, U_q, N, N, N, N);
+        flags = wasm_i16x8_mul(flags, wasm_i16x8_const(8,8,4,4,2,2,1,1));
+        v128_t ms_vec = frwd_fetch<0xFF>(magsgn); 
+
+        // U_q holds U_q for this quad
+        // flags has e_k, e_1, and rho such that e_k is sitting in the
+        // 0x8000, e_1 in 0x800, and rho in 0x80
+
+        // next e_k and m_n
+        v128_t m_n;
+        w0 = wasm_u32x4_shr(flags, 15); // e_k
+        m_n = wasm_i32x4_sub(U_q, w0);
+        m_n = wasm_v128_andnot(m_n, insig);
+
+        // find cumulative sums
+        // to find at which bit in ms_vec the sample starts
+        v128_t ex_sum, shfl, inc_sum = m_n; // inclusive scan
+        shfl = wasm_i32x4_shuffle(wasm_i64x2_const(0,0), inc_sum, 3, 4, 5, 6);
+        inc_sum = wasm_i32x4_add(inc_sum, shfl);
+        shfl = wasm_i64x2_shuffle(wasm_i64x2_const(0,0), inc_sum, 1, 2);
+        inc_sum = wasm_i32x4_add(inc_sum, shfl);
+        int total_mn = wasm_u16x8_extract_lane(inc_sum, 6);
+        ex_sum = wasm_i32x4_shuffle(wasm_i64x2_const(0,0), inc_sum, 3, 4, 5, 6);
+
+        // find the starting byte and starting bit
+        v128_t byte_idx = wasm_u32x4_shr(ex_sum, 3);
+        v128_t bit_idx = 
+          wasm_v128_and(ex_sum, wasm_i32x4_const(OJPH_REPEAT4(7)));
+        byte_idx = wasm_i8x16_swizzle(byte_idx, 
+          wasm_i32x4_const(0x00000000, 0x04040404, 0x08080808, 0x0C0C0C0C));
+        byte_idx = 
+          wasm_i32x4_add(byte_idx, wasm_i32x4_const(OJPH_REPEAT4(0x03020100)));
+        v128_t d0 = wasm_i8x16_swizzle(ms_vec, byte_idx);
+        byte_idx = 
+          wasm_i32x4_add(byte_idx, wasm_i32x4_const(OJPH_REPEAT4(0x01010101)));
+        v128_t d1 = wasm_i8x16_swizzle(ms_vec, byte_idx);
+
+        // shift samples values to correct location
+        bit_idx = wasm_v128_or(bit_idx, wasm_i32x4_shl(bit_idx, 16));
+        v128_t bit_shift = wasm_i8x16_swizzle(
+          wasm_i8x16_const(-1, 127, 63, 31, 15, 7, 3, 1,
+                           -1, 127, 63, 31, 15, 7, 3, 1), bit_idx);
+        bit_shift = 
+          wasm_i16x8_add(bit_shift, wasm_i16x8_const(OJPH_REPEAT8(0x0101)));
+        d0 = wasm_i16x8_mul(d0, bit_shift);
+        d0 = wasm_u16x8_shr(d0, 8); // we should have 8 bits in the LSB
+        d1 = wasm_i16x8_mul(d1, bit_shift);
+        d1 =  // 8 in MSB
+          wasm_v128_and(d1, wasm_u32x4_const(OJPH_REPEAT4(0xFF00FF00)));
+        d0 = wasm_v128_or(d0, d1);
+
+        // find location of e_k and mask
+        v128_t shift;
+        v128_t ones = wasm_i32x4_const(OJPH_REPEAT4(1));
+        v128_t twos = wasm_i32x4_const(OJPH_REPEAT4(2));
+        ui32 U_q_m1 = wasm_u32x4_extract_lane(U_q, 0) - 1u;
+        w0 = wasm_i32x4_sub(twos, w0);
+        shift = wasm_i32x4_shl(w0, U_q_m1);
+        ms_vec = wasm_v128_and(d0, wasm_i32x4_sub(shift, ones));
+
+        // next e_1
+        w0 = wasm_v128_and(flags, wasm_i32x4_const(OJPH_REPEAT4(0x800)));
+        w0 = wasm_i32x4_eq(w0, wasm_i64x2_const(0, 0));
+        w0 = wasm_v128_andnot(shift, w0);  // e_1 in correct position
+        ms_vec = wasm_v128_or(ms_vec, w0); // e_1
+        w0 = wasm_i32x4_shl(ms_vec, 31);   // sign
+        ms_vec = wasm_v128_or(ms_vec, ones); // bin center
+        v128_t tvn = ms_vec;
+        ms_vec = wasm_i32x4_add(ms_vec, twos);// + 2
+        ms_vec = wasm_i32x4_shl(ms_vec, p - 1);
+        ms_vec = wasm_v128_or(ms_vec, w0); // sign
+        row = wasm_v128_andnot(ms_vec, insig); // significant only
+
+        ms_vec = wasm_v128_andnot(tvn, insig); // significant only
+        if (N == 0) // the compiler should remove one
+          tvn = wasm_i8x16_swizzle(ms_vec, 
+            wasm_i32x4_const(0x07060504, 0x0F0E0D0C, -1, -1));
+        else if (N == 1)
+          tvn = wasm_i8x16_swizzle(ms_vec, 
+            wasm_i32x4_const(-1, 0x07060504, 0x0F0E0D0C, -1));
+        else
+          assert(0);
+        vn = wasm_v128_or(vn, tvn);
+
+        if (total_mn)
+          frwd_advance(magsgn, (ui32)total_mn);
+      }
+      return row;
+    }
+
+   //************************************************************************/
+    /** @brief decodes twos consecutive quads (one octet), using 16 bit data
+     *
+     *  @param inf_u_q  decoded VLC code, with interleaved u values
+     *  @param U_q      U values
+     *  @param magsgn   structure for forward data buffer
+     *  @param p        bitplane at which we are decoding
+     *  @param vn       used for handling E values (stores v_n values)
+     *  @return v128_t decoded quad
+     */
+    static inline 
+    v128_t decode_two_quad16(const v128_t inf_u_q, v128_t U_q, 
+                              frwd_struct* magsgn, ui32 p, v128_t& vn)
+    {
+      v128_t w0;     // workers
+      v128_t insig;  // lanes hold FF's if samples are insignificant
+      v128_t flags;  // lanes hold e_k, e_1, and rho
+      v128_t row;    // decoded row
+
+      row = wasm_i64x2_const(0, 0);
+      w0 = wasm_i8x16_swizzle(inf_u_q, 
+        wasm_i16x8_const(0x0100, 0x0100, 0x0100, 0x0100,
+                         0x0504, 0x0504, 0x0504, 0x0504));
+      // we keeps e_k, e_1, and rho in w2
+      flags = wasm_v128_and(w0, 
+        wasm_u16x8_const(0x1110, 0x2220, 0x4440, 0x8880, 
+                         0x1110, 0x2220, 0x4440, 0x8880));
+      insig = wasm_i16x8_eq(flags, wasm_i64x2_const(0, 0));
+      if (wasm_i8x16_bitmask(insig) != 0xFFFF) //are all insignificant?
+      {
+        U_q = wasm_i8x16_swizzle(U_q, 
+          wasm_i16x8_const(0x0100, 0x0100, 0x0100, 0x0100, 
+                           0x0504, 0x0504, 0x0504, 0x0504));
+        flags = wasm_i16x8_mul(flags, wasm_i16x8_const(8,4,2,1,8,4,2,1));
+        v128_t ms_vec = frwd_fetch<0xFF>(magsgn); 
+
+        // U_q holds U_q for this quad
+        // flags has e_k, e_1, and rho such that e_k is sitting in the
+        // 0x8000, e_1 in 0x800, and rho in 0x80
+
+        // next e_k and m_n
+        v128_t m_n;
+        w0 = wasm_u16x8_shr(flags, 15); // e_k
+        m_n = wasm_i16x8_sub(U_q, w0);
+        m_n = wasm_v128_andnot(m_n, insig);
+
+        // find cumulative sums
+        // to find at which bit in ms_vec the sample starts
+        v128_t ex_sum, shfl, inc_sum = m_n; // inclusive scan
+        shfl = wasm_i16x8_shuffle(wasm_i64x2_const(0,0), 
+          inc_sum, 7, 8, 9, 10, 11, 12, 13, 14);
+        inc_sum = wasm_i16x8_add(inc_sum, shfl);
+        shfl = wasm_i32x4_shuffle(wasm_i64x2_const(0,0), inc_sum, 3, 4, 5, 6);
+        inc_sum = wasm_i16x8_add(inc_sum, shfl);
+        shfl = wasm_i64x2_shuffle(wasm_i64x2_const(0,0), inc_sum, 1, 2);
+        inc_sum = wasm_i16x8_add(inc_sum, shfl);
+        int total_mn = wasm_u16x8_extract_lane(inc_sum, 7);
+        ex_sum = wasm_i16x8_shuffle(wasm_i64x2_const(0,0), 
+          inc_sum, 7, 8, 9, 10, 11, 12, 13, 14);
+
+        // find the starting byte and starting bit
+        v128_t byte_idx = wasm_u16x8_shr(ex_sum, 3);
+        v128_t bit_idx = 
+          wasm_v128_and(ex_sum, wasm_i16x8_const(OJPH_REPEAT8(7)));
+        byte_idx = wasm_i8x16_swizzle(byte_idx, 
+          wasm_i16x8_const(0x0000, 0x0202, 0x0404, 0x0606, 
+                           0x0808, 0x0A0A, 0x0C0C, 0x0E0E));
+        byte_idx = 
+          wasm_i16x8_add(byte_idx, wasm_i16x8_const(OJPH_REPEAT8(0x0100)));
+        v128_t d0 = wasm_i8x16_swizzle(ms_vec, byte_idx);
+        byte_idx = 
+          wasm_i16x8_add(byte_idx, wasm_i16x8_const(OJPH_REPEAT8(0x0101)));
+        v128_t d1 = wasm_i8x16_swizzle(ms_vec, byte_idx);
+
+        // shift samples values to correct location
+        v128_t bit_shift = wasm_i8x16_swizzle(
+          wasm_i8x16_const(-1, 127, 63, 31, 15, 7, 3, 1,
+                           -1, 127, 63, 31, 15, 7, 3, 1), bit_idx);
+        bit_shift = 
+          wasm_i16x8_add(bit_shift, wasm_i16x8_const(OJPH_REPEAT8(0x0101)));
+        d0 = wasm_i16x8_mul(d0, bit_shift);
+        d0 = wasm_u16x8_shr(d0, 8); // we should have 8 bits in the LSB
+        d1 = wasm_i16x8_mul(d1, bit_shift);
+        d1 = // 8 in MSB
+          wasm_v128_and(d1, wasm_i16x8_const(OJPH_REPEAT8((si16)0xFF00))); 
+        d0 = wasm_v128_or(d0, d1);
+
+        // find location of e_k and mask
+        v128_t shift, t0, t1;
+        v128_t ones = wasm_i16x8_const(OJPH_REPEAT8(1));
+        v128_t twos = wasm_i16x8_const(OJPH_REPEAT8(2));
+        v128_t U_q_m1 = wasm_i32x4_sub(U_q, ones);
+        ui32 Uq0 = wasm_u16x8_extract_lane(U_q_m1, 0);
+        ui32 Uq1 = wasm_u16x8_extract_lane(U_q_m1, 4);
+        w0 = wasm_i16x8_sub(twos, w0);
+        t0 = wasm_v128_and(w0, wasm_i64x2_const(-1, 0));
+        t1 = wasm_v128_and(w0, wasm_i64x2_const(0, -1));
+        t0 = wasm_i32x4_shl(t0, Uq0);
+        t1 = wasm_i32x4_shl(t1, Uq1);
+        shift = wasm_v128_or(t0, t1);
+        ms_vec = wasm_v128_and(d0, wasm_i16x8_sub(shift, ones));
+
+        // next e_1
+        w0 = wasm_v128_and(flags, wasm_i16x8_const(OJPH_REPEAT8(0x800)));
+        w0 = wasm_i16x8_eq(w0, wasm_i64x2_const(0, 0));
+        w0 = wasm_v128_andnot(shift, w0);  // e_1 in correct position
+        ms_vec = wasm_v128_or(ms_vec, w0); // e_1
+        w0 = wasm_i16x8_shl(ms_vec, 15);   // sign
+        ms_vec = wasm_v128_or(ms_vec, ones); // bin center
+        v128_t tvn = ms_vec;
+        ms_vec = wasm_i16x8_add(ms_vec, twos);// + 2
+        ms_vec = wasm_i16x8_shl(ms_vec, p - 1);
+        ms_vec = wasm_v128_or(ms_vec, w0); // sign
+        row = wasm_v128_andnot(ms_vec, insig); // significant only
+
+        ms_vec = wasm_v128_andnot(tvn, insig); // significant only
+        w0 = wasm_i8x16_swizzle(ms_vec, 
+          wasm_i16x8_const(0x0302, 0x0706, -1, -1, -1, -1, -1, -1));
+        vn = wasm_v128_or(vn, w0);
+        w0 = wasm_i8x16_swizzle(ms_vec, 
+          wasm_i16x8_const(-1, 0x0B0A, 0x0F0E, -1, -1, -1, -1, -1));
+        vn = wasm_v128_or(vn, w0);
+
+        if (total_mn)
+          frwd_advance(magsgn, (ui32)total_mn);
+      }
+      return row;
+    }
+
 
     //************************************************************************/
     /** @brief Decodes one codeblock, processing the cleanup, siginificance
@@ -742,11 +1048,11 @@ namespace ojph {
      *  @param [in]   stride is the decoded codeblock buffer stride 
      *  @param [in]   stripe_causal is true for stripe causal mode
      */
-    bool ojph_decode_codeblock(ui8* coded_data, ui32* decoded_data,
-                               ui32 missing_msbs, ui32 num_passes,
-                               ui32 lengths1, ui32 lengths2,
-                               ui32 width, ui32 height, ui32 stride,
-                               bool stripe_causal)
+    bool ojph_decode_codeblock_wasm(ui8* coded_data, ui32* decoded_data,
+                                    ui32 missing_msbs, ui32 num_passes,
+                                    ui32 lengths1, ui32 lengths2,
+                                    ui32 width, ui32 height, ui32 stride,
+                                    bool stripe_causal)
     {
       static bool insufficient_precision = false;
       static bool modify_code = false;
@@ -754,7 +1060,7 @@ namespace ojph {
 
       if (num_passes > 1 && lengths2 == 0)
       {
-        grk::GRK_WARN("A malformed codeblock that has more than "
+        OJPH_WARN(0x00010001, "A malformed codeblock that has more than "
                               "one coding pass, but zero length for "
                               "2nd and potential 3rd pass.\n");
         num_passes = 1;
@@ -762,7 +1068,7 @@ namespace ojph {
 
       if (num_passes > 3)
       {
-        grk::GRK_WARN("We do not support more than 3 coding passes; "
+        OJPH_WARN(0x00010002, "We do not support more than 3 coding passes; "
                               "This codeblocks has %d passes.\n",
                               num_passes);
         return false;
@@ -773,7 +1079,7 @@ namespace ojph {
         if (insufficient_precision == false) 
         {
           insufficient_precision = true;
-          grk::GRK_WARN( "32 bits are not enough to decode this "
+          OJPH_WARN(0x00010003, "32 bits are not enough to decode this "
                                 "codeblock. This message will not be "
                                 "displayed again.\n");
         }
@@ -783,7 +1089,7 @@ namespace ojph {
       { // not enough precision to decode and set the bin center to 1
         if (modify_code == false) {
           modify_code = true;
-          grk::GRK_WARN("Not enough precision to decode the cleanup "
+          OJPH_WARN(0x00010004, "Not enough precision to decode the cleanup "
                                 "pass. The code can be modified to support "
                                 "this case. This message will not be "
                                 "displayed again.\n");
@@ -796,7 +1102,7 @@ namespace ojph {
           num_passes = 1;
           if (truncate_spp_mrp == false) {
             truncate_spp_mrp = true;
-            grk::GRK_WARN("Not enough precision to decode the SgnProp "
+            OJPH_WARN(0x00010005, "Not enough precision to decode the SgnProp "
                                   "nor MagRef passes; both will be skipped. "
                                   "This message will not be displayed "
                                   "again.\n");
@@ -809,7 +1115,7 @@ namespace ojph {
 
       if (lengths1 < 2)
       {
-    	  grk::GRK_WARN("Wrong codeblock length.\n");
+        OJPH_WARN(0x00010006, "Wrong codeblock length.\n");
         return false;
       }
 
@@ -836,7 +1142,7 @@ namespace ojph {
       // Each entry in UVLC contains u_q
       // One extra row to handle the case of SPP propagating downwards
       // when codeblock width is 4
-      ui16 scratch[8 * 513] = {0};       // 8 kB
+      ui16 scratch[8 * 513] = {0};          // 8+ kB
 
       // We need an extra two entries (one inf and one u_q) beyond
       // the last column. 
@@ -846,6 +1152,8 @@ namespace ojph {
       // quads), we use 24 (enough for 12 quads).
       ui32 sstr = ((width + 2u) + 7u) & ~7u; // multiples of 8
 
+      assert((stride & 0x3) == 0);
+
       ui32 mmsbp2 = missing_msbs + 2;
 
       // The cleanup pass is decoded in two steps; in step one,
@@ -853,7 +1161,7 @@ namespace ojph {
       // has 2 bytes per quad. The 2 bytes contain, u, rho, e^1 & e^k.
       // This information should be sufficient for the next step.
       // In step 2, we decode the MagSgn segment.
-
+      
       // step 1 decoding VLC and MEL segments
       {
         // init structures
@@ -899,7 +1207,7 @@ namespace ojph {
           //t0 = (c_q != 0 || run == -1) ? t0 : 0;
           //if (run < 0)
           //  run = mel_get_run(&mel);  // get another run
-          sp[0] = t0;
+          sp[0] = t0; 
           x += 2;
 
           // prepare context for the next quad; eqn. 1 in ITU T.814
@@ -971,10 +1279,10 @@ namespace ojph {
           // quad 0 length
           len = uvlc_entry & 0x7; // quad 0 suffix length
           uvlc_entry >>= 3;
-          ui16 u_q = (ui16)(1 + (uvlc_entry&7) + (tmp&~(0xFFU<<len)));//kap. 1
-          sp[1] = u_q;
+          ui16 u_q = (ui16)(1 + (uvlc_entry&7) + (tmp&~(0xFFU<<len))); //kap. 1
+          sp[1] = u_q; 
           u_q = (ui16)(1 + (uvlc_entry >> 3) + (tmp >> len));  //kappa == 1
-          sp[3]= u_q;
+          sp[3] = u_q; 
         }
         sp[0] = sp[1] = 0;
 
@@ -1054,7 +1362,7 @@ namespace ojph {
             //t1 = (c_q != 0 || run == -1) ? t1 : 0;
             //if (run < 0)
             //  run = mel_get_run(&mel);  // get another run
-            sp[2] = t1;
+            sp[2] = t1; 
             x += 2;
 
             // partial c_q, will be completed when we process the next quad
@@ -1092,237 +1400,324 @@ namespace ojph {
       }
 
       // step2 we decode magsgn
+      // mmsbp2 equals K_max + 1 (we decode up to K_max bits + 1 sign bit)
+      // The 32 bit path decode 16 bits data, for which one would think
+      // 16 bits are enough, because we want to put in the center of the
+      // bin.
+      // If you have mmsbp2 equals 16 bit, and reversible coding, and
+      // no bitplanes are missing, then we can decoding using the 16 bit
+      // path, but we are not doing this here.
+      if (mmsbp2 >= 16)
       {
         // We allocate a scratch row for storing v_n values.
         // We have 512 quads horizontally.
-        // We need an extra entry to handle the case of vp[1]
-        // when vp is at the last column.
-        // Here, we allocate 4 instead of 1 to make the buffer size
-        // a multipled of 16 bytes.
-        const int v_n_size = 512 + 4;
-        ui32 v_n_scratch[v_n_size] = {0};  // 2+ kB
+        // We may go beyond the last entry by up to 4 entries.
+        // Here we allocate additional 8 entries.
+        // There are two rows in this structure, the bottom
+        // row is used to store processed entries.
+        const int v_n_size = 512 + 8;
+        ui32 v_n_scratch[2 * v_n_size] = {0}; // 4+ kB
 
         frwd_struct magsgn;
         frwd_init<0xFF>(&magsgn, coded_data, lcup - scup);
 
-        ui16 *sp = scratch;
-        ui32 *vp = v_n_scratch;
-        ui32 *dp = decoded_data;
-
-        ui32 prev_v_n = 0;
-        for (ui32 x = 0; x < width; sp += 2, ++vp)
         {
-          ui32 inf = sp[0];
-          ui32 U_q = sp[1];
-          if (U_q > mmsbp2)
-            return false;
+          ui16 *sp = scratch;
+          ui32 *vp = v_n_scratch;
+          ui32 *dp = decoded_data;
+          vp[0] = 2; // for easy calculation of emax
 
-          ui32 v_n;
-          ui32 val = 0;
-          ui32 bit = 0;
-          if (inf & (1 << (4 + bit)))
+          for (ui32 x = 0; x < width; x += 4, sp += 4, vp += 2, dp += 4)
           {
-            //get 32 bits of magsgn data
-            ui32 ms_val = frwd_fetch<0xFF>(&magsgn); 
-            ui32 m_n = U_q - ((inf >> (12 + bit)) & 1); // remove e_k
-            frwd_advance(&magsgn, m_n);                 //consume m_n
+            //here we process two quads
+            v128_t w0, w1; // workers
+            v128_t inf_u_q, U_q;
+            // determine U_q
+            {
+              inf_u_q = wasm_v128_load(sp);
+              U_q = wasm_u32x4_shr(inf_u_q, 16);
 
-            val = ms_val << 31;                     // get sign bit
-            v_n = ms_val & ((1 << m_n) - 1);        // keep only m_n bits
-            v_n |= ((inf >> (8 + bit)) & 1) << m_n; // add EMB e_1 as MSB
-            v_n |= 1;                               // add center of bin    
-            //v_n now has 2 * (\mu - 1) + 0.5 with correct sign bit
-            //add 2 to make it 2*\mu+0.5, shift it up to missing MSBs
-            val |= (v_n + 2) << (p - 1);
+              w0 = wasm_i32x4_gt(U_q, wasm_u32x4_splat(mmsbp2));
+              ui32 i = wasm_i8x16_bitmask(w0);
+              if (i & 0xFF) // only the lower two U_q
+                return false;
+            }
+
+            v128_t vn = wasm_i32x4_const(OJPH_REPEAT4(2));
+            v128_t row0 = decode_one_quad32<0>(inf_u_q, U_q, &magsgn, p, vn);
+            v128_t row1 = decode_one_quad32<1>(inf_u_q, U_q, &magsgn, p, vn);
+            w0 = wasm_v128_load(vp);
+            w0 = wasm_v128_and(w0, wasm_i32x4_const(-1,0,0,0));
+            w0 = wasm_v128_or(w0, vn);
+            wasm_v128_store(vp, w0);            
+
+            //interleave in ssse3 style 
+                 
+            w0 = wasm_i32x4_shuffle(row0, row1, 0, 4, 1, 5);
+            w1 = wasm_i32x4_shuffle(row0, row1, 2, 6, 3, 7);
+            row0 = wasm_i32x4_shuffle(w0, w1, 0, 4, 1, 5);
+            row1 = wasm_i32x4_shuffle(w0, w1, 2, 6, 3, 7);
+            wasm_v128_store(dp, row0);
+            wasm_v128_store(dp + stride, row1);
           }
-          dp[0] = val;
-
-          v_n = 0;
-          val = 0;
-          bit = 1;
-          if (inf & (1 << (4 + bit)))
-          {
-            //get 32 bits of magsgn data
-            ui32 ms_val = frwd_fetch<0xFF>(&magsgn); 
-            ui32 m_n = U_q - ((inf >> (12 + bit)) & 1); // remove e_k
-            frwd_advance(&magsgn, m_n);                 //consume m_n
-
-            val = ms_val << 31;                      // get sign bit
-            v_n = ms_val & ((1 << m_n) - 1);        // keep only m_n bits
-            v_n |= ((inf >> (8 + bit)) & 1) << m_n; // add EMB e_1 as MSB
-            v_n |= 1;                               // add center of bin    
-            //v_n now has 2 * (\mu - 1) + 0.5 with correct sign bit
-            //add 2 to make it 2*\mu+0.5, shift it up to missing MSBs
-            val |= (v_n + 2) << (p - 1);
-          }
-          dp[stride] = val;
-          vp[0] = prev_v_n | v_n;
-          prev_v_n = 0;
-          ++dp;
-          if (++x >= width)
-          { ++vp; break; }
-
-          val = 0;
-          bit = 2;
-          if (inf & (1 << (4 + bit)))
-          {
-            //get 32 bits of magsgn data
-            ui32 ms_val = frwd_fetch<0xFF>(&magsgn); 
-            ui32 m_n = U_q - ((inf >> (12 + bit)) & 1); // remove e_k
-            frwd_advance(&magsgn, m_n);                 //consume m_n
-
-            val = ms_val << 31;                     // get sign bit
-            v_n = ms_val & ((1 << m_n) - 1);        // keep only m_n bits
-            v_n |= ((inf >> (8 + bit)) & 1) << m_n; // add EMB e_1 as MSB
-            v_n |= 1;                               // add center of bin    
-            //v_n now has 2 * (\mu - 1) + 0.5 with correct sign bit
-            //add 2 to make it 2*\mu+0.5, shift it up to missing MSBs
-            val |= (v_n + 2) << (p - 1);
-          }
-          dp[0] = val;
-
-          v_n = 0;
-          val = 0;
-          bit = 3;
-          if (inf & (1 << (4 + bit)))
-          {
-            //get 32 bits of magsgn data
-            ui32 ms_val = frwd_fetch<0xFF>(&magsgn); 
-            ui32 m_n = U_q - ((inf >> (12 + bit)) & 1); // remove e_k
-            frwd_advance(&magsgn, m_n);                 //consume m_n
-
-            val = ms_val << 31;                     // get sign bit
-            v_n = ms_val & ((1 << m_n) - 1);        // keep only m_n bits
-            v_n |= ((inf >> (8 + bit)) & 1) << m_n; // add EMB e_1 as MSB
-            v_n |= 1;                               // add center of bin    
-            //v_n now has 2 * (\mu - 1) + 0.5 with correct sign bit
-            //add 2 to make it 2*\mu+0.5, shift it up to missing MSBs
-            val |= (v_n + 2) << (p - 1);
-          }
-          dp[stride] = val;
-          prev_v_n = v_n;
-          ++dp;
-          ++x;
         }
-        vp[0] = prev_v_n;
 
         for (ui32 y = 2; y < height; y += 2)
         {
-          ui16 *sp = scratch + (y >> 1) * sstr;
-          ui32 *vp = v_n_scratch;
-          ui32 *dp = decoded_data + y * stride;
-
-          prev_v_n = 0;
-          for (ui32 x = 0; x < width; sp += 2, ++vp)
           {
-            ui32 inf = sp[0];
-            ui32 u_q = sp[1];
-
-            ui32 gamma = inf & 0xF0; gamma &= gamma - 0x10; //is gamma_q 1?
-            ui32 emax = vp[0] | vp[1];
-            emax = 31 - count_leading_zeros(emax | 2); // emax - 1            
-            ui32 kappa = gamma ? emax : 1;
-
-            ui32 U_q = u_q + kappa;
-            if (U_q > mmsbp2)
-              return false;
-
-            ui32 v_n;
-            ui32 val = 0;
-            ui32 bit = 0;
-            if (inf & (1 << (4 + bit)))
+            // perform 31 - count_leading_zeros(*vp) here
+            ui32 *vp = v_n_scratch;
+            const v128_t lut_lo = wasm_i8x16_const(
+              31, 7, 6, 6, 5, 5, 5, 5, 4, 4, 4, 4, 4, 4, 4, 4
+            );
+            const v128_t lut_hi = wasm_i8x16_const(
+              31, 3, 2, 2, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0
+            );
+            const v128_t nibble_mask = wasm_i8x16_const(OJPH_REPEAT16(0x0F));
+            const v128_t byte_offset8 = wasm_i16x8_const(OJPH_REPEAT8(8));
+            const v128_t byte_offset16 = wasm_i16x8_const(OJPH_REPEAT8(16));
+            const v128_t cc = wasm_i32x4_const(OJPH_REPEAT4(31));
+            for (ui32 x = 0; x <= width; x += 8, vp += 4)
             {
-              //get 32 bits of magsgn data
-              ui32 ms_val = frwd_fetch<0xFF>(&magsgn); 
-              ui32 m_n = U_q - ((inf >> (12 + bit)) & 1); // remove e_k
-              frwd_advance(&magsgn, m_n);                 //consume m_n
+              v128_t v, t; // workers
+              v = wasm_v128_load(vp);
 
-              val = ms_val << 31;                     // get sign bit
-              v_n = ms_val & ((1 << m_n) - 1);        // keep only m_n bits
-              v_n |= ((inf >> (8 + bit)) & 1) << m_n; // add EMB e_1 as MSB
-              v_n |= 1;                               // add center of bin    
-              //v_n now has 2 * (\mu - 1) + 0.5 with correct sign bit
-              //add 2 to make it 2*\mu+0.5, shift it up to missing MSBs
-              val |= (v_n + 2) << (p - 1);
+              t = wasm_v128_and(nibble_mask, v);
+              v = wasm_v128_and(wasm_u16x8_shr(v, 4), nibble_mask);
+              t = wasm_i8x16_swizzle(lut_lo, t);
+              v = wasm_i8x16_swizzle(lut_hi, v);
+              v = wasm_u8x16_min(v, t);
+
+              t = wasm_u16x8_shr(v, 8);
+              v = wasm_v128_or(v, byte_offset8);
+              v = wasm_u8x16_min(v, t);
+
+              t = wasm_u32x4_shr(v, 16);
+              v = wasm_v128_or(v, byte_offset16);
+              v = wasm_u8x16_min(v, t);
+
+              v = wasm_i16x8_sub(cc, v);
+              wasm_v128_store(vp + v_n_size, v);
             }
-            dp[0] = val;
-
-            v_n = 0;
-            val = 0;
-            bit = 1;
-            if (inf & (1 << (4 + bit)))
-            {
-              //get 32 bits of magsgn data
-              ui32 ms_val = frwd_fetch<0xFF>(&magsgn); 
-              ui32 m_n = U_q - ((inf >> (12 + bit)) & 1); // remove e_k
-              frwd_advance(&magsgn, m_n);                 //consume m_n
-
-              val = ms_val << 31;                     // get sign bit
-              v_n = ms_val & ((1 << m_n) - 1);        // keep only m_n bits
-              v_n |= ((inf >> (8 + bit)) & 1) << m_n; // add EMB e_1 as MSB
-              v_n |= 1;                               // add center of bin    
-              //v_n now has 2 * (\mu - 1) + 0.5 with correct sign bit
-              //add 2 to make it 2*\mu+0.5, shift it up to missing MSBs
-              val |= (v_n + 2) << (p - 1);
-            }
-            dp[stride] = val;
-            vp[0] = prev_v_n | v_n;
-            prev_v_n = 0;
-            ++dp;
-            if (++x >= width)
-            { ++vp; break; }
-
-            val = 0;
-            bit = 2;
-            if (inf & (1 << (4 + bit)))
-            {
-              //get 32 bits of magsgn data
-              ui32 ms_val = frwd_fetch<0xFF>(&magsgn); 
-              ui32 m_n = U_q - ((inf >> (12 + bit)) & 1); // remove e_k
-              frwd_advance(&magsgn, m_n);                 //consume m_n
-
-              val = ms_val << 31;                     // get sign bit
-              v_n = ms_val & ((1 << m_n) - 1);        // keep only m_n bits
-              v_n |= ((inf >> (8 + bit)) & 1) << m_n; // add EMB e_1 as MSB
-              v_n |= 1;                               // add center of bin    
-              //v_n now has 2 * (\mu - 1) + 0.5 with correct sign bit
-              //add 2 to make it 2*\mu+0.5, shift it up to missing MSBs
-              val |= (v_n + 2) << (p - 1);
-            }
-            dp[0] = val;
-
-            v_n = 0;
-            val = 0;
-            bit = 3;
-            if (inf & (1 << (4 + bit)))
-            {
-              //get 32 bits of magsgn data
-              ui32 ms_val = frwd_fetch<0xFF>(&magsgn); 
-              ui32 m_n = U_q - ((inf >> (12 + bit)) & 1); // remove e_k
-              frwd_advance(&magsgn, m_n);                 //consume m_n
-
-              val = ms_val << 31;                     // get sign bit
-              v_n = ms_val & ((1 << m_n) - 1);        // keep only m_n bits
-              v_n |= ((inf >> (8 + bit)) & 1) << m_n; // add EMB e_1 as MSB
-              v_n |= 1;                               // add center of bin    
-              //v_n now has 2 * (\mu - 1) + 0.5 with correct sign bit
-              //add 2 to make it 2*\mu+0.5, shift it up to missing MSBs
-              val |= (v_n + 2) << (p - 1);
-            }
-            dp[stride] = val;
-            prev_v_n = v_n;
-            ++dp;
-            ++x;
           }
-          vp[0] = prev_v_n;
+
+          ui32 *vp = v_n_scratch;
+          ui16 *sp = scratch + (y >> 1) * sstr;
+          ui32 *dp = decoded_data + y * stride;
+          vp[0] = 2; // for easy calculation of emax
+
+          for (ui32 x = 0; x < width; x += 4, sp += 4, vp += 2, dp += 4)
+          {
+            //process two quads
+            v128_t w0, w1; // workers
+            v128_t inf_u_q, U_q;
+            // determine U_q
+            {
+              v128_t gamma, emax, kappa, u_q; // needed locally
+
+              inf_u_q = wasm_v128_load(sp);
+              gamma = 
+                wasm_v128_and(inf_u_q, wasm_i32x4_const(OJPH_REPEAT4(0xF0)));
+              w0 = wasm_i32x4_sub(gamma, wasm_i32x4_const(OJPH_REPEAT4(1)));
+              gamma = wasm_v128_and(gamma, w0);
+              gamma = wasm_i32x4_eq(gamma, wasm_i64x2_const(0, 0));
+
+              emax = wasm_v128_load(vp + v_n_size);
+              w0 = wasm_i32x4_shuffle(emax, wasm_i64x2_const(0,0), 1, 2, 3, 4);
+              emax = wasm_i16x8_max(w0, emax); // no max_epi32 in ssse3              
+              emax = wasm_v128_andnot(emax, gamma);
+
+              kappa = wasm_i32x4_const(OJPH_REPEAT4(1));
+              kappa = wasm_i16x8_max(emax, kappa); // no max_epi32 in ssse3
+
+              u_q = wasm_u32x4_shr(inf_u_q, 16);
+              U_q = wasm_i32x4_add(u_q, kappa);
+
+              w0 = wasm_i32x4_gt(U_q, wasm_u32x4_splat(mmsbp2));
+              ui32 i = wasm_i8x16_bitmask(w0);
+              if (i & 0xFF) // only the lower two U_q
+                return false;
+            }
+
+            v128_t vn = wasm_i32x4_const(OJPH_REPEAT4(2));
+            v128_t row0 = decode_one_quad32<0>(inf_u_q, U_q, &magsgn, p, vn);
+            v128_t row1 = decode_one_quad32<1>(inf_u_q, U_q, &magsgn, p, vn);
+            w0 = wasm_v128_load(vp);
+            w0 = wasm_v128_and(w0, wasm_i32x4_const(-1,0,0,0));
+            w0 = wasm_v128_or(w0, vn);
+            wasm_v128_store(vp, w0);  
+
+            //interleave in ssse3 style
+            w0 = wasm_i32x4_shuffle(row0, row1, 0, 4, 1, 5); 
+            w1 = wasm_i32x4_shuffle(row0, row1, 2, 6, 3, 7); 
+            row0 = wasm_i32x4_shuffle(w0, w1, 0, 4, 1, 5); 
+            row1 = wasm_i32x4_shuffle(w0, w1, 2, 6, 3, 7); 
+            wasm_v128_store(dp, row0);
+            wasm_v128_store(dp + stride, row1);
+          }
         }
+      }
+      else 
+      {
+        // reduce bitplane by 16 because we now have 16 bits instead of 32
+        p -= 16;
+
+        // We allocate a scratch row for storing v_n values.
+        // We have 512 quads horizontally.
+        // We may go beyond the last entry by up to 8 entries.
+        // Therefore we allocate additional 8 entries.
+        // There are two rows in this structure, the bottom
+        // row is used to store processed entries.
+        const int v_n_size = 512 + 8;
+        ui16 v_n_scratch[2 * v_n_size] = {0}; // 2+ kB
+
+        frwd_struct magsgn;
+        frwd_init<0xFF>(&magsgn, coded_data, lcup - scup);
+
+        {
+          ui16 *sp = scratch;
+          ui16 *vp = v_n_scratch;
+          ui32 *dp = decoded_data;
+          vp[0] = 2; // for easy calculation of emax
+
+          for (ui32 x = 0; x < width; x += 4, sp += 4, vp += 2, dp += 4)
+          {
+            //here we process two quads
+            v128_t w0, w1; // workers
+            v128_t inf_u_q, U_q;
+            // determine U_q
+            {
+              inf_u_q = wasm_v128_load(sp);
+              U_q = wasm_u32x4_shr(inf_u_q, 16);
+
+              w0 = wasm_i32x4_gt(U_q, wasm_u32x4_splat(mmsbp2));
+              ui32 i = wasm_i8x16_bitmask(w0);
+              if (i & 0xFF) // only the lower two U_q
+                return false;
+            }
+
+            v128_t vn = wasm_i16x8_const(OJPH_REPEAT8(2));
+            v128_t row = decode_two_quad16(inf_u_q, U_q, &magsgn, p, vn);
+            w0 = wasm_v128_load(vp);
+            w0 = wasm_v128_and(w0, wasm_i16x8_const(-1,0,0,0,0,0,0,0));
+            w0 = wasm_v128_or(w0, vn);
+            wasm_v128_store(vp, w0);  
+
+            //interleave in ssse3 style 
+            w0 = wasm_i8x16_swizzle(row, 
+              wasm_i16x8_const(-1, 0x0100, -1, 0x0504, 
+                               -1, 0x0908, -1, 0x0D0C));
+            wasm_v128_store(dp, w0);
+            w1 = wasm_i8x16_swizzle(row, 
+              wasm_i16x8_const(-1, 0x0302, -1, 0x0706, 
+                               -1, 0x0B0A, -1, 0x0F0E));
+            wasm_v128_store(dp + stride, w1);
+          }
+        }
+
+        for (ui32 y = 2; y < height; y += 2)
+        {
+          {
+            // perform 15 - count_leading_zeros(*vp) here
+            ui16 *vp = v_n_scratch;
+            const v128_t lut_lo = wasm_i8x16_const(
+              15, 7, 6, 6, 5, 5, 5, 5, 4, 4, 4, 4, 4, 4, 4, 4
+            );
+            const v128_t lut_hi = wasm_i8x16_const(
+              15, 3, 2, 2, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0
+            );
+            const v128_t nibble_mask = wasm_i8x16_const(OJPH_REPEAT16(0x0F));
+            const v128_t byte_offset8 = wasm_i16x8_const(OJPH_REPEAT8(8));
+            const v128_t cc = wasm_i16x8_const(OJPH_REPEAT8(15));
+            for (ui32 x = 0; x <= width; x += 16, vp += 8)
+            {
+              v128_t v, t; // workers
+              v = wasm_v128_load(vp);
+
+              t = wasm_v128_and(nibble_mask, v);
+              v = wasm_v128_and(wasm_u16x8_shr(v, 4), nibble_mask);
+              t = wasm_i8x16_swizzle(lut_lo, t);
+              v = wasm_i8x16_swizzle(lut_hi, v);
+              v = wasm_u8x16_min(v, t);
+
+              t = wasm_u16x8_shr(v, 8);
+              v = wasm_v128_or(v, byte_offset8);
+              v = wasm_u8x16_min(v, t);
+
+              v = wasm_i16x8_sub(cc, v);
+              wasm_v128_store(vp + v_n_size, v);
+            }
+          }
+
+          ui16 *vp = v_n_scratch;
+          ui16 *sp = scratch + (y >> 1) * sstr;
+          ui32 *dp = decoded_data + y * stride;
+          vp[0] = 2; // for easy calculation of emax
+
+          for (ui32 x = 0; x < width; x += 4, sp += 4, vp += 2, dp += 4)
+          {
+            //process two quads
+            v128_t w0, w1; // workers
+            v128_t inf_u_q, U_q;
+            // determine U_q
+            {
+              v128_t gamma, emax, kappa, u_q; // needed locally
+
+              inf_u_q = wasm_v128_load(sp);
+              gamma = 
+                wasm_v128_and(inf_u_q, wasm_i32x4_const(OJPH_REPEAT4(0xF0)));
+              w0 = wasm_i32x4_sub(gamma, wasm_i32x4_const(OJPH_REPEAT4(1)));
+              gamma = wasm_v128_and(gamma, w0);
+              gamma = wasm_i32x4_eq(gamma, wasm_i64x2_const(0, 0));
+
+              emax = wasm_v128_load(vp + v_n_size);
+              w0 = wasm_i16x8_shuffle(emax, 
+                wasm_i64x2_const(0, 0), 1, 2, 3, 4, 5, 6, 7, 8);
+              emax = wasm_i16x8_max(w0, emax); // no max_epi32 in ssse3
+              emax = wasm_i8x16_swizzle(emax, 
+                wasm_i16x8_const(0x0100, -1, 0x0302, -1, 
+                                 0x0504, -1, 0x0706, -1));
+              emax = wasm_v128_andnot(emax, gamma);
+
+              kappa = wasm_i32x4_const(OJPH_REPEAT4(1));
+              kappa = wasm_i16x8_max(emax, kappa); // no max_epi32 in ssse3
+
+              u_q = wasm_u32x4_shr(inf_u_q, 16);
+              U_q = wasm_i32x4_add(u_q, kappa);
+
+              w0 = wasm_i32x4_gt(U_q, wasm_u32x4_splat(mmsbp2));
+              ui32 i = wasm_i8x16_bitmask(w0);
+              if (i & 0xFF) // only the lower two U_q
+                return false;
+            }
+
+            v128_t vn = wasm_i16x8_const(OJPH_REPEAT8(2));
+            v128_t row = decode_two_quad16(inf_u_q, U_q, &magsgn, p, vn);
+            w0 = wasm_v128_load(vp);
+            w0 = wasm_v128_and(w0, wasm_i16x8_const(-1,0,0,0,0,0,0,0));
+            w0 = wasm_v128_or(w0, vn);
+            wasm_v128_store(vp, w0);  
+
+            w0 = wasm_i8x16_swizzle(row, 
+              wasm_i16x8_const(-1, 0x0100, -1, 0x0504, 
+                               -1, 0x0908, -1, 0x0D0C));
+            wasm_v128_store(dp, w0);
+            w1 = wasm_i8x16_swizzle(row, 
+              wasm_i16x8_const(-1, 0x0302, -1, 0x0706, 
+                               -1, 0x0B0A, -1, 0x0F0E));
+            wasm_v128_store(dp + stride, w1);
+          }
+        }
+
+        // increase bitplane back by 16 because we need to process 32 bits
+        p += 16;
       }
 
       if (num_passes > 1)
       {
         // We use scratch again, we can divide it into multiple regions
         // sigma holds all the significant samples, and it cannot
-        // be modified after it is set.  it will be used during the
+        // be modified after it is set.  it will be used during the 
         // Magnitude Refinement Pass
         ui16* const sigma = scratch;
 
@@ -1335,25 +1730,44 @@ namespace ojph {
         // each 4 consequtive bits represent one column of 4 rows
         {
           ui32 y;
-          for (y = 0; y < height; y += 4)
+
+          const v128_t mask_3 = wasm_i32x4_const(OJPH_REPEAT4(0x30));
+          const v128_t mask_C = wasm_i32x4_const(OJPH_REPEAT4(0xC0));
+          const v128_t shuffle_mask = wasm_i32x4_const(0x0C080400,-1,-1,-1);
+          for (y = 0; y < height; y += 4) 
           {
             ui16* sp = scratch + (y >> 1) * sstr;
             ui16* dp = sigma + (y >> 2) * mstr;
-            for (ui32 x = 0; x < width; x += 4, sp += 4, ++dp) {
-              ui32 t0 = 0, t1 = 0;
-              t0  = ((sp[0     ] & 0x30u) >> 4)  | ((sp[0     ] & 0xC0u) >> 2);
-              t0 |= ((sp[2     ] & 0x30u) << 4)  | ((sp[2     ] & 0xC0u) << 6);
-              t1  = ((sp[0+sstr] & 0x30u) >> 2)  | ((sp[0+sstr] & 0xC0u)     );
-              t1 |= ((sp[2+sstr] & 0x30u) << 6)  | ((sp[2+sstr] & 0xC0u) << 8);
-              dp[0] = (ui16)(t0 | t1);
+            for (ui32 x = 0; x < width; x += 8, sp += 8, dp += 2) 
+            {
+              v128_t s0, s1, u3, uC, t0, t1;
+
+              s0 = wasm_v128_load(sp);
+              u3 = wasm_v128_and(s0, mask_3);
+              u3 = wasm_u32x4_shr(u3, 4);
+              uC = wasm_v128_and(s0, mask_C);
+              uC = wasm_u32x4_shr(uC, 2);
+              t0 = wasm_v128_or(u3, uC);
+
+              s1 = wasm_v128_load(sp + sstr);
+              u3 = wasm_v128_and(s1, mask_3);
+              u3 = wasm_u32x4_shr(u3, 2);
+              uC = wasm_v128_and(s1, mask_C);
+              t1 = wasm_v128_or(u3, uC);
+
+              v128_t r = wasm_v128_or(t0, t1);
+              r = wasm_i8x16_swizzle(r, shuffle_mask);
+
+              wasm_v128_store32_lane(dp, r, 0);
             }
             dp[0] = 0; // set an extra entry on the right with 0
           }
           {
             // reset one row after the codeblock
             ui16* dp = sigma + (y >> 2) * mstr;
-            for (ui32 x = 0; x < width; x += 4, ++dp)
-              dp[0] = 0;
+            v128_t zero = wasm_i64x2_const(0, 0);
+            for (ui32 x = 0; x < width; x += 32, dp += 8)
+              wasm_v128_store(dp, zero);
             dp[0] = 0; // set an extra entry on the right with 0
           }
         }
@@ -1392,7 +1806,7 @@ namespace ojph {
             ui16 *prev_sig = prev_row_sig;
             ui16 *cur_sig = sigma + (y >> 2) * mstr;
             ui32 *dpp = decoded_data + y * stride;
-            for (ui32 x = 0; x < width; x += 4, ++cur_sig, ++prev_sig)
+            for (ui32 x = 0; x < width; x += 4, dpp += 4, ++cur_sig, ++prev_sig)
             {
               // only rows and columns inside the stripe are included
               si32 s = (si32)x + 4 - (si32)width;
@@ -1437,7 +1851,8 @@ namespace ojph {
               ui32 new_sig = mbr;
               if (new_sig)
               {
-                ui32 cwd = frwd_fetch<0>(&sigprop);
+                v128_t cwd_vec = frwd_fetch<0>(&sigprop);
+                ui32 cwd = wasm_u32x4_extract_lane(cwd_vec, 0);
 
                 ui32 cnt = 0;
                 ui32 col_mask = 0xFu;
@@ -1499,48 +1914,81 @@ namespace ojph {
 
                 if (new_sig)
                 {
-                  // new_sig has newly-discovered sig. samples during SPP
-                  // find the signs and update decoded_data
-                  ui32 *dp = dpp + x;
-                  ui32 val = 3u << (p - 2);
-                  col_mask = 0xFu;
-                  for (int i = 0; i < 4; ++i, ++dp, col_mask <<= 4)
-                  {
-                    if ((col_mask & new_sig) == 0)
-                      continue;
+                  // Spread new_sig, such that each bit is in one byte with a
+                  // value of 0 if new_sig bit is 0, and 0xFF if new_sig is 1
+                  v128_t new_sig_vec = wasm_i16x8_splat((si16)new_sig);
+                  new_sig_vec = wasm_i8x16_swizzle(new_sig_vec,
+                    wasm_i8x16_const(0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1));
+                  new_sig_vec = wasm_v128_and(new_sig_vec,
+                    wasm_u64x2_const(OJPH_REPEAT2(0x8040201008040201)));
+                  new_sig_vec = wasm_i8x16_eq(new_sig_vec,
+                    wasm_u64x2_const(OJPH_REPEAT2(0x8040201008040201)));
 
-                    //scan 4 signs
-                    ui32 sample_mask = 0x1111u & col_mask;
-                    if (new_sig & sample_mask)
-                    {
-                      assert(dp[0] == 0);
-                      dp[0] = (cwd << 31) | val;
-                      cwd >>= 1; ++cnt;
-                    }
+                  // find cumulative sums
+                  // to find which bit in cwd we should extract
+                  v128_t ex_sum, shfl, inc_sum = new_sig_vec; // inclusive scan
+                  inc_sum = wasm_i8x16_abs(inc_sum); // cvrt to 0 or 1                  
+                  shfl = wasm_i8x16_shuffle(wasm_i64x2_const(0,0), inc_sum,
+                    15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30);
+                  inc_sum = wasm_i8x16_add(inc_sum, shfl);
+                  shfl = wasm_i16x8_shuffle(wasm_i64x2_const(0,0), inc_sum, 
+                    7, 8, 9, 10, 11, 12, 13, 14);
+                  inc_sum = wasm_i8x16_add(inc_sum, shfl);
+                  shfl = wasm_i32x4_shuffle(wasm_i64x2_const(0,0), inc_sum, 
+                    3, 4, 5, 6);
+                  inc_sum = wasm_i8x16_add(inc_sum, shfl);
+                  shfl = wasm_i64x2_shuffle(wasm_i64x2_const(0,0), inc_sum, 
+                    1, 2);
+                  inc_sum = wasm_i8x16_add(inc_sum, shfl);
+                  cnt += wasm_u8x16_extract_lane(inc_sum, 15);
+                  // exclusive scan
+                  ex_sum = wasm_i8x16_shuffle(wasm_i64x2_const(0,0), inc_sum,
+                    15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30);
 
-                    sample_mask += sample_mask;
-                    if (new_sig & sample_mask)
-                    {
-                      assert(dp[stride] == 0);
-                      dp[stride] = (cwd << 31) | val;
-                      cwd >>= 1; ++cnt;
-                    }
+                  // Spread cwd, such that each bit is in one byte
+                  // with a value of 0 or 1.
+                  cwd_vec = wasm_i16x8_splat((si16)cwd);
+                  cwd_vec = wasm_i8x16_swizzle(cwd_vec,
+                    wasm_i8x16_const(0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1));
+                  cwd_vec = wasm_v128_and(cwd_vec,
+                    wasm_u64x2_const(OJPH_REPEAT2(0x8040201008040201)));
+                  cwd_vec = wasm_i8x16_eq(cwd_vec,
+                    wasm_u64x2_const(OJPH_REPEAT2(0x8040201008040201)));
+                  cwd_vec = wasm_i8x16_abs(cwd_vec);
 
-                    sample_mask += sample_mask;
-                    if (new_sig & sample_mask)
-                    {
-                      assert(dp[2 * stride] == 0);
-                      dp[2 * stride] = (cwd << 31) | val;
-                      cwd >>= 1; ++cnt;
-                    }
+                  // Obtain bit from cwd_vec correspondig to ex_sum
+                  // Basically, collect needed bits from cwd_vec
+                  v128_t v = wasm_i8x16_swizzle(cwd_vec, ex_sum);
 
-                    sample_mask += sample_mask;
-                    if (new_sig & sample_mask)
-                    {
-                      assert(dp[3 * stride] == 0);
-                      dp[3 * stride] = (cwd << 31) | val;
-                      cwd >>= 1; ++cnt;
-                    }
+                  // load data and set spp coefficients
+                  v128_t m = wasm_i8x16_const(
+                    0,-1,-1,-1,4,-1,-1,-1,8,-1,-1,-1,12,-1,-1,-1);
+                  v128_t val = wasm_i32x4_splat(3 << (p - 2));
+                  ui32 *dp = dpp;
+                  for (int c = 0; c < 4; ++ c) {
+                    v128_t s0, s0_ns, s0_val;
+                    // load coefficients
+                    s0 = wasm_v128_load(dp);
+
+                    // epi32 is -1 only for coefficient that
+                    // are changed during the SPP
+                    s0_ns = wasm_i8x16_swizzle(new_sig_vec, m);
+                    s0_ns = wasm_i32x4_eq(s0_ns, 
+                      wasm_i32x4_const(OJPH_REPEAT4(0xFF)));
+
+                    // obtain sign for coefficients in SPP
+                    s0_val = wasm_i8x16_swizzle(v, m);
+                    s0_val = wasm_i32x4_shl(s0_val, 31);
+                    s0_val = wasm_v128_or(s0_val, val);
+                    s0_val = wasm_v128_and(s0_val, s0_ns);
+
+                    // update vector
+                    s0 = wasm_v128_or(s0, s0_val);
+                    // store coefficients
+                    wasm_v128_store(dp, s0);
+                    // prepare for next row
+                    dp += stride;
+                    m = wasm_i32x4_add(m, wasm_i32x4_const(OJPH_REPEAT4(1)));
                   }
                 }
                 frwd_advance(&sigprop, cnt);
@@ -1569,50 +2017,101 @@ namespace ojph {
 
           for (ui32 y = 0; y < height; y += 4)
           {
-            ui32 *cur_sig = (ui32*)(sigma + (y >> 2) * mstr);
+            ui16 *cur_sig = sigma + (y >> 2) * mstr;
             ui32 *dpp = decoded_data + y * stride;
-            ui32 half = 1 << (p - 2);
-            for (ui32 i = 0; i < width; i += 8)
+            for (ui32 i = 0; i < width; i += 4, dpp += 4)
             {
               //Process one entry from sigma array at a time
               // Each nibble (4 bits) in the sigma array represents 4 rows,
-              // and the 32 bits contain 8 columns
               ui32 cwd = rev_fetch_mrp(&magref); // get 32 bit data
-              ui32 sig = *cur_sig++; // 32 bit that will be processed now
-              ui32 col_mask = 0xFu;  // a mask for a column in sig
+              ui16 sig = *cur_sig++; // 16 bit that will be processed now
+              int total_bits = 0;
               if (sig) // if any of the 32 bits are set
               {
-                for (int j = 0; j < 8; ++j) //one column at a time
-                {
-                  if (sig & col_mask) // lowest nibble
-                  {
-                    ui32 *dp = dpp + i + j; // next column in decoded samples
-                    ui32 sample_mask = 0x11111111u & col_mask; //LSB
+                // We work on 4 rows, with 4 samples each, since
+                // data is 32 bit (4 bytes)
 
-                    for (int k = 0; k < 4; ++k) {
-                      if (sig & sample_mask) //if LSB is set
-                      {
-                        assert(dp[0] != 0); // decoded value cannot be zero
-                        assert((dp[0] & half) == 0); // no half
-                        ui32 sym = cwd & 1;          // get it value
-                        sym = (1 - sym) << (p - 1); // previous center of bin
-                        sym |= half;            // put half the center of bin
-                        dp[0] ^= sym;    // remove old bin center and put new
-                        cwd >>= 1;       // consume word
-                      }
-                      sample_mask += sample_mask; //next row
-                      dp += stride; // next samples row
-                    }
-                  }
-                  col_mask <<= 4; //next column
+                // spread the 16 bits in sig to 0 or 1 bytes in sig_vec
+                v128_t sig_vec = wasm_i16x8_splat((si16)sig);
+                sig_vec = wasm_i8x16_swizzle(sig_vec,
+                  wasm_i8x16_const(0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1));
+                sig_vec = wasm_v128_and(sig_vec,
+                  wasm_u64x2_const(OJPH_REPEAT2(0x8040201008040201)));
+                sig_vec = wasm_i8x16_eq(sig_vec,
+                  wasm_u64x2_const(OJPH_REPEAT2(0x8040201008040201)));
+                sig_vec = wasm_i8x16_abs(sig_vec);
+
+                // find cumulative sums
+                // to find which bit in cwd we should extract
+                v128_t ex_sum, shfl, inc_sum = sig_vec; // inclusive scan
+                shfl = wasm_i8x16_shuffle(wasm_i64x2_const(0,0), inc_sum,
+                  15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30);
+                inc_sum = wasm_i8x16_add(inc_sum, shfl);
+                shfl = wasm_i16x8_shuffle(wasm_i64x2_const(0,0), inc_sum, 
+                  7, 8, 9, 10, 11, 12, 13, 14);
+                inc_sum = wasm_i8x16_add(inc_sum, shfl);
+                shfl = wasm_i32x4_shuffle(wasm_i64x2_const(0,0), inc_sum, 
+                  3, 4, 5, 6);
+                inc_sum = wasm_i8x16_add(inc_sum, shfl);
+                shfl = wasm_i64x2_shuffle(wasm_i64x2_const(0,0), inc_sum, 
+                  1, 2);
+                inc_sum = wasm_i8x16_add(inc_sum, shfl);
+                total_bits = wasm_u8x16_extract_lane(inc_sum, 15);
+                // exclusive scan
+                ex_sum = wasm_i8x16_shuffle(wasm_i64x2_const(0,0), inc_sum,
+                  15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30);
+
+                // Spread the 16 bits in cwd to inverted 0 or 1 bytes in
+                // cwd_vec. Then, convert these to a form suitable
+                // for coefficient modifications; in particular, a value
+                // of 0 is presented as binary 11, and a value of 1 is
+                // represented as binary 01
+                v128_t cwd_vec = wasm_i16x8_splat((si16)cwd);
+                cwd_vec = wasm_i8x16_swizzle(cwd_vec,
+                  wasm_i8x16_const(0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1));
+                cwd_vec = wasm_v128_and(cwd_vec, 
+                  wasm_u64x2_const(OJPH_REPEAT2(0x8040201008040201)));
+                cwd_vec = wasm_i8x16_eq(cwd_vec, 
+                  wasm_u64x2_const(OJPH_REPEAT2(0x8040201008040201)));
+                cwd_vec = 
+                  wasm_i8x16_add(cwd_vec, wasm_i8x16_const(OJPH_REPEAT16(1)));
+                cwd_vec = wasm_i8x16_add(cwd_vec, cwd_vec);
+                cwd_vec = 
+                  wasm_v128_or(cwd_vec, wasm_i8x16_const(OJPH_REPEAT16(1)));
+
+                // load data and insert the mrp bit
+                v128_t m = wasm_i8x16_const(0,-1,-1,-1,4,-1,-1,-1,
+                                            8,-1,-1,-1,12,-1,-1,-1);
+                ui32 *dp = dpp;
+                for (int c = 0; c < 4; ++c) {
+                  v128_t s0, s0_sig, s0_idx, s0_val;
+                  // load coefficients                  
+                  s0 = wasm_v128_load(dp);
+                  // find significant samples in this row
+                  s0_sig = wasm_i8x16_swizzle(sig_vec, m);
+                  s0_sig = wasm_i8x16_eq(s0_sig, wasm_i64x2_const(0, 0));
+                  // get MRP bit index, and MRP pattern
+                  s0_idx = wasm_i8x16_swizzle(ex_sum, m);
+                  s0_val = wasm_i8x16_swizzle(cwd_vec, s0_idx);
+                  // keep data from significant samples only
+                  s0_val = wasm_v128_andnot(s0_val, s0_sig);
+                  // move mrp bits to correct position, and employ
+                  s0_val = wasm_i32x4_shl(s0_val, p - 2);
+                  s0 = wasm_v128_xor(s0, s0_val);
+                  // store coefficients
+                  wasm_v128_store(dp, s0);
+                  // prepare for next row
+                  dp += stride;
+                  m = wasm_i32x4_add(m, wasm_i32x4_const(OJPH_REPEAT4(1)));
                 }
               }
               // consume data according to the number of bits set
-              rev_advance_mrp(&magref, population_count(sig));
+              rev_advance_mrp(&magref, (ui32)total_bits);
             }
           }
         }
       }
+
       return true;
     }
   }

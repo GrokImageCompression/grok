@@ -1,10 +1,10 @@
-//***************************************************************************/
+/***************************************************************************/
 // This software is released under the 2-Clause BSD license, included
 // below.
 //
-// Copyright (c) 2019, Aous Naman 
-// Copyright (c) 2019, Kakadu Software Pty Ltd, Australia
-// Copyright (c) 2019, The University of New South Wales, Australia
+// Copyright (c) 2022, Aous Naman 
+// Copyright (c) 2022, Kakadu Software Pty Ltd, Australia
+// Copyright (c) 2022, The University of New South Wales, Australia
 // 
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are
@@ -30,54 +30,20 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //***************************************************************************/
 // This file is part of the OpenJPH software implementation.
-// File: ojph_defs.h
+// File: ojph_block_common.h
 // Author: Aous Naman
-// Date: 28 August 2019
+// Date: 13 May 2022
 //***************************************************************************/
 
+#include "ojph_defs.h"
 
-#ifndef OJPH_TYPES_H
-#define OJPH_TYPES_H
+namespace ojph{
+  namespace local {
+    
+    extern ui16 vlc_tbl0[1024];
+    extern ui16 vlc_tbl1[1024];
+    extern ui16 uvlc_tbl0[256+64];
+    extern ui16 uvlc_tbl1[256];
 
-#include <cstdint>
-#include "ojph_version.h"
-
-namespace ojph {
-
-/////////////////////////////////////////////////////////////////////////////
-//                               types
-/////////////////////////////////////////////////////////////////////////////
-typedef uint8_t ui8;
-typedef int8_t si8;
-typedef uint16_t ui16;
-typedef int16_t si16;
-typedef uint32_t ui32;
-typedef int32_t si32;
-typedef uint64_t ui64;
-typedef int64_t si64;
-
-/////////////////////////////////////////////////////////////////////////////
-#define OJPH_INT_STRINGIFY(I) #I
-#define OJPH_INT_TO_STRING(I) OJPH_INT_STRINGIFY(I)
-
-/////////////////////////////////////////////////////////////////////////////
-// number of fractional bits for 16 bit representation
-// for 32 bits, it is NUM_FRAC_BITS + 16
-// All numbers are in the range of [-0.5, 0.5)
-const int NUM_FRAC_BITS = 13;
-
-/////////////////////////////////////////////////////////////////////////////
-#define ojph_div_ceil(a, b) (((a) + (b) - 1) / (b))
-
-/////////////////////////////////////////////////////////////////////////////
-#define ojph_max(a, b) (((a) > (b)) ? (a) : (b))
-
-/////////////////////////////////////////////////////////////////////////////
-#define ojph_min(a, b) (((a) < (b)) ? (a) : (b))
-
-#define ojph_unused(x) (void)(x)
-
-
-}
-
-#endif // !OJPH_TYPES_H
+  } // !namespace local
+} // !namespace ojph
