@@ -63,7 +63,7 @@ constexpr T getFilterPad(bool lossless)
  * (in Canvas coordinates).
  *
  * Note: if top level window is present, then only this window allocates
- * a memory buffer, and all other ResWindowBuffers attach
+ * a memory buffer, and all other ResWindows attach themselves
  * to the top level memory buffer
  *
  */

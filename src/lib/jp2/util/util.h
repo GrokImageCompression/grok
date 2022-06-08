@@ -100,27 +100,37 @@ T satSub(int64_t lhs, int64_t rhs)
 template<typename T>
 struct grk_rect
 {
-	grk_rect(T x0, T y0, T x1, T y1) : x0(x0), y0(y0), x1(x1), y1(y1) {}
-	grk_rect(const grk_rect& rhs) : grk_rect(&rhs) {}
+	grk_rect(T origin_x0, T origin_y0, T x0, T y0, T x1, T y1) :
+		origin_x0(origin_x0), origin_y0(origin_y0), x0(x0), y0(y0), x1(x1), y1(y1)
+	{}
+	grk_rect(T x0, T y0, T x1, T y1) : grk_rect(x0,y0,x0,y0,x1,y1)
+	{}
+	grk_rect(const grk_rect& rhs) : grk_rect(&rhs)
+	{}
 	grk_rect(const grk_rect* rhs)
 	{
+		origin_x0 = rhs->origin_x0;
+		origin_y0 = rhs->origin_y0;
 		x0 = rhs->x0;
 		y0 = rhs->y0;
 		x1 = rhs->x1;
 		y1 = rhs->y1;
 	}
-	grk_rect(void) : x0(0), y0(0), x1(0), y1(0) {}
+	grk_rect(void) : grk_rect(0,0,0,0)
+	{}
 	virtual ~grk_rect() = default;
+
+	T origin_x0, origin_y0;
 	T x0, y0, x1, y1;
 
 	virtual void print(void) const
 	{
-		GRK_INFO("[%u,%u,%u,%u]", x0, y0, x1, y1);
+		GRK_INFO("[%u,%u,%u,%u,%u,%u]", origin_x0, origin_y0, x0, y0, x1, y1);
 	}
 	std::string boundsString() const
 	{
 		std::ostringstream os;
-		os << "[" << x0 << "," << y0 << "," << x1 << "," << y1 << "]";
+		os << "[" << origin_x0 << "," << origin_y0  << "," << x0 << "," << y0 << "," << x1 << "," << y1 << "]";
 		return os.str();
 	}
 	bool valid(void) const
@@ -148,6 +158,8 @@ struct grk_rect
 		assert(rhs);
 		if(rhs && (this != rhs))
 		{ // self-assignment check expected
+			origin_x0 = rhs->origin_x0;
+			origin_y0 = rhs->origin_y0;
 			x0 = rhs->x0;
 			y0 = rhs->y0;
 			x1 = rhs->x1;
@@ -159,7 +171,8 @@ struct grk_rect
 	{
 		if(this == &rhs)
 			return true;
-		return x0 == rhs.x0 && y0 == rhs.y0 && x1 == rhs.x1 && y1 == rhs.y1;
+		return origin_x0 == rhs.origin_x0 && origin_y0 == rhs.origin_y0
+				&& x0 == rhs.x0 && y0 == rhs.y0 && x1 == rhs.x1 && y1 == rhs.y1;
 	}
 	void set(grk_rect<T>* rhs)
 	{
