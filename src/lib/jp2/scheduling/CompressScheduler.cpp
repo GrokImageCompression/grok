@@ -48,7 +48,7 @@ bool CompressScheduler::scheduleBlocks(uint16_t compno)
 		auto tccp = tcp_->tccps + compno;
 		for(resno = 0; resno < tilec->numresolutions; ++resno)
 		{
-			auto res = &tilec->tileCompResolution[resno];
+			auto res = &tilec->resolutions_[resno];
 			for(bandIndex = 0; bandIndex < res->numTileBandWindows; ++bandIndex)
 			{
 				auto band = &res->tileBand[bandIndex];
@@ -67,12 +67,12 @@ bool CompressScheduler::scheduleBlocks(uint16_t compno)
 						block->doRateControl = needsRateControl;
 						block->x = cblk->x0;
 						block->y = cblk->y0;
-						tilec->getBuffer()->toRelativeCoordinates(resno, band->orientation,
+						tilec->getWindow()->toRelativeCoordinates(resno, band->orientation,
 																  block->x, block->y);
 						block->tiledp =
-							tilec->getBuffer()->getResWindowBufferHighestREL()->getBuffer() +
+							tilec->getWindow()->getResWindowBufferHighestREL()->getBuffer() +
 							(uint64_t)block->x +
-							block->y * (uint64_t)tilec->getBuffer()
+							block->y * (uint64_t)tilec->getWindow()
 										   ->getResWindowBufferHighestREL()
 										   ->stride;
 						maxCblkW = std::max<uint32_t>(maxCblkW, (uint32_t)(1 << tccp->cblkw));

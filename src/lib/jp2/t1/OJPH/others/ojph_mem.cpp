@@ -37,7 +37,21 @@
 
 
 #include <new>
+#ifndef _MSC_VER
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wconversion"
+#pragma GCC diagnostic ignored "-Wsign-conversion"
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+#pragma GCC diagnostic ignored "-Wunused-variable"
+#pragma GCC diagnostic ignored "-Wsign-compare"
+#pragma GCC diagnostic ignored "-Wparentheses"
+#endif
+
 #include "ojph_mem.h"
+
+#ifndef _MSC_VER
+#pragma GCC diagnostic pop
+#endif
 
 namespace ojph {
 

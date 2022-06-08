@@ -177,12 +177,12 @@ class WaveletReverse
 	void decompress_h_strip_53(const dwt_data<int32_t>* horiz, uint32_t hMin, uint32_t hMax,
 							   grk_buf2d_simple<int32_t> winL, grk_buf2d_simple<int32_t> winH,
 							   grk_buf2d_simple<int32_t> winDest);
-	bool decompress_h_53(uint8_t res, TileComponentWindowBuffer<int32_t>* buf, uint32_t resHeight,
+	bool decompress_h_53(uint8_t res, TileComponentWindow<int32_t>* buf, uint32_t resHeight,
 						 size_t dataLength);
 	void decompress_v_strip_53(const dwt_data<int32_t>* vert, uint32_t wMin, uint32_t wMax,
 							   grk_buf2d_simple<int32_t> winL, grk_buf2d_simple<int32_t> winH,
 							   grk_buf2d_simple<int32_t> winDest);
-	bool decompress_v_53(uint8_t res, TileComponentWindowBuffer<int32_t>* buf, uint32_t resWidth,
+	bool decompress_v_53(uint8_t res, TileComponentWindow<int32_t>* buf, uint32_t resWidth,
 						 size_t dataLength);
 	bool decompress_tile_53(void);
 

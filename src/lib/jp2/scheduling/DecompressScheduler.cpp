@@ -91,12 +91,12 @@ bool DecompressScheduler::scheduleBlocks(uint16_t compno)
 	uint8_t resno = 0;
 	for(; resno <= tilec->highestResolutionDecompressed; ++resno)
 	{
-		auto res = tilec->tileCompResolution + resno;
+		auto res = tilec->resolutions_ + resno;
 		for(uint8_t bandIndex = 0; bandIndex < res->numTileBandWindows; ++bandIndex)
 		{
 			auto band = res->tileBand + bandIndex;
 			auto paddedBandWindow =
-				tilec->getBuffer()->getBandWindowPadded(resno, band->orientation);
+				tilec->getWindow()->getBandWindowPadded(resno, band->orientation);
 			for(auto precinct : band->precincts)
 			{
 				if(!wholeTileDecoding && !paddedBandWindow->nonEmptyIntersection(precinct))
@@ -231,7 +231,7 @@ bool DecompressScheduler::scheduleWavelet(uint16_t compno)
 	auto tilec = tile_->comps + compno;
 	uint8_t numRes = tilec->highestResolutionDecompressed + 1U;
 	waveletReverse_[compno] =
-		new WaveletReverse(tileProcessor_, tilec, compno, tilec->getBuffer()->unreducedBounds(),
+		new WaveletReverse(tileProcessor_, tilec, compno, tilec->getWindow()->unreducedBounds(),
 						   numRes, (tcp_->tccps + compno)->qmfbid);
 
 	return waveletReverse_[compno]->decompress();

@@ -139,7 +139,7 @@
 #include "ImageComponentFlow.h"
 #include "Scheduler.h"
 #include "SparseCanvas.h"
-#include "TileComponentWindowBuffer.h"
+#include "TileComponentWindow.h"
 #include "WaveletReverse.h"
 #include "PacketIter.h"
 #include "PacketManager.h"

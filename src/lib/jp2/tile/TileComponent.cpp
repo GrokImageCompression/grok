@@ -28,21 +28,21 @@ const bool DEBUG_TILE_COMPONENT = false;
 namespace grk
 {
 TileComponent::TileComponent()
-	: tileCompResolution(nullptr), numresolutions(0), numResolutionsToDecompress(0),
+	: resolutions_(nullptr), numresolutions(0), numResolutionsToDecompress(0),
 	  highestResolutionDecompressed(0),
 #ifdef DEBUG_LOSSLESS_T2
 	  round_trip_resolutions(nullptr),
 #endif
-	  sa_(nullptr), wholeTileDecompress(true), isCompressor_(false), buf(nullptr), tccp_(nullptr)
+	  regionWindow_(nullptr), wholeTileDecompress(true), isCompressor_(false), window_(nullptr), tccp_(nullptr)
 {}
 
 TileComponent::~TileComponent()
 {
-	if(tileCompResolution)
+	if(resolutions_)
 	{
 		for(uint32_t resno = 0; resno < numresolutions; ++resno)
 		{
-			auto res = tileCompResolution + resno;
+			auto res = resolutions_ + resno;
 			for(uint32_t bandIndex = 0; bandIndex < 3; ++bandIndex)
 			{
 				auto band = res->tileBand + bandIndex;
@@ -51,16 +51,16 @@ TileComponent::~TileComponent()
 				band->precincts.clear();
 			}
 		}
-		delete[] tileCompResolution;
+		delete[] resolutions_;
 	}
-	deallocBuffers();
+	dealloc();
 }
-void TileComponent::deallocBuffers(void)
+void TileComponent::dealloc(void)
 {
-	delete sa_;
-	sa_ = nullptr;
-	delete buf;
-	buf = nullptr;
+	delete regionWindow_;
+	regionWindow_ = nullptr;
+	delete window_;
+	window_ = nullptr;
 }
 /**
  * Initialize tile component in unreduced tile component coordinates
@@ -81,12 +81,12 @@ bool TileComponent::init(TileProcessor* tileProcessor, grk_rect32 unreducedTileC
 	numResolutionsToDecompress = numresolutions < cp->coding_params_.dec_.reduce_
 									 ? 1
 									 : (uint8_t)(numresolutions - cp->coding_params_.dec_.reduce_);
-	tileCompResolution = new Resolution[numresolutions];
+	resolutions_ = new Resolution[numresolutions];
 	for(uint8_t resno = 0; resno < numresolutions; ++resno)
 	{
-		auto res = tileCompResolution + resno;
+		auto res = resolutions_ + resno;
 
-		res->set(ResWindowBuffer<int32_t>::getBandWindow((uint32_t)(numresolutions - (resno + 1)),
+		res->set(ResWindow<int32_t>::getBandWindow((uint32_t)(numresolutions - (resno + 1)),
 														 BAND_ORIENT_LL, unreducedTileComp));
 
 		/* p. 35, table A-23, ISO/IEC FDIS154444-1 : 2000 (18 august 2000) */
@@ -125,11 +125,11 @@ bool TileComponent::init(TileProcessor* tileProcessor, grk_rect32 unreducedTileC
 	// 2. set tile component and band bounds
 	auto highestNumberOfResolutions =
 		(!isCompressor_) ? numResolutionsToDecompress : numresolutions;
-	auto hightestResolution = tileCompResolution + highestNumberOfResolutions - 1;
+	auto hightestResolution = resolutions_ + highestNumberOfResolutions - 1;
 	set(hightestResolution);
 	for(uint8_t resno = 0; resno < numresolutions; ++resno)
 	{
-		auto res = tileCompResolution + resno;
+		auto res = resolutions_ + resno;
 		for(uint32_t bandIndex = 0; bandIndex < res->numTileBandWindows; ++bandIndex)
 		{
 			auto band = res->tileBand + bandIndex;
@@ -138,14 +138,14 @@ bool TileComponent::init(TileProcessor* tileProcessor, grk_rect32 unreducedTileC
 			band->orientation = orientation;
 			uint32_t numDecomps =
 				(resno == 0) ? (uint32_t)(numresolutions - 1U) : (uint32_t)(numresolutions - resno);
-			band->set(ResWindowBuffer<int32_t>::getBandWindow(numDecomps, band->orientation,
+			band->set(ResWindow<int32_t>::getBandWindow(numDecomps, band->orientation,
 															  unreducedTileComp));
 		}
 	}
 	// set band step size
 	for(uint32_t resno = 0; resno < numresolutions; ++resno)
 	{
-		auto res = tileCompResolution + resno;
+		auto res = resolutions_ + resno;
 		for(uint8_t bandIndex = 0; bandIndex < res->numTileBandWindows; ++bandIndex)
 		{
 			auto band = res->tileBand + bandIndex;
@@ -177,7 +177,7 @@ bool TileComponent::init(TileProcessor* tileProcessor, grk_rect32 unreducedTileC
 	// 4. initialize precincts and code blocks
 	for(uint32_t resno = 0; resno < numresolutions; ++resno)
 	{
-		auto res = tileCompResolution + resno;
+		auto res = resolutions_ + resno;
 		if(!res->init(tileProcessor, tccp_, (uint8_t)resno))
 			return false;
 	}
@@ -187,9 +187,9 @@ bool TileComponent::init(TileProcessor* tileProcessor, grk_rect32 unreducedTileC
 bool TileComponent::subbandIntersectsAOI(uint8_t resno, eBandOrientation orient,
 										 const grk_rect32* aoi) const
 {
-	return buf->getBandWindowPadded(resno, orient)->nonEmptyIntersection(aoi);
+	return window_->getBandWindowPadded(resno, orient)->nonEmptyIntersection(aoi);
 }
-bool TileComponent::allocSparseCanvas(uint32_t numres, bool truncatedTile)
+bool TileComponent::allocRegionWindow(uint32_t numres, bool truncatedTile)
 {
 	grk_rect32 temp(0, 0, 0, 0);
 	bool first = true;
@@ -197,11 +197,11 @@ bool TileComponent::allocSparseCanvas(uint32_t numres, bool truncatedTile)
 	// 1. find outside bounds of all relevant code blocks, in relative coordinates
 	for(uint8_t resno = 0; resno < numres; ++resno)
 	{
-		auto res = &tileCompResolution[resno];
+		auto res = &resolutions_[resno];
 		for(uint8_t bandIndex = 0; bandIndex < res->numTileBandWindows; ++bandIndex)
 		{
 			auto band = res->tileBand + bandIndex;
-			auto roi = buf->getBandWindowPadded(resno, band->orientation);
+			auto roi = window_->getBandWindowPadded(resno, band->orientation);
 			for(auto precinct : band->precincts)
 			{
 				if(precinct->empty())
@@ -224,12 +224,12 @@ bool TileComponent::allocSparseCanvas(uint32_t numres, bool truncatedTile)
 						uint32_t y = cblkBounds.y0 - band->y0;
 						if(band->orientation & 1)
 						{
-							auto prev_res = tileCompResolution + resno - 1;
+							auto prev_res = resolutions_ + resno - 1;
 							x += prev_res->width();
 						}
 						if(band->orientation & 2)
 						{
-							auto prev_res = tileCompResolution + resno - 1;
+							auto prev_res = resolutions_ + resno - 1;
 							y += prev_res->height();
 						}
 						// add to union of code block bounds
@@ -254,16 +254,16 @@ bool TileComponent::allocSparseCanvas(uint32_t numres, bool truncatedTile)
 	// 2. create (padded) sparse canvas, in buffer space,
 	const uint32_t blockSizeExp = 6;
 	temp.growIPL(8);
-	auto sa = new SparseCanvas<blockSizeExp, blockSizeExp>(temp);
+	auto regionWindow = new SparseCanvas<blockSizeExp, blockSizeExp>(temp);
 
 	// 3. allocate sparse blocks
 	for(uint8_t resno = 0; resno < numres; ++resno)
 	{
-		auto res = &tileCompResolution[resno];
+		auto res = resolutions_ + resno;
 		for(uint8_t bandIndex = 0; bandIndex < res->numTileBandWindows; ++bandIndex)
 		{
 			auto band = res->tileBand + bandIndex;
-			auto roi = buf->getBandWindowPadded(resno, band->orientation);
+			auto roi = window_->getBandWindowPadded(resno, band->orientation);
 			for(auto precinct : band->precincts)
 			{
 				if(precinct->empty())
@@ -286,20 +286,20 @@ bool TileComponent::allocSparseCanvas(uint32_t numres, bool truncatedTile)
 						uint32_t y = cblkBounds.y0 - band->y0;
 						if(band->orientation & 1)
 						{
-							auto prev_res = tileCompResolution + resno - 1;
+							auto prev_res = resolutions_ + resno - 1;
 							x += prev_res->width();
 						}
 						if(band->orientation & 2)
 						{
-							auto prev_res = tileCompResolution + resno - 1;
+							auto prev_res = resolutions_ + resno - 1;
 							y += prev_res->height();
 						}
 
-						if(!sa->alloc(
+						if(!regionWindow->alloc(
 							   grk_rect32(x, y, x + cblkBounds.width(), y + cblkBounds.height()),
 							   truncatedTile))
 						{
-							delete sa;
+							delete regionWindow;
 							throw std::runtime_error("unable to allocate sparse array");
 						}
 						cblkno++;
@@ -309,18 +309,18 @@ bool TileComponent::allocSparseCanvas(uint32_t numres, bool truncatedTile)
 		}
 	}
 
-	if(sa_)
-		delete sa_;
-	sa_ = sa;
+	if(regionWindow_)
+		delete regionWindow_;
+	regionWindow_ = regionWindow;
 
 	return true;
 }
-bool TileComponent::createWindowBuffer(grk_rect32 unreducedTileCompOrImageCompWindow)
+bool TileComponent::createWindow(grk_rect32 unreducedTileCompOrImageCompWindow)
 {
-	deallocBuffers();
+	dealloc();
 	auto highestNumberOfResolutions =
 		(!isCompressor_) ? numResolutionsToDecompress : numresolutions;
-	auto maxResolution = tileCompResolution + numresolutions - 1;
+	auto maxResolution = resolutions_ + numresolutions - 1;
 	if(!maxResolution->intersection(unreducedTileCompOrImageCompWindow).valid())
 	{
 		GRK_ERROR("Decompress region (%u,%u,%u,%u) must overlap image bounds (%u,%u,%u,%u)",
@@ -329,24 +329,24 @@ bool TileComponent::createWindowBuffer(grk_rect32 unreducedTileCompOrImageCompWi
 				  maxResolution->x0, maxResolution->y0, maxResolution->x1, maxResolution->y1);
 		return false;
 	}
-	buf = new TileComponentWindowBuffer<int32_t>(
+	window_ = new TileComponentWindow<int32_t>(
 		isCompressor_, tccp_->qmfbid == 1, wholeTileDecompress, grk_rect32(maxResolution),
-		grk_rect32(this), unreducedTileCompOrImageCompWindow, tileCompResolution, numresolutions,
+		grk_rect32(this), unreducedTileCompOrImageCompWindow, resolutions_, numresolutions,
 		highestNumberOfResolutions);
 
 	return true;
 }
-TileComponentWindowBuffer<int32_t>* TileComponent::getBuffer() const
+TileComponentWindow<int32_t>* TileComponent::getWindow() const
 {
-	return buf;
+	return window_;
 }
 bool TileComponent::isWholeTileDecoding()
 {
 	return wholeTileDecompress;
 }
-ISparseCanvas* TileComponent::getSparseCanvas()
+ISparseCanvas* TileComponent::getRegionWindow()
 {
-	return sa_;
+	return regionWindow_;
 }
 bool TileComponent::postProcess(int32_t* srcData, DecompressBlockExec* block)
 {
@@ -416,8 +416,8 @@ bool TileComponent::postDecompressImpl(int32_t* srcData, DecompressBlockExec* bl
 	grk_buf2d<int32_t, AllocatorAligned> dest;
 	grk_buf2d<int32_t, AllocatorAligned> src =
 		grk_buf2d<int32_t, AllocatorAligned>(srcData, false, cblk->width(), stride, cblk->height());
-	buf->toRelativeCoordinates(block->resno, block->bandOrientation, block->x, block->y);
-	if(sa_)
+	window_->toRelativeCoordinates(block->resno, block->bandOrientation, block->x, block->y);
+	if(regionWindow_)
 	{
 		dest = src;
 	}
@@ -425,7 +425,7 @@ bool TileComponent::postDecompressImpl(int32_t* srcData, DecompressBlockExec* bl
 	{
 		src.set(
 			grk_rect32(block->x, block->y, block->x + cblk->width(), block->y + cblk->height()));
-		dest = buf->getCodeBlockDestWindowREL(block->resno, block->bandOrientation);
+		dest = window_->getCodeBlockDestWindowREL(block->resno, block->bandOrientation);
 	}
 
 	if(!cblk->seg_buffers.empty())
@@ -438,7 +438,7 @@ bool TileComponent::postDecompressImpl(int32_t* srcData, DecompressBlockExec* bl
 		srcData = nullptr;
 	}
 
-	if(sa_ && !sa_->write(block->resno,
+	if(regionWindow_ && !regionWindow_->write(block->resno,
 						  grk_rect32(block->x, block->y, block->x + cblk->width(),
 									 block->y + cblk->height()),
 						  srcData, 1, cblk->width(), true))

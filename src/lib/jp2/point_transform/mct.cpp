@@ -42,12 +42,12 @@ namespace HWY_NAMESPACE
 		void transform(ScheduleInfo info)
 		{
 			auto highestResBuffer =
-				info.tile->comps[info.compno].getBuffer()->getResWindowBufferHighestREL();
+				info.tile->comps[info.compno].getWindow()->getResWindowBufferHighestREL();
 			std::vector<ShiftInfo>& shiftInfo = info.shiftInfo;
 			auto index = (uint64_t)info.yBegin * highestResBuffer->stride;
 			auto chunkSize = (uint64_t)(info.yEnd - info.yBegin) * highestResBuffer->stride;
 			auto chan0 = (float*)info.tile->comps[info.compno]
-							 .getBuffer()
+							 .getWindow()
 							 ->getResWindowBufferHighestREL()
 							 ->getBuffer();
 			const HWY_FULL(int32_t) di;
@@ -78,12 +78,12 @@ namespace HWY_NAMESPACE
 		void transform(ScheduleInfo info)
 		{
 			auto highestResBuffer =
-				info.tile->comps[info.compno].getBuffer()->getResWindowBufferHighestREL();
+				info.tile->comps[info.compno].getWindow()->getResWindowBufferHighestREL();
 			auto index = (uint64_t)info.yBegin * highestResBuffer->stride;
 			auto chunkSize = (uint64_t)(info.yEnd - info.yBegin) * highestResBuffer->stride;
 			std::vector<ShiftInfo>& shiftInfo = info.shiftInfo;
 			auto chan0 = info.tile->comps[info.compno]
-							 .getBuffer()
+							 .getWindow()
 							 ->getResWindowBufferHighestREL()
 							 ->getBuffer();
 			const HWY_FULL(int32_t) di;
@@ -111,16 +111,16 @@ namespace HWY_NAMESPACE
 		void transform(ScheduleInfo info)
 		{
 			auto highestResBuffer =
-				info.tile->comps[info.compno].getBuffer()->getResWindowBufferHighestREL();
+				info.tile->comps[info.compno].getWindow()->getResWindowBufferHighestREL();
 			auto index = (uint64_t)info.yBegin * highestResBuffer->stride;
 			auto chunkSize = (uint64_t)(info.yEnd - info.yBegin) * highestResBuffer->stride;
 			std::vector<ShiftInfo>& shiftInfo = info.shiftInfo;
 			auto chan0 =
-				info.tile->comps[0].getBuffer()->getResWindowBufferHighestREL()->getBuffer();
+				info.tile->comps[0].getWindow()->getResWindowBufferHighestREL()->getBuffer();
 			auto chan1 =
-				info.tile->comps[1].getBuffer()->getResWindowBufferHighestREL()->getBuffer();
+				info.tile->comps[1].getWindow()->getResWindowBufferHighestREL()->getBuffer();
 			auto chan2 =
-				info.tile->comps[2].getBuffer()->getResWindowBufferHighestREL()->getBuffer();
+				info.tile->comps[2].getWindow()->getResWindowBufferHighestREL()->getBuffer();
 			int32_t shift[3] = {shiftInfo[0]._shift, shiftInfo[1]._shift, shiftInfo[2]._shift};
 			int32_t _min[3] = {shiftInfo[0]._min, shiftInfo[1]._min, shiftInfo[2]._min};
 			int32_t _max[3] = {shiftInfo[0]._max, shiftInfo[1]._max, shiftInfo[2]._max};
@@ -161,20 +161,20 @@ namespace HWY_NAMESPACE
 		void transform(ScheduleInfo info)
 		{
 			auto highestResBuffer =
-				info.tile->comps[info.compno].getBuffer()->getResWindowBufferHighestREL();
+				info.tile->comps[info.compno].getWindow()->getResWindowBufferHighestREL();
 			auto index = (uint64_t)info.yBegin * highestResBuffer->stride;
 			auto chunkSize = (uint64_t)(info.yEnd - info.yBegin) * highestResBuffer->stride;
 			std::vector<ShiftInfo>& shiftInfo = info.shiftInfo;
 			auto chan0 = (float*)info.tile->comps[0]
-							 .getBuffer()
+							 .getWindow()
 							 ->getResWindowBufferHighestREL()
 							 ->getBuffer();
 			auto chan1 = (float*)info.tile->comps[1]
-							 .getBuffer()
+							 .getWindow()
 							 ->getResWindowBufferHighestREL()
 							 ->getBuffer();
 			auto chan2 = (float*)info.tile->comps[2]
-							 .getBuffer()
+							 .getWindow()
 							 ->getResWindowBufferHighestREL()
 							 ->getBuffer();
 
@@ -229,16 +229,16 @@ namespace HWY_NAMESPACE
 		void transform(ScheduleInfo info)
 		{
 			auto highestResBuffer =
-				info.tile->comps[info.compno].getBuffer()->getResWindowBufferHighestREL();
+				info.tile->comps[info.compno].getWindow()->getResWindowBufferHighestREL();
 			auto index = (uint64_t)info.yBegin * highestResBuffer->stride;
 			auto chunkSize = (uint64_t)(info.yEnd - info.yBegin) * highestResBuffer->stride;
 			std::vector<ShiftInfo>& shiftInfo = info.shiftInfo;
 			auto chan0 =
-				info.tile->comps[0].getBuffer()->getResWindowBufferHighestREL()->getBuffer();
+				info.tile->comps[0].getWindow()->getResWindowBufferHighestREL()->getBuffer();
 			auto chan1 =
-				info.tile->comps[1].getBuffer()->getResWindowBufferHighestREL()->getBuffer();
+				info.tile->comps[1].getWindow()->getResWindowBufferHighestREL()->getBuffer();
 			auto chan2 =
-				info.tile->comps[2].getBuffer()->getResWindowBufferHighestREL()->getBuffer();
+				info.tile->comps[2].getWindow()->getResWindowBufferHighestREL()->getBuffer();
 
 			const HWY_FULL(int32_t) di;
 			int32_t shift[3] = {shiftInfo[0]._shift, shiftInfo[1]._shift, shiftInfo[2]._shift};
@@ -272,16 +272,16 @@ namespace HWY_NAMESPACE
 		void transform(ScheduleInfo info)
 		{
 			auto highestResBuffer =
-				info.tile->comps[info.compno].getBuffer()->getResWindowBufferHighestREL();
+				info.tile->comps[info.compno].getWindow()->getResWindowBufferHighestREL();
 			auto index = (uint64_t)info.yBegin * highestResBuffer->stride;
 			auto chunkSize = (uint64_t)(info.yEnd - info.yBegin) * highestResBuffer->stride;
 			std::vector<ShiftInfo>& shiftInfo = info.shiftInfo;
 			auto chan0 =
-				info.tile->comps[0].getBuffer()->getResWindowBufferHighestREL()->getBuffer();
+				info.tile->comps[0].getWindow()->getResWindowBufferHighestREL()->getBuffer();
 			auto chan1 =
-				info.tile->comps[1].getBuffer()->getResWindowBufferHighestREL()->getBuffer();
+				info.tile->comps[1].getWindow()->getResWindowBufferHighestREL()->getBuffer();
 			auto chan2 =
-				info.tile->comps[2].getBuffer()->getResWindowBufferHighestREL()->getBuffer();
+				info.tile->comps[2].getWindow()->getResWindowBufferHighestREL()->getBuffer();
 
 			int32_t shift[3] = {shiftInfo[0]._shift, shiftInfo[1]._shift, shiftInfo[2]._shift};
 
@@ -327,7 +327,7 @@ namespace HWY_NAMESPACE
 	void vscheduler(ScheduleInfo info)
 	{
 		auto highestResBuffer =
-			info.tile->comps[info.compno].getBuffer()->getResWindowBufferHighestREL();
+			info.tile->comps[info.compno].getWindow()->getResWindowBufferHighestREL();
 		if(ExecSingleton::get()->num_workers() > 1)
 		{
 			tf::Task* tasks = nullptr;

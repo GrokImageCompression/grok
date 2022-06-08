@@ -919,7 +919,7 @@ GrkImage* GrkImage::duplicate(const Tile* src)
 	for(uint16_t compno = 0; compno < src->numcomps_; ++compno)
 	{
 		auto srcComp = src->comps + compno;
-		auto src_buffer = srcComp->getBuffer();
+		auto src_buffer = srcComp->getWindow();
 		auto src_bounds = src_buffer->bounds();
 
 		auto destComp = destImage->comps + compno;
@@ -943,7 +943,7 @@ void GrkImage::transferDataFrom(const Tile* tile_src_data)
 
 		// transfer memory from tile component to output image
 		grk_image_single_component_data_free(destComp);
-		srcComp->getBuffer()->transfer(&destComp->data, &destComp->stride);
+		srcComp->getWindow()->transfer(&destComp->data, &destComp->stride);
 		if(destComp->data)
 			assert(destComp->stride >= destComp->w);
 	}
@@ -976,7 +976,7 @@ bool GrkImage::compositeInterleaved(const Tile* src, uint32_t yBegin, uint32_t y
 	}
 	for(uint16_t i = 0; i < src->numcomps_; ++i)
 	{
-		if(!(src->comps + i)->getBuffer()->getResWindowBufferHighestREL()->getBuffer())
+		if(!(src->comps + i)->getWindow()->getResWindowBufferHighestREL()->getBuffer())
 		{
 			GRK_WARN("GrkImage::compositeInterleaved: null data for source component %u", i);
 			return false;
@@ -1007,12 +1007,12 @@ bool GrkImage::compositeInterleaved(const Tile* src, uint32_t yBegin, uint32_t y
 	int32_t const* planes[grk::maxNumPackComponents];
 	for(uint16_t i = 0; i < src->numcomps_; ++i)
 	{
-		auto b = (src->comps + i)->getBuffer()->getResWindowBufferHighestREL();
+		auto b = (src->comps + i)->getWindow()->getResWindowBufferHighestREL();
 		planes[i] = b->getBuffer() + yBegin * b->stride;
 	}
 	iter->interleave(const_cast<int32_t**>(planes), src->numcomps_,
 					 interleavedData.data_ + destIndex, destWin.width(),
-					 srcComp->getBuffer()->getResWindowBufferHighestREL()->stride, destStride,
+					 srcComp->getWindow()->getResWindowBufferHighestREL()->stride, destStride,
 					 destWin.height(), 0);
 	delete iter;
 

@@ -14,6 +14,16 @@
  *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
+#ifndef _MSC_VER
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wconversion"
+#pragma GCC diagnostic ignored "-Wsign-conversion"
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+#pragma GCC diagnostic ignored "-Wunused-variable"
+#pragma GCC diagnostic ignored "-Wsign-compare"
+#pragma GCC diagnostic ignored "-Wparentheses"
+#endif
+
 #include "simd.h"
 #include "coding_units.hpp"
 #include "ht_block_decoding.hpp"
@@ -47,7 +57,7 @@ void T1OpenHTJ2K::preCompress(grk::CompressBlockExec* block, grk::Tile* tile)
 	uint16_t w = (uint16_t)cblk->width();
 	uint16_t h = (uint16_t)cblk->height();
 	uint32_t tile_width =
-		(tile->comps + block->compno)->getBuffer()->getResWindowBufferHighestREL()->stride;
+		(tile->comps + block->compno)->getWindow()->getResWindowBufferHighestREL()->stride;
 	auto tileLineAdvance = tile_width - w;
 	uint32_t cblk_index = 0;
 
@@ -164,3 +174,8 @@ bool T1OpenHTJ2K::decompress(grk::DecompressBlockExec* block)
 	return block->tilec->postProcessHT(unencoded_data, block, stride);
 }
 } // namespace openhtj2k
+
+
+#ifndef _MSC_VER
+#pragma GCC diagnostic pop
+#endif

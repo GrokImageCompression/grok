@@ -92,7 +92,7 @@ bool T2Compress::compressPacketSimulate(TileCodingParams* tcp, PacketIter* pi,
 	uint64_t nb_blocks;
 	auto tile = tileProcessor->getTile();
 	auto tilec = tile->comps + compno;
-	auto res = tilec->tileCompResolution + resno;
+	auto res = tilec->resolutions_ + resno;
 	uint64_t byteCount = 0;
 	*packet_bytes_written = 0;
 
@@ -385,7 +385,7 @@ bool T2Compress::compressPacket(TileCodingParams* tcp, PacketIter* pi, IBuffered
 	bio = std::unique_ptr<BitIO>(new BitIO(stream, true));
 
 	// initialize precinct and code blocks if this is the first layer
-	auto res = tilec->tileCompResolution + resno;
+	auto res = tilec->resolutions_ + resno;
 	if(!compressHeader(bio.get(), res, layno, precinctIndex))
 		return false;
 

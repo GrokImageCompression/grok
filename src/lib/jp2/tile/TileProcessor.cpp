@@ -247,7 +247,7 @@ bool TileProcessor::init(void)
 			auto tilec = tile->comps + compno;
 			for(uint32_t resno = 0; resno < tilec->numresolutions; ++resno)
 			{
-				auto res = tilec->tileCompResolution + resno;
+				auto res = tilec->resolutions_ + resno;
 				max_precincts =
 					(std::max<uint64_t>)(max_precincts, (uint64_t)res->precinctGridWidth *
 															res->precinctGridHeight);
@@ -270,7 +270,7 @@ bool TileProcessor::createWindowBuffers(const GrkImage* outputImage)
 		{
 			// for the compressor, the "window" comprises the full tile component
 			auto tileComp = tile->comps + compno;
-			if(!tileComp->createWindowBuffer(grk_rect32(tileComp)))
+			if(!tileComp->createWindow(grk_rect32(tileComp)))
 				return false;
 		}
 		else
@@ -280,7 +280,7 @@ bool TileProcessor::createWindowBuffers(const GrkImage* outputImage)
 				grk_rect32(outputImage->x0, outputImage->y0, outputImage->x1, outputImage->y1);
 			grk_rect32 unreducedImageCompWindow =
 				unreducedImageWindow.scaleDownCeil(imageComp->dx, imageComp->dy);
-			if(!(tile->comps + compno)->createWindowBuffer(unreducedImageCompWindow))
+			if(!(tile->comps + compno)->createWindow(unreducedImageCompWindow))
 				return false;
 		}
 	}
@@ -298,7 +298,7 @@ void TileProcessor::deallocBuffers()
 	for(uint16_t compno = 0; compno < (int64_t)tile->numcomps_; ++compno)
 	{
 		auto tile_comp = tile->comps + compno;
-		tile_comp->deallocBuffers();
+		tile_comp->dealloc();
 	}
 }
 bool TileProcessor::doCompress(void)
@@ -400,7 +400,7 @@ bool TileProcessor::isWholeTileDecompress(uint16_t compno)
 	auto tilec = tile->comps + compno;
 	/* Compute the intersection of the area of interest, expressed in tile component coordinates, */
 	/* with the tile bounds */
-	auto dims = tilec->getBuffer()->bounds().intersection(tilec);
+	auto dims = tilec->getWindow()->bounds().intersection(tilec);
 
 	uint32_t shift = (uint32_t)(tilec->numresolutions - tilec->numResolutionsToDecompress);
 	/* Tolerate small margin within the reduced resolution factor to consider if */
@@ -455,7 +455,7 @@ bool TileProcessor::decompressT2T1(GrkImage* outputImage)
 			auto tilec = tile->comps + compno;
 			for(uint8_t resno = 0; resno < tilec->numResolutionsToDecompress; ++resno)
 			{
-				auto res = tilec->tileCompResolution + resno;
+				auto res = tilec->resolutions_ + resno;
 				parserCount += res->parserMap_->precinctParsers_.size();
 			}
 		}
@@ -470,7 +470,7 @@ bool TileProcessor::decompressT2T1(GrkImage* outputImage)
 					auto tilec = tile->comps + compno;
 					for(uint8_t resno = 0; resno < tilec->numResolutionsToDecompress; ++resno)
 					{
-						auto res = tilec->tileCompResolution + resno;
+						auto res = tilec->resolutions_ + resno;
 						for(auto& pp : res->parserMap_->precinctParsers_)
 						{
 							for(uint64_t j = 0; j < pp.second->numParsers_; ++j)
@@ -504,7 +504,7 @@ bool TileProcessor::decompressT2T1(GrkImage* outputImage)
 					auto tilec = tile->comps + compno;
 					for(uint8_t resno = 0; resno < tilec->numResolutionsToDecompress; ++resno)
 					{
-						auto res = tilec->tileCompResolution + resno;
+						auto res = tilec->resolutions_ + resno;
 						for(auto& pp : res->parserMap_->precinctParsers_)
 						{
 							auto& ppair = pp;
@@ -550,7 +550,7 @@ bool TileProcessor::decompressT2T1(GrkImage* outputImage)
 			{
 				try
 				{
-					tilec->allocSparseCanvas(tilec->highestResolutionDecompressed + 1U, truncated);
+					tilec->allocRegionWindow(tilec->highestResolutionDecompressed + 1U, truncated);
 				}
 				catch(std::runtime_error& ex)
 				{
@@ -563,7 +563,7 @@ bool TileProcessor::decompressT2T1(GrkImage* outputImage)
 					return false;
 				}
 			}
-			if(!tilec->getBuffer()->alloc())
+			if(!tilec->getWindow()->alloc())
 			{
 				GRK_ERROR("Not enough memory for tile data");
 				return false;
@@ -636,13 +636,13 @@ void TileProcessor::ingestImage()
 		uint64_t image_offset =
 			(tilec->x0 - offset_x) + (uint64_t)(tilec->y0 - offset_y) * img_comp->stride;
 		auto src = img_comp->data + image_offset;
-		auto dest = tilec->getBuffer()->getResWindowBufferHighestREL()->getBuffer();
+		auto dest = tilec->getWindow()->getResWindowBufferHighestREL()->getBuffer();
 
 		for(uint32_t j = 0; j < tilec->height(); ++j)
 		{
 			memcpy(dest, src, tilec->width() * sizeof(int32_t));
 			src += img_comp->stride;
-			dest += tilec->getBuffer()->getResWindowBufferHighestREL()->stride;
+			dest += tilec->getWindow()->getResWindowBufferHighestREL()->stride;
 		}
 	}
 }
@@ -681,9 +681,9 @@ bool TileProcessor::mctDecompress(FlowComponent* flow)
 		for(uint16_t i = 0; i < tile->numcomps_; ++i)
 		{
 			auto tile_comp = tile->comps + i;
-			data[i] = (uint8_t*)tile_comp->getBuffer()->getResWindowBufferHighestREL()->getBuffer();
+			data[i] = (uint8_t*)tile_comp->getWindow()->getResWindowBufferHighestREL()->getBuffer();
 		}
-		uint64_t samples = tile->comps->getBuffer()->stridedArea();
+		uint64_t samples = tile->comps->getWindow()->stridedArea();
 		bool rc = mct::decompress_custom((uint8_t*)tcp_->mct_decoding_matrix_, samples, data,
 										 tile->numcomps_, headerImage->comps->sgnd);
 		return rc;
@@ -704,8 +704,8 @@ bool TileProcessor::dcLevelShiftCompress()
 	{
 		auto tile_comp = tile->comps + compno;
 		auto tccp = tcp_->tccps + compno;
-		auto current_ptr = tile_comp->getBuffer()->getResWindowBufferHighestREL()->getBuffer();
-		uint64_t samples = tile_comp->getBuffer()->stridedArea();
+		auto current_ptr = tile_comp->getWindow()->getResWindowBufferHighestREL()->getBuffer();
+		uint64_t samples = tile_comp->getWindow()->stridedArea();
 #ifndef GRK_FORCE_SIGNED_COMPRESS
 		if(needsMctDecompress(compno))
 			continue;
@@ -753,9 +753,9 @@ bool TileProcessor::mct_encode()
 		for(uint32_t i = 0; i < tile->numcomps_; ++i)
 		{
 			auto tile_comp = tile->comps + i;
-			data[i] = (uint8_t*)tile_comp->getBuffer()->getResWindowBufferHighestREL()->getBuffer();
+			data[i] = (uint8_t*)tile_comp->getWindow()->getResWindowBufferHighestREL()->getBuffer();
 		}
-		uint64_t samples = tile->comps->getBuffer()->stridedArea();
+		uint64_t samples = tile->comps->getWindow()->stridedArea();
 		bool rc = mct::compress_custom((uint8_t*)tcp_->mct_coding_matrix_, samples, data,
 									   tile->numcomps_, headerImage->comps->sgnd);
 		delete[] data;
@@ -818,7 +818,7 @@ bool TileProcessor::encodeT2(uint32_t* tileBytesWritten)
 		tilec->round_trip_resolutions = new Resolution[tilec->numresolutions];
 		for(uint32_t resno = 0; resno < tilec->numresolutions; ++resno)
 		{
-			auto res = tilec->tileCompResolution + resno;
+			auto res = tilec->resolutions_ + resno;
 			auto roundRes = tilec->round_trip_resolutions + resno;
 			roundRes->x0 = res->x0;
 			roundRes->y0 = res->y0;
@@ -933,8 +933,8 @@ bool TileProcessor::preCompressTile()
 		auto tilec = tile->comps + j;
 		auto imagec = headerImage->comps + j;
 		if(transfer_image_to_tile && imagec->data)
-			tilec->getBuffer()->attach(imagec->data, imagec->stride);
-		else if(!tilec->getBuffer()->alloc())
+			tilec->getWindow()->attach(imagec->data, imagec->stride);
+		else if(!tilec->getWindow()->alloc())
 		{
 			GRK_ERROR("Error allocating tile component data.");
 			return false;
@@ -979,10 +979,10 @@ bool TileProcessor::ingestUncompressedData(uint8_t* p_src, uint64_t src_length)
 		auto tilec = tile->comps + i;
 		auto img_comp = headerImage->comps + i;
 		uint32_t size_comp = (uint32_t)((img_comp->prec + 7) >> 3);
-		auto dest_ptr = tilec->getBuffer()->getResWindowBufferHighestREL()->getBuffer();
-		uint32_t w = (uint32_t)tilec->getBuffer()->bounds().width();
-		uint32_t h = (uint32_t)tilec->getBuffer()->bounds().height();
-		uint32_t stride = tilec->getBuffer()->getResWindowBufferHighestREL()->stride;
+		auto dest_ptr = tilec->getWindow()->getResWindowBufferHighestREL()->getBuffer();
+		uint32_t w = (uint32_t)tilec->getWindow()->bounds().width();
+		uint32_t h = (uint32_t)tilec->getWindow()->bounds().height();
+		uint32_t stride = tilec->getWindow()->getResWindowBufferHighestREL()->stride;
 		switch(size_comp)
 		{
 			case 1:
@@ -1164,7 +1164,7 @@ void TileProcessor::makeLayerFeasible(uint32_t layno, uint16_t thresh, bool fina
 		auto tilec = tile->comps + compno;
 		for(uint8_t resno = 0; resno < tilec->numresolutions; resno++)
 		{
-			auto res = tilec->tileCompResolution + resno;
+			auto res = tilec->resolutions_ + resno;
 			for(uint8_t bandIndex = 0; bandIndex < res->numTileBandWindows; bandIndex++)
 			{
 				auto band = res->tileBand + bandIndex;
@@ -1247,7 +1247,7 @@ bool TileProcessor::pcrdBisectFeasible(uint32_t* allPacketBytes)
 		uint64_t numpix = 0;
 		for(uint8_t resno = 0; resno < tilec->numresolutions; resno++)
 		{
-			auto res = &tilec->tileCompResolution[resno];
+			auto res = &tilec->resolutions_[resno];
 			for(uint8_t bandIndex = 0; bandIndex < res->numTileBandWindows; bandIndex++)
 			{
 				auto band = &res->tileBand[bandIndex];
@@ -1383,7 +1383,7 @@ bool TileProcessor::pcrdBisectSimple(uint32_t* allPacketBytes)
 		uint64_t numpix = 0;
 		for(uint8_t resno = 0; resno < tilec->numresolutions; resno++)
 		{
-			auto res = &tilec->tileCompResolution[resno];
+			auto res = &tilec->resolutions_[resno];
 			for(uint8_t bandIndex = 0; bandIndex < res->numTileBandWindows; bandIndex++)
 			{
 				auto band = &res->tileBand[bandIndex];
@@ -1539,7 +1539,7 @@ void TileProcessor::makeLayerSimple(uint32_t layno, double thresh, bool finalAtt
 		auto tilec = tile->comps + compno;
 		for(uint8_t resno = 0; resno < tilec->numresolutions; resno++)
 		{
-			auto res = tilec->tileCompResolution + resno;
+			auto res = tilec->resolutions_ + resno;
 			for(uint8_t bandIndex = 0; bandIndex < res->numTileBandWindows; bandIndex++)
 			{
 				auto band = res->tileBand + bandIndex;
@@ -1632,7 +1632,7 @@ void TileProcessor::makeLayerFinal(uint32_t layno)
 		auto tilec = tile->comps + compno;
 		for(uint8_t resno = 0; resno < tilec->numresolutions; resno++)
 		{
-			auto res = tilec->tileCompResolution + resno;
+			auto res = tilec->resolutions_ + resno;
 			for(uint8_t bandIndex = 0; bandIndex < res->numTileBandWindows; bandIndex++)
 			{
 				auto band = res->tileBand + bandIndex;

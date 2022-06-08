@@ -25,6 +25,15 @@
 //    CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+#ifndef _MSC_VER
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wconversion"
+#pragma GCC diagnostic ignored "-Wsign-conversion"
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+#pragma GCC diagnostic ignored "-Wunused-variable"
+#pragma GCC diagnostic ignored "-Wsign-compare"
+#pragma GCC diagnostic ignored "-Wparentheses"
+#endif
 
 #include "coding_units.hpp"
 #include "dec_CxtVLC_tables.hpp"
@@ -1264,3 +1273,8 @@ void htj2k_decode(j2k_codeblock *block, const uint8_t ROIshift) {
     }
   }  // end
 }
+
+
+#ifndef _MSC_VER
+#pragma GCC diagnostic pop
+#endif

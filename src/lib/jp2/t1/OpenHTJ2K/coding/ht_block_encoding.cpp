@@ -27,6 +27,15 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <algorithm>
+#ifndef _MSC_VER
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wconversion"
+#pragma GCC diagnostic ignored "-Wsign-conversion"
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+#pragma GCC diagnostic ignored "-Wunused-variable"
+#pragma GCC diagnostic ignored "-Wsign-compare"
+#pragma GCC diagnostic ignored "-Wparentheses"
+#endif
 #include "coding_units.hpp"
 #include "ht_block_encoding.hpp"
 #include "coding_local.hpp"
@@ -899,3 +908,8 @@ int32_t htj2k_encode(j2k_codeblock *const block, const uint8_t ROIshift) noexcep
   block->num_ZBP = block->get_Mb() - 1;
   return block->length;
 }
+
+
+#ifndef _MSC_VER
+#pragma GCC diagnostic pop
+#endif

@@ -386,14 +386,14 @@ bool WaveletFwdImpl::encode_procedure(TileComponent* tilec)
 		return true;
 
 	// const int num_threads = grk_thread_pool_get_thread_count(tp);
-	uint32_t stride = tilec->getBuffer()->getResWindowBufferHighestREL()->stride;
-	T* GRK_RESTRICT tiledp = (T*)tilec->getBuffer()->getResWindowBufferHighestREL()->getBuffer();
+	uint32_t stride = tilec->getWindow()->getResWindowBufferHighestREL()->stride;
+	T* GRK_RESTRICT tiledp = (T*)tilec->getWindow()->getResWindowBufferHighestREL()->getBuffer();
 
 	uint8_t maxNumResolutions = (uint8_t)(tilec->numresolutions - 1);
-	auto currentRes = tilec->tileCompResolution + maxNumResolutions;
+	auto currentRes = tilec->resolutions_ + maxNumResolutions;
 	auto lastRes = currentRes - 1;
 
-	size_t dataSize = max_resolution(tilec->tileCompResolution, tilec->numresolutions);
+	size_t dataSize = max_resolution(tilec->resolutions_, tilec->numresolutions);
 	/* overflow check */
 	if(dataSize > (SIZE_MAX / (NB_ELTS_V8 * sizeof(int32_t))))
 	{

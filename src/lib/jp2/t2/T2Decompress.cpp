@@ -103,13 +103,13 @@ bool T2Decompress::processPacket(uint16_t compno, uint8_t resno, uint64_t precin
 	if(!tileProcessor->packetLengthCache.next(&packetInfo))
 		return false;
 	auto tilec = tileProcessor->getTile()->comps + compno;
-	auto res = tilec->tileCompResolution + resno;
+	auto res = tilec->resolutions_ + resno;
 	auto tcp = tileProcessor->getTileCodingParams();
 	auto skip = layno >= tcp->numLayersToDecompress || resno >= tilec->numResolutionsToDecompress;
 	if(!skip && !tilec->isWholeTileDecoding())
 	{
 		skip = true;
-		auto tilecBuffer = tilec->getBuffer();
+		auto tilecBuffer = tilec->getWindow();
 		for(uint8_t bandIndex = 0; bandIndex < res->numTileBandWindows; ++bandIndex)
 		{
 			auto band = res->tileBand + bandIndex;

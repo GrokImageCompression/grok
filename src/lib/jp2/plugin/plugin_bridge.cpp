@@ -33,7 +33,7 @@ void decompress_synch_plugin_with_host(TileProcessor* tcd)
 			assert(tilec->numresolutions == plugin_tilec->numResolutions);
 			for(uint32_t resno = 0; resno < tilec->numresolutions; resno++)
 			{
-				auto res = &tilec->tileCompResolution[resno];
+				auto res = &tilec->resolutions_[resno];
 				auto plugin_res = plugin_tilec->resolutions[resno];
 				assert(plugin_res->numBands == res->numTileBandWindows);
 				for(uint32_t bandIndex = 0; bandIndex < res->numTileBandWindows; bandIndex++)
@@ -109,7 +109,7 @@ bool tile_equals(grk_plugin_tile* plugin_tile, Tile* tilePtr)
 			return false;
 		for(uint32_t resno = 0; resno < tilecomp->numresolutions; ++resno)
 		{
-			auto resolution = tilecomp->tileCompResolution + resno;
+			auto resolution = tilecomp->resolutions_ + resno;
 			auto plugin_resolution = plugin_tilecomp->resolutions[resno];
 			if(resolution->numTileBandWindows != plugin_resolution->numBands)
 				return false;
@@ -280,7 +280,7 @@ void set_context_stream(TileProcessor* p_tileProcessor)
 		auto tilec = tile->comps + compno;
 		for(uint32_t resno = 0; resno < tilec->numresolutions; resno++)
 		{
-			auto res = &tilec->tileCompResolution[resno];
+			auto res = &tilec->resolutions_[resno];
 			for(uint32_t bandIndex = 0; bandIndex < res->numTileBandWindows; bandIndex++)
 			{
 				auto band = &res->tileBand[bandIndex];

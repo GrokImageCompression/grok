@@ -69,7 +69,7 @@ void PacketParser::readHeader(void)
 
 	auto currentData = data_;
 	auto tilePtr = tileProcessor_->getTile();
-	auto res = tilePtr->comps[compno_].tileCompResolution + resno_;
+	auto res = tilePtr->comps[compno_].resolutions_ + resno_;
 	auto tcp = tileProcessor_->getTileCodingParams();
 	bool mayHaveSOP = tcp->csty & J2K_CP_CSTY_SOP;
 	bool hasEPH = tcp->csty & J2K_CP_CSTY_EPH;
@@ -366,7 +366,7 @@ void PacketParser::readData(void)
 	}
 	uint32_t offset = 0;
 	auto tile = tileProcessor_->getTile();
-	auto res = tile->comps[compno_].tileCompResolution + resno_;
+	auto res = tile->comps[compno_].resolutions_ + resno_;
 	for(uint32_t bandIndex = 0; bandIndex < res->numTileBandWindows; ++bandIndex)
 	{
 		auto band = res->tileBand + bandIndex;

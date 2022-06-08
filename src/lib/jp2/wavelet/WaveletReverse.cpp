@@ -666,8 +666,8 @@ bool WaveletReverse::decompress_tile_97(void)
 	if(numres_ == 1U)
 		return true;
 
-	auto tr = tilec_->tileCompResolution;
-	auto buf = tilec_->getBuffer();
+	auto tr = tilec_->resolutions_;
+	auto buf = tilec_->getWindow();
 	uint32_t resWidth = tr->width();
 	uint32_t resHeight = tr->height();
 
@@ -1032,7 +1032,7 @@ void WaveletReverse::decompress_h_strip_53(const dwt_data<int32_t>* horiz, uint3
 		winDest.incY_IN_PLACE(1);
 	}
 }
-bool WaveletReverse::decompress_h_53(uint8_t res, TileComponentWindowBuffer<int32_t>* buf,
+bool WaveletReverse::decompress_h_53(uint8_t res, TileComponentWindow<int32_t>* buf,
 									 uint32_t resHeight, size_t dataLength)
 {
 	uint32_t numThreads = (uint32_t)ExecSingleton::get()->num_workers();
@@ -1123,7 +1123,7 @@ void WaveletReverse::decompress_v_strip_53(const dwt_data<int32_t>* vert, uint32
 		decompress_v_53(vert, winL, winH, winDest, wMax - j);
 }
 
-bool WaveletReverse::decompress_v_53(uint8_t res, TileComponentWindowBuffer<int32_t>* buf,
+bool WaveletReverse::decompress_v_53(uint8_t res, TileComponentWindow<int32_t>* buf,
 									 uint32_t resWidth, size_t dataLength)
 {
 	if(resWidth == 0)
@@ -1182,8 +1182,8 @@ bool WaveletReverse::decompress_tile_53(void)
 	if(numres_ == 1U)
 		return true;
 
-	auto tileCompRes = tilec_->tileCompResolution;
-	auto buf = tilec_->getBuffer();
+	auto tileCompRes = tilec_->resolutions_;
+	auto buf = tilec_->getWindow();
 	size_t dataLength = max_resolution(tileCompRes, numres_);
 	/* overflow check */
 	if(dataLength > (SIZE_MAX / PLL_COLS_53 / sizeof(int32_t)))
@@ -1751,7 +1751,7 @@ struct PartialBandInfo
 	grk_rect32 resWindowRect;
 
 	bool alloc(ISparseCanvas* sa, uint8_t resno, Resolution* fullRes,
-			   TileComponentWindowBuffer<int32_t>* buf)
+			   TileComponentWindow<int32_t>* buf)
 	{
 		bandWindowRect[BAND_ORIENT_LL] =
 			grk_rect32(buf->getBandWindowBufferPaddedREL(resno, BAND_ORIENT_LL));
@@ -1830,9 +1830,9 @@ template<typename T, uint32_t FILTER_WIDTH, uint32_t VERT_PASS_WIDTH, typename D
 bool WaveletReverse::decompress_partial_tile(ISparseCanvas* sa)
 {
 	uint8_t numresolutions = tilec_->numresolutions;
-	auto buf = tilec_->getBuffer();
-	auto fullRes = tilec_->tileCompResolution;
-	auto fullResTopLevel = tilec_->tileCompResolution + numres_ - 1;
+	auto buf = tilec_->getWindow();
+	auto fullRes = tilec_->resolutions_;
+	auto fullResTopLevel = tilec_->resolutions_ + numres_ - 1;
 	if(!fullResTopLevel->width() || !fullResTopLevel->height())
 		return true;
 
@@ -2076,7 +2076,7 @@ bool WaveletReverse::decompress(void)
 			return decompress_partial_tile<
 				int32_t, getFilterPad<uint32_t>(true), VERT_PASS_WIDTH,
 				Partial53<int32_t, getFilterPad<uint32_t>(false), VERT_PASS_WIDTH>>(
-				tilec_->getSparseCanvas());
+				tilec_->getRegionWindow());
 		}
 	}
 	else
@@ -2089,7 +2089,7 @@ bool WaveletReverse::decompress(void)
 			return decompress_partial_tile<
 				vec4f, getFilterPad<uint32_t>(false), VERT_PASS_WIDTH,
 				Partial97<vec4f, getFilterPad<uint32_t>(false), VERT_PASS_WIDTH>>(
-				tilec_->getSparseCanvas());
+				tilec_->getRegionWindow());
 		}
 	}
 }

@@ -28,20 +28,20 @@ struct TileComponent : public grk_rect32
 {
 	TileComponent();
 	~TileComponent();
-	bool allocSparseCanvas(uint32_t numres, bool truncatedTile);
-	bool createWindowBuffer(grk_rect32 unreducedTileCompOrImageCompWindow);
-	void deallocBuffers(void);
+	bool allocRegionWindow(uint32_t numres, bool truncatedTile);
+	bool createWindow(grk_rect32 unreducedTileCompOrImageCompWindow);
+	void dealloc(void);
 	bool init(TileProcessor* tileProcessor, grk_rect32 unreducedTileComp, uint8_t prec,
 			  TileComponentCodingParams* tccp);
 	bool subbandIntersectsAOI(uint8_t resno, eBandOrientation orient, const grk_rect32* aoi) const;
 
-	TileComponentWindowBuffer<int32_t>* getBuffer() const;
+	TileComponentWindow<int32_t>* getWindow() const;
 	bool isWholeTileDecoding();
-	ISparseCanvas* getSparseCanvas();
+	ISparseCanvas* getRegionWindow();
 	bool postProcess(int32_t* srcData, DecompressBlockExec* block);
 	bool postProcessHT(int32_t* srcData, DecompressBlockExec* block, uint16_t stride);
 
-	Resolution* tileCompResolution; // in canvas coordinates
+	Resolution* resolutions_; // in canvas coordinates
 	uint8_t numresolutions;
 	uint8_t numResolutionsToDecompress; // desired number of resolutions to decompress
 	std::atomic<uint8_t> highestResolutionDecompressed; // highest resolution actually decompressed
@@ -51,10 +51,10 @@ struct TileComponent : public grk_rect32
   private:
 	template<typename F>
 	bool postDecompressImpl(int32_t* srcData, DecompressBlockExec* block, uint16_t stride);
-	ISparseCanvas* sa_;
+	ISparseCanvas* regionWindow_;
 	bool wholeTileDecompress;
 	bool isCompressor_;
-	TileComponentWindowBuffer<int32_t>* buf;
+	TileComponentWindow<int32_t>* window_;
 	TileComponentCodingParams* tccp_;
 };
 

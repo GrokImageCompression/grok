@@ -31,6 +31,16 @@
 #include <cstdint>
 #include <cstdlib>
 
+#ifndef _MSC_VER
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wconversion"
+#pragma GCC diagnostic ignored "-Wsign-conversion"
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+#pragma GCC diagnostic ignored "-Wunused-variable"
+#pragma GCC diagnostic ignored "-Wsign-compare"
+#pragma GCC diagnostic ignored "-Wparentheses"
+#endif
+
 #define round_up(x, n) (((x) + (n)-1) & (-n))
 #define round_down(x, n) ((x) & (-n))
 #define ceil_int(a, b) ((a) + ((b)-1)) / (b)
@@ -90,3 +100,7 @@ static inline uint32_t count_leading_zeros(const uint32_t x) {
 #endif
   return (x == 0) ? 31 : y;
 }
+
+#ifndef _MSC_VER
+#pragma GCC diagnostic pop
+#endif

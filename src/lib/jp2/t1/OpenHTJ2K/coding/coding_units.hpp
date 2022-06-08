@@ -30,6 +30,17 @@
 
 #include <cstdint>
 #include <vector>
+
+#ifndef _MSC_VER
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wconversion"
+#pragma GCC diagnostic ignored "-Wsign-conversion"
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+#pragma GCC diagnostic ignored "-Wunused-variable"
+#pragma GCC diagnostic ignored "-Wsign-compare"
+#pragma GCC diagnostic ignored "-Wparentheses"
+#endif
+
 #include "open_htj2k_typedef.hpp"
 #include <cassert>
 #include <string>
@@ -129,3 +140,8 @@ class j2k_codeblock : public j2k_region {
 };
 
 int32_t htj2k_encode(j2k_codeblock *block, uint8_t ROIshift) noexcept;
+
+
+#ifndef _MSC_VER
+#pragma GCC diagnostic pop
+#endif
