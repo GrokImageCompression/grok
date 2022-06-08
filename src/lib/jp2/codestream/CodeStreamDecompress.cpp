@@ -253,7 +253,8 @@ bool CodeStreamDecompress::setDecompressRegion(grk_rect_single region)
 		return false;
 	}
 
-	if(region != grk_rect_single(0, 0, 0, 0))
+	if(((uint32_t)region.x0 + image->x0) != 0 && ((uint32_t)region.y0 + image->y0) != 0 &&
+       ((uint32_t)region.x1 + image->x1) != 0 && ((uint32_t)region.y1 + image->y1) != 0)
 	{
 		grk_rect16 tilesToDecompress;
 		/* Check if the region provided by the user is correct */
