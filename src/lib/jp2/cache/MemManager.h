@@ -276,6 +276,9 @@ struct grk_buf2d : protected grk_buf<T, A>, public grk_rect32
 	explicit grk_buf2d(const grk_rect32* b)
 		: grk_buf<T, A>(nullptr, false), grk_rect32(b->x0, b->y0, b->x1, b->y1), stride(0)
 	{}
+	explicit grk_buf2d(const grk_rect32& b)
+		: grk_buf<T, A>(nullptr, false), grk_rect32(b.x0, b.y0, b.x1, b.y1), stride(0)
+	{}
 	grk_buf2d(void) : grk_buf2d(nullptr, 0, 0, 0, false) {}
 	explicit grk_buf2d(const grk_buf2d& rhs)
 		: grk_buf<T, A>(rhs), grk_rect32(rhs), stride(rhs.stride)

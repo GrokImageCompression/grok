@@ -122,7 +122,7 @@ struct ResWindow
 					auto bandWindowREL =
 						bandWindow.pan(-(int64_t)bandFull.x0, -(int64_t)bandFull.y0);
 					bandWindowsBuffersPaddedREL_.push_back(
-						new grk_buf2d<T, AllocatorAligned>(&bandWindowREL));
+						new grk_buf2d<T, AllocatorAligned>(bandWindowREL));
 				}
 				auto winLow = bandWindowsBuffersPaddedREL_[BAND_ORIENT_LL];
 				auto winHigh = bandWindowsBuffersPaddedREL_[BAND_ORIENT_HL];
@@ -135,7 +135,7 @@ struct ResWindow
 
 				// todo: shouldn't need to clip
 				auto resBounds = grk_rect32(0, 0, tileCompAtRes_->width(), tileCompAtRes_->height());
-				resWindowBufferREL_->clipIPL(&resBounds);
+				resWindowBufferREL_->clipIPL(resBounds);
 
 				// two windows formed by horizontal pass and used as input for vertical pass
 				grk_rect32 splitResWindowREL[SPLIT_NUM_ORIENTATIONS];
@@ -145,7 +145,7 @@ struct ResWindow
 					resWindowBufferREL_->x1, bandWindowsBuffersPaddedREL_[BAND_ORIENT_LL]->y1);
 
 				resWindowBufferSplitREL_[SPLIT_L] =
-					new grk_buf2d<T, AllocatorAligned>(&splitResWindowREL[SPLIT_L]);
+					new grk_buf2d<T, AllocatorAligned>(splitResWindowREL[SPLIT_L]);
 
 				splitResWindowREL[SPLIT_H] = grk_rect32(
 					resWindowBufferREL_->x0,
@@ -154,7 +154,7 @@ struct ResWindow
 					bandWindowsBuffersPaddedREL_[BAND_ORIENT_LH]->y1 + tileCompAtLowerRes_->height());
 
 				resWindowBufferSplitREL_[SPLIT_H] =
-					new grk_buf2d<T, AllocatorAligned>(&splitResWindowREL[SPLIT_H]);
+					new grk_buf2d<T, AllocatorAligned>(splitResWindowREL[SPLIT_H]);
 			}
 			// compression or full tile decompression
 		}
@@ -343,14 +343,29 @@ struct ResWindow
 			1, orientation,
 			oneLessDecompWindow.growIPL(2 * padding).intersection(&oneLessDecompTile));
 	}
-	grk_buf2d<T, AllocatorAligned>* getResWindowBufferREL(void){
+	grk_buf2d<T, AllocatorAligned>* getResWindowBufferREL(void) const{
 		return resWindowBufferREL_;
 	}
-	grk_rect32* getResWindowBoundsPadded(void){
+	grk_rect32* getResWindowBoundsPadded(void) {
 		return &resWindowBoundsPadded_;
 	}
 	void disableBandWindowAllocation(void){
 		resWindowBufferTopLevelREL_ = resWindowBufferREL_;
+	}
+	grk_buf2d<T, AllocatorAligned>* getResWindowBufferSplitREL(eSplitOrientation orientation) const{
+		return resWindowBufferSplitREL_[orientation];
+	}
+	const grk_rect32* getBandWindowPadded(eBandOrientation orientation) const
+	{
+		if(bandWindowsBoundsPadded_.empty())
+			return nullptr;
+		return &bandWindowsBoundsPadded_[orientation];
+	}
+	const grk_buf2d<T, AllocatorAligned>* getBandWindowBufferPaddedREL(eBandOrientation orientation) const
+	{
+		if(bandWindowsBuffersPaddedREL_.empty())
+			return nullptr;
+		return bandWindowsBuffersPaddedREL_[orientation];
 	}
 private:
 	bool allocated_;
@@ -361,7 +376,6 @@ private:
 
 	grk_rect32 resWindowBoundsPadded_;
 	grk_buf2d<T, AllocatorAligned>* resWindowBufferTopLevelREL_;
-public:
 	grk_buf2d<T, AllocatorAligned>* resWindowBufferREL_;
 	grk_buf2d<T, AllocatorAligned>* resWindowBufferSplitREL_[SPLIT_NUM_ORIENTATIONS];
 

@@ -88,7 +88,7 @@ struct TileComponentWindow
 			auto resWindow = ResWindow<T>::getBandWindow(
 				(uint32_t)(numresolutions - 1 - resno), 0, unreducedBounds_);
 			resWindows.push_back(new ResWindow<T>(
-				numresolutions, resno, useBandWindows() ? nullptr : topLevel->resWindowBufferREL_,
+				numresolutions, resno, useBandWindows() ? nullptr : topLevel->getResWindowBufferREL(),
 				resolutions_ + resno, resno > 0 ? resolutions_ + resno - 1 : nullptr,
 				resWindow, unreducedBounds_, tileCompUnreduced,
 				wholeTileDecompress ? 0 : getFilterPad<uint32_t>(lossless)));
@@ -174,7 +174,7 @@ struct TileComponentWindow
 		if(resno == 0 && (compress_ || wholeTileDecompress_))
 			return resWindows[0]->getResWindowBufferREL();
 
-		return resWindows[resno]->bandWindowsBuffersPaddedREL_[orientation];
+		return resWindows[resno]->getBandWindowBufferPaddedREL(orientation);
 	}
 
 	/**
@@ -186,9 +186,7 @@ struct TileComponentWindow
 	 */
 	const grk_rect32* getBandWindowPadded(uint8_t resno, eBandOrientation orientation) const
 	{
-		if(resWindows[resno]->bandWindowsBoundsPadded_.empty())
-			return nullptr;
-		return &resWindows[resno]->bandWindowsBoundsPadded_[orientation];
+		return resWindows[resno]->getBandWindowPadded(orientation);
 	}
 
 	const grk_rect32* getResWindowPadded(uint8_t resno) const
@@ -205,7 +203,7 @@ struct TileComponentWindow
 	{
 		assert(resno > 0 && resno < resolution_.size());
 
-		return resWindows[resno]->resWindowBufferSplitREL_[orientation];
+		return resWindows[resno]->getResWindowBufferSplitREL(orientation);
 	}
 	/**
 	 * Get resolution window
@@ -215,7 +213,7 @@ struct TileComponentWindow
 	 */
 	const grk_buf2d<T, AllocatorAligned>* getResWindowBufferREL(uint32_t resno) const
 	{
-		return resWindows[resno]->resWindowBufferREL_;
+		return resWindows[resno]->getResWindowBufferREL();
 	}
 	/**
 	 * Get highest resolution window

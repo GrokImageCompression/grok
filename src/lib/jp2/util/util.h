@@ -232,15 +232,15 @@ struct grk_rect
 		return grk_rect<T>(std::max<T>(x0, rhs->x0), std::max<T>(y0, rhs->y0),
 						   std::min<T>(x1, rhs->x1), std::min<T>(y1, rhs->y1));
 	}
-	grk_rect<T> clip(const grk_rect<T>& rhs) const
+	grk_rect<T> clip(const grk_rect<T> &rhs) const
 	{
 		return clip(&rhs);
 	}
 	// IPL stands for in place
-	void clipIPL(const grk_rect<T>* rhs)
+	void clipIPL(const grk_rect<T> &rhs)
 	{
-		*this = grk_rect<T>(std::max<T>(x0, rhs->x0), std::max<T>(y0, rhs->y0),
-							std::min<T>(x1, rhs->x1), std::min<T>(y1, rhs->y1));
+		*this = grk_rect<T>(std::max<T>(x0, rhs.x0), std::max<T>(y0, rhs.y0),
+							std::min<T>(x1, rhs.x1), std::min<T>(y1, rhs.y1));
 	}
 	grk_rect<T> intersection(const grk_rect<T>* rhs) const
 	{
