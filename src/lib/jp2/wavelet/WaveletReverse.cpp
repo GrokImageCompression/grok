@@ -696,13 +696,11 @@ bool WaveletReverse::decompress_tile_97(void)
 		auto winSplitH = buf->getResWindowBufferSplitSimpleF(res, SPLIT_H);
 		if(!decompress_h_97(res, numThreads, dataLength, horizF_, vertF_.sn_full,
 							buf->getResWindowBufferSimpleF(res - 1U),
-							buf->getBandWindowBufferPaddedSimpleF(res, BAND_ORIENT_HL),
-							winSplitL))
+							buf->getBandWindowBufferPaddedSimpleF(res, BAND_ORIENT_HL), winSplitL))
 			return false;
 		if(!decompress_h_97(res, numThreads, dataLength, horizF_, resHeight - vertF_.sn_full,
 							buf->getBandWindowBufferPaddedSimpleF(res, BAND_ORIENT_LH),
-							buf->getBandWindowBufferPaddedSimpleF(res, BAND_ORIENT_HH),
-							winSplitH))
+							buf->getBandWindowBufferPaddedSimpleF(res, BAND_ORIENT_HH), winSplitH))
 			return false;
 		vertF_.dn_full = resHeight - vertF_.sn_full;
 		vertF_.parity = tr->y0 & 1;
@@ -1751,14 +1749,10 @@ struct PartialBandInfo
 	bool alloc(ISparseCanvas* sa, uint8_t resno, Resolution* fullRes,
 			   TileComponentWindow<int32_t>* buf)
 	{
-		bandWindowREL_[BAND_ORIENT_LL] =
-			buf->getBandWindowBufferPaddedREL(resno, BAND_ORIENT_LL);
-		bandWindowREL_[BAND_ORIENT_HL] =
-			buf->getBandWindowBufferPaddedREL(resno, BAND_ORIENT_HL);
-		bandWindowREL_[BAND_ORIENT_LH] =
-			buf->getBandWindowBufferPaddedREL(resno, BAND_ORIENT_LH);
-		bandWindowREL_[BAND_ORIENT_HH] =
-			buf->getBandWindowBufferPaddedREL(resno, BAND_ORIENT_HH);
+		bandWindowREL_[BAND_ORIENT_LL] = buf->getBandWindowBufferPaddedREL(resno, BAND_ORIENT_LL);
+		bandWindowREL_[BAND_ORIENT_HL] = buf->getBandWindowBufferPaddedREL(resno, BAND_ORIENT_HL);
+		bandWindowREL_[BAND_ORIENT_LH] = buf->getBandWindowBufferPaddedREL(resno, BAND_ORIENT_LH);
+		bandWindowREL_[BAND_ORIENT_HH] = buf->getBandWindowBufferPaddedREL(resno, BAND_ORIENT_HH);
 
 		// band windows in band coordinates - needed to pre-allocate sparse blocks
 		grk_rect32 tileBandWindowREL[BAND_NUM_ORIENTATIONS];
@@ -1860,8 +1854,7 @@ bool WaveletReverse::decompress_partial_tile(ISparseCanvas* sa)
 	{
 		auto final_read = [sa, synthesisWindow, simpleBuf]() {
 			// final read into tile buffer
-			bool ret =
-				sa->read(0, synthesisWindow, simpleBuf.buf_, 1, simpleBuf.stride_, true);
+			bool ret = sa->read(0, synthesisWindow, simpleBuf.buf_, 1, simpleBuf.stride_, true);
 			assert(ret);
 			GRK_UNUSED(ret);
 		};
@@ -1875,7 +1868,7 @@ bool WaveletReverse::decompress_partial_tile(ISparseCanvas* sa)
 	auto final_read = [this, sa, synthesisWindow, simpleBuf]() {
 		// final read into tile buffer
 		bool ret =
-			sa->read(numres_ - 1, synthesisWindow, simpleBuf.buf_,  1, simpleBuf.stride_, true);
+			sa->read(numres_ - 1, synthesisWindow, simpleBuf.buf_, 1, simpleBuf.stride_, true);
 		assert(ret);
 		GRK_UNUSED(ret);
 	};

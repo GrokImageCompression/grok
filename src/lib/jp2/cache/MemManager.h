@@ -248,7 +248,8 @@ template<typename T>
 struct grk_buf2d_simple
 {
 	grk_buf2d_simple() : grk_buf2d_simple(nullptr, 0, 0) {}
-	grk_buf2d_simple(T* buf, uint32_t stride, uint32_t height) : buf_(buf), stride_(stride), height_(height)
+	grk_buf2d_simple(T* buf, uint32_t stride, uint32_t height)
+		: buf_(buf), stride_(stride), height_(height)
 	{}
 	grk_buf2d_simple incX_IN_PLACE(size_t deltaX)
 	{

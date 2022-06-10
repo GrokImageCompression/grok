@@ -70,8 +70,9 @@ bool CodeStreamDecompress::readSOTorEOC(void)
 		decompressorState_.setState(DECOMPRESS_STATE_NO_EOC);
 		return false;
 	}
-	if (curr_marker_ != J2K_MS_SOT && curr_marker_ != J2K_MS_EOC)
-		GRK_WARN("Expected SOT or EOC marker - read %s marker instead.",markerString(curr_marker_).c_str());
+	if(curr_marker_ != J2K_MS_SOT && curr_marker_ != J2K_MS_EOC)
+		GRK_WARN("Expected SOT or EOC marker - read %s marker instead.",
+				 markerString(curr_marker_).c_str());
 
 	return true;
 }
@@ -84,7 +85,8 @@ bool CodeStreamDecompress::readCurrentMarkerBody(uint16_t* markerLength)
 	}
 	else if(*markerLength < MARKER_LENGTH_BYTES)
 	{
-		GRK_ERROR("Marker length %u for marker 0x%x is less than marker length bytes (2)", *markerLength, curr_marker_);
+		GRK_ERROR("Marker length %u for marker 0x%x is less than marker length bytes (2)",
+				  *markerLength, curr_marker_);
 		return false;
 	}
 	else if(*markerLength == MARKER_LENGTH_BYTES)
@@ -134,9 +136,12 @@ bool CodeStreamDecompress::parseTileParts(bool* canDecompress)
 	assert(curr_marker_ == J2K_MS_SOT);
 
 	// try to skip non-scheduled tile parts using TLM marker if available
-	try {
+	try
+	{
 		skipNonScheduledTLM(&cp_);
-	} catch (CorruptTLMException &cte){
+	}
+	catch(CorruptTLMException& cte)
+	{
 		return false;
 	}
 
@@ -357,7 +362,7 @@ void CodeStreamDecompress::nextTLM(void)
 		auto actualTileLength = stream_->tell() - decompressorState_.lastSotReadPosition;
 		if(tilePartLengthInfo)
 		{
-			//GRK_INFO("TLM: tile %u", tilePartLengthInfo->tileIndex_);
+			// GRK_INFO("TLM: tile %u", tilePartLengthInfo->tileIndex_);
 			if(actualTileLength != tilePartLengthInfo->length_)
 			{
 				GRK_WARN("Tile %u: TLM marker tile part length %u differs from actual"
@@ -365,16 +370,17 @@ void CodeStreamDecompress::nextTLM(void)
 						 tilePartLengthInfo->tileIndex_, tilePartLengthInfo->length_,
 						 actualTileLength, decompressorState_.lastSotReadPosition, stream_->tell());
 				cp_.tlm_markers->invalidate();
-				 //assert(false);
+				// assert(false);
 			}
 			else if(currentTileProcessor_->getIndex() != tilePartLengthInfo->tileIndex_)
 			{
 				GRK_WARN("Tile %u: TLM marker signalled tile index %u differs from actual"
 						 " tile index %u; %u,%u. Disabling TLM.",
 						 currentTileProcessor_->getIndex(), tilePartLengthInfo->tileIndex_,
-						 currentTileProcessor_->getIndex(), decompressorState_.lastSotReadPosition, stream_->tell());
+						 currentTileProcessor_->getIndex(), decompressorState_.lastSotReadPosition,
+						 stream_->tell());
 				cp_.tlm_markers->invalidate();
-				//assert(false);
+				// assert(false);
 			}
 		}
 	}

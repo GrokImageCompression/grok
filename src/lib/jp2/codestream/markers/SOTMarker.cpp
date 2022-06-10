@@ -92,7 +92,7 @@ bool SOTMarker::read(CodeStreamDecompress* codeStream, uint8_t* headerData, uint
 	grk_read<uint16_t>(headerData, &index);
 	headerData += sizeof(uint16_t);
 	grk_read<uint32_t>(headerData, &len);
-	headerData +=sizeof(uint32_t);
+	headerData += sizeof(uint32_t);
 	grk_read<uint8_t>(headerData++, &tp_index);
 	grk_read<uint8_t>(headerData++, &num_tile_parts);
 
@@ -136,26 +136,28 @@ bool SOTMarker::read(CodeStreamDecompress* codeStream, uint8_t* headerData, uint
 	}
 
 	auto tcp = cp->tcps + tileIndex;
-	if (!tcp->advanceTilePartCounter(tileIndex, currentTilePart))
+	if(!tcp->advanceTilePartCounter(tileIndex, currentTilePart))
 		return false;
 
-	//GRK_INFO("SOT: Tile %u, tile part %u",tileIndex, currentTilePart);
+	// GRK_INFO("SOT: Tile %u, tile part %u",tileIndex, currentTilePart);
 
-	if (tilePartLength == sot_marker_segment_len_minus_tile_data_len) {
+	if(tilePartLength == sot_marker_segment_len_minus_tile_data_len)
+	{
 		// next marker should be SOD
 		codeStream->setExpectSOD();
-	} else {
+	}
+	else
+	{
 		/* PSot should be equal to zero, or greater than or equal to sot_marker_segment_min_len.
-		 * There is a third, technically illegal case where PSot equals sot_marker_segment_len_minus_tile_data_len,
-		 * where there is just a single SOD marker, and the SOD marker length is excluded from the signalled
-		 * PSot, for some reason.
+		 * There is a third, technically illegal case where PSot equals
+		 * sot_marker_segment_len_minus_tile_data_len, where there is just a single SOD marker, and
+		 * the SOD marker length is excluded from the signalled PSot, for some reason.
 		 */
 		if(tilePartLength && (tilePartLength < sot_marker_segment_min_len))
 		{
 			GRK_ERROR("Illegal Psot value %u", tilePartLength);
 			return false;
 		}
-
 	}
 	/* Ref A.4.2: Psot may equal zero if it is the last tile-part of the code stream.*/
 	auto decompressState = codeStream->getDecompressorState();
@@ -212,7 +214,7 @@ bool SOTMarker::read(CodeStreamDecompress* codeStream, uint8_t* headerData, uint
 		decompressState->setComplete(tileIndex);
 
 	codeStream->currentProcessor()->setTilePartDataLength(
-			currentTilePart, tilePartLength, decompressState->lastTilePartInCodeStream);
+		currentTilePart, tilePartLength, decompressState->lastTilePartInCodeStream);
 	decompressState->setState(DECOMPRESS_STATE_TPH);
 
 	grk_pt16 currTile(tileIndex % cp->t_grid_width, tileIndex / cp->t_grid_width);

@@ -100,13 +100,11 @@ T satSub(int64_t lhs, int64_t rhs)
 template<typename T>
 struct grk_rect
 {
-	grk_rect(T origin_x0, T origin_y0, T x0, T y0, T x1, T y1) :
-		origin_x0(origin_x0), origin_y0(origin_y0), x0(x0), y0(y0), x1(x1), y1(y1)
+	grk_rect(T origin_x0, T origin_y0, T x0, T y0, T x1, T y1)
+		: origin_x0(origin_x0), origin_y0(origin_y0), x0(x0), y0(y0), x1(x1), y1(y1)
 	{}
-	grk_rect(T x0, T y0, T x1, T y1) : grk_rect(x0,y0,x0,y0,x1,y1)
-	{}
-	grk_rect(const grk_rect& rhs) : grk_rect(&rhs)
-	{}
+	grk_rect(T x0, T y0, T x1, T y1) : grk_rect(x0, y0, x0, y0, x1, y1) {}
+	grk_rect(const grk_rect& rhs) : grk_rect(&rhs) {}
 	grk_rect(const grk_rect* rhs)
 	{
 		origin_x0 = rhs->origin_x0;
@@ -116,8 +114,7 @@ struct grk_rect
 		x1 = rhs->x1;
 		y1 = rhs->y1;
 	}
-	grk_rect(void) : grk_rect(0,0,0,0)
-	{}
+	grk_rect(void) : grk_rect(0, 0, 0, 0) {}
 	virtual ~grk_rect() = default;
 
 	T origin_x0, origin_y0;
@@ -130,7 +127,8 @@ struct grk_rect
 	std::string boundsString() const
 	{
 		std::ostringstream os;
-		os << "[" << origin_x0 << "," << origin_y0  << "," << x0 << "," << y0 << "," << x1 << "," << y1 << "]";
+		os << "[" << origin_x0 << "," << origin_y0 << "," << x0 << "," << y0 << "," << x1 << ","
+		   << y1 << "]";
 		return os.str();
 	}
 	bool valid(void) const
@@ -171,8 +169,8 @@ struct grk_rect
 	{
 		if(this == &rhs)
 			return true;
-		return origin_x0 == rhs.origin_x0 && origin_y0 == rhs.origin_y0
-				&& x0 == rhs.x0 && y0 == rhs.y0 && x1 == rhs.x1 && y1 == rhs.y1;
+		return origin_x0 == rhs.origin_x0 && origin_y0 == rhs.origin_y0 && x0 == rhs.x0 &&
+			   y0 == rhs.y0 && x1 == rhs.x1 && y1 == rhs.y1;
 	}
 	void set(grk_rect<T>* rhs)
 	{
@@ -232,12 +230,12 @@ struct grk_rect
 		return grk_rect<T>(std::max<T>(x0, rhs->x0), std::max<T>(y0, rhs->y0),
 						   std::min<T>(x1, rhs->x1), std::min<T>(y1, rhs->y1));
 	}
-	grk_rect<T> clip(const grk_rect<T> &rhs) const
+	grk_rect<T> clip(const grk_rect<T>& rhs) const
 	{
 		return clip(&rhs);
 	}
 	// IPL stands for in place
-	void clipIPL(const grk_rect<T> &rhs)
+	void clipIPL(const grk_rect<T>& rhs)
 	{
 		*this = grk_rect<T>(std::max<T>(x0, rhs.x0), std::max<T>(y0, rhs.y0),
 							std::min<T>(x1, rhs.x1), std::min<T>(y1, rhs.y1));

@@ -33,7 +33,8 @@ TileComponent::TileComponent()
 #ifdef DEBUG_LOSSLESS_T2
 	  round_trip_resolutions(nullptr),
 #endif
-	  regionWindow_(nullptr), wholeTileDecompress(true), isCompressor_(false), window_(nullptr), tccp_(nullptr)
+	  regionWindow_(nullptr), wholeTileDecompress(true), isCompressor_(false), window_(nullptr),
+	  tccp_(nullptr)
 {}
 
 TileComponent::~TileComponent()
@@ -86,8 +87,8 @@ bool TileComponent::init(TileProcessor* tileProcessor, grk_rect32 unreducedTileC
 	{
 		auto res = resolutions_ + resno;
 
-		res->set(ResWindow<int32_t>::getBandWindow((uint32_t)(numresolutions - (resno + 1)),
-														 BAND_ORIENT_LL, unreducedTileComp));
+		res->set(TileComponentWindow<int32_t>::getBandWindow(
+			(uint32_t)(numresolutions - (resno + 1)), BAND_ORIENT_LL, unreducedTileComp));
 
 		/* p. 35, table A-23, ISO/IEC FDIS154444-1 : 2000 (18 august 2000) */
 		uint32_t precWidthExp = tccp_->precWidthExp[resno];
@@ -138,8 +139,8 @@ bool TileComponent::init(TileProcessor* tileProcessor, grk_rect32 unreducedTileC
 			band->orientation = orientation;
 			uint32_t numDecomps =
 				(resno == 0) ? (uint32_t)(numresolutions - 1U) : (uint32_t)(numresolutions - resno);
-			band->set(ResWindow<int32_t>::getBandWindow(numDecomps, band->orientation,
-															  unreducedTileComp));
+			band->set(TileComponentWindow<int32_t>::getBandWindow(numDecomps, band->orientation,
+																  unreducedTileComp));
 		}
 	}
 	// set band step size
@@ -354,19 +355,19 @@ void TileComponent::postProcess(int32_t* srcData, DecompressBlockExec* block)
 	{
 		if(block->qmfbid == 1)
 			postDecompressImpl<RoiShiftFilter<int32_t>>(srcData, block,
-															   (uint16_t)block->cblk->width());
+														(uint16_t)block->cblk->width());
 		else
 			postDecompressImpl<RoiScaleFilter<int32_t>>(srcData, block,
-															   (uint16_t)block->cblk->width());
+														(uint16_t)block->cblk->width());
 	}
 	else
 	{
 		if(block->qmfbid == 1)
 			postDecompressImpl<ShiftFilter<int32_t>>(srcData, block,
-															(uint16_t)block->cblk->width());
+													 (uint16_t)block->cblk->width());
 		else
 			postDecompressImpl<ScaleFilter<int32_t>>(srcData, block,
-															(uint16_t)block->cblk->width());
+													 (uint16_t)block->cblk->width());
 	}
 }
 void TileComponent::postProcessHT(int32_t* srcData, DecompressBlockExec* block, uint16_t stride)
@@ -375,20 +376,16 @@ void TileComponent::postProcessHT(int32_t* srcData, DecompressBlockExec* block, 
 	if(block->roishift)
 	{
 		if(block->qmfbid == 1)
-			postDecompressImpl<openhtj2k::RoiShiftOpenHTJ2KFilter<int32_t>>(srcData, block,
-																				   stride);
+			postDecompressImpl<openhtj2k::RoiShiftOpenHTJ2KFilter<int32_t>>(srcData, block, stride);
 		else
-			postDecompressImpl<openhtj2k::RoiScaleOpenHTJ2KFilter<int32_t>>(srcData, block,
-																				   stride);
+			postDecompressImpl<openhtj2k::RoiScaleOpenHTJ2KFilter<int32_t>>(srcData, block, stride);
 	}
 	else
 	{
 		if(block->qmfbid == 1)
-			postDecompressImpl<openhtj2k::ShiftOpenHTJ2KFilter<int32_t>>(srcData, block,
-																				stride);
+			postDecompressImpl<openhtj2k::ShiftOpenHTJ2KFilter<int32_t>>(srcData, block, stride);
 		else
-			postDecompressImpl<openhtj2k::ScaleOpenHTJ2KFilter<int32_t>>(srcData, block,
-																				stride);
+			postDecompressImpl<openhtj2k::ScaleOpenHTJ2KFilter<int32_t>>(srcData, block, stride);
 	}
 #else
 	if(block->roishift)
@@ -415,9 +412,12 @@ void TileComponent::postDecompressImpl(int32_t* srcData, DecompressBlockExec* bl
 	bool empty = cblk->seg_buffers.empty();
 
 	window_->toRelativeCoordinates(block->resno, block->bandOrientation, block->x, block->y);
-	auto src = grk_buf2d<int32_t, AllocatorAligned>(srcData, false, cblk->width(), stride, cblk->height());
-	auto blockBounds = grk_rect32(block->x, block->y, block->x + cblk->width(), block->y + cblk->height());
-	if (!empty) {
+	auto src =
+		grk_buf2d<int32_t, AllocatorAligned>(srcData, false, cblk->width(), stride, cblk->height());
+	auto blockBounds =
+		grk_rect32(block->x, block->y, block->x + cblk->width(), block->y + cblk->height());
+	if(!empty)
+	{
 		if(regionWindow_)
 		{
 			src.copy<F>(src, F(block));
@@ -425,11 +425,12 @@ void TileComponent::postDecompressImpl(int32_t* srcData, DecompressBlockExec* bl
 		else
 		{
 			src.set(blockBounds);
-			window_->postProcess<F>(src,block->resno, block->bandOrientation,block);
+			window_->postProcess<F>(src, block->resno, block->bandOrientation, block);
 		}
 	}
-	if (regionWindow_)
-		regionWindow_->write(block->resno, blockBounds,empty ? nullptr : srcData, 1, blockBounds.width(), true);
+	if(regionWindow_)
+		regionWindow_->write(block->resno, blockBounds, empty ? nullptr : srcData, 1,
+							 blockBounds.width(), true);
 }
 
 } // namespace grk

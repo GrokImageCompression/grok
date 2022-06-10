@@ -51,15 +51,16 @@ bool TileProcessor::subtractMarkerSegmentLength(uint16_t markerLen)
 	uint32_t segmentLength = (uint32_t)(markerLen + MARKER_LENGTH_BYTES);
 	if(tilePartDataLength > 0 && tilePartDataLength < segmentLength)
 	{
-		GRK_ERROR("Tile part data length %u smaller than marker segment length %u", tilePartDataLength,
-				  markerLen);
+		GRK_ERROR("Tile part data length %u smaller than marker segment length %u",
+				  tilePartDataLength, markerLen);
 		return false;
 	}
 	tilePartDataLength -= (uint64_t)segmentLength;
 
 	return true;
 }
-bool TileProcessor::setTilePartDataLength(uint16_t tilePart, uint32_t tilePartLength, bool lastTilePartInCodeStream)
+bool TileProcessor::setTilePartDataLength(uint16_t tilePart, uint32_t tilePartLength,
+										  bool lastTilePartInCodeStream)
 {
 	if(!lastTilePartInCodeStream)
 	{
@@ -71,13 +72,17 @@ bool TileProcessor::setTilePartDataLength(uint16_t tilePart, uint32_t tilePartLe
 		}
 		tilePartDataLength = tilePartLength - sot_marker_segment_len_minus_tile_data_len;
 		// handle some edge cases
-		if (tilePartDataLength < 2) {
-			if (tilePartDataLength == 1) {
-				GRK_WARN("Tile %u: tile part %u data length %u is smaller than minimum size of 2 - room for single SOD marker. Ignoring.",
-					getIndex(), tilePart, tilePartDataLength);
+		if(tilePartDataLength < 2)
+		{
+			if(tilePartDataLength == 1)
+			{
+				GRK_WARN("Tile %u: tile part %u data length %u is smaller than minimum size of 2 - "
+						 "room for single SOD marker. Ignoring.",
+						 getIndex(), tilePart, tilePartDataLength);
 				tilePartDataLength = 0;
 			}
-			else {
+			else
+			{
 				// some non-compliant images do not add 2 bytes for SOD marker
 				// for an empty tile part
 				tilePartDataLength = 2;

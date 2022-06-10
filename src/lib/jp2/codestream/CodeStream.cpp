@@ -61,61 +61,63 @@ IBufferedStream* CodeStream::getStream()
 	return stream_;
 }
 
-std::string CodeStream::markerString(uint16_t marker) {
-	switch (marker) {
-	case J2K_MS_SOC:
-		return "SOC";
-	case J2K_MS_SOT:
-		return "SOT";
-	case J2K_MS_SOD:
-		return "SOD";
-	case J2K_MS_EOC:
-		return "EOC";
-	case J2K_MS_CAP:
-		return "CAP";
-	case J2K_MS_SIZ:
-		return "SIZ";
-	case J2K_MS_COD:
-		return "COD";
-	case J2K_MS_COC:
-		return "COC";
-	case J2K_MS_RGN:
-		return "RGN";
-	case J2K_MS_QCD:
-		return "QCD";
-	case J2K_MS_QCC:
-		return "QCC";
-	case J2K_MS_POC:
-		return "POC";
-	case J2K_MS_TLM:
-		return "TLM";
-	case J2K_MS_PLM:
-		return "PLM";
-	case J2K_MS_PLT:
-		return "PLT";
-	case J2K_MS_PPM:
-		return "PPM";
-	case J2K_MS_PPT:
-		return "PPT";
-	case J2K_MS_SOP:
-		return "SOP";
-	case J2K_MS_EPH:
-		return "EPH";
-	case J2K_MS_CRG:
-		return "CRG";
-	case J2K_MS_COM:
-		return "COM";
-	case J2K_MS_CBD:
-		return "CBD";
-	case J2K_MS_MCC:
-		return "MCC";
-	case J2K_MS_MCT:
-		return "MCT";
-	case J2K_MS_MCO:
-		return "MCO";
-	case J2K_MS_UNK:
-	default:
-		return "Unknown";
+std::string CodeStream::markerString(uint16_t marker)
+{
+	switch(marker)
+	{
+		case J2K_MS_SOC:
+			return "SOC";
+		case J2K_MS_SOT:
+			return "SOT";
+		case J2K_MS_SOD:
+			return "SOD";
+		case J2K_MS_EOC:
+			return "EOC";
+		case J2K_MS_CAP:
+			return "CAP";
+		case J2K_MS_SIZ:
+			return "SIZ";
+		case J2K_MS_COD:
+			return "COD";
+		case J2K_MS_COC:
+			return "COC";
+		case J2K_MS_RGN:
+			return "RGN";
+		case J2K_MS_QCD:
+			return "QCD";
+		case J2K_MS_QCC:
+			return "QCC";
+		case J2K_MS_POC:
+			return "POC";
+		case J2K_MS_TLM:
+			return "TLM";
+		case J2K_MS_PLM:
+			return "PLM";
+		case J2K_MS_PLT:
+			return "PLT";
+		case J2K_MS_PPM:
+			return "PPM";
+		case J2K_MS_PPT:
+			return "PPT";
+		case J2K_MS_SOP:
+			return "SOP";
+		case J2K_MS_EPH:
+			return "EPH";
+		case J2K_MS_CRG:
+			return "CRG";
+		case J2K_MS_COM:
+			return "COM";
+		case J2K_MS_CBD:
+			return "CBD";
+		case J2K_MS_MCC:
+			return "MCC";
+		case J2K_MS_MCT:
+			return "MCT";
+		case J2K_MS_MCO:
+			return "MCO";
+		case J2K_MS_UNK:
+		default:
+			return "Unknown";
 	}
 }
 

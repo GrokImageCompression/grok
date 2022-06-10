@@ -125,7 +125,8 @@ struct TileProcessor
 	PLCache packetLengthCache;
 	uint64_t getTilePartDataLength(void);
 	bool subtractMarkerSegmentLength(uint16_t markerLen);
-	bool setTilePartDataLength(uint16_t tilePart, uint32_t tilePartLength, bool lastTilePartInCodeStream);
+	bool setTilePartDataLength(uint16_t tilePart, uint32_t tilePartLength,
+							   bool lastTilePartInCodeStream);
 	uint64_t getNumProcessedPackets(void);
 	void incNumProcessedPackets(void);
 	void incNumProcessedPackets(uint64_t numPackets);

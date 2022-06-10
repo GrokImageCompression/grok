@@ -46,10 +46,9 @@ template<typename T>
 struct TileComponentWindow
 {
 	TileComponentWindow(bool isCompressor, bool lossless, bool wholeTileDecompress,
-							  grk_rect32 tileCompUnreduced, grk_rect32 tileCompReduced,
-							  grk_rect32 unreducedTileCompOrImageCompWindow,
-							  Resolution* resolutions_, uint8_t numresolutions,
-							  uint8_t reducedNumResolutions)
+						grk_rect32 tileCompUnreduced, grk_rect32 tileCompReduced,
+						grk_rect32 unreducedTileCompOrImageCompWindow, Resolution* resolutions_,
+						uint8_t numresolutions, uint8_t reducedNumResolutions)
 		: unreducedBounds_(tileCompUnreduced), bounds_(tileCompReduced),
 		  numResolutions_(numresolutions), compress_(isCompressor),
 		  wholeTileDecompress_(wholeTileDecompress)
@@ -85,12 +84,13 @@ struct TileComponentWindow
 		for(uint8_t resno = 0; resno < reducedNumResolutions - 1; ++resno)
 		{
 			// resolution window ==  next resolution band window at orientation 0
-			auto resWindow = ResWindow<T>::getBandWindow(
-				(uint32_t)(numresolutions - 1 - resno), 0, unreducedBounds_);
+			auto resWindow = ResWindow<T>::getBandWindow((uint32_t)(numresolutions - 1 - resno), 0,
+														 unreducedBounds_);
 			resWindows.push_back(new ResWindow<T>(
-				numresolutions, resno, useBandWindows() ? nullptr : topLevel->getResWindowBufferREL(),
-				resolutions_ + resno, resno > 0 ? resolutions_ + resno - 1 : nullptr,
-				resWindow, unreducedBounds_, tileCompUnreduced,
+				numresolutions, resno,
+				useBandWindows() ? nullptr : topLevel->getResWindowBufferREL(),
+				resolutions_ + resno, resno > 0 ? resolutions_ + resno - 1 : nullptr, resWindow,
+				unreducedBounds_, tileCompUnreduced,
 				wholeTileDecompress ? 0 : getFilterPad<uint32_t>(lossless)));
 		}
 		resWindows.push_back(topLevel);
@@ -99,6 +99,21 @@ struct TileComponentWindow
 	{
 		for(auto& b : resWindows)
 			delete b;
+	}
+	/**
+	 * Get band window (in tile component coordinates) for specified number
+	 * of decompositions
+	 *
+	 * Note: if numDecomps is zero, then the band window (and there is only one)
+	 * is equal to the unreduced tile component window
+	 *
+	 * See table F-1 in JPEG 2000 standard
+	 *
+	 */
+	static grk_rect32 getBandWindow(uint32_t numDecomps, uint8_t orientation,
+									grk_rect32 tileCompWindowUnreduced)
+	{
+		return ResWindow<T>::getBandWindow(numDecomps, orientation, tileCompWindowUnreduced);
 	}
 
 	/**
@@ -142,9 +157,9 @@ struct TileComponentWindow
 		offsetx = x;
 		offsety = y;
 	}
-	template<typename F> void postProcess(grk_buf2d<int32_t, AllocatorAligned> &src,
-											uint8_t resno, eBandOrientation bandOrientation,
-											DecompressBlockExec* block)
+	template<typename F>
+	void postProcess(grk_buf2d<int32_t, AllocatorAligned>& src, uint8_t resno,
+					 eBandOrientation bandOrientation, DecompressBlockExec* block)
 	{
 		grk_buf2d<int32_t, AllocatorAligned> dst;
 		dst = getCodeBlockDestWindowREL(resno, bandOrientation);
@@ -248,7 +263,7 @@ struct TileComponentWindow
 	const grk_buf2d_simple<int32_t>
 		getResWindowBufferSplitSimple(uint8_t resno, eSplitOrientation orientation) const
 	{
-		return getResWindowBufferSplitREL(resno,orientation)->simple();
+		return getResWindowBufferSplitREL(resno, orientation)->simple();
 	}
 
 	/*
@@ -259,7 +274,7 @@ struct TileComponentWindow
 	const grk_buf2d_simple<float>
 		getResWindowBufferSplitSimpleF(uint8_t resno, eSplitOrientation orientation) const
 	{
-		return getResWindowBufferSplitREL(resno,orientation)->simpleF();
+		return getResWindowBufferSplitREL(resno, orientation)->simpleF();
 	}
 
 	/**
@@ -308,7 +323,7 @@ struct TileComponentWindow
 	 *
 	 *
 	 */
-	 grk_buf2d_simple<int32_t> getResWindowBufferHighestSimple(void) const
+	grk_buf2d_simple<int32_t> getResWindowBufferHighestSimple(void) const
 	{
 		return getResWindowBufferHighestREL()->simple();
 	}
@@ -317,7 +332,7 @@ struct TileComponentWindow
 	 *
 	 *
 	 */
-	 grk_buf2d_simple<float> getResWindowBufferHighestSimpleF(void) const
+	grk_buf2d_simple<float> getResWindowBufferHighestSimpleF(void) const
 	{
 		return getResWindowBufferHighestREL()->simpleF();
 	}

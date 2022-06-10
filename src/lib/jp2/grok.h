@@ -1351,7 +1351,6 @@ GRK_API bool GRK_CALLCONV grk_decompress(grk_codec* codec, grk_plugin_tile* tile
  */
 GRK_API bool GRK_CALLCONV grk_decompress_tile(grk_codec* codec, uint16_t tileIndex);
 
-
 /* COMPRESSION FUNCTIONS*/
 
 /**

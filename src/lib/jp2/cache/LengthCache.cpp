@@ -458,9 +458,10 @@ TilePartLengthInfo* TileLengthMarkers::next(bool peek)
 				curr_vec_ = nullptr;
 			}
 		}
-		if(curr_vec_) {
-			auto rc =  &curr_vec_->operator[](markerTilePartIndex_);
-			if (!peek)
+		if(curr_vec_)
+		{
+			auto rc = &curr_vec_->operator[](markerTilePartIndex_);
+			if(!peek)
 				markerTilePartIndex_++;
 			return rc;
 		}
@@ -472,7 +473,7 @@ TilePartLengthInfo* TileLengthMarkers::next(bool peek)
  *
  * return false if TLM marker is corrupt, otherwise false
  */
-void TileLengthMarkers::seek(TileSet *tilesToDecompress,CodingParams *cp, IBufferedStream* stream)
+void TileLengthMarkers::seek(TileSet* tilesToDecompress, CodingParams* cp, IBufferedStream* stream)
 {
 	assert(stream);
 	// peek at tile part
@@ -488,19 +489,18 @@ void TileLengthMarkers::seek(TileSet *tilesToDecompress,CodingParams *cp, IBuffe
 			throw CorruptTLMException();
 		}
 		skip += tilePart->length_;
-		//GRK_INFO("Skipped tile part from tile %u",tilePart->tileIndex_);
+		// GRK_INFO("Skipped tile part from tile %u",tilePart->tileIndex_);
 		auto tcp = cp->tcps + tilePart->tileIndex_;
-		//increment tile part counter (unable to validate with SOT marker)
+		// increment tile part counter (unable to validate with SOT marker)
 		tcp->tilePartCounter_++;
 		// increment TLM
 		next(false);
 		// peek at next tile part
 		tilePart = next(true);
 	}
-	if (skip && !stream->seek(stream->tell() + skip))
+	if(skip && !stream->seek(stream->tell() + skip))
 		throw CorruptTLMException();
 }
-
 
 bool TileLengthMarkers::writeBegin(uint16_t numTilePartsTotal)
 {

@@ -115,7 +115,7 @@ struct TileLengthMarkers
 	TilePartLengthInfo* next(bool peek);
 	void invalidate(void);
 	bool valid(void);
-	void seek(TileSet *tilesToDecompress,CodingParams *cp, IBufferedStream* stream);
+	void seek(TileSet* tilesToDecompress, CodingParams* cp, IBufferedStream* stream);
 	bool writeBegin(uint16_t numTilePartsTotal);
 	void push(uint16_t tileIndex, uint32_t tile_part_size);
 	bool writeEnd(void);

@@ -177,7 +177,6 @@ bool T1OpenHTJ2K::decompress(grk::DecompressBlockExec* block)
 }
 } // namespace openhtj2k
 
-
 #ifndef _MSC_VER
 #pragma GCC diagnostic pop
 #endif

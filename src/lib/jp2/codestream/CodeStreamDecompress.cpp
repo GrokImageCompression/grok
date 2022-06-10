@@ -24,8 +24,8 @@
 namespace grk
 {
 CodeStreamDecompress::CodeStreamDecompress(IBufferedStream* stream)
-	: CodeStream(stream),expectSOD_(false), curr_marker_(0), headerError_(false), headerRead_(false),
-	  marker_scratch_(nullptr), marker_scratch_size_(0), outputImage_(nullptr),
+	: CodeStream(stream), expectSOD_(false), curr_marker_(0), headerError_(false),
+	  headerRead_(false), marker_scratch_(nullptr), marker_scratch_size_(0), outputImage_(nullptr),
 	  tileCache_(new TileCache()), ioBufferCallback(nullptr), ioUserData(nullptr),
 	  grkRegisterReclaimCallback_(nullptr)
 {
@@ -112,7 +112,8 @@ bool CodeStreamDecompress::needsHeaderRead(void)
 {
 	return !headerError_ && !headerRead_;
 }
-void CodeStreamDecompress::setExpectSOD(){
+void CodeStreamDecompress::setExpectSOD()
+{
 	expectSOD_ = true;
 }
 GrkImage* CodeStreamDecompress::getCompositeImage()
@@ -819,12 +820,12 @@ bool CodeStreamDecompress::hasTLM(void)
 /***
  * Skip past non-scheduled tiles
  */
-bool CodeStreamDecompress::skipNonScheduledTLM(CodingParams *cp)
+bool CodeStreamDecompress::skipNonScheduledTLM(CodingParams* cp)
 {
 	if(!hasTLM())
 		return false;
 
-	cp_.tlm_markers->seek(&decompressorState_.tilesToDecompress_,cp, stream_);
+	cp_.tlm_markers->seek(&decompressorState_.tilesToDecompress_, cp, stream_);
 
 	return true;
 }
@@ -849,7 +850,8 @@ bool CodeStreamDecompress::decompressTile(void)
 	if(!tileCache || !tileCache->processor->getImage())
 	{
 		// find first tile part
-		try {
+		try
+		{
 			// try to skip non-scheduled tile parts using TLM marker if available
 			if(!skipNonScheduledTLM(&cp_))
 			{
@@ -859,7 +861,9 @@ bool CodeStreamDecompress::decompressTile(void)
 				if(!codeStreamInfo->seekFirstTilePart(tileIndex))
 					return false;
 			}
-		} catch (CorruptTLMException &cte){
+		}
+		catch(CorruptTLMException& cte)
+		{
 			return false;
 		}
 		/* Special case if we have previously read the EOC marker
@@ -894,8 +898,10 @@ bool CodeStreamDecompress::decompressTile(void)
 
 		// check for corrupt Adobe images where a final tile part is not parsed
 		// due to incorrectly-signalled number of tile parts
-		try {
-			if (readSOTorEOC() && curr_marker_ == J2K_MS_SOT){
+		try
+		{
+			if(readSOTorEOC() && curr_marker_ == J2K_MS_SOT)
+			{
 				uint16_t markerSize;
 				if(!readCurrentMarkerBody(&markerSize))
 					return false;
@@ -996,7 +1002,7 @@ bool CodeStreamDecompress::readMarker(bool suppressWarning)
 	if(!read_short(&curr_marker_))
 		return false;
 
-	if (expectSOD_ && curr_marker_ != J2K_MS_SOD)
+	if(expectSOD_ && curr_marker_ != J2K_MS_SOD)
 		throw InvalidMarkerException(curr_marker_);
 	expectSOD_ = false;
 

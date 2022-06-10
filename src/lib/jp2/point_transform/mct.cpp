@@ -110,12 +110,9 @@ namespace HWY_NAMESPACE
 			auto index = (uint64_t)info.yBegin * highestResBufferStride;
 			auto chunkSize = (uint64_t)(info.yEnd - info.yBegin) * highestResBufferStride;
 			std::vector<ShiftInfo>& shiftInfo = info.shiftInfo;
-			auto chan0 =
-				info.tile->comps[0].getWindow()->getResWindowBufferHighestSimple().buf_;
-			auto chan1 =
-				info.tile->comps[1].getWindow()->getResWindowBufferHighestSimple().buf_;
-			auto chan2 =
-				info.tile->comps[2].getWindow()->getResWindowBufferHighestSimple().buf_;
+			auto chan0 = info.tile->comps[0].getWindow()->getResWindowBufferHighestSimple().buf_;
+			auto chan1 = info.tile->comps[1].getWindow()->getResWindowBufferHighestSimple().buf_;
+			auto chan2 = info.tile->comps[2].getWindow()->getResWindowBufferHighestSimple().buf_;
 			int32_t shift[3] = {shiftInfo[0]._shift, shiftInfo[1]._shift, shiftInfo[2]._shift};
 			int32_t _min[3] = {shiftInfo[0]._min, shiftInfo[1]._min, shiftInfo[2]._min};
 			int32_t _max[3] = {shiftInfo[0]._max, shiftInfo[1]._max, shiftInfo[2]._max};
@@ -160,15 +157,9 @@ namespace HWY_NAMESPACE
 			auto index = (uint64_t)info.yBegin * highestResBufferStride;
 			auto chunkSize = (uint64_t)(info.yEnd - info.yBegin) * highestResBufferStride;
 			std::vector<ShiftInfo>& shiftInfo = info.shiftInfo;
-			auto chan0 = info.tile->comps[0]
-							 .getWindow()
-							 ->getResWindowBufferHighestSimpleF().buf_;
-			auto chan1 = info.tile->comps[1]
-						 .getWindow()
-						 ->getResWindowBufferHighestSimpleF().buf_;
-			auto chan2 = info.tile->comps[2]
-						 .getWindow()
-						 ->getResWindowBufferHighestSimpleF().buf_;
+			auto chan0 = info.tile->comps[0].getWindow()->getResWindowBufferHighestSimpleF().buf_;
+			auto chan1 = info.tile->comps[1].getWindow()->getResWindowBufferHighestSimpleF().buf_;
+			auto chan2 = info.tile->comps[2].getWindow()->getResWindowBufferHighestSimpleF().buf_;
 
 			auto c0 = (int32_t*)chan0;
 			auto c1 = (int32_t*)chan1;
@@ -225,15 +216,9 @@ namespace HWY_NAMESPACE
 			auto index = (uint64_t)info.yBegin * highestResBufferStride;
 			auto chunkSize = (uint64_t)(info.yEnd - info.yBegin) * highestResBufferStride;
 			std::vector<ShiftInfo>& shiftInfo = info.shiftInfo;
-			auto chan0 = info.tile->comps[0]
-							 .getWindow()
-							 ->getResWindowBufferHighestSimple().buf_;
-			auto chan1 = info.tile->comps[1]
-						 .getWindow()
-						 ->getResWindowBufferHighestSimple().buf_;
-			auto chan2 = info.tile->comps[2]
-						 .getWindow()
-						 ->getResWindowBufferHighestSimple().buf_;
+			auto chan0 = info.tile->comps[0].getWindow()->getResWindowBufferHighestSimple().buf_;
+			auto chan1 = info.tile->comps[1].getWindow()->getResWindowBufferHighestSimple().buf_;
+			auto chan2 = info.tile->comps[2].getWindow()->getResWindowBufferHighestSimple().buf_;
 
 			const HWY_FULL(int32_t) di;
 			int32_t shift[3] = {shiftInfo[0]._shift, shiftInfo[1]._shift, shiftInfo[2]._shift};
@@ -271,12 +256,9 @@ namespace HWY_NAMESPACE
 			auto index = (uint64_t)info.yBegin * highestResBufferStride;
 			auto chunkSize = (uint64_t)(info.yEnd - info.yBegin) * highestResBufferStride;
 			std::vector<ShiftInfo>& shiftInfo = info.shiftInfo;
-			auto chan0 =
-				info.tile->comps[0].getWindow()->getResWindowBufferHighestSimple().buf_;
-			auto chan1 =
-				info.tile->comps[1].getWindow()->getResWindowBufferHighestSimple().buf_;
-			auto chan2 =
-				info.tile->comps[2].getWindow()->getResWindowBufferHighestSimple().buf_;
+			auto chan0 = info.tile->comps[0].getWindow()->getResWindowBufferHighestSimple().buf_;
+			auto chan1 = info.tile->comps[1].getWindow()->getResWindowBufferHighestSimple().buf_;
+			auto chan2 = info.tile->comps[2].getWindow()->getResWindowBufferHighestSimple().buf_;
 
 			int32_t shift[3] = {shiftInfo[0]._shift, shiftInfo[1]._shift, shiftInfo[2]._shift};
 
@@ -321,7 +303,8 @@ namespace HWY_NAMESPACE
 	template<class T>
 	void vscheduler(ScheduleInfo info)
 	{
-		auto highestResBuffer = info.tile->comps[info.compno].getWindow()->getResWindowBufferHighestSimple();
+		auto highestResBuffer =
+			info.tile->comps[info.compno].getWindow()->getResWindowBufferHighestSimple();
 		if(ExecSingleton::get()->num_workers() > 1)
 		{
 			tf::Task* tasks = nullptr;

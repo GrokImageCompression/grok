@@ -108,7 +108,8 @@ TileCodingParams::~TileCodingParams()
 	delete qcd_;
 }
 
-bool TileCodingParams::advanceTilePartCounter(uint16_t tileIndex, uint8_t tilePartIndex){
+bool TileCodingParams::advanceTilePartCounter(uint16_t tileIndex, uint8_t tilePartIndex)
+{
 	/* Fixes issue with id_000020,sig_06,src_001958,op_flip4,pos_149 */
 	/* of https://github.com/uclouvain/openjpeg/issues/939 */
 	/* We must avoid reading the same tile part number twice for a given tile */
