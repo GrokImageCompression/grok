@@ -976,7 +976,7 @@ bool GrkImage::compositeInterleaved(const Tile* src, uint32_t yBegin, uint32_t y
 	}
 	for(uint16_t i = 0; i < src->numcomps_; ++i)
 	{
-		if(!(src->comps + i)->getWindow()->getResWindowBufferHighestREL()->getBuffer())
+		if(!(src->comps + i)->getWindow()->getResWindowBufferHighestSimple().buf_)
 		{
 			GRK_WARN("GrkImage::compositeInterleaved: null data for source component %u", i);
 			return false;
@@ -1007,12 +1007,12 @@ bool GrkImage::compositeInterleaved(const Tile* src, uint32_t yBegin, uint32_t y
 	int32_t const* planes[grk::maxNumPackComponents];
 	for(uint16_t i = 0; i < src->numcomps_; ++i)
 	{
-		auto b = (src->comps + i)->getWindow()->getResWindowBufferHighestREL();
-		planes[i] = b->getBuffer() + yBegin * b->stride;
+		auto b = (src->comps + i)->getWindow()->getResWindowBufferHighestSimple();
+		planes[i] = b.buf_ + yBegin * b.stride_;
 	}
 	iter->interleave(const_cast<int32_t**>(planes), src->numcomps_,
 					 interleavedData.data_ + destIndex, destWin.width(),
-					 srcComp->getWindow()->getResWindowBufferHighestREL()->stride, destStride,
+					 srcComp->getWindow()->getResWindowBufferHighestStride(), destStride,
 					 destWin.height(), 0);
 	delete iter;
 

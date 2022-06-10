@@ -636,13 +636,13 @@ void TileProcessor::ingestImage()
 		uint64_t image_offset =
 			(tilec->x0 - offset_x) + (uint64_t)(tilec->y0 - offset_y) * img_comp->stride;
 		auto src = img_comp->data + image_offset;
-		auto dest = tilec->getWindow()->getResWindowBufferHighestREL()->getBuffer();
+		auto dest = tilec->getWindow()->getResWindowBufferHighestSimple();
 
 		for(uint32_t j = 0; j < tilec->height(); ++j)
 		{
-			memcpy(dest, src, tilec->width() * sizeof(int32_t));
+			memcpy(dest.buf_, src, tilec->width() * sizeof(int32_t));
 			src += img_comp->stride;
-			dest += tilec->getWindow()->getResWindowBufferHighestREL()->stride;
+			dest.buf_ += dest.stride_;
 		}
 	}
 }
@@ -681,7 +681,7 @@ bool TileProcessor::mctDecompress(FlowComponent* flow)
 		for(uint16_t i = 0; i < tile->numcomps_; ++i)
 		{
 			auto tile_comp = tile->comps + i;
-			data[i] = (uint8_t*)tile_comp->getWindow()->getResWindowBufferHighestREL()->getBuffer();
+			data[i] = (uint8_t*)tile_comp->getWindow()->getResWindowBufferHighestSimple().buf_;
 		}
 		uint64_t samples = tile->comps->getWindow()->stridedArea();
 		bool rc = mct::decompress_custom((uint8_t*)tcp_->mct_decoding_matrix_, samples, data,
@@ -704,7 +704,7 @@ bool TileProcessor::dcLevelShiftCompress()
 	{
 		auto tile_comp = tile->comps + compno;
 		auto tccp = tcp_->tccps + compno;
-		auto current_ptr = tile_comp->getWindow()->getResWindowBufferHighestREL()->getBuffer();
+		auto current_ptr = tile_comp->getWindow()->getResWindowBufferHighestSimple().buf_;
 		uint64_t samples = tile_comp->getWindow()->stridedArea();
 #ifndef GRK_FORCE_SIGNED_COMPRESS
 		if(needsMctDecompress(compno))
@@ -753,7 +753,7 @@ bool TileProcessor::mct_encode()
 		for(uint32_t i = 0; i < tile->numcomps_; ++i)
 		{
 			auto tile_comp = tile->comps + i;
-			data[i] = (uint8_t*)tile_comp->getWindow()->getResWindowBufferHighestREL()->getBuffer();
+			data[i] = (uint8_t*)tile_comp->getWindow()->getResWindowBufferHighestSimple().buf_;
 		}
 		uint64_t samples = tile->comps->getWindow()->stridedArea();
 		bool rc = mct::compress_custom((uint8_t*)tcp_->mct_coding_matrix_, samples, data,
@@ -979,10 +979,11 @@ bool TileProcessor::ingestUncompressedData(uint8_t* p_src, uint64_t src_length)
 		auto tilec = tile->comps + i;
 		auto img_comp = headerImage->comps + i;
 		uint32_t size_comp = (uint32_t)((img_comp->prec + 7) >> 3);
-		auto dest_ptr = tilec->getWindow()->getResWindowBufferHighestREL()->getBuffer();
+		auto b = tilec->getWindow()->getResWindowBufferHighestSimple();
+		auto dest_ptr = b.buf_;
 		uint32_t w = (uint32_t)tilec->getWindow()->bounds().width();
 		uint32_t h = (uint32_t)tilec->getWindow()->bounds().height();
-		uint32_t stride = tilec->getWindow()->getResWindowBufferHighestREL()->stride;
+		uint32_t stride = b.stride_;
 		switch(size_comp)
 		{
 			case 1:

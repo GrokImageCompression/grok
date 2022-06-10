@@ -247,8 +247,9 @@ using grk_buf8_aligned = grk_buf<uint8_t, AllocatorAligned>;
 template<typename T>
 struct grk_buf2d_simple
 {
-	grk_buf2d_simple() : grk_buf2d_simple(nullptr, 0) {}
-	grk_buf2d_simple(T* buf, uint32_t stride) : buf_(buf), stride_(stride) {}
+	grk_buf2d_simple() : grk_buf2d_simple(nullptr, 0, 0) {}
+	grk_buf2d_simple(T* buf, uint32_t stride, uint32_t height) : buf_(buf), stride_(stride), height_(height)
+	{}
 	grk_buf2d_simple incX_IN_PLACE(size_t deltaX)
 	{
 		buf_ += deltaX;
@@ -263,6 +264,7 @@ struct grk_buf2d_simple
 	}
 	T* buf_;
 	uint32_t stride_;
+	uint32_t height_;
 };
 
 template<typename T, template<typename TT> typename A>
@@ -271,8 +273,7 @@ struct grk_buf2d : protected grk_buf<T, A>, public grk_rect32
 	grk_buf2d(T* buffer, bool ownsData, uint32_t w, uint32_t strd, uint32_t h)
 		: grk_buf<T, A>(buffer, ownsData), grk_rect32(0, 0, w, h), stride(strd)
 	{}
-	grk_buf2d(uint32_t w, uint32_t strd, uint32_t h) : grk_buf2d(nullptr, false, w, strd, h) {}
-	grk_buf2d(uint32_t w, uint32_t h) : grk_buf2d(w, 0, h) {}
+	grk_buf2d(uint32_t w, uint32_t h) : grk_buf2d(nullptr, false, w, 0, h) {}
 	explicit grk_buf2d(const grk_rect32* b)
 		: grk_buf<T, A>(nullptr, false), grk_rect32(b->x0, b->y0, b->x1, b->y1), stride(0)
 	{}
@@ -285,11 +286,11 @@ struct grk_buf2d : protected grk_buf<T, A>, public grk_rect32
 	{}
 	grk_buf2d_simple<T> simple(void) const
 	{
-		return grk_buf2d_simple<T>(this->buf, this->stride);
+		return grk_buf2d_simple<T>(this->buf, this->stride, this->height());
 	}
 	grk_buf2d_simple<float> simpleF(void) const
 	{
-		return grk_buf2d_simple<float>((float*)this->buf, this->stride);
+		return grk_buf2d_simple<float>((float*)this->buf, this->stride, this->height());
 	}
 	grk_buf2d& operator=(const grk_buf2d& rhs) // copy assignment
 	{

@@ -346,6 +346,12 @@ struct ResWindow
 	grk_buf2d<T, AllocatorAligned>* getResWindowBufferREL(void) const{
 		return resWindowBufferREL_;
 	}
+	grk_buf2d_simple<int32_t> getResWindowBufferSimple(void) const{
+		return resWindowBufferREL_->simple();
+	}
+	grk_buf2d_simple<float> getResWindowBufferSimpleF(void) const{
+		return resWindowBufferREL_->simpleF();
+	}
 	grk_rect32* getResWindowBoundsPadded(void) {
 		return &resWindowBoundsPadded_;
 	}
@@ -367,6 +373,19 @@ struct ResWindow
 			return nullptr;
 		return bandWindowsBuffersPaddedREL_[orientation];
 	}
+	const grk_buf2d_simple<int32_t>  getBandWindowBufferPaddedSimple(eBandOrientation orientation) const
+	{
+		if(bandWindowsBuffersPaddedREL_.empty())
+			return grk_buf2d_simple<int32_t>();
+		return bandWindowsBuffersPaddedREL_[orientation]->simple();
+	}
+	const grk_buf2d_simple<float>  getBandWindowBufferPaddedSimpleF(eBandOrientation orientation) const
+	{
+		if(bandWindowsBuffersPaddedREL_.empty())
+			return grk_buf2d_simple<float>();
+		return bandWindowsBuffersPaddedREL_[orientation]->simpleF();
+	}
+
 private:
 	bool allocated_;
 	uint32_t filterWidth_;

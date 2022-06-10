@@ -69,12 +69,8 @@ bool CompressScheduler::scheduleBlocks(uint16_t compno)
 						block->y = cblk->y0;
 						tilec->getWindow()->toRelativeCoordinates(resno, band->orientation,
 																  block->x, block->y);
-						block->tiledp =
-							tilec->getWindow()->getResWindowBufferHighestREL()->getBuffer() +
-							(uint64_t)block->x +
-							block->y * (uint64_t)tilec->getWindow()
-										   ->getResWindowBufferHighestREL()
-										   ->stride;
+						auto highest = tilec->getWindow()->getResWindowBufferHighestSimple();
+						block->tiledp = highest.buf_ + (uint64_t)block->x + block->y * (uint64_t)highest.stride_;
 						maxCblkW = std::max<uint32_t>(maxCblkW, (uint32_t)(1 << tccp->cblkw));
 						maxCblkH = std::max<uint32_t>(maxCblkH, (uint32_t)(1 << tccp->cblkh));
 						block->compno = compno;

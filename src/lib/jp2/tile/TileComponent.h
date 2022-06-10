@@ -38,8 +38,8 @@ struct TileComponent : public grk_rect32
 	TileComponentWindow<int32_t>* getWindow() const;
 	bool isWholeTileDecoding();
 	ISparseCanvas* getRegionWindow();
-	bool postProcess(int32_t* srcData, DecompressBlockExec* block);
-	bool postProcessHT(int32_t* srcData, DecompressBlockExec* block, uint16_t stride);
+	void postProcess(int32_t* srcData, DecompressBlockExec* block);
+	void postProcessHT(int32_t* srcData, DecompressBlockExec* block, uint16_t stride);
 
 	Resolution* resolutions_; // in canvas coordinates
 	uint8_t numresolutions;
@@ -50,7 +50,7 @@ struct TileComponent : public grk_rect32
 #endif
   private:
 	template<typename F>
-	bool postDecompressImpl(int32_t* srcData, DecompressBlockExec* block, uint16_t stride);
+	void postDecompressImpl(int32_t* srcData, DecompressBlockExec* block, uint16_t stride);
 	ISparseCanvas* regionWindow_;
 	bool wholeTileDecompress;
 	bool isCompressor_;

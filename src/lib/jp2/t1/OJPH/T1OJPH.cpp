@@ -53,7 +53,7 @@ void T1OJPH::preCompress(grk::CompressBlockExec* block, grk::Tile* tile)
 	uint16_t w = (uint16_t)cblk->width();
 	uint16_t h = (uint16_t)cblk->height();
 	uint32_t tile_width =
-		(tile->comps + block->compno)->getWindow()->getResWindowBufferHighestREL()->stride;
+		(tile->comps + block->compno)->getWindow()->getResWindowBufferHighestStride();
 	auto tileLineAdvance = tile_width - w;
 	uint32_t cblk_index = 0;
 	int32_t shift = 31 - (block->k_msbs + 1);
@@ -170,6 +170,8 @@ bool T1OJPH::decompress(grk::DecompressBlockExec* block)
 		}
 	}
 
-	return block->tilec->postProcessHT(unencoded_data, block, stride);
+	block->tilec->postProcessHT(unencoded_data, block, stride);
+
+	return true;
 }
 } // namespace ojph

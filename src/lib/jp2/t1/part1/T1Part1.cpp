@@ -48,7 +48,7 @@ namespace t1_part1
 		if(!t1->alloc(w, h))
 			return false;
 		auto tileLineAdvance =
-			(tile->comps + block->compno)->getWindow()->getResWindowBufferHighestREL()->stride - w;
+			(tile->comps + block->compno)->getWindow()->getResWindowBufferHighestStride() - w;
 		uint32_t tileIndex = 0;
 		uint32_t cblk_index = 0;
 		maximum = 0;
@@ -164,10 +164,10 @@ namespace t1_part1
 			}
 		}
 
-		bool rc = block->tilec->postProcess(t1->getUncompressedData(), block);
+		block->tilec->postProcess(t1->getUncompressedData(), block);
 		cblk->release();
 
-		return rc;
+		return true;
 	}
 
 } // namespace t1_part1

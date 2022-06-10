@@ -348,103 +348,93 @@ ISparseCanvas* TileComponent::getRegionWindow()
 {
 	return regionWindow_;
 }
-bool TileComponent::postProcess(int32_t* srcData, DecompressBlockExec* block)
+void TileComponent::postProcess(int32_t* srcData, DecompressBlockExec* block)
 {
 	if(block->roishift)
 	{
 		if(block->qmfbid == 1)
-			return postDecompressImpl<RoiShiftFilter<int32_t>>(srcData, block,
+			postDecompressImpl<RoiShiftFilter<int32_t>>(srcData, block,
 															   (uint16_t)block->cblk->width());
 		else
-			return postDecompressImpl<RoiScaleFilter<int32_t>>(srcData, block,
+			postDecompressImpl<RoiScaleFilter<int32_t>>(srcData, block,
 															   (uint16_t)block->cblk->width());
 	}
 	else
 	{
 		if(block->qmfbid == 1)
-			return postDecompressImpl<ShiftFilter<int32_t>>(srcData, block,
+			postDecompressImpl<ShiftFilter<int32_t>>(srcData, block,
 															(uint16_t)block->cblk->width());
 		else
-			return postDecompressImpl<ScaleFilter<int32_t>>(srcData, block,
+			postDecompressImpl<ScaleFilter<int32_t>>(srcData, block,
 															(uint16_t)block->cblk->width());
 	}
 }
-bool TileComponent::postProcessHT(int32_t* srcData, DecompressBlockExec* block, uint16_t stride)
+void TileComponent::postProcessHT(int32_t* srcData, DecompressBlockExec* block, uint16_t stride)
 {
 #ifdef OPENHTJ2K
 	if(block->roishift)
 	{
 		if(block->qmfbid == 1)
-			return postDecompressImpl<openhtj2k::RoiShiftOpenHTJ2KFilter<int32_t>>(srcData, block,
+			postDecompressImpl<openhtj2k::RoiShiftOpenHTJ2KFilter<int32_t>>(srcData, block,
 																				   stride);
 		else
-			return postDecompressImpl<openhtj2k::RoiScaleOpenHTJ2KFilter<int32_t>>(srcData, block,
+			postDecompressImpl<openhtj2k::RoiScaleOpenHTJ2KFilter<int32_t>>(srcData, block,
 																				   stride);
 	}
 	else
 	{
 		if(block->qmfbid == 1)
-			return postDecompressImpl<openhtj2k::ShiftOpenHTJ2KFilter<int32_t>>(srcData, block,
+			postDecompressImpl<openhtj2k::ShiftOpenHTJ2KFilter<int32_t>>(srcData, block,
 																				stride);
 		else
-			return postDecompressImpl<openhtj2k::ScaleOpenHTJ2KFilter<int32_t>>(srcData, block,
+			postDecompressImpl<openhtj2k::ScaleOpenHTJ2KFilter<int32_t>>(srcData, block,
 																				stride);
 	}
 #else
 	if(block->roishift)
 	{
 		if(block->qmfbid == 1)
-			return postDecompressImpl<ojph::RoiShiftOJPHFilter<int32_t>>(srcData, block, stride);
+			postDecompressImpl<ojph::RoiShiftOJPHFilter<int32_t>>(srcData, block, stride);
 		else
-			return postDecompressImpl<ojph::RoiScaleOJPHFilter<int32_t>>(srcData, block, stride);
+			postDecompressImpl<ojph::RoiScaleOJPHFilter<int32_t>>(srcData, block, stride);
 	}
 	else
 	{
 		if(block->qmfbid == 1)
-			return postDecompressImpl<ojph::ShiftOJPHFilter<int32_t>>(srcData, block, stride);
+			postDecompressImpl<ojph::ShiftOJPHFilter<int32_t>>(srcData, block, stride);
 		else
-			return postDecompressImpl<ojph::ScaleOJPHFilter<int32_t>>(srcData, block, stride);
+			postDecompressImpl<ojph::ScaleOJPHFilter<int32_t>>(srcData, block, stride);
 	}
 #endif
 }
 template<typename F>
-bool TileComponent::postDecompressImpl(int32_t* srcData, DecompressBlockExec* block,
+void TileComponent::postDecompressImpl(int32_t* srcData, DecompressBlockExec* block,
 									   uint16_t stride)
 {
 	auto cblk = block->cblk;
+	bool empty = cblk->seg_buffers.empty();
 
 	grk_buf2d<int32_t, AllocatorAligned> dest;
-	grk_buf2d<int32_t, AllocatorAligned> src =
-		grk_buf2d<int32_t, AllocatorAligned>(srcData, false, cblk->width(), stride, cblk->height());
 	window_->toRelativeCoordinates(block->resno, block->bandOrientation, block->x, block->y);
+	auto src = grk_buf2d<int32_t, AllocatorAligned>(srcData, false, cblk->width(), stride, cblk->height());
+	auto blockBounds = grk_rect32(block->x, block->y, block->x + cblk->width(), block->y + cblk->height());
 	if(regionWindow_)
 	{
 		dest = src;
 	}
 	else
 	{
-		src.set(
-			grk_rect32(block->x, block->y, block->x + cblk->width(), block->y + cblk->height()));
+		src.set(blockBounds);
 		dest = window_->getCodeBlockDestWindowREL(block->resno, block->bandOrientation);
 	}
-
-	if(!cblk->seg_buffers.empty())
+	if(!empty)
 	{
 		F f(block);
 		dest.copy<F>(src, f);
 	}
-	else
-	{
-		srcData = nullptr;
-	}
 
-	if(regionWindow_ && !regionWindow_->write(block->resno,
-						  grk_rect32(block->x, block->y, block->x + cblk->width(),
-									 block->y + cblk->height()),
-						  srcData, 1, cblk->width(), true))
-		return false;
-
-	return true;
+	if (regionWindow_)
+		regionWindow_->write(block->resno, blockBounds,empty ? nullptr : srcData, 1, blockBounds.width(), true);
 }
 
 } // namespace grk

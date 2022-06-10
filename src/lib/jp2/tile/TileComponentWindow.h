@@ -176,6 +176,46 @@ struct TileComponentWindow
 
 		return resWindows[resno]->getBandWindowBufferPaddedREL(orientation);
 	}
+	/**
+	 * Get padded band window buffer
+	 *
+	 * @param resno resolution number
+	 * @param orientation band orientation {0,1,2,3} for {LL,HL,LH,HH} band windows
+	 *
+	 * If resno is > 0, return LL,HL,LH or HH band window, otherwise return LL resolution window
+	 *
+	 */
+	const grk_buf2d_simple<int32_t>
+		getBandWindowBufferPaddedSimple(uint8_t resno, eBandOrientation orientation) const
+	{
+		assert(resno < resolution_.size());
+		assert(resno > 0 || orientation == BAND_ORIENT_LL);
+
+		if(resno == 0 && (compress_ || wholeTileDecompress_))
+			return resWindows[0]->getResWindowBufferSimple();
+
+		return resWindows[resno]->getBandWindowBufferPaddedSimple(orientation);
+	}
+	/**
+	 * Get padded band window buffer
+	 *
+	 * @param resno resolution number
+	 * @param orientation band orientation {0,1,2,3} for {LL,HL,LH,HH} band windows
+	 *
+	 * If resno is > 0, return LL,HL,LH or HH band window, otherwise return LL resolution window
+	 *
+	 */
+	const grk_buf2d_simple<float>
+		getBandWindowBufferPaddedSimpleF(uint8_t resno, eBandOrientation orientation) const
+	{
+		assert(resno < resolution_.size());
+		assert(resno > 0 || orientation == BAND_ORIENT_LL);
+
+		if(resno == 0 && (compress_ || wholeTileDecompress_))
+			return resWindows[0]->getResWindowBufferSimpleF();
+
+		return resWindows[resno]->getBandWindowBufferPaddedSimpleF(orientation);
+	}
 
 	/**
 	 * Get padded band window
@@ -205,6 +245,28 @@ struct TileComponentWindow
 
 		return resWindows[resno]->getResWindowBufferSplitREL(orientation);
 	}
+	/*
+	 * Get intermediate split window simple buffer
+	 *
+	 * @param orientation 0 for upper split window, and 1 for lower split window
+	 */
+	const grk_buf2d_simple<int32_t>
+		getResWindowBufferSplitSimple(uint8_t resno, eSplitOrientation orientation) const
+	{
+		return getResWindowBufferSplitREL(resno,orientation)->simple();
+	}
+
+	/*
+	 * Get intermediate split window simpleF buffer
+	 *
+	 * @param orientation 0 for upper split window, and 1 for lower split window
+	 */
+	const grk_buf2d_simple<float>
+		getResWindowBufferSplitSimpleF(uint8_t resno, eSplitOrientation orientation) const
+	{
+		return getResWindowBufferSplitREL(resno,orientation)->simpleF();
+	}
+
 	/**
 	 * Get resolution window
 	 *
@@ -216,13 +278,53 @@ struct TileComponentWindow
 		return resWindows[resno]->getResWindowBufferREL();
 	}
 	/**
+	 * Get resolution window
+	 *
+	 * @param resno resolution number
+	 *
+	 */
+	const grk_buf2d_simple<int32_t> getResWindowBufferSimple(uint32_t resno) const
+	{
+		return getResWindowBufferREL(resno)->simple();
+	}
+	/**
+	 * Get resolution window
+	 *
+	 * @param resno resolution number
+	 *
+	 */
+	const grk_buf2d_simple<float> getResWindowBufferSimpleF(uint32_t resno) const
+	{
+		return getResWindowBufferREL(resno)->simpleF();
+	}
+
+	/**
 	 * Get highest resolution window
 	 *
 	 *
 	 */
-	grk_buf2d<T, AllocatorAligned>* getResWindowBufferHighestREL(void) const
+	uint32_t getResWindowBufferHighestStride(void) const
 	{
-		return resWindows.back()->getResWindowBufferREL();
+		return getResWindowBufferHighestREL()->stride;
+	}
+
+	/**
+	 * Get highest resolution window
+	 *
+	 *
+	 */
+	 grk_buf2d_simple<int32_t> getResWindowBufferHighestSimple(void) const
+	{
+		return getResWindowBufferHighestREL()->simple();
+	}
+	/**
+	 * Get highest resolution window
+	 *
+	 *
+	 */
+	 grk_buf2d_simple<float> getResWindowBufferHighestSimpleF(void) const
+	{
+		return getResWindowBufferHighestREL()->simpleF();
 	}
 	bool alloc()
 	{
@@ -249,7 +351,8 @@ struct TileComponentWindow
 	}
 	uint64_t stridedArea(void) const
 	{
-		return getResWindowBufferHighestREL()->stride * getResWindowBufferHighestREL()->height();
+		auto win = getResWindowBufferHighestREL();
+		return win->stride * win->height();
 	}
 
 	// set data to buf without owning it
@@ -264,6 +367,16 @@ struct TileComponentWindow
 	}
 
   private:
+	/**
+	 * Get highest resolution window
+	 *
+	 *
+	 */
+	grk_buf2d<T, AllocatorAligned>* getResWindowBufferHighestREL(void) const
+	{
+		return resWindows.back()->getResWindowBufferREL();
+	}
+
 	bool useBandWindows() const
 	{
 		return !wholeTileDecompress_;
