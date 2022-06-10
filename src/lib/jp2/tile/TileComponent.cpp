@@ -254,7 +254,7 @@ bool TileComponent::allocRegionWindow(uint32_t numres, bool truncatedTile)
 
 	// 2. create (padded) sparse canvas, in buffer space,
 	const uint32_t blockSizeExp = 6;
-	temp.growIPL(8);
+	temp.grow_IN_PLACE(8);
 	auto regionWindow = new SparseCanvas<blockSizeExp, blockSizeExp>(temp);
 
 	// 3. allocate sparse blocks
@@ -316,26 +316,26 @@ bool TileComponent::allocRegionWindow(uint32_t numres, bool truncatedTile)
 
 	return true;
 }
-bool TileComponent::createWindow(grk_rect32 unreducedTileCompOrImageCompWindow)
+bool TileComponent::canCreateWindow(grk_rect32 windowBounds)
 {
-	dealloc();
-	auto highestNumberOfResolutions =
-		(!isCompressor_) ? numResolutionsToDecompress : numresolutions;
 	auto maxResolution = resolutions_ + numresolutions - 1;
-	if(!maxResolution->intersection(unreducedTileCompOrImageCompWindow).valid())
+	if(!maxResolution->intersection(windowBounds).valid())
 	{
 		GRK_ERROR("Decompress region (%u,%u,%u,%u) must overlap image bounds (%u,%u,%u,%u)",
-				  unreducedTileCompOrImageCompWindow.x0, unreducedTileCompOrImageCompWindow.y0,
-				  unreducedTileCompOrImageCompWindow.x1, unreducedTileCompOrImageCompWindow.y1,
+				  windowBounds.x0, windowBounds.y0, windowBounds.x1, windowBounds.y1,
 				  maxResolution->x0, maxResolution->y0, maxResolution->x1, maxResolution->y1);
 		return false;
 	}
-	window_ = new TileComponentWindow<int32_t>(
-		isCompressor_, tccp_->qmfbid == 1, wholeTileDecompress, grk_rect32(maxResolution),
-		grk_rect32(this), unreducedTileCompOrImageCompWindow, resolutions_, numresolutions,
-		highestNumberOfResolutions);
 
 	return true;
+}
+void TileComponent::createWindow(grk_rect32 unreducedImageCompWindow)
+{
+	dealloc();
+	window_ = new TileComponentWindow<int32_t>(
+		isCompressor_, tccp_->qmfbid == 1, wholeTileDecompress, resolutions_ + numresolutions - 1,
+		this, unreducedImageCompWindow, resolutions_, numresolutions,
+		isCompressor_ ? numresolutions : numResolutionsToDecompress);
 }
 TileComponentWindow<int32_t>* TileComponent::getWindow() const
 {

@@ -271,23 +271,23 @@ bool TileProcessor::createWindowBuffers(const GrkImage* outputImage)
 		auto imageComp = headerImage->comps + compno;
 		if(imageComp->dx == 0 || imageComp->dy == 0)
 			return false;
+		auto tileComp = tile->comps + compno;
+		grk_rect32 unreducedImageCompWindow;
 		if(isCompressor_)
 		{
-			// for the compressor, the "window" comprises the full tile component
-			auto tileComp = tile->comps + compno;
-			if(!tileComp->createWindow(grk_rect32(tileComp)))
+			if(!tileComp->canCreateWindow(tileComp))
 				return false;
 		}
 		else
 		{
-			// outputImage equals full image clipped to decode window
 			unreducedImageWindow =
 				grk_rect32(outputImage->x0, outputImage->y0, outputImage->x1, outputImage->y1);
-			grk_rect32 unreducedImageCompWindow =
+			unreducedImageCompWindow =
 				unreducedImageWindow.scaleDownCeil(imageComp->dx, imageComp->dy);
-			if(!(tile->comps + compno)->createWindow(unreducedImageCompWindow))
+			if(!tileComp->canCreateWindow(unreducedImageCompWindow))
 				return false;
 		}
+		tileComp->createWindow(unreducedImageCompWindow);
 	}
 
 	return true;

@@ -29,7 +29,8 @@ struct TileComponent : public grk_rect32
 	TileComponent();
 	~TileComponent();
 	bool allocRegionWindow(uint32_t numres, bool truncatedTile);
-	bool createWindow(grk_rect32 unreducedTileCompOrImageCompWindow);
+	bool canCreateWindow(grk_rect32 unreducedTileCompOrImageCompWindow);
+	void createWindow(grk_rect32 unreducedTileCompOrImageCompWindow);
 	void dealloc(void);
 	bool init(TileProcessor* tileProcessor, grk_rect32 unreducedTileComp, uint8_t prec,
 			  TileComponentCodingParams* tccp);

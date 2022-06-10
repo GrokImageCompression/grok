@@ -42,30 +42,36 @@
 
 namespace grk
 {
+
+template<class T>
+constexpr T getFilterPad(bool lossless)
+{
+	return lossless ? 1 : 2;
+}
+
 template<typename T>
 struct TileComponentWindow
 {
+	typedef grk_buf2d<T, AllocatorAligned> Buf2dAligned;
 	TileComponentWindow(bool isCompressor, bool lossless, bool wholeTileDecompress,
-						grk_rect32 tileCompUnreduced, grk_rect32 tileCompReduced,
-						grk_rect32 unreducedTileCompOrImageCompWindow, Resolution* resolutions_,
+						grk_rect32 unreducedTileComp, grk_rect32 reducedTileComp,
+						grk_rect32 unreducedImageCompWindow, Resolution* resolutions_,
 						uint8_t numresolutions, uint8_t reducedNumResolutions)
-		: unreducedBounds_(tileCompUnreduced), bounds_(tileCompReduced),
-		  numResolutions_(numresolutions), compress_(isCompressor),
+		: unreducedBounds_(unreducedTileComp), bounds_(reducedTileComp), compress_(isCompressor),
 		  wholeTileDecompress_(wholeTileDecompress)
 	{
+		assert(reducedNumResolutions > 0);
 		if(!compress_)
 		{
-			// for decompress, we are passed the unreduced image component window
-			auto unreducedImageCompWindow = unreducedTileCompOrImageCompWindow;
-			bounds_ = unreducedImageCompWindow.scaleDownCeilPow2(
-				(uint32_t)(numResolutions_ - reducedNumResolutions));
-			bounds_ = bounds_.intersection(tileCompReduced);
-			assert(bounds_.valid());
-			unreducedBounds_ = unreducedImageCompWindow.intersection(tileCompUnreduced);
+			unreducedBounds_ = unreducedImageCompWindow.intersection(unreducedTileComp);
 			assert(unreducedBounds_.valid());
+
+			bounds_ = unreducedImageCompWindow.scaleDownCeilPow2(
+				(uint32_t)(numresolutions - reducedNumResolutions));
+			bounds_ = bounds_.intersection(reducedTileComp);
+			assert(bounds_.valid());
 		}
 		// fill resolutions vector
-		assert(reducedNumResolutions > 0);
 		for(uint32_t resno = 0; resno < reducedNumResolutions; ++resno)
 			resolution_.push_back(resolutions_ + resno);
 
@@ -73,27 +79,28 @@ struct TileComponentWindow
 		auto tileCompAtLowerRes =
 			reducedNumResolutions > 1 ? resolutions_ + reducedNumResolutions - 2 : nullptr;
 		// create resolution buffers
-		auto topLevel = new ResWindow<T>(
+		auto highestResWindow = new ResWindow<T>(
 			numresolutions, (uint8_t)(reducedNumResolutions - 1U), nullptr, tileCompAtRes,
-			tileCompAtLowerRes, bounds_, unreducedBounds_, tileCompUnreduced,
+			tileCompAtLowerRes, bounds_, unreducedBounds_, unreducedTileComp,
 			wholeTileDecompress ? 0 : getFilterPad<uint32_t>(lossless));
 		// setting top level prevents allocation of tileCompBandWindows buffers
 		if(!useBandWindows())
-			topLevel->disableBandWindowAllocation();
+			highestResWindow->disableBandWindowAllocation();
 
+		// create windows for all resolutions except highest resolution
 		for(uint8_t resno = 0; resno < reducedNumResolutions - 1; ++resno)
 		{
-			// resolution window ==  next resolution band window at orientation 0
+			// resolution window ==  LL band window of next highest resolution
 			auto resWindow = ResWindow<T>::getBandWindow((uint32_t)(numresolutions - 1 - resno), 0,
 														 unreducedBounds_);
 			resWindows.push_back(new ResWindow<T>(
 				numresolutions, resno,
-				useBandWindows() ? nullptr : topLevel->getResWindowBufferREL(),
+				useBandWindows() ? nullptr : highestResWindow->getResWindowBufferREL(),
 				resolutions_ + resno, resno > 0 ? resolutions_ + resno - 1 : nullptr, resWindow,
-				unreducedBounds_, tileCompUnreduced,
+				unreducedBounds_, unreducedTileComp,
 				wholeTileDecompress ? 0 : getFilterPad<uint32_t>(lossless)));
 		}
-		resWindows.push_back(topLevel);
+		resWindows.push_back(highestResWindow);
 	}
 	~TileComponentWindow()
 	{
@@ -158,8 +165,8 @@ struct TileComponentWindow
 		offsety = y;
 	}
 	template<typename F>
-	void postProcess(grk_buf2d<int32_t, AllocatorAligned>& src, uint8_t resno,
-					 eBandOrientation bandOrientation, DecompressBlockExec* block)
+	void postProcess(Buf2dAligned& src, uint8_t resno, eBandOrientation bandOrientation,
+					 DecompressBlockExec* block)
 	{
 		grk_buf2d<int32_t, AllocatorAligned> dst;
 		dst = getCodeBlockDestWindowREL(resno, bandOrientation);
@@ -175,8 +182,8 @@ struct TileComponentWindow
 	 * If resno is > 0, return LL,HL,LH or HH band window, otherwise return LL resolution window
 	 *
 	 */
-	const grk_buf2d<T, AllocatorAligned>*
-		getBandWindowBufferPaddedREL(uint8_t resno, eBandOrientation orientation) const
+	const Buf2dAligned* getBandWindowBufferPaddedREL(uint8_t resno,
+													 eBandOrientation orientation) const
 	{
 		assert(resno < resolution_.size());
 		assert(resno > 0 || orientation == BAND_ORIENT_LL);
@@ -248,8 +255,8 @@ struct TileComponentWindow
 	 *
 	 * @param orientation 0 for upper split window, and 1 for lower split window
 	 */
-	const grk_buf2d<T, AllocatorAligned>*
-		getResWindowBufferSplitREL(uint8_t resno, eSplitOrientation orientation) const
+	const Buf2dAligned* getResWindowBufferSplitREL(uint8_t resno,
+												   eSplitOrientation orientation) const
 	{
 		assert(resno > 0 && resno < resolution_.size());
 
@@ -283,7 +290,7 @@ struct TileComponentWindow
 	 * @param resno resolution number
 	 *
 	 */
-	const grk_buf2d<T, AllocatorAligned>* getResWindowBufferREL(uint32_t resno) const
+	const Buf2dAligned* getResWindowBufferREL(uint32_t resno) const
 	{
 		return resWindows[resno]->getResWindowBufferREL();
 	}
@@ -384,8 +391,7 @@ struct TileComponentWindow
 	 * @param orientation band orientation {LL,HL,LH,HH}
 	 *
 	 */
-	const grk_buf2d<T, AllocatorAligned>*
-		getCodeBlockDestWindowREL(uint8_t resno, eBandOrientation orientation) const
+	const Buf2dAligned* getCodeBlockDestWindowREL(uint8_t resno, eBandOrientation orientation) const
 	{
 		return (useBufferCoordinatesForCodeblock())
 				   ? getResWindowBufferHighestREL()
@@ -396,7 +402,7 @@ struct TileComponentWindow
 	 *
 	 *
 	 */
-	grk_buf2d<T, AllocatorAligned>* getResWindowBufferHighestREL(void) const
+	Buf2dAligned* getResWindowBufferHighestREL(void) const
 	{
 		return resWindows.back()->getResWindowBufferREL();
 	}
@@ -429,9 +435,6 @@ struct TileComponentWindow
 	std::vector<Resolution*> resolution_;
 	// windowed bounds for windowed decompress, otherwise full bounds
 	std::vector<ResWindow<T>*> resWindows;
-
-	// unreduced number of resolutions
-	uint8_t numResolutions_;
 
 	bool compress_;
 	bool wholeTileDecompress_;

@@ -1747,12 +1747,16 @@ struct PartialBandInfo
 	grk_rect32 resWindowREL_;
 
 	bool alloc(ISparseCanvas* sa, uint8_t resno, Resolution* fullRes,
-			   TileComponentWindow<int32_t>* buf)
+			   TileComponentWindow<int32_t>* tileWindow)
 	{
-		bandWindowREL_[BAND_ORIENT_LL] = buf->getBandWindowBufferPaddedREL(resno, BAND_ORIENT_LL);
-		bandWindowREL_[BAND_ORIENT_HL] = buf->getBandWindowBufferPaddedREL(resno, BAND_ORIENT_HL);
-		bandWindowREL_[BAND_ORIENT_LH] = buf->getBandWindowBufferPaddedREL(resno, BAND_ORIENT_LH);
-		bandWindowREL_[BAND_ORIENT_HH] = buf->getBandWindowBufferPaddedREL(resno, BAND_ORIENT_HH);
+		bandWindowREL_[BAND_ORIENT_LL] =
+			tileWindow->getBandWindowBufferPaddedREL(resno, BAND_ORIENT_LL);
+		bandWindowREL_[BAND_ORIENT_HL] =
+			tileWindow->getBandWindowBufferPaddedREL(resno, BAND_ORIENT_HL);
+		bandWindowREL_[BAND_ORIENT_LH] =
+			tileWindow->getBandWindowBufferPaddedREL(resno, BAND_ORIENT_LH);
+		bandWindowREL_[BAND_ORIENT_HH] =
+			tileWindow->getBandWindowBufferPaddedREL(resno, BAND_ORIENT_HH);
 
 		// band windows in band coordinates - needed to pre-allocate sparse blocks
 		grk_rect32 tileBandWindowREL[BAND_NUM_ORIENTATIONS];
@@ -1768,23 +1772,23 @@ struct PartialBandInfo
 		for(uint32_t i = 0; i < BAND_NUM_ORIENTATIONS; ++i)
 		{
 			auto temp = tileBandWindowREL[i];
-			if(!sa->alloc(temp.growIPL(2 * FILTER_WIDTH, fullRes->width(), fullRes->height()),
+			if(!sa->alloc(temp.grow_IN_PLACE(2 * FILTER_WIDTH, fullRes->width(), fullRes->height()),
 						  true))
 				return false;
 		}
-		resWindowREL_ = buf->getResWindowBufferREL(resno);
+		resWindowREL_ = tileWindow->getResWindowBufferREL(resno);
 		if(!sa->alloc(resWindowREL_, true))
 			return false;
-		splitWindowREL_[SPLIT_L] = buf->getResWindowBufferSplitREL(resno, SPLIT_L);
-		splitWindowREL_[SPLIT_H] = buf->getResWindowBufferSplitREL(resno, SPLIT_H);
+		splitWindowREL_[SPLIT_L] = tileWindow->getResWindowBufferSplitREL(resno, SPLIT_L);
+		splitWindowREL_[SPLIT_H] = tileWindow->getResWindowBufferSplitREL(resno, SPLIT_H);
 
 		auto fullResNext = fullRes + 1;
 		for(uint32_t k = 0; k < SPLIT_NUM_ORIENTATIONS; ++k)
 		{
 			auto temp = splitWindowREL_[k];
-			if(!sa->alloc(
-				   temp.growIPL(2 * FILTER_WIDTH, fullResNext->width(), fullResNext->height()),
-				   true))
+			if(!sa->alloc(temp.grow_IN_PLACE(2 * FILTER_WIDTH, fullResNext->width(),
+											 fullResNext->height()),
+						  true))
 				return false;
 		}
 

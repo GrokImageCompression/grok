@@ -335,6 +335,19 @@ struct grk_buf2d : protected grk_buf<T, A>, public grk_rect32
 		grk_buf<T, A>::attach(buffer);
 		stride = strd;
 	}
+	void attach(grk_buf2d& rhs)
+	{
+		attach(&rhs);
+	}
+	void attach(grk_buf2d* rhs)
+	{
+		if(!rhs)
+			return;
+		this->buf = rhs->buf;
+		this->len = rhs->len;
+		this->owns_data = false;
+		this->stride = rhs->stride;
+	}
 	// set buf to buf and own it
 	void acquire(T* buffer, uint32_t strd)
 	{

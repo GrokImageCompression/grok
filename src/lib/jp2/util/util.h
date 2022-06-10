@@ -235,7 +235,7 @@ struct grk_rect
 		return clip(&rhs);
 	}
 	// IPL stands for in place
-	void clipIPL(const grk_rect<T>& rhs)
+	void clip_IN_PLACE(const grk_rect<T>& rhs)
 	{
 		*this = grk_rect<T>(std::max<T>(x0, rhs.x0), std::max<T>(y0, rhs.y0),
 							std::min<T>(x1, rhs.x1), std::min<T>(y1, rhs.y1));
@@ -285,29 +285,29 @@ struct grk_rect
 						   satAdd<T>((int64_t)x1, (int64_t)x), satAdd<T>((int64_t)y1, (int64_t)y));
 	}
 	// IPL stands for in place
-	grk_rect<T>& growIPL(T boundary)
+	grk_rect<T>& grow_IN_PLACE(T boundary)
 	{
-		return growIPL(boundary, boundary, (std::numeric_limits<T>::max)(),
-					   (std::numeric_limits<T>::max)());
+		return grow_IN_PLACE(boundary, boundary, (std::numeric_limits<T>::max)(),
+							 (std::numeric_limits<T>::max)());
 	}
-	grk_rect<T>& growIPL(T boundaryx, T boundaryy)
+	grk_rect<T>& grow_IN_PLACE(T boundaryx, T boundaryy)
 	{
-		return growIPL(boundaryx, boundaryy, (std::numeric_limits<T>::max)(),
-					   (std::numeric_limits<T>::max)());
+		return grow_IN_PLACE(boundaryx, boundaryy, (std::numeric_limits<T>::max)(),
+							 (std::numeric_limits<T>::max)());
 	}
-	grk_rect<T>& growIPL(T boundary, T maxX, T maxY)
+	grk_rect<T>& grow_IN_PLACE(T boundary, T maxX, T maxY)
 	{
-		return growIPL(boundary, boundary, maxX, maxY);
+		return grow_IN_PLACE(boundary, boundary, maxX, maxY);
 	}
-	grk_rect<T>& growIPL(T boundaryx, T boundaryy, T maxX, T maxY)
+	grk_rect<T>& grow_IN_PLACE(T boundaryx, T boundaryy, T maxX, T maxY)
 	{
-		return growIPL(boundaryx, boundaryy, grk_rect<T>((T)0, (T)0, maxX, maxY));
+		return grow_IN_PLACE(boundaryx, boundaryy, grk_rect<T>((T)0, (T)0, maxX, maxY));
 	}
-	grk_rect<T>& growIPL(T boundary, grk_rect<T> bounds)
+	grk_rect<T>& grow_IN_PLACE(T boundary, grk_rect<T> bounds)
 	{
-		return growIPL(boundary, boundary, bounds);
+		return grow_IN_PLACE(boundary, boundary, bounds);
 	}
-	grk_rect<T>& growIPL(T boundaryx, T boundaryy, grk_rect<T> bounds)
+	grk_rect<T>& grow_IN_PLACE(T boundaryx, T boundaryy, grk_rect<T> bounds)
 	{
 		x0 = std::max<T>(satSub<T>(x0, boundaryx), bounds.x0);
 		y0 = std::max<T>(satSub<T>(y0, boundaryy), bounds.y0);
