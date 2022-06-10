@@ -414,25 +414,20 @@ void TileComponent::postDecompressImpl(int32_t* srcData, DecompressBlockExec* bl
 	auto cblk = block->cblk;
 	bool empty = cblk->seg_buffers.empty();
 
-	grk_buf2d<int32_t, AllocatorAligned> dest;
 	window_->toRelativeCoordinates(block->resno, block->bandOrientation, block->x, block->y);
 	auto src = grk_buf2d<int32_t, AllocatorAligned>(srcData, false, cblk->width(), stride, cblk->height());
 	auto blockBounds = grk_rect32(block->x, block->y, block->x + cblk->width(), block->y + cblk->height());
-	if(regionWindow_)
-	{
-		dest = src;
+	if (!empty) {
+		if(regionWindow_)
+		{
+			src.copy<F>(src, F(block));
+		}
+		else
+		{
+			src.set(blockBounds);
+			window_->postProcess<F>(src,block->resno, block->bandOrientation,block);
+		}
 	}
-	else
-	{
-		src.set(blockBounds);
-		dest = window_->getCodeBlockDestWindowREL(block->resno, block->bandOrientation);
-	}
-	if(!empty)
-	{
-		F f(block);
-		dest.copy<F>(src, f);
-	}
-
 	if (regionWindow_)
 		regionWindow_->write(block->resno, blockBounds,empty ? nullptr : srcData, 1, blockBounds.width(), true);
 }

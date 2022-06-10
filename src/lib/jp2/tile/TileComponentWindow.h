@@ -142,20 +142,15 @@ struct TileComponentWindow
 		offsetx = x;
 		offsety = y;
 	}
-	/**
-	 * Get code block destination window
-	 *
-	 * @param resno resolution number
-	 * @param orientation band orientation {LL,HL,LH,HH}
-	 *
-	 */
-	const grk_buf2d<T, AllocatorAligned>*
-		getCodeBlockDestWindowREL(uint8_t resno, eBandOrientation orientation) const
+	template<typename F> void postProcess(grk_buf2d<int32_t, AllocatorAligned> &src,
+											uint8_t resno, eBandOrientation bandOrientation,
+											DecompressBlockExec* block)
 	{
-		return (useBufferCoordinatesForCodeblock())
-				   ? getResWindowBufferHighestREL()
-				   : getBandWindowBufferPaddedREL(resno, orientation);
+		grk_buf2d<int32_t, AllocatorAligned> dst;
+		dst = getCodeBlockDestWindowREL(resno, bandOrientation);
+		dst.copy<F>(src, F(block));
 	}
+
 	/**
 	 * Get padded band window buffer
 	 *
@@ -367,6 +362,20 @@ struct TileComponentWindow
 	}
 
   private:
+	/**
+	 * Get code block destination window
+	 *
+	 * @param resno resolution number
+	 * @param orientation band orientation {LL,HL,LH,HH}
+	 *
+	 */
+	const grk_buf2d<T, AllocatorAligned>*
+		getCodeBlockDestWindowREL(uint8_t resno, eBandOrientation orientation) const
+	{
+		return (useBufferCoordinatesForCodeblock())
+				   ? getResWindowBufferHighestREL()
+				   : getBandWindowBufferPaddedREL(resno, orientation);
+	}
 	/**
 	 * Get highest resolution window
 	 *
