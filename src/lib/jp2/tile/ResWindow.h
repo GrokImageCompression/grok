@@ -83,47 +83,46 @@ struct ResWindow
 	{
 		auto resWindowPadded = resWindow.grow_IN_PLACE(2 * FILTER_WIDTH);
 		resWindowBoundsPadded_ = resWindowPadded.intersection(tileCompAtRes_);
+		resWindowBoundsPadded_.setOrigin(tileCompAtRes);
+		resWindowBuffer_->setOrigin(tileCompAtRes_);
+
+		uint32_t numDecomps =
+			(resno == 0) ? (uint32_t)(numresolutions - 1U) : (uint32_t)(numresolutions - resno);
+		for(uint8_t orient = 0; orient < ((resno) > 0 ? BAND_NUM_ORIENTATIONS : 1); orient++)
+		{
+			// todo: should only need padding equal to FILTER_WIDTH, not 2*FILTER_WIDTH
+			auto bandWindow = getPaddedBandWindow(numDecomps, orient, tileCompWindowUnreduced,
+											  tileCompUnreduced, 2 * FILTER_WIDTH);
+			grk_rect32 band = tileCompAtRes_->tileBand[BAND_ORIENT_LL];
+			if (resno > 0)
+			    band = orient == BAND_ORIENT_LL ? *((grk_rect32*)tileCompAtLowerRes_)
+												 : tileCompAtRes_->tileBand[orient - 1];
+			bandWindow.setOrigin(band);
+			assert(bandWindow.intersection(band).setOrigin(bandWindow) == bandWindow);
+			bandWindowsBoundsPadded_.push_back(bandWindow);
+		}
+
 		// windowed decompression
 		if(FILTER_WIDTH)
 		{
-			uint32_t numDecomps =
-				(resno == 0) ? (uint32_t)(numresolutions - 1U) : (uint32_t)(numresolutions - resno);
-
-			/*
-			bandWindowsBoundsPadded_ is used for determining which precincts and code blocks overlap
-			the window of interest, in each respective resolution
-			*/
-			for(uint8_t orient = 0; orient < ((resno) > 0 ? BAND_NUM_ORIENTATIONS : 1); orient++)
-			{
-				auto padded = getPaddedBandWindow(numDecomps, orient, tileCompWindowUnreduced,
-												  tileCompUnreduced, 2 * FILTER_WIDTH);
-				bandWindowsBoundsPadded_.push_back(padded);
-			}
 			if(tileCompAtLowerRes_)
 			{
 				assert(resno > 0);
 				for(uint8_t orient = 0; orient < BAND_NUM_ORIENTATIONS; orient++)
 				{
-					// todo: should only need padding equal to FILTER_WIDTH, not 2*FILTER_WIDTH
-					auto bandWindow =
-						getPaddedBandWindow(numDecomps, orient, tileCompWindowUnreduced,
-											tileCompUnreduced, 2 * FILTER_WIDTH);
-					auto band = orient == BAND_ORIENT_LL ? *((grk_rect32*)tileCompAtLowerRes_)
-														 : tileCompAtRes_->tileBand[orient - 1];
-					bandWindow.origin_x0 = band.x0;
-					bandWindow.origin_y0 = band.y0;
+					auto bandWindow = bandWindowsBoundsPadded_[orient];
 					bandWindowsBuffersPadded_.push_back(new Buf2dAligned(bandWindow));
-					bandWindowsBuffersPaddedREL_.push_back(
-						new Buf2dAligned(bandWindow.toggleCoordinates()));
+					bandWindowsBuffersPaddedREL_.push_back(new Buf2dAligned(bandWindow.toRelative()));
 				}
 				padResWindowBufferBounds(resWindowBuffer_, bandWindowsBuffersPadded_,
-										 tileCompAtRes_);
+										 tileCompAtRes_,true);
 				genSplitWindowBuffers(resWindowBufferSplit_, resWindowBuffer_,
 									  bandWindowsBuffersPadded_);
 
 				padResWindowBufferBounds(
 					resWindowBufferREL_, bandWindowsBuffersPaddedREL_,
-					grk_rect32(0, 0, tileCompAtRes_->width(), tileCompAtRes_->height()));
+					grk_rect32(0, 0, tileCompAtRes_->width(), tileCompAtRes_->height()),false);
+
 				genSplitWindowBuffers(resWindowBufferSplitREL_, resWindowBuffer_,
 									  bandWindowsBuffersPaddedREL_);
 			}
@@ -141,9 +140,9 @@ struct ResWindow
 				{
 					auto tileCompBand = tileCompAtRes_->tileBand + i;
 
-					bandWindowsBuffersPadded_.push_back(new Buf2dAligned(tileCompBand));
-					bandWindowsBuffersPaddedREL_.push_back(
-						new Buf2dAligned(tileCompBand->width(), tileCompBand->height()));
+					auto band = grk_rect32(tileCompBand);
+					bandWindowsBuffersPadded_.push_back(new Buf2dAligned(band));
+					bandWindowsBuffersPaddedREL_.push_back(new Buf2dAligned(band.toRelative()));
 				}
 				for(uint8_t i = 0; i < SPLIT_NUM_ORIENTATIONS; i++)
 				{
@@ -154,11 +153,10 @@ struct ResWindow
 					split.y1 = resWindowPadded.y1 == 0
 								   ? 0
 								   : ceildivpow2<uint32_t>(resWindowPadded.y1 - i, 1);
-					split.origin_x0 = tileCompAtLowerRes_->x0;
-					split.origin_y0 = tileCompAtRes_->y0;
+					split.setOrigin(tileCompAtLowerRes_->x0, tileCompAtRes_->y0);
 					resWindowBufferSplit_[i] = new Buf2dAligned(split);
 					resWindowBufferSplitREL_[i] = new Buf2dAligned(resWindowBufferSplit_[i]);
-					resWindowBufferSplitREL_[i]->toggleCoordinates();
+					resWindowBufferSplitREL_[i]->toRelative();
 				}
 			}
 		}
@@ -179,7 +177,8 @@ struct ResWindow
 	}
 	void padResWindowBufferBounds(Buf2dAligned* resWindowBuffer,
 								  std::vector<Buf2dAligned*>& bandWindowsBuffersPadded,
-								  grk_rect32 resBounds)
+								  grk_rect32 resBounds,
+								  bool absolute)
 	{
 		auto winLow = bandWindowsBuffersPadded[BAND_ORIENT_LL];
 		auto winHigh = bandWindowsBuffersPadded[BAND_ORIENT_HL];
@@ -192,6 +191,7 @@ struct ResWindow
 
 		// todo: shouldn't need to clip
 		resWindowBuffer->clip_IN_PLACE(resBounds);
+		resWindowBuffer->setOrigin(resBounds,absolute);
 	}
 
 	void genSplitWindowBuffers(Buf2dAligned** resWindowBufferSplit, Buf2dAligned* resWindowBuffer,
@@ -239,12 +239,16 @@ struct ResWindow
 		uint32_t bx0Offset = (1U << (numDecomps - 1)) * bx0;
 		uint32_t by0Offset = (1U << (numDecomps - 1)) * by0;
 
+		uint32_t tc_originx0 = tileCompWindowUnreduced.origin_x0;
+		uint32_t tc_originy0 = tileCompWindowUnreduced.origin_y0;
 		uint32_t tcx0 = tileCompWindowUnreduced.x0;
 		uint32_t tcy0 = tileCompWindowUnreduced.y0;
 		uint32_t tcx1 = tileCompWindowUnreduced.x1;
 		uint32_t tcy1 = tileCompWindowUnreduced.y1;
 
 		return grk_rect32(
+			(tc_originx0 <= bx0Offset) ? 0 : ceildivpow2<uint32_t>(tc_originx0 - bx0Offset, numDecomps),
+			(tc_originy0 <= by0Offset) ? 0 : ceildivpow2<uint32_t>(tc_originy0 - by0Offset, numDecomps),
 			(tcx0 <= bx0Offset) ? 0 : ceildivpow2<uint32_t>(tcx0 - bx0Offset, numDecomps),
 			(tcy0 <= by0Offset) ? 0 : ceildivpow2<uint32_t>(tcy0 - by0Offset, numDecomps),
 			(tcx1 <= bx0Offset) ? 0 : ceildivpow2<uint32_t>(tcx1 - bx0Offset, numDecomps),
@@ -439,6 +443,11 @@ struct ResWindow
 	Buf2dAligned* resWindowBuffer_;
 	Buf2dAligned* resWindowBufferSplit_[SPLIT_NUM_ORIENTATIONS];
 	std::vector<Buf2dAligned*> bandWindowsBuffersPadded_;
+
+	/*
+	bandWindowsBoundsPadded_ is used for determining which precincts and code blocks overlap
+	the window of interest, in each respective resolution
+	*/
 	std::vector<grk_rect32> bandWindowsBoundsPadded_;
 };
 

@@ -123,17 +123,56 @@ struct grk_rect
 	T origin_x0, origin_y0;
 	T x0, y0, x1, y1;
 
-	grk_rect<T>& toggleCoordinates(void)
-	{
-		if(absoluteCoordinates)
-			pan_IN_PLACE(-(int64_t)origin_x0, -(int64_t)origin_y0);
-		else
-			pan_IN_PLACE(origin_x0, origin_y0);
-		absoluteCoordinates = !absoluteCoordinates;
+	grk_rect<T>& setOrigin(T x, T y, bool absolute){
+		absoluteCoordinates = absolute;
+
+		return setOrigin(x,y);
+	}
+	grk_rect<T>& setOrigin(grk_rect<T>& rhs, bool absolute){
+		absoluteCoordinates = absolute;
+
+		return setOrigin(&rhs);
+	}
+	grk_rect<T>& setOrigin(grk_rect<T> *rhs, bool absolute){
+		absoluteCoordinates = absolute;
+
+		return setOrigin(rhs);
+	}
+	grk_rect<T>& setOrigin(T x, T y){
+		origin_x0 = x;
+		origin_y0 = y;
 
 		return *this;
 	}
+	grk_rect<T>& setOrigin(grk_rect<T>& rhs){
+		return setOrigin(&rhs);
+	}
+	grk_rect<T>& setOrigin(grk_rect<T> *rhs){
+		if (rhs) {
+			origin_x0 = rhs->origin_x0;
+			origin_y0 = rhs->origin_y0;
+		}
 
+		return *this;
+	}
+	grk_rect<T>& toRelative(void)
+	{
+		assert(x0 >= origin_x0);
+		assert(y0 >= origin_y0);
+		if(absoluteCoordinates)
+			pan_IN_PLACE(-(int64_t)origin_x0, -(int64_t)origin_y0);
+		absoluteCoordinates = false;
+
+		return *this;
+	}
+	grk_rect<T>& toAbsolute(void)
+	{
+		if(!absoluteCoordinates)
+			pan_IN_PLACE(origin_x0, origin_y0);
+		absoluteCoordinates = true;
+
+		return *this;
+	}
 	virtual void print(void) const
 	{
 		GRK_INFO("[%u,%u,%u,%u,%u,%u]", origin_x0, origin_y0, x0, y0, x1, y1);
@@ -170,6 +209,7 @@ struct grk_rect
 		assert(rhs);
 		if(rhs && (this != rhs))
 		{ // self-assignment check expected
+			absoluteCoordinates = rhs->absoluteCoordinates;
 			origin_x0 = rhs->origin_x0;
 			origin_y0 = rhs->origin_y0;
 			x0 = rhs->x0;
@@ -183,8 +223,9 @@ struct grk_rect
 	{
 		if(this == &rhs)
 			return true;
-		return origin_x0 == rhs.origin_x0 && origin_y0 == rhs.origin_y0 && x0 == rhs.x0 &&
-			   y0 == rhs.y0 && x1 == rhs.x1 && y1 == rhs.y1;
+		return absoluteCoordinates == rhs.absoluteCoordinates &&
+				origin_x0 == rhs.origin_x0 && origin_y0 == rhs.origin_y0 && x0 == rhs.x0 &&
+				y0 == rhs.y0 && x1 == rhs.x1 && y1 == rhs.y1;
 	}
 	void set(grk_rect<T>* rhs)
 	{
@@ -196,20 +237,22 @@ struct grk_rect
 	}
 	grk_rect<T> scaleDownCeil(uint32_t den) const
 	{
-		return grk_rect<T>(ceildiv(x0, den), ceildiv(y0, den), ceildiv(x1, den), ceildiv(y1, den));
+		return grk_rect<T>(ceildiv(origin_x0, den),ceildiv(origin_y0, den),ceildiv(x0, den), ceildiv(y0, den), ceildiv(x1, den), ceildiv(y1, den));
 	}
 	grk_rect<T> scale(uint32_t scalex, uint32_t scaley) const
 	{
-		return grk_rect<T>(x0 * scalex, y0 * scaley, x1 * scalex, y1 * scaley);
+		return grk_rect<T>(origin_x0 * scalex, origin_y0 * scaley, x0 * scalex, y0 * scaley, x1 * scalex, y1 * scaley);
 	}
 	grk_rect<T> scaleDown(uint64_t denx, uint64_t deny) const
 	{
-		return grk_rect<T>((T)(x0 / denx), (T)(y0 / deny), (T)ceildiv<uint64_t>(x1, denx),
+		return grk_rect<T>((T)(origin_x0 / denx), (T)(origin_y0 / deny),
+							(T)(x0 / denx), (T)(y0 / deny), (T)ceildiv<uint64_t>(x1, denx),
 						   (T)ceildiv<uint64_t>(y1, deny));
 	}
 	grk_rect<T> scaleDownPow2(uint32_t powx, uint32_t powy) const
 	{
-		return grk_rect<T>((T)(x0 >> powx), (T)(y0 >> powy), (T)ceildivpow2<uint64_t>(x1, powx),
+		return grk_rect<T>((T)(origin_x0 >> powx), (T)(origin_y0 >> powy),
+							(T)(x0 >> powx), (T)(y0 >> powy), (T)ceildivpow2<uint64_t>(x1, powx),
 						   (T)ceildivpow2<uint64_t>(y1, powy));
 	}
 	grk_rect<T> scaleDownPow2(grk_pt<T> pow) const
@@ -218,21 +261,26 @@ struct grk_rect
 	}
 	grk_rect<T> scaleDownCeil(uint64_t denx, uint64_t deny) const
 	{
-		return grk_rect<T>(ceildiv<uint64_t>(x0, denx), ceildiv<uint64_t>(y0, deny),
+		return grk_rect<T>(ceildiv<uint64_t>(origin_x0, denx), ceildiv<uint64_t>(origin_y0, deny),
+						   ceildiv<uint64_t>(x0, denx), ceildiv<uint64_t>(y0, deny),
 						   ceildiv<uint64_t>(x1, denx), ceildiv<uint64_t>(y1, deny));
 	}
 	grk_rect<T> scaleDownCeilPow2(uint32_t power) const
 	{
-		return grk_rect<T>(ceildivpow2(x0, power), ceildivpow2(y0, power), ceildivpow2(x1, power),
+		return grk_rect<T>(ceildivpow2(origin_x0, power), ceildivpow2(origin_y0, power),
+						   ceildivpow2(x0, power), ceildivpow2(y0, power), ceildivpow2(x1, power),
 						   ceildivpow2(y1, power));
 	}
 	grk_rect<T> scaleDownCeilPow2(uint32_t powx, uint32_t powy) const
 	{
-		return grk_rect<T>(ceildivpow2<uint64_t>(x0, powx), ceildivpow2<uint64_t>(y0, powy),
+		return grk_rect<T>(ceildivpow2<uint64_t>(origin_x0, powx), ceildivpow2<uint64_t>(origin_y0, powy),
+							ceildivpow2<uint64_t>(x0, powx), ceildivpow2<uint64_t>(y0, powy),
 						   ceildivpow2<uint64_t>(x1, powx), ceildivpow2<uint64_t>(y1, powy));
 	}
 	grk_rect<T> intersection(const grk_rect<T> rhs) const
 	{
+		assert(absoluteCoordinates == rhs.absoluteCoordinates);
+
 		return intersection(&rhs);
 	}
 	bool isContainedIn(const grk_rect<T> rhs) const
@@ -241,6 +289,7 @@ struct grk_rect
 	}
 	grk_rect<T> clip(const grk_rect<T>* rhs) const
 	{
+		assert(absoluteCoordinates == rhs->absoluteCoordinates);
 		return grk_rect<T>(std::max<T>(x0, rhs->x0), std::max<T>(y0, rhs->y0),
 						   std::min<T>(x1, rhs->x1), std::min<T>(y1, rhs->y1));
 	}
@@ -248,9 +297,9 @@ struct grk_rect
 	{
 		return clip(&rhs);
 	}
-	// IPL stands for in place
 	grk_rect<T>& clip_IN_PLACE(const grk_rect<T>& rhs)
 	{
+		assert(absoluteCoordinates == rhs.absoluteCoordinates);
 		*this = grk_rect<T>(std::max<T>(x0, rhs.x0), std::max<T>(y0, rhs.y0),
 							std::min<T>(x1, rhs.x1), std::min<T>(y1, rhs.y1));
 
@@ -258,16 +307,19 @@ struct grk_rect
 	}
 	grk_rect<T> intersection(const grk_rect<T>* rhs) const
 	{
+		assert(absoluteCoordinates == rhs->absoluteCoordinates);
 		return grk_rect<T>(std::max<T>(x0, rhs->x0), std::max<T>(y0, rhs->y0),
 						   std::min<T>(x1, rhs->x1), std::min<T>(y1, rhs->y1));
 	}
 	bool nonEmptyIntersection(const grk_rect<T>* rhs) const
 	{
+		assert(absoluteCoordinates == rhs->absoluteCoordinates);
 		return std::max<T>(x0, rhs->x0) < std::min<T>(x1, rhs->x1) &&
 			   std::max<T>(y0, rhs->y0) < std::min<T>(y1, rhs->y1);
 	}
 	grk_rect<T> rectUnion(const grk_rect<T>* rhs) const
 	{
+		assert(absoluteCoordinates == rhs->absoluteCoordinates);
 		return grk_rect<T>(std::min<T>(x0, rhs->x0), std::min<T>(y0, rhs->y0),
 						   std::max<T>(x1, rhs->x1), std::max<T>(y1, rhs->y1));
 	}
@@ -295,6 +347,7 @@ struct grk_rect
 	{
 		return grk_line<T>(y0, y1);
 	}
+	// pan doesn't affect origin
 	grk_rect<T> pan(int64_t x, int64_t y) const
 	{
 		auto rc = (*this);
@@ -310,7 +363,7 @@ struct grk_rect
 
 		return *this;
 	}
-	// IPL stands for in place
+	// grow doesn't affect origin
 	grk_rect<T>& grow_IN_PLACE(T boundary)
 	{
 		return grow_IN_PLACE(boundary, boundary, (std::numeric_limits<T>::max)(),
