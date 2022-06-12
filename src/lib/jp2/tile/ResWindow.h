@@ -113,14 +113,19 @@ struct ResWindow
 					bandWindow.origin_x0 = band.x0;
 					bandWindow.origin_y0 = band.y0;
 					bandWindowsBuffersPadded_.push_back(new Buf2dAligned(bandWindow));
-					bandWindowsBuffersPaddedREL_.push_back(new Buf2dAligned(bandWindow.toggleCoordinates()));
+					bandWindowsBuffersPaddedREL_.push_back(
+						new Buf2dAligned(bandWindow.toggleCoordinates()));
 				}
-				padResWindowBufferBounds(resWindowBuffer_, bandWindowsBuffersPadded_, tileCompAtRes_);
-				genSplitWindowBuffers(resWindowBufferSplit_, resWindowBuffer_, bandWindowsBuffersPadded_);
+				padResWindowBufferBounds(resWindowBuffer_, bandWindowsBuffersPadded_,
+										 tileCompAtRes_);
+				genSplitWindowBuffers(resWindowBufferSplit_, resWindowBuffer_,
+									  bandWindowsBuffersPadded_);
 
-				padResWindowBufferBounds(resWindowBufferREL_, bandWindowsBuffersPaddedREL_,
-						grk_rect32(0, 0, tileCompAtRes_->width(), tileCompAtRes_->height()));
-				genSplitWindowBuffers(resWindowBufferSplitREL_, resWindowBuffer_, bandWindowsBuffersPaddedREL_);
+				padResWindowBufferBounds(
+					resWindowBufferREL_, bandWindowsBuffersPaddedREL_,
+					grk_rect32(0, 0, tileCompAtRes_->width(), tileCompAtRes_->height()));
+				genSplitWindowBuffers(resWindowBufferSplitREL_, resWindowBuffer_,
+									  bandWindowsBuffersPaddedREL_);
 			}
 		}
 		else
@@ -128,8 +133,8 @@ struct ResWindow
 			assert(tileCompAtRes_->numTileBandWindows == 3 || !tileCompAtLowerRes);
 
 			// dummy LL band window
-			bandWindowsBuffersPaddedREL_.push_back(new Buf2dAligned(0, 0));
 			bandWindowsBuffersPadded_.push_back(new Buf2dAligned(0, 0));
+			bandWindowsBuffersPaddedREL_.push_back(new Buf2dAligned(0, 0));
 			if(tileCompAtLowerRes_)
 			{
 				for(uint32_t i = 0; i < tileCompAtRes_->numTileBandWindows; ++i)
@@ -140,20 +145,20 @@ struct ResWindow
 					bandWindowsBuffersPaddedREL_.push_back(
 						new Buf2dAligned(tileCompBand->width(), tileCompBand->height()));
 				}
-				for(uint32_t i = 0; i < SPLIT_NUM_ORIENTATIONS; ++i)
+				for(uint8_t i = 0; i < SPLIT_NUM_ORIENTATIONS; i++)
 				{
-					for(uint8_t b = 0; b < 2; b++)
-					{
-						auto split = resWindowPadded;
-						split.y0 = resWindowPadded.y0 == 0
-									   ? 0
-									   : ceildivpow2<uint32_t>(resWindowPadded.y0 - b, 1);
-						split.y1 = resWindowPadded.y1 == 0
-									   ? 0
-									   : ceildivpow2<uint32_t>(resWindowPadded.y1 - b, 1);
-						resWindowBufferSplitREL_[b] = new Buf2dAligned(split);
-						resWindowBufferSplit_[b] = new Buf2dAligned(split);
-					}
+					auto split = resWindowPadded;
+					split.y0 = resWindowPadded.y0 == 0
+								   ? 0
+								   : ceildivpow2<uint32_t>(resWindowPadded.y0 - i, 1);
+					split.y1 = resWindowPadded.y1 == 0
+								   ? 0
+								   : ceildivpow2<uint32_t>(resWindowPadded.y1 - i, 1);
+					split.origin_x0 = tileCompAtLowerRes_->x0;
+					split.origin_y0 = tileCompAtRes_->y0;
+					resWindowBufferSplit_[i] = new Buf2dAligned(split);
+					resWindowBufferSplitREL_[i] = new Buf2dAligned(resWindowBufferSplit_[i]);
+					resWindowBufferSplitREL_[i]->toggleCoordinates();
 				}
 			}
 		}
@@ -300,9 +305,8 @@ struct ResWindow
 							break;
 					}
 				}
-				resWindowBufferSplit_[SPLIT_L]->attach(
-					resWindowBufferHighestResREL_->getBuffer(),
-					resWindowBufferHighestResREL_->stride);
+				resWindowBufferSplit_[SPLIT_L]->attach(resWindowBufferHighestResREL_->getBuffer(),
+													   resWindowBufferHighestResREL_->stride);
 				resWindowBufferSplit_[SPLIT_H]->attach(
 					resWindowBufferHighestResREL_->getBuffer() +
 						tileCompAtLowerRes_->height() * resWindowBufferHighestResREL_->stride,
@@ -324,11 +328,11 @@ struct ResWindow
 			if(tileCompAtLowerRes_)
 			{
 				resWindowBufferSplit_[SPLIT_L]->attach(resWindowBufferREL_->getBuffer(),
-														  resWindowBufferREL_->stride);
+													   resWindowBufferREL_->stride);
 				resWindowBufferSplit_[SPLIT_H]->attach(resWindowBufferREL_->getBuffer() +
-															  tileCompAtLowerRes_->height() *
-																  resWindowBufferREL_->stride,
-														  resWindowBufferREL_->stride);
+														   tileCompAtLowerRes_->height() *
+															   resWindowBufferREL_->stride,
+													   resWindowBufferREL_->stride);
 			}
 		}
 
