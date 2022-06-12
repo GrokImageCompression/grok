@@ -251,13 +251,13 @@ struct grk_buf2d_simple
 	grk_buf2d_simple(T* buf, uint32_t stride, uint32_t height)
 		: buf_(buf), stride_(stride), height_(height)
 	{}
-	grk_buf2d_simple incX_IN_PLACE(size_t deltaX)
+	grk_buf2d_simple& incX_IN_PLACE(size_t deltaX)
 	{
 		buf_ += deltaX;
 
 		return *this;
 	}
-	grk_buf2d_simple incY_IN_PLACE(size_t deltaY)
+	grk_buf2d_simple& incY_IN_PLACE(size_t deltaY)
 	{
 		buf_ += deltaY * stride_;
 
@@ -346,7 +346,7 @@ struct grk_buf2d : protected grk_buf<T, A>, public grk_rect32
 		this->buf = rhs->buf;
 		this->len = rhs->len;
 		this->owns_data = false;
-		this->stride = rhs->stride;
+		stride = rhs->stride;
 	}
 	// set buf to buf and own it
 	void acquire(T* buffer, uint32_t strd)

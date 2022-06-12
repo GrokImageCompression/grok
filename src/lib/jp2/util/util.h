@@ -101,10 +101,12 @@ template<typename T>
 struct grk_rect
 {
 	grk_rect(T origin_x0, T origin_y0, T x0, T y0, T x1, T y1)
-		: origin_x0(origin_x0), origin_y0(origin_y0), x0(x0), y0(y0), x1(x1), y1(y1)
+		: absoluteCoordinates(true), origin_x0(origin_x0), origin_y0(origin_y0), x0(x0), y0(y0), x1(x1), y1(y1)
 	{}
-	grk_rect(T x0, T y0, T x1, T y1) : grk_rect(x0, y0, x0, y0, x1, y1) {}
-	grk_rect(const grk_rect& rhs) : grk_rect(&rhs) {}
+	grk_rect(T x0, T y0, T x1, T y1) : grk_rect(x0, y0, x0, y0, x1, y1)
+	{}
+	grk_rect(const grk_rect& rhs) : grk_rect(&rhs)
+	{}
 	grk_rect(const grk_rect* rhs)
 	{
 		origin_x0 = rhs->origin_x0;
@@ -113,12 +115,25 @@ struct grk_rect
 		y0 = rhs->y0;
 		x1 = rhs->x1;
 		y1 = rhs->y1;
+		absoluteCoordinates = rhs->absoluteCoordinates;
 	}
-	grk_rect(void) : grk_rect(0, 0, 0, 0) {}
+	grk_rect(void) : grk_rect(0, 0, 0, 0)
+	{}
 	virtual ~grk_rect() = default;
 
+	bool absoluteCoordinates;
 	T origin_x0, origin_y0;
 	T x0, y0, x1, y1;
+
+	grk_rect<T>& toggleCoordinates(void){
+		if (absoluteCoordinates)
+			pan_IN_PLACE(-(int64_t)origin_x0, -(int64_t)origin_y0);
+		else
+			pan_IN_PLACE(origin_x0, origin_y0);
+		absoluteCoordinates = !absoluteCoordinates;
+
+		return *this;
+	}
 
 	virtual void print(void) const
 	{
@@ -235,17 +250,19 @@ struct grk_rect
 		return clip(&rhs);
 	}
 	// IPL stands for in place
-	void clip_IN_PLACE(const grk_rect<T>& rhs)
+	grk_rect<T>&  clip_IN_PLACE(const grk_rect<T>& rhs)
 	{
 		*this = grk_rect<T>(std::max<T>(x0, rhs.x0), std::max<T>(y0, rhs.y0),
 							std::min<T>(x1, rhs.x1), std::min<T>(y1, rhs.y1));
+
+		return *this;
 	}
 	grk_rect<T> intersection(const grk_rect<T>* rhs) const
 	{
 		return grk_rect<T>(std::max<T>(x0, rhs->x0), std::max<T>(y0, rhs->y0),
 						   std::min<T>(x1, rhs->x1), std::min<T>(y1, rhs->y1));
 	}
-	inline bool nonEmptyIntersection(const grk_rect<T>* rhs) const
+	bool nonEmptyIntersection(const grk_rect<T>* rhs) const
 	{
 		return std::max<T>(x0, rhs->x0) < std::min<T>(x1, rhs->x1) &&
 			   std::max<T>(y0, rhs->y0) < std::min<T>(y1, rhs->y1);
@@ -281,8 +298,18 @@ struct grk_rect
 	}
 	grk_rect<T> pan(int64_t x, int64_t y) const
 	{
-		return grk_rect<T>(satAdd<T>((int64_t)x0, (int64_t)x), satAdd<T>((int64_t)y0, (int64_t)y),
-						   satAdd<T>((int64_t)x1, (int64_t)x), satAdd<T>((int64_t)y1, (int64_t)y));
+		auto rc = (*this);
+
+		return rc.pan_IN_PLACE(x,y);
+	}
+	grk_rect<T>& pan_IN_PLACE(int64_t x, int64_t y)
+	{
+		x0 = satAdd<T>((int64_t)x0, (int64_t)x);
+		y0 = satAdd<T>((int64_t)y0, (int64_t)y);
+		x1 = satAdd<T>((int64_t)x1, (int64_t)x);
+		y1 = satAdd<T>((int64_t)y1, (int64_t)y);
+
+		return *this;
 	}
 	// IPL stands for in place
 	grk_rect<T>& grow_IN_PLACE(T boundary)

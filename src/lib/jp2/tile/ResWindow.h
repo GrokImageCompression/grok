@@ -113,9 +113,7 @@ struct ResWindow
 					bandWindow.origin_x0 = band.x0;
 					bandWindow.origin_y0 = band.y0;
 					bandWindowsBuffersPadded_.push_back(new Buf2dAligned(bandWindow));
-
-					auto bandWindowREL = bandWindow.pan(-(int64_t)band.x0, -(int64_t)band.y0);
-					bandWindowsBuffersPaddedREL_.push_back(new Buf2dAligned(bandWindowREL));
+					bandWindowsBuffersPaddedREL_.push_back(new Buf2dAligned(bandWindow.toggleCoordinates()));
 				}
 				padResWindowBufferBounds(resWindowBuffer_, bandWindowsBuffersPadded_, tileCompAtRes_);
 				genSplitWindowBuffers(resWindowBufferSplit_, resWindowBuffer_, bandWindowsBuffersPadded_);
