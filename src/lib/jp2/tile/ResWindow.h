@@ -120,9 +120,9 @@ struct ResWindow
 				genSplitWindowBuffers(resWindowBufferSplit_, resWindowBuffer_,
 									  bandWindowsBuffersPadded_);
 
-				padResWindowBufferBounds(
-					resWindowBufferREL_, bandWindowsBuffersPaddedREL_,
-					grk_rect32(0, 0, tileCompAtRes_->width(), tileCompAtRes_->height()), false);
+				resWindowBuffer_->toRelative();
+				resWindowBufferREL_->set(resWindowBuffer_);
+				resWindowBuffer_->toAbsolute();
 
 				genSplitWindowBuffers(resWindowBufferSplitREL_, resWindowBuffer_,
 									  bandWindowsBuffersPaddedREL_);
@@ -192,6 +192,8 @@ struct ResWindow
 		// todo: shouldn't need to clip
 		resWindowBuffer->clip_IN_PLACE(resBounds);
 		resWindowBuffer->setOrigin(resBounds, absolute);
+		assert(resWindowBuffer->x0 >= resBounds.origin_x0);
+		assert(resWindowBuffer->y0 >= resBounds.origin_y0);
 	}
 
 	void genSplitWindowBuffers(Buf2dAligned** resWindowBufferSplit, Buf2dAligned* resWindowBuffer,
