@@ -123,32 +123,39 @@ struct grk_rect
 	T origin_x0, origin_y0;
 	T x0, y0, x1, y1;
 
-	grk_rect<T>& setOrigin(T x, T y, bool absolute){
+	grk_rect<T>& setOrigin(T x, T y, bool absolute)
+	{
 		absoluteCoordinates = absolute;
 
-		return setOrigin(x,y);
+		return setOrigin(x, y);
 	}
-	grk_rect<T>& setOrigin(grk_rect<T>& rhs, bool absolute){
+	grk_rect<T>& setOrigin(grk_rect<T>& rhs, bool absolute)
+	{
 		absoluteCoordinates = absolute;
 
 		return setOrigin(&rhs);
 	}
-	grk_rect<T>& setOrigin(grk_rect<T> *rhs, bool absolute){
+	grk_rect<T>& setOrigin(grk_rect<T>* rhs, bool absolute)
+	{
 		absoluteCoordinates = absolute;
 
 		return setOrigin(rhs);
 	}
-	grk_rect<T>& setOrigin(T x, T y){
+	grk_rect<T>& setOrigin(T x, T y)
+	{
 		origin_x0 = x;
 		origin_y0 = y;
 
 		return *this;
 	}
-	grk_rect<T>& setOrigin(grk_rect<T>& rhs){
+	grk_rect<T>& setOrigin(grk_rect<T>& rhs)
+	{
 		return setOrigin(&rhs);
 	}
-	grk_rect<T>& setOrigin(grk_rect<T> *rhs){
-		if (rhs) {
+	grk_rect<T>& setOrigin(grk_rect<T>* rhs)
+	{
+		if(rhs)
+		{
 			origin_x0 = rhs->origin_x0;
 			origin_y0 = rhs->origin_y0;
 		}
@@ -223,9 +230,9 @@ struct grk_rect
 	{
 		if(this == &rhs)
 			return true;
-		return absoluteCoordinates == rhs.absoluteCoordinates &&
-				origin_x0 == rhs.origin_x0 && origin_y0 == rhs.origin_y0 && x0 == rhs.x0 &&
-				y0 == rhs.y0 && x1 == rhs.x1 && y1 == rhs.y1;
+		return absoluteCoordinates == rhs.absoluteCoordinates && origin_x0 == rhs.origin_x0 &&
+			   origin_y0 == rhs.origin_y0 && x0 == rhs.x0 && y0 == rhs.y0 && x1 == rhs.x1 &&
+			   y1 == rhs.y1;
 	}
 	void set(grk_rect<T>* rhs)
 	{
@@ -237,22 +244,24 @@ struct grk_rect
 	}
 	grk_rect<T> scaleDownCeil(uint32_t den) const
 	{
-		return grk_rect<T>(ceildiv(origin_x0, den),ceildiv(origin_y0, den),ceildiv(x0, den), ceildiv(y0, den), ceildiv(x1, den), ceildiv(y1, den));
+		return grk_rect<T>(ceildiv(origin_x0, den), ceildiv(origin_y0, den), ceildiv(x0, den),
+						   ceildiv(y0, den), ceildiv(x1, den), ceildiv(y1, den));
 	}
 	grk_rect<T> scale(uint32_t scalex, uint32_t scaley) const
 	{
-		return grk_rect<T>(origin_x0 * scalex, origin_y0 * scaley, x0 * scalex, y0 * scaley, x1 * scalex, y1 * scaley);
+		return grk_rect<T>(origin_x0 * scalex, origin_y0 * scaley, x0 * scalex, y0 * scaley,
+						   x1 * scalex, y1 * scaley);
 	}
 	grk_rect<T> scaleDown(uint64_t denx, uint64_t deny) const
 	{
-		return grk_rect<T>((T)(origin_x0 / denx), (T)(origin_y0 / deny),
-							(T)(x0 / denx), (T)(y0 / deny), (T)ceildiv<uint64_t>(x1, denx),
+		return grk_rect<T>((T)(origin_x0 / denx), (T)(origin_y0 / deny), (T)(x0 / denx),
+						   (T)(y0 / deny), (T)ceildiv<uint64_t>(x1, denx),
 						   (T)ceildiv<uint64_t>(y1, deny));
 	}
 	grk_rect<T> scaleDownPow2(uint32_t powx, uint32_t powy) const
 	{
-		return grk_rect<T>((T)(origin_x0 >> powx), (T)(origin_y0 >> powy),
-							(T)(x0 >> powx), (T)(y0 >> powy), (T)ceildivpow2<uint64_t>(x1, powx),
+		return grk_rect<T>((T)(origin_x0 >> powx), (T)(origin_y0 >> powy), (T)(x0 >> powx),
+						   (T)(y0 >> powy), (T)ceildivpow2<uint64_t>(x1, powx),
 						   (T)ceildivpow2<uint64_t>(y1, powy));
 	}
 	grk_rect<T> scaleDownPow2(grk_pt<T> pow) const
@@ -273,9 +282,10 @@ struct grk_rect
 	}
 	grk_rect<T> scaleDownCeilPow2(uint32_t powx, uint32_t powy) const
 	{
-		return grk_rect<T>(ceildivpow2<uint64_t>(origin_x0, powx), ceildivpow2<uint64_t>(origin_y0, powy),
-							ceildivpow2<uint64_t>(x0, powx), ceildivpow2<uint64_t>(y0, powy),
-						   ceildivpow2<uint64_t>(x1, powx), ceildivpow2<uint64_t>(y1, powy));
+		return grk_rect<T>(ceildivpow2<uint64_t>(origin_x0, powx),
+						   ceildivpow2<uint64_t>(origin_y0, powy), ceildivpow2<uint64_t>(x0, powx),
+						   ceildivpow2<uint64_t>(y0, powy), ceildivpow2<uint64_t>(x1, powx),
+						   ceildivpow2<uint64_t>(y1, powy));
 	}
 	grk_rect<T> intersection(const grk_rect<T> rhs) const
 	{

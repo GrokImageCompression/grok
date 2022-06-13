@@ -92,11 +92,11 @@ struct ResWindow
 		{
 			// todo: should only need padding equal to FILTER_WIDTH, not 2*FILTER_WIDTH
 			auto bandWindow = getPaddedBandWindow(numDecomps, orient, tileCompWindowUnreduced,
-											  tileCompUnreduced, 2 * FILTER_WIDTH);
+												  tileCompUnreduced, 2 * FILTER_WIDTH);
 			grk_rect32 band = tileCompAtRes_->tileBand[BAND_ORIENT_LL];
-			if (resno > 0)
-			    band = orient == BAND_ORIENT_LL ? *((grk_rect32*)tileCompAtLowerRes_)
-												 : tileCompAtRes_->tileBand[orient - 1];
+			if(resno > 0)
+				band = orient == BAND_ORIENT_LL ? *((grk_rect32*)tileCompAtLowerRes_)
+												: tileCompAtRes_->tileBand[orient - 1];
 			bandWindow.setOrigin(band);
 			assert(bandWindow.intersection(band).setOrigin(bandWindow) == bandWindow);
 			bandWindowsBoundsPadded_.push_back(bandWindow);
@@ -112,16 +112,17 @@ struct ResWindow
 				{
 					auto bandWindow = bandWindowsBoundsPadded_[orient];
 					bandWindowsBuffersPadded_.push_back(new Buf2dAligned(bandWindow));
-					bandWindowsBuffersPaddedREL_.push_back(new Buf2dAligned(bandWindow.toRelative()));
+					bandWindowsBuffersPaddedREL_.push_back(
+						new Buf2dAligned(bandWindow.toRelative()));
 				}
 				padResWindowBufferBounds(resWindowBuffer_, bandWindowsBuffersPadded_,
-										 tileCompAtRes_,true);
+										 tileCompAtRes_, true);
 				genSplitWindowBuffers(resWindowBufferSplit_, resWindowBuffer_,
 									  bandWindowsBuffersPadded_);
 
 				padResWindowBufferBounds(
 					resWindowBufferREL_, bandWindowsBuffersPaddedREL_,
-					grk_rect32(0, 0, tileCompAtRes_->width(), tileCompAtRes_->height()),false);
+					grk_rect32(0, 0, tileCompAtRes_->width(), tileCompAtRes_->height()), false);
 
 				genSplitWindowBuffers(resWindowBufferSplitREL_, resWindowBuffer_,
 									  bandWindowsBuffersPaddedREL_);
@@ -177,8 +178,7 @@ struct ResWindow
 	}
 	void padResWindowBufferBounds(Buf2dAligned* resWindowBuffer,
 								  std::vector<Buf2dAligned*>& bandWindowsBuffersPadded,
-								  grk_rect32 resBounds,
-								  bool absolute)
+								  grk_rect32 resBounds, bool absolute)
 	{
 		auto winLow = bandWindowsBuffersPadded[BAND_ORIENT_LL];
 		auto winHigh = bandWindowsBuffersPadded[BAND_ORIENT_HL];
@@ -191,7 +191,7 @@ struct ResWindow
 
 		// todo: shouldn't need to clip
 		resWindowBuffer->clip_IN_PLACE(resBounds);
-		resWindowBuffer->setOrigin(resBounds,absolute);
+		resWindowBuffer->setOrigin(resBounds, absolute);
 	}
 
 	void genSplitWindowBuffers(Buf2dAligned** resWindowBufferSplit, Buf2dAligned* resWindowBuffer,
@@ -247,8 +247,10 @@ struct ResWindow
 		uint32_t tcy1 = tileCompWindowUnreduced.y1;
 
 		return grk_rect32(
-			(tc_originx0 <= bx0Offset) ? 0 : ceildivpow2<uint32_t>(tc_originx0 - bx0Offset, numDecomps),
-			(tc_originy0 <= by0Offset) ? 0 : ceildivpow2<uint32_t>(tc_originy0 - by0Offset, numDecomps),
+			(tc_originx0 <= bx0Offset) ? 0
+									   : ceildivpow2<uint32_t>(tc_originx0 - bx0Offset, numDecomps),
+			(tc_originy0 <= by0Offset) ? 0
+									   : ceildivpow2<uint32_t>(tc_originy0 - by0Offset, numDecomps),
 			(tcx0 <= bx0Offset) ? 0 : ceildivpow2<uint32_t>(tcx0 - bx0Offset, numDecomps),
 			(tcy0 <= by0Offset) ? 0 : ceildivpow2<uint32_t>(tcy0 - by0Offset, numDecomps),
 			(tcx1 <= bx0Offset) ? 0 : ceildivpow2<uint32_t>(tcx1 - bx0Offset, numDecomps),
