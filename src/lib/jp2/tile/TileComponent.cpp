@@ -87,8 +87,8 @@ bool TileComponent::init(TileProcessor* tileProcessor, grk_rect32 unreducedTileC
 	{
 		auto res = resolutions_ + resno;
 
-		res->set(TileComponentWindow<int32_t>::getBandWindow(
-			(uint32_t)(numresolutions - (resno + 1)), BAND_ORIENT_LL, unreducedTileComp));
+		res->setRect(TileComponentWindow<int32_t>::getBandWindow(
+			(uint8_t)(numresolutions - (resno + 1)), BAND_ORIENT_LL, unreducedTileComp));
 
 		/* p. 35, table A-23, ISO/IEC FDIS154444-1 : 2000 (18 august 2000) */
 		uint32_t precWidthExp = tccp_->precWidthExp[resno];
@@ -127,7 +127,7 @@ bool TileComponent::init(TileProcessor* tileProcessor, grk_rect32 unreducedTileC
 	auto highestNumberOfResolutions =
 		(!isCompressor_) ? numResolutionsToDecompress : numresolutions;
 	auto hightestResolution = resolutions_ + highestNumberOfResolutions - 1;
-	set(hightestResolution);
+	setRect(hightestResolution);
 	for(uint8_t resno = 0; resno < numresolutions; ++resno)
 	{
 		auto res = resolutions_ + resno;
@@ -137,10 +137,10 @@ bool TileComponent::init(TileProcessor* tileProcessor, grk_rect32 unreducedTileC
 			eBandOrientation orientation =
 				(resno == 0) ? BAND_ORIENT_LL : (eBandOrientation)(bandIndex + 1);
 			band->orientation = orientation;
-			uint32_t numDecomps =
-				(resno == 0) ? (uint32_t)(numresolutions - 1U) : (uint32_t)(numresolutions - resno);
-			band->set(TileComponentWindow<int32_t>::getBandWindow(numDecomps, band->orientation,
-																  unreducedTileComp));
+			uint8_t numDecomps =
+				(resno == 0) ? (uint8_t)(numresolutions - 1U) : (uint8_t)(numresolutions - resno);
+			band->setRect(TileComponentWindow<int32_t>::getBandWindow(numDecomps, band->orientation,
+																	  unreducedTileComp));
 		}
 	}
 	// set band step size
@@ -424,7 +424,7 @@ void TileComponent::postDecompressImpl(int32_t* srcData, DecompressBlockExec* bl
 		}
 		else
 		{
-			src.set(blockBounds);
+			src.setRect(blockBounds);
 			window_->postProcess<F>(src, block->resno, block->bandOrientation, block);
 		}
 	}

@@ -83,11 +83,11 @@ struct ResWindow
 	{
 		auto resWindowPadded = resWindow.grow_IN_PLACE(2 * FILTER_WIDTH);
 		resWindowBoundsPadded_ = resWindowPadded.intersection(tileCompAtRes_);
-		resWindowBoundsPadded_.setOrigin(tileCompAtRes);
-		resWindowBuffer_->setOrigin(tileCompAtRes_);
+		resWindowBoundsPadded_.setOrigin(tileCompAtRes, true);
+		resWindowBuffer_->setOrigin(tileCompAtRes_, true);
 
-		uint32_t numDecomps =
-			(resno == 0) ? (uint32_t)(numresolutions - 1U) : (uint32_t)(numresolutions - resno);
+		uint8_t numDecomps =
+			(resno == 0) ? (uint8_t)(numresolutions - 1U) : (uint8_t)(numresolutions - resno);
 		for(uint8_t orient = 0; orient < ((resno) > 0 ? BAND_NUM_ORIENTATIONS : 1); orient++)
 		{
 			// todo: should only need padding equal to FILTER_WIDTH, not 2*FILTER_WIDTH
@@ -95,10 +95,10 @@ struct ResWindow
 												  tileCompUnreduced, 2 * FILTER_WIDTH);
 			grk_rect32 band = tileCompAtRes_->tileBand[BAND_ORIENT_LL];
 			if(resno > 0)
-				band = orient == BAND_ORIENT_LL ? *((grk_rect32*)tileCompAtLowerRes_)
+				band = orient == BAND_ORIENT_LL ? grk_rect32(tileCompAtLowerRes_)
 												: tileCompAtRes_->tileBand[orient - 1];
-			bandWindow.setOrigin(band);
-			assert(bandWindow.intersection(band).setOrigin(bandWindow) == bandWindow);
+			bandWindow.setOrigin(band, true);
+			assert(bandWindow.intersection(band).setOrigin(bandWindow, true) == bandWindow);
 			bandWindowsBoundsPadded_.push_back(bandWindow);
 		}
 
@@ -121,7 +121,7 @@ struct ResWindow
 									  bandWindowsBuffersPadded_);
 
 				resWindowBuffer_->toRelative();
-				resWindowBufferREL_->set(resWindowBuffer_);
+				resWindowBufferREL_->setRect(resWindowBuffer_);
 				resWindowBuffer_->toAbsolute();
 
 				genSplitWindowBuffers(resWindowBufferSplitREL_, resWindowBuffer_,
@@ -135,7 +135,7 @@ struct ResWindow
 			// dummy LL band window
 			bandWindowsBuffersPadded_.push_back(new Buf2dAligned(0, 0));
 			bandWindowsBuffersPaddedREL_.push_back(new Buf2dAligned(0, 0));
-			if(tileCompAtLowerRes_)
+			if(tileCompAtLowerRes_ && tileCompAtLowerRes_->valid())
 			{
 				for(uint32_t i = 0; i < tileCompAtRes_->numTileBandWindows; ++i)
 				{
@@ -148,16 +148,14 @@ struct ResWindow
 				for(uint8_t i = 0; i < SPLIT_NUM_ORIENTATIONS; i++)
 				{
 					auto split = resWindowPadded;
-					split.y0 = resWindowPadded.y0 == 0
-								   ? 0
-								   : ceildivpow2<uint32_t>(resWindowPadded.y0 - i, 1);
-					split.y1 = resWindowPadded.y1 == 0
-								   ? 0
-								   : ceildivpow2<uint32_t>(resWindowPadded.y1 - i, 1);
-					split.setOrigin(tileCompAtLowerRes_->x0, tileCompAtRes_->y0);
+					split.y0 = (resWindowPadded.y0 == 0
+									? 0
+									: ceildivpow2<uint32_t>(resWindowPadded.y0 - i, 1));
+					split.y1 = (resWindowPadded.y1 == 0
+									? 0
+									: ceildivpow2<uint32_t>(resWindowPadded.y1 - i, 1));
 					resWindowBufferSplit_[i] = new Buf2dAligned(split);
 					resWindowBufferSplitREL_[i] = new Buf2dAligned(resWindowBufferSplit_[i]);
-					resWindowBufferSplitREL_[i]->toRelative();
 				}
 			}
 		}
@@ -192,8 +190,6 @@ struct ResWindow
 		// todo: shouldn't need to clip
 		resWindowBuffer->clip_IN_PLACE(resBounds);
 		resWindowBuffer->setOrigin(resBounds, absolute);
-		assert(resWindowBuffer->x0 >= resBounds.origin_x0);
-		assert(resWindowBuffer->y0 >= resBounds.origin_y0);
 	}
 
 	void genSplitWindowBuffers(Buf2dAligned** resWindowBufferSplit, Buf2dAligned* resWindowBuffer,
@@ -209,9 +205,9 @@ struct ResWindow
 
 		splitResWindowBounds[SPLIT_H] = grk_rect32(
 			resWindowBuffer->x0,
-			bandWindowsBuffersPadded[BAND_ORIENT_LH]->y0 + tileCompAtLowerRes_->height(),
+			tileCompAtLowerRes_->height() + bandWindowsBuffersPadded[BAND_ORIENT_LH]->y0,
 			resWindowBuffer->x1,
-			bandWindowsBuffersPadded[BAND_ORIENT_LH]->y1 + tileCompAtLowerRes_->height());
+			tileCompAtLowerRes_->height() + bandWindowsBuffersPadded[BAND_ORIENT_LH]->y1);
 
 		resWindowBufferSplit[SPLIT_H] = new Buf2dAligned(splitResWindowBounds[SPLIT_H]);
 	}
@@ -226,7 +222,7 @@ struct ResWindow
 	 * See table F-1 in JPEG 2000 standard
 	 *
 	 */
-	static grk_rect32 getBandWindow(uint32_t numDecomps, uint8_t orientation,
+	static grk_rect32 getBandWindow(uint8_t numDecomps, uint8_t orientation,
 									grk_rect32 tileCompWindowUnreduced)
 	{
 		assert(orientation < BAND_NUM_ORIENTATIONS);
@@ -367,7 +363,7 @@ struct ResWindow
 	 * Note: if numDecomps is zero, then the band window (and there is only one)
 	 * is equal to the unreduced tile component window (with padding)
 	 */
-	static grk_rect32 getPaddedBandWindow(uint32_t numDecomps, uint8_t orientation,
+	static grk_rect32 getPaddedBandWindow(uint8_t numDecomps, uint8_t orientation,
 										  grk_rect32 unreducedTileCompWindow,
 										  grk_rect32 unreducedTileComp, uint32_t padding)
 	{

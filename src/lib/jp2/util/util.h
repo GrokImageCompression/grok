@@ -123,39 +123,30 @@ struct grk_rect
 	T origin_x0, origin_y0;
 	T x0, y0, x1, y1;
 
-	grk_rect<T>& setOrigin(T x, T y, bool absolute)
+	grk_rect<T>& setOrigin(T origx, T origy, bool absolute)
 	{
 		absoluteCoordinates = absolute;
 
-		return setOrigin(x, y);
+		assert(x0 >= origx);
+		assert(y0 >= origy);
+
+		origin_x0 = origx;
+		origin_y0 = origy;
+
+		return *this;
 	}
 	grk_rect<T>& setOrigin(grk_rect<T>& rhs, bool absolute)
 	{
-		absoluteCoordinates = absolute;
-
-		return setOrigin(&rhs);
+		return setOrigin(&rhs, absolute);
 	}
 	grk_rect<T>& setOrigin(grk_rect<T>* rhs, bool absolute)
 	{
 		absoluteCoordinates = absolute;
 
-		return setOrigin(rhs);
-	}
-	grk_rect<T>& setOrigin(T x, T y)
-	{
-		origin_x0 = x;
-		origin_y0 = y;
-
-		return *this;
-	}
-	grk_rect<T>& setOrigin(grk_rect<T>& rhs)
-	{
-		return setOrigin(&rhs);
-	}
-	grk_rect<T>& setOrigin(grk_rect<T>* rhs)
-	{
 		if(rhs)
 		{
+			assert(x0 >= rhs->origin_x0);
+			assert(y0 >= rhs->origin_y0);
 			origin_x0 = rhs->origin_x0;
 			origin_y0 = rhs->origin_y0;
 		}
@@ -234,13 +225,13 @@ struct grk_rect
 			   origin_y0 == rhs.origin_y0 && x0 == rhs.x0 && y0 == rhs.y0 && x1 == rhs.x1 &&
 			   y1 == rhs.y1;
 	}
-	void set(grk_rect<T>* rhs)
+	void setRect(grk_rect<T>* rhs)
 	{
 		*this = *rhs;
 	}
-	void set(grk_rect<T> rhs)
+	void setRect(grk_rect<T> rhs)
 	{
-		set(&rhs);
+		setRect(&rhs);
 	}
 	grk_rect<T> scaleDownCeil(uint32_t den) const
 	{

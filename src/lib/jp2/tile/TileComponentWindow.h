@@ -91,7 +91,7 @@ struct TileComponentWindow
 		for(uint8_t resno = 0; resno < reducedNumResolutions - 1; ++resno)
 		{
 			// resolution window ==  LL band window of next highest resolution
-			auto resWindow = ResWindow<T>::getBandWindow((uint32_t)(numresolutions - 1 - resno), 0,
+			auto resWindow = ResWindow<T>::getBandWindow((uint8_t)(numresolutions - 1 - resno), 0,
 														 unreducedBounds_);
 			resWindows.push_back(new ResWindow<T>(
 				numresolutions, resno,
@@ -117,7 +117,7 @@ struct TileComponentWindow
 	 * See table F-1 in JPEG 2000 standard
 	 *
 	 */
-	static grk_rect32 getBandWindow(uint32_t numDecomps, uint8_t orientation,
+	static grk_rect32 getBandWindow(uint8_t numDecomps, uint8_t orientation,
 									grk_rect32 tileCompWindowUnreduced)
 	{
 		return ResWindow<T>::getBandWindow(numDecomps, orientation, tileCompWindowUnreduced);
@@ -145,24 +145,19 @@ struct TileComponentWindow
 		auto res = resolution_[resno];
 		auto band = res->tileBand + getBandIndex(resno, orientation);
 
-		uint32_t x = offsetx;
-		uint32_t y = offsety;
-
 		// get offset relative to band
-		x -= band->x0;
-		y -= band->y0;
+		offsetx -= band->x0;
+		offsety -= band->y0;
 
 		if(useBufferCoordinatesForCodeblock() && resno > 0)
 		{
 			auto resLower = resolution_[resno - 1U];
 
 			if(orientation & 1)
-				x += resLower->width();
+				offsetx += resLower->width();
 			if(orientation & 2)
-				y += resLower->height();
+				offsety += resLower->height();
 		}
-		offsetx = x;
-		offsety = y;
 	}
 	template<typename F>
 	void postProcess(Buf2dAligned& src, uint8_t resno, eBandOrientation bandOrientation,
@@ -419,10 +414,8 @@ struct TileComponentWindow
 	{
 		uint8_t index = 0;
 		if(resno > 0)
-		{
-			index = (uint8_t)orientation;
-			index--;
-		}
+			index = (uint8_t)orientation-1;
+
 		return index;
 	}
 	/******************************************************/
