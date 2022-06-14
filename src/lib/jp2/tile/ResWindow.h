@@ -106,22 +106,22 @@ struct ResWindow
 			{
 				assert(resno > 0);
 				resWindowBuffer_->setRect(resWindowPadded);
-				resWindowBuffer_->toRelative();
-				resWindowBufferREL_->setRect(resWindowBuffer_);
+				resWindowBufferREL_->setRect(resWindowBuffer_->toRelative());
 				resWindowBuffer_->toAbsolute();
 
 				for(uint8_t orient = 0; orient < BAND_NUM_ORIENTATIONS; orient++)
 				{
 					auto bandWindow = bandWindowsBoundsPadded_[orient];
-					bandWindowsBuffersPadded_.push_back(new Buf2dAligned(bandWindow));
+					bandWindowsBuffersPadded_.push_back(new Buf2dAligned(bandWindow, true));
 					bandWindowsBuffersPaddedREL_.push_back(
-						new Buf2dAligned(bandWindow.toRelative()));
+						new Buf2dAligned(bandWindow.toRelative(), true));
 				}
 				genSplitWindowBuffers(resWindowBufferSplit_, resWindowBuffer_,
-									  bandWindowsBuffersPadded_);
-
+									  bandWindowsBuffersPadded_[BAND_ORIENT_LL],
+									  bandWindowsBuffersPadded_[BAND_ORIENT_LH], true);
 				genSplitWindowBuffers(resWindowBufferSplitREL_, resWindowBuffer_,
-									  bandWindowsBuffersPaddedREL_);
+									  bandWindowsBuffersPadded_[BAND_ORIENT_LL],
+									  bandWindowsBuffersPadded_[BAND_ORIENT_LH], false);
 			}
 		}
 		else
@@ -171,23 +171,32 @@ struct ResWindow
 			delete resWindowBufferSplit_[i];
 	}
 	void genSplitWindowBuffers(Buf2dAligned** resWindowBufferSplit, Buf2dAligned* resWindowBuffer,
-							   std::vector<Buf2dAligned*>& bandWindowsBuffersPadded)
+							   Buf2dAligned* bandWindowsBuffersPaddedXL,
+							   Buf2dAligned* bandWindowsBuffersPaddedXH, bool absolute)
 	{
+		if(!absolute)
+		{
+			tileCompAtLowerRes_->toRelative();
+			bandWindowsBuffersPaddedXL->toRelative();
+			bandWindowsBuffersPaddedXH->toRelative();
+		}
+
 		// two windows formed by horizontal pass and used as input for vertical pass
-		grk_rect32 splitResWindowBounds[SPLIT_NUM_ORIENTATIONS];
-		splitResWindowBounds[SPLIT_L] =
-			grk_rect32(resWindowBuffer->x0, bandWindowsBuffersPadded[BAND_ORIENT_LL]->y0,
-					   resWindowBuffer->x1, bandWindowsBuffersPadded[BAND_ORIENT_LL]->y1);
+		auto splitResWindowBounds = grk_rect32(resWindowBuffer->x0, bandWindowsBuffersPaddedXL->y0,
+											   resWindowBuffer->x1, bandWindowsBuffersPaddedXL->y1);
+		resWindowBufferSplit[SPLIT_L] = new Buf2dAligned(splitResWindowBounds);
 
-		resWindowBufferSplit[SPLIT_L] = new Buf2dAligned(splitResWindowBounds[SPLIT_L]);
+		splitResWindowBounds = grk_rect32(
+			resWindowBuffer->x0, tileCompAtLowerRes_->y1 + bandWindowsBuffersPaddedXH->y0,
+			resWindowBuffer->x1, tileCompAtLowerRes_->y1 + bandWindowsBuffersPaddedXH->y1);
+		resWindowBufferSplit[SPLIT_H] = new Buf2dAligned(splitResWindowBounds);
 
-		splitResWindowBounds[SPLIT_H] = grk_rect32(
-			resWindowBuffer->x0,
-			tileCompAtLowerRes_->height() + bandWindowsBuffersPadded[BAND_ORIENT_LH]->y0,
-			resWindowBuffer->x1,
-			tileCompAtLowerRes_->height() + bandWindowsBuffersPadded[BAND_ORIENT_LH]->y1);
-
-		resWindowBufferSplit[SPLIT_H] = new Buf2dAligned(splitResWindowBounds[SPLIT_H]);
+		if(!absolute)
+		{
+			tileCompAtLowerRes_->toAbsolute();
+			bandWindowsBuffersPaddedXL->toAbsolute();
+			bandWindowsBuffersPaddedXH->toAbsolute();
+		}
 	}
 	bool alloc(bool clear)
 	{
@@ -262,15 +271,13 @@ struct ResWindow
 		// attach canvas windows to relative windows
 		for(uint8_t orientation = 0; orientation < bandWindowsBuffersPaddedREL_.size();
 			++orientation)
+		{
 			bandWindowsBuffersPadded_[orientation]->attach(
 				bandWindowsBuffersPaddedREL_[orientation]);
+		}
 		resWindowBuffer_->attach(resWindowBufferREL_);
 		for(uint8_t i = 0; i < SPLIT_NUM_ORIENTATIONS; ++i)
-		{
-			if(resWindowBufferSplitREL_[i])
-				resWindowBufferSplitREL_[i]->attach(resWindowBufferSplit_[i]);
-		}
-
+			resWindowBufferSplitREL_[i]->attach(resWindowBufferSplit_[i]);
 		allocated_ = true;
 
 		return true;
