@@ -420,7 +420,7 @@ void WaveletReverse::interleave_h_97(dwt_data<vec4f>* GRK_RESTRICT dwt,
 	float* GRK_RESTRICT bi = (float*)(dwt->mem + dwt->parity);
 	uint32_t x0 = dwt->win_l.x0;
 	uint32_t x1 = dwt->win_l.x1;
-	const size_t vec4f_elts = sizeof(vec4f) / sizeof(float);
+	const size_t vec4f_elts = vec4f::NUM_ELTS;
 	for(uint32_t k = 0; k < 2; ++k)
 	{
 		auto band = (k == 0) ? winL.buf_ : winH.buf_;
@@ -475,7 +475,7 @@ void WaveletReverse::decompress_h_strip_97(dwt_data<vec4f>* GRK_RESTRICT horiz,
 	float* GRK_RESTRICT dest = winDest.buf_;
 	const uint32_t strideDest = winDest.stride_;
 	uint32_t j;
-	const size_t vec4f_elts = sizeof(vec4f) / sizeof(float);
+	const size_t vec4f_elts = vec4f::NUM_ELTS;
 	for(j = 0; j < (resHeight & (uint32_t)(~(vec4f_elts - 1))); j += vec4f_elts)
 	{
 		interleave_h_97(horiz, winL, winH, resHeight - j);
@@ -582,7 +582,7 @@ void WaveletReverse::decompress_v_strip_97(dwt_data<vec4f>* GRK_RESTRICT vert,
 										   grk_buf2d_simple<float> winDest)
 {
 	uint32_t j;
-	const size_t vec4f_elts = sizeof(vec4f) / sizeof(float);
+	const size_t vec4f_elts = vec4f::NUM_ELTS;
 	for(j = 0; j < (resWidth & (uint32_t) ~(vec4f_elts - 1)); j += vec4f_elts)
 	{
 		interleave_v_97(vert, winL, winH, vec4f_elts);
@@ -1722,7 +1722,7 @@ struct TaskInfo
 	TaskInfo(S data, uint32_t indexMin, uint32_t indexMax)
 		: data(data), indexMin_(indexMin), indexMax_(indexMax)
 	{}
-	~TaskInfo()
+	~TaskInfo(void)
 	{
 		data.release();
 	}

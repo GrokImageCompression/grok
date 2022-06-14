@@ -414,7 +414,7 @@ struct TileComponentWindow
 	{
 		uint8_t index = 0;
 		if(resno > 0)
-			index = (uint8_t)orientation-1;
+			index = (uint8_t)orientation - 1;
 
 		return index;
 	}

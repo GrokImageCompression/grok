@@ -327,9 +327,7 @@ namespace HWY_NAMESPACE
 					transform.transform(info);
 				};
 				if(info.flow_)
-				{
 					info.flow_->nextTask().work([compressor] { compressor(); });
-				}
 				else
 					tasks[t].work(compressor);
 			}

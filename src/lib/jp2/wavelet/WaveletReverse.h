@@ -25,31 +25,34 @@
 
 namespace grk
 {
-struct vec4f
+
+template<typename T, size_t N>
+struct vec
 {
-	vec4f() : f{0} {}
-	explicit vec4f(float m)
+	vec(void) : f{0} {}
+	explicit vec(T m)
 	{
-		f[0] = m;
-		f[1] = m;
-		f[2] = m;
-		f[3] = m;
+		for(size_t i = 0; i < N; ++i)
+			f[i] = m;
 	}
-	float f[4];
+	constexpr static size_t NUM_ELTS = N;
+	T f[N];
 };
+
+typedef vec<float, 4> vec4f;
 
 uint32_t max_resolution(Resolution* GRK_RESTRICT r, uint32_t i);
 
 template<class T>
 constexpr T getHorizontalPassHeight(bool lossless)
 {
-	return T(lossless ? (sizeof(int32_t) / sizeof(int32_t)) : (sizeof(vec4f) / sizeof(float)));
+	return T(lossless ? 1 : vec4f::NUM_ELTS);
 }
 
 template<typename T>
 struct dwt_data
 {
-	dwt_data()
+	dwt_data(void)
 		: allocatedMem(nullptr), lenBytes_(0), paddingBytes_(0), mem(nullptr), memL(nullptr),
 		  memH(nullptr), sn_full(0), dn_full(0), parity(0), resno(0)
 	{}
@@ -58,7 +61,7 @@ struct dwt_data
 		  memH(nullptr), sn_full(rhs.sn_full), dn_full(rhs.dn_full), parity(rhs.parity),
 		  win_l(rhs.win_l), win_h(rhs.win_h), resno(rhs.resno)
 	{}
-	~dwt_data()
+	~dwt_data(void)
 	{
 		release();
 	}
@@ -88,7 +91,7 @@ struct dwt_data
 
 		return (allocatedMem != nullptr) ? true : false;
 	}
-	void release()
+	void release(void)
 	{
 		grk_aligned_free(allocatedMem);
 		allocatedMem = nullptr;
@@ -112,7 +115,7 @@ struct dwt_data
 
 struct Params97
 {
-	Params97() : dataPrev(nullptr), data(nullptr), len(0), lenMax(0) {}
+	Params97(void) : dataPrev(nullptr), data(nullptr), len(0), lenMax(0) {}
 	vec4f* dataPrev;
 	vec4f* data;
 	uint32_t len;
