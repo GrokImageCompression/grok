@@ -189,7 +189,8 @@ bool GrkImage::subsampleAndReduce(uint32_t reduce)
 		comp_x1 = ceildivpow2<uint32_t>(comp_x1, reduce);
 		if(comp_x1 <= comp->x0)
 		{
-			GRK_ERROR("component %u: x1 (%u) is <= x0 (%u).", compno, comp_x1, comp->x0);
+			GRK_ERROR("subsampleAndReduce: component %u: x1 (%u) is <= x0 (%u). Subsampled and reduced image is invalid",
+					compno, comp_x1, comp->x0);
 			return false;
 		}
 		comp->w = (uint32_t)(comp_x1 - comp->x0);
@@ -199,7 +200,8 @@ bool GrkImage::subsampleAndReduce(uint32_t reduce)
 		comp_y1 = ceildivpow2<uint32_t>(comp_y1, reduce);
 		if(comp_y1 <= comp->y0)
 		{
-			GRK_ERROR("component %u: y1 (%u) is <= y0 (%u).", compno, comp_y1, comp->y0);
+			GRK_ERROR("subsampleAndReduce: component %u: y1 (%u) is <= y0 (%u).  Subsampled and reduced image is invalid",
+					compno, comp_y1, comp->y0);
 			return false;
 		}
 		comp->h = (uint32_t)(comp_y1 - comp->y0);
