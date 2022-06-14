@@ -240,11 +240,6 @@ struct TileComponentWindow
 	{
 		return resWindows[resno]->getBandWindowPadded(orientation);
 	}
-
-	const grk_rect32* getResWindowPadded(uint8_t resno) const
-	{
-		return resWindows[resno]->getResWindowBoundsPadded();
-	}
 	/*
 	 * Get intermediate split window
 	 *

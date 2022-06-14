@@ -335,18 +335,27 @@ struct grk_buf2d : protected grk_buf<T, A>, public grk_rect32
 		grk_buf<T, A>::attach(buffer);
 		stride = strd;
 	}
+	void attach(grk_buf2d& rhs, uint32_t x, uint32_t y)
+	{
+		attach(&rhs, x, y);
+	}
 	void attach(grk_buf2d& rhs)
 	{
-		attach(&rhs);
+		attach(&rhs, 0, 0);
 	}
-	void attach(grk_buf2d* rhs)
+	void attach(grk_buf2d* rhs, uint32_t x, uint32_t y)
 	{
 		if(!rhs)
 			return;
-		this->buf = rhs->buf;
+		grk_buf<T, A>::dealloc();
+		this->buf = rhs->address(x, y);
 		this->len = rhs->len;
 		this->owns_data = false;
 		stride = rhs->stride;
+	}
+	void attach(grk_buf2d* rhs)
+	{
+		attach(rhs, 0, 0);
 	}
 	// set buf to buf and own it
 	void acquire(T* buffer, uint32_t strd)
@@ -463,6 +472,10 @@ struct grk_buf2d : protected grk_buf<T, A>, public grk_rect32
 	T* getBuffer(void) const
 	{
 		return this->currPtr();
+	}
+	T* address(uint32_t x, uint32_t y)
+	{
+		return this->currPtr() + (uint64_t)x + (uint64_t)y * stride;
 	}
 	uint32_t stride;
 };

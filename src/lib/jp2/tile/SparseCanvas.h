@@ -126,8 +126,8 @@ class SparseCanvas : public ISparseCanvas
 				if(!grid.contains(gridX, gridY))
 				{
 					GRK_WARN("sparse canvas : attempt to allocate a block (%u,%u) outside block "
-							  "grid bounds (%u,%u,%u,%u)",
-							  gridX, gridY, grid.x0, grid.y0, grid.x1, grid.y1);
+							 "grid bounds (%u,%u,%u,%u)",
+							 gridX, gridY, grid.x0, grid.y0, grid.x1, grid.y1);
 					return false;
 				}
 				auto srcBlock = getBlock(gridX, gridY);
@@ -167,9 +167,9 @@ class SparseCanvas : public ISparseCanvas
 		if(!isWindowValid(win))
 		{
 			GRK_WARN("Sparse canvas @ res %u, attempt to read/write invalid window (%u,%u,%u,%u) "
-					  "for bounds (%u,%u,%u,%u).",
-					  resno, win.x0, win.y0, win.x1, win.y1, bounds.x0, bounds.y0, bounds.x1,
-					  bounds.y1);
+					 "for bounds (%u,%u,%u,%u).",
+					 resno, win.x0, win.y0, win.x1, win.y1, bounds.x0, bounds.y0, bounds.x1,
+					 bounds.y1);
 			return false;
 		}
 		assert(spacingY != 0 || win.height() == 1);
@@ -194,8 +194,8 @@ class SparseCanvas : public ISparseCanvas
 				if(!grid.contains(gridX, gridY))
 				{
 					GRK_WARN("sparse canvas @ resno %u, Attempt to access a block (%u,%u) outside "
-							  "block grid bounds",
-							  resno, gridX, gridY);
+							 "block grid bounds",
+							 resno, gridX, gridY);
 					return false;
 				}
 				auto srcBlock = getBlock(gridX, gridY);

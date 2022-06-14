@@ -76,23 +76,21 @@ struct ResWindow
 			  uint32_t FILTER_WIDTH)
 		: allocated_(false), filterWidth_(FILTER_WIDTH), tileCompAtRes_(tileCompAtRes),
 		  tileCompAtLowerRes_(tileCompAtLowerRes),
+		  resWindowBuffer_(new Buf2dAligned(resWindow)), resWindowBufferSplit_{nullptr, nullptr},
 		  resWindowBufferHighestResREL_(resWindowHighestResREL),
 		  resWindowBufferREL_(new Buf2dAligned(resWindow.width(), resWindow.height())),
-		  resWindowBufferSplitREL_{nullptr, nullptr},
-		  resWindowBuffer_(new Buf2dAligned(resWindow)), resWindowBufferSplit_{nullptr, nullptr}
+		  resWindowBufferSplitREL_{nullptr, nullptr}
 	{
-		auto resWindowPadded = resWindow.grow_IN_PLACE(2 * FILTER_WIDTH);
-		resWindowBoundsPadded_ = resWindowPadded.intersection(tileCompAtRes_);
-		resWindowBoundsPadded_.setOrigin(tileCompAtRes, true);
 		resWindowBuffer_->setOrigin(tileCompAtRes_, true);
-
 		uint8_t numDecomps =
 			(resno == 0) ? (uint8_t)(numresolutions - 1U) : (uint8_t)(numresolutions - resno);
+		grk_rect32 resWindowPadded;
 		for(uint8_t orient = 0; orient < ((resno) > 0 ? BAND_NUM_ORIENTATIONS : 1); orient++)
 		{
 			// todo: should only need padding equal to FILTER_WIDTH, not 2*FILTER_WIDTH
-			auto bandWindow = getPaddedBandWindow(numDecomps, orient, tileCompWindowUnreduced,
-												  tileCompUnreduced, 2 * FILTER_WIDTH);
+			auto bandWindow =
+				getPaddedBandWindow(numDecomps, orient, tileCompWindowUnreduced, tileCompUnreduced,
+									2 * FILTER_WIDTH, resWindowPadded);
 			grk_rect32 band = tileCompAtRes_->tileBand[BAND_ORIENT_LL];
 			if(resno > 0)
 				band = orient == BAND_ORIENT_LL ? grk_rect32(tileCompAtLowerRes_)
@@ -101,13 +99,17 @@ struct ResWindow
 			assert(bandWindow.intersection(band).setOrigin(bandWindow, true) == bandWindow);
 			bandWindowsBoundsPadded_.push_back(bandWindow);
 		}
-
 		// windowed decompression
 		if(FILTER_WIDTH)
 		{
 			if(tileCompAtLowerRes_)
 			{
 				assert(resno > 0);
+				resWindowBuffer_->setRect(resWindowPadded);
+				resWindowBuffer_->toRelative();
+				resWindowBufferREL_->setRect(resWindowBuffer_);
+				resWindowBuffer_->toAbsolute();
+
 				for(uint8_t orient = 0; orient < BAND_NUM_ORIENTATIONS; orient++)
 				{
 					auto bandWindow = bandWindowsBoundsPadded_[orient];
@@ -115,14 +117,8 @@ struct ResWindow
 					bandWindowsBuffersPaddedREL_.push_back(
 						new Buf2dAligned(bandWindow.toRelative()));
 				}
-				padResWindowBufferBounds(resWindowBuffer_, bandWindowsBuffersPadded_,
-										 tileCompAtRes_, true);
 				genSplitWindowBuffers(resWindowBufferSplit_, resWindowBuffer_,
 									  bandWindowsBuffersPadded_);
-
-				resWindowBuffer_->toRelative();
-				resWindowBufferREL_->setRect(resWindowBuffer_);
-				resWindowBuffer_->toAbsolute();
 
 				genSplitWindowBuffers(resWindowBufferSplitREL_, resWindowBuffer_,
 									  bandWindowsBuffersPaddedREL_);
@@ -147,13 +143,13 @@ struct ResWindow
 				}
 				for(uint8_t i = 0; i < SPLIT_NUM_ORIENTATIONS; i++)
 				{
-					auto split = resWindowPadded;
-					split.y0 = (resWindowPadded.y0 == 0
+					grk_rect32 split = resWindowBuffer_;
+					split.y0 = (resWindowBuffer_->y0 == 0
 									? 0
-									: ceildivpow2<uint32_t>(resWindowPadded.y0 - i, 1));
-					split.y1 = (resWindowPadded.y1 == 0
+									: ceildivpow2<uint32_t>(resWindowBuffer_->y0 - i, 1));
+					split.y1 = (resWindowBuffer_->y1 == 0
 									? 0
-									: ceildivpow2<uint32_t>(resWindowPadded.y1 - i, 1));
+									: ceildivpow2<uint32_t>(resWindowBuffer_->y1 - i, 1));
 					resWindowBufferSplit_[i] = new Buf2dAligned(split);
 					resWindowBufferSplitREL_[i] = new Buf2dAligned(resWindowBufferSplit_[i]);
 				}
@@ -174,24 +170,6 @@ struct ResWindow
 		for(uint32_t i = 0; i < SPLIT_NUM_ORIENTATIONS; ++i)
 			delete resWindowBufferSplit_[i];
 	}
-	void padResWindowBufferBounds(Buf2dAligned* resWindowBuffer,
-								  std::vector<Buf2dAligned*>& bandWindowsBuffersPadded,
-								  grk_rect32 resBounds, bool absolute)
-	{
-		auto winLow = bandWindowsBuffersPadded[BAND_ORIENT_LL];
-		auto winHigh = bandWindowsBuffersPadded[BAND_ORIENT_HL];
-		resWindowBuffer->x0 = (std::min<uint32_t>)(2 * winLow->x0, 2 * winHigh->x0 + 1);
-		resWindowBuffer->x1 = (std::max<uint32_t>)(2 * winLow->x1, 2 * winHigh->x1 + 1);
-		winLow = bandWindowsBuffersPadded[BAND_ORIENT_LL];
-		winHigh = bandWindowsBuffersPadded[BAND_ORIENT_LH];
-		resWindowBuffer->y0 = (std::min<uint32_t>)(2 * winLow->y0, 2 * winHigh->y0 + 1);
-		resWindowBuffer->y1 = (std::max<uint32_t>)(2 * winLow->y1, 2 * winHigh->y1 + 1);
-
-		// todo: shouldn't need to clip
-		resWindowBuffer->clip_IN_PLACE(resBounds);
-		resWindowBuffer->setOrigin(resBounds, absolute);
-	}
-
 	void genSplitWindowBuffers(Buf2dAligned** resWindowBufferSplit, Buf2dAligned* resWindowBuffer,
 							   std::vector<Buf2dAligned*>& bandWindowsBuffersPadded)
 	{
@@ -210,6 +188,92 @@ struct ResWindow
 			tileCompAtLowerRes_->height() + bandWindowsBuffersPadded[BAND_ORIENT_LH]->y1);
 
 		resWindowBufferSplit[SPLIT_H] = new Buf2dAligned(splitResWindowBounds[SPLIT_H]);
+	}
+	bool alloc(bool clear)
+	{
+		if(allocated_)
+			return true;
+
+		// if top level window is present, then all buffers attach to this window
+		if(resWindowBufferHighestResREL_)
+		{
+			// ensure that top level window is allocated
+			if(!resWindowBufferHighestResREL_->alloc2d(clear))
+				return false;
+
+			// don't allocate bandWindows for windowed decompression
+			if(filterWidth_)
+				return true;
+
+			// attach to top level window
+			if(resWindowBufferREL_ != resWindowBufferHighestResREL_)
+				resWindowBufferREL_->attach(resWindowBufferHighestResREL_);
+
+			// tileCompResLower_ is null for lowest resolution
+			if(tileCompAtLowerRes_)
+			{
+				for(uint8_t orientation = 0; orientation < bandWindowsBuffersPaddedREL_.size();
+					++orientation)
+				{
+					switch(orientation)
+					{
+						case BAND_ORIENT_HL:
+							bandWindowsBuffersPaddedREL_[orientation]->attach(
+								resWindowBufferHighestResREL_, tileCompAtLowerRes_->width(), 0);
+							break;
+						case BAND_ORIENT_LH:
+							bandWindowsBuffersPaddedREL_[orientation]->attach(
+								resWindowBufferHighestResREL_, 0, tileCompAtLowerRes_->height());
+							break;
+						case BAND_ORIENT_HH:
+							bandWindowsBuffersPaddedREL_[orientation]->attach(
+								resWindowBufferHighestResREL_, tileCompAtLowerRes_->width(),
+								tileCompAtLowerRes_->height());
+							break;
+						default:
+							break;
+					}
+				}
+				resWindowBufferSplit_[SPLIT_L]->attach(resWindowBufferHighestResREL_);
+				resWindowBufferSplit_[SPLIT_H]->attach(resWindowBufferHighestResREL_, 0,
+													   tileCompAtLowerRes_->height());
+			}
+		}
+		else
+		{
+			// resolution window is always allocated
+			if(!resWindowBufferREL_->alloc2d(clear))
+				return false;
+
+			// band windows are allocated if present
+			for(auto& b : bandWindowsBuffersPaddedREL_)
+			{
+				if(!b->alloc2d(clear))
+					return false;
+			}
+			if(tileCompAtLowerRes_)
+			{
+				resWindowBufferSplit_[SPLIT_L]->attach(resWindowBufferREL_);
+				resWindowBufferSplit_[SPLIT_H]->attach(resWindowBufferREL_, 0,
+													   tileCompAtLowerRes_->height());
+			}
+		}
+
+		// attach canvas windows to relative windows
+		for(uint8_t orientation = 0; orientation < bandWindowsBuffersPaddedREL_.size();
+			++orientation)
+			bandWindowsBuffersPadded_[orientation]->attach(
+				bandWindowsBuffersPaddedREL_[orientation]);
+		resWindowBuffer_->attach(resWindowBufferREL_);
+		for(uint8_t i = 0; i < SPLIT_NUM_ORIENTATIONS; ++i)
+		{
+			if(resWindowBufferSplitREL_[i])
+				resWindowBufferSplitREL_[i]->attach(resWindowBufferSplit_[i]);
+		}
+
+		allocated_ = true;
+
+		return true;
 	}
 
 	/**
@@ -255,107 +319,6 @@ struct ResWindow
 			(tcy1 <= by0Offset) ? 0 : ceildivpow2<uint32_t>(tcy1 - by0Offset, numDecomps));
 	}
 
-	bool alloc(bool clear)
-	{
-		if(allocated_)
-			return true;
-
-		// if top level window is present, then all buffers attach to this window
-		if(resWindowBufferHighestResREL_)
-		{
-			// ensure that top level window is allocated
-			if(!resWindowBufferHighestResREL_->alloc2d(clear))
-				return false;
-
-			// don't allocate bandWindows for windowed decompression
-			if(filterWidth_)
-				return true;
-
-			// attach to top level window
-			if(resWindowBufferREL_ != resWindowBufferHighestResREL_)
-				resWindowBufferREL_->attach(resWindowBufferHighestResREL_->getBuffer(),
-											resWindowBufferHighestResREL_->stride);
-
-			// tileCompResLower_ is null for lowest resolution
-			if(tileCompAtLowerRes_)
-			{
-				for(uint8_t orientation = 0; orientation < bandWindowsBuffersPaddedREL_.size();
-					++orientation)
-				{
-					switch(orientation)
-					{
-						case BAND_ORIENT_HL:
-							bandWindowsBuffersPaddedREL_[orientation]->attach(
-								resWindowBufferHighestResREL_->getBuffer() +
-									tileCompAtLowerRes_->width(),
-								resWindowBufferHighestResREL_->stride);
-							break;
-						case BAND_ORIENT_LH:
-							bandWindowsBuffersPaddedREL_[orientation]->attach(
-								resWindowBufferHighestResREL_->getBuffer() +
-									tileCompAtLowerRes_->height() *
-										resWindowBufferHighestResREL_->stride,
-								resWindowBufferHighestResREL_->stride);
-							break;
-						case BAND_ORIENT_HH:
-							bandWindowsBuffersPaddedREL_[orientation]->attach(
-								resWindowBufferHighestResREL_->getBuffer() +
-									tileCompAtLowerRes_->width() +
-									tileCompAtLowerRes_->height() *
-										resWindowBufferHighestResREL_->stride,
-								resWindowBufferHighestResREL_->stride);
-							break;
-						default:
-							break;
-					}
-				}
-				resWindowBufferSplit_[SPLIT_L]->attach(resWindowBufferHighestResREL_->getBuffer(),
-													   resWindowBufferHighestResREL_->stride);
-				resWindowBufferSplit_[SPLIT_H]->attach(
-					resWindowBufferHighestResREL_->getBuffer() +
-						tileCompAtLowerRes_->height() * resWindowBufferHighestResREL_->stride,
-					resWindowBufferHighestResREL_->stride);
-			}
-		}
-		else
-		{
-			// resolution window is always allocated
-			if(!resWindowBufferREL_->alloc2d(clear))
-				return false;
-
-			// band windows are allocated if present
-			for(auto& b : bandWindowsBuffersPaddedREL_)
-			{
-				if(!b->alloc2d(clear))
-					return false;
-			}
-			if(tileCompAtLowerRes_)
-			{
-				resWindowBufferSplit_[SPLIT_L]->attach(resWindowBufferREL_->getBuffer(),
-													   resWindowBufferREL_->stride);
-				resWindowBufferSplit_[SPLIT_H]->attach(resWindowBufferREL_->getBuffer() +
-														   tileCompAtLowerRes_->height() *
-															   resWindowBufferREL_->stride,
-													   resWindowBufferREL_->stride);
-			}
-		}
-
-		// attach canvas windows to relative windows
-		for(uint8_t orientation = 0; orientation < bandWindowsBuffersPaddedREL_.size();
-			++orientation)
-			bandWindowsBuffersPadded_[orientation]->attach(
-				bandWindowsBuffersPaddedREL_[orientation]);
-		resWindowBuffer_->attach(resWindowBufferREL_);
-		for(uint8_t i = 0; i < SPLIT_NUM_ORIENTATIONS; ++i)
-		{
-			if(resWindowBufferSplitREL_[i])
-				resWindowBufferSplitREL_[i]->attach(resWindowBufferSplit_[i]);
-		}
-
-		allocated_ = true;
-
-		return true;
-	}
 	/**
 	 * Get band window (in tile component coordinates) for specified number
 	 * of decompositions (with padding)
@@ -365,7 +328,8 @@ struct ResWindow
 	 */
 	static grk_rect32 getPaddedBandWindow(uint8_t numDecomps, uint8_t orientation,
 										  grk_rect32 unreducedTileCompWindow,
-										  grk_rect32 unreducedTileComp, uint32_t padding)
+										  grk_rect32 unreducedTileComp, uint32_t padding,
+										  grk_rect32& paddedResWindow)
 	{
 		assert(orientation < BAND_NUM_ORIENTATIONS);
 		if(numDecomps == 0)
@@ -373,17 +337,17 @@ struct ResWindow
 			assert(orientation == 0);
 			return unreducedTileCompWindow.grow_IN_PLACE(padding).intersection(&unreducedTileComp);
 		}
-		auto oneLessDecompWindow = unreducedTileCompWindow;
+		paddedResWindow = unreducedTileCompWindow;
 		auto oneLessDecompTile = unreducedTileComp;
 		if(numDecomps > 1)
 		{
-			oneLessDecompWindow = getBandWindow(numDecomps - 1, 0, unreducedTileCompWindow);
+			paddedResWindow = getBandWindow(numDecomps - 1, 0, unreducedTileCompWindow);
 			oneLessDecompTile = getBandWindow(numDecomps - 1, 0, unreducedTileComp);
 		}
+		paddedResWindow.grow_IN_PLACE(2 * padding).clip_IN_PLACE(&oneLessDecompTile);
+		paddedResWindow.setOrigin(oneLessDecompTile, true);
 
-		return getBandWindow(
-			1, orientation,
-			oneLessDecompWindow.grow_IN_PLACE(2 * padding).intersection(&oneLessDecompTile));
+		return getBandWindow(1, orientation, paddedResWindow);
 	}
 
 	grk_buf2d_simple<int32_t> getResWindowBufferSimple(void) const
@@ -393,10 +357,6 @@ struct ResWindow
 	grk_buf2d_simple<float> getResWindowBufferSimpleF(void) const
 	{
 		return resWindowBuffer_->simpleF();
-	}
-	grk_rect32* getResWindowBoundsPadded(void)
-	{
-		return &resWindowBoundsPadded_;
 	}
 	void disableBandWindowAllocation(void)
 	{
@@ -433,12 +393,6 @@ struct ResWindow
 
 	Resolution* tileCompAtRes_; // non-null will trigger creation of band window buffers
 	Resolution* tileCompAtLowerRes_; // null for lowest resolution
-	grk_rect32 resWindowBoundsPadded_;
-
-	Buf2dAligned* resWindowBufferHighestResREL_;
-	Buf2dAligned* resWindowBufferREL_;
-	Buf2dAligned* resWindowBufferSplitREL_[SPLIT_NUM_ORIENTATIONS];
-	std::vector<Buf2dAligned*> bandWindowsBuffersPaddedREL_;
 
 	Buf2dAligned* resWindowBuffer_;
 	Buf2dAligned* resWindowBufferSplit_[SPLIT_NUM_ORIENTATIONS];
@@ -449,6 +403,11 @@ struct ResWindow
 	the window of interest, in each respective resolution
 	*/
 	std::vector<grk_rect32> bandWindowsBoundsPadded_;
+
+	Buf2dAligned* resWindowBufferHighestResREL_;
+	Buf2dAligned* resWindowBufferREL_;
+	Buf2dAligned* resWindowBufferSplitREL_[SPLIT_NUM_ORIENTATIONS];
+	std::vector<Buf2dAligned*> bandWindowsBuffersPaddedREL_;
 };
 
 } // namespace grk
