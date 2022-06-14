@@ -43,13 +43,13 @@ class ISparseCanvas
 	 * Read window of data into dest buffer.
 	 */
 	virtual bool read(uint8_t resno, grk_rect32 window, int32_t* dest, const uint32_t destChunkY,
-					  const uint32_t destChunkX, bool forceReturnTrue) = 0;
+					  const uint32_t destChunkX) = 0;
 	/**
 	 * Write window of data from src buffer
 	 */
 	virtual bool write(uint8_t resno, grk_rect32 window, const int32_t* src,
-					   const uint32_t srcChunkY, const uint32_t srcChunkX,
-					   bool forceReturnTrue) = 0;
+					   const uint32_t srcChunkY, const uint32_t srcChunkX) = 0;
+
 	virtual bool alloc(grk_rect32 window, bool zeroOutBuffer) = 0;
 };
 struct SparseBlock
@@ -75,7 +75,7 @@ class SparseCanvas : public ISparseCanvas
 		: blockWidth(1 << LBW), blockHeight(1 << LBH), blocks(nullptr), bounds(bds)
 	{
 		if(!bounds.width() || !bounds.height() || !LBW || !LBH)
-			throw std::runtime_error("invalid window for sparse buffer");
+			throw std::runtime_error("invalid window for sparse canvas");
 		grid = bounds.scaleDownPow2(LBW, LBH);
 		auto blockCount = grid.area();
 		blocks = new SparseBlock*[blockCount];
@@ -96,15 +96,14 @@ class SparseCanvas : public ISparseCanvas
 		}
 	}
 	bool read(uint8_t resno, grk_rect32 window, int32_t* dest, const uint32_t destChunkY,
-			  const uint32_t destChunkX, bool forceReturnTrue)
+			  const uint32_t destChunkX)
 	{
-		return readWrite(resno, window, dest, destChunkY, destChunkX, forceReturnTrue, true);
+		return readWrite(resno, window, dest, destChunkY, destChunkX, true);
 	}
 	bool write(uint8_t resno, grk_rect32 window, const int32_t* src, const uint32_t srcChunkY,
-			   const uint32_t srcChunkX, bool forceReturnTrue)
+			   const uint32_t srcChunkX)
 	{
-		return readWrite(resno, window, (int32_t*)src, srcChunkY, srcChunkX, forceReturnTrue,
-						 false);
+		return readWrite(resno, window, (int32_t*)src, srcChunkY, srcChunkX, false);
 	}
 	bool alloc(grk_rect32 win, bool zeroOutBuffer)
 	{
@@ -126,7 +125,7 @@ class SparseCanvas : public ISparseCanvas
 				blockWinWidth = (std::min<uint32_t>)(blockWinWidth, win.x1 - x);
 				if(!grid.contains(gridX, gridY))
 				{
-					GRK_ERROR("sparse buffer : attempt to allocate a block (%u,%u) outside block "
+					GRK_WARN("sparse canvas : attempt to allocate a block (%u,%u) outside block "
 							  "grid bounds (%u,%u,%u,%u)",
 							  gridX, gridY, grid.x0, grid.y0, grid.x1, grid.y1);
 					return false;
@@ -159,24 +158,19 @@ class SparseCanvas : public ISparseCanvas
 				 win.y0 >= bounds.y1 || win.y1 <= win.y0 || win.y1 > bounds.y1);
 	}
 	bool readWrite(uint8_t resno, grk_rect32 win, int32_t* buf, const uint32_t spacingX,
-				   const uint32_t spacingY, bool forceReturnTrue, bool isReadOperation)
+				   const uint32_t spacingY, bool isReadOperation)
 	{
 		if(!win.valid())
-			return forceReturnTrue;
+			return false;
 		assert(!isReadOperation || buf);
 
 		if(!isWindowValid(win))
 		{
-			// fill the client buffer with zeros in this case
-			if(forceReturnTrue && isReadOperation)
-			{
-				GRK_WARN("Sparse buffer @ res %u, attempt to read invalid window (%u,%u,%u,%u). "
-						 "Filling with zeros.",
-						 resno, win.x0, win.y0, win.x1, win.y1);
-				if(buf)
-					memset(buf, 0, win.area() * sizeof(int32_t));
-			}
-			return forceReturnTrue;
+			GRK_WARN("Sparse canvas @ res %u, attempt to read/write invalid window (%u,%u,%u,%u) "
+					  "for bounds (%u,%u,%u,%u).",
+					  resno, win.x0, win.y0, win.x1, win.y1, bounds.x0, bounds.y0, bounds.x1,
+					  bounds.y1);
+			return false;
 		}
 		assert(spacingY != 0 || win.height() == 1);
 		assert((spacingY <= 1 && spacingX >= 1) || (spacingY >= 1 && spacingX == 1));
@@ -199,7 +193,7 @@ class SparseCanvas : public ISparseCanvas
 				blockWinWidth = (std::min<uint32_t>)(blockWinWidth, win.x1 - x);
 				if(!grid.contains(gridX, gridY))
 				{
-					GRK_ERROR("sparse buffer @ resno %u, Attempt to access a block (%u,%u) outside "
+					GRK_WARN("sparse canvas @ resno %u, Attempt to access a block (%u,%u) outside "
 							  "block grid bounds",
 							  resno, gridX, gridY);
 					return false;
@@ -207,7 +201,7 @@ class SparseCanvas : public ISparseCanvas
 				auto srcBlock = getBlock(gridX, gridY);
 				if(!srcBlock)
 				{
-					GRK_WARN("sparse buffer @ resno %u, %s op: missing block (%u,%u,%u,%u) for %s "
+					GRK_WARN("sparse canvas @ resno %u, %s op: missing block (%u,%u,%u,%u) for %s "
 							 "(%u,%u,%u,%u). Skipping.",
 							 resno, isReadOperation ? "read" : "write",
 							 bounds.x0 + gridX * blockWidth, bounds.y0 + gridY * blockHeight,
@@ -228,7 +222,7 @@ class SparseCanvas : public ISparseCanvas
 #ifdef GRK_DEBUG_VALGRIND
 							size_t val = grk_memcheck<int32_t>(src + blockX, 1);
 							if(val != grk_mem_ok)
-								GRK_ERROR("sparse buffer @resno %u, read block(%u,%u) : "
+								GRK_ERROR("sparse canvas @resno %u, read block(%u,%u) : "
 										  "uninitialized at location (%u,%u)",
 										  resno, gridX, gridY, x + blockX, y_);
 #endif
@@ -256,7 +250,7 @@ class SparseCanvas : public ISparseCanvas
 								grk_pt32 pt((uint32_t)(x + blockX), y_);
 								size_t val = grk_memcheck<int32_t>(src + srcInd, 1);
 								if(val != grk_mem_ok)
-									GRK_ERROR("sparse buffer @ resno %u,  write block(%u,%u): "
+									GRK_ERROR("sparse canvas @ resno %u,  write block(%u,%u): "
 											  "uninitialized at location (%u,%u)",
 											  resno, gridX, gridY, x + blockX, y_);
 							}

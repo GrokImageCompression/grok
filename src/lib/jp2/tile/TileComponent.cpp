@@ -430,7 +430,7 @@ void TileComponent::postDecompressImpl(int32_t* srcData, DecompressBlockExec* bl
 	}
 	if(regionWindow_)
 		regionWindow_->write(block->resno, blockBounds, empty ? nullptr : srcData, 1,
-							 blockBounds.width(), true);
+							 blockBounds.width());
 }
 
 } // namespace grk

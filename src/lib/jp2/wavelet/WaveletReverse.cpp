@@ -1253,32 +1253,31 @@ class PartialInterleaver
 		const uint32_t stripHeight = (uint32_t)(sizeof(T) / sizeof(int32_t));
 		for(uint32_t y = 0; y < height; y++)
 		{
-			bool ret = false;
 			// read one row of L band
 			if(dwt->sn_full)
 			{
-				ret = sa->read(
+				bool ret = sa->read(
 					dwt->resno,
 					grk_rect32(dwt->win_l.x0, y_offset + y,
 							   std::min<uint32_t>(dwt->win_l.x1 + FILTER_WIDTH, dwt->sn_full),
 							   y_offset + y + 1),
-					(int32_t*)dwt->memL + y, 2 * stripHeight, 0, true);
-				assert(ret);
+					(int32_t*)dwt->memL + y, 2 * stripHeight, 0);
+				if(!ret)
+					return false;
 			}
 			// read one row of H band
 			if(dwt->dn_full)
 			{
-				ret = sa->read(
+				bool ret = sa->read(
 					dwt->resno,
 					grk_rect32(dwt->sn_full + dwt->win_h.x0, y_offset + y,
 							   dwt->sn_full +
 								   std::min<uint32_t>(dwt->win_h.x1 + FILTER_WIDTH, dwt->dn_full),
 							   y_offset + y + 1),
-					(int32_t*)dwt->memH + y, 2 * stripHeight, 0, true);
-				assert(ret);
+					(int32_t*)dwt->memH + y, 2 * stripHeight, 0);
+				if(!ret)
+					return false;
 			}
-			if(!ret)
-				return false;
 		}
 
 		return true;
@@ -1295,7 +1294,7 @@ class PartialInterleaver
 				sa->read(dwt->resno,
 						 grk_rect32(x_offset, dwt->win_l.x0, x_offset + xWidth,
 									std::min<uint32_t>(dwt->win_l.x1 + FILTER_WIDTH, dwt->sn_full)),
-						 (int32_t*)dwt->memL, 1, 2 * stripWidth, true);
+						 (int32_t*)dwt->memL, 1, 2 * stripWidth);
 		}
 		// read one vertical strip (of width x_num_elements <= stripWidth) of H band
 		if(dwt->dn_full)
@@ -1305,7 +1304,7 @@ class PartialInterleaver
 						 grk_rect32(x_offset, dwt->sn_full + dwt->win_h.x0, x_offset + xWidth,
 									dwt->sn_full + std::min<uint32_t>(dwt->win_h.x1 + FILTER_WIDTH,
 																	  dwt->dn_full)),
-						 (int32_t*)dwt->memH, 1, 2 * stripWidth, true);
+						 (int32_t*)dwt->memH, 1, 2 * stripWidth);
 		}
 
 		return ret;
@@ -1858,9 +1857,9 @@ bool WaveletReverse::decompress_partial_tile(ISparseCanvas* sa)
 	{
 		auto final_read = [sa, synthesisWindow, simpleBuf]() {
 			// final read into tile buffer
-			bool ret = sa->read(0, synthesisWindow, simpleBuf.buf_, 1, simpleBuf.stride_, true);
-			assert(ret);
-			GRK_UNUSED(ret);
+			bool ret = sa->read(0, synthesisWindow, simpleBuf.buf_, 1, simpleBuf.stride_);
+
+			return ret;
 		};
 		if(numThreads > 1)
 			imageComponentFlow->waveletFinalCopy_->nextTask().work([final_read] { final_read(); });
@@ -1871,10 +1870,9 @@ bool WaveletReverse::decompress_partial_tile(ISparseCanvas* sa)
 	}
 	auto final_read = [this, sa, synthesisWindow, simpleBuf]() {
 		// final read into tile buffer
-		bool ret =
-			sa->read(numres_ - 1, synthesisWindow, simpleBuf.buf_, 1, simpleBuf.stride_, true);
-		assert(ret);
-		GRK_UNUSED(ret);
+		bool ret = sa->read(numres_ - 1, synthesisWindow, simpleBuf.buf_, 1, simpleBuf.stride_);
+
+		return ret;
 	};
 	if(numThreads > 1)
 		imageComponentFlow->waveletFinalCopy_->nextTask().work([final_read] { final_read(); });
@@ -1925,7 +1923,7 @@ bool WaveletReverse::decompress_partial_tile(ISparseCanvas* sa)
 										 yPos + height),
 							  (int32_t*)(taskInfo->data.mem + (int64_t)bandInfo.resWindowREL_.x0 -
 										 2 * (int64_t)taskInfo->data.win_l.x0),
-							  HORIZ_PASS_HEIGHT, 1, true))
+							  HORIZ_PASS_HEIGHT, 1))
 				{
 					delete taskInfo;
 					return false;
@@ -1966,7 +1964,7 @@ bool WaveletReverse::decompress_partial_tile(ISparseCanvas* sa)
 					   (int32_t*)(taskInfo->data.mem + ((int64_t)bandInfo.resWindowREL_.y0 -
 														2 * (int64_t)taskInfo->data.win_l.x0) *
 														   VERT_PASS_WIDTH),
-					   1, VERT_PASS_WIDTH * (sizeof(T) / sizeof(int32_t)), true))
+					   1, VERT_PASS_WIDTH * (sizeof(T) / sizeof(int32_t))))
 				{
 					GRK_ERROR("Sparse array write failure");
 					delete taskInfo;
