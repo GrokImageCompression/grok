@@ -482,10 +482,10 @@ void WaveletReverse::decompress_h_strip_97(dwt_data<vec4f>* GRK_RESTRICT horiz,
 		decompress_step_97(horiz);
 		for(uint32_t k = 0; k < horiz->sn_full + horiz->dn_full; k++)
 		{
-			dest[k] = horiz->mem[k].f[0];
-			dest[k + (size_t)strideDest] = horiz->mem[k].f[1];
-			dest[k + (size_t)strideDest * 2] = horiz->mem[k].f[2];
-			dest[k + (size_t)strideDest * 3] = horiz->mem[k].f[3];
+			dest[k] = horiz->mem[k].val[0];
+			dest[k + (size_t)strideDest] = horiz->mem[k].val[1];
+			dest[k + (size_t)strideDest * 2] = horiz->mem[k].val[2];
+			dest[k + (size_t)strideDest * 3] = horiz->mem[k].val[3];
 		}
 		winL.buf_ += winL.stride_ << 2;
 		winH.buf_ += winH.stride_ << 2;
@@ -500,13 +500,13 @@ void WaveletReverse::decompress_h_strip_97(dwt_data<vec4f>* GRK_RESTRICT horiz,
 			switch(resHeight - j)
 			{
 				case 3:
-					dest[k + (strideDest << 1)] = horiz->mem[k].f[2];
+					dest[k + (strideDest << 1)] = horiz->mem[k].val[2];
 				/* FALLTHRU */
 				case 2:
-					dest[k + strideDest] = horiz->mem[k].f[1];
+					dest[k + strideDest] = horiz->mem[k].val[1];
 				/* FALLTHRU */
 				case 1:
-					dest[k] = horiz->mem[k].f[0];
+					dest[k] = horiz->mem[k].val[0];
 			}
 		}
 	}

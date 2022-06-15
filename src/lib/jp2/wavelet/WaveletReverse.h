@@ -26,19 +26,6 @@
 namespace grk
 {
 
-template<typename T, size_t N>
-struct vec
-{
-	vec(void) : f{0} {}
-	explicit vec(T m)
-	{
-		for(size_t i = 0; i < N; ++i)
-			f[i] = m;
-	}
-	constexpr static size_t NUM_ELTS = N;
-	T f[N];
-};
-
 typedef vec<float, 4> vec4f;
 
 uint32_t max_resolution(Resolution* GRK_RESTRICT r, uint32_t i);
