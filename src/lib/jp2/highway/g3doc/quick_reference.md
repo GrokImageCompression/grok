@@ -10,7 +10,7 @@ using platform-specific intrinsics, which map to SIMD/vector instructions.
 `hwy/contrib` also includes higher-level algorithms such as `FindIf` or `Sorter`
 implemented using these ops.
 
-Highyway can use dynamic dispatch, which chooses the best available
+Highway can use dynamic dispatch, which chooses the best available
 implementation at runtime, or static dispatch which has no runtime overhead.
 Dynamic dispatch works by compiling your code once per target CPU and then
 selecting (via indirect call) at runtime.
@@ -379,6 +379,14 @@ All other ops in this section are only available if `HWY_TARGET != HWY_SCALAR`:
     128-bit values, each stored as an adjacent pair of 64-bit lanes (e.g.
     indices 1 and 0, where 0 is the least-significant 64-bits).
 
+*   `V`: `u64` \
+    <code>M **Min128Upper**(D, V a, V b)</code>: for each 128-bit key-value
+    pair, returns `a` if it is considered less than `b` by Lt128Upper, else `b`.
+
+*   `V`: `u64` \
+    <code>M **Max128Upper**(D, V a, V b)</code>: for each 128-bit key-value
+    pair, returns `a` if it is considered > `b` by Lt128Upper, else `b`.
+
 #### Multiply
 
 *   `V`: `{u,i}{16,32}` \
@@ -500,6 +508,15 @@ Per-lane variable shifts (slow if SSSE3/SSE4, or 16-bit, or Shr i64 on AVX2):
 *   `V`: `{f}` \
     <code>M **IsNaN**(V v)</code>: returns mask indicating whether `v[i]` is
     "not a number" (unordered).
+
+*   `V`: `{f}` \
+    <code>M **IsInf**(V v)</code>: returns mask indicating whether `v[i]` is
+    positive or negative infinity.
+
+*   `V`: `{f}` \
+    <code>M **IsFinite**(V v)</code>: returns mask indicating whether `v[i]` is
+    neither NaN nor infinity, i.e. normal, subnormal or zero. Equivalent to
+    `Not(Or(IsNaN(v), IsInf(v)))`.
 
 ### Logical
 
@@ -654,6 +671,10 @@ false is zero, true has all bits set:
     is already a mask, e.g. returned by a comparison.
 
 *   `V`: `{u,i,f}{16,32,64}` \
+    <code>V **CompressNot**(V v, M m)</code>: equivalent to `Compress(v,
+    Not(m))` but possibly faster if `CompressIsPartition<T>::value` is true.
+
+*   `V`: `{u,i,f}{16,32,64}` \
     <code>size_t **CompressStore**(V v, M m, D d, T* p)</code>: writes lanes
     whose mask `m` is true into `p`, starting from lane 0. Returns `CountTrue(d,
     m)`, the number of valid lanes. May be implemented as `Compress` followed by
@@ -716,15 +737,30 @@ These return a mask (see above) indicating whether the condition is true.
     b[1]:b[0]. For each pair, the mask lanes are either both true or both false.
     Only available if `HWY_TARGET != HWY_SCALAR`.
 
+*   `V`: `u64` \
+    <code>M **Lt128Upper**(D, V a, V b)</code>: for each adjacent pair of 64-bit
+    lanes (e.g. indices 1,0), returns whether a[1] is less than b[1]. For each
+    pair, the mask lanes are either both true or both false. This is useful for
+    comparing 64-bit keys alongside 64-bit values. Only available if `HWY_TARGET
+    != HWY_SCALAR`.
+
 ### Memory
 
 Memory operands are little-endian, otherwise their order would depend on the
 lane configuration. Pointers are the addresses of `N` consecutive `T` values,
-either naturally-aligned (`aligned`) or possibly unaligned (`p`).
+either `aligned` (address is a multiple of the vector size) or possibly
+unaligned (denoted `p`).
+
+Even unaligned addresses must still be a multiple of `sizeof(T)`, otherwise
+`StoreU` may crash on some platforms (e.g. RVV and ARMv7). Note that C++ ensures
+automatic (stack) and dynamically allocated (via `new` or `malloc`) variables of
+type `T` are aligned to `sizeof(T)`, hence such addresses are suitable for
+`StoreU`. However, casting pointers to `char*` and adding arbitrary offsets (not
+a multiple of `sizeof(T)`) can violate this requirement.
 
 **Note**: computations with low arithmetic intensity (FLOP/s per memory traffic
 bytes), e.g. dot product, can be *1.5 times as fast* when the memory operands
-are naturally aligned. An unaligned access may require two load ports.
+are aligned to the vector size. An unaligned access may require two load ports.
 
 #### Load
 
@@ -793,11 +829,12 @@ F(src[tbl[i]])` because `Scatter` is more expensive than `Gather`.
 #### Store
 
 *   <code>void **Store**(Vec&lt;D&gt; v, D, T* aligned)</code>: copies `v[i]`
-    into `aligned[i]`, which must be naturally aligned. Writes exactly `N *
-    sizeof(T)` bytes.
+    into `aligned[i]`, which must be aligned to the vector size. Writes exactly
+    `N * sizeof(T)` bytes.
 
-*   <code>void **StoreU**(Vec&lt;D&gt; v, D, T* p)</code>: as `Store`, but
-    without the alignment requirement.
+*   <code>void **StoreU**(Vec&lt;D&gt; v, D, T* p)</code>: as `Store`, but the
+    alignment requirement is relaxed to element-aligned (multiple of
+    `sizeof(T)`).
 
 *   <code>void **BlendedStore**(Vec&lt;D&gt; v, M m, D d, T* p)</code>: as
     `StoreU`, but only updates `p` where `m` is true. May fault even where
@@ -805,7 +842,7 @@ F(src[tbl[i]])` because `Scatter` is more expensive than `Gather`.
     cannot happen unless the entire vector is inaccessible. Equivalent to, and
     potentially more efficient than, `StoreU(IfThenElse(m, v, LoadU(d, p)), d,
     p)`. "Blended" indicates this may not be atomic; other threads must not
-    concurrently update `[p, p + Lanes(d))` without sychronization.
+    concurrently update `[p, p + Lanes(d))` without synchronization.
 
 *   <code>void **SafeFillN**(size_t num, T value, D d, T* HWY_RESTRICT
     to)</code>: Sets `to[0, num)` to `value`. If `num` exceeds `Lanes(d)`, the
@@ -842,8 +879,8 @@ All functions except `Stream` are defined in cache_control.h.
     write-only data; avoids cache pollution). May be implemented using a
     CPU-internal buffer. To avoid partial flushes and unpredictable interactions
     with atomics (for example, see Intel SDM Vol 4, Sec. 8.1.2.2), call this
-    consecutively for an entire naturally aligned cache line (typically 64
-    bytes). Each call may write a multiple of `HWY_STREAM_MULTIPLE` bytes, which
+    consecutively for an entire cache line (typically 64 bytes, aligned to its
+    size). Each call may write a multiple of `HWY_STREAM_MULTIPLE` bytes, which
     can exceed `Lanes(d) * sizeof(T)`. The new contents of `aligned` may not be
     visible until `FlushStream` is called.
 
@@ -1134,7 +1171,7 @@ instead because they are more general:
     <code>V **Reverse**(D, V a)</code> returns a vector with lanes in reversed
     order (`out[i] == a[Lanes(D()) - 1 - i]`).
 
-The following `ReverseN` must not be called if `Lanes(D()) > N`:
+The following `ReverseN` must not be called if `Lanes(D()) < N`:
 
 *   `V`: `{u,i,f}{16,32,64}` \
     <code>V **Reverse2**(D, V a)</code> returns a vector with each group of 2
@@ -1185,19 +1222,19 @@ Ops in this section are only available if `HWY_TARGET != HWY_SCALAR`:
 
 *   `V`: `u8` \
     <code>V **AESRound**(V state, V round_key)</code>: one round of AES
-    encrytion: `MixColumns(SubBytes(ShiftRows(state))) ^ round_key`. This
+    encryption: `MixColumns(SubBytes(ShiftRows(state))) ^ round_key`. This
     matches x86 AES-NI. The latency is independent of the input values.
 
 *   `V`: `u8` \
     <code>V **AESLastRound**(V state, V round_key)</code>: the last round of AES
-    encrytion: `SubBytes(ShiftRows(state)) ^ round_key`. This matches x86
+    encryption: `SubBytes(ShiftRows(state)) ^ round_key`. This matches x86
     AES-NI. The latency is independent of the input values.
 
 *   `V`: `u64` \
     <code>V **CLMulLower**(V a, V b)</code>: carryless multiplication of the
     lower 64 bits of each 128-bit block into a 128-bit product. The latency is
     independent of the input values (assuming that is true of normal integer
-    multiplication) so this can safely be used in cryto. Applications that wish
+    multiplication) so this can safely be used in crypto. Applications that wish
     to multiply upper with lower halves can `Shuffle01` one of the operands; on
     x86 that is expected to be latency-neutral.
 
@@ -1241,13 +1278,13 @@ The above were previously known as `HWY_CAP_INTEGER64`, `HWY_CAP_FLOAT16`, and
     when attempting to load lanes from unmapped memory, even if the
     corresponding mask element is false. This is the case on ASAN/MSAN builds,
     AMD x86 prior to AVX-512, and ARM NEON. If so, users can prevent faults by
-    ensuring memory addresses are naturally aligned or at least padded
+    ensuring memory addresses are aligned to the vector size or at least padded
     (allocation size increased by at least `Lanes(d)`.
 
 *   `HWY_NATIVE_FMA` expands to 1 if the `MulAdd` etc. ops use native fused
-    multiply-add. Otherwise, `MulAdd(f, m, a)` is implemented as
-    `Add(Mul(f, m), a)`. Checking this can be useful for increasing the
-    tolerance of expected results (around 1E-5 or 1E-6).
+    multiply-add. Otherwise, `MulAdd(f, m, a)` is implemented as `Add(Mul(f, m),
+    a)`. Checking this can be useful for increasing the tolerance of expected
+    results (around 1E-5 or 1E-6).
 
 The following were used to signal the maximum number of lanes for certain
 operations, but this is no longer necessary (nor possible on SVE/RVV), so they
@@ -1333,6 +1370,19 @@ constant-propagation issues with Clang on ARM.
     integer `T`.
 *   `SizeTag<N>` is an empty struct, used to select overloaded functions
     appropriate for `N` bytes.
+
+*   `MakeUnsigned<T>` is an alias for an unsigned type of the same size as `T`.
+
+*   `MakeSigned<T>` is an alias for a signed type of the same size as `T`.
+
+*   `MakeFloat<T>` is an alias for a floating-point type of the same size as
+    `T`.
+
+*   `MakeWide<T>` is an alias for a type with twice the size of `T` and the same
+    category (unsigned/signed/float).
+
+*   `MakeNarrow<T>` is an alias for a type with half the size of `T` and the
+    same category (unsigned/signed/float).
 
 ## Memory allocation
 

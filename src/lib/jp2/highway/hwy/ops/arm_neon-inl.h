@@ -814,6 +814,9 @@ class Mask128 {
   Raw raw;
 };
 
+template <typename T>
+using Mask64 = Mask128<T, 8 / sizeof(T)>;
+
 namespace detail {
 
 // Deduce Simd<T, N, 0> from Vec128<T, N>
@@ -1413,10 +1416,10 @@ HWY_API Vec128<int64_t> Neg(const Vec128<int64_t> v) {
                             prefix##infix##suffix, v.raw, HWY_MAX(1, kBits))); \
   }
 
-HWY_NEON_DEF_FUNCTION_INTS_UINTS(ShiftLeft, vshl, _n_, HWY_SHIFT)
+HWY_NEON_DEF_FUNCTION_INTS_UINTS(ShiftLeft, vshl, _n_, ignored)
 
-HWY_NEON_DEF_FUNCTION_UINTS(ShiftRight, vshr, _n_, HWY_SHIFT)
-HWY_NEON_DEF_FUNCTION_INTS(ShiftRight, vshr, _n_, HWY_SHIFT)
+HWY_NEON_DEF_FUNCTION_UINTS(ShiftRight, vshr, _n_, ignored)
+HWY_NEON_DEF_FUNCTION_INTS(ShiftRight, vshr, _n_, ignored)
 
 #pragma pop_macro("HWY_NEON_DEF_FUNCTION")
 
@@ -2308,12 +2311,6 @@ HWY_NEON_DEF_FUNCTION_INT_8_16_32(operator==, vceq, _, HWY_COMPARE)
 HWY_NEON_DEF_FUNCTION_UINT_8_16_32(operator==, vceq, _, HWY_COMPARE)
 #endif
 
-// ------------------------------ Inequality
-template <typename T, size_t N>
-HWY_API Mask128<T, N> operator!=(const Vec128<T, N> a, const Vec128<T, N> b) {
-  return Not(a == b);
-}
-
 // ------------------------------ Strict inequality (signed, float)
 #if HWY_ARCH_ARM_A64
 HWY_NEON_DEF_FUNCTION_INTS_UINTS(operator<, vclt, _, HWY_COMPARE)
@@ -2376,6 +2373,24 @@ HWY_API Mask128<uint64_t, N> operator<(const Vec128<uint64_t, N> a,
 }
 
 #endif
+
+// ------------------------------ operator!= (operator==)
+
+// Customize HWY_NEON_DEF_FUNCTION to call 2 functions.
+#pragma push_macro("HWY_NEON_DEF_FUNCTION")
+#undef HWY_NEON_DEF_FUNCTION
+// This cannot have _any_ template argument (in x86_128 we can at least have N
+// as an argument), otherwise it is not more specialized than rewritten
+// operator== in C++20, leading to compile errors.
+#define HWY_NEON_DEF_FUNCTION(type, size, name, prefix, infix, suffix, args) \
+  HWY_API Mask128<type##_t, size> name(Vec128<type##_t, size> a,             \
+                                       Vec128<type##_t, size> b) {           \
+    return Not(a == b);                                                      \
+  }
+
+HWY_NEON_DEF_FUNCTION_ALL_TYPES(operator!=, ignored, ignored, ignored)
+
+#pragma pop_macro("HWY_NEON_DEF_FUNCTION")
 
 // ------------------------------ Reversed comparisons
 
@@ -2613,61 +2628,49 @@ HWY_API Vec64<double> LoadU(Full64<double> /* tag */,
   return Vec64<double>(vld1_f64(p));
 }
 #endif
-
 // ------------------------------ Load 32
 
-HWY_API Vec32<uint8_t> LoadU(Full32<uint8_t> /*tag*/,
-                             const uint8_t* HWY_RESTRICT p) {
-  uint32x2_t a = vld1_dup_u32(reinterpret_cast<const uint32_t*>(p));
-  return Vec32<uint8_t>(vreinterpret_u8_u32(a));
-}
-HWY_API Vec32<uint16_t> LoadU(Full32<uint16_t> /*tag*/,
-                              const uint16_t* HWY_RESTRICT p) {
-  uint32x2_t a = vld1_dup_u32(reinterpret_cast<const uint32_t*>(p));
-  return Vec32<uint16_t>(vreinterpret_u16_u32(a));
-}
+// Actual 32-bit broadcast load - used to implement the other lane types
+// because reinterpret_cast of the pointer leads to incorrect codegen on GCC.
 HWY_API Vec32<uint32_t> LoadU(Full32<uint32_t> /*tag*/,
                               const uint32_t* HWY_RESTRICT p) {
-  return Vec32<uint32_t>(vld1_dup_u32(reinterpret_cast<const uint32_t*>(p)));
-}
-HWY_API Vec32<int8_t> LoadU(Full32<int8_t> /*tag*/,
-                            const int8_t* HWY_RESTRICT p) {
-  int32x2_t a = vld1_dup_s32(reinterpret_cast<const int32_t*>(p));
-  return Vec32<int8_t>(vreinterpret_s8_s32(a));
-}
-HWY_API Vec32<int16_t> LoadU(Full32<int16_t> /*tag*/,
-                             const int16_t* HWY_RESTRICT p) {
-  int32x2_t a = vld1_dup_s32(reinterpret_cast<const int32_t*>(p));
-  return Vec32<int16_t>(vreinterpret_s16_s32(a));
+  return Vec32<uint32_t>(vld1_dup_u32(p));
 }
 HWY_API Vec32<int32_t> LoadU(Full32<int32_t> /*tag*/,
                              const int32_t* HWY_RESTRICT p) {
-  return Vec32<int32_t>(vld1_dup_s32(reinterpret_cast<const int32_t*>(p)));
+  return Vec32<int32_t>(vld1_dup_s32(p));
 }
 HWY_API Vec32<float> LoadU(Full32<float> /*tag*/, const float* HWY_RESTRICT p) {
   return Vec32<float>(vld1_dup_f32(p));
 }
 
+template <typename T, HWY_IF_LANE_SIZE_LT(T, 4)>
+HWY_API Vec32<T> LoadU(Full32<T> d, const T* HWY_RESTRICT p) {
+  const Repartition<uint32_t, decltype(d)> d32;
+  uint32_t buf;
+  CopyBytes<4>(p, &buf);
+  return BitCast(d, LoadU(d32, &buf));
+}
+
 // ------------------------------ Load 16
 
-HWY_API Vec128<uint8_t, 2> LoadU(Simd<uint8_t, 2, 0> /*tag*/,
-                                 const uint8_t* HWY_RESTRICT p) {
-  uint16x4_t a = vld1_dup_u16(reinterpret_cast<const uint16_t*>(p));
-  return Vec128<uint8_t, 2>(vreinterpret_u8_u16(a));
-}
+// Actual 16-bit broadcast load - used to implement the other lane types
+// because reinterpret_cast of the pointer leads to incorrect codegen on GCC.
 HWY_API Vec128<uint16_t, 1> LoadU(Simd<uint16_t, 1, 0> /*tag*/,
                                   const uint16_t* HWY_RESTRICT p) {
-  return Vec128<uint16_t, 1>(
-      vld1_dup_u16(reinterpret_cast<const uint16_t*>(p)));
-}
-HWY_API Vec128<int8_t, 2> LoadU(Simd<int8_t, 2, 0> /*tag*/,
-                                const int8_t* HWY_RESTRICT p) {
-  int16x4_t a = vld1_dup_s16(reinterpret_cast<const int16_t*>(p));
-  return Vec128<int8_t, 2>(vreinterpret_s8_s16(a));
+  return Vec128<uint16_t, 1>(vld1_dup_u16(p));
 }
 HWY_API Vec128<int16_t, 1> LoadU(Simd<int16_t, 1, 0> /*tag*/,
                                  const int16_t* HWY_RESTRICT p) {
-  return Vec128<int16_t, 1>(vld1_dup_s16(reinterpret_cast<const int16_t*>(p)));
+  return Vec128<int16_t, 1>(vld1_dup_s16(p));
+}
+
+template <typename T, HWY_IF_LANE_SIZE_LT(T, 2)>
+HWY_API Vec128<T, 2> LoadU(Simd<T, 2, 0> d, const T* HWY_RESTRICT p) {
+  const Repartition<uint16_t, decltype(d)> d16;
+  uint16_t buf;
+  CopyBytes<2>(p, &buf);
+  return BitCast(d, LoadU(d16, &buf));
 }
 
 // ------------------------------ Load 8
@@ -2809,29 +2812,9 @@ HWY_API void StoreU(const Vec64<double> v, Full64<double> /* tag */,
 
 // ------------------------------ Store 32
 
-HWY_API void StoreU(const Vec32<uint8_t> v, Full32<uint8_t>,
-                    uint8_t* HWY_RESTRICT p) {
-  uint32x2_t a = vreinterpret_u32_u8(v.raw);
-  vst1_lane_u32(reinterpret_cast<uint32_t*>(p), a, 0);
-}
-HWY_API void StoreU(const Vec32<uint16_t> v, Full32<uint16_t>,
-                    uint16_t* HWY_RESTRICT p) {
-  uint32x2_t a = vreinterpret_u32_u16(v.raw);
-  vst1_lane_u32(reinterpret_cast<uint32_t*>(p), a, 0);
-}
 HWY_API void StoreU(const Vec32<uint32_t> v, Full32<uint32_t>,
                     uint32_t* HWY_RESTRICT p) {
   vst1_lane_u32(p, v.raw, 0);
-}
-HWY_API void StoreU(const Vec32<int8_t> v, Full32<int8_t>,
-                    int8_t* HWY_RESTRICT p) {
-  int32x2_t a = vreinterpret_s32_s8(v.raw);
-  vst1_lane_s32(reinterpret_cast<int32_t*>(p), a, 0);
-}
-HWY_API void StoreU(const Vec32<int16_t> v, Full32<int16_t>,
-                    int16_t* HWY_RESTRICT p) {
-  int32x2_t a = vreinterpret_s32_s16(v.raw);
-  vst1_lane_s32(reinterpret_cast<int32_t*>(p), a, 0);
 }
 HWY_API void StoreU(const Vec32<int32_t> v, Full32<int32_t>,
                     int32_t* HWY_RESTRICT p) {
@@ -2842,25 +2825,29 @@ HWY_API void StoreU(const Vec32<float> v, Full32<float>,
   vst1_lane_f32(p, v.raw, 0);
 }
 
+template <typename T, HWY_IF_LANE_SIZE_LT(T, 4)>
+HWY_API void StoreU(const Vec32<T> v, Full32<T> d, T* HWY_RESTRICT p) {
+  const Repartition<uint32_t, decltype(d)> d32;
+  const uint32_t buf = GetLane(BitCast(d32, v));
+  CopyBytes<4>(&buf, p);
+}
+
 // ------------------------------ Store 16
 
-HWY_API void StoreU(const Vec128<uint8_t, 2> v, Simd<uint8_t, 2, 0>,
-                    uint8_t* HWY_RESTRICT p) {
-  uint16x4_t a = vreinterpret_u16_u8(v.raw);
-  vst1_lane_u16(reinterpret_cast<uint16_t*>(p), a, 0);
-}
 HWY_API void StoreU(const Vec128<uint16_t, 1> v, Simd<uint16_t, 1, 0>,
                     uint16_t* HWY_RESTRICT p) {
   vst1_lane_u16(p, v.raw, 0);
 }
-HWY_API void StoreU(const Vec128<int8_t, 2> v, Simd<int8_t, 2, 0>,
-                    int8_t* HWY_RESTRICT p) {
-  int16x4_t a = vreinterpret_s16_s8(v.raw);
-  vst1_lane_s16(reinterpret_cast<int16_t*>(p), a, 0);
-}
 HWY_API void StoreU(const Vec128<int16_t, 1> v, Simd<int16_t, 1, 0>,
                     int16_t* HWY_RESTRICT p) {
   vst1_lane_s16(p, v.raw, 0);
+}
+
+template <typename T, HWY_IF_LANE_SIZE_LT(T, 2)>
+HWY_API void StoreU(const Vec128<T, 2> v, Simd<T, 2, 0> d, T* HWY_RESTRICT p) {
+  const Repartition<uint16_t, decltype(d)> d16;
+  const uint16_t buf = GetLane(BitCast(d16, v));
+  CopyBytes<2>(&buf, p);
 }
 
 // ------------------------------ Store 8
@@ -5026,6 +5013,34 @@ HWY_API Mask128<T, N> LoadMaskBits(Simd<T, N, 0> d,
 
 namespace detail {
 
+// Returns mask[i]? 0xF : 0 in each nibble. This is more efficient than
+// BitsFromMask for use in (partial) CountTrue, FindFirstTrue and AllFalse.
+template <typename T>
+HWY_INLINE uint64_t NibblesFromMask(const Full128<T> d, Mask128<T> mask) {
+  const Full128<uint16_t> du16;
+  const Vec128<uint16_t> vu16 = BitCast(du16, VecFromMask(d, mask));
+  const Vec64<uint8_t> nib(vshrn_n_u16(vu16.raw, 4));
+  return GetLane(BitCast(Full64<uint64_t>(), nib));
+}
+
+template <typename T>
+HWY_INLINE uint64_t NibblesFromMask(const Full64<T> d, Mask64<T> mask) {
+  // There is no vshrn_n_u16 for uint16x4, so zero-extend.
+  const Twice<decltype(d)> d2;
+  const Vec128<T> v128 = ZeroExtendVector(d2, VecFromMask(d, mask));
+  // No need to mask, upper half is zero thanks to ZeroExtendVector.
+  return NibblesFromMask(d2, MaskFromVec(v128));
+}
+
+template <typename T, size_t N, HWY_IF_LE32(T, N)>
+HWY_INLINE uint64_t NibblesFromMask(Simd<T, N, 0> /*d*/, Mask128<T, N> mask) {
+  const Mask64<T> mask64(mask.raw);
+  const uint64_t nib = NibblesFromMask(Full64<T>(), mask64);
+  // Clear nibbles from upper half of 64-bits
+  constexpr size_t kBytes = sizeof(T) * N;
+  return nib & ((1ull << (kBytes * 4)) - 1);
+}
+
 template <typename T>
 HWY_INLINE uint64_t BitsFromMask(hwy::SizeTag<1> /*tag*/,
                                  const Mask128<T> mask) {
@@ -5183,6 +5198,10 @@ HWY_INLINE uint64_t BitsFromMask(const Mask128<T, N> mask) {
 // Masks are either FF..FF or 0. Unfortunately there is no reduce-sub op
 // ("vsubv"). ANDing with 1 would work but requires a constant. Negating also
 // changes each lane to 1 (if mask set) or 0.
+// NOTE: PopCount also operates on vectors, so we still have to do horizontal
+// sums separately. We specialize CountTrue for full vectors (negating instead
+// of PopCount because it avoids an extra shift), and use PopCount of
+// NibblesFromMask for partial vectors.
 
 template <typename T>
 HWY_INLINE size_t CountTrue(hwy::SizeTag<1> /*tag*/, const Mask128<T> mask) {
@@ -5253,15 +5272,17 @@ HWY_API size_t CountTrue(Full128<T> /* tag */, const Mask128<T> mask) {
 
 // Partial
 template <typename T, size_t N, HWY_IF_LE64(T, N)>
-HWY_API size_t CountTrue(Simd<T, N, 0> /* tag */, const Mask128<T, N> mask) {
-  return PopCount(detail::BitsFromMask(mask));
+HWY_API size_t CountTrue(Simd<T, N, 0> d, const Mask128<T, N> mask) {
+  constexpr int kDiv = 4 * sizeof(T);
+  return PopCount(detail::NibblesFromMask(d, mask)) / kDiv;
 }
-
 template <typename T, size_t N>
-HWY_API intptr_t FindFirstTrue(const Simd<T, N, 0> /* tag */,
+HWY_API intptr_t FindFirstTrue(const Simd<T, N, 0> d,
                                const Mask128<T, N> mask) {
-  const uint64_t bits = detail::BitsFromMask(mask);
-  return bits ? static_cast<intptr_t>(Num0BitsBelowLS1Bit_Nonzero64(bits)) : -1;
+  const uint64_t nib = detail::NibblesFromMask(d, mask);
+  if (nib == 0) return -1;
+  constexpr int kDiv = 4 * sizeof(T);
+  return static_cast<intptr_t>(Num0BitsBelowLS1Bit_Nonzero64(nib) / kDiv);
 }
 
 // `p` points to at least 8 writable bytes.
@@ -5274,29 +5295,21 @@ HWY_API size_t StoreMaskBits(Simd<T, N, 0> /* tag */, const Mask128<T, N> mask,
   return kNumBytes;
 }
 
+template <typename T, size_t N>
+HWY_API bool AllFalse(const Simd<T, N, 0> d, const Mask128<T, N> m) {
+  return detail::NibblesFromMask(d, m) == 0;
+}
+
 // Full
 template <typename T>
-HWY_API bool AllFalse(const Full128<T> d, const Mask128<T> m) {
-#if HWY_ARCH_ARM_A64
-  const Full128<uint32_t> d32;
-  const auto m32 = MaskFromVec(BitCast(d32, VecFromMask(d, m)));
-  return (vmaxvq_u32(m32.raw) == 0);
-#else
-  const auto v64 = BitCast(Full128<uint64_t>(), VecFromMask(d, m));
-  uint32x2_t a = vqmovn_u64(v64.raw);
-  return vget_lane_u64(vreinterpret_u64_u32(a), 0) == 0;
-#endif
+HWY_API bool AllTrue(const Full128<T> d, const Mask128<T> m) {
+  return detail::NibblesFromMask(d, m) == ~0ull;
 }
-
 // Partial
 template <typename T, size_t N, HWY_IF_LE64(T, N)>
-HWY_API bool AllFalse(const Simd<T, N, 0> /* tag */, const Mask128<T, N> m) {
-  return detail::BitsFromMask(m) == 0;
-}
-
-template <typename T, size_t N>
 HWY_API bool AllTrue(const Simd<T, N, 0> d, const Mask128<T, N> m) {
-  return AllFalse(d, VecFromMask(d, m) == Zero(d));
+  constexpr size_t kBytes = sizeof(T) * N;
+  return detail::NibblesFromMask(d, m) == (1ull << (kBytes * 4)) - 1;
 }
 
 // ------------------------------ Compress
@@ -5339,6 +5352,7 @@ HWY_INLINE Vec128<T, N> IdxFromBits(hwy::SizeTag<2> /*tag*/,
   // Here, 16-bit lanes are too narrow to hold all bits, and unpacking nibbles
   // is likely more costly than the higher cache footprint from storing bytes.
   alignas(16) constexpr uint8_t table[256 * 8] = {
+      // PrintCompress16x8Tables
       0,  2,  4,  6,  8,  10, 12, 14, /**/ 0, 2,  4,  6,  8,  10, 12, 14,  //
       2,  0,  4,  6,  8,  10, 12, 14, /**/ 0, 2,  4,  6,  8,  10, 12, 14,  //
       4,  0,  2,  6,  8,  10, 12, 14, /**/ 0, 4,  2,  6,  8,  10, 12, 14,  //
@@ -5474,12 +5488,165 @@ HWY_INLINE Vec128<T, N> IdxFromBits(hwy::SizeTag<2> /*tag*/,
 }
 
 template <typename T, size_t N>
+HWY_INLINE Vec128<T, N> IdxFromNotBits(hwy::SizeTag<2> /*tag*/,
+                                       const uint64_t mask_bits) {
+  HWY_DASSERT(mask_bits < 256);
+  const Simd<T, N, 0> d;
+  const Repartition<uint8_t, decltype(d)> d8;
+  const Simd<uint16_t, N, 0> du;
+
+  // ARM does not provide an equivalent of AVX2 permutevar, so we need byte
+  // indices for VTBL (one vector's worth for each of 256 combinations of
+  // 8 mask bits). Loading them directly would require 4 KiB. We can instead
+  // store lane indices and convert to byte indices (2*lane + 0..1), with the
+  // doubling baked into the table. AVX2 Compress32 stores eight 4-bit lane
+  // indices (total 1 KiB), broadcasts them into each 32-bit lane and shifts.
+  // Here, 16-bit lanes are too narrow to hold all bits, and unpacking nibbles
+  // is likely more costly than the higher cache footprint from storing bytes.
+  alignas(16) constexpr uint8_t table[256 * 8] = {
+      // PrintCompressNot16x8Tables
+      0, 2,  4,  6,  8,  10, 12, 14, /**/ 2,  4,  6,  8,  10, 12, 14, 0,   //
+      0, 4,  6,  8,  10, 12, 14, 2,  /**/ 4,  6,  8,  10, 12, 14, 0,  2,   //
+      0, 2,  6,  8,  10, 12, 14, 4,  /**/ 2,  6,  8,  10, 12, 14, 0,  4,   //
+      0, 6,  8,  10, 12, 14, 2,  4,  /**/ 6,  8,  10, 12, 14, 0,  2,  4,   //
+      0, 2,  4,  8,  10, 12, 14, 6,  /**/ 2,  4,  8,  10, 12, 14, 0,  6,   //
+      0, 4,  8,  10, 12, 14, 2,  6,  /**/ 4,  8,  10, 12, 14, 0,  2,  6,   //
+      0, 2,  8,  10, 12, 14, 4,  6,  /**/ 2,  8,  10, 12, 14, 0,  4,  6,   //
+      0, 8,  10, 12, 14, 2,  4,  6,  /**/ 8,  10, 12, 14, 0,  2,  4,  6,   //
+      0, 2,  4,  6,  10, 12, 14, 8,  /**/ 2,  4,  6,  10, 12, 14, 0,  8,   //
+      0, 4,  6,  10, 12, 14, 2,  8,  /**/ 4,  6,  10, 12, 14, 0,  2,  8,   //
+      0, 2,  6,  10, 12, 14, 4,  8,  /**/ 2,  6,  10, 12, 14, 0,  4,  8,   //
+      0, 6,  10, 12, 14, 2,  4,  8,  /**/ 6,  10, 12, 14, 0,  2,  4,  8,   //
+      0, 2,  4,  10, 12, 14, 6,  8,  /**/ 2,  4,  10, 12, 14, 0,  6,  8,   //
+      0, 4,  10, 12, 14, 2,  6,  8,  /**/ 4,  10, 12, 14, 0,  2,  6,  8,   //
+      0, 2,  10, 12, 14, 4,  6,  8,  /**/ 2,  10, 12, 14, 0,  4,  6,  8,   //
+      0, 10, 12, 14, 2,  4,  6,  8,  /**/ 10, 12, 14, 0,  2,  4,  6,  8,   //
+      0, 2,  4,  6,  8,  12, 14, 10, /**/ 2,  4,  6,  8,  12, 14, 0,  10,  //
+      0, 4,  6,  8,  12, 14, 2,  10, /**/ 4,  6,  8,  12, 14, 0,  2,  10,  //
+      0, 2,  6,  8,  12, 14, 4,  10, /**/ 2,  6,  8,  12, 14, 0,  4,  10,  //
+      0, 6,  8,  12, 14, 2,  4,  10, /**/ 6,  8,  12, 14, 0,  2,  4,  10,  //
+      0, 2,  4,  8,  12, 14, 6,  10, /**/ 2,  4,  8,  12, 14, 0,  6,  10,  //
+      0, 4,  8,  12, 14, 2,  6,  10, /**/ 4,  8,  12, 14, 0,  2,  6,  10,  //
+      0, 2,  8,  12, 14, 4,  6,  10, /**/ 2,  8,  12, 14, 0,  4,  6,  10,  //
+      0, 8,  12, 14, 2,  4,  6,  10, /**/ 8,  12, 14, 0,  2,  4,  6,  10,  //
+      0, 2,  4,  6,  12, 14, 8,  10, /**/ 2,  4,  6,  12, 14, 0,  8,  10,  //
+      0, 4,  6,  12, 14, 2,  8,  10, /**/ 4,  6,  12, 14, 0,  2,  8,  10,  //
+      0, 2,  6,  12, 14, 4,  8,  10, /**/ 2,  6,  12, 14, 0,  4,  8,  10,  //
+      0, 6,  12, 14, 2,  4,  8,  10, /**/ 6,  12, 14, 0,  2,  4,  8,  10,  //
+      0, 2,  4,  12, 14, 6,  8,  10, /**/ 2,  4,  12, 14, 0,  6,  8,  10,  //
+      0, 4,  12, 14, 2,  6,  8,  10, /**/ 4,  12, 14, 0,  2,  6,  8,  10,  //
+      0, 2,  12, 14, 4,  6,  8,  10, /**/ 2,  12, 14, 0,  4,  6,  8,  10,  //
+      0, 12, 14, 2,  4,  6,  8,  10, /**/ 12, 14, 0,  2,  4,  6,  8,  10,  //
+      0, 2,  4,  6,  8,  10, 14, 12, /**/ 2,  4,  6,  8,  10, 14, 0,  12,  //
+      0, 4,  6,  8,  10, 14, 2,  12, /**/ 4,  6,  8,  10, 14, 0,  2,  12,  //
+      0, 2,  6,  8,  10, 14, 4,  12, /**/ 2,  6,  8,  10, 14, 0,  4,  12,  //
+      0, 6,  8,  10, 14, 2,  4,  12, /**/ 6,  8,  10, 14, 0,  2,  4,  12,  //
+      0, 2,  4,  8,  10, 14, 6,  12, /**/ 2,  4,  8,  10, 14, 0,  6,  12,  //
+      0, 4,  8,  10, 14, 2,  6,  12, /**/ 4,  8,  10, 14, 0,  2,  6,  12,  //
+      0, 2,  8,  10, 14, 4,  6,  12, /**/ 2,  8,  10, 14, 0,  4,  6,  12,  //
+      0, 8,  10, 14, 2,  4,  6,  12, /**/ 8,  10, 14, 0,  2,  4,  6,  12,  //
+      0, 2,  4,  6,  10, 14, 8,  12, /**/ 2,  4,  6,  10, 14, 0,  8,  12,  //
+      0, 4,  6,  10, 14, 2,  8,  12, /**/ 4,  6,  10, 14, 0,  2,  8,  12,  //
+      0, 2,  6,  10, 14, 4,  8,  12, /**/ 2,  6,  10, 14, 0,  4,  8,  12,  //
+      0, 6,  10, 14, 2,  4,  8,  12, /**/ 6,  10, 14, 0,  2,  4,  8,  12,  //
+      0, 2,  4,  10, 14, 6,  8,  12, /**/ 2,  4,  10, 14, 0,  6,  8,  12,  //
+      0, 4,  10, 14, 2,  6,  8,  12, /**/ 4,  10, 14, 0,  2,  6,  8,  12,  //
+      0, 2,  10, 14, 4,  6,  8,  12, /**/ 2,  10, 14, 0,  4,  6,  8,  12,  //
+      0, 10, 14, 2,  4,  6,  8,  12, /**/ 10, 14, 0,  2,  4,  6,  8,  12,  //
+      0, 2,  4,  6,  8,  14, 10, 12, /**/ 2,  4,  6,  8,  14, 0,  10, 12,  //
+      0, 4,  6,  8,  14, 2,  10, 12, /**/ 4,  6,  8,  14, 0,  2,  10, 12,  //
+      0, 2,  6,  8,  14, 4,  10, 12, /**/ 2,  6,  8,  14, 0,  4,  10, 12,  //
+      0, 6,  8,  14, 2,  4,  10, 12, /**/ 6,  8,  14, 0,  2,  4,  10, 12,  //
+      0, 2,  4,  8,  14, 6,  10, 12, /**/ 2,  4,  8,  14, 0,  6,  10, 12,  //
+      0, 4,  8,  14, 2,  6,  10, 12, /**/ 4,  8,  14, 0,  2,  6,  10, 12,  //
+      0, 2,  8,  14, 4,  6,  10, 12, /**/ 2,  8,  14, 0,  4,  6,  10, 12,  //
+      0, 8,  14, 2,  4,  6,  10, 12, /**/ 8,  14, 0,  2,  4,  6,  10, 12,  //
+      0, 2,  4,  6,  14, 8,  10, 12, /**/ 2,  4,  6,  14, 0,  8,  10, 12,  //
+      0, 4,  6,  14, 2,  8,  10, 12, /**/ 4,  6,  14, 0,  2,  8,  10, 12,  //
+      0, 2,  6,  14, 4,  8,  10, 12, /**/ 2,  6,  14, 0,  4,  8,  10, 12,  //
+      0, 6,  14, 2,  4,  8,  10, 12, /**/ 6,  14, 0,  2,  4,  8,  10, 12,  //
+      0, 2,  4,  14, 6,  8,  10, 12, /**/ 2,  4,  14, 0,  6,  8,  10, 12,  //
+      0, 4,  14, 2,  6,  8,  10, 12, /**/ 4,  14, 0,  2,  6,  8,  10, 12,  //
+      0, 2,  14, 4,  6,  8,  10, 12, /**/ 2,  14, 0,  4,  6,  8,  10, 12,  //
+      0, 14, 2,  4,  6,  8,  10, 12, /**/ 14, 0,  2,  4,  6,  8,  10, 12,  //
+      0, 2,  4,  6,  8,  10, 12, 14, /**/ 2,  4,  6,  8,  10, 12, 0,  14,  //
+      0, 4,  6,  8,  10, 12, 2,  14, /**/ 4,  6,  8,  10, 12, 0,  2,  14,  //
+      0, 2,  6,  8,  10, 12, 4,  14, /**/ 2,  6,  8,  10, 12, 0,  4,  14,  //
+      0, 6,  8,  10, 12, 2,  4,  14, /**/ 6,  8,  10, 12, 0,  2,  4,  14,  //
+      0, 2,  4,  8,  10, 12, 6,  14, /**/ 2,  4,  8,  10, 12, 0,  6,  14,  //
+      0, 4,  8,  10, 12, 2,  6,  14, /**/ 4,  8,  10, 12, 0,  2,  6,  14,  //
+      0, 2,  8,  10, 12, 4,  6,  14, /**/ 2,  8,  10, 12, 0,  4,  6,  14,  //
+      0, 8,  10, 12, 2,  4,  6,  14, /**/ 8,  10, 12, 0,  2,  4,  6,  14,  //
+      0, 2,  4,  6,  10, 12, 8,  14, /**/ 2,  4,  6,  10, 12, 0,  8,  14,  //
+      0, 4,  6,  10, 12, 2,  8,  14, /**/ 4,  6,  10, 12, 0,  2,  8,  14,  //
+      0, 2,  6,  10, 12, 4,  8,  14, /**/ 2,  6,  10, 12, 0,  4,  8,  14,  //
+      0, 6,  10, 12, 2,  4,  8,  14, /**/ 6,  10, 12, 0,  2,  4,  8,  14,  //
+      0, 2,  4,  10, 12, 6,  8,  14, /**/ 2,  4,  10, 12, 0,  6,  8,  14,  //
+      0, 4,  10, 12, 2,  6,  8,  14, /**/ 4,  10, 12, 0,  2,  6,  8,  14,  //
+      0, 2,  10, 12, 4,  6,  8,  14, /**/ 2,  10, 12, 0,  4,  6,  8,  14,  //
+      0, 10, 12, 2,  4,  6,  8,  14, /**/ 10, 12, 0,  2,  4,  6,  8,  14,  //
+      0, 2,  4,  6,  8,  12, 10, 14, /**/ 2,  4,  6,  8,  12, 0,  10, 14,  //
+      0, 4,  6,  8,  12, 2,  10, 14, /**/ 4,  6,  8,  12, 0,  2,  10, 14,  //
+      0, 2,  6,  8,  12, 4,  10, 14, /**/ 2,  6,  8,  12, 0,  4,  10, 14,  //
+      0, 6,  8,  12, 2,  4,  10, 14, /**/ 6,  8,  12, 0,  2,  4,  10, 14,  //
+      0, 2,  4,  8,  12, 6,  10, 14, /**/ 2,  4,  8,  12, 0,  6,  10, 14,  //
+      0, 4,  8,  12, 2,  6,  10, 14, /**/ 4,  8,  12, 0,  2,  6,  10, 14,  //
+      0, 2,  8,  12, 4,  6,  10, 14, /**/ 2,  8,  12, 0,  4,  6,  10, 14,  //
+      0, 8,  12, 2,  4,  6,  10, 14, /**/ 8,  12, 0,  2,  4,  6,  10, 14,  //
+      0, 2,  4,  6,  12, 8,  10, 14, /**/ 2,  4,  6,  12, 0,  8,  10, 14,  //
+      0, 4,  6,  12, 2,  8,  10, 14, /**/ 4,  6,  12, 0,  2,  8,  10, 14,  //
+      0, 2,  6,  12, 4,  8,  10, 14, /**/ 2,  6,  12, 0,  4,  8,  10, 14,  //
+      0, 6,  12, 2,  4,  8,  10, 14, /**/ 6,  12, 0,  2,  4,  8,  10, 14,  //
+      0, 2,  4,  12, 6,  8,  10, 14, /**/ 2,  4,  12, 0,  6,  8,  10, 14,  //
+      0, 4,  12, 2,  6,  8,  10, 14, /**/ 4,  12, 0,  2,  6,  8,  10, 14,  //
+      0, 2,  12, 4,  6,  8,  10, 14, /**/ 2,  12, 0,  4,  6,  8,  10, 14,  //
+      0, 12, 2,  4,  6,  8,  10, 14, /**/ 12, 0,  2,  4,  6,  8,  10, 14,  //
+      0, 2,  4,  6,  8,  10, 12, 14, /**/ 2,  4,  6,  8,  10, 0,  12, 14,  //
+      0, 4,  6,  8,  10, 2,  12, 14, /**/ 4,  6,  8,  10, 0,  2,  12, 14,  //
+      0, 2,  6,  8,  10, 4,  12, 14, /**/ 2,  6,  8,  10, 0,  4,  12, 14,  //
+      0, 6,  8,  10, 2,  4,  12, 14, /**/ 6,  8,  10, 0,  2,  4,  12, 14,  //
+      0, 2,  4,  8,  10, 6,  12, 14, /**/ 2,  4,  8,  10, 0,  6,  12, 14,  //
+      0, 4,  8,  10, 2,  6,  12, 14, /**/ 4,  8,  10, 0,  2,  6,  12, 14,  //
+      0, 2,  8,  10, 4,  6,  12, 14, /**/ 2,  8,  10, 0,  4,  6,  12, 14,  //
+      0, 8,  10, 2,  4,  6,  12, 14, /**/ 8,  10, 0,  2,  4,  6,  12, 14,  //
+      0, 2,  4,  6,  10, 8,  12, 14, /**/ 2,  4,  6,  10, 0,  8,  12, 14,  //
+      0, 4,  6,  10, 2,  8,  12, 14, /**/ 4,  6,  10, 0,  2,  8,  12, 14,  //
+      0, 2,  6,  10, 4,  8,  12, 14, /**/ 2,  6,  10, 0,  4,  8,  12, 14,  //
+      0, 6,  10, 2,  4,  8,  12, 14, /**/ 6,  10, 0,  2,  4,  8,  12, 14,  //
+      0, 2,  4,  10, 6,  8,  12, 14, /**/ 2,  4,  10, 0,  6,  8,  12, 14,  //
+      0, 4,  10, 2,  6,  8,  12, 14, /**/ 4,  10, 0,  2,  6,  8,  12, 14,  //
+      0, 2,  10, 4,  6,  8,  12, 14, /**/ 2,  10, 0,  4,  6,  8,  12, 14,  //
+      0, 10, 2,  4,  6,  8,  12, 14, /**/ 10, 0,  2,  4,  6,  8,  12, 14,  //
+      0, 2,  4,  6,  8,  10, 12, 14, /**/ 2,  4,  6,  8,  0,  10, 12, 14,  //
+      0, 4,  6,  8,  2,  10, 12, 14, /**/ 4,  6,  8,  0,  2,  10, 12, 14,  //
+      0, 2,  6,  8,  4,  10, 12, 14, /**/ 2,  6,  8,  0,  4,  10, 12, 14,  //
+      0, 6,  8,  2,  4,  10, 12, 14, /**/ 6,  8,  0,  2,  4,  10, 12, 14,  //
+      0, 2,  4,  8,  6,  10, 12, 14, /**/ 2,  4,  8,  0,  6,  10, 12, 14,  //
+      0, 4,  8,  2,  6,  10, 12, 14, /**/ 4,  8,  0,  2,  6,  10, 12, 14,  //
+      0, 2,  8,  4,  6,  10, 12, 14, /**/ 2,  8,  0,  4,  6,  10, 12, 14,  //
+      0, 8,  2,  4,  6,  10, 12, 14, /**/ 8,  0,  2,  4,  6,  10, 12, 14,  //
+      0, 2,  4,  6,  8,  10, 12, 14, /**/ 2,  4,  6,  0,  8,  10, 12, 14,  //
+      0, 4,  6,  2,  8,  10, 12, 14, /**/ 4,  6,  0,  2,  8,  10, 12, 14,  //
+      0, 2,  6,  4,  8,  10, 12, 14, /**/ 2,  6,  0,  4,  8,  10, 12, 14,  //
+      0, 6,  2,  4,  8,  10, 12, 14, /**/ 6,  0,  2,  4,  8,  10, 12, 14,  //
+      0, 2,  4,  6,  8,  10, 12, 14, /**/ 2,  4,  0,  6,  8,  10, 12, 14,  //
+      0, 4,  2,  6,  8,  10, 12, 14, /**/ 4,  0,  2,  6,  8,  10, 12, 14,  //
+      0, 2,  4,  6,  8,  10, 12, 14, /**/ 2,  0,  4,  6,  8,  10, 12, 14,  //
+      0, 2,  4,  6,  8,  10, 12, 14, /**/ 0,  2,  4,  6,  8,  10, 12, 14};
+
+  const Vec128<uint8_t, 2 * N> byte_idx = Load8Bytes(d8, table + mask_bits * 8);
+  const Vec128<uint16_t, N> pairs = ZipLower(byte_idx, byte_idx);
+  return BitCast(d, pairs + Set(du, 0x0100));
+}
+
+template <typename T, size_t N>
 HWY_INLINE Vec128<T, N> IdxFromBits(hwy::SizeTag<4> /*tag*/,
                                     const uint64_t mask_bits) {
   HWY_DASSERT(mask_bits < 16);
 
   // There are only 4 lanes, so we can afford to load the index vector directly.
-  alignas(16) constexpr uint8_t packed_array[16 * 16] = {
+  alignas(16) constexpr uint8_t u8_indices[16 * 16] = {
+      // PrintCompress32x4Tables
       0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12, 13, 14, 15,  //
       0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12, 13, 14, 15,  //
       4,  5,  6,  7,  0,  1,  2,  3,  8,  9,  10, 11, 12, 13, 14, 15,  //
@@ -5498,7 +5665,35 @@ HWY_INLINE Vec128<T, N> IdxFromBits(hwy::SizeTag<4> /*tag*/,
       0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12, 13, 14, 15};
   const Simd<T, N, 0> d;
   const Repartition<uint8_t, decltype(d)> d8;
-  return BitCast(d, Load(d8, packed_array + 16 * mask_bits));
+  return BitCast(d, Load(d8, u8_indices + 16 * mask_bits));
+}
+
+template <typename T, size_t N>
+HWY_INLINE Vec128<T, N> IdxFromNotBits(hwy::SizeTag<4> /*tag*/,
+                                       const uint64_t mask_bits) {
+  HWY_DASSERT(mask_bits < 16);
+
+  // There are only 4 lanes, so we can afford to load the index vector directly.
+  alignas(16) constexpr uint8_t u8_indices[16 * 16] = {
+      // PrintCompressNot32x4Tables
+      0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12, 13, 14, 15, 4,  5,
+      6,  7,  8,  9,  10, 11, 12, 13, 14, 15, 0,  1,  2,  3,  0,  1,  2,  3,
+      8,  9,  10, 11, 12, 13, 14, 15, 4,  5,  6,  7,  8,  9,  10, 11, 12, 13,
+      14, 15, 0,  1,  2,  3,  4,  5,  6,  7,  0,  1,  2,  3,  4,  5,  6,  7,
+      12, 13, 14, 15, 8,  9,  10, 11, 4,  5,  6,  7,  12, 13, 14, 15, 0,  1,
+      2,  3,  8,  9,  10, 11, 0,  1,  2,  3,  12, 13, 14, 15, 4,  5,  6,  7,
+      8,  9,  10, 11, 12, 13, 14, 15, 0,  1,  2,  3,  4,  5,  6,  7,  8,  9,
+      10, 11, 0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12, 13, 14, 15,
+      4,  5,  6,  7,  8,  9,  10, 11, 0,  1,  2,  3,  12, 13, 14, 15, 0,  1,
+      2,  3,  8,  9,  10, 11, 4,  5,  6,  7,  12, 13, 14, 15, 8,  9,  10, 11,
+      0,  1,  2,  3,  4,  5,  6,  7,  12, 13, 14, 15, 0,  1,  2,  3,  4,  5,
+      6,  7,  8,  9,  10, 11, 12, 13, 14, 15, 4,  5,  6,  7,  0,  1,  2,  3,
+      8,  9,  10, 11, 12, 13, 14, 15, 0,  1,  2,  3,  4,  5,  6,  7,  8,  9,
+      10, 11, 12, 13, 14, 15, 0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11,
+      12, 13, 14, 15};
+  const Simd<T, N, 0> d;
+  const Repartition<uint8_t, decltype(d)> d8;
+  return BitCast(d, Load(d8, u8_indices + 16 * mask_bits));
 }
 
 #if HWY_HAVE_INTEGER64 || HWY_HAVE_FLOAT64
@@ -5509,7 +5704,8 @@ HWY_INLINE Vec128<T, N> IdxFromBits(hwy::SizeTag<8> /*tag*/,
   HWY_DASSERT(mask_bits < 4);
 
   // There are only 2 lanes, so we can afford to load the index vector directly.
-  alignas(16) constexpr uint8_t packed_array[4 * 16] = {
+  alignas(16) constexpr uint8_t u8_indices[64] = {
+      // PrintCompress64x2Tables
       0, 1, 2,  3,  4,  5,  6,  7,  8, 9, 10, 11, 12, 13, 14, 15,
       0, 1, 2,  3,  4,  5,  6,  7,  8, 9, 10, 11, 12, 13, 14, 15,
       8, 9, 10, 11, 12, 13, 14, 15, 0, 1, 2,  3,  4,  5,  6,  7,
@@ -5517,7 +5713,25 @@ HWY_INLINE Vec128<T, N> IdxFromBits(hwy::SizeTag<8> /*tag*/,
 
   const Simd<T, N, 0> d;
   const Repartition<uint8_t, decltype(d)> d8;
-  return BitCast(d, Load(d8, packed_array + 16 * mask_bits));
+  return BitCast(d, Load(d8, u8_indices + 16 * mask_bits));
+}
+
+template <typename T, size_t N>
+HWY_INLINE Vec128<T, N> IdxFromNotBits(hwy::SizeTag<8> /*tag*/,
+                                       const uint64_t mask_bits) {
+  HWY_DASSERT(mask_bits < 4);
+
+  // There are only 2 lanes, so we can afford to load the index vector directly.
+  alignas(16) constexpr uint8_t u8_indices[4 * 16] = {
+      // PrintCompressNot64x2Tables
+      0, 1, 2,  3,  4,  5,  6,  7,  8, 9, 10, 11, 12, 13, 14, 15,
+      8, 9, 10, 11, 12, 13, 14, 15, 0, 1, 2,  3,  4,  5,  6,  7,
+      0, 1, 2,  3,  4,  5,  6,  7,  8, 9, 10, 11, 12, 13, 14, 15,
+      0, 1, 2,  3,  4,  5,  6,  7,  8, 9, 10, 11, 12, 13, 14, 15};
+
+  const Simd<T, N, 0> d;
+  const Repartition<uint8_t, decltype(d)> d8;
+  return BitCast(d, Load(d8, u8_indices + 16 * mask_bits));
 }
 
 #endif
@@ -5533,11 +5747,30 @@ HWY_INLINE Vec128<T, N> Compress(Vec128<T, N> v, const uint64_t mask_bits) {
   return BitCast(D(), TableLookupBytes(BitCast(di, v), BitCast(di, idx)));
 }
 
+template <typename T, size_t N>
+HWY_INLINE Vec128<T, N> CompressNot(Vec128<T, N> v, const uint64_t mask_bits) {
+  const auto idx =
+      detail::IdxFromNotBits<T, N>(hwy::SizeTag<sizeof(T)>(), mask_bits);
+  using D = Simd<T, N, 0>;
+  const RebindToSigned<D> di;
+  return BitCast(D(), TableLookupBytes(BitCast(di, v), BitCast(di, idx)));
+}
+
 }  // namespace detail
 
 template <typename T, size_t N>
 HWY_API Vec128<T, N> Compress(Vec128<T, N> v, const Mask128<T, N> mask) {
   return detail::Compress(v, detail::BitsFromMask(mask));
+}
+
+template <typename T, size_t N>
+HWY_API Vec128<T, N> CompressNot(Vec128<T, N> v, Mask128<T, N> m) {
+  // For partial vectors, we cannot pull the Not() into the table because
+  // BitsFromMask clears the upper bits.
+  if (N < 16 / sizeof(T)) {
+    return detail::Compress(v, detail::BitsFromMask(Not(m)));
+  }
+  return detail::CompressNot(v, detail::BitsFromMask(m));
 }
 
 // ------------------------------ CompressBits
@@ -5968,6 +6201,13 @@ HWY_INLINE Mask128<T, N> Lt128(Simd<T, N, 0> d, Vec128<T, N> a,
   return MaskFromVec(InterleaveUpper(d, vecHx, vecHx));
 }
 
+template <typename T, size_t N, HWY_IF_LE128(T, N)>
+HWY_INLINE Mask128<T, N> Lt128Upper(Simd<T, N, 0> d, Vec128<T, N> a,
+                                    Vec128<T, N> b) {
+  const Vec128<T, N> ltHL = VecFromMask(d, Lt(a, b));
+  return MaskFromVec(InterleaveUpper(d, ltHL, ltHL));
+}
+
 // ------------------------------ Min128, Max128 (Lt128)
 
 // Without a native OddEven, it seems infeasible to go faster than Lt128.
@@ -5978,7 +6218,17 @@ HWY_INLINE VFromD<D> Min128(D d, const VFromD<D> a, const VFromD<D> b) {
 
 template <class D>
 HWY_INLINE VFromD<D> Max128(D d, const VFromD<D> a, const VFromD<D> b) {
-  return IfThenElse(Lt128(d, a, b), b, a);
+  return IfThenElse(Lt128(d, b, a), a, b);
+}
+
+template <class D>
+HWY_INLINE VFromD<D> Min128Upper(D d, const VFromD<D> a, const VFromD<D> b) {
+  return IfThenElse(Lt128Upper(d, a, b), a, b);
+}
+
+template <class D>
+HWY_INLINE VFromD<D> Max128Upper(D d, const VFromD<D> a, const VFromD<D> b) {
+  return IfThenElse(Lt128Upper(d, b, a), a, b);
 }
 
 // ================================================== Operator wrapper

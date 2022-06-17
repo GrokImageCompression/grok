@@ -19,7 +19,7 @@ if(POLICY CMP0083)
   cmake_policy(SET CMP0083 NEW)
 endif()
 
-project(hwy VERSION 0.16.0)  # Keep in sync with highway.h version
+project(hwy VERSION 0.17.0)  # Keep in sync with highway.h version
 
 # Directly define the ABI version from the cmake project() version values:
 set(LIBRARY_VERSION "${hwy_VERSION}")
@@ -121,6 +121,8 @@ set(HWY_SOURCES
     hwy/ops/x86_128-inl.h
     hwy/ops/x86_256-inl.h
     hwy/ops/x86_512-inl.h
+    hwy/per_target.cc
+    hwy/per_target.h
     hwy/print-inl.h
     hwy/print.cc
     hwy/print.h
@@ -444,6 +446,7 @@ set(HWY_TEST_FILES
   hwy/aligned_allocator_test.cc
   hwy/base_test.cc
   hwy/highway_test.cc
+  hwy/nanobenchmark_test.cc
   hwy/targets_test.cc
   hwy/examples/skeleton_test.cc
   hwy/tests/arithmetic_test.cc
@@ -451,14 +454,18 @@ set(HWY_TEST_FILES
   hwy/tests/blockwise_shift_test.cc
   hwy/tests/combine_test.cc
   hwy/tests/compare_test.cc
+  hwy/tests/compress_test.cc
   hwy/tests/convert_test.cc
   hwy/tests/crypto_test.cc
   hwy/tests/demote_test.cc
   hwy/tests/float_test.cc
   hwy/tests/logical_test.cc
   hwy/tests/mask_test.cc
+  hwy/tests/mask_mem_test.cc
   hwy/tests/memory_test.cc
   hwy/tests/mul_test.cc
+  hwy/tests/reduction_test.cc
+  hwy/tests/reverse_test.cc
   hwy/tests/shift_test.cc
   hwy/tests/swizzle_test.cc
   hwy/tests/test_util_test.cc

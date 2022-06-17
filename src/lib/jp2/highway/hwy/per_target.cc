@@ -1,4 +1,4 @@
-// Copyright 2021 Google LLC
+// Copyright 2022 Google LLC
 // SPDX-License-Identifier: Apache-2.0
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,43 +13,38 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "hwy/contrib/sort/disabled_targets.h"
-#include "hwy/contrib/sort/vqsort.h"
+#include "hwy/per_target.h"
 
 #undef HWY_TARGET_INCLUDE
-#define HWY_TARGET_INCLUDE "hwy/contrib/sort/vqsort_u64a.cc"
+#define HWY_TARGET_INCLUDE "hwy/per_target.cc"
 #include "hwy/foreach_target.h"
-
-// After foreach_target
-#include "hwy/contrib/sort/traits-inl.h"
-#include "hwy/contrib/sort/vqsort-inl.h"
+#include "hwy/highway.h"
 
 HWY_BEFORE_NAMESPACE();
 namespace hwy {
 namespace HWY_NAMESPACE {
-
-void SortU64Asc(uint64_t* HWY_RESTRICT keys, size_t num,
-                uint64_t* HWY_RESTRICT buf) {
-  SortTag<uint64_t> d;
-  detail::SharedTraits<detail::TraitsLane<detail::OrderAscending<uint64_t>>> st;
-  Sort(d, st, keys, num, buf);
-}
-
+// On SVE, Lanes rounds down to a power of two, but we want to know the actual
+// size here. Otherwise, hypothetical SVE with 48 bytes would round down to 32
+// and we'd enable HWY_SVE_256, and then fail reverse_test because Reverse on
+// HWY_SVE_256 requires the actual vector to be a power of two.
+#if HWY_TARGET == HWY_SVE || HWY_TARGET == HWY_SVE2 || HWY_TARGET == HWY_SVE_256
+size_t GetVectorBytes() { return detail::AllHardwareLanes(hwy::SizeTag<1>()); }
+#else
+size_t GetVectorBytes() { return Lanes(ScalableTag<uint8_t>()); }
+#endif
 // NOLINTNEXTLINE(google-readability-namespace-comments)
 }  // namespace HWY_NAMESPACE
+
 }  // namespace hwy
 HWY_AFTER_NAMESPACE();
 
 #if HWY_ONCE
 namespace hwy {
 namespace {
-HWY_EXPORT(SortU64Asc);
+HWY_EXPORT(GetVectorBytes);  // Local function.
 }  // namespace
 
-void Sorter::operator()(uint64_t* HWY_RESTRICT keys, size_t n,
-                        SortAscending) const {
-  HWY_DYNAMIC_DISPATCH(SortU64Asc)(keys, n, Get<uint64_t>());
-}
+size_t VectorBytes() { return HWY_DYNAMIC_DISPATCH(GetVectorBytes)(); }
 
 }  // namespace hwy
 #endif  // HWY_ONCE

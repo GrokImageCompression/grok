@@ -33,6 +33,7 @@ DECLARE_FUNCTION(SSSE3)
 DECLARE_FUNCTION(NEON)
 DECLARE_FUNCTION(SVE)
 DECLARE_FUNCTION(SVE2)
+DECLARE_FUNCTION(SVE_256)
 DECLARE_FUNCTION(PPC8)
 DECLARE_FUNCTION(WASM)
 DECLARE_FUNCTION(RVV)
@@ -47,7 +48,7 @@ void CallFunctionForTarget(uint32_t target, int line) {
 
   // Call Update() first to make &HWY_DYNAMIC_DISPATCH() return
   // the pointer to the already cached function.
-  hwy::GetChosenTarget().Update();
+  hwy::GetChosenTarget().Update(hwy::SupportedTargets());
 
   EXPECT_EQ(target, HWY_DYNAMIC_DISPATCH(FakeFunction)(42)) << line;
 
@@ -71,6 +72,7 @@ void CheckFakeFunction() {
   CallFunctionForTarget(HWY_NEON, __LINE__);
   CallFunctionForTarget(HWY_SVE, __LINE__);
   CallFunctionForTarget(HWY_SVE2, __LINE__);
+  CallFunctionForTarget(HWY_SVE_256, __LINE__);
   CallFunctionForTarget(HWY_PPC8, __LINE__);
   CallFunctionForTarget(HWY_WASM, __LINE__);
   CallFunctionForTarget(HWY_RVV, __LINE__);
@@ -102,23 +104,23 @@ TEST_F(HwyTargetsTest, ChosenTargetOrderTest) { fake::CheckFakeFunction(); }
 
 TEST_F(HwyTargetsTest, DisabledTargetsTest) {
   DisableTargets(~0u);
-  // Check that the baseline can't be disabled.
-  HWY_ASSERT(HWY_ENABLED_BASELINE == SupportedTargets());
+  // Check that disabling everything at least leaves the static target.
+  HWY_ASSERT(HWY_STATIC_TARGET == SupportedTargets());
 
   DisableTargets(0);  // Reset the mask.
   uint32_t current_targets = SupportedTargets();
-  if ((current_targets & ~uint32_t(HWY_ENABLED_BASELINE)) == 0) {
+  if ((current_targets & ~static_cast<uint32_t>(HWY_ENABLED_BASELINE)) == 0) {
     // We can't test anything else if the only compiled target is the baseline.
     return;
   }
   // Get the lowest bit in the mask (the best target) and disable that one.
-  uint32_t lowest_target = current_targets & (~current_targets + 1);
+  uint32_t best_target = current_targets & (~current_targets + 1);
   // The lowest target shouldn't be one in the baseline.
-  HWY_ASSERT((lowest_target & ~uint32_t(HWY_ENABLED_BASELINE)) != 0);
-  DisableTargets(lowest_target);
+  HWY_ASSERT((best_target & ~static_cast<uint32_t>(HWY_ENABLED_BASELINE)) != 0);
+  DisableTargets(best_target);
 
   // Check that the other targets are still enabled.
-  HWY_ASSERT((lowest_target ^ current_targets) == SupportedTargets());
+  HWY_ASSERT((best_target ^ current_targets) == SupportedTargets());
   DisableTargets(0);  // Reset the mask.
 }
 

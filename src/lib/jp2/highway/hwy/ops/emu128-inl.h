@@ -736,7 +736,7 @@ template <size_t N>
 HWY_API Vec128<int16_t, N> MulHigh(Vec128<int16_t, N> a,
                                    const Vec128<int16_t, N> b) {
   for (size_t i = 0; i < N; ++i) {
-    a.raw[i] = static_cast<int16_t>((a.raw[i] * b.raw[i]) >> 16);
+    a.raw[i] = static_cast<int16_t>((int32_t{a.raw[i]} * b.raw[i]) >> 16);
   }
   return a;
 }
@@ -1146,6 +1146,15 @@ HWY_API Mask128<uint64_t> Lt128(Simd<uint64_t, 2, 0> /* tag */,
   return ret;
 }
 
+HWY_API Mask128<uint64_t> Lt128Upper(Simd<uint64_t, 2, 0> /* tag */,
+                                     Vec128<uint64_t> a,
+                                     const Vec128<uint64_t> b) {
+  const bool lt = a.raw[1] < b.raw[1];
+  Mask128<uint64_t> ret;
+  ret.bits[0] = ret.bits[1] = Mask128<uint64_t>::FromBool(lt);
+  return ret;
+}
+
 // ------------------------------ Min128, Max128 (Lt128)
 
 template <class D, class V = VFromD<D>>
@@ -1155,7 +1164,17 @@ HWY_API V Min128(D d, const V a, const V b) {
 
 template <class D, class V = VFromD<D>>
 HWY_API V Max128(D d, const V a, const V b) {
-  return IfThenElse(Lt128(d, a, b), b, a);
+  return IfThenElse(Lt128(d, b, a), a, b);
+}
+
+template <class D, class V = VFromD<D>>
+HWY_API V Min128Upper(D d, const V a, const V b) {
+  return IfThenElse(Lt128Upper(d, a, b), a, b);
+}
+
+template <class D, class V = VFromD<D>>
+HWY_API V Max128Upper(D d, const V a, const V b) {
+  return IfThenElse(Lt128Upper(d, b, a), a, b);
 }
 
 // ================================================== MEMORY
@@ -2129,6 +2148,25 @@ HWY_API Vec128<T, N> Compress(Vec128<T, N> v, const Mask128<T, N> mask) {
   }
   for (size_t i = 0; i < N; ++i) {
     if (!mask.bits[i]) {
+      ret.raw[count++] = v.raw[i];
+    }
+  }
+  HWY_DASSERT(count == N);
+  return ret;
+}
+
+// ------------------------------ CompressNot
+template <typename T, size_t N>
+HWY_API Vec128<T, N> CompressNot(Vec128<T, N> v, const Mask128<T, N> mask) {
+  size_t count = 0;
+  Vec128<T, N> ret;
+  for (size_t i = 0; i < N; ++i) {
+    if (!mask.bits[i]) {
+      ret.raw[count++] = v.raw[i];
+    }
+  }
+  for (size_t i = 0; i < N; ++i) {
+    if (mask.bits[i]) {
       ret.raw[count++] = v.raw[i];
     }
   }

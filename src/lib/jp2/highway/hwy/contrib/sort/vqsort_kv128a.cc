@@ -17,21 +17,24 @@
 #include "hwy/contrib/sort/vqsort.h"
 
 #undef HWY_TARGET_INCLUDE
-#define HWY_TARGET_INCLUDE "hwy/contrib/sort/vqsort_u64a.cc"
+// clang-format off
+// (avoid line break, which would prevent Copybara rules from matching)
+#define HWY_TARGET_INCLUDE "hwy/contrib/sort/vqsort_kv128a.cc"
+// clang-format on
 #include "hwy/foreach_target.h"
 
 // After foreach_target
-#include "hwy/contrib/sort/traits-inl.h"
+#include "hwy/contrib/sort/traits128-inl.h"
 #include "hwy/contrib/sort/vqsort-inl.h"
 
 HWY_BEFORE_NAMESPACE();
 namespace hwy {
 namespace HWY_NAMESPACE {
 
-void SortU64Asc(uint64_t* HWY_RESTRICT keys, size_t num,
-                uint64_t* HWY_RESTRICT buf) {
+void SortKV128Asc(uint64_t* HWY_RESTRICT keys, size_t num,
+                  uint64_t* HWY_RESTRICT buf) {
   SortTag<uint64_t> d;
-  detail::SharedTraits<detail::TraitsLane<detail::OrderAscending<uint64_t>>> st;
+  detail::SharedTraits<detail::Traits128<detail::OrderAscendingKV128>> st;
   Sort(d, st, keys, num, buf);
 }
 
@@ -43,12 +46,13 @@ HWY_AFTER_NAMESPACE();
 #if HWY_ONCE
 namespace hwy {
 namespace {
-HWY_EXPORT(SortU64Asc);
+HWY_EXPORT(SortKV128Asc);
 }  // namespace
 
-void Sorter::operator()(uint64_t* HWY_RESTRICT keys, size_t n,
+void Sorter::operator()(K64V64* HWY_RESTRICT keys, size_t n,
                         SortAscending) const {
-  HWY_DYNAMIC_DISPATCH(SortU64Asc)(keys, n, Get<uint64_t>());
+  HWY_DYNAMIC_DISPATCH(SortKV128Asc)
+  (reinterpret_cast<uint64_t*>(keys), n * 2, Get<uint64_t>());
 }
 
 }  // namespace hwy

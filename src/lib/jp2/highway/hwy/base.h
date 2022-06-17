@@ -257,6 +257,44 @@ struct bfloat16_t {
 using float32_t = float;
 using float64_t = double;
 
+#pragma pack(push, 1)
+
+// Aligned 128-bit type. Cannot use __int128 because clang doesn't yet align it:
+// https://reviews.llvm.org/D86310
+struct alignas(16) uint128_t {
+  uint64_t lo;  // little-endian layout
+  uint64_t hi;
+};
+
+// 64 bit key plus 64 bit value. Faster than using uint128_t when only the key
+// field is to be compared (Lt128Upper instead of Lt128).
+struct alignas(16) K64V64 {
+  uint64_t value;  // little-endian layout
+  uint64_t key;
+};
+
+#pragma pack(pop)
+
+static inline HWY_MAYBE_UNUSED bool operator<(const uint128_t& a,
+                                              const uint128_t& b) {
+  return (a.hi == b.hi) ? a.lo < b.lo : a.hi < b.hi;
+}
+// Required for std::greater.
+static inline HWY_MAYBE_UNUSED bool operator>(const uint128_t& a,
+                                              const uint128_t& b) {
+  return b < a;
+}
+
+static inline HWY_MAYBE_UNUSED bool operator<(const K64V64& a,
+                                              const K64V64& b) {
+  return a.key < b.key;
+}
+// Required for std::greater.
+static inline HWY_MAYBE_UNUSED bool operator>(const K64V64& a,
+                                              const K64V64& b) {
+  return b < a;
+}
+
 //------------------------------------------------------------------------------
 // Controlling overload resolution (SFINAE)
 
@@ -309,6 +347,8 @@ HWY_API constexpr bool IsSame() {
   hwy::EnableIf<sizeof(T) == (bytes)>* = nullptr
 #define HWY_IF_NOT_LANE_SIZE(T, bytes) \
   hwy::EnableIf<sizeof(T) != (bytes)>* = nullptr
+#define HWY_IF_LANE_SIZE_LT(T, bytes) \
+  hwy::EnableIf<sizeof(T) < (bytes)>* = nullptr
 
 #define HWY_IF_LANES_PER_BLOCK(T, N, LANES) \
   hwy::EnableIf<HWY_MIN(sizeof(T) * N, 16) / sizeof(T) == (LANES)>* = nullptr
@@ -383,6 +423,7 @@ struct Relations<uint64_t> {
   using Unsigned = uint64_t;
   using Signed = int64_t;
   using Float = double;
+  using Wide = uint128_t;
   using Narrow = uint32_t;
 };
 template <>
@@ -391,6 +432,11 @@ struct Relations<int64_t> {
   using Signed = int64_t;
   using Float = double;
   using Narrow = int32_t;
+};
+template <>
+struct Relations<uint128_t> {
+  using Unsigned = uint128_t;
+  using Narrow = uint64_t;
 };
 template <>
 struct Relations<float16_t> {
@@ -445,6 +491,10 @@ struct TypeFromSize<8> {
   using Signed = int64_t;
   using Float = double;
 };
+template <>
+struct TypeFromSize<16> {
+  using Unsigned = uint128_t;
+};
 
 }  // namespace detail
 
@@ -479,6 +529,14 @@ HWY_API constexpr bool IsFloat() {
   // from a float, not compared.
   return IsSame<T, float>() || IsSame<T, double>();
 }
+template <>
+constexpr bool IsFloat<hwy::uint128_t>() {
+  return false;
+}
+template <>
+constexpr bool IsFloat<K64V64>() {
+  return false;
+}
 
 template <typename T>
 HWY_API constexpr bool IsSigned() {
@@ -491,6 +549,14 @@ constexpr bool IsSigned<float16_t>() {
 template <>
 constexpr bool IsSigned<bfloat16_t>() {
   return true;
+}
+template <>
+constexpr bool IsSigned<hwy::uint128_t>() {
+  return false;
+}
+template <>
+constexpr bool IsSigned<K64V64>() {
+  return false;
 }
 
 // Largest/smallest representable integer values.
@@ -640,7 +706,7 @@ HWY_API size_t Num0BitsBelowLS1Bit_Nonzero64(const uint64_t x) {
 #else   // HWY_ARCH_X86_64
   // _BitScanForward64 not available
   uint32_t lsb = static_cast<uint32_t>(x & 0xFFFFFFFF);
-  unsigned long index;
+  unsigned long index;  // NOLINT
   if (lsb == 0) {
     uint32_t msb = static_cast<uint32_t>(x >> 32u);
     _BitScanForward(&index, msb);
@@ -675,7 +741,7 @@ HWY_API size_t Num0BitsAboveMS1Bit_Nonzero64(const uint64_t x) {
 #else   // HWY_ARCH_X86_64
   // _BitScanReverse64 not available
   const uint32_t msb = static_cast<uint32_t>(x >> 32u);
-  unsigned long index;
+  unsigned long index;  // NOLINT
   if (msb == 0) {
     const uint32_t lsb = static_cast<uint32_t>(x & 0xFFFFFFFF);
     _BitScanReverse(&index, lsb);
@@ -700,7 +766,8 @@ HWY_API size_t PopCount(uint64_t x) {
 #elif HWY_COMPILER_MSVC && HWY_ARCH_X86_64 && defined(__AVX__)
   return _mm_popcnt_u64(x);
 #elif HWY_COMPILER_MSVC && HWY_ARCH_X86_32 && defined(__AVX__)
-  return _mm_popcnt_u32(uint32_t(x)) + _mm_popcnt_u32(uint32_t(x >> 32));
+  return _mm_popcnt_u32(static_cast<uint32_t>(x & 0xFFFFFFFFu)) +
+         _mm_popcnt_u32(static_cast<uint32_t>(x >> 32));
 #else
   x -= ((x >> 1) & 0x5555555555555555ULL);
   x = (((x >> 2) & 0x3333333333333333ULL) + (x & 0x3333333333333333ULL));
