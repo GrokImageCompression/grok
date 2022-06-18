@@ -32,7 +32,6 @@ set(BLACKLIST_JPEG2000_TMP
     issue733.jp2
     3635.pdf.asan.77.2930.jp2
     issue165.jp2
-    #edf_c2_1103421.jp2
     edf_c2_1178956.jp2
     edf_c2_1000290.jp2
     #edf_c2_1000691.jp2 # ok

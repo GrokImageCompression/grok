@@ -616,8 +616,6 @@ bool CodeStreamDecompress::decompressTiles(void)
 	if(!success)
 		goto cleanup;
 
-	// we will ignore TPSot problem
-	// (https://github.com/uclouvain/openjpeg/issues/254)
 	if(numTilesDecompressed == 0)
 	{
 		GRK_ERROR("No tiles were decompressed.");

@@ -94,7 +94,6 @@ void mqc_init_dec(mqcoder* mqc, uint8_t* bp, uint32_t len)
 	/* Note: alternate "J.1 - Initialization of the software-conventions */
 	/* decoder" has been tried, but does */
 	/* not bring any improvement. */
-	/* See https://github.com/uclouvain/openjpeg/issues/921 */
 	mqc_init_dec_common(mqc, bp, len);
 	mqc_setcurctx(mqc, 0);
 	mqc->end_of_byte_stream_counter = 0;
