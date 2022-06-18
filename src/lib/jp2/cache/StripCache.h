@@ -16,12 +16,12 @@ struct GrkIOBuf : public grk_io_buf
 	GrkIOBuf(uint8_t* data, uint64_t offset, uint64_t dataLen, uint64_t allocLen, bool pooled,
 			 uint32_t index)
 	{
-		this->data_ = data;
-		this->offset_ = offset;
-		this->len_ = dataLen;
-		this->allocLen_ = allocLen;
-		this->pooled_ = pooled;
-		this->index_ = index;
+		data_ = data;
+		offset_ = offset;
+		len_ = dataLen;
+		allocLen_ = allocLen;
+		pooled_ = pooled;
+		index_ = index;
 	}
 	explicit GrkIOBuf(const grk_io_buf rhs)
 	{
