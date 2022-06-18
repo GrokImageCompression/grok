@@ -21,6 +21,10 @@
 #define GROK_SKIP_POISON
 #include "grk_includes.h"
 
+#ifdef _WIN32
+#include <malloc.h>
+#endif
+
 #ifndef SIZE_MAX
 #define SIZE_MAX ((size_t)-1)
 #endif
@@ -50,7 +54,7 @@ static inline void* grk_aligned_alloc_N(size_t alignment, size_t size)
 	size = ((size + alignment - 1) / alignment) * alignment;
 
 #ifdef _WIN32
-	ptr = _aligned_alloc(size,alignment);
+	ptr = _aligned_malloc(size,alignment);
 #else
 	ptr = std::aligned_alloc(alignment, size);
 #endif
@@ -77,7 +81,11 @@ void* grk_aligned_malloc(size_t size)
 }
 void grk_aligned_free(void* ptr)
 {
+#ifdef _WIN32
+	_aligned_free(ptr);
+#else
 	free(ptr);
+#endif
 }
 void* grk_realloc(void* ptr, size_t new_size)
 {
