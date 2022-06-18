@@ -1,30 +1,9 @@
-/* create grk_config_private.h for CMake */
-#cmakedefine GROK_HAVE_INTTYPES_H 	@GROK_HAVE_INTTYPES_H@
-
 #define GRK_PACKAGE_VERSION "@PACKAGE_VERSION@"
 
 #cmakedefine _LARGEFILE_SOURCE
 #cmakedefine _LARGE_FILES
 #cmakedefine _FILE_OFFSET_BITS @_FILE_OFFSET_BITS@
 #cmakedefine GROK_HAVE_FSEEKO @GROK_HAVE_FSEEKO@
-
-/* find whether or not have <malloc.h> */
-#cmakedefine GROK_HAVE_MALLOC_H
-/* check if function `aligned_alloc` exists */
-#cmakedefine GROK_HAVE_ALIGNED_ALLOC
-/* check if function `_aligned_malloc` exists */
-#cmakedefine GROK_HAVE__ALIGNED_MALLOC
-/* check if function `memalign` exists */
-#cmakedefine GROK_HAVE_MEMALIGN
-/* check if function `posix_memalign` exists */
-#cmakedefine GROK_HAVE_POSIX_MEMALIGN
-
-#if !defined(_POSIX_C_SOURCE)
-#if defined(GROK_HAVE_FSEEKO) || defined(GROK_HAVE_POSIX_MEMALIGN)
-/* Get declarations of fseeko, ftello, posix_memalign. */
-#define _POSIX_C_SOURCE 200112L
-#endif
-#endif
 
 /* Byte order.  */
 /* All compilers that support Mac OS X define either __BIG_ENDIAN__ or
