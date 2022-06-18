@@ -38,7 +38,7 @@ Below is a benchmark comparing time and memory performance for **Grok 9.7.7** an
 #### Benchmark Details
 
 * test system : 24 core / 48 thread `AMD Threadripper`
-running `Ubuntu 21.04` with `5.11` Linux kernel and `ext4` file system
+running `Fedora 36` with `5.17` Linux kernel and `xfs` file system
 * codecs were configured to use all 48 threads
 * file cache was cleared before each decompression using `$ sudo sysctl vm.drop_caches=3`
 * Grok was built in release mode using `GCC 10`
@@ -47,13 +47,13 @@ running `Ubuntu 21.04` with `5.11` Linux kernel and `ext4` file system
 
 | Test  | Grok               | Kakadu
 | :---- | :-----             | :------: 
-| 1     | 14.80 s / 16.6 GB  | 10.28 s / 0.05 GB
+| 1     | 14.56 s / 16.6 GB  | 9.02 s / 0.05 GB
 | 2     | 0.25 s / 0.4 GB    | 0.12 s   
-| 3     | 3.45 s / 1.8 GB    | 4.99 s / 0.1 GB
-| 4     | 3.70 s / 2.0 GB    | 4.10 s / 0.1 GB
-| 5     | 0.30 s / 0.7 GB    | 2.7 s / 1.0 GB
-| 6     | 0.64 s / 1.0 GB    | 3.07 s / 1.0 GB
-| 7     | 1.90 s / 1.8 GB    | 3.85 s / 1.1 GB
+| 3     | 3.21 s / 3.65 GB   | 4.94 s / 0.1 GB
+| 4     | 2.94 s / 4.0 GB    | 3.90 s / 0.09 GB
+| 5     | 0.37 s / 0.7 GB    | 2.72 s / 1.0 GB
+| 6     | 0.67 s / 1.0 GB    | 3.02 s / 1.0 GB
+| 7     | 1.76 s / 1.8 GB    | 3.72 s / 1.1 GB
 | 8     | 2.49 s / 6.0 GB    | 7.42 s / 1.1 GB
 
 ### Library Details
