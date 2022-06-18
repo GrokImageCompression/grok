@@ -30,7 +30,6 @@ jobs:
         sudo apt-get install -y gcc-10 g++-10
         sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-10 100 \
           --slave /usr/bin/g++ g++ /usr/bin/g++-10 --slave /usr/bin/gcov gcov /usr/bin/gcov-10
-        python3 -m site &> /dev/null && PATH="$PATH:`python3 -m site --user-base`/bin"
         wget -q http://kakadusoftware.com/wp-content/uploads/KDU805_Demo_Apps_for_Linux-x86-64_200602.zip
         cmake -E tar -xvf KDU805_Demo_Apps_for_Linux-x86-64_200602.zip
         mv KDU805_Demo_Apps_for_Linux-x86-64_200602 kdu
@@ -39,7 +38,6 @@ jobs:
     - name: macos-dependencies
       if: startsWith(matrix.os, 'macos')
       run: |
-        python3 -m site &> /dev/null && PATH="$PATH:`python3 -m site --user-base`/bin"
         wget -q http://kakadusoftware.com/wp-content/uploads/KDU805_Demo_Apps_for_MacOS_200602.dmg_.zip
         mkdir kdu && mv KDU805_Demo_Apps_for_MacOS_200602.dmg_.zip kdu && cd kdu
         7z e KDU805_Demo_Apps_for_MacOS_200602.dmg_.zip
@@ -74,7 +72,6 @@ jobs:
 
     - name: dependencies
       run: |
-        python3 -m pip install --upgrade pip
         cmake -E make_directory ${{ github.workspace }}/build
         git clone --depth=1 --branch=${{ env.DATA_BRANCH }} https://github.com/GrokImageCompression/grok-test-data.git ${{ env.DATA_ROOT }}
 
