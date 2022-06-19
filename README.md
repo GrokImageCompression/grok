@@ -22,7 +22,7 @@
 
 ### Performance
 
-Below is a benchmark comparing time and memory performance for **Grok 9.7.7** and **Kakadu 8.05** on the following workflows:
+Below is a benchmark comparing time and memory performance for **Grok 9.7.8** and **Kakadu 8.05** on the following workflows:
 
 1. decompress large single-tiled [image of Mars](https://hirise.lpl.arizona.edu/PDS/RDR/ESP/ORB_011200_011299/ESP_011277_1825/ESP_011277_1825_RED.JP2) to TIF output
 1. decompress region `(1000,1000,5000,5000)` from large single-tiled [image of Mars](https://hirise.lpl.arizona.edu/PDS/RDR/ESP/ORB_011200_011299/ESP_011277_1825/ESP_011277_1825_RED.JP2) to TIF output
