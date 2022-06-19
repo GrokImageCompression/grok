@@ -31,7 +31,9 @@ void MarkerInfo::dump(FILE* outputFileStream)
 TilePartInfo::TilePartInfo(uint64_t start, uint64_t endHeader, uint64_t end)
 	: startPosition(start), endHeaderPosition(endHeader), endPosition(end)
 {}
-TilePartInfo::TilePartInfo(void) : TilePartInfo(0, 0, 0) {}
+TilePartInfo::TilePartInfo(void)
+	: startPosition(0), endHeaderPosition(0), endPosition(0)
+{}
 void TilePartInfo::dump(FILE* outputFileStream, uint8_t tilePart)
 {
 	std::stringstream ss;
@@ -51,7 +53,7 @@ TileInfo::TileInfo(void)
 }
 TileInfo::~TileInfo(void)
 {
-	grk_free(tilePartInfo);
+	delete[] tilePartInfo;
 	grk_free(markerInfo);
 }
 bool TileInfo::checkResize(void)
@@ -85,65 +87,19 @@ bool TileInfo::hasTilePartInfo(void)
 bool TileInfo::update(uint16_t tileIndex, uint8_t currentTilePart, uint8_t numTileParts)
 {
 	tileno = tileIndex;
-	if(numTileParts != 0)
-	{
-		allocatedTileParts = numTileParts;
-		if(!tilePartInfo)
-		{
-			tilePartInfo = (TilePartInfo*)grk_calloc(numTileParts, sizeof(TilePartInfo));
-			if(!tilePartInfo)
-			{
-				GRK_ERROR("Not enough memory to read SOT marker. "
-						  "Tile index allocation failed");
-				return false;
-			}
-		}
-		else
-		{
-			auto newTilePartIndex =
-				(TilePartInfo*)grk_realloc(tilePartInfo, numTileParts * sizeof(TilePartInfo));
-			if(!newTilePartIndex)
-			{
-				grk_free(tilePartInfo);
-				tilePartInfo = nullptr;
-				GRK_ERROR("Not enough memory to read SOT marker. "
-						  "Tile index allocation failed");
-				return false;
-			}
-			tilePartInfo = newTilePartIndex;
+	if (!tilePartInfo){
+		allocatedTileParts = numTileParts ? numTileParts : 10;
+		tilePartInfo = new TilePartInfo[allocatedTileParts];
+	} else {
+		if (currentTilePart >= allocatedTileParts){
+			auto temp = new TilePartInfo[allocatedTileParts*2];
+			for (uint8_t i = 0; i < allocatedTileParts; ++i)
+				temp[i] = tilePartInfo[i];
+			delete[] tilePartInfo;
+			tilePartInfo = temp;
 		}
 	}
-	else
-	{
-		if(!tilePartInfo)
-		{
-			allocatedTileParts = 10;
-			tilePartInfo = (TilePartInfo*)grk_calloc(allocatedTileParts, sizeof(TilePartInfo));
-			if(!tilePartInfo)
-			{
-				allocatedTileParts = 0;
-				GRK_ERROR("Not enough memory to read SOT marker. "
-						  "Tile index allocation failed");
-				return false;
-			}
-		}
-
-		if(currentTilePart >= allocatedTileParts)
-		{
-			allocatedTileParts = currentTilePart + 1U;
-			auto newTilePartIndex =
-				(TilePartInfo*)grk_realloc(tilePartInfo, allocatedTileParts * sizeof(TilePartInfo));
-			if(!newTilePartIndex)
-			{
-				grk_free(tilePartInfo);
-				tilePartInfo = nullptr;
-				allocatedTileParts = 0;
-				GRK_ERROR("Not enough memory to read SOT marker. Tile index allocation failed");
-				return false;
-			}
-			tilePartInfo = newTilePartIndex;
-		}
-	}
+	tilePartInfo[currentTilePart] = TilePartInfo(tileIndex,currentTilePart,numTileParts);
 
 	return true;
 }
