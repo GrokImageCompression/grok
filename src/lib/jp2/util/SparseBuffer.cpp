@@ -76,7 +76,6 @@ size_t SparseBuffer::read(void* buffer, size_t numBytes)
 }
 size_t SparseBuffer::skip(size_t numBytes)
 {
-	size_t bytes_remaining;
 	if(numBytes + getGlobalOffset() > dataLen)
 	{
 #ifdef DEBUG_CHUNK_BUF
@@ -86,28 +85,29 @@ size_t SparseBuffer::skip(size_t numBytes)
 	}
 	if(numBytes == 0)
 		return 0;
-	bytes_remaining = numBytes;
-	while(currentChunkId < chunks.size() && bytes_remaining > 0)
+	auto skipBytes = numBytes;
+	while(currentChunkId < chunks.size() && skipBytes > 0)
 	{
 		auto currentChunk = chunks[currentChunkId];
 		size_t bytesInCurrentChunk = (size_t)(currentChunk->len - currentChunk->offset);
-		/* hoover up all the bytes in this chunk, and move to the next one */
-		if(bytesInCurrentChunk > bytes_remaining)
+		if(skipBytes > bytesInCurrentChunk)
 		{
+			// hoover up all the bytes in this chunk, and move to the next one
 			incrementCurrentChunkOffset(bytesInCurrentChunk);
-			bytes_remaining -= bytesInCurrentChunk;
+			skipBytes -= bytesInCurrentChunk;
 			currentChunk = chunks[currentChunkId];
 		}
 		else
-		{ /* bingo! we found the chunk */
-			incrementCurrentChunkOffset(bytes_remaining);
-			return numBytes;
+		{   // bingo! we found the chunk
+			incrementCurrentChunkOffset(skipBytes);
+			break;
 		}
 	}
 	return numBytes;
 }
 grk_buf8* SparseBuffer::pushBack(uint8_t* buf, size_t len, bool ownsData)
 {
+	//assert(len < UINT_MAX);
 	auto new_chunk = new grk_buf8(buf, len, ownsData);
 	pushBack(new_chunk);
 	return new_chunk;
