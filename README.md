@@ -54,7 +54,7 @@ running `Fedora 36` with `5.17` Linux kernel and `xfs` file system
 | 5     | 0.37 s / 0.7 GB    | 2.72 s / 1.0 GB
 | 6     | 0.67 s / 1.0 GB    | 3.02 s / 1.0 GB
 | 7     | 1.76 s / 1.8 GB    | 3.72 s / 1.1 GB
-| 8     | 2.49 s / 6.0 GB    | 7.42 s / 1.1 GB
+| 8     | 2.89 s / 6.0 GB    | 7.39 s / 1.1 GB
 
 ### Library Details
 
