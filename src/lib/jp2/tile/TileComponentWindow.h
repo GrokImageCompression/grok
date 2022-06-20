@@ -80,8 +80,8 @@ struct TileComponentWindow
 			reducedNumResolutions > 1 ? resolutions_ + reducedNumResolutions - 2 : nullptr;
 		// create resolution buffers
 		auto highestResWindow = new ResWindow<T>(
-			numresolutions, (uint8_t)(reducedNumResolutions - 1U), nullptr, tileCompAtRes,
-			tileCompAtLowerRes, bounds_, unreducedBounds_, unreducedTileComp,
+			numresolutions, (uint8_t)(reducedNumResolutions - 1U), nullptr, tileCompAtRes->genResSimple(),
+			tileCompAtLowerRes ? tileCompAtLowerRes->genResSimple() : ResSimple(), bounds_, unreducedBounds_, unreducedTileComp,
 			wholeTileDecompress ? 0 : getFilterPad<uint32_t>(lossless));
 		// setting top level prevents allocation of tileCompBandWindows buffers
 		if(!useBandWindows())
@@ -96,7 +96,8 @@ struct TileComponentWindow
 			resWindows.push_back(new ResWindow<T>(
 				numresolutions, resno,
 				useBandWindows() ? nullptr : highestResWindow->getResWindowBufferREL(),
-				resolutions_ + resno, resno > 0 ? resolutions_ + resno - 1 : nullptr, resWindow,
+				(resolutions_ + resno)->genResSimple(),
+				resno > 0 ? (resolutions_ + resno - 1)->genResSimple() : ResSimple(), resWindow,
 				unreducedBounds_, unreducedTileComp,
 				wholeTileDecompress ? 0 : getFilterPad<uint32_t>(lossless)));
 		}

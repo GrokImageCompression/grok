@@ -27,10 +27,11 @@ struct Resolution : public grk_rect32
 	~Resolution(void);
 	virtual void print() const override;
 	bool init(TileProcessor* tileProcessor, TileComponentCodingParams* tccp, uint8_t resno);
+	ResSimple genResSimple(void);
 
 	bool initialized;
 	Subband tileBand[BAND_NUM_INDICES]; // unreduced tile component bands in canvas coordinates
-	uint32_t numTileBandWindows; // 1 or 3
+	uint8_t numTileBandWindows; // 1 or 3
 	uint32_t precinctGridWidth, precinctGridHeight; /* dimensions of precinct grid */
 	grk_pt32 cblkExpn;
 	grk_pt32 precinctPartitionTopLeft;

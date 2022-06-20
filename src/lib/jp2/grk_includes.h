@@ -133,6 +133,7 @@
 #include "T1Interface.h"
 #include "Codeblock.h"
 #include "PacketParser.h"
+#include "ResSimple.h"
 #include "Precinct.h"
 #include "Subband.h"
 #include "Resolution.h"
