@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.17)
+cmake_minimum_required(VERSION 3.16)
 
 if(NOT GROK_NAMESPACE)
   set(GROK_NAMESPACE "GROK")
