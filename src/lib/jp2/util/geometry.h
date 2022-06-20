@@ -409,12 +409,5 @@ struct grk_rect
 using grk_rect32 = grk_rect<uint32_t>;
 using grk_rect16 = grk_rect<uint16_t>;
 
-template<typename T>
-void update_maximum(std::atomic<T>& maximum_value, T const& value) noexcept
-{
-	T prev_value = maximum_value;
-	while(prev_value < value && !maximum_value.compare_exchange_weak(prev_value, value))
-	{}
-}
 
 } // namespace grk

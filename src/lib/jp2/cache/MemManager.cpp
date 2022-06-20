@@ -40,8 +40,6 @@ uint32_t grk_make_aligned_width(uint32_t width)
 }
 static inline void* grk_aligned_alloc_N(size_t alignment, size_t size)
 {
-	void* ptr;
-
 	/* alignment shall be power of 2 */
 	assert((alignment != 0U) && ((alignment & (alignment - 1U)) == 0U));
 	/* alignment shall be at least sizeof(void*) */
@@ -54,23 +52,23 @@ static inline void* grk_aligned_alloc_N(size_t alignment, size_t size)
 	size = ((size + alignment - 1) / alignment) * alignment;
 
 #ifdef _WIN32
-	ptr = _aligned_malloc(size,alignment);
+	return _aligned_malloc(size,alignment);
 #else
-	ptr = std::aligned_alloc(alignment, size);
+	return std::aligned_alloc(alignment, size);
 #endif
-	return ptr;
 }
 void* grk_malloc(size_t size)
 {
-	if(size == 0U) /* prevent implementation defined behavior of realloc */
+	// prevent implementation defined behavior of realloc
+	if(size == 0U)
 		return nullptr;
 
 	return malloc(size);
 }
 void* grk_calloc(size_t num, size_t size)
 {
+    // prevent implementation defined behavior of realloc
 	if(num == 0 || size == 0)
-		/* prevent implementation defined behavior of realloc */
 		return nullptr;
 
 	return calloc(num, size);
@@ -89,7 +87,8 @@ void grk_aligned_free(void* ptr)
 }
 void* grk_realloc(void* ptr, size_t new_size)
 {
-	if(new_size == 0U) /* prevent implementation defined behavior of realloc */
+	// prevent implementation defined behavior of realloc
+	if(new_size == 0U)
 		return nullptr;
 
 	return realloc(ptr, new_size);
