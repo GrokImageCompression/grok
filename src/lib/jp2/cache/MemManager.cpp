@@ -52,7 +52,7 @@ static inline void* grk_aligned_alloc_N(size_t alignment, size_t size)
 	size = ((size + alignment - 1) / alignment) * alignment;
 
 #ifdef _WIN32
-	return _aligned_malloc(size,alignment);
+	return _aligned_malloc(size, alignment);
 #else
 	return std::aligned_alloc(alignment, size);
 #endif
@@ -67,7 +67,7 @@ void* grk_malloc(size_t size)
 }
 void* grk_calloc(size_t num, size_t size)
 {
-    // prevent implementation defined behavior of realloc
+	// prevent implementation defined behavior of realloc
 	if(num == 0 || size == 0)
 		return nullptr;
 

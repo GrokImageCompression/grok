@@ -57,7 +57,7 @@ static inline void* grkAlignedAllocN(size_t alignment, size_t size)
 	size = ((size + alignment - 1) / alignment) * alignment;
 
 #ifdef _WIN32
-	ptr = _aligned_malloc(size,alignment);
+	ptr = _aligned_malloc(size, alignment);
 #else
 	ptr = std::aligned_alloc(alignment, size);
 #endif

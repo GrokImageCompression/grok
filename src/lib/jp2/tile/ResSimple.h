@@ -16,8 +16,8 @@
  */
 #pragma once
 
-namespace grk {
-
+namespace grk
+{
 
 enum eBandOrientation
 {
@@ -39,20 +39,19 @@ enum eBandIndex
 	BAND_NUM_INDICES
 };
 
-
-struct ResSimple : public grk_rect32{
-	ResSimple(void) : numTileBandWindows(0){
-	}
-	ResSimple(grk_rect32* res, uint8_t numTileBandWindows,grk_rect32 (&tileBand)[BAND_NUM_INDICES]){
+struct ResSimple : public grk_rect32
+{
+	ResSimple(void) : numTileBandWindows(0) {}
+	ResSimple(grk_rect32* res, uint8_t numTileBandWindows, grk_rect32 (&tileBand)[BAND_NUM_INDICES])
+	{
 		setRect(res);
 		this->numTileBandWindows = numTileBandWindows;
-		for (uint8_t i = 0; i < numTileBandWindows; i++)
+		for(uint8_t i = 0; i < numTileBandWindows; i++)
 			this->tileBand[i] = tileBand[i];
 	}
 
 	grk_rect32 tileBand[BAND_NUM_INDICES]; // unreduced tile component bands in canvas coordinates
 	uint8_t numTileBandWindows; // 1 or 3
-
 };
 
-}
+} // namespace grk

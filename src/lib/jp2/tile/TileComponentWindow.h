@@ -55,7 +55,7 @@ struct TileComponentWindow
 	typedef grk_buf2d<T, AllocatorAligned> Buf2dAligned;
 	TileComponentWindow(bool isCompressor, bool lossless, bool wholeTileDecompress,
 						grk_rect32 unreducedTileComp, grk_rect32 reducedTileComp,
-						grk_rect32 unreducedImageCompWindow, std::vector<ResSimple> &resolution,
+						grk_rect32 unreducedImageCompWindow, std::vector<ResSimple>& resolution,
 						uint8_t numresolutions, uint8_t reducedNumResolutions)
 		: unreducedBounds_(unreducedTileComp), bounds_(reducedTileComp), compress_(isCompressor),
 		  wholeTileDecompress_(wholeTileDecompress)
@@ -94,8 +94,7 @@ struct TileComponentWindow
 			resWindows.push_back(new ResWindow<T>(
 				numresolutions, resno,
 				useBandWindows() ? nullptr : highestResWindow->getResWindowBufferREL(),
-				resolution_[resno],
-				resno > 0 ? resolution_[resno - 1] : ResSimple(), resWindow,
+				resolution_[resno], resno > 0 ? resolution_[resno - 1] : ResSimple(), resWindow,
 				unreducedBounds_, unreducedTileComp,
 				wholeTileDecompress ? 0 : getFilterPad<uint32_t>(lossless)));
 		}
@@ -419,7 +418,7 @@ struct TileComponentWindow
 	grk_rect32 bounds_;
 	/******************************************************/
 
-	std::vector<ResSimple>resolution_;
+	std::vector<ResSimple> resolution_;
 	// windowed bounds for windowed decompress, otherwise full bounds
 	std::vector<ResWindow<T>*> resWindows;
 

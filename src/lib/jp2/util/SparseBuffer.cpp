@@ -98,7 +98,7 @@ size_t SparseBuffer::skip(size_t numBytes)
 			currentChunk = chunks[currentChunkId];
 		}
 		else
-		{   // bingo! we found the chunk
+		{ // bingo! we found the chunk
 			incrementCurrentChunkOffset(skipBytes);
 			break;
 		}
@@ -107,7 +107,7 @@ size_t SparseBuffer::skip(size_t numBytes)
 }
 grk_buf8* SparseBuffer::pushBack(uint8_t* buf, size_t len, bool ownsData)
 {
-	//assert(len < UINT_MAX);
+	// assert(len < UINT_MAX);
 	auto new_chunk = new grk_buf8(buf, len, ownsData);
 	pushBack(new_chunk);
 	return new_chunk;

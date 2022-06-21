@@ -31,9 +31,7 @@ void MarkerInfo::dump(FILE* outputFileStream)
 TilePartInfo::TilePartInfo(uint64_t start, uint64_t endHeader, uint64_t end)
 	: startPosition(start), endHeaderPosition(endHeader), endPosition(end)
 {}
-TilePartInfo::TilePartInfo(void)
-	: startPosition(0), endHeaderPosition(0), endPosition(0)
-{}
+TilePartInfo::TilePartInfo(void) : startPosition(0), endHeaderPosition(0), endPosition(0) {}
 void TilePartInfo::dump(FILE* outputFileStream, uint8_t tilePart)
 {
 	std::stringstream ss;
@@ -87,19 +85,23 @@ bool TileInfo::hasTilePartInfo(void)
 bool TileInfo::update(uint16_t tileIndex, uint8_t currentTilePart, uint8_t numTileParts)
 {
 	tileno = tileIndex;
-	if (!tilePartInfo){
+	if(!tilePartInfo)
+	{
 		allocatedTileParts = numTileParts ? numTileParts : 10;
 		tilePartInfo = new TilePartInfo[allocatedTileParts];
-	} else {
-		if (currentTilePart >= allocatedTileParts){
-			auto temp = new TilePartInfo[allocatedTileParts*2];
-			for (uint8_t i = 0; i < allocatedTileParts; ++i)
+	}
+	else
+	{
+		if(currentTilePart >= allocatedTileParts)
+		{
+			auto temp = new TilePartInfo[allocatedTileParts * 2];
+			for(uint8_t i = 0; i < allocatedTileParts; ++i)
 				temp[i] = tilePartInfo[i];
 			delete[] tilePartInfo;
 			tilePartInfo = temp;
 		}
 	}
-	tilePartInfo[currentTilePart] = TilePartInfo(tileIndex,currentTilePart,numTileParts);
+	tilePartInfo[currentTilePart] = TilePartInfo(tileIndex, currentTilePart, numTileParts);
 
 	return true;
 }

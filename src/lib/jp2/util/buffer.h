@@ -16,7 +16,8 @@
  */
 #pragma once
 
-namespace grk {
+namespace grk
+{
 
 template<typename T>
 struct AllocatorVanilla
@@ -441,4 +442,4 @@ struct grk_buf2d : protected grk_buf<T, A>, public grk_rect32
 	uint32_t stride;
 };
 
-}
+} // namespace grk

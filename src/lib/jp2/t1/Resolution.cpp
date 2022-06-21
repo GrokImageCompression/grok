@@ -84,10 +84,12 @@ bool Resolution::init(TileProcessor* tileProcessor, TileComponentCodingParams* t
 	return true;
 }
 
-ResSimple Resolution::genResSimple(void){
-	grk_rect32 bands[BAND_NUM_INDICES] = {tileBand[BAND_INDEX_HL],tileBand[BAND_INDEX_LH], tileBand[BAND_INDEX_HH]};
+ResSimple Resolution::genResSimple(void)
+{
+	grk_rect32 bands[BAND_NUM_INDICES] = {tileBand[BAND_INDEX_HL], tileBand[BAND_INDEX_LH],
+										  tileBand[BAND_INDEX_HH]};
 
-	return ResSimple(this,numTileBandWindows,bands);
+	return ResSimple(this, numTileBandWindows, bands);
 }
 
 } // namespace grk

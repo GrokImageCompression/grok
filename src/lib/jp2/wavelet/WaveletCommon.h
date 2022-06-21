@@ -30,27 +30,31 @@ struct vec
 		for(size_t i = 0; i < N; ++i)
 			val[i] = m;
 	}
-	vec operator+(const vec &rhs){
+	vec operator+(const vec& rhs)
+	{
 		vec rc;
 		for(size_t i = 0; i < N; ++i)
 			rc.val[i] = val[i] + rhs.val[i];
 
 		return rc;
 	}
-	vec& operator+=(const vec &rhs){
+	vec& operator+=(const vec& rhs)
+	{
 		for(size_t i = 0; i < N; ++i)
 			val[i] += rhs.val[i];
 
 		return *this;
 	}
-	vec operator-(const vec &rhs){
+	vec operator-(const vec& rhs)
+	{
 		vec rc;
 		for(size_t i = 0; i < N; ++i)
 			rc.val[i] = val[i] - rhs.val[i];
 
 		return rc;
 	}
-	vec& operator-=(const vec &rhs){
+	vec& operator-=(const vec& rhs)
+	{
 		for(size_t i = 0; i < N; ++i)
 			val[i] -= rhs.val[i];
 
@@ -61,4 +65,4 @@ struct vec
 	T val[N];
 };
 
-}
+} // namespace grk

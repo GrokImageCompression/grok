@@ -409,5 +409,4 @@ struct grk_rect
 using grk_rect32 = grk_rect<uint32_t>;
 using grk_rect16 = grk_rect<uint16_t>;
 
-
 } // namespace grk

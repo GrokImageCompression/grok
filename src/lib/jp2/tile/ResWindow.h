@@ -71,7 +71,7 @@ struct ResWindow
 
   private:
 	ResWindow(uint8_t numresolutions, uint8_t resno, Buf2dAligned* resWindowHighestResREL,
-			ResSimple tileCompAtRes, ResSimple tileCompAtLowerRes, grk_rect32 resWindow,
+			  ResSimple tileCompAtRes, ResSimple tileCompAtLowerRes, grk_rect32 resWindow,
 			  grk_rect32 tileCompWindowUnreduced, grk_rect32 tileCompUnreduced,
 			  uint32_t FILTER_WIDTH)
 		: allocated_(false), filterWidth_(FILTER_WIDTH), tileCompAtRes_(tileCompAtRes),
@@ -126,7 +126,8 @@ struct ResWindow
 		}
 		else
 		{
-			assert(tileCompAtRes_.numTileBandWindows == 3 || !tileCompAtLowerRes.numTileBandWindows);
+			assert(tileCompAtRes_.numTileBandWindows == 3 ||
+				   !tileCompAtLowerRes.numTileBandWindows);
 
 			// dummy LL band window
 			bandWindowsBuffersPadded_.push_back(new Buf2dAligned(0, 0));
