@@ -332,9 +332,12 @@ bool TileComponent::canCreateWindow(grk_rect32 windowBounds)
 void TileComponent::createWindow(grk_rect32 unreducedImageCompWindow)
 {
 	dealloc();
+	std::vector<ResSimple> resVec;
+	for (uint8_t i = 0; i < numresolutions; ++i)
+		resVec.push_back((resolutions_+i)->genResSimple());
 	window_ = new TileComponentWindow<int32_t>(
 		isCompressor_, tccp_->qmfbid == 1, wholeTileDecompress, resolutions_ + numresolutions - 1,
-		this, unreducedImageCompWindow, resolutions_, numresolutions,
+		this, unreducedImageCompWindow, resVec, numresolutions,
 		isCompressor_ ? numresolutions : numResolutionsToDecompress);
 }
 TileComponentWindow<int32_t>* TileComponent::getWindow() const

@@ -55,7 +55,7 @@ struct TileComponentWindow
 	typedef grk_buf2d<T, AllocatorAligned> Buf2dAligned;
 	TileComponentWindow(bool isCompressor, bool lossless, bool wholeTileDecompress,
 						grk_rect32 unreducedTileComp, grk_rect32 reducedTileComp,
-						grk_rect32 unreducedImageCompWindow, Resolution* resolutions_,
+						grk_rect32 unreducedImageCompWindow, std::vector<ResSimple> &resolution,
 						uint8_t numresolutions, uint8_t reducedNumResolutions)
 		: unreducedBounds_(unreducedTileComp), bounds_(reducedTileComp), compress_(isCompressor),
 		  wholeTileDecompress_(wholeTileDecompress)
@@ -72,16 +72,14 @@ struct TileComponentWindow
 			assert(bounds_.valid());
 		}
 		// fill resolutions vector
-		for(uint32_t resno = 0; resno < reducedNumResolutions; ++resno)
-			resolution_.push_back(resolutions_ + resno);
-
-		auto tileCompAtRes = resolutions_ + reducedNumResolutions - 1;
+		resolution_ = resolution;
+		auto tileCompAtRes = resolution_[reducedNumResolutions - 1];
 		auto tileCompAtLowerRes =
-			reducedNumResolutions > 1 ? resolutions_ + reducedNumResolutions - 2 : nullptr;
+			reducedNumResolutions > 1 ? resolution_[reducedNumResolutions - 2] : ResSimple();
 		// create resolution buffers
 		auto highestResWindow = new ResWindow<T>(
-			numresolutions, (uint8_t)(reducedNumResolutions - 1U), nullptr, tileCompAtRes->genResSimple(),
-			tileCompAtLowerRes ? tileCompAtLowerRes->genResSimple() : ResSimple(), bounds_, unreducedBounds_, unreducedTileComp,
+			numresolutions, (uint8_t)(reducedNumResolutions - 1U), nullptr, tileCompAtRes,
+			tileCompAtLowerRes, bounds_, unreducedBounds_, unreducedTileComp,
 			wholeTileDecompress ? 0 : getFilterPad<uint32_t>(lossless));
 		// setting top level prevents allocation of tileCompBandWindows buffers
 		if(!useBandWindows())
@@ -96,8 +94,8 @@ struct TileComponentWindow
 			resWindows.push_back(new ResWindow<T>(
 				numresolutions, resno,
 				useBandWindows() ? nullptr : highestResWindow->getResWindowBufferREL(),
-				(resolutions_ + resno)->genResSimple(),
-				resno > 0 ? (resolutions_ + resno - 1)->genResSimple() : ResSimple(), resWindow,
+				resolution_[resno],
+				resno > 0 ? resolution_[resno - 1] : ResSimple(), resWindow,
 				unreducedBounds_, unreducedTileComp,
 				wholeTileDecompress ? 0 : getFilterPad<uint32_t>(lossless)));
 		}
@@ -144,7 +142,7 @@ struct TileComponentWindow
 		assert(resno < resolution_.size());
 
 		auto res = resolution_[resno];
-		auto band = res->tileBand + getBandIndex(resno, orientation);
+		auto band = res.tileBand + getBandIndex(resno, orientation);
 
 		// get offset relative to band
 		offsetx -= band->x0;
@@ -155,9 +153,9 @@ struct TileComponentWindow
 			auto resLower = resolution_[resno - 1U];
 
 			if(orientation & 1)
-				offsetx += resLower->width();
+				offsetx += resLower.width();
 			if(orientation & 2)
-				offsety += resLower->height();
+				offsety += resLower.height();
 		}
 	}
 	template<typename F>
@@ -421,7 +419,7 @@ struct TileComponentWindow
 	grk_rect32 bounds_;
 	/******************************************************/
 
-	std::vector<Resolution*> resolution_;
+	std::vector<ResSimple>resolution_;
 	// windowed bounds for windowed decompress, otherwise full bounds
 	std::vector<ResWindow<T>*> resWindows;
 
