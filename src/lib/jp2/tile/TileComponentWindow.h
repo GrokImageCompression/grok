@@ -55,15 +55,25 @@ struct TileComponentWindow
 	typedef grk_buf2d<T, AllocatorAligned> Buf2dAligned;
 	TileComponentWindow(bool isCompressor, bool lossless, bool wholeTileDecompress,
 						grk_rect32 unreducedTileComp, grk_rect32 reducedTileComp,
-						grk_rect32 unreducedImageCompWindow, std::vector<ResSimple>& resolution,
-						uint8_t numresolutions, uint8_t reducedNumResolutions)
+						grk_rect32 unreducedImageCompWindow, uint8_t numresolutions,
+						uint8_t reducedNumResolutions)
 		: unreducedBounds_(unreducedTileComp), bounds_(reducedTileComp), compress_(isCompressor),
 		  wholeTileDecompress_(wholeTileDecompress)
 	{
 		assert(reducedNumResolutions > 0);
+		auto currentRes = unreducedTileComp;
+		for(uint8_t i = 0; i < numresolutions; ++i)
+		{
+			bool finalResolution = i == numresolutions - 1;
+			ResSimple r(currentRes, finalResolution);
+			resolution_.push_back(r);
+			if(!finalResolution)
+				currentRes = ResSimple::getBandWindow(1, 0, currentRes);
+		}
+		std::reverse(resolution_.begin(), resolution_.end());
 		if(!compress_)
 		{
-			unreducedBounds_ = unreducedImageCompWindow.intersection(unreducedTileComp);
+			unreducedBounds_ = unreducedImageCompWindow.intersection(unreducedBounds_);
 			assert(unreducedBounds_.valid());
 
 			bounds_ = unreducedImageCompWindow.scaleDownCeilPow2(
@@ -72,7 +82,6 @@ struct TileComponentWindow
 			assert(bounds_.valid());
 		}
 		// fill resolutions vector
-		resolution_ = resolution;
 		auto tileCompAtRes = resolution_[reducedNumResolutions - 1];
 		auto tileCompAtLowerRes =
 			reducedNumResolutions > 1 ? resolution_[reducedNumResolutions - 2] : ResSimple();
@@ -89,8 +98,8 @@ struct TileComponentWindow
 		for(uint8_t resno = 0; resno < reducedNumResolutions - 1; ++resno)
 		{
 			// resolution window ==  LL band window of next highest resolution
-			auto resWindow = ResWindow<T>::getBandWindow((uint8_t)(numresolutions - 1 - resno), 0,
-														 unreducedBounds_);
+			auto resWindow = ResSimple::getBandWindow((uint8_t)(numresolutions - 1 - resno), 0,
+													  unreducedBounds_);
 			resWindows.push_back(new ResWindow<T>(
 				numresolutions, resno,
 				useBandWindows() ? nullptr : highestResWindow->getResWindowBufferREL(),
@@ -104,21 +113,6 @@ struct TileComponentWindow
 	{
 		for(auto& b : resWindows)
 			delete b;
-	}
-	/**
-	 * Get band window (in tile component coordinates) for specified number
-	 * of decompositions
-	 *
-	 * Note: if numDecomps is zero, then the band window (and there is only one)
-	 * is equal to the unreduced tile component window
-	 *
-	 * See table F-1 in JPEG 2000 standard
-	 *
-	 */
-	static grk_rect32 getBandWindow(uint8_t numDecomps, uint8_t orientation,
-									grk_rect32 tileCompWindowUnreduced)
-	{
-		return ResWindow<T>::getBandWindow(numDecomps, orientation, tileCompWindowUnreduced);
 	}
 
 	/**

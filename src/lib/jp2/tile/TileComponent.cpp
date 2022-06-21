@@ -87,8 +87,8 @@ bool TileComponent::init(TileProcessor* tileProcessor, grk_rect32 unreducedTileC
 	{
 		auto res = resolutions_ + resno;
 
-		res->setRect(TileComponentWindow<int32_t>::getBandWindow(
-			(uint8_t)(numresolutions - (resno + 1)), BAND_ORIENT_LL, unreducedTileComp));
+		res->setRect(ResSimple::getBandWindow((uint8_t)(numresolutions - (resno + 1)),
+											  BAND_ORIENT_LL, unreducedTileComp));
 
 		/* p. 35, table A-23, ISO/IEC FDIS154444-1 : 2000 (18 august 2000) */
 		uint32_t precWidthExp = tccp_->precWidthExp[resno];
@@ -139,8 +139,8 @@ bool TileComponent::init(TileProcessor* tileProcessor, grk_rect32 unreducedTileC
 			band->orientation = orientation;
 			uint8_t numDecomps =
 				(resno == 0) ? (uint8_t)(numresolutions - 1U) : (uint8_t)(numresolutions - resno);
-			band->setRect(TileComponentWindow<int32_t>::getBandWindow(numDecomps, band->orientation,
-																	  unreducedTileComp));
+			band->setRect(
+				ResSimple::getBandWindow(numDecomps, band->orientation, unreducedTileComp));
 		}
 	}
 	// set band step size
@@ -332,12 +332,9 @@ bool TileComponent::canCreateWindow(grk_rect32 windowBounds)
 void TileComponent::createWindow(grk_rect32 unreducedImageCompWindow)
 {
 	dealloc();
-	std::vector<ResSimple> resVec;
-	for(uint8_t i = 0; i < numresolutions; ++i)
-		resVec.push_back((resolutions_ + i)->genResSimple());
 	window_ = new TileComponentWindow<int32_t>(
 		isCompressor_, tccp_->qmfbid == 1, wholeTileDecompress, resolutions_ + numresolutions - 1,
-		this, unreducedImageCompWindow, resVec, numresolutions,
+		this, unreducedImageCompWindow, numresolutions,
 		isCompressor_ ? numresolutions : numResolutionsToDecompress);
 }
 TileComponentWindow<int32_t>* TileComponent::getWindow() const
