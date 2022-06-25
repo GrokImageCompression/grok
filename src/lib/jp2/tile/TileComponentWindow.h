@@ -71,16 +71,15 @@ struct TileComponentWindow
 				currentRes = ResSimple::getBandWindow(1, 0, currentRes);
 		}
 		std::reverse(resolution_.begin(), resolution_.end());
-		if(!compress_)
-		{
-			unreducedBounds_ = unreducedImageCompWindow.intersection(unreducedBounds_);
-			assert(unreducedBounds_.valid());
 
-			bounds_ = unreducedImageCompWindow.scaleDownCeilPow2(
-				(uint32_t)(numresolutions - reducedNumResolutions));
-			bounds_ = bounds_.intersection(reducedTileComp);
-			assert(bounds_.valid());
-		}
+		// generate bounds
+		unreducedBounds_ = unreducedImageCompWindow.intersection(unreducedBounds_);
+		assert(unreducedBounds_.valid());
+		bounds_ = unreducedImageCompWindow.scaleDownCeilPow2(
+			(uint32_t)(numresolutions - reducedNumResolutions));
+		bounds_ = bounds_.intersection(reducedTileComp);
+		assert(bounds_.valid());
+
 		// fill resolutions vector
 		auto tileCompAtRes = resolution_[reducedNumResolutions - 1];
 		auto tileCompAtLowerRes =

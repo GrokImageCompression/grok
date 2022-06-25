@@ -277,6 +277,7 @@ bool TileProcessor::createWindowBuffers(const GrkImage* outputImage)
 		{
 			if(!tileComp->canCreateWindow(tileComp))
 				return false;
+			unreducedImageCompWindow = tileComp;
 		}
 		else
 		{
