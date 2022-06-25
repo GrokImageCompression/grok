@@ -105,8 +105,8 @@ typedef std::map<uint16_t, TL_INFO_VEC*> TL_MAP;
 
 struct TileLengthMarkers
 {
-	TileLengthMarkers();
-	TileLengthMarkers(IBufferedStream* stream);
+	explicit TileLengthMarkers(uint16_t numSignalledTiles);
+	explicit TileLengthMarkers(IBufferedStream* stream);
 	~TileLengthMarkers();
 
 	bool read(uint8_t* headerData, uint16_t header_size);
@@ -143,6 +143,7 @@ struct TileLengthMarkers
 	// used to track tile index when there are no tile indices
 	// stored in markers
 	uint16_t tileCount_;
+	uint16_t numSignalledTiles_;
 };
 
 struct PacketInfo

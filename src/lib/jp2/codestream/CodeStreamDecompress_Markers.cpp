@@ -947,8 +947,7 @@ bool CodeStreamDecompress::read_cbd(uint8_t* headerData, uint16_t header_size)
 bool CodeStreamDecompress::read_tlm(uint8_t* headerData, uint16_t header_size)
 {
 	if(!cp_.tlm_markers)
-		cp_.tlm_markers = new TileLengthMarkers();
-
+		cp_.tlm_markers = new TileLengthMarkers(cp_.t_grid_width * cp_.t_grid_height);
 	bool rc = cp_.tlm_markers->read(headerData, header_size);
 
 	// disable

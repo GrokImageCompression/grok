@@ -598,8 +598,10 @@ bool CodeStreamDecompress::decompressTiles(void)
 			if(curr_marker_ == J2K_MS_SOT)
 			{
 				uint16_t markerSize;
-				if(!readCurrentMarkerBody(&markerSize))
-					return false;
+				if(!readCurrentMarkerBody(&markerSize)){
+					success = false;
+					goto cleanup;
+				}
 			}
 			break;
 		}
@@ -632,9 +634,7 @@ cleanup:
 	{
 		executor->run(taskflow).wait();
 		delete executor;
-		executor = nullptr;
 		delete[] node;
-		node = nullptr;
 	}
 	return success;
 }
