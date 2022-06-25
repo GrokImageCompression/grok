@@ -162,10 +162,13 @@ bool CodeStreamDecompress::parseTileParts(bool* canDecompress)
 			}
 
 			uint16_t markerSize;
-			try {
-			   if (!readCurrentMarkerBody(&markerSize))
-				   return false;
-			} catch (CorruptSOTMarkerException &csme){
+			try
+			{
+				if(!readCurrentMarkerBody(&markerSize))
+					return false;
+			}
+			catch(CorruptSOTMarkerException& csme)
+			{
 				return false;
 			}
 			/* Add the marker to the code stream index*/
@@ -756,8 +759,6 @@ bool CodeStreamDecompress::read_rgn(uint8_t* headerData, uint16_t header_size)
 		GRK_ERROR("RGN marker RS value of %u is not supported by JPEG 2000 Part 1", roi_sty);
 		return false;
 	}
-
-	/* testcase 3635.pdf.asan.77.2930 */
 	if(comp_no >= numComps)
 	{
 		GRK_ERROR("bad component number in RGN (%u is >= number of components %u)", comp_no,

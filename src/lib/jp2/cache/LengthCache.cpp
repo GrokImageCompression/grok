@@ -229,8 +229,7 @@ TilePartLengthInfo::TilePartLengthInfo(uint16_t tileno, uint32_t len)
 TileLengthMarkers::TileLengthMarkers(uint16_t numSignalledTiles)
 	: markers_(new TL_MAP()), markerIt_(markers_->end()), markerTilePartIndex_(0),
 	  curr_vec_(nullptr), stream_(nullptr), streamStart(0), valid_(true), hasTileIndices_(false),
-	  tileCount_(0),
-	  numSignalledTiles_(numSignalledTiles)
+	  tileCount_(0), numSignalledTiles_(numSignalledTiles)
 {}
 TileLengthMarkers::TileLengthMarkers(IBufferedStream* stream) : TileLengthMarkers(USHRT_MAX)
 {
@@ -420,8 +419,10 @@ TilePartLengthInfo* TileLengthMarkers::next(bool peek)
 		if(curr_vec_)
 		{
 			auto rc = &curr_vec_->operator[](markerTilePartIndex_);
-			if (rc->tileIndex_ >= numSignalledTiles_){
-				GRK_ERROR("TLM entry tile index %d must be less than signalled number of tiles %d",rc->tileIndex_, numSignalledTiles_);
+			if(rc->tileIndex_ >= numSignalledTiles_)
+			{
+				GRK_ERROR("TLM entry tile index %d must be less than signalled number of tiles %d",
+						  rc->tileIndex_, numSignalledTiles_);
 				throw CorruptTLMException();
 			}
 			if(!peek)

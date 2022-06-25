@@ -127,8 +127,6 @@ bool SOTMarker::read(CodeStreamDecompress* codeStream, uint8_t* headerData, uint
 		return false;
 	}
 	auto cp = codeStream->getCodingParams();
-
-	/* testcase 2.pdf.SIGFPE.706.1112 */
 	if(tileIndex >= cp->t_grid_width * cp->t_grid_height)
 	{
 		GRK_ERROR("Invalid tile number %u", tileIndex);

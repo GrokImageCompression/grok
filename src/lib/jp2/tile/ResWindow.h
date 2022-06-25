@@ -277,8 +277,9 @@ struct ResWindow
 				bandWindowsBuffersPaddedREL_[orientation]);
 		}
 		resWindowBuffer_->attach(resWindowBufferREL_);
-		for(uint8_t i = 0; i < SPLIT_NUM_ORIENTATIONS; ++i){
-			if (resWindowBufferSplitREL_[i])
+		for(uint8_t i = 0; i < SPLIT_NUM_ORIENTATIONS; ++i)
+		{
+			if(resWindowBufferSplitREL_[i])
 				resWindowBufferSplitREL_[i]->attach(resWindowBufferSplit_[i]);
 		}
 		allocated_ = true;

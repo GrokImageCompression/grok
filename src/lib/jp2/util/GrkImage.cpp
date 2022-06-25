@@ -554,7 +554,6 @@ void GrkImage::apply_channel_definition()
 bool GrkImage::check_color(void)
 {
 	uint16_t i;
-	/* testcase 4149.pdf.SIGSEGV.cf7.3501 */
 	auto clr = &meta->color;
 	if(clr->channel_definition)
 	{
@@ -600,9 +599,6 @@ bool GrkImage::check_color(void)
 			--num_channels;
 		}
 	}
-
-	/* testcases 451.pdf.SIGSEGV.f4c.3723, 451.pdf.SIGSEGV.5b5.3723 and
-	 66ea31acbb0f23a2bbc91f64d69a03f5_signal_sigsegv_13937c0_7030_5725.pdf */
 	if(clr->palette && clr->palette->component_mapping)
 	{
 		uint16_t num_channels = clr->palette->num_channels;

@@ -597,10 +597,13 @@ bool CodeStreamDecompress::decompressTiles(void)
 			// but there are actually 6
 			if(curr_marker_ == J2K_MS_SOT)
 			{
-				try {
-				 uint16_t markerSize;
-				 readCurrentMarkerBody(&markerSize);
-				} catch (CorruptSOTMarkerException &csme){
+				try
+				{
+					uint16_t markerSize;
+					readCurrentMarkerBody(&markerSize);
+				}
+				catch(CorruptSOTMarkerException& csme)
+				{
 					success = false;
 					goto cleanup;
 				}
@@ -902,10 +905,13 @@ bool CodeStreamDecompress::decompressTile(void)
 		{
 			if(readSOTorEOC() && curr_marker_ == J2K_MS_SOT)
 			{
-				try {
+				try
+				{
 					uint16_t markerSize;
 					readCurrentMarkerBody(&markerSize);
-				} catch (CorruptSOTMarkerException &csme){
+				}
+				catch(CorruptSOTMarkerException& csme)
+				{
 					return false;
 				}
 			}

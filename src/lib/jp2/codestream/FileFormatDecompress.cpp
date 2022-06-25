@@ -949,7 +949,6 @@ bool FileFormatDecompress::read_colr(uint8_t* p_colr_header_data, uint32_t colr_
 		enumcs = (GRK_ENUM_COLOUR_SPACE)temp;
 		if((colr_header_size > 7) && (enumcs != GRK_ENUM_CLRSPC_CIE))
 		{ /* handled below for CIELab) */
-			/* testcase Altona_Technical_v20_x4.pdf */
 			GRK_WARN("Bad COLR header box (bad size: %u)", colr_header_size);
 		}
 		if(enumcs == GRK_ENUM_CLRSPC_CIE)
