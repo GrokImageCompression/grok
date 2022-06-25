@@ -47,7 +47,7 @@ running `Fedora 36` with `5.17` Linux kernel and `xfs` file system
 
 | Test  | Grok               | Kakadu
 | :---- | :-----             | :------: 
-| 1     | 14.56 s / 16.6 GB  | 9.02 s / 0.05 GB
+| 1     | 13.74 s / 16.6 GB  | 9.02 s / 0.05 GB
 | 2     | 0.25 s / 0.4 GB    | 0.12 s   
 | 3     | 3.21 s / 3.65 GB   | 4.94 s / 0.1 GB
 | 4     | 2.94 s / 4.0 GB    | 3.90 s / 0.09 GB
