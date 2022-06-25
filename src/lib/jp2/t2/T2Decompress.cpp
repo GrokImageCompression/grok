@@ -166,7 +166,9 @@ bool T2Decompress::processPacket(uint16_t compno, uint8_t resno, uint64_t precin
 		delete parser;
 		return false;
 	}
-	if(!skip)
+	if (skip)
+		delete parser;
+	else
 		readPacketData(res, parser, precinctIndex, packetInfo->packetLength);
 	tileProcessor->incNumProcessedPackets();
 
