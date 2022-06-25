@@ -162,9 +162,12 @@ bool CodeStreamDecompress::parseTileParts(bool* canDecompress)
 			}
 
 			uint16_t markerSize;
-			if(!readCurrentMarkerBody(&markerSize))
+			try {
+			   if (!readCurrentMarkerBody(&markerSize))
+				   return false;
+			} catch (CorruptSOTMarkerException &csme){
 				return false;
-
+			}
 			/* Add the marker to the code stream index*/
 			if(codeStreamInfo)
 			{

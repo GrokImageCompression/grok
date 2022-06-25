@@ -55,7 +55,13 @@ class InvalidMarkerException : public std::exception
 class BadAsocException : public std::exception
 {
 };
-class CorruptTLMException : public CorruptPacketException
+class CorruptMarkerException : public std::exception
+{
+};
+class CorruptTLMException : public CorruptMarkerException
+{
+};
+class CorruptSOTMarkerException : public CorruptMarkerException
 {
 };
 
