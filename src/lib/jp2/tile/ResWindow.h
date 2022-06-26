@@ -50,6 +50,8 @@ enum eSplitOrientation
 
 template<typename T>
 struct TileComponentWindow;
+template<typename T>
+struct TileComponentWindowBase;
 
 /**
  * ResWindow
@@ -66,6 +68,7 @@ struct TileComponentWindow;
 template<typename T>
 struct ResWindow
 {
+	friend struct TileComponentWindowBase<T>;
 	friend struct TileComponentWindow<T>;
 	typedef grk_buf2d<T, AllocatorAligned> Buf2dAligned;
 
@@ -248,40 +251,62 @@ struct ResWindow
 				resWindowBufferSplit_[SPLIT_H]->attach(resWindowBufferHighestResREL_, 0,
 													   tileCompAtLowerRes_.height());
 			}
+
+			// attach canvas windows to relative windows
+			for(uint8_t orientation = 0; orientation < bandWindowsBuffersPaddedREL_.size();
+				++orientation)
+			{
+				bandWindowsBuffersPadded_[orientation]->attach(
+					bandWindowsBuffersPaddedREL_[orientation]);
+			}
+			resWindowBuffer_->attach(resWindowBufferREL_);
+			for(uint8_t i = 0; i < SPLIT_NUM_ORIENTATIONS; ++i)
+			{
+				if(resWindowBufferSplitREL_[i])
+					resWindowBufferSplitREL_[i]->attach(resWindowBufferSplit_[i]);
+			}
 		}
 		else
 		{
+			// 1. allocate resolution window
 			// resolution window is always allocated
 			if(!resWindowBufferREL_->alloc2d(clear))
 				return false;
+			resWindowBuffer_->attach(resWindowBufferREL_);
 
+			// 2, allocate padded band windows
 			// band windows are allocated if present
-			for(auto& b : bandWindowsBuffersPaddedREL_)
+			for(auto& b : bandWindowsBuffersPadded_)
 			{
 				if(!b->alloc2d(clear))
 					return false;
 			}
+			for(uint8_t orientation = 0; orientation < bandWindowsBuffersPaddedREL_.size();
+				++orientation)
+			{
+				bandWindowsBuffersPaddedREL_[orientation]->attach(
+					bandWindowsBuffersPaddedREL_[orientation]);
+			}
+
+			// 3. allocate split windows
 			if(tileCompAtLowerRes_.numTileBandWindows)
 			{
-				resWindowBufferSplit_[SPLIT_L]->attach(resWindowBufferREL_);
-				resWindowBufferSplit_[SPLIT_H]->attach(resWindowBufferREL_, 0,
+				if (resWindowBufferHighestResREL_) {
+					resWindowBufferSplit_[SPLIT_L]->attach(resWindowBuffer_);
+					resWindowBufferSplit_[SPLIT_H]->attach(resWindowBuffer_, 0,
 													   tileCompAtLowerRes_.height());
+				} else {
+					resWindowBufferSplit_[SPLIT_L]->alloc2d(clear);
+					resWindowBufferSplit_[SPLIT_H]->alloc2d(clear);
+				}
+				for(uint8_t i = 0; i < SPLIT_NUM_ORIENTATIONS; ++i)
+				{
+					if(resWindowBufferSplitREL_[i])
+						resWindowBufferSplitREL_[i]->attach(resWindowBufferSplit_[i]);
+				}
 			}
 		}
 
-		// attach canvas windows to relative windows
-		for(uint8_t orientation = 0; orientation < bandWindowsBuffersPaddedREL_.size();
-			++orientation)
-		{
-			bandWindowsBuffersPadded_[orientation]->attach(
-				bandWindowsBuffersPaddedREL_[orientation]);
-		}
-		resWindowBuffer_->attach(resWindowBufferREL_);
-		for(uint8_t i = 0; i < SPLIT_NUM_ORIENTATIONS; ++i)
-		{
-			if(resWindowBufferSplitREL_[i])
-				resWindowBufferSplitREL_[i]->attach(resWindowBufferSplit_[i]);
-		}
 		allocated_ = true;
 
 		return true;

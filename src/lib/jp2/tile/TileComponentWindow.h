@@ -50,15 +50,13 @@ constexpr T getFilterPad(bool lossless)
 }
 
 template<typename T>
-struct TileComponentWindow
-{
-	typedef grk_buf2d<T, AllocatorAligned> Buf2dAligned;
-	TileComponentWindow(bool isCompressor, bool lossless, bool wholeTileDecompress,
+struct TileComponentWindowBase {
+	TileComponentWindowBase(bool isCompressor, bool lossless, bool wholeTileDecompress,
 						grk_rect32 unreducedTileComp, grk_rect32 reducedTileComp,
 						grk_rect32 unreducedImageCompWindow, uint8_t numresolutions,
-						uint8_t reducedNumResolutions)
-		: unreducedBounds_(unreducedTileComp), bounds_(reducedTileComp), compress_(isCompressor),
-		  wholeTileDecompress_(wholeTileDecompress)
+						uint8_t reducedNumResolutions) :
+							  unreducedBounds_(unreducedTileComp), bounds_(reducedTileComp), compress_(isCompressor),
+							  wholeTileDecompress_(wholeTileDecompress)
 	{
 		assert(reducedNumResolutions > 0);
 		auto currentRes = unreducedTileComp;
@@ -108,11 +106,70 @@ struct TileComponentWindow
 		}
 		resWindows.push_back(highestResWindow);
 	}
-	~TileComponentWindow()
+	virtual ~TileComponentWindowBase()
 	{
-		for(auto& b : resWindows)
+		for(auto& b : this->resWindows)
 			delete b;
 	}
+	/**
+	 * Get bounds of tile component (canvas coordinates)
+	 * decompress: reduced canvas coordinates of window
+	 * compress: unreduced canvas coordinates of entire tile
+	 */
+	grk_rect32 bounds() const
+	{
+		return bounds_;
+	}
+	grk_rect32 unreducedBounds() const
+	{
+		return unreducedBounds_;
+	}
+	bool alloc()
+	{
+		for(auto& b : resWindows)
+		{
+			if(!b->alloc(!compress_))
+				return false;
+		}
+
+		return true;
+	}
+protected:
+	bool useBandWindows() const
+	{
+		return !this->wholeTileDecompress_;
+	}
+	// windowed bounds for windowed decompress, otherwise full bounds
+	std::vector<ResWindow<T>*> resWindows;
+	/******************************************************/
+	// decompress: unreduced/reduced image component window
+	// compress:  unreduced/reduced tile component
+	grk_rect32 unreducedBounds_;
+	grk_rect32 bounds_;
+	/******************************************************/
+
+	std::vector<ResSimple> resolution_;
+	bool compress_;
+	bool wholeTileDecompress_;
+};
+
+
+template<typename T>
+struct TileComponentWindow : public TileComponentWindowBase<T>
+{
+	typedef grk_buf2d<T, AllocatorAligned> Buf2dAligned;
+	TileComponentWindow(bool isCompressor, bool lossless, bool wholeTileDecompress,
+						grk_rect32 unreducedTileComp, grk_rect32 reducedTileComp,
+						grk_rect32 unreducedImageCompWindow, uint8_t numresolutions,
+						uint8_t reducedNumResolutions)
+		: TileComponentWindowBase<T>(isCompressor, lossless, wholeTileDecompress,
+				unreducedTileComp, reducedTileComp,
+				unreducedImageCompWindow,  numresolutions,
+				reducedNumResolutions)
+
+	{
+	}
+	~TileComponentWindow() = default;
 
 	/**
 	 * Transform code block offsets from canvas coordinates
@@ -131,9 +188,9 @@ struct TileComponentWindow
 	void toRelativeCoordinates(uint8_t resno, eBandOrientation orientation, uint32_t& offsetx,
 							   uint32_t& offsety) const
 	{
-		assert(resno < resolution_.size());
+		assert(resno < this->resolution_.size());
 
-		auto res = resolution_[resno];
+		auto res = this->resolution_[resno];
 		auto band = res.tileBand + getBandIndex(resno, orientation);
 
 		// get offset relative to band
@@ -142,7 +199,7 @@ struct TileComponentWindow
 
 		if(useBufferCoordinatesForCodeblock() && resno > 0)
 		{
-			auto resLower = resolution_[resno - 1U];
+			auto resLower = this->resolution_[resno - 1U];
 
 			if(orientation & 1)
 				offsetx += resLower.width();
@@ -171,13 +228,13 @@ struct TileComponentWindow
 	const Buf2dAligned* getBandWindowBufferPaddedREL(uint8_t resno,
 													 eBandOrientation orientation) const
 	{
-		assert(resno < resolution_.size());
+		assert(resno < this->resolution_.size());
 		assert(resno > 0 || orientation == BAND_ORIENT_LL);
 
-		if(resno == 0 && (compress_ || wholeTileDecompress_))
-			return resWindows[0]->getResWindowBufferREL();
+		if(resno == 0 && (this->compress_ || this->wholeTileDecompress_))
+			return this->resWindows[0]->getResWindowBufferREL();
 
-		return resWindows[resno]->getBandWindowBufferPaddedREL(orientation);
+		return this->resWindows[resno]->getBandWindowBufferPaddedREL(orientation);
 	}
 	/**
 	 * Get padded band window buffer
@@ -191,13 +248,13 @@ struct TileComponentWindow
 	const grk_buf2d_simple<int32_t>
 		getBandWindowBufferPaddedSimple(uint8_t resno, eBandOrientation orientation) const
 	{
-		assert(resno < resolution_.size());
+		assert(resno < this->resolution_.size());
 		assert(resno > 0 || orientation == BAND_ORIENT_LL);
 
-		if(resno == 0 && (compress_ || wholeTileDecompress_))
-			return resWindows[0]->getResWindowBufferSimple();
+		if(resno == 0 && (this->compress_ || this->wholeTileDecompress_))
+			return this->resWindows[0]->getResWindowBufferSimple();
 
-		return resWindows[resno]->getBandWindowBufferPaddedSimple(orientation);
+		return this->resWindows[resno]->getBandWindowBufferPaddedSimple(orientation);
 	}
 	/**
 	 * Get padded band window buffer
@@ -211,13 +268,13 @@ struct TileComponentWindow
 	const grk_buf2d_simple<float>
 		getBandWindowBufferPaddedSimpleF(uint8_t resno, eBandOrientation orientation) const
 	{
-		assert(resno < resolution_.size());
+		assert(resno < this->resolution_.size());
 		assert(resno > 0 || orientation == BAND_ORIENT_LL);
 
-		if(resno == 0 && (compress_ || wholeTileDecompress_))
-			return resWindows[0]->getResWindowBufferSimpleF();
+		if(resno == 0 && (this->compress_ || this->wholeTileDecompress_))
+			return this->resWindows[0]->getResWindowBufferSimpleF();
 
-		return resWindows[resno]->getBandWindowBufferPaddedSimpleF(orientation);
+		return this->resWindows[resno]->getBandWindowBufferPaddedSimpleF(orientation);
 	}
 
 	/**
@@ -229,7 +286,7 @@ struct TileComponentWindow
 	 */
 	const grk_rect32* getBandWindowPadded(uint8_t resno, eBandOrientation orientation) const
 	{
-		return resWindows[resno]->getBandWindowPadded(orientation);
+		return this->resWindows[resno]->getBandWindowPadded(orientation);
 	}
 	/*
 	 * Get intermediate split window
@@ -239,9 +296,9 @@ struct TileComponentWindow
 	const Buf2dAligned* getResWindowBufferSplitREL(uint8_t resno,
 												   eSplitOrientation orientation) const
 	{
-		assert(resno > 0 && resno < resolution_.size());
+		assert(resno > 0 && resno < this->resolution_.size());
 
-		return resWindows[resno]->getResWindowBufferSplitREL(orientation);
+		return this->resWindows[resno]->getResWindowBufferSplitREL(orientation);
 	}
 	/*
 	 * Get intermediate split window simple buffer
@@ -273,7 +330,7 @@ struct TileComponentWindow
 	 */
 	const Buf2dAligned* getResWindowBufferREL(uint32_t resno) const
 	{
-		return resWindows[resno]->getResWindowBufferREL();
+		return this->resWindows[resno]->getResWindowBufferREL();
 	}
 	/**
 	 * Get resolution window
@@ -324,29 +381,6 @@ struct TileComponentWindow
 	{
 		return getResWindowBufferHighestREL()->simpleF();
 	}
-	bool alloc()
-	{
-		for(auto& b : resWindows)
-		{
-			if(!b->alloc(!compress_))
-				return false;
-		}
-
-		return true;
-	}
-	/**
-	 * Get bounds of tile component (canvas coordinates)
-	 * decompress: reduced canvas coordinates of window
-	 * compress: unreduced canvas coordinates of entire tile
-	 */
-	grk_rect32 bounds() const
-	{
-		return bounds_;
-	}
-	grk_rect32 unreducedBounds() const
-	{
-		return unreducedBounds_;
-	}
 	uint64_t stridedArea(void) const
 	{
 		auto win = getResWindowBufferHighestREL();
@@ -385,16 +419,11 @@ struct TileComponentWindow
 	 */
 	Buf2dAligned* getResWindowBufferHighestREL(void) const
 	{
-		return resWindows.back()->getResWindowBufferREL();
-	}
-
-	bool useBandWindows() const
-	{
-		return !wholeTileDecompress_;
+		return this->resWindows.back()->getResWindowBufferREL();
 	}
 	bool useBufferCoordinatesForCodeblock() const
 	{
-		return compress_ || !wholeTileDecompress_;
+		return this->compress_ || !this->wholeTileDecompress_;
 	}
 	uint8_t getBandIndex(uint8_t resno, eBandOrientation orientation) const
 	{
@@ -404,19 +433,6 @@ struct TileComponentWindow
 
 		return index;
 	}
-	/******************************************************/
-	// decompress: unreduced/reduced image component window
-	// compress:  unreduced/reduced tile component
-	grk_rect32 unreducedBounds_;
-	grk_rect32 bounds_;
-	/******************************************************/
-
-	std::vector<ResSimple> resolution_;
-	// windowed bounds for windowed decompress, otherwise full bounds
-	std::vector<ResWindow<T>*> resWindows;
-
-	bool compress_;
-	bool wholeTileDecompress_;
 };
 
 } // namespace grk
