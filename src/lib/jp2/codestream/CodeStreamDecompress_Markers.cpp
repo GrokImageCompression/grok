@@ -218,7 +218,11 @@ bool CodeStreamDecompress::parseTileParts(bool* canDecompress)
 			// prepare for next tile part
 			decompressorState_.setState(DECOMPRESS_STATE_TPH_SOT);
 
-			nextTLM();
+			try {
+				nextTLM();
+			} catch (CorruptTLMException &ctlme){
+				return false;
+			}
 			if(!readSOTorEOC())
 				break;
 		}
@@ -228,7 +232,11 @@ bool CodeStreamDecompress::parseTileParts(bool* canDecompress)
 			if(!currentTileProcessor_->cacheTilePartPackets(this))
 				return false;
 
-			nextTLM();
+			try {
+				nextTLM();
+			} catch (CorruptTLMException &ctlme){
+				return false;
+			}
 			if(!decompressorState_.tilesToDecompress_.isComplete(
 				   currentTileProcessor_->getIndex()) &&
 			   !readSOTorEOC())

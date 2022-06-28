@@ -597,13 +597,7 @@ bool CodeStreamDecompress::decompressTiles(void)
 			// but there are actually 6
 			if(curr_marker_ == J2K_MS_SOT)
 			{
-				try
-				{
-					uint16_t markerSize;
-					readCurrentMarkerBody(&markerSize);
-				}
-				catch(CorruptSOTMarkerException& csme)
-				{
+				if (checkForIllegalTilePart()){
 					success = false;
 					goto cleanup;
 				}
@@ -905,15 +899,8 @@ bool CodeStreamDecompress::decompressTile(void)
 		{
 			if(readSOTorEOC() && curr_marker_ == J2K_MS_SOT)
 			{
-				try
-				{
-					uint16_t markerSize;
-					readCurrentMarkerBody(&markerSize);
-				}
-				catch(CorruptSOTMarkerException& csme)
-				{
+				if (checkForIllegalTilePart())
 					return false;
-				}
 			}
 		}
 		catch(InvalidMarkerException& ime)
@@ -924,6 +911,19 @@ bool CodeStreamDecompress::decompressTile(void)
 	}
 
 	return true;
+}
+bool CodeStreamDecompress::checkForIllegalTilePart(void){
+	try
+	{
+		uint16_t markerSize;
+		readCurrentMarkerBody(&markerSize);
+	}
+	catch(CorruptSOTMarkerException& csme)
+	{
+		return true;
+	}
+
+	return false;
 }
 bool CodeStreamDecompress::findNextSOT(TileProcessor* tileProcessor)
 {

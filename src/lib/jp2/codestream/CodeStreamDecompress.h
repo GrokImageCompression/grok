@@ -315,6 +315,7 @@ class CodeStreamDecompress : public CodeStream, public ICodeStreamDecompress
 	const marker_handler* get_marker_handler(uint16_t id);
 
 	bool createOutputImage(void);
+	bool checkForIllegalTilePart(void);
 
 	std::map<uint16_t, marker_handler*> marker_map;
 	DecompressorState decompressorState_;
