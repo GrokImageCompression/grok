@@ -28,6 +28,33 @@ namespace grk
 
 typedef vec<float, 4> vec4f;
 
+template<typename T, typename S>
+struct TaskInfo
+{
+	TaskInfo(S data, grk_buf2d_simple<T> winLL, grk_buf2d_simple<T> winHL,
+			 grk_buf2d_simple<T> winLH, grk_buf2d_simple<T> winHH, grk_buf2d_simple<T> winDest,
+			 uint32_t indexMin, uint32_t indexMax)
+		: data(data), winLL(winLL), winHL(winHL), winLH(winLH), winHH(winHH), winDest(winDest),
+		  indexMin_(indexMin), indexMax_(indexMax)
+	{}
+	TaskInfo(S data, uint32_t indexMin, uint32_t indexMax)
+		: data(data), indexMin_(indexMin), indexMax_(indexMax)
+	{}
+	~TaskInfo(void)
+	{
+		data.release();
+	}
+	S data;
+	grk_buf2d_simple<T> winLL;
+	grk_buf2d_simple<T> winHL;
+	grk_buf2d_simple<T> winLH;
+	grk_buf2d_simple<T> winHH;
+	grk_buf2d_simple<T> winDest;
+
+	uint32_t indexMin_;
+	uint32_t indexMax_;
+};
+
 uint32_t max_resolution(Resolution* GRK_RESTRICT r, uint32_t i);
 
 template<class T>
@@ -114,13 +141,14 @@ class WaveletReverse
   public:
 	WaveletReverse(TileProcessor* tileProcessor, TileComponent* tilec, uint16_t compno,
 				   grk_rect32 window, uint8_t numres, uint8_t qmfbid);
+	~WaveletReverse(void);
 	bool decompress(void);
 
 	static void decompress_step_97(dwt_data<vec4f>* GRK_RESTRICT dwt);
 
   private:
 	template<typename T, uint32_t FILTER_WIDTH, uint32_t VERT_PASS_WIDTH, typename D>
-	bool decompress_partial_tile(ISparseCanvas* sa);
+	bool decompress_partial_tile(ISparseCanvas* sa, std::vector<TaskInfo<T, dwt_data<T>>*> &tasks);
 	static void decompress_step1_97(const Params97& d, const float c);
 #ifdef __SSE__
 	static void decompress_step1_sse_97(Params97 d, const __m128 c);
@@ -189,6 +217,9 @@ class WaveletReverse
 
 	dwt_data<vec4f> horizF_;
 	dwt_data<vec4f> vertF_;
+
+	std::vector<TaskInfo<vec4f, dwt_data<vec4f>>*> tasksF_;
+	std::vector<TaskInfo<int32_t, dwt_data<int32_t>>*> tasks_;
 };
 
 } // namespace grk

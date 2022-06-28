@@ -1709,32 +1709,7 @@ Params97 WaveletReverse::makeParams97(dwt_data<vec4f>* dwt, bool isBandL, bool s
 	return rc;
 };
 
-template<typename T, typename S>
-struct TaskInfo
-{
-	TaskInfo(S data, grk_buf2d_simple<T> winLL, grk_buf2d_simple<T> winHL,
-			 grk_buf2d_simple<T> winLH, grk_buf2d_simple<T> winHH, grk_buf2d_simple<T> winDest,
-			 uint32_t indexMin, uint32_t indexMax)
-		: data(data), winLL(winLL), winHL(winHL), winLH(winLH), winHH(winHH), winDest(winDest),
-		  indexMin_(indexMin), indexMax_(indexMax)
-	{}
-	TaskInfo(S data, uint32_t indexMin, uint32_t indexMax)
-		: data(data), indexMin_(indexMin), indexMax_(indexMax)
-	{}
-	~TaskInfo(void)
-	{
-		data.release();
-	}
-	S data;
-	grk_buf2d_simple<T> winLL;
-	grk_buf2d_simple<T> winHL;
-	grk_buf2d_simple<T> winLH;
-	grk_buf2d_simple<T> winHH;
-	grk_buf2d_simple<T> winDest;
 
-	uint32_t indexMin_;
-	uint32_t indexMax_;
-};
 
 template<uint32_t FILTER_WIDTH>
 struct PartialBandInfo
@@ -1825,7 +1800,7 @@ struct PartialBandInfo
  */
 template<typename T, uint32_t FILTER_WIDTH, uint32_t VERT_PASS_WIDTH, typename D>
 
-bool WaveletReverse::decompress_partial_tile(ISparseCanvas* sa)
+bool WaveletReverse::decompress_partial_tile(ISparseCanvas* sa, std::vector<TaskInfo<T, dwt_data<T>>*> &tasks)
 {
 	uint8_t numresolutions = tilec_->numresolutions;
 	auto buf = tilec_->getWindow();
@@ -1874,8 +1849,6 @@ bool WaveletReverse::decompress_partial_tile(ISparseCanvas* sa)
 
 		return ret;
 	};
-	if(numThreads > 1)
-		imageComponentFlow->waveletFinalCopy_->nextTask().work([final_read] { final_read(); });
 	// pre-allocate all blocks
 	std::vector<PartialBandInfo<FILTER_WIDTH>> resBandInfo;
 	for(uint8_t resno = 1; resno < numres_; resno++)
@@ -1911,7 +1884,6 @@ bool WaveletReverse::decompress_partial_tile(ISparseCanvas* sa)
 					2 * ((int64_t)taskInfo->data.win_h.x0 - (int64_t)taskInfo->data.win_l.x0);
 				if(!decompressor.interleave_h(&taskInfo->data, sa, yPos, height))
 				{
-					delete taskInfo;
 					return false;
 				}
 				taskInfo->data.memL = taskInfo->data.mem;
@@ -1925,11 +1897,9 @@ bool WaveletReverse::decompress_partial_tile(ISparseCanvas* sa)
 										 2 * (int64_t)taskInfo->data.win_l.x0),
 							  HORIZ_PASS_HEIGHT, 1))
 				{
-					delete taskInfo;
 					return false;
 				}
 			}
-			delete taskInfo;
 
 			return true;
 		};
@@ -1947,7 +1917,6 @@ bool WaveletReverse::decompress_partial_tile(ISparseCanvas* sa)
 						VERT_PASS_WIDTH;
 				if(!decompressor.interleave_v(&taskInfo->data, sa, xPos, width))
 				{
-					delete taskInfo;
 					return false;
 				}
 				taskInfo->data.memL = taskInfo->data.mem;
@@ -1967,11 +1936,9 @@ bool WaveletReverse::decompress_partial_tile(ISparseCanvas* sa)
 					   1, VERT_PASS_WIDTH * (sizeof(T) / sizeof(int32_t))))
 				{
 					GRK_ERROR("Sparse array write failure");
-					delete taskInfo;
 					return false;
 				}
 			}
-			delete taskInfo;
 
 			return true;
 		};
@@ -2008,6 +1975,7 @@ bool WaveletReverse::decompress_partial_tile(ISparseCanvas* sa)
 					delete taskInfo;
 					return false;
 				}
+				tasks.push_back(taskInfo);
 				if(numThreads > 1)
 					resFlow->waveletHoriz_->nextTask().work(
 						[taskInfo, executor_h] { executor_h(taskInfo); });
@@ -2041,6 +2009,7 @@ bool WaveletReverse::decompress_partial_tile(ISparseCanvas* sa)
 				delete taskInfo;
 				return false;
 			}
+			tasks.push_back(taskInfo);
 			if(numThreads > 1)
 				resFlow->waveletVert_->nextTask().work(
 					[taskInfo, executor_v] { executor_v(taskInfo); });
@@ -2049,7 +2018,9 @@ bool WaveletReverse::decompress_partial_tile(ISparseCanvas* sa)
 		}
 	}
 
-	if(numThreads == 1)
+	if(numThreads > 1)
+		imageComponentFlow->waveletFinalCopy_->nextTask().work([final_read] { final_read(); });
+	else
 		final_read();
 
 	return true;
@@ -2059,6 +2030,12 @@ WaveletReverse::WaveletReverse(TileProcessor* tileProcessor, TileComponent* tile
 	: tileProcessor_(tileProcessor), scheduler_(tileProcessor->getScheduler()), tilec_(tilec),
 	  compno_(compno), unreducedWindow_(unreducedWindow), numres_(numres), qmfbid_(qmfbid)
 {}
+WaveletReverse::~WaveletReverse(void){
+	for (auto& t : tasks_)
+		delete t;
+	for (auto& t : tasksF_)
+		delete t;
+}
 bool WaveletReverse::decompress(void)
 {
 	if(qmfbid_ == 1)
@@ -2071,7 +2048,7 @@ bool WaveletReverse::decompress(void)
 			return decompress_partial_tile<
 				int32_t, getFilterPad<uint32_t>(true), VERT_PASS_WIDTH,
 				Partial53<int32_t, getFilterPad<uint32_t>(false), VERT_PASS_WIDTH>>(
-				tilec_->getRegionWindow());
+				tilec_->getRegionWindow(),tasks_ );
 		}
 	}
 	else
@@ -2084,7 +2061,7 @@ bool WaveletReverse::decompress(void)
 			return decompress_partial_tile<
 				vec4f, getFilterPad<uint32_t>(false), VERT_PASS_WIDTH,
 				Partial97<vec4f, getFilterPad<uint32_t>(false), VERT_PASS_WIDTH>>(
-				tilec_->getRegionWindow());
+				tilec_->getRegionWindow(),tasksF_);
 		}
 	}
 }

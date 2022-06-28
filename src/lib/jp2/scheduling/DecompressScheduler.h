@@ -47,6 +47,7 @@ class DecompressScheduler : public Scheduler
 	bool scheduleBlocks(uint16_t compno);
 	bool scheduleWavelet(uint16_t compno);
 	bool decompressBlock(T1Interface* impl, DecompressBlockExec* block);
+	void releaseBlocks(uint16_t compno);
 	TileProcessor* tileProcessor_;
 	TileCodingParams* tcp_;
 	uint8_t prec_;
