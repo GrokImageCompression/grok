@@ -133,10 +133,10 @@ struct ResWindow
 				   !tileCompAtLowerRes.numTileBandWindows);
 
 			// dummy LL band window
-			bandWindowsBuffersPadded_.push_back(new Buf2dAligned(0, 0));
-			bandWindowsBuffersPaddedREL_.push_back(new Buf2dAligned(0, 0));
 			if(tileCompAtLowerRes_.numTileBandWindows && tileCompAtLowerRes_.valid())
 			{
+				bandWindowsBuffersPadded_.push_back(new Buf2dAligned(0, 0));
+				bandWindowsBuffersPaddedREL_.push_back(new Buf2dAligned(0, 0));
 				for(uint32_t i = 0; i < tileCompAtRes_.numTileBandWindows; ++i)
 				{
 					auto tileCompBand = tileCompAtRes_.tileBand + i;
