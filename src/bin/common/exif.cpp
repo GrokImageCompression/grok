@@ -35,9 +35,9 @@
 #endif
 #endif
 #include "exif.h"
-#include "spdlog/spdlog.h"
 #include <stdexcept>
 #include "common.h"
+#include <iostream>
 
 namespace grk
 {
@@ -135,11 +135,11 @@ void transferExifTags(std::string src, std::string dest)
 	dTHX;
 	char* args[] = {(char*)src.c_str(), (char*)dest.c_str(), nullptr};
 	if(call_argv("transfer", G_DISCARD, args))
-		spdlog::warn("Unable to run Perl script used to extract exif tags");
+		std::cout << "Unable to run Perl script used to extract exif tags" << std::endl;
 #else
 	GRK_UNUSED(src);
 	GRK_UNUSED(dest);
-	spdlog::warn("ExifTool not available; unable to transfer Exif tags");
+	std::cout << "ExifTool not available; unable to transfer Exif tags" << std::endl;
 #endif
 }
 
