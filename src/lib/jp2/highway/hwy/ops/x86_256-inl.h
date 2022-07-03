@@ -2206,11 +2206,7 @@ HWY_API Vec256<double> MaskedLoad(Mask256<double> m, Full256<double> d,
 // 3-cycle cost of moving data between 128-bit halves and avoids port 5.
 template <typename T>
 HWY_API Vec256<T> LoadDup128(Full256<T> /* tag */, const T* HWY_RESTRICT p) {
-#if HWY_LOADDUP_ASM
-  __m256i out;
-  asm("vbroadcasti128 %1, %[reg]" : [ reg ] "=x"(out) : "m"(p[0]));
-  return Vec256<T>{out};
-#elif HWY_COMPILER_MSVC && !HWY_COMPILER_CLANG && HWY_COMPILER_MSVC < 1931
+#if HWY_COMPILER_MSVC && !HWY_COMPILER_CLANG && HWY_COMPILER_MSVC < 1931
   // Workaround for incorrect results with _mm256_broadcastsi128_si256. Note
   // that MSVC also lacks _mm256_zextsi128_si256, but cast (which leaves the
   // upper half undefined) is fine because we're overwriting that anyway.
@@ -2225,11 +2221,7 @@ HWY_API Vec256<T> LoadDup128(Full256<T> /* tag */, const T* HWY_RESTRICT p) {
 }
 HWY_API Vec256<float> LoadDup128(Full256<float> /* tag */,
                                  const float* const HWY_RESTRICT p) {
-#if HWY_LOADDUP_ASM
-  __m256 out;
-  asm("vbroadcastf128 %1, %[reg]" : [ reg ] "=x"(out) : "m"(p[0]));
-  return Vec256<float>{out};
-#elif HWY_COMPILER_MSVC && !HWY_COMPILER_CLANG && HWY_COMPILER_MSVC < 1931
+#if HWY_COMPILER_MSVC && !HWY_COMPILER_CLANG && HWY_COMPILER_MSVC < 1931
   const __m128 v128 = LoadU(Full128<float>(), p).raw;
   return Vec256<float>{
       _mm256_insertf128_ps(_mm256_castps128_ps256(v128), v128, 1)};
@@ -2239,11 +2231,7 @@ HWY_API Vec256<float> LoadDup128(Full256<float> /* tag */,
 }
 HWY_API Vec256<double> LoadDup128(Full256<double> /* tag */,
                                   const double* const HWY_RESTRICT p) {
-#if HWY_LOADDUP_ASM
-  __m256d out;
-  asm("vbroadcastf128 %1, %[reg]" : [ reg ] "=x"(out) : "m"(p[0]));
-  return Vec256<double>{out};
-#elif HWY_COMPILER_MSVC && !HWY_COMPILER_CLANG && HWY_COMPILER_MSVC < 1931
+#if HWY_COMPILER_MSVC && !HWY_COMPILER_CLANG && HWY_COMPILER_MSVC < 1931
   const __m128d v128 = LoadU(Full128<double>(), p).raw;
   return Vec256<double>{
       _mm256_insertf128_pd(_mm256_castpd128_pd256(v128), v128, 1)};
@@ -2651,33 +2639,43 @@ HWY_API T GetLane(const Vec256<T> v) {
 // compiler could decide to optimize out code that relies on this.
 //
 // The newer _mm256_zextsi128_si256 intrinsic fixes this by specifying the
-// zeroing, but it is not available on MSVC nor GCC until 10.1. For older GCC,
-// we can still obtain the desired code thanks to pattern recognition; note that
-// the expensive insert instruction is not actually generated, see
-// https://gcc.godbolt.org/z/1MKGaP.
+// zeroing, but it is not available on MSVC until 15.7 nor GCC until 10.1. For
+// older GCC, we can still obtain the desired code thanks to pattern
+// recognition; note that the expensive insert instruction is not actually
+// generated, see https://gcc.godbolt.org/z/1MKGaP.
+
+#if !defined(HWY_HAVE_ZEXT)
+#if (HWY_COMPILER_MSVC && HWY_COMPILER_MSVC >= 1915) ||  \
+    (HWY_COMPILER_CLANG && HWY_COMPILER_CLANG >= 500) || \
+    (!HWY_COMPILER_CLANG && HWY_COMPILER_GCC && HWY_COMPILER_GCC >= 1000)
+#define HWY_HAVE_ZEXT 1
+#else
+#define HWY_HAVE_ZEXT 0
+#endif
+#endif  // defined(HWY_HAVE_ZEXT)
 
 template <typename T>
 HWY_API Vec256<T> ZeroExtendVector(Full256<T> /* tag */, Vec128<T> lo) {
-#if !HWY_COMPILER_CLANG && HWY_COMPILER_GCC && (HWY_COMPILER_GCC < 1000)
-  return Vec256<T>{_mm256_inserti128_si256(_mm256_setzero_si256(), lo.raw, 0)};
+#if HWY_HAVE_ZEXT
+return Vec256<T>{_mm256_zextsi128_si256(lo.raw)};
 #else
-  return Vec256<T>{_mm256_zextsi128_si256(lo.raw)};
+  return Vec256<T>{_mm256_inserti128_si256(_mm256_setzero_si256(), lo.raw, 0)};
 #endif
 }
 HWY_API Vec256<float> ZeroExtendVector(Full256<float> /* tag */,
                                        Vec128<float> lo) {
-#if !HWY_COMPILER_CLANG && HWY_COMPILER_GCC && (HWY_COMPILER_GCC < 1000)
-  return Vec256<float>{_mm256_insertf128_ps(_mm256_setzero_ps(), lo.raw, 0)};
-#else
+#if HWY_HAVE_ZEXT
   return Vec256<float>{_mm256_zextps128_ps256(lo.raw)};
+#else
+  return Vec256<float>{_mm256_insertf128_ps(_mm256_setzero_ps(), lo.raw, 0)};
 #endif
 }
 HWY_API Vec256<double> ZeroExtendVector(Full256<double> /* tag */,
                                         Vec128<double> lo) {
-#if !HWY_COMPILER_CLANG && HWY_COMPILER_GCC && (HWY_COMPILER_GCC < 1000)
-  return Vec256<double>{_mm256_insertf128_pd(_mm256_setzero_pd(), lo.raw, 0)};
-#else
+#if HWY_HAVE_ZEXT
   return Vec256<double>{_mm256_zextpd128_pd256(lo.raw)};
+#else
+  return Vec256<double>{_mm256_insertf128_pd(_mm256_setzero_pd(), lo.raw, 0)};
 #endif
 }
 
@@ -4414,6 +4412,12 @@ HWY_API Vec256<T> CompressNot(Vec256<T> v, Mask256<T> mask) {
   return TableLookupLanes(v, indices);
 }
 
+// ------------------------------ CompressBlocksNot
+HWY_API Vec256<uint64_t> CompressBlocksNot(Vec256<uint64_t> v,
+                                           Mask256<uint64_t> mask) {
+  return CompressNot(v, mask);
+}
+
 // ------------------------------ CompressBits (LoadMaskBits)
 template <typename T>
 HWY_API Vec256<T> CompressBits(Vec256<T> v, const uint8_t* HWY_RESTRICT bits) {
@@ -4505,8 +4509,6 @@ HWY_API size_t CompressStore(Vec256<double> v, Mask256<double> mask,
 
 // ------------------------------ CompressBlendedStore (CompressStore)
 
-#if HWY_TARGET <= HWY_AVX3
-
 template <typename T, HWY_IF_NOT_LANE_SIZE(T, 2)>
 HWY_API size_t CompressBlendedStore(Vec256<T> v, Mask256<T> m, Full256<T> d,
                                     T* HWY_RESTRICT unaligned) {
@@ -4530,35 +4532,6 @@ HWY_API size_t CompressBlendedStore(Vec256<T> v, Mask256<T> m, Full256<T> d,
   return count;
 #endif
 }
-
-#else  // AVX2
-
-template <typename T, HWY_IF_NOT_LANE_SIZE(T, 2)>
-HWY_API size_t CompressBlendedStore(Vec256<T> v, Mask256<T> m, Full256<T> d,
-                                    T* HWY_RESTRICT unaligned) {
-  const size_t count = CountTrue(m);
-  BlendedStore(FirstN(d, count), d, Compress(v, m));
-  return count;
-}
-
-template <typename T, HWY_IF_LANE_SIZE(T, 2)>
-HWY_API size_t CompressBlendedStore(Vec256<T> v, Mask256<T> m, Full256<T> d,
-                                    T* HWY_RESTRICT unaligned) {
-  const size_t count = CountTrue(d, m);
-  const Vec256<T> compressed = Compress(v, m);
-#if HWY_MEM_OPS_MIGHT_FAULT
-  // BlendedStore tests mask for each lane, but we know that the mask is
-  // FirstN, so we can just copy.
-  alignas(32) T buf[16];
-  Store(compressed, d, buf);
-  memcpy(unaligned, buf, count * sizeof(T));
-#else
-  BlendedStore(compressed, FirstN(d, count), d, unaligned);
-#endif
-  return count;
-}
-
-#endif  // AVX2
 
 // ------------------------------ CompressBitsStore (LoadMaskBits)
 
@@ -4998,6 +4971,11 @@ HWY_API Vec256<T> CompressNot(Vec256<T> v, Mask256<T> m) {
   return detail::CompressNot(v, detail::BitsFromMask(m));
 }
 
+HWY_API Vec256<uint64_t> CompressBlocksNot(Vec256<uint64_t> v,
+                                           Mask256<uint64_t> mask) {
+  return CompressNot(v, mask);
+}
+
 template <typename T>
 HWY_API Vec256<T> CompressBits(Vec256<T> v, const uint8_t* HWY_RESTRICT bits) {
   constexpr size_t N = 32 / sizeof(T);
@@ -5028,7 +5006,7 @@ HWY_API size_t CompressStore(Vec256<T> v, Mask256<T> m, Full256<T> d,
   return count;
 }
 
-template <typename T>
+template <typename T, HWY_IF_NOT_LANE_SIZE(T, 2)>
 HWY_API size_t CompressBlendedStore(Vec256<T> v, Mask256<T> m, Full256<T> d,
                                     T* HWY_RESTRICT unaligned) {
   const uint64_t mask_bits = detail::BitsFromMask(m);
@@ -5037,6 +5015,25 @@ HWY_API size_t CompressBlendedStore(Vec256<T> v, Mask256<T> m, Full256<T> d,
   // Workaround for MSAN not marking output as initialized (b/233326619)
 #if HWY_IS_MSAN
   __msan_unpoison(unaligned, count * sizeof(T));
+#endif
+  return count;
+}
+
+template <typename T, HWY_IF_LANE_SIZE(T, 2)>
+HWY_API size_t CompressBlendedStore(Vec256<T> v, Mask256<T> m, Full256<T> d,
+                                    T* HWY_RESTRICT unaligned) {
+  const uint64_t mask_bits = detail::BitsFromMask(m);
+  const size_t count = PopCount(mask_bits);
+  const Vec256<T> compressed = detail::Compress(v, mask_bits);
+
+#if HWY_MEM_OPS_MIGHT_FAULT  // true if HWY_IS_MSAN
+  // BlendedStore tests mask for each lane, but we know that the mask is
+  // FirstN, so we can just copy.
+  alignas(32) T buf[16];
+  Store(compressed, d, buf);
+  memcpy(unaligned, buf, count * sizeof(T));
+#else
+  BlendedStore(compressed, FirstN(d, count), d, unaligned);
 #endif
   return count;
 }

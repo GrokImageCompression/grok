@@ -710,7 +710,7 @@ HWY_API Vec128<T, N> operator*(Vec128<T, N> a, const Vec128<T, N> b) {
 template <typename T, size_t N, HWY_IF_SIGNED(T)>
 HWY_API Vec128<T, N> operator*(Vec128<T, N> a, const Vec128<T, N> b) {
   for (size_t i = 0; i < N; ++i) {
-    a.raw[i] = static_cast<T>(int64_t(a.raw[i]) * b.raw[i]);
+    a.raw[i] = static_cast<T>(static_cast<int64_t>(a.raw[i]) * b.raw[i]);
   }
   return a;
 }
@@ -718,7 +718,7 @@ HWY_API Vec128<T, N> operator*(Vec128<T, N> a, const Vec128<T, N> b) {
 template <typename T, size_t N, HWY_IF_UNSIGNED(T)>
 HWY_API Vec128<T, N> operator*(Vec128<T, N> a, const Vec128<T, N> b) {
   for (size_t i = 0; i < N; ++i) {
-    a.raw[i] = static_cast<T>(uint64_t(a.raw[i]) * b.raw[i]);
+    a.raw[i] = static_cast<T>(static_cast<uint64_t>(a.raw[i]) * b.raw[i]);
   }
   return a;
 }
@@ -1452,10 +1452,11 @@ HWY_API Vec128<ToT, N> DemoteTo(Simd<ToT, N, 0> /* tag */,
 template <size_t N>
 HWY_API Vec128<bfloat16_t, 2 * N> ReorderDemote2To(
     Simd<bfloat16_t, 2 * N, 0> dbf16, Vec128<float, N> a, Vec128<float, N> b) {
-  const RebindToUnsigned<decltype(dbf16)> du16;
   const Repartition<uint32_t, decltype(dbf16)> du32;
-  const Vec128<uint32_t, N> b_in_even = ShiftRight<16>(BitCast(du32, b));
-  return BitCast(dbf16, OddEven(BitCast(du16, a), BitCast(du16, b_in_even)));
+  const Vec128<uint32_t, N> b_in_lower = ShiftRight<16>(BitCast(du32, b));
+  // Avoid OddEven - we want the upper half of `a` even on big-endian systems.
+  const Vec128<uint32_t, N> a_mask = Set(du32, 0xFFFF0000);
+  return BitCast(dbf16, IfVecThenElse(a_mask, BitCast(du32, a), b_in_lower));
 }
 
 namespace detail {
@@ -2174,6 +2175,12 @@ HWY_API Vec128<T, N> CompressNot(Vec128<T, N> v, const Mask128<T, N> mask) {
   return ret;
 }
 
+// ------------------------------ CompressBlocksNot
+HWY_API Vec128<uint64_t> CompressBlocksNot(Vec128<uint64_t> v,
+                                           Mask128<uint64_t> /* m */) {
+  return v;
+}
+
 // ------------------------------ CompressBits
 template <typename T, size_t N>
 HWY_API Vec128<T, N> CompressBits(Vec128<T, N> v,
@@ -2220,13 +2227,12 @@ HWY_API Vec128<float, N> ReorderWidenMulAccumulate(Simd<float, N, 0> df32,
                                                    Vec128<bfloat16_t, 2 * N> b,
                                                    const Vec128<float, N> sum0,
                                                    Vec128<float, N>& sum1) {
-  const Repartition<uint16_t, decltype(df32)> du16;
-  const RebindToUnsigned<decltype(df32)> du32;
-  const Vec128<uint16_t, 2 * N> zero = Zero(du16);
-  const Vec128<uint32_t, N> a0 = ZipLower(du32, zero, BitCast(du16, a));
-  const Vec128<uint32_t, N> a1 = ZipUpper(du32, zero, BitCast(du16, a));
-  const Vec128<uint32_t, N> b0 = ZipLower(du32, zero, BitCast(du16, b));
-  const Vec128<uint32_t, N> b1 = ZipUpper(du32, zero, BitCast(du16, b));
+  const Rebind<bfloat16_t, decltype(df32)> dbf16;
+  // Avoid ZipLower/Upper so this also works on big-endian systems.
+  const Vec128<float, N> a0 = PromoteTo(df32, LowerHalf(dbf16, a));
+  const Vec128<float, N> a1 = PromoteTo(df32, UpperHalf(dbf16, a));
+  const Vec128<float, N> b0 = PromoteTo(df32, LowerHalf(dbf16, b));
+  const Vec128<float, N> b1 = PromoteTo(df32, UpperHalf(dbf16, b));
   sum1 = MulAdd(BitCast(df32, a1), BitCast(df32, b1), sum1);
   return MulAdd(BitCast(df32, a0), BitCast(df32, b0), sum0);
 }

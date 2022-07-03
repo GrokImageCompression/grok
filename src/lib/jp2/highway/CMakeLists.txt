@@ -64,12 +64,14 @@ check_cxx_source_compiles(
 )
 
 if (HWY_ENABLE_CONTRIB)
-set(HWY_CONTRIB_SOURCES
+# Glob all the traits so we don't need to modify this file when adding
+# additional special cases.
+file(GLOB HWY_CONTRIB_SOURCES "hwy/contrib/sort/vqsort_*.cc")
+list(APPEND HWY_CONTRIB_SOURCES
     hwy/contrib/dot/dot-inl.h
     hwy/contrib/image/image.cc
     hwy/contrib/image/image.h
     hwy/contrib/math/math-inl.h
-    hwy/contrib/sort/disabled_targets.h
     hwy/contrib/sort/shared-inl.h
     hwy/contrib/sort/sorting_networks-inl.h
     hwy/contrib/sort/traits-inl.h
@@ -77,24 +79,6 @@ set(HWY_CONTRIB_SOURCES
     hwy/contrib/sort/vqsort-inl.h
     hwy/contrib/sort/vqsort.cc
     hwy/contrib/sort/vqsort.h
-    hwy/contrib/sort/vqsort_128a.cc
-    hwy/contrib/sort/vqsort_128d.cc
-    hwy/contrib/sort/vqsort_f32a.cc
-    hwy/contrib/sort/vqsort_f32d.cc
-    hwy/contrib/sort/vqsort_f64a.cc
-    hwy/contrib/sort/vqsort_f64d.cc
-    hwy/contrib/sort/vqsort_i16a.cc
-    hwy/contrib/sort/vqsort_i16d.cc
-    hwy/contrib/sort/vqsort_i32a.cc
-    hwy/contrib/sort/vqsort_i32d.cc
-    hwy/contrib/sort/vqsort_i64a.cc
-    hwy/contrib/sort/vqsort_i64d.cc
-    hwy/contrib/sort/vqsort_u16a.cc
-    hwy/contrib/sort/vqsort_u16d.cc
-    hwy/contrib/sort/vqsort_u32a.cc
-    hwy/contrib/sort/vqsort_u32d.cc
-    hwy/contrib/sort/vqsort_u64a.cc
-    hwy/contrib/sort/vqsort_u64d.cc
 )
 endif()  # HWY_ENABLE_CONTRIB
 
@@ -283,6 +267,13 @@ target_include_directories(hwy_contrib PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}>
     $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
 target_compile_features(hwy_contrib PUBLIC cxx_std_11)
+set_target_properties(hwy_contrib PROPERTIES
+  LINK_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/hwy/hwy.version)
+# not supported by MSVC/Clang, safe to skip (we use DLLEXPORT annotations)
+if(UNIX AND NOT APPLE)
+  set_property(TARGET hwy_contrib APPEND_STRING PROPERTY
+    LINK_FLAGS " -Wl,--version-script=${CMAKE_CURRENT_SOURCE_DIR}/hwy/hwy.version")
+endif()
 endif()  # HWY_ENABLE_CONTRIB
 
 add_library(hwy_test ${HWY_LIBRARY_TYPE} ${HWY_TEST_SOURCES})
@@ -294,6 +285,13 @@ target_include_directories(hwy_test PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}>
     $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
 target_compile_features(hwy_test PUBLIC cxx_std_11)
+set_target_properties(hwy_test PROPERTIES
+  LINK_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/hwy/hwy.version)
+# not supported by MSVC/Clang, safe to skip (we use DLLEXPORT annotations)
+if(UNIX AND NOT APPLE)
+  set_property(TARGET hwy_test APPEND_STRING PROPERTY
+    LINK_FLAGS " -Wl,--version-script=${CMAKE_CURRENT_SOURCE_DIR}/hwy/hwy.version")
+endif()
 
 # -------------------------------------------------------- hwy_list_targets
 # Generate a tool to print the compiled-in targets as defined by the current

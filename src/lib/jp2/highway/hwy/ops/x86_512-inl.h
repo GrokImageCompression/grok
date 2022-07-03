@@ -1894,40 +1894,19 @@ HWY_API Vec512<double> MaskedLoad(Mask512<double> m, Full512<double> /* tag */,
 template <typename T>
 HWY_API Vec512<T> LoadDup128(Full512<T> /* tag */,
                              const T* const HWY_RESTRICT p) {
-  // Clang 3.9 generates VINSERTF128 which is slower, but inline assembly leads
-  // to "invalid output size for constraint" without -mavx512:
-  // https://gcc.godbolt.org/z/-Jt_-F
-#if HWY_LOADDUP_ASM
-  __m512i out;
-  asm("vbroadcasti128 %1, %[reg]" : [reg] "=x"(out) : "m"(p[0]));
-  return Vec512<T>{out};
-#else
   const auto x4 = LoadU(Full128<T>(), p);
   return Vec512<T>{_mm512_broadcast_i32x4(x4.raw)};
-#endif
 }
 HWY_API Vec512<float> LoadDup128(Full512<float> /* tag */,
                                  const float* const HWY_RESTRICT p) {
-#if HWY_LOADDUP_ASM
-  __m512 out;
-  asm("vbroadcastf128 %1, %[reg]" : [reg] "=x"(out) : "m"(p[0]));
-  return Vec512<float>{out};
-#else
   const __m128 x4 = _mm_loadu_ps(p);
   return Vec512<float>{_mm512_broadcast_f32x4(x4)};
-#endif
 }
 
 HWY_API Vec512<double> LoadDup128(Full512<double> /* tag */,
                                   const double* const HWY_RESTRICT p) {
-#if HWY_LOADDUP_ASM
-  __m512d out;
-  asm("vbroadcastf128 %1, %[reg]" : [reg] "=x"(out) : "m"(p[0]));
-  return Vec512<double>{out};
-#else
   const __m128d x2 = _mm_loadu_pd(p);
   return Vec512<double>{_mm512_broadcast_f64x2(x2)};
-#endif
 }
 
 // ------------------------------ Store
@@ -2218,39 +2197,28 @@ HWY_API T GetLane(const Vec512<T> v) {
 
 // ------------------------------ ZeroExtendVector
 
-// Unfortunately the initial _mm512_castsi256_si512 intrinsic leaves the upper
-// bits undefined. Although it makes sense for them to be zero (EVEX encoded
-// instructions have that effect), a compiler could decide to optimize out code
-// that relies on this.
-//
-// The newer _mm512_zextsi256_si512 intrinsic fixes this by specifying the
-// zeroing, but it is not available on GCC until 10.1. For older GCC, we can
-// still obtain the desired code thanks to pattern recognition; note that the
-// expensive insert instruction is not actually generated, see
-// https://gcc.godbolt.org/z/1MKGaP.
-
 template <typename T>
 HWY_API Vec512<T> ZeroExtendVector(Full512<T> /* tag */, Vec256<T> lo) {
-#if !HWY_COMPILER_CLANG && HWY_COMPILER_GCC && (HWY_COMPILER_GCC < 1000)
-  return Vec512<T>{_mm512_inserti32x8(_mm512_setzero_si512(), lo.raw, 0)};
-#else
+#if HWY_HAVE_ZEXT  // See definition/comment in x86_256-inl.h.
   return Vec512<T>{_mm512_zextsi256_si512(lo.raw)};
+#else
+  return Vec512<T>{_mm512_inserti32x8(_mm512_setzero_si512(), lo.raw, 0)};
 #endif
 }
 HWY_API Vec512<float> ZeroExtendVector(Full512<float> /* tag */,
                                        Vec256<float> lo) {
-#if !HWY_COMPILER_CLANG && HWY_COMPILER_GCC && (HWY_COMPILER_GCC < 1000)
-  return Vec512<float>{_mm512_insertf32x8(_mm512_setzero_ps(), lo.raw, 0)};
-#else
+#if HWY_HAVE_ZEXT
   return Vec512<float>{_mm512_zextps256_ps512(lo.raw)};
+#else
+  return Vec512<float>{_mm512_insertf32x8(_mm512_setzero_ps(), lo.raw, 0)};
 #endif
 }
 HWY_API Vec512<double> ZeroExtendVector(Full512<double> /* tag */,
                                         Vec256<double> lo) {
-#if !HWY_COMPILER_CLANG && HWY_COMPILER_GCC && (HWY_COMPILER_GCC < 1000)
-  return Vec512<double>{_mm512_insertf64x4(_mm512_setzero_pd(), lo.raw, 0)};
-#else
+#if HWY_HAVE_ZEXT
   return Vec512<double>{_mm512_zextpd256_pd512(lo.raw)};
+#else
+  return Vec512<double>{_mm512_insertf64x4(_mm512_setzero_pd(), lo.raw, 0)};
 #endif
 }
 
@@ -3751,6 +3719,11 @@ HWY_API Vec512<T> CompressNot(Vec512<T> v, Mask512<T> mask) {
   alignas(64) constexpr uint64_t shifts[8] = {0, 4, 8, 12, 16, 20, 24, 28};
   const auto indices = Indices512<T>{(packed >> Load(du64, shifts)).raw};
   return TableLookupLanes(v, indices);
+}
+
+HWY_API Vec512<uint64_t> CompressBlocksNot(Vec512<uint64_t> v,
+                                           Mask512<uint64_t> mask) {
+  return CompressNot(v, mask);
 }
 
 // ------------------------------ CompressBits

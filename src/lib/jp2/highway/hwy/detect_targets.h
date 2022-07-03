@@ -73,7 +73,8 @@
 // HWY_MAX_DYNAMIC_TARGETS in total.
 #define HWY_HIGHEST_TARGET_BIT_X86 9
 
-// 0x400, 0x800, 0x1000: reserved
+// 0x400, 0x800: reserved
+#define HWY_SVE2_128 0x1000  // specialized target (e.g. Arm N2)
 #define HWY_SVE_256 0x2000  // specialized target (e.g. Arm V1)
 #define HWY_SVE2 0x4000
 #define HWY_SVE 0x8000
@@ -146,7 +147,7 @@
 // SVE[2] require recent clang or gcc versions.
 #elif (HWY_COMPILER_CLANG && HWY_COMPILER_CLANG < 1100) ||\
 (!HWY_COMPILER_CLANG && HWY_COMPILER_GCC && HWY_COMPILER_GCC < 1000)
-#define HWY_BROKEN_TARGETS (HWY_SVE | HWY_SVE2 | HWY_SVE_256)
+#define HWY_BROKEN_TARGETS (HWY_SVE | HWY_SVE2 | HWY_SVE_256 | HWY_SVE2_128)
 
 #else
 #define HWY_BROKEN_TARGETS 0
@@ -356,10 +357,16 @@
 #define HWY_ATTAINABLE_AVX3_DL 0
 #endif
 
-#if HWY_ARCH_ARM_A64 && (HWY_ENABLED_BASELINE & (HWY_SVE | HWY_SVE2))
+#if HWY_ARCH_ARM_A64 && (HWY_ENABLED_BASELINE & HWY_SVE)
 #define HWY_ATTAINABLE_SVE_256 HWY_ENABLED(HWY_SVE_256)
 #else
 #define HWY_ATTAINABLE_SVE_256 0
+#endif
+
+#if HWY_ARCH_ARM_A64 && (HWY_ENABLED_BASELINE & HWY_SVE2)
+#define HWY_ATTAINABLE_SVE2_128 HWY_ENABLED(HWY_SVE2_128)
+#else
+#define HWY_ATTAINABLE_SVE2_128 0
 #endif
 
 // Attainable means enabled and the compiler allows intrinsics (even when not
@@ -369,7 +376,8 @@
   HWY_ENABLED(HWY_BASELINE_SCALAR | HWY_SSSE3 | HWY_SSE4 | HWY_AVX2 | \
               HWY_AVX3 | HWY_ATTAINABLE_AVX3_DL)
 #else
-#define HWY_ATTAINABLE_TARGETS (HWY_ENABLED_BASELINE | HWY_ATTAINABLE_SVE_256)
+#define HWY_ATTAINABLE_TARGETS \
+  (HWY_ENABLED_BASELINE | HWY_ATTAINABLE_SVE_256 | HWY_ATTAINABLE_SVE2_128)
 #endif
 
 // 1) For older compilers: disable all SIMD (could also set HWY_DISABLED_TARGETS

@@ -13,7 +13,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "hwy/contrib/sort/disabled_targets.h"
 #include "hwy/contrib/sort/vqsort.h"
 
 #undef HWY_TARGET_INCLUDE
@@ -23,9 +22,6 @@
 // After foreach_target
 #include "hwy/contrib/sort/traits-inl.h"
 #include "hwy/contrib/sort/vqsort-inl.h"
-
-// Workaround for build timeout
-#if !HWY_COMPILER_MSVC || HWY_IS_DEBUG_BUILD
 
 HWY_BEFORE_NAMESPACE();
 namespace hwy {
@@ -56,5 +52,3 @@ void Sorter::operator()(int16_t* HWY_RESTRICT keys, size_t n,
 
 }  // namespace hwy
 #endif  // HWY_ONCE
-
-#endif  // !HWY_COMPILER_MSVC || HWY_IS_DEBUG_BUILD

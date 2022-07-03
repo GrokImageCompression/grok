@@ -65,30 +65,38 @@ HWY_NOINLINE void BenchPartition() {
   const Dist dist = Dist::kUniform8;
   double sum = 0.0;
 
+  detail::Generator rng(&sum, 123);  // for ChoosePivot
+
   const size_t max_log2 = AdjustedLog2Reps(20);
   for (size_t log2 = max_log2; log2 < max_log2 + 1; ++log2) {
     const size_t num_lanes = 1ull << log2;
     const size_t num_keys = num_lanes / st.LanesPerKey();
     auto aligned = hwy::AllocateAligned<LaneType>(num_lanes);
     auto buf = hwy::AllocateAligned<LaneType>(
-        hwy::SortConstants::PartitionBufNum(Lanes(d)));
+        HWY_MAX(hwy::SortConstants::PartitionBufNum(Lanes(d)),
+                hwy::SortConstants::PivotBufNum(sizeof(LaneType), Lanes(d))));
 
     std::vector<double> seconds;
-    const size_t num_reps = (1ull << (14 - log2 / 2)) * kReps;
+    const size_t num_reps = (1ull << (14 - log2 / 2)) * 30;
     for (size_t rep = 0; rep < num_reps; ++rep) {
       (void)GenerateInput(dist, aligned.get(), num_lanes);
 
-      const Timestamp t0;
+      // The pivot value can influence performance. Do exactly what vqsort will
+      // do so that the performance (influenced by prefetching and branch
+      // prediction) is likely to predict the actual performance inside vqsort.
+      const auto pivot = detail::ChoosePivot(d, st, aligned.get(), 0, num_lanes,
+                                             buf.get(), rng);
 
-      detail::Partition(d, st, aligned.get(), 0, num_lanes - 1,
-                        Set(d, LaneType(128)), buf.get());
+      const Timestamp t0;
+      detail::Partition(d, st, aligned.get(), 0, num_lanes - 1, pivot,
+                        buf.get());
       seconds.push_back(SecondsSince(t0));
       // 'Use' the result to prevent optimizing out the partition.
       sum += static_cast<double>(aligned.get()[num_lanes / 2]);
     }
 
-    MakeResult<KeyType>(Algo::kVQSort, dist, num_keys, 1,
-                        SummarizeMeasurements(seconds))
+    Result(Algo::kVQSort, dist, num_keys, 1, SummarizeMeasurements(seconds),
+           sizeof(KeyType), st.KeyString())
         .Print();
   }
   HWY_ASSERT(sum != 999999);  // Prevent optimizing out
@@ -96,13 +104,15 @@ HWY_NOINLINE void BenchPartition() {
 
 HWY_NOINLINE void BenchAllPartition() {
   // Not interested in benchmark results for these targets
-  if (HWY_TARGET == HWY_SSSE3 || HWY_TARGET == HWY_SSE4) {
+  if (HWY_TARGET == HWY_SSSE3) {
     return;
   }
 
-  BenchPartition<TraitsLane<OrderDescending<float>>>();
-  BenchPartition<TraitsLane<OrderAscending<int64_t>>>();
+  // BenchPartition<TraitsLane<OrderDescending<float>>>();
+  BenchPartition<TraitsLane<OrderDescending<int64_t>>>();
+  BenchPartition<Traits128<OrderAscending128>>();
   BenchPartition<Traits128<OrderDescending128>>();
+  BenchPartition<Traits128<OrderAscendingKV128>>();
 }
 
 template <class Traits>
@@ -128,13 +138,14 @@ HWY_NOINLINE void BenchBase(std::vector<Result>& results) {
   double sum = 0;                             // prevents elision
   constexpr size_t kMul = AdjustedReps(600);  // ensures long enough to measure
 
-  for (size_t rep = 0; rep < kReps; ++rep) {
+  for (size_t rep = 0; rep < 30; ++rep) {
     InputStats<LaneType> input_stats =
         GenerateInput(dist, keys.get(), num_lanes);
 
     const Timestamp t0;
     for (size_t i = 0; i < kMul; ++i) {
-      detail::BaseCase(d, st, keys.get(), num_lanes, buf.get());
+      detail::BaseCase(d, st, keys.get(), keys.get() + num_lanes, num_lanes,
+                       buf.get());
       sum += static_cast<double>(keys[0]);
     }
     seconds.push_back(SecondsSince(t0));
@@ -143,8 +154,9 @@ HWY_NOINLINE void BenchBase(std::vector<Result>& results) {
     HWY_ASSERT(VerifySort(st, input_stats, keys.get(), num_lanes, "BenchBase"));
   }
   HWY_ASSERT(sum < 1E99);
-  results.push_back(MakeResult<KeyType>(Algo::kVQSort, dist, num_keys * kMul, 1,
-                                        SummarizeMeasurements(seconds)));
+  results.emplace_back(Algo::kVQSort, dist, num_keys * kMul, 1,
+                       SummarizeMeasurements(seconds), sizeof(KeyType),
+                       st.KeyString());
 }
 
 HWY_NOINLINE void BenchAllBase() {
@@ -178,6 +190,11 @@ std::vector<Algo> AlgoForBench() {
 #if HAVE_SORT512
         Algo::kSort512,
 #endif
+// Only include if we're compiling for the target it supports.
+#if HAVE_VXSORT && ((VXSORT_AVX3 && HWY_TARGET == HWY_AVX3) || \
+                    (!VXSORT_AVX3 && HWY_TARGET == HWY_AVX2))
+        Algo::kVXSort,
+#endif
 
 #if !HAVE_PARALLEL_IPS4O
 #if !SORT_100M
@@ -202,14 +219,21 @@ HWY_NOINLINE void BenchSort(size_t num_keys) {
   using KeyType = typename Traits::KeyType;
   const size_t num_lanes = num_keys * st.LanesPerKey();
   auto aligned = hwy::AllocateAligned<LaneType>(num_lanes);
+
+  const size_t reps = num_keys > 1000 * 1000 ? 10 : 30;
+
   for (Algo algo : AlgoForBench()) {
     // Other algorithms don't depend on the vector instructions, so only run
     // them for the first target.
-    if (algo != Algo::kVQSort && HWY_TARGET != first_sort_target) continue;
+#if !HAVE_VXSORT
+    if (algo != Algo::kVQSort && HWY_TARGET != first_sort_target) {
+      continue;
+    }
+#endif
 
     for (Dist dist : AllDist()) {
       std::vector<double> seconds;
-      for (size_t rep = 0; rep < kReps; ++rep) {
+      for (size_t rep = 0; rep < reps; ++rep) {
         InputStats<LaneType> input_stats =
             GenerateInput(dist, aligned.get(), num_lanes);
 
@@ -222,8 +246,8 @@ HWY_NOINLINE void BenchSort(size_t num_keys) {
         HWY_ASSERT(
             VerifySort(st, input_stats, aligned.get(), num_lanes, "BenchSort"));
       }
-      MakeResult<KeyType>(algo, dist, num_keys, 1,
-                          SummarizeMeasurements(seconds))
+      Result(algo, dist, num_keys, 1, SummarizeMeasurements(seconds),
+             sizeof(KeyType), st.KeyString())
           .Print();
     }  // dist
   }    // algo
@@ -257,8 +281,11 @@ HWY_NOINLINE void BenchAllSort() {
     // BenchSort<TraitsLane<OrderDescending<uint16_t>>>(num_keys);
     // BenchSort<TraitsLane<OrderDescending<uint32_t>>>(num_keys);
     BenchSort<TraitsLane<OrderAscending<uint64_t>>>(num_keys);
+
+#if !HAVE_VXSORT
     BenchSort<Traits128<OrderAscending128>>(num_keys);
     BenchSort<Traits128<OrderAscendingKV128>>(num_keys);
+#endif
   }
 }
 

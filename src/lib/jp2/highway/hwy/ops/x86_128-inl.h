@@ -35,15 +35,6 @@
 #include <sanitizer/msan_interface.h>
 #endif
 
-// Clang 3.9 generates VINSERTF128 instead of the desired VBROADCASTF128,
-// which would free up port5. However, inline assembly isn't supported on
-// MSVC, results in incorrect output on GCC 8.3, and raises "invalid output size
-// for constraint" errors on Clang (https://gcc.godbolt.org/z/-Jt_-F), hence we
-// disable it.
-#ifndef HWY_LOADDUP_ASM
-#define HWY_LOADDUP_ASM 0
-#endif
-
 HWY_BEFORE_NAMESPACE();
 namespace hwy {
 namespace HWY_NAMESPACE {
@@ -143,7 +134,7 @@ struct RawMask128<8> {
 
 }  // namespace detail
 
-template <typename T, size_t N>
+template <typename T, size_t N = 16 / sizeof(T)>
 struct Mask128 {
   using Raw = typename detail::RawMask128<sizeof(T)>::type;
 
@@ -1689,7 +1680,7 @@ HWY_API Mask128<double, N> operator==(const Vec128<double, N> a,
 
 // ------------------------------ Inequality
 
-// This cannot have T as a template argument, otherwise it is not more 
+// This cannot have T as a template argument, otherwise it is not more
 // specialized than rewritten operator== in C++20, leading to compile
 // errors: https://gcc.godbolt.org/z/xsrPhPvPT.
 template <size_t N>
@@ -1783,17 +1774,16 @@ template <size_t N>
 HWY_API Mask128<int64_t, N> operator>(const Vec128<int64_t, N> a,
                                       const Vec128<int64_t, N> b) {
 #if HWY_TARGET == HWY_SSSE3
-  // If the upper half is less than or greater, this is the answer.
-  const __m128i m_gt = _mm_cmpgt_epi32(a.raw, b.raw);
-
-  // Otherwise, the lower half decides.
-  const __m128i m_eq = _mm_cmpeq_epi32(a.raw, b.raw);
-  const __m128i lo_in_hi = _mm_shuffle_epi32(m_gt, _MM_SHUFFLE(2, 2, 0, 0));
-  const __m128i lo_gt = _mm_and_si128(m_eq, lo_in_hi);
-
-  const __m128i gt = _mm_or_si128(lo_gt, m_gt);
-  // Copy result in upper 32 bits to lower 32 bits.
-  return Mask128<int64_t, N>{_mm_shuffle_epi32(gt, _MM_SHUFFLE(3, 3, 1, 1))};
+  // See https://stackoverflow.com/questions/65166174/:
+  const Simd<int64_t, N, 0> d;
+  const RepartitionToNarrow<decltype(d)> d32;
+  const Vec128<int64_t, N> m_eq32{Eq(BitCast(d32, a), BitCast(d32, b)).raw};
+  const Vec128<int64_t, N> m_gt32{Gt(BitCast(d32, a), BitCast(d32, b)).raw};
+  // If a.upper is greater, upper := true. Otherwise, if a.upper == b.upper:
+  // upper := b-a (unsigned comparison result of lower). Otherwise: upper := 0.
+  const __m128i upper = OrAnd(m_gt32, m_eq32, Sub(b, a)).raw;
+  // Duplicate upper to lower half.
+  return Mask128<int64_t, N>{_mm_shuffle_epi32(upper, _MM_SHUFFLE(3, 3, 1, 1))};
 #else
   return Mask128<int64_t, N>{_mm_cmpgt_epi64(a.raw, b.raw)};  // SSE4.2
 #endif
@@ -5984,6 +5974,12 @@ HWY_INLINE Vec128<uint16_t> IndicesForCompress16(uint64_t mask_bits) {
 }  // namespace detail
 #endif  // HWY_TARGET != HWY_AVX3_DL
 
+// Single lane: no-op
+template <typename T>
+HWY_API Vec128<T, 1> Compress(Vec128<T, 1> v, Mask128<T, 1> /*m*/) {
+  return v;
+}
+
 template <typename T, size_t N, HWY_IF_LANE_SIZE(T, 2)>
 HWY_API Vec128<T, N> Compress(Vec128<T, N> v, Mask128<T, N> mask) {
   const Simd<T, N, 0> d;
@@ -6004,13 +6000,13 @@ HWY_API Vec128<T, N> Compress(Vec128<T, N> v, Mask128<T, N> mask) {
   return Vec128<T, N>{_mm_maskz_compress_epi32(mask.raw, v.raw)};
 }
 
-template <size_t N>
+template <size_t N, HWY_IF_GE64(float, N)>
 HWY_API Vec128<float, N> Compress(Vec128<float, N> v, Mask128<float, N> mask) {
   return Vec128<float, N>{_mm_maskz_compress_ps(mask.raw, v.raw)};
 }
 
-template <typename T, size_t N, HWY_IF_LANE_SIZE(T, 8)>
-HWY_API Vec128<T, N> Compress(Vec128<T, N> v, Mask128<T, N> mask) {
+template <typename T, HWY_IF_LANE_SIZE(T, 8)>
+HWY_API Vec128<T> Compress(Vec128<T> v, Mask128<T> mask) {
   HWY_DASSERT(mask.raw < 4);
 
   // There are only 2 lanes, so we can afford to load the index vector directly.
@@ -6020,16 +6016,29 @@ HWY_API Vec128<T, N> Compress(Vec128<T, N> v, Mask128<T, N> mask) {
       8, 9, 10, 11, 12, 13, 14, 15, 0, 1, 2,  3,  4,  5,  6,  7,
       0, 1, 2,  3,  4,  5,  6,  7,  8, 9, 10, 11, 12, 13, 14, 15};
 
-  const Simd<T, N, 0> d;
+  const Full128<T> d;
   const Repartition<uint8_t, decltype(d)> d8;
   const auto index = Load(d8, u8_indices + 16 * mask.raw);
   return BitCast(d, TableLookupBytes(BitCast(d8, v), index));
 }
 
 // ------------------------------ CompressNot (Compress)
+
+// Single lane: no-op
+template <typename T>
+HWY_API Vec128<T, 1> CompressNot(Vec128<T, 1> v, Mask128<T, 1> /*m*/) {
+  return v;
+}
+
 template <typename T, size_t N>
 HWY_API Vec128<T, N> CompressNot(Vec128<T, N> v, Mask128<T, N> mask) {
   return Compress(v, Not(mask));
+}
+
+// ------------------------------ CompressBlocksNot
+HWY_API Vec128<uint64_t> CompressBlocksNot(Vec128<uint64_t> v,
+                                           Mask128<uint64_t> /* m */) {
+  return v;
 }
 
 // ------------------------------ CompressBits (LoadMaskBits)
@@ -6733,19 +6742,63 @@ HWY_API Vec128<T, N> CompressNotBits(Vec128<T, N> v, uint64_t mask_bits) {
 
 }  // namespace detail
 
-template <typename T, size_t N>
-HWY_API Vec128<T, N> Compress(Vec128<T, N> v, Mask128<T, N> m) {
-  return detail::CompressBits(v, detail::BitsFromMask(m));
+// Single lane: no-op
+template <typename T>
+HWY_API Vec128<T, 1> Compress(Vec128<T, 1> v, Mask128<T, 1> /*m*/) {
+  return v;
 }
 
-template <typename T, size_t N>
-HWY_API Vec128<T, N> CompressNot(Vec128<T, N> v, Mask128<T, N> m) {
+// Two lanes: conditional swap
+template <typename T, HWY_IF_LANE_SIZE(T, 8)>
+HWY_API Vec128<T> Compress(Vec128<T> v, Mask128<T> mask) {
+  // If mask[1] = 1 and mask[0] = 0, then swap both halves, else keep.
+  const Full128<T> d;
+  const Vec128<T> m = VecFromMask(d, mask);
+  const Vec128<T> maskL = DupEven(m);
+  const Vec128<T> maskH = DupOdd(m);
+  const Vec128<T> swap = AndNot(maskL, maskH);
+  return IfVecThenElse(swap, Shuffle01(v), v);
+}
+
+// General case
+template <typename T, size_t N, HWY_IF_NOT_LANE_SIZE(T, 8)>
+HWY_API Vec128<T, N> Compress(Vec128<T, N> v, Mask128<T, N> mask) {
+  return detail::CompressBits(v, detail::BitsFromMask(mask));
+}
+
+// Single lane: no-op
+template <typename T>
+HWY_API Vec128<T, 1> CompressNot(Vec128<T, 1> v, Mask128<T, 1> /*m*/) {
+  return v;
+}
+
+// Two lanes: conditional swap
+template <typename T, HWY_IF_LANE_SIZE(T, 8)>
+HWY_API Vec128<T> CompressNot(Vec128<T> v, Mask128<T> mask) {
+  // If mask[1] = 0 and mask[0] = 1, then swap both halves, else keep.
+  const Full128<T> d;
+  const Vec128<T> m = VecFromMask(d, mask);
+  const Vec128<T> maskL = DupEven(m);
+  const Vec128<T> maskH = DupOdd(m);
+  const Vec128<T> swap = AndNot(maskH, maskL);
+  return IfVecThenElse(swap, Shuffle01(v), v);
+}
+
+// General case
+template <typename T, size_t N, HWY_IF_NOT_LANE_SIZE(T, 8)>
+HWY_API Vec128<T, N> CompressNot(Vec128<T, N> v, Mask128<T, N> mask) {
   // For partial vectors, we cannot pull the Not() into the table because
   // BitsFromMask clears the upper bits.
   if (N < 16 / sizeof(T)) {
-    return detail::CompressBits(v, detail::BitsFromMask(Not(m)));
+    return detail::CompressBits(v, detail::BitsFromMask(Not(mask)));
   }
-  return detail::CompressNotBits(v, detail::BitsFromMask(m));
+  return detail::CompressNotBits(v, detail::BitsFromMask(mask));
+}
+
+// ------------------------------ CompressBlocksNot
+HWY_API Vec128<uint64_t> CompressBlocksNot(Vec128<uint64_t> v,
+                                           Mask128<uint64_t> /* m */) {
+  return v;
 }
 
 template <typename T, size_t N>
@@ -6983,10 +7036,10 @@ HWY_INLINE V Lt128Vec(const D d, const V a, const V b) {
   //  1  0  0  0  |  0
   //  1  0  0  1  |  1
   //  1  1  0  0  |  0
-  const V eqHL = VecFromMask(d, Eq(a, b));
+  const auto eqHL = Eq(a, b);
   const V ltHL = VecFromMask(d, Lt(a, b));
   const V ltLX = ShiftLeftLanes<1>(ltHL);
-  const V vecHx = OrAnd(ltHL, eqHL, ltLX);
+  const V vecHx = IfThenElse(eqHL, ltLX, ltHL);
   return InterleaveUpper(d, vecHx, vecHx);
 }
 
@@ -6997,6 +7050,7 @@ HWY_INLINE V Lt128UpperVec(const D d, const V a, const V b) {
   const V ltHL = VecFromMask(d, Lt(a, b));
   return InterleaveUpper(d, ltHL, ltHL);
 }
+
 }  // namespace detail
 
 template <class D, class V = VFromD<D>>
