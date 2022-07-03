@@ -420,7 +420,7 @@ void TileComponent::postDecompressImpl(int32_t* srcData, DecompressBlockExec* bl
 	{
 		if(regionWindow_)
 		{
-			src.copy<F>(src, F(block));
+			src.copyFrom<F>(src, F(block));
 		}
 		else
 		{

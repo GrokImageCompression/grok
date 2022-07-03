@@ -347,52 +347,38 @@ struct grk_buf2d : protected grk_buf<T, A>, public grk_rect32
 	}
 	// rhs coordinates are in "this" coordinate system
 	template<typename F>
-	void copy(const grk_buf2d& rhs, F filter)
+	void copyFrom(const grk_buf2d& src, F filter)
 	{
-		return copy(&rhs,filter);
+		return copyFrom(&src,filter);
 	}
 	// rhs coordinates are in "this" coordinate system
 	template<typename F>
-	void copy(const grk_buf2d *rhs, F filter)
+	void copyFrom(const grk_buf2d *src, F filter)
 	{
-		auto inter = intersection(rhs);
+		auto inter = intersection(src);
 		if(inter.empty())
 			return;
 
-		if (!rhs->buf)
+		if (!src->buf)
 			return;
 
 		T* ptr = this->buf + (inter.y0 * stride + inter.x0);
-		T* rhs_ptr = rhs->buf + ((inter.y0 - rhs->y0) * rhs->stride + inter.x0 - rhs->x0);
+		T* srcPtr = src->buf + ((inter.y0 - src->y0) * src->stride + inter.x0 - src->x0);
 		uint32_t len = inter.width();
 		for(uint32_t j = inter.y0; j < inter.y1; ++j)
 		{
-			filter.copy(ptr, rhs_ptr, len);
+			filter.copy(ptr, srcPtr, len);
 			ptr += stride;
-			rhs_ptr += rhs->stride;
+			srcPtr += src->stride;
 		}
 	}
-	struct memcpy_to {
-		void copy(T* ptr, T* rhs_ptr, uint32_t len){
-			memcpy(rhs_ptr,ptr,len);
-		}
-	};
 	struct memcpy_from {
-		void copy(T* ptr, T* rhs_ptr, uint32_t len){
-			memcpy(ptr,rhs_ptr,len);
+		void copy(T* dst, T* src, uint32_t len){
+			memcpy(dst,src,len);
 		}
 	};
-	void copy(const grk_buf2d& rhs, bool copyTo){
-		if (copyTo)
-			copy(rhs, memcpy_to());
-		else
-			copy(rhs, memcpy_from());
-	}
-	void copy(const grk_buf2d *rhs, bool copyTo){
-		if (copyTo)
-			copy(rhs, memcpy_to());
-		else
-			copy(rhs, memcpy_from());
+	void copyFrom(const grk_buf2d& src){
+		copy(src, memcpy_from());
 	}
 	T* getBuffer(void) const
 	{

@@ -213,7 +213,7 @@ struct TileComponentWindow : public TileComponentWindowBase<T>
 	{
 		grk_buf2d<int32_t, AllocatorAligned> dst;
 		dst = getCodeBlockDestWindowREL(resno, bandOrientation);
-		dst.copy<F>(src, F(block));
+		dst.copyFrom<F>(src, F(block));
 	}
 
 	/**
