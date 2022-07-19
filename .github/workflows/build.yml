@@ -3,7 +3,7 @@ name: Build
 on: [push,pull_request,workflow_dispatch]
 
 env:
-  BUILD_TYPE: Debug
+  BUILD_TYPE: Release
   DATA_ROOT: ${{ github.workspace }}/data
   DATA_BRANCH: master
   GENERATOR_PLATFORM:
@@ -34,6 +34,8 @@ jobs:
         cmake -E tar -xvf KDU805_Demo_Apps_for_Linux-x86-64_200602.zip
         mv KDU805_Demo_Apps_for_Linux-x86-64_200602 kdu
         echo "${{ github.workspace }}/kdu" >> $GITHUB_PATH
+        echo DATA_BRANCH=linux-release >> $GITHUB_ENV
+
 
     - name: macos-dependencies
       if: startsWith(matrix.os, 'macos')
