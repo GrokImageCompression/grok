@@ -301,7 +301,7 @@ grk_rect32 TileProcessor::getUnreducedTileWindow(void)
 
 void TileProcessor::deallocBuffers()
 {
-	for(uint16_t compno = 0; compno < (int64_t)tile->numcomps_; ++compno)
+	for(uint16_t compno = 0; compno < tile->numcomps_; ++compno)
 	{
 		auto tile_comp = tile->comps + compno;
 		tile_comp->dealloc();
