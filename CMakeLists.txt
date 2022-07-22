@@ -169,20 +169,16 @@ endif()
 
 # Build Testing
 option(BUILD_TESTING "Build tests." OFF)
-if(BUILD_TESTING)
-  if(BUILD_CODEC)
-    enable_testing()
-    include(CTest)
-    # Search for Grok test data
-    # The test data can be cloned from
-    # https://github.com/GrokImageCompression/grok-test-data
-    find_path(GRK_DATA_ROOT README-GROK-TEST-DATA
-      PATHS $ENV{GRK_DATA_ROOT} ${CMAKE_SOURCE_DIR}/../grok-test-data
-      NO_CMAKE_FIND_ROOT_PATH)
-    add_subdirectory(tests)
-  else()
-    message(FATAL_ERROR "You need build codec to run the tests")
-  endif()
+if(BUILD_TESTING AND BUILD_CODEC)
+	enable_testing()
+	include(CTest)
+	# Search for Grok test data
+	# The test data can be cloned from
+	# https://github.com/GrokImageCompression/grok-test-data
+	find_path(GRK_DATA_ROOT README-GROK-TEST-DATA
+	  PATHS $ENV{GRK_DATA_ROOT} ${CMAKE_SOURCE_DIR}/../grok-test-data
+	  NO_CMAKE_FIND_ROOT_PATH)
+	add_subdirectory(tests)
 endif()
 
 # install all targets referenced as GrokTargets
