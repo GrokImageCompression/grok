@@ -251,7 +251,7 @@ if(WIN32)
   add_library(${GROK_LIBRARY_NAME} ${GROK_LIBRARY_SRCS})
   set(INSTALL_LIBS ${GROK_LIBRARY_NAME})
 else()
-  if(BUILD_STATIC_LIBS)
+  if(BUILD_STATIC_LIBS AND BUILD_SHARED_LIBS)
       # Builds and installs both static and dynamic libraries
 	  add_library(${GROK_LIBRARY_NAME} SHARED ${GROK_LIBRARY_SRCS})
 	  add_library(${GROK_LIBRARY_NAME}_static STATIC ${GROK_LIBRARY_SRCS})
@@ -275,12 +275,14 @@ set_target_properties(${GROK_LIBRARY_NAME} PROPERTIES ${GROK_LIBRARY_PROPERTIES}
 target_compile_options(${GROK_LIBRARY_NAME} PRIVATE ${GROK_COMPILE_OPTIONS} PRIVATE ${HWY_FLAGS})
 
 # Install library
+if(BUILD_SHARED_LIBS)
 install(TARGETS ${INSTALL_LIBS}
   EXPORT GrokTargets
   RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR} COMPONENT Applications
   LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT Libraries
   ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT Libraries
 )
+endif()
 
 # Install includes files
 install(FILES grok.h 
