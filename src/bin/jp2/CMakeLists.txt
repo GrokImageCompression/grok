@@ -129,12 +129,6 @@ foreach(exe grk_decompress grk_compress grk_dump)
     EXPORT GrokTargets
     DESTINATION ${CMAKE_INSTALL_BINDIR} COMPONENT Applications
   )
-  if(GROK_USE_DSYMUTIL)
-    add_custom_command(TARGET ${exe} POST_BUILD
-    COMMAND "dsymutil" "$<TARGET_FILE:${exe}>"
-    COMMENT "dsymutil $<TARGET_FILE:${exe}>"
-    DEPENDS ${exe})
-  endif()
 endforeach()
 
 if(BUILD_DOC)

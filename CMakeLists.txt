@@ -55,7 +55,6 @@ endif()
 
 if (APPLE)
 	list(APPEND GROK_LIBRARY_PROPERTIES INSTALL_NAME_DIR "${CMAKE_INSTALL_FULL_LIBDIR}")
-	option(GROK_USE_DSYMUTIL "Call dsymutil on binaries after build." OFF)
 endif()
 
 # Big endian test:
