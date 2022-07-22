@@ -63,7 +63,9 @@ endif()
 #-----------------------------------------------------------------------------
 # Big endian test:
 include (${CMAKE_ROOT}/Modules/TestBigEndian.cmake)
+if (NOT CMAKE_SYSTEM_NAME STREQUAL Emscripten)
 TEST_BIG_ENDIAN(GROK_BIG_ENDIAN)
+endif()
 
 #-----------------------------------------------------------------------------
 # Set up file for setting custom ctest vars
