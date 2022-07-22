@@ -182,11 +182,14 @@ if(BUILD_TESTING AND BUILD_CODEC)
 endif()
 
 # install all targets referenced as GrokTargets
+if (NOT CMAKE_SYSTEM_NAME STREQUAL Emscripten)
 install(EXPORT GrokTargets DESTINATION ${GROK_INSTALL_PACKAGE_DIR})
 configure_file( ${${GROK_NAMESPACE}_SOURCE_DIR}/cmake/GrokConfig.cmake.in
   ${${GROK_NAMESPACE}_BINARY_DIR}/GrokConfig.cmake
   @ONLY
 )
+endif()
+
 install( FILES ${GROK_BINARY_DIR}/GrokConfig.cmake
   DESTINATION ${GROK_INSTALL_PACKAGE_DIR}
 )
