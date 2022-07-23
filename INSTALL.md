@@ -65,14 +65,13 @@ then both dynamic and static builds are generated and installed.
 
 ##### Fedora
 
-1. for a static build, the following library must be installed:
-`sudo dnf install libstdc++-static-*.x86_64`
-where * refers to the libstdc++ library version.
-1. if the library has been installed, then
+1. if the Grok library has been installed, then
 `export LD_LIBRARY_PATH=/PATH/TO/BUILD/bin:/usr/local/lib64`
 must be added to the `.bashrc` file. Note that the build binary folder is
 entered before the system binary folder, so that build shared libraries
 are given priority when loading at run time.
+1. for a static build, the following library must be installed:
+`sudo dnf install libstdc++-static`
 
 #### Debug/Release
 

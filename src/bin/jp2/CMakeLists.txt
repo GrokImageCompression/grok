@@ -100,8 +100,7 @@ foreach(exe grk_decompress grk_compress grk_dump)
   target_link_libraries(${exe} 
     ${PNG_LIBNAME} ${TIFF_LIBNAME} ${LCMS_LIBNAME}
     ${JPEG_LIBNAME} ${CMAKE_THREAD_LIBS_INIT} )
-  # link to static library dependencies if only BUILD_STATIC_LIBS is turned on
-  if (BUILD_STATIC_LIBS AND NOT BUILD_SHARED_LIBS)
+  if (NOT BUILD_SHARED_LIBS)
 	  target_link_libraries(${exe} ${GROK_LIBRARY_NAME} hwy ${CMAKE_THREAD_LIBS_INIT} ${CMAKE_DL_LIBS} lcms2)
   else()
 	  target_link_libraries(${exe} ${GROK_LIBRARY_NAME} ${CMAKE_DL_LIBS} )
