@@ -100,9 +100,9 @@ add_subdirectory(src/lib)
 option(BUILD_LUTS_GENERATOR "Build utility to generate t1_luts.h" OFF)
 
 # Build Applications
-option(BUILD_CODEC "Build the CODEC executables" ON)
-option(BUILD_PLUGIN_LOADER "Enable loading of T1 plugin" OFF)
-mark_as_advanced(BUILD_PLUGIN_LOADER)
+option(GRK_BUILD_CODEC "Build the CODEC executables" ON)
+option(GRK_BUILD_PLUGIN_LOADER "Enable loading of T1 plugin" OFF)
+mark_as_advanced(GRK_BUILD_PLUGIN_LOADER)
 
 # URING support
 option(URING OFF "Enable support for io_uring (requires liburing and Linux kernel >= 5.8)")
@@ -142,8 +142,8 @@ if (PERLLIBS_FOUND)
      endif()
 endif(PERLLIBS_FOUND)
 
-if(BUILD_CODEC)
-  option(GROK_BUILD_THIRDPARTY "Build third party binaries" ON)
+if(GRK_BUILD_CODEC)
+  option(GRK_BUILD_THIRDPARTY "Build third party binaries" ON)
   option(GRK_USE_LIBJPEG "Use libjpeg library to support JPEG file format, if present in system" OFF)
   add_subdirectory(thirdparty)
   add_subdirectory(src/bin)
@@ -161,14 +161,14 @@ configure_file(
  @ONLY)
 
 # Build DOCUMENTATION
-option(BUILD_DOC "Build HTML documentation (with doxygen if available)." OFF)
-if(BUILD_DOC)
+option(GRK_BUILD_DOC "Build HTML documentation (with doxygen if available)." OFF)
+if(GRK_BUILD_DOC)
   add_subdirectory(doc)
 endif()
 
 # Build Testing
 option(BUILD_TESTING "Build tests." OFF)
-if(BUILD_TESTING AND BUILD_CODEC)
+if(BUILD_TESTING AND GRK_BUILD_CODEC)
 	enable_testing()
 	include(CTest)
 	# Search for Grok test data
@@ -194,7 +194,7 @@ install( FILES ${GROK_BINARY_DIR}/GrokConfig.cmake
 )
 
 # install CHANGES and LICENSE
-if(BUILD_DOC)
+if(GRK_BUILD_DOC)
 if(EXISTS ${GROK_SOURCE_DIR}/CHANGES)
   install(FILES CHANGES DESTINATION ${CMAKE_INSTALL_DOCDIR})
 endif()

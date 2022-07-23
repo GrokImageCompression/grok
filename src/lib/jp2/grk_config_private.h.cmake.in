@@ -18,4 +18,4 @@ On other platforms we use the result of the TRY_RUN. */
 # define GROK_BIG_ENDIAN
 #endif
 
-#cmakedefine GROK_BUILD_THIRDPARTY @GROK_BUILD_THIRDPARTY@
+#cmakedefine GRK_BUILD_THIRDPARTY @GRK_BUILD_THIRDPARTY@

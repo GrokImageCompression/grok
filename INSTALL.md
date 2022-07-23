@@ -60,8 +60,6 @@ The `BUILD_SHARED_LIBS` `cmake` flag determines if the `grk_compress`
 and `grk_decompress` binaries are linked to dynamic or static builds
 of the library `libgrokj2k`.
 
-If both `BUILD_SHARED_LIBS` and `BUILD_STATIC_LIBS` `cmake` flags are set,
-then both dynamic and static builds are generated and installed.
 
 ##### Fedora
 
@@ -125,11 +123,11 @@ Important `cmake` flags:
  `-DBUILD_SHARED_LIBS:bool=on` (default: `ON`)
 
   Note: when using this option, static libraries are not built and executables are dynamically linked.
-* To build the core codec : `-DBUILD_CODEC:bool=ON` (default: `ON`)
-* To build the documentation: `-DBUILD_DOC:bool=ON` (default: `OFF`)
+* To build the core codec : `-DGRK_BUILD_CODEC:bool=ON` (default: `ON`)
+* To build the documentation: `-GRK_BUILD_DOC=ON` (default: `OFF`)
 * To enable testing :
 
-      $  cmake . -DBUILD_TESTING:BOOL=ON -DGRK_DATA_ROOT:PATH='PATH/TO/DATA/DIRECTORY'
+      $  cmake . -BUILD_TESTING=ON -DGRK_DATA_ROOT:PATH='PATH/TO/DATA/DIRECTORY'
       $  make -j8
       $  ctest -D NightlyMemCheck
 
@@ -168,7 +166,7 @@ Type `cmake --help` for available generators on your platform.
 Third party libraries such as `libtiff` are built by default. To disable
 these library builds and use the version installed on your system, set :
 
-  `-DGROK_BUILD_THIRDPARTY:BOOL=OFF`
+  `-DGRK_BUILD_THIRDPARTY:BOOL=OFF`
 
 #### JPEG Support
 

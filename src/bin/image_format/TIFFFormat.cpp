@@ -21,7 +21,7 @@
 
 #ifdef GROK_HAVE_LIBTIFF
 
-#ifdef GROK_BUILD_THIRDPARTY
+#ifdef GRK_BUILD_THIRDPARTY
 #include "tiffiop.h"
 #endif
 

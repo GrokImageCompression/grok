@@ -239,7 +239,7 @@ set(GROK_LIBRARY_SRCS
 add_definitions(-DSPDLOG_COMPILED_LIB)
 
 # Build the library
-if (BUILD_PLUGIN_LOADER)
+if (GRK_BUILD_PLUGIN_LOADER)
     add_definitions(-DGRK_BUILD_PLUGIN_LOADER)
 endif()
 if(WIN32)
