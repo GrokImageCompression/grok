@@ -12,12 +12,11 @@
  *
  *    You should have received a copy of the GNU Affero General Public License
  *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
  */
 
-#include "GrkCompareDumpFiles.h"
+namespace grk {
 
-int main(int argc, char **argv) {
-  grk::GrkCompareDumpFiles cdf;
+int batch_sleep(int val);
 
-  return cdf.main(argc, argv);
 }

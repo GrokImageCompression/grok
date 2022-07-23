@@ -83,7 +83,6 @@ const GRK_SUPPORTED_FILE_FMT supportedStdoutFileFormats[] = {
 
 const size_t maxICCProfileBufferLen = 10000000;
 
-int batch_sleep(int val);
 
 class ChronoTimer {
 public:

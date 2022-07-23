@@ -29,6 +29,7 @@ set(common_SRCS
   ${GROK_SOURCE_DIR}/src/bin/image_format/PNGFormat.h
   ${GROK_SOURCE_DIR}/src/bin/image_format/JPEGFormat.h
   ${GROK_SOURCE_DIR}/src/bin/common/common.cpp
+  ${GROK_SOURCE_DIR}/src/bin/common/codec_common.cpp
   ${GROK_SOURCE_DIR}/src/bin/common/common.h
   ${GROK_SOURCE_DIR}/src/bin/common/grk_string.h
   ${GROK_SOURCE_DIR}/src/bin/common/exif.cpp
@@ -45,7 +46,10 @@ set(common_SRCS
   ${GROK_SOURCE_DIR}/src/bin/io/Serializer.cpp
   ${GROK_SOURCE_DIR}/src/bin/io/ImageFormat.cpp
   ${GROK_SOURCE_DIR}/src/bin/io/TIFFFormat.cpp
-  )
+  ${GROK_SOURCE_DIR}/src/bin/jp2/GrkCompress.cpp
+  ${GROK_SOURCE_DIR}/src/bin/jp2/GrkDecompress.cpp
+  ${GROK_SOURCE_DIR}/src/bin/jp2/GrkDump.cpp
+ )
 
 if(GROK_HAVE_LIBTIFF)
 	list(APPEND common_SRCS ../image_format/TIFFFormat.cpp)

@@ -1,5 +1,9 @@
-# source code for Grok apps:
-add_subdirectory(common)
-# Part 1 & 2:
+configure_file(
+ ${CMAKE_CURRENT_SOURCE_DIR}/grk_apps_config.h.cmake.in
+ ${CMAKE_CURRENT_BINARY_DIR}/grk_apps_config.h
+ @ONLY
+ )
+include_directories(
+  ${CMAKE_CURRENT_BINARY_DIR}
+)
 add_subdirectory(jp2)
-

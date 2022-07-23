@@ -19,29 +19,17 @@
  *
  */
 #include <filesystem>
-#include "common.h"
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
-#include <condition_variable>
-using namespace std::chrono_literals;
-
 #ifdef _MSC_VER
 #include <intrin.h>
 #endif
 
+#include "common.h"
+
 namespace grk
 {
-std::condition_variable sleep_cv;
-std::mutex sleep_cv_m;
-// val == # of 100ms increments to wait
-int batch_sleep(int val)
-{
-	std::unique_lock<std::mutex> lk(sleep_cv_m);
-	sleep_cv.wait_for(lk, val * 100ms, [] { return false; });
-	return 0;
-};
-
 std::string convertFileFmtToString(GRK_SUPPORTED_FILE_FMT fmt)
 {
 	switch(fmt)
@@ -86,12 +74,6 @@ std::string convertFileFmtToString(GRK_SUPPORTED_FILE_FMT fmt)
 	}
 }
 
-/* -------------------------------------------------------------------------- */
-/**
- * Parse decoding area input values
- * separator = ","
- */
-/* -------------------------------------------------------------------------- */
 bool parseWindowBounds(char* inArg, float* dw_x0, float* dw_y0, float* dw_x1,	float* dw_y1)
 {
 	int it = 0;

@@ -12,12 +12,22 @@
  *
  *    You should have received a copy of the GNU Affero General Public License
  *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
  */
 
-#include "GrkCompareDumpFiles.h"
+#include <condition_variable>
+using namespace std::chrono_literals;
 
-int main(int argc, char **argv) {
-  grk::GrkCompareDumpFiles cdf;
+namespace grk
+{
+std::condition_variable sleep_cv;
+std::mutex sleep_cv_m;
+// val == # of 100ms increments to wait
+int batch_sleep(int val)
+{
+    std::unique_lock<std::mutex> lk(sleep_cv_m);
+    sleep_cv.wait_for(lk, val * 100ms, [] { return false; });
+    return 0;
+};
 
-  return cdf.main(argc, argv);
 }
