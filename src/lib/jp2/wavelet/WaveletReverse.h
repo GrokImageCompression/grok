@@ -148,7 +148,7 @@ class WaveletReverse
 
   private:
 	template<typename T, uint32_t FILTER_WIDTH, uint32_t VERT_PASS_WIDTH, typename D>
-	bool decompress_partial_tile(ISparseCanvas* sa, std::vector<TaskInfo<T, dwt_data<T>>*> &tasks);
+	bool decompress_partial_tile(ISparseCanvas* sa, std::vector<TaskInfo<T, dwt_data<T>>*>& tasks);
 	static void decompress_step1_97(const Params97& d, const float c);
 #ifdef __SSE__
 	static void decompress_step1_sse_97(Params97 d, const __m128 c);

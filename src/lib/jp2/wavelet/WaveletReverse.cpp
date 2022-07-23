@@ -1709,8 +1709,6 @@ Params97 WaveletReverse::makeParams97(dwt_data<vec4f>* dwt, bool isBandL, bool s
 	return rc;
 };
 
-
-
 template<uint32_t FILTER_WIDTH>
 struct PartialBandInfo
 {
@@ -1800,7 +1798,8 @@ struct PartialBandInfo
  */
 template<typename T, uint32_t FILTER_WIDTH, uint32_t VERT_PASS_WIDTH, typename D>
 
-bool WaveletReverse::decompress_partial_tile(ISparseCanvas* sa, std::vector<TaskInfo<T, dwt_data<T>>*> &tasks)
+bool WaveletReverse::decompress_partial_tile(ISparseCanvas* sa,
+											 std::vector<TaskInfo<T, dwt_data<T>>*>& tasks)
 {
 	uint8_t numresolutions = tilec_->numresolutions;
 	auto buf = tilec_->getWindow();
@@ -2030,10 +2029,11 @@ WaveletReverse::WaveletReverse(TileProcessor* tileProcessor, TileComponent* tile
 	: tileProcessor_(tileProcessor), scheduler_(tileProcessor->getScheduler()), tilec_(tilec),
 	  compno_(compno), unreducedWindow_(unreducedWindow), numres_(numres), qmfbid_(qmfbid)
 {}
-WaveletReverse::~WaveletReverse(void){
-	for (auto& t : tasks_)
+WaveletReverse::~WaveletReverse(void)
+{
+	for(auto& t : tasks_)
 		delete t;
-	for (auto& t : tasksF_)
+	for(auto& t : tasksF_)
 		delete t;
 }
 bool WaveletReverse::decompress(void)
@@ -2048,7 +2048,7 @@ bool WaveletReverse::decompress(void)
 			return decompress_partial_tile<
 				int32_t, getFilterPad<uint32_t>(true), VERT_PASS_WIDTH,
 				Partial53<int32_t, getFilterPad<uint32_t>(false), VERT_PASS_WIDTH>>(
-				tilec_->getRegionWindow(),tasks_ );
+				tilec_->getRegionWindow(), tasks_);
 		}
 	}
 	else
@@ -2061,7 +2061,7 @@ bool WaveletReverse::decompress(void)
 			return decompress_partial_tile<
 				vec4f, getFilterPad<uint32_t>(false), VERT_PASS_WIDTH,
 				Partial97<vec4f, getFilterPad<uint32_t>(false), VERT_PASS_WIDTH>>(
-				tilec_->getRegionWindow(),tasksF_);
+				tilec_->getRegionWindow(), tasksF_);
 		}
 	}
 }

@@ -597,7 +597,8 @@ bool CodeStreamDecompress::decompressTiles(void)
 			// but there are actually 6
 			if(curr_marker_ == J2K_MS_SOT)
 			{
-				if (checkForIllegalTilePart()){
+				if(checkForIllegalTilePart())
+				{
 					success = false;
 					goto cleanup;
 				}
@@ -899,7 +900,7 @@ bool CodeStreamDecompress::decompressTile(void)
 		{
 			if(readSOTorEOC() && curr_marker_ == J2K_MS_SOT)
 			{
-				if (checkForIllegalTilePart())
+				if(checkForIllegalTilePart())
 					return false;
 			}
 		}
@@ -912,7 +913,8 @@ bool CodeStreamDecompress::decompressTile(void)
 
 	return true;
 }
-bool CodeStreamDecompress::checkForIllegalTilePart(void){
+bool CodeStreamDecompress::checkForIllegalTilePart(void)
+{
 	try
 	{
 		uint16_t markerSize;

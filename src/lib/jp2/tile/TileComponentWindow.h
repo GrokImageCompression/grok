@@ -50,13 +50,14 @@ constexpr T getFilterPad(bool lossless)
 }
 
 template<typename T>
-struct TileComponentWindowBase {
+struct TileComponentWindowBase
+{
 	TileComponentWindowBase(bool isCompressor, bool lossless, bool wholeTileDecompress,
-						grk_rect32 unreducedTileComp, grk_rect32 reducedTileComp,
-						grk_rect32 unreducedImageCompWindow, uint8_t numresolutions,
-						uint8_t reducedNumResolutions) :
-							  unreducedBounds_(unreducedTileComp), bounds_(reducedTileComp), compress_(isCompressor),
-							  wholeTileDecompress_(wholeTileDecompress)
+							grk_rect32 unreducedTileComp, grk_rect32 reducedTileComp,
+							grk_rect32 unreducedImageCompWindow, uint8_t numresolutions,
+							uint8_t reducedNumResolutions)
+		: unreducedBounds_(unreducedTileComp), bounds_(reducedTileComp), compress_(isCompressor),
+		  wholeTileDecompress_(wholeTileDecompress)
 	{
 		assert(reducedNumResolutions > 0);
 		auto currentRes = unreducedTileComp;
@@ -134,7 +135,8 @@ struct TileComponentWindowBase {
 
 		return true;
 	}
-protected:
+
+  protected:
 	bool useBandWindows() const
 	{
 		return !this->wholeTileDecompress_;
@@ -153,7 +155,6 @@ protected:
 	bool wholeTileDecompress_;
 };
 
-
 template<typename T>
 struct TileComponentWindow : public TileComponentWindowBase<T>
 {
@@ -162,13 +163,11 @@ struct TileComponentWindow : public TileComponentWindowBase<T>
 						grk_rect32 unreducedTileComp, grk_rect32 reducedTileComp,
 						grk_rect32 unreducedImageCompWindow, uint8_t numresolutions,
 						uint8_t reducedNumResolutions)
-		: TileComponentWindowBase<T>(isCompressor, lossless, wholeTileDecompress,
-				unreducedTileComp, reducedTileComp,
-				unreducedImageCompWindow,  numresolutions,
-				reducedNumResolutions)
+		: TileComponentWindowBase<T>(isCompressor, lossless, wholeTileDecompress, unreducedTileComp,
+									 reducedTileComp, unreducedImageCompWindow, numresolutions,
+									 reducedNumResolutions)
 
-	{
-	}
+	{}
 	~TileComponentWindow() = default;
 
 	/**

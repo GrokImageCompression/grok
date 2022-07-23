@@ -14,12 +14,12 @@
  *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifdef _WIN32
-#else
+#ifndef _WIN32
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/uio.h>
 #endif
+
 #include <cstring>
 #include <cassert>
 
@@ -49,6 +49,7 @@ void FileIOUnix::registerReclaimCallback(io_callback reclaim_callback, void* use
 bool FileIOUnix::attach(FileIOUnix* parent)
 {
 	fd_ = parent->fd_;
+	mode_ = parent->mode_;
 
 #ifdef IOBENCH_HAVE_URING
 	return uring.attach(&parent->uring);
@@ -58,10 +59,8 @@ bool FileIOUnix::attach(FileIOUnix* parent)
 }
 int FileIOUnix::getMode(std::string mode)
 {
+#ifndef _WIN32
 	int m = -1;
-#ifdef _WIN32
-
-#else
 	switch(mode[0])
 	{
 		case 'r':
@@ -83,19 +82,19 @@ int FileIOUnix::getMode(std::string mode)
 			printf("Bad mode %s\n", mode.c_str());
 			break;
 	}
-#endif
 
 	return m;
+#endif
+
+	return -1;
 }
 
 bool FileIOUnix::open(std::string name, std::string mode, bool asynch)
 {
+#ifndef _WIN32
 	(void)asynch;
 	if(!close())
 		return false;
-#ifdef _WIN32
-
-#else
 	int fd = 0;
 	int m = getMode(mode);
 	if(m == -1)
@@ -120,15 +119,15 @@ bool FileIOUnix::open(std::string name, std::string mode, bool asynch)
 	filename_ = name;
 	mode_ = mode;
 	ownsFileDescriptor_ = true;
-#endif
 
 	return true;
+#endif
+
+	return false;
 }
 bool FileIOUnix::close(void)
 {
-#ifdef _WIN32
-	return true;
-#else
+#ifndef _WIN32
 #ifdef IOBENCH_HAVE_URING
 	uring.close();
 #endif
@@ -152,14 +151,34 @@ bool FileIOUnix::close(void)
 
 	return rc == 0;
 #endif
+
+	return false;
+}
+bool FileIOUnix::reopenAsBuffered(void)
+{
+#ifndef _WIN32
+	if(mode_.length() >= 2 && mode_[1] == 'd')
+	{
+		auto off = lseek(fd_, 0, SEEK_END);
+		if(!close())
+			return false;
+
+		if(!open(filename_, "a", false))
+			return false;
+
+		lseek(fd_, off, SEEK_SET);
+	}
+
+	return true;
+#endif
+
+	return false;
 }
 uint64_t FileIOUnix::seek(int64_t off, int32_t whence)
 {
+#ifndef _WIN32
 	if(simulateWrite_)
 		return off_;
-#ifdef _WIN32
-
-#else
 	off_t rc = lseek(fd_, off, whence);
 	if(rc == -1)
 	{
@@ -172,22 +191,21 @@ uint64_t FileIOUnix::seek(int64_t off, int32_t whence)
 
 	return (uint64_t)rc;
 #endif
+
+	return 0;
 }
 uint64_t FileIOUnix::write(uint64_t offset, IOBuf** buffers, uint32_t numBuffers)
 {
+#ifndef _WIN32
 	if(!buffers || !numBuffers)
 		return 0;
 	uint64_t bytesWritten = 0;
-#ifdef _WIN32
-
-#else
-
 #ifdef IOBENCH_HAVE_URING
 	if(uring.active())
 		return uring.write(offset, buffers, numBuffers);
 #endif
 
-	auto io = new IOScheduleData(offset, buffers, numBuffers);
+	auto io = new IOScheduleData(offset, buffers, numBuffers, FileIO::isDirect(mode_));
 	ssize_t writtenInCall = 0;
 	for(; bytesWritten < io->totalBytes_; bytesWritten += (uint64_t)writtenInCall)
 	{
@@ -196,18 +214,21 @@ uint64_t FileIOUnix::write(uint64_t offset, IOBuf** buffers, uint32_t numBuffers
 			break;
 	}
 	delete io;
-#endif
-
 	for(uint32_t i = 0; i < numBuffers; ++i)
 	{
 		auto b = buffers[i];
 		assert(reclaim_callback_);
 		reclaim_callback_(threadId_, b, reclaim_user_data_);
 	}
+
 	return bytesWritten;
+#endif
+
+	return 0;
 }
 uint64_t FileIOUnix::write(uint8_t* buf, uint64_t bytes_total)
 {
+#ifndef _WIN32
 	if(simulateWrite_)
 	{
 		// offset 0 write is for file header
@@ -220,9 +241,6 @@ uint64_t FileIOUnix::write(uint8_t* buf, uint64_t bytes_total)
 		return bytes_total;
 	}
 	uint64_t bytes_written = 0;
-#ifdef _WIN32
-
-#else
 	ssize_t count = 0;
 	for(; bytes_written < bytes_total; bytes_written += (uint64_t)count)
 	{
@@ -232,9 +250,11 @@ uint64_t FileIOUnix::write(uint8_t* buf, uint64_t bytes_total)
 		if(count <= 0)
 			break;
 	}
-#endif
 
 	return bytes_written;
+#endif
+
+	return 0;
 }
 
 } // namespace io

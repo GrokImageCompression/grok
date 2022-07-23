@@ -134,7 +134,7 @@ struct io
 
 struct IOScheduleData
 {
-	IOScheduleData(uint64_t offset, IOBuf** buffers, uint32_t numBuffers)
+	IOScheduleData(uint64_t offset, IOBuf** buffers, uint32_t numBuffers, bool direct)
 		: offset_(offset), numBuffers_(numBuffers), buffers_(nullptr), iov_(new io[numBuffers_]),
 		  totalBytes_(0)
 	{
@@ -146,7 +146,7 @@ struct IOScheduleData
 			auto b = buffers_[i];
 			auto v = iov_ + i;
 			v->iov_base = b->data_;
-			v->iov_len = b->len_;
+			v->iov_len = direct ? b->allocLen_ : b->len_;
 			totalBytes_ += b->len_;
 		}
 	}

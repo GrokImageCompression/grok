@@ -67,6 +67,10 @@ bool Serializer::close(void)
 {
 	return fileIO_.close();
 }
+bool Serializer::reopenAsBuffered(void)
+{
+	return fileIO_.reopenAsBuffered();
+}
 uint64_t Serializer::seek(int64_t off, int32_t whence)
 {
 	return fileIO_.seek(off, whence);

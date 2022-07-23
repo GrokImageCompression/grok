@@ -349,17 +349,17 @@ struct grk_buf2d : protected grk_buf<T, A>, public grk_rect32
 	template<typename F>
 	void copyFrom(const grk_buf2d& src, F filter)
 	{
-		return copyFrom(&src,filter);
+		return copyFrom(&src, filter);
 	}
 	// rhs coordinates are in "this" coordinate system
 	template<typename F>
-	void copyFrom(const grk_buf2d *src, F filter)
+	void copyFrom(const grk_buf2d* src, F filter)
 	{
 		auto inter = intersection(src);
 		if(inter.empty())
 			return;
 
-		if (!src->buf)
+		if(!src->buf)
 			return;
 
 		T* ptr = this->buf + (inter.y0 * stride + inter.x0);
@@ -372,12 +372,15 @@ struct grk_buf2d : protected grk_buf<T, A>, public grk_rect32
 			srcPtr += src->stride;
 		}
 	}
-	struct memcpy_from {
-		void copy(T* dst, T* src, uint32_t len){
-			memcpy(dst,src,len);
+	struct memcpy_from
+	{
+		void copy(T* dst, T* src, uint32_t len)
+		{
+			memcpy(dst, src, len);
 		}
 	};
-	void copyFrom(const grk_buf2d& src){
+	void copyFrom(const grk_buf2d& src)
+	{
 		copy(src, memcpy_from());
 	}
 	T* getBuffer(void) const

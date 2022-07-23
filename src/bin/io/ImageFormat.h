@@ -41,6 +41,7 @@ class ImageFormat
 	void setEncodeFinisher(std::function<bool(void)> finisher);
 	virtual void init(uint32_t width, uint32_t height, uint16_t numcomps, uint64_t packedRowBytes,
 					  uint32_t nominalStripHeight, bool chunked);
+	bool reopenAsBuffered(void);
 	virtual bool encodeInit(std::string filename, bool direct, uint32_t concurrency, bool asynch);
 	virtual bool encodePixels(uint32_t threadId, IOBuf** buffers, uint32_t numBuffers);
 	virtual bool encodePixels(uint32_t threadId, StripChunkArray* chunkArray);
@@ -50,6 +51,7 @@ class ImageFormat
 	ImageStripper* getImageStripper(void);
 
   protected:
+	bool closeThreadSerializers(void);
 	bool isHeaderEncoded(void);
 	uint8_t* header_;
 	size_t headerLength_;

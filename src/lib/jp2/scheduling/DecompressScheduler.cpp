@@ -71,7 +71,7 @@ bool DecompressScheduler::schedule(uint16_t compno)
 	uint8_t numRes = tilec->highestResolutionDecompressed + 1U;
 	if(numRes > 0 && !scheduleWavelet(compno))
 	{
-		for (uint16_t i = 0; i < numcomps_; ++i)
+		for(uint16_t i = 0; i < numcomps_; ++i)
 			releaseBlocks(i);
 		return false;
 	}
@@ -79,7 +79,8 @@ bool DecompressScheduler::schedule(uint16_t compno)
 	return true;
 }
 
-void DecompressScheduler::releaseBlocks(uint16_t compno){
+void DecompressScheduler::releaseBlocks(uint16_t compno)
+{
 	auto& componentBlocks = tileBlocks_[compno];
 	for(auto& rb : componentBlocks)
 		rb.release();

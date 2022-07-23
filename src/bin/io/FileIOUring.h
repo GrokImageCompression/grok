@@ -53,7 +53,7 @@ class FileIOUring : public IFileIO
 	bool initQueue(uint32_t shared_ring_fd);
 	IOScheduleData* retrieveCompletion(bool peek, bool& success);
 
-	const uint32_t QD = 1024;
+	const uint32_t QD = 4;
 	io_callback reclaim_callback_;
 	void* reclaim_user_data_;
 	uint32_t threadId_;

@@ -34,6 +34,7 @@ class FileIOUnix : public FileIO
 	void registerReclaimCallback(io_callback reclaim_callback, void* user_data) override;
 	bool attach(FileIOUnix* parent);
 	bool open(std::string name, std::string mode, bool asynch);
+	bool reopenAsBuffered(void);
 	bool close(void) override;
 	uint64_t write(uint64_t offset, IOBuf** buffers, uint32_t numBuffers) override;
 	uint64_t write(uint8_t* buf, uint64_t size);

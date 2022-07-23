@@ -78,6 +78,10 @@ bool ImageFormat::encodeInit(std::string filename, bool direct, uint32_t concurr
 
 	return true;
 }
+bool ImageFormat::reopenAsBuffered(void)
+{
+	return serializer_.reopenAsBuffered();
+}
 ImageStripper* ImageFormat::getImageStripper(void)
 {
 	return imageStripper_;
@@ -135,9 +139,7 @@ bool ImageFormat::encodePixels(uint32_t threadId, IOBuf** buffers, uint32_t numB
 {
 	assert(numBuffers);
 	auto ser = workerSerializers_[threadId];
-	uint64_t toWrite = 0;
-	for(uint32_t i = 0; i < numBuffers; ++i)
-		toWrite += buffers[i]->len_;
+	uint64_t toWrite = FileIO::bytesToWrite(buffers, numBuffers, mode_);
 	uint64_t written = ser->write(buffers[0]->offset_, buffers, numBuffers);
 	if(written != toWrite)
 	{
@@ -159,13 +161,20 @@ bool ImageFormat::isHeaderEncoded(void)
 {
 	return ((encodeState_ & IMAGE_FORMAT_ENCODED_HEADER) == IMAGE_FORMAT_ENCODED_HEADER);
 }
-bool ImageFormat::close(void)
+bool ImageFormat::closeThreadSerializers(void)
 {
 	// close all thread serializers
 	for(uint32_t i = 0; i < concurrency_; ++i)
 		workerSerializers_[i]->close();
 
 	return true;
+}
+bool ImageFormat::close(void)
+{
+	bool rc = closeThreadSerializers();
+	rc &= serializer_.close();
+
+	return rc;
 }
 
 } // namespace io

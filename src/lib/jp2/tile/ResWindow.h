@@ -291,11 +291,14 @@ struct ResWindow
 			// 3. allocate split windows
 			if(tileCompAtLowerRes_.numTileBandWindows)
 			{
-				if (resWindowBufferHighestResREL_) {
+				if(resWindowBufferHighestResREL_)
+				{
 					resWindowBufferSplit_[SPLIT_L]->attach(resWindowBuffer_);
 					resWindowBufferSplit_[SPLIT_H]->attach(resWindowBuffer_, 0,
-													   tileCompAtLowerRes_.height());
-				} else {
+														   tileCompAtLowerRes_.height());
+				}
+				else
+				{
 					resWindowBufferSplit_[SPLIT_L]->alloc2d(clear);
 					resWindowBufferSplit_[SPLIT_H]->alloc2d(clear);
 				}
