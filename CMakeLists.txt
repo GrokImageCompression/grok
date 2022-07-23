@@ -142,12 +142,12 @@ if (PERLLIBS_FOUND)
      endif()
 endif(PERLLIBS_FOUND)
 
+option(GRK_BUILD_THIRDPARTY "Build third party binaries" ON)
+add_subdirectory(thirdparty)
 if(GRK_BUILD_CODEC)
-  option(GRK_BUILD_THIRDPARTY "Build third party binaries" ON)
-  option(GRK_USE_LIBJPEG "Use libjpeg library to support JPEG file format, if present in system" OFF)
-  add_subdirectory(thirdparty)
   add_subdirectory(src/bin)
-endif ()
+  option(GRK_USE_LIBJPEG "Use libjpeg library to support JPEG file format, if present in system" OFF)
+endif()
 
 # grk_config.h generation
 configure_file(
@@ -181,7 +181,7 @@ if(BUILD_TESTING AND GRK_BUILD_CODEC)
 endif()
 
 # install all targets referenced as GrokTargets
-if (NOT CMAKE_SYSTEM_NAME STREQUAL Emscripten)
+if (BUILD_SHARED_LIBS AND NOT CMAKE_SYSTEM_NAME STREQUAL Emscripten)
 install(EXPORT GrokTargets DESTINATION ${GROK_INSTALL_PACKAGE_DIR})
 configure_file( ${${GROK_NAMESPACE}_SOURCE_DIR}/cmake/GrokConfig.cmake.in
   ${${GROK_NAMESPACE}_BINARY_DIR}/GrokConfig.cmake
