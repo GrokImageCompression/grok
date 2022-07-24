@@ -68,8 +68,8 @@ endif()
 
 # Headers file are located here:
 include_directories(
-  ${${GROK_NAMESPACE}_BINARY_DIR}/src/lib/jp2
-  ${${GROK_NAMESPACE}_BINARY_DIR}/src/bin/common
+  ${GROK_BINARY_DIR}/src/lib/jp2
+  ${GROK_BINARY_DIR}/src/bin/common
   ${GROK_SOURCE_DIR}/src/lib/jp2
   ${GROK_SOURCE_DIR}/src/bin/common
   ${GROK_SOURCE_DIR}/src/bin/image_format

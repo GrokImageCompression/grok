@@ -1,11 +1,10 @@
 cmake_minimum_required(VERSION 3.16)
 
-if(NOT GROK_NAMESPACE)
-  set(GROK_NAMESPACE "GROK")
-endif()
+project(GROK)
 set(GROK_LIBRARY_NAME grokj2k)
+set(GROK_CODEC_NAME grokj2kcodec)
 set(GROK_PLUGIN_NAME grokj2k_plugin)
-project(${GROK_NAMESPACE} )
+
 
 if ( (CMAKE_CXX_COMPILER_ID MATCHES "GNU") AND (CMAKE_CXX_COMPILER_VERSION LESS 10.0) )
    message(FATAL_ERROR "GNU compiler version must be at least 10.0")
@@ -41,7 +40,7 @@ set(GROK_LIBRARY_PROPERTIES
 
 # Path to additional CMake modules
 set(CMAKE_MODULE_PATH
-    ${${GROK_NAMESPACE}_SOURCE_DIR}/cmake
+    ${GROK_SOURCE_DIR}/cmake
     ${CMAKE_MODULE_PATH})
 
 # Install directories
@@ -65,8 +64,8 @@ endif()
 
 # Set up file for setting custom ctest variables
 configure_file(
-  ${${GROK_NAMESPACE}_SOURCE_DIR}/cmake/CTestCustom.cmake.in
-  ${${GROK_NAMESPACE}_BINARY_DIR}/CTestCustom.cmake
+  ${GROK_SOURCE_DIR}/cmake/CTestCustom.cmake.in
+  ${GROK_BINARY_DIR}/CTestCustom.cmake
   @ONLY
   )
 
@@ -183,8 +182,8 @@ endif()
 # install all targets referenced as GrokTargets
 if (BUILD_SHARED_LIBS AND NOT CMAKE_SYSTEM_NAME STREQUAL Emscripten)
 install(EXPORT GrokTargets DESTINATION ${GROK_INSTALL_PACKAGE_DIR})
-configure_file( ${${GROK_NAMESPACE}_SOURCE_DIR}/cmake/GrokConfig.cmake.in
-  ${${GROK_NAMESPACE}_BINARY_DIR}/GrokConfig.cmake
+configure_file( ${GROK_SOURCE_DIR}/cmake/GrokConfig.cmake.in
+  ${GROK_BINARY_DIR}/GrokConfig.cmake
   @ONLY
 )
 endif()

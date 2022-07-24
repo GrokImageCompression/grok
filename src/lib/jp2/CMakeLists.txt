@@ -1,5 +1,3 @@
-include_regular_expression("^.*$")
-
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
@@ -29,7 +27,7 @@ install( FILES  ${CMAKE_CURRENT_BINARY_DIR}/grk_config.h
  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${GROK_INSTALL_SUBDIR} COMPONENT Headers)
 
 include_directories(
-  ${${GROK_NAMESPACE}_BINARY_DIR}/src/lib/jp2 # grk_config.h and grk_config_private.h
+  ${GROK_BINARY_DIR}/src/lib/jp2 # grk_config.h and grk_config_private.h
   ${GROK_SOURCE_DIR}/src/bin/common
   ${GROK_SOURCE_DIR}/src/bin/jp2
   ${GROK_SOURCE_DIR}/src/include
