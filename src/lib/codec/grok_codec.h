@@ -12,10 +12,27 @@
  *
  *    You should have received a copy of the GNU Affero General Public License
  *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
  */
 
-#include "grok_codec.h"
+#pragma once
 
-int main(int argc, char *argv[]) {
-   return grk_codec_test_tile_encoder(argc,argv);
+#include "grok.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+GRK_API int grk_codec_dump(int argc, char* argv[]);
+GRK_API int grk_codec_compress(int argc, char* argv[]);
+GRK_API int grk_codec_decompress(int argc, char* argv[]);
+GRK_API int grk_codec_compare_dump_files(int argc, char* argv[]);
+GRK_API int grk_codec_compare_images(int argc, char* argv[]);
+GRK_API int grk_codec_compare_raw_files(int argc, char* argv[]);
+GRK_API int grk_codec_random_tile_access(int argc, char* argv[]);
+GRK_API int grk_codec_test_tile_encoder(int argc, char* argv[]);
+GRK_API int grk_codec_test_tile_decoder(int argc, char* argv[]);
+
+#ifdef __cplusplus
 }
+#endif

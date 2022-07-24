@@ -14,11 +14,8 @@
  *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "GrkCompareRawFiles.h"
+#include "grok_codec.h"
 
 int main(int argc, char **argv) {
-    grk::GrkCompareRawFiles crf;
-
-    return crf.main(argc, argv);
-
+   return grk_codec_compare_raw_files(argc,argv);
 }

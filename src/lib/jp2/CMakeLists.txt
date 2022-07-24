@@ -28,8 +28,8 @@ install( FILES  ${CMAKE_CURRENT_BINARY_DIR}/grk_config.h
 
 include_directories(
   ${GROK_BINARY_DIR}/src/lib/jp2 # grk_config.h and grk_config_private.h
-  ${GROK_SOURCE_DIR}/src/bin/common
-  ${GROK_SOURCE_DIR}/src/bin/jp2
+  ${GROK_SOURCE_DIR}/src/lib/codec/common
+  ${GROK_SOURCE_DIR}/src/lib/codec
   ${GROK_SOURCE_DIR}/src/include
   ${CMAKE_CURRENT_SOURCE_DIR}
   ${CMAKE_CURRENT_SOURCE_DIR}/plugin
@@ -246,25 +246,20 @@ if(WIN32)
   else()
     add_definitions(-DGRK_STATIC)
   endif()
-  add_library(${GROK_LIBRARY_NAME} ${GROK_LIBRARY_SRCS})
-  set(INSTALL_LIBS ${GROK_LIBRARY_NAME})
-else()
-	  add_library(${GROK_LIBRARY_NAME} ${GROK_LIBRARY_SRCS})
-	  set(INSTALL_LIBS ${GROK_LIBRARY_NAME})
 endif()
+add_library(${GROK_LIBRARY_NAME} ${GROK_LIBRARY_SRCS})
+set(INSTALL_LIBS ${GROK_LIBRARY_NAME})
 if (CMAKE_CXX_COMPILER_ID MATCHES "GNU")
-	target_link_options(${GROK_LIBRARY_NAME} PUBLIC "LINKER:-z,now")
+  target_link_options(${GROK_LIBRARY_NAME} PUBLIC "LINKER:-z,now")
 endif() 
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/highway EXCLUDE_FROM_ALL)
+target_link_libraries(${GROK_LIBRARY_NAME} PRIVATE hwy lcms2)
 if(UNIX)
-  target_link_libraries(${GROK_LIBRARY_NAME} PUBLIC ${CMAKE_THREAD_LIBS_INIT} PRIVATE hwy lcms2)
-else()
-  target_link_libraries(${GROK_LIBRARY_NAME} PRIVATE hwy lcms2)
+  target_link_libraries(${GROK_LIBRARY_NAME} PUBLIC ${CMAKE_THREAD_LIBS_INIT})
 endif()
 set_target_properties(${GROK_LIBRARY_NAME} PROPERTIES ${GROK_LIBRARY_PROPERTIES})
 target_compile_options(${GROK_LIBRARY_NAME} PRIVATE ${GROK_COMPILE_OPTIONS} PRIVATE ${HWY_FLAGS})
 
-# Install library
 if(BUILD_SHARED_LIBS)
 install(TARGETS ${INSTALL_LIBS}
   EXPORT GrokTargets
@@ -274,7 +269,6 @@ install(TARGETS ${INSTALL_LIBS}
 )
 endif()
 
-# Install includes files
 install(FILES grok.h 
   DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${GROK_INSTALL_SUBDIR} COMPONENT Headers
 )

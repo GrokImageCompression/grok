@@ -8,9 +8,9 @@ ENDIF(MSVC)
 include_directories(
   ${GROK_BINARY_DIR}/src/lib/jp2 # grk_config.h
   ${GROK_BINARY_DIR}/src/bin/ # grk_apps_config.h
+  ${GROK_BINARY_DIR}/src/lib/codec/ # grk_apps_config.h
+  ${GROK_SOURCE_DIR}/src/lib/codec
   ${GROK_SOURCE_DIR}/src/lib/jp2
-  ${GROK_SOURCE_DIR}/src/bin/jp2
-  ${GROK_SOURCE_DIR}/src/bin/common
   ${GROK_SOURCE_DIR}/src/include
   ${GROK_SOURCE_DIR}/src/bin/image_format
   ${LCMS_INCLUDE_DIRNAME}
@@ -28,75 +28,9 @@ include_directories(
   endif()
 endif()
 
-set(compare_dump_files_SRCS
-  ${GROK_SOURCE_DIR}/src/bin/jp2/GrkCompareDumpFiles.cpp
-  ${GROK_SOURCE_DIR}/src/bin/common/common.cpp
-)
-set(compare_raw_files_SRCS
-  ${GROK_SOURCE_DIR}/src/bin/jp2/GrkCompareRawFiles.cpp
-  ${GROK_SOURCE_DIR}/src/bin/common/common.cpp
-)
-set(test_tile_decoder_SRCS
-  ${GROK_SOURCE_DIR}/src/bin/jp2/GrkTesTileDecoder.cpp
-  ${GROK_SOURCE_DIR}/src/bin/common/common.cpp
-)
-set(random_tile_access_SRCS
-  ${GROK_SOURCE_DIR}/src/bin/jp2/GrkRandomTileAccess.cpp
-  ${GROK_SOURCE_DIR}/src/bin/common/common.cpp
-)
-set(test_tile_decoder_SRCS
-  ${GROK_SOURCE_DIR}/src/bin/jp2/GrkTestTileDecoder.cpp
-  ${GROK_SOURCE_DIR}/src/bin/common/common.cpp
-)
-set(test_tile_encoder_SRCS
-  ${GROK_SOURCE_DIR}/src/bin/jp2/GrkTestTileEncoder.cpp
-  ${GROK_SOURCE_DIR}/src/bin/common/common.cpp
-)
-
-set(compare_images_SRCS compare_images.cpp
-  ${GROK_SOURCE_DIR}/src/bin/jp2/GrkCompareImages.cpp
-  ${GROK_SOURCE_DIR}/src/bin/common/common.cpp
-  ${GROK_SOURCE_DIR}/src/bin/common/common.h
-  ${GROK_SOURCE_DIR}/src/bin/common/convert.cpp
-  ${GROK_SOURCE_DIR}/src/bin/image_format/Serializer.cpp
-  ${GROK_SOURCE_DIR}/src/bin/image_format/MemManager.cpp
-  ${GROK_SOURCE_DIR}/src/bin/image_format/BufferPool.cpp
-  ${GROK_SOURCE_DIR}/src/bin/image_format/ImageFormat.cpp
-  ${GROK_SOURCE_DIR}/src/bin/image_format/ImageFormat.h
-  ${GROK_SOURCE_DIR}/src/bin/image_format/FileStreamIO.h
-  ${GROK_SOURCE_DIR}/src/bin/image_format/FileStreamIO.cpp
-  ${GROK_SOURCE_DIR}/src/bin/image_format/PNMFormat.cpp
-  ${GROK_SOURCE_DIR}/src/bin/image_format/PNMFormat.h
-  ${GROK_SOURCE_DIR}/src/bin/image_format/BMPFormat.cpp
-  ${GROK_SOURCE_DIR}/src/bin/image_format/BMPFormat.h  
-  ${GROK_SOURCE_DIR}/src/bin/image_format/PGXFormat.cpp
-  ${GROK_SOURCE_DIR}/src/bin/image_format/PGXFormat.h
-  ${GROK_SOURCE_DIR}/src/bin/io/FileIO.cpp
-  ${GROK_SOURCE_DIR}/src/bin/io/FileIOUnix.cpp
-  ${GROK_SOURCE_DIR}/src/bin/io/FileIOWin32.cpp
-  ${GROK_SOURCE_DIR}/src/bin/io/FileIOUring.cpp
-  ${GROK_SOURCE_DIR}/src/bin/io/Serializer.cpp
-  ${GROK_SOURCE_DIR}/src/bin/io/ImageFormat.cpp
-  ${GROK_SOURCE_DIR}/src/bin/io/TIFFFormat.cpp
-  )
-
-if(GROK_HAVE_LIBTIFF)
- 	list(APPEND compare_images_SRCS ${GROK_SOURCE_DIR}/src/bin/image_format/TIFFFormat.h)
-	list(APPEND compare_images_SRCS ${GROK_SOURCE_DIR}/src/bin/image_format/TIFFFormat.cpp)
-endif()
-
-if(GROK_HAVE_URING)
-	list(APPEND compare_images_SRCS ${GROK_SOURCE_DIR}/src/bin/image_format/FileUringIO.cpp)
-endif()
-
-if(GROK_HAVE_LIBPNG)
-	list(APPEND compare_images_SRCS ${GROK_SOURCE_DIR}/src/bin/image_format/PNGFormat.cpp)
-	list(APPEND compare_images_SRCS ${GROK_SOURCE_DIR}/src/bin/image_format/PNGFormat.h)
-endif()
-
-add_executable(compare_images ${compare_images_SRCS})
+add_executable(compare_images compare_images.cpp)
 target_link_libraries(compare_images
-  ${GROK_LIBRARY_NAME}
+  ${GROK_LIBRARY_NAME} ${GROK_CODEC_NAME}
   ${PNG_LIBNAME} ${TIFF_LIBNAME} ${LCMS_LIBNAME} ${CMAKE_DL_LIBS} ${CMAKE_THREAD_LIBS_INIT}
   )
 
@@ -109,12 +43,14 @@ if(URING)
   target_link_libraries(compare_images uring)
 endif()
 
-add_executable(compare_dump_files compare_dump_files.cpp ${compare_dump_files_SRCS})
-add_executable(j2k_random_tile_access j2k_random_tile_access.cpp ${random_tile_access_SRCS})
-target_link_libraries(j2k_random_tile_access ${GROK_LIBRARY_NAME} ${CMAKE_DL_LIBS} ${CMAKE_THREAD_LIBS_INIT} )
-add_executable(compare_raw_files compare_raw_files.cpp ${compare_raw_files_SRCS})
-add_executable(test_tile_encoder test_tile_encoder.cpp ${test_tile_encoder_SRCS})
-target_link_libraries(test_tile_encoder ${GROK_LIBRARY_NAME} ${CMAKE_DL_LIBS} ${CMAKE_THREAD_LIBS_INIT})
+add_executable(compare_dump_files compare_dump_files.cpp)
+target_link_libraries(compare_dump_files ${GROK_LIBRARY_NAME} ${GROK_CODEC_NAME} ${CMAKE_DL_LIBS} ${CMAKE_THREAD_LIBS_INIT} )
+add_executable(j2k_random_tile_access j2k_random_tile_access.cpp)
+target_link_libraries(j2k_random_tile_access ${GROK_LIBRARY_NAME} ${GROK_CODEC_NAME} ${CMAKE_DL_LIBS} ${CMAKE_THREAD_LIBS_INIT} )
+add_executable(compare_raw_files compare_raw_files.cpp)
+target_link_libraries(compare_raw_files ${GROK_LIBRARY_NAME} ${GROK_CODEC_NAME} ${CMAKE_DL_LIBS} ${CMAKE_THREAD_LIBS_INIT} )
+add_executable(test_tile_encoder test_tile_encoder.cpp)
+target_link_libraries(test_tile_encoder ${GROK_LIBRARY_NAME} ${GROK_CODEC_NAME} ${CMAKE_DL_LIBS} ${CMAKE_THREAD_LIBS_INIT})
 
 # Let's try a couple of possibilities:
 add_test(NAME tte0 COMMAND test_tile_encoder)
@@ -127,7 +63,7 @@ add_test(NAME tte5 COMMAND test_tile_encoder 1  512  512  256  256 8 0 tte5.j2k)
 #add_test(NAME tte7 COMMAND test_tile_encoder 1 32768 32768 512  512 8 0 tte7.jp2)
 
 add_executable(test_tile_decoder test_tile_decoder.cpp ${test_tile_decoder_SRCS})
-target_link_libraries(test_tile_decoder ${GROK_LIBRARY_NAME} ${CMAKE_DL_LIBS} ${CMAKE_THREAD_LIBS_INIT})
+target_link_libraries(test_tile_decoder ${GROK_LIBRARY_NAME}  ${GROK_CODEC_NAME} ${CMAKE_DL_LIBS} ${CMAKE_THREAD_LIBS_INIT})
 
 add_test(NAME ttd0 COMMAND test_tile_decoder)
 set_property(TEST ttd0 APPEND PROPERTY DEPENDS tte0)

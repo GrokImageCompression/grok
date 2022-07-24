@@ -31,7 +31,11 @@
 #include <tiffio.h>
 #include "convert.h"
 
+//#define GRK_NEW_IO
+
+#ifdef GRK_NEW_IO
 #include "../io/TIFFFormat.h"
+#endif
 
 /* TIFF conversion*/
 void tiffSetErrorAndWarningHandlers(bool verbose);
@@ -58,7 +62,9 @@ class TIFFFormat : public ImageFormat
 	bool encodeFinish(void) override;
 	grk_image* decode(const std::string& filename, grk_cparameters* parameters) override;
 
+#ifdef GRK_NEW_IO
 	bool ioReclaim(uint32_t threadId, io::io_buf* buffer);
+#endif
 
   private:
 #ifdef GRK_CUSTOM_TIFF_IO
@@ -73,7 +79,9 @@ class TIFFFormat : public ImageFormat
 	uint32_t chroma_subsample_x;
 	uint32_t chroma_subsample_y;
 	size_t units;
+#ifdef GRK_NEW_IO
 	io::TIFFFormat ioTiffFormat;
+#endif
 	grk_io_callback grkReclaimCallback_;
 	void* grkReclaimUserData_;
 };

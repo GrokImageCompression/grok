@@ -34,6 +34,7 @@
 #include <climits>
 #include <string>
 #include <chrono>
+#include <thread>
 
 #include "grk_apps_config.h"
 #include "common.h"

@@ -460,15 +460,6 @@ struct test_cmp_parameters
 	float region[4];
 	bool regionSet;
 };
-static GRK_SUPPORTED_FILE_FMT get_decod_format(test_cmp_parameters* param)
-{
-	auto base_format = grk::get_file_format(param->base_filename);
-	auto test_format = grk::get_file_format(param->test_filename);
-	if(base_format != test_format)
-		return GRK_UNK_FMT;
-
-	return base_format;
-}
 class GrokOutput : public TCLAP::StdOutput
 {
   public:
@@ -930,6 +921,7 @@ int GrkCompareImages::main(int argc, char** argv)
 		auto testComp = imageTest->comps + compno;
 		uint32_t x0 = 0, y0 = 0, x1 = diffComp->w, y1 = diffComp->h;
 		// one region for all components
+		//todo handle normalized region in [0,1]x[0,1]
 		if(inParam.regionSet)
 		{
 			x0 = inParam.region[0];

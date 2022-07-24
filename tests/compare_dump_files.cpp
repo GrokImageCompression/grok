@@ -14,10 +14,8 @@
  *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "GrkCompareDumpFiles.h"
+#include "grok_codec.h"
 
 int main(int argc, char **argv) {
-  grk::GrkCompareDumpFiles cdf;
-
-  return cdf.main(argc, argv);
+   return grk_codec_compare_dump_files(argc,argv);
 }

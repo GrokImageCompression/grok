@@ -15,10 +15,9 @@
  *
  */
 
-#include "GrkDecompress.h"
+#include "grok_codec.h"
 
 int main(int argc, char** argv)
 {
-	grk::GrkDecompress decomp;
-	return decomp.main(argc, argv);
+	return grk_codec_decompress(argc,argv);
 }

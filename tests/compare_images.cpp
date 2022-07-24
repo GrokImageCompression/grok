@@ -14,10 +14,8 @@
  *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "GrkCompareImages.h"
+#include "grok_codec.h"
 
 int main(int argc, char **argv) {
-    grk::GrkCompareImages ci;
-
-    return ci.main(argc,argv);
+	   return grk_codec_compare_images(argc,argv);
 }

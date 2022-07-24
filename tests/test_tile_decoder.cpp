@@ -14,10 +14,8 @@
  *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "GrkTestTileDecoder.h"
+#include "grok_codec.h"
 
 int main(int argc, char *argv[]) {
-   grk::GrkTestTileDecoder ttd;
-
-   return ttd.main(argc, argv);
+	return grk_codec_test_tile_decoder(argc,argv);
 }

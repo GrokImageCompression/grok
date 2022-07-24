@@ -15,10 +15,9 @@
  *
  */
 
-#include "GrkCompress.h"
+#include "grok_codec.h"
 
 int main(int argc, char** argv)
 {
-	grk::GrkCompress compress;
-	return compress.main(argc, argv);
+	return grk_codec_compress(argc,argv);
 }

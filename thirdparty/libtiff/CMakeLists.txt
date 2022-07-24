@@ -239,6 +239,7 @@ set(tiff_libs_private_list "${tiff_libs_private_list}" PARENT_SCOPE)
 set(tiff_requires_private "${tiff_requires_private}" PARENT_SCOPE)
 
 set_target_properties(tiff PROPERTIES SOVERSION ${SO_COMPATVERSION})
+set_property(TARGET tiff PROPERTY POSITION_INDEPENDENT_CODE ON)
 if(NOT CYGWIN)
     # This property causes shared libraries on Linux to have the full version
     # encoded into their final filename.  We disable this on Cygwin because

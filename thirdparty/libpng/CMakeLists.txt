@@ -93,20 +93,14 @@ set(EXT_HDRS
  ${CMAKE_BINARY_DIR}/thirdparty/libz/zconf.h
 )
 
-
-
 #
 set(LIBTARGET "png")
-#
 add_library(${LIBTARGET} STATIC ${libpng_sources} ${libpng_hdrs} ${EXT_HDRS})
-#
+set_property(TARGET ${LIBTARGET} PROPERTY POSITION_INDEPENDENT_CODE ON)
 if(MSVC)
   set_target_properties(${LIBTARGET} PROPERTIES PREFIX "lib")
 endif(MSVC)
-#
 target_link_libraries(${LIBTARGET} ${Z_LIBNAME} ${M_LIBRARY})
-#
 set_target_properties(${LIBTARGET}
 	PROPERTIES
     OUTPUT_NAME "${LIBTARGET}")
-#

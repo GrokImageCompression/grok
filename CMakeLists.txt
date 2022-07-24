@@ -146,6 +146,7 @@ add_subdirectory(thirdparty)
 if(GRK_BUILD_CODEC)
   add_subdirectory(src/bin)
   option(GRK_USE_LIBJPEG "Use libjpeg library to support JPEG file format, if present in system" OFF)
+  add_subdirectory(src/lib/codec)
 endif()
 
 # grk_config.h generation
@@ -213,5 +214,9 @@ if(BUILD_PKGCONFIG_FILES)
    configure_file(${CMAKE_CURRENT_SOURCE_DIR}/src/lib/jp2/libgrokj2k.pc.cmake.in
     ${CMAKE_CURRENT_BINARY_DIR}/libgrokj2k.pc @ONLY)
   install( FILES  ${CMAKE_CURRENT_BINARY_DIR}/libgrokj2k.pc DESTINATION
+    ${CMAKE_INSTALL_LIBDIR}/pkgconfig )
+  configure_file(${CMAKE_CURRENT_SOURCE_DIR}/src/lib/codec/libgrokj2kcodec.pc.cmake.in
+    ${CMAKE_CURRENT_BINARY_DIR}/libgrokj2kcodec.pc @ONLY)
+  install( FILES  ${CMAKE_CURRENT_BINARY_DIR}/libgrokj2kcodec.pc DESTINATION
     ${CMAKE_INSTALL_LIBDIR}/pkgconfig )
 endif()
