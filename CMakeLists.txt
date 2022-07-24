@@ -98,6 +98,19 @@ include(CheckSymbolExists)
 add_subdirectory(src/lib)
 option(BUILD_LUTS_GENERATOR "Build utility to generate t1_luts.h" OFF)
 
+# Build examples
+option(GRK_BUILD_LIBRARY_EXAMPLES "Build library examples" OFF)
+option(GRK_BUILD_CODEC_EXAMPLES "Build codec examples" OFF)
+
+# examples use files from data folder
+if (GRK_BUILD_LIBRARY_EXAMPLES OR GRK_BUILD_CODEC_EXAMPLES)
+	add_subdirectory(src/examples)
+	find_path(GRK_DATA_ROOT README-GROK-TEST-DATA
+	  PATHS $ENV{GRK_DATA_ROOT} ${CMAKE_SOURCE_DIR}/../grok-test-data
+	  NO_CMAKE_FIND_ROOT_PATH)
+endif()
+
+
 # Build Applications
 option(GRK_BUILD_CODEC "Build the CODEC executables" ON)
 option(GRK_BUILD_PLUGIN_LOADER "Enable loading of T1 plugin" OFF)
@@ -171,9 +184,6 @@ option(BUILD_TESTING "Build tests." OFF)
 if(BUILD_TESTING AND GRK_BUILD_CODEC)
 	enable_testing()
 	include(CTest)
-	# Search for Grok test data
-	# The test data can be cloned from
-	# https://github.com/GrokImageCompression/grok-test-data
 	find_path(GRK_DATA_ROOT README-GROK-TEST-DATA
 	  PATHS $ENV{GRK_DATA_ROOT} ${CMAKE_SOURCE_DIR}/../grok-test-data
 	  NO_CMAKE_FIND_ROOT_PATH)
@@ -193,12 +203,8 @@ install( FILES ${GROK_BINARY_DIR}/GrokConfig.cmake
   DESTINATION ${GROK_INSTALL_PACKAGE_DIR}
 )
 
-# install CHANGES and LICENSE
 if(GRK_BUILD_DOC)
-if(EXISTS ${GROK_SOURCE_DIR}/CHANGES)
-  install(FILES CHANGES DESTINATION ${CMAKE_INSTALL_DOCDIR})
-endif()
-install(FILES LICENSE DESTINATION ${CMAKE_INSTALL_DOCDIR})
+   install(FILES LICENSE DESTINATION ${CMAKE_INSTALL_DOCDIR})
 endif()
 
 include (cmake/GrokCPack.cmake)
@@ -206,11 +212,11 @@ include (cmake/GrokCPack.cmake)
 # pkgconfig support
 # enabled by default on Unix, disabled by default on other platforms
 if(UNIX)
-  option(BUILD_PKGCONFIG_FILES "Build and install pkg-config files" ON)
+  option(GRK_BUILD_PKGCONFIG_FILES "Build and install pkg-config files" ON)
 else()
-  option(BUILD_PKGCONFIG_FILES "Build and install pkg-config files" OFF)
+  option(GRK_BUILD_PKGCONFIG_FILES "Build and install pkg-config files" OFF)
 endif()
-if(BUILD_PKGCONFIG_FILES)
+if(GRK_BUILD_PKGCONFIG_FILES)
    configure_file(${CMAKE_CURRENT_SOURCE_DIR}/src/lib/jp2/libgrokj2k.pc.cmake.in
     ${CMAKE_CURRENT_BINARY_DIR}/libgrokj2k.pc @ONLY)
   install( FILES  ${CMAKE_CURRENT_BINARY_DIR}/libgrokj2k.pc DESTINATION

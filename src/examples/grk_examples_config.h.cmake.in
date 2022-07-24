@@ -1,0 +1,1 @@
+#cmakedefine GRK_DATA_ROOT "@GRK_DATA_ROOT@"
