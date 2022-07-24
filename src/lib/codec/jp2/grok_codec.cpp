@@ -26,39 +26,48 @@
 #include "GrkTestTileEncoder.h"
 #include "GrkTestTileDecoder.h"
 
-GRK_API int grk_dump_main(int argc, char* argv[]){
+GRK_API int grk_dump_main(int argc, char* argv[])
+{
 	grk::GrkDump prog;
 	return prog.main(argc, argv);
 }
-GRK_API int grk_compress_main(int argc, char* argv[]){
+GRK_API int grk_compress_main(int argc, char* argv[])
+{
 	grk::GrkCompress prog;
 	return prog.main(argc, argv);
 }
-GRK_API int grk_decompress_main(int argc, char* argv[]){
+GRK_API int grk_decompress_main(int argc, char* argv[])
+{
 	grk::GrkDecompress prog;
 	return prog.main(argc, argv);
 }
-GRK_API int grk_compare_dump_files_main(int argc, char* argv[]){
+GRK_API int grk_compare_dump_files_main(int argc, char* argv[])
+{
 	grk::GrkCompareDumpFiles prog;
 	return prog.main(argc, argv);
 }
-GRK_API int grk_compare_images_main(int argc, char* argv[]){
+GRK_API int grk_compare_images_main(int argc, char* argv[])
+{
 	grk::GrkCompareImages prog;
 	return prog.main(argc, argv);
 }
-GRK_API int grk_compare_raw_files_main(int argc, char* argv[]){
+GRK_API int grk_compare_raw_files_main(int argc, char* argv[])
+{
 	grk::GrkCompareRawFiles prog;
 	return prog.main(argc, argv);
 }
-GRK_API int grk_random_tile_access_main(int argc, char* argv[]){
+GRK_API int grk_random_tile_access_main(int argc, char* argv[])
+{
 	grk::GrkRandomTileAccess prog;
 	return prog.main(argc, argv);
 }
-GRK_API int grk_test_tile_encoder_main(int argc, char* argv[]){
+GRK_API int grk_test_tile_encoder_main(int argc, char* argv[])
+{
 	grk::GrkTestTileEncoder prog;
 	return prog.main(argc, argv);
 }
-GRK_API int grk_test_tile_decoder_main(int argc, char* argv[]){
+GRK_API int grk_test_tile_decoder_main(int argc, char* argv[])
+{
 	grk::GrkTestTileDecoder prog;
 	return prog.main(argc, argv);
 }

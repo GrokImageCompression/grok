@@ -18,5 +18,5 @@
 
 int main(int argc, char* argv[])
 {
-	return grk_codec_dump(argc,argv);
+	return grk_codec_dump(argc, argv);
 }

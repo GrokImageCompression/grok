@@ -21,6 +21,7 @@
 #include <string>
 #include <cstring>
 #include <vector>
+#include <filesystem>
 
 const std::string dataRoot = GRK_DATA_ROOT;
 
@@ -31,13 +32,15 @@ int main(int argc, char** argv)
 
 	//1. form vector of command line args
 	std::vector<std::string> argString;
-	argString.push_back("grk_codec_decompress");
+	argString.push_back("grk_example_codec_decompress");
 	argString.push_back("-v");
-	std::string temp = "-i " + dataRoot + "/input/nonregression/boats_cprl.j2k";
+	std::string temp = "-i " + dataRoot + std::filesystem::path::preferred_separator +
+			"input" +  std::filesystem::path::preferred_separator +
+			"nonregression" + std::filesystem::path::preferred_separator + "boats_cprl.j2k";
 	argString.push_back(temp);
 	argString.push_back("-o boats_cprl.tif");
 
-	// 2. convert to character strings
+	// 2. convert to array of c strings
 	std::vector<char *> args;
 	for (auto& s : argString){
 	  char *arg = new char[s.size() + 1];
