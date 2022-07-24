@@ -24,6 +24,7 @@
 #include <cstring>
 #ifdef _MSC_VER
 #include <intrin.h>
+#define strcasecmp _stricmp
 #endif
 
 #include "common.h"

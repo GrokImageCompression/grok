@@ -15,13 +15,13 @@
  *
  */
 
-namespace grk {
+namespace grk
+{
 
-class GrkRandomTileAccess {
-public:
-    int main(int argc, char **argv);
+class GrkRandomTileAccess
+{
+  public:
+	int main(int argc, char** argv);
 };
 
-}
-
-
+} // namespace grk

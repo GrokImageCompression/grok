@@ -23,26 +23,27 @@ namespace grk
 {
 struct CompressInitParams
 {
-    CompressInitParams();
-    ~CompressInitParams();
-    bool initialized;
-    grk_cparameters parameters;
-    char pluginPath[GRK_PATH_LEN];
-    grk_img_fol inputFolder;
-    grk_img_fol outFolder;
-    bool transferExifTags;
+	CompressInitParams();
+	~CompressInitParams();
+	bool initialized;
+	grk_cparameters parameters;
+	char pluginPath[GRK_PATH_LEN];
+	grk_img_fol inputFolder;
+	grk_img_fol outFolder;
+	bool transferExifTags;
 };
 
 class GrkCompress
 {
   public:
-    GrkCompress(void) = default;
-    ~GrkCompress(void) = default;
-    int main(int argc, char** argv);
+	GrkCompress(void) = default;
+	~GrkCompress(void) = default;
+	int main(int argc, char** argv);
+
   private:
-    int pluginMain(int argc, char** argv, CompressInitParams* initParams);
-    int parseCommandLine(int argc, char** argv, CompressInitParams* initParams);
-    int compress(const std::string& inputFile, CompressInitParams* initParams);
+	int pluginMain(int argc, char** argv, CompressInitParams* initParams);
+	int parseCommandLine(int argc, char** argv, CompressInitParams* initParams);
+	int compress(const std::string& inputFile, CompressInitParams* initParams);
 };
 
 } // namespace grk

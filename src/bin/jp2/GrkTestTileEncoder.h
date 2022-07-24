@@ -15,13 +15,13 @@
  *
  */
 
-namespace grk {
+namespace grk
+{
 
-class GrkTestTileEncoder {
-public:
-    int main(int argc, char *argv[]);
+class GrkTestTileEncoder
+{
+  public:
+	int main(int argc, char* argv[]);
 };
 
-}
-
-
+} // namespace grk

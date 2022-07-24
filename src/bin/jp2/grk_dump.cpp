@@ -20,5 +20,5 @@ int main(int argc, char* argv[])
 {
 	grk::GrkDump dump;
 
-	return dump.main(argc,argv);
+	return dump.main(argc, argv);
 }

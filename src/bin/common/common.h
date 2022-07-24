@@ -24,8 +24,6 @@
 #include "grk_config_private.h"
 #ifdef _WIN32
 #include <Windows.h>
-#define strcasecmp _stricmp
-#define strncasecmp _strnicmp
 #include <io.h>
 #include <fcntl.h>
 #else

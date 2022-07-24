@@ -15,11 +15,13 @@
  *
  */
 
-namespace grk {
+namespace grk
+{
 
-class GrkDump {
-public:
-    int main(int argc, char* argv[]);
+class GrkDump
+{
+  public:
+	int main(int argc, char* argv[]);
 };
 
-};
+}; // namespace grk
