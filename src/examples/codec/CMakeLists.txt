@@ -31,6 +31,12 @@ foreach(exe grk_example_codec_decompress)
 	target_link_options(${exe}  PUBLIC "LINKER:-z,now")
   endif()
 
+  # set emcc options
+  if (CMAKE_SYSTEM_NAME STREQUAL Emscripten)
+    target_link_options(${exe} PUBLIC -sASSERTIONS=1 -sPROXY_TO_PTHREAD -sTOTAL_MEMORY=1536MB -sEXIT_RUNTIME=1 -sUSE_PTHREADS=1)
+    target_compile_options(${exe} PUBLIC -matomics)
+  endif()
+
   target_link_libraries(${exe}
     ${PNG_LIBNAME} ${TIFF_LIBNAME} ${LCMS_LIBNAME}
     ${JPEG_LIBNAME} ${CMAKE_THREAD_LIBS_INIT} ${GROK_LIBRARY_NAME} ${GROK_CODEC_NAME} ${CMAKE_DL_LIBS} )
