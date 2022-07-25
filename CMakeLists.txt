@@ -94,6 +94,8 @@ include(CheckIncludeFiles)
 check_include_files(malloc.h GROK_HAVE_MALLOC_H)
 include(CheckSymbolExists)
 
+add_subdirectory(thirdparty)
+
 # Build Library
 add_subdirectory(src/lib)
 option(BUILD_LUTS_GENERATOR "Build utility to generate t1_luts.h" OFF)
@@ -155,7 +157,6 @@ if (PERLLIBS_FOUND)
 endif(PERLLIBS_FOUND)
 
 option(GRK_BUILD_THIRDPARTY "Build third party binaries" ON)
-add_subdirectory(thirdparty)
 if(GRK_BUILD_CODEC)
   add_subdirectory(src/bin)
   option(GRK_USE_LIBJPEG "Use libjpeg library to support JPEG file format, if present in system" OFF)
