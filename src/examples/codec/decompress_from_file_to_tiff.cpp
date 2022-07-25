@@ -32,7 +32,7 @@ int main(int argc, char** argv)
 
 	//1. form vector of command line args
 	std::vector<std::string> argString;
-	argString.push_back("grk_example_codec_decompress");
+	argString.push_back("decompress_from_file_to_tiff");
 	argString.push_back("-v");
 	std::string temp = "-i " + dataRoot + std::filesystem::path::preferred_separator +
 			"input" +  std::filesystem::path::preferred_separator +

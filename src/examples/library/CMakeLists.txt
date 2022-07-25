@@ -24,7 +24,7 @@ endif()
 
 add_definitions(-DSPDLOG_COMPILED_LIB)
 
-foreach(exe grk_example_library_decompress)
+foreach(exe decompress_from_file)
   add_executable(${exe} ${exe}.cpp ${common_SRCS})
   target_compile_options(${exe} PRIVATE ${GROK_COMPILE_OPTIONS})
   if (CMAKE_CXX_COMPILER_ID MATCHES "GNU")
