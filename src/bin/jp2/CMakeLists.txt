@@ -52,12 +52,12 @@ foreach(exe grk_decompress grk_compress grk_dump)
   if(URING)
 	  target_link_libraries(${exe} uring)
   endif()
-  
+
   if (PERLLIBS_FOUND)
   	include_directories(${PERL_INCLUDE_PATH})
    	target_link_libraries(${exe} ${PERL_LIBRARY} )
   endif()
-  
+ 
   install(TARGETS ${exe}
     EXPORT GrokTargets
     DESTINATION ${CMAKE_INSTALL_BINDIR} COMPONENT Applications

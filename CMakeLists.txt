@@ -94,6 +94,7 @@ include(CheckIncludeFiles)
 check_include_files(malloc.h GROK_HAVE_MALLOC_H)
 include(CheckSymbolExists)
 
+option(GRK_BUILD_THIRDPARTY "Build third party binaries" ON)
 add_subdirectory(thirdparty)
 
 # Build Library
@@ -156,7 +157,6 @@ if (PERLLIBS_FOUND)
      endif()
 endif(PERLLIBS_FOUND)
 
-option(GRK_BUILD_THIRDPARTY "Build third party binaries" ON)
 if(GRK_BUILD_CODEC)
   add_subdirectory(src/bin)
   option(GRK_USE_LIBJPEG "Use libjpeg library to support JPEG file format, if present in system" OFF)

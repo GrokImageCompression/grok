@@ -113,6 +113,16 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "GNU")
 endif()
 target_link_libraries(${GROK_CODEC_NAME} PRIVATE ${GROK_LIBRARY_NAME} hwy ${LCMS_LIBNAME} ${Z_LIBNAME} ${PNG_LIBNAME} ${TIFF_LIBNAME} ${LCMS_LIBNAME}
     ${JPEG_LIBNAME})
+
+if(URING)
+  target_link_libraries(${GROK_CODEC_NAME} PRIVATE uring)
+endif()
+
+if (PERLLIBS_FOUND)
+   include_directories(${PERL_INCLUDE_PATH})
+   target_link_libraries(${GROK_CODEC_NAME} PRIVATE ${PERL_LIBRARY} )
+endif()
+
 if(UNIX)
   target_link_libraries(${GROK_CODEC_NAME} PUBLIC ${CMAKE_THREAD_LIBS_INIT})
 endif()
