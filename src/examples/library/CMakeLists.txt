@@ -31,22 +31,12 @@ foreach(exe grk_example_library_decompress)
 	target_link_options(${exe}  PUBLIC "LINKER:-z,now")
   endif()
 
-  target_link_libraries(${exe} ${CMAKE_THREAD_LIBS_INIT} ${GROK_LIBRARY_NAME} ${CMAKE_DL_LIBS} )
+  target_link_libraries(${exe} ${GROK_LIBRARY_NAME})
 
-  # To support universal exe:
-  if(ZLIB_FOUND AND APPLE)
-    target_link_libraries(${exe} z)
-  else(ZLIB_FOUND AND APPLE)
-    target_link_libraries(${exe} ${Z_LIBNAME})
-  endif()
-
-  if(URING)
-	  target_link_libraries(${exe} uring)
-  endif()
-
-  if (PERLLIBS_FOUND)
-  	include_directories(${PERL_INCLUDE_PATH})
-   	target_link_libraries(${exe} ${PERL_LIBRARY} )
+  # set emcc options
+  if (CMAKE_SYSTEM_NAME STREQUAL Emscripten)
+    target_link_options(${exe} PUBLIC -sASSERTIONS=1 -sPROXY_TO_PTHREAD -sTOTAL_MEMORY=1536MB -sEXIT_RUNTIME=1 -sUSE_PTHREADS=1)
+    target_compile_options(${exe} PUBLIC -matomics)
   endif()
 
   install(TARGETS ${exe}
