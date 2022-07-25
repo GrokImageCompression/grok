@@ -262,7 +262,6 @@ target_compile_options(${GROK_LIBRARY_NAME} PRIVATE ${GROK_COMPILE_OPTIONS} PRIV
 
 # set emcc options
 if (CMAKE_SYSTEM_NAME STREQUAL Emscripten)
-  target_link_options(${GROK_LIBRARY_NAME} PUBLIC -sASSERTIONS=1 -sPROXY_TO_PTHREAD -sTOTAL_MEMORY=1536MB -sEXIT_RUNTIME=1 -sUSE_PTHREADS=1)
   target_compile_options(${GROK_LIBRARY_NAME} PUBLIC -matomics)
 endif()
 

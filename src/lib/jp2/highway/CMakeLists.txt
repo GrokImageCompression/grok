@@ -256,6 +256,9 @@ if(UNIX AND NOT APPLE)
   set_property(TARGET hwy APPEND_STRING PROPERTY
     LINK_FLAGS " -Wl,--version-script=${CMAKE_CURRENT_SOURCE_DIR}/hwy/hwy.version")
 endif()
+if (HWY_EMSCRIPTEN)
+    target_compile_options(hwy PUBLIC -matomics)
+endif()
 
 if (HWY_ENABLE_CONTRIB)
 add_library(hwy_contrib ${HWY_LIBRARY_TYPE} ${HWY_CONTRIB_SOURCES})
