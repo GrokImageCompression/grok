@@ -6,7 +6,11 @@ IF(MSVC)
 ENDIF(MSVC)
 
 include_directories(
+  ${GROK_BINARY_DIR}/src/lib/codec
+  ${GROK_SOURCE_DIR}/src/lib/codec
+  ${GROK_BINARY_DIR}/src/lib/jp2
   ${GROK_SOURCE_DIR}/src/lib/jp2
+  ${CMAKE_CURRENT_BINARY_DIR}/../
 )
 
 if(WIN32)
@@ -20,7 +24,7 @@ endif()
 
 add_definitions(-DSPDLOG_COMPILED_LIB)
 
-foreach(exe grk_library_decompress)
+foreach(exe grk_example_library_decompress)
   add_executable(${exe} ${exe}.cpp ${common_SRCS})
   target_compile_options(${exe} PRIVATE ${GROK_COMPILE_OPTIONS})
   if (CMAKE_CXX_COMPILER_ID MATCHES "GNU")

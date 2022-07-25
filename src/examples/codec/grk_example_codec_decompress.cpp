@@ -15,13 +15,13 @@
  *
  */
 
-
-#include "grok_codec.h"
-#include "grk_examples_config.h"
 #include <string>
 #include <cstring>
 #include <vector>
 #include <filesystem>
+
+#include "grok_codec.h"
+#include "grk_examples_config.h"
 
 const std::string dataRoot = GRK_DATA_ROOT;
 
