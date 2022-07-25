@@ -166,7 +166,7 @@ Type `cmake --help` for available generators on your platform.
 Third party libraries such as `libtiff` are built by default. To disable
 these library builds and use the version installed on your system, set :
 
-  `-DGRK_BUILD_THIRDPARTY:BOOL=OFF`
+  `-DGRK_BUILD_LiBTIFF:BOOL=OFF`
 
 #### JPEG Support
 

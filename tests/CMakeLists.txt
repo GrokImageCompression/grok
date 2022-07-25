@@ -88,7 +88,7 @@ add_test(NAME rta5 COMMAND j2k_random_tile_access tte5.j2k)
 set_property(TEST rta5 APPEND PROPERTY DEPENDS tte5)
 
 if(NOT GROK_HAVE_LIBPNG)
-  message(WARNING "libpng is not available - running regression tests requires GRK_BUILD_THIRDPARTY enabled.")
+  message(WARNING "libpng is not available - running regression tests requires GRK_BUILD_LIBPNG enabled.")
 endif()
 
 add_subdirectory(conformance)

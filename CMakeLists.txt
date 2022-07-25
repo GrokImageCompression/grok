@@ -94,7 +94,9 @@ include(CheckIncludeFiles)
 check_include_files(malloc.h GROK_HAVE_MALLOC_H)
 include(CheckSymbolExists)
 
-option(GRK_BUILD_THIRDPARTY "Build third party binaries" ON)
+option(GRK_BUILD_LIBPNG "Build libpng library" ON)
+option(GRK_BUILD_LIBTIFF "Build libtiff library" ON)
+option(GRK_BUILD_LCMS2 "Build lcms2 library" ON)
 add_subdirectory(thirdparty)
 
 # Build Library

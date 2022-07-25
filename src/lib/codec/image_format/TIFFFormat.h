@@ -23,7 +23,7 @@
 #include "FileUringIO.h"
 #endif
 
-#if !defined(_WIN32) && defined(GRK_BUILD_THIRDPARTY)
+#if !defined(_WIN32) && defined(GRK_BUILD_LIBTIFF)
 #define GRK_CUSTOM_TIFF_IO
 #endif
 
