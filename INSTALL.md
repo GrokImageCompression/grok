@@ -13,6 +13,8 @@ Grok releases can be found [here](https://github.com/GrokImageCompression/grok/r
 ## Install from Source
 
 Grok uses [cmake](www.cmake.org) to configure builds across multiple platforms.
+It requires version 3.16 and higher.
+
 
 ### Compilers
 
@@ -21,10 +23,15 @@ Supported compilers:
 1. g++ 10 and higher
 1. clang 12 and higher
 1. MSVC 2019 and higher (mingw compiler not supported)
+1. Binaryen for WebAssembly
+
+#### g++
 
 To ensure that g++ 10 is the default compiler after installation, execute
 
 $ sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-10 100 --slave /usr/bin/g++ g++ /usr/bin/g++-10
+
+#### Clang
 
 For clang-12, execute:
 
@@ -35,6 +42,20 @@ $ sudo update-alternatives --config c++
 
 The second line brings up a menu allowing a user to configure the default `c++` compiler, which is
 what is used by `cmake` to configure the project compiler.
+
+#### Binaryen
+
+Emscripten SDK can installed following [these instructions](https://emscripten.org/docs/getting_started/downloads.html)
+The SDK includes a helper script, `emcmake`, to configure cmake.
+
+`emcmake` command:
+
+`$ emcmake cmake -DBUILD_SHARED_LIBS=OFF -DGRK_BUILD_CODEC=OFF -DGRK_BUILD_LIBPNG=OFF -DBUILD_TESTING=OFF -DGRK_BUILD_LIBRARY_EXAMPLES=ON  GROK/SRC/FOLDER`
+
+Now the library example can be runs as follows:
+
+`$ node --experimental-wasm-threads --experimental-wasm-bulk-memory bin/library_decompress_from_file.js`
+
 
 ### Configuration
 
@@ -63,7 +84,8 @@ of the library `libgrokj2k`.
 
 ##### Fedora
 
-1. if the Grok library has been installed, then
+1. if the Grok library has been installed and you would still like to run the binaries
+from the build folder, then
 `export LD_LIBRARY_PATH=/PATH/TO/BUILD/bin:/usr/local/lib64`
 must be added to the `.bashrc` file. Note that the build binary folder is
 entered before the system binary folder, so that build shared libraries

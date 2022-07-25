@@ -19,6 +19,7 @@
 * full encode/decode support for `monochrome`, `sRGB`, `palette`, `YCC`, `extended YCC`, `CIELab` and `CMYK` colour spaces
 * full encode/decode support for `JPEG`,`PNG`,`BMP`,`TIFF`,`RAW`,`PNM` and `PAM` image formats
 * full encode/decode support for 1-16 bit precision images
+* supported platforms: Linux x86-64, Linux AArch64, Windows, macOS and WebAssembly
 
 ### Performance
 
