@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.16)
 
 project(GROK)
-set(GROK_LIBRARY_NAME grokj2k)
+set(GROK_CORE_NAME grokj2k)
 set(GROK_CODEC_NAME grokj2kcodec)
 set(GROK_PLUGIN_NAME grokj2k_plugin)
 
@@ -104,12 +104,12 @@ add_subdirectory(src/lib)
 option(BUILD_LUTS_GENERATOR "Build utility to generate t1_luts.h" OFF)
 
 # Build examples
-option(GRK_BUILD_LIBRARY_EXAMPLES "Build library examples" OFF)
+option(GRK_BUILD_CORE_EXAMPLES "Build core examples" OFF)
 option(GRK_BUILD_CODEC_EXAMPLES "Build codec examples" OFF)
 
 # examples use files from data folder
-if (GRK_BUILD_LIBRARY_EXAMPLES OR GRK_BUILD_CODEC_EXAMPLES)
-	add_subdirectory(src/examples)
+if (GRK_BUILD_CORE_EXAMPLES OR GRK_BUILD_CODEC_EXAMPLES)
+	add_subdirectory(examples)
 	find_path(GRK_DATA_ROOT README-GROK-TEST-DATA
 	  PATHS $ENV{GRK_DATA_ROOT} ${CMAKE_SOURCE_DIR}/../grok-test-data
 	  NO_CMAKE_FIND_ROOT_PATH)
@@ -167,13 +167,13 @@ endif()
 
 # grk_config.h generation
 configure_file(
- ${CMAKE_CURRENT_SOURCE_DIR}/src/lib/jp2/grk_config.h.cmake.in
- ${CMAKE_CURRENT_BINARY_DIR}/src/lib/jp2/grk_config.h
+ ${CMAKE_CURRENT_SOURCE_DIR}/src/lib/core/grk_config.h.cmake.in
+ ${CMAKE_CURRENT_BINARY_DIR}/src/lib/core/grk_config.h
  @ONLY)
 
  configure_file(
- ${CMAKE_CURRENT_SOURCE_DIR}/src/lib/jp2/grk_config_private.h.cmake.in
- ${CMAKE_CURRENT_BINARY_DIR}/src/lib/jp2/grk_config_private.h
+ ${CMAKE_CURRENT_SOURCE_DIR}/src/lib/core/grk_config_private.h.cmake.in
+ ${CMAKE_CURRENT_BINARY_DIR}/src/lib/core/grk_config_private.h
  @ONLY)
 
 # Build DOCUMENTATION
@@ -220,7 +220,7 @@ else()
   option(GRK_BUILD_PKGCONFIG_FILES "Build and install pkg-config files" OFF)
 endif()
 if(GRK_BUILD_PKGCONFIG_FILES)
-   configure_file(${CMAKE_CURRENT_SOURCE_DIR}/src/lib/jp2/libgrokj2k.pc.cmake.in
+   configure_file(${CMAKE_CURRENT_SOURCE_DIR}/src/lib/core/libgrokj2k.pc.cmake.in
     ${CMAKE_CURRENT_BINARY_DIR}/libgrokj2k.pc @ONLY)
   install( FILES  ${CMAKE_CURRENT_BINARY_DIR}/libgrokj2k.pc DESTINATION
     ${CMAKE_INSTALL_LIBDIR}/pkgconfig )

@@ -50,7 +50,7 @@ The SDK includes a helper script, `emcmake`, to configure cmake.
 
 `emcmake` command:
 
-`$ emcmake cmake -DBUILD_SHARED_LIBS=OFF -DGRK_BUILD_CODEC=OFF -DGRK_BUILD_LIBPNG=OFF -DBUILD_TESTING=OFF -DGRK_BUILD_LIBRARY_EXAMPLES=ON  GROK/SRC/FOLDER`
+`$ emcmake cmake -DBUILD_SHARED_LIBS=OFF -DGRK_BUILD_CODEC=OFF -DGRK_BUILD_LIBPNG=OFF -DBUILD_TESTING=OFF -DGRK_BUILD_CORE_EXAMPLES=ON  GROK/SRC/FOLDER`
 
 Now the library example can be runs as follows:
 

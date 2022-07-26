@@ -6,11 +6,11 @@ IF(MSVC)
 ENDIF(MSVC)
 
 include_directories(
-  ${GROK_BINARY_DIR}/src/lib/jp2 # grk_config.h
+  ${GROK_BINARY_DIR}/src/lib/core # grk_config.h
   ${GROK_BINARY_DIR}/src/bin/ # grk_apps_config.h
   ${GROK_BINARY_DIR}/src/lib/codec/ # grk_apps_config.h
   ${GROK_SOURCE_DIR}/src/lib/codec
-  ${GROK_SOURCE_DIR}/src/lib/jp2
+  ${GROK_SOURCE_DIR}/src/lib/core
   ${GROK_SOURCE_DIR}/src/include
   ${GROK_SOURCE_DIR}/src/bin/image_format
   ${LCMS_INCLUDE_DIRNAME}
@@ -30,7 +30,7 @@ endif()
 
 add_executable(compare_images compare_images.cpp)
 target_link_libraries(compare_images
-  ${GROK_LIBRARY_NAME} ${GROK_CODEC_NAME}
+  ${GROK_CORE_NAME} ${GROK_CODEC_NAME}
   ${PNG_LIBNAME} ${TIFF_LIBNAME} ${LCMS_LIBNAME} ${CMAKE_DL_LIBS} ${CMAKE_THREAD_LIBS_INIT}
   )
 
@@ -44,13 +44,13 @@ if(URING)
 endif()
 
 add_executable(compare_dump_files compare_dump_files.cpp)
-target_link_libraries(compare_dump_files ${GROK_LIBRARY_NAME} ${GROK_CODEC_NAME} ${CMAKE_DL_LIBS} ${CMAKE_THREAD_LIBS_INIT} )
+target_link_libraries(compare_dump_files ${GROK_CORE_NAME} ${GROK_CODEC_NAME} ${CMAKE_DL_LIBS} ${CMAKE_THREAD_LIBS_INIT} )
 add_executable(j2k_random_tile_access j2k_random_tile_access.cpp)
-target_link_libraries(j2k_random_tile_access ${GROK_LIBRARY_NAME} ${GROK_CODEC_NAME} ${CMAKE_DL_LIBS} ${CMAKE_THREAD_LIBS_INIT} )
+target_link_libraries(j2k_random_tile_access ${GROK_CORE_NAME} ${GROK_CODEC_NAME} ${CMAKE_DL_LIBS} ${CMAKE_THREAD_LIBS_INIT} )
 add_executable(compare_raw_files compare_raw_files.cpp)
-target_link_libraries(compare_raw_files ${GROK_LIBRARY_NAME} ${GROK_CODEC_NAME} ${CMAKE_DL_LIBS} ${CMAKE_THREAD_LIBS_INIT} )
+target_link_libraries(compare_raw_files ${GROK_CORE_NAME} ${GROK_CODEC_NAME} ${CMAKE_DL_LIBS} ${CMAKE_THREAD_LIBS_INIT} )
 add_executable(test_tile_encoder test_tile_encoder.cpp)
-target_link_libraries(test_tile_encoder ${GROK_LIBRARY_NAME} ${GROK_CODEC_NAME} ${CMAKE_DL_LIBS} ${CMAKE_THREAD_LIBS_INIT})
+target_link_libraries(test_tile_encoder ${GROK_CORE_NAME} ${GROK_CODEC_NAME} ${CMAKE_DL_LIBS} ${CMAKE_THREAD_LIBS_INIT})
 
 # Let's try a couple of possibilities:
 add_test(NAME tte0 COMMAND test_tile_encoder)
@@ -63,7 +63,7 @@ add_test(NAME tte5 COMMAND test_tile_encoder 1  512  512  256  256 8 0 tte5.j2k)
 #add_test(NAME tte7 COMMAND test_tile_encoder 1 32768 32768 512  512 8 0 tte7.jp2)
 
 add_executable(test_tile_decoder test_tile_decoder.cpp ${test_tile_decoder_SRCS})
-target_link_libraries(test_tile_decoder ${GROK_LIBRARY_NAME}  ${GROK_CODEC_NAME} ${CMAKE_DL_LIBS} ${CMAKE_THREAD_LIBS_INIT})
+target_link_libraries(test_tile_decoder ${GROK_CORE_NAME}  ${GROK_CODEC_NAME} ${CMAKE_DL_LIBS} ${CMAKE_THREAD_LIBS_INIT})
 
 add_test(NAME ttd0 COMMAND test_tile_decoder)
 set_property(TEST ttd0 APPEND PROPERTY DEPENDS tte0)

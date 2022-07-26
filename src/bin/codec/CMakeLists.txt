@@ -6,9 +6,9 @@ IF(MSVC)
 ENDIF(MSVC)
 
 include_directories(
-  ${GROK_BINARY_DIR}/src/lib/jp2
+  ${GROK_BINARY_DIR}/src/lib/core
   ${GROK_BINARY_DIR}/src/bin/common
-  ${GROK_SOURCE_DIR}/src/lib/jp2
+  ${GROK_SOURCE_DIR}/src/lib/core
   ${GROK_SOURCE_DIR}/src/lib/codec
   ${CMAKE_CURRENT_SOURCE_DIR}/../common
   ${CMAKE_CURRENT_SOURCE_DIR}/../image_format
@@ -40,7 +40,7 @@ foreach(exe grk_decompress grk_compress grk_dump)
 
   target_link_libraries(${exe} 
     ${PNG_LIBNAME} ${TIFF_LIBNAME} ${LCMS_LIBNAME}
-    ${JPEG_LIBNAME} ${CMAKE_THREAD_LIBS_INIT} ${GROK_LIBRARY_NAME} ${GROK_CODEC_NAME} ${CMAKE_DL_LIBS} )
+    ${JPEG_LIBNAME} ${CMAKE_THREAD_LIBS_INIT} ${GROK_CORE_NAME} ${GROK_CODEC_NAME} ${CMAKE_DL_LIBS} )
 
   # To support universal exe:
   if(ZLIB_FOUND AND APPLE)

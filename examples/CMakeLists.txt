@@ -4,9 +4,9 @@ configure_file(
  @ONLY
  )
 
-if (GRK_BUILD_LIBRARY_EXAMPLES)
-	add_subdirectory(library)
-endif(GRK_BUILD_LIBRARY_EXAMPLES)
+if (GRK_BUILD_CORE_EXAMPLES)
+	add_subdirectory(core)
+endif(GRK_BUILD_CORE_EXAMPLES)
 if (GRK_BUILD_CODEC_EXAMPLES)
 	add_subdirectory(codec)
 endif(GRK_BUILD_CODEC_EXAMPLES)

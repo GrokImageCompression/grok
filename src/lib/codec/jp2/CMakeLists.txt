@@ -23,12 +23,12 @@ endif()
 
 # Headers file are located here:
 include_directories(
-  ${GROK_BINARY_DIR}/src/lib/jp2
+  ${GROK_BINARY_DIR}/src/lib/core
   ${GROK_BINARY_DIR}/src/bin/common
-  ${GROK_SOURCE_DIR}/src/lib/jp2
+  ${GROK_SOURCE_DIR}/src/lib/core
   ${GROK_SOURCE_DIR}/src/bin/common
   ${GROK_SOURCE_DIR}/src/bin/image_format
-  ${GROK_SOURCE_DIR}/src/bin/jp2
+  ${GROK_SOURCE_DIR}/src/bin/codec
   ${LCMS_INCLUDE_DIRNAME}
   ${PNG_INCLUDE_DIRNAME}
   ${TIFF_INCLUDE_DIRNAME}

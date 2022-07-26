@@ -23,8 +23,8 @@ include_directories(
   ${TIFF_INCLUDE_DIRNAME}
   ${JPEG_INCLUDE_DIRNAME}
   ${GROK_BINARY_DIR}/src/bin
-  ${GROK_BINARY_DIR}/src/lib/jp2 # grk_config.h and grk_config_private.h
-  ${GROK_SOURCE_DIR}/src/lib/jp2
+  ${GROK_BINARY_DIR}/src/lib/core # grk_config.h and grk_config_private.h
+  ${GROK_SOURCE_DIR}/src/lib/core
   ${GROK_SOURCE_DIR}/src/include
   ${CMAKE_CURRENT_BINARY_DIR}
   ${CMAKE_CURRENT_SOURCE_DIR}/image_format
@@ -111,7 +111,7 @@ set(INSTALL_LIBS ${GROK_CODEC_NAME})
 if (CMAKE_CXX_COMPILER_ID MATCHES "GNU")
 	target_link_options(${GROK_CODEC_NAME} PUBLIC "LINKER:-z,now")
 endif()
-target_link_libraries(${GROK_CODEC_NAME} PRIVATE ${GROK_LIBRARY_NAME} hwy ${LCMS_LIBNAME} ${Z_LIBNAME} ${PNG_LIBNAME} ${TIFF_LIBNAME} ${LCMS_LIBNAME}
+target_link_libraries(${GROK_CODEC_NAME} PRIVATE ${GROK_CORE_NAME} hwy ${LCMS_LIBNAME} ${Z_LIBNAME} ${PNG_LIBNAME} ${TIFF_LIBNAME} ${LCMS_LIBNAME}
     ${JPEG_LIBNAME})
 
 if(URING)

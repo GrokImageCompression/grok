@@ -28,7 +28,7 @@ if(EXISTS "${CMAKE_ROOT}/Modules/CPack.cmake")
 
   # Make this explicit here, rather than accepting the CPack default value,
   # so we can refer to it:
-  set(CPACK_PACKAGE_NAME "${GROK_LIBRARY_NAME}")
+  set(CPACK_PACKAGE_NAME "${GROK_CORE_NAME}")
 
   if(NOT DEFINED CPACK_SYSTEM_NAME)
     # make sure package is not Cygwin-unknown, for Cygwin just

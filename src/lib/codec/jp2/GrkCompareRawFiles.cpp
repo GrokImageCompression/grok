@@ -49,7 +49,6 @@ static void compare_raw_files_help_display(void)
 }
 static int parse_cmdline_cmp(int argc, char** argv, test_cmp_parameters* param)
 {
-	size_t sizemembasefile, sizememtestfile;
 	int index = 0;
 	try
 	{
@@ -60,13 +59,11 @@ static int parse_cmdline_cmp(int argc, char** argv, test_cmp_parameters* param)
 		cmd.parse(argc, argv);
 		if(baseArg.isSet())
 		{
-			sizemembasefile = baseArg.getValue().length() + 1;
 			strcpy(param->base_filename, baseArg.getValue().c_str());
 			index++;
 		}
 		if(testArg.isSet())
 		{
-			sizememtestfile = testArg.getValue().length() + 1;
 			strcpy(param->test_filename, testArg.getValue().c_str());
 			index++;
 		}
