@@ -6,8 +6,6 @@ IF(MSVC)
 ENDIF(MSVC)
 
 include_directories(
-  ${GROK_BINARY_DIR}/src/lib/codec
-  ${GROK_SOURCE_DIR}/src/lib/codec
   ${GROK_BINARY_DIR}/src/lib/core
   ${GROK_SOURCE_DIR}/src/lib/core
   ${CMAKE_CURRENT_BINARY_DIR}/../
@@ -21,8 +19,6 @@ if(WIN32)
     add_definitions(-DGRK_STATIC)
   endif()
 endif()
-
-add_definitions(-DSPDLOG_COMPILED_LIB)
 
 foreach(exe core_decompress_from_file
             core_decompress_from_buf
@@ -41,8 +37,4 @@ foreach(exe core_decompress_from_file
     target_compile_options(${exe} PUBLIC -matomics)
   endif()
 
-  install(TARGETS ${exe}
-    EXPORT GrokTargets
-    DESTINATION ${CMAKE_INSTALL_BINDIR} COMPONENT Applications
-  )
 endforeach()

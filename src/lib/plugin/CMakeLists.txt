@@ -25,6 +25,7 @@ set(GROK_PLUGIN_SRCS
 if(WIN32)
     add_definitions(-DGRK_EXPORTS)
 endif()
+
 add_library(${GROK_PLUGIN_NAME} ${GROK_PLUGIN_SRCS})
 
 set_target_properties(${GROK_PLUGIN_NAME} PROPERTIES ${GROK_LIBRARY_PROPERTIES})

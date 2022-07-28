@@ -19,7 +19,6 @@
 #include <cstring>
 
 #include "grok.h"
-#include "grk_examples_config.h"
 
 uint8_t img[] = {
 0xff, 0x4f, 0xff, 0x51, 0x00, 0x2c, 0x00, 0x02, 0x00, 0x00, 0x00, 0x0c, 0x00, 0x00, 0x00, 0x0c,
@@ -100,7 +99,7 @@ int main(int argc, char** argv)
 	auto stream = grk_stream_create_mem_stream(img, sizeof(img), false, true);
 	if(!stream)
 	{
-		fprintf(stderr, "Failed to create memory stream");
+		fprintf(stderr, "Failed to create memory stream\n");
 		goto beach;
 	}
 	grk_decompress_set_default_params(&param.core);
@@ -135,16 +134,15 @@ int main(int argc, char** argv)
 	// retrieve image holding uncompressed image data
 	image = grk_decompress_get_composited_image(codec);
 	if (!image){
-        fprintf(stderr, "Failed to retrieve image \n");
+        fprintf(stderr, "Failed to retrieve decompressed image\n");
         goto beach;
 	}
 
 	rc = EXIT_SUCCESS;
-	grk_deinitialize();
-
 beach:
 	grk_object_unref(stream);
 	grk_object_unref(codec);
+    grk_deinitialize();
 
 	return rc;
 }

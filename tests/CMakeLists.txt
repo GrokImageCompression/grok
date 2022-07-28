@@ -11,13 +11,7 @@ include_directories(
   ${GROK_BINARY_DIR}/src/lib/codec/ # grk_apps_config.h
   ${GROK_SOURCE_DIR}/src/lib/codec
   ${GROK_SOURCE_DIR}/src/lib/core
-  ${GROK_SOURCE_DIR}/src/include
-  ${GROK_SOURCE_DIR}/src/bin/image_format
-  ${LCMS_INCLUDE_DIRNAME}
-  ${PNG_INCLUDE_DIRNAME}
-  ${TIFF_INCLUDE_DIRNAME}
-  &{JPEG_INCLUDE_DIRNAME}
-  )
+)
 
  if(WIN32)
   add_definitions(-DNOMINMAX)

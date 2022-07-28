@@ -6,7 +6,6 @@ IF(MSVC)
 ENDIF(MSVC)
 
 include_directories(
-  ${GROK_BINARY_DIR}/src/lib/codec
   ${GROK_SOURCE_DIR}/src/lib/codec
   ${GROK_BINARY_DIR}/src/lib/core
   ${GROK_SOURCE_DIR}/src/lib/core
@@ -21,8 +20,6 @@ if(WIN32)
     add_definitions(-DGRK_STATIC)
   endif()
 endif()
-
-add_definitions(-DSPDLOG_COMPILED_LIB)
 
 foreach(exe codec_decompress_from_file_to_tiff)
   add_executable(${exe} ${exe}.cpp)
@@ -57,8 +54,4 @@ foreach(exe codec_decompress_from_file_to_tiff)
    	target_link_libraries(${exe} ${PERL_LIBRARY} )
   endif()
 
-  install(TARGETS ${exe}
-    EXPORT GrokTargets
-    DESTINATION ${CMAKE_INSTALL_BINDIR} COMPONENT Applications
-  )
 endforeach()

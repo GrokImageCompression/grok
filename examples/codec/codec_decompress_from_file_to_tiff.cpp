@@ -14,7 +14,6 @@
  *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
-
 #include <string>
 #include <cstring>
 #include <vector>
@@ -32,15 +31,24 @@ int main(int argc, char** argv)
 
 	//1. form vector of command line args
 	std::vector<std::string> argString;
+
+	// first entry must always be the name of the program, as is
+	// required by argv/argc variables in main method
 	argString.push_back("codec_decompress_from_file_to_tiff");
+
+	// verbose output
 	argString.push_back("-v");
+
+	// input file
 	std::string temp = "-i " + dataRoot + std::filesystem::path::preferred_separator +
 			"input" +  std::filesystem::path::preferred_separator +
 			"nonregression" + std::filesystem::path::preferred_separator + "boats_cprl.j2k";
 	argString.push_back(temp);
+
+	// output file
 	argString.push_back("-o boats_cprl.tif");
 
-	// 2. convert to array of c strings
+	// 2. convert to array of C strings
 	std::vector<char *> args;
 	for (auto& s : argString){
 	  char *arg = new char[s.size() + 1];
@@ -51,6 +59,8 @@ int main(int argc, char** argv)
 
 	// 3. decompress
 	int rc =  grk_codec_decompress((int)args.size(),&args[0]);
+	if (rc)
+	    fprintf(stderr, "Failed to decompress\n");
 
 	//4. cleanup
 	for (auto& s : args)

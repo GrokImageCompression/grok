@@ -10,14 +10,6 @@ include_directories(
   ${GROK_BINARY_DIR}/src/bin/common
   ${GROK_SOURCE_DIR}/src/lib/core
   ${GROK_SOURCE_DIR}/src/lib/codec
-  ${CMAKE_CURRENT_SOURCE_DIR}/../common
-  ${CMAKE_CURRENT_SOURCE_DIR}/../image_format
-  ${CMAKE_CURRENT_SOURCE_DIR}/../jp2
-  ${LCMS_INCLUDE_DIRNAME}
-  ${PNG_INCLUDE_DIRNAME}
-  ${TIFF_INCLUDE_DIRNAME}
-  ${JPEG_INCLUDE_DIRNAME}
-  ${GROK_SOURCE_DIR}/src/include
   )
 
 if(WIN32)
@@ -28,8 +20,6 @@ if(WIN32)
     add_definitions(-DGRK_STATIC)
   endif()
 endif()
-
-add_definitions(-DSPDLOG_COMPILED_LIB)
 
 foreach(exe grk_decompress grk_compress grk_dump)
   add_executable(${exe} ${exe}.cpp ${common_SRCS})

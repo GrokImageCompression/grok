@@ -14,7 +14,6 @@
  *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
-
 #include <cstdio>
 #include <string>
 #include <cstring>
@@ -69,17 +68,15 @@ GRK_SUPPORTED_FILE_FMT get_file_format(const char* filename)
 	return GRK_UNK_FMT;
 }
 
-
 #define JP2_RFC3745_MAGIC "\x00\x00\x00\x0c\x6a\x50\x20\x20\x0d\x0a\x87\x0a"
 #define J2K_CODESTREAM_MAGIC "\xff\x4f\xff\x51"
 bool jpeg2000_file_format(const char* fname, GRK_SUPPORTED_FILE_FMT* fmt)
 {
-	FILE* reader;
 	GRK_SUPPORTED_FILE_FMT ext_format = GRK_UNK_FMT, magic_format = GRK_UNK_FMT;
 	uint8_t buf[12];
 	size_t nb_read;
 
-	reader = fopen(fname, "rb");
+	auto reader = fopen(fname, "rb");
 	if(reader == nullptr)
 		return false;
 
@@ -105,7 +102,7 @@ bool jpeg2000_file_format(const char* fname, GRK_SUPPORTED_FILE_FMT* fmt)
 	}
 	else
 	{
-		fprintf(stderr,"%s does not contain a JPEG 2000 code stream", fname);
+		fprintf(stderr,"%s does not contain a JPEG 2000 code stream\n", fname);
 		*fmt = GRK_UNK_FMT;
 		return false;
 	}
@@ -116,6 +113,7 @@ bool jpeg2000_file_format(const char* fname, GRK_SUPPORTED_FILE_FMT* fmt)
 		return true;
 	}
 	*fmt = magic_format;
+
 	return true;
 }
 
@@ -133,7 +131,7 @@ int main(int argc, char** argv)
 	grk_codec *codec = nullptr;
 	grk_image *image = nullptr;
 	uint16_t tile_index = 0;
-	int32_t rc = EXIT_FAILURE;
+	int rc = EXIT_FAILURE;
 
 	float da_x0 = 0;
 	float da_y0 = 0;
@@ -145,13 +143,13 @@ int main(int argc, char** argv)
 	auto stream = grk_stream_create_file_stream(input_file, 1024 * 1024, true);
 	if(!stream)
 	{
-		fprintf(stderr, "Failed to create a stream from file %s", input_file);
+		fprintf(stderr, "Failed to create a stream from file %s\n", input_file);
 		goto beach;
 	}
 	grk_decompress_set_default_params(&param.core);
 	if(!jpeg2000_file_format(input_file, &param.decod_format))
 	{
-		fprintf(stderr, "Failed to parse input file format");
+		fprintf(stderr, "Failed to parse input file format\n");
 		goto beach;
 	}
 	param.core.max_layers = 0;
@@ -168,7 +166,7 @@ int main(int argc, char** argv)
 			break;
 		}
 		default: {
-			fprintf(stderr,"Not a valid JPEG2000 file!\n");
+			fprintf(stderr,"Not a valid JPEG2000 file\n");
 			goto beach;
 			break;
 		}
@@ -201,11 +199,10 @@ int main(int argc, char** argv)
     }
 
 	rc = EXIT_SUCCESS;
-	grk_deinitialize();
-
 beach:
 	grk_object_unref(stream);
 	grk_object_unref(codec);
+    grk_deinitialize();
 
 	return rc;
 }
