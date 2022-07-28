@@ -130,8 +130,8 @@ int main(int argc, char** argv)
 
 	grk_decompress_parameters param;
 	memset(&param, 0, sizeof(grk_decompress_parameters));
-	grk_codec* codec = nullptr;
-	grk_stream* stream = nullptr;
+	grk_codec *codec = nullptr;
+	grk_image *image = nullptr;
 	uint16_t tile_index = 0;
 	int32_t rc = EXIT_FAILURE;
 
@@ -142,16 +142,16 @@ int main(int argc, char** argv)
 
 	auto input_file = in.c_str();
 	grk_initialize(nullptr, 0);
-	stream = grk_stream_create_file_stream(input_file, 1024 * 1024, true);
+	auto stream = grk_stream_create_file_stream(input_file, 1024 * 1024, true);
 	if(!stream)
 	{
-		fprintf(stderr, "failed to create a stream from file %s", input_file);
+		fprintf(stderr, "Failed to create a stream from file %s", input_file);
 		goto beach;
 	}
 	grk_decompress_set_default_params(&param.core);
 	if(!jpeg2000_file_format(input_file, &param.decod_format))
 	{
-		fprintf(stderr, "failed to parse input file format");
+		fprintf(stderr, "Failed to parse input file format");
 		goto beach;
 	}
 	param.core.max_layers = 0;
@@ -177,21 +177,28 @@ int main(int argc, char** argv)
 						 errorCallback, nullptr);
 	if(!grk_decompress_init(codec, &param.core))
 	{
-		fprintf(stderr, "test tile decoder: failed to set up decompressor\n");
+		fprintf(stderr, "Failed to set up decompressor\n");
 		goto beach;
 	}
 	if(!grk_decompress_read_header(codec, nullptr))
 	{
-		fprintf(stderr, "test tile decoder: failed to read the header\n");
+		fprintf(stderr, "Failed to read the header\n");
 		goto beach;
 	}
 	if(!grk_decompress_set_window(codec, da_x0, da_y0, da_x1, da_y1))
 	{
-		fprintf(stderr, "grk_decompress_set_window: failed to set decompress region\n");
+		fprintf(stderr, "Failed to set decompress region\n");
 		goto beach;
 	}
 	if(!grk_decompress_tile(codec, tile_index))
 		goto beach;
+
+    // retrieve image holding uncompressed image data
+    image = grk_decompress_get_composited_image(codec);
+    if (!image){
+        fprintf(stderr, "Failed to retrieve image \n");
+        goto beach;
+    }
 
 	rc = EXIT_SUCCESS;
 	grk_deinitialize();
