@@ -28,11 +28,6 @@ target_link_libraries(compare_images
   ${PNG_LIBNAME} ${TIFF_LIBNAME} ${LCMS_LIBNAME} ${CMAKE_DL_LIBS} ${CMAKE_THREAD_LIBS_INIT}
   )
 
-if(ZLIB_FOUND AND APPLE)
-  target_link_libraries(compare_images z)
-else(ZLIB_FOUND AND APPLE)
-  target_link_libraries(compare_images ${Z_LIBNAME})
-endif()
 if(URING)
   target_link_libraries(compare_images uring)
 endif()

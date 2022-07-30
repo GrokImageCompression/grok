@@ -36,14 +36,8 @@ foreach(exe codec_decompress_from_file_to_tiff)
 
   target_link_libraries(${exe}
     ${PNG_LIBNAME} ${TIFF_LIBNAME} ${LCMS_LIBNAME}
-    ${JPEG_LIBNAME} ${CMAKE_THREAD_LIBS_INIT} ${GROK_CORE_NAME} ${GROK_CODEC_NAME} ${CMAKE_DL_LIBS} )
-
-  # To support universal exe:
-  if(ZLIB_FOUND AND APPLE)
-    target_link_libraries(${exe} z)
-  else(ZLIB_FOUND AND APPLE)
-    target_link_libraries(${exe} ${Z_LIBNAME})
-  endif()
+    ${JPEG_LIBNAME} ${CMAKE_THREAD_LIBS_INIT} ${GROK_CORE_NAME}
+    ${GROK_CODEC_NAME} ${CMAKE_DL_LIBS} )
 
   if(URING)
 	  target_link_libraries(${exe} uring)

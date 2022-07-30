@@ -1,4 +1,9 @@
-project(libpng C)
+project(libpng)
+
+# suppress "explicit source extensions" warning
+if(POLICY CMP0115)
+  cmake_policy(SET CMP0115 OLD)
+endif()
 
 include_directories(
   "${CMAKE_CURRENT_SOURCE_DIR}"
@@ -100,7 +105,7 @@ set_property(TARGET ${LIBTARGET} PROPERTY POSITION_INDEPENDENT_CODE ON)
 if(MSVC)
   set_target_properties(${LIBTARGET} PROPERTIES PREFIX "lib")
 endif(MSVC)
-target_link_libraries(${LIBTARGET} ${Z_LIBNAME} ${M_LIBRARY})
+target_link_libraries(${LIBTARGET} zlib)
 set_target_properties(${LIBTARGET}
 	PROPERTIES
     OUTPUT_NAME "${LIBTARGET}")

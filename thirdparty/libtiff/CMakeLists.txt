@@ -192,7 +192,12 @@ set(tiff_libs_private_list "") # cmake list
 set(tiff_requires_private "") # cmake string
 
 if(ZIP_SUPPORT)
-  target_link_libraries(tiff PRIVATE ZLIB::ZLIB)
+  if (BUILD_SHARED_LIBS)
+  	target_link_libraries(tiff PRIVATE ZLIB::ZLIB)
+  else(BUILD_SHARED_LIBS)
+    # link to static version of zlib built by project
+    target_link_libraries(tiff PRIVATE zlib)
+  endif()
   string(APPEND tiff_requires_private " zlib")
 endif()
 if(ZIP_SUPPORT AND LIBDEFLATE_SUPPORT)
@@ -251,22 +256,6 @@ if(HAVE_LD_VERSION_SCRIPT)
   set_target_properties(tiff PROPERTIES LINK_FLAGS
                         "-Wl,--version-script=${CMAKE_CURRENT_SOURCE_DIR}/libtiff.map")
 endif()
-
-export(TARGETS tiff NAMESPACE TIFF:: FILE "${CMAKE_CURRENT_BINARY_DIR}/libtiffTargets.cmake")
-install(TARGETS tiff EXPORT TiffTargets
-        RUNTIME DESTINATION ${CMAKE_INSTALL_FULL_BINDIR}
-        LIBRARY DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR}
-        ARCHIVE DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR})
-
-install(FILES ${tiff_public_HEADERS}
-        DESTINATION "${CMAKE_INSTALL_FULL_INCLUDEDIR}")
-
-set(TIFF_CONFIGDIR ${CMAKE_INSTALL_LIBDIR}/cmake/tiff)
-install(EXPORT TiffTargets
-        FILE TiffTargets.cmake
-        NAMESPACE TIFF::
-        DESTINATION ${TIFF_CONFIGDIR}
-)
 
 if(CXX_SUPPORT)
   set(tiffxx_HEADERS
