@@ -3,6 +3,7 @@ include(FindPkgConfig)
 # Try to find lib Z
 if(GRK_BUILD_LIBPNG)
   message(STATUS "zlib will be built.")
+  set(ZLIB_ENABLE_TESTS OFF)
   set(ZLIB_COMPAT ON)
   set(BUILD_SHARED_LIBS OFF)
   add_subdirectory(libz EXCLUDE_FROM_ALL)

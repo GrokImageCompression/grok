@@ -1,11 +1,11 @@
 /* zutil_p.h -- Private inline functions used internally in zlib-ng
- *
+ * For conditions of distribution and use, see copyright notice in zlib.h
  */
 
 #ifndef ZUTIL_P_H
 #define ZUTIL_P_H
 
-#ifdef __APPLE__
+#if defined(__APPLE__) || defined(HAVE_POSIX_MEMALIGN)
 #  include <stdlib.h>
 #elif defined(__FreeBSD__)
 #  include <stdlib.h>
@@ -16,7 +16,7 @@
 
 /* Function to allocate 16 or 64-byte aligned memory */
 static inline void *zng_alloc(size_t size) {
-#if defined(__FreeBSD__)
+#ifdef HAVE_POSIX_MEMALIGN
     void *ptr;
     return posix_memalign(&ptr, 64, size) ? NULL : ptr;
 #elif defined(_WIN32)

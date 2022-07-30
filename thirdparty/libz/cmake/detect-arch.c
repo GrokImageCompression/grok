@@ -36,7 +36,7 @@
     #if defined(__64BIT__) || defined(__powerpc64__) || defined(__ppc64__)
         #if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
             #error archfound powerpc64le
-        #else 
+        #else
             #error archfound powerpc64
         #endif
     #else
@@ -92,6 +92,14 @@
 // RS-6000
 #elif defined(__THW_RS6000)
     #error archfound rs6000
+
+// RISC-V
+#elif defined(__riscv)
+    #if __riscv_xlen == 64
+        #error archfound riscv64
+    #elif __riscv_xlen == 32
+        #error archfound riscv32
+    #endif
 
 // return 'unrecognized' if we do not know what architecture this is
 #else
