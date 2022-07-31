@@ -1,4 +1,4 @@
-project(libpng)
+project(libpng C)
 
 # suppress "explicit source extensions" warning
 if(POLICY CMP0115)
