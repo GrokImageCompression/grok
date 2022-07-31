@@ -26,9 +26,9 @@ Supported compilers:
 
 #### g++
 
-To ensure that g++ 10 is the default compiler after installation, execute
+To ensure that g++ 10 is the default compiler after installation, execute:
 
-$ sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-10 100 --slave /usr/bin/g++ g++ /usr/bin/g++-10
+`$ sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-10 100 --slave /usr/bin/g++ g++ /usr/bin/g++-10`
 
 #### Clang
 
@@ -39,8 +39,7 @@ $ sudo update-alternatives --install /usr/bin/c++ c++ /usr/bin/clang++-12 60
 $ sudo update-alternatives --config c++
 ```
 
-The second line brings up a menu allowing a user to configure the default `c++` compiler, which is
-what is used by `cmake` to configure the project compiler.
+The second line brings up a menu allowing a user to configure the default `c++` compiler, which is what is used by `cmake` to configure the project compiler.
 
 #### Binaryen
 
@@ -53,7 +52,7 @@ The SDK includes a helper script, `emcmake`, to configure cmake.
 
 Now the core example that decompresses from a buffer can be runs as follows:
 
-`$ node --experimental-wasm-threads --experimental-wasm-bulk-memory bin/core_decompress_from_buf.js`
+`$ node --experimental-wasm-threads bin/core_decompress_from_buf.js`
 
 Note: WebAssembly by default is sand-boxed and not allowed to access the file system, so
 only the `core_decompress_from_buf` example will run.
