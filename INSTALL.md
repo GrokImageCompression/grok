@@ -1,6 +1,6 @@
 ## Install from Package Manager
 
-1. **Debian** Grok .deb packages can be found [here](https://tracker.debian.org/pkg/libgrokj2k)
+1. **Debian** Grok `.deb` packages can be found [here](https://tracker.debian.org/pkg/libgrokj2k)
 
 1. **Archlinux** Grok Archlinux packages can be found [here](https://aur.archlinux.org/packages/grok-jpeg2000/)
 
@@ -13,16 +13,15 @@ Grok releases can be found [here](https://github.com/GrokImageCompression/grok/r
 ## Install from Source
 
 Grok uses [cmake](www.cmake.org) to configure builds across multiple platforms.
-It requires version 3.16 and higher.
-
+It requires version 3.16 or higher.
 
 ### Compilers
 
 Supported compilers:
 
-1. g++ 10 and higher
-1. clang 12 and higher
-1. MSVC 2019 and higher (mingw compiler not supported)
+1. g++ : version 10 or higher
+1. clang : version 12 or higher
+1. MSVC : 2019 or higher
 1. Binaryen for WebAssembly
 
 #### g++
@@ -33,7 +32,7 @@ $ sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-10 100 --slav
 
 #### Clang
 
-For clang-12, execute:
+To ensure that clang-12 is the default compiler after installation, execute:
 
 ```
 $ sudo update-alternatives --install /usr/bin/c++ c++ /usr/bin/clang++-12 60
@@ -45,17 +44,19 @@ what is used by `cmake` to configure the project compiler.
 
 #### Binaryen
 
-Emscripten SDK can installed following [these instructions](https://emscripten.org/docs/getting_started/downloads.html)
+The Emscripten SDK can installed by following [these instructions](https://emscripten.org/docs/getting_started/downloads.html)
 The SDK includes a helper script, `emcmake`, to configure cmake.
 
 `emcmake` command:
 
-`$ emcmake cmake -DBUILD_SHARED_LIBS=OFF -DGRK_BUILD_CODEC=OFF -DGRK_BUILD_LIBPNG=OFF -DBUILD_TESTING=OFF -DGRK_BUILD_CORE_EXAMPLES=ON  GROK/SRC/FOLDER`
+`$ emcmake cmake -DBUILD_SHARED_LIBS=OFF -DGRK_BUILD_CODEC=OFF -DGRK_BUILD_LIBPNG=OFF -DBUILD_TESTING=OFF -DGRK_BUILD_CORE_EXAMPLES=ON  PATH/TO/SOURCE`
 
-Now the library example can be runs as follows:
+Now the core example that decompresses from a buffer can be runs as follows:
 
-`$ node --experimental-wasm-threads --experimental-wasm-bulk-memory bin/library_decompress_from_file.js`
+`$ node --experimental-wasm-threads --experimental-wasm-bulk-memory bin/core_decompress_from_buf.js`
 
+Note: WebAssembly by default is sand-boxed and not allowed to access the file system, so
+only the `core_decompress_from_buf` example will run.
 
 ### Configuration
 
@@ -67,7 +68,7 @@ To configure a build using the defaults:
    $ cmake /PATH/TO/SOURCE
 ```
 
-The `cmake` GUI is recommended, in order to easily view all `cmake` options.
+The `cmake` GUI is recommended, in order to view all `cmake` options.
 On Linux distributions, `cmake-gui` will launch the cmake GUI.
 On system without a window manager, `ccmake` (an ncurses application)
 may be used to configure the build.
@@ -78,8 +79,7 @@ may be used to configure the build.
 #### Shared vs. Static
 
 The `BUILD_SHARED_LIBS` `cmake` flag determines if the `grk_compress`
-and `grk_decompress` binaries are linked to dynamic or static builds
-of the library `libgrokj2k`.
+and `grk_decompress` binaries are linked dynamically or statically.
 
 
 ##### Fedora
@@ -160,9 +160,9 @@ test files will be automatically searched for in
 `${CMAKE_SOURCE_DIR}/../grok-test-data`
 
 
-## Macos
+## macOS
 
-Macos builds are configured similar to *NIX builds.
+macOS builds are configured similar to *NIX builds.
 The Xcode project files can be generated using:
 
 `$ cmake -G Xcode ....`
