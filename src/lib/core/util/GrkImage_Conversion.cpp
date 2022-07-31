@@ -26,7 +26,7 @@ bool GrkImage::allComponentsSanityCheck(bool equalPrecision)
 	}
 	if(comp0->prec == 0 || comp0->prec > GRK_MAX_SUPPORTED_IMAGE_PRECISION)
 	{
-		GRK_WARN("component 0 precision {} is not supported.", 0, comp0->prec);
+		GRK_WARN("component 0 precision %d is not supported.", 0, comp0->prec);
 		return false;
 	}
 
@@ -36,41 +36,41 @@ bool GrkImage::allComponentsSanityCheck(bool equalPrecision)
 
 		if(!comp0->data)
 		{
-			GRK_WARN("component {} : data is null.", i);
+			GRK_WARN("component %d : data is null.", i);
 			return false;
 		}
 		if(equalPrecision && comp0->prec != compi->prec)
 		{
-			GRK_WARN("precision {} of component {}"
-					 " differs from precision {} of component 0.",
+			GRK_WARN("precision %d of component %d"
+					 " differs from precision %d of component 0.",
 					 compi->prec, i, comp0->prec);
 			return false;
 		}
 		if(comp0->sgnd != compi->sgnd)
 		{
-			GRK_WARN("signedness {} of component {}"
-					 " differs from signedness {} of component 0.",
+			GRK_WARN("signedness %d of component %d"
+					 " differs from signedness %d of component 0.",
 					 compi->sgnd, i, comp0->sgnd);
 			return false;
 		}
 		if(comp0->w != compi->w)
 		{
-			GRK_WARN("width {} of component {}"
-					 " differs from width {} of component 0.",
+			GRK_WARN("width %d of component %d"
+					 " differs from width %d of component 0.",
 					 compi->sgnd, i, comp0->sgnd);
 			return false;
 		}
 		if(comp0->stride != compi->stride)
 		{
-			GRK_WARN("stride {} of component {}"
-					 " differs from stride {} of component 0.",
+			GRK_WARN("stride %d of component %d"
+					 " differs from stride %d of component 0.",
 					 compi->sgnd, i, comp0->sgnd);
 			return false;
 		}
 		if(comp0->h != compi->h)
 		{
-			GRK_WARN("height {} of component {}"
-					 " differs from height {} of component 0.",
+			GRK_WARN("height %d of component %d"
+					 " differs from height %d of component 0.",
 					 compi->sgnd, i, comp0->sgnd);
 			return false;
 		}
@@ -315,7 +315,7 @@ void GrkImage::convertPrecision(void)
 		uint16_t nr_comp = numcomps;
 		if(nr_comp > 4)
 		{
-			GRK_WARN("PNG: number of components {} is "
+			GRK_WARN("PNG: number of components %d is "
 					 "greater than 4. Truncating to 4",
 					 nr_comp);
 			nr_comp = 4;
@@ -405,7 +405,7 @@ bool GrkImage::convertToRGB(bool wholeTileDecompress)
 		case GRK_CLRSPC_SYCC:
 			if(numcomps != 3)
 			{
-				GRK_ERROR("grk_decompress: YCC: number of components {} "
+				GRK_ERROR("grk_decompress: YCC: number of components %d "
 						  "not equal to 3 ",
 						  numcomps);
 				return false;
@@ -419,7 +419,7 @@ bool GrkImage::convertToRGB(bool wholeTileDecompress)
 		case GRK_CLRSPC_EYCC:
 			if(numcomps != 3)
 			{
-				GRK_ERROR("grk_decompress: YCC: number of components {} "
+				GRK_ERROR("grk_decompress: YCC: number of components %d "
 						  "not equal to 3 ",
 						  numcomps);
 				return false;
@@ -430,7 +430,7 @@ bool GrkImage::convertToRGB(bool wholeTileDecompress)
 		case GRK_CLRSPC_CMYK:
 			if(numcomps != 4)
 			{
-				GRK_ERROR("grk_decompress: CMYK: number of components {} "
+				GRK_ERROR("grk_decompress: CMYK: number of components %d "
 						  "not equal to 4 ",
 						  numcomps);
 				return false;
@@ -802,7 +802,7 @@ bool GrkImage::color_sycc_to_rgb(bool oddFirstX, bool oddFirstY)
 {
 	if(numcomps != 3)
 	{
-		GRK_WARN("color_sycc_to_rgb: number of components {} is not equal to 3."
+		GRK_WARN("color_sycc_to_rgb: number of components %d is not equal to 3."
 				 " Unable to convert",
 				 numcomps);
 		return false;
@@ -827,7 +827,7 @@ bool GrkImage::color_sycc_to_rgb(bool oddFirstX, bool oddFirstY)
 	}
 	else
 	{
-		GRK_WARN("color_sycc_to_rgb:  Invalid sub-sampling: ({},{}), ({},{}), ({},{})."
+		GRK_WARN("color_sycc_to_rgb:  Invalid sub-sampling: (%d,%d), (%d,%d), (%d,%d)."
 				 " Unable to convert.",
 				 comps[0].dx, comps[0].dy, comps[1].dx, comps[1].dy, comps[2].dx, comps[2].dy);
 		rc = false;
@@ -1497,7 +1497,7 @@ bool GrkImage::cieLabToRGB(void)
 	auto enumcs = (GRK_ENUM_COLOUR_SPACE)row[0];
 	if(enumcs != GRK_ENUM_CLRSPC_CIE)
 	{ /* CIELab */
-		GRK_WARN("{}:{}:\n\tenumCS {} not handled. Ignoring.", __FILE__, __LINE__, enumcs);
+		GRK_WARN("enumCS %d not handled. Ignoring.", enumcs);
 		return false;
 	}
 
@@ -1560,7 +1560,7 @@ bool GrkImage::cieLabToRGB(void)
 			cmsWhitePointFromTemp(&WhitePoint, 4000);
 			break;
 		default:
-			GRK_WARN("Unrecognized illuminant {} in CIELab colour space. "
+			GRK_WARN("Unrecognized illuminant %d in CIELab colour space. "
 					 "Setting to default Daylight50",
 					 illuminant);
 			illuminant = GRK_CIE_D50;
