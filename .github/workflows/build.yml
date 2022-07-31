@@ -13,8 +13,8 @@ jobs:
   build:
     strategy:
        matrix:
-         #os: [ubuntu-latest, windows-latest]
          os: [ubuntu-latest, windows-latest, macos-latest]
+         shared_libs_flag: [ON,OFF]
     # The CMake configure and build commands are platform agnostic and should work equally
     # well on Windows or Mac.  You can convert this to a matrix build if you need
     # cross-platform coverage.
@@ -85,7 +85,7 @@ jobs:
       # Note the current convention is to use the -S and -B options here to specify source 
       # and build directories, but this is only available with CMake 3.13 and higher.  
       # The CMake binaries on the Github Actions machines are (as of this writing) 3.12
-      run: cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DBUILD_TESTING:BOOL=ON -DGRK_DATA_ROOT=$DATA_ROOT $GENERATOR_PLATFORM
+      run: cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DBUILD_SHARED_LIBS=${{ matrix.shared_libs_flag }} -DBUILD_TESTING:BOOL=ON -DGRK_DATA_ROOT=$DATA_ROOT $GENERATOR_PLATFORM
 
     - name: build
       working-directory: ${{ github.workspace }}/build
@@ -100,6 +100,7 @@ jobs:
       run: ctest --output-on-failure -C $BUILD_TYPE
 
     - name: package
+      if: ${{  matrix.shared_libs_flag == 'ON' }}
       working-directory: ${{ github.workspace }}/build
       shell: bash
       run: |
