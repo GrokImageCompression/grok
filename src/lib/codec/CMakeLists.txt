@@ -77,7 +77,6 @@ set(GROK_CODEC_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/jp2/GrkCompareRawFiles.cpp
 )
 
-
 if(GROK_HAVE_LIBTIFF)
 	list(APPEND GROK_CODEC_SRCS image_format/TIFFFormat.cpp)
 endif()
@@ -96,9 +95,6 @@ endif()
 add_definitions(-DSPDLOG_COMPILED_LIB)
 
 # Build the library
-if (GRK_BUILD_PLUGIN_LOADER)
-    add_definitions(-DGRK_BUILD_PLUGIN_LOADER)
-endif()
 if(WIN32)
   if(BUILD_SHARED_LIBS)
     add_definitions(-DGRK_EXPORTS)
@@ -131,14 +127,12 @@ set_target_properties(${GROK_CODEC_NAME} PROPERTIES ${GROK_LIBRARY_PROPERTIES})
 target_compile_options(${GROK_CODEC_NAME} PRIVATE ${GROK_COMPILE_OPTIONS})
 
 # Install library
-if(BUILD_SHARED_LIBS)
 install(TARGETS ${INSTALL_LIBS}
   EXPORT GrokTargets
   RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR} COMPONENT Applications
   LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT Libraries
   ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT Libraries
 )
-endif()
 
 # Install includes files
 install(FILES grok_codec.h
