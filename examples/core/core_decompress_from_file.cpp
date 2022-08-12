@@ -42,55 +42,23 @@ void infoCallback(const char* msg, void* client_data)
 	std::string t = std::string(msg) + "\n";
 	fprintf(stdout,t.c_str());
 }
-
-GRK_SUPPORTED_FILE_FMT get_file_format(const char* filename)
-{
-	const char* ext = strrchr(filename, '.');
-	if(ext == nullptr)
-		return GRK_UNK_FMT;
-	ext++;
-	if(*ext)
-	{
-		static const char* extension[] = {"pgx",  "pam", "pnm",	 "pgm", "ppm",	"pbm",
-										  "bmp",  "tif", "tiff", "jpg", "jpeg", "raw",
-										  "rawl", "png", "j2k",	 "jp2", "j2c",	"jpc"};
-		static const GRK_SUPPORTED_FILE_FMT format[] = {
-			GRK_PGX_FMT,  GRK_PXM_FMT, GRK_PXM_FMT, GRK_PXM_FMT, GRK_PXM_FMT, GRK_PXM_FMT,
-			GRK_BMP_FMT,  GRK_TIF_FMT, GRK_TIF_FMT, GRK_JPG_FMT, GRK_JPG_FMT, GRK_RAW_FMT,
-			GRK_RAWL_FMT, GRK_PNG_FMT, GRK_J2K_FMT, GRK_JP2_FMT, GRK_J2K_FMT, GRK_J2K_FMT};
-		for(uint32_t i = 0; i < sizeof(format) / sizeof(*format); i++)
-		{
-			if(strcasecmp(ext, extension[i]) == 0)
-				return format[i];
-		}
-	}
-
-	return GRK_UNK_FMT;
-}
-
+// parse file format
 #define JP2_RFC3745_MAGIC "\x00\x00\x00\x0c\x6a\x50\x20\x20\x0d\x0a\x87\x0a"
 #define J2K_CODESTREAM_MAGIC "\xff\x4f\xff\x51"
-bool jpeg2000_file_format(const char* fname, GRK_SUPPORTED_FILE_FMT* fmt)
+static bool jpeg2000_file_format(const char* fname, GRK_SUPPORTED_FILE_FMT* fmt)
 {
-	GRK_SUPPORTED_FILE_FMT ext_format = GRK_UNK_FMT, magic_format = GRK_UNK_FMT;
+	GRK_SUPPORTED_FILE_FMT magic_format = GRK_UNK_FMT;
 	uint8_t buf[12];
-	size_t nb_read;
-
 	auto reader = fopen(fname, "rb");
 	if(reader == nullptr)
 		return false;
 
 	memset(buf, 0, 12);
-	nb_read = fread(buf, 1, 12, reader);
+	auto bytesRead = fread(buf, 1, 12, reader);
 	if(fclose(reader))
 		return false;
-
-	if(nb_read != 12)
+	if(bytesRead != 12)
 		return false;
-
-	int temp = get_file_format(fname);
-	if(temp > GRK_UNK_FMT)
-		ext_format = (GRK_SUPPORTED_FILE_FMT)temp;
 
 	if(memcmp(buf, JP2_RFC3745_MAGIC, 12) == 0)
 	{
@@ -104,14 +72,10 @@ bool jpeg2000_file_format(const char* fname, GRK_SUPPORTED_FILE_FMT* fmt)
 	{
 		fprintf(stderr,"%s does not contain a JPEG 2000 code stream\n", fname);
 		*fmt = GRK_UNK_FMT;
+
 		return false;
 	}
 
-	if(magic_format == ext_format)
-	{
-		*fmt = ext_format;
-		return true;
-	}
 	*fmt = magic_format;
 
 	return true;
@@ -121,40 +85,51 @@ int main(int argc, char** argv)
 {
 	(void)argc;
 	(void)argv;
+    int rc = EXIT_FAILURE;
 
-	std::string in = dataRoot + std::filesystem::path::preferred_separator +
+	std::string inputFilePath = dataRoot + std::filesystem::path::preferred_separator +
 			"input" +  std::filesystem::path::preferred_separator +
 			"nonregression" + std::filesystem::path::preferred_separator + "boats_cprl.j2k";
 
+	// initialize decompress parameters
 	grk_decompress_parameters param;
 	memset(&param, 0, sizeof(grk_decompress_parameters));
+	param.repeats = 1;
+	param.compressionLevel = GRK_DECOMPRESS_COMPRESSION_LEVEL_DEFAULT;
+    grk_decompress_set_default_params(&param.core);
+
 	grk_codec *codec = nullptr;
 	grk_image *image = nullptr;
-	uint16_t tile_index = 0;
-	int rc = EXIT_FAILURE;
 
+	// decompress tile 0
+	uint16_t tile_index = 0;
+
+	// set decode window to {0,0,1000,1000} (optional)
 	float da_x0 = 0;
 	float da_y0 = 0;
 	float da_x1 = 1000;
 	float da_y1 = 1000;
 
-	auto input_file = in.c_str();
+	// initialize library
 	grk_initialize(nullptr, 0);
-	auto stream = grk_stream_create_file_stream(input_file, 1024 * 1024, true);
+
+	// create jpeg 2000 stream
+    auto inputFileStr = inputFilePath.c_str();
+	auto stream = grk_stream_create_file_stream(inputFileStr, 1024 * 1024, true);
 	if(!stream)
 	{
-		fprintf(stderr, "Failed to create a stream from file %s\n", input_file);
+		fprintf(stderr, "Failed to create a stream from file %s\n", inputFileStr);
 		goto beach;
 	}
-	grk_decompress_set_default_params(&param.core);
-	if(!jpeg2000_file_format(input_file, &param.decod_format))
+
+	// parse jpeg 2000 file format : j2k or jp2
+	if(!jpeg2000_file_format(inputFileStr, &param.decod_format))
 	{
 		fprintf(stderr, "Failed to parse input file format\n");
 		goto beach;
 	}
-	param.core.max_layers = 0;
-	param.core.reduce = 0;
 
+	// create codec
 	switch(param.decod_format)
 	{
 		case GRK_J2K_FMT: { /* JPEG-2000 codestream */
@@ -171,23 +146,32 @@ int main(int argc, char** argv)
 			break;
 		}
 	}
+
+	// set message handlers for info,warning and error
 	grk_set_msg_handlers(infoCallback, nullptr, warningCallback, nullptr,
 						 errorCallback, nullptr);
+
+	// initialize decompressor
 	if(!grk_decompress_init(codec, &param.core))
 	{
 		fprintf(stderr, "Failed to set up decompressor\n");
 		goto beach;
 	}
+
+	// read j2k header
 	if(!grk_decompress_read_header(codec, nullptr))
 	{
 		fprintf(stderr, "Failed to read the header\n");
 		goto beach;
 	}
+	// set decode window (optional)
 	if(!grk_decompress_set_window(codec, da_x0, da_y0, da_x1, da_y1))
 	{
 		fprintf(stderr, "Failed to set decompress region\n");
 		goto beach;
 	}
+
+	// decompress tile
 	if(!grk_decompress_tile(codec, tile_index))
 		goto beach;
 
@@ -197,9 +181,19 @@ int main(int argc, char** argv)
         fprintf(stderr, "Failed to retrieve image \n");
         goto beach;
     }
+    // see grok.h header for full details of image structure
+    /*
+    for (uint16_t compno = 0; compno < image->numcomps; ++compno){
+        auto comp = image->comps + compno;
+        auto compWidth = comp->w;
+        auto compHeight = comp->h;
+        auto compData = comp->data;
+    }
+    */
 
 	rc = EXIT_SUCCESS;
 beach:
+    // cleanup
 	grk_object_unref(stream);
 	grk_object_unref(codec);
     grk_deinitialize();
