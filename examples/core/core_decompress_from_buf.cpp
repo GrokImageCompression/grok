@@ -83,51 +83,70 @@ int main(int argc, char** argv)
 	(void)argc;
 	(void)argv;
 
-	grk_decompress_parameters param;
-	memset(&param, 0, sizeof(grk_decompress_parameters));
+    // initialize decompress parameters
+    grk_decompress_parameters param;
+    memset(&param, 0, sizeof(grk_decompress_parameters));
+    param.repeats = 1;
+    param.compressionLevel = GRK_DECOMPRESS_COMPRESSION_LEVEL_DEFAULT;
+    grk_decompress_set_default_params(&param.core);
+    param.decod_format = GRK_J2K_FMT;
+
 	grk_codec *codec = nullptr;
-	grk_image *image;
+	grk_image *image = nullptr;
+
 	uint16_t tile_index = 0;
 	int32_t rc = EXIT_FAILURE;
 
+	// set decompress window (optional)
 	float da_x0 = 0;
 	float da_y0 = 0;
 	float da_x1 = 1000;
 	float da_y1 = 1000;
 
+	// initialize library
 	grk_initialize(nullptr, 0);
+
+	// create j2k memory stream
 	auto stream = grk_stream_create_mem_stream(img, sizeof(img), false, true);
 	if(!stream)
 	{
 		fprintf(stderr, "Failed to create memory stream\n");
 		goto beach;
 	}
-	grk_decompress_set_default_params(&param.core);
-	param.core.max_layers = 0;
-	param.core.reduce = 0;
-	param.decod_format = GRK_J2K_FMT;
+
+	// create codec
 	codec = grk_decompress_create(GRK_CODEC_J2K, stream);
 	if (!codec) {
         fprintf(stderr, "Failed to create codec\n");
         goto beach;
 	}
+
+	// set library message handlers
 	grk_set_msg_handlers(infoCallback, nullptr, warningCallback, nullptr,
 						 errorCallback, nullptr);
+
+	// initialize decompressor
 	if(!grk_decompress_init(codec, &param.core))
 	{
 		fprintf(stderr, "Failed to set up decompressor\n");
 		goto beach;
 	}
+
+	// read j2k header
 	if(!grk_decompress_read_header(codec, nullptr))
 	{
 		fprintf(stderr, "Failed to read the header\n");
 		goto beach;
 	}
+
+	// set decompress window (optional)
 	if(!grk_decompress_set_window(codec, da_x0, da_y0, da_x1, da_y1))
 	{
 		fprintf(stderr, "Failed to set decompress region\n");
 		goto beach;
 	}
+
+	// decompress tile
 	if(!grk_decompress_tile(codec, tile_index))
 		goto beach;
 
@@ -137,9 +156,19 @@ int main(int argc, char** argv)
         fprintf(stderr, "Failed to retrieve decompressed image\n");
         goto beach;
 	}
+    // see grok.h header for full details of image structure
+    /*
+    for (uint16_t compno = 0; compno < image->numcomps; ++compno){
+        auto comp = image->comps + compno;
+        auto compWidth = comp->w;
+        auto compHeight = comp->h;
+        auto compData = comp->data;
+    }
+    */
 
 	rc = EXIT_SUCCESS;
 beach:
+    // cleanup
 	grk_object_unref(stream);
 	grk_object_unref(codec);
     grk_deinitialize();

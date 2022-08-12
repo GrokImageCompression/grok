@@ -113,7 +113,7 @@ int main(int argc, char** argv)
 	// initialize library
 	grk_initialize(nullptr, 0);
 
-	// create jpeg 2000 stream
+	// create j2k file stream
     auto inputFileStr = inputFilePath.c_str();
 	auto stream = grk_stream_create_file_stream(inputFileStr, 1024 * 1024, true);
 	if(!stream)
@@ -122,7 +122,7 @@ int main(int argc, char** argv)
 		goto beach;
 	}
 
-	// parse jpeg 2000 file format : j2k or jp2
+	// parse jpeg 2000 format : j2k or jp2
 	if(!jpeg2000_file_format(inputFileStr, &param.decod_format))
 	{
 		fprintf(stderr, "Failed to parse input file format\n");
