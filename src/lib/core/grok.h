@@ -40,23 +40,23 @@ extern "C" {
 #endif
 
 #ifdef _WIN32
-    #if defined(GRK_STATIC)
-        #define GRK_API
-    #else
-        #if defined(GRK_EXPORTS) || defined(DLL_EXPORT)
-            #define GRK_API __declspec(dllexport)
-        #else
-            #define GRK_API __declspec(dllimport)
-        #endif
-    #endif
-    #define GRK_CALLCONV __stdcall
+#if defined(GRK_STATIC)
+#define GRK_API
 #else
-    #if defined(GRK_STATIC) /* static library uses "hidden" */
-        #define GRK_API __attribute__((visibility("hidden")))
-    #else
-        #define GRK_API __attribute__((visibility("default")))
-    #endif
-    #define GRK_CALLCONV
+#if defined(GRK_EXPORTS) || defined(DLL_EXPORT)
+#define GRK_API __declspec(dllexport)
+#else
+#define GRK_API __declspec(dllimport)
+#endif
+#endif
+#define GRK_CALLCONV __stdcall
+#else
+#if defined(GRK_STATIC) /* static library uses "hidden" */
+#define GRK_API __attribute__((visibility("hidden")))
+#else
+#define GRK_API __attribute__((visibility("default")))
+#endif
+#define GRK_CALLCONV
 #endif
 
 typedef enum GRK_RATE_CONTROL_ALGORITHM
