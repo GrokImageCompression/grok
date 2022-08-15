@@ -15,7 +15,6 @@ if(EXISTS "${CMAKE_ROOT}/Modules/CPack.cmake")
   configure_file("${CMAKE_CURRENT_SOURCE_DIR}/LICENSE"
     "${CMAKE_CURRENT_BINARY_DIR}/LICENSE.txt" COPYONLY
     )
-  # For PackageMaker on MacOSX it is important to have a file extension:
   set(CPACK_PACKAGE_DESCRIPTION_FILE    "${CMAKE_CURRENT_BINARY_DIR}/LICENSE.txt")
   set(CPACK_RESOURCE_FILE_LICENSE    "${CMAKE_CURRENT_BINARY_DIR}/LICENSE.txt")
   set(CPACK_PACKAGE_VERSION_MAJOR    "${GROK_VERSION_MAJOR}")

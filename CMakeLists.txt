@@ -58,13 +58,6 @@ if (NOT CMAKE_SYSTEM_NAME STREQUAL Emscripten)
 TEST_BIG_ENDIAN(GROK_BIG_ENDIAN)
 endif()
 
-# Set up file for setting custom ctest variables
-configure_file(
-  ${GROK_SOURCE_DIR}/cmake/CTestCustom.cmake.in
-  ${GROK_BINARY_DIR}/CTestCustom.cmake
-  @ONLY
-  )
-
 # Grok build configuration options.
 option(BUILD_SHARED_LIBS "Build Grok shared library and link executables against it." ON)
 set (EXECUTABLE_OUTPUT_PATH ${GROK_BINARY_DIR}/bin CACHE PATH "Single output directory for building all executables.")
@@ -192,15 +185,7 @@ endif()
 # install all targets referenced as GrokTargets
 if (BUILD_SHARED_LIBS AND NOT CMAKE_SYSTEM_NAME STREQUAL Emscripten)
 install(EXPORT GrokTargets DESTINATION ${GROK_INSTALL_PACKAGE_DIR})
-configure_file( ${GROK_SOURCE_DIR}/cmake/GrokConfig.cmake.in
-  ${GROK_BINARY_DIR}/GrokConfig.cmake
-  @ONLY
-)
 endif()
-
-install( FILES ${GROK_BINARY_DIR}/GrokConfig.cmake
-  DESTINATION ${GROK_INSTALL_PACKAGE_DIR}
-)
 
 if(GRK_BUILD_DOC)
    install(FILES LICENSE DESTINATION ${CMAKE_INSTALL_DOCDIR})
