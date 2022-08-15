@@ -1,7 +1,5 @@
-# package bundler
 if(EXISTS "${CMAKE_ROOT}/Modules/CPack.cmake")
   if(EXISTS "${CMAKE_ROOT}/Modules/InstallRequiredSystemLibraries.cmake")
-    set(CMAKE_INSTALL_MFC_LIBRARIES 0)
     set(CMAKE_INSTALL_DEBUG_LIBRARIES 0)
     if(NOT DEFINED CMAKE_INSTALL_SYSTEM_RUNTIME_LIBS_NO_WARNINGS)
       set(CMAKE_INSTALL_SYSTEM_RUNTIME_LIBS_NO_WARNINGS ON)
@@ -9,8 +7,8 @@ if(EXISTS "${CMAKE_ROOT}/Modules/CPack.cmake")
     include(${CMAKE_ROOT}/Modules/InstallRequiredSystemLibraries.cmake)
   endif()
 
-  set(GROK_PACKAGEDESCRIPTION_SUMMARY "Grok - Grok a JPEG 2000 implementation.")
-  set(GROK_PACKAGECONTACT "boxerab@gmail.com")
+  set(GROK_PACKAGEDESCRIPTION_SUMMARY "Grok JPEG 2000 Toolkit")
+  set(GROK_PACKAGECONTACT "boxerab@protonmail.com")
 
   set(CPACK_PACKAGE_DESCRIPTION_SUMMARY ${GROK_PACKAGEDESCRIPTION_SUMMARY})
   set(CPACK_PACKAGE_VENDOR           "Grok Image Compression Inc.")
@@ -31,13 +29,7 @@ if(EXISTS "${CMAKE_ROOT}/Modules/CPack.cmake")
   set(CPACK_PACKAGE_NAME "${GROK_CORE_NAME}")
 
   if(NOT DEFINED CPACK_SYSTEM_NAME)
-    # make sure package is not Cygwin-unknown, for Cygwin just
-    # cygwin is good for the system name
-    if("${CMAKE_SYSTEM_NAME}" STREQUAL "CYGWIN")
-      set(CPACK_SYSTEM_NAME Cygwin)
-    else()
-      set(CPACK_SYSTEM_NAME ${CMAKE_SYSTEM_NAME}-${CMAKE_SYSTEM_PROCESSOR})
-    endif()
+    set(CPACK_SYSTEM_NAME ${CMAKE_SYSTEM_NAME}-${CMAKE_SYSTEM_PROCESSOR})
   endif()
   if(${CPACK_SYSTEM_NAME} MATCHES Windows)
     if(CMAKE_CL_64)
@@ -48,15 +40,7 @@ if(EXISTS "${CMAKE_ROOT}/Modules/CPack.cmake")
   endif()
 
   if(NOT DEFINED CPACK_PACKAGE_FILE_NAME)
-    # if the CPACK_PACKAGE_FILE_NAME is not defined by the cache
-    # default to source package - system, on cygwin system is not
-    # needed
-    if(CYGWIN)
-      set(CPACK_PACKAGE_FILE_NAME "${CPACK_SOURCE_PACKAGE_FILE_NAME}")
-    else()
-      set(CPACK_PACKAGE_FILE_NAME
-        "${CPACK_SOURCE_PACKAGE_FILE_NAME}-${CPACK_SYSTEM_NAME}")
-    endif()
+      set(CPACK_PACKAGE_FILE_NAME "${CPACK_SOURCE_PACKAGE_FILE_NAME}-${CPACK_SYSTEM_NAME}")
   endif()
 
   set(CPACK_BUNDLE_NAME "Grok ${CPACK_PACKAGE_VERSION_MAJOR}.${CPACK_PACKAGE_VERSION_MINOR}")
