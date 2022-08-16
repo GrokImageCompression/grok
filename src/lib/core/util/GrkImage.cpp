@@ -767,18 +767,15 @@ bool GrkImage::apply_palette_clr()
 		auto mapping = component_mapping + channel;
 		uint16_t palette_column = mapping->palette_column;
 		uint16_t compno = mapping->component_index;
+		// Direct mapping
+		uint16_t componentIndex = channel;
 
-		/* Direct mapping */
-		if(mapping->mapping_type == 0)
-		{
-			newComps[channel] = oldComps[compno];
-			newComps[channel].data = nullptr;
-		}
-		else
-		{
-			newComps[palette_column] = oldComps[compno];
-			newComps[palette_column].data = nullptr;
-		}
+		if(mapping->mapping_type != 0)
+		    componentIndex = palette_column;
+
+		newComps[componentIndex] = oldComps[compno];
+		newComps[componentIndex].data = nullptr;
+
 		if(!GrkImage::allocData(newComps + channel))
 		{
 			while(channel > 0)
