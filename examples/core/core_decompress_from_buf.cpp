@@ -93,15 +93,18 @@ int main(int argc, char** argv)
 
 	grk_codec *codec = nullptr;
 	grk_image *image = nullptr;
-
-	uint16_t tile_index = 0;
 	int32_t rc = EXIT_FAILURE;
 
-	// set decompress window (optional)
-	float da_x0 = 0;
-	float da_y0 = 0;
-	float da_x1 = 1000;
-	float da_y1 = 1000;
+    // if true, decompress a particular tile, otherwise decompress
+    // all tiles
+    bool decompressTile = false;
+
+    // index of tile to decompress.
+    uint16_t tileIndex = 0;
+
+    // if true, decompress window of dimension specified below,
+    // otherwise decompress entire image
+    bool decompressWindow = false;
 
 	// initialize library
 	grk_initialize(nullptr, 0);
@@ -139,32 +142,47 @@ int main(int argc, char** argv)
 		goto beach;
 	}
 
-	// set decompress window (optional)
-	if(!grk_decompress_set_window(codec, da_x0, da_y0, da_x1, da_y1))
-	{
-		fprintf(stderr, "Failed to set decompress region\n");
-		goto beach;
-	}
+    // set decompress window (optional)
+    if (decompressWindow) {
+        // decompress window of dimensions {0,0,1000,1000}
+        if(!grk_decompress_set_window(codec, 0, 0, 1000, 1000))
+        {
+            fprintf(stderr, "Failed to set decompress region\n");
+            goto beach;
+        }
+    }
 
-	// decompress tile
-	if(!grk_decompress_tile(codec, tile_index))
-		goto beach;
-
-	// retrieve image holding uncompressed image data
-	image = grk_decompress_get_composited_image(codec);
-	if (!image){
-        fprintf(stderr, "Failed to retrieve decompressed image\n");
+    // retrieve image that will store uncompressed image data.
+    // at this point, it stores the jpeg 2000 image header data
+    image = grk_decompress_get_composited_image(codec);
+    if (!image){
+        fprintf(stderr, "Failed to retrieve image \n");
         goto beach;
-	}
+    }
+
+    if (decompressTile) {
+        // decompress a particular tile
+        if(!grk_decompress_tile(codec, tileIndex))
+            goto beach;
+    } else {
+        // decompress all tiles
+        if(!grk_decompress(codec, nullptr))
+            goto beach;
+    }
+
     // see grok.h header for full details of image structure
-    /*
     for (uint16_t compno = 0; compno < image->numcomps; ++compno){
         auto comp = image->comps + compno;
         auto compWidth = comp->w;
+        (void)compWidth;
         auto compHeight = comp->h;
+        (void)compHeight;
         auto compData = comp->data;
+        if (!compData){
+            fprintf(stderr, "Image has null data for component %d\n",compno);
+            goto beach;
+        }
     }
-    */
 
 	rc = EXIT_SUCCESS;
 beach:
