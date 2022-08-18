@@ -83,10 +83,11 @@ int main(int argc, char** argv)
 	(void)argc;
 	(void)argv;
 
+	uint16_t numTiles = 0;
+
     // initialize decompress parameters
     grk_decompress_parameters param;
     memset(&param, 0, sizeof(grk_decompress_parameters));
-    param.repeats = 1;
     param.compressionLevel = GRK_DECOMPRESS_COMPRESSION_LEVEL_DEFAULT;
     grk_decompress_set_default_params(&param.core);
     param.decod_format = GRK_J2K_FMT;
@@ -136,12 +137,13 @@ int main(int argc, char** argv)
 	}
 
 	// read j2k header
-	if(!grk_decompress_read_header(codec, nullptr))
+    grk_header_info headerInfo;
+    memset(&headerInfo,0,sizeof(headerInfo));
+	if(!grk_decompress_read_header(codec, &headerInfo))
 	{
 		fprintf(stderr, "Failed to read the header\n");
 		goto beach;
 	}
-
     // set decompress window (optional)
     if (decompressWindow) {
         // decompress window of dimensions {0,0,1000,1000}
@@ -151,13 +153,23 @@ int main(int argc, char** argv)
             goto beach;
         }
     }
-
     // retrieve image that will store uncompressed image data.
-    // at this point, it stores the jpeg 2000 image header data
     image = grk_decompress_get_composited_image(codec);
     if (!image){
         fprintf(stderr, "Failed to retrieve image \n");
         goto beach;
+    }
+
+    numTiles = (uint16_t)(headerInfo.t_grid_width * headerInfo.t_grid_height);
+    printf("Image Info\n");
+    printf("Width: %d\n", image->x1 - image->x0);
+    printf("Height: %d\n", image->y1 - image->y0);
+    printf("Number of components: %d\n", image->numcomps);
+    for (uint16_t compno = 0; compno < image->numcomps; ++compno)
+        printf("Precision of component %d : %d\n", compno,image->comps[compno].prec);
+    printf("Number of tiles: %d\n", numTiles);
+    if (numTiles > 1) {
+        printf("Nominal tile dimensions: (%d,%d)\n",headerInfo.t_width, headerInfo.t_height);
     }
 
     if (decompressTile) {
