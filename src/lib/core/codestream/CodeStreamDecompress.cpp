@@ -524,7 +524,7 @@ bool CodeStreamDecompress::decompressTiles(void)
 		currentTileProcessor_ = nullptr;
 		try
 		{
-			if(!findNextSOT(processor))
+			if(!endOfCodeStream() && !findNextSOT(processor))
 			{
 				GRK_ERROR("Failed to find next SOT marker or EOC after tile %u/%u",
 						  processor->getIndex(), numTilesToDecompress);
