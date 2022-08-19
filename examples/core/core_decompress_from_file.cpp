@@ -90,14 +90,24 @@ int main(int argc, char** argv)
 
     uint16_t numTiles = 0;
 
+    // a file can be passed in as a command line argument
+    // example:
+    // $ core_decompress_from_file foo.jp2
+    // otherwise a file from the Grok test suite, specified below, will be used.
+
 	std::string inputFilePath = dataRoot + std::filesystem::path::preferred_separator +
 			"input" +  std::filesystem::path::preferred_separator +
 			"nonregression" + std::filesystem::path::preferred_separator + "boats_cprl.j2k";
+	if (argc > 1)
+	    inputFilePath = argv[1];
+
+	printf("Decompressing file %s\n",inputFilePath.c_str());
 
 	// initialize decompress parameters
 	grk_decompress_parameters param;
 	memset(&param, 0, sizeof(grk_decompress_parameters));
 	param.compressionLevel = GRK_DECOMPRESS_COMPRESSION_LEVEL_DEFAULT;
+	param.verbose_ = true;
     grk_decompress_set_default_params(&param.core);
 
 	grk_codec *codec = nullptr;
@@ -189,7 +199,7 @@ int main(int argc, char** argv)
     }
 
     numTiles = (uint16_t)(headerInfo.t_grid_width * headerInfo.t_grid_height);
-    printf("Image Info\n");
+    printf("\nImage Info\n");
     printf("Width: %d\n", image->x1 - image->x0);
     printf("Height: %d\n", image->y1 - image->y0);
     printf("Number of components: %d\n", image->numcomps);
@@ -199,8 +209,6 @@ int main(int argc, char** argv)
     if (numTiles > 1) {
         printf("Nominal tile dimensions: (%d,%d)\n",headerInfo.t_width, headerInfo.t_height);
     }
-
-
 
 	if (decompressTile) {
 	    // decompress a particular tile

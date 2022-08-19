@@ -91,6 +91,7 @@ int main(int argc, char** argv)
     param.compressionLevel = GRK_DECOMPRESS_COMPRESSION_LEVEL_DEFAULT;
     grk_decompress_set_default_params(&param.core);
     param.decod_format = GRK_J2K_FMT;
+    param.verbose_ = true;
 
 	grk_codec *codec = nullptr;
 	grk_image *image = nullptr;
