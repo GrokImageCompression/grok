@@ -160,6 +160,10 @@ int main(int argc, char** argv)
 			break;
 		}
 	}
+	if (!codec){
+        fprintf(stderr,"Failed to create codec.\n");
+        goto beach;
+	}
 
 	// set message handlers for info,warning and error
 	grk_set_msg_handlers(infoCallback, nullptr, warningCallback, nullptr,
