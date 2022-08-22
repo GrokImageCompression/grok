@@ -33,8 +33,7 @@
 namespace grk
 {
 
-static int32_t test_tile(uint16_t tile_index, grk_image* image, grk_stream* stream,
-						 grk_codec* codec)
+static int32_t test_tile(uint16_t tile_index, grk_image* image,grk_codec* codec)
 {
 	spdlog::info("Decompressing tile {} ...", tile_index);
 	if(!grk_decompress_tile(codec, tile_index))
@@ -134,7 +133,7 @@ int GrkRandomTileAccess::main(int argc, char** argv)
 		tile[3] = (uint16_t)(tile[2] - headerInfo.t_grid_width);
 
 		image = grk_decompress_get_composited_image(codec);
-		rc = test_tile(tile[i], image, stream, codec);
+		rc = test_tile(tile[i], image, codec);
 
 		grk_object_unref(codec);
 		grk_object_unref(stream);
