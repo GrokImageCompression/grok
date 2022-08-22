@@ -29,4 +29,7 @@ endif()
 add_library(${GROK_PLUGIN_NAME} ${GROK_PLUGIN_SRCS})
 
 set_target_properties(${GROK_PLUGIN_NAME} PROPERTIES ${GROK_LIBRARY_PROPERTIES})
-target_link_libraries(${GROK_PLUGIN_NAME} ${CMAKE_DL_LIBS} )
+
+if (GRK_BUILD_PLUGIN_LOADER)
+  target_link_libraries(${GROK_PLUGIN_NAME} ${CMAKE_DL_LIBS} )
+endif(GRK_BUILD_PLUGIN_LOADER)
