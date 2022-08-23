@@ -126,7 +126,7 @@ static char nextFile(size_t imageno, dircnt* dirptr, inputFolder* inputFolder,
 
 	strcpy(inputFile, dirptr->filename[imageno]);
 	spdlog::info("File Number {} \"{}\"", imageno, inputFile);
-	if(!grk::jpeg2000_file_format(inputFile, &parameters->decod_format))
+	if(!grk_decompress_detect_format(inputFile, &parameters->decod_format))
 		return 1;
 	sprintf(infilename, "%s/%s", inputFolder->imgdirpath, inputFile);
 	if(grk::strcpy_s(parameters->infile, sizeof(parameters->infile), infilename) != 0)
@@ -181,7 +181,7 @@ static int parseCommandLine(int argc, char** argv, grk_decompress_parameters* pa
 		if(inputArg.isSet())
 		{
 			const char* infile = inputArg.getValue().c_str();
-			if(!grk::jpeg2000_file_format(infile, &parameters->decod_format))
+			if(!grk_decompress_detect_format(infile, &parameters->decod_format))
 			{
 				spdlog::error("Unknown input file format: {} \n"
 							  "        Known file formats are *.j2k, *.jp2 or *.jpc",

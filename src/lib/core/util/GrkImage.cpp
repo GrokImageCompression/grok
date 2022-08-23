@@ -771,7 +771,7 @@ bool GrkImage::apply_palette_clr()
 		uint16_t componentIndex = channel;
 
 		if(mapping->mapping_type != 0)
-		    componentIndex = palette_column;
+			componentIndex = palette_column;
 
 		newComps[componentIndex] = oldComps[compno];
 		newComps[componentIndex].data = nullptr;

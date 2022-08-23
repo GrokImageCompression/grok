@@ -137,10 +137,6 @@ static bool grk_seek_in_file(int64_t numBytes, FILE* p_user_data)
 	return GRK_FSEEK(p_user_data, numBytes, SEEK_SET) ? false : true;
 }
 
-/* ---------------------------------------------------------------------- */
-
-/* ---------------------------------------------------------------------- */
-
 #ifdef _WIN32
 #ifndef GRK_STATIC
 BOOL APIENTRY DllMain(HINSTANCE hModule, DWORD ul_reason_for_call, LPVOID lpReserved)
@@ -161,8 +157,6 @@ BOOL APIENTRY DllMain(HINSTANCE hModule, DWORD ul_reason_for_call, LPVOID lpRese
 }
 #endif /* GRK_STATIC */
 #endif /* _WIN32 */
-
-/* ---------------------------------------------------------------------- */
 
 const char* GRK_CALLCONV grk_version(void)
 {
@@ -188,8 +182,56 @@ void GRK_CALLCONV grk_image_single_component_data_free(grk_image_comp* comp)
 	comp->data = nullptr;
 }
 
-/* ---------------------------------------------------------------------- */
 /* DECOMPRESSION FUNCTIONS*/
+
+static const char* JP2_RFC3745_MAGIC = "\x00\x00\x00\x0c\x6a\x50\x20\x20\x0d\x0a\x87\x0a";
+static const char* J2K_CODESTREAM_MAGIC = "\xff\x4f\xff\x51";
+bool GRK_CALLCONV grk_decompress_buffer_detect_format(uint8_t* buffer, size_t len,
+														   GRK_SUPPORTED_FILE_FMT* fmt)
+{
+	GRK_SUPPORTED_FILE_FMT magic_format = GRK_UNK_FMT;
+	if(len < 12)
+		return false;
+
+	if(memcmp(buffer, JP2_RFC3745_MAGIC, 12) == 0)
+	{
+		magic_format = GRK_JP2_FMT;
+	}
+	else if(memcmp(buffer, J2K_CODESTREAM_MAGIC, 4) == 0)
+	{
+		magic_format = GRK_J2K_FMT;
+	}
+	else
+	{
+		GRK_ERROR("No JPEG 2000 code stream detected.");
+		*fmt = GRK_UNK_FMT;
+
+		return false;
+	}
+	*fmt = magic_format;
+
+	return true;
+}
+bool GRK_CALLCONV grk_decompress_detect_format(const char* fileName,
+														 GRK_SUPPORTED_FILE_FMT* fmt)
+{
+	uint8_t buf[12];
+	size_t bytesRead;
+
+	auto reader = fopen(fileName, "rb");
+	if(!reader)
+		return false;
+
+	memset(buf, 0, 12);
+	bytesRead = fread(buf, 1, 12, reader);
+	if(fclose(reader))
+		return false;
+	if(bytesRead != 12)
+		return false;
+
+	return grk_decompress_buffer_detect_format(buf, 12, fmt);
+}
+
 grk_codec* GRK_CALLCONV grk_decompress_create(GRK_CODEC_FORMAT p_format, grk_stream* stream)
 {
 	GrkCodec* codec = nullptr;

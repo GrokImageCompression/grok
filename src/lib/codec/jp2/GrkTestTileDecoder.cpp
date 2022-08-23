@@ -115,7 +115,7 @@ int GrkTestTileDecoder::main(int argc, char* argv[])
 		goto beach;
 	}
 	grk_decompress_set_default_params(&param.core);
-	if(!grk::jpeg2000_file_format(input_file, &param.decod_format))
+	if(!grk_decompress_detect_format(input_file, &param.decod_format))
 	{
 		spdlog::error("failed to parse input file format");
 		goto beach;

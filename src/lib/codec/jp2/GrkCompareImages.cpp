@@ -130,7 +130,7 @@ static char* createMultiComponentsFilename(std::string inFilename, const uint16_
 	if(!outFilename)
 		return nullptr;
 	strcpy(outFilename, iss.str().c_str());
-	GRK_SUPPORTED_FILE_FMT decod_format = grk::get_file_format(inFilename.c_str());
+	GRK_SUPPORTED_FILE_FMT decod_format = grk::grk_get_file_format(inFilename.c_str());
 	if(decod_format == GRK_PGX_FMT)
 	{
 		strcat(outFilename, ".pgx");
@@ -758,7 +758,7 @@ int GrkCompareImages::main(int argc, char** argv)
 	memsizebasefilename = strlen(inParam.test_filename) + 1 + 5 + 2 + 4;
 	memsizetestfilename = strlen(inParam.test_filename) + 1 + 5 + 2 + 4;
 
-	decod_format = grk::get_file_format(inParam.base_filename);
+	decod_format = grk::grk_get_file_format(inParam.base_filename);
 
 	if(decod_format == GRK_PGX_FMT)
 	{
@@ -797,7 +797,7 @@ int GrkCompareImages::main(int argc, char** argv)
 
 	/*----------TEST IMAGE--------*/
 
-	decod_format = grk::get_file_format(inParam.test_filename);
+	decod_format = grk::grk_get_file_format(inParam.test_filename);
 
 	if(decod_format == GRK_PGX_FMT)
 	{

@@ -335,8 +335,8 @@ char GrkDecompress::nextFile(const std::string inputFile, grk_img_fol* inputFold
 {
 	spdlog::info("File: \"{}\"", inputFile.c_str());
 	std::string infilename = inputFolder->imgdirpath + std::string(pathSeparator()) + inputFile;
-	if(!grk::jpeg2000_file_format(infilename.c_str(),
-								  (GRK_SUPPORTED_FILE_FMT*)&parameters->decod_format) ||
+	if(!grk_decompress_detect_format(
+		   infilename.c_str(), (GRK_SUPPORTED_FILE_FMT*)&parameters->decod_format) ||
 	   parameters->decod_format == GRK_UNK_FMT)
 		return 1;
 	if(grk::strcpy_s(parameters->infile, sizeof(parameters->infile), infilename.c_str()) != 0)
@@ -508,8 +508,8 @@ int GrkDecompress::parseCommandLine(int argc, char** argv, DecompressInitParams*
 
 			if(checkFile)
 			{
-				if(!jpeg2000_file_format(infile,
-										 (GRK_SUPPORTED_FILE_FMT*)&parameters->decod_format))
+				if(!grk_decompress_detect_format(
+					   infile, (GRK_SUPPORTED_FILE_FMT*)&parameters->decod_format))
 				{
 					spdlog::error("Unable to open file {} for decoding.", infile);
 					return 1;
@@ -543,7 +543,7 @@ int GrkDecompress::parseCommandLine(int argc, char** argv, DecompressInitParams*
 			const char* of = outForArg.getValue().c_str();
 			sprintf(outformat, ".%s", of);
 			inputFolder->set_out_format = true;
-			parameters->cod_format = (GRK_SUPPORTED_FILE_FMT)get_file_format(outformat);
+			parameters->cod_format = (GRK_SUPPORTED_FILE_FMT)grk_get_file_format(outformat);
 			switch(parameters->cod_format)
 			{
 				case GRK_PGX_FMT:
@@ -580,7 +580,7 @@ int GrkDecompress::parseCommandLine(int argc, char** argv, DecompressInitParams*
 		if(outputFileArg.isSet())
 		{
 			const char* outfile = outputFileArg.getValue().c_str();
-			parameters->cod_format = (GRK_SUPPORTED_FILE_FMT)get_file_format(outfile);
+			parameters->cod_format = (GRK_SUPPORTED_FILE_FMT)grk_get_file_format(outfile);
 			switch(parameters->cod_format)
 			{
 				case GRK_PGX_FMT:

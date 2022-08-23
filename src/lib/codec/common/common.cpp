@@ -194,7 +194,7 @@ bool grk_open_for_output(FILE** fdest, const char* outfile, bool writeToStdout)
 	return true;
 }
 
-GRK_SUPPORTED_FILE_FMT get_file_format(const char* filename)
+GRK_SUPPORTED_FILE_FMT grk_get_file_format(const char* filename)
 {
 	const char* ext = strrchr(filename, '.');
 	if(ext == nullptr)
@@ -217,55 +217,6 @@ GRK_SUPPORTED_FILE_FMT get_file_format(const char* filename)
 	}
 
 	return GRK_UNK_FMT;
-}
-
-#define JP2_RFC3745_MAGIC "\x00\x00\x00\x0c\x6a\x50\x20\x20\x0d\x0a\x87\x0a"
-#define J2K_CODESTREAM_MAGIC "\xff\x4f\xff\x51"
-bool jpeg2000_file_format(const char* fname, GRK_SUPPORTED_FILE_FMT* fmt)
-{
-	FILE* reader;
-	GRK_SUPPORTED_FILE_FMT ext_format = GRK_UNK_FMT, magic_format = GRK_UNK_FMT;
-	uint8_t buf[12];
-	size_t nb_read;
-
-	reader = fopen(fname, "rb");
-	if(reader == nullptr)
-		return false;
-
-	memset(buf, 0, 12);
-	nb_read = fread(buf, 1, 12, reader);
-	if(!grk::safe_fclose(reader))
-		return false;
-
-	if(nb_read != 12)
-		return false;
-
-	int temp = get_file_format(fname);
-	if(temp > GRK_UNK_FMT)
-		ext_format = (GRK_SUPPORTED_FILE_FMT)temp;
-
-	if(memcmp(buf, JP2_RFC3745_MAGIC, 12) == 0)
-	{
-		magic_format = GRK_JP2_FMT;
-	}
-	else if(memcmp(buf, J2K_CODESTREAM_MAGIC, 4) == 0)
-	{
-		magic_format = GRK_J2K_FMT;
-	}
-	else
-	{
-		spdlog::error("{} does not contain a JPEG 2000 code stream", fname);
-		*fmt = GRK_UNK_FMT;
-		return false;
-	}
-
-	if(magic_format == ext_format)
-	{
-		*fmt = ext_format;
-		return true;
-	}
-	*fmt = magic_format;
-	return true;
 }
 
 bool isFinalOutputSubsampled(grk_image* image)

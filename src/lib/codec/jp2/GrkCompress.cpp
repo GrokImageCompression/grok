@@ -364,7 +364,7 @@ static char nextFile(std::string inputFile, grk_img_fol* inputFolder, grk_img_fo
 		inputFolder->imgdirpath + std::string(grk::pathSeparator()) + inputFile;
 	if(parameters->decod_format == GRK_UNK_FMT)
 	{
-		int fmt = get_file_format((char*)infilename.c_str());
+		int fmt = grk_get_file_format((char*)infilename.c_str());
 		if(fmt <= GRK_UNK_FMT)
 			return 1;
 		parameters->decod_format = (GRK_SUPPORTED_FILE_FMT)fmt;
@@ -789,7 +789,7 @@ int GrkCompress::parseCommandLine(int argc, char** argv, CompressInitParams* ini
 		{
 			auto dummy = "dummy." + inForArg.getValue();
 			char* infile = (char*)(dummy).c_str();
-			parameters->decod_format = (GRK_SUPPORTED_FILE_FMT)get_file_format((char*)infile);
+			parameters->decod_format = (GRK_SUPPORTED_FILE_FMT)grk_get_file_format((char*)infile);
 			if(!isDecodedFormatSupported(parameters->decod_format))
 			{
 				spdlog::warn(" Ignoring unknown input file format: %s \n"
@@ -805,7 +805,7 @@ int GrkCompress::parseCommandLine(int argc, char** argv, CompressInitParams* ini
 			char* infile = (char*)inputFileArg.getValue().c_str();
 			if(parameters->decod_format == GRK_UNK_FMT)
 			{
-				parameters->decod_format = (GRK_SUPPORTED_FILE_FMT)get_file_format(infile);
+				parameters->decod_format = (GRK_SUPPORTED_FILE_FMT)grk_get_file_format(infile);
 				if(!isDecodedFormatSupported(parameters->decod_format))
 				{
 					spdlog::error("Unknown input file format: {} \n"
@@ -842,7 +842,7 @@ int GrkCompress::parseCommandLine(int argc, char** argv, CompressInitParams* ini
 			char* of = (char*)outForArg.getValue().c_str();
 			sprintf(outformat, ".%s", of);
 			inputFolder->set_out_format = true;
-			parameters->cod_format = (GRK_SUPPORTED_FILE_FMT)get_file_format(outformat);
+			parameters->cod_format = (GRK_SUPPORTED_FILE_FMT)grk_get_file_format(outformat);
 			switch(parameters->cod_format)
 			{
 				case GRK_J2K_FMT:
@@ -860,7 +860,7 @@ int GrkCompress::parseCommandLine(int argc, char** argv, CompressInitParams* ini
 		if(outputFileArg.isSet())
 		{
 			char* outfile = (char*)outputFileArg.getValue().c_str();
-			parameters->cod_format = (GRK_SUPPORTED_FILE_FMT)get_file_format(outfile);
+			parameters->cod_format = (GRK_SUPPORTED_FILE_FMT)grk_get_file_format(outfile);
 			switch(parameters->cod_format)
 			{
 				case GRK_J2K_FMT:
@@ -1884,7 +1884,7 @@ static bool pluginCompressCallback(grk_plugin_compress_user_callback_info* info)
 	{
 		if(parameters->decod_format == GRK_UNK_FMT)
 		{
-			int fmt = get_file_format((char*)info->input_file_name);
+			int fmt = grk_get_file_format((char*)info->input_file_name);
 			if(fmt <= GRK_UNK_FMT)
 			{
 				bSuccess = false;

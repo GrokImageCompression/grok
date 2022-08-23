@@ -1259,6 +1259,32 @@ GRK_API size_t GRK_CALLCONV grk_stream_get_write_mem_stream_length(grk_stream* s
  */
 GRK_API grk_stream* GRK_CALLCONV grk_stream_create_mapped_file_stream(const char* fname,
 																	  bool read_stream);
+/**
+ * Detect jpeg 2000 format from file
+ * Format is either GRK_J2K_FMT or GRK_JP2_FMT
+ *
+ * @param fileName file name
+ * @param fmt pointer to detected format
+ *
+ * @return true if format was detected, otherwise false
+ *
+ */
+GRK_API bool GRK_CALLCONV grk_decompress_detect_format(const char* fileName,
+																 GRK_SUPPORTED_FILE_FMT* fmt);
+
+/**
+ * Detect jpeg 2000 format from buffer
+ * Format is either GRK_J2K_FMT or GRK_JP2_FMT
+ *
+ * @param buffer buffer
+ * @param len buffer length
+ * @param fmt pointer to detected format
+ *
+ * @return true if format was detected, otherwise false
+ *
+ */
+GRK_API bool GRK_CALLCONV grk_decompress_buffer_detect_format(uint8_t* buffer, size_t len,
+																   GRK_SUPPORTED_FILE_FMT* fmt);
 
 /**
  * Create j2k/jp2 decompression codec

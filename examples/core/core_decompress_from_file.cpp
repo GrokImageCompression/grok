@@ -43,44 +43,6 @@ void infoCallback(const char* msg, void* client_data)
 	std::string t = std::string(msg) + "\n";
 	fprintf(stdout,t.c_str());
 }
-// parse file format
-#define JP2_RFC3745_MAGIC "\x00\x00\x00\x0c\x6a\x50\x20\x20\x0d\x0a\x87\x0a"
-#define J2K_CODESTREAM_MAGIC "\xff\x4f\xff\x51"
-static bool jpeg2000_file_format(const char* fname, GRK_SUPPORTED_FILE_FMT* fmt)
-{
-	GRK_SUPPORTED_FILE_FMT magic_format = GRK_UNK_FMT;
-	uint8_t buf[12];
-	auto reader = fopen(fname, "rb");
-	if(reader == nullptr)
-		return false;
-
-	memset(buf, 0, 12);
-	auto bytesRead = fread(buf, 1, 12, reader);
-	if(fclose(reader))
-		return false;
-	if(bytesRead != 12)
-		return false;
-
-	if(memcmp(buf, JP2_RFC3745_MAGIC, 12) == 0)
-	{
-		magic_format = GRK_JP2_FMT;
-	}
-	else if(memcmp(buf, J2K_CODESTREAM_MAGIC, 4) == 0)
-	{
-		magic_format = GRK_J2K_FMT;
-	}
-	else
-	{
-		fprintf(stderr,"%s does not contain a JPEG 2000 code stream\n", fname);
-		*fmt = GRK_UNK_FMT;
-
-		return false;
-	}
-
-	*fmt = magic_format;
-
-	return true;
-}
 
 int main(int argc, char** argv)
 {
@@ -100,8 +62,6 @@ int main(int argc, char** argv)
 			"nonregression" + std::filesystem::path::preferred_separator + "boats_cprl.j2k";
 	if (argc > 1)
 	    inputFilePath = argv[1];
-
-	printf("Decompressing file %s\n",inputFilePath.c_str());
 
 	// initialize decompress parameters
 	grk_decompress_parameters param;
@@ -137,11 +97,14 @@ int main(int argc, char** argv)
 	}
 
 	// parse jpeg 2000 format : j2k or jp2
-	if(!jpeg2000_file_format(inputFileStr, &param.decod_format))
+	if(!grk_decompress_detect_format(inputFileStr, &param.decod_format))
 	{
 		fprintf(stderr, "Failed to parse input file format\n");
 		goto beach;
 	}
+
+    printf("Decompressing file %s of format %s\n",
+            inputFilePath.c_str(),param.decod_format == GRK_JP2_FMT ? "jp2" : "j2k");
 
 	// create codec
 	switch(param.decod_format)

@@ -33,7 +33,7 @@
 namespace grk
 {
 
-static int32_t test_tile(uint16_t tile_index, grk_image* image,grk_codec* codec)
+static int32_t test_tile(uint16_t tile_index, grk_image* image, grk_codec* codec)
 {
 	spdlog::info("Decompressing tile {} ...", tile_index);
 	if(!grk_decompress_tile(codec, tile_index))
@@ -76,7 +76,7 @@ int GrkRandomTileAccess::main(int argc, char** argv)
 		memset(&parameters, 0, sizeof(grk_decompress_parameters));
 		grk_decompress_set_default_params(&parameters.core);
 		strncpy(parameters.infile, argv[1], GRK_PATH_LEN - 1);
-		if(!grk::jpeg2000_file_format(parameters.infile, &parameters.decod_format))
+		if(!grk_decompress_detect_format(parameters.infile, &parameters.decod_format))
 		{
 			spdlog::error("Failed to detect JPEG 2000 file format for file {}", parameters.infile);
 			return EXIT_FAILURE;
