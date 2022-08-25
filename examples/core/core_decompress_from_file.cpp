@@ -89,23 +89,8 @@ int main(int argc, char** argv)
 
 	// create j2k file stream
     auto inputFileStr = inputFilePath.c_str();
-	auto stream = grk_stream_create_file_stream(inputFileStr, 1024 * 1024, true);
-	if(!stream)
-	{
-		fprintf(stderr, "Failed to create a stream from file %s\n", inputFileStr);
-		goto beach;
-	}
-
-	// parse jpeg 2000 format : j2k or jp2
-	if(!grk_decompress_detect_format(inputFileStr, &param.decod_format))
-	{
-		fprintf(stderr, "Failed to parse input file format\n");
-		goto beach;
-	}
-
-    printf("Decompressing file %s of format %s\n",
-            inputFilePath.c_str(),param.decod_format == GRK_CODEC_J2K ? "j2k" : "jp2");
-    codec = grk_decompress_create(stream);
+    printf("Decompressing file %s\n", inputFilePath.c_str());
+    codec = grk_decompress_create_from_file(inputFileStr);
 	if (!codec){
         fprintf(stderr,"Failed to create codec.\n");
         goto beach;
@@ -187,7 +172,6 @@ int main(int argc, char** argv)
 	rc = EXIT_SUCCESS;
 beach:
     // cleanup
-	grk_object_unref(stream);
 	grk_object_unref(codec);
     grk_deinitialize();
 

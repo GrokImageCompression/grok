@@ -35,7 +35,7 @@ using namespace grk;
 
 struct GrkCodec
 {
-	GrkCodec(grk_stream* stream);
+	GrkCodec(grk_stream* stream, bool owns_stream);
 	~GrkCodec();
 
 	static GrkCodec* getImpl(grk_codec* codec)
@@ -50,11 +50,14 @@ struct GrkCodec
 	grk_object obj;
 	ICodeStreamCompress* compressor_;
 	ICodeStreamDecompress* decompressor_;
+
+  private:
 	grk_stream* stream_;
+	bool owns_stream_;
 };
 
-GrkCodec::GrkCodec(grk_stream* stream)
-	: compressor_(nullptr), decompressor_(nullptr), stream_(stream)
+GrkCodec::GrkCodec(grk_stream* stream, bool owns_stream)
+	: compressor_(nullptr), decompressor_(nullptr), stream_(stream), owns_stream_(owns_stream)
 {
 	obj.wrapper = new GrkObjectWrapperImpl<GrkCodec>(this);
 }
@@ -63,6 +66,8 @@ GrkCodec::~GrkCodec()
 {
 	delete compressor_;
 	delete decompressor_;
+	if(owns_stream_)
+		grk_object_unref(stream_);
 }
 
 static grk_stream* grk_stream_new(size_t buffer_size, bool is_input)
@@ -70,6 +75,25 @@ static grk_stream* grk_stream_new(size_t buffer_size, bool is_input)
 	auto streamImpl = new BufferedStream(nullptr, buffer_size, is_input);
 
 	return streamImpl->getWrapper();
+}
+
+grk_codec* grk_decompress_create(grk_stream* stream, bool owns_stream)
+{
+	GrkCodec* codec = nullptr;
+	auto bstream = BufferedStream::getImpl(stream);
+	auto format = bstream->getFormat();
+	if(format == GRK_CODEC_UNK)
+	{
+		GRK_ERROR("Invalid codec format.");
+		return nullptr;
+	}
+	codec = new GrkCodec(stream, owns_stream);
+	if(format == GRK_CODEC_J2K)
+		codec->decompressor_ = new CodeStreamDecompress(BufferedStream::getImpl(stream));
+	else
+		codec->decompressor_ = new FileFormatDecompress(BufferedStream::getImpl(stream));
+
+	return &codec->obj;
 }
 
 static bool is_plugin_initialized = false;
@@ -237,6 +261,24 @@ bool GRK_CALLCONV grk_decompress_detect_format(const char* fileName, GRK_CODEC_F
 	return grk_decompress_buffer_detect_format(buf, 12, fmt);
 }
 
+grk_codec* GRK_CALLCONV grk_decompress_create_from_buffer(uint8_t* buf, size_t len)
+{
+	auto stream = grk_stream_create_mem_stream(buf, len, false, true);
+	if(!stream)
+	{
+		GRK_ERROR("Unable to create memory stream.");
+		return nullptr;
+	}
+	auto codec = grk_decompress_create(stream, true);
+	if(!codec)
+	{
+		GRK_ERROR("Unable to codec.");
+		return nullptr;
+	}
+
+	return codec;
+}
+
 grk_codec* GRK_CALLCONV grk_decompress_create_from_file(const char* file_name)
 {
 	auto stream = create_mapped_file_read_stream(file_name);
@@ -245,29 +287,19 @@ grk_codec* GRK_CALLCONV grk_decompress_create_from_file(const char* file_name)
 		GRK_ERROR("Unable to create stream for file %s.", file_name);
 		return nullptr;
 	}
-	auto codec = grk_decompress_create(stream);
+	auto codec = grk_decompress_create(stream, true);
+	if(!codec)
+	{
+		GRK_ERROR("Unable to codec for file %s.", file_name);
+		return nullptr;
+	}
 
 	return codec;
 }
 
 grk_codec* GRK_CALLCONV grk_decompress_create(grk_stream* stream)
 {
-	GrkCodec* codec = nullptr;
-	auto bstream = BufferedStream::getImpl(stream);
-	switch(bstream->getFormat())
-	{
-		case GRK_CODEC_J2K:
-			codec = new GrkCodec(stream);
-			codec->decompressor_ = new CodeStreamDecompress(BufferedStream::getImpl(stream));
-			break;
-		case GRK_CODEC_JP2:
-			codec = new GrkCodec(stream);
-			codec->decompressor_ = new FileFormatDecompress(BufferedStream::getImpl(stream));
-			break;
-		default:
-			return nullptr;
-	}
-	return &codec->obj;
+	return grk_decompress_create(stream, false);
 }
 void GRK_CALLCONV grk_decompress_set_default_params(grk_decompress_core_params* parameters)
 {
@@ -403,7 +435,6 @@ grk_image* GRK_CALLCONV grk_decompress_get_composited_image(grk_codec* codecWrap
 	return nullptr;
 }
 
-/* ---------------------------------------------------------------------- */
 /* COMPRESSION FUNCTIONS*/
 
 grk_codec* GRK_CALLCONV grk_compress_create(GRK_CODEC_FORMAT p_format, grk_stream* stream)
@@ -412,11 +443,11 @@ grk_codec* GRK_CALLCONV grk_compress_create(GRK_CODEC_FORMAT p_format, grk_strea
 	switch(p_format)
 	{
 		case GRK_CODEC_J2K:
-			codec = new GrkCodec(stream);
+			codec = new GrkCodec(stream, false);
 			codec->compressor_ = new CodeStreamCompress(BufferedStream::getImpl(stream));
 			break;
 		case GRK_CODEC_JP2:
-			codec = new GrkCodec(stream);
+			codec = new GrkCodec(stream, false);
 			codec->compressor_ = new FileFormatCompress(BufferedStream::getImpl(stream));
 			break;
 		default:

@@ -933,14 +933,6 @@ int decompress_callback(grk_plugin_decompress_callback_info* info)
 	return rc;
 }
 
-enum grk_stream_type
-{
-	GRK_FILE_STREAM,
-	GRK_MAPPED_FILE_STREAM
-};
-
-grk_stream_type stream_type = GRK_MAPPED_FILE_STREAM;
-
 static void cleanUpFile(const char* outfile)
 {
 	if(!outfile)
@@ -1025,13 +1017,11 @@ int GrkDecompress::preProcess(grk_plugin_decompress_callback_info* info)
 	if(!info)
 		return 1;
 	bool failed = true;
-	bool useMemoryBuffer = false;
+	// bool useMemoryBuffer = false;
 	auto parameters = info->decompressor_parameters;
 	if(!parameters)
 		return 1;
 	auto infile = info->input_file_name ? info->input_file_name : parameters->infile;
-	GRK_CODEC_FORMAT decod_format =
-		info->decod_format != GRK_CODEC_UNK ? info->decod_format : parameters->decod_format;
 	const char* outfile = info->decompressor_parameters->outfile[0]
 							  ? info->decompressor_parameters->outfile
 							  : info->output_file_name;
@@ -1087,6 +1077,7 @@ int GrkDecompress::preProcess(grk_plugin_decompress_callback_info* info)
 	parameters->core.io_register_client_callback = grkSerializeRegisterClientCallback;
 
 	// 1. initialize
+	/*
 	if(!info->stream)
 	{
 		if(useMemoryBuffer)
@@ -1134,10 +1125,7 @@ int GrkDecompress::preProcess(grk_plugin_decompress_callback_info* info)
 		}
 		else
 		{
-			if(stream_type == GRK_MAPPED_FILE_STREAM)
-				info->stream = grk_stream_create_mapped_file_stream(infile, true);
-			else
-				info->stream = grk_stream_create_file_stream(infile, 1024 * 1024, true);
+			info->stream = grk_stream_create_mapped_file_stream(infile, true);
 		}
 	}
 	if(!info->stream)
@@ -1145,9 +1133,10 @@ int GrkDecompress::preProcess(grk_plugin_decompress_callback_info* info)
 		spdlog::error("grk_decompress: failed to create a stream from file {}", infile);
 		goto cleanup;
 	}
+	*/
 	if(!info->codec)
 	{
-		info->codec = grk_decompress_create(info->stream);
+		info->codec = grk_decompress_create_from_file(infile);
 		if(!info->codec)
 		{
 			spdlog::error("grk_decompress: failed to create codec from file {}", infile);
@@ -1285,8 +1274,6 @@ int GrkDecompress::preProcess(grk_plugin_decompress_callback_info* info)
 		goto cleanup;
 	failed = false;
 cleanup:
-	grk_object_unref(info->stream);
-	info->stream = nullptr;
 	if(failed)
 	{
 		cleanUpFile(outfile);

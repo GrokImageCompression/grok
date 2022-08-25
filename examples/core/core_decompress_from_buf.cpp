@@ -90,11 +90,9 @@ int main(int argc, char** argv)
     memset(&param, 0, sizeof(grk_decompress_parameters));
     param.compressionLevel = GRK_DECOMPRESS_COMPRESSION_LEVEL_DEFAULT;
     grk_decompress_set_default_params(&param.core);
-    param.decod_format = GRK_CODEC_J2K;
     param.verbose_ = true;
 
 	grk_codec *codec = nullptr;
-	grk_stream *stream = nullptr;
 	grk_image *image = nullptr;
 	int32_t rc = EXIT_FAILURE;
 
@@ -112,24 +110,8 @@ int main(int argc, char** argv)
 	// initialize library
 	grk_initialize(nullptr, 0);
 
-    // parse jpeg 2000 format : j2k or jp2
-    if(!grk_decompress_buffer_detect_format(img, sizeof(img), &param.decod_format))
-    {
-        fprintf(stderr, "Failed to parse input file format\n");
-        goto beach;
-    }
-    printf("Decompressing buffer of format %s\n\n",param.decod_format == GRK_CODEC_JP2 ? "jp2" : "j2k");
-
-	// create j2k memory stream
-	stream = grk_stream_create_mem_stream(img, sizeof(img), false, true);
-	if(!stream)
-	{
-		fprintf(stderr, "Failed to create memory stream\n");
-		goto beach;
-	}
-
 	// create codec
-	codec = grk_decompress_create(stream);
+	codec = grk_decompress_create_from_buffer(img, sizeof(img));
 	if (!codec) {
         fprintf(stderr, "Failed to create codec\n");
         goto beach;
@@ -209,7 +191,6 @@ int main(int argc, char** argv)
 	rc = EXIT_SUCCESS;
 beach:
     // cleanup
-	grk_object_unref(stream);
 	grk_object_unref(codec);
     grk_deinitialize();
 

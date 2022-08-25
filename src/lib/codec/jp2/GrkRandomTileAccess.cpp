@@ -84,14 +84,7 @@ int GrkRandomTileAccess::main(int argc, char** argv)
 
 		/* Index of corner tiles */
 		uint16_t tile[4];
-
-		auto stream = grk_stream_create_file_stream(parameters.infile, 1024 * 1024, 1);
-		if(!stream)
-		{
-			spdlog::error("failed to create a stream from file {}", parameters.infile);
-			goto cleanup;
-		}
-		codec = grk_decompress_create(stream);
+		codec = grk_decompress_create_from_file(parameters.infile);
 		if(!codec)
 		{
 			spdlog::error("failed to create codec from file {}", parameters.infile);
@@ -126,7 +119,6 @@ int GrkRandomTileAccess::main(int argc, char** argv)
 		rc = test_tile(tile[i], image, codec);
 
 		grk_object_unref(codec);
-		grk_object_unref(stream);
 		if(rc)
 			goto cleanup;
 	}

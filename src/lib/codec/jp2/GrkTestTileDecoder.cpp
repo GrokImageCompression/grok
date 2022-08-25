@@ -108,7 +108,7 @@ int GrkTestTileDecoder::main(int argc, char* argv[])
 	}
 
 	grk_initialize(nullptr, 0);
-	stream = grk_stream_create_file_stream(input_file, 1024 * 1024, true);
+	stream = grk_stream_create_mapped_file_stream(input_file, true);
 	if(!stream)
 	{
 		spdlog::error("failed to create a stream from file {}", input_file);

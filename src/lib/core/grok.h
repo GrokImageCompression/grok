@@ -1277,6 +1277,27 @@ GRK_API bool GRK_CALLCONV grk_decompress_buffer_detect_format(uint8_t* buffer, s
 															  GRK_CODEC_FORMAT* fmt);
 
 /**
+ * Create j2k/jp2 decompression codec from file
+ *
+ * @param file_name file name
+ *
+ * @return a handle to a decompressor if successful, otherwise nullptr
+ *
+ */
+GRK_API grk_codec* GRK_CALLCONV grk_decompress_create_from_file(const char* file_name);
+
+/**
+ * Create j2k/jp2 decompression codec from memory buffer
+ *
+ * @param buf buffer
+ * @param len buffer length
+ *
+ * @return a handle to a decompressor if successful, otherwise nullptr
+ *
+ */
+GRK_API grk_codec* GRK_CALLCONV grk_decompress_create_from_buffer(uint8_t* buf, size_t len);
+
+/**
  * Create j2k/jp2 decompression codec
  *
  * @param	stream	JPEG 2000 stream

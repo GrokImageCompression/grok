@@ -358,7 +358,7 @@ int GrkDump::main(int argc, char* argv[])
 			if(nextFile(imageno, dirptr, &inputFolder, &parameters))
 				continue;
 		}
-		stream = grk_stream_create_file_stream(parameters.infile, 1024 * 1024, 1);
+		stream = grk_stream_create_mapped_file_stream(parameters.infile, true);
 		if(!stream)
 		{
 			spdlog::error("failed to create a stream from file {}", parameters.infile);

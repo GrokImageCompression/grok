@@ -31,22 +31,19 @@ int LLVMFuzzerInitialize(int *argc, char ***argv) {
   return 0;
 }
 int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len) {
-  auto stream = grk_stream_create_mem_stream(buf, len, false, true);
-  if (!stream)
-      goto cleanup;
-  auto codec = grk_decompress_create(stream);
+  grk_image *image = nullptr;
+  grk_header_info headerInfo;
+  grk_decompress_core_params parameters;
+  uint32_t x0, y0, width, height;
+  auto codec = grk_decompress_create_from_buffer(const_cast<uint8_t*>(buf),len);
   if (!codec)
       goto cleanup;
   grk_set_msg_handlers(nullptr, nullptr,
 					  nullptr, nullptr,
 					  nullptr, nullptr);
-  grk_decompress_core_params parameters;
   grk_decompress_set_default_params(&parameters);
   grk_decompress_init(codec, &parameters);
-  grk_image *image = nullptr;
-  grk_header_info headerInfo;
   memset(&headerInfo,0,sizeof(grk_header_info));
-  uint32_t x0, y0, width, height;
   if (!grk_decompress_read_header(codec, &headerInfo))
     goto cleanup;
   image = grk_decompress_get_composited_image(codec);
@@ -67,7 +64,6 @@ int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len) {
       goto cleanup;
   }
 cleanup:
-  grk_object_unref(stream);
   grk_object_unref(codec);
 
   return 0;
