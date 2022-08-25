@@ -142,9 +142,18 @@ size_t get_mem_stream_offset(grk_stream* stream)
 grk_stream* create_mem_stream(uint8_t* buf, size_t len, bool ownsBuffer, bool is_read_stream)
 {
 	if(!buf || !len)
+		return nullptr;
+	if(len < 12)
+	{
+		GRK_ERROR("Buffer of length %d is invalid\n", len);
+		return nullptr;
+	}
+	GRK_CODEC_FORMAT format;
+	if(!grk_decompress_buffer_detect_format(buf, len, &format))
 	{
 		return nullptr;
 	}
+
 	auto memStream = new MemStream(buf, 0, len, ownsBuffer);
 	auto streamImpl = new BufferedStream(buf, len, is_read_stream);
 	auto stream = streamImpl->getWrapper();

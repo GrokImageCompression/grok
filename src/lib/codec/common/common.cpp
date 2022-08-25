@@ -35,40 +35,40 @@ std::string convertFileFmtToString(GRK_SUPPORTED_FILE_FMT fmt)
 {
 	switch(fmt)
 	{
-		case GRK_J2K_FMT:
+		case GRK_FMT_J2K:
 			return "J2K";
 			break;
-		case GRK_JP2_FMT:
+		case GRK_FMT_JP2:
 			return "JP2";
 			break;
-		case GRK_PXM_FMT:
+		case GRK_FMT_PXM:
 			return "PNM";
 			break;
-		case GRK_PGX_FMT:
+		case GRK_FMT_PGX:
 			return "PGX";
 			break;
-		case GRK_PAM_FMT:
+		case GRK_FMT_PAM:
 			return "PAM";
 			break;
-		case GRK_BMP_FMT:
+		case GRK_FMT_BMP:
 			return "BMP";
 			break;
-		case GRK_TIF_FMT:
+		case GRK_FMT_TIF:
 			return "TIFF";
 			break;
-		case GRK_RAW_FMT:
+		case GRK_FMT_RAW:
 			return "RAW";
 			break;
-		case GRK_PNG_FMT:
+		case GRK_FMT_PNG:
 			return "PNG";
 			break;
-		case GRK_RAWL_FMT:
+		case GRK_FMT_RAWL:
 			return "RAWL";
 			break;
-		case GRK_JPG_FMT:
+		case GRK_FMT_JPG:
 			return "JPEG";
 			break;
-		case GRK_UNK_FMT:
+		case GRK_FMT_UNK:
 		default:
 			return "UNKNOWN";
 			break;
@@ -198,7 +198,7 @@ GRK_SUPPORTED_FILE_FMT grk_get_file_format(const char* filename)
 {
 	const char* ext = strrchr(filename, '.');
 	if(ext == nullptr)
-		return GRK_UNK_FMT;
+		return GRK_FMT_UNK;
 	ext++;
 	if(*ext)
 	{
@@ -206,9 +206,9 @@ GRK_SUPPORTED_FILE_FMT grk_get_file_format(const char* filename)
 										  "bmp",  "tif", "tiff", "jpg", "jpeg", "raw",
 										  "rawl", "png", "j2k",	 "jp2", "j2c",	"jpc"};
 		static const GRK_SUPPORTED_FILE_FMT format[] = {
-			GRK_PGX_FMT,  GRK_PXM_FMT, GRK_PXM_FMT, GRK_PXM_FMT, GRK_PXM_FMT, GRK_PXM_FMT,
-			GRK_BMP_FMT,  GRK_TIF_FMT, GRK_TIF_FMT, GRK_JPG_FMT, GRK_JPG_FMT, GRK_RAW_FMT,
-			GRK_RAWL_FMT, GRK_PNG_FMT, GRK_J2K_FMT, GRK_JP2_FMT, GRK_J2K_FMT, GRK_J2K_FMT};
+			GRK_FMT_PGX,  GRK_FMT_PXM, GRK_FMT_PXM, GRK_FMT_PXM, GRK_FMT_PXM, GRK_FMT_PXM,
+			GRK_FMT_BMP,  GRK_FMT_TIF, GRK_FMT_TIF, GRK_FMT_JPG, GRK_FMT_JPG, GRK_FMT_RAW,
+			GRK_FMT_RAWL, GRK_FMT_PNG, GRK_FMT_J2K, GRK_FMT_JP2, GRK_FMT_J2K, GRK_FMT_J2K};
 		for(uint32_t i = 0; i < sizeof(format) / sizeof(*format); i++)
 		{
 			if(strcasecmp(ext, extension[i]) == 0)
@@ -216,7 +216,7 @@ GRK_SUPPORTED_FILE_FMT grk_get_file_format(const char* filename)
 		}
 	}
 
-	return GRK_UNK_FMT;
+	return GRK_FMT_UNK;
 }
 
 bool isFinalOutputSubsampled(grk_image* image)

@@ -335,9 +335,8 @@ char GrkDecompress::nextFile(const std::string inputFile, grk_img_fol* inputFold
 {
 	spdlog::info("File: \"{}\"", inputFile.c_str());
 	std::string infilename = inputFolder->imgdirpath + std::string(pathSeparator()) + inputFile;
-	if(!grk_decompress_detect_format(
-		   infilename.c_str(), (GRK_SUPPORTED_FILE_FMT*)&parameters->decod_format) ||
-	   parameters->decod_format == GRK_UNK_FMT)
+	if(!grk_decompress_detect_format(infilename.c_str(), &parameters->decod_format) ||
+	   parameters->decod_format == GRK_CODEC_UNK)
 		return 1;
 	if(grk::strcpy_s(parameters->infile, sizeof(parameters->infile), infilename.c_str()) != 0)
 		return 1;
@@ -508,17 +507,15 @@ int GrkDecompress::parseCommandLine(int argc, char** argv, DecompressInitParams*
 
 			if(checkFile)
 			{
-				if(!grk_decompress_detect_format(
-					   infile, (GRK_SUPPORTED_FILE_FMT*)&parameters->decod_format))
+				if(!grk_decompress_detect_format(infile, &parameters->decod_format))
 				{
 					spdlog::error("Unable to open file {} for decoding.", infile);
 					return 1;
 				}
 				switch(parameters->decod_format)
 				{
-					case GRK_J2K_FMT:
-						break;
-					case GRK_JP2_FMT:
+					case GRK_CODEC_J2K:
+					case GRK_CODEC_JP2:
 						break;
 					default:
 						spdlog::error("Unknown input file format: {} \n"
@@ -529,7 +526,7 @@ int GrkDecompress::parseCommandLine(int argc, char** argv, DecompressInitParams*
 			}
 			else
 			{
-				parameters->decod_format = GRK_J2K_FMT;
+				parameters->decod_format = GRK_CODEC_J2K;
 			}
 			if(grk::strcpy_s(parameters->infile, sizeof(parameters->infile), infile) != 0)
 			{
@@ -546,28 +543,28 @@ int GrkDecompress::parseCommandLine(int argc, char** argv, DecompressInitParams*
 			parameters->cod_format = (GRK_SUPPORTED_FILE_FMT)grk_get_file_format(outformat);
 			switch(parameters->cod_format)
 			{
-				case GRK_PGX_FMT:
+				case GRK_FMT_PGX:
 					inputFolder->out_format = "pgx";
 					break;
-				case GRK_PXM_FMT:
+				case GRK_FMT_PXM:
 					inputFolder->out_format = "ppm";
 					break;
-				case GRK_BMP_FMT:
+				case GRK_FMT_BMP:
 					inputFolder->out_format = "bmp";
 					break;
-				case GRK_JPG_FMT:
+				case GRK_FMT_JPG:
 					inputFolder->out_format = "jpg";
 					break;
-				case GRK_TIF_FMT:
+				case GRK_FMT_TIF:
 					inputFolder->out_format = "tif";
 					break;
-				case GRK_RAW_FMT:
+				case GRK_FMT_RAW:
 					inputFolder->out_format = "raw";
 					break;
-				case GRK_RAWL_FMT:
+				case GRK_FMT_RAWL:
 					inputFolder->out_format = "rawl";
 					break;
-				case GRK_PNG_FMT:
+				case GRK_FMT_PNG:
 					inputFolder->out_format = "png";
 					break;
 				default:
@@ -583,14 +580,14 @@ int GrkDecompress::parseCommandLine(int argc, char** argv, DecompressInitParams*
 			parameters->cod_format = (GRK_SUPPORTED_FILE_FMT)grk_get_file_format(outfile);
 			switch(parameters->cod_format)
 			{
-				case GRK_PGX_FMT:
-				case GRK_PXM_FMT:
-				case GRK_BMP_FMT:
-				case GRK_TIF_FMT:
-				case GRK_RAW_FMT:
-				case GRK_RAWL_FMT:
-				case GRK_PNG_FMT:
-				case GRK_JPG_FMT:
+				case GRK_FMT_PGX:
+				case GRK_FMT_PXM:
+				case GRK_FMT_BMP:
+				case GRK_FMT_TIF:
+				case GRK_FMT_RAW:
+				case GRK_FMT_RAWL:
+				case GRK_FMT_PNG:
+				case GRK_FMT_JPG:
 					break;
 				default:
 					spdlog::error(
@@ -717,7 +714,7 @@ int GrkDecompress::parseCommandLine(int argc, char** argv, DecompressInitParams*
 	}
 	else
 	{
-		if(parameters->decod_format == GRK_UNK_FMT)
+		if(parameters->decod_format == GRK_CODEC_UNK)
 		{
 			if((parameters->infile[0] == 0) || (parameters->outfile[0] == 0))
 			{
@@ -769,13 +766,12 @@ int GrkDecompress::decompress(const std::string& fileName, DecompressInitParams*
 	}
 	grk_plugin_decompress_callback_info info;
 	memset(&info, 0, sizeof(grk_plugin_decompress_callback_info));
-	info.decod_format = GRK_UNK_FMT;
+	info.decod_format = GRK_CODEC_UNK;
 	info.decompress_flags = GRK_DECODE_ALL;
 	info.decompressor_parameters = &initParams->parameters;
 	info.user_data = this;
-	info.cod_format = (GRK_SUPPORTED_FILE_FMT)(info.cod_format != GRK_UNK_FMT
-												   ? info.cod_format
-												   : info.decompressor_parameters->cod_format);
+	info.cod_format =
+		info.cod_format != GRK_FMT_UNK ? info.cod_format : info.decompressor_parameters->cod_format;
 	info.header_info.decompressFormat = info.cod_format;
 	info.header_info.forceRGB = info.decompressor_parameters->force_rgb;
 	info.header_info.upsample = info.decompressor_parameters->upsample;
@@ -794,7 +790,7 @@ int GrkDecompress::decompress(const std::string& fileName, DecompressInitParams*
 		return 0;
 	}
 #ifdef GROK_HAVE_EXIFTOOL
-	if(initParams->transferExifTags && initParams->parameters.decod_format == GRK_JP2_FMT)
+	if(initParams->transferExifTags && initParams->parameters.decod_format == GRK_CODEC_JP2)
 		transferExifTags(initParams->parameters.infile, initParams->parameters.outfile);
 #endif
 	grk_object_unref(info.codec);
@@ -1004,14 +1000,12 @@ bool GrkDecompress::encodeInit(grk_plugin_decompress_callback_info* info)
 	const char* outfile = info->decompressor_parameters->outfile[0]
 							  ? info->decompressor_parameters->outfile
 							  : info->output_file_name;
-	auto cod_format =
-		(GRK_SUPPORTED_FILE_FMT)(info->cod_format != GRK_UNK_FMT ? info->cod_format
-																 : parameters->cod_format);
+	auto cod_format = info->cod_format != GRK_FMT_UNK ? info->cod_format : parameters->cod_format;
 	auto outfileStr = outfile ? std::string(outfile) : "";
 	uint32_t compressionLevel = 0;
-	if(cod_format == GRK_TIF_FMT)
+	if(cod_format == GRK_FMT_TIF)
 		compressionLevel = parameters->compression;
-	else if(cod_format == GRK_JPG_FMT || cod_format == GRK_PNG_FMT)
+	else if(cod_format == GRK_FMT_JPG || cod_format == GRK_FMT_PNG)
 		compressionLevel = parameters->compressionLevel;
 	if(!imageFormat->encodeInit(info->image, outfileStr, compressionLevel,
 								info->decompressor_parameters->numThreads
@@ -1036,26 +1030,24 @@ int GrkDecompress::preProcess(grk_plugin_decompress_callback_info* info)
 	if(!parameters)
 		return 1;
 	auto infile = info->input_file_name ? info->input_file_name : parameters->infile;
-	int decod_format =
-		info->decod_format != GRK_UNK_FMT ? info->decod_format : parameters->decod_format;
+	GRK_CODEC_FORMAT decod_format =
+		info->decod_format != GRK_CODEC_UNK ? info->decod_format : parameters->decod_format;
 	const char* outfile = info->decompressor_parameters->outfile[0]
 							  ? info->decompressor_parameters->outfile
 							  : info->output_file_name;
-	auto cod_format =
-		(GRK_SUPPORTED_FILE_FMT)(info->cod_format != GRK_UNK_FMT ? info->cod_format
-																 : parameters->cod_format);
+	auto cod_format = info->cod_format != GRK_FMT_UNK ? info->cod_format : parameters->cod_format;
 	switch(cod_format)
 	{
-		case GRK_PXM_FMT:
+		case GRK_FMT_PXM:
 			imageFormat = new PNMFormat(parameters->split_pnm);
 			break;
-		case GRK_PGX_FMT:
+		case GRK_FMT_PGX:
 			imageFormat = new PGXFormat();
 			break;
-		case GRK_BMP_FMT:
+		case GRK_FMT_BMP:
 			imageFormat = new BMPFormat();
 			break;
-		case GRK_TIF_FMT:
+		case GRK_FMT_TIF:
 #ifdef GROK_HAVE_LIBTIFF
 			imageFormat = new TIFFFormat();
 #else
@@ -1063,13 +1055,13 @@ int GrkDecompress::preProcess(grk_plugin_decompress_callback_info* info)
 			goto cleanup;
 #endif
 			break;
-		case GRK_RAW_FMT:
+		case GRK_FMT_RAW:
 			imageFormat = new RAWFormat(true);
 			break;
-		case GRK_RAWL_FMT:
+		case GRK_FMT_RAWL:
 			imageFormat = new RAWFormat(false);
 			break;
-		case GRK_JPG_FMT:
+		case GRK_FMT_JPG:
 #ifdef GROK_HAVE_LIBJPEG
 			imageFormat = new JPEGFormat();
 #else
@@ -1077,7 +1069,7 @@ int GrkDecompress::preProcess(grk_plugin_decompress_callback_info* info)
 			goto cleanup;
 #endif
 			break;
-		case GRK_PNG_FMT:
+		case GRK_FMT_PNG:
 #ifdef GROK_HAVE_LIBPNG
 			imageFormat = new PNGFormat();
 #else
@@ -1155,20 +1147,13 @@ int GrkDecompress::preProcess(grk_plugin_decompress_callback_info* info)
 	}
 	if(!info->codec)
 	{
-		switch(decod_format)
+		info->codec = grk_decompress_create(decod_format, info->stream);
+		if(!info->codec)
 		{
-			case GRK_J2K_FMT: { /* JPEG 2000 code stream */
-				info->codec = grk_decompress_create(GRK_CODEC_J2K, info->stream);
-				break;
-			}
-			case GRK_JP2_FMT: { /* JPEG 2000 compressed image data */
-				info->codec = grk_decompress_create(GRK_CODEC_JP2, info->stream);
-				break;
-			}
-			default:
-				spdlog::error("grk_decompress: unknown decode format {}", decod_format);
-				goto cleanup;
+			spdlog::error("grk_decompress: failed to create codec from file {}", infile);
+			goto cleanup;
 		}
+
 		grk_set_msg_handlers(parameters->verbose_ ? infoCallback : nullptr, nullptr,
 							 parameters->verbose_ ? warningCallback : nullptr, nullptr,
 							 errorCallback, nullptr);
@@ -1334,8 +1319,8 @@ int GrkDecompress::postProcess(grk_plugin_decompress_callback_info* info)
 	{
 		if(image->meta->xmp_buf)
 		{
-			bool canStoreXMP = (info->decompressor_parameters->cod_format == GRK_TIF_FMT ||
-								info->decompressor_parameters->cod_format == GRK_PNG_FMT);
+			bool canStoreXMP = (info->decompressor_parameters->cod_format == GRK_FMT_TIF ||
+								info->decompressor_parameters->cod_format == GRK_FMT_PNG);
 			if(!canStoreXMP)
 			{
 				spdlog::warn(" Input file `{}` contains XMP meta-data,\nbut the file format for "
@@ -1345,7 +1330,7 @@ int GrkDecompress::postProcess(grk_plugin_decompress_callback_info* info)
 		}
 		if(image->meta->iptc_buf)
 		{
-			bool canStoreIPTC_IIM = (info->decompressor_parameters->cod_format == GRK_TIF_FMT);
+			bool canStoreIPTC_IIM = (info->decompressor_parameters->cod_format == GRK_FMT_TIF);
 			if(!canStoreIPTC_IIM)
 			{
 				spdlog::warn(

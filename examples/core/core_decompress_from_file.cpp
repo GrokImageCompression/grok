@@ -104,25 +104,8 @@ int main(int argc, char** argv)
 	}
 
     printf("Decompressing file %s of format %s\n",
-            inputFilePath.c_str(),param.decod_format == GRK_JP2_FMT ? "jp2" : "j2k");
-
-	// create codec
-	switch(param.decod_format)
-	{
-		case GRK_J2K_FMT: { /* JPEG-2000 codestream */
-			codec = grk_decompress_create(GRK_CODEC_J2K, stream);
-			break;
-		}
-		case GRK_JP2_FMT: { /* JPEG 2000 compressed image data */
-			codec = grk_decompress_create(GRK_CODEC_JP2, stream);
-			break;
-		}
-		default: {
-			fprintf(stderr,"Not a valid JPEG2000 file\n");
-			goto beach;
-			break;
-		}
-	}
+            inputFilePath.c_str(),param.decod_format == GRK_CODEC_J2K ? "j2k" : "jp2");
+    codec = grk_decompress_create(param.decod_format, stream);
 	if (!codec){
         fprintf(stderr,"Failed to create codec.\n");
         goto beach;

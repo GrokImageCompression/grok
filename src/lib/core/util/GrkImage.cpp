@@ -330,7 +330,7 @@ bool GrkImage::supportsStripCache(CodingParams* cp)
 		return false;
 
 	bool supportedFileFormat =
-		decompressFormat == GRK_TIF_FMT || (decompressFormat == GRK_PXM_FMT && !splitByComponent);
+		decompressFormat == GRK_FMT_TIF || (decompressFormat == GRK_FMT_PXM && !splitByComponent);
 	if(isSubsampled() || precision || upsample || needsConversionToRGB() || !supportedFileFormat ||
 	   (meta && (meta->color.palette || meta->color.icc_profile_buf)))
 	{
@@ -379,7 +379,7 @@ void GrkImage::postReadHeader(CodingParams* cp)
 		decompressNumComps = meta->color.palette->num_channels;
 	else
 		decompressNumComps = (forceRGB && numcomps < 3) ? 3 : numcomps;
-	if(decompressFormat == GRK_PXM_FMT && decompressNumComps == 4 && !isGAorRGBA)
+	if(decompressFormat == GRK_FMT_PXM && decompressNumComps == 4 && !isGAorRGBA)
 		decompressNumComps = 3;
 	uint16_t ncmp = decompressNumComps;
 	decompressWidth = comps->w;
@@ -394,7 +394,7 @@ void GrkImage::postReadHeader(CodingParams* cp)
 	decompressColourSpace = color_space;
 	if(needsConversionToRGB())
 		decompressColourSpace = GRK_CLRSPC_SRGB;
-	bool tiffSubSampled = decompressFormat == GRK_TIF_FMT && isSubsampled() &&
+	bool tiffSubSampled = decompressFormat == GRK_FMT_TIF && isSubsampled() &&
 						  (color_space == GRK_CLRSPC_EYCC || color_space == GRK_CLRSPC_SYCC);
 	if(tiffSubSampled)
 	{
@@ -410,10 +410,10 @@ void GrkImage::postReadHeader(CodingParams* cp)
 	{
 		switch(decompressFormat)
 		{
-			case GRK_BMP_FMT:
+			case GRK_FMT_BMP:
 				packedRowBytes = (((uint64_t)ncmp * decompressWidth + 3) >> 2) << 2;
 				break;
-			case GRK_PXM_FMT:
+			case GRK_FMT_PXM:
 				packedRowBytes = grk::PlanarToInterleaved<int32_t>::getPackedBytes(
 					ncmp, decompressWidth, prec > 8 ? 16 : 8);
 				break;
@@ -429,7 +429,7 @@ void GrkImage::postReadHeader(CodingParams* cp)
 		rowsPerStrip = height();
 
 	if(meta && meta->color.icc_profile_buf && meta->color.icc_profile_len &&
-	   decompressFormat == GRK_PNG_FMT)
+	   decompressFormat == GRK_FMT_PNG)
 	{
 		// extract the description tag from the ICC header,
 		// and use this tag as the profile name
@@ -982,10 +982,10 @@ bool GrkImage::compositeInterleaved(const Tile* src, uint32_t yBegin, uint32_t y
 	uint8_t prec = 0;
 	switch(decompressFormat)
 	{
-		case GRK_TIF_FMT:
+		case GRK_FMT_TIF:
 			prec = destComp->prec;
 			break;
-		case GRK_PXM_FMT:
+		case GRK_FMT_PXM:
 			prec = destComp->prec > 8 ? 16 : 8;
 			break;
 		default:
@@ -998,7 +998,7 @@ bool GrkImage::compositeInterleaved(const Tile* src, uint32_t yBegin, uint32_t y
 		grk::PlanarToInterleaved<int32_t>::getPackedBytes(src->numcomps_, destWin.x0, prec);
 	auto destIndex = (uint64_t)destWin.y0 * destStride + (uint64_t)destx0;
 	auto iter = InterleaverFactory<int32_t>::makeInterleaver(
-		prec == 16 && decompressFormat != GRK_TIF_FMT ? packer16BitBE : prec);
+		prec == 16 && decompressFormat != GRK_FMT_TIF ? packer16BitBE : prec);
 	if(!iter)
 		return false;
 	int32_t const* planes[grk::maxNumPackComponents];
@@ -1045,10 +1045,10 @@ bool GrkImage::compositeInterleaved(const GrkImage* src)
 	uint8_t prec = 0;
 	switch(decompressFormat)
 	{
-		case GRK_TIF_FMT:
+		case GRK_FMT_TIF:
 			prec = destComp->prec;
 			break;
-		case GRK_PXM_FMT:
+		case GRK_FMT_PXM:
 			prec = destComp->prec > 8 ? 16 : 8;
 			break;
 		default:

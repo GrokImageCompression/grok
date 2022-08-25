@@ -288,6 +288,12 @@ int GrkDump::main(int argc, char* argv[])
 		rc = EXIT_FAILURE;
 		goto cleanup;
 	}
+	if(parameters.decod_format == GRK_CODEC_UNK)
+	{
+		spdlog::error("Unknown codec format");
+		rc = EXIT_FAILURE;
+		goto cleanup;
+	}
 
 	/* Initialize reading of directory */
 	if(inputFolder.set_imgdir)
@@ -317,9 +323,7 @@ int GrkDump::main(int argc, char* argv[])
 				goto cleanup;
 			}
 			for(size_t i = 0; i < num_images; i++)
-			{
 				dirptr->filename[i] = dirptr->filename_buf + i * GRK_PATH_LEN;
-			}
 		}
 		if(loadImages(dirptr, inputFolder.imgdirpath) == 1)
 		{
@@ -352,9 +356,7 @@ int GrkDump::main(int argc, char* argv[])
 		if(inputFolder.set_imgdir)
 		{
 			if(nextFile(imageno, dirptr, &inputFolder, &parameters))
-			{
 				continue;
-			}
 		}
 		stream = grk_stream_create_file_stream(parameters.infile, 1024 * 1024, 1);
 		if(!stream)
@@ -363,22 +365,13 @@ int GrkDump::main(int argc, char* argv[])
 			rc = EXIT_FAILURE;
 			goto cleanup;
 		}
-		switch(parameters.decod_format)
+		codec = grk_decompress_create(parameters.decod_format, stream);
+		if(!codec)
 		{
-			case GRK_J2K_FMT: {
-				codec = grk_decompress_create(GRK_CODEC_J2K, stream);
-				break;
-			}
-			case GRK_JP2_FMT: {
-				codec = grk_decompress_create(GRK_CODEC_JP2, stream);
-				break;
-			}
-			default:
-				grk_object_unref(stream);
-				stream = nullptr;
-				continue;
+			spdlog::error("failed to codec for file {}", parameters.infile);
+			rc = EXIT_FAILURE;
+			goto cleanup;
 		}
-
 		/* Setup the decompressor decoding parameters using user parameters */
 		if(!grk_decompress_init(codec, &parameters.core))
 		{

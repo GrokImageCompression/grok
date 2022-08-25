@@ -291,7 +291,7 @@ void GrkImage::convertPrecision(void)
 			}
 		}
 	}
-	if(decompressFormat == GRK_JPG_FMT)
+	if(decompressFormat == GRK_FMT_JPG)
 	{
 		uint8_t prec = comps[0].prec;
 		if(prec < 8 && numcomps > 1)
@@ -310,7 +310,7 @@ void GrkImage::convertPrecision(void)
 				scaleComponent(comps + i, prec);
 		}
 	}
-	else if(decompressFormat == GRK_PNG_FMT)
+	else if(decompressFormat == GRK_FMT_PNG)
 	{
 		uint16_t nr_comp = numcomps;
 		if(nr_comp > 4)
@@ -387,7 +387,7 @@ bool GrkImage::needsConversionToRGB(void)
 {
 	return (((color_space == GRK_CLRSPC_SYCC || color_space == GRK_CLRSPC_EYCC ||
 			  color_space == GRK_CLRSPC_CMYK) &&
-			 (decompressFormat != GRK_UNK_FMT && decompressFormat != GRK_TIF_FMT)) ||
+			 (decompressFormat != GRK_FMT_UNK && decompressFormat != GRK_FMT_TIF)) ||
 			forceRGB);
 }
 bool GrkImage::convertToRGB(bool wholeTileDecompress)
@@ -1137,15 +1137,15 @@ bool GrkImage::validateICC(void)
 
 bool GrkImage::applyColourManagement(void)
 {
-	bool isTiff = decompressFormat == GRK_TIF_FMT;
+	bool isTiff = decompressFormat == GRK_FMT_TIF;
 	bool canStoreCIE = isTiff && color_space == GRK_CLRSPC_DEFAULT_CIE;
 	bool isCIE = color_space == GRK_CLRSPC_DEFAULT_CIE || color_space == GRK_CLRSPC_CUSTOM_CIE;
 	// A TIFF,PNG, BMP or JPEG image can store the ICC profile,
 	// so no need to apply it in this case,
 	// (unless we are forcing to RGB).
 	// Otherwise, we apply the profile
-	bool canStoreICC = (decompressFormat == GRK_TIF_FMT || decompressFormat == GRK_PNG_FMT ||
-						decompressFormat == GRK_JPG_FMT || decompressFormat == GRK_BMP_FMT);
+	bool canStoreICC = (decompressFormat == GRK_FMT_TIF || decompressFormat == GRK_FMT_PNG ||
+						decompressFormat == GRK_FMT_JPG || decompressFormat == GRK_FMT_BMP);
 
 	bool shouldColourManage = meta && meta->color.icc_profile_buf &&
 							  (forceRGB || ((isCIE && !canStoreCIE) || !canStoreICC));

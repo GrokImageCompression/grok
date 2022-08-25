@@ -131,11 +131,11 @@ static char* createMultiComponentsFilename(std::string inFilename, const uint16_
 		return nullptr;
 	strcpy(outFilename, iss.str().c_str());
 	GRK_SUPPORTED_FILE_FMT decod_format = grk::grk_get_file_format(inFilename.c_str());
-	if(decod_format == GRK_PGX_FMT)
+	if(decod_format == GRK_FMT_PGX)
 	{
 		strcat(outFilename, ".pgx");
 	}
-	else if(decod_format == GRK_PXM_FMT)
+	else if(decod_format == GRK_FMT_PXM)
 	{
 		strcat(outFilename, ".pgm");
 	}
@@ -159,7 +159,7 @@ static grk_image* readImageFromFilePPM(const char* filename, uint16_t nbFilename
 	if(!nbFilenamePGX)
 		return nullptr;
 	grk_compress_set_default_params(&parameters);
-	parameters.decod_format = GRK_PXM_FMT;
+	parameters.decod_format = GRK_FMT_PXM;
 	strcpy(parameters.infile, filename);
 	src_param = (grk_image_comp*)malloc((size_t)nbFilenamePGX * sizeof(grk_image_comp));
 	if(!src_param)
@@ -241,7 +241,7 @@ static grk_image* readImageFromFileBMP(const char* filename)
 	grk_image* image_read = nullptr;
 	grk_cparameters parameters;
 	grk_compress_set_default_params(&parameters);
-	parameters.decod_format = GRK_BMP_FMT;
+	parameters.decod_format = GRK_FMT_BMP;
 	strcpy(parameters.infile, filename);
 	BMPFormat bmp;
 	image_read = bmp.decode(filename, &parameters);
@@ -259,7 +259,7 @@ static grk_image* readImageFromFilePNG(const char* filename)
 	grk_image* image_read = nullptr;
 	grk_cparameters parameters;
 	grk_compress_set_default_params(&parameters);
-	parameters.decod_format = GRK_PNG_FMT;
+	parameters.decod_format = GRK_FMT_PNG;
 	strcpy(parameters.infile, filename);
 
 #ifdef GROK_HAVE_LIBPNG
@@ -288,7 +288,7 @@ static grk_image* readImageFromFileTIF(const char* filename, const char* separat
 	if(strlen(separator) != 0)
 		return nullptr;
 	grk_compress_set_default_params(&parameters);
-	parameters.decod_format = GRK_TIF_FMT;
+	parameters.decod_format = GRK_FMT_TIF;
 	strcpy(parameters.infile, filename);
 
 #ifdef GROK_HAVE_LIBTIFF
@@ -321,7 +321,7 @@ static grk_image* readImageFromFilePGX(const char* filename, uint16_t nbFilename
 	if(!nbFilenamePGX)
 		return nullptr;
 	grk_compress_set_default_params(&parameters);
-	parameters.decod_format = GRK_PGX_FMT;
+	parameters.decod_format = GRK_FMT_PGX;
 	strcpy(parameters.infile, filename);
 
 	/* Allocate memory*/
@@ -760,25 +760,25 @@ int GrkCompareImages::main(int argc, char** argv)
 
 	decod_format = grk::grk_get_file_format(inParam.base_filename);
 
-	if(decod_format == GRK_PGX_FMT)
+	if(decod_format == GRK_FMT_PGX)
 	{
 		imageBase =
 			readImageFromFilePGX(inParam.base_filename, nbFilenamePGXbase, inParam.separator_base);
 	}
-	else if(decod_format == GRK_TIF_FMT)
+	else if(decod_format == GRK_FMT_TIF)
 	{
 		imageBase = readImageFromFileTIF(inParam.base_filename, "");
 	}
-	else if(decod_format == GRK_PXM_FMT)
+	else if(decod_format == GRK_FMT_PXM)
 	{
 		imageBase =
 			readImageFromFilePPM(inParam.base_filename, nbFilenamePGXbase, inParam.separator_base);
 	}
-	else if(decod_format == GRK_PNG_FMT)
+	else if(decod_format == GRK_FMT_PNG)
 	{
 		imageBase = readImageFromFilePNG(inParam.base_filename);
 	}
-	else if(decod_format == GRK_BMP_FMT)
+	else if(decod_format == GRK_FMT_BMP)
 	{
 		imageBase = readImageFromFileBMP(inParam.base_filename);
 	}
@@ -799,25 +799,25 @@ int GrkCompareImages::main(int argc, char** argv)
 
 	decod_format = grk::grk_get_file_format(inParam.test_filename);
 
-	if(decod_format == GRK_PGX_FMT)
+	if(decod_format == GRK_FMT_PGX)
 	{
 		imageTest =
 			readImageFromFilePGX(inParam.test_filename, nbFilenamePGXtest, inParam.separator_test);
 	}
-	else if(decod_format == GRK_TIF_FMT)
+	else if(decod_format == GRK_FMT_TIF)
 	{
 		imageTest = readImageFromFileTIF(inParam.test_filename, "");
 	}
-	else if(decod_format == GRK_PXM_FMT)
+	else if(decod_format == GRK_FMT_PXM)
 	{
 		imageTest =
 			readImageFromFilePPM(inParam.test_filename, nbFilenamePGXtest, inParam.separator_test);
 	}
-	else if(decod_format == GRK_PNG_FMT)
+	else if(decod_format == GRK_FMT_PNG)
 	{
 		imageTest = readImageFromFilePNG(inParam.test_filename);
 	}
-	else if(decod_format == GRK_BMP_FMT)
+	else if(decod_format == GRK_FMT_BMP)
 	{
 		imageTest = readImageFromFileBMP(inParam.test_filename);
 	}

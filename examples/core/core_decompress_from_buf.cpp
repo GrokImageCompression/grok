@@ -90,7 +90,7 @@ int main(int argc, char** argv)
     memset(&param, 0, sizeof(grk_decompress_parameters));
     param.compressionLevel = GRK_DECOMPRESS_COMPRESSION_LEVEL_DEFAULT;
     grk_decompress_set_default_params(&param.core);
-    param.decod_format = GRK_J2K_FMT;
+    param.decod_format = GRK_CODEC_J2K;
     param.verbose_ = true;
 
 	grk_codec *codec = nullptr;
@@ -118,8 +118,7 @@ int main(int argc, char** argv)
         fprintf(stderr, "Failed to parse input file format\n");
         goto beach;
     }
-
-    printf("Decompressing buffer of format %s\n\n",param.decod_format == GRK_JP2_FMT ? "jp2" : "j2k");
+    printf("Decompressing buffer of format %s\n\n",param.decod_format == GRK_CODEC_JP2 ? "jp2" : "j2k");
 
 	// create j2k memory stream
 	stream = grk_stream_create_mem_stream(img, sizeof(img), false, true);

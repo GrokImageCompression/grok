@@ -89,23 +89,13 @@ int GrkRandomTileAccess::main(int argc, char** argv)
 		if(!stream)
 		{
 			spdlog::error("failed to create a stream from file {}", parameters.infile);
-			return EXIT_FAILURE;
+			goto cleanup;
 		}
-		switch(parameters.decod_format)
+		codec = grk_decompress_create(parameters.decod_format, stream);
+		if(!codec)
 		{
-			case GRK_J2K_FMT: { /* JPEG-2000 codestream */
-				codec = grk_decompress_create(GRK_CODEC_J2K, stream);
-				break;
-			}
-			case GRK_JP2_FMT: { /* JPEG 2000 compressed image data */
-				codec = grk_decompress_create(GRK_CODEC_JP2, stream);
-				break;
-			}
-			default:
-				spdlog::error("Unrecognized format for input {} [accept only *.j2k, "
-							  "*.jp2 or *.jpc]",
-							  parameters.infile);
-				return EXIT_FAILURE;
+			spdlog::error("failed to create codec from file {}", parameters.infile);
+			goto cleanup;
 		}
 
 		/* Set up the decompress parameters using user parameters */

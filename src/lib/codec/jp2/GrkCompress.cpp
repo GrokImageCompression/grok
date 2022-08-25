@@ -362,10 +362,10 @@ static char nextFile(std::string inputFile, grk_img_fol* inputFolder, grk_img_fo
 	spdlog::info("File \"{}\"", inputFile.c_str());
 	std::string infilename =
 		inputFolder->imgdirpath + std::string(grk::pathSeparator()) + inputFile;
-	if(parameters->decod_format == GRK_UNK_FMT)
+	if(parameters->decod_format == GRK_FMT_UNK)
 	{
 		int fmt = grk_get_file_format((char*)infilename.c_str());
-		if(fmt <= GRK_UNK_FMT)
+		if(fmt <= GRK_FMT_UNK)
 			return 1;
 		parameters->decod_format = (GRK_SUPPORTED_FILE_FMT)fmt;
 	}
@@ -396,14 +396,14 @@ static bool isDecodedFormatSupported(GRK_SUPPORTED_FILE_FMT format)
 {
 	switch(format)
 	{
-		case GRK_PGX_FMT:
-		case GRK_PXM_FMT:
-		case GRK_BMP_FMT:
-		case GRK_TIF_FMT:
-		case GRK_RAW_FMT:
-		case GRK_RAWL_FMT:
-		case GRK_PNG_FMT:
-		case GRK_JPG_FMT:
+		case GRK_FMT_PGX:
+		case GRK_FMT_PXM:
+		case GRK_FMT_BMP:
+		case GRK_FMT_TIF:
+		case GRK_FMT_RAW:
+		case GRK_FMT_RAWL:
+		case GRK_FMT_PNG:
+		case GRK_FMT_JPG:
 			break;
 		default:
 			return false;
@@ -803,7 +803,7 @@ int GrkCompress::parseCommandLine(int argc, char** argv, CompressInitParams* ini
 		if(inputFileArg.isSet())
 		{
 			char* infile = (char*)inputFileArg.getValue().c_str();
-			if(parameters->decod_format == GRK_UNK_FMT)
+			if(parameters->decod_format == GRK_FMT_UNK)
 			{
 				parameters->decod_format = (GRK_SUPPORTED_FILE_FMT)grk_get_file_format(infile);
 				if(!isDecodedFormatSupported(parameters->decod_format))
@@ -845,10 +845,10 @@ int GrkCompress::parseCommandLine(int argc, char** argv, CompressInitParams* ini
 			parameters->cod_format = (GRK_SUPPORTED_FILE_FMT)grk_get_file_format(outformat);
 			switch(parameters->cod_format)
 			{
-				case GRK_J2K_FMT:
+				case GRK_FMT_J2K:
 					inputFolder->out_format = "j2k";
 					break;
-				case GRK_JP2_FMT:
+				case GRK_FMT_JP2:
 					inputFolder->out_format = "jp2";
 					break;
 				default:
@@ -863,8 +863,8 @@ int GrkCompress::parseCommandLine(int argc, char** argv, CompressInitParams* ini
 			parameters->cod_format = (GRK_SUPPORTED_FILE_FMT)grk_get_file_format(outfile);
 			switch(parameters->cod_format)
 			{
-				case GRK_J2K_FMT:
-				case GRK_JP2_FMT:
+				case GRK_FMT_J2K:
+				case GRK_FMT_JP2:
 					break;
 				default:
 					spdlog::error("Unknown output format image {} [only *.j2k, *.j2c or *.jp2] ",
@@ -1776,7 +1776,7 @@ int GrkCompress::parseCommandLine(int argc, char** argv, CompressInitParams* ini
 	}
 	else
 	{
-		if(parameters->cod_format == GRK_UNK_FMT)
+		if(parameters->cod_format == GRK_FMT_UNK)
 		{
 			if(parameters->infile[0] == 0)
 			{
@@ -1797,8 +1797,8 @@ int GrkCompress::parseCommandLine(int argc, char** argv, CompressInitParams* ini
 			return 1;
 		}
 	}
-	if((parameters->decod_format == GRK_RAW_FMT && parameters->raw_cp.width == 0) ||
-	   (parameters->decod_format == GRK_RAWL_FMT && parameters->raw_cp.width == 0))
+	if((parameters->decod_format == GRK_FMT_RAW && parameters->raw_cp.width == 0) ||
+	   (parameters->decod_format == GRK_FMT_RAWL && parameters->raw_cp.width == 0))
 	{
 		spdlog::error("invalid raw image parameters");
 		spdlog::error("Please use the Format option -F:");
@@ -1825,7 +1825,7 @@ int GrkCompress::parseCommandLine(int argc, char** argv, CompressInitParams* ini
 		}
 	}
 	/* If subsampled image is provided, automatically disable MCT */
-	if(((parameters->decod_format == GRK_RAW_FMT) || (parameters->decod_format == GRK_RAWL_FMT)) &&
+	if(((parameters->decod_format == GRK_FMT_RAW) || (parameters->decod_format == GRK_FMT_RAWL)) &&
 	   (((parameters->raw_cp.numcomps > 1) &&
 		 ((parameters->raw_cp.comps[1].dx > 1) || (parameters->raw_cp.comps[1].dy > 1))) ||
 		((parameters->raw_cp.numcomps > 2) &&
@@ -1882,10 +1882,10 @@ static bool pluginCompressCallback(grk_plugin_compress_user_callback_info* info)
 
 	if(!image)
 	{
-		if(parameters->decod_format == GRK_UNK_FMT)
+		if(parameters->decod_format == GRK_FMT_UNK)
 		{
 			int fmt = grk_get_file_format((char*)info->input_file_name);
-			if(fmt <= GRK_UNK_FMT)
+			if(fmt <= GRK_FMT_UNK)
 			{
 				bSuccess = false;
 				goto cleanup;
@@ -1902,7 +1902,7 @@ static bool pluginCompressCallback(grk_plugin_compress_user_callback_info* info)
 
 		switch(info->compressor_parameters->decod_format)
 		{
-			case GRK_PGX_FMT: {
+			case GRK_FMT_PGX: {
 				PGXFormat pgx;
 				image = pgx.decode(info->input_file_name, info->compressor_parameters);
 				if(!image)
@@ -1914,7 +1914,7 @@ static bool pluginCompressCallback(grk_plugin_compress_user_callback_info* info)
 			}
 			break;
 
-			case GRK_PXM_FMT: {
+			case GRK_FMT_PXM: {
 				PNMFormat pnm(false);
 				image = pnm.decode(info->input_file_name, info->compressor_parameters);
 				if(!image)
@@ -1926,7 +1926,7 @@ static bool pluginCompressCallback(grk_plugin_compress_user_callback_info* info)
 			}
 			break;
 
-			case GRK_BMP_FMT: {
+			case GRK_FMT_BMP: {
 				BMPFormat bmp;
 				image = bmp.decode(info->input_file_name, info->compressor_parameters);
 				if(!image)
@@ -1939,7 +1939,7 @@ static bool pluginCompressCallback(grk_plugin_compress_user_callback_info* info)
 			break;
 
 #ifdef GROK_HAVE_LIBTIFF
-			case GRK_TIF_FMT: {
+			case GRK_FMT_TIF: {
 				TIFFFormat tif;
 				image = tif.decode(info->input_file_name, info->compressor_parameters);
 				if(!image)
@@ -1951,7 +1951,7 @@ static bool pluginCompressCallback(grk_plugin_compress_user_callback_info* info)
 			break;
 #endif /* GROK_HAVE_LIBTIFF */
 
-			case GRK_RAW_FMT: {
+			case GRK_FMT_RAW: {
 				RAWFormat raw(true);
 				image = raw.decode(info->input_file_name, info->compressor_parameters);
 				if(!image)
@@ -1963,7 +1963,7 @@ static bool pluginCompressCallback(grk_plugin_compress_user_callback_info* info)
 			}
 			break;
 
-			case GRK_RAWL_FMT: {
+			case GRK_FMT_RAWL: {
 				RAWFormat raw(false);
 				image = raw.decode(info->input_file_name, info->compressor_parameters);
 				if(!image)
@@ -1976,7 +1976,7 @@ static bool pluginCompressCallback(grk_plugin_compress_user_callback_info* info)
 			break;
 
 #ifdef GROK_HAVE_LIBPNG
-			case GRK_PNG_FMT: {
+			case GRK_FMT_PNG: {
 				PNGFormat png;
 				image = png.decode(info->input_file_name, info->compressor_parameters);
 				if(!image)
@@ -1990,7 +1990,7 @@ static bool pluginCompressCallback(grk_plugin_compress_user_callback_info* info)
 #endif /* GROK_HAVE_LIBPNG */
 
 #ifdef GROK_HAVE_LIBJPEG
-			case GRK_JPG_FMT: {
+			case GRK_FMT_JPG: {
 				JPEGFormat jpeg;
 				image = jpeg.decode(info->input_file_name, info->compressor_parameters);
 				if(!image)
@@ -2171,10 +2171,10 @@ static bool pluginCompressCallback(grk_plugin_compress_user_callback_info* info)
 
 	switch(parameters->cod_format)
 	{
-		case GRK_J2K_FMT: /* JPEG 2000 code stream */
+		case GRK_FMT_J2K: /* JPEG 2000 code stream */
 			codec = grk_compress_create(GRK_CODEC_J2K, stream);
 			break;
-		case GRK_JP2_FMT: /* JPEG 2000 compressed image data */
+		case GRK_FMT_JP2: /* JPEG 2000 compressed image data */
 			codec = grk_compress_create(GRK_CODEC_JP2, stream);
 			break;
 		default:
@@ -2216,7 +2216,7 @@ static bool pluginCompressCallback(grk_plugin_compress_user_callback_info* info)
 		goto cleanup;
 	}
 #ifdef GROK_HAVE_EXIFTOOL
-	if(bSuccess && info->transferExifTags && info->compressor_parameters->cod_format == GRK_JP2_FMT)
+	if(bSuccess && info->transferExifTags && info->compressor_parameters->cod_format == GRK_FMT_JP2)
 		transferExifTags(info->input_file_name, info->output_file_name);
 #endif
 	if(info->compressBuffer)
@@ -2268,7 +2268,7 @@ int GrkCompress::compress(const std::string& inputFile, CompressInitParams* init
 	initParams->parameters.write_capture_resolution_from_file = false;
 	// don't reset format if reading from STDIN
 	if(initParams->parameters.infile[0])
-		initParams->parameters.decod_format = GRK_UNK_FMT;
+		initParams->parameters.decod_format = GRK_FMT_UNK;
 	if(initParams->inputFolder.set_imgdir)
 	{
 		if(nextFile(inputFile, &initParams->inputFolder,

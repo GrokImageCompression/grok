@@ -122,22 +122,11 @@ int GrkTestTileDecoder::main(int argc, char* argv[])
 	}
 	param.core.max_layers = 0;
 	param.core.reduce = 0;
-
-	switch(param.decod_format)
+	codec = grk_decompress_create(param.decod_format, stream);
+	if(!codec)
 	{
-		case GRK_J2K_FMT: { /* JPEG-2000 codestream */
-			codec = grk_decompress_create(GRK_CODEC_J2K, stream);
-			break;
-		}
-		case GRK_JP2_FMT: { /* JPEG 2000 compressed image data */
-			codec = grk_decompress_create(GRK_CODEC_JP2, stream);
-			break;
-		}
-		default: {
-			spdlog::error("Not a valid JPEG2000 file!\n");
-			goto beach;
-			break;
-		}
+		spdlog::error("test tile decoder: failed to create codec\n");
+		goto beach;
 	}
 	grk_set_msg_handlers(grk::infoCallback, nullptr, grk::warningCallback, nullptr,
 						 grk::errorCallback, nullptr);

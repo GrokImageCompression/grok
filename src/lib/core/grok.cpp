@@ -187,24 +187,24 @@ void GRK_CALLCONV grk_image_single_component_data_free(grk_image_comp* comp)
 static const char* JP2_RFC3745_MAGIC = "\x00\x00\x00\x0c\x6a\x50\x20\x20\x0d\x0a\x87\x0a";
 static const char* J2K_CODESTREAM_MAGIC = "\xff\x4f\xff\x51";
 bool GRK_CALLCONV grk_decompress_buffer_detect_format(uint8_t* buffer, size_t len,
-														   GRK_SUPPORTED_FILE_FMT* fmt)
+													  GRK_CODEC_FORMAT* fmt)
 {
-	GRK_SUPPORTED_FILE_FMT magic_format = GRK_UNK_FMT;
+	GRK_CODEC_FORMAT magic_format = GRK_CODEC_UNK;
 	if(len < 12)
 		return false;
 
 	if(memcmp(buffer, JP2_RFC3745_MAGIC, 12) == 0)
 	{
-		magic_format = GRK_JP2_FMT;
+		magic_format = GRK_CODEC_JP2;
 	}
 	else if(memcmp(buffer, J2K_CODESTREAM_MAGIC, 4) == 0)
 	{
-		magic_format = GRK_J2K_FMT;
+		magic_format = GRK_CODEC_J2K;
 	}
 	else
 	{
 		GRK_ERROR("No JPEG 2000 code stream detected.");
-		*fmt = GRK_UNK_FMT;
+		*fmt = GRK_CODEC_UNK;
 
 		return false;
 	}
@@ -212,8 +212,7 @@ bool GRK_CALLCONV grk_decompress_buffer_detect_format(uint8_t* buffer, size_t le
 
 	return true;
 }
-bool GRK_CALLCONV grk_decompress_detect_format(const char* fileName,
-														 GRK_SUPPORTED_FILE_FMT* fmt)
+bool GRK_CALLCONV grk_decompress_detect_format(const char* fileName, GRK_CODEC_FORMAT* fmt)
 {
 	uint8_t buf[12];
 	size_t bytesRead;
@@ -222,7 +221,6 @@ bool GRK_CALLCONV grk_decompress_detect_format(const char* fileName,
 	if(!reader)
 		return false;
 
-	memset(buf, 0, 12);
 	bytesRead = fread(buf, 1, 12, reader);
 	if(fclose(reader))
 		return false;
@@ -230,6 +228,13 @@ bool GRK_CALLCONV grk_decompress_detect_format(const char* fileName,
 		return false;
 
 	return grk_decompress_buffer_detect_format(buf, 12, fmt);
+}
+
+grk_codec* GRK_CALLCONV grk_decompress_create_from_file(const char* file_name)
+{
+	GrkCodec* codec = nullptr;
+
+	return &codec->obj;
 }
 
 grk_codec* GRK_CALLCONV grk_decompress_create(GRK_CODEC_FORMAT p_format, grk_stream* stream)
@@ -422,8 +427,8 @@ void GRK_CALLCONV grk_compress_set_default_params(grk_cparameters* parameters)
 		parameters->subsampling_dx = 1;
 		parameters->subsampling_dy = 1;
 		parameters->enableTilePartGeneration = false;
-		parameters->decod_format = GRK_UNK_FMT;
-		parameters->cod_format = GRK_UNK_FMT;
+		parameters->decod_format = GRK_FMT_UNK;
+		parameters->cod_format = GRK_FMT_UNK;
 		parameters->layer_rate[0] = 0;
 		parameters->numlayers = 0;
 		parameters->allocationByRateDistoration = false;
@@ -498,33 +503,42 @@ grk_stream* GRK_CALLCONV grk_stream_create_file_stream(const char* fname, size_t
 													   bool is_read_stream)
 {
 	bool stdin_stdout = !fname || !fname[0];
-	FILE* p_file = nullptr;
+	FILE* file = nullptr;
 	if(!stdin_stdout && (!fname || !fname[0]))
 		return nullptr;
 	if(stdin_stdout)
 	{
-		p_file = is_read_stream ? stdin : stdout;
+		file = is_read_stream ? stdin : stdout;
 	}
 	else
 	{
 		const char* mode = (is_read_stream) ? "rb" : "wb";
-		p_file = fopen(fname, mode);
-		if(!p_file)
-		{
+		file = fopen(fname, mode);
+		if(!file)
 			return nullptr;
-		}
 	}
 	auto stream = grk_stream_new(p_size, is_read_stream);
 	if(!stream)
 	{
 		if(!stdin_stdout)
-			fclose(p_file);
+			fclose(file);
 		return nullptr;
 	}
-	grk_stream_set_user_data(stream, (void*)p_file,
+	// validate
+	if(is_read_stream)
+	{
+		uint8_t buf[12];
+		size_t bytesRead;
+		bytesRead = fread(buf, 1, 12, file);
+		if(bytesRead != 12)
+			return nullptr;
+		auto bstream = (BufferedStream*)stream;
+	}
+
+	grk_stream_set_user_data(stream, (void*)file,
 							 (grk_stream_free_user_data_fn)(stdin_stdout ? nullptr : grkFree_file));
 	if(is_read_stream)
-		grk_stream_set_user_data_length(stream, grk_get_data_length_from_file(p_file));
+		grk_stream_set_user_data_length(stream, grk_get_data_length_from_file(file));
 	grk_stream_set_read_function(stream, (grk_stream_read_fn)grk_read_from_file);
 	grk_stream_set_write_function(stream, (grk_stream_write_fn)grk_write_to_file);
 	grk_stream_set_seek_function(stream, (grk_stream_seek_fn)grk_seek_in_file);

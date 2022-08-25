@@ -77,7 +77,7 @@ void log(grk_msg_callback msg_handler, void* data, char const* const format, Arg
 }
 
 const GRK_SUPPORTED_FILE_FMT supportedStdoutFileFormats[] = {
-	GRK_BMP_FMT, GRK_PNG_FMT, GRK_PXM_FMT, GRK_RAW_FMT, GRK_RAWL_FMT, GRK_JPG_FMT};
+	GRK_FMT_BMP, GRK_FMT_PNG, GRK_FMT_PXM, GRK_FMT_RAW, GRK_FMT_RAWL, GRK_FMT_JPG};
 
 const size_t maxICCProfileBufferLen = 10000000;
 
