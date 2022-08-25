@@ -115,6 +115,9 @@ struct BufferedStream : public IBufferedStream
 	bool supportsZeroCopy();
 	uint8_t* getZeroCopyPtr();
 
+	void setFormat(GRK_CODEC_FORMAT format);
+	GRK_CODEC_FORMAT getFormat(void);
+
   private:
 	~BufferedStream();
 	/**
@@ -207,6 +210,8 @@ struct BufferedStream : public IBufferedStream
 
 	// number of bytes read/written from the beginning of the stream
 	uint64_t stream_offset_;
+
+	GRK_CODEC_FORMAT format_;
 };
 
 template<typename TYPE>

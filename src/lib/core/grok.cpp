@@ -499,7 +499,7 @@ static void grkFree_file(void* p_user_data)
 		fclose((FILE*)p_user_data);
 }
 
-grk_stream* GRK_CALLCONV grk_stream_create_file_stream(const char* fname, size_t p_size,
+grk_stream* GRK_CALLCONV grk_stream_create_file_stream(const char* fname, size_t buffer_size,
 													   bool is_read_stream)
 {
 	bool stdin_stdout = !fname || !fname[0];
@@ -517,7 +517,7 @@ grk_stream* GRK_CALLCONV grk_stream_create_file_stream(const char* fname, size_t
 		if(!file)
 			return nullptr;
 	}
-	auto stream = grk_stream_new(p_size, is_read_stream);
+	auto stream = grk_stream_new(buffer_size, is_read_stream);
 	if(!stream)
 	{
 		if(!stdin_stdout)
@@ -528,14 +528,22 @@ grk_stream* GRK_CALLCONV grk_stream_create_file_stream(const char* fname, size_t
 	if(is_read_stream)
 	{
 		uint8_t buf[12];
-		size_t bytesRead;
-		bytesRead = fread(buf, 1, 12, file);
+		size_t bytesRead = fread(buf, 1, 12, file);
 		if(bytesRead != 12)
 			return nullptr;
-		auto bstream = (BufferedStream*)stream;
+		rewind(file);
+		auto bstream = BufferedStream::getImpl(stream);
+		GRK_CODEC_FORMAT fmt;
+		if(!grk_decompress_buffer_detect_format(buf, 12, &fmt))
+		{
+			GRK_ERROR("Unable to detect codec format.");
+			return nullptr;
+		}
+		if(is_read_stream)
+			bstream->setFormat(fmt);
 	}
 
-	grk_stream_set_user_data(stream, (void*)file,
+	grk_stream_set_user_data(stream, file,
 							 (grk_stream_free_user_data_fn)(stdin_stdout ? nullptr : grkFree_file));
 	if(is_read_stream)
 		grk_stream_set_user_data_length(stream, grk_get_data_length_from_file(file));

@@ -31,7 +31,7 @@ BufferedStream::BufferedStream(uint8_t* buffer, size_t buffer_size, bool is_inpu
 	: user_data_(nullptr), free_user_data_fn_(nullptr), user_data_length_(0), read_fn_(nullptr),
 	  zero_copy_read_fn_(nullptr), write_fn_(nullptr), seek_fn_(nullptr),
 	  status_(is_input ? GROK_STREAM_STATUS_INPUT : GROK_STREAM_STATUS_OUTPUT), buf_(nullptr),
-	  buffered_bytes_(0), read_bytes_seekable_(0), stream_offset_(0)
+	  buffered_bytes_(0), read_bytes_seekable_(0), stream_offset_(0), format_(GRK_CODEC_UNK)
 {
 	buf_ = new grk_buf8((!buffer && buffer_size) ? new uint8_t[buffer_size] : buffer, buffer_size,
 						buffer == nullptr);
@@ -43,6 +43,14 @@ BufferedStream::~BufferedStream()
 	if(free_user_data_fn_)
 		free_user_data_fn_(user_data_);
 	delete buf_;
+}
+void BufferedStream::setFormat(GRK_CODEC_FORMAT format)
+{
+	format_ = format;
+}
+GRK_CODEC_FORMAT BufferedStream::getFormat(void)
+{
+	return format_;
 }
 void BufferedStream::setUserData(void* data, grk_stream_free_user_data_fn freeUserDataFun)
 {

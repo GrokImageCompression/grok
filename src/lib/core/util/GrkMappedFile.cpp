@@ -212,10 +212,15 @@ grk_stream* create_mapped_file_read_stream(const char* fname)
 		GRK_ERROR("Unable to open memory mapped file %s", fname);
 		return nullptr;
 	}
-
+	size_t len = (size_t)size_proc(fd);
+	if(len < 12)
+	{
+		GRK_ERROR("File length %ld too short.", len);
+		return nullptr;
+	}
 	auto memStream = new MemStream();
 	memStream->fd = fd;
-	memStream->len = (size_t)size_proc(fd);
+	memStream->len = len;
 	auto mapped_view = grk_map(fd, memStream->len, true);
 	if(!mapped_view)
 	{
@@ -223,11 +228,19 @@ grk_stream* create_mapped_file_read_stream(const char* fname)
 		mem_map_free(memStream);
 		return nullptr;
 	}
+
+	GRK_CODEC_FORMAT fmt;
+	if(!grk_decompress_buffer_detect_format((uint8_t*)mapped_view, 12, &fmt))
+	{
+		GRK_ERROR("Unable to detect codec format.");
+		return nullptr;
+	}
 	memStream->buf = (uint8_t*)mapped_view;
 	memStream->off = 0;
 
 	// now treat mapped file like any other memory stream
 	auto streamImpl = new BufferedStream(memStream->buf, memStream->len, true);
+	streamImpl->setFormat(fmt);
 	auto stream = streamImpl->getWrapper();
 	grk_stream_set_user_data(stream, memStream, (grk_stream_free_user_data_fn)mem_map_free);
 	set_up_mem_stream(stream, memStream->len, true);

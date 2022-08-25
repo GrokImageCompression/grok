@@ -150,12 +150,11 @@ grk_stream* create_mem_stream(uint8_t* buf, size_t len, bool ownsBuffer, bool is
 	}
 	GRK_CODEC_FORMAT format;
 	if(!grk_decompress_buffer_detect_format(buf, len, &format))
-	{
 		return nullptr;
-	}
 
 	auto memStream = new MemStream(buf, 0, len, ownsBuffer);
 	auto streamImpl = new BufferedStream(buf, len, is_read_stream);
+	streamImpl->setFormat(format);
 	auto stream = streamImpl->getWrapper();
 	grk_stream_set_user_data((grk_stream*)stream, memStream, free_mem);
 	set_up_mem_stream((grk_stream*)stream, memStream->len, is_read_stream);
