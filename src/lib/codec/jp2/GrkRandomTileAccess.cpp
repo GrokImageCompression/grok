@@ -91,7 +91,7 @@ int GrkRandomTileAccess::main(int argc, char** argv)
 			spdlog::error("failed to create a stream from file {}", parameters.infile);
 			goto cleanup;
 		}
-		codec = grk_decompress_create(parameters.decod_format, stream);
+		codec = grk_decompress_create(stream);
 		if(!codec)
 		{
 			spdlog::error("failed to create codec from file {}", parameters.infile);

@@ -105,7 +105,7 @@ int main(int argc, char** argv)
 
     printf("Decompressing file %s of format %s\n",
             inputFilePath.c_str(),param.decod_format == GRK_CODEC_J2K ? "j2k" : "jp2");
-    codec = grk_decompress_create(param.decod_format, stream);
+    codec = grk_decompress_create(stream);
 	if (!codec){
         fprintf(stderr,"Failed to create codec.\n");
         goto beach;

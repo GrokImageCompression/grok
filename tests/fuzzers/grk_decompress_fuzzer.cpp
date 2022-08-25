@@ -19,67 +19,24 @@
 #include <cstring>
 #include "grok.h"
 
-static const unsigned char codeStreamHeader[] = {0xff, 0x4f};
-static const unsigned char fileFormatHeader[] = {0x6a, 0x50, 0x20, 0x20};
 extern "C" int LLVMFuzzerInitialize(int *argc, char ***argv);
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len);
-typedef struct {
-  const uint8_t *data;
-  size_t offset;
-  size_t len;
-} MemoryBuf;
-static size_t ReadCB(void *pBuffer, size_t numBytes, void *userData) {
- auto memBuf = (MemoryBuf *)userData;
-  if (memBuf->offset >= memBuf->len)
-    return 0;
-  if (memBuf->offset + numBytes >= memBuf->len) {
-    size_t bytesToRead = memBuf->len - memBuf->offset;
-    memcpy(pBuffer, memBuf->data + memBuf->offset, bytesToRead);
-    memBuf->offset = memBuf->len;
-
-    return bytesToRead;
-  }
-  if (numBytes == 0)
-    return 0;
-  memcpy(pBuffer, memBuf->data + memBuf->offset, numBytes);
-  memBuf->offset += numBytes;
-
-  return numBytes;
-}
-static bool SeekCB(size_t numBytes, void *userData) {
-  auto memBuf = (MemoryBuf *)userData;
-  memBuf->offset = numBytes;
-
-  return true;
-}
 struct Initializer {
-  Initializer() { grk_initialize(nullptr, 0); }
+  Initializer() {
+      grk_initialize(nullptr, 0);
+  }
 };
 int LLVMFuzzerInitialize(int *argc, char ***argv) {
   static Initializer init;
   return 0;
 }
 int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len) {
-  GRK_CODEC_FORMAT eCodecFormat;
-  if (len >= sizeof(codeStreamHeader) &&
-      memcmp(buf, codeStreamHeader, sizeof(codeStreamHeader)) == 0)
-    eCodecFormat = GRK_CODEC_J2K;
-  else if (len >= 4 + sizeof(fileFormatHeader) &&
-             memcmp(buf + 4, fileFormatHeader, sizeof(fileFormatHeader)) == 0)
-    eCodecFormat = GRK_CODEC_JP2;
-  else
-    return 0;
-
-  auto stream = grk_stream_new(1024, true);
-  MemoryBuf memBuf;
-  memBuf.data = buf;
-  memBuf.len = len;
-  memBuf.offset = 0;
-  grk_stream_set_user_data_length(stream, len);
-  grk_stream_set_read_function(stream, ReadCB);
-  grk_stream_set_seek_function(stream, SeekCB);
-  grk_stream_set_user_data(stream, &memBuf, nullptr);
-  auto codec = grk_decompress_create(eCodecFormat, stream);
+  auto stream = grk_stream_create_mem_stream(buf, len, false, true);
+  if (!stream)
+      goto cleanup;
+  auto codec = grk_decompress_create(stream);
+  if (!codec)
+      goto cleanup;
   grk_set_msg_handlers(nullptr, nullptr,
 					  nullptr, nullptr,
 					  nullptr, nullptr);

@@ -365,7 +365,7 @@ int GrkDump::main(int argc, char* argv[])
 			rc = EXIT_FAILURE;
 			goto cleanup;
 		}
-		codec = grk_decompress_create(parameters.decod_format, stream);
+		codec = grk_decompress_create(stream);
 		if(!codec)
 		{
 			spdlog::error("failed to codec for file {}", parameters.infile);

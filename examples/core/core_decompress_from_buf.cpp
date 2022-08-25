@@ -129,7 +129,7 @@ int main(int argc, char** argv)
 	}
 
 	// create codec
-	codec = grk_decompress_create(GRK_CODEC_J2K, stream);
+	codec = grk_decompress_create(stream);
 	if (!codec) {
         fprintf(stderr, "Failed to create codec\n");
         goto beach;

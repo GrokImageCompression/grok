@@ -122,7 +122,7 @@ int GrkTestTileDecoder::main(int argc, char* argv[])
 	}
 	param.core.max_layers = 0;
 	param.core.reduce = 0;
-	codec = grk_decompress_create(param.decod_format, stream);
+	codec = grk_decompress_create(stream);
 	if(!codec)
 	{
 		spdlog::error("test tile decoder: failed to create codec\n");

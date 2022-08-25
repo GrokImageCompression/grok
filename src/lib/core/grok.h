@@ -1172,18 +1172,6 @@ GRK_API grk_image_meta* GRK_CALLCONV grk_image_meta_new(void);
 GRK_API void GRK_CALLCONV grk_image_single_component_data_free(grk_image_comp* image);
 
 /**
- * Create an abstract stream. This function does nothing except
- * allocate memory and initialize abstract stream.
- *
- * @param	buffer_size   size of stream's double-buffer
- * @param	is_input	  if set to true then the stream will be
- *  an input stream, an output stream else.
- *
- * @return	stream object.
- */
-GRK_API grk_stream* GRK_CALLCONV grk_stream_new(size_t buffer_size, bool is_input);
-
-/**
  * Set read function
  *
  * @param		stream	    JPEG 2000 stream
@@ -1291,12 +1279,11 @@ GRK_API bool GRK_CALLCONV grk_decompress_buffer_detect_format(uint8_t* buffer, s
 /**
  * Create j2k/jp2 decompression codec
  *
- * @param format 	JPEG 2000 format
  * @param	stream	JPEG 2000 stream
  *
  * @return a handle to a decompressor if successful, otherwise nullptr
  * */
-GRK_API grk_codec* GRK_CALLCONV grk_decompress_create(GRK_CODEC_FORMAT format, grk_stream* stream);
+GRK_API grk_codec* GRK_CALLCONV grk_decompress_create(grk_stream* stream);
 
 /**
  * Initialize decompress parameters with default values

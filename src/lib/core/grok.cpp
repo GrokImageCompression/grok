@@ -65,6 +65,13 @@ GrkCodec::~GrkCodec()
 	delete decompressor_;
 }
 
+static grk_stream* grk_stream_new(size_t buffer_size, bool is_input)
+{
+	auto streamImpl = new BufferedStream(nullptr, buffer_size, is_input);
+
+	return streamImpl->getWrapper();
+}
+
 static bool is_plugin_initialized = false;
 bool GRK_CALLCONV grk_initialize(const char* pluginPath, uint32_t numthreads)
 {
@@ -232,15 +239,22 @@ bool GRK_CALLCONV grk_decompress_detect_format(const char* fileName, GRK_CODEC_F
 
 grk_codec* GRK_CALLCONV grk_decompress_create_from_file(const char* file_name)
 {
-	GrkCodec* codec = nullptr;
+	auto stream = create_mapped_file_read_stream(file_name);
+	if(!stream)
+	{
+		GRK_ERROR("Unable to create stream for file %s.", file_name);
+		return nullptr;
+	}
+	auto codec = grk_decompress_create(stream);
 
-	return &codec->obj;
+	return codec;
 }
 
-grk_codec* GRK_CALLCONV grk_decompress_create(GRK_CODEC_FORMAT p_format, grk_stream* stream)
+grk_codec* GRK_CALLCONV grk_decompress_create(grk_stream* stream)
 {
 	GrkCodec* codec = nullptr;
-	switch(p_format)
+	auto bstream = BufferedStream::getImpl(stream);
+	switch(bstream->getFormat())
 	{
 		case GRK_CODEC_J2K:
 			codec = new GrkCodec(stream);
@@ -844,13 +858,6 @@ void GRK_CALLCONV grk_plugin_stop_batch_decompress(void)
 		if(func)
 			func();
 	}
-}
-
-grk_stream* GRK_CALLCONV grk_stream_new(size_t buffer_size, bool is_input)
-{
-	auto streamImpl = new BufferedStream(nullptr, buffer_size, is_input);
-
-	return streamImpl->getWrapper();
 }
 
 void GRK_CALLCONV grk_stream_set_read_function(grk_stream* stream, grk_stream_read_fn func)

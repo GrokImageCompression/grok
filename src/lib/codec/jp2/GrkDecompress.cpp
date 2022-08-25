@@ -1147,7 +1147,7 @@ int GrkDecompress::preProcess(grk_plugin_decompress_callback_info* info)
 	}
 	if(!info->codec)
 	{
-		info->codec = grk_decompress_create(decod_format, info->stream);
+		info->codec = grk_decompress_create(info->stream);
 		if(!info->codec)
 		{
 			spdlog::error("grk_decompress: failed to create codec from file {}", infile);
