@@ -261,7 +261,7 @@ bool GRK_CALLCONV grk_decompress_detect_format(const char* fileName, GRK_CODEC_F
 	return grk_decompress_buffer_detect_format(buf, 12, fmt);
 }
 
-grk_codec* GRK_CALLCONV grk_decompress_create_from_buffer(uint8_t* buf, size_t len)
+static grk_codec* grk_decompress_create_from_buffer(uint8_t* buf, size_t len)
 {
 	auto stream = grk_stream_create_mem_stream(buf, len, false, true);
 	if(!stream)
@@ -279,7 +279,7 @@ grk_codec* GRK_CALLCONV grk_decompress_create_from_buffer(uint8_t* buf, size_t l
 	return codec;
 }
 
-grk_codec* GRK_CALLCONV grk_decompress_create_from_file(const char* file_name)
+static grk_codec* grk_decompress_create_from_file(const char* file_name)
 {
 	auto stream = create_mapped_file_read_stream(file_name);
 	if(!stream)
@@ -306,20 +306,31 @@ void GRK_CALLCONV grk_decompress_set_default_params(grk_decompress_core_params* 
 			GRK_RANDOM_ACCESS_TLM | GRK_RANDOM_ACCESS_PLM | GRK_RANDOM_ACCESS_PLT;
 	}
 }
-bool GRK_CALLCONV grk_decompress_init(grk_codec* codecWrapper,
-									  grk_decompress_core_params* parameters)
+grk_codec* GRK_CALLCONV grk_decompress_init(grk_decompress_init_params* init_params,
+											grk_decompress_core_params* core_params)
 {
-	if(codecWrapper && parameters)
+	if(!init_params || !core_params)
+		return nullptr;
+	grk_codec* codecWrapper = nullptr;
+	if(init_params->src_file)
+		codecWrapper = grk_decompress_create_from_file(init_params->src_file);
+	else if(init_params->src_buf)
+		codecWrapper =
+			grk_decompress_create_from_buffer(init_params->src_buf, init_params->src_buf_len);
+	if(!codecWrapper)
+		return nullptr;
+
+	auto codec = GrkCodec::getImpl(codecWrapper);
+	if(!codec->decompressor_)
 	{
-		auto codec = GrkCodec::getImpl(codecWrapper);
-		if(codec->decompressor_)
-		{
-			codec->decompressor_->init(parameters);
-			return true;
-		}
-		return false;
+		grk_object_unref(codecWrapper);
+
+		return nullptr;
 	}
-	return false;
+
+	codec->decompressor_->init(core_params);
+
+	return codecWrapper;
 }
 bool GRK_CALLCONV grk_decompress_read_header(grk_codec* codecWrapper, grk_header_info* header_info)
 {

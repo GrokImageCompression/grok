@@ -1136,18 +1136,15 @@ int GrkDecompress::preProcess(grk_plugin_decompress_callback_info* info)
 	*/
 	if(!info->codec)
 	{
-		info->codec = grk_decompress_create_from_file(infile);
-		if(!info->codec)
-		{
-			spdlog::error("grk_decompress: failed to create codec from file {}", infile);
-			goto cleanup;
-		}
-
 		grk_set_msg_handlers(parameters->verbose_ ? infoCallback : nullptr, nullptr,
 							 parameters->verbose_ ? warningCallback : nullptr, nullptr,
 							 errorCallback, nullptr);
 
-		if(!grk_decompress_init(info->codec, &(parameters->core)))
+		grk_decompress_init_params init_params;
+		memset(&init_params, 0, sizeof(init_params));
+		init_params.src_file = infile;
+		info->codec = grk_decompress_init(&init_params, &parameters->core);
+		if(!info->codec)
 		{
 			spdlog::error("grk_decompress: failed to set up the decompressor");
 			goto cleanup;

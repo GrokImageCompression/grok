@@ -110,19 +110,18 @@ int main(int argc, char** argv)
 	// initialize library
 	grk_initialize(nullptr, 0);
 
-	// create codec
-	codec = grk_decompress_create_from_buffer(img, sizeof(img));
-	if (!codec) {
-        fprintf(stderr, "Failed to create codec\n");
-        goto beach;
-	}
+	grk_decompress_init_params init_params;
+	memset(&init_params,0,sizeof(init_params));
+	init_params.src_buf = img;
+	init_params.src_buf_len = sizeof(img);
 
 	// set library message handlers
 	grk_set_msg_handlers(infoCallback, nullptr, warningCallback, nullptr,
 						 errorCallback, nullptr);
 
 	// initialize decompressor
-	if(!grk_decompress_init(codec, &param.core))
+	codec = grk_decompress_init(&init_params, &param.core);
+	if(!codec)
 	{
 		fprintf(stderr, "Failed to set up decompressor\n");
 		goto beach;

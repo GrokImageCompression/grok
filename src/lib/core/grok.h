@@ -1288,28 +1288,6 @@ GRK_API bool GRK_CALLCONV grk_decompress_detect_format(const char* fileName, GRK
  */
 GRK_API bool GRK_CALLCONV grk_decompress_buffer_detect_format(uint8_t* buffer, size_t len,
 															  GRK_CODEC_FORMAT* fmt);
-
-/**
- * Create j2k/jp2 decompression codec from file
- *
- * @param file_name file name
- *
- * @return a handle to a decompressor if successful, otherwise nullptr
- *
- */
-GRK_API grk_codec* GRK_CALLCONV grk_decompress_create_from_file(const char* file_name);
-
-/**
- * Create j2k/jp2 decompression codec from memory buffer
- *
- * @param buf buffer
- * @param len buffer length
- *
- * @return a handle to a decompressor if successful, otherwise nullptr
- *
- */
-GRK_API grk_codec* GRK_CALLCONV grk_decompress_create_from_buffer(uint8_t* buf, size_t len);
-
 /**
  * Initialize decompress parameters with default values
  *
@@ -1318,15 +1296,15 @@ GRK_API grk_codec* GRK_CALLCONV grk_decompress_create_from_buffer(uint8_t* buf, 
 GRK_API void GRK_CALLCONV grk_decompress_set_default_params(grk_decompress_core_params* parameters);
 
 /**
- * Set up decompressor with decompress parameters
+ * Initialize decompressor
  *
- * @param codec 		decompression codec
- * @param parameters 	decompression parameters
+ * @param init_params 	decompress initialization parameters
+ * @param core_params 	decompress core parameters
  *
- * @return true			if the decompressor is correctly set
+ * @return grk_codec* if successful, otherwise NULL
  */
-GRK_API bool GRK_CALLCONV grk_decompress_init(grk_codec* codec,
-											  grk_decompress_core_params* parameters);
+GRK_API grk_codec* GRK_CALLCONV grk_decompress_init(grk_decompress_init_params* init_params,
+											grk_decompress_core_params* core_params);
 
 /**
  * Decompress JPEG 2000 header

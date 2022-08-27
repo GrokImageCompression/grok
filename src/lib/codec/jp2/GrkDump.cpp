@@ -357,15 +357,11 @@ int GrkDump::main(int argc, char* argv[])
 			if(nextFile(imageno, dirptr, &inputFolder, &parameters))
 				continue;
 		}
-		codec = grk_decompress_create_from_file(parameters.infile);
+		grk_decompress_init_params init_params;
+		memset(&init_params, 0, sizeof(init_params));
+		init_params.src_file = parameters.infile;
+		codec = grk_decompress_init(&init_params, &parameters.core);
 		if(!codec)
-		{
-			spdlog::error("failed to codec for file {}", parameters.infile);
-			rc = EXIT_FAILURE;
-			goto cleanup;
-		}
-		/* Setup the decompressor decoding parameters using user parameters */
-		if(!grk_decompress_init(codec, &parameters.core))
 		{
 			spdlog::error("grk_dump: failed to set up the decompressor");
 			rc = EXIT_FAILURE;

@@ -35,14 +35,18 @@ int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len) {
   grk_header_info headerInfo;
   grk_decompress_core_params parameters;
   uint32_t x0, y0, width, height;
-  auto codec = grk_decompress_create_from_buffer(const_cast<uint8_t*>(buf),len);
-  if (!codec)
-      goto cleanup;
+  grk_codec *codec = nullptr;
   grk_set_msg_handlers(nullptr, nullptr,
 					  nullptr, nullptr,
 					  nullptr, nullptr);
   grk_decompress_set_default_params(&parameters);
-  grk_decompress_init(codec, &parameters);
+  grk_decompress_init_params init_params;
+  memset(&init_params,0,sizeof(init_params));
+  init_params.src_buf = const_cast<uint8_t*>(buf);
+  init_params.src_buf_len = len;
+  codec = grk_decompress_init(&init_params, &parameters);
+  if (!codec)
+      goto cleanup;
   memset(&headerInfo,0,sizeof(grk_header_info));
   if (!grk_decompress_read_header(codec, &headerInfo))
     goto cleanup;

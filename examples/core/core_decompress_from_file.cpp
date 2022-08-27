@@ -90,18 +90,17 @@ int main(int argc, char** argv)
 	// create j2k file stream
     auto inputFileStr = inputFilePath.c_str();
     printf("Decompressing file %s\n", inputFilePath.c_str());
-    codec = grk_decompress_create_from_file(inputFileStr);
-	if (!codec){
-        fprintf(stderr,"Failed to create codec.\n");
-        goto beach;
-	}
 
 	// set message handlers for info,warning and error
 	grk_set_msg_handlers(infoCallback, nullptr, warningCallback, nullptr,
 						 errorCallback, nullptr);
 
 	// initialize decompressor
-	if(!grk_decompress_init(codec, &param.core))
+    grk_decompress_init_params init_params;
+    memset(&init_params,0,sizeof(init_params));
+    init_params.src_file = inputFileStr;
+    codec = grk_decompress_init(&init_params, &param.core);
+	if(!codec)
 	{
 		fprintf(stderr, "Failed to set up decompressor\n");
 		goto beach;

@@ -76,23 +76,15 @@ int GrkRandomTileAccess::main(int argc, char** argv)
 		memset(&parameters, 0, sizeof(grk_decompress_parameters));
 		grk_decompress_set_default_params(&parameters.core);
 		strncpy(parameters.infile, argv[1], GRK_PATH_LEN - 1);
-		if(!grk_decompress_detect_format(parameters.infile, &parameters.decod_format))
-		{
-			spdlog::error("Failed to detect JPEG 2000 file format for file {}", parameters.infile);
-			return EXIT_FAILURE;
-		}
 
 		/* Index of corner tiles */
 		uint16_t tile[4];
-		codec = grk_decompress_create_from_file(parameters.infile);
-		if(!codec)
-		{
-			spdlog::error("failed to create codec from file {}", parameters.infile);
-			goto cleanup;
-		}
 
-		/* Set up the decompress parameters using user parameters */
-		if(!grk_decompress_init(codec, &parameters.core))
+		grk_decompress_init_params init_params;
+		memset(&init_params, 0, sizeof(init_params));
+		init_params.src_file = parameters.infile;
+		codec = grk_decompress_init(&init_params, &parameters.core);
+		if(!codec)
 		{
 			spdlog::error("random tile processor: failed to set up decompressor");
 			goto cleanup;
