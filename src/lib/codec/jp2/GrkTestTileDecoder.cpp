@@ -40,7 +40,6 @@ int GrkTestTileDecoder::main(int argc, char* argv[])
 	grk_decompress_parameters param;
 	memset(&param, 0, sizeof(grk_decompress_parameters));
 	grk_codec* codec = nullptr;
-	grk_stream* stream = nullptr;
 	uint16_t tile_index = 0;
 	int32_t rc = EXIT_FAILURE;
 
@@ -108,21 +107,8 @@ int GrkTestTileDecoder::main(int argc, char* argv[])
 	}
 
 	grk_initialize(nullptr, 0);
-	stream = grk_stream_create_mapped_file_stream(input_file, true);
-	if(!stream)
-	{
-		spdlog::error("failed to create a stream from file {}", input_file);
-		goto beach;
-	}
 	grk_decompress_set_default_params(&param.core);
-	if(!grk_decompress_detect_format(input_file, &param.decod_format))
-	{
-		spdlog::error("failed to parse input file format");
-		goto beach;
-	}
-	param.core.max_layers = 0;
-	param.core.reduce = 0;
-	codec = grk_decompress_create(stream);
+	codec = grk_decompress_create_from_file(input_file);
 	if(!codec)
 	{
 		spdlog::error("test tile decoder: failed to create codec\n");
@@ -152,7 +138,6 @@ int GrkTestTileDecoder::main(int argc, char* argv[])
 	grk_deinitialize();
 
 beach:
-	grk_object_unref(stream);
 	grk_object_unref(codec);
 
 	return rc;

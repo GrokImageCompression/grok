@@ -833,6 +833,19 @@ typedef void (*grk_io_register_reclaim_callback)(grk_io_init io_init,
 typedef bool (*grk_io_pixels_callback)(uint32_t threadId, grk_io_buf buffer, void* user_data);
 
 /**
+ * Decompress codec initialization parameters
+ */
+typedef struct _grk_decompress_init_params
+{
+	// source file name
+	const char* src_file;
+
+	// source buffer and buffer length
+	uint8_t* src_buf;
+	size_t src_buf_len;
+} grk_decompress_init_params;
+
+/**
  * Core decompress parameters
  * */
 typedef struct _grk_decompress_core_params
@@ -1296,15 +1309,6 @@ GRK_API grk_codec* GRK_CALLCONV grk_decompress_create_from_file(const char* file
  *
  */
 GRK_API grk_codec* GRK_CALLCONV grk_decompress_create_from_buffer(uint8_t* buf, size_t len);
-
-/**
- * Create j2k/jp2 decompression codec
- *
- * @param	stream	JPEG 2000 stream
- *
- * @return a handle to a decompressor if successful, otherwise nullptr
- * */
-GRK_API grk_codec* GRK_CALLCONV grk_decompress_create(grk_stream* stream);
 
 /**
  * Initialize decompress parameters with default values

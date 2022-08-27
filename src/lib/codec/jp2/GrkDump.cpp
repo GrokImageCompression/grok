@@ -265,7 +265,6 @@ int GrkDump::main(int argc, char* argv[])
 	memset(&parameters, 0, sizeof(grk_decompress_parameters));
 	grk_image* image = nullptr; /* Image structure */
 	grk_codec* codec = nullptr; /* Handle to a decompressor */
-	grk_stream* stream = nullptr; /* Stream */
 
 	size_t num_images, imageno;
 	inputFolder inputFolder;
@@ -358,14 +357,7 @@ int GrkDump::main(int argc, char* argv[])
 			if(nextFile(imageno, dirptr, &inputFolder, &parameters))
 				continue;
 		}
-		stream = grk_stream_create_mapped_file_stream(parameters.infile, true);
-		if(!stream)
-		{
-			spdlog::error("failed to create a stream from file {}", parameters.infile);
-			rc = EXIT_FAILURE;
-			goto cleanup;
-		}
-		codec = grk_decompress_create(stream);
+		codec = grk_decompress_create_from_file(parameters.infile);
 		if(!codec)
 		{
 			spdlog::error("failed to codec for file {}", parameters.infile);
@@ -389,13 +381,6 @@ int GrkDump::main(int argc, char* argv[])
 		}
 
 		grk_dump_codec(codec, inputFolder.flag, fout);
-		/* close the byte stream */
-		if(stream)
-		{
-			grk_object_unref(stream);
-			stream = nullptr;
-		}
-
 		/* free remaining structures */
 		if(codec)
 		{
@@ -416,9 +401,6 @@ cleanup:
 		free(dirptr->filename);
 		free(dirptr);
 	}
-	/* close the byte stream */
-	grk_object_unref(stream);
-	/* free remaining structures */
 	grk_object_unref(codec);
 	if(fout)
 		fclose(fout);

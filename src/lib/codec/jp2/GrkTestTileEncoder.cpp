@@ -92,12 +92,10 @@ int GrkTestTileEncoder::main(int argc, char* argv[])
 		goto cleanup;
 
 	nb_tiles = (image_width / tile_width) * (image_height / tile_height);
-	data_size = (uint64_t)tile_width * tile_height * num_comps * ((comp_prec + 7) / 8);
+	data_size = (uint64_t)tile_width * tile_height * num_comps * (uint8_t)((comp_prec + 7) / 8);
 	if(!data_size)
 		goto cleanup;
-	data = (uint8_t*)malloc(data_size * sizeof(uint8_t));
-	if(!data)
-		goto cleanup;
+	data = new uint8_t[data_size];
 	spdlog::info("Compressing random values -> keep in mind that this is very "
 				 "hard to compress");
 	for(i = 0; i < data_size; ++i)
@@ -107,8 +105,6 @@ int GrkTestTileEncoder::main(int argc, char* argv[])
 	param.numlayers = 1;
 	param.allocationByQuality = true;
 	param.layer_distortion[0] = 20;
-	param.tx0 = 0;
-	param.ty0 = 0;
 	param.tile_size_on = true;
 	param.t_width = tile_width;
 	param.t_height = tile_height;
@@ -140,17 +136,11 @@ int GrkTestTileEncoder::main(int argc, char* argv[])
 	}
 	len = strlen(output_file);
 	if(strcmp(output_file + len - 4, ".jp2") == 0)
-	{
 		codec = grk_compress_create(GRK_CODEC_JP2, stream);
-	}
 	else
-	{
 		codec = grk_compress_create(GRK_CODEC_J2K, stream);
-	}
 	if(!codec)
-	{
 		goto cleanup;
-	}
 	grk_set_msg_handlers(grk::infoCallback, nullptr, grk::warningCallback, nullptr,
 						 grk::errorCallback, nullptr);
 	image = grk_image_new(num_comps, params, GRK_CLRSPC_SRGB);
@@ -194,7 +184,7 @@ cleanup:
 	grk_object_unref(codec);
 	grk_object_unref(&image->obj);
 
-	free(data);
+	delete[] data;
 	grk_deinitialize();
 
 	return rc;

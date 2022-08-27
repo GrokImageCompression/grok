@@ -296,11 +296,6 @@ grk_codec* GRK_CALLCONV grk_decompress_create_from_file(const char* file_name)
 
 	return codec;
 }
-
-grk_codec* GRK_CALLCONV grk_decompress_create(grk_stream* stream)
-{
-	return grk_decompress_create(stream, false);
-}
 void GRK_CALLCONV grk_decompress_set_default_params(grk_decompress_core_params* parameters)
 {
 	if(parameters)
@@ -457,32 +452,32 @@ grk_codec* GRK_CALLCONV grk_compress_create(GRK_CODEC_FORMAT p_format, grk_strea
 }
 void GRK_CALLCONV grk_compress_set_default_params(grk_cparameters* parameters)
 {
-	if(parameters)
-	{
-		memset(parameters, 0, sizeof(grk_cparameters));
-		/* default coding parameters */
-		parameters->rsiz = GRK_PROFILE_NONE;
-		parameters->max_comp_size = 0;
-		parameters->numresolution = GRK_COMP_PARAM_DEFAULT_NUMRESOLUTION;
-		parameters->cblockw_init = GRK_COMP_PARAM_DEFAULT_CBLOCKW;
-		parameters->cblockh_init = GRK_COMP_PARAM_DEFAULT_CBLOCKH;
-		parameters->numgbits = 2;
-		parameters->prog_order = GRK_COMP_PARAM_DEFAULT_PROG_ORDER;
-		parameters->roi_compno = -1; /* no ROI */
-		parameters->subsampling_dx = 1;
-		parameters->subsampling_dy = 1;
-		parameters->enableTilePartGeneration = false;
-		parameters->decod_format = GRK_FMT_UNK;
-		parameters->cod_format = GRK_FMT_UNK;
-		parameters->layer_rate[0] = 0;
-		parameters->numlayers = 0;
-		parameters->allocationByRateDistoration = false;
-		parameters->allocationByQuality = false;
-		parameters->writePLT = false;
-		parameters->writeTLM = false;
-		parameters->deviceId = 0;
-		parameters->repeats = 1;
-	}
+	if(!parameters)
+		return;
+
+	memset(parameters, 0, sizeof(grk_cparameters));
+	/* default coding parameters */
+	parameters->rsiz = GRK_PROFILE_NONE;
+	parameters->max_comp_size = 0;
+	parameters->numresolution = GRK_COMP_PARAM_DEFAULT_NUMRESOLUTION;
+	parameters->cblockw_init = GRK_COMP_PARAM_DEFAULT_CBLOCKW;
+	parameters->cblockh_init = GRK_COMP_PARAM_DEFAULT_CBLOCKH;
+	parameters->numgbits = 2;
+	parameters->prog_order = GRK_COMP_PARAM_DEFAULT_PROG_ORDER;
+	parameters->roi_compno = -1; /* no ROI */
+	parameters->subsampling_dx = 1;
+	parameters->subsampling_dy = 1;
+	parameters->enableTilePartGeneration = false;
+	parameters->decod_format = GRK_FMT_UNK;
+	parameters->cod_format = GRK_FMT_UNK;
+	parameters->layer_rate[0] = 0;
+	parameters->numlayers = 0;
+	parameters->allocationByRateDistoration = false;
+	parameters->allocationByQuality = false;
+	parameters->writePLT = false;
+	parameters->writeTLM = false;
+	parameters->deviceId = 0;
+	parameters->repeats = 1;
 }
 bool GRK_CALLCONV grk_compress_init(grk_codec* codecWrapper, grk_cparameters* parameters,
 									grk_image* p_image)
