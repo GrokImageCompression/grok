@@ -76,8 +76,12 @@ void log(grk_msg_callback msg_handler, void* data, char const* const format, Arg
 	}
 }
 
-const GRK_SUPPORTED_FILE_FMT supportedStdoutFileFormats[] = {
-	GRK_FMT_BMP, GRK_FMT_PNG, GRK_FMT_PXM, GRK_FMT_RAW, GRK_FMT_RAWL, GRK_FMT_JPG};
+const GRK_SUPPORTED_FILE_FMT supportedStdoutFileFormatsCompress[] = {
+	GRK_FMT_PNG, GRK_FMT_PXM, GRK_FMT_RAW, GRK_FMT_RAWL, GRK_FMT_JPG
+};
+const GRK_SUPPORTED_FILE_FMT supportedStdoutFileFormatsDecompress[] = {
+    GRK_FMT_BMP, GRK_FMT_PNG, GRK_FMT_PXM, GRK_FMT_RAW, GRK_FMT_RAWL, GRK_FMT_JPG
+};
 
 const size_t maxICCProfileBufferLen = 10000000;
 
@@ -118,7 +122,7 @@ bool parseWindowBounds(char* inArg, float* dw_x0, float* dw_y0, float* dw_x1,
 		float* dw_y1);
 bool safe_fclose(FILE* fd);
 bool useStdio(std::string filename);
-bool supportedStdioFormat(GRK_SUPPORTED_FILE_FMT format);
+bool supportedStdioFormat(GRK_SUPPORTED_FILE_FMT format, bool compress);
 bool grk_open_for_output(FILE** fdest, const char* outfile, bool writeToStdout);
 bool grk_set_binary_mode(FILE* file);
 GRK_SUPPORTED_FILE_FMT grk_get_file_format(const char* filename);

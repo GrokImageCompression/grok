@@ -150,15 +150,17 @@ bool useStdio(std::string  filename)
 	return  filename.empty();
 }
 
-bool supportedStdioFormat(GRK_SUPPORTED_FILE_FMT format)
+bool supportedStdioFormat(GRK_SUPPORTED_FILE_FMT format, bool compress)
 {
-	for(size_t i = 0; i < sizeof(supportedStdoutFileFormats) / sizeof(GRK_SUPPORTED_FILE_FMT); ++i)
-	{
-		if(supportedStdoutFileFormats[i] == format)
-		{
-			return true;
-		}
-	}
+    if (compress) {
+        for(size_t i = 0; i < sizeof(supportedStdoutFileFormatsCompress) / sizeof(GRK_SUPPORTED_FILE_FMT); ++i)
+            if(supportedStdoutFileFormatsCompress[i] == format)
+                return true;
+    } else {
+        for(size_t i = 0; i < sizeof(supportedStdoutFileFormatsDecompress) / sizeof(GRK_SUPPORTED_FILE_FMT); ++i)
+            if(supportedStdoutFileFormatsDecompress[i] == format)
+                return true;
+    }
 	return false;
 }
 

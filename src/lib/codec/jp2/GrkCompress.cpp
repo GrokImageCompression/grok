@@ -827,7 +827,7 @@ int GrkCompress::parseCommandLine(int argc, char** argv, CompressInitParams* ini
 			{
 				bool fromStdin =
 					inForArg.isSet() &&
-					grk::supportedStdioFormat((GRK_SUPPORTED_FILE_FMT)parameters->decod_format);
+					grk::supportedStdioFormat((GRK_SUPPORTED_FILE_FMT)parameters->decod_format,true);
 				if(!fromStdin)
 				{
 					spdlog::error("Missing input file");

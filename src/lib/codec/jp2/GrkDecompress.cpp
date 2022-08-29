@@ -609,7 +609,7 @@ int GrkDecompress::parseCommandLine(int argc, char** argv, DecompressInitParams*
 			{
 				bool toStdout =
 					outForArg.isSet() &&
-					grk::supportedStdioFormat((GRK_SUPPORTED_FILE_FMT)parameters->cod_format);
+					grk::supportedStdioFormat((GRK_SUPPORTED_FILE_FMT)parameters->cod_format,false);
 				if(!toStdout)
 				{
 					spdlog::error("Missing output file");
