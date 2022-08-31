@@ -1054,7 +1054,7 @@ bool GrkImage::validateICC(void)
 
 	// image properties such as subsampling and number of components
 	// are consistent with colour space
-	bool imagePropertiesMatchColourSpace = false;
+	bool imagePropertiesMatchICCColourSpace = false;
 
 	// ICC colour space conversion is supported for this colour space
 	bool iccColourSpaceCanBeConverted = false;
@@ -1076,33 +1076,33 @@ bool GrkImage::validateICC(void)
 			case cmsSigLabData:
 				imageColourSpaceMatchesICCColourSpace =
 					(color_space == GRK_CLRSPC_DEFAULT_CIE || color_space == GRK_CLRSPC_CUSTOM_CIE);
-				imagePropertiesMatchColourSpace = numcomps >= 3;
+				imagePropertiesMatchICCColourSpace = numcomps >= 3;
 				break;
 			case cmsSigYCbCrData:
 				imageColourSpaceMatchesICCColourSpace =
 					(color_space == GRK_CLRSPC_SYCC || color_space == GRK_CLRSPC_EYCC);
 				if(numcomps < 3)
-					imagePropertiesMatchColourSpace = false;
+					imagePropertiesMatchICCColourSpace = false;
 				else
 				{
 					auto compLuma = comps;
-					imagePropertiesMatchColourSpace =
+					imagePropertiesMatchICCColourSpace =
 						compLuma->dx == 1 && compLuma->dy == 1 && isSubsampled();
 				}
 				break;
 			case cmsSigRgbData:
 				imageColourSpaceMatchesICCColourSpace = color_space == GRK_CLRSPC_SRGB;
-				imagePropertiesMatchColourSpace = numcomps >= 3 && !isSubsampled();
+				imagePropertiesMatchICCColourSpace = numcomps >= 3 && !isSubsampled();
 				iccColourSpaceCanBeConverted = true;
 				break;
 			case cmsSigGrayData:
 				imageColourSpaceMatchesICCColourSpace = color_space == GRK_CLRSPC_GRAY;
-				imagePropertiesMatchColourSpace = numcomps <= 2;
+				imagePropertiesMatchICCColourSpace = numcomps <= 2;
 				iccColourSpaceCanBeConverted = true;
 				break;
 			case cmsSigCmykData:
 				imageColourSpaceMatchesICCColourSpace = color_space == GRK_CLRSPC_CMYK;
-				imagePropertiesMatchColourSpace = numcomps == 4 && !isSubsampled();
+				imagePropertiesMatchICCColourSpace = numcomps == 4 && !isSubsampled();
 				break;
 			default:
 				break;
@@ -1127,12 +1127,12 @@ bool GrkImage::validateICC(void)
 				 getICCColourSpaceString((cmsColorSpaceSignature)iccColourSpace).c_str());
 		return false;
 	}
-	if(!imageColourSpaceMatchesICCColourSpace)
+	if(!imagePropertiesMatchICCColourSpace)
 		GRK_WARN(
 			"Image subsampling / number of components do not match ICC colour space %s. Ignoring",
 			getICCColourSpaceString((cmsColorSpaceSignature)iccColourSpace).c_str());
 
-	return imagePropertiesMatchColourSpace;
+	return imagePropertiesMatchICCColourSpace;
 }
 
 bool GrkImage::applyColourManagement(void)
@@ -1174,7 +1174,7 @@ bool GrkImage::applyColourManagement(void)
 				if(!forceRGB)
 				{
 					GRK_WARN("");
-					GRK_WARN("The input file contains a color profile");
+					GRK_WARN("The input file contains an ICC profile");
 					GRK_WARN("but the codec is unable to store this profile"
 							 " in the output file.");
 					GRK_WARN("The profile will therefore be applied to the output"
