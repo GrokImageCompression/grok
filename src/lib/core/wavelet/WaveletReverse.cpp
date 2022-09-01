@@ -1614,10 +1614,9 @@ class Partial53 : public PartialInterleaver<T, FILTER_WIDTH, VERT_PASS_WIDTH>
 	}
 
   private:
-	void adjust_bounds(dwt_data<T>* dwt, int64_t sn_full, int64_t dn_full, int64_t* sn, int64_t* dn)
+	void adjust_bounds(dwt_data<T>* dwt, [[maybe_unused]] int64_t sn_full,
+					   [[maybe_unused]] int64_t dn_full, int64_t* sn, int64_t* dn)
 	{
-		GRK_UNUSED(sn_full);
-		GRK_UNUSED(dn_full);
 		if((uint64_t)dwt->memH < (uint64_t)dwt->memL && *sn == *dn)
 		{
 			assert(dn_full == sn_full - 1);
@@ -1809,8 +1808,7 @@ bool WaveletReverse::decompress_partial_tile(ISparseCanvas* sa,
 	if(!fullResTopLevel->width() || !fullResTopLevel->height())
 		return true;
 
-	const uint16_t debug_compno = 0;
-	GRK_UNUSED(debug_compno);
+	[[maybe_unused]] const uint16_t debug_compno = 0;
 	const uint32_t HORIZ_PASS_HEIGHT = sizeof(T) / sizeof(int32_t);
 	const uint32_t pad = FILTER_WIDTH * std::max<uint32_t>(HORIZ_PASS_HEIGHT, VERT_PASS_WIDTH) *
 						 sizeof(T) / sizeof(int32_t);

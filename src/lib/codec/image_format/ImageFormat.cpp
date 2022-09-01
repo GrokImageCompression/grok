@@ -20,9 +20,9 @@
 #include "common.h"
 #include "FileStreamIO.h"
 
-static bool grkReclaimCallback(uint32_t threadId, grk_io_buf buffer, void* io_user_data)
+static bool grkReclaimCallback([[maybe_unused]] uint32_t threadId, grk_io_buf buffer,
+							   void* io_user_data)
 {
-	GRK_UNUSED(threadId);
 	auto pool = (BufferPool*)io_user_data;
 	if(pool)
 		pool->put(GrkIOBuf(buffer));
@@ -90,9 +90,8 @@ bool ImageFormat::encodePixels(uint32_t threadId, grk_io_buf pixels)
 /***
  * Common core pixel encoding
  */
-bool ImageFormat::encodePixelsCore(uint32_t threadId, grk_io_buf pixels)
+bool ImageFormat::encodePixelsCore([[maybe_unused]] uint32_t threadId, grk_io_buf pixels)
 {
-	GRK_UNUSED(threadId);
 #ifdef GROK_HAVE_URING
 	serializer.initPooledRequest();
 #endif
@@ -116,15 +115,13 @@ bool ImageFormat::encodePixelsCore(uint32_t threadId, grk_io_buf pixels)
 	return success;
 }
 // reclaim to local pool if library reclamation is not enabled
-void ImageFormat::applicationOrchestratedReclaim(GrkIOBuf buf)
+void ImageFormat::applicationOrchestratedReclaim([[maybe_unused]] GrkIOBuf buf)
 {
 #ifndef GROK_HAVE_URING
 	if(!serializer.getIOReclaimCallback())
 	{
 		pool.put(buf);
 	}
-#else
-	GRK_UNUSED(buf);
 #endif
 }
 /***

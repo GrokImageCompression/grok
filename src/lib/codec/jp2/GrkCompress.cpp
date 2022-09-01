@@ -89,9 +89,8 @@ BOOL sig_handler(DWORD signum)
 	}
 }
 #else
-void sig_handler(int signum)
+void sig_handler([[maybe_unused]] int signum)
 {
-	GRK_UNUSED(signum);
 	exit_func();
 }
 #endif
@@ -414,9 +413,8 @@ static bool isDecodedFormatSupported(GRK_SUPPORTED_FILE_FMT format)
 class GrokOutput : public TCLAP::StdOutput
 {
   public:
-	virtual void usage(TCLAP::CmdLineInterface& c)
+	virtual void usage([[maybe_unused]] TCLAP::CmdLineInterface& c)
 	{
-		GRK_UNUSED(c);
 		compress_help_display();
 	}
 };
@@ -2252,7 +2250,7 @@ cleanup:
 		{
 			bool allocated = false;
 			char* p = actual_path(parameters->outfile, &allocated);
-			GRK_UNUSED(remove)(p);
+			remove(p);
 			if(allocated)
 				free(p);
 		}

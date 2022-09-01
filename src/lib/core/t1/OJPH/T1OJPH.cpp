@@ -27,13 +27,13 @@ const uint8_t grk_cblk_dec_compressed_data_pad_ht = 8;
 
 namespace ojph
 {
-T1OJPH::T1OJPH(bool isCompressor, grk::TileCodingParams* tcp, uint32_t maxCblkW, uint32_t maxCblkH)
+T1OJPH::T1OJPH(bool isCompressor, [[maybe_unused]] grk::TileCodingParams* tcp, uint32_t maxCblkW,
+			   uint32_t maxCblkH)
 	: coded_data_size(isCompressor ? 0 : (uint32_t)(maxCblkW * maxCblkH * sizeof(int32_t))),
 	  coded_data(isCompressor ? nullptr : new uint8_t[coded_data_size]),
 	  unencoded_data_size(maxCblkW * maxCblkH), unencoded_data(new int32_t[unencoded_data_size]),
 	  allocator(new mem_fixed_allocator), elastic_alloc(new mem_elastic_allocator(1048576))
 {
-	(void)tcp;
 	if(!isCompressor)
 		memset(coded_data, 0, grk_cblk_dec_compressed_data_pad_ht);
 }
@@ -44,11 +44,9 @@ T1OJPH::~T1OJPH()
 	delete allocator;
 	delete elastic_alloc;
 }
-void T1OJPH::preCompress(grk::CompressBlockExec* block, grk::Tile* tile)
+void T1OJPH::preCompress([[maybe_unused]] grk::CompressBlockExec* block,
+						 [[maybe_unused]] grk::Tile* tile)
 {
-	(void)block;
-	(void)tile;
-
 	auto cblk = block->cblk;
 	uint16_t w = (uint16_t)cblk->width();
 	uint16_t h = (uint16_t)cblk->height();

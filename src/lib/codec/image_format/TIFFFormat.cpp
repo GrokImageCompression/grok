@@ -33,11 +33,9 @@
 #ifdef GRK_CUSTOM_TIFF_IO
 #define IO_MAX 2147483647U
 
-static tmsize_t TiffRead(thandle_t handle, void* buf, tmsize_t size)
+static tmsize_t TiffRead([[maybe_unused]] thandle_t handle, [[maybe_unused]] void* buf,
+						 tmsize_t size)
 {
-	GRK_UNUSED(handle);
-	GRK_UNUSED(buf);
-
 	return size;
 }
 static tmsize_t TiffWrite(thandle_t handle, void* buf, tmsize_t size)
@@ -77,10 +75,8 @@ static int TiffClose(thandle_t handle)
 	return serializer->close() ? 0 : EINVAL;
 }
 
-static uint64_t TiffSize(thandle_t handle)
+static uint64_t TiffSize([[maybe_unused]] thandle_t handle)
 {
-	GRK_UNUSED(handle);
-
 	return 0U;
 }
 
@@ -1391,18 +1387,16 @@ cleanup:
 	return nullptr;
 }
 
-static void tiff_error(const char* msg, void* client_data)
+static void tiff_error(const char* msg, [[maybe_unused]] void* client_data)
 {
-	GRK_UNUSED(client_data);
 	if(msg)
 	{
 		std::string out = std::string("libtiff: ") + msg;
 		spdlog::error(out);
 	}
 }
-static void tiff_warn(const char* msg, void* client_data)
+static void tiff_warn(const char* msg, [[maybe_unused]] void* client_data)
 {
-	GRK_UNUSED(client_data);
 	if(msg)
 	{
 		std::string out = std::string("libtiff: ") + msg;
@@ -1411,15 +1405,13 @@ static void tiff_warn(const char* msg, void* client_data)
 }
 
 static bool tiffWarningHandlerVerbose = true;
-void MyTiffErrorHandler(const char* module, const char* fmt, va_list ap)
+void MyTiffErrorHandler([[maybe_unused]] const char* module, const char* fmt, va_list ap)
 {
-	GRK_UNUSED(module);
 	grk::log(tiff_error, nullptr, fmt, ap);
 }
 
-void MyTiffWarningHandler(const char* module, const char* fmt, va_list ap)
+void MyTiffWarningHandler([[maybe_unused]] const char* module, const char* fmt, va_list ap)
 {
-	GRK_UNUSED(module);
 	if(tiffWarningHandlerVerbose)
 		grk::log(tiff_warn, nullptr, fmt, ap);
 }

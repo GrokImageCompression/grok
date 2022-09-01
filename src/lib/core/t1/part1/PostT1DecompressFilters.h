@@ -32,10 +32,7 @@ template<typename T>
 class ShiftFilter
 {
   public:
-	ShiftFilter(DecompressBlockExec* block)
-	{
-		GRK_UNUSED(block);
-	}
+	ShiftFilter([[maybe_unused]] DecompressBlockExec* block) {}
 	inline void copy(T* dest, T* src, uint32_t len)
 	{
 		for(uint32_t i = 0; i < len; ++i)

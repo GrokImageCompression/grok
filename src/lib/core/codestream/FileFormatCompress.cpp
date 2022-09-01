@@ -24,10 +24,9 @@
 
 namespace grk
 {
-void MycmsLogErrorHandlerFunction(cmsContext ContextID, cmsUInt32Number ErrorCode, const char* Text)
+void MycmsLogErrorHandlerFunction([[maybe_unused]] cmsContext ContextID,
+								  [[maybe_unused]] cmsUInt32Number ErrorCode, const char* Text)
 {
-	GRK_UNUSED(ContextID);
-	GRK_UNUSED(ErrorCode);
 	GRK_WARN(" LCMS error: {}", Text);
 }
 

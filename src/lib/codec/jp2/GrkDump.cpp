@@ -98,9 +98,8 @@ static void decompress_help_display(void)
 class GrokOutput : public TCLAP::StdOutput
 {
   public:
-	virtual void usage(TCLAP::CmdLineInterface& c)
+	virtual void usage([[maybe_unused]] TCLAP::CmdLineInterface& c)
 	{
-		GRK_UNUSED(c);
 		decompress_help_display();
 	}
 };

@@ -532,9 +532,8 @@ bool CodeStreamDecompress::decompressTiles(void)
 				goto cleanup;
 			}
 		}
-		catch(DecodeUnknownMarkerAtEndOfTileException& e)
+		catch([[maybe_unused]] DecodeUnknownMarkerAtEndOfTileException& e)
 		{
-			GRK_UNUSED(e);
 			breakAfterT1 = true;
 		}
 		// 3. T2 + T1 decompress

@@ -35,24 +35,20 @@ const uint8_t grk_cblk_dec_compressed_data_pad_ht = 8;
 
 namespace openhtj2k
 {
-T1OpenHTJ2K::T1OpenHTJ2K(bool isCompressor, grk::TileCodingParams* tcp, uint32_t maxCblkW,
-						 uint32_t maxCblkH)
+T1OpenHTJ2K::T1OpenHTJ2K(bool isCompressor, [[maybe_unused]] grk::TileCodingParams* tcp,
+						 uint32_t maxCblkW, uint32_t maxCblkH)
 	: coded_data_size(isCompressor ? 0 : (uint32_t)(maxCblkW * maxCblkH * sizeof(int32_t))),
 	  coded_data(isCompressor ? nullptr : new uint8_t[coded_data_size]),
 	  unencoded_data_size(maxCblkW * maxCblkH), unencoded_data(new int32_t[unencoded_data_size])
-{
-	GRK_UNUSED(tcp);
-}
+{}
 T1OpenHTJ2K::~T1OpenHTJ2K()
 {
 	delete[] coded_data;
 	delete[] unencoded_data;
 }
-void T1OpenHTJ2K::preCompress(grk::CompressBlockExec* block, grk::Tile* tile)
+void T1OpenHTJ2K::preCompress([[maybe_unused]] grk::CompressBlockExec* block,
+							  [[maybe_unused]] grk::Tile* tile)
 {
-	GRK_UNUSED(block);
-	GRK_UNUSED(tile);
-
 	auto cblk = block->cblk;
 	uint16_t w = (uint16_t)cblk->width();
 	uint16_t h = (uint16_t)cblk->height();

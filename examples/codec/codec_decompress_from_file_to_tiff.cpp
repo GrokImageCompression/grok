@@ -24,11 +24,8 @@
 
 const std::string dataRoot = GRK_DATA_ROOT;
 
-int main(int argc, char** argv)
+int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
 {
-	(void)argc;
-	(void)argv;
-
 	//1. form vector of command line args
 	std::vector<std::string> argString;
 

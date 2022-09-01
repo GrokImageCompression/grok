@@ -120,7 +120,7 @@ class PerlScriptRunner
 };
 #endif
 
-void transferExifTags(std::string src, std::string dest)
+void transferExifTags([[maybe_unused]] std::string src, [[maybe_unused]] std::string dest)
 {
 #ifdef GROK_HAVE_EXIFTOOL
 	try
@@ -137,8 +137,6 @@ void transferExifTags(std::string src, std::string dest)
 	if(call_argv("transfer", G_DISCARD, args))
 		std::cout << "Unable to run Perl script used to extract exif tags" << std::endl;
 #else
-	GRK_UNUSED(src);
-	GRK_UNUSED(dest);
 	std::cout << "ExifTool not available; unable to transfer Exif tags" << std::endl;
 #endif
 }

@@ -142,12 +142,11 @@ void FileUringIO::enqueue(io_uring* ring, io_data* data, bool readop, int fd)
 	else
 		io_uring_prep_writev(sqe, fd, &data->iov, 1, data->buf.offset_);
 	io_uring_sqe_set_data(sqe, data);
-	int ret = io_uring_submit(ring);
+	[[maybe_unused]] int ret = io_uring_submit(ring);
 	// if (debugUring)
 	//	spdlog::info("Enqueued {}, length {}, offset {}", fmt::ptr(data->buf.data),
 	// data->buf.dataLen, data->buf.offset); timer.finish();
 	assert(ret == 1);
-	GRK_UNUSED(ret);
 	requestsSubmitted++;
 
 	while(true)
@@ -279,20 +278,14 @@ uint64_t FileUringIO::write(GrkIOBuf buffer)
 
 	return buffer.len_;
 }
-bool FileUringIO::read(uint8_t* buf, size_t len)
+bool FileUringIO::read([[maybe_unused]] uint8_t* buf, [[maybe_unused]] size_t len)
 {
-	GRK_UNUSED(buf);
-	GRK_UNUSED(len);
-
 	throw new std::runtime_error("uring read");
 
 	return false;
 }
-uint64_t FileUringIO::seek(int64_t pos, int whence)
+uint64_t FileUringIO::seek([[maybe_unused]] int64_t pos, [[maybe_unused]] int whence)
 {
-	GRK_UNUSED(pos);
-	GRK_UNUSED(whence);
-
 	throw new std::runtime_error("uring seek");
 
 	return 0;

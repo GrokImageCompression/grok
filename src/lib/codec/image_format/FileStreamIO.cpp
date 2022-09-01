@@ -65,11 +65,9 @@ bool FileStreamIO::close(void)
 	fileHandle_ = nullptr;
 	return rc;
 }
-uint64_t FileStreamIO::write(uint8_t* buf, uint64_t offset, size_t len, size_t maxLen, bool pooled)
+uint64_t FileStreamIO::write(uint8_t* buf, [[maybe_unused]] uint64_t offset, size_t len,
+							 [[maybe_unused]] size_t maxLen, [[maybe_unused]] bool pooled)
 {
-	GRK_UNUSED(offset);
-	GRK_UNUSED(pooled);
-	GRK_UNUSED(maxLen);
 	auto actual = fwrite(buf, 1, len, fileHandle_);
 	if(actual < len)
 		spdlog::error("wrote fewer bytes {} than expected number of bytes {}.", actual, len);

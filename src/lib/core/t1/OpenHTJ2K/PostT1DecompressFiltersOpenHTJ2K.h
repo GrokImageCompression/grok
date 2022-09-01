@@ -33,10 +33,7 @@ template<typename T>
 class ShiftOpenHTJ2KFilter
 {
   public:
-	ShiftOpenHTJ2KFilter(grk::DecompressBlockExec* block)
-	{
-		GRK_UNUSED(block);
-	}
+	ShiftOpenHTJ2KFilter([[maybe_unused]] grk::DecompressBlockExec* block) {}
 	inline void copy(T* dest, T* src, uint32_t len)
 	{
 		for(uint32_t i = 0; i < len; ++i)
@@ -50,10 +47,7 @@ template<typename T>
 class RoiScaleOpenHTJ2KFilter
 {
   public:
-	RoiScaleOpenHTJ2KFilter(grk::DecompressBlockExec* block)
-	{
-		GRK_UNUSED(block);
-	}
+	RoiScaleOpenHTJ2KFilter([[maybe_unused]] grk::DecompressBlockExec* block) {}
 	inline void copy(T* dest, T* src, uint32_t len)
 	{
 		for(uint32_t i = 0; i < len; ++i)

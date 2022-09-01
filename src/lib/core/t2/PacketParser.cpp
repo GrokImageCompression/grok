@@ -287,9 +287,8 @@ void PacketParser::readHeader(void)
 		bio->inalign();
 		currentHeaderPtr += bio->numBytes();
 	}
-	catch(InvalidMarkerException& ex)
+	catch([[maybe_unused]] InvalidMarkerException& ex)
 	{
-		GRK_UNUSED(ex);
 		headerError_ = true;
 		throw CorruptPacketHeaderException();
 	}

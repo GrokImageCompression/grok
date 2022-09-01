@@ -59,8 +59,6 @@
 #define GRK_FTELL(stream) ftell(stream)
 #endif
 
-#define GRK_UNUSED(x) (void)x
-
 namespace grk
 {
 template<typename... Args>

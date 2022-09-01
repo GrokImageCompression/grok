@@ -44,10 +44,8 @@ void infoCallback(const char* msg, void* client_data)
 	fprintf(stdout,t.c_str());
 }
 
-int main(int argc, char** argv)
+int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
 {
-	(void)argc;
-	(void)argv;
     int rc = EXIT_FAILURE;
 
     uint16_t numTiles = 0;
@@ -157,10 +155,8 @@ int main(int argc, char** argv)
     // see grok.h header for full details of image structure
     for (uint16_t compno = 0; compno < image->numcomps; ++compno){
         auto comp = image->comps + compno;
-        auto compWidth = comp->w;
-        (void)compWidth;
-        auto compHeight = comp->h;
-        (void)compHeight;
+        [[maybe_unused]] auto compWidth = comp->w;
+        [[maybe_unused]] auto compHeight = comp->h;
         auto compData = comp->data;
         if (!compData){
             fprintf(stderr, "Image has null data for component %d\n",compno);

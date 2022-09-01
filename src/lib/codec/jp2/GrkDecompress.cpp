@@ -86,9 +86,8 @@ BOOL sig_handler(DWORD signum)
 	}
 }
 #else
-void sig_handler(int signum)
+void sig_handler([[maybe_unused]] int signum)
 {
-	GRK_UNUSED(signum);
 	exit_func();
 }
 #endif
@@ -360,9 +359,8 @@ char GrkDecompress::nextFile(const std::string inputFile, grk_img_fol* inputFold
 class GrokOutput : public TCLAP::StdOutput
 {
   public:
-	virtual void usage(TCLAP::CmdLineInterface& c)
+	virtual void usage([[maybe_unused]] TCLAP::CmdLineInterface& c)
 	{
-		GRK_UNUSED(c);
 		decompress_help_display();
 	}
 };
@@ -1408,9 +1406,8 @@ int GrkDecompress::main(int argc, char** argv)
 		}
 		printTiming(numDecompressed, std::chrono::high_resolution_clock::now() - start);
 	}
-	catch(std::bad_alloc& ba)
+	catch([[maybe_unused]] std::bad_alloc& ba)
 	{
-		GRK_UNUSED(ba);
 		spdlog::error("Out of memory. Exiting.");
 		rc = 1;
 		goto cleanup;

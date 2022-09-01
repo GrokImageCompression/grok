@@ -47,8 +47,9 @@ static std::string GetLastErrorAsString()
 
 namespace grk
 {
-bool minpf_get_full_path(const char* path, void* addr, dynamic_handle_t handle, char* fullPath,
-						 size_t fullPathLen)
+bool minpf_get_full_path([[maybe_unused]] const char* path, [[maybe_unused]] void* addr,
+						 [[maybe_unused]] dynamic_handle_t handle, [[maybe_unused]] char* fullPath,
+						 [[maybe_unused]] size_t fullPathLen)
 {
 #ifdef GRK_BUILD_PLUGIN_LOADER
 	if(!path || !addr || !fullPath || !fullPathLen)
@@ -67,7 +68,6 @@ bool minpf_get_full_path(const char* path, void* addr, dynamic_handle_t handle, 
 	}
 	return true;
 #else
-	(void)handle;
 	Dl_info dl_info;
 	memset(&dl_info, 0, sizeof(dl_info));
 	if(dladdr(addr, &dl_info) && strlen(dl_info.dli_fname) < fullPathLen)
@@ -81,16 +81,11 @@ bool minpf_get_full_path(const char* path, void* addr, dynamic_handle_t handle, 
 #endif
 
 #else
-	(void)path;
-	(void)addr;
-	(void)handle;
-	(void)fullPath;
-	(void)fullPathLen;
 	return false;
 #endif
 }
 
-bool minpf_unload_dynamic_library(minpf_dynamic_library* library)
+bool minpf_unload_dynamic_library([[maybe_unused]] minpf_dynamic_library* library)
 {
 #ifdef GRK_BUILD_PLUGIN_LOADER
 	if(!library)
@@ -105,14 +100,13 @@ bool minpf_unload_dynamic_library(minpf_dynamic_library* library)
 	free(library);
 	return rc;
 #else
-	(void)library;
 	return false;
 #endif
 }
 
-minpf_dynamic_library* minpf_load_dynamic_library(const char* path, char* error)
+minpf_dynamic_library* minpf_load_dynamic_library([[maybe_unused]] const char* path,
+												  [[maybe_unused]] char* error)
 {
-	(void)error;
 #ifdef GRK_BUILD_PLUGIN_LOADER
 	minpf_dynamic_library* lib = nullptr;
 	dynamic_handle_t handle = nullptr;
@@ -151,12 +145,12 @@ minpf_dynamic_library* minpf_load_dynamic_library(const char* path, char* error)
 	lib->handle = handle;
 	return lib;
 #else
-	(void)path;
 	return nullptr;
 #endif
 }
 
-void* minpf_get_symbol(minpf_dynamic_library* library, const char* symbol)
+void* minpf_get_symbol([[maybe_unused]] minpf_dynamic_library* library,
+					   [[maybe_unused]] const char* symbol)
 {
 #ifdef GRK_BUILD_PLUGIN_LOADER
 	if(!library || !library->handle)
@@ -176,8 +170,6 @@ void* minpf_get_symbol(minpf_dynamic_library* library, const char* symbol)
 
 	return rc;
 #else
-	(void)library;
-	(void)symbol;
 	return nullptr;
 #endif
 }

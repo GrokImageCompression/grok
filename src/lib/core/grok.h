@@ -50,12 +50,6 @@ extern "C" {
 #endif
 #endif
 
-#ifdef __GNUC__
-#define GRK_DEPRECATED(func) func __attribute__((deprecated))
-#elif defined(_MSC_VER)
-#define GRK_DEPRECATED(func) __declspec(deprecated) func
-#endif
-
 /**
  * Progression order
  * */
@@ -198,6 +192,8 @@ typedef struct _grk_raw_cparameters
 
 /**
  * Rate control algorithms
+    GRK_RATE_CONTROL_BISECT: bisect with all truncation points
+    GRK_RATE_CONTROL_PCRD_OPT: bisect with only feasible truncation points
  */
 typedef enum _GRK_RATE_CONTROL_ALGORITHM
 {
@@ -354,10 +350,6 @@ typedef struct _grk_cparameters
 	bool write_display_resolution;
 	double display_resolution[2];
 
-	/**************************************************
-	0: bisect with all truncation points
-	1: bisect with only feasible truncation points
-	 *************************************************/
 	GRK_RATE_CONTROL_ALGORITHM rateControlAlgorithm;
 	uint32_t numThreads;
 	int32_t deviceId;

@@ -463,9 +463,8 @@ struct test_cmp_parameters
 class GrokOutput : public TCLAP::StdOutput
 {
   public:
-	virtual void usage(TCLAP::CmdLineInterface& c)
+	virtual void usage([[maybe_unused]] TCLAP::CmdLineInterface& c)
 	{
-		(void)c;
 		compare_images_help_display();
 	}
 };

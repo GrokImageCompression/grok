@@ -17,10 +17,7 @@ class MinHeapLocker
 class MinHeapFakeLocker
 {
   public:
-	MinHeapFakeLocker(std::mutex& mut)
-	{
-		GRK_UNUSED(mut);
-	}
+	MinHeapFakeLocker([[maybe_unused]] std::mutex& mut) {}
 };
 
 template<typename T>

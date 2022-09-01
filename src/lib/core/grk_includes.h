@@ -78,7 +78,6 @@
 #ifndef GROK_NOSANITIZE
 #define GROK_NOSANITIZE(kind)
 #endif
-#define GRK_UNUSED(x) (void)x
 
 #include "grok_private.h"
 #include "simd.h"

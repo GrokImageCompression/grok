@@ -487,9 +487,8 @@ bool TileProcessor::decompressT2T1(GrkImage* outputImage)
 									parser->readHeader();
 									parser->readData();
 								}
-								catch(std::exception& ex)
+								catch([[maybe_unused]] std::exception& ex)
 								{
-									GRK_UNUSED(ex);
 									break;
 								}
 							}
@@ -523,9 +522,8 @@ bool TileProcessor::decompressT2T1(GrkImage* outputImage)
 										parser->readHeader();
 										parser->readData();
 									}
-									catch(std::exception& ex)
+									catch([[maybe_unused]] std::exception& ex)
 									{
-										GRK_UNUSED(ex);
 										break;
 									}
 								}
@@ -558,14 +556,12 @@ bool TileProcessor::decompressT2T1(GrkImage* outputImage)
 				{
 					tilec->allocRegionWindow(tilec->highestResolutionDecompressed + 1U, truncated);
 				}
-				catch(std::runtime_error& ex)
+				catch([[maybe_unused]] std::runtime_error& ex)
 				{
-					GRK_UNUSED(ex);
 					continue;
 				}
-				catch(std::bad_alloc& baex)
+				catch([[maybe_unused]] std::bad_alloc& baex)
 				{
-					GRK_UNUSED(baex);
 					return false;
 				}
 			}
@@ -1104,9 +1100,8 @@ bool TileProcessor::cacheTilePartPackets(CodeStreamDecompress* codeStream)
 			{
 				buff = new uint8_t[len];
 			}
-			catch(std::bad_alloc& ex)
+			catch([[maybe_unused]] std::bad_alloc& ex)
 			{
-				GRK_UNUSED(ex);
 				GRK_ERROR("Not enough memory to allocate segment");
 
 				return false;

@@ -164,12 +164,11 @@ bool supportedStdioFormat(GRK_SUPPORTED_FILE_FMT format, bool compress)
 	return false;
 }
 
-bool grk_set_binary_mode(FILE* file)
+bool grk_set_binary_mode([[maybe_unused]] FILE* file)
 {
 #ifdef _WIN32
 	return (_setmode(_fileno(file), _O_BINARY) != -1);
 #else
-	GRK_UNUSED(file);
 	return true;
 #endif
 }
@@ -252,11 +251,8 @@ char* get_file_name(char* name)
 uint32_t get_num_images(char* imgdirpath)
 {
 	uint32_t i = 0;
-    for (const auto & entry : std::filesystem::directory_iterator(imgdirpath))
-	{
-    	GRK_UNUSED(entry);
+    for ([[maybe_unused]] const auto & entry : std::filesystem::directory_iterator(imgdirpath))
     	i++;
-	}
 
     return i;
 }
@@ -346,19 +342,16 @@ int count_trailing_zeros(uint32_t val)
 #endif
 }
 
-void errorCallback(const char* msg, void* client_data)
+void errorCallback(const char* msg, [[maybe_unused]] void* client_data)
 {
-	GRK_UNUSED(client_data);
 	spdlog::default_logger()->error(msg);
 }
-void warningCallback(const char* msg, void* client_data)
+void warningCallback(const char* msg, [[maybe_unused]] void* client_data)
 {
-	GRK_UNUSED(client_data);
 	spdlog::default_logger()->warn(msg);
 }
-void infoCallback(const char* msg, void* client_data)
+void infoCallback(const char* msg, [[maybe_unused]] void* client_data)
 {
-	GRK_UNUSED(client_data);
 	spdlog::default_logger()->info(msg);
 }
 

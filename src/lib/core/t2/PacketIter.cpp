@@ -331,7 +331,8 @@ bool PacketIter::checkForRemainingValidProgression(int32_t prog, uint32_t pino,
 			case 'P':
 				switch(poc->progression)
 				{
-					case GRK_LRCP: /* fall through */
+					case GRK_LRCP:
+						[[fallthrough]];
 					case GRK_RLCP:
 						if(poc->prec_temp == poc->tpPrecE)
 							return checkForRemainingValidProgression(prog - 1, pino, progString);
@@ -1175,9 +1176,8 @@ bool PacketIter::skipPackets(SparseBuffer* src, uint64_t numPackets)
 
 	return true;
 }
-bool PacketIter::next_lrcpOPT(SparseBuffer* src)
+bool PacketIter::next_lrcpOPT([[maybe_unused]] SparseBuffer* src)
 {
-	GRK_UNUSED(src);
 	for(; layno < prog.layE; layno++)
 	{
 		for(; resno < prog.resE; resno++)
@@ -1206,9 +1206,8 @@ bool PacketIter::next_lrcpOPT(SparseBuffer* src)
 
 	return false;
 }
-bool PacketIter::next_rlcpOPT(SparseBuffer* src)
+bool PacketIter::next_rlcpOPT([[maybe_unused]] SparseBuffer* src)
 {
-	GRK_UNUSED(src);
 	for(; resno < prog.resE; resno++)
 	{
 		auto precInfo = precinctInfoOPT_ + resno;
@@ -1313,9 +1312,8 @@ bool PacketIter::next_cprlOPT(SparseBuffer* src)
 
 	return false;
 }
-bool PacketIter::next_pcrlOPT(SparseBuffer* src)
+bool PacketIter::next_pcrlOPT([[maybe_unused]] SparseBuffer* src)
 {
-	GRK_UNUSED(src);
 	auto wholeTile = isWholeTile();
 	auto precInfo = precinctInfoOPT_ + prog.resE - 1;
 	if(!precInfoCheck(precInfo))

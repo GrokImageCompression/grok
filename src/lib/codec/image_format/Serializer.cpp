@@ -18,10 +18,9 @@ void Serializer::setMaxPooledRequests(uint32_t maxRequests)
 {
 	maxPooledRequests_ = maxRequests;
 }
-void Serializer::registerGrkReclaimCallback(grk_io_init io_init, grk_io_callback reclaim_callback,
-											void* user_data)
+void Serializer::registerGrkReclaimCallback([[maybe_unused]] grk_io_init io_init,
+											grk_io_callback reclaim_callback, void* user_data)
 {
-	GRK_UNUSED(io_init);
 	reclaim_callback_ = reclaim_callback;
 	reclaim_user_data_ = user_data;
 #ifdef GROK_HAVE_URING
@@ -38,9 +37,8 @@ void* Serializer::getIOReclaimUserData(void)
 }
 #ifdef _WIN32
 
-bool Serializer::open(std::string name, std::string mode, bool asynch)
+bool Serializer::open(std::string name, std::string mode, [[maybe_unused]] bool asynch)
 {
-	GRK_UNUSED(asynch);
 	return fileStreamIO.open(name, mode);
 }
 bool Serializer::close(void)
@@ -85,9 +83,8 @@ int Serializer::getMode(std::string mode)
 	return (m);
 }
 
-bool Serializer::open(std::string name, std::string mode, bool asynch)
+bool Serializer::open(std::string name, std::string mode, [[maybe_unused]] bool asynch)
 {
-	GRK_UNUSED(asynch);
 	bool useStdio = grk::useStdio(name);
 	bool doRead = mode[0] == 'r';
 	int fd = 0;
@@ -167,10 +164,9 @@ size_t Serializer::write(uint8_t* buf, size_t bytes_total)
 		if(scheduled_.pooled_ && (++numPooledRequests_ == maxPooledRequests_))
 		{
 			asynchActive_ = false;
-			bool rc = uring.close();
+			[[maybe_unused]] bool rc = uring.close();
 			// todo: handle return value
 			assert(rc);
-			GRK_UNUSED(rc);
 			close();
 			// todo: re-open in buffered mode
 			open(filename_, "a", false);

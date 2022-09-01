@@ -148,7 +148,7 @@ grk_image* JPEGFormat::jpegtoimage(const char* filename, grk_cparameters* parame
 
 	/* Step 3: read file parameters with jpeg_read_header() */
 
-	GRK_UNUSED(jpeg_read_header)(&cinfo, TRUE);
+	jpeg_read_header(&cinfo, TRUE);
 	/* We can ignore the return value from jpeg_read_header since
 	 *   (a) suspension is not possible with the stdio data source, and
 	 *   (b) we passed TRUE to reject a tables-only JPEG file as an error.
@@ -169,7 +169,7 @@ grk_image* JPEGFormat::jpegtoimage(const char* filename, grk_cparameters* parame
 
 	/* Step 5: Start decompressor */
 
-	GRK_UNUSED(jpeg_start_decompress)(&cinfo);
+	jpeg_start_decompress(&cinfo);
 	/* We can ignore the return value since suspension is not possible
 	 * with the stdio data source.
 	 */
@@ -277,7 +277,7 @@ grk_image* JPEGFormat::jpegtoimage(const char* filename, grk_cparameters* parame
 		 * Here the array is only one element long, but you could ask for
 		 * more than one scanline at a time if that's more convenient.
 		 */
-		GRK_UNUSED(jpeg_read_scanlines)(&cinfo, buffer, 1);
+		jpeg_read_scanlines(&cinfo, buffer, 1);
 
 		// convert 8 bit buffer to 32 bit buffer
 		cvtJpegTo32s(buffer[0], buffer32s, (size_t)w * (size_t)decompressNumComps, false);
@@ -292,7 +292,7 @@ grk_image* JPEGFormat::jpegtoimage(const char* filename, grk_cparameters* parame
 
 	/* Step 7: Finish decompression */
 
-	GRK_UNUSED(jpeg_finish_decompress)(&cinfo);
+	jpeg_finish_decompress(&cinfo);
 /* We can ignore the return value since suspension is not possible
  * with the stdio data source.
  */
@@ -551,7 +551,7 @@ bool JPEGFormat::encodePixels(void)
 						 1, adjust);
 		JSAMPROW row_pointer[1]; /* pointer to JSAMPLE row[s] */
 		row_pointer[0] = buffer;
-		GRK_UNUSED(jpeg_write_scanlines)(&cinfo, row_pointer, 1);
+		jpeg_write_scanlines(&cinfo, row_pointer, 1);
 	}
 	delete iter;
 

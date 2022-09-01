@@ -188,9 +188,8 @@ bool PNMFormat::encodeFinish(void)
  * application-orchestrated pixel encoding of entire image
  */
 template<typename T>
-bool PNMFormat::encodeRows(uint32_t rows)
+bool PNMFormat::encodeRows([[maybe_unused]] uint32_t rows)
 {
-	GRK_UNUSED(rows);
 	uint16_t ncomp = image_->numcomps;
 	bool success = false;
 	uint32_t height = image_->decompressHeight;
@@ -428,14 +427,12 @@ int32_t convert(std::string s)
 	{
 		return stoi(s);
 	}
-	catch(std::invalid_argument const& e)
+	catch([[maybe_unused]] std::invalid_argument const& e)
 	{
-		GRK_UNUSED(e);
 		std::cout << "Bad input: std::invalid_argument thrown" << '\n';
 	}
-	catch(std::out_of_range const& e)
+	catch([[maybe_unused]] std::out_of_range const& e)
 	{
-		GRK_UNUSED(e);
 		std::cout << "Integer overflow: std::out_of_range thrown" << '\n';
 	}
 	return -1;

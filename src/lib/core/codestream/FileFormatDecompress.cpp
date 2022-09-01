@@ -61,9 +61,8 @@ bool FileFormatDecompress::read_asoc(uint8_t* header_data, uint32_t header_data_
 	{
 		read_asoc(&root_asoc, &header_data, &header_data_size, header_data_size);
 	}
-	catch(BadAsocException& bae)
+	catch([[maybe_unused]] BadAsocException& bae)
 	{
-		GRK_UNUSED(bae);
 		return false;
 	}
 
@@ -532,9 +531,8 @@ bool FileFormatDecompress::readHeaderProcedureImpl(void)
 		}
 		rc = true;
 	}
-	catch(CorruptJP2BoxException& ex)
+	catch([[maybe_unused]] CorruptJP2BoxException& ex)
 	{
-		GRK_UNUSED(ex);
 		rc = false;
 	}
 cleanup:
@@ -798,12 +796,10 @@ bool FileFormatDecompress::read_bpc(uint8_t* p_bpc_header_data, uint32_t bpc_hea
 
 	return true;
 }
-bool FileFormatDecompress::read_channel_definition(uint8_t* p_cdef_header_data,
+bool FileFormatDecompress::read_channel_definition([[maybe_unused]] uint8_t* p_cdef_header_data,
 												   uint32_t cdef_header_size)
 {
 	assert(p_cdef_header_data != nullptr);
-
-	GRK_UNUSED(cdef_header_size);
 	bool rc = false;
 	auto clr = getColour();
 

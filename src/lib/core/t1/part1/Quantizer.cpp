@@ -77,11 +77,9 @@ void Quantizer::push(grk_stepsize* stepptr)
 			u16_SPqcd[bn] = (uint16_t)((step->expn << 11) + step->mant);
 	}
 }
-void Quantizer::generate(uint32_t decomps, uint32_t max_bit_depth, bool color_transform,
-						 bool is_signed)
+void Quantizer::generate(uint32_t decomps, uint32_t max_bit_depth,
+						 [[maybe_unused]] bool color_transform, [[maybe_unused]] bool is_signed)
 {
-	GRK_UNUSED(color_transform);
-	GRK_UNUSED(is_signed);
 	num_decomps = decomps;
 
 	uint32_t numresolutions = decomps + 1;
@@ -112,10 +110,8 @@ void Quantizer::generate(uint32_t decomps, uint32_t max_bit_depth, bool color_tr
 }
 
 // no-op
-bool Quantizer::write(IBufferedStream* stream)
+bool Quantizer::write([[maybe_unused]] IBufferedStream* stream)
 {
-	GRK_UNUSED(stream);
-
 	return true;
 }
 

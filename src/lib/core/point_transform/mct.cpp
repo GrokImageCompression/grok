@@ -512,14 +512,12 @@ void mct::calculate_norms(double* pNorms, uint16_t pNbComps, float* pMatrix)
 }
 
 bool mct::compress_custom(uint8_t* mct_matrix, uint64_t n, uint8_t** pData, uint16_t pNbComp,
-						  uint32_t isSigned)
+						  [[maybe_unused]] uint32_t isSigned)
 {
 	auto Mct = (float*)mct_matrix;
 	uint32_t NbMatCoeff = pNbComp * pNbComp;
 	auto data = (int32_t**)pData;
 	uint32_t Multiplicator = 1 << 13;
-	GRK_UNUSED(isSigned);
-
 	auto CurrentData = (int32_t*)grk_malloc((pNbComp + NbMatCoeff) * sizeof(int32_t));
 	if(!CurrentData)
 		return false;
@@ -551,12 +549,9 @@ bool mct::compress_custom(uint8_t* mct_matrix, uint64_t n, uint8_t** pData, uint
 }
 
 bool mct::decompress_custom(uint8_t* mct_matrix, uint64_t n, uint8_t** pData, uint16_t num_comps,
-							uint32_t is_signed)
+							[[maybe_unused]] uint32_t is_signed)
 {
 	auto data = (float**)pData;
-
-	GRK_UNUSED(is_signed);
-
 	auto pixel = new float[2 * num_comps];
 	auto current_pixel = pixel + num_comps;
 
