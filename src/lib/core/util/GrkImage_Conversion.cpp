@@ -879,7 +879,7 @@ bool GrkImage::color_cmyk_to_rgb(void)
 		dest_index += stride_diff;
 	}
 
-	grk_image_single_component_data_free(comps + 3);
+	single_component_data_free(comps + 3);
 	comps[0].prec = 8;
 	comps[1].prec = 8;
 	comps[2].prec = 8;
@@ -1641,7 +1641,7 @@ bool GrkImage::cieLabToRGB(void)
 	cmsDeleteTransform(transform);
 
 	for(i = 0; i < numcomps; ++i)
-		grk_image_single_component_data_free(comps + i);
+		single_component_data_free(comps + i);
 
 	numcomps = 3;
 	for(i = 0; i < numcomps; ++i)

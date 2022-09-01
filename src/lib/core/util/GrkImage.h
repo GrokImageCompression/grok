@@ -100,6 +100,7 @@ class GrkImage : public grk_image
 
   private:
 	~GrkImage();
+	static void single_component_data_free(grk_image_comp* comp);
 	std::string getColourSpaceString(void);
 	std::string getICCColourSpaceString(cmsColorSpaceSignature color_space);
 	bool isValidICCColourSpace(uint32_t signature);

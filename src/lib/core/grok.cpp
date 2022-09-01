@@ -170,10 +170,8 @@ static bool grk_seek_in_file(int64_t numBytes, FILE* p_user_data)
 
 #ifdef _WIN32
 #ifndef GRK_STATIC
-BOOL APIENTRY DllMain(HINSTANCE hModule, DWORD ul_reason_for_call, LPVOID lpReserved)
+BOOL APIENTRY DllMain([[maybe_unused]] HINSTANCE hModule, DWORD ul_reason_for_call, [[maybe_unused]] LPVOID lpReserved)
 {
-	GRK_UNUSED(lpReserved);
-	GRK_UNUSED(hModule);
 	switch(ul_reason_for_call)
 	{
 		case DLL_PROCESS_ATTACH:
@@ -203,14 +201,6 @@ grk_image* GRK_CALLCONV grk_image_new(uint16_t numcmpts, grk_image_comp* cmptpar
 grk_image_meta* GRK_CALLCONV grk_image_meta_new(void)
 {
 	return (grk_image_meta*)(new GrkImageMeta());
-}
-
-void GRK_CALLCONV grk_image_single_component_data_free(grk_image_comp* comp)
-{
-	if(!comp || !comp->data)
-		return;
-	grk_aligned_free(comp->data);
-	comp->data = nullptr;
 }
 
 /* DECOMPRESSION FUNCTIONS*/

@@ -162,7 +162,7 @@ void GrkImage::all_components_data_free()
 	if(!comps)
 		return;
 	for(i = 0; i < numcomps; ++i)
-		grk_image_single_component_data_free(comps + i);
+		single_component_data_free(comps + i);
 }
 
 bool GrkImage::subsampleAndReduce(uint32_t reduce)
@@ -298,7 +298,7 @@ bool GrkImage::allocData(grk_image_comp* comp, bool clear)
 	}
 	if(clear)
 		memset(data, 0, dataSize);
-	grk_image_single_component_data_free(comp);
+	single_component_data_free(comp);
 	comp->data = data;
 
 	return true;
@@ -830,7 +830,7 @@ bool GrkImage::apply_palette_clr()
 		}
 	}
 	for(uint16_t i = 0; i < numcomps; ++i)
-		grk_image_single_component_data_free(oldComps + i);
+		single_component_data_free(oldComps + i);
 	delete[] oldComps;
 	comps = newComps;
 	numcomps = num_channels;
@@ -882,7 +882,7 @@ void GrkImage::transferDataTo(GrkImage* dest)
 		auto srcComp = comps + compno;
 		auto destComp = dest->comps + compno;
 
-		grk_image_single_component_data_free(destComp);
+		single_component_data_free(destComp);
 		destComp->data = srcComp->data;
 		if(srcComp->stride)
 		{
@@ -939,7 +939,7 @@ void GrkImage::transferDataFrom(const Tile* tile_src_data)
 		auto destComp = comps + compno;
 
 		// transfer memory from tile component to output image
-		grk_image_single_component_data_free(destComp);
+		single_component_data_free(destComp);
 		srcComp->getWindow()->transfer(&destComp->data, &destComp->stride);
 		if(destComp->data)
 			assert(destComp->stride >= destComp->w);
@@ -1144,6 +1144,15 @@ bool GrkImage::generateCompositeBounds(const grk_image_comp* srcComp, uint16_t d
 		grk_rect32(srcComp->x0, srcComp->y0, srcComp->x0 + srcComp->w, srcComp->y0 + srcComp->h),
 		destCompno, destWin);
 }
+
+void GrkImage::single_component_data_free(grk_image_comp* comp)
+{
+	if(!comp || !comp->data)
+		return;
+	grk_aligned_free(comp->data);
+	comp->data = nullptr;
+}
+
 ///////////////////////////////////////////////////////////////////////////////////////////////
 GrkImageMeta::GrkImageMeta()
 {

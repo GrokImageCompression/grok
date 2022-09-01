@@ -192,8 +192,8 @@ typedef struct _grk_raw_cparameters
 
 /**
  * Rate control algorithms
-    GRK_RATE_CONTROL_BISECT: bisect with all truncation points
-    GRK_RATE_CONTROL_PCRD_OPT: bisect with only feasible truncation points
+	GRK_RATE_CONTROL_BISECT: bisect with all truncation points
+	GRK_RATE_CONTROL_PCRD_OPT: bisect with only feasible truncation points
  */
 typedef enum _GRK_RATE_CONTROL_ALGORITHM
 {
