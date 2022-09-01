@@ -80,6 +80,7 @@
 #endif
 #define GRK_UNUSED(x) (void)x
 
+#include "grok_private.h"
 #include "simd.h"
 #include "ThreadPool.hpp"
 #include "packer.h"

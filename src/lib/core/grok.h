@@ -30,17 +30,9 @@ extern "C" {
 #include <stdbool.h>
 #include <limits.h>
 
-#ifdef __GNUC__
-#define GRK_DEPRECATED(func) func __attribute__((deprecated))
-#elif defined(_MSC_VER)
-#define GRK_DEPRECATED(func) __declspec(deprecated) func
-#else
-#pragma message("WARNING: You need to implement DEPRECATED for this compiler")
-#define GRK_DEPRECATED(func) func
-#endif
-
 #ifdef _WIN32
-#if defined(GRK_STATIC)
+#define GRK_CALLCONV __stdcall
+#ifdef GRK_STATIC
 #define GRK_API
 #else
 #if defined(GRK_EXPORTS) || defined(DLL_EXPORT)
@@ -49,275 +41,20 @@ extern "C" {
 #define GRK_API __declspec(dllimport)
 #endif
 #endif
-#define GRK_CALLCONV __stdcall
 #else
-#if defined(GRK_STATIC) /* static library uses "hidden" */
+#define GRK_CALLCONV
+#ifdef GRK_STATIC /* static library uses "hidden" */
 #define GRK_API __attribute__((visibility("hidden")))
 #else
 #define GRK_API __attribute__((visibility("default")))
 #endif
-#define GRK_CALLCONV
 #endif
 
-typedef enum GRK_RATE_CONTROL_ALGORITHM
-{
-	GRK_RATE_CONTROL_BISECT,
-	GRK_RATE_CONTROL_PCRD_OPT
-} GRK_RATE_CONTROL_ALGORITHM;
-
-/**
- * All supported file formats
- */
-typedef enum GRK_SUPPORTED_FILE_FMT
-{
-	GRK_FMT_UNK,
-	GRK_FMT_J2K,
-	GRK_FMT_JP2,
-	GRK_FMT_PXM,
-	GRK_FMT_PGX,
-	GRK_FMT_PAM,
-	GRK_FMT_BMP,
-	GRK_FMT_TIF,
-	GRK_FMT_RAW, /* MSB / Big Endian */
-	GRK_FMT_PNG,
-	GRK_FMT_RAWL, /* LSB / Little Endian */
-	GRK_FMT_JPG
-} GRK_SUPPORTED_FILE_FMT;
-
-/**
- * Supported JPEG 2000 formats
- */
-typedef enum _GRK_CODEC_FORMAT
-{
-	GRK_CODEC_UNK = -1, /**< place-holder */
-	GRK_CODEC_J2K = 0, /**< JPEG 2000 code stream : read/write */
-	GRK_CODEC_JP2 = 2 /**< JP2 file format : read/write */
-} GRK_CODEC_FORMAT;
-
-#define GRK_PATH_LEN 4096 /* Maximum allowed filename size */
-#define GRK_MAX_LAYERS 100
-#define GRK_MAX_SUPPORTED_IMAGE_PRECISION 16 /* Maximum supported precision in library */
-
-/*
- * Note: range for number of decomposition levels is 0-32
- * So, accordingly, range for number of resolutions is 1-33
- */
-
-#define GRK_J2K_MAX_DECOMP_LVLS                                      \
-	32 /* Maximum number of decomposition levels allowed by standard \
-		*/
-#define GRK_J2K_MAXRLVLS \
-	(GRK_J2K_MAX_DECOMP_LVLS + 1) /* Maximum number of resolution levels allowed by standard*/
-#define GRK_J2K_MAXBANDS \
-	(3 * GRK_J2K_MAXRLVLS - 2) /*  Maximum number of sub-bands allowed by standard */
-
-#define GRK_IMG_INFO 1 /* Basic image information provided to the user */
-#define GRK_J2K_MH_INFO 2 /* Codestream information based only on the main header */
-#define GRK_J2K_TH_INFO 4 /* Tile information based on the current tile header */
-#define GRK_J2K_TCH_INFO 8 /**< Tile/Component information of all tiles */
-#define GRK_J2K_MH_IND 16 /**< Codestream index based only on the main header */
-#define GRK_J2K_TH_IND 32 /**< Tile index based on the current tile */
-#define GRK_JP2_INFO 128 /**< JP2 file information */
-#define GRK_JP2_IND 256 /**< JP2 file index */
-
-#define GRK_CBLKSTY_LAZY 0x001 /**< Selective arithmetic coding bypass */
-#define GRK_CBLKSTY_RESET 0x002 /**< Reset context probabilities on coding pass boundaries */
-#define GRK_CBLKSTY_TERMALL 0x004 /**< Termination on each coding pass */
-#define GRK_CBLKSTY_VSC 0x008 /**< Vertical stripe causal context */
-#define GRK_CBLKSTY_PTERM 0x010 /**< Predictable termination */
-#define GRK_CBLKSTY_SEGSYM 0x020 /**< Segmentation symbols are used */
-#define GRK_CBLKSTY_HT 0x040 /**< high throughput block coding */
-#define GRK_CBLKSTY_HT_MIXED 0x080 /**< high throughput block coding - mixed*/
-#define GRK_CBLKSTY_HT_PHLD 0x100 /**< high throughput block coding - placeholder */
-#define GRK_JPH_RSIZ_FLAG 0x4000 /**<for JPH, bit 14 of RSIZ must be set to 1 */
-
-/**
- * JPEG 2000 Profiles, see Table A.10 from 15444-1 (updated in various AMDs)
- *
- * These values help choose the RSIZ value for the JPEG 2000 code stream.
- * The RSIZ value forces various compressing options, as detailed in Table A.10.
- * If GRK_PROFILE_PART2 is chosen, it must be combined with one or more extensions
- * described below.
- *
- *   Example: rsiz = GRK_PROFILE_PART2 | GRK_EXTENSION_MCT;
- *
- * For broadcast profiles, the GRK_PROFILE_X value has to be combined with the target
- * level (3-0 LSB, value between 0 and 11):
- *   Example: rsiz = GRK_PROFILE_BC_MULTI | 0x0005; //level equals 5
- *
- * For IMF profiles, the GRK_PROFILE_X value has to be combined with the target main-level
- * (3-0 LSB, value between 0 and 11) and sub-level (7-4 LSB, value between 0 and 9):
- *   Example: rsiz = GRK_PROFILE_IMF_2K | 0x0040 | 0x0005; // main-level equals 5 and sub-level
- * equals 4
- *
- * */
-#define GRK_PROFILE_NONE 0x0000 /** no profile, conform to 15444-1 */
-#define GRK_PROFILE_0 0x0001 /** Profile 0 as described in 15444-1,Table A.45 */
-#define GRK_PROFILE_1 0x0002 /** Profile 1 as described in 15444-1,Table A.45 */
-#define GRK_PROFILE_CINEMA_2K 0x0003 /** 2K cinema profile defined in 15444-1 AMD1 */
-#define GRK_PROFILE_CINEMA_4K 0x0004 /** 4K cinema profile defined in 15444-1 AMD1 */
-#define GRK_PROFILE_CINEMA_S2K 0x0005 /** Scalable 2K cinema profile defined in 15444-1 AMD2 */
-#define GRK_PROFILE_CINEMA_S4K 0x0006 /** Scalable 4K cinema profile defined in 15444-1 AMD2 */
-#define GRK_PROFILE_CINEMA_LTS \
-	0x0007 /** Long term storage cinema profile defined in 15444-1 AMD2 */
-#define GRK_PROFILE_BC_SINGLE 0x0100 /** Single Tile Broadcast profile defined in 15444-1 AMD3 */
-#define GRK_PROFILE_BC_MULTI 0x0200 /** Multi Tile Broadcast profile defined in 15444-1 AMD3 */
-#define GRK_PROFILE_BC_MULTI_R \
-	0x0300 /** Multi Tile Reversible Broadcast profile defined in 15444-1 AMD3 */
-#define GRK_PROFILE_BC_MASK 0x030F /** Mask for broadcast profile including main level */
-#define GRK_PROFILE_IMF_2K 0x0400 /** 2K Single Tile Lossy IMF profile defined in 15444-1 AMD8 */
-#define GRK_PROFILE_IMF_4K 0x0500 /** 4K Single Tile Lossy IMF profile defined in 15444-1 AMD8 */
-#define GRK_PROFILE_IMF_8K 0x0600 /** 8K Single Tile Lossy IMF profile defined in 15444-1 AMD8 */
-#define GRK_PROFILE_IMF_2K_R \
-	0x0700 /** 2K Single/Multi Tile Reversible IMF profile defined in 15444-1 AMD8 */
-#define GRK_PROFILE_IMF_4K_R \
-	0x0800 /** 4K Single/Multi Tile Reversible IMF profile defined in 15444-1 AMD8 */
-#define GRK_PROFILE_IMF_8K_R \
-	0x0900 /** 8K Single/Multi Tile Reversible IMF profile defined in 15444-1 AMD8 */
-#define GRK_PROFILE_MASK 0x0FFF /** Mask for profile bits */
-#define GRK_PROFILE_PART2 0x8000 /** At least 1 extension defined in 15444-2 (Part-2) */
-#define GRK_PROFILE_PART2_EXTENSIONS_MASK 0x3FFF // Mask for Part-2 extension bits
-
-/**
- * JPEG 2000 Part-2 extensions
- * */
-#define GRK_EXTENSION_NONE 0x0000 /** No Part-2 extension */
-#define GRK_EXTENSION_MCT 0x0100 /** Custom MCT support */
-#define GRK_IS_PART2(v) ((v)&GRK_PROFILE_PART2)
-
-#define GRK_IS_CINEMA(v) (((v) >= GRK_PROFILE_CINEMA_2K) && ((v) <= GRK_PROFILE_CINEMA_S4K))
-#define GRK_IS_STORAGE(v) ((v) == GRK_PROFILE_CINEMA_LTS)
-
-/*
- *
- * *********************************************
- * Broadcast level (3-0 LSB) (15444-1 AMD4,AMD8)
- * *********************************************
- *
- * indicates maximum bit rate and sample rate for a code stream
- *
- * Note: Mbit/s == 10^6 bits/s;  Msamples/s == 10^6 samples/s
- *
- * 0:		no maximum rate
- * 1:		200 Mbits/s, 65  Msamples/s
- * 2:		200 Mbits/s, 130 Msamples/s
- * 3:		200 Mbits/s, 195 Msamples/s
- * 4:		400 Mbits/s, 260 Msamples/s
- * 5:		800Mbits/s,  520 Msamples/s
- * >= 6:	2^(level-6) * 1600 Mbits/s, 2^(level-6) * 1200 Msamples/s
- *
- * Note: level cannot be greater than 11
- *
- * ****************
- * Broadcast tiling
- * ****************
- *
- * Either single-tile or multi-tile. Multi-tile only permits
- * 1 or 4 tiles per frame, where multiple tiles have identical
- * sizes, and are configured in either 2x2 or 1x4 layout.
- *
- *************************************************************
- *
- * ***************************************
- * IMF main-level (3-0) LSB (15444-1 AMD8)
- * ***************************************
- *
- * main-level indicates maximum number of samples per second,
- * as listed above.
- *
- *
- * **************************************
- * IMF sub-level (7-4) LSB (15444-1 AMD8)
- * **************************************
- *
- * sub-level indicates maximum bit rate for a code stream:
- *
- * 0:	no maximum rate
- * >0:	2^sub-level * 100 Mbits/second
- *
- * Note: sub-level cannot be greater than 9, and cannot be larger
- * then maximum of (main-level -2) and 1.
- *
- */
-
-#define GRK_GET_IMF_OR_BROADCAST_PROFILE(v) \
-	((v)&0x0f00) /** Extract profile without mainlevel/sublevel */
-
-#define GRK_LEVEL_MAX 11U /** Maximum (main) level */
-#define GRK_GET_LEVEL(v) ((v)&0xf) /** Extract (main) level */
-
-/******* BROADCAST **********/
-
-#define GRK_IS_BROADCAST(v)                                                          \
-	(((v) >= GRK_PROFILE_BC_SINGLE) && ((v) <= (GRK_PROFILE_BC_MULTI_R | 0x000b)) && \
-	 (((v)&0xf) <= 0xb))
-
-/* Maximum component sampling Rate (Mbits/sec) per level */
-#define GRK_BROADCAST_LEVEL_1_MBITSSEC 200U /** Mbits/sec for level 1 */
-#define GRK_BROADCAST_LEVEL_2_MBITSSEC 200U /** Mbits/sec for level 2 */
-#define GRK_BROADCAST_LEVEL_3_MBITSSEC 200U /** Mbits/sec for level 3 */
-#define GRK_BROADCAST_LEVEL_4_MBITSSEC 400U /** Mbits/sec for level 4 */
-#define GRK_BROADCAST_LEVEL_5_MBITSSEC 800U /** Mbits/sec for level 5 */
-#define GRK_BROADCAST_LEVEL_6_MBITSSEC 1600U /** Mbits/sec for level 6 */
-#define GRK_BROADCAST_LEVEL_7_MBITSSEC 3200U /** Mbits/sec for level 7 */
-#define GRK_BROADCAST_LEVEL_8_MBITSSEC 6400U /** Mbits/sec for level 8 */
-#define GRK_BROADCAST_LEVEL_9_MBITSSEC 12800U /** Mbits/sec for level 9 */
-#define GRK_BROADCAST_LEVEL_10_MBITSSEC 25600U /** Mbits/sec for level 10 */
-#define GRK_BROADCAST_LEVEL_11_MBITSSEC 51200U /** Mbits/sec for level 11 */
-
-#define GRK_BROADCAST_LEVEL_1_MSAMPLESSEC 64U /** MSamples/sec for level 1 */
-#define GRK_BROADCAST_LEVEL_2_MSAMPLESSEC 130U /** MSamples/sec for level 2 */
-#define GRK_BROADCAST_LEVEL_3_MSAMPLESSEC 195U /** MSamples/sec for level 3 */
-#define GRK_BROADCAST_LEVEL_4_MSAMPLESSEC 260U /** MSamples/sec for level 4 */
-#define GRK_BROADCAST_LEVEL_5_MSAMPLESSEC 520U /** MSamples/sec for level 5 */
-#define GRK_BROADCAST_LEVEL_6_MSAMPLESSEC 1200U /** MSamples/sec for level 6 */
-#define GRK_BROADCAST_LEVEL_7_MSAMPLESSEC 2400U /** MSamples/sec for level 7 */
-#define GRK_BROADCAST_LEVEL_8_MSAMPLESSEC 4800U /** MSamples/sec for level 8 */
-#define GRK_BROADCAST_LEVEL_9_MSAMPLESSEC 9600U /** MSamples/sec for level 9 */
-#define GRK_BROADCAST_LEVEL_10_MSAMPLESSEC 19200U /** MSamples/sec for level 10 */
-#define GRK_BROADCAST_LEVEL_11_MSAMPLESSEC 38400U /** MSamples/sec for level 11 */
-
-/********IMF ***********************************************************************/
-
-#define GRK_IS_IMF(v)                                                           \
-	(((v) >= GRK_PROFILE_IMF_2K) && ((v) <= (GRK_PROFILE_IMF_8K_R | 0x009b)) && \
-	 (((v)&0xf) <= 0xb) && (((v)&0xf0) <= 0x90))
-
-/* Maximum component sampling rate (MSamples/sec) per main level */
-#define GRK_IMF_MAINLEVEL_1_MSAMPLESSEC 65U /** MSamples/sec for main level 1 */
-#define GRK_IMF_MAINLEVEL_2_MSAMPLESSEC 130U /** MSamples/sec for main level 2 */
-#define GRK_IMF_MAINLEVEL_3_MSAMPLESSEC 195U /** MSamples/sec for main level 3 */
-#define GRK_IMF_MAINLEVEL_4_MSAMPLESSEC 260U /** MSamples/sec for main level 4 */
-#define GRK_IMF_MAINLEVEL_5_MSAMPLESSEC 520U /** MSamples/sec for main level 5 */
-#define GRK_IMF_MAINLEVEL_6_MSAMPLESSEC 1200U /** MSamples/sec for main level 6 */
-#define GRK_IMF_MAINLEVEL_7_MSAMPLESSEC 2400U /** MSamples/sec for main level 7 */
-#define GRK_IMF_MAINLEVEL_8_MSAMPLESSEC 4800U /** MSamples/sec for main level 8 */
-#define GRK_IMF_MAINLEVEL_9_MSAMPLESSEC 9600U /** MSamples/sec for main level 9 */
-#define GRK_IMF_MAINLEVEL_10_MSAMPLESSEC 19200U /** MSamples/sec for main level 10 */
-#define GRK_IMF_MAINLEVEL_11_MSAMPLESSEC 38400U /** MSamples/sec for main level 11 */
-
-#define GRK_IMF_SUBLEVEL_MAX 9U /** Maximum IMF sublevel */
-#define GRK_GET_IMF_SUBLEVEL(v) (((v) >> 4) & 0xf) /** Extract IMF sub level */
-
-/** Maximum compressed bit rate (Mbits/s) per IMF sub level */
-#define GRK_IMF_SUBLEVEL_1_MBITSSEC 200U /** Mbits/s for IMF sub level 1 */
-#define GRK_IMF_SUBLEVEL_2_MBITSSEC 400U /** Mbits/s for IMF sub level 2 */
-#define GRK_IMF_SUBLEVEL_3_MBITSSEC 800U /** Mbits/s for IMF sub level 3 */
-#define GRK_IMF_SUBLEVEL_4_MBITSSEC 1600U /** Mbits/s for IMF sub level 4 */
-#define GRK_IMF_SUBLEVEL_5_MBITSSEC 3200U /** Mbits/s for IMF sub level 5 */
-#define GRK_IMF_SUBLEVEL_6_MBITSSEC 6400U /** Mbits/s for IMF sub level 6 */
-#define GRK_IMF_SUBLEVEL_7_MBITSSEC 12800U /** Mbits/s for IMF sub level 7 */
-#define GRK_IMF_SUBLEVEL_8_MBITSSEC 25600U /** Mbits/s for IMF sub level 8 */
-#define GRK_IMF_SUBLEVEL_9_MBITSSEC 51200U /** Mbits/s for IMF sub level 9 */
-/**********************************************************************************/
-
-/**
- * JPEG 2000 cinema profile code stream and component size limits
- * */
-#define GRK_CINEMA_24_CS 1302083U /** Maximum code stream length @ 24fps */
-#define GRK_CINEMA_48_CS 651041U /** Maximum code stream length @ 48fps */
-#define GRK_CINEMA_24_COMP 1041666U /** Maximum size per color component @ 24fps */
-#define GRK_CINEMA_48_COMP 520833U /** Maximum size per color component @ 48fps */
+#ifdef __GNUC__
+#define GRK_DEPRECATED(func) func __attribute__((deprecated))
+#elif defined(_MSC_VER)
+#define GRK_DEPRECATED(func) __declspec(deprecated) func
+#endif
 
 /**
  * Progression order
@@ -332,22 +69,6 @@ typedef enum _GRK_PROG_ORDER
 	GRK_CPRL = 4, /**< component-precinct-resolution-layer order */
 	GRK_NUM_PROGRESSION_ORDERS = 5 /** number of possible progression orders */
 } GRK_PROG_ORDER;
-
-/*
- *
- * CIE Lab #defines
- */
-#define GRK_CUSTOM_CIELAB_SPACE 0x0
-#define GRK_DEFAULT_CIELAB_SPACE 0x44454600 /* 'DEF' */
-#define GRK_CIE_DAY ((((uint32_t)'C') << 24) + (((uint32_t)'T') << 16))
-#define GRK_CIE_D50 ((uint32_t)0x00443530)
-#define GRK_CIE_D65 ((uint32_t)0x00443635)
-#define GRK_CIE_D75 ((uint32_t)0x00443735)
-#define GRK_CIE_SA ((uint32_t)0x00005341)
-#define GRK_CIE_SC ((uint32_t)0x00005343)
-#define GRK_CIE_F2 ((uint32_t)0x00004632)
-#define GRK_CIE_F7 ((uint32_t)0x00004637)
-#define GRK_CIE_F11 ((uint32_t)0x00463131)
 
 /**
  * Supported color spaces
@@ -366,7 +87,7 @@ typedef enum _GRK_COLOR_SPACE
 } GRK_COLOR_SPACE;
 
 /* JPEG 2000 standard colour space enumeration */
-typedef enum GRK_ENUM_COLOUR_SPACE
+typedef enum _GRK_ENUM_COLOUR_SPACE
 {
 	GRK_ENUM_CLRSPC_UNKNOWN = 0xFFFFFFFF,
 	GRK_ENUM_CLRSPC_BILEVEL1 = 0,
@@ -394,27 +115,17 @@ typedef enum GRK_ENUM_COLOUR_SPACE
 #define GRK_NUM_ASOC_BOXES_SUPPORTED 256
 #define GRK_MAX_COMMENT_LENGTH (UINT16_MAX - 2)
 
-typedef enum GRK_TILE_CACHE_STRATEGY
-{
-	GRK_TILE_CACHE_NONE, /* no tile caching */
-	GRK_TILE_CACHE_IMAGE /* cache final tile image */
-} GRK_TILE_CACHE_STRATEGY;
-
-#define GRK_RANDOM_ACCESS_PLT 1 /* use PLT marker if present */
-#define GRK_RANDOM_ACCESS_TLM 2 /* use TLM marker if present */
-#define GRK_RANDOM_ACCESS_PLM 4 /* use PLM marker if present */
-
 /**
  * Logging callback
  *
  * @param msg               message
- * @param client_data       client object passed to callback
+ * @param client_data       client data passed to callback
  * */
 typedef void (*grk_msg_callback)(const char* msg, void* client_data);
 
 /**
  *
- * Base Grok ref-counted object
+ * Grok ref-counted object
  *
  */
 typedef struct _grk_object
@@ -484,6 +195,49 @@ typedef struct _grk_raw_cparameters
 	bool sgnd; /** signed/unsigned raw image */
 	grk_raw_comp_cparameters* comps; /** raw components parameters */
 } grk_raw_cparameters;
+
+/**
+ * Rate control algorithms
+ */
+typedef enum _GRK_RATE_CONTROL_ALGORITHM
+{
+	GRK_RATE_CONTROL_BISECT,
+	GRK_RATE_CONTROL_PCRD_OPT
+} GRK_RATE_CONTROL_ALGORITHM;
+
+/**
+ * All supported file formats
+ */
+typedef enum _GRK_SUPPORTED_FILE_FMT
+{
+	GRK_FMT_UNK,
+	GRK_FMT_J2K,
+	GRK_FMT_JP2,
+	GRK_FMT_PXM,
+	GRK_FMT_PGX,
+	GRK_FMT_PAM,
+	GRK_FMT_BMP,
+	GRK_FMT_TIF,
+	GRK_FMT_RAW, /* MSB / Big Endian */
+	GRK_FMT_PNG,
+	GRK_FMT_RAWL, /* LSB / Little Endian */
+	GRK_FMT_JPG
+} GRK_SUPPORTED_FILE_FMT;
+
+#define GRK_PATH_LEN 4096 /* Maximum allowed filename size */
+#define GRK_MAX_LAYERS 100 /* Maximum number of quality layers */
+
+/*
+ * Note: range for number of decomposition levels is 0-32
+ * So, accordingly, range for number of resolutions is 1-33
+ */
+#define GRK_J2K_MAX_DECOMP_LVLS                                      \
+	32 /* Maximum number of decomposition levels allowed by standard \
+		*/
+#define GRK_J2K_MAXRLVLS \
+	(GRK_J2K_MAX_DECOMP_LVLS + 1) /* Maximum number of resolution levels allowed by standard*/
+#define GRK_J2K_MAXBANDS \
+	(3 * GRK_J2K_MAXRLVLS - 2) /*  Maximum number of sub-bands allowed by standard */
 
 /**
  * Compress parameters
@@ -652,7 +406,7 @@ typedef struct _grk_palette_data
  * */
 
 /* channel type */
-typedef enum GRK_CHANNEL_TYPE_
+typedef enum _GRK_CHANNEL_TYPE
 {
 
 	GRK_CHANNEL_TYPE_COLOUR = 0,
@@ -663,7 +417,7 @@ typedef enum GRK_CHANNEL_TYPE_
 } GRK_CHANNEL_TYPE;
 
 /* channel association */
-typedef enum GRK_CHANNEL_ASSOC_
+typedef enum _GRK_CHANNEL_ASSOC
 {
 
 	GRK_CHANNEL_ASSOC_WHOLE_IMAGE = 0,
@@ -706,6 +460,9 @@ typedef struct _grk_color
 	bool has_colour_specification_box;
 } grk_color;
 
+/**
+ * Association box info
+ */
 typedef struct _grk_asoc
 {
 	uint32_t level; /* 0 for root level */
@@ -717,7 +474,7 @@ typedef struct _grk_asoc
 /**
  * Precision mode
  */
-typedef enum grk_prec_mode
+typedef enum _grk_precision_mode
 {
 	GRK_PREC_MODE_CLIP,
 	GRK_PREC_MODE_SCALE
@@ -726,7 +483,7 @@ typedef enum grk_prec_mode
 /**
  * Precision
  */
-typedef struct _grk_prec
+typedef struct _grk_precision
 {
 	uint8_t prec;
 	grk_precision_mode mode;
@@ -737,9 +494,9 @@ typedef struct _grk_prec
  */
 typedef struct _grk_header_info
 {
-	/***************************************
-	set by client
-	***************************************/
+	/******************************************
+	set by client only if decompressing to file
+	*******************************************/
 	GRK_SUPPORTED_FILE_FMT decompressFormat;
 	bool forceRGB;
 	bool upsample;
@@ -750,7 +507,7 @@ typedef struct _grk_header_info
 	/****************************************/
 
 	/*****************************************
-	populated by codec after reading header
+	populated by library after reading header
 	******************************************/
 	/** initial code block width, default to 64 */
 	uint32_t cblockw_init;
@@ -833,9 +590,9 @@ typedef void (*grk_io_register_reclaim_callback)(grk_io_init io_init,
 typedef bool (*grk_io_pixels_callback)(uint32_t threadId, grk_io_buf buffer, void* user_data);
 
 /**
- * Decompress codec initialization parameters
+ * Decompression source parameters
  */
-typedef struct _grk_decompress_init_params
+typedef struct _grk_decompress_src_params
 {
 	// source file name
 	const char* src_file;
@@ -843,10 +600,16 @@ typedef struct _grk_decompress_init_params
 	// source buffer and buffer length
 	uint8_t* src_buf;
 	size_t src_buf_len;
-} grk_decompress_init_params;
+} grk_decompress_src_params;
+
+typedef enum _GRK_TILE_CACHE_STRATEGY
+{
+	GRK_TILE_CACHE_NONE, /* no tile caching */
+	GRK_TILE_CACHE_IMAGE /* cache final tile image */
+} GRK_TILE_CACHE_STRATEGY;
 
 /**
- * Core decompress parameters
+ * Core decompression parameters
  * */
 typedef struct _grk_decompress_core_params
 {
@@ -877,7 +640,17 @@ typedef struct _grk_decompress_core_params
 #define GRK_DECOMPRESS_COMPRESSION_LEVEL_DEFAULT (UINT_MAX)
 
 /**
- * Decompress parameters
+ * Supported JPEG 2000 formats
+ */
+typedef enum _GRK_CODEC_FORMAT
+{
+	GRK_CODEC_UNK = -1, /**< place-holder */
+	GRK_CODEC_J2K = 0, /**< JPEG 2000 code stream : read/write */
+	GRK_CODEC_JP2 = 2 /**< JP2 file format : read/write */
+} GRK_CODEC_FORMAT;
+
+/**
+ * Decompression parameters
  */
 typedef struct _grk_decompress_params
 {
@@ -926,25 +699,6 @@ typedef struct _grk_decompress_params
 	uint32_t repeats;
 	uint32_t numThreads;
 } grk_decompress_parameters;
-
-/*
- * read callback
- *
- */
-typedef size_t (*grk_stream_read_fn)(void* buffer, size_t numBytes, void* user_data);
-
-/*
- * write callback
- */
-typedef size_t (*grk_stream_write_fn)(void* buffer, size_t numBytes, void* user_data);
-/*
- * (absolute) seek callback
- */
-typedef bool (*grk_stream_seek_fn)(uint64_t numBytes, void* user_data);
-/*
- *  free user data callback
- */
-typedef void (*grk_stream_free_user_data_fn)(void* user_data);
 
 /**
  * Image component
@@ -1177,56 +931,6 @@ GRK_API grk_image* GRK_CALLCONV grk_image_new(uint16_t numcmpts, grk_image_comp*
 
 GRK_API grk_image_meta* GRK_CALLCONV grk_image_meta_new(void);
 
-/**
- * Deallocate data for single image component
- *
- * @param image         image
- */
-GRK_API void GRK_CALLCONV grk_image_single_component_data_free(grk_image_comp* image);
-
-/**
- * Set read function
- *
- * @param		stream	    JPEG 2000 stream
- * @param		func		read function
- */
-GRK_API void GRK_CALLCONV grk_stream_set_read_function(grk_stream* stream, grk_stream_read_fn func);
-
-/**
- * Set write function
- *
- * @param		stream		JPEG 2000 stream
- * @param		func		write function
- */
-GRK_API void GRK_CALLCONV grk_stream_set_write_function(grk_stream* stream,
-														grk_stream_write_fn func);
-
-/**
- * Set (absolute) seek function (stream must be seekable)
- *
- * @param		stream		JPEG 2000 stream
- * @param		func		(absolute) seek function.
- */
-GRK_API void GRK_CALLCONV grk_stream_set_seek_function(grk_stream* stream, grk_stream_seek_fn func);
-
-/**
- * Set user data for JPEG 2000 stream
- *
- * @param		stream	    JPEG 2000 stream
- * @param		data		user data
- * @param		func		function to free data when grk_object_unref() is called.
- */
-GRK_API void GRK_CALLCONV grk_stream_set_user_data(grk_stream* stream, void* data,
-												   grk_stream_free_user_data_fn func);
-
-/**
- * Set the length of the user data for the stream.
- *
- * @param stream    JPEG 2000 stream
- * @param data_length length of data.
- */
-GRK_API void GRK_CALLCONV grk_stream_set_user_data_length(grk_stream* stream, uint64_t data_length);
-
 /** Create stream from a file identified with its filename with a specific buffer size
  *
  * @param fname           the name of the file to stream
@@ -1298,13 +1002,13 @@ GRK_API void GRK_CALLCONV grk_decompress_set_default_params(grk_decompress_core_
 /**
  * Initialize decompressor
  *
- * @param init_params 	decompress initialization parameters
+ * @param src_params 	decompress source parameters
  * @param core_params 	decompress core parameters
  *
  * @return grk_codec* if successful, otherwise NULL
  */
-GRK_API grk_codec* GRK_CALLCONV grk_decompress_init(grk_decompress_init_params* init_params,
-											grk_decompress_core_params* core_params);
+GRK_API grk_codec* GRK_CALLCONV grk_decompress_init(grk_decompress_src_params* src_params,
+													grk_decompress_core_params* core_params);
 
 /**
  * Decompress JPEG 2000 header
@@ -1493,6 +1197,239 @@ GRK_API void GRK_CALLCONV grk_dump_codec(grk_codec* codec, uint32_t info_flag, F
  */
 GRK_API bool GRK_CALLCONV grk_set_MCT(grk_cparameters* parameters, float* encodingMatrix,
 									  int32_t* dc_shift, uint32_t nbComp);
+
+#define GRK_MAX_SUPPORTED_IMAGE_PRECISION 16 /* Maximum supported precision in library */
+
+#define GRK_IMG_INFO 1 /* Basic image information provided to the user */
+#define GRK_J2K_MH_INFO 2 /* Codestream information based only on the main header */
+#define GRK_J2K_TH_INFO 4 /* Tile information based on the current tile header */
+#define GRK_J2K_TCH_INFO 8 /**< Tile/Component information of all tiles */
+#define GRK_J2K_MH_IND 16 /**< Codestream index based only on the main header */
+#define GRK_J2K_TH_IND 32 /**< Tile index based on the current tile */
+#define GRK_JP2_INFO 128 /**< JP2 file information */
+#define GRK_JP2_IND 256 /**< JP2 file index */
+
+#define GRK_CBLKSTY_LAZY 0x001 /**< Selective arithmetic coding bypass */
+#define GRK_CBLKSTY_RESET 0x002 /**< Reset context probabilities on coding pass boundaries */
+#define GRK_CBLKSTY_TERMALL 0x004 /**< Termination on each coding pass */
+#define GRK_CBLKSTY_VSC 0x008 /**< Vertical stripe causal context */
+#define GRK_CBLKSTY_PTERM 0x010 /**< Predictable termination */
+#define GRK_CBLKSTY_SEGSYM 0x020 /**< Segmentation symbols are used */
+#define GRK_CBLKSTY_HT 0x040 /**< high throughput block coding */
+#define GRK_CBLKSTY_HT_MIXED 0x080 /**< high throughput block coding - mixed*/
+#define GRK_CBLKSTY_HT_PHLD 0x100 /**< high throughput block coding - placeholder */
+#define GRK_JPH_RSIZ_FLAG 0x4000 /**<for JPH, bit 14 of RSIZ must be set to 1 */
+
+/*****************************************************************************
+ * JPEG 2000 Profiles, see Table A.10 from 15444-1 (updated in various AMDs)
+ *
+ * These values help choose the RSIZ value for the JPEG 2000 code stream.
+ * The RSIZ value forces various compressing options, as detailed in Table A.10.
+ * If GRK_PROFILE_PART2 is chosen, it must be combined with one or more extensions
+ * described below.
+ *
+ *   Example: rsiz = GRK_PROFILE_PART2 | GRK_EXTENSION_MCT;
+ *
+ * For broadcast profiles, the GRK_PROFILE_X value has to be combined with the target
+ * level (3-0 LSB, value between 0 and 11):
+ *   Example: rsiz = GRK_PROFILE_BC_MULTI | 0x0005; //level equals 5
+ *
+ * For IMF profiles, the GRK_PROFILE_X value has to be combined with the target main-level
+ * (3-0 LSB, value between 0 and 11) and sub-level (7-4 LSB, value between 0 and 9):
+ *   Example: rsiz = GRK_PROFILE_IMF_2K | 0x0040 | 0x0005; // main-level equals 5 and sub-level
+ * equals 4
+ *
+ * */
+#define GRK_PROFILE_NONE 0x0000 /** no profile, conform to 15444-1 */
+#define GRK_PROFILE_0 0x0001 /** Profile 0 as described in 15444-1,Table A.45 */
+#define GRK_PROFILE_1 0x0002 /** Profile 1 as described in 15444-1,Table A.45 */
+#define GRK_PROFILE_CINEMA_2K 0x0003 /** 2K cinema profile defined in 15444-1 AMD1 */
+#define GRK_PROFILE_CINEMA_4K 0x0004 /** 4K cinema profile defined in 15444-1 AMD1 */
+#define GRK_PROFILE_CINEMA_S2K 0x0005 /** Scalable 2K cinema profile defined in 15444-1 AMD2 */
+#define GRK_PROFILE_CINEMA_S4K 0x0006 /** Scalable 4K cinema profile defined in 15444-1 AMD2 */
+#define GRK_PROFILE_CINEMA_LTS \
+	0x0007 /** Long term storage cinema profile defined in 15444-1 AMD2 */
+#define GRK_PROFILE_BC_SINGLE 0x0100 /** Single Tile Broadcast profile defined in 15444-1 AMD3 */
+#define GRK_PROFILE_BC_MULTI 0x0200 /** Multi Tile Broadcast profile defined in 15444-1 AMD3 */
+#define GRK_PROFILE_BC_MULTI_R \
+	0x0300 /** Multi Tile Reversible Broadcast profile defined in 15444-1 AMD3 */
+#define GRK_PROFILE_BC_MASK 0x030F /** Mask for broadcast profile including main level */
+#define GRK_PROFILE_IMF_2K 0x0400 /** 2K Single Tile Lossy IMF profile defined in 15444-1 AMD8 */
+#define GRK_PROFILE_IMF_4K 0x0500 /** 4K Single Tile Lossy IMF profile defined in 15444-1 AMD8 */
+#define GRK_PROFILE_IMF_8K 0x0600 /** 8K Single Tile Lossy IMF profile defined in 15444-1 AMD8 */
+#define GRK_PROFILE_IMF_2K_R \
+	0x0700 /** 2K Single/Multi Tile Reversible IMF profile defined in 15444-1 AMD8 */
+#define GRK_PROFILE_IMF_4K_R \
+	0x0800 /** 4K Single/Multi Tile Reversible IMF profile defined in 15444-1 AMD8 */
+#define GRK_PROFILE_IMF_8K_R \
+	0x0900 /** 8K Single/Multi Tile Reversible IMF profile defined in 15444-1 AMD8 */
+#define GRK_PROFILE_MASK 0x0FFF /** Mask for profile bits */
+#define GRK_PROFILE_PART2 0x8000 /** At least 1 extension defined in 15444-2 (Part-2) */
+#define GRK_PROFILE_PART2_EXTENSIONS_MASK 0x3FFF // Mask for Part-2 extension bits
+
+/**
+ * JPEG 2000 Part-2 extensions
+ * */
+#define GRK_EXTENSION_NONE 0x0000 /** No Part-2 extension */
+#define GRK_EXTENSION_MCT 0x0100 /** Custom MCT support */
+#define GRK_IS_PART2(v) ((v)&GRK_PROFILE_PART2)
+
+#define GRK_IS_CINEMA(v) (((v) >= GRK_PROFILE_CINEMA_2K) && ((v) <= GRK_PROFILE_CINEMA_S4K))
+#define GRK_IS_STORAGE(v) ((v) == GRK_PROFILE_CINEMA_LTS)
+
+/*
+ *
+ * *********************************************
+ * Broadcast level (3-0 LSB) (15444-1 AMD4,AMD8)
+ * *********************************************
+ *
+ * indicates maximum bit rate and sample rate for a code stream
+ *
+ * Note: Mbit/s == 10^6 bits/s;  Msamples/s == 10^6 samples/s
+ *
+ * 0:       no maximum rate
+ * 1:       200 Mbits/s, 65  Msamples/s
+ * 2:       200 Mbits/s, 130 Msamples/s
+ * 3:       200 Mbits/s, 195 Msamples/s
+ * 4:       400 Mbits/s, 260 Msamples/s
+ * 5:       800Mbits/s,  520 Msamples/s
+ * >= 6:    2^(level-6) * 1600 Mbits/s, 2^(level-6) * 1200 Msamples/s
+ *
+ * Note: level cannot be greater than 11
+ *
+ * ****************
+ * Broadcast tiling
+ * ****************
+ *
+ * Either single-tile or multi-tile. Multi-tile only permits
+ * 1 or 4 tiles per frame, where multiple tiles have identical
+ * sizes, and are configured in either 2x2 or 1x4 layout.
+ *
+ *************************************************************
+ *
+ * ***************************************
+ * IMF main-level (3-0) LSB (15444-1 AMD8)
+ * ***************************************
+ *
+ * main-level indicates maximum number of samples per second,
+ * as listed above.
+ *
+ *
+ * **************************************
+ * IMF sub-level (7-4) LSB (15444-1 AMD8)
+ * **************************************
+ *
+ * sub-level indicates maximum bit rate for a code stream:
+ *
+ * 0:   no maximum rate
+ * >0:  2^sub-level * 100 Mbits/second
+ *
+ * Note: sub-level cannot be greater than 9, and cannot be larger
+ * then maximum of (main-level -2) and 1.
+ *
+ */
+
+#define GRK_GET_IMF_OR_BROADCAST_PROFILE(v) \
+	((v)&0x0f00) /** Extract profile without mainlevel/sublevel */
+
+#define GRK_LEVEL_MAX 11U /** Maximum (main) level */
+#define GRK_GET_LEVEL(v) ((v)&0xf) /** Extract (main) level */
+
+/******* BROADCAST **********************************************************/
+
+#define GRK_IS_BROADCAST(v)                                                          \
+	(((v) >= GRK_PROFILE_BC_SINGLE) && ((v) <= (GRK_PROFILE_BC_MULTI_R | 0x000b)) && \
+	 (((v)&0xf) <= 0xb))
+
+/* Maximum component sampling Rate (Mbits/sec) per level */
+#define GRK_BROADCAST_LEVEL_1_MBITSSEC 200U /** Mbits/sec for level 1 */
+#define GRK_BROADCAST_LEVEL_2_MBITSSEC 200U /** Mbits/sec for level 2 */
+#define GRK_BROADCAST_LEVEL_3_MBITSSEC 200U /** Mbits/sec for level 3 */
+#define GRK_BROADCAST_LEVEL_4_MBITSSEC 400U /** Mbits/sec for level 4 */
+#define GRK_BROADCAST_LEVEL_5_MBITSSEC 800U /** Mbits/sec for level 5 */
+#define GRK_BROADCAST_LEVEL_6_MBITSSEC 1600U /** Mbits/sec for level 6 */
+#define GRK_BROADCAST_LEVEL_7_MBITSSEC 3200U /** Mbits/sec for level 7 */
+#define GRK_BROADCAST_LEVEL_8_MBITSSEC 6400U /** Mbits/sec for level 8 */
+#define GRK_BROADCAST_LEVEL_9_MBITSSEC 12800U /** Mbits/sec for level 9 */
+#define GRK_BROADCAST_LEVEL_10_MBITSSEC 25600U /** Mbits/sec for level 10 */
+#define GRK_BROADCAST_LEVEL_11_MBITSSEC 51200U /** Mbits/sec for level 11 */
+
+#define GRK_BROADCAST_LEVEL_1_MSAMPLESSEC 64U /** MSamples/sec for level 1 */
+#define GRK_BROADCAST_LEVEL_2_MSAMPLESSEC 130U /** MSamples/sec for level 2 */
+#define GRK_BROADCAST_LEVEL_3_MSAMPLESSEC 195U /** MSamples/sec for level 3 */
+#define GRK_BROADCAST_LEVEL_4_MSAMPLESSEC 260U /** MSamples/sec for level 4 */
+#define GRK_BROADCAST_LEVEL_5_MSAMPLESSEC 520U /** MSamples/sec for level 5 */
+#define GRK_BROADCAST_LEVEL_6_MSAMPLESSEC 1200U /** MSamples/sec for level 6 */
+#define GRK_BROADCAST_LEVEL_7_MSAMPLESSEC 2400U /** MSamples/sec for level 7 */
+#define GRK_BROADCAST_LEVEL_8_MSAMPLESSEC 4800U /** MSamples/sec for level 8 */
+#define GRK_BROADCAST_LEVEL_9_MSAMPLESSEC 9600U /** MSamples/sec for level 9 */
+#define GRK_BROADCAST_LEVEL_10_MSAMPLESSEC 19200U /** MSamples/sec for level 10 */
+#define GRK_BROADCAST_LEVEL_11_MSAMPLESSEC 38400U /** MSamples/sec for level 11 */
+
+/********IMF *****************************************************************/
+
+#define GRK_IS_IMF(v)                                                           \
+	(((v) >= GRK_PROFILE_IMF_2K) && ((v) <= (GRK_PROFILE_IMF_8K_R | 0x009b)) && \
+	 (((v)&0xf) <= 0xb) && (((v)&0xf0) <= 0x90))
+
+/* Maximum component sampling rate (MSamples/sec) per main level */
+#define GRK_IMF_MAINLEVEL_1_MSAMPLESSEC 65U /** MSamples/sec for main level 1 */
+#define GRK_IMF_MAINLEVEL_2_MSAMPLESSEC 130U /** MSamples/sec for main level 2 */
+#define GRK_IMF_MAINLEVEL_3_MSAMPLESSEC 195U /** MSamples/sec for main level 3 */
+#define GRK_IMF_MAINLEVEL_4_MSAMPLESSEC 260U /** MSamples/sec for main level 4 */
+#define GRK_IMF_MAINLEVEL_5_MSAMPLESSEC 520U /** MSamples/sec for main level 5 */
+#define GRK_IMF_MAINLEVEL_6_MSAMPLESSEC 1200U /** MSamples/sec for main level 6 */
+#define GRK_IMF_MAINLEVEL_7_MSAMPLESSEC 2400U /** MSamples/sec for main level 7 */
+#define GRK_IMF_MAINLEVEL_8_MSAMPLESSEC 4800U /** MSamples/sec for main level 8 */
+#define GRK_IMF_MAINLEVEL_9_MSAMPLESSEC 9600U /** MSamples/sec for main level 9 */
+#define GRK_IMF_MAINLEVEL_10_MSAMPLESSEC 19200U /** MSamples/sec for main level 10 */
+#define GRK_IMF_MAINLEVEL_11_MSAMPLESSEC 38400U /** MSamples/sec for main level 11 */
+
+#define GRK_IMF_SUBLEVEL_MAX 9U /** Maximum IMF sublevel */
+#define GRK_GET_IMF_SUBLEVEL(v) (((v) >> 4) & 0xf) /** Extract IMF sub level */
+
+/** Maximum compressed bit rate (Mbits/s) per IMF sub level */
+#define GRK_IMF_SUBLEVEL_1_MBITSSEC 200U /** Mbits/s for IMF sub level 1 */
+#define GRK_IMF_SUBLEVEL_2_MBITSSEC 400U /** Mbits/s for IMF sub level 2 */
+#define GRK_IMF_SUBLEVEL_3_MBITSSEC 800U /** Mbits/s for IMF sub level 3 */
+#define GRK_IMF_SUBLEVEL_4_MBITSSEC 1600U /** Mbits/s for IMF sub level 4 */
+#define GRK_IMF_SUBLEVEL_5_MBITSSEC 3200U /** Mbits/s for IMF sub level 5 */
+#define GRK_IMF_SUBLEVEL_6_MBITSSEC 6400U /** Mbits/s for IMF sub level 6 */
+#define GRK_IMF_SUBLEVEL_7_MBITSSEC 12800U /** Mbits/s for IMF sub level 7 */
+#define GRK_IMF_SUBLEVEL_8_MBITSSEC 25600U /** Mbits/s for IMF sub level 8 */
+#define GRK_IMF_SUBLEVEL_9_MBITSSEC 51200U /** Mbits/s for IMF sub level 9 */
+/**********************************************************************************/
+
+/**
+ * JPEG 2000 cinema profile code stream and component size limits
+ * */
+#define GRK_CINEMA_24_CS 1302083U /** Maximum code stream length @ 24fps */
+#define GRK_CINEMA_48_CS 651041U /** Maximum code stream length @ 48fps */
+#define GRK_CINEMA_24_COMP 1041666U /** Maximum size per color component @ 24fps */
+#define GRK_CINEMA_48_COMP 520833U /** Maximum size per color component @ 48fps */
+
+/*
+ *
+ * CIE Lab #defines
+ */
+#define GRK_CUSTOM_CIELAB_SPACE 0x0
+#define GRK_DEFAULT_CIELAB_SPACE 0x44454600 /* 'DEF' */
+#define GRK_CIE_DAY ((((uint32_t)'C') << 24) + (((uint32_t)'T') << 16))
+#define GRK_CIE_D50 ((uint32_t)0x00443530)
+#define GRK_CIE_D65 ((uint32_t)0x00443635)
+#define GRK_CIE_D75 ((uint32_t)0x00443735)
+#define GRK_CIE_SA ((uint32_t)0x00005341)
+#define GRK_CIE_SC ((uint32_t)0x00005343)
+#define GRK_CIE_F2 ((uint32_t)0x00004632)
+#define GRK_CIE_F7 ((uint32_t)0x00004637)
+#define GRK_CIE_F11 ((uint32_t)0x00463131)
+
+/**
+ * Toggle random access markers
+ */
+#define GRK_RANDOM_ACCESS_PLT 1 /* use PLT marker if present */
+#define GRK_RANDOM_ACCESS_TLM 2 /* use TLM marker if present */
+#define GRK_RANDOM_ACCESS_PLM 4 /* use PLM marker if present */
 
 /*************************************************************************************
  Plugin Interface

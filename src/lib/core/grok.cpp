@@ -306,7 +306,7 @@ void GRK_CALLCONV grk_decompress_set_default_params(grk_decompress_core_params* 
 			GRK_RANDOM_ACCESS_TLM | GRK_RANDOM_ACCESS_PLM | GRK_RANDOM_ACCESS_PLT;
 	}
 }
-grk_codec* GRK_CALLCONV grk_decompress_init(grk_decompress_init_params* init_params,
+grk_codec* GRK_CALLCONV grk_decompress_init(grk_decompress_src_params* init_params,
 											grk_decompress_core_params* core_params)
 {
 	if(!init_params || !core_params)

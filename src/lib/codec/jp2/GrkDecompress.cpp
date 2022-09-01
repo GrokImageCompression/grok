@@ -608,8 +608,8 @@ int GrkDecompress::parseCommandLine(int argc, char** argv, DecompressInitParams*
 			if(!inDirArg.isSet())
 			{
 				bool toStdout =
-					outForArg.isSet() &&
-					grk::supportedStdioFormat((GRK_SUPPORTED_FILE_FMT)parameters->cod_format,false);
+					outForArg.isSet() && grk::supportedStdioFormat(
+											 (GRK_SUPPORTED_FILE_FMT)parameters->cod_format, false);
 				if(!toStdout)
 				{
 					spdlog::error("Missing output file");
@@ -1140,10 +1140,10 @@ int GrkDecompress::preProcess(grk_plugin_decompress_callback_info* info)
 							 parameters->verbose_ ? warningCallback : nullptr, nullptr,
 							 errorCallback, nullptr);
 
-		grk_decompress_init_params init_params;
-		memset(&init_params, 0, sizeof(init_params));
-		init_params.src_file = infile;
-		info->codec = grk_decompress_init(&init_params, &parameters->core);
+		grk_decompress_src_params src_params;
+		memset(&src_params, 0, sizeof(src_params));
+		src_params.src_file = infile;
+		info->codec = grk_decompress_init(&src_params, &parameters->core);
 		if(!info->codec)
 		{
 			spdlog::error("grk_decompress: failed to set up the decompressor");

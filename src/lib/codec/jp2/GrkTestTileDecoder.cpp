@@ -111,10 +111,10 @@ int GrkTestTileDecoder::main(int argc, char* argv[])
 	grk_set_msg_handlers(grk::infoCallback, nullptr, grk::warningCallback, nullptr,
 						 grk::errorCallback, nullptr);
 
-	grk_decompress_init_params init_params;
-	memset(&init_params, 0, sizeof(init_params));
-	init_params.src_file = input_file;
-	codec = grk_decompress_init(&init_params, &param.core);
+	grk_decompress_src_params src_params;
+	memset(&src_params, 0, sizeof(src_params));
+	src_params.src_file = input_file;
+	codec = grk_decompress_init(&src_params, &param.core);
 	if(!codec)
 	{
 		spdlog::error("test tile decoder: failed to set up decompressor\n");
