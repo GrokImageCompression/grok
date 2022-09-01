@@ -1053,11 +1053,12 @@ bool GrkImage::validateICC(void)
 	bool imageColourSpaceMatchesICCColourSpace = false;
 
 	// image properties such as subsampling and number of components
-	// are consistent with colour space
+	// are consistent with ICC colour space
 	bool imagePropertiesMatchICCColourSpace = false;
 
-	// ICC colour space conversion is supported for this colour space
-	bool iccColourSpaceCanBeConverted = false;
+	// colour space conversion is supported by the library
+	// for this ICC colour space
+	bool supportedICCColourSpace = false;
 
 	uint32_t iccColourSpace = 0;
 	auto in_prof = cmsOpenProfileFromMem(meta->color.icc_profile_buf, meta->color.icc_profile_len);
@@ -1093,12 +1094,12 @@ bool GrkImage::validateICC(void)
 			case cmsSigRgbData:
 				imageColourSpaceMatchesICCColourSpace = color_space == GRK_CLRSPC_SRGB;
 				imagePropertiesMatchICCColourSpace = numcomps >= 3 && !isSubsampled();
-				iccColourSpaceCanBeConverted = true;
+				supportedICCColourSpace = true;
 				break;
 			case cmsSigGrayData:
 				imageColourSpaceMatchesICCColourSpace = color_space == GRK_CLRSPC_GRAY;
 				imagePropertiesMatchICCColourSpace = numcomps <= 2;
-				iccColourSpaceCanBeConverted = true;
+				supportedICCColourSpace = true;
 				break;
 			case cmsSigCmykData:
 				imageColourSpaceMatchesICCColourSpace = color_space == GRK_CLRSPC_CMYK;
@@ -1114,7 +1115,7 @@ bool GrkImage::validateICC(void)
 		GRK_WARN("Unable to parse ICC profile. Ignoring");
 		return false;
 	}
-	if(!iccColourSpaceCanBeConverted)
+	if(!supportedICCColourSpace)
 	{
 		GRK_WARN("Unsupported ICC colour space %s. Ignoring",
 				 getICCColourSpaceString((cmsColorSpaceSignature)iccColourSpace).c_str());
@@ -1135,8 +1136,14 @@ bool GrkImage::validateICC(void)
 	return imagePropertiesMatchICCColourSpace;
 }
 
+/**
+ * Convert to sRGB
+ */
 bool GrkImage::applyColourManagement(void)
 {
+    if(!meta || !meta->color.icc_profile_buf)
+       return true;
+
 	bool isTiff = decompressFormat == GRK_FMT_TIF;
 	bool canStoreCIE = isTiff && color_space == GRK_CLRSPC_DEFAULT_CIE;
 	bool isCIE = color_space == GRK_CLRSPC_DEFAULT_CIE || color_space == GRK_CLRSPC_CUSTOM_CIE;
@@ -1147,48 +1154,48 @@ bool GrkImage::applyColourManagement(void)
 	bool canStoreICC = (decompressFormat == GRK_FMT_TIF || decompressFormat == GRK_FMT_PNG ||
 						decompressFormat == GRK_FMT_JPG || decompressFormat == GRK_FMT_BMP);
 
-	bool shouldColourManage = meta && meta->color.icc_profile_buf &&
-							  (forceRGB || ((isCIE && !canStoreCIE) || !canStoreICC));
-	if(!shouldColourManage)
+	bool shouldApplyColourManagement =
+	        forceRGB ||
+	            (decompressFormat != GRK_FMT_UNK &&
+	                    meta && meta->color.icc_profile_buf &&
+	                        ((isCIE && !canStoreCIE) || !canStoreICC) );
+	if(!shouldApplyColourManagement)
 		return true;
 
-	if(meta && meta->color.icc_profile_buf)
-	{
-		if(isCIE)
-		{
-			if(!forceRGB)
-				GRK_WARN(" Input file is in CIE colour space,\n"
-						 "but the codec is unable to store this information in the "
-						 "output file .\n"
-						 "The output image will therefore be converted to sRGB before saving.");
-			if(!cieLabToRGB())
-			{
-				GRK_ERROR("Unable to convert L*a*b image to sRGB");
-				return false;
-			}
-		}
-		else
-		{
-			if(validateICC())
-			{
-				if(!forceRGB)
-				{
-					GRK_WARN("");
-					GRK_WARN("The input file contains an ICC profile");
-					GRK_WARN("but the codec is unable to store this profile"
-							 " in the output file.");
-					GRK_WARN("The profile will therefore be applied to the output"
-							 " image before saving.");
-					GRK_WARN("");
-				}
-				if(!applyICC())
-				{
-					GRK_WARN("Unable to apply ICC profile");
-					return false;
-				}
-			}
-		}
-	}
+    if(isCIE)
+    {
+        if(!forceRGB)
+            GRK_WARN(" Input image is in CIE colour space,\n"
+                     "but the codec is unable to store this information in the "
+                     "output file .\n"
+                     "The output image will therefore be converted to sRGB before saving.");
+        if(!cieLabToRGB())
+        {
+            GRK_ERROR("Unable to convert L*a*b image to sRGB");
+            return false;
+        }
+    }
+    else
+    {
+        if(validateICC())
+        {
+            if(!forceRGB)
+            {
+                GRK_WARN("");
+                GRK_WARN("The input image contains an ICC profile");
+                GRK_WARN("but the codec is unable to store this profile"
+                         " in the output file.");
+                GRK_WARN("The profile will therefore be applied to the output"
+                         " image before saving.");
+                GRK_WARN("");
+            }
+            if(!applyICC())
+            {
+                GRK_WARN("Unable to apply ICC profile");
+                return false;
+            }
+        }
+    }
 
 	return true;
 }
@@ -1209,7 +1216,7 @@ bool GrkImage::applyICC(void)
 
 	if(numcomps == 0 || !allComponentsSanityCheck(true))
 		return false;
-	if(!meta)
+	if(!meta || !meta->color.icc_profile_buf || !meta->color.icc_profile_len)
 		return false;
 	in_prof = cmsOpenProfileFromMem(meta->color.icc_profile_buf, meta->color.icc_profile_len);
 	if(!in_prof)
@@ -1281,7 +1288,7 @@ bool GrkImage::applyICC(void)
 	}
 	else
 	{
-		GRK_WARN("Apply ICC \nICC profile has unknown "
+		GRK_WARN("Apply ICC profile has unknown "
 				 "output color space (%#x)\nICC profile ignored.",
 				 out_space);
 		goto cleanup;
