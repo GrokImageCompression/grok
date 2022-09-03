@@ -69,7 +69,7 @@ To configure a build using the defaults:
 
 The `cmake` GUI is recommended, in order to view all `cmake` options.
 On Linux distributions, `cmake-gui` will launch the cmake GUI.
-On system without a window manager, `ccmake` (an ncurses application)
+On headless systems, `ccmake` (an ncurses application)
 may be used to configure the build.
 
 
@@ -80,6 +80,12 @@ may be used to configure the build.
 The `BUILD_SHARED_LIBS` `cmake` flag determines if the `grk_compress`
 and `grk_decompress` binaries are linked dynamically or statically.
 
+A static build on most systems will still link dynamically
+to `glibc`. For a purely static build, the library can be built
+on [Alpine Linux](https://www.alpinelinux.org/). Alpine uses
+[musl libc](https://musl.libc.org/), which can be linked to statically.
+
+Note: `cmake` must also be configured with `-DCMAKE_EXE_LINKER_FLAGS="-static"`.
 
 ##### Fedora
 
@@ -94,9 +100,8 @@ are given priority when loading at run time.
 
 #### Debug/Release
 
-Default build type is `Release`. For a `Debug` build, run:
-
-`$ cmake -DCMAKE_BUILD_TYPE=Debug /PATH/TO/SOURCE`
+Default build type is `Release`. For a `Debug` build, configure
+`cmake` with `-DCMAKE_BUILD_TYPE=Debug`
 
 #### Build
 
@@ -112,7 +117,7 @@ Root users may run:
 
 `$ make install`
 
-those with sudo powers may run:
+those with sudo powers can run:
 
 `$ sudo make install`
 
@@ -195,7 +200,7 @@ To encode and decode JPEG files, a `libjpeg`-compatible library
 (`-dev` version) must be installed.
 Recommended library : [libjpeg-turbo](https://github.com/libjpeg-turbo/libjpeg-turbo)
 On Debian systems, the `libjpeg-turbo8-dev` package will provide a development
-version of the library.
+version of this library.
 
 ##### Grok dynamic build with JPEG support (Windows)
 
