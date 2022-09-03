@@ -269,7 +269,7 @@ size_t BufferedStream::writeBytes(const uint8_t* buffer, size_t p_size)
 	if(isMemStream())
 	{
 		/* we should do an actual write on the media */
-		auto current_write_nb_bytes = write_fn_((uint8_t*)buffer, p_size, user_data_);
+		auto current_write_nb_bytes = write_fn_(buffer, p_size, user_data_);
 		writeIncrement(current_write_nb_bytes);
 
 		return current_write_nb_bytes;

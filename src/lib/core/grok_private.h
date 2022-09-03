@@ -23,12 +23,12 @@
  * read callback
  *
  */
-typedef size_t (*grk_stream_read_fn)(void* buffer, size_t numBytes, void* user_data);
+typedef size_t (*grk_stream_read_fn)(uint8_t* buffer, size_t numBytes, void* user_data);
 
 /*
  * write callback
  */
-typedef size_t (*grk_stream_write_fn)(void* buffer, size_t numBytes, void* user_data);
+typedef size_t (*grk_stream_write_fn)(const uint8_t* buffer, size_t numBytes, void* user_data);
 /*
  * (absolute) seek callback
  */
