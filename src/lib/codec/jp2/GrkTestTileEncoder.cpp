@@ -158,12 +158,6 @@ int GrkTestTileEncoder::main(int argc, char* argv[])
 		spdlog::error("test_tile_encoder: failed to setup the codec");
 		goto cleanup;
 	}
-	if(!grk_compress_start(codec))
-	{
-		spdlog::error("test_tile_encoder: failed to start compress");
-		goto cleanup;
-	}
-
 	for(i = 0; i < nb_tiles; ++i)
 	{
 		if(!grk_compress_tile(codec, (uint16_t)i, data, data_size))

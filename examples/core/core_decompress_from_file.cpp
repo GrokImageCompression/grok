@@ -91,10 +91,10 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
 						 errorCallback, nullptr);
 
 	// initialize decompressor
-    grk_decompress_src_params src_params;
-    memset(&src_params,0,sizeof(src_params));
-    src_params.src_file = inputFileStr;
-    codec = grk_decompress_init(&src_params, &param.core);
+    grk_stream_params stream_params;
+    memset(&stream_params,0,sizeof(stream_params));
+    stream_params.file = inputFileStr;
+    codec = grk_decompress_init(&stream_params, &param.core);
 	if(!codec)
 	{
 		fprintf(stderr, "Failed to set up decompressor\n");

@@ -858,7 +858,7 @@ int GrkCompress::parseCommandLine(int argc, char** argv, CompressInitParams* ini
 		if(outputFileArg.isSet())
 		{
 			char* outfile = (char*)outputFileArg.getValue().c_str();
-			parameters->cod_format = (GRK_SUPPORTED_FILE_FMT)grk_get_file_format(outfile);
+			parameters->cod_format = grk_get_file_format(outfile);
 			switch(parameters->cod_format)
 			{
 				case GRK_FMT_J2K:
@@ -2058,9 +2058,9 @@ static bool pluginCompressCallback(grk_plugin_compress_user_callback_info* info)
 				  image->numcomps * ((image->comps[0].prec + 7U) / 8U)) *
 				 3U) /
 				2U;
-			info->compressBufferLen =
+			info->mem_stream_params.len =
 				(size_t)fileLength > imageSize ? (size_t)fileLength : imageSize;
-			info->compressBuffer = new uint8_t[info->compressBufferLen];
+			info->mem_stream_params.buf = new uint8_t[info->mem_stream_params.len];
 		}
 	}
 
@@ -2149,16 +2149,15 @@ static bool pluginCompressCallback(grk_plugin_compress_user_callback_info* info)
 			spdlog::warn("MSamples/sec is {}, whereas limit is {}.", msamplespersec, limit);
 	}
 
-	if(info->compressBuffer)
+	if(info->mem_stream_params.buf)
 	{
 		// let stream clean up compress buffer
-		stream = grk_stream_create_mem_stream(info->compressBuffer, info->compressBufferLen, true,
-											  false);
+		stream = grk_stream_create_mem_stream(info->mem_stream_params.buf,
+											  info->mem_stream_params.len, true, false);
 	}
 	else
 	{
 		stream = grk_stream_create_file_stream(outfile, 1024 * 1024, false);
-		// stream = grk_stream_create_mapped_file_stream(outfile, false);
 	}
 	if(!stream)
 	{
@@ -2188,16 +2187,6 @@ static bool pluginCompressCallback(grk_plugin_compress_user_callback_info* info)
 		bSuccess = false;
 		goto cleanup;
 	}
-
-	/* compress the image */
-	bSuccess = grk_compress_start(codec);
-	if(!bSuccess)
-	{
-		spdlog::error("failed to compress image: grk_compress_start");
-		bSuccess = false;
-		goto cleanup;
-	}
-
 	bSuccess = grk_compress_with_plugin(codec, info->tile);
 	if(!bSuccess)
 	{
@@ -2217,7 +2206,7 @@ static bool pluginCompressCallback(grk_plugin_compress_user_callback_info* info)
 	if(bSuccess && info->transferExifTags && info->compressor_parameters->cod_format == GRK_FMT_JP2)
 		transferExifTags(info->input_file_name, info->output_file_name);
 #endif
-	if(info->compressBuffer)
+	if(info->mem_stream_params.buf)
 	{
 		auto fp = fopen(outfile, "wb");
 		if(!fp)
@@ -2227,7 +2216,7 @@ static bool pluginCompressCallback(grk_plugin_compress_user_callback_info* info)
 		else
 		{
 			auto len = grk_stream_get_write_mem_stream_length(stream);
-			size_t written = fwrite(info->compressBuffer, 1, len, fp);
+			size_t written = fwrite(info->mem_stream_params.buf, 1, len, fp);
 			if(written != len)
 			{
 				spdlog::error("Buffer compress: only {} bytes written out of {} total", len,

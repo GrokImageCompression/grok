@@ -582,17 +582,17 @@ typedef void (*grk_io_register_reclaim_callback)(grk_io_init io_init,
 typedef bool (*grk_io_pixels_callback)(uint32_t threadId, grk_io_buf buffer, void* user_data);
 
 /**
- * Decompression source parameters
+ * JPEG 2000 stream parameters - either file or buffer
  */
-typedef struct _grk_decompress_src_params
+typedef struct _grk_stream_params
 {
-	// source file name
-	const char* src_file;
+	// file name
+	const char* file;
 
-	// source buffer and buffer length
-	uint8_t* src_buf;
-	size_t src_buf_len;
-} grk_decompress_src_params;
+	// buffer and buffer length
+	uint8_t* buf;
+	size_t len;
+} grk_stream_params;
 
 typedef enum _GRK_TILE_CACHE_STRATEGY
 {
@@ -952,14 +952,6 @@ GRK_API grk_stream* GRK_CALLCONV grk_stream_create_mem_stream(uint8_t* buf, size
 GRK_API size_t GRK_CALLCONV grk_stream_get_write_mem_stream_length(grk_stream* stream);
 
 /**
- * Create mapped file stream
- *
- * @param fname			file name
- * @param read_stream 	true if this is a read stream, otherwise false
- */
-GRK_API grk_stream* GRK_CALLCONV grk_stream_create_mapped_file_stream(const char* fname,
-																	  bool read_stream);
-/**
  * Detect jpeg 2000 format from file
  * Format is either GRK_FMT_J2K or GRK_FMT_JP2
  *
@@ -994,12 +986,12 @@ GRK_API void GRK_CALLCONV grk_decompress_set_default_params(grk_decompress_core_
 /**
  * Initialize decompressor
  *
- * @param src_params 	decompress source parameters
+ * @param stream_params 	source stream parameters
  * @param core_params 	decompress core parameters
  *
  * @return grk_codec* if successful, otherwise NULL
  */
-GRK_API grk_codec* GRK_CALLCONV grk_decompress_init(grk_decompress_src_params* src_params,
+GRK_API grk_codec* GRK_CALLCONV grk_decompress_init(grk_stream_params* stream_params,
 													grk_decompress_core_params* core_params);
 
 /**
@@ -1111,14 +1103,6 @@ GRK_API void GRK_CALLCONV grk_compress_set_default_params(grk_cparameters* param
  */
 GRK_API bool GRK_CALLCONV grk_compress_init(grk_codec* codec, grk_cparameters* parameters,
 											grk_image* image);
-
-/**
- * Start compressing image
- *
- * @param codec 		compression codec
- *
- */
-GRK_API bool GRK_CALLCONV grk_compress_start(grk_codec* codec);
 
 /**
  * Compress image
@@ -1498,8 +1482,7 @@ typedef struct grk_plugin_compress_user_callback_info
 	grk_cparameters* compressor_parameters;
 	grk_image* image;
 	grk_plugin_tile* tile;
-	uint8_t* compressBuffer;
-	size_t compressBufferLen;
+	grk_stream_params mem_stream_params;
 	unsigned int error_code;
 	bool transferExifTags;
 } grk_plugin_compress_user_callback_info;

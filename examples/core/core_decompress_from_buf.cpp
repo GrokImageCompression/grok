@@ -103,17 +103,17 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
 	// initialize library
 	grk_initialize(nullptr, 0);
 
-	grk_decompress_src_params src_params;
-	memset(&src_params,0,sizeof(src_params));
-	src_params.src_buf = img;
-	src_params.src_buf_len = sizeof(img);
+	grk_stream_params stream_params;
+	memset(&stream_params,0,sizeof(stream_params));
+	stream_params.buf = img;
+	stream_params.len = sizeof(img);
 
 	// set library message handlers
 	grk_set_msg_handlers(infoCallback, nullptr, warningCallback, nullptr,
 						 errorCallback, nullptr);
 
 	// initialize decompressor
-	codec = grk_decompress_init(&src_params, &param.core);
+	codec = grk_decompress_init(&stream_params, &param.core);
 	if(!codec)
 	{
 		fprintf(stderr, "Failed to set up decompressor\n");

@@ -1075,73 +1075,16 @@ int GrkDecompress::preProcess(grk_plugin_decompress_callback_info* info)
 	parameters->core.io_register_client_callback = grkSerializeRegisterClientCallback;
 
 	// 1. initialize
-	/*
-	if(!info->stream)
-	{
-		if(useMemoryBuffer)
-		{
-			// Reading value from file
-			auto in = fopen(infile, "r");
-			if(in)
-			{
-				GRK_FSEEK(in, 0L, SEEK_END);
-				int64_t sz = GRK_FTELL(in);
-				if(sz == -1)
-				{
-					spdlog::error("grk_decompress: ftell error from file {}", sz, infile);
-					goto cleanup;
-				}
-				rewind(in);
-				auto memoryBuffer = new uint8_t[(size_t)sz];
-				size_t ret = fread(memoryBuffer, 1, (size_t)sz, in);
-				if(ret != (size_t)sz)
-				{
-					spdlog::error("grk_decompress: error reading {} bytes from file {}", sz,
-								  infile);
-					goto cleanup;
-				}
-				int rc = fclose(in);
-				if(rc)
-				{
-					spdlog::error("grk_decompress: error closing file {}", infile);
-					goto cleanup;
-				}
-				if(ret == (size_t)sz)
-					info->stream =
-						grk_stream_create_mem_stream(memoryBuffer, (size_t)sz, true, true);
-				else
-				{
-					spdlog::error("grk_decompress: failed to create memory stream for file {}",
-								  infile);
-					goto cleanup;
-				}
-			}
-			else
-			{
-				goto cleanup;
-			}
-		}
-		else
-		{
-			info->stream = grk_stream_create_mapped_file_stream(infile, true);
-		}
-	}
-	if(!info->stream)
-	{
-		spdlog::error("grk_decompress: failed to create a stream from file {}", infile);
-		goto cleanup;
-	}
-	*/
 	if(!info->codec)
 	{
 		grk_set_msg_handlers(parameters->verbose_ ? infoCallback : nullptr, nullptr,
 							 parameters->verbose_ ? warningCallback : nullptr, nullptr,
 							 errorCallback, nullptr);
 
-		grk_decompress_src_params src_params;
-		memset(&src_params, 0, sizeof(src_params));
-		src_params.src_file = infile;
-		info->codec = grk_decompress_init(&src_params, &parameters->core);
+		grk_stream_params stream_params;
+		memset(&stream_params, 0, sizeof(stream_params));
+		stream_params.file = infile;
+		info->codec = grk_decompress_init(&stream_params, &parameters->core);
 		if(!info->codec)
 		{
 			spdlog::error("grk_decompress: failed to set up the decompressor");

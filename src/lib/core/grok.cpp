@@ -170,7 +170,8 @@ static bool grk_seek_in_file(int64_t numBytes, FILE* p_user_data)
 
 #ifdef _WIN32
 #ifndef GRK_STATIC
-BOOL APIENTRY DllMain([[maybe_unused]] HINSTANCE hModule, DWORD ul_reason_for_call, [[maybe_unused]] LPVOID lpReserved)
+BOOL APIENTRY DllMain([[maybe_unused]] HINSTANCE hModule, DWORD ul_reason_for_call,
+					  [[maybe_unused]] LPVOID lpReserved)
 {
 	switch(ul_reason_for_call)
 	{
@@ -296,17 +297,16 @@ void GRK_CALLCONV grk_decompress_set_default_params(grk_decompress_core_params* 
 			GRK_RANDOM_ACCESS_TLM | GRK_RANDOM_ACCESS_PLM | GRK_RANDOM_ACCESS_PLT;
 	}
 }
-grk_codec* GRK_CALLCONV grk_decompress_init(grk_decompress_src_params* init_params,
+grk_codec* GRK_CALLCONV grk_decompress_init(grk_stream_params* stream_params,
 											grk_decompress_core_params* core_params)
 {
-	if(!init_params || !core_params)
+	if(!stream_params || !core_params)
 		return nullptr;
 	grk_codec* codecWrapper = nullptr;
-	if(init_params->src_file)
-		codecWrapper = grk_decompress_create_from_file(init_params->src_file);
-	else if(init_params->src_buf)
-		codecWrapper =
-			grk_decompress_create_from_buffer(init_params->src_buf, init_params->src_buf_len);
+	if(stream_params->file)
+		codecWrapper = grk_decompress_create_from_file(stream_params->file);
+	else if(stream_params->buf)
+		codecWrapper = grk_decompress_create_from_buffer(stream_params->buf, stream_params->len);
 	if(!codecWrapper)
 		return nullptr;
 
@@ -483,15 +483,17 @@ void GRK_CALLCONV grk_compress_set_default_params(grk_cparameters* parameters)
 bool GRK_CALLCONV grk_compress_init(grk_codec* codecWrapper, grk_cparameters* parameters,
 									grk_image* p_image)
 {
-	if(codecWrapper && parameters && p_image)
-	{
-		auto codec = GrkCodec::getImpl(codecWrapper);
-		return codec->compressor_ ? codec->compressor_->init(parameters, (GrkImage*)p_image)
-								  : false;
-	}
-	return false;
+	if(!codecWrapper || !parameters || !p_image)
+		return false;
+
+	auto codec = GrkCodec::getImpl(codecWrapper);
+	bool rc = codec->compressor_ ? codec->compressor_->init(parameters, (GrkImage*)p_image) : false;
+	if(rc)
+		rc = grk_compress_start(codecWrapper);
+
+	return rc;
 }
-bool GRK_CALLCONV grk_compress_start(grk_codec* codecWrapper)
+bool grk_compress_start(grk_codec* codecWrapper)
 {
 	if(codecWrapper)
 	{
@@ -593,7 +595,7 @@ grk_stream* GRK_CALLCONV grk_stream_create_file_stream(const char* fname, size_t
 	grk_stream_set_seek_function(stream, (grk_stream_seek_fn)grk_seek_in_file);
 	return stream;
 }
-/* ---------------------------------------------------------------------- */
+
 GRK_API size_t GRK_CALLCONV grk_stream_get_write_mem_stream_length(grk_stream* stream)
 {
 	if(!stream)
@@ -605,14 +607,6 @@ grk_stream* GRK_CALLCONV grk_stream_create_mem_stream(uint8_t* buf, size_t len, 
 {
 	return create_mem_stream(buf, len, ownsBuffer, is_read_stream);
 }
-grk_stream* GRK_CALLCONV grk_stream_create_mapped_file_stream(const char* fname, bool read_stream)
-{
-	if(read_stream)
-		return create_mapped_file_read_stream(fname);
-	else
-		return create_mapped_file_write_stream(fname);
-}
-/* ---------------------------------------------------------------------- */
 
 /**********************************************************************
  Plugin interface implementation
