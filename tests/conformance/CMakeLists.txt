@@ -11,9 +11,6 @@ set(INPUT_CONF ${GRK_DATA_ROOT}/input/conformance)
 set( CP0_nbC_list "not_used;1;1;1;3;4;4;3;3;1;3;1;1;4;3;1;1")
 set( CP1_nbC_list "not_used;1;3;4;1;3;3;2")
 
-set(COMMENTCODEVAR FALSE)
-
-
 ##--------------------------------------------------------------------------
 ## Tests for class 0 profile 0
 ## try to decode

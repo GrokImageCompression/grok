@@ -95,7 +95,7 @@ int GrkRandomTileAccess::main(int argc, char** argv)
 		memset(&headerInfo, 0, sizeof(grk_header_info));
 		if(!grk_decompress_read_header(codec, &headerInfo))
 		{
-			spdlog::error("randome tile processor : failed to read header");
+			spdlog::error("random tile processor : failed to read header");
 			goto cleanup;
 		}
 
