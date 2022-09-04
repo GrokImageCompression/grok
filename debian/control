@@ -5,15 +5,13 @@ Homepage: https://github.com/GrokImageCompression/grok
 Build-Depends: cmake (>= 3.16.0),
                debhelper-compat (= 13),
                help2man,
-               liblcms2-dev,
                libpng-dev,
-               libzstd-dev,
                libtiff-dev,
                libjpeg-dev,
                zlib1g-dev,
                libimage-exiftool-perl
 Build-Depends-Indep: doxygen
-Standards-Version: 4.5.1
+Standards-Version: 4.6.1.0
 Section: libs
 Vcs-Browser: https://github.com/GrokImageCompression/grok
 Vcs-Git: https://github.com/GrokImageCompression/grok.git -b debian/master
@@ -54,15 +52,16 @@ Description: command-line tools for the Grok JPEG 2000 library
  This package provides command-line tools for conversions between
  several image formats:
  .
-  - grk_decompress: decode j2k or jp2 file to pgm, ppm, pnm, pam,
-                  pgx, tif, bmp and png.
-  - grk_compress: encode pnm, pgm, pgx, bmp, or ppm file to j2k
-                  or jp2 file.
+  - grk_decompress: decompress j2k or jp2 file to pgm, ppm, pnm, pam,
+                  pgx, tif, bmp, raw, rawl, jpeg or png.
+  - grk_compress: encode pgm, ppm, pnm, pam, pgx, tif, bmp, raw, rawl,
+                  jpeg or png file to j2k or jp2 file.
   - grk_dump: dump information contained in a j2k or jp2 file.
 
 Package: libgrokj2k1-doc
 Section: doc
 Architecture: all
+Multi-Arch: foreign
 Depends: ${misc:Depends}
 Description: documentation for the Grok JPEG 2000 library
  Grok is a library for handling the JPEG 2000 image compression format.

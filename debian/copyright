@@ -18,33 +18,17 @@ Copyright: 2001-2003, David Janssens
   2016-2020, Grok Image Compression Inc.
 License: AGPL-3 and BSD-2-clause and Apache-2
 
-Files: src/lib/jp2/highway/*
+Files: src/lib/core/highway/*
 Copyright: 2020, Google LLC
 License: Apache-2
 
-Files: src/lib/jp2/t1/OJPH/coding/*
- src/lib/jp2/t1/OJPH/common/*
- src/lib/jp2/t1/OJPH/others/*
+Files: src/lib/core/t1/OJPH/coding/*
+ src/lib/core/t1/OJPH/common/*
+ src/lib/core/t1/OJPH/others/*
 Copyright: 2019, Aous Naman
   2019, Kakadu Software Pty Ltd, Australia
   2019, The University of New South Wales, Australia
 License: BSD-2-clause
-
-Files: src/lib/jp2/t1/OpenHTJ2K/codestream/*
- src/lib/jp2/t1/OpenHTJ2K/coding/*
- src/lib/jp2/t1/OpenHTJ2K/common/*
-Copyright: 2019 - 2021, Osamu Watanabe
-License: BSD-2-clause
-
-
-Files: src/lib/jp2/tile/SparseCanvas.h
-Copyright: 2016-2020, Grok Image Compression Inc.
-  2017, IntoPix SA <contact@intopix.com>
-License: AGPL-3 and BSD-2-clause
-
-Files: src/bin/common/windirent.h
-Copyright: 1998-2019 Toni Ronkko
-License: MIT
 
 Files: cmake/ucm.cmake
 Copyright: 2016, Viktor Kirilov
@@ -63,7 +47,7 @@ Copyright: 2018-2020 T.-W. Huang, C.-X. Lin, G. Guo, and M. Wong
   2018-2020 University of Illinois at Urbana-Champaign, IL, USA
 License: MIT
 
-Files: src/bin/common/spdlog/*
+Files: src/lib/codec/common/spdlog/*
  src/include/spdlog/*
 Copyright: 2015-present, Gabi Melman & spdlog contributors.
 License: MIT
