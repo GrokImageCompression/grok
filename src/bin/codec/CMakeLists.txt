@@ -52,7 +52,7 @@ foreach(exe grk_decompress grk_compress grk_dump)
   )
 endforeach()
 
-if(BUILD_DOC)
+if(GRK_BUILD_DOC)
 install(
   FILES       ${GROK_SOURCE_DIR}/doc/man/man1/grk_compress.1
               ${GROK_SOURCE_DIR}/doc/man/man1/grk_decompress.1
