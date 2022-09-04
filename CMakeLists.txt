@@ -73,8 +73,10 @@ endif()
 # Option choose whether to use static runtime
 include(ucm)
 if(BUILD_SHARED_LIBS)
+	set(GRK_STATIC FALSE)
     ucm_set_runtime(DYNAMIC)
 else()
+	set(GRK_STATIC TRUE)
     ucm_set_runtime(STATIC)
 endif()
 

@@ -19,3 +19,4 @@ On other platforms we use the result of the TRY_RUN. */
 #endif
 
 #cmakedefine GRK_BUILD_LIBTIFF @GRK_BUILD_LIBTIFF@
+#define GROK_PLUGIN_NAME "@GROK_PLUGIN_NAME@"

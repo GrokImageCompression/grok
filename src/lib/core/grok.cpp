@@ -22,14 +22,12 @@
 #ifdef _WIN32
 #include <windows.h>
 #else /* _WIN32 */
-#include <errno.h>
-#include <stdarg.h>
-#include <stdlib.h>
 #include <sys/stat.h>
 #include <unistd.h>
 #include <sys/mman.h>
 #endif
 #include <fcntl.h>
+
 #include "grk_includes.h"
 using namespace grk;
 
