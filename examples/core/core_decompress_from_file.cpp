@@ -18,29 +18,26 @@
 #include <string>
 #include <cstring>
 #include <filesystem>
+#include <cassert>
 
 #include "grok.h"
 #include "grk_examples_config.h"
-#include <cassert>
 
 const std::string dataRoot = GRK_DATA_ROOT;
 
-void errorCallback(const char* msg, void* client_data)
+void errorCallback(const char* msg, [[maybe_unused]] void* client_data)
 {
-	(void)(client_data);
-	std::string t = std::string(msg) + "\n";
+	auto t = std::string(msg) + "\n";
 	fprintf(stderr,t.c_str());
 }
-void warningCallback(const char* msg, void* client_data)
+void warningCallback(const char* msg, [[maybe_unused]] void* client_data)
 {
-	(void)(client_data);
-	std::string t = std::string(msg) + "\n";
+	auto t = std::string(msg) + "\n";
 	fprintf(stdout,t.c_str());
 }
-void infoCallback(const char* msg, void* client_data)
+void infoCallback(const char* msg, [[maybe_unused]] void* client_data)
 {
-	(void)(client_data);
-	std::string t = std::string(msg) + "\n";
+	auto t = std::string(msg) + "\n";
 	fprintf(stdout,t.c_str());
 }
 
@@ -162,6 +159,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
             fprintf(stderr, "Image has null data for component %d\n",compno);
             goto beach;
         }
+        // component data is stored in precision `comp->prec`
     }
 
 	rc = EXIT_SUCCESS;

@@ -58,23 +58,19 @@ uint8_t img[] = {
 0xa1, 0x0d, 0xff, 0x91, 0x00, 0x04, 0x00, 0x1c, 0xcf, 0xc0, 0x04, 0xff, 0x92, 0x04, 0xff, 0x91,
 0x00, 0x04, 0x00, 0x1d, 0x80, 0xff, 0x92, 0xff, 0xd9 };
 
-
-void errorCallback(const char* msg, void* client_data)
+void errorCallback(const char* msg, [[maybe_unused]] void* client_data)
 {
-	(void)(client_data);
-	std::string t = std::string(msg) + "\n";
+	auto t = std::string(msg) + "\n";
 	fprintf(stderr,t.c_str());
 }
-void warningCallback(const char* msg, void* client_data)
+void warningCallback(const char* msg, [[maybe_unused]] void* client_data)
 {
-	(void)(client_data);
-	std::string t = std::string(msg) + "\n";
+	auto t = std::string(msg) + "\n";
 	fprintf(stdout,t.c_str());
 }
-void infoCallback(const char* msg, void* client_data)
+void infoCallback(const char* msg, [[maybe_unused]] void* client_data)
 {
-	(void)(client_data);
-	std::string t = std::string(msg) + "\n";
+	auto t = std::string(msg) + "\n";
 	fprintf(stdout,t.c_str());
 }
 
@@ -180,6 +176,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
             fprintf(stderr, "Image has null data for component %d\n",compno);
             goto beach;
         }
+        // component data is stored in precision `comp->prec`
     }
 
 	rc = EXIT_SUCCESS;
