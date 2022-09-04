@@ -43,7 +43,7 @@ extern "C" {
 #endif
 #else
 #define GRK_CALLCONV
-#ifdef GRK_STATIC /* static library uses "hidden" */
+#ifdef GRK_STATIC
 #define GRK_API __attribute__((visibility("hidden")))
 #else
 #define GRK_API __attribute__((visibility("default")))
@@ -872,9 +872,6 @@ typedef struct _grk_plugin_tile
 /* opaque codec object */
 typedef grk_object grk_codec;
 
-/* opaque stream object */
-typedef grk_object grk_stream;
-
 /**
  * Library version
  */
@@ -922,34 +919,6 @@ GRK_API grk_image* GRK_CALLCONV grk_image_new(uint16_t numcmpts, grk_image_comp*
 											  GRK_COLOR_SPACE clrspc);
 
 GRK_API grk_image_meta* GRK_CALLCONV grk_image_meta_new(void);
-
-/** Create stream from a file identified with its filename with a specific buffer size
- *
- * @param fname           the name of the file to stream
- * @param buffer_size     size of the chunk used to stream
- * @param is_read_stream  whether the stream is a read stream (true) or not (false)
- */
-GRK_API grk_stream* GRK_CALLCONV grk_stream_create_file_stream(const char* fname,
-															   size_t buffer_size,
-															   bool is_read_stream);
-
-/** Create stream from buffer
- *
- * @param buf			buffer
- * @param buffer_len    length of buffer
- * @param ownsBuffer	if true, library will delete[] buffer. Otherwise, it is the caller's
- *						responsibility to delete the buffer
- * @param is_read_stream  whether the stream is a read stream (true) or not (false)
- */
-GRK_API grk_stream* GRK_CALLCONV grk_stream_create_mem_stream(uint8_t* buf, size_t buffer_len,
-															  bool ownsBuffer, bool is_read_stream);
-
-/**
- * Get length of memory stream
- *
- * @param stream memory stream
- */
-GRK_API size_t GRK_CALLCONV grk_stream_get_write_mem_stream_length(grk_stream* stream);
 
 /**
  * Detect jpeg 2000 format from file
@@ -1064,16 +1033,6 @@ GRK_API bool GRK_CALLCONV grk_decompress_tile(grk_codec* codec, uint16_t tileInd
 /* COMPRESSION FUNCTIONS*/
 
 /**
- * Creates a J2K/JP2 compression structure
- *
- * @param 	format 		output format : j2k or jp2
- * @param	stream		JPEG 2000 stream
- *
- * @return 				compression codec if successful, otherwise NULL
- */
-GRK_API grk_codec* GRK_CALLCONV grk_compress_create(GRK_CODEC_FORMAT format, grk_stream* stream);
-
-/**
  Set compressing parameters to default values:
 
  Lossless
@@ -1101,8 +1060,8 @@ GRK_API void GRK_CALLCONV grk_compress_set_default_params(grk_cparameters* param
  * @param parameters 	compression parameters
  * @param image 		input image
  */
-GRK_API bool GRK_CALLCONV grk_compress_init(grk_codec* codec, grk_cparameters* parameters,
-											grk_image* image);
+GRK_API grk_codec* GRK_CALLCONV grk_compress_init(grk_stream_params* stream_params,
+												  grk_cparameters* parameters, grk_image* p_image);
 
 /**
  * Compress image
@@ -1113,9 +1072,7 @@ GRK_API bool GRK_CALLCONV grk_compress_init(grk_codec* codec, grk_cparameters* p
 GRK_API bool GRK_CALLCONV grk_compress(grk_codec* codec);
 
 /**
- * Compress uncompressed data stored in a buffer.
- * This method should be called right after grk_compress_start,
- * and before grk_compress_end.
+ * Compress data stored in a buffer into tile.
  *
  * @param	codec		    compression codec
  * @param	tileIndex		the index of the tile to write. At the moment,
@@ -1130,13 +1087,13 @@ GRK_API bool GRK_CALLCONV grk_compress(grk_codec* codec);
  *                          component_size can be 1 or 2 bytes, depending on
  *                          the precision of the given component.
  *
- * @return	true if the data could be written.
+ * @return	true if the data was written successfully
  */
 GRK_API bool GRK_CALLCONV grk_compress_tile(grk_codec* codec, uint16_t tileIndex, uint8_t* data,
 											uint64_t data_size);
 
 /**
- * Comopress an image into a JPEG 2000 code stream using plugin
+ * Compress an image into a JPEG 2000 code stream using plugin
  *
  * @param codec 		compression codec
  * @param tile			plugin tile
@@ -1482,7 +1439,7 @@ typedef struct grk_plugin_compress_user_callback_info
 	grk_cparameters* compressor_parameters;
 	grk_image* image;
 	grk_plugin_tile* tile;
-	grk_stream_params mem_stream_params;
+	grk_stream_params stream_params;
 	unsigned int error_code;
 	bool transferExifTags;
 } grk_plugin_compress_user_callback_info;
@@ -1540,7 +1497,6 @@ typedef struct _grk_plugin_decompress_callback_info
 	GRK_CODEC_FORMAT decod_format;
 	/* output file format 0: PGX, 1: PxM, 2: BMP etc */
 	GRK_SUPPORTED_FILE_FMT cod_format;
-	grk_stream* stream;
 	grk_codec* codec;
 	grk_header_info header_info;
 	grk_decompress_parameters* decompressor_parameters;

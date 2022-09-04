@@ -910,9 +910,6 @@ int decompress_callback(grk_plugin_decompress_callback_info* info)
 	}
 	if(info->decompress_flags & GRK_PLUGIN_DECODE_CLEAN)
 	{
-		if(info->stream)
-			grk_object_unref(info->stream);
-		info->stream = nullptr;
 		grk_object_unref(info->codec);
 		info->codec = nullptr;
 		if(info->image && !info->plugin_owns_image)
@@ -1281,8 +1278,6 @@ int GrkDecompress::postProcess(grk_plugin_decompress_callback_info* info)
 	}
 	failed = false;
 cleanup:
-	grk_object_unref(info->stream);
-	info->stream = nullptr;
 	grk_object_unref(info->codec);
 	info->codec = nullptr;
 	if(image && imageNeedsDestroy)

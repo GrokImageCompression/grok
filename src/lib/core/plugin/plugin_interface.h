@@ -91,7 +91,7 @@ struct PluginDecodeCallbackInfo
 							 grk_decompress_parameters* decompressorParameters,
 							 GRK_CODEC_FORMAT format, uint32_t flags)
 		: deviceId(0), init_decompressors_func(nullptr), inputFile(input), outputFile(output),
-		  decod_format(format), cod_format(GRK_FMT_UNK), stream(nullptr), codec(nullptr),
+		  decod_format(format), cod_format(GRK_FMT_UNK), codec(nullptr),
 		  decompressor_parameters(decompressorParameters), image(nullptr), plugin_owns_image(false),
 		  tile(nullptr), error_code(0), decompress_flags(flags), user_data(nullptr)
 
@@ -106,7 +106,6 @@ struct PluginDecodeCallbackInfo
 	GRK_CODEC_FORMAT decod_format;
 	// output file format 0: PGX, 1: PxM, 2: BMP etc
 	GRK_SUPPORTED_FILE_FMT cod_format;
-	grk_stream* stream;
 	grk_codec* codec;
 	grk_decompress_parameters* decompressor_parameters;
 	grk_header_info header_info;

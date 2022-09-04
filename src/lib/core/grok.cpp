@@ -35,7 +35,7 @@ using namespace grk;
 
 struct GrkCodec
 {
-	GrkCodec(grk_stream* stream, bool owns_stream);
+	GrkCodec(grk_stream* stream);
 	~GrkCodec();
 
 	static GrkCodec* getImpl(grk_codec* codec)
@@ -53,11 +53,10 @@ struct GrkCodec
 
   private:
 	grk_stream* stream_;
-	bool owns_stream_;
 };
 
-GrkCodec::GrkCodec(grk_stream* stream, bool owns_stream)
-	: compressor_(nullptr), decompressor_(nullptr), stream_(stream), owns_stream_(owns_stream)
+GrkCodec::GrkCodec(grk_stream* stream)
+	: compressor_(nullptr), decompressor_(nullptr), stream_(stream)
 {
 	obj.wrapper = new GrkObjectWrapperImpl<GrkCodec>(this);
 }
@@ -66,8 +65,7 @@ GrkCodec::~GrkCodec()
 {
 	delete compressor_;
 	delete decompressor_;
-	if(owns_stream_)
-		grk_object_unref(stream_);
+	grk_object_unref(stream_);
 }
 
 static grk_stream* grk_stream_new(size_t buffer_size, bool is_input)
@@ -77,7 +75,7 @@ static grk_stream* grk_stream_new(size_t buffer_size, bool is_input)
 	return streamImpl->getWrapper();
 }
 
-grk_codec* grk_decompress_create(grk_stream* stream, bool owns_stream)
+grk_codec* grk_decompress_create(grk_stream* stream)
 {
 	GrkCodec* codec = nullptr;
 	auto bstream = BufferedStream::getImpl(stream);
@@ -87,7 +85,7 @@ grk_codec* grk_decompress_create(grk_stream* stream, bool owns_stream)
 		GRK_ERROR("Invalid codec format.");
 		return nullptr;
 	}
-	codec = new GrkCodec(stream, owns_stream);
+	codec = new GrkCodec(stream);
 	if(format == GRK_CODEC_J2K)
 		codec->decompressor_ = new CodeStreamDecompress(BufferedStream::getImpl(stream));
 	else
@@ -260,7 +258,7 @@ static grk_codec* grk_decompress_create_from_buffer(uint8_t* buf, size_t len)
 		GRK_ERROR("Unable to create memory stream.");
 		return nullptr;
 	}
-	auto codec = grk_decompress_create(stream, true);
+	auto codec = grk_decompress_create(stream);
 	if(!codec)
 	{
 		GRK_ERROR("Unable to codec.");
@@ -278,10 +276,11 @@ static grk_codec* grk_decompress_create_from_file(const char* file_name)
 		GRK_ERROR("Unable to create stream for file %s.", file_name);
 		return nullptr;
 	}
-	auto codec = grk_decompress_create(stream, true);
+	auto codec = grk_decompress_create(stream);
 	if(!codec)
 	{
 		GRK_ERROR("Unable to codec for file %s.", file_name);
+		grk_object_unref(stream);
 		return nullptr;
 	}
 
@@ -439,11 +438,11 @@ grk_codec* GRK_CALLCONV grk_compress_create(GRK_CODEC_FORMAT p_format, grk_strea
 	switch(p_format)
 	{
 		case GRK_CODEC_J2K:
-			codec = new GrkCodec(stream, false);
+			codec = new GrkCodec(stream);
 			codec->compressor_ = new CodeStreamCompress(BufferedStream::getImpl(stream));
 			break;
 		case GRK_CODEC_JP2:
-			codec = new GrkCodec(stream, false);
+			codec = new GrkCodec(stream);
 			codec->compressor_ = new FileFormatCompress(BufferedStream::getImpl(stream));
 			break;
 		default:
@@ -480,18 +479,59 @@ void GRK_CALLCONV grk_compress_set_default_params(grk_cparameters* parameters)
 	parameters->deviceId = 0;
 	parameters->repeats = 1;
 }
-bool GRK_CALLCONV grk_compress_init(grk_codec* codecWrapper, grk_cparameters* parameters,
-									grk_image* p_image)
+grk_codec* GRK_CALLCONV grk_compress_init(grk_stream_params* stream_params,
+										  grk_cparameters* parameters, grk_image* p_image)
 {
-	if(!codecWrapper || !parameters || !p_image)
-		return false;
+	if(!parameters || !p_image)
+		return nullptr;
+	if(parameters->cod_format != GRK_FMT_J2K && parameters->cod_format != GRK_FMT_JP2)
+	{
+		GRK_ERROR("Unknown stream format.");
+		return nullptr;
+	}
+	grk_stream* stream = nullptr;
+	if(stream_params->buf)
+	{
+		// let stream clean up compress buffer
+		stream = grk_stream_create_mem_stream(stream_params->buf, stream_params->len, true, false);
+	}
+	else
+	{
+		stream = grk_stream_create_file_stream(stream_params->file, 1024 * 1024, false);
+	}
+	if(!stream)
+	{
+		GRK_ERROR("failed to create stream");
+		return nullptr;
+	}
+
+	grk_codec* codecWrapper = nullptr;
+	switch(parameters->cod_format)
+	{
+		case GRK_FMT_J2K: /* JPEG 2000 code stream */
+			codecWrapper = grk_compress_create(GRK_CODEC_J2K, stream);
+			break;
+		case GRK_FMT_JP2: /* JPEG 2000 compressed image data */
+			codecWrapper = grk_compress_create(GRK_CODEC_JP2, stream);
+			break;
+		default:
+			break;
+	}
 
 	auto codec = GrkCodec::getImpl(codecWrapper);
 	bool rc = codec->compressor_ ? codec->compressor_->init(parameters, (GrkImage*)p_image) : false;
 	if(rc)
+	{
 		rc = grk_compress_start(codecWrapper);
+	}
+	else
+	{
+		GRK_ERROR("Failed to initialize codec.");
+		grk_object_unref(codecWrapper);
+		codecWrapper = nullptr;
+	}
 
-	return rc;
+	return codecWrapper;
 }
 bool grk_compress_start(grk_codec* codecWrapper)
 {
@@ -542,8 +582,8 @@ static void grkFree_file(void* p_user_data)
 		fclose((FILE*)p_user_data);
 }
 
-grk_stream* GRK_CALLCONV grk_stream_create_file_stream(const char* fname, size_t buffer_size,
-													   bool is_read_stream)
+grk_stream* grk_stream_create_file_stream(const char* fname, size_t buffer_size,
+										  bool is_read_stream)
 {
 	bool stdin_stdout = !fname || !fname[0];
 	FILE* file = nullptr;
@@ -596,14 +636,14 @@ grk_stream* GRK_CALLCONV grk_stream_create_file_stream(const char* fname, size_t
 	return stream;
 }
 
-GRK_API size_t GRK_CALLCONV grk_stream_get_write_mem_stream_length(grk_stream* stream)
+size_t grk_stream_get_write_mem_stream_length(grk_stream* stream)
 {
 	if(!stream)
 		return 0;
 	return get_mem_stream_offset(stream);
 }
-grk_stream* GRK_CALLCONV grk_stream_create_mem_stream(uint8_t* buf, size_t len, bool ownsBuffer,
-													  bool is_read_stream)
+grk_stream* grk_stream_create_mem_stream(uint8_t* buf, size_t len, bool ownsBuffer,
+										 bool is_read_stream)
 {
 	return create_mem_stream(buf, len, ownsBuffer, is_read_stream);
 }
@@ -802,7 +842,6 @@ int32_t grk_plugin_internal_decode_callback(PluginDecodeCallbackInfo* info)
 	grokInfo.decod_format = info->decod_format;
 	grokInfo.cod_format = info->cod_format;
 	grokInfo.decompressor_parameters = info->decompressor_parameters;
-	grokInfo.stream = info->stream;
 	grokInfo.codec = info->codec;
 	grokInfo.image = info->image;
 	grokInfo.plugin_owns_image = info->plugin_owns_image;
@@ -812,7 +851,6 @@ int32_t grk_plugin_internal_decode_callback(PluginDecodeCallbackInfo* info)
 		rc = decodeCallback(&grokInfo);
 	// synch
 	info->image = grokInfo.image;
-	info->stream = grokInfo.stream;
 	info->codec = grokInfo.codec;
 	info->header_info = grokInfo.header_info;
 	return rc;

@@ -36,8 +36,8 @@ int GrkTestTileEncoder::main(int argc, char* argv[])
 {
 	grk_cparameters param;
 	grk_codec* codec = nullptr;
+	grk_stream_params stream_params;
 	grk_image* image = nullptr;
-	grk_stream* stream = nullptr;
 	grk_image_comp params[NUM_COMPS_MAX];
 	uint32_t nb_tiles = 0;
 	uint64_t data_size = 0;
@@ -128,19 +128,13 @@ int GrkTestTileEncoder::main(int argc, char* argv[])
 		++current_param_ptr;
 	}
 
-	stream = grk_stream_create_file_stream(output_file, 1024 * 1024, false);
-	if(!stream)
-	{
-		spdlog::error("test_tile_encoder: failed to create a stream from file {}", output_file);
-		goto cleanup;
-	}
+	memset(&stream_params, 0, sizeof(stream_params));
+	stream_params.file = output_file;
 	len = strlen(output_file);
 	if(strcmp(output_file + len - 4, ".jp2") == 0)
-		codec = grk_compress_create(GRK_CODEC_JP2, stream);
+		param.cod_format = GRK_FMT_JP2;
 	else
-		codec = grk_compress_create(GRK_CODEC_J2K, stream);
-	if(!codec)
-		goto cleanup;
+		param.cod_format = GRK_FMT_J2K;
 	grk_set_msg_handlers(grk::infoCallback, nullptr, grk::warningCallback, nullptr,
 						 grk::errorCallback, nullptr);
 	image = grk_image_new(num_comps, params, GRK_CLRSPC_SRGB);
@@ -153,7 +147,8 @@ int GrkTestTileEncoder::main(int argc, char* argv[])
 	image->y1 = image_height;
 	image->color_space = GRK_CLRSPC_SRGB;
 
-	if(!grk_compress_init(codec, &param, image))
+	codec = grk_compress_init(&stream_params, &param, image);
+	if(!codec)
 	{
 		spdlog::error("test_tile_encoder: failed to setup the codec");
 		goto cleanup;
@@ -174,7 +169,6 @@ int GrkTestTileEncoder::main(int argc, char* argv[])
 	}
 	rc = 0;
 cleanup:
-	grk_object_unref(stream);
 	grk_object_unref(codec);
 	grk_object_unref(&image->obj);
 
