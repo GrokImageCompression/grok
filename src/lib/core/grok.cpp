@@ -540,11 +540,8 @@ bool grk_compress_start(grk_codec* codecWrapper)
 	}
 	return false;
 }
-bool GRK_CALLCONV grk_compress(grk_codec* codecWrapper)
-{
-	return grk_compress_with_plugin(codecWrapper, nullptr);
-}
-bool GRK_CALLCONV grk_compress_with_plugin(grk_codec* codecWrapper, grk_plugin_tile* tile)
+
+bool GRK_CALLCONV grk_compress(grk_codec* codecWrapper, grk_plugin_tile* tile)
 {
 	if(codecWrapper)
 	{
@@ -553,27 +550,6 @@ bool GRK_CALLCONV grk_compress_with_plugin(grk_codec* codecWrapper, grk_plugin_t
 	}
 	return false;
 }
-bool GRK_CALLCONV grk_compress_end(grk_codec* codecWrapper)
-{
-	if(codecWrapper)
-	{
-		auto codec = GrkCodec::getImpl(codecWrapper);
-		return codec->compressor_ ? codec->compressor_->end() : false;
-	}
-	return false;
-}
-bool GRK_CALLCONV grk_compress_tile(grk_codec* codecWrapper, uint16_t tileIndex, uint8_t* p_data,
-									uint64_t data_size)
-{
-	if(codecWrapper && p_data)
-	{
-		auto codec = GrkCodec::getImpl(codecWrapper);
-		return codec->compressor_ ? codec->compressor_->compressTile(tileIndex, p_data, data_size)
-								  : false;
-	}
-	return false;
-}
-
 static void grkFree_file(void* p_user_data)
 {
 	if(p_user_data)

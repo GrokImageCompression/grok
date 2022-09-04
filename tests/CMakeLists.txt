@@ -38,19 +38,6 @@ add_executable(j2k_random_tile_access j2k_random_tile_access.cpp)
 target_link_libraries(j2k_random_tile_access ${GROK_CORE_NAME} ${GROK_CODEC_NAME} ${CMAKE_DL_LIBS} ${CMAKE_THREAD_LIBS_INIT} )
 add_executable(compare_raw_files compare_raw_files.cpp)
 target_link_libraries(compare_raw_files ${GROK_CORE_NAME} ${GROK_CODEC_NAME} ${CMAKE_DL_LIBS} ${CMAKE_THREAD_LIBS_INIT} )
-add_executable(test_tile_encoder test_tile_encoder.cpp)
-target_link_libraries(test_tile_encoder ${GROK_CORE_NAME} ${GROK_CODEC_NAME} ${CMAKE_DL_LIBS} ${CMAKE_THREAD_LIBS_INIT})
-
-# Let's try a couple of possibilities:
-add_test(NAME tte0 COMMAND test_tile_encoder)
-add_test(NAME tte1 COMMAND test_tile_encoder 3 2048 2048 1024 1024 8 1 tte1.j2k)
-add_test(NAME tte2 COMMAND test_tile_encoder 3 2048 2048 1024 1024 8 1 tte2.jp2)
-add_test(NAME tte3 COMMAND test_tile_encoder 1 2048 2048 1024 1024 8 1 tte3.j2k)
-add_test(NAME tte4 COMMAND test_tile_encoder 1  256  256  128  128 8 0 tte4.j2k)
-add_test(NAME tte5 COMMAND test_tile_encoder 1  512  512  256  256 8 0 tte5.j2k)
-#add_test(NAME tte6 COMMAND test_tile_encoder 1 8192 8192  512  512 8 0 tte6.j2k)
-#add_test(NAME tte7 COMMAND test_tile_encoder 1 32768 32768 512  512 8 0 tte7.jp2)
-
 add_executable(test_tile_decoder test_tile_decoder.cpp ${test_tile_decoder_SRCS})
 target_link_libraries(test_tile_decoder ${GROK_CORE_NAME}  ${GROK_CODEC_NAME} ${CMAKE_DL_LIBS} ${CMAKE_THREAD_LIBS_INIT})
 

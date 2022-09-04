@@ -2161,18 +2161,10 @@ static bool pluginCompressCallback(grk_plugin_compress_user_callback_info* info)
 		bSuccess = false;
 		goto cleanup;
 	}
-	bSuccess = grk_compress_with_plugin(codec, info->tile);
+	bSuccess = grk_compress(codec, info->tile);
 	if(!bSuccess)
 	{
 		spdlog::error("failed to compress image: grk_compress");
-		bSuccess = false;
-		goto cleanup;
-	}
-
-	bSuccess = bSuccess && grk_compress_end(codec);
-	if(!bSuccess)
-	{
-		spdlog::error("failed to compress image: grk_compress_end");
 		bSuccess = false;
 		goto cleanup;
 	}

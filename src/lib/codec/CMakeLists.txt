@@ -69,7 +69,6 @@ set(GROK_CODEC_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/jp2/GrkCompress.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/jp2/GrkDecompress.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/jp2/GrkDump.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/jp2/GrkTestTileEncoder.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/jp2/GrkTestTileDecoder.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/jp2/GrkCompareImages.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/jp2/GrkRandomTileAccess.cpp

@@ -31,10 +31,9 @@ class FileFormatCompress : public FileFormat, public ICodeStreamCompress
 	bool init(grk_cparameters* p_param, GrkImage* p_image);
 	bool start(void);
 	bool compress(grk_plugin_tile* tile);
-	bool compressTile(uint16_t tileIndex, uint8_t* p_data, uint64_t data_size);
-	bool end(void);
 
   private:
+	bool end(void);
 	grk_color* getColour(void);
 	void find_cf(double x, uint32_t* num, uint32_t* den);
 	void write_res_box(double resx, double resy, uint32_t box_id, uint8_t** current_res_ptr);

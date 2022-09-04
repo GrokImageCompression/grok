@@ -384,14 +384,14 @@ static grk_image* readImageFromFilePGX(const char* filename, uint16_t nbFilename
 		goto cleanup;
 	for(fileno = 0; fileno < nbFilenamePGX; fileno++)
 	{
-		if((dest->comps + fileno) && dest_data[fileno])
-		{
-			auto dest_comp = dest->comps + fileno;
-			memcpy(dest_comp->data, dest_data[fileno],
-				   dest_comp->h * dest_comp->stride * sizeof(int32_t));
-			free(dest_data[fileno]);
-			dest_data[fileno] = nullptr;
-		}
+		if(!dest_data[fileno])
+			continue;
+
+		auto dest_comp = dest->comps + fileno;
+		memcpy(dest_comp->data, dest_data[fileno],
+			   dest_comp->h * dest_comp->stride * sizeof(int32_t));
+		free(dest_data[fileno]);
+		dest_data[fileno] = nullptr;
 	}
 
 cleanup:

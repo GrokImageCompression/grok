@@ -109,8 +109,6 @@ struct ICodeStreamCompress
 	virtual bool init(grk_cparameters* p_param, GrkImage* p_image) = 0;
 	virtual bool start(void) = 0;
 	virtual bool compress(grk_plugin_tile* tile) = 0;
-	virtual bool compressTile(uint16_t tileIndex, uint8_t* p_data, uint64_t data_size) = 0;
-	virtual bool end(void) = 0;
 };
 
 struct ICodeStreamDecompress

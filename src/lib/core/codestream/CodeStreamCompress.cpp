@@ -687,40 +687,10 @@ cleanup:
 		delete completeTileProcessor;
 		completeTileProcessor = heap.pop();
 	}
+	if(success)
+		success = end();
 
 	return success;
-}
-bool CodeStreamCompress::compressTile(uint16_t tileIndex, uint8_t* p_data,
-									  uint64_t uncompressed_data_size)
-{
-	if(!p_data)
-		return false;
-	bool rc = false;
-
-	auto currentTileProcessor = new TileProcessor(tileIndex, this, stream_, true, nullptr);
-	if(!currentTileProcessor->preCompressTile())
-	{
-		GRK_ERROR("Error while preCompressTile with tile index = %u", tileIndex);
-		goto cleanup;
-	}
-	/* now copy data into the tile component */
-	if(!currentTileProcessor->ingestUncompressedData(p_data, uncompressed_data_size))
-	{
-		GRK_ERROR("Size mismatch between tile data and sent data.");
-		goto cleanup;
-	}
-	if(!currentTileProcessor->doCompress())
-		goto cleanup;
-	if(!writeTileParts(currentTileProcessor))
-	{
-		GRK_ERROR("Error while j2k_post_write_tile with tile index = %u", tileIndex);
-		goto cleanup;
-	}
-	rc = true;
-cleanup:
-	delete currentTileProcessor;
-
-	return rc;
 }
 bool CodeStreamCompress::end(void)
 {

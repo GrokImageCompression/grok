@@ -904,20 +904,17 @@ bool FileFormatCompress::init(grk_cparameters* parameters, GrkImage* image)
 }
 bool FileFormatCompress::compress(grk_plugin_tile* tile)
 {
-	return codeStream->compress(tile);
-}
-bool FileFormatCompress::compressTile(uint16_t tileIndex, uint8_t* p_data, uint64_t data_size)
-{
-	return codeStream->compressTile(tileIndex, p_data, data_size);
+	bool rc = codeStream->compress(tile);
+	if(rc)
+		rc = end();
+
+	return rc;
 }
 bool FileFormatCompress::end(void)
 {
-	/* customization of the end compressing */
-	init_end_header_writing();
-	if(!codeStream->end())
-		return false;
-
 	/* write header */
+	init_end_header_writing();
+
 	return exec(procedure_list_);
 }
 void FileFormatCompress::init_end_header_writing(void)

@@ -236,132 +236,6 @@ typedef enum _GRK_SUPPORTED_FILE_FMT
 	(3 * GRK_J2K_MAXRLVLS - 2) /*  Maximum number of sub-bands allowed by standard */
 
 /**
- * Compress parameters
- * */
-typedef struct _grk_cparameters
-{
-	/** size of tile: tile_size_on = false (not in argument) or = true (in argument) */
-	bool tile_size_on;
-	/** XTOsiz */
-	uint32_t tx0;
-	/** YTOsiz */
-	uint32_t ty0;
-	/** XTsiz */
-	uint32_t t_width;
-	/** YTsiz */
-	uint32_t t_height;
-	/** number of layers */
-	uint16_t numlayers;
-	/** rate control allocation by rate/distortion curve */
-	bool allocationByRateDistoration;
-	/** layers rates expressed as compression ratios.
-	 *  They might be subsequently limited by the max_cs_size field */
-	double layer_rate[GRK_MAX_LAYERS];
-	/** rate control allocation by fixed_PSNR quality */
-	bool allocationByQuality;
-	/** layer PSNR values */
-	double layer_distortion[GRK_MAX_LAYERS];
-	char* comment[GRK_NUM_COMMENTS_SUPPORTED];
-	uint16_t comment_len[GRK_NUM_COMMENTS_SUPPORTED];
-	bool is_binary_comment[GRK_NUM_COMMENTS_SUPPORTED];
-	size_t num_comments;
-	/** csty : coding style */
-	uint8_t csty;
-	/* number of guard bits */
-	uint8_t numgbits;
-	/** progression order (default is LRCP) */
-	GRK_PROG_ORDER prog_order;
-	/** progressions */
-	grk_progression progression[GRK_J2K_MAXRLVLS];
-	/** number of progression order changes (POCs), default to 0 */
-	uint32_t numpocs;
-	/** number of resolutions */
-	uint8_t numresolution;
-	/** initial code block width  (default to 64) */
-	uint32_t cblockw_init;
-	/** initial code block height (default to 64) */
-	uint32_t cblockh_init;
-	/** code block style */
-	uint8_t cblk_sty;
-	/** 1 : use the irreversible DWT 9-7, 0 :
-	 *  use lossless compression (default) */
-	bool irreversible;
-	/** region of interest: affected component in [0..3];
-	 *  -1 indicates no ROI */
-	int32_t roi_compno;
-	/** region of interest: upshift value */
-	uint32_t roi_shift;
-	/* number of precinct size specifications */
-	uint32_t res_spec;
-	/** initial precinct width */
-	uint32_t prcw_init[GRK_J2K_MAXRLVLS];
-	/** initial precinct height */
-	uint32_t prch_init[GRK_J2K_MAXRLVLS];
-	/** input file name */
-	char infile[GRK_PATH_LEN];
-	/** output file name */
-	char outfile[GRK_PATH_LEN];
-	/** subimage compressing: origin image offset in x direction */
-	uint32_t image_offset_x0;
-	/** subimage compressing: origin image offset in y direction */
-	uint32_t image_offset_y0;
-	/** subsampling value for dx */
-	uint8_t subsampling_dx;
-	/** subsampling value for dy */
-	uint8_t subsampling_dy;
-	/** input file format*/
-	GRK_SUPPORTED_FILE_FMT decod_format;
-	/** output file format*/
-	GRK_SUPPORTED_FILE_FMT cod_format;
-	grk_raw_cparameters raw_cp;
-	/**
-	 * Maximum size (in bytes) for each component.
-	 * If == 0, component size limitation is not considered
-	 * */
-	uint32_t max_comp_size;
-	/** Tile part generation*/
-	bool enableTilePartGeneration;
-	/** new tile part progression divider */
-	uint8_t newTilePartProgressionDivider;
-	/** MCT (multiple component transform) */
-	uint8_t mct;
-	/** Naive implementation of MCT restricted to a single reversible array based
-	 compressing without offset concerning all the components. */
-	void* mct_data;
-	/**
-	 * Maximum size (in bytes) for the whole code stream.
-	 * If equal to zero, code stream size limitation is not considered
-	 * If it does not comply with layer_rate, max_cs_size prevails
-	 * and a warning is issued.
-	 * */
-	uint64_t max_cs_size;
-	/** RSIZ value
-	 To be used to combine GRK_PROFILE_*, GRK_EXTENSION_* and (sub)levels values. */
-	uint16_t rsiz;
-	uint16_t framerate;
-
-	/* set to true if input file stores capture resolution */
-	bool write_capture_resolution_from_file;
-	double capture_resolution_from_file[2];
-
-	bool write_capture_resolution;
-	double capture_resolution[2];
-
-	bool write_display_resolution;
-	double display_resolution[2];
-
-	GRK_RATE_CONTROL_ALGORITHM rateControlAlgorithm;
-	uint32_t numThreads;
-	int32_t deviceId;
-	uint32_t duration; /* seconds */
-	uint32_t kernelBuildOptions;
-	uint32_t repeats;
-	bool writePLT;
-	bool writeTLM;
-	bool verbose;
-} grk_cparameters;
-
-/**
  * Note: "component" refers to an image component as decompressed
  * from the code stream, while "channel" refers to a component resulting
  * from the application of a Palette box LUT and a Component mapping box.
@@ -1033,6 +907,132 @@ GRK_API bool GRK_CALLCONV grk_decompress_tile(grk_codec* codec, uint16_t tileInd
 /* COMPRESSION FUNCTIONS*/
 
 /**
+ * Compress parameters
+ * */
+typedef struct _grk_cparameters
+{
+	/** size of tile: tile_size_on = false (not in argument) or = true (in argument) */
+	bool tile_size_on;
+	/** XTOsiz */
+	uint32_t tx0;
+	/** YTOsiz */
+	uint32_t ty0;
+	/** XTsiz */
+	uint32_t t_width;
+	/** YTsiz */
+	uint32_t t_height;
+	/** number of layers */
+	uint16_t numlayers;
+	/** rate control allocation by rate/distortion curve */
+	bool allocationByRateDistoration;
+	/** layers rates expressed as compression ratios.
+	 *  They might be subsequently limited by the max_cs_size field */
+	double layer_rate[GRK_MAX_LAYERS];
+	/** rate control allocation by fixed_PSNR quality */
+	bool allocationByQuality;
+	/** layer PSNR values */
+	double layer_distortion[GRK_MAX_LAYERS];
+	char* comment[GRK_NUM_COMMENTS_SUPPORTED];
+	uint16_t comment_len[GRK_NUM_COMMENTS_SUPPORTED];
+	bool is_binary_comment[GRK_NUM_COMMENTS_SUPPORTED];
+	size_t num_comments;
+	/** csty : coding style */
+	uint8_t csty;
+	/* number of guard bits */
+	uint8_t numgbits;
+	/** progression order (default is LRCP) */
+	GRK_PROG_ORDER prog_order;
+	/** progressions */
+	grk_progression progression[GRK_J2K_MAXRLVLS];
+	/** number of progression order changes (POCs), default to 0 */
+	uint32_t numpocs;
+	/** number of resolutions */
+	uint8_t numresolution;
+	/** initial code block width  (default to 64) */
+	uint32_t cblockw_init;
+	/** initial code block height (default to 64) */
+	uint32_t cblockh_init;
+	/** code block style */
+	uint8_t cblk_sty;
+	/** 1 : use the irreversible DWT 9-7, 0 :
+	 *  use lossless compression (default) */
+	bool irreversible;
+	/** region of interest: affected component in [0..3];
+	 *  -1 indicates no ROI */
+	int32_t roi_compno;
+	/** region of interest: upshift value */
+	uint32_t roi_shift;
+	/* number of precinct size specifications */
+	uint32_t res_spec;
+	/** initial precinct width */
+	uint32_t prcw_init[GRK_J2K_MAXRLVLS];
+	/** initial precinct height */
+	uint32_t prch_init[GRK_J2K_MAXRLVLS];
+	/** input file name */
+	char infile[GRK_PATH_LEN];
+	/** output file name */
+	char outfile[GRK_PATH_LEN];
+	/** subimage compressing: origin image offset in x direction */
+	uint32_t image_offset_x0;
+	/** subimage compressing: origin image offset in y direction */
+	uint32_t image_offset_y0;
+	/** subsampling value for dx */
+	uint8_t subsampling_dx;
+	/** subsampling value for dy */
+	uint8_t subsampling_dy;
+	/** input file format*/
+	GRK_SUPPORTED_FILE_FMT decod_format;
+	/** output file format*/
+	GRK_SUPPORTED_FILE_FMT cod_format;
+	grk_raw_cparameters raw_cp;
+	/**
+	 * Maximum size (in bytes) for each component.
+	 * If == 0, component size limitation is not considered
+	 * */
+	uint32_t max_comp_size;
+	/** Tile part generation*/
+	bool enableTilePartGeneration;
+	/** new tile part progression divider */
+	uint8_t newTilePartProgressionDivider;
+	/** MCT (multiple component transform) */
+	uint8_t mct;
+	/** Naive implementation of MCT restricted to a single reversible array based
+	 compressing without offset concerning all the components. */
+	void* mct_data;
+	/**
+	 * Maximum size (in bytes) for the whole code stream.
+	 * If equal to zero, code stream size limitation is not considered
+	 * If it does not comply with layer_rate, max_cs_size prevails
+	 * and a warning is issued.
+	 * */
+	uint64_t max_cs_size;
+	/** RSIZ value
+	 To be used to combine GRK_PROFILE_*, GRK_EXTENSION_* and (sub)levels values. */
+	uint16_t rsiz;
+	uint16_t framerate;
+
+	/* set to true if input file stores capture resolution */
+	bool write_capture_resolution_from_file;
+	double capture_resolution_from_file[2];
+
+	bool write_capture_resolution;
+	double capture_resolution[2];
+
+	bool write_display_resolution;
+	double display_resolution[2];
+
+	GRK_RATE_CONTROL_ALGORITHM rateControlAlgorithm;
+	uint32_t numThreads;
+	int32_t deviceId;
+	uint32_t duration; /* seconds */
+	uint32_t kernelBuildOptions;
+	uint32_t repeats;
+	bool writePLT;
+	bool writeTLM;
+	bool verbose;
+} grk_cparameters;
+
+/**
  Set compressing parameters to default values:
 
  Lossless
@@ -1064,35 +1064,6 @@ GRK_API grk_codec* GRK_CALLCONV grk_compress_init(grk_stream_params* stream_para
 												  grk_cparameters* parameters, grk_image* p_image);
 
 /**
- * Compress image
- * @param codec 		compression codec
- *
- * @return 				Returns true if successful, otherwise false
- */
-GRK_API bool GRK_CALLCONV grk_compress(grk_codec* codec);
-
-/**
- * Compress data stored in a buffer into tile.
- *
- * @param	codec		    compression codec
- * @param	tileIndex		the index of the tile to write. At the moment,
- * 							the tiles must be written from 0 to n-1 in sequence.
- * @param	data			pointer to the data to write. Data is arranged in planar
- *  						sequence, data_comp0, data_comp1 etc,
- *  						The data should NOT BE INTERLEAVED.
- * @param	data_size		this value is used to ensure the data
- * 							being written is correct. The size must be
- * 							equal to the sum for each component of
- *                          tile_width * tile_height * component_size.
- *                          component_size can be 1 or 2 bytes, depending on
- *                          the precision of the given component.
- *
- * @return	true if the data was written successfully
- */
-GRK_API bool GRK_CALLCONV grk_compress_tile(grk_codec* codec, uint16_t tileIndex, uint8_t* data,
-											uint64_t data_size);
-
-/**
  * Compress an image into a JPEG 2000 code stream using plugin
  *
  * @param codec 		compression codec
@@ -1100,13 +1071,7 @@ GRK_API bool GRK_CALLCONV grk_compress_tile(grk_codec* codec, uint16_t tileIndex
  *
  * @return 				Returns true if successful, returns false otherwise
  */
-GRK_API bool GRK_CALLCONV grk_compress_with_plugin(grk_codec* codec, grk_plugin_tile* tile);
-
-/**
- * End compression
- * @param codec 		compression codec
- */
-GRK_API bool GRK_CALLCONV grk_compress_end(grk_codec* codec);
+GRK_API bool GRK_CALLCONV grk_compress(grk_codec* codec, grk_plugin_tile* tile);
 
 /**
  * Dump codec information to file
