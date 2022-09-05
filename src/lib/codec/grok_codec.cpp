@@ -14,7 +14,6 @@
  *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
-
 #include "grok_codec.h"
 #include "GrkDump.h"
 #include "GrkDecompress.h"
@@ -24,38 +23,31 @@
 #include "GrkCompareRawFiles.h"
 #include "GrkRandomTileAccess.h"
 
-GRK_API int grk_codec_dump(int argc, char* argv[])
+int GRK_CALLCONV grk_codec_dump(int argc, char* argv[])
 {
-	grk::GrkDump prog;
-	return prog.main(argc, argv);
+	return grk::GrkDump().main(argc, argv);
 }
-GRK_API int grk_codec_compress(int argc, char* argv[])
+int GRK_CALLCONV grk_codec_compress(int argc, char* argv[])
 {
-	grk::GrkCompress prog;
-	return prog.main(argc, argv);
+	return grk::GrkCompress().main(argc, argv);
 }
-GRK_API int grk_codec_decompress(int argc, char* argv[])
+int GRK_CALLCONV grk_codec_decompress(int argc, char* argv[])
 {
-	grk::GrkDecompress prog;
-	return prog.main(argc, argv);
+	return grk::GrkDecompress().main(argc, argv);
 }
-GRK_API int grk_codec_compare_dump_files(int argc, char* argv[])
+int GRK_CALLCONV grk_codec_compare_dump_files(int argc, char* argv[])
 {
-	grk::GrkCompareDumpFiles prog;
-	return prog.main(argc, argv);
+	return grk::GrkCompareDumpFiles().main(argc, argv);
 }
-GRK_API int grk_codec_compare_images(int argc, char* argv[])
+int GRK_CALLCONV grk_codec_compare_images(int argc, char* argv[])
 {
-	grk::GrkCompareImages prog;
-	return prog.main(argc, argv);
+	return grk::GrkCompareImages().main(argc, argv);
 }
-GRK_API int grk_codec_compare_raw_files(int argc, char* argv[])
+int GRK_CALLCONV grk_codec_compare_raw_files(int argc, char* argv[])
 {
-	grk::GrkCompareRawFiles prog;
-	return prog.main(argc, argv);
+	return grk::GrkCompareRawFiles().main(argc, argv);
 }
-GRK_API int grk_codec_random_tile_access(int argc, char* argv[])
+int GRK_CALLCONV grk_codec_random_tile_access(int argc, char* argv[])
 {
-	grk::GrkRandomTileAccess prog;
-	return prog.main(argc, argv);
+	return grk::GrkRandomTileAccess().main(argc, argv);
 }

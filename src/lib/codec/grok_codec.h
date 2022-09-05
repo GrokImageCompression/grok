@@ -14,7 +14,6 @@
  *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
-
 #pragma once
 
 #include "grok.h"
@@ -23,15 +22,90 @@
 extern "C" {
 #endif
 
+/**
+ * Dump codec to file.
+ *
+ * Pass grk_dump command line arguments
+ *
+ * @param argc
+ * @param argv
+ *
+ * return 0 if successful
+ */
 GRK_API int grk_codec_dump(int argc, char* argv[]);
+
+/**
+ * Compress image.
+ *
+ * Pass grk_compress command line arguments
+ *
+ * @param argc
+ * @param argv
+ *
+ * return 0 if successful
+ */
 GRK_API int grk_codec_compress(int argc, char* argv[]);
+
+/**
+ * Decompress image.
+ *
+ * Pass grk_decompress command line arguments
+ *
+ * @param argc
+ * @param argv
+ *
+ * return 0 if successful
+ */
 GRK_API int grk_codec_decompress(int argc, char* argv[]);
+
+
+/**
+ * Compare dump files
+ *
+ * Pass compare_dump_files command line arguments
+ *
+ * @param argc
+ * @param argv
+ *
+ * return 0 if successful
+ */
 GRK_API int grk_codec_compare_dump_files(int argc, char* argv[]);
+
+/**
+ * Compare images
+ *
+ * Pass grk_compare_images command line arguments
+ *
+ * @param argc
+ * @param argv
+ *
+ * return 0 if successful
+ */
 GRK_API int grk_codec_compare_images(int argc, char* argv[]);
+
+/**
+ * Compare raw files
+ *
+ * Pass grk_compare_raw_files command line arguments
+ *
+ * @param argc
+ * @param argv
+ *
+ * return 0 if successful
+ */
 GRK_API int grk_codec_compare_raw_files(int argc, char* argv[]);
+
+/**
+ * Random tile access
+ *
+ * Pass grk_random_tile_access command line arguments
+ *
+ * @param argc
+ * @param argv
+ *
+ * return 0 if successful
+ */
 GRK_API int grk_codec_random_tile_access(int argc, char* argv[]);
-GRK_API int grk_codec_test_tile_encoder(int argc, char* argv[]);
-GRK_API int grk_codec_test_tile_decoder(int argc, char* argv[]);
 
 #ifdef __cplusplus
 }
