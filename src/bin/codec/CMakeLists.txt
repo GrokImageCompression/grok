@@ -29,7 +29,7 @@ foreach(exe grk_decompress grk_compress grk_dump)
   endif()
 
   target_link_libraries(${exe} 
-    ${PNG_LIBNAME} ${TIFF_LIBNAME} ${LCMS_LIBNAME}
+    ${PNG_LIBNAME} ${TIFF_LIBNAME}
     ${JPEG_LIBNAME} ${CMAKE_THREAD_LIBS_INIT} 
     ${GROK_CORE_NAME} ${GROK_CODEC_NAME} )
 

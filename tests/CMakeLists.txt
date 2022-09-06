@@ -26,7 +26,7 @@ endif()
 add_executable(compare_images compare_images.cpp)
 target_link_libraries(compare_images
   ${GROK_CORE_NAME} ${GROK_CODEC_NAME}
-  ${PNG_LIBNAME} ${TIFF_LIBNAME} ${LCMS_LIBNAME} ${CMAKE_DL_LIBS} ${CMAKE_THREAD_LIBS_INIT}
+  ${PNG_LIBNAME} ${TIFF_LIBNAME} ${CMAKE_DL_LIBS} ${CMAKE_THREAD_LIBS_INIT}
   )
 
 if(URING)

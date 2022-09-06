@@ -103,7 +103,7 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "GNU")
 	target_link_options(${GROK_CODEC_NAME} PUBLIC "LINKER:-z,now")
 endif()
 target_link_libraries(${GROK_CODEC_NAME} PRIVATE ${GROK_CORE_NAME}
-                       hwy ${LCMS_LIBNAME} ${PNG_LIBNAME} ${TIFF_LIBNAME} ${LCMS_LIBNAME}
+                       ${PNG_LIBNAME} ${TIFF_LIBNAME}
                        ${JPEG_LIBNAME})
 
 if(URING)
