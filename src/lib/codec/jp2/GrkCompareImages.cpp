@@ -26,14 +26,12 @@
 #include <cstring>
 #include <string>
 
+#include "grk_apps_config.h"
+#include "grok.h"
 #include "BMPFormat.h"
 #include "PGXFormat.h"
 #include "PNMFormat.h"
 #include "common.h"
-#include "convert.h"
-#include "grk_apps_config.h"
-#include "grok.h"
-#include "spdlog/spdlog.h"
 #ifdef GROK_HAVE_LIBPNG
 #include "PNGFormat.h"
 #endif

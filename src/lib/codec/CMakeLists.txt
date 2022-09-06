@@ -70,9 +70,6 @@ set(GROK_CODEC_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/jp2/GrkDecompress.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/jp2/GrkDump.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/jp2/GrkCompareImages.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/jp2/GrkRandomTileAccess.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/jp2/GrkCompareDumpFiles.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/jp2/GrkCompareRawFiles.cpp
 )
 
 if(GROK_HAVE_LIBTIFF)

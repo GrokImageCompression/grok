@@ -13,8 +13,9 @@
  *    You should have received a copy of the GNU Affero General Public License
  *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-#include "GrkCompareRawFiles.h"
 
-int main(int argc, char **argv) {
-   return grk::GrkCompareRawFiles().main(argc,argv);
-}
+#pragma once
+
+// uncomment to force test files to be copied to
+// test repository
+//#define COPY_TEST_FILES_TO_REPO

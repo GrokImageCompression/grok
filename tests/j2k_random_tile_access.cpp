@@ -14,8 +14,8 @@
  *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "grok_codec.h"
+#include "GrkRandomTileAccess.h"
 
 int main(int argc, char **argv) {
-	return grk_codec_random_tile_access(argc,argv);
+	return grk::GrkRandomTileAccess().main(argc,argv);
 }

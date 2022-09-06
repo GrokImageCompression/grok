@@ -58,19 +58,6 @@ GRK_API int grk_codec_compress(int argc, char* argv[]);
  */
 GRK_API int grk_codec_decompress(int argc, char* argv[]);
 
-
-/**
- * Compare dump files
- *
- * Pass compare_dump_files command line arguments
- *
- * @param argc
- * @param argv
- *
- * return 0 if successful
- */
-GRK_API int grk_codec_compare_dump_files(int argc, char* argv[]);
-
 /**
  * Compare images
  *
@@ -82,30 +69,6 @@ GRK_API int grk_codec_compare_dump_files(int argc, char* argv[]);
  * return 0 if successful
  */
 GRK_API int grk_codec_compare_images(int argc, char* argv[]);
-
-/**
- * Compare raw files
- *
- * Pass grk_compare_raw_files command line arguments
- *
- * @param argc
- * @param argv
- *
- * return 0 if successful
- */
-GRK_API int grk_codec_compare_raw_files(int argc, char* argv[]);
-
-/**
- * Random tile access
- *
- * Pass grk_random_tile_access command line arguments
- *
- * @param argc
- * @param argv
- *
- * return 0 if successful
- */
-GRK_API int grk_codec_random_tile_access(int argc, char* argv[]);
 
 #ifdef __cplusplus
 }

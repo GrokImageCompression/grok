@@ -17,7 +17,6 @@
  *    This source code incorporates work covered by the BSD 2-clause license.
  *    Please see the LICENSE file in the root directory for details.
  */
-
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
@@ -26,30 +25,43 @@
 #include <windows.h>
 #endif /* _WIN32 */
 
-#include "common.h"
+#include "grok.h"
 #include "grk_config.h"
 #include "GrkRandomTileAccess.h"
 
 namespace grk
 {
 
+static void errorCallback(const char* msg, [[maybe_unused]] void* client_data)
+{
+    fprintf(stderr,"Error: %s\n",msg);
+}
+static void warningCallback(const char* msg, [[maybe_unused]] void* client_data)
+{
+    fprintf(stdin,"Warning: %s\n",msg);
+}
+static void infoCallback(const char* msg, [[maybe_unused]] void* client_data)
+{
+    fprintf(stdin,"Info: %s\n",msg);
+}
+
 static int32_t test_tile(uint16_t tile_index, grk_image* image, grk_codec* codec)
 {
-	spdlog::info("Decompressing tile {} ...", tile_index);
+	fprintf(stdout,"Decompressing tile %d ...", tile_index);
 	if(!grk_decompress_tile(codec, tile_index))
 	{
-		spdlog::error("random tile processor: failed to decompress tile {}", tile_index);
+		fprintf(stderr,"random tile processor: failed to decompress tile %d", tile_index);
 		return EXIT_FAILURE;
 	}
 	for(uint32_t index = 0; index < image->numcomps; ++index)
 	{
 		if(image->comps[index].data == nullptr)
 		{
-			spdlog::error("random tile processor: failed to decompress tile {}", tile_index);
+		    fprintf(stderr,"random tile processor: failed to decompress tile %d", tile_index);
 			return EXIT_FAILURE;
 		}
 	}
-	spdlog::info("Tile {} decoded successfully", tile_index);
+	fprintf(stdin,"Tile %d decoded successfully", tile_index);
 	return EXIT_SUCCESS;
 }
 
@@ -60,13 +72,13 @@ int GrkRandomTileAccess::main(int argc, char** argv)
 
 	if(argc != 2)
 	{
-		spdlog::error("Usage: {} <input_file>", argv[0]);
+	    fprintf(stderr,"Usage: %s <input_file>", argv[0]);
 		return EXIT_FAILURE;
 	}
 
 	grk_initialize(nullptr, 0);
-	grk_set_msg_handlers(grk::infoCallback, nullptr, grk::warningCallback, nullptr,
-						 grk::errorCallback, nullptr);
+	grk_set_msg_handlers(infoCallback, nullptr, warningCallback, nullptr,
+						 errorCallback, nullptr);
 
 	for(uint32_t i = 0; i < 4; ++i)
 	{
@@ -86,7 +98,7 @@ int GrkRandomTileAccess::main(int argc, char** argv)
 		codec = grk_decompress_init(&stream_params, &parameters.core);
 		if(!codec)
 		{
-			spdlog::error("random tile processor: failed to set up decompressor");
+		    fprintf(stderr,"random tile processor: failed to set up decompressor");
 			goto cleanup;
 		}
 
@@ -95,11 +107,11 @@ int GrkRandomTileAccess::main(int argc, char** argv)
 		memset(&headerInfo, 0, sizeof(grk_header_info));
 		if(!grk_decompress_read_header(codec, &headerInfo))
 		{
-			spdlog::error("random tile processor : failed to read header");
+		    fprintf(stderr,"random tile processor : failed to read header");
 			goto cleanup;
 		}
 
-		spdlog::info("The file contains {}x{} tiles", headerInfo.t_grid_width,
+		fprintf(stdin,"The file contains %dx%d tiles", headerInfo.t_grid_width,
 					 headerInfo.t_grid_height);
 
 		tile[0] = 0;

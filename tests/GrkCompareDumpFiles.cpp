@@ -26,7 +26,6 @@
 #include <sstream>
 #include <string>
 
-#include "spdlog/spdlog.h"
 #define TCLAP_NAMESTARTSTRING "-"
 #include "tclap/CmdLine.h"
 #include "test_common.h"
@@ -81,7 +80,7 @@ static int parse_cmdline_cmp(int argc, char** argv, test_cmp_parameters* param)
 			param->base_filename = (char*)malloc(sizemembasefile);
 			if(!param->base_filename)
 			{
-				spdlog::error("Out of memory");
+			    fprintf(stderr,"Out of memory");
 				return 1;
 			}
 			strcpy(param->base_filename, baseArg.getValue().c_str());
@@ -96,7 +95,7 @@ static int parse_cmdline_cmp(int argc, char** argv, test_cmp_parameters* param)
 			param->test_filename = (char*)malloc(sizememtestfile);
 			if(!param->test_filename)
 			{
-				spdlog::error("Out of memory");
+			    fprintf(stderr,"Out of memory");
 				return 1;
 			}
 			strcpy(param->test_filename, testArg.getValue().c_str());
@@ -173,12 +172,12 @@ int GrkCompareDumpFiles::main(int argc, char** argv)
 		assert(nbase != 511 && ntest != 511);
 		if(nbase != 1 || ntest != 1)
 		{
-			spdlog::error("could not parse line from files\n");
+			fprintf(stderr,"could not parse line from files\n");
 			goto cleanup;
 		}
 		if(strcmp(strbase, strtest) != 0)
 		{
-			spdlog::error("<{}> vs. <{}>\n", strbase, strtest);
+		    fprintf(stderr,"<%s> vs. <%s>\n", strbase, strtest);
 			goto cleanup;
 		}
 	}

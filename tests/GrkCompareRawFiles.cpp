@@ -24,7 +24,6 @@
 #include <cstring>
 #include <string>
 
-#include "spdlog/spdlog.h"
 #define TCLAP_NAMESTARTSTRING "-"
 #include "tclap/CmdLine.h"
 #include "test_common.h"

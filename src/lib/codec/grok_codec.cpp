@@ -18,10 +18,7 @@
 #include "GrkDump.h"
 #include "GrkDecompress.h"
 #include "GrkCompress.h"
-#include "GrkCompareDumpFiles.h"
 #include "GrkCompareImages.h"
-#include "GrkCompareRawFiles.h"
-#include "GrkRandomTileAccess.h"
 
 int GRK_CALLCONV grk_codec_dump(int argc, char* argv[])
 {
@@ -35,19 +32,7 @@ int GRK_CALLCONV grk_codec_decompress(int argc, char* argv[])
 {
 	return grk::GrkDecompress().main(argc, argv);
 }
-int GRK_CALLCONV grk_codec_compare_dump_files(int argc, char* argv[])
-{
-	return grk::GrkCompareDumpFiles().main(argc, argv);
-}
 int GRK_CALLCONV grk_codec_compare_images(int argc, char* argv[])
 {
 	return grk::GrkCompareImages().main(argc, argv);
-}
-int GRK_CALLCONV grk_codec_compare_raw_files(int argc, char* argv[])
-{
-	return grk::GrkCompareRawFiles().main(argc, argv);
-}
-int GRK_CALLCONV grk_codec_random_tile_access(int argc, char* argv[])
-{
-	return grk::GrkRandomTileAccess().main(argc, argv);
 }

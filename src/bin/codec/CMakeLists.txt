@@ -22,7 +22,7 @@ if(WIN32)
 endif()
 
 foreach(exe grk_decompress grk_compress grk_dump)
-  add_executable(${exe} ${exe}.cpp ${common_SRCS})
+  add_executable(${exe} ${exe}.cpp)
   target_compile_options(${exe} PRIVATE ${GROK_COMPILE_OPTIONS})
   if (CMAKE_CXX_COMPILER_ID MATCHES "GNU")
 	target_link_options(${exe}  PUBLIC "LINKER:-z,now")
