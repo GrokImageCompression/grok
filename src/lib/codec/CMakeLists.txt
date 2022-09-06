@@ -1,13 +1,3 @@
-set(CMAKE_CXX_STANDARD 20)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_EXTENSIONS OFF)
-
-find_package(Threads REQUIRED)
-
-IF(MSVC)
-    string(APPEND CMAKE_CXX_FLAGS " /EHsc")
-ENDIF(MSVC)
-
 IF(UNIX)
 IF(BUILD_SHARED_LIBS)
     if (CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
@@ -15,7 +5,6 @@ IF(BUILD_SHARED_LIBS)
     ENDIF()
 ENDIF()
 ENDIF(UNIX)
-
 
 include_directories(
   ${LCMS_INCLUDE_DIRNAME}
@@ -93,8 +82,6 @@ add_definitions(-DSPDLOG_COMPILED_LIB)
 if(WIN32)
   if(BUILD_SHARED_LIBS)
     add_definitions(-DGRK_EXPORTS)
-  else()
-    add_definitions(-DGRK_STATIC)
   endif()
 endif()
 add_library(${GROK_CODEC_NAME} ${GROK_CODEC_SRCS})

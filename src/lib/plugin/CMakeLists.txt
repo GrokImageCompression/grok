@@ -1,12 +1,3 @@
-include_regular_expression("^.*$")
-
-set(CMAKE_CXX_STANDARD 14)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-
-IF(MSVC)
-    string(APPEND CMAKE_CXX_FLAGS " /EHsc")
-ENDIF(MSVC)
-
 include_directories(
   ${GROK_BINARY_DIR}/src/lib/plugin
   ${GROK_BINARY_DIR}/src/lib/core # grk_config.h and grk_config_private.h

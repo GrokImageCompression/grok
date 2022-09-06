@@ -1,10 +1,3 @@
-set(CMAKE_CXX_STANDARD 20)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-
-IF(MSVC)
-    string(APPEND CMAKE_CXX_FLAGS " /EHsc")
-ENDIF(MSVC)
-
 # First thing define the common source:
 if(GROK_HAVE_LIBTIFF)
 	list(APPEND common_SRCS ../image_format/TIFFFormat.cpp)
@@ -40,8 +33,6 @@ if(WIN32)
   add_definitions(-DNOMINMAX)
   if(BUILD_SHARED_LIBS)
     add_definitions(-DGRK_EXPORTS)
-  else()
-    add_definitions(-DGRK_STATIC)
   endif()
 endif()
 

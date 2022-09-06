@@ -5,6 +5,13 @@ set(GROK_CORE_NAME grokj2k)
 set(GROK_CODEC_NAME grokj2kcodec)
 set(GROK_PLUGIN_NAME grokj2k_plugin)
 
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+IF(MSVC)
+    string(APPEND CMAKE_CXX_FLAGS " /EHsc")
+ENDIF(MSVC)
+
 
 if ( (CMAKE_CXX_COMPILER_ID MATCHES "GNU") AND (CMAKE_CXX_COMPILER_VERSION LESS 10.0) )
    message(FATAL_ERROR "GNU compiler version must be at least 10.0")
@@ -77,6 +84,13 @@ if(BUILD_SHARED_LIBS)
 else()
 	add_definitions(-DGRK_STATIC)
     ucm_set_runtime(STATIC)
+endif()
+
+if(WIN32)
+  add_definitions(-DNOMINMAX)
+  if(BUILD_SHARED_LIBS)
+    add_definitions(-DGRK_EXPORTS)
+  endif()
 endif()
 
 # Allocating Aligned Memory Blocks

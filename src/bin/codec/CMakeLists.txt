@@ -1,10 +1,3 @@
-set(CMAKE_CXX_STANDARD 20)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-
-IF(MSVC)
-    string(APPEND CMAKE_CXX_FLAGS " /EHsc")
-ENDIF(MSVC)
-
 include_directories(
   ${GROK_BINARY_DIR}/src/lib/core
   ${GROK_BINARY_DIR}/src/bin/common
@@ -16,8 +9,6 @@ if(WIN32)
   add_definitions(-DNOMINMAX)
   if(BUILD_SHARED_LIBS)
     add_definitions(-DGRK_EXPORTS)
-  else()
-    add_definitions(-DGRK_STATIC)
   endif()
 endif()
 
