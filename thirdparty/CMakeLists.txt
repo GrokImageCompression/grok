@@ -52,7 +52,7 @@ if(GRK_BUILD_LIBTIFF)
   set(TIFF_LIBNAME tiff PARENT_SCOPE)
   set(TIFF_INCLUDE_DIRNAME
     ${GROK_SOURCE_DIR}/thirdparty/libtiff
-    ${GROK_BINARY_DIR}/thirdparty/libtiff
+    ${CMAKE_BINARY_DIR}/thirdparty/libtiff
     PARENT_SCOPE)
   set(GROK_HAVE_LIBTIFF 1 PARENT_SCOPE)
 else(GRK_BUILD_LIBTIFF)

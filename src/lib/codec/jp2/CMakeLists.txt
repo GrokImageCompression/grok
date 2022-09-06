@@ -16,8 +16,8 @@ endif()
 
 # Headers file are located here:
 include_directories(
-  ${GROK_BINARY_DIR}/src/lib/core
-  ${GROK_BINARY_DIR}/src/bin/common
+  ${CMAKE_BINARY_DIR}/src/lib/core
+  ${CMAKE_BINARY_DIR}/src/bin/common
   ${GROK_SOURCE_DIR}/src/lib/core
   ${GROK_SOURCE_DIR}/src/bin/common
   ${GROK_SOURCE_DIR}/src/bin/image_format

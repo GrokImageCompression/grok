@@ -11,8 +11,8 @@ include_directories(
   ${PNG_INCLUDE_DIRNAME}
   ${TIFF_INCLUDE_DIRNAME}
   ${JPEG_INCLUDE_DIRNAME}
-  ${GROK_BINARY_DIR}/src/bin
-  ${GROK_BINARY_DIR}/src/lib/core # grk_config.h and grk_config_private.h
+  ${CMAKE_BINARY_DIR}/src/bin
+  ${CMAKE_BINARY_DIR}/src/lib/core # grk_config.h and grk_config_private.h
   ${GROK_SOURCE_DIR}/src/lib/core
   ${GROK_SOURCE_DIR}/src/include
   ${CMAKE_CURRENT_BINARY_DIR}

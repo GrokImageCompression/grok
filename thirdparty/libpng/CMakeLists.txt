@@ -8,7 +8,7 @@ endif()
 include_directories(
   "${CMAKE_CURRENT_SOURCE_DIR}"
   ${GROK_SOURCE_DIR}/thirdparty/libz
-  ${GROK_BINARY_DIR}/thirdparty/libz
+  ${CMAKE_BINARY_DIR}/thirdparty/libz
 )
 
 option(PNG_HARDWARE_OPTIMIZATIONS "Enable hardware optimizations" ON)

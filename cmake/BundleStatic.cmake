@@ -55,11 +55,10 @@ function(bundle_static_library tgt_name bundled_tgt_name)
   _recursively_collect_dependencies(${tgt_name})
 
   list(REMOVE_DUPLICATES static_libs)
-
   set(bundled_tgt_full_name
-    ${CMAKE_BINARY_DIR}/${CMAKE_STATIC_LIBRARY_PREFIX}${bundled_tgt_name}${CMAKE_STATIC_LIBRARY_SUFFIX})
+    ${CMAKE_BINARY_DIR}/bin/${CMAKE_STATIC_LIBRARY_PREFIX}${bundled_tgt_name}${CMAKE_STATIC_LIBRARY_SUFFIX})
 
-  if (CMAKE_CXX_COMPILER_ID MATCHES "^(Clang|GNU)$")
+  if (CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
     file(WRITE ${CMAKE_BINARY_DIR}/${bundled_tgt_name}.ar.in
       "CREATE ${bundled_tgt_full_name}\n" )
 
@@ -83,11 +82,10 @@ function(bundle_static_library tgt_name bundled_tgt_name)
     add_custom_command(
       COMMAND ${ar_tool} -M < ${CMAKE_BINARY_DIR}/${bundled_tgt_name}.ar
       OUTPUT ${bundled_tgt_full_name}
-      DEPENDS ${static_libs}
       COMMENT "Bundling ${bundled_tgt_name}"
       VERBATIM)
   elseif(MSVC)
-    find_program(lib_tool lib)
+    find_program(lib_tool lib.exe)
 
     foreach(tgt IN LISTS static_libs)
       list(APPEND static_libs_full_names $<TARGET_FILE:${tgt}>)
@@ -96,7 +94,6 @@ function(bundle_static_library tgt_name bundled_tgt_name)
     add_custom_command(
       COMMAND ${lib_tool} /NOLOGO /OUT:${bundled_tgt_full_name} ${static_libs_full_names}
       OUTPUT ${bundled_tgt_full_name}
-      DEPENDS ${static_libs}
       COMMENT "Bundling ${bundled_tgt_name}"
       VERBATIM)
   else()
@@ -112,5 +109,12 @@ function(bundle_static_library tgt_name bundled_tgt_name)
       IMPORTED_LOCATION ${bundled_tgt_full_name}
       INTERFACE_INCLUDE_DIRECTORIES $<TARGET_PROPERTY:${tgt_name},INTERFACE_INCLUDE_DIRECTORIES>)
   add_dependencies(${bundled_tgt_name} bundling_target)
+
+  set(result
+     ${CMAKE_BINARY_DIR}/bin/${CMAKE_STATIC_LIBRARY_PREFIX}${tgt_name}${CMAKE_STATIC_LIBRARY_SUFFIX})
+  add_custom_command(TARGET bundling_target POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy
+					${bundled_tgt_full_name}
+					${result}
+   )
 
 endfunction()

@@ -1,5 +1,8 @@
-include(BundleStatic)
 find_package(Threads REQUIRED)
+
+if (LINUX)
+include(BundleStatic)
+endif(LINUX)
 
 IF(UNIX)
 find_package(Valgrind)
@@ -20,7 +23,7 @@ install( FILES  ${CMAKE_CURRENT_BINARY_DIR}/grk_config.h
  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${GROK_INSTALL_SUBDIR} COMPONENT Headers)
 
 include_directories(
-  ${GROK_BINARY_DIR}/src/lib/core # grk_config.h and grk_config_private.h
+  ${CMAKE_BINARY_DIR}/src/lib/core # grk_config.h and grk_config_private.h
   ${GROK_SOURCE_DIR}/src/lib/codec/common
   ${GROK_SOURCE_DIR}/src/lib/codec
   ${GROK_SOURCE_DIR}/src/include
@@ -228,41 +231,38 @@ set(GROK_LIBRARY_SRCS
 )
 
 add_definitions(-DSPDLOG_COMPILED_LIB)
-
-# Build the library
 if (GRK_BUILD_PLUGIN_LOADER)
     add_definitions(-DGRK_BUILD_PLUGIN_LOADER)
 endif()
-if(WIN32)
-  if(BUILD_SHARED_LIBS)
-    add_definitions(-DGRK_EXPORTS)
-  endif()
-endif()
-add_library(${GROK_CORE_NAME} ${GROK_LIBRARY_SRCS})
-set(INSTALL_LIBS ${GROK_CORE_NAME})
-if (CMAKE_CXX_COMPILER_ID MATCHES "GNU")
-  target_link_options(${GROK_CORE_NAME} PUBLIC "LINKER:-z,now")
-endif() 
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/highway EXCLUDE_FROM_ALL)
-target_link_libraries(${GROK_CORE_NAME} PRIVATE hwy ${LCMS_LIBNAME} )
-if(UNIX)
-  target_link_libraries(${GROK_CORE_NAME} PUBLIC ${CMAKE_THREAD_LIBS_INIT})
-endif()
+
+add_library(${GROK_CORE_NAME} ${GROK_LIBRARY_SRCS})
 set_target_properties(${GROK_CORE_NAME} PROPERTIES ${GROK_LIBRARY_PROPERTIES})
 target_compile_options(${GROK_CORE_NAME} PRIVATE ${GROK_COMPILE_OPTIONS} PRIVATE ${HWY_FLAGS})
-
-# set emcc options
 if (CMAKE_SYSTEM_NAME STREQUAL Emscripten)
   target_compile_options(${GROK_CORE_NAME} PUBLIC -matomics)
 endif()
 
-install(TARGETS ${INSTALL_LIBS}
+if (CMAKE_CXX_COMPILER_ID MATCHES "GNU")
+  target_link_options(${GROK_CORE_NAME} PUBLIC "LINKER:-z,now")
+endif() 
+
+if(UNIX)
+  target_link_libraries(${GROK_CORE_NAME} PUBLIC ${CMAKE_THREAD_LIBS_INIT})
+endif()
+target_link_libraries(${GROK_CORE_NAME} PRIVATE hwy ${LCMS_LIBNAME} )
+
+# bundle all static libraries into a single library
+if (NOT BUILD_SHARED_LIBS AND LINUX)
+	bundle_static_library(${GROK_CORE_NAME} ${GROK_CORE_NAME}_bundled)
+endif(NOT BUILD_SHARED_LIBS AND LINUX)
+
+install(TARGETS ${GROK_CORE_NAME}
   EXPORT GrokTargets
   RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR} COMPONENT Applications
   LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT Libraries
-  ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT Libraries
-)
-
+  ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT Libraries)
+  
 install(FILES grok.h 
   DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${GROK_INSTALL_SUBDIR} COMPONENT Headers
 )

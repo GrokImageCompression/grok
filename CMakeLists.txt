@@ -67,8 +67,8 @@ endif()
 
 # Grok build configuration options.
 option(BUILD_SHARED_LIBS "Build Grok shared library and link executables against it." ON)
-set (EXECUTABLE_OUTPUT_PATH ${GROK_BINARY_DIR}/bin CACHE PATH "Single output directory for building all executables.")
-set (LIBRARY_OUTPUT_PATH ${GROK_BINARY_DIR}/bin CACHE PATH "Single output directory for building all libraries.")
+set (EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR}/bin CACHE PATH "Single output directory for building all executables.")
+set (LIBRARY_OUTPUT_PATH ${CMAKE_BINARY_DIR}/bin CACHE PATH "Single output directory for building all libraries.")
 mark_as_advanced(LIBRARY_OUTPUT_PATH EXECUTABLE_OUTPUT_PATH)
 
 # Compiler specific flags:

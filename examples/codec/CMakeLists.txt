@@ -1,6 +1,6 @@
 include_directories(
   ${GROK_SOURCE_DIR}/src/lib/codec
-  ${GROK_BINARY_DIR}/src/lib/core
+  ${CMAKE_BINARY_DIR}/src/lib/core
   ${GROK_SOURCE_DIR}/src/lib/core
   ${CMAKE_CURRENT_BINARY_DIR}/../
 )
