@@ -72,7 +72,7 @@ typedef minpf_exit_func (*minpf_post_load_func)(const char* pluginPath,
 #define PLUGIN_LOCAL
 #endif
 #else
-#if defined(GRK_EXPORTS) || defined(DLL_EXPORT)
+#ifdef GRK_EXPORTS
 #define PLUGIN_API __declspec(dllexport)
 #else
 #define PLUGIN_API __declspec(dllimport)

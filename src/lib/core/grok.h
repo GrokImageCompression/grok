@@ -35,7 +35,7 @@ extern "C" {
 #ifdef GRK_STATIC
 #define GRK_API
 #else
-#if defined(GRK_EXPORTS) || defined(DLL_EXPORT)
+#ifdef GRK_EXPORTS
 #define GRK_API __declspec(dllexport)
 #else
 #define GRK_API __declspec(dllimport)

@@ -2,6 +2,3 @@
 #define GRK_VERSION_MAJOR @GROK_VERSION_MAJOR@
 #define GRK_VERSION_MINOR @GROK_VERSION_MINOR@
 #define GRK_VERSION_BUILD @GROK_VERSION_BUILD@
-
-/* Grok static build #define */
-#cmakedefine GRK_STATIC @GRK_STATIC@
