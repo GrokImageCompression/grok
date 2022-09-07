@@ -1,8 +1,8 @@
 find_package(Threads REQUIRED)
 
-if (LINUX)
+if (NOT APPLE)
 include(BundleStatic)
-endif(LINUX)
+endif(NOT APPLE)
 
 IF(UNIX)
 find_package(Valgrind)
@@ -253,9 +253,9 @@ endif()
 target_link_libraries(${GROK_CORE_NAME} PRIVATE hwy ${LCMS_LIBNAME} )
 
 # bundle all static libraries into a single library
-if (NOT BUILD_SHARED_LIBS AND LINUX)
+if (NOT BUILD_SHARED_LIBS AND NOT APPLE)
 	bundle_static_library(${GROK_CORE_NAME} ${GROK_CORE_NAME}_bundled)
-endif(NOT BUILD_SHARED_LIBS AND LINUX)
+endif(NOT BUILD_SHARED_LIBS NOT APPLE)
 
 install(TARGETS ${GROK_CORE_NAME}
   EXPORT GrokTargets
