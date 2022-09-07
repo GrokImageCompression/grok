@@ -93,9 +93,6 @@ if(WIN32)
   endif()
 endif()
 
-# Allocating Aligned Memory Blocks
-include(CheckIncludeFiles)
-check_include_files(malloc.h GROK_HAVE_MALLOC_H)
 include(CheckSymbolExists)
 
 option(GRK_BUILD_LIBPNG "Build libpng library" ON)
