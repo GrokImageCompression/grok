@@ -1,4 +1,4 @@
-% grk_dump(1) Version 7.6 | dump JPEG 2000 code stream to stdout or to file
+% grk_dump(1) Version 10.0 | dump JPEG 2000 code stream to stdout or to file
 
 NAME
 ====
