@@ -10,10 +10,6 @@ include_directories(
 add_executable(compare_images compare_images.cpp)
 target_link_libraries(compare_images ${GROK_CODEC_NAME})
 
-if(URING)
-  target_link_libraries(compare_images uring)
-endif()
-
 add_executable(compare_dump_files compare_dump_files.cpp GrkCompareDumpFiles.cpp )
 target_link_libraries(compare_dump_files ${GROK_CORE_NAME})
 

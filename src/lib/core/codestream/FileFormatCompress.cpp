@@ -531,15 +531,17 @@ uint8_t* FileFormatCompress::write_res(uint32_t* p_nb_bytes_written)
 
 	return res_data;
 }
-void FileFormatCompress::find_cf(double x, uint32_t* num, uint32_t* den)
+
+//https://shreevatsa.wordpress.com/2011/01/10/not-all-best-rational-approximations-are-the-convergents-of-the-continued-fraction/
+void FileFormatCompress::find_cf(double x, uint16_t* num, uint16_t* den)
 {
 	// number of terms in continued fraction.
 	// 15 is the max without precision errors for M_PI
-#define MAX 15
+    const size_t MAX_ITER = 15;
 	const double eps = 1.0 / USHRT_MAX;
-	long p[MAX], q[MAX], a[MAX];
+	long p[MAX_ITER], q[MAX_ITER], a[MAX_ITER];
 
-	int i;
+	size_t i;
 	// The first two convergents are 0/1 and 1/0
 	p[0] = 0;
 	q[0] = 1;
@@ -547,18 +549,19 @@ void FileFormatCompress::find_cf(double x, uint32_t* num, uint32_t* den)
 	p[1] = 1;
 	q[1] = 0;
 	// The rest of the convergents (and continued fraction)
-	for(i = 2; i < MAX; ++i)
+	for(i = 2; i < MAX_ITER; ++i)
 	{
 		a[i] = lrint(floor(x));
 		p[i] = a[i] * p[i - 1] + p[i - 2];
 		q[i] = a[i] * q[i - 1] + q[i - 2];
-		// printf("%ld:  %ld/%ld\n", a[i], p[i], q[i]);
-		if(fabs(x - (double)a[i]) < eps || (p[i] > USHRT_MAX) || (q[i] > USHRT_MAX))
+		bool overflow = (p[i] > USHRT_MAX) || (q[i] > USHRT_MAX);
+		if(fabs(x - (double)a[i]) < eps || overflow)
 			break;
 		x = 1.0 / (x - (double)a[i]);
 	}
-	*num = (uint32_t)p[i - 1];
-	*den = (uint32_t)q[i - 1];
+
+	*num = (uint16_t)(p[i-1]);
+    *den = (uint16_t)(q[i-1]);
 }
 void FileFormatCompress::write_res_box(double resx, double resy, uint32_t box_id,
 									   uint8_t** current_res_ptr)
@@ -576,26 +579,40 @@ void FileFormatCompress::write_res_box(double resx, double resy, uint32_t box_id
 	res[0] = resy;
 	res[1] = resx;
 
-	uint32_t num[2];
-	uint32_t den[2];
+	uint16_t num[2];
+	uint16_t den[2];
 	int32_t exponent[2];
 
 	for(size_t i = 0; i < 2; ++i)
 	{
+	    // special case when res[i] is a whole number.
+	    exponent[i] = 0;
+	    double r = res[i];
+        while (floor(r) == r){
+            if (r <= USHRT_MAX)
+                break;
+            r /= 10;
+            exponent[i]++;
+        }
+        if (floor(r) == r) {
+            num[i] = (uint16_t)r;
+            den[i] = 1;
+            continue;
+        }
+        //////////////////////////////////////////
+
 		exponent[i] = (int32_t)log10(res[i]);
 		if(exponent[i] < 1)
 			exponent[i] = 0;
 		if(exponent[i] >= 1)
-		{
 			res[i] /= pow(10, exponent[i]);
-		}
 		find_cf(res[i], num + i, den + i);
 	}
 	for(size_t i = 0; i < 2; ++i)
 	{
-		grk_write<uint16_t>(*current_res_ptr, (uint16_t)num[i]);
+		grk_write<uint16_t>(*current_res_ptr, num[i]);
 		*current_res_ptr += 2;
-		grk_write<uint16_t>(*current_res_ptr, (uint16_t)den[i]);
+		grk_write<uint16_t>(*current_res_ptr, den[i]);
 		*current_res_ptr += 2;
 	}
 	for(size_t i = 0; i < 2; ++i)

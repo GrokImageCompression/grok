@@ -1323,8 +1323,6 @@ grk_image* TIFFFormat::decode(const std::string& filename, grk_cparameters* para
 	{
 		set_resolution(parameters->capture_resolution_from_file, tiXRes, tiYRes, tiResUnit);
 		parameters->write_capture_resolution_from_file = true;
-		image->capture_resolution[0] = tiXRes;
-		image->capture_resolution[1] = tiYRes;
 	}
 	// 6. extract embedded ICC profile (with sanity check on binary size of profile)
 	// note: we ignore ICC profile for CIE images as JPEG 2000 can't signal both
