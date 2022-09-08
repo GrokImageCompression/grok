@@ -7,31 +7,21 @@ include_directories(
   ${GROK_SOURCE_DIR}/src/include
 )
 
- if(WIN32)
-  add_definitions(-DNOMINMAX)
-  if(BUILD_SHARED_LIBS)
-    add_definitions(-DGRK_EXPORTS)
-  endif()
-endif()
-
 add_executable(compare_images compare_images.cpp)
-target_link_libraries(compare_images
-  ${GROK_CORE_NAME} ${GROK_CODEC_NAME}
-  ${PNG_LIBNAME} ${TIFF_LIBNAME} ${CMAKE_DL_LIBS} ${CMAKE_THREAD_LIBS_INIT}
-  )
+target_link_libraries(compare_images ${GROK_CODEC_NAME})
 
 if(URING)
   target_link_libraries(compare_images uring)
 endif()
 
 add_executable(compare_dump_files compare_dump_files.cpp GrkCompareDumpFiles.cpp )
-target_link_libraries(compare_dump_files ${GROK_CORE_NAME} ${CMAKE_DL_LIBS} ${CMAKE_THREAD_LIBS_INIT} )
+target_link_libraries(compare_dump_files ${GROK_CORE_NAME})
 
 add_executable(j2k_random_tile_access j2k_random_tile_access.cpp GrkRandomTileAccess.cpp)
-target_link_libraries(j2k_random_tile_access ${GROK_CORE_NAME} ${CMAKE_DL_LIBS} ${CMAKE_THREAD_LIBS_INIT} )
+target_link_libraries(j2k_random_tile_access ${GROK_CORE_NAME})
 
 add_executable(compare_raw_files compare_raw_files.cpp GrkCompareRawFiles.cpp)
-target_link_libraries(compare_raw_files ${GROK_CORE_NAME} ${CMAKE_DL_LIBS} ${CMAKE_THREAD_LIBS_INIT} )
+target_link_libraries(compare_raw_files ${GROK_CORE_NAME})
 
 if(NOT GROK_HAVE_LIBPNG)
   message(WARNING "libpng is not available - running regression tests requires GRK_BUILD_LIBPNG enabled.")

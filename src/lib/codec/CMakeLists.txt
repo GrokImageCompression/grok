@@ -78,12 +78,6 @@ endif()
 
 add_definitions(-DSPDLOG_COMPILED_LIB)
 
-# Build the library
-if(WIN32)
-  if(BUILD_SHARED_LIBS)
-    add_definitions(-DGRK_EXPORTS)
-  endif()
-endif()
 add_library(${GROK_CODEC_NAME} ${GROK_CODEC_SRCS})
 set(INSTALL_LIBS ${GROK_CODEC_NAME})
 if (CMAKE_CXX_COMPILER_ID MATCHES "GNU")

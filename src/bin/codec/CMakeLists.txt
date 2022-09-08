@@ -4,14 +4,6 @@ include_directories(
   ${GROK_SOURCE_DIR}/src/lib/core
   ${GROK_SOURCE_DIR}/src/lib/codec
   )
-
-if(WIN32)
-  add_definitions(-DNOMINMAX)
-  if(BUILD_SHARED_LIBS)
-    add_definitions(-DGRK_EXPORTS)
-  endif()
-endif()
-
 foreach(exe grk_decompress grk_compress grk_dump)
   add_executable(${exe} ${exe}.cpp)
   target_compile_options(${exe} PRIVATE ${GROK_COMPILE_OPTIONS})
@@ -19,14 +11,7 @@ foreach(exe grk_decompress grk_compress grk_dump)
 	target_link_options(${exe}  PUBLIC "LINKER:-z,now")
   endif()
 
-  target_link_libraries(${exe} 
-    ${PNG_LIBNAME} ${TIFF_LIBNAME}
-    ${JPEG_LIBNAME} ${CMAKE_THREAD_LIBS_INIT} 
-    ${GROK_CORE_NAME} ${GROK_CODEC_NAME} )
-
-  if (GRK_BUILD_PLUGIN_LOADER)
-    target_link_libraries(${exe} ${CMAKE_DL_LIBS} )
-  endif(GRK_BUILD_PLUGIN_LOADER)
+  target_link_libraries(${exe} ${GROK_CODEC_NAME} )
 
   if(URING)
 	  target_link_libraries(${exe} uring)
