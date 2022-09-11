@@ -36,7 +36,6 @@
 #endif
 #include "exif.h"
 #include <stdexcept>
-#include "common.h"
 #include <iostream>
 
 namespace grk
@@ -129,7 +128,7 @@ void transferExifTags([[maybe_unused]] std::string src, [[maybe_unused]] std::st
 	}
 	catch(std::runtime_error& re)
 	{
-		spdlog::warn(re.what());
+		std::cout << re.what() << std::endl;
 		return;
 	}
 	dTHX;
