@@ -1,32 +1,9 @@
 cmake_minimum_required(VERSION 3.16)
 
 project(GROK)
-set(GROK_CORE_NAME grokj2k)
-set(GROK_CODEC_NAME grokj2kcodec)
-set(GROK_PLUGIN_NAME grokj2k_plugin)
 
-set(CMAKE_CXX_STANDARD 20)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-
-IF(MSVC)
-    string(APPEND CMAKE_CXX_FLAGS " /EHsc")
-ENDIF(MSVC)
-
-
-if ( (CMAKE_CXX_COMPILER_ID MATCHES "GNU") AND (CMAKE_CXX_COMPILER_VERSION LESS 10.0) )
-   message(FATAL_ERROR "GNU compiler version must be at least 10.0")
-endif()
-
-# Set a default build type if none was specified
-if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
-  message(STATUS "Setting build type to 'Release' as none was specified.")
-  set(CMAKE_BUILD_TYPE Release CACHE STRING "Choose the type of build." FORCE)
-  # Set the possible values of build type for cmake-gui
-  set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release"
-    "MinSizeRel" "RelWithDebInfo")
-endif()
-
-# GROK version number
+#######################################
+# GROK version
 set(GROK_VERSION_MAJOR 10)
 set(GROK_VERSION_MINOR 0)
 set(GROK_VERSION_BUILD 0)
@@ -44,6 +21,46 @@ set(GROK_LIBRARY_PROPERTIES
   VERSION   "${GROK_VERSION_MAJOR}.${GROK_VERSION_MINOR}.${GROK_VERSION_BUILD}"
   SOVERSION "${GROK_SOVERSION}"
 )
+#######################################
+
+set(GROK_CORE_NAME grokj2k)
+set(GROK_CODEC_NAME grokj2kcodec)
+set(GROK_PLUGIN_NAME grokj2k_plugin)
+
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+# check if we need to link to libatomic
+if (CMAKE_SYSTEM_PROCESSOR MATCHES "unknown")
+  # uname -p is broken on this system.  Try uname -m
+  EXECUTE_PROCESS( COMMAND uname -m
+		   OUTPUT_STRIP_TRAILING_WHITESPACE
+		   ERROR_QUIET
+		   OUTPUT_VARIABLE ARCH)
+else (CMAKE_SYSTEM_PROCESSOR MATCHES "unknown")
+  set(ARCH ${CMAKE_SYSTEM_PROCESSOR})
+endif (CMAKE_SYSTEM_PROCESSOR MATCHES "unknown")
+message("Architecture: " ${ARCH})
+if (ARCH MATCHES "mips" OR ARCH MATCHES "armv5")
+  string(APPEND CMAKE_CXX_FLAGS " -latomic")
+endif (ARCH MATCHES "mips" OR ARCH MATCHES "armv5")
+
+IF(MSVC)
+    string(APPEND CMAKE_CXX_FLAGS " /EHsc")
+ENDIF(MSVC)
+
+if ( (CMAKE_CXX_COMPILER_ID MATCHES "GNU") AND (CMAKE_CXX_COMPILER_VERSION LESS 10.0) )
+   message(FATAL_ERROR "GNU compiler version must be at least 10.0")
+endif()
+
+# Set a default build type if none was specified
+if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
+  message(STATUS "Setting build type to 'Release' as none was specified.")
+  set(CMAKE_BUILD_TYPE Release CACHE STRING "Choose the type of build." FORCE)
+  # Set the possible values of build type for cmake-gui
+  set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release"
+    "MinSizeRel" "RelWithDebInfo")
+endif()
 
 # Path to additional CMake modules
 set(CMAKE_MODULE_PATH
