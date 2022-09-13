@@ -681,20 +681,20 @@ static void set_resolution(double* res, float resx, float resy, short resUnit)
 	res[0] = resx;
 	res[1] = resy;
 
-	switch(resUnit)
-	{
-		case RESUNIT_INCH:
-			// 2.54 cm / inch
-			res[0] *= 100 / 2.54;
-			res[1] *= 100 / 2.54;
-			break;
-			// cm
-		case RESUNIT_CENTIMETER:
-			res[0] *= 100;
-			res[1] *= 100;
-			break;
-		default:
-			break;
+	for (uint32_t i = 0; i < 2; ++i) {
+        switch(resUnit)
+        {
+            case RESUNIT_INCH:
+                res[i] *= 39.370078740157;
+                break;
+                // cm
+            case RESUNIT_CENTIMETER:
+                res[i] *= 100;
+                break;
+            default:
+                break;
+        }
+        res[i] = floor(res[i]+0.5);
 	}
 }
 
