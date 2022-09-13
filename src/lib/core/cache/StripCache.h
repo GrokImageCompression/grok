@@ -13,7 +13,7 @@ struct GrkIOBuf : public grk_io_buf
 {
   public:
 	GrkIOBuf() : GrkIOBuf(nullptr, 0, 0, 0, false, 0) {}
-	GrkIOBuf(uint8_t* data, uint64_t offset, uint64_t dataLen, uint64_t allocLen, bool pooled,
+	GrkIOBuf(uint8_t* data, size_t offset, size_t dataLen, size_t allocLen, bool pooled,
 			 uint32_t index)
 	{
 		data_ = data;
@@ -36,7 +36,7 @@ struct GrkIOBuf : public grk_io_buf
 	{
 		return index_;
 	}
-	bool alloc(uint64_t len)
+	bool alloc(size_t len)
 	{
 		dealloc();
 		data_ = (uint8_t*)grk_aligned_malloc(len);

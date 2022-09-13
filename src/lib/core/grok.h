@@ -436,9 +436,9 @@ typedef struct _grk_header_info
 typedef struct _grk_io_buf
 {
 	uint8_t* data_;
-	uint64_t offset_;
-	uint64_t len_;
-	uint64_t allocLen_;
+	size_t offset_;
+	size_t len_;
+	size_t allocLen_;
 	bool pooled_;
 	uint32_t index_;
 } grk_io_buf;

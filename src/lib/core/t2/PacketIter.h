@@ -20,6 +20,9 @@
  */
 
 #pragma once
+
+#include <limits>
+
 namespace grk
 {
 /**
@@ -89,8 +92,9 @@ struct IncludeTracker
 		{
 			auto numprecs = numPrecinctsPerRes[resno];
 			auto len = (numprecs * numcomps + 7) / 8;
-			buf = new uint8_t[len];
-			memset(buf, 0, len);
+			assert(len <= std::numeric_limits<size_t>::max());
+			buf = new uint8_t[(size_t)len];
+			memset(buf, 0, (size_t)len);
 			resBuf->buffers[resno] = buf;
 		}
 		return buf;
