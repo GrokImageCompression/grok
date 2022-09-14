@@ -9,8 +9,7 @@ class BufferPool
   public:
 	BufferPool();
 	virtual ~BufferPool();
-	void init(uint64_t allocLen);
-	GrkIOBuf get(uint64_t len);
+	GrkIOBuf get(size_t len);
 	void put(GrkIOBuf b);
 
   private:
