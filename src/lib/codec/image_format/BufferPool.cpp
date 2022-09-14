@@ -8,7 +8,7 @@ BufferPool::~BufferPool()
 		p.second.dealloc();
 }
 
-GrkIOBuf BufferPool::get(uint64_t len)
+GrkIOBuf BufferPool::get(size_t len)
 {
 	for(auto iter = pool.begin(); iter != pool.end(); ++iter)
 	{

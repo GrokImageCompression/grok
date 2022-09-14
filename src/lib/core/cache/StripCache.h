@@ -63,7 +63,7 @@ class BufPool
 		for(auto& b : pool)
 			b.second.dealloc();
 	}
-	GrkIOBuf get(uint64_t len)
+	GrkIOBuf get(size_t len)
 	{
 		for(auto iter = pool.begin(); iter != pool.end(); ++iter)
 		{
