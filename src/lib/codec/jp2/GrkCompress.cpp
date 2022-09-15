@@ -264,7 +264,7 @@ static void compress_help_display(void)
 	fprintf(stdout, "    Offset of the origin of the tiles.\n");
 	fprintf(stdout, "[-L|-PLT\n");
 	fprintf(stdout, "    Use PLT markers.\n");
-	fprintf(stdout, "[-I|-Irreversible\n");
+	fprintf(stdout, "[-I|-irreversible\n");
 	fprintf(stdout, "    Use the irreversible DWT 9-7.\n");
 	fprintf(stdout, "[-Y|-MCT] <0|1|2>\n");
 	fprintf(stdout, "    Specifies explicitly if a Multiple Component Transform has to be used.\n");
@@ -312,7 +312,9 @@ static void compress_help_display(void)
 	fprintf(stdout, "    the image resolution will be used.\n");
 	fprintf(stdout, "[-D|-display_res] <display resolution X,display resolution Y>\n");
 	fprintf(stdout, "    Display resolution in pixels/metre, in double precision.\n");
-	fprintf(stdout, "[-e|-Repetitions] <number of repetitions>\n");
+    fprintf(stdout, "[-f|-apply_icc]");
+    fprintf(stdout, "    Apply ICC profile before compression, if present.\n");
+	fprintf(stdout, "[-e|-repetitions] <number of repetitions>\n");
 	fprintf(stdout, "    Number of repetitions, for either a single image, or a folder of images.\n"
 					"    Default is 1. 0 signifies unlimited repetitions. \n");
 	fprintf(stdout, "[-g|-plugin_path] <plugin path>\n");
@@ -735,6 +737,8 @@ int GrkCompress::parseCommandLine(int argc, char** argv, CompressInitParams* ini
 
 		TCLAP::ValueArg<std::string> BroadcastArg("U", "broadcast", "Broadcast profile", false, "",
 												  "string", cmd);
+
+        TCLAP::SwitchArg applyICCArg("f", "apply_icc", "Apply ICC profile before compression, f present", cmd);
 		cmd.parse(argc, argv);
 
 		initParams->transferExifTags = transferExifTagsArg.isSet();
@@ -746,6 +750,9 @@ int GrkCompress::parseCommandLine(int argc, char** argv, CompressInitParams* ini
 
 		inputFolder->set_out_format = false;
 		parameters->raw_cp.width = 0;
+
+		if (applyICCArg.isSet())
+		    parameters->apply_icc_ = true;
 
 		if(pltArg.isSet())
 			parameters->writePLT = true;

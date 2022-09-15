@@ -1450,6 +1450,9 @@ bool GrkImage::applyICC(void)
 		delete[] outbuf;
 	} /* if(image->numcomps */
 	rc = true;
+	delete[] meta->color.icc_profile_buf;
+	meta->color.icc_profile_buf = nullptr;
+	meta->color.icc_profile_len = 0;
 cleanup:
 	if(in_prof)
 		cmsCloseProfile(in_prof);

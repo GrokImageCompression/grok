@@ -79,6 +79,7 @@ class GrkImage : public grk_image
 	bool greyToRGB(void);
 	bool convertToRGB(bool wholeTileDecompress);
 	bool applyColourManagement(void);
+    bool applyICC(void);
 	bool validateICC(void);
 	void convertPrecision(void);
 	bool execUpsample(void);
@@ -120,7 +121,6 @@ class GrkImage : public grk_image
 	bool color_sycc_to_rgb(bool oddFirstX, bool oddFirstY);
 	bool color_cmyk_to_rgb(void);
 	bool color_esycc_to_rgb(void);
-	bool applyICC(void);
 	bool cieLabToRGB(void);
 	bool componentsEqual(grk_image_comp* src, grk_image_comp* dest, bool checkPrecision);
 	static void copyComponent(grk_image_comp* src, grk_image_comp* dest);
