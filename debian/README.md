@@ -1,5 +1,5 @@
 ----------------
-Useful Commands
+Managing Tags
 ----------------
 
 Move master tag:
@@ -35,8 +35,15 @@ or, to just check lintian errors:
 5. Check for errors / warnings
 
    `$ lintian -EviIL +pedantic ../*.changes`
-   
-   
+
+
+--------------------
+Other Architectures
+--------------------
+
+[Guide](https://www.antixforum.com/forums/topic/use-sbuild-to-automate-deb-package-building/) to
+creating chroots for other architectures.
+
 ------------------
 GPG Key Management
 ------------------
@@ -53,7 +60,7 @@ https://www.linuxbabe.com/security/a-practical-guide-to-gpg-part-1-generate-your
 
 `$ gpg --full-gen-key`
 
-2. sign .changes file
+2. sign `.changes` file
 
 `$ debsign -k 6DFF91ED95915E24EF8CDF2BC23974AB6BA8B412 ../*.changes`
 
@@ -61,6 +68,4 @@ https://www.linuxbabe.com/security/a-practical-guide-to-gpg-part-1-generate-your
 
 `$ dput -f mentors ../*.changes`
 
-4. to list all keys
-
-`$ gpg --list-keys`
+Note: to list all gpg keys: `$ gpg --list-keys`
