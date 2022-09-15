@@ -126,6 +126,7 @@ bool parseWindowBounds(char* inArg, float* dw_x0, float* dw_y0, float* dw_x1,	fl
 			if (val[i] != (uint32_t)val[i]){
 				spdlog::warn("Decompress region in absolute coordinates must only contain integers."
 						"\n Ignoring specified region ({},{},{},{}).", 	 val[0], val[1], val[2], val[3]);
+				return false;
 			}
 		}
 	}

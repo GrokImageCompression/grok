@@ -507,7 +507,7 @@ static int parse_cmdline_cmp(int argc, char** argv, test_cmp_parameters* param)
 		TCLAP::ValueArg<std::string> separatorArg("s", "Separator", "Separator", false, "",
 												  "string", cmd);
 
-		TCLAP::ValueArg<std::string> regionArg("R", "SubRegion", "Sub region to compare", false, "",
+		TCLAP::ValueArg<std::string> regionArg("R", "SubRegion", "Base image region to compare with. Must equal test image dimensions.", false, "",
 											   "string", cmd);
 
 		cmd.parse(argc, argv);
@@ -551,8 +551,7 @@ static int parse_cmdline_cmp(int argc, char** argv, test_cmp_parameters* param)
 		if(regionArg.isSet())
 		{
 			float x0 = 0, y0 = 0, x1 = 0, y1 = 0;
-			if(grk::parseWindowBounds((char*)regionArg.getValue().c_str(), &x0, &y0, &x1, &y1) ==
-			   EXIT_SUCCESS)
+			if(grk::parseWindowBounds((char*)regionArg.getValue().c_str(), &x0, &y0, &x1, &y1))
 			{
 				param->region[0] = x0;
 				param->region[1] = y0;
@@ -831,7 +830,6 @@ int GrkCompareImages::main(int argc, char** argv)
 	strcpy(testFileName, inParam.test_filename);
 	strcat(testFileName, ".test");
 
-	/*----------DIFF IMAGE--------*/
 	param_image_diff = (grk_image_comp*)malloc(imageBase->numcomps * sizeof(grk_image_comp));
 	spdlog::info("Step 1 -> Header comparison");
 	if(imageBase->numcomps != imageTest->numcomps)
@@ -853,13 +851,13 @@ int GrkCompareImages::main(int argc, char** argv)
 
 		if(inParam.regionSet)
 		{
-			if(testComp->w != inParam.region[2] - inParam.region[0])
+			if(testComp->w != (uint32_t)(inParam.region[2] - inParam.region[0]))
 			{
 				spdlog::error("test image component width {} doesn't match region width {}",
 							  testComp->w, inParam.region[2] - inParam.region[0]);
 				goto cleanup;
 			}
-			if(testComp->h != inParam.region[3] - inParam.region[1])
+			if(testComp->h != (uint32_t)(inParam.region[3] - inParam.region[1]))
 			{
 				spdlog::error("test image component height {} doesn't match region height {}",
 							  testComp->h, inParam.region[3] - inParam.region[1]);
@@ -916,15 +914,17 @@ int GrkCompareImages::main(int argc, char** argv)
 		auto diffComp = imageDiff->comps + compno;
 		auto baseComp = imageBase->comps + compno;
 		auto testComp = imageTest->comps + compno;
-		uint32_t x0 = 0, y0 = 0, x1 = diffComp->w, y1 = diffComp->h;
+		uint32_t x0 = 0;
+		uint32_t y0 = 0;
+		uint32_t x1 = diffComp->w;
+		uint32_t y1 = diffComp->h;
 		// one region for all components
-		// todo handle normalized region in [0,1]x[0,1]
 		if(inParam.regionSet)
 		{
-			x0 = inParam.region[0];
-			y0 = inParam.region[1];
-			x1 = inParam.region[2];
-			y1 = inParam.region[3];
+			x0 = (uint32_t)inParam.region[0];
+			y0 = (uint32_t)inParam.region[1];
+			x1 = (uint32_t)inParam.region[2];
+			y1 = (uint32_t)inParam.region[3];
 		}
 		for(uint32_t j = y0; j < y1; ++j)
 		{
