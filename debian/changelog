@@ -1,3 +1,10 @@
+libgrokj2k (10.0.2-1) unstable; urgency=medium
+
+    * Maintenance bug fix release
+    * Fixes Failure to build on mipsel and armel (Closes: #1015014)
+
+ -- Aaron Boxer <boxerab@protonmail.com>  Fri, 16 Sep 2022 8:10:00 +0200
+
 libgrokj2k (10.0.1-1) unstable; urgency=medium
 
     * Maintenance bug fix release
