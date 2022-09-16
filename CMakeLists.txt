@@ -175,7 +175,6 @@ endif(PERLLIBS_FOUND)
 
 if(GRK_BUILD_CODEC)
   add_subdirectory(src/bin)
-  option(GRK_USE_LIBJPEG "Use libjpeg library to support JPEG file format, if present in system" OFF)
   add_subdirectory(src/lib/codec)
 endif()
 
