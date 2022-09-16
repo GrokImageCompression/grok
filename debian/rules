@@ -6,6 +6,11 @@ DEB_HOST_MULTIARCH ?= $(shell dpkg-architecture -qDEB_HOST_MULTIARCH)
 # as per upstream request:
 export DEB_CXXFLAGS_MAINT_APPEND = -fvisibility=hidden
 
+# add atomic (this is now handled in cmake)
+# ifneq (,$(filter $(DEB_HOST_ARCH), armel mipsel))
+#  export DEB_LDFLAGS_MAINT_APPEND += -Wl,--no-as-needed -latomic -Wl,--as-needed
+# endif
+
 %:
 	dh $@
 
