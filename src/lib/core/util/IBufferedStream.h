@@ -20,6 +20,15 @@ struct IBufferedStream
 {
 	virtual ~IBufferedStream() = default;
 
+    virtual uint32_t getStatus(void) = 0;
+    virtual void* getUserData(void) = 0;
+    virtual void setUserData(void* data, grk_stream_free_user_data_fn freeUserDataFun) = 0;
+    virtual void setUserDataLength(uint64_t len) = 0;
+    virtual void setReadFunction(grk_stream_read_fn fn) = 0;
+    virtual void setZeroCopyReadFunction(grk_stream_zero_copy_read_fn fn) = 0;
+    virtual void setWriteFunction(grk_stream_write_fn fn) = 0;
+    virtual void setSeekFunction(grk_stream_seek_fn fn) = 0;
+
 	virtual bool supportsZeroCopy() = 0;
 	virtual uint8_t* getZeroCopyPtr() = 0;
 	/**
@@ -91,6 +100,9 @@ struct IBufferedStream
 	 * @return	 true if stream is seekable, otherwise false
 	 */
 	virtual bool hasSeek() = 0;
+
+    virtual void setFormat(GRK_CODEC_FORMAT format) = 0;
+    virtual GRK_CODEC_FORMAT getFormat(void) = 0;
 };
 
 } // namespace grk

@@ -37,17 +37,17 @@ struct BufferedStream : public IBufferedStream
 	friend GrkObjectWrapperImpl<BufferedStream>;
 	BufferedStream(uint8_t* buffer, size_t buffer_size, bool l_is_input);
 
-	static BufferedStream* getImpl(grk_stream* stream);
+	static IBufferedStream* getImpl(grk_stream* stream);
 	grk_stream* getWrapper(void);
 
-	void setUserData(void* data, grk_stream_free_user_data_fn freeUserDataFun);
-	void* getUserData(void);
-	void setUserDataLength(uint64_t len);
-	uint32_t getStatus(void);
-	void setReadFunction(grk_stream_read_fn fn);
-	void setZeroCopyReadFunction(grk_stream_zero_copy_read_fn fn);
-	void setWriteFunction(grk_stream_write_fn fn);
-	void setSeekFunction(grk_stream_seek_fn fn);
+	void setUserData(void* data, grk_stream_free_user_data_fn freeUserDataFun) override;
+	void* getUserData(void) override;
+	void setUserDataLength(uint64_t len) override;
+	uint32_t getStatus(void) override;
+	void setReadFunction(grk_stream_read_fn fn) override;
+	void setZeroCopyReadFunction(grk_stream_zero_copy_read_fn fn) override;
+	void setWriteFunction(grk_stream_write_fn fn) override;
+	void setSeekFunction(grk_stream_seek_fn fn) override;
 	/**
 	 * Reads some bytes from the stream.
 	 * @param		buffer	pointer to the data buffer
@@ -107,16 +107,16 @@ struct BufferedStream : public IBufferedStream
 	 *
 	 * @return		true if successful, otherwise false
 	 */
-	bool seek(uint64_t offset);
+	bool seek(uint64_t offset) override;
 	/**
 	 * Check if stream is seekable.
 	 */
-	bool hasSeek();
-	bool supportsZeroCopy();
-	uint8_t* getZeroCopyPtr();
+	bool hasSeek() override;
+	bool supportsZeroCopy() override;
+	uint8_t* getZeroCopyPtr() override;
 
-	void setFormat(GRK_CODEC_FORMAT format);
-	GRK_CODEC_FORMAT getFormat(void);
+	void setFormat(GRK_CODEC_FORMAT format) override;
+	GRK_CODEC_FORMAT getFormat(void) override;
 
   private:
 	~BufferedStream();
