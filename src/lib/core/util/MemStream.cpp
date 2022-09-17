@@ -35,7 +35,7 @@ static void free_mem(void* user_data)
 		delete data;
 }
 
-static size_t zero_copy_read_from_mem(void** buffer, size_t numBytes, MemStream* src)
+static size_t zero_copy_read_from_mem(uint8_t** buffer, size_t numBytes, MemStream* src)
 {
 	size_t nb_read = 0;
 
