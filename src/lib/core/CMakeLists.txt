@@ -249,9 +249,9 @@ endif()
 
 if(UNIX)
   target_link_libraries(${GROK_CORE_NAME} PUBLIC ${CMAKE_THREAD_LIBS_INIT})
-  if (ARCH MATCHES "mips" OR ARCH MATCHES "armv5" OR ARCH MATCHES "armv7l")
+  if (ARCH MATCHES "armv7l|armv8l|m68k|mips|sh4|ppc|riscv64")
     target_link_libraries(${GROK_CORE_NAME} PUBLIC atomic)
-  endif (ARCH MATCHES "mips" OR ARCH MATCHES "armv5" OR ARCH MATCHES "armv7l")
+  endif (ARCH MATCHES "armv7l|armv8l|m68k|mips|sh4|ppc|riscv64")
 endif()
 target_link_libraries(${GROK_CORE_NAME} PRIVATE hwy ${LCMS_LIBNAME} )
 
