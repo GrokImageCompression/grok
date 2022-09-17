@@ -893,7 +893,7 @@ void GRK_CALLCONV grk_plugin_stop_batch_decompress(void)
 	}
 }
 
-void GRK_CALLCONV grk_stream_set_read_function(grk_stream* stream, grk_stream_read_fn func)
+void grk_stream_set_read_function(grk_stream* stream, grk_stream_read_fn func)
 {
 	auto streamImpl = BufferedStream::getImpl(stream);
 	if((!streamImpl) || (!(streamImpl->getStatus() & GROK_STREAM_STATUS_INPUT)))
@@ -901,13 +901,13 @@ void GRK_CALLCONV grk_stream_set_read_function(grk_stream* stream, grk_stream_re
 	streamImpl->setReadFunction(func);
 }
 
-void GRK_CALLCONV grk_stream_set_seek_function(grk_stream* stream, grk_stream_seek_fn func)
+void grk_stream_set_seek_function(grk_stream* stream, grk_stream_seek_fn func)
 {
 	auto streamImpl = BufferedStream::getImpl(stream);
 	if(streamImpl)
 		streamImpl->setSeekFunction(func);
 }
-void GRK_CALLCONV grk_stream_set_write_function(grk_stream* stream, grk_stream_write_fn func)
+void grk_stream_set_write_function(grk_stream* stream, grk_stream_write_fn func)
 {
 	auto streamImpl = BufferedStream::getImpl(stream);
 	if((!streamImpl) || (!(streamImpl->getStatus() & GROK_STREAM_STATUS_OUTPUT)))
@@ -916,7 +916,7 @@ void GRK_CALLCONV grk_stream_set_write_function(grk_stream* stream, grk_stream_w
 	streamImpl->setWriteFunction(func);
 }
 
-void GRK_CALLCONV grk_stream_set_user_data(grk_stream* stream, void* p_data,
+void grk_stream_set_user_data(grk_stream* stream, void* p_data,
 										   grk_stream_free_user_data_fn func)
 {
 	auto streamImpl = BufferedStream::getImpl(stream);
@@ -924,7 +924,7 @@ void GRK_CALLCONV grk_stream_set_user_data(grk_stream* stream, void* p_data,
 		return;
 	streamImpl->setUserData(p_data, func);
 }
-void GRK_CALLCONV grk_stream_set_user_data_length(grk_stream* stream, uint64_t data_length)
+void grk_stream_set_user_data_length(grk_stream* stream, uint64_t data_length)
 {
 	auto streamImpl = BufferedStream::getImpl(stream);
 	if(streamImpl)
