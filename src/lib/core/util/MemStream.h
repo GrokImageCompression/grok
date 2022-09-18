@@ -42,7 +42,17 @@ struct MemStream
 };
 
 void set_up_mem_stream(grk_stream* stream, size_t len, bool is_read_stream);
+
+/** Create stream from buffer
+ *
+ * @param buf           buffer
+ * @param buffer_len    length of buffer
+ * @param ownsBuffer    if true, library will delete[] buffer. Otherwise, it is the caller's
+ *                      responsibility to delete the buffer
+ * @param is_read_stream  whether the stream is a read stream (true) or not (false)
+ */
 grk_stream* create_mem_stream(uint8_t* buf, size_t len, bool ownsBuffer, bool is_read_stream);
+
 size_t get_mem_stream_offset(grk_stream* stream);
 
 } // namespace grk

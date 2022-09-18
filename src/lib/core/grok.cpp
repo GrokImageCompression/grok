@@ -66,6 +66,24 @@ GrkCodec::~GrkCodec()
 	grk_object_unref(stream_);
 }
 
+/**
+ * Start compressing image
+ *
+ * @param codec         compression codec
+ *
+ */
+static bool grk_compress_start(grk_codec* codec);
+
+/** Create stream from a file identified with its filename with a specific buffer size
+ *
+ * @param fname           the name of the file to stream
+ * @param buffer_size     size of the chunk used to stream
+ * @param is_read_stream  whether the stream is a read stream (true) or not (false)
+ */
+static grk_stream* grk_stream_create_file_stream(const char* fname, size_t buffer_size,
+                                          bool is_read_stream);
+
+
 static grk_stream* grk_stream_new(size_t buffer_size, bool is_input)
 {
 	auto streamImpl = new BufferedStream(nullptr, buffer_size, is_input);
@@ -143,25 +161,26 @@ GRK_API void GRK_CALLCONV grk_set_msg_handlers(grk_msg_callback info_callback, v
 	logger::logger_.error_data_ = error_user_data;
 }
 
-static size_t grk_read_from_file(void* buffer, size_t numBytes, FILE* p_file)
+static size_t grk_read_from_file(void* buffer, size_t numBytes, void* p_file)
 {
-	return fread(buffer, 1, numBytes, p_file);
+	return fread(buffer, 1, numBytes, (FILE*)p_file);
 }
 
-static uint64_t grk_get_data_length_from_file(FILE* p_file)
+static uint64_t grk_get_data_length_from_file(void* filePtr)
 {
-	GRK_FSEEK(p_file, 0, SEEK_END);
-	int64_t file_length = (int64_t)GRK_FTELL(p_file);
-	GRK_FSEEK(p_file, 0, SEEK_SET);
+    auto file = (FILE*)filePtr;
+	GRK_FSEEK(file, 0, SEEK_END);
+	int64_t file_length = (int64_t)GRK_FTELL(file);
+	GRK_FSEEK(file, 0, SEEK_SET);
 	return (uint64_t)file_length;
 }
-static size_t grk_write_to_file(void* buffer, size_t numBytes, FILE* p_file)
+static size_t grk_write_to_file(void* buffer, size_t numBytes, void* p_file)
 {
-	return fwrite(buffer, 1, numBytes, p_file);
+	return fwrite(buffer, 1, numBytes, (FILE*)p_file);
 }
-static bool grk_seek_in_file(int64_t numBytes, FILE* p_user_data)
+static bool grk_seek_in_file(int64_t numBytes, void* p_user_data)
 {
-	return GRK_FSEEK(p_user_data, numBytes, SEEK_SET) ? false : true;
+	return GRK_FSEEK((FILE*)p_user_data, numBytes, SEEK_SET) ? false : true;
 }
 
 #ifdef _WIN32
@@ -250,7 +269,7 @@ bool GRK_CALLCONV grk_decompress_detect_format(const char* fileName, GRK_CODEC_F
 
 static grk_codec* grk_decompress_create_from_buffer(uint8_t* buf, size_t len)
 {
-	auto stream = grk_stream_create_mem_stream(buf, len, false, true);
+	auto stream = create_mem_stream(buf, len, false, true);
 	if(!stream)
 	{
 		GRK_ERROR("Unable to create memory stream.");
@@ -491,7 +510,7 @@ grk_codec* GRK_CALLCONV grk_compress_init(grk_stream_params* stream_params,
 	if(stream_params->buf)
 	{
 		// let stream clean up compress buffer
-		stream = grk_stream_create_mem_stream(stream_params->buf, stream_params->len, true, false);
+		stream = create_mem_stream(stream_params->buf, stream_params->len, true, false);
 	}
 	else
 	{
@@ -531,7 +550,7 @@ grk_codec* GRK_CALLCONV grk_compress_init(grk_stream_params* stream_params,
 
 	return codecWrapper;
 }
-bool grk_compress_start(grk_codec* codecWrapper)
+static bool grk_compress_start(grk_codec* codecWrapper)
 {
 	if(codecWrapper)
 	{
@@ -556,7 +575,7 @@ static void grkFree_file(void* p_user_data)
 		fclose((FILE*)p_user_data);
 }
 
-grk_stream* grk_stream_create_file_stream(const char* fname, size_t buffer_size,
+static grk_stream* grk_stream_create_file_stream(const char* fname, size_t buffer_size,
 										  bool is_read_stream)
 {
 	bool stdin_stdout = !fname || !fname[0];
@@ -608,18 +627,6 @@ grk_stream* grk_stream_create_file_stream(const char* fname, size_t buffer_size,
 	grk_stream_set_write_function(stream, (grk_stream_write_fn)grk_write_to_file);
 	grk_stream_set_seek_function(stream, (grk_stream_seek_fn)grk_seek_in_file);
 	return stream;
-}
-
-size_t grk_stream_get_write_mem_stream_length(grk_stream* stream)
-{
-	if(!stream)
-		return 0;
-	return get_mem_stream_offset(stream);
-}
-grk_stream* grk_stream_create_mem_stream(uint8_t* buf, size_t len, bool ownsBuffer,
-										 bool is_read_stream)
-{
-	return create_mem_stream(buf, len, ownsBuffer, is_read_stream);
 }
 
 /**********************************************************************

@@ -82,47 +82,4 @@ void grk_stream_set_user_data(grk_stream* stream, void* data, grk_stream_free_us
  */
 void grk_stream_set_user_data_length(grk_stream* stream, uint64_t data_length);
 
-/** Create stream from a file identified with its filename with a specific buffer size
- *
- * @param fname           the name of the file to stream
- * @param buffer_size     size of the chunk used to stream
- * @param is_read_stream  whether the stream is a read stream (true) or not (false)
- */
-grk_stream* grk_stream_create_file_stream(const char* fname, size_t buffer_size,
-										  bool is_read_stream);
 
-/** Create stream from buffer
- *
- * @param buf           buffer
- * @param buffer_len    length of buffer
- * @param ownsBuffer    if true, library will delete[] buffer. Otherwise, it is the caller's
- *                      responsibility to delete the buffer
- * @param is_read_stream  whether the stream is a read stream (true) or not (false)
- */
-grk_stream* grk_stream_create_mem_stream(uint8_t* buf, size_t buffer_len, bool ownsBuffer,
-										 bool is_read_stream);
-
-/**
- * Get length of memory stream
- *
- * @param stream memory stream
- */
-size_t grk_stream_get_write_mem_stream_length(grk_stream* stream);
-
-/**
- * Creates a J2K/JP2 compression codec
- *
- * @param   format      output format : j2k or jp2
- * @param   stream      JPEG 2000 stream
- *
- * @return              compression codec if successful, otherwise NULL
- */
-grk_codec* grk_compress_create(GRK_CODEC_FORMAT format, grk_stream* stream);
-
-/**
- * Start compressing image
- *
- * @param codec         compression codec
- *
- */
-bool grk_compress_start(grk_codec* codec);

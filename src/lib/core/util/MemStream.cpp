@@ -35,63 +35,69 @@ static void free_mem(void* user_data)
 		delete data;
 }
 
-static size_t zero_copy_read_from_mem(uint8_t** buffer, size_t numBytes, MemStream* src)
+static size_t zero_copy_read_from_mem(uint8_t** buffer, size_t numBytes, void* src)
 {
 	size_t nb_read = 0;
+	auto srcStream = (MemStream*)src;
 
-	if(((size_t)src->off + numBytes) < src->len)
+	if(((size_t)srcStream->off + numBytes) < srcStream->len)
 		nb_read = numBytes;
 
-	*buffer = src->buf + src->off;
-	assert(src->off + nb_read <= src->len);
-	src->off += nb_read;
+	*buffer = srcStream->buf + srcStream->off;
+	assert(srcStream->off + nb_read <= srcStream->len);
+	srcStream->off += nb_read;
 
 	return nb_read;
 }
 
-static size_t read_from_mem(uint8_t* dest, size_t numBytes, MemStream* src)
+static size_t read_from_mem(uint8_t* dest, size_t numBytes, void* src)
 {
 	size_t nb_read;
 
 	if(!dest)
 		return 0;
 
-	if(src->off + numBytes < src->len)
+	auto srcStream = (MemStream*)src;
+
+	if(srcStream->off + numBytes < srcStream->len)
 		nb_read = numBytes;
 	else
-		nb_read = (size_t)(src->len - src->off);
+		nb_read = (size_t)(srcStream->len - srcStream->off);
 
 	if(nb_read)
 	{
-		assert(src->off + nb_read <= src->len);
+		assert(srcStream->off + nb_read <= srcStream->len);
 		// (don't copy buffer into itself)
-		if(dest != src->buf + src->off)
-			memcpy(dest, src->buf + src->off, nb_read);
-		src->off += nb_read;
+		if(dest != srcStream->buf + srcStream->off)
+			memcpy(dest, srcStream->buf + srcStream->off, nb_read);
+		srcStream->off += nb_read;
 	}
 
 	return nb_read;
 }
 
-static size_t write_to_mem(const uint8_t* src, size_t numBytes, MemStream* dest)
+static size_t write_to_mem(const uint8_t* src, size_t numBytes, void* dest)
 {
-	if(dest->off + numBytes >= dest->len)
+    auto destStream = (MemStream*)dest;
+    if(destStream->off + numBytes >= destStream->len)
 		return 0;
 
 	if(numBytes)
 	{
-		memcpy(dest->buf + (size_t)dest->off, src, numBytes);
-		dest->off += numBytes;
+		memcpy(destStream->buf + (size_t)destStream->off, src, numBytes);
+		destStream->off += numBytes;
 	}
 	return numBytes;
 }
 
-static bool seek_from_mem(uint64_t numBytes, MemStream* src)
+static bool seek_from_mem(uint64_t numBytes, void* src)
 {
-	if(numBytes < src->len)
-		src->off = numBytes;
+    auto srcStream = (MemStream*)src;
+
+	if(numBytes < srcStream->len)
+		srcStream->off = numBytes;
 	else
-		src->off = src->len;
+		srcStream->off = srcStream->len;
 
 	return true;
 }
@@ -138,6 +144,7 @@ size_t get_mem_stream_offset(grk_stream* stream)
 
 	return buf->off;
 }
+
 
 grk_stream* create_mem_stream(uint8_t* buf, size_t len, bool ownsBuffer, bool is_read_stream)
 {
