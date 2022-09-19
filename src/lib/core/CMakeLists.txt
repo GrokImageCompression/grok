@@ -18,7 +18,6 @@ IF(BUILD_SHARED_LIBS)
 ENDIF()
 ENDIF(UNIX)
 
-
 install( FILES  ${CMAKE_CURRENT_BINARY_DIR}/grk_config.h
  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${GROK_INSTALL_SUBDIR} COMPONENT Headers)
 
@@ -245,17 +244,17 @@ endif()
 
 if (CMAKE_CXX_COMPILER_ID MATCHES "GNU")
   target_link_options(${GROK_CORE_NAME} PRIVATE "LINKER:-z,now")
-endif() 
+endif()
 
 # link to libatomic for these architectures
-if (ARCH MATCHES "armv7l|armv8l|m68k|mips|sh4|ppc|riscv64")
+if (GRK_ARCH MATCHES "armv7l|armv8l|m68k|mips|sh4|ppc|riscv64")
   target_link_libraries(${GROK_CORE_NAME} PUBLIC atomic)
-endif (ARCH MATCHES "armv7l|armv8l|m68k|mips|sh4|ppc|riscv64")
+endif (GRK_ARCH MATCHES "armv7l|armv8l|m68k|mips|sh4|ppc|riscv64")
 
 # mips needs explicit linker flag to disable executable stack
-if (ARCH MATCHES "mips")
+if (GRK_ARCH MATCHES "mips")
   target_link_options(${GROK_CORE_NAME} PRIVATE "LINKER:-z,noexecstack")
-endif (ARCH MATCHES "mips")
+endif (GRK_ARCH MATCHES "mips")
 
 if(UNIX)
   target_link_libraries(${GROK_CORE_NAME} PUBLIC ${CMAKE_THREAD_LIBS_INIT})

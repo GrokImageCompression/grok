@@ -29,13 +29,4 @@ include_directories(
   ${GROK_SOURCE_DIR}/src/include
   )
 
-if(WIN32)
-  add_definitions(-DNOMINMAX)
-  if(BUILD_SHARED_LIBS)
-    add_definitions(-DGRK_EXPORTS)
-  endif()
-endif()
-
 add_definitions(-DSPDLOG_COMPILED_LIB)
-
-

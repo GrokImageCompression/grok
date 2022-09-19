@@ -102,9 +102,9 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "GNU")
 endif()
 
 # mips needs explicit linker flag to disable executable stack
-if (ARCH MATCHES "mips")
+if (GRK_ARCH MATCHES "mips")
   target_link_options(${GROK_CORE_NAME} PRIVATE "LINKER:-z,noexecstack")
-endif (ARCH MATCHES "mips")
+endif (GRK_ARCH MATCHES "mips")
 
 # Install library
 install(TARGETS ${INSTALL_LIBS}
