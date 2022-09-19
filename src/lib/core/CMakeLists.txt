@@ -244,15 +244,22 @@ if (CMAKE_SYSTEM_NAME STREQUAL Emscripten)
 endif()
 
 if (CMAKE_CXX_COMPILER_ID MATCHES "GNU")
-  target_link_options(${GROK_CORE_NAME} PUBLIC "LINKER:-z,now")
+  target_link_options(${GROK_CORE_NAME} PRIVATE "LINKER:-z,now")
 endif() 
+
+# link to libatomic for these architectures
+if (ARCH MATCHES "armv7l|armv8l|m68k|mips|sh4|ppc|riscv64")
+  target_link_libraries(${GROK_CORE_NAME} PUBLIC atomic)
+endif (ARCH MATCHES "armv7l|armv8l|m68k|mips|sh4|ppc|riscv64")
+
+# mips needs explicit linker flag to disable executable stack
+if (ARCH MATCHES "mips")
+  target_link_options(${GROK_CORE_NAME} PRIVATE "LINKER:-z,noexecstack")
+endif (ARCH MATCHES "mips")
 
 if(UNIX)
   target_link_libraries(${GROK_CORE_NAME} PUBLIC ${CMAKE_THREAD_LIBS_INIT})
-  if (ARCH MATCHES "armv7l|armv8l|m68k|mips|sh4|ppc|riscv64")
-    target_link_libraries(${GROK_CORE_NAME} PUBLIC atomic)
-  endif (ARCH MATCHES "armv7l|armv8l|m68k|mips|sh4|ppc|riscv64")
-endif()
+endif(UNIX)
 target_link_libraries(${GROK_CORE_NAME} PRIVATE hwy ${LCMS_LIBNAME} )
 
 # bundle all static libraries into a single library

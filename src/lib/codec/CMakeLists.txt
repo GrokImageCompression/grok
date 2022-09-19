@@ -80,20 +80,14 @@ add_definitions(-DSPDLOG_COMPILED_LIB)
 
 add_library(${GROK_CODEC_NAME} ${GROK_CODEC_SRCS})
 set(INSTALL_LIBS ${GROK_CODEC_NAME})
-if (CMAKE_CXX_COMPILER_ID MATCHES "GNU")
-	target_link_options(${GROK_CODEC_NAME} PUBLIC "LINKER:-z,now")
-endif()
+
 target_link_libraries(${GROK_CODEC_NAME} PRIVATE ${GROK_CORE_NAME}
                        ${PNG_LIBNAME} ${TIFF_LIBNAME}
                        ${JPEG_LIBNAME})
 
-if(URING)
-  target_link_libraries(${GROK_CODEC_NAME} PRIVATE uring)
-endif()
-
 if (PERLLIBS_FOUND)
    include_directories(${PERL_INCLUDE_PATH})
-   target_link_libraries(${GROK_CODEC_NAME} PRIVATE ${PERL_LIBRARY} )
+   target_link_libraries(${GROK_CODEC_NAME} PUBLIC ${PERL_LIBRARY} )
 endif()
 
 if(UNIX)
@@ -101,6 +95,16 @@ if(UNIX)
 endif()
 set_target_properties(${GROK_CODEC_NAME} PROPERTIES ${GROK_LIBRARY_PROPERTIES})
 target_compile_options(${GROK_CODEC_NAME} PRIVATE ${GROK_COMPILE_OPTIONS})
+
+# hardening
+if (CMAKE_CXX_COMPILER_ID MATCHES "GNU")
+	target_link_options(${GROK_CODEC_NAME} PRIVATE "LINKER:-z,now")
+endif()
+
+# mips needs explicit linker flag to disable executable stack
+if (ARCH MATCHES "mips")
+  target_link_options(${GROK_CORE_NAME} PRIVATE "LINKER:-z,noexecstack")
+endif (ARCH MATCHES "mips")
 
 # Install library
 install(TARGETS ${INSTALL_LIBS}

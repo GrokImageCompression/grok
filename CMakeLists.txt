@@ -30,7 +30,6 @@ set(GROK_PLUGIN_NAME grokj2k_plugin)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# check if we need to link to libatomic
 if (CMAKE_SYSTEM_PROCESSOR MATCHES "unknown")
   # uname -p is broken on this system.  Try uname -m
   EXECUTE_PROCESS( COMMAND uname -m
