@@ -434,8 +434,8 @@ inline void CmdLine::parse(int argc, const char *const *argv) {
 }
 
 inline void CmdLine::parse(std::vector<std::string> &args) {
-    bool shouldExit = false;
-    int estat = 0;
+    //bool shouldExit = false;
+    //int estat = 0;
 
     try {
         if (args.empty()) {
@@ -526,8 +526,8 @@ inline void CmdLine::parse(std::vector<std::string> &args) {
         try {
             _output->failure(*this, e);
         } catch (ExitException &ee) {
-            estat = ee.getExitStatus();
-            shouldExit = true;
+            //estat = ee.getExitStatus();
+            //shouldExit = true;
         }
     } catch (ExitException &ee) {
         // If we're not handling the exceptions, rethrow.
@@ -535,11 +535,11 @@ inline void CmdLine::parse(std::vector<std::string> &args) {
             throw;
         }
 
-        estat = ee.getExitStatus();
-        shouldExit = true;
+        //estat = ee.getExitStatus();
+        //shouldExit = true;
     }
 
-    if (shouldExit) exit(estat);
+    //if (shouldExit) exit(estat);
 }
 
 inline bool CmdLine::_emptyCombined(const std::string &s) {
