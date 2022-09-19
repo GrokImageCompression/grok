@@ -33,6 +33,7 @@ Description: JPEG 2000 image compression/decompression library
 Package: libgrokj2k1-dev
 Section: libdevel
 Architecture: any
+Multi-Arch: foreign
 Depends: libgrokj2k1 (= ${binary:Version}), ${misc:Depends}
 Recommends: libgrokj2k1-doc (= ${source:Version})
 Description: development files for Grok, a JPEG 2000 image library
