@@ -4,12 +4,12 @@ Managing Tags
 
 Move master tag:
 
-`$ git push origin :refs/tags/v10.0.2 && git tag -fa v10.0.2 && git push origin master --tags`
+`$ git push origin :refs/tags/v10.0.3 && git tag -fa v10.0.3 && git push origin master --tags`
 
 
 Move debian/master tag:
 
-`$ git push origin :refs/tags/v10.0.2.debian && git tag -fa v10.0.2.debian && git push origin master --tags`
+`$ git push origin :refs/tags/v10.0.3.debian && git tag -fa v10.0.3.debian && git push origin master --tags`
 
 ------------------
 Building a Package
@@ -24,7 +24,7 @@ Guide to [setting up schroot](https://wiki.debian.org/Packaging/Pre-Requisites)
 
 2. `sudo schroot -c debian-sid`
 
-3. `$ git archive --format=tar v10.0.2 | gzip > libgrokj2k_10.0.2.orig.tar.gz && mv libgrokj2k_10.0.2.orig.tar.gz ..`
+3. `$ git archive --format=tar v10.0.3 | gzip > libgrokj2k_10.0.3.orig.tar.gz && mv libgrokj2k_10.0.3.orig.tar.gz ..`
 
 4. `$ dpkg-buildpackage -us -uc`
 

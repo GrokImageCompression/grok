@@ -1,3 +1,10 @@
+libgrokj2k (10.0.3-1) unstable; urgency=medium
+
+    * Maintenance bug fix release
+    * Fixes a few lintian and blhc warnings
+
+ -- Aaron Boxer <boxerab@protonmail.com>  Mon, 19 Sep 2022 8:10:00 +0200
+
 libgrokj2k (10.0.2-1) unstable; urgency=medium
 
     * Maintenance bug fix release
