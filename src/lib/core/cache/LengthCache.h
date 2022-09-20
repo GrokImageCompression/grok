@@ -68,7 +68,7 @@ struct TileInfo
 };
 struct CodeStreamInfo
 {
-	CodeStreamInfo(IBufferedStream* str);
+	CodeStreamInfo(BufferedStream* str);
 	virtual ~CodeStreamInfo();
 	bool allocTileInfo(uint16_t numTiles);
 	bool updateTileInfo(uint16_t tileIndex, uint8_t currentTilePart, uint8_t numTileParts);
@@ -90,7 +90,7 @@ struct CodeStreamInfo
 	// TileInfo array
 	TileInfo* tileInfo;
 	uint16_t numTiles;
-	IBufferedStream* stream;
+	BufferedStream* stream;
 };
 struct TilePartLengthInfo
 {
@@ -106,7 +106,7 @@ typedef std::map<uint16_t, TL_INFO_VEC*> TL_MAP;
 struct TileLengthMarkers
 {
 	explicit TileLengthMarkers(uint16_t numSignalledTiles);
-	explicit TileLengthMarkers(IBufferedStream* stream);
+	explicit TileLengthMarkers(BufferedStream* stream);
 	~TileLengthMarkers();
 
 	bool read(uint8_t* headerData, uint16_t header_size);
@@ -115,7 +115,7 @@ struct TileLengthMarkers
 	TilePartLengthInfo* next(bool peek);
 	void invalidate(void);
 	bool valid(void);
-	void seek(TileSet* tilesToDecompress, CodingParams* cp, IBufferedStream* stream);
+	void seek(TileSet* tilesToDecompress, CodingParams* cp, BufferedStream* stream);
 	bool writeBegin(uint16_t numTilePartsTotal);
 	void push(uint16_t tileIndex, uint32_t tile_part_size);
 	bool writeEnd(void);
@@ -136,7 +136,7 @@ struct TileLengthMarkers
 	TL_MAP::iterator markerIt_;
 	uint16_t markerTilePartIndex_;
 	TL_INFO_VEC* curr_vec_;
-	IBufferedStream* stream_;
+	BufferedStream* stream_;
 	uint64_t streamStart;
 	bool valid_;
 	bool hasTileIndices_;

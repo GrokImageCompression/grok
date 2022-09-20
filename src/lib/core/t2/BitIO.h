@@ -22,7 +22,7 @@
 #pragma once
 
 #include "IBitIO.h"
-#include "IBufferedStream.h"
+#include "BufferedStream.h"
 
 namespace grk
 {
@@ -33,7 +33,7 @@ class BitIO : public IBitIO
 {
   public:
 	BitIO(uint8_t* bp, uint64_t len, bool isCompressor);
-	BitIO(IBufferedStream* stream, bool isCompressor);
+	BitIO(BufferedStream* stream, bool isCompressor);
 
 	/*
 	 Number of bytes written.
@@ -85,7 +85,7 @@ class BitIO : public IBitIO
 	/* coder : number of bits free to write. decoder : number of bits read */
 	uint8_t ct;
 
-	IBufferedStream* stream;
+	BufferedStream* stream;
 
 	bool read0xFF;
 

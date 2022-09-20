@@ -46,7 +46,7 @@ struct Quantizer
 	void push(grk_stepsize* stepptr);
 	virtual void generate(uint32_t decomps, uint32_t max_bit_depth, bool color_transform,
 						  bool is_signed);
-	virtual bool write(IBufferedStream* stream);
+	virtual bool write(BufferedStream* stream);
 
   protected:
 	uint32_t get_num_guard_bits() const;

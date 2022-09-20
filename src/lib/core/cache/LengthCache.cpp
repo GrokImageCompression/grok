@@ -125,7 +125,7 @@ void TileInfo::dump(FILE* outputFileStream, uint16_t tileNum)
 			markerInfo[markerNum].dump(outputFileStream);
 	}
 }
-CodeStreamInfo::CodeStreamInfo(IBufferedStream* str)
+CodeStreamInfo::CodeStreamInfo(BufferedStream* str)
 	: mainHeaderStart(0), mainHeaderEnd(0), tileInfo(nullptr), numTiles(0), stream(str)
 {}
 CodeStreamInfo::~CodeStreamInfo()
@@ -231,7 +231,7 @@ TileLengthMarkers::TileLengthMarkers(uint16_t numSignalledTiles)
 	  curr_vec_(nullptr), stream_(nullptr), streamStart(0), valid_(true), hasTileIndices_(false),
 	  tileCount_(0), numSignalledTiles_(numSignalledTiles)
 {}
-TileLengthMarkers::TileLengthMarkers(IBufferedStream* stream) : TileLengthMarkers(USHRT_MAX)
+TileLengthMarkers::TileLengthMarkers(BufferedStream* stream) : TileLengthMarkers(USHRT_MAX)
 {
 	stream_ = stream;
 }
@@ -437,7 +437,7 @@ TilePartLengthInfo* TileLengthMarkers::next(bool peek)
  *
  * return false if TLM marker is corrupt, otherwise false
  */
-void TileLengthMarkers::seek(TileSet* tilesToDecompress, CodingParams* cp, IBufferedStream* stream)
+void TileLengthMarkers::seek(TileSet* tilesToDecompress, CodingParams* cp, BufferedStream* stream)
 {
 	assert(stream);
 	// peek at tile part

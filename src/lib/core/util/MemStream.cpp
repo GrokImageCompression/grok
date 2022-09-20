@@ -124,13 +124,13 @@ void set_up_mem_stream(grk_stream* stream, size_t len, bool is_read_stream)
 	grk_stream_set_user_data_length(stream, len);
 	if(is_read_stream)
 	{
-		grk_stream_set_read_function(stream, (grk_stream_read_fn)read_from_mem);
+		grk_stream_set_read_function(stream, read_from_mem);
 		grk_stream_set_zero_copy_read_function(
-			stream, (grk_stream_zero_copy_read_fn)zero_copy_read_from_mem);
+			stream, zero_copy_read_from_mem);
 	}
 	else
-		grk_stream_set_write_function(stream, (grk_stream_write_fn)write_to_mem);
-	grk_stream_set_seek_function(stream, (grk_stream_seek_fn)seek_from_mem);
+		grk_stream_set_write_function(stream, write_to_mem);
+	grk_stream_set_seek_function(stream, seek_from_mem);
 }
 
 size_t get_mem_stream_offset(grk_stream* stream)

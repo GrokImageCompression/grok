@@ -27,7 +27,7 @@ class PLCache
   public:
 	PLCache(CodingParams* cp);
 	virtual ~PLCache();
-	PLMarkerMgr* createMarkers(IBufferedStream* strm);
+	PLMarkerMgr* createMarkers(BufferedStream* strm);
 	PLMarkerMgr* getMarkers(void);
 	void deleteMarkers(void);
 	bool next(PacketInfo** p);

@@ -257,7 +257,7 @@ uint32_t QuantizerOJPH::get_MAGBp() const
 
 	return B;
 }
-bool QuantizerOJPH::write(grk::IBufferedStream* stream)
+bool QuantizerOJPH::write(grk::BufferedStream* stream)
 {
 	// marker size excluding header
 	uint16_t Lcap = 8;

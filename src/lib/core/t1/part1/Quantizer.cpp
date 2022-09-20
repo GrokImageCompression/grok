@@ -110,7 +110,7 @@ void Quantizer::generate(uint32_t decomps, uint32_t max_bit_depth,
 }
 
 // no-op
-bool Quantizer::write([[maybe_unused]] IBufferedStream* stream)
+bool Quantizer::write([[maybe_unused]] BufferedStream* stream)
 {
 	return true;
 }

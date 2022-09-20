@@ -23,7 +23,7 @@
 
 namespace grk
 {
-FileFormatDecompress::FileFormatDecompress(IBufferedStream* stream)
+FileFormatDecompress::FileFormatDecompress(BufferedStream* stream)
 	: FileFormat(), headerError_(false), codeStream(new CodeStreamDecompress(stream)), jp2_state(0)
 {
 	header = {{JP2_JP, [this](uint8_t* data, uint32_t len) { return read_jp(data, len); }},
@@ -550,7 +550,7 @@ cleanup:
  *
  */
 bool FileFormatDecompress::read_box_hdr(FileFormatBox* box, uint32_t* p_number_bytes_read,
-										IBufferedStream* stream)
+										BufferedStream* stream)
 {
 	assert(stream != nullptr);
 	assert(box != nullptr);

@@ -23,7 +23,7 @@
 
 namespace grk
 {
-CodeStreamDecompress::CodeStreamDecompress(IBufferedStream* stream)
+CodeStreamDecompress::CodeStreamDecompress(BufferedStream* stream)
 	: CodeStream(stream), expectSOD_(false), curr_marker_(0), headerError_(false),
 	  headerRead_(false), marker_scratch_(nullptr), marker_scratch_size_(0), outputImage_(nullptr),
 	  tileCache_(new TileCache()), ioBufferCallback(nullptr), ioUserData(nullptr),

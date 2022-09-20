@@ -480,7 +480,7 @@ bool BufferedStream::isMemStream()
 	return !buf_->owns_data;
 }
 
-IBufferedStream* BufferedStream::getImpl(grk_stream* stream)
+BufferedStream* BufferedStream::getImpl(grk_stream* stream)
 {
 	return ((GrkObjectWrapperImpl<BufferedStream>*)stream->wrapper)->getWrappee();
 }

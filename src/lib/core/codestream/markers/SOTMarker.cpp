@@ -24,7 +24,7 @@
 namespace grk
 {
 SOTMarker::SOTMarker(void) : psot_location_(0) {}
-bool SOTMarker::write_psot(IBufferedStream* stream, uint32_t tileLength)
+bool SOTMarker::write_psot(BufferedStream* stream, uint32_t tileLength)
 {
 	if(psot_location_)
 	{

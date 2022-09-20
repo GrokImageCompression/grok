@@ -24,7 +24,7 @@ PLCache::~PLCache()
 	delete pltMarkers;
 }
 
-PLMarkerMgr* PLCache::createMarkers(IBufferedStream* strm)
+PLMarkerMgr* PLCache::createMarkers(BufferedStream* strm)
 {
 	if(!pltMarkers)
 		pltMarkers = strm ? new PLMarkerMgr(strm) : new PLMarkerMgr();

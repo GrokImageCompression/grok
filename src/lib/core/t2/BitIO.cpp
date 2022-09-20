@@ -29,7 +29,7 @@ BitIO::BitIO(uint8_t* bp, uint64_t len, bool isCompressor)
 	assert(isCompressor || bp);
 }
 
-BitIO::BitIO(IBufferedStream* strm, bool isCompressor)
+BitIO::BitIO(BufferedStream* strm, bool isCompressor)
 	: start(nullptr), offset(0), buf_len(0), buf(0), ct(isCompressor ? 8 : 0), stream(strm),
 	  read0xFF(false)
 {}

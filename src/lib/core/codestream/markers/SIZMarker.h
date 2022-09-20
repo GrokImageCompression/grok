@@ -45,7 +45,7 @@ class SIZMarker
 	 * @param       stream        buffered stream.
 
 	 */
-	bool write(CodeStreamCompress* codeStream, IBufferedStream* stream);
+	bool write(CodeStreamCompress* codeStream, BufferedStream* stream);
 
   private:
 	void subsampleAndReduceHeaderImageComponents(GrkImage* headerImage, const CodingParams* p_cp);

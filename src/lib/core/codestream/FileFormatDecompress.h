@@ -28,7 +28,7 @@ typedef std::function<bool(uint8_t* headerData, uint32_t header_size)> BOX_FUNC;
 class FileFormatDecompress : public FileFormat, public ICodeStreamDecompress
 {
   public:
-	FileFormatDecompress(IBufferedStream* stream);
+	FileFormatDecompress(BufferedStream* stream);
 	virtual ~FileFormatDecompress();
 	bool readHeader(grk_header_info* header_info);
 	GrkImage* getImage(uint16_t tileIndex);
@@ -47,7 +47,7 @@ class FileFormatDecompress : public FileFormat, public ICodeStreamDecompress
 	uint32_t read_asoc(AsocBox* parent, uint8_t** header_data, uint32_t* header_data_size,
 					   uint32_t asocSize);
 	bool readHeaderProcedureImpl(void);
-	bool read_box_hdr(FileFormatBox* box, uint32_t* p_number_bytes_read, IBufferedStream* stream);
+	bool read_box_hdr(FileFormatBox* box, uint32_t* p_number_bytes_read, BufferedStream* stream);
 	bool read_ihdr(uint8_t* p_image_header_data, uint32_t image_header_size);
 	bool read_xml(uint8_t* p_xml_data, uint32_t xml_size);
 	bool read_uuid(uint8_t* headerData, uint32_t header_size);

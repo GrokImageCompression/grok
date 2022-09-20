@@ -26,7 +26,7 @@ PLMarkerMgr::PLMarkerMgr()
 	  currMarkerBuf_(nullptr), enabled_(true)
 {}
 // compression
-PLMarkerMgr::PLMarkerMgr(IBufferedStream* strm) : PLMarkerMgr()
+PLMarkerMgr::PLMarkerMgr(BufferedStream* strm) : PLMarkerMgr()
 {
 	stream_ = strm;
 }

@@ -63,7 +63,7 @@ struct QuantizerOpenHTJ2K : public grk::Quantizer
 	QuantizerOpenHTJ2K(bool reversible, uint8_t guard_bits);
 	void generate(uint32_t decomps, uint32_t max_bit_depth, bool color_transform,
 				  bool is_signed) override;
-	bool write(grk::IBufferedStream* stream) override;
+	bool write(grk::BufferedStream* stream) override;
 
   private:
 	uint32_t get_MAGBp() const;

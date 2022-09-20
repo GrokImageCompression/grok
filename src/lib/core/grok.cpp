@@ -161,7 +161,7 @@ GRK_API void GRK_CALLCONV grk_set_msg_handlers(grk_msg_callback info_callback, v
 	logger::logger_.error_data_ = error_user_data;
 }
 
-static size_t grk_read_from_file(void* buffer, size_t numBytes, void* p_file)
+static size_t grk_read_from_file(uint8_t* buffer, size_t numBytes, void* p_file)
 {
 	return fread(buffer, 1, numBytes, (FILE*)p_file);
 }
@@ -174,13 +174,17 @@ static uint64_t grk_get_data_length_from_file(void* filePtr)
 	GRK_FSEEK(file, 0, SEEK_SET);
 	return (uint64_t)file_length;
 }
-static size_t grk_write_to_file(void* buffer, size_t numBytes, void* p_file)
+static size_t grk_write_to_file(const uint8_t* buffer, size_t numBytes, void* p_file)
 {
 	return fwrite(buffer, 1, numBytes, (FILE*)p_file);
 }
-static bool grk_seek_in_file(int64_t numBytes, void* p_user_data)
+static bool grk_seek_in_file(uint64_t numBytes, void* p_user_data)
 {
-	return GRK_FSEEK((FILE*)p_user_data, numBytes, SEEK_SET) ? false : true;
+    if (numBytes > INT64_MAX) {
+        return false;
+    }
+
+	return GRK_FSEEK((FILE*)p_user_data, (int64_t)numBytes, SEEK_SET) ? false : true;
 }
 
 #ifdef _WIN32
@@ -619,13 +623,12 @@ static grk_stream* grk_stream_create_file_stream(const char* fname, size_t buffe
 			bstream->setFormat(fmt);
 	}
 
-	grk_stream_set_user_data(stream, file,
-							 (grk_stream_free_user_data_fn)(stdin_stdout ? nullptr : grkFree_file));
+	grk_stream_set_user_data(stream, file,stdin_stdout ? nullptr : grkFree_file);
 	if(is_read_stream)
 		grk_stream_set_user_data_length(stream, grk_get_data_length_from_file(file));
-	grk_stream_set_read_function(stream, (grk_stream_read_fn)grk_read_from_file);
-	grk_stream_set_write_function(stream, (grk_stream_write_fn)grk_write_to_file);
-	grk_stream_set_seek_function(stream, (grk_stream_seek_fn)grk_seek_in_file);
+	grk_stream_set_read_function(stream, grk_read_from_file);
+	grk_stream_set_write_function(stream, grk_write_to_file);
+	grk_stream_set_seek_function(stream, grk_seek_in_file);
 	return stream;
 }
 

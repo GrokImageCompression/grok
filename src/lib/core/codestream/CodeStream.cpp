@@ -22,7 +22,7 @@
 
 namespace grk
 {
-CodeStream::CodeStream(IBufferedStream* stream)
+CodeStream::CodeStream(BufferedStream* stream)
 	: codeStreamInfo(nullptr), headerImage_(nullptr), currentTileProcessor_(nullptr),
 	  stream_(stream), current_plugin_tile(nullptr)
 {}
@@ -56,7 +56,7 @@ grk_plugin_tile* CodeStream::getCurrentPluginTile()
 {
 	return current_plugin_tile;
 }
-IBufferedStream* CodeStream::getStream()
+BufferedStream* CodeStream::getStream()
 {
 	return stream_;
 }

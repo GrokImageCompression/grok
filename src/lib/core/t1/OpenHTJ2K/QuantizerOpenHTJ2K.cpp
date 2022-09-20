@@ -256,7 +256,7 @@ uint32_t QuantizerOpenHTJ2K::get_MAGBp() const
 	return B;
 }
 
-bool QuantizerOpenHTJ2K::write(grk::IBufferedStream* stream)
+bool QuantizerOpenHTJ2K::write(grk::BufferedStream* stream)
 {
 	// marker size excluding header
 	uint16_t Lcap = 8;

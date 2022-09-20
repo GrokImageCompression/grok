@@ -265,7 +265,7 @@ bool SIZMarker::read(CodeStreamDecompress* codeStream, uint8_t* headerData, uint
 	return true;
 }
 
-bool SIZMarker::write(CodeStreamCompress* codeStream, IBufferedStream* stream)
+bool SIZMarker::write(CodeStreamCompress* codeStream, BufferedStream* stream)
 {
 	uint32_t i;
 	uint32_t size_len;

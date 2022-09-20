@@ -27,7 +27,7 @@ typedef int32_t grk_handle;
 /*
  * Callback function prototype for zero copy read function
  */
-typedef size_t (*grk_stream_zero_copy_read_fn)(void** buffer, size_t numBytes, void* user_data);
+typedef size_t (*grk_stream_zero_copy_read_fn)(uint8_t** buffer, size_t numBytes, void* user_data);
 
 struct MemStream
 {

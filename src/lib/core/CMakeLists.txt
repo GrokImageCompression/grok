@@ -75,7 +75,6 @@ set(GROK_LIBRARY_OPENHTJ2K_SRCS
 set(GROK_LIBRARY_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/util/BufferedStream.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/util/BufferedStream.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/util/IBufferedStream.h
   ${CMAKE_CURRENT_SOURCE_DIR}/util/logger.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/util/logger.h  
   ${CMAKE_CURRENT_SOURCE_DIR}/util/GrkMappedFile.cpp
@@ -171,7 +170,6 @@ set(GROK_LIBRARY_SRCS
 
   ${CMAKE_CURRENT_SOURCE_DIR}/grok.h
   ${CMAKE_CURRENT_SOURCE_DIR}/grok.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/grok.h
   ${CMAKE_CURRENT_SOURCE_DIR}/grk_includes.h  
     
   ${CMAKE_CURRENT_SOURCE_DIR}/tile/TileComponentWindow.h

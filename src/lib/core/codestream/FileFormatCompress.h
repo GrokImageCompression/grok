@@ -25,7 +25,7 @@ namespace grk
 class FileFormatCompress : public FileFormat, public ICodeStreamCompress
 {
   public:
-	FileFormatCompress(IBufferedStream* stream);
+	FileFormatCompress(BufferedStream* stream);
 	virtual ~FileFormatCompress();
 
 	bool init(grk_cparameters* p_param, GrkImage* p_image);

@@ -21,7 +21,6 @@
 
 #pragma once
 
-#include <IBufferedStream.h>
 #include "grk_config_private.h"
 #include "IBitIO.h"
 
@@ -32,22 +31,22 @@ namespace grk
 #define GROK_STREAM_STATUS_END 0x4U
 #define GROK_STREAM_STATUS_ERROR 0x8U
 
-struct BufferedStream : public IBufferedStream
+struct BufferedStream
 {
 	friend GrkObjectWrapperImpl<BufferedStream>;
 	BufferedStream(uint8_t* buffer, size_t buffer_size, bool l_is_input);
 
-	static IBufferedStream* getImpl(grk_stream* stream);
+	static BufferedStream* getImpl(grk_stream* stream);
 	grk_stream* getWrapper(void);
 
-	void setUserData(void* data, grk_stream_free_user_data_fn freeUserDataFun) override;
-	void* getUserData(void) override;
-	void setUserDataLength(uint64_t len) override;
-	uint32_t getStatus(void) override;
-	void setReadFunction(grk_stream_read_fn fn) override;
-	void setZeroCopyReadFunction(grk_stream_zero_copy_read_fn fn) override;
-	void setWriteFunction(grk_stream_write_fn fn) override;
-	void setSeekFunction(grk_stream_seek_fn fn) override;
+	void setUserData(void* data, grk_stream_free_user_data_fn freeUserDataFun);
+	void* getUserData(void);
+	void setUserDataLength(uint64_t len);
+	uint32_t getStatus(void);
+	void setReadFunction(grk_stream_read_fn fn);
+	void setZeroCopyReadFunction(grk_stream_zero_copy_read_fn fn);
+	void setWriteFunction(grk_stream_write_fn fn);
+	void setSeekFunction(grk_stream_seek_fn fn);
 	/**
 	 * Reads some bytes from the stream.
 	 * @param		buffer	pointer to the data buffer
@@ -107,16 +106,16 @@ struct BufferedStream : public IBufferedStream
 	 *
 	 * @return		true if successful, otherwise false
 	 */
-	bool seek(uint64_t offset) override;
+	bool seek(uint64_t offset);
 	/**
 	 * Check if stream is seekable.
 	 */
-	bool hasSeek() override;
-	bool supportsZeroCopy() override;
-	uint8_t* getZeroCopyPtr() override;
+	bool hasSeek();
+	bool supportsZeroCopy();
+	uint8_t* getZeroCopyPtr();
 
-	void setFormat(GRK_CODEC_FORMAT format) override;
-	GRK_CODEC_FORMAT getFormat(void) override;
+	void setFormat(GRK_CODEC_FORMAT format);
+	GRK_CODEC_FORMAT getFormat(void);
 
   private:
 	~BufferedStream();

@@ -76,7 +76,7 @@ class mct;
 
 struct TileProcessor
 {
-	explicit TileProcessor(uint16_t index, CodeStream* codeStream, IBufferedStream* stream,
+	explicit TileProcessor(uint16_t index, CodeStream* codeStream, BufferedStream* stream,
 						   bool isCompressor, StripCache* stripCache);
 	~TileProcessor();
 	bool init(void);
@@ -99,7 +99,7 @@ struct TileProcessor
 	grk_rect32 getUnreducedTileWindow(void);
 	TileCodingParams* getTileCodingParams(void);
 	uint8_t getMaxNumDecompressResolutions(void);
-	IBufferedStream* getStream(void);
+	BufferedStream* getStream(void);
 	uint32_t getPreCalculatedTileLen(void);
 	bool canPreCalculateTileLen(void);
 	uint16_t getIndex(void) const;
@@ -163,7 +163,7 @@ struct TileProcessor
 	// Compressing only - track which packets have already been written
 	// to the code stream
 	PacketTracker packetTracker_;
-	IBufferedStream* stream_;
+	BufferedStream* stream_;
 	bool corrupt_packet_;
 	/** position of the tile part flag in progression order*/
 	uint32_t newTilePartProgressionPosition;

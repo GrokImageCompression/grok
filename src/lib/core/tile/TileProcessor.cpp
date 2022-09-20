@@ -21,7 +21,7 @@
 #include "grk_includes.h"
 namespace grk
 {
-TileProcessor::TileProcessor(uint16_t tileIndex, CodeStream* codeStream, IBufferedStream* stream,
+TileProcessor::TileProcessor(uint16_t tileIndex, CodeStream* codeStream, BufferedStream* stream,
 							 bool isCompressor, StripCache* stripCache)
 	: first_poc_tile_part_(true), tilePartCounter_(0), pino(0),
 	  headerImage(codeStream->getHeaderImage()),
@@ -116,7 +116,7 @@ void TileProcessor::incNumDecompressedPackets(void)
 {
 	numDecompressedPackets++;
 }
-IBufferedStream* TileProcessor::getStream(void)
+BufferedStream* TileProcessor::getStream(void)
 {
 	return stream_;
 }

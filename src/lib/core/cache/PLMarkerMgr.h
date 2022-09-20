@@ -44,7 +44,7 @@ struct PLMarkerMgr
 
 	/////////////////////////////////////////////
 	// decompress
-	PLMarkerMgr(IBufferedStream* strm);
+	PLMarkerMgr(BufferedStream* strm);
 	bool readPLT(uint8_t* headerData, uint16_t header_size);
 	bool readPLM(uint8_t* headerData, uint16_t header_size);
 	void rewind(void);
@@ -62,7 +62,7 @@ struct PLMarkerMgr
 	// compress
 	uint32_t totalBytesWritten_;
 	bool isFinal_;
-	IBufferedStream* stream_;
+	BufferedStream* stream_;
 	////////////////////////////////
 
 	//////////////////////////
