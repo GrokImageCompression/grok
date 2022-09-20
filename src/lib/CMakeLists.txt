@@ -1,2 +1,4 @@
 add_subdirectory(core)
-add_subdirectory(plugin)
+if (GRK_BUILD_PLUGIN_LOADER)
+  add_subdirectory(plugin)
+endif(GRK_BUILD_PLUGIN_LOADER)
