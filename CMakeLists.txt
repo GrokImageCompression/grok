@@ -39,7 +39,7 @@ if (CMAKE_SYSTEM_PROCESSOR MATCHES "unknown")
 else (CMAKE_SYSTEM_PROCESSOR MATCHES "unknown")
   set(GRK_ARCH ${CMAKE_SYSTEM_PROCESSOR})
 endif (CMAKE_SYSTEM_PROCESSOR MATCHES "unknown")
-message("Architecture: " ${GRK_ARCH})
+message(STATUS "Architecture: " ${GRK_ARCH})
 
 IF(MSVC)
     string(APPEND CMAKE_CXX_FLAGS " /EHsc")

@@ -233,6 +233,12 @@ add_definitions(-DSPDLOG_COMPILED_LIB)
 if (GRK_BUILD_PLUGIN_LOADER)
     add_definitions(-DGRK_BUILD_PLUGIN_LOADER)
 endif()
+
+set(HWY_ENABLE_EXAMPLES OFF CACHE BOOL "Enable HWY examples")
+set(HWY_ENABLE_CONTRIB OFF CACHE BOOL "Enable HWY contrib")
+set(HWY_ENABLE_INSTALL OFF CACHE BOOL "Enable HWY install")
+set(HWY_FORCE_STATIC_LIBS ON CACHE BOOL "Enable HWY force static libs")
+set(INSTALL_GTEST OFF CACHE BOOL "Install GTest")
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/highway EXCLUDE_FROM_ALL)
 
 add_library(${GROK_CORE_NAME} ${GROK_LIBRARY_SRCS})
