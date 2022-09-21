@@ -79,6 +79,8 @@ cc_library(
         "vqsort_i32d.cc",
         "vqsort_i64a.cc",
         "vqsort_i64d.cc",
+        "vqsort_kv64a.cc",
+        "vqsort_kv64d.cc",
         "vqsort_kv128a.cc",
         "vqsort_kv128d.cc",
         "vqsort_u16a.cc",
@@ -99,6 +101,7 @@ cc_library(
         "traits-inl.h",
         "traits128-inl.h",
         "vqsort-inl.h",
+        # Placeholder for internal instrumentation. Do not remove.
     ],
     deps = [
         # Only if VQSORT_SECURE_RNG is set.

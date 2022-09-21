@@ -13,35 +13,33 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <stdint.h>
+#include <stdio.h>
+
+#include <vector>
+
 // clang-format off
 #undef HWY_TARGET_INCLUDE
 #define HWY_TARGET_INCLUDE "hwy/contrib/sort/bench_sort.cc"
-#include "hwy/foreach_target.h"
+#include "hwy/foreach_target.h"  // IWYU pragma: keep
 
 // After foreach_target
 #include "hwy/contrib/sort/algo-inl.h"
 #include "hwy/contrib/sort/result-inl.h"
-#include "hwy/contrib/sort/vqsort.h"
 #include "hwy/contrib/sort/sorting_networks-inl.h"  // SharedTraits
 #include "hwy/contrib/sort/traits-inl.h"
 #include "hwy/contrib/sort/traits128-inl.h"
 #include "hwy/tests/test_util-inl.h"
 // clang-format on
 
-#include <stdint.h>
-#include <stdio.h>
-#include <string.h>  // memcpy
-
-#include <vector>
-
 // Mode for larger sorts because M1 is able to access more than the per-core
 // share of L2, so 1M elements might still be in cache.
-#define SORT_100M 1
+#define SORT_100M 0
 
 HWY_BEFORE_NAMESPACE();
 namespace hwy {
 // Defined within HWY_ONCE, used by BenchAllSort.
-extern uint32_t first_sort_target;
+extern int64_t first_sort_target;
 
 namespace HWY_NAMESPACE {
 namespace {
@@ -50,10 +48,9 @@ using detail::OrderAscending;
 using detail::OrderDescending;
 using detail::SharedTraits;
 
-#if HWY_TARGET != HWY_SCALAR
+#if VQSORT_ENABLED || HWY_IDE
 using detail::OrderAscending128;
 using detail::OrderAscendingKV128;
-using detail::OrderDescending128;
 using detail::Traits128;
 
 template <class Traits>
@@ -84,8 +81,9 @@ HWY_NOINLINE void BenchPartition() {
       // The pivot value can influence performance. Do exactly what vqsort will
       // do so that the performance (influenced by prefetching and branch
       // prediction) is likely to predict the actual performance inside vqsort.
-      const auto pivot = detail::ChoosePivot(d, st, aligned.get(), 0, num_lanes,
-                                             buf.get(), rng);
+      detail::DrawSamples(d, st, aligned.get(), num_lanes, buf.get(), rng);
+      detail::SortSamples(d, st, buf.get());
+      auto pivot = detail::ChoosePivotByRank(d, st, buf.get());
 
       const Timestamp t0;
       detail::Partition(d, st, aligned.get(), 0, num_lanes - 1, pivot,
@@ -108,10 +106,11 @@ HWY_NOINLINE void BenchAllPartition() {
     return;
   }
 
-  // BenchPartition<TraitsLane<OrderDescending<float>>>();
+  BenchPartition<TraitsLane<OrderDescending<float>>>();
+  BenchPartition<TraitsLane<OrderDescending<int32_t>>>();
   BenchPartition<TraitsLane<OrderDescending<int64_t>>>();
   BenchPartition<Traits128<OrderAscending128>>();
-  BenchPartition<Traits128<OrderDescending128>>();
+  // BenchPartition<Traits128<OrderDescending128>>();
   BenchPartition<Traits128<OrderAscendingKV128>>();
 }
 
@@ -173,6 +172,11 @@ HWY_NOINLINE void BenchAllBase() {
     r.Print();
   }
 }
+
+#else
+void BenchAllPartition() {}
+void BenchAllBase() {}
+#endif  // VQSORT_ENABLED
 
 std::vector<Algo> AlgoForBench() {
   return {
@@ -255,12 +259,9 @@ HWY_NOINLINE void BenchSort(size_t num_keys) {
 
 HWY_NOINLINE void BenchAllSort() {
   // Not interested in benchmark results for these targets
-  if (HWY_TARGET == HWY_SSSE3 || HWY_TARGET == HWY_SSE4 ||
-      HWY_TARGET == HWY_NEON) {
+  if (HWY_TARGET == HWY_SSSE3 || HWY_TARGET == HWY_SSE4) {
     return;
   }
-  // Only enable EMU128 on x86 - it's slow on emulators.
-  if (!HWY_ARCH_X86 && (HWY_TARGET == HWY_EMU128)) return;
 
   constexpr size_t K = 1000;
   constexpr size_t M = K * K;
@@ -273,27 +274,21 @@ HWY_NOINLINE void BenchAllSort() {
         1 * M,
 #endif
        }) {
-    // BenchSort<TraitsLane<OrderAscending<float>>>(num_keys);
+    BenchSort<TraitsLane<OrderAscending<float>>>(num_keys);
     // BenchSort<TraitsLane<OrderDescending<double>>>(num_keys);
     // BenchSort<TraitsLane<OrderAscending<int16_t>>>(num_keys);
-    // BenchSort<TraitsLane<OrderDescending<int32_t>>>(num_keys);
-    // BenchSort<TraitsLane<OrderAscending<int64_t>>>(num_keys);
+    BenchSort<TraitsLane<OrderDescending<int32_t>>>(num_keys);
+    BenchSort<TraitsLane<OrderAscending<int64_t>>>(num_keys);
     // BenchSort<TraitsLane<OrderDescending<uint16_t>>>(num_keys);
     // BenchSort<TraitsLane<OrderDescending<uint32_t>>>(num_keys);
-    BenchSort<TraitsLane<OrderAscending<uint64_t>>>(num_keys);
+    // BenchSort<TraitsLane<OrderAscending<uint64_t>>>(num_keys);
 
-#if !HAVE_VXSORT
+#if !HAVE_VXSORT && VQSORT_ENABLED
     BenchSort<Traits128<OrderAscending128>>(num_keys);
     BenchSort<Traits128<OrderAscendingKV128>>(num_keys);
 #endif
   }
 }
-
-#else
-void BenchAllPartition() {}
-void BenchAllBase() {}
-void BenchAllSort() {}
-#endif  // HWY_TARGET != HWY_SCALAR
 
 }  // namespace
 // NOLINTNEXTLINE(google-readability-namespace-comments)
@@ -304,7 +299,7 @@ HWY_AFTER_NAMESPACE();
 #if HWY_ONCE
 
 namespace hwy {
-uint32_t first_sort_target = 0;  // none run yet
+int64_t first_sort_target = 0;  // none run yet
 namespace {
 HWY_BEFORE_TEST(BenchSort);
 HWY_EXPORT_AND_TEST_P(BenchSort, BenchAllPartition);

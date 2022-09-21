@@ -15,11 +15,11 @@
 
 #include <stddef.h>
 #include <stdint.h>
+#include <string.h>  // memcpy
 
 #undef HWY_TARGET_INCLUDE
 #define HWY_TARGET_INCLUDE "tests/combine_test.cc"
-#include "hwy/foreach_target.h"
-
+#include "hwy/foreach_target.h"  // IWYU pragma: keep
 #include "hwy/highway.h"
 #include "hwy/tests/test_util-inl.h"
 
@@ -235,6 +235,14 @@ struct TestConcatOddEven {
     const auto odd = Add(even, Set(d, 1));
     HWY_ASSERT_VEC_EQ(d, odd, ConcatOdd(d, hi, lo));
     HWY_ASSERT_VEC_EQ(d, even, ConcatEven(d, hi, lo));
+
+    // This test catches inadvertent saturation.
+    const auto min = Set(d, LowestValue<T>());
+    const auto max = Set(d, HighestValue<T>());
+    HWY_ASSERT_VEC_EQ(d, max, ConcatOdd(d, max, max));
+    HWY_ASSERT_VEC_EQ(d, max, ConcatEven(d, max, max));
+    HWY_ASSERT_VEC_EQ(d, min, ConcatOdd(d, min, min));
+    HWY_ASSERT_VEC_EQ(d, min, ConcatEven(d, min, min));
 #else
     (void)d;
 #endif

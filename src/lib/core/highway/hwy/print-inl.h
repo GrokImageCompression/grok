@@ -15,11 +15,11 @@
 
 // Print() function
 
-#include <inttypes.h>
 #include <stdint.h>
 
-#include "hwy/base.h"
-#include "hwy/tests/test_util.h"
+#include "hwy/aligned_allocator.h"
+#include "hwy/highway.h"
+#include "hwy/print.h"
 
 // Per-target include guard
 #if defined(HIGHWAY_HWY_PRINT_INL_H_) == \

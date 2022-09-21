@@ -126,9 +126,18 @@ such as `AESRound` which may require emulation, and are non-trivial enough that
 we don't want to copy them into each target's implementation. Instead, we
 implement such functions in
 [generic_ops-inl.h](../hwy/ops/generic_ops-inl.h), which is included
-into every backend. The functions there are typically templated on the vector
-and/or tag types. To allow some targets to override these functions, we use the
-same per-target include guard mechanism, e.g. `HWY_NATIVE_AES`.
+into every backend. To allow some targets to override these functions, we use
+the same per-target include guard mechanism, e.g. `HWY_NATIVE_AES`.
+
+The functions there are typically templated on the vector and/or tag types. This
+is necessary because the vector type depends on the target. Although `Vec128` is
+available on most targets, `HWY_SCALAR`, `HWY_RVV` and `HWY_SVE*` lack this
+type. To enable specialized overloads (e.g. only for signed integers), we use
+the `HWY_IF` SFINAE helpers. Example: `template <class V, class D = DFromV<V>,
+HWY_IF_SIGNED_D(D)>`. Note that there is a limited set of `HWY_IF` that work
+directly with vectors, identified by their `_V` suffix. However, the functions
+likely use a `D` type anyway, thus it is convenient to obtain one in the
+template arguments and also use that for `HWY_IF_*_D`.
 
 For x86, we also avoid some duplication by implementing only once the functions
 which are shared between all targets. They reside in
@@ -204,6 +213,9 @@ guarantees 16-byte vectors are available like all other Highway targets, and
 supports all ops. Both of these alternatives are slower than native vector code,
 but they allow testing your code even when actual vectors are unavailable.
 
-`HWY_SCALAR` is only enabled/used `#ifdef HWY_COMPILE_ONLY_SCALAR`. Projects
-that intend to use it may require `#if HWY_TARGET != HWY_SCALAR` around the ops
-it does not support to prevent compile errors.
+One of the above targets is used if the CPU does not support any actual SIMD
+target. To avoid compiling any intrinsics, define `HWY_COMPILE_ONLY_EMU128`.
+
+`HWY_SCALAR` is only enabled/used `#ifdef HWY_COMPILE_ONLY_SCALAR` (or `#if
+HWY_BROKEN_EMU128`). Projects that intend to use it may require `#if HWY_TARGET
+!= HWY_SCALAR` around the ops it does not support to prevent compile errors.

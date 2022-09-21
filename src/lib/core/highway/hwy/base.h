@@ -24,6 +24,9 @@
 #include "hwy/detect_compiler_arch.h"
 #include "hwy/highway_export.h"
 
+#if HWY_COMPILER_MSVC
+#include <string.h>  // memcpy
+#endif
 #if HWY_ARCH_X86
 #include <atomic>
 #endif
@@ -59,7 +62,13 @@
 #else
 
 #define HWY_RESTRICT __restrict__
+// force inlining without optimization enabled creates very inefficient code
+// that can cause compiler timeout
+#ifdef __OPTIMIZE__
 #define HWY_INLINE inline __attribute__((always_inline))
+#else
+#define HWY_INLINE inline
+#endif
 #define HWY_NOINLINE __attribute__((noinline))
 #define HWY_FLATTEN __attribute__((flatten))
 #define HWY_NORETURN __attribute__((noreturn))
@@ -124,6 +133,19 @@
 
 #define HWY_MIN(a, b) ((a) < (b) ? (a) : (b))
 #define HWY_MAX(a, b) ((a) > (b) ? (a) : (b))
+
+#if HWY_COMPILER_GCC_ACTUAL
+// nielskm: GCC does not support '#pragma GCC unroll' without the factor.
+#define HWY_UNROLL(factor) HWY_PRAGMA(GCC unroll factor)
+#define HWY_DEFAULT_UNROLL HWY_UNROLL(4)
+#elif HWY_COMPILER_CLANG || HWY_COMPILER_ICC || HWY_COMPILER_ICX
+#define HWY_UNROLL(factor) HWY_PRAGMA(unroll factor)
+#define HWY_DEFAULT_UNROLL HWY_UNROLL()
+#else
+#define HWY_UNROLL(factor)
+#define HWY_DEFAULT_UNROLL HWY_UNROLL()
+#endif
+
 
 // Compile-time fence to prevent undesirable code reordering. On Clang x86, the
 // typical asm volatile("" : : : "memory") has no effect, whereas atomic fence
@@ -229,19 +251,17 @@ static constexpr HWY_MAYBE_UNUSED size_t kMaxVectorSize = 16;
 // Match [u]int##_t naming scheme so rvv-inl.h macros can obtain the type name
 // by concatenating base type and bits.
 
-#if HWY_ARCH_ARM && (__ARM_FP & 2)
-#define HWY_NATIVE_FLOAT16 1
-#else
-#define HWY_NATIVE_FLOAT16 0
-#endif
-
 #pragma pack(push, 1)
 
-#if HWY_NATIVE_FLOAT16
+// ACLE (https://gcc.gnu.org/onlinedocs/gcc/Half-Precision.html):
+// always supported on aarch64, for v7 only if -mfp16-format is given.
+#if ((HWY_ARCH_ARM_A64 || (__ARM_FP & 2)) && HWY_COMPILER_GCC)
 using float16_t = __fp16;
-// Clang does not allow __fp16 arguments, but scalar.h requires LaneType
-// arguments, so use a wrapper.
-// TODO(janwas): replace with _Float16 when that is supported?
+// C11 extension ISO/IEC TS 18661-3:2015 but not supported on all targets.
+// Required for Clang RVV if the float16 extension is used.
+#elif HWY_ARCH_RVV && HWY_COMPILER_CLANG && defined(__riscv_zvfh)
+using float16_t = _Float16;
+// Otherwise emulate
 #else
 struct float16_t {
   uint16_t bits;
@@ -273,6 +293,13 @@ struct alignas(16) K64V64 {
   uint64_t key;
 };
 
+// 32 bit key plus 32 bit value. Allows vqsort recursions to terminate earlier
+// than when considering both to be a 64-bit key.
+struct alignas(8) K32V32 {
+  uint32_t value;  // little-endian layout
+  uint32_t key;
+};
+
 #pragma pack(pop)
 
 static inline HWY_MAYBE_UNUSED bool operator<(const uint128_t& a,
@@ -284,6 +311,10 @@ static inline HWY_MAYBE_UNUSED bool operator>(const uint128_t& a,
                                               const uint128_t& b) {
   return b < a;
 }
+static inline HWY_MAYBE_UNUSED bool operator==(const uint128_t& a,
+                                               const uint128_t& b) {
+  return a.lo == b.lo && a.hi == b.hi;
+}
 
 static inline HWY_MAYBE_UNUSED bool operator<(const K64V64& a,
                                               const K64V64& b) {
@@ -292,6 +323,16 @@ static inline HWY_MAYBE_UNUSED bool operator<(const K64V64& a,
 // Required for std::greater.
 static inline HWY_MAYBE_UNUSED bool operator>(const K64V64& a,
                                               const K64V64& b) {
+  return b < a;
+}
+
+static inline HWY_MAYBE_UNUSED bool operator<(const K32V32& a,
+                                              const K32V32& b) {
+  return a.key < b.key;
+}
+// Required for std::greater.
+static inline HWY_MAYBE_UNUSED bool operator>(const K32V32& a,
+                                              const K32V32& b) {
   return b < a;
 }
 
@@ -381,12 +422,14 @@ struct Relations<uint8_t> {
   using Unsigned = uint8_t;
   using Signed = int8_t;
   using Wide = uint16_t;
+  enum { is_signed = 0, is_float = 0 };
 };
 template <>
 struct Relations<int8_t> {
   using Unsigned = uint8_t;
   using Signed = int8_t;
   using Wide = int16_t;
+  enum { is_signed = 1, is_float = 0 };
 };
 template <>
 struct Relations<uint16_t> {
@@ -394,6 +437,7 @@ struct Relations<uint16_t> {
   using Signed = int16_t;
   using Wide = uint32_t;
   using Narrow = uint8_t;
+  enum { is_signed = 0, is_float = 0 };
 };
 template <>
 struct Relations<int16_t> {
@@ -401,6 +445,7 @@ struct Relations<int16_t> {
   using Signed = int16_t;
   using Wide = int32_t;
   using Narrow = int8_t;
+  enum { is_signed = 1, is_float = 0 };
 };
 template <>
 struct Relations<uint32_t> {
@@ -409,6 +454,7 @@ struct Relations<uint32_t> {
   using Float = float;
   using Wide = uint64_t;
   using Narrow = uint16_t;
+  enum { is_signed = 0, is_float = 0 };
 };
 template <>
 struct Relations<int32_t> {
@@ -417,6 +463,7 @@ struct Relations<int32_t> {
   using Float = float;
   using Wide = int64_t;
   using Narrow = int16_t;
+  enum { is_signed = 1, is_float = 0 };
 };
 template <>
 struct Relations<uint64_t> {
@@ -425,6 +472,7 @@ struct Relations<uint64_t> {
   using Float = double;
   using Wide = uint128_t;
   using Narrow = uint32_t;
+  enum { is_signed = 0, is_float = 0 };
 };
 template <>
 struct Relations<int64_t> {
@@ -432,11 +480,13 @@ struct Relations<int64_t> {
   using Signed = int64_t;
   using Float = double;
   using Narrow = int32_t;
+  enum { is_signed = 1, is_float = 0 };
 };
 template <>
 struct Relations<uint128_t> {
   using Unsigned = uint128_t;
   using Narrow = uint64_t;
+  enum { is_signed = 0, is_float = 0 };
 };
 template <>
 struct Relations<float16_t> {
@@ -444,12 +494,14 @@ struct Relations<float16_t> {
   using Signed = int16_t;
   using Float = float16_t;
   using Wide = float;
+  enum { is_signed = 1, is_float = 1 };
 };
 template <>
 struct Relations<bfloat16_t> {
   using Unsigned = uint16_t;
   using Signed = int16_t;
   using Wide = float;
+  enum { is_signed = 1, is_float = 1 };
 };
 template <>
 struct Relations<float> {
@@ -458,6 +510,7 @@ struct Relations<float> {
   using Float = float;
   using Wide = double;
   using Narrow = float16_t;
+  enum { is_signed = 1, is_float = 1 };
 };
 template <>
 struct Relations<double> {
@@ -465,6 +518,7 @@ struct Relations<double> {
   using Signed = int64_t;
   using Float = double;
   using Narrow = float;
+  enum { is_signed = 1, is_float = 1 };
 };
 
 template <size_t N>
@@ -519,6 +573,24 @@ template <size_t N>
 using SignedFromSize = typename detail::TypeFromSize<N>::Signed;
 template <size_t N>
 using FloatFromSize = typename detail::TypeFromSize<N>::Float;
+
+// Avoid confusion with SizeTag where the parameter is a lane size.
+using UnsignedTag = SizeTag<0>;
+using SignedTag = SizeTag<0x100>;  // integer
+using FloatTag = SizeTag<0x200>;
+
+template <typename T, class R = detail::Relations<T>>
+constexpr auto TypeTag() -> hwy::SizeTag<((R::is_signed + R::is_float) << 8)> {
+  return hwy::SizeTag<((R::is_signed + R::is_float) << 8)>();
+}
+
+// For when we only want to distinguish FloatTag from everything else.
+using NonFloatTag = SizeTag<0x400>;
+
+template <typename T, class R = detail::Relations<T>>
+constexpr auto IsFloatTag() -> hwy::SizeTag<(R::is_float ? 0x200 : 0x400)> {
+  return hwy::SizeTag<(R::is_float ? 0x200 : 0x400)>();
+}
 
 //------------------------------------------------------------------------------
 // Type traits
@@ -583,6 +655,20 @@ constexpr float HighestValue<float>() {
 template <>
 constexpr double HighestValue<double>() {
   return 1.7976931348623158e+308;
+}
+
+// Difference between 1.0 and the next representable value.
+template <typename T>
+HWY_API constexpr T Epsilon() {
+  return 1;
+}
+template <>
+constexpr float Epsilon<float>() {
+  return 1.192092896e-7f;
+}
+template <>
+constexpr double Epsilon<double>() {
+  return 2.2204460492503131e-16;
 }
 
 // Returns width in bits of the mantissa field in IEEE binary32/64.
@@ -741,7 +827,7 @@ HWY_API size_t Num0BitsAboveMS1Bit_Nonzero64(const uint64_t x) {
 }
 
 HWY_API size_t PopCount(uint64_t x) {
-#if HWY_COMPILER_CLANG || HWY_COMPILER_GCC
+#if HWY_COMPILER_GCC  // includes clang
   return static_cast<size_t>(__builtin_popcountll(x));
   // This instruction has a separate feature flag, but is often called from
   // non-SIMD code, so we don't want to require dynamic dispatch. It was first
@@ -815,8 +901,16 @@ HWY_API void CopyBytes(const From* from, To* to) {
 #if HWY_COMPILER_MSVC
   memcpy(to, from, kBytes);
 #else
-  __builtin_memcpy(to, from, kBytes);
+  __builtin_memcpy(
+      static_cast<void*>(to), static_cast<const void*>(from), kBytes);
 #endif
+}
+
+// Same as CopyBytes, but for same-sized objects; avoids a size argument.
+template <typename From, typename To>
+HWY_API void CopySameSize(const From* HWY_RESTRICT from, To* HWY_RESTRICT to) {
+  static_assert(sizeof(From) == sizeof(To), "");
+  CopyBytes<sizeof(From)>(from, to);
 }
 
 template <size_t kBytes, typename To>
@@ -832,13 +926,13 @@ HWY_API float F32FromBF16(bfloat16_t bf) {
   uint32_t bits = bf.bits;
   bits <<= 16;
   float f;
-  CopyBytes<4>(&bits, &f);
+  CopySameSize(&bits, &f);
   return f;
 }
 
 HWY_API bfloat16_t BF16FromF32(float f) {
   uint32_t bits;
-  CopyBytes<4>(&f, &bits);
+  CopySameSize(&f, &bits);
   bfloat16_t bf;
   bf.bits = static_cast<uint16_t>(bits >> 16);
   return bf;

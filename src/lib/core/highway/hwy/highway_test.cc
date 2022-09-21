@@ -15,7 +15,6 @@
 
 #include <stddef.h>
 #include <stdint.h>
-#include <string.h>
 
 #include <bitset>
 
@@ -23,7 +22,7 @@
 
 #undef HWY_TARGET_INCLUDE
 #define HWY_TARGET_INCLUDE "highway_test.cc"
-#include "hwy/foreach_target.h"
+#include "hwy/foreach_target.h"    // IWYU pragma: keep
 #include "hwy/highway.h"
 #include "hwy/nanobenchmark.h"  // Unpredictable1
 #include "hwy/tests/test_util-inl.h"
@@ -224,7 +223,7 @@ HWY_INLINE void AssertNaN(D d, VecArg<V> v, const char* file, int line) {
     // avoid truncating doubles.
     uint8_t bytes[HWY_MAX(sizeof(T), 8)] = {0};
     const T lane = GetLane(v);
-    memcpy(bytes, &lane, sizeof(T));
+    CopyBytes<sizeof(T)>(&lane, bytes);
     Abort(file, line,
           "Expected %s NaN, got %E (bytes %02x %02x %02x %02x %02x %02x %02x "
           "%02x)",

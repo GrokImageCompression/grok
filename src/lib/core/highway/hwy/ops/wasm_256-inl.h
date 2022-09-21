@@ -592,7 +592,7 @@ HWY_API Vec256<int16_t> MulHigh(const Vec256<int16_t> a,
 }
 
 HWY_API Vec256<int16_t> MulFixedPoint15(Vec256<int16_t>, Vec256<int16_t>) {
-  HWY_ASSERT(0);
+  HWY_ASSERT(0);  // Not implemented
 }
 
 // Multiplies even lanes (0, 2 ..) and returns the double-width result.
@@ -1043,7 +1043,7 @@ HWY_API Vec256<T> IfThenZeroElse(Mask256<T> mask, Vec256<T> no) {
 template <typename T>
     HWY_API Vec256 <
     T IfNegativeThenElse(Vec256<T> v, Vec256<T> yes, Vec256<T> no) {
-  HWY_ASSERT(0);
+  HWY_ASSERT(0);  // Not implemented
 }
 
 template <typename T, HWY_IF_FLOAT(T)>
@@ -1333,13 +1333,13 @@ HWY_API Vec256<T> GatherIndex(const Full256<T> d, const T* HWY_RESTRICT base,
 // ------------------------------ ExtractLane
 template <typename T, size_t N>
 HWY_API T ExtractLane(const Vec128<T, N> v, size_t i) {
-  HWY_ASSERT(0);
+  HWY_ASSERT(0);  // Not implemented
 }
 
 // ------------------------------ InsertLane
 template <typename T, size_t N>
 HWY_API Vec128<T, N> InsertLane(const Vec128<T, N> v, size_t i, T t) {
-  HWY_ASSERT(0);
+  HWY_ASSERT(0);  // Not implemented
 }
 
 // ------------------------------ GetLane
@@ -1846,21 +1846,21 @@ HWY_API Vec256<T> Reverse(Full256<T> d, const Vec256<T> v) {
 
 template <typename T>
 HWY_API Vec256<T> Reverse2(Full256<T> d, const Vec256<T> v) {
-  HWY_ASSERT(0);
+  HWY_ASSERT(0);  // Not implemented
 }
 
 // ------------------------------ Reverse4
 
 template <typename T>
 HWY_API Vec256<T> Reverse4(Full256<T> d, const Vec256<T> v) {
-  HWY_ASSERT(0);
+  HWY_ASSERT(0);  // Not implemented
 }
 
 // ------------------------------ Reverse8
 
 template <typename T>
 HWY_API Vec256<T> Reverse8(Full256<T> d, const Vec256<T> v) {
-  HWY_ASSERT(0);
+  HWY_ASSERT(0);  // Not implemented
 }
 
 // ------------------------------ InterleaveLower
@@ -2065,13 +2065,13 @@ HWY_API Vec256<T> ConcatEven(Full256<T> /* tag */, Vec256<T> hi, Vec256<T> lo) {
 // ------------------------------ DupEven
 template <typename T>
 HWY_API Vec256<T> DupEven(Vec256<T> v) {
-  HWY_ASSERT(0);
+  HWY_ASSERT(0);  // Not implemented
 }
 
 // ------------------------------ DupOdd
 template <typename T>
 HWY_API Vec256<T> DupOdd(Vec256<T> v) {
-  HWY_ASSERT(0);
+  HWY_ASSERT(0);  // Not implemented
 }
 
 // ------------------------------ OddEven
@@ -2298,10 +2298,59 @@ HWY_API Vec128<bfloat16_t> ReorderDemote2To(Full128<bfloat16_t> dbf16,
   return BitCast(dbf16, OddEven(BitCast(du16, a), BitCast(du16, b_in_even)));
 }
 
+HWY_API Vec512<int16_t> ReorderDemote2To(Full512<int16_t> /*d16*/,
+                                         Vec512<int32_t> a, Vec512<int32_t> b) {
+  return Vec512<int16_t>{wasm_i16x8_narrow_i32x4(a.raw, b.raw)};
+}
+
 // For already range-limited input [0, 255].
 HWY_API Vec256<uint8_t> U8FromU32(const Vec256<uint32_t> v) {
   const auto intermediate = wasm_i16x8_narrow_i32x4(v.raw, v.raw);
   return Vec256<uint8_t>{wasm_u8x16_narrow_i16x8(intermediate, intermediate)};
+}
+
+// ------------------------------ Truncations
+
+HWY_API Vec256<uint8_t, 4> TruncateTo(Simd<uint8_t, 4, 0> /* tag */,
+                                      const Vec256<uint64_t> v) {
+  return Vec256<uint8_t, 4>{wasm_i8x16_shuffle(v.v0.raw, v.v1.raw, 0, 8, 16, 24,
+                                               0, 8, 16, 24, 0, 8, 16, 24, 0, 8,
+                                               16, 24)};
+}
+
+HWY_API Vec256<uint16_t, 4> TruncateTo(Simd<uint16_t, 4, 0> /* tag */,
+                                       const Vec256<uint64_t> v) {
+  return Vec256<uint16_t, 4>{wasm_i8x16_shuffle(v.v0.raw, v.v1.raw, 0, 1, 8, 9,
+                                                16, 17, 24, 25, 0, 1, 8, 9, 16,
+                                                17, 24, 25)};
+}
+
+HWY_API Vec256<uint32_t, 4> TruncateTo(Simd<uint32_t, 4, 0> /* tag */,
+                                       const Vec256<uint64_t> v) {
+  return Vec256<uint32_t, 4>{wasm_i8x16_shuffle(v.v0.raw, v.v1.raw, 0, 1, 2, 3,
+                                                8, 9, 10, 11, 16, 17, 18, 19,
+                                                24, 25, 26, 27)};
+}
+
+HWY_API Vec256<uint8_t, 8> TruncateTo(Simd<uint8_t, 8, 0> /* tag */,
+                                      const Vec256<uint32_t> v) {
+  return Vec256<uint8_t, 8>{wasm_i8x16_shuffle(v.v0.raw, v.v1.raw, 0, 4, 8, 12,
+                                               16, 20, 24, 28, 0, 4, 8, 12, 16,
+                                               20, 24, 28)};
+}
+
+HWY_API Vec256<uint16_t, 8> TruncateTo(Simd<uint16_t, 8, 0> /* tag */,
+                                       const Vec256<uint32_t> v) {
+  return Vec256<uint16_t, 8>{wasm_i8x16_shuffle(v.v0.raw, v.v1.raw, 0, 1, 4, 5,
+                                                8, 9, 12, 13, 16, 17, 20, 21,
+                                                24, 25, 28, 29)};
+}
+
+HWY_API Vec256<uint8_t, 16> TruncateTo(Simd<uint8_t, 16, 0> /* tag */,
+                                       const Vec256<uint16_t> v) {
+  return Vec256<uint8_t, 16>{wasm_i8x16_shuffle(v.v0.raw, v.v1.raw, 0, 2, 4, 6,
+                                                8, 10, 12, 14, 16, 18, 20, 22,
+                                                24, 26, 28, 30)};
 }
 
 // ------------------------------ Convert i32 <=> f32 (Round)
@@ -2309,6 +2358,10 @@ HWY_API Vec256<uint8_t> U8FromU32(const Vec256<uint32_t> v) {
 HWY_API Vec256<float> ConvertTo(Full256<float> /* tag */,
                                 const Vec256<int32_t> v) {
   return Vec256<float>{wasm_f32x4_convert_i32x4(v.raw)};
+}
+HWY_API Vec256<float> ConvertTo(Full256<float> /* tag */,
+                                const Vec256<uint32_t> v) {
+  return Vec256<float>{wasm_f32x4_convert_u32x4(v.raw)};
 }
 // Truncates (rounds toward zero).
 HWY_API Vec256<int32_t> ConvertTo(Full256<int32_t> /* tag */,
@@ -2767,7 +2820,7 @@ HWY_API Vec256<T> Compress(Vec256<T> v, const Mask256<T> mask) {
 // ------------------------------ CompressBlocksNot
 HWY_API Vec256<uint64_t> CompressBlocksNot(Vec256<uint64_t> v,
                                            Mask256<uint64_t> mask) {
-  HWY_ASSERT(0);
+  HWY_ASSERT(0);  // Not implemented
 }
 
 // ------------------------------ CompressBits
@@ -2870,6 +2923,14 @@ HWY_API Vec256<float> ReorderWidenMulAccumulate(Full256<float> df32,
   return MulAdd(BitCast(df32, a0), BitCast(df32, b0), sum0);
 }
 
+HWY_API Vec256<int32_t> ReorderWidenMulAccumulate(Full256<int32_t> /*d32*/,
+                                                  Vec256<int16_t> a,
+                                                  Vec256<int16_t> b,
+                                                  const Vec256<int32_t> sum0,
+                                                  Vec256<int32_t>& /*sum1*/) {
+  return sum0 + Vec256<int32_t>{wasm_i32x4_dot_i16x8(a.raw, b.raw)};
+}
+
 // ------------------------------ Reductions
 
 namespace detail {
@@ -2924,22 +2985,12 @@ HWY_INLINE Vec256<T> MaxOfLanes(hwy::SizeTag<8> /* tag */,
 
 // u16/i16
 template <typename T, HWY_IF_LANE_SIZE(T, 2)>
-HWY_API Vec256<T> MinOfLanes(hwy::SizeTag<2> /* tag */, Vec256<T> v) {
-  const Repartition<int32_t, Full256<T>> d32;
-  const auto even = And(BitCast(d32, v), Set(d32, 0xFFFF));
-  const auto odd = ShiftRight<16>(BitCast(d32, v));
-  const auto min = MinOfLanes(d32, Min(even, odd));
-  // Also broadcast into odd lanes.
-  return BitCast(Full256<T>(), Or(min, ShiftLeft<16>(min)));
+HWY_API Vec256<T> MinOfLanes(hwy::SizeTag<2> /* tag */, Vec256<T> /*v*/) {
+  HWY_ASSERT(0);  // Not implemented
 }
 template <typename T, HWY_IF_LANE_SIZE(T, 2)>
-HWY_API Vec256<T> MaxOfLanes(hwy::SizeTag<2> /* tag */, Vec256<T> v) {
-  const Repartition<int32_t, Full256<T>> d32;
-  const auto even = And(BitCast(d32, v), Set(d32, 0xFFFF));
-  const auto odd = ShiftRight<16>(BitCast(d32, v));
-  const auto min = MaxOfLanes(d32, Max(even, odd));
-  // Also broadcast into odd lanes.
-  return BitCast(Full256<T>(), Or(min, ShiftLeft<16>(min)));
+HWY_API Vec256<T> MaxOfLanes(hwy::SizeTag<2> /* tag */, Vec256<T> /*v*/) {
+  HWY_ASSERT(0);  // Not implemented
 }
 
 }  // namespace detail
@@ -2965,6 +3016,12 @@ HWY_INLINE Mask256<T> Lt128(Full256<T> d, Vec256<T> a, Vec256<T> b) {}
 
 template <typename T>
 HWY_INLINE Mask256<T> Lt128Upper(Full256<T> d, Vec256<T> a, Vec256<T> b) {}
+
+template <typename T>
+HWY_INLINE Mask256<T> Eq128(Full256<T> d, Vec256<T> a, Vec256<T> b) {}
+
+template <typename T>
+HWY_INLINE Mask256<T> Eq128Upper(Full256<T> d, Vec256<T> a, Vec256<T> b) {}
 
 template <typename T>
 HWY_INLINE Vec256<T> Min128(Full256<T> d, Vec256<T> a, Vec256<T> b) {}

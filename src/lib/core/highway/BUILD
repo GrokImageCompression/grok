@@ -161,6 +161,8 @@ cc_library(
         # These are textual because config macros influence them:
         "hwy/detect_targets.h",  # private
         "hwy/targets.h",
+        # This .cc file #includes itself through foreach_target.h
+        "hwy/per_target.cc",
         # End of list
         "hwy/highway.h",  # public
         "hwy/foreach_target.h",  # public
@@ -323,6 +325,8 @@ HWY_TESTS = [
     ("hwy/tests/", "crypto_test"),
     ("hwy/tests/", "demote_test"),
     ("hwy/tests/", "float_test"),
+    ("hwy/tests/", "if_test"),
+    ("hwy/tests/", "interleaved_test"),
     ("hwy/tests/", "logical_test"),
     ("hwy/tests/", "mask_test"),
     ("hwy/tests/", "mask_mem_test"),

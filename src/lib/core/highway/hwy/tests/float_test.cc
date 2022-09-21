@@ -15,7 +15,6 @@
 
 // Tests some ops specific to floating-point types (Div, Round etc.)
 
-#include <inttypes.h>
 #include <stddef.h>
 #include <stdint.h>
 
@@ -24,7 +23,7 @@
 
 #undef HWY_TARGET_INCLUDE
 #define HWY_TARGET_INCLUDE "tests/float_test.cc"
-#include "hwy/foreach_target.h"
+#include "hwy/foreach_target.h"  // IWYU pragma: keep
 #include "hwy/highway.h"
 #include "hwy/tests/test_util-inl.h"
 
@@ -113,9 +112,8 @@ struct TestReciprocalSquareRoot {
       float err = lanes[i] - 0.090166f;
       if (err < 0.0f) err = -err;
       if (err >= 4E-4f) {
-        HWY_ABORT("Lane %" PRIu64 "(%" PRIu64 "): actual %f err %f\n",
-                  static_cast<uint64_t>(i), static_cast<uint64_t>(N), lanes[i],
-                  err);
+        HWY_ABORT("Lane %d (%d): actual %f err %f\n", static_cast<int>(i),
+                  static_cast<int>(N), lanes[i], err);
       }
     }
   }
@@ -222,7 +220,7 @@ struct TestNearestInt {
       if (std::isnan(in[i])) {
         // We replace NaN with 0 below (no_nan)
         expected[i] = 0;
-      } else if (std::isinf(in[i]) || double(std::abs(in[i])) >= max) {
+      } else if (std::isinf(in[i]) || double{std::abs(in[i])} >= max) {
         // Avoid undefined result for lrintf
         expected[i] = std::signbit(in[i]) ? LimitsMin<TI>() : LimitsMax<TI>();
       } else {

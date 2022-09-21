@@ -1,4 +1,4 @@
-// Copyright 2021 Google LLC
+// Copyright 2022 Google LLC
 // SPDX-License-Identifier: Apache-2.0
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,7 +16,10 @@
 #include "hwy/contrib/sort/vqsort.h"
 
 #undef HWY_TARGET_INCLUDE
-#define HWY_TARGET_INCLUDE "hwy/contrib/sort/vqsort_u16a.cc"
+// clang-format off
+// (avoid line break, which would prevent Copybara rules from matching)
+#define HWY_TARGET_INCLUDE "hwy/contrib/sort/vqsort_kv64a.cc"  //NOLINT
+// clang-format on
 #include "hwy/foreach_target.h"  // IWYU pragma: keep
 
 // After foreach_target
@@ -27,11 +30,18 @@ HWY_BEFORE_NAMESPACE();
 namespace hwy {
 namespace HWY_NAMESPACE {
 
-void SortU16Asc(uint16_t* HWY_RESTRICT keys, size_t num,
-                uint16_t* HWY_RESTRICT buf) {
-  SortTag<uint16_t> d;
-  detail::SharedTraits<detail::TraitsLane<detail::OrderAscending<uint16_t>>> st;
+void SortKV64Asc(uint64_t* HWY_RESTRICT keys, size_t num,
+                 uint64_t* HWY_RESTRICT buf) {
+#if VQSORT_ENABLED
+  SortTag<uint64_t> d;
+  detail::SharedTraits<detail::TraitsLane<detail::OrderAscendingKV64>> st;
   Sort(d, st, keys, num, buf);
+#else
+  (void) keys;
+  (void) num;
+  (void) buf;
+  HWY_ASSERT(0);
+#endif
 }
 
 // NOLINTNEXTLINE(google-readability-namespace-comments)
@@ -42,12 +52,13 @@ HWY_AFTER_NAMESPACE();
 #if HWY_ONCE
 namespace hwy {
 namespace {
-HWY_EXPORT(SortU16Asc);
+HWY_EXPORT(SortKV64Asc);
 }  // namespace
 
-void Sorter::operator()(uint16_t* HWY_RESTRICT keys, size_t n,
+void Sorter::operator()(K32V32* HWY_RESTRICT keys, size_t n,
                         SortAscending) const {
-  HWY_DYNAMIC_DISPATCH(SortU16Asc)(keys, n, Get<uint16_t>());
+  HWY_DYNAMIC_DISPATCH(SortKV64Asc)
+  (reinterpret_cast<uint64_t*>(keys), n, Get<uint64_t>());
 }
 
 }  // namespace hwy

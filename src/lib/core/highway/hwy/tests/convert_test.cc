@@ -17,10 +17,13 @@
 #include <stdint.h>
 #include <string.h>
 
+#include <cmath>  // std::isfinite
+
+#include "hwy/base.h"
+
 #undef HWY_TARGET_INCLUDE
 #define HWY_TARGET_INCLUDE "tests/convert_test.cc"
-#include "hwy/foreach_target.h"
-
+#include "hwy/foreach_target.h"  // IWYU pragma: keep
 #include "hwy/highway.h"
 #include "hwy/tests/test_util-inl.h"
 
@@ -155,7 +158,7 @@ struct TestPromoteTo {
     for (size_t rep = 0; rep < AdjustedReps(200); ++rep) {
       for (size_t i = 0; i < N; ++i) {
         const uint64_t bits = rng();
-        memcpy(&from[i], &bits, sizeof(T));
+        CopyBytes<sizeof(T)>(&bits, &from[i]);  // not same size
         expected[i] = from[i];
       }
 
@@ -235,13 +238,19 @@ AlignedFreeUniquePtr<float[]> F16TestCases(D d, size_t& padded) {
       -2.00390625f, -3.99609375f,
       // No infinity/NaN - implementation-defined due to ARM.
   };
-  const size_t kNumTestCases = sizeof(test_cases) / sizeof(test_cases[0]);
+  constexpr size_t kNumTestCases = sizeof(test_cases) / sizeof(test_cases[0]);
   const size_t N = Lanes(d);
+  HWY_ASSERT(N != 0);
   padded = RoundUpTo(kNumTestCases, N);  // allow loading whole vectors
   auto in = AllocateAligned<float>(padded);
   auto expected = AllocateAligned<float>(padded);
-  std::copy(test_cases, test_cases + kNumTestCases, in.get());
-  std::fill(in.get() + kNumTestCases, in.get() + padded, 0.0f);
+  size_t i = 0;
+  for (; i < kNumTestCases; ++i) {
+    in[i] = test_cases[i];
+  }
+  for (; i < padded; ++i) {
+    in[i] = 0.0f;
+  }
   return in;
 }
 
@@ -250,10 +259,11 @@ struct TestF16 {
   HWY_NOINLINE void operator()(TF32 /*t*/, DF32 d32) {
 #if HWY_HAVE_FLOAT16
     size_t padded;
+    const size_t N = Lanes(d32);  // same count for f16
+    HWY_ASSERT(N != 0);
     auto in = F16TestCases(d32, padded);
     using TF16 = float16_t;
     const Rebind<TF16, DF32> d16;
-    const size_t N = Lanes(d32);  // same count for f16
     auto temp16 = AllocateAligned<TF16>(N);
 
     for (size_t i = 0; i < padded; i += N) {
@@ -289,13 +299,19 @@ AlignedFreeUniquePtr<float[]> BF16TestCases(D d, size_t& padded) {
       // negative +/- delta
       -2.015625f, -3.984375f,
   };
-  const size_t kNumTestCases = sizeof(test_cases) / sizeof(test_cases[0]);
+  constexpr size_t kNumTestCases = sizeof(test_cases) / sizeof(test_cases[0]);
   const size_t N = Lanes(d);
+  HWY_ASSERT(N != 0);
   padded = RoundUpTo(kNumTestCases, N);  // allow loading whole vectors
   auto in = AllocateAligned<float>(padded);
   auto expected = AllocateAligned<float>(padded);
-  std::copy(test_cases, test_cases + kNumTestCases, in.get());
-  std::fill(in.get() + kNumTestCases, in.get() + padded, 0.0f);
+  size_t i = 0;
+  for (; i < kNumTestCases; ++i) {
+    in[i] = test_cases[i];
+  }
+  for (; i < padded; ++i) {
+    in[i] = 0.0f;
+  }
   return in;
 }
 
@@ -335,8 +351,6 @@ struct TestConvertU8 {
   template <typename T, class D>
   HWY_NOINLINE void operator()(T /*unused*/, const D du32) {
     const Rebind<uint8_t, D> du8;
-    auto lanes8 = AllocateAligned<uint8_t>(Lanes(du8));
-    Store(Iota(du8, 0), du8, lanes8.get());
     const auto wrap = Set(du32, 0xFF);
     HWY_ASSERT_VEC_EQ(du8, Iota(du8, 0), U8FromU32(And(Iota(du32, 0), wrap)));
     HWY_ASSERT_VEC_EQ(du8, Iota(du8, 0x7F),
@@ -348,15 +362,54 @@ HWY_NOINLINE void TestAllConvertU8() {
   ForDemoteVectors<TestConvertU8, 2>()(uint32_t());
 }
 
+template <typename From, typename To, class D>
+constexpr bool IsSupportedTruncation() {
+  return (sizeof(To) < sizeof(From)) &&
+         (Pow2(Rebind<To, D>()) + 3 >= static_cast<int>(CeilLog2(sizeof(To))));
+}
+
+struct TestTruncateTo {
+  template <typename From, typename To, class D,
+            hwy::EnableIf<!IsSupportedTruncation<From, To, D>()>* = nullptr>
+  HWY_NOINLINE void testTo(From, To, const D) {
+    // do nothing
+  }
+
+  template <typename From, typename To, class D,
+            hwy::EnableIf<IsSupportedTruncation<From, To, D>()>* = nullptr>
+  HWY_NOINLINE void testTo(From, To, const D d) {
+    constexpr uint32_t base = 0xFA578D00;
+    const Rebind<To, D> dTo;
+    const auto src = Iota(d, static_cast<From>(base));
+    const auto expected = Iota(dTo, static_cast<To>(base));
+    const VFromD<decltype(dTo)> actual = TruncateTo(dTo, src);
+    HWY_ASSERT_VEC_EQ(dTo, expected, actual);
+  }
+
+  template <typename T, class D>
+  HWY_NOINLINE void operator()(T from, const D d) {
+    testTo<T, uint8_t, D>(from, uint8_t(), d);
+    testTo<T, uint16_t, D>(from, uint16_t(), d);
+    testTo<T, uint32_t, D>(from, uint32_t(), d);
+  }
+};
+
+HWY_NOINLINE void TestAllTruncate() {
+  ForUnsignedTypes(ForPartialVectors<TestTruncateTo>());
+}
+
 // Separate function to attempt to work around a compiler bug on ARM: when this
 // is merged with TestIntFromFloat, outputs match a previous Iota(-(N+1)) input.
 struct TestIntFromFloatHuge {
   template <typename TF, class DF>
   HWY_NOINLINE void operator()(TF /*unused*/, const DF df) {
-    // Still does not work, although ARMv7 manual says that float->int
-    // saturates, i.e. chooses the nearest representable value. Also causes
-    // out-of-memory for MSVC.
-#if HWY_TARGET != HWY_NEON && !HWY_COMPILER_MSVC
+    // The ARMv7 manual says that float->int saturates, i.e. chooses the
+    // nearest representable value. This works correctly on armhf with GCC, but
+    // not with clang. For reasons unknown, MSVC also runs into an out-of-memory
+    // error here.
+#if HWY_COMPILER_CLANG || HWY_COMPILER_MSVC
+    (void)df;
+#else
     using TI = MakeSigned<TF>;
     const Rebind<TI, DF> di;
 
@@ -372,8 +425,6 @@ struct TestIntFromFloatHuge {
     // Huge negative
     Store(Set(di, LimitsMin<TI>()), di, expected.get());
     HWY_ASSERT_VEC_EQ(di, expected.get(), ConvertTo(di, Set(df, TF(-1E20))));
-#else
-    (void)df;
 #endif
   }
 };
@@ -390,7 +441,7 @@ class TestIntFromFloat {
     for (int sign = 0; sign < 2; ++sign) {
       for (size_t shift = 0; shift < kBits - 1; ++shift) {
         for (int64_t ofs : ofs_table) {
-          const int64_t mag = (int64_t(1) << shift) + ofs;
+          const int64_t mag = (int64_t{1} << shift) + ofs;
           const int64_t val = sign ? mag : -mag;
           HWY_ASSERT_VEC_EQ(di, Set(di, static_cast<TI>(val)),
                             ConvertTo(di, Set(df, static_cast<TF>(val))));
@@ -417,7 +468,7 @@ class TestIntFromFloat {
       for (size_t i = 0; i < N; ++i) {
         do {
           const uint64_t bits = rng();
-          memcpy(&from[i], &bits, sizeof(TF));
+          CopyBytes<sizeof(TF)>(&bits, &from[i]);  // not same size
         } while (!std::isfinite(from[i]));
         if (from[i] >= max) {
           expected[i] = LimitsMax<TI>();
@@ -498,6 +549,34 @@ HWY_NOINLINE void TestAllFloatFromInt() {
   ForFloatTypes(ForPartialVectors<TestFloatFromInt>());
 }
 
+struct TestFloatFromUint {
+  template <typename TF, class DF>
+  HWY_NOINLINE void operator()(TF /*unused*/, const DF df) {
+    using TU = MakeUnsigned<TF>;
+    const RebindToUnsigned<DF> du;
+
+    // Integer positive
+    HWY_ASSERT_VEC_EQ(df, Iota(df, TF(4.0)), ConvertTo(df, Iota(du, TU(4))));
+    HWY_ASSERT_VEC_EQ(df, Iota(df, TF(65535.0)),
+                      ConvertTo(df, Iota(du, 65535)));  // 2^16-1
+    if (sizeof(TF) > 4) {
+      HWY_ASSERT_VEC_EQ(df, Iota(df, TF(4294967295.0)),
+                        ConvertTo(df, Iota(du, 4294967295ULL)));  // 2^32-1
+    }
+
+    // Max positive
+    HWY_ASSERT_VEC_EQ(df, Set(df, TF(LimitsMax<TU>())),
+                      ConvertTo(df, Set(du, LimitsMax<TU>())));
+
+    // Zero
+    HWY_ASSERT_VEC_EQ(df, Zero(df), ConvertTo(df, Zero(du)));
+  }
+};
+
+HWY_NOINLINE void TestAllFloatFromUint() {
+  ForFloatTypes(ForPartialVectors<TestFloatFromUint>());
+}
+
 struct TestI32F64 {
   template <typename TF, class DF>
   HWY_NOINLINE void operator()(TF /*unused*/, const DF df) {
@@ -554,8 +633,10 @@ HWY_EXPORT_AND_TEST_P(HwyConvertTest, TestAllPromoteTo);
 HWY_EXPORT_AND_TEST_P(HwyConvertTest, TestAllF16);
 HWY_EXPORT_AND_TEST_P(HwyConvertTest, TestAllBF16);
 HWY_EXPORT_AND_TEST_P(HwyConvertTest, TestAllConvertU8);
+HWY_EXPORT_AND_TEST_P(HwyConvertTest, TestAllTruncate);
 HWY_EXPORT_AND_TEST_P(HwyConvertTest, TestAllIntFromFloat);
 HWY_EXPORT_AND_TEST_P(HwyConvertTest, TestAllFloatFromInt);
+HWY_EXPORT_AND_TEST_P(HwyConvertTest, TestAllFloatFromUint);
 HWY_EXPORT_AND_TEST_P(HwyConvertTest, TestAllI32F64);
 }  // namespace hwy
 

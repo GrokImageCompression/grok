@@ -39,7 +39,7 @@ namespace detail {
 // along with an abstraction layer for single-lane vs. lane-pair, which is
 // independent of the order.
 struct KeyAny128 {
-  constexpr bool Is128() const { return true; }
+  static constexpr bool Is128() { return true; }
   constexpr size_t LanesPerKey() const { return 2; }
 
   // What type bench_sort should allocate for generating inputs.
@@ -128,6 +128,15 @@ struct Key128 : public KeyAny128 {
   using KeyType = hwy::uint128_t;
 
   std::string KeyString() const { return "U128"; }
+
+  template <class D>
+  HWY_INLINE Mask<D> EqualKeys(D d, Vec<D> a, Vec<D> b) const {
+    return Eq128(d, a, b);
+  }
+
+  HWY_INLINE bool Equal1(const LaneType* a, const LaneType* b) {
+    return a[0] == b[0] && a[1] == b[1];
+  }
 };
 
 // Anything order-related depends on the key traits *and* the order (see
@@ -175,6 +184,12 @@ struct OrderAscending128 : public Key128 {
   HWY_INLINE Vec<D> LastValue(D d) const {
     return Set(d, hwy::HighestValue<TFromD<D> >());
   }
+
+  template <class D>
+  HWY_INLINE Vec<D> PrevValue(D d, Vec<D> v) const {
+    const Vec<D> k1 = OddEven(Zero(d), Set(d, 1));
+    return Sub(v, k1);
+  }
 };
 
 struct OrderDescending128 : public Key128 {
@@ -215,6 +230,12 @@ struct OrderDescending128 : public Key128 {
   HWY_INLINE Vec<D> LastValue(D d) const {
     return Set(d, hwy::LowestValue<TFromD<D> >());
   }
+
+  template <class D>
+  HWY_INLINE Vec<D> PrevValue(D d, Vec<D> v) const {
+    const Vec<D> k1 = OddEven(Zero(d), Set(d, 1));
+    return Add(v, k1);
+  }
 };
 
 // Base class shared between OrderAscendingKV128, OrderDescendingKV128.
@@ -223,6 +244,15 @@ struct KeyValue128 : public KeyAny128 {
   using KeyType = K64V64;
 
   std::string KeyString() const { return "KV128"; }
+
+  template <class D>
+  HWY_INLINE Mask<D> EqualKeys(D d, Vec<D> a, Vec<D> b) const {
+    return Eq128Upper(d, a, b);
+  }
+
+  HWY_INLINE bool Equal1(const LaneType* a, const LaneType* b) {
+    return a[1] == b[1];
+  }
 };
 
 struct OrderAscendingKV128 : public KeyValue128 {
@@ -263,6 +293,12 @@ struct OrderAscendingKV128 : public KeyValue128 {
   HWY_INLINE Vec<D> LastValue(D d) const {
     return Set(d, hwy::HighestValue<TFromD<D> >());
   }
+
+  template <class D>
+  HWY_INLINE Vec<D> PrevValue(D d, Vec<D> v) const {
+    const Vec<D> k1 = OddEven(Zero(d), Set(d, 1));
+    return Sub(v, k1);
+  }
 };
 
 struct OrderDescendingKV128 : public KeyValue128 {
@@ -302,6 +338,12 @@ struct OrderDescendingKV128 : public KeyValue128 {
   template <class D>
   HWY_INLINE Vec<D> LastValue(D d) const {
     return Set(d, hwy::LowestValue<TFromD<D> >());
+  }
+
+  template <class D>
+  HWY_INLINE Vec<D> PrevValue(D d, Vec<D> v) const {
+    const Vec<D> k1 = OddEven(Zero(d), Set(d, 1));
+    return Add(v, k1);
   }
 };
 

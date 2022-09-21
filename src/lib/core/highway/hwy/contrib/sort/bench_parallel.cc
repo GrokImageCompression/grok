@@ -28,10 +28,9 @@
 #include <vector>
 
 // clang-format off
-#include "hwy/contrib/sort/vqsort.h"
 #undef HWY_TARGET_INCLUDE
 #define HWY_TARGET_INCLUDE "hwy/contrib/sort/bench_parallel.cc"  //NOLINT
-#include "hwy/foreach_target.h"
+#include "hwy/foreach_target.h"  // IWYU pragma: keep
 
 // After foreach_target
 #include "hwy/contrib/sort/algo-inl.h"
@@ -45,8 +44,6 @@ HWY_BEFORE_NAMESPACE();
 namespace hwy {
 namespace HWY_NAMESPACE {
 namespace {
-
-#if HWY_TARGET != HWY_SCALAR
 
 class ThreadPool {
  public:
@@ -222,10 +219,6 @@ void BenchParallel() {
     results.back().Print();
   }
 }
-
-#else
-void BenchParallel() {}
-#endif  // HWY_TARGET != HWY_SCALAR
 
 }  // namespace
 // NOLINTNEXTLINE(google-readability-namespace-comments)

@@ -19,7 +19,7 @@ if(POLICY CMP0083)
   cmake_policy(SET CMP0083 NEW)
 endif()
 
-project(hwy VERSION 0.17.0)  # Keep in sync with highway.h version
+project(hwy VERSION 1.0.1)  # Keep in sync with highway.h version
 
 # Directly define the ABI version from the cmake project() version values:
 set(LIBRARY_VERSION "${hwy_VERSION}")
@@ -63,6 +63,16 @@ check_cxx_source_compiles(
   HWY_EMSCRIPTEN
 )
 
+check_cxx_source_compiles(
+   "int main() {
+      #if !defined(__riscv)
+      static_assert(false, \"__riscv is not defined\");
+      #endif
+      return 0;
+    }"
+  HWY_RISCV
+)
+
 if (HWY_ENABLE_CONTRIB)
 # Glob all the traits so we don't need to modify this file when adding
 # additional special cases.
@@ -79,6 +89,9 @@ list(APPEND HWY_CONTRIB_SOURCES
     hwy/contrib/sort/vqsort-inl.h
     hwy/contrib/sort/vqsort.cc
     hwy/contrib/sort/vqsort.h
+    hwy/contrib/algo/copy-inl.h
+    hwy/contrib/algo/find-inl.h
+    hwy/contrib/algo/transform-inl.h
 )
 endif()  # HWY_ENABLE_CONTRIB
 
@@ -211,27 +224,43 @@ else()
     )
   endif()  # HWY_CMAKE_ARM7
 
+  if(HWY_RISCV)
+    if(${CMAKE_CXX_COMPILER_ID} MATCHES "Clang")
+      # Not yet supported by GCC. When runtime dispatch is supported and
+      # implemented, we will remove v from the required flags. Until then, using
+      # clang for RISC-V will require the CPU to support the V extension (1.0).
+      list(APPEND HWY_FLAGS -march=rv64gcv1p0)
+      list(APPEND HWY_FLAGS -menable-experimental-extensions)
+    endif()
+  endif()
+
   if (HWY_WARNINGS_ARE_ERRORS)
     list(APPEND HWY_FLAGS -Werror)
+  endif()
+
+  # Prevent "wasm-ld: error: --shared-memory is disallowed by targets.cc.o
+  # because it was not compiled with 'atomics' or 'bulk-memory' features."
+  if (HWY_EMSCRIPTEN)
+    list(APPEND HWY_FLAGS -matomics)
   endif()
 
 endif()  # !MSVC
 
 # By default prefer STATIC build (legacy behavior)
-#option(BUILD_SHARED_LIBS "Build shared libraries" OFF)
-#option(HWY_FORCE_STATIC_LIBS "Ignore BUILD_SHARED_LIBS" ON)
+option(BUILD_SHARED_LIBS "Build shared libraries" OFF)
+option(HWY_FORCE_STATIC_LIBS "Ignore BUILD_SHARED_LIBS" OFF)
 # only expose shared/static options to advanced users:
-#mark_as_advanced(BUILD_SHARED_LIBS)
-#mark_as_advanced(HWY_FORCE_STATIC_LIBS)
+mark_as_advanced(BUILD_SHARED_LIBS)
+mark_as_advanced(HWY_FORCE_STATIC_LIBS)
 # Define visibility settings globally:
 set(CMAKE_CXX_VISIBILITY_PRESET hidden)
 set(CMAKE_VISIBILITY_INLINES_HIDDEN 1)
 
 # Copy-cat "add_library" logic + add override.
-#set(HWY_LIBRARY_TYPE "SHARED")
-#if (NOT BUILD_SHARED_LIBS OR HWY_FORCE_STATIC_LIBS)
+set(HWY_LIBRARY_TYPE "SHARED")
+if (NOT BUILD_SHARED_LIBS OR HWY_FORCE_STATIC_LIBS)
   set(HWY_LIBRARY_TYPE "STATIC")
-#endif()
+endif()
 
 # This preprocessor define will drive the build, also used in the *.pc files:
 if("${HWY_LIBRARY_TYPE}" STREQUAL "SHARED")
@@ -251,14 +280,30 @@ target_include_directories(hwy PUBLIC
 target_compile_features(hwy PUBLIC cxx_std_11)
 set_target_properties(hwy PROPERTIES
   LINK_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/hwy/hwy.version)
-# not supported by MSVC/Clang, safe to skip (we use DLLEXPORT annotations)
 if(UNIX AND NOT APPLE)
+  # For GCC __atomic_store_8, see #887
+  if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND NOT HWY_EMSCRIPTEN)
+    target_link_libraries(hwy atomic)
+  endif()
+  # not supported by MSVC/Clang, safe to skip (we use DLLEXPORT annotations)
   set_property(TARGET hwy APPEND_STRING PROPERTY
     LINK_FLAGS " -Wl,--version-script=${CMAKE_CURRENT_SOURCE_DIR}/hwy/hwy.version")
 endif()
-if (HWY_EMSCRIPTEN)
-    target_compile_options(hwy PUBLIC -matomics)
-endif()
+
+if (CMAKE_SYSTEM_PROCESSOR MATCHES "unknown")
+  # uname -p is broken on this system.  Try uname -m
+  EXECUTE_PROCESS( COMMAND uname -m
+		   OUTPUT_STRIP_TRAILING_WHITESPACE
+		   ERROR_QUIET
+		   OUTPUT_VARIABLE HWY_ARCH)
+else (CMAKE_SYSTEM_PROCESSOR MATCHES "unknown")
+  set(HWY_ARCH ${CMAKE_SYSTEM_PROCESSOR})
+endif (CMAKE_SYSTEM_PROCESSOR MATCHES "unknown")
+message("Architecture: " ${HWY_ARCH})
+if (HWY_ARCH MATCHES "mips")
+  target_link_options(hwy PUBLIC "LINKER:-z,noexecstack")
+endif (HWY_ARCH MATCHES "mips")
+
 
 if (HWY_ENABLE_CONTRIB)
 add_library(hwy_contrib ${HWY_LIBRARY_TYPE} ${HWY_CONTRIB_SOURCES})
@@ -387,8 +432,8 @@ set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 add_executable(hwy_benchmark hwy/examples/benchmark.cc)
 target_sources(hwy_benchmark PRIVATE
     hwy/nanobenchmark.h)
-# Try adding either -DHWY_COMPILE_ONLY_SCALAR or -DHWY_COMPILE_ONLY_STATIC to
-# observe the difference in targets printed.
+# Try adding one of -DHWY_COMPILE_ONLY_SCALAR, -DHWY_COMPILE_ONLY_EMU128 or
+# -DHWY_COMPILE_ONLY_STATIC to observe the difference in targets printed.
 target_compile_options(hwy_benchmark PRIVATE ${HWY_FLAGS})
 target_link_libraries(hwy_benchmark hwy)
 set_target_properties(hwy_benchmark
@@ -431,13 +476,6 @@ set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 add_subdirectory(${CMAKE_CURRENT_BINARY_DIR}/googletest-src
                  ${CMAKE_CURRENT_BINARY_DIR}/googletest-build
                  EXCLUDE_FROM_ALL)
-
-# The gtest/gtest_main targets carry header search path
-# dependencies automatically when using CMake 2.8.11 or
-# later. Otherwise we have to add them here ourselves.
-if (CMAKE_VERSION VERSION_LESS 2.8.11)
-  include_directories("${gtest_SOURCE_DIR}/include")
-endif()
 endif()  # HWY_SYSTEM_GTEST
 
 set(HWY_TEST_FILES
@@ -460,6 +498,8 @@ set(HWY_TEST_FILES
   hwy/tests/crypto_test.cc
   hwy/tests/demote_test.cc
   hwy/tests/float_test.cc
+  hwy/tests/if_test.cc
+  hwy/tests/interleaved_test.cc
   hwy/tests/logical_test.cc
   hwy/tests/mask_test.cc
   hwy/tests/mask_mem_test.cc
@@ -488,7 +528,11 @@ list(APPEND HWY_TEST_FILES
 endif()  # HWY_ENABLE_CONTRIB
 
 if(HWY_SYSTEM_GTEST)
-  set(HWY_GTEST_LIBS GTest::GTest GTest::Main)
+  if (CMAKE_VERSION VERSION_LESS 3.20)
+    set(HWY_GTEST_LIBS GTest::GTest GTest::Main)
+  else()
+    set(HWY_GTEST_LIBS GTest::gtest GTest::gtest_main)
+  endif()
 else()
   set(HWY_GTEST_LIBS gtest gtest_main)
 endif()

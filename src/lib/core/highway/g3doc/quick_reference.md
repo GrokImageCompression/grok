@@ -103,9 +103,22 @@ of type `D` and return an actual vector of unspecified type.
 The actual lane count (used to increment loop counters etc.) can be obtained via
 `Lanes(d)`. This value might not be known at compile time, thus storage for
 vectors should be dynamically allocated, e.g. via `AllocateAligned(Lanes(d))`.
-Note that `Lanes(d)` could potentially change at runtime, upon user request via
-special CPU instructions. Thus we discourage caching the result; it is typically
-used inside a function or basic block.
+
+Note that `Lanes(d)` could potentially change at runtime. This is currently
+unlikely, and will not be initiated by Highway without user action, but could
+still happen in other circumstances:
+
+*   upon user request in future via special CPU instructions (switching to
+    'streaming SVE' mode for Arm SME), or
+*   via system software (`prctl(PR_SVE_SET_VL` on Linux for Arm SVE). When the
+    vector length is changed using this mechanism, all but the lower 128 bits of
+    vector registers are invalidated.
+
+Thus we discourage caching the result; it is typically used inside a function or
+basic block. If the application anticipates that one of the above circumstances
+could happen, it should ensure by some out-of-band mechanism that such changes
+will not happen during the critical section (the vector code which uses the
+result of the previously obtained `Lanes(d)`).
 
 `MaxLanes(d)` returns a (potentially loose) upper bound on `Lanes(d)`, and is
 implemented as a constexpr function.
@@ -148,7 +161,10 @@ lane count, thus avoiding the need for a second loop to handle remainders.
     masking in `Load` etc. `kCount` must be a power of two not exceeding
     `HWY_LANES(T)`, which is one for `HWY_SCALAR`. This tag can be used when the
     `HWY_SCALAR` target is anyway disabled (superseded by a higher baseline) or
-    unusable (due to use of ops such as `TableLookupBytes`).
+    unusable (due to use of ops such as `TableLookupBytes`). As a convenience,
+    we also provide `Full128<T>`, `Full64<T>` and `Full32<T>` aliases which are
+    equivalent to `FixedTag<T, 16 / sizeof(T)>`, `FixedTag<T, 8 / sizeof(T)>`
+    and `FixedTag<T, 4 / sizeof(T)>`.
 
 *   The result of `UpperHalf`/`LowerHalf` has half the lanes. To obtain a
     corresponding `d`, use `Half<decltype(d)>`; the opposite is `Twice<>`.
@@ -232,6 +248,12 @@ instructions (implying the target CPU must support them).
     finally reverts to `HWY_STATIC_TARGET`. Can be used in `#if` expressions to
     provide an alternative to functions which are not supported by `HWY_SCALAR`.
 
+    In particular, for x86 we sometimes wish to specialize functions for AVX-512
+    because it provides many new instructions. This can be accomplished via `#if
+    HWY_TARGET <= HWY_AVX3`, which means AVX-512 or better (e.g. `HWY_AVX3_DL`).
+    This is because numerically lower targets are better, and no other platform
+    has targets numerically less than those of x86.
+
 *   `HWY_WANT_SSSE3`, `HWY_WANT_SSE4`: add SSSE3 and SSE4 to the baseline even
     if they are not marked as available by the compiler. On MSVC, the only ways
     to enable SSSE3 and SSE4 are defining these, or enabling AVX.
@@ -262,9 +284,10 @@ code, in descending order of preference:
 -   `using hwy::HWY_NAMESPACE;` directive. This is generally discouraged,
     especially for SIMD code residing in a header.
 
-Note that overloaded operators are not yet supported on RVV and SVE; code that
-wishes to run on all targets until that is resolved can use the corresponding
-equivalents functions such as `Eq`, `Lt`, `Add`, `Div` etc.
+Note that overloaded operators are not yet supported on RVV and SVE. Until that
+is resolved, code that wishes to run on all targets must use the corresponding
+equivalents mentioned in the description of each overloaded operator, for
+example `Lt` instead of `operator<`.
 
 ### Initialization
 
@@ -389,7 +412,7 @@ All other ops in this section are only available if `HWY_TARGET != HWY_SCALAR`:
 
 #### Multiply
 
-*   `V`: `{u,i}{16,32}` \
+*   `V`: `{u,i}{16,32,64}` \
     <code>V <b>operator*</b>(V a, V b)</code>: returns the lower half of `a[i] *
     b[i]` in each lane. Currently unavailable on SVE/RVV; use the equivalent
     `Mul` instead.
@@ -419,7 +442,7 @@ All other ops in this section are only available if `HWY_TARGET != HWY_SCALAR`:
     b[i]` for every odd `i`, in lanes `i - 1` (lower) and `i` (upper). Only
     supported if `HWY_TARGET != HWY_SCALAR`.
 
-*   `V`: `bf16`; `D`: `f32` \
+*   `V`: `{bf,i}16`, `D`: `RepartitionToWide<DFromV<V>>` \
     <code>Vec<D> **ReorderWidenMulAccumulate**(D d, V a, V b, Vec<D> sum0,
     Vec<D>& sum1)</code>: widens `a` and `b` to `TFromD<D>`, then adds `a[i] *
     b[i]` to either `sum1[j]` or lane `j` of the return value, where `j = P(i)`
@@ -738,14 +761,28 @@ These return a mask (see above) indicating whether the condition is true.
 
 *   `V`: `u64` \
     <code>M **Lt128**(D, V a, V b)</code>: for each adjacent pair of 64-bit
-    lanes (e.g. indices 1,0), returns whether a[1]:a[0] concatenated to an
-    unsigned 128-bit integer (least significant bits in a[0]) is less than
-    b[1]:b[0]. For each pair, the mask lanes are either both true or both false.
-    Unavailable if `HWY_TARGET == HWY_SCALAR`.
+    lanes (e.g. indices 1,0), returns whether `a[1]:a[0]` concatenated to an
+    unsigned 128-bit integer (least significant bits in `a[0]`) is less than
+    `b[1]:b[0]`. For each pair, the mask lanes are either both true or both
+    false. Unavailable if `HWY_TARGET == HWY_SCALAR`.
 
 *   `V`: `u64` \
     <code>M **Lt128Upper**(D, V a, V b)</code>: for each adjacent pair of 64-bit
-    lanes (e.g. indices 1,0), returns whether a[1] is less than b[1]. For each
+    lanes (e.g. indices 1,0), returns whether `a[1]` is less than `b[1]`. For
+    each pair, the mask lanes are either both true or both false. This is useful
+    for comparing 64-bit keys alongside 64-bit values. Only available if
+    `HWY_TARGET != HWY_SCALAR`.
+
+*   `V`: `u64` \
+    <code>M **Eq128**(D, V a, V b)</code>: for each adjacent pair of 64-bit
+    lanes (e.g. indices 1,0), returns whether `a[1]:a[0]` concatenated to an
+    unsigned 128-bit integer (least significant bits in `a[0]`) equals
+    `b[1]:b[0]`. For each pair, the mask lanes are either both true or both
+    false. Unavailable if `HWY_TARGET == HWY_SCALAR`.
+
+*   `V`: `u64` \
+    <code>M **Eq128Upper**(D, V a, V b)</code>: for each adjacent pair of 64-bit
+    lanes (e.g. indices 1,0), returns whether `a[1]` equals `b[1]`. For each
     pair, the mask lanes are either both true or both false. This is useful for
     comparing 64-bit keys alongside 64-bit values. Only available if `HWY_TARGET
     != HWY_SCALAR`.
@@ -936,6 +973,16 @@ All functions except `Stream` are defined in cache_control.h.
     <code>V8 **U8FromU32**(V)</code>: special-case `u32` to `u8` conversion when
     all lanes of `V` are already clamped to `[0, 256)`.
 
+*   `D`,`V`: (`u64,u32`), (`u64,u16`), (`u64,u8`), (`u32,u16`), (`u32,u8`), \
+    (`u16,u8`) <code>Vec&lt;D&gt; **TruncateTo**(D, V v)</code>: returns `v[i]`
+    truncated to the smaller type indicated by `T = TFromD<D>`, with the same
+    result as if the more-signficant input bits that do not fit in `T` had been
+    zero. Example: ```
+ScalableTag<uint32_t> du32;
+Rebind<uint8_t> du8;
+TruncateTo(du8, Set(du32, 0xF08F))
+    ``` is the same as `Set(du8, 0x8F)`.
+
 `DemoteTo` and float-to-int `ConvertTo` return the closest representable value
 if the input exceeds the destination range.
 
@@ -952,7 +999,7 @@ if the input exceeds the destination range.
     <code>Vec&lt;D&gt; **DemoteTo**(D, V a)</code>: narrows float to half (for
     bf16, it is unspecified whether this truncates or rounds).
 
-*   `V`,`D`: (`f32,bf16`) \
+*   `D`: `{bf,i}16`, `V`: `RepartitionToWide<D>` \
     <code>Vec&lt;D&gt; **ReorderDemote2To**(D, V a, V b)</code>: as above, but
     converts two inputs, `D` and the output have twice as many lanes as `V`, and
     the output order is some permutation of the inputs. Only available if
@@ -1210,7 +1257,7 @@ broadcasted to all lanes. To obtain a scalar, you can call `GetLane`.
 Being a horizontal operation (across lanes of the same vector), these are slower
 than normal SIMD operations and are typically used outside critical loops.
 
-*   `V`: `{u,i,f}{32,64}` \
+*   `V`: `{u,i,f}{32,64},{u,i}{16}` \
     <code>V **SumOfLanes**(D, V v)</code>: returns the sum of all lanes in each
     lane.
 
@@ -1301,10 +1348,11 @@ are DEPRECATED:
 
 ## Detecting supported targets
 
-`SupportedTargets()` returns a cached (initialized on-demand) bitfield of the
-targets supported on the current CPU, detected using CPUID on x86 or equivalent.
-This may include targets that are not in `HWY_TARGETS`, and vice versa. If
-there is no overlap the binary will likely crash. This can only happen if:
+`SupportedTargets()` returns a non-cached (re-initialized on each call) bitfield
+of the targets supported on the current CPU, detected using CPUID on x86 or
+equivalent. This may include targets that are not in `HWY_TARGETS`, and vice
+versa. If there is no overlap the binary will likely crash. This can only happen
+if:
 
 *   the specified baseline is not supported by the current CPU, which
     contradicts the definition of baseline, so the configuration is invalid; or
@@ -1343,13 +1391,19 @@ as an expression, e.g. `-DHWY_DISABLED_TARGETS=(HWY_SSE4|HWY_AVX3)`.
 Zero or one of the following macros may be defined to replace the default
 policy for selecting `HWY_TARGETS`:
 
-*   `HWY_COMPILE_ONLY_SCALAR` selects only `HWY_SCALAR`, which disables SIMD.
+*   `HWY_COMPILE_ONLY_EMU128` selects only `HWY_EMU128`, which avoids intrinsics
+    but implements all ops using standard C++.
+*   `HWY_COMPILE_ONLY_SCALAR` selects only `HWY_SCALAR`, which implements
+    single-lane-only ops using standard C++.
 *   `HWY_COMPILE_ONLY_STATIC` selects only `HWY_STATIC_TARGET`, which
     effectively disables dynamic dispatch.
 *   `HWY_COMPILE_ALL_ATTAINABLE` selects all attainable targets (i.e. enabled
     and permitted by the compiler, independently of autovectorization), which
-    maximizes coverage in tests. This may also be defined even if one of
-    `HWY_COMPILE_ONLY_*` is, but will then be ignored.
+    maximizes coverage in tests.
+
+At most one `HWY_COMPILE_ONLY_*` may be defined. `HWY_COMPILE_ALL_ATTAINABLE`
+may also be defined even if one of `HWY_COMPILE_ONLY_*` is, but will then be
+ignored.
 
 If none are defined, but `HWY_IS_TEST` is defined, the default is
 `HWY_COMPILE_ALL_ATTAINABLE`. Otherwise, the default is to select all attainable

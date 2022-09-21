@@ -23,7 +23,7 @@
 //------------------------------------------------------------------------------
 // Optional configuration
 
-// See ../quick_reference.md for documentation of these macros.
+// See g3doc/quick_reference.md for documentation of these macros.
 
 // Uncomment to override the default baseline determined from predefined macros:
 // #define HWY_BASELINE_TARGETS (HWY_SSE4 | HWY_SCALAR)
@@ -51,61 +51,71 @@
 // All values are unconditionally defined so we can test HWY_TARGETS without
 // first checking the HWY_ARCH_*.
 //
-// The C99 preprocessor evaluates #if expressions using intmax_t types, so we
-// can use 32-bit literals.
+// The C99 preprocessor evaluates #if expressions using intmax_t types. This
+// holds at least 64 bits in practice (verified 2022-07-18 via Godbolt on
+// 32-bit clang/GCC/MSVC compilers for x86/Arm7/AArch32/RISC-V/WASM). We now
+// avoid overflow when computing HWY_TARGETS (subtracting one instead of
+// left-shifting 2^62), but still do not use bit 63 because it is the sign bit.
 
-// 1,2,4: reserved
-
+// --------------------------- x86: 15 targets (+ one fallback)
+// Bits 0..6 reserved (7 targets)
 // Currently satisfiable by Ice Lake (VNNI, VPCLMULQDQ, VPOPCNTDQ, VBMI, VBMI2,
 // VAES, BITALG). Later to be added: BF16 (Cooper Lake). VP2INTERSECT is only in
 // Tiger Lake? We do not yet have uses for GFNI.
-#define HWY_AVX3_DL 8  // see HWY_WANT_AVX3_DL below
-#define HWY_AVX3 16
-#define HWY_AVX2 32
-// 64: reserved for AVX
-#define HWY_SSE4 128
-#define HWY_SSSE3 256
-// 512: reserved for SSE3 or SSE2
-
+#define HWY_AVX3_DL (1LL << 7)  // see HWY_WANT_AVX3_DL below
+#define HWY_AVX3 (1LL << 8)
+#define HWY_AVX2 (1LL << 9)
+// Bit 10: reserved for AVX
+#define HWY_SSE4 (1LL << 11)
+#define HWY_SSSE3 (1LL << 12)
+// Bits 13..14 reserved for SSE3 or SSE2 (2 targets)
 // The highest bit in the HWY_TARGETS mask that a x86 target can have. Used for
 // dynamic dispatch. All x86 target bits must be lower or equal to
 // (1 << HWY_HIGHEST_TARGET_BIT_X86) and they can only use
 // HWY_MAX_DYNAMIC_TARGETS in total.
-#define HWY_HIGHEST_TARGET_BIT_X86 9
+#define HWY_HIGHEST_TARGET_BIT_X86 14
 
-// 0x400, 0x800: reserved
-#define HWY_SVE2_128 0x1000  // specialized target (e.g. Arm N2)
-#define HWY_SVE_256 0x2000  // specialized target (e.g. Arm V1)
-#define HWY_SVE2 0x4000
-#define HWY_SVE 0x8000
-// 0x10000 reserved for Helium
-#define HWY_NEON 0x20000
+// --------------------------- Arm: 15 targets (+ one fallback)
+// Bits 15..23 reserved (9 targets)
+#define HWY_SVE2_128 (1LL << 24)  // specialized target (e.g. Arm N2)
+#define HWY_SVE_256 (1LL << 25)   // specialized target (e.g. Arm V1)
+#define HWY_SVE2 (1LL << 26)
+#define HWY_SVE (1LL << 27)
+#define HWY_NEON (1LL << 28)  // On A64, includes/requires AES
+// Bit 29 reserved (Helium?)
+#define HWY_HIGHEST_TARGET_BIT_ARM 29
 
-#define HWY_HIGHEST_TARGET_BIT_ARM 17
+// --------------------------- RISC-V: 9 targets (+ one fallback)
+// Bits 30..36 reserved (7 targets)
+#define HWY_RVV (1LL << 37)
+// Bit 38 reserved
+#define HWY_HIGHEST_TARGET_BIT_RVV 38
 
-// 0x40000 reserved
-#define HWY_PPC8 0x80000  // v2.07 or 3
-// 0x100000 reserved for prior VSX/AltiVec
+// --------------------------- Future expansion: 4 targets
+// Bits 39..42 reserved
 
-#define HWY_HIGHEST_TARGET_BIT_PPC 20
 
-// 0x200000, 0x400000 reserved
-#define HWY_WASM_EMU256 0x800000  // Experimental
-#define HWY_WASM 0x1000000
+// --------------------------- IBM Power: 9 targets (+ one fallback)
+// Bits 43..48 reserved (6 targets)
+#define HWY_PPC8 (1LL << 49)  // v2.07 or 3
+// Bits 50..51 reserved for prior VSX/AltiVec (2 targets)
+#define HWY_HIGHEST_TARGET_BIT_PPC 51
 
-#define HWY_HIGHEST_TARGET_BIT_WASM 24
+// --------------------------- WebAssembly: 9 targets (+ one fallback)
+// Bits 52..57 reserved (6 targets)
+#define HWY_WASM_EMU256 (1LL << 58)  // Experimental
+#define HWY_WASM (1LL << 59)
+// Bits 60 reserved
+#define HWY_HIGHEST_TARGET_BIT_WASM 60
 
-// 0x2000000, 0x4000000, 0x8000000 reserved
-#define HWY_RVV 0x10000000
+// --------------------------- Emulation: 2 targets
 
-#define HWY_HIGHEST_TARGET_BIT_RVV 28
+#define HWY_EMU128 (1LL << 61)
+// We do not add/left-shift, so this will not overflow to a negative number.
+#define HWY_SCALAR (1LL << 62)
+#define HWY_HIGHEST_TARGET_BIT_SCALAR 62
 
-#define HWY_EMU128 0x20000000
-#define HWY_SCALAR 0x40000000
-
-#define HWY_HIGHEST_TARGET_BIT_SCALAR 30
-
-// Cannot use higher values, otherwise HWY_TARGETS computation might overflow.
+// Do not use bit 63 - would be confusing to have negative numbers.
 
 //------------------------------------------------------------------------------
 // Set default blocklists
@@ -145,8 +155,8 @@
 #define HWY_BROKEN_TARGETS (HWY_NEON)
 
 // SVE[2] require recent clang or gcc versions.
-#elif (HWY_COMPILER_CLANG && HWY_COMPILER_CLANG < 1100) ||\
-(!HWY_COMPILER_CLANG && HWY_COMPILER_GCC && HWY_COMPILER_GCC < 1000)
+#elif (HWY_COMPILER_CLANG && HWY_COMPILER_CLANG < 1100) || \
+    (HWY_COMPILER_GCC_ACTUAL && HWY_COMPILER_GCC_ACTUAL < 1000)
 #define HWY_BROKEN_TARGETS (HWY_SVE | HWY_SVE2 | HWY_SVE_256 | HWY_SVE2_128)
 
 #else
@@ -159,6 +169,19 @@
 #define HWY_ENABLED(targets) \
   ((targets) & ~((HWY_DISABLED_TARGETS) | (HWY_BROKEN_TARGETS)))
 
+// Opt-out for EMU128 (affected by a GCC bug on multiple arches, fixed in 12.3:
+// see https://gcc.gnu.org/bugzilla/show_bug.cgi?id=106322). This is separate
+// from HWY_BROKEN_TARGETS because it affects the fallback target, which must
+// always be enabled. If 1, we instead choose HWY_SCALAR even without
+// HWY_COMPILE_ONLY_SCALAR being set.
+#if !defined(HWY_BROKEN_EMU128)  // allow overriding
+#if HWY_COMPILER_GCC_ACTUAL && HWY_COMPILER_GCC_ACTUAL < 1203
+#define HWY_BROKEN_EMU128 1
+#else
+#define HWY_BROKEN_EMU128 0
+#endif
+#endif  // HWY_BROKEN_EMU128
+
 //------------------------------------------------------------------------------
 // Detect baseline targets using predefined macros
 
@@ -166,7 +189,7 @@
 // instructions, implying the target CPU would have to support them. This does
 // not take the blocklist into account.
 
-#if defined(HWY_COMPILE_ONLY_SCALAR)
+#if defined(HWY_COMPILE_ONLY_SCALAR) || HWY_BROKEN_EMU128
 #define HWY_BASELINE_SCALAR HWY_SCALAR
 #else
 #define HWY_BASELINE_SCALAR HWY_EMU128
@@ -217,7 +240,7 @@
 #endif
 
 // Special handling for MSVC because it has fewer predefined macros:
-#if HWY_COMPILER_MSVC && !HWY_COMPILER_CLANG
+#if HWY_COMPILER_MSVC
 
 // 1) We can only be sure SSSE3/SSE4 are enabled if AVX is:
 //    https://stackoverflow.com/questions/18563978/.
@@ -343,10 +366,22 @@
 //------------------------------------------------------------------------------
 // Choose targets for dynamic dispatch according to one of four policies
 
-#if defined(HWY_COMPILE_ONLY_SCALAR) && defined(HWY_COMPILE_ONLY_STATIC)
-#error "Defined both HWY_COMPILE_ONLY_{SCALAR|STATIC} - bug?"
+#if 1 < (defined(HWY_COMPILE_ONLY_SCALAR) + defined(HWY_COMPILE_ONLY_EMU128) + \
+         defined(HWY_COMPILE_ONLY_STATIC))
+#error "Can only define one of HWY_COMPILE_ONLY_{SCALAR|EMU128|STATIC} - bug?"
 #endif
-// Defining either HWY_COMPILE_ONLY_* will trump HWY_COMPILE_ALL_ATTAINABLE.
+// Defining one of HWY_COMPILE_ONLY_* will trump HWY_COMPILE_ALL_ATTAINABLE.
+
+// Clang, GCC and MSVC allow runtime dispatch on x86.
+#if HWY_ARCH_X86
+#define HWY_HAVE_RUNTIME_DISPATCH 1
+// On Arm, currently only GCC does, and we require Linux to detect CPU
+// capabilities.
+#elif HWY_ARCH_ARM && HWY_COMPILER_GCC_ACTUAL && HWY_OS_LINUX
+#define HWY_HAVE_RUNTIME_DISPATCH 1
+#else
+#define HWY_HAVE_RUNTIME_DISPATCH 0
+#endif
 
 // AVX3_DL is not widely available yet. To reduce code size and compile time,
 // only include it in the set of attainable targets (for dynamic dispatch) if
@@ -357,16 +392,18 @@
 #define HWY_ATTAINABLE_AVX3_DL 0
 #endif
 
-#if HWY_ARCH_ARM_A64 && (HWY_ENABLED_BASELINE & HWY_SVE)
-#define HWY_ATTAINABLE_SVE_256 HWY_ENABLED(HWY_SVE_256)
+#if HWY_ARCH_ARM_A64 && \
+    ((HWY_ENABLED_BASELINE & HWY_SVE) || HWY_HAVE_RUNTIME_DISPATCH)
+#define HWY_ATTAINABLE_SVE HWY_ENABLED(HWY_SVE | HWY_SVE_256)
 #else
-#define HWY_ATTAINABLE_SVE_256 0
+#define HWY_ATTAINABLE_SVE 0
 #endif
 
-#if HWY_ARCH_ARM_A64 && (HWY_ENABLED_BASELINE & HWY_SVE2)
-#define HWY_ATTAINABLE_SVE2_128 HWY_ENABLED(HWY_SVE2_128)
+#if HWY_ARCH_ARM_A64 && \
+    ((HWY_ENABLED_BASELINE & HWY_SVE2) || HWY_HAVE_RUNTIME_DISPATCH)
+#define HWY_ATTAINABLE_SVE2 HWY_ENABLED(HWY_SVE2 | HWY_SVE2_128)
 #else
-#define HWY_ATTAINABLE_SVE2_128 0
+#define HWY_ATTAINABLE_SVE2 0
 #endif
 
 // Attainable means enabled and the compiler allows intrinsics (even when not
@@ -375,14 +412,25 @@
 #define HWY_ATTAINABLE_TARGETS                                        \
   HWY_ENABLED(HWY_BASELINE_SCALAR | HWY_SSSE3 | HWY_SSE4 | HWY_AVX2 | \
               HWY_AVX3 | HWY_ATTAINABLE_AVX3_DL)
+#elif HWY_ARCH_ARM && HWY_HAVE_RUNTIME_DISPATCH
+#define HWY_ATTAINABLE_TARGETS                                      \
+  HWY_ENABLED(HWY_BASELINE_SCALAR | HWY_NEON | HWY_ATTAINABLE_SVE | \
+              HWY_ATTAINABLE_SVE2)
 #else
 #define HWY_ATTAINABLE_TARGETS \
-  (HWY_ENABLED_BASELINE | HWY_ATTAINABLE_SVE_256 | HWY_ATTAINABLE_SVE2_128)
+  (HWY_ENABLED_BASELINE | HWY_ATTAINABLE_SVE | HWY_ATTAINABLE_SVE2)
 #endif
 
-// 1) For older compilers: disable all SIMD (could also set HWY_DISABLED_TARGETS
-// to ~HWY_SCALAR, but this is more explicit).
-#if defined(HWY_COMPILE_ONLY_SCALAR)
+// 1) For older compilers: avoid SIMD intrinsics, but still support all ops.
+#if defined(HWY_COMPILE_ONLY_EMU128) && !HWY_BROKEN_EMU128
+#undef HWY_STATIC_TARGET
+#define HWY_STATIC_TARGET HWY_EMU128  // override baseline
+#define HWY_TARGETS HWY_EMU128
+
+// 1b) HWY_SCALAR is less capable than HWY_EMU128 (which supports all ops), but
+// we currently still support it for backwards compatibility.
+#elif defined(HWY_COMPILE_ONLY_SCALAR) || \
+    (defined(HWY_COMPILE_ONLY_EMU128) && HWY_BROKEN_EMU128)
 #undef HWY_STATIC_TARGET
 #define HWY_STATIC_TARGET HWY_SCALAR  // override baseline
 #define HWY_TARGETS HWY_SCALAR
@@ -396,9 +444,12 @@
 #define HWY_TARGETS HWY_ATTAINABLE_TARGETS
 
 // 4) Default: attainable WITHOUT non-best baseline. This reduces code size by
-// excluding superseded targets, in particular scalar.
+// excluding superseded targets, in particular scalar. Note: HWY_STATIC_TARGET
+// may be 2^62 (HWY_SCALAR), so we must not left-shift/add it. Subtracting one
+// sets all lower bits (better targets), then we also include the static target.
 #else
-#define HWY_TARGETS (HWY_ATTAINABLE_TARGETS & (2 * HWY_STATIC_TARGET - 1))
+#define HWY_TARGETS \
+  (HWY_ATTAINABLE_TARGETS & ((HWY_STATIC_TARGET - 1LL) | HWY_STATIC_TARGET))
 
 #endif  // target policy
 

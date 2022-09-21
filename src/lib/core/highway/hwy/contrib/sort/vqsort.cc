@@ -17,11 +17,9 @@
 
 #include <string.h>  // memset
 
-#include "hwy/aligned_allocator.h"
-
 #undef HWY_TARGET_INCLUDE
 #define HWY_TARGET_INCLUDE "hwy/contrib/sort/vqsort.cc"
-#include "hwy/foreach_target.h"
+#include "hwy/foreach_target.h"  // IWYU pragma: keep
 
 // After foreach_target
 #include "hwy/contrib/sort/shared-inl.h"
@@ -36,13 +34,17 @@
 #endif
 #endif  // VQSORT_STACK
 
+#if !VQSORT_STACK
+#include "hwy/aligned_allocator.h"
+#endif
+
 // Check if we have sys/random.h. First skip some systems on which the check
 // itself (features.h) might be problematic.
 #if defined(ANDROID) || defined(__ANDROID__) || HWY_ARCH_RVV
 #define VQSORT_GETRANDOM 0
 #endif
 
-#if !defined(VQSORT_GETRANDOM) && (defined(linux) || defined(__linux__))
+#if !defined(VQSORT_GETRANDOM) && HWY_OS_LINUX
 #include <features.h>
 
 // ---- which libc
