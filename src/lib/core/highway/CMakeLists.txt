@@ -441,10 +441,10 @@ set_target_properties(hwy_benchmark
 
 endif()  # HWY_ENABLE_EXAMPLES
 # -------------------------------------------------------- Tests
-
+set(HWY_ENABLE_TESTS ON CACHE BOOL "Disable HWY tests")
 include(CTest)
 
-if(BUILD_TESTING)
+if(BUILD_TESTING AND HWY_ENABLE_TESTS)
 enable_testing()
 include(GoogleTest)
 

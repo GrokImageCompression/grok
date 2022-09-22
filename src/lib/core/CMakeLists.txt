@@ -237,6 +237,7 @@ set(HWY_ENABLE_CONTRIB OFF CACHE BOOL "Enable HWY contrib")
 set(HWY_ENABLE_INSTALL OFF CACHE BOOL "Enable HWY install")
 set(HWY_FORCE_STATIC_LIBS ON CACHE BOOL "Enable HWY force static libs")
 set(INSTALL_GTEST OFF CACHE BOOL "Install GTest")
+set(HWY_ENABLE_TESTS OFF CACHE BOOL "Disable tests")
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/highway EXCLUDE_FROM_ALL)
 
 add_library(${GROK_CORE_NAME} ${GROK_LIBRARY_SRCS})
