@@ -10,9 +10,6 @@ Build-Depends: cmake (>= 3.16.0),
                libjpeg-dev,
                zlib1g-dev,
                libimage-exiftool-perl,
-               build-essential [arc],
-               sysvinit-utils (>= 3.05-4~) [kfreebsd-amd64 kfreebsd-i386],
-               cmake-data (= 3.23.2-1) [sparc64]
 Build-Depends-Indep: doxygen
 Standards-Version: 4.6.1.0
 Section: libs
