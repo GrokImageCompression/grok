@@ -15,6 +15,7 @@
  */
 
 #include "grk_apps_config.h"
+#include <iostream>
 #ifdef GROK_HAVE_EXIFTOOL
 #ifndef _MSC_VER
 #pragma GCC diagnostic push
@@ -36,7 +37,6 @@
 #endif
 #include "exif.h"
 #include <stdexcept>
-#include <iostream>
 
 namespace grk
 {
