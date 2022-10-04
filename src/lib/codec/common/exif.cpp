@@ -15,6 +15,8 @@
  */
 
 #include "grk_apps_config.h"
+#include <iostream>
+
 #ifdef GROK_HAVE_EXIFTOOL
 #ifndef _MSC_VER
 #pragma GCC diagnostic push
@@ -26,6 +28,7 @@
 #pragma GCC diagnostic ignored "-Wconversion"
 #pragma GCC diagnostic ignored "-Wsign-conversion"
 #endif
+
 #define PERL_NO_GET_CONTEXT
 #include "EXTERN.h"
 #include "perl.h"
@@ -36,7 +39,6 @@
 #endif
 #include "exif.h"
 #include <stdexcept>
-#include <iostream>
 
 namespace grk
 {
