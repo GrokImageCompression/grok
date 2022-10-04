@@ -1,9 +1,10 @@
 libgrokj2k (10.0.4-1) unstable; urgency=medium
 
     * Maintenance bug fix release
-    * Fixes
+    * Fixes a bug in older macOS build
+    * Fixes bug in Doxyfile.dox.cmake.in file (Closes: #972494)
 
- -- Aaron Boxer <boxerab@protonmail.com>  Fri, 23 Sep 2022 8:10:00 +0200
+ -- Aaron Boxer <boxerab@protonmail.com>  Tue, 4 Oct 2022 8:10:00 +0200
 
 libgrokj2k (10.0.3-1) unstable; urgency=medium
 
