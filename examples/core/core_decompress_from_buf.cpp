@@ -149,8 +149,6 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
     printf("Width: %d\n", image->x1 - image->x0);
     printf("Height: %d\n", image->y1 - image->y0);
     printf("Number of components: %d\n", image->numcomps);
-    for (uint16_t compno = 0; compno < image->numcomps; ++compno)
-        printf("Precision of component %d : %d\n", compno,image->comps[compno].prec);
     printf("Number of tiles: %d\n", numTiles);
     if (numTiles > 1) {
         printf("Nominal tile dimensions: (%d,%d)\n",headerInfo.t_width, headerInfo.t_height);
@@ -176,7 +174,18 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
             fprintf(stderr, "Image has null data for component %d\n",compno);
             goto beach;
         }
-        // component data is stored in precision `comp->prec`
+        printf("Component %d : dimensions (%d,%d) at precision %d\n",
+                                compno,compWidth,compHeight,comp->prec);
+
+        // copy data, taking component stride into account
+        auto copiedData = new int32_t[compWidth * compHeight];
+        auto copyPtr = copiedData;
+        for (uint32_t j = 0; j < compHeight; ++j) {
+           memcpy(copyPtr, compData, compWidth * sizeof(int32_t));
+           copyPtr += compWidth;
+           compData += comp->stride;
+        }
+        delete[] copiedData;
     }
 
 	rc = EXIT_SUCCESS;

@@ -159,7 +159,18 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
             fprintf(stderr, "Image has null data for component %d\n",compno);
             goto beach;
         }
-        // component data is stored in precision `comp->prec`
+        printf("Component %d : dimensions (%d,%d) at precision %d\n",
+                                compno,compWidth,compHeight,comp->prec);
+
+        // copy data, taking component stride into account
+        auto copiedData = new int32_t[compWidth * compHeight];
+        auto copyPtr = copiedData;
+        for (uint32_t j = 0; j < compHeight; ++j) {
+           memcpy(copyPtr, compData, compWidth * sizeof(int32_t));
+           copyPtr += compWidth;
+           compData += comp->stride;
+        }
+        delete[] copiedData;
     }
 
 	rc = EXIT_SUCCESS;
