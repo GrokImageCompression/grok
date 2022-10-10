@@ -21,7 +21,6 @@
 #include "grk_includes.h"
 
 #undef HWY_TARGET_INCLUDE
-//#define HWY_DISABLED_TARGETS (HWY_AVX2)
 #define HWY_TARGET_INCLUDE "point_transform/mct.cpp"
 #include <hwy/foreach_target.h>
 #include <hwy/highway.h>
