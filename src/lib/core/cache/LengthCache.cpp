@@ -99,6 +99,7 @@ bool TileInfo::update(uint16_t tileIndex, uint8_t currentTilePart, uint8_t numTi
 				temp[i] = tilePartInfo[i];
 			delete[] tilePartInfo;
 			tilePartInfo = temp;
+			allocatedTileParts *=2;
 		}
 	}
 	tilePartInfo[currentTilePart] = TilePartInfo(tileIndex, currentTilePart, numTileParts);
