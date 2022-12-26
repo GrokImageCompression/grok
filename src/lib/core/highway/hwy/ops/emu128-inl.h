@@ -18,6 +18,7 @@
 
 #include <stddef.h>
 #include <stdint.h>
+#include <cmath>  // std::abs, std::isnan
 
 #include "hwy/base.h"
 #include "hwy/ops/shared-inl.h"
@@ -32,6 +33,9 @@ using Full128 = Simd<T, 16 / sizeof(T), 0>;
 // (Wrapper class required for overloading comparison operators.)
 template <typename T, size_t N = 16 / sizeof(T)>
 struct Vec128 {
+  using PrivateT = T;                     // only for DFromV
+  static constexpr size_t kPrivateN = N;  // only for DFromV
+
   HWY_INLINE Vec128() = default;
   Vec128(const Vec128&) = default;
   Vec128& operator=(const Vec128&) = default;
@@ -78,23 +82,11 @@ struct Mask128 {
   Raw bits[16 / sizeof(T)] = {};
 };
 
-namespace detail {
-
-// Deduce Simd<T, N, 0> from Vec128<T, N>
-struct Deduce128 {
-  template <typename T, size_t N>
-  Simd<T, N, 0> operator()(Vec128<T, N>) const {
-    return Simd<T, N, 0>();
-  }
-};
-
-}  // namespace detail
+template <class V>
+using DFromV = Simd<typename V::PrivateT, V::kPrivateN, 0>;
 
 template <class V>
-using DFromV = decltype(detail::Deduce128()(V()));
-
-template <class V>
-using TFromV = TFromD<DFromV<V>>;
+using TFromV = typename V::PrivateT;
 
 // ------------------------------ BitCast
 
@@ -228,6 +220,13 @@ HWY_API Vec128<T, N> Xor(const Vec128<T, N> a, const Vec128<T, N> b) {
 template <typename T, size_t N>
 HWY_API Vec128<T, N> operator^(const Vec128<T, N> a, const Vec128<T, N> b) {
   return Xor(a, b);
+}
+
+// ------------------------------ Xor3
+
+template <typename T, size_t N>
+HWY_API Vec128<T, N> Xor3(Vec128<T, N> x1, Vec128<T, N> x2, Vec128<T, N> x3) {
+  return Xor(x1, Xor(x2, x3));
 }
 
 // ------------------------------ Or3
@@ -378,6 +377,12 @@ template <typename T, size_t N>
 HWY_API Mask128<T, N> Xor(const Mask128<T, N> a, Mask128<T, N> b) {
   const Simd<T, N, 0> d;
   return MaskFromVec(Xor(VecFromMask(d, a), VecFromMask(d, b)));
+}
+
+template <typename T, size_t N>
+HWY_API Mask128<T, N> ExclusiveNeither(const Mask128<T, N> a, Mask128<T, N> b) {
+  const Simd<T, N, 0> d;
+  return MaskFromVec(AndNot(VecFromMask(d, a), Not(VecFromMask(d, b))));
 }
 
 // ================================================== SHIFTS
@@ -1235,12 +1240,29 @@ HWY_API Mask128<uint64_t> Eq128(Simd<uint64_t, 2, 0> /* tag */,
   return ret;
 }
 
+HWY_API Mask128<uint64_t> Ne128(Simd<uint64_t, 2, 0> /* tag */,
+                                Vec128<uint64_t> a, const Vec128<uint64_t> b) {
+  const bool ne = a.raw[1] != b.raw[1] || a.raw[0] != b.raw[0];
+  Mask128<uint64_t> ret;
+  ret.bits[0] = ret.bits[1] = Mask128<uint64_t>::FromBool(ne);
+  return ret;
+}
+
 HWY_API Mask128<uint64_t> Eq128Upper(Simd<uint64_t, 2, 0> /* tag */,
                                      Vec128<uint64_t> a,
                                      const Vec128<uint64_t> b) {
   const bool eq = a.raw[1] == b.raw[1];
   Mask128<uint64_t> ret;
   ret.bits[0] = ret.bits[1] = Mask128<uint64_t>::FromBool(eq);
+  return ret;
+}
+
+HWY_API Mask128<uint64_t> Ne128Upper(Simd<uint64_t, 2, 0> /* tag */,
+                                     Vec128<uint64_t> a,
+                                     const Vec128<uint64_t> b) {
+  const bool ne = a.raw[1] != b.raw[1];
+  Mask128<uint64_t> ret;
+  ret.bits[0] = ret.bits[1] = Mask128<uint64_t>::FromBool(ne);
   return ret;
 }
 
@@ -2296,6 +2318,16 @@ HWY_API size_t CountTrue(Simd<T, N, 0> /* tag */, const Mask128<T, N> mask) {
 }
 
 template <typename T, size_t N>
+HWY_API size_t FindKnownFirstTrue(Simd<T, N, 0> /* tag */,
+                               const Mask128<T, N> mask) {
+  for (size_t i = 0; i < N; ++i) {
+    if (mask.bits[i] != 0) return i;
+  }
+  HWY_DASSERT(false);
+  return 0;
+}
+
+template <typename T, size_t N>
 HWY_API intptr_t FindFirstTrue(Simd<T, N, 0> /* tag */,
                                const Mask128<T, N> mask) {
   for (size_t i = 0; i < N; ++i) {
@@ -2308,7 +2340,7 @@ HWY_API intptr_t FindFirstTrue(Simd<T, N, 0> /* tag */,
 
 template <typename T>
 struct CompressIsPartition {
-  enum { value = 1 };
+  enum { value = (sizeof(T) != 1) };
 };
 
 template <typename T, size_t N>
@@ -2401,28 +2433,36 @@ HWY_API Vec128<float, N> ReorderWidenMulAccumulate(Simd<float, N, 0> df32,
                                                    Vec128<bfloat16_t, 2 * N> b,
                                                    const Vec128<float, N> sum0,
                                                    Vec128<float, N>& sum1) {
-  const Rebind<bfloat16_t, decltype(df32)> dbf16;
+  const Rebind<uint32_t, decltype(df32)> du32;
+  using VU32 = VFromD<decltype(du32)>;
+  const VU32 odd = Set(du32, 0xFFFF0000u);  // bfloat16 is the upper half of f32
   // Avoid ZipLower/Upper so this also works on big-endian systems.
-  const Vec128<float, N> a0 = PromoteTo(df32, LowerHalf(dbf16, a));
-  const Vec128<float, N> a1 = PromoteTo(df32, UpperHalf(dbf16, a));
-  const Vec128<float, N> b0 = PromoteTo(df32, LowerHalf(dbf16, b));
-  const Vec128<float, N> b1 = PromoteTo(df32, UpperHalf(dbf16, b));
-  sum1 = MulAdd(BitCast(df32, a1), BitCast(df32, b1), sum1);
-  return MulAdd(BitCast(df32, a0), BitCast(df32, b0), sum0);
+  const VU32 ae = ShiftLeft<16>(BitCast(du32, a));
+  const VU32 ao = And(BitCast(du32, a), odd);
+  const VU32 be = ShiftLeft<16>(BitCast(du32, b));
+  const VU32 bo = And(BitCast(du32, b), odd);
+  sum1 = MulAdd(BitCast(df32, ao), BitCast(df32, bo), sum1);
+  return MulAdd(BitCast(df32, ae), BitCast(df32, be), sum0);
 }
 
 template <size_t N>
 HWY_API Vec128<int32_t, N> ReorderWidenMulAccumulate(
     Simd<int32_t, N, 0> d32, Vec128<int16_t, 2 * N> a, Vec128<int16_t, 2 * N> b,
     const Vec128<int32_t, N> sum0, Vec128<int32_t, N>& sum1) {
-  const Rebind<int16_t, decltype(d32)> d16;
-  // Avoid ZipLower/Upper so this also works on big-endian systems.
-  const Vec128<int32_t, N> a0 = PromoteTo(d32, LowerHalf(d16, a));
-  const Vec128<int32_t, N> a1 = PromoteTo(d32, UpperHalf(d16, a));
-  const Vec128<int32_t, N> b0 = PromoteTo(d32, LowerHalf(d16, b));
-  const Vec128<int32_t, N> b1 = PromoteTo(d32, UpperHalf(d16, b));
-  sum1 = MulAdd(BitCast(d32, a1), BitCast(d32, b1), sum1);
-  return MulAdd(BitCast(d32, a0), BitCast(d32, b0), sum0);
+  using VI32 = VFromD<decltype(d32)>;
+  // Manual sign extension requires two shifts for even lanes.
+  const VI32 ae = ShiftRight<16>(ShiftLeft<16>(BitCast(d32, a)));
+  const VI32 be = ShiftRight<16>(ShiftLeft<16>(BitCast(d32, b)));
+  const VI32 ao = ShiftRight<16>(BitCast(d32, a));
+  const VI32 bo = ShiftRight<16>(BitCast(d32, b));
+  sum1 = Add(Mul(ao, bo), sum1);
+  return Add(Mul(ae, be), sum0);
+}
+
+// ------------------------------ RearrangeToOddPlusEven
+template <class VW>
+HWY_API VW RearrangeToOddPlusEven(const VW sum0, const VW sum1) {
+  return Add(sum0, sum1);
 }
 
 // ================================================== REDUCTIONS

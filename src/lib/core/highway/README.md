@@ -55,7 +55,8 @@ layouts, and aligned/padded allocations.
 
 Online demos using Compiler Explorer:
 
--   [generating code for multiple targets](https://gcc.godbolt.org/z/n6rx6xK5h) (recommended)
+-   [multiple targets with dynamic dispatch](https://gcc.godbolt.org/z/zP7MYe9Yf)
+    (recommended)
 -   [single target using -m flags](https://gcc.godbolt.org/z/rGnjMevKG)
 
 Projects using Highway: (to add yours, feel free to raise an issue or contact us
@@ -73,6 +74,10 @@ via the below email)
 Supported targets: scalar, S-SSE3, SSE4, AVX2, AVX-512, AVX3_DL (~Icelake,
 requires opt-in by defining `HWY_WANT_AVX3_DL`), NEON (ARMv7 and v8), SVE, SVE2,
 WASM SIMD, RISC-V V.
+
+`HWY_WASM_EMU256` is a 2x unrolled version of wasm128 and is enabled if
+`HWY_WANT_WASM2` is defined. This will remain supported until it is potentially
+superseded by a future version of WASM.
 
 SVE was initially tested using farm_sve (see acknowledgments).
 
@@ -103,6 +108,16 @@ The `contrib` directory contains SIMD-related utilities: an image class with
 aligned rows, a math library (16 functions already implemented, mostly
 trigonometry), and functions for computing dot products and sorting.
 
+### Other libraries
+
+If you only require x86 support, you may also use Agner Fog's
+[VCL vector class library](https://github.com/vectorclass). It includes many
+functions including a complete math library.
+
+If you have existing code using x86/NEON intrinsics, you may be interested in
+[SIMDe](https://github.com/simd-everywhere/simde), which emulates those
+intrinsics using other platforms' intrinsics or autovectorization.
+
 ## Installation
 
 This project uses CMake to generate and build. In a Debian-based system you can
@@ -121,6 +136,9 @@ installing gtest separately:
 sudo apt install libgtest-dev
 ```
 
+Running cross-compiled tests requires support from the OS, which on Debian is
+provided by the `qemu-user-binfmt` package.
+
 To build Highway as a shared or static library (depending on BUILD_SHARED_LIBS),
 the standard CMake workflow can be used:
 
@@ -133,6 +151,10 @@ make -j && make test
 Or you can run `run_tests.sh` (`run_tests.bat` on Windows).
 
 Bazel is also supported for building, but it is not as widely used/tested.
+
+When building for Arm v7, a limitation of current compilers requires you to add
+`-DHWY_CMAKE_ARM7:BOOL=ON` to the CMake command line; see #834 and #1032. We
+understand that work is underway to remove this limitation.
 
 ## Quick start
 
@@ -166,8 +188,8 @@ Due to ADL restrictions, user code calling Highway ops must either:
     hn::Add()`; or
 *   add using-declarations for each op used: `using hwy::HWY_NAMESPACE::Add;`.
 
-Additionally, each function that calls Highway ops must either be prefixed with
-`HWY_ATTR`, OR reside between `HWY_BEFORE_NAMESPACE()` and
+Additionally, each function that calls Highway ops (such as `Load`) must either
+be prefixed with `HWY_ATTR`, OR reside between `HWY_BEFORE_NAMESPACE()` and
 `HWY_AFTER_NAMESPACE()`. Lambda functions currently require `HWY_ATTR` before
 their opening brace.
 
@@ -188,6 +210,27 @@ they use static or dynamic dispatch.
     module is automatically compiled for each target in `HWY_TARGETS` (see
     [quick-reference](g3doc/quick_reference.md)) if `HWY_TARGET_INCLUDE` is
     defined and `foreach_target.h` is included.
+
+When using dynamic dispatch, `foreach_target.h` is included from translation
+units (.cc files), not headers. Headers containing vector code shared between
+several translation units require a special include guard, for example the
+following taken from `examples/skeleton-inl.h`:
+
+```
+#if defined(HIGHWAY_HWY_EXAMPLES_SKELETON_INL_H_) == defined(HWY_TARGET_TOGGLE)
+#ifdef HIGHWAY_HWY_EXAMPLES_SKELETON_INL_H_
+#undef HIGHWAY_HWY_EXAMPLES_SKELETON_INL_H_
+#else
+#define HIGHWAY_HWY_EXAMPLES_SKELETON_INL_H_
+#endif
+
+#include "hwy/highway.h"
+// Your vector code
+#endif
+```
+
+By convention, we name such headers `-inl.h` because their contents (often
+function templates) are usually inlined.
 
 ## Compiler flags
 

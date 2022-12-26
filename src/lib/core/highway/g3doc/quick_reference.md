@@ -49,7 +49,9 @@ The public headers are:
 *   hwy/tests/test_util-inl.h: defines macros for invoking tests on all
     available targets, plus per-target functions useful in tests.
 
-SIMD implementations must be preceded and followed by the following:
+Highway provides helper macros to simplify your vector code and ensure support
+for dynamic dispatch. To use these, add the following to the start and end of
+any vector code:
 
 ```
 #include "hwy/highway.h"
@@ -64,6 +66,10 @@ namespace HWY_NAMESPACE {
 }  // namespace project - optional
 HWY_AFTER_NAMESPACE();
 ```
+
+If you choose not to use the `BEFORE/AFTER` lines, you must prefix any function
+that calls Highway ops such as `Load` with `HWY_ATTR`. You can omit the
+`HWY_NAMESPACE` lines if not using dynamic dispatch.
 
 ## Notation in this doc
 
@@ -179,10 +185,13 @@ the smaller types must be obtained from those of the larger type (e.g. via
 
 ## Using unspecified vector types
 
-Vector types are unspecified and depend on the target. User code could define
-them as `auto`, but it is more readable (due to making the type visible) to use
-an alias such as `Vec<D>`, or `decltype(Zero(d))`. Similarly, the mask type can
-be obtained via `Mask<D>`.
+Vector types are unspecified and depend on the target. Your code could define
+vector variables using `auto`, but it is more readable (due to making the type
+visible) to use an alias such as `Vec<D>`, or `decltype(Zero(d))`. Similarly,
+the mask type can be obtained via `Mask<D>`. Often your code will first define a
+`d` lvalue using `ScalableTag<T>`. You may wish to define an alias for your
+vector types such as `using VecT = Vec<decltype(d)>`. Do not use undocumented
+types such as `Vec128`; these may work on most targets, but not all (e.g. SVE).
 
 Vectors are sizeless types on RVV/SVE. Therefore, vectors must not be used in
 arrays/STL containers (use the lane type `T` instead), class members,
@@ -200,8 +209,8 @@ lack the limit on `N` established by the original `D`. However, `Vec<DV>` is the
 same as `V`.
 
 Thus a template argument `V` suffices for generic functions that do not load
-from/store to memory: `template<class V> V Mul4(V v) { return v *
-Set(DFromV<V>(), 4); }`.
+from/store to memory: `template<class V> V Mul4(V v) { return Mul(v,
+Set(DFromV<V>(), 4)); }`.
 
 Example of mixing partial vectors with generic functions:
 
@@ -442,13 +451,24 @@ All other ops in this section are only available if `HWY_TARGET != HWY_SCALAR`:
     b[i]` for every odd `i`, in lanes `i - 1` (lower) and `i` (upper). Only
     supported if `HWY_TARGET != HWY_SCALAR`.
 
-*   `V`: `{bf,i}16`, `D`: `RepartitionToWide<DFromV<V>>` \
-    <code>Vec<D> **ReorderWidenMulAccumulate**(D d, V a, V b, Vec<D> sum0,
-    Vec<D>& sum1)</code>: widens `a` and `b` to `TFromD<D>`, then adds `a[i] *
-    b[i]` to either `sum1[j]` or lane `j` of the return value, where `j = P(i)`
-    and `P` is a permutation. The only guarantee is that `SumOfLanes(d,
+*   `V`: `{bf,i}16`, `D`: `RepartitionToWide<DFromV<V>>`, `VW`: `Vec<D>` \
+    <code>VW **ReorderWidenMulAccumulate**(D d, V a, V b, VW sum0, VW&
+    sum1)</code>: widens `a` and `b` to `TFromD<D>`, then adds `a[i] * b[i]` to
+    either `sum1[j]` or lane `j` of the return value, where `j = P(i)` and `P`
+    is a permutation. The only guarantee is that `SumOfLanes(d,
     Add(return_value, sum1))` is the sum of all `a[i] * b[i]`. This is useful
     for computing dot products and the L2 norm.
+
+*   `VW`: `{f,i}32` \
+    <code>VW **RearrangeToOddPlusEven**(VW sum0, VW sum1)</code>: returns in
+    each 32-bit lane with index `i` `a[2*i+1]*b[2*i+1] + a[2*i+0]*b[2*i+0]`.
+    `sum0` must be the return value of a prior `ReorderWidenMulAccumulate`, and
+    `sum1` must be its last (output) argument. In other words, this strengthens
+    the invariant of `ReorderWidenMulAccumulate` such that each 32-bit lane is
+    the sum of the widened products whose 16-bit inputs came from the top and
+    bottom halves of the 32-bit lane. This is typically called after a series of
+    calls to `ReorderWidenMulAccumulate`, as opposed to after each one.
+    Exception: if `HWY_TARGET == HWY_SCALAR`, returns `a[0]*b[0]`.
 
 #### Fused multiply-add
 
@@ -571,7 +591,12 @@ types, and on SVE/RVV.
 The following three-argument functions may be more efficient than assembling
 them from 2-argument functions:
 
+*   <code>V **Xor3**(V x1, V x2, V x3)</code>: returns `x1[i] ^ x2[i] ^ x3[i]`.
+    This is more efficient than `Or3` on some targets. When inputs are disjoint
+    (no bit is set in more than one argument), `Xor3` and `Or3` are equivalent
+    and you should use the former.
 *   <code>V **Or3**(V o1, V o2, V o3)</code>: returns `o1[i] | o2[i] | o3[i]`.
+    This is less efficient than `Xor3` on some targets; use that where possible.
 *   <code>V **OrAnd**(V o, V a1, V a2)</code>: returns `o[i] | (a1[i] & a2[i])`.
 
 Special functions for signed types:
@@ -646,6 +671,11 @@ encoding depends on the platform).
 *   <code>intptr_t **FindFirstTrue**(D, M m)</code>: returns the index of the
     first (i.e. lowest index) `m[i]` that is true, or -1 if none are.
 
+*   <code>size_t **FindKnownFirstTrue**(D, M m)</code>: returns the index of the
+    first (i.e. lowest index) `m[i]` that is true. Requires `!AllFalse(d, m)`,
+    otherwise results are undefined. This is typically more efficient than
+    `FindFirstTrue`.
+
 #### Ternary operator
 
 For `IfThen*`, masks must adhere to the invariant established by `MaskFromVec`:
@@ -673,7 +703,7 @@ false is zero, true has all bits set:
     whether both input mask elements were true.
 
 *   <code>M **AndNot**(M not_a, M b)</code>: returns mask of elements indicating
-    whether not_a is false and b is true.
+    whether `not_a` is false and `b` is true.
 
 *   <code>M **Or**(M a, M b)</code>: returns mask of elements indicating whether
     either input mask element was true.
@@ -681,20 +711,24 @@ false is zero, true has all bits set:
 *   <code>M **Xor**(M a, M b)</code>: returns mask of elements indicating
     whether exactly one input mask element was true.
 
+*   <code>M **ExclusiveNeither**(M a, M b)</code>: returns mask of elements
+    indicating `a` is false and `b` is false. Undefined if both are true. We
+    choose not to provide NotOr/NotXor because x86 and SVE only define one of
+    these operations. This op is for situations where the inputs are known to be
+    mutually exclusive.
+
 #### Compress
 
-*   `V`: `{u,i,f}{16,32,64}` \
-    <code>V **Compress**(V v, M m)</code>: returns `r` such that `r[n]` is
+*   <code>V **Compress**(V v, M m)</code>: returns `r` such that `r[n]` is
     `v[i]`, with `i` the n-th lane index (starting from 0) where `m[i]` is true.
     Compacts lanes whose mask is true into the lower lanes. For targets and lane
     type `T` where `CompressIsPartition<T>::value` is true, the upper lanes are
     those whose mask is false (thus `Compress` corresponds to partitioning
     according to the mask). Otherwise, the upper lanes are
-    implementation-defined. Slow with 16-bit lanes. Use this form when the input
-    is already a mask, e.g. returned by a comparison.
+    implementation-defined. Potentially slow with 8 and 16-bit lanes. Use this
+    form when the input is already a mask, e.g. returned by a comparison.
 
-*   `V`: `{u,i,f}{16,32,64}` \
-    <code>V **CompressNot**(V v, M m)</code>: equivalent to `Compress(v,
+*   <code>V **CompressNot**(V v, M m)</code>: equivalent to `Compress(v,
     Not(m))` but possibly faster if `CompressIsPartition<T>::value` is true.
 
 *   `V`: `u64` \
@@ -703,32 +737,28 @@ false is zero, true has all bits set:
     false), e.g. as returned by `Lt128`. This is a no-op for 128 bit vectors.
     Unavailable if `HWY_TARGET == HWY_SCALAR`.
 
-*   `V`: `{u,i,f}{16,32,64}` \
-    <code>size_t **CompressStore**(V v, M m, D d, T* p)</code>: writes lanes
+*   <code>size_t **CompressStore**(V v, M m, D d, T* p)</code>: writes lanes
     whose mask `m` is true into `p`, starting from lane 0. Returns `CountTrue(d,
     m)`, the number of valid lanes. May be implemented as `Compress` followed by
-    `StoreU`; lanes after the valid ones may still be overwritten! Slower for
-    16-bit lanes.
+    `StoreU`; lanes after the valid ones may still be overwritten! Potentially
+    slow with 8 and 16-bit lanes.
 
-*   `V`: `{u,i,f}{16,32,64}` \
-    <code>size_t **CompressBlendedStore**(V v, M m, D d, T* p)</code>: writes
+*   <code>size_t **CompressBlendedStore**(V v, M m, D d, T* p)</code>: writes
     only lanes whose mask `m` is true into `p`, starting from lane 0. Returns
     `CountTrue(d, m)`, the number of lanes written. Does not modify subsequent
     lanes, but there is no guarantee of atomicity because this may be
     implemented as `Compress, LoadU, IfThenElse(FirstN), StoreU`.
 
-*   `V`: `{u,i,f}{16,32,64}` \
-    <code>V **CompressBits**(V v, const uint8_t* HWY_RESTRICT bits)</code>:
+*   <code>V **CompressBits**(V v, const uint8_t* HWY_RESTRICT bits)</code>:
     Equivalent to, but often faster than `Compress(v, LoadMaskBits(d, bits))`.
     `bits` is as specified for `LoadMaskBits`. If called multiple times, the
     `bits` pointer passed to this function must also be marked `HWY_RESTRICT` to
     avoid repeated work. Note that if the vector has less than 8 elements,
     incrementing `bits` will not work as intended for packed bit arrays. As with
     `Compress`, `CompressIsPartition` indicates the mask=false lanes are moved
-    to the upper lanes; this op is also slow for 16-bit lanes.
+    to the upper lanes. Potentially slow with 8 and 16-bit lanes.
 
-*   `V`: `{u,i,f}{16,32,64}` \
-    <code>size_t **CompressBitsStore**(V v, const uint8_t* HWY_RESTRICT bits, D
+*   <code>size_t **CompressBitsStore**(V v, const uint8_t* HWY_RESTRICT bits, D
     d, T* p)</code>: combination of `CompressStore` and `CompressBits`, see
     remarks there.
 
@@ -781,11 +811,25 @@ These return a mask (see above) indicating whether the condition is true.
     false. Unavailable if `HWY_TARGET == HWY_SCALAR`.
 
 *   `V`: `u64` \
+    <code>M **Ne128**(D, V a, V b)</code>: for each adjacent pair of 64-bit
+    lanes (e.g. indices 1,0), returns whether `a[1]:a[0]` concatenated to an
+    unsigned 128-bit integer (least significant bits in `a[0]`) differs from
+    `b[1]:b[0]`. For each pair, the mask lanes are either both true or both
+    false. Unavailable if `HWY_TARGET == HWY_SCALAR`.
+
+*   `V`: `u64` \
     <code>M **Eq128Upper**(D, V a, V b)</code>: for each adjacent pair of 64-bit
     lanes (e.g. indices 1,0), returns whether `a[1]` equals `b[1]`. For each
     pair, the mask lanes are either both true or both false. This is useful for
     comparing 64-bit keys alongside 64-bit values. Only available if `HWY_TARGET
     != HWY_SCALAR`.
+
+*   `V`: `u64` \
+    <code>M **Ne128Upper**(D, V a, V b)</code>: for each adjacent pair of 64-bit
+    lanes (e.g. indices 1,0), returns whether `a[1]` differs from `b[1]`. For
+    each pair, the mask lanes are either both true or both false. This is useful
+    for comparing 64-bit keys alongside 64-bit values. Only available if
+    `HWY_TARGET != HWY_SCALAR`.
 
 ### Memory
 
@@ -973,15 +1017,13 @@ All functions except `Stream` are defined in cache_control.h.
     <code>V8 **U8FromU32**(V)</code>: special-case `u32` to `u8` conversion when
     all lanes of `V` are already clamped to `[0, 256)`.
 
-*   `D`,`V`: (`u64,u32`), (`u64,u16`), (`u64,u8`), (`u32,u16`), (`u32,u8`), \
-    (`u16,u8`) <code>Vec&lt;D&gt; **TruncateTo**(D, V v)</code>: returns `v[i]`
-    truncated to the smaller type indicated by `T = TFromD<D>`, with the same
-    result as if the more-signficant input bits that do not fit in `T` had been
-    zero. Example: ```
-ScalableTag<uint32_t> du32;
-Rebind<uint8_t> du8;
-TruncateTo(du8, Set(du32, 0xF08F))
-    ``` is the same as `Set(du8, 0x8F)`.
+*   `V`,`D`: (`u64,u32`), (`u64,u16`), (`u64,u8`), (`u32,u16`), (`u32,u8`), \
+    (`u16,u8`) \
+    <code>Vec&lt;D&gt; **TruncateTo**(D, V v)</code>: returns `v[i]` truncated
+    to the smaller type indicated by `T = TFromD<D>`, with the same result as if
+    the more-significant input bits that do not fit in `T` had been zero.
+    Example: `ScalableTag<uint32_t> du32; Rebind<uint8_t> du8; TruncateTo(du8,
+    Set(du32, 0xF08F))` is the same as `Set(du8, 0x8F)`.
 
 `DemoteTo` and float-to-int `ConvertTo` return the closest representable value
 if the input exceeds the destination range.
@@ -1107,15 +1149,15 @@ Ops in this section are only available if `HWY_TARGET != HWY_SCALAR`:
 #### Zip
 
 *   `Ret`: `MakeWide<T>`; `V`: `{u,i}{8,16,32}` \
-    <code>Ret **ZipLower**([D, ] V a, V b)</code>: returns the same bits as
+    <code>Ret **ZipLower**([DW, ] V a, V b)</code>: returns the same bits as
     `InterleaveLower`, but repartitioned into double-width lanes (required in
-    order to use this operation with scalars). The optional `D` (provided for
+    order to use this operation with scalars). The optional `DW` (provided for
     consistency with `ZipUpper`) is `RepartitionToWide<DFromV<V>>`.
 
 *   `Ret`: `MakeWide<T>`; `V`: `{u,i}{8,16,32}` \
-    <code>Ret **ZipUpper**(D, V a, V b)</code>: returns the same bits as
+    <code>Ret **ZipUpper**(DW, V a, V b)</code>: returns the same bits as
     `InterleaveUpper`, but repartitioned into double-width lanes (required in
-    order to use this operation with scalars). `D` is
+    order to use this operation with scalars). `DW` is
     `RepartitionToWide<DFromV<V>>`. Only available if `HWY_TARGET !=
     HWY_SCALAR`.
 
@@ -1419,6 +1461,14 @@ target-specific attributes introduced via #pragma. Function using SIMD must
 reside between `HWY_BEFORE_NAMESPACE` and `HWY_AFTER_NAMESPACE`. Alternatively,
 individual functions or lambdas may be prefixed with `HWY_ATTR`.
 
+If you know the SVE vector width and are using static dispatch, you can specify
+`-march=armv9-a+sve2-aes -msve-vector-bits=128` and Highway will then use
+`HWY_SVE2_128` as the baseline. Similarly, `-march=armv8.2-a+sve
+-msve-vector-bits=256` enables the `HWY_SVE_256` specialization for Neoverse V1.
+Note that these flags are unnecessary when using dynamic dispatch. Highway will
+automatically detect and dispatch to the best available target, including
+`HWY_SVE2_128` or `HWY_SVE_256`.
+
 Immediates (compile-time constants) are specified as template arguments to avoid
 constant-propagation issues with Clang on ARM.
 
@@ -1470,3 +1520,36 @@ of the new array using the passed constructor parameters, returning a unique
 pointer to the array. Note that only the first element is guaranteed to be
 aligned to the vector size; because there is no padding between elements,
 the alignment of the remaining elements depends on the size of `T`.
+
+## Speeding up code for older x86 platforms
+
+Thanks to @dzaima for inspiring this section.
+
+It is possible to improve the performance of your code on older x86 CPUs while
+remaining portable to all platforms. These older CPUs might indeed be the ones
+for which optimization is most impactful, because modern CPUs are usually faster
+and thus likelier to meet performance expectations.
+
+For those without AVX3, preferably avoid `Scatter*`; some algorithms can be
+reformulated to use `Gather*` instead. For pre-AVX2, it is also important to
+avoid `Gather*`.
+
+It is typically much more efficient to pad arrays and use `Load` instead of
+`MaskedLoad` and `Store` instead of `BlendedStore`.
+
+If possible, use signed 8..32 bit types instead of unsigned types for
+comparisons and `Min`/`Max`.
+
+Other ops which are considerably more expensive especially on SSSE3, and
+preferably avoided if possible: `MulEven`, i32 `Mul`, `Shl`/`Shr`,
+`Round`/`Trunc`/`Ceil`/`Floor`, float16 `PromoteTo`/`DemoteTo`, `AESRound`.
+
+Ops which are moderately more expensive on older CPUs: 64-bit
+`Abs`/`ShiftRight`/`ConvertTo`, i32->u16 `DemoteTo`, u32->f32 `ConvertTo`,
+`Not`, `IfThenElse`, `RotateRight`, `OddEven`, `BroadcastSignBit`.
+
+It is likely difficult to avoid all of these ops (about a fifth of the total).
+Apps usually also cannot more efficiently achieve the same result as any op
+without using it - this is an explicit design goal of Highway. However,
+sometimes it is possible to restructure your code to avoid `Not`, e.g. by
+hoisting it outside the SIMD code, or fusing with `AndNot` or `CompressNot`.

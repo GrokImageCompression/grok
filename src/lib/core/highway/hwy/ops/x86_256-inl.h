@@ -83,6 +83,9 @@ class Vec256 {
   using Raw = typename detail::Raw256<T>::type;
 
  public:
+  using PrivateT = T;                                  // only for DFromV
+  static constexpr size_t kPrivateN = 32 / sizeof(T);  // only for DFromV
+
   // Compound assignment. Only usable if there is a corresponding non-member
   // binary operator overload. For example, only f32 and f64 support division.
   HWY_INLINE Vec256& operator*=(const Vec256 other) {
@@ -156,6 +159,9 @@ struct Mask256 {
 };
 
 #endif  // HWY_TARGET <= HWY_AVX3
+
+template <typename T>
+using Full256 = Simd<T, 32 / sizeof(T), 0>;
 
 // ------------------------------ BitCast
 
@@ -326,7 +332,6 @@ HWY_API Vec256<double> Xor(const Vec256<double> a, const Vec256<double> b) {
 }
 
 // ------------------------------ Not
-
 template <typename T>
 HWY_API Vec256<T> Not(const Vec256<T> v) {
   using TU = MakeUnsigned<T>;
@@ -339,8 +344,22 @@ HWY_API Vec256<T> Not(const Vec256<T> v) {
 #endif
 }
 
-// ------------------------------ Or3
+// ------------------------------ Xor3
+template <typename T>
+HWY_API Vec256<T> Xor3(Vec256<T> x1, Vec256<T> x2, Vec256<T> x3) {
+#if HWY_TARGET <= HWY_AVX3
+  const Full256<T> d;
+  const RebindToUnsigned<decltype(d)> du;
+  using VU = VFromD<decltype(du)>;
+  const __m256i ret = _mm256_ternarylogic_epi64(
+      BitCast(du, x1).raw, BitCast(du, x2).raw, BitCast(du, x3).raw, 0x96);
+  return BitCast(d, VU{ret});
+#else
+  return Xor(x1, Xor(x2, x3));
+#endif
+}
 
+// ------------------------------ Or3
 template <typename T>
 HWY_API Vec256<T> Or3(Vec256<T> o1, Vec256<T> o2, Vec256<T> o3) {
 #if HWY_TARGET <= HWY_AVX3
@@ -356,7 +375,6 @@ HWY_API Vec256<T> Or3(Vec256<T> o1, Vec256<T> o2, Vec256<T> o3) {
 }
 
 // ------------------------------ OrAnd
-
 template <typename T>
 HWY_API Vec256<T> OrAnd(Vec256<T> o, Vec256<T> a1, Vec256<T> a2) {
 #if HWY_TARGET <= HWY_AVX3
@@ -372,7 +390,6 @@ HWY_API Vec256<T> OrAnd(Vec256<T> o, Vec256<T> a1, Vec256<T> a2) {
 }
 
 // ------------------------------ IfVecThenElse
-
 template <typename T>
 HWY_API Vec256<T> IfVecThenElse(Vec256<T> mask, Vec256<T> yes, Vec256<T> no) {
 #if HWY_TARGET <= HWY_AVX3
@@ -764,6 +781,43 @@ HWY_INLINE Mask256<T> Xor(hwy::SizeTag<8> /*tag*/, const Mask256<T> a,
 #endif
 }
 
+template <typename T>
+HWY_INLINE Mask256<T> ExclusiveNeither(hwy::SizeTag<1> /*tag*/,
+                                       const Mask256<T> a, const Mask256<T> b) {
+#if HWY_COMPILER_HAS_MASK_INTRINSICS
+  return Mask256<T>{_kxnor_mask32(a.raw, b.raw)};
+#else
+  return Mask256<T>{static_cast<__mmask32>(~(a.raw ^ b.raw) & 0xFFFFFFFF)};
+#endif
+}
+template <typename T>
+HWY_INLINE Mask256<T> ExclusiveNeither(hwy::SizeTag<2> /*tag*/,
+                                       const Mask256<T> a, const Mask256<T> b) {
+#if HWY_COMPILER_HAS_MASK_INTRINSICS
+  return Mask256<T>{_kxnor_mask16(a.raw, b.raw)};
+#else
+  return Mask256<T>{static_cast<__mmask16>(~(a.raw ^ b.raw) & 0xFFFF)};
+#endif
+}
+template <typename T>
+HWY_INLINE Mask256<T> ExclusiveNeither(hwy::SizeTag<4> /*tag*/,
+                                       const Mask256<T> a, const Mask256<T> b) {
+#if HWY_COMPILER_HAS_MASK_INTRINSICS
+  return Mask256<T>{_kxnor_mask8(a.raw, b.raw)};
+#else
+  return Mask256<T>{static_cast<__mmask8>(~(a.raw ^ b.raw) & 0xFF)};
+#endif
+}
+template <typename T>
+HWY_INLINE Mask256<T> ExclusiveNeither(hwy::SizeTag<8> /*tag*/,
+                                       const Mask256<T> a, const Mask256<T> b) {
+#if HWY_COMPILER_HAS_MASK_INTRINSICS
+  return Mask256<T>{static_cast<__mmask8>(_kxnor_mask8(a.raw, b.raw) & 0xF)};
+#else
+  return Mask256<T>{static_cast<__mmask8>(~(a.raw ^ b.raw) & 0xF)};
+#endif
+}
+
 }  // namespace detail
 
 template <typename T>
@@ -791,6 +845,11 @@ HWY_API Mask256<T> Not(const Mask256<T> m) {
   // Flip only the valid bits.
   constexpr size_t N = 32 / sizeof(T);
   return Xor(m, Mask256<T>::FromBits((1ull << N) - 1));
+}
+
+template <typename T>
+HWY_API Mask256<T> ExclusiveNeither(const Mask256<T> a, Mask256<T> b) {
+  return detail::ExclusiveNeither(hwy::SizeTag<sizeof(T)>(), a, b);
 }
 
 #else  // AVX2
@@ -881,6 +940,12 @@ template <typename T>
 HWY_API Mask256<T> Xor(const Mask256<T> a, Mask256<T> b) {
   const Full256<T> d;
   return MaskFromVec(Xor(VecFromMask(d, a), VecFromMask(d, b)));
+}
+
+template <typename T>
+HWY_API Mask256<T> ExclusiveNeither(const Mask256<T> a, Mask256<T> b) {
+  const Full256<T> d;
+  return MaskFromVec(AndNot(VecFromMask(d, a), Not(VecFromMask(d, b))));
 }
 
 #endif  // HWY_TARGET <= HWY_AVX3
@@ -2866,6 +2931,7 @@ HWY_API Vec256<float> Shuffle2301(const Vec256<float> v) {
   return Vec256<float>{_mm256_shuffle_ps(v.raw, v.raw, 0xB1)};
 }
 
+// Used by generic_ops-inl.h
 namespace detail {
 
 template <typename T, HWY_IF_LANE_SIZE(T, 4)>
@@ -3694,7 +3760,7 @@ HWY_API Vec256<TI> TableLookupBytes(const Vec128<T, N> bytes,
 
 namespace detail {
 
-#if HWY_TARGET > HWY_AVX3  // AVX2 or older
+#if HWY_TARGET > HWY_AVX3 && !HWY_IDE  // AVX2 or older
 
 // Returns 2^v for use as per-lane multipliers to emulate 16-bit shifts.
 template <typename T>
@@ -3721,7 +3787,7 @@ HWY_INLINE Vec256<MakeUnsigned<T>> Pow2(const Vec256<T> v) {
 
 HWY_INLINE Vec256<uint16_t> Shl(hwy::UnsignedTag /*tag*/, Vec256<uint16_t> v,
                                 Vec256<uint16_t> bits) {
-#if HWY_TARGET <= HWY_AVX3
+#if HWY_TARGET <= HWY_AVX3 || HWY_IDE
   return Vec256<uint16_t>{_mm256_sllv_epi16(v.raw, bits.raw)};
 #else
   return v * Pow2(bits);
@@ -3757,7 +3823,7 @@ HWY_API Vec256<T> operator<<(Vec256<T> v, Vec256<T> bits) {
 // ------------------------------ Shr (MulHigh, IfThenElse, Not)
 
 HWY_API Vec256<uint16_t> operator>>(Vec256<uint16_t> v, Vec256<uint16_t> bits) {
-#if HWY_TARGET <= HWY_AVX3
+#if HWY_TARGET <= HWY_AVX3 || HWY_IDE
   return Vec256<uint16_t>{_mm256_srlv_epi16(v.raw, bits.raw)};
 #else
   Full256<uint16_t> d;
@@ -3798,7 +3864,7 @@ HWY_API Vec256<int64_t> operator>>(Vec256<int64_t> v, Vec256<int64_t> bits) {
 
 HWY_INLINE Vec256<uint64_t> MulEven(const Vec256<uint64_t> a,
                                     const Vec256<uint64_t> b) {
-  const DFromV<decltype(a)> du64;
+  const Full256<uint64_t> du64;
   const RepartitionToNarrow<decltype(du64)> du32;
   const auto maskL = Set(du64, 0xFFFFFFFFULL);
   const auto a32 = BitCast(du32, a);
@@ -3827,7 +3893,7 @@ HWY_INLINE Vec256<uint64_t> MulEven(const Vec256<uint64_t> a,
 
 HWY_INLINE Vec256<uint64_t> MulOdd(const Vec256<uint64_t> a,
                                    const Vec256<uint64_t> b) {
-  const DFromV<decltype(a)> du64;
+  const Full256<uint64_t> du64;
   const RepartitionToNarrow<decltype(du64)> du32;
   const auto maskL = Set(du64, 0xFFFFFFFFULL);
   const auto a32 = BitCast(du32, a);
@@ -3852,33 +3918,19 @@ HWY_INLINE Vec256<uint64_t> MulOdd(const Vec256<uint64_t> a,
   return InterleaveUpper(du64, mulL, mulH);
 }
 
-// ------------------------------ ReorderWidenMulAccumulate (MulAdd, ZipLower)
-
-HWY_API Vec256<float> ReorderWidenMulAccumulate(Full256<float> df32,
-                                                Vec256<bfloat16_t> a,
-                                                Vec256<bfloat16_t> b,
-                                                const Vec256<float> sum0,
-                                                Vec256<float>& sum1) {
-  // TODO(janwas): _mm256_dpbf16_ps when available
-  const Repartition<uint16_t, decltype(df32)> du16;
-  const RebindToUnsigned<decltype(df32)> du32;
-  const Vec256<uint16_t> zero = Zero(du16);
-  // Lane order within sum0/1 is undefined, hence we can avoid the
-  // longer-latency lane-crossing PromoteTo.
-  const Vec256<uint32_t> a0 = ZipLower(du32, zero, BitCast(du16, a));
-  const Vec256<uint32_t> a1 = ZipUpper(du32, zero, BitCast(du16, a));
-  const Vec256<uint32_t> b0 = ZipLower(du32, zero, BitCast(du16, b));
-  const Vec256<uint32_t> b1 = ZipUpper(du32, zero, BitCast(du16, b));
-  sum1 = MulAdd(BitCast(df32, a1), BitCast(df32, b1), sum1);
-  return MulAdd(BitCast(df32, a0), BitCast(df32, b0), sum0);
-}
-
+// ------------------------------ ReorderWidenMulAccumulate
 HWY_API Vec256<int32_t> ReorderWidenMulAccumulate(Full256<int32_t> /*d32*/,
                                                   Vec256<int16_t> a,
                                                   Vec256<int16_t> b,
                                                   const Vec256<int32_t> sum0,
                                                   Vec256<int32_t>& /*sum1*/) {
   return sum0 + Vec256<int32_t>{_mm256_madd_epi16(a.raw, b.raw)};
+}
+
+// ------------------------------ RearrangeToOddPlusEven
+HWY_API Vec256<int32_t> RearrangeToOddPlusEven(const Vec256<int32_t> sum0,
+                                               Vec256<int32_t> /*sum1*/) {
+  return sum0;  // invariant already holds
 }
 
 // ================================================== CONVERT
@@ -4231,7 +4283,7 @@ HWY_API Vec256<float> ConvertTo(HWY_MAYBE_UNUSED Full256<float> df,
   const RebindToSigned<decltype(df)> d32;
 
   const auto msk_lo = Set(du32, 0xFFFF);
-  const auto cnst2_16_flt = Set(df, 65536.0f); // 2^16
+  const auto cnst2_16_flt = Set(df, 65536.0f);  // 2^16
 
   // Extract the 16 lowest/highest significant bits of v and cast to signed int
   const auto v_lo = BitCast(d32, And(v, msk_lo));
@@ -4251,9 +4303,9 @@ HWY_API Vec256<double> ConvertTo(HWY_MAYBE_UNUSED Full256<double> dd,
   using VU = VFromD<decltype(d64)>;
 
   const VU msk_lo = Set(d64, 0xFFFFFFFFULL);
-  const auto cnst2_32_dbl = Set(dd, 4294967296.0); // 2^32
+  const auto cnst2_32_dbl = Set(dd, 4294967296.0);  // 2^32
 
-   // Extract the 32 lowest significant bits of v
+  // Extract the 32 lowest significant bits of v
   const VU v_lo = And(v, msk_lo);
   const VU v_hi = ShiftRight<32>(v);
 
@@ -4471,9 +4523,15 @@ HWY_API size_t CountTrue(const Full256<T> /* tag */, const Mask256<T> mask) {
 }
 
 template <typename T>
-HWY_API intptr_t FindFirstTrue(const Full256<T> /* tag */,
-                               const Mask256<T> mask) {
-  return mask.raw ? intptr_t(Num0BitsBelowLS1Bit_Nonzero32(mask.raw)) : -1;
+HWY_API size_t FindKnownFirstTrue(const Full256<T> /* tag */,
+                                  const Mask256<T> mask) {
+  return Num0BitsBelowLS1Bit_Nonzero32(mask.raw);
+}
+
+template <typename T>
+HWY_API intptr_t FindFirstTrue(const Full256<T> d, const Mask256<T> mask) {
+  return mask.raw ? static_cast<intptr_t>(FindKnownFirstTrue(d, mask))
+                  : intptr_t{-1};
 }
 
 // Beware: the suffix indicates the number of mask bits, not lane size!
@@ -4589,10 +4647,7 @@ HWY_API Vec256<T> Compress(Vec256<T> v, Mask256<T> mask) {
 
 // ------------------------------ CompressNot (Compress)
 
-template <typename T, HWY_IF_NOT_LANE_SIZE(T, 8)>
-HWY_API Vec256<T> CompressNot(Vec256<T> v, const Mask256<T> mask) {
-  return Compress(v, Not(mask));
-}
+// Implemented in x86_512 for lane size != 8.
 
 template <typename T, HWY_IF_LANE_SIZE(T, 8)>
 HWY_API Vec256<T> CompressNot(Vec256<T> v, Mask256<T> mask) {
@@ -4608,67 +4663,21 @@ HWY_API Vec256<T> CompressNot(Vec256<T> v, Mask256<T> mask) {
   const Full256<T> d;
   const RebindToUnsigned<decltype(d)> du64;
   const auto packed = Set(du64, packed_array[mask.raw]);
-  alignas(64) constexpr uint64_t shifts[4] = {0, 4, 8, 12};
+  alignas(32) constexpr uint64_t shifts[4] = {0, 4, 8, 12};
   const auto indices = Indices256<T>{(packed >> Load(du64, shifts)).raw};
   return TableLookupLanes(v, indices);
 }
 
-// ------------------------------ CompressBlocksNot
-HWY_API Vec256<uint64_t> CompressBlocksNot(Vec256<uint64_t> v,
-                                           Mask256<uint64_t> mask) {
-  return CompressNot(v, mask);
-}
-
-// ------------------------------ CompressBits (LoadMaskBits)
-template <typename T>
-HWY_API Vec256<T> CompressBits(Vec256<T> v, const uint8_t* HWY_RESTRICT bits) {
-  return Compress(v, LoadMaskBits(Full256<T>(), bits));
-}
-
 // ------------------------------ CompressStore
 
-template <typename T, HWY_IF_LANE_SIZE(T, 2)>
-HWY_API size_t CompressStore(Vec256<T> v, Mask256<T> mask, Full256<T> d,
-                             T* HWY_RESTRICT unaligned) {
-  const Rebind<uint16_t, decltype(d)> du;
-  const auto vu = BitCast(du, v);  // (required for float16_t inputs)
-
-  const uint64_t mask_bits{mask.raw};
-
-#if HWY_TARGET == HWY_AVX3_DL  // VBMI2
-  _mm256_mask_compressstoreu_epi16(unaligned, mask.raw, vu.raw);
-#else
-  // Split into halves to keep the table size manageable.
-  const Half<decltype(du)> duh;
-  const auto vL = LowerHalf(duh, vu);
-  const auto vH = UpperHalf(duh, vu);
-
-  const uint64_t mask_bitsL = mask_bits & 0xFF;
-  const uint64_t mask_bitsH = mask_bits >> 8;
-
-  const auto idxL = detail::IndicesForCompress16(mask_bitsL);
-  const auto idxH = detail::IndicesForCompress16(mask_bitsH);
-
-  // Compress and 128-bit halves.
-  const Vec128<uint16_t> cL{_mm_permutexvar_epi16(idxL.raw, vL.raw)};
-  const Vec128<uint16_t> cH{_mm_permutexvar_epi16(idxH.raw, vH.raw)};
-  const Half<decltype(d)> dh;
-  StoreU(BitCast(dh, cL), dh, unaligned);
-  StoreU(BitCast(dh, cH), dh, unaligned + PopCount(mask_bitsL));
-#endif  // HWY_TARGET == HWY_AVX3_DL
-
-  return PopCount(mask_bits);
-}
+// 8-16 bit Compress, CompressStore defined in x86_512 because they use Vec512.
 
 template <typename T, HWY_IF_LANE_SIZE(T, 4)>
 HWY_API size_t CompressStore(Vec256<T> v, Mask256<T> mask, Full256<T> /* tag */,
                              T* HWY_RESTRICT unaligned) {
   _mm256_mask_compressstoreu_epi32(unaligned, mask.raw, v.raw);
   const size_t count = PopCount(uint64_t{mask.raw});
-  // Workaround for MSAN not marking output as initialized (b/233326619)
-#if HWY_IS_MSAN
-  __msan_unpoison(unaligned, count * sizeof(T));
-#endif
+  detail::MaybeUnpoison(unaligned, count);
   return count;
 }
 
@@ -4677,10 +4686,7 @@ HWY_API size_t CompressStore(Vec256<T> v, Mask256<T> mask, Full256<T> /* tag */,
                              T* HWY_RESTRICT unaligned) {
   _mm256_mask_compressstoreu_epi64(unaligned, mask.raw, v.raw);
   const size_t count = PopCount(uint64_t{mask.raw} & 0xFull);
-  // Workaround for MSAN not marking output as initialized (b/233326619)
-#if HWY_IS_MSAN
-  __msan_unpoison(unaligned, count * sizeof(T));
-#endif
+  detail::MaybeUnpoison(unaligned, count);
   return count;
 }
 
@@ -4689,10 +4695,7 @@ HWY_API size_t CompressStore(Vec256<float> v, Mask256<float> mask,
                              float* HWY_RESTRICT unaligned) {
   _mm256_mask_compressstoreu_ps(unaligned, mask.raw, v.raw);
   const size_t count = PopCount(uint64_t{mask.raw});
-  // Workaround for MSAN not marking output as initialized (b/233326619)
-#if HWY_IS_MSAN
-  __msan_unpoison(unaligned, count * sizeof(float));
-#endif
+  detail::MaybeUnpoison(unaligned, count);
   return count;
 }
 
@@ -4701,42 +4704,30 @@ HWY_API size_t CompressStore(Vec256<double> v, Mask256<double> mask,
                              double* HWY_RESTRICT unaligned) {
   _mm256_mask_compressstoreu_pd(unaligned, mask.raw, v.raw);
   const size_t count = PopCount(uint64_t{mask.raw} & 0xFull);
-  // Workaround for MSAN not marking output as initialized (b/233326619)
-#if HWY_IS_MSAN
-  __msan_unpoison(unaligned, count * sizeof(double));
-#endif
+  detail::MaybeUnpoison(unaligned, count);
   return count;
 }
 
 // ------------------------------ CompressBlendedStore (CompressStore)
 
-template <typename T, HWY_IF_NOT_LANE_SIZE(T, 2)>
+template <typename T>
 HWY_API size_t CompressBlendedStore(Vec256<T> v, Mask256<T> m, Full256<T> d,
                                     T* HWY_RESTRICT unaligned) {
-  // Native (32 or 64-bit) AVX-512 instruction already does the blending at no
-  // extra cost (latency 11, rthroughput 2 - same as compress plus store).
-  return CompressStore(v, m, d, unaligned);
-}
-
-template <typename T, HWY_IF_LANE_SIZE(T, 2)>
-HWY_API size_t CompressBlendedStore(Vec256<T> v, Mask256<T> m, Full256<T> d,
-                                    T* HWY_RESTRICT unaligned) {
-#if HWY_TARGET <= HWY_AVX3_DL
-  return CompressStore(v, m, d, unaligned);  // also native
-#else
-  const size_t count = CountTrue(d, m);
-  BlendedStore(Compress(v, m), FirstN(d, count), d, unaligned);
-  // Workaround for MSAN not marking output as initialized (b/233326619)
-#if HWY_IS_MSAN
-  __msan_unpoison(unaligned, count * sizeof(T));
-#endif
-  return count;
-#endif
+  if (HWY_TARGET == HWY_AVX3_DL || sizeof(T) > 2) {
+    // Native (32 or 64-bit) AVX-512 instruction already does the blending at no
+    // extra cost (latency 11, rthroughput 2 - same as compress plus store).
+    return CompressStore(v, m, d, unaligned);
+  } else {
+    const size_t count = CountTrue(d, m);
+    BlendedStore(Compress(v, m), FirstN(d, count), d, unaligned);
+    detail::MaybeUnpoison(unaligned, count);
+    return count;
+  }
 }
 
 // ------------------------------ CompressBitsStore (LoadMaskBits)
 
-template <typename T>
+template <typename T, HWY_IF_NOT_LANE_SIZE(T, 1)>
 HWY_API size_t CompressBitsStore(Vec256<T> v, const uint8_t* HWY_RESTRICT bits,
                                  Full256<T> d, T* HWY_RESTRICT unaligned) {
   return CompressStore(v, LoadMaskBits(d, bits), d, unaligned);
@@ -4914,6 +4905,13 @@ HWY_API size_t CountTrue(const Full256<T> d, const Mask256<T> mask) {
 template <typename T, HWY_IF_NOT_LANE_SIZE(T, 2)>
 HWY_API size_t CountTrue(const Full256<T> /* tag */, const Mask256<T> mask) {
   return PopCount(detail::BitsFromMask(mask));
+}
+
+template <typename T>
+HWY_API size_t FindKnownFirstTrue(const Full256<T> /* tag */,
+                                  const Mask256<T> mask) {
+  const uint64_t mask_bits = detail::BitsFromMask(mask);
+  return Num0BitsBelowLS1Bit_Nonzero64(mask_bits);
 }
 
 template <typename T>
@@ -5146,7 +5144,7 @@ HWY_INLINE Vec256<T> Compress(Vec256<T> v, const uint64_t mask_bits) {
   }
 }
 
-template <typename T, HWY_IF_NOT_LANE_SIZE(T, 2)>
+template <typename T, HWY_IF_LANE_SIZE_ONE_OF(T, 0x110)>  // 4 or 8 bytes
 HWY_INLINE Vec256<T> CompressNot(Vec256<T> v, const uint64_t mask_bits) {
   const Full256<T> d;
   const Repartition<uint32_t, decltype(d)> du32;
@@ -5168,12 +5166,12 @@ HWY_INLINE Vec256<T> CompressNot(Vec256<T> v, const uint64_t mask_bits) {
 
 }  // namespace detail
 
-template <typename T>
+template <typename T, HWY_IF_NOT_LANE_SIZE(T, 1)>
 HWY_API Vec256<T> Compress(Vec256<T> v, Mask256<T> m) {
   return detail::Compress(v, detail::BitsFromMask(m));
 }
 
-template <typename T>
+template <typename T, HWY_IF_NOT_LANE_SIZE(T, 1)>
 HWY_API Vec256<T> CompressNot(Vec256<T> v, Mask256<T> m) {
   return detail::CompressNot(v, detail::BitsFromMask(m));
 }
@@ -5183,7 +5181,7 @@ HWY_API Vec256<uint64_t> CompressBlocksNot(Vec256<uint64_t> v,
   return CompressNot(v, mask);
 }
 
-template <typename T>
+template <typename T, HWY_IF_NOT_LANE_SIZE(T, 1)>
 HWY_API Vec256<T> CompressBits(Vec256<T> v, const uint8_t* HWY_RESTRICT bits) {
   constexpr size_t N = 32 / sizeof(T);
   constexpr size_t kNumBytes = (N + 7) / 8;
@@ -5200,20 +5198,17 @@ HWY_API Vec256<T> CompressBits(Vec256<T> v, const uint8_t* HWY_RESTRICT bits) {
 
 // ------------------------------ CompressStore, CompressBitsStore
 
-template <typename T>
+template <typename T, HWY_IF_NOT_LANE_SIZE(T, 1)>
 HWY_API size_t CompressStore(Vec256<T> v, Mask256<T> m, Full256<T> d,
                              T* HWY_RESTRICT unaligned) {
   const uint64_t mask_bits = detail::BitsFromMask(m);
   const size_t count = PopCount(mask_bits);
   StoreU(detail::Compress(v, mask_bits), d, unaligned);
-  // Workaround for MSAN not marking output as initialized (b/233326619)
-#if HWY_IS_MSAN
-  __msan_unpoison(unaligned, count * sizeof(T));
-#endif
+  detail::MaybeUnpoison(unaligned, count);
   return count;
 }
 
-template <typename T, HWY_IF_NOT_LANE_SIZE(T, 2)>
+template <typename T, HWY_IF_LANE_SIZE_ONE_OF(T, 0x110)>  // 4 or 8 bytes
 HWY_API size_t CompressBlendedStore(Vec256<T> v, Mask256<T> m, Full256<T> d,
                                     T* HWY_RESTRICT unaligned) {
   const uint64_t mask_bits = detail::BitsFromMask(m);
@@ -5234,10 +5229,7 @@ HWY_API size_t CompressBlendedStore(Vec256<T> v, Mask256<T> m, Full256<T> d,
                                   Indices256<uint32_t>{idx_and_mask.raw}));
 
   BlendedStore(compressed, mask, d, unaligned);
-  // Workaround for MSAN not marking output as initialized (b/233326619)
-#if HWY_IS_MSAN
-  __msan_unpoison(unaligned, count * sizeof(T));
-#endif
+  detail::MaybeUnpoison(unaligned, count);
   return count;
 }
 
@@ -5260,7 +5252,7 @@ HWY_API size_t CompressBlendedStore(Vec256<T> v, Mask256<T> m, Full256<T> d,
   return count;
 }
 
-template <typename T>
+template <typename T, HWY_IF_NOT_LANE_SIZE(T, 1)>
 HWY_API size_t CompressBitsStore(Vec256<T> v, const uint8_t* HWY_RESTRICT bits,
                                  Full256<T> d, T* HWY_RESTRICT unaligned) {
   constexpr size_t N = 32 / sizeof(T);
@@ -5275,10 +5267,7 @@ HWY_API size_t CompressBitsStore(Vec256<T> v, const uint8_t* HWY_RESTRICT bits,
   const size_t count = PopCount(mask_bits);
 
   StoreU(detail::Compress(v, mask_bits), d, unaligned);
-  // Workaround for MSAN not marking output as initialized (b/233326619)
-#if HWY_IS_MSAN
-  __msan_unpoison(unaligned, count * sizeof(T));
-#endif
+  detail::MaybeUnpoison(unaligned, count);
   return count;
 }
 

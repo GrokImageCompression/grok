@@ -19,13 +19,23 @@ if(POLICY CMP0083)
   cmake_policy(SET CMP0083 NEW)
 endif()
 
-project(hwy VERSION 1.0.1)  # Keep in sync with highway.h version
+# Workaround for 3.19 raising error 'IMPORTED_LOCATION not set for imported
+# target "GTest::gtest_main"'.
+if(POLICY CMP0111)
+  cmake_policy(SET CMP0111 OLD)
+endif()
+
+project(hwy VERSION 1.0.2)  # Keep in sync with highway.h version
 
 # Directly define the ABI version from the cmake project() version values:
 set(LIBRARY_VERSION "${hwy_VERSION}")
 set(LIBRARY_SOVERSION ${hwy_VERSION_MAJOR})
 
 set(CMAKE_CXX_EXTENSIONS OFF)
+
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+# Search for Atomics implementation:
+find_package(Atomics REQUIRED)
 
 # Enabled PIE binaries by default if supported.
 include(CheckPIESupported OPTIONAL RESULT_VARIABLE CHECK_PIE_SUPPORTED)
@@ -51,6 +61,7 @@ set(HWY_WARNINGS_ARE_ERRORS OFF CACHE BOOL "Add -Werror flag?")
 set(HWY_ENABLE_CONTRIB ON CACHE BOOL "Include contrib/")
 set(HWY_ENABLE_EXAMPLES ON CACHE BOOL "Build examples")
 set(HWY_ENABLE_INSTALL ON CACHE BOOL "Install library")
+set(HWY_ENABLE_TESTS ON CACHE BOOL "Enable HWY tests")
 
 include(CheckCXXSourceCompiles)
 check_cxx_source_compiles(
@@ -111,6 +122,7 @@ set(HWY_SOURCES
     hwy/ops/arm_sve-inl.h
     hwy/ops/emu128-inl.h
     hwy/ops/generic_ops-inl.h
+    hwy/ops/rvv-inl.h
     hwy/ops/scalar-inl.h
     hwy/ops/set_macros-inl.h
     hwy/ops/shared-inl.h
@@ -246,6 +258,12 @@ else()
 
 endif()  # !MSVC
 
+include(CheckIncludeFile)
+check_include_file(sys/auxv.h  HAVE_SYS_AUXV_H)
+if (NOT HAVE_SYS_AUXV_H)
+  list(APPEND HWY_FLAGS -DTOOLCHAIN_MISS_SYS_AUXV_H=1)
+endif()
+
 # By default prefer STATIC build (legacy behavior)
 option(BUILD_SHARED_LIBS "Build shared libraries" OFF)
 option(HWY_FORCE_STATIC_LIBS "Ignore BUILD_SHARED_LIBS" OFF)
@@ -280,12 +298,10 @@ target_include_directories(hwy PUBLIC
 target_compile_features(hwy PUBLIC cxx_std_11)
 set_target_properties(hwy PROPERTIES
   LINK_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/hwy/hwy.version)
+# For GCC __atomic_store_8, see #887
+target_link_libraries(hwy PRIVATE ${ATOMICS_LIBRARIES})
+# not supported by MSVC/Clang, safe to skip (we use DLLEXPORT annotations)
 if(UNIX AND NOT APPLE)
-  # For GCC __atomic_store_8, see #887
-  if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND NOT HWY_EMSCRIPTEN)
-    target_link_libraries(hwy atomic)
-  endif()
-  # not supported by MSVC/Clang, safe to skip (we use DLLEXPORT annotations)
   set_property(TARGET hwy APPEND_STRING PROPERTY
     LINK_FLAGS " -Wl,--version-script=${CMAKE_CURRENT_SOURCE_DIR}/hwy/hwy.version")
 endif()
@@ -441,7 +457,7 @@ set_target_properties(hwy_benchmark
 
 endif()  # HWY_ENABLE_EXAMPLES
 # -------------------------------------------------------- Tests
-set(HWY_ENABLE_TESTS ON CACHE BOOL "Disable HWY tests")
+
 include(CTest)
 
 if(BUILD_TESTING AND HWY_ENABLE_TESTS)
@@ -549,7 +565,9 @@ foreach (TESTFILE IN LISTS HWY_TEST_FILES)
   # that include us may set them.
   target_compile_options(${TESTNAME} PRIVATE -DHWY_IS_TEST=1)
 
-  target_link_libraries(${TESTNAME} ${HWY_TEST_LIBS} ${HWY_GTEST_LIBS})
+  target_link_libraries(${TESTNAME} PRIVATE ${HWY_TEST_LIBS} ${HWY_GTEST_LIBS})
+  # For GCC __atomic_store_8, see #887
+  target_link_libraries(${TESTNAME} PRIVATE ${ATOMICS_LIBRARIES})
   # Output test targets in the test directory.
   set_target_properties(${TESTNAME} PROPERTIES RUNTIME_OUTPUT_DIRECTORY "tests")
 

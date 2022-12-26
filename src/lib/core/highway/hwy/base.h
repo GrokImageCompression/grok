@@ -143,7 +143,7 @@
 #define HWY_DEFAULT_UNROLL HWY_UNROLL()
 #else
 #define HWY_UNROLL(factor)
-#define HWY_DEFAULT_UNROLL HWY_UNROLL()
+#define HWY_DEFAULT_UNROLL
 #endif
 
 
@@ -325,6 +325,10 @@ static inline HWY_MAYBE_UNUSED bool operator>(const K64V64& a,
                                               const K64V64& b) {
   return b < a;
 }
+static inline HWY_MAYBE_UNUSED bool operator==(const K64V64& a,
+                                               const K64V64& b) {
+  return a.key == b.key;
+}
 
 static inline HWY_MAYBE_UNUSED bool operator<(const K32V32& a,
                                               const K32V32& b) {
@@ -334,6 +338,10 @@ static inline HWY_MAYBE_UNUSED bool operator<(const K32V32& a,
 static inline HWY_MAYBE_UNUSED bool operator>(const K32V32& a,
                                               const K32V32& b) {
   return b < a;
+}
+static inline HWY_MAYBE_UNUSED bool operator==(const K32V32& a,
+                                               const K32V32& b) {
+  return a.key == b.key;
 }
 
 //------------------------------------------------------------------------------
@@ -388,8 +396,11 @@ HWY_API constexpr bool IsSame() {
   hwy::EnableIf<sizeof(T) == (bytes)>* = nullptr
 #define HWY_IF_NOT_LANE_SIZE(T, bytes) \
   hwy::EnableIf<sizeof(T) != (bytes)>* = nullptr
-#define HWY_IF_LANE_SIZE_LT(T, bytes) \
-  hwy::EnableIf<sizeof(T) < (bytes)>* = nullptr
+// bit_array = 0x102 means 1 or 8 bytes. There is no NONE_OF because it sounds
+// too similar. If you want the opposite of this (2 or 4 bytes), ask for those
+// bits explicitly (0x14) instead of attempting to 'negate' 0x102.
+#define HWY_IF_LANE_SIZE_ONE_OF(T, bit_array) \
+  hwy::EnableIf<((size_t{1} << sizeof(T)) & (bit_array)) != 0>* = nullptr
 
 #define HWY_IF_LANES_PER_BLOCK(T, N, LANES) \
   hwy::EnableIf<HWY_MIN(sizeof(T) * N, 16) / sizeof(T) == (LANES)>* = nullptr

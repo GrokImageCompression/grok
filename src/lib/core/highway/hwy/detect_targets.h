@@ -175,7 +175,8 @@
 // always be enabled. If 1, we instead choose HWY_SCALAR even without
 // HWY_COMPILE_ONLY_SCALAR being set.
 #if !defined(HWY_BROKEN_EMU128)  // allow overriding
-#if HWY_COMPILER_GCC_ACTUAL && HWY_COMPILER_GCC_ACTUAL < 1203
+#if (HWY_COMPILER_GCC_ACTUAL && HWY_COMPILER_GCC_ACTUAL < 1203) || \
+    defined(HWY_NO_LIBCXX)
 #define HWY_BROKEN_EMU128 1
 #else
 #define HWY_BROKEN_EMU128 0
@@ -215,29 +216,44 @@
 #define HWY_BASELINE_PPC8 0
 #endif
 
-#if HWY_ARCH_ARM && defined(__ARM_FEATURE_SVE2)
-#define HWY_BASELINE_SVE2 HWY_SVE2
-#else
 #define HWY_BASELINE_SVE2 0
-#endif
-
-#if HWY_ARCH_ARM && defined(__ARM_FEATURE_SVE)
-// Baseline targets can be used unconditionally, which does not apply to
-// HWY_SVE_256 because it requires a vector size of 256 bits. Including SVE_256
-// in the baseline would also disable all 'worse' targets (including SVE and
-// SVE2) in non-test builds. Therefore we instead add HWY_SVE_256 to
-// HWY_ATTAINABLE_TARGETS below.
-#define HWY_BASELINE_SVE HWY_SVE
-#else
 #define HWY_BASELINE_SVE 0
-#endif
+#define HWY_BASELINE_NEON 0
+
+#if HWY_ARCH_ARM
+
+#if defined(__ARM_FEATURE_SVE2)
+#undef HWY_BASELINE_SVE2  // was 0, will be re-defined
+// If user specified -msve-vector-bits=128, they assert the vector length is
+// 128 bits and we should use the HWY_SVE2_128 (more efficient for some ops).
+#if defined(__ARM_FEATURE_SVE_BITS) && __ARM_FEATURE_SVE_BITS == 128
+#define HWY_BASELINE_SVE2 HWY_SVE2_128
+// Otherwise we're not sure what the vector length will be. The baseline must be
+// unconditionally valid, so we can only assume HWY_SVE2. However, when running
+// on a CPU with 128-bit vectors, user code that supports dynamic dispatch will
+// still benefit from HWY_SVE2_128 because we add it to HWY_ATTAINABLE_TARGETS.
+#else
+#define HWY_BASELINE_SVE2 HWY_SVE2
+#endif  // __ARM_FEATURE_SVE_BITS
+#endif  // __ARM_FEATURE_SVE2
+
+#if defined(__ARM_FEATURE_SVE)
+#undef HWY_BASELINE_SVE  // was 0, will be re-defined
+// See above. If user-specified vector length matches our optimization, use it.
+#if defined(__ARM_FEATURE_SVE_BITS) && __ARM_FEATURE_SVE_BITS == 256
+#define HWY_BASELINE_SVE HWY_SVE_256
+#else
+#define HWY_BASELINE_SVE HWY_SVE
+#endif  // __ARM_FEATURE_SVE_BITS
+#endif  // __ARM_FEATURE_SVE
 
 // GCC 4.5.4 only defines __ARM_NEON__; 5.4 defines both.
-#if HWY_ARCH_ARM && (defined(__ARM_NEON__) || defined(__ARM_NEON))
+#if defined(__ARM_NEON__) || defined(__ARM_NEON)
+#undef HWY_BASELINE_NEON
 #define HWY_BASELINE_NEON HWY_NEON
-#else
-#define HWY_BASELINE_NEON 0
 #endif
+
+#endif  // HWY_ARCH_ARM
 
 // Special handling for MSVC because it has fewer predefined macros:
 #if HWY_COMPILER_MSVC
@@ -377,7 +393,7 @@
 #define HWY_HAVE_RUNTIME_DISPATCH 1
 // On Arm, currently only GCC does, and we require Linux to detect CPU
 // capabilities.
-#elif HWY_ARCH_ARM && HWY_COMPILER_GCC_ACTUAL && HWY_OS_LINUX
+#elif HWY_ARCH_ARM && HWY_COMPILER_GCC_ACTUAL && HWY_OS_LINUX && !defined(TOOLCHAIN_MISS_SYS_AUXV_H)
 #define HWY_HAVE_RUNTIME_DISPATCH 1
 #else
 #define HWY_HAVE_RUNTIME_DISPATCH 0
@@ -392,15 +408,15 @@
 #define HWY_ATTAINABLE_AVX3_DL 0
 #endif
 
-#if HWY_ARCH_ARM_A64 && \
-    ((HWY_ENABLED_BASELINE & HWY_SVE) || HWY_HAVE_RUNTIME_DISPATCH)
+#if HWY_ARCH_ARM_A64 && (HWY_HAVE_RUNTIME_DISPATCH || \
+                         (HWY_ENABLED_BASELINE & (HWY_SVE | HWY_SVE_256)))
 #define HWY_ATTAINABLE_SVE HWY_ENABLED(HWY_SVE | HWY_SVE_256)
 #else
 #define HWY_ATTAINABLE_SVE 0
 #endif
 
-#if HWY_ARCH_ARM_A64 && \
-    ((HWY_ENABLED_BASELINE & HWY_SVE2) || HWY_HAVE_RUNTIME_DISPATCH)
+#if HWY_ARCH_ARM_A64 && (HWY_HAVE_RUNTIME_DISPATCH || \
+                         (HWY_ENABLED_BASELINE & (HWY_SVE2 | HWY_SVE2_128)))
 #define HWY_ATTAINABLE_SVE2 HWY_ENABLED(HWY_SVE2 | HWY_SVE2_128)
 #else
 #define HWY_ATTAINABLE_SVE2 0
