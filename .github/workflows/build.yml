@@ -15,14 +15,10 @@ jobs:
        matrix:
          os: [ubuntu-latest, windows-latest, macos-latest]
          shared_libs_flag: [ON,OFF]
-    # The CMake configure and build commands are platform agnostic and should work equally
-    # well on Windows or Mac.  You can convert this to a matrix build if you need
-    # cross-platform coverage.
-    # See: https://docs.github.com/en/free-pro-team@latest/actions/learn-github-actions/managing-complex-workflows#using-a-build-matrix
     runs-on: ${{ matrix.os }}
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
 
     - name: ubuntu-dependencies
       if: startsWith(matrix.os, 'ubuntu')
@@ -113,6 +109,7 @@ jobs:
       with:
         name: grok-${{ matrix.os }}
         path: ${{ github.workspace }}/build/grok-${{ matrix.os }}
+
 
     - name: Upload binaries to release
       uses: softprops/action-gh-release@v1
