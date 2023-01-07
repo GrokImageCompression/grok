@@ -62,11 +62,11 @@ jobs:
         echo "Generator: ${generator}"
         echo "GENERATOR_PLATFORM=$generator" >> $env:GITHUB_ENV
         choco install wget 7zip --no-progress
-        wget -q http://kakadusoftware.com/wp-content/uploads/KDU805_Demo_Apps_for_Win64_200602.msi_.zip
-        cmake -E tar -xvf KDU805_Demo_Apps_for_Win64_200602.msi_.zip
-        mkdir kdu && cp KDU805_Demo_Apps_for_Win64_200602.msi kdu && cd kdu
-        7z e KDU805_Demo_Apps_for_Win64_200602.msi && 7z e disk1.cab
-        echo "${{ github.workspace }}/kdu" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+        #wget -q http://kakadusoftware.com/wp-content/uploads/KDU805_Demo_Apps_for_Win64_200602.msi_.zip
+        #cmake -E tar -xvf KDU805_Demo_Apps_for_Win64_200602.msi_.zip
+        #mkdir kdu && cp KDU805_Demo_Apps_for_Win64_200602.msi kdu && cd kdu
+        #7z e KDU805_Demo_Apps_for_Win64_200602.msi && 7z e disk1.cab
+        #echo "${{ github.workspace }}/kdu" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
     - name: dependencies
       run: |
