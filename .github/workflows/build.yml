@@ -7,7 +7,6 @@ env:
   DATA_ROOT: ${{ github.workspace }}/data
   DATA_BRANCH: master
   GENERATOR_PLATFORM:
-  LD_LIBRARY_PATH: ${{ github.workspace }}/kdu
 
 jobs:
   build:
@@ -26,30 +25,12 @@ jobs:
         sudo apt-get install -y gcc-10 g++-10
         sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-10 100 \
           --slave /usr/bin/g++ g++ /usr/bin/g++-10 --slave /usr/bin/gcov gcov /usr/bin/gcov-10
-        wget -q http://kakadusoftware.com/wp-content/uploads/KDU805_Demo_Apps_for_Linux-x86-64_200602.zip
-        cmake -E tar -xvf KDU805_Demo_Apps_for_Linux-x86-64_200602.zip
-        mv KDU805_Demo_Apps_for_Linux-x86-64_200602 kdu
-        echo "${{ github.workspace }}/kdu" >> $GITHUB_PATH
         echo DATA_BRANCH=linux-release >> $GITHUB_ENV
 
 
     - name: macos-dependencies
       if: startsWith(matrix.os, 'macos')
       run: |
-        wget -q http://kakadusoftware.com/wp-content/uploads/KDU805_Demo_Apps_for_MacOS_200602.dmg_.zip
-        mkdir kdu && mv KDU805_Demo_Apps_for_MacOS_200602.dmg_.zip kdu && cd kdu
-        7z e KDU805_Demo_Apps_for_MacOS_200602.dmg_.zip
-        7z e KDU805_Demo_Apps_for_MacOS_200602.dmg 2>/dev/null || true
-        7z e Payload~ 2>/dev/null || true
-        chmod +x kdu_expand
-        chmod +x kdu_compress
-        install_name_tool -id ${PWD}/libkdu_v80R.dylib libkdu_v80R.dylib
-        codesign -s - -f ${PWD}/libkdu_v80R.dylib
-        install_name_tool -change /usr/local/lib/libkdu_v80R.dylib ${PWD}/libkdu_v80R.dylib kdu_compress
-        codesign -s - -f ${PWD}/kdu_compress
-        install_name_tool -change /usr/local/lib/libkdu_v80R.dylib ${PWD}/libkdu_v80R.dylib kdu_expand
-        codesign -s - -f ${PWD}/kdu_expand
-        echo "${{ github.workspace }}/kdu" >> $GITHUB_PATH
         echo DATA_BRANCH=osx >> $GITHUB_ENV
         brew install little-cms2
 
@@ -62,11 +43,6 @@ jobs:
         echo "Generator: ${generator}"
         echo "GENERATOR_PLATFORM=$generator" >> $env:GITHUB_ENV
         choco install wget 7zip --no-progress
-        #wget -q http://kakadusoftware.com/wp-content/uploads/KDU805_Demo_Apps_for_Win64_200602.msi_.zip
-        #cmake -E tar -xvf KDU805_Demo_Apps_for_Win64_200602.msi_.zip
-        #mkdir kdu && cp KDU805_Demo_Apps_for_Win64_200602.msi kdu && cd kdu
-        #7z e KDU805_Demo_Apps_for_Win64_200602.msi && 7z e disk1.cab
-        #echo "${{ github.workspace }}/kdu" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
     - name: dependencies
       run: |
@@ -109,7 +85,6 @@ jobs:
       with:
         name: grok-${{ matrix.os }}
         path: ${{ github.workspace }}/build/grok-${{ matrix.os }}
-
 
     - name: Upload binaries to release
       uses: softprops/action-gh-release@v1
