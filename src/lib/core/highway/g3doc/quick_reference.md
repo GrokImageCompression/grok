@@ -436,7 +436,7 @@ All other ops in this section are only available if `HWY_TARGET != HWY_SCALAR`:
 
 *   `V`: `i16` \
     <code>V **MulFixedPoint15**(V a, V b)</code>: returns the result of
-    multiplying two 1.15 fixed-point numbers. This corresponds to doubling the
+    multiplying two Q1.15 fixed-point numbers. This corresponds to doubling the
     multiplication result and storing the upper half. Results are
     implementation-defined iff both inputs are -32768.
 
@@ -457,7 +457,12 @@ All other ops in this section are only available if `HWY_TARGET != HWY_SCALAR`:
     either `sum1[j]` or lane `j` of the return value, where `j = P(i)` and `P`
     is a permutation. The only guarantee is that `SumOfLanes(d,
     Add(return_value, sum1))` is the sum of all `a[i] * b[i]`. This is useful
-    for computing dot products and the L2 norm.
+    for computing dot products and the L2 norm. The initial value of `sum1`
+    before any call to `ReorderWidenMulAccumulate` must be zero (because it is
+    unused on some platforms). It is safe to set the initial value of `sum0` to
+    any vector `v`; this has the effect of increasing the total sum by
+    `GetLane(SumOfLanes(d, v))` and may be slightly more efficient than later
+    adding `v` to `sum0`.
 
 *   `VW`: `{f,i}32` \
     <code>VW **RearrangeToOddPlusEven**(VW sum0, VW sum1)</code>: returns in
@@ -468,7 +473,9 @@ All other ops in this section are only available if `HWY_TARGET != HWY_SCALAR`:
     the sum of the widened products whose 16-bit inputs came from the top and
     bottom halves of the 32-bit lane. This is typically called after a series of
     calls to `ReorderWidenMulAccumulate`, as opposed to after each one.
-    Exception: if `HWY_TARGET == HWY_SCALAR`, returns `a[0]*b[0]`.
+    Exception: if `HWY_TARGET == HWY_SCALAR`, returns `a[0]*b[0]`. Note that the
+    initial value of `sum1` must be zero, see `ReorderWidenMulAccumulate`.
+
 
 #### Fused multiply-add
 
@@ -1298,6 +1305,8 @@ broadcasted to all lanes. To obtain a scalar, you can call `GetLane`.
 
 Being a horizontal operation (across lanes of the same vector), these are slower
 than normal SIMD operations and are typically used outside critical loops.
+
+There are additional `{u,i}{8}` implementations on SSE4.1+ and NEON.
 
 *   `V`: `{u,i,f}{32,64},{u,i}{16}` \
     <code>V **SumOfLanes**(D, V v)</code>: returns the sum of all lanes in each

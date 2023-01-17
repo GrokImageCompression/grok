@@ -1049,7 +1049,8 @@ template <typename T, size_t N, typename T2>
 Vec128<T, N> Iota(const Simd<T, N, 0> d, const T2 first) {
   HWY_ALIGN T lanes[16 / sizeof(T)];
   for (size_t i = 0; i < 16 / sizeof(T); ++i) {
-    lanes[i] = static_cast<T>(first + static_cast<T2>(i));
+    lanes[i] =
+        AddWithWraparound(hwy::IsFloatTag<T>(), static_cast<T>(first), i);
   }
   return Load(d, lanes);
 }
@@ -5182,6 +5183,52 @@ HWY_INLINE Vec128<T> MaxOfLanes(hwy::SizeTag<4> /* tag */,
   const Vec128<T> v20_31_20_31 = Shuffle0321(v31_20_31_20);
   return Max(v20_31_20_31, v31_20_31_20);
 }
+
+#define HWY_NEON_BUILD_TYPE_T(type, size) type##x##size##_t
+#define HWY_NEON_BUILD_RET_PAIRWISE_REDUCTION(type, size) Vec128<type##_t, size>
+#define HWY_NEON_DEF_PAIRWISE_REDUCTION(type, size, name, prefix, suffix)    \
+  HWY_API HWY_NEON_BUILD_RET_PAIRWISE_REDUCTION(type, size)                  \
+      name(hwy::SizeTag<sizeof(type##_t)>, const Vec128<type##_t, size> v) { \
+    HWY_NEON_BUILD_TYPE_T(type, size) tmp = prefix##_##suffix(v.raw, v.raw); \
+    if ((size / 2) > 1) tmp = prefix##_##suffix(tmp, tmp);                   \
+    if ((size / 4) > 1) tmp = prefix##_##suffix(tmp, tmp);                   \
+    return HWY_NEON_BUILD_RET_PAIRWISE_REDUCTION(                            \
+        type, size)(HWY_NEON_EVAL(vdup##_lane_##suffix, tmp, 0));            \
+  }
+#define HWY_NEON_DEF_WIDE_PAIRWISE_REDUCTION(type, size, half, name, prefix, \
+                                             suffix)                         \
+  HWY_API HWY_NEON_BUILD_RET_PAIRWISE_REDUCTION(type, size)                  \
+      name(hwy::SizeTag<sizeof(type##_t)>, const Vec128<type##_t, size> v) { \
+    HWY_NEON_BUILD_TYPE_T(type, half) tmp;                                   \
+    tmp = prefix##_##suffix(vget_high_##suffix(v.raw),                       \
+                            vget_low_##suffix(v.raw));                       \
+    if ((size / 2) > 1) tmp = prefix##_##suffix(tmp, tmp);                   \
+    if ((size / 4) > 1) tmp = prefix##_##suffix(tmp, tmp);                   \
+    if ((size / 8) > 1) tmp = prefix##_##suffix(tmp, tmp);                   \
+    tmp = vdup_lane_##suffix(tmp, 0);                                        \
+    return HWY_NEON_BUILD_RET_PAIRWISE_REDUCTION(                            \
+        type, size)(HWY_NEON_EVAL(vcombine_##suffix, tmp, tmp));             \
+  }
+
+#define HWY_NEON_DEF_PAIRWISE_REDUCTIONS(name, prefix)                  \
+  HWY_NEON_DEF_PAIRWISE_REDUCTION(uint16, 4, name, prefix, u16)         \
+  HWY_NEON_DEF_PAIRWISE_REDUCTION(uint8, 8, name, prefix, u8)           \
+  HWY_NEON_DEF_PAIRWISE_REDUCTION(int16, 4, name, prefix, s16)          \
+  HWY_NEON_DEF_PAIRWISE_REDUCTION(int8, 8, name, prefix, s8)            \
+  HWY_NEON_DEF_WIDE_PAIRWISE_REDUCTION(uint16, 8, 4, name, prefix, u16) \
+  HWY_NEON_DEF_WIDE_PAIRWISE_REDUCTION(uint8, 16, 8, name, prefix, u8)  \
+  HWY_NEON_DEF_WIDE_PAIRWISE_REDUCTION(int16, 8, 4, name, prefix, s16)  \
+  HWY_NEON_DEF_WIDE_PAIRWISE_REDUCTION(int8, 16, 8, name, prefix, s8)
+
+HWY_NEON_DEF_PAIRWISE_REDUCTIONS(SumOfLanes, vpadd)
+HWY_NEON_DEF_PAIRWISE_REDUCTIONS(MinOfLanes, vpmin)
+HWY_NEON_DEF_PAIRWISE_REDUCTIONS(MaxOfLanes, vpmax)
+
+#undef HWY_NEON_DEF_PAIRWISE_REDUCTIONS
+#undef HWY_NEON_DEF_WIDE_PAIRWISE_REDUCTION
+#undef HWY_NEON_DEF_PAIRWISE_REDUCTION
+#undef HWY_NEON_BUILD_RET_PAIRWISE_REDUCTION
+#undef HWY_NEON_BUILD_TYPE_T
 
 template <size_t N, HWY_IF_GE32(uint16_t, N)>
 HWY_API Vec128<uint16_t, N> SumOfLanes(hwy::SizeTag<2> /* tag */,
