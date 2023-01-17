@@ -32,7 +32,6 @@ jobs:
       if: startsWith(matrix.os, 'macos')
       run: |
         echo DATA_BRANCH=osx >> $GITHUB_ENV
-        brew install little-cms2
 
     - name: windows-dependencies
       if: startsWith(matrix.os, 'windows')
