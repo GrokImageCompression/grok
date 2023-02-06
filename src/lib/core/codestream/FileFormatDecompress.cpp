@@ -204,12 +204,8 @@ bool FileFormatDecompress::readHeader(grk_header_info* header_info)
 				image->color_space = GRK_CLRSPC_UNKNOWN;
 				break;
 		}
-		if(meth == 2 && getColour()->icc_profile_buf)
-		{
-			// validate
-			if(image->validateICC())
-				image->color_space = GRK_CLRSPC_ICC;
-		}
+        image->validateICC();
+
 		// check RGB subsampling
 		if(image->color_space == GRK_CLRSPC_SRGB)
 		{

@@ -787,11 +787,7 @@ bool FileFormatCompress::init(grk_cparameters* parameters, GrkImage* image)
 			comps[i].bpc = (uint8_t)(comps[i].bpc + (1 << 7));
 	}
 
-	if(inputImage_->meta && inputImage_->meta->color.icc_profile_buf)
-	{
-		if(inputImage_->validateICC())
-			inputImage_->color_space = GRK_CLRSPC_ICC;
-	}
+	inputImage_->validateICC();
 
 	/* Colour Specification box */
 	if(inputImage_->color_space == GRK_CLRSPC_ICC)

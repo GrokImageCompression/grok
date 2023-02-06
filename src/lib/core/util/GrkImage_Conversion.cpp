@@ -1045,7 +1045,10 @@ bool GrkImage::isValidICCColourSpace(uint32_t signature)
 }
 bool GrkImage::validateICC(void)
 {
-	// check if already validated
+    if (!meta || !meta->color.icc_profile_buf)
+        return false;
+
+    // check if already validated
 	if(color_space == GRK_CLRSPC_ICC)
 		return true;
 
@@ -1133,6 +1136,9 @@ bool GrkImage::validateICC(void)
 			"Image subsampling / number of components do not match ICC colour space %s. Ignoring",
 			getICCColourSpaceString((cmsColorSpaceSignature)iccColourSpace).c_str());
 
+	if (imagePropertiesMatchICCColourSpace)
+	    color_space = GRK_CLRSPC_ICC;
+
 	return imagePropertiesMatchICCColourSpace;
 }
 
@@ -1211,6 +1217,9 @@ bool GrkImage::applyICC(void)
 	uint32_t prec, w, stride_diff, h;
 	GRK_COLOR_SPACE oldspace;
 	bool rc = false;
+
+	if (!validateICC())
+	    return false;
 
 	if(numcomps == 0 || !allComponentsSanityCheck(true))
 		return false;

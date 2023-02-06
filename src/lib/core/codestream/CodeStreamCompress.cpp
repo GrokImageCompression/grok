@@ -148,11 +148,8 @@ bool CodeStreamCompress::init(grk_cparameters* parameters, GrkImage* image)
 			return false;
 		}
 	}
-
-    if (parameters->apply_icc_){
-        if (image->validateICC())
-            image->applyICC();
-    }
+    if (parameters->apply_icc_)
+       image->applyICC();
 
 	// create private sanitized copy of image
 	headerImage_ = new GrkImage();
