@@ -1,18 +1,22 @@
-## Dependencies
+# Dependencies
 
-`grk_compress` can transfer ExIF tags to the output `jp2` file via the `-V` tag, but first
-the `ExifTool` [binary](https://exiftool.org/) must be installed.
+## ExifTool
+
+If the `-V` flag is used to transfer ExIF tags to the output file, [ExifTool](https://exiftool.org/) must be installed.
+
+### Linux/MacOS
+
+Follow installation instructions on the ExifTool site.
 
 ### Windows
 
 1. install [Strawberry Perl](https://strawberryperl.com/)
-1. download and extract platform-independant ExifTool [tarball](https://exiftool.org)
-1. in extracted folder, open `lib` folder and copy `Image` and `Exiftool` folders to `C:\Strawberry\perl\site\lib`
-1. to validate, open command line shell and run `perl -MImage::ExifTool -e " "`
-1. if there is no output, then validation has succeeded
+1. download and extract platform-independant [ExifTool tarball](https://exiftool.org)
+1. open `lib` folder inside extracted folder and copy `Image` and `Exiftool` folders to `C:\Strawberry\perl\site\lib`
+1. to validate that the ExifTool Perl modules were installed correctly, open a command line shell and run `perl -MImage::ExifTool -e " "`. If there is no output, then installation succeeded.
 
 
-## Install from Package Manager
+# Install from Package Manager
 
 1. **Debian** Grok `.deb` packages can be found [here](https://tracker.debian.org/pkg/libgrokj2k)
 
@@ -20,16 +24,16 @@ the `ExifTool` [binary](https://exiftool.org/) must be installed.
 
 1. **Homebrew** Grok can be installed using the `grokj2k` brew formula
 
-## Install from Release
+# Install from Release
 
 Grok releases can be found [here](https://github.com/GrokImageCompression/grok/releases)
 
-## Install from Source
+# Install from Source
 
 Grok uses [cmake](www.cmake.org) to configure builds across multiple platforms.
 It requires version 3.16 or higher.
 
-### Compilers
+## Compilers
 
 Supported compilers:
 
@@ -38,13 +42,13 @@ Supported compilers:
 1. MSVC : 2019 or higher
 1. Binaryen for WebAssembly
 
-#### g++
+### g++
 
 To ensure that g++ 10 is the default compiler after installation, execute:
 
 `$ sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-10 100 --slave /usr/bin/g++ g++ /usr/bin/g++-10`
 
-#### Clang
+### Clang
 
 To ensure that clang-12 is the default compiler after installation, execute:
 
@@ -55,7 +59,7 @@ $ sudo update-alternatives --config c++
 
 The second line brings up a menu allowing a user to configure the default `c++` compiler, which is what is used by `cmake` to configure the project compiler.
 
-#### Binaryen
+### Binaryen
 
 The Emscripten SDK can installed by following [these instructions](https://emscripten.org/docs/getting_started/downloads.html)
 The SDK includes a helper script, `emcmake`, to configure cmake.
@@ -71,7 +75,7 @@ Now the core example that decompresses from a buffer can be runs as follows:
 Note: WebAssembly by default is sand-boxed and not allowed to access the file system, so
 only the `core_decompress_from_buf` example will run.
 
-### Configuration
+## Configuration
 
 To configure a build using the defaults:
 
@@ -87,9 +91,9 @@ On headless systems, `ccmake` (an ncurses application)
 may be used to configure the build.
 
 
-### *NIX
+## *NIX
 
-#### Shared vs. Static
+### Shared vs. Static
 
 The `BUILD_SHARED_LIBS` `cmake` flag determines if the `grk_compress`
 and `grk_decompress` binaries are linked dynamically or statically.
@@ -101,7 +105,7 @@ on [Alpine Linux](https://www.alpinelinux.org/). Alpine uses
 
 Note: `cmake` must also be configured with `-DCMAKE_EXE_LINKER_FLAGS="-static"`.
 
-##### Fedora
+### Fedora
 
 1. if the Grok library has been installed and you would still like to run the binaries
 from the build folder, then
@@ -112,12 +116,12 @@ are given priority when loading at run time.
 1. for a static build, the following library must be installed:
 `sudo dnf install libstdc++-static`
 
-#### Debug/Release
+### Debug/Release
 
 Default build type is `Release`. For a `Debug` build, configure
 `cmake` with `-DCMAKE_BUILD_TYPE=Debug`
 
-#### Build
+### Build
 
 `$ make -j8`
 
@@ -125,7 +129,7 @@ for a machine with 8 logical cores.
 
 Binaries are located in the `bin` directory.
 
-#### Install
+### Install
 
 Root users may run:
 
@@ -145,7 +149,7 @@ Note: On Linux, after a shared library build, run
 
 to update the shared library cache.
 
-#### Documentation
+### Documentation
 
 To build the Doxygen documentation (Doxygen needs to be found on the system):
 
@@ -153,7 +157,7 @@ To build the Doxygen documentation (Doxygen needs to be found on the system):
 
 A `HTML` directory is generated in the `doc` directory
 
-#### Cmake Flags
+### CMake Flags
 
 Important `cmake` flags:
 
@@ -167,7 +171,7 @@ Important `cmake` flags:
 * To build the documentation: `-GRK_BUILD_DOC=ON` (default: `OFF`)
 * To enable testing :
 
-      $  cmake . -BUILD_TESTING=ON -DGRK_DATA_ROOT:PATH='PATH/TO/DATA/DIRECTORY'
+      $  cmake . -BUILD_TESTING=ON -DGRK_DATA_ROOT:PATH='/PATH/TO/DATA/DIRECTORY'
       $  make -j8
       $  ctest -D NightlyMemCheck
 
@@ -204,7 +208,7 @@ Type `cmake --help` for available generators on your platform.
 ### Third Party Libraries
 
 Third party libraries such as `libtiff` are built by default. To disable
-these library builds and use the version installed on your system, set :
+`libtiff` library build and use the version installed on your system, set :
 
   `-DGRK_BUILD_LiBTIFF:BOOL=OFF`
 
