@@ -1,3 +1,17 @@
+## Dependencies
+
+`grk_compress` can transfer ExIF tags to the output `jp2` file via the `-V` tag, but first
+the `ExifTool` [binary](https://exiftool.org/) must be installed.
+
+### Windows
+
+1. install [Strawberry Perl](https://strawberryperl.com/)
+1. download and extract platform-independant ExifTool [tarball](https://exiftool.org)
+1. in extracted folder, open `lib` folder and copy `Image` and `Exiftool` folders to `C:\Strawberry\perl\site\lib`
+1. to validate, open command line shell and run `perl -MImage::ExifTool -e " "`
+1. if there is no output, then validation has succeeded
+
+
 ## Install from Package Manager
 
 1. **Debian** Grok `.deb` packages can be found [here](https://tracker.debian.org/pkg/libgrokj2k)
