@@ -5,6 +5,7 @@ Homepage: https://github.com/GrokImageCompression/grok
 Build-Depends: cmake (>= 3.16.0),
                debhelper-compat (= 13),
                help2man,
+               liblcms2-dev,
                libpng-dev,
                libtiff-dev,
                libjpeg-dev,

@@ -4,12 +4,12 @@ Managing Tags
 
 Move master tag:
 
-`$ git push origin :refs/tags/v10.0.4 && git tag -fa v10.0.4 && git push origin master --tags`
+`$ git push origin :refs/tags/v10.0.5 && git tag -fa v10.0.5 && git push origin --tags`
 
 
 Move debian/master tag:
 
-`$ git push origin :refs/tags/v10.0.4.debian && git tag -fa v10.0.4.debian && git push origin master --tags`
+`$ git push origin :refs/tags/v10.0.5.debian && git tag -fa v10.0.5.debian && git push origin --tags`
 
 ------------------
 Building a Package
@@ -20,11 +20,11 @@ Guide to [setting up schroot](https://wiki.debian.org/Packaging/Pre-Requisites)
 0. `cd $SOURCE_DIR`
 
 1. First-time chroot setup:
-   `$ apt install git sbuild cmake  devscripts build-essential debhelper help2man libpng-dev libtiff-dev libjpeg-dev zlib1g-dev doxygen lintian libimage-exiftool-perl`
+   `$ apt install git sbuild cmake  devscripts build-essential debhelper help2man libpng-dev liblcms2-dev libtiff-dev libjpeg-dev zlib1g-dev doxygen lintian libimage-exiftool-perl`
 
 2. `sudo schroot -c debian-sid`
 
-3. `$ git archive --format=tar v10.0.4 | gzip > libgrokj2k_10.0.4.orig.tar.gz && mv libgrokj2k_10.0.4.orig.tar.gz ..`
+3. `$ git archive --format=tar v10.0.5 | gzip > libgrokj2k_10.0.5.orig.tar.gz && mv libgrokj2k_10.0.5.orig.tar.gz ..`
 
 4. `$ dpkg-buildpackage -us -uc`
 
@@ -60,9 +60,11 @@ https://www.linuxbabe.com/security/a-practical-guide-to-gpg-part-1-generate-your
 
 `$ gpg --full-gen-key`
 
+Choose default RSA key, and choose length of 4096 bits
+
 2. sign `.changes` file
 
-`$ debsign -k 6DFF91ED95915E24EF8CDF2BC23974AB6BA8B412 ../*.changes`
+`$ debsign -k AD89FCBE49DCDB2F4DE41D4E9E763CFFF2AC6581 ../*.changes`
 
 3. dupload changes file
 

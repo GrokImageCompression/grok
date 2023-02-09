@@ -1,3 +1,11 @@
+libgrokj2k (10.0.5-1) unstable; urgency=medium
+
+    * Maintenance bug fix release
+    * Fixes an encoder crash : Grok issue #333
+    * Fixes a lintian warning about statically linked lcms2 library
+
+ -- Aaron Boxer <boxerab@protonmail.com>  Thu, 9 Feb 2023 8:10:00 +0200
+
 libgrokj2k (10.0.4-1) unstable; urgency=medium
 
     * Maintenance bug fix release
