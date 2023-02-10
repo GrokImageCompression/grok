@@ -48,12 +48,14 @@ endif(GRK_BUILD_LIBPNG)
 if(GRK_BUILD_LIBTIFF)
   # Try to build it
   message(STATUS "libtiff will be built to support TIFF files.")
-  add_subdirectory(libtiff EXCLUDE_FROM_ALL)
-  set(TIFF_LIBNAME tiff PARENT_SCOPE)
   set(TIFF_INCLUDE_DIRNAME
-    ${GROK_SOURCE_DIR}/thirdparty/libtiff
-    ${CMAKE_BINARY_DIR}/thirdparty/libtiff
-    PARENT_SCOPE)
+      ${CMAKE_BINARY_DIR}/thirdparty/libtiff-prefix/src/libtiff-build/libtiff/
+      ${CMAKE_BINARY_DIR}/thirdparty/libtiff-prefix/src/libtiff/libtiff/ PARENT_SCOPE)
+  set(TIFF_LIBNAME tiff PARENT_SCOPE)
+  ExternalProject_Add(libtiff
+                      CMAKE_ARGS -DBUILD_SHARED_LIBS=OFF -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/libtiff
+  				      GIT_REPOSITORY https://gitlab.com/libtiff/libtiff.git
+  					  GIT_TAG        v4.5.0)
   set(GROK_HAVE_LIBTIFF 1 PARENT_SCOPE)
 else(GRK_BUILD_LIBTIFF)
   find_package(TIFF)
