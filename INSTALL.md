@@ -4,17 +4,20 @@
 
 If the `-V` flag is used to transfer ExIF tags to the output file, [ExifTool](https://exiftool.org/) must be installed.
 
-### Linux/MacOS
+### Linux
 
-Follow installation instructions on the ExifTool site.
+Use your package manager to install ExifTool. This will ensure that the ExifTool Perl modules
+are correctly installed
+
+### MacOS
+
+Use [brew](https://brew.sh/) package manager to install ExifTool. This will ensure that the ExifTool Perl modules are correctly installed
 
 ### Windows
 
-1. install [Strawberry Perl](https://strawberryperl.com/)
-1. download and extract platform-independant [ExifTool tarball](https://exiftool.org)
-1. open `lib` folder inside extracted folder and copy `Image` and `Exiftool` folders to `C:\Strawberry\perl\site\lib`
-1. to validate that the ExifTool Perl modules were installed correctly, open a command line shell and run `perl -MImage::ExifTool -e " "`. If there is no output, then installation succeeded.
-
+`-V` is not supported on Windows. To transfer tags, simply run
+`$ exiftool -tagsfromfile $SRC_FILE -all:all $DEST_FILE`
+after running Grok.
 
 # Install from Package Manager
 
