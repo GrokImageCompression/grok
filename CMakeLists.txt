@@ -63,6 +63,7 @@ set(CMAKE_MODULE_PATH
     ${GROK_SOURCE_DIR}/cmake
     ${CMAKE_MODULE_PATH})
 
+include (ExternalProject)
 # Install directories
 include(GNUInstallDirs)
 string(TOLOWER ${PROJECT_NAME} projectname)
@@ -111,6 +112,7 @@ include(CheckSymbolExists)
 option(GRK_BUILD_LIBPNG "Build libpng library" ON)
 option(GRK_BUILD_LIBTIFF "Build libtiff library" ON)
 option(GRK_BUILD_LCMS2 "Build lcms2 library" ON)
+option(GRK_BUILD_JPEG "Build jpeg library" ON)
 add_subdirectory(thirdparty)
 
 # Build Library
