@@ -124,6 +124,7 @@ set(tiff_private_HEADERS
 
 
 add_library(tiff libtiff.def)
+add_library(TIFF::TIFF ALIAS tiff)
 
 target_sources(tiff PRIVATE
         ${tiff_public_HEADERS}
@@ -144,6 +145,7 @@ target_sources(tiff PRIVATE
         tif_fax3sm.c
         tif_flush.c
         tif_getimage.c
+        tif_hash_set.c
         tif_jbig.c
         tif_jpeg.c
         tif_jpeg_12.c
@@ -207,7 +209,9 @@ endif()
 if(JPEG_SUPPORT)
   target_link_libraries(tiff PRIVATE JPEG::JPEG)
   string(APPEND tiff_requires_private " libjpeg")
-  if(JPEG_DUAL_MODE_8_12)
+  if(HAVE_JPEGTURBO_DUAL_MODE_8_12)
+    target_compile_definitions(tiff PRIVATE HAVE_JPEGTURBO_DUAL_MODE_8_12)
+  elseif(JPEG_DUAL_MODE_8_12)
     target_include_directories(tiff PRIVATE ${JPEG12_INCLUDE_DIR})
     target_link_libraries(tiff PRIVATE ${JPEG12_LIBRARIES})
   endif()
@@ -235,8 +239,8 @@ if(WEBP_SUPPORT)
   target_link_libraries(tiff PRIVATE WebP::WebP)
   string(APPEND tiff_requires_private " libwebp")
 endif()
-target_link_libraries(tiff PRIVATE CMath::CMath)
 if(CMath_LIBRARY)
+  target_link_libraries(tiff PRIVATE CMath::CMath)
   list(APPEND tiff_libs_private_list "${CMath_LIBRARY}")
 endif()
 
@@ -255,6 +259,24 @@ endif()
 if(HAVE_LD_VERSION_SCRIPT)
   set_target_properties(tiff PROPERTIES LINK_FLAGS
                         "-Wl,--version-script=${CMAKE_CURRENT_SOURCE_DIR}/libtiff.map")
+endif()
+
+if(tiff-install)
+  export(TARGETS tiff NAMESPACE TIFF:: FILE "${CMAKE_CURRENT_BINARY_DIR}/libtiffTargets.cmake")
+  install(TARGETS tiff EXPORT TiffTargets
+          RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+          LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+          ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
+
+  install(FILES ${tiff_public_HEADERS}
+          DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")
+
+  set(TIFF_CONFIGDIR ${CMAKE_INSTALL_LIBDIR}/cmake/tiff)
+  install(EXPORT TiffTargets
+          FILE TiffTargets.cmake
+          NAMESPACE TIFF::
+          DESTINATION ${TIFF_CONFIGDIR}
+  )
 endif()
 
 if(CXX_SUPPORT)
@@ -279,14 +301,16 @@ if(CXX_SUPPORT)
                           "-Wl,--version-script=${CMAKE_CURRENT_SOURCE_DIR}/libtiffxx.map")
   endif()
 
-  install(TARGETS tiffxx
-          RUNTIME DESTINATION ${CMAKE_INSTALL_FULL_BINDIR}
-          LIBRARY DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR}
-          ARCHIVE DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR})
+  if(tiff-install)
+    install(TARGETS tiffxx
+            RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+            LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+            ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
 
-  install(FILES ${tiffxx_HEADERS}
-          DESTINATION "${CMAKE_INSTALL_FULL_INCLUDEDIR}")
-
+    install(FILES ${tiffxx_HEADERS}
+            DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")
+  endif()
+      
 endif()
 
 

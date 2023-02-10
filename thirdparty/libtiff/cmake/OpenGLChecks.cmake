@@ -29,6 +29,7 @@ set(OpenGL_GL_PREFERENCE LEGACY)
 find_package(OpenGL COMPONENTS OpenGL)
 find_package(GLUT)
 
+set(OPENGL_SUPPORT FALSE)
 set(HAVE_OPENGL FALSE)
 if(OPENGL_FOUND AND OPENGL_GLU_FOUND AND GLUT_FOUND)
     set(HAVE_OPENGL TRUE)
@@ -41,3 +42,9 @@ check_include_file(GL/glut.h HAVE_GL_GLUT_H)
 check_include_file(GLUT/glut.h HAVE_GLUT_GLUT_H)
 check_include_file(OpenGL/gl.h HAVE_OPENGL_GL_H)
 check_include_file(OpenGL/glu.h HAVE_OPENGL_GLU_H)
+
+option(tiff-opengl "use OpenGL (required for tiffgt viewer)" ${HAVE_OPENGL})
+
+if (tiff-opengl AND HAVE_OPENGL)
+    set(OPENGL_SUPPORT TRUE)
+endif()

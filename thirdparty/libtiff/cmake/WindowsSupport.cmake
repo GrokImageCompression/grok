@@ -23,13 +23,17 @@
 # LIABILITY, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE
 # OF THIS SOFTWARE.
 
-# Debug postfix
 if(MSVC)
+    # Debug postfix
     set(CMAKE_DEBUG_POSTFIX "d")
-# disable deprecation warnings
-    add_compile_definitions(_CRT_SECURE_NO_WARNINGS)
-# suppress deprecation warning for MSVC POSIX names
-    add_compile_definitions(_CRT_NONSTDC_NO_WARNINGS)
+
+    # disable deprecation warnings
+    add_definitions(-D_CRT_SECURE_NO_DEPRECATE -D_CRT_NONSTDC_NO_DEPRECATE)
+    # suppress deprecation warning for MSVC POSIX names
+    add_definitions(-D_CRT_SECURE_NO_WARNINGS -D_CRT_NONSTDC_NO_WARNINGS)
+
+    # Don't warn about use of deprecated functions
+    add_compile_options(/wd4996)
 endif()
 
 # Win32 file I/O

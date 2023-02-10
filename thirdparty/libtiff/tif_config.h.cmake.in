@@ -112,6 +112,9 @@
 /* Default size of the strip in bytes (when strip chopping enabled) */
 #define STRIP_SIZE_DEFAULT @STRIP_SIZE_DEFAULT@
 
+/** Maximum number of TIFF IFDs that libtiff can iterate through in a file. */
+#define TIFF_MAX_DIR_COUNT @TIFF_MAX_DIR_COUNT@
+
 /* define to use win32 IO system */
 #cmakedefine USE_WIN32_FILEIO 1
 

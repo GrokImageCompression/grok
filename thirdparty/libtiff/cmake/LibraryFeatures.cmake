@@ -35,6 +35,8 @@ if(strip-chopping)
     endif()
 endif()
 
+set(TIFF_MAX_DIR_COUNT 1048576 CACHE STRING "Maximum number of TIFF directories that libtiff can browse through")
+
 # Defer loading of strip/tile offsets
 option(defer-strile-load "enable deferred strip/tile offset/size loading (also available at runtime with the 'D' flag of TIFFOpen())" OFF)
 set(DEFER_STRILE_LOAD ${defer-strile-load})
