@@ -7,7 +7,6 @@ ENDIF()
 ENDIF(UNIX)
 
 include_directories(
-  ${LCMS_INCLUDE_DIRNAME}
   ${PNG_INCLUDE_DIRNAME}
   ${TIFF_INCLUDE_DIRNAME}
   ${JPEG_INCLUDE_DIRNAME}
@@ -15,7 +14,6 @@ include_directories(
   ${CMAKE_BINARY_DIR}/src/lib/core # grk_config.h and grk_config_private.h
   ${GROK_SOURCE_DIR}/src/lib/core
   ${GROK_SOURCE_DIR}/src/include
-  ${CMAKE_CURRENT_BINARY_DIR}
   ${CMAKE_CURRENT_SOURCE_DIR}/image_format
   ${CMAKE_CURRENT_SOURCE_DIR}/common
   ${CMAKE_CURRENT_SOURCE_DIR}/jp2
