@@ -214,19 +214,3 @@ Third party libraries such as `libtiff` are built by default. To disable
 `libtiff` library build and use the version installed on your system, set :
 
   `-DGRK_BUILD_LiBTIFF:BOOL=OFF`
-
-#### JPEG Support
-
-To encode and decode JPEG files, a `libjpeg`-compatible library
-(`-dev` version) must be installed.
-Recommended library : [libjpeg-turbo](https://github.com/libjpeg-turbo/libjpeg-turbo)
-On Debian systems, the `libjpeg-turbo8-dev` package will provide a development
-version of this library.
-
-##### Grok dynamic build with JPEG support (Windows)
-
-`libjpeg-turbo` must be built with the `WITH_CRT_DLL` flag on, to ensure that the dynamic version of the C runtime libraries is used. Also, if Grok is linking with dynamic build of `libjpeg-turbo`, (`cmake` flag `JPEG_LIBRARY` is set to `LIBJPEG_INSTALL_DIRECTORY/jpeg.lib`), then make sure that `LIBJPEG_INSTALL_DIRECTORY/bin` is on the path.
-
-##### Grok static build with JPEG support (Windows)
-
-`libjpeg-turbo` must be built with the `WITH_CRT_DLL` flag off, to ensure that the static version of the C runtime libraries is used.
