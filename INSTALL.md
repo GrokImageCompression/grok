@@ -16,7 +16,7 @@ Use [brew](https://brew.sh/) package manager to install ExifTool. This will ensu
 ### Windows
 
 `-V` is not supported on Windows. To transfer tags, simply run
-`$ exiftool -tagsfromfile $SRC_FILE -all:all $DEST_FILE`
+`$ exiftool -TagsFromFile $SOURCE_FILE "-all:all>all:all" $DEST_FILE`
 after running Grok.
 
 # Install from Package Manager
