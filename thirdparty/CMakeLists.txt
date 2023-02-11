@@ -114,6 +114,7 @@ if (GRK_BUILD_JPEG)
                         -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/libjpeg-turbo
                         -DCMAKE_INSTALL_LIBDIR=${CMAKE_BINARY_DIR}/bin
                         -DCMAKE_POSITION_INDEPENDENT_CODE=ON
+                        -DWITH_TURBOJPEG=0
   				      GIT_REPOSITORY https://github.com/libjpeg-turbo/libjpeg-turbo.git
   					  GIT_TAG        2.1.5.1)
 if(WIN32)
