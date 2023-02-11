@@ -58,6 +58,12 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
     "MinSizeRel" "RelWithDebInfo")
 endif()
 
+include(CheckPIESupported OPTIONAL RESULT_VARIABLE CHECK_PIE_SUPPORTED)
+check_pie_supported(LANGUAGES CXX)
+ if(CMAKE_CXX_LINK_PIE_SUPPORTED)
+   set(CMAKE_POSITION_INDEPENDENT_CODE TRUE)
+endif()
+
 # Path to additional CMake modules
 set(CMAKE_MODULE_PATH
     ${GROK_SOURCE_DIR}/cmake
