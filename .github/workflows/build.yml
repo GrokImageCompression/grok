@@ -26,12 +26,16 @@ jobs:
         sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-10 100 \
           --slave /usr/bin/g++ g++ /usr/bin/g++-10 --slave /usr/bin/gcov gcov /usr/bin/gcov-10
         echo DATA_BRANCH=linux-release >> $GITHUB_ENV
+        sudo apt install exiftool
 
 
     - name: macos-dependencies
       if: startsWith(matrix.os, 'macos')
       run: |
         echo DATA_BRANCH=osx >> $GITHUB_ENV
+        brew upgrade
+        brew install exiftool
+        #perl -MImage::ExifTool -e ""
 
     - name: windows-dependencies
       if: startsWith(matrix.os, 'windows')
