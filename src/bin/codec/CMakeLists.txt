@@ -12,6 +12,9 @@ foreach(exe grk_decompress grk_compress grk_dump)
   endif()
 
   target_link_libraries(${exe} ${GROK_CODEC_NAME} )
+  if (OPENCL_FOUND)
+  	target_link_libraries(${exe} ${OPENCL_LIBRARIES} )
+  endif(OPENCL_FOUND)
 
   if(URING)
 	  target_link_libraries(${exe} uring)
