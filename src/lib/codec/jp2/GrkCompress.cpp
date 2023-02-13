@@ -488,6 +488,7 @@ int GrkCompress::main(int argc, char** argv)
 					success = 1;
 					goto cleanup;
 				}
+				spdlog::info("Compressed file {}", initParams.parameters.outfile);
 				numCompressedFiles++;
 			}
 			else
@@ -496,8 +497,10 @@ int GrkCompress::main(int argc, char** argv)
 					std::filesystem::directory_iterator(initParams.inputFolder.imgdirpath))
 				{
 					initParams.parameters = parametersCache;
-					if(compress(entry.path().filename().string(), &initParams) == 1)
+					if(compress(entry.path().filename().string(), &initParams) == 1){
+	                    spdlog::info("Compressed file {}", initParams.parameters.outfile);
 						numCompressedFiles++;
+					}
 				}
 			}
 		}
