@@ -743,14 +743,20 @@ int GrkCompress::parseCommandLine(int argc, char** argv, CompressInitParams* ini
 
         TCLAP::SwitchArg applyICCArg("f", "apply_icc", "Apply ICC profile before compression, f present", cmd);
 		cmd.parse(argc, argv);
-
-		initParams->transferExifTags = transferExifTagsArg.isSet();
 		if(logfileArg.isSet())
 		{
 			auto file_logger = spdlog::basic_logger_mt("grk_compress", logfileArg.getValue());
 			spdlog::set_default_logger(file_logger);
 		}
-
+        initParams->transferExifTags = transferExifTagsArg.isSet();
+#ifndef GROK_HAVE_EXIFTOOL
+        if (initParams->transferExifTags) {
+            spdlog::warn("Transfer of EXIF tags not supported. Transfer can be achieved by directly calling");
+            spdlog::warn("exiftool after compression as follows: ");
+            spdlog::warn("exiftool -TagsFromFile $SOURCE_FILE -all:all>all:all $DEST_FILE");
+            initParams->transferExifTags = false;
+        }
+#endif
 		inputFolder->set_out_format = false;
 		parameters->raw_cp.width = 0;
 

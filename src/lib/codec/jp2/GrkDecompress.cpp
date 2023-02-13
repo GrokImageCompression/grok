@@ -459,9 +459,6 @@ int GrkDecompress::parseCommandLine(int argc, char** argv, DecompressInitParams*
 											  "unsigned integer", cmd);
 
 		cmd.parse(argc, argv);
-
-		initParams->transferExifTags = transferExifTagsArg.isSet();
-
 		parameters->verbose_ = verboseArg.isSet();
 		bool useStdio = inputFileArg.isSet() && outForArg.isSet() && !outputFileArg.isSet();
 		// disable verbose mode so we don't write info or warnings to stdout
@@ -476,6 +473,15 @@ int GrkDecompress::parseCommandLine(int argc, char** argv, DecompressInitParams*
 			spdlog::set_default_logger(file_logger);
 		}
 
+        initParams->transferExifTags = transferExifTagsArg.isSet();
+#ifndef GROK_HAVE_EXIFTOOL
+        if (initParams->transferExifTags) {
+            spdlog::warn("Transfer of EXIF tags not supported. Transfer can be achieved by directly calling");
+            spdlog::warn("exiftool after decompression as follows: ");
+            spdlog::warn("exiftool -TagsFromFile $SOURCE_FILE -all:all>all:all $DEST_FILE");
+            initParams->transferExifTags = false;
+        }
+#endif
 		parameters->io_xml = xmlArg.isSet();
 		parameters->force_rgb = forceRgbArg.isSet();
 		if(upsampleArg.isSet())
