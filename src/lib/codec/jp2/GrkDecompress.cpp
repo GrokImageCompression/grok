@@ -341,7 +341,7 @@ char GrkDecompress::nextFile(const std::string inputFile, grk_img_fol* inputFold
 		return 1;
 
 	auto temp_ofname = inputFile;
-	auto pos = inputFile.find(".");
+	auto pos = inputFile.rfind(".");
 	if(pos != std::string::npos)
 		temp_ofname = inputFile.substr(0, pos);
 	if(inputFolder->set_out_format)

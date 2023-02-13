@@ -376,7 +376,7 @@ static char nextFile(std::string inputFile, grk_img_fol* inputFolder, grk_img_fo
 	}
 	std::string outputRootFile;
 	// if we don't find a file tag, then just use the full file name
-	auto pos = inputFile.find(".");
+	auto pos = inputFile.rfind(".");
 	if(pos != std::string::npos)
 		outputRootFile = inputFile.substr(0, pos);
 	else
