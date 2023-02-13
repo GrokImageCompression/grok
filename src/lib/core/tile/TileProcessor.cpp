@@ -344,8 +344,18 @@ bool TileProcessor::doCompress(void)
 		packetLengthCache.createMarkers(stream_);
 	// 2. rate control
 	uint32_t allPacketBytes = 0;
-	if(!rateAllocate(&allPacketBytes))
-		return false;
+	if(!rateAllocate(&allPacketBytes)) {
+	    auto tcp = cp_->tcps + tileIndex_;
+	    if (tcp->csty & J2K_CP_CSTY_SOP){
+	        GRK_WARN("Unable to perform rate control on tile %d. Disabling SOP markers for this tile.",tileIndex_);
+	        tcp->csty = uint8_t(tcp->csty & ~J2K_CP_CSTY_SOP);
+	        allPacketBytes = 0;
+	        if(!rateAllocate(&allPacketBytes)) {
+                GRK_ERROR("Unable to perform rate control on tile %d",tileIndex_);
+                return false;
+	        }
+	    }
+	}
 	packetTracker_.clear();
 
 	if(canPreCalculateTileLen())
