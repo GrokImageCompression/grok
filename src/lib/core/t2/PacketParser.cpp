@@ -293,7 +293,7 @@ void PacketParser::readHeader(void)
 		throw CorruptPacketHeaderException();
 	}
 
-	// EPH marker (absent from packet in case of packet packet headers)
+	// EPH marker (absent from packet in case of packed packet headers)
 	if(hasEPH)
 	{
 		if((*remainingBytes - (uint32_t)(currentHeaderPtr - *headerStart)) < 2U)

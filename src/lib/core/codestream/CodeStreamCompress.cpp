@@ -916,7 +916,6 @@ bool CodeStreamCompress::updateRates(void)
 {
 	auto cp = &(cp_);
 	auto image = headerImage_;
-	auto tcp = cp->tcps;
 	auto width = image->x1 - image->x0;
 	auto height = image->y1 - image->y0;
 	if(width <= 0 || height <= 0)
@@ -930,7 +929,9 @@ bool CodeStreamCompress::updateRates(void)
 	{
 		for(uint32_t tile_x = 0; tile_x < cp->t_grid_width; ++tile_x)
 		{
-			double stride = 0;
+		    uint32_t tileId = tile_y * cp->t_grid_width + tile_x;
+		    auto tcp = cp->tcps + tileId;
+            double stride = 0;
 			if(cp->coding_params_.enc_.enableTilePartGeneration_)
 				stride = (tcp->numTileParts_ - 1) * 14;
 			double offset = stride / tcp->numlayers;
@@ -944,20 +945,18 @@ bool CodeStreamCompress::updateRates(void)
 							  ((double)*rates * (double)bits_empty)) -
 							 offset;
 			}
-			++tcp;
 		}
 	}
-	tcp = cp->tcps;
-
 	for(uint32_t tile_y = 0; tile_y < cp->t_grid_height; ++tile_y)
 	{
 		for(uint32_t tile_x = 0; tile_x < cp->t_grid_width; ++tile_x)
 		{
+            uint32_t tileId = tile_y * cp->t_grid_width + tile_x;
+            auto tcp = cp->tcps + tileId;
 			double* rates = tcp->rates;
-
 			auto tileBounds = cp->getTileBounds(image, tile_x, tile_y);
 			uint64_t numTilePixels = tileBounds.area();
-
+			// correction for header size is distributed amongst all tiles
 			double sot_adjust =
 				((double)numTilePixels * (double)header_size) / ((double)width * height);
 			if(*rates > 0.0)
@@ -983,7 +982,6 @@ bool CodeStreamCompress::updateRates(void)
 				if(*rates < *(rates - 1) + 10.0)
 					*rates = (*(rates - 1)) + 20.0;
 			}
-			++tcp;
 		}
 	}
 
