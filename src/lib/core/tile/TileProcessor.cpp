@@ -1370,9 +1370,11 @@ bool TileProcessor::pcrdBisectFeasible(uint32_t* allPacketBytes, bool padSOP_EPH
 			// start by including everything in this layer
 			uint32_t goodthresh = upperBound;
 			makeLayerFeasible(layno, (uint16_t)goodthresh, true);
-			cumulativeDistortion[layno] =
-				(layno == 0) ? tile->layerDistoration[0]
-							 : (cumulativeDistortion[layno - 1] + tile->layerDistoration[layno]);
+			if(cp_->coding_params_.enc_.allocationByFixedQuality_) {
+                cumulativeDistortion[layno] =
+                    (layno == 0) ? tile->layerDistoration[0]
+                                 : (cumulativeDistortion[layno - 1] + tile->layerDistoration[layno]);
+			}
 			// upper bound for next layer is initialized to lowerBound for current layer, minus one
 			upperBound = lowerBound - 1;
 		}
@@ -1387,6 +1389,8 @@ bool TileProcessor::pcrdBisectFeasible(uint32_t* allPacketBytes, bool padSOP_EPH
 	bool rc =  t2.compressPacketsSimulate(tileIndex_, tcp->numlayers, allPacketBytes, maxLayerLength,
 									  newTilePartProgressionPosition,
 									  packetLengthCache.getMarkers(), true);
+
+	assert(!padSOP_EPH || rc);
 	return rc;
 }
 /*
