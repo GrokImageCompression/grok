@@ -940,6 +940,7 @@ bool CodeStreamCompress::updateRates(void)
 			for(uint16_t k = 0; k < tcp->numlayers; ++k)
 			{
 				double* rates = tcp->rates + k;
+				// convert to target bytes for layer
 				if(*rates > 0.0f)
 					*rates = ((((double)size_pixel * (double)numTilePixels)) /
 							  ((double)*rates * (double)bits_empty)) -

@@ -143,13 +143,13 @@ struct TileProcessor
 	bool dwt_encode();
 	void t1_encode();
 	bool encodeT2(uint32_t* packet_bytes_written);
-	bool rateAllocate(uint32_t* allPacketBytes);
+	bool rateAllocate(uint32_t* allPacketBytes, bool padSOP_EPH);
 	bool layerNeedsRateControl(uint32_t layno);
 	bool makeSingleLosslessLayer();
 	void makeLayerFinal(uint32_t layno);
 	bool pcrdBisectSimple(uint32_t* p_data_written);
 	void makeLayerSimple(uint32_t layno, double thresh, bool finalAttempt);
-	bool pcrdBisectFeasible(uint32_t* p_data_written);
+	bool pcrdBisectFeasible(uint32_t* p_data_written, bool padSOP_EPH);
 	void makeLayerFeasible(uint32_t layno, uint16_t thresh, bool finalAttempt);
 
 	Tile* tile;
