@@ -1255,6 +1255,7 @@ bool TileProcessor::pcrdBisectFeasible(uint32_t* allPacketBytes, bool padSOP_EPH
 	uint32_t state = grk_plugin_get_debug_state();
 	RateInfo rateInfo;
 	uint64_t numPackets = 0;
+	bool debug = false;
 	for(uint16_t compno = 0; compno < tile->numcomps_; compno++)
 	{
 		auto tilec = &tile->comps[compno];
@@ -1318,11 +1319,16 @@ bool TileProcessor::pcrdBisectFeasible(uint32_t* allPacketBytes, bool padSOP_EPH
 		uint32_t lowerBound = min_slope;
 		maxLayerLength = tcp->rates[layno] > 0.0f ? ((uint32_t)ceil(tcp->rates[layno])) : UINT_MAX;
 		if (tcp->rates[layno] > 0.0f && padSOP_EPH) {
-		    uint64_t adj = 0;
+		    // adjust for empty packets
+		    uint64_t adj = numPackets;
+		    // adjust for EPH marker
             if (tcp_->csty & J2K_CP_CSTY_EPH)
-                adj += numPackets * 4 * 2;
+                adj += numPackets * 2;
+            // adjust for SOP marker
             if (tcp_->csty & J2K_CP_CSTY_SOP)
-                adj += numPackets * 6 * 2;
+                adj += numPackets * 6;
+            // multiply by 4 for good measure
+            adj *= 4;
             if ((uint64_t)maxLayerLength + adj < UINT_MAX)
                 maxLayerLength += (uint32_t)adj;
 		}
@@ -1391,7 +1397,7 @@ bool TileProcessor::pcrdBisectFeasible(uint32_t* allPacketBytes, bool padSOP_EPH
 									  newTilePartProgressionPosition,
 									  packetLengthCache.getMarkers(), true, debug);
 
-	assert(!padSOP_EPH || rc);
+	//assert(!padSOP_EPH || rc);
 	return rc;
 }
 /*

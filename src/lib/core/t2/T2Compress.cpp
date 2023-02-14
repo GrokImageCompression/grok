@@ -83,7 +83,8 @@ bool T2Compress::compressPacketsSimulate(uint16_t tile_no, uint16_t max_layers,
 }
 bool T2Compress::compressPacketSimulate(TileCodingParams* tcp, PacketIter* pi,
 										uint32_t* packet_bytes_written,
-										uint32_t max_bytes_available, PLMarkerMgr* markers, bool debug)
+										uint32_t max_bytes_available, PLMarkerMgr* markers,
+										[[maybe_unused]] bool debug)
 {
 	uint16_t compno = pi->getCompno();
 	uint32_t resno = pi->getResno();
@@ -159,6 +160,8 @@ bool T2Compress::compressPacketSimulate(TileCodingParams* tcp, PacketIter* pi,
 		return false;
 	}
 	*packet_bytes_written = (uint32_t)byteCount;
+	//if (debug)
+	//    printf("c=%d p=%d r=%d l=%d bytes=%d available=%d\n", compno,precinctIndex,resno,layno,byteCount, max_bytes_available);
 	if(markers)
 	{
 		if(!markers->pushPL(*packet_bytes_written))
