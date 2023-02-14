@@ -147,7 +147,7 @@ struct TileProcessor
 	bool layerNeedsRateControl(uint32_t layno);
 	bool makeSingleLosslessLayer();
 	void makeLayerFinal(uint32_t layno);
-	bool pcrdBisectSimple(uint32_t* p_data_written);
+	bool pcrdBisectSimple(uint32_t* p_data_written, bool padSOP_EPH);
 	void makeLayerSimple(uint32_t layno, double thresh, bool finalAttempt);
 	bool pcrdBisectFeasible(uint32_t* p_data_written, bool padSOP_EPH);
 	void makeLayerFeasible(uint32_t layno, uint16_t thresh, bool finalAttempt);

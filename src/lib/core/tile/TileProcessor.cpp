@@ -1135,7 +1135,7 @@ bool TileProcessor::rateAllocate(uint32_t* allPacketBytes, bool padSOP_EPH)
 	switch(cp_->coding_params_.enc_.rateControlAlgorithm)
 	{
 		case 0:
-			return pcrdBisectSimple(allPacketBytes);
+			return pcrdBisectSimple(allPacketBytes, padSOP_EPH);
 		default:
 			return pcrdBisectFeasible(allPacketBytes, padSOP_EPH);
 	}
@@ -1403,7 +1403,7 @@ bool TileProcessor::pcrdBisectFeasible(uint32_t* allPacketBytes, bool padSOP_EPH
 /*
  Simple bisect algorithm to calculate optimal layer truncation points
  */
-bool TileProcessor::pcrdBisectSimple(uint32_t* allPacketBytes)
+bool TileProcessor::pcrdBisectSimple(uint32_t* allPacketBytes, bool padSOP_EPH)
 {
 	uint32_t passno;
 	const double K = 1;
@@ -1412,6 +1412,8 @@ bool TileProcessor::pcrdBisectSimple(uint32_t* allPacketBytes)
 	double max_slope = -1;
 	uint32_t state = grk_plugin_get_debug_state();
 	bool single_lossless = makeSingleLosslessLayer();
+    uint64_t numPackets = 0;
+    auto tcp = tcp_;
 	for(uint16_t compno = 0; compno < tile->numcomps_; compno++)
 	{
 		auto tilec = &tile->comps[compno];
@@ -1424,6 +1426,7 @@ bool TileProcessor::pcrdBisectSimple(uint32_t* allPacketBytes)
 				auto band = &res->tileBand[bandIndex];
 				for(auto prc : band->precincts)
 				{
+				    numPackets++;
 					for(uint64_t cblkno = 0; cblkno < prc->getNumCblks(); cblkno++)
 					{
 						auto cblk = prc->getCompressedBlockPtr(cblkno);
@@ -1487,8 +1490,21 @@ bool TileProcessor::pcrdBisectSimple(uint32_t* allPacketBytes)
 	uint32_t maxLayerLength = UINT_MAX;
 	for(uint16_t layno = 0; layno < tcp_->numlayers; layno++)
 	{
-		maxLayerLength =
-			(tcp_->rates[layno] > 0.0f) ? (uint32_t)ceil(tcp_->rates[layno]) : UINT_MAX;
+        maxLayerLength = tcp->rates[layno] > 0.0f ? ((uint32_t)ceil(tcp->rates[layno])) : UINT_MAX;
+        if (tcp->rates[layno] > 0.0f && padSOP_EPH) {
+            // adjust for empty packets
+            uint64_t adj = numPackets;
+            // adjust for EPH marker
+            if (tcp_->csty & J2K_CP_CSTY_EPH)
+                adj += numPackets * 2;
+            // adjust for SOP marker
+            if (tcp_->csty & J2K_CP_CSTY_SOP)
+                adj += numPackets * 6;
+            // multiply by 4 for good measure
+            adj *= 4;
+            if ((uint64_t)maxLayerLength + adj < UINT_MAX)
+                maxLayerLength += (uint32_t)adj;
+        }
 		if(layerNeedsRateControl(layno))
 		{
 			double lowerBound = min_slope;
