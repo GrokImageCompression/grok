@@ -349,6 +349,7 @@ bool TileProcessor::doCompress(void)
         if ((tcp_->csty & J2K_CP_CSTY_EPH) || (tcp_->csty & J2K_CP_CSTY_SOP)){
             GRK_WARN("Unable to perform rate control on tile %d. "
                     "We will try increasing rate to adjust for SOP and/or EPH markers",tileIndex_);
+            allPacketBytes = 0;
             rc = rateAllocate(&allPacketBytes , true);
         }
         if (!rc) {
@@ -1305,7 +1306,7 @@ bool TileProcessor::pcrdBisectFeasible(uint32_t* allPacketBytes, bool padSOP_EPH
 		// and correct tile length
 		return t2.compressPacketsSimulate(tileIndex_, 0 + 1U, allPacketBytes, UINT_MAX,
 										  newTilePartProgressionPosition,
-										  packetLengthCache.getMarkers(), true);
+										  packetLengthCache.getMarkers(), true, false);
 	}
 	uint32_t min_slope = rateInfo.getMinimumThresh();
 	uint32_t max_slope = USHRT_MAX;
@@ -1357,7 +1358,7 @@ bool TileProcessor::pcrdBisectFeasible(uint32_t* allPacketBytes, bool padSOP_EPH
 				{
 					if(!t2.compressPacketsSimulate(
 						   tileIndex_, (uint16_t)(layno + 1U), allPacketBytes, maxLayerLength,
-						   newTilePartProgressionPosition, packetLengthCache.getMarkers(), false))
+						   newTilePartProgressionPosition, packetLengthCache.getMarkers(), false, false))
 					{
 						lowerBound = thresh;
 						continue;
@@ -1388,7 +1389,7 @@ bool TileProcessor::pcrdBisectFeasible(uint32_t* allPacketBytes, bool padSOP_EPH
 	// and correct tile length
 	bool rc =  t2.compressPacketsSimulate(tileIndex_, tcp->numlayers, allPacketBytes, maxLayerLength,
 									  newTilePartProgressionPosition,
-									  packetLengthCache.getMarkers(), true);
+									  packetLengthCache.getMarkers(), true, debug);
 
 	assert(!padSOP_EPH || rc);
 	return rc;
@@ -1473,7 +1474,7 @@ bool TileProcessor::pcrdBisectSimple(uint32_t* allPacketBytes)
 		// and correct tile length
 		return t2.compressPacketsSimulate(tileIndex_, 0 + 1U, allPacketBytes, UINT_MAX,
 										  newTilePartProgressionPosition,
-										  packetLengthCache.getMarkers(), true);
+										  packetLengthCache.getMarkers(), true,false);
 	}
 	double cumulativeDistortion[maxCompressLayersGRK];
 	double upperBound = max_slope;
@@ -1518,7 +1519,7 @@ bool TileProcessor::pcrdBisectSimple(uint32_t* allPacketBytes)
 				{
 					if(!t2.compressPacketsSimulate(tileIndex_, layno + 1U, allPacketBytes,
 												   maxLayerLength, newTilePartProgressionPosition,
-												   packetLengthCache.getMarkers(), false))
+												   packetLengthCache.getMarkers(), false,false))
 					{
 						lowerBound = thresh;
 						continue;
@@ -1548,7 +1549,7 @@ bool TileProcessor::pcrdBisectSimple(uint32_t* allPacketBytes)
 	// GRK_INFO("Rate control final simulation");
 	return t2.compressPacketsSimulate(tileIndex_, tcp_->numlayers, allPacketBytes, maxLayerLength,
 									  newTilePartProgressionPosition,
-									  packetLengthCache.getMarkers(), true);
+									  packetLengthCache.getMarkers(), true, false);
 }
 static void prepareBlockForFirstLayer(CompressCodeblock* cblk)
 {
