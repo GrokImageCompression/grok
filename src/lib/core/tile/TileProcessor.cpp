@@ -1254,7 +1254,8 @@ bool TileProcessor::pcrdBisectFeasible(uint32_t* allPacketBytes, bool padSOP_EPH
 	auto tcp = tcp_;
 	uint32_t state = grk_plugin_get_debug_state();
 	RateInfo rateInfo;
-	uint64_t numPackets = 0;
+	uint64_t numPacketsPerLayer = 0;
+	uint64_t numCodeBlocks = 0;
 	bool debug = false;
 	for(uint16_t compno = 0; compno < tile->numcomps_; compno++)
 	{
@@ -1268,9 +1269,10 @@ bool TileProcessor::pcrdBisectFeasible(uint32_t* allPacketBytes, bool padSOP_EPH
 				auto band = &res->tileBand[bandIndex];
 				for(auto prc : band->precincts)
 				{
-				    numPackets++;
+				    numPacketsPerLayer++;
 					for(uint64_t cblkno = 0; cblkno < prc->getNumCblks(); cblkno++)
 					{
+					    numCodeBlocks++;
 						auto cblk = prc->getCompressedBlockPtr(cblkno);
 						uint32_t numPix = (uint32_t)cblk->area();
 						if(!(state & GRK_PLUGIN_STATE_PRE_TR1))
@@ -1320,15 +1322,15 @@ bool TileProcessor::pcrdBisectFeasible(uint32_t* allPacketBytes, bool padSOP_EPH
 		maxLayerLength = tcp->rates[layno] > 0.0f ? ((uint32_t)ceil(tcp->rates[layno])) : UINT_MAX;
 		if (tcp->rates[layno] > 0.0f && padSOP_EPH) {
 		    // adjust for empty packets
-		    uint64_t adj = numPackets;
+		    uint64_t adj = numPacketsPerLayer;
 		    // adjust for EPH marker
             if (tcp_->csty & J2K_CP_CSTY_EPH)
-                adj += numPackets * 2;
+                adj += numPacketsPerLayer * 2;
             // adjust for SOP marker
             if (tcp_->csty & J2K_CP_CSTY_SOP)
-                adj += numPackets * 6;
-            // multiply by 4 for good measure
-            adj *= 4;
+                adj += numPacketsPerLayer * 6;
+            // add extra padding based on number of code blocks
+            adj += numCodeBlocks * 10;
             if ((uint64_t)maxLayerLength + adj < UINT_MAX)
                 maxLayerLength += (uint32_t)adj;
 		}
@@ -1412,7 +1414,8 @@ bool TileProcessor::pcrdBisectSimple(uint32_t* allPacketBytes, bool padSOP_EPH)
 	double max_slope = -1;
 	uint32_t state = grk_plugin_get_debug_state();
 	bool single_lossless = makeSingleLosslessLayer();
-    uint64_t numPackets = 0;
+    uint64_t numPacketsPerLayer = 0;
+    uint64_t numCodeBlocks = 0;
     auto tcp = tcp_;
 	for(uint16_t compno = 0; compno < tile->numcomps_; compno++)
 	{
@@ -1426,11 +1429,12 @@ bool TileProcessor::pcrdBisectSimple(uint32_t* allPacketBytes, bool padSOP_EPH)
 				auto band = &res->tileBand[bandIndex];
 				for(auto prc : band->precincts)
 				{
-				    numPackets++;
+				    numPacketsPerLayer++;
 					for(uint64_t cblkno = 0; cblkno < prc->getNumCblks(); cblkno++)
 					{
 						auto cblk = prc->getCompressedBlockPtr(cblkno);
 						uint32_t numPix = (uint32_t)cblk->area();
+						numCodeBlocks++;
 						if(!(state & GRK_PLUGIN_STATE_PRE_TR1))
 						{
 							compress_synch_with_plugin(this, compno, resno, bandIndex,
@@ -1493,15 +1497,15 @@ bool TileProcessor::pcrdBisectSimple(uint32_t* allPacketBytes, bool padSOP_EPH)
         maxLayerLength = tcp->rates[layno] > 0.0f ? ((uint32_t)ceil(tcp->rates[layno])) : UINT_MAX;
         if (tcp->rates[layno] > 0.0f && padSOP_EPH) {
             // adjust for empty packets
-            uint64_t adj = numPackets;
+            uint64_t adj = numPacketsPerLayer;
             // adjust for EPH marker
             if (tcp_->csty & J2K_CP_CSTY_EPH)
-                adj += numPackets * 2;
+                adj += numPacketsPerLayer * 2;
             // adjust for SOP marker
             if (tcp_->csty & J2K_CP_CSTY_SOP)
-                adj += numPackets * 6;
-            // multiply by 4 for good measure
-            adj *= 4;
+                adj += numPacketsPerLayer * 6;
+            // add extra padding based on number of code blocks
+            adj += numCodeBlocks * 10;
             if ((uint64_t)maxLayerLength + adj < UINT_MAX)
                 maxLayerLength += (uint32_t)adj;
         }
