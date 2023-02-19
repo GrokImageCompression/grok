@@ -786,11 +786,12 @@ GRK_API void GRK_CALLCONV grk_set_msg_handlers(grk_msg_callback info_callback, v
  * @param numcmpts      number of components
  * @param cmptparms     component parameters
  * @param clrspc        image color space
+ * @param alloc_data    if true, allocate component data buffers
  *
- * @return returns      a new image if successful, otherwise nullptr
+ * @return returns      a new image if successful, otherwise NULL
  * */
 GRK_API grk_image* GRK_CALLCONV grk_image_new(uint16_t numcmpts, grk_image_comp* cmptparms,
-											  GRK_COLOR_SPACE clrspc);
+											  GRK_COLOR_SPACE clrspc, bool alloc_data);
 
 GRK_API grk_image_meta* GRK_CALLCONV grk_image_meta_new(void);
 
