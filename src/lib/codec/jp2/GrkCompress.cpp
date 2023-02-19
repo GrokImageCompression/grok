@@ -324,7 +324,7 @@ static void compress_help_display(void)
 	fprintf(stdout, "[-G|-device_id] <device ID>\n");
 	fprintf(stdout, "    (GPU) Specify which GPU accelerator to run codec on.\n");
 	fprintf(stdout, "    A value of -1 will specify all devices.\n");
-	fprintf(stdout, "[-W | -logfile] <log file name>\n"
+	fprintf(stdout, "[-W|-logfile] <log file name>\n"
 					"    log to file. File name will be set to \"log file name\"\n");
 }
 
@@ -525,14 +525,35 @@ cleanup:
 	return success;
 }
 
+int GrkCompress::pluginBatchCompress(CompressInitParams* initParams) {
+   setUpSignalHandler();
+   int success = grk_plugin_batch_compress(initParams->inputFolder.imgdirpath,
+                                       initParams->outFolder.imgdirpath,
+                                       &initParams->parameters, pluginCompressCallback);
+   // if plugin successfully begins batch compress, then wait for batch to complete
+   if(success == 0)
+   {
+       uint32_t slice = 100; // ms
+       uint32_t slicesPerSecond = 1000 / slice;
+       uint32_t seconds = initParams->parameters.duration;
+       if(!seconds)
+           seconds = UINT_MAX;
+       for(uint32_t i = 0U; i < seconds * slicesPerSecond; ++i)
+       {
+           batch_sleep(1);
+           if(grk_plugin_is_batch_complete())
+               break;
+       }
+       grk_plugin_stop_batch_compress();
+   }
+
+   return success;
+}
+
 int GrkCompress::pluginMain(int argc, char** argv, CompressInitParams* initParams)
 {
 	if(!initParams)
 		return 1;
-	int32_t success = 0;
-	bool isBatch = false;
-	uint32_t state = 0;
-
 	/* set compressing parameters to default values */
 	grk_compress_set_default_params(&initParams->parameters);
 	/* parse input and get user compressing parameters */
@@ -540,22 +561,15 @@ int GrkCompress::pluginMain(int argc, char** argv, CompressInitParams* initParam
 		255; /* This will be set later according to the input image or the provided option */
 	initParams->parameters.rateControlAlgorithm = GRK_RATE_CONTROL_PCRD_OPT;
 	if(parseCommandLine(argc, argv, initParams) == 1)
-	{
-		success = 1;
-		goto cleanup;
-	}
-	isBatch = initParams->inputFolder.imgdirpath && initParams->outFolder.imgdirpath;
-	state = grk_plugin_get_debug_state();
+	    return 1;
+
 #ifdef GROK_HAVE_LIBTIFF
 	tiffSetErrorAndWarningHandlers(initParams->parameters.verbose);
 #endif
 	initParams->initialized = true;
 	// load plugin but do not actually create codec
 	if(!grk_initialize(initParams->pluginPath, initParams->parameters.numThreads))
-	{
-		success = 1;
-		goto cleanup;
-	}
+	    return 1;
 	img_fol_plugin = initParams->inputFolder;
 	out_fol_plugin = initParams->outFolder;
 
@@ -564,66 +578,41 @@ int GrkCompress::pluginMain(int argc, char** argv, CompressInitParams* initParam
 	initInfo.deviceId = initParams->parameters.deviceId;
 	initInfo.verbose = initParams->parameters.verbose;
 	if(!grk_plugin_init(initInfo))
-	{
-		success = 1;
-		goto cleanup;
-	}
-	if((state & GRK_PLUGIN_STATE_DEBUG) || (state & GRK_PLUGIN_STATE_PRE_TR1))
-		isBatch = 0;
-	if(isBatch)
-	{
-		setUpSignalHandler();
-		success = grk_plugin_batch_compress(initParams->inputFolder.imgdirpath,
-											initParams->outFolder.imgdirpath,
-											&initParams->parameters, pluginCompressCallback);
-		// if plugin successfully begins batch compress, then wait for batch to complete
-		if(success == 0)
-		{
-			uint32_t slice = 100; // ms
-			uint32_t slicesPerSecond = 1000 / slice;
-			uint32_t seconds = initParams->parameters.duration;
-			if(!seconds)
-				seconds = UINT_MAX;
-			for(uint32_t i = 0U; i < seconds * slicesPerSecond; ++i)
-			{
-				batch_sleep(1);
-				if(grk_plugin_is_batch_complete())
-					break;
-			}
-			grk_plugin_stop_batch_compress();
-		}
-	}
-	else
-	{
-		if(!initParams->inputFolder.set_imgdir)
-		{
-			success = grk_plugin_compress(&initParams->parameters, pluginCompressCallback);
-		}
-		else
-		{
-			// cache certain settings
-			auto mct = initParams->parameters.mct;
-			auto rateControlAlgorithm = initParams->parameters.rateControlAlgorithm;
-			for(const auto& entry :
-				std::filesystem::directory_iterator(initParams->inputFolder.imgdirpath))
-			{
-				if(nextFile(entry.path().filename().string(), &initParams->inputFolder,
-							initParams->outFolder.imgdirpath ? &initParams->outFolder
-															 : &initParams->inputFolder,
-							&initParams->parameters))
-				{
-					continue;
-				}
-				// restore cached settings
-				initParams->parameters.mct = mct;
-				initParams->parameters.rateControlAlgorithm = rateControlAlgorithm;
-				success = grk_plugin_compress(&initParams->parameters, pluginCompressCallback);
-				if(success != 0)
-					break;
-			}
-		}
-	}
-cleanup:
+	    return -1;
+
+	// 1. batch encode
+    uint32_t state = grk_plugin_get_debug_state();
+    bool isBatch = initParams->inputFolder.imgdirpath && initParams->outFolder.imgdirpath;
+    if(isBatch && !((state & GRK_PLUGIN_STATE_DEBUG) || (state & GRK_PLUGIN_STATE_PRE_TR1)))
+	    return pluginBatchCompress(initParams);
+
+	// 2. single image encode
+    if(!initParams->inputFolder.set_imgdir)
+        return grk_plugin_compress(&initParams->parameters, pluginCompressCallback);
+
+    //3. directory encode
+    // cache certain settings
+    auto mct = initParams->parameters.mct;
+    auto rateControlAlgorithm = initParams->parameters.rateControlAlgorithm;
+    int32_t success = 0;
+    for(const auto& entry :
+        std::filesystem::directory_iterator(initParams->inputFolder.imgdirpath))
+    {
+        if(nextFile(entry.path().filename().string(), &initParams->inputFolder,
+                    initParams->outFolder.imgdirpath ? &initParams->outFolder
+                                                     : &initParams->inputFolder,
+                    &initParams->parameters))
+        {
+            continue;
+        }
+        // restore cached settings
+        initParams->parameters.mct = mct;
+        initParams->parameters.rateControlAlgorithm = rateControlAlgorithm;
+        success = grk_plugin_compress(&initParams->parameters, pluginCompressCallback);
+        if(success != 0)
+            break;
+    }
+
 	return success;
 }
 
