@@ -150,7 +150,7 @@ struct TileProcessor
 	bool pcrdBisectSimple(uint32_t* p_data_written, bool padSOP_EPH);
 	void makeLayerSimple(uint32_t layno, double thresh, bool finalAttempt);
 	bool pcrdBisectFeasible(uint32_t* p_data_written, bool padSOP_EPH);
-	void makeLayerFeasible(uint32_t layno, uint16_t thresh, bool finalAttempt);
+	bool makeLayerFeasible(uint32_t layno, uint16_t thresh, bool finalAttempt);
 
 	Tile* tile;
 	Scheduler* scheduler_;

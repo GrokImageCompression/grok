@@ -1168,10 +1168,11 @@ bool TileProcessor::makeSingleLosslessLayer()
 
 	return false;
 }
-void TileProcessor::makeLayerFeasible(uint32_t layno, uint16_t thresh, bool finalAttempt)
+bool TileProcessor::makeLayerFeasible(uint32_t layno, uint16_t thresh, bool finalAttempt)
 {
 	uint32_t passno;
 	tile->layerDistoration[layno] = 0;
+	bool allocationChanged = false;
 	for(uint16_t compno = 0; compno < tile->numcomps_; compno++)
 	{
 		auto tilec = tile->comps + compno;
@@ -1214,6 +1215,7 @@ void TileProcessor::makeLayerFeasible(uint32_t layno, uint16_t thresh, bool fina
 							continue;
 						}
 						// update layer
+						allocationChanged = true;
 						if(cblk->numPassesInPreviousPackets == 0)
 						{
 							layer->len = cblk->passes[cumulative_included_passes_in_block - 1].rate;
@@ -1242,6 +1244,8 @@ void TileProcessor::makeLayerFeasible(uint32_t layno, uint16_t thresh, bool fina
 			}
 		}
 	}
+
+	return allocationChanged;
 }
 /*
  Hybrid rate control using bisect algorithm with optimal truncation points
@@ -1348,7 +1352,7 @@ bool TileProcessor::pcrdBisectFeasible(uint32_t* allPacketBytes, bool padSOP_EPH
 				uint32_t thresh = (lowerBound + upperBound) >> 1;
 				if(prevthresh != 0 && prevthresh == thresh)
 					break;
-				makeLayerFeasible(layno, (uint16_t)thresh, false);
+				bool allocationChanged = makeLayerFeasible(layno, (uint16_t)thresh, false);
 				prevthresh = thresh;
 				if(cp_->coding_params_.enc_.allocationByFixedQuality_)
 				{
@@ -1364,7 +1368,7 @@ bool TileProcessor::pcrdBisectFeasible(uint32_t* allPacketBytes, bool padSOP_EPH
 				}
 				else
 				{
-					if(!t2.compressPacketsSimulate(
+					if(allocationChanged && !t2.compressPacketsSimulate(
 						   tileIndex_, (uint16_t)(layno + 1U), allPacketBytes, maxLayerLength,
 						   newTilePartProgressionPosition, packetLengthCache.getMarkers(), false, false))
 					{
