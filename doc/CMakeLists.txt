@@ -8,12 +8,12 @@ find_package(Doxygen)
 if(DOXYGEN_FOUND)
   # Configure the doxygen config file with variable from CMake and move it
   configure_file(${CMAKE_CURRENT_SOURCE_DIR}/Doxyfile.dox.cmake.in
-    ${CMAKE_BINARY_DIR}/doc/Doxyfile-html.dox @ONLY)
+    ${CMAKE_CURRENT_BINARY_DIR}/Doxyfile-html.dox @ONLY)
 
   # Configure the html mainpage file of the doxygen documentation with variable
   # from CMake and move it
   configure_file(${CMAKE_CURRENT_SOURCE_DIR}/mainpage.dox.in
-    ${CMAKE_BINARY_DIR}/doc/mainpage.dox @ONLY)
+    ${CMAKE_CURRENT_BINARY_DIR}/mainpage.dox @ONLY)
 
   file(GLOB headers
     ${GROK_SOURCE_DIR}/src/lib/core/*.h
@@ -22,18 +22,18 @@ if(DOXYGEN_FOUND)
   # Generate new target to build the html documentation
   add_custom_command(
     OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/html/index.html
-    COMMAND ${DOXYGEN_EXECUTABLE} ${CMAKE_BINARY_DIR}/doc/Doxyfile-html.dox
-    DEPENDS ${CMAKE_BINARY_DIR}/doc/Doxyfile-html.dox
-            ${CMAKE_BINARY_DIR}/doc/mainpage.dox
+    COMMAND ${DOXYGEN_EXECUTABLE} ${CMAKE_CURRENT_BINARY_DIR}/Doxyfile-html.dox
+    DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/Doxyfile-html.dox
+            ${CMAKE_CURRENT_BINARY_DIR}/mainpage.dox
             ${headers}
   )
   add_custom_target(doc ALL
-    DEPENDS ${CMAKE_BINARY_DIR}/doc/html/index.html
+    DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/html/index.html
     COMMENT "Building doxygen documentation"
   )
 
   # install HTML documentation (install png files too):
-  install(DIRECTORY ${CMAKE_BINARY_DIR}/doc/html
+  install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/html
     DESTINATION ${CMAKE_INSTALL_DOCDIR}
   )
 else()

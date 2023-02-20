@@ -6,7 +6,7 @@
 DOXYFILE_ENCODING      = UTF-8
 PROJECT_NAME           = Grok
 PROJECT_NUMBER         = @GROK_VERSION@
-OUTPUT_DIRECTORY       = @CMAKE_BINARY_DIR@/doc
+OUTPUT_DIRECTORY       = @CMAKE_CURRENT_BINARY_DIR@
 CREATE_SUBDIRS         = NO
 OUTPUT_LANGUAGE        = English
 BRIEF_MEMBER_DESC      = YES
@@ -97,7 +97,7 @@ WARN_LOGFILE           =
 #---------------------------------------------------------------------------
 INPUT                  = @GROK_SOURCE_DIR@/src/lib/core \
 						 @GROK_SOURCE_DIR@/src/lib/plugin \
-                         @CMAKE_BINARY_DIR@/doc
+                         @CMAKE_CURRENT_BINARY_DIR@/doc
 INPUT_ENCODING         = UTF-8
 FILE_PATTERNS          = *.h \
                          *.c \

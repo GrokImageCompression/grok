@@ -22,7 +22,7 @@ install( FILES  ${CMAKE_CURRENT_BINARY_DIR}/grk_config.h
  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${GROK_INSTALL_SUBDIR} COMPONENT Headers)
 
 include_directories(
-  ${CMAKE_BINARY_DIR}/src/lib/core # grk_config.h and grk_config_private.h
+  ${CMAKE_CURRENT_BINARY_DIR} # grk_config.h and grk_config_private.h
   ${GROK_SOURCE_DIR}/src/lib/codec/common
   ${GROK_SOURCE_DIR}/src/lib/codec
   ${GROK_SOURCE_DIR}/src/include

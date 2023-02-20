@@ -1,5 +1,5 @@
 include_directories(
-  ${CMAKE_BINARY_DIR}/src/lib/core
+  ${CMAKE_CURRENT_BINARY_DIR}/../../src/lib/core
   ${GROK_SOURCE_DIR}/src/lib/core
   ${CMAKE_CURRENT_BINARY_DIR}/../
 )
