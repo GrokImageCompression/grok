@@ -1,5 +1,5 @@
-# test-compress.cmake -- Runs a test against an input file to make sure that the specified
-#   targets are able to to compress and then decompress it successfully. Optionally verify
+# compress-and-verify.cmake -- Runs a test against an input file to make sure that the specified
+#   targets are able to to compress and then decompress successfully. Optionally verify
 #   the results with gzip. Output files are generated with unique names to prevent parallel
 #   tests from corrupting one another. Default target arguments are compatible with minigzip.
 
@@ -173,7 +173,7 @@ if(GZIP_VERIFY AND NOT "${COMPRESS_ARGS}" MATCHES "-T")
         endif()
 
         # Check gzip can decompress our compressed output
-        set(GZ_DECOMPRESS_COMMAND ${GZIP} --decompress)
+        set(GZ_DECOMPRESS_COMMAND ${GZIP} -d)
 
         message(STATUS "Gzip decompress ${GZ_DECOMPRESS_COMMAND}")
         message(STATUS "  Input: ${OUTPUT_BASE}.gz")

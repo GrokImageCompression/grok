@@ -4,24 +4,13 @@
  */
 
 #include "zbuild.h"
+#include "zendian.h"
 #include "zutil.h"
 #include "inftrees.h"
 #include "inflate.h"
-#include "inffast.h"
 #include "inflate_p.h"
 #include "functable.h"
 
-/* Load 64 bits from IN and place the bytes at offset BITS in the result. */
-static inline uint64_t load_64_bits(const unsigned char *in, unsigned bits) {
-    uint64_t chunk;
-    zmemcpy_8(&chunk, in);
-
-#if BYTE_ORDER == LITTLE_ENDIAN
-    return chunk << bits;
-#else
-    return ZSWAP64(chunk) << bits;
-#endif
-}
 /*
    Decode literal, length, and distance codes and write out the resulting
    literal and match bytes until either not enough input or output is
@@ -61,7 +50,7 @@ static inline uint64_t load_64_bits(const unsigned char *in, unsigned bits) {
       requires strm->avail_out >= 258 for each loop to avoid checking for
       output space.
  */
-void Z_INTERNAL zng_inflate_fast(PREFIX3(stream) *strm, unsigned long start) {
+void Z_INTERNAL INFLATE_FAST(PREFIX3(stream) *strm, uint32_t start) {
     /* start: inflate()'s starting value for strm->avail_out */
     struct inflate_state *state;
     z_const unsigned char *in;  /* local strm->next_in */
@@ -159,7 +148,7 @@ void Z_INTERNAL zng_inflate_fast(PREFIX3(stream) *strm, unsigned long start) {
     /* decode literals and length/distances until end-of-block or not enough
        input data or output space */
     do {
-        if (bits < 15) {
+        if (bits < MAX_BITS) {
             hold |= load_64_bits(in, bits);
             in += 6;
             bits += 48;
@@ -184,7 +173,7 @@ void Z_INTERNAL zng_inflate_fast(PREFIX3(stream) *strm, unsigned long start) {
             len += BITS(op);
             DROPBITS(op);
             Tracevv((stderr, "inflate:         length %u\n", len));
-            if (bits < 15) {
+            if (bits < MAX_BITS) {
                 hold |= load_64_bits(in, bits);
                 in += 6;
                 bits += 48;
@@ -195,7 +184,7 @@ void Z_INTERNAL zng_inflate_fast(PREFIX3(stream) *strm, unsigned long start) {
             op = here->op;
             if (op & 16) {                      /* distance base */
                 dist = here->val;
-                op &= 15;                       /* number of extra bits */
+                op &= MAX_BITS;                 /* number of extra bits */
                 if (bits < op) {
                     hold |= load_64_bits(in, bits);
                     in += 6;
@@ -259,7 +248,7 @@ void Z_INTERNAL zng_inflate_fast(PREFIX3(stream) *strm, unsigned long start) {
                     if (op < len) {             /* still need some from output */
                         len -= op;
                         out = chunkcopy_safe(out, from, op, safe);
-                        out = functable.chunkunroll(out, &dist, &len);
+                        out = CHUNKUNROLL(out, &dist, &len);
                         out = chunkcopy_safe(out, out - dist, len, safe);
                     } else {
                         out = chunkcopy_safe(out, from, len, safe);
@@ -269,7 +258,7 @@ void Z_INTERNAL zng_inflate_fast(PREFIX3(stream) *strm, unsigned long start) {
                     if (dist >= len || dist >= state->chunksize)
                         out = chunkcopy_safe(out, out - dist, len, safe);
                     else
-                        out = functable.chunkmemset_safe(out, dist, len, (unsigned)((safe - out) + 1));
+                        out = CHUNKMEMSET_SAFE(out, dist, len, (unsigned)((safe - out) + 1));
                 } else {
                     /* Whole reference is in range of current output.  No range checks are
                        necessary because we start with room for at least 258 bytes of output,
@@ -277,9 +266,9 @@ void Z_INTERNAL zng_inflate_fast(PREFIX3(stream) *strm, unsigned long start) {
                        as they stay within 258 bytes of `out`.
                     */
                     if (dist >= len || dist >= state->chunksize)
-                        out = functable.chunkcopy(out, out - dist, len);
+                        out = CHUNKCOPY(out, out - dist, len);
                     else
-                        out = functable.chunkmemset(out, dist, len);
+                        out = CHUNKMEMSET(out, dist, len);
                 }
             } else if ((op & 64) == 0) {          /* 2nd level distance code */
                 here = dcode + here->val + BITS(op);

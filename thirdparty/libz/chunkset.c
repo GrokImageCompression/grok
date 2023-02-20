@@ -13,20 +13,20 @@ typedef uint64_t chunk_t;
 
 static inline void chunkmemset_4(uint8_t *from, chunk_t *chunk) {
     uint8_t *dest = (uint8_t *)chunk;
-    zmemcpy_4(dest, from);
-    zmemcpy_4(dest+4, from);
+    memcpy(dest, from, sizeof(uint32_t));
+    memcpy(dest+4, from, sizeof(uint32_t));
 }
 
 static inline void chunkmemset_8(uint8_t *from, chunk_t *chunk) {
-    zmemcpy_8(chunk, from);
+    memcpy(chunk, from, sizeof(uint64_t));
 }
 
 static inline void loadchunk(uint8_t const *s, chunk_t *chunk) {
-    zmemcpy_8(chunk, (uint8_t *)s);
+    memcpy(chunk, (uint8_t *)s, sizeof(uint64_t));
 }
 
 static inline void storechunk(uint8_t *out, chunk_t *chunk) {
-    zmemcpy_8(out, chunk);
+    memcpy(out, chunk, sizeof(uint64_t));
 }
 
 #define CHUNKSIZE        chunksize_c
@@ -36,3 +36,7 @@ static inline void storechunk(uint8_t *out, chunk_t *chunk) {
 #define CHUNKMEMSET_SAFE chunkmemset_safe_c
 
 #include "chunkset_tpl.h"
+
+#define INFLATE_FAST     inflate_fast_c
+
+#include "inffast_tpl.h"

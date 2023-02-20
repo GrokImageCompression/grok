@@ -35,7 +35,7 @@ public:
         uint32_t hash = 0;
 
         for (auto _ : state) {
-            hash = crc32(hash, (const unsigned char *)random_ints, state.range(0));
+            hash = crc32(hash, (const unsigned char *)random_ints, (size_t)state.range(0));
         }
 
         benchmark::DoNotOptimize(hash);
@@ -55,11 +55,11 @@ public:
     } \
     BENCHMARK_REGISTER_F(crc32, name)->Range(1, MAX_RANDOM_INTS_SIZE);
 
-BENCHMARK_CRC32(braid, crc32_braid, 1);
+BENCHMARK_CRC32(braid, PREFIX(crc32_braid), 1);
 
-#ifdef ARM_ACLE_CRC_HASH
+#ifdef ARM_ACLE
 BENCHMARK_CRC32(acle, crc32_acle, arm_cpu_has_crc32);
-#elif defined(POWER8_VSX_CRC32)
+#elif defined(POWER8_VSX)
 BENCHMARK_CRC32(power8, crc32_power8, power_cpu_has_arch_2_07);
 #elif defined(S390_CRC32_VX)
 BENCHMARK_CRC32(vx, PREFIX(s390_crc32_vx), PREFIX(s390_cpu_has_vx));

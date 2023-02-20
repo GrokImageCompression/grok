@@ -111,7 +111,7 @@ static z_word_t crc_word(z_word_t data) {
 #endif /* W */
 
 /* ========================================================================= */
-Z_INTERNAL uint32_t crc32_braid(uint32_t crc, const uint8_t *buf, uint64_t len) {
+Z_INTERNAL uint32_t PREFIX(crc32_braid)(uint32_t crc, const uint8_t *buf, size_t len) {
     Z_REGISTER uint32_t c;
 
     /* Pre-condition the CRC */
@@ -120,12 +120,12 @@ Z_INTERNAL uint32_t crc32_braid(uint32_t crc, const uint8_t *buf, uint64_t len) 
 #ifdef W
     /* If provided enough bytes, do a braided CRC calculation. */
     if (len >= N * W + W - 1) {
-        uint64_t blks;
+        size_t blks;
         z_word_t const *words;
         int k;
 
         /* Compute the CRC up to a z_word_t boundary. */
-        while (len && ((z_size_t)buf & (W - 1)) != 0) {
+        while (len && ((uintptr_t)buf & (W - 1)) != 0) {
             len--;
             DO1;
         }

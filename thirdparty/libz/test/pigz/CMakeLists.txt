@@ -64,9 +64,8 @@ endif()
 FetchContent_Declare(pigz
     GIT_REPOSITORY https://github.com/madler/pigz.git
     GIT_TAG ${PIGZ_TAG})
-FetchContent_MakeAvailable(pigz)
-FetchContent_GetProperties(pigz)
 
+FetchContent_GetProperties(pigz)
 if(NOT pigz_POPULATED)
     FetchContent_Populate(pigz)
 endif()
@@ -167,7 +166,7 @@ if(PIGZ_ENABLE_TESTS)
                 "-DDECOMPRESS_ARGS=-d;-c"
                 -DINPUT=${CMAKE_CURRENT_SOURCE_DIR}/${path}
                 -DTEST_NAME=${test_id}
-                -P ${CMAKE_CURRENT_SOURCE_DIR}/../../cmake/test-compress.cmake)
+                -P ${CMAKE_CURRENT_SOURCE_DIR}/../cmake/compress-and-verify.cmake)
         endif()
     endmacro()
 
