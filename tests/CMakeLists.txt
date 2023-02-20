@@ -1,7 +1,7 @@
 include_directories(
-  ${CMAKE_BINARY_DIR}/src/lib/core # grk_config.h
-  ${CMAKE_BINARY_DIR}/src/bin/ # grk_apps_config.h
-  ${CMAKE_BINARY_DIR}/src/lib/codec/ # grk_apps_config.h
+  ${CMAKE_CURRENT_BINARY_DIR}/../src/lib/core # grk_config.h
+  ${CMAKE_CURRENT_BINARY_DIR}/../src/bin/ # grk_apps_config.h
+  ${CMAKE_CURRENT_BINARY_DIR}/../src/lib/codec/ # grk_apps_config.h
   ${GROK_SOURCE_DIR}/src/lib/codec
   ${GROK_SOURCE_DIR}/src/lib/core
   ${GROK_SOURCE_DIR}/src/include
