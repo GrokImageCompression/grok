@@ -88,6 +88,28 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
 	}
 	image = grk_image_new(numComps, compParams, GRK_CLRSPC_SRGB, true);
 
+	// fill in component data
+    // see grok.h header for full details of image structure
+    for (uint16_t compno = 0; compno < image->numcomps; ++compno){
+        auto comp = image->comps + compno;
+        auto compWidth = comp->w;
+        auto compHeight = comp->h;
+        auto compData = comp->data;
+        if (!compData){
+            fprintf(stderr, "Image has null data for component %d\n",compno);
+            goto beach;
+        }
+        // fill in component data, taking component stride into account
+        auto srcData = new int32_t[compWidth * compHeight];
+        auto srcPtr = srcData;
+        for (uint32_t j = 0; j < compHeight; ++j) {
+           memcpy(compData, srcPtr, compWidth * sizeof(int32_t));
+           srcPtr += compWidth;
+           compData += comp->stride;
+        }
+        delete[] srcData;
+    }
+
 	// initialize compressor
 	codec = grk_compress_init(&stream_params, &param, image);
 	if(!codec)
@@ -103,6 +125,8 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
         fprintf(stderr, "Failed to compress\n");
         goto beach;
     }
+
+    printf("Compression succeeded: %ld bytes used.\n",compressedLength);
 
     // write buffer to file
     if (outputToBuffer) {
@@ -127,6 +151,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
 beach:
     // cleanup
     delete[] compParams;
+    delete[] stream_params.buf;
 	grk_object_unref(codec);
 	grk_object_unref(&image->obj);
     grk_deinitialize();

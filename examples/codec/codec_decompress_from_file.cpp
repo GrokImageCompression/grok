@@ -31,7 +31,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
 
 	// first entry must always be the name of the program, as is
 	// required by argv/argc variables in main method
-	argString.push_back("codec_decompress_from_file_to_tiff");
+	argString.push_back("codec_decompress_from_file");
 
 	// verbose output
 	argString.push_back("-v");

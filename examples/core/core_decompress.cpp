@@ -201,8 +201,8 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
     // see grok.h header for full details of image structure
     for (uint16_t compno = 0; compno < image->numcomps; ++compno){
         auto comp = image->comps + compno;
-        [[maybe_unused]] auto compWidth = comp->w;
-        [[maybe_unused]] auto compHeight = comp->h;
+        auto compWidth = comp->w;
+        auto compHeight = comp->h;
         auto compData = comp->data;
         if (!compData){
             fprintf(stderr, "Image has null data for component %d\n",compno);
