@@ -618,7 +618,7 @@ bool CodeStreamCompress::init(grk_cparameters* parameters, GrkImage* image)
 
 	return true;
 }
-bool CodeStreamCompress::compress(grk_plugin_tile* tile)
+uint64_t CodeStreamCompress::compress(grk_plugin_tile* tile)
 {
 	MinHeapPtr<TileProcessor, uint16_t, MinHeapLocker> heap;
 	uint32_t numTiles = (uint32_t)cp_.t_grid_height * cp_.t_grid_width;
@@ -627,7 +627,7 @@ bool CodeStreamCompress::compress(grk_plugin_tile* tile)
 		GRK_ERROR("Number of tiles %u is greater than max tiles %u"
 				  "allowed by the standard.",
 				  numTiles, maxNumTilesJ2K);
-		return false;
+		return 0;
 	}
 	auto numRequiredThreads =
 		std::min<uint32_t>((uint32_t)ExecSingleton::get()->num_workers(), numTiles);
@@ -692,7 +692,7 @@ cleanup:
 	if(success)
 		success = end();
 
-	return success;
+	return success ? stream_->tell() : 0;
 }
 bool CodeStreamCompress::end(void)
 {

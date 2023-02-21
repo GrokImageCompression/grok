@@ -2176,28 +2176,7 @@ static bool pluginCompressCallback(grk_plugin_compress_user_callback_info* info)
 	if(bSuccess && info->transferExifTags && info->compressor_parameters->cod_format == GRK_FMT_JP2)
 		transferExifTags(info->input_file_name, info->output_file_name);
 #endif
-	/*
-	if(info->stream_params.buf)
-	{
-		auto fp = fopen(outfile, "wb");
-		if(!fp)
-		{
-			spdlog::error("Buffer compress: failed to open file {} for writing", outfile);
-		}
-		else
-		{
-			auto len = grk_stream_get_write_mem_stream_length(stream);
-			size_t written = fwrite(info->stream_params.buf, 1, len, fp);
-			if(written != len)
-			{
-				spdlog::error("Buffer compress: only {} bytes written out of {} total", len,
-							  written);
-				bSuccess = false;
-			}
-			fclose(fp);
-		}
-	}
-	*/
+
 cleanup:
 	grk_object_unref(codec);
 	if(createdImage)

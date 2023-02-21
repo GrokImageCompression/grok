@@ -42,6 +42,9 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
     const uint32_t dimY = 480;
     const uint32_t numComps = 3;
     const uint32_t precision = 8;
+    const char *outFile = "test.jp2";
+
+    uint64_t compressedLength = 0;
 
     // initialize compress parameters
 	grk_cparameters param;
@@ -54,7 +57,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
 	grk_image_comp* compParams = nullptr;
 	int32_t rc = EXIT_FAILURE;
 
-	bool outputToBuffer = true;
+	bool outputToBuffer = false;
 
 	// initialize library
 	grk_initialize(nullptr, 0);
@@ -65,7 +68,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
         stream_params.len = (size_t)numComps * (precision/8) * dimX * dimY;
 	    stream_params.buf = new uint8_t[stream_params.len];
 	} else {
-	    stream_params.file = "test.jp2";
+	    stream_params.file = outFile;
 	}
 
 	// set library message handlers
@@ -94,10 +97,30 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
 	}
 
 	// compress
-    if (!grk_compress(codec, nullptr))
+	compressedLength = grk_compress(codec, nullptr);
+    if (compressedLength == 0)
     {
         fprintf(stderr, "Failed to compress\n");
         goto beach;
+    }
+
+    // write buffer to file
+    if (outputToBuffer) {
+        auto fp = fopen(outFile, "wb");
+        if(!fp)
+        {
+            fprintf(stderr,"Buffer compress: failed to open file %s for writing", outFile);
+        }
+        else
+        {
+            size_t written = fwrite(stream_params.buf, 1, compressedLength, fp);
+            if(written != compressedLength)
+            {
+                fprintf(stderr,"Buffer compress: only %ld bytes written out of %ld total", compressedLength,
+                              written);
+            }
+            fclose(fp);
+        }
     }
 
 	rc = EXIT_SUCCESS;

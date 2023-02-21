@@ -1072,9 +1072,9 @@ GRK_API grk_codec* GRK_CALLCONV grk_compress_init(grk_stream_params* stream_para
  * @param codec 		compression codec
  * @param tile			plugin tile
  *
- * @return 				Returns true if successful, returns false otherwise
+ * @return 				number of bytes written if successful, 0 otherwise
  */
-GRK_API bool GRK_CALLCONV grk_compress(grk_codec* codec, grk_plugin_tile* tile);
+GRK_API uint64_t GRK_CALLCONV grk_compress(grk_codec* codec, grk_plugin_tile* tile);
 
 /**
  * Dump codec information to file

@@ -915,11 +915,11 @@ bool FileFormatCompress::init(grk_cparameters* parameters, GrkImage* image)
 
 	return true;
 }
-bool FileFormatCompress::compress(grk_plugin_tile* tile)
+uint64_t FileFormatCompress::compress(grk_plugin_tile* tile)
 {
-	bool rc = codeStream->compress(tile);
-	if(rc)
-		rc = end();
+	auto rc = codeStream->compress(tile);
+	if (rc && !end())
+	    return 0;
 
 	return rc;
 }

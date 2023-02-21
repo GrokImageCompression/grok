@@ -36,7 +36,7 @@ class CodeStreamCompress : public CodeStream, public ICodeStreamCompress
 
 	bool start(void);
 	bool init(grk_cparameters* p_param, GrkImage* p_image);
-	bool compress(grk_plugin_tile* tile);
+	uint64_t compress(grk_plugin_tile* tile);
 
   private:
 	bool init_header_writing(void);

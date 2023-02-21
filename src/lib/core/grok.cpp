@@ -563,7 +563,7 @@ static bool grk_compress_start(grk_codec* codecWrapper)
 	return false;
 }
 
-bool GRK_CALLCONV grk_compress(grk_codec* codecWrapper, grk_plugin_tile* tile)
+uint64_t GRK_CALLCONV grk_compress(grk_codec* codecWrapper, grk_plugin_tile* tile)
 {
 	if(codecWrapper)
 	{
