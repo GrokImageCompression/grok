@@ -307,15 +307,16 @@ static grk_codec* grk_decompress_create_from_file(const char* file_name)
 
 	return codec;
 }
-void GRK_CALLCONV grk_decompress_set_default_params(grk_decompress_core_params* parameters)
+void GRK_CALLCONV grk_decompress_set_default_params(grk_decompress_parameters* parameters)
 {
-	if(parameters)
-	{
-		memset(parameters, 0, sizeof(grk_decompress_core_params));
-		parameters->tileCacheStrategy = GRK_TILE_CACHE_NONE;
-		parameters->randomAccessFlags_ =
-			GRK_RANDOM_ACCESS_TLM | GRK_RANDOM_ACCESS_PLM | GRK_RANDOM_ACCESS_PLT;
-	}
+    if (!parameters)
+        return;
+    memset(parameters, 0, sizeof(grk_decompress_parameters));
+    auto core_params = &parameters->core;
+    memset(core_params, 0, sizeof(grk_decompress_core_params));
+    core_params->tileCacheStrategy = GRK_TILE_CACHE_NONE;
+    core_params->randomAccessFlags_ =
+        GRK_RANDOM_ACCESS_TLM | GRK_RANDOM_ACCESS_PLM | GRK_RANDOM_ACCESS_PLT;
 }
 grk_codec* GRK_CALLCONV grk_decompress_init(grk_stream_params* stream_params,
 											grk_decompress_core_params* core_params)

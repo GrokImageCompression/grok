@@ -825,7 +825,7 @@ GRK_API bool GRK_CALLCONV grk_decompress_buffer_detect_format(uint8_t* buffer, s
  *
  * @param parameters decompression parameters
  */
-GRK_API void GRK_CALLCONV grk_decompress_set_default_params(grk_decompress_core_params* parameters);
+GRK_API void GRK_CALLCONV grk_decompress_set_default_params(grk_decompress_parameters* parameters);
 
 /**
  * Initialize decompressor

@@ -85,8 +85,7 @@ int GrkRandomTileAccess::main(int argc, char** argv)
 		grk_codec* codec = nullptr; /* Handle to a decompressor */
 		grk_image* image = nullptr;
 
-		memset(&parameters, 0, sizeof(grk_decompress_parameters));
-		grk_decompress_set_default_params(&parameters.core);
+		grk_decompress_set_default_params(&parameters);
 		strncpy(parameters.infile, argv[1], GRK_PATH_LEN - 1);
 
 		/* Index of corner tiles */

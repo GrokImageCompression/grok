@@ -736,8 +736,7 @@ void GrkDecompress::setDefaultParams(grk_decompress_parameters* parameters)
 {
 	if(parameters)
 	{
-		memset(parameters, 0, sizeof(grk_decompress_parameters));
-		grk_decompress_set_default_params(&(parameters->core));
+		grk_decompress_set_default_params(parameters);
 		parameters->deviceId = 0;
 		parameters->repeats = 1;
 		parameters->compressionLevel = GRK_DECOMPRESS_COMPRESSION_LEVEL_DEFAULT;
