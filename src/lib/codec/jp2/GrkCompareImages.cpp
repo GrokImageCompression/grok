@@ -159,9 +159,7 @@ static grk_image* readImageFromFilePPM(const char* filename, uint16_t nbFilename
 	grk_compress_set_default_params(&parameters);
 	parameters.decod_format = GRK_FMT_PXM;
 	strcpy(parameters.infile, filename);
-	src_param = (grk_image_comp*)malloc((size_t)nbFilenamePGX * sizeof(grk_image_comp));
-	if(!src_param)
-		goto cleanup;
+	src_param = new grk_image_comp[nbFilenamePGX];
 	dest_data = (int**)calloc((size_t)nbFilenamePGX, sizeof(*dest_data));
 	if(!dest_data)
 		goto cleanup;
@@ -223,7 +221,7 @@ static grk_image* readImageFromFilePPM(const char* filename, uint16_t nbFilename
 		}
 	}
 cleanup:
-	free(src_param);
+	delete[] src_param;
 	if(dest_data)
 	{
 		for(size_t it_free_data = 0; it_free_data < fileno; it_free_data++)

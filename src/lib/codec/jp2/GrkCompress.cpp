@@ -568,8 +568,7 @@ int GrkCompress::pluginMain(int argc, char** argv, CompressInitParams* initParam
 #endif
 	initParams->initialized = true;
 	// load plugin but do not actually create codec
-	if(!grk_initialize(initParams->pluginPath, initParams->parameters.numThreads))
-	    return 1;
+	grk_initialize(initParams->pluginPath, initParams->parameters.numThreads);
 	img_fol_plugin = initParams->inputFolder;
 	out_fol_plugin = initParams->outFolder;
 

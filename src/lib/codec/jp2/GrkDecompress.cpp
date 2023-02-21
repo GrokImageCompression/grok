@@ -819,11 +819,8 @@ int GrkDecompress::pluginMain(int argc, char** argv, DecompressInitParams* initP
 #endif
 	initParams->initialized = true;
 	// loads plugin but does not actually create codec
-	if(!grk_initialize(initParams->pluginPath, initParams->parameters.numThreads))
-	{
-		success = 1;
-		goto cleanup;
-	}
+	grk_initialize(initParams->pluginPath, initParams->parameters.numThreads);
+
 	// create codec
 	grk_plugin_init_info initInfo;
 	initInfo.deviceId = initParams->parameters.deviceId;
