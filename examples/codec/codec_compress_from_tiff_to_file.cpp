@@ -31,7 +31,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
 
 	// first entry must always be the name of the program, as is
 	// required by argv/argc variables in main method
-	argString.push_back("codec_decompress_from_file_to_tiff");
+	argString.push_back("codec_compress_from_tiff_to_file");
 
 	// verbose output
 	argString.push_back("-v");
@@ -39,11 +39,11 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
 	// input file
 	std::string temp = "-i " + dataRoot + std::filesystem::path::preferred_separator +
 			"input" +  std::filesystem::path::preferred_separator +
-			"nonregression" + std::filesystem::path::preferred_separator + "boats_cprl.j2k";
+			"nonregression" + std::filesystem::path::preferred_separator + "basn6a08.tif";
 	argString.push_back(temp);
 
 	// output file
-	argString.push_back("-o boats_cprl.tif");
+	argString.push_back("-o basn6a08.jp2");
 
 	// 2. convert to array of C strings
 	std::vector<char *> args;
@@ -55,9 +55,9 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
 	}
 
 	// 3. decompress
-	int rc =  grk_codec_decompress((int)args.size(),&args[0]);
+	int rc =  grk_codec_compress((int)args.size(),&args[0]);
 	if (rc)
-	    fprintf(stderr, "Failed to decompress\n");
+	    fprintf(stderr, "Failed to compress\n");
 
 	//4. cleanup
 	for (auto& s : args)

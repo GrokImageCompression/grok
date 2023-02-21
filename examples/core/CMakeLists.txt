@@ -4,8 +4,8 @@ include_directories(
   ${CMAKE_CURRENT_BINARY_DIR}/../
 )
 
-foreach(exe core_decompress_from_file
-            core_decompress_from_buf
+foreach(exe core_decompress
+            core_compress
 )
   add_executable(${exe} ${exe}.cpp ${common_SRCS})
   target_compile_options(${exe} PRIVATE ${GROK_COMPILE_OPTIONS})

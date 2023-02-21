@@ -5,7 +5,9 @@ include_directories(
   ${CMAKE_CURRENT_BINARY_DIR}/../
 )
 
-foreach(exe codec_decompress_from_file_to_tiff)
+foreach(exe codec_decompress_from_file
+            codec_compress_from_tiff_to_file
+            codec_compress_from_tiff_to_buf)
   add_executable(${exe} ${exe}.cpp)
   target_compile_options(${exe} PRIVATE ${GROK_COMPILE_OPTIONS})
   if (CMAKE_CXX_COMPILER_ID MATCHES "GNU")
