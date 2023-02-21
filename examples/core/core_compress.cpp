@@ -38,6 +38,11 @@ void infoCallback(const char* msg, [[maybe_unused]] void* client_data)
 
 int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
 {
+    const uint32_t dimX = 640;
+    const uint32_t dimY = 480;
+    const uint32_t numComps = 3;
+    const uint32_t precision = 8;
+
     // initialize compress parameters
 	grk_cparameters param;
     grk_compress_set_default_params(&param);
@@ -49,29 +54,36 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
 	grk_image_comp* compParams = nullptr;
 	int32_t rc = EXIT_FAILURE;
 
+	bool outputToBuffer = true;
+
 	// initialize library
 	grk_initialize(nullptr, 0);
 
 	grk_stream_params stream_params;
 	memset(&stream_params,0,sizeof(stream_params));
-	stream_params.file = "test.jp2";
+	if (outputToBuffer) {
+        stream_params.len = (size_t)numComps * (precision/8) * dimX * dimY;
+	    stream_params.buf = new uint8_t[stream_params.len];
+	} else {
+	    stream_params.file = "test.jp2";
+	}
 
 	// set library message handlers
 	grk_set_msg_handlers(infoCallback, nullptr, warningCallback, nullptr,
 						 errorCallback, nullptr);
 
-	// create image
-	compParams = new grk_image_comp[3];
-	for (uint32_t i = 0; i < 3; ++i){
+	// create blank image
+	compParams = new grk_image_comp[numComps];
+	for (uint32_t i = 0; i < numComps; ++i){
 	    auto c = compParams + i;
-	    c->w = 640;
-	    c->h = 480;
+	    c->w = dimX;
+	    c->h = dimY;
 	    c->dx = 1;
 	    c->dy = 1;
-	    c->prec = 8;
+	    c->prec = precision;
 	    c->sgnd = false;
 	}
-	image = grk_image_new(3, compParams, GRK_CLRSPC_SRGB, true);
+	image = grk_image_new(numComps, compParams, GRK_CLRSPC_SRGB, true);
 
 	// initialize compressor
 	codec = grk_compress_init(&stream_params, &param, image);
