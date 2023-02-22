@@ -460,12 +460,16 @@ typedef bool (*grk_io_pixels_callback)(uint32_t threadId, grk_io_buf buffer, voi
  */
 typedef struct _grk_stream_params
 {
+    /* File */
 	// file name
 	const char* file;
 
+	/* Buffer */
 	// buffer and buffer length
 	uint8_t* buf;
 	size_t len;
+	// length of compressed stream (set by compressor, not client)
+	size_t buf_compressed_len;
 } grk_stream_params;
 
 typedef enum _GRK_TILE_CACHE_STRATEGY
@@ -1406,13 +1410,14 @@ typedef struct grk_plugin_compress_user_callback_info
 	const char* output_file_name;
 	grk_cparameters* compressor_parameters;
 	grk_image* image;
+	grk_stream_params *out_buffer;
 	grk_plugin_tile* tile;
 	grk_stream_params stream_params;
 	unsigned int error_code;
 	bool transferExifTags;
 } grk_plugin_compress_user_callback_info;
 
-typedef bool (*GRK_PLUGIN_COMPRESS_USER_CALLBACK)(grk_plugin_compress_user_callback_info* info);
+typedef uint64_t (*GRK_PLUGIN_COMPRESS_USER_CALLBACK)(grk_plugin_compress_user_callback_info* info);
 
 /**
  * Compress with plugin

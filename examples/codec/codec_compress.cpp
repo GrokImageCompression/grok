@@ -33,10 +33,16 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
     const uint32_t precision = 8;
     grk_image_comp* compParams = nullptr;
     grk_image *image = nullptr;
+    grk_stream_params out_buffer;
+    memset(&out_buffer,0,sizeof(out_buffer));
 
-    uint64_t compressedLength = 0;
+    bool inputFromImage = true;
+    bool outputToBuffer = true;
 
-    bool inputFromImage = false;
+    if (outputToBuffer) {
+        out_buffer.len = (size_t)numComps * (precision/8) * dimX * dimY;
+        out_buffer.buf = new uint8_t[out_buffer.len];
+    }
 
     std::vector<std::string> argString;
     std::vector<char *> args;
@@ -103,10 +109,15 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
         inputFile = argv[1];
         outputFile = inputFile + ".tif";
     }
-	argString.push_back("-i " + inputFile);
+    if (!inputFromImage) {
+        argString.push_back("-i " + inputFile);
+    }
 
-	// output file
-	argString.push_back("-o " + outputFile);
+	if (outputToBuffer) {
+        argString.push_back("-out_fmt jp2");
+	} else {
+        argString.push_back("-o " + outputFile);
+	}
 
 	// 2. convert to array of C strings
 	for (auto& s : argString){
@@ -117,17 +128,40 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
 	}
 
 	// 3. decompress
-	rc =  grk_codec_compress((int)args.size(),&args[0], image);
+	rc =  grk_codec_compress((int)args.size(),&args[0], image,
+	                            outputToBuffer ? &out_buffer : nullptr);
 	if (rc)
 	    fprintf(stderr, "Failed to compress\n");
+
+	if (outputToBuffer)
+	    printf("Compressed to memory : %ld bytes\n",out_buffer.buf_compressed_len);
+
+    // write buffer to file
+    if (outputToBuffer) {
+        auto fp = fopen(outputFile.c_str(), "wb");
+        if(!fp)
+        {
+            fprintf(stderr,"Buffer compress: failed to open file %s for writing", outputFile.c_str());
+        }
+        else
+        {
+            size_t written = fwrite(out_buffer.buf, 1, out_buffer.buf_compressed_len, fp);
+            if(written != out_buffer.buf_compressed_len)
+            {
+                fprintf(stderr,"Buffer compress: only %ld bytes written out of %ld total", out_buffer.buf_compressed_len,
+                              written);
+            }
+            fclose(fp);
+        }
+    }
 
 beach:
 	//4. cleanup
 	for (auto& s : args)
 	  delete[] s;
     delete[] compParams;
+    delete[] out_buffer.buf;
     grk_object_unref(&image->obj);
-    grk_deinitialize();
 
 	return rc;
 }

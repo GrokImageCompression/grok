@@ -57,7 +57,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
 	grk_image_comp* compParams = nullptr;
 	int32_t rc = EXIT_FAILURE;
 
-	bool outputToBuffer = false;
+	bool outputToBuffer = true;
 
 	// initialize library
 	grk_initialize(nullptr, 0);

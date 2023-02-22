@@ -110,7 +110,7 @@ void setUpSignalHandler()
 namespace grk
 {
 
-static bool pluginCompressCallback(grk_plugin_compress_user_callback_info* info);
+static uint64_t pluginCompressCallback(grk_plugin_compress_user_callback_info* info);
 
 grk_img_fol img_fol_plugin, out_fol_plugin;
 
@@ -343,7 +343,10 @@ static GRK_PROG_ORDER getProgression(const char progression[4])
 
 	return GRK_PROG_UNKNOWN;
 }
-CompressInitParams::CompressInitParams() : initialized(false), transferExifTags(false)
+CompressInitParams::CompressInitParams() : initialized(false),
+                                            transferExifTags(false),
+                                            in_image(nullptr),
+                                            out_buffer(nullptr)
 {
 	pluginPath[0] = 0;
 	memset(&inputFolder, 0, sizeof(inputFolder));
@@ -457,9 +460,11 @@ static bool validateCinema(TCLAP::ValueArg<uint32_t>* arg, uint16_t profile,
 	return true;
 }
 
-int GrkCompress::main(int argc, char** argv, grk_image *image)
+int GrkCompress::main(int argc, char** argv, grk_image *in_image, grk_stream_params *out_buffer)
 {
 	CompressInitParams initParams;
+	initParams.in_image = in_image;
+	initParams.out_buffer = out_buffer;
 	int success = 0;
 	try
 	{
@@ -483,7 +488,7 @@ int GrkCompress::main(int argc, char** argv, grk_image *image)
 			if(!initParams.inputFolder.set_imgdir)
 			{
 				initParams.parameters = parametersCache;
-				if(compress("", &initParams, image) == 0)
+				if(compress("", &initParams) == 0)
 				{
 					success = 1;
 					goto cleanup;
@@ -497,7 +502,7 @@ int GrkCompress::main(int argc, char** argv, grk_image *image)
 					std::filesystem::directory_iterator(initParams.inputFolder.imgdirpath))
 				{
 					initParams.parameters = parametersCache;
-					if(compress(entry.path().filename().string(), &initParams, image) == 1){
+					if(compress(entry.path().filename().string(), &initParams) == 1){
 	                    spdlog::info("Compressed file {}", initParams.parameters.outfile);
 						numCompressedFiles++;
 					}
@@ -825,7 +830,7 @@ int GrkCompress::parseCommandLine(int argc, char** argv, CompressInitParams* ini
 		else
 		{
 			// check for possible input from STDIN
-			if(!inDirArg.isSet())
+			if(!inDirArg.isSet() && !initParams->in_image)
 			{
 				bool fromStdin =
 					inForArg.isSet() && grk::supportedStdioFormat(
@@ -1778,7 +1783,7 @@ int GrkCompress::parseCommandLine(int argc, char** argv, CompressInitParams* ini
 	}
 	else
 	{
-		if(parameters->cod_format == GRK_FMT_UNK)
+		if(parameters->cod_format == GRK_FMT_UNK && !initParams->in_image)
 		{
 			if(parameters->infile[0] == 0)
 			{
@@ -1790,7 +1795,7 @@ int GrkCompress::parseCommandLine(int argc, char** argv, CompressInitParams* ini
 			}
 		}
 
-		if(parameters->outfile[0] == 0)
+		if(parameters->outfile[0] == 0 && !initParams->out_buffer)
 		{
 			spdlog::error("Missing output file parameter\n"
 						  "Example: {} -i image.pgm -o image.j2k",
@@ -1844,43 +1849,44 @@ int GrkCompress::parseCommandLine(int argc, char** argv, CompressInitParams* ini
 	return 0;
 }
 
-static bool pluginCompressCallback(grk_plugin_compress_user_callback_info* info)
+static uint64_t pluginCompressCallback(grk_plugin_compress_user_callback_info* info)
 {
 	auto parameters = info->compressor_parameters;
-	bool bSuccess = true;
+	uint64_t compressedBytes = 0;
 	grk_codec* codec = nullptr;
 	grk_image* image = info->image;
 	char outfile[3 * GRK_PATH_LEN];
 	char temp_ofname[GRK_PATH_LEN];
 	bool createdImage = false;
-	bool inMemoryCompression = false;
 
 	// get output file
 	outfile[0] = 0;
-	if(info->output_file_name && info->output_file_name[0])
-	{
-		if(info->outputFileNameIsRelative)
-		{
-			strcpy(temp_ofname, get_file_name((char*)info->output_file_name));
-			if(img_fol_plugin.set_out_format)
-			{
-				sprintf(outfile, "%s%s%s.%s",
-						out_fol_plugin.imgdirpath ? out_fol_plugin.imgdirpath
-												  : img_fol_plugin.imgdirpath,
-						grk::pathSeparator(), temp_ofname, img_fol_plugin.out_format);
-			}
-		}
-		else
-		{
-			strcpy(outfile, info->output_file_name);
-		}
-	}
-	else
-	{
-		bSuccess = false;
-		goto cleanup;
+	if (!info->out_buffer) {
+        if(info->output_file_name && info->output_file_name[0])
+        {
+            if(info->outputFileNameIsRelative)
+            {
+                strcpy(temp_ofname, get_file_name((char*)info->output_file_name));
+                if(img_fol_plugin.set_out_format)
+                {
+                    sprintf(outfile, "%s%s%s.%s",
+                            out_fol_plugin.imgdirpath ? out_fol_plugin.imgdirpath
+                                                      : img_fol_plugin.imgdirpath,
+                            grk::pathSeparator(), temp_ofname, img_fol_plugin.out_format);
+                }
+            }
+            else
+            {
+                strcpy(outfile, info->output_file_name);
+            }
+        }
+        else
+        {
+            goto cleanup;
+        }
 	}
 
+	// read image from disk if in-memory image is not available
 	if(!image)
 	{
 		if(parameters->decod_format == GRK_FMT_UNK)
@@ -1888,19 +1894,15 @@ static bool pluginCompressCallback(grk_plugin_compress_user_callback_info* info)
 			int fmt = grk_get_file_format((char*)info->input_file_name);
 			if(fmt <= GRK_FMT_UNK)
 			{
-				bSuccess = false;
 				goto cleanup;
 			}
 			parameters->decod_format = (GRK_SUPPORTED_FILE_FMT)fmt;
 			if(!isDecodedFormatSupported(parameters->decod_format))
 			{
-				bSuccess = false;
 				goto cleanup;
 			}
 		}
 		/* decode the source image */
-		/* ----------------------- */
-
 		switch(info->compressor_parameters->decod_format)
 		{
 			case GRK_FMT_PGX: {
@@ -1909,7 +1911,6 @@ static bool pluginCompressCallback(grk_plugin_compress_user_callback_info* info)
 				if(!image)
 				{
 					spdlog::error("Unable to load pgx file");
-					bSuccess = false;
 					goto cleanup;
 				}
 			}
@@ -1921,7 +1922,6 @@ static bool pluginCompressCallback(grk_plugin_compress_user_callback_info* info)
 				if(!image)
 				{
 					spdlog::error("Unable to load pnm file");
-					bSuccess = false;
 					goto cleanup;
 				}
 			}
@@ -1933,7 +1933,6 @@ static bool pluginCompressCallback(grk_plugin_compress_user_callback_info* info)
 				if(!image)
 				{
 					spdlog::error("Unable to load bmp file");
-					bSuccess = false;
 					goto cleanup;
 				}
 			}
@@ -1944,10 +1943,7 @@ static bool pluginCompressCallback(grk_plugin_compress_user_callback_info* info)
 				TIFFFormat tif;
 				image = tif.decode(info->input_file_name, info->compressor_parameters);
 				if(!image)
-				{
-					bSuccess = false;
 					goto cleanup;
-				}
 			}
 			break;
 #endif /* GROK_HAVE_LIBTIFF */
@@ -1958,7 +1954,6 @@ static bool pluginCompressCallback(grk_plugin_compress_user_callback_info* info)
 				if(!image)
 				{
 					spdlog::error("Unable to load raw file");
-					bSuccess = false;
 					goto cleanup;
 				}
 			}
@@ -1970,7 +1965,6 @@ static bool pluginCompressCallback(grk_plugin_compress_user_callback_info* info)
 				if(!image)
 				{
 					spdlog::error("Unable to load raw file");
-					bSuccess = false;
 					goto cleanup;
 				}
 			}
@@ -1983,7 +1977,6 @@ static bool pluginCompressCallback(grk_plugin_compress_user_callback_info* info)
 				if(!image)
 				{
 					spdlog::error("Unable to load png file");
-					bSuccess = false;
 					goto cleanup;
 				}
 			}
@@ -1997,7 +1990,6 @@ static bool pluginCompressCallback(grk_plugin_compress_user_callback_info* info)
 				if(!image)
 				{
 					spdlog::error("Unable to load jpeg file");
-					bSuccess = false;
 					goto cleanup;
 				}
 			}
@@ -2006,7 +1998,6 @@ static bool pluginCompressCallback(grk_plugin_compress_user_callback_info* info)
 			default: {
 				spdlog::error("Input file format {} is not supported",
 							  convertFileFmtToString(info->compressor_parameters->decod_format));
-				bSuccess = false;
 				goto cleanup;
 			}
 			break;
@@ -2018,14 +2009,16 @@ static bool pluginCompressCallback(grk_plugin_compress_user_callback_info* info)
 		if(!image)
 		{
 			spdlog::error("Unable to load file: no image generated.");
-			bSuccess = false;
 			goto cleanup;
 		}
 		createdImage = true;
 	}
 
-	if(inMemoryCompression)
+	if(info->out_buffer)
 	{
+        info->stream_params.len = info->out_buffer->len;
+        info->stream_params.buf = info->out_buffer->buf;
+	    /*
 		auto fp = fopen(info->input_file_name, "rb");
 		if(!fp)
 		{
@@ -2065,6 +2058,7 @@ static bool pluginCompressCallback(grk_plugin_compress_user_callback_info* info)
 				(size_t)fileLength > imageSize ? (size_t)fileLength : imageSize;
 			info->stream_params.buf = new uint8_t[info->stream_params.len];
 		}
+		*/
 	}
 
 	// limit to 16 bit precision
@@ -2073,7 +2067,6 @@ static bool pluginCompressCallback(grk_plugin_compress_user_callback_info* info)
 		if(image->comps[i].prec > GRK_MAX_SUPPORTED_IMAGE_PRECISION)
 		{
 			spdlog::error("precision = {} not supported:", image->comps[i].prec);
-			bSuccess = false;
 			goto cleanup;
 		}
 	}
@@ -2089,14 +2082,12 @@ static bool pluginCompressCallback(grk_plugin_compress_user_callback_info* info)
 		{
 			spdlog::error("RGB->YCC conversion cannot be used:");
 			spdlog::error("Input image has less than 3 components");
-			bSuccess = false;
 			goto cleanup;
 		}
 		if((parameters->mct == 2) && (!parameters->mct_data))
 		{
 			spdlog::error("Custom MCT has been set but no array-based MCT");
 			spdlog::error("has been provided.");
-			bSuccess = false;
 			goto cleanup;
 		}
 	}
@@ -2162,18 +2153,16 @@ static bool pluginCompressCallback(grk_plugin_compress_user_callback_info* info)
 	if(!codec)
 	{
 		spdlog::error("failed to compress image: grk_compress_init");
-		bSuccess = false;
 		goto cleanup;
 	}
-	bSuccess = grk_compress(codec, info->tile);
-	if(!bSuccess)
+	compressedBytes = grk_compress(codec, info->tile);
+	if(!compressedBytes)
 	{
 		spdlog::error("failed to compress image: grk_compress");
-		bSuccess = false;
 		goto cleanup;
 	}
 #ifdef GROK_HAVE_EXIFTOOL
-	if(bSuccess && info->transferExifTags && info->compressor_parameters->cod_format == GRK_FMT_JP2)
+	if(compressedBytes && info->transferExifTags && info->compressor_parameters->cod_format == GRK_FMT_JP2)
 		transferExifTags(info->input_file_name, info->output_file_name);
 #endif
 
@@ -2181,7 +2170,7 @@ cleanup:
 	grk_object_unref(codec);
 	if(createdImage)
 		grk_object_unref(&image->obj);
-	if(!bSuccess)
+	if(!compressedBytes)
 	{
 		spdlog::error("failed to compress image");
 		if(parameters->outfile[0])
@@ -2193,12 +2182,12 @@ cleanup:
 				free(p);
 		}
 	}
-	return bSuccess;
+	return compressedBytes;
 }
 
 // returns 0 if failed, 1 if succeeded,
 // and 2 if file is not suitable for compression
-int GrkCompress::compress(const std::string& inputFile, CompressInitParams* initParams, grk_image *image)
+int GrkCompress::compress(const std::string& inputFile, CompressInitParams* initParams)
 {
 	// clear for next file compress
 	initParams->parameters.write_capture_resolution_from_file = false;
@@ -2218,12 +2207,17 @@ int GrkCompress::compress(const std::string& inputFile, CompressInitParams* init
 	grk_plugin_compress_user_callback_info callbackInfo;
 	memset(&callbackInfo, 0, sizeof(grk_plugin_compress_user_callback_info));
 	callbackInfo.compressor_parameters = &initParams->parameters;
-	callbackInfo.image = image;
+	callbackInfo.image = initParams->in_image;
+	callbackInfo.out_buffer = initParams->out_buffer;
 	callbackInfo.output_file_name = initParams->parameters.outfile;
 	callbackInfo.input_file_name = initParams->parameters.infile;
 	callbackInfo.transferExifTags = initParams->transferExifTags;
 
-	return pluginCompressCallback(&callbackInfo) ? 1 : 0;
+	uint64_t compressedBytes =  pluginCompressCallback(&callbackInfo);
+	if (initParams->out_buffer)
+	    initParams->out_buffer->buf_compressed_len = compressedBytes;
+
+	return compressedBytes ? 1 : 0;
 }
 
 } // namespace grk

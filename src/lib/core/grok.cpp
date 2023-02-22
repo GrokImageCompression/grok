@@ -513,7 +513,7 @@ grk_codec* GRK_CALLCONV grk_compress_init(grk_stream_params* stream_params,
 	if(stream_params->buf)
 	{
 		// let stream clean up compress buffer
-		stream = create_mem_stream(stream_params->buf, stream_params->len, true, false);
+		stream = create_mem_stream(stream_params->buf, stream_params->len, false, false);
 	}
 	else
 	{
@@ -568,9 +568,9 @@ uint64_t GRK_CALLCONV grk_compress(grk_codec* codecWrapper, grk_plugin_tile* til
 	if(codecWrapper)
 	{
 		auto codec = GrkCodec::getImpl(codecWrapper);
-		return codec->compressor_ ? codec->compressor_->compress(tile) : false;
+		return codec->compressor_ ? codec->compressor_->compress(tile) : 0;
 	}
-	return false;
+	return 0;
 }
 static void grkFree_file(void* p_user_data)
 {
