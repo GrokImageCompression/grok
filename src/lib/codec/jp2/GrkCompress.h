@@ -38,13 +38,13 @@ class GrkCompress
   public:
 	GrkCompress(void) = default;
 	~GrkCompress(void) = default;
-	int main(int argc, char** argv);
+	int main(int argc, char** argv, grk_image *image);
 
   private:
 	int pluginBatchCompress(CompressInitParams* initParams);
 	int pluginMain(int argc, char** argv, CompressInitParams* initParams);
 	int parseCommandLine(int argc, char** argv, CompressInitParams* initParams);
-	int compress(const std::string& inputFile, CompressInitParams* initParams);
+	int compress(const std::string& inputFile, CompressInitParams* initParams, grk_image *image);
 };
 
 } // namespace grk

@@ -79,8 +79,6 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
             }
             delete[] srcData;
         }
-
-
     }
 
 	//1. form vector of command line args

@@ -457,7 +457,7 @@ static bool validateCinema(TCLAP::ValueArg<uint32_t>* arg, uint16_t profile,
 	return true;
 }
 
-int GrkCompress::main(int argc, char** argv)
+int GrkCompress::main(int argc, char** argv, grk_image *image)
 {
 	CompressInitParams initParams;
 	int success = 0;
@@ -483,7 +483,7 @@ int GrkCompress::main(int argc, char** argv)
 			if(!initParams.inputFolder.set_imgdir)
 			{
 				initParams.parameters = parametersCache;
-				if(compress("", &initParams) == 0)
+				if(compress("", &initParams, image) == 0)
 				{
 					success = 1;
 					goto cleanup;
@@ -497,7 +497,7 @@ int GrkCompress::main(int argc, char** argv)
 					std::filesystem::directory_iterator(initParams.inputFolder.imgdirpath))
 				{
 					initParams.parameters = parametersCache;
-					if(compress(entry.path().filename().string(), &initParams) == 1){
+					if(compress(entry.path().filename().string(), &initParams, image) == 1){
 	                    spdlog::info("Compressed file {}", initParams.parameters.outfile);
 						numCompressedFiles++;
 					}
@@ -2198,7 +2198,7 @@ cleanup:
 
 // returns 0 if failed, 1 if succeeded,
 // and 2 if file is not suitable for compression
-int GrkCompress::compress(const std::string& inputFile, CompressInitParams* initParams)
+int GrkCompress::compress(const std::string& inputFile, CompressInitParams* initParams, grk_image *image)
 {
 	// clear for next file compress
 	initParams->parameters.write_capture_resolution_from_file = false;
@@ -2218,7 +2218,7 @@ int GrkCompress::compress(const std::string& inputFile, CompressInitParams* init
 	grk_plugin_compress_user_callback_info callbackInfo;
 	memset(&callbackInfo, 0, sizeof(grk_plugin_compress_user_callback_info));
 	callbackInfo.compressor_parameters = &initParams->parameters;
-	callbackInfo.image = nullptr;
+	callbackInfo.image = image;
 	callbackInfo.output_file_name = initParams->parameters.outfile;
 	callbackInfo.input_file_name = initParams->parameters.infile;
 	callbackInfo.transferExifTags = initParams->transferExifTags;
