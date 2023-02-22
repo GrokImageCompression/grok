@@ -6,6 +6,7 @@ include_directories(
 )
 
 foreach(exe codec_decompress_from_file
+			codec_compress
 )
   add_executable(${exe} ${exe}.cpp)
   target_compile_options(${exe} PRIVATE ${GROK_COMPILE_OPTIONS})
@@ -19,7 +20,7 @@ foreach(exe codec_decompress_from_file
     target_compile_options(${exe} PUBLIC -matomics)
   endif()
 
-  target_link_libraries(${exe} ${GROK_CODEC_NAME})
+  target_link_libraries(${exe} ${GROK_CODEC_NAME} ${GROK_CORE_NAME})
 
   if(URING)
 	  target_link_libraries(${exe} uring)

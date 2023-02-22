@@ -90,7 +90,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
 
     // a file can be passed in as a command line argument
     // example:
-    // $ core_decompress_from_file foo.jp2
+    // $ core_decompress foo.jp2
     // otherwise a file from the Grok test suite, specified below, will be used.
 
 	std::string inputFilePath = dataRoot + std::filesystem::path::preferred_separator +
