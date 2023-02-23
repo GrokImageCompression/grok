@@ -312,8 +312,8 @@ static void compress_help_display(void)
 	fprintf(stdout, "    the image resolution will be used.\n");
 	fprintf(stdout, "[-D|-display_res] <display resolution X,display resolution Y>\n");
 	fprintf(stdout, "    Display resolution in pixels/metre, in double precision.\n");
-    fprintf(stdout, "[-f|-apply_icc]");
-    fprintf(stdout, "    Apply ICC profile before compression, if present.\n");
+	fprintf(stdout, "[-f|-apply_icc]");
+	fprintf(stdout, "    Apply ICC profile before compression, if present.\n");
 	fprintf(stdout, "[-e|-repetitions] <number of repetitions>\n");
 	fprintf(stdout, "    Number of repetitions, for either a single image, or a folder of images.\n"
 					"    Default is 1. 0 signifies unlimited repetitions. \n");
@@ -343,10 +343,8 @@ static GRK_PROG_ORDER getProgression(const char progression[4])
 
 	return GRK_PROG_UNKNOWN;
 }
-CompressInitParams::CompressInitParams() : initialized(false),
-                                            transferExifTags(false),
-                                            in_image(nullptr),
-                                            out_buffer(nullptr)
+CompressInitParams::CompressInitParams()
+	: initialized(false), transferExifTags(false), in_image(nullptr), out_buffer(nullptr)
 {
 	pluginPath[0] = 0;
 	memset(&inputFolder, 0, sizeof(inputFolder));
@@ -460,7 +458,7 @@ static bool validateCinema(TCLAP::ValueArg<uint32_t>* arg, uint16_t profile,
 	return true;
 }
 
-int GrkCompress::main(int argc, char** argv, grk_image *in_image, grk_stream_params *out_buffer)
+int GrkCompress::main(int argc, char** argv, grk_image* in_image, grk_stream_params* out_buffer)
 {
 	CompressInitParams initParams;
 	initParams.in_image = in_image;
@@ -502,8 +500,9 @@ int GrkCompress::main(int argc, char** argv, grk_image *in_image, grk_stream_par
 					std::filesystem::directory_iterator(initParams.inputFolder.imgdirpath))
 				{
 					initParams.parameters = parametersCache;
-					if(compress(entry.path().filename().string(), &initParams) == 1){
-	                    spdlog::info("Compressed file {}", initParams.parameters.outfile);
+					if(compress(entry.path().filename().string(), &initParams) == 1)
+					{
+						spdlog::info("Compressed file {}", initParams.parameters.outfile);
 						numCompressedFiles++;
 					}
 				}
@@ -530,29 +529,30 @@ cleanup:
 	return success;
 }
 
-int GrkCompress::pluginBatchCompress(CompressInitParams* initParams) {
-   setUpSignalHandler();
-   int success = grk_plugin_batch_compress(initParams->inputFolder.imgdirpath,
-                                       initParams->outFolder.imgdirpath,
-                                       &initParams->parameters, pluginCompressCallback);
-   // if plugin successfully begins batch compress, then wait for batch to complete
-   if(success == 0)
-   {
-       uint32_t slice = 100; // ms
-       uint32_t slicesPerSecond = 1000 / slice;
-       uint32_t seconds = initParams->parameters.duration;
-       if(!seconds)
-           seconds = UINT_MAX;
-       for(uint32_t i = 0U; i < seconds * slicesPerSecond; ++i)
-       {
-           batch_sleep(1);
-           if(grk_plugin_is_batch_complete())
-               break;
-       }
-       grk_plugin_stop_batch_compress();
-   }
+int GrkCompress::pluginBatchCompress(CompressInitParams* initParams)
+{
+	setUpSignalHandler();
+	int success = grk_plugin_batch_compress(initParams->inputFolder.imgdirpath,
+											initParams->outFolder.imgdirpath,
+											&initParams->parameters, pluginCompressCallback);
+	// if plugin successfully begins batch compress, then wait for batch to complete
+	if(success == 0)
+	{
+		uint32_t slice = 100; // ms
+		uint32_t slicesPerSecond = 1000 / slice;
+		uint32_t seconds = initParams->parameters.duration;
+		if(!seconds)
+			seconds = UINT_MAX;
+		for(uint32_t i = 0U; i < seconds * slicesPerSecond; ++i)
+		{
+			batch_sleep(1);
+			if(grk_plugin_is_batch_complete())
+				break;
+		}
+		grk_plugin_stop_batch_compress();
+	}
 
-   return success;
+	return success;
 }
 
 int GrkCompress::pluginMain(int argc, char** argv, CompressInitParams* initParams)
@@ -566,7 +566,7 @@ int GrkCompress::pluginMain(int argc, char** argv, CompressInitParams* initParam
 		255; /* This will be set later according to the input image or the provided option */
 	initParams->parameters.rateControlAlgorithm = GRK_RATE_CONTROL_PCRD_OPT;
 	if(parseCommandLine(argc, argv, initParams) == 1)
-	    return 1;
+		return 1;
 
 #ifdef GROK_HAVE_LIBTIFF
 	tiffSetErrorAndWarningHandlers(initParams->parameters.verbose);
@@ -582,40 +582,39 @@ int GrkCompress::pluginMain(int argc, char** argv, CompressInitParams* initParam
 	initInfo.deviceId = initParams->parameters.deviceId;
 	initInfo.verbose = initParams->parameters.verbose;
 	if(!grk_plugin_init(initInfo))
-	    return -1;
+		return -1;
 
 	// 1. batch encode
-    uint32_t state = grk_plugin_get_debug_state();
-    bool isBatch = initParams->inputFolder.imgdirpath && initParams->outFolder.imgdirpath;
-    if(isBatch && !((state & GRK_PLUGIN_STATE_DEBUG) || (state & GRK_PLUGIN_STATE_PRE_TR1)))
-	    return pluginBatchCompress(initParams);
+	uint32_t state = grk_plugin_get_debug_state();
+	bool isBatch = initParams->inputFolder.imgdirpath && initParams->outFolder.imgdirpath;
+	if(isBatch && !((state & GRK_PLUGIN_STATE_DEBUG) || (state & GRK_PLUGIN_STATE_PRE_TR1)))
+		return pluginBatchCompress(initParams);
 
 	// 2. single image encode
-    if(!initParams->inputFolder.set_imgdir)
-        return grk_plugin_compress(&initParams->parameters, pluginCompressCallback);
+	if(!initParams->inputFolder.set_imgdir)
+		return grk_plugin_compress(&initParams->parameters, pluginCompressCallback);
 
-    //3. directory encode
-    // cache certain settings
-    auto mct = initParams->parameters.mct;
-    auto rateControlAlgorithm = initParams->parameters.rateControlAlgorithm;
-    int32_t success = 0;
-    for(const auto& entry :
-        std::filesystem::directory_iterator(initParams->inputFolder.imgdirpath))
-    {
-        if(nextFile(entry.path().filename().string(), &initParams->inputFolder,
-                    initParams->outFolder.imgdirpath ? &initParams->outFolder
-                                                     : &initParams->inputFolder,
-                    &initParams->parameters))
-        {
-            continue;
-        }
-        // restore cached settings
-        initParams->parameters.mct = mct;
-        initParams->parameters.rateControlAlgorithm = rateControlAlgorithm;
-        success = grk_plugin_compress(&initParams->parameters, pluginCompressCallback);
-        if(success != 0)
-            break;
-    }
+	// 3. directory encode
+	//  cache certain settings
+	auto mct = initParams->parameters.mct;
+	auto rateControlAlgorithm = initParams->parameters.rateControlAlgorithm;
+	int32_t success = 0;
+	for(const auto& entry : std::filesystem::directory_iterator(initParams->inputFolder.imgdirpath))
+	{
+		if(nextFile(entry.path().filename().string(), &initParams->inputFolder,
+					initParams->outFolder.imgdirpath ? &initParams->outFolder
+													 : &initParams->inputFolder,
+					&initParams->parameters))
+		{
+			continue;
+		}
+		// restore cached settings
+		initParams->parameters.mct = mct;
+		initParams->parameters.rateControlAlgorithm = rateControlAlgorithm;
+		success = grk_plugin_compress(&initParams->parameters, pluginCompressCallback);
+		if(success != 0)
+			break;
+	}
 
 	return success;
 }
@@ -734,27 +733,30 @@ int GrkCompress::parseCommandLine(int argc, char** argv, CompressInitParams* ini
 		TCLAP::ValueArg<std::string> BroadcastArg("U", "broadcast", "Broadcast profile", false, "",
 												  "string", cmd);
 
-        TCLAP::SwitchArg applyICCArg("f", "apply_icc", "Apply ICC profile before compression, f present", cmd);
+		TCLAP::SwitchArg applyICCArg("f", "apply_icc",
+									 "Apply ICC profile before compression, f present", cmd);
 		cmd.parse(argc, argv);
 		if(logfileArg.isSet())
 		{
 			auto file_logger = spdlog::basic_logger_mt("grk_compress", logfileArg.getValue());
 			spdlog::set_default_logger(file_logger);
 		}
-        initParams->transferExifTags = transferExifTagsArg.isSet();
+		initParams->transferExifTags = transferExifTagsArg.isSet();
 #ifndef GROK_HAVE_EXIFTOOL
-        if (initParams->transferExifTags) {
-            spdlog::warn("Transfer of EXIF tags not supported. Transfer can be achieved by directly calling");
-            spdlog::warn("exiftool after compression as follows: ");
-            spdlog::warn("exiftool -TagsFromFile $SOURCE_FILE -all:all>all:all $DEST_FILE");
-            initParams->transferExifTags = false;
-        }
+		if(initParams->transferExifTags)
+		{
+			spdlog::warn("Transfer of EXIF tags not supported. Transfer can be achieved by "
+						 "directly calling");
+			spdlog::warn("exiftool after compression as follows: ");
+			spdlog::warn("exiftool -TagsFromFile $SOURCE_FILE -all:all>all:all $DEST_FILE");
+			initParams->transferExifTags = false;
+		}
 #endif
 		inputFolder->set_out_format = false;
 		parameters->raw_cp.width = 0;
 
-		if (applyICCArg.isSet())
-		    parameters->apply_icc_ = true;
+		if(applyICCArg.isSet())
+			parameters->apply_icc_ = true;
 
 		if(pltArg.isSet())
 			parameters->writePLT = true;
@@ -1861,29 +1863,30 @@ static uint64_t pluginCompressCallback(grk_plugin_compress_user_callback_info* i
 
 	// get output file
 	outfile[0] = 0;
-	if (!info->out_buffer) {
-        if(info->output_file_name && info->output_file_name[0])
-        {
-            if(info->outputFileNameIsRelative)
-            {
-                strcpy(temp_ofname, get_file_name((char*)info->output_file_name));
-                if(img_fol_plugin.set_out_format)
-                {
-                    sprintf(outfile, "%s%s%s.%s",
-                            out_fol_plugin.imgdirpath ? out_fol_plugin.imgdirpath
-                                                      : img_fol_plugin.imgdirpath,
-                            grk::pathSeparator(), temp_ofname, img_fol_plugin.out_format);
-                }
-            }
-            else
-            {
-                strcpy(outfile, info->output_file_name);
-            }
-        }
-        else
-        {
-            goto cleanup;
-        }
+	if(!info->out_buffer)
+	{
+		if(info->output_file_name && info->output_file_name[0])
+		{
+			if(info->outputFileNameIsRelative)
+			{
+				strcpy(temp_ofname, get_file_name((char*)info->output_file_name));
+				if(img_fol_plugin.set_out_format)
+				{
+					sprintf(outfile, "%s%s%s.%s",
+							out_fol_plugin.imgdirpath ? out_fol_plugin.imgdirpath
+													  : img_fol_plugin.imgdirpath,
+							grk::pathSeparator(), temp_ofname, img_fol_plugin.out_format);
+				}
+			}
+			else
+			{
+				strcpy(outfile, info->output_file_name);
+			}
+		}
+		else
+		{
+			goto cleanup;
+		}
 	}
 
 	// read image from disk if in-memory image is not available
@@ -2016,9 +2019,9 @@ static uint64_t pluginCompressCallback(grk_plugin_compress_user_callback_info* i
 
 	if(info->out_buffer)
 	{
-        info->stream_params.len = info->out_buffer->len;
-        info->stream_params.buf = info->out_buffer->buf;
-	    /*
+		info->stream_params.len = info->out_buffer->len;
+		info->stream_params.buf = info->out_buffer->buf;
+		/*
 		auto fp = fopen(info->input_file_name, "rb");
 		if(!fp)
 		{
@@ -2162,7 +2165,8 @@ static uint64_t pluginCompressCallback(grk_plugin_compress_user_callback_info* i
 		goto cleanup;
 	}
 #ifdef GROK_HAVE_EXIFTOOL
-	if(compressedBytes && info->transferExifTags && info->compressor_parameters->cod_format == GRK_FMT_JP2)
+	if(compressedBytes && info->transferExifTags &&
+	   info->compressor_parameters->cod_format == GRK_FMT_JP2)
 		transferExifTags(info->input_file_name, info->output_file_name);
 #endif
 
@@ -2213,9 +2217,9 @@ int GrkCompress::compress(const std::string& inputFile, CompressInitParams* init
 	callbackInfo.input_file_name = initParams->parameters.infile;
 	callbackInfo.transferExifTags = initParams->transferExifTags;
 
-	uint64_t compressedBytes =  pluginCompressCallback(&callbackInfo);
-	if (initParams->out_buffer)
-	    initParams->out_buffer->buf_compressed_len = compressedBytes;
+	uint64_t compressedBytes = pluginCompressCallback(&callbackInfo);
+	if(initParams->out_buffer)
+		initParams->out_buffer->buf_compressed_len = compressedBytes;
 
 	return compressedBytes ? 1 : 0;
 }

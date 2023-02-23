@@ -206,7 +206,7 @@ static grk_image* readImageFromFilePPM(const char* filename, uint16_t nbFilename
 		grk_object_unref(&src->obj);
 		free(filenameComponentPGX);
 	}
-	dest = grk_image_new((uint16_t)nbFilenamePGX, src_param, GRK_CLRSPC_UNKNOWN,true);
+	dest = grk_image_new((uint16_t)nbFilenamePGX, src_param, GRK_CLRSPC_UNKNOWN, true);
 	if(!dest || !dest->comps)
 		goto cleanup;
 	for(fileno = 0; fileno < nbFilenamePGX; fileno++)
@@ -375,7 +375,7 @@ static grk_image* readImageFromFilePGX(const char* filename, uint16_t nbFilename
 		grk_object_unref(&src->obj);
 		free(filenameComponentPGX);
 	}
-	dest = grk_image_new(nbFilenamePGX, dest_param, GRK_CLRSPC_UNKNOWN,true);
+	dest = grk_image_new(nbFilenamePGX, dest_param, GRK_CLRSPC_UNKNOWN, true);
 	if(!dest || !dest->comps)
 		goto cleanup;
 	for(fileno = 0; fileno < nbFilenamePGX; fileno++)
@@ -416,7 +416,7 @@ static int imageToPNG(const grk_image* src, const char* filename, uint16_t compn
 	dest_param.prec = src_comp->prec;
 	dest_param.sgnd = src_comp->sgnd;
 
-	auto dest = grk_image_new(1u, &dest_param, GRK_CLRSPC_GRAY,true);
+	auto dest = grk_image_new(1u, &dest_param, GRK_CLRSPC_GRAY, true);
 	auto dest_comp = dest->comps;
 	uint32_t src_diff = src_comp->stride - src_comp->w;
 	uint32_t dest_diff = dest_comp->stride - dest_comp->w;
@@ -505,8 +505,10 @@ static int parse_cmdline_cmp(int argc, char** argv, test_cmp_parameters* param)
 		TCLAP::ValueArg<std::string> separatorArg("s", "Separator", "Separator", false, "",
 												  "string", cmd);
 
-		TCLAP::ValueArg<std::string> regionArg("R", "SubRegion", "Base image region to compare with. Must equal test image dimensions.", false, "",
-											   "string", cmd);
+		TCLAP::ValueArg<std::string> regionArg(
+			"R", "SubRegion",
+			"Base image region to compare with. Must equal test image dimensions.", false, "",
+			"string", cmd);
 
 		cmd.parse(argc, argv);
 
@@ -896,7 +898,7 @@ int GrkCompareImages::main(int argc, char** argv)
 		param_image_diff[compno].w = testComp->w;
 	}
 
-	imageDiff = grk_image_new(imageBase->numcomps, param_image_diff, GRK_CLRSPC_UNKNOWN,true);
+	imageDiff = grk_image_new(imageBase->numcomps, param_image_diff, GRK_CLRSPC_UNKNOWN, true);
 	free(param_image_diff);
 	param_image_diff = nullptr;
 	spdlog::info("Step 2 -> measurement comparison");

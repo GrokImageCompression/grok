@@ -681,20 +681,21 @@ static void set_resolution(double* res, float resx, float resy, short resUnit)
 	res[0] = resx;
 	res[1] = resy;
 
-	for (uint32_t i = 0; i < 2; ++i) {
-        switch(resUnit)
-        {
-            case RESUNIT_INCH:
-                res[i] *= 39.370078740157;
-                break;
-                // cm
-            case RESUNIT_CENTIMETER:
-                res[i] *= 100;
-                break;
-            default:
-                break;
-        }
-        res[i] = floor(res[i]+0.5);
+	for(uint32_t i = 0; i < 2; ++i)
+	{
+		switch(resUnit)
+		{
+			case RESUNIT_INCH:
+				res[i] *= 39.370078740157;
+				break;
+				// cm
+			case RESUNIT_CENTIMETER:
+				res[i] *= 100;
+				break;
+			default:
+				break;
+		}
+		res[i] = floor(res[i] + 0.5);
 	}
 }
 
@@ -1200,7 +1201,7 @@ grk_image* TIFFFormat::decode(const std::string& filename, grk_cparameters* para
 		img_comp->w = grk::ceildiv<uint32_t>(w, img_comp->dx);
 		img_comp->h = grk::ceildiv<uint32_t>(h, img_comp->dy);
 	}
-	image = grk_image_new(numcomps, &cmptparm[0], color_space,true);
+	image = grk_image_new(numcomps, &cmptparm[0], color_space, true);
 	if(!image)
 		goto cleanup;
 

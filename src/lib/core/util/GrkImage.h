@@ -79,7 +79,7 @@ class GrkImage : public grk_image
 	bool greyToRGB(void);
 	bool convertToRGB(bool wholeTileDecompress);
 	bool applyColourManagement(void);
-    bool applyICC(void);
+	bool applyICC(void);
 	bool validateICC(void);
 	void convertPrecision(void);
 	bool execUpsample(void);

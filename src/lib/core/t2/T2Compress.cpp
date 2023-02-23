@@ -64,8 +64,9 @@ bool T2Compress::compressPacketsSimulate(uint16_t tile_no, uint16_t max_layers,
 				if(current_pi->getLayno() < max_layers)
 				{
 					uint32_t bytesInPacket = 0;
-					if(!compressPacketSimulate(tcp, current_pi, &bytesInPacket, maxBytes, markers,debug))
-					    return false;
+					if(!compressPacketSimulate(tcp, current_pi, &bytesInPacket, maxBytes, markers,
+											   debug))
+						return false;
 
 					componentBytes += bytesInPacket;
 					if(maxBytes != UINT_MAX)
@@ -160,8 +161,9 @@ bool T2Compress::compressPacketSimulate(TileCodingParams* tcp, PacketIter* pi,
 		return false;
 	}
 	*packet_bytes_written = (uint32_t)byteCount;
-	//if (debug)
-	//    printf("c=%d p=%d r=%d l=%d bytes=%d available=%d\n", compno,precinctIndex,resno,layno,byteCount, max_bytes_available);
+	// if (debug)
+	//     printf("c=%d p=%d r=%d l=%d bytes=%d available=%d\n",
+	//     compno,precinctIndex,resno,layno,byteCount, max_bytes_available);
 	if(markers)
 	{
 		if(!markers->pushPL(*packet_bytes_written))

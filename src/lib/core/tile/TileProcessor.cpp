@@ -344,18 +344,22 @@ bool TileProcessor::doCompress(void)
 		packetLengthCache.createMarkers(stream_);
 	// 2. rate control
 	uint32_t allPacketBytes = 0;
-	bool rc = rateAllocate(&allPacketBytes , false);
-	if(!rc) {
-        if ((tcp_->csty & J2K_CP_CSTY_EPH) || (tcp_->csty & J2K_CP_CSTY_SOP)){
-            GRK_WARN("Unable to perform rate control on tile %d. "
-                    "We will try increasing rate to adjust for SOP and/or EPH markers",tileIndex_);
-            allPacketBytes = 0;
-            rc = rateAllocate(&allPacketBytes , true);
-        }
-        if (!rc) {
-            GRK_ERROR("Unable to perform rate control on tile %d",tileIndex_);
-            return false;
-        }
+	bool rc = rateAllocate(&allPacketBytes, false);
+	if(!rc)
+	{
+		if((tcp_->csty & J2K_CP_CSTY_EPH) || (tcp_->csty & J2K_CP_CSTY_SOP))
+		{
+			GRK_WARN("Unable to perform rate control on tile %d. "
+					 "We will try increasing rate to adjust for SOP and/or EPH markers",
+					 tileIndex_);
+			allPacketBytes = 0;
+			rc = rateAllocate(&allPacketBytes, true);
+		}
+		if(!rc)
+		{
+			GRK_ERROR("Unable to perform rate control on tile %d", tileIndex_);
+			return false;
+		}
 	}
 	packetTracker_.clear();
 
@@ -1273,10 +1277,10 @@ bool TileProcessor::pcrdBisectFeasible(uint32_t* allPacketBytes, bool padSOP_EPH
 				auto band = &res->tileBand[bandIndex];
 				for(auto prc : band->precincts)
 				{
-				    numPacketsPerLayer++;
+					numPacketsPerLayer++;
 					for(uint64_t cblkno = 0; cblkno < prc->getNumCblks(); cblkno++)
 					{
-					    numCodeBlocks++;
+						numCodeBlocks++;
 						auto cblk = prc->getCompressedBlockPtr(cblkno);
 						uint32_t numPix = (uint32_t)cblk->area();
 						if(!(state & GRK_PLUGIN_STATE_PRE_TR1))
@@ -1324,19 +1328,20 @@ bool TileProcessor::pcrdBisectFeasible(uint32_t* allPacketBytes, bool padSOP_EPH
 	{
 		uint32_t lowerBound = min_slope;
 		maxLayerLength = tcp->rates[layno] > 0.0f ? ((uint32_t)ceil(tcp->rates[layno])) : UINT_MAX;
-		if (tcp->rates[layno] > 0.0f && padSOP_EPH) {
-		    // adjust for empty packets
-		    uint64_t adj = numPacketsPerLayer;
-		    // adjust for EPH marker
-            if (tcp_->csty & J2K_CP_CSTY_EPH)
-                adj += numPacketsPerLayer * 2;
-            // adjust for SOP marker
-            if (tcp_->csty & J2K_CP_CSTY_SOP)
-                adj += numPacketsPerLayer * 6;
-            // add extra padding based on number of code blocks
-            adj += numCodeBlocks * 10;
-            if ((uint64_t)maxLayerLength + adj < UINT_MAX)
-                maxLayerLength += (uint32_t)adj;
+		if(tcp->rates[layno] > 0.0f && padSOP_EPH)
+		{
+			// adjust for empty packets
+			uint64_t adj = numPacketsPerLayer;
+			// adjust for EPH marker
+			if(tcp_->csty & J2K_CP_CSTY_EPH)
+				adj += numPacketsPerLayer * 2;
+			// adjust for SOP marker
+			if(tcp_->csty & J2K_CP_CSTY_SOP)
+				adj += numPacketsPerLayer * 6;
+			// add extra padding based on number of code blocks
+			adj += numCodeBlocks * 10;
+			if((uint64_t)maxLayerLength + adj < UINT_MAX)
+				maxLayerLength += (uint32_t)adj;
 		}
 
 		if(layerNeedsRateControl(layno))
@@ -1369,8 +1374,9 @@ bool TileProcessor::pcrdBisectFeasible(uint32_t* allPacketBytes, bool padSOP_EPH
 				else
 				{
 					if(allocationChanged && !t2.compressPacketsSimulate(
-						   tileIndex_, (uint16_t)(layno + 1U), allPacketBytes, maxLayerLength,
-						   newTilePartProgressionPosition, packetLengthCache.getMarkers(), false, false))
+												tileIndex_, (uint16_t)(layno + 1U), allPacketBytes,
+												maxLayerLength, newTilePartProgressionPosition,
+												packetLengthCache.getMarkers(), false, false))
 					{
 						lowerBound = thresh;
 						continue;
@@ -1383,10 +1389,12 @@ bool TileProcessor::pcrdBisectFeasible(uint32_t* allPacketBytes, bool padSOP_EPH
 			// start by including everything in this layer
 			uint32_t goodthresh = upperBound;
 			makeLayerFeasible(layno, (uint16_t)goodthresh, true);
-			if(cp_->coding_params_.enc_.allocationByFixedQuality_) {
-                cumulativeDistortion[layno] =
-                    (layno == 0) ? tile->layerDistoration[0]
-                                 : (cumulativeDistortion[layno - 1] + tile->layerDistoration[layno]);
+			if(cp_->coding_params_.enc_.allocationByFixedQuality_)
+			{
+				cumulativeDistortion[layno] =
+					(layno == 0)
+						? tile->layerDistoration[0]
+						: (cumulativeDistortion[layno - 1] + tile->layerDistoration[layno]);
 			}
 			// upper bound for next layer is initialized to lowerBound for current layer, minus one
 			upperBound = lowerBound - 1;
@@ -1399,11 +1407,11 @@ bool TileProcessor::pcrdBisectFeasible(uint32_t* allPacketBytes, bool padSOP_EPH
 
 	// final simulation will generate correct PLT lengths
 	// and correct tile length
-	bool rc =  t2.compressPacketsSimulate(tileIndex_, tcp->numlayers, allPacketBytes, maxLayerLength,
-									  newTilePartProgressionPosition,
-									  packetLengthCache.getMarkers(), true, debug);
+	bool rc = t2.compressPacketsSimulate(tileIndex_, tcp->numlayers, allPacketBytes, maxLayerLength,
+										 newTilePartProgressionPosition,
+										 packetLengthCache.getMarkers(), true, debug);
 
-	//assert(!padSOP_EPH || rc);
+	// assert(!padSOP_EPH || rc);
 	return rc;
 }
 /*
@@ -1418,9 +1426,9 @@ bool TileProcessor::pcrdBisectSimple(uint32_t* allPacketBytes, bool padSOP_EPH)
 	double max_slope = -1;
 	uint32_t state = grk_plugin_get_debug_state();
 	bool single_lossless = makeSingleLosslessLayer();
-    uint64_t numPacketsPerLayer = 0;
-    uint64_t numCodeBlocks = 0;
-    auto tcp = tcp_;
+	uint64_t numPacketsPerLayer = 0;
+	uint64_t numCodeBlocks = 0;
+	auto tcp = tcp_;
 	for(uint16_t compno = 0; compno < tile->numcomps_; compno++)
 	{
 		auto tilec = &tile->comps[compno];
@@ -1433,7 +1441,7 @@ bool TileProcessor::pcrdBisectSimple(uint32_t* allPacketBytes, bool padSOP_EPH)
 				auto band = &res->tileBand[bandIndex];
 				for(auto prc : band->precincts)
 				{
-				    numPacketsPerLayer++;
+					numPacketsPerLayer++;
 					for(uint64_t cblkno = 0; cblkno < prc->getNumCblks(); cblkno++)
 					{
 						auto cblk = prc->getCompressedBlockPtr(cblkno);
@@ -1491,28 +1499,29 @@ bool TileProcessor::pcrdBisectSimple(uint32_t* allPacketBytes, bool padSOP_EPH)
 		// and correct tile length
 		return t2.compressPacketsSimulate(tileIndex_, 0 + 1U, allPacketBytes, UINT_MAX,
 										  newTilePartProgressionPosition,
-										  packetLengthCache.getMarkers(), true,false);
+										  packetLengthCache.getMarkers(), true, false);
 	}
 	double cumulativeDistortion[maxCompressLayersGRK];
 	double upperBound = max_slope;
 	uint32_t maxLayerLength = UINT_MAX;
 	for(uint16_t layno = 0; layno < tcp_->numlayers; layno++)
 	{
-        maxLayerLength = tcp->rates[layno] > 0.0f ? ((uint32_t)ceil(tcp->rates[layno])) : UINT_MAX;
-        if (tcp->rates[layno] > 0.0f && padSOP_EPH) {
-            // adjust for empty packets
-            uint64_t adj = numPacketsPerLayer;
-            // adjust for EPH marker
-            if (tcp_->csty & J2K_CP_CSTY_EPH)
-                adj += numPacketsPerLayer * 2;
-            // adjust for SOP marker
-            if (tcp_->csty & J2K_CP_CSTY_SOP)
-                adj += numPacketsPerLayer * 6;
-            // add extra padding based on number of code blocks
-            adj += numCodeBlocks * 10;
-            if ((uint64_t)maxLayerLength + adj < UINT_MAX)
-                maxLayerLength += (uint32_t)adj;
-        }
+		maxLayerLength = tcp->rates[layno] > 0.0f ? ((uint32_t)ceil(tcp->rates[layno])) : UINT_MAX;
+		if(tcp->rates[layno] > 0.0f && padSOP_EPH)
+		{
+			// adjust for empty packets
+			uint64_t adj = numPacketsPerLayer;
+			// adjust for EPH marker
+			if(tcp_->csty & J2K_CP_CSTY_EPH)
+				adj += numPacketsPerLayer * 2;
+			// adjust for SOP marker
+			if(tcp_->csty & J2K_CP_CSTY_SOP)
+				adj += numPacketsPerLayer * 6;
+			// add extra padding based on number of code blocks
+			adj += numCodeBlocks * 10;
+			if((uint64_t)maxLayerLength + adj < UINT_MAX)
+				maxLayerLength += (uint32_t)adj;
+		}
 		if(layerNeedsRateControl(layno))
 		{
 			double lowerBound = min_slope;
@@ -1549,7 +1558,7 @@ bool TileProcessor::pcrdBisectSimple(uint32_t* allPacketBytes, bool padSOP_EPH)
 				{
 					if(!t2.compressPacketsSimulate(tileIndex_, layno + 1U, allPacketBytes,
 												   maxLayerLength, newTilePartProgressionPosition,
-												   packetLengthCache.getMarkers(), false,false))
+												   packetLengthCache.getMarkers(), false, false))
 					{
 						lowerBound = thresh;
 						continue;

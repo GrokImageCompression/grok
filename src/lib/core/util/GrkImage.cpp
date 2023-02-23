@@ -88,8 +88,8 @@ GrkImage* GrkImage::create(grk_image* src, uint16_t numcmpts, grk_image_comp* cm
 	assert(numcmpts);
 	assert(cmptparms);
 
-	if (!numcmpts || !cmptparms)
-	    return nullptr;
+	if(!numcmpts || !cmptparms)
+		return nullptr;
 
 	auto image = new GrkImage();
 	image->color_space = clrspc;
@@ -158,7 +158,7 @@ GrkImage* GrkImage::create(grk_image* src, uint16_t numcmpts, grk_image_comp* cm
 
 	// use first component dimensions as image dimensions
 	image->x1 = cmptparms[0].w;
-    image->y1 = cmptparms[0].h;
+	image->y1 = cmptparms[0].h;
 
 	return image;
 }

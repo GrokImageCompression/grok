@@ -532,12 +532,12 @@ uint8_t* FileFormatCompress::write_res(uint32_t* p_nb_bytes_written)
 	return res_data;
 }
 
-//https://shreevatsa.wordpress.com/2011/01/10/not-all-best-rational-approximations-are-the-convergents-of-the-continued-fraction/
+// https://shreevatsa.wordpress.com/2011/01/10/not-all-best-rational-approximations-are-the-convergents-of-the-continued-fraction/
 void FileFormatCompress::find_cf(double x, uint16_t* num, uint16_t* den)
 {
 	// number of terms in continued fraction.
 	// 15 is the max without precision errors for M_PI
-    const size_t MAX_ITER = 15;
+	const size_t MAX_ITER = 15;
 	const double eps = 1.0 / USHRT_MAX;
 	long p[MAX_ITER], q[MAX_ITER], a[MAX_ITER];
 
@@ -560,8 +560,8 @@ void FileFormatCompress::find_cf(double x, uint16_t* num, uint16_t* den)
 		x = 1.0 / (x - (double)a[i]);
 	}
 
-	*num = (uint16_t)(p[i-1]);
-    *den = (uint16_t)(q[i-1]);
+	*num = (uint16_t)(p[i - 1]);
+	*den = (uint16_t)(q[i - 1]);
 }
 void FileFormatCompress::write_res_box(double resx, double resy, uint32_t box_id,
 									   uint8_t** current_res_ptr)
@@ -585,21 +585,23 @@ void FileFormatCompress::write_res_box(double resx, double resy, uint32_t box_id
 
 	for(size_t i = 0; i < 2; ++i)
 	{
-	    // special case when res[i] is a whole number.
-	    exponent[i] = 0;
-	    double r = res[i];
-        while (floor(r) == r){
-            if (r <= USHRT_MAX)
-                break;
-            r /= 10;
-            exponent[i]++;
-        }
-        if (floor(r) == r) {
-            num[i] = (uint16_t)r;
-            den[i] = 1;
-            continue;
-        }
-        //////////////////////////////////////////
+		// special case when res[i] is a whole number.
+		exponent[i] = 0;
+		double r = res[i];
+		while(floor(r) == r)
+		{
+			if(r <= USHRT_MAX)
+				break;
+			r /= 10;
+			exponent[i]++;
+		}
+		if(floor(r) == r)
+		{
+			num[i] = (uint16_t)r;
+			den[i] = 1;
+			continue;
+		}
+		//////////////////////////////////////////
 
 		exponent[i] = (int32_t)log10(res[i]);
 		if(exponent[i] < 1)
@@ -918,8 +920,8 @@ bool FileFormatCompress::init(grk_cparameters* parameters, GrkImage* image)
 uint64_t FileFormatCompress::compress(grk_plugin_tile* tile)
 {
 	auto rc = codeStream->compress(tile);
-	if (rc && !end())
-	    return 0;
+	if(rc && !end())
+		return 0;
 
 	return rc;
 }

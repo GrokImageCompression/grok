@@ -31,7 +31,7 @@
 #include <tiffio.h>
 #include "convert.h"
 
-//#define GRK_NEW_IO
+// #define GRK_NEW_IO
 
 #ifdef GRK_NEW_IO
 #include "../io/TIFFFormat.h"

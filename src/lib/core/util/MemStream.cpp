@@ -78,8 +78,8 @@ static size_t read_from_mem(uint8_t* dest, size_t numBytes, void* src)
 
 static size_t write_to_mem(const uint8_t* src, size_t numBytes, void* dest)
 {
-    auto destStream = (MemStream*)dest;
-    if(destStream->off + numBytes >= destStream->len)
+	auto destStream = (MemStream*)dest;
+	if(destStream->off + numBytes >= destStream->len)
 		return 0;
 
 	if(numBytes)
@@ -92,7 +92,7 @@ static size_t write_to_mem(const uint8_t* src, size_t numBytes, void* dest)
 
 static bool seek_from_mem(uint64_t numBytes, void* src)
 {
-    auto srcStream = (MemStream*)src;
+	auto srcStream = (MemStream*)src;
 
 	if(numBytes < srcStream->len)
 		srcStream->off = numBytes;
@@ -125,8 +125,7 @@ void set_up_mem_stream(grk_stream* stream, size_t len, bool is_read_stream)
 	if(is_read_stream)
 	{
 		grk_stream_set_read_function(stream, read_from_mem);
-		grk_stream_set_zero_copy_read_function(
-			stream, zero_copy_read_from_mem);
+		grk_stream_set_zero_copy_read_function(stream, zero_copy_read_from_mem);
 	}
 	else
 		grk_stream_set_write_function(stream, write_to_mem);
@@ -144,7 +143,6 @@ size_t get_mem_stream_offset(grk_stream* stream)
 
 	return buf->off;
 }
-
 
 grk_stream* create_mem_stream(uint8_t* buf, size_t len, bool ownsBuffer, bool is_read_stream)
 {

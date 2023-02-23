@@ -148,8 +148,8 @@ bool CodeStreamCompress::init(grk_cparameters* parameters, GrkImage* image)
 			return false;
 		}
 	}
-    if (parameters->apply_icc_)
-       image->applyICC();
+	if(parameters->apply_icc_)
+		image->applyICC();
 
 	// create private sanitized copy of image
 	headerImage_ = new GrkImage();
@@ -929,9 +929,9 @@ bool CodeStreamCompress::updateRates(void)
 	{
 		for(uint32_t tile_x = 0; tile_x < cp->t_grid_width; ++tile_x)
 		{
-		    uint32_t tileId = tile_y * cp->t_grid_width + tile_x;
-		    auto tcp = cp->tcps + tileId;
-            double stride = 0;
+			uint32_t tileId = tile_y * cp->t_grid_width + tile_x;
+			auto tcp = cp->tcps + tileId;
+			double stride = 0;
 			if(cp->coding_params_.enc_.enableTilePartGeneration_)
 				stride = (tcp->numTileParts_ - 1) * 14;
 			double offset = stride / tcp->numlayers;
@@ -952,8 +952,8 @@ bool CodeStreamCompress::updateRates(void)
 	{
 		for(uint32_t tile_x = 0; tile_x < cp->t_grid_width; ++tile_x)
 		{
-            uint32_t tileId = tile_y * cp->t_grid_width + tile_x;
-            auto tcp = cp->tcps + tileId;
+			uint32_t tileId = tile_y * cp->t_grid_width + tile_x;
+			auto tcp = cp->tcps + tileId;
 			double* rates = tcp->rates;
 			auto tileBounds = cp->getTileBounds(image, tile_x, tile_y);
 			uint64_t numTilePixels = tileBounds.area();

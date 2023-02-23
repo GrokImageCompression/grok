@@ -270,7 +270,7 @@ static const float dwt_delta = -0.443506852f; /*  -3633 */
 static const float K = 1.230174105f; /*  10078 */
 static const float twice_invK = 1.625732422f;
 
-//#undef __SSE__
+// #undef __SSE__
 
 #ifdef __SSE__
 void WaveletReverse::decompress_step1_sse_97(Params97 d, const __m128 c)

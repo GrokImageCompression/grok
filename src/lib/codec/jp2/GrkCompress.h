@@ -31,8 +31,8 @@ struct CompressInitParams
 	grk_img_fol inputFolder;
 	grk_img_fol outFolder;
 	bool transferExifTags;
-	grk_image *in_image;
-	grk_stream_params *out_buffer;
+	grk_image* in_image;
+	grk_stream_params* out_buffer;
 };
 
 class GrkCompress
@@ -40,7 +40,7 @@ class GrkCompress
   public:
 	GrkCompress(void) = default;
 	~GrkCompress(void) = default;
-	int main(int argc, char** argv, grk_image *in_image, grk_stream_params *out_buffer);
+	int main(int argc, char** argv, grk_image* in_image, grk_stream_params* out_buffer);
 
   private:
 	int pluginBatchCompress(CompressInitParams* initParams);

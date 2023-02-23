@@ -81,5 +81,3 @@ void grk_stream_set_user_data(grk_stream* stream, void* data, grk_stream_free_us
  * @param data_length length of data.
  */
 void grk_stream_set_user_data_length(grk_stream* stream, uint64_t data_length);
-
-

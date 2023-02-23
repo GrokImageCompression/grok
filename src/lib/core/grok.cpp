@@ -81,8 +81,7 @@ static bool grk_compress_start(grk_codec* codec);
  * @param is_read_stream  whether the stream is a read stream (true) or not (false)
  */
 static grk_stream* grk_stream_create_file_stream(const char* fname, size_t buffer_size,
-                                          bool is_read_stream);
-
+												 bool is_read_stream);
 
 static grk_stream* grk_stream_new(size_t buffer_size, bool is_input)
 {
@@ -166,7 +165,7 @@ static size_t grk_read_from_file(uint8_t* buffer, size_t numBytes, void* p_file)
 
 static uint64_t grk_get_data_length_from_file(void* filePtr)
 {
-    auto file = (FILE*)filePtr;
+	auto file = (FILE*)filePtr;
 	GRK_FSEEK(file, 0, SEEK_END);
 	int64_t file_length = (int64_t)GRK_FTELL(file);
 	GRK_FSEEK(file, 0, SEEK_SET);
@@ -178,9 +177,10 @@ static size_t grk_write_to_file(const uint8_t* buffer, size_t numBytes, void* p_
 }
 static bool grk_seek_in_file(uint64_t numBytes, void* p_user_data)
 {
-    if (numBytes > INT64_MAX) {
-        return false;
-    }
+	if(numBytes > INT64_MAX)
+	{
+		return false;
+	}
 
 	return GRK_FSEEK((FILE*)p_user_data, (int64_t)numBytes, SEEK_SET) ? false : true;
 }
@@ -307,14 +307,14 @@ static grk_codec* grk_decompress_create_from_file(const char* file_name)
 }
 void GRK_CALLCONV grk_decompress_set_default_params(grk_decompress_parameters* parameters)
 {
-    if (!parameters)
-        return;
-    memset(parameters, 0, sizeof(grk_decompress_parameters));
-    auto core_params = &parameters->core;
-    memset(core_params, 0, sizeof(grk_decompress_core_params));
-    core_params->tileCacheStrategy = GRK_TILE_CACHE_NONE;
-    core_params->randomAccessFlags_ =
-        GRK_RANDOM_ACCESS_TLM | GRK_RANDOM_ACCESS_PLM | GRK_RANDOM_ACCESS_PLT;
+	if(!parameters)
+		return;
+	memset(parameters, 0, sizeof(grk_decompress_parameters));
+	auto core_params = &parameters->core;
+	memset(core_params, 0, sizeof(grk_decompress_core_params));
+	core_params->tileCacheStrategy = GRK_TILE_CACHE_NONE;
+	core_params->randomAccessFlags_ =
+		GRK_RANDOM_ACCESS_TLM | GRK_RANDOM_ACCESS_PLM | GRK_RANDOM_ACCESS_PLT;
 }
 grk_codec* GRK_CALLCONV grk_decompress_init(grk_stream_params* stream_params,
 											grk_decompress_core_params* core_params)
@@ -579,7 +579,7 @@ static void grkFree_file(void* p_user_data)
 }
 
 static grk_stream* grk_stream_create_file_stream(const char* fname, size_t buffer_size,
-										  bool is_read_stream)
+												 bool is_read_stream)
 {
 	bool stdin_stdout = !fname || !fname[0];
 	FILE* file = nullptr;
@@ -622,7 +622,7 @@ static grk_stream* grk_stream_create_file_stream(const char* fname, size_t buffe
 			bstream->setFormat(fmt);
 	}
 
-	grk_stream_set_user_data(stream, file,stdin_stdout ? nullptr : grkFree_file);
+	grk_stream_set_user_data(stream, file, stdin_stdout ? nullptr : grkFree_file);
 	if(is_read_stream)
 		grk_stream_set_user_data_length(stream, grk_get_data_length_from_file(file));
 	grk_stream_set_read_function(stream, grk_read_from_file);
@@ -925,8 +925,7 @@ void grk_stream_set_write_function(grk_stream* stream, grk_stream_write_fn func)
 	streamImpl->setWriteFunction(func);
 }
 
-void grk_stream_set_user_data(grk_stream* stream, void* p_data,
-										   grk_stream_free_user_data_fn func)
+void grk_stream_set_user_data(grk_stream* stream, void* p_data, grk_stream_free_user_data_fn func)
 {
 	auto streamImpl = BufferedStream::getImpl(stream);
 	if(!streamImpl)
