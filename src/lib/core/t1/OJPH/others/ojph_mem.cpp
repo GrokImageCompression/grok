@@ -113,21 +113,24 @@ namespace ojph {
     if (store == NULL)
     {
       ui32 bytes = ojph_max(extended_bytes, chunk_size);
-      store = (stores_list*)malloc(bytes);
+      ui32 store_bytes = stores_list::eval_store_bytes(bytes);
+      store = (stores_list*)malloc(store_bytes);
       cur_store = store = new (store) stores_list(bytes);
-      total_allocated += bytes;
+      total_allocated += store_bytes;
     }
 
     if (cur_store->available < extended_bytes)
     {
       ui32 bytes = ojph_max(extended_bytes, chunk_size);
-      cur_store->next_store = (stores_list*)malloc(bytes);
+      ui32 store_bytes = stores_list::eval_store_bytes(bytes);
+      cur_store->next_store = (stores_list*)malloc(store_bytes);
       cur_store = new (cur_store->next_store) stores_list(bytes);
-      total_allocated += bytes;
+      total_allocated += store_bytes;
     }
 
     p = new (cur_store->data) coded_lists(needed_bytes);
 
+    assert(cur_store->available >= extended_bytes);
     cur_store->available -= extended_bytes;
     cur_store->data += extended_bytes;
   }
