@@ -24,8 +24,6 @@
 #pragma GCC poison malloc calloc realloc free
 #endif
 
-#include <cstddef>
-
 namespace grk
 {
 uint32_t grk_make_aligned_width(uint32_t width);

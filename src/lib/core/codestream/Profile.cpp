@@ -21,7 +21,6 @@
 
 #include "grk_includes.h"
 #include <algorithm>
-using namespace std;
 
 namespace grk
 {
@@ -185,7 +184,7 @@ bool Profile::is_imf_compliant(grk_cparameters* parameters, GrkImage* image)
 				 tabMaxSubLevelFromMainLevel[mainlevel], mainlevel, sublevel);
 		ret = false;
 	}
-	int m = max((int)mainlevel - 2, 1);
+	int m = std::max((int)mainlevel - 2, 1);
 	if((int)sublevel > m)
 	{
 		GRK_WARN("JPEG 2000 IMF profile: invalid sub-level %u", sublevel);
