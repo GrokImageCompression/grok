@@ -64,8 +64,6 @@ check_pie_supported(LANGUAGES CXX)
    set(CMAKE_POSITION_INDEPENDENT_CODE TRUE)
 endif()
 
-include (cmake/FindOpenCL.cmake)
-
 # Path to additional CMake modules
 set(CMAKE_MODULE_PATH
     ${GROK_SOURCE_DIR}/cmake
