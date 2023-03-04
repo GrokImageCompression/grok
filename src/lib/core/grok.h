@@ -568,6 +568,7 @@ typedef struct _grk_decompress_params
 	uint32_t kernelBuildOptions;
 	uint32_t repeats;
 	uint32_t numThreads;
+	void* user_data;
 } grk_decompress_parameters;
 
 /**

@@ -830,6 +830,7 @@ int32_t grk_plugin_internal_decode_callback(PluginDecodeCallbackInfo* info)
 	grokInfo.plugin_owns_image = info->plugin_owns_image;
 	grokInfo.tile = info->tile;
 	grokInfo.decompress_flags = info->decompress_flags;
+	grokInfo.user_data = info->decompressor_parameters->user_data;
 	if(decodeCallback)
 		rc = decodeCallback(&grokInfo);
 	// synch

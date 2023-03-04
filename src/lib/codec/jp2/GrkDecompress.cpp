@@ -832,6 +832,7 @@ int GrkDecompress::pluginMain(int argc, char** argv, DecompressInitParams* initP
 		success = 1;
 		goto cleanup;
 	}
+	initParams->parameters.user_data = this;
 	isBatch = initParams->inputFolder.imgdirpath && initParams->outFolder.imgdirpath;
 	if((grk_plugin_get_debug_state() & GRK_PLUGIN_STATE_DEBUG))
 		isBatch = false;
