@@ -350,7 +350,8 @@ bool TileProcessor::doCompress(void)
 		if((tcp_->csty & J2K_CP_CSTY_EPH) || (tcp_->csty & J2K_CP_CSTY_SOP))
 		{
 			GRK_WARN("Unable to perform rate control on tile %d. "
-					 "We will try increasing rate to adjust for SOP and/or EPH markers",
+					 "We will disable rate control on this tile "
+					 "to adjust for SOP and/or EPH markers",
 					 tileIndex_);
 			allPacketBytes = 0;
 			rc = rateAllocate(&allPacketBytes, true);
@@ -1133,15 +1134,15 @@ bool TileProcessor::cacheTilePartPackets(CodeStreamDecompress* codeStream)
 	return true;
 }
 // RATE CONTROL ////////////////////////////////////////////
-bool TileProcessor::rateAllocate(uint32_t* allPacketBytes, bool padSOP_EPH)
+bool TileProcessor::rateAllocate(uint32_t* allPacketBytes, bool disableRateControl)
 {
 	// rate control by rate/distortion or fixed quality
 	switch(cp_->coding_params_.enc_.rateControlAlgorithm)
 	{
 		case 0:
-			return pcrdBisectSimple(allPacketBytes, padSOP_EPH);
+			return pcrdBisectSimple(allPacketBytes, disableRateControl);
 		default:
-			return pcrdBisectFeasible(allPacketBytes, padSOP_EPH);
+			return pcrdBisectFeasible(allPacketBytes, disableRateControl);
 	}
 }
 bool TileProcessor::layerNeedsRateControl(uint32_t layno)
@@ -1254,7 +1255,7 @@ bool TileProcessor::makeLayerFeasible(uint32_t layno, uint16_t thresh, bool fina
 /*
  Hybrid rate control using bisect algorithm with optimal truncation points
  */
-bool TileProcessor::pcrdBisectFeasible(uint32_t* allPacketBytes, bool padSOP_EPH)
+bool TileProcessor::pcrdBisectFeasible(uint32_t* allPacketBytes, bool disableRateControl)
 {
 	bool single_lossless = tcp_->numlayers == 1 && !layerNeedsRateControl(0);
 	const double K = 1;
@@ -1327,23 +1328,8 @@ bool TileProcessor::pcrdBisectFeasible(uint32_t* allPacketBytes, bool padSOP_EPH
 	for(uint16_t layno = 0; layno < tcp->numlayers; layno++)
 	{
 		uint32_t lowerBound = min_slope;
-		maxLayerLength = tcp->rates[layno] > 0.0f ? ((uint32_t)ceil(tcp->rates[layno])) : UINT_MAX;
-		if(tcp->rates[layno] > 0.0f && padSOP_EPH)
-		{
-			// adjust for empty packets
-			uint64_t adj = numPacketsPerLayer;
-			// adjust for EPH marker
-			if(tcp_->csty & J2K_CP_CSTY_EPH)
-				adj += numPacketsPerLayer * 2;
-			// adjust for SOP marker
-			if(tcp_->csty & J2K_CP_CSTY_SOP)
-				adj += numPacketsPerLayer * 6;
-			// add extra padding based on number of code blocks
-			adj += numCodeBlocks * 10;
-			if((uint64_t)maxLayerLength + adj < UINT_MAX)
-				maxLayerLength += (uint32_t)adj;
-		}
-
+		maxLayerLength = (!disableRateControl && tcp->rates[layno] > 0.0f) ?
+		                    ((uint32_t)ceil(tcp->rates[layno])) : UINT_MAX;
 		if(layerNeedsRateControl(layno))
 		{
 			// thresh from previous iteration - starts off uninitialized
@@ -1411,13 +1397,13 @@ bool TileProcessor::pcrdBisectFeasible(uint32_t* allPacketBytes, bool padSOP_EPH
 										 newTilePartProgressionPosition,
 										 packetLengthCache.getMarkers(), true, debug);
 
-	// assert(!padSOP_EPH || rc);
+	// assert(!disableRateControl || rc);
 	return rc;
 }
 /*
  Simple bisect algorithm to calculate optimal layer truncation points
  */
-bool TileProcessor::pcrdBisectSimple(uint32_t* allPacketBytes, bool padSOP_EPH)
+bool TileProcessor::pcrdBisectSimple(uint32_t* allPacketBytes, bool disableRateControl)
 {
 	uint32_t passno;
 	const double K = 1;
@@ -1506,22 +1492,8 @@ bool TileProcessor::pcrdBisectSimple(uint32_t* allPacketBytes, bool padSOP_EPH)
 	uint32_t maxLayerLength = UINT_MAX;
 	for(uint16_t layno = 0; layno < tcp_->numlayers; layno++)
 	{
-		maxLayerLength = tcp->rates[layno] > 0.0f ? ((uint32_t)ceil(tcp->rates[layno])) : UINT_MAX;
-		if(tcp->rates[layno] > 0.0f && padSOP_EPH)
-		{
-			// adjust for empty packets
-			uint64_t adj = numPacketsPerLayer;
-			// adjust for EPH marker
-			if(tcp_->csty & J2K_CP_CSTY_EPH)
-				adj += numPacketsPerLayer * 2;
-			// adjust for SOP marker
-			if(tcp_->csty & J2K_CP_CSTY_SOP)
-				adj += numPacketsPerLayer * 6;
-			// add extra padding based on number of code blocks
-			adj += numCodeBlocks * 10;
-			if((uint64_t)maxLayerLength + adj < UINT_MAX)
-				maxLayerLength += (uint32_t)adj;
-		}
+        maxLayerLength = (!disableRateControl && tcp->rates[layno] > 0.0f) ?
+                            ((uint32_t)ceil(tcp->rates[layno])) : UINT_MAX;
 		if(layerNeedsRateControl(layno))
 		{
 			double lowerBound = min_slope;
