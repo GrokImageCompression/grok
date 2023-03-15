@@ -347,15 +347,10 @@ bool TileProcessor::doCompress(void)
 	bool rc = rateAllocate(&allPacketBytes, false);
 	if(!rc)
 	{
-		if((tcp_->csty & J2K_CP_CSTY_EPH) || (tcp_->csty & J2K_CP_CSTY_SOP))
-		{
-			GRK_WARN("Unable to perform rate control on tile %d. "
-					 "We will disable rate control on this tile "
-					 "to adjust for SOP and/or EPH markers",
-					 tileIndex_);
-			allPacketBytes = 0;
-			rc = rateAllocate(&allPacketBytes, true);
-		}
+		GRK_WARN("Unable to perform rate control on tile %d",tileIndex_);
+		GRK_WARN("Rate control will be disabled for this tile");
+		allPacketBytes = 0;
+		rc = rateAllocate(&allPacketBytes, true);
 		if(!rc)
 		{
 			GRK_ERROR("Unable to perform rate control on tile %d", tileIndex_);
