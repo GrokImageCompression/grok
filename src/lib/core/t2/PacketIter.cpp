@@ -823,7 +823,7 @@ void PacketIter::init(PacketManager* packetMan, uint32_t pino, TileCodingParams*
 
 		prog.progression = hasPoc ? poc->progression : tcp->prg;
 		prog.layS = 0;
-		prog.layE = hasPoc ? std::min<uint16_t>(poc->layE, tcp->numlayers) : tcp->numlayers;
+		prog.layE = hasPoc ? std::min<uint16_t>(poc->layE, tcp->max_layers_) : tcp->max_layers_;
 		prog.resS = hasPoc ? poc->resS : 0;
 		prog.resE = hasPoc ? poc->resE : max_res;
 		prog.compS = hasPoc ? poc->compS : 0;

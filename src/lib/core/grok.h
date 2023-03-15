@@ -416,8 +416,8 @@ typedef struct _grk_header_info
 	uint32_t t_grid_width;
 	/** tile grid height  */
 	uint32_t t_grid_height;
-	/** number of layers */
-	uint16_t numlayers;
+	/** maximum number of layers */
+	uint16_t max_layers_;
 	/*************************************
 	note: xml_data will remain valid
 	 until codec is destroyed
@@ -497,7 +497,7 @@ typedef struct _grk_decompress_core_params
 	 decompressed. if != 0, then only the first "layer" layers are decompressed; if == 0 or not
 	 used, all the quality layers are decompressed
 	 */
-	uint16_t max_layers;
+	uint16_t layers_to_decompress_;
 	GRK_TILE_CACHE_STRATEGY tileCacheStrategy;
 
 	uint32_t randomAccessFlags_;

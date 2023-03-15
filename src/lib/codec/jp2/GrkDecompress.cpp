@@ -650,7 +650,7 @@ int GrkDecompress::parseCommandLine(int argc, char** argv, DecompressInitParams*
 				parameters->core.reduce = (uint8_t)reduceArg.getValue();
 		}
 		if(layerArg.isSet())
-			parameters->core.max_layers = layerArg.getValue();
+			parameters->core.layers_to_decompress_ = layerArg.getValue();
 		if(randomAccessArg.isSet())
 			parameters->core.randomAccessFlags_ = randomAccessArg.getValue();
 		parameters->singleTileDecompress = tileArg.isSet();

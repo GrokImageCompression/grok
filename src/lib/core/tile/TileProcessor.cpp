@@ -259,7 +259,7 @@ bool TileProcessor::init(void)
 			}
 		}
 		packetTracker_.init(tile->numcomps_, tile->comps->numresolutions, max_precincts,
-							tcp->numlayers);
+							tcp->max_layers_);
 	}
 
 	return true;
@@ -889,7 +889,7 @@ bool TileProcessor::encodeT2(uint32_t* tileBytesWritten)
 		}
 	}
 #endif
-	if(!l_t2->compressPackets(tileIndex_, tcp_->numlayers, stream_, tileBytesWritten,
+	if(!l_t2->compressPackets(tileIndex_, tcp_->max_layers_, stream_, tileBytesWritten,
 							  first_poc_tile_part_, newTilePartProgressionPosition, pino))
 	{
 		delete l_t2;
@@ -1148,7 +1148,7 @@ bool TileProcessor::layerNeedsRateControl(uint32_t layno)
 }
 bool TileProcessor::needsRateControl()
 {
-	for(uint16_t i = 0; i < tcp_->numlayers; ++i)
+	for(uint16_t i = 0; i < tcp_->max_layers_; ++i)
 	{
 		if(layerNeedsRateControl(i))
 			return true;
@@ -1159,7 +1159,7 @@ bool TileProcessor::needsRateControl()
 // due to irreversible DWT and quantization
 bool TileProcessor::makeSingleLosslessLayer()
 {
-	if(tcp_->numlayers == 1 && !layerNeedsRateControl(0))
+	if(tcp_->max_layers_ == 1 && !layerNeedsRateControl(0))
 	{
 		makeLayerFinal(0);
 
@@ -1252,7 +1252,7 @@ bool TileProcessor::makeLayerFeasible(uint32_t layno, uint16_t thresh, bool fina
  */
 bool TileProcessor::pcrdBisectFeasible(uint32_t* allPacketBytes, bool disableRateControl)
 {
-	bool single_lossless = tcp_->numlayers == 1 && !layerNeedsRateControl(0);
+	bool single_lossless = tcp_->max_layers_ == 1 && !layerNeedsRateControl(0);
 	const double K = 1;
 	double maxSE = 0;
 	auto tcp = tcp_;
@@ -1320,7 +1320,7 @@ bool TileProcessor::pcrdBisectFeasible(uint32_t* allPacketBytes, bool disableRat
 	double cumulativeDistortion[maxCompressLayersGRK];
 	uint32_t upperBound = max_slope;
 	uint32_t maxLayerLength = UINT_MAX;
-	for(uint16_t layno = 0; layno < tcp->numlayers; layno++)
+	for(uint16_t layno = 0; layno < tcp->max_layers_; layno++)
 	{
 		uint32_t lowerBound = min_slope;
 		maxLayerLength = (!disableRateControl && tcp->rates[layno] > 0.0f) ?
@@ -1388,7 +1388,7 @@ bool TileProcessor::pcrdBisectFeasible(uint32_t* allPacketBytes, bool disableRat
 
 	// final simulation will generate correct PLT lengths
 	// and correct tile length
-	bool rc = t2.compressPacketsSimulate(tileIndex_, tcp->numlayers, allPacketBytes, maxLayerLength,
+	bool rc = t2.compressPacketsSimulate(tileIndex_, tcp->max_layers_, allPacketBytes, maxLayerLength,
 										 newTilePartProgressionPosition,
 										 packetLengthCache.getMarkers(), true, debug);
 
@@ -1485,7 +1485,7 @@ bool TileProcessor::pcrdBisectSimple(uint32_t* allPacketBytes, bool disableRateC
 	double cumulativeDistortion[maxCompressLayersGRK];
 	double upperBound = max_slope;
 	uint32_t maxLayerLength = UINT_MAX;
-	for(uint16_t layno = 0; layno < tcp_->numlayers; layno++)
+	for(uint16_t layno = 0; layno < tcp_->max_layers_; layno++)
 	{
         maxLayerLength = (!disableRateControl && tcp->rates[layno] > 0.0f) ?
                             ((uint32_t)ceil(tcp->rates[layno])) : UINT_MAX;
@@ -1546,14 +1546,14 @@ bool TileProcessor::pcrdBisectSimple(uint32_t* allPacketBytes, bool disableRateC
 		else
 		{
 			makeLayerFinal(layno);
-			assert(layno == tcp_->numlayers - 1);
+			assert(layno == tcp_->max_layers_ - 1);
 		}
 	}
 
 	// final simulation will generate correct PLT lengths
 	// and correct tile length
 	// GRK_INFO("Rate control final simulation");
-	return t2.compressPacketsSimulate(tileIndex_, tcp_->numlayers, allPacketBytes, maxLayerLength,
+	return t2.compressPacketsSimulate(tileIndex_, tcp_->max_layers_, allPacketBytes, maxLayerLength,
 									  newTilePartProgressionPosition,
 									  packetLengthCache.getMarkers(), true, false);
 }
