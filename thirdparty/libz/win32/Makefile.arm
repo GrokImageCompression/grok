@@ -68,7 +68,6 @@ OBJS = \
 	infback.obj \
 	inflate.obj \
 	inftrees.obj \
-	inffast.obj \
 	insert_string.obj \
 	insert_string_roll.obj \
 	slide_hash.obj \
@@ -96,7 +95,7 @@ OBJS = $(OBJS) gzlib.obj gzread.obj gzwrite.obj
 !endif
 
 !if "$(WITH_ACLE)" != ""
-WFLAGS = $(WFLAGS) -DARM_ACLE_CRC_HASH
+WFLAGS = $(WFLAGS) -DARM_ACLE
 OBJS = $(OBJS) crc32_acle.obj insert_string_acle.obj
 !endif
 !if "$(WITH_VFPV3)" != ""
@@ -107,9 +106,6 @@ CFLAGS = $(CFLAGS) $(NEON_ARCH)
 WFLAGS = $(WFLAGS) \
 	-D__ARM_NEON__=1 \
 	-DARM_NEON \
-	-DARM_NEON_ADLER32 \
-	-DARM_NEON_CHUNKSET \
-	-DARM_NEON_SLIDEHASH \
 	-DARM_NOCHECK_NEON \
 	#
 OBJS = $(OBJS) adler32_neon.obj chunkset_neon.obj compare256_neon.obj slide_hash_neon.obj
@@ -213,9 +209,8 @@ deflate_quick.obj: $(SRCDIR)/deflate_quick.c $(SRCDIR)/zbuild.h $(SRCDIR)/deflat
 deflate_rle.obj: $(SRCDIR)/deflate_rle.c $(SRCDIR)/zbuild.h $(SRCDIR)/deflate.h $(SRCDIR)/deflate_p.h $(SRCDIR)/functable.h
 deflate_slow.obj: $(SRCDIR)/deflate_slow.c $(SRCDIR)/zbuild.h $(SRCDIR)/deflate.h $(SRCDIR)/deflate_p.h $(SRCDIR)/functable.h
 deflate_stored.obj: $(SRCDIR)/deflate_stored.c $(SRCDIR)/zbuild.h $(SRCDIR)/deflate.h $(SRCDIR)/deflate_p.h $(SRCDIR)/functable.h
-infback.obj: $(SRCDIR)/infback.c $(SRCDIR)/zbuild.h $(SRCDIR)/zutil.h $(SRCDIR)/inftrees.h $(SRCDIR)/inflate.h $(SRCDIR)/inffast.h
-inffast.obj: $(SRCDIR)/inffast.c $(SRCDIR)/zbuild.h $(SRCDIR)/zutil.h $(SRCDIR)/inftrees.h $(SRCDIR)/inflate.h $(SRCDIR)/inffast.h $(SRCDIR)/functable.h
-inflate.obj: $(SRCDIR)/inflate.c $(SRCDIR)/zbuild.h $(SRCDIR)/zutil.h $(SRCDIR)/inftrees.h $(SRCDIR)/inflate.h $(SRCDIR)/inffast.h $(SRCDIR)/functable.h $(SRCDIR)/functable.h
+infback.obj: $(SRCDIR)/infback.c $(SRCDIR)/zbuild.h $(SRCDIR)/zutil.h $(SRCDIR)/inftrees.h $(SRCDIR)/inflate.h $(SRCDIR)/inflate_p.h $(SRCDIR)/functable.h
+inflate.obj: $(SRCDIR)/inflate.c $(SRCDIR)/zbuild.h $(SRCDIR)/zutil.h $(SRCDIR)/inftrees.h $(SRCDIR)/inflate.h $(SRCDIR)/inflate_p.h $(SRCDIR)/functable.h $(SRCDIR)/functable.h
 inftrees.obj: $(SRCDIR)/inftrees.c $(SRCDIR)/zbuild.h $(SRCDIR)/zutil.h $(SRCDIR)/inftrees.h
 slide_hash.obj: $(SRCDIR)/slide_hash.c $(SRCDIR)/zbuild.h $(SRCDIR)/deflate.h
 trees.obj: $(SRCDIR)/zbuild.h $(SRCDIR)/deflate.h $(SRCDIR)/trees_tbl.h

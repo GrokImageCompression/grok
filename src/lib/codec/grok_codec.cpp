@@ -24,9 +24,10 @@ int GRK_CALLCONV grk_codec_dump(int argc, char* argv[])
 {
 	return grk::GrkDump().main(argc, argv);
 }
-int GRK_CALLCONV grk_codec_compress(int argc, char* argv[])
+int GRK_CALLCONV grk_codec_compress(int argc, char* argv[], grk_image* in_image,
+									grk_stream_params* out_buffer)
 {
-	return grk::GrkCompress().main(argc, argv);
+	return grk::GrkCompress().main(argc, argv, in_image, out_buffer);
 }
 int GRK_CALLCONV grk_codec_decompress(int argc, char* argv[])
 {

@@ -851,7 +851,7 @@ grk_image* BMPFormat::decode(const std::string& fname, grk_cparameters* paramete
 		img_comp->h = grk::ceildiv<uint32_t>((uint32_t)infoHeader_.biHeight, img_comp->dy);
 	}
 
-	image = grk_image_new(numcmpts, &cmptparm[0], colour_space);
+	image = grk_image_new(numcmpts, &cmptparm[0], colour_space, true);
 	if(!image)
 		goto cleanup;
 

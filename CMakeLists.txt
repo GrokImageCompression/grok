@@ -6,7 +6,7 @@ project(GROK)
 # GROK version
 set(GROK_VERSION_MAJOR 10)
 set(GROK_VERSION_MINOR 0)
-set(GROK_VERSION_BUILD 5)
+set(GROK_VERSION_BUILD 6)
 set(GROK_VERSION
   "${GROK_VERSION_MAJOR}.${GROK_VERSION_MINOR}.${GROK_VERSION_BUILD}")
 set(PACKAGE_VERSION
@@ -58,11 +58,18 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
     "MinSizeRel" "RelWithDebInfo")
 endif()
 
+include(CheckPIESupported OPTIONAL RESULT_VARIABLE CHECK_PIE_SUPPORTED)
+check_pie_supported(LANGUAGES CXX)
+ if(CMAKE_CXX_LINK_PIE_SUPPORTED)
+   set(CMAKE_POSITION_INDEPENDENT_CODE TRUE)
+endif()
+
 # Path to additional CMake modules
 set(CMAKE_MODULE_PATH
     ${GROK_SOURCE_DIR}/cmake
     ${CMAKE_MODULE_PATH})
 
+include (ExternalProject)
 # Install directories
 include(GNUInstallDirs)
 string(TOLOWER ${PROJECT_NAME} projectname)
@@ -80,8 +87,8 @@ endif()
 
 # Grok build configuration options.
 option(BUILD_SHARED_LIBS "Build Grok shared library and link executables against it." ON)
-set (EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR}/bin CACHE PATH "Single output directory for building all executables.")
-set (LIBRARY_OUTPUT_PATH ${CMAKE_BINARY_DIR}/bin CACHE PATH "Single output directory for building all libraries.")
+set (EXECUTABLE_OUTPUT_PATH ${CMAKE_CURRENT_BINARY_DIR}/bin CACHE PATH "Single output directory for building all executables.")
+set (LIBRARY_OUTPUT_PATH ${CMAKE_CURRENT_BINARY_DIR}/bin CACHE PATH "Single output directory for building all libraries.")
 mark_as_advanced(LIBRARY_OUTPUT_PATH EXECUTABLE_OUTPUT_PATH)
 
 # Compiler specific flags:
@@ -111,6 +118,7 @@ include(CheckSymbolExists)
 option(GRK_BUILD_LIBPNG "Build libpng library" ON)
 option(GRK_BUILD_LIBTIFF "Build libtiff library" ON)
 option(GRK_BUILD_LCMS2 "Build lcms2 library" ON)
+option(GRK_BUILD_JPEG "Build jpeg library" ON)
 add_subdirectory(thirdparty)
 
 # Build Library

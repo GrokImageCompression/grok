@@ -134,7 +134,7 @@ TagTreeU8* PrecinctImpl::getIMsbTagTree(void)
 
 Precinct::Precinct(TileProcessor* tileProcessor, const grk_rect32& bounds, grk_pt32 cblk_expn)
 	: grk_rect32(bounds), precinctIndex(0),
-	  numLayers_(tileProcessor->getTileCodingParams()->numlayers),
+	  numLayers_(tileProcessor->getTileCodingParams()->max_layers_),
 	  impl(new PrecinctImpl(tileProcessor->isCompressor(), this, cblk_expn)), cblk_expn_(cblk_expn)
 
 {}

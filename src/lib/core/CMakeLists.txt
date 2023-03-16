@@ -22,7 +22,7 @@ install( FILES  ${CMAKE_CURRENT_BINARY_DIR}/grk_config.h
  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${GROK_INSTALL_SUBDIR} COMPONENT Headers)
 
 include_directories(
-  ${CMAKE_BINARY_DIR}/src/lib/core # grk_config.h and grk_config_private.h
+  ${CMAKE_CURRENT_BINARY_DIR} # grk_config.h and grk_config_private.h
   ${GROK_SOURCE_DIR}/src/lib/codec/common
   ${GROK_SOURCE_DIR}/src/lib/codec
   ${GROK_SOURCE_DIR}/src/include
@@ -32,9 +32,6 @@ include_directories(
   ${CMAKE_CURRENT_SOURCE_DIR}/t1
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/part1
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/part1/impl
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/OpenHTJ2K
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/OpenHTJ2K/coding
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/OpenHTJ2K/common
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/OJPH/common
   ${CMAKE_CURRENT_SOURCE_DIR}/util
   ${CMAKE_CURRENT_SOURCE_DIR}/codestream
@@ -55,23 +52,6 @@ set(GROK_EXECUTABLES_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/part1/t1_generate_luts.cpp
 )
 
-# Defines the source code for the library
-set(GROK_LIBRARY_OPENHTJ2K_SRCS
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/OpenHTJ2K/coding/coding_local.hpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/OpenHTJ2K/coding/coding_units.hpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/OpenHTJ2K/coding/ht_block_decoding.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/OpenHTJ2K/coding/ht_block_encoding.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/OpenHTJ2K/coding/coding_units.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/OpenHTJ2K/coding/dec_CxtVLC_tables.hpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/OpenHTJ2K/coding/enc_CxtVLC_tables.hpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/OpenHTJ2K/coding/ht_block_decoding.hpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/OpenHTJ2K/coding/ht_block_encoding.hpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/OpenHTJ2K/T1OpenHTJ2K.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/OpenHTJ2K/T1OpenHTJ2K.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/OpenHTJ2K/QuantizerOpenHTJ2K.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/OpenHTJ2K/QuantizerOpenHTJ2K.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/OpenHTJ2K/PostT1DecompressFiltersOpenHTJ2K.h
-)
 set(GROK_LIBRARY_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/util/BufferedStream.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/util/BufferedStream.h

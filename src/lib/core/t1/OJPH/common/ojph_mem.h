@@ -199,15 +199,19 @@ namespace ojph {
   private:
     struct stores_list
     {
-      stores_list(ui32 chunk_size)
+      stores_list(ui32 available_bytes)
       {
         this->next_store = NULL;
-        this->available = chunk_size - (ui32)sizeof(stores_list);
-        this->data = (char*)this + sizeof(stores_list);
+        this->available = available_bytes;
+        this->data = (ui8*)this + sizeof(stores_list);
+      }
+      static ui32 eval_store_bytes(ui32 available_bytes) 
+      { // calculates how many bytes need to be allocated
+        return available_bytes + (ui32)sizeof(stores_list);
       }
       stores_list *next_store;
       ui32 available;
-      char* data;
+      ui8* data;
     };
 
     stores_list *store, *cur_store;

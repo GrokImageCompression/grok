@@ -527,7 +527,7 @@ grk_image* PNGFormat::do_decode(grk_cparameters* params)
 		img_comp->h = grk::ceildiv<uint32_t>(height, img_comp->dy);
 	}
 
-	image_ = grk_image_new(nr_comp, &cmptparm[0], colorSpace_);
+	image_ = grk_image_new(nr_comp, &cmptparm[0], colorSpace_, true);
 	if(image_ == nullptr)
 		goto beach;
 	image_->x0 = params->image_offset_x0;

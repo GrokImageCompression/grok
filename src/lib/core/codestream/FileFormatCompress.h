@@ -30,7 +30,7 @@ class FileFormatCompress : public FileFormat, public ICodeStreamCompress
 
 	bool init(grk_cparameters* p_param, GrkImage* p_image);
 	bool start(void);
-	bool compress(grk_plugin_tile* tile);
+	uint64_t compress(grk_plugin_tile* tile);
 
   private:
 	bool end(void);

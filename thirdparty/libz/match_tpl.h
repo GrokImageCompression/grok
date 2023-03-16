@@ -9,6 +9,7 @@
  */
 
 #include "zbuild.h"
+#include "zutil_p.h"
 #include "deflate.h"
 #include "functable.h"
 
@@ -74,11 +75,11 @@ Z_INTERNAL uint32_t LONGEST_MATCH(deflate_state *const s, Pos cur_match) {
 #endif
 
 #ifdef UNALIGNED64_OK
-    zmemcpy_8(scan_start, scan);
-    zmemcpy_8(scan_end, scan+offset);
+    memcpy(scan_start, scan, sizeof(uint64_t));
+    memcpy(scan_end, scan+offset, sizeof(uint64_t));
 #elif defined(UNALIGNED_OK)
-    zmemcpy_4(scan_start, scan);
-    zmemcpy_4(scan_end, scan+offset);
+    memcpy(scan_start, scan, sizeof(uint32_t));
+    memcpy(scan_end, scan+offset, sizeof(uint32_t));
 #else
     scan_end[0] = *(scan+offset);
     scan_end[1] = *(scan+offset+1);
@@ -145,24 +146,24 @@ Z_INTERNAL uint32_t LONGEST_MATCH(deflate_state *const s, Pos cur_match) {
 #ifdef UNALIGNED_OK
         if (best_len < sizeof(uint32_t)) {
             for (;;) {
-                if (zmemcmp_2(mbase_end+cur_match, scan_end) == 0 &&
-                    zmemcmp_2(mbase_start+cur_match, scan_start) == 0)
+                if (zng_memcmp_2(mbase_end+cur_match, scan_end) == 0 &&
+                    zng_memcmp_2(mbase_start+cur_match, scan_start) == 0)
                     break;
                 GOTO_NEXT_CHAIN;
             }
 #  ifdef UNALIGNED64_OK
         } else if (best_len >= sizeof(uint64_t)) {
             for (;;) {
-                if (zmemcmp_8(mbase_end+cur_match, scan_end) == 0 &&
-                    zmemcmp_8(mbase_start+cur_match, scan_start) == 0)
+                if (zng_memcmp_8(mbase_end+cur_match, scan_end) == 0 &&
+                    zng_memcmp_8(mbase_start+cur_match, scan_start) == 0)
                     break;
                 GOTO_NEXT_CHAIN;
             }
 #  endif
         } else {
             for (;;) {
-                if (zmemcmp_4(mbase_end+cur_match, scan_end) == 0 &&
-                    zmemcmp_4(mbase_start+cur_match, scan_start) == 0)
+                if (zng_memcmp_4(mbase_end+cur_match, scan_end) == 0 &&
+                    zng_memcmp_4(mbase_start+cur_match, scan_start) == 0)
                     break;
                 GOTO_NEXT_CHAIN;
             }
@@ -201,9 +202,9 @@ Z_INTERNAL uint32_t LONGEST_MATCH(deflate_state *const s, Pos cur_match) {
 #endif
 
 #ifdef UNALIGNED64_OK
-            zmemcpy_8(scan_end, scan+offset);
+            memcpy(scan_end, scan+offset, sizeof(uint64_t));
 #elif defined(UNALIGNED_OK)
-            zmemcpy_4(scan_end, scan+offset);
+            memcpy(scan_end, scan+offset, sizeof(uint32_t));
 #else
             scan_end[0] = *(scan+offset);
             scan_end[1] = *(scan+offset+1);

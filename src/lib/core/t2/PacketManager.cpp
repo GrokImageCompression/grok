@@ -200,7 +200,7 @@ void PacketManager::updateCompressTcpProgressions(CodingParams* p_cp, uint16_t n
 	{
 		auto prog = tcp->progressionOrderChange + pino;
 		prog->progression = poc ? prog->specifiedCompressionPocProg : tcp->prg;
-		prog->tpLayE = poc ? prog->layE : tcp->numlayers;
+		prog->tpLayE = poc ? prog->layE : tcp->max_layers_;
 		prog->tpResS = poc ? prog->resS : 0;
 		prog->tpResE = poc ? prog->resE : max_res;
 		prog->tpCompS = poc ? prog->compS : 0;

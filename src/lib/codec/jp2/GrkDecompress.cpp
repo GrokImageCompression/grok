@@ -341,7 +341,7 @@ char GrkDecompress::nextFile(const std::string inputFile, grk_img_fol* inputFold
 		return 1;
 
 	auto temp_ofname = inputFile;
-	auto pos = inputFile.find(".");
+	auto pos = inputFile.rfind(".");
 	if(pos != std::string::npos)
 		temp_ofname = inputFile.substr(0, pos);
 	if(inputFolder->set_out_format)
@@ -459,9 +459,6 @@ int GrkDecompress::parseCommandLine(int argc, char** argv, DecompressInitParams*
 											  "unsigned integer", cmd);
 
 		cmd.parse(argc, argv);
-
-		initParams->transferExifTags = transferExifTagsArg.isSet();
-
 		parameters->verbose_ = verboseArg.isSet();
 		bool useStdio = inputFileArg.isSet() && outForArg.isSet() && !outputFileArg.isSet();
 		// disable verbose mode so we don't write info or warnings to stdout
@@ -476,6 +473,17 @@ int GrkDecompress::parseCommandLine(int argc, char** argv, DecompressInitParams*
 			spdlog::set_default_logger(file_logger);
 		}
 
+		initParams->transferExifTags = transferExifTagsArg.isSet();
+#ifndef GROK_HAVE_EXIFTOOL
+		if(initParams->transferExifTags)
+		{
+			spdlog::warn("Transfer of EXIF tags not supported. Transfer can be achieved by "
+						 "directly calling");
+			spdlog::warn("exiftool after decompression as follows: ");
+			spdlog::warn("exiftool -TagsFromFile $SOURCE_FILE -all:all>all:all $DEST_FILE");
+			initParams->transferExifTags = false;
+		}
+#endif
 		parameters->io_xml = xmlArg.isSet();
 		parameters->force_rgb = forceRgbArg.isSet();
 		if(upsampleArg.isSet())
@@ -642,7 +650,7 @@ int GrkDecompress::parseCommandLine(int argc, char** argv, DecompressInitParams*
 				parameters->core.reduce = (uint8_t)reduceArg.getValue();
 		}
 		if(layerArg.isSet())
-			parameters->core.max_layers = layerArg.getValue();
+			parameters->core.layers_to_decompress_ = layerArg.getValue();
 		if(randomAccessArg.isSet())
 			parameters->core.randomAccessFlags_ = randomAccessArg.getValue();
 		parameters->singleTileDecompress = tileArg.isSet();
@@ -730,8 +738,7 @@ void GrkDecompress::setDefaultParams(grk_decompress_parameters* parameters)
 {
 	if(parameters)
 	{
-		memset(parameters, 0, sizeof(grk_decompress_parameters));
-		grk_decompress_set_default_params(&(parameters->core));
+		grk_decompress_set_default_params(parameters);
 		parameters->deviceId = 0;
 		parameters->repeats = 1;
 		parameters->compressionLevel = GRK_DECOMPRESS_COMPRESSION_LEVEL_DEFAULT;
@@ -814,11 +821,8 @@ int GrkDecompress::pluginMain(int argc, char** argv, DecompressInitParams* initP
 #endif
 	initParams->initialized = true;
 	// loads plugin but does not actually create codec
-	if(!grk_initialize(initParams->pluginPath, initParams->parameters.numThreads))
-	{
-		success = 1;
-		goto cleanup;
-	}
+	grk_initialize(initParams->pluginPath, initParams->parameters.numThreads);
+
 	// create codec
 	grk_plugin_init_info initInfo;
 	initInfo.deviceId = initParams->parameters.deviceId;
@@ -828,6 +832,7 @@ int GrkDecompress::pluginMain(int argc, char** argv, DecompressInitParams* initP
 		success = 1;
 		goto cleanup;
 	}
+	initParams->parameters.user_data = this;
 	isBatch = initParams->inputFolder.imgdirpath && initParams->outFolder.imgdirpath;
 	if((grk_plugin_get_debug_state() & GRK_PLUGIN_STATE_DEBUG))
 		isBatch = false;

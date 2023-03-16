@@ -293,7 +293,7 @@ void PacketParser::readHeader(void)
 		throw CorruptPacketHeaderException();
 	}
 
-	// EPH marker (absent from packet in case of packet packet headers)
+	// EPH marker (absent from packet in case of packed packet headers)
 	if(hasEPH)
 	{
 		if((*remainingBytes - (uint32_t)(currentHeaderPtr - *headerStart)) < 2U)
@@ -456,7 +456,7 @@ PrecinctPacketParsers::PrecinctPacketParsers(TileProcessor* tileProcessor)
 	: tileProcessor_(tileProcessor), parsers_(nullptr), numParsers_(0), allocatedParsers_(0)
 {
 	auto tcp = tileProcessor_->getTileCodingParams();
-	allocatedParsers_ = tcp->numlayers;
+	allocatedParsers_ = tcp->max_layers_;
 	if(allocatedParsers_)
 	{
 		parsers_ = new PacketParser*[allocatedParsers_];

@@ -204,7 +204,7 @@ bool FileFormatDecompress::readHeader(grk_header_info* header_info)
 				image->color_space = GRK_CLRSPC_UNKNOWN;
 				break;
 		}
-        image->validateICC();
+		image->validateICC();
 
 		// check RGB subsampling
 		if(image->color_space == GRK_CLRSPC_SRGB)

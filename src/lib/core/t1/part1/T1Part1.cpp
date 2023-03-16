@@ -20,7 +20,6 @@
 #include "t1_common.h"
 #include "T1.h"
 #include <algorithm>
-using namespace std;
 
 namespace grk
 {

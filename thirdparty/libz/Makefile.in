@@ -93,7 +93,6 @@ OBJZ = \
 	deflate_stored.o \
 	functable.o \
 	infback.o \
-	inffast.o \
 	inflate.o \
 	inftrees.o \
 	insert_string.o \
@@ -109,6 +108,7 @@ OBJG = \
 	gzread.o \
 	gzwrite.o
 
+TESTOBJG =
 OBJC = $(OBJZ) $(OBJG)
 
 PIC_OBJZ = \
@@ -131,7 +131,6 @@ PIC_OBJZ = \
 	deflate_stored.lo \
 	functable.lo \
 	infback.lo \
-	inffast.lo \
 	inflate.lo \
 	inftrees.lo \
 	insert_string.lo \
@@ -212,8 +211,8 @@ maketrees.o:
 makecrct.o:
 	$(CC) $(CFLAGS) $(INCLUDES) -c -o $@ $(SRCDIR)/tools/makecrct.c
 
-zlibrc.o: win32/zlib$(SUFFIX)1.rc
-	$(RC) $(RCFLAGS) -o $@ win32/zlib$(SUFFIX)1.rc
+zlibrc.o: $(SRCDIR)/win32/zlib$(SUFFIX)1.rc
+	$(RC) $(RCFLAGS) -o $@ $(SRCDIR)/win32/zlib$(SUFFIX)1.rc
 
 .SUFFIXES: .lo
 
@@ -254,45 +253,45 @@ ifneq ($(SHAREDLIB),$(SHAREDTARGET))
 endif
 endif
 
-example$(EXE): example.o $(OBJG) $(STATICLIB)
-	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ example.o $(OBJG) $(TEST_LIBS) $(LDSHAREDLIBC)
+example$(EXE): example.o $(TESTOBJG) $(STATICLIB)
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ example.o $(TESTOBJG) $(TEST_LIBS) $(LDSHAREDLIBC)
 ifneq ($(STRIP),)
 	$(STRIP) $@
 endif
 
-minigzip$(EXE): minigzip.o $(OBJG) $(STATICLIB)
-	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ minigzip.o $(OBJG) $(TEST_LIBS) $(LDSHAREDLIBC)
+minigzip$(EXE): minigzip.o $(TESTOBJG) $(STATICLIB)
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ minigzip.o $(TESTOBJG) $(TEST_LIBS) $(LDSHAREDLIBC)
 ifneq ($(STRIP),)
 	$(STRIP) $@
 endif
 
-minigzipsh$(EXE): minigzip.o $(OBJG) $(SHAREDTARGET)
-	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ minigzip.o $(OBJG) $(SHAREDTARGET) $(LDSHAREDLIBC)
+minigzipsh$(EXE): minigzip.o $(PIC_TESTOBJG) $(SHAREDTARGET)
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ minigzip.o $(PIC_TESTOBJG) $(SHAREDLIB) $(LDSHAREDLIBC)
 ifneq ($(STRIP),)
 	$(STRIP) $@
 endif
 
 
 examplesh$(EXE): example.o $(PIC_TESTOBJG) $(SHAREDTARGET)
-	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ example.o $(PIC_TESTOBJG) $(SHAREDTARGET) $(LDSHAREDLIBC)
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ example.o $(PIC_TESTOBJG) $(SHAREDLIB) $(LDSHAREDLIBC)
 ifneq ($(STRIP),)
 	$(STRIP) $@
 endif
 
-makefixed$(EXE): makefixed.o $(OBJG) $(STATICLIB)
-	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ makefixed.o $(OBJG) $(TEST_LIBS) $(LDSHAREDLIBC)
+makefixed$(EXE): makefixed.o $(STATICLIB)
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ makefixed.o $(TEST_LIBS) $(LDSHAREDLIBC)
 ifneq ($(STRIP),)
 	$(STRIP) $@
 endif
 
-maketrees$(EXE): maketrees.o $(OBJG) $(STATICLIB)
-	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ maketrees.o $(OBJG) $(TEST_LIBS) $(LDSHAREDLIBC)
+maketrees$(EXE): maketrees.o $(STATICLIB)
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ maketrees.o $(TEST_LIBS) $(LDSHAREDLIBC)
 ifneq ($(STRIP),)
 	$(STRIP) $@
 endif
 
-makecrct$(EXE): makecrct.o $(OBJG) $(STATICLIB)
-	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ makecrct.o $(OBJG) $(TEST_LIBS) $(LDSHAREDLIBC)
+makecrct$(EXE): makecrct.o $(STATICLIB)
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ makecrct.o $(TEST_LIBS) $(LDSHAREDLIBC)
 ifneq ($(STRIP),)
 	$(STRIP) $@
 endif
@@ -367,7 +366,6 @@ clean:
 	rm -rf objs
 	rm -f *.gcda *.gcno *.gcov
 	rm -f a.out a.exe
-	rm -f *.pc
 	rm -f *._h
 	rm -rf btmp1 btmp2 pkgtmp1 pkgtmp2
 
@@ -375,7 +373,7 @@ maintainer-clean: distclean
 distclean: clean
 	@if [ -f $(ARCHDIR)/Makefile ]; then $(MAKE) -C $(ARCHDIR) distclean; fi
 	@if [ -f test/Makefile ]; then $(MAKE) -C test distclean; fi
-	rm -f $(PKGFILE) configure.log zconf.h zconf.h.cmakein zlib$(SUFFIX).h zlib_name_mangling$(SUFFIX)}.h
+	rm -f $(PKGFILE) configure.log zconf.h zconf.h.cmakein zlib$(SUFFIX).h zlib_name_mangling$(SUFFIX)}.h *.pc
 	-@rm -f .DS_Store
 # Reset Makefile if building inside source tree
 	@if [ -f Makefile.in ]; then \

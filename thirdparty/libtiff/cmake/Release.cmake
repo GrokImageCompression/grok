@@ -23,7 +23,7 @@
 # OF THIS SOFTWARE.
 
 
-add_custom_target(release
+add_custom_target(tiff_release
         COMMAND ${CMAKE_COMMAND}
         "-DSOURCE_DIR:PATH=${PROJECT_SOURCE_DIR}"
         "-DLIBTIFF_VERSION=${PROJECT_VERSION}"

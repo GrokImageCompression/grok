@@ -57,7 +57,7 @@ struct T2Compress
 	 */
 	bool compressPacketsSimulate(uint16_t tileno, uint16_t maxlayers, uint32_t* p_data_written,
 								 uint32_t max_len, uint32_t tppos, PLMarkerMgr* markers,
-								 bool isFinal);
+								 bool isFinal, bool debug);
 
   private:
 	TileProcessor* tileProcessor;
@@ -83,7 +83,7 @@ struct T2Compress
 	 @return
 	 */
 	bool compressPacketSimulate(TileCodingParams* tcp, PacketIter* pi, uint32_t* p_data_written,
-								uint32_t len, PLMarkerMgr* markers);
+								uint32_t len, PLMarkerMgr* markers, bool debug);
 
 	bool compressHeader(BitIO* bio, Resolution* res, uint16_t layno, uint64_t precinctIndex);
 };

@@ -26,7 +26,7 @@ public:
     void SetUp(const ::benchmark::State& state) {
         l0 = (uint16_t *)zng_alloc(HASH_SIZE * sizeof(uint16_t));
 
-        for (int32_t i = 0; i < HASH_SIZE; i++) {
+        for (uint32_t i = 0; i < HASH_SIZE; i++) {
             l0[i] = rand();
         }
 
@@ -68,13 +68,13 @@ public:
 
 BENCHMARK_SLIDEHASH(c, slide_hash_c, 1);
 
-#ifdef ARM_NEON_SLIDEHASH
+#ifdef ARM_NEON
 BENCHMARK_SLIDEHASH(neon, slide_hash_neon, arm_cpu_has_neon);
 #endif
-#ifdef POWER8_VSX_SLIDEHASH
+#ifdef POWER8_VSX
 BENCHMARK_SLIDEHASH(power8, slide_hash_power8, power_cpu_has_arch_2_07);
 #endif
-#ifdef PPC_VMX_SLIDEHASH
+#ifdef PPC_VMX
 BENCHMARK_SLIDEHASH(vmx, slide_hash_vmx, power_cpu_has_altivec);
 #endif
 

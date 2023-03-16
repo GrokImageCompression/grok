@@ -26,11 +26,11 @@ namespace grk
 #endif
 
 // uncomment to enable testing of different stages of round-trip lossless compress
-//#define DEBUG_LOSSLESS_DWT
-//#define DEBUG_LOSSLESS_T1
-//#define DEBUG_LOSSLESS_T2
+// #define DEBUG_LOSSLESS_DWT
+// #define DEBUG_LOSSLESS_T1
+// #define DEBUG_LOSSLESS_T2
 
-//#define GRK_DEBUG_SPARSE
+// #define GRK_DEBUG_SPARSE
 
 #ifdef GRK_DEBUG_SPARSE
 #undef __SSE__

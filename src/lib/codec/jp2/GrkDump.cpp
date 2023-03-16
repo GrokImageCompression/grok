@@ -261,7 +261,6 @@ int GrkDump::main(int argc, char* argv[])
 	FILE* fout = nullptr;
 
 	grk_decompress_parameters parameters; /* Decompression parameters */
-	memset(&parameters, 0, sizeof(grk_decompress_parameters));
 	grk_image* image = nullptr; /* Image structure */
 	grk_codec* codec = nullptr; /* Handle to a decompressor */
 
@@ -274,7 +273,7 @@ int GrkDump::main(int argc, char* argv[])
 	grk_set_msg_handlers(infoCallback, nullptr, warningCallback, nullptr, errorCallback, nullptr);
 
 	/* Set decoding parameters to default values */
-	grk_decompress_set_default_params(&parameters.core);
+	grk_decompress_set_default_params(&parameters);
 
 	/* Initialize inputFolder */
 	memset(&inputFolder, 0, sizeof(inputFolder));

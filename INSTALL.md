@@ -4,17 +4,20 @@
 
 If the `-V` flag is used to transfer ExIF tags to the output file, [ExifTool](https://exiftool.org/) must be installed.
 
-### Linux/MacOS
+### Linux
 
-Follow installation instructions on the ExifTool site.
+Use your package manager to install ExifTool. This will ensure that the ExifTool Perl modules
+are correctly installed
+
+### MacOS
+
+Use [brew](https://brew.sh/) package manager to install ExifTool. This will ensure that the ExifTool Perl modules are correctly installed
 
 ### Windows
 
-1. install [Strawberry Perl](https://strawberryperl.com/)
-1. download and extract platform-independant [ExifTool tarball](https://exiftool.org)
-1. open `lib` folder inside extracted folder and copy `Image` and `Exiftool` folders to `C:\Strawberry\perl\site\lib`
-1. to validate that the ExifTool Perl modules were installed correctly, open a command line shell and run `perl -MImage::ExifTool -e " "`. If there is no output, then installation succeeded.
-
+`-V` is not supported on Windows. To transfer tags, simply run
+`$ exiftool -TagsFromFile $SOURCE_FILE "-all:all>all:all" $DEST_FILE`
+after running Grok.
 
 # Install from Package Manager
 
@@ -211,19 +214,3 @@ Third party libraries such as `libtiff` are built by default. To disable
 `libtiff` library build and use the version installed on your system, set :
 
   `-DGRK_BUILD_LiBTIFF:BOOL=OFF`
-
-#### JPEG Support
-
-To encode and decode JPEG files, a `libjpeg`-compatible library
-(`-dev` version) must be installed.
-Recommended library : [libjpeg-turbo](https://github.com/libjpeg-turbo/libjpeg-turbo)
-On Debian systems, the `libjpeg-turbo8-dev` package will provide a development
-version of this library.
-
-##### Grok dynamic build with JPEG support (Windows)
-
-`libjpeg-turbo` must be built with the `WITH_CRT_DLL` flag on, to ensure that the dynamic version of the C runtime libraries is used. Also, if Grok is linking with dynamic build of `libjpeg-turbo`, (`cmake` flag `JPEG_LIBRARY` is set to `LIBJPEG_INSTALL_DIRECTORY/jpeg.lib`), then make sure that `LIBJPEG_INSTALL_DIRECTORY/bin` is on the path.
-
-##### Grok static build with JPEG support (Windows)
-
-`libjpeg-turbo` must be built with the `WITH_CRT_DLL` flag off, to ensure that the static version of the C runtime libraries is used.

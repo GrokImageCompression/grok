@@ -372,22 +372,6 @@ void TileComponent::postProcess(int32_t* srcData, DecompressBlockExec* block)
 }
 void TileComponent::postProcessHT(int32_t* srcData, DecompressBlockExec* block, uint16_t stride)
 {
-#ifdef OPENHTJ2K
-	if(block->roishift)
-	{
-		if(block->qmfbid == 1)
-			postDecompressImpl<openhtj2k::RoiShiftOpenHTJ2KFilter<int32_t>>(srcData, block, stride);
-		else
-			postDecompressImpl<openhtj2k::RoiScaleOpenHTJ2KFilter<int32_t>>(srcData, block, stride);
-	}
-	else
-	{
-		if(block->qmfbid == 1)
-			postDecompressImpl<openhtj2k::ShiftOpenHTJ2KFilter<int32_t>>(srcData, block, stride);
-		else
-			postDecompressImpl<openhtj2k::ScaleOpenHTJ2KFilter<int32_t>>(srcData, block, stride);
-	}
-#else
 	if(block->roishift)
 	{
 		if(block->qmfbid == 1)
@@ -402,7 +386,6 @@ void TileComponent::postProcessHT(int32_t* srcData, DecompressBlockExec* block, 
 		else
 			postDecompressImpl<ojph::ScaleOJPHFilter<int32_t>>(srcData, block, stride);
 	}
-#endif
 }
 template<typename F>
 void TileComponent::postDecompressImpl(int32_t* srcData, DecompressBlockExec* block,

@@ -1,6 +1,6 @@
 include_directories(
-  ${CMAKE_BINARY_DIR}/src/lib/core
-  ${CMAKE_BINARY_DIR}/src/bin/common
+  ${CMAKE_CURRENT_BINARY_DIR}/../../lib/core
+  ${CMAKE_CURRENT_BINARY_DIR}/../common
   ${GROK_SOURCE_DIR}/src/lib/core
   ${GROK_SOURCE_DIR}/src/lib/codec
   )
@@ -11,7 +11,14 @@ foreach(exe grk_decompress grk_compress grk_dump)
 	target_link_options(${exe}  PUBLIC "LINKER:-z,now")
   endif()
 
-  target_link_libraries(${exe} ${GROK_CODEC_NAME} )
+  target_link_libraries(${exe} ${GROK_CODEC_NAME})
+  if (GRK_BUILD_PLUGIN_LOADER AND UNIX)
+  	target_link_libraries(${exe} ${CMAKE_DL_LIBS} )
+  endif(GRK_BUILD_PLUGIN_LOADER AND UNIX)
+
+  if (OPENCL_FOUND)
+  	target_link_libraries(${exe} ${OPENCL_LIBRARIES} )
+  endif(OPENCL_FOUND)
 
   if(URING)
 	  target_link_libraries(${exe} uring)

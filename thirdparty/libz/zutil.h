@@ -36,6 +36,9 @@ extern z_const char * const PREFIX(z_errmsg)[10]; /* indexed by 2-zlib_error */
 #endif
 /* default windowBits for decompression. MAX_WBITS is for compression only */
 
+#define MAX_BITS 15
+/* all codes must not exceed MAX_BITS bits */
+
 #if MAX_MEM_LEVEL >= 8
 #  define DEF_MEM_LEVEL 8
 #else
@@ -126,17 +129,17 @@ extern z_const char * const PREFIX(z_errmsg)[10]; /* indexed by 2-zlib_error */
 
          /* memory allocation functions */
 
-void Z_INTERNAL *zng_calloc(void *opaque, unsigned items, unsigned size);
-void Z_INTERNAL   zng_cfree(void *opaque, void *ptr);
+void Z_INTERNAL *PREFIX(zcalloc)(void *opaque, unsigned items, unsigned size);
+void Z_INTERNAL  PREFIX(zcfree)(void *opaque, void *ptr);
 
 typedef void *zng_calloc_func(void *opaque, unsigned items, unsigned size);
 typedef void  zng_cfree_func(void *opaque, void *ptr);
 
-void Z_INTERNAL *zng_alloc_aligned(zng_calloc_func zalloc, void *opaque, unsigned items, unsigned size, unsigned align);
-void Z_INTERNAL  zng_free_aligned(zng_cfree_func zfree, void *opaque, void *ptr);
+void Z_INTERNAL *PREFIX3(alloc_aligned)(zng_calloc_func zalloc, void *opaque, unsigned items, unsigned size, unsigned align);
+void Z_INTERNAL  PREFIX3(free_aligned)(zng_cfree_func zfree, void *opaque, void *ptr);
 
-#define ZALLOC(strm, items, size) zng_alloc_aligned((strm)->zalloc, (strm)->opaque, (items), (size), 64)
-#define ZFREE(strm, addr)         zng_free_aligned((strm)->zfree, (strm)->opaque, (void *)(addr))
+#define ZALLOC(strm, items, size) PREFIX3(alloc_aligned)((strm)->zalloc, (strm)->opaque, (items), (size), 64)
+#define ZFREE(strm, addr)         PREFIX3(free_aligned)((strm)->zfree, (strm)->opaque, (void *)(addr))
 
 #define TRY_FREE(s, p)            {if (p) ZFREE(s, p);}
 

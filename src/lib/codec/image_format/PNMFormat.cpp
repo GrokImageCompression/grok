@@ -38,8 +38,6 @@
 #include "FileUringIO.h"
 #endif
 
-using namespace std;
-
 enum PNM_COLOUR_SPACE
 {
 	PNM_UNKNOWN,
@@ -103,7 +101,7 @@ bool PNMFormat::encodeHeader(void)
 }
 bool PNMFormat::writeHeader(bool doPGM)
 {
-	ostringstream iss;
+	std::ostringstream iss;
 	uint32_t prec = image_->decompressPrec;
 	uint32_t width = image_->decompressWidth;
 	uint32_t height = image_->decompressHeight;
@@ -251,8 +249,8 @@ bool PNMFormat::encodeRows([[maybe_unused]] uint32_t rows)
 				spdlog::error(" imagetopnm: missing file tag");
 				goto cleanup;
 			}
-			string rawname = fileName_.substr(0, lastindex);
-			ostringstream iss;
+			std::string rawname = fileName_.substr(0, lastindex);
+			std::ostringstream iss;
 			iss << rawname << "_" << compno << ".pgm";
 			destname = iss.str().c_str();
 		}
@@ -489,11 +487,11 @@ bool PNMFormat::decodeHeader(struct pnm_header* ph)
 			if(*line == '#' || *line == '\n')
 				continue;
 
-			istringstream iss(line);
-			vector<string> tokens{istream_iterator<string>{iss}, istream_iterator<string>{}};
+			std::istringstream iss(line);
+			std::vector<std::string> tokens{std::istream_iterator<std::string>{iss}, std::istream_iterator<std::string>{}};
 			if(tokens.size() == 0)
 				continue;
-			string idf = tokens[0];
+			std::string idf = tokens[0];
 			if(idf == "ENDHDR")
 			{
 				end = 1;
@@ -544,7 +542,7 @@ bool PNMFormat::decodeHeader(struct pnm_header* ph)
 				}
 				else if(idf == "TUPLTYPE")
 				{
-					string type = tokens[1];
+					std::string type = tokens[1];
 					if(type == "BLACKANDWHITE")
 						ph->colour_space = PNM_BW;
 					else if(type == "GRAYSCALE")
@@ -827,7 +825,7 @@ grk_image* PNMFormat::decode(grk_cparameters* parameters)
 		cmptparm[i].w = w;
 		cmptparm[i].h = h;
 	}
-	image = grk_image_new(decompressNumComps, &cmptparm[0], color_space);
+	image = grk_image_new(decompressNumComps, &cmptparm[0], color_space, true);
 	if(!image)
 	{
 		spdlog::error("pnmtoimage: Failed to create image");
@@ -947,7 +945,7 @@ grk_image* PNMFormat::decode(grk_cparameters* parameters)
 		uint64_t i = 0;
 		while(i < area)
 		{
-			auto toRead = min((uint64_t)chunkSize, (uint64_t)(area - i));
+			auto toRead = std::min((uint64_t)chunkSize, (uint64_t)(area - i));
 			size_t bytesRead = fread(chunk, 1, toRead, fileStream_);
 			if(bytesRead == 0)
 				break;

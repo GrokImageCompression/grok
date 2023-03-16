@@ -5,6 +5,9 @@
 #ifndef _POSIX_C_SOURCE
 #  define _POSIX_C_SOURCE 200809L /* snprintf, posix_memalign, strdup */
 #endif
+#ifndef _ISOC11_SOURCE
+#  define _ISOC11_SOURCE 1 /* aligned_alloc */
+#endif
 
 #include <stddef.h>
 #include <string.h>
@@ -27,7 +30,7 @@
 
 /* Determine compiler support for TLS */
 #ifndef Z_TLS
-#  if defined(STDC11) && !defined(__STDC_NO_THREADS__)
+#  ifdef HAVE_THREAD_LOCAL
 #    define Z_TLS _Thread_local
 #  elif defined(__GNUC__) || defined(__SUNPRO_C)
 #    define Z_TLS __thread
@@ -39,12 +42,34 @@
 #  endif
 #endif
 
+#ifndef Z_HAS_ATTRIBUTE
+#  if defined(__has_attribute)
+#    define Z_HAS_ATTRIBUTE(a) __has_attribute(a)
+#  else
+#    define Z_HAS_ATTRIBUTE(a) 0
+#  endif
+#endif
+
+#ifndef Z_FALLTHROUGH
+#  if Z_HAS_ATTRIBUTE(__fallthrough__) || (defined(__GNUC__) && (__GNUC__ >= 7))
+#    define Z_FALLTHROUGH __attribute__((__fallthrough__))
+#  else
+#    define Z_FALLTHROUGH do {} while(0) /* fallthrough */
+#  endif
+#endif
+
 /* This has to be first include that defines any types */
 #if defined(_MSC_VER)
 #  if defined(_WIN64)
     typedef __int64 ssize_t;
 #  else
     typedef long ssize_t;
+#  endif
+
+#  if defined(_WIN64)
+    #define SSIZE_MAX _I64_MAX
+#  else
+    #define SSIZE_MAX LONG_MAX
 #  endif
 #endif
 
@@ -178,7 +203,7 @@
 #ifdef ZLIB_DEBUG
 #  include <stdio.h>
    extern int Z_INTERNAL z_verbose;
-   extern void Z_INTERNAL z_error(char *m);
+   extern void Z_INTERNAL z_error(const char *m);
 #  define Assert(cond, msg) {if (!(cond)) z_error(msg);}
 #  define Trace(x) {if (z_verbose >= 0) fprintf x;}
 #  define Tracev(x) {if (z_verbose > 0) fprintf x;}
@@ -216,34 +241,6 @@
 #      define UNALIGNED64_OK
 #    endif
 #  endif
-#endif
-
-/* Force compiler to emit unaligned memory accesses if unaligned access is supported
-   on the architecture, otherwise don't assume unaligned access is supported. Older
-   compilers don't optimize memcpy and memcmp calls to unaligned access instructions
-   when it is supported on the architecture resulting in significant performance impact.
-   Newer compilers might optimize memcpy but not all optimize memcmp for all integer types. */
-#ifdef UNALIGNED_OK
-#  define zmemcpy_2(dest, src)    (*((uint16_t *)(dest)) = *((uint16_t *)(src)))
-#  define zmemcmp_2(str1, str2)   (*((uint16_t *)(str1)) != *((uint16_t *)(str2)))
-#  define zmemcpy_4(dest, src)    (*((uint32_t *)(dest)) = *((uint32_t *)(src)))
-#  define zmemcmp_4(str1, str2)   (*((uint32_t *)(str1)) != *((uint32_t *)(str2)))
-#  if defined(UNALIGNED64_OK) && (UINTPTR_MAX == UINT64_MAX)
-#    define zmemcpy_8(dest, src)  (*((uint64_t *)(dest)) = *((uint64_t *)(src)))
-#    define zmemcmp_8(str1, str2) (*((uint64_t *)(str1)) != *((uint64_t *)(str2)))
-#  else
-#    define zmemcpy_8(dest, src)  (((uint32_t *)(dest))[0] = ((uint32_t *)(src))[0], \
-                                   ((uint32_t *)(dest))[1] = ((uint32_t *)(src))[1])
-#    define zmemcmp_8(str1, str2) (((uint32_t *)(str1))[0] != ((uint32_t *)(str2))[0] || \
-                                   ((uint32_t *)(str1))[1] != ((uint32_t *)(str2))[1])
-#  endif
-#else
-#  define zmemcpy_2(dest, src)  memcpy(dest, src, 2)
-#  define zmemcmp_2(str1, str2) memcmp(str1, str2, 2)
-#  define zmemcpy_4(dest, src)  memcpy(dest, src, 4)
-#  define zmemcmp_4(str1, str2) memcmp(str1, str2, 4)
-#  define zmemcpy_8(dest, src)  memcpy(dest, src, 8)
-#  define zmemcmp_8(str1, str2) memcmp(str1, str2, 8)
 #endif
 
 #if defined(__has_feature)

@@ -59,7 +59,7 @@
 # undef deflateInit2
 #endif
 
-const char PREFIX(deflate_copyright)[] = " deflate 1.2.12.f Copyright 1995-2022 Jean-loup Gailly and Mark Adler ";
+const char PREFIX(deflate_copyright)[] = " deflate 1.2.13 Copyright 1995-2022 Jean-loup Gailly and Mark Adler ";
 /*
   If you use the zlib library in a product, an acknowledgment is welcome
   in the documentation of your product. If for some reason you cannot
@@ -202,28 +202,28 @@ int32_t ZNG_CONDEXPORT PREFIX(deflateInit2)(PREFIX3(stream) *strm, int32_t level
 
     strm->msg = NULL;
     if (strm->zalloc == NULL) {
-        strm->zalloc = zng_calloc;
+        strm->zalloc = PREFIX(zcalloc);
         strm->opaque = NULL;
     }
     if (strm->zfree == NULL)
-        strm->zfree = zng_cfree;
+        strm->zfree = PREFIX(zcfree);
 
     if (level == Z_DEFAULT_COMPRESSION)
         level = 6;
 
     if (windowBits < 0) { /* suppress zlib wrapper */
         wrap = 0;
-        if (windowBits < -15)
+        if (windowBits < -MAX_WBITS)
             return Z_STREAM_ERROR;
         windowBits = -windowBits;
 #ifdef GZIP
-    } else if (windowBits > 15) {
+    } else if (windowBits > MAX_WBITS) {
         wrap = 2;       /* write gzip wrapper instead */
         windowBits -= 16;
 #endif
     }
-    if (memLevel < 1 || memLevel > MAX_MEM_LEVEL || method != Z_DEFLATED || windowBits < 8 ||
-        windowBits > 15 || level < 0 || level > 9 || strategy < 0 || strategy > Z_FIXED ||
+    if (memLevel < 1 || memLevel > MAX_MEM_LEVEL || method != Z_DEFLATED || windowBits < MIN_WBITS ||
+        windowBits > MAX_WBITS || level < 0 || level > 9 || strategy < 0 || strategy > Z_FIXED ||
         (windowBits == 8 && wrap != 1)) {
         return Z_STREAM_ERROR;
     }
@@ -400,14 +400,14 @@ int32_t Z_EXPORT PREFIX(deflateSetDictionary)(PREFIX3(stream) *strm, const uint8
     next = strm->next_in;
     strm->avail_in = dictLength;
     strm->next_in = (z_const unsigned char *)dictionary;
-    fill_window(s);
+    PREFIX(fill_window)(s);
     while (s->lookahead >= STD_MIN_MATCH) {
         str = s->strstart;
         n = s->lookahead - (STD_MIN_MATCH - 1);
-        functable.insert_string(s, str, n);
+        s->insert_string(s, str, n);
         s->strstart = str + n;
         s->lookahead = STD_MIN_MATCH - 1;
-        fill_window(s);
+        PREFIX(fill_window)(s);
     }
     s->strstart += s->lookahead;
     s->block_start = (int)s->strstart;
@@ -662,8 +662,15 @@ unsigned long Z_EXPORT PREFIX(deflateBound)(PREFIX3(stream) *strm, unsigned long
 
     /* if not default parameters, return conservative bound */
     if (DEFLATE_NEED_CONSERVATIVE_BOUND(strm) ||  /* hook for IBM Z DFLTCC */
-            s->w_bits != 15 || HASH_BITS < 15)
+            s->w_bits != MAX_WBITS || HASH_BITS < 15) {
+        if (s->level == 0) {
+            /* upper bound for stored blocks with length 127 (memLevel == 1) --
+               ~4% overhead plus a small constant */
+            complen = sourceLen + (sourceLen >> 5) + (sourceLen >> 7) + (sourceLen >> 11) + 7;
+        }
+
         return complen + wraplen;
+    }
 
 #ifndef NO_QUICK_STRATEGY
     return sourceLen                       /* The source size itself */
@@ -1090,7 +1097,7 @@ int32_t Z_EXPORT PREFIX(deflateCopy)(PREFIX3(stream) *dest, PREFIX3(stream) *sou
  * allocating a large strm->next_in buffer and copying from it.
  * (See also flush_pending()).
  */
-Z_INTERNAL unsigned read_buf(PREFIX3(stream) *strm, unsigned char *buf, unsigned size) {
+Z_INTERNAL unsigned PREFIX(read_buf)(PREFIX3(stream) *strm, unsigned char *buf, unsigned size) {
     uint32_t len = strm->avail_in;
 
     len = MIN(len, size);
@@ -1175,7 +1182,7 @@ static void lm_init(deflate_state *s) {
  *    option -- not supported here).
  */
 
-void Z_INTERNAL fill_window(deflate_state *s) {
+void Z_INTERNAL PREFIX(fill_window)(deflate_state *s) {
     unsigned n;
     unsigned int more;    /* Amount of free space at the end of the window. */
     unsigned int wsize = s->w_size;
@@ -1219,7 +1226,7 @@ void Z_INTERNAL fill_window(deflate_state *s) {
          */
         Assert(more >= 2, "more < 2");
 
-        n = read_buf(s->strm, s->window + s->strstart + s->lookahead, more);
+        n = PREFIX(read_buf)(s->strm, s->window + s->strstart + s->lookahead, more);
         s->lookahead += n;
 
         /* Initialize the hash value now that we have some input: */

@@ -1,7 +1,7 @@
 //---------------------------------------------------------------------------------
 //
 //  Little Color Management System
-//  Copyright (c) 1998-2022 Marti Maria Saguer
+//  Copyright (c) 1998-2023 Marti Maria Saguer
 //
 // Permission is hereby granted, free of charge, to any person obtaining
 // a copy of this software and associated documentation files (the "Software"),
@@ -322,10 +322,8 @@ cmsPipeline* CMSEXPORT _cmsReadInputLUT(cmsHPROFILE hProfile, cmsUInt32Number In
         if (nc == NULL) return NULL;
 
         Lut = cmsPipelineAlloc(ContextID, 0, 0);
-        if (Lut == NULL) {
-            cmsFreeNamedColorList(nc);
-            return NULL;
-        }
+        if (Lut == NULL)            
+            return NULL;        
 
         if (!cmsPipelineInsertStage(Lut, cmsAT_BEGIN, _cmsStageAllocNamedColor(nc, TRUE)) ||
             !cmsPipelineInsertStage(Lut, cmsAT_END, _cmsStageAllocLabV2ToV4(ContextID))) {
@@ -739,8 +737,7 @@ cmsPipeline* CMSEXPORT _cmsReadDevicelinkLUT(cmsHPROFILE hProfile, cmsUInt32Numb
 
         return Lut;
     Error:
-        cmsPipelineFree(Lut);
-        cmsFreeNamedColorList(nc);
+        cmsPipelineFree(Lut);        
         return NULL;
     }
 
@@ -853,6 +850,10 @@ cmsBool  CMSEXPORT cmsIsCLUT(cmsHPROFILE hProfile, cmsUInt32Number Intent, cmsUI
            cmsSignalError(cmsGetProfileContextID(hProfile), cmsERROR_RANGE, "Unexpected direction (%d)", UsedDirection);
            return FALSE;
     }
+
+    // Extended intents are not strictly CLUT-based
+    if (Intent > INTENT_ABSOLUTE_COLORIMETRIC)
+        return FALSE;
 
     return cmsIsTag(hProfile, TagTable[Intent]);
 

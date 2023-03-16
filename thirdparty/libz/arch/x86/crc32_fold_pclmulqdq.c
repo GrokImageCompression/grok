@@ -32,11 +32,11 @@
 #include <assert.h>
 
 #ifdef X86_VPCLMULQDQ_CRC
-extern uint64_t fold_16_vpclmulqdq(__m128i *xmm_crc0, __m128i *xmm_crc1,
-    __m128i *xmm_crc2, __m128i *xmm_crc3, const uint8_t *src, uint64_t len, __m128i init_crc,
+extern size_t fold_16_vpclmulqdq(__m128i *xmm_crc0, __m128i *xmm_crc1,
+    __m128i *xmm_crc2, __m128i *xmm_crc3, const uint8_t *src, size_t len, __m128i init_crc,
     int32_t first);
-extern uint64_t fold_16_vpclmulqdq_copy(__m128i *xmm_crc0, __m128i *xmm_crc1,
-    __m128i *xmm_crc2, __m128i *xmm_crc3, uint8_t *dst, const uint8_t *src, uint64_t len);
+extern size_t fold_16_vpclmulqdq_copy(__m128i *xmm_crc0, __m128i *xmm_crc1,
+    __m128i *xmm_crc2, __m128i *xmm_crc3, uint8_t *dst, const uint8_t *src, size_t len);
 #endif
 
 static void fold_1(__m128i *xmm_crc0, __m128i *xmm_crc1, __m128i *xmm_crc2, __m128i *xmm_crc3) {
@@ -185,7 +185,7 @@ static const unsigned ALIGNED_(32) pshufb_shf_table[60] = {
     0x0201008f, 0x06050403, 0x0a090807, 0x0e0d0c0b  /* shl  1 (16 -15)/shr15*/
 };
 
-static void partial_fold(const uint64_t len, __m128i *xmm_crc0, __m128i *xmm_crc1, __m128i *xmm_crc2,
+static void partial_fold(const size_t len, __m128i *xmm_crc0, __m128i *xmm_crc1, __m128i *xmm_crc2,
                          __m128i *xmm_crc3, __m128i *xmm_crc_part) {
 
     const __m128i xmm_fold4 = _mm_set_epi32( 0x00000001, 0x54442bd4,
@@ -238,17 +238,18 @@ static inline void crc32_fold_load(__m128i *fold, __m128i *fold0, __m128i *fold1
     *fold3 = _mm_load_si128(fold + 3);
 }
 
-static inline void crc32_fold_save(__m128i *fold, __m128i fold0, __m128i fold1, __m128i fold2, __m128i fold3) {
-    _mm_storeu_si128(fold + 0, fold0);
-    _mm_storeu_si128(fold + 1, fold1);
-    _mm_storeu_si128(fold + 2, fold2);
-    _mm_storeu_si128(fold + 3, fold3);
+static inline void crc32_fold_save(__m128i *fold, const __m128i *fold0, const __m128i *fold1,
+                                   const __m128i *fold2, const __m128i *fold3) {
+    _mm_storeu_si128(fold + 0, *fold0);
+    _mm_storeu_si128(fold + 1, *fold1);
+    _mm_storeu_si128(fold + 2, *fold2);
+    _mm_storeu_si128(fold + 3, *fold3);
 }
 
 Z_INTERNAL uint32_t crc32_fold_pclmulqdq_reset(crc32_fold *crc) {
     __m128i xmm_crc0 = _mm_cvtsi32_si128(0x9db42487);
     __m128i xmm_zero = _mm_setzero_si128();
-    crc32_fold_save((__m128i *)crc->fold, xmm_crc0, xmm_zero, xmm_zero, xmm_zero);
+    crc32_fold_save((__m128i *)crc->fold, &xmm_crc0, &xmm_zero, &xmm_zero, &xmm_zero);
     return 0;
 }
 
@@ -341,11 +342,11 @@ Z_INTERNAL uint32_t crc32_fold_pclmulqdq_final(crc32_fold *crc) {
     return crc->value;
 }
 
-uint32_t crc32_pclmulqdq(uint32_t crc32, const uint8_t *buf, uint64_t len) {
+Z_INTERNAL uint32_t crc32_pclmulqdq(uint32_t crc32, const uint8_t *buf, size_t len) {
     /* For lens < 64, crc32_braid method is faster. The CRC32 instruction for
      * these short lengths might also prove to be effective */
     if (len < 64)
-        return crc32_braid(crc32, buf, len);
+        return PREFIX(crc32_braid)(crc32, buf, len);
 
     crc32_fold ALIGNED_(16) crc_state;
     crc32_fold_pclmulqdq_reset(&crc_state);

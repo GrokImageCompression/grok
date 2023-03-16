@@ -416,8 +416,8 @@ typedef struct _grk_header_info
 	uint32_t t_grid_width;
 	/** tile grid height  */
 	uint32_t t_grid_height;
-	/** number of layers */
-	uint16_t numlayers;
+	/** maximum number of layers */
+	uint16_t max_layers_;
 	/*************************************
 	note: xml_data will remain valid
 	 until codec is destroyed
@@ -460,12 +460,16 @@ typedef bool (*grk_io_pixels_callback)(uint32_t threadId, grk_io_buf buffer, voi
  */
 typedef struct _grk_stream_params
 {
+	/* File */
 	// file name
 	const char* file;
 
+	/* Buffer */
 	// buffer and buffer length
 	uint8_t* buf;
 	size_t len;
+	// length of compressed stream (set by compressor, not client)
+	size_t buf_compressed_len;
 } grk_stream_params;
 
 typedef enum _GRK_TILE_CACHE_STRATEGY
@@ -493,7 +497,7 @@ typedef struct _grk_decompress_core_params
 	 decompressed. if != 0, then only the first "layer" layers are decompressed; if == 0 or not
 	 used, all the quality layers are decompressed
 	 */
-	uint16_t max_layers;
+	uint16_t layers_to_decompress_;
 	GRK_TILE_CACHE_STRATEGY tileCacheStrategy;
 
 	uint32_t randomAccessFlags_;
@@ -564,6 +568,7 @@ typedef struct _grk_decompress_params
 	uint32_t kernelBuildOptions;
 	uint32_t repeats;
 	uint32_t numThreads;
+	void* user_data;
 } grk_decompress_parameters;
 
 /**
@@ -757,7 +762,7 @@ GRK_API const char* GRK_CALLCONV grk_version(void);
  * @param pluginPath 	path to plugin
  * @param numthreads 	number of threads to use for compress/decompress
  */
-GRK_API bool GRK_CALLCONV grk_initialize(const char* pluginPath, uint32_t numthreads);
+GRK_API void GRK_CALLCONV grk_initialize(const char* pluginPath, uint32_t numthreads);
 
 /**
  * De-initialize library
@@ -786,11 +791,12 @@ GRK_API void GRK_CALLCONV grk_set_msg_handlers(grk_msg_callback info_callback, v
  * @param numcmpts      number of components
  * @param cmptparms     component parameters
  * @param clrspc        image color space
+ * @param alloc_data    if true, allocate component data buffers
  *
- * @return returns      a new image if successful, otherwise nullptr
+ * @return returns      a new image if successful, otherwise NULL
  * */
 GRK_API grk_image* GRK_CALLCONV grk_image_new(uint16_t numcmpts, grk_image_comp* cmptparms,
-											  GRK_COLOR_SPACE clrspc);
+											  GRK_COLOR_SPACE clrspc, bool alloc_data);
 
 GRK_API grk_image_meta* GRK_CALLCONV grk_image_meta_new(void);
 
@@ -824,7 +830,7 @@ GRK_API bool GRK_CALLCONV grk_decompress_buffer_detect_format(uint8_t* buffer, s
  *
  * @param parameters decompression parameters
  */
-GRK_API void GRK_CALLCONV grk_decompress_set_default_params(grk_decompress_core_params* parameters);
+GRK_API void GRK_CALLCONV grk_decompress_set_default_params(grk_decompress_parameters* parameters);
 
 /**
  * Initialize decompressor
@@ -1071,9 +1077,9 @@ GRK_API grk_codec* GRK_CALLCONV grk_compress_init(grk_stream_params* stream_para
  * @param codec 		compression codec
  * @param tile			plugin tile
  *
- * @return 				Returns true if successful, returns false otherwise
+ * @return 				number of bytes written if successful, 0 otherwise
  */
-GRK_API bool GRK_CALLCONV grk_compress(grk_codec* codec, grk_plugin_tile* tile);
+GRK_API uint64_t GRK_CALLCONV grk_compress(grk_codec* codec, grk_plugin_tile* tile);
 
 /**
  * Dump codec information to file
@@ -1405,13 +1411,14 @@ typedef struct grk_plugin_compress_user_callback_info
 	const char* output_file_name;
 	grk_cparameters* compressor_parameters;
 	grk_image* image;
+	grk_stream_params* out_buffer;
 	grk_plugin_tile* tile;
 	grk_stream_params stream_params;
 	unsigned int error_code;
 	bool transferExifTags;
 } grk_plugin_compress_user_callback_info;
 
-typedef bool (*GRK_PLUGIN_COMPRESS_USER_CALLBACK)(grk_plugin_compress_user_callback_info* info);
+typedef uint64_t (*GRK_PLUGIN_COMPRESS_USER_CALLBACK)(grk_plugin_compress_user_callback_info* info);
 
 /**
  * Compress with plugin

@@ -148,8 +148,8 @@ bool CodeStreamCompress::init(grk_cparameters* parameters, GrkImage* image)
 			return false;
 		}
 	}
-    if (parameters->apply_icc_)
-       image->applyICC();
+	if(parameters->apply_icc_)
+		image->applyICC();
 
 	// create private sanitized copy of image
 	headerImage_ = new GrkImage();
@@ -412,8 +412,8 @@ bool CodeStreamCompress::init(grk_cparameters* parameters, GrkImage* image)
 		for(uint32_t i = 0; i < image->numcomps; i++)
 			tcp->qcd_->pull((tcp->tccps + i)->stepsizes);
 
-		tcp->numlayers = parameters->numlayers;
-		for(uint16_t j = 0; j < tcp->numlayers; j++)
+		tcp->max_layers_ = parameters->numlayers;
+		for(uint16_t j = 0; j < tcp->max_layers_; j++)
 		{
 			if(cp_.coding_params_.enc_.allocationByFixedQuality_)
 				tcp->distortion[j] = parameters->layer_distortion[j];
@@ -618,7 +618,7 @@ bool CodeStreamCompress::init(grk_cparameters* parameters, GrkImage* image)
 
 	return true;
 }
-bool CodeStreamCompress::compress(grk_plugin_tile* tile)
+uint64_t CodeStreamCompress::compress(grk_plugin_tile* tile)
 {
 	MinHeapPtr<TileProcessor, uint16_t, MinHeapLocker> heap;
 	uint32_t numTiles = (uint32_t)cp_.t_grid_height * cp_.t_grid_width;
@@ -627,7 +627,7 @@ bool CodeStreamCompress::compress(grk_plugin_tile* tile)
 		GRK_ERROR("Number of tiles %u is greater than max tiles %u"
 				  "allowed by the standard.",
 				  numTiles, maxNumTilesJ2K);
-		return false;
+		return 0;
 	}
 	auto numRequiredThreads =
 		std::min<uint32_t>((uint32_t)ExecSingleton::get()->num_workers(), numTiles);
@@ -692,7 +692,7 @@ cleanup:
 	if(success)
 		success = end();
 
-	return success;
+	return success ? stream_->tell() : 0;
 }
 bool CodeStreamCompress::end(void)
 {
@@ -916,7 +916,6 @@ bool CodeStreamCompress::updateRates(void)
 {
 	auto cp = &(cp_);
 	auto image = headerImage_;
-	auto tcp = cp->tcps;
 	auto width = image->x1 - image->x0;
 	auto height = image->y1 - image->y0;
 	if(width <= 0 || height <= 0)
@@ -930,34 +929,35 @@ bool CodeStreamCompress::updateRates(void)
 	{
 		for(uint32_t tile_x = 0; tile_x < cp->t_grid_width; ++tile_x)
 		{
+			uint32_t tileId = tile_y * cp->t_grid_width + tile_x;
+			auto tcp = cp->tcps + tileId;
 			double stride = 0;
 			if(cp->coding_params_.enc_.enableTilePartGeneration_)
 				stride = (tcp->numTileParts_ - 1) * 14;
-			double offset = stride / tcp->numlayers;
+			double offset = stride / tcp->max_layers_;
 			auto tileBounds = cp->getTileBounds(image, tile_x, tile_y);
 			uint64_t numTilePixels = tileBounds.area();
-			for(uint16_t k = 0; k < tcp->numlayers; ++k)
+			for(uint16_t k = 0; k < tcp->max_layers_; ++k)
 			{
 				double* rates = tcp->rates + k;
+				// convert to target bytes for layer
 				if(*rates > 0.0f)
 					*rates = ((((double)size_pixel * (double)numTilePixels)) /
 							  ((double)*rates * (double)bits_empty)) -
 							 offset;
 			}
-			++tcp;
 		}
 	}
-	tcp = cp->tcps;
-
 	for(uint32_t tile_y = 0; tile_y < cp->t_grid_height; ++tile_y)
 	{
 		for(uint32_t tile_x = 0; tile_x < cp->t_grid_width; ++tile_x)
 		{
+			uint32_t tileId = tile_y * cp->t_grid_width + tile_x;
+			auto tcp = cp->tcps + tileId;
 			double* rates = tcp->rates;
-
 			auto tileBounds = cp->getTileBounds(image, tile_x, tile_y);
 			uint64_t numTilePixels = tileBounds.area();
-
+			// correction for header size is distributed amongst all tiles
 			double sot_adjust =
 				((double)numTilePixels * (double)header_size) / ((double)width * height);
 			if(*rates > 0.0)
@@ -967,7 +967,7 @@ bool CodeStreamCompress::updateRates(void)
 					*rates = 30.0f;
 			}
 			++rates;
-			for(uint16_t k = 1; k < (uint16_t)(tcp->numlayers - 1); ++k)
+			for(uint16_t k = 1; k < (uint16_t)(tcp->max_layers_ - 1); ++k)
 			{
 				if(*rates > 0.0)
 				{
@@ -983,7 +983,6 @@ bool CodeStreamCompress::updateRates(void)
 				if(*rates < *(rates - 1) + 10.0)
 					*rates = (*(rates - 1)) + 20.0;
 			}
-			++tcp;
 		}
 	}
 
@@ -1082,7 +1081,7 @@ bool CodeStreamCompress::write_cod()
 	if(!stream_->writeByte((uint8_t)tcp->prg))
 		return false;
 	/* SGcod (B) */
-	if(!stream_->writeShort((uint16_t)tcp->numlayers))
+	if(!stream_->writeShort((uint16_t)tcp->max_layers_))
 		return false;
 	/* SGcod (C) */
 	if(!stream_->writeByte((uint8_t)tcp->mct))
@@ -1253,7 +1252,7 @@ bool CodeStreamCompress::writePoc()
 
 		/* change the value of the max layer according to the actual number of layers in the file,
 		 * components and resolutions*/
-		current_prog->layE = std::min<uint16_t>(current_prog->layE, tcp->numlayers);
+		current_prog->layE = std::min<uint16_t>(current_prog->layE, tcp->max_layers_);
 		current_prog->resE = std::min<uint8_t>(current_prog->resE, tccp->numresolutions);
 		current_prog->compE = std::min<uint16_t>(current_prog->compE, numComps);
 	}

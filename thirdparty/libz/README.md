@@ -120,6 +120,7 @@ Build Options
 | WITH_NEW_STRATEGIES      | --without-new-strategies | Use new strategies                                                                    | ON      |
 | WITH_NATIVE_INSTRUCTIONS | --native                 | Compiles with full instruction set supported on this host (gcc/clang -march=native)   | OFF     |
 | WITH_SANITIZER           |                          | Build with sanitizer (memory, address, undefined)                                     | OFF     |
+| WITH_GTEST               |                          | Build gtest_zlib                                                                      | ON      |
 | WITH_FUZZERS             |                          | Build test/fuzz                                                                       | OFF     |
 | WITH_BENCHMARKS          |                          | Build test/benchmarks                                                                 | OFF     |
 | WITH_MAINTAINER_WARNINGS |                          | Build with project maintainer warnings                                                | OFF     |
@@ -142,7 +143,7 @@ with zlib, then zlib-ng will temporarily be used instead by the program,
 without risking system-wide instability.
 
 ```
-LD_PRELOAD=/opt/zlib-ng/libz.so.1.2.12.zlib-ng /usr/bin/program
+LD_PRELOAD=/opt/zlib-ng/libz.so.1.2.13.zlib-ng /usr/bin/program
 ```
 
 ### Cmake
@@ -160,6 +161,20 @@ To install zlib-ng system-wide using the configure script:
 ```
 make install
 ```
+
+### Vcpkg
+
+Alternatively, you can build and install zlib-ng using the [vcpkg](https://github.com/Microsoft/vcpkg/) dependency manager:
+
+```sh or powershell
+git clone https://github.com/Microsoft/vcpkg.git
+cd vcpkg
+./bootstrap-vcpkg.sh # "./bootstrap-vcpkg.bat" for powershell
+./vcpkg integrate install
+./vcpkg install zlib-ng
+```
+
+The zlib-ng port in vcpkg is kept up to date by Microsoft team members and community contributors. If the version is out of date, please [create an issue or pull request](https://github.com/Microsoft/vcpkg) on the vcpkg repository.
 
 Contributing
 ------------
@@ -193,9 +208,7 @@ Advanced Build Options
 
 | CMake                           | configure             | Description                                                         | Default                |
 |:--------------------------------|:----------------------|:--------------------------------------------------------------------|------------------------|
-| ZLIB_DUAL_LINK                  |                       | Dual link tests with system zlib                                    | OFF                    |
 | FORCE_SSE2                      | --force-sse2          | Skip runtime check for SSE2 instructions (Always on for x86_64)     | OFF (x86)              |
-| FORCE_TZCNT                     | --force-tzcnt         | Skip runtime check for TZCNT instructions                           | OFF                    |
 | WITH_AVX2                       |                       | Build with AVX2 intrinsics                                          | ON                     |
 | WITH_AVX512                     |                       | Build with AVX512 intrinsics                                        | ON                     |
 | WITH_AVX512VNNI                 |                       | Build with AVX512VNNI intrinsics                                    | ON                     |
@@ -215,12 +228,13 @@ Advanced Build Options
 | WITH_INFLATE_STRICT             |                       | Build with strict inflate distance checking                         | OFF                    |
 | WITH_INFLATE_ALLOW_INVALID_DIST |                       | Build with zero fill for inflate invalid distances                  | OFF                    |
 | INSTALL_UTILS                   |                       | Copy minigzip and minideflate during install                        | OFF                    |
+| ZLIBNG_ENABLE_TESTS             |                       | Test zlib-ng specific API                                           | ON                     |
 
 
 Related Projects
 ----------------
 
-* Fork of the popular minigzip                  https://github.com/zlib-ng/minizip-ng
+* Fork of the popular minizip                   https://github.com/zlib-ng/minizip-ng
 * Python tool to benchmark minigzip/minideflate https://github.com/zlib-ng/deflatebench
 * Python tool to benchmark pigz                 https://github.com/zlib-ng/pigzbench
 * 3rd party patches for zlib-ng compatibility   https://github.com/zlib-ng/patches
