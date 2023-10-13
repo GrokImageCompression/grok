@@ -362,6 +362,11 @@ cmsMD5add                                =   cmsMD5add
 cmsMD5alloc                              =   cmsMD5alloc
 cmsMD5finish                             =   cmsMD5finish
 _cmsComputeInterpParams                  =   _cmsComputeInterpParams
-cmsGetToneCurveParams                    =   cmsGetToneCurveParams
+cmsGetToneCurveSegment                   =   cmsGetToneCurveSegment
 cmsDetectRGBProfileGamma                 =   cmsDetectRGBProfileGamma
-
+_cmsOptimizePipeline                     =   _cmsOptimizePipeline
+_cmsReasonableGridpointsByColorspace     =   _cmsReasonableGridpointsByColorspace
+_cmsGetTransformFlags                    =   _cmsGetTransformFlags
+_cmsGetTransformWorker                   =   _cmsGetTransformWorker
+_cmsGetTransformMaxWorkers               =   _cmsGetTransformMaxWorkers
+_cmsGetTransformWorkerFlags              =   _cmsGetTransformWorkerFlags
