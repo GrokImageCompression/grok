@@ -45,8 +45,9 @@
 #undef HWY_CAP_GE512
 
 // Supported on all targets except RVV (requires GCC 14 or upcoming Clang)
-#if HWY_TARGET == HWY_RVV && \
-    (HWY_COMPILER_GCC_ACTUAL < 1400 || HWY_COMPILER_CLANG)
+#if HWY_TARGET == HWY_RVV &&                                        \
+    ((HWY_COMPILER_GCC_ACTUAL && HWY_COMPILER_GCC_ACTUAL < 1400) || \
+     (HWY_COMPILER_CLANG))
 #define HWY_HAVE_TUPLE 0
 #else
 #define HWY_HAVE_TUPLE 1
@@ -130,7 +131,16 @@
 #if HWY_COMPILER_CLANG
 #define HWY_TARGET_STR_PPC10 HWY_TARGET_STR_PPC9 ",power10-vector"
 #else
-#define HWY_TARGET_STR_PPC10 HWY_TARGET_STR_PPC9 ",cpu=power10"
+// See #1707 and https://gcc.gnu.org/bugzilla/show_bug.cgi?id=102059#c35.
+// When the baseline is PPC 8 or 9, inlining functions such as PreventElision
+// into PPC10 code fails because PPC10 defaults to no-htm and is thus worse than
+// the baseline, which has htm. We cannot have pragma target on functions
+// outside HWY_NAMESPACE such as those in base.h. It would be possible for users
+// to set -mno-htm globally, but we can also work around this at the library
+// level by claiming that PPC10 still has HTM, thus avoiding the mismatch. This
+// seems to be safe because HTM uses builtins rather than modifying codegen, see
+// https://gcc.gnu.org/legacy-ml/gcc-patches/2013-07/msg00167.html.
+#define HWY_TARGET_STR_PPC10 HWY_TARGET_STR_PPC9 ",cpu=power10,htm"
 #endif
 
 // Before include guard so we redefine HWY_TARGET_STR on each include,
@@ -232,7 +242,7 @@
 
 #define HWY_HAVE_SCALABLE 0
 #define HWY_HAVE_INTEGER64 1
-#if (HWY_TARGET == HWY_AVX3_SPR) && 0  // TODO(janwas): enable when implemented
+#if (HWY_TARGET == HWY_AVX3_SPR) && 0  // TODO(janwas): enable after testing
 #define HWY_HAVE_FLOAT16 1
 #else
 #define HWY_HAVE_FLOAT16 0
@@ -360,11 +370,7 @@
 #if HWY_TARGET == HWY_NEON_WITHOUT_AES
 // Do not define HWY_TARGET_STR (no pragma).
 #else
-#if HWY_COMPILER_GCC_ACTUAL
-#define HWY_TARGET_STR "arch=armv8-a+crypto"
-#else  // clang
 #define HWY_TARGET_STR "+crypto"
-#endif  // HWY_COMPILER_*
 #endif  // HWY_TARGET == HWY_NEON_WITHOUT_AES
 
 #endif  // HWY_ARCH_ARM_V7
@@ -413,11 +419,17 @@
 // Can use pragmas instead of -march compiler flag
 #if HWY_HAVE_RUNTIME_DISPATCH
 #if HWY_TARGET == HWY_SVE2 || HWY_TARGET == HWY_SVE2_128
+// Static dispatch with -march=armv8-a+sve2+aes, or no baseline, hence dynamic
+// dispatch, which checks for AES support at runtime.
+#if defined(__ARM_FEATURE_SVE2_AES) || (HWY_BASELINE_SVE2 == 0)
 #define HWY_TARGET_STR "+sve2-aes"
-#else
+#else  // SVE2 without AES
+#define HWY_TARGET_STR "+sve2"
+#endif
+#else  // not SVE2 target
 #define HWY_TARGET_STR "+sve"
 #endif
-#else
+#else  // !HWY_HAVE_RUNTIME_DISPATCH
 // HWY_TARGET_STR remains undefined
 #endif
 
@@ -432,7 +444,7 @@
 #define HWY_HAVE_SCALABLE 0
 #define HWY_HAVE_INTEGER64 1
 #define HWY_HAVE_FLOAT16 0
-#define HWY_HAVE_FLOAT64 0
+#define HWY_HAVE_FLOAT64 1
 #define HWY_MEM_OPS_MIGHT_FAULT 1
 #define HWY_NATIVE_FMA 0
 #define HWY_CAP_GE256 0

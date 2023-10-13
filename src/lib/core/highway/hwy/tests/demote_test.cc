@@ -143,6 +143,9 @@ HWY_NOINLINE void TestAllDemoteToMixed() {
 #if HWY_HAVE_FLOAT64
   const ForDemoteVectors<TestDemoteTo<int32_t>> to_i32;
   to_i32(double());
+
+  const ForDemoteVectors<TestDemoteTo<uint32_t>> to_u32;
+  to_u32(double());
 #endif
 }
 
@@ -187,6 +190,61 @@ HWY_NOINLINE void TestAllDemoteToFloat() {
 #if HWY_HAVE_FLOAT64
   const ForDemoteVectors<TestDemoteToFloat<float>, 1> to_float;
   to_float(double());
+#endif
+}
+
+struct TestDemoteUI64ToFloat {
+  // This helper function avoids an internal compiler error on GCC 8 AVX3,
+  // see https://gcc.gnu.org/bugzilla/show_bug.cgi?id=111117.
+  template <class D>
+  static HWY_NOINLINE void Verify(D from_d, TFromD<D> from, float expected) {
+    const Rebind<float, D> df32;
+    HWY_ASSERT_VEC_EQ(df32, Set(df32, expected),
+                      DemoteTo(df32, Set(from_d, from)));
+  }
+
+  template <typename T, class D>
+  HWY_NOINLINE void operator()(T /*unused*/, D from_d) {
+    const Rebind<float, D> df32;
+
+    Verify(from_d, T{0}, 0.0f);
+    Verify(from_d, LimitsMax<T>(), static_cast<float>(LimitsMax<T>()));
+    Verify(from_d, T(11808), 11808.0f);
+    Verify(from_d, T(261162016), 261162016.0f);
+    Verify(from_d, T(18665497952256LL), 18665497952256.0f);
+
+    if (IsSigned<T>()) {
+      Verify(from_d, T(-1), -1.0f);
+      Verify(from_d, LimitsMin<T>(), static_cast<float>(LimitsMin<T>()));
+      Verify(from_d, T(-17633), -17633.0f);
+      Verify(from_d, T(-3888877568LL), -3888877568.0f);
+      Verify(from_d, T(-17851503083520LL), -17851503083520.0f);
+    }
+
+    const size_t N = Lanes(from_d);
+    auto from = AllocateAligned<T>(N);
+    auto expected = AllocateAligned<float>(N);
+    HWY_ASSERT(from && expected);
+
+    RandomState rng;
+    for (size_t rep = 0; rep < AdjustedReps(1000); ++rep) {
+      for (size_t i = 0; i < N; i++) {
+        const uint64_t bits = rng();
+        CopySameSize(&bits, &from[i]);
+        expected[i] = static_cast<float>(from[i]);
+      }
+
+      HWY_ASSERT_VEC_EQ(df32, expected.get(),
+                        DemoteTo(df32, Load(from_d, from.get())));
+    }
+  }
+};
+
+HWY_NOINLINE void TestAllDemoteUI64ToFloat() {
+#if HWY_HAVE_INTEGER64
+  const ForDemoteVectors<TestDemoteUI64ToFloat, 1> to_float;
+  to_float(int64_t());
+  to_float(uint64_t());
 #endif
 }
 
@@ -676,6 +734,7 @@ HWY_BEFORE_TEST(HwyDemoteTest);
 HWY_EXPORT_AND_TEST_P(HwyDemoteTest, TestAllDemoteToInt);
 HWY_EXPORT_AND_TEST_P(HwyDemoteTest, TestAllDemoteToMixed);
 HWY_EXPORT_AND_TEST_P(HwyDemoteTest, TestAllDemoteToFloat);
+HWY_EXPORT_AND_TEST_P(HwyDemoteTest, TestAllDemoteUI64ToFloat);
 HWY_EXPORT_AND_TEST_P(HwyDemoteTest, TestAllDemoteToBF16);
 HWY_EXPORT_AND_TEST_P(HwyDemoteTest, TestAllReorderDemote2To);
 HWY_EXPORT_AND_TEST_P(HwyDemoteTest, TestAllOrderedDemote2To);

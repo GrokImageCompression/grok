@@ -2,36 +2,41 @@
 
 <!--*
 # Document freshness: For more information, see go/fresh-source.
-freshness: { owner: 'janwas' reviewed: '2023-04-21' }
+freshness: { owner: 'janwas' reviewed: '2023-08-04' }
 *-->
 
 [TOC]
 
 ## Wishlist
 
-### AVX3_SPR target
+### NEON dot product
 
-### MaskedGather, MaskedScatter
-
-MaskedGather returns zero for mask=false. MaskedScatter does not access the
-mask-false lanes, but may instead write a safe location (i.e. different index).
+### QuickSelect algo
 
 ### numpy
 
-Loadn/LoadnPair: mostly Gather*, with some specializations for smaller strides.
-In particular for 2x64-bit, which use 128-bit loads plus Combine.
+NeUnordered
+
+Loadn: Gather*, but for stride 2..4 use ld2..4.
+
+LoadnPair: Gather with optimizations in particular for 2x64-bit, which use
+128-bit loads plus Combine.
+Also StorePair
 
 Lookup128 for 32x 32-bit and 16x 64-bit. permutex2var on AVX-512, else Gather.
+Also Lookup64 and Lookup32.
 
-### SME/x86 AMX
+ReduceMin/MaxOrNaN
 
-Wrapper for 2D outer product.
+Document Reduce/Min NaN behavior
+
+_mm512_getmant, _mm512_scalef, _mm512_getexp (f32/f64)
 
 ### Clear lowest mask bit
 
 ### Remaining math functions for hwy/contrib/math
 
-High-precision! Consider copying from SLEEF.
+High-precision! Consider copying from SLEEF. See #1650.
 
 cbrt, cosh, erf, exp2, fmod, hypot, ilogb, lgamma, logb, modf, nextafter,
 nexttoward, pow, scalbn, tan, tgamma
@@ -57,8 +62,6 @@ Port https://github.com/richgel999/sserangecoding to Highway (~50 instructions).
 Port https://github.com/SnellerInc/sneller/tree/master/ion/zion/iguana
 (Go+assembly) to Highway.
 
-### float64 support for WASM
-
 ### AfterN
 
 = Not(FirstN()), replaces several instances. WHILEGE on SVE.
@@ -78,11 +81,12 @@ For crypto. Native on Icelake+.
 
 ### SVE codegen
 
-* SVE2: use XAR for `RotateRight`
-* `CombineShiftRightBytes` use `TableLookupLanes` instead?
-* `Shuffle*`: use `TableLookupLanes` instead?
-* Use SME once available: DUP predicate, REVD (rotate 128-bit elements by 64),
-  SCLAMP/UCLAMP, 128-bit TRN/UZP/ZIP (also in F64MM)
+*   SVE2.1: TBLQ for `TableLookupBytes`
+*   SVE2: use XAR for `RotateRight`
+*   `CombineShiftRightBytes` use `TableLookupLanes` instead?
+*   `Shuffle*`: use `TableLookupLanes` instead?
+*   Use SME once available: DUP predicate, REVD (rotate 128-bit elements by 64),
+    SCLAMP/UCLAMP, 128-bit TRN/UZP/ZIP (also in F64MM)
 
 ### emu128 codegen
 
@@ -91,30 +95,15 @@ For crypto. Native on Icelake+.
 ### Add emu256 target
 Reuse same wasm256 file, `#if` for wasm-specific parts. Use reserved avx slot.
 
-### `MaxOfLanes, MinOfLanes` returning scalar
-Avoids extra broadcast.
-
-### Reductions for 8-bit
-For orthogonality; already done for x86+NEON.
-
 ### Conflict detection
 For hash tables. Use VPCONFLICT on ZEN4.
 
-### `PromoteToEven`
-For `WidenMul`, `MinOfLanes`.
-
-### Add `DupEven` for 16-bit
-Use in `MinOfLanes` (helps NEON).
-
-### Masked add/sub
-For tolower (subtract if in range) or hash table probing.
-
 ### Div (integer division) and Mod
 
-Issue 633.
+Issue 633. Consider promoting to f64 and back. Or: op to compute inverse.
 
-### `AddSub`
-Interval arithmetic?
+### `AddSub` and `MulAddSub`
+Subtracts for even lanes, adds for odd. Interval arithmetic? Numpy?
 
 ### `Dup128TableLookupBytes`
 Avoids having to add offset on RVV. Table must come from `LoadDup128`.
@@ -188,3 +177,15 @@ For SVE (svld1sb_u32)+WASM? Compiler can probably already fuse.
 *   ~~`PromoteTo` for all types (#915)~~ - by johnplatts in #1387
 *   ~~atan2~~
 *   ~~Slide1Up/Down~~ - by johnplatts in #1496
+*   ~~`MaxOfLanes, MinOfLanes` returning scalar~~
+*   ~~Add `DupEven` for 16-bit~~ - by johnplatts in #1431
+*   ~~AVX3_SPR target~~
+*   ~~MaskedGather returns zero for mask=false.~~
+*   ~~GatherIndexN/ScatterIndexN~~
+*   ~~MaskedScatter~~
+*   ~~float64 support for WASM~~
+*   ~~LoadNOr~~
+*   ~~PromoteEvenTo~~ - by johnplatts
+*   ~~Masked add/sub/div~~
+*   ~~ReduceMin/Max like ReduceSum, in addition to Min/MaxOfLanes~~
+*   ~~Reductions for 8-bit~~

@@ -61,7 +61,7 @@
 // --------------------------- x86: 15 targets (+ one fallback)
 // Bits 0..3 reserved (4 targets)
 #define HWY_AVX3_SPR (1LL << 4)
-// Bit 5 reserved
+// Bit 5 reserved (likely AVX10.2 with 256-bit vectors)
 // Currently HWY_AVX3_DL plus a special case for CompressStore (10x as fast).
 // We may later also use VPCONFLICT.
 #define HWY_AVX3_ZEN4 (1LL << 6)  // see HWY_WANT_AVX3_ZEN4 below
@@ -167,16 +167,19 @@
 #define HWY_BROKEN_MSVC 0
 #endif
 
-// AVX3_DL and AVX3_ZEN4 require clang >= 7 (ensured above) or gcc >= 8.1.
-#if (HWY_COMPILER_GCC_ACTUAL && HWY_COMPILER_GCC_ACTUAL < 801)
+// AVX3_DL and AVX3_ZEN4 require clang >= 7 (ensured above), gcc >= 8.1 or ICC
+// 2021.
+#if (HWY_COMPILER_GCC_ACTUAL && HWY_COMPILER_GCC_ACTUAL < 801) || \
+    (HWY_COMPILER_ICC && HWY_COMPILER_ICC < 2021)
 #define HWY_BROKEN_AVX3_DL_ZEN4 (HWY_AVX3_DL | HWY_AVX3_ZEN4)
 #else
 #define HWY_BROKEN_AVX3_DL_ZEN4 0
 #endif
 
-// AVX3_SPR requires clang >= 14 or gcc >= 12.
-#if (HWY_COMPILER_CLANG != 0 && HWY_COMPILER_CLANG < 1400) || \
-    (HWY_COMPILER_GCC_ACTUAL && HWY_COMPILER_GCC_ACTUAL < 1200)
+// AVX3_SPR requires clang >= 14, gcc >= 12, or ICC 2021.
+#if (HWY_COMPILER_CLANG != 0 && HWY_COMPILER_CLANG < 1400) ||      \
+    (HWY_COMPILER_GCC_ACTUAL && HWY_COMPILER_GCC_ACTUAL < 1200) || \
+    (HWY_COMPILER_ICC && HWY_COMPILER_ICC < 2021)
 #define HWY_BROKEN_AVX3_SPR (HWY_AVX3_SPR)
 #else
 #define HWY_BROKEN_AVX3_SPR 0
@@ -212,9 +215,9 @@
 // GCC 10 supports the -mcpu=power10 option but does not support the PPC10
 // vector intrinsics
 #define HWY_BROKEN_PPC10 (HWY_PPC10)
-#elif HWY_ARCH_PPC && HWY_IS_BIG_ENDIAN &&                                    \
-    ((HWY_COMPILER3_CLANG && HWY_COMPILER3_CLANG < 160001) ||                 \
-     (HWY_COMPILER_GCC_ACTUAL >= 1200 && HWY_COMPILER_GCC_ACTUAL <= 1203) ||  \
+#elif HWY_ARCH_PPC && HWY_IS_BIG_ENDIAN &&                                   \
+    ((HWY_COMPILER3_CLANG && HWY_COMPILER3_CLANG < 160001) ||                \
+     (HWY_COMPILER_GCC_ACTUAL >= 1200 && HWY_COMPILER_GCC_ACTUAL <= 1203) || \
      (HWY_COMPILER_GCC_ACTUAL >= 1300 && HWY_COMPILER_GCC_ACTUAL <= 1301))
 // GCC 12.0 through 12.3 and GCC 13.0 through 13.1 have a compiler bug where the
 // vsldoi instruction is sometimes incorrectly optimized out (and this causes
@@ -252,12 +255,12 @@
   ((targets) & ~((HWY_DISABLED_TARGETS) | (HWY_BROKEN_TARGETS)))
 
 // Opt-out for EMU128 (affected by a GCC bug on multiple arches, fixed in 12.3:
-// see https://gcc.gnu.org/bugzilla/show_bug.cgi?id=106322). This is separate
-// from HWY_BROKEN_TARGETS because it affects the fallback target, which must
-// always be enabled. If 1, we instead choose HWY_SCALAR even without
-// HWY_COMPILE_ONLY_SCALAR being set.
+// see https://gcc.gnu.org/bugzilla/show_bug.cgi?id=106322). An issue still
+// remains with 13.2, see #1683. This is separate from HWY_BROKEN_TARGETS
+// because it affects the fallback target, which must always be enabled. If 1,
+// we instead choose HWY_SCALAR even without HWY_COMPILE_ONLY_SCALAR being set.
 #if !defined(HWY_BROKEN_EMU128)  // allow overriding
-#if (HWY_COMPILER_GCC_ACTUAL && HWY_COMPILER_GCC_ACTUAL < 1203) || \
+#if (HWY_COMPILER_GCC_ACTUAL && HWY_COMPILER_GCC_ACTUAL < 1400) || \
     defined(HWY_NO_LIBCXX)
 #define HWY_BROKEN_EMU128 1
 #else
@@ -576,7 +579,18 @@
 
 #if HWY_ARCH_PPC && defined(__ALTIVEC__) && \
     (!HWY_COMPILER_CLANG || HWY_BASELINE_PPC8 != 0)
+
+#if (HWY_BASELINE_PPC9 | HWY_BASELINE_PPC10) && \
+    !defined(HWY_SKIP_NON_BEST_BASELINE)
+// On POWER with -m flags, we get compile errors (#1707) for targets older than
+// the baseline specified via -m, so only generate the static target and better.
+// Note that some Linux distros actually do set POWER9 as the baseline.
+// This works by skipping case 3 below, so case 4 is reached.
+#define HWY_SKIP_NON_BEST_BASELINE
+#endif
+
 #define HWY_ATTAINABLE_PPC (HWY_PPC8 | HWY_PPC9 | HWY_PPC10)
+
 #else
 #define HWY_ATTAINABLE_PPC 0
 #endif
@@ -584,10 +598,16 @@
 // Attainable means enabled and the compiler allows intrinsics (even when not
 // allowed to autovectorize). Used in 3 and 4.
 #if HWY_ARCH_X86
+#if HWY_COMPILER_MSVC
+// Fewer targets for faster builds.
+#define HWY_ATTAINABLE_TARGETS \
+  HWY_ENABLED(HWY_BASELINE_SCALAR | HWY_STATIC_TARGET | HWY_AVX2)
+#else  // !HWY_COMPILER_MSVC
 #define HWY_ATTAINABLE_TARGETS                                               \
   HWY_ENABLED(HWY_BASELINE_SCALAR | HWY_SSE2 | HWY_SSSE3 | HWY_SSE4 |        \
               HWY_AVX2 | HWY_AVX3 | HWY_ATTAINABLE_AVX3_DL | HWY_AVX3_ZEN4 | \
               HWY_AVX3_SPR)
+#endif  // !HWY_COMPILER_MSVC
 #elif HWY_ARCH_ARM
 #define HWY_ATTAINABLE_TARGETS                                                 \
   HWY_ENABLED(HWY_BASELINE_SCALAR | HWY_ATTAINABLE_NEON | HWY_ATTAINABLE_SVE | \
@@ -618,7 +638,8 @@
 #define HWY_TARGETS HWY_STATIC_TARGET
 
 // 3) For tests: include all attainable targets (in particular: scalar)
-#elif defined(HWY_COMPILE_ALL_ATTAINABLE) || defined(HWY_IS_TEST)
+#elif (defined(HWY_COMPILE_ALL_ATTAINABLE) || defined(HWY_IS_TEST)) && \
+    !defined(HWY_SKIP_NON_BEST_BASELINE)
 #define HWY_TARGETS HWY_ATTAINABLE_TARGETS
 
 // 4) Default: attainable WITHOUT non-best baseline. This reduces code size by

@@ -193,7 +193,10 @@ struct TestMulFixedPoint15 {
       for (size_t i = 0; i < N; ++i) {
         // There are three ways to compute the results. x86 and Arm are defined
         // using 32-bit multiplication results:
-        const int arm = (2 * in1[i] * in2[i] + 0x8000) >> 16;
+        const int arm =
+            static_cast<int32_t>(2u * static_cast<uint32_t>(in1[i] * in2[i]) +
+                                 0x8000u) >>
+            16;
         const int x86 = (((in1[i] * in2[i]) >> 14) + 1) >> 1;
         // On other platforms, split the result into upper and lower 16 bits.
         const auto v1 = Set(d, in1[i]);
@@ -220,6 +223,22 @@ HWY_NOINLINE void TestAllMulFixedPoint15() {
 }
 
 struct TestMulEven {
+  template <class D, HWY_IF_SIGNED_D(D)>
+  HWY_INLINE void DoTestNegMulEven(D /*d*/, Vec<D> v) {
+    using T = TFromD<D>;
+    using Wide = MakeWide<T>;
+    const Repartition<Wide, D> d2;
+
+    const auto v_squared = MulEven(v, v);
+    const auto neg_v_squared = Neg(v_squared);
+    const auto neg_v = Neg(v);
+    HWY_ASSERT_VEC_EQ(d2, v_squared, MulEven(neg_v, neg_v));
+    HWY_ASSERT_VEC_EQ(d2, neg_v_squared, MulEven(neg_v, v));
+    HWY_ASSERT_VEC_EQ(d2, neg_v_squared, MulEven(v, neg_v));
+  }
+  template <class D, HWY_IF_UNSIGNED_D(D)>
+  HWY_INLINE void DoTestNegMulEven(D /*d*/, Vec<D> /*v*/) {}
+
   template <typename T, class D>
   HWY_NOINLINE void operator()(T /*unused*/, D d) {
     using Wide = MakeWide<T>;
@@ -227,26 +246,92 @@ struct TestMulEven {
     const auto v0 = Zero(d);
     HWY_ASSERT_VEC_EQ(d2, Zero(d2), MulEven(v0, v0));
 
+    constexpr size_t kShiftAmtMask = sizeof(T) * 8 - 1;
     const size_t N = Lanes(d);
     auto in_lanes = AllocateAligned<T>(N);
     auto expected = AllocateAligned<Wide>(Lanes(d2));
     for (size_t i = 0; i < N; i += 2) {
-      in_lanes[i + 0] = LimitsMax<T>() >> i;
+      in_lanes[i + 0] = static_cast<T>(LimitsMax<T>() >> (i & kShiftAmtMask));
       if (N != 1) {
         in_lanes[i + 1] = 1;  // unused
       }
-      expected[i / 2] = Wide(in_lanes[i + 0]) * in_lanes[i + 0];
+      expected[i / 2] =
+          static_cast<Wide>(Wide(in_lanes[i + 0]) * in_lanes[i + 0]);
     }
 
     const auto v = Load(d, in_lanes.get());
     HWY_ASSERT_VEC_EQ(d2, expected.get(), MulEven(v, v));
+
+    DoTestNegMulEven(d, v);
   }
 };
 
+struct TestMulOdd {
+  template <class D, HWY_IF_SIGNED_D(D)>
+  HWY_INLINE void DoTestNegMulOdd(D d, Vec<D> v) {
+    using T = TFromD<D>;
+    using Wide = MakeWide<T>;
+    const Repartition<Wide, D> d2;
+
+    const auto v_squared = MulOdd(v, v);
+    const auto neg_v_squared = Neg(v_squared);
+    const auto neg_v = Neg(v);
+    HWY_ASSERT_VEC_EQ(d2, v_squared, MulOdd(neg_v, neg_v));
+    HWY_ASSERT_VEC_EQ(d2, neg_v_squared, MulOdd(neg_v, v));
+    HWY_ASSERT_VEC_EQ(d2, neg_v_squared, MulOdd(v, neg_v));
+    HWY_ASSERT_VEC_EQ(d2, neg_v_squared, MulEven(DupOdd(v), DupOdd(neg_v)));
+    HWY_ASSERT_VEC_EQ(d2, neg_v_squared,
+                      MulEven(Reverse2(d, v), Reverse2(d, neg_v)));
+  }
+  template <class D, HWY_IF_UNSIGNED_D(D)>
+  HWY_INLINE void DoTestNegMulOdd(D /*d*/, Vec<D> /*v*/) {}
+
+  template <typename T, class D, HWY_IF_LANES_GT_D(D, 1)>
+  HWY_NOINLINE void operator()(T /*unused*/, D d) {
+#if HWY_TARGET != HWY_SCALAR
+    const size_t N = Lanes(d);
+    if (N < 2) return;
+
+    using Wide = MakeWide<T>;
+    const Repartition<Wide, D> d2;
+    const auto v0 = Zero(d);
+    HWY_ASSERT_VEC_EQ(d2, Zero(d2), MulOdd(v0, v0));
+
+    constexpr size_t kShiftAmtMask = sizeof(T) * 8 - 1;
+    auto in_lanes = AllocateAligned<T>(N);
+    auto expected = AllocateAligned<Wide>(Lanes(d2));
+    for (size_t i = 0; i < N; i += 2) {
+      in_lanes[i + 0] = 1;  // unused
+      in_lanes[i + 1] = static_cast<T>(LimitsMax<T>() >> (i & kShiftAmtMask));
+      expected[i / 2] =
+          static_cast<Wide>(Wide(in_lanes[i + 1]) * in_lanes[i + 1]);
+    }
+
+    const auto v = Load(d, in_lanes.get());
+    HWY_ASSERT_VEC_EQ(d2, expected.get(), MulOdd(v, v));
+
+    const auto v_dupodd = DupOdd(v);
+    HWY_ASSERT_VEC_EQ(d2, expected.get(), MulEven(v_dupodd, v_dupodd));
+    HWY_ASSERT_VEC_EQ(d2, expected.get(), MulOdd(v_dupodd, v_dupodd));
+    HWY_ASSERT_VEC_EQ(d2, expected.get(), MulOdd(v_dupodd, v));
+    HWY_ASSERT_VEC_EQ(d2, expected.get(), MulOdd(v, v_dupodd));
+
+    const auto v_reverse2 = Reverse2(d, v);
+    HWY_ASSERT_VEC_EQ(d2, expected.get(), MulEven(v_reverse2, v_reverse2));
+
+    DoTestNegMulOdd(d, v);
+#else
+    (void)d;
+#endif
+  }
+  template <typename T, class D, HWY_IF_LANES_LE_D(D, 1)>
+  HWY_INLINE void operator()(T /*unused*/, D /*d*/) {}
+};
+
+#if HWY_HAVE_INTEGER64 && HWY_TARGET != HWY_SCALAR
 struct TestMulEvenOdd64 {
   template <typename T, class D>
   HWY_NOINLINE void operator()(T /*unused*/, D d) {
-#if HWY_TARGET != HWY_SCALAR
     const auto v0 = Zero(d);
     HWY_ASSERT_VEC_EQ(d, Zero(d), MulEven(v0, v0));
     HWY_ASSERT_VEC_EQ(d, Zero(d), MulOdd(v0, v0));
@@ -277,18 +362,30 @@ struct TestMulEvenOdd64 {
       HWY_ASSERT_VEC_EQ(d, expected_even.get(), MulEven(a, b));
       HWY_ASSERT_VEC_EQ(d, expected_odd.get(), MulOdd(a, b));
     }
-#else
-    (void)d;
-#endif  // HWY_TARGET != HWY_SCALAR
   }
 };
+#endif  // HWY_HAVE_INTEGER64 && HWY_TARGET != HWY_SCALAR
 
 HWY_NOINLINE void TestAllMulEven() {
-  ForGEVectors<64, TestMulEven> test;
-  test(int32_t());
-  test(uint32_t());
+  ForUI8(ForGEVectors<16, TestMulEven>());
+  ForUI16(ForGEVectors<32, TestMulEven>());
 
+#if HWY_HAVE_INTEGER64
+  ForUI32(ForGEVectors<64, TestMulEven>());
+#if HWY_TARGET != HWY_SCALAR
   ForGEVectors<128, TestMulEvenOdd64>()(uint64_t());
+#endif  // HWY_TARGET != HWY_SCALAR
+#endif  // HWY_HAVE_INTEGER64
+}
+
+HWY_NOINLINE void TestAllMulOdd() {
+  ForUI8(ForGEVectors<16, TestMulOdd>());
+  ForUI16(ForGEVectors<32, TestMulOdd>());
+#if HWY_HAVE_INTEGER64
+  ForUI32(ForGEVectors<64, TestMulOdd>());
+#endif
+
+  // uint64_t MulOdd is already tested in TestMulEvenOdd64
 }
 
 #ifndef HWY_NATIVE_FMA
@@ -305,6 +402,7 @@ struct TestMulAdd {
     // Unlike RebindToSigned, we want to leave floating-point unchanged.
     // This allows Neg for unsigned types.
     const Rebind<If<IsFloat<T>(), T, MakeSigned<T>>, D> di;
+    using TI = TFromD<decltype(di)>;
     const Vec<D> neg_v2 = BitCast(d, Neg(BitCast(di, v2)));
 
     const size_t N = Lanes(d);
@@ -331,7 +429,7 @@ struct TestMulAdd {
     HWY_ASSERT_VEC_EQ(d, expected.get(), NegMulAdd(neg_v2, v2, v1));
 
     for (size_t i = 0; i < N; ++i) {
-      const T nm = static_cast<T>(-static_cast<MakeSigned<T>>(i + T{2}));
+      const T nm = static_cast<T>(-(static_cast<TI>(i) + TI{2}));
       const T f = static_cast<T>(i + 2);
       const T a = static_cast<T>(i + 1);
       expected[i] = static_cast<T>(nm * f + a);
@@ -382,180 +480,6 @@ HWY_NOINLINE void TestAllMulAdd() {
   ForFloatTypes(ForPartialVectors<TestMulSub>());
 }
 
-struct TestWidenMulPairwiseAdd {
-  // Must be inlined on aarch64 for bf16, else clang crashes.
-  template <typename TN, class DN>
-  HWY_INLINE void operator()(TN /*unused*/, DN dn) {
-    using TW = MakeWide<TN>;
-    const RepartitionToWide<DN> dw;
-    using VW = Vec<decltype(dw)>;
-    using VN = Vec<decltype(dn)>;
-    const size_t NN = Lanes(dn);
-
-    const VW f0 = Zero(dw);
-    const VW f1 = Set(dw, TW{1});
-    const VN bf0 = Zero(dn);
-    // Cannot Set() bfloat16_t directly.
-    const VN bf1 = ReorderDemote2To(dn, f1, f1);
-
-    // Any input zero => both outputs zero
-    HWY_ASSERT_VEC_EQ(dw, f0, WidenMulPairwiseAdd(dw, bf0, bf0));
-    HWY_ASSERT_VEC_EQ(dw, f0, WidenMulPairwiseAdd(dw, bf0, bf1));
-    HWY_ASSERT_VEC_EQ(dw, f0, WidenMulPairwiseAdd(dw, bf1, bf0));
-
-    // delta[p] := p all others zero.
-    auto delta_w = AllocateAligned<TW>(NN);
-    for (size_t p = 0; p < NN; ++p) {
-      // Workaround for incorrect Clang wasm codegen: re-initialize the entire
-      // array rather than zero-initialize once and then set lane p to p.
-      for (size_t i = 0; i < NN; ++i) {
-        delta_w[i] = static_cast<TW>((i == p) ? p : 0);
-      }
-      const VW delta0 = Load(dw, delta_w.get() + 0);
-      const VW delta1 = Load(dw, delta_w.get() + NN / 2);
-      const VN delta = OrderedDemote2To(dn, delta0, delta1);
-
-      const VW expected = InsertLane(f0, p / 2, static_cast<TW>(p));
-      {
-        const VW actual = WidenMulPairwiseAdd(dw, delta, bf1);
-        HWY_ASSERT_VEC_EQ(dw, expected, actual);
-      }
-      // Swapped arg order
-      {
-        const VW actual = WidenMulPairwiseAdd(dw, bf1, delta);
-        HWY_ASSERT_VEC_EQ(dw, expected, actual);
-      }
-    }
-  }
-};
-
-HWY_NOINLINE void TestAllWidenMulPairwiseAdd() {
-  ForShrinkableVectors<TestWidenMulPairwiseAdd>()(bfloat16_t());
-  ForShrinkableVectors<TestWidenMulPairwiseAdd>()(int16_t());
-}
-
-struct TestReorderWidenMulAccumulate {
-  // Must be inlined on aarch64 for bf16, else clang crashes.
-  template <typename TN, class DN>
-  HWY_INLINE void operator()(TN /*unused*/, DN dn) {
-    using TW = MakeWide<TN>;
-    const RepartitionToWide<DN> dw;
-    const Half<DN> dnh;
-    using VW = Vec<decltype(dw)>;
-    using VN = Vec<decltype(dn)>;
-    const size_t NN = Lanes(dn);
-
-    const VW f0 = Zero(dw);
-    const VW f1 = Set(dw, TW{1});
-    const VN bf0 = Zero(dn);
-    // Cannot Set() bfloat16_t directly.
-    const VN bf1 = ReorderDemote2To(dn, f1, f1);
-
-    // Any input zero => both outputs zero
-    VW sum1 = f0;
-    HWY_ASSERT_VEC_EQ(dw, f0,
-                      ReorderWidenMulAccumulate(dw, bf0, bf0, f0, sum1));
-    HWY_ASSERT_VEC_EQ(dw, f0, sum1);
-    HWY_ASSERT_VEC_EQ(dw, f0,
-                      ReorderWidenMulAccumulate(dw, bf0, bf1, f0, sum1));
-    HWY_ASSERT_VEC_EQ(dw, f0, sum1);
-    HWY_ASSERT_VEC_EQ(dw, f0,
-                      ReorderWidenMulAccumulate(dw, bf1, bf0, f0, sum1));
-    HWY_ASSERT_VEC_EQ(dw, f0, sum1);
-
-    // delta[p] := 1, all others zero. For each p: Dot(delta, all-ones) == 1.
-    auto delta_w = AllocateAligned<TW>(NN);
-    for (size_t p = 0; p < NN; ++p) {
-      // Workaround for incorrect Clang wasm codegen: re-initialize the entire
-      // array rather than zero-initialize once and then toggle lane p.
-      for (size_t i = 0; i < NN; ++i) {
-        delta_w[i] = static_cast<TW>(i == p);
-      }
-      const VW delta0 = Load(dw, delta_w.get());
-      const VW delta1 = Load(dw, delta_w.get() + NN / 2);
-      const VN delta = ReorderDemote2To(dn, delta0, delta1);
-
-      {
-        sum1 = f0;
-        const VW sum0 = ReorderWidenMulAccumulate(dw, delta, bf1, f0, sum1);
-        HWY_ASSERT_EQ(TW{1}, ReduceSum(dw, Add(sum0, sum1)));
-      }
-      // Swapped arg order
-      {
-        sum1 = f0;
-        const VW sum0 = ReorderWidenMulAccumulate(dw, bf1, delta, f0, sum1);
-        HWY_ASSERT_EQ(TW{1}, ReduceSum(dw, Add(sum0, sum1)));
-      }
-      // Start with nonzero sum0 or sum1
-      {
-        VW sum0 = PromoteTo(dw, LowerHalf(dnh, delta));
-        sum1 = PromoteTo(dw, UpperHalf(dnh, delta));
-        sum0 = ReorderWidenMulAccumulate(dw, delta, bf1, sum0, sum1);
-        HWY_ASSERT_EQ(TW{2}, ReduceSum(dw, Add(sum0, sum1)));
-      }
-      // Start with nonzero sum0 or sum1, and swap arg order
-      {
-        VW sum0 = PromoteTo(dw, LowerHalf(dnh, delta));
-        sum1 = PromoteTo(dw, UpperHalf(dnh, delta));
-        sum0 = ReorderWidenMulAccumulate(dw, bf1, delta, sum0, sum1);
-        HWY_ASSERT_EQ(TW{2}, ReduceSum(dw, Add(sum0, sum1)));
-      }
-    }
-  }
-};
-
-HWY_NOINLINE void TestAllReorderWidenMulAccumulate() {
-  ForShrinkableVectors<TestReorderWidenMulAccumulate>()(bfloat16_t());
-  ForShrinkableVectors<TestReorderWidenMulAccumulate>()(int16_t());
-}
-
-struct TestRearrangeToOddPlusEven {
-  // Must be inlined on aarch64 for bf16, else clang crashes.
-  template <typename TN, class DN>
-  HWY_INLINE void operator()(TN /*unused*/, DN dn) {
-    using TW = MakeWide<TN>;
-    const RepartitionToWide<DN> dw;
-    using VW = Vec<decltype(dw)>;
-    using VN = Vec<decltype(dn)>;
-    const size_t NW = Lanes(dw);
-
-    const auto expected = AllocateAligned<TW>(NW);
-    for (size_t iw = 0; iw < NW; ++iw) {
-      const size_t in = iw * 2;  // even, odd is +1
-      const size_t a0 = 1 + in;
-      const size_t b0 = 1 + 2 * NW - a0;
-      const size_t a1 = a0 + 1;
-      const size_t b1 = b0 - 1;
-      expected[iw] = static_cast<TW>(a0 * b0 + a1 * b1);
-    }
-
-    const VW up0 = Iota(dw, TW{1});
-    const VW up1 = Iota(dw, static_cast<TW>(1 + NW));
-    // We will compute i * (N-i) to avoid per-lane overflow.
-    const VW down0 = Reverse(dw, up1);
-    const VW down1 = Reverse(dw, up0);
-
-    const VN a = OrderedDemote2To(dn, up0, up1);
-    const VN b = OrderedDemote2To(dn, down0, down1);
-
-    VW sum0 = Zero(dw);
-    VW sum1 = Zero(dw);
-    sum0 = ReorderWidenMulAccumulate(dw, a, b, sum0, sum1);
-    const VW sum_odd_even = RearrangeToOddPlusEven(sum0, sum1);
-    HWY_ASSERT_VEC_EQ(dw, expected.get(), sum_odd_even);
-  }
-};
-
-HWY_NOINLINE void TestAllRearrangeToOddPlusEven() {
-// For reasons unknown, <128 bit crashes aarch64 clang.
-#if HWY_ARCH_ARM_A64 && HWY_COMPILER_CLANG
-  ForGEVectors<128, TestRearrangeToOddPlusEven>()(bfloat16_t());
-#else
-  ForShrinkableVectors<TestRearrangeToOddPlusEven>()(bfloat16_t());
-#endif
-  ForShrinkableVectors<TestRearrangeToOddPlusEven>()(int16_t());
-}
-
 // NOLINTNEXTLINE(google-readability-namespace-comments)
 }  // namespace HWY_NAMESPACE
 }  // namespace hwy
@@ -569,10 +493,8 @@ HWY_EXPORT_AND_TEST_P(HwyMulTest, TestAllMul);
 HWY_EXPORT_AND_TEST_P(HwyMulTest, TestAllMulHigh);
 HWY_EXPORT_AND_TEST_P(HwyMulTest, TestAllMulFixedPoint15);
 HWY_EXPORT_AND_TEST_P(HwyMulTest, TestAllMulEven);
+HWY_EXPORT_AND_TEST_P(HwyMulTest, TestAllMulOdd);
 HWY_EXPORT_AND_TEST_P(HwyMulTest, TestAllMulAdd);
-HWY_EXPORT_AND_TEST_P(HwyMulTest, TestAllWidenMulPairwiseAdd);
-HWY_EXPORT_AND_TEST_P(HwyMulTest, TestAllReorderWidenMulAccumulate);
-HWY_EXPORT_AND_TEST_P(HwyMulTest, TestAllRearrangeToOddPlusEven);
 
 }  // namespace hwy
 

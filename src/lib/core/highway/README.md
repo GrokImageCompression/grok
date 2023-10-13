@@ -6,6 +6,8 @@ Highway is a C++ library that provides portable SIMD/vector intrinsics.
 
 [Documentation](https://google.github.io/highway/en/master/)
 
+Previously licensed under Apache 2, now dual-licensed as Apache 2 / BSD-3.
+
 ## Why
 
 We are passionate about high-performance software. We see major untapped
@@ -27,8 +29,8 @@ functions that map well to CPU instructions without extensive compiler
 transformations. The resulting code is more predictable and robust to code
 changes/compiler updates than autovectorization.
 
-**Works on widely-used platforms**: Highway supports four architectures; the
-same application code can target eight instruction sets, including those with
+**Works on widely-used platforms**: Highway supports five architectures; the
+same application code can target various instruction sets, including those with
 'scalable' vectors (size unknown at compile time). Highway only requires C++11
 and supports four families of compilers. If you would like to use Highway on
 other platforms, please raise an issue.
@@ -70,22 +72,27 @@ us via the below email.
 
 *   Browsers: Chromium (+Vivaldi), Firefox (+floorp / foxhound / librewolf / Waterfox)
 *   Cryptography: google/distributed_point_functions
-*   Image codecs: eustas/2im, [Grok JPEG 2000](https://github.com/GrokImageCompression/grok), [JPEG XL](https://github.com/libjxl/libjxl), OpenHTJ2K
-*   Image processing: cloudinary/ssimulacra2, m-ab-s/media-autobuild_suite
+*   Image codecs: eustas/2im, [Grok JPEG 2000](https://github.com/GrokImageCompression/grok), [JPEG XL](https://github.com/libjxl/libjxl), OpenHTJ2K, [JPEGenc](https://github.com/osamu620/JPEGenc)
+*   Image processing: cloudinary/ssimulacra2, m-ab-s/media-autobuild_suite, [libvips](https://github.com/libvips/libvips)
 *   Image viewers: AlienCowEatCake/ImageViewer, mirillis/jpegxl-wic,
     [Lux panorama/image viewer](https://bitbucket.org/kfj/pv/)
 *   Information retrieval: [iresearch database index](https://github.com/iresearch-toolkit/iresearch/blob/e7638e7a4b99136ca41f82be6edccf01351a7223/core/utils/simd_utils.hpp), michaeljclark/zvec
 
 Other
 
+*   [Evaluation of C++ SIMD Libraries](https://www.mnm-team.org/pub/Fopras/rock23/):
+    "Highway excelled with a strong performance across multiple SIMD extensions
+    [..]. Thus, Highway may currently be the most suitable SIMD library for many
+    software projects."
 *   [zimt](https://github.com/kfjahnke/zimt): C++11 template library to process n-dimensional arrays with multi-threaded SIMD code
 *   [vectorized Quicksort](https://github.com/google/highway/tree/master/hwy/contrib/sort) ([paper](https://arxiv.org/abs/2205.05982))
 
 If you'd like to get Highway, in addition to cloning from this Github repository
 or using it as a Git submodule, you can also find it in the following package
 managers or repositories: alpinelinux, conan-io, conda-forge, DragonFlyBSD,
-freebsd, ghostbsd, microsoft/vcpkg, MidnightBSD, NetBSD, openSUSE, opnsense,
-Xilinx/Vitis_Libraries.
+freebsd, ghostbsd, microsoft/vcpkg, MidnightBSD, MSYS2, NetBSD, openSUSE,
+opnsense, Xilinx/Vitis_Libraries. See also the list at
+https://repology.org/project/highway-simd-library/versions .
 
 ## Current status
 
@@ -206,6 +213,16 @@ tests on 32-bit x86, including AVX2/3, on GCC 7/8 and Clang 8/11/12. On Ubuntu
 above plus `-isystem /usr/i686-linux-gnu/include/c++/12/i686-linux-gnu`. See
 #1279.
 
+## Building highway - Using vcpkg
+
+highway is now available in [vcpkg](https://github.com/Microsoft/vcpkg)
+
+```bash
+vcpkg install highway
+```
+
+The highway port in vcpkg is kept up to date by Microsoft team members and community contributors. If the version is out of date, please [create an issue or pull request](https://github.com/Microsoft/vcpkg) on the vcpkg repository.
+
 ## Quick start
 
 You can use the `benchmark` inside examples/ as a starting point.
@@ -259,7 +276,11 @@ they use static or dynamic dispatch.
     call the best function pointer for the current CPU's supported targets. A
     module is automatically compiled for each target in `HWY_TARGETS` (see
     [quick-reference](g3doc/quick_reference.md)) if `HWY_TARGET_INCLUDE` is
-    defined and `foreach_target.h` is included.
+    defined and `foreach_target.h` is included. Note that the first invocation
+    of `HWY_DYNAMIC_DISPATCH`, or each call to the pointer returned by the first
+    invocation of `HWY_DYNAMIC_POINTER`, involves some CPU detection overhead.
+    You can prevent this by calling the following before any invocation of
+    `HWY_DYNAMIC_*`: `hwy::GetChosenTarget().Update(hwy::SupportedTargets());`.
 
 When using dynamic dispatch, `foreach_target.h` is included from translation
 units (.cc files), not headers. Headers containing vector code shared between

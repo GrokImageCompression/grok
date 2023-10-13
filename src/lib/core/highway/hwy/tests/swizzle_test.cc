@@ -36,9 +36,68 @@ HWY_NOINLINE void TestAllGetLane() {
 }
 
 struct TestExtractLane {
+#if !HWY_HAVE_SCALABLE && HWY_TARGET < HWY_EMU128 && \
+    HWY_TARGET != HWY_SVE2_128 && HWY_TARGET != HWY_SVE_256
+  template <class D, HWY_IF_LANES_D(BlockDFromD<D>, 1)>
+  static HWY_INLINE void DoTestExtractLaneWithConstAmt_0_7(D /*d*/, Vec<D> v) {
+    HWY_ASSERT_EQ(static_cast<TFromD<D>>(1), ExtractLane(v, 0));
+  }
+
+  template <class D, HWY_IF_LANES_D(BlockDFromD<D>, 2)>
+  static HWY_INLINE void DoTestExtractLaneWithConstAmt_0_7(D /*d*/, Vec<D> v) {
+    HWY_ASSERT_EQ(static_cast<TFromD<D>>(1), ExtractLane(v, 0));
+    HWY_ASSERT_EQ(static_cast<TFromD<D>>(2), ExtractLane(v, 1));
+  }
+
+  template <class D, HWY_IF_LANES_D(BlockDFromD<D>, 4)>
+  static HWY_INLINE void DoTestExtractLaneWithConstAmt_0_7(D /*d*/, Vec<D> v) {
+    HWY_ASSERT_EQ(static_cast<TFromD<D>>(1), ExtractLane(v, 0));
+    HWY_ASSERT_EQ(static_cast<TFromD<D>>(2), ExtractLane(v, 1));
+    HWY_ASSERT_EQ(static_cast<TFromD<D>>(3), ExtractLane(v, 2));
+    HWY_ASSERT_EQ(static_cast<TFromD<D>>(4), ExtractLane(v, 3));
+  }
+
+  template <class D, HWY_IF_LANES_GT_D(BlockDFromD<D>, 4)>
+  static HWY_INLINE void DoTestExtractLaneWithConstAmt_0_7(D /*d*/, Vec<D> v) {
+    HWY_ASSERT_EQ(static_cast<TFromD<D>>(1), ExtractLane(v, 0));
+    HWY_ASSERT_EQ(static_cast<TFromD<D>>(2), ExtractLane(v, 1));
+    HWY_ASSERT_EQ(static_cast<TFromD<D>>(3), ExtractLane(v, 2));
+    HWY_ASSERT_EQ(static_cast<TFromD<D>>(4), ExtractLane(v, 3));
+    HWY_ASSERT_EQ(static_cast<TFromD<D>>(5), ExtractLane(v, 4));
+    HWY_ASSERT_EQ(static_cast<TFromD<D>>(6), ExtractLane(v, 5));
+    HWY_ASSERT_EQ(static_cast<TFromD<D>>(7), ExtractLane(v, 6));
+    HWY_ASSERT_EQ(static_cast<TFromD<D>>(8), ExtractLane(v, 7));
+  }
+
+  template <class D, HWY_IF_LANES_LE_D(BlockDFromD<D>, 8)>
+  static HWY_INLINE void DoTestExtractLaneWithConstAmt_8_15(D /*d*/,
+                                                            Vec<D> /*v*/) {}
+
+  template <class D, HWY_IF_LANES_GT_D(BlockDFromD<D>, 8)>
+  static HWY_INLINE void DoTestExtractLaneWithConstAmt_8_15(D /*d*/, Vec<D> v) {
+    HWY_ASSERT_EQ(static_cast<TFromD<D>>(9), ExtractLane(v, 8));
+    HWY_ASSERT_EQ(static_cast<TFromD<D>>(10), ExtractLane(v, 9));
+    HWY_ASSERT_EQ(static_cast<TFromD<D>>(11), ExtractLane(v, 10));
+    HWY_ASSERT_EQ(static_cast<TFromD<D>>(12), ExtractLane(v, 11));
+    HWY_ASSERT_EQ(static_cast<TFromD<D>>(13), ExtractLane(v, 12));
+    HWY_ASSERT_EQ(static_cast<TFromD<D>>(14), ExtractLane(v, 13));
+    HWY_ASSERT_EQ(static_cast<TFromD<D>>(15), ExtractLane(v, 14));
+    HWY_ASSERT_EQ(static_cast<TFromD<D>>(16), ExtractLane(v, 15));
+  }
+#endif  // !HWY_HAVE_SCALABLE && HWY_TARGET < HWY_EMU128 &&
+        // HWY_TARGET != HWY_SVE2_128 && HWY_TARGET != HWY_SVE_256
+
   template <class T, class D>
   HWY_NOINLINE void operator()(T /*unused*/, D d) {
     const auto v = Iota(d, T(1));
+
+#if !HWY_HAVE_SCALABLE && HWY_TARGET < HWY_EMU128 && \
+    HWY_TARGET != HWY_SVE2_128 && HWY_TARGET != HWY_SVE_256
+    DoTestExtractLaneWithConstAmt_0_7(d, v);
+    DoTestExtractLaneWithConstAmt_8_15(d, v);
+#endif  // !HWY_HAVE_SCALABLE && HWY_TARGET < HWY_EMU128 &&
+        // HWY_TARGET != HWY_SVE2_128 && HWY_TARGET != HWY_SVE_256
+
     for (size_t i = 0; i < Lanes(d); ++i) {
       const T actual = ExtractLane(v, i);
       HWY_ASSERT_EQ(static_cast<T>(i + 1), actual);
@@ -51,6 +110,141 @@ HWY_NOINLINE void TestAllExtractLane() {
 }
 
 struct TestInsertLane {
+#if !HWY_HAVE_SCALABLE && HWY_TARGET < HWY_EMU128 && \
+    HWY_TARGET != HWY_SVE2_128 && HWY_TARGET != HWY_SVE_256
+  template <class D, HWY_IF_LANES_D(BlockDFromD<D>, 1)>
+  static HWY_INLINE void DoTestInsertLaneWithConstAmt_0_7(
+      D d, TFromD<D>* HWY_RESTRICT lanes) {
+    using T = TFromD<D>;
+
+    lanes[0] = static_cast<T>(1);
+    Vec<D> v = InsertLane(Zero(d), 0, static_cast<T>(1));
+    HWY_ASSERT_VEC_EQ(d, lanes, v);
+  }
+  template <class D, HWY_IF_LANES_D(BlockDFromD<D>, 2)>
+  static HWY_INLINE void DoTestInsertLaneWithConstAmt_0_7(
+      D d, TFromD<D>* HWY_RESTRICT lanes) {
+    using T = TFromD<D>;
+
+    lanes[0] = static_cast<T>(1);
+    Vec<D> v = InsertLane(Zero(d), 0, static_cast<T>(1));
+    HWY_ASSERT_VEC_EQ(d, lanes, v);
+
+    lanes[1] = static_cast<T>(2);
+    v = InsertLane(v, 1, static_cast<T>(2));
+    HWY_ASSERT_VEC_EQ(d, lanes, v);
+  }
+  template <class D, HWY_IF_LANES_D(BlockDFromD<D>, 4)>
+  static HWY_INLINE void DoTestInsertLaneWithConstAmt_0_7(
+      D d, TFromD<D>* HWY_RESTRICT lanes) {
+    using T = TFromD<D>;
+
+    lanes[0] = static_cast<T>(1);
+    Vec<D> v = InsertLane(Zero(d), 0, static_cast<T>(1));
+    HWY_ASSERT_VEC_EQ(d, lanes, v);
+
+    lanes[1] = static_cast<T>(2);
+    v = InsertLane(v, 1, static_cast<T>(2));
+    HWY_ASSERT_VEC_EQ(d, lanes, v);
+
+    lanes[2] = static_cast<T>(3);
+    v = InsertLane(v, 2, static_cast<T>(3));
+    HWY_ASSERT_VEC_EQ(d, lanes, v);
+
+    lanes[3] = static_cast<T>(4);
+    v = InsertLane(v, 3, static_cast<T>(4));
+    HWY_ASSERT_VEC_EQ(d, lanes, v);
+  }
+  template <class D, HWY_IF_LANES_GT_D(BlockDFromD<D>, 4)>
+  static HWY_INLINE void DoTestInsertLaneWithConstAmt_0_7(
+      D d, TFromD<D>* HWY_RESTRICT lanes) {
+    using T = TFromD<D>;
+
+    lanes[0] = static_cast<T>(1);
+    Vec<D> v = InsertLane(Zero(d), 0, static_cast<T>(1));
+    HWY_ASSERT_VEC_EQ(d, lanes, v);
+
+    lanes[1] = static_cast<T>(2);
+    v = InsertLane(v, 1, static_cast<T>(2));
+    HWY_ASSERT_VEC_EQ(d, lanes, v);
+
+    lanes[2] = static_cast<T>(3);
+    v = InsertLane(v, 2, static_cast<T>(3));
+    HWY_ASSERT_VEC_EQ(d, lanes, v);
+
+    lanes[3] = static_cast<T>(4);
+    v = InsertLane(v, 3, static_cast<T>(4));
+    HWY_ASSERT_VEC_EQ(d, lanes, v);
+
+    lanes[4] = static_cast<T>(5);
+    v = InsertLane(v, 4, static_cast<T>(5));
+    HWY_ASSERT_VEC_EQ(d, lanes, v);
+
+    lanes[5] = static_cast<T>(6);
+    v = InsertLane(v, 5, static_cast<T>(6));
+    HWY_ASSERT_VEC_EQ(d, lanes, v);
+
+    lanes[6] = static_cast<T>(7);
+    v = InsertLane(v, 6, static_cast<T>(7));
+    HWY_ASSERT_VEC_EQ(d, lanes, v);
+
+    lanes[7] = static_cast<T>(8);
+    v = InsertLane(v, 7, static_cast<T>(8));
+    HWY_ASSERT_VEC_EQ(d, lanes, v);
+  }
+  template <class D, HWY_IF_LANES_LE_D(BlockDFromD<D>, 8)>
+  static HWY_INLINE void DoTestInsertLaneWithConstAmt_8_15(
+      D /*d*/, TFromD<D>* HWY_RESTRICT /*lanes*/) {}
+  template <class D, HWY_IF_LANES_GT_D(BlockDFromD<D>, 8)>
+  static HWY_INLINE void DoTestInsertLaneWithConstAmt_8_15(
+      D d, TFromD<D>* HWY_RESTRICT lanes) {
+    using T = TFromD<D>;
+    Vec<D> v = Load(d, lanes);
+
+    lanes[8] = static_cast<T>(9);
+    v = InsertLane(v, 8, static_cast<T>(9));
+    HWY_ASSERT_VEC_EQ(d, lanes, v);
+
+    lanes[9] = static_cast<T>(10);
+    v = InsertLane(v, 9, static_cast<T>(10));
+    HWY_ASSERT_VEC_EQ(d, lanes, v);
+
+    lanes[10] = static_cast<T>(11);
+    v = InsertLane(v, 10, static_cast<T>(11));
+    HWY_ASSERT_VEC_EQ(d, lanes, v);
+
+    lanes[11] = static_cast<T>(12);
+    v = InsertLane(v, 11, static_cast<T>(12));
+    HWY_ASSERT_VEC_EQ(d, lanes, v);
+
+    lanes[12] = static_cast<T>(13);
+    v = InsertLane(v, 12, static_cast<T>(13));
+    HWY_ASSERT_VEC_EQ(d, lanes, v);
+
+    lanes[13] = static_cast<T>(14);
+    v = InsertLane(v, 13, static_cast<T>(14));
+    HWY_ASSERT_VEC_EQ(d, lanes, v);
+
+    lanes[14] = static_cast<T>(15);
+    v = InsertLane(v, 14, static_cast<T>(15));
+    HWY_ASSERT_VEC_EQ(d, lanes, v);
+
+    lanes[15] = static_cast<T>(16);
+    v = InsertLane(v, 15, static_cast<T>(16));
+    HWY_ASSERT_VEC_EQ(d, lanes, v);
+  }
+  template <class D, HWY_IF_V_SIZE_LE_D(D, 16)>
+  static HWY_INLINE void DoTestInsertLaneWithConstAmt(
+      D d, TFromD<D>* HWY_RESTRICT lanes) {
+    DoTestInsertLaneWithConstAmt_0_7(d, lanes);
+    DoTestInsertLaneWithConstAmt_8_15(d, lanes);
+    Store(Zero(d), d, lanes);
+  }
+  template <class D, HWY_IF_V_SIZE_GT_D(D, 16)>
+  static HWY_INLINE void DoTestInsertLaneWithConstAmt(
+      D /*d*/, TFromD<D>* HWY_RESTRICT /*lanes*/) {}
+#endif  // !HWY_HAVE_SCALABLE && HWY_TARGET < HWY_EMU128 &&
+        // HWY_TARGET != HWY_SVE2_128 && HWY_TARGET != HWY_SVE_256
   template <class T, class D>
   HWY_NOINLINE void operator()(T /*unused*/, D d) {
     using V = Vec<D>;
@@ -58,13 +252,28 @@ struct TestInsertLane {
     const size_t N = Lanes(d);
     auto lanes = AllocateAligned<T>(N);
     HWY_ASSERT(lanes);
-    Store(v, d, lanes.get());
+    Store(Zero(d), d, lanes.get());
 
-    for (size_t i = 0; i < Lanes(d); ++i) {
+#if !HWY_HAVE_SCALABLE && HWY_TARGET < HWY_EMU128 && \
+    HWY_TARGET != HWY_SVE2_128 && HWY_TARGET != HWY_SVE_256
+    DoTestInsertLaneWithConstAmt(d, lanes.get());
+#endif  // !HWY_HAVE_SCALABLE && HWY_TARGET < HWY_EMU128 &&
+        // HWY_TARGET != HWY_SVE2_128 && HWY_TARGET != HWY_SVE_256
+
+    V v2 = Zero(d);
+    for (size_t i = 0; i < N; ++i) {
+      lanes[i] = static_cast<T>(i + 1);
+      v2 = InsertLane(v2, i, static_cast<T>(i + 1));
+      HWY_ASSERT_VEC_EQ(d, lanes.get(), v2);
+    }
+    HWY_ASSERT_VEC_EQ(d, v, v2);
+
+    for (size_t i = 0; i < N; ++i) {
       lanes[i] = T{0};
-      const V actual = InsertLane(v, i, static_cast<T>(i + 1));
+      const V v3 = Load(d, lanes.get());
+      const V actual = InsertLane(v3, i, static_cast<T>(i + 1));
       HWY_ASSERT_VEC_EQ(d, v, actual);
-      Store(v, d, lanes.get());  // restore lane i
+      lanes[i] = static_cast<T>(i + 1);  // restore lane i
     }
   }
 };
@@ -128,191 +337,6 @@ struct TestOddEven {
 
 HWY_NOINLINE void TestAllOddEven() {
   ForAllTypes(ForShrinkableVectors<TestOddEven>());
-}
-
-class TestPer4LaneBlockShuffle {
- private:
-  template <class D, HWY_IF_LANES_LE_D(D, 1)>
-  static HWY_INLINE VFromD<D> InterleaveMaskVectors(D /*d*/, VFromD<D> a,
-                                                    VFromD<D> /*b*/) {
-    return a;
-  }
-#if HWY_TARGET != HWY_SCALAR
-  template <class D, HWY_IF_LANES_GT_D(D, 1)>
-  static HWY_INLINE VFromD<D> InterleaveMaskVectors(D d, VFromD<D> a,
-                                                    VFromD<D> b) {
-    return InterleaveLower(d, a, b);
-  }
-#endif
-  template <class D>
-  static HWY_INLINE Mask<D> Per4LaneBlockShufValidMask(D d, const size_t N,
-                                                       const size_t idx1,
-                                                       const size_t idx0) {
-    if (N < 4) {
-      const RebindToSigned<decltype(d)> di;
-      using TI = TFromD<decltype(di)>;
-      const auto lane_0_valid =
-          Set(di, static_cast<TI>(-static_cast<int>(idx0 < N)));
-      if (N > 1) {
-        const auto lane_1_valid =
-            Set(di, static_cast<TI>(-static_cast<int>(idx1 < N)));
-        return RebindMask(d, MaskFromVec(InterleaveMaskVectors(di, lane_0_valid,
-                                                               lane_1_valid)));
-      }
-      return RebindMask(d, MaskFromVec(lane_0_valid));
-    }
-
-    return FirstN(d, N);
-  }
-
-  // TODO(b/287462770): inline to work around incorrect SVE codegen
-  template <class D>
-  static HWY_INLINE void DoCheckPer4LaneBlkShufResult(
-      D d, const size_t N, VFromD<D> actual,
-      const TFromD<D>* HWY_RESTRICT src_lanes, TFromD<D>* HWY_RESTRICT expected,
-      size_t idx3, size_t idx2, size_t idx1, size_t idx0) {
-    for (size_t i = 0; i < N; i += 4) {
-      expected[i] = src_lanes[i + idx0];
-      expected[i + 1] = src_lanes[i + idx1];
-      expected[i + 2] = src_lanes[i + idx2];
-      expected[i + 3] = src_lanes[i + idx3];
-    }
-
-    if (N < 4) {
-      if (idx0 >= N) expected[0] = TFromD<D>{0};
-      if (idx1 >= N) expected[1] = TFromD<D>{0};
-    }
-
-    const auto valid_lanes_mask = Per4LaneBlockShufValidMask(d, N, idx1, idx0);
-    HWY_ASSERT_VEC_EQ(d, expected, IfThenElseZero(valid_lanes_mask, actual));
-  }
-
-#if HWY_TARGET != HWY_SCALAR
-  template <class D>
-  static HWY_NOINLINE void TestTblLookupPer4LaneBlkShuf(
-      D d, const size_t N, const TFromD<D>* HWY_RESTRICT src_lanes,
-      TFromD<D>* HWY_RESTRICT expected) {
-    const auto v = Load(d, src_lanes);
-    for (size_t idx3210 = 0; idx3210 <= 0xFF; idx3210++) {
-      const size_t idx3 = (idx3210 >> 6) & 3;
-      const size_t idx2 = (idx3210 >> 4) & 3;
-      const size_t idx1 = (idx3210 >> 2) & 3;
-      const size_t idx0 = idx3210 & 3;
-
-      const auto actual = detail::TblLookupPer4LaneBlkShuf(v, idx3210);
-      DoCheckPer4LaneBlkShufResult(d, N, actual, src_lanes, expected, idx3,
-                                   idx2, idx1, idx0);
-    }
-  }
-#endif
-
-  template <size_t kIdx3, size_t kIdx2, size_t kIdx1, size_t kIdx0, class D>
-  static HWY_INLINE void DoTestPer4LaneBlkShuffle(
-      D d, const size_t N, const VFromD<D> v,
-      const TFromD<D>* HWY_RESTRICT src_lanes,
-      TFromD<D>* HWY_RESTRICT expected) {
-    const auto actual = Per4LaneBlockShuffle<kIdx3, kIdx2, kIdx1, kIdx0>(v);
-    DoCheckPer4LaneBlkShufResult(d, N, actual, src_lanes, expected, kIdx3,
-                                 kIdx2, kIdx1, kIdx0);
-  }
-
-  template <class D>
-  static HWY_NOINLINE void DoTestPer4LaneBlkShuffles(
-      D d, const size_t N, const VecArg<VFromD<D>> v,
-      TFromD<D>* HWY_RESTRICT src_lanes,
-      TFromD<D>* HWY_RESTRICT expected) {
-    Store(v, d, src_lanes);
-#if HWY_TARGET != HWY_SCALAR
-    TestTblLookupPer4LaneBlkShuf(d, N, src_lanes, expected);
-#endif
-    DoTestPer4LaneBlkShuffle<0, 1, 2, 3>(d, N, v, src_lanes, expected);
-    DoTestPer4LaneBlkShuffle<0, 1, 3, 2>(d, N, v, src_lanes, expected);
-    DoTestPer4LaneBlkShuffle<0, 2, 3, 1>(d, N, v, src_lanes, expected);
-    DoTestPer4LaneBlkShuffle<0, 3, 0, 2>(d, N, v, src_lanes, expected);
-    DoTestPer4LaneBlkShuffle<1, 0, 1, 0>(d, N, v, src_lanes, expected);
-    DoTestPer4LaneBlkShuffle<1, 0, 3, 1>(d, N, v, src_lanes, expected);
-    DoTestPer4LaneBlkShuffle<1, 0, 3, 2>(d, N, v, src_lanes, expected);
-    DoTestPer4LaneBlkShuffle<1, 2, 0, 3>(d, N, v, src_lanes, expected);
-    DoTestPer4LaneBlkShuffle<1, 2, 1, 3>(d, N, v, src_lanes, expected);
-    DoTestPer4LaneBlkShuffle<1, 1, 0, 0>(d, N, v, src_lanes, expected);
-    DoTestPer4LaneBlkShuffle<2, 0, 1, 3>(d, N, v, src_lanes, expected);
-    DoTestPer4LaneBlkShuffle<2, 0, 2, 0>(d, N, v, src_lanes, expected);
-    DoTestPer4LaneBlkShuffle<2, 1, 2, 0>(d, N, v, src_lanes, expected);
-    DoTestPer4LaneBlkShuffle<2, 2, 0, 0>(d, N, v, src_lanes, expected);
-    DoTestPer4LaneBlkShuffle<2, 3, 0, 1>(d, N, v, src_lanes, expected);
-    DoTestPer4LaneBlkShuffle<2, 3, 3, 0>(d, N, v, src_lanes, expected);
-    DoTestPer4LaneBlkShuffle<3, 0, 2, 1>(d, N, v, src_lanes, expected);
-    DoTestPer4LaneBlkShuffle<3, 1, 0, 3>(d, N, v, src_lanes, expected);
-    DoTestPer4LaneBlkShuffle<3, 1, 3, 1>(d, N, v, src_lanes, expected);
-    DoTestPer4LaneBlkShuffle<3, 2, 1, 0>(d, N, v, src_lanes, expected);
-    DoTestPer4LaneBlkShuffle<3, 2, 3, 2>(d, N, v, src_lanes, expected);
-    DoTestPer4LaneBlkShuffle<3, 3, 0, 1>(d, N, v, src_lanes, expected);
-    DoTestPer4LaneBlkShuffle<3, 3, 1, 1>(d, N, v, src_lanes, expected);
-    DoTestPer4LaneBlkShuffle<3, 3, 2, 2>(d, N, v, src_lanes, expected);
-  }
-
-  template <class D>
-  static HWY_INLINE Vec<D> GenerateTestVect(hwy::NonFloatTag /*tag*/, D d) {
-    const RebindToUnsigned<decltype(d)> du;
-    using TU = TFromD<decltype(du)>;
-    constexpr TU kIotaStart = static_cast<TU>(0x0706050403020101u);
-    return BitCast(d, Iota(du, kIotaStart));
-  }
-
-  template <class D>
-  static HWY_INLINE Vec<D> GenerateTestVect(hwy::FloatTag /*tag*/, D d) {
-    const RebindToUnsigned<decltype(d)> du;
-    using T = TFromD<decltype(d)>;
-    using TU = TFromD<decltype(du)>;
-
-    constexpr size_t kNumOfBitsInT = sizeof(T) * 8;
-    constexpr TU kIntBitsMask =
-        (kNumOfBitsInT > 16) ? static_cast<TU>(static_cast<TU>(~TU{0}) >> 16)
-                             : TU{0};
-
-    const auto flt_iota = Set(d, 1);
-    if (kIntBitsMask == 0) return flt_iota;
-
-    const auto int_iota =
-        And(GenerateTestVect(hwy::NonFloatTag(), du), Set(du, kIntBitsMask));
-    return Or(flt_iota, BitCast(d, int_iota));
-  }
-
- public:
-  template <class T, class D>
-  HWY_NOINLINE void operator()(T /*unused*/, D d) {
-    const size_t N = Lanes(d);
-    const size_t alloc_len = static_cast<size_t>((N + 3) & (~size_t{3}));
-    HWY_ASSERT(alloc_len >= 4);
-
-    auto expected = AllocateAligned<T>(alloc_len);
-    auto src_lanes = AllocateAligned<T>(alloc_len);
-    HWY_ASSERT(expected && src_lanes);
-
-    expected[alloc_len - 4] = T{0};
-    expected[alloc_len - 3] = T{0};
-    expected[alloc_len - 2] = T{0};
-    expected[alloc_len - 1] = T{0};
-    src_lanes[alloc_len - 4] = T{0};
-    src_lanes[alloc_len - 3] = T{0};
-    src_lanes[alloc_len - 2] = T{0};
-    src_lanes[alloc_len - 1] = T{0};
-
-    const auto v = GenerateTestVect(hwy::IsFloatTag<T>(), d);
-    DoTestPer4LaneBlkShuffles(d, N, v, src_lanes.get(), expected.get());
-
-    const RebindToUnsigned<decltype(d)> du;
-    using TU = TFromD<decltype(du)>;
-    const auto msb_mask =
-        BitCast(d, Set(du, static_cast<TU>(TU{1} << (sizeof(TU) * 8 - 1))));
-
-    DoTestPer4LaneBlkShuffles(d, N, Xor(v, msb_mask), src_lanes.get(),
-                              expected.get());
-  }
-};
-
-HWY_NOINLINE void TestAllPer4LaneBlockShuffle() {
-  ForAllTypes(ForPartialFixedOrFullScalableVectors<TestPer4LaneBlockShuffle>());
 }
 
 class TestBroadcastLane {
@@ -388,7 +412,6 @@ HWY_EXPORT_AND_TEST_P(HwySwizzleTest, TestAllInsertLane);
 HWY_EXPORT_AND_TEST_P(HwySwizzleTest, TestAllDupEven);
 HWY_EXPORT_AND_TEST_P(HwySwizzleTest, TestAllDupOdd);
 HWY_EXPORT_AND_TEST_P(HwySwizzleTest, TestAllOddEven);
-HWY_EXPORT_AND_TEST_P(HwySwizzleTest, TestAllPer4LaneBlockShuffle);
 HWY_EXPORT_AND_TEST_P(HwySwizzleTest, TestAllBroadcastLane);
 }  // namespace hwy
 

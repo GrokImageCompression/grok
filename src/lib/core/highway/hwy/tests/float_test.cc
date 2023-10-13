@@ -44,7 +44,7 @@ struct TestDiv {
     auto expected = AllocateAligned<T>(N);
     HWY_ASSERT(expected);
     for (size_t i = 0; i < N; ++i) {
-      expected[i] = (T(i) - 2) / T(2);
+      expected[i] = static_cast<T>((static_cast<double>(i) - 2.0) / 2.0);
     }
     HWY_ASSERT_VEC_EQ(d, expected.get(), Div(v, Set(d, T(2))));
   }
@@ -113,10 +113,11 @@ struct TestReciprocalSquareRoot {
     Store(ApproximateReciprocalSqrt(v), d, lanes.get());
     for (size_t i = 0; i < N; ++i) {
       T err = lanes[i] - 0.090166f;
-      if (err < 0.0f) err = -err;
-      if (err >= 4E-4f) {
+      if (err < T{0}) err = -err;
+      if (static_cast<double>(err) >= 4E-4) {
         HWY_ABORT("Lane %d (%d): actual %f err %f\n", static_cast<int>(i),
-                  static_cast<int>(N), lanes[i], err);
+                  static_cast<int>(N), static_cast<double>(lanes[i]),
+                  static_cast<double>(err));
       }
     }
   }
@@ -185,7 +186,8 @@ struct TestRound {
       // Avoid [std::]round, which does not round to nearest *even*.
       // NOTE: std:: version from C++11 cmath is not defined in RVV GCC, see
       // https://lists.freebsd.org/pipermail/freebsd-current/2014-January/048130.html
-      expected[i] = static_cast<T>(nearbyint(in[i]));
+      // Cast to double because nearbyint does not support _Float16.
+      expected[i] = static_cast<T>(nearbyint(static_cast<double>(in[i])));
     }
     for (size_t i = 0; i < padded; i += Lanes(d)) {
       HWY_ASSERT_VEC_EQ(d, &expected[i], Round(Load(d, &in[i])));
@@ -243,7 +245,8 @@ struct TestTrunc {
     for (size_t i = 0; i < padded; ++i) {
       // NOTE: std:: version from C++11 cmath is not defined in RVV GCC, see
       // https://lists.freebsd.org/pipermail/freebsd-current/2014-January/048130.html
-      expected[i] = static_cast<T>(trunc(in[i]));
+      // Cast to double because trunc does not support _Float16.
+      expected[i] = static_cast<T>(trunc(static_cast<double>(in[i])));
     }
     for (size_t i = 0; i < padded; i += Lanes(d)) {
       HWY_ASSERT_VEC_EQ(d, &expected[i], Trunc(Load(d, &in[i])));
@@ -264,7 +267,8 @@ struct TestCeil {
     HWY_ASSERT(expected);
 
     for (size_t i = 0; i < padded; ++i) {
-      expected[i] = std::ceil(in[i]);
+      // Cast to double because ceil does not support _Float16.
+      expected[i] = static_cast<T>(std::ceil(static_cast<double>(in[i])));
     }
     for (size_t i = 0; i < padded; i += Lanes(d)) {
       HWY_ASSERT_VEC_EQ(d, &expected[i], Ceil(Load(d, &in[i])));
@@ -285,7 +289,8 @@ struct TestFloor {
     HWY_ASSERT(expected);
 
     for (size_t i = 0; i < padded; ++i) {
-      expected[i] = std::floor(in[i]);
+      // Cast to double because floor does not support _Float16.
+      expected[i] = static_cast<T>(std::floor(static_cast<double>(in[i])));
     }
     for (size_t i = 0; i < padded; i += Lanes(d)) {
       HWY_ASSERT_VEC_EQ(d, &expected[i], Floor(Load(d, &in[i])));
@@ -308,7 +313,9 @@ struct TestAbsDiff {
     for (size_t i = 0; i < N; ++i) {
       in_lanes_a[i] = static_cast<T>((i ^ 1u) << i);
       in_lanes_b[i] = static_cast<T>(i << i);
-      out_lanes[i] = std::abs(in_lanes_a[i] - in_lanes_b[i]);
+      // Cast to double because abs does not support _Float16.
+      out_lanes[i] = static_cast<T>(
+          std::abs(static_cast<double>(in_lanes_a[i] - in_lanes_b[i])));
     }
     const auto a = Load(d, in_lanes_a.get());
     const auto b = Load(d, in_lanes_b.get());
@@ -319,7 +326,7 @@ struct TestAbsDiff {
 };
 
 HWY_NOINLINE void TestAllAbsDiff() {
-  ForPartialVectors<TestAbsDiff>()(float());
+  ForFloatTypes(ForPartialVectors<TestAbsDiff>());
 }
 
 // NOLINTNEXTLINE(google-readability-namespace-comments)

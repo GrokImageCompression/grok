@@ -33,7 +33,7 @@ namespace hwy {
 // API version (https://semver.org/); keep in sync with CMakeLists.txt.
 #define HWY_MAJOR 1
 #define HWY_MINOR 0
-#define HWY_PATCH 4
+#define HWY_PATCH 7
 
 //------------------------------------------------------------------------------
 // Shorthand for tags (defined in shared-inl.h) used to select overloads.
@@ -337,6 +337,7 @@ FunctionCache<RetType, Args...> DeduceFunctionCache(RetType (*)(Args...)) {
   HWY_MAYBE_UNUSED static decltype(&HWY_STATIC_DISPATCH(FUNC_NAME)) const \
   HWY_DISPATCH_TABLE(FUNC_NAME)[1] = {&HWY_STATIC_DISPATCH(FUNC_NAME)}
 #define HWY_DYNAMIC_DISPATCH(FUNC_NAME) HWY_STATIC_DISPATCH(FUNC_NAME)
+#define HWY_DYNAMIC_POINTER(FUNC_NAME) &HWY_STATIC_DISPATCH(FUNC_NAME)
 
 #else
 
@@ -373,6 +374,8 @@ FunctionCache<RetType, Args...> DeduceFunctionCache(RetType (*)(Args...)) {
 
 #define HWY_DYNAMIC_DISPATCH(FUNC_NAME) \
   (*(HWY_DISPATCH_TABLE(FUNC_NAME)[hwy::GetChosenTarget().GetIndex()]))
+#define HWY_DYNAMIC_POINTER(FUNC_NAME) \
+  (HWY_DISPATCH_TABLE(FUNC_NAME)[hwy::GetChosenTarget().GetIndex()])
 
 #endif  // HWY_IDE || ((HWY_TARGETS & (HWY_TARGETS - 1)) == 0)
 
@@ -398,8 +401,7 @@ FunctionCache<RetType, Args...> DeduceFunctionCache(RetType (*)(Args...)) {
 #endif
 
 // These define ops inside namespace hwy::HWY_NAMESPACE.
-#if HWY_TARGET == HWY_SSE2 || HWY_TARGET == HWY_SSSE3 || \
-    HWY_TARGET == HWY_SSE4
+#if HWY_TARGET == HWY_SSE2 || HWY_TARGET == HWY_SSSE3 || HWY_TARGET == HWY_SSE4
 #include "hwy/ops/x86_128-inl.h"
 #elif HWY_TARGET == HWY_AVX2
 #include "hwy/ops/x86_256-inl.h"

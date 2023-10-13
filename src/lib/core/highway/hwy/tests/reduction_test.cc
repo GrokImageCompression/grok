@@ -24,15 +24,27 @@ namespace hwy {
 namespace HWY_NAMESPACE {
 
 struct TestSumOfLanes {
-  template <typename T, size_t N, int P,
-            hwy::EnableIf<!IsSigned<T>() || ((N & 1) != 0)>* = nullptr>
-  HWY_NOINLINE void SignedEvenLengthVectorTests(Simd<T, N, P>) {
+  template <typename D,
+            hwy::EnableIf<!IsSigned<TFromD<D>>() ||
+                          ((HWY_MAX_LANES_D(D) & 1) != 0)>* = nullptr>
+  HWY_NOINLINE void SignedEvenLengthVectorTests(D /*d*/) {
     // do nothing
   }
-  template <typename T, size_t N, int P,
-            hwy::EnableIf<IsSigned<T>() && ((N & 1) == 0)>* = nullptr>
-  HWY_NOINLINE void SignedEvenLengthVectorTests(Simd<T, N, P> d) {
-    const T pairs = static_cast<T>(Lanes(d) / 2);
+  template <typename D,
+            hwy::EnableIf<IsSigned<TFromD<D>>() &&
+                          ((HWY_MAX_LANES_D(D) & 1) == 0)>* = nullptr>
+  HWY_NOINLINE void SignedEvenLengthVectorTests(D d) {
+    using T = TFromD<D>;
+
+    const size_t lanes = Lanes(d);
+
+#if HWY_HAVE_SCALABLE
+    // On platforms that use scalable vectors, it is possible for Lanes(d) to be
+    // odd but for MaxLanes(d) to be even if Lanes(d) < 2 is true.
+    if (lanes < 2) return;
+#endif
+
+    const T pairs = static_cast<T>(lanes / 2);
 
     // Lanes are the repeated sequence -2, 1, [...]; each pair sums to -1,
     // so the eventual total is just -(N/2).
@@ -54,20 +66,20 @@ struct TestSumOfLanes {
     HWY_ASSERT(in_lanes);
 
     // Lane i = bit i, higher lanes 0
-    double sum = 0.0;
+    T sum = T{0};
     // Avoid setting sign bit and cap at double precision
     constexpr size_t kBits = HWY_MIN(sizeof(T) * 8 - 1, 51);
     for (size_t i = 0; i < N; ++i) {
       in_lanes[i] = i < kBits ? static_cast<T>(1ull << i) : static_cast<T>(0);
-      sum += static_cast<double>(in_lanes[i]);
+      sum = AddWithWraparound(hwy::IsFloatTag<T>(), sum, in_lanes[i]);
     }
     HWY_ASSERT_VEC_EQ(d, Set(d, T(sum)),
                       SumOfLanes(d, Load(d, in_lanes.get())));
     HWY_ASSERT_EQ(T(sum), ReduceSum(d, Load(d, in_lanes.get())));
     // Lane i = i (iota) to include upper lanes
-    sum = 0.0;
+    sum = T{0};
     for (size_t i = 0; i < N; ++i) {
-      sum += static_cast<double>(i);
+      sum = AddWithWraparound(hwy::IsFloatTag<T>(), sum, static_cast<T>(i));
     }
     HWY_ASSERT_VEC_EQ(d, Set(d, T(sum)), SumOfLanes(d, Iota(d, 0)));
     HWY_ASSERT_EQ(T(sum), ReduceSum(d, Iota(d, 0)));
@@ -79,13 +91,7 @@ struct TestSumOfLanes {
 };
 
 HWY_NOINLINE void TestAllSumOfLanes() {
-  ForUIF3264(ForPartialVectors<TestSumOfLanes>());
-  ForUI16(ForPartialVectors<TestSumOfLanes>());
-
-// UI8 is only implemented for some targets.
-#if HWY_MAX_BYTES == 16 && (HWY_ARCH_ARM || HWY_ARCH_X86)
-  ForUI8(ForGEVectors<64, TestSumOfLanes>());
-#endif
+  ForAllTypes(ForPartialVectors<TestSumOfLanes>());
 }
 
 struct TestMinOfLanes {
@@ -140,6 +146,7 @@ struct TestMinOfLanes {
       in_lanes[i] = min;
     }
     HWY_ASSERT_VEC_EQ(d, Set(d, min), MinOfLanes(d, Load(d, in_lanes.get())));
+    HWY_ASSERT_EQ(min, ReduceMin(d, Load(d, in_lanes.get())));
   }
 };
 
@@ -194,21 +201,102 @@ struct TestMaxOfLanes {
       in_lanes[i] = max;
     }
     HWY_ASSERT_VEC_EQ(d, Set(d, max), MaxOfLanes(d, Load(d, in_lanes.get())));
+    HWY_ASSERT_EQ(max, ReduceMax(d, Load(d, in_lanes.get())));
   }
 };
 
 HWY_NOINLINE void TestAllMinMaxOfLanes() {
-  const ForPartialVectors<TestMinOfLanes> test_min;
-  const ForPartialVectors<TestMaxOfLanes> test_max;
-  ForUIF3264(test_min);
-  ForUIF3264(test_max);
-  ForUI16(test_min);
-  ForUI16(test_max);
+  ForAllTypes(ForPartialVectors<TestMinOfLanes>());
+  ForAllTypes(ForPartialVectors<TestMaxOfLanes>());
+}
 
-// UI8 is only implemented for some targets.
-#if HWY_MAX_BYTES == 16 && (HWY_ARCH_ARM || HWY_ARCH_X86)
-  ForUI8(ForGEVectors<64, TestMinOfLanes>());
-  ForUI8(ForGEVectors<64, TestMaxOfLanes>());
+struct TestSumsOf2 {
+  template <typename T, class D>
+  HWY_NOINLINE void operator()(T /*unused*/, D d) {
+    RandomState rng;
+    using TW = MakeWide<T>;
+
+    const size_t N = Lanes(d);
+    if (N < 2) return;
+    const RepartitionToWide<D> dw;
+
+    auto in_lanes = AllocateAligned<T>(N);
+    auto sum_lanes = AllocateAligned<TW>(N / 2);
+
+    for (size_t rep = 0; rep < 100; ++rep) {
+      for (size_t i = 0; i < N; ++i) {
+        in_lanes[i] = RandomFiniteValue<T>(&rng);
+      }
+
+      for (size_t idx_sum = 0; idx_sum < N / 2; ++idx_sum) {
+        TW sum = static_cast<TW>(static_cast<TW>(in_lanes[idx_sum * 2]) +
+                                 static_cast<TW>(in_lanes[idx_sum * 2 + 1]));
+        sum_lanes[idx_sum] = sum;
+      }
+
+      const Vec<D> in = Load(d, in_lanes.get());
+      HWY_ASSERT_VEC_EQ(dw, sum_lanes.get(), SumsOf2(in));
+    }
+  }
+};
+
+HWY_NOINLINE void TestAllSumsOf2() {
+  ForGEVectors<16, TestSumsOf2>()(int8_t());
+  ForGEVectors<16, TestSumsOf2>()(uint8_t());
+
+  ForGEVectors<32, TestSumsOf2>()(int16_t());
+  ForGEVectors<32, TestSumsOf2>()(uint16_t());
+
+#if HWY_HAVE_INTEGER64
+  ForGEVectors<64, TestSumsOf2>()(int32_t());
+  ForGEVectors<64, TestSumsOf2>()(uint32_t());
+#endif
+
+#if HWY_HAVE_FLOAT64
+  ForGEVectors<64, TestSumsOf2>()(float());
+#endif
+}
+
+struct TestSumsOf4 {
+  template <typename T, class D>
+  HWY_NOINLINE void operator()(T /*unused*/, D d) {
+    RandomState rng;
+    using TW = MakeWide<T>;
+    using TW2 = MakeWide<TW>;
+
+    const size_t N = Lanes(d);
+    if (N < 4) return;
+    const Repartition<TW2, D> dw2;
+
+    auto in_lanes = AllocateAligned<T>(N);
+    auto sum_lanes = AllocateAligned<TW2>(N / 4);
+
+    for (size_t rep = 0; rep < 100; ++rep) {
+      for (size_t i = 0; i < N; ++i) {
+        in_lanes[i] = RandomFiniteValue<T>(&rng);
+      }
+
+      for (size_t idx_sum = 0; idx_sum < N / 4; ++idx_sum) {
+        TW2 sum = static_cast<TW2>(static_cast<TW>(in_lanes[idx_sum * 4]) +
+                                   static_cast<TW>(in_lanes[idx_sum * 4 + 1]) +
+                                   static_cast<TW>(in_lanes[idx_sum * 4 + 2]) +
+                                   static_cast<TW>(in_lanes[idx_sum * 4 + 3]));
+        sum_lanes[idx_sum] = sum;
+      }
+
+      const Vec<D> in = Load(d, in_lanes.get());
+      HWY_ASSERT_VEC_EQ(dw2, sum_lanes.get(), SumsOf4(in));
+    }
+  }
+};
+
+HWY_NOINLINE void TestAllSumsOf4() {
+  ForGEVectors<32, TestSumsOf4>()(int8_t());
+  ForGEVectors<32, TestSumsOf4>()(uint8_t());
+
+#if HWY_HAVE_INTEGER64
+  ForGEVectors<64, TestSumsOf4>()(int16_t());
+  ForGEVectors<64, TestSumsOf4>()(uint16_t());
 #endif
 }
 
@@ -216,21 +304,22 @@ struct TestSumsOf8 {
   template <typename T, class D>
   HWY_NOINLINE void operator()(T /*unused*/, D d) {
     RandomState rng;
+    using TW = MakeWide<MakeWide<MakeWide<T>>>;
 
     const size_t N = Lanes(d);
     if (N < 8) return;
-    const Repartition<uint64_t, D> du64;
+    const Repartition<TW, D> d64;
 
     auto in_lanes = AllocateAligned<T>(N);
-    auto sum_lanes = AllocateAligned<uint64_t>(N / 8);
+    auto sum_lanes = AllocateAligned<TW>(N / 8);
 
     for (size_t rep = 0; rep < 100; ++rep) {
       for (size_t i = 0; i < N; ++i) {
-        in_lanes[i] = Random64(&rng) & 0xFF;
+        in_lanes[i] = static_cast<T>(Random64(&rng) & 0xFF);
       }
 
       for (size_t idx_sum = 0; idx_sum < N / 8; ++idx_sum) {
-        uint64_t sum = 0;
+        TW sum = 0;
         for (size_t i = 0; i < 8; ++i) {
           sum += in_lanes[idx_sum * 8 + i];
         }
@@ -238,56 +327,14 @@ struct TestSumsOf8 {
       }
 
       const Vec<D> in = Load(d, in_lanes.get());
-      HWY_ASSERT_VEC_EQ(du64, sum_lanes.get(), SumsOf8(in));
+      HWY_ASSERT_VEC_EQ(d64, sum_lanes.get(), SumsOf8(in));
     }
   }
 };
 
 HWY_NOINLINE void TestAllSumsOf8() {
+  ForGEVectors<64, TestSumsOf8>()(int8_t());
   ForGEVectors<64, TestSumsOf8>()(uint8_t());
-}
-
-struct TestSumsOf8AbsDiff {
-  template <typename T, class D>
-  HWY_NOINLINE void operator()(T /*unused*/, D d) {
-    RandomState rng;
-
-    const size_t N = Lanes(d);
-    if (N < 8) return;
-    const Repartition<uint64_t, D> du64;
-
-    auto in_lanes_a = AllocateAligned<T>(N);
-    auto in_lanes_b = AllocateAligned<T>(N);
-    auto sum_lanes = AllocateAligned<uint64_t>(N / 8);
-
-    for (size_t rep = 0; rep < 100; ++rep) {
-      for (size_t i = 0; i < N; ++i) {
-        uint64_t rand64_val = Random64(&rng);
-        in_lanes_a[i] = rand64_val & 0xFF;
-        in_lanes_b[i] = (rand64_val >> 8) & 0xFF;
-      }
-
-      for (size_t idx_sum = 0; idx_sum < N / 8; ++idx_sum) {
-        uint64_t sum = 0;
-        for (size_t i = 0; i < 8; ++i) {
-          const auto lane_diff =
-            static_cast<int16_t>(in_lanes_a[idx_sum * 8 + i]) -
-            static_cast<int16_t>(in_lanes_b[idx_sum * 8 + i]);
-          sum +=
-            static_cast<uint64_t>((lane_diff >= 0) ? lane_diff : -lane_diff);
-        }
-        sum_lanes[idx_sum] = sum;
-      }
-
-      const Vec<D> a = Load(d, in_lanes_a.get());
-      const Vec<D> b = Load(d, in_lanes_b.get());
-      HWY_ASSERT_VEC_EQ(du64, sum_lanes.get(), SumsOf8AbsDiff(a, b));
-    }
-  }
-};
-
-HWY_NOINLINE void TestAllSumsOf8AbsDiff() {
-  ForGEVectors<64, TestSumsOf8AbsDiff>()(uint8_t());
 }
 
 // NOLINTNEXTLINE(google-readability-namespace-comments)
@@ -301,8 +348,9 @@ namespace hwy {
 HWY_BEFORE_TEST(HwyReductionTest);
 HWY_EXPORT_AND_TEST_P(HwyReductionTest, TestAllSumOfLanes);
 HWY_EXPORT_AND_TEST_P(HwyReductionTest, TestAllMinMaxOfLanes);
+HWY_EXPORT_AND_TEST_P(HwyReductionTest, TestAllSumsOf2);
+HWY_EXPORT_AND_TEST_P(HwyReductionTest, TestAllSumsOf4);
 HWY_EXPORT_AND_TEST_P(HwyReductionTest, TestAllSumsOf8);
-HWY_EXPORT_AND_TEST_P(HwyReductionTest, TestAllSumsOf8AbsDiff);
 }  // namespace hwy
 
 #endif

@@ -39,21 +39,15 @@ namespace HWY_NAMESPACE {
 #if HWY_ARCH_X86_32 && HWY_COMPILER_GCC_ACTUAL && \
     (HWY_TARGET == HWY_SCALAR || HWY_TARGET == HWY_EMU128)
 
-// On 32-bit x86 with GCC 13+, build with `-fexcess-precision=standard` - see
+// GCC 13+: because CMAKE_CXX_EXTENSIONS is OFF, we build with -std= and hence
+// also -fexcess-precision=standard, so there is no problem. See #1708 and
 // https://gcc.gnu.org/bugzilla/show_bug.cgi?id=323.
 #if HWY_COMPILER_GCC_ACTUAL >= 1300
-
-#if FLT_EVAL_METHOD == 0  // correct flag given, no problem
 #define HWY_MATH_TEST_EXCESS_PRECISION 0
-#else
-#define HWY_MATH_TEST_EXCESS_PRECISION 1
-#pragma message( \
-    "Skipping scalar math_test on 32-bit x86 GCC 13+ without -fexcess-precision=standard")
-#endif  // FLT_EVAL_METHOD
 
-#else                  // HWY_COMPILER_GCC_ACTUAL < 1300
+#else  // HWY_COMPILER_GCC_ACTUAL < 1300
 
-// On 32-bit x86 with GCC <13, set HWY_CMAKE_SSE2 - see
+// The build system must enable SSE2, e.g. via HWY_CMAKE_SSE2 - see
 // https://stackoverflow.com/questions/20869904/c-handling-of-excess-precision .
 #if defined(__SSE2__)  // correct flag given, no problem
 #define HWY_MATH_TEST_EXCESS_PRECISION 0
@@ -68,14 +62,6 @@ namespace HWY_NAMESPACE {
 #define HWY_MATH_TEST_EXCESS_PRECISION 0
 #endif  // HWY_ARCH_X86_32 etc
 
-template <class Out, class In>
-inline Out BitCast(const In& in) {
-  static_assert(sizeof(Out) == sizeof(In), "");
-  Out out;
-  CopyBytes<sizeof(out)>(&in, &out);
-  return out;
-}
-
 template <class T, class D>
 HWY_NOINLINE void TestMath(const char* name, T (*fx1)(T),
                            Vec<D> (*fxN)(D, VecArg<Vec<D>>), D d, T min, T max,
@@ -87,21 +73,22 @@ HWY_NOINLINE void TestMath(const char* name, T (*fx1)(T),
       fprintf(stderr,
               "Skipping math_test due to GCC issue with excess precision.\n");
     }
+    return;
   }
 
   using UintT = MakeUnsigned<T>;
 
-  const UintT min_bits = BitCast<UintT>(min);
-  const UintT max_bits = BitCast<UintT>(max);
+  const UintT min_bits = BitCastScalar<UintT>(min);
+  const UintT max_bits = BitCastScalar<UintT>(max);
 
   // If min is negative and max is positive, the range needs to be broken into
   // two pieces, [+0, max] and [-0, min], otherwise [min, max].
   int range_count = 1;
   UintT ranges[2][2] = {{min_bits, max_bits}, {0, 0}};
   if ((min < 0.0) && (max > 0.0)) {
-    ranges[0][0] = BitCast<UintT>(static_cast<T>(+0.0));
+    ranges[0][0] = BitCastScalar<UintT>(static_cast<T>(+0.0));
     ranges[0][1] = max_bits;
-    ranges[1][0] = BitCast<UintT>(static_cast<T>(-0.0));
+    ranges[1][0] = BitCastScalar<UintT>(static_cast<T>(-0.0));
     ranges[1][1] = min_bits;
     range_count = 2;
   }
@@ -116,7 +103,8 @@ HWY_NOINLINE void TestMath(const char* name, T (*fx1)(T),
     for (UintT value_bits = start; value_bits <= stop; value_bits += step) {
       // For reasons unknown, the HWY_MAX is necessary on RVV, otherwise
       // value_bits can be less than start, and thus possibly NaN.
-      const T value = BitCast<T>(HWY_MIN(HWY_MAX(start, value_bits), stop));
+      const T value =
+          BitCastScalar<T>(HWY_MIN(HWY_MAX(start, value_bits), stop));
       const T actual = GetLane(fxN(d, Set(d, value)));
       const T expected = fx1(value);
 
@@ -165,9 +153,11 @@ HWY_NOINLINE void TestMath(const char* name, T (*fx1)(T),
   };                                                                      \
   DEFINE_MATH_TEST_FUNC(NAME)
 
-// Floating point values closest to but less than 1.0
-const float kNearOneF = BitCast<float>(0x3F7FFFFF);
-const double kNearOneD = BitCast<double>(0x3FEFFFFFFFFFFFFFULL);
+// Floating point values closest to but less than 1.0. Avoid variables with
+// static initializers inside HWY_BEFORE_NAMESPACE/HWY_AFTER_NAMESPACE to
+// ensure target-specific code does not leak into startup code.
+float kNearOneF() { return BitCastScalar<float>(0x3F7FFFFF); }
+double kNearOneD() { return BitCastScalar<double>(0x3FEFFFFFFFFFFFFFULL); }
 
 // The discrepancy is unacceptably large for MSYS2 (less accurate libm?), so
 // only increase the error tolerance there.
@@ -188,16 +178,14 @@ constexpr uint64_t ACosh32ULP() {
 }
 
 template <class D>
-static Vec<D> SinCosSin(const D d, VecArg<Vec<D>> x)
-{
+static Vec<D> SinCosSin(const D d, VecArg<Vec<D>> x) {
   Vec<D> s, c;
   SinCos(d, x, s, c);
   return s;
 }
 
 template <class D>
-static Vec<D> SinCosCos(const D d, VecArg<Vec<D>> x)
-{
+static Vec<D> SinCosCos(const D d, VecArg<Vec<D>> x) {
   Vec<D> s, c;
   SinCos(d, x, s, c);
   return c;
@@ -237,8 +225,8 @@ DEFINE_MATH_TEST(Atan,
   std::atan,  CallAtan,  -FLT_MAX,   +FLT_MAX,    3,
   std::atan,  CallAtan,  -DBL_MAX,   +DBL_MAX,    3)
 DEFINE_MATH_TEST(Atanh,
-  std::atanh, CallAtanh, -kNearOneF, +kNearOneF,  4,  // NEON is 4 instead of 3
-  std::atanh, CallAtanh, -kNearOneD, +kNearOneD,  3)
+  std::atanh, CallAtanh, -kNearOneF(), +kNearOneF(),  4,  // NEON is 4 instead of 3
+  std::atanh, CallAtanh, -kNearOneD(), +kNearOneD(),  3)
 DEFINE_MATH_TEST(Cos,
   std::cos,   CallCos,   -39000.0f,  +39000.0f,   3,
   std::cos,   CallCos,   -39000.0,   +39000.0,    Cos64ULP())

@@ -38,8 +38,7 @@
 
 // We are covered by the highway.h include guard, but generic_ops-inl.h
 // includes this again #if HWY_IDE.
-#if defined(HIGHWAY_HWY_OPS_SHARED_TOGGLE) == \
-    defined(HWY_TARGET_TOGGLE)
+#if defined(HIGHWAY_HWY_OPS_SHARED_TOGGLE) == defined(HWY_TARGET_TOGGLE)
 #ifdef HIGHWAY_HWY_OPS_SHARED_TOGGLE
 #undef HIGHWAY_HWY_OPS_SHARED_TOGGLE
 #else
@@ -69,6 +68,27 @@ using VecArg = V;
 #endif
 
 namespace detail {
+
+// Primary template: default is no change for all but f16.
+template <typename T>
+struct NativeLaneTypeT {
+  using type = T;
+};
+
+template <>
+struct NativeLaneTypeT<hwy::float16_t> {
+  using type = hwy::float16_t::Raw;
+};
+
+template <>
+struct NativeLaneTypeT<hwy::bfloat16_t> {
+  using type = hwy::bfloat16_t::Raw;
+};
+
+// Evaluates to the type expected by intrinsics given the Highway lane type T.
+// This is usually the same, but differs for our wrapper types [b]float16_t.
+template <typename T>
+using NativeLaneType = typename NativeLaneTypeT<T>::type;
 
 // Returns N * 2^pow2. N is the number of lanes in a full vector and pow2 the
 // desired fraction or multiple of it, see Simd<>. `pow2` is most often in
@@ -131,6 +151,13 @@ struct Simd {
 
  private:
   static_assert(sizeof(Lane) <= 8, "Lanes are up to 64-bit");
+  static_assert(IsSame<Lane, RemoveCvRef<Lane>>(),
+                "Lane must not be a reference type, const-qualified type, or "
+                "volatile-qualified type");
+  static_assert(IsIntegerLaneType<Lane>() || IsFloat<Lane>() ||
+                    IsSpecialFloat<Lane>(),
+                "IsIntegerLaneType<T>(), IsFloat<T>(), or IsSpecialFloat<T>() "
+                "must be true");
   // 20 bits are sufficient for any HWY_MAX_BYTES. This is the 'normal' value of
   // N when kFrac == 0, otherwise it is one (see FracN).
   static constexpr size_t kWhole = N & 0xFFFFF;
@@ -391,6 +418,13 @@ using RepartitionToWide = Repartition<MakeWide<TFromD<D>>, D>;
 template <class D>
 using RepartitionToNarrow = Repartition<MakeNarrow<TFromD<D>>, D>;
 
+// Shorthand for applying RepartitionToWide twice (for 8/16-bit types).
+template <class D>
+using RepartitionToWideX2 = RepartitionToWide<RepartitionToWide<D>>;
+// Shorthand for applying RepartitionToWide three times (for 8-bit types).
+template <class D>
+using RepartitionToWideX3 = RepartitionToWide<RepartitionToWideX2<D>>;
+
 // Tag for the same lane type as D, but half the lanes.
 template <class D>
 using Half = typename D::Half;
@@ -434,6 +468,8 @@ using BlockDFromD =
 #define HWY_IF_SIGNED_D(D) HWY_IF_SIGNED(TFromD<D>)
 #define HWY_IF_FLOAT_D(D) HWY_IF_FLOAT(TFromD<D>)
 #define HWY_IF_NOT_FLOAT_D(D) HWY_IF_NOT_FLOAT(TFromD<D>)
+#define HWY_IF_FLOAT3264_D(D) HWY_IF_FLOAT3264(TFromD<D>)
+#define HWY_IF_NOT_FLOAT3264_D(D) HWY_IF_NOT_FLOAT3264(TFromD<D>)
 #define HWY_IF_SPECIAL_FLOAT_D(D) HWY_IF_SPECIAL_FLOAT(TFromD<D>)
 #define HWY_IF_NOT_SPECIAL_FLOAT_D(D) HWY_IF_NOT_SPECIAL_FLOAT(TFromD<D>)
 #define HWY_IF_FLOAT_OR_SPECIAL_D(D) HWY_IF_FLOAT_OR_SPECIAL(TFromD<D>)
@@ -444,43 +480,43 @@ using BlockDFromD =
 #define HWY_IF_NOT_T_SIZE_D(D, bytes) HWY_IF_NOT_T_SIZE(TFromD<D>, bytes)
 #define HWY_IF_T_SIZE_ONE_OF_D(D, bit_array) \
   HWY_IF_T_SIZE_ONE_OF(TFromD<D>, bit_array)
+#define HWY_IF_T_SIZE_LE_D(D, bytes) HWY_IF_T_SIZE_LE(TFromD<D>, bytes)
+#define HWY_IF_T_SIZE_GT_D(D, bytes) HWY_IF_T_SIZE_GT(TFromD<D>, bytes)
 
 #define HWY_IF_LANES_D(D, lanes) HWY_IF_LANES(HWY_MAX_LANES_D(D), lanes)
 #define HWY_IF_LANES_LE_D(D, lanes) HWY_IF_LANES_LE(HWY_MAX_LANES_D(D), lanes)
 #define HWY_IF_LANES_GT_D(D, lanes) HWY_IF_LANES_GT(HWY_MAX_LANES_D(D), lanes)
 #define HWY_IF_LANES_PER_BLOCK_D(D, lanes) \
-  HWY_IF_LANES_PER_BLOCK(                  \
-      TFromD<D>, HWY_MIN(HWY_MAX_LANES_D(D), 16 / sizeof(TFromD<D>)), lanes)
+  HWY_IF_LANES_PER_BLOCK(TFromD<D>, HWY_MAX_LANES_D(D), lanes)
 
 #define HWY_IF_POW2_LE_D(D, pow2) hwy::EnableIf<D().Pow2() <= pow2>* = nullptr
 #define HWY_IF_POW2_GT_D(D, pow2) hwy::EnableIf<(D().Pow2() > pow2)>* = nullptr
 
-#define HWY_IF_U8_D(D) hwy::EnableIf<IsSame<TFromD<D>, uint8_t>()>* = nullptr
-#define HWY_IF_U16_D(D) hwy::EnableIf<IsSame<TFromD<D>, uint16_t>()>* = nullptr
-#define HWY_IF_U32_D(D) hwy::EnableIf<IsSame<TFromD<D>, uint32_t>()>* = nullptr
-#define HWY_IF_U64_D(D) hwy::EnableIf<IsSame<TFromD<D>, uint64_t>()>* = nullptr
+#define HWY_IF_U8_D(D) HWY_IF_U8(TFromD<D>)
+#define HWY_IF_U16_D(D) HWY_IF_U16(TFromD<D>)
+#define HWY_IF_U32_D(D) HWY_IF_U32(TFromD<D>)
+#define HWY_IF_U64_D(D) HWY_IF_U64(TFromD<D>)
 
-#define HWY_IF_I8_D(D) hwy::EnableIf<IsSame<TFromD<D>, int8_t>()>* = nullptr
-#define HWY_IF_I16_D(D) hwy::EnableIf<IsSame<TFromD<D>, int16_t>()>* = nullptr
-#define HWY_IF_I32_D(D) hwy::EnableIf<IsSame<TFromD<D>, int32_t>()>* = nullptr
-#define HWY_IF_I64_D(D) hwy::EnableIf<IsSame<TFromD<D>, int64_t>()>* = nullptr
+#define HWY_IF_I8_D(D) HWY_IF_I8(TFromD<D>)
+#define HWY_IF_I16_D(D) HWY_IF_I16(TFromD<D>)
+#define HWY_IF_I32_D(D) HWY_IF_I32(TFromD<D>)
+#define HWY_IF_I64_D(D) HWY_IF_I64(TFromD<D>)
 
-// Use instead of HWY_IF_T_SIZE_D to avoid ambiguity with float/double
+// Use instead of HWY_IF_T_SIZE_D to avoid ambiguity with float16_t/float/double
 // overloads.
-#define HWY_IF_UI32_D(D)                         \
-  hwy::EnableIf<IsSame<TFromD<D>, uint32_t>() || \
-                IsSame<TFromD<D>, int32_t>()>* = nullptr
-#define HWY_IF_UI64_D(D)                         \
-  hwy::EnableIf<IsSame<TFromD<D>, uint64_t>() || \
-                IsSame<TFromD<D>, int64_t>()>* = nullptr
+#define HWY_IF_UI8_D(D) HWY_IF_UI8(TFromD<D>)
+#define HWY_IF_UI16_D(D) HWY_IF_UI16(TFromD<D>)
+#define HWY_IF_UI32_D(D) HWY_IF_UI32(TFromD<D>)
+#define HWY_IF_UI64_D(D) HWY_IF_UI64(TFromD<D>)
 
-#define HWY_IF_BF16_D(D) \
-  hwy::EnableIf<IsSame<TFromD<D>, hwy::bfloat16_t>()>* = nullptr
-#define HWY_IF_F16_D(D) \
-  hwy::EnableIf<IsSame<TFromD<D>, hwy::float16_t>()>* = nullptr
-#define HWY_IF_F32_D(D) hwy::EnableIf<IsSame<TFromD<D>, float>()>* = nullptr
-#define HWY_IF_F64_D(D) hwy::EnableIf<IsSame<TFromD<D>, double>()>* = nullptr
+#define HWY_IF_BF16_D(D) HWY_IF_BF16(TFromD<D>)
+#define HWY_IF_NOT_BF16_D(D) HWY_IF_NOT_BF16(TFromD<D>)
 
+#define HWY_IF_F16_D(D) HWY_IF_F16(TFromD<D>)
+#define HWY_IF_F32_D(D) HWY_IF_F32(TFromD<D>)
+#define HWY_IF_F64_D(D) HWY_IF_F64(TFromD<D>)
+
+#define HWY_V_SIZE_D(D) (HWY_MAX_LANES_D(D) * sizeof(TFromD<D>))
 #define HWY_IF_V_SIZE_D(D, bytes) \
   HWY_IF_V_SIZE(TFromD<D>, HWY_MAX_LANES_D(D), bytes)
 #define HWY_IF_V_SIZE_LE_D(D, bytes) \
@@ -509,6 +545,20 @@ using BlockDFromD =
   HWY_IF_V_SIZE_LE(TFromV<V>, HWY_MAX_LANES_V(V), bytes)
 #define HWY_IF_V_SIZE_GT_V(V, bytes) \
   HWY_IF_V_SIZE_GT(TFromV<V>, HWY_MAX_LANES_V(V), bytes)
+
+// Use in implementations of ReduceSum etc. to avoid conflicts with the N=1 and
+// N=4 8-bit specializations in generic_ops-inl.
+#undef HWY_IF_REDUCE_D
+#define HWY_IF_REDUCE_D(D)                                              \
+  hwy::EnableIf<HWY_MAX_LANES_D(D) != 1 &&                              \
+                (HWY_MAX_LANES_D(D) != 4 || sizeof(TFromD<D>) != 1)>* = \
+      nullptr
+
+#undef HWY_IF_SUM_OF_LANES_D
+#define HWY_IF_SUM_OF_LANES_D(D) HWY_IF_LANES_GT_D(D, 1)
+
+#undef HWY_IF_MINMAX_OF_LANES_D
+#define HWY_IF_MINMAX_OF_LANES_D(D) HWY_IF_LANES_GT_D(D, 1)
 
 // Old names (deprecated)
 #define HWY_IF_LANE_SIZE_D(D, bytes) HWY_IF_T_SIZE_D(D, bytes)

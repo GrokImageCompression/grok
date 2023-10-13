@@ -8,7 +8,7 @@ Q0.0: How do I **get the Highway library**?
 
 A: Highway is available in numerous package managers, e.g. under the name
 libhwy-dev. After installing, you can add it to your CMake-based build via
-`find_package(HWY 1.0.4)` and `target_link_libraries(your_project PRIVATE hwy)`.
+`find_package(HWY 1.0.7)` and `target_link_libraries(your_project PRIVATE hwy)`.
 
 Alternatively, if using Git for version control, you can use Highway as a
 'submodule' by adding the following to .gitmodules:
@@ -71,7 +71,7 @@ which lists all of the Highway ops.
 
 Q1.2: Are there **examples of porting intrinsics to Highway**?
 
-A: See cl/448957386 and cl/450480902.
+A: See https://github.com/google/highway#examples.
 
 Q1.3: Where do I find documentation for each **platform's intrinsics**?
 
@@ -266,9 +266,9 @@ Q5.1: What is **boilerplate**?
 A: We use this to refer to reusable infrastructure which mostly serves to
 support runtime dispatch. We strongly recommend starting a SIMD project by
 copying from an existing one, because the ordering of code matters and the
-vector-specific boilerplate may be unfamiliar. For static dispatch, see
-cl/408632990. For dynamic dispatch, see hwy/examples/skeleton.cc or
-cl/376150733.
+vector-specific boilerplate may be unfamiliar. See hwy/examples/skeleton.cc
+and https://github.com/google/highway#examples.
+
 
 Q5.2: What's the difference between **`HWY_BEFORE_NAMESPACE` and `HWY_ATTR`**?
 
@@ -405,3 +405,39 @@ far slower than normal Load/Store (which can typically handle two or even three
 entire *vectors* per cycle), so avoid them where possible. However, some
 algorithms such as rANS entropy coding and hash tables require gathers, and it
 is still usually better to use them than to avoid vectorization entirely.
+
+## Troubleshooting
+
+Q7.1: When building with clang-16, I see errors such as `DWARF error: invalid or
+unhandled FORM value: 0x25` or `undefined reference to __extendhfsf2`.
+
+A: This can happen if clang has been updated but compiler-rt has not. Action:
+When installing Clang 16 from apt.llvm.org, ensure libclang-rt-16-dev is also
+installed. This was caused by LLVM 16 changing the ABI of `__extendhfsf2` to
+match the GCC ABI, which requires the entire toolchain to be updated. See #1709
+for more information.
+
+Q7.2: I see build errors mentioning `inlining failed in call to ‘always_inline’
+‘hwy::PreventElision<int&>(int&)void’: target specific option mismatch`.
+
+A: This is caused by a conflict between `-m` compiler flags and Highway's
+dynamic dispatch mode, and is typically triggered by defining `HWY_IS_TEST` (set
+by our CMake/Bazel builds for tests) or `HWY_COMPILE_ALL_ATTAINABLE`. See below
+for a workaround; first some background. The goal of dynamic dispatch is to
+compile multiple versions of the code, one per target. When `-m` compiler flags
+are used to force a certain baseline, it can be that non-SIMD, forceinline
+functions such as `PreventElision` are compiled for a newer CPU baseline than
+the minimum target that Highway sets via `#pragma`. The compiler enforces a
+safety check: inlining higher-baseline functions into a normal function raises
+an error. This would not occur in most applications because Highway only enables
+targets at or above the baseline set by `-m` flags. However, Highway's tests aim
+to cover all targets by defining `HWY_IS_TEST`. When that or
+`HWY_COMPILE_ALL_ATTAINABLE` are defined, then older targets are also compiled
+and the incompatibility arises. One possible solution is to disable these modes
+by defining `HWY_COMPILE_ONLY_STATIC`, which is checked first. Then, only the
+baseline target is used and dynamic dispatch is effectively disabled. If you
+still want to dispatch, but just avoid targets superseded by the baseline,
+define `HWY_SKIP_NON_BEST_BASELINE`. A third option is to avoid `-m` flags
+entirely, because they contradict the goals of test coverage and dynamic
+dispatch, or only set the ones that correspond to the oldest target Highway
+supports. See #1460, #1570, and #1707 for more information.

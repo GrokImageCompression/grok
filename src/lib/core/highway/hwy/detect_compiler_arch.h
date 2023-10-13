@@ -73,7 +73,9 @@
 // https://github.com/simd-everywhere/simde/blob/47d6e603de9d04ee05cdfbc57cf282a02be1bf2a/simde/simde-detect-clang.h#L59.
 // Please send updates below to them as well, thanks!
 #if defined(__apple_build_version__) || __clang_major__ >= 999
-#if __has_attribute(nouwtable)  // no new warnings in 16.0
+#if __has_attribute(unsafe_buffer_usage)  // no new warnings in 17.0
+#define HWY_COMPILER_CLANG 1700
+#elif __has_attribute(nouwtable)  // no new warnings in 16.0
 #define HWY_COMPILER_CLANG 1600
 #elif __has_warning("-Warray-parameter")
 #define HWY_COMPILER_CLANG 1500
@@ -113,7 +115,7 @@
 #define HWY_COMPILER3_CLANG 0
 #endif
 
-#if HWY_COMPILER_GCC && !HWY_COMPILER_CLANG
+#if HWY_COMPILER_GCC && !HWY_COMPILER_CLANG && !HWY_COMPILER_ICC
 #define HWY_COMPILER_GCC_ACTUAL HWY_COMPILER_GCC
 #else
 #define HWY_COMPILER_GCC_ACTUAL 0
