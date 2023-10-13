@@ -83,7 +83,7 @@ const uint16_t planarconfig = PLANARCONFIG_CONTIG;
 
 char auxCharArrayW[N_SIZE];
 short auxShortArrayW[N_SIZE];
-long auxLongArrayW[N_SIZE];
+int32_t auxInt32ArrayW[N_SIZE];
 float auxFloatArrayW[N_SIZE];
 double auxDoubleArrayW[N_SIZE];
 char auxTextArrayW[N_SIZE][STRSIZE];
@@ -284,7 +284,7 @@ int write_test_tiff(TIFF *tif, const char *filenameRead)
     }
     for (i = 0; i < N_SIZE; i++)
     {
-        auxLongArrayW[i] = (i + 1) * 133;
+        auxInt32ArrayW[i] = (i + 1) * 133;
     }
     for (i = 0; i < N_SIZE; i++)
     {
@@ -964,7 +964,7 @@ int write_all_tags(TIFF *tif, const TIFFFieldArray *tFieldArray,
         void *pVoid = NULL;
 
         /*-- dependent on set_field_type write value --*/
-        long auxLong = 0;
+        uint32_t auxUint32 = 0;
         switch (tSetFieldType)
         {
             case TIFF_SETGET_ASCII:
@@ -973,14 +973,14 @@ int write_all_tags(TIFF *tif, const TIFFFieldArray *tFieldArray,
                  * Shorter strings than in auxTextArraxW need a
                  * NULL-termination. Therefore copy the string. */
                 if (tWriteCount > 0)
-                    auxLong = tWriteCount - 1;
+                    auxUint32 = tWriteCount - 1;
                 else
-                    auxLong = (long)strlen(auxTextArrayW[i]) - 1;
-                auxLong = auxLong >= sizeof(auxCharArray)
-                              ? sizeof(auxCharArray) - 1
-                              : auxLong;
-                strncpy(auxCharArray, auxTextArrayW[i], auxLong);
-                auxCharArray[auxLong] = 0;
+                    auxUint32 = (uint32_t)strlen(auxTextArrayW[i]) - 1;
+                auxUint32 = (size_t)auxUint32 >= sizeof(auxCharArray)
+                                ? (uint32_t)(sizeof(auxCharArray) - 1)
+                                : auxUint32;
+                strncpy(auxCharArray, auxTextArrayW[i], auxUint32);
+                auxCharArray[auxUint32] = 0;
                 if (!TIFFSetField(tif, tTag, auxCharArray))
                 {
                     fprintf(stderr, "Can't write %s\n",
@@ -1000,25 +1000,27 @@ int write_all_tags(TIFF *tif, const TIFFFieldArray *tFieldArray,
                 }
                 break;
             case TIFF_SETGET_UINT8:
-                if (auxLongArrayW[i] > 255)
-                    auxLongArrayW[i] = 255;
             case TIFF_SETGET_UINT16:
-                if (auxLongArrayW[i] > 65535)
-                    auxLongArrayW[i] = 65535;
             case TIFF_SETGET_UINT32:
             case TIFF_SETGET_INT:
             case TIFF_SETGET_UNDEFINED:
                 /*-- All those can be written with char, short or long
                  * parameter. Only value range should be in line. */
+                if ((tSetFieldType == TIFF_SETGET_UINT8) &&
+                    (auxInt32ArrayW[i] > 255))
+                    auxInt32ArrayW[i] = 255;
+                else if ((tSetFieldType == TIFF_SETGET_UINT16) &&
+                         (auxInt32ArrayW[i] > 65535))
+                    auxInt32ArrayW[i] = 65535;
                 if (tTag == TIFFTAG_FILLORDER)
-                    auxLongArrayW[i] = 1;
+                    auxInt32ArrayW[i] = 1;
                 if (tTag == TIFFTAG_ORIENTATION)
-                    auxLongArrayW[i] = 7;
+                    auxInt32ArrayW[i] = 7;
                 if (tTag == TIFFTAG_RESOLUTIONUNIT)
-                    auxLongArrayW[i] = 3;
+                    auxInt32ArrayW[i] = 3;
                 if (tTag == TIFFTAG_SAMPLEFORMAT)
-                    auxLongArrayW[i] = SAMPLEFORMAT_UINT;
-                if (!TIFFSetField(tif, tTag, auxLongArrayW[i]))
+                    auxInt32ArrayW[i] = SAMPLEFORMAT_UINT;
+                if (!TIFFSetField(tif, tTag, auxInt32ArrayW[i]))
                 {
                     fprintf(stderr, "Can't write %s\n",
                             tFieldArray->fields[t].field_name);
@@ -1026,9 +1028,9 @@ int write_all_tags(TIFF *tif, const TIFFFieldArray *tFieldArray,
                 }
                 break;
             case TIFF_SETGET_UINT16_PAIR:
-                if (auxLongArrayW[i] > 65535)
-                    auxLongArrayW[i] = 65535;
-                if (!TIFFSetField(tif, tTag, 7, auxLongArrayW[i]))
+                if (auxInt32ArrayW[i] > 65535)
+                    auxInt32ArrayW[i] = 65535;
+                if (!TIFFSetField(tif, tTag, 7, auxInt32ArrayW[i]))
                 {
                     fprintf(stderr, "Can't write %s\n",
                             tFieldArray->fields[t].field_name);
@@ -1044,7 +1046,7 @@ int write_all_tags(TIFF *tif, const TIFFFieldArray *tFieldArray,
                  * "int", which is different in x64 and x86 compilations.
                  * Thus cast to expected uint64_t.
                  */
-                if (!TIFFSetField(tif, tTag, (uint64_t)auxLongArrayW[i]))
+                if (!TIFFSetField(tif, tTag, (uint64_t)auxInt32ArrayW[i]))
                 {
                     fprintf(stderr, "Can't write %s\n",
                             tFieldArray->fields[t].field_name);
@@ -1056,7 +1058,7 @@ int write_all_tags(TIFF *tif, const TIFFFieldArray *tFieldArray,
             case TIFF_SETGET_SINT32:
                 /*-- All those can be written with char, short or long
                  * parameter. Only value range should be in line. */
-                if (!TIFFSetField(tif, tTag, -1.0 * auxLongArrayW[i]))
+                if (!TIFFSetField(tif, tTag, -1.0 * auxInt32ArrayW[i]))
                 {
                     fprintf(stderr, "Can't write %s\n",
                             tFieldArray->fields[t].field_name);
@@ -1155,7 +1157,7 @@ int write_all_tags(TIFF *tif, const TIFFFieldArray *tFieldArray,
             case TIFF_SETGET_C16_SINT32:
             case TIFF_SETGET_C32_UINT32:
             case TIFF_SETGET_C32_SINT32:
-                pVoid = &auxLongArrayW[i];
+                pVoid = &auxInt32ArrayW[i];
                 deferredSetField = true;
                 break;
             case TIFF_SETGET_C16_IFD8:
@@ -1171,7 +1173,7 @@ int write_all_tags(TIFF *tif, const TIFFFieldArray *tFieldArray,
                 }
                 else
                 {
-                    pVoid = &auxLongArrayW[i];
+                    pVoid = &auxInt32ArrayW[i];
                     deferredSetField = true;
                 }
                 break;
@@ -1281,21 +1283,21 @@ int read_all_tags(TIFF *tif, const TIFFFieldArray *tFieldArray,
     uint32_t auxUint32 = 0;
     uint64_t auxUint64 = 0;
     short auxShort = 0;
-    long auxLong = 0;
+    int32_t auxInt32 = 0;
     union
     {
-        long Long;
+        int32_t Int32;
         short Short1;
         short Short2[2];
         char Char[4];
-    } unionLong;
+    } unionInt32;
     void *pVoidArray;
     char *pAscii;
     double dblDiff, dblDiffLimit;
 
     char auxCharArray[2 * STRSIZE];
     short auxShortArray[2 * N_SIZE];
-    long auxLongArray[2 * N_SIZE];
+    int32_t auxInt32Array[2 * N_SIZE];
     float auxFloatArray[2 * N_SIZE];
     double auxDoubleArray[2 * N_SIZE];
 #define RATIONAL_EPS                                                           \
@@ -1334,10 +1336,11 @@ int read_all_tags(TIFF *tif, const TIFFFieldArray *tFieldArray,
                 strncpy(auxCharArray, pAscii, sizeof(auxCharArray) - 1u);
                 auxCharArray[sizeof(auxCharArray) - 1u] = '\0';
                 if (tWriteCount > 0)
-                    auxLong = tWriteCount - 1;
+                    auxInt32 = tWriteCount - 1;
                 else
-                    auxLong = (long)strlen(auxCharArray);
-                int retCode2 = strncmp(auxCharArray, auxTextArrayW[i], auxLong);
+                    auxInt32 = (int32_t)strlen(auxCharArray);
+                int retCode2 =
+                    strncmp(auxCharArray, auxTextArrayW[i], auxInt32);
                 if (retCode2 != 0)
                 {
                     fprintf(stderr,
@@ -1380,13 +1383,13 @@ int read_all_tags(TIFF *tif, const TIFFFieldArray *tFieldArray,
                     break;
                 }
                 /* compare read values with written ones */
-                auxLong = auxChar;
-                if (auxLong != (char)auxLongArrayW[i])
+                auxInt32 = auxChar;
+                if (auxInt32 != (char)auxInt32ArrayW[i])
                 {
                     fprintf(stderr,
-                            "%d:Read value of %s %ld differs from set "
-                            "value %ld\n",
-                            i, tFieldName, auxLong, auxLongArrayW[i]);
+                            "%d:Read value of %s %d differs from set "
+                            "value %d\n",
+                            i, tFieldName, auxInt32, auxInt32ArrayW[i]);
                 }
                 break;
             case TIFF_SETGET_UINT16:
@@ -1399,13 +1402,13 @@ int read_all_tags(TIFF *tif, const TIFFFieldArray *tFieldArray,
                     break;
                 }
                 /* compare read values with written ones */
-                auxLong = auxShort;
-                if (auxLong != (short)auxLongArrayW[i])
+                auxInt32 = auxShort;
+                if (auxInt32 != (short)auxInt32ArrayW[i])
                 {
                     fprintf(stderr,
-                            "%d:Read value of %s %ld differs from set "
-                            "value %ld\n",
-                            i, tFieldName, auxLong, auxLongArrayW[i]);
+                            "%d:Read value of %s %d differs from set "
+                            "value %d\n",
+                            i, tFieldName, auxInt32, auxInt32ArrayW[i]);
                     GOTOFAILURE
                 }
                 break;
@@ -1419,14 +1422,14 @@ int read_all_tags(TIFF *tif, const TIFFFieldArray *tFieldArray,
                     break;
                 }
                 if (auxShortArray[0] != 7 ||
-                    auxShortArray[1] != auxLongArrayW[i])
+                    auxShortArray[1] != auxInt32ArrayW[i])
                 {
                     fprintf(stderr,
                             "%d:Read value of %s %d/%d UINT16_PAIR differs "
                             "from set "
-                            "values %d/%ld\n",
+                            "values %d/%d\n",
                             i, tFieldName, auxShortArray[0], auxShortArray[1],
-                            7, auxLongArrayW[i]);
+                            7, auxInt32ArrayW[i]);
                     GOTOFAILURE
                 }
                 break;
@@ -1441,8 +1444,8 @@ int read_all_tags(TIFF *tif, const TIFFFieldArray *tFieldArray,
                     break;
                 }
                 /* compare read values with written ones */
-                auxLong = auxUint32;
-                if (auxLong != auxLongArrayW[i])
+                auxInt32 = auxUint32;
+                if (auxInt32 != auxInt32ArrayW[i])
                 {
                     uint32_t auxU;
                     if (tTag == TIFFTAG_TILEDEPTH &&
@@ -1451,22 +1454,22 @@ int read_all_tags(TIFF *tif, const TIFFFieldArray *tFieldArray,
                         /* At directory re-reading from file,
                            tif->tif_dir.td_tiledepth =
                            tif->tif_dir.td_imagedepth is set. */
-                        if (auxLong != auxU)
+                        if (auxUint32 != auxU)
                         {
                             fprintf(stderr,
-                                    "%d:Read value of %s %ld differs "
+                                    "%d:Read value of %s %d differs "
                                     "from set "
                                     "value %d\n",
-                                    i, tFieldName, auxLong, auxU);
+                                    i, tFieldName, auxUint32, auxU);
                             GOTOFAILURE
                         }
                     }
                     else
                     {
                         fprintf(stderr,
-                                "%d:Read value of %s %ld differs from set "
-                                "value %ld\n",
-                                i, tFieldName, auxLong, auxLongArrayW[i]);
+                                "%d:Read value of %s %d differs from set "
+                                "value %d\n",
+                                i, tFieldName, auxInt32, auxInt32ArrayW[i]);
                         GOTOFAILURE
                     }
                 }
@@ -1481,18 +1484,18 @@ int read_all_tags(TIFF *tif, const TIFFFieldArray *tFieldArray,
                 }
                 /* compare read values with written ones, we wrote only
                  * unit32 values! */
-                if (auxUint64 != (uint64_t)auxLongArrayW[i])
+                if (auxUint64 != (uint64_t)auxInt32ArrayW[i])
                 {
                     fprintf(stderr,
                             "%d:Read value of %s %" PRIu64 " differs from set"
-                            "value %ld\n",
-                            i, tFieldName, auxUint64, auxLongArrayW[i]);
+                            "value %d\n",
+                            i, tFieldName, auxUint64, auxInt32ArrayW[i]);
                     GOTOFAILURE
                 }
                 break;
 
             case TIFF_SETGET_C16_IFD8:
-                if (!TIFFGetField(tif, tTag, &unionLong, &pVoidArray))
+                if (!TIFFGetField(tif, tTag, &unionInt32, &pVoidArray))
                 {
                     fprintf(stderr, "Can't read %s\n",
                             tFieldArray->fields[t].field_name);
@@ -1502,7 +1505,7 @@ int read_all_tags(TIFF *tif, const TIFFFieldArray *tFieldArray,
                 if (tTag == TIFFTAG_EXTRACAMERAPROFILES)
                 {
                     auxUint64 = *(uint64_t *)pVoidArray;
-                    if (unionLong.Short1 != 1 && auxUint64 != 18)
+                    if (unionInt32.Short1 != 1 && auxUint64 != 18)
                     {
                         fprintf(stderr,
                                 "%d:Read value of %s %" PRIu64
@@ -1645,15 +1648,15 @@ int read_all_tags(TIFF *tif, const TIFFFieldArray *tFieldArray,
                         /* set tWriteCount to number of read samples for
                          * next steps
                          */
-                        auxLong = tWriteCount;
+                        auxInt32 = tWriteCount;
                     }
                     else
                     {
                         /*-- Special treatment of variable array. --
                          * Dependent on _Cxx_, the count parameter is
-                         * short or long. Therefore use unionLong!
+                         * short or long. Therefore use unionInt32!
                          */
-                        if (!TIFFGetField(tif, tTag, &unionLong, &pVoidArray))
+                        if (!TIFFGetField(tif, tTag, &unionInt32, &pVoidArray))
                         {
                             fprintf(stderr, "Can't read %s\n",
                                     tFieldArray->fields[t].field_name);
@@ -1672,11 +1675,11 @@ int read_all_tags(TIFF *tif, const TIFFFieldArray *tFieldArray,
                             tSetFieldType == TIFF_SETGET_C32_FLOAT ||
                             tSetFieldType == TIFF_SETGET_C32_DOUBLE)
                         {
-                            auxLong = unionLong.Long;
+                            auxInt32 = unionInt32.Int32;
                         }
                         else
                         {
-                            auxLong = unionLong.Short1;
+                            auxInt32 = unionInt32.Short1;
                         }
                     }
                     /* Save values from temporary array and compare to
@@ -1686,13 +1689,13 @@ int read_all_tags(TIFF *tif, const TIFFFieldArray *tFieldArray,
                         tSetFieldType == TIFF_SETGET_C32_FLOAT)
                     {
                         memcpy(&auxFloatArray, pVoidArray,
-                               (auxLong * sizeof(auxFloatArray[0])));
+                               (auxInt32 * sizeof(auxFloatArray[0])));
                         /* compare read values with written ones */
                         if (tType == TIFF_RATIONAL || tType == TIFF_SRATIONAL)
                             dblDiffLimit = RATIONAL_EPS * auxDoubleArrayW[i];
                         else
                             dblDiffLimit = 1e-6;
-                        for (j = 0; j < auxLong; j++)
+                        for (j = 0; j < auxInt32; j++)
                         {
                             dblDiff = auxFloatArray[j] - auxFloatArrayW[i + j];
                             if (fabs(dblDiff) > fabs(dblDiffLimit))
@@ -1711,13 +1714,13 @@ int read_all_tags(TIFF *tif, const TIFFFieldArray *tFieldArray,
                              tSetFieldType == TIFF_SETGET_C32_DOUBLE)
                     {
                         memcpy(&auxDoubleArray, pVoidArray,
-                               (auxLong * sizeof(auxDoubleArray[0])));
+                               (auxInt32 * sizeof(auxDoubleArray[0])));
                         /* compare read values with written ones */
                         if (tType == TIFF_RATIONAL || tType == TIFF_SRATIONAL)
                             dblDiffLimit = RATIONAL_EPS * auxDoubleArrayW[i];
                         else
                             dblDiffLimit = 1e-6;
-                        for (j = 0; j < auxLong; j++)
+                        for (j = 0; j < auxInt32; j++)
                         {
                             dblDiff =
                                 auxDoubleArray[j] - auxDoubleArrayW[i + j];
@@ -1740,7 +1743,7 @@ int read_all_tags(TIFF *tif, const TIFFFieldArray *tFieldArray,
                              tSetFieldType == TIFF_SETGET_C32_SINT8)
                     {
                         memcpy(&auxCharArray, pVoidArray,
-                               (auxLong * sizeof(auxCharArray[0])));
+                               (auxInt32 * sizeof(auxCharArray[0])));
                         /* Compare and check values  */
                         char *auxCharCompare;
                         if (tTag == EXIFTAG_EXIFVERSION)
@@ -1756,7 +1759,7 @@ int read_all_tags(TIFF *tif, const TIFFFieldArray *tFieldArray,
                             auxCharCompare = &auxCharArrayW[i];
                         }
 
-                        for (j = 0; j < auxLong; j++)
+                        for (j = 0; j < auxInt32; j++)
                         {
                             if (auxCharArray[j] != auxCharCompare[j])
                             {
@@ -1777,9 +1780,9 @@ int read_all_tags(TIFF *tif, const TIFFFieldArray *tFieldArray,
                              tSetFieldType == TIFF_SETGET_C32_SINT16)
                     {
                         memcpy(&auxShortArray, pVoidArray,
-                               (auxLong * sizeof(auxShortArray[0])));
+                               (auxInt32 * sizeof(auxShortArray[0])));
                         /* Compare and check values  */
-                        for (j = 0; j < auxLong; j++)
+                        for (j = 0; j < auxInt32; j++)
                         {
                             if (auxShortArray[j] != auxShortArrayW[i + j])
                             {
@@ -1800,19 +1803,19 @@ int read_all_tags(TIFF *tif, const TIFFFieldArray *tFieldArray,
                              tSetFieldType == TIFF_SETGET_C32_UINT32 ||
                              tSetFieldType == TIFF_SETGET_C32_SINT32)
                     {
-                        memcpy(&auxLongArray, pVoidArray,
-                               (auxLong * sizeof(auxLongArray[0])));
+                        memcpy(&auxInt32Array, pVoidArray,
+                               (auxInt32 * sizeof(auxInt32Array[0])));
                         /* Compare and check values  */
-                        for (j = 0; j < auxLong; j++)
+                        for (j = 0; j < auxInt32; j++)
                         {
-                            if (auxLongArray[j] != auxLongArrayW[i + j])
+                            if (auxInt32Array[j] != auxInt32ArrayW[i + j])
                             {
                                 fprintf(stderr,
-                                        "Read value %d of %s #%d %ld "
+                                        "Read value %d of %s #%d %d "
                                         "differs from "
-                                        "set value %ld\n",
-                                        i, tFieldName, j, auxLongArray[j],
-                                        auxLongArrayW[i + j]);
+                                        "set value %d\n",
+                                        i, tFieldName, j, auxInt32Array[j],
+                                        auxInt32ArrayW[i + j]);
                                 GOTOFAILURE
                             }
                         }

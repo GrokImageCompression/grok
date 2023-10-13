@@ -32,6 +32,7 @@ EXTRA_DIST = \
 	libtiff.def \
 	libtiff.map \
 	libtiffxx.map \
+	tiffvers.h.cmake.in \
 	tif_config.h.cmake.in \
 	tiffconf.h.cmake.in \
 	tif_win32_versioninfo.rc

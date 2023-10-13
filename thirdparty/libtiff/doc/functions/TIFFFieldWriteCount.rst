@@ -45,4 +45,10 @@ Return values
 See also
 --------
 
+:doc:`TIFFFieldDataType` (3tiff),
+:doc:`TIFFFieldName` (3tiff),
+:doc:`TIFFFieldPassCount` (3tiff),
+:doc:`TIFFFieldQuery` (3tiff),
+:doc:`TIFFFieldReadCount` (3tiff),
+:doc:`TIFFFieldTag` (3tiff),
 :doc:`libtiff` (3tiff)

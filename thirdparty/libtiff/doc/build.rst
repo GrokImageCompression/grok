@@ -617,20 +617,16 @@ necessary to manually do this work on a non-UNIX system.
 Testing the software
 --------------------
 
-Assuming you have working versions of :doc:`/tools/tiffgt`, you can now use
-it to view any of the sample images available for testing, or try
+You can try
 :doc:`/tools/tiffinfo` to display the file metadata.  See the
-:doc:`images` section on obtaining the test images.  Otherwise, you can
-do a cursory check of the library with the :doc:`/tools/tiffcp` and
-:doc:`/tools/tiffcmp` programs. For example,
+:doc:`images` section on obtaining the test images.
+Otherwise, you can do a cursory check of the library
+with the :doc:`/tools/tiffcp` program. For example,
 
 .. code-block:: shell
 
     tiffcp -lzw cramps.tif x.tif
-    tiffcmp cramps.tif x.tif
 
-(:program:`tiffcmp` should be silent if the files compare
-correctly).
 
 
 LibTIFF source files

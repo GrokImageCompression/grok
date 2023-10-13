@@ -29,4 +29,10 @@ Return values
 See also
 --------
 
+:doc:`TIFFFieldName` (3tiff),
+:doc:`TIFFFieldPassCount` (3tiff),
+:doc:`TIFFFieldQuery` (3tiff),
+:doc:`TIFFFieldReadCount` (3tiff),
+:doc:`TIFFFieldTag` (3tiff),
+:doc:`TIFFFieldWriteCount` (3tiff),
 :doc:`libtiff` (3tiff)

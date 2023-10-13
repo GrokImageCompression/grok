@@ -812,19 +812,9 @@ Warning messages are likewise directed through the
 See also
 --------
 
-:doc:`/tools/fax2tiff`,
-:doc:`/tools/pal2rgb`,
-:doc:`/tools/ppm2tiff`,
-:doc:`/tools/rgb2ycbcr`,
-:doc:`/tools/raw2tiff`,
-:doc:`/tools/tiff2bw`,
-:doc:`/tools/tiffdither`,
 :doc:`/tools/tiffdump`,
 :doc:`/tools/tiffcp`,
-:doc:`/tools/tiffcmp`,
-:doc:`/tools/tiffgt`,
 :doc:`/tools/tiffinfo`,
-:doc:`/tools/tiffmedian`,
 :doc:`/tools/tiffsplit`,
 
 **"Tag Image File Format Specification *Revision 6.0*"**,

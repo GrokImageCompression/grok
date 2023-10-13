@@ -103,26 +103,10 @@ rst_sources = \
 	index.rst \
 	build.rst \
 	internals.rst \
-	tools/tiffgt.rst \
-	tools/tiffdither.rst \
-	tools/tiff2pdf.rst \
-	tools/tiff2ps.rst \
-	tools/ppm2tiff.rst \
-	tools/raw2tiff.rst \
-	tools/fax2tiff.rst \
-	tools/tiffcrop.rst \
-	tools/tiff2bw.rst \
-	tools/fax2ps.rst \
-	tools/thumbnail.rst \
-	tools/tiffcmp.rst \
 	tools/tiffdump.rst \
-	tools/tiff2rgba.rst \
 	tools/tiffinfo.rst \
-	tools/rgb2ycbcr.rst \
 	tools/tiffset.rst \
 	tools/tiffsplit.rst \
-	tools/tiffmedian.rst \
-	tools/pal2rgb.rst \
 	tools/tiffcp.rst \
 	project/license.rst \
 	project/index.rst \
@@ -194,6 +178,7 @@ rst_sources = \
 	releases/v3.7.2.rst \
 	releases/v4.5.0.rst \
 	releases/v4.5.1.rst \
+	releases/v4.6.0.rst \
 	functions.rst \
 	tools.rst \
 	terms.rst \
@@ -258,6 +243,7 @@ rst_sources = \
 	functions/TIFFSetTagExtender.rst \
 	functions/TIFFStrileQuery.rst \
 	libtiff.rst \
+	multi_page.rst \
 	images.rst
 
 EXTRA_DIST = \

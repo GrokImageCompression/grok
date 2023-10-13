@@ -22,10 +22,26 @@
 # LIABILITY, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE
 # OF THIS SOFTWARE.
 
-
+# Add target tiff_release to update the version information in the root files
+# VERSION and RELEASE-DATE.
 add_custom_target(tiff_release
-        COMMAND ${CMAKE_COMMAND}
-        "-DSOURCE_DIR:PATH=${PROJECT_SOURCE_DIR}"
-        "-DLIBTIFF_VERSION=${PROJECT_VERSION}"
-        -P "${CMAKE_CURRENT_LIST_DIR}/ReleaseScript.cmake"
-        COMMENT "Releasing ${PROJECT_NAME} ${PROJECT_VERSION}")
+    COMMAND ${CMAKE_COMMAND}
+    "-DSOURCE_DIR:PATH=${PROJECT_SOURCE_DIR}"
+    "-DLIBTIFF_VERSION=${PROJECT_VERSION}"
+    "-DLIBTIFF_BASIC_SOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}"
+    "-DLIBTIFF_BASIC_BINARY_DIR=${CMAKE_CURRENT_BINARY_DIR}"
+    -P "${CMAKE_CURRENT_LIST_DIR}/ReleaseScript.cmake"
+    COMMENT "Releasing ${PROJECT_NAME} ${PROJECT_VERSION} ...")
+
+# Version information is taken from configure.ac
+# Note: Single command "cmake --build . --target tiff_release"
+#       does not work correctly, because version information is taken from CMakeCache.txt,
+#       which is not updated by cmake --build.
+#       Therefore, force CMake re-configure if configure.ac has changed.
+#       By the way, release-date and VERSION will not change but only when --targt tiff_release is called.
+set_property(
+    DIRECTORY
+    APPEND
+    PROPERTY CMAKE_CONFIGURE_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/configure.ac
+)
+

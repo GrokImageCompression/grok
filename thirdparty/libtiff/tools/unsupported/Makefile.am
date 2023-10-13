@@ -27,38 +27,29 @@ LIBPORT = $(top_builddir)/port/libport.la
 LIBTIFF = $(top_builddir)/libtiff/libtiff.la
 
 EXTRA_DIST = \
-	CMakeLists.txt \
-	tif_tools_versioninfo.rc
+	CMakeLists.txt
 
-if TIFF_TOOLS
+(echo tifftoolsunsupported: $(TIFF_TOOLS_UNSUPPORTED))
+if TIFF_TOOLS_UNSUPPORTED
 bin_PROGRAMS = \
-	tiffcp \
-	tiffdump \
-	tiffinfo \
-	tiffset \
-	tiffsplit
+	tiff2pdf \
+	tiff2ps
 endif
+
+EXTRA_PROGRAMS = 
 
 if HAVE_RPATH
 AM_LDFLAGS = $(LIBDIR)
 endif
 
-tiffcp_SOURCES = tiffcp.c
-tiffcp_LDADD = $(LIBTIFF) $(LIBPORT)
+tiff2pdf_SOURCES = tiff2pdf.c
+tiff2pdf_LDADD = $(LIBTIFF) $(LIBPORT)
 
-tiffdump_SOURCES = tiffdump.c
-tiffdump_LDADD = $(LIBTIFF) $(LIBPORT)
-
-tiffinfo_SOURCES = tiffinfo.c
-tiffinfo_LDADD = $(LIBTIFF) $(LIBPORT)
-
-tiffset_SOURCES = tiffset.c
-tiffset_LDADD = $(LIBTIFF) $(LIBPORT)
-
-tiffsplit_SOURCES = tiffsplit.c
-tiffsplit_LDADD = $(LIBTIFF) $(LIBPORT)
+tiff2ps_SOURCES = tiff2ps.c
+tiff2ps_LDADD = $(LIBTIFF) $(LIBPORT)
 
 AM_CPPFLAGS = -I$(top_srcdir)/libtiff -I$(top_srcdir)/port
 
 echo:
 	(echo $(CFLAGS))
+	(echo tifftoolsunsupported: $(TIFF_TOOLS_UNSUPPORTED))

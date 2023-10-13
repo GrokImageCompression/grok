@@ -144,7 +144,7 @@ failure:
  * Only if blnCloseFile is true, the file is closed.
  * TIFF **ptif returns the pointer to the opened TIFF file.
  */
-int write_basic_IFD_data(TIFF **ptif, const char *fileneme, int wrtTransferFunction, int nExtraSamples,
+int write_basic_IFD_data(TIFF **ptif, const char *filename, int wrtTransferFunction, int nExtraSamples,
                          int blnCloseFile)
 {
     unsigned char buf[3] = {0, 127, 255};
@@ -273,7 +273,7 @@ int main()
     TIFF *tif = NULL;
 
     fprintf(stderr,
-            "--- Testing TIFF_TRANSFERFUNCTION tag writing and reding. ---\n    Expect 6 warning messages ...\n");
+            "--- Testing TIFF_TRANSFERFUNCTION tag writing and reading. ---\n    Expect 6 warning messages ...\n");
 
     /* Test with RGB data */
     spp = 3;

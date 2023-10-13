@@ -108,8 +108,8 @@ by overriding the put methods as described above for supporting
 alternate raster formats.
 Simply keep a reference to the default put methods setup by
 :c:func:`TIFFRGBAImageBegin` and then invoke them before or after
-each display operation. For example, the
-:doc:`/tools/tiffgt` utility uses the following put method to
+each display operation. 
+An example for a "put" method to
 update the display as the raster is being filled:
 
 ::

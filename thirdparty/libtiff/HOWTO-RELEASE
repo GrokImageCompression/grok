@@ -100,11 +100,13 @@ Notes on releasing.
 
      make release
 
-   This will update "RELEASE-DATE", "VERSION", and libtiff/tiffvers.h
-   in the source tree.
+   This will update "RELEASE-DATE", "VERSION" in the source tree, 
+   and libtiff/tiffvers.h in the build tree.
 
 12. In the source tree, verify that the version info in RELEASE-DATE,
-   VERSION and libtiff/tiffvers.h is right.
+    VERSION is right.
+    In the build tree, verify that the version info in
+    libtiff/tiffvers.h is right.
 
 13. In the build tree do
 

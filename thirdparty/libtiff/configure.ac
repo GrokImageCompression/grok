@@ -25,7 +25,7 @@ dnl OF THIS SOFTWARE.
 dnl Process this file with autoconf to produce a configure script.
 
 AC_PREREQ(2.64)
-AC_INIT([LibTIFF Software],[4.5.1],[tiff@lists.maptools.org],[tiff])
+AC_INIT([LibTIFF Software],[4.6.0],[tiff@lists.osgeo.org],[tiff])
 AC_CONFIG_AUX_DIR(config)
 AC_CONFIG_MACRO_DIR(m4)
 AC_LANG(C)
@@ -40,12 +40,13 @@ AM_MAINTAINER_MODE
 dnl Versioning.
 dnl Don't fill the ALPHA_VERSION field, if not applicable.
 LIBTIFF_MAJOR_VERSION=4
-LIBTIFF_MINOR_VERSION=5
-LIBTIFF_MICRO_VERSION=1
+LIBTIFF_MINOR_VERSION=6
+LIBTIFF_MICRO_VERSION=0
 LIBTIFF_ALPHA_VERSION=
 LIBTIFF_VERSION=$LIBTIFF_MAJOR_VERSION.$LIBTIFF_MINOR_VERSION.$LIBTIFF_MICRO_VERSION$LIBTIFF_ALPHA_VERSION
-dnl This will be used with the 'make release' target
-LIBTIFF_RELEASE_DATE=`date +"%Y%m%d"`
+dnl This (LIBTIFF_RELEASE_DATE) is used to set the #define TIFFLIB_VERSION in tiffvers.h.
+LIBTIFF_RELEASE_DATE=$(cat ${srcdir}/RELEASE-DATE)
+
 
 dnl Libtool library revision control info
 dnl See the libtool documentation under the heading "Libtool's versioning
@@ -77,7 +78,7 @@ dnl     increment age.
 dnl  6. If any interfaces have been removed since the last public release,
 dnl     then set age to 0.                                
 LIBTIFF_CURRENT=6
-LIBTIFF_REVISION=1
+LIBTIFF_REVISION=2
 LIBTIFF_AGE=0
 LIBTIFF_VERSION_INFO=$LIBTIFF_CURRENT:$LIBTIFF_REVISION:$LIBTIFF_AGE
 
@@ -318,6 +319,12 @@ AC_ARG_ENABLE(tools,
                              [Disable building of tools]),
                              [TIFF_TOOLS=$enableval], [TIFF_TOOLS=yes])
 AM_CONDITIONAL(TIFF_TOOLS, test "$TIFF_TOOLS" = "yes")
+
+AC_ARG_ENABLE(tools-unsupported,
+              AS_HELP_STRING([--enable-tools-unsupported],
+                             [Enable building of unsupported tools]),
+                             [TIFF_TOOLS_UNSUPPORTED=$enableval], [TIFF_TOOLS_UNSUPPORTED=no])
+AM_CONDITIONAL(TIFF_TOOLS_UNSUPPORTED, test "$TIFF_TOOLS_UNSUPPORTED" = "yes")
 
 AC_ARG_ENABLE(tests,
               AS_HELP_STRING([--disable-tests],
@@ -960,46 +967,14 @@ fi
 AM_CONDITIONAL(HAVE_CXX, test "$HAVE_CXX" = "yes")
 
 dnl ---------------------------------------------------------------------------
-dnl Check for OpenGL and GLUT.
-dnl ---------------------------------------------------------------------------
-
-HAVE_OPENGL=no
-
-AC_ARG_ENABLE(opengl,
-	      AS_HELP_STRING([--disable-opengl],
-			     [disable OpenGL usage (required by tiffgt, enabled by default)]),,)
-
-if test "x$enable_opengl" != "xno" ; then
-
-  AC_PATH_XTRA
-
-  dnl AX_CHECK_GL sets GL_CFLAGS & GL_LIBS.  Also PTHREAD_LIBS,
-  dnl PTHREAD_CFLAGS, & PTHREAD_CC as a side-effect
-  AX_CHECK_GL
-
-  dnl AX_CHECK_GLU sets GLU_CFLAGS & GLU_LIBS
-  AX_CHECK_GLU
-
-  dnl AX_CHECK_GLUT sets GLUT_CFLAGS & GLUT_LIBS
-  AX_CHECK_GLUT
-
-  if test "$no_x" != "yes" -a "$no_gl" != "yes" \
-      -a "$no_glu" != "yes" -a "$no_glut" != "yes" ; then
-    HAVE_OPENGL=yes
-  fi
-fi
-
-AM_CONDITIONAL(HAVE_OPENGL, test "$HAVE_OPENGL" = "yes")
-
-dnl ---------------------------------------------------------------------------
 dnl Check for Win32 IO: make sure we have windows.h but not cygwin
-dnl this must be after the ogl test, since that looks for windows.h and we
-dnl test it
 dnl ---------------------------------------------------------------------------
 
 AC_ARG_ENABLE(win32-io,
 	      AS_HELP_STRING([--disable-win32-io],
 			     [disable Win32 I/O (Windows only, enabled by default except for Cygwin)]),,)
+
+AC_CHECK_HEADER(windows.h)
 
 win32_io_ok=no
 case "${host_os}" in
@@ -1209,9 +1184,11 @@ AC_CONFIG_FILES([Makefile \
 		 doc/Makefile \
 		 libtiff-4.pc \
 		 libtiff/Makefile \
+		 libtiff/tiffvers.h \
 		 port/Makefile \
 		 test/Makefile \
-		 tools/Makefile])
+		 tools/Makefile \
+		 tools/unsupported/Makefile])
 AC_OUTPUT
 
 dnl ---------------------------------------------------------------------------
@@ -1221,11 +1198,16 @@ dnl ---------------------------------------------------------------------------
 LOC_MSG()
 LOC_MSG([Libtiff is now configured for ${host}])
 LOC_MSG()
+LOC_MSG([  Libtiff build version:              ${LIBTIFF_VERSION}])
+LOC_MSG([  Libtiff library version:            ${LIBTIFF_VERSION_INFO}])
+LOC_MSG([  Libtiff release date:               ${LIBTIFF_RELEASE_DATE}])
+LOC_MSG()
 LOC_MSG([  Installation directory:             ${prefix}])
 LOC_MSG([  Documentation directory:            ${LIBTIFF_DOCDIR}])
 LOC_MSG([  C compiler:                         ${CC} ${CFLAGS}])
 LOC_MSG([  C++ compiler:                       ${CXX} ${CXXFLAGS}])
 LOC_MSG([  Build tools:                        ${TIFF_TOOLS}])
+LOC_MSG([  Build tools-unsupported:            ${TIFF_TOOLS_UNSUPPORTED}])
 LOC_MSG([  Build tests:                        ${TIFF_TESTS}])
 LOC_MSG([  Build contrib:                      ${TIFF_CONTRIB}])
 LOC_MSG([  Build docs:                         ${TIFF_DOCS}])
@@ -1263,6 +1245,5 @@ LOC_MSG()
 LOC_MSG([  C++ support:                        ${HAVE_CXX}])
 LOC_MSG()
 dnl LOC_MSG([  X Athena Widgets support:           ${HAVE_XAW}])
-LOC_MSG([  OpenGL support:                     ${HAVE_OPENGL}])
 LOC_MSG()
 

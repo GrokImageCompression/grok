@@ -1,7 +1,6 @@
-# Checks for OpenGL and GLUT support
+# CMake build for libtiff
 #
 # Copyright © 2015 Open Microscopy Environment / University of Dundee
-# Copyright © 2021 Roger Leigh <rleigh@codelibre.net>
 # Written by Roger Leigh <rleigh@codelibre.net>
 #
 # Permission to use, copy, modify, distribute, and sell this software and
@@ -23,28 +22,35 @@
 # LIABILITY, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE
 # OF THIS SOFTWARE.
 
-# OpenGL and GLUT
-set(OpenGL_GL_PREFERENCE LEGACY)
+message(STATUS "====  Tools - Unsupported =========")
 
-find_package(OpenGL COMPONENTS OpenGL)
-find_package(GLUT)
+# Windows specific resource preparation
+if (WIN32)
+  message(STATUS "Include resource version information for TOOLS-UNSUPPORTED")
+  set(MSVC_RESSOURCE_FILE tif_tools-unsupported_versioninfo.rc)
+  source_group("Resource Files" FILES tif_tools-unsupported_versioninfo.rc)
+endif ()
 
-set(OPENGL_SUPPORT FALSE)
-set(HAVE_OPENGL FALSE)
-if(OPENGL_FOUND AND OPENGL_GLU_FOUND AND GLUT_FOUND)
-    set(HAVE_OPENGL TRUE)
-endif()
 
-# Purely to satisfy the generated headers:
-check_include_file(GL/gl.h HAVE_GL_GL_H)
-check_include_file(GL/glu.h HAVE_GL_GLU_H)
-check_include_file(GL/glut.h HAVE_GL_GLUT_H)
-check_include_file(GLUT/glut.h HAVE_GLUT_GLUT_H)
-check_include_file(OpenGL/gl.h HAVE_OPENGL_GL_H)
-check_include_file(OpenGL/glu.h HAVE_OPENGL_GLU_H)
+add_executable(tiff2pdf ../../placeholder.h)
+target_sources(tiff2pdf PRIVATE tiff2pdf.c ${MSVC_RESSOURCE_FILE})
+target_link_libraries(tiff2pdf PRIVATE tiff tiff_port)
 
-option(tiff-opengl "use OpenGL (required for tiffgt viewer)" ${HAVE_OPENGL})
+add_executable(tiff2ps ../../placeholder.h)
+target_sources(tiff2ps PRIVATE tiff2ps.c ${MSVC_RESSOURCE_FILE})
+target_link_libraries(tiff2ps PRIVATE tiff tiff_port CMath::CMath)
 
-if (tiff-opengl AND HAVE_OPENGL)
-    set(OPENGL_SUPPORT TRUE)
+# rgb2ycbcr and thumbnail are intended to *NOT* be installed. They are for
+# testing purposes only.
+install(TARGETS tiff2pdf
+                tiff2ps
+        RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}/unsupported")
+
+if(WEBP_SUPPORT AND EMSCRIPTEN)
+  # Emscripten is pretty finnicky about linker flags.
+  # It needs --shared-memory if and only if atomics or bulk-memory is used.
+  foreach(target tiff2pdf
+                 tiff2ps)
+    target_link_options(${target} PUBLIC "-Wl,--shared-memory")
+  endforeach()
 endif()

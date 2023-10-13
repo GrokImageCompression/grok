@@ -58,8 +58,5 @@ Options
 See also
 --------
 
-:doc:`pal2rgb`,
-:doc:`tiffcp`,
-:doc:`tiffcmp`,
-:doc:`tiffmedian`,
+:doc:`tiffdump`,
 :doc:`/functions/libtiff`

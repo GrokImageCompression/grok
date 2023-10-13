@@ -7,7 +7,6 @@
 #include <winver.h>
 
 #include "tiffvers.h"
-#include "tif_config.h"
 
 #ifdef _WIN32
 LANGUAGE LANG_NEUTRAL, SUBLANG_NEUTRAL
@@ -33,12 +32,12 @@ BEGIN
         BEGIN
             VALUE "CompanyName", "libtiff project"
             VALUE "FileDescription", "TIFF Library"
-            VALUE "FileVersion", PACKAGE_VERSION
+            VALUE "FileVersion", TIFFLIB_VERSION_STR_MAJ_MIN_MIC
             VALUE "InternalName", "tiff.dll"
             VALUE "LegalCopyright", "See LICENCE.md"
             VALUE "OriginalFilename", "tiff.dll"
             VALUE "ProductName", "LibTIFF"
-            VALUE "ProductVersion", PACKAGE_VERSION
+            VALUE "ProductVersion", TIFFLIB_VERSION_STR_MAJ_MIN_MIC
             VALUE "WebPage", "https://libtiff.gitlab.io/libtiff/\0"
        END
     END
