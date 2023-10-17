@@ -79,6 +79,9 @@
 #define GROK_NOSANITIZE(kind)
 #endif
 
+#define CMS_NO_REGISTER_KEYWORD 1
+#include "lcms2.h"
+
 #include "grok_private.h"
 #include "ILogger.h"
 #include <Logger.h>

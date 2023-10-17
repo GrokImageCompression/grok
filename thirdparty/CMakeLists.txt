@@ -119,7 +119,7 @@ if(GRK_BUILD_LCMS2)
   set(LCMS_LIBNAME lcms2 PARENT_SCOPE)
   set(LCMS_INCLUDE_DIRNAME ${GROK_SOURCE_DIR}/thirdparty/liblcms2/include PARENT_SCOPE)
 else(GRK_BUILD_LCMS2)
-  find_package(LCMS2)
+  find_package(LCMS2 REQUIRED 2.15)
   # Static only build:
   #   it is necessary to invoke pkg_check_module on lcms2 since it may have
   #   several other dependencies not declared by its cmake module, but which are
@@ -132,6 +132,6 @@ else(GRK_BUILD_LCMS2)
     set(LCMS_LIBNAME ${LCMS2_LIBRARIES} ${PC_LCMS2_STATIC_LIBRARIES} PARENT_SCOPE)
     set(LCMS_INCLUDE_DIRNAME ${LCMS2_INCLUDE_DIRS} ${PC_LCMS2_STATIC_INCLUDE_DIRS} PARENT_SCOPE)
   else(LCMS2_FOUND)
-      message(FATAL_ERROR "LCMS2 library not found - please activate GRK_BUILD_LCMS2")
+      message(FATAL_ERROR "LCMS2 library with minimum version not found - please activate GRK_BUILD_LCMS2")
   endif(LCMS2_FOUND)
 endif(GRK_BUILD_LCMS2)

@@ -42,9 +42,8 @@ include_directories(
   ${CMAKE_CURRENT_SOURCE_DIR}/tile
   ${CMAKE_CURRENT_SOURCE_DIR}/scheduling
   ${CMAKE_CURRENT_SOURCE_DIR}/filters
-  ${CMAKE_CURRENT_SOURCE_DIR}/highway
   ${CMAKE_CURRENT_SOURCE_DIR}/cache
-  ${GROK_SOURCE_DIR}/thirdparty/liblcms2/include
+  ${LCMS_INCLUDE_DIRNAME}
 )
 
 # Defines the source code for executables

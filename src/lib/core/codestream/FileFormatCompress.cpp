@@ -20,7 +20,6 @@
  */
 
 #include "grk_includes.h"
-#include "lcms2.h"
 
 namespace grk
 {
