@@ -33,22 +33,44 @@
 class ExecSingleton
 {
 public:
-  static tf::Executor* instance(uint32_t numthreads)
-  {
-    static tf::Executor singleton(numthreads ? numthreads : std::thread::hardware_concurrency());
+  // Deleted copy constructor and assignment operator
+  ExecSingleton(const ExecSingleton&) = delete;
+  ExecSingleton& operator=(const ExecSingleton&) = delete;
 
-    return &singleton;
-  }
-  static tf::Executor* get()
+  // Get instance of the Singleton with a specific number of threads
+  static tf::Executor& instance(uint32_t numthreads)
   {
-    return instance(0);
+    std::lock_guard<std::mutex> lock(mutex_);
+    instance_ = std::make_unique<tf::Executor>(numthreads ? numthreads
+                                                          : std::thread::hardware_concurrency());
+
+    return *instance_;
   }
-  static void release()
+
+  // Get current instance of the Singleton (create with hardware concurrency if null)
+  static tf::Executor& get(void)
   {
-    get()->shutdown();
+    std::lock_guard<std::mutex> lock(mutex_);
+    if(!instance_)
+      return instance(0);
+    return *instance_;
   }
+
+  // Destroy the Singleton instance
+  static void destroy()
+  {
+    std::lock_guard<std::mutex> lock(mutex_);
+    instance_.reset();
+  }
+
   static uint32_t threadId(void)
   {
-    return get()->num_workers() > 1 ? (uint32_t)ExecSingleton::get()->this_worker_id() : 0;
+    return get().num_workers() > 1 ? (uint32_t)get().this_worker_id() : 0;
   }
+
+private:
+  ExecSingleton() = default;
+
+  static std::unique_ptr<tf::Executor> instance_;
+  static std::mutex mutex_;
 };

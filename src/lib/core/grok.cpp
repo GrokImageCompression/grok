@@ -127,7 +127,7 @@ void GRK_CALLCONV grk_initialize(const char* pluginPath, uint32_t numthreads, bo
 GRK_API void GRK_CALLCONV grk_deinitialize()
 {
   grk_plugin_cleanup();
-  ExecSingleton::release();
+  ExecSingleton::destroy();
 }
 
 GRK_API grk_object* GRK_CALLCONV grk_object_ref(grk_object* obj)

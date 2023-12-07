@@ -302,7 +302,7 @@ namespace HWY_NAMESPACE
   {
     auto highestResBuffer =
         info.tile->comps[info.compno].getWindow()->getResWindowBufferHighestSimple();
-    if(ExecSingleton::get()->num_workers() > 1)
+    if(ExecSingleton::get().num_workers() > 1)
     {
       tf::Task* tasks = nullptr;
       tf::Taskflow taskflow;
@@ -328,7 +328,7 @@ namespace HWY_NAMESPACE
       }
       if(tasks)
       {
-        ExecSingleton::get()->run(taskflow).wait();
+        ExecSingleton::get().run(taskflow).wait();
         delete[] tasks;
       }
     }

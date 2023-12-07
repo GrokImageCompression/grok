@@ -90,7 +90,7 @@ bool CompressScheduler::scheduleBlocks(uint16_t compno)
       }
     }
   }
-  for(auto i = 0U; i < ExecSingleton::get()->num_workers(); ++i)
+  for(auto i = 0U; i < ExecSingleton::get().num_workers(); ++i)
     t1Implementations.push_back(T1Factory::makeT1(true, tcp_, maxCblkW, maxCblkH));
   compress(&blocks);
 
@@ -102,7 +102,7 @@ void CompressScheduler::compress(std::vector<CompressBlockExec*>* blocks)
   if(!blocks || blocks->size() == 0)
     return;
 
-  size_t num_threads = ExecSingleton::get()->num_workers();
+  size_t num_threads = ExecSingleton::get().num_workers();
   if(num_threads == 1)
   {
     auto impl = t1Implementations[0];
@@ -120,20 +120,19 @@ void CompressScheduler::compress(std::vector<CompressBlockExec*>* blocks)
   blocks->clear();
 
   tf::Taskflow taskflow;
-  auto numThreads = ExecSingleton::get()->num_workers();
+  auto numThreads = ExecSingleton::get().num_workers();
   auto node = new tf::Task[numThreads];
   for(uint64_t i = 0; i < numThreads; i++)
     node[i] = taskflow.placeholder();
   for(uint64_t i = 0; i < numThreads; i++)
   {
     node[i].work([this, maxBlocks] {
-      auto threadnum = ExecSingleton::get()->this_worker_id();
+      auto threadnum = ExecSingleton::get().this_worker_id();
       while(compress((size_t)threadnum, maxBlocks))
-      {
-      }
+      {}
     });
   }
-  ExecSingleton::get()->run(taskflow).wait();
+  ExecSingleton::get().run(taskflow).wait();
 
   delete[] node;
   delete[] encodeBlocks;

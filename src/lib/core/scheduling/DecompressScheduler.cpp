@@ -158,10 +158,10 @@ bool DecompressScheduler::scheduleBlocks(uint16_t compno)
   // nominal code block dimensions
   uint16_t codeblock_width = (uint16_t)(tccp->cblkw ? (uint32_t)1 << tccp->cblkw : 0);
   uint16_t codeblock_height = (uint16_t)(tccp->cblkh ? (uint32_t)1 << tccp->cblkh : 0);
-  for(auto i = 0U; i < ExecSingleton::get()->num_workers(); ++i)
+  for(auto i = 0U; i < ExecSingleton::get().num_workers(); ++i)
     t1Implementations.push_back(T1Factory::makeT1(false, tcp_, codeblock_width, codeblock_height));
 
-  size_t num_threads = ExecSingleton::get()->num_workers();
+  size_t num_threads = ExecSingleton::get().num_workers();
   success = true;
   if(num_threads == 1)
   {
@@ -197,7 +197,7 @@ bool DecompressScheduler::scheduleBlocks(uint16_t compno)
         }
         else
         {
-          auto threadnum = ExecSingleton::get()->this_worker_id();
+          auto threadnum = ExecSingleton::get().this_worker_id();
           auto impl = t1Implementations[(size_t)threadnum];
           if(!decompressBlock(impl, block))
             success = false;

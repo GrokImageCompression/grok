@@ -464,7 +464,7 @@ bool CodeStreamDecompress::decompressTiles(void)
     return false;
 
   auto numRequiredThreads =
-      std::min<uint32_t>((uint32_t)ExecSingleton::get()->num_workers(), numTilesToDecompress);
+      std::min<uint32_t>((uint32_t)ExecSingleton::get().num_workers(), numTilesToDecompress);
   if(outputImage_->supportsStripCache(&cp_))
   {
     uint32_t numStrips = cp_.t_grid_height;
@@ -473,7 +473,7 @@ bool CodeStreamDecompress::decompressTiles(void)
       numStrips =
           (outputImage_->height() + outputImage_->rowsPerStrip - 1) / outputImage_->rowsPerStrip;
     }
-    stripCache_.init((uint32_t)ExecSingleton::get()->num_workers(), cp_.t_grid_width, numStrips,
+    stripCache_.init((uint32_t)ExecSingleton::get().num_workers(), cp_.t_grid_width, numStrips,
                      numTilesToDecompress > 1 ? cp_.t_height : outputImage_->rowsPerStrip,
                      cp_.coding_params_.dec_.reduce_, outputImage_, ioBufferCallback, ioUserData,
                      grkRegisterReclaimCallback_);
@@ -885,7 +885,7 @@ bool CodeStreamDecompress::decompressTile(void)
     {
       uint32_t numStrips =
           (outputImage_->height() + outputImage_->rowsPerStrip - 1) / outputImage_->rowsPerStrip;
-      stripCache_.init((uint32_t)ExecSingleton::get()->num_workers(), 1, numStrips,
+      stripCache_.init((uint32_t)ExecSingleton::get().num_workers(), 1, numStrips,
                        outputImage_->rowsPerStrip, cp_.coding_params_.dec_.reduce_, outputImage_,
                        ioBufferCallback, ioUserData, grkRegisterReclaimCallback_);
     }

@@ -406,7 +406,7 @@ bool WaveletFwdImpl::encode_procedure(TileComponent* tilec)
   if(dataSize != 0 && !bj)
     return false;
   int32_t i = maxNumResolutions;
-  uint32_t num_threads = ExecSingleton::get()->num_workers() > 1 ? 2 : 1;
+  uint32_t num_threads = ExecSingleton::get().num_workers() > 1 ? 2 : 1;
   DWT dwt;
   while(i--)
   {
@@ -489,7 +489,7 @@ bool WaveletFwdImpl::encode_procedure(TileComponent* tilec)
       }
       if(node)
       {
-        ExecSingleton::get()->run(taskflow).wait();
+        ExecSingleton::get().run(taskflow).wait();
         delete[] node;
       }
       if(!rc)
@@ -555,7 +555,7 @@ bool WaveletFwdImpl::encode_procedure(TileComponent* tilec)
       }
       if(node)
       {
-        ExecSingleton::get()->run(taskflow).wait();
+        ExecSingleton::get().run(taskflow).wait();
         delete[] node;
       }
       if(!rc)

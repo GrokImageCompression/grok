@@ -16,8 +16,12 @@
  */
 #include "grk_includes.h"
 
+std::unique_ptr<tf::Executor> ExecSingleton::instance_ = nullptr;
+std::mutex ExecSingleton::mutex_;
+
 namespace grk
 {
+
 Scheduler::Scheduler(Tile* tile)
     : success(true), tile_(tile), numcomps_(tile->numcomps_), prePostProc_(nullptr)
 {
@@ -36,7 +40,7 @@ Scheduler::~Scheduler()
 }
 bool Scheduler::run(void)
 {
-  ExecSingleton::get()->run(codecFlow_).wait();
+  ExecSingleton::get().run(codecFlow_).wait();
 
   return success;
 }

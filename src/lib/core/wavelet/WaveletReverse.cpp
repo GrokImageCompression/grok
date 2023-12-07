@@ -673,7 +673,7 @@ bool WaveletReverse::decompress_tile_97(void)
     return false;
   }
   vertF_.mem = horizF_.mem;
-  uint32_t numThreads = (uint32_t)ExecSingleton::get()->num_workers();
+  uint32_t numThreads = (uint32_t)ExecSingleton::get().num_workers();
   for(uint8_t res = 1; res < numres_; ++res)
   {
     horizF_.sn_full = resWidth;
@@ -1026,7 +1026,7 @@ void WaveletReverse::decompress_h_strip_53(const dwt_data<int32_t>* horiz, uint3
 bool WaveletReverse::decompress_h_53(uint8_t res, TileComponentWindow<int32_t>* buf,
                                      uint32_t resHeight, size_t dataLength)
 {
-  uint32_t numThreads = (uint32_t)ExecSingleton::get()->num_workers();
+  uint32_t numThreads = (uint32_t)ExecSingleton::get().num_workers();
   grk_buf2d_simple<int32_t> winL, winH, winDest;
   auto imageComponentFlow = scheduler_->getImageComponentFlow(compno_);
   auto resFlow = imageComponentFlow->getResFlow(res - 1);
@@ -1118,7 +1118,7 @@ bool WaveletReverse::decompress_v_53(uint8_t res, TileComponentWindow<int32_t>* 
 {
   if(resWidth == 0)
     return true;
-  uint32_t numThreads = (uint32_t)ExecSingleton::get()->num_workers();
+  uint32_t numThreads = (uint32_t)ExecSingleton::get().num_workers();
   auto winL = buf->getResWindowBufferSplitSimple(res, SPLIT_L);
   auto winH = buf->getResWindowBufferSplitSimple(res, SPLIT_H);
   auto winDest = buf->getResWindowBufferSimple(res);
@@ -1791,7 +1791,7 @@ bool WaveletReverse::decompress_partial_tile(ISparseCanvas* sa,
       synthesisWindow.pan(-(int64_t)fullResTopLevel->x0, -(int64_t)fullResTopLevel->y0);
   if(synthesisWindow.empty())
     return true;
-  uint32_t numThreads = (uint32_t)ExecSingleton::get()->num_workers();
+  uint32_t numThreads = (uint32_t)ExecSingleton::get().num_workers();
   auto imageComponentFlow = scheduler_->getImageComponentFlow(compno_);
   // imageComponentFlow == nullptr ==> no blocks were decompressed for this component
   if(!imageComponentFlow)

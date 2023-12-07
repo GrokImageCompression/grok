@@ -480,7 +480,7 @@ bool TileProcessor::decompressT2T1(GrkImage* outputImage)
     // 2.create and populate tasks, and execute
     if(parserCount)
     {
-      auto numThreads = std::min<size_t>(ExecSingleton::get()->num_workers(), parserCount);
+      auto numThreads = std::min<size_t>(ExecSingleton::get().num_workers(), parserCount);
       if(numThreads == 1)
       {
         for(uint16_t compno = 0; compno < headerImage->numcomps; ++compno)
@@ -544,7 +544,7 @@ bool TileProcessor::decompressT2T1(GrkImage* outputImage)
             }
           }
         }
-        ExecSingleton::get()->run(taskflow).wait();
+        ExecSingleton::get().run(taskflow).wait();
         delete[] tasks;
       }
     }
