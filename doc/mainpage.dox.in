@@ -1,0 +1,52 @@
+/*
+ * $Id$
+ *
+ *    Copyright (C) 2016-2024 Grok Image Compression Inc.
+ *
+ *    This source code is free software: you can redistribute it and/or  modify
+ *    it under the terms of the GNU Affero General Public License, version 3,
+ *    as published by the Free Software Foundation.
+ *
+ *    This source code is distributed in the hope that it will be useful,
+ *    but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *    GNU Affero General Public License for more details.
+ *
+ *    You should have received a copy of the GNU Affero General Public License
+ *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ *    This source code incorporates work covered by the BSD 2-clause license.
+ *    Please see the LICENSE file in the root directory for details.
+ *
+ */
+
+/*! \mainpage Grok v@GROK_VERSION@ Documentation
+*
+* \section intro Introduction
+* This manual documents the low-level Grok C API.\n
+* The Grok library is an open-source JPEG 2000 library developed to promote the use of JPEG 2000.\n
+* This documents is focused on the main part of the library which implements Part 1 and parts of Part 2 of the JPEG2000 standard.\n
+*
+* \section home Home page
+*
+* The Home Page of the Grok project can be found at:
+*
+* https://github.com/GrokImageCompression/grok
+*
+* The source code repository is available here:
+*
+* https://github.com/GrokImageCompression/grok
+*
+*
+* The test files repository is available here:
+*
+* https://github.com/GrokImageCompression/grok-test-data
+*
+* \section license License
+* This software is released under the GNU Affero General Public License, version 3,\n
+* as published by the Free Software Foundation.
+* This software also incorporates work covered by the BSD 2-clause license.
+*
+* \author Grok Team
+*
+*/

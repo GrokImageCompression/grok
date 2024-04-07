@@ -1,0 +1,739 @@
+#    Copyright (C) 2016-2024 Grok Image Compression Inc.
+#
+#    This source code is free software: you can redistribute it and/or  modify
+#    it under the terms of the GNU Affero General Public License, version 3,
+#    as published by the Free Software Foundation.
+#
+#    This source code is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU Affero General Public License for more details.
+#
+#    You should have received a copy of the GNU Affero General Public License
+#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+#
+# This file list all the input commands of the tests run by the ctest command which 
+# are not related to the conformance files.
+#
+# For each line of this file (except line which begin with #) an grk_compress test or a
+# grk_decompress is run and its related tests.
+#   + For encoder related tests = dump, compare dump to base, decode the encoded file with 
+#     reference and compare the decoded file with the baseline decoded previously with 
+#     ref decoder.
+#   + For decoder related tests = dump, compare dump to base, (TODO: compare outpout decoding 
+#     image to base)
+#
+# Lines beginning with `!` should fail. We use this for bad jpeg2000 file which should be 
+# gracefully rejected. When adding a new test, please add a short summary of 
+# why this file should be rejected.
+#
+# You can use @INPUT_NR_PATH@ and @TEMP_PATH@ cmake variable which refers to GRK_DATA_ROOT 
+# repository. However you can use relative path or absolute path.
+
+# ENCODER TEST SUITE
+grk_compress -i @INPUT_NR_PATH@/Bretagne1.ppm -o @TEMP_PATH@/Bretagne1_0.j2k -r 200,50,10
+grk_compress -i @INPUT_NR_PATH@/Bretagne1.ppm -o @TEMP_PATH@/Bretagne1_1.j2k -q 30,35,40 -n 2
+grk_compress -i @INPUT_NR_PATH@/Bretagne1.ppm -o @TEMP_PATH@/Bretagne1_2.j2k -q 30,35,40 -b 16,16 -c [64,64]
+grk_compress -i @INPUT_NR_PATH@/Bretagne2.ppm -o @TEMP_PATH@/Bretagne2_0.j2k -c [128,128],[128,128],[128,128] -r 100,20,2 -t 640,480 -b 32,32
+grk_compress -i @INPUT_NR_PATH@/Bretagne2.ppm -o @TEMP_PATH@/Bretagne2_1.j2k -t 127,127 -p PCRL
+grk_compress -i @INPUT_NR_PATH@/Bretagne2.ppm -o @TEMP_PATH@/Bretagne2_2.j2k -SOP
+grk_compress -i @INPUT_NR_PATH@/Bretagne2.ppm -o @TEMP_PATH@/Bretagne2_3.j2k -EPH -M 38
+grk_compress -i @INPUT_NR_PATH@/Bretagne2.ppm -o @TEMP_PATH@/Bretagne2_4.j2k -d 150,300 -r 800
+grk_compress -i @INPUT_NR_PATH@/Cevennes1.bmp -o @TEMP_PATH@/Cevennes1.j2k -r 10
+grk_compress -i @INPUT_NR_PATH@/Cevennes2.ppm -o @TEMP_PATH@/Cevennes2.jp2 -r 50
+grk_compress -i @INPUT_NR_PATH@/Rome.bmp -o @TEMP_PATH@/Rome.jp2 -q 30,35,50 -n 3
+# related to issue 5
+grk_compress -i @INPUT_NR_PATH@/random-issue-0005.tif -o @TEMP_PATH@/random-issue-0005.tif.j2k
+# related to issue 62
+grk_compress -i @INPUT_NR_PATH@/tmp-issue-0062.raw -o @TEMP_PATH@/tmp-issue-0062-u.raw.j2k -F 512,512,1,16,u
+grk_compress -i @INPUT_NR_PATH@/tmp-issue-0062.raw -o @TEMP_PATH@/tmp-issue-0062-s.raw.j2k -F 512,512,1,16,s
+grk_compress -i @INPUT_NR_PATH@/X_4_2K_24_185_CBR_WB_000.tif -o @TEMP_PATH@/X_4_2K_24_185_CBR_WB_000_C2K_24.j2k -cinema2K 24
+grk_compress -i @INPUT_NR_PATH@/X_5_2K_24_235_CBR_STEM24_000.tif -o @TEMP_PATH@/X_5_2K_24_235_CBR_STEM24_000_C2K_24.j2k -cinema2K 24
+grk_compress -i @INPUT_NR_PATH@/X_6_2K_24_FULL_CBR_CIRCLE_000.tif -o @TEMP_PATH@/X_6_2K_24_FULL_CBR_CIRCLE_000_C2K_24.j2k -cinema2K 24
+grk_compress -i @INPUT_NR_PATH@/X_4_2K_24_185_CBR_WB_000.tif -o @TEMP_PATH@/X_4_2K_24_185_CBR_WB_000_C2K_48.j2k -cinema2K 48
+grk_compress -i @INPUT_NR_PATH@/X_5_2K_24_235_CBR_STEM24_000.tif -o @TEMP_PATH@/X_5_2K_24_235_CBR_STEM24_000_C2K_48.j2k -cinema2K 48
+grk_compress -i @INPUT_NR_PATH@/X_6_2K_24_FULL_CBR_CIRCLE_000.tif -o @TEMP_PATH@/X_6_2K_24_FULL_CBR_CIRCLE_000_C2K_48.j2k -cinema2K 48
+grk_compress -i @INPUT_NR_PATH@/ElephantDream_4K.tif -o @TEMP_PATH@/ElephantDream_4K_C4K.j2k -cinema4K 24
+# issue 141
+grk_compress -i @INPUT_NR_PATH@/issue141.rawl -o @TEMP_PATH@/issue141.rawl.j2k   -F 2048,32,1,16,u
+grk_compress -i @INPUT_NR_PATH@/issue141.rawl -o @TEMP_PATH@/issue141-I.rawl.j2k -F 2048,32,1,16,u -I
+# issue 46:
+grk_compress -i @INPUT_NR_PATH@/Bretagne2.ppm -o @TEMP_PATH@/Bretagne2_5.j2k -c [64,64]
+# issue 316
+grk_compress -i @INPUT_NR_PATH@/issue316.png -o @TEMP_PATH@/issue316.png.jp2
+# issue 416 (cdef for png with alpha) + issue 436 (MCT norm read buffer overflow for num comp > 3 + Issue 215 number of decomp levels
+grk_compress -i @INPUT_NR_PATH@/pngsuite/basn6a08.png -o @TEMP_PATH@/basn6a08.png.jp2 -n 6
+# issue 203 BMP Files not handled properly
+grk_compress -i @INPUT_NR_PATH@/issue203-8bpp-width1.bmp -o @TEMP_PATH@/issue203-8bpp-width1.bmp.jp2
+grk_compress -i @INPUT_NR_PATH@/issue203-rle8.bmp -o @TEMP_PATH@/issue203-rle8.bmp.jp2
+grk_compress -i @INPUT_NR_PATH@/issue203-32x32-y8.bmp -o @TEMP_PATH@/issue203-32x32-y8.bmp.jp2
+grk_compress -i @INPUT_NR_PATH@/issue203-33x33-y8.bmp -o @TEMP_PATH@/issue203-33x33-y8.bmp.jp2
+grk_compress -i @INPUT_NR_PATH@/issue203-34x34-y8.bmp -o @TEMP_PATH@/issue203-34x34-y8.bmp.jp2
+grk_compress -i @INPUT_NR_PATH@/issue203-35x35-y8.bmp -o @TEMP_PATH@/issue203-35x35-y8.bmp.jp2
+grk_compress -i @INPUT_NR_PATH@/issue203-32x32-bgr.bmp -o @TEMP_PATH@/issue203-32x32-bgr.bmp.jp2
+grk_compress -i @INPUT_NR_PATH@/issue203-33x33-bgr.bmp -o @TEMP_PATH@/issue203-33x33-bgr.bmp.jp2
+grk_compress -i @INPUT_NR_PATH@/issue203-34x34-bgr.bmp -o @TEMP_PATH@/issue203-34x34-bgr.bmp.jp2
+grk_compress -i @INPUT_NR_PATH@/issue203-35x35-bgr.bmp -o @TEMP_PATH@/issue203-35x35-bgr.bmp.jp2
+grk_compress -i @INPUT_NR_PATH@/issue203-32x32-y-rle8.bmp -o @TEMP_PATH@/issue203-32x32-y-rle8.bmp.jp2
+grk_compress -i @INPUT_NR_PATH@/issue203-32x32-bgr-rle8.bmp -o @TEMP_PATH@/issue203-32x32-bgr-rle8.bmp.jp2
+grk_compress -i @INPUT_NR_PATH@/issue203-32x32-y-rle4.bmp -o @TEMP_PATH@/issue203-32x32-y-rle4.bmp.jp2
+grk_compress -i @INPUT_NR_PATH@/issue203-32x32-bgr-rle4.bmp -o @TEMP_PATH@/issue203-32x32-bgr-rle4.bmp.jp2
+grk_compress -i @INPUT_NR_PATH@/issue203-32x32-bgra.bmp -o @TEMP_PATH@/issue203-32x32-bgra.bmp.jp2
+grk_compress -i @INPUT_NR_PATH@/issue203-32x32-bgrx.bmp -o @TEMP_PATH@/issue203-32x32-bgrx.bmp.jp2
+grk_compress -i @INPUT_NR_PATH@/issue203-32x32-bgr16.bmp -o @TEMP_PATH@/issue203-32x32-bgr16.bmp.jp2
+grk_compress -i @INPUT_NR_PATH@/issue203-33x33-bgr16.bmp -o @TEMP_PATH@/issue203-33x33-bgr16.bmp.jp2
+grk_compress -i @INPUT_NR_PATH@/issue203-32x32-bgra16.bmp -o @TEMP_PATH@/issue203-32x32-bgra16.bmp.jp2
+grk_compress -i @INPUT_NR_PATH@/issue203-33x33-bgra16.bmp -o @TEMP_PATH@/issue203-33x33-bgra16.bmp.jp2
+grk_compress -i @INPUT_NR_PATH@/issue203-32x32-bgrx16.bmp -o @TEMP_PATH@/issue203-32x32-bgrx16.bmp.jp2
+grk_compress -i @INPUT_NR_PATH@/issue203-33x33-bgrx16.bmp -o @TEMP_PATH@/issue203-33x33-bgrx16.bmp.jp2
+grk_compress -i @INPUT_NR_PATH@/issue203-127x64-bgr16.bmp -o @TEMP_PATH@/issue203-127x64-bgr16.bmp.jp2
+grk_compress -i @INPUT_NR_PATH@/issue203-127x64-bgrx.bmp -o @TEMP_PATH@/issue203-127x64-bgrx.bmp.jp2
+
+# issue 322 limited tif support 
+# note: since our reference files do not have capture resolution stored, we disable capture resolution 
+# storage via command line parameter "-Q 0,0"
+grk_compress -i @INPUT_NR_PATH@/flower-minisblack-01.tif -o @TEMP_PATH@/flower-minisblack-01.tif.jp2 -Q 0,0
+grk_compress -i @INPUT_NR_PATH@/flower-minisblack-02.tif -o @TEMP_PATH@/flower-minisblack-02.tif.jp2 -Q 0,0
+grk_compress -i @INPUT_NR_PATH@/flower-minisblack-04.tif -o @TEMP_PATH@/flower-minisblack-04.tif.jp2 -Q 0,0
+grk_compress -i @INPUT_NR_PATH@/flower-minisblack-06.tif -o @TEMP_PATH@/flower-minisblack-06.tif.jp2 -Q 0,0
+grk_compress -i @INPUT_NR_PATH@/flower-minisblack-08.tif -o @TEMP_PATH@/flower-minisblack-08.tif.jp2 -Q 0,0
+grk_compress -i @INPUT_NR_PATH@/flower-minisblack-10.tif -o @TEMP_PATH@/flower-minisblack-10.tif.jp2 -Q 0,0
+grk_compress -i @INPUT_NR_PATH@/flower-minisblack-12.tif -o @TEMP_PATH@/flower-minisblack-12.tif.jp2 -Q 0,0
+grk_compress -i @INPUT_NR_PATH@/flower-minisblack-14.tif -o @TEMP_PATH@/flower-minisblack-14.tif.jp2 -Q 0,0
+grk_compress -i @INPUT_NR_PATH@/flower-minisblack-16.tif -o @TEMP_PATH@/flower-minisblack-16.tif.jp2 -Q 0,0
+grk_compress -i @INPUT_NR_PATH@/flower-rgb-contig-02.tif -o @TEMP_PATH@/flower-rgb-contig-02.tif.jp2 -Q 0,0
+grk_compress -i @INPUT_NR_PATH@/flower-rgb-contig-04.tif -o @TEMP_PATH@/flower-rgb-contig-04.tif.jp2 -Q 0,0
+grk_compress -i @INPUT_NR_PATH@/flower-rgb-contig-08.tif -o @TEMP_PATH@/flower-rgb-contig-08.tif.jp2 -Q 0,0
+grk_compress -i @INPUT_NR_PATH@/flower-rgb-contig-10.tif -o @TEMP_PATH@/flower-rgb-contig-10.tif.jp2 -Q 0,0
+grk_compress -i @INPUT_NR_PATH@/flower-rgb-contig-12.tif -o @TEMP_PATH@/flower-rgb-contig-12.tif.jp2 -Q 0,0
+grk_compress -i @INPUT_NR_PATH@/flower-rgb-contig-14.tif -o @TEMP_PATH@/flower-rgb-contig-14.tif.jp2 -Q 0,0
+grk_compress -i @INPUT_NR_PATH@/flower-rgb-contig-16.tif -o @TEMP_PATH@/flower-rgb-contig-16.tif.jp2 -Q 0,0
+grk_compress -i @INPUT_NR_PATH@/flower-rgb-planar-02.tif -o @TEMP_PATH@/flower-rgb-planar-02.tif.jp2 -Q 0,0
+grk_compress -i @INPUT_NR_PATH@/flower-rgb-planar-04.tif -o @TEMP_PATH@/flower-rgb-planar-04.tif.jp2 -Q 0,0
+grk_compress -i @INPUT_NR_PATH@/flower-rgb-planar-08.tif -o @TEMP_PATH@/flower-rgb-planar-08.tif.jp2 -Q 0,0
+grk_compress -i @INPUT_NR_PATH@/flower-rgb-planar-10.tif -o @TEMP_PATH@/flower-rgb-planar-10.tif.jp2 -Q 0,0
+grk_compress -i @INPUT_NR_PATH@/flower-rgb-planar-12.tif -o @TEMP_PATH@/flower-rgb-planar-12.tif.jp2 -Q 0,0
+grk_compress -i @INPUT_NR_PATH@/flower-rgb-planar-14.tif -o @TEMP_PATH@/flower-rgb-planar-14.tif.jp2 -Q 0,0
+grk_compress -i @INPUT_NR_PATH@/flower-rgb-planar-16.tif -o @TEMP_PATH@/flower-rgb-planar-16.tif.jp2 -Q 0,0
+grk_compress -i @INPUT_NR_PATH@/basn6a08.tif -o @TEMP_PATH@/basn6a08.tif.jp2 -Q 0,0
+grk_compress -i @INPUT_NR_PATH@/basn4a08.tif -o @TEMP_PATH@/basn4a08.tif.jp2 -Q 0,0
+
+# issue 536 (PNG images are always read as RGB(A) images) + issue 264 (convert.c is unmaintainable)
+# Test all images from pngsuite
+grk_compress -i @INPUT_NR_PATH@/pngsuite/basn0g01.png -o @TEMP_PATH@/basn0g01.png.jp2
+grk_compress -i @INPUT_NR_PATH@/pngsuite/basn0g02.png -o @TEMP_PATH@/basn0g02.png.jp2
+grk_compress -i @INPUT_NR_PATH@/pngsuite/basn0g04.png -o @TEMP_PATH@/basn0g04.png.jp2
+grk_compress -i @INPUT_NR_PATH@/pngsuite/basn0g08.png -o @TEMP_PATH@/basn0g08.png.jp2
+grk_compress -i @INPUT_NR_PATH@/pngsuite/basn0g16.png -o @TEMP_PATH@/basn0g16.png.jp2
+grk_compress -i @INPUT_NR_PATH@/pngsuite/basn2c08.png -o @TEMP_PATH@/basn2c08.png.jp2
+grk_compress -i @INPUT_NR_PATH@/pngsuite/basn2c16.png -o @TEMP_PATH@/basn2c16.png.jp2
+grk_compress -i @INPUT_NR_PATH@/pngsuite/basn3p01.png -o @TEMP_PATH@/basn3p01.png.jp2
+grk_compress -i @INPUT_NR_PATH@/pngsuite/basn3p02.png -o @TEMP_PATH@/basn3p02.png.jp2
+grk_compress -i @INPUT_NR_PATH@/pngsuite/basn3p04.png -o @TEMP_PATH@/basn3p04.png.jp2
+grk_compress -i @INPUT_NR_PATH@/pngsuite/basn3p08.png -o @TEMP_PATH@/basn3p08.png.jp2
+grk_compress -i @INPUT_NR_PATH@/pngsuite/basn4a08.png -o @TEMP_PATH@/basn4a08.png.jp2
+grk_compress -i @INPUT_NR_PATH@/pngsuite/basn4a16.png -o @TEMP_PATH@/basn4a16.png.jp2
+# already done grk_compress -i @INPUT_NR_PATH@/pngsuite/basn6a08.png -o @TEMP_PATH@/basn6a08.png.jp2
+grk_compress -i @INPUT_NR_PATH@/pngsuite/basn6a16.png -o @TEMP_PATH@/basn6a16.png.jp2
+grk_compress -i @INPUT_NR_PATH@/pngsuite/ftbbn0g01.png -o @TEMP_PATH@/ftbbn0g01.png.jp2
+grk_compress -i @INPUT_NR_PATH@/pngsuite/ftbbn0g02.png -o @TEMP_PATH@/ftbbn0g02.png.jp2
+grk_compress -i @INPUT_NR_PATH@/pngsuite/ftbbn0g04.png -o @TEMP_PATH@/ftbbn0g04.png.jp2
+grk_compress -i @INPUT_NR_PATH@/pngsuite/ftbbn2c16.png -o @TEMP_PATH@/ftbbn2c16.png.jp2
+grk_compress -i @INPUT_NR_PATH@/pngsuite/ftbbn3p08.png -o @TEMP_PATH@/ftbbn3p08.png.jp2
+grk_compress -i @INPUT_NR_PATH@/pngsuite/ftbgn2c16.png -o @TEMP_PATH@/ftbgn2c16.png.jp2
+grk_compress -i @INPUT_NR_PATH@/pngsuite/ftbgn3p08.png -o @TEMP_PATH@/ftbgn3p08.png.jp2
+grk_compress -i @INPUT_NR_PATH@/pngsuite/ftbrn2c08.png -o @TEMP_PATH@/ftbrn2c08.png.jp2
+grk_compress -i @INPUT_NR_PATH@/pngsuite/ftbwn0g16.png -o @TEMP_PATH@/ftbwn0g16.png.jp2
+grk_compress -i @INPUT_NR_PATH@/pngsuite/ftbwn3p08.png -o @TEMP_PATH@/ftbwn3p08.png.jp2
+grk_compress -i @INPUT_NR_PATH@/pngsuite/ftbyn3p08.png -o @TEMP_PATH@/ftbyn3p08.png.jp2
+grk_compress -i @INPUT_NR_PATH@/pngsuite/ftp0n0g08.png -o @TEMP_PATH@/ftp0n0g08.png.jp2
+grk_compress -i @INPUT_NR_PATH@/pngsuite/ftp0n2c08.png -o @TEMP_PATH@/ftp0n2c08.png.jp2
+grk_compress -i @INPUT_NR_PATH@/pngsuite/ftp0n3p08.png -o @TEMP_PATH@/ftp0n3p08.png.jp2
+grk_compress -i @INPUT_NR_PATH@/pngsuite/ftp1n3p08.png -o @TEMP_PATH@/ftp1n3p08.png.jp2
+
+# issue 571 Lossless is not lossless on linux x86
+grk_compress -i @INPUT_NR_PATH@/issue571.tif -o @TEMP_PATH@/issue571.tif.j2k
+
+# issue 729 Allow to read 3/5/7/9/11/13/15 bpp tif files 
+# note: since our reference files do not have capture resolution stored, we disable capture resolution 
+# storage via command line parameter "-Q 0,0"
+grk_compress -i @INPUT_NR_PATH@/flower-minisblack-03.tif -o @TEMP_PATH@/flower-minisblack-03.tif.jp2 -Q 0,0
+grk_compress -i @INPUT_NR_PATH@/flower-minisblack-05.tif -o @TEMP_PATH@/flower-minisblack-05.tif.jp2 -Q 0,0
+grk_compress -i @INPUT_NR_PATH@/flower-minisblack-07.tif -o @TEMP_PATH@/flower-minisblack-07.tif.jp2 -Q 0,0
+grk_compress -i @INPUT_NR_PATH@/flower-minisblack-09.tif -o @TEMP_PATH@/flower-minisblack-09.tif.jp2 -Q 0,0
+grk_compress -i @INPUT_NR_PATH@/flower-minisblack-11.tif -o @TEMP_PATH@/flower-minisblack-11.tif.jp2 -Q 0,0
+grk_compress -i @INPUT_NR_PATH@/flower-minisblack-13.tif -o @TEMP_PATH@/flower-minisblack-13.tif.jp2 -Q 0,0
+grk_compress -i @INPUT_NR_PATH@/flower-minisblack-15.tif -o @TEMP_PATH@/flower-minisblack-15.tif.jp2 -Q 0,0
+
+# issue 843 Crash with invalid ppm file
+!grk_compress -i @INPUT_NR_PATH@/issue843.ppm -o @TEMP_PATH@/issue843.ppm.jp2
+
+# Test all 6 coding options individually
+grk_compress -i @INPUT_NR_PATH@/Bretagne2.ppm -o @TEMP_PATH@/Bretagne2_vsc.j2k -M 8
+grk_compress -i @INPUT_NR_PATH@/Bretagne2.ppm -o @TEMP_PATH@/Bretagne2_bypass.j2k -M 1
+grk_compress -i @INPUT_NR_PATH@/Bretagne2.ppm -o @TEMP_PATH@/Bretagne2_reset.j2k -M 2
+grk_compress -i @INPUT_NR_PATH@/Bretagne2.ppm -o @TEMP_PATH@/Bretagne2_termall.j2k -M 4
+grk_compress -i @INPUT_NR_PATH@/Bretagne2.ppm -o @TEMP_PATH@/Bretagne2_pterm.j2k -M 16
+grk_compress -i @INPUT_NR_PATH@/Bretagne2.ppm -o @TEMP_PATH@/Bretagne2_segsym.j2k -M 32
+
+# Test a few combinations of coding options
+grk_compress -i @INPUT_NR_PATH@/Bretagne2.ppm -o @TEMP_PATH@/Bretagne2_bypass_termall.j2k -M 5
+grk_compress -i @INPUT_NR_PATH@/Bretagne2.ppm -o @TEMP_PATH@/Bretagne2_bypass_pterm.j2k -M 17
+grk_compress -i @INPUT_NR_PATH@/Bretagne2.ppm -o @TEMP_PATH@/Bretagne2_termall_pterm.j2k -M 20
+grk_compress -i @INPUT_NR_PATH@/Bretagne2.ppm -o @TEMP_PATH@/Bretagne2_bypass_termall_pterm.j2k -M 21
+grk_compress -i @INPUT_NR_PATH@/Bretagne2.ppm -o @TEMP_PATH@/Bretagne2_bypass_vsc_reset_termall_pterm_segsym.j2k -M 63
+
+# issue 92
+grk_compress -i @INPUT_NR_PATH@/Bretagne2.ppm -o @TEMP_PATH@/Bretagne2_issue_92.j2k -r 700,53.8246894469852,38.6958466880406,27.8193625692756,20,1 -c [256,256],[256,256],[128,128],[128,128],[128,128],[128,128] -p RPCL -n 6 -t 1024,1024 -b 64,64 -SOP -EPH -M 1
+
+grk_compress_no_raw -i @INPUT_NR_PATH@/X_4_2K_24_185_CBR_WB_000.tif -o @TEMP_PATH@/X_4_2K_24_185_CBR_WB_000_IMF_2K.j2k -IMF 2K
+grk_compress_no_raw -i @INPUT_NR_PATH@/ElephantDream_4K.tif -o @TEMP_PATH@/X_4_2K_24_185_CBR_WB_000_IMF_4K.j2k -IMF 4K
+grk_compress_no_raw -i @INPUT_NR_PATH@/ElephantDream_4K.tif -o @TEMP_PATH@/X_4_2K_24_185_CBR_WB_000_IMF_8K.j2k -IMF 8K
+grk_compress_no_raw_lossless -i @INPUT_NR_PATH@/X_4_2K_24_185_CBR_WB_000.tif -o @TEMP_PATH@/X_4_2K_24_185_CBR_WB_000_IMF_2K_R.j2k -IMF 2K_R
+grk_compress_no_raw_lossless -i @INPUT_NR_PATH@/ElephantDream_4K.tif -o @TEMP_PATH@/X_4_2K_24_185_CBR_WB_000_IMF_4K_R.j2k -IMF 4K_R
+grk_compress_no_raw_lossless -i @INPUT_NR_PATH@/ElephantDream_4K.tif -o @TEMP_PATH@/X_4_2K_24_185_CBR_WB_000_IMF_8K_R.j2k -IMF 8K_R
+
+# DECODER TEST SUITE
+grk_decompress -i  @INPUT_NR_PATH@/Bretagne2.j2k -o @TEMP_PATH@/Bretagne2.j2k.pgx
+grk_decompress -i  @INPUT_NR_PATH@/_00042.j2k -o @TEMP_PATH@/_00042.j2k.pgx
+grk_decompress -i  @INPUT_NR_PATH@/123.j2c -o @TEMP_PATH@/123.j2c.pgx
+# The 4 following tests should failed (kakadu indicates that they are corrupted)
+!grk_decompress -i  @INPUT_NR_PATH@/broken1.jp2 -o @TEMP_PATH@/broken1.jp2.pgx
+!grk_decompress -i  @INPUT_NR_PATH@/broken2.jp2 -o @TEMP_PATH@/broken2.jp2.pgx
+!grk_decompress -i  @INPUT_NR_PATH@/broken3.jp2 -o @TEMP_PATH@/broken3.jp2.pgx
+!grk_decompress -i  @INPUT_NR_PATH@/broken4.jp2 -o @TEMP_PATH@/broken4.jp2.pgx
+grk_decompress -i  @INPUT_NR_PATH@/bug.j2c -o @TEMP_PATH@/bug.j2c.pgx
+grk_decompress -i  @INPUT_NR_PATH@/buxI.j2k -o @TEMP_PATH@/buxI.j2k.pgx
+grk_decompress -i  @INPUT_NR_PATH@/buxR.j2k -o @TEMP_PATH@/buxR.j2k.pgx
+grk_decompress -i  @INPUT_NR_PATH@/Cannotreaddatawithnosizeknown.j2k -o @TEMP_PATH@/Cannotreaddatawithnosizeknown.j2k.pgx
+grk_decompress -i  @INPUT_NR_PATH@/cthead1.j2k -o @TEMP_PATH@/cthead1.j2k.pgx
+grk_decompress -i  @INPUT_NR_PATH@/CT_Phillips_JPEG2K_Decompr_Problem.j2k -o @TEMP_PATH@/CT_Phillips_JPEG2K_Decompr_Problem.j2k.pgx
+grk_decompress -i  @INPUT_NR_PATH@/illegalcolortransform.j2k -o @TEMP_PATH@/illegalcolortransform.j2k.pgx
+grk_decompress -i  @INPUT_NR_PATH@/j2k32.j2k -o @TEMP_PATH@/j2k32.j2k.pgx
+grk_decompress -i  @INPUT_NR_PATH@/kakadu_v4-4_openjpegv2_broken.j2k -o @TEMP_PATH@/kakadu_v4-4_openjpegv2_broken.j2k.pgx
+grk_decompress -i  @INPUT_NR_PATH@/MarkerIsNotCompliant.j2k -o @TEMP_PATH@/MarkerIsNotCompliant.j2k.pgx
+grk_decompress -i  @INPUT_NR_PATH@/Marrin.jp2 -o @TEMP_PATH@/Marrin.jp2.pgx
+grk_decompress -i  @INPUT_NR_PATH@/merged.jp2 -o @TEMP_PATH@/merged.jp2.pgx
+grk_decompress -i  @INPUT_NR_PATH@/movie_00000.j2k -o @TEMP_PATH@/movie_00000.j2k.pgx
+grk_decompress -i  @INPUT_NR_PATH@/movie_00001.j2k -o @TEMP_PATH@/movie_00001.j2k.pgx
+grk_decompress -i  @INPUT_NR_PATH@/movie_00002.j2k -o @TEMP_PATH@/movie_00002.j2k.pgx
+grk_decompress -i  @INPUT_NR_PATH@/orb-blue10-lin-j2k.j2k -o @TEMP_PATH@/orb-blue10-lin-j2k.j2k.pgx
+grk_decompress -i  @INPUT_NR_PATH@/orb-blue10-lin-jp2.jp2 -o @TEMP_PATH@/orb-blue10-lin-jp2.jp2.pgx
+grk_decompress -i  @INPUT_NR_PATH@/orb-blue10-win-j2k.j2k -o @TEMP_PATH@/orb-blue10-win-j2k.j2k.pgx
+grk_decompress -i  @INPUT_NR_PATH@/orb-blue10-win-jp2.jp2 -o @TEMP_PATH@/orb-blue10-win-jp2.jp2.pgx
+grk_decompress -i  @INPUT_NR_PATH@/relax.jp2 -o @TEMP_PATH@/relax.jp2.pgx
+grk_decompress -i  @INPUT_NR_PATH@/test_lossless.j2k -o @TEMP_PATH@/test_lossless.j2k.pgx
+# text_GBR.jp2 file exhibt an error regarding a tile part with a index equal to the number of tile-part in tile (related to issue 202, 206, 208)
+!grk_decompress -i  @INPUT_NR_PATH@/text_GBR.jp2 -o @TEMP_PATH@/text_GBR.jp2.pgx
+# pacs.ge file should throw an error but finally it seems work with v2
+grk_decompress -i  @INPUT_NR_PATH@/pacs.ge.j2k -o @TEMP_PATH@/pacs.ge.j2k.pgx
+# related to issue 135 
+grk_decompress -i  @INPUT_NR_PATH@/kodak_2layers_lrcp.j2c -o @TEMP_PATH@/kodak_2layers_lrcp.j2c.pgx
+grk_decompress -i  @INPUT_NR_PATH@/kodak_2layers_lrcp.j2c -o @TEMP_PATH@/kodak_2layers_lrcp-l2.j2c.pgx -l 2
+# related to issue 104 and 110
+grk_decompress -i  @INPUT_NR_PATH@/issue104_jpxstream.jp2 -o @TEMP_PATH@/issue104_jpxstream.jp2.pgx
+# File not supported by kakadu (Malformed PCLR box) and not supported by Grok (problem with value of TPSot)
+!grk_decompress -i  @INPUT_NR_PATH@/mem-b2ace68c-1381.jp2 -o @TEMP_PATH@/mem-b2ace68c-1381.jp2.pgx
+# File which produced weird output with kakadu and not supported by Grok (problem with value of TPSot, issue 202, 206, 208)
+!grk_decompress -i  @INPUT_NR_PATH@/mem-b2b86b74-2753.jp2 -o @TEMP_PATH@/mem-b2b86b74-2753.jp2.pgx
+# issue 191 raised by the gdal fuzzer test (should properly failed)
+!grk_decompress -i  @INPUT_NR_PATH@/gdal_fuzzer_unchecked_numresolutions.jp2 -o @TEMP_PATH@/gdal_fuzzer_unchecked_numresolutions.pgx
+# issue 192 raised by the gdal fuzzer test (should nicely failed)
+!grk_decompress -i  @INPUT_NR_PATH@/gdal_fuzzer_assert_in_j2k_read_SQcd_SQcc.patch.jp2 -o @TEMP_PATH@/gdal_fuzzer_assert_in_j2k_read_SQcd_SQcc.patch.pgx
+# issue 193 raised by the gdal fuzzer test (should nicely failed)
+!grk_decompress -i  @INPUT_NR_PATH@/gdal_fuzzer_check_number_of_tiles.jp2 -o @TEMP_PATH@/gdal_fuzzer_check_number_of_tiles.pgx
+# issue 194 raised by the gdal fuzzer test (should nicely failed)
+!grk_decompress -i  @INPUT_NR_PATH@/gdal_fuzzer_check_comp_dx_dy.jp2 -o @TEMP_PATH@/gdal_fuzzer_check_comp_dx_dy.pgx
+# issue 202 
+grk_decompress -i  @INPUT_NR_PATH@/file409752.jp2 -o @TEMP_PATH@/file409752.jp2.pgx
+# issue 188 
+grk_decompress -i  @INPUT_NR_PATH@/issue188_beach_64bitsbox.jp2 -o @TEMP_PATH@/issue188_beach_64bitsbox.jp2.pgx
+# issue 206
+!grk_decompress -i  @INPUT_NR_PATH@/issue206_image-000.jp2 -o @TEMP_PATH@/issue206_image-000.jp2.pgx
+# issue 205
+grk_decompress -i  @INPUT_NR_PATH@/issue205.jp2 -o @TEMP_PATH@/issue205.jp2.pgx
+# issue 225 (sumatrapdf)
+!grk_decompress -i @INPUT_NR_PATH@/451.pdf.SIGSEGV.5b5.3723.jp2  -o @TEMP_PATH@/451.pdf.SIGSEGV.5b5.3723.jp2.pgx
+!grk_decompress -i @INPUT_NR_PATH@/1888.pdf.asan.35.988.jp2      -o @TEMP_PATH@/1888.pdf.asan.35.988.jp2.pgx
+!grk_decompress -i @INPUT_NR_PATH@/2539.pdf.SIGFPE.706.1712.jp2  -o @TEMP_PATH@/2539.pdf.SIGFPE.706.1712.jp2.pgx
+!grk_decompress -i @INPUT_NR_PATH@/2236.pdf.SIGSEGV.398.1376.jp2 -o @TEMP_PATH@/2236.pdf.SIGSEGV.398.1376.jp2.pgx
+!grk_decompress  -i @INPUT_NR_PATH@/1336.pdf.asan.47.376.jp2     -o @TEMP_PATH@/1336.pdf.asan.47.376.jp2.pgx
+!grk_decompress -i @INPUT_NR_PATH@/1851.pdf.SIGSEGV.ce9.948.jp2  -o @TEMP_PATH@/1851.pdf.SIGSEGV.ce9.948.jp2.pgx
+!grk_decompress -i @INPUT_NR_PATH@/4149.pdf.SIGSEGV.cf7.3501.jp2 -o @TEMP_PATH@/4149.pdf.SIGSEGV.cf7.3501.jp2.pgx
+!grk_decompress -i @INPUT_NR_PATH@/4035.pdf.SIGSEGV.d8b.3375.jp2 -o @TEMP_PATH@/4035.pdf.SIGSEGV.d8b.3375.jp2.pgx
+!grk_decompress -i @INPUT_NR_PATH@/2977.pdf.asan.67.2198.jp2     -o @TEMP_PATH@/2977.pdf.asan.67.2198.jp2.pgx
+!grk_decompress -i @INPUT_NR_PATH@/451.pdf.SIGSEGV.ce9.3723.jp2  -o @TEMP_PATH@/451.pdf.SIGSEGV.ce9.3723.jp2.pgx
+!grk_decompress -i @INPUT_NR_PATH@/3635.pdf.asan.77.2930.jp2     -o @TEMP_PATH@/3635.pdf.asan.77.2930.jp2.pgx
+grk_decompress -i @INPUT_NR_PATH@/1802.pdf.SIGSEGV.36e.894.jp2  -o @TEMP_PATH@/1802.pdf.SIGSEGV.36e.894.jp2.pgx
+!grk_decompress -i @INPUT_NR_PATH@/451.pdf.SIGSEGV.f4c.3723.jp2  -o @TEMP_PATH@/451.pdf.SIGSEGV.f4c.3723.jp2.pgx
+!grk_decompress -i @INPUT_NR_PATH@/2.pdf.SIGFPE.706.1112.jp2     -o @TEMP_PATH@/2.pdf.SIGFPE.706.1112.jp2.pgx
+!grk_decompress -i @INPUT_NR_PATH@/147af3f1083de4393666b7d99b01b58b_signal_sigsegv_130c531_6155_5136.jp2 -o @TEMP_PATH@/147af3f1083de4393666b7d99b01b58b_signal_sigsegv_130c531_6155_5136.jp2.pgx
+!grk_decompress -i @INPUT_NR_PATH@/4241ac039aba57e6a9c948d519d94216_asan_heap-oob_14650f2_7469_602.jp2 -o @TEMP_PATH@/4241ac039aba57e6a9c948d519d94216_asan_heap-oob_14650f2_7469_602.pgx
+# issue 228 (16bits/lossy)
+grk_decompress -i @INPUT_NR_PATH@/issue228.j2k                  -o @TEMP_PATH@/issue228.j2k.pgx
+# issue 229
+!grk_decompress -i @INPUT_NR_PATH@/27ac957758a35d00d6765a0c86350d9c.SIGFPE.d25.537.jpc -o @TEMP_PATH@27ac957758a35d00d6765a0c86350d9c.SIGFPE.d25.537.jpc.pgx
+!grk_decompress -i @INPUT_NR_PATH@/26ccf3651020967f7778238ef5af08af.SIGFPE.d25.527.jp2 -o @TEMP_PATH@26ccf3651020967f7778238ef5af08af.SIGFPE.d25.527.jp2.pgx
+!grk_decompress -i @INPUT_NR_PATH@/0290cb77c5df21828fa74cf2ab2c84d8.SIGFPE.d25.31.jp2  -o @TEMP_PATH@0290cb77c5df21828fa74cf2ab2c84d8.SIGFPE.d25.31.jp2.pgx
+!grk_decompress -i @INPUT_NR_PATH@/3672da2f1f67bbecad27d7181b4e9d7c.SIGFPE.d25.805.jpc -o @TEMP_PATH@3672da2f1f67bbecad27d7181b4e9d7c.SIGFPE.d25.805.jpc.pgx
+# issue 254 (loss in quality)
+!grk_decompress -i @INPUT_NR_PATH@/issue254.jp2                  -o @TEMP_PATH@/issue254.jp2.pgx
+# issue 142
+grk_decompress -i @INPUT_NR_PATH@/issue142.j2k                  -o @TEMP_PATH@/issue142.j2k.pgx
+# issue 134
+grk_decompress -i @INPUT_NR_PATH@/issue134.jp2                  -o @TEMP_PATH@/issue134.jp2.pgx
+# issue 135
+grk_decompress -i @INPUT_NR_PATH@/issue135.j2k                  -o @TEMP_PATH@/issue135.j2k.pgx
+# issue 208
+!grk_decompress -i @INPUT_NR_PATH@/issue208.jp2                  -o @TEMP_PATH@/issue208.jp2.pgx
+# issue 211
+grk_decompress -i @INPUT_NR_PATH@/issue211.jp2                  -o @TEMP_PATH@/issue211.jp2.pgx
+# issue 171
+grk_decompress -i @INPUT_NR_PATH@/issue171.jp2                  -o @TEMP_PATH@/issue171.jp2.pgx
+# issue 171
+!grk_decompress -i @INPUT_NR_PATH@/issue165.jp2                  -o @TEMP_PATH@/issue165.jp2.pgx
+# this test passes, but is commented out because it takes a very long time to complete
+# File broken.jpc has been removed from Grok branch of test data repo; still exists
+# in master branch though
+#grk_decompress -i @INPUT_NR_PATH@/broken.jpc                    -o @TEMP_PATH@/broken.jpc.pgx
+# issue 226
+grk_decompress -i @INPUT_NR_PATH@/issue226.j2k                   -o @TEMP_PATH@/issue226.j2k.pgx
+# issue 297
+!grk_decompress -i @INPUT_NR_PATH@/edf_c2_1103421.jp2  -o @TEMP_PATH@/edf_c2_1103421.jp2.pgx
+!grk_decompress -i @INPUT_NR_PATH@/edf_c2_1178956.jp2  -o @TEMP_PATH@/edf_c2_1178956.jp2.pgx
+!grk_decompress -i @INPUT_NR_PATH@/edf_c2_1000290.jp2  -o @TEMP_PATH@/edf_c2_1000290.jp2.pgx
+!grk_decompress -i @INPUT_NR_PATH@/edf_c2_1000691.jp2  -o @TEMP_PATH@/edf_c2_1000691.jp2.pgx
+!grk_decompress -i @INPUT_NR_PATH@/edf_c2_20.jp2       -o @TEMP_PATH@/edf_c2_20.jp2.pgx
+!grk_decompress -i @INPUT_NR_PATH@/edf_c2_1377017.jp2  -o @TEMP_PATH@/edf_c2_1377017.jp2.pgx
+!grk_decompress -i @INPUT_NR_PATH@/edf_c2_1002767.jp2  -o @TEMP_PATH@/edf_c2_1002767.jp2.pgx
+!grk_decompress -i @INPUT_NR_PATH@/edf_c2_10025.jp2    -o @TEMP_PATH@/edf_c2_10025.jp2.pgx
+!grk_decompress -i @INPUT_NR_PATH@/edf_c2_1000234.jp2  -o @TEMP_PATH@/edf_c2_1000234.jp2.pgx
+!grk_decompress -i @INPUT_NR_PATH@/edf_c2_225881.jp2   -o @TEMP_PATH@/edf_c2_225881.jp2.pgx
+!grk_decompress -i @INPUT_NR_PATH@/edf_c2_1000671.jp2  -o @TEMP_PATH@/edf_c2_1000671.jp2.pgx
+!grk_decompress -i @INPUT_NR_PATH@/edf_c2_1013627.jp2  -o @TEMP_PATH@/edf_c2_1013627.jp2.pgx
+!grk_decompress -i @INPUT_NR_PATH@/edf_c2_1015644.jp2  -o @TEMP_PATH@/edf_c2_1015644.jp2.pgx
+!grk_decompress -i @INPUT_NR_PATH@/edf_c2_101463.jp2   -o @TEMP_PATH@/edf_c2_101463.jp2.pgx
+!grk_decompress -i @INPUT_NR_PATH@/edf_c2_1674177.jp2  -o @TEMP_PATH@/edf_c2_1674177.jp2.pgx
+!grk_decompress -i @INPUT_NR_PATH@/edf_c2_1673169.jp2  -o @TEMP_PATH@/edf_c2_1673169.jp2.pgx
+# issue 296
+#!grk_decompress -i @INPUT_NR_PATH@/3459.pdf.asan.78.2734.0.jp2 -o @TEMP_PATH@/3459.pdf.asan.78.2734.0.jp2.pgx
+#!grk_decompress -i @INPUT_NR_PATH@/3459.pdf.asan.78.2734.1.jp2 -o @TEMP_PATH@/3459.pdf.asan.78.2734.1.jp2.pgx
+#!grk_decompress -i @INPUT_NR_PATH@/3459.pdf.asan.78.2734.2.jp2 -o @TEMP_PATH@/3459.pdf.asan.78.2734.2.jp2.pgx
+#!grk_decompress -i @INPUT_NR_PATH@/3459.pdf.asan.6c.2734.0.jp2 -o @TEMP_PATH@/3459.pdf.asan.6c.2734.0.jp2.pgx
+#!grk_decompress -i @INPUT_NR_PATH@/3459.pdf.asan.6c.2734.1.jp2 -o @TEMP_PATH@/3459.pdf.asan.6c.2734.1.jp2.pgx
+#!grk_decompress -i @INPUT_NR_PATH@/3459.pdf.asan.6c.2734.2.jp2 -o @TEMP_PATH@/3459.pdf.asan.6c.2734.2.jp2.pgx
+# issue 362 (from pdfium fuzz engine)
+# Invalid PPM Marker
+!grk_decompress -i @INPUT_NR_PATH@/issue362-2863.jp2 -o @TEMP_PATH@/issue362-2863.jp2.pgx
+# Invalid ftyp box size
+!grk_decompress -i @INPUT_NR_PATH@/issue362-2866.jp2 -o @TEMP_PATH@/issue362-2866.jp2.pgx
+!grk_decompress -i @INPUT_NR_PATH@/issue362-2894.jp2 -o @TEMP_PATH@/issue362-2894.jp2.pgx
+# issue 363  (from pdfium fuzz engine)
+# Invalid Marker length
+!grk_decompress -i @INPUT_NR_PATH@/issue363-4740.jp2 -o @TEMP_PATH@/issue363-4740.jp2.pgx
+!grk_decompress -i @INPUT_NR_PATH@/issue363-4792.jp2 -o @TEMP_PATH@/issue363-4792.jp2.pgx
+# issue 390  (from pdfium fuzz engine) Invalid segment size
+!grk_decompress -i @INPUT_NR_PATH@/issue390.jp2 -o @TEMP_PATH@/issue390.jp2.pgx
+# issue 391  (from pdfium fuzz engine) Invalid segment size
+!grk_decompress -i @INPUT_NR_PATH@/issue391.jp2 -o @TEMP_PATH@/issue391.jp2.pgx
+# issue 400  (from pdfium fuzz engine) Unknown Scod value in COD marker
+!grk_decompress -i @INPUT_NR_PATH@/issue400.jp2 -o @TEMP_PATH@/issue400.jp2.pgx
+# issue 413  (from pdfium fuzz engine) Unknown progression order in COD marker
+!grk_decompress -i @INPUT_NR_PATH@/issue413.jp2 -o @TEMP_PATH@/issue413.jp2.pgx
+# issue 364 (from pdfium fuzz engine)
+# Inconsistent box length for jp2 box
+!grk_decompress -i @INPUT_NR_PATH@/issue364-38.jp2 -o @TEMP_PATH@/issue364-38.jp2.pgx
+# No ihdr box
+!grk_decompress -i @INPUT_NR_PATH@/issue364-903.jp2 -o @TEMP_PATH@/issue364-903.jp2.pgx
+# issue 393  (from pdfium fuzz engine) Zppm found twice
+!grk_decompress -i @INPUT_NR_PATH@/issue393.jp2 -o @TEMP_PATH@/issue393.jp2.pgx
+# issue 395  (from pdfium fuzz engine) Stream too short
+!grk_decompress -i @INPUT_NR_PATH@/issue395.jp2 -o @TEMP_PATH@/issue395.jp2.pgx
+# issue 397  (from pdfium fuzz engine) Incomplete channel definitions.
+!grk_decompress -i @INPUT_NR_PATH@/issue397.jp2 -o @TEMP_PATH@/issue397.jp2.pgx
+# issue 399  (from pdfium fuzz engine) Incomplete channel definitions.
+grk_decompress -i @INPUT_NR_PATH@/issue399.j2k -o @TEMP_PATH@/issue399.j2k.pgx
+# issue 408  (from pdfium fuzz engine) No COD marker in main j2k header.
+!grk_decompress -i @INPUT_NR_PATH@/issue408.jp2 -o @TEMP_PATH@/issue408.jp2.pgx
+# issue 412 Palette image with cdef fails to decompress.
+grk_decompress -i @INPUT_NR_PATH@/issue412.jp2 -o @TEMP_PATH@/issue412.jp2.pgx
+# issue 428 Palette image with cdef fails to decompress properly.
+grk_decompress -i @INPUT_NR_PATH@/issue412.jp2 -o @TEMP_PATH@/issue428.jp2.pgx -t 0
+# issue 414 Image with per channel alpha (cdef) does not decode properly.
+grk_decompress -i @INPUT_NR_PATH@/issue414.jp2 -o @TEMP_PATH@/issue414.jp2.pgx
+# issue 418 (from pdfium fuzz engine) Tile part length size inconsistent with stream length.
+!grk_decompress -i @INPUT_NR_PATH@/issue418.jp2 -o @TEMP_PATH@/issue418.jp2.pgx
+# issue 420 (from pdfium fuzz engine) Illegal custom precinct exponent.
+!grk_decompress -i @INPUT_NR_PATH@/issue420.jp2 -o @TEMP_PATH@/issue420.jp2.pgx
+# issue 422 (rework of issue 411). ycc with odd width/height
+grk_decompress -i @INPUT_NR_PATH@/issue411-ycc444.jp2 -o @TEMP_PATH@/issue411-ycc444.jp2.pgx
+grk_decompress -i @INPUT_NR_PATH@/issue411-ycc422.jp2 -o @TEMP_PATH@/issue411-ycc422.jp2.pgx
+grk_decompress -i @INPUT_NR_PATH@/issue411-ycc420.jp2 -o @TEMP_PATH@/issue411-ycc420.jp2.pgx
+# issue 429 (from pdfium fuzz engine) 0 entries in PCLR box.
+!grk_decompress -i @INPUT_NR_PATH@/issue429.jp2 -o @TEMP_PATH@/issue429.jp2.pgx
+# issue 432 (from pdfium fuzz engine) Overflow in tcd tilec data size computation.
+grk_decompress -i @INPUT_NR_PATH@/issue432.jp2 -o @TEMP_PATH@/issue432.jp2.pgx -d 0,0,1024,1024
+# issue 427 image width is 0
+!grk_decompress -i @INPUT_NR_PATH@/issue427-null-image-size.jp2 -o @TEMP_PATH@/issue427-null-image-size.jp2.pgx
+# issue 427 illegal tile offset
+!grk_decompress -i @INPUT_NR_PATH@/issue427-illegal-tile-offset.jp2 -o @TEMP_PATH@/issue427-illegal-tile-offset.jp2.pgx
+# issue 458 component precision upscaling
+grk_decompress -i @INPUT_NR_PATH@/issue458.jp2 -o @TEMP_PATH@/issue458.jp2.pgx
+# issue 476 Multiple COD in MH
+!grk_decompress -i @INPUT_NR_PATH@/issue476.jp2 -o @TEMP_PATH@/issue476.jp2.pgx
+# issue 475 Invalid number of layers
+!grk_decompress -i @INPUT_NR_PATH@/issue475.jp2 -o @TEMP_PATH@/issue475.jp2.pgx
+# issue 495 Overflow op_image_comp_header_updat
+!grk_decompress -i @INPUT_NR_PATH@/issue495.jp2 -o @TEMP_PATH@/issue495.jp2.pgx
+
+
+# decode with specific area
+# prec=12; nb_c=1 
+grk_decompress -i @INPUT_CONF_PATH@/p1_04.j2k -o @TEMP_PATH@/p1_04.j2k.png -L 9 -d 0,0,1024,1024
+grk_decompress -i @INPUT_CONF_PATH@/p1_04.j2k -o @TEMP_PATH@/p1_04_1.j2k.png -L 9 -d 512,640,640,768
+grk_decompress -i @INPUT_CONF_PATH@/p1_04.j2k -o @TEMP_PATH@/p1_04_2.j2k.png -L 9 -d 896,896,1024,1024
+grk_decompress -i @INPUT_CONF_PATH@/p1_04.j2k -o @TEMP_PATH@/p1_04_3.j2k.png -L 9 -d 100,500,300,800
+grk_decompress -i @INPUT_CONF_PATH@/p1_04.j2k -o @TEMP_PATH@/p1_04_4.j2k.png -L 9 -d 260,520,360,600
+grk_decompress -i @INPUT_CONF_PATH@/p1_04.j2k -o @TEMP_PATH@/p1_04_5.j2k.png -L 9 -d 260,520,360,660
+grk_decompress -i @INPUT_CONF_PATH@/p1_04.j2k -o @TEMP_PATH@/p1_04_6.j2k.png -L 9 -d 360,520,400,600
+grk_decompress -i @INPUT_CONF_PATH@/p1_04.j2k -o @TEMP_PATH@/p1_04_10.j2k.png -L 9 -d 0,0,1024,1024 -r 2
+grk_decompress -i @INPUT_CONF_PATH@/p1_04.j2k -o @TEMP_PATH@/p1_04_11.j2k.png -L 9 -d 512,640,640,768 -r 2
+grk_decompress -i @INPUT_CONF_PATH@/p1_04.j2k -o @TEMP_PATH@/p1_04_12.j2k.png -L 9 -d 896,896,1024,1024 -r 2
+grk_decompress -i @INPUT_CONF_PATH@/p1_04.j2k -o @TEMP_PATH@/p1_04_13.j2k.png -L 9 -d 100,500,300,800 -r 2
+grk_decompress -i @INPUT_CONF_PATH@/p1_04.j2k -o @TEMP_PATH@/p1_04_14.j2k.png -L 9 -d 260,520,360,600 -r 2
+grk_decompress -i @INPUT_CONF_PATH@/p1_04.j2k -o @TEMP_PATH@/p1_04_15.j2k.png -L 9 -d 260,520,360,660 -r 2
+grk_decompress -i @INPUT_CONF_PATH@/p1_04.j2k -o @TEMP_PATH@/p1_04_16.j2k.png -L 9 -d 360,520,400,600 -r 2
+
+grk_decompress -i @INPUT_CONF_PATH@/p1_04.j2k -o @TEMP_PATH@/p1_04_17_t63.j2k.png -L 9 -t 63 
+grk_decompress -i @INPUT_CONF_PATH@/p1_04.j2k -o @TEMP_PATH@/p1_04_17_t63_r2.j2k.png -L 9 -t 63 -r 2
+grk_decompress -i @INPUT_CONF_PATH@/p1_04.j2k -o @TEMP_PATH@/p1_04_18.t12.j2k.png -L 9 -t 12 
+grk_decompress -i @INPUT_CONF_PATH@/p1_04.j2k -o @TEMP_PATH@/p1_04_19_t12_r1.j2k.png -L 9 -t 12 -r 1
+
+# prec=8; nb_c=3 
+grk_decompress -i @INPUT_CONF_PATH@/p1_06.j2k -o @TEMP_PATH@/p1_06.j2k.png -L 9 -d 0,0,12,12
+grk_decompress -i @INPUT_CONF_PATH@/p1_06.j2k -o @TEMP_PATH@/p1_06_1.j2k.png -L 9 -d 1,8,8,11
+grk_decompress -i @INPUT_CONF_PATH@/p1_06.j2k -o @TEMP_PATH@/p1_06_2.j2k.png -L 9 -d 9,9,12,12
+grk_decompress -i @INPUT_CONF_PATH@/p1_06.j2k -o @TEMP_PATH@/p1_06_3.j2k.png -L 9 -d 10,4,12,10
+grk_decompress -i @INPUT_CONF_PATH@/p1_06.j2k -o @TEMP_PATH@/p1_06_4.j2k.png -L 9 -d 3,3,9,9
+grk_decompress -i @INPUT_CONF_PATH@/p1_06.j2k -o @TEMP_PATH@/p1_06_5.j2k.png -L 9 -d 4,4,7,7
+grk_decompress -i @INPUT_CONF_PATH@/p1_06.j2k -o @TEMP_PATH@/p1_06_6.j2k.png -L 9 -d 4,4,5,5
+grk_decompress -i @INPUT_CONF_PATH@/p1_06.j2k -o @TEMP_PATH@/p1_06_7.j2k.png -L 9 -d 0,0,12,12 -r 1
+grk_decompress -i @INPUT_CONF_PATH@/p1_06.j2k -o @TEMP_PATH@/p1_06_7_1.j2k.png -L 9 -d 1,8,8,11 -r 1
+grk_decompress -i @INPUT_CONF_PATH@/p1_06.j2k -o @TEMP_PATH@/p1_06_7_2.j2k.png -L 9 -d 9,9,12,12 -r 1
+grk_decompress -i @INPUT_CONF_PATH@/p1_06.j2k -o @TEMP_PATH@/p1_06_7_3.j2k.png -L 9 -d 10,4,12,10 -r 1
+grk_decompress -i @INPUT_CONF_PATH@/p1_06.j2k -o @TEMP_PATH@/p1_06_7_4.j2k.png -L 9 -d 3,3,9,9 -r 1
+grk_decompress -i @INPUT_CONF_PATH@/p1_06.j2k -o @TEMP_PATH@/p1_06_7_5.j2k.png -L 9 -d 4,4,7,7 -r 1
+grk_decompress -i @INPUT_CONF_PATH@/p1_06.j2k -o @TEMP_PATH@/p1_06_7_6.j2k.png -L 9 -d 4,4,5,5 -r 1
+
+# see Grok issue #59 for details on why grk_decompress should error out in the test below
+!grk_decompress -i @INPUT_CONF_PATH@/p1_06.j2k -o @TEMP_PATH@/p1_06_8_6.j2k.png -L 9 -d 9,9,12,12 -r 2
+
+grk_decompress -i @INPUT_CONF_PATH@/p1_06.j2k -o @TEMP_PATH@/p1_06_9.j2k.png -L 9 -t 0
+grk_decompress -i @INPUT_CONF_PATH@/p1_06.j2k -o @TEMP_PATH@/p1_06_9_1.j2k.png -L 9 -t 5
+grk_decompress -i @INPUT_CONF_PATH@/p1_06.j2k -o @TEMP_PATH@/p1_06_9_2.j2k.png -L 9 -t 9
+grk_decompress -i @INPUT_CONF_PATH@/p1_06.j2k -o @TEMP_PATH@/p1_06_9_3.j2k.png -L 9 -t 15
+
+grk_decompress -i @INPUT_CONF_PATH@/p1_06.j2k -o @TEMP_PATH@/p1_06_10.j2k.png -L 9 -t 0 -r 2
+grk_decompress -i @INPUT_CONF_PATH@/p1_06.j2k -o @TEMP_PATH@/p1_06_10_1.j2k.png -L 9 -t 5 -r 2
+grk_decompress -i @INPUT_CONF_PATH@/p1_06.j2k -o @TEMP_PATH@/p1_06_10_2.j2k.png -L 9 -t 9 -r 2
+
+# see Grok issue #59 for details on why grk_decompress should error out in the test below
+!grk_decompress -i @INPUT_CONF_PATH@/p1_06.j2k -o @TEMP_PATH@/p1_06_10_3.j2k.png -L 9 -t 15 -r 2
+
+grk_decompress -i @INPUT_CONF_PATH@/p1_06.j2k -o @TEMP_PATH@/p1_06_11.j2k.png -L 9 -r 4
+
+# prec=4; nb_c=3 ; signd=yes
+grk_decompress -i @INPUT_CONF_PATH@/p0_04.j2k -o @TEMP_PATH@/p0_04.j2k.png -L 9 -d 0,0,256,256
+grk_decompress -i @INPUT_CONF_PATH@/p0_04.j2k -o @TEMP_PATH@/p0_04_1.j2k.png -L 9 -d 128,0,256,128
+grk_decompress -i @INPUT_CONF_PATH@/p0_04.j2k -o @TEMP_PATH@/p0_04_2.j2k.png -L 9 -d 50,10,120,200
+grk_decompress -i @INPUT_CONF_PATH@/p0_04.j2k -o @TEMP_PATH@/p0_04_3.j2k.png -L 9 -d 10,150,190,210
+grk_decompress -i @INPUT_CONF_PATH@/p0_04.j2k -o @TEMP_PATH@/p0_04_4.j2k.png -L 9 -d 100,80,200,150
+grk_decompress -i @INPUT_CONF_PATH@/p0_04.j2k -o @TEMP_PATH@/p0_04_5.j2k.png -L 9 -d 150,20,200,50
+grk_decompress -i @INPUT_CONF_PATH@/p0_04.j2k -o @TEMP_PATH@/p0_04_6.j2k.png -L 9 -d 0,0,256,256 -r 2
+grk_decompress -i @INPUT_CONF_PATH@/p0_04.j2k -o @TEMP_PATH@/p0_04_6_1.j2k.png -L 9 -d 128,0,256,128 -r 2
+grk_decompress -i @INPUT_CONF_PATH@/p0_04.j2k -o @TEMP_PATH@/p0_04_6_2.j2k.png -L 9 -d 50,10,120,200 -r 2
+grk_decompress -i @INPUT_CONF_PATH@/p0_04.j2k -o @TEMP_PATH@/p0_04_6_3.j2k.png -L 9 -d 10,150,190,210  -r 2
+grk_decompress -i @INPUT_CONF_PATH@/p0_04.j2k -o @TEMP_PATH@/p0_04_6_4.j2k.png -L 9 -d 100,80,200,150 -r 2
+grk_decompress -i @INPUT_CONF_PATH@/p0_04.j2k -o @TEMP_PATH@/p0_04_6_5.j2k.png -L 9 -d 150,20,200,50 -r 2
+
+# prec=8; nb_c=1 ; non standard origin (image offset and tile offset); sample sep: 2x1
+#grk_decompress -i @INPUT_CONF_PATH@/p1_01.j2k -o @TEMP_PATH@/p1_01.j2k.png -L 9 -d 5,128,127,226
+#grk_decompress -i @INPUT_CONF_PATH@/p1_01.j2k -o @TEMP_PATH@/p1_01_1.j2k.png -L 9 -d 5,128,122,99
+#grk_decompress -i @INPUT_CONF_PATH@/p1_01.j2k -o @TEMP_PATH@/p1_01_2.j2k.png -L 9 -d 50,10,120,200
+#grk_decompress -i @INPUT_CONF_PATH@/p1_01.j2k -o @TEMP_PATH@/p1_01_3.j2k.png -L 9 -d 10,150,190,210
+#grk_decompress -i @INPUT_CONF_PATH@/p1_01.j2k -o @TEMP_PATH@/p1_01_4.j2k.png -L 9 -d 100,80,200,150
+#grk_decompress -i @INPUT_CONF_PATH@/p1_01.j2k -o @TEMP_PATH@/p1_01_5.j2k.png -L 9 -d 150,20,200,50
+
+# issue 322 limited tif support
+# GRAYSCALE 
+grk_decompress -i @INPUT_CONF_PATH@/a1_mono.j2c -o @TEMP_PATH@/a1_mono_tif-1.tif -p 1S
+grk_decompress -i @INPUT_CONF_PATH@/a1_mono.j2c -o @TEMP_PATH@/a1_mono_tif-2.tif -p 2S
+grk_decompress -i @INPUT_CONF_PATH@/a1_mono.j2c -o @TEMP_PATH@/a1_mono_tif-4.tif -p 4S
+grk_decompress -i @INPUT_CONF_PATH@/a1_mono.j2c -o @TEMP_PATH@/a1_mono_tif-6.tif -p 6S
+grk_decompress -i @INPUT_CONF_PATH@/a1_mono.j2c -o @TEMP_PATH@/a1_mono_tif-8.tif -p 8S
+grk_decompress -i @INPUT_CONF_PATH@/a1_mono.j2c -o @TEMP_PATH@/a1_mono_tif-10.tif -p 10S
+grk_decompress -i @INPUT_CONF_PATH@/a1_mono.j2c -o @TEMP_PATH@/a1_mono_tif-12.tif -p 12S
+grk_decompress -i @INPUT_CONF_PATH@/a1_mono.j2c -o @TEMP_PATH@/a1_mono_tif-14.tif -p 14S
+grk_decompress -i @INPUT_CONF_PATH@/a1_mono.j2c -o @TEMP_PATH@/a1_mono_tif-16.tif -p 16S
+# GRAYSCALE ALPHA
+grk_decompress -i @INPUT_NR_PATH@/basn4a08.jp2 -o @TEMP_PATH@/basn4a08_tif-1.tif -p 1S
+grk_decompress -i @INPUT_NR_PATH@/basn4a08.jp2 -o @TEMP_PATH@/basn4a08_tif-2.tif -p 2S
+grk_decompress -i @INPUT_NR_PATH@/basn4a08.jp2 -o @TEMP_PATH@/basn4a08_tif-4.tif -p 4S
+grk_decompress -i @INPUT_NR_PATH@/basn4a08.jp2 -o @TEMP_PATH@/basn4a08_tif-6.tif -p 6S
+grk_decompress -i @INPUT_NR_PATH@/basn4a08.jp2 -o @TEMP_PATH@/basn4a08_tif-8.tif -p 8S
+grk_decompress -i @INPUT_NR_PATH@/basn4a08.jp2 -o @TEMP_PATH@/basn4a08_tif-10.tif -p 10S
+grk_decompress -i @INPUT_NR_PATH@/basn4a08.jp2 -o @TEMP_PATH@/basn4a08_tif-12.tif -p 12S
+grk_decompress -i @INPUT_NR_PATH@/basn4a08.jp2 -o @TEMP_PATH@/basn4a08_tif-14.tif -p 14S
+grk_decompress -i @INPUT_NR_PATH@/basn4a08.jp2 -o @TEMP_PATH@/basn4a08_tif-16.tif -p 16S
+# RGB
+grk_decompress -i @INPUT_CONF_PATH@/p0_14.j2k -o @TEMP_PATH@/p0_14_tif-1.tif -p 1S
+grk_decompress -i @INPUT_CONF_PATH@/p0_14.j2k -o @TEMP_PATH@/p0_14_tif-2.tif -p 2S
+grk_decompress -i @INPUT_CONF_PATH@/p0_14.j2k -o @TEMP_PATH@/p0_14_tif-4.tif -p 4S
+grk_decompress -i @INPUT_CONF_PATH@/p0_14.j2k -o @TEMP_PATH@/p0_14_tif-6.tif -p 6S
+grk_decompress -i @INPUT_CONF_PATH@/p0_14.j2k -o @TEMP_PATH@/p0_14_tif-8.tif -p 8S
+grk_decompress -i @INPUT_CONF_PATH@/p0_14.j2k -o @TEMP_PATH@/p0_14_tif-10.tif -p 10S
+grk_decompress -i @INPUT_CONF_PATH@/p0_14.j2k -o @TEMP_PATH@/p0_14_tif-12.tif -p 12S
+grk_decompress -i @INPUT_CONF_PATH@/p0_14.j2k -o @TEMP_PATH@/p0_14_tif-14.tif -p 14S
+grk_decompress -i @INPUT_CONF_PATH@/p0_14.j2k -o @TEMP_PATH@/p0_14_tif-16.tif -p 16S
+# RGBA
+grk_decompress -i @INPUT_NR_PATH@/basn6a08.jp2 -o @TEMP_PATH@/basn6a08_tif-1.tif -p 1S
+grk_decompress -i @INPUT_NR_PATH@/basn6a08.jp2 -o @TEMP_PATH@/basn6a08_tif-2.tif -p 2S
+grk_decompress -i @INPUT_NR_PATH@/basn6a08.jp2 -o @TEMP_PATH@/basn6a08_tif-4.tif -p 4S
+grk_decompress -i @INPUT_NR_PATH@/basn6a08.jp2 -o @TEMP_PATH@/basn6a08_tif-6.tif -p 6S
+grk_decompress -i @INPUT_NR_PATH@/basn6a08.jp2 -o @TEMP_PATH@/basn6a08_tif-8.tif -p 8S
+grk_decompress -i @INPUT_NR_PATH@/basn6a08.jp2 -o @TEMP_PATH@/basn6a08_tif-10.tif -p 10S
+grk_decompress -i @INPUT_NR_PATH@/basn6a08.jp2 -o @TEMP_PATH@/basn6a08_tif-12.tif -p 12S
+grk_decompress -i @INPUT_NR_PATH@/basn6a08.jp2 -o @TEMP_PATH@/basn6a08_tif-14.tif -p 14S
+grk_decompress -i @INPUT_NR_PATH@/basn6a08.jp2 -o @TEMP_PATH@/basn6a08_tif-16.tif -p 16S
+
+#issue 235 CMAP outside jp2h box. CMAP is buggy
+!grk_decompress -i @INPUT_NR_PATH@/issue235.jp2 -o @TEMP_PATH@/issue235.jp2.pgx
+
+# issue 264, add checks for png
+# GRAYSCALE 
+grk_decompress -i @INPUT_CONF_PATH@/a1_mono.j2c -o @TEMP_PATH@/a1_mono_png-1.png -L 9 -p 1S
+grk_decompress -i @INPUT_CONF_PATH@/a1_mono.j2c -o @TEMP_PATH@/a1_mono_png-2.png -L 9 -p 2S
+grk_decompress -i @INPUT_CONF_PATH@/a1_mono.j2c -o @TEMP_PATH@/a1_mono_png-4.png -L 9 -p 4S
+grk_decompress -i @INPUT_CONF_PATH@/a1_mono.j2c -o @TEMP_PATH@/a1_mono_png-6.png -L 9 -p 6S
+grk_decompress -i @INPUT_CONF_PATH@/a1_mono.j2c -o @TEMP_PATH@/a1_mono_png-8.png -L 9 -p 8S
+grk_decompress -i @INPUT_CONF_PATH@/a1_mono.j2c -o @TEMP_PATH@/a1_mono_png-10.png -L 9 -p 10S
+grk_decompress -i @INPUT_CONF_PATH@/a1_mono.j2c -o @TEMP_PATH@/a1_mono_png-12.png -L 9 -p 12S
+grk_decompress -i @INPUT_CONF_PATH@/a1_mono.j2c -o @TEMP_PATH@/a1_mono_png-14.png -L 9 -p 14S
+grk_decompress -i @INPUT_CONF_PATH@/a1_mono.j2c -o @TEMP_PATH@/a1_mono_png-16.png -L 9 -p 16S
+# GRAYSCALE ALPHA
+grk_decompress -i @INPUT_NR_PATH@/basn4a08.jp2 -o @TEMP_PATH@/basn4a08_png-1.png -L 9 -p 1S
+grk_decompress -i @INPUT_NR_PATH@/basn4a08.jp2 -o @TEMP_PATH@/basn4a08_png-2.png -L 9 -p 2S
+grk_decompress -i @INPUT_NR_PATH@/basn4a08.jp2 -o @TEMP_PATH@/basn4a08_png-4.png -L 9 -p 4S
+grk_decompress -i @INPUT_NR_PATH@/basn4a08.jp2 -o @TEMP_PATH@/basn4a08_png-6.png -L 9 -p 6S
+grk_decompress -i @INPUT_NR_PATH@/basn4a08.jp2 -o @TEMP_PATH@/basn4a08_png-8.png -L 9 -p 8S
+grk_decompress -i @INPUT_NR_PATH@/basn4a08.jp2 -o @TEMP_PATH@/basn4a08_png-10.png -L 9 -p 10S
+grk_decompress -i @INPUT_NR_PATH@/basn4a08.jp2 -o @TEMP_PATH@/basn4a08_png-12.png -L 9 -p 12S
+grk_decompress -i @INPUT_NR_PATH@/basn4a08.jp2 -o @TEMP_PATH@/basn4a08_png-14.png -L 9 -p 14S
+grk_decompress -i @INPUT_NR_PATH@/basn4a08.jp2 -o @TEMP_PATH@/basn4a08_png-16.png -L 9 -p 16S
+# RGB
+grk_decompress -i @INPUT_CONF_PATH@/p0_14.j2k -o @TEMP_PATH@/p0_14_png-1.png -L 9 -p 1S
+grk_decompress -i @INPUT_CONF_PATH@/p0_14.j2k -o @TEMP_PATH@/p0_14_png-2.png -L 9 -p 2S
+grk_decompress -i @INPUT_CONF_PATH@/p0_14.j2k -o @TEMP_PATH@/p0_14_png-4.png -L 9 -p 4S
+grk_decompress -i @INPUT_CONF_PATH@/p0_14.j2k -o @TEMP_PATH@/p0_14_png-6.png -L 9 -p 6S
+grk_decompress -i @INPUT_CONF_PATH@/p0_14.j2k -o @TEMP_PATH@/p0_14_png-8.png -L 9 -p 8S
+grk_decompress -i @INPUT_CONF_PATH@/p0_14.j2k -o @TEMP_PATH@/p0_14_png-10.png -L 9 -p 10S
+grk_decompress -i @INPUT_CONF_PATH@/p0_14.j2k -o @TEMP_PATH@/p0_14_png-12.png -L 9 -p 12S
+grk_decompress -i @INPUT_CONF_PATH@/p0_14.j2k -o @TEMP_PATH@/p0_14_png-14.png -L 9 -p 14S
+grk_decompress -i @INPUT_CONF_PATH@/p0_14.j2k -o @TEMP_PATH@/p0_14_png-16.png -L 9 -p 16S
+# RGBA
+grk_decompress -i @INPUT_NR_PATH@/basn6a08.jp2 -o @TEMP_PATH@/basn6a08_png-1.png -L 9 -p 1S
+grk_decompress -i @INPUT_NR_PATH@/basn6a08.jp2 -o @TEMP_PATH@/basn6a08_png-2.png -L 9 -p 2S
+grk_decompress -i @INPUT_NR_PATH@/basn6a08.jp2 -o @TEMP_PATH@/basn6a08_png-4.png -L 9 -p 4S
+grk_decompress -i @INPUT_NR_PATH@/basn6a08.jp2 -o @TEMP_PATH@/basn6a08_png-6.png -L 9 -p 6S
+grk_decompress -i @INPUT_NR_PATH@/basn6a08.jp2 -o @TEMP_PATH@/basn6a08_png-8.png -L 9 -p 8S
+grk_decompress -i @INPUT_NR_PATH@/basn6a08.jp2 -o @TEMP_PATH@/basn6a08_png-10.png -L 9 -p 10S
+grk_decompress -i @INPUT_NR_PATH@/basn6a08.jp2 -o @TEMP_PATH@/basn6a08_png-12.png -L 9 -p 12S
+grk_decompress -i @INPUT_NR_PATH@/basn6a08.jp2 -o @TEMP_PATH@/basn6a08_png-14.png -L 9 -p 14S
+grk_decompress -i @INPUT_NR_PATH@/basn6a08.jp2 -o @TEMP_PATH@/basn6a08_png-16.png -L 9 -p 16S
+
+# issue 388
+!grk_decompress -i @INPUT_NR_PATH@/v4dwt_interleave_h.gsr105.j2k -o @TEMP_PATH@/v4dwt_interleave_h.gsr105.j2k.pgx
+!grk_decompress -i @INPUT_NR_PATH@/dwt_interleave_h.gsr105.jp2 -o @TEMP_PATH@/dwt_interleave_h.gsr105.jp2.pgx
+
+# PR 559 : CMYK tif output
+grk_decompress -i @INPUT_NR_PATH@/issue205.jp2 -o @TEMP_PATH@/issue205-tif.jp2.tif
+
+# issue 236: esYCC colorspace
+grk_decompress -i @INPUT_NR_PATH@/issue236-ESYCC-CDEF.jp2 -o @TEMP_PATH@/issue236-ESYCC-CDEF.jp2.pgx
+
+# issue 326 + PR 559: CIELab colorspace
+!grk_decompress -i @INPUT_NR_PATH@/issue559-eci-090-CIELab.jp2 -o @TEMP_PATH@/issue559-eci-090-CIELab.jp2.pgx
+!grk_decompress -i @INPUT_NR_PATH@/issue559-eci-091-CIELab.jp2 -o @TEMP_PATH@/issue559-eci-091-CIELab.jp2.pgx
+
+# issue 653 Last box of undefined size byg
+grk_decompress -i @INPUT_NR_PATH@/issue653-zero-unknownbox.jp2 -o @TEMP_PATH@/issue653-zero-unknownbox.jp2.png -L 9 -p 8S
+
+# issue 729 decompress 3/5/7/9/11/13/15 bits precision to tiff
+# GRAYSCALE 
+grk_decompress -i @INPUT_CONF_PATH@/a1_mono.j2c -o @TEMP_PATH@/a1_mono_tif-3.tif -p 3S
+grk_decompress -i @INPUT_CONF_PATH@/a1_mono.j2c -o @TEMP_PATH@/a1_mono_tif-5.tif -p 5S
+grk_decompress -i @INPUT_CONF_PATH@/a1_mono.j2c -o @TEMP_PATH@/a1_mono_tif-7.tif -p 7S
+grk_decompress -i @INPUT_CONF_PATH@/a1_mono.j2c -o @TEMP_PATH@/a1_mono_tif-9.tif -p 9S
+grk_decompress -i @INPUT_CONF_PATH@/a1_mono.j2c -o @TEMP_PATH@/a1_mono_tif-11.tif -p 11S
+grk_decompress -i @INPUT_CONF_PATH@/a1_mono.j2c -o @TEMP_PATH@/a1_mono_tif-13.tif -p 13S
+grk_decompress -i @INPUT_CONF_PATH@/a1_mono.j2c -o @TEMP_PATH@/a1_mono_tif-15.tif -p 15S
+# GRAYSCALE ALPHA
+grk_decompress -i @INPUT_NR_PATH@/basn4a08.jp2 -o @TEMP_PATH@/basn4a08_tif-3.tif -p 3S
+grk_decompress -i @INPUT_NR_PATH@/basn4a08.jp2 -o @TEMP_PATH@/basn4a08_tif-5.tif -p 5S
+grk_decompress -i @INPUT_NR_PATH@/basn4a08.jp2 -o @TEMP_PATH@/basn4a08_tif-7.tif -p 7S
+grk_decompress -i @INPUT_NR_PATH@/basn4a08.jp2 -o @TEMP_PATH@/basn4a08_tif-9.tif -p 9S
+grk_decompress -i @INPUT_NR_PATH@/basn4a08.jp2 -o @TEMP_PATH@/basn4a08_tif-11.tif -p 11S
+grk_decompress -i @INPUT_NR_PATH@/basn4a08.jp2 -o @TEMP_PATH@/basn4a08_tif-13.tif -p 13S
+grk_decompress -i @INPUT_NR_PATH@/basn4a08.jp2 -o @TEMP_PATH@/basn4a08_tif-15.tif -p 15S
+# RGB
+grk_decompress -i @INPUT_CONF_PATH@/p0_14.j2k -o @TEMP_PATH@/p0_14_tif-3.tif -p 3S
+grk_decompress -i @INPUT_CONF_PATH@/p0_14.j2k -o @TEMP_PATH@/p0_14_tif-5.tif -p 5S
+grk_decompress -i @INPUT_CONF_PATH@/p0_14.j2k -o @TEMP_PATH@/p0_14_tif-7.tif -p 7S
+grk_decompress -i @INPUT_CONF_PATH@/p0_14.j2k -o @TEMP_PATH@/p0_14_tif-9.tif -p 9S
+grk_decompress -i @INPUT_CONF_PATH@/p0_14.j2k -o @TEMP_PATH@/p0_14_tif-11.tif -p 11S
+grk_decompress -i @INPUT_CONF_PATH@/p0_14.j2k -o @TEMP_PATH@/p0_14_tif-13.tif -p 13S
+grk_decompress -i @INPUT_CONF_PATH@/p0_14.j2k -o @TEMP_PATH@/p0_14_tif-15.tif -p 15S
+# RGBA
+grk_decompress -i @INPUT_NR_PATH@/basn6a08.jp2 -o @TEMP_PATH@/basn6a08_tif-3.tif -p 3S
+grk_decompress -i @INPUT_NR_PATH@/basn6a08.jp2 -o @TEMP_PATH@/basn6a08_tif-5.tif -p 5S
+grk_decompress -i @INPUT_NR_PATH@/basn6a08.jp2 -o @TEMP_PATH@/basn6a08_tif-7.tif -p 7S
+grk_decompress -i @INPUT_NR_PATH@/basn6a08.jp2 -o @TEMP_PATH@/basn6a08_tif-9.tif -p 9S
+grk_decompress -i @INPUT_NR_PATH@/basn6a08.jp2 -o @TEMP_PATH@/basn6a08_tif-11.tif -p 11S
+grk_decompress -i @INPUT_NR_PATH@/basn6a08.jp2 -o @TEMP_PATH@/basn6a08_tif-13.tif -p 13S
+grk_decompress -i @INPUT_NR_PATH@/basn6a08.jp2 -o @TEMP_PATH@/basn6a08_tif-15.tif -p 15S
+!grk_decompress -i @INPUT_NR_PATH@/issue725.jp2 -o @TEMP_PATH@/issue725.png -L 9
+grk_decompress -i @INPUT_NR_PATH@/issue726.j2k -o @TEMP_PATH@/issue726.png -L 9
+!grk_decompress -i @INPUT_NR_PATH@/issue733.jp2 -o @TEMP_PATH@/issue733.png
+!grk_decompress -i @INPUT_NR_PATH@/issue774.jp2 -o @TEMP_PATH@/issue774.png
+!grk_decompress -i @INPUT_NR_PATH@/issue775.j2k -o @TEMP_PATH@/issue775.png
+!grk_decompress -i @INPUT_NR_PATH@/issue775-2.j2k -o @TEMP_PATH@/issue775-2.png
+grk_decompress -i @INPUT_NR_PATH@/issue818.jp2 -o @TEMP_PATH@/issue818.png -L 9
+!grk_decompress -i @INPUT_NR_PATH@/issue823.jp2 -o @TEMP_PATH@/issue823.png
+!grk_decompress -i @INPUT_NR_PATH@/issue826.jp2 -o @TEMP_PATH@/issue826.png
+!grk_decompress -i @INPUT_NR_PATH@/issue820.jp2 -o @TEMP_PATH@/issue820.png
+!grk_decompress -i  @INPUT_NR_PATH@/openjpeg_1125.jp2 -o @TEMP_PATH@/openjpeg_1125.png
+
+# Test High Throughput encoding
+grk_compress -i @INPUT_NR_PATH@/Bretagne2.ppm -o @TEMP_PATH@/Bretagne2_ht.j2k -M 64
+grk_compress -i @INPUT_NR_PATH@/Bretagne2.ppm -o @TEMP_PATH@/Bretagne2_ht_lossy.j2k -M 64 -I
+grk_compress -i @INPUT_NR_PATH@/Bretagne2.ppm -o @TEMP_PATH@/Bretagne2_ht_lossy_plt.j2k -M 64 -I -PLT
+
+grk_decompress -i @INPUT_NR_PATH@/Bretagne2_ht.j2k -o @TEMP_PATH@/Bretagne2_ht.png
+grk_decompress -i @INPUT_NR_PATH@/Bretagne2_ht_lossy.j2k -o @TEMP_PATH@/Bretagne2_ht_lossy.png
+!grk_compress  -i @INPUT_NR_PATH@/bitfield_32_bpp_corrupt_colour_mask.bmp -o @TEMP_PATH@/bitfield_32_bpp_corrupt_colour_mask.jp2
+grk_decompress -i @INPUT_NR_PATH@/4bpp.j2k   -o @TEMP_PATH@/4bpp.bmp
+grk_decompress -i @INPUT_NR_PATH@/truncated.jp2  -o @TEMP_PATH@/truncated.bmp
+grk_decompress -i @INPUT_CONF_PATH@/p1_05.j2k -o @TEMP_PATH@/ppm_tile1.tif -t 1
+
+grk_compress -i @INPUT_NR_PATH@/BMP_v5_with_ICC.bmp -o @TEMP_PATH@/BMP_v5_with_ICC.jp2
+grk_compress -i @INPUT_NR_PATH@/BMP_v5_with_ICC2.bmp -o @TEMP_PATH@/BMP_v5_with_ICC2.jp2
+grk_decompress -i @TEMP_PATH@/BMP_v5_with_ICC.jp2 -o @TEMP_PATH@/BMP_v5_with_ICC.bmp
+grk_decompress -i @TEMP_PATH@/BMP_v5_with_ICC2.jp2 -o @TEMP_PATH@/BMP_v5_with_ICC2.bmp
+grk_decompress -i @TEMP_PATH@/BMP_v5_with_ICC.jp2 -o @TEMP_PATH@/BMP_v5_with_ICC.png
+grk_decompress -i @TEMP_PATH@/BMP_v5_with_ICC2.jp2 -o @TEMP_PATH@/BMP_v5_with_ICC2.png
+grk_compress   -i @INPUT_NR_PATH@/ybr-cat.tif -o @TEMP_PATH@/ybr-cat.jp2
+grk_decompress -i @TEMP_PATH@/ybr-cat.jp2 -o @TEMP_PATH@/ybr-cat.tif   -d 2,2,201,301
+# test corrupt HT image
+grk_decompress -i @INPUT_NR_PATH@/clusterfuzz-testcase-minimized-grk_decompress_fuzzer-5713875855736832 -o @TEMP_PATH@/clusterfuzz-testcase-minimized-grk_decompress_fuzzer-5713875855736832.pgx
+# test odd dimension mono bmp output
+grk_decompress -i @INPUT_NR_PATH@/cinema129x129.jp2 -o @TEMP_PATH@/cinema129x129.bmp
+# test boundary condition for region decode
+grk_decompress -i @INPUT_NR_PATH@/b1_mono_4k.j2k -o @TEMP_PATH@/b1_mono_4k.tif -d 0,0,1024,1024
+# missing EOC marker
+grk_decompress -i @INPUT_NR_PATH@/tnsot_zero_missing_eoc.jp2 -o @TEMP_PATH@/tnsot_zero_missing_eoc.tif
+grk_decompress -i @INPUT_NR_PATH@/grk_decompress_fuzzer-5796072240840704   -o @TEMP_PATH@/grk_decompress_fuzzer-5796072240840704.png
+!grk_decompress -i @INPUT_NR_PATH@/grk_decompress_fuzzer-6502012527181824   -o @TEMP_PATH@/grk_decompress_fuzzer-6502012527181824.pgx -d 0,0,1024,1024
+grk_decompress -i @INPUT_NR_PATH@/clusterfuzz-29249-uninitialized-mem   -o @TEMP_PATH@/clusterfuzz-29249-uninitialized-mem.pgx -d 448,10,500,11
+grk_decompress -i @INPUT_NR_PATH@/ybr-cat.jp2   -o @TEMP_PATH@/ybr-cat.jp2.pgx -d 0,324,1,325 -r 1
+grk_decompress -i @INPUT_NR_PATH@/clusterfuzz-testcase-minimized-grk_decompress_fuzzer-5245768921382912 -o @TEMP_PATH@/clusterfuzz-testcase-minimized-grk_decompress_fuzzer-5245768921382912.pgx  -d 27,22,30,30
+grk_decompress -i @INPUT_NR_PATH@/foo.j2k -o @TEMP_PATH@/foo.j2k.pgx  -d 72,64,73,73 -r 3
+grk_decompress -i @INPUT_NR_PATH@/foo_irrev.j2k -o @TEMP_PATH@/foo_irrev.j2k.pgx -d 60,60,75,75 -r 3
+grk_decompress -i @INPUT_NR_PATH@/1615b673ff67eddf0a79b3fce6950a9ece638d65 -o @TEMP_PATH@/1615b673ff67eddf0a79b3fce6950a9ece638d65.pgx -d 10,94,11,95
+grk_decompress -i @INPUT_NR_PATH@/clusterfuzz-testcase-grk_decompress_fuzzer-4634603289706496 -o @TEMP_PATH@/clusterfuzz-testcase-grk_decompress_fuzzer-4634603289706496.pgx -d 270,32,530,1056
+grk_decompress -i @INPUT_NR_PATH@/clusterfuzz-testcase-minimized-grk_decompress_fuzzer-4772443124269056 -o @TEMP_PATH@/clusterfuzz-testcase-minimized-grk_decompress_fuzzer-4772443124269056.pgx  -d 214,881,215,978 -r 4
+grk_decompress -i @INPUT_NR_PATH@/clusterfuzz-testcase-minimized-grk_decompress_fuzzer-5764218712358912 -o @TEMP_PATH@/clusterfuzz-testcase-minimized-grk_decompress_fuzzer-5764218712358912.pgx  -d 2,5,128,186
+grk_decompress -i @INPUT_NR_PATH@/161388041dff7f85465687873c5a1d9680413331 -o @TEMP_PATH@/161388041dff7f85465687873c5a1d9680413331.pgx -d  90,10,100,11
+# coverage for different progressions
+grk_compress -i @INPUT_NR_PATH@/Bretagne1.ppm -o @TEMP_PATH@/Bretagne1_LRCP.j2k -p LRCP
+grk_compress -i @INPUT_NR_PATH@/Bretagne1.ppm -o @TEMP_PATH@/Bretagne1_PCRL.j2k -p PCRL
+grk_compress -i @INPUT_NR_PATH@/Bretagne1.ppm -o @TEMP_PATH@/Bretagne1_CPRL.j2k -p CPRL
+grk_compress -i @INPUT_NR_PATH@/Bretagne1.ppm -o @TEMP_PATH@/Bretagne1_RLCP.j2k -p RLCP
+grk_compress -i @INPUT_NR_PATH@/Bretagne1.ppm -o @TEMP_PATH@/Bretagne1_RPCL.j2k -p RPCL
+grk_compress -i @INPUT_NR_PATH@/Bretagne1.ppm -o @TEMP_PATH@/Bretagne1_LRCP_tp_R.j2k -p LRCP -u R -r 200,50,1
+grk_compress -i @INPUT_NR_PATH@/Bretagne1.ppm -o @TEMP_PATH@/Bretagne1_PCRL_tp_L.j2k -p PCRL -u L -r 200,50,1
+grk_compress -i @INPUT_NR_PATH@/Bretagne1.ppm -o @TEMP_PATH@/Bretagne1_CPRL_tp_C.j2k -p CPRL -u C -r 200,50,1
+grk_compress -i @INPUT_NR_PATH@/Bretagne1.ppm -o @TEMP_PATH@/Bretagne1_RLCP_tp_R.j2k -p RLCP -u R -r 200,50,5
+grk_compress -i @INPUT_NR_PATH@/Bretagne1.ppm -o @TEMP_PATH@/Bretagne1_RPCL_tp_L.j2k -p RPCL -u L -r 200,50,10
+grk_compress -i @INPUT_NR_PATH@/Bretagne2.ppm -o @TEMP_PATH@/Bretagne2_issue_92_LRCP.j2k -r 700,53.8246894469852,38.6958466880406,27.8193625692756,20,1 -c [256,256],[256,256],[128,128],[128,128],[128,128],[128,128] -p LRCP -n 6 -t 1024,1024 -b 64,64 -SOP -EPH -M 1
+grk_compress -i @INPUT_NR_PATH@/Bretagne2.ppm -o @TEMP_PATH@/Bretagne2_issue_92_PCRL.j2k -r 700,53.8246894469852,38.6958466880406,27.8193625692756,20,1 -c [256,256],[256,256],[128,128],[128,128],[128,128],[128,128] -p PCRL -n 6 -t 1024,1024 -b 64,64 -SOP -EPH -M 1
+grk_compress -i @INPUT_NR_PATH@/Bretagne2.ppm -o @TEMP_PATH@/Bretagne2_issue_92_CPRL.j2k -r 700,53.8246894469852,38.6958466880406,27.8193625692756,20,1 -c [256,256],[256,256],[128,128],[128,128],[128,128],[128,128] -p CPRL -n 6 -t 1024,1024 -b 64,64 -SOP -EPH -M 1
+grk_compress -i @INPUT_NR_PATH@/Bretagne2.ppm -o @TEMP_PATH@/Bretagne2_issue_92_RLCP.j2k -r 700,53.8246894469852,38.6958466880406,27.8193625692756,20,1 -c [256,256],[256,256],[128,128],[128,128],[128,128],[128,128] -p RLCP -n 6 -t 1024,1024 -b 64,64 -SOP -EPH -M 1
+grk_compress -i @INPUT_NR_PATH@/246094.png -o @TEMP_PATH@/246094_rev_q40.jp2 -q 40
+grk_compress -i @INPUT_NR_PATH@/246094.png -o @TEMP_PATH@/246094_irrev_q40.jp2 -q 40 -I
+!grk_decompress -i @INPUT_NR_PATH@/ossfuzz-35259-poc-timeout   -o @TEMP_PATH@/ossfuzz-35259-poc-timeout.pgx -d 10,10,1024,1024
+
+# unsigned mono
+grk_compress -i @INPUT_NR_PATH@/basn4a08.tif -o @TEMP_PATH@/mono_lossy_no_transform.jp2 -I -n 1
+grk_compress -i @INPUT_NR_PATH@/basn4a08.tif -o @TEMP_PATH@/mono_lossy.jp2 -I
+grk_compress -i @INPUT_NR_PATH@/basn4a08.tif -o @TEMP_PATH@/ht_mono_lossy_no_transform.j2k -M 64 -I -n 1
+grk_compress -i @INPUT_NR_PATH@/basn4a08.tif -o @TEMP_PATH@/ht_mono_lossy.j2k -M 64 -I
+
+# signed mono
+grk_compress -i @BASELINE_CONF_PATH@/c0p0_03r0.pgx -o @TEMP_PATH@/signed_mono_lossy_no_transform.jp2 -I -n 1
+grk_compress -i @BASELINE_CONF_PATH@/c0p0_03r0.pgx -o @TEMP_PATH@/signed_mono_lossy.jp2 -I
+grk_compress -i @BASELINE_CONF_PATH@/c0p0_03r0.pgx -o @TEMP_PATH@/signed_ht_mono_lossy_no_transform.j2k -M 64 -I -n 1
+grk_compress -i @BASELINE_CONF_PATH@/c0p0_03r0.pgx -o @TEMP_PATH@/signed_ht_mono_lossy.j2k -M 64 -I
+
+# RGB
+grk_compress -i @INPUT_NR_PATH@/basn6a08.tif -o @TEMP_PATH@/rgb_lossy_no_mct_no_transform.jp2 -I -MCT 0 -n 1
+grk_compress -i @INPUT_NR_PATH@/basn6a08.tif -o @TEMP_PATH@/rgb_lossy_no_mct.jp2 -I -MCT 0
+grk_compress -i @INPUT_NR_PATH@/basn6a08.tif -o @TEMP_PATH@/rgb_lossy_no_transform.jp2 -I -n 1
+grk_compress -i @INPUT_NR_PATH@/basn6a08.tif -o @TEMP_PATH@/rgb_lossy.jp2 -I
+
+grk_compress -i @INPUT_NR_PATH@/basn6a08.tif -o @TEMP_PATH@/ht_rgb_lossy_no_mct_no_transform.j2k -M 64 -I -MCT 0 -n 1
+grk_compress -i @INPUT_NR_PATH@/basn6a08.tif -o @TEMP_PATH@/ht_rgb_lossy_no_mct.j2k -M 64 -I -MCT 0
+grk_compress -i @INPUT_NR_PATH@/basn6a08.tif -o @TEMP_PATH@/ht_rgb_lossy_no_transform.j2k -M 64 -I -n 1
+grk_compress -i @INPUT_NR_PATH@/basn6a08.tif -o @TEMP_PATH@/ht_rgb_lossy.j2k -M 64 -I
+
+# signed 4 bpp
+grk_compress -i @INPUT_NR_PATH@/signed-4bpp.tif -o @TEMP_PATH@/signed-4bpp.j2k
+
+# mono with ICC profile
+grk_decompress -i @INPUT_NR_PATH@/mono_icc.jp2 -o @TEMP_PATH@/mono_icc.tif
+grk_decompress -i @INPUT_NR_PATH@/mono_icc.jp2 -o @TEMP_PATH@/mono_icc_force.tif -force_rgb
+grk_decompress -i @INPUT_NR_PATH@/mono_icc.jp2 -o @TEMP_PATH@/mono_icc.pgx
+
+grk_decompress -i @INPUT_NR_PATH@/sycc_420_odd_origin_x_coord.jp2 -o @TEMP_PATH@/sycc_420_odd_origin_x_coord.tif
+grk_decompress -i @INPUT_NR_PATH@/sycc_420_odd_origin_x_coord.jp2 -o @TEMP_PATH@/sycc_420_odd_origin_x_coord.png
+grk_decompress -i @INPUT_NR_PATH@/sycc_420_odd_origin_x_coord.jp2 -o @TEMP_PATH@/sycc_420_odd_origin_x_coord.bmp
+
+grk_decompress -i @INPUT_NR_PATH@/boats_plt_tlm_rlcp.j2k -o @TEMP_PATH@/boats_plt_tlm_rlcp.tif -d 300,200,400,300
+grk_decompress -i @INPUT_NR_PATH@/boats_plt_tlm_lrcp.j2k -o @TEMP_PATH@/boats_plt_tlm_lrcp.tif -d 300,200,400,300
+grk_decompress -i @INPUT_NR_PATH@/boats_plt_tlm_pcrl.j2k -o @TEMP_PATH@/boats_plt_tlm_pcrl.tif -d 300,200,400,300
+grk_decompress -i @INPUT_NR_PATH@/boats_plt_tlm_cprl.j2k -o @TEMP_PATH@/boats_plt_tlm_cprl.tif -d 300,200,400,300
+grk_decompress -i @INPUT_NR_PATH@/boats_plt_tlm_rpcl.j2k -o @TEMP_PATH@/boats_plt_tlm_rpcl.tif -d 300,200,400,300
+grk_decompress -i @INPUT_NR_PATH@/boats_rlcp.j2k -o @TEMP_PATH@/boats_rlcp.tif -d 300,200,400,300
+grk_decompress -i @INPUT_NR_PATH@/boats_lrcp.j2k -o @TEMP_PATH@/boats_lrcp.tif -d 300,200,400,300
+grk_decompress -i @INPUT_NR_PATH@/boats_pcrl.j2k -o @TEMP_PATH@/boats_pcrl.tif -d 300,200,400,300
+grk_decompress -i @INPUT_NR_PATH@/boats_cprl.j2k -o @TEMP_PATH@/boats_cprl.tif -d 300,200,400,300
+grk_decompress -i @INPUT_NR_PATH@/boats_rpcl.j2k -o @TEMP_PATH@/boats_rpcl.tif -d 300,200,400,300
+
+grk_decompress -i @INPUT_NR_PATH@/crash-0a.jp2 -o @TEMP_PATH@/crash-0a.tif
+
+grk_decompress -i  @INPUT_NR_PATH@/issue205.jp2 -o @TEMP_PATH@/issue205.jp2_r0.tif
+grk_decompress -i  @INPUT_NR_PATH@/issue205.jp2 -o @TEMP_PATH@/issue205.jp2_r1.tif -r 1
+
+grk_compress -i @INPUT_NR_PATH@/cmyk.tif -o @TEMP_PATH@/cmyk.jp2 -n 1
+grk_decompress -i  @INPUT_NR_PATH@/cmyk_no_wavelet.jp2 -o @TEMP_PATH@/cmyk_no_wavelet.tif
+grk_decompress -i  @INPUT_NR_PATH@/cmyk_no_wavelet.jp2 -o @TEMP_PATH@/cmyk_no_wavelet_region.tif -d 64,64,256,256
+grk_decompress -i  @INPUT_NR_PATH@/mono_plt.j2k -o @TEMP_PATH@/mono_plt.tif
+grk_decompress -i  @INPUT_NR_PATH@/mono_plt.j2k -o @TEMP_PATH@/mono_plt_region.tif -d 15,15,64,64
+grk_decompress -i  @INPUT_NR_PATH@/mono_plt_tlm.j2k -o @TEMP_PATH@/mono_plt_tlm_tile5.tif -t 5
+grk_decompress -i  @INPUT_NR_PATH@/mono_plt_tlm.j2k -o @TEMP_PATH@/mono_plt_tlm_region.tif -d 15,15,64,64
+grk_decompress -i  @INPUT_NR_PATH@/mono_plt_tlm_tp.j2k -o @TEMP_PATH@/mono_plt_tlm_tp_tile5.tif -t 5
+grk_decompress -i  @INPUT_NR_PATH@/mono_plt_tlm_tp.j2k -o @TEMP_PATH@/mono_plt_tlm_tp_region.tif -d 15,15,64,64
+grk_decompress -i  @INPUT_NR_PATH@/mono_plt_tlm.j2k -o @TEMP_PATH@/mono_plt_tlm_tile.pgm
+grk_decompress -i  @INPUT_NR_PATH@/mono_plt_tlm.j2k -o @TEMP_PATH@/mono_plt_tlm_tile5.pgm -t 5
+
+grk_decompress -i @INPUT_CONF_PATH@/a1_mono.j2c -o @TEMP_PATH@/a1_mono_tif-r-1.tif -r 1

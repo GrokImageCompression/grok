@@ -1,0 +1,6 @@
+if(NOT "@BUILD_SHARED_LIBS@")
+    # TODO: import dependencies
+endif()
+if(NOT TARGET TIFF::tiff)
+    include("${CMAKE_CURRENT_LIST_DIR}/TiffTargets.cmake")
+endif()

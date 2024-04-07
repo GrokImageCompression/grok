@@ -1,0 +1,13 @@
+prefix=@CMAKE_INSTALL_PREFIX@
+bindir=${prefix}/@CMAKE_INSTALL_BINDIR@
+mandir=${prefix}/@CMAKE_INSTALL_MANDIR@
+docdir=${prefix}/@CMAKE_INSTALL_DOCDIR@
+libdir=${prefix}/@CMAKE_INSTALL_LIBDIR@
+includedir=${prefix}/@CMAKE_INSTALL_INCLUDEDIR@/@GROK_INSTALL_SUBDIR@
+
+Name: grokj2k
+Description: Core JPEG 2000 codec (Part 1)
+URL: https://github.com/GrokImageCompression/grok
+Version: @GROK_VERSION@
+Libs: -L${libdir} -lgrokj2k
+Cflags: -I${includedir}
