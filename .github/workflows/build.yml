@@ -12,12 +12,16 @@ jobs:
   build:
     strategy:
        matrix:
-         os: [ubuntu-latest, windows-latest, macos-13]
+         os: [ubuntu-latest, windows-latest, macos-latest]
          shared_libs_flag: [ON,OFF]
     runs-on: ${{ matrix.os }}
 
     steps:
     - uses: actions/checkout@v3
+
+    - name: Delete workflow runs
+      if: startsWith(matrix.os, 'ubuntu') && matrix.shared_libs_flag == 'ON'
+      uses: Mattraks/delete-workflow-runs@v2.0.6
 
     - name: ubuntu-dependencies
       if: startsWith(matrix.os, 'ubuntu')
@@ -33,7 +37,6 @@ jobs:
       if: startsWith(matrix.os, 'macos')
       run: |
         echo DATA_BRANCH=osx >> $GITHUB_ENV
-        brew upgrade
         brew install exiftool
         #perl -MImage::ExifTool -e ""
 
@@ -94,4 +97,4 @@ jobs:
       if: ${{startsWith(github.ref, 'refs/tags/') }}
       with:
           files: build/grok-${{ matrix.os }}.zip 
-
+ 
