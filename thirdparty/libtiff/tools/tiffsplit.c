@@ -169,7 +169,7 @@ int main(int argc, char *argv[])
         if (!path)
         {
             fprintf(stderr,
-                    "tiffsplit: Error: Can't allocate %" TIFF_SSIZE_FORMAT
+                    "tiffsplit: Error: Can't allocate %" TIFF_SIZE_FORMAT
                     " bytes for path-variable.\n",
                     path_len);
             TIFFClose(in);

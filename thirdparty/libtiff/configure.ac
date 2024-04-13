@@ -198,7 +198,7 @@ dnl Check if optarg (and presumably related externs) already declared in headers
 AC_CHECK_DECLS([optarg])
 
 dnl ---------------------------------------------------------------------------
-dnl Deprecated features and backward compatibilty
+dnl Deprecated features and backward compatibility
 dnl ---------------------------------------------------------------------------
 
 AC_ARG_ENABLE([deprecated],

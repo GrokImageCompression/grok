@@ -94,6 +94,11 @@ is not necessary. There are some test programmes that briefly demonstrate
 the creation and reading of EXIF, GPS and custom directories.
 See test/custom_dir.c and test/custom_dir_EXIF_231.c
 
+After ``libtiff`` version 4.6.0 :c:func:`TIFFCreateCustomDirectory`,
+:c:func:`TIFFCreateEXIFDirectory` and :c:func:`TIFFCreateGPSDirectory` also
+releases the directory part of the `tif` structure by calling :c:func:`TIFFFreeDirectory`,
+which should have been called by the user application before creating a new directory.
+
 Hints and detailed instructions
 -------------------------------
 

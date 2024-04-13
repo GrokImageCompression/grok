@@ -64,5 +64,6 @@ The following sections are included in this documentation:
     addingtags
     tools
     contrib
+    rfcs/index
     project/index
     releases/index

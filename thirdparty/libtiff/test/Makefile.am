@@ -73,7 +73,7 @@ endif
 if TIFF_TESTS
 check_PROGRAMS = \
 	ascii_tag long_tag short_tag strip_rw rewrite custom_dir custom_dir_EXIF_231 \
-	defer_strile_loading defer_strile_writing test_directory test_open_options \
+	defer_strile_loading defer_strile_writing test_directory test_IFD_enlargement test_open_options \
 	test_append_to_strip test_ifd_loop_detection testtypes test_signed_tags $(JPEG_DEPENDENT_CHECK_PROG) $(STATIC_CHECK_PROGS)
 endif
 
@@ -198,6 +198,8 @@ defer_strile_writing_SOURCES = defer_strile_writing.c
 defer_strile_writing_LDADD = $(LIBTIFF)
 test_directory_SOURCES = test_directory.c
 test_directory_LDADD = $(LIBTIFF)
+test_IFD_enlargement_SOURCES = test_IFD_enlargement.c
+test_IFD_enlargement_LDADD = $(LIBTIFF)
 test_open_options_SOURCES = test_open_options.c
 test_open_options_LDADD = $(LIBTIFF)
 test_append_to_strip_SOURCES = test_append_to_strip.c

@@ -39,7 +39,6 @@
 #include "tiffio.h"
 #include "tiffiop.h"
 
-const uint32_t length = 40;
 const uint32_t rows_per_strip = 1;
 
 int test_packbits()
@@ -256,7 +255,7 @@ int rewrite_test(const char *filename, uint32_t width, int length, int bigtiff,
 
     upd_bytecount = (uint64_t *)_TIFFmalloc(sizeof(uint64_t) * length);
     for (i = 0; i < length; i++)
-        upd_bytecount[i] = 100 + i * width;
+        upd_bytecount[i] = 100 + (uint64_t)i * width;
 
     if (!_TIFFRewriteField(tif, TIFFTAG_STRIPBYTECOUNTS, TIFF_LONG8, length,
                            upd_bytecount))
@@ -309,7 +308,7 @@ int rewrite_test(const char *filename, uint32_t width, int length, int bigtiff,
 
     for (i = 0; i < length; i++)
     {
-        uint64_t expect = 100 + i * width;
+        uint64_t expect = 100 + (uint64_t)i * width;
 
         if (rowbytes[i] != expect)
         {

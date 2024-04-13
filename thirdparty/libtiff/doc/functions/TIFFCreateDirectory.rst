@@ -63,6 +63,10 @@ Be aware:
 - that unlike :c:func:`TIFFWriteDirectory`, :c:func:`TIFFCheckpointDirectory`
   does not free up the directory data structures in memory.
 
+After ``libtiff`` version 4.6.0 :c:func:`TIFFCreateDirectory` also releases 
+the directory part of the `tif` structure by calling :c:func:`TIFFFreeDirectory`,
+which should have been called by the user application before creating a new directory.
+
 Diagnostics
 -----------
 

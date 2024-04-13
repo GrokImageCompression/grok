@@ -27,6 +27,15 @@ the associated function to close the file handle.
 The given structure will be completely freed, so you should save opened file
 handle and pointer to the close procedure in external variables before
 calling :c:func:`TIFFCleanup`, if you will need these ones to close the file.
+:c:func:`TIFFCleanup` calls :c:func:`TIFFFlush`, which stores all pending data
+in the file.
+
+.. note::
+    Both functions have no return value. 
+    If you want to check whether the data has been successfully written
+    to the file, you can call :c:func:`TIFFFlush`, which has a return value,
+    before :c:func:`TIFFClose`.
+    
 
 Diagnostics
 -----------

@@ -94,8 +94,9 @@ TIFF structure without closing the file handle and afterwards the
 file should be closed using its file descriptor *fd*.
 
 :c:func:`TIFFOpenExt` (added in libtiff 4.5) is like :c:func:`TIFFOpen`,
-but options, such as re-entrant error and warning handlers may be passed
-with the *opts* argument. The *opts* argument may be NULL. 
+but options, such as re-entrant error and warning handlers and a limit in byte
+that libtiff internal memory allocation functions are allowed to request per call
+may be passed with the *opts* argument. The *opts* argument may be NULL. 
 Refer to :doc:`TIFFOpenOptions` for allocating and filling the *opts* argument
 parameters. The allocated memory for :c:type:`TIFFOpenOptions`
 can be released straight after successful execution of the related
@@ -105,9 +106,7 @@ can be released straight after successful execution of the related
 but opens a TIFF file with a Unicode filename.
 
 :c:func:`TIFFFdOpenExt` (added in libtiff 4.5) is like :c:func:`TIFFFdOpen`,
-but options, such as re-entrant error and warning handlers may be passed
-with the *opts* argument. The *opts* argument may be NULL. 
-Refer to :doc:`TIFFOpenOptions` for filling the *opts* argument.
+but options argument *opts* like for :c:func:`TIFFOpenExt` can be passed.
 
 :c:func:`TIFFSetFileName` sets the file name in the tif-structure
 and returns the old file name.
@@ -326,5 +325,5 @@ See also
 
 :doc:`libtiff` (3tiff),
 :doc:`TIFFClose` (3tiff),
-:doc:`TIFFStrileQuery`,
+:doc:`TIFFStrileQuery` (3tiff),
 :doc:`TIFFOpenOptions`

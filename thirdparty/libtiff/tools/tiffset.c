@@ -55,7 +55,7 @@
   does not distribute the CRT (it is supplied by Microsoft) so the correct CRT
   must be available on the target computer in order for the program to run.
 */
-#if defined(__WIN32__) && !(defined(_MSC_VER) && _MSC_VER < 1400) &&           \
+#if defined(_WIN32) && !(defined(_MSC_VER) && _MSC_VER < 1400) &&              \
     !(defined(__MSVCRT_VERSION__) && __MSVCRT_VERSION__ < 0x800)
 #define TIFFfseek(stream, offset, whence)                                      \
     _fseeki64(stream, /* __int64 */ offset, whence)

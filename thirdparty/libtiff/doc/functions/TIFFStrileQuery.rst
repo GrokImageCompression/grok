@@ -66,6 +66,11 @@ Diagnostics
 All error messages are directed to the :c:func:`TIFFErrorExtR` routine.
 Likewise, warning messages are directed to the :c:func:`TIFFWarningExtR` routine.
 
+Note
+----
+
+This functionality was introduced with libtiff 4.1.
+
 See also
 --------
 

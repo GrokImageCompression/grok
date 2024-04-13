@@ -90,10 +90,19 @@ compatibility on machines with a segmented architecture.
 :c:func:`realloc`, and :c:func:`free` routines in the C library.)
 
 To deal with segmented pointer issues ``libtiff`` also provides
-:c:func:`_TIFFmemcpy`, :c:func:`_TIFFmemset`, and :c:func:`_TIFFmemmove`
+:c:func:`_TIFFmemcpy`, :c:func:`_TIFFmemset`, and :c:func:`_TIFFmemcmp`
 routines that mimic the equivalent ANSI C routines, but that are
 intended for use with memory allocated through :c:func:`_TIFFmalloc`
 and :c:func:`_TIFFrealloc`.
+
+With ``libtiff`` 4.5 a method was introduced to limit the internal
+memory allocation that functions are allowed to request per call
+(see  :c:func:`TIFFOpenOptionsSetMaxSingleMemAlloc` and :c:func:`TIFFOpenExt`).
+
+With ``libtiff`` 4.6.1 a method was introduced to limit the internal
+cumulated memory allocation that functions are allowed to request for a given
+TIFF handle
+(see  :c:func:`TIFFOpenOptionsSetMaxCumulatedMemAlloc` and :c:func:`TIFFOpenExt`).
 
 Error Handling
 --------------
@@ -105,6 +114,10 @@ All error messages are directed to a single global error handler
 routine that can be specified with a call to :c:func:`TIFFSetErrorHandler`.
 Likewise warning messages are directed to a single handler routine
 that can be specified with a call to :c:func:`TIFFSetWarningHandler`
+
+Further application-specific and per-TIFF handle (re-entrant) error handler
+and warning handler can be set. Please refer to :doc:`/functions/TIFFError`
+and :doc:`/functions/TIFFOpenOptions`.
 
 Basic File Handling
 -------------------
@@ -139,7 +152,7 @@ a ``"w"`` argument:
     main()
     {
         TIFF* tif = TIFFOpen("foo.tif", "w");
-        ... do stuff ...
+        /* ... do stuff ... */
         TIFFClose(tif);
     }
 
@@ -156,6 +169,25 @@ valid TIFF image.  Consequently, when writing a TIFF image it is necessary
 to always call :c:func:`TIFFClose` or :c:func:`TIFFFlush` to flush any
 buffered information to a file.  Note that if you call :c:func:`TIFFClose`
 you do not need to call :c:func:`TIFFFlush`.
+
+.. warning::
+
+    In order to prevent out-of-memory issues when opening a TIFF file
+    :c:func:`TIFFOpenExt` can be used and then the maximum single memory
+    limit in bytes that ``libtiff`` internal memory allocation functions
+    are allowed to request per call can be set with
+    :c:func:`TIFFOpenOptionsSetMaxSingleMemAlloc`.
+
+Example
+
+::
+
+    tmsize_t limit = (256 * 1024 * 1024);
+    TIFFOpenOptions *opts = TIFFOpenOptionsAlloc();
+    TIFFOpenOptionsSetMaxSingleMemAlloc(opts, limit);
+    TIFF *tif = TIFFOpenExt("foo.tif", "w", opts);
+    TIFFOpenOptionsFree(opts);
+    /* ... go on here ... */
 
 TIFF Directories
 ----------------

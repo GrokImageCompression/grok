@@ -27,6 +27,9 @@
  * especially after the update with "relative" movement possibility. Also
  * TIFFUnlinkDirectory() is tested.
  *
+ * Furthermore, tests are performed with big-endian, little-endian and BigTIFF
+ * images.
+ *
  */
 
 #include "tif_config.h"
@@ -42,6 +45,7 @@
 #include <unistd.h>
 #endif
 
+/* Global settings for the test image. It is not save to change. */
 #define SPP 3            /* Samples per pixel */
 #define N_DIRECTORIES 10 /* Number of directories to write */
 const uint16_t width = 1;
@@ -51,7 +55,14 @@ const uint16_t photometric = PHOTOMETRIC_RGB;
 const uint16_t rows_per_strip = 1;
 const uint16_t planarconfig = PLANARCONFIG_CONTIG;
 
-int write_data_to_current_directory(TIFF *tif, int i)
+char *openModeStrings[] = {"wl", "wb", "w8l", "w8b"};
+char *openModeText[] = {"non-BigTIFF and LE", "non-BigTIFF and BE",
+                        "BigTIFF and LE", "BigTIFF and BE"};
+
+/* Writes basic tags to current directory (IFD) as well one pixel to the file.
+ * For is_corrupted = TRUE a corrupted IFD (missing image width tag) is
+ * generated. */
+int write_data_to_current_directory(TIFF *tif, int i, bool is_corrupted)
 {
     unsigned char buf[SPP] = {0, 127, 255};
     char auxString[128];
@@ -61,10 +72,13 @@ int write_data_to_current_directory(TIFF *tif, int i)
         fprintf(stderr, "Invalid TIFF handle.\n");
         return 1;
     }
-    if (!TIFFSetField(tif, TIFFTAG_IMAGEWIDTH, width))
+    if (!is_corrupted)
     {
-        fprintf(stderr, "Can't set ImageWidth tag.\n");
-        return 1;
+        if (!TIFFSetField(tif, TIFFTAG_IMAGEWIDTH, width))
+        {
+            fprintf(stderr, "Can't set ImageWidth tag.\n");
+            return 1;
+        }
     }
     if (!TIFFSetField(tif, TIFFTAG_IMAGELENGTH, length))
     {
@@ -105,7 +119,7 @@ int write_data_to_current_directory(TIFF *tif, int i)
     }
 
     /* Write dummy pixel data. */
-    if (TIFFWriteScanline(tif, buf, 0, 0) == -1)
+    if (TIFFWriteScanline(tif, buf, 0, 0) == -1 && !is_corrupted)
     {
         fprintf(stderr, "Can't write image data.\n");
         return 1;
@@ -114,18 +128,24 @@ int write_data_to_current_directory(TIFF *tif, int i)
     return 0;
 }
 
-int write_directory_to_closed_file(const char *filename, bool is_big_tiff,
+/* Fills a new IFD and appends it to a file by opening a file and closing it
+ * again after writing. */
+int write_directory_to_closed_file(const char *filename, unsigned int openMode,
                                    int i)
 {
     TIFF *tif;
-    tif = TIFFOpen(filename, is_big_tiff ? "a8" : "a");
+    /* Replace 'w' for write by 'a' for append. */
+    char strAux[8] = {0};
+    strncpy(strAux, openModeStrings[openMode], sizeof(strAux) - 1);
+    strAux[0] = 'a';
+    tif = TIFFOpen(filename, strAux);
     if (!tif)
     {
         fprintf(stderr, "Can't create/open %s\n", filename);
         return 1;
     }
 
-    if (write_data_to_current_directory(tif, i))
+    if (write_data_to_current_directory(tif, i, false))
     {
         fprintf(stderr, "Can't write data to directory %d of %s.\n", i,
                 filename);
@@ -145,6 +165,7 @@ int write_directory_to_closed_file(const char *filename, bool is_big_tiff,
     return 0;
 }
 
+/* Opens a file and counts its directories. */
 int count_directories(const char *filename, int *count)
 {
     TIFF *tif;
@@ -276,15 +297,27 @@ int get_dir_offsets(const char *filename, uint64_t *offsets,
  * Also the case where directly after TIFFWriteDirectory() that directory
  * is re-read using TIFFSetDirectory() is tested.
  */
-int test_arbitrary_directrory_loading(bool is_big_tiff)
+int test_arbitrary_directrory_loading(unsigned int openMode)
 {
-    const char *filename = "test_arbitrary_directrory_loading.tif";
+    char filename[128] = {0};
     TIFF *tif;
     uint64_t offsets_base[N_DIRECTORIES];
     int expected_original_dirnumber;
 
-    /* Create a file and write N_DIRECTORIES (10) directories to it */
-    tif = TIFFOpen(filename, is_big_tiff ? "w8" : "w");
+    if (openMode >= (sizeof(openModeStrings) / sizeof(openModeStrings[0])))
+    {
+        fprintf(stderr, "Index %d for openMode parameter out of range.\n",
+                openMode);
+        return 1;
+    }
+
+    /* Get individual filenames and delete existent ones. */
+    sprintf(filename, "test_arbitrary_directrory_loading_%s.tif",
+            openModeStrings[openMode]);
+    unlink(filename);
+
+    /* Create a file and write N_DIRECTORIES (10) directories to it. */
+    tif = TIFFOpen(filename, openModeStrings[openMode]);
     if (!tif)
     {
         fprintf(stderr, "Can't create %s\n", filename);
@@ -293,7 +326,7 @@ int test_arbitrary_directrory_loading(bool is_big_tiff)
     TIFFSetDirectory(tif, 0);
     for (int i = 0; i < N_DIRECTORIES; i++)
     {
-        if (write_data_to_current_directory(tif, i))
+        if (write_data_to_current_directory(tif, i, false))
         {
             fprintf(stderr, "Can't write data to current directory in %s\n",
                     filename);
@@ -411,7 +444,7 @@ int test_arbitrary_directrory_loading(bool is_big_tiff)
     if (TIFFSetDirectory(tif, N_DIRECTORIES))
     {
         fprintf(stderr,
-                "No expected fail for accessing not existant directory number "
+                "No expected fail for accessing not existent directory number "
                 "%d in file %s\n",
                 N_DIRECTORIES, filename);
         goto failure;
@@ -497,7 +530,7 @@ int test_arbitrary_directrory_loading(bool is_big_tiff)
     }
 
     /* Second UnlinkDirectory -> two IFDs are missing in the main-IFD chain
-     * then, orignal dirnum 2 and 3 */
+     * then, original dirnum 2 and 3 */
     if (!TIFFUnlinkDirectory(tif, 3))
     {
         fprintf(stderr, "Can't unlink directory %d within %s\n", 3, filename);
@@ -616,7 +649,7 @@ int test_arbitrary_directrory_loading(bool is_big_tiff)
     }
 
     /* Third UnlinkDirectory -> three IFDs are missing in the main-IFD chain
-     * then, orignal dirnum 0, 2 and 3
+     * then, original dirnum 0, 2 and 3
      * Furthermore, this test checks that TIFFUnlinkDirectory() can unlink
      * the first directory dirnum = 0 and a following TIFFSetDirectory(0)
      * does not load the unlinked directory. */
@@ -672,17 +705,16 @@ failure:
     {
         TIFFClose(tif);
     }
-    unlink(filename);
     return 1;
-}
+} /*-- test_arbitrary_directrory_loading() --*/
 
 /* Tests SubIFD writing and reading
  *
  *
  */
-int test_SubIFD_directrory_handling(bool is_big_tiff)
+int test_SubIFD_directrory_handling(unsigned int openMode)
 {
-    const char *filename = "test_SubIFD_directrory_handling.tif";
+    char filename[128] = {0};
 
 /* Define the number of sub-IFDs you are going to write */
 #define NUMBER_OF_SUBIFDs 3
@@ -695,8 +727,20 @@ int test_SubIFD_directrory_handling(bool is_big_tiff)
     TIFF *tif;
     int expected_original_dirnumber;
 
+    if (openMode >= (sizeof(openModeStrings) / sizeof(openModeStrings[0])))
+    {
+        fprintf(stderr, "Index %d for openMode parameter out of range.\n",
+                openMode);
+        return 1;
+    }
+
+    /* Get individual filenames and delete existent ones. */
+    sprintf(filename, "test_SubIFD_directrory_handling_%s.tif",
+            openModeStrings[openMode]);
+    unlink(filename);
+
     /* Create a file and write N_DIRECTORIES (10) directories to it */
-    tif = TIFFOpen(filename, is_big_tiff ? "w8" : "w");
+    tif = TIFFOpen(filename, openModeStrings[openMode]);
     if (!tif)
     {
         fprintf(stderr, "Can't create %s\n", filename);
@@ -705,7 +749,7 @@ int test_SubIFD_directrory_handling(bool is_big_tiff)
     for (i = 0; i < N_DIRECTORIES; i++)
     {
         if (write_data_to_current_directory(
-                tif, blnWriteSubIFD ? 200 + iSubIFD++ : iIFD++))
+                tif, blnWriteSubIFD ? 200 + iSubIFD++ : iIFD++, false))
         {
             fprintf(stderr, "Can't write data to current directory in %s\n",
                     filename);
@@ -758,7 +802,7 @@ int test_SubIFD_directrory_handling(bool is_big_tiff)
     }
 
     tdir_t numberOfMainIFDs = TIFFNumberOfDirectories(tif);
-    if (numberOfMainIFDs != N_DIRECTORIES - number_of_sub_IFDs)
+    if (numberOfMainIFDs != (tdir_t)N_DIRECTORIES - number_of_sub_IFDs)
     {
         fprintf(stderr,
                 "Unexpected number of directories in %s. Expected %i, "
@@ -829,16 +873,157 @@ failure:
     if (tif)
     {
         TIFFClose(tif);
-        tif = NULL;
     }
-    unlink(filename);
     return 1;
 } /*--- test_SubIFD_directrory_handling() ---*/
 
-/* Checks that rewriting a directory does not break the directory linked
- * list
+/* Test failure in TIFFSetSubDirectory() (see issue #618 and MR !543)
  *
- * This could happen because TIFFRewriteDirectory relies on the traversal of
+ * If int TIFFSetSubDirectory(TIFF *tif, uint64_t diroff) fails due to
+ * TIFFReadDirectory() error, subsequent calls to TIFFSetDirectory() can not
+ * recover a consistent state. This is reproducible in master, 4.6, 4.5.1.
+ * This issue surfaced around the time when relative seeking
+ * support / IFD hash map optimiazions were introduced. This can be reproduced
+ * by opening an invalid SubIFD directory (e.g. w/o required ImageLength tag).
+ * The issue was fixed by MR !543.
+ */
+int test_SetSubDirectory_failure(unsigned int openMode)
+{
+    char filename[128] = {0};
+
+/* Define the number of sub-IFDs you are going to write */
+#define NUMBER_OF_SUBIFDs2 1
+    uint16_t number_of_sub_IFDs = NUMBER_OF_SUBIFDs2;
+    toff_t sub_IFDs_offsets[NUMBER_OF_SUBIFDs2] = {
+        0UL}; /* array for SubIFD tag */
+    TIFF *tif;
+
+    if (openMode >= (sizeof(openModeStrings) / sizeof(openModeStrings[0])))
+    {
+        fprintf(stderr, "Index %d for openMode parameter out of range.\n",
+                openMode);
+        return 1;
+    }
+
+    /* Get individual filenames and delete existent ones. */
+    sprintf(filename, "test_SetSubDirectory_failure_%s.tif",
+            openModeStrings[openMode]);
+    unlink(filename);
+
+    /* Create a file and write one directory with one corrupted sub-directory to
+     * it */
+    tif = TIFFOpen(filename, openModeStrings[openMode]);
+    if (!tif)
+    {
+        fprintf(stderr, "Can't create %s\n", filename);
+        return 1;
+    }
+
+    if (write_data_to_current_directory(tif, 300, false))
+    {
+        fprintf(stderr, "Can't write data to current directory in %s\n",
+                filename);
+        goto failure;
+    }
+    /* prepare to write next directory as SubIFD */
+    if (!TIFFSetField(tif, TIFFTAG_SUBIFD, number_of_sub_IFDs,
+                      sub_IFDs_offsets))
+        goto failure;
+    if (!TIFFWriteDirectory(tif))
+    {
+        fprintf(stderr, "Can't write directory to %s\n", filename);
+        goto failure;
+    }
+    /* write corrupted SubIFD */
+    fprintf(
+        stderr,
+        "--- Expect some error messages about 'scanline size is zero' ---.\n");
+    if (write_data_to_current_directory(tif, 310, true))
+    {
+        fprintf(stderr, "Can't write data to current directory in %s\n",
+                filename);
+        goto failure;
+    }
+    /* SUBFILETYPE tag is not mandatory for SubIFD writing, but a
+     * good idea to indicate thumbnails */
+    if (!TIFFSetField(tif, TIFFTAG_SUBFILETYPE, FILETYPE_REDUCEDIMAGE))
+        goto failure;
+
+    if (!TIFFWriteDirectory(tif))
+    {
+        fprintf(stderr, "Can't write directory to %s\n", filename);
+        goto failure;
+    }
+    TIFFClose(tif);
+
+    /* Reopen prepared testfile */
+    tif = TIFFOpen(filename, "r");
+    if (!tif)
+    {
+        fprintf(stderr, "Can't open %s\n", filename);
+        goto failure;
+    }
+    /* The first directory is already read through TIFFOpen() */
+    if (!is_requested_directory(tif, 300, filename))
+    {
+        goto failure;
+    }
+
+    /* Check if there are SubIFD subfiles */
+    void *ptr;
+    if (TIFFGetField(tif, TIFFTAG_SUBIFD, &number_of_sub_IFDs, &ptr))
+    {
+        /* Copy SubIFD array from pointer */
+        memcpy(sub_IFDs_offsets, ptr,
+               number_of_sub_IFDs * sizeof(sub_IFDs_offsets[0]));
+
+        /* Read first SubIFD directory */
+        if (!TIFFSetSubDirectory(tif, sub_IFDs_offsets[0]))
+        {
+            /* Attempt to set back to the main directory.
+             * Would fail if absolute seeking is not forced independent of
+             * TIFFReadDirectory success. */
+            if (!TIFFSetDirectory(tif, 0))
+            {
+                fprintf(stderr,
+                        "Failed to reset from not valid SubIFD back to "
+                        "main directory. %s\n",
+                        filename);
+                goto failure;
+            }
+            if (!is_requested_directory(tif, 300, filename))
+            {
+                goto failure;
+            }
+        }
+        else
+        {
+            if (!is_requested_directory(tif, 310, filename))
+            {
+                goto failure;
+            }
+        }
+        /* Go back to main-IFD chain and re-read that main-IFD directory */
+        if (!TIFFSetDirectory(tif, 0))
+            goto failure;
+    }
+
+    TIFFClose(tif);
+    unlink(filename);
+    return 0;
+
+failure:
+    if (tif)
+    {
+        TIFFClose(tif);
+    }
+    return 1;
+} /*--- test_SetSubDirectory_failure() ---*/
+
+/* Checks that rewriting a directory does not break the directory linked
+ * list.
+ *
+ * This could happen because TIFFRewriteDirectory() relies on the traversal of
  * the directory linked list in order to move the rewritten directory to the
  * end of the file. This means the `lastdir_offset` optimization should be
  * skipped, otherwise the linked list will be broken at the point where it
@@ -847,14 +1032,26 @@ failure:
  * Rewriting the first directory requires an additional test, because it is
  * treated differently from the directories that have a predecessor in the list.
  */
-int test_rewrite_lastdir_offset(bool is_big_tiff)
+int test_rewrite_lastdir_offset(unsigned int openMode)
 {
-    const char *filename = "test_directory_rewrite.tif";
+    char filename[128] = {0};
     int i, count;
     TIFF *tif;
 
-    /* Create a file and write N_DIRECTORIES (10) directories to it */
-    tif = TIFFOpen(filename, is_big_tiff ? "w8" : "w");
+    if (openMode >= (sizeof(openModeStrings) / sizeof(openModeStrings[0])))
+    {
+        fprintf(stderr, "Index %d for openMode parameter out of range.\n",
+                openMode);
+        return 1;
+    }
+
+    /* Get individual filenames and delete existent ones. */
+    sprintf(filename, "test_directory_rewrite_%s.tif",
+            openModeStrings[openMode]);
+    unlink(filename);
+
+    /* Create a file and write N_DIRECTORIES (10) directories to it. */
+    tif = TIFFOpen(filename, openModeStrings[openMode]);
     if (!tif)
     {
         fprintf(stderr, "Can't create %s\n", filename);
@@ -862,7 +1059,7 @@ int test_rewrite_lastdir_offset(bool is_big_tiff)
     }
     for (i = 0; i < N_DIRECTORIES; i++)
     {
-        if (write_data_to_current_directory(tif, i))
+        if (write_data_to_current_directory(tif, i, false))
         {
             fprintf(stderr, "Can't write data to current directory in %s\n",
                     filename);
@@ -891,7 +1088,7 @@ int test_rewrite_lastdir_offset(bool is_big_tiff)
      * list.
      */
     uint64_t off1 = TIFFCurrentDirOffset(tif);
-    if (write_data_to_current_directory(tif, 4))
+    if (write_data_to_current_directory(tif, 4, false))
     {
         fprintf(stderr, "Can't write data to fifth directory in %s\n",
                 filename);
@@ -930,7 +1127,7 @@ int test_rewrite_lastdir_offset(bool is_big_tiff)
         return 5;
     }
     off1 = TIFFCurrentDirOffset(tif);
-    if (write_data_to_current_directory(tif, 0))
+    if (write_data_to_current_directory(tif, 0, false))
     {
         fprintf(stderr, "Can't write data to first directory in %s\n",
                 filename);
@@ -978,7 +1175,6 @@ int test_rewrite_lastdir_offset(bool is_big_tiff)
                 filename, N_DIRECTORIES, count);
         goto failure;
     }
-
     unlink(filename);
     return 0;
 
@@ -987,24 +1183,38 @@ failure:
     {
         TIFFClose(tif);
     }
-    unlink(filename);
     return 1;
-}
+} /*-- test_rewrite_lastdir_offset() --*/
 
 /* Compares multi-directory files written with and without the lastdir
  * optimization */
-int test_lastdir_offset(bool is_big_tiff)
+int test_lastdir_offset(unsigned int openMode)
 {
-    const char *filename_optimized = "test_directory_optimized.tif";
-    const char *filename_non_optimized = "test_directory_non_optimized.tif";
+    char filename_optimized[128] = {0};
+    char filename_non_optimized[128] = {0};
     int i, count_optimized, count_non_optimized;
     uint64_t offsets_base[N_DIRECTORIES];
     uint64_t offsets_comparison[N_DIRECTORIES];
     TIFF *tif;
 
+    if (openMode >= (sizeof(openModeStrings) / sizeof(openModeStrings[0])))
+    {
+        fprintf(stderr, "Index %d for openMode parameter out of range.\n",
+                openMode);
+        return 1;
+    }
+
+    /* Get individual filenames and delete existent ones. */
+    sprintf(filename_optimized, "test_directory_optimized_%s.tif",
+            openModeStrings[openMode]);
+    sprintf(filename_non_optimized, "test_directory_non_optimized_%s.tif",
+            openModeStrings[openMode]);
+    unlink(filename_optimized);
+    unlink(filename_non_optimized);
+
     /* First file: open it and add multiple directories. This uses the
      * lastdir optimization. */
-    tif = TIFFOpen(filename_optimized, is_big_tiff ? "w8" : "w");
+    tif = TIFFOpen(filename_optimized, openModeStrings[openMode]);
     if (!tif)
     {
         fprintf(stderr, "Can't create %s\n", filename_optimized);
@@ -1012,7 +1222,7 @@ int test_lastdir_offset(bool is_big_tiff)
     }
     for (i = 0; i < N_DIRECTORIES; i++)
     {
-        if (write_data_to_current_directory(tif, i))
+        if (write_data_to_current_directory(tif, i, false))
         {
             fprintf(stderr, "Can't write data to current directory in %s\n",
                     filename_optimized);
@@ -1032,8 +1242,7 @@ int test_lastdir_offset(bool is_big_tiff)
      * lastdir optimization. */
     for (i = 0; i < N_DIRECTORIES; i++)
     {
-        if (write_directory_to_closed_file(filename_non_optimized, is_big_tiff,
-                                           i))
+        if (write_directory_to_closed_file(filename_non_optimized, openMode, i))
         {
             fprintf(stderr, "Can't write directory to %s\n",
                     filename_non_optimized);
@@ -1112,10 +1321,8 @@ int test_lastdir_offset(bool is_big_tiff)
             }
         }
     }
-
     unlink(filename_optimized);
     unlink(filename_non_optimized);
-
     return 0;
 
 failure:
@@ -1123,61 +1330,53 @@ failure:
     {
         TIFFClose(tif);
     }
-    unlink(filename_optimized);
-    unlink(filename_non_optimized);
     return 1;
-}
+} /*-- test_lastdir_offset() --*/
 
 int main()
 {
-    if (test_lastdir_offset(false))
+    unsigned int openModeMax =
+        (sizeof(openModeStrings) / sizeof(openModeStrings[0]));
+    for (unsigned int openMode = 1; openMode < openModeMax; openMode++)
     {
-        fprintf(stderr, "Failed during non-BigTIFF WriteDirectory test.\n");
-        return 1;
-    }
-    if (test_lastdir_offset(true))
-    {
-        fprintf(stderr, "Failed during BigTIFF WriteDirectory test.\n");
-        return 1;
-    }
+        if (test_lastdir_offset(openMode))
+        {
+            fprintf(stderr, "Failed during %s WriteDirectory test.\n",
+                    openModeText[openMode]);
+            return 1;
+        }
 
-    if (test_rewrite_lastdir_offset(false))
-    {
-        fprintf(stderr, "Failed during non-BigTIFF RewriteDirectory test.\n");
-        return 1;
-    }
-    if (test_rewrite_lastdir_offset(true))
-    {
-        fprintf(stderr, "Failed during BigTIFF RewriteDirectory test.\n");
-        return 1;
-    }
+        if (test_rewrite_lastdir_offset(openMode))
+        {
+            fprintf(stderr, "Failed during %s RewriteDirectory test.\n",
+                    openModeText[openMode]);
+            return 1;
+        }
 
-    /* Test arbitrary directory loading */
-    if (test_arbitrary_directrory_loading(false))
-    {
-        fprintf(stderr,
-                "Failed during non-BigTIFF ArbitraryDirectoryLoading test.\n");
-        return 1;
-    }
-    if (test_arbitrary_directrory_loading(true))
-    {
-        fprintf(stderr,
-                "Failed during BigTIFF ArbitraryDirectoryLoading test.\n");
-        return 1;
-    }
+        /* Test arbitrary directory loading */
+        if (test_arbitrary_directrory_loading(openMode))
+        {
+            fprintf(stderr,
+                    "Failed during %s ArbitraryDirectoryLoading test.\n",
+                    openModeText[openMode]);
+            return 1;
+        }
 
-    /* Test SubIFD writing and reading */
-    if (test_SubIFD_directrory_handling(false))
-    {
-        fprintf(stderr,
-                "Failed during non-BigTIFF SubIFD_directrory_handling test.\n");
-        return 1;
-    }
-    if (test_SubIFD_directrory_handling(true))
-    {
-        fprintf(stderr,
-                "Failed during BigTIFF SubIFD_directrory_handling test.\n");
-        return 1;
+        /* Test SubIFD writing and reading */
+        if (test_SubIFD_directrory_handling(openMode))
+        {
+            fprintf(stderr,
+                    "Failed during %s SubIFD_directrory_handling test.\n",
+                    openModeText[openMode]);
+            return 1;
+        }
+        /* Test for failure in TIFFSetSubDirectory() */
+        if (test_SetSubDirectory_failure(openMode))
+        {
+            fprintf(stderr, "Failed during %s SetSubDirectory_failure test.\n",
+                    openModeText[openMode]);
+            return 1;
+        }
     }
 
     return 0;

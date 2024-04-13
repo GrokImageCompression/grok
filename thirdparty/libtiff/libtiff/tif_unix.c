@@ -27,6 +27,10 @@
  * Windows Common RunTime Library.
  */
 
+#ifdef TIFF_DO_NOT_USE_NON_EXT_ALLOC_FUNCTIONS
+#undef TIFF_DO_NOT_USE_NON_EXT_ALLOC_FUNCTIONS
+#endif
+
 #include "tif_config.h"
 
 #ifdef HAVE_SYS_TYPES_H
@@ -258,7 +262,7 @@ TIFF *TIFFOpenExt(const char *name, const char *mode, TIFFOpenOptions *opts)
     return tif;
 }
 
-#ifdef __WIN32__
+#ifdef _WIN32
 #include <windows.h>
 /*
  * Open a TIFF file with a Unicode filename, for read/writing.

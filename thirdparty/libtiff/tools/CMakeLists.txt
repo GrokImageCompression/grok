@@ -25,29 +25,29 @@
 # Windows specific resource preparation
 if (WIN32)
   message(STATUS "Include resource version information for TOOLS")
-  set(MSVC_RESSOURCE_FILE tif_tools_versioninfo.rc)
+  set(MSVC_RESOURCE_FILE tif_tools_versioninfo.rc)
   source_group("Resource Files" FILES tif_tools_versioninfo.rc)
 endif ()
 
 
 add_executable(tiffcp ../placeholder.h)
-target_sources(tiffcp PRIVATE tiffcp.c ${MSVC_RESSOURCE_FILE})
+target_sources(tiffcp PRIVATE tiffcp.c ${MSVC_RESOURCE_FILE})
 target_link_libraries(tiffcp PRIVATE tiff tiff_port)
 
 add_executable(tiffdump ../placeholder.h)
-target_sources(tiffdump PRIVATE tiffdump.c ${MSVC_RESSOURCE_FILE})
+target_sources(tiffdump PRIVATE tiffdump.c ${MSVC_RESOURCE_FILE})
 target_link_libraries(tiffdump PRIVATE tiff tiff_port)
 
 add_executable(tiffinfo ../placeholder.h)
-target_sources(tiffinfo PRIVATE tiffinfo.c ${MSVC_RESSOURCE_FILE})
+target_sources(tiffinfo PRIVATE tiffinfo.c ${MSVC_RESOURCE_FILE})
 target_link_libraries(tiffinfo PRIVATE tiff tiff_port)
 
 add_executable(tiffset ../placeholder.h)
-target_sources(tiffset PRIVATE tiffset.c ${MSVC_RESSOURCE_FILE})
+target_sources(tiffset PRIVATE tiffset.c ${MSVC_RESOURCE_FILE})
 target_link_libraries(tiffset PRIVATE tiff tiff_port)
 
 add_executable(tiffsplit ../placeholder.h)
-target_sources(tiffsplit PRIVATE tiffsplit.c ${MSVC_RESSOURCE_FILE})
+target_sources(tiffsplit PRIVATE tiffsplit.c ${MSVC_RESOURCE_FILE})
 target_link_libraries(tiffsplit PRIVATE tiff tiff_port)
 
 # rgb2ycbcr and thumbnail are intended to *NOT* be installed. They are for

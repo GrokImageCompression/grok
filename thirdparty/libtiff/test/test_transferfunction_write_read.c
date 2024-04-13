@@ -39,7 +39,6 @@ const uint16_t bps = 8;
 const uint16_t photometric = PHOTOMETRIC_RGB;
 const uint16_t rows_per_strip = 100; /* up to 2**32-1 */
 const uint16_t planarconfig = PLANARCONFIG_CONTIG;
-const char *filename = "test_transferfunction_write_read.tif";
 
 /* Data and pointer to three transfer functions. */
 uint16_t *pTransferFunctionData;
@@ -266,6 +265,9 @@ failure:
 /*==== main() ====*/
 int main()
 {
+
+    const char *filename = "test_transferfunction_write_read.tif";
+
     if (setup_transfer_functions())
         return 1;
 

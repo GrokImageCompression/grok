@@ -31,7 +31,7 @@
  * Extended and amended version for testing the TIFFSetField() / and
  *TIFFGetField()- interface for custom fields of type RATIONAL when the TIFFLib
  *internal precision is updated from FLOAT to DOUBLE! The external interface of
- *already defined tags schould be kept. This is verified for some of those tags
+ *already defined tags should be kept. This is verified for some of those tags
  *with this test.
  *
  */
@@ -66,8 +66,6 @@
 #include "tiffio.h"
 #include "tiffiop.h"
 #include "tifftest.h"
-
-#include "tif_dirwrite.c"
 
 int write_test_tiff(TIFF *tif, const char *filenameRead, int blnAllCustomTags);
 
@@ -133,7 +131,7 @@ static const TIFFField tifFieldInfo[] = {
 
 #define N(a) (sizeof(a) / sizeof(a[0]))
 
-/*--- Add aditional Rational-Double Tags to TIFF
+/*--- Add additional Rational-Double Tags to TIFF
           ref: html\addingtags.html but with new function _TIFFMergeFields().
 ---*/
 
@@ -205,7 +203,7 @@ int main()
     int ret;
     int errorNo;
 
-    /*-- Initialize TIFF-Extender to add additonal TIFF-Tags --*/
+    /*-- Initialize TIFF-Extender to add additional TIFF-Tags --*/
     _XTIFFInitialize();
 
     fprintf(stderr, "==== Test if Set()/Get() interface for some custom "
@@ -559,7 +557,7 @@ int write_test_tiff(TIFF *tif, const char *filenameRead, int blnAllCustomTags)
             goto failure;
         }
 
-        /*- Varable Array:  TIFF_RATIONAL, 0, TIFF_SETGET_C16_FLOAT */
+        /*- Variable Array:  TIFF_RATIONAL, 0, TIFF_SETGET_C16_FLOAT */
         if (!TIFFSetField(tif, TIFFTAG_BLACKLEVEL, 3, auxFloatArrayN1))
         { /* for TIFF_SETGET_C16_FLOAT */
             fprintf(stderr, "Can't set TIFFTAG_BLACKLEVEL tag.\n");
@@ -671,7 +669,7 @@ int write_test_tiff(TIFF *tif, const char *filenameRead, int blnAllCustomTags)
                         {
                             fprintf(stderr,
                                     "WriteCount for .set_field_type %d should "
-                                    "be -1 or greather than 1!  %s\n",
+                                    "be -1 or greater than 1!  %s\n",
                                     tSetFieldType,
                                     tFieldArray->fields[i].field_name);
                         }
@@ -1153,7 +1151,7 @@ int write_test_tiff(TIFF *tif, const char *filenameRead, int blnAllCustomTags)
                             else
                             {
                                 /* Old interface reads TIFF_RATIONAL defined as
-                                 * TIFF_SETGET_DOUBLE alwasy as FLOAT */
+                                 * TIFF_SETGET_DOUBLE always as FLOAT */
                                 auxDouble = (double)auxDblUnion.flt1;
                             }
                         }
@@ -1199,7 +1197,7 @@ int write_test_tiff(TIFF *tif, const char *filenameRead, int blnAllCustomTags)
                         {
                             fprintf(stderr,
                                     "Reading: WriteCount for .set_field_type "
-                                    "%d should be -1 or greather than 1!  %s\n",
+                                    "%d should be -1 or greater than 1!  %s\n",
                                     tSetFieldType,
                                     tFieldArray->fields[i].field_name);
                             GOTOFAILURE

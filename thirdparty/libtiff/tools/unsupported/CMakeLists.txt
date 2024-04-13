@@ -27,17 +27,17 @@ message(STATUS "====  Tools - Unsupported =========")
 # Windows specific resource preparation
 if (WIN32)
   message(STATUS "Include resource version information for TOOLS-UNSUPPORTED")
-  set(MSVC_RESSOURCE_FILE tif_tools-unsupported_versioninfo.rc)
+  set(MSVC_RESOURCE_FILE tif_tools-unsupported_versioninfo.rc)
   source_group("Resource Files" FILES tif_tools-unsupported_versioninfo.rc)
 endif ()
 
 
 add_executable(tiff2pdf ../../placeholder.h)
-target_sources(tiff2pdf PRIVATE tiff2pdf.c ${MSVC_RESSOURCE_FILE})
+target_sources(tiff2pdf PRIVATE tiff2pdf.c ${MSVC_RESOURCE_FILE})
 target_link_libraries(tiff2pdf PRIVATE tiff tiff_port)
 
 add_executable(tiff2ps ../../placeholder.h)
-target_sources(tiff2ps PRIVATE tiff2ps.c ${MSVC_RESSOURCE_FILE})
+target_sources(tiff2ps PRIVATE tiff2ps.c ${MSVC_RESOURCE_FILE})
 target_link_libraries(tiff2ps PRIVATE tiff tiff_port CMath::CMath)
 
 # rgb2ycbcr and thumbnail are intended to *NOT* be installed. They are for

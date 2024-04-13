@@ -299,7 +299,7 @@
 	Fixes https://bugs.chromium.org/p/oss-fuzz/issues/detail?id=59751
 
 	In 738e0409 (refs #575), we disabled DNG / EP tags, but there was a
-	special proessing for TIFFTAG_EP_BATTERYLEVEL that must be disabled
+	special processing for TIFFTAG_EP_BATTERYLEVEL that must be disabled
 	since the tag is no longer defined.
 
 2023-06-09  Su_Laus  <sulau@freenet.de>
@@ -395,8 +395,8 @@
 	tif_dirinfo.c: disable DNG 1.2->1.6 tags.
 	They were added per b90b20d36d7833f54a1f3014c324f6c21b988006 but it has
 	been found in https://gitlab.com/libtiff/libtiff/-/issues/575 that it
-	could cause compatibity issues with libtiff users, so this addition
-	should be defered for a feature release (likely 4.6.0) and not a patch one.
+	could cause compatibility issues with libtiff users, so this addition
+	should be deferred for a feature release (likely 4.6.0) and not a patch one.
 
 	Fixes #575
 
@@ -576,7 +576,7 @@
 2023-05-06  Even Rouault  <even.rouault@spatialys.com>
 
 	Merge branch 'fix_548' into 'master'
-	LZWDecode(): avoid crash when trying to read again from a strip whith a...
+	LZWDecode(): avoid crash when trying to read again from a strip with a...
 
 	Closes #548
 
@@ -610,7 +610,7 @@
 
 2023-04-29  Even Rouault  <even.rouault@spatialys.com>
 
-	LZWDecode(): avoid crash when trying to read again from a strip whith a missing end-of-information marker (fixes #548)
+	LZWDecode(): avoid crash when trying to read again from a strip with a missing end-of-information marker (fixes #548)
 
 2023-04-25  Su_Laus  <sulau@freenet.de>
 
@@ -1339,7 +1339,7 @@
 
 	Use structures that can be extended as extra argument.
 
-	Leverages and ammends https://gitlab.com/libtiff/libtiff/-/merge_requests/409
+	Leverages and amends https://gitlab.com/libtiff/libtiff/-/merge_requests/409
 
 2022-11-21  Even Rouault  <even.rouault@spatialys.com>
 
@@ -2077,7 +2077,7 @@
 	to
 	{ TIFFTAG_INTEROPERABILITYIFD, 1, 1, TIFF_IFD8, 0, TIFF_SETGET_IFD8, TIFF_SETGET_UNDEFINED, FIELD_CUSTOM, 0, 0, "InteroperabilityIFDOffset", NULL },
 
-	However, if those tags schould not be handled by LibTiff because they are deamed as abandoned or unwanted tags, those tags need to be defined with FIELD_IGNORE instead of FIELD_CUSTOM and keeping set_field_type  = TIFF_SETGET_UNDEFINED
+	However, if those tags should not be handled by LibTiff because they are deamed as abandoned or unwanted tags, those tags need to be defined with FIELD_IGNORE instead of FIELD_CUSTOM and keeping set_field_type  = TIFF_SETGET_UNDEFINED
 
 2022-07-01  Su_Laus  <sulau@freenet.de>
 
@@ -2185,7 +2185,7 @@
 	tif_predict.c: make horAcc8() work with icc (ICC) 2021.6.0 20220226 -O2.
 	For a reason I don't understand, recent ICC generates wrong code in -O2
 	mode for the stride = 3 and 4 cases. The modified code is more
-	straightfoward, so go for it.
+	straightforward, so go for it.
 
 2022-06-19  Roger Leigh  <rleigh@codelibre.net>
 
@@ -2442,7 +2442,7 @@
 	Include stdlib.h in tif_lzw.c.
 	In `tif_lzw.c`, a call is made to `_byteswap_uint64`. This is declared in `stdlib.h`. `stdlib.h` is not included in `tib_lzw.c`, so a name error may occur.
 
-	This change adds `#include stdlib.h` to `tif_lzw.c`, to prevent a name error from occuring when `stdlib.h` is not included.
+	This change adds `#include stdlib.h` to `tif_lzw.c`, to prevent a name error from occurring when `stdlib.h` is not included.
 
 2022-05-29  Roger Leigh  <rleigh@codelibre.net>
 
@@ -2662,7 +2662,7 @@
 
 2022-04-22  Even Rouault  <even.rouault@spatialys.com>
 
-	tif_lzw.c: fix potential out-of-bounds error when trying to read in the same tile/strip after an error has occured (fixes #410)
+	tif_lzw.c: fix potential out-of-bounds error when trying to read in the same tile/strip after an error has occurred (fixes #410)
 
 2022-04-06  Su_Laus  <sulau@freenet.de>
 
@@ -3035,7 +3035,7 @@
 2022-02-11  Even Rouault  <even.rouault@spatialys.com>
 
 	Merge branch 'predictor_2_64bit' into 'master'
-	Predictor 2 (horizontal differenciation): support 64-bit
+	Predictor 2 (horizontal differentiation): support 64-bit
 
 	See merge request libtiff/libtiff!296
 
@@ -3054,7 +3054,7 @@
 
 2022-02-09  Even Rouault  <even.rouault@spatialys.com>
 
-	Predictor 2 (horizontal differenciation): support 64-bit.
+	Predictor 2 (horizontal differentiation): support 64-bit.
 	There's no reason not to support 64-bit. The TIFF 6 specification
 	doesn't say anything about that (and even mention 4-bit, which we don't
 	support)
@@ -3237,8 +3237,8 @@
 2021-12-13  Even Rouault  <even.rouault@spatialys.com>
 
 	OJPEG: avoid assertion when using TIFFReadScanline() (fixes #337)
-	Note: my analyis of the issue would be that the use of the scanline API
-	is currently propably broken with OJPEG.
+	Note: my analysis of the issue would be that the use of the scanline API
+	is currently probably broken with OJPEG.
 
 2021-12-10  Even Rouault  <even.rouault@spatialys.com>
 
@@ -3492,7 +3492,7 @@
 2021-09-23  Even Rouault  <even.rouault@spatialys.com>
 
 	TIFFAppendToStrip(): fix rewrite-in-place logic.
-	reproducable in particular with packbits compression.
+	reproducible in particular with packbits compression.
 
 	Fixes https://github.com/OSGeo/gdal/issues/4538
 
@@ -3960,7 +3960,7 @@
 2021-03-07  Antonio Valentino  <Antonio.Valentino@esa.int>
 
 	Add LERC plugin.
-	The lerc plugin code has been copyed form GDAL.
+	The lerc plugin code has been copied:* form GDAL.
 
 2021-03-06  Roger Leigh  <rleigh@codelibre.net>
 
@@ -4160,7 +4160,7 @@
 
 	Correct include order.
 
-	Eliminate implict fallthrough usage.
+	Eliminate implicit fallthrough usage.
 	Use simple loops in place of manual loop unrolling.  Rely on
 	the compiler optimiser to unroll loops when appropriate.
 
@@ -4422,7 +4422,7 @@
 2021-01-18  Even Rouault  <even.rouault@spatialys.com>
 
 	Merge branch 'tiffcmp' into 'master'
-	tiffcmp: fix comparaison with pixels that are fractional number of bytes
+	tiffcmp: fix comparison with pixels that are fractional number of bytes
 
 	Closes #53
 
@@ -4438,8 +4438,8 @@
 
 2021-01-15  Thomas Bernard  <miniupnp@free.fr>
 
-	tiffcmp: fix comparaison with pixels that are fractional number of bytes
-	For exemple : 4bits per sample + 3 samples per pixel => 1.5 bytes per pixel
+	tiffcmp: fix comparison with pixels that are fractional number of bytes
+	For example : 4bits per sample + 3 samples per pixel => 1.5 bytes per pixel
 
 	tiff2ps: exit the loop in case of error.
 	fixes #232
@@ -4634,7 +4634,7 @@
 2020-12-31  Kurt Schwehr  <schwehr@google.com>
 
 	custom_dir_EXIF_231.c: dos2unix and codespell.
-	additonal, Varable, greather, alwasy
+	additional, Varable, greather, alwasy
 
 2020-12-31  Kurt Schwehr  <schwehr@google.com>
 
@@ -6208,7 +6208,7 @@
 
 2019-10-03  Even Rouault  <even.rouault@spatialys.com>
 
-	tif_read: align code of TIFFReadRawStrip() and TIFFReadRawTile() that differed for non good reason. Non-functional change normally. (fixes GitLab #162)
+	tif_read: align code of TIFFReadRawStrip() and TIFFReadRawTile() that deferred for non good reason. Non-functional change normally. (fixes GitLab #162)
 
 2019-10-01  Even Rouault  <even.rouault@spatialys.com>
 
@@ -7740,7 +7740,7 @@
 
 2017-11-23  Roger Leigh  <rleigh@codelibre.net>
 
-	appveyor: Correct path for git clone and skip artefact archival.
+	appveyor: Correct path for git clone and skip artifact archival.
 
 2017-11-22  Roger Leigh  <rleigh@codelibre.net>
 

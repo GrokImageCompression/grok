@@ -183,6 +183,11 @@ target_sources(test_directory PRIVATE test_directory.c)
 target_link_libraries(test_directory PRIVATE tiff tiff_port)
 list(APPEND simple_tests test_directory)
 
+add_executable(test_IFD_enlargement ../placeholder.h)
+target_sources(test_IFD_enlargement PRIVATE test_IFD_enlargement.c)
+target_link_libraries(test_IFD_enlargement PRIVATE tiff tiff_port)
+list(APPEND simple_tests test_IFD_enlargement)
+
 add_executable(testtypes ../placeholder.h)
 target_sources(testtypes PRIVATE testtypes.c)
 target_link_libraries(testtypes PRIVATE tiff tiff_port)

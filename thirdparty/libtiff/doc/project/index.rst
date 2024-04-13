@@ -23,4 +23,5 @@ Questions should be sent to the :doc:`mailinglist`.
     license
     mailinglist
     bugs
+    psc
     acknowledgements

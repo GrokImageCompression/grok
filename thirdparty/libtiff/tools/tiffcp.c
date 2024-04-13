@@ -150,7 +150,7 @@ static int nextSrcImage(TIFF *tif, char **imageSpec)
         }
         if (TIFFSetDirectory(tif, nextImage))
             return 1;
-        fprintf(stderr, "%s%c%" PRIu16 " not found!\n", TIFFFileName(tif),
+        fprintf(stderr, "%s%c%" PRIu32 " not found!\n", TIFFFileName(tif),
                 comma, nextImage);
     }
     return 0;
@@ -1199,11 +1199,11 @@ typedef void biasFn(void *image, void *bias, uint32_t pixels);
     static void subtract##bits(void *i, void *b, uint32_t pixels)              \
     {                                                                          \
         uint##bits##_t *image = i;                                             \
-        uint##bits##_t *bias = b;                                              \
+        uint##bits##_t *biasx = b;                                             \
         while (pixels--)                                                       \
         {                                                                      \
-            *image = *image > *bias ? *image - *bias : 0;                      \
-            image++, bias++;                                                   \
+            *image = *image > *biasx ? *image - *biasx : 0;                    \
+            image++, biasx++;                                                  \
         }                                                                      \
     }
 
@@ -1290,8 +1290,8 @@ DECLAREcpFunc(cpBiasedContig2Contig)
             }
         }
         TIFFError(TIFFFileName(in),
-                  "Bias image %s,%" PRIu16
-                  "\nis not the same size as %s,%" PRIu16 "\n",
+                  "Bias image %s,%" PRIu32
+                  "\nis not the same size as %s,%" PRIu32 "\n",
                   TIFFFileName(bias), TIFFCurrentDirectory(bias),
                   TIFFFileName(in), TIFFCurrentDirectory(in));
         return 0;
@@ -1299,7 +1299,7 @@ DECLAREcpFunc(cpBiasedContig2Contig)
     else
     {
         TIFFError(TIFFFileName(in),
-                  "Can't bias %s,%" PRIu16 " as it has >1 Sample/Pixel\n",
+                  "Can't bias %s,%" PRIu32 " as it has >1 Sample/Pixel\n",
                   TIFFFileName(in), TIFFCurrentDirectory(in));
         return 0;
     }
@@ -1854,7 +1854,7 @@ done:
 
 DECLAREwriteFunc(writeBufferToContigStrips)
 {
-    uint32_t row, rowsperstrip;
+    uint32_t row;
     tstrip_t strip = 0;
 
     (void)imagewidth;
@@ -1879,7 +1879,6 @@ DECLAREwriteFunc(writeBufferToContigStrips)
 DECLAREwriteFunc(writeBufferToSeparateStrips)
 {
     uint32_t rowsize = imagewidth * spp;
-    uint32_t rowsperstrip;
     tsize_t stripsize = TIFFStripSize(out);
     tdata_t obuf;
     tstrip_t strip = 0;
@@ -1915,7 +1914,7 @@ DECLAREwriteFunc(writeBufferToSeparateStrips)
             uint32_t nrows = (row + rowsperstrip > imagelength)
                                  ? imagelength - row
                                  : rowsperstrip;
-            tsize_t stripsize = TIFFVStripSize(out, nrows);
+            stripsize = TIFFVStripSize(out, nrows);
 
             cpContigBufToSeparateBuf(obuf, (uint8_t *)buf + row * rowsize + s,
                                      nrows, imagewidth, 0, 0, spp,

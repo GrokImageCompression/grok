@@ -103,7 +103,7 @@ char inkNamesW[] = {"Ink1\0Ink2\0Ink3"};
 #define NUM_ELEMENTS(x) (sizeof(x) / sizeof(x[0]))
 
 /* -- List of tags, which must not be written with arbitrary values because they
- *    are written explicitely by the test program (like the basic TIFF tags),
+ *    are written explicitly by the test program (like the basic TIFF tags),
  *    are automatically written by LibTIFF (e.g.TIFFTAG_NUMBEROFINKS),
  *    have some special characteristics, or write procedure is not supported
  * yet.
@@ -158,14 +158,14 @@ uint32_t listTagsNotFollowPasscountRules[] = {
 int check_tag_definitions(void);
 int write_test_tiff(TIFF *tif, const char *filenameRead);
 int write_all_tags(TIFF *tif, const TIFFFieldArray *tFieldArray,
-                   uint32_t *listTagsNotToWrite, uint32_t nTagsInList,
+                   uint32_t *plistTagsNotToWrite, uint32_t nTagsInList,
                    uint32_t *iCnt);
 int tagIsInList(uint32_t tTag, uint32_t *list, uint32_t nTagsInList);
 int testPasscountFlag(const char *szMsg, const TIFFFieldArray *tFieldArray,
-                      uint32_t *listTagsNotFollowPasscountRules,
+                      uint32_t *plistTagsNotFollowPasscountRules,
                       uint32_t nTagsInList);
 int read_all_tags(TIFF *tif, const TIFFFieldArray *tFieldArray,
-                  uint32_t *listTagsNotToWrite, uint32_t nTagsNotToWrite,
+                  uint32_t *plistTagsNotToWrite, uint32_t nTagsNotToWrite,
                   uint32_t *iCnt);
 
 /* ==== main() ========================================================
@@ -519,7 +519,7 @@ int write_test_tiff(TIFF *tif, const char *filenameRead)
     /*-- Write dummy pixel data at the end of all directories. --*/
     if (TIFFWriteScanline(tif, buf, 0, 0) < 0)
     {
-        fprintf(stderr, "Can't write image data after all direcories.\n");
+        fprintf(stderr, "Can't write image data after all directories.\n");
         goto failure;
     }
 #endif
@@ -686,7 +686,7 @@ failure:
  *
  */
 int testPasscountFlag(const char *szMsg, const TIFFFieldArray *tFieldArray,
-                      uint32_t *listTagsNotFollowPasscountRules,
+                      uint32_t *plistTagsNotFollowPasscountRules,
                       uint32_t nTagsInList)
 {
     uint32_t t;
@@ -699,7 +699,7 @@ int testPasscountFlag(const char *szMsg, const TIFFFieldArray *tFieldArray,
     for (t = 0; t < nTags; t++)
     {
         if (tagIsInList(tFieldArray->fields[t].field_tag,
-                        listTagsNotFollowPasscountRules, nTagsInList))
+                        plistTagsNotFollowPasscountRules, nTagsInList))
             continue;
 
         if (tFieldArray->fields[t].field_writecount !=
@@ -728,7 +728,7 @@ int testPasscountFlag(const char *szMsg, const TIFFFieldArray *tFieldArray,
     for (t = 0; t < nTags; t++)
     {
         if (tagIsInList(tFieldArray->fields[t].field_tag,
-                        listTagsNotFollowPasscountRules, nTagsInList))
+                        plistTagsNotFollowPasscountRules, nTagsInList))
             continue;
 
         if (tFieldArray->fields[t].field_writecount < 0)
@@ -828,7 +828,7 @@ int testPasscountFlag(const char *szMsg, const TIFFFieldArray *tFieldArray,
     for (t = 0; t < nTags; t++)
     {
         if (tagIsInList(tFieldArray->fields[t].field_tag,
-                        listTagsNotFollowPasscountRules, nTagsInList))
+                        plistTagsNotFollowPasscountRules, nTagsInList))
             continue;
 
         /* TIFF_SETGET_UNDEFINED tags FIELD_IGNORE tags are not written to file.
@@ -935,7 +935,7 @@ int testPasscountFlag(const char *szMsg, const TIFFFieldArray *tFieldArray,
  * iCnt is an index into predefined arrays for the values to write.
  */
 int write_all_tags(TIFF *tif, const TIFFFieldArray *tFieldArray,
-                   uint32_t *listTagsNotToWrite, uint32_t nTagsInList,
+                   uint32_t *plistTagsNotToWrite, uint32_t nTagsInList,
                    uint32_t *iCnt)
 {
 
@@ -946,11 +946,11 @@ int write_all_tags(TIFF *tif, const TIFFFieldArray *tFieldArray,
     for (uint32_t t = 0; t < nTags; i++, t++)
     {
         bool deferredSetField = false;
-        /* Allways reset variableArrayCount to default value here. */
+        /* Always reset variableArrayCount to default value here. */
         uint32_t variableArrayCount = VARIABLE_ARRAY_SIZE;
 
         uint32_t tTag = tFieldArray->fields[t].field_tag;
-        if (tagIsInList(tTag, listTagsNotToWrite, nTagsInList))
+        if (tagIsInList(tTag, plistTagsNotToWrite, nTagsInList))
             continue;
 
         TIFFDataType tType =
@@ -1103,7 +1103,7 @@ int write_all_tags(TIFF *tif, const TIFFFieldArray *tFieldArray,
                             tSetFieldType, tFieldArray->fields[t].field_name);
                 }
                 break;
-                /* _Cxx_ just defines the precense and size of the count
+                /* _Cxx_ just defines the presence and size of the count
                  * parameter for the array:
                  * - C0=no count parameter (fixed array where,
                  *      positive readcount/writecount gives array count)
@@ -1271,7 +1271,7 @@ int tagIsInList(uint32_t tTag, uint32_t *list, uint32_t nTagsInList)
  * The read values are compared to the written ones.
  */
 int read_all_tags(TIFF *tif, const TIFFFieldArray *tFieldArray,
-                  uint32_t *listTagsNotToWrite, uint32_t nTagsNotToWrite,
+                  uint32_t *plistTagsNotToWrite, uint32_t nTagsNotToWrite,
                   uint32_t *iCnt)
 {
 
@@ -1315,7 +1315,7 @@ int read_all_tags(TIFF *tif, const TIFFFieldArray *tFieldArray,
             tFieldArray->fields[t]
                 .set_field_type; /* e.g. TIFF_SETGET_C0_FLOAT */
         char *tFieldName = tFieldArray->fields[t].field_name;
-        if (tagIsInList(tTag, listTagsNotToWrite, nTagsNotToWrite))
+        if (tagIsInList(tTag, plistTagsNotToWrite, nTagsNotToWrite))
             continue;
 
         /*-- dependent on set_field_type read value --*/
@@ -1613,7 +1613,7 @@ int read_all_tags(TIFF *tif, const TIFFFieldArray *tFieldArray,
             case TIFF_SETGET_C32_UINT32:
             case TIFF_SETGET_C32_SINT32:
             {
-                /* _Cxx_ just defines the precense and size of the count
+                /* _Cxx_ just defines the presence and size of the count
                  * parameter for the array:
                  * - C0=no count parameter (fixed array where,
                  *      positive readcount/writecount gives array count)

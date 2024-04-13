@@ -446,7 +446,6 @@ int main(int argc, char *argv[])
         int inputlen = BUFFER_SZ;
 
         line = (char *)malloc(inputlen);
-        token = (char *)NULL;
         while ((line = super_fgets(line, &inputlen, ifile)) != NULL)
         {
             state = 0;
@@ -459,38 +458,38 @@ int main(int argc, char *argv[])
             {
                 if (state == 0)
                 {
-                    int state, next;
+                    int state2, next2;
 
-                    char brkused, quoted;
+                    char brkused2, quoted2;
 
-                    state = 0;
-                    next = 0;
+                    state2 = 0;
+                    next2 = 0;
                     while (tokenizer(0, newstr, inputlen, token, "", "#", "", 0,
-                                     &brkused, &next, &quoted) == 0)
+                                     &brkused2, &next2, &quoted2) == 0)
                     {
-                        if (state == 0)
+                        if (state2 == 0)
                             dataset = (unsigned char)atoi(newstr);
-                        else if (state == 1)
+                        else if (state2 == 1)
                             recnum = (unsigned char)atoi(newstr);
-                        state++;
+                        state2++;
                     }
                 }
                 else if (state == 1)
                 {
-                    int next;
+                    int next2;
 
                     unsigned long len;
 
-                    char brkused, quoted;
+                    char brkused2, quoted2;
 
-                    next = 0;
+                    next2 = 0;
                     len = (unsigned long)strlen(token);
                     while (tokenizer(0, newstr, inputlen, token, "", "&", "", 0,
-                                     &brkused, &next, &quoted) == 0)
+                                     &brkused2, &next2, &quoted2) == 0)
                     {
-                        if (brkused && next > 0)
+                        if (brkused2 && next2 > 0)
                         {
-                            char *s = &token[next - 1];
+                            char *s = &token[next2 - 1];
 
                             len -= convertHTMLcodes(s, (int)strlen(s));
                         }
@@ -511,16 +510,14 @@ int main(int argc, char *argv[])
                         fputc((len >> 8) & 255, ofile);
                         fputc(len & 255, ofile);
                     }
-                    next = 0;
+                    next2 = 0;
                     while (len--)
-                        fputc(token[next++], ofile);
+                        fputc(token[next2++], ofile);
                 }
                 state++;
             }
             free(token);
-            token = (char *)NULL;
             free(newstr);
-            newstr = (char *)NULL;
         }
         free(line);
 

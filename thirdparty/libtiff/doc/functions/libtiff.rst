@@ -329,6 +329,8 @@ will work.
       - releases the allocated memory for :c:type:`TIFFOpenOptions`
     * - :c:func:`TIFFOpenOptionsSetMaxSingleMemAlloc`
       - limits the maximum single memory allocation within ``libtiff``
+    * - :c:func:`TIFFOpenOptionsSetMaxCumulatedMemAlloc`
+      - limits the maximum cumulated memory allocation within ``libtiff``
     * - :c:func:`TIFFOpenOptionsSetErrorHandlerExtR`
       - setup of a user-specific and per-TIFF handle (re-entrant) error handler
     * - :c:func:`TIFFOpenOptionsSetWarningHandlerExtR`
