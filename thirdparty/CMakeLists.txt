@@ -83,10 +83,7 @@ if(GRK_BUILD_LIBTIFF)
   message(STATUS "libtiff will be built to support TIFF files.")
   add_subdirectory(libtiff EXCLUDE_FROM_ALL)
   set(TIFF_LIBNAME tiff PARENT_SCOPE)
-  set(TIFF_INCLUDE_DIRNAME
-    ${GROK_SOURCE_DIR}/thirdparty/libtiff
-    ${CMAKE_CURRENT_BINARY_DIR}/thirdparty/libtiff
-    PARENT_SCOPE)
+  set(TIFF_INCLUDE_DIRNAME ${GROK_SOURCE_DIR}/thirdparty/libtiff PARENT_SCOPE)
   set(GROK_HAVE_LIBTIFF 1 PARENT_SCOPE)
 else(GRK_BUILD_LIBTIFF)
   find_package(TIFF)
