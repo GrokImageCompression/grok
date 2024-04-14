@@ -1,7 +1,7 @@
 //---------------------------------------------------------------------------------
 //
 //  Little Color Management System
-//  Copyright (c) 1998-2023 Marti Maria Saguer
+//  Copyright (c) 1998-2024 Marti Maria Saguer
 //
 // Permission is hereby granted, free of charge, to any person obtaining
 // a copy of this software and associated documentation files (the "Software"),
@@ -92,7 +92,8 @@ cmsBool   _cmsRegisterMemHandlerPlugin(cmsContext ContextID, cmsPluginBase* Plug
 static
 void* _cmsMallocDefaultFn(cmsContext ContextID, cmsUInt32Number size)
 {
-    if (size > MAX_MEMORY_FOR_ALLOC) return NULL;  // Never allow over maximum
+    // Never allow 0 or over maximum
+    if (size == 0 || size > MAX_MEMORY_FOR_ALLOC) return NULL;
 
     return (void*) malloc(size);
 

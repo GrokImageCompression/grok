@@ -1,7 +1,7 @@
 //---------------------------------------------------------------------------------
 //
 //  Little Color Management System
-//  Copyright (c) 1998-2023 Marti Maria Saguer
+//  Copyright (c) 1998-2024 Marti Maria Saguer
 //
 // Permission is hereby granted, free of charge, to any person obtaining
 // a copy of this software and associated documentation files (the "Software"),
@@ -1727,6 +1727,8 @@ cmsBool OptimizeMatrixShaper(cmsPipeline** Lut, cmsUInt32Number Intent, cmsUInt3
                      &Curve1, &Matrix1, &Curve2)) {
 
                      _cmsStageMatrixData* Data = (_cmsStageMatrixData*)cmsStageData(Matrix1);
+
+                     if (Matrix1->InputChannels != 3 || Matrix1->OutputChannels != 3) return FALSE;
 
                      // Copy the matrix to our result
                      memcpy(&res, Data->Double, sizeof(res));

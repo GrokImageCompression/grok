@@ -1,7 +1,7 @@
 //---------------------------------------------------------------------------------
 //
 //  Little Color Management System
-//  Copyright (c) 1998-2023 Marti Maria Saguer
+//  Copyright (c) 1998-2024 Marti Maria Saguer
 //
 // Permission is hereby granted, free of charge, to any person obtaining
 // a copy of this software and associated documentation files (the "Software"),
@@ -383,7 +383,7 @@ int InkLimitingSampler(CMSREGISTER const cmsUInt16Number In[], CMSREGISTER cmsUI
     Out[1] = _cmsQuickSaturateWord(In[1] * Ratio);     // M
     Out[2] = _cmsQuickSaturateWord(In[2] * Ratio);     // Y
 
-    Out[3] = In[3];                                 // K (untouched)
+    Out[3] = In[3];                                    // K (untouched)
 
     return TRUE;
 }
@@ -404,12 +404,11 @@ cmsHPROFILE CMSEXPORT cmsCreateInkLimitingDeviceLinkTHR(cmsContext ContextID,
         return NULL;
     }
 
-    if (Limit < 0.0 || Limit > 400) {
+    if (Limit < 1.0 || Limit > 400) {
 
-        cmsSignalError(ContextID, cmsERROR_RANGE, "InkLimiting: Limit should be between 0..400");
-        if (Limit < 0) Limit = 0;
+        cmsSignalError(ContextID, cmsERROR_RANGE, "InkLimiting: Limit should be between 1..400");
+        if (Limit < 1) Limit = 1;
         if (Limit > 400) Limit = 400;
-
     }
 
     hICC = cmsCreateProfilePlaceholder(ContextID);
@@ -677,7 +676,7 @@ cmsHPROFILE CMSEXPORT cmsCreate_sRGBProfile(void)
 * 
 * This virtual profile cannot be saved as an ICC file
 */
-cmsHPROFILE cmsCreate_OkLabProfile(cmsContext ctx)
+cmsHPROFILE CMSEXPORT cmsCreate_OkLabProfile(cmsContext ctx)
 {
     cmsStage* XYZPCS = _cmsStageNormalizeFromXyzFloat(ctx);
     cmsStage* PCSXYZ = _cmsStageNormalizeToXyzFloat(ctx);
@@ -746,6 +745,8 @@ cmsHPROFILE cmsCreate_OkLabProfile(cmsContext ctx)
     cmsPipeline* BToA = cmsPipelineAlloc(ctx, 3, 3);
 
     cmsHPROFILE hProfile = cmsCreateProfilePlaceholder(ctx);
+    if (!hProfile)            // can't allocate
+        goto error;
   
     cmsSetProfileVersion(hProfile, 4.4);
 
@@ -1152,7 +1153,7 @@ cmsBool CheckOne(const cmsAllowedLUT* Tab, const cmsPipeline* Lut)
 
     for (n=0, mpe = Lut ->Elements; mpe != NULL; mpe = mpe ->Next, n++) {
 
-        if (n > Tab ->nTypes) return FALSE;
+        if (n >= Tab ->nTypes) return FALSE;
         if (cmsStageType(mpe) != Tab ->MpeTypes[n]) return FALSE;
     }
 
@@ -1195,6 +1196,9 @@ cmsHPROFILE CMSEXPORT cmsTransform2DeviceLink(cmsHTRANSFORM hTransform, cmsFloat
     cmsProfileClassSignature deviceClass; 
 
     _cmsAssert(hTransform != NULL);
+
+    // Check if the pipeline holding is valid
+    if (xform -> Lut == NULL) return NULL;
 
     // Get the first mpe to check for named color
     mpe = cmsPipelineGetPtrToFirstStage(xform ->Lut);

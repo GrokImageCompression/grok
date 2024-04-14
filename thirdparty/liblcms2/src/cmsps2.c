@@ -1,7 +1,7 @@
 //---------------------------------------------------------------------------------
 //
 //  Little Color Management System
-//  Copyright (c) 1998-2023 Marti Maria Saguer
+//  Copyright (c) 1998-2024 Marti Maria Saguer
 //
 // Permission is hereby granted, free of charge, to any person obtaining
 // a copy of this software and associated documentation files (the "Software"),
@@ -465,7 +465,7 @@ void Emit1Gamma(cmsIOHANDLER* m, cmsToneCurve* Table)
     // Bounds check
     EmitRangeCheck(m);
 
-    // Emit intepolation code
+    // Emit interpolation code
 
     // PostScript code                      Stack
     // ===============                      ========================
@@ -589,7 +589,7 @@ int OutputValueSampler(CMSREGISTER const cmsUInt16Number In[], CMSREGISTER cmsUI
     }
 
 
-    // Hadle the parenthesis on rows
+    // Handle the parenthesis on rows
 
     if (In[0] != sc ->FirstComponent) {
 
@@ -661,18 +661,23 @@ void WriteCLUT(cmsIOHANDLER* m, cmsStage* mpe, const char* PreMaj,
     sc.FixWhite = FixWhite;
     sc.ColorSpace = ColorSpace;
 
-    _cmsIOPrintf(m, "[");
+    if (sc.Pipeline != NULL && sc.Pipeline->Params != NULL) {
 
-    for (i=0; i < sc.Pipeline->Params->nInputs; i++)
-        _cmsIOPrintf(m, " %d ", sc.Pipeline->Params->nSamples[i]);
+        _cmsIOPrintf(m, "[");
 
-    _cmsIOPrintf(m, " [\n");
+        for (i = 0; i < sc.Pipeline->Params->nInputs; i++) {
+            if (i < MAX_INPUT_DIMENSIONS)
+                _cmsIOPrintf(m, " %d ", sc.Pipeline->Params->nSamples[i]);
+        }
 
-    cmsStageSampleCLut16bit(mpe, OutputValueSampler, (void*) &sc, SAMPLER_INSPECT);
+        _cmsIOPrintf(m, " [\n");
 
-    _cmsIOPrintf(m, PostMin);
-    _cmsIOPrintf(m, PostMaj);
-    _cmsIOPrintf(m, "] ");
+        cmsStageSampleCLut16bit(mpe, OutputValueSampler, (void*)&sc, SAMPLER_INSPECT);
+
+        _cmsIOPrintf(m, PostMin);
+        _cmsIOPrintf(m, PostMaj);
+        _cmsIOPrintf(m, "] ");
+    }
 
 }
 
@@ -837,13 +842,13 @@ cmsToneCurve* ExtractGray2Y(cmsContext ContextID, cmsHPROFILE hProfile, cmsUInt3
 // a more perceptually uniform space... I do choose Lab.
 
 static
-int WriteInputLUT(cmsIOHANDLER* m, cmsHPROFILE hProfile, cmsUInt32Number Intent, cmsUInt32Number dwFlags)
+cmsBool WriteInputLUT(cmsIOHANDLER* m, cmsHPROFILE hProfile, cmsUInt32Number Intent, cmsUInt32Number dwFlags)
 {
     cmsHPROFILE hLab;
     cmsHTRANSFORM xform;
     cmsUInt32Number nChannels;
     cmsUInt32Number InputFormat;
-    int rc;
+
     cmsHPROFILE Profiles[2];
     cmsCIEXYZ BlackPointAdaptedToD50;
 
@@ -868,7 +873,7 @@ int WriteInputLUT(cmsIOHANDLER* m, cmsHPROFILE hProfile, cmsUInt32Number Intent,
     if (xform == NULL) {
 
         cmsSignalError(m ->ContextID, cmsERROR_COLORSPACE_CHECK, "Cannot create transform Profile -> Lab");
-        return 0;
+        return FALSE;
     }
 
     // Only 1, 3 and 4 channels are allowed
@@ -878,7 +883,7 @@ int WriteInputLUT(cmsIOHANDLER* m, cmsHPROFILE hProfile, cmsUInt32Number Intent,
     case 1: {
             cmsToneCurve* Gray2Y = ExtractGray2Y(m ->ContextID, hProfile, Intent);
             EmitCIEBasedA(m, Gray2Y, &BlackPointAdaptedToD50);
-            cmsFreeToneCurve(Gray2Y);
+            cmsFreeToneCurve(Gray2Y);            
             }
             break;
 
@@ -887,29 +892,35 @@ int WriteInputLUT(cmsIOHANDLER* m, cmsHPROFILE hProfile, cmsUInt32Number Intent,
             cmsUInt32Number OutFrm = TYPE_Lab_16;
             cmsPipeline* DeviceLink;
             _cmsTRANSFORM* v = (_cmsTRANSFORM*) xform;
+            cmsBool rc;
 
             DeviceLink = cmsPipelineDup(v ->Lut);
-            if (DeviceLink == NULL) return 0;
+            if (DeviceLink == NULL) {
+                cmsDeleteTransform(xform);
+                return FALSE;
+            }
 
             dwFlags |= cmsFLAGS_FORCE_CLUT;
             _cmsOptimizePipeline(m->ContextID, &DeviceLink, Intent, &InputFormat, &OutFrm, &dwFlags);
 
             rc = EmitCIEBasedDEF(m, DeviceLink, Intent, &BlackPointAdaptedToD50);
-            cmsPipelineFree(DeviceLink);
-            if (rc == 0) return 0;
+            cmsPipelineFree(DeviceLink);            
+            if (!rc) {
+                cmsDeleteTransform(xform);
+                return FALSE;
+            }
             }
             break;
 
     default:
 
-        cmsSignalError(m ->ContextID, cmsERROR_COLORSPACE_CHECK, "Only 3, 4 channels are supported for CSA. This profile has %d channels.", nChannels);
-        return 0;
+        cmsDeleteTransform(xform);        
+        cmsSignalError(m ->ContextID, cmsERROR_COLORSPACE_CHECK, "Only 3, 4 channels are supported for CSA. This profile has %d channels.", nChannels);        
+        return FALSE;        
     }
 
-
     cmsDeleteTransform(xform);
-
-    return 1;
+    return TRUE;
 }
 
 static
@@ -980,10 +991,15 @@ int WriteNamedColorCSA(cmsIOHANDLER* m, cmsHPROFILE hNamedColor, cmsUInt32Number
 
     hLab  = cmsCreateLab4ProfileTHR(m ->ContextID, NULL);
     xform = cmsCreateTransform(hNamedColor, TYPE_NAMED_COLOR_INDEX, hLab, TYPE_Lab_DBL, Intent, 0);
+    cmsCloseProfile(hLab);
+
     if (xform == NULL) return 0;
 
     NamedColorList = cmsGetNamedColorList(xform);
-    if (NamedColorList == NULL) return 0;
+    if (NamedColorList == NULL) {
+        cmsDeleteTransform(xform);
+        return 0;
+    }
 
     _cmsIOPrintf(m, "<<\n");
     _cmsIOPrintf(m, "(colorlistcomment) (%s)\n", "Named color CSA");
@@ -991,7 +1007,6 @@ int WriteNamedColorCSA(cmsIOHANDLER* m, cmsHPROFILE hNamedColor, cmsUInt32Number
     _cmsIOPrintf(m, "(Suffix) [ ( CV) ( CVC) ( C) ]\n");
 
     nColors   = cmsNamedColorCount(NamedColorList);
-
 
     for (i=0; i < nColors; i++) {
 
@@ -1007,12 +1022,9 @@ int WriteNamedColorCSA(cmsIOHANDLER* m, cmsHPROFILE hNamedColor, cmsUInt32Number
         _cmsIOPrintf(m, "  (%s) [ %.3f %.3f %.3f ]\n", ColorName, Lab.L, Lab.a, Lab.b);
     }
 
-
-
     _cmsIOPrintf(m, ">>\n");
 
     cmsDeleteTransform(xform);
-    cmsCloseProfile(hLab);
     return 1;
 }
 
@@ -1266,7 +1278,7 @@ int WriteOutputLUT(cmsIOHANDLER* m, cmsHPROFILE hProfile, cmsUInt32Number Intent
     cmsUInt32Number InFrm = TYPE_Lab_16;
     cmsUInt32Number RelativeEncodingIntent;
     cmsColorSpaceSignature ColorSpace;
-
+    cmsStage* first;
 
     hLab = cmsCreateLab4ProfileTHR(m ->ContextID, NULL);
     if (hLab == NULL) return 0;
@@ -1292,8 +1304,7 @@ int WriteOutputLUT(cmsIOHANDLER* m, cmsHPROFILE hProfile, cmsUInt32Number Intent
                                               OutputFormat, RelativeEncodingIntent, 0);
     cmsCloseProfile(hLab);
 
-    if (xform == NULL) {
-
+    if (xform == NULL) {        
         cmsSignalError(m ->ContextID, cmsERROR_COLORSPACE_CHECK, "Cannot create transform Lab -> Profile in CRD creation");
         return 0;
     }
@@ -1301,12 +1312,19 @@ int WriteOutputLUT(cmsIOHANDLER* m, cmsHPROFILE hProfile, cmsUInt32Number Intent
     // Get a copy of the internal devicelink
     v = (_cmsTRANSFORM*) xform;
     DeviceLink = cmsPipelineDup(v ->Lut);
-    if (DeviceLink == NULL) return 0;
+    if (DeviceLink == NULL) {
+        cmsDeleteTransform(xform);
+        cmsSignalError(m->ContextID, cmsERROR_CORRUPTION_DETECTED, "Cannot access link for CRD");
+        return 0;
+    }
 
-
-    // We need a CLUT
+     // We need a CLUT
     dwFlags |= cmsFLAGS_FORCE_CLUT;
-    _cmsOptimizePipeline(m->ContextID, &DeviceLink, RelativeEncodingIntent, &InFrm, &OutputFormat, &dwFlags);
+    if (!_cmsOptimizePipeline(m->ContextID, &DeviceLink, RelativeEncodingIntent, &InFrm, &OutputFormat, &dwFlags)) {
+        cmsDeleteTransform(xform);
+        cmsSignalError(m->ContextID, cmsERROR_CORRUPTION_DETECTED, "Cannot create CLUT table for CRD");
+        return 0;
+    }
 
     _cmsIOPrintf(m, "<<\n");
     _cmsIOPrintf(m, "/ColorRenderingType 1\n");
@@ -1331,8 +1349,10 @@ int WriteOutputLUT(cmsIOHANDLER* m, cmsHPROFILE hProfile, cmsUInt32Number Intent
 
     _cmsIOPrintf(m, "/RenderTable ");
 
-
-    WriteCLUT(m, cmsPipelineGetPtrToFirstStage(DeviceLink), "<", ">\n", "", "", lFixWhite, ColorSpace);
+    first = cmsPipelineGetPtrToFirstStage(DeviceLink);
+    if (first != NULL) {
+        WriteCLUT(m, first, "<", ">\n", "", "", lFixWhite, ColorSpace);
+    }
 
     _cmsIOPrintf(m, " %d {} bind ", nChannels);
 
@@ -1340,7 +1360,6 @@ int WriteOutputLUT(cmsIOHANDLER* m, cmsHPROFILE hProfile, cmsUInt32Number Intent
             _cmsIOPrintf(m, "dup ");
 
     _cmsIOPrintf(m, "]\n");
-
 
     EmitIntent(m, Intent);
 
@@ -1404,7 +1423,10 @@ int WriteNamedColorCRD(cmsIOHANDLER* m, cmsHPROFILE hNamedColor, cmsUInt32Number
 
 
     NamedColorList = cmsGetNamedColorList(xform);
-    if (NamedColorList == NULL) return 0;
+    if (NamedColorList == NULL) {
+        cmsDeleteTransform(xform);
+        return 0;
+    }
 
     _cmsIOPrintf(m, "<<\n");
     _cmsIOPrintf(m, "(colorlistcomment) (%s) \n", "Named profile");
