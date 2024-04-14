@@ -5,6 +5,7 @@
 
 #include "zbuild.h"
 #include "zutil_p.h"
+#include "deflate.h"
 #include "fallback_builtins.h"
 
 /* ALIGNED, byte comparison */
@@ -56,7 +57,7 @@ Z_INTERNAL uint32_t compare256_c(const uint8_t *src0, const uint8_t *src1) {
 
 #include "match_tpl.h"
 
-#ifdef UNALIGNED_OK
+#if defined(UNALIGNED_OK) && BYTE_ORDER == LITTLE_ENDIAN
 /* 16-bit unaligned integer comparison */
 static inline uint32_t compare256_unaligned_16_static(const uint8_t *src0, const uint8_t *src1) {
     uint32_t len = 0;

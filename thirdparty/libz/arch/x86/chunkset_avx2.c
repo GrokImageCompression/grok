@@ -1,4 +1,4 @@
-/* chunkset_avx.c -- AVX inline functions to copy small data chunks.
+/* chunkset_avx2.c -- AVX2 inline functions to copy small data chunks.
  * For conditions of distribution and use, see copyright notice in zlib.h
  */
 #include "zbuild.h"
@@ -84,10 +84,8 @@ static inline chunk_t GET_CHUNK_MAG(uint8_t *buf, uint32_t *chunk_rem, uint32_t 
      * GPRs to begin with the 256 bit load is _probably_ just as inexpensive */
     *chunk_rem = lut_rem.remval;
 
-#ifdef Z_MEMORY_SANITIZER
-    /* See note in chunkset_sse4.c for why this is ok */
+    /* See note in chunkset_ssse3.c for why this is ok */
     __msan_unpoison(buf + dist, 32 - dist);
-#endif
 
     if (dist < 16) {
         /* This simpler case still requires us to shuffle in 128 bit lanes, so we must apply a static offset after
@@ -120,15 +118,15 @@ static inline chunk_t GET_CHUNK_MAG(uint8_t *buf, uint32_t *chunk_rem, uint32_t 
     return ret_vec;
 }
 
-#define CHUNKSIZE        chunksize_avx
-#define CHUNKCOPY        chunkcopy_avx
-#define CHUNKUNROLL      chunkunroll_avx
-#define CHUNKMEMSET      chunkmemset_avx
-#define CHUNKMEMSET_SAFE chunkmemset_safe_avx
+#define CHUNKSIZE        chunksize_avx2
+#define CHUNKCOPY        chunkcopy_avx2
+#define CHUNKUNROLL      chunkunroll_avx2
+#define CHUNKMEMSET      chunkmemset_avx2
+#define CHUNKMEMSET_SAFE chunkmemset_safe_avx2
 
 #include "chunkset_tpl.h"
 
-#define INFLATE_FAST     inflate_fast_avx
+#define INFLATE_FAST     inflate_fast_avx2
 
 #include "inffast_tpl.h"
 

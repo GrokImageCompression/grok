@@ -86,7 +86,7 @@ Z_INTERNAL block_state deflate_quick(deflate_state *s, int flush) {
         }
 
         if (LIKELY(s->lookahead >= WANT_MIN_MATCH)) {
-            hash_head = functable.quick_insert_string(s, s->strstart);
+            hash_head = quick_insert_string(s, s->strstart);
             dist = (int64_t)s->strstart - hash_head;
 
             if (dist <= MAX_DIST(s) && dist > 0) {
@@ -94,11 +94,13 @@ Z_INTERNAL block_state deflate_quick(deflate_state *s, int flush) {
                 const uint8_t *match_start = s->window + hash_head;
 
                 if (zng_memcmp_2(str_start, match_start) == 0) {
-                    match_len = functable.compare256(str_start+2, match_start+2) + 2;
+                    match_len = FUNCTABLE_CALL(compare256)(str_start+2, match_start+2) + 2;
 
                     if (match_len >= WANT_MIN_MATCH) {
                         if (UNLIKELY(match_len > s->lookahead))
                             match_len = s->lookahead;
+                        if (UNLIKELY(match_len > STD_MAX_MATCH))
+                            match_len = STD_MAX_MATCH;
 
                         check_match(s, s->strstart, hash_head, match_len);
 

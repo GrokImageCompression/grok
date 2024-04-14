@@ -1,7 +1,7 @@
 #ifndef ZUTIL_H_
 #define ZUTIL_H_
 /* zutil.h -- internal interface and configuration of the compression library
- * Copyright (C) 1995-2022 Jean-loup Gailly, Mark Adler
+ * Copyright (C) 1995-2024 Jean-loup Gailly, Mark Adler
  * For conditions of distribution and use, see copyright notice in zlib.h
  */
 
@@ -24,7 +24,7 @@ typedef unsigned long ulg;
 extern z_const char * const PREFIX(z_errmsg)[10]; /* indexed by 2-zlib_error */
 /* (size given to avoid silly warnings with Visual C++) */
 
-#define ERR_MSG(err) PREFIX(z_errmsg)[Z_NEED_DICT-(err)]
+#define ERR_MSG(err) PREFIX(z_errmsg)[(err) < -6 || (err) > 2 ? 9 : 2 - (err)]
 
 #define ERR_RETURN(strm, err) return (strm->msg = ERR_MSG(err), (err))
 /* To be used only when the state is known to be valid */
@@ -38,6 +38,8 @@ extern z_const char * const PREFIX(z_errmsg)[10]; /* indexed by 2-zlib_error */
 
 #define MAX_BITS 15
 /* all codes must not exceed MAX_BITS bits */
+#define MAX_DIST_EXTRA_BITS 13
+/* maximum number of extra distance bits */
 
 #if MAX_MEM_LEVEL >= 8
 #  define DEF_MEM_LEVEL 8
@@ -101,7 +103,7 @@ extern z_const char * const PREFIX(z_errmsg)[10]; /* indexed by 2-zlib_error */
 #  define OS_CODE  6
 #endif
 
-#if defined(MACOS) || defined(TARGET_OS_MAC)
+#if defined(MACOS)
 #  define OS_CODE  7
 #endif
 

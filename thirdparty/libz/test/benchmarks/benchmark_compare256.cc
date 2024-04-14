@@ -10,7 +10,8 @@
 extern "C" {
 #  include "zbuild.h"
 #  include "zutil_p.h"
-#  include "cpu_features.h"
+#  include "arch_functions.h"
+#  include "../test_cpu_features.h"
 }
 
 #define MAX_COMPARE_SIZE (256)
@@ -61,7 +62,11 @@ public:
 
 BENCHMARK_COMPARE256(c, compare256_c, 1);
 
-#ifdef UNALIGNED_OK
+#ifdef DISABLE_RUNTIME_CPU_DETECTION
+BENCHMARK_COMPARE256(native, native_compare256, 1);
+#else
+
+#if defined(UNALIGNED_OK) && BYTE_ORDER == LITTLE_ENDIAN
 BENCHMARK_COMPARE256(unaligned_16, compare256_unaligned_16, 1);
 #ifdef HAVE_BUILTIN_CTZ
 BENCHMARK_COMPARE256(unaligned_32, compare256_unaligned_32, 1);
@@ -71,14 +76,19 @@ BENCHMARK_COMPARE256(unaligned_64, compare256_unaligned_64, 1);
 #endif
 #endif
 #if defined(X86_SSE2) && defined(HAVE_BUILTIN_CTZ)
-BENCHMARK_COMPARE256(sse2, compare256_sse2, x86_cpu_has_sse2);
+BENCHMARK_COMPARE256(sse2, compare256_sse2, test_cpu_features.x86.has_sse2);
 #endif
 #if defined(X86_AVX2) && defined(HAVE_BUILTIN_CTZ)
-BENCHMARK_COMPARE256(avx2, compare256_avx2, x86_cpu_has_avx2);
+BENCHMARK_COMPARE256(avx2, compare256_avx2, test_cpu_features.x86.has_avx2);
 #endif
 #if defined(ARM_NEON) && defined(HAVE_BUILTIN_CTZLL)
-BENCHMARK_COMPARE256(neon, compare256_neon, arm_cpu_has_neon);
+BENCHMARK_COMPARE256(neon, compare256_neon, test_cpu_features.arm.has_neon);
 #endif
 #ifdef POWER9
-BENCHMARK_COMPARE256(power9, compare256_power9, power_cpu_has_arch_3_00);
+BENCHMARK_COMPARE256(power9, compare256_power9, test_cpu_features.power.has_arch_3_00);
+#endif
+#ifdef RISCV_RVV
+BENCHMARK_COMPARE256(rvv, compare256_rvv, test_cpu_features.riscv.has_rvv);
+#endif
+
 #endif

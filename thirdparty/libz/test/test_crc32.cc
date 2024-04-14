@@ -11,8 +11,8 @@
 
 extern "C" {
 #  include "zbuild.h"
-#  include "zutil_p.h"
-#  include "cpu_features.h"
+#  include "arch_functions.h"
+#  include "test_cpu_features.h"
 }
 
 #include <gtest/gtest.h>
@@ -199,7 +199,7 @@ INSTANTIATE_TEST_SUITE_P(crc32, crc32_variant, testing::ValuesIn(tests));
 
 #define TEST_CRC32(name, func, support_flag) \
     TEST_P(crc32_variant, name) { \
-        if (!support_flag) { \
+        if (!(support_flag)) { \
             GTEST_SKIP(); \
             return; \
         } \
@@ -208,12 +208,24 @@ INSTANTIATE_TEST_SUITE_P(crc32, crc32_variant, testing::ValuesIn(tests));
 
 TEST_CRC32(braid, PREFIX(crc32_braid), 1)
 
+#ifdef DISABLE_RUNTIME_CPU_DETECTION
+TEST_CRC32(native, native_crc32, 1)
+#else
+
 #ifdef ARM_ACLE
-TEST_CRC32(acle, crc32_acle, arm_cpu_has_crc32)
-#elif defined(POWER8_VSX_CRC32)
-TEST_CRC32(power8, crc32_power8, power_cpu_has_arch_2_07)
-#elif defined(S390_CRC32_VX)
-TEST_CRC32(vx, PREFIX(s390_crc32_vx), PREFIX(s390_cpu_has_vx))
-#elif defined(X86_PCLMULQDQ_CRC)
-TEST_CRC32(pclmulqdq, crc32_pclmulqdq, x86_cpu_has_pclmulqdq)
+TEST_CRC32(acle, crc32_acle, test_cpu_features.arm.has_crc32)
+#endif
+#ifdef POWER8_VSX_CRC32
+TEST_CRC32(power8, crc32_power8, test_cpu_features.power.has_arch_2_07)
+#endif
+#ifdef S390_CRC32_VX
+TEST_CRC32(vx, crc32_s390_vx, test_cpu_features.s390.has_vx)
+#endif
+#ifdef X86_PCLMULQDQ_CRC
+TEST_CRC32(pclmulqdq, crc32_pclmulqdq, test_cpu_features.x86.has_pclmulqdq)
+#endif
+#ifdef X86_VPCLMULQDQ_CRC
+TEST_CRC32(vpclmulqdq, crc32_vpclmulqdq, (test_cpu_features.x86.has_pclmulqdq && test_cpu_features.x86.has_avx512 && test_cpu_features.x86.has_vpclmulqdq))
+#endif
+
 #endif

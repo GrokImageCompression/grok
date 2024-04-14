@@ -11,7 +11,8 @@ extern "C" {
 #  include "zbuild.h"
 #  include "zutil_p.h"
 #  include "deflate.h"
-#  include "cpu_features.h"
+#  include "arch_functions.h"
+#  include "../test_cpu_features.h"
 }
 
 #define MAX_RANDOM_INTS 32768
@@ -68,19 +69,30 @@ public:
 
 BENCHMARK_SLIDEHASH(c, slide_hash_c, 1);
 
+#ifdef DISABLE_RUNTIME_CPU_DETECTION
+BENCHMARK_SLIDEHASH(native, native_slide_hash, 1);
+#else
+
+#ifdef ARM_SIMD
+BENCHMARK_SLIDEHASH(armv6, slide_hash_armv6, test_cpu_features.arm.has_simd);
+#endif
 #ifdef ARM_NEON
-BENCHMARK_SLIDEHASH(neon, slide_hash_neon, arm_cpu_has_neon);
+BENCHMARK_SLIDEHASH(neon, slide_hash_neon, test_cpu_features.arm.has_neon);
 #endif
 #ifdef POWER8_VSX
-BENCHMARK_SLIDEHASH(power8, slide_hash_power8, power_cpu_has_arch_2_07);
+BENCHMARK_SLIDEHASH(power8, slide_hash_power8, test_cpu_features.power.has_arch_2_07);
 #endif
 #ifdef PPC_VMX
-BENCHMARK_SLIDEHASH(vmx, slide_hash_vmx, power_cpu_has_altivec);
+BENCHMARK_SLIDEHASH(vmx, slide_hash_vmx, test_cpu_features.power.has_altivec);
 #endif
-
+#ifdef RISCV_RVV
+BENCHMARK_SLIDEHASH(rvv, slide_hash_rvv, test_cpu_features.riscv.has_rvv);
+#endif
 #ifdef X86_SSE2
-BENCHMARK_SLIDEHASH(sse2, slide_hash_sse2, x86_cpu_has_sse2);
+BENCHMARK_SLIDEHASH(sse2, slide_hash_sse2, test_cpu_features.x86.has_sse2);
 #endif
 #ifdef X86_AVX2
-BENCHMARK_SLIDEHASH(avx2, slide_hash_avx2, x86_cpu_has_avx2);
+BENCHMARK_SLIDEHASH(avx2, slide_hash_avx2, test_cpu_features.x86.has_avx2);
+#endif
+
 #endif

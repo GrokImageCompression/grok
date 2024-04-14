@@ -5,7 +5,6 @@
 
 #include "zbuild.h"
 #include "zutil.h"
-#include "cpu_features.h"
 #include "inftrees.h"
 #include "inflate.h"
 #include "inflate_p.h"
@@ -29,11 +28,11 @@ static inline void inf_chksum_cpy(PREFIX3(stream) *strm, uint8_t *dst,
     struct inflate_state *state = (struct inflate_state*)strm->state;
 #ifdef GUNZIP
     if (state->flags) {
-        functable.crc32_fold_copy(&state->crc_fold, dst, src, copy);
+        FUNCTABLE_CALL(crc32_fold_copy)(&state->crc_fold, dst, src, copy);
     } else
 #endif
     {
-        strm->adler = state->check = functable.adler32_fold_copy(state->check, dst, src, copy);
+        strm->adler = state->check = FUNCTABLE_CALL(adler32_fold_copy)(state->check, dst, src, copy);
     }
 }
 
@@ -41,11 +40,11 @@ static inline void inf_chksum(PREFIX3(stream) *strm, const uint8_t *src, uint32_
     struct inflate_state *state = (struct inflate_state*)strm->state;
 #ifdef GUNZIP
     if (state->flags) {
-        functable.crc32_fold(&state->crc_fold, src, len, 0);
+        FUNCTABLE_CALL(crc32_fold)(&state->crc_fold, src, len, 0);
     } else
 #endif
     {
-        strm->adler = state->check = functable.adler32(state->check, src, len);
+        strm->adler = state->check = FUNCTABLE_CALL(adler32)(state->check, src, len);
     }
 }
 
@@ -140,7 +139,8 @@ int32_t ZNG_CONDEXPORT PREFIX(inflateInit2)(PREFIX3(stream) *strm, int32_t windo
     int32_t ret;
     struct inflate_state *state;
 
-    cpu_check_features();
+    /* Initialize functable */
+    FUNCTABLE_INIT;
 
     if (strm == NULL)
         return Z_STREAM_ERROR;
@@ -159,7 +159,7 @@ int32_t ZNG_CONDEXPORT PREFIX(inflateInit2)(PREFIX3(stream) *strm, int32_t windo
     state->strm = strm;
     state->window = NULL;
     state->mode = HEAD;     /* to pass state test in inflateReset2() */
-    state->chunksize = functable.chunksize();
+    state->chunksize = FUNCTABLE_CALL(chunksize)();
     ret = PREFIX(inflateReset2)(strm, windowBits);
     if (ret != Z_OK) {
         ZFREE_STATE(strm, state);
@@ -193,6 +193,8 @@ int32_t Z_EXPORT PREFIX(inflatePrime)(PREFIX3(stream) *strm, int32_t bits, int32
 
     if (inflateStateCheck(strm))
         return Z_STREAM_ERROR;
+    if (bits == 0)
+        return Z_OK;
     INFLATE_PRIME_HOOK(strm, bits, value);  /* hook for IBM Z DFLTCC */
     state = (struct inflate_state *)strm->state;
     if (bits < 0) {
@@ -270,9 +272,7 @@ static int32_t updatewindow(PREFIX3(stream) *strm, const uint8_t *end, uint32_t 
     /* len state->wsize or less output bytes into the circular window */
     if (len >= state->wsize) {
         /* Only do this if the caller specifies to checksum bytes AND the platform requires
-         * it (s/390 being the primary exception to this. Also, for now, do the adler checksums
-         * if not a gzip based header. The inline adler checksums will come in the near future,
-         * possibly the next commit */
+         * it (s/390 being the primary exception to this) */
         if (INFLATE_NEED_CHECKSUM(strm) && cksum) {
             /* We have to split the checksum over non-copied and copied bytes */
             if (len > state->wsize)
@@ -634,7 +634,7 @@ int32_t Z_EXPORT PREFIX(inflate)(PREFIX3(stream) *strm, int32_t flush) {
             }
             /* compute crc32 checksum if not in raw mode */
             if ((state->wrap & 4) && state->flags)
-                strm->adler = state->check = functable.crc32_fold_reset(&state->crc_fold);
+                strm->adler = state->check = FUNCTABLE_CALL(crc32_fold_reset)(&state->crc_fold);
             state->mode = TYPE;
             break;
 #endif
@@ -865,7 +865,7 @@ int32_t Z_EXPORT PREFIX(inflate)(PREFIX3(stream) *strm, int32_t flush) {
             /* use inflate_fast() if we have enough input and output */
             if (have >= INFLATE_FAST_MIN_HAVE && left >= INFLATE_FAST_MIN_LEFT) {
                 RESTORE();
-                functable.inflate_fast(strm, out);
+                FUNCTABLE_CALL(inflate_fast)(strm, out);
                 LOAD();
                 if (state->mode == TYPE)
                     state->back = -1;
@@ -1024,7 +1024,7 @@ int32_t Z_EXPORT PREFIX(inflate)(PREFIX3(stream) *strm, int32_t flush) {
             } else {
                 copy = MIN(state->length, left);
 
-                put = functable.chunkmemset_safe(put, state->offset, copy, left);
+                put = FUNCTABLE_CALL(chunkmemset_safe)(put, state->offset, copy, left);
             }
             left -= copy;
             state->length -= copy;
@@ -1054,7 +1054,7 @@ int32_t Z_EXPORT PREFIX(inflate)(PREFIX3(stream) *strm, int32_t flush) {
                     }
 #ifdef GUNZIP
                     if (state->flags)
-                        strm->adler = state->check = functable.crc32_fold_final(&state->crc_fold);
+                        strm->adler = state->check = FUNCTABLE_CALL(crc32_fold_final)(&state->crc_fold);
 #endif
                 }
                 out = left;
@@ -1113,11 +1113,12 @@ int32_t Z_EXPORT PREFIX(inflate)(PREFIX3(stream) *strm, int32_t flush) {
      */
   inf_leave:
     RESTORE();
+    uint32_t check_bytes = out - strm->avail_out;
     if (INFLATE_NEED_UPDATEWINDOW(strm) &&
             (state->wsize || (out != strm->avail_out && state->mode < BAD &&
                  (state->mode < CHECK || flush != Z_FINISH)))) {
         /* update sliding window with respective checksum if not in "raw" mode */
-        if (updatewindow(strm, strm->next_out, out - strm->avail_out, state->wrap & 4)) {
+        if (updatewindow(strm, strm->next_out, check_bytes, state->wrap & 4)) {
             state->mode = MEM;
             return Z_MEM_ERROR;
         }
@@ -1130,8 +1131,13 @@ int32_t Z_EXPORT PREFIX(inflate)(PREFIX3(stream) *strm, int32_t flush) {
 
     strm->data_type = (int)state->bits + (state->last ? 64 : 0) +
                       (state->mode == TYPE ? 128 : 0) + (state->mode == LEN_ || state->mode == COPY_ ? 256 : 0);
-    if (((in == 0 && out == 0) || flush == Z_FINISH) && ret == Z_OK)
+    if (((in == 0 && out == 0) || flush == Z_FINISH) && ret == Z_OK) {
+        /* when no sliding window is used, hash the output bytes if no CHECK state */
+        if (INFLATE_NEED_CHECKSUM(strm) && !state->wsize && flush == Z_FINISH) {
+            inf_chksum(strm, put - check_bytes, check_bytes);
+        }
         ret = Z_BUF_ERROR;
+    }
     return ret;
 }
 
@@ -1182,7 +1188,7 @@ int32_t Z_EXPORT PREFIX(inflateSetDictionary)(PREFIX3(stream) *strm, const uint8
 
     /* check for correct dictionary identifier */
     if (state->mode == DICT) {
-        dictid = functable.adler32(ADLER32_INITIAL_VALUE, dictionary, dictLength);
+        dictid = FUNCTABLE_CALL(adler32)(ADLER32_INITIAL_VALUE, dictionary, dictLength);
         if (dictid != state->check)
             return Z_DATA_ERROR;
     }
@@ -1263,7 +1269,7 @@ int32_t Z_EXPORT PREFIX(inflateSync)(PREFIX3(stream) *strm) {
     /* if first time, start search in bit buffer */
     if (state->mode != SYNC) {
         state->mode = SYNC;
-        state->hold <<= state->bits & 7;
+        state->hold >>= state->bits & 7;
         state->bits -= state->bits & 7;
         len = 0;
         while (state->bits >= 8) {
@@ -1292,8 +1298,8 @@ int32_t Z_EXPORT PREFIX(inflateSync)(PREFIX3(stream) *strm) {
     in = strm->total_in;
     out = strm->total_out;
     PREFIX(inflateReset)(strm);
-    strm->total_in = (z_size_t)in;
-    strm->total_out = (z_size_t)out;
+    strm->total_in = (z_uintmax_t)in; /* Can't use z_size_t here as it will overflow on 64-bit Windows */
+    strm->total_out = (z_uintmax_t)out;
     state->flags = flags;
     state->mode = TYPE;
     return Z_OK;
@@ -1320,8 +1326,6 @@ int32_t Z_EXPORT PREFIX(inflateSyncPoint)(PREFIX3(stream) *strm) {
 int32_t Z_EXPORT PREFIX(inflateCopy)(PREFIX3(stream) *dest, PREFIX3(stream) *source) {
     struct inflate_state *state;
     struct inflate_state *copy;
-    unsigned char *window;
-    unsigned wsize;
 
     /* check input */
     if (inflateStateCheck(source) || dest == NULL)
@@ -1332,15 +1336,6 @@ int32_t Z_EXPORT PREFIX(inflateCopy)(PREFIX3(stream) *dest, PREFIX3(stream) *sou
     copy = ZALLOC_INFLATE_STATE(source);
     if (copy == NULL)
         return Z_MEM_ERROR;
-    window = NULL;
-    if (state->window != NULL) {
-        wsize = 1U << state->wbits;
-        window = (unsigned char *)ZALLOC_WINDOW(source, wsize, sizeof(unsigned char));
-        if (window == NULL) {
-            ZFREE_STATE(source, copy);
-            return Z_MEM_ERROR;
-        }
-    }
 
     /* copy state */
     memcpy((void *)dest, (void *)source, sizeof(PREFIX3(stream)));
@@ -1351,10 +1346,17 @@ int32_t Z_EXPORT PREFIX(inflateCopy)(PREFIX3(stream) *dest, PREFIX3(stream) *sou
         copy->distcode = copy->codes + (state->distcode - state->codes);
     }
     copy->next = copy->codes + (state->next - state->codes);
-    if (window != NULL) {
-        ZCOPY_WINDOW(window, state->window, (size_t)1U << state->wbits);
+
+    /* window */
+    copy->window = NULL;
+    if (state->window != NULL) {
+        if (PREFIX(inflate_ensure_window)(copy)) {
+            ZFREE_STATE(source, copy);
+            return Z_MEM_ERROR;
+        }
+        ZCOPY_WINDOW(copy->window, state->window, (size_t)state->wsize);
     }
-    copy->window = window;
+
     dest->state = (struct internal_state *)copy;
     return Z_OK;
 }

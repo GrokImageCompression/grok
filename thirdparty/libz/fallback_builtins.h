@@ -2,12 +2,9 @@
 #define FALLBACK_BUILTINS_H
 
 #if defined(_MSC_VER) && !defined(__clang__)
-#if defined(_M_IX86) || defined(_M_AMD64) || defined(_M_IA64) ||  defined(_M_ARM) || defined(_M_ARM64)
+#if defined(_M_IX86) || defined(_M_AMD64) || defined(_M_IA64) ||  defined(_M_ARM) || defined(_M_ARM64) || defined(_M_ARM64EC)
 
 #include <intrin.h>
-#ifdef X86_FEATURES
-#  include "arch/x86/x86_features.h"
-#endif
 
 /* This is not a general purpose replacement for __builtin_ctz. The function expects that value is != 0.
  * Because of that assumption trailing_zero is not initialized and the return value is not checked.
@@ -46,48 +43,5 @@ static __forceinline int __builtin_ctzll(unsigned long long value) {
 
 #endif // Microsoft AMD64/IA64/x86/ARM/ARM64 test
 #endif // _MSC_VER & !clang
-
-/* Unfortunately GCC didn't support these things until version 10.
- * Similarly, AppleClang didn't support them in Xcode 9.2 but did in 9.3.
- */
-#ifdef __AVX2__
-#include <immintrin.h>
-
-#if (!defined(__clang__) && defined(__GNUC__) && __GNUC__ < 10) \
-    || (defined(__apple_build_version__) && __apple_build_version__ < 9020039)
-static inline __m256i _mm256_zextsi128_si256(__m128i a) {
-    __m128i r;
-    __asm__ volatile ("vmovdqa %1,%0" : "=x" (r) : "x" (a));
-    return _mm256_castsi128_si256(r);
-}
-
-#ifdef __AVX512F__
-static inline __m512i _mm512_zextsi128_si512(__m128i a) {
-    __m128i r;
-    __asm__ volatile ("vmovdqa %1,%0" : "=x" (r) : "x" (a));
-    return _mm512_castsi128_si512(r);
-}
-#endif // __AVX512F__
-#endif // gcc/AppleClang version test
-
-#endif // __AVX2__
-
-/* Missing zero-extension AVX and AVX512 intrinsics.
- * Fixed in Microsoft Visual Studio 2017 version 15.7
- * https://developercommunity.visualstudio.com/t/missing-zero-extension-avx-and-avx512-intrinsics/175737
- */
-#if defined(_MSC_VER) && _MSC_VER < 1914
-#ifdef __AVX2__
-static inline __m256i _mm256_zextsi128_si256(__m128i a) {
-    return _mm256_inserti128_si256(_mm256_setzero_si256(), a, 0);
-}
-#endif // __AVX2__
-
-#ifdef __AVX512F__
-static inline __m512i _mm512_zextsi128_si512(__m128i a) {
-    return _mm512_inserti32x4(_mm512_setzero_si512(), a, 0);
-}
-#endif // __AVX512F__
-#endif // defined(_MSC_VER) && _MSC_VER < 1914
 
 #endif // include guard FALLBACK_BUILTINS_H
