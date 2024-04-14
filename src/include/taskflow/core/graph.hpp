@@ -25,6 +25,7 @@ namespace tf {
 // Class: Graph
 // ----------------------------------------------------------------------------
 
+
 /**
 @class Graph
 
@@ -147,6 +148,14 @@ class Runtime {
   friend class FlowBuilder;
 
   public:
+  
+  /**
+  @brief destroys the runtime object
+
+  Issues a tf::Runtime::corun_all to finish all spawned asynchronous tasks
+  and then destroys the runtime object.
+  */
+  ~Runtime();
 
   /**
   @brief obtains the running executor
@@ -211,9 +220,9 @@ class Runtime {
   The method creates an asynchronous task to launch the given
   function on the given arguments.
   The difference to tf::Executor::async is that the created asynchronous task
-  pertains to the runtime.
-  When the runtime joins, all asynchronous tasks created from the runtime
-  are guaranteed to finish after the join returns.
+  pertains to the runtime object.
+  Applications can explicitly issue tf::Runtime::corun_all
+  to wait for all spawned asynchronous tasks to finish.
   For example:
 
   @code{.cpp}
@@ -230,8 +239,8 @@ class Runtime {
       rt.async([&](){ counter++; });
     }
     
-    // explicit join 100 asynchronous tasks
-    rt.join();
+    // wait for the 100 asynchronous tasks to finish
+    rt.corun_all();
     assert(counter == 102);
   });
   @endcode
@@ -254,8 +263,8 @@ class Runtime {
       });
     }
     
-    // explicit join 100 asynchronous tasks
-    rt.join();
+    // wait for the 200 asynchronous tasks to finish
+    rt.corun_all();
     assert(counter == 200);
   });
   @endcode
@@ -264,11 +273,12 @@ class Runtime {
   auto async(F&& f);
   
   /**
-  @brief similar to tf::Runtime::async but assigns the task a name
+  @brief runs the given callable asynchronously
 
   @tparam F callable type
+  @tparam P task parameters type
 
-  @param name assigned name to the task
+  @param params task parameters
   @param f callable
 
   @code{.cpp}
@@ -279,8 +289,8 @@ class Runtime {
   @endcode
 
   */
-  template <typename F>
-  auto async(const std::string& name, F&& f);
+  template <typename P, typename F>
+  auto async(P&& params, F&& f);
 
   /**
   @brief runs the given function asynchronously without returning any future object
@@ -297,7 +307,7 @@ class Runtime {
     for(int i=0; i<100; i++) {
       rt.silent_async([&](){ counter++; });
     }
-    rt.join();
+    rt.corun_all();
     assert(counter == 100);
   });
   @endcode
@@ -308,28 +318,50 @@ class Runtime {
   void silent_async(F&& f);
   
   /**
-  @brief similar to tf::Runtime::silent_async but assigns the task a name
+  @brief runs the given function asynchronously without returning any future object
 
   @tparam F callable type
-  @param name assigned name to the task
+  @param params task parameters
   @param f callable
   
   @code{.cpp}
   taskflow.emplace([&](tf::Runtime& rt){
     rt.silent_async("my task", [](){});
-    rt.join();
+    rt.corun_all();
   });
   @endcode
   */
-  template <typename F>
-  void silent_async(const std::string& name, F&& f);
+  template <typename P, typename F>
+  void silent_async(P&& params, F&& f);
   
   /**
   @brief similar to tf::Runtime::silent_async but the caller must be the worker of the runtime
 
   @tparam F callable type
 
-  @param name assigned name to the task
+  @param f callable
+
+  The method bypass the check of the caller worker from the executor 
+  and thus can only called by the worker of this runtime.
+
+  @code{.cpp}
+  taskflow.emplace([&](tf::Runtime& rt){
+    // running by the worker of this runtime
+    rt.silent_async_unchecked([](){});
+    rt.corun_all();
+  });
+  @endcode
+  */
+  template <typename F>
+  void silent_async_unchecked(F&& f);
+  
+  /**
+  @brief similar to tf::Runtime::silent_async but the caller must be the worker of the runtime
+
+  @tparam F callable type
+  @tparam P task parameters type
+
+  @param params task parameters
   @param f callable
 
   The method bypass the check of the caller worker from the executor 
@@ -339,18 +371,18 @@ class Runtime {
   taskflow.emplace([&](tf::Runtime& rt){
     // running by the worker of this runtime
     rt.silent_async_unchecked("my task", [](){});
-    rt.join();
+    rt.corun_all();
   });
   @endcode
   */
-  template <typename F>
-  void silent_async_unchecked(const std::string& name, F&& f);
+  template <typename P, typename F>
+  void silent_async_unchecked(P&& params, F&& f);
 
   /**
   @brief co-runs the given target and waits until it completes
   
   A target can be one of the following forms:
-    + a dynamic task to spawn a subflow or
+    + a subflow task to spawn a subflow or
     + a composable graph object with `tf::Graph& T::graph()` defined
 
   @code{.cpp}
@@ -376,6 +408,9 @@ class Runtime {
   the caller thread (worker) is not blocked (e.g., sleeping or holding any lock). 
   Instead, the caller thread joins the work-stealing loop of the executor 
   and returns when all tasks in the target completes.
+  
+  @attention
+  Only the worker of this tf::Runtime can issue corun.
   */
   template <typename T>
   void corun(T&& target);
@@ -388,41 +423,43 @@ class Runtime {
 
   The method keeps the caller worker running in the work-stealing loop
   until the stop predicate becomes true.
+  
+  @attention
+  Only the worker of this tf::Runtime can issue corun.
   */
   template <typename P>
   void corun_until(P&& predicate);
   
   /**
-  @brief joins all asynchronous tasks spawned by this runtime
+  @brief corun all asynchronous tasks spawned by this runtime with other workers
 
-  Immediately joins all asynchronous tasks (tf::Runtime::async,
-  tf::Runtime::silent_async).
-  Unlike tf::Subflow::join, you can join multiples times from
-  a tf::Runtime object.
+  Coruns all asynchronous tasks (tf::Runtime::async,
+  tf::Runtime::silent_async) with other workers until all those 
+  asynchronous tasks finish.
     
   @code{.cpp}
   std::atomic<size_t> counter{0};
   taskflow.emplace([&](tf::Runtime& rt){
-    // spawn 100 async tasks and join
+    // spawn 100 async tasks and wait
     for(int i=0; i<100; i++) {
       rt.silent_async([&](){ counter++; });
     }
-    rt.join();
+    rt.corun_all();
     assert(counter == 100);
     
-    // spawn another 100 async tasks and join
+    // spawn another 100 async tasks and wait
     for(int i=0; i<100; i++) {
       rt.silent_async([&](){ counter++; });
     }
-    rt.join();
+    rt.corun_all();
     assert(counter == 200);
   });
   @endcode
 
   @attention
-  Only the worker of this tf::Runtime can issue join.
+  Only the worker of this tf::Runtime can issue tf::Runtime::corun_all.
   */
-  inline void join();
+  inline void corun_all();
 
   /**
   @brief acquire a reference to the underlying worker
@@ -454,14 +491,14 @@ class Runtime {
   /**
   @private
   */
-  template <typename F>
-  auto _async(Worker& w, const std::string& name, F&& f);
+  template <typename P, typename F>
+  auto _async(Worker& w, P&& params, F&& f);
   
   /**
   @private
   */
-  template <typename F>
-  void _silent_async(Worker& w, const std::string& name, F&& f);
+  template <typename P, typename F>
+  void _silent_async(Worker& w, P&& params, F&& f);
 };
 
 // constructor
@@ -480,6 +517,54 @@ inline Executor& Runtime::executor() {
 inline Worker& Runtime::worker() {
   return _worker;
 }
+
+// ----------------------------------------------------------------------------
+// TaskParams
+// ----------------------------------------------------------------------------
+
+/**
+@struct TaskParams
+
+@brief task parameters to use when creating an asynchronous task
+*/
+struct TaskParams {
+  /**
+  @brief name of the task
+  */
+  std::string name;
+
+  /**
+  @brief priority of the tassk
+  */
+  unsigned priority {0};
+
+  /**
+  @brief C-styled pointer to user data
+  */
+  void* data {nullptr};
+};
+
+/**
+@struct DefaultTaskParams
+
+@brief empty task parameter type for compile-time optimization
+*/
+struct DefaultTaskParams {
+};
+
+/**
+@brief determines if the given type is a task parameter type
+
+Task parameters can be specified in one of the following types:
+  + tf::TaskParams: assign the struct of defined parameters
+  + tf::DefaultTaskParams: assign nothing
+  + std::string: assign a name to the task
+*/
+template <typename P>
+constexpr bool is_task_params_v =
+  std::is_same_v<std::decay_t<P>, TaskParams> ||
+  std::is_same_v<std::decay_t<P>, DefaultTaskParams> ||
+  std::is_constructible_v<std::string, P>;
 
 // ----------------------------------------------------------------------------
 // Node
@@ -513,6 +598,7 @@ class Node {
   constexpr static int DETACHED    = 2;
   constexpr static int ACQUIRED    = 4;
   constexpr static int READY       = 8;
+  constexpr static int EXCEPTION   = 16;
 
   using Placeholder = std::monostate;
 
@@ -527,13 +613,13 @@ class Node {
     > work;
   };
 
-  // dynamic work handle
-  struct Dynamic {
+  // subflow work handle
+  struct Subflow {
 
     template <typename C>
-    Dynamic(C&&);
+    Subflow(C&&);
 
-    std::function<void(Subflow&)> work;
+    std::function<void(tf::Subflow&)> work;
     Graph subgraph;
   };
 
@@ -596,7 +682,7 @@ class Node {
   using handle_t = std::variant<
     Placeholder,      // placeholder
     Static,           // static tasking
-    Dynamic,          // dynamic tasking
+    Subflow,          // subflow tasking
     Condition,        // conditional tasking
     MultiCondition,   // multi-conditional tasking
     Module,           // composable tasking
@@ -614,7 +700,7 @@ class Node {
   // variant index
   constexpr static auto PLACEHOLDER     = get_index_v<Placeholder, handle_t>;
   constexpr static auto STATIC          = get_index_v<Static, handle_t>;
-  constexpr static auto DYNAMIC         = get_index_v<Dynamic, handle_t>;
+  constexpr static auto SUBFLOW         = get_index_v<Subflow, handle_t>;
   constexpr static auto CONDITION       = get_index_v<Condition, handle_t>;
   constexpr static auto MULTI_CONDITION = get_index_v<MultiCondition, handle_t>;
   constexpr static auto MODULE          = get_index_v<Module, handle_t>;
@@ -624,7 +710,16 @@ class Node {
   Node() = default;
 
   template <typename... Args>
-  Node(const std::string&, unsigned, Topology*, Node*, size_t, Args&&... args);
+  Node(const std::string&, unsigned, Topology*, Node*, size_t, Args&&...);
+  
+  template <typename... Args>
+  Node(const std::string&, Topology*, Node*, size_t, Args&&...);
+  
+  template <typename... Args>
+  Node(const TaskParams&, Topology*, Node*, size_t, Args&&...);
+  
+  template <typename... Args>
+  Node(const DefaultTaskParams&, Topology*, Node*, size_t, Args&&...);
 
   ~Node();
 
@@ -641,10 +736,10 @@ class Node {
   
   unsigned _priority {0};
   
+  void* _data {nullptr};
+  
   Topology* _topology {nullptr};
   Node* _parent {nullptr};
-
-  void* _data {nullptr};
 
   SmallVector<Node*> _successors;
   SmallVector<Node*> _dependents;
@@ -653,11 +748,13 @@ class Node {
   std::atomic<size_t> _join_counter {0};
 
   std::unique_ptr<Semaphores> _semaphores;
+  std::exception_ptr _exception_ptr {nullptr};
   
   handle_t _handle;
 
   void _precede(Node*);
   void _set_up_join_counter();
+  void _process_exception();
 
   bool _is_cancelled() const;
   bool _is_conditioner() const;
@@ -685,12 +782,12 @@ Node::Static::Static(C&& c) : work {std::forward<C>(c)} {
 }
 
 // ----------------------------------------------------------------------------
-// Definition for Node::Dynamic
+// Definition for Node::Subflow
 // ----------------------------------------------------------------------------
 
 // Constructor
 template <typename C>
-Node::Dynamic::Dynamic(C&& c) : work {std::forward<C>(c)} {
+Node::Subflow::Subflow(C&& c) : work {std::forward<C>(c)} {
 }
 
 // ----------------------------------------------------------------------------
@@ -760,16 +857,65 @@ Node::Node(
   _handle       {std::forward<Args>(args)...} {
 }
 
+// Constructor
+template <typename... Args>
+Node::Node(
+  const std::string& name,
+  Topology* topology, 
+  Node* parent, 
+  size_t join_counter,
+  Args&&... args
+) :
+  _name         {name},
+  _topology     {topology},
+  _parent       {parent},
+  _join_counter {join_counter},
+  _handle       {std::forward<Args>(args)...} {
+}
+
+// Constructor
+template <typename... Args>
+Node::Node(
+  const TaskParams& params,
+  Topology* topology, 
+  Node* parent, 
+  size_t join_counter,
+  Args&&... args
+) :
+  _name         {params.name},
+  _priority     {params.priority},
+  _data         {params.data},
+  _topology     {topology},
+  _parent       {parent},
+  _join_counter {join_counter},
+  _handle       {std::forward<Args>(args)...} {
+}
+
+// Constructor
+template <typename... Args>
+Node::Node(
+  const DefaultTaskParams&,
+  Topology* topology, 
+  Node* parent, 
+  size_t join_counter,
+  Args&&... args
+) :
+  _topology     {topology},
+  _parent       {parent},
+  _join_counter {join_counter},
+  _handle       {std::forward<Args>(args)...} {
+}
+
 // Destructor
 inline Node::~Node() {
   // this is to avoid stack overflow
 
-  if(_handle.index() == DYNAMIC) {
+  if(_handle.index() == SUBFLOW) {
     // using std::get_if instead of std::get makes this compatible
     // with older macOS versions
     // the result of std::get_if is guaranteed to be non-null
     // due to the index check above
-    auto& subgraph = std::get_if<Dynamic>(&_handle)->subgraph;
+    auto& subgraph = std::get_if<Subflow>(&_handle)->subgraph;
     std::vector<Node*> nodes;
     nodes.reserve(subgraph.size());
 
@@ -782,8 +928,8 @@ inline Node::~Node() {
 
     while(i < nodes.size()) {
 
-      if(nodes[i]->_handle.index() == DYNAMIC) {
-        auto& sbg = std::get_if<Dynamic>(&(nodes[i]->_handle))->subgraph;
+      if(nodes[i]->_handle.index() == SUBFLOW) {
+        auto& sbg = std::get_if<Subflow>(&(nodes[i]->_handle))->subgraph;
         std::move(
           sbg._nodes.begin(), sbg._nodes.end(), std::back_inserter(nodes)
         );
@@ -852,8 +998,11 @@ inline bool Node::_is_conditioner() const {
 }
 
 // Function: _is_cancelled
+// we currently only support cancellation of taskflow (no async task)
 inline bool Node::_is_cancelled() const {
-  return _topology && _topology->_is_cancelled.load(std::memory_order_relaxed);
+  //return _topology && _topology->_is_cancelled.load(std::memory_order_relaxed);
+  return _topology &&
+         (_topology->_state.load(std::memory_order_relaxed) & Topology::CANCELLED);
 }
 
 // Procedure: _set_up_join_counter
@@ -871,6 +1020,14 @@ inline void Node::_set_up_join_counter() {
   _join_counter.store(c, std::memory_order_relaxed);
 }
 
+// Procedure: _process_exception
+inline void Node::_process_exception() {
+  if(_exception_ptr) {
+    auto e = _exception_ptr;
+    _exception_ptr = nullptr;
+    std::rethrow_exception(e);
+  }
+}
 
 // Function: _acquire_all
 inline bool Node::_acquire_all(SmallVector<Node*>& nodes) {
@@ -998,4 +1155,15 @@ Node* Graph::_emplace_back(ArgsT&&... args) {
   return _nodes.back();
 }
 
+
 }  // end of namespace tf. ---------------------------------------------------
+
+
+
+
+
+
+
+
+
+

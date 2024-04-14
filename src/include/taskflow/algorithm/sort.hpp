@@ -601,9 +601,9 @@ namespace tf {
 
 // Function: make_sort_task
 template <typename B, typename E, typename C>
-TF_FORCE_INLINE auto make_sort_task(B beg, E end, C cmp) {
+TF_FORCE_INLINE auto make_sort_task(B b, E e, C cmp) {
   
-  return [b=beg, e=end, cmp] (Runtime& rt) mutable {
+  return [b, e, cmp] (Runtime& rt) mutable {
 
     using B_t = std::decay_t<unwrap_ref_decay_t<B>>;
     using E_t = std::decay_t<unwrap_ref_decay_t<E>>;
@@ -631,7 +631,7 @@ TF_FORCE_INLINE auto make_sort_task(B beg, E end, C cmp) {
       std::is_arithmetic_v<typename std::iterator_traits<B_t>::value_type>
     >(rt, beg, end, cmp, log2(end - beg));
 
-    rt.join();
+    rt.corun_all();
   };
 }
   

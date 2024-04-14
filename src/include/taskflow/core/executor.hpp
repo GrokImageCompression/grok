@@ -59,23 +59,15 @@ class Executor {
   /**
   @brief constructs the executor with @c N worker threads
 
-
-  @param N number of workers (default std::thread::hardware_concurrency)
-  @param wix worker interface class to alter worker (thread) behaviors
+  @param N the number of workers (default std::thread::hardware_concurrency)
   
   The constructor spawns @c N worker threads to run tasks in a
   work-stealing loop. The number of workers must be greater than zero
   or an exception will be thrown.
   By default, the number of worker threads is equal to the maximum
   hardware concurrency returned by std::thread::hardware_concurrency.
-
-  Users can alter the worker behavior, such as changing thread affinity,
-  via deriving an instance from tf::WorkerInterface.
   */
-  explicit Executor(
-    size_t N = std::thread::hardware_concurrency(),
-    std::shared_ptr<WorkerInterface> wix = nullptr 
-  );
+  explicit Executor(size_t N = std::thread::hardware_concurrency());
 
   /**
   @brief destructs the executor
@@ -85,8 +77,6 @@ class Executor {
   and join these threads.
   */
   ~Executor();
-
-  void shutdown();
 
   /**
   @brief runs a taskflow once
@@ -601,6 +591,34 @@ class Executor {
   // --------------------------------------------------------------------------
   // Async Task Methods
   // --------------------------------------------------------------------------
+  
+  /**
+  @brief creates a parameterized asynchronous task to run the given function
+
+  @tparam P task parameter type
+  @tparam F callable type
+
+  @param params task parameters
+  @param func callable object
+
+  @return a @std_future that will hold the result of the execution
+  
+  The method creates a parameterized asynchronous task 
+  to run the given function and return a @std_future object 
+  that eventually will hold the result of the execution.
+
+  @code{.cpp}
+  std::future<int> future = executor.async("name", [](){
+    std::cout << "create an asynchronous task with a name and returns 1\n";
+    return 1;
+  });
+  future.get();
+  @endcode
+
+  This member function is thread-safe.
+  */
+  template <typename P, typename F>
+  auto async(P&& params, F&& func);
 
   /**
   @brief runs a given function asynchronously
@@ -629,33 +647,31 @@ class Executor {
   auto async(F&& func);
 
   /**
-  @brief runs a given function asynchronously and gives a name to this task
+  @brief similar to tf::Executor::async but does not return a future object
 
   @tparam F callable type
 
-  @param name name of the asynchronous task
+  @param params task parameters
   @param func callable object
 
-  @return a @std_future that will hold the result of the execution
-  
-  The method creates and assigns a name to an asynchronous task 
-  to run the given function, 
-  returning @std_future object that eventually will hold the result
-  Assigned task names will appear in the observers of the executor.
+  The method creates a parameterized asynchronous task 
+  to run the given function without returning any @std_future object.
+  This member function is more efficient than tf::Executor::async 
+  and is encouraged to use when applications do not need a @std_future to acquire
+  the result or synchronize the execution.
 
   @code{.cpp}
-  std::future<int> future = executor.async("name", [](){
-    std::cout << "create an asynchronous task with a name and returns 1\n";
-    return 1;
+  executor.silent_async("name", [](){
+    std::cout << "create an asynchronous task with a name and no return\n";
   });
-  future.get();
+  executor.wait_for_all();
   @endcode
 
   This member function is thread-safe.
   */
-  template <typename F>
-  auto async(const std::string& name, F&& func);
-
+  template <typename P, typename F>
+  void silent_async(P&& params, F&& func);
+  
   /**
   @brief similar to tf::Executor::async but does not return a future object
   
@@ -663,9 +679,11 @@ class Executor {
   
   @param func callable object
 
-  This member function is more efficient than tf::Executor::async
-  and is encouraged to use when you do not want a @std_future to
-  acquire the result or synchronize the execution.
+  The method creates an asynchronous task 
+  to run the given function without returning any @std_future object.
+  This member function is more efficient than tf::Executor::async 
+  and is encouraged to use when applications do not need a @std_future to acquire
+  the result or synchronize the execution.
 
   @code{.cpp}
   executor.silent_async([](){
@@ -678,31 +696,6 @@ class Executor {
   */
   template <typename F>
   void silent_async(F&& func);
-
-  /**
-  @brief similar to tf::Executor::async but does not return a future object
-
-  @tparam F callable type
-
-  @param name assigned name to the task
-  @param func callable object
-
-  This member function is more efficient than tf::Executor::async
-  and is encouraged to use when you do not want a @std_future to
-  acquire the result or synchronize the execution.
-  Assigned task names will appear in the observers of the executor.
-
-  @code{.cpp}
-  executor.silent_async("name", [](){
-    std::cout << "create an asynchronous task with a name and no return\n";
-  });
-  executor.wait_for_all();
-  @endcode
-
-  This member function is thread-safe.
-  */
-  template <typename F>
-  void silent_async(const std::string& name, F&& func);
 
   // --------------------------------------------------------------------------
   // Silent Dependent Async Methods
@@ -741,13 +734,13 @@ class Executor {
   tf::AsyncTask silent_dependent_async(F&& func, Tasks&&... tasks);
   
   /**
-  @brief names and runs the given function asynchronously 
+  @brief runs the given function asynchronously 
          when the given dependents finish
   
   @tparam F callable type
   @tparam Tasks task types convertible to tf::AsyncTask
 
-  @param name assigned name to the task
+  @param params task parameters
   @param func callable object
   @param tasks asynchronous tasks on which this execution depends
   
@@ -771,10 +764,10 @@ class Executor {
 
   This member function is thread-safe.
   */
-  template <typename F, typename... Tasks,
-    std::enable_if_t<all_same_v<AsyncTask, std::decay_t<Tasks>...>, void>* = nullptr
+  template <typename P, typename F, typename... Tasks,
+    std::enable_if_t<is_task_params_v<P> && all_same_v<AsyncTask, std::decay_t<Tasks>...>, void>* = nullptr
   >
-  tf::AsyncTask silent_dependent_async(const std::string& name, F&& func, Tasks&&... tasks);
+  tf::AsyncTask silent_dependent_async(P&& params, F&& func, Tasks&&... tasks);
   
   /**
   @brief runs the given function asynchronously 
@@ -814,13 +807,13 @@ class Executor {
   tf::AsyncTask silent_dependent_async(F&& func, I first, I last);
   
   /**
-  @brief names and runs the given function asynchronously 
+  @brief runs the given function asynchronously 
          when the given range of dependents finish
   
   @tparam F callable type
   @tparam I iterator type 
 
-  @param name assigned name to the task
+  @param params tasks parameters
   @param func callable object
   @param first iterator to the beginning (inclusive)
   @param last iterator to the end (exclusive)
@@ -847,10 +840,10 @@ class Executor {
 
   This member function is thread-safe.
   */
-  template <typename F, typename I, 
-    std::enable_if_t<!std::is_same_v<std::decay_t<I>, AsyncTask>, void>* = nullptr
+  template <typename P, typename F, typename I, 
+    std::enable_if_t<is_task_params_v<P> && !std::is_same_v<std::decay_t<I>, AsyncTask>, void>* = nullptr
   >
-  tf::AsyncTask silent_dependent_async(const std::string& name, F&& func, I first, I last);
+  tf::AsyncTask silent_dependent_async(P&& params, F&& func, I first, I last);
   
   // --------------------------------------------------------------------------
   // Dependent Async Methods
@@ -899,13 +892,14 @@ class Executor {
   auto dependent_async(F&& func, Tasks&&... tasks);
   
   /**
-  @brief names and runs the given function asynchronously
+  @brief runs the given function asynchronously
          when the given dependents finish
   
+  @tparam P task parameters type
   @tparam F callable type
   @tparam Tasks task types convertible to tf::AsyncTask
   
-  @param name assigned name to the task
+  @param params task parameters
   @param func callable object
   @param tasks asynchronous tasks on which this execution depends
   
@@ -938,10 +932,10 @@ class Executor {
 
   This member function is thread-safe.
   */
-  template <typename F, typename... Tasks,
-    std::enable_if_t<all_same_v<AsyncTask, std::decay_t<Tasks>...>, void>* = nullptr
+  template <typename P, typename F, typename... Tasks,
+    std::enable_if_t<is_task_params_v<P> && all_same_v<AsyncTask, std::decay_t<Tasks>...>, void>* = nullptr
   >
-  auto dependent_async(const std::string& name, F&& func, Tasks&&... tasks);
+  auto dependent_async(P&& params, F&& func, Tasks&&... tasks);
   
   /**
   @brief runs the given function asynchronously 
@@ -989,13 +983,14 @@ class Executor {
   auto dependent_async(F&& func, I first, I last);
   
   /**
-  @brief names and runs the given function asynchronously 
+  @brief runs the given function asynchronously 
          when the given range of dependents finish
   
+  @tparam P task parameters type
   @tparam F callable type
   @tparam I iterator type 
   
-  @param name assigned name to the task
+  @param params task parameters
   @param func callable object
   @param first iterator to the beginning (inclusive)
   @param last iterator to the end (exclusive)
@@ -1031,10 +1026,10 @@ class Executor {
 
   This member function is thread-safe.
   */
-  template <typename F, typename I,
-    std::enable_if_t<!std::is_same_v<std::decay_t<I>, AsyncTask>, void>* = nullptr
+  template <typename P, typename F, typename I,
+    std::enable_if_t<is_task_params_v<P> && !std::is_same_v<std::decay_t<I>, AsyncTask>, void>* = nullptr
   >
-  auto dependent_async(const std::string& name, F&& func, I first, I last);
+  auto dependent_async(P&& params, F&& func, I first, I last);
 
   private:
     
@@ -1044,7 +1039,8 @@ class Executor {
   std::mutex _taskflows_mutex;
 
 #ifdef __cpp_lib_atomic_wait
-  std::atomic<size_t> _num_topologies{0};
+  std::atomic<size_t> _num_topologies {0};
+  std::atomic_flag _all_spawned = ATOMIC_FLAG_INIT;
 #else
   std::condition_variable _topology_cv;
   std::mutex _topology_mutex;
@@ -1062,13 +1058,10 @@ class Executor {
 
   std::atomic<bool> _done {0};
 
-  std::shared_ptr<WorkerInterface> _worker_interface;
   std::unordered_set<std::shared_ptr<ObserverInterface>> _observers;
 
   Worker* _this_worker();
   
-  Node* _tear_down_invoke(Worker&, Node*);
-
   bool _wait_for_task(Worker&, Node*&);
   bool _invoke_module_task_internal(Worker&, Node*);
 
@@ -1086,53 +1079,49 @@ class Executor {
   void _tear_down_topology(Worker&, Topology*);
   void _tear_down_async(Node*);
   void _tear_down_dependent_async(Worker&, Node*);
+  void _tear_down_invoke(Worker&, Node*);
   void _increment_topology();
   void _decrement_topology();
   void _invoke(Worker&, Node*);
   void _invoke_static_task(Worker&, Node*);
-  void _invoke_dynamic_task(Worker&, Node*);
-  void _consume_graph(Worker&, Node*, Graph&);
-  void _detach_dynamic_task(Worker&, Node*, Graph&);
+  void _invoke_subflow_task(Worker&, Node*);
+  void _detach_subflow_task(Worker&, Node*, Graph&);
   void _invoke_condition_task(Worker&, Node*, SmallVector<int>&);
   void _invoke_multi_condition_task(Worker&, Node*, SmallVector<int>&);
-  void _invoke_module_task(Worker&, Node*, bool&);
+  void _invoke_module_task(Worker&, Node*);
   void _invoke_async_task(Worker&, Node*);
   void _invoke_dependent_async_task(Worker&, Node*);
   void _process_async_dependent(Node*, tf::AsyncTask&, size_t&);
+  void _process_exception(Worker&, Node*);
   void _schedule_async_task(Node*);
+  void _corun_graph(Worker&, Node*, Graph&);
   
   template <typename P>
   void _corun_until(Worker&, P&&);
-  
-  template <typename R, typename F>
-  auto _make_promised_async(std::promise<R>&&, F&&);
 };
 
 // Constructor
-inline Executor::Executor(size_t N, std::shared_ptr<WorkerInterface> wix) :
+inline Executor::Executor(size_t N) :
   _MAX_STEALS {((N+1) << 1)},
   _threads    {N},
   _workers    {N},
-  _notifier   {N},
-  _worker_interface {std::move(wix)} {
+  _notifier   {N} {
 
   if(N == 0) {
-    TF_THROW("no cpu workers to execute taskflows");
+    TF_THROW("executor must define at least one worker");
   }
 
   _spawn(N);
 
-  // instantite the default observer if requested
+  // initialize the default observer if requested
   if(has_env(TF_ENABLE_PROFILER)) {
     TFProfManager::get()._manage(make_observer<TFProfObserver>());
   }
 }
+
 // Destructor
 inline Executor::~Executor() {
-	shutdown();
-}
-// Destructor
-inline void Executor::shutdown() {
+
   // wait for all topologies to complete
   wait_for_all();
 
@@ -1142,12 +1131,8 @@ inline void Executor::shutdown() {
   _notifier.notify(true);
 
   for(auto& t : _threads){
-	t.join();
+    t.join();
   }
-
-  _threads.clear();
-
-
 }
 
 // Function: num_workers
@@ -1184,9 +1169,12 @@ inline int Executor::this_worker_id() const {
 // Procedure: _spawn
 inline void Executor::_spawn(size_t N) {
 
+#ifdef __cpp_lib_atomic_wait
+#else
   std::mutex mutex;
   std::condition_variable cond;
   size_t n=0;
+#endif
 
   for(size_t id=0; id<N; ++id) {
 
@@ -1195,14 +1183,15 @@ inline void Executor::_spawn(size_t N) {
     _workers[id]._executor = this;
     _workers[id]._waiter = &_notifier._waiters[id];
 
-    _threads[id] = std::thread([this] (
-      Worker& w, std::mutex& mutex, std::condition_variable& cond, size_t& n
-    ) -> void {
-      
-      // assign the thread
-      w._thread = &_threads[w._id];
+    _threads[id] = std::thread([&, &w=_workers[id]] () {
 
-      // enables the mapping
+#ifdef __cpp_lib_atomic_wait
+      // wait for the caller thread to initialize the ID mapping
+      _all_spawned.wait(false, std::memory_order_acquire);
+      w._thread = &_threads[w._id];
+#else
+      // update the ID mapping of this thread
+      w._thread = &_threads[w._id];
       {
         std::scoped_lock lock(mutex);
         _wids[std::this_thread::get_id()] = w._id;
@@ -1210,41 +1199,22 @@ inline void Executor::_spawn(size_t N) {
           cond.notify_one();
         }
       }
+#endif
 
       Node* t = nullptr;
       
-      // before entering the scheduler (work-stealing loop), 
-      // call the user-specified prologue function
-      if(_worker_interface) {
-        _worker_interface->scheduler_prologue(w);
-      }
-      
-      // must use 1 as condition instead of !done because
-      // the previous worker may stop while the following workers
-      // are still preparing for entering the scheduling loop
-      std::exception_ptr ptr{nullptr};
-      try {
-        while(1) {
+      while(1) {
 
-          // execute the tasks.
-          _exploit_task(w, t);
+        // execute the tasks.
+        _exploit_task(w, t);
 
-          // wait for tasks
-          if(_wait_for_task(w, t) == false) {
-            break;
-          }
+        // wait for tasks
+        if(_wait_for_task(w, t) == false) {
+          break;
         }
-      } 
-      catch(...) {
-        ptr = std::current_exception();
-      }
-      
-      // call the user-specified epilogue function
-      if(_worker_interface) {
-        _worker_interface->scheduler_epilogue(w, ptr);
       }
 
-    }, std::ref(_workers[id]), std::ref(mutex), std::ref(cond), std::ref(n));
+    });
     
     // POSIX-like system can use the following to affine threads to cores 
     //cpu_set_t cpuset;
@@ -1253,10 +1223,22 @@ inline void Executor::_spawn(size_t N) {
     //pthread_setaffinity_np(
     //  _threads[id].native_handle(), sizeof(cpu_set_t), &cpuset
     //);
-  }
 
+#ifdef __cpp_lib_atomic_wait
+    //_wids[_threads[id].get_id()] = id;
+    _wids.emplace(std::piecewise_construct,
+      std::forward_as_tuple(_threads[id].get_id()), std::forward_as_tuple(id)
+    );
+#endif
+  }
+  
+#ifdef __cpp_lib_atomic_wait
+  _all_spawned.test_and_set(std::memory_order_release);
+  _all_spawned.notify_all();
+#else
   std::unique_lock<std::mutex> lock(mutex);
   cond.wait(lock, [&](){ return n==N; });
+#endif
 }
 
 // Function: _corun_until
@@ -1541,9 +1523,7 @@ inline void Executor::_invoke(Worker& worker, Node* node) {
 
   // no need to do other things if the topology is cancelled
   if(node->_is_cancelled()) {
-    if(node = _tear_down_invoke(worker, node); node) {
-      goto invoke_successors;
-    }
+    _tear_down_invoke(worker, node);
     return;
   }
 
@@ -1560,7 +1540,6 @@ inline void Executor::_invoke(Worker& worker, Node* node) {
   // condition task
   //int cond = -1;
 
-
   // switch is faster than nested if-else due to jump table
   switch(node->_handle.index()) {
     // static task
@@ -1569,9 +1548,9 @@ inline void Executor::_invoke(Worker& worker, Node* node) {
     }
     break;
 
-    // dynamic task
-    case Node::DYNAMIC: {
-      _invoke_dynamic_task(worker, node);
+    // subflow task
+    case Node::SUBFLOW: {
+      _invoke_subflow_task(worker, node);
     }
     break;
 
@@ -1589,11 +1568,7 @@ inline void Executor::_invoke(Worker& worker, Node* node) {
 
     // module task
     case Node::MODULE: {
-      bool spawned;
-      _invoke_module_task(worker, node, spawned);
-      if(spawned) {
-        return;
-      }
+      _invoke_module_task(worker, node);
     }
     break;
 
@@ -1622,7 +1597,7 @@ inline void Executor::_invoke(Worker& worker, Node* node) {
     break;
   }
 
-  invoke_successors:
+  //invoke_successors:
 
   // if releasing semaphores exist, release them
   if(node->_semaphores && !node->_semaphores->to_release.empty()) {
@@ -1701,9 +1676,7 @@ inline void Executor::_invoke(Worker& worker, Node* node) {
   }
 
   // tear_down the invoke
-  if(node = _tear_down_invoke(worker, node); node) {
-    goto invoke_successors;
-  }
+  _tear_down_invoke(worker, node);
 
   // perform tail recursion elimination for the right-most child to reduce
   // the number of expensive pop/push operations through the task queue
@@ -1714,25 +1687,31 @@ inline void Executor::_invoke(Worker& worker, Node* node) {
   }
 }
 
-// Proecdure: _tear_down_invoke
-inline Node* Executor::_tear_down_invoke(Worker& worker, Node* node) {
-  // we must check parent first before substracting the join counter,
+// Procedure: _tear_down_invoke
+inline void Executor::_tear_down_invoke(Worker& worker, Node* node) {
+  // we must check parent first before subtracting the join counter,
   // or it can introduce data race
   if(auto parent = node->_parent; parent == nullptr) {
     if(node->_topology->_join_counter.fetch_sub(1, std::memory_order_acq_rel) == 1) {
       _tear_down_topology(worker, node->_topology);
     }
   }
-  // module task
-  else {  
-    auto id = parent->_handle.index();
-    if(parent->_join_counter.fetch_sub(1, std::memory_order_acq_rel) == 1) {
-      if(id == Node::MODULE) {
-        return parent;
-      }
-    }
+  // Here we asssume the parent is in a busy loop (e.g., corun) waiting for
+  // its join counter to become 0.
+  else {
+    //parent->_join_counter.fetch_sub(1, std::memory_order_acq_rel);
+    parent->_join_counter.fetch_sub(1, std::memory_order_release);
   }
-  return nullptr;
+  //// module task
+  //else {  
+  //  auto id = parent->_handle.index();
+  //  if(parent->_join_counter.fetch_sub(1, std::memory_order_acq_rel) == 1) {
+  //    if(id == Node::MODULE) {
+  //      return parent;
+  //    }
+  //  }
+  //}
+  //return nullptr;
 }
 
 // Procedure: _observer_prologue
@@ -1749,47 +1728,68 @@ inline void Executor::_observer_epilogue(Worker& worker, Node* node) {
   }
 }
 
+// Procedure: _process_exception
+inline void Executor::_process_exception(Worker&, Node* node) {
+
+  constexpr static auto flag = Topology::EXCEPTION | Topology::CANCELLED;
+  
+  // if the node has a parent, we store the exception in its parent
+  if(auto parent = node->_parent; parent) { 
+    if ((parent->_state.fetch_or(Node::EXCEPTION, std::memory_order_relaxed) & Node::EXCEPTION) == 0) {
+      parent->_exception_ptr = std::current_exception();
+    }
+    // TODO if the node has a topology, cancel it to enable early stop
+    //if(auto tpg = node->_topology; tpg) {
+    //  tpg->_state.fetch_or(Topology::CANCELLED, std::memory_order_relaxed);
+    //}
+  }
+  // multiple tasks may throw, so we only take the first thrown exception
+  else if(auto tpg = node->_topology; tpg && 
+    ((tpg->_state.fetch_or(flag, std::memory_order_relaxed) & Topology::EXCEPTION) == 0)
+  ) {
+    tpg->_exception_ptr = std::current_exception();
+  }
+  // TODO: skip the exception that is not associated with any taskflows
+}
+
 // Procedure: _invoke_static_task
 inline void Executor::_invoke_static_task(Worker& worker, Node* node) {
   _observer_prologue(worker, node);
-  auto& work = std::get_if<Node::Static>(&node->_handle)->work;
-  switch(work.index()) {
-    case 0:
-      std::get_if<0>(&work)->operator()();
-    break;
+  TF_EXECUTOR_EXCEPTION_HANDLER(worker, node, {
+    auto& work = std::get_if<Node::Static>(&node->_handle)->work;
+    switch(work.index()) {
+      case 0:
+        std::get_if<0>(&work)->operator()();
+      break;
 
-    case 1:
-      Runtime rt(*this, worker, node);
-      std::get_if<1>(&work)->operator()(rt);
-    break;
-  }
+      case 1:
+        Runtime rt(*this, worker, node);
+        std::get_if<1>(&work)->operator()(rt);
+        node->_process_exception();
+      break;
+    }
+  });
   _observer_epilogue(worker, node);
 }
 
-// Procedure: _invoke_dynamic_task
-inline void Executor::_invoke_dynamic_task(Worker& w, Node* node) {
-
+// Procedure: _invoke_subflow_task
+inline void Executor::_invoke_subflow_task(Worker& w, Node* node) {
   _observer_prologue(w, node);
-
-  auto handle = std::get_if<Node::Dynamic>(&node->_handle);
-
-  handle->subgraph._clear();
-
-  Subflow sf(*this, w, node, handle->subgraph);
-
-  handle->work(sf);
-
-  if(sf._joinable) {
-    _consume_graph(w, node, handle->subgraph);
-  }
-
+  TF_EXECUTOR_EXCEPTION_HANDLER(w, node, {
+    auto handle = std::get_if<Node::Subflow>(&node->_handle);
+    handle->subgraph._clear();
+    Subflow sf(*this, w, node, handle->subgraph);
+    handle->work(sf);
+    if(sf._joinable) {
+      _corun_graph(w, node, handle->subgraph);
+    }
+    node->_process_exception();
+  });
   _observer_epilogue(w, node);
 }
 
-// Procedure: _detach_dynamic_task
-inline void Executor::_detach_dynamic_task(
-  Worker& w, Node* p, Graph& g
-) {
+// Procedure: _detach_subflow_task
+inline void Executor::_detach_subflow_task(Worker& w, Node* p, Graph& g) {
 
   // graph is empty and has no async tasks
   if(g.empty() && p->_join_counter.load(std::memory_order_acquire) == 0) {
@@ -1808,8 +1808,10 @@ inline void Executor::_detach_dynamic_task(
   _schedule(w, src);
 }
 
-// Procedure: _consume_graph
-inline void Executor::_consume_graph(Worker& w, Node* p, Graph& g) {
+// Procedure: _corun_graph
+inline void Executor::_corun_graph(Worker& w, Node* p, Graph& g) {
+
+  // assert(p);
 
   // graph is empty and has no async tasks (subflow)
   if(g.empty() && p->_join_counter.load(std::memory_order_acquire) == 0) {
@@ -1833,17 +1835,20 @@ inline void Executor::_invoke_condition_task(
   Worker& worker, Node* node, SmallVector<int>& conds
 ) {
   _observer_prologue(worker, node);
-  auto& work = std::get_if<Node::Condition>(&node->_handle)->work;
-  switch(work.index()) {
-    case 0:
-      conds = { std::get_if<0>(&work)->operator()() };
-    break;
+  TF_EXECUTOR_EXCEPTION_HANDLER(worker, node, {
+    auto& work = std::get_if<Node::Condition>(&node->_handle)->work;
+    switch(work.index()) {
+      case 0:
+        conds = { std::get_if<0>(&work)->operator()() };
+      break;
 
-    case 1:
-      Runtime rt(*this, worker, node);
-      conds = { std::get_if<1>(&work)->operator()(rt) };
-    break;
-  }
+      case 1:
+        Runtime rt(*this, worker, node);
+        conds = { std::get_if<1>(&work)->operator()(rt) };
+        node->_process_exception();
+      break;
+    }
+  });
   _observer_epilogue(worker, node);
 }
 
@@ -1852,77 +1857,87 @@ inline void Executor::_invoke_multi_condition_task(
   Worker& worker, Node* node, SmallVector<int>& conds
 ) {
   _observer_prologue(worker, node);
-  auto& work = std::get_if<Node::MultiCondition>(&node->_handle)->work;
-  switch(work.index()) {
-    case 0:
-      conds = std::get_if<0>(&work)->operator()();
-    break;
+  TF_EXECUTOR_EXCEPTION_HANDLER(worker, node, {
+    auto& work = std::get_if<Node::MultiCondition>(&node->_handle)->work;
+    switch(work.index()) {
+      case 0:
+        conds = std::get_if<0>(&work)->operator()();
+      break;
 
-    case 1:
-      Runtime rt(*this, worker, node);
-      conds = std::get_if<1>(&work)->operator()(rt);
-    break;
-  }
+      case 1:
+        Runtime rt(*this, worker, node);
+        conds = std::get_if<1>(&work)->operator()(rt);
+        node->_process_exception();
+      break;
+    }
+  });
   _observer_epilogue(worker, node);
 }
 
 // Procedure: _invoke_module_task
-inline void Executor::_invoke_module_task(Worker& w, Node* node, bool& spawned) {
+inline void Executor::_invoke_module_task(Worker& w, Node* node) {
   _observer_prologue(w, node);
-  spawned = _invoke_module_task_internal(w, node);
+  TF_EXECUTOR_EXCEPTION_HANDLER(w, node, {
+    _corun_graph(w, node, std::get_if<Node::Module>(&node->_handle)->graph);
+    node->_process_exception();
+  });
   _observer_epilogue(w, node);
 }
 
-// Function: _invoke_module_task_internal
-inline bool Executor::_invoke_module_task_internal(Worker& w, Node* p) {
-  
-  // acquire the underlying graph
-  auto& g = std::get_if<Node::Module>(&p->_handle)->graph;
-
-  // no need to do anything if the graph is empty
-  if(g.empty()) {
-    return false;
-  }
-
-  SmallVector<Node*> src;
-  _set_up_graph(g, p, p->_topology, 0, src);
-  p->_join_counter.fetch_add(src.size(), std::memory_order_relaxed);
-
-  _schedule(w, src);
-  return true;
-}
+//// Function: _invoke_module_task_internal
+//inline bool Executor::_invoke_module_task_internal(Worker& w, Node* p) {
+//  
+//  // acquire the underlying graph
+//  auto& g = std::get_if<Node::Module>(&p->_handle)->graph;
+//
+//  // no need to do anything if the graph is empty
+//  if(g.empty()) {
+//    return false;
+//  }
+//
+//  SmallVector<Node*> src;
+//  _set_up_graph(g, p, p->_topology, 0, src);
+//  p->_join_counter.fetch_add(src.size(), std::memory_order_relaxed);
+//
+//  _schedule(w, src);
+//  return true;
+//}
 
 // Procedure: _invoke_async_task
 inline void Executor::_invoke_async_task(Worker& worker, Node* node) {
   _observer_prologue(worker, node);
-  auto& work = std::get_if<Node::Async>(&node->_handle)->work;
-  switch(work.index()) {
-    case 0:
-      std::get_if<0>(&work)->operator()();
-    break;
+  TF_EXECUTOR_EXCEPTION_HANDLER(worker, node, {
+    auto& work = std::get_if<Node::Async>(&node->_handle)->work;
+    switch(work.index()) {
+      case 0:
+        std::get_if<0>(&work)->operator()();
+      break;
 
-    case 1:
-      Runtime rt(*this, worker, node);
-      std::get_if<1>(&work)->operator()(rt);
-    break;
-  }
+      case 1:
+        Runtime rt(*this, worker, node);
+        std::get_if<1>(&work)->operator()(rt);
+      break;
+    }
+  });
   _observer_epilogue(worker, node);
 }
 
 // Procedure: _invoke_dependent_async_task
 inline void Executor::_invoke_dependent_async_task(Worker& worker, Node* node) {
   _observer_prologue(worker, node);
-  auto& work = std::get_if<Node::DependentAsync>(&node->_handle)->work;
-  switch(work.index()) {
-    case 0:
-      std::get_if<0>(&work)->operator()();
-    break;
+  TF_EXECUTOR_EXCEPTION_HANDLER(worker, node, {
+    auto& work = std::get_if<Node::DependentAsync>(&node->_handle)->work;
+    switch(work.index()) {
+      case 0:
+        std::get_if<0>(&work)->operator()();
+      break;
 
-    case 1:
-      Runtime rt(*this, worker, node);
-      std::get_if<1>(&work)->operator()(rt);
-    break;
-  }
+      case 1:
+        Runtime rt(*this, worker, node);
+        std::get_if<1>(&work)->operator()(rt);
+      break;
+    }
+  });
   _observer_epilogue(worker, node);
 }
 
@@ -1992,7 +2007,7 @@ tf::Future<void> Executor::run_until(Taskflow& f, P&& p, C&& c) {
 
   _increment_topology();
 
-  // Need to check the empty under the lock since dynamic task may
+  // Need to check the empty under the lock since subflow task may
   // define detached blocks that modify the taskflow at the same time
   bool empty;
   {
@@ -2006,7 +2021,7 @@ tf::Future<void> Executor::run_until(Taskflow& f, P&& p, C&& c) {
     std::promise<void> promise;
     promise.set_value();
     _decrement_topology();
-    return tf::Future<void>(promise.get_future(), std::monostate{});
+    return tf::Future<void>(promise.get_future());
   }
 
   // create a topology for this run
@@ -2052,8 +2067,9 @@ void Executor::corun(T& target) {
     TF_THROW("corun must be called by a worker of the executor");
   }
 
-  Node parent;  // dummy parent
-  _consume_graph(*w, &parent, target.graph());
+  Node parent;  // auxiliary parent
+  _corun_graph(*w, &parent, target.graph());
+  parent._process_exception();
 }
 
 // Function: corun_until
@@ -2067,6 +2083,8 @@ void Executor::corun_until(P&& predicate) {
   }
 
   _corun_until(*w, std::forward<P>(predicate));
+
+  // TODO: exception?
 }
 
 // Procedure: _increment_topology
@@ -2137,6 +2155,7 @@ inline void Executor::_set_up_graph(
       src.push_back(node);
     }
     node->_set_up_join_counter();
+    node->_exception_ptr = nullptr;
   }
 }
 
@@ -2148,7 +2167,7 @@ inline void Executor::_tear_down_topology(Worker& worker, Topology* tpg) {
   //assert(&tpg == &(f._topologies.front()));
 
   // case 1: we still need to run the topology again
-  if(!tpg->_is_cancelled && !tpg->_pred()) {
+  if(!tpg->_exception_ptr && !tpg->cancelled() && !tpg->_pred()) {
     //assert(tpg->_join_counter == 0);
     std::lock_guard<std::mutex> lock(f._mutex);
     tpg->_join_counter.store(tpg->_sources.size(), std::memory_order_relaxed);
@@ -2181,36 +2200,24 @@ inline void Executor::_tear_down_topology(Worker& worker, Topology* tpg) {
     else {
       //assert(f._topologies.size() == 1);
 
-      // Need to back up the promise first here becuz taskflow might be
-      // destroy soon after calling get
-      auto p {std::move(tpg->_promise)};
-
-      // Back up lambda capture in case it has the topology pointer,
-      // to avoid it releasing on pop_front ahead of _mutex.unlock &
-      // _promise.set_value. Released safely when leaving scope.
-      auto c {std::move(tpg->_call)};
-
-      // Get the satellite if any
-      auto s {f._satellite};
-
-      // Now we remove the topology from this taskflow
+      auto fetched_tpg {std::move(f._topologies.front())};
       f._topologies.pop();
+      auto satellite {f._satellite};
 
-      //f._mutex.unlock();
       lock.unlock();
-
-      // We set the promise in the end in case taskflow leaves the scope.
-      // After set_value, the caller will return from wait
-      p.set_value();
+      
+      // Soon after we carry out the promise, there is no longer any guarantee
+      // for the lifetime of the associated taskflow.
+      fetched_tpg->_carry_out_promise();
 
       _decrement_topology();
 
       // remove the taskflow if it is managed by the executor
       // TODO: in the future, we may need to synchronize on wait
       // (which means the following code should the moved before set_value)
-      if(s) {
-        std::scoped_lock<std::mutex> lock(_taskflows_mutex);
-        _taskflows.erase(*s);
+      if(satellite) {
+        std::scoped_lock<std::mutex> satellite_lock(_taskflows_mutex);
+        _taskflows.erase(*satellite);
       }
     }
   }
@@ -2229,7 +2236,11 @@ inline void Subflow::join() {
   }
 
   // only the parent worker can join the subflow
-  _executor._consume_graph(_worker, _parent, _graph);
+  _executor._corun_graph(_worker, _parent, _graph);
+
+  // if any exception is caught from subflow tasks, rethrow it
+  _parent->_process_exception();
+
   _joinable = false;
 }
 
@@ -2242,7 +2253,7 @@ inline void Subflow::detach() {
   }
 
   // only the parent worker can detach the subflow
-  _executor._detach_dynamic_task(_worker, _parent, _graph);
+  _executor._detach_subflow_task(_worker, _parent, _graph);
   _joinable = false;
 }
 
@@ -2268,36 +2279,44 @@ inline void Runtime::schedule(Task task) {
 // Procedure: corun
 template <typename T>
 void Runtime::corun(T&& target) {
-
-  // dynamic task (subflow)
-  if constexpr(is_dynamic_task_v<T>) {
-    Graph graph;
-    Subflow sf(_executor, _worker, _parent, graph);
-    target(sf);
-    if(sf._joinable) {
-      _executor._consume_graph(_worker, _parent, graph);
-    }
-  }
-  // a composable graph object with `tf::Graph& T::graph()` defined
-  else {
-    _executor._consume_graph(_worker, _parent, target.graph());
-  }
+  _executor._corun_graph(_worker, _parent, target.graph());
+  _parent->_process_exception();
 }
 
 // Procedure: corun_until
 template <typename P>
 void Runtime::corun_until(P&& predicate) {
   _executor._corun_until(_worker, std::forward<P>(predicate));
+  // TODO: exception?
 }
 
+// Function: corun_all
+inline void Runtime::corun_all() {
+  _executor._corun_until(_worker, [this] () -> bool { 
+    return _parent->_join_counter.load(std::memory_order_acquire) == 0; 
+  });
+  _parent->_process_exception();
+}
+
+// Destructor
+inline Runtime::~Runtime() {
+  _executor._corun_until(_worker, [this] () -> bool { 
+    return _parent->_join_counter.load(std::memory_order_acquire) == 0; 
+  });
+}
+
+// ------------------------------------
+// Runtime::silent_async series
+// ------------------------------------
+
 // Function: _silent_async
-template <typename F>
-void Runtime::_silent_async(Worker& w, const std::string& name, F&& f) {
+template <typename P, typename F>
+void Runtime::_silent_async(Worker& w, P&& params, F&& f) {
 
   _parent->_join_counter.fetch_add(1, std::memory_order_relaxed);
 
   auto node = node_pool.animate(
-    name, 0, _parent->_topology, _parent, 0,
+    std::forward<P>(params), _parent->_topology, _parent, 0,
     std::in_place_type_t<Node::Async>{}, std::forward<F>(f)
   );
 
@@ -2307,44 +2326,46 @@ void Runtime::_silent_async(Worker& w, const std::string& name, F&& f) {
 // Function: silent_async
 template <typename F>
 void Runtime::silent_async(F&& f) {
-  _silent_async(*_executor._this_worker(), "", std::forward<F>(f));
+  _silent_async(*_executor._this_worker(), DefaultTaskParams{}, std::forward<F>(f));
 }
 
 // Function: silent_async
-template <typename F>
-void Runtime::silent_async(const std::string& name, F&& f) {
-  _silent_async(*_executor._this_worker(), name, std::forward<F>(f));
+template <typename P, typename F>
+void Runtime::silent_async(P&& params, F&& f) {
+  _silent_async(*_executor._this_worker(), std::forward<P>(params), std::forward<F>(f));
 }
 
 // Function: silent_async_unchecked
 template <typename F>
-void Runtime::silent_async_unchecked(const std::string& name, F&& f) {
-  _silent_async(_worker, name, std::forward<F>(f));
+void Runtime::silent_async_unchecked(F&& f) {
+  _silent_async(_worker, DefaultTaskParams{}, std::forward<F>(f));
 }
 
+// Function: silent_async_unchecked
+template <typename P, typename F>
+void Runtime::silent_async_unchecked(P&& params, F&& f) {
+  _silent_async(_worker, std::forward<P>(params), std::forward<F>(f));
+}
+
+// ------------------------------------
+// Runtime::async series
+// ------------------------------------
+
 // Function: _async
-template <typename F>
-auto Runtime::_async(Worker& w, const std::string& name, F&& f) {
+template <typename P, typename F>
+auto Runtime::_async(Worker& w, P&& params, F&& f) {
 
   _parent->_join_counter.fetch_add(1, std::memory_order_relaxed);
 
   using R = std::invoke_result_t<std::decay_t<F>>;
 
-  std::promise<R> p;
+  std::packaged_task<R()> p(std::forward<F>(f));
   auto fu{p.get_future()};
 
   auto node = node_pool.animate(
-    name, 0, _parent->_topology, _parent, 0,
+    std::forward<P>(params), _parent->_topology, _parent, 0, 
     std::in_place_type_t<Node::Async>{},
-    [p=make_moc(std::move(p)), f=std::forward<F>(f)] () mutable {
-      if constexpr(std::is_same_v<R, void>) {
-        f();
-        p.object.set_value();
-      }
-      else {
-        p.object.set_value(f());
-      }
-    }
+    [p=make_moc(std::move(p))] () mutable { p.object(); }
   );
 
   _executor._schedule(w, node);
@@ -2355,21 +2376,16 @@ auto Runtime::_async(Worker& w, const std::string& name, F&& f) {
 // Function: async
 template <typename F>
 auto Runtime::async(F&& f) {
-  return _async(*_executor._this_worker(), "", std::forward<F>(f));
+  return _async(*_executor._this_worker(), DefaultTaskParams{}, std::forward<F>(f));
 }
 
 // Function: async
-template <typename F>
-auto Runtime::async(const std::string& name, F&& f) {
-  return _async(*_executor._this_worker(), name, std::forward<F>(f));
+template <typename P, typename F>
+auto Runtime::async(P&& params, F&& f) {
+  return _async(*_executor._this_worker(), std::forward<P>(params), std::forward<F>(f));
 }
 
-// Function: join
-inline void Runtime::join() {
-  corun_until([this] () -> bool { 
-    return _parent->_join_counter.load(std::memory_order_acquire) == 0; 
-  });
-}
+
 
 }  // end of namespace tf -----------------------------------------------------
 
