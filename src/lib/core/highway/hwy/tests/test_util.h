@@ -23,13 +23,13 @@
 #include <cmath>  // std::isnan
 #include <string>
 
-#include "hwy/highway.h"
+#include "hwy/base.h"
 #include "hwy/print.h"
 
 namespace hwy {
 
 // The maximum vector size used in tests when defining test data. DEPRECATED.
-constexpr size_t kTestMaxVectorSize = 64;
+HWY_MAYBE_UNUSED constexpr size_t kTestMaxVectorSize = 64;
 
 // 64-bit random generator (Xorshift128+). Much smaller state than std::mt19937,
 // which triggers a compiler bug.
@@ -150,18 +150,52 @@ std::string TypeName(T /*unused*/, size_t N) {
   return string100;
 }
 
-// Compare non-vector, non-string T.
-template <typename T>
-HWY_INLINE bool IsEqual(const T expected, const T actual) {
-  const auto info = detail::MakeTypeInfo<T>();
+// Type large enough to hold either value, to which we cast for comparison.
+template <typename T1, typename T2>
+using LargestType = If<IsFloat<T1>() || IsFloat<T2>(),
+                       FloatFromSize<HWY_MAX(sizeof(T1), sizeof(T2))>,
+                       If<IsSigned<T1>() || IsSigned<T2>(),
+                          SignedFromSize<HWY_MAX(sizeof(T1), sizeof(T2))>,
+                          UnsignedFromSize<HWY_MAX(sizeof(T1), sizeof(T2))>>>;
+
+// TTo is the lane type of the actual value and T is an often but not
+// necessarily larger type of the expected value. Especially for 8-bit lanes
+// initialized via Iota, the actual value often wraps around. To ensure it still
+// compares equal to the expected value, wrap integers.
+// 1) < 64-bit integer: mask
+template <typename TTo, typename T, HWY_IF_NOT_FLOAT_NOR_SPECIAL(TTo),
+          HWY_IF_T_SIZE_LE(TTo, 4)>
+T WrapTo(T value) {
+  return static_cast<T>(static_cast<uint64_t>(value) &
+                        ((uint64_t{1} << (sizeof(TTo) * 8)) - 1));
+}
+// 2) 64-bit integer: no mask (shift would overflow)
+template <typename TTo, typename T, HWY_IF_NOT_FLOAT_NOR_SPECIAL(TTo),
+          HWY_IF_T_SIZE_GT(TTo, 4)>
+T WrapTo(T value) {
+  return value;
+}
+// 3) float or special: do nothing because their value range is sufficient for
+// Iota for any vector length.
+template <typename TTo, typename T, HWY_IF_FLOAT_OR_SPECIAL(TTo)>
+T WrapTo(T value) {
+  return value;
+}
+
+// Compare non-vector, non-string T, after promoting to the largest type.
+template <typename TExpected, typename TActual>
+HWY_INLINE bool IsEqual(const TExpected texpected, const TActual actual) {
+  const TActual expected = ConvertScalarTo<TActual>(WrapTo<TActual>(texpected));
+  const auto info = detail::MakeTypeInfo<TActual>();
   return detail::IsEqual(info, &expected, &actual);
 }
 
-template <typename T>
-HWY_INLINE void AssertEqual(const T expected, const T actual,
+template <typename TExpected, typename TActual>
+HWY_INLINE void AssertEqual(const TExpected texpected, const TActual actual,
                             const char* target_name, const char* filename,
                             int line, size_t lane = 0) {
-  const auto info = detail::MakeTypeInfo<T>();
+  const TActual expected = ConvertScalarTo<TActual>(WrapTo<TActual>(texpected));
+  const auto info = detail::MakeTypeInfo<TActual>();
   if (!detail::IsEqual(info, &expected, &actual)) {
     detail::PrintMismatchAndAbort(info, &expected, &actual, target_name,
                                   filename, line, lane);
@@ -175,6 +209,36 @@ HWY_INLINE void AssertArrayEqual(const T* expected, const T* actual,
   const auto info = hwy::detail::MakeTypeInfo<T>();
   detail::AssertArrayEqual(info, expected, actual, count, target_name, filename,
                            line);
+}
+
+// Compare with tolerance due to FMA and f16 precision.
+template <typename T>
+HWY_INLINE void AssertArraySimilar(const T* expected, const T* actual,
+                                   size_t count, const char* target_name,
+                                   const char* filename, int line) {
+  const double tolerance =
+      (hwy::IsSame<RemoveCvRef<T>, float16_t>() ? 128.0 : 1.0) /
+      (uint64_t{1} << MantissaBits<T>());
+  for (size_t i = 0; i < count; ++i) {
+    const double exp = ConvertScalarTo<double>(expected[i]);
+    const double act = ConvertScalarTo<double>(actual[i]);
+    const double l1 = ScalarAbs(act - exp);
+    // Cannot divide, so check absolute error.
+    if (exp == 0.0) {
+      if (l1 > tolerance) {
+        HWY_ABORT("%s %s:%d %s mismatch %zu of %zu: %E %E l1 %E tol %E\n",
+                  target_name, filename, line, TypeName(T(), 1).c_str(), i,
+                  count, exp, act, l1, tolerance);
+      }
+    } else {  // relative
+      const double rel = l1 / exp;
+      if (rel > tolerance) {
+        HWY_ABORT("%s %s:%d %s mismatch %zu of %zu: %E %E rel %E tol %E\n",
+                  target_name, filename, line, TypeName(T(), 1).c_str(), i,
+                  count, exp, act, rel, tolerance);
+      }
+    }
+  }
 }
 
 }  // namespace hwy

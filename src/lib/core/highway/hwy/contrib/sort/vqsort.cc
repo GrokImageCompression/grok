@@ -23,7 +23,7 @@
 // unavailable on Android and non-Linux RVV, we assume that those systems lack
 // getrandom. Note that the only supported sources of entropy are getrandom or
 // Windows, thus VQSORT_SECURE_SEED=0 when this is 0 and we are not on Windows.
-#if defined(ANDROID) || defined(__ANDROID__) || (HWY_ARCH_RVV && !HWY_OS_LINUX)
+#if defined(ANDROID) || defined(__ANDROID__) || (HWY_ARCH_RISCV && !HWY_OS_LINUX)
 #define VQSORT_GETRANDOM 0
 #endif
 
@@ -211,8 +211,6 @@ void Sorter::Fill24Bytes(const void*, size_t, void*) {}
 bool Sorter::HaveFloat64() { return hwy::HaveFloat64(); }
 Sorter::Sorter() {}
 void Sorter::Delete() {}
-uint64_t* GetGeneratorState() {
-  return HWY_STATIC_DISPATCH(detail::GetGeneratorStateStatic());
-}
+uint64_t* GetGeneratorState() { return hwy::detail::GetGeneratorStateStatic(); }
 
 }  // namespace hwy

@@ -1,14 +1,12 @@
 # Frequently Asked Questions
 
-[[TOC]]
-
 ## Getting started
 
 Q0.0: How do I **get the Highway library**?
 
 A: Highway is available in numerous package managers, e.g. under the name
 libhwy-dev. After installing, you can add it to your CMake-based build via
-`find_package(HWY 1.0.7)` and `target_link_libraries(your_project PRIVATE hwy)`.
+`find_package(HWY 1.1.0)` and `target_link_libraries(your_project PRIVATE hwy)`.
 
 Alternatively, if using Git for version control, you can use Highway as a
 'submodule' by adding the following to .gitmodules:
@@ -75,9 +73,11 @@ A: See https://github.com/google/highway#examples.
 
 Q1.3: Where do I find documentation for each **platform's intrinsics**?
 
-A: See [Intel](https://www.intel.com/content/www/us/en/docs/intrinsics-guide),
-[Arm NEON and SVE](https://developer.arm.com/architectures/instruction-sets/intrinsics),
-[RISC-V V](https://github.com/riscv/riscv-v-spec/blob/master/v-spec.adoc),
+A: See Intel [guide](https://www.intel.com/content/www/us/en/docs/intrinsics-guide),
+Arm [guide](https://developer.arm.com/architectures/instruction-sets/intrinsics)
+and [SVE](https://dougallj.github.io/asil/),
+RISC-V V [spec](https://github.com/riscv/riscv-v-spec/blob/master/v-spec.adoc)
+and [guide](https://dzaima.github.io/intrinsics-viewer/#),
 [WebAssembly](https://nemequ.github.io/waspr/intrinsics), PPC
 [ISA](https://openpowerfoundation.org/specifications/isa/) and
 [intrinsics](https://openpowerfoundation.org/specifications/vectorintrinsicprogrammingreference/).

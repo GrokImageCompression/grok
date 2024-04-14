@@ -26,8 +26,18 @@ HWY_BEFORE_NAMESPACE();
 namespace hwy {
 namespace HWY_NAMESPACE {
 
-void SortU32Desc(uint32_t* HWY_RESTRICT keys, size_t num) {
+void SortU32Desc(uint32_t* HWY_RESTRICT keys, const size_t num) {
   return VQSortStatic(keys, num, SortDescending());
+}
+
+void PartialSortU32Desc(uint32_t* HWY_RESTRICT keys, const size_t num,
+                        const size_t k) {
+  return VQPartialSortStatic(keys, num, k, SortDescending());
+}
+
+void SelectU32Desc(uint32_t* HWY_RESTRICT keys, const size_t num,
+                   const size_t k) {
+  return VQSelectStatic(keys, num, k, SortDescending());
 }
 
 // NOLINTNEXTLINE(google-readability-namespace-comments)
@@ -39,10 +49,22 @@ HWY_AFTER_NAMESPACE();
 namespace hwy {
 namespace {
 HWY_EXPORT(SortU32Desc);
+HWY_EXPORT(PartialSortU32Desc);
+HWY_EXPORT(SelectU32Desc);
 }  // namespace
 
-void VQSort(uint32_t* HWY_RESTRICT keys, size_t n, SortDescending) {
+void VQSort(uint32_t* HWY_RESTRICT keys, const size_t n, SortDescending) {
   HWY_DYNAMIC_DISPATCH(SortU32Desc)(keys, n);
+}
+
+void VQPartialSort(uint32_t* HWY_RESTRICT keys, const size_t n, const size_t k,
+                   SortDescending) {
+  HWY_DYNAMIC_DISPATCH(PartialSortU32Desc)(keys, n, k);
+}
+
+void VQSelect(uint32_t* HWY_RESTRICT keys, const size_t n, const size_t k,
+              SortDescending) {
+  HWY_DYNAMIC_DISPATCH(SelectU32Desc)(keys, n, k);
 }
 
 }  // namespace hwy

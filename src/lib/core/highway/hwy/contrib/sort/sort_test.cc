@@ -14,17 +14,19 @@
 // limitations under the License.
 
 #include <stdio.h>
-#include <string.h>  // memcpy
 
+#include <random>
 #include <unordered_map>
 #include <vector>
 
 #include "hwy/base.h"
+#include "hwy/detect_compiler_arch.h"
 
 #undef HWY_TARGET_INCLUDE
 #define HWY_TARGET_INCLUDE "hwy/contrib/sort/sort_test.cc"
 #include "hwy/foreach_target.h"  // IWYU pragma: keep
 // After foreach_target
+#include "hwy/aligned_allocator.h"  // IsAligned
 #include "hwy/contrib/sort/algo-inl.h"
 #include "hwy/contrib/sort/result-inl.h"
 #include "hwy/contrib/sort/traits128-inl.h"
@@ -60,7 +62,7 @@ struct TestFloatLargerSmaller {
   template <typename T, class D>
   HWY_NOINLINE void operator()(T, D d) {
     const Vec<D> p0 = Zero(d);
-    const Vec<D> p1 = Set(d, static_cast<T>(1));
+    const Vec<D> p1 = Set(d, ConvertScalarTo<T>(1));
     const Vec<D> pinf = Inf(d);
     const Vec<D> peps = Set(d, hwy::Epsilon<T>());
     const Vec<D> pmax = Set(d, hwy::HighestValue<T>());
@@ -301,6 +303,12 @@ HWY_NOINLINE void TestAllBaseCase() {
 #if defined(_MSC_VER)
   return;
 #endif
+// TODO(b/314758657): Compiler bug causes incorrect results
+#ifndef VQSORT_DO_NOT_SKIP
+  if (HWY_COMPILER_CLANG && HWY_ARCH_X86 && HWY_TARGET >= HWY_SSSE3) {
+    return;
+  }
+#endif
   TestBaseCase<TraitsLane<OrderAscending<int32_t> > >();
   TestBaseCase<TraitsLane<OtherOrder<int64_t> > >();
 #if !HAVE_INTEL
@@ -534,45 +542,100 @@ class CompareResults {
 
  public:
   CompareResults(const LaneType* in, size_t num_lanes) {
-    copy_.resize(num_lanes);
-    memcpy(copy_.data(), in, num_lanes * sizeof(LaneType));
+    copy_lanes_ = num_lanes;
+    copy_ = hwy::AllocateAligned<LaneType>(num_lanes);
+    CopyBytes(in, copy_.get(), num_lanes * sizeof(LaneType));
+  }
+
+  bool VerifyPartialSort(const LaneType* output, const size_t k) {
+    const Algo reference = Algo::kStdPartialSort;
+    SharedState shared;
+    using Order = typename Traits::Order;
+    const Traits st;
+    constexpr size_t kLPK = st.LanesPerKey();
+    const size_t num_keys = copy_lanes_ / kLPK;
+    Run<Order>(reference, reinterpret_cast<KeyType*>(copy_.get()), num_keys,
+               shared, /*thread=*/0, k);
+#if VQSORT_PRINT >= 3
+    fprintf(stderr, "\nExpected:\n");
+    for (size_t i = 0; i < HWY_MIN(40, copy_lanes_); i += kLPK) {
+      fprintf(stderr, "\n%03zu: ", i);
+      KeyType key;
+      CopyBytes<sizeof(KeyType)>(&copy_[i], &key);
+      PrintValue(key);
+    }
+
+    fprintf(stderr, "\n\nActual:\n");
+    for (size_t i = 0; i < HWY_MIN(40, copy_lanes_); i += kLPK) {
+      fprintf(stderr, "\n%03zu: ", i);
+      KeyType key;
+      CopyBytes<sizeof(KeyType)>(&output[i], &key);
+      PrintValue(key);
+    }
+#endif
+    for (size_t i = 0; i < k; i += kLPK) {
+      // Results should be equivalent, i.e. neither a < b nor b < a.
+      if (st.Compare1(&copy_[i], &output[i]) ||
+          st.Compare1(&output[i], &copy_[i])) {
+        KeyType expected, actual;
+        CopyBytes<sizeof(KeyType)>(&copy_[i], &expected);
+        CopyBytes<sizeof(KeyType)>(&output[i], &actual);
+        fprintf(stderr, "Type %s Asc %d mismatch at %d of %d: ", st.KeyString(),
+                Order().IsAscending(), static_cast<int>(i),
+                static_cast<int>(copy_lanes_));
+        PrintValue(expected);
+        PrintValue(actual);
+        fprintf(stderr, "\n");
+        return false;
+      }
+    }
+    return true;
   }
 
   bool Verify(const LaneType* output) {
 #if HAVE_PDQSORT
     const Algo reference = Algo::kPDQ;
 #else
-    const Algo reference = Algo::kStd;
+    const Algo reference = Algo::kStdSort;
 #endif
     SharedState shared;
     using Order = typename Traits::Order;
     const Traits st;
-    const size_t num_keys = copy_.size() / st.LanesPerKey();
-    Run<Order>(reference, reinterpret_cast<KeyType*>(copy_.data()), num_keys,
+    constexpr size_t kLPK = st.LanesPerKey();
+    const size_t num_keys = copy_lanes_ / kLPK;
+    HWY_ASSERT(hwy::IsAligned(copy_.get(), sizeof(KeyType)));
+    Run<Order>(reference, HWY_RCAST_ALIGNED(KeyType*, copy_.get()), num_keys,
                shared, /*thread=*/0);
 #if VQSORT_PRINT >= 3
     fprintf(stderr, "\nExpected:\n");
-    for (size_t i = 0; i < copy_.size(); ++i) {
-      PrintValue(copy_[i]);
+    for (size_t i = 0; i < HWY_MIN(40, copy_lanes_); i += kLPK) {
+      fprintf(stderr, "\n%03zu: ", i);
+      KeyType key;
+      CopyBytes<sizeof(KeyType)>(&copy_[i], &key);
+      PrintValue(key);
     }
-    fprintf(stderr, "\n");
+
+    fprintf(stderr, "\n\nActual:\n");
+    for (size_t i = 0; i < HWY_MIN(40, copy_lanes_); i += kLPK) {
+      fprintf(stderr, "\n%03zu: ", i);
+      KeyType key;
+      CopyBytes<sizeof(KeyType)>(&output[i], &key);
+      PrintValue(key);
+    }
 #endif
-    for (size_t i = 0; i < copy_.size(); ++i) {
-      if (copy_[i] != output[i]) {
-        if (sizeof(KeyType) == 16) {
-          fprintf(stderr, "%s Asc %d mismatch at %d of %d: %g %g\n",
-                  st.KeyString(), Order().IsAscending(), static_cast<int>(i),
-                  static_cast<int>(copy_.size()), static_cast<double>(copy_[i]),
-                  static_cast<double>(output[i]));
-        } else {
-          fprintf(stderr,
-                  "Type %s Asc %d mismatch at %d of %d: ", st.KeyString(),
-                  Order().IsAscending(), static_cast<int>(i),
-                  static_cast<int>(copy_.size()));
-          PrintValue(copy_[i]);
-          PrintValue(output[i]);
-          fprintf(stderr, "\n");
-        }
+    for (size_t i = 0; i < copy_lanes_; i += kLPK) {
+      // Results should be equivalent, i.e. neither a < b nor b < a.
+      if (st.Compare1(&copy_[i], &output[i]) ||
+          st.Compare1(&output[i], &copy_[i])) {
+        KeyType expected, actual;
+        CopyBytes<sizeof(KeyType)>(&copy_[i], &expected);
+        CopyBytes<sizeof(KeyType)>(&output[i], &actual);
+        fprintf(stderr, "Type %s Asc %d mismatch at %d of %d: ", st.KeyString(),
+                Order().IsAscending(), static_cast<int>(i),
+                static_cast<int>(copy_lanes_));
+        PrintValue(expected);
+        PrintValue(actual);
+        fprintf(stderr, "\n");
         return false;
       }
     }
@@ -580,10 +643,11 @@ class CompareResults {
   }
 
  private:
-  std::vector<LaneType> copy_;
+  hwy::AlignedFreeUniquePtr<LaneType[]> copy_;
+  size_t copy_lanes_;
 };
 
-std::vector<Algo> AlgoForTest() {
+std::vector<Algo> SortAlgoForTest() {
   return {
 #if HAVE_AVX2SORT
     Algo::kSEA,
@@ -600,7 +664,7 @@ std::vector<Algo> AlgoForTest() {
 #if VQSORT_ENABLED
         Algo::kVQSort,
 #endif
-        Algo::kHeap,
+        Algo::kHeapSort,
   };
 }
 
@@ -624,7 +688,7 @@ void TestSort(size_t num_lanes) {
   auto aligned =
       hwy::AllocateAligned<LaneType>(kMaxMisalign + num_lanes + kMaxMisalign);
   HWY_ASSERT(aligned);
-  for (Algo algo : AlgoForTest()) {
+  for (Algo algo : SortAlgoForTest()) {
     for (Dist dist : AllDist()) {
       for (size_t misalign : {size_t{0}, size_t{st.LanesPerKey()},
                               size_t{3 * st.LanesPerKey()}, kMaxMisalign / 2}) {
@@ -645,16 +709,15 @@ void TestSort(size_t num_lanes) {
             GenerateInput(dist, lanes, num_lanes);
 
         CompareResults<Traits> compare(lanes, num_lanes);
-        Run<Order>(algo, reinterpret_cast<KeyType*>(lanes), num_keys, shared,
+        HWY_ASSERT(hwy::IsAligned(lanes, sizeof(KeyType)));
+        Run<Order>(algo, HWY_RCAST_ALIGNED(KeyType*, lanes), num_keys, shared,
                    /*thread=*/0);
         HWY_ASSERT(compare.Verify(lanes));
         HWY_ASSERT(VerifySort(st, input_stats, lanes, num_lanes, "TestSort"));
 
         // Check red zones
-#if HWY_IS_MSAN
-        __msan_unpoison(aligned.get(), misalign * sizeof(LaneType));
-        __msan_unpoison(lanes + num_lanes, kMaxMisalign * sizeof(LaneType));
-#endif
+        detail::MaybeUnpoison(aligned.get(), misalign);
+        detail::MaybeUnpoison(lanes + num_lanes, kMaxMisalign);
         for (size_t i = 0; i < misalign; ++i) {
           if (aligned[i] != hwy::LowestValue<LaneType>())
             HWY_ABORT("Overrun left at %d\n", static_cast<int>(i));
@@ -669,6 +732,13 @@ void TestSort(size_t num_lanes) {
 }
 
 void TestAllSort() {
+// TODO(b/314758657): Compiler bug causes incorrect results
+#ifndef VQSORT_DO_NOT_SKIP
+  if (HWY_COMPILER_CLANG && HWY_ARCH_X86 && HWY_TARGET >= HWY_SSSE3) {
+    return;
+  }
+#endif
+
   for (int num : {129, 504, 3 * 1000, 34567}) {
     const size_t num_lanes = AdjustedReps(static_cast<size_t>(num));
 #if !HAVE_INTEL
@@ -713,6 +783,246 @@ void TestAllSort() {
   }
 }
 
+std::vector<Algo> PartialSortAlgoForTest() {
+  return {
+#if VQSORT_ENABLED
+    Algo::kVQPartialSort,
+#endif
+        Algo::kHeapPartialSort,
+  };
+}
+
+template <class Traits>
+void TestPartialSort(size_t num_lanes) {
+// Workaround for stack overflow on clang-cl (/F 8388608 does not help).
+#if defined(_MSC_VER)
+  return;
+#endif
+  using Order = typename Traits::Order;
+  using LaneType = typename Traits::LaneType;
+  using KeyType = typename Traits::KeyType;
+  SharedState shared;
+  SharedTraits<Traits> st;
+
+  // Round up to a whole number of keys.
+  num_lanes += (st.Is128() && (num_lanes & 1));
+  const size_t num_keys = num_lanes / st.LanesPerKey();
+
+  std::mt19937 rng(42);
+  std::uniform_int_distribution<size_t> k_dist(2 * st.LanesPerKey(),
+                                               num_keys - 1);
+
+  constexpr size_t kMaxMisalign = 16;
+  auto aligned =
+      hwy::AllocateAligned<LaneType>(kMaxMisalign + num_lanes + kMaxMisalign);
+  HWY_ASSERT(aligned);
+  for (Algo algo : PartialSortAlgoForTest()) {
+    for (Dist dist : AllDist()) {
+      for (size_t misalign : {size_t{0}, size_t{st.LanesPerKey()},
+                              size_t{3 * st.LanesPerKey()}, kMaxMisalign / 2}) {
+        for (size_t ki = 0; ki < 10; ++ki) {
+          LaneType* lanes = aligned.get() + misalign;
+
+          // Set up red zones before/after the keys to sort
+          for (size_t i = 0; i < misalign; ++i) {
+            aligned[i] = hwy::LowestValue<LaneType>();
+          }
+          for (size_t i = 0; i < kMaxMisalign; ++i) {
+            lanes[num_lanes + i] = hwy::HighestValue<LaneType>();
+          }
+#if HWY_IS_MSAN
+          __msan_poison(aligned.get(), misalign * sizeof(LaneType));
+          __msan_poison(lanes + num_lanes, kMaxMisalign * sizeof(LaneType));
+#endif
+          size_t k = k_dist(rng);
+          InputStats<LaneType> input_stats =
+              GenerateInput(dist, lanes, num_lanes);
+
+          CompareResults<Traits> compare(lanes, num_lanes);
+          Run<Order>(algo, reinterpret_cast<KeyType*>(lanes), num_keys, shared,
+                     /*thread=*/0, k);
+          HWY_ASSERT(compare.VerifyPartialSort(lanes, k));
+          HWY_ASSERT(VerifyPartialSort(st, input_stats, lanes, num_lanes, k,
+                                       "TestPartialSort"));
+
+          // Check red zones
+          detail::MaybeUnpoison(aligned.get(), misalign);
+          detail::MaybeUnpoison(lanes + num_lanes, kMaxMisalign);
+
+          for (size_t i = 0; i < misalign; ++i) {
+            if (aligned[i] != hwy::LowestValue<LaneType>())
+              HWY_ABORT("Overrun left at %d\n", static_cast<int>(i));
+          }
+          for (size_t i = num_lanes; i < num_lanes + kMaxMisalign; ++i) {
+            if (lanes[i] != hwy::HighestValue<LaneType>())
+              HWY_ABORT("Overrun right at %d\n", static_cast<int>(i));
+          }
+        }  // ki
+      }    // misalign
+    }      // dist
+  }        // algo
+}
+
+void TestAllPartialSort() {
+// TODO(b/314758657): Compiler bug causes incorrect results
+#ifndef VQSORT_DO_NOT_SKIP
+  if (HWY_COMPILER_CLANG && HWY_ARCH_X86 && HWY_TARGET >= HWY_SSSE3) {
+    return;
+  }
+#endif
+
+  for (int num : {129, 504, 3 * 1000, 34567}) {
+    const size_t num_lanes = AdjustedReps(static_cast<size_t>(num));
+#if !HAVE_INTEL
+    TestPartialSort<TraitsLane<OrderAscending<int16_t> > >(num_lanes);
+    TestPartialSort<TraitsLane<OtherOrder<uint16_t> > >(num_lanes);
+#endif
+
+    TestPartialSort<TraitsLane<OtherOrder<int32_t> > >(num_lanes);
+    TestPartialSort<TraitsLane<OtherOrder<uint32_t> > >(num_lanes);
+
+    TestPartialSort<TraitsLane<OrderAscending<int64_t> > >(num_lanes);
+    TestPartialSort<TraitsLane<OrderAscending<uint64_t> > >(num_lanes);
+
+    // WARNING: for float types, SIMD comparisons will flush denormals to
+    // zero, causing mismatches with scalar sorts. In this test, we avoid
+    // generating denormal inputs.
+#if HWY_HAVE_FLOAT16  // #if protects algo-inl's GenerateRandom
+    // Must also check whether the dynamic-dispatch target supports float16_t!
+    if (hwy::HaveFloat16()) {
+      TestPartialSort<TraitsLane<OrderAscending<float16_t> > >(num_lanes);
+    }
+#endif
+    TestPartialSort<TraitsLane<OrderAscending<float> > >(num_lanes);
+#if HWY_HAVE_FLOAT64  // #if protects algo-inl's GenerateRandom
+    // Must also check whether the dynamic-dispatch target supports float64!
+    if (hwy::HaveFloat64()) {
+      TestPartialSort<TraitsLane<OtherOrder<double> > >(num_lanes);
+    }
+#endif
+  }
+}
+
+std::vector<Algo> SelectAlgoForTest() {
+  return {
+#if VQSORT_ENABLED
+    Algo::kVQSelect,
+#endif
+        Algo::kHeapSelect,
+  };
+}
+
+template <class Traits>
+void TestSelect(size_t num_lanes) {
+// Workaround for stack overflow on clang-cl (/F 8388608 does not help).
+#if defined(_MSC_VER)
+  return;
+#endif
+  using Order = typename Traits::Order;
+  using LaneType = typename Traits::LaneType;
+  using KeyType = typename Traits::KeyType;
+  SharedState shared;
+  SharedTraits<Traits> st;
+
+  // Round up to a whole number of keys.
+  num_lanes += (st.Is128() && (num_lanes & 1));
+  const size_t num_keys = num_lanes / st.LanesPerKey();
+
+  std::mt19937 rng(42);
+  std::uniform_int_distribution<size_t> k_dist(2 * st.LanesPerKey(),
+                                               num_keys - 1);
+
+  constexpr size_t kMaxMisalign = 16;
+  auto aligned =
+      hwy::AllocateAligned<LaneType>(kMaxMisalign + num_lanes + kMaxMisalign);
+  HWY_ASSERT(aligned);
+  for (Algo algo : SelectAlgoForTest()) {
+    for (Dist dist : AllDist()) {
+      for (size_t misalign : {size_t{0}, size_t{st.LanesPerKey()},
+                              size_t{3 * st.LanesPerKey()}, kMaxMisalign / 2}) {
+        for (size_t ki = 0; ki < 10; ++ki) {
+          LaneType* lanes = aligned.get() + misalign;
+
+          // Set up red zones before/after the keys to sort
+          for (size_t i = 0; i < misalign; ++i) {
+            aligned[i] = hwy::LowestValue<LaneType>();
+          }
+          for (size_t i = 0; i < kMaxMisalign; ++i) {
+            lanes[num_lanes + i] = hwy::HighestValue<LaneType>();
+          }
+#if HWY_IS_MSAN
+          __msan_poison(aligned.get(), misalign * sizeof(LaneType));
+          __msan_poison(lanes + num_lanes, kMaxMisalign * sizeof(LaneType));
+#endif
+          InputStats<LaneType> input_stats =
+              GenerateInput(dist, lanes, num_lanes);
+
+          size_t k = k_dist(rng);
+
+          Run<Order>(algo, reinterpret_cast<KeyType*>(lanes), num_keys, shared,
+                     /*thread=*/0, k);
+          // TODO: compare kth element with kth element of std::nth_element
+          HWY_ASSERT(
+              VerifySelect(st, input_stats, lanes, num_lanes, k, "TestSelect"));
+
+          // Check red zones
+          detail::MaybeUnpoison(aligned.get(), misalign);
+          detail::MaybeUnpoison(lanes + num_lanes, kMaxMisalign);
+
+          for (size_t i = 0; i < misalign; ++i) {
+            if (aligned[i] != hwy::LowestValue<LaneType>())
+              HWY_ABORT("Overrun left at %d\n", static_cast<int>(i));
+          }
+          for (size_t i = num_lanes; i < num_lanes + kMaxMisalign; ++i) {
+            if (lanes[i] != hwy::HighestValue<LaneType>())
+              HWY_ABORT("Overrun right at %d\n", static_cast<int>(i));
+          }
+        }  // ki
+      }    // misalign
+    }      // dist
+  }        // algo
+}
+
+void TestAllSelect() {
+// TODO(b/314758657): Compiler bug causes incorrect results
+#ifndef VQSORT_DO_NOT_SKIP
+  if (HWY_COMPILER_CLANG && HWY_ARCH_X86 && HWY_TARGET >= HWY_SSSE3) {
+    return;
+  }
+#endif
+
+  for (int num : {129, 504, 3 * 1000, 34567}) {
+    const size_t num_lanes = AdjustedReps(static_cast<size_t>(num));
+#if !HAVE_INTEL
+    TestSelect<TraitsLane<OrderAscending<int16_t> > >(num_lanes);
+    TestSelect<TraitsLane<OtherOrder<uint16_t> > >(num_lanes);
+#endif
+
+    TestSelect<TraitsLane<OtherOrder<int32_t> > >(num_lanes);
+    TestSelect<TraitsLane<OtherOrder<uint32_t> > >(num_lanes);
+
+    TestSelect<TraitsLane<OrderAscending<int64_t> > >(num_lanes);
+    TestSelect<TraitsLane<OrderAscending<uint64_t> > >(num_lanes);
+
+    // WARNING: for float types, SIMD comparisons will flush denormals to
+    // zero, causing mismatches with scalar sorts. In this test, we avoid
+    // generating denormal inputs.
+#if HWY_HAVE_FLOAT16  // #if protects algo-inl's GenerateRandom
+    // Must also check whether the dynamic-dispatch target supports float16_t!
+    if (hwy::HaveFloat16()) {
+      TestSelect<TraitsLane<OrderAscending<float16_t> > >(num_lanes);
+    }
+#endif
+    TestSelect<TraitsLane<OrderAscending<float> > >(num_lanes);
+#if HWY_HAVE_FLOAT64  // #if protects algo-inl's GenerateRandom
+    // Must also check whether the dynamic-dispatch target supports float64!
+    if (hwy::HaveFloat64()) {
+      TestSelect<TraitsLane<OtherOrder<double> > >(num_lanes);
+    }
+#endif
+  }
+}
+
 }  // namespace
 // NOLINTNEXTLINE(google-readability-namespace-comments)
 }  // namespace HWY_NAMESPACE
@@ -722,7 +1032,6 @@ HWY_AFTER_NAMESPACE();
 #if HWY_ONCE
 
 namespace hwy {
-namespace {
 HWY_BEFORE_TEST(SortTest);
 HWY_EXPORT_AND_TEST_P(SortTest, TestAllFloatLargerSmaller);
 HWY_EXPORT_AND_TEST_P(SortTest, TestAllFloatInf);
@@ -731,7 +1040,9 @@ HWY_EXPORT_AND_TEST_P(SortTest, TestAllBaseCase);
 HWY_EXPORT_AND_TEST_P(SortTest, TestAllPartition);
 HWY_EXPORT_AND_TEST_P(SortTest, TestAllGenerator);
 HWY_EXPORT_AND_TEST_P(SortTest, TestAllSort);
-}  // namespace
+HWY_EXPORT_AND_TEST_P(SortTest, TestAllSelect);
+HWY_EXPORT_AND_TEST_P(SortTest, TestAllPartialSort);
+HWY_AFTER_TEST();
 }  // namespace hwy
 
 #endif  // HWY_ONCE

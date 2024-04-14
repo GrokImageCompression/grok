@@ -1,7 +1,5 @@
 # Highway implementation details
 
-[TOC]
-
 ## Introduction
 
 This doc explains some of the Highway implementation details; understanding them
@@ -245,6 +243,11 @@ For POWER targets `HWY_PPC8`, `HWY_PPC9`, `HWY_PPC10`, there is
 [documentation of intrinsics](https://files.openpower.foundation/s/9nRDmJgfjM8MpR7),
 the [ISA](https://files.openpower.foundation/s/dAYSdGzTfW4j2r2), plus a
 [searchable reference](https://www.ibm.com/docs/en/openxl-c-and-cpp-aix/17.1.1?).
+
+For ZVector targets `HWY_Z14`, `HWY_Z15`, `HWY_Z16`, there is the
+[ISA](https://www.ibm.com/support/pages/zarchitecture-principles-operation)
+(requires IBMid login), plus a
+[searchable reference](https://www.ibm.com/docs/en/zos/2.5.0?topic=topics-using-vector-programming-support).
 
 ## Why scalar target
 

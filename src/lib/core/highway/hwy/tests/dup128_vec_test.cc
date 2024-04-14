@@ -70,22 +70,22 @@ struct TestDup128VecFromValues {
   }
 
   template <class D, class T, HWY_IF_BF16_D(D)>
-  static HWY_INLINE bfloat16_t CastValueToLaneType(D /*d*/, T val) {
+  static HWY_INLINE hwy::bfloat16_t CastValueToLaneType(D /*d*/, T val) {
     return BF16FromF32(static_cast<float>(val));
   }
 
   template <class D, class T, HWY_IF_F16_D(D)>
-  static HWY_INLINE float16_t CastValueToLaneType(D /*d*/, T val) {
+  static HWY_INLINE hwy::float16_t CastValueToLaneType(D /*d*/, T val) {
     return F16FromF32(static_cast<float>(val));
   }
 
-  template <class D, class T, HWY_IF_NOT_SPECIAL_FLOAT_D(D)>
-  static HWY_INLINE Vec<D> BlockwiseIota(D d, T start) {
+  template <class D, typename T2, HWY_IF_NOT_SPECIAL_FLOAT_D(D)>
+  static HWY_INLINE Vec<D> BlockwiseIota(D d, T2 start) {
     return BroadcastBlock<0>(Iota(d, static_cast<TFromD<D>>(start)));
   }
 
-  template <class D, class T, HWY_IF_BF16_D(D)>
-  static HWY_INLINE Vec<D> BlockwiseIota(D d, T start) {
+  template <class D, typename T2, HWY_IF_BF16_D(D)>
+  static HWY_INLINE Vec<D> BlockwiseIota(D d, T2 start) {
 #if HWY_TARGET == HWY_SCALAR
     return Set(d, BF16FromF32(static_cast<float>(start)));
 #else  // HWY_TARGET != HWY_SCALAR
@@ -98,27 +98,25 @@ struct TestDup128VecFromValues {
 #else
     const FixedTag<float, 8> df32;
 #endif
-    const Rebind<bfloat16_t, decltype(df32)> dbf16;
+    const Rebind<hwy::bfloat16_t, decltype(df32)> dbf16;
 
-    const auto vbf16_iota =
-        DemoteTo(dbf16, Iota(df32, static_cast<float>(start)));
+    const auto vbf16_iota = DemoteTo(dbf16, Iota(df32, start));
 #else
     const FixedTag<float, 4> df32;
-    const Repartition<bfloat16_t, decltype(df32)> dbf16;
+    const Repartition<hwy::bfloat16_t, decltype(df32)> dbf16;
 
-    const auto vbf16_iota =
-        OrderedDemote2To(dbf16, Iota(df32, static_cast<float>(start)),
-                         Iota(df32, static_cast<float>(start) + 4.0f));
+    const auto vbf16_iota = OrderedDemote2To(
+        dbf16, Iota(df32, start), Iota(df32, static_cast<float>(start) + 4.0f));
 #endif
 
     return BroadcastBlock<0>(ResizeBitCast(d, vbf16_iota));
 #endif  // HWY_TARGET == HWY_SCALAR
   }
 
-  template <class D, class T, HWY_IF_F16_D(D)>
-  static HWY_INLINE Vec<D> BlockwiseIota(D d, T start) {
+  template <class D, typename T2, HWY_IF_F16_D(D)>
+  static HWY_INLINE Vec<D> BlockwiseIota(D d, T2 start) {
 #if HWY_HAVE_FLOAT16
-    return BroadcastBlock<0>(Iota(d, static_cast<TFromD<D>>(start)));
+    return BroadcastBlock<0>(Iota(d, start));
 #elif HWY_TARGET == HWY_SCALAR
     return Set(d, F16FromF32(static_cast<float>(start)));
 #else  // !HWY_HAVE_FLOAT16 && HWY_TARGET != HWY_SCALAR
@@ -131,18 +129,17 @@ struct TestDup128VecFromValues {
 #else
     const FixedTag<float, 8> df32;
 #endif
-    const Rebind<float16_t, decltype(df32)> df16;
+    const Rebind<hwy::float16_t, decltype(df32)> df16;
 
-    const auto vf16_iota =
-        DemoteTo(df16, Iota(df32, static_cast<float>(start)));
+    const auto vf16_iota = DemoteTo(df16, Iota(df32, start));
 #else
     const FixedTag<float, 4> df32;
-    const Repartition<float16_t, decltype(df32)> df16;
+    const Repartition<hwy::float16_t, decltype(df32)> df16;
     const Half<decltype(df16)> dh_f16;
 
     const auto vf16_iota = Combine(
         df16, DemoteTo(dh_f16, Iota(df32, static_cast<float>(start) + 4.0f)),
-        DemoteTo(dh_f16, Iota(df32, static_cast<float>(start))));
+        DemoteTo(dh_f16, Iota(df32, start)));
 #endif
 
     return BroadcastBlock<0>(ResizeBitCast(d, vf16_iota));
@@ -194,14 +191,15 @@ struct TestDup128VecFromValues {
                       CastValueToLaneType(d, -1)));
 
     RandomState rng;
-    alignas(16) T rand_vals[16];
+    auto rand_vals = AllocateAligned<T>(16);
+    HWY_ASSERT(rand_vals);
 
     for (size_t rep = 0; rep < AdjustedReps(200); ++rep) {
-      for (size_t i = 0; i < 16; i++) {
+      for (size_t i = 0; i < 16; ++i) {
         rand_vals[i] = RandomFiniteValue<T>(&rng);
       }
 
-      const auto expected = LoadDup128(d, rand_vals);
+      const auto expected = LoadDup128(d, rand_vals.get());
       const auto actual = VecFromValues(
           d, rand_vals[0], rand_vals[1], rand_vals[2], rand_vals[3],
           rand_vals[4], rand_vals[5], rand_vals[6], rand_vals[7], rand_vals[8],
@@ -215,8 +213,8 @@ struct TestDup128VecFromValues {
 HWY_NOINLINE void TestAllDup128VecFromValues() {
   const ForPartialVectors<TestDup128VecFromValues> func;
   ForIntegerTypes(func);
-  func(float16_t());
-  func(bfloat16_t());
+  func(hwy::float16_t());
+  func(hwy::bfloat16_t());
   ForFloat3264Types(func);
 }
 
@@ -230,6 +228,7 @@ HWY_AFTER_NAMESPACE();
 namespace hwy {
 HWY_BEFORE_TEST(HwyDup128VecTest);
 HWY_EXPORT_AND_TEST_P(HwyDup128VecTest, TestAllDup128VecFromValues);
+HWY_AFTER_TEST();
 }  // namespace hwy
 
 #endif  // HWY_ONCE

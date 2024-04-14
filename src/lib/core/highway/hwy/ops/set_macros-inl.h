@@ -1,5 +1,7 @@
 // Copyright 2020 Google LLC
+// Copyright 2024 Arm Limited and/or its affiliates <open-source-office@arm.com>
 // SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: BSD-3-Clause
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -116,7 +118,15 @@
   ",vpclmulqdq,avx512vbmi,avx512vbmi2,vaes,avx512vnni,avx512bitalg," \
   "avx512vpopcntdq,gfni"
 
-#define HWY_TARGET_STR_AVX3_SPR HWY_TARGET_STR_AVX3_DL ",avx512fp16"
+#if !HWY_COMPILER_CLANGCL &&                                          \
+    (HWY_COMPILER_GCC_ACTUAL >= 1000 || HWY_COMPILER_CLANG >= 900) && \
+    !defined(HWY_AVX3_DISABLE_AVX512BF16)
+#define HWY_TARGET_STR_AVX3_ZEN4 HWY_TARGET_STR_AVX3_DL ",avx512bf16"
+#else
+#define HWY_TARGET_STR_AVX3_ZEN4 HWY_TARGET_STR_AVX3_DL
+#endif
+
+#define HWY_TARGET_STR_AVX3_SPR HWY_TARGET_STR_AVX3_ZEN4 ",avx512fp16"
 
 #if defined(HWY_DISABLE_PPC8_CRYPTO)
 #define HWY_TARGET_STR_PPC8_CRYPTO ""
@@ -142,6 +152,9 @@
 // https://gcc.gnu.org/legacy-ml/gcc-patches/2013-07/msg00167.html.
 #define HWY_TARGET_STR_PPC10 HWY_TARGET_STR_PPC9 ",cpu=power10,htm"
 #endif
+
+#define HWY_TARGET_STR_Z14 "arch=z14"
+#define HWY_TARGET_STR_Z15 "arch=z15"
 
 // Before include guard so we redefine HWY_TARGET_STR on each include,
 // governed by the current HWY_TARGET.
@@ -242,7 +255,10 @@
 
 #define HWY_HAVE_SCALABLE 0
 #define HWY_HAVE_INTEGER64 1
-#if (HWY_TARGET == HWY_AVX3_SPR) && 0  // TODO(janwas): enable after testing
+#if HWY_TARGET == HWY_AVX3_SPR && HWY_COMPILER_GCC_ACTUAL && \
+    HWY_HAVE_SCALAR_F16_TYPE
+// TODO: enable F16 for AVX3_SPR target with Clang once compilation issues are
+// fixed
 #define HWY_HAVE_FLOAT16 1
 #else
 #define HWY_HAVE_FLOAT16 0
@@ -266,8 +282,7 @@
 #elif HWY_TARGET == HWY_AVX3_ZEN4
 
 #define HWY_NAMESPACE N_AVX3_ZEN4
-// Currently the same as HWY_AVX3_DL: both support Icelake.
-#define HWY_TARGET_STR HWY_TARGET_STR_AVX3_DL
+#define HWY_TARGET_STR HWY_TARGET_STR_AVX3_ZEN4
 
 #elif HWY_TARGET == HWY_AVX3_SPR
 
@@ -316,6 +331,37 @@
 #endif  // HWY_TARGET == HWY_PPC10
 
 //-----------------------------------------------------------------------------
+// Z14, Z15
+#elif HWY_TARGET == HWY_Z14 || HWY_TARGET == HWY_Z15
+
+#define HWY_ALIGN alignas(16)
+#define HWY_MAX_BYTES 16
+#define HWY_LANES(T) (16 / sizeof(T))
+
+#define HWY_HAVE_SCALABLE 0
+#define HWY_HAVE_INTEGER64 1
+#define HWY_HAVE_FLOAT16 0
+#define HWY_HAVE_FLOAT64 1
+#define HWY_MEM_OPS_MIGHT_FAULT 1
+#define HWY_NATIVE_FMA 1
+#define HWY_CAP_GE256 0
+#define HWY_CAP_GE512 0
+
+#if HWY_TARGET == HWY_Z14
+
+#define HWY_NAMESPACE N_Z14
+#define HWY_TARGET_STR HWY_TARGET_STR_Z14
+
+#elif HWY_TARGET == HWY_Z15
+
+#define HWY_NAMESPACE N_Z15
+#define HWY_TARGET_STR HWY_TARGET_STR_Z15
+
+#else
+#error "Logic error"
+#endif  // HWY_TARGET == HWY_Z15
+
+//-----------------------------------------------------------------------------
 // NEON
 #elif HWY_TARGET == HWY_NEON || HWY_TARGET == HWY_NEON_WITHOUT_AES
 
@@ -339,7 +385,7 @@
 
 #define HWY_MEM_OPS_MIGHT_FAULT 1
 
-#if defined(__ARM_VFPV4__) || HWY_ARCH_ARM_A64
+#if defined(__ARM_FEATURE_FMA) || defined(__ARM_VFPV4__) || HWY_ARCH_ARM_A64
 #define HWY_NATIVE_FMA 1
 #else
 #define HWY_NATIVE_FMA 0
@@ -391,7 +437,7 @@
 #define HWY_LANES(T) ((HWY_MAX_BYTES) / sizeof(T))
 
 #define HWY_HAVE_INTEGER64 1
-#define HWY_HAVE_FLOAT16 0
+#define HWY_HAVE_FLOAT16 1
 #define HWY_HAVE_FLOAT64 1
 #define HWY_MEM_OPS_MIGHT_FAULT 0
 #define HWY_NATIVE_FMA 1
@@ -498,7 +544,7 @@
 #define HWY_CAP_GE256 0
 #define HWY_CAP_GE512 0
 
-#if defined(__riscv_zvfh)
+#if HWY_RVV_HAVE_F16_VEC
 #define HWY_HAVE_FLOAT16 1
 #else
 #define HWY_HAVE_FLOAT16 0
@@ -554,6 +600,14 @@
 #else
 #pragma message("HWY_TARGET does not match any known target")
 #endif  // HWY_TARGET
+
+//-----------------------------------------------------------------------------
+
+// Sanity check: if we have f16 vector support, then base.h should also be
+// using a built-in type for f16 scalars.
+#if HWY_HAVE_FLOAT16 && !HWY_HAVE_SCALAR_F16_TYPE
+#error "Logic error: f16 vectors but no scalars"
+#endif
 
 // Override this to 1 in asan/msan builds, which will still fault.
 #if HWY_IS_ASAN || HWY_IS_MSAN

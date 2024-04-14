@@ -1,4 +1,7 @@
 # Copyright 2019 Google LLC
+# Copyright 2024 Arm Limited and/or its affiliates <open-source-office@arm.com>
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: BSD-3-Clause
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -33,7 +36,7 @@ if(POLICY CMP0128)
   cmake_policy(SET CMP0128 NEW)
 endif()
 
-project(hwy VERSION 1.0.7)  # Keep in sync with highway.h version
+project(hwy VERSION 1.1.0)  # Keep in sync with highway.h version
 # `hwy` is lowercase to handle find_package() in Config mode:
 set(namespace "${PROJECT_NAME}::")
 
@@ -107,11 +110,13 @@ if (HWY_ENABLE_CONTRIB)
 # additional special cases.
 file(GLOB HWY_CONTRIB_SOURCES "hwy/contrib/sort/vqsort_*.cc")
 list(APPEND HWY_CONTRIB_SOURCES
+    hwy/contrib/bit_pack/bit_pack-inl.h
     hwy/contrib/dot/dot-inl.h
     hwy/contrib/image/image.cc
     hwy/contrib/image/image.h
     hwy/contrib/math/math-inl.h
     hwy/contrib/matvec/matvec-inl.h
+    hwy/contrib/random/random-inl.h
     hwy/contrib/sort/order.h
     hwy/contrib/sort/shared-inl.h
     hwy/contrib/sort/sorting_networks-inl.h
@@ -120,7 +125,7 @@ list(APPEND HWY_CONTRIB_SOURCES
     hwy/contrib/sort/vqsort-inl.h
     hwy/contrib/sort/vqsort.cc
     hwy/contrib/sort/vqsort.h
-    hwy/contrib/thread_pool/thread_pool.cc
+    hwy/contrib/thread_pool/futex.h
     hwy/contrib/thread_pool/thread_pool.h
     hwy/contrib/algo/copy-inl.h
     hwy/contrib/algo/find-inl.h
@@ -130,6 +135,8 @@ list(APPEND HWY_CONTRIB_SOURCES
 endif()  # HWY_ENABLE_CONTRIB
 
 set(HWY_SOURCES
+    hwy/abort.cc
+    hwy/abort.h
     hwy/aligned_allocator.cc
     hwy/aligned_allocator.h
     hwy/base.h
@@ -141,6 +148,7 @@ set(HWY_SOURCES
     hwy/highway_export.h
     hwy/nanobenchmark.cc
     hwy/nanobenchmark.h
+    hwy/profiler.h
     hwy/ops/arm_neon-inl.h
     hwy/ops/arm_sve-inl.h
     hwy/ops/emu128-inl.h
@@ -179,7 +187,52 @@ if (MSVC)
   set(HWY_FLAGS
     # fix build error C1128 in blockwise*_test & arithmetic_test
     /bigobj
+
+    # Warnings
+    /W4
+    # Disable some W4 warnings.  Enable them individually after they are cleaned up.
+    /wd4100
+    /wd4127
+    /wd4324
+    /wd4456
+    /wd4701
+    /wd4702
+    /wd4723
+
+    # CMake automatically adds exception handling flags.  Remove them.
+    /GR-
+    /EHs-c-
+    # Disable exceptions in STL code.
+    -D_HAS_EXCEPTIONS=0
   )
+
+  # This adds extra warnings for the clang-cl compiler on Windows.
+  # This is the same as the sections in the else part.
+  # These could be refactored.
+  if (${CMAKE_CXX_COMPILER_ID} MATCHES "Clang")
+    list(APPEND HWY_FLAGS
+      # These are not included in Wall nor Wextra:
+      -Wconversion
+      -Wsign-conversion
+      -Wvla
+      -Wnon-virtual-dtor
+
+      -Wfloat-overflow-conversion
+      -Wfloat-zero-conversion
+      -Wfor-loop-analysis
+      -Wgnu-redeclared-enum
+      -Winfinite-recursion
+      -Wself-assign
+      -Wstring-conversion
+      -Wtautological-overlap-compare
+      -Wthread-safety-analysis
+      -Wundefined-func-template
+    )
+  endif()
+
+  if (HWY_WARNINGS_ARE_ERRORS)
+    list(APPEND HWY_FLAGS /WX)
+  endif()
 else()
   set(HWY_FLAGS
     # Avoid changing binaries based on the current time and date.
@@ -199,6 +252,7 @@ else()
     -Wsign-conversion
     -Wvla
     -Wnon-virtual-dtor
+    -Wcast-align # see -Wcast-align=strict on x86
   )
 
   if(${CMAKE_CXX_COMPILER_ID} MATCHES "Clang")
@@ -259,6 +313,18 @@ else()
   # Workaround for excess precision, see #1488.
   if (HWY_CMAKE_SSE2)
     list(APPEND HWY_FLAGS -msse2 -mfpmath=sse)
+  endif()
+
+  # Suppress STL iterator warnings. Supported by GCC 4.4.7 and newer, which
+  # predates the C++11 we require.
+  if (${CMAKE_CXX_COMPILER_ID} MATCHES "GNU")
+    list(APPEND HWY_FLAGS -Wno-psabi)
+  endif()
+  # Clang supports this flag from 11.0.
+  if (${CMAKE_CXX_COMPILER_ID} MATCHES "Clang")
+    if (CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 11.0)
+      list(APPEND HWY_FLAGS -Wno-psabi)
+    endif()
   endif()
 
   if (HWY_CMAKE_ARM7)
@@ -493,6 +559,16 @@ target_link_libraries(hwy_benchmark PRIVATE ${ATOMICS_LIBRARIES})
 set_target_properties(hwy_benchmark
     PROPERTIES RUNTIME_OUTPUT_DIRECTORY "examples/")
 
+# Profiler demo
+add_executable(hwy_profiler_example hwy/examples/profiler_example.cc)
+target_sources(hwy_profiler_example PRIVATE
+    hwy/profiler.h)
+target_compile_options(hwy_profiler_example PRIVATE ${HWY_FLAGS})
+target_link_libraries(hwy_profiler_example PRIVATE hwy)
+target_link_libraries(hwy_profiler_example PRIVATE ${ATOMICS_LIBRARIES})
+set_target_properties(hwy_profiler_example
+    PROPERTIES RUNTIME_OUTPUT_DIRECTORY "examples/")
+
 endif()  # HWY_ENABLE_EXAMPLES
 # -------------------------------------------------------- Tests
 
@@ -536,6 +612,7 @@ set(HWY_TEST_FILES
   hwy/contrib/algo/copy_test.cc
   hwy/contrib/algo/find_test.cc
   hwy/contrib/algo/transform_test.cc
+  hwy/abort_test.cc
   hwy/aligned_allocator_test.cc
   hwy/base_test.cc
   hwy/highway_test.cc
@@ -558,13 +635,16 @@ set(HWY_TEST_FILES
   hwy/tests/float_test.cc
   hwy/tests/foreach_vec_test.cc
   hwy/tests/if_test.cc
+  hwy/tests/in_range_float_to_int_conv_test.cc
   hwy/tests/interleaved_test.cc
   hwy/tests/logical_test.cc
   hwy/tests/mask_combine_test.cc
   hwy/tests/mask_convert_test.cc
   hwy/tests/mask_mem_test.cc
+  hwy/tests/mask_slide_test.cc
   hwy/tests/mask_test.cc
   hwy/tests/masked_arithmetic_test.cc
+  hwy/tests/masked_minmax_test.cc
   hwy/tests/memory_test.cc
   hwy/tests/minmax_test.cc
   hwy/tests/mul_test.cc
@@ -590,12 +670,14 @@ if (HWY_ENABLE_CONTRIB)
 list(APPEND HWY_TEST_LIBS hwy_contrib)
 
 list(APPEND HWY_TEST_FILES
+  hwy/contrib/bit_pack/bit_pack_test.cc
   hwy/contrib/dot/dot_test.cc
   hwy/contrib/matvec/matvec_test.cc
   hwy/contrib/image/image_test.cc
   # Disabled due to SIGILL in clang7 debug build during gtest discovery phase,
   # not reproducible locally. Still tested via bazel build.
   hwy/contrib/math/math_test.cc
+  hwy/contrib/random/random_test.cc
   hwy/contrib/sort/sort_test.cc
   hwy/contrib/sort/bench_sort.cc
   hwy/contrib/thread_pool/thread_pool_test.cc

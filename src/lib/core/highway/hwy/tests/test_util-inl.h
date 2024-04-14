@@ -32,7 +32,9 @@
 #include "hwy/print-inl.h"
 
 // Per-target include guard
-#if defined(HIGHWAY_HWY_TESTS_TEST_UTIL_INL_H_) == defined(HWY_TARGET_TOGGLE)
+// clang-format off
+#if defined(HIGHWAY_HWY_TESTS_TEST_UTIL_INL_H_) == defined(HWY_TARGET_TOGGLE)  // NOLINT
+// clang-format on
 #ifdef HIGHWAY_HWY_TESTS_TEST_UTIL_INL_H_
 #undef HIGHWAY_HWY_TESTS_TEST_UTIL_INL_H_
 #else
@@ -42,6 +44,75 @@
 HWY_BEFORE_NAMESPACE();
 namespace hwy {
 namespace HWY_NAMESPACE {
+
+// Like Iota, but avoids wrapping around to negative integers.
+template <class D, HWY_IF_FLOAT_D(D)>
+HWY_INLINE Vec<D> PositiveIota(D d) {
+  return Iota(d, 1);
+}
+template <class D, HWY_IF_NOT_FLOAT_NOR_SPECIAL_D(D)>
+HWY_INLINE Vec<D> PositiveIota(D d) {
+  const auto vi = Iota(d, 1);
+  return Max(And(vi, Set(d, LimitsMax<TFromD<D>>())),
+             Set(d, static_cast<TFromD<D>>(1)));
+}
+
+// Same as Iota, but supports bf16. This is possibly too expensive for general
+// use, but fine for tests.
+template <class D, typename First, HWY_IF_NOT_SPECIAL_FLOAT_D(D)>
+VFromD<D> IotaForSpecial(D d, First first) {
+  return Iota(d, first);
+}
+#if HWY_HAVE_FLOAT16
+template <class D, typename First, HWY_IF_F16_D(D), HWY_IF_LANES_GT_D(D, 1)>
+VFromD<D> IotaForSpecial(D d, First first) {
+  return Iota(d, first);
+}
+#else   // !HWY_HAVE_FLOAT16
+template <class D, typename First, HWY_IF_F16_D(D), HWY_IF_LANES_GT_D(D, 1),
+          HWY_IF_POW2_GT_D(D, -1)>
+VFromD<D> IotaForSpecial(D d, First first) {
+  const Repartition<float, D> df;
+  const size_t NW = Lanes(d) / 2;
+  const Half<D> dh;
+  const float first2 = static_cast<float>(first) + static_cast<float>(NW);
+  return Combine(d, DemoteTo(dh, Iota(df, first2)),
+                 DemoteTo(dh, Iota(df, first)));
+  // TODO(janwas): enable when supported for f16
+  // return OrderedDemote2To(d, Iota(df, first), Iota(df, first + NW));
+}
+// For partial vectors, a single f32 vector is enough, and the prior overload
+// might not be able to Repartition.
+template <class D, typename First, HWY_IF_F16_D(D), HWY_IF_LANES_GT_D(D, 1),
+          HWY_IF_POW2_LE_D(D, -1)>
+VFromD<D> IotaForSpecial(D d, First first) {
+  const Rebind<float, D> df;
+  return DemoteTo(d, Iota(df, first));
+}
+#endif  // HWY_HAVE_FLOAT16
+template <class D, typename First, HWY_IF_BF16_D(D), HWY_IF_LANES_GT_D(D, 1),
+          HWY_IF_POW2_GT_D(D, -1)>
+VFromD<D> IotaForSpecial(D d, First first) {
+  const Repartition<float, D> df;
+  const float first1 = ConvertScalarTo<float>(first);
+  const float first2 = first1 + static_cast<float>(Lanes(d) / 2);
+  return OrderedDemote2To(d, Iota(df, first1), Iota(df, first2));
+}
+// For partial vectors, a single f32 vector is enough, and the prior overload
+// might not be able to Repartition.
+template <class D, typename First, HWY_IF_BF16_D(D), HWY_IF_LANES_GT_D(D, 1),
+          HWY_IF_POW2_LE_D(D, -1)>
+VFromD<D> IotaForSpecial(D d, First first) {
+  const Rebind<float, D> df;
+  return DemoteTo(d, Iota(df, first));
+}
+// OrderedDemote2To does not work for single lanes, so special-case that.
+template <class D, typename First, HWY_IF_SPECIAL_FLOAT_D(D),
+          HWY_IF_LANES_D(D, 1)>
+VFromD<D> IotaForSpecial(D d, First first) {
+  const Rebind<float, D> df;
+  return DemoteTo(d, Set(df, static_cast<float>(first)));
+}
 
 // Compare expected array to vector.
 // TODO(b/287462770): inline to work around incorrect SVE codegen.
@@ -139,18 +210,8 @@ HWY_INLINE Mask<D> MaskTrue(const D d) {
   return FirstN(d, Lanes(d));
 }
 
-// Defined in rvv-inl.h for slightly better codegen.
-#if HWY_TARGET != HWY_RVV
-
-template <class D>
-HWY_INLINE Mask<D> MaskFalse(const D d) {
-  // Signed comparisons are cheaper on x86.
-  const RebindToSigned<D> di;
-  const Vec<decltype(di)> zero = Zero(di);
-  return RebindMask(d, Lt(zero, zero));
-}
-
-#endif  // HWY_TARGET != HWY_RVV
+// MaskFalse is now implemented in x86_128-inl.h on AVX3, arm_sve-inl.h on SVE,
+// rvv-inl.h on RVV, and generic_ops-inl.h on all other targets
 
 #ifndef HWY_ASSERT_EQ
 
@@ -699,6 +760,18 @@ void ForAllTypes(const Func& func) {
   ForFloatTypes(func);
 }
 
+// For ops that are also unconditionally available for bfloat16_t/float16_t.
+template <class Func>
+void ForSpecialTypes(const Func& func) {
+  func(float16_t());
+  func(bfloat16_t());
+}
+template <class Func>
+void ForAllTypesAndSpecial(const Func& func) {
+  ForAllTypes(func);
+  ForSpecialTypes(func);
+}
+
 template <class Func>
 void ForUI8(const Func& func) {
   func(uint8_t());
@@ -791,7 +864,7 @@ void ForUIF163264(const Func& func) {
 // For tests that involve loops, adjust the trip count so that emulated tests
 // finish quickly (but always at least 2 iterations to ensure some diversity).
 constexpr size_t AdjustedReps(size_t max_reps) {
-#if HWY_ARCH_RVV
+#if HWY_ARCH_RISCV
   return HWY_MAX(max_reps / 32, 2);
 #elif HWY_IS_DEBUG_BUILD
   return HWY_MAX(max_reps / 8, 2);
@@ -807,7 +880,7 @@ constexpr size_t AdjustedReps(size_t max_reps) {
 // Same as above, but the loop trip count will be 1 << max_pow2.
 constexpr size_t AdjustedLog2Reps(size_t max_pow2) {
   // If "negative" (unsigned wraparound), use original.
-#if HWY_ARCH_RVV
+#if HWY_ARCH_RISCV
   return HWY_MIN(max_pow2 - 4, max_pow2);
 #elif HWY_IS_DEBUG_BUILD
   return HWY_MIN(max_pow2 - 1, max_pow2);

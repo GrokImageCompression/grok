@@ -32,8 +32,8 @@ namespace hwy {
 
 // API version (https://semver.org/); keep in sync with CMakeLists.txt.
 #define HWY_MAJOR 1
-#define HWY_MINOR 0
-#define HWY_PATCH 7
+#define HWY_MINOR 1
+#define HWY_PATCH 0
 
 //------------------------------------------------------------------------------
 // Shorthand for tags (defined in shared-inl.h) used to select overloads.
@@ -98,6 +98,10 @@ namespace hwy {
 #define HWY_STATIC_DISPATCH(FUNC_NAME) N_PPC9::FUNC_NAME
 #elif HWY_STATIC_TARGET == HWY_PPC10
 #define HWY_STATIC_DISPATCH(FUNC_NAME) N_PPC10::FUNC_NAME
+#elif HWY_STATIC_TARGET == HWY_Z14
+#define HWY_STATIC_DISPATCH(FUNC_NAME) N_Z14::FUNC_NAME
+#elif HWY_STATIC_TARGET == HWY_Z15
+#define HWY_STATIC_DISPATCH(FUNC_NAME) N_Z15::FUNC_NAME
 #elif HWY_STATIC_TARGET == HWY_SSE2
 #define HWY_STATIC_DISPATCH(FUNC_NAME) N_SSE2::FUNC_NAME
 #elif HWY_STATIC_TARGET == HWY_SSSE3
@@ -198,6 +202,18 @@ namespace hwy {
 #define HWY_CHOOSE_PPC10(FUNC_NAME) &N_PPC10::FUNC_NAME
 #else
 #define HWY_CHOOSE_PPC10(FUNC_NAME) nullptr
+#endif
+
+#if HWY_TARGETS & HWY_Z14
+#define HWY_CHOOSE_Z14(FUNC_NAME) &N_Z14::FUNC_NAME
+#else
+#define HWY_CHOOSE_Z14(FUNC_NAME) nullptr
+#endif
+
+#if HWY_TARGETS & HWY_Z15
+#define HWY_CHOOSE_Z15(FUNC_NAME) &N_Z15::FUNC_NAME
+#else
+#define HWY_CHOOSE_Z15(FUNC_NAME) nullptr
 #endif
 
 #if HWY_TARGETS & HWY_SSE2
@@ -408,7 +424,8 @@ FunctionCache<RetType, Args...> DeduceFunctionCache(RetType (*)(Args...)) {
 #elif HWY_TARGET == HWY_AVX3 || HWY_TARGET == HWY_AVX3_DL || \
     HWY_TARGET == HWY_AVX3_ZEN4 || HWY_TARGET == HWY_AVX3_SPR
 #include "hwy/ops/x86_512-inl.h"
-#elif HWY_TARGET == HWY_PPC8 || HWY_TARGET == HWY_PPC9 || \
+#elif HWY_TARGET == HWY_Z14 || HWY_TARGET == HWY_Z15 || \
+    HWY_TARGET == HWY_PPC8 || HWY_TARGET == HWY_PPC9 || \
     HWY_TARGET == HWY_PPC10
 #include "hwy/ops/ppc_vsx-inl.h"
 #elif HWY_TARGET == HWY_NEON || HWY_TARGET == HWY_NEON_WITHOUT_AES

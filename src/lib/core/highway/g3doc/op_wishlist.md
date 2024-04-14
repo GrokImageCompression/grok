@@ -2,16 +2,14 @@
 
 <!--*
 # Document freshness: For more information, see go/fresh-source.
-freshness: { owner: 'janwas' reviewed: '2023-08-04' }
+freshness: { owner: 'janwas' reviewed: '2024-04-09' }
 *-->
-
-[TOC]
 
 ## Wishlist
 
-### NEON dot product
+### F32RoundToNearestEven
 
-### QuickSelect algo
+### NEON dot product
 
 ### numpy
 
@@ -72,12 +70,8 @@ For crypto. Native on Icelake+.
 
 ### RVV codegen
 
-*   New tuple interface for segment load/store
 *   Use new mask<->vec cast instruction, possibly for OddEven, ExpandLoad
 *   `rgather_vx` for broadcasting redsum result?
-*   Fix remaining 8-bit table lookups for large vectors (`Broadcast`,
-    `Interleave`): use 64-bit for initial shuffle. For `TwoTablesLookupLanes`,
-    use 16-bit indices.
 
 ### SVE codegen
 
@@ -97,13 +91,6 @@ Reuse same wasm256 file, `#if` for wasm-specific parts. Use reserved avx slot.
 
 ### Conflict detection
 For hash tables. Use VPCONFLICT on ZEN4.
-
-### Div (integer division) and Mod
-
-Issue 633. Consider promoting to f64 and back. Or: op to compute inverse.
-
-### `AddSub` and `MulAddSub`
-Subtracts for even lanes, adds for odd. Interval arithmetic? Numpy?
 
 ### `Dup128TableLookupBytes`
 Avoids having to add offset on RVV. Table must come from `LoadDup128`.
@@ -189,3 +176,8 @@ For SVE (svld1sb_u32)+WASM? Compiler can probably already fuse.
 *   ~~Masked add/sub/div~~
 *   ~~ReduceMin/Max like ReduceSum, in addition to Min/MaxOfLanes~~
 *   ~~Reductions for 8-bit~~
+*   ~~RVV: Fix remaining 8-bit table lookups for large vectors~~
+*   ~~QuickSelect algo~~ - by enum-class
+*   ~~New tuple interface for segment load/store~~
+*   ~~Div (integer division) and Mod~~ - by johnplatts
+*   ~~AddSub and MulAddSub~~ - by johnplatts

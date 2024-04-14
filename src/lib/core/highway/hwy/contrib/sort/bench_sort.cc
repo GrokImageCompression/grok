@@ -122,7 +122,7 @@ HWY_NOINLINE void BenchAllColdSort() {
   VQSort(items, kSize, SortAscending());
 #else
   SharedState shared;
-  Run<SortAscending>(Algo::kStd, items, kSize, shared, /*thread=*/0);
+  Run<SortAscending>(Algo::kStdSort, items, kSize, shared, /*thread=*/0);
 #endif
   const timer::Ticks t1 = timer::Stop();
 
@@ -295,7 +295,7 @@ std::vector<Algo> AlgoForBench() {
 #if !SORT_100M
     // 10-20x slower, but that's OK for the default size when we are not
     // testing the parallel nor 100M modes.
-    // Algo::kStd,
+    // Algo::kStdSort,
 #endif
 
 #if VQSORT_ENABLED
@@ -335,7 +335,7 @@ HWY_NOINLINE void BenchSort(size_t num_keys) {
             GenerateInput(dist, aligned.get(), num_lanes);
 
         const Timestamp t0;
-        Run<Order>(algo, reinterpret_cast<KeyType*>(aligned.get()), num_keys,
+        Run<Order>(algo, HWY_RCAST_ALIGNED(KeyType*, aligned.get()), num_keys,
                    shared, /*thread=*/0);
         seconds.push_back(SecondsSince(t0));
         // printf("%f\n", seconds.back());
@@ -460,7 +460,6 @@ HWY_AFTER_NAMESPACE();
 namespace hwy {
 int64_t first_sort_target = 0;  // none run yet
 int64_t first_cold_target = 0;  // none run yet
-namespace {
 HWY_BEFORE_TEST(BenchSort);
 HWY_EXPORT_AND_TEST_P(BenchSort, BenchAllColdSort);
 #if SORT_BENCH_BASE_AND_PARTITION
@@ -471,7 +470,7 @@ HWY_EXPORT_AND_TEST_P(BenchSort, BenchAllBase);
 #if !SORT_ONLY_COLD  // skip (warms up vector unit for next run)
 HWY_EXPORT_AND_TEST_P(BenchSort, BenchAllSort);
 #endif
-}  // namespace
+HWY_AFTER_TEST();
 }  // namespace hwy
 
 #endif  // HWY_ONCE

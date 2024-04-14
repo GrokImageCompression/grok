@@ -30,9 +30,9 @@ struct TestCreateAndSet {
   HWY_NOINLINE void operator()(T /*unused*/, D d) {
 #if HWY_HAVE_TUPLE
     const Vec<D> v0 = Zero(d);
-    const Vec<D> vi = Iota(d, T{1});
-    const Vec<D> v2 = Set(d, T{2});
-    const Vec<D> v3 = Set(d, T{3});
+    const Vec<D> vi = Iota(d, 1);
+    const Vec<D> v2 = Set(d, ConvertScalarTo<T>(2));
+    const Vec<D> v3 = Set(d, ConvertScalarTo<T>(3));
 
     Vec2<D> t2 = Create2(d, v0, vi);
     HWY_ASSERT_VEC_EQ(d, v0, Get2<0>(t2));
@@ -92,6 +92,7 @@ HWY_AFTER_NAMESPACE();
 namespace hwy {
 HWY_BEFORE_TEST(TupleTest);
 HWY_EXPORT_AND_TEST_P(TupleTest, TestAllCreate);
+HWY_AFTER_TEST();
 }  // namespace hwy
 
 #endif  // HWY_ONCE

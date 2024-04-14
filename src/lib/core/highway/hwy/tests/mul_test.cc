@@ -13,6 +13,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <stddef.h>
+#include <stdint.h>
+
 #undef HWY_TARGET_INCLUDE
 #define HWY_TARGET_INCLUDE "tests/mul_test.cc"
 #include "hwy/foreach_target.h"  // IWYU pragma: keep
@@ -35,10 +38,10 @@ constexpr uint64_t FirstBits<64>() {
 struct TestUnsignedMul {
   template <typename T, class D>
   HWY_NOINLINE void operator()(T /*unused*/, D d) {
-    const auto v0 = Zero(d);
-    const auto v1 = Set(d, T(1));
-    const auto vi = Iota(d, 1);
-    const auto vj = Iota(d, 3);
+    const Vec<D> v0 = Zero(d);
+    const Vec<D> v1 = Set(d, static_cast<T>(1));
+    const Vec<D> vi = Iota(d, 1);
+    const Vec<D> vj = Iota(d, 3);
     const size_t N = Lanes(d);
     auto expected = AllocateAligned<T>(N);
     HWY_ASSERT(expected);
@@ -49,12 +52,12 @@ struct TestUnsignedMul {
     HWY_ASSERT_VEC_EQ(d, vi, Mul(vi, v1));
 
     for (size_t i = 0; i < N; ++i) {
-      expected[i] = static_cast<T>((1 + i) * (1 + i));
+      expected[i] = ConvertScalarTo<T>((1 + i) * (1 + i));
     }
     HWY_ASSERT_VEC_EQ(d, expected.get(), Mul(vi, vi));
 
     for (size_t i = 0; i < N; ++i) {
-      expected[i] = static_cast<T>((1 + i) * (3 + i));
+      expected[i] = ConvertScalarTo<T>((1 + i) * (3 + i));
     }
     HWY_ASSERT_VEC_EQ(d, expected.get(), Mul(vi, vj));
 
@@ -75,22 +78,24 @@ struct TestSignedMul {
     const size_t N = Lanes(d);
     auto expected = AllocateAligned<T>(N);
 
-    const auto v0 = Zero(d);
-    const auto v1 = Set(d, T(1));
-    const auto vi = Iota(d, 1);
-    const auto vn = Iota(d, -T(N));  // no i8 supported, so no wraparound
+    const Vec<D> v0 = Zero(d);
+    const Vec<D> v1 = Set(d, static_cast<T>(1));
+    const Vec<D> vi = Iota(d, 1);
+    // i8 is not supported, so T is large enough to avoid wraparound.
+    const Vec<D> vn = Iota(d, -static_cast<T>(N));
     HWY_ASSERT_VEC_EQ(d, v0, Mul(v0, v0));
     HWY_ASSERT_VEC_EQ(d, v1, Mul(v1, v1));
     HWY_ASSERT_VEC_EQ(d, vi, Mul(v1, vi));
     HWY_ASSERT_VEC_EQ(d, vi, Mul(vi, v1));
 
     for (size_t i = 0; i < N; ++i) {
-      expected[i] = static_cast<T>((1 + i) * (1 + i));
+      expected[i] = ConvertScalarTo<T>((1 + i) * (1 + i));
     }
     HWY_ASSERT_VEC_EQ(d, expected.get(), Mul(vi, vi));
 
     for (size_t i = 0; i < N; ++i) {
-      expected[i] = static_cast<T>((-T(N) + T(i)) * T(1u + i));
+      expected[i] = static_cast<T>((-static_cast<T>(N) + static_cast<T>(i)) *
+                                   static_cast<T>(1 + i));
     }
     HWY_ASSERT_VEC_EQ(d, expected.get(), Mul(vn, vi));
     HWY_ASSERT_VEC_EQ(d, expected.get(), Mul(vi, vn));
@@ -108,8 +113,8 @@ struct TestMulOverflow {
 struct TestDivOverflow {
   template <typename T, class D>
   HWY_NOINLINE void operator()(T /*unused*/, D d) {
-    const auto vZero = Set(d, T(0));
-    const auto v1 = Set(d, T(1));
+    const Vec<D> vZero = Set(d, ConvertScalarTo<T>(0));
+    const Vec<D> v1 = Set(d, ConvertScalarTo<T>(1));
     HWY_ASSERT_VEC_EQ(d, Div(v1, vZero), Div(v1, vZero));
   }
 };
@@ -124,40 +129,62 @@ HWY_NOINLINE void TestAllMul() {
 }
 
 struct TestMulHigh {
+  template <size_t kSize, class T, hwy::EnableIf<(kSize != 8)>* = nullptr>
+  static HWY_INLINE RemoveCvRef<T> ScalarMulHigh(hwy::SizeTag<kSize>, T a,
+                                                 T b) {
+    using TW = MakeWide<RemoveCvRef<T>>;
+    return static_cast<T>((static_cast<TW>(a) * static_cast<TW>(b)) >>
+                          (sizeof(RemoveCvRef<T>) * 8));
+  }
+
+  template <class T>
+  static HWY_INLINE RemoveCvRef<T> ScalarMulHigh(hwy::SizeTag<8>, T a, T b) {
+    RemoveCvRef<T> hi;
+    Mul128(a, b, &hi);
+    return hi;
+  }
+
+  template <class T>
+  static HWY_INLINE RemoveCvRef<T> ScalarMulHigh(T a, T b) {
+    using NonCvRefT = RemoveCvRef<T>;
+    return ScalarMulHigh(hwy::SizeTag<sizeof(NonCvRefT)>(),
+                         static_cast<NonCvRefT>(a), static_cast<NonCvRefT>(b));
+  }
+
   template <typename T, class D>
   HWY_NOINLINE void operator()(T /*unused*/, D d) {
-    using Wide = MakeWide<T>;
+    using TU = MakeUnsigned<T>;
     const size_t N = Lanes(d);
     auto in_lanes = AllocateAligned<T>(N);
     auto expected_lanes = AllocateAligned<T>(N);
 
-    const auto vi = Iota(d, 1);
-    // no i8 supported, so no wraparound
-    const auto vni = Iota(d, T(static_cast<T>(~N + 1)));
+    const Vec<D> vi = Iota(d, 1);
+    const Vec<D> vni = Iota(d, static_cast<T>(0ULL - static_cast<uint64_t>(N)));
 
-    const auto v0 = Zero(d);
+    const Vec<D> v0 = Zero(d);
     HWY_ASSERT_VEC_EQ(d, v0, MulHigh(v0, v0));
     HWY_ASSERT_VEC_EQ(d, v0, MulHigh(v0, vi));
     HWY_ASSERT_VEC_EQ(d, v0, MulHigh(vi, v0));
 
     // Large positive squared
     for (size_t i = 0; i < N; ++i) {
-      in_lanes[i] = T(LimitsMax<T>() >> i);
-      expected_lanes[i] = T((Wide(in_lanes[i]) * in_lanes[i]) >> 16);
+      in_lanes[i] = static_cast<T>(LimitsMax<T>() >> (i & (sizeof(T) * 8 - 1)));
+      expected_lanes[i] = ScalarMulHigh(in_lanes[i], in_lanes[i]);
     }
-    auto v = Load(d, in_lanes.get());
+    Vec<D> v = Load(d, in_lanes.get());
     HWY_ASSERT_VEC_EQ(d, expected_lanes.get(), MulHigh(v, v));
 
     // Large positive * small positive
     for (size_t i = 0; i < N; ++i) {
-      expected_lanes[i] = T((Wide(in_lanes[i]) * T(1u + i)) >> 16);
+      expected_lanes[i] = ScalarMulHigh(in_lanes[i], static_cast<T>(1 + i));
     }
     HWY_ASSERT_VEC_EQ(d, expected_lanes.get(), MulHigh(v, vi));
     HWY_ASSERT_VEC_EQ(d, expected_lanes.get(), MulHigh(vi, v));
 
     // Large positive * small negative
     for (size_t i = 0; i < N; ++i) {
-      expected_lanes[i] = T((Wide(in_lanes[i]) * T(i - N)) >> 16);
+      const T neg = static_cast<T>(static_cast<TU>(i) - static_cast<TU>(N));
+      expected_lanes[i] = ScalarMulHigh(in_lanes[i], neg);
     }
     HWY_ASSERT_VEC_EQ(d, expected_lanes.get(), MulHigh(v, vni));
     HWY_ASSERT_VEC_EQ(d, expected_lanes.get(), MulHigh(vni, v));
@@ -166,8 +193,7 @@ struct TestMulHigh {
 
 HWY_NOINLINE void TestAllMulHigh() {
   ForPartialVectors<TestMulHigh> test;
-  test(int16_t());
-  test(uint16_t());
+  ForIntegerTypes(test);
 }
 
 struct TestMulFixedPoint15 {
@@ -186,8 +212,8 @@ struct TestMulFixedPoint15 {
     RandomState rng;
     for (size_t rep = 0; rep < AdjustedReps(10000); ++rep) {
       for (size_t i = 0; i < N; ++i) {
-        in1[i] = static_cast<T>(Random64(&rng) & 0xFFFF);
-        in2[i] = static_cast<T>(Random64(&rng) & 0xFFFF);
+        in1[i] = ConvertScalarTo<T>(Random64(&rng) & 0xFFFF);
+        in2[i] = ConvertScalarTo<T>(Random64(&rng) & 0xFFFF);
       }
 
       for (size_t i = 0; i < N; ++i) {
@@ -204,7 +230,7 @@ struct TestMulFixedPoint15 {
         const int hi = GetLane(MulHigh(v1, v2));
         const int lo = GetLane(Mul(v1, v2)) & 0xFFFF;
         const int split = 2 * hi + ((lo + 0x4000) >> 15);
-        expected[i] = static_cast<T>(arm);
+        expected[i] = ConvertScalarTo<T>(arm);
         if (in1[i] != -32768 || in2[i] != -32768) {
           HWY_ASSERT_EQ(arm, x86);
           HWY_ASSERT_EQ(arm, split);
@@ -251,7 +277,8 @@ struct TestMulEven {
     auto in_lanes = AllocateAligned<T>(N);
     auto expected = AllocateAligned<Wide>(Lanes(d2));
     for (size_t i = 0; i < N; i += 2) {
-      in_lanes[i + 0] = static_cast<T>(LimitsMax<T>() >> (i & kShiftAmtMask));
+      in_lanes[i + 0] =
+          ConvertScalarTo<T>(LimitsMax<T>() >> (i & kShiftAmtMask));
       if (N != 1) {
         in_lanes[i + 1] = 1;  // unused
       }
@@ -302,7 +329,8 @@ struct TestMulOdd {
     auto expected = AllocateAligned<Wide>(Lanes(d2));
     for (size_t i = 0; i < N; i += 2) {
       in_lanes[i + 0] = 1;  // unused
-      in_lanes[i + 1] = static_cast<T>(LimitsMax<T>() >> (i & kShiftAmtMask));
+      in_lanes[i + 1] =
+          ConvertScalarTo<T>(LimitsMax<T>() >> (i & kShiftAmtMask));
       expected[i / 2] =
           static_cast<Wide>(Wide(in_lanes[i + 1]) * in_lanes[i + 1]);
     }
@@ -348,8 +376,8 @@ struct TestMulEvenOdd64 {
     RandomState rng;
     for (size_t rep = 0; rep < AdjustedReps(1000); ++rep) {
       for (size_t i = 0; i < N; ++i) {
-        in1[i] = Random64(&rng);
-        in2[i] = Random64(&rng);
+        in1[i] = static_cast<T>(Random64(&rng));
+        in2[i] = static_cast<T>(Random64(&rng));
       }
 
       for (size_t i = 0; i < N; i += 2) {
@@ -373,6 +401,7 @@ HWY_NOINLINE void TestAllMulEven() {
 #if HWY_HAVE_INTEGER64
   ForUI32(ForGEVectors<64, TestMulEven>());
 #if HWY_TARGET != HWY_SCALAR
+  ForGEVectors<128, TestMulEvenOdd64>()(int64_t());
   ForGEVectors<128, TestMulEvenOdd64>()(uint64_t());
 #endif  // HWY_TARGET != HWY_SCALAR
 #endif  // HWY_HAVE_INTEGER64
@@ -401,9 +430,8 @@ struct TestMulAdd {
 
     // Unlike RebindToSigned, we want to leave floating-point unchanged.
     // This allows Neg for unsigned types.
-    const Rebind<If<IsFloat<T>(), T, MakeSigned<T>>, D> di;
-    using TI = TFromD<decltype(di)>;
-    const Vec<D> neg_v2 = BitCast(d, Neg(BitCast(di, v2)));
+    const Rebind<If<IsFloat<T>(), T, MakeSigned<T>>, D> dif;
+    const Vec<D> neg_v2 = BitCast(d, Neg(BitCast(dif, v2)));
 
     const size_t N = Lanes(d);
     auto expected = AllocateAligned<T>(N);
@@ -415,7 +443,7 @@ struct TestMulAdd {
     HWY_ASSERT_VEC_EQ(d, v2, NegMulAdd(v1, k0, v2));
 
     for (size_t i = 0; i < N; ++i) {
-      expected[i] = static_cast<T>((i + 1) * (i + 2));
+      expected[i] = ConvertScalarTo<T>((i + 1) * (i + 2));
     }
     HWY_ASSERT_VEC_EQ(d, expected.get(), MulAdd(v2, v1, k0));
     HWY_ASSERT_VEC_EQ(d, expected.get(), MulAdd(v1, v2, k0));
@@ -423,16 +451,16 @@ struct TestMulAdd {
     HWY_ASSERT_VEC_EQ(d, expected.get(), NegMulAdd(v1, neg_v2, k0));
 
     for (size_t i = 0; i < N; ++i) {
-      expected[i] = static_cast<T>((i + 2) * (i + 2) + (i + 1));
+      expected[i] = ConvertScalarTo<T>((i + 2) * (i + 2) + (i + 1));
     }
     HWY_ASSERT_VEC_EQ(d, expected.get(), MulAdd(v2, v2, v1));
     HWY_ASSERT_VEC_EQ(d, expected.get(), NegMulAdd(neg_v2, v2, v1));
 
     for (size_t i = 0; i < N; ++i) {
-      const T nm = static_cast<T>(-(static_cast<TI>(i) + TI{2}));
-      const T f = static_cast<T>(i + 2);
-      const T a = static_cast<T>(i + 1);
-      expected[i] = static_cast<T>(nm * f + a);
+      const T nm = ConvertScalarTo<T>(-static_cast<int>(i + 2));
+      const T f = ConvertScalarTo<T>(i + 2);
+      const T a = ConvertScalarTo<T>(i + 1);
+      expected[i] = ConvertScalarTo<T>(nm * f + a);
     }
     HWY_ASSERT_VEC_EQ(d, expected.get(), NegMulAdd(v2, v2, v1));
   }
@@ -442,42 +470,82 @@ struct TestMulSub {
   template <typename T, class D>
   HWY_NOINLINE void operator()(T /*unused*/, D d) {
     const Vec<D> k0 = Zero(d);
-    const Vec<D> kNeg0 = Set(d, T(-0.0));
+    const Vec<D> kNeg0 = Set(d, ConvertScalarTo<T>(-0.0));
     const Vec<D> v1 = Iota(d, 1);
     const Vec<D> v2 = Iota(d, 2);
     const size_t N = Lanes(d);
     auto expected = AllocateAligned<T>(N);
 
+    // Unlike RebindToSigned, we want to leave floating-point unchanged.
+    // This allows Neg for unsigned types.
+    const Rebind<If<IsFloat<T>(), T, MakeSigned<T>>, D> dif;
+
     HWY_ASSERT_VEC_EQ(d, k0, MulSub(k0, k0, k0));
     HWY_ASSERT_VEC_EQ(d, kNeg0, NegMulSub(k0, k0, k0));
 
     for (size_t i = 0; i < N; ++i) {
-      expected[i] = -T(i + 2);
+      expected[i] = ConvertScalarTo<T>(-static_cast<int>(i + 2));
     }
+    const auto neg_k0 = BitCast(d, Neg(BitCast(dif, k0)));
     HWY_ASSERT_VEC_EQ(d, expected.get(), MulSub(k0, v1, v2));
     HWY_ASSERT_VEC_EQ(d, expected.get(), MulSub(v1, k0, v2));
-    HWY_ASSERT_VEC_EQ(d, expected.get(), NegMulSub(Neg(k0), v1, v2));
-    HWY_ASSERT_VEC_EQ(d, expected.get(), NegMulSub(v1, Neg(k0), v2));
+    HWY_ASSERT_VEC_EQ(d, expected.get(), NegMulSub(neg_k0, v1, v2));
+    HWY_ASSERT_VEC_EQ(d, expected.get(), NegMulSub(v1, neg_k0, v2));
 
     for (size_t i = 0; i < N; ++i) {
-      expected[i] = static_cast<T>((i + 1) * (i + 2));
+      expected[i] = ConvertScalarTo<T>((i + 1) * (i + 2));
     }
+    const auto neg_v1 = BitCast(d, Neg(BitCast(dif, v1)));
     HWY_ASSERT_VEC_EQ(d, expected.get(), MulSub(v1, v2, k0));
     HWY_ASSERT_VEC_EQ(d, expected.get(), MulSub(v2, v1, k0));
-    HWY_ASSERT_VEC_EQ(d, expected.get(), NegMulSub(Neg(v1), v2, k0));
-    HWY_ASSERT_VEC_EQ(d, expected.get(), NegMulSub(v2, Neg(v1), k0));
+    HWY_ASSERT_VEC_EQ(d, expected.get(), NegMulSub(neg_v1, v2, k0));
+    HWY_ASSERT_VEC_EQ(d, expected.get(), NegMulSub(v2, neg_v1, k0));
 
     for (size_t i = 0; i < N; ++i) {
-      expected[i] = static_cast<T>((i + 2) * (i + 2) - (1 + i));
+      expected[i] = ConvertScalarTo<T>((i + 2) * (i + 2) - (1 + i));
     }
+    const auto neg_v2 = BitCast(d, Neg(BitCast(dif, v2)));
     HWY_ASSERT_VEC_EQ(d, expected.get(), MulSub(v2, v2, v1));
-    HWY_ASSERT_VEC_EQ(d, expected.get(), NegMulSub(Neg(v2), v2, v1));
+    HWY_ASSERT_VEC_EQ(d, expected.get(), NegMulSub(neg_v2, v2, v1));
+    HWY_ASSERT_VEC_EQ(d, expected.get(), NegMulSub(v2, neg_v2, v1));
+  }
+};
+
+struct TestMulAddSub {
+  template <typename T, class D>
+  HWY_NOINLINE void operator()(T /*unused*/, D d) {
+    const Vec<D> k0 = Zero(d);
+    const Vec<D> v1 = Iota(d, 1);
+    const Vec<D> v2 = Iota(d, 2);
+
+    // Unlike RebindToSigned, we want to leave floating-point unchanged.
+    // This allows Neg for unsigned types.
+    const Rebind<If<IsFloat<T>(), T, MakeSigned<T>>, D> dif;
+    const Vec<D> neg_v2 = BitCast(d, Neg(BitCast(dif, v2)));
+
+    const size_t N = Lanes(d);
+    auto expected = AllocateAligned<T>(N);
+    HWY_ASSERT(expected);
+
+    HWY_ASSERT_VEC_EQ(d, k0, MulAddSub(k0, k0, k0));
+
+    const auto v2_negated_if_even = OddEven(v2, neg_v2);
+    HWY_ASSERT_VEC_EQ(d, v2_negated_if_even, MulAddSub(k0, v1, v2));
+    HWY_ASSERT_VEC_EQ(d, v2_negated_if_even, MulAddSub(v1, k0, v2));
+
+    for (size_t i = 0; i < N; ++i) {
+      expected[i] =
+          ConvertScalarTo<T>(((i & 1) == 0) ? ((i + 2) * (i + 2) - (i + 1))
+                                            : ((i + 2) * (i + 2) + (i + 1)));
+    }
+    HWY_ASSERT_VEC_EQ(d, expected.get(), MulAddSub(v2, v2, v1));
   }
 };
 
 HWY_NOINLINE void TestAllMulAdd() {
   ForAllTypes(ForPartialVectors<TestMulAdd>());
-  ForFloatTypes(ForPartialVectors<TestMulSub>());
+  ForAllTypes(ForPartialVectors<TestMulSub>());
+  ForAllTypes(ForPartialVectors<TestMulAddSub>());
 }
 
 // NOLINTNEXTLINE(google-readability-namespace-comments)
@@ -495,7 +563,7 @@ HWY_EXPORT_AND_TEST_P(HwyMulTest, TestAllMulFixedPoint15);
 HWY_EXPORT_AND_TEST_P(HwyMulTest, TestAllMulEven);
 HWY_EXPORT_AND_TEST_P(HwyMulTest, TestAllMulOdd);
 HWY_EXPORT_AND_TEST_P(HwyMulTest, TestAllMulAdd);
-
+HWY_AFTER_TEST();
 }  // namespace hwy
 
 #endif

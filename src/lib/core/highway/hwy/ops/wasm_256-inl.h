@@ -43,6 +43,9 @@ class Vec256 {
   HWY_INLINE Vec256& operator-=(const Vec256 other) {
     return *this = (*this - other);
   }
+  HWY_INLINE Vec256& operator%=(const Vec256 other) {
+    return *this = (*this % other);
+  }
   HWY_INLINE Vec256& operator&=(const Vec256 other) {
     return *this = (*this & other);
   }
@@ -242,12 +245,17 @@ HWY_API Vec256<T> ShiftRight(Vec256<T> v) {
 }
 
 // ------------------------------ RotateRight (ShiftRight, Or)
-template <int kBits, typename T>
+template <int kBits, typename T, HWY_IF_NOT_FLOAT_NOR_SPECIAL(T)>
 HWY_API Vec256<T> RotateRight(const Vec256<T> v) {
+  const DFromV<decltype(v)> d;
+  const RebindToUnsigned<decltype(d)> du;
+
   constexpr size_t kSizeInBits = sizeof(T) * 8;
   static_assert(0 <= kBits && kBits < kSizeInBits, "Invalid shift count");
   if (kBits == 0) return v;
-  return Or(ShiftRight<kBits>(v), ShiftLeft<kSizeInBits - kBits>(v));
+
+  return Or(BitCast(d, ShiftRight<kBits>(BitCast(du, v))),
+            ShiftLeft<HWY_MIN(kSizeInBits - 1, kSizeInBits - kBits)>(v));
 }
 
 // ------------------------------ Shift lanes by same variable #bits
@@ -313,8 +321,9 @@ HWY_API Vec256<MakeWide<T>> MulEven(Vec256<T> a, const Vec256<T> b) {
   ret.v1 = MulEven(a.v1, b.v1);
   return ret;
 }
-HWY_API Vec256<uint64_t> MulEven(Vec256<uint64_t> a, const Vec256<uint64_t> b) {
-  Vec256<uint64_t> ret;
+template <class T, HWY_IF_UI64(T)>
+HWY_API Vec256<T> MulEven(Vec256<T> a, const Vec256<T> b) {
+  Vec256<T> ret;
   ret.v0 = MulEven(a.v0, b.v0);
   ret.v1 = MulEven(a.v1, b.v1);
   return ret;
@@ -328,8 +337,9 @@ HWY_API Vec256<MakeWide<T>> MulOdd(Vec256<T> a, const Vec256<T> b) {
   ret.v1 = MulOdd(a.v1, b.v1);
   return ret;
 }
-HWY_API Vec256<uint64_t> MulOdd(Vec256<uint64_t> a, const Vec256<uint64_t> b) {
-  Vec256<uint64_t> ret;
+template <class T, HWY_IF_UI64(T)>
+HWY_API Vec256<T> MulOdd(Vec256<T> a, const Vec256<T> b) {
+  Vec256<T> ret;
   ret.v0 = MulOdd(a.v0, b.v0);
   ret.v1 = MulOdd(a.v1, b.v1);
   return ret;
@@ -351,7 +361,8 @@ HWY_API Vec256<T> AbsDiff(const Vec256<T> a, const Vec256<T> b) {
 }
 
 // ------------------------------ Floating-point division
-template <typename T>
+// generic_ops takes care of integer T.
+template <typename T, HWY_IF_FLOAT(T)>
 HWY_API Vec256<T> operator/(Vec256<T> a, const Vec256<T> b) {
   a.v0 /= b.v0;
   a.v1 /= b.v1;
@@ -679,11 +690,6 @@ HWY_API Vec256<T> IfNegativeThenElse(Vec256<T> v, Vec256<T> yes, Vec256<T> no) {
   v.v0 = IfNegativeThenElse(v.v0, yes.v0, no.v0);
   v.v1 = IfNegativeThenElse(v.v1, yes.v1, no.v1);
   return v;
-}
-
-template <typename T, HWY_IF_FLOAT(T)>
-HWY_API Vec256<T> ZeroIfNegative(Vec256<T> v) {
-  return IfThenZeroElse(v < Zero(DFromV<decltype(v)>()), v);
 }
 
 // ------------------------------ Mask logical
@@ -1364,6 +1370,24 @@ HWY_API Vec256<T> OddEven(Vec256<T> a, const Vec256<T> b) {
   return a;
 }
 
+// ------------------------------ InterleaveEven
+template <class D, HWY_IF_V_SIZE_D(D, 32)>
+HWY_API VFromD<D> InterleaveEven(D d, VFromD<D> a, VFromD<D> b) {
+  const Half<decltype(d)> dh;
+  a.v0 = InterleaveEven(dh, a.v0, b.v0);
+  a.v1 = InterleaveEven(dh, a.v1, b.v1);
+  return a;
+}
+
+// ------------------------------ InterleaveOdd
+template <class D, HWY_IF_V_SIZE_D(D, 32)>
+HWY_API VFromD<D> InterleaveOdd(D d, VFromD<D> a, VFromD<D> b) {
+  const Half<decltype(d)> dh;
+  a.v0 = InterleaveOdd(dh, a.v0, b.v0);
+  a.v1 = InterleaveOdd(dh, a.v1, b.v1);
+  return a;
+}
+
 // ------------------------------ OddEvenBlocks
 template <typename T>
 HWY_API Vec256<T> OddEvenBlocks(Vec256<T> odd, Vec256<T> even) {
@@ -1860,14 +1884,6 @@ HWY_API Vec128<float16_t> DemoteTo(D d16, Vec256<float> v) {
   return Combine(d16, hi, lo);
 }
 
-template <class D, HWY_IF_BF16_D(D)>
-HWY_API Vec128<bfloat16_t> DemoteTo(D dbf16, Vec256<float> v) {
-  const Half<decltype(dbf16)> dbf16h;
-  const Vec64<bfloat16_t> lo = DemoteTo(dbf16h, v.v0);
-  const Vec64<bfloat16_t> hi = DemoteTo(dbf16h, v.v1);
-  return Combine(dbf16, hi, lo);
-}
-
 // For already range-limited input [0, 255].
 HWY_API Vec64<uint8_t> U8FromU32(Vec256<uint32_t> v) {
   const Full64<uint8_t> du8;
@@ -1920,13 +1936,6 @@ HWY_API Vec128<uint8_t> TruncateTo(D /* tag */, Vec256<uint16_t> v) {
 }
 
 // ------------------------------ ReorderDemote2To
-template <class DBF16, HWY_IF_BF16_D(DBF16)>
-HWY_API Vec256<bfloat16_t> ReorderDemote2To(DBF16 dbf16, Vec256<float> a,
-                                            Vec256<float> b) {
-  const RebindToUnsigned<decltype(dbf16)> du16;
-  return BitCast(dbf16, ConcatOdd(du16, BitCast(du16, b), BitCast(du16, a)));
-}
-
 template <class DN, typename V, HWY_IF_V_SIZE_D(DN, 32),
           HWY_IF_NOT_FLOAT_NOR_SPECIAL(TFromD<DN>), HWY_IF_SIGNED_V(V),
           HWY_IF_T_SIZE_ONE_OF_D(DN, (1 << 1) | (1 << 2) | (1 << 4)),

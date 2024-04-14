@@ -1,7 +1,10 @@
-load("@rules_license//rules:license.bzl", "license")
+# Placeholder#1 for Guitar, do not remove
 load("@bazel_skylib//lib:selects.bzl", "selects")
+load("@rules_license//rules:license.bzl", "license")
 
 load("@rules_cc//cc:defs.bzl", "cc_test")
+# Placeholder#2 for Guitar, do not remove
+
 package(
     default_applicable_licenses = ["//:license"],
     default_visibility = ["//visibility:public"],
@@ -153,6 +156,7 @@ COMPAT = [
 cc_library(
     name = "hwy",
     srcs = [
+        "hwy/abort.cc",
         "hwy/aligned_allocator.cc",
         "hwy/per_target.cc",
         "hwy/print.cc",
@@ -160,6 +164,7 @@ cc_library(
     ],
     # Normal headers with include guards
     hdrs = [
+        "hwy/abort.h",
         "hwy/aligned_allocator.h",
         "hwy/base.h",
         "hwy/cache_control.h",
@@ -207,6 +212,64 @@ cc_library(
 )
 
 cc_library(
+    name = "stats",
+    srcs = [
+        "hwy/stats.cc",
+    ],
+    hdrs = [
+        "hwy/stats.h",
+    ],
+    compatible_with = [],
+    copts = COPTS,
+    deps = [":hwy"],
+)
+
+cc_library(
+    name = "nanobenchmark",
+    srcs = [
+        "hwy/nanobenchmark.cc",
+        "hwy/timer.cc",
+    ],
+    hdrs = [
+        "hwy/nanobenchmark.h",
+        "hwy/robust_statistics.h",
+        "hwy/timer.h",
+    ],
+    compatible_with = [],
+    copts = COPTS,
+    local_defines = ["hwy_EXPORTS"],
+    textual_hdrs = [
+        "hwy/timer-inl.h",
+    ],
+    deps = [":hwy"],
+)
+
+cc_library(
+    name = "profiler",
+    hdrs = [
+        "hwy/profiler.h",
+    ],
+    compatible_with = [],
+    copts = COPTS,
+    deps = [
+        ":hwy",
+        ":nanobenchmark",
+        # "//hwy/contrib/sort:vqsort",
+    ],
+)
+
+cc_binary(
+    name = "profiler_example",
+    srcs = ["hwy/examples/profiler_example.cc"],
+    copts = COPTS,
+    deps = [
+        ":hwy",
+        ":nanobenchmark",
+        ":profiler",
+    ],
+)
+
+cc_library(
     name = "algo",
     compatible_with = [],
     copts = COPTS,
@@ -246,16 +309,17 @@ cc_library(
 
 cc_library(
     name = "thread_pool",
-    srcs = [
-        "hwy/contrib/thread_pool/thread_pool.cc",
-    ],
     hdrs = [
+        "hwy/contrib/thread_pool/futex.h",
         "hwy/contrib/thread_pool/thread_pool.h",
     ],
     compatible_with = [],
     copts = COPTS,
     deps = [
         ":hwy",  # HWY_ASSERT
+        ":nanobenchmark",
+        ":profiler",
+        ":stats",
     ],
 )
 
@@ -302,6 +366,18 @@ cc_library(
 )
 
 cc_library(
+    name = "random",
+    compatible_with = [],
+    copts = COPTS,
+    textual_hdrs = [
+        "hwy/contrib/random/random-inl.h",
+    ],
+    deps = [
+        ":hwy",
+    ],
+)
+
+cc_library(
     name = "unroller",
     compatible_with = [],
     copts = COPTS,
@@ -330,26 +406,6 @@ cc_library(
     deps = [
         ":hwy",
     ],
-)
-
-cc_library(
-    name = "nanobenchmark",
-    srcs = [
-        "hwy/nanobenchmark.cc",
-        "hwy/timer.cc",
-    ],
-    hdrs = [
-        "hwy/nanobenchmark.h",
-        "hwy/robust_statistics.h",
-        "hwy/timer.h",
-    ],
-    compatible_with = [],
-    copts = COPTS,
-    local_defines = ["hwy_EXPORTS"],
-    textual_hdrs = [
-        "hwy/timer-inl.h",
-    ],
-    deps = [":hwy"],
 )
 
 cc_binary(
@@ -390,6 +446,7 @@ HWY_TESTS = [
     ("hwy/contrib/dot/", "dot_test"),
     ("hwy/contrib/image/", "image_test"),
     ("hwy/contrib/math/", "math_test"),
+    ("hwy/contrib/random/", "random_test"),
     ("hwy/contrib/matvec/", "matvec_test"),
     ("hwy/contrib/thread_pool/", "thread_pool_test"),
     ("hwy/contrib/unroller/", "unroller_test"),
@@ -397,6 +454,7 @@ HWY_TESTS = [
     # To run bench_sort, specify --test=hwy/contrib/sort:bench_sort.
     ("hwy/examples/", "skeleton_test"),
     ("hwy/", "nanobenchmark_test"),
+    ("hwy/", "abort_test"),
     ("hwy/", "aligned_allocator_test"),
     ("hwy/", "base_test"),
     ("hwy/", "highway_test"),
@@ -417,13 +475,16 @@ HWY_TESTS = [
     ("hwy/tests/", "float_test"),
     ("hwy/tests/", "foreach_vec_test"),
     ("hwy/tests/", "if_test"),
+    ("hwy/tests/", "in_range_float_to_int_conv_test"),
     ("hwy/tests/", "interleaved_test"),
     ("hwy/tests/", "logical_test"),
     ("hwy/tests/", "mask_combine_test"),
     ("hwy/tests/", "mask_convert_test"),
     ("hwy/tests/", "mask_mem_test"),
+    ("hwy/tests/", "mask_slide_test"),
     ("hwy/tests/", "mask_test"),
     ("hwy/tests/", "masked_arithmetic_test"),
+    ("hwy/tests/", "masked_minmax_test"),
     ("hwy/tests/", "memory_test"),
     ("hwy/tests/", "minmax_test"),
     ("hwy/tests/", "mul_test"),
@@ -461,14 +522,17 @@ HWY_TEST_DEPS = [
     ":hwy_test_util",
     ":image",
     ":math",
+    ":random",
     ":matvec",
     ":nanobenchmark",
     ":skeleton",
     ":thread_pool",
     ":unroller",
     "//hwy/contrib/sort:vqsort",
-    "@com_google_googletest//:gtest_main",
-]
+] + select({
+    ":compiler_msvc": [],
+    "//conditions:default": ["@com_google_googletest//:gtest_main"],
+})
 
 [
     [

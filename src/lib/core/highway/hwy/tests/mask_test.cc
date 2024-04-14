@@ -13,9 +13,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <stddef.h>
+#include <stdint.h>
 #include <string.h>  // memcmp
-
-#include <algorithm>  // std::fill
 
 #undef HWY_TARGET_INCLUDE
 #define HWY_TARGET_INCLUDE "tests/mask_test.cc"
@@ -28,6 +28,54 @@ namespace hwy {
 namespace HWY_NAMESPACE {
 
 // All types.
+struct TestMaskFalse {
+  template <typename T, class D>
+  HWY_NOINLINE void operator()(T /*unused*/, D d) {
+#if HWY_HAVE_SCALABLE || HWY_TARGET == HWY_SVE_256 || \
+    HWY_TARGET == HWY_SVE2_128 || HWY_TARGET == HWY_SCALAR
+    // For RVV, SVE and SCALAR, use the underlying native vector.
+    const DFromV<Vec<D>> d2;
+#else
+    // Other targets are strongly-typed, but we can safely ResizeBitCast to the
+    // native vector. All targets have at least 128-bit vectors, but NEON also
+    // supports 64-bit vectors.
+    constexpr size_t kMinD2Lanes =
+        ((HWY_TARGET == HWY_NEON || HWY_TARGET == HWY_NEON_WITHOUT_AES) ? 8
+                                                                        : 16) /
+        sizeof(T);
+    const FixedTag<T, HWY_MAX(HWY_MAX_LANES_D(D), kMinD2Lanes)> d2;
+#endif
+    static_assert(d2.MaxBytes() >= d.MaxBytes(),
+                  "d2.MaxBytes() >= d.MaxBytes() should be true");
+    using V2 = Vec<decltype(d2)>;
+
+    // Various ways of checking that false masks are false.
+    HWY_ASSERT(AllFalse(d, MaskFalse(d)));
+    HWY_ASSERT_EQ(0, CountTrue(d, MaskFalse(d)));
+    HWY_ASSERT_VEC_EQ(d, Zero(d), VecFromMask(d, MaskFalse(d)));
+
+#if HWY_HAVE_SCALABLE || HWY_TARGET == HWY_SVE_256 || HWY_TARGET == HWY_SVE2_128
+    // For these targets, we can treat the result as if it were a vector of type
+    // `V2`. On SVE, vectors are always full (not fractional) and caps are only
+    // enforced by Highway ops. On RVV, LMUL must match but caps can also be
+    // ignored. For safety, MaskFalse also sets lanes >= `Lanes(d)` to false,
+    // and we verify that here.
+    HWY_ASSERT(AllFalse(d2, MaskFalse(d)));
+    HWY_ASSERT_EQ(0, CountTrue(d2, MaskFalse(d)));
+    HWY_ASSERT_VEC_EQ(d2, Zero(d2), VecFromMask(d2, MaskFalse(d)));
+#endif
+
+    // All targets support, and strongly-typed (non-scalable) targets require,
+    // ResizeBitCast before we compare to the 'native' underlying vector size.
+    const V2 actual2 = ResizeBitCast(d2, VecFromMask(d, MaskFalse(d)));
+    HWY_ASSERT_VEC_EQ(d2, Zero(d2), actual2);
+  }
+};
+
+HWY_NOINLINE void TestAllMaskFalse() {
+  ForAllTypes(ForPartialVectors<TestMaskFalse>());
+}
+
 struct TestFromVec {
   template <typename T, class D>
   HWY_NOINLINE void operator()(T /*unused*/, D d) {
@@ -59,22 +107,24 @@ struct TestFirstN {
     using TN = SignedFromSize<HWY_MIN(sizeof(size_t), sizeof(T))>;
     const size_t max_len = static_cast<size_t>(LimitsMax<TN>());
 
+    const Vec<D> k1 = Set(d, ConvertScalarTo<T>(1));
+
     const size_t max_lanes = HWY_MIN(2 * N, AdjustedReps(512));
     for (size_t len = 0; len <= HWY_MIN(max_lanes, max_len); ++len) {
       // Loop instead of Iota+Lt to avoid wraparound for 8-bit T.
       for (size_t i = 0; i < N; ++i) {
-        bool_lanes[i] = (i < len) ? T{1} : T{0};
+        bool_lanes[i] = ConvertScalarTo<T>(i < len ? 1 : 0);
       }
-      const auto expected = Eq(Load(d, bool_lanes.get()), Set(d, T{1}));
+      const Mask<D> expected = Eq(Load(d, bool_lanes.get()), k1);
       HWY_ASSERT_MASK_EQ(d, expected, FirstN(d, len));
     }
 
     // Also ensure huge values yield all-true (unless the vector is actually
     // larger than max_len).
     for (size_t i = 0; i < N; ++i) {
-      bool_lanes[i] = (i < max_len) ? T{1} : T{0};
+      bool_lanes[i] = ConvertScalarTo<T>(i < max_len ? 1 : 0);
     }
-    const auto expected = Eq(Load(d, bool_lanes.get()), Set(d, T{1}));
+    const Mask<D> expected = Eq(Load(d, bool_lanes.get()), k1);
     HWY_ASSERT_MASK_EQ(d, expected, FirstN(d, max_len));
   }
 };
@@ -125,7 +175,7 @@ struct TestAllTrueFalse {
     const size_t N = Lanes(d);
     auto lanes = AllocateAligned<T>(N);
     HWY_ASSERT(lanes);
-    std::fill(lanes.get(), lanes.get() + N, T(0));
+    ZeroBytes(lanes.get(), N * sizeof(T));
 
     HWY_ASSERT(AllTrue(d, Eq(v, zero)));
     HWY_ASSERT(!AllFalse(d, Eq(v, zero)));
@@ -136,20 +186,20 @@ struct TestAllTrueFalse {
 
     // Set each lane to nonzero and back to zero
     for (size_t i = 0; i < N; ++i) {
-      lanes[i] = T(1);
+      lanes[i] = ConvertScalarTo<T>(1);
       v = Load(d, lanes.get());
 
       HWY_ASSERT(!AllTrue(d, Eq(v, zero)));
 
       HWY_ASSERT(expected_all_false ^ AllFalse(d, Eq(v, zero)));
 
-      lanes[i] = T(-1);
+      lanes[i] = ConvertScalarTo<T>(-1);
       v = Load(d, lanes.get());
       HWY_ASSERT(!AllTrue(d, Eq(v, zero)));
       HWY_ASSERT(expected_all_false ^ AllFalse(d, Eq(v, zero)));
 
       // Reset to all zero
-      lanes[i] = T(0);
+      lanes[i] = ConvertScalarTo<T>(0);
       v = Load(d, lanes.get());
       HWY_ASSERT(AllTrue(d, Eq(v, zero)));
       HWY_ASSERT(!AllFalse(d, Eq(v, zero)));
@@ -509,6 +559,7 @@ HWY_AFTER_NAMESPACE();
 
 namespace hwy {
 HWY_BEFORE_TEST(HwyMaskTest);
+HWY_EXPORT_AND_TEST_P(HwyMaskTest, TestAllMaskFalse);
 HWY_EXPORT_AND_TEST_P(HwyMaskTest, TestAllFromVec);
 HWY_EXPORT_AND_TEST_P(HwyMaskTest, TestAllFirstN);
 HWY_EXPORT_AND_TEST_P(HwyMaskTest, TestAllMaskVec);
@@ -522,6 +573,7 @@ HWY_EXPORT_AND_TEST_P(HwyMaskTest, TestAllSetAtOrBeforeFirst);
 HWY_EXPORT_AND_TEST_P(HwyMaskTest, TestAllSetOnlyFirst);
 HWY_EXPORT_AND_TEST_P(HwyMaskTest, TestAllSetAtOrAfterFirst);
 HWY_EXPORT_AND_TEST_P(HwyMaskTest, TestAllDup128MaskFromMaskBits);
+HWY_AFTER_TEST();
 }  // namespace hwy
 
 #endif

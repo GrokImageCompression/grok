@@ -26,12 +26,35 @@ HWY_BEFORE_NAMESPACE();
 namespace hwy {
 namespace HWY_NAMESPACE {
 
-void SortF64Asc(double* HWY_RESTRICT keys, size_t num) {
+void SortF64Asc(double* HWY_RESTRICT keys, const size_t num) {
 #if HWY_HAVE_FLOAT64
   return VQSortStatic(keys, num, SortAscending());
 #else
   (void)keys;
   (void)num;
+  HWY_ASSERT(0);
+#endif
+}
+
+void PartialSortF64Asc(double* HWY_RESTRICT keys, const size_t num,
+                       const size_t k) {
+#if HWY_HAVE_FLOAT64
+  return VQPartialSortStatic(keys, num, k, SortAscending());
+#else
+  (void)keys;
+  (void)num;
+  (void)k;
+  HWY_ASSERT(0);
+#endif
+}
+
+void SelectF64Asc(double* HWY_RESTRICT keys, const size_t num, const size_t k) {
+#if HWY_HAVE_FLOAT64
+  return VQSelectStatic(keys, num, k, SortAscending());
+#else
+  (void)keys;
+  (void)num;
+  (void)k;
   HWY_ASSERT(0);
 #endif
 }
@@ -45,10 +68,22 @@ HWY_AFTER_NAMESPACE();
 namespace hwy {
 namespace {
 HWY_EXPORT(SortF64Asc);
+HWY_EXPORT(PartialSortF64Asc);
+HWY_EXPORT(SelectF64Asc);
 }  // namespace
 
-void VQSort(double* HWY_RESTRICT keys, size_t n, SortAscending) {
+void VQSort(double* HWY_RESTRICT keys, const size_t n, SortAscending) {
   HWY_DYNAMIC_DISPATCH(SortF64Asc)(keys, n);
+}
+
+void VQPartialSort(double* HWY_RESTRICT keys, const size_t n, const size_t k,
+                   SortAscending) {
+  HWY_DYNAMIC_DISPATCH(PartialSortF64Asc)(keys, n, k);
+}
+
+void VQSelect(double* HWY_RESTRICT keys, const size_t n, const size_t k,
+              SortAscending) {
+  HWY_DYNAMIC_DISPATCH(SelectF64Asc)(keys, n, k);
 }
 
 }  // namespace hwy

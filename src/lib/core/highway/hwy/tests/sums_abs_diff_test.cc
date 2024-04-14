@@ -13,6 +13,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <stddef.h>
+#include <stdint.h>
+
 #undef HWY_TARGET_INCLUDE
 #define HWY_TARGET_INCLUDE "tests/sums_abs_diff_test.cc"
 #include "hwy/foreach_target.h"  // IWYU pragma: keep
@@ -40,8 +43,8 @@ struct TestSumsOf8AbsDiff {
     for (size_t rep = 0; rep < 100; ++rep) {
       for (size_t i = 0; i < N; ++i) {
         uint64_t rand64_val = Random64(&rng);
-        in_lanes_a[i] = static_cast<T>(rand64_val & 0xFF);
-        in_lanes_b[i] = static_cast<T>((rand64_val >> 8) & 0xFF);
+        in_lanes_a[i] = ConvertScalarTo<T>(rand64_val & 0xFF);
+        in_lanes_b[i] = ConvertScalarTo<T>((rand64_val >> 8) & 0xFF);
       }
 
       for (size_t idx_sum = 0; idx_sum < N / 8; ++idx_sum) {
@@ -113,44 +116,40 @@ struct TestSumsOfAdjQuadAbsDiff {
     for (size_t rep = 0; rep < 100; ++rep) {
       for (size_t i = 0; i < N; ++i) {
         uint64_t rand64_val = Random64(&rng);
-        in_lanes_a[i] = static_cast<T>(rand64_val & 0xFF);
-        in_lanes_b[i] = static_cast<T>((rand64_val >> 8) & 0xFF);
+        in_lanes_a[i] = ConvertScalarTo<T>(rand64_val & 0xFF);
+        in_lanes_b[i] = ConvertScalarTo<T>((rand64_val >> 8) & 0xFF);
       }
 
       for (size_t i = 0; i < num_valid_sum_lanes; ++i) {
         size_t blk_idx = i / 8;
         size_t idx_in_blk = i & 7;
 
-        const auto a0 = static_cast<TW_I>(
+        const TW_I a0 = static_cast<TW_I>(
             in_lanes_a[blk_idx * 16 + kAOffset * 4 + idx_in_blk]);
-        const auto a1 = static_cast<TW_I>(
+        const TW_I a1 = static_cast<TW_I>(
             in_lanes_a[blk_idx * 16 + kAOffset * 4 + idx_in_blk + 1]);
-        const auto a2 = static_cast<TW_I>(
+        const TW_I a2 = static_cast<TW_I>(
             in_lanes_a[blk_idx * 16 + kAOffset * 4 + idx_in_blk + 2]);
-        const auto a3 = static_cast<TW_I>(
+        const TW_I a3 = static_cast<TW_I>(
             in_lanes_a[blk_idx * 16 + kAOffset * 4 + idx_in_blk + 3]);
 
-        const auto b0 =
+        const TW_I b0 =
             static_cast<TW_I>(in_lanes_b[blk_idx * 16 + kBOffset * 4]);
-        const auto b1 =
+        const TW_I b1 =
             static_cast<TW_I>(in_lanes_b[blk_idx * 16 + kBOffset * 4 + 1]);
-        const auto b2 =
+        const TW_I b2 =
             static_cast<TW_I>(in_lanes_b[blk_idx * 16 + kBOffset * 4 + 2]);
-        const auto b3 =
+        const TW_I b3 =
             static_cast<TW_I>(in_lanes_b[blk_idx * 16 + kBOffset * 4 + 3]);
 
-        const auto diff0 = a0 - b0;
-        const auto diff1 = a1 - b1;
-        const auto diff2 = a2 - b2;
-        const auto diff3 = a3 - b3;
-
-        sum_lanes[i] = static_cast<TW>(((diff0 < 0) ? (-diff0) : diff0) +
-                                       ((diff1 < 0) ? (-diff1) : diff1) +
-                                       ((diff2 < 0) ? (-diff2) : diff2) +
-                                       ((diff3 < 0) ? (-diff3) : diff3));
+        const TW_I diff0 = static_cast<TW_I>(ScalarAbs(a0 - b0));
+        const TW_I diff1 = static_cast<TW_I>(ScalarAbs(a1 - b1));
+        const TW_I diff2 = static_cast<TW_I>(ScalarAbs(a2 - b2));
+        const TW_I diff3 = static_cast<TW_I>(ScalarAbs(a3 - b3));
+        sum_lanes[i] = static_cast<TW>(diff0 + diff1 + diff2 + diff3);
       }
 
-      const auto actual = IfThenElseZero(
+      const Vec<decltype(dw)> actual = IfThenElseZero(
           FirstN(dw, num_valid_sum_lanes),
           SumsOfAdjQuadAbsDiff<kAOffset, kBOffset>(Load(d, in_lanes_a.get()),
                                                    Load(d, in_lanes_b.get())));
@@ -228,8 +227,8 @@ struct TestSumsOfShuffledQuadAbsDiff {
     for (size_t rep = 0; rep < 100; ++rep) {
       for (size_t i = 0; i < N; ++i) {
         uint64_t rand64_val = Random64(&rng);
-        in_lanes_a[i] = static_cast<T>(rand64_val & 0xFF);
-        in_lanes_b[i] = static_cast<T>((rand64_val >> 8) & 0xFF);
+        in_lanes_a[i] = ConvertScalarTo<T>(rand64_val & 0xFF);
+        in_lanes_b[i] = ConvertScalarTo<T>((rand64_val >> 8) & 0xFF);
       }
 
       const auto a = Load(d, in_lanes_a.get());
@@ -344,6 +343,7 @@ HWY_BEFORE_TEST(HwySumsAbsDiffTest);
 HWY_EXPORT_AND_TEST_P(HwySumsAbsDiffTest, TestAllSumsOf8AbsDiff);
 HWY_EXPORT_AND_TEST_P(HwySumsAbsDiffTest, TestAllSumsOfAdjQuadAbsDiff);
 HWY_EXPORT_AND_TEST_P(HwySumsAbsDiffTest, TestAllSumsOfShuffledQuadAbsDiff);
+HWY_AFTER_TEST();
 }  // namespace hwy
 
 #endif
