@@ -27,6 +27,21 @@
 * [WIKI](https://github.com/GrokImageCompression/grok/wiki)
 * [LICENSE][link-license]
 
+
+### Library Roadmap
+
+This project is now stable, feature complete, and performs very well relative to commercial and other open source JPEG 2000 toolkits. 
+
+* No new features are planned - only bugs reported by users will be considered
+* Releases older than version 12.0 will no longer be supported and have been removed from release page
+* Repository history is no longer needed and has been removed
+
+Have no fear ! The current release continues to pass all 1900+ unit tests. The OSS-Fuzz fuzzer continues
+to run, looking for memory leaks and other program errors. The issue tracker continues to be available
+for any issues encountered by users.
+
+
+
 ### Current Build Status
 [![badge-actions]][link-actions]
 [![badge-oss-fuzz]][link-oss-fuzz]
