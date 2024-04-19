@@ -119,6 +119,7 @@ bool useStdio(const std::string &filename);
 bool supportedStdioFormat(GRK_SUPPORTED_FILE_FMT format, bool compress);
 bool grk_open_for_output(FILE** fdest, const char* outfile, bool writeToStdout);
 bool grk_set_binary_mode(FILE* file);
+GRK_SUPPORTED_FILE_FMT grk_get_file_format(const char* filename, bool &isHTJ2K);
 GRK_SUPPORTED_FILE_FMT grk_get_file_format(const char* filename);
 const char* pathSeparator();
 char* get_file_name(char* name);

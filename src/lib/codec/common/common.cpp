@@ -217,9 +217,10 @@ bool grk_open_for_output(FILE** fdest, const char* outfile, bool writeToStdout)
 	return true;
 }
 
-GRK_SUPPORTED_FILE_FMT grk_get_file_format(const char* filename)
+GRK_SUPPORTED_FILE_FMT grk_get_file_format(const char* filename, bool &isHTJ2K)
 {
 	const char* ext = strrchr(filename, '.');
+	isHTJ2K = false;
 	if(ext == nullptr)
 		return GRK_FMT_UNK;
 	ext++;
@@ -227,19 +228,27 @@ GRK_SUPPORTED_FILE_FMT grk_get_file_format(const char* filename)
 	{
 		static const char* extension[] = {"pgx",  "pam", "pnm",	 "pgm", "ppm",	"pbm",
 										  "bmp",  "tif", "tiff", "jpg", "jpeg", "raw",
-										  "rawl", "png", "j2k",	 "jp2", "j2c",	"jpc"};
+										  "rawl", "png", "j2k",	 "jp2", "j2c",	"jpc", "jph", "jhc"};
 		static const GRK_SUPPORTED_FILE_FMT format[] = {
 			GRK_FMT_PGX,  GRK_FMT_PXM, GRK_FMT_PXM, GRK_FMT_PXM, GRK_FMT_PXM, GRK_FMT_PXM,
 			GRK_FMT_BMP,  GRK_FMT_TIF, GRK_FMT_TIF, GRK_FMT_JPG, GRK_FMT_JPG, GRK_FMT_RAW,
-			GRK_FMT_RAWL, GRK_FMT_PNG, GRK_FMT_J2K, GRK_FMT_JP2, GRK_FMT_J2K, GRK_FMT_J2K};
+			GRK_FMT_RAWL, GRK_FMT_PNG, GRK_FMT_J2K, GRK_FMT_JP2, GRK_FMT_J2K, GRK_FMT_J2K, GRK_FMT_JP2, GRK_FMT_J2K};
 		for(uint32_t i = 0; i < sizeof(format) / sizeof(*format); i++)
 		{
-			if(strcasecmp(ext, extension[i]) == 0)
+			if(strcasecmp(ext, extension[i]) == 0) {
+				if (i == 18 || i == 19)
+					isHTJ2K = true;
 				return format[i];
+			}
 		}
 	}
 
 	return GRK_FMT_UNK;
+}
+
+GRK_SUPPORTED_FILE_FMT grk_get_file_format(const char* filename) {
+	bool isHTJ2K;
+	return grk_get_file_format(filename, isHTJ2K);
 }
 
 bool isFinalOutputSubsampled(grk_image* image)
