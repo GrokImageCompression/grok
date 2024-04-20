@@ -26,12 +26,8 @@ jobs:
     - name: ubuntu-dependencies
       if: startsWith(matrix.os, 'ubuntu')
       run: |
-        sudo apt-get install -y gcc-10 g++-10
-        sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-10 100 \
-          --slave /usr/bin/g++ g++ /usr/bin/g++-10 --slave /usr/bin/gcov gcov /usr/bin/gcov-10
         echo DATA_BRANCH=linux-release >> $GITHUB_ENV
         sudo apt install exiftool
-
 
     - name: macos-dependencies
       if: startsWith(matrix.os, 'macos')
@@ -48,7 +44,6 @@ jobs:
         $generator= "-DCMAKE_GENERATOR_PLATFORM=x64"
         echo "Generator: ${generator}"
         echo "GENERATOR_PLATFORM=$generator" >> $env:GITHUB_ENV
-        choco install wget 7zip --no-progress
 
     - name: dependencies
       run: |

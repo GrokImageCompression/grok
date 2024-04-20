@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.20)
 
 project(GROK)
 
@@ -27,8 +27,12 @@ set(GROK_CORE_NAME grokj2k)
 set(GROK_CODEC_NAME grokj2kcodec)
 set(GROK_PLUGIN_NAME grokj2k_plugin)
 
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+if ( (CMAKE_CXX_COMPILER_ID MATCHES "GNU") AND (CMAKE_CXX_COMPILER_VERSION LESS 11.0) )
+   message(FATAL_ERROR "GNU compiler version must be at least 11.0")
+endif()
+
 
 if (CMAKE_SYSTEM_PROCESSOR MATCHES "unknown")
   # uname -p is broken on this system.  Try uname -m
@@ -44,10 +48,6 @@ message(STATUS "Architecture: " ${GRK_ARCH})
 IF(MSVC)
     string(APPEND CMAKE_CXX_FLAGS " /EHsc")
 ENDIF(MSVC)
-
-if ( (CMAKE_CXX_COMPILER_ID MATCHES "GNU") AND (CMAKE_CXX_COMPILER_VERSION LESS 10.0) )
-   message(FATAL_ERROR "GNU compiler version must be at least 10.0")
-endif()
 
 # Set a default build type if none was specified
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
