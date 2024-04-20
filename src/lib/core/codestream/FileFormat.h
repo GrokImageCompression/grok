@@ -44,6 +44,7 @@ namespace grk
 #define JP2_DTBL 0x6474626c /**< Data Reference box */
 #define JP2_BPCC 0x62706363 /**< Bits per component box */
 #define JP2_JP2 0x6a703220 /**< File type fields */
+#define JP2_JPH 0x6A706820
 #define JP2_RES 0x72657320 /**< Resolution box (super-box) */
 #define JP2_CAPTURE_RES 0x72657363 /**< Capture resolution box */
 #define JP2_DISPLAY_RES 0x72657364 /**< Display resolution box */

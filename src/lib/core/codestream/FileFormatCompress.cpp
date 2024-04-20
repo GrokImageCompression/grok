@@ -747,16 +747,16 @@ bool FileFormatCompress::init(grk_cparameters* parameters, GrkImage* image)
 	  return false;
 
    /* Profile box */
-   brand = JP2_JP2; /* BR */
+   brand = parameters->cblk_sty == GRK_CBLKSTY_HT ? JP2_JPH : JP2_JP2; /* BR */
    minversion = 0; /* MinV */
    numcl = 1;
-   cl = (uint32_t*)grk_malloc(sizeof(uint32_t));
+   cl = (uint32_t*)grk_malloc(sizeof(uint32_t) * numcl);
    if(!cl)
    {
 	  Logger::logger_.error("Not enough memory when set up the JP2 compressor");
 	  return false;
    }
-   cl[0] = JP2_JP2; /* CL0 : JP2 */
+   cl[0] = brand;
 
    /* Image Header box */
    numcomps = inputImage_->numcomps; /* NC */
