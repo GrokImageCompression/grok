@@ -12,7 +12,7 @@
 
 ### Features
 
-* support for new **High Throughput JPEG 2000 (HTJ2K)** standard
+* support for High Throughput JPEG 2000 (HTJ2K) encode/decode
 * fast random-access sub-image decoding using `TLM` markers
 * full encode/decode support for `ICC` colour profiles
 * full encode/decode support for `XML`,`IPTC`, `XMP` and `EXIF` meta-data
@@ -26,20 +26,6 @@
 * [INSTALL](https://github.com/GrokImageCompression/grok/blob/master/INSTALL.md)
 * [WIKI](https://github.com/GrokImageCompression/grok/wiki)
 * [LICENSE][link-license]
-
-
-### Library Roadmap
-
-This project is now stable, feature complete, and performs very well relative to commercial and other open source JPEG 2000 toolkits. 
-
-* No new features are planned - only bugs reported by users will be considered
-* Releases older than version 12.0 will no longer be supported and have been removed from release page
-* Repository history is no longer needed and has been removed
-
-Have no fear ! The current release continues to pass all 1900+ unit tests. The OSS-Fuzz fuzzer continues
-to run, looking for memory leaks and other program errors. The issue tracker continues to be available
-for any issues encountered by users.
-
 
 
 ### Current Build Status
