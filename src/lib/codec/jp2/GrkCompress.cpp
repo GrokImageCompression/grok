@@ -987,8 +987,9 @@ GrkRC GrkCompress::pluginMain(int argc, char** argv, CompressInitParams* initPar
    return rc;
 }
 
-static void setHT(grk_cparameters* parameters,
-		TCLAP::ValueArg<std::string> &compressionRatiosArg, TCLAP::ValueArg<std::string> &qualityArg) {
+static void setHT(grk_cparameters* parameters, TCLAP::ValueArg<std::string>& compressionRatiosArg,
+				  TCLAP::ValueArg<std::string>& qualityArg)
+{
    parameters->cblk_sty = GRK_CBLKSTY_HT;
    parameters->numgbits = 1;
    if(compressionRatiosArg.isSet() || qualityArg.isSet())
@@ -1213,12 +1214,13 @@ GrkRC GrkCompress::parseCommandLine(int argc, char** argv, CompressInitParams* i
 			case GRK_FMT_JP2:
 			   break;
 			default:
-			   spdlog::error("Unknown output format image {} [only *.j2k, *.j2c, *.jp2, *.jpc, *.jph or *.jhc] supported ",
+			   spdlog::error("Unknown output format image {} [only *.j2k, *.j2c, *.jp2, *.jpc, "
+							 "*.jph or *.jhc] supported ",
 							 outfile);
 			   return GrkRCFail;
 		 }
-		 if (isHT)
-			 setHT(parameters,compressionRatiosArg, qualityArg);
+		 if(isHT)
+			setHT(parameters, compressionRatiosArg, qualityArg);
 		 if(grk::strcpy_s(parameters->outfile, sizeof(parameters->outfile), outfile) != 0)
 		 {
 			return GrkRCFail;
@@ -1717,8 +1719,8 @@ GrkRC GrkCompress::parseCommandLine(int argc, char** argv, CompressInitParams* i
 		 parameters->cblk_sty = cblkSty.getValue() & 0X7F;
 		 if(parameters->cblk_sty == GRK_CBLKSTY_HT)
 		 {
-		   spdlog::error("High throughput compression mode cannot be be used for non HTJ2K file");
-		   return GrkRCFail;
+			spdlog::error("High throughput compression mode cannot be be used for non HTJ2K file");
+			return GrkRCFail;
 		 }
 	  }
 	  if(!isHT && compressionRatiosArg.isSet() && qualityArg.isSet())
@@ -2082,11 +2084,12 @@ GrkRC GrkCompress::parseCommandLine(int argc, char** argv, CompressInitParams* i
 			   inputFolder->out_format = "jp2";
 			   break;
 			default:
-			   spdlog::error("Unknown output format image [only *.j2k, *.j2c, *.jp2, *.jpc, *.jph or *.jhc] supported");
+			   spdlog::error("Unknown output format image [only *.j2k, *.j2c, *.jp2, *.jpc, *.jph "
+							 "or *.jhc] supported");
 			   return GrkRCFail;
 		 }
-		 if (isHT)
-			 setHT(parameters,compressionRatiosArg, qualityArg);
+		 if(isHT)
+			setHT(parameters, compressionRatiosArg, qualityArg);
 	  }
 	  if(serverArg.isSet() && licenseArg.isSet())
 	  {

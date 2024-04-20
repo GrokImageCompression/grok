@@ -976,7 +976,8 @@ grk_image* TIFFFormat::decode(const std::string& filename, grk_cparameters* para
 	  return 0;
    }
 
-   if (TIFFIsTiled(tif_)) {
+   if(TIFFIsTiled(tif_))
+   {
 	  spdlog::error("TIFFFormat::decode: tiled TIFF images not supported");
 	  return 0;
    }
