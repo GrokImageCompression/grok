@@ -383,7 +383,7 @@ struct TileComponentWindow : public TileComponentWindowBase<T>
    uint64_t stridedArea(void) const
    {
 	  auto win = getResWindowBufferHighestREL();
-	  return win->stride * win->height();
+	  return (uint64_t)win->stride * win->height();
    }
 
    // set data to buf without owning it

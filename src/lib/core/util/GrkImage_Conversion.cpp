@@ -199,7 +199,8 @@ bool GrkImage::execUpsample(void)
 	  }
 	  else
 	  {
-		 memcpy(new_cmp->data, org_cmp->data, org_cmp->stride * org_cmp->h * sizeof(int32_t));
+		 memcpy(new_cmp->data, org_cmp->data,
+				(size_t)org_cmp->stride * org_cmp->h * sizeof(int32_t));
 	  }
    }
    all_components_data_free();

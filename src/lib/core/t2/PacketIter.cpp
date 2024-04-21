@@ -778,7 +778,7 @@ void PacketIter::init(PacketManager* packetMan, uint32_t pino, TileCodingParams*
 			   for(uint8_t resno = 0; resno < comps->numresolutions; ++resno)
 			   {
 				  auto inf = precinctInfoOPT_ + resno;
-				  inf->innerPrecincts_ = prog.compE * prog.layE;
+				  inf->innerPrecincts_ = (uint64_t)prog.compE * prog.layE;
 				  auto compLayer = inf->innerPrecincts_;
 				  inf->winPrecinctsLeft_ = inf->winPrecGrid.x0 * compLayer;
 				  inf->winPrecinctsRight_ =
@@ -827,6 +827,7 @@ bool PacketIter::next(SparseBuffer* src)
 
 bool PacketIter::next_cprl(SparseBuffer* src)
 {
+   (void)src;
    for(; compno < prog.compE; compno++)
    {
 	  auto comp = comps + compno;
@@ -867,6 +868,7 @@ bool PacketIter::next_cprl(SparseBuffer* src)
 }
 bool PacketIter::next_pcrl(SparseBuffer* src)
 {
+   (void)src;
    for(; y < prog.ty1; y += dyActive, dyActive = dy)
    {
 	  for(; x < prog.tx1; x += dxActive, dxActive = dx)
@@ -910,6 +912,7 @@ bool PacketIter::next_pcrl(SparseBuffer* src)
 }
 bool PacketIter::next_lrcp(SparseBuffer* src)
 {
+   (void)src;
    for(; layno < prog.layE; layno++)
    {
 	  for(; resno < prog.resE; resno++)
@@ -953,6 +956,7 @@ bool PacketIter::next_lrcp(SparseBuffer* src)
 }
 bool PacketIter::next_rlcp(SparseBuffer* src)
 {
+   (void)src;
    for(; resno < prog.resE; resno++)
    {
 	  uint64_t precE = 0;
@@ -995,6 +999,7 @@ bool PacketIter::next_rlcp(SparseBuffer* src)
 }
 bool PacketIter::next_rpcl(SparseBuffer* src)
 {
+   (void)src;
    for(; resno < prog.resE; resno++)
    {
 	  // if all remaining components have degenerate precinct grid, then

@@ -530,7 +530,7 @@ bool BMPFormat::read_info_header(GRK_BITMAPFILEHEADER* fileHeader, GRK_BITMAPINF
 
 bool BMPFormat::read_raw_data(uint8_t* pData, uint32_t stride, uint32_t height)
 {
-   return read(pData, stride * height);
+   return read(pData, (size_t)stride * height);
 }
 
 bool BMPFormat::read_rle8_data(uint8_t* pData, uint32_t stride, uint32_t width, uint32_t height)
@@ -546,7 +546,7 @@ bool BMPFormat::read_rle8_data(uint8_t* pData, uint32_t stride, uint32_t width, 
 	  goto cleanup;
    }
    pixels_ptr = pixels;
-   beyond = pData + stride * height;
+   beyond = pData + (size_t)stride * height;
    pix = pData;
 
    while(y < height)
@@ -620,7 +620,7 @@ bool BMPFormat::read_rle4_data(uint8_t* pData, uint32_t stride, uint32_t width, 
    if(!read(pixels, infoHeader_.biSizeImage))
 	  goto cleanup;
    pixels_ptr = pixels;
-   beyond = pData + stride * height;
+   beyond = pData + (size_t)stride * height;
    pix = pData;
    while(y < height)
    {

@@ -541,6 +541,8 @@ bool CodeStreamDecompress::read_crg(uint8_t* headerData, uint16_t header_size)
  */
 bool CodeStreamDecompress::read_plm(uint8_t* headerData, uint16_t header_size)
 {
+   (void)headerData;
+   (void)header_size;
    return true;
 }
 /**
@@ -552,6 +554,8 @@ bool CodeStreamDecompress::read_plm(uint8_t* headerData, uint16_t header_size)
  */
 bool CodeStreamDecompress::read_plt(uint8_t* headerData, uint16_t header_size)
 {
+   (void)headerData;
+   (void)header_size;
    return true;
 }
 /**

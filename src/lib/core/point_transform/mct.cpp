@@ -504,7 +504,7 @@ void mct::calculate_norms(double* pNorms, uint16_t pNbComps, float* pMatrix)
 	  {
 		 CurrentValue = Matrix[Index];
 		 Index += pNbComps;
-		 Norms[i] += CurrentValue * CurrentValue;
+		 Norms[i] += (double)CurrentValue * CurrentValue;
 	  }
 	  Norms[i] = sqrt(Norms[i]);
    }

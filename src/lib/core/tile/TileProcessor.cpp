@@ -1534,7 +1534,7 @@ void PacketTracker::clear(void)
 uint64_t PacketTracker::get_buffer_len(uint32_t numcomps, uint32_t numres, uint64_t numprec,
 									   uint32_t numlayers)
 {
-   uint64_t len = numcomps * numres * numprec * numlayers;
+   uint64_t len = (uint64_t)numcomps * numres * numprec * numlayers;
 
    return ((len + 7) >> 3) << 3;
 }
