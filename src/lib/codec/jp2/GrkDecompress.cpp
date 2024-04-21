@@ -197,7 +197,7 @@ static void decompress_help_display(void)
    fprintf(stdout, "  `-i, -in_file [file]`\n");
    fprintf(stdout, "\n");
    fprintf(stdout,
-		   "Input file. Either this argument or the `-img_dir` argument described below is\n");
+		   "Input file. Either this argument or the `-batch_src` argument described below is\n");
    fprintf(stdout,
 		   "required. Valid input image extensions are J2K, JP2 and JPC. When using this\n");
    fprintf(stdout, "option output file must be specified using -o.\n");
@@ -214,7 +214,7 @@ static void decompress_help_display(void)
 		   "there is more than one component, then only the first component will be written\n");
    fprintf(stdout, "to the file.\n");
    fprintf(stdout, "\n");
-   fprintf(stdout, " `-y, -img_dir [directory path]`\n");
+   fprintf(stdout, " `-y, -batch_src [directory path]`\n");
    fprintf(stdout, "\n");
    fprintf(stdout,
 		   "Path to the folder where the compressed images are stored. Either this argument\n");
@@ -229,11 +229,11 @@ static void decompress_help_display(void)
    fprintf(stdout, " `-a, -out_dir [output directory]`\n");
    fprintf(stdout, "\n");
    fprintf(stdout, "Output directory where compressed files are stored. Only relevant when the\n");
-   fprintf(stdout, "`-img_dir` flag is set. Default: same directory as specified by `-img_dir`.\n");
+   fprintf(stdout, "`-img_dir` flag is set. Default: same directory as specified by `-batch_src`.\n");
    fprintf(stdout, "\n");
    fprintf(stdout, " `-O, -out_fmt [format]`\n");
    fprintf(stdout, "\n");
-   fprintf(stdout, "Output format used to decompress the code streams. Required when `-img_dir`\n");
+   fprintf(stdout, "Output format used to decompress the code streams. Required when `-batch_src`\n");
    fprintf(stdout, "option is used. See above for supported formats.\n");
    fprintf(stdout, "\n");
    fprintf(stdout, " `-r, -reduce [reduce factor]`\n");

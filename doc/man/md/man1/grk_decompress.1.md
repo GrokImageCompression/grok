@@ -71,23 +71,23 @@ Output information and warnings about decoding to console (errors are always out
 
 `-i, -in_file [file]`
 
-Input file. Either this argument or the `-img_dir` argument described below is required. Valid input image extensions are J2K, JP2 and JPC. When using this option output file must be specified using -o.
+Input file. Either this argument or the `-batch_src` argument described below is required. Valid input image extensions are J2K, JP2 and JPC. When using this option output file must be specified using -o.
 
 `-o, -out_file [file]`
 
 Output file. Required when using `-i` option. See above for supported file types. If a `PGX` filename is given, there will be as many output files as there are components: an index starting from 0 will then be appended to the output filename, just before the `pgx` extension. If a `PGM` filename is given and there is more than one component, then only the first component will be written to the file.
 
-`-y, -img_dir [directory path]`
+`-y, -batch_src [directory path]`
 
 Path to the folder where the compressed images are stored. Either this argument or the `-i` argument described above is required. When image files are in the same directory as the executable, this can be indicated by a dot `.` argument. When using this option, the output format must be specified using `-out_fmt`. Output images are saved in the same folder.
 
 `-a, -out_dir [output directory]`
 
-Output directory where compressed files are stored. Only relevant when the `-img_dir` flag is set. Default: same directory as specified by `-img_dir`.
+Output directory where compressed files are stored. Only relevant when the `-batch_src` flag is set. Default: same directory as specified by `-batch_src`.
 
 `-O, -out_fmt [format]`
 
-Output format used to decompress the code streams. Required when `-img_dir` option is used. See above for supported formats.
+Output format used to decompress the code streams. Required when `-batch_src` option is used. See above for supported formats.
 
 `-r, -reduce [reduce factor]`
 

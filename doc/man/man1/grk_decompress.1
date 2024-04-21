@@ -108,7 +108,7 @@ Console is silent by default.
 \f[C]-i, -in_file [file]\f[R]
 .PP
 Input file.
-Either this argument or the \f[C]-img_dir\f[R] argument described below
+Either this argument or the \f[C]-batch_src\f[R] argument described below
 is required.
 Valid input image extensions are J2K, JP2 and JPC.
 When using this option output file must be specified using -o.
@@ -124,7 +124,7 @@ to the output filename, just before the \f[C]pgx\f[R] extension.
 If a \f[C]PGM\f[R] filename is given and there is more than one
 component, then only the first component will be written to the file.
 .PP
-\f[C]-y, -img_dir [directory path]\f[R]
+\f[C]-y, -batch_src [directory path]\f[R]
 .PP
 Path to the folder where the compressed images are stored.
 Either this argument or the \f[C]-i\f[R] argument described above is
@@ -138,13 +138,13 @@ Output images are saved in the same folder.
 \f[C]-a, -out_dir [output directory]\f[R]
 .PP
 Output directory where compressed files are stored.
-Only relevant when the \f[C]-img_dir\f[R] flag is set.
-Default: same directory as specified by \f[C]-img_dir\f[R].
+Only relevant when the \f[C]-batch_src\f[R] flag is set.
+Default: same directory as specified by \f[C]-batch_src\f[R].
 .PP
 \f[C]-O, -out_fmt [format]\f[R]
 .PP
 Output format used to decompress the code streams.
-Required when \f[C]-img_dir\f[R] option is used.
+Required when \f[C]-batch_src\f[R] option is used.
 See above for supported formats.
 .PP
 \f[C]-r, -reduce [reduce factor]\f[R]
