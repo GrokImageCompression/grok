@@ -282,7 +282,7 @@ bool SIZMarker::write(CodeStreamCompress* codeStream, BufferedStream* stream)
    /* write SOC identifier */
 
    /* SIZ */
-   if(!stream->writeShort(J2K_MS_SIZ))
+   if(!stream->writeShort(J2K_SIZ))
 	  return false;
 
    /* L_SIZ */

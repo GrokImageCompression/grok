@@ -80,7 +80,7 @@ void PacketParser::readHeader(void)
    {
 	  uint16_t marker =
 		  (uint16_t)(((uint16_t)(*currentData) << 8) | (uint16_t)(*(currentData + 1)));
-	  if(marker == J2K_MS_SOP)
+	  if(marker == J2K_SOP)
 	  {
 		 if(remainingTilePartBytes_ < 6)
 		 {
@@ -304,7 +304,7 @@ void PacketParser::readHeader(void)
 	  }
 	  uint16_t marker =
 		  (uint16_t)(((uint16_t)(*currentHeaderPtr) << 8) | (uint16_t)(*(currentHeaderPtr + 1)));
-	  if(marker != J2K_MS_EPH)
+	  if(marker != J2K_EPH)
 	  {
 		 Logger::logger_.warn("Expected EPH marker, but found 0x%x", marker);
 		 headerError_ = true;
@@ -444,7 +444,8 @@ void update_maximum(std::atomic<T>& maximum_value, T const& value) noexcept
 {
    T prev_value = maximum_value;
    while(prev_value < value && !maximum_value.compare_exchange_weak(prev_value, value))
-   {}
+   {
+   }
 }
 
 void PacketParser::readDataFinalize(void)

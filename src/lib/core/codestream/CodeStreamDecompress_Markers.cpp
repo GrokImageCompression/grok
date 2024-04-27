@@ -70,7 +70,7 @@ bool CodeStreamDecompress::readSOTorEOC(void)
 	  decompressorState_.setState(DECOMPRESS_STATE_NO_EOC);
 	  return false;
    }
-   if(curr_marker_ != J2K_MS_SOT && curr_marker_ != J2K_MS_EOC)
+   if(curr_marker_ != J2K_SOT && curr_marker_ != J2K_EOC)
 	  Logger::logger_.warn("Expected SOT or EOC marker - read %s marker instead.",
 						   markerString(curr_marker_).c_str());
 
@@ -134,7 +134,7 @@ bool CodeStreamDecompress::parseTileParts(bool* canDecompress)
 	  return false;
    }
 
-   assert(curr_marker_ == J2K_MS_SOT);
+   assert(curr_marker_ == J2K_SOT);
 
    // try to skip non-scheduled tile parts using TLM marker if available
    try
@@ -150,10 +150,10 @@ bool CodeStreamDecompress::parseTileParts(bool* canDecompress)
 	*  we stop when we either read the EOC or run out of data */
    while((!currentTileProcessor_ ||
 		  !decompressorState_.tilesToDecompress_.isComplete(currentTileProcessor_->getIndex())) &&
-		 (curr_marker_ != J2K_MS_EOC))
+		 (curr_marker_ != J2K_EOC))
    {
 	  /* read markers until SOD is detected */
-	  while(curr_marker_ != J2K_MS_SOD)
+	  while(curr_marker_ != J2K_SOD)
 	  {
 		 // end of stream with no EOC
 		 if(stream_->numBytesLeft() == 0)
@@ -184,7 +184,7 @@ bool CodeStreamDecompress::parseTileParts(bool* canDecompress)
 			   return false;
 			}
 		 }
-		 if(curr_marker_ == J2K_MS_SOT)
+		 if(curr_marker_ == J2K_SOT)
 		 {
 			// Logger::logger_.info("Found SOT for tile %d",currentTileProcessor_->getIndex());
 			//  cache SOT position
@@ -232,7 +232,7 @@ bool CodeStreamDecompress::parseTileParts(bool* canDecompress)
 	  }
 	  else
 	  {
-		 assert(curr_marker_ == J2K_MS_SOD);
+		 assert(curr_marker_ == J2K_SOD);
 		 if(!currentTileProcessor_->cacheTilePartPackets(this))
 			return false;
 
@@ -343,7 +343,7 @@ bool CodeStreamDecompress::parseTileParts(bool* canDecompress)
 	  }
    }
    /* Current marker is the EOC marker ?*/
-   if(curr_marker_ == J2K_MS_EOC && decompressorState_.getState() != DECOMPRESS_STATE_EOC)
+   if(curr_marker_ == J2K_EOC && decompressorState_.getState() != DECOMPRESS_STATE_EOC)
 	  decompressorState_.setState(DECOMPRESS_STATE_EOC);
    // if we are not ready to decompress tile part data,
    // then skip tiles with no tile data i.e. no SOD marker
@@ -1928,7 +1928,7 @@ bool CodeStreamDecompress::read_soc()
 	  return false;
 
    grk_read<uint16_t>(data, &marker);
-   if(marker != J2K_MS_SOC)
+   if(marker != J2K_SOC)
 	  return false;
 
    /* Next marker should be a SIZ marker in the main header */
@@ -1938,7 +1938,7 @@ bool CodeStreamDecompress::read_soc()
    {
 	  // subtract already-read SOC marker length when caching header start
 	  codeStreamInfo->setMainHeaderStart(stream_->tell() - MARKER_BYTES);
-	  addMarker(J2K_MS_SOC, codeStreamInfo->getMainHeaderStart(), MARKER_BYTES);
+	  addMarker(J2K_SOC, codeStreamInfo->getMainHeaderStart(), MARKER_BYTES);
    }
    return true;
 }

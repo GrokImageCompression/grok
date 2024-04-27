@@ -144,7 +144,7 @@ bool PLMarkerMgr::write(void)
 	  for(auto itv = v->begin(); itv != v->end(); ++itv)
 	  {
 		 auto b = *itv;
-		 if(!stream_->writeShort(J2K_MS_PLT))
+		 if(!stream_->writeShort(J2K_PLT))
 			return false;
 		 if(!stream_->writeShort((uint16_t)(b->offset + 2)))
 			return false;
@@ -260,7 +260,8 @@ uint32_t PLMarkerMgr::pop(void)
    {
 	  // read next packet length
 	  while(currMarkerBuf_->canRead() && !readNextByte(currMarkerBuf_->read(), &rc))
-	  {}
+	  {
+	  }
 	  // advance to next buffer
 	  if(currMarkerBuf_->offset == currMarkerBuf_->len)
 	  {

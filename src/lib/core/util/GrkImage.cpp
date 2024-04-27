@@ -768,7 +768,8 @@ bool GrkImage::apply_palette_clr()
 			{
 			   Logger::logger_.error(
 				   "apply_palette_clr: channel %u with non-direct component mapping: "
-				   "cannot be signed", channel);
+				   "cannot be signed",
+				   channel);
 			   return false;
 			}
 			break;

@@ -65,57 +65,57 @@ std::string CodeStream::markerString(uint16_t marker)
 {
    switch(marker)
    {
-	  case J2K_MS_SOC:
+	  case J2K_SOC:
 		 return "SOC";
-	  case J2K_MS_SOT:
+	  case J2K_SOT:
 		 return "SOT";
-	  case J2K_MS_SOD:
+	  case J2K_SOD:
 		 return "SOD";
-	  case J2K_MS_EOC:
+	  case J2K_EOC:
 		 return "EOC";
-	  case J2K_MS_CAP:
+	  case J2K_CAP:
 		 return "CAP";
-	  case J2K_MS_SIZ:
+	  case J2K_SIZ:
 		 return "SIZ";
-	  case J2K_MS_COD:
+	  case J2K_COD:
 		 return "COD";
-	  case J2K_MS_COC:
+	  case J2K_COC:
 		 return "COC";
-	  case J2K_MS_RGN:
+	  case J2K_RGN:
 		 return "RGN";
-	  case J2K_MS_QCD:
+	  case J2K_QCD:
 		 return "QCD";
-	  case J2K_MS_QCC:
+	  case J2K_QCC:
 		 return "QCC";
-	  case J2K_MS_POC:
+	  case J2K_POC:
 		 return "POC";
-	  case J2K_MS_TLM:
+	  case J2K_TLM:
 		 return "TLM";
-	  case J2K_MS_PLM:
+	  case J2K_PLM:
 		 return "PLM";
-	  case J2K_MS_PLT:
+	  case J2K_PLT:
 		 return "PLT";
-	  case J2K_MS_PPM:
+	  case J2K_PPM:
 		 return "PPM";
-	  case J2K_MS_PPT:
+	  case J2K_PPT:
 		 return "PPT";
-	  case J2K_MS_SOP:
+	  case J2K_SOP:
 		 return "SOP";
-	  case J2K_MS_EPH:
+	  case J2K_EPH:
 		 return "EPH";
-	  case J2K_MS_CRG:
+	  case J2K_CRG:
 		 return "CRG";
-	  case J2K_MS_COM:
+	  case J2K_COM:
 		 return "COM";
-	  case J2K_MS_CBD:
+	  case J2K_CBD:
 		 return "CBD";
-	  case J2K_MS_MCC:
+	  case J2K_MCC:
 		 return "MCC";
-	  case J2K_MS_MCT:
+	  case J2K_MCT:
 		 return "MCT";
-	  case J2K_MS_MCO:
+	  case J2K_MCO:
 		 return "MCO";
-	  case J2K_MS_UNK:
+	  case J2K_UNK:
 	  default:
 		 return "Unknown";
    }

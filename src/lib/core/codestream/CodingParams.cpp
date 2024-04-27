@@ -304,12 +304,12 @@ bool DecompressorState::findNextSOT(CodeStreamDecompress* codeStream)
 	  {
 		 // we found the EOC marker - set state accordingly and return true;
 		 // we can ignore all data after EOC
-		 case J2K_MS_EOC:
+		 case J2K_EOC:
 			setState(DECOMPRESS_STATE_EOC);
 			return true;
 			break;
 		 // start of another tile
-		 case J2K_MS_SOT:
+		 case J2K_SOT:
 			return true;
 			break;
 		 default: {

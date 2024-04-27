@@ -42,7 +42,7 @@ bool SOTMarker::write(TileProcessor* proc, uint32_t tileLength)
 {
    auto stream = proc->getStream();
    /* SOT */
-   if(!stream->writeShort(J2K_MS_SOT))
+   if(!stream->writeShort(J2K_SOT))
 	  return false;
 
    /* Lsot */

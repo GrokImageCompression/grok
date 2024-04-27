@@ -229,11 +229,13 @@ static void decompress_help_display(void)
    fprintf(stdout, " `-a, -out_dir [output directory]`\n");
    fprintf(stdout, "\n");
    fprintf(stdout, "Output directory where compressed files are stored. Only relevant when the\n");
-   fprintf(stdout, "`-img_dir` flag is set. Default: same directory as specified by `-batch_src`.\n");
+   fprintf(stdout,
+		   "`-img_dir` flag is set. Default: same directory as specified by `-batch_src`.\n");
    fprintf(stdout, "\n");
    fprintf(stdout, " `-O, -out_fmt [format]`\n");
    fprintf(stdout, "\n");
-   fprintf(stdout, "Output format used to decompress the code streams. Required when `-batch_src`\n");
+   fprintf(stdout,
+		   "Output format used to decompress the code streams. Required when `-batch_src`\n");
    fprintf(stdout, "option is used. See above for supported formats.\n");
    fprintf(stdout, "\n");
    fprintf(stdout, " `-r, -reduce [reduce factor]`\n");

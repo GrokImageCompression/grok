@@ -371,9 +371,9 @@ bool T2Compress::compressPacket(TileCodingParams* tcp, PacketIter* pi, BufferedS
    // SOP marker
    if(tcp->csty & J2K_CP_CSTY_SOP)
    {
-	  if(!stream->writeByte(J2K_MS_SOP >> 8))
+	  if(!stream->writeByte(J2K_SOP >> 8))
 		 return false;
-	  if(!stream->writeByte(J2K_MS_SOP & 0xff))
+	  if(!stream->writeByte(J2K_SOP & 0xff))
 		 return false;
 	  if(!stream->writeByte(0))
 		 return false;
@@ -399,9 +399,9 @@ bool T2Compress::compressPacket(TileCodingParams* tcp, PacketIter* pi, BufferedS
    // EPH marker
    if(tcp->csty & J2K_CP_CSTY_EPH)
    {
-	  if(!stream->writeByte(J2K_MS_EPH >> 8))
+	  if(!stream->writeByte(J2K_EPH >> 8))
 		 return false;
-	  if(!stream->writeByte(J2K_MS_EPH & 0xff))
+	  if(!stream->writeByte(J2K_EPH & 0xff))
 		 return false;
    }
 

@@ -1624,13 +1624,13 @@ class Partial53 : public PartialInterleaver<T, FILTER_WIDTH, VERT_PASS_WIDTH>
    }
    inline T get_S_off(T* const buf, int64_t i, int64_t off)
    {
-	  auto ret = buf[(i)*2 * VERT_PASS_WIDTH + off];
+	  auto ret = buf[(i) * 2 * VERT_PASS_WIDTH + off];
 	  assert(abs(ret) < 0xFFFFFFF);
 	  return ret;
    }
    inline T get_D_off(T* const buf, int64_t i, int64_t off)
    {
-	  auto ret = buf[(1 + (i)*2) * VERT_PASS_WIDTH + off];
+	  auto ret = buf[(1 + (i) * 2) * VERT_PASS_WIDTH + off];
 	  assert(abs(ret) < 0xFFFFFFF);
 	  return ret;
    }

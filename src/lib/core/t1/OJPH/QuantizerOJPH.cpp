@@ -284,7 +284,7 @@ bool QuantizerOJPH::write(grk::BufferedStream* stream)
    Ccap[0] = (uint16_t)(Ccap[0] | Bp);
 
    /* CAP */
-   if(!stream->writeShort(grk::J2K_MS_CAP))
+   if(!stream->writeShort(grk::J2K_CAP))
    {
 	  return false;
    }

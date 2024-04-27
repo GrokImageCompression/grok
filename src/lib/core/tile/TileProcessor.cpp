@@ -402,7 +402,7 @@ bool TileProcessor::writeTilePartT2(uint32_t* tileBytesWritten)
    }
 
    // write SOD
-   if(!stream_->writeShort(J2K_MS_SOD))
+   if(!stream_->writeShort(J2K_SOD))
 	  return false;
    *tileBytesWritten += 2;
 
@@ -1088,8 +1088,7 @@ bool TileProcessor::cacheTilePartPackets(CodeStreamDecompress* codeStream)
 	  auto tilePartInfo = tileInfo->getTilePartInfo(current_tile_part);
 	  tilePartInfo->endHeaderPosition = current_pos;
 	  tilePartInfo->endPosition = current_pos + tilePartDataLength + MARKER_BYTES;
-	  if(!TileLengthMarkers::addTileMarkerInfo(tileIndex_, codeStreamInfo, J2K_MS_SOD, current_pos,
-											   0))
+	  if(!TileLengthMarkers::addTileMarkerInfo(tileIndex_, codeStreamInfo, J2K_SOD, current_pos, 0))
 	  {
 		 Logger::logger_.error("Not enough memory to add tl marker");
 

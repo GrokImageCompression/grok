@@ -584,11 +584,14 @@ grk_image* PNGFormat::do_decode(grk_cparameters* params)
 	  {
 		 const char* key = text_ptr[i].key;
 		 if(!strcmp(key, "Description"))
-		 {}
+		 {
+		 }
 		 else if(!strcmp(key, "Author"))
-		 {}
+		 {
+		 }
 		 else if(!strcmp(key, "Title"))
-		 {}
+		 {
+		 }
 		 else if(!strcmp(key, "XML:com.adobe.xmp"))
 		 {
 			if(text_ptr[i].text_length)
@@ -601,7 +604,8 @@ grk_image* PNGFormat::do_decode(grk_cparameters* params)
 		 }
 		 // other comments
 		 else
-		 {}
+		 {
+		 }
 	  }
    }
 

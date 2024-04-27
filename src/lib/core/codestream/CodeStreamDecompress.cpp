@@ -37,65 +37,65 @@ CodeStreamDecompress::CodeStreamDecompress(BufferedStream* stream)
    headerImage_ = new GrkImage();
    headerImage_->meta = grk_image_meta_new();
    marker_map = {
-	   {J2K_MS_SOT,
-		new marker_handler(J2K_MS_SOT, DECOMPRESS_STATE_MH | DECOMPRESS_STATE_TPH_SOT,
+	   {J2K_SOT,
+		new marker_handler(J2K_SOT, DECOMPRESS_STATE_MH | DECOMPRESS_STATE_TPH_SOT,
 						   [this](uint8_t* data, uint16_t len) { return read_sot(data, len); })},
-	   {J2K_MS_COD,
-		new marker_handler(J2K_MS_COD, DECOMPRESS_STATE_MH | DECOMPRESS_STATE_TPH,
+	   {J2K_COD,
+		new marker_handler(J2K_COD, DECOMPRESS_STATE_MH | DECOMPRESS_STATE_TPH,
 						   [this](uint8_t* data, uint16_t len) { return read_cod(data, len); })},
-	   {J2K_MS_COC,
-		new marker_handler(J2K_MS_COC, DECOMPRESS_STATE_MH | DECOMPRESS_STATE_TPH,
+	   {J2K_COC,
+		new marker_handler(J2K_COC, DECOMPRESS_STATE_MH | DECOMPRESS_STATE_TPH,
 						   [this](uint8_t* data, uint16_t len) { return read_coc(data, len); })},
-	   {J2K_MS_RGN,
-		new marker_handler(J2K_MS_RGN, DECOMPRESS_STATE_MH | DECOMPRESS_STATE_TPH,
+	   {J2K_RGN,
+		new marker_handler(J2K_RGN, DECOMPRESS_STATE_MH | DECOMPRESS_STATE_TPH,
 						   [this](uint8_t* data, uint16_t len) { return read_rgn(data, len); })},
-	   {J2K_MS_QCD,
-		new marker_handler(J2K_MS_QCD, DECOMPRESS_STATE_MH | DECOMPRESS_STATE_TPH,
+	   {J2K_QCD,
+		new marker_handler(J2K_QCD, DECOMPRESS_STATE_MH | DECOMPRESS_STATE_TPH,
 						   [this](uint8_t* data, uint16_t len) { return read_qcd(data, len); })},
-	   {J2K_MS_QCC,
-		new marker_handler(J2K_MS_QCC, DECOMPRESS_STATE_MH | DECOMPRESS_STATE_TPH,
+	   {J2K_QCC,
+		new marker_handler(J2K_QCC, DECOMPRESS_STATE_MH | DECOMPRESS_STATE_TPH,
 						   [this](uint8_t* data, uint16_t len) { return read_qcc(data, len); })},
-	   {J2K_MS_POC,
-		new marker_handler(J2K_MS_POC, DECOMPRESS_STATE_MH | DECOMPRESS_STATE_TPH,
+	   {J2K_POC,
+		new marker_handler(J2K_POC, DECOMPRESS_STATE_MH | DECOMPRESS_STATE_TPH,
 						   [this](uint8_t* data, uint16_t len) { return read_poc(data, len); })},
-	   {J2K_MS_SIZ,
-		new marker_handler(J2K_MS_SIZ, DECOMPRESS_STATE_MH_SIZ,
+	   {J2K_SIZ,
+		new marker_handler(J2K_SIZ, DECOMPRESS_STATE_MH_SIZ,
 						   [this](uint8_t* data, uint16_t len) { return read_siz(data, len); })},
-	   {J2K_MS_CAP,
-		new marker_handler(J2K_MS_CAP, DECOMPRESS_STATE_MH,
+	   {J2K_CAP,
+		new marker_handler(J2K_CAP, DECOMPRESS_STATE_MH,
 						   [this](uint8_t* data, uint16_t len) { return read_cap(data, len); })},
-	   {J2K_MS_TLM,
-		new marker_handler(J2K_MS_TLM, DECOMPRESS_STATE_MH,
+	   {J2K_TLM,
+		new marker_handler(J2K_TLM, DECOMPRESS_STATE_MH,
 						   [this](uint8_t* data, uint16_t len) { return read_tlm(data, len); })},
-	   {J2K_MS_PLM,
-		new marker_handler(J2K_MS_PLM, DECOMPRESS_STATE_MH,
+	   {J2K_PLM,
+		new marker_handler(J2K_PLM, DECOMPRESS_STATE_MH,
 						   [this](uint8_t* data, uint16_t len) { return read_plm(data, len); })},
-	   {J2K_MS_PLT,
-		new marker_handler(J2K_MS_PLT, DECOMPRESS_STATE_TPH,
+	   {J2K_PLT,
+		new marker_handler(J2K_PLT, DECOMPRESS_STATE_TPH,
 						   [this](uint8_t* data, uint16_t len) { return read_plt(data, len); })},
-	   {J2K_MS_PPM,
-		new marker_handler(J2K_MS_PPM, DECOMPRESS_STATE_MH,
+	   {J2K_PPM,
+		new marker_handler(J2K_PPM, DECOMPRESS_STATE_MH,
 						   [this](uint8_t* data, uint16_t len) { return read_ppm(data, len); })},
-	   {J2K_MS_PPT,
-		new marker_handler(J2K_MS_PPT, DECOMPRESS_STATE_TPH,
+	   {J2K_PPT,
+		new marker_handler(J2K_PPT, DECOMPRESS_STATE_TPH,
 						   [this](uint8_t* data, uint16_t len) { return read_ppt(data, len); })},
-	   {J2K_MS_CRG,
-		new marker_handler(J2K_MS_CRG, DECOMPRESS_STATE_MH,
+	   {J2K_CRG,
+		new marker_handler(J2K_CRG, DECOMPRESS_STATE_MH,
 						   [this](uint8_t* data, uint16_t len) { return read_crg(data, len); })},
-	   {J2K_MS_COM,
-		new marker_handler(J2K_MS_COM, DECOMPRESS_STATE_MH | DECOMPRESS_STATE_TPH,
+	   {J2K_COM,
+		new marker_handler(J2K_COM, DECOMPRESS_STATE_MH | DECOMPRESS_STATE_TPH,
 						   [this](uint8_t* data, uint16_t len) { return read_com(data, len); })},
-	   {J2K_MS_MCT,
-		new marker_handler(J2K_MS_MCT, DECOMPRESS_STATE_MH | DECOMPRESS_STATE_TPH,
+	   {J2K_MCT,
+		new marker_handler(J2K_MCT, DECOMPRESS_STATE_MH | DECOMPRESS_STATE_TPH,
 						   [this](uint8_t* data, uint16_t len) { return read_mct(data, len); })},
-	   {J2K_MS_CBD,
-		new marker_handler(J2K_MS_CBD, DECOMPRESS_STATE_MH,
+	   {J2K_CBD,
+		new marker_handler(J2K_CBD, DECOMPRESS_STATE_MH,
 						   [this](uint8_t* data, uint16_t len) { return read_cbd(data, len); })},
-	   {J2K_MS_MCC,
-		new marker_handler(J2K_MS_MCC, DECOMPRESS_STATE_MH | DECOMPRESS_STATE_TPH,
+	   {J2K_MCC,
+		new marker_handler(J2K_MCC, DECOMPRESS_STATE_MH | DECOMPRESS_STATE_TPH,
 						   [this](uint8_t* data, uint16_t len) { return read_mcc(data, len); })},
-	   {J2K_MS_MCO,
-		new marker_handler(J2K_MS_MCO, DECOMPRESS_STATE_MH | DECOMPRESS_STATE_TPH,
+	   {J2K_MCO,
+		new marker_handler(J2K_MCO, DECOMPRESS_STATE_MH | DECOMPRESS_STATE_TPH,
 						   [this](uint8_t* data, uint16_t len) { return read_mco(data, len); })}};
 }
 CodeStreamDecompress::~CodeStreamDecompress()
@@ -595,7 +595,7 @@ bool CodeStreamDecompress::decompressTiles(void)
 	  {
 		 // check for corrupt Adobe files where 5 tile parts per tile are signaled
 		 // but there are actually 6
-		 if(curr_marker_ == J2K_MS_SOT)
+		 if(curr_marker_ == J2K_SOT)
 		 {
 			if(checkForIllegalTilePart())
 			{
@@ -694,7 +694,7 @@ bool CodeStreamDecompress::readHeaderProcedureImpl(void)
    if(!readMarker())
 	  return false;
 
-   if(curr_marker_ != J2K_MS_SIZ)
+   if(curr_marker_ != J2K_SIZ)
    {
 	  Logger::logger_.error(
 		  "Code-stream must contain a valid SIZ marker segment, immediately after the SOC "
@@ -703,7 +703,7 @@ bool CodeStreamDecompress::readHeaderProcedureImpl(void)
    }
 
    /* read until first SOT is detected */
-   while(curr_marker_ != J2K_MS_SOT)
+   while(curr_marker_ != J2K_SOT)
    {
 	  // 1. get handler handler
 	  auto marker_handler = get_marker_handler(curr_marker_);
@@ -711,15 +711,15 @@ bool CodeStreamDecompress::readHeaderProcedureImpl(void)
 	  {
 		 if(!read_unk())
 			return false;
-		 if(curr_marker_ == J2K_MS_SOT)
+		 if(curr_marker_ == J2K_SOT)
 			break;
 		 marker_handler = get_marker_handler(curr_marker_);
 	  }
-	  if(marker_handler->id == J2K_MS_SIZ)
+	  if(marker_handler->id == J2K_SIZ)
 		 has_siz = true;
-	  else if(marker_handler->id == J2K_MS_COD)
+	  else if(marker_handler->id == J2K_COD)
 		 has_cod = true;
-	  else if(marker_handler->id == J2K_MS_QCD)
+	  else if(marker_handler->id == J2K_QCD)
 		 has_qcd = true;
 
 	  /* Check if the marker is known and if it is in the correct location
@@ -899,7 +899,7 @@ bool CodeStreamDecompress::decompressTile(void)
 	  // due to incorrectly-signalled number of tile parts
 	  try
 	  {
-		 if(readSOTorEOC() && curr_marker_ == J2K_MS_SOT)
+		 if(readSOTorEOC() && curr_marker_ == J2K_SOT)
 		 {
 			if(checkForIllegalTilePart())
 			   return false;
@@ -1014,7 +1014,7 @@ bool CodeStreamDecompress::readMarker(bool suppressWarning)
    if(!read_short(&curr_marker_))
 	  return false;
 
-   if(expectSOD_ && curr_marker_ != J2K_MS_SOD)
+   if(expectSOD_ && curr_marker_ != J2K_SOD)
 	  throw InvalidMarkerException(curr_marker_);
    expectSOD_ = false;
 

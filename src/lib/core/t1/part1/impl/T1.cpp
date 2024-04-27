@@ -1083,7 +1083,7 @@ inline void T1::dec_sigpass_step_raw(grk_flag* flagsp, int32_t* datap, int32_t o
 			setcurctx(curctx, ctxt2);                                                          \
 			decompress_macro(v, mqc, curctx, a, c, ct);                                        \
 			v = v ^ spb;                                                                       \
-			(data)[(ciorig)*data_stride] = v ? -oneplushalf : oneplushalf;                     \
+			(data)[(ciorig) * data_stride] = v ? -oneplushalf : oneplushalf;                   \
 			update_flags_macro(flags, flagsp, ci, v, flags_stride, vsc);                       \
 		 }                                                                                     \
 		 flags |= T1_PI_THIS << (ci);                                                          \

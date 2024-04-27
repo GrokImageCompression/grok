@@ -1235,7 +1235,7 @@ GRK_API bool GRK_CALLCONV grk_set_MCT(grk_cparameters* parameters, float* encodi
  * */
 #define GRK_EXTENSION_NONE 0x0000 /** No Part-2 extension */
 #define GRK_EXTENSION_MCT 0x0100 /** Custom MCT support */
-#define GRK_IS_PART2(v) ((v)&GRK_PROFILE_PART2)
+#define GRK_IS_PART2(v) ((v) & GRK_PROFILE_PART2)
 
 #define GRK_IS_CINEMA(v) (((v) >= GRK_PROFILE_CINEMA_2K) && ((v) <= GRK_PROFILE_CINEMA_S4K))
 #define GRK_IS_STORAGE(v) ((v) == GRK_PROFILE_CINEMA_LTS)
@@ -1293,16 +1293,16 @@ GRK_API bool GRK_CALLCONV grk_set_MCT(grk_cparameters* parameters, float* encodi
  */
 
 #define GRK_GET_IMF_OR_BROADCAST_PROFILE(v) \
-   ((v)&0x0f00) /** Extract profile without mainlevel/sublevel */
+   ((v) & 0x0f00) /** Extract profile without mainlevel/sublevel */
 
 #define GRK_LEVEL_MAX 11U /** Maximum (main) level */
-#define GRK_GET_LEVEL(v) ((v)&0xf) /** Extract (main) level */
+#define GRK_GET_LEVEL(v) ((v) & 0xf) /** Extract (main) level */
 
 /******* BROADCAST **********************************************************/
 
 #define GRK_IS_BROADCAST(v)                                                         \
    (((v) >= GRK_PROFILE_BC_SINGLE) && ((v) <= (GRK_PROFILE_BC_MULTI_R | 0x000b)) && \
-	(((v)&0xf) <= 0xb))
+	(((v) & 0xf) <= 0xb))
 
 /* Maximum component sampling Rate (Mbits/sec) per level */
 #define GRK_BROADCAST_LEVEL_1_MBITSSEC 200U /** Mbits/sec for level 1 */
@@ -1333,7 +1333,7 @@ GRK_API bool GRK_CALLCONV grk_set_MCT(grk_cparameters* parameters, float* encodi
 
 #define GRK_IS_IMF(v)                                                          \
    (((v) >= GRK_PROFILE_IMF_2K) && ((v) <= (GRK_PROFILE_IMF_8K_R | 0x009b)) && \
-	(((v)&0xf) <= 0xb) && (((v)&0xf0) <= 0x90))
+	(((v) & 0xf) <= 0xb) && (((v) & 0xf0) <= 0x90))
 
 /* Maximum component sampling rate (MSamples/sec) per main level */
 #define GRK_IMF_MAINLEVEL_1_MSAMPLESSEC 65U /** MSamples/sec for main level 1 */

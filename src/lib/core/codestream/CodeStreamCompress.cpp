@@ -706,7 +706,7 @@ bool CodeStreamCompress::write_rgn(uint16_t tile_no, uint32_t comp_no, uint32_t 
    rgn_size = 6 + comp_room;
 
    /* RGN  */
-   if(!stream_->writeShort(J2K_MS_RGN))
+   if(!stream_->writeShort(J2K_RGN))
 	  return false;
    /* Lrgn */
    if(!stream_->writeShort((uint16_t)(rgn_size - 2)))
@@ -732,7 +732,7 @@ bool CodeStreamCompress::write_rgn(uint16_t tile_no, uint32_t comp_no, uint32_t 
 
 bool CodeStreamCompress::write_eoc()
 {
-   if(!stream_->writeShort(J2K_MS_EOC))
+   if(!stream_->writeShort(J2K_EOC))
 	  return false;
 
    return stream_->flush();
@@ -745,7 +745,7 @@ bool CodeStreamCompress::write_mct_record(grk_mct_data* p_mct_record, BufferedSt
    mct_size = 10 + p_mct_record->data_size_;
 
    /* MCT */
-   if(!stream->writeShort(J2K_MS_MCT))
+   if(!stream->writeShort(J2K_MCT))
 	  return false;
    /* Lmct */
    if(!stream->writeShort((uint16_t)(mct_size - 2)))
@@ -1009,7 +1009,7 @@ bool CodeStreamCompress::compressValidation()
 }
 bool CodeStreamCompress::write_soc()
 {
-   return stream_->writeShort(J2K_MS_SOC);
+   return stream_->writeShort(J2K_SOC);
 }
 bool CodeStreamCompress::write_siz()
 {
@@ -1043,7 +1043,7 @@ bool CodeStreamCompress::write_com()
 	  uint32_t totacom_size = (uint32_t)comment_size + 6;
 
 	  /* COM */
-	  if(!stream_->writeShort(J2K_MS_COM))
+	  if(!stream_->writeShort(J2K_COM))
 		 return false;
 	  /* L_COM */
 	  if(!stream_->writeShort((uint16_t)(totacom_size - 2)))
@@ -1063,7 +1063,7 @@ bool CodeStreamCompress::write_cod()
    code_size = 9 + get_SPCod_SPCoc_size(0);
 
    /* COD */
-   if(!stream_->writeShort(J2K_MS_COD))
+   if(!stream_->writeShort(J2K_COD))
 	  return false;
    /* L_COD */
    if(!stream_->writeShort((uint16_t)(code_size - 2)))
@@ -1098,7 +1098,7 @@ bool CodeStreamCompress::write_coc(uint32_t comp_no)
    coc_size = cod_coc_len + comp_room + get_SPCod_SPCoc_size(comp_no);
 
    /* COC */
-   if(!stream_->writeShort(J2K_MS_COC))
+   if(!stream_->writeShort(J2K_COC))
 	  return false;
    /* L_COC */
    if(!stream_->writeShort((uint16_t)(coc_size - 2)))
@@ -1137,7 +1137,7 @@ bool CodeStreamCompress::write_qcd()
    qcd_size = 4 + get_SQcd_SQcc_size(0);
 
    /* QCD */
-   if(!stream_->writeShort(J2K_MS_QCD))
+   if(!stream_->writeShort(J2K_QCD))
 	  return false;
    /* L_QCD */
    if(!stream_->writeShort((uint16_t)(qcd_size - 2)))
@@ -1155,7 +1155,7 @@ bool CodeStreamCompress::write_qcc(uint32_t comp_no)
    uint32_t qcc_size = 6 + get_SQcd_SQcc_size(comp_no);
 
    /* QCC */
-   if(!stream_->writeShort(J2K_MS_QCC))
+   if(!stream_->writeShort(J2K_QCC))
    {
 	  return false;
    }
@@ -1199,7 +1199,7 @@ bool CodeStreamCompress::writePoc()
    auto poc_size = getPocSize(numComps, numPocs);
 
    /* POC  */
-   if(!stream_->writeShort(J2K_MS_POC))
+   if(!stream_->writeShort(J2K_POC))
 	  return false;
 
    /* Lpoc */
@@ -1345,7 +1345,7 @@ bool CodeStreamCompress::write_mcc_record(grk_simple_mcc_decorrelation_data* p_m
    mcc_size = p_mcc_record->nb_comps_ * 2 * nb_bytes_for_comp + 19;
 
    /* MCC */
-   if(!stream->writeShort(J2K_MS_MCC))
+   if(!stream->writeShort(J2K_MCC))
 	  return false;
    /* Lmcc */
    if(!stream->writeShort((uint16_t)(mcc_size - 2)))
@@ -1424,7 +1424,7 @@ bool CodeStreamCompress::write_mco()
    mco_size = 5 + tcp->nb_mcc_records_;
 
    /* MCO */
-   if(!stream_->writeShort(J2K_MS_MCO))
+   if(!stream_->writeShort(J2K_MCO))
 	  return false;
 
    /* Lmco */
@@ -1453,7 +1453,7 @@ bool CodeStreamCompress::write_cbd()
    uint16_t cbd_size = (uint16_t)(6U + getHeaderImage()->numcomps);
 
    /* CBD */
-   if(!stream_->writeShort(J2K_MS_CBD))
+   if(!stream_->writeShort(J2K_CBD))
 	  return false;
 
    /* L_CBD */

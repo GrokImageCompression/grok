@@ -35,10 +35,9 @@ TilePartInfo::TilePartInfo(void) : startPosition(0), endHeaderPosition(0), endPo
 void TilePartInfo::dump(FILE* outputFileStream, uint8_t tilePart)
 {
    std::stringstream ss;
-   ss << "\t\t\t tile-part[" << tilePart << "]:"
-	  << " star_pos=" << startPosition << ","
-	  << " endHeaderPosition=" << endHeaderPosition << ","
-	  << " endPosition=" << endPosition << std::endl;
+   ss << "\t\t\t tile-part[" << tilePart << "]:" << " star_pos=" << startPosition << ","
+	  << " endHeaderPosition=" << endHeaderPosition << "," << " endPosition=" << endPosition
+	  << std::endl;
    fprintf(outputFileStream, "%s", ss.str().c_str());
 }
 TileInfo::TileInfo(void)
@@ -473,7 +472,7 @@ bool TileLengthMarkers::writeBegin(uint16_t numTilePartsTotal)
    streamStart = stream_->tell();
 
    /* TLM */
-   if(!stream_->writeShort(J2K_MS_TLM))
+   if(!stream_->writeShort(J2K_TLM))
 	  return false;
 
    /* Ltlm */
@@ -517,7 +516,7 @@ bool TileLengthMarkers::addTileMarkerInfo(uint16_t tileno, CodeStreamInfo* codes
 										  uint16_t id, uint64_t pos, uint32_t len)
 {
    assert(codestreamInfo);
-   if(id == J2K_MS_SOT)
+   if(id == J2K_SOT)
    {
 	  auto currTileInfo = codestreamInfo->getTileInfo(tileno);
 	  auto tilePartInfo = currTileInfo->getTilePartInfo(currTileInfo->currentTilePart);
