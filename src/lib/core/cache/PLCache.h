@@ -25,7 +25,7 @@ namespace grk
 class PLCache
 {
  public:
-   PLCache(CodingParams* cp);
+   PLCache();
    virtual ~PLCache();
    PLMarkerMgr* createMarkers(BufferedStream* strm);
    PLMarkerMgr* getMarkers(void);
@@ -36,7 +36,6 @@ class PLCache
 #ifdef ENABLE_PACKET_CACHE
    SequentialPtrCache<PacketInfo> packetInfoCache;
 #endif
-   CodingParams* cp_;
 };
 
 } // namespace grk

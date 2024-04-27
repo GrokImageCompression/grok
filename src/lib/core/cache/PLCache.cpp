@@ -18,7 +18,7 @@
 
 namespace grk
 {
-PLCache::PLCache(CodingParams* cp) : pltMarkers(nullptr), cp_(cp) {}
+PLCache::PLCache() : pltMarkers(nullptr) {}
 PLCache::~PLCache()
 {
    delete pltMarkers;
