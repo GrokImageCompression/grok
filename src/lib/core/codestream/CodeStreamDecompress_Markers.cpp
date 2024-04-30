@@ -1185,16 +1185,19 @@ bool CodeStreamDecompress::read_SPCod_SPCoc(uint16_t compno, uint8_t* headerData
 
    /* SPcoc (G) */
    tccp->cblk_sty = *current_ptr++;
-   if((tccp->cblk_sty & GRK_CBLKSTY_HT) && tccp->cblk_sty != GRK_CBLKSTY_HT)
-   {
-	  Logger::logger_.error(
-		  "Unrecognized code-block style byte 0x%x found in COD/COC marker segment.\nWith bit-6 "
-		  "set (HT block coder), the other mode flags from the original J2K block coder must be "
-		  "0.",
-		  tccp->cblk_sty);
-	  return false;
-   }
    uint8_t high_bits = (uint8_t)(tccp->cblk_sty >> 6U);
+   if((tccp->cblk_sty & GRK_CBLKSTY_HT))
+   {
+	  uint8_t lower_6 =  tccp->cblk_sty & 0x3f;
+	  uint8_t non_vsc_modes = lower_6 & (uint8_t)(~GRK_CBLKSTY_VSC);
+	  if (high_bits == 1 && non_vsc_modes != 0) {
+		  Logger::logger_.error(
+			  "Unrecognized code-block style byte 0x%x found in COD/COC marker segment.\nWith bit-6 "
+			  "set and bit-7 not set i.e all blocks are HT blocks, only vertically causal context mode is supported.",
+			  non_vsc_modes);
+		  return false;
+	  }
+   }
    if(high_bits == 2)
    {
 	  Logger::logger_.error(
