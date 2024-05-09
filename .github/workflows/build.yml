@@ -26,13 +26,13 @@ jobs:
     - name: ubuntu-dependencies
       if: startsWith(matrix.os, 'ubuntu')
       run: |
-        echo DATA_BRANCH=linux-release >> $GITHUB_ENV
+        #echo DATA_BRANCH=linux-release >> $GITHUB_ENV
         sudo apt install exiftool
 
     - name: macos-dependencies
       if: startsWith(matrix.os, 'macos')
       run: |
-        echo DATA_BRANCH=osx >> $GITHUB_ENV
+        #echo DATA_BRANCH=osx >> $GITHUB_ENV
         brew install exiftool
         #perl -MImage::ExifTool -e ""
 
