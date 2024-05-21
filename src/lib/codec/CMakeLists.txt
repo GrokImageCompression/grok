@@ -9,7 +9,7 @@ ENDIF(UNIX)
 include_directories(
   ${PNG_INCLUDE_DIRNAME}
   ${TIFF_INCLUDE_DIRNAME}
-  ${JPEG_INCLUDE_DIRNAME}
+  ${JPEG_INCLUDE_DIRS}
   ${CMAKE_CURRENT_BINARY_DIR}/../../bin
   ${CMAKE_CURRENT_BINARY_DIR}/../../lib/core # grk_config.h and grk_config_private.h
   ${GROK_SOURCE_DIR}/src/lib/core

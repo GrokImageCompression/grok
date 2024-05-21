@@ -20,37 +20,70 @@ else(GRK_BUILD_LIBPNG OR GRK_BUILD_LIBTIFF)
 endif(GRK_BUILD_LIBPNG OR GRK_BUILD_LIBTIFF)
 
 # JPEG library
+#if(CMAKE_GENERATOR STREQUAL "Ninja")
+#  set(GRK_BUILD_JPEG OFF)
+#  message(STATUS "Ninja generator detected. GRK_BUILD_JPEG disabled. For jpeg support, libjeg-turbo can be independantly installed.")
+#endif()
 if (GRK_BUILD_JPEG)
   message(STATUS "We will build libjpeg-turbo library")
   set(GROK_HAVE_LIBJPEG 1 PARENT_SCOPE)
-  ExternalProject_Add(libjpeg-turbo
-                      CMAKE_ARGS
-                        -DENABLE_SHARED=OFF
-                        -DENABLE_STATIC=ON
-                        -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_BINARY_DIR}/libjpeg-turbo
-                        -DCMAKE_INSTALL_LIBDIR=${CMAKE_CURRENT_BINARY_DIR}/bin
-                        -DCMAKE_POSITION_INDEPENDENT_CODE=ON
-                        -DWITH_TURBOJPEG=0
-  				      GIT_REPOSITORY https://github.com/libjpeg-turbo/libjpeg-turbo.git
-  					  GIT_TAG        2.1.5.1)
-if(WIN32)
-  set(JPEG_LIBNAME ${CMAKE_CURRENT_BINARY_DIR}/bin/jpeg-static.lib PARENT_SCOPE)
-else(WIN32)
-  set(JPEG_LIBNAME ${CMAKE_CURRENT_BINARY_DIR}/bin/libjpeg.a PARENT_SCOPE)
-endif(WIN32)
-  set(JPEG_INCLUDE_DIRNAME ${CMAKE_CURRENT_BINARY_DIR}/libjpeg-turbo/include/ PARENT_SCOPE)
+  # Determine the appropriate library filename based on the platform
+	if(WIN32)
+	    set(JPEG_LIBNAME jpeg-static.lib)
+	else()
+	    set(JPEG_LIBNAME libjpeg.a)
+  endif()
+  if(CMAKE_GENERATOR STREQUAL "Ninja")
+    include(FetchContent)
+	FetchContent_Declare(
+	    libjpeg-turbo
+	    GIT_REPOSITORY https://github.com/libjpeg-turbo/libjpeg-turbo.git
+	    GIT_TAG        2.1.5.1
+	)
+	# Set configuration variables before populating and adding the subdirectory
+	set(ENABLE_SHARED OFF CACHE BOOL "" FORCE)
+	set(ENABLE_STATIC ON CACHE BOOL "" FORCE)
+	set(CMAKE_POSITION_INDEPENDENT_CODE ON CACHE BOOL "" FORCE)
+	set(WITH_TURBOJPEG OFF CACHE BOOL "" FORCE)
+	FetchContent_GetProperties(libjpeg-turbo)
+	set(JPEG_LIBNAME ${CMAKE_CURRENT_BINARY_DIR}/../bin/${JPEG_LIBNAME} PARENT_SCOPE)
+	if(NOT libjpeg-turbo_POPULATED)
+	    FetchContent_Populate(libjpeg-turbo)
+	    set(CMAKE_INSTALL_PREFIX "${CMAKE_CURRENT_BINARY_DIR}/libjpeg-turbo" CACHE PATH "" FORCE) # Set install prefix after population but before add_subdirectory
+	    add_subdirectory(${libjpeg-turbo_SOURCE_DIR} ${libjpeg-turbo_BINARY_DIR} EXCLUDE_FROM_ALL)
+	endif()
+	# Set the JPEG library path and include directory to be used elsewhere in the project
+	set(JPEG_INCLUDE_DIRS
+	    ${CMAKE_CURRENT_BINARY_DIR}/../_deps/libjpeg-turbo-src
+	    ${CMAKE_CURRENT_BINARY_DIR}/../_deps/libjpeg-turbo-build
+	    PARENT_SCOPE)
+  else()
+	  ExternalProject_Add(libjpeg-turbo
+	                      CMAKE_ARGS
+	                        -DENABLE_SHARED=OFF
+	                        -DENABLE_STATIC=ON
+	                        -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_BINARY_DIR}/libjpeg-turbo
+	                        -DCMAKE_INSTALL_LIBDIR=${CMAKE_CURRENT_BINARY_DIR}/bin
+	                        -DCMAKE_POSITION_INDEPENDENT_CODE=ON
+	                        -DWITH_TURBOJPEG=0
+	  				      GIT_REPOSITORY https://github.com/libjpeg-turbo/libjpeg-turbo.git
+	  					  GIT_TAG        2.1.5.1)
+    set(JPEG_LIBNAME ${CMAKE_CURRENT_BINARY_DIR}/bin/${JPEG_LIBNAME} PARENT_SCOPE)
+    set(JPEG_INCLUDE_DIRS ${CMAKE_CURRENT_BINARY_DIR}/libjpeg-turbo/include/ PARENT_SCOPE)
+endif()
 else(GRK_BUILD_JPEG)
 	find_package(JPEG)
 	if(JPEG_FOUND)
 		message(STATUS "The system seems to have libjpeg available, it will be used to support JPEG files")
 		set(GROK_HAVE_LIBJPEG 1 PARENT_SCOPE)
 		set(JPEG_LIBNAME ${JPEG_LIBRARIES} PARENT_SCOPE)
-		set(JPEG_INCLUDE_DIRNAME ${JPEG_INCLUDE_DIR} PARENT_SCOPE)
+		set(JPEG_INCLUDE_DIRS ${JPEG_INCLUDE_DIR} PARENT_SCOPE)
 	else(JPEG_FOUND)
 	    set(GROK_HAVE_LIBJPEG 0 PARENT_SCOPE)
 	    message(STATUS "libjpeg not found, please install or build from source and ensure install directory is on path")
 	endif(JPEG_FOUND)
 endif(GRK_BUILD_JPEG)
+
 
 # Try to find libpng (which depends on zlib)
 if(GRK_BUILD_LIBPNG)
