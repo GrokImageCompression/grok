@@ -30,7 +30,7 @@ PPMMarker::~PPMMarker()
    if(markers)
    {
 	  for(uint32_t i = 0U; i < markers_count; ++i)
-		grk_free(markers[i].data_);
+		 grk_free(markers[i].data_);
 	  markers_count = 0U;
 	  grk_free(markers);
    }
