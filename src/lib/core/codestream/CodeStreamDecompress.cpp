@@ -990,7 +990,7 @@ bool CodeStreamDecompress::read_short(uint16_t* val)
    if(stream_->read(temp, sizeof(uint16_t)) != sizeof(uint16_t))
 	  return false;
 
-   grk_read<uint16_t>(temp, val);
+   grk_read(temp, val);
 
    return true;
 }

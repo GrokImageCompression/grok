@@ -89,12 +89,12 @@ bool SOTMarker::read(CodeStreamDecompress* codeStream, uint8_t* headerData, uint
    uint32_t len;
    uint16_t index;
    uint8_t tp_index, num_tile_parts;
-   grk_read<uint16_t>(headerData, &index);
+   grk_read(headerData, &index);
    headerData += sizeof(uint16_t);
-   grk_read<uint32_t>(headerData, &len);
+   grk_read(headerData, &len);
    headerData += sizeof(uint32_t);
-   grk_read<uint8_t>(headerData++, &tp_index);
-   grk_read<uint8_t>(headerData++, &num_tile_parts);
+   grk_read(headerData++, &tp_index);
+   grk_read(headerData++, &num_tile_parts);
 
    if(num_tile_parts && (tp_index >= num_tile_parts))
    {

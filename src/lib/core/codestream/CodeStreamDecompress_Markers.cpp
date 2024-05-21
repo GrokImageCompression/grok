@@ -568,9 +568,8 @@ bool CodeStreamDecompress::read_plt(uint8_t* headerData, uint16_t header_size)
 bool CodeStreamDecompress::read_ppm(uint8_t* headerData, uint16_t header_size)
 {
    if(!cp_.ppm_marker)
-   {
 	  cp_.ppm_marker = new PPMMarker();
-   }
+
    return cp_.ppm_marker->read(headerData, header_size);
 }
 /**
@@ -593,7 +592,7 @@ bool CodeStreamDecompress::merge_ppm(CodingParams* p_cp)
 bool CodeStreamDecompress::read_ppt(uint8_t* headerData, uint16_t header_size)
 {
    assert(headerData != nullptr);
-   uint32_t Z_ppt;
+   uint8_t Z_ppt;
    auto tileProcessor = currentProcessor();
 
    /* We need to have the Z_ppt element + 1 byte of Ippt at minimum */
@@ -602,9 +601,7 @@ bool CodeStreamDecompress::read_ppt(uint8_t* headerData, uint16_t header_size)
 	  Logger::logger_.error("Error reading PPT marker");
 	  return false;
    }
-
-   auto cp = &(cp_);
-   if(cp->ppm_marker)
+   if(cp_.ppm_marker)
    {
 	  Logger::logger_.error(
 		  "Error reading PPT marker: packet header have been previously found in the main "
@@ -612,11 +609,11 @@ bool CodeStreamDecompress::read_ppt(uint8_t* headerData, uint16_t header_size)
 	  return false;
    }
 
-   auto tcp = &(cp->tcps[tileProcessor->getIndex()]);
+   auto tcp = &(cp_.tcps[tileProcessor->getIndex()]);
    tcp->ppt = true;
 
    /* Z_ppt */
-   grk_read<uint32_t>(headerData++, &Z_ppt, 1);
+   grk_read(headerData++, &Z_ppt);
    --header_size;
 
    /* check allocation needed */
@@ -1231,7 +1228,7 @@ bool CodeStreamDecompress::read_SPCod_SPCoc(uint16_t compno, uint8_t* headerData
 	  {
 		 uint8_t tmp;
 		 /* SPcoc (I_i) */
-		 grk_read<uint8_t>(current_ptr, &tmp);
+		 grk_read(current_ptr, &tmp);
 		 ++current_ptr;
 		 /* Precinct exponent 0 is only allowed for lowest resolution level (Table A.21) */
 		 if((i != 0) && (((tmp & 0xf) == 0) || ((tmp >> 4) == 0)))

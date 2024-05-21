@@ -618,9 +618,9 @@ bool FileFormatDecompress::read_ihdr(uint8_t* p_image_header_data, uint32_t imag
 	  Logger::logger_.error("Bad image header box (bad size)");
 	  return false;
    }
-   grk_read<uint32_t>(p_image_header_data, &(h)); /* HEIGHT */
+   grk_read(p_image_header_data, &h); /* HEIGHT */
    p_image_header_data += 4;
-   grk_read<uint32_t>(p_image_header_data, &(w)); /* WIDTH */
+   grk_read(p_image_header_data, &w); /* WIDTH */
    p_image_header_data += 4;
    if(w == 0 || h == 0)
    {
