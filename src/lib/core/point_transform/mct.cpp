@@ -574,15 +574,16 @@ bool mct::decompress_custom(uint8_t* mct_matrix, uint64_t n, uint8_t** pData, ui
    return true;
 }
 
+
 /* <summary> */
 /* This table contains the norms of the basis function of the reversible MCT. */
 /* </summary> */
-static const double mct_norms_rev[3] = {1.732, .8292, .8292};
+static const double mct_norms_rev[] = {std::sqrt(3.0), std::sqrt(0.6875), std::sqrt(0.6875)};
 
 /* <summary> */
 /* This table contains the norms of the basis function of the irreversible MCT. */
 /* </summary> */
-static const double mct_norms_irrev[3] = {1.732, 1.805, 1.573};
+static const double mct_norms_irrev[] = {std::sqrt(3.0000), std::sqrt(3.2584), std::sqrt(2.4755)};
 
 const double* mct::get_norms_rev()
 {
