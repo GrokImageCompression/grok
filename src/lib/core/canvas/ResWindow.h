@@ -78,8 +78,8 @@ struct ResWindow
 			 grk_rect32 tileCompWindowUnreduced, grk_rect32 tileCompUnreduced,
 			 uint32_t FILTER_WIDTH)
 	   : allocated_(false), filterWidth_(FILTER_WIDTH), tileCompAtRes_(tileCompAtRes),
-		 tileCompAtLowerRes_(tileCompAtLowerRes), resWindowBuffer_(new Buf2dAligned(resWindow)),
-		 resWindowBufferSplit_{nullptr, nullptr},
+		 tileCompAtLowerRes_(tileCompAtLowerRes),
+		 resWindowBuffer_(new Buf2dAligned(resWindow)), resWindowBufferSplit_{nullptr, nullptr},
 		 resWindowBufferHighestResREL_(resWindowHighestResREL),
 		 resWindowBufferREL_(new Buf2dAligned(resWindow.width(), resWindow.height())),
 		 resWindowBufferSplitREL_{nullptr, nullptr}

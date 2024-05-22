@@ -574,7 +574,6 @@ bool mct::decompress_custom(uint8_t* mct_matrix, uint64_t n, uint8_t** pData, ui
    return true;
 }
 
-
 /* <summary> */
 /* This table contains the norms of the basis function of the reversible MCT. */
 /* </summary> */

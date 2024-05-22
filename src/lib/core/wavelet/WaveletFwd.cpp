@@ -628,7 +628,7 @@ void dwt53::encode_and_deinterleave_v(int32_t* arrayIn, int32_t* tmpIn, uint32_t
 			xmm_Si_1 = xmm_Sip1_1;
 		 }
 	  }
-	  if(((height) & 1) == 0)
+	  if(((height)&1) == 0)
 	  {
 		 for(c = 0; c < NB_ELTS_V8; c++)
 			GRK_Dc(i) -= GRK_Sc(i);
@@ -659,7 +659,7 @@ void dwt53::encode_and_deinterleave_v(int32_t* arrayIn, int32_t* tmpIn, uint32_t
 			xmm_Dim1_1 = xmm_Di_1;
 		 }
 	  }
-	  if(((height) & 1) == 1)
+	  if(((height)&1) == 1)
 	  {
 		 for(c = 0; c < NB_ELTS_V8; c++)
 			GRK_Sc(i) += (GRK_Dc(i - 1) + GRK_Dc(i - 1) + 2) >> 2;
@@ -694,7 +694,7 @@ void dwt53::encode_and_deinterleave_v(int32_t* arrayIn, int32_t* tmpIn, uint32_t
 			xmm_Dim1_1 = xmm_Di_1;
 		 }
 	  }
-	  if(((height) & 1) == 1)
+	  if(((height)&1) == 1)
 	  {
 		 for(c = 0; c < NB_ELTS_V8; c++)
 			GRK_Sc(i) -= GRK_Dc(i - 1);
@@ -723,7 +723,7 @@ void dwt53::encode_and_deinterleave_v(int32_t* arrayIn, int32_t* tmpIn, uint32_t
 			xmm_Si_1 = xmm_Sip1_1;
 		 }
 	  }
-	  if(((height) & 1) == 0)
+	  if(((height)&1) == 0)
 	  {
 		 for(c = 0; c < NB_ELTS_V8; c++)
 			GRK_Dc(i) += (GRK_Sc(i) + GRK_Sc(i) + 2) >> 2;
