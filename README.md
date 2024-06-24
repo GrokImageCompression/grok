@@ -21,6 +21,15 @@
 * full encode/decode support for 1-16 bit precision images
 * supported platforms: Linux x86-64, Linux AArch64, Windows, macOS and WebAssembly
 
+
+### Grok in the News
+
+1. [Accelerate Grok With Blosc2](https://www.blosc.org/posts/blosc2-grok-release/)
+
+2. [Generating Lossy Access JP2s With Grok](https://www.bitsgalore.org/2022/03/30/generating-lossy-access-jp2s-from-lossless-preservation-masters)
+
+
+
 ### Library Details
 
 * [INSTALL](https://github.com/GrokImageCompression/grok/blob/master/INSTALL.md)
