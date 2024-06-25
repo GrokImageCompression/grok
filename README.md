@@ -24,7 +24,7 @@
 
 ### Grok in the News
 
-1. [Accelerate Grok With Blosc2](https://www.blosc.org/posts/blosc2-grok-release/)
+1. [Accelerating Grok With Blosc2](https://www.blosc.org/posts/blosc2-grok-release/)
 
 2. [Generating Lossy Access JP2s With Grok](https://www.bitsgalore.org/2022/03/30/generating-lossy-access-jp2s-from-lossless-preservation-masters)
 
