@@ -835,10 +835,10 @@ GrkRC GrkDecompress::parseCommandLine(int argc, char** argv, DecompressInitParam
 
 	  if(reduceArg.isSet())
 	  {
-		 if(reduceArg.getValue() >= GRK_J2K_MAXRLVLS)
+		 if(reduceArg.getValue() >= GRK_MAXRLVLS)
 			spdlog::warn("Resolution level reduction %u must be strictly less than the "
 						 "maximum number of resolutions %u. Ignoring",
-						 reduceArg.getValue(), GRK_J2K_MAXRLVLS);
+						 reduceArg.getValue(), GRK_MAXRLVLS);
 		 else
 			parameters->core.reduce = (uint8_t)reduceArg.getValue();
 	  }

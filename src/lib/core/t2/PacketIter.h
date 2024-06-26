@@ -42,15 +42,15 @@ struct ResIncludeBuffers
 {
    ResIncludeBuffers()
    {
-	  for(uint8_t i = 0; i < GRK_J2K_MAXRLVLS; ++i)
+	  for(uint8_t i = 0; i < GRK_MAXRLVLS; ++i)
 		 buffers[i] = nullptr;
    }
    ~ResIncludeBuffers()
    {
-	  for(uint8_t i = 0; i < GRK_J2K_MAXRLVLS; ++i)
+	  for(uint8_t i = 0; i < GRK_MAXRLVLS; ++i)
 		 delete[] buffers[i];
    }
-   uint8_t* buffers[GRK_J2K_MAXRLVLS];
+   uint8_t* buffers[GRK_MAXRLVLS];
 };
 struct IncludeTracker
 {
@@ -58,7 +58,7 @@ struct IncludeTracker
 	   : numcomps(numcomponents), currentLayer(0), currentResBuf(nullptr),
 		 include(new std::map<uint16_t, ResIncludeBuffers*>())
    {
-	  for(uint8_t i = 0; i < GRK_J2K_MAXRLVLS; ++i)
+	  for(uint8_t i = 0; i < GRK_MAXRLVLS; ++i)
 		 numPrecinctsPerRes[i] = 0;
    }
    ~IncludeTracker()
@@ -121,7 +121,7 @@ struct IncludeTracker
 		 delete it->second;
 	  include->clear();
    }
-   uint64_t numPrecinctsPerRes[GRK_J2K_MAXRLVLS];
+   uint64_t numPrecinctsPerRes[GRK_MAXRLVLS];
 
  private:
    uint16_t numcomps;

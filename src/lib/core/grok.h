@@ -255,13 +255,13 @@ typedef enum _GRK_CODEC_FORMAT
  * Note: range for number of decomposition levels is 0-32
  * So, accordingly, range for number of resolutions is 1-33
  */
-#define GRK_J2K_MAX_DECOMP_LVLS                                     \
+#define GRK_MAX_DECOMP_LVLS                                     \
    32 /* Maximum number of decomposition levels allowed by standard \
 	   */
-#define GRK_J2K_MAXRLVLS \
-   (GRK_J2K_MAX_DECOMP_LVLS + 1) /* Maximum number of resolution levels allowed by standard*/
-#define GRK_J2K_MAXBANDS \
-   (3 * GRK_J2K_MAXRLVLS - 2) /*  Maximum number of sub-bands allowed by standard */
+#define GRK_MAXRLVLS \
+   (GRK_MAX_DECOMP_LVLS + 1) /* Maximum number of resolution levels allowed by standard*/
+#define GRK_MAXBANDS \
+   (3 * GRK_MAXRLVLS - 2) /*  Maximum number of sub-bands allowed by standard */
 
 /**
  * Note: "component" refers to an image component as decompressed
@@ -428,9 +428,9 @@ typedef struct _grk_header_info
    *******************************************************************/
    uint8_t cblk_sty;
    /** initial precinct width */
-   uint32_t prcw_init[GRK_J2K_MAXRLVLS];
+   uint32_t prcw_init[GRK_MAXRLVLS];
    /** initial precinct height */
-   uint32_t prch_init[GRK_J2K_MAXRLVLS];
+   uint32_t prch_init[GRK_MAXRLVLS];
    /** XTOsiz */
    uint32_t tx0;
    /** YTOsiz */
@@ -1007,7 +1007,7 @@ typedef struct _grk_cparameters
    /** progression order (default is LRCP) */
    GRK_PROG_ORDER prog_order;
    /** progressions */
-   grk_progression progression[GRK_J2K_MAXRLVLS];
+   grk_progression progression[GRK_MAXRLVLS];
    /** number of progression order changes (POCs), default to 0 */
    uint32_t numpocs;
    /** number of resolutions */
@@ -1029,9 +1029,9 @@ typedef struct _grk_cparameters
    /* number of precinct size specifications */
    uint32_t res_spec;
    /** initial precinct width */
-   uint32_t prcw_init[GRK_J2K_MAXRLVLS];
+   uint32_t prcw_init[GRK_MAXRLVLS];
    /** initial precinct height */
-   uint32_t prch_init[GRK_J2K_MAXRLVLS];
+   uint32_t prch_init[GRK_MAXRLVLS];
    /** input file name */
    char infile[GRK_PATH_LEN];
    /** output file name */
@@ -1164,11 +1164,11 @@ GRK_API bool GRK_CALLCONV grk_set_MCT(grk_cparameters* parameters, float* encodi
 									  int32_t* dc_shift, uint32_t nbComp);
 
 #define GRK_IMG_INFO 1 /* Basic image information provided to the user */
-#define GRK_J2K_MH_INFO 2 /* Codestream information based only on the main header */
-#define GRK_J2K_TH_INFO 4 /* Tile information based on the current tile header */
-#define GRK_J2K_TCH_INFO 8 /**< Tile/Component information of all tiles */
-#define GRK_J2K_MH_IND 16 /**< Codestream index based only on the main header */
-#define GRK_J2K_TH_IND 32 /**< Tile index based on the current tile */
+#define GRK_MH_INFO 2 /* Codestream information based only on the main header */
+#define GRK_TH_INFO 4 /* Tile information based on the current tile header */
+#define GRK_TCH_INFO 8 /**< Tile/Component information of all tiles */
+#define GRK_MH_IND 16 /**< Codestream index based only on the main header */
+#define GRK_TH_IND 32 /**< Tile index based on the current tile */
 #define GRK_JP2_INFO 128 /**< JP2 file information */
 #define GRK_JP2_IND 256 /**< JP2 file index */
 

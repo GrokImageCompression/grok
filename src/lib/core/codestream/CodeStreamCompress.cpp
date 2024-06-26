@@ -179,10 +179,10 @@ bool CodeStreamCompress::init(grk_cparameters* parameters, GrkImage* image)
 	  parameters->allocationByRateDistoration = true;
    }
 
-   if((parameters->numresolution == 0) || (parameters->numresolution > GRK_J2K_MAXRLVLS))
+   if((parameters->numresolution == 0) || (parameters->numresolution > GRK_MAXRLVLS))
    {
 	  Logger::logger_.error("Invalid number of resolutions : %u not in range [1,%u]",
-							parameters->numresolution, GRK_J2K_MAXRLVLS);
+							parameters->numresolution, GRK_MAXRLVLS);
 	  return false;
    }
 
@@ -988,10 +988,10 @@ bool CodeStreamCompress::compressValidation()
    /* ISO 15444-1:2004 states between 1 & 33
 	* ergo (number of decomposition levels between 0 -> 32) */
    if((cp_.tcps->tccps->numresolutions == 0) ||
-	  (cp_.tcps->tccps->numresolutions > GRK_J2K_MAXRLVLS))
+	  (cp_.tcps->tccps->numresolutions > GRK_MAXRLVLS))
    {
 	  Logger::logger_.error("Invalid number of resolutions : %u not in range [1,%u]",
-							cp_.tcps->tccps->numresolutions, GRK_J2K_MAXRLVLS);
+							cp_.tcps->tccps->numresolutions, GRK_MAXRLVLS);
 	  return false;
    }
    if(cp_.t_width == 0)

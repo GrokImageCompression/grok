@@ -268,7 +268,7 @@ int GrkDump::main(int argc, char* argv[])
 
    /* Initialize inputFolder */
    memset(&inputFolder, 0, sizeof(inputFolder));
-   inputFolder.flag = GRK_IMG_INFO | GRK_J2K_MH_INFO | GRK_J2K_MH_IND;
+   inputFolder.flag = GRK_IMG_INFO | GRK_MH_INFO | GRK_MH_IND;
 
    /* Parse input and get user compressing parameters */
    if(parseCommandLine(argc, argv, &parameters, &inputFolder) == 1)

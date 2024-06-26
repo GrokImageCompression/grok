@@ -39,7 +39,7 @@ const uint16_t maxNumLayersJ2K = 65535;
 #define T1_NMSEDEC_BITS 7
 #define T1_NMSEDEC_FRACBITS (T1_NMSEDEC_BITS - 1)
 const uint32_t maxBitPlanesGRK = 31 - T1_NMSEDEC_FRACBITS;
-// const uint32_t max_bit_planes_bibo = maxSupportedPrecisionGRK + GRK_J2K_MAXRLVLS * 5;
+// const uint32_t max_bit_planes_bibo = maxSupportedPrecisionGRK + GRK_MAXRLVLS * 5;
 const uint16_t maxCompressLayersGRK = 100;
 
 } // namespace grk

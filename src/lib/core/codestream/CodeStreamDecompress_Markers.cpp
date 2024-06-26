@@ -438,10 +438,10 @@ bool CodeStreamDecompress::read_poc(uint8_t* headerData, uint16_t header_size)
    }
    uint32_t oldNumProgressions = tcp->getNumProgressions();
    currentNumProgressions += oldNumProgressions;
-   if(currentNumProgressions > GRK_J2K_MAXRLVLS)
+   if(currentNumProgressions > GRK_MAXRLVLS)
    {
 	  Logger::logger_.error("read_poc: number of progressions %u exceeds Grok maximum number %u",
-							currentNumProgressions, GRK_J2K_MAXRLVLS);
+							currentNumProgressions, GRK_MAXRLVLS);
 	  return false;
    }
 
@@ -1037,14 +1037,14 @@ bool CodeStreamDecompress::read_SQcd_SQcc(bool fromQCC, uint16_t comp_no, uint8_
 		 tccp->numStepSizes = (tccp->qntsty == J2K_CCP_QNTSTY_NOQNT)
 								  ? (uint8_t)(*header_size)
 								  : (uint8_t)((*header_size) / 2);
-		 if(tccp->numStepSizes > GRK_J2K_MAXBANDS)
+		 if(tccp->numStepSizes > GRK_MAXBANDS)
 		 {
 			Logger::logger_.warn("While reading QCD or QCC marker segment, "
 								 "number of step sizes (%u) is greater"
-								 " than GRK_J2K_MAXBANDS (%u).\n"
+								 " than GRK_MAXBANDS (%u).\n"
 								 "So, number of elements stored is limited to "
-								 "GRK_J2K_MAXBANDS (%u) and the rest are skipped.",
-								 tccp->numStepSizes, GRK_J2K_MAXBANDS, GRK_J2K_MAXBANDS);
+								 "GRK_MAXBANDS (%u) and the rest are skipped.",
+								 tccp->numStepSizes, GRK_MAXBANDS, GRK_MAXBANDS);
 		 }
 	  }
 	  if(mainQCD)
@@ -1063,7 +1063,7 @@ bool CodeStreamDecompress::read_SQcd_SQcc(bool fromQCC, uint16_t comp_no, uint8_
 		 grk_read<uint32_t>(current_ptr++, &tmp, 1);
 		 if(!ignore)
 		 {
-			if(band_no < GRK_J2K_MAXBANDS)
+			if(band_no < GRK_MAXBANDS)
 			{
 			   // top 5 bits for exponent
 			   tccp->stepsizes[band_no].expn = (uint8_t)(tmp >> 3);
@@ -1088,7 +1088,7 @@ bool CodeStreamDecompress::read_SQcd_SQcc(bool fromQCC, uint16_t comp_no, uint8_
 		 current_ptr += 2;
 		 if(!ignore)
 		 {
-			if(band_no < GRK_J2K_MAXBANDS)
+			if(band_no < GRK_MAXBANDS)
 			{
 			   // top 5 bits for exponent
 			   tccp->stepsizes[band_no].expn = (uint8_t)(tmp >> 11);
@@ -1104,7 +1104,7 @@ bool CodeStreamDecompress::read_SQcd_SQcc(bool fromQCC, uint16_t comp_no, uint8_
 	  /* if scalar derived, then compute other stepsizes */
 	  if(tccp->qntsty == J2K_CCP_QNTSTY_SIQNT)
 	  {
-		 for(uint32_t band_no = 1; band_no < GRK_J2K_MAXBANDS; band_no++)
+		 for(uint32_t band_no = 1; band_no < GRK_MAXBANDS; band_no++)
 		 {
 			uint8_t bandDividedBy3 = (uint8_t)((band_no - 1) / 3);
 			tccp->stepsizes[band_no].expn = 0;
@@ -1140,11 +1140,11 @@ bool CodeStreamDecompress::read_SPCod_SPCoc(uint16_t compno, uint8_t* headerData
    /* SPcox (D) */
    // note: we actually read the number of decompositions
    grk_read<uint8_t>(current_ptr++, &tccp->numresolutions);
-   if(tccp->numresolutions > GRK_J2K_MAX_DECOMP_LVLS)
+   if(tccp->numresolutions > GRK_MAX_DECOMP_LVLS)
    {
 	  Logger::logger_.error("Invalid number of decomposition levels : %u. The JPEG 2000 standard\n"
 							"allows a maximum number of %u decomposition levels.",
-							tccp->numresolutions, GRK_J2K_MAX_DECOMP_LVLS);
+							tccp->numresolutions, GRK_MAX_DECOMP_LVLS);
 	  return false;
    }
    ++tccp->numresolutions;
@@ -1859,7 +1859,7 @@ bool CodeStreamDecompress::read_qcd(uint8_t* headerData, uint16_t header_size)
 	  {
 		 dest->qntsty = src->qntsty;
 		 dest->numgbits = src->numgbits;
-		 auto size = GRK_J2K_MAXBANDS * sizeof(grk_stepsize);
+		 auto size = GRK_MAXBANDS * sizeof(grk_stepsize);
 		 memcpy(dest->stepsizes, src->stepsizes, size);
 	  }
    }

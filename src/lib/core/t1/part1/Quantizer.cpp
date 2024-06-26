@@ -26,8 +26,8 @@ namespace grk
 Quantizer::Quantizer(bool reversible, uint8_t guard_bits)
 	: Sqcd((uint8_t)(guard_bits << 5)), num_decomps(0), isReversible(reversible)
 {
-   memset(u8_SPqcd, 0, GRK_J2K_MAXBANDS);
-   memset(u16_SPqcd, 0, GRK_J2K_MAXBANDS * sizeof(short));
+   memset(u8_SPqcd, 0, GRK_MAXBANDS);
+   memset(u16_SPqcd, 0, GRK_MAXBANDS * sizeof(short));
 }
 
 uint32_t Quantizer::get_num_guard_bits() const

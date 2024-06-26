@@ -30,7 +30,7 @@ PacketManager::PacketManager(bool compression, GrkImage* img, CodingParams* cpar
    assert(tileno < cp->t_grid_width * cp->t_grid_height);
    auto tcp = cp->tcps + tileno;
    uint32_t numProgressions = tcp->numpocs + 1;
-   uint32_t data_stride = 4 * GRK_J2K_MAXRLVLS;
+   uint32_t data_stride = 4 * GRK_MAXRLVLS;
    auto precinct = new uint32_t[data_stride * image->numcomps];
    auto precinctByComponent = new uint32_t*[image->numcomps];
    auto resolutionPrecinctGrid = precinct;
@@ -125,7 +125,7 @@ void PacketManager::getParams(const GrkImage* image, const CodingParams* p_cp, u
 
    if(numPrecinctsPerRes)
    {
-	  for(uint32_t i = 0; i < GRK_J2K_MAXRLVLS; ++i)
+	  for(uint32_t i = 0; i < GRK_MAXRLVLS; ++i)
 		 numPrecinctsPerRes[i] = 0;
    }
    auto tcp = &p_cp->tcps[tileno];

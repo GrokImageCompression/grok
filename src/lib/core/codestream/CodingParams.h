@@ -74,7 +74,7 @@ struct TileComponentCodingParams
    /** quantisation style */
    uint8_t qntsty;
    /** stepsizes used for quantization */
-   grk_stepsize stepsizes[GRK_J2K_MAXBANDS];
+   grk_stepsize stepsizes[GRK_MAXBANDS];
    // number of step sizes read from QCC marker
    uint8_t numStepSizes;
    /** number of guard bits */
@@ -82,9 +82,9 @@ struct TileComponentCodingParams
    /** Region Of Interest shift */
    uint8_t roishift;
    /** precinct width (power of 2 exponent, < 16) */
-   uint32_t precWidthExp[GRK_J2K_MAXRLVLS];
+   uint32_t precWidthExp[GRK_MAXRLVLS];
    /** precinct height (power of 2 exponent, < 16) */
-   uint32_t precHeightExp[GRK_J2K_MAXRLVLS];
+   uint32_t precHeightExp[GRK_MAXRLVLS];
    /** the dc_level_shift **/
    int32_t dc_level_shift_;
 };
@@ -144,7 +144,7 @@ struct TileCodingParams
    /** number of progression order changes */
    uint32_t numpocs;
    /** progression order changes */
-   grk_progression progressionOrderChange[GRK_J2K_MAXRLVLS];
+   grk_progression progressionOrderChange[GRK_MAXRLVLS];
    /** number of ppt markers (reserved size) */
    uint32_t ppt_markers_count;
    /** ppt markers data (table indexed by Zppt) */

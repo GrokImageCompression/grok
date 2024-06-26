@@ -236,7 +236,7 @@ TileComponentCodingParams::TileComponentCodingParams()
 	  quantizationMarkerSet(false), fromQCC(false), fromTileHeader(false), qntsty(0),
 	  numStepSizes(0), numgbits(0), roishift(0), dc_level_shift_(0)
 {
-   for(uint32_t i = 0; i < GRK_J2K_MAXRLVLS; ++i)
+   for(uint32_t i = 0; i < GRK_MAXRLVLS; ++i)
    {
 	  precWidthExp[i] = 0;
 	  precHeightExp[i] = 0;

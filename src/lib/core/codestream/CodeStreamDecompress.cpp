@@ -1127,14 +1127,14 @@ void CodeStreamDecompress::dump(uint32_t flag, FILE* outputFileStream)
    }
 
    /* Dump the code stream info from main header */
-   if(flag & GRK_J2K_MH_INFO)
+   if(flag & GRK_MH_INFO)
    {
 	  if(getHeaderImage())
 		 dump_MH_info(outputFileStream);
    }
    /* Dump all tile/code stream info */
    auto cp = getCodingParams();
-   if(flag & GRK_J2K_TCH_INFO)
+   if(flag & GRK_TCH_INFO)
    {
 	  if(getHeaderImage())
 	  {
@@ -1148,7 +1148,7 @@ void CodeStreamDecompress::dump(uint32_t flag, FILE* outputFileStream)
    }
 
    /* Dump the code stream index from main header */
-   if((flag & GRK_J2K_MH_IND) && codeStreamInfo)
+   if((flag & GRK_MH_IND) && codeStreamInfo)
 	  codeStreamInfo->dump(outputFileStream);
 }
 void CodeStreamDecompress::dump_MH_info(FILE* outputFileStream)
