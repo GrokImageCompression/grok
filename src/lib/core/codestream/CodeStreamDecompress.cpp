@@ -1112,13 +1112,6 @@ void CodeStreamDecompress::dump_tile_info(TileCodingParams* default_tile, uint32
 
 void CodeStreamDecompress::dump(uint32_t flag, FILE* outputFileStream)
 {
-   /* Check if the flag is compatible with j2k file*/
-   if((flag & GRK_JP2_INFO) || (flag & GRK_JP2_IND))
-   {
-	  fprintf(outputFileStream, "Wrong flag\n");
-	  return;
-   }
-
    /* Dump the image_header */
    if(flag & GRK_IMG_INFO)
    {

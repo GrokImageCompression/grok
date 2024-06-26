@@ -1169,8 +1169,6 @@ GRK_API bool GRK_CALLCONV grk_set_MCT(grk_cparameters* parameters, float* encodi
 #define GRK_TCH_INFO 8 /**< Tile/Component information of all tiles */
 #define GRK_MH_IND 16 /**< Codestream index based only on the main header */
 #define GRK_TH_IND 32 /**< Tile index based on the current tile */
-#define GRK_JP2_INFO 128 /**< JP2 file information */
-#define GRK_JP2_IND 256 /**< JP2 file index */
 
 #define GRK_CBLKSTY_LAZY 0x01 /**< Selective arithmetic coding bypass */
 #define GRK_CBLKSTY_RESET 0x02 /**< Reset context probabilities on coding pass boundaries */
