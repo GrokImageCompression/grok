@@ -95,16 +95,6 @@ TIFF* TIFFFormat::MyTIFFOpen(const char* name, const char* mode)
 
 #endif
 
-const bool grokNewIO = false;
-#ifdef GRK_NEW_IO
-static bool ioReclaimCallback(uint32_t threadId, io::io_buf* buffer, void* io_user_data)
-{
-   auto tiffFormat = static_cast<TIFFFormat*>(io_user_data);
-
-   return tiffFormat->ioReclaim(threadId, buffer);
-}
-#endif
-
 TIFFFormat::TIFFFormat()
 	: tif_(nullptr), chroma_subsample_x(1), chroma_subsample_y(1), units(0),
 	  grkReclaimCallback_(nullptr), grkReclaimUserData_(nullptr)
@@ -124,24 +114,6 @@ void TIFFFormat::registerGrkReclaimCallback(grk_io_init io_init, grk_io_callback
    if(io_init.maxPooledRequests_)
 	  serializer.setMaxPooledRequests(io_init.maxPooledRequests_);
 }
-#ifdef GRK_NEW_IO
-bool TIFFFormat::ioReclaim(uint32_t threadId, io::io_buf* buffer)
-{
-   if(!grkReclaimCallback_)
-	  return false;
-
-   grk_io_buf b;
-   b.data_ = buffer->data_;
-   b.allocLen_ = buffer->allocLen_;
-   grkReclaimCallback_(threadId, b, grkReclaimUserData_);
-
-   buffer->data_ = nullptr;
-   io::RefReaper::unref((io::IOBuf*)buffer);
-
-   return true;
-}
-#endif
-
 bool TIFFFormat::encodeInit(grk_image* image, const std::string& filename,
 							uint32_t compressionLevel, uint32_t concurrency)
 {
@@ -153,44 +125,14 @@ bool TIFFFormat::encodeInit(grk_image* image, const std::string& filename,
 
    if(!ImageFormat::encodeInit(image, filename, compressionLevel, concurrency))
 	  return false;
-
-#ifdef GRK_NEW_IO
-   if(grokNewIO)
-   {
-	  ioTiffFormat.setHeaderWriter([this](TIFF* tif) { return encodeHeader(tif); });
-
-	  ioTiffFormat.setEncodeFinisher([this](void) { return encodeFinish(); });
-
-	  // initialize
-	  ioTiffFormat.init(image_->comps->w, image_->comps->h, image_->numcomps,
-						image_->packedRowBytes, image->rowsPerStrip, false);
-
-	  bool asynch = false;
-#ifdef GROK_HAVE_URING
-	  asynch = true;
-#endif
-	  if(!ioTiffFormat.encodeInit(fileName_, false, concurrency, asynch))
-		 return false;
-	  ioTiffFormat.registerReclaimCallback(ioReclaimCallback, this);
-   }
-#endif
    return true;
 }
 bool TIFFFormat::encodeHeader(void)
 {
-   if(grokNewIO)
-   {
-	  return true;
-   }
-
    if(isHeaderEncoded())
 	  return true;
 
-#ifdef GRK_CUSTOM_TIFF_IO
-   tif_ = MyTIFFOpen(fileName_.c_str(), "wb");
-#else
    tif_ = TIFFOpen(fileName_.c_str(), "wb");
-#endif
    if(!tif_)
    {
 	  spdlog::error("TIFFFormat::encodeHeader:failed to open {} for writing", fileName_.c_str());
@@ -420,20 +362,6 @@ cleanup:
  */
 bool TIFFFormat::encodePixels(uint32_t threadId, grk_io_buf pixels)
 {
-#ifdef GRK_NEW_IO
-   if(grokNewIO)
-   {
-	  auto b = new io::IOBuf();
-	  b->index_ = pixels.index_;
-	  b->data_ = pixels.data_;
-	  b->len_ = pixels.len_;
-	  b->allocLen_ = pixels.allocLen_;
-	  b->offset_ = pixels.offset_;
-
-	  return ioTiffFormat.encodePixels(threadId, &b, 1);
-   }
-#endif
-
    std::unique_lock<std::mutex> lk(encodePixelmutex);
    if(encodeState & IMAGE_FORMAT_ENCODED_PIXELS)
 	  return true;
