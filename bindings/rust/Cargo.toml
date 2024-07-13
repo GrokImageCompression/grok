@@ -1,0 +1,40 @@
+# Copyright (C) 2016-2024 Grok Image Compression Inc.
+#
+# This source code is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License, version 3,
+# as published by the Free Software Foundation.
+#
+# This source code is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Affero General Public License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+[package]
+name = "grokj2k-sys"
+authors = ["Grok Image Compression <support@grokcompression.com>"]
+repository = "https://github.com/GrokImageCompression/grok"
+links = "grokj2k"
+license = "AGPL-3.0-only"
+description = "Bindings for Grok JPEG 2000 SDK"
+version = "1.0.0"
+categories = ["external-ffi-bindings", "multimedia::images"]
+keywords = ["j2k", "jp2", "j2c", "jph", "jhc", "jpeg2000", "grok"]
+edition = "2021"
+
+[dependencies]
+libc = "0.2"
+
+[build-dependencies]
+pkg-config = "0.3.19"
+bindgen = "0.58.1"
+
+[lib]
+name = "grokj2k_sys"
+path = "src/lib.rs"
+
+[[example]]
+name = "initialize_grok"
+path = "examples/initialize_grok.rs"
