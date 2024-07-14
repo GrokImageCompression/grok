@@ -118,8 +118,8 @@ include(CheckSymbolExists)
 # Special Builds
 option(GRK_BUILD_DCI "Build DCI" OFF)
 mark_as_advanced(GRK_BUILD_DCI)
-
-
+option(GRK_BUNDLE_STATIC_CORE "Bundle static core library" OFF)
+mark_as_advanced(GRK_BUNDLE_STATIC_CORE)
 option(GRK_BUILD_LIBPNG "Build libpng library" ON)
 option(GRK_BUILD_LIBTIFF "Build libtiff library" ON)
 option(GRK_BUILD_LCMS2 "Build lcms2 library" ON)
