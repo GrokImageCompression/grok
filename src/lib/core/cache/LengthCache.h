@@ -49,7 +49,7 @@ struct TileInfo
    ~TileInfo(void);
    bool checkResize(void);
    bool hasTilePartInfo(void);
-   bool update(uint16_t tileIndex, uint8_t currentTilePart, uint8_t numTileParts);
+   bool update(uint16_t tile_index, uint8_t currentTilePart, uint8_t numTileParts);
    TilePartInfo* getTilePartInfo(uint8_t tilePart);
    void dump(FILE* outputFileStream, uint16_t tileNum);
    uint16_t tileno;
@@ -71,15 +71,15 @@ struct CodeStreamInfo
    CodeStreamInfo(BufferedStream* str);
    virtual ~CodeStreamInfo();
    bool allocTileInfo(uint16_t numTiles);
-   bool updateTileInfo(uint16_t tileIndex, uint8_t currentTilePart, uint8_t numTileParts);
-   TileInfo* getTileInfo(uint16_t tileIndex);
+   bool updateTileInfo(uint16_t tile_index, uint8_t currentTilePart, uint8_t numTileParts);
+   TileInfo* getTileInfo(uint16_t tile_index);
    void dump(FILE* outputFileStream);
    void pushMarker(uint16_t id, uint64_t pos, uint32_t len);
    uint64_t getMainHeaderStart(void);
    void setMainHeaderStart(uint64_t start);
    uint64_t getMainHeaderEnd(void);
    void setMainHeaderEnd(uint64_t end);
-   bool seekFirstTilePart(uint16_t tileIndex);
+   bool seekFirstTilePart(uint16_t tile_index);
 
  private:
    /** main header start position (SOC position) */
@@ -117,7 +117,7 @@ struct TileLengthMarkers
    bool valid(void);
    void seek(TileSet* tilesToDecompress, CodingParams* cp, BufferedStream* stream);
    bool writeBegin(uint16_t numTilePartsTotal);
-   void push(uint16_t tileIndex, uint32_t tile_part_size);
+   void push(uint16_t tile_index, uint32_t tile_part_size);
    bool writeEnd(void);
    /**
 	Add tile header marker information

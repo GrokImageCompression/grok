@@ -123,9 +123,9 @@ typedef enum _GRK_ENUM_COLOUR_SPACE
  So,  worst-case scenario is lossless with colour transform : need to add 5 more bits to prec to
  avoid overflow
  */
-#define BIBO_EXTRA_BITS 7
+#define GRK_BIBO_EXTRA_BITS 7
 
-#define GRK_MAX_PASSES (3 * (GRK_MAX_SUPPORTED_IMAGE_PRECISION + BIBO_EXTRA_BITS) - 2)
+#define GRK_MAX_PASSES (3 * (GRK_MAX_SUPPORTED_IMAGE_PRECISION + GRK_BIBO_EXTRA_BITS) - 2)
 
 /**
  * Logging callback
@@ -152,8 +152,8 @@ typedef struct _grk_object
 typedef struct _grk_progression
 {
    GRK_PROG_ORDER progression;
-   char progressionString[5];
-   GRK_PROG_ORDER specifiedCompressionPocProg;
+   char progression_str[5];
+   GRK_PROG_ORDER specified_compression_poc_prog;
    uint32_t tileno;
    /** tile dimensions */
    uint32_t tx0;
@@ -161,24 +161,24 @@ typedef struct _grk_progression
    uint32_t tx1;
    uint32_t ty1;
    /** progression order bounds specified by POC */
-   uint16_t compS;
-   uint16_t compE;
-   uint8_t resS;
-   uint8_t resE;
-   uint64_t precS;
-   uint64_t precE;
-   uint16_t layS;
-   uint16_t layE;
-   uint16_t tpCompS;
-   uint16_t tpCompE;
-   uint8_t tpResS;
-   uint8_t tpResE;
-   uint64_t tpPrecE;
-   uint16_t tpLayE;
-   uint32_t tp_txS;
-   uint32_t tp_txE;
-   uint32_t tp_tyS;
-   uint32_t tp_tyE;
+   uint16_t comp_s;
+   uint16_t comp_e;
+   uint8_t res_s;
+   uint8_t res_e;
+   uint64_t prec_s;
+   uint64_t prec_e;
+   uint16_t lay_s;
+   uint16_t lay_e;
+   uint16_t tp_comp_s;
+   uint16_t tp_comp_e;
+   uint8_t tp_res_s;
+   uint8_t tp_res_e;
+   uint64_t tp_prec_e;
+   uint16_t tp_lay_e;
+   uint32_t tp_tx_s;
+   uint32_t tp_tx_e;
+   uint32_t tp_ty_s;
+   uint32_t tp_ty_e;
    uint32_t dx;
    uint32_t dy;
    uint16_t comp_temp;
@@ -390,13 +390,13 @@ typedef struct _grk_header_info
    /******************************************
    set by client only if decompressing to file
    *******************************************/
-   GRK_SUPPORTED_FILE_FMT decompressFormat;
-   bool forceRGB;
+   GRK_SUPPORTED_FILE_FMT decompress_fmt;
+   bool force_rgb;
    bool upsample;
    grk_precision* precision;
-   uint32_t numPrecision;
-   bool splitByComponent;
-   bool singleTileDecompress;
+   uint32_t num_precision;
+   bool split_by_component;
+   bool single_tile_decompress;
    /****************************************/
 
    /*****************************************
@@ -454,7 +454,7 @@ typedef struct _grk_header_info
    size_t num_comments;
    char* comment[GRK_NUM_COMMENTS_SUPPORTED];
    uint16_t comment_len[GRK_NUM_COMMENTS_SUPPORTED];
-   bool isBinaryComment[GRK_NUM_COMMENTS_SUPPORTED];
+   bool is_binary_comment[GRK_NUM_COMMENTS_SUPPORTED];
 
    grk_asoc asocs[GRK_NUM_ASOC_BOXES_SUPPORTED];
    uint32_t num_asocs;
@@ -465,14 +465,14 @@ typedef struct _grk_io_buf
    uint8_t* data_;
    size_t offset_;
    size_t len_;
-   size_t allocLen_;
+   size_t alloc_len_;
    bool pooled_;
    uint32_t index_;
 } grk_io_buf;
 
 typedef struct _grk_io_init
 {
-   uint32_t maxPooledRequests_;
+   uint32_t max_pooled_requests_;
 
 } grk_io_init;
 
@@ -572,9 +572,9 @@ typedef struct _grk_decompress_core_params
 	used, all the quality layers are decompressed
 	*/
    uint16_t layers_to_decompress_;
-   GRK_TILE_CACHE_STRATEGY tileCacheStrategy;
+   GRK_TILE_CACHE_STRATEGY tile_cache_strategy;
 
-   uint32_t randomAccessFlags_;
+   uint32_t random_access_flags_;
 
    grk_io_pixels_callback io_buffer_callback;
    void* io_user_data;
@@ -607,10 +607,10 @@ typedef struct _grk_decompress_params
    /** Decompress window bottom boundary */
    float dw_y1;
    /** tile number of the decompressed tile*/
-   uint16_t tileIndex;
-   bool singleTileDecompress;
+   uint16_t tile_index;
+   bool single_tile_decompress;
    grk_precision* precision;
-   uint32_t numPrecision;
+   uint32_t num_precision;
    /* force output colorspace to RGB */
    bool force_rgb;
    /* upsample components according to their dx/dy values */
@@ -624,14 +624,14 @@ typedef struct _grk_decompress_params
    compression "quality". Meaning of "quality" depends
    on file format we are writing to
    *****************************************************/
-   uint32_t compressionLevel;
+   uint32_t compression_level;
    /** Verbose mode */
    bool verbose_;
-   int32_t deviceId;
+   int32_t device_id;
    uint32_t duration; /* in seconds */
-   uint32_t kernelBuildOptions;
+   uint32_t kernel_build_options;
    uint32_t repeats;
-   uint32_t numThreads;
+   uint32_t num_threads;
    void* user_data;
 } grk_decompress_parameters;
 
@@ -663,7 +663,7 @@ typedef struct _grk_image_comp
    GRK_CHANNEL_TYPE type;
    GRK_CHANNEL_ASSOC association;
    /* component registration coordinates */
-   uint16_t Xcrg, Ycrg;
+   uint16_t crg_x, crg_y;
    /** image component data */
    int32_t* data;
 } grk_image_comp;
@@ -695,28 +695,28 @@ typedef struct _grk_image
    /** number of components in the image */
    uint16_t numcomps;
    GRK_COLOR_SPACE color_space;
-   bool paletteApplied_;
-   bool channelDefinitionApplied_;
+   bool palette_applied_;
+   bool channel_definition_applied_;
    bool has_capture_resolution;
    double capture_resolution[2];
    bool has_display_resolution;
    double display_resolution[2];
-   GRK_SUPPORTED_FILE_FMT decompressFormat;
-   bool forceRGB;
+   GRK_SUPPORTED_FILE_FMT decompress_fmt;
+   bool force_rgb;
    bool upsample;
    grk_precision* precision;
-   uint32_t numPrecision;
-   bool hasMultipleTiles;
-   bool splitByComponent;
-   uint16_t decompressNumComps;
-   uint32_t decompressWidth;
-   uint32_t decompressHeight;
-   uint8_t decompressPrec;
-   GRK_COLOR_SPACE decompressColourSpace;
-   grk_io_buf interleavedData;
-   uint32_t rowsPerStrip; // for storage to output format
-   uint32_t rowsPerTask; // for scheduling
-   uint64_t packedRowBytes;
+   uint32_t num_precision;
+   bool has_multiple_tiles;
+   bool split_by_component;
+   uint16_t decompress_num_comps;
+   uint32_t decompress_width;
+   uint32_t decompress_height;
+   uint8_t decompress_prec;
+   GRK_COLOR_SPACE decompress_colour_space;
+   grk_io_buf interleaved_data;
+   uint32_t rows_per_strip; // for storage to output format
+   uint32_t rows_per_task; // for scheduling
+   uint64_t packed_row_bytes;
    grk_image_meta* meta;
    grk_image_comp* comps;
 } grk_image;
@@ -729,7 +729,7 @@ Structs to pass data between grok and plugin
  */
 typedef struct _grk_plugin_pass
 {
-   double distortionDecrease; /* distortion decrease up to and including this pass */
+   double distortion_decrease; /* distortion decrease up to and including this pass */
    size_t rate; /* rate up to and including this pass */
    size_t length; /* stream length for this pass */
 } grk_plugin_pass;
@@ -743,15 +743,15 @@ typedef struct _grk_plugin_code_block
    debug info
    **************************/
    uint32_t x0, y0, x1, y1;
-   unsigned int* contextStream;
+   unsigned int* context_stream;
    /***************************/
-   uint32_t numPix;
-   uint8_t* compressedData;
-   uint32_t compressedDataLength;
-   uint8_t numBitPlanes;
-   size_t numPasses;
+   uint32_t num_pix;
+   uint8_t* compressed_data;
+   uint32_t compressed_data_length;
+   uint8_t num_bit_planes;
+   size_t num_passes;
    grk_plugin_pass passes[GRK_MAX_PASSES];
-   unsigned int sortedIndex;
+   unsigned int sorted_index;
 } grk_plugin_code_block;
 
 /**
@@ -759,7 +759,7 @@ typedef struct _grk_plugin_code_block
  */
 typedef struct _grk_plugin_precinct
 {
-   uint64_t numBlocks;
+   uint64_t num_blocks;
    grk_plugin_code_block** blocks;
 } grk_plugin_precinct;
 
@@ -769,7 +769,7 @@ typedef struct _grk_plugin_precinct
 typedef struct _grk_plugin_band
 {
    uint8_t orientation;
-   uint64_t numPrecincts;
+   uint64_t num_precincts;
    grk_plugin_precinct** precincts;
    float stepsize;
 } grk_plugin_band;
@@ -780,7 +780,7 @@ typedef struct _grk_plugin_band
 typedef struct _grk_plugin_resolution
 {
    size_t level;
-   size_t numBands;
+   size_t num_bands;
    grk_plugin_band** band;
 } grk_plugin_resolution;
 
@@ -789,7 +789,7 @@ typedef struct _grk_plugin_resolution
  */
 typedef struct grk_plugin_tile_component
 {
-   size_t numResolutions;
+   size_t num_resolutions;
    grk_plugin_resolution** resolutions;
 } grk_plugin_tile_component;
 
@@ -808,8 +808,8 @@ typedef struct grk_plugin_tile_component
 typedef struct _grk_plugin_tile
 {
    uint32_t decompress_flags;
-   size_t numComponents;
-   grk_plugin_tile_component** tileComponents;
+   size_t num_components;
+   grk_plugin_tile_component** tile_components;
 } grk_plugin_tile;
 
 /* opaque codec object */
@@ -917,11 +917,11 @@ GRK_API bool GRK_CALLCONV grk_decompress_read_header(grk_codec* codec,
  * Get decompressed tile image
  *
  * @param	codec				decompression codec
- * @param	tileIndex			tile index
+ * @param	tile_index			tile index
  *
  * @return pointer to decompressed image
  */
-GRK_API grk_image* GRK_CALLCONV grk_decompress_get_tile_image(grk_codec* codec, uint16_t tileIndex);
+GRK_API grk_image* GRK_CALLCONV grk_decompress_get_tile_image(grk_codec* codec, uint16_t tile_index);
 
 /**
  * Get decompressed composite image
@@ -962,11 +962,11 @@ GRK_API bool GRK_CALLCONV grk_decompress(grk_codec* codec, grk_plugin_tile* tile
  * Decompress a specific tile
  *
  * @param	codec			decompression codec
- * @param	tileIndex		index of the tile to be decompressed
+ * @param	tile_index		index of the tile to be decompressed
  *
  * @return					true if successful, otherwise false
  */
-GRK_API bool GRK_CALLCONV grk_decompress_tile(grk_codec* codec, uint16_t tileIndex);
+GRK_API bool GRK_CALLCONV grk_decompress_tile(grk_codec* codec, uint16_t tile_index);
 
 /* COMPRESSION FUNCTIONS*/
 
@@ -988,12 +988,12 @@ typedef struct _grk_cparameters
    /** number of layers */
    uint16_t numlayers;
    /** rate control allocation by rate/distortion curve */
-   bool allocationByRateDistoration;
+   bool allocation_by_rate_distortion;
    /** layers rates expressed as compression ratios.
 	*  They might be subsequently limited by the max_cs_size field */
    double layer_rate[GRK_MAX_LAYERS];
    /** rate control allocation by fixed_PSNR quality */
-   bool allocationByQuality;
+   bool allocation_by_quality;
    /** layer PSNR values */
    double layer_distortion[GRK_MAX_LAYERS];
    char* comment[GRK_NUM_COMMENTS_SUPPORTED];
@@ -1050,9 +1050,9 @@ typedef struct _grk_cparameters
    GRK_SUPPORTED_FILE_FMT cod_format;
    grk_raw_cparameters raw_cp;
    /** Tile part generation*/
-   bool enableTilePartGeneration;
+   bool enable_tile_part_generation;
    /** new tile part progression divider */
-   uint8_t newTilePartProgressionDivider;
+   uint8_t new_tile_part_progression_divider;
    /** MCT (multiple component transform) */
    uint8_t mct;
    /** Naive implementation of MCT restricted to a single reversible array based
@@ -1087,16 +1087,16 @@ typedef struct _grk_cparameters
 
    bool apply_icc_;
 
-   GRK_RATE_CONTROL_ALGORITHM rateControlAlgorithm;
-   uint32_t numThreads;
-   int32_t deviceId;
+   GRK_RATE_CONTROL_ALGORITHM rate_control_algorithm;
+   uint32_t num_threads;
+   int32_t device_id;
    uint32_t duration; /* seconds */
-   uint32_t kernelBuildOptions;
+   uint32_t kernel_build_options;
    uint32_t repeats;
-   bool writePLT;
-   bool writeTLM;
+   bool write_plt;
+   bool write_tlm;
    bool verbose;
-   bool sharedMemoryInterface;
+   bool shared_memory_interface;
 } grk_cparameters;
 
 /**
@@ -1456,7 +1456,7 @@ GRK_API uint32_t GRK_CALLCONV grk_plugin_get_debug_state();
  */
 typedef struct _grk_plugin_init_info
 {
-   int32_t deviceId;
+   int32_t device_id;
    bool verbose;
    const char* license;
    const char* server;
@@ -1470,14 +1470,14 @@ GRK_API bool GRK_CALLCONV grk_plugin_init(grk_plugin_init_info initInfo);
 typedef struct grk_plugin_compress_user_callback_info
 {
    const char* input_file_name;
-   bool outputFileNameIsRelative;
+   bool output_file_name_is_relative;
    const char* output_file_name;
    grk_cparameters* compressor_parameters;
    grk_image* image;
    grk_plugin_tile* tile;
    grk_stream_params stream_params;
    unsigned int error_code;
-   bool transferExifTags;
+   bool transfer_exif_tags;
 } grk_plugin_compress_user_callback_info;
 
 typedef uint64_t (*GRK_PLUGIN_COMPRESS_USER_CALLBACK)(grk_plugin_compress_user_callback_info* info);
@@ -1530,7 +1530,7 @@ typedef int (*GROK_INIT_DECOMPRESSORS)(grk_header_info* header_info, grk_image* 
 
 typedef struct _grk_plugin_decompress_callback_info
 {
-   size_t deviceId;
+   size_t device_id;
    GROK_INIT_DECOMPRESSORS init_decompressors_func;
    const char* input_file_name;
    const char* output_file_name;

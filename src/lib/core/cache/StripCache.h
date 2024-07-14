@@ -19,7 +19,7 @@ struct GrkIOBuf : public grk_io_buf
 	  data_ = data;
 	  offset_ = offset;
 	  len_ = dataLen;
-	  allocLen_ = allocLen;
+	  alloc_len_ = allocLen;
 	  pooled_ = pooled;
 	  index_ = index;
    }
@@ -28,7 +28,7 @@ struct GrkIOBuf : public grk_io_buf
 	  data_ = rhs.data_;
 	  offset_ = rhs.offset_;
 	  len_ = rhs.len_;
-	  allocLen_ = rhs.allocLen_;
+	  alloc_len_ = rhs.alloc_len_;
 	  pooled_ = rhs.pooled_;
 	  index_ = rhs.index_;
    }
@@ -43,7 +43,7 @@ struct GrkIOBuf : public grk_io_buf
 	  if(data_)
 	  {
 		 len_ = len;
-		 allocLen_ = len;
+		 alloc_len_ = len;
 	  }
 
 	  return (data_ != nullptr);
@@ -67,7 +67,7 @@ class BufPool
    {
 	  for(auto iter = pool.begin(); iter != pool.end(); ++iter)
 	  {
-		 if(iter->second.allocLen_ >= len)
+		 if(iter->second.alloc_len_ >= len)
 		 {
 			auto b = iter->second;
 			b.len_ = len;

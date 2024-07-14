@@ -307,7 +307,7 @@ static INLINE void update_flags(grk_flag* flagsp, uint32_t ci, uint32_t s, uint3
 
 T1::T1(bool isCompressor, uint32_t maxCblkW, uint32_t maxCblkH)
 	: uncompressedData(nullptr), uncompressedDataLen(0), ownsUncompressedData(false), w(0), h(0),
-	  uncompressedDataStride(0), compressedData(nullptr), compressedDataLen(0), flags(nullptr),
+	  uncompressedDataStride(0), compressed_data(nullptr), compressedDataLen(0), flags(nullptr),
 	  flagssize(0), compressor(isCompressor)
 {
    memset(&coder, 0, sizeof(coder));
@@ -318,7 +318,7 @@ T1::~T1()
 {
    deallocUncompressedData();
    grk_aligned_free(flags);
-   delete[] compressedData;
+   delete[] compressed_data;
 }
 double T1::getnorm(uint32_t level, uint8_t orientation, bool reversible)
 {
@@ -342,14 +342,14 @@ double T1::getnorm_97(uint32_t level, uint8_t orientation)
 }
 uint8_t* T1::getCompressedDataBuffer(void)
 {
-   return compressedData;
+   return compressed_data;
 }
 void T1::allocCompressedData(size_t len)
 {
-   if(compressedData && compressedDataLen > len)
+   if(compressed_data && compressedDataLen > len)
 	  return;
-   delete[] compressedData;
-   compressedData = new uint8_t[len];
+   delete[] compressed_data;
+   compressed_data = new uint8_t[len];
    compressedDataLen = len;
 }
 int32_t* T1::getUncompressedData(void)
@@ -839,7 +839,7 @@ double T1::compress_cblk(cblk_enc* cblk, uint32_t max, uint8_t orientation, uint
 #ifdef PLUGIN_DEBUG_ENCODE
    // uint32_t state = Plugin::getDebugState();
    // if (state & GROK_PLUGIN_STATE_DEBUG) {
-   mqc->debug_mqc.contextStream = cblk->contextStream;
+   mqc->debug_mqc.context_stream = cblk->context_stream;
    mqc->debug_mqc.orientation = orientation;
    mqc->debug_mqc.compno = compno;
    mqc->debug_mqc.level = level;
@@ -1312,7 +1312,7 @@ void T1::dec_refpass_mqc(int32_t bpno)
    if(w == 64 && h == 64)
 	  dec_refpass_mqc_internal(bpno, 64, 64, 66) else dec_refpass_mqc_internal(bpno, w, h, w + 2U)
 }
-bool T1::decompress_cblk(DecompressCodeblock* cblk, uint8_t* compressedData, uint8_t orientation,
+bool T1::decompress_cblk(DecompressCodeblock* cblk, uint8_t* compressed_data, uint8_t orientation,
 						 uint32_t cblksty)
 {
    auto mqc = &coder;
@@ -1338,9 +1338,9 @@ bool T1::decompress_cblk(DecompressCodeblock* cblk, uint8_t* compressedData, uin
 						 ? T1_TYPE_RAW
 						 : T1_TYPE_MQ;
 	  if(type == T1_TYPE_RAW)
-		 mqc_raw_init_dec(mqc, compressedData + cblkdataindex, seg->len);
+		 mqc_raw_init_dec(mqc, compressed_data + cblkdataindex, seg->len);
 	  else
-		 mqc_init_dec(mqc, compressedData + cblkdataindex, seg->len);
+		 mqc_init_dec(mqc, compressed_data + cblkdataindex, seg->len);
 	  cblkdataindex += seg->len;
 	  for(uint32_t passno = 0; (passno < seg->numpasses) && (bpno_plus_one >= 1); ++passno)
 	  {

@@ -40,26 +40,26 @@ bool TileCache::empty()
 {
    return cache_.empty();
 }
-TileCacheEntry* TileCache::put(uint16_t tileIndex, TileProcessor* processor)
+TileCacheEntry* TileCache::put(uint16_t tile_index, TileProcessor* processor)
 {
    TileCacheEntry* entry = nullptr;
-   if(cache_.find(tileIndex) != cache_.end())
+   if(cache_.find(tile_index) != cache_.end())
    {
-	  entry = cache_[tileIndex];
+	  entry = cache_[tile_index];
 	  entry->processor = processor;
    }
    else
    {
 	  entry = new TileCacheEntry(processor);
-	  cache_[tileIndex] = entry;
+	  cache_[tile_index] = entry;
    }
 
    return entry;
 }
-TileCacheEntry* TileCache::get(uint16_t tileIndex)
+TileCacheEntry* TileCache::get(uint16_t tile_index)
 {
-   if(cache_.find(tileIndex) != cache_.end())
-	  return cache_[tileIndex];
+   if(cache_.find(tile_index) != cache_.end())
+	  return cache_[tile_index];
 
    return nullptr;
 }

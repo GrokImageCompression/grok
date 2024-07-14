@@ -43,7 +43,7 @@ struct ResFlow
 class ImageComponentFlow
 {
  public:
-   ImageComponentFlow(uint8_t numResolutions);
+   ImageComponentFlow(uint8_t num_resolutions);
    virtual ~ImageComponentFlow(void);
    void setRegionDecompression(void);
    std::string genBlockFlowTaskName(uint8_t resFlowNo);

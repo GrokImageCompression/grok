@@ -26,8 +26,8 @@ CompressScheduler::CompressScheduler(Tile* tile, bool needsRateControl, TileCodi
 {
    for(uint16_t compno = 0; compno < numcomps_; ++compno)
    {
-	  uint8_t numResolutions = (tile->comps + compno)->highestResolutionDecompressed + 1;
-	  imageComponentFlows_[compno] = new ImageComponentFlow(numResolutions);
+	  uint8_t num_resolutions = (tile->comps + compno)->highestResolutionDecompressed + 1;
+	  imageComponentFlows_[compno] = new ImageComponentFlow(num_resolutions);
    }
 }
 bool CompressScheduler::schedule(uint16_t compno)
@@ -121,11 +121,11 @@ void CompressScheduler::compress(std::vector<CompressBlockExec*>* blocks)
    blocks->clear();
 
    tf::Taskflow taskflow;
-   auto numThreads = ExecSingleton::get().num_workers();
-   auto node = new tf::Task[numThreads];
-   for(uint64_t i = 0; i < numThreads; i++)
+   num_threads = ExecSingleton::get().num_workers();
+   auto node = new tf::Task[num_threads];
+   for(uint64_t i = 0; i < num_threads; i++)
 	  node[i] = taskflow.placeholder();
-   for(uint64_t i = 0; i < numThreads; i++)
+   for(uint64_t i = 0; i < num_threads; i++)
    {
 	  node[i].work([this, maxBlocks] {
 		 auto threadnum = ExecSingleton::get().this_worker_id();

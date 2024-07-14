@@ -116,8 +116,8 @@ void PacketIter::printStaticState(void)
    if(precinctInfoOPT_)
    {
 	  Logger::logger_.info("Packet Iterator Static State");
-	  Logger::logger_.info("progression bounds [C-R-P-L] : [%u %u %u %u] ", prog.compE, prog.resE,
-						   prog.precE, prog.layE);
+	  Logger::logger_.info("progression bounds [C-R-P-L] : [%u %u %u %u] ", prog.comp_e, prog.res_e,
+						   prog.prec_e, prog.lay_e);
 	  for(uint32_t resno = 0; resno < comps->numresolutions; resno++)
 	  {
 		 auto inf = precinctInfoOPT_ + resno;
@@ -243,19 +243,19 @@ bool PacketIter::checkForRemainingValidProgression(int32_t prog, uint32_t pino,
 	  switch(progString[prog])
 	  {
 		 case 'R':
-			if(poc->res_temp == poc->tpResE)
+			if(poc->res_temp == poc->tp_res_e)
 			   return checkForRemainingValidProgression(prog - 1, pino, progString);
 			else
 			   return true;
 			break;
 		 case 'C':
-			if(poc->comp_temp == poc->tpCompE)
+			if(poc->comp_temp == poc->tp_comp_e)
 			   return checkForRemainingValidProgression(prog - 1, pino, progString);
 			else
 			   return true;
 			break;
 		 case 'L':
-			if(poc->lay_temp == poc->tpLayE)
+			if(poc->lay_temp == poc->tp_lay_e)
 			   return checkForRemainingValidProgression(prog - 1, pino, progString);
 			else
 			   return true;
@@ -266,16 +266,16 @@ bool PacketIter::checkForRemainingValidProgression(int32_t prog, uint32_t pino,
 			   case GRK_LRCP:
 				  [[fallthrough]];
 			   case GRK_RLCP:
-				  if(poc->prec_temp == poc->tpPrecE)
+				  if(poc->prec_temp == poc->tp_prec_e)
 					 return checkForRemainingValidProgression(prog - 1, pino, progString);
 				  else
 					 return true;
 				  break;
 			   default:
-				  if(poc->tx0_temp == poc->tp_txE)
+				  if(poc->tx0_temp == poc->tp_tx_e)
 				  {
 					 /*TY*/
-					 if(poc->ty0_temp == poc->tp_tyE)
+					 if(poc->ty0_temp == poc->tp_ty_e)
 						return checkForRemainingValidProgression(prog - 1, pino, progString);
 					 else
 						return true;
@@ -291,7 +291,7 @@ bool PacketIter::checkForRemainingValidProgression(int32_t prog, uint32_t pino,
    }
    return false;
 }
-void PacketIter::enableTilePartGeneration(uint32_t pino, bool first_poc_tile_part,
+void PacketIter::enable_tile_part_generation(uint32_t pino, bool first_poc_tile_part,
 										  uint32_t newTilePartProgressionPosition)
 {
    auto cp = packetManager->getCodingParams();
@@ -308,30 +308,30 @@ void PacketIter::enableTilePartGeneration(uint32_t pino, bool first_poc_tile_par
 		 switch(pocProg[i])
 		 {
 			case 'R':
-			   prog.resS = poc->tpResS;
-			   prog.resE = poc->tpResE;
+			   prog.res_s = poc->tp_res_s;
+			   prog.res_e = poc->tp_res_e;
 			   break;
 			case 'C':
-			   prog.compS = poc->tpCompS;
-			   prog.compE = poc->tpCompE;
+			   prog.comp_s = poc->tp_comp_s;
+			   prog.comp_e = poc->tp_comp_e;
 			   break;
 			case 'L':
-			   prog.layS = 0;
-			   prog.layE = poc->tpLayE;
+			   prog.lay_s = 0;
+			   prog.lay_e = poc->tp_lay_e;
 			   break;
 			case 'P':
 			   switch(poc->progression)
 			   {
 				  case GRK_LRCP:
 				  case GRK_RLCP:
-					 prog.precS = 0;
-					 prog.precE = poc->tpPrecE;
+					 prog.prec_s = 0;
+					 prog.prec_e = poc->tp_prec_e;
 					 break;
 				  default:
-					 prog.tx0 = poc->tp_txS;
-					 prog.ty0 = poc->tp_tyS;
-					 prog.tx1 = poc->tp_txE;
-					 prog.ty1 = poc->tp_tyE;
+					 prog.tx0 = poc->tp_tx_s;
+					 prog.ty0 = poc->tp_ty_s;
+					 prog.tx1 = poc->tp_tx_e;
+					 prog.ty1 = poc->tp_ty_e;
 					 break;
 			   }
 			   break;
@@ -344,21 +344,21 @@ void PacketIter::enableTilePartGeneration(uint32_t pino, bool first_poc_tile_par
 			switch(pocProg[i])
 			{
 			   case 'C':
-				  poc->comp_temp = poc->tpCompS;
-				  prog.compS = poc->comp_temp;
-				  prog.compE = poc->comp_temp + 1U;
+				  poc->comp_temp = poc->tp_comp_s;
+				  prog.comp_s = poc->comp_temp;
+				  prog.comp_e = poc->comp_temp + 1U;
 				  poc->comp_temp = poc->comp_temp + 1U;
 				  break;
 			   case 'R':
-				  poc->res_temp = poc->tpResS;
-				  prog.resS = poc->res_temp;
-				  prog.resE = poc->res_temp + 1U;
+				  poc->res_temp = poc->tp_res_s;
+				  prog.res_s = poc->res_temp;
+				  prog.res_e = poc->res_temp + 1U;
 				  poc->res_temp = poc->res_temp + 1U;
 				  break;
 			   case 'L':
 				  poc->lay_temp = 0;
-				  prog.layS = poc->lay_temp;
-				  prog.layE = poc->lay_temp + 1U;
+				  prog.lay_s = poc->lay_temp;
+				  prog.lay_e = poc->lay_temp + 1U;
 				  poc->lay_temp = poc->lay_temp + 1U;
 				  break;
 			   case 'P':
@@ -367,13 +367,13 @@ void PacketIter::enableTilePartGeneration(uint32_t pino, bool first_poc_tile_par
 					 case GRK_LRCP:
 					 case GRK_RLCP:
 						poc->prec_temp = 0;
-						prog.precS = poc->prec_temp;
-						prog.precE = poc->prec_temp + 1U;
+						prog.prec_s = poc->prec_temp;
+						prog.prec_e = poc->prec_temp + 1U;
 						poc->prec_temp += 1;
 						break;
 					 default:
-						poc->tx0_temp = poc->tp_txS;
-						poc->ty0_temp = poc->tp_tyS;
+						poc->tx0_temp = poc->tp_tx_s;
+						poc->ty0_temp = poc->tp_ty_s;
 						prog.tx0 = poc->tx0_temp;
 						prog.tx1 = (poc->tx0_temp + poc->dx - (poc->tx0_temp % poc->dx));
 						prog.ty0 = poc->ty0_temp;
@@ -395,24 +395,24 @@ void PacketIter::enableTilePartGeneration(uint32_t pino, bool first_poc_tile_par
 			switch(pocProg[i])
 			{
 			   case 'C':
-				  prog.compS = uint16_t(poc->comp_temp - 1);
-				  prog.compE = poc->comp_temp;
+				  prog.comp_s = uint16_t(poc->comp_temp - 1);
+				  prog.comp_e = poc->comp_temp;
 				  break;
 			   case 'R':
-				  prog.resS = uint8_t(poc->res_temp - 1);
-				  prog.resE = poc->res_temp;
+				  prog.res_s = uint8_t(poc->res_temp - 1);
+				  prog.res_e = poc->res_temp;
 				  break;
 			   case 'L':
-				  prog.layS = uint16_t(poc->lay_temp - 1);
-				  prog.layE = poc->lay_temp;
+				  prog.lay_s = uint16_t(poc->lay_temp - 1);
+				  prog.lay_e = poc->lay_temp;
 				  break;
 			   case 'P':
 				  switch(poc->progression)
 				  {
 					 case GRK_LRCP:
 					 case GRK_RLCP:
-						prog.precS = poc->prec_temp - 1;
-						prog.precE = poc->prec_temp;
+						prog.prec_s = poc->prec_temp - 1;
+						prog.prec_e = poc->prec_temp;
 						break;
 					 default:
 						prog.tx0 = (poc->tx0_temp - poc->dx - (poc->tx0_temp % poc->dx));
@@ -428,13 +428,13 @@ void PacketIter::enableTilePartGeneration(uint32_t pino, bool first_poc_tile_par
 			   switch(pocProg[i])
 			   {
 				  case 'R':
-					 if(poc->res_temp == poc->tpResE)
+					 if(poc->res_temp == poc->tp_res_e)
 					 {
 						if(checkForRemainingValidProgression(i - 1, pino, pocProg))
 						{
-						   poc->res_temp = poc->tpResS;
-						   prog.resS = poc->res_temp;
-						   prog.resE = poc->res_temp + 1U;
+						   poc->res_temp = poc->tp_res_s;
+						   prog.res_s = poc->res_temp;
+						   prog.res_e = poc->res_temp + 1U;
 						   poc->res_temp = poc->res_temp + 1U;
 						   incr_top = 1;
 						}
@@ -445,20 +445,20 @@ void PacketIter::enableTilePartGeneration(uint32_t pino, bool first_poc_tile_par
 					 }
 					 else
 					 {
-						prog.resS = poc->res_temp;
-						prog.resE = poc->res_temp + 1U;
+						prog.res_s = poc->res_temp;
+						prog.res_e = poc->res_temp + 1U;
 						poc->res_temp = poc->res_temp + 1U;
 						incr_top = 0;
 					 }
 					 break;
 				  case 'C':
-					 if(poc->comp_temp == poc->tpCompE)
+					 if(poc->comp_temp == poc->tp_comp_e)
 					 {
 						if(checkForRemainingValidProgression(i - 1, pino, pocProg))
 						{
-						   poc->comp_temp = poc->tpCompS;
-						   prog.compS = poc->comp_temp;
-						   prog.compE = poc->comp_temp + 1U;
+						   poc->comp_temp = poc->tp_comp_s;
+						   prog.comp_s = poc->comp_temp;
+						   prog.comp_e = poc->comp_temp + 1U;
 						   poc->comp_temp = poc->comp_temp + 1U;
 						   incr_top = 1;
 						}
@@ -469,20 +469,20 @@ void PacketIter::enableTilePartGeneration(uint32_t pino, bool first_poc_tile_par
 					 }
 					 else
 					 {
-						prog.compS = poc->comp_temp;
-						prog.compE = poc->comp_temp + 1U;
+						prog.comp_s = poc->comp_temp;
+						prog.comp_e = poc->comp_temp + 1U;
 						poc->comp_temp = poc->comp_temp + 1U;
 						incr_top = 0;
 					 }
 					 break;
 				  case 'L':
-					 if(poc->lay_temp == poc->tpLayE)
+					 if(poc->lay_temp == poc->tp_lay_e)
 					 {
 						if(checkForRemainingValidProgression(i - 1, pino, pocProg))
 						{
 						   poc->lay_temp = 0;
-						   prog.layS = poc->lay_temp;
-						   prog.layE = poc->lay_temp + 1U;
+						   prog.lay_s = poc->lay_temp;
+						   prog.lay_e = poc->lay_temp + 1U;
 						   poc->lay_temp = poc->lay_temp + 1U;
 						   incr_top = 1;
 						}
@@ -493,8 +493,8 @@ void PacketIter::enableTilePartGeneration(uint32_t pino, bool first_poc_tile_par
 					 }
 					 else
 					 {
-						prog.layS = poc->lay_temp;
-						prog.layE = poc->lay_temp + 1U;
+						prog.lay_s = poc->lay_temp;
+						prog.lay_e = poc->lay_temp + 1U;
 						poc->lay_temp = poc->lay_temp + 1U;
 						incr_top = 0;
 					 }
@@ -504,13 +504,13 @@ void PacketIter::enableTilePartGeneration(uint32_t pino, bool first_poc_tile_par
 					 {
 						case GRK_LRCP:
 						case GRK_RLCP:
-						   if(poc->prec_temp == poc->tpPrecE)
+						   if(poc->prec_temp == poc->tp_prec_e)
 						   {
 							  if(checkForRemainingValidProgression(i - 1, pino, pocProg))
 							  {
 								 poc->prec_temp = 0;
-								 prog.precS = poc->prec_temp;
-								 prog.precE = poc->prec_temp + 1;
+								 prog.prec_s = poc->prec_temp;
+								 prog.prec_e = poc->prec_temp + 1;
 								 poc->prec_temp += 1;
 								 incr_top = 1;
 							  }
@@ -521,20 +521,20 @@ void PacketIter::enableTilePartGeneration(uint32_t pino, bool first_poc_tile_par
 						   }
 						   else
 						   {
-							  prog.precS = poc->prec_temp;
-							  prog.precE = poc->prec_temp + 1;
+							  prog.prec_s = poc->prec_temp;
+							  prog.prec_e = poc->prec_temp + 1;
 							  poc->prec_temp += 1;
 							  incr_top = 0;
 						   }
 						   break;
 						default:
-						   if(poc->tx0_temp >= poc->tp_txE)
+						   if(poc->tx0_temp >= poc->tp_tx_e)
 						   {
-							  if(poc->ty0_temp >= poc->tp_tyE)
+							  if(poc->ty0_temp >= poc->tp_ty_e)
 							  {
 								 if(checkForRemainingValidProgression(i - 1, pino, pocProg))
 								 {
-									poc->ty0_temp = poc->tp_tyS;
+									poc->ty0_temp = poc->tp_ty_s;
 									prog.ty0 = poc->ty0_temp;
 									prog.ty1 = (uint32_t)(poc->ty0_temp + poc->dy -
 														  (poc->ty0_temp % poc->dy));
@@ -558,7 +558,7 @@ void PacketIter::enableTilePartGeneration(uint32_t pino, bool first_poc_tile_par
 							  }
 							  if(resetX == 1)
 							  {
-								 poc->tx0_temp = poc->tp_txS;
+								 poc->tx0_temp = poc->tp_tx_s;
 								 prog.tx0 = poc->tx0_temp;
 								 prog.tx1 = (uint32_t)(poc->tx0_temp + poc->dx -
 													   (poc->tx0_temp % poc->dx));
@@ -583,18 +583,18 @@ void PacketIter::enableTilePartGeneration(uint32_t pino, bool first_poc_tile_par
    }
    else
    {
-	  prog.layS = 0;
-	  prog.layE = poc->tpLayE;
-	  prog.resS = poc->tpResS;
-	  prog.resE = poc->tpResE;
-	  prog.compS = poc->tpCompS;
-	  prog.compE = poc->tpCompE;
-	  prog.precS = 0;
-	  prog.precE = poc->tpPrecE;
-	  prog.tx0 = poc->tp_txS;
-	  prog.ty0 = poc->tp_tyS;
-	  prog.tx1 = poc->tp_txE;
-	  prog.ty1 = poc->tp_tyE;
+	  prog.lay_s = 0;
+	  prog.lay_e = poc->tp_lay_e;
+	  prog.res_s = poc->tp_res_s;
+	  prog.res_e = poc->tp_res_e;
+	  prog.comp_s = poc->tp_comp_s;
+	  prog.comp_e = poc->tp_comp_e;
+	  prog.prec_s = 0;
+	  prog.prec_e = poc->tp_prec_e;
+	  prog.tx0 = poc->tp_tx_s;
+	  prog.ty0 = poc->tp_ty_s;
+	  prog.tx1 = poc->tp_tx_e;
+	  prog.ty1 = poc->tp_ty_e;
    }
 }
 GRK_PROG_ORDER PacketIter::getProgression(void) const
@@ -724,14 +724,14 @@ void PacketIter::init(PacketManager* packetMan, uint32_t pino, TileCodingParams*
 	  auto poc = tcp->progressionOrderChange + pino;
 
 	  prog.progression = hasPoc ? poc->progression : tcp->prg;
-	  prog.layS = 0;
-	  prog.layE = hasPoc ? std::min<uint16_t>(poc->layE, tcp->max_layers_) : tcp->max_layers_;
-	  prog.resS = hasPoc ? poc->resS : 0;
-	  prog.resE = hasPoc ? poc->resE : max_res;
-	  prog.compS = hasPoc ? poc->compS : 0;
-	  prog.compE = std::min<uint16_t>(hasPoc ? poc->compE : numcomps, image->numcomps);
-	  prog.precS = 0;
-	  prog.precE = max_precincts;
+	  prog.lay_s = 0;
+	  prog.lay_e = hasPoc ? std::min<uint16_t>(poc->lay_e, tcp->max_layers_) : tcp->max_layers_;
+	  prog.res_s = hasPoc ? poc->res_s : 0;
+	  prog.res_e = hasPoc ? poc->res_e : max_res;
+	  prog.comp_s = hasPoc ? poc->comp_s : 0;
+	  prog.comp_e = std::min<uint16_t>(hasPoc ? poc->comp_e : numcomps, image->numcomps);
+	  prog.prec_s = 0;
+	  prog.prec_e = max_precincts;
    }
    prog.tx0 = tileBounds.x0;
    prog.ty0 = tileBounds.y0;
@@ -764,21 +764,21 @@ void PacketIter::init(PacketManager* packetMan, uint32_t pino, TileCodingParams*
 	  switch(prog.progression)
 	  {
 		 case GRK_LRCP:
-			prog.layE = (std::min)(
-				prog.layE,
+			prog.lay_e = (std::min)(
+				prog.lay_e,
 				packetManager->getTileProcessor()->getTileCodingParams()->numLayersToDecompress);
 			break;
 		 case GRK_RLCP:
-			prog.resE = (std::min)(prog.resE, maxNumDecompositionResolutions);
+			prog.res_e = (std::min)(prog.res_e, maxNumDecompositionResolutions);
 			break;
 		 case GRK_RPCL:
-			prog.resE = (std::min)(prog.resE, maxNumDecompositionResolutions);
+			prog.res_e = (std::min)(prog.res_e, maxNumDecompositionResolutions);
 			if(precinctInfoOPT_)
 			{
 			   for(uint8_t resno = 0; resno < comps->numresolutions; ++resno)
 			   {
 				  auto inf = precinctInfoOPT_ + resno;
-				  inf->innerPrecincts_ = (uint64_t)prog.compE * prog.layE;
+				  inf->innerPrecincts_ = (uint64_t)prog.comp_e * prog.lay_e;
 				  auto compLayer = inf->innerPrecincts_;
 				  inf->winPrecinctsLeft_ = inf->winPrecGrid.x0 * compLayer;
 				  inf->winPrecinctsRight_ =
@@ -828,20 +828,20 @@ bool PacketIter::next(SparseBuffer* src)
 bool PacketIter::next_cprl(SparseBuffer* src)
 {
    (void)src;
-   for(; compno < prog.compE; compno++)
+   for(; compno < prog.comp_e; compno++)
    {
 	  auto comp = comps + compno;
 	  for(; y < prog.ty1; y += dyActive, dyActive = dy)
 	  {
 		 for(; x < prog.tx1; x += dxActive, dxActive = dx)
 		 {
-			for(; resno < prog.resE; resno++)
+			for(; resno < prog.res_e; resno++)
 			{
 			   if(!validatePrecinct())
 				  continue;
 			   if(incrementInner)
 				  layno++;
-			   if(layno < prog.layE)
+			   if(layno < prog.lay_e)
 			   {
 				  incrementInner = true;
 				  generatePrecinctIndex();
@@ -850,10 +850,10 @@ bool PacketIter::next_cprl(SparseBuffer* src)
 					 return true;
 				  }
 			   }
-			   layno = prog.layS;
+			   layno = prog.lay_s;
 			   incrementInner = false;
 			}
-			resno = prog.resS;
+			resno = prog.res_s;
 		 }
 		 x = prog.tx0;
 		 dxActive = (uint32_t)(dx - (x % dx));
@@ -882,27 +882,27 @@ bool PacketIter::next_pcrl(SparseBuffer* src)
 			if(!win.empty() && (y >= win.y1 || (win.y1 > 0 && y == win.y1 - 1 && x >= win.x1)))
 			   return false;
 		 }
-		 for(; compno < prog.compE; compno++)
+		 for(; compno < prog.comp_e; compno++)
 		 {
-			for(; resno < prog.resE; resno++)
+			for(; resno < prog.res_e; resno++)
 			{
 			   if(!validatePrecinct())
 				  continue;
 			   if(incrementInner)
 				  layno++;
-			   if(layno < prog.layE)
+			   if(layno < prog.lay_e)
 			   {
 				  incrementInner = true;
 				  generatePrecinctIndex();
 				  if(update_include())
 					 return true;
 			   }
-			   layno = prog.layS;
+			   layno = prog.lay_s;
 			   incrementInner = false;
 			}
-			resno = prog.resS;
+			resno = prog.res_s;
 		 }
-		 compno = prog.compS;
+		 compno = prog.comp_s;
 	  }
 	  x = prog.tx0;
 	  dxActive = (uint32_t)(dx - (x % dx));
@@ -913,19 +913,19 @@ bool PacketIter::next_pcrl(SparseBuffer* src)
 bool PacketIter::next_lrcp(SparseBuffer* src)
 {
    (void)src;
-   for(; layno < prog.layE; layno++)
+   for(; layno < prog.lay_e; layno++)
    {
-	  for(; resno < prog.resE; resno++)
+	  for(; resno < prog.res_e; resno++)
 	  {
-		 uint64_t precE = 0;
+		 uint64_t prec_e = 0;
 		 if(precinctInfoOPT_)
 		 {
 			if(resno >= comps->numresolutions)
 			   continue;
 			auto res = comps->resolutions + resno;
-			precE = (uint64_t)res->precinctGridWidth * res->precinctGridHeight;
+			prec_e = (uint64_t)res->precinctGridWidth * res->precinctGridHeight;
 		 }
-		 for(; compno < prog.compE; compno++)
+		 for(; compno < prog.comp_e; compno++)
 		 {
 			auto comp = comps + compno;
 			if(!precinctInfoOPT_)
@@ -934,22 +934,22 @@ bool PacketIter::next_lrcp(SparseBuffer* src)
 			   if(resno >= comp->numresolutions)
 				  continue;
 			   auto res = comp->resolutions + resno;
-			   precE = (uint64_t)res->precinctGridWidth * res->precinctGridHeight;
+			   prec_e = (uint64_t)res->precinctGridWidth * res->precinctGridHeight;
 			}
 			if(incrementInner)
 			   precinctIndex++;
-			if(precinctIndex < precE)
+			if(precinctIndex < prec_e)
 			{
 			   incrementInner = true;
 			   if(update_include())
 				  return true;
 			}
-			precinctIndex = prog.precS;
+			precinctIndex = prog.prec_s;
 			incrementInner = false;
 		 }
-		 compno = prog.compS;
+		 compno = prog.comp_s;
 	  }
-	  resno = prog.resS;
+	  resno = prog.res_s;
    }
 
    return false;
@@ -957,19 +957,19 @@ bool PacketIter::next_lrcp(SparseBuffer* src)
 bool PacketIter::next_rlcp(SparseBuffer* src)
 {
    (void)src;
-   for(; resno < prog.resE; resno++)
+   for(; resno < prog.res_e; resno++)
    {
-	  uint64_t precE = 0;
+	  uint64_t prec_e = 0;
 	  if(precinctInfoOPT_)
 	  {
 		 if(resno >= comps->numresolutions)
 			continue;
 		 auto res = comps->resolutions + resno;
-		 precE = (uint64_t)res->precinctGridWidth * res->precinctGridHeight;
+		 prec_e = (uint64_t)res->precinctGridWidth * res->precinctGridHeight;
 	  }
-	  for(; layno < prog.layE; layno++)
+	  for(; layno < prog.lay_e; layno++)
 	  {
-		 for(; compno < prog.compE; compno++)
+		 for(; compno < prog.comp_e; compno++)
 		 {
 			auto comp = comps + compno;
 			if(!precinctInfoOPT_)
@@ -977,22 +977,22 @@ bool PacketIter::next_rlcp(SparseBuffer* src)
 			   if(resno >= comp->numresolutions)
 				  continue;
 			   auto res = comp->resolutions + resno;
-			   precE = (uint64_t)res->precinctGridWidth * res->precinctGridHeight;
+			   prec_e = (uint64_t)res->precinctGridWidth * res->precinctGridHeight;
 			}
 			if(incrementInner)
 			   precinctIndex++;
-			if(precinctIndex < precE)
+			if(precinctIndex < prec_e)
 			{
 			   incrementInner = true;
 			   if(update_include())
 				  return true;
 			}
-			precinctIndex = prog.precS;
+			precinctIndex = prog.prec_s;
 			incrementInner = false;
 		 }
-		 compno = prog.compS;
+		 compno = prog.comp_s;
 	  }
-	  layno = prog.layS;
+	  layno = prog.lay_s;
    }
 
    return false;
@@ -1000,12 +1000,12 @@ bool PacketIter::next_rlcp(SparseBuffer* src)
 bool PacketIter::next_rpcl(SparseBuffer* src)
 {
    (void)src;
-   for(; resno < prog.resE; resno++)
+   for(; resno < prog.res_e; resno++)
    {
 	  // if all remaining components have degenerate precinct grid, then
 	  // skip this resolution
 	  bool sane = false;
-	  for(uint16_t compnoTmp = compno; compnoTmp < prog.compE; compnoTmp++)
+	  for(uint16_t compnoTmp = compno; compnoTmp < prog.comp_e; compnoTmp++)
 	  {
 		 auto comp = comps + compnoTmp;
 		 if(resno >= comp->numresolutions)
@@ -1025,23 +1025,23 @@ bool PacketIter::next_rpcl(SparseBuffer* src)
 		 for(; x < prog.tx1; x += dxActive, dxActive = dx)
 		 {
 			// calculate x
-			for(; compno < prog.compE; compno++)
+			for(; compno < prog.comp_e; compno++)
 			{
 			   if(!validatePrecinct())
 				  continue;
 			   if(incrementInner)
 				  layno++;
-			   if(layno < prog.layE)
+			   if(layno < prog.lay_e)
 			   {
 				  incrementInner = true;
 				  generatePrecinctIndex();
 				  if(update_include())
 					 return true;
 			   }
-			   layno = prog.layS;
+			   layno = prog.lay_s;
 			   incrementInner = false;
 			}
-			compno = prog.compS;
+			compno = prog.comp_s;
 		 }
 		 x = prog.tx0;
 		 dxActive = (uint32_t)(dx - (x % dx));

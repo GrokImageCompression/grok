@@ -35,7 +35,7 @@ struct grk_plugin_debug_mqc
 {
    uint32_t debug_state;
    uint8_t context_number;
-   uint32_t* contextStream;
+   uint32_t* context_stream;
    uint32_t contextStreamByteCount;
    uint8_t contextCache[DEBUG_CONTEXT_CACHE_SIZE];
    uint32_t contextCacheCount;
@@ -75,7 +75,7 @@ struct PluginDecodeCallbackInfo
    PluginDecodeCallbackInfo(std::string input, std::string output,
 							grk_decompress_parameters* decompressorParameters,
 							GRK_CODEC_FORMAT format, uint32_t flags)
-	   : deviceId(0), init_decompressors_func(nullptr), inputFile(input), outputFile(output),
+	   : device_id(0), init_decompressors_func(nullptr), inputFile(input), outputFile(output),
 		 decod_format(format), cod_format(GRK_FMT_UNK), codec(nullptr),
 		 decompressor_parameters(decompressorParameters), image(nullptr), plugin_owns_image(false),
 		 tile(nullptr), error_code(0), decompress_flags(flags), user_data(nullptr)
@@ -83,7 +83,7 @@ struct PluginDecodeCallbackInfo
    {
 	  memset(&header_info, 0, sizeof(header_info));
    }
-   size_t deviceId;
+   size_t device_id;
    GROK_INIT_DECOMPRESSORS init_decompressors_func;
    std::string inputFile;
    std::string outputFile;

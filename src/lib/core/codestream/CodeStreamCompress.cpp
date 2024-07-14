@@ -176,7 +176,7 @@ bool CodeStreamCompress::init(grk_cparameters* parameters, GrkImage* image)
 		 parameters->numlayers = 1;
 		 parameters->layer_rate[0] = 0;
 	  }
-	  parameters->allocationByRateDistoration = true;
+	  parameters->allocation_by_rate_distortion = true;
    }
 
    if((parameters->numresolution == 0) || (parameters->numresolution > GRK_MAXRLVLS))
@@ -200,7 +200,7 @@ bool CodeStreamCompress::init(grk_cparameters* parameters, GrkImage* image)
    {
 	  parameters->layer_rate[0] = 0;
 	  parameters->numlayers = 1;
-	  parameters->allocationByRateDistoration = true;
+	  parameters->allocation_by_rate_distortion = true;
    }
 
    /* see if max_codestream_size does limit input rate */
@@ -304,11 +304,11 @@ bool CodeStreamCompress::init(grk_cparameters* parameters, GrkImage* image)
 
    cp_.coding_params_.enc_.max_comp_size_ = parameters->max_comp_size;
    cp_.rsiz = parameters->rsiz;
-   cp_.coding_params_.enc_.allocationByRateDistortion_ = parameters->allocationByRateDistoration;
-   cp_.coding_params_.enc_.allocationByFixedQuality_ = parameters->allocationByQuality;
-   cp_.coding_params_.enc_.writePLT = parameters->writePLT;
-   cp_.coding_params_.enc_.writeTLM = parameters->writeTLM;
-   cp_.coding_params_.enc_.rateControlAlgorithm = parameters->rateControlAlgorithm;
+   cp_.coding_params_.enc_.allocationByRateDistortion_ = parameters->allocation_by_rate_distortion;
+   cp_.coding_params_.enc_.allocationByFixedQuality_ = parameters->allocation_by_quality;
+   cp_.coding_params_.enc_.write_plt = parameters->write_plt;
+   cp_.coding_params_.enc_.write_tlm = parameters->write_tlm;
+   cp_.coding_params_.enc_.rate_control_algorithm = parameters->rate_control_algorithm;
 
    /* tiles */
    cp_.t_width = parameters->t_width;
@@ -336,7 +336,7 @@ bool CodeStreamCompress::init(grk_cparameters* parameters, GrkImage* image)
 				cp_.comment_len[i], GRK_MAX_COMMENT_LENGTH);
 			continue;
 		 }
-		 cp_.isBinaryComment[i] = parameters->is_binary_comment[i];
+		 cp_.is_binary_comment[i] = parameters->is_binary_comment[i];
 		 cp_.comment[i] = new char[cp_.comment_len[i]];
 		 memcpy(cp_.comment[i], parameters->comment[i], cp_.comment_len[i]);
 		 cp_.num_comments++;
@@ -351,7 +351,7 @@ bool CodeStreamCompress::init(grk_cparameters* parameters, GrkImage* image)
 	  memcpy(cp_.comment[0], comment.c_str(), comment_len);
 	  cp_.comment_len[0] = (uint16_t)comment_len;
 	  cp_.num_comments = 1;
-	  cp_.isBinaryComment[0] = false;
+	  cp_.is_binary_comment[0] = false;
    }
    if(parameters->tile_size_on)
    {
@@ -379,10 +379,10 @@ bool CodeStreamCompress::init(grk_cparameters* parameters, GrkImage* image)
 	  cp_.t_width = image->x1 - cp_.tx0;
 	  cp_.t_height = image->y1 - cp_.ty0;
    }
-   if(parameters->enableTilePartGeneration)
+   if(parameters->enable_tile_part_generation)
    {
 	  cp_.coding_params_.enc_.newTilePartProgressionDivider_ =
-		  parameters->newTilePartProgressionDivider;
+		  parameters->new_tile_part_progression_divider;
 	  cp_.coding_params_.enc_.enableTilePartGeneration_ = true;
    }
    uint8_t numgbits = parameters->numgbits;
@@ -423,13 +423,13 @@ bool CodeStreamCompress::init(grk_cparameters* parameters, GrkImage* image)
 			{
 			   auto tcp_poc = tcp->progressionOrderChange + numTileProgressions;
 
-			   tcp_poc->resS = parameters->progression[numTileProgressions].resS;
-			   tcp_poc->compS = parameters->progression[numTileProgressions].compS;
-			   tcp_poc->layE = parameters->progression[numTileProgressions].layE;
-			   tcp_poc->resE = parameters->progression[numTileProgressions].resE;
-			   tcp_poc->compE = parameters->progression[numTileProgressions].compE;
-			   tcp_poc->specifiedCompressionPocProg =
-				   parameters->progression[numTileProgressions].specifiedCompressionPocProg;
+			   tcp_poc->res_s = parameters->progression[numTileProgressions].res_s;
+			   tcp_poc->comp_s = parameters->progression[numTileProgressions].comp_s;
+			   tcp_poc->lay_e = parameters->progression[numTileProgressions].lay_e;
+			   tcp_poc->res_e = parameters->progression[numTileProgressions].res_e;
+			   tcp_poc->comp_e = parameters->progression[numTileProgressions].comp_e;
+			   tcp_poc->specified_compression_poc_prog =
+				   parameters->progression[numTileProgressions].specified_compression_poc_prog;
 			   tcp_poc->tileno = parameters->progression[numTileProgressions].tileno;
 			   numTileProgressions++;
 			}
@@ -633,11 +633,11 @@ uint64_t CodeStreamCompress::compress(grk_plugin_tile* tile)
 		 node[i] = taskflow.placeholder();
 	  for(uint16_t j = 0; j < numTiles; ++j)
 	  {
-		 uint16_t tileIndex = j;
-		 node[j].work([this, tile, tileIndex, &heap, &success] {
+		 uint16_t tile_index = j;
+		 node[j].work([this, tile, tile_index, &heap, &success] {
 			if(success)
 			{
-			   auto tileProcessor = new TileProcessor(tileIndex, this, stream_, true, nullptr);
+			   auto tileProcessor = new TileProcessor(tile_index, this, stream_, true, nullptr);
 			   tileProcessor->current_plugin_tile = tile;
 			   if(!tileProcessor->preCompressTile() || !tileProcessor->doCompress())
 				  success = false;
@@ -690,7 +690,7 @@ bool CodeStreamCompress::end(void)
 {
    /* customization of the compressing */
    procedure_list_.push_back(std::bind(&CodeStreamCompress::write_eoc, this));
-   if(cp_.coding_params_.enc_.writeTLM)
+   if(cp_.coding_params_.enc_.write_tlm)
 	  procedure_list_.push_back(std::bind(&CodeStreamCompress::write_tlm_end, this));
 
    return exec(procedure_list_);
@@ -786,7 +786,7 @@ bool CodeStreamCompress::init_header_writing(void)
    procedure_list_.push_back(std::bind(&CodeStreamCompress::write_all_coc, this));
    procedure_list_.push_back(std::bind(&CodeStreamCompress::write_all_qcc, this));
 
-   if(cp_.coding_params_.enc_.writeTLM)
+   if(cp_.coding_params_.enc_.write_tlm)
 	  procedure_list_.push_back(std::bind(&CodeStreamCompress::write_tlm_begin, this));
    if(cp_.tcps->hasPoc())
 	  procedure_list_.push_back(std::bind(&CodeStreamCompress::writePoc, this));
@@ -1048,7 +1048,7 @@ bool CodeStreamCompress::write_com()
 	  /* L_COM */
 	  if(!stream_->writeShort((uint16_t)(totacom_size - 2)))
 		 return false;
-	  if(!stream_->writeShort(cp_.isBinaryComment[i] ? 0 : 1))
+	  if(!stream_->writeShort(cp_.is_binary_comment[i] ? 0 : 1))
 		 return false;
 	  if(!stream_->writeBytes((uint8_t*)comment, comment_size))
 		 return false;
@@ -1210,34 +1210,34 @@ bool CodeStreamCompress::writePoc()
    {
 	  auto current_prog = tcp->progressionOrderChange + i;
 	  /* RSpoc_i */
-	  if(!stream_->writeByte(current_prog->resS))
+	  if(!stream_->writeByte(current_prog->res_s))
 		 return false;
 	  /* CSpoc_i */
 	  if(pocRoom == 2)
 	  {
-		 if(!stream_->writeShort(current_prog->compS))
+		 if(!stream_->writeShort(current_prog->comp_s))
 			return false;
 	  }
 	  else
 	  {
-		 if(!stream_->writeByte((uint8_t)current_prog->compS))
+		 if(!stream_->writeByte((uint8_t)current_prog->comp_s))
 			return false;
 	  }
 	  /* LYEpoc_i */
-	  if(!stream_->writeShort(current_prog->layE))
+	  if(!stream_->writeShort(current_prog->lay_e))
 		 return false;
 	  /* REpoc_i */
-	  if(!stream_->writeByte(current_prog->resE))
+	  if(!stream_->writeByte(current_prog->res_e))
 		 return false;
 	  /* CEpoc_i */
 	  if(pocRoom == 2)
 	  {
-		 if(!stream_->writeShort(current_prog->compE))
+		 if(!stream_->writeShort(current_prog->comp_e))
 			return false;
 	  }
 	  else
 	  {
-		 if(!stream_->writeByte((uint8_t)current_prog->compE))
+		 if(!stream_->writeByte((uint8_t)current_prog->comp_e))
 			return false;
 	  }
 	  /* Ppoc_i */
@@ -1246,9 +1246,9 @@ bool CodeStreamCompress::writePoc()
 
 	  /* change the value of the max layer according to the actual number of layers in the file,
 	   * components and resolutions*/
-	  current_prog->layE = std::min<uint16_t>(current_prog->layE, tcp->max_layers_);
-	  current_prog->resE = std::min<uint8_t>(current_prog->resE, tccp->numresolutions);
-	  current_prog->compE = std::min<uint16_t>(current_prog->compE, numComps);
+	  current_prog->lay_e = std::min<uint16_t>(current_prog->lay_e, tcp->max_layers_);
+	  current_prog->res_e = std::min<uint8_t>(current_prog->res_e, tccp->numresolutions);
+	  current_prog->comp_e = std::min<uint16_t>(current_prog->comp_e, numComps);
    }
 
    return true;
@@ -1651,14 +1651,14 @@ uint16_t CodeStreamCompress::getPocSize(uint32_t numComps, uint32_t numPocs)
    return (uint16_t)(4 + (5 + 2 * pocRoom) * numPocs);
 }
 bool CodeStreamCompress::validateProgressionOrders(const grk_progression* progressions,
-												   uint32_t numProgressions, uint8_t numResolutions,
+												   uint32_t numProgressions, uint8_t num_resolutions,
 												   uint16_t numComps, uint16_t numLayers)
 {
    uint32_t resno, compno, layno;
    uint32_t i;
    uint32_t step_c = 1;
    uint32_t step_r = numComps * step_c;
-   uint32_t step_l = numResolutions * step_r;
+   uint32_t step_l = num_resolutions * step_r;
 
    auto packet_array = new uint8_t[(size_t)step_l * numLayers];
    memset(packet_array, 0, (size_t)step_l * numLayers * sizeof(uint8_t));
@@ -1667,21 +1667,21 @@ bool CodeStreamCompress::validateProgressionOrders(const grk_progression* progre
    for(i = 0; i < numProgressions; ++i)
    {
 	  auto currentPoc = progressions + i;
-	  size_t index = step_r * currentPoc->resS;
+	  size_t index = step_r * currentPoc->res_s;
 	  /* take each resolution for each poc */
-	  for(resno = currentPoc->resS; resno < std::min<uint32_t>(currentPoc->resE, numResolutions);
+	  for(resno = currentPoc->res_s; resno < std::min<uint32_t>(currentPoc->res_e, num_resolutions);
 		  ++resno)
 	  {
-		 size_t res_index = index + currentPoc->compS * step_c;
+		 size_t res_index = index + currentPoc->comp_s * step_c;
 
 		 /* take each comp of each resolution for each poc */
-		 for(compno = currentPoc->compS; compno < std::min<uint32_t>(currentPoc->compE, numComps);
+		 for(compno = currentPoc->comp_s; compno < std::min<uint32_t>(currentPoc->comp_e, numComps);
 			 ++compno)
 		 {
 			size_t comp_index = res_index + 0 * step_l;
 
 			/* and finally take each layer of each res of ... */
-			for(layno = 0; layno < std::min<uint32_t>(currentPoc->layE, numLayers); ++layno)
+			for(layno = 0; layno < std::min<uint32_t>(currentPoc->lay_e, numLayers); ++layno)
 			{
 			   /*index = step_r * resno + step_c * compno + step_l * layno;*/
 			   packet_array[comp_index] = 1;
@@ -1697,7 +1697,7 @@ bool CodeStreamCompress::validateProgressionOrders(const grk_progression* progre
    size_t index = 0;
    for(layno = 0; layno < numLayers; ++layno)
    {
-	  for(resno = 0; resno < numResolutions; ++resno)
+	  for(resno = 0; resno < num_resolutions; ++resno)
 	  {
 		 for(compno = 0; compno < numComps; ++compno)
 		 {
@@ -1894,19 +1894,19 @@ uint64_t CodeStreamCompress::getNumTilePartsForProgression(uint32_t pino, uint16
 		 {
 			/* component wise */
 			case 'C':
-			   numTileParts *= current_poc->tpCompE;
+			   numTileParts *= current_poc->tp_comp_e;
 			   break;
 			   /* resolution wise */
 			case 'R':
-			   numTileParts *= current_poc->tpResE;
+			   numTileParts *= current_poc->tp_res_e;
 			   break;
 			   /* precinct wise */
 			case 'P':
-			   numTileParts *= current_poc->tpPrecE;
+			   numTileParts *= current_poc->tp_prec_e;
 			   break;
 			   /* layer wise */
 			case 'L':
-			   numTileParts *= current_poc->tpLayE;
+			   numTileParts *= current_poc->tp_lay_e;
 			   break;
 		 }
 		 // we start a new tile part when progression matches specified tile part

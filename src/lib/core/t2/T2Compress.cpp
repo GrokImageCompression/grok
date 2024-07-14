@@ -51,7 +51,7 @@ bool T2Compress::compressPacketsSimulate(uint16_t tile_no, uint16_t max_layers,
 	  for(uint32_t poc = 0; poc < pocno; ++poc)
 	  {
 		 auto current_pi = packetManager.getPacketIter(poc);
-		 packetManager.enableTilePartGeneration(poc, (compno == 0), newTilePartProgressionPosition);
+		 packetManager.enable_tile_part_generation(poc, (compno == 0), newTilePartProgressionPosition);
 
 		 if(current_pi->getProgression() == GRK_PROG_UNKNOWN)
 		 {
@@ -182,7 +182,7 @@ bool T2Compress::compressPackets(uint16_t tile_no, uint16_t max_layers, Buffered
    auto image = tileProcessor->headerImage;
    auto tcp = &cp->tcps[tile_no];
    PacketManager packetManager(true, image, cp, tile_no, FINAL_PASS, tileProcessor);
-   packetManager.enableTilePartGeneration(pino, first_poc_tile_part,
+   packetManager.enable_tile_part_generation(pino, first_poc_tile_part,
 										  newTilePartProgressionPosition);
    auto current_pi = packetManager.getPacketIter(pino);
    if(current_pi->getProgression() == GRK_PROG_UNKNOWN)

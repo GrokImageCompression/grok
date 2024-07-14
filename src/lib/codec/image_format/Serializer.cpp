@@ -12,12 +12,12 @@ Serializer::Serializer(void)
 #ifndef _WIN32
 	  fd_(-1),
 #endif
-	  numPooledRequests_(0), maxPooledRequests_(0), asynchActive_(false), off_(0),
+	  numPooledRequests_(0), max_pooled_requests_(0), asynchActive_(false), off_(0),
 	  reclaim_callback_(nullptr), reclaim_user_data_(nullptr)
 {}
 void Serializer::setMaxPooledRequests(uint32_t maxRequests)
 {
-   maxPooledRequests_ = maxRequests;
+   max_pooled_requests_ = maxRequests;
 }
 void Serializer::registerGrkReclaimCallback([[maybe_unused]] grk_io_init io_init,
 											grk_io_callback reclaim_callback, void* user_data)
@@ -164,7 +164,7 @@ size_t Serializer::write(uint8_t* buf, size_t bytes_total)
 	  uring.write(scheduled_);
 	  off_ += scheduled_.len_;
 	  // 2. close uring if this is final buffer to schedule
-	  if(scheduled_.pooled_ && (++numPooledRequests_ == maxPooledRequests_))
+	  if(scheduled_.pooled_ && (++numPooledRequests_ == max_pooled_requests_))
 	  {
 		 asynchActive_ = false;
 		 [[maybe_unused]] bool rc = uring.close();
@@ -221,5 +221,5 @@ uint64_t Serializer::getOffset(void)
 }
 bool Serializer::allPooledRequestsComplete(void)
 {
-   return numPooledRequests_ == maxPooledRequests_;
+   return numPooledRequests_ == max_pooled_requests_;
 }

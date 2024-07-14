@@ -677,7 +677,7 @@ static GRK_PROG_ORDER getProgression(const char progression[4])
    return GRK_PROG_UNKNOWN;
 }
 CompressInitParams::CompressInitParams()
-	: initialized(false), transferExifTags(false), in_image(nullptr), stream_(nullptr)
+	: initialized(false), transfer_exif_tags(false), in_image(nullptr), stream_(nullptr)
 {
    pluginPath[0] = 0;
    memset(&inputFolder, 0, sizeof(inputFolder));
@@ -924,7 +924,7 @@ GrkRC GrkCompress::pluginMain(int argc, char** argv, CompressInitParams* initPar
    /* parse input and get user compressing parameters */
    initParams->parameters.mct =
 	   255; /* This will be set later according to the input image or the provided option */
-   initParams->parameters.rateControlAlgorithm = GRK_RATE_CONTROL_PCRD_OPT;
+   initParams->parameters.rate_control_algorithm = GRK_RATE_CONTROL_PCRD_OPT;
    GrkRC parseRc = parseCommandLine(argc, argv, initParams);
    if(parseRc != GrkRCSuccess)
 	  return parseRc;
@@ -934,7 +934,7 @@ GrkRC GrkCompress::pluginMain(int argc, char** argv, CompressInitParams* initPar
 #endif
    initParams->initialized = true;
    // load plugin but do not actually create codec
-   grk_initialize(initParams->pluginPath, initParams->parameters.numThreads,
+   grk_initialize(initParams->pluginPath, initParams->parameters.num_threads,
 				  initParams->parameters.verbose);
    img_fol_plugin = initParams->inputFolder;
    out_fol_plugin = initParams->outFolder;
@@ -942,7 +942,7 @@ GrkRC GrkCompress::pluginMain(int argc, char** argv, CompressInitParams* initPar
    // create codec
    grk_plugin_init_info initInfo;
    memset(&initInfo, 0, sizeof(initInfo));
-   initInfo.deviceId = initParams->parameters.deviceId;
+   initInfo.device_id = initParams->parameters.device_id;
    initInfo.verbose = initParams->parameters.verbose;
    initInfo.license = initParams->license_.c_str();
    initInfo.server = initParams->server_.c_str();
@@ -953,7 +953,7 @@ GrkRC GrkCompress::pluginMain(int argc, char** argv, CompressInitParams* initPar
    uint32_t state = grk_plugin_get_debug_state();
    bool isBatch =
 	   initParams->inputFolder.imgdirpath &&
-	   (initParams->outFolder.imgdirpath || initParams->parameters.sharedMemoryInterface);
+	   (initParams->outFolder.imgdirpath || initParams->parameters.shared_memory_interface);
    if(isBatch && !((state & GRK_PLUGIN_STATE_DEBUG) || (state & GRK_PLUGIN_STATE_PRE_TR1)))
 	  return pluginBatchCompress(initParams) ? GrkRCFail : GrkRCSuccess;
 
@@ -965,7 +965,7 @@ GrkRC GrkCompress::pluginMain(int argc, char** argv, CompressInitParams* initPar
    // 3. directory encode
    //  cache certain settings
    auto mct = initParams->parameters.mct;
-   auto rateControlAlgorithm = initParams->parameters.rateControlAlgorithm;
+   auto rate_control_algorithm = initParams->parameters.rate_control_algorithm;
    GrkRC rc = GrkRCFail;
    for(const auto& entry : std::filesystem::directory_iterator(initParams->inputFolder.imgdirpath))
    {
@@ -978,7 +978,7 @@ GrkRC GrkCompress::pluginMain(int argc, char** argv, CompressInitParams* initPar
 	  }
 	  // restore cached settings
 	  initParams->parameters.mct = mct;
-	  initParams->parameters.rateControlAlgorithm = rateControlAlgorithm;
+	  initParams->parameters.rate_control_algorithm = rate_control_algorithm;
 	  if(grk_plugin_compress(&initParams->parameters, pluginCompressCallback))
 		 break;
    }
@@ -1126,15 +1126,15 @@ GrkRC GrkCompress::parseCommandLine(int argc, char** argv, CompressInitParams* i
 		 parameters->numresolution = GRK_CINEMA_4K_DEFAULT_NUM_RESOLUTIONS;
 
 #ifndef GRK_BUILD_DCI
-	  initParams->transferExifTags = transferExifTagsArg.isSet();
+	  initParams->transfer_exif_tags = transferExifTagsArg.isSet();
 #ifndef GROK_HAVE_EXIFTOOL
-	  if(initParams->transferExifTags)
+	  if(initParams->transfer_exif_tags)
 	  {
 		 spdlog::warn("Transfer of EXIF tags not supported. Transfer can be achieved by "
 					  "directly calling");
 		 spdlog::warn("exiftool after compression as follows: ");
 		 spdlog::warn("exiftool -TagsFromFile $SOURCE_FILE -all:all>all:all $DEST_FILE");
-		 initParams->transferExifTags = false;
+		 initParams->transfer_exif_tags = false;
 	  }
 #endif
 	  inputFolder->set_out_format = false;
@@ -1142,15 +1142,15 @@ GrkRC GrkCompress::parseCommandLine(int argc, char** argv, CompressInitParams* i
 	  if(applyICCArg.isSet())
 		 parameters->apply_icc_ = true;
 	  if(pltArg.isSet())
-		 parameters->writePLT = true;
+		 parameters->write_plt = true;
 	  if(tlmArg.isSet())
-		 parameters->writeTLM = true;
+		 parameters->write_tlm = true;
 	  if(repetitionsArg.isSet())
 		 parameters->repeats = repetitionsArg.getValue();
 	  if(numThreadsArg.isSet())
-		 parameters->numThreads = numThreadsArg.getValue();
+		 parameters->num_threads = numThreadsArg.getValue();
 	  if(deviceIdArg.isSet())
-		 parameters->deviceId = deviceIdArg.getValue();
+		 parameters->device_id = deviceIdArg.getValue();
 	  if(durationArg.isSet())
 		 parameters->duration = durationArg.getValue();
 	  if(inForArg.isSet())
@@ -1380,41 +1380,41 @@ GrkRC GrkCompress::parseCommandLine(int argc, char** argv, CompressInitParams* i
 		 uint32_t numProgressions = 0;
 		 char* s = (char*)pocArg.getValue().c_str();
 		 auto progression = parameters->progression;
-		 uint32_t resS, compS, layE, resE, compE;
+		 uint32_t res_s, comp_s, lay_e, res_e, comp_e;
 
-		 while(sscanf(s, "T%u=%u,%u,%u,%u,%u,%4s", &progression[numProgressions].tileno, &resS,
-					  &compS, &layE, &resE, &compE,
-					  progression[numProgressions].progressionString) == 7)
+		 while(sscanf(s, "T%u=%u,%u,%u,%u,%u,%4s", &progression[numProgressions].tileno, &res_s,
+					  &comp_s, &lay_e, &res_e, &comp_e,
+					  progression[numProgressions].progression_str) == 7)
 		 {
-			progression[numProgressions].resS = (uint8_t)resS;
-			progression[numProgressions].compS = (uint16_t)compS;
-			progression[numProgressions].layE = (uint16_t)layE;
-			progression[numProgressions].resE = (uint8_t)resE;
-			progression[numProgressions].compE = (uint16_t)compE;
-			progression[numProgressions].specifiedCompressionPocProg =
-				getProgression(progression[numProgressions].progressionString);
+			progression[numProgressions].res_s = (uint8_t)res_s;
+			progression[numProgressions].comp_s = (uint16_t)comp_s;
+			progression[numProgressions].lay_e = (uint16_t)lay_e;
+			progression[numProgressions].res_e = (uint8_t)res_e;
+			progression[numProgressions].comp_e = (uint16_t)comp_e;
+			progression[numProgressions].specified_compression_poc_prog =
+				getProgression(progression[numProgressions].progression_str);
 			// sanity check on layer
-			if(progression[numProgressions].layE > parameters->numlayers)
+			if(progression[numProgressions].lay_e > parameters->numlayers)
 			{
 			   spdlog::warn("End layer {} in POC {} is greater than"
 							" total number of layers {}. Truncating.",
-							progression[numProgressions].layE, numProgressions,
+							progression[numProgressions].lay_e, numProgressions,
 							parameters->numlayers);
-			   progression[numProgressions].layE = parameters->numlayers;
+			   progression[numProgressions].lay_e = parameters->numlayers;
 			}
-			if(progression[numProgressions].resE > parameters->numresolution)
+			if(progression[numProgressions].res_e > parameters->numresolution)
 			{
 			   spdlog::warn("POC end resolution {} cannot be greater than"
 							"the number of resolutions {}",
-							progression[numProgressions].resE, parameters->numresolution);
-			   progression[numProgressions].resE = parameters->numresolution;
+							progression[numProgressions].res_e, parameters->numresolution);
+			   progression[numProgressions].res_e = parameters->numresolution;
 			}
-			if(progression[numProgressions].resS >= progression[numProgressions].resE)
+			if(progression[numProgressions].res_s >= progression[numProgressions].res_e)
 			{
 			   spdlog::error("POC beginning resolution must be strictly less than end resolution");
 			   return GrkRCFail;
 			}
-			if(progression[numProgressions].compS >= progression[numProgressions].compE)
+			if(progression[numProgressions].comp_s >= progression[numProgressions].comp_e)
 			{
 			   spdlog::error("POC beginning component must be strictly less than end component");
 			   return GrkRCFail;
@@ -1711,8 +1711,8 @@ GrkRC GrkCompress::parseCommandLine(int argc, char** argv, CompressInitParams* i
 	  }
 	  if(tpArg.isSet())
 	  {
-		 parameters->newTilePartProgressionDivider = tpArg.getValue();
-		 parameters->enableTilePartGeneration = true;
+		 parameters->new_tile_part_progression_divider = tpArg.getValue();
+		 parameters->enable_tile_part_generation = true;
 	  }
 	  if(!isHT && cblkSty.isSet())
 	  {
@@ -1761,7 +1761,7 @@ GrkRC GrkCompress::parseCommandLine(int argc, char** argv, CompressInitParams* i
 			lastRate = parameters->layer_rate[i];
 		 }
 
-		 parameters->allocationByRateDistoration = true;
+		 parameters->allocation_by_rate_distortion = true;
 		 // set compression ratio of 1 equal to 0, to signal lossless layer
 		 for(uint32_t i = 0; i < parameters->numlayers; ++i)
 		 {
@@ -1784,7 +1784,7 @@ GrkRC GrkCompress::parseCommandLine(int argc, char** argv, CompressInitParams* i
 			   break;
 			s++;
 		 }
-		 parameters->allocationByQuality = true;
+		 parameters->allocation_by_quality = true;
 
 		 // sanity check on quality values
 		 double lastDistortion = -1;
@@ -1829,7 +1829,7 @@ GrkRC GrkCompress::parseCommandLine(int argc, char** argv, CompressInitParams* i
 		 }
 		 if(count >= 6)
 		 {
-			parameters->sharedMemoryInterface = true;
+			parameters->shared_memory_interface = true;
 		 }
 		 else
 		 {
@@ -1853,13 +1853,13 @@ GrkRC GrkCompress::parseCommandLine(int argc, char** argv, CompressInitParams* i
 		 }
 	  }
 	  if(kernelBuildOptionsArg.isSet())
-		 parameters->kernelBuildOptions = kernelBuildOptionsArg.getValue();
+		 parameters->kernel_build_options = kernelBuildOptionsArg.getValue();
 	  if(!isHT && !qualityArg.isSet() && !compressionRatiosArg.isSet())
 	  {
 		 /* if no rate was entered, then lossless by default */
 		 parameters->layer_rate[0] = 0;
 		 parameters->numlayers = 1;
-		 parameters->allocationByRateDistoration = false;
+		 parameters->allocation_by_rate_distortion = false;
 	  }
 	  // cinema/broadcast profiles
 	  if(!isHT)
@@ -1868,7 +1868,7 @@ GrkRC GrkCompress::parseCommandLine(int argc, char** argv, CompressInitParams* i
 		 {
 			if(!validateCinema(&cinema2KArg, GRK_PROFILE_CINEMA_2K, parameters))
 			   return GrkRCFail;
-			parameters->writeTLM = true;
+			parameters->write_tlm = true;
 			spdlog::warn("Cinema 2K profile activated. Other options specified may be overridden");
 		 }
 		 else if(cinema4KArg.isSet())
@@ -1876,7 +1876,7 @@ GrkRC GrkCompress::parseCommandLine(int argc, char** argv, CompressInitParams* i
 			if(!validateCinema(&cinema4KArg, GRK_PROFILE_CINEMA_4K, parameters))
 			   return GrkRCFail;
 			spdlog::warn("Cinema 4K profile activated. Other options specified may be overridden");
-			parameters->writeTLM = true;
+			parameters->write_tlm = true;
 		 }
 		 else if(BroadcastArg.isSet())
 		 {
@@ -1950,7 +1950,7 @@ GrkRC GrkCompress::parseCommandLine(int argc, char** argv, CompressInitParams* i
 			   parameters->max_cs_size =
 				   (uint64_t)(limitMBitsSec[mainlevel] * (1000.0 * 1000 / 8) / framerate);
 			   spdlog::info("Setting max code stream size to {} bytes.", parameters->max_cs_size);
-			   parameters->writeTLM = true;
+			   parameters->write_tlm = true;
 			}
 		 }
 		 if(IMFArg.isSet())
@@ -2054,7 +2054,7 @@ GrkRC GrkCompress::parseCommandLine(int argc, char** argv, CompressInitParams* i
 				   (uint64_t)(limitMBitsSec[sublevel] * (1000.0 * 1000 / 8) / framerate);
 			   spdlog::info("Setting max code stream size to {} bytes.", parameters->max_cs_size);
 			}
-			parameters->writeTLM = true;
+			parameters->write_tlm = true;
 		 }
 		 if(rsizArg.isSet())
 		 {
@@ -2211,7 +2211,7 @@ static uint64_t pluginCompressCallback(grk_plugin_compress_user_callback_info* i
    {
 	  if(info->output_file_name && info->output_file_name[0])
 	  {
-		 if(info->outputFileNameIsRelative)
+		 if(info->output_file_name_is_relative)
 		 {
 			temp_ofname = get_file_name((char*)info->output_file_name);
 			if(img_fol_plugin.set_out_format)
@@ -2504,9 +2504,9 @@ static uint64_t pluginCompressCallback(grk_plugin_compress_user_callback_info* i
 	  goto cleanup;
    }
 #ifdef GROK_HAVE_EXIFTOOL
-   if(compressedBytes && info->transferExifTags &&
+   if(compressedBytes && info->transfer_exif_tags &&
 	  info->compressor_parameters->cod_format == GRK_FMT_JP2)
-	  transferExifTags(info->input_file_name, info->output_file_name);
+	  transfer_exif_tags(info->input_file_name, info->output_file_name);
 #endif
 
 cleanup:
@@ -2555,7 +2555,7 @@ int GrkCompress::compress(const std::string& inputFile, CompressInitParams* init
 	  callbackInfo.stream_params = *initParams->stream_;
    callbackInfo.output_file_name = initParams->parameters.outfile;
    callbackInfo.input_file_name = initParams->parameters.infile;
-   callbackInfo.transferExifTags = initParams->transferExifTags;
+   callbackInfo.transfer_exif_tags = initParams->transfer_exif_tags;
 
    uint64_t compressedBytes = pluginCompressCallback(&callbackInfo);
    if(initParams->stream_)

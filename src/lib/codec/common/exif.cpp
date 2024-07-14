@@ -121,7 +121,7 @@ class PerlScriptRunner
 };
 #endif
 
-void transferExifTags([[maybe_unused]] const std::string &src, [[maybe_unused]] const std::string &dest)
+void transfer_exif_tags([[maybe_unused]] const std::string &src, [[maybe_unused]] const std::string &dest)
 {
 #ifdef GROK_HAVE_EXIFTOOL
 	try

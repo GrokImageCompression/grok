@@ -22,7 +22,7 @@ Strip::Strip(GrkImage* outputImage, uint16_t index, uint32_t nominalHeight, uint
    stripImg->y1 = std::min<uint32_t>(outputImage->y1, stripImg->y0 + nominalHeight);
    stripImg->comps->y0 = stripImg->y0;
    stripImg->comps->h = stripImg->y1 - stripImg->y0;
-   if(outputImage->hasMultipleTiles)
+   if(outputImage->has_multiple_tiles)
    {
 	  stripImg->comps->y0 = reduceDim(stripImg->comps->y0);
 	  stripImg->comps->h = reduceDim(stripImg->comps->h);
@@ -43,16 +43,16 @@ bool Strip::allocInterleavedLocked(uint64_t len, BufPool* pool)
    std::unique_lock<std::mutex> lk(interleaveMutex_);
    if(allocatedInterleaved_.load(std::memory_order_relaxed))
 	  return true;
-   stripImg->interleavedData = pool->get(len);
+   stripImg->interleaved_data = pool->get(len);
    allocatedInterleaved_.store(true, std::memory_order_release);
 
-   return stripImg->interleavedData.data_;
+   return stripImg->interleaved_data.data_;
 }
 bool Strip::allocInterleaved(uint64_t len, BufPool* pool)
 {
-   stripImg->interleavedData = pool->get(len);
+   stripImg->interleaved_data = pool->get(len);
 
-   return stripImg->interleavedData.data_;
+   return stripImg->interleaved_data.data_;
 }
 StripCache::StripCache()
 	: strips(nullptr), numTiles_(0), numStrips_(0), nominalStripHeight_(0), imageY0_(0),
@@ -83,21 +83,21 @@ void StripCache::init(uint32_t concurrency, uint16_t numTiles, uint32_t numStrip
    assert(outputImage);
    if(!numStrips || !outputImage)
 	  return;
-   multiTile_ = outputImage->hasMultipleTiles;
+   multiTile_ = outputImage->has_multiple_tiles;
    ioBufferCallback_ = ioBufferCallback;
    ioUserData_ = ioUserData;
    grk_io_init io_init;
    // we can ignore subsampling since it is disabled for library-orchestrated encoding,
-   // which is the only case where maxPooledRequests_ is utilized
-   io_init.maxPooledRequests_ =
-	   (outputImage->comps->h + outputImage->rowsPerStrip - 1) / outputImage->rowsPerStrip;
+   // which is the only case where max_pooled_requests_ is utilized
+   io_init.max_pooled_requests_ =
+	   (outputImage->comps->h + outputImage->rows_per_strip - 1) / outputImage->rows_per_strip;
    if(registerGrkReclaimCallback)
 	  registerGrkReclaimCallback(io_init, grkReclaimCallback, ioUserData, this);
    numTiles_ = numTiles;
    numStrips_ = numStrips;
    imageY0_ = outputImage->y0;
    nominalStripHeight_ = nominalStripHeight;
-   packedRowBytes_ = outputImage->packedRowBytes;
+   packedRowBytes_ = outputImage->packed_row_bytes;
    strips = new Strip*[numStrips];
    for(uint16_t i = 0; i < numStrips_; ++i)
 	  strips[i] = new Strip(outputImage, i, nominalStripHeight_, reduce);
@@ -122,11 +122,11 @@ bool StripCache::ingestStrip(uint32_t threadId, Tile* src, uint32_t yBegin, uint
    if(!dest->compositeInterleaved(src, yBegin, yEnd))
 	  return false;
 
-   auto buf = GrkIOBuf(dest->interleavedData);
+   auto buf = GrkIOBuf(dest->interleaved_data);
    buf.index_ = stripId;
    buf.offset_ = dataOffset;
    buf.len_ = dataLen;
-   dest->interleavedData.data_ = nullptr;
+   dest->interleaved_data.data_ = nullptr;
 
    return serialize(threadId, buf);
 }
@@ -155,11 +155,11 @@ bool StripCache::ingestTile(uint32_t threadId, GrkImage* src)
 
    if(++strip->tileCounter == numTiles_)
    {
-	  auto buf = GrkIOBuf(dest->interleavedData);
+	  auto buf = GrkIOBuf(dest->interleaved_data);
 	  buf.index_ = stripId;
 	  buf.offset_ = offset;
 	  buf.len_ = dataLen;
-	  dest->interleavedData.data_ = nullptr;
+	  dest->interleaved_data.data_ = nullptr;
 	  if(grokNewIO)
 		 return ioBufferCallback_(threadId, buf, ioUserData_);
 	  if(!serialize(threadId, buf))

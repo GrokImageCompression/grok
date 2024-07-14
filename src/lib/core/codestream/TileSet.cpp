@@ -30,15 +30,15 @@ void TileSet::schedule(grk_pt16 tile)
 {
    schedule(index(tile.x, tile.y));
 }
-void TileSet::schedule(uint16_t tileIndex)
+void TileSet::schedule(uint16_t tile_index)
 {
    tilesToDecompress_.clear();
-   tilesToDecompress_.insert(tileIndex);
-   lastTileToDecompress_ = tileIndex;
+   tilesToDecompress_.insert(tile_index);
+   lastTileToDecompress_ = tile_index;
 }
-bool TileSet::isScheduled(uint16_t tileIndex)
+bool TileSet::isScheduled(uint16_t tile_index)
 {
-   return tilesToDecompress_.contains(tileIndex);
+   return tilesToDecompress_.contains(tile_index);
 }
 bool TileSet::isScheduled(grk_pt16 tile)
 {
@@ -56,19 +56,19 @@ uint16_t TileSet::index(grk_pt16 tile)
 {
    return (uint16_t)(tile.x + tile.y * allTiles_.width());
 }
-void TileSet::setComplete(uint16_t tileIndex)
+void TileSet::setComplete(uint16_t tile_index)
 {
-   if(isScheduled(tileIndex))
+   if(isScheduled(tile_index))
    {
-	  tilesDecompressed_.insert(tileIndex);
-	  // Logger::logger_.info("Complete %d", tileIndex);
+	  tilesDecompressed_.insert(tile_index);
+	  // Logger::logger_.info("Complete %d", tile_index);
 	  // if (allComplete())
 	  //	Logger::logger_.info("Complete");
    }
 }
-bool TileSet::isComplete(uint16_t tileIndex)
+bool TileSet::isComplete(uint16_t tile_index)
 {
-   return tilesDecompressed_.contains(tileIndex);
+   return tilesDecompressed_.contains(tile_index);
 }
 bool TileSet::allComplete(void)
 {

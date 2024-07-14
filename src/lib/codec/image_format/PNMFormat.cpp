@@ -70,12 +70,12 @@ bool PNMFormat::encodeHeader(void)
    if(!areAllComponentsSameSubsampling(image_))
 	  return false;
 
-   uint16_t ncomp = image_->decompressNumComps;
+   uint16_t ncomp = image_->decompress_num_comps;
    if(ncomp > 4)
    {
 	  spdlog::error("PNMFormat::encodeHeader: Number of components cannot be greater than 4; %u "
 					"number of components not supported.",
-					image_->decompressNumComps);
+					image_->decompress_num_comps);
 	  return false;
    }
    if(hasOpacity() && !hasAlpha())
@@ -103,12 +103,12 @@ bool PNMFormat::encodeHeader(void)
 bool PNMFormat::writeHeader(bool doPGM)
 {
    std::ostringstream iss;
-   uint32_t prec = image_->decompressPrec;
-   uint32_t width = image_->decompressWidth;
-   uint32_t height = image_->decompressHeight;
+   uint32_t prec = image_->decompress_prec;
+   uint32_t width = image_->decompress_width;
+   uint32_t height = image_->decompress_height;
    uint32_t max = (uint32_t)((1U << prec) - 1);
 
-   if(doPGM || image_->decompressNumComps == 1)
+   if(doPGM || image_->decompress_num_comps == 1)
    {
 	  iss << "P5\n#Grok-" << grk_version() << "\n" << width << " " << height << "\n" << max << "\n";
    }
@@ -116,7 +116,7 @@ bool PNMFormat::writeHeader(bool doPGM)
    {
 	  if(hasAlpha())
 	  {
-		 uint16_t ncomp = image_->decompressNumComps;
+		 uint16_t ncomp = image_->decompress_num_comps;
 		 iss << "P7\n# Grok-" << grk_version() << "\nWIDTH " << width << "\nHEIGHT " << height;
 		 iss << "\nDEPTH " << ncomp << "\nMAXVAL " << max;
 		 iss << "\nTUPLTYPE " << ((ncomp >= 3) ? "RGB_ALPHA" : "GRAYSCALE_ALPHA") << "\nENDHDR\n";
@@ -142,7 +142,7 @@ const size_t bufSize = 4096;
 
 bool PNMFormat::doNonSplitEncode(void)
 {
-   return !forceSplit || image_->decompressNumComps > 1;
+   return !forceSplit || image_->decompress_num_comps > 1;
 }
 
 /***
@@ -167,8 +167,8 @@ bool PNMFormat::encodePixels(void)
 	  }
    }
 
-   return (image_->decompressPrec > 8U) ? encodeRows<uint16_t>(image_->decompressHeight)
-										: encodeRows<uint8_t>(image_->decompressHeight);
+   return (image_->decompress_prec > 8U) ? encodeRows<uint16_t>(image_->decompress_height)
+										: encodeRows<uint8_t>(image_->decompress_height);
 }
 bool PNMFormat::encodeFinish(void)
 {
@@ -188,33 +188,33 @@ bool PNMFormat::encodeRows([[maybe_unused]] uint32_t rows)
 {
    uint16_t ncomp = image_->numcomps;
    bool success = false;
-   uint32_t height = image_->decompressHeight;
+   uint32_t height = image_->decompress_height;
 
    // 1. write first file: PAM or PPM
    if(doNonSplitEncode())
    {
 	  int32_t const* planes[grk::maxNumPackComponents];
-	  uint16_t decompressNumComps = image_->decompressNumComps;
-	  for(uint32_t i = 0U; i < decompressNumComps; ++i)
+	  uint16_t decompress_num_comps = image_->decompress_num_comps;
+	  for(uint32_t i = 0U; i < decompress_num_comps; ++i)
 		 planes[i] = image_->comps[i].data;
 	  uint32_t h = 0;
 	  GrkIOBuf packedBuf;
-	  int32_t adjust = (image_->comps[0].sgnd ? 1 << (image_->decompressPrec - 1) : 0);
+	  int32_t adjust = (image_->comps[0].sgnd ? 1 << (image_->decompress_prec - 1) : 0);
 	  auto iter = grk::InterleaverFactory<int32_t>::makeInterleaver(
-		  image_->decompressPrec > 8U ? grk::packer16BitBE : 8);
+		  image_->decompress_prec > 8U ? grk::packer16BitBE : 8);
 
 	  if(!iter)
 		 goto cleanup;
 	  while(h < height)
 	  {
-		 uint32_t stripRows = (std::min)(image_->rowsPerStrip, height - h);
-		 packedBuf = pool.get(image_->packedRowBytes * stripRows);
-		 iter->interleave((int32_t**)planes, decompressNumComps, packedBuf.data_,
-						  image_->decompressWidth, image_->comps[0].stride, image_->packedRowBytes,
+		 uint32_t stripRows = (std::min)(image_->rows_per_strip, height - h);
+		 packedBuf = pool.get(image_->packed_row_bytes * stripRows);
+		 iter->interleave((int32_t**)planes, decompress_num_comps, packedBuf.data_,
+						  image_->decompress_width, image_->comps[0].stride, image_->packed_row_bytes,
 						  stripRows, adjust);
 		 packedBuf.pooled_ = true;
 		 packedBuf.offset_ = serializer.getOffset();
-		 packedBuf.len_ = image_->packedRowBytes * stripRows;
+		 packedBuf.len_ = image_->packed_row_bytes * stripRows;
 		 packedBuf.index_ = serializer.getNumPooledRequests();
 		 if(!encodePixelsCore(0, packedBuf))
 		 {
@@ -263,9 +263,9 @@ bool PNMFormat::encodeRows([[maybe_unused]] uint32_t rows)
 	  size_t outCount = 0;
 	  T buf[bufSize];
 	  uint32_t i = 0;
-	  for(; i + image_->rowsPerStrip < height; i += image_->rowsPerStrip)
+	  for(; i + image_->rows_per_strip < height; i += image_->rows_per_strip)
 	  {
-		 if(!writeRows<T>(i, image_->rowsPerStrip, compno, buf, &outCount))
+		 if(!writeRows<T>(i, image_->rows_per_strip, compno, buf, &outCount))
 			goto cleanup;
 	  }
 	  if(i < height)
@@ -295,14 +295,14 @@ bool PNMFormat::writeRows(uint32_t rowsOffset, uint32_t rows, uint16_t compno, T
 	  spdlog::warn("PNMFormat: Attempt to write zero rows");
 	  return true;
    }
-   uint16_t ncomp = image_->decompressNumComps;
+   uint16_t ncomp = image_->decompress_num_comps;
    bool singleComp = compno <= 4;
    if(!singleComp && !hasAlpha())
 	  ncomp = (std::min)(ncomp, (uint16_t)3);
-   uint32_t width = image_->decompressWidth;
+   uint32_t width = image_->decompress_width;
    uint32_t stride_diff = image_->comps[0].stride - width;
    // all components have same sign and precision
-   int32_t adjust = (image_->comps[0].sgnd ? 1 << (image_->decompressPrec - 1) : 0);
+   int32_t adjust = (image_->comps[0].sgnd ? 1 << (image_->decompress_prec - 1) : 0);
    int32_t* compPtr[4] = {nullptr, nullptr, nullptr, nullptr};
    T* outPtr = buf + *outCount;
    uint16_t start = singleComp ? compno : 0;
@@ -338,12 +338,12 @@ bool PNMFormat::hasAlpha(void)
 {
    if(!image_)
 	  return false;
-   uint16_t ncomp = image_->decompressNumComps;
+   uint16_t ncomp = image_->decompress_num_comps;
    return (ncomp == 4 && isOpacity(ncomp - 1)) || (ncomp == 2 && isOpacity(ncomp - 1));
 }
 bool PNMFormat::isOpacity(uint16_t compno)
 {
-   if(!image_ || compno >= image_->decompressNumComps)
+   if(!image_ || compno >= image_->decompress_num_comps)
 	  return false;
    auto comp = image_->comps + compno;
 
@@ -354,7 +354,7 @@ bool PNMFormat::hasOpacity(void)
 {
    if(!image_)
 	  return false;
-   for(uint16_t i = 0; i < image_->decompressNumComps; ++i)
+   for(uint16_t i = 0; i < image_->decompress_num_comps; ++i)
    {
 	  if(isOpacity(i))
 		 return true;
@@ -701,15 +701,15 @@ inline bool readBytes(FILE* fp, grk_image* image, size_t area)
    if(!fp || !image)
 	  return false;
 
-   assert(image->decompressNumComps <= 4);
+   assert(image->decompress_num_comps <= 4);
 
    uint64_t i = 0;
    uint64_t index = 0;
    uint16_t compno = 0;
-   uint64_t totalSize = area * image->decompressNumComps;
+   uint64_t totalSize = area * image->decompress_num_comps;
    const uint64_t chunkSize = 4096 * 4;
    T chunk[chunkSize];
-   uint32_t width = image->decompressWidth;
+   uint32_t width = image->decompress_width;
    uint32_t stride_diff = image->comps[0].stride - width;
    uint32_t counter = 0;
    while(i < totalSize)
@@ -723,7 +723,7 @@ inline bool readBytes(FILE* fp, grk_image* image, size_t area)
 	  {
 		 image->comps[compno++].data[index] =
 			 sizeof(T) > 1 ? grk::endian<T>(*chunkPtr++, true) : *chunkPtr++;
-		 if(compno == image->decompressNumComps)
+		 if(compno == image->decompress_num_comps)
 		 {
 			compno = 0;
 			index++;
@@ -750,7 +750,7 @@ grk_image* PNMFormat::decode(grk_cparameters* parameters)
 {
    uint8_t subsampling_dx = parameters->subsampling_dx;
    uint8_t subsampling_dy = parameters->subsampling_dy;
-   uint16_t decompressNumComps;
+   uint16_t decompress_num_comps;
    uint16_t compno;
    uint32_t w, stride_diff, width, counter, h, format;
    uint8_t prec;
@@ -778,23 +778,23 @@ grk_image* PNMFormat::decode(grk_cparameters* parameters)
    {
 	  case 1: /* ascii bitmap */
 	  case 4: /* binary bitmap */
-		 decompressNumComps = 1;
+		 decompress_num_comps = 1;
 		 break;
 	  case 2: /* ascii greymap */
 	  case 5: /* binary greymap */
-		 decompressNumComps = 1;
+		 decompress_num_comps = 1;
 		 break;
 	  case 3: /* ascii pixmap */
 	  case 6: /* binary pixmap */
-		 decompressNumComps = 3;
+		 decompress_num_comps = 3;
 		 break;
 	  case 7: /* arbitrary map */
-		 decompressNumComps = (uint16_t)header_info.depth;
+		 decompress_num_comps = (uint16_t)header_info.depth;
 		 break;
 	  default:
 		 goto cleanup;
    }
-   if(decompressNumComps < 3)
+   if(decompress_num_comps < 3)
 	  color_space = GRK_CLRSPC_GRAY; /* GRAY, GRAYA */
    else
 	  color_space = GRK_CLRSPC_SRGB; /* RGB, RGBA */
@@ -811,9 +811,9 @@ grk_image* PNMFormat::decode(grk_cparameters* parameters)
    area = (uint64_t)w * h;
    subsampling_dx = parameters->subsampling_dx;
    subsampling_dy = parameters->subsampling_dy;
-   memset(&cmptparm[0], 0, (size_t)decompressNumComps * sizeof(grk_image_comp));
+   memset(&cmptparm[0], 0, (size_t)decompress_num_comps * sizeof(grk_image_comp));
 
-   for(uint32_t i = 0; i < decompressNumComps; i++)
+   for(uint32_t i = 0; i < decompress_num_comps; i++)
    {
 	  cmptparm[i].prec = prec;
 	  cmptparm[i].sgnd = false;
@@ -822,7 +822,7 @@ grk_image* PNMFormat::decode(grk_cparameters* parameters)
 	  cmptparm[i].w = w;
 	  cmptparm[i].h = h;
    }
-   image = grk_image_new(decompressNumComps, &cmptparm[0], color_space, true);
+   image = grk_image_new(decompress_num_comps, &cmptparm[0], color_space, true);
    if(!image)
    {
 	  spdlog::error("pnmtoimage: Failed to create image");
@@ -835,7 +835,7 @@ grk_image* PNMFormat::decode(grk_cparameters* parameters)
    image->x1 = (parameters->image_offset_x0 + (w - 1) * subsampling_dx + 1);
    image->y1 = (parameters->image_offset_y0 + (h - 1) * subsampling_dy + 1);
 
-   width = image->decompressWidth;
+   width = image->decompress_width;
    stride_diff = image->comps[0].stride - width;
    counter = 0;
 
@@ -877,7 +877,7 @@ grk_image* PNMFormat::decode(grk_cparameters* parameters)
 	  area = (uint64_t)image->comps[0].stride * h;
 	  for(uint64_t i = 0; i < area; i++)
 	  {
-		 for(compno = 0; compno < decompressNumComps; compno++)
+		 for(compno = 0; compno < decompress_num_comps; compno++)
 		 {
 			uint32_t val = 0;
 			if(fscanf(fileStream_, "%u", &val) != 1)

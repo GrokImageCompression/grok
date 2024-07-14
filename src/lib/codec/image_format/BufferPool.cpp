@@ -12,7 +12,7 @@ GrkIOBuf BufferPool::get(size_t len)
 {
    for(auto iter = pool.begin(); iter != pool.end(); ++iter)
    {
-	  if(iter->second.allocLen_ >= len)
+	  if(iter->second.alloc_len_ >= len)
 	  {
 		 auto b = iter->second;
 		 b.len_ = len;

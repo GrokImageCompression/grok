@@ -31,12 +31,12 @@ class FileFormatDecompress : public FileFormat, public ICodeStreamDecompress
    FileFormatDecompress(BufferedStream* stream);
    virtual ~FileFormatDecompress();
    bool readHeader(grk_header_info* header_info);
-   GrkImage* getImage(uint16_t tileIndex);
+   GrkImage* getImage(uint16_t tile_index);
    GrkImage* getImage(void);
    void init(grk_decompress_core_params* p_param);
    bool setDecompressRegion(grk_rect_single region);
    bool decompress(grk_plugin_tile* tile);
-   bool decompressTile(uint16_t tileIndex);
+   bool decompressTile(uint16_t tile_index);
    bool end(void);
    bool postProcess(void);
    bool preProcess(void);

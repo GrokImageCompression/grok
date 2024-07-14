@@ -33,7 +33,7 @@ struct T1
    T1(bool isCompressor, uint32_t maxCblkW, uint32_t maxCblkH);
    ~T1();
 
-   bool decompress_cblk(DecompressCodeblock* cblk, uint8_t* compressedData, uint8_t orientation,
+   bool decompress_cblk(DecompressCodeblock* cblk, uint8_t* compressed_data, uint8_t orientation,
 						uint32_t cblksty);
    void code_block_enc_deallocate(cblk_enc* p_code_block);
    bool alloc(uint32_t w, uint32_t h);
@@ -60,8 +60,8 @@ struct T1
 
    //////////////////////////
    // decompress only
-   uint8_t* compressedData; /* Temporary buffer to concatenate all chunks of a codebock */
-   size_t compressedDataLen; /* Maximum size available in compressedData */
+   uint8_t* compressed_data; /* Temporary buffer to concatenate all chunks of a codebock */
+   size_t compressedDataLen; /* Maximum size available in compressed_data */
    /////////////////////////////////////
 
    /** Flags used by decompressor and compressor.

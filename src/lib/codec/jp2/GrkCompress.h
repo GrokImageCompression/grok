@@ -30,7 +30,7 @@ struct CompressInitParams
    char pluginPath[GRK_PATH_LEN];
    grk_img_fol inputFolder;
    grk_img_fol outFolder;
-   bool transferExifTags;
+   bool transfer_exif_tags;
    grk_image* in_image;
    grk_stream_params* stream_;
    std::string license_;

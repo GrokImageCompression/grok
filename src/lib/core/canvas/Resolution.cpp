@@ -64,7 +64,7 @@ bool Resolution::init(TileProcessor* tileProcessor, TileComponentCodingParams* t
    for(uint8_t bandIndex = 0; bandIndex < numTileBandWindows; ++bandIndex)
    {
 	  auto curr_band = tileBand + bandIndex;
-	  curr_band->numPrecincts = num_precincts;
+	  curr_band->num_precincts = num_precincts;
 	  if(tileProcessor->isCompressor())
 	  {
 		 for(uint64_t precinctIndex = 0; precinctIndex < num_precincts; ++precinctIndex)

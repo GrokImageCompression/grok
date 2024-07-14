@@ -14,11 +14,11 @@ class TileSet
    void init(grk_rect16 allTiles);
    void schedule(grk_rect16 tiles);
    void schedule(grk_pt16 tile);
-   void schedule(uint16_t tileIndex);
-   bool isScheduled(uint16_t tileIndex);
+   void schedule(uint16_t tile_index);
+   bool isScheduled(uint16_t tile_index);
    bool isScheduled(grk_pt16 tile);
-   void setComplete(uint16_t tileIndex);
-   bool isComplete(uint16_t tileIndex);
+   void setComplete(uint16_t tile_index);
+   bool isComplete(uint16_t tile_index);
    bool allComplete(void);
    uint16_t getSingle(void);
 

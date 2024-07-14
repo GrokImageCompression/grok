@@ -125,7 +125,7 @@ struct CompressCodeblock : public Codeblock
 		 numPassesInPreviousPackets(0), numPassesTotal(0)
 #ifdef PLUGIN_DEBUG_ENCODE
 		 ,
-		 contextStream(nullptr)
+		 context_stream(nullptr)
 #endif
    {}
    virtual ~CompressCodeblock()
@@ -170,7 +170,7 @@ struct CompressCodeblock : public Codeblock
    uint32_t numPassesInPreviousPackets;
    uint32_t numPassesTotal; /* total number of passes in all layers */
 #ifdef PLUGIN_DEBUG_ENCODE
-   uint32_t* contextStream;
+   uint32_t* context_stream;
 #endif
 };
 

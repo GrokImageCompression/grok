@@ -89,8 +89,8 @@ void Profile::set_imf_parameters(grk_cparameters* parameters, GrkImage* image)
    }
 
    /* One tile part for each component */
-   parameters->newTilePartProgressionDivider = 'C';
-   parameters->enableTilePartGeneration = true;
+   parameters->new_tile_part_progression_divider = 'C';
+   parameters->enable_tile_part_generation = true;
 
    if(parameters->prog_order == GRK_DEFAULT_PROG_ORDER)
 	  parameters->prog_order = GRK_CPRL;
@@ -682,8 +682,8 @@ void Profile::set_broadcast_parameters(grk_cparameters* parameters)
    parameters->prog_order = GRK_CPRL;
 
    /* One tile part for each component */
-   parameters->newTilePartProgressionDivider = 'C';
-   parameters->enableTilePartGeneration = true;
+   parameters->new_tile_part_progression_divider = 'C';
+   parameters->enable_tile_part_generation = true;
 
    /* No ROI */
    parameters->roi_compno = -1;
@@ -999,19 +999,19 @@ void Profile::initialise_4K_poc(grk_progression* POC, uint8_t numres)
 {
    assert(numres > 0);
    POC[0].tileno = 0;
-   POC[0].resS = 0;
-   POC[0].compS = 0;
-   POC[0].layE = 1;
-   POC[0].resE = (uint8_t)(numres - 1);
-   POC[0].compE = 3;
-   POC[0].specifiedCompressionPocProg = GRK_CPRL;
+   POC[0].res_s = 0;
+   POC[0].comp_s = 0;
+   POC[0].lay_e = 1;
+   POC[0].res_e = (uint8_t)(numres - 1);
+   POC[0].comp_e = 3;
+   POC[0].specified_compression_poc_prog = GRK_CPRL;
    POC[1].tileno = 0;
-   POC[1].resS = (uint8_t)(numres - 1);
-   POC[1].compS = 0;
-   POC[1].layE = 1;
-   POC[1].resE = numres;
-   POC[1].compE = 3;
-   POC[1].specifiedCompressionPocProg = GRK_CPRL;
+   POC[1].res_s = (uint8_t)(numres - 1);
+   POC[1].comp_s = 0;
+   POC[1].lay_e = 1;
+   POC[1].res_e = numres;
+   POC[1].comp_e = 3;
+   POC[1].specified_compression_poc_prog = GRK_CPRL;
 }
 
 void Profile::set_cinema_parameters(grk_cparameters* parameters, GrkImage* image)
@@ -1022,8 +1022,8 @@ void Profile::set_cinema_parameters(grk_cparameters* parameters, GrkImage* image
    parameters->t_height = 1;
 
    /* One tile part for each component */
-   parameters->newTilePartProgressionDivider = 'C';
-   parameters->enableTilePartGeneration = true;
+   parameters->new_tile_part_progression_divider = 'C';
+   parameters->enable_tile_part_generation = true;
 
    /* Tile and Image shall be at (0,0) */
    parameters->tx0 = 0;
@@ -1122,7 +1122,7 @@ void Profile::set_cinema_parameters(grk_cparameters* parameters, GrkImage* image
    }
 
    /* Limit bit-rate */
-   parameters->allocationByRateDistoration = true;
+   parameters->allocation_by_rate_distortion = true;
    if(parameters->max_cs_size == 0)
    {
 	  /* No rate has been introduced for code stream, so 24 fps is assumed */

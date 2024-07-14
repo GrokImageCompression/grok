@@ -76,7 +76,7 @@ struct cblk_enc
    uint8_t numbps;
    uint32_t numPassesTotal;
 #ifdef PLUGIN_DEBUG_ENCODE
-   uint32_t* contextStream;
+   uint32_t* context_stream;
 #endif
 };
 

@@ -77,7 +77,7 @@ bool SOTMarker::write(TileProcessor* proc, uint32_t tileLength)
 }
 
 bool SOTMarker::read(CodeStreamDecompress* codeStream, uint8_t* headerData, uint32_t headerSize,
-					 uint32_t* tilePartLength, uint16_t* tileIndex, uint8_t* tilePartIndex,
+					 uint32_t* tilePartLength, uint16_t* tile_index, uint8_t* tilePartIndex,
 					 uint8_t* numTileParts)
 {
    assert(headerData != nullptr);
@@ -107,7 +107,7 @@ bool SOTMarker::read(CodeStreamDecompress* codeStream, uint8_t* headerData, uint
    if(!codeStream->allocateProcessor(index))
 	  return false;
    *tilePartLength = len;
-   *tileIndex = index;
+   *tile_index = index;
    *tilePartIndex = tp_index;
    *numTileParts = num_tile_parts;
 
@@ -118,27 +118,27 @@ bool SOTMarker::read(CodeStreamDecompress* codeStream, uint8_t* headerData, uint
 {
    uint32_t tilePartLength = 0;
    uint8_t numTileParts = 0;
-   uint16_t tileIndex;
+   uint16_t tile_index;
    uint8_t currentTilePart;
 
-   if(!read(codeStream, headerData, header_size, &tilePartLength, &tileIndex, &currentTilePart,
+   if(!read(codeStream, headerData, header_size, &tilePartLength, &tile_index, &currentTilePart,
 			&numTileParts))
    {
 	  Logger::logger_.error("Error reading SOT marker");
 	  return false;
    }
    auto cp = codeStream->getCodingParams();
-   if(tileIndex >= cp->t_grid_width * cp->t_grid_height)
+   if(tile_index >= cp->t_grid_width * cp->t_grid_height)
    {
-	  Logger::logger_.error("Invalid tile number %u", tileIndex);
+	  Logger::logger_.error("Invalid tile number %u", tile_index);
 	  return false;
    }
 
-   auto tcp = cp->tcps + tileIndex;
-   if(!tcp->advanceTilePartCounter(tileIndex, currentTilePart))
+   auto tcp = cp->tcps + tile_index;
+   if(!tcp->advanceTilePartCounter(tile_index, currentTilePart))
 	  return false;
 
-   // Logger::logger_.info("SOT: Tile %u, tile part %u",tileIndex, currentTilePart);
+   // Logger::logger_.info("SOT: Tile %u, tile part %u",tile_index, currentTilePart);
 
    if(tilePartLength == sot_marker_segment_len_minus_tile_data_len)
    {
@@ -195,7 +195,7 @@ bool SOTMarker::read(CodeStreamDecompress* codeStream, uint8_t* headerData, uint
 		 {
 			Logger::logger_.error("Invalid number of tile parts for tile number %u. "
 								  "Got %u, expected %u as signalled in previous tile part(s).",
-								  tileIndex, numTileParts, tcp->numTileParts_);
+								  tile_index, numTileParts, tcp->numTileParts_);
 			return false;
 		 }
 	  }
@@ -213,17 +213,17 @@ bool SOTMarker::read(CodeStreamDecompress* codeStream, uint8_t* headerData, uint
    /* If we know the number of tile parts from the header, we check whether we have read the last
 	* one*/
    if(tcp->numTileParts_ && (tcp->numTileParts_ == (currentTilePart + 1)))
-	  decompressState->setComplete(tileIndex);
+	  decompressState->setComplete(tile_index);
 
    codeStream->currentProcessor()->setTilePartDataLength(currentTilePart, tilePartLength,
 														 decompressState->lastTilePartInCodeStream);
    decompressState->setState(DECOMPRESS_STATE_TPH);
 
-   grk_pt16 currTile(tileIndex % cp->t_grid_width, tileIndex / cp->t_grid_width);
+   grk_pt16 currTile(tile_index % cp->t_grid_width, tile_index / cp->t_grid_width);
    auto codeStreamInfo = codeStream->getCodeStreamInfo();
 
    return !codeStreamInfo ||
-		  codeStreamInfo->updateTileInfo(tileIndex, currentTilePart, numTileParts);
+		  codeStreamInfo->updateTileInfo(tile_index, currentTilePart, numTileParts);
 }
 
 } /* namespace grk */

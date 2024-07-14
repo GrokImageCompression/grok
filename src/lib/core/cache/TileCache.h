@@ -44,8 +44,8 @@ class TileCache
    bool empty(void);
    void setStrategy(GRK_TILE_CACHE_STRATEGY strategy);
    GRK_TILE_CACHE_STRATEGY getStrategy(void);
-   TileCacheEntry* put(uint16_t tileIndex, TileProcessor* processor);
-   TileCacheEntry* get(uint16_t tileIndex);
+   TileCacheEntry* put(uint16_t tile_index, TileProcessor* processor);
+   TileCacheEntry* get(uint16_t tile_index);
    GrkImage* getComposite(void);
    std::vector<GrkImage*> getAllImages(void);
    std::vector<GrkImage*> getTileImages(void);

@@ -65,7 +65,7 @@ class SOTMarker
 
 	*/
    bool read(CodeStreamDecompress* codeStream, uint8_t* headerData, uint32_t header_size,
-			 uint32_t* tot_len, uint16_t* tileIndex, uint8_t* current_part, uint8_t* num_parts);
+			 uint32_t* tot_len, uint16_t* tile_index, uint8_t* current_part, uint8_t* num_parts);
 };
 
 } /* namespace grk */

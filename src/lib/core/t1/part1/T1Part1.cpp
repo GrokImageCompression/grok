@@ -49,7 +49,7 @@ namespace t1_part1
 		 return false;
 	  auto tileLineAdvance =
 		  (tile->comps + block->compno)->getWindow()->getResWindowBufferHighestStride() - w;
-	  uint32_t tileIndex = 0;
+	  uint32_t tile_index = 0;
 	  uint32_t cblk_index = 0;
 	  maximum = 0;
 	  auto uncompressedData = t1->getUncompressedData();
@@ -59,14 +59,14 @@ namespace t1_part1
 		 {
 			for(auto i = 0U; i < w; ++i)
 			{
-			   int32_t temp = (block->tiledp[tileIndex++] *= (1 << T1_NMSEDEC_FRACBITS));
+			   int32_t temp = (block->tiledp[tile_index++] *= (1 << T1_NMSEDEC_FRACBITS));
 			   int32_t mag = temp * ((temp > 0) - (temp < 0));
 			   if((uint32_t)mag > maximum)
 				  maximum = (uint32_t)mag;
 			   int32_t sgn = int32_t((uint32_t)(mag != temp) * 0x80000000);
 			   uncompressedData[cblk_index++] = sgn | mag;
 			}
-			tileIndex += tileLineAdvance;
+			tile_index += tileLineAdvance;
 		 }
 	  }
 	  else
@@ -77,7 +77,7 @@ namespace t1_part1
 		 {
 			for(auto i = 0U; i < w; ++i)
 			{
-			   int32_t temp = (int32_t)grk_lrintf((float)(((double)tiledp[tileIndex++] * quant)) *
+			   int32_t temp = (int32_t)grk_lrintf((float)(((double)tiledp[tile_index++] * quant)) *
 												  (1 << T1_NMSEDEC_FRACBITS));
 			   int32_t mag = temp * ((temp > 0) - (temp < 0));
 			   if((uint32_t)mag > maximum)
@@ -85,7 +85,7 @@ namespace t1_part1
 			   int32_t sgn = int32_t((uint32_t)(mag != temp) * 0x80000000);
 			   uncompressedData[cblk_index++] = sgn | mag;
 			}
-			tileIndex += tileLineAdvance;
+			tile_index += tileLineAdvance;
 		 }
 	  }
 
@@ -110,7 +110,7 @@ namespace t1_part1
 
 	  cblkexp.data = cblk->paddedCompressedStream;
 #ifdef PLUGIN_DEBUG_ENCODE
-	  cblkexp.contextStream = cblk->contextStream;
+	  cblkexp.context_stream = cblk->context_stream;
 #endif
 
 	  auto distortion = t1->compress_cblk(
@@ -151,14 +151,14 @@ namespace t1_part1
 			size_t totalSegLen = cblk->getSegBuffersLen() + grk_cblk_dec_compressed_data_pad_right;
 			t1->allocCompressedData(totalSegLen);
 			size_t offset = 0;
-			auto compressedData = t1->getCompressedDataBuffer();
+			auto compressed_data = t1->getCompressedDataBuffer();
 			for(const auto& b : cblk->seg_buffers)
 			{
-			   memcpy(compressedData + offset, b->buf, b->len);
+			   memcpy(compressed_data + offset, b->buf, b->len);
 			   offset += b->len;
 			}
 			bool ret =
-				t1->decompress_cblk(cblk, compressedData, block->bandOrientation, block->cblk_sty);
+				t1->decompress_cblk(cblk, compressed_data, block->bandOrientation, block->cblk_sty);
 			cblk->setCacheState(ret ? GRK_CACHE_STATE_OPEN : GRK_CACHE_STATE_ERROR);
 			if(!ret)
 			   return false;

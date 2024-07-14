@@ -108,7 +108,7 @@ TileCodingParams::~TileCodingParams()
    delete qcd_;
 }
 
-bool TileCodingParams::advanceTilePartCounter(uint16_t tileIndex, uint8_t tilePartIndex)
+bool TileCodingParams::advanceTilePartCounter(uint16_t tile_index, uint8_t tilePartIndex)
 {
    /* We must avoid reading the same tile part number twice for a given tile */
    /* to avoid various issues, like grk_j2k_merge_ppt being called several times. */
@@ -118,7 +118,7 @@ bool TileCodingParams::advanceTilePartCounter(uint16_t tileIndex, uint8_t tilePa
    {
 	  Logger::logger_.error("Invalid tile part index for tile number %u. "
 							"Got %u, expected %u",
-							tileIndex, tilePartIndex, tilePartCounter_);
+							tile_index, tilePartIndex, tilePartCounter_);
 	  return false;
    }
    tilePartCounter_++;
@@ -264,9 +264,9 @@ void DecompressorState::andState(uint16_t state)
 {
    state_ &= state;
 }
-void DecompressorState::setComplete(uint16_t tileIndex)
+void DecompressorState::setComplete(uint16_t tile_index)
 {
-   tilesToDecompress_.setComplete(tileIndex);
+   tilesToDecompress_.setComplete(tile_index);
 }
 // parse stream until EOC or next SOT
 bool DecompressorState::findNextSOT(CodeStreamDecompress* codeStream)

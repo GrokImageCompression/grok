@@ -87,8 +87,8 @@ ResFlow::~ResFlow(void)
    delete waveletHoriz_;
    delete waveletVert_;
 }
-ImageComponentFlow::ImageComponentFlow(uint8_t numResolutions)
-	: numResFlows_(numResolutions), resFlows_(nullptr), waveletFinalCopy_(nullptr),
+ImageComponentFlow::ImageComponentFlow(uint8_t num_resolutions)
+	: numResFlows_(num_resolutions), resFlows_(nullptr), waveletFinalCopy_(nullptr),
 	  prePostProc_(nullptr)
 {
    if(numResFlows_)

@@ -116,12 +116,12 @@ struct ICodeStreamDecompress
  public:
    virtual ~ICodeStreamDecompress() = default;
    virtual bool readHeader(grk_header_info* header_info) = 0;
-   virtual GrkImage* getImage(uint16_t tileIndex) = 0;
+   virtual GrkImage* getImage(uint16_t tile_index) = 0;
    virtual GrkImage* getImage(void) = 0;
    virtual void init(grk_decompress_core_params* p_param) = 0;
    virtual bool setDecompressRegion(grk_rect_single region) = 0;
    virtual bool decompress(grk_plugin_tile* tile) = 0;
-   virtual bool decompressTile(uint16_t tileIndex) = 0;
+   virtual bool decompressTile(uint16_t tile_index) = 0;
    virtual bool preProcess(void) = 0;
    virtual bool postProcess(void) = 0;
    virtual void dump(uint32_t flag, FILE* outputFileStream) = 0;

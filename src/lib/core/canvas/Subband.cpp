@@ -20,10 +20,10 @@
 namespace grk
 {
 
-Subband::Subband() : orientation(BAND_ORIENT_LL), numPrecincts(0), numbps(0), stepsize(0) {}
+Subband::Subband() : orientation(BAND_ORIENT_LL), num_precincts(0), numbps(0), stepsize(0) {}
 // note: don't copy precinct array
 Subband::Subband(const Subband& rhs)
-	: grk_rect32(rhs), orientation(rhs.orientation), numPrecincts(0), numbps(rhs.numbps),
+	: grk_rect32(rhs), orientation(rhs.orientation), num_precincts(0), numbps(rhs.numbps),
 	  stepsize(rhs.stepsize)
 {}
 Subband& Subband::operator=(const Subband& rhs)

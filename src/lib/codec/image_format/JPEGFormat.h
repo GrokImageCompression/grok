@@ -38,7 +38,7 @@ class JPEGFormat : public ImageFormat
 
  private:
    grk_image* jpegtoimage(const char* filename, grk_cparameters* parameters);
-   bool imagetojpeg(grk_image* image, const char* filename, uint32_t compressionLevel);
+   bool imagetojpeg(grk_image* image, const char* filename, uint32_t compression_level);
 
    bool success;
    uint8_t* buffer;

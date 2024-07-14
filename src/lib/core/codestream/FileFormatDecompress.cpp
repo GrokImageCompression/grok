@@ -95,9 +95,9 @@ void FileFormatDecompress::serializeAsoc(AsocBox* asoc, grk_asoc* serial_asocs, 
    for(auto& child : asoc->children)
 	  serializeAsoc(child, serial_asocs, num_asocs, level + 1);
 }
-GrkImage* FileFormatDecompress::getImage(uint16_t tileIndex)
+GrkImage* FileFormatDecompress::getImage(uint16_t tile_index)
 {
-   return codeStream->getImage(tileIndex);
+   return codeStream->getImage(tile_index);
 }
 GrkImage* FileFormatDecompress::getImage(void)
 {
@@ -311,9 +311,9 @@ bool FileFormatDecompress::postProcess(void)
 {
    return codeStream->postProcess();
 }
-bool FileFormatDecompress::decompressTile(uint16_t tileIndex)
+bool FileFormatDecompress::decompressTile(uint16_t tile_index)
 {
-   if(!codeStream->decompressTile(tileIndex))
+   if(!codeStream->decompressTile(tile_index))
    {
 	  Logger::logger_.error("Failed to decompress JP2 file");
 	  return false;

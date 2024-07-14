@@ -159,7 +159,7 @@ class WaveletReverse
    void decompress_h_strip_97(dwt_data<vec4f>* GRK_RESTRICT horiz, const uint32_t resHeight,
 							  grk_buf2d_simple<float> winL, grk_buf2d_simple<float> winH,
 							  grk_buf2d_simple<float> winDest);
-   bool decompress_h_97(uint8_t res, uint32_t numThreads, size_t dataLength,
+   bool decompress_h_97(uint8_t res, uint32_t num_threads, size_t dataLength,
 						dwt_data<vec4f>& GRK_RESTRICT horiz, const uint32_t resHeight,
 						grk_buf2d_simple<float> winL, grk_buf2d_simple<float> winH,
 						grk_buf2d_simple<float> winDest);
@@ -168,7 +168,7 @@ class WaveletReverse
    void decompress_v_strip_97(dwt_data<vec4f>* GRK_RESTRICT vert, const uint32_t resWidth,
 							  const uint32_t resHeight, grk_buf2d_simple<float> winL,
 							  grk_buf2d_simple<float> winH, grk_buf2d_simple<float> winDest);
-   bool decompress_v_97(uint8_t res, uint32_t numThreads, size_t dataLength,
+   bool decompress_v_97(uint8_t res, uint32_t num_threads, size_t dataLength,
 						dwt_data<vec4f>& GRK_RESTRICT vert, const uint32_t resWidth,
 						const uint32_t resHeight, grk_buf2d_simple<float> winL,
 						grk_buf2d_simple<float> winH, grk_buf2d_simple<float> winDest);

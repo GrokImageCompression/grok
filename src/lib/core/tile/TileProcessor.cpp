@@ -21,14 +21,14 @@
 #include "grk_includes.h"
 namespace grk
 {
-TileProcessor::TileProcessor(uint16_t tileIndex, CodeStream* codeStream, BufferedStream* stream,
+TileProcessor::TileProcessor(uint16_t tile_index, CodeStream* codeStream, BufferedStream* stream,
 							 bool isCompressor, StripCache* stripCache)
 	: first_poc_tile_part_(true), tilePartCounter_(0), pino(0),
 	  headerImage(codeStream->getHeaderImage()),
 	  current_plugin_tile(codeStream->getCurrentPluginTile()), cp_(codeStream->getCodingParams()),
 	  packetLengthCache(PLCache()), tile(new Tile(headerImage->numcomps)), scheduler_(nullptr),
 	  numProcessedPackets(0), numDecompressedPackets(0), tilePartDataLength(0),
-	  tileIndex_(tileIndex), stream_(stream), corrupt_packet_(false),
+	  tileIndex_(tile_index), stream_(stream), corrupt_packet_(false),
 	  newTilePartProgressionPosition(cp_->coding_params_.enc_.newTilePartProgressionPosition),
 	  tcp_(cp_->tcps + tileIndex_), truncated(false), image_(nullptr), isCompressor_(isCompressor),
 	  preCalculatedTileLen(0), mct_(new mct(tile, headerImage, tcp_, stripCache))
@@ -343,7 +343,7 @@ bool TileProcessor::doCompress(void)
    }
    // 1. create PLT marker if required
    packetLengthCache.deleteMarkers();
-   if(cp_->coding_params_.enc_.writePLT)
+   if(cp_->coding_params_.enc_.write_plt)
 	  packetLengthCache.createMarkers(stream_);
    // 2. rate control
    uint32_t allPacketBytes = 0;
@@ -482,8 +482,8 @@ bool TileProcessor::decompressT2T1(GrkImage* outputImage)
 	  // 2.create and populate tasks, and execute
 	  if(parserCount)
 	  {
-		 auto numThreads = std::min<size_t>(ExecSingleton::get().num_workers(), parserCount);
-		 if(numThreads == 1)
+		 auto num_threads = std::min<size_t>(ExecSingleton::get().num_workers(), parserCount);
+		 if(num_threads == 1)
 		 {
 			for(uint16_t compno = 0; compno < headerImage->numcomps; ++compno)
 			{
@@ -625,7 +625,7 @@ bool TileProcessor::decompressT2T1(GrkImage* outputImage)
 	   !current_plugin_tile || (current_plugin_tile->decompress_flags & GRK_DECODE_POST_T1);
    if(doPost)
    {
-	  if(outputImage->hasMultipleTiles)
+	  if(outputImage->has_multiple_tiles)
 		 generateImage(outputImage, tile);
 	  else
 		 outputImage->transferDataFrom(tile);
@@ -634,7 +634,7 @@ bool TileProcessor::decompressT2T1(GrkImage* outputImage)
    if(doT1 && getNumDecompressedPackets() == 0)
    {
 	  Logger::logger_.warn("Tile %u was not decompressed", tileIndex_);
-	  if(!outputImage->hasMultipleTiles)
+	  if(!outputImage->has_multiple_tiles)
 		 return false;
    }
    return true;
@@ -856,11 +856,11 @@ bool TileProcessor::encodeT2(uint32_t* tileBytesWritten)
 		 {
 			auto tileBand = res->tileBand + bandIndex;
 			auto decodeBand = roundRes->tileBand + bandIndex;
-			if(!tileBand->numPrecincts)
+			if(!tileBand->num_precincts)
 			   continue;
-			decodeBand->precincts = new Precinct[tileBand->numPrecincts];
-			decodeBand->precincts_data_size = (uint32_t)(tileBand->numPrecincts * sizeof(Precinct));
-			for(uint64_t precinctIndex = 0; precinctIndex < tileBand->numPrecincts; ++precinctIndex)
+			decodeBand->precincts = new Precinct[tileBand->num_precincts];
+			decodeBand->precincts_data_size = (uint32_t)(tileBand->num_precincts * sizeof(Precinct));
+			for(uint64_t precinctIndex = 0; precinctIndex < tileBand->num_precincts; ++precinctIndex)
 			{
 			   auto prec = tileBand->precincts + precinctIndex;
 			   auto decodePrec = decodeBand->precincts + precinctIndex;
@@ -908,7 +908,7 @@ bool TileProcessor::encodeT2(uint32_t* tileBytesWritten)
 			auto decodeBand = roundRes->tileBand + bandIndex;
 			if(decodeBand->precincts)
 			{
-			   for(uint64_t precinctIndex = 0; precinctIndex < decodeBand->numPrecincts;
+			   for(uint64_t precinctIndex = 0; precinctIndex < decodeBand->num_precincts;
 				   ++precinctIndex)
 			   {
 				  auto decodePrec = decodeBand->precincts + precinctIndex;
@@ -1194,12 +1194,12 @@ bool TileProcessor::pcrdBisectSimple(uint32_t* allPacketBytes, bool disableRateC
 			   for(uint64_t cblkno = 0; cblkno < prc->getNumCblks(); cblkno++)
 			   {
 				  auto cblk = prc->getCompressedBlockPtr(cblkno);
-				  uint32_t numPix = (uint32_t)cblk->area();
+				  uint32_t num_pix = (uint32_t)cblk->area();
 				  numCodeBlocks++;
 				  if(!(state & GRK_PLUGIN_STATE_PRE_TR1))
 				  {
 					 compress_synch_with_plugin(this, compno, resno, bandIndex, prc->precinctIndex,
-												cblkno, band, cblk, &numPix);
+												cblkno, band, cblk, &num_pix);
 				  }
 				  if(!single_lossless)
 				  {
@@ -1226,7 +1226,7 @@ bool TileProcessor::pcrdBisectSimple(uint32_t* allPacketBytes, bool disableRateC
 						if(rdslope > max_slope)
 						   max_slope = rdslope;
 					 } /* passno */
-					 numpix += numPix;
+					 numpix += num_pix;
 				  }
 			   } /* cbklno */
 			} /* precinctIndex */

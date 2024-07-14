@@ -111,11 +111,11 @@ void TIFFFormat::registerGrkReclaimCallback(grk_io_init io_init, grk_io_callback
 {
    grkReclaimCallback_ = reclaim_callback;
    grkReclaimUserData_ = user_data;
-   if(io_init.maxPooledRequests_)
-	  serializer.setMaxPooledRequests(io_init.maxPooledRequests_);
+   if(io_init.max_pooled_requests_)
+	  serializer.setMaxPooledRequests(io_init.max_pooled_requests_);
 }
 bool TIFFFormat::encodeInit(grk_image* image, const std::string& filename,
-							uint32_t compressionLevel, uint32_t concurrency)
+							uint32_t compression_level, uint32_t concurrency)
 {
    if(encodeState & IMAGE_FORMAT_ENCODED_PIXELS)
    {
@@ -123,7 +123,7 @@ bool TIFFFormat::encodeInit(grk_image* image, const std::string& filename,
 	  return true;
    }
 
-   if(!ImageFormat::encodeInit(image, filename, compressionLevel, concurrency))
+   if(!ImageFormat::encodeInit(image, filename, compression_level, concurrency))
 	  return false;
    return true;
 }
@@ -152,13 +152,13 @@ bool TIFFFormat::encodeHeader(TIFF* tif)
    uint32_t num_colour_channels = 0;
    size_t numExtraChannels = 0;
    bool sgnd = image_->comps[0].sgnd;
-   uint32_t width = image_->decompressWidth;
+   uint32_t width = image_->decompress_width;
    units = width;
-   uint32_t height = image_->decompressHeight;
-   uint8_t bps = image_->decompressPrec;
-   uint16_t numcomps = image_->decompressNumComps;
+   uint32_t height = image_->decompress_height;
+   uint8_t bps = image_->decompress_prec;
+   uint16_t numcomps = image_->decompress_num_comps;
    bool subsampled = isFinalOutputSubsampled(image_);
-   auto colourSpace = image_->decompressColourSpace;
+   auto colourSpace = image_->decompress_colour_space;
    if(bps == 0)
    {
 	  spdlog::error("TIFFFormat::encodeHeader: image_ precision is zero.");
@@ -268,7 +268,7 @@ bool TIFFFormat::encodeHeader(TIFF* tif)
    TIFFSetField(tif, TIFFTAG_ORIENTATION, ORIENTATION_TOPLEFT);
    TIFFSetField(tif, TIFFTAG_PLANARCONFIG, PLANARCONFIG_CONTIG);
    TIFFSetField(tif, TIFFTAG_PHOTOMETRIC, tiPhoto);
-   TIFFSetField(tif, TIFFTAG_ROWSPERSTRIP, image_->rowsPerStrip);
+   TIFFSetField(tif, TIFFTAG_ROWSPERSTRIP, image_->rows_per_strip);
    if(tiPhoto == PHOTOMETRIC_YCBCR)
    {
 	  float refBlackWhite[6] = {0.0, 255.0, 128.0, 255.0, 128.0, 255.0};
@@ -391,10 +391,10 @@ bool TIFFFormat::encodePixels()
 	  }
    }
    bool success = false;
-   uint32_t height = image_->decompressHeight;
+   uint32_t height = image_->decompress_height;
    int32_t const* planes[grk::maxNumPackComponents];
    int32_t const* planesBegin[grk::maxNumPackComponents];
-   uint16_t numcomps = image_->decompressNumComps;
+   uint16_t numcomps = image_->decompress_num_comps;
    for(uint32_t i = 0U; i < numcomps; ++i)
    {
 	  planes[i] = image_->comps[i].data;
@@ -406,7 +406,7 @@ bool TIFFFormat::encodePixels()
    if(isFinalOutputSubsampled(image_))
    {
 	  // TIFF-specific
-	  uint64_t packedLengthEncoded = (uint64_t)TIFFVStripSize(tif_, (uint32_t)image_->rowsPerStrip);
+	  uint64_t packedLengthEncoded = (uint64_t)TIFFVStripSize(tif_, (uint32_t)image_->rows_per_strip);
 	  packedBuf = pool.get(packedLengthEncoded);
 	  auto bufPtr = (int8_t*)packedBuf.data_;
 	  uint32_t bytesToWrite = 0;
@@ -414,7 +414,7 @@ bool TIFFFormat::encodePixels()
 	  for(; h < rowsWritten + height; h += chroma_subsample_y)
 	  {
 		 uint32_t rowsSoFar = h - rowsWritten;
-		 if(bytesToWrite > 0 && rowsSoFar > 0 && (rowsSoFar % image_->rowsPerStrip == 0))
+		 if(bytesToWrite > 0 && rowsSoFar > 0 && (rowsSoFar % image_->rows_per_strip == 0))
 		 {
 			packedBuf.len_ = bytesToWrite;
 			packedBuf.offset_ = serializer.getOffset();
@@ -434,7 +434,7 @@ bool TIFFFormat::encodePixels()
 			{
 			   for(size_t sub_x = xposLuma; sub_x < xposLuma + chroma_subsample_x; ++sub_x)
 			   {
-				  bool accept = (h + sub_h) < height && sub_x < image_->decompressWidth;
+				  bool accept = (h + sub_h) < height && sub_x < image_->decompress_width;
 				  *bufPtr++ =
 					  accept ? (int8_t)planes[0][sub_x + sub_h * image_->comps[0].stride] : 0;
 				  bytesToWrite++;
@@ -470,18 +470,18 @@ bool TIFFFormat::encodePixels()
    }
    else
    {
-	  auto iter = grk::InterleaverFactory<int32_t>::makeInterleaver(image_->decompressPrec);
+	  auto iter = grk::InterleaverFactory<int32_t>::makeInterleaver(image_->decompress_prec);
 	  if(!iter)
 		 goto cleanup;
 	  while(h < height)
 	  {
-		 uint32_t stripRows = (std::min)(image_->rowsPerStrip, height - h);
-		 packedBuf = pool.get(image_->packedRowBytes * stripRows);
-		 iter->interleave((int32_t**)planes, numcomps, packedBuf.data_, image_->decompressWidth,
-						  image_->comps[0].stride, image_->packedRowBytes, stripRows, 0);
+		 uint32_t stripRows = (std::min)(image_->rows_per_strip, height - h);
+		 packedBuf = pool.get(image_->packed_row_bytes * stripRows);
+		 iter->interleave((int32_t**)planes, numcomps, packedBuf.data_, image_->decompress_width,
+						  image_->comps[0].stride, image_->packed_row_bytes, stripRows, 0);
 		 packedBuf.pooled_ = true;
 		 packedBuf.offset_ = serializer.getOffset();
-		 packedBuf.len_ = image_->packedRowBytes * stripRows;
+		 packedBuf.len_ = image_->packed_row_bytes * stripRows;
 		 packedBuf.index_ = serializer.getNumPooledRequests();
 		 if(!encodePixelsCore(0, packedBuf))
 		 {

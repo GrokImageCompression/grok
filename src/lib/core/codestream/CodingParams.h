@@ -123,7 +123,7 @@ struct TileCodingParams
    TileCodingParams();
    ~TileCodingParams();
 
-   bool advanceTilePartCounter(uint16_t tileIndex, uint8_t tilePartIndex);
+   bool advanceTilePartCounter(uint16_t tile_index, uint8_t tilePartIndex);
    bool copy(const TileCodingParams* rhs, const GrkImage* image);
    void setIsHT(bool ht, bool reversible, uint8_t guardBits);
    bool isHT(void);
@@ -219,11 +219,11 @@ struct EncodingParams
    /** Enabling Tile part generation*/
    bool enableTilePartGeneration_;
    /* write plt marker */
-   bool writePLT;
+   bool write_plt;
    /* write TLM marker */
-   bool writeTLM;
+   bool write_tlm;
    /* rate control algorithm */
-   uint32_t rateControlAlgorithm;
+   uint32_t rate_control_algorithm;
 };
 
 struct DecodingParams
@@ -235,7 +235,7 @@ struct DecodingParams
 	* quality layers are decompressed */
    uint16_t layers_to_decompress_;
 
-   uint32_t randomAccessFlags_;
+   uint32_t random_access_flags_;
 };
 
 /**
@@ -265,7 +265,7 @@ struct CodingParams
    size_t num_comments;
    char* comment[GRK_NUM_COMMENTS_SUPPORTED];
    uint16_t comment_len[GRK_NUM_COMMENTS_SUPPORTED];
-   bool isBinaryComment[GRK_NUM_COMMENTS_SUPPORTED];
+   bool is_binary_comment[GRK_NUM_COMMENTS_SUPPORTED];
    // note: maximum number of tiles is 65535
    /** number of tiles in width */
    uint16_t t_grid_width;
@@ -314,7 +314,7 @@ struct DecompressorState
    void setState(uint16_t state);
    void orState(uint16_t state);
    void andState(uint16_t state);
-   void setComplete(uint16_t tileIndex);
+   void setComplete(uint16_t tile_index);
 
    // store decoding parameters common to all tiles (information
    // like COD, COC and RGN in main header)

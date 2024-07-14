@@ -345,8 +345,8 @@ void GRK_CALLCONV grk_decompress_set_default_params(grk_decompress_parameters* p
    memset(parameters, 0, sizeof(grk_decompress_parameters));
    auto core_params = &parameters->core;
    memset(core_params, 0, sizeof(grk_decompress_core_params));
-   core_params->tileCacheStrategy = GRK_TILE_CACHE_NONE;
-   core_params->randomAccessFlags_ =
+   core_params->tile_cache_strategy = GRK_TILE_CACHE_NONE;
+   core_params->random_access_flags_ =
 	   GRK_RANDOM_ACCESS_TLM | GRK_RANDOM_ACCESS_PLM | GRK_RANDOM_ACCESS_PLT;
 }
 grk_codec* GRK_CALLCONV grk_decompress_init(grk_stream_params* stream_params,
@@ -416,12 +416,12 @@ bool GRK_CALLCONV grk_decompress(grk_codec* codecWrapper, grk_plugin_tile* tile)
    }
    return false;
 }
-bool GRK_CALLCONV grk_decompress_tile(grk_codec* codecWrapper, uint16_t tileIndex)
+bool GRK_CALLCONV grk_decompress_tile(grk_codec* codecWrapper, uint16_t tile_index)
 {
    if(codecWrapper)
    {
 	  auto codec = GrkCodec::getImpl(codecWrapper);
-	  bool rc = codec->decompressor_ ? codec->decompressor_->decompressTile(tileIndex) : false;
+	  bool rc = codec->decompressor_ ? codec->decompressor_->decompressTile(tile_index) : false;
 	  rc = rc && (codec->decompressor_ ? codec->decompressor_->postProcess() : false);
 	  return rc;
    }
@@ -467,12 +467,12 @@ bool GRK_CALLCONV grk_set_MCT(grk_cparameters* parameters, float* pEncodingMatri
    memcpy(((uint8_t*)parameters->mct_data) + l_matrix_size, p_dc_shift, l_dc_shift_size);
    return true;
 }
-grk_image* GRK_CALLCONV grk_decompress_get_tile_image(grk_codec* codecWrapper, uint16_t tileIndex)
+grk_image* GRK_CALLCONV grk_decompress_get_tile_image(grk_codec* codecWrapper, uint16_t tile_index)
 {
    if(codecWrapper)
    {
 	  auto codec = GrkCodec::getImpl(codecWrapper);
-	  return codec->decompressor_ ? codec->decompressor_->getImage(tileIndex) : nullptr;
+	  return codec->decompressor_ ? codec->decompressor_->getImage(tile_index) : nullptr;
    }
    return nullptr;
 }
@@ -524,16 +524,16 @@ void GRK_CALLCONV grk_compress_set_default_params(grk_cparameters* parameters)
    parameters->roi_compno = -1; /* no ROI */
    parameters->subsampling_dx = 1;
    parameters->subsampling_dy = 1;
-   parameters->enableTilePartGeneration = false;
+   parameters->enable_tile_part_generation = false;
    parameters->decod_format = GRK_FMT_UNK;
    parameters->cod_format = GRK_FMT_UNK;
    parameters->layer_rate[0] = 0;
    parameters->numlayers = 0;
-   parameters->allocationByRateDistoration = false;
-   parameters->allocationByQuality = false;
-   parameters->writePLT = false;
-   parameters->writeTLM = false;
-   parameters->deviceId = 0;
+   parameters->allocation_by_rate_distortion = false;
+   parameters->allocation_by_quality = false;
+   parameters->write_plt = false;
+   parameters->write_tlm = false;
+   parameters->device_id = 0;
    parameters->repeats = 1;
 }
 grk_codec* GRK_CALLCONV grk_compress_init(grk_stream_params* stream_params,

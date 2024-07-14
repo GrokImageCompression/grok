@@ -81,9 +81,9 @@ bool TileInfo::hasTilePartInfo(void)
 {
    return tilePartInfo != nullptr;
 }
-bool TileInfo::update(uint16_t tileIndex, uint8_t currentTilePart, uint8_t numTileParts)
+bool TileInfo::update(uint16_t tile_index, uint8_t currentTilePart, uint8_t numTileParts)
 {
-   tileno = tileIndex;
+   tileno = tile_index;
    if(!tilePartInfo)
    {
 	  allocatedTileParts = numTileParts ? numTileParts : 10;
@@ -101,7 +101,7 @@ bool TileInfo::update(uint16_t tileIndex, uint8_t currentTilePart, uint8_t numTi
 		 allocatedTileParts *= 2;
 	  }
    }
-   tilePartInfo[currentTilePart] = TilePartInfo(tileIndex, currentTilePart, numTileParts);
+   tilePartInfo[currentTilePart] = TilePartInfo(tile_index, currentTilePart, numTileParts);
 
    return true;
 }
@@ -142,18 +142,18 @@ bool CodeStreamInfo::allocTileInfo(uint16_t ntiles)
    tileInfo = new TileInfo[numTiles];
    return true;
 }
-bool CodeStreamInfo::updateTileInfo(uint16_t tileIndex, uint8_t currentTilePart,
+bool CodeStreamInfo::updateTileInfo(uint16_t tile_index, uint8_t currentTilePart,
 									uint8_t numTileParts)
 {
    assert(tileInfo != nullptr);
-   return tileInfo[tileIndex].update(tileIndex, currentTilePart, numTileParts);
+   return tileInfo[tile_index].update(tile_index, currentTilePart, numTileParts);
 }
-TileInfo* CodeStreamInfo::getTileInfo(uint16_t tileIndex)
+TileInfo* CodeStreamInfo::getTileInfo(uint16_t tile_index)
 {
-   if(!tileInfo || tileIndex >= numTiles)
+   if(!tileInfo || tile_index >= numTiles)
 	  return nullptr;
 
-   return tileInfo + tileIndex;
+   return tileInfo + tile_index;
 }
 void CodeStreamInfo::dump(FILE* outputFileStream)
 {
@@ -204,14 +204,14 @@ void CodeStreamInfo::setMainHeaderEnd(uint64_t end)
 {
    mainHeaderEnd = end;
 }
-bool CodeStreamInfo::seekFirstTilePart(uint16_t tileIndex)
+bool CodeStreamInfo::seekFirstTilePart(uint16_t tile_index)
 {
    // no need to seek if we haven't parsed any tiles yet
    bool hasVeryFirstTilePartInfo = tileInfo && (tileInfo + 0)->hasTilePartInfo();
    if(!hasVeryFirstTilePartInfo)
 	  return true;
 
-   auto tileInfoForTile = getTileInfo(tileIndex);
+   auto tileInfoForTile = getTileInfo(tile_index);
    assert(tileInfoForTile && tileInfoForTile->numTileParts);
    // move just past SOT marker of first tile part for this tile
    if(!(stream->seek(tileInfoForTile->getTilePartInfo(0)->startPosition + MARKER_BYTES)))
@@ -492,9 +492,9 @@ bool TileLengthMarkers::writeBegin(uint16_t numTilePartsTotal)
    /* make room for tile part lengths */
    return stream_->skip(tlmMarkerBytesPerTilePart * numTilePartsTotal);
 }
-void TileLengthMarkers::push(uint16_t tileIndex, uint32_t tile_part_size)
+void TileLengthMarkers::push(uint16_t tile_index, uint32_t tile_part_size)
 {
-   push((uint8_t)markerIt_->first, TilePartLengthInfo(tileIndex, tile_part_size));
+   push((uint8_t)markerIt_->first, TilePartLengthInfo(tile_index, tile_part_size));
 }
 bool TileLengthMarkers::writeEnd(void)
 {

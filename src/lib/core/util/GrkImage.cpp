@@ -6,7 +6,7 @@ GrkImage::GrkImage()
 {
    memset((grk_image*)(this), 0, sizeof(grk_image));
    obj.wrapper = new GrkObjectWrapperImpl(this);
-   rowsPerTask = singleTileRowsPerStrip;
+   rows_per_task = singleTileRowsPerStrip;
 }
 GrkImage::~GrkImage()
 {
@@ -17,7 +17,7 @@ GrkImage::~GrkImage()
    }
    if(meta)
 	  grk_object_unref(&meta->obj);
-   grk_aligned_free(interleavedData.data_);
+   grk_aligned_free(interleaved_data.data_);
 }
 uint32_t GrkImage::width(void) const
 {
@@ -47,8 +47,8 @@ void GrkImage::copyComponent(grk_image_comp* src, grk_image_comp* dest)
    dest->h = src->h;
    dest->x0 = src->x0;
    dest->y0 = src->y0;
-   dest->Xcrg = src->Xcrg;
-   dest->Ycrg = src->Ycrg;
+   dest->crg_x = src->crg_x;
+   dest->crg_y = src->crg_y;
    dest->prec = src->prec;
    dest->sgnd = src->sgnd;
    dest->type = src->type;
@@ -79,7 +79,7 @@ bool GrkImage::componentsEqual(grk_image_comp* src, grk_image_comp* dest, bool c
 
    return (dest->dx == src->dx && dest->dy == src->dy && dest->w == src->w &&
 		   dest->stride == src->stride && dest->h == src->h && dest->x0 == src->x0 &&
-		   dest->y0 == src->y0 && dest->Xcrg == src->Xcrg && dest->Ycrg == src->Ycrg &&
+		   dest->y0 == src->y0 && dest->crg_x == src->crg_x && dest->crg_y == src->crg_y &&
 		   dest->sgnd == src->sgnd && dest->type == src->type);
 }
 GrkImage* GrkImage::create(grk_image* src, uint16_t numcmpts, grk_image_comp* cmptparms,
@@ -94,20 +94,20 @@ GrkImage* GrkImage::create(grk_image* src, uint16_t numcmpts, grk_image_comp* cm
    auto image = new GrkImage();
    image->color_space = clrspc;
    image->numcomps = numcmpts;
-   image->decompressNumComps = numcmpts;
-   image->decompressWidth = cmptparms->w;
-   image->decompressHeight = cmptparms->h;
-   image->decompressPrec = cmptparms->prec;
-   image->decompressColourSpace = clrspc;
+   image->decompress_num_comps = numcmpts;
+   image->decompress_width = cmptparms->w;
+   image->decompress_height = cmptparms->h;
+   image->decompress_prec = cmptparms->prec;
+   image->decompress_colour_space = clrspc;
    if(src)
    {
-	  image->decompressFormat = src->decompressFormat;
-	  image->forceRGB = src->forceRGB;
+	  image->decompress_fmt = src->decompress_fmt;
+	  image->force_rgb = src->force_rgb;
 	  image->upsample = src->upsample;
 	  image->precision = src->precision;
-	  image->numPrecision = src->numPrecision;
-	  image->rowsPerStrip = src->rowsPerStrip;
-	  image->packedRowBytes = src->packedRowBytes;
+	  image->num_precision = src->num_precision;
+	  image->rows_per_strip = src->rows_per_strip;
+	  image->packed_row_bytes = src->packed_row_bytes;
    }
 
    /* allocate memory for the per-component information */
@@ -271,19 +271,19 @@ void GrkImage::copyHeader(GrkImage* dest)
 	  grk_object_ref(&temp->obj);
 	  dest->meta = meta;
    }
-   dest->decompressFormat = decompressFormat;
-   dest->decompressNumComps = decompressNumComps;
-   dest->decompressWidth = decompressWidth;
-   dest->decompressHeight = decompressHeight;
-   dest->decompressPrec = decompressPrec;
-   dest->decompressColourSpace = decompressColourSpace;
-   dest->forceRGB = forceRGB;
+   dest->decompress_fmt = decompress_fmt;
+   dest->decompress_num_comps = decompress_num_comps;
+   dest->decompress_width = decompress_width;
+   dest->decompress_height = decompress_height;
+   dest->decompress_prec = decompress_prec;
+   dest->decompress_colour_space = decompress_colour_space;
+   dest->force_rgb = force_rgb;
    dest->upsample = upsample;
    dest->precision = precision;
-   dest->hasMultipleTiles = hasMultipleTiles;
-   dest->numPrecision = numPrecision;
-   dest->rowsPerStrip = rowsPerStrip;
-   dest->packedRowBytes = packedRowBytes;
+   dest->has_multiple_tiles = has_multiple_tiles;
+   dest->num_precision = num_precision;
+   dest->rows_per_strip = rows_per_strip;
+   dest->packed_row_bytes = packed_row_bytes;
 }
 bool GrkImage::allocData(grk_image_comp* comp)
 {
@@ -318,7 +318,7 @@ bool GrkImage::supportsStripCache(CodingParams* cp)
    if(!cp->wholeTileDecompress_)
 	  return false;
 
-   if(hasMultipleTiles)
+   if(has_multiple_tiles)
    {
 	  // packed tile width bits must be divisible by 8
 	  if(((cp->t_width * numcomps * comps->prec) & 7) != 0)
@@ -339,7 +339,7 @@ bool GrkImage::supportsStripCache(CodingParams* cp)
 	  return false;
 
    bool supportedFileFormat =
-	   decompressFormat == GRK_FMT_TIF || (decompressFormat == GRK_FMT_PXM && !splitByComponent);
+	   decompress_fmt == GRK_FMT_TIF || (decompress_fmt == GRK_FMT_PXM && !split_by_component);
    if(isSubsampled() || precision || upsample || needsConversionToRGB() || !supportedFileFormat ||
 	  (meta && (meta->color.palette || meta->color.icc_profile_buf)))
    {
@@ -383,62 +383,62 @@ void GrkImage::postReadHeader(CodingParams* cp)
    if(precision)
 	  prec = precision->prec;
    bool isGAorRGBA =
-	   (decompressNumComps == 4 || decompressNumComps == 2) && isOpacity(decompressNumComps - 1);
+	   (decompress_num_comps == 4 || decompress_num_comps == 2) && isOpacity(decompress_num_comps - 1);
    if(meta && meta->color.palette)
-	  decompressNumComps = meta->color.palette->num_channels;
+	  decompress_num_comps = meta->color.palette->num_channels;
    else
-	  decompressNumComps = (forceRGB && numcomps < 3) ? 3 : numcomps;
-   if(decompressFormat == GRK_FMT_PXM && decompressNumComps == 4 && !isGAorRGBA)
-	  decompressNumComps = 3;
-   uint16_t ncmp = decompressNumComps;
-   decompressWidth = comps->w;
-   if(isSubsampled() && (upsample || forceRGB))
-	  decompressWidth = x1 - x0;
-   decompressHeight = comps->h;
-   if(isSubsampled() && (upsample || forceRGB))
-	  decompressHeight = y1 - y0;
-   decompressPrec = comps->prec;
+	  decompress_num_comps = (force_rgb && numcomps < 3) ? 3 : numcomps;
+   if(decompress_fmt == GRK_FMT_PXM && decompress_num_comps == 4 && !isGAorRGBA)
+	  decompress_num_comps = 3;
+   uint16_t ncmp = decompress_num_comps;
+   decompress_width = comps->w;
+   if(isSubsampled() && (upsample || force_rgb))
+	  decompress_width = x1 - x0;
+   decompress_height = comps->h;
+   if(isSubsampled() && (upsample || force_rgb))
+	  decompress_height = y1 - y0;
+   decompress_prec = comps->prec;
    if(precision)
-	  decompressPrec = precision->prec;
-   decompressColourSpace = color_space;
+	  decompress_prec = precision->prec;
+   decompress_colour_space = color_space;
    if(needsConversionToRGB())
-	  decompressColourSpace = GRK_CLRSPC_SRGB;
-   bool tiffSubSampled = decompressFormat == GRK_FMT_TIF && isSubsampled() &&
+	  decompress_colour_space = GRK_CLRSPC_SRGB;
+   bool tiffSubSampled = decompress_fmt == GRK_FMT_TIF && isSubsampled() &&
 						 (color_space == GRK_CLRSPC_EYCC || color_space == GRK_CLRSPC_SYCC);
    if(tiffSubSampled)
    {
 	  uint32_t chroma_subsample_x = comps[1].dx;
 	  uint32_t chroma_subsample_y = comps[1].dy;
-	  uint32_t units = (decompressWidth + chroma_subsample_x - 1) / chroma_subsample_x;
-	  packedRowBytes =
-		  (uint64_t)((((uint64_t)decompressWidth * chroma_subsample_y + units * 2U) * prec + 7U) /
+	  uint32_t units = (decompress_width + chroma_subsample_x - 1) / chroma_subsample_x;
+	  packed_row_bytes =
+		  (uint64_t)((((uint64_t)decompress_width * chroma_subsample_y + units * 2U) * prec + 7U) /
 					 8U);
-	  rowsPerStrip = (uint32_t)((chroma_subsample_y * 8 * 1024 * 1024) / packedRowBytes);
+	  rows_per_strip = (uint32_t)((chroma_subsample_y * 8 * 1024 * 1024) / packed_row_bytes);
    }
    else
    {
-	  switch(decompressFormat)
+	  switch(decompress_fmt)
 	  {
 		 case GRK_FMT_BMP:
-			packedRowBytes = (((uint64_t)ncmp * decompressWidth + 3) >> 2) << 2;
+			packed_row_bytes = (((uint64_t)ncmp * decompress_width + 3) >> 2) << 2;
 			break;
 		 case GRK_FMT_PXM:
-			packedRowBytes = grk::PlanarToInterleaved<int32_t>::getPackedBytes(
-				ncmp, decompressWidth, prec > 8 ? 16 : 8);
+			packed_row_bytes = grk::PlanarToInterleaved<int32_t>::getPackedBytes(
+				ncmp, decompress_width, prec > 8 ? 16 : 8);
 			break;
 		 default:
-			packedRowBytes =
-				grk::PlanarToInterleaved<int32_t>::getPackedBytes(ncmp, decompressWidth, prec);
+			packed_row_bytes =
+				grk::PlanarToInterleaved<int32_t>::getPackedBytes(ncmp, decompress_width, prec);
 			break;
 	  }
-	  rowsPerStrip = hasMultipleTiles ? ceildivpow2(cp->t_height, cp->coding_params_.dec_.reduce_)
+	  rows_per_strip = has_multiple_tiles ? ceildivpow2(cp->t_height, cp->coding_params_.dec_.reduce_)
 									  : singleTileRowsPerStrip;
    }
-   if(rowsPerStrip > height())
-	  rowsPerStrip = height();
+   if(rows_per_strip > height())
+	  rows_per_strip = height();
 
    if(meta && meta->color.icc_profile_buf && meta->color.icc_profile_len &&
-	  decompressFormat == GRK_FMT_PNG)
+	  decompress_fmt == GRK_FMT_PNG)
    {
 	  // extract the description tag from the ICC header,
 	  // and use this tag as the profile name
@@ -506,7 +506,7 @@ bool GrkImage::applyColour(void)
 }
 void GrkImage::apply_channel_definition()
 {
-   if(channelDefinitionApplied_)
+   if(channel_definition_applied_)
 	  return;
 
    auto info = meta->color.channel_definition->descriptions;
@@ -560,7 +560,7 @@ void GrkImage::apply_channel_definition()
 		 }
 	  }
    }
-   channelDefinitionApplied_ = true;
+   channel_definition_applied_ = true;
 }
 bool GrkImage::check_color(void)
 {
@@ -712,7 +712,7 @@ bool GrkImage::check_color(void)
 }
 bool GrkImage::apply_palette_clr()
 {
-   if(paletteApplied_)
+   if(palette_applied_)
 	  return true;
 
    auto clr = &meta->color;
@@ -849,7 +849,7 @@ bool GrkImage::apply_palette_clr()
    delete[] oldComps;
    comps = newComps;
    numcomps = num_channels;
-   paletteApplied_ = true;
+   palette_applied_ = true;
 
    return true;
 }
@@ -857,7 +857,7 @@ bool GrkImage::allocCompositeData(void)
 {
    // only allocate data if there are multiple tiles. Otherwise, the single tile data
    // will simply be transferred to the output image
-   if(!hasMultipleTiles)
+   if(!has_multiple_tiles)
 	  return true;
 
    for(uint32_t i = 0; i < numcomps; i++)
@@ -908,8 +908,8 @@ void GrkImage::transferDataTo(GrkImage* dest)
 	  srcComp->data = nullptr;
    }
 
-   dest->interleavedData.data_ = interleavedData.data_;
-   interleavedData.data_ = nullptr;
+   dest->interleaved_data.data_ = interleaved_data.data_;
+   interleaved_data.data_ = nullptr;
 }
 
 /**
@@ -964,7 +964,7 @@ void GrkImage::transferDataFrom(const Tile* tile_src_data)
 
 bool GrkImage::composite(const GrkImage* srcImg)
 {
-   return interleavedData.data_ ? compositeInterleaved(srcImg) : compositePlanar(srcImg);
+   return interleaved_data.data_ ? compositeInterleaved(srcImg) : compositePlanar(srcImg);
 }
 
 /**
@@ -997,7 +997,7 @@ bool GrkImage::compositeInterleaved(const Tile* src, uint32_t yBegin, uint32_t y
 	  }
    }
    uint8_t prec = 0;
-   switch(decompressFormat)
+   switch(decompress_fmt)
    {
 	  case GRK_FMT_TIF:
 		 prec = destComp->prec;
@@ -1015,7 +1015,7 @@ bool GrkImage::compositeInterleaved(const Tile* src, uint32_t yBegin, uint32_t y
 	   grk::PlanarToInterleaved<int32_t>::getPackedBytes(src->numcomps_, destWin.x0, prec);
    auto destIndex = (uint64_t)destWin.y0 * destStride + (uint64_t)destx0;
    auto iter = InterleaverFactory<int32_t>::makeInterleaver(
-	   prec == 16 && decompressFormat != GRK_FMT_TIF ? packer16BitBE : prec);
+	   prec == 16 && decompress_fmt != GRK_FMT_TIF ? packer16BitBE : prec);
    if(!iter)
 	  return false;
    int32_t const* planes[grk::maxNumPackComponents];
@@ -1025,7 +1025,7 @@ bool GrkImage::compositeInterleaved(const Tile* src, uint32_t yBegin, uint32_t y
 	  planes[i] = b.buf_ + yBegin * b.stride_;
    }
    iter->interleave(const_cast<int32_t**>(planes), src->numcomps_,
-					interleavedData.data_ + destIndex, destWin.width(),
+					interleaved_data.data_ + destIndex, destWin.width(),
 					srcComp->getWindow()->getResWindowBufferHighestStride(), destStride,
 					destWin.height(), 0);
    delete iter;
@@ -1061,7 +1061,7 @@ bool GrkImage::compositeInterleaved(const GrkImage* src)
 	  }
    }
    uint8_t prec = 0;
-   switch(decompressFormat)
+   switch(decompress_fmt)
    {
 	  case GRK_FMT_TIF:
 		 prec = destComp->prec;
@@ -1083,7 +1083,7 @@ bool GrkImage::compositeInterleaved(const GrkImage* src)
    int32_t const* planes[grk::maxNumPackComponents];
    for(uint16_t i = 0; i < src->numcomps; ++i)
 	  planes[i] = (src->comps + i)->data;
-   iter->interleave(const_cast<int32_t**>(planes), src->numcomps, interleavedData.data_ + destIndex,
+   iter->interleave(const_cast<int32_t**>(planes), src->numcomps, interleaved_data.data_ + destIndex,
 					destWin.width(), srcComp->stride, destStride, destWin.height(), 0);
    delete iter;
 

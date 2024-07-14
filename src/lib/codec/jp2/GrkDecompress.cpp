@@ -406,7 +406,7 @@ bool GrkDecompress::parsePrecision(const char* option, grk_decompress_parameters
 	  free(parameters->precision);
 	  parameters->precision = nullptr;
    }
-   parameters->numPrecision = 0U;
+   parameters->num_precision = 0U;
 
    for(;;)
    {
@@ -462,7 +462,7 @@ bool GrkDecompress::parsePrecision(const char* option, grk_decompress_parameters
 		 }
 		 else
 		 {
-			uint32_t new_size = parameters->numPrecision + 1U;
+			uint32_t new_size = parameters->num_precision + 1U;
 			grk_precision* new_prec;
 
 			if(new_size == 0U)
@@ -483,19 +483,19 @@ bool GrkDecompress::parsePrecision(const char* option, grk_decompress_parameters
 			parameters->precision = new_prec;
 		 }
 
-		 parameters->precision[parameters->numPrecision].prec = (uint8_t)prec;
+		 parameters->precision[parameters->num_precision].prec = (uint8_t)prec;
 		 switch(mode)
 		 {
 			case 'C':
-			   parameters->precision[parameters->numPrecision].mode = GRK_PREC_MODE_CLIP;
+			   parameters->precision[parameters->num_precision].mode = GRK_PREC_MODE_CLIP;
 			   break;
 			case 'S':
-			   parameters->precision[parameters->numPrecision].mode = GRK_PREC_MODE_SCALE;
+			   parameters->precision[parameters->num_precision].mode = GRK_PREC_MODE_SCALE;
 			   break;
 			default:
 			   break;
 		 }
-		 parameters->numPrecision++;
+		 parameters->num_precision++;
 
 		 remaining = strchr(remaining, ',');
 		 if(remaining == nullptr)
@@ -664,15 +664,15 @@ GrkRC GrkDecompress::parseCommandLine(int argc, char** argv, DecompressInitParam
 		 spdlog::set_default_logger(file_logger);
 	  }
 
-	  initParams->transferExifTags = transferExifTagsArg.isSet();
+	  initParams->transfer_exif_tags = transferExifTagsArg.isSet();
 #ifndef GROK_HAVE_EXIFTOOL
-	  if(initParams->transferExifTags)
+	  if(initParams->transfer_exif_tags)
 	  {
 		 spdlog::warn("Transfer of EXIF tags not supported. Transfer can be achieved by "
 					  "directly calling");
 		 spdlog::warn("exiftool after decompression as follows: ");
 		 spdlog::warn("exiftool -TagsFromFile $SOURCE_FILE -all:all>all:all $DEST_FILE");
-		 initParams->transferExifTags = false;
+		 initParams->transfer_exif_tags = false;
 	  }
 #endif
 	  parameters->io_xml = xmlArg.isSet();
@@ -694,7 +694,7 @@ GrkRC GrkDecompress::parseCommandLine(int argc, char** argv, DecompressInitParam
 			parameters->compression = comp;
 	  }
 	  if(compressionLevelArg.isSet())
-		 parameters->compressionLevel = compressionLevelArg.getValue();
+		 parameters->compression_level = compressionLevelArg.getValue();
 	  // process
 	  if(inputFileArg.isSet())
 	  {
@@ -845,14 +845,14 @@ GrkRC GrkDecompress::parseCommandLine(int argc, char** argv, DecompressInitParam
 	  if(layerArg.isSet())
 		 parameters->core.layers_to_decompress_ = layerArg.getValue();
 	  if(randomAccessArg.isSet())
-		 parameters->core.randomAccessFlags_ = randomAccessArg.getValue();
-	  parameters->singleTileDecompress = tileArg.isSet();
+		 parameters->core.random_access_flags_ = randomAccessArg.getValue();
+	  parameters->single_tile_decompress = tileArg.isSet();
 	  if(tileArg.isSet())
-		 parameters->tileIndex = (uint16_t)tileArg.getValue();
+		 parameters->tile_index = (uint16_t)tileArg.getValue();
 	  if(precisionArg.isSet() && !parsePrecision(precisionArg.getValue().c_str(), parameters))
 		 return GrkRCParseArgsFailed;
 	  if(numThreadsArg.isSet())
-		 parameters->numThreads = numThreadsArg.getValue();
+		 parameters->num_threads = numThreadsArg.getValue();
 	  if(decodeRegionArg.isSet())
 	  {
 		 size_t size_optarg = (size_t)strlen(decodeRegionArg.getValue().c_str()) + 1U;
@@ -873,9 +873,9 @@ GrkRC GrkDecompress::parseCommandLine(int argc, char** argv, DecompressInitParam
 	  if(repetitionsArg.isSet())
 		 parameters->repeats = repetitionsArg.getValue();
 	  if(kernelBuildOptionsArg.isSet())
-		 parameters->kernelBuildOptions = kernelBuildOptionsArg.getValue();
+		 parameters->kernel_build_options = kernelBuildOptionsArg.getValue();
 	  if(deviceIdArg.isSet())
-		 parameters->deviceId = deviceIdArg.getValue();
+		 parameters->device_id = deviceIdArg.getValue();
 	  if(durationArg.isSet())
 		 parameters->duration = durationArg.getValue();
    }
@@ -931,9 +931,9 @@ void GrkDecompress::setDefaultParams(grk_decompress_parameters* parameters)
    if(parameters)
    {
 	  grk_decompress_set_default_params(parameters);
-	  parameters->deviceId = 0;
+	  parameters->device_id = 0;
 	  parameters->repeats = 1;
-	  parameters->compressionLevel = GRK_DECOMPRESS_COMPRESSION_LEVEL_DEFAULT;
+	  parameters->compression_level = GRK_DECOMPRESS_COMPRESSION_LEVEL_DEFAULT;
    }
 }
 
@@ -969,13 +969,13 @@ int GrkDecompress::decompress(const std::string& fileName, DecompressInitParams*
    info.user_data = this;
    info.cod_format =
 	   info.cod_format != GRK_FMT_UNK ? info.cod_format : info.decompressor_parameters->cod_format;
-   info.header_info.decompressFormat = info.cod_format;
-   info.header_info.forceRGB = info.decompressor_parameters->force_rgb;
+   info.header_info.decompress_fmt = info.cod_format;
+   info.header_info.force_rgb = info.decompressor_parameters->force_rgb;
    info.header_info.upsample = info.decompressor_parameters->upsample;
    info.header_info.precision = info.decompressor_parameters->precision;
-   info.header_info.numPrecision = info.decompressor_parameters->numPrecision;
-   info.header_info.splitByComponent = info.decompressor_parameters->split_pnm;
-   info.header_info.singleTileDecompress = info.decompressor_parameters->singleTileDecompress;
+   info.header_info.num_precision = info.decompressor_parameters->num_precision;
+   info.header_info.split_by_component = info.decompressor_parameters->split_pnm;
+   info.header_info.single_tile_decompress = info.decompressor_parameters->single_tile_decompress;
    if(preProcess(&info))
    {
 	  grk_object_unref(info.codec);
@@ -987,8 +987,8 @@ int GrkDecompress::decompress(const std::string& fileName, DecompressInitParams*
 	  return 0;
    }
 #ifdef GROK_HAVE_EXIFTOOL
-   if(initParams->transferExifTags && initParams->parameters.decod_format == GRK_CODEC_JP2)
-	  transferExifTags(initParams->parameters.infile, initParams->parameters.outfile);
+   if(initParams->transfer_exif_tags && initParams->parameters.decod_format == GRK_CODEC_JP2)
+	  transfer_exif_tags(initParams->parameters.infile, initParams->parameters.outfile);
 #endif
    grk_object_unref(info.codec);
    info.codec = nullptr;
@@ -1014,12 +1014,12 @@ GrkRC GrkDecompress::pluginMain(int argc, char** argv, DecompressInitParams* ini
 #endif
    initParams->initialized = true;
    // loads plugin but does not actually create codec
-   grk_initialize(initParams->pluginPath, initParams->parameters.numThreads,
+   grk_initialize(initParams->pluginPath, initParams->parameters.num_threads,
 				  initParams->parameters.verbose_);
 
    // create codec
    grk_plugin_init_info initInfo;
-   initInfo.deviceId = initParams->parameters.deviceId;
+   initInfo.device_id = initParams->parameters.device_id;
    initInfo.verbose = initParams->parameters.verbose_;
    if(!grk_plugin_init(initInfo))
 	  goto cleanup;
@@ -1177,14 +1177,14 @@ bool GrkDecompress::encodeInit(grk_plugin_decompress_callback_info* info)
 							 : info->output_file_name;
    auto cod_format = info->cod_format != GRK_FMT_UNK ? info->cod_format : parameters->cod_format;
    auto outfileStr = outfile ? std::string(outfile) : "";
-   uint32_t compressionLevel = 0;
+   uint32_t compression_level = 0;
    if(cod_format == GRK_FMT_TIF)
-	  compressionLevel = parameters->compression;
+	  compression_level = parameters->compression;
    else if(cod_format == GRK_FMT_JPG || cod_format == GRK_FMT_PNG)
-	  compressionLevel = parameters->compressionLevel;
-   if(!imageFormat->encodeInit(info->image, outfileStr, compressionLevel,
-							   info->decompressor_parameters->numThreads
-								   ? info->decompressor_parameters->numThreads
+	  compression_level = parameters->compression_level;
+   if(!imageFormat->encodeInit(info->image, outfileStr, compression_level,
+							   info->decompressor_parameters->num_threads
+								   ? info->decompressor_parameters->num_threads
 								   : std::thread::hardware_concurrency()))
    {
 	  spdlog::error("Outfile {} not generated", outfileStr);
@@ -1374,7 +1374,7 @@ int GrkDecompress::preProcess(grk_plugin_decompress_callback_info* info)
 	  return false;
 
    // decompress all tiles
-   if(!parameters->singleTileDecompress)
+   if(!parameters->single_tile_decompress)
    {
 	  if(!(grk_decompress(info->codec, info->tile)))
 		 goto cleanup;
@@ -1382,7 +1382,7 @@ int GrkDecompress::preProcess(grk_plugin_decompress_callback_info* info)
    // or, decompress one particular tile
    else
    {
-	  if(!grk_decompress_tile(info->codec, parameters->tileIndex))
+	  if(!grk_decompress_tile(info->codec, parameters->tile_index))
 	  {
 		 spdlog::error("grk_decompress: failed to decompress tile");
 		 goto cleanup;

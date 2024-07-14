@@ -404,7 +404,7 @@ mct::mct(Tile* tile, GrkImage* image, TileCodingParams* tcp, StripCache* stripCa
  */
 void mct::decompress_dc_shift_irrev(FlowComponent* flow, uint16_t compno)
 {
-   ScheduleInfo info(tile_, flow, stripCache_, image_->rowsPerTask);
+   ScheduleInfo info(tile_, flow, stripCache_, image_->rows_per_task);
    info.compno = compno;
    genShift(compno, 1, info.shiftInfo);
    HWY_DYNAMIC_DISPATCH(hwy_decompress_dc_shift_irrev)(info);
@@ -414,7 +414,7 @@ void mct::decompress_dc_shift_irrev(FlowComponent* flow, uint16_t compno)
  */
 void mct::decompress_dc_shift_rev(FlowComponent* flow, uint16_t compno)
 {
-   ScheduleInfo info(tile_, flow, stripCache_, image_->rowsPerTask);
+   ScheduleInfo info(tile_, flow, stripCache_, image_->rows_per_task);
    info.compno = compno;
    genShift(compno, 1, info.shiftInfo);
    HWY_DYNAMIC_DISPATCH(hwy_decompress_dc_shift_rev)(info);
@@ -426,7 +426,7 @@ void mct::decompress_dc_shift_rev(FlowComponent* flow, uint16_t compno)
  */
 void mct::decompress_irrev(FlowComponent* flow)
 {
-   ScheduleInfo info(tile_, flow, stripCache_, image_->rowsPerTask);
+   ScheduleInfo info(tile_, flow, stripCache_, image_->rows_per_task);
    hwy::DisableTargets(uint32_t(~HWY_SCALAR));
    genShift(1, info.shiftInfo);
    HWY_DYNAMIC_DISPATCH(hwy_decompress_irrev)
@@ -438,7 +438,7 @@ void mct::decompress_irrev(FlowComponent* flow)
  */
 void mct::decompress_rev(FlowComponent* flow)
 {
-   ScheduleInfo info(tile_, flow, stripCache_, image_->rowsPerTask);
+   ScheduleInfo info(tile_, flow, stripCache_, image_->rows_per_task);
    genShift(1, info.shiftInfo);
    HWY_DYNAMIC_DISPATCH(hwy_decompress_rev)
    (info);

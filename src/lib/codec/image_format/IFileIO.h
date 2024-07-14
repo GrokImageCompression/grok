@@ -31,7 +31,7 @@ struct GrkIOBuf : public grk_io_buf
 	  data_ = data;
 	  offset_ = offset;
 	  len_ = dataLen;
-	  allocLen_ = allocLen;
+	  alloc_len_ = allocLen;
 	  pooled_ = pooled;
    }
    explicit GrkIOBuf(const grk_io_buf rhs)
@@ -39,7 +39,7 @@ struct GrkIOBuf : public grk_io_buf
 	  data_ = rhs.data_;
 	  offset_ = rhs.offset_;
 	  len_ = rhs.len_;
-	  allocLen_ = rhs.allocLen_;
+	  alloc_len_ = rhs.alloc_len_;
 	  pooled_ = rhs.pooled_;
    }
    bool alloc(size_t len)
@@ -50,7 +50,7 @@ struct GrkIOBuf : public grk_io_buf
 	  {
 		 // printf("Allocated  %p\n", data);
 		 len_ = len;
-		 allocLen_ = len;
+		 alloc_len_ = len;
 	  }
 
 	  return data_ != nullptr;

@@ -449,45 +449,45 @@ bool CodeStreamDecompress::read_poc(uint8_t* headerData, uint16_t header_size)
    {
 	  auto current_prog = tcp->progressionOrderChange + i;
 	  /* RSpoc_i */
-	  grk_read(headerData, &current_prog->resS);
+	  grk_read(headerData, &current_prog->res_s);
 	  ++headerData;
-	  if(current_prog->resS >= maxNumResLevels)
+	  if(current_prog->res_s >= maxNumResLevels)
 	  {
 		 Logger::logger_.error("read_poc: invalid POC start resolution number %u",
-							   current_prog->resS);
+							   current_prog->res_s);
 		 return false;
 	  }
 	  /* CSpoc_i */
-	  grk_read<uint16_t>(headerData, &(current_prog->compS), componentRoom);
+	  grk_read<uint16_t>(headerData, &(current_prog->comp_s), componentRoom);
 	  headerData += componentRoom;
-	  if(current_prog->compS > image->numcomps)
+	  if(current_prog->comp_s > image->numcomps)
 	  {
-		 Logger::logger_.error("read_poc: invalid POC start component %u", current_prog->compS);
+		 Logger::logger_.error("read_poc: invalid POC start component %u", current_prog->comp_s);
 		 return false;
 	  }
 	  /* LYEpoc_i */
-	  grk_read(headerData, &(current_prog->layE));
+	  grk_read(headerData, &(current_prog->lay_e));
 	  /* make sure layer end is in acceptable bounds */
-	  current_prog->layE = std::min<uint16_t>(current_prog->layE, tcp->max_layers_);
+	  current_prog->lay_e = std::min<uint16_t>(current_prog->lay_e, tcp->max_layers_);
 	  headerData += 2;
 	  /* REpoc_i */
-	  grk_read(headerData, &current_prog->resE);
+	  grk_read(headerData, &current_prog->res_e);
 	  ++headerData;
-	  current_prog->resE = std::min<uint8_t>(current_prog->resE, maxNumResLevels);
-	  if(current_prog->resE <= current_prog->resS)
+	  current_prog->res_e = std::min<uint8_t>(current_prog->res_e, maxNumResLevels);
+	  if(current_prog->res_e <= current_prog->res_s)
 	  {
-		 Logger::logger_.error("read_poc: invalid POC end resolution %u", current_prog->resE);
+		 Logger::logger_.error("read_poc: invalid POC end resolution %u", current_prog->res_e);
 		 return false;
 	  }
 	  /* CEpoc_i */
-	  grk_read<uint16_t>(headerData, &(current_prog->compE), componentRoom);
+	  grk_read<uint16_t>(headerData, &(current_prog->comp_e), componentRoom);
 	  headerData += componentRoom;
-	  current_prog->compE = std::min<uint16_t>(current_prog->compE, numComps);
-	  if(current_prog->compE <= current_prog->compS)
+	  current_prog->comp_e = std::min<uint16_t>(current_prog->comp_e, numComps);
+	  if(current_prog->comp_e <= current_prog->comp_s)
 	  {
 		 Logger::logger_.error("read_poc: invalid POC end component (%u) : end component is "
 							   "less than or equal to POC start component (%u)",
-							   current_prog->compE, current_prog->compS);
+							   current_prog->comp_e, current_prog->comp_s);
 		 return false;
 	  }
 	  /* Ppoc_i */
@@ -524,10 +524,10 @@ bool CodeStreamDecompress::read_crg(uint8_t* headerData, uint16_t header_size)
    {
 	  auto comp = getHeaderImage()->comps + i;
 	  // Xcrg_i
-	  grk_read<uint16_t>(headerData, &comp->Xcrg);
+	  grk_read<uint16_t>(headerData, &comp->crg_x);
 	  headerData += sizeof(uint16_t);
 	  // Xcrg_i
-	  grk_read<uint16_t>(headerData, &comp->Ycrg);
+	  grk_read<uint16_t>(headerData, &comp->crg_y);
 	  headerData += sizeof(uint16_t);
    }
    return true;
@@ -962,7 +962,7 @@ bool CodeStreamDecompress::read_tlm(uint8_t* headerData, uint16_t header_size)
    bool rc = cp_.tlm_markers->read(headerData, header_size);
 
    // disable
-   if(rc && (cp_.coding_params_.dec_.randomAccessFlags_ & GRK_RANDOM_ACCESS_TLM) == 0)
+   if(rc && (cp_.coding_params_.dec_.random_access_flags_ & GRK_RANDOM_ACCESS_TLM) == 0)
 	  cp_.tlm_markers->invalidate();
 
    return rc;
@@ -2002,7 +2002,7 @@ bool CodeStreamDecompress::read_siz(uint8_t* headerData, uint16_t header_size)
    if(rc)
    {
 	  uint16_t numTilesToDecompress = (uint16_t)(cp_.t_grid_height * cp_.t_grid_width);
-	  headerImage_->hasMultipleTiles = numTilesToDecompress > 1;
+	  headerImage_->has_multiple_tiles = numTilesToDecompress > 1;
    }
 
    return rc;
@@ -2039,7 +2039,7 @@ bool CodeStreamDecompress::read_com(uint8_t* headerData, uint16_t header_size)
    uint16_t commentType;
    grk_read<uint16_t>(headerData, &commentType);
    auto numComments = cp_.num_comments;
-   cp_.isBinaryComment[numComments] = (commentType == 0);
+   cp_.is_binary_comment[numComments] = (commentType == 0);
    if(commentType > 1)
    {
 	  Logger::logger_.warn(
@@ -2051,7 +2051,7 @@ bool CodeStreamDecompress::read_com(uint8_t* headerData, uint16_t header_size)
    headerData += 2;
    uint16_t commentSize = (uint16_t)(header_size - 2);
    size_t commentSizeToAlloc = commentSize;
-   if(!cp_.isBinaryComment[numComments])
+   if(!cp_.is_binary_comment[numComments])
 	  commentSizeToAlloc++;
    cp_.comment[numComments] = (char*)new uint8_t[commentSizeToAlloc];
    if(!cp_.comment[numComments])
@@ -2064,7 +2064,7 @@ bool CodeStreamDecompress::read_com(uint8_t* headerData, uint16_t header_size)
    cp_.comment_len[numComments] = commentSize;
 
    // make null-terminated string
-   if(!cp_.isBinaryComment[numComments])
+   if(!cp_.is_binary_comment[numComments])
 	  cp_.comment[numComments][commentSize] = 0;
    cp_.num_comments++;
    return true;

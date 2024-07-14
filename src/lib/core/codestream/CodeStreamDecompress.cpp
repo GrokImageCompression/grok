@@ -120,14 +120,14 @@ GrkImage* CodeStreamDecompress::getCompositeImage()
 {
    return tileCache_->getComposite();
 }
-TileProcessor* CodeStreamDecompress::allocateProcessor(uint16_t tileIndex)
+TileProcessor* CodeStreamDecompress::allocateProcessor(uint16_t tile_index)
 {
-   auto tileCache = tileCache_->get(tileIndex);
+   auto tileCache = tileCache_->get(tile_index);
    auto tileProcessor = tileCache ? tileCache->processor : nullptr;
    if(!tileProcessor)
    {
-	  tileProcessor = new TileProcessor(tileIndex, this, stream_, false, &stripCache_);
-	  tileCache_->put(tileIndex, tileProcessor);
+	  tileProcessor = new TileProcessor(tile_index, this, stream_, false, &stripCache_);
+	  tileCache_->put(tile_index, tileProcessor);
    }
    currentTileProcessor_ = tileProcessor;
 
@@ -150,9 +150,9 @@ DecompressorState* CodeStreamDecompress::getDecompressorState(void)
 {
    return &decompressorState_;
 }
-GrkImage* CodeStreamDecompress::getImage(uint16_t tileIndex)
+GrkImage* CodeStreamDecompress::getImage(uint16_t tile_index)
 {
-   auto entry = tileCache_->get(tileIndex);
+   auto entry = tileCache_->get(tile_index);
    return entry ? entry->processor->getImage() : nullptr;
 }
 std::vector<GrkImage*> CodeStreamDecompress::getAllImages(void)
@@ -185,18 +185,18 @@ bool CodeStreamDecompress::readHeader(grk_header_info* header_info)
 		 return false;
 	  }
 	  if(header_info)
-		 headerImage_->hasMultipleTiles =
-			 headerImage_->hasMultipleTiles && !header_info->singleTileDecompress;
+		 headerImage_->has_multiple_tiles =
+			 headerImage_->has_multiple_tiles && !header_info->single_tile_decompress;
 	  auto composite = getCompositeImage();
 	  headerImage_->copyHeader(composite);
 	  if(header_info)
 	  {
-		 composite->decompressFormat = header_info->decompressFormat;
-		 composite->forceRGB = header_info->forceRGB;
+		 composite->decompress_fmt = header_info->decompress_fmt;
+		 composite->force_rgb = header_info->force_rgb;
 		 composite->upsample = header_info->upsample;
 		 composite->precision = header_info->precision;
-		 composite->numPrecision = header_info->numPrecision;
-		 composite->splitByComponent = header_info->splitByComponent;
+		 composite->num_precision = header_info->num_precision;
+		 composite->split_by_component = header_info->split_by_component;
 	  }
    }
    if(header_info)
@@ -236,7 +236,7 @@ bool CodeStreamDecompress::readHeader(grk_header_info* header_info)
 	  {
 		 header_info->comment[i] = cp_.comment[i];
 		 header_info->comment_len[i] = cp_.comment_len[i];
-		 header_info->isBinaryComment[i] = cp_.isBinaryComment[i];
+		 header_info->is_binary_comment[i] = cp_.is_binary_comment[i];
 	  }
    }
    return true;
@@ -357,8 +357,8 @@ void CodeStreamDecompress::init(grk_decompress_core_params* parameters)
 
    cp_.coding_params_.dec_.layers_to_decompress_ = parameters->layers_to_decompress_;
    cp_.coding_params_.dec_.reduce_ = parameters->reduce;
-   cp_.coding_params_.dec_.randomAccessFlags_ = parameters->randomAccessFlags_;
-   tileCache_->setStrategy(parameters->tileCacheStrategy);
+   cp_.coding_params_.dec_.random_access_flags_ = parameters->random_access_flags_;
+   tileCache_->setStrategy(parameters->tile_cache_strategy);
 
    ioBufferCallback = parameters->io_buffer_callback;
    ioUserData = parameters->io_user_data;
@@ -371,10 +371,10 @@ bool CodeStreamDecompress::decompress(grk_plugin_tile* tile)
 
    return decompressExec();
 }
-bool CodeStreamDecompress::decompressTile(uint16_t tileIndex)
+bool CodeStreamDecompress::decompressTile(uint16_t tile_index)
 {
    // 1. check if tile has already been decompressed
-   auto entry = tileCache_->get(tileIndex);
+   auto entry = tileCache_->get(tile_index);
    if(entry && entry->processor && entry->processor->getImage())
 	  return true;
 
@@ -392,16 +392,16 @@ bool CodeStreamDecompress::decompressTile(uint16_t tileIndex)
    }
 
    auto compositeImage = getCompositeImage();
-   if(tileIndex >= numTilesToDecompress)
+   if(tile_index >= numTilesToDecompress)
    {
-	  Logger::logger_.error("Tile index %u is greater than maximum tile index %u", tileIndex,
+	  Logger::logger_.error("Tile index %u is greater than maximum tile index %u", tile_index,
 							numTilesToDecompress - 1);
 	  return false;
    }
 
    /* Compute the dimension of the desired tile*/
-   uint32_t tile_x = tileIndex % cp_.t_grid_width;
-   uint32_t tile_y = tileIndex / cp_.t_grid_width;
+   uint32_t tile_x = tile_index % cp_.t_grid_width;
+   uint32_t tile_y = tile_index / cp_.t_grid_width;
 
    auto imageBounds =
 	   grk_rect32(compositeImage->x0, compositeImage->y0, compositeImage->x1, compositeImage->y1);
@@ -420,7 +420,7 @@ bool CodeStreamDecompress::decompressTile(uint16_t tileIndex)
 	  Logger::logger_.warn("Decompress bounds <%u,%u,%u,%u> do not overlap with requested tile %u. "
 						   "Decompressing full image",
 						   imageBounds.x0, imageBounds.y0, imageBounds.x1, imageBounds.y1,
-						   tileIndex);
+						   tile_index);
 	  croppedImageBounds = imageBounds;
    }
 
@@ -436,7 +436,7 @@ bool CodeStreamDecompress::decompressTile(uint16_t tileIndex)
 	  comp->h = reducedCompBounds.height();
    }
    compositeImage->postReadHeader(&cp_);
-   decompressorState_.tilesToDecompress_.schedule(tileIndex);
+   decompressorState_.tilesToDecompress_.schedule(tile_index);
 
    // reset tile part numbers, in case we are re-using the same codec object
    // from previous decompress
@@ -472,10 +472,10 @@ bool CodeStreamDecompress::decompressTiles(void)
 	  if(numTilesToDecompress == 1)
 	  {
 		 numStrips =
-			 (outputImage_->height() + outputImage_->rowsPerStrip - 1) / outputImage_->rowsPerStrip;
+			 (outputImage_->height() + outputImage_->rows_per_strip - 1) / outputImage_->rows_per_strip;
 	  }
 	  stripCache_.init((uint32_t)ExecSingleton::get().num_workers(), cp_.t_grid_width, numStrips,
-					   numTilesToDecompress > 1 ? cp_.t_height : outputImage_->rowsPerStrip,
+					   numTilesToDecompress > 1 ? cp_.t_height : outputImage_->rows_per_strip,
 					   cp_.coding_params_.dec_.reduce_, outputImage_, ioBufferCallback, ioUserData,
 					   grkRegisterReclaimCallback_);
    }
@@ -555,7 +555,7 @@ bool CodeStreamDecompress::decompressTiles(void)
 			{
 			   numTilesDecompressed++;
 			   auto img = processor->getImage();
-			   if(outputImage_->hasMultipleTiles && img)
+			   if(outputImage_->has_multiple_tiles && img)
 			   {
 				  if(outputImage_->supportsStripCache(&cp_))
 				  {
@@ -799,7 +799,7 @@ bool CodeStreamDecompress::decompressExec(void)
 
 bool CodeStreamDecompress::createOutputImage(void)
 {
-   if(!headerImage_->hasMultipleTiles)
+   if(!headerImage_->has_multiple_tiles)
    {
 	  if(outputImage_)
 		 grk_object_unref(&outputImage_->obj);
@@ -843,9 +843,9 @@ bool CodeStreamDecompress::decompressTile(void)
 							"since first tile SOT has not been detected");
 	  return false;
    }
-   outputImage_->hasMultipleTiles = false;
-   uint16_t tileIndex = decompressorState_.tilesToDecompress_.getSingle();
-   auto tileCache = tileCache_->get(tileIndex);
+   outputImage_->has_multiple_tiles = false;
+   uint16_t tile_index = decompressorState_.tilesToDecompress_.getSingle();
+   auto tileCache = tileCache_->get(tile_index);
    auto tileProcessor = tileCache ? tileCache->processor : nullptr;
    if(!tileCache || !tileCache->processor->getImage())
    {
@@ -858,7 +858,7 @@ bool CodeStreamDecompress::decompressTile(void)
 			// otherwise skip non-scheduled by reading tile headers
 			if(!codeStreamInfo->allocTileInfo((uint16_t)(cp_.t_grid_width * cp_.t_grid_height)))
 			   return false;
-			if(!codeStreamInfo->seekFirstTilePart(tileIndex))
+			if(!codeStreamInfo->seekFirstTilePart(tile_index))
 			   return false;
 		 }
 	  }
@@ -886,9 +886,9 @@ bool CodeStreamDecompress::decompressTile(void)
 	  if(outputImage_->supportsStripCache(&cp_))
 	  {
 		 uint32_t numStrips =
-			 (outputImage_->height() + outputImage_->rowsPerStrip - 1) / outputImage_->rowsPerStrip;
+			 (outputImage_->height() + outputImage_->rows_per_strip - 1) / outputImage_->rows_per_strip;
 		 stripCache_.init((uint32_t)ExecSingleton::get().num_workers(), 1, numStrips,
-						  outputImage_->rowsPerStrip, cp_.coding_params_.dec_.reduce_, outputImage_,
+						  outputImage_->rows_per_strip, cp_.coding_params_.dec_.reduce_, outputImage_,
 						  ioBufferCallback, ioUserData, grkRegisterReclaimCallback_);
 	  }
 

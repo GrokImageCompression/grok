@@ -231,7 +231,7 @@ struct PacketIter
 	@param first_poc_tile_part true for first POC tile part
 	@param tppos 	The position of the tile part flag in the progression order
 	*/
-   void enableTilePartGeneration(uint32_t pino, bool first_poc_tile_part, uint32_t tppos);
+   void enable_tile_part_generation(uint32_t pino, bool first_poc_tile_part, uint32_t tppos);
 
    void genPrecinctInfo();
    void genPrecinctInfo(PiComp* comp, PiResolution* res, uint8_t resNumber);

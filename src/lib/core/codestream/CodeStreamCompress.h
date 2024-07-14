@@ -32,7 +32,7 @@ class CodeStreamCompress : public CodeStream, public ICodeStreamCompress
    virtual ~CodeStreamCompress();
 
    static char* convertProgressionOrder(GRK_PROG_ORDER prg_order);
-   static uint16_t getPocSize(uint32_t numComponents, uint32_t l_nb_poc);
+   static uint16_t getPocSize(uint32_t num_components, uint32_t l_nb_poc);
 
    bool start(void);
    bool init(grk_cparameters* p_param, GrkImage* p_image);
@@ -118,12 +118,12 @@ class CodeStreamCompress : public CodeStream, public ICodeStreamCompress
    /**
 	* Writes the QCC marker (quantization component)
 	*
-	* @param 		tileIndex 	current tile index
+	* @param 		tile_index 	current tile index
 	* @param       comp_no     the index of the component to output.
 	* @param       stream      buffered stream.
 
 	*/
-   bool write_qcc(uint16_t tileIndex, uint32_t comp_no, BufferedStream* stream);
+   bool write_qcc(uint16_t tile_index, uint32_t comp_no, BufferedStream* stream);
 
    bool write_qcc(uint32_t comp_no);
 
@@ -300,14 +300,14 @@ class CodeStreamCompress : public CodeStream, public ICodeStreamCompress
 	*
 	* @param       progressions          progression orders.
 	* @param       numProgressions       number of progression orders.
-	* @param       numResolutions        number of resolutions.
+	* @param       num_resolutions        number of resolutions.
 	* @param       numcomps              number of components
 	* @param       numlayers             number of layers.
 	*
 	* @return      true if the pocs are valid.
 	*/
    bool validateProgressionOrders(const grk_progression* progressions, uint32_t numProgressions,
-								  uint8_t numResolutions, uint16_t numcomps, uint16_t numlayers);
+								  uint8_t num_resolutions, uint16_t numcomps, uint16_t numlayers);
 
    bool init_mct_encoding(TileCodingParams* p_tcp, GrkImage* p_image);
 

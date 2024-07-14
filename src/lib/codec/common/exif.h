@@ -19,6 +19,6 @@
 namespace grk
 {
 // transfer metadata
-void transferExifTags(const std::string &src, const std::string &dest);
+void transfer_exif_tags(const std::string &src, const std::string &dest);
 
 } // namespace grk

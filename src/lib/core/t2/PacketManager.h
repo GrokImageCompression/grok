@@ -32,7 +32,7 @@ class PacketManager
 	@param first_poc_tile_part true for first POC tile part
 	@param tppos 	The position of the tile part flag in the progression order
 	*/
-   void enableTilePartGeneration(uint32_t pino, bool first_poc_tile_part, uint32_t tppos);
+   void enable_tile_part_generation(uint32_t pino, bool first_poc_tile_part, uint32_t tppos);
    /**
 	* Updates the compressing parameters of the codec.
 	*

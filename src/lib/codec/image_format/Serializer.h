@@ -48,7 +48,7 @@ struct Serializer
 #endif
    uint32_t numPooledRequests_;
    // used to detect when library-orchestrated encode is complete
-   uint32_t maxPooledRequests_;
+   uint32_t max_pooled_requests_;
    bool asynchActive_;
    uint64_t off_;
    grk_io_callback reclaim_callback_;

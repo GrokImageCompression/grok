@@ -39,18 +39,18 @@ class CodeStreamDecompress : public CodeStream, public ICodeStreamDecompress
  public:
    CodeStreamDecompress(BufferedStream* stream);
    virtual ~CodeStreamDecompress();
-   TileProcessor* allocateProcessor(uint16_t tileIndex);
+   TileProcessor* allocateProcessor(uint16_t tile_index);
    DecompressorState* getDecompressorState(void);
    TileCodingParams* get_current_decode_tcp(void);
    bool isDecodingTilePartHeader();
    bool readHeader(grk_header_info* header_info);
-   GrkImage* getImage(uint16_t tileIndex);
+   GrkImage* getImage(uint16_t tile_index);
    GrkImage* getImage(void);
    std::vector<GrkImage*> getAllImages(void);
    void init(grk_decompress_core_params* p_param);
    bool setDecompressRegion(grk_rect_single region);
    bool decompress(grk_plugin_tile* tile);
-   bool decompressTile(uint16_t tileIndex);
+   bool decompressTile(uint16_t tile_index);
    bool preProcess(void);
    bool postProcess(void);
    CodeStreamInfo* getCodeStreamInfo(void);

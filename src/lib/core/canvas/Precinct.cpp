@@ -53,13 +53,13 @@ bool PrecinctImpl::initCodeBlocks(uint16_t numLayers, grk_rect32* bounds)
    if((isCompressor_ && enc) || (!isCompressor_ && dec))
 	  return true;
    bounds_ = *bounds;
-   auto numBlocks = cblk_grid_.area();
-   if(!numBlocks)
+   auto num_blocks = cblk_grid_.area();
+   if(!num_blocks)
 	  return true;
    if(isCompressor_)
-	  enc = new BlockCache<CompressCodeblock, PrecinctImpl>(numLayers, numBlocks, this);
+	  enc = new BlockCache<CompressCodeblock, PrecinctImpl>(numLayers, num_blocks, this);
    else
-	  dec = new BlockCache<DecompressCodeblock, PrecinctImpl>(numLayers, numBlocks, this);
+	  dec = new BlockCache<DecompressCodeblock, PrecinctImpl>(numLayers, num_blocks, this);
 
    return true;
 }

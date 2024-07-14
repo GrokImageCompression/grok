@@ -75,13 +75,13 @@ bool RAWFormat::encodePixels(void)
    unsigned int compno, numcomps;
    bool success = false;
 
-   if((image_->decompressNumComps * image_->x1 * image_->y1) == 0)
+   if((image_->decompress_num_comps * image_->x1 * image_->y1) == 0)
    {
 	  spdlog::error("imagetoraw: invalid raw image_ parameters");
 	  goto beach;
    }
 
-   numcomps = image_->decompressNumComps;
+   numcomps = image_->decompress_num_comps;
    if(numcomps > 4)
    {
 	  spdlog::warn("imagetoraw: number of components {} is "
@@ -111,9 +111,9 @@ bool RAWFormat::encodePixels(void)
 	  goto beach;
 
    spdlog::info("imagetoraw: raw image_ characteristics: {} components",
-				image_->decompressNumComps);
+				image_->decompress_num_comps);
 
-   for(compno = 0; compno < image_->decompressNumComps; compno++)
+   for(compno = 0; compno < image_->decompress_num_comps; compno++)
    {
 	  auto comp = image_->comps + compno;
 	  spdlog::info("Component {} characteristics: {}x{}x{} {}", compno, comp->w, comp->h,

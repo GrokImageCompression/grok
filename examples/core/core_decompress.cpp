@@ -150,7 +150,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
    // initialize decompress parameters
    grk_decompress_parameters decompressParams;
    grk_decompress_set_default_params(&decompressParams);
-   decompressParams.compressionLevel = GRK_DECOMPRESS_COMPRESSION_LEVEL_DEFAULT;
+   decompressParams.compression_level = GRK_DECOMPRESS_COMPRESSION_LEVEL_DEFAULT;
    decompressParams.verbose_ = true;
 
    grk_image* image = nullptr;
@@ -163,7 +163,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
    bool decompressTile = false;
 
    // index of tile to decompress.
-   uint16_t tileIndex = 0;
+   uint16_t tile_index = 0;
 
    // if true, decompress window of dimension specified below,
    // otherwise decompress entire image
@@ -284,7 +284,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
    if(decompressTile)
    {
 	  // decompress a particular tile
-	  if(!grk_decompress_tile(codec, tileIndex))
+	  if(!grk_decompress_tile(codec, tile_index))
 		 goto beach;
    }
    else

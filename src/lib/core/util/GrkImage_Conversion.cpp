@@ -269,8 +269,8 @@ void GrkImage::convertPrecision(void)
 	  for(uint16_t compno = 0; compno < numcomps; ++compno)
 	  {
 		 uint32_t precisionno = compno;
-		 if(precisionno >= numPrecision)
-			precisionno = numPrecision - 1U;
+		 if(precisionno >= num_precision)
+			precisionno = num_precision - 1U;
 		 uint8_t prec = precision[precisionno].prec;
 		 auto comp = comps + compno;
 		 if(prec == 0)
@@ -292,7 +292,7 @@ void GrkImage::convertPrecision(void)
 		 }
 	  }
    }
-   if(decompressFormat == GRK_FMT_JPG)
+   if(decompress_fmt == GRK_FMT_JPG)
    {
 	  uint8_t prec = comps[0].prec;
 	  if(prec < 8 && numcomps > 1)
@@ -310,7 +310,7 @@ void GrkImage::convertPrecision(void)
 			scaleComponent(comps + i, prec);
 	  }
    }
-   else if(decompressFormat == GRK_FMT_PNG)
+   else if(decompress_fmt == GRK_FMT_PNG)
    {
 	  uint16_t nr_comp = numcomps;
 	  if(nr_comp > 4)
@@ -346,7 +346,7 @@ bool GrkImage::greyToRGB(void)
    if(numcomps != 1)
 	  return true;
 
-   if(!forceRGB || color_space != GRK_CLRSPC_GRAY)
+   if(!force_rgb || color_space != GRK_CLRSPC_GRAY)
 	  return true;
 
    auto new_components = new grk_image_comp[3];
@@ -387,8 +387,8 @@ bool GrkImage::needsConversionToRGB(void)
 {
    return (((color_space == GRK_CLRSPC_SYCC || color_space == GRK_CLRSPC_EYCC ||
 			 color_space == GRK_CLRSPC_CMYK) &&
-			(decompressFormat != GRK_FMT_UNK && decompressFormat != GRK_FMT_TIF)) ||
-		   forceRGB);
+			(decompress_fmt != GRK_FMT_UNK && decompress_fmt != GRK_FMT_TIF)) ||
+		   force_rgb);
 }
 bool GrkImage::convertToRGB(bool wholeTileDecompress)
 {
@@ -1148,25 +1148,25 @@ bool GrkImage::applyColourManagement(void)
    if(!meta || !meta->color.icc_profile_buf)
 	  return true;
 
-   bool isTiff = decompressFormat == GRK_FMT_TIF;
+   bool isTiff = decompress_fmt == GRK_FMT_TIF;
    bool canStoreCIE = isTiff && color_space == GRK_CLRSPC_DEFAULT_CIE;
    bool isCIE = color_space == GRK_CLRSPC_DEFAULT_CIE || color_space == GRK_CLRSPC_CUSTOM_CIE;
    // A TIFF,PNG, BMP or JPEG image can store the ICC profile,
    // so no need to apply it in this case,
    // (unless we are forcing to RGB).
    // Otherwise, we apply the profile
-   bool canStoreICC = (decompressFormat == GRK_FMT_TIF || decompressFormat == GRK_FMT_PNG ||
-					   decompressFormat == GRK_FMT_JPG || decompressFormat == GRK_FMT_BMP);
+   bool canStoreICC = (decompress_fmt == GRK_FMT_TIF || decompress_fmt == GRK_FMT_PNG ||
+					   decompress_fmt == GRK_FMT_JPG || decompress_fmt == GRK_FMT_BMP);
 
    bool shouldApplyColourManagement =
-	   forceRGB || (decompressFormat != GRK_FMT_UNK && meta && meta->color.icc_profile_buf &&
+	   force_rgb || (decompress_fmt != GRK_FMT_UNK && meta && meta->color.icc_profile_buf &&
 					((isCIE && !canStoreCIE) || !canStoreICC));
    if(!shouldApplyColourManagement)
 	  return true;
 
    if(isCIE)
    {
-	  if(!forceRGB)
+	  if(!force_rgb)
 		 Logger::logger_.warn(
 			 " Input image is in CIE colour space,\n"
 			 "but the codec is unable to store this information in the "
@@ -1182,7 +1182,7 @@ bool GrkImage::applyColourManagement(void)
    {
 	  if(validateICC())
 	  {
-		 if(!forceRGB)
+		 if(!force_rgb)
 		 {
 			Logger::logger_.warn("");
 			Logger::logger_.warn("The input image contains an ICC profile");
@@ -1280,7 +1280,7 @@ bool GrkImage::applyICC(void)
 	  in_type = TYPE_GRAY_8;
 	  out_type = TYPE_RGB_8;
 	  out_prof = cmsCreate_sRGBProfile();
-	  if(forceRGB)
+	  if(force_rgb)
 		 color_space = GRK_CLRSPC_SRGB;
 	  else
 		 color_space = GRK_CLRSPC_GRAY;
@@ -1406,7 +1406,7 @@ bool GrkImage::applyICC(void)
 	  comps = newComps;
 	  auto inbuf = new uint8_t[nr_samples];
 	  auto outbuf = new uint8_t[nr_samples];
-	  if(forceRGB)
+	  if(force_rgb)
 	  {
 		 if(numcomps == 2)
 			comps[3] = comps[1];
@@ -1429,7 +1429,7 @@ bool GrkImage::applyICC(void)
 	  }
 	  cmsDoTransform(transform, inbuf, outbuf, (cmsUInt32Number)componentSize);
 	  int32_t *g = nullptr, *b = nullptr;
-	  if(forceRGB)
+	  if(force_rgb)
 	  {
 		 g = comps[1].data;
 		 b = comps[2].data;
@@ -1441,7 +1441,7 @@ bool GrkImage::applyICC(void)
 		 for(uint32_t i = 0; i < w; ++i)
 		 {
 			r[dest_index] = (int32_t)outbuf[src_index++];
-			if(forceRGB)
+			if(force_rgb)
 			{
 			   g[dest_index] = (int32_t)outbuf[src_index++];
 			   b[dest_index] = (int32_t)outbuf[src_index++];

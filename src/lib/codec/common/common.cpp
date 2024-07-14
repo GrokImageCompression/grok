@@ -254,7 +254,7 @@ GRK_SUPPORTED_FILE_FMT grk_get_file_format(const char* filename) {
 bool isFinalOutputSubsampled(grk_image* image)
 {
 	assert(image);
-	if (image->upsample || image->forceRGB)
+	if (image->upsample || image->force_rgb)
 		return false;
 	for(uint32_t i = 0; i < image->numcomps; ++i)
 	{

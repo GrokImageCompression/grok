@@ -99,11 +99,11 @@ TileProcessor* PacketManager::getTileProcessor(void)
 {
    return tileProcessor;
 }
-void PacketManager::enableTilePartGeneration(uint32_t pino, bool first_poc_tile_part,
+void PacketManager::enable_tile_part_generation(uint32_t pino, bool first_poc_tile_part,
 											 uint32_t newTilePartProgressionPosition)
 {
    (pi_ + pino)
-	   ->enableTilePartGeneration(pino, first_poc_tile_part, newTilePartProgressionPosition);
+	   ->enable_tile_part_generation(pino, first_poc_tile_part, newTilePartProgressionPosition);
 }
 void PacketManager::getParams(const GrkImage* image, const CodingParams* p_cp, uint16_t tileno,
 							  grk_rect32* tileBounds, uint32_t* dx_min, uint32_t* dy_min,
@@ -170,11 +170,11 @@ void PacketManager::getParams(const GrkImage* image, const CodingParams* p_cp, u
 			*precinctInfo++ = precinctGridWidth;
 			*precinctInfo++ = precinctGridHeight;
 		 }
-		 uint64_t numPrecincts = (uint64_t)precinctGridWidth * precinctGridHeight;
-		 if(numPrecinctsPerRes && numPrecincts > numPrecinctsPerRes[resno])
-			numPrecinctsPerRes[resno] = numPrecincts;
-		 if(numPrecincts > *max_precincts)
-			*max_precincts = numPrecincts;
+		 uint64_t num_precincts = (uint64_t)precinctGridWidth * precinctGridHeight;
+		 if(numPrecinctsPerRes && num_precincts > numPrecinctsPerRes[resno])
+			numPrecinctsPerRes[resno] = num_precincts;
+		 if(num_precincts > *max_precincts)
+			*max_precincts = num_precincts;
 
 		 // 3. find minimal precinct subsampling factors over all components and resolutions
 		 uint64_t compResDx =
@@ -199,17 +199,17 @@ void PacketManager::updateCompressTcpProgressions(CodingParams* p_cp, uint16_t n
    for(uint32_t pino = 0; pino < tcp->getNumProgressions(); ++pino)
    {
 	  auto prog = tcp->progressionOrderChange + pino;
-	  prog->progression = poc ? prog->specifiedCompressionPocProg : tcp->prg;
-	  prog->tpLayE = poc ? prog->layE : tcp->max_layers_;
-	  prog->tpResS = poc ? prog->resS : 0;
-	  prog->tpResE = poc ? prog->resE : max_res;
-	  prog->tpCompS = poc ? prog->compS : 0;
-	  prog->tpCompE = poc ? prog->compE : num_comps;
-	  prog->tpPrecE = max_precincts;
-	  prog->tp_txS = tileBounds.x0;
-	  prog->tp_tyS = tileBounds.y0;
-	  prog->tp_txE = tileBounds.x1;
-	  prog->tp_tyE = tileBounds.y1;
+	  prog->progression = poc ? prog->specified_compression_poc_prog : tcp->prg;
+	  prog->tp_lay_e = poc ? prog->lay_e : tcp->max_layers_;
+	  prog->tp_res_s = poc ? prog->res_s : 0;
+	  prog->tp_res_e = poc ? prog->res_e : max_res;
+	  prog->tp_comp_s = poc ? prog->comp_s : 0;
+	  prog->tp_comp_e = poc ? prog->comp_e : num_comps;
+	  prog->tp_prec_e = max_precincts;
+	  prog->tp_tx_s = tileBounds.x0;
+	  prog->tp_ty_s = tileBounds.y0;
+	  prog->tp_tx_e = tileBounds.x1;
+	  prog->tp_ty_e = tileBounds.y1;
 	  prog->dx = dx_min;
 	  prog->dy = dy_min;
    }
