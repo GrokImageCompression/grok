@@ -112,7 +112,7 @@ grk_codec* grk_decompress_create(grk_stream* stream)
 }
 
 static bool is_plugin_initialized = false;
-void GRK_CALLCONV grk_initialize(const char* pluginPath, uint32_t numthreads, bool verbose)
+bool GRK_CALLCONV grk_initialize(const char* pluginPath, uint32_t numthreads, bool verbose)
 {
    ExecSingleton::instance(numthreads);
    if(!is_plugin_initialized)
@@ -121,7 +121,13 @@ void GRK_CALLCONV grk_initialize(const char* pluginPath, uint32_t numthreads, bo
 	  info.pluginPath = pluginPath;
 	  info.verbose = verbose;
 	  is_plugin_initialized = grk_plugin_load(info);
+	  if(!is_plugin_initialized)
+	    return false;
+	  else
+	    Logger::logger_.info("Plugin loaded");
    }
+
+   return true;
 }
 
 GRK_API void GRK_CALLCONV grk_deinitialize()
