@@ -37,8 +37,8 @@ grk_compress -i @INPUT_NR_PATH@/Bretagne1.ppm -o @TEMP_PATH@/Bretagne1_1.j2k -q 
 grk_compress -i @INPUT_NR_PATH@/Bretagne1.ppm -o @TEMP_PATH@/Bretagne1_2.j2k -q 30,35,40 -b 16,16 -c [64,64]
 grk_compress -i @INPUT_NR_PATH@/Bretagne2.ppm -o @TEMP_PATH@/Bretagne2_0.j2k -c [128,128],[128,128],[128,128] -r 100,20,2 -t 640,480 -b 32,32
 grk_compress -i @INPUT_NR_PATH@/Bretagne2.ppm -o @TEMP_PATH@/Bretagne2_1.j2k -t 127,127 -p PCRL
-grk_compress -i @INPUT_NR_PATH@/Bretagne2.ppm -o @TEMP_PATH@/Bretagne2_2.j2k -SOP
-grk_compress -i @INPUT_NR_PATH@/Bretagne2.ppm -o @TEMP_PATH@/Bretagne2_3.j2k -EPH -M 38
+grk_compress -i @INPUT_NR_PATH@/Bretagne2.ppm -o @TEMP_PATH@/Bretagne2_2.j2k --sop
+grk_compress -i @INPUT_NR_PATH@/Bretagne2.ppm -o @TEMP_PATH@/Bretagne2_3.j2k --eph -M 38
 grk_compress -i @INPUT_NR_PATH@/Bretagne2.ppm -o @TEMP_PATH@/Bretagne2_4.j2k -d 150,300 -r 800
 grk_compress -i @INPUT_NR_PATH@/Cevennes1.bmp -o @TEMP_PATH@/Cevennes1.j2k -r 10
 grk_compress -i @INPUT_NR_PATH@/Cevennes2.ppm -o @TEMP_PATH@/Cevennes2.jp2 -r 50
@@ -48,13 +48,13 @@ grk_compress -i @INPUT_NR_PATH@/random-issue-0005.tif -o @TEMP_PATH@/random-issu
 # related to issue 62
 grk_compress -i @INPUT_NR_PATH@/tmp-issue-0062.raw -o @TEMP_PATH@/tmp-issue-0062-u.raw.j2k -F 512,512,1,16,u
 grk_compress -i @INPUT_NR_PATH@/tmp-issue-0062.raw -o @TEMP_PATH@/tmp-issue-0062-s.raw.j2k -F 512,512,1,16,s
-grk_compress -i @INPUT_NR_PATH@/X_4_2K_24_185_CBR_WB_000.tif -o @TEMP_PATH@/X_4_2K_24_185_CBR_WB_000_C2K_24.j2k -cinema2K 24
-grk_compress -i @INPUT_NR_PATH@/X_5_2K_24_235_CBR_STEM24_000.tif -o @TEMP_PATH@/X_5_2K_24_235_CBR_STEM24_000_C2K_24.j2k -cinema2K 24
-grk_compress -i @INPUT_NR_PATH@/X_6_2K_24_FULL_CBR_CIRCLE_000.tif -o @TEMP_PATH@/X_6_2K_24_FULL_CBR_CIRCLE_000_C2K_24.j2k -cinema2K 24
-grk_compress -i @INPUT_NR_PATH@/X_4_2K_24_185_CBR_WB_000.tif -o @TEMP_PATH@/X_4_2K_24_185_CBR_WB_000_C2K_48.j2k -cinema2K 48
-grk_compress -i @INPUT_NR_PATH@/X_5_2K_24_235_CBR_STEM24_000.tif -o @TEMP_PATH@/X_5_2K_24_235_CBR_STEM24_000_C2K_48.j2k -cinema2K 48
-grk_compress -i @INPUT_NR_PATH@/X_6_2K_24_FULL_CBR_CIRCLE_000.tif -o @TEMP_PATH@/X_6_2K_24_FULL_CBR_CIRCLE_000_C2K_48.j2k -cinema2K 48
-grk_compress -i @INPUT_NR_PATH@/ElephantDream_4K.tif -o @TEMP_PATH@/ElephantDream_4K_C4K.j2k -cinema4K 24
+grk_compress -i @INPUT_NR_PATH@/X_4_2K_24_185_CBR_WB_000.tif -o @TEMP_PATH@/X_4_2K_24_185_CBR_WB_000_C2K_24.j2k --cinema-2k 24
+grk_compress -i @INPUT_NR_PATH@/X_5_2K_24_235_CBR_STEM24_000.tif -o @TEMP_PATH@/X_5_2K_24_235_CBR_STEM24_000_C2K_24.j2k --cinema-2k 24
+grk_compress -i @INPUT_NR_PATH@/X_6_2K_24_FULL_CBR_CIRCLE_000.tif -o @TEMP_PATH@/X_6_2K_24_FULL_CBR_CIRCLE_000_C2K_24.j2k --cinema-2k 24
+grk_compress -i @INPUT_NR_PATH@/X_4_2K_24_185_CBR_WB_000.tif -o @TEMP_PATH@/X_4_2K_24_185_CBR_WB_000_C2K_48.j2k --cinema-2k 48
+grk_compress -i @INPUT_NR_PATH@/X_5_2K_24_235_CBR_STEM24_000.tif -o @TEMP_PATH@/X_5_2K_24_235_CBR_STEM24_000_C2K_48.j2k --cinema-2k 48
+grk_compress -i @INPUT_NR_PATH@/X_6_2K_24_FULL_CBR_CIRCLE_000.tif -o @TEMP_PATH@/X_6_2K_24_FULL_CBR_CIRCLE_000_C2K_48.j2k --cinema-2k 48
+grk_compress -i @INPUT_NR_PATH@/ElephantDream_4K.tif -o @TEMP_PATH@/ElephantDream_4K_C4K.j2k --cinema-4k 24
 # issue 141
 grk_compress -i @INPUT_NR_PATH@/issue141.rawl -o @TEMP_PATH@/issue141.rawl.j2k   -F 2048,32,1,16,u
 grk_compress -i @INPUT_NR_PATH@/issue141.rawl -o @TEMP_PATH@/issue141-I.rawl.j2k -F 2048,32,1,16,u -I
@@ -185,14 +185,14 @@ grk_compress -i @INPUT_NR_PATH@/Bretagne2.ppm -o @TEMP_PATH@/Bretagne2_bypass_te
 grk_compress -i @INPUT_NR_PATH@/Bretagne2.ppm -o @TEMP_PATH@/Bretagne2_bypass_vsc_reset_termall_pterm_segsym.j2k -M 63
 
 # issue 92
-grk_compress -i @INPUT_NR_PATH@/Bretagne2.ppm -o @TEMP_PATH@/Bretagne2_issue_92.j2k -r 700,53.8246894469852,38.6958466880406,27.8193625692756,20,1 -c [256,256],[256,256],[128,128],[128,128],[128,128],[128,128] -p RPCL -n 6 -t 1024,1024 -b 64,64 -SOP -EPH -M 1
+grk_compress -i @INPUT_NR_PATH@/Bretagne2.ppm -o @TEMP_PATH@/Bretagne2_issue_92.j2k -r 700,53.8246894469852,38.6958466880406,27.8193625692756,20,1 -c [256,256],[256,256],[128,128],[128,128],[128,128],[128,128] -p RPCL -n 6 -t 1024,1024 -b 64,64 --sop --eph -M 1
 
-grk_compress_no_raw -i @INPUT_NR_PATH@/X_4_2K_24_185_CBR_WB_000.tif -o @TEMP_PATH@/X_4_2K_24_185_CBR_WB_000_IMF_2K.j2k -IMF 2K
-grk_compress_no_raw -i @INPUT_NR_PATH@/ElephantDream_4K.tif -o @TEMP_PATH@/X_4_2K_24_185_CBR_WB_000_IMF_4K.j2k -IMF 4K
-grk_compress_no_raw -i @INPUT_NR_PATH@/ElephantDream_4K.tif -o @TEMP_PATH@/X_4_2K_24_185_CBR_WB_000_IMF_8K.j2k -IMF 8K
-grk_compress_no_raw_lossless -i @INPUT_NR_PATH@/X_4_2K_24_185_CBR_WB_000.tif -o @TEMP_PATH@/X_4_2K_24_185_CBR_WB_000_IMF_2K_R.j2k -IMF 2K_R
-grk_compress_no_raw_lossless -i @INPUT_NR_PATH@/ElephantDream_4K.tif -o @TEMP_PATH@/X_4_2K_24_185_CBR_WB_000_IMF_4K_R.j2k -IMF 4K_R
-grk_compress_no_raw_lossless -i @INPUT_NR_PATH@/ElephantDream_4K.tif -o @TEMP_PATH@/X_4_2K_24_185_CBR_WB_000_IMF_8K_R.j2k -IMF 8K_R
+grk_compress_no_raw -i @INPUT_NR_PATH@/X_4_2K_24_185_CBR_WB_000.tif -o @TEMP_PATH@/X_4_2K_24_185_CBR_WB_000_IMF_2K.j2k --imf 2K
+grk_compress_no_raw -i @INPUT_NR_PATH@/ElephantDream_4K.tif -o @TEMP_PATH@/X_4_2K_24_185_CBR_WB_000_IMF_4K.j2k --imf 4K
+grk_compress_no_raw -i @INPUT_NR_PATH@/ElephantDream_4K.tif -o @TEMP_PATH@/X_4_2K_24_185_CBR_WB_000_IMF_8K.j2k --imf 8K
+grk_compress_no_raw_lossless -i @INPUT_NR_PATH@/X_4_2K_24_185_CBR_WB_000.tif -o @TEMP_PATH@/X_4_2K_24_185_CBR_WB_000_IMF_2K_R.j2k --imf 2K_R
+grk_compress_no_raw_lossless -i @INPUT_NR_PATH@/ElephantDream_4K.tif -o @TEMP_PATH@/X_4_2K_24_185_CBR_WB_000_IMF_4K_R.j2k --imf 4K_R
+grk_compress_no_raw_lossless -i @INPUT_NR_PATH@/ElephantDream_4K.tif -o @TEMP_PATH@/X_4_2K_24_185_CBR_WB_000_IMF_8K_R.j2k --imf 8K_R
 
 # DECODER TEST SUITE
 grk_decompress -i  @INPUT_NR_PATH@/Bretagne2.j2k -o @TEMP_PATH@/Bretagne2.j2k.pgx
@@ -617,7 +617,7 @@ grk_decompress -i @INPUT_NR_PATH@/issue818.jp2 -o @TEMP_PATH@/issue818.png -L 9
 # Test High Throughput encoding
 grk_compress -i @INPUT_NR_PATH@/Bretagne2.ppm -o @TEMP_PATH@/Bretagne2_ht.jhc
 grk_compress -i @INPUT_NR_PATH@/Bretagne2.ppm -o @TEMP_PATH@/Bretagne2_ht_lossy.jhc -I
-grk_compress -i @INPUT_NR_PATH@/Bretagne2.ppm -o @TEMP_PATH@/Bretagne2_ht_lossy_plt.jhc -I -PLT
+grk_compress -i @INPUT_NR_PATH@/Bretagne2.ppm -o @TEMP_PATH@/Bretagne2_ht_lossy_plt.jhc -I --plt
 
 grk_decompress -i @INPUT_NR_PATH@/Bretagne2_ht.j2k -o @TEMP_PATH@/Bretagne2_ht.png
 grk_decompress -i @INPUT_NR_PATH@/Bretagne2_ht_lossy.j2k -o @TEMP_PATH@/Bretagne2_ht_lossy.png
@@ -665,10 +665,10 @@ grk_compress -i @INPUT_NR_PATH@/Bretagne1.ppm -o @TEMP_PATH@/Bretagne1_PCRL_tp_L
 grk_compress -i @INPUT_NR_PATH@/Bretagne1.ppm -o @TEMP_PATH@/Bretagne1_CPRL_tp_C.j2k -p CPRL -u C -r 200,50,1
 grk_compress -i @INPUT_NR_PATH@/Bretagne1.ppm -o @TEMP_PATH@/Bretagne1_RLCP_tp_R.j2k -p RLCP -u R -r 200,50,5
 grk_compress -i @INPUT_NR_PATH@/Bretagne1.ppm -o @TEMP_PATH@/Bretagne1_RPCL_tp_L.j2k -p RPCL -u L -r 200,50,10
-grk_compress -i @INPUT_NR_PATH@/Bretagne2.ppm -o @TEMP_PATH@/Bretagne2_issue_92_LRCP.j2k -r 700,53.8246894469852,38.6958466880406,27.8193625692756,20,1 -c [256,256],[256,256],[128,128],[128,128],[128,128],[128,128] -p LRCP -n 6 -t 1024,1024 -b 64,64 -SOP -EPH -M 1
-grk_compress -i @INPUT_NR_PATH@/Bretagne2.ppm -o @TEMP_PATH@/Bretagne2_issue_92_PCRL.j2k -r 700,53.8246894469852,38.6958466880406,27.8193625692756,20,1 -c [256,256],[256,256],[128,128],[128,128],[128,128],[128,128] -p PCRL -n 6 -t 1024,1024 -b 64,64 -SOP -EPH -M 1
-grk_compress -i @INPUT_NR_PATH@/Bretagne2.ppm -o @TEMP_PATH@/Bretagne2_issue_92_CPRL.j2k -r 700,53.8246894469852,38.6958466880406,27.8193625692756,20,1 -c [256,256],[256,256],[128,128],[128,128],[128,128],[128,128] -p CPRL -n 6 -t 1024,1024 -b 64,64 -SOP -EPH -M 1
-grk_compress -i @INPUT_NR_PATH@/Bretagne2.ppm -o @TEMP_PATH@/Bretagne2_issue_92_RLCP.j2k -r 700,53.8246894469852,38.6958466880406,27.8193625692756,20,1 -c [256,256],[256,256],[128,128],[128,128],[128,128],[128,128] -p RLCP -n 6 -t 1024,1024 -b 64,64 -SOP -EPH -M 1
+grk_compress -i @INPUT_NR_PATH@/Bretagne2.ppm -o @TEMP_PATH@/Bretagne2_issue_92_LRCP.j2k -r 700,53.8246894469852,38.6958466880406,27.8193625692756,20,1 -c [256,256],[256,256],[128,128],[128,128],[128,128],[128,128] -p LRCP -n 6 -t 1024,1024 -b 64,64 --sop --eph -M 1
+grk_compress -i @INPUT_NR_PATH@/Bretagne2.ppm -o @TEMP_PATH@/Bretagne2_issue_92_PCRL.j2k -r 700,53.8246894469852,38.6958466880406,27.8193625692756,20,1 -c [256,256],[256,256],[128,128],[128,128],[128,128],[128,128] -p PCRL -n 6 -t 1024,1024 -b 64,64 --sop --eph -M 1
+grk_compress -i @INPUT_NR_PATH@/Bretagne2.ppm -o @TEMP_PATH@/Bretagne2_issue_92_CPRL.j2k -r 700,53.8246894469852,38.6958466880406,27.8193625692756,20,1 -c [256,256],[256,256],[128,128],[128,128],[128,128],[128,128] -p CPRL -n 6 -t 1024,1024 -b 64,64 --sop --eph -M 1
+grk_compress -i @INPUT_NR_PATH@/Bretagne2.ppm -o @TEMP_PATH@/Bretagne2_issue_92_RLCP.j2k -r 700,53.8246894469852,38.6958466880406,27.8193625692756,20,1 -c [256,256],[256,256],[128,128],[128,128],[128,128],[128,128] -p RLCP -n 6 -t 1024,1024 -b 64,64 --sop --eph -M 1
 grk_compress -i @INPUT_NR_PATH@/246094.png -o @TEMP_PATH@/246094_rev_q40.jp2 -q 40
 grk_compress -i @INPUT_NR_PATH@/246094.png -o @TEMP_PATH@/246094_irrev_q40.jp2 -q 40 -I
 !grk_decompress -i @INPUT_NR_PATH@/ossfuzz-35259-poc-timeout   -o @TEMP_PATH@/ossfuzz-35259-poc-timeout.pgx -d 10,10,1024,1024
@@ -686,13 +686,13 @@ grk_compress -i @BASELINE_CONF_PATH@/c0p0_03r0.pgx -o @TEMP_PATH@/signed_ht_mono
 grk_compress -i @BASELINE_CONF_PATH@/c0p0_03r0.pgx -o @TEMP_PATH@/signed_ht_mono_lossy.jhc -I
 
 # RGB
-grk_compress -i @INPUT_NR_PATH@/basn6a08.tif -o @TEMP_PATH@/rgb_lossy_no_mct_no_transform.jp2 -I -MCT 0 -n 1
-grk_compress -i @INPUT_NR_PATH@/basn6a08.tif -o @TEMP_PATH@/rgb_lossy_no_mct.jp2 -I -MCT 0
+grk_compress -i @INPUT_NR_PATH@/basn6a08.tif -o @TEMP_PATH@/rgb_lossy_no_mct_no_transform.jp2 -I --mct 0 -n 1
+grk_compress -i @INPUT_NR_PATH@/basn6a08.tif -o @TEMP_PATH@/rgb_lossy_no_mct.jp2 -I --mct 0
 grk_compress -i @INPUT_NR_PATH@/basn6a08.tif -o @TEMP_PATH@/rgb_lossy_no_transform.jp2 -I -n 1
 grk_compress -i @INPUT_NR_PATH@/basn6a08.tif -o @TEMP_PATH@/rgb_lossy.jp2 -I
 
-grk_compress -i @INPUT_NR_PATH@/basn6a08.tif -o @TEMP_PATH@/ht_rgb_lossy_no_mct_no_transform.jhc -I -MCT 0 -n 1
-grk_compress -i @INPUT_NR_PATH@/basn6a08.tif -o @TEMP_PATH@/ht_rgb_lossy_no_mct.jhc -I -MCT 0
+grk_compress -i @INPUT_NR_PATH@/basn6a08.tif -o @TEMP_PATH@/ht_rgb_lossy_no_mct_no_transform.jhc -I --mct 0 -n 1
+grk_compress -i @INPUT_NR_PATH@/basn6a08.tif -o @TEMP_PATH@/ht_rgb_lossy_no_mct.jhc -I --mct 0
 grk_compress -i @INPUT_NR_PATH@/basn6a08.tif -o @TEMP_PATH@/ht_rgb_lossy_no_transform.jhc -I -n 1
 grk_compress -i @INPUT_NR_PATH@/basn6a08.tif -o @TEMP_PATH@/ht_rgb_lossy.jhc -I
 
@@ -701,7 +701,7 @@ grk_compress -i @INPUT_NR_PATH@/signed-4bpp.tif -o @TEMP_PATH@/signed-4bpp.j2k
 
 # mono with ICC profile
 grk_decompress -i @INPUT_NR_PATH@/mono_icc.jp2 -o @TEMP_PATH@/mono_icc.tif
-grk_decompress -i @INPUT_NR_PATH@/mono_icc.jp2 -o @TEMP_PATH@/mono_icc_force.tif -force_rgb
+grk_decompress -i @INPUT_NR_PATH@/mono_icc.jp2 -o @TEMP_PATH@/mono_icc_force.tif --force-rgb
 grk_decompress -i @INPUT_NR_PATH@/mono_icc.jp2 -o @TEMP_PATH@/mono_icc.pgx
 
 grk_decompress -i @INPUT_NR_PATH@/sycc_420_odd_origin_x_coord.jp2 -o @TEMP_PATH@/sycc_420_odd_origin_x_coord.tif

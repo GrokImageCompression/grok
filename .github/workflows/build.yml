@@ -18,6 +18,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
+      with:
+        submodules: true # Recursively clone submodules
 
     - name: Delete workflow runs
       if: startsWith(matrix.os, 'ubuntu') && matrix.shared_libs_flag == 'ON'

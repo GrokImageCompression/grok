@@ -48,7 +48,7 @@ formats: \f[C]BMP\f[R],\f[C]PNG\f[R], \f[C]JPG\f[R], \f[C]PNM\f[R],
 \f[C]RAW\f[R] and \f[C]RAWL\f[R].
 To enable writing to \f[C]stdout\f[R], please ensure that the
 \f[C]-o\f[R] parameter is \f[B]not\f[R] present in the command line, and
-that the \f[C]-out_fmt\f[R] parameter is set to one of the supported
+that the \f[C]--out-fmt\f[R] parameter is set to one of the supported
 formats listed above.
 Note: the verbose flag \f[C]-v\f[R] will be ignored in this mode, as
 verbose output would corrupt the output file.
@@ -132,7 +132,7 @@ required.
 When image files are in the same directory as the executable, this can
 be indicated by a dot \f[C].\f[R] argument.
 When using this option, the output format must be specified using
-\f[C]-out_fmt\f[R].
+\f[C]--out-fmt\f[R].
 Output images are saved in the same folder.
 .PP
 \f[C]-a, -out_dir [output directory]\f[R]
@@ -141,7 +141,7 @@ Output directory where compressed files are stored.
 Only relevant when the \f[C]-batch_src\f[R] flag is set.
 Default: same directory as specified by \f[C]-batch_src\f[R].
 .PP
-\f[C]-O, -out_fmt [format]\f[R]
+\f[C]-O, --out-fmt [format]\f[R]
 .PP
 Output format used to decompress the code streams.
 Required when \f[C]-batch_src\f[R] option is used.

@@ -107,7 +107,7 @@ Path to the folder where the images to be compressed are stored. Either this arg
 
 Output directory where compressed files are stored. Only relevant when the `-batch_src` flag is set. Default: same directory as specified by `-y`.
 
-`-O, -out_fmt [J2K|J2C|JP2]`
+`-O, --out-fmt [J2K|J2C|JP2]`
 
 Output format used to compress the images read from the directory specified with `-batch_src`. Required when `-batch_src` option is used. Supported formats are `J2K`, `J2C`, and `JP2`.
 
@@ -223,7 +223,7 @@ Broadcast compliant code stream
 * frame rate may be specified to enhance checks and set maximum bit rate when Y > 0. 
 If specified, it must be positive.
 
-`-z, -IMF [PROFILE [,mainlevel=X][,sublevel=Y][,framerate=FPS]] ]`
+`-z, --imf [PROFILE [,mainlevel=X][,sublevel=Y][,framerate=FPS]] ]`
 
 Interoperable Master Format (IMF) compliant codestream.
 
@@ -285,7 +285,7 @@ Offset of the image origin. The division in tile could be modified as the anchor
 
 Offset of the tile origin. The two values are respectively for X and Y axis offset. The tile anchor point can not be inside the image area. Default: no offset.
 
-`-Y, -MCT [0|1|2]`
+`-Y, --mct [0|1|2]`
 
 Specify explicitly if a Multiple Component Transform has to be used. 
 

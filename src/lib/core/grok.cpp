@@ -122,9 +122,9 @@ bool GRK_CALLCONV grk_initialize(const char* pluginPath, uint32_t numthreads, bo
 	  info.verbose = verbose;
 	  is_plugin_initialized = grk_plugin_load(info);
 	  if(!is_plugin_initialized)
-	    return false;
+		 return false;
 	  else
-	    Logger::logger_.info("Plugin loaded");
+		 Logger::logger_.info("Plugin loaded");
    }
 
    return true;
@@ -392,14 +392,14 @@ bool GRK_CALLCONV grk_decompress_read_header(grk_codec* codecWrapper, grk_header
    }
    return false;
 }
-bool GRK_CALLCONV grk_decompress_set_window(grk_codec* codecWrapper, float start_x, float start_y,
-											float end_x, float end_y)
+bool GRK_CALLCONV grk_decompress_set_window(grk_codec* codecWrapper, double start_x, double start_y,
+											double end_x, double end_y)
 {
    if(codecWrapper)
    {
 	  auto codec = GrkCodec::getImpl(codecWrapper);
 	  return codec->decompressor_ ? codec->decompressor_->setDecompressRegion(
-										grk_rect_single(start_x, start_y, end_x, end_y))
+										grk_rect_double(start_x, start_y, end_x, end_y))
 								  : false;
    }
    return false;

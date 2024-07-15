@@ -112,8 +112,8 @@ struct grk_img_fol
 
 bool validateDirectory(std::string dir);
 std::string convertFileFmtToString(GRK_SUPPORTED_FILE_FMT fmt);
-bool parseWindowBounds(char* inArg, float* dw_x0, float* dw_y0, float* dw_x1,
-		float* dw_y1);
+bool parseWindowBounds(char* inArg, double* dw_x0, double* dw_y0, double* dw_x1,
+		double* dw_y1);
 bool safe_fclose(FILE* fd);
 bool useStdio(const std::string &filename);
 bool supportedStdioFormat(GRK_SUPPORTED_FILE_FMT format, bool compress);
@@ -219,5 +219,24 @@ int count_trailing_zeros(uint32_t val);
 void errorCallback(const char* msg, void* client_data);
 void warningCallback(const char* msg, void* client_data);
 void infoCallback(const char* msg, void* client_data);
+
+
+
+
+#define CLI11_PARSE_CUSTOM(app, ...)                                                                                          \
+    try {                                                                                                              \
+        (app).parse(__VA_ARGS__);                                                                                      \
+    } catch(const CLI::ParseError &e) {                                                                                \
+        int ret = (app).exit(e);                                                                                       \
+        if (ret == 0)                                                                                                  \
+            return GrkRCSuccess;                                                                                       \
+        else if (ret == 1)                                                                                             \
+            return GrkRCParseArgsFailed;                                                                               \
+        else                                                                                                           \
+            return GrkRCFail;                                                                                          \
+    }
+
+
+
 
 } // namespace grk

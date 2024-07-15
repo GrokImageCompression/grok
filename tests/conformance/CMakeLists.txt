@@ -445,7 +445,7 @@ foreach(numFileJP2 RANGE 1 9)
     -i ${INPUT_CONF}/${filenameInput}
     -o ${TEMP}/${filenameInput}.tif
     -p 8S
-    -force_rgb
+    --force-rgb
   )
 
   add_test(NAME ETS-JP2-${filenameInput}-compare2ref
@@ -514,7 +514,7 @@ foreach(kdu_file ${kdu_j2k_conf_files})
   # Build filenames
   set( filenameInput "${kdu_file}.j2c" )
   set( filenameRef   "${kdu_file}.ppm" )
-  set(kdu_test_args -upsample -s )
+  set(kdu_test_args --upsample -s )
 
   add_test(NAME ETS-KDU-${filenameInput}-decode
     COMMAND grk_decompress

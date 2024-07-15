@@ -255,13 +255,12 @@ typedef enum _GRK_CODEC_FORMAT
  * Note: range for number of decomposition levels is 0-32
  * So, accordingly, range for number of resolutions is 1-33
  */
-#define GRK_MAX_DECOMP_LVLS                                     \
+#define GRK_MAX_DECOMP_LVLS                                         \
    32 /* Maximum number of decomposition levels allowed by standard \
 	   */
 #define GRK_MAXRLVLS \
    (GRK_MAX_DECOMP_LVLS + 1) /* Maximum number of resolution levels allowed by standard*/
-#define GRK_MAXBANDS \
-   (3 * GRK_MAXRLVLS - 2) /*  Maximum number of sub-bands allowed by standard */
+#define GRK_MAXBANDS (3 * GRK_MAXRLVLS - 2) /*  Maximum number of sub-bands allowed by standard */
 
 /**
  * Note: "component" refers to an image component as decompressed
@@ -599,13 +598,13 @@ typedef struct _grk_decompress_params
    /** output file format*/
    GRK_SUPPORTED_FILE_FMT cod_format;
    /** Decompress window left boundary */
-   float dw_x0;
+   double dw_x0;
    /** Decompress window right boundary */
-   float dw_x1;
+   double dw_x1;
    /** Decompress window up boundary */
-   float dw_y0;
+   double dw_y0;
    /** Decompress window bottom boundary */
-   float dw_y1;
+   double dw_y1;
    /** tile number of the decompressed tile*/
    uint16_t tile_index;
    bool single_tile_decompress;
@@ -921,7 +920,8 @@ GRK_API bool GRK_CALLCONV grk_decompress_read_header(grk_codec* codec,
  *
  * @return pointer to decompressed image
  */
-GRK_API grk_image* GRK_CALLCONV grk_decompress_get_tile_image(grk_codec* codec, uint16_t tile_index);
+GRK_API grk_image* GRK_CALLCONV grk_decompress_get_tile_image(grk_codec* codec,
+															  uint16_t tile_index);
 
 /**
  * Get decompressed composite image
@@ -945,8 +945,8 @@ GRK_API grk_image* GRK_CALLCONV grk_decompress_get_composited_image(grk_codec* c
  *
  * @return	true			if the area could be set.
  */
-GRK_API bool GRK_CALLCONV grk_decompress_set_window(grk_codec* codec, float start_x, float start_y,
-													float end_x, float end_y);
+GRK_API bool GRK_CALLCONV grk_decompress_set_window(grk_codec* codec, double start_x,
+													double start_y, double end_x, double end_y);
 
 /**
  * Decompress image from a JPEG 2000 code stream

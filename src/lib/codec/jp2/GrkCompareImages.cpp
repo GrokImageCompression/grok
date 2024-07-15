@@ -453,7 +453,7 @@ struct test_cmp_parameters
    int nr_flag;
    char separator_base[2];
    char separator_test[2];
-   float region[4];
+   double region[4];
    bool regionSet;
 };
 class GrokOutput : public TCLAP::StdOutput
@@ -547,7 +547,7 @@ static int parse_cmdline_cmp(int argc, char** argv, test_cmp_parameters* param)
 	  }
 	  if(regionArg.isSet())
 	  {
-		 float x0 = 0, y0 = 0, x1 = 0, y1 = 0;
+		 double x0 = 0, y0 = 0, x1 = 0, y1 = 0;
 		 if(grk::parseWindowBounds((char*)regionArg.getValue().c_str(), &x0, &y0, &x1, &y1))
 		 {
 			param->region[0] = x0;

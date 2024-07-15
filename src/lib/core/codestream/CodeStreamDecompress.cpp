@@ -241,7 +241,7 @@ bool CodeStreamDecompress::readHeader(grk_header_info* header_info)
    }
    return true;
 }
-bool CodeStreamDecompress::setDecompressRegion(grk_rect_single region)
+bool CodeStreamDecompress::setDecompressRegion(grk_rect_double region)
 {
    auto image = headerImage_;
    auto compositeImage = getCompositeImage();
@@ -254,7 +254,7 @@ bool CodeStreamDecompress::setDecompressRegion(grk_rect_single region)
 	  return false;
    }
 
-   if(region != grk_rect_single(0, 0, 0, 0))
+   if(region != grk_rect_double(0, 0, 0, 0))
    {
 	  grk_rect16 tilesToDecompress;
 	  /* Check if the region provided by the user is correct */
@@ -335,10 +335,10 @@ bool CodeStreamDecompress::setDecompressRegion(grk_rect_single region)
 	  Logger::logger_.info("decompress region canvas coordinates set to (%u,%u,%u,%u)",
 						   compositeImage->x0, compositeImage->y0, compositeImage->x1,
 						   compositeImage->y1);
-	  auto scaledX0 = float(compositeImage->x0 - image->x0) / float(image->width());
-	  auto scaledY0 = float(compositeImage->y0 - image->y0) / float(image->height());
-	  auto scaledX1 = float(compositeImage->x1 - image->x0) / float(image->width());
-	  auto scaledY1 = float(compositeImage->y1 - image->y0) / float(image->height());
+	  auto scaledX0 = double(compositeImage->x0 - image->x0) / double(image->width());
+	  auto scaledY0 = double(compositeImage->y0 - image->y0) / double(image->height());
+	  auto scaledX1 = double(compositeImage->x1 - image->x0) / double(image->width());
+	  auto scaledY1 = double(compositeImage->y1 - image->y0) / double(image->height());
 	  Logger::logger_.info("Region scaled coordinates : (%f,%f,%f,%f)", scaledX0, scaledY0,
 						   scaledX1, scaledY1);
 	  Logger::logger_.info("Region scaled coordinates in ROW-COLUMN format : \"{%f,%f},{%f,%f}\"",

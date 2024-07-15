@@ -96,17 +96,17 @@ std::string convertFileFmtToString(GRK_SUPPORTED_FILE_FMT fmt)
 	}
 }
 
-bool parseWindowBounds(char* inArg, float* dw_x0, float* dw_y0, float* dw_x1,	float* dw_y1)
+bool parseWindowBounds(char* inArg, double* dw_x0, double* dw_y0, double* dw_x1,	double* dw_y1)
 {
 	int it = 0;
-	float val[4];
+	double val[4];
 	char delims[] = ",";
 	char* result = nullptr;
 	result = strtok(inArg, delims);
 
 	while((result != nullptr) && (it < 4))
 	{
-		val[it] = (float)atof(result);
+		val[it] = atof(result);
 		result = strtok(nullptr, delims);
 		it++;
 	}
@@ -138,7 +138,7 @@ bool parseWindowBounds(char* inArg, float* dw_x0, float* dw_y0, float* dw_x1,	fl
 	//sanity check
 	bool allLessThanOne = true;
 	for (uint8_t i = 0; i < 4; ++i){
-		if (val[i] > 1.0f)
+		if (val[i] > 1.0)
 			allLessThanOne = false;
 	}
 	// note: special case of [0,0,1,1] is interpreted as relative coordinates

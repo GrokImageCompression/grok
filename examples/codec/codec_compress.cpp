@@ -128,7 +128,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
 
 	  if(outputToBuffer)
 	  {
-		 argString.push_back("-out_fmt jp2");
+		 argString.push_back("--out-fmt jp2");
 	  }
 	  else
 	  {

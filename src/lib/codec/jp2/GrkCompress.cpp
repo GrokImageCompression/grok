@@ -60,11 +60,10 @@ using namespace grk;
 #endif
 #include "convert.h"
 #include "grk_string.h"
-#define TCLAP_NAMESTARTSTRING "-"
-#include "tclap/CmdLine.h"
 #include "spdlog/sinks/basic_file_sink.h"
 #include "exif.h"
 #include "GrkCompress.h"
+#include "CLI/CLI.hpp"
 
 void exit_func()
 {
@@ -145,7 +144,7 @@ static void compress_help_display(void)
 		   "Input from `stdin` is supported for the following formats: `PNG`, `JPG`, `RAW`\n");
    fprintf(stdout, "and `RAWL`.  To read from `stdin`,\n");
    fprintf(stdout,
-		   "make sure that the `-i` parameter is **not** present, and that the `-in_fmt`\n");
+		   "make sure that the `-i` parameter is **not** present, and that the `--in-fmt`\n");
    fprintf(stdout, "parameter is set to one of the supported formats listed above.\n");
    fprintf(stdout, "\n");
    fprintf(stdout, " Embedded ICC Profile (JP2 Only)\n");
@@ -205,24 +204,24 @@ static void compress_help_display(void)
    fprintf(stdout, "\n");
    fprintf(stdout, " Options\n");
    fprintf(stdout, "\n");
-   fprintf(stdout, " `-h, -help`\n");
+   fprintf(stdout, " `-h, --help`\n");
    fprintf(stdout, "\n");
    fprintf(stdout, "Print a help message and exit.\n");
    fprintf(stdout, "\n");
-   fprintf(stdout, " `-version`\n");
+   fprintf(stdout, " `--version`\n");
    fprintf(stdout, "\n");
    fprintf(stdout, "Print library version and exit.\n");
    fprintf(stdout, "\n");
-   fprintf(stdout, " `-v, -verbose`\n");
+   fprintf(stdout, " `-v, --verbose`\n");
    fprintf(stdout, "\n");
    fprintf(stdout,
 		   "Output information and warnings about encoding to console (errors are always\n");
    fprintf(stdout, "output). Default is false i.e. console is silent by default.\n");
    fprintf(stdout, "\n");
-   fprintf(stdout, " `-i, -in_file [file]`\n");
+   fprintf(stdout, " `-i, --in-file [file]`\n");
    fprintf(stdout, "\n");
    fprintf(stdout,
-		   "Input file. Either this argument or the `-batch_src` argument described below is\n");
+		   "Input file. Either this argument or the `--batch-src` argument described below is\n");
    fprintf(stdout, "required.  See above for supported input formats.\n");
    fprintf(stdout, "\n");
    fprintf(stdout, "* `PNG` requires `libpng` while `TIF/TIFF` requires `libtiff`\n");
@@ -242,14 +241,14 @@ static void compress_help_display(void)
 		   "format assumes big endian-ness, `RAWL` assumes little endian-ness) When using\n");
    fprintf(stdout, "this option, the output file must be specified using `-o`.\n");
    fprintf(stdout, "\n");
-   fprintf(stdout, " `-o, -out_file [file]`\n");
+   fprintf(stdout, " `-o, --out-file [file]`\n");
    fprintf(stdout, "\n");
    fprintf(stdout,
 		   "Output file. Required when using `-i` option. Valid output image extensions are\n");
    fprintf(stdout, "`J2K`, `JP2` and `J2C`.\n");
    fprintf(stdout, "\n");
    fprintf(stdout,
-		   " `-y, -batch_src [Source image directory OR comma separated list of compression "
+		   " `-y, --batch-src [Source image directory OR comma separated list of compression "
 		   "settings for shared memory interface]`\n");
    fprintf(stdout, "\n");
    fprintf(stdout,
@@ -260,25 +259,25 @@ static void compress_help_display(void)
    fprintf(stdout,
 		   "argument. When using this option, output format must be specified using `-O`.\n");
    fprintf(stdout, "\n");
-   fprintf(stdout, " `-a, -out_dir [output directory]`\n");
+   fprintf(stdout, " `-a, --out-dir [output directory]`\n");
    fprintf(stdout, "\n");
    fprintf(stdout, "Output directory where compressed files are stored. Only relevant when the\n");
-   fprintf(stdout, "`-batch_src` flag is set. Default: same directory as specified by `-y`.\n");
+   fprintf(stdout, "`--batch-src` flag is set. Default: same directory as specified by `-y`.\n");
    fprintf(stdout, "\n");
-   fprintf(stdout, " `-O, -out_fmt [J2K|J2C|JP2]`\n");
+   fprintf(stdout, " `-O, --out-fmt [J2K|J2C|JP2]`\n");
    fprintf(stdout, "\n");
    fprintf(stdout,
 		   "Output format used to compress the images read from the directory specified with\n");
    fprintf(
 	   stdout,
-	   "`-batch_src`. Required when `-batch_src` option is used. Supported formats are `J2K`,\n");
+	   "`--batch-src`. Required when `--batch-src` option is used. Supported formats are `J2K`,\n");
    fprintf(stdout, "`J2C`, and `JP2`.\n");
    fprintf(stdout, "\n");
-   fprintf(stdout, " `-K, -in_fmt [pbm|pgm|ppm|pnm|pam|pgx|png|bmp|tif|raw|rawl|jpg]`\n");
+   fprintf(stdout, " `-K, --in-fmt [pbm|pgm|ppm|pnm|pam|pgx|png|bmp|tif|raw|rawl|jpg]`\n");
    fprintf(stdout, "\n");
    fprintf(stdout, "Input format. Will override file tag.\n");
    fprintf(stdout, "\n");
-   fprintf(stdout, " `-F, -raw [width,height,number of components,bit\n");
+   fprintf(stdout, " `-F, --raw [width,height,number of components,bit\n");
    fprintf(stdout, "depth,[s,u]@<dx1>x<dy1>:...:<dxn>x<dyn>]`\n");
    fprintf(stdout, "\n");
    fprintf(stdout, "Raw input image characteristics. Required only if RAW or RAWL (RAW little\n");
@@ -288,6 +287,14 @@ static void compress_help_display(void)
    fprintf(stdout, "Example of a raw `512x512` unsigned image with `4:2:0` sub-sampling\n");
    fprintf(stdout, "\n");
    fprintf(stdout, "-F 512,512,3,8,u@1x1:2x2:2x2\n");
+   fprintf(stdout, "\n");
+   fprintf(stdout, " `-A, --rate-control-algorithm [0|1]`\n");
+   fprintf(stdout, "\n");
+   fprintf(stdout, "Select algorithm used for rate control.\n");
+   fprintf(stdout, "* 0: Bisection search for optimal threshold using all code passes in code\n");
+   fprintf(stdout, "blocks. Slightly higher PSNR than algorithm 1.\n");
+   fprintf(stdout, "* 1: Bisection search for optimal threshold using only feasible truncation\n");
+   fprintf(stdout, "points, on convex hull (default). Faster than algorithm 0.\n");
    fprintf(stdout, "\n");
    fprintf(stdout, " `-r, -compression_ratios [<compression ratio>,<compression ratio>,...]`\n");
    fprintf(stdout, "\n");
@@ -304,7 +311,7 @@ static void compress_help_display(void)
    fprintf(stdout, "final lossless quality layer (including all remaining code passes) will be\n");
    fprintf(stdout, "signified by the value 1. Default: 1 single lossless quality layer.\n");
    fprintf(stdout, "\n");
-   fprintf(stdout, " `-q, -quality [quality in dB,quality in dB,...]`\n");
+   fprintf(stdout, " `-q, --quality [quality in dB,quality in dB,...]`\n");
    fprintf(stdout, "\n");
    fprintf(stdout, "Note: not supported for Part 15 (HTJ2K) compression\n");
    fprintf(stdout, "\n");
@@ -318,13 +325,13 @@ static void compress_help_display(void)
    fprintf(stdout,
 		   "(including all remaining code passes) Default: 1 single lossless quality layer.\n");
    fprintf(stdout, "\n");
-   fprintf(stdout, " `-n, -num_resolutions [number of resolutions]`\n");
+   fprintf(stdout, " `-n, --resolutions [number of resolutions]`\n");
    fprintf(stdout, "\n");
    fprintf(stdout,
 		   "Number of resolutions. It corresponds to the `number of DWT decompositions +1`.\n");
    fprintf(stdout, "Default: 6.\n");
    fprintf(stdout, "\n");
-   fprintf(stdout, " `-b, -code_block_dims [code block width,code block height]`\n");
+   fprintf(stdout, " `-b, --code-block-dims [code block width,code block height]`\n");
    fprintf(stdout, "\n");
    fprintf(stdout, "Code-block size. The dimension must respect the constraint defined in the\n");
    fprintf(stdout,
@@ -334,7 +341,7 @@ static void compress_help_display(void)
    fprintf(stdout, "Default: 64x64.\n");
    fprintf(stdout, "\n");
    fprintf(stdout,
-		   " `-c, -precinct_dims [  [prec width,prec height],[prec width,prec height],... ]`\n");
+		   " `-c, --precinct-dims [  [prec width,prec height],[prec width,prec height],... ]`\n");
    fprintf(stdout, "\n");
    fprintf(stdout,
 		   "Precinct dimensions. Dimensions specified must be powers of 2. Multiple records\n");
@@ -353,19 +360,19 @@ static void compress_help_display(void)
    fprintf(stdout, "\n");
    fprintf(stdout, "`-c [256,256],[256,256],[256,256],[256,256],[256,256],[256,256]`\n");
    fprintf(stdout, "\n");
-   fprintf(stdout, " `-t, -tile_dims [tile width,tile height]`\n");
+   fprintf(stdout, " `-t, --tile-dims [tile width,tile height]`\n");
    fprintf(stdout, "\n");
    fprintf(stdout, "Tile size. Default: the dimension of the whole image, thus only one tile.\n");
    fprintf(stdout, "\n");
-   fprintf(stdout, " `-L, -PLT`\n");
+   fprintf(stdout, " `-L, --plt`\n");
    fprintf(stdout, "\n");
    fprintf(stdout, "Use PLT markers. Default: off\n");
    fprintf(stdout, "\n");
-   fprintf(stdout, " `-X, -TLM`\n");
+   fprintf(stdout, " `-X, --tlm`\n");
    fprintf(stdout, "\n");
    fprintf(stdout, "Use TLM markers. Default: off\n");
    fprintf(stdout, "\n");
-   fprintf(stdout, " `-I, -irreversible`\n");
+   fprintf(stdout, " `-I, --irreversible`\n");
    fprintf(stdout, "\n");
    fprintf(stdout,
 		   "Irreversible compression (ICT + DWT 9-7). This option enables the Irreversible\n");
@@ -379,17 +386,17 @@ static void compress_help_display(void)
 		   "Progression order. The five progression orders are : `LRCP`, `RLCP`, `RPCL`,\n");
    fprintf(stdout, "`PCRL` and `CPRL`. Default: `LRCP`.\n");
    fprintf(stdout, "\n");
-   fprintf(stdout, " `-Z, -rsiz [rsiz]`\n");
+   fprintf(stdout, " `-Z, --rsiz [rsiz]`\n");
    fprintf(stdout, "\n");
    fprintf(stdout,
 		   "Profile, main level, sub level and version. Note: this flag will be ignored if\n");
    fprintf(stdout, "cinema profile flags are used.\n");
    fprintf(stdout, "\n");
-   fprintf(stdout, " `-N, -guard_bits [number of guard bits]`\n");
+   fprintf(stdout, " `-N, --guard-bits [number of guard bits]`\n");
    fprintf(stdout, "\n");
    fprintf(stdout, "Number of guard bits to use in block coder. Must be between 0 and 7.\n");
    fprintf(stdout, "\n");
-   fprintf(stdout, " `-w, -cinema2K [24|48]`\n");
+   fprintf(stdout, " `-w, --cinema-2k [24|48]`\n");
    fprintf(stdout, "\n");
    fprintf(stdout,
 		   "2K digital cinema profile. This option generates a codes stream compliant with\n");
@@ -420,7 +427,7 @@ static void compress_help_display(void)
    fprintf(stdout, "color component\n");
    fprintf(stdout, "* 12 bits per component.\n");
    fprintf(stdout, "\n");
-   fprintf(stdout, " `-x, -cinema4k`\n");
+   fprintf(stdout, " `-x, --cinema-4k`\n");
    fprintf(stdout, "\n");
    fprintf(stdout,
 		   "4K digital cinema profile. This option generates a code stream compliant with\n");
@@ -447,7 +454,7 @@ static void compress_help_display(void)
    fprintf(stdout, "necessary to decompress one 4K color component.\n");
    fprintf(stdout, "* 12 bits per component\n");
    fprintf(stdout, "\n");
-   fprintf(stdout, " `-U, -broadcast [PROFILE [,mainlevel=X][,framerate=FPS] ]`\n");
+   fprintf(stdout, " `-U, --broadcast [PROFILE [,mainlevel=X][,framerate=FPS] ]`\n");
    fprintf(stdout, "\n");
    fprintf(stdout, "Broadcast compliant code stream\n");
    fprintf(stdout, "\n");
@@ -458,7 +465,7 @@ static void compress_help_display(void)
    fprintf(stdout, "> 0.\n");
    fprintf(stdout, "If specified, it must be positive.\n");
    fprintf(stdout, "\n");
-   fprintf(stdout, " `-z, -IMF [PROFILE [,mainlevel=X][,sublevel=Y][,framerate=FPS]] ]`\n");
+   fprintf(stdout, " `-z, --imf [PROFILE [,mainlevel=X][,sublevel=Y][,framerate=FPS]] ]`\n");
    fprintf(stdout, "\n");
    fprintf(stdout, "Interoperable Master Format (IMF) compliant codestream.\n");
    fprintf(stdout, "\n");
@@ -469,7 +476,7 @@ static void compress_help_display(void)
 		   "* frame rate may be specified to enhance checks and set maximum bit rate when Y\n");
    fprintf(stdout, "> 0. If specified, it must be positive.\n");
    fprintf(stdout, "\n");
-   fprintf(stdout, " `-P, -POC [T<tile number 0>=resolution number start>,component number\n");
+   fprintf(stdout, " `-P, --poc [T<tile number 0>=resolution number start>,component number\n");
    fprintf(stdout,
 		   "start,layer number end,resolution number end,component number end,progression\n");
    fprintf(stdout, "order/T<tile number 1>= ...]`\n");
@@ -480,17 +487,17 @@ static void compress_help_display(void)
    fprintf(stdout, "Note: there must be at least two progression orders specified.\n");
    fprintf(stdout, "\n");
    fprintf(stdout, "Example:\n");
-   fprintf(stdout, "` -POC T0=0,0,1,3,2,CPRL/T0=0,0,1,6,3,CPRL`\n");
+   fprintf(stdout, "` --poc T0=0,0,1,3,2,CPRL/T0=0,0,1,6,3,CPRL`\n");
    fprintf(stdout, "\n");
-   fprintf(stdout, " `-S, -SOP`\n");
+   fprintf(stdout, " `-S, --sop`\n");
    fprintf(stdout, "\n");
    fprintf(stdout, "SOP marker is added before each packet. Default: no SOP.\n");
    fprintf(stdout, "\n");
-   fprintf(stdout, " `-E, -EPH`\n");
+   fprintf(stdout, " `-E, --eph`\n");
    fprintf(stdout, "\n");
    fprintf(stdout, "EPH marker is added after each packet header. Default: no EPH.\n");
    fprintf(stdout, "\n");
-   fprintf(stdout, " `-M, -mode [value]`\n");
+   fprintf(stdout, " `-M, --mode [value]`\n");
    fprintf(stdout, "\n");
    fprintf(stdout, "Non-default encode modes. There are 7 modes available.\n");
    fprintf(stdout, "The first six are:\n");
@@ -513,7 +520,7 @@ static void compress_help_display(void)
 		   "Mode HT [64], for High Throughput encoding, *cannot* be combined with any of the\n");
    fprintf(stdout, "other flags.\n");
    fprintf(stdout, "\n");
-   fprintf(stdout, " `-u, -tile_parts [R|L|C]`\n");
+   fprintf(stdout, " `-u, --tile-parts [R|L|C]`\n");
    fprintf(stdout, "\n");
    fprintf(stdout,
 		   "Divide packets of every tile into tile-parts. The division is made by grouping\n");
@@ -521,7 +528,7 @@ static void compress_help_display(void)
 		   "Resolutions (R), Layers (L) or Components (C). The type of division is specified\n");
    fprintf(stdout, "by setting the single letter `R`, `L`, or `C` as the value for this flag.\n");
    fprintf(stdout, "\n");
-   fprintf(stdout, " `-R, -ROI [c=component index,U=upshifting value]`\n");
+   fprintf(stdout, " `-R, --roi [c=component index,U=upshifting value]`\n");
    fprintf(stdout, "\n");
    fprintf(stdout, "Quantization indices upshifted for a component.\n");
    fprintf(stdout, "\n");
@@ -535,7 +542,7 @@ static void compress_help_display(void)
 		   "`c=` is the component number `[0, 1, 2, ...]` and the value after `U=` is the\n");
    fprintf(stdout, "value of upshifting. U must be in the range `[0, 37]`.\n");
    fprintf(stdout, "\n");
-   fprintf(stdout, " `-d, -image_offset [x offset,y offset]`\n");
+   fprintf(stdout, " `-d, --image-offset [x offset,y offset]`\n");
    fprintf(stdout, "\n");
    fprintf(stdout,
 		   "Offset of the image origin. The division in tile could be modified as the anchor\n");
@@ -547,13 +554,13 @@ static void compress_help_display(void)
 		   "is used. The two values are respectively for `X` and `Y` axis offset. Default:\n");
    fprintf(stdout, "no offset.\n");
    fprintf(stdout, "\n");
-   fprintf(stdout, " `-T, -tile_offset [x offset,y offset]`\n");
+   fprintf(stdout, " `-T, --tile-offset [x offset,y offset]`\n");
    fprintf(stdout, "\n");
    fprintf(stdout, "Offset of the tile origin. The two values are respectively for X and Y axis\n");
    fprintf(stdout, "offset. The tile anchor point can not be inside the image area. Default: no\n");
    fprintf(stdout, "offset.\n");
    fprintf(stdout, "\n");
-   fprintf(stdout, " `-Y, -MCT [0|1|2]`\n");
+   fprintf(stdout, " `-Y, --mct [0|1|2]`\n");
    fprintf(stdout, "\n");
    fprintf(stdout, "Specify explicitly if a Multiple Component Transform has to be used.\n");
    fprintf(stdout, "\n");
@@ -566,7 +573,7 @@ static void compress_help_display(void)
    fprintf(stdout, "conversion is used if there are three components or more, otherwise no\n");
    fprintf(stdout, "conversion.\n");
    fprintf(stdout, "\n");
-   fprintf(stdout, " `-m, -custom_mct [file]`\n");
+   fprintf(stdout, " `-m, --custom-mct [file]`\n");
    fprintf(stdout, "\n");
    fprintf(stdout,
 		   "Use custom array-based MCT of 32 bit signed values, comma separated, line-by-\n");
@@ -574,7 +581,7 @@ static void compress_help_display(void)
 		   "line no specific separators between lines, no space allowed between values. If\n");
    fprintf(stdout, "this option is used, it automatically sets `[-Y|-mct]` option equal to 2.\n");
    fprintf(stdout, "\n");
-   fprintf(stdout, " `-V, -transfer_exif_tags`\n");
+   fprintf(stdout, " `-V, --transfer-exif-tags`\n");
    fprintf(stdout, "\n");
    fprintf(stdout, "Transfer all Exif tags to output file.\n");
    fprintf(stdout, "\n");
@@ -591,7 +598,7 @@ static void compress_help_display(void)
    fprintf(stdout, "\n");
    fprintf(stdout, "`exiftool -TagsFromFile src.tif \"-all:all>all:all\" dest.jp2`\n");
    fprintf(stdout, "\n");
-   fprintf(stdout, " `-Q, -capture_res [capture resolution X,capture resolution Y]`\n");
+   fprintf(stdout, " `-Q, --capture-res [capture resolution X,capture resolution Y]`\n");
    fprintf(stdout, "\n");
    fprintf(stdout, "Capture resolution in pixels/metre, in double precision.\n");
    fprintf(stdout, "\n");
@@ -604,14 +611,14 @@ static void compress_help_display(void)
 		   "* The special values `[0,0]` for `-Q` will force the encoder to **not** store\n");
    fprintf(stdout, "capture resolution, even if present in input image.\n");
    fprintf(stdout, "\n");
-   fprintf(stdout, " `-D, -display_res [display resolution X,display resolution Y]`\n");
+   fprintf(stdout, " `-D, --display-res [display resolution X,display resolution Y]`\n");
    fprintf(stdout, "\n");
    fprintf(stdout, "Display resolution in pixels/metre, in double precision.\n");
    fprintf(stdout,
 		   "The special values `[0,0]` for `-D` will force the encoder to set the display\n");
    fprintf(stdout, "resolution equal to the capture resolution.\n");
    fprintf(stdout, "\n");
-   fprintf(stdout, " `-C, -comment [comment]`\n");
+   fprintf(stdout, " `-C, --comment [comment]`\n");
    fprintf(stdout, "\n");
    fprintf(stdout,
 		   "Add `<comment>` in comment marker segment(s). Multiple comments (up to a total\n");
@@ -621,37 +628,37 @@ static void compress_help_display(void)
    fprintf(stdout, "comment` in the first comment marker segment, and `This is my second` in a\n");
    fprintf(stdout, "second comment marker.\n");
    fprintf(stdout, "\n");
-   fprintf(stdout, " `-f, -apply_icc`\n");
+   fprintf(stdout, " `-f, --apply-icc`\n");
    fprintf(stdout, "\n");
    fprintf(stdout, "Apply ICC profile before compression, if present.\n");
    fprintf(stdout, "\n");
-   fprintf(stdout, " `-W, -logfile [output file name]`\n");
+   fprintf(stdout, " `-W, --log-file [output file name]`\n");
    fprintf(stdout, "\n");
    fprintf(stdout, "Log to file. File name will be set to `output file name`\n");
    fprintf(stdout, "\n");
-   fprintf(stdout, " `-H, -num_threads [number of threads]`\n");
+   fprintf(stdout, " `-H, --num-threads [number of threads]`\n");
    fprintf(stdout, "\n");
    fprintf(stdout,
 		   "Number of threads used for T1 compression. Default is total number of logical\n");
    fprintf(stdout, "cores.\n");
    fprintf(stdout, "\n");
-   fprintf(stdout, " `-J, -duration [duration]`\n");
+   fprintf(stdout, " `-J, --duration [duration]`\n");
    fprintf(stdout, "\n");
    fprintf(stdout, "Duration in seconds for a batch compress job. `grk_compress` will exit when\n");
    fprintf(stdout, "duration has been reached.\n");
    fprintf(stdout, "\n");
-   fprintf(stdout, " `-e, -repetitions [number of repetitions]`\n");
+   fprintf(stdout, " `-e, --repetitions [number of repetitions]`\n");
    fprintf(stdout, "\n");
    fprintf(stdout,
 		   "Number of repetitions, for either a single image, or a folder of images. Default\n");
    fprintf(stdout, "value is `1`. Unlimited repetitions are specified by a value of `0`.\n");
    fprintf(stdout, "\n");
-   fprintf(stdout, " `-g, -plugin_path [plugin path]`\n");
+   fprintf(stdout, " `-g, --plugin-path [plugin path]`\n");
    fprintf(stdout, "\n");
    fprintf(stdout, "Path to Grok plugin, which handles T1 compression.\n");
    fprintf(stdout, "Default search path for plugin is in same folder as `grk_compress` binary\n");
    fprintf(stdout, "\n");
-   fprintf(stdout, " `-G, -device_id [device ID]`\n");
+   fprintf(stdout, " `-G, --device-id [device ID]`\n");
    fprintf(stdout, "\n");
    fprintf(stdout, "For Grok plugin running on multi-GPU system. Specifies which single GPU\n");
    fprintf(stdout, "accelerator to run codec on.\n");
@@ -744,14 +751,6 @@ static bool isDecodedFormatSupported(GRK_SUPPORTED_FILE_FMT format)
    return true;
 }
 
-class GrokCompressOutput : public TCLAP::StdOutput
-{
- public:
-   virtual void usage([[maybe_unused]] TCLAP::CmdLineInterface& c)
-   {
-	  compress_help_display();
-   }
-};
 static void parse_cs(const std::string& str, std::vector<std::string>& result)
 {
    std::stringstream ss(str);
@@ -763,14 +762,12 @@ static void parse_cs(const std::string& str, std::vector<std::string>& result)
    }
 }
 
-static bool validateCinema(TCLAP::ValueArg<std::string>* arg, uint16_t profile,
-						   grk_cparameters* parameters)
+static bool validateCinema(std::string& arg, uint16_t profile, grk_cparameters* parameters)
 {
-   if(arg->isSet())
+   if(!arg.empty())
    {
-	  auto val = arg->getValue();
 	  std::vector<std::string> args;
-	  parse_cs(val, args);
+	  parse_cs(arg, args);
 	  uint16_t fps = (uint16_t)std::stoi(args[0]);
 	  int bandwidth = 0;
 	  if(args.size() > 1)
@@ -915,7 +912,7 @@ int GrkCompress::pluginBatchCompress(CompressInitParams* initParams)
    return success;
 }
 
-GrkRC GrkCompress::pluginMain(int argc, char** argv, CompressInitParams* initParams)
+GrkRC GrkCompress::pluginMain(int argc, char* argv[], CompressInitParams* initParams)
 {
    if(!initParams)
 	  return GrkRCFail;
@@ -934,8 +931,11 @@ GrkRC GrkCompress::pluginMain(int argc, char** argv, CompressInitParams* initPar
 #endif
    initParams->initialized = true;
    // load plugin but do not actually create codec
-   grk_initialize(initParams->pluginPath, initParams->parameters.num_threads,
-				  initParams->parameters.verbose);
+   if(!grk_initialize(initParams->pluginPath, initParams->parameters.num_threads,
+					  initParams->parameters.verbose))
+   {
+	  return GrkRCFail;
+   }
    img_fol_plugin = initParams->inputFolder;
    out_fol_plugin = initParams->outFolder;
 
@@ -947,7 +947,10 @@ GrkRC GrkCompress::pluginMain(int argc, char** argv, CompressInitParams* initPar
    initInfo.license = initParams->license_.c_str();
    initInfo.server = initParams->server_.c_str();
    if(!grk_plugin_init(initInfo))
+   {
+	  spdlog::info("Failed to create codec");
 	  return GrkRCFail;
+   }
 
    // 1. batch encode
    uint32_t state = grk_plugin_get_debug_state();
@@ -987,1143 +990,1191 @@ GrkRC GrkCompress::pluginMain(int argc, char** argv, CompressInitParams* initPar
    return rc;
 }
 
-static void setHT(grk_cparameters* parameters, TCLAP::ValueArg<std::string>& compressionRatiosArg,
-				  TCLAP::ValueArg<std::string>& qualityArg)
+static void setHT(grk_cparameters* parameters, bool hasCompressionRatios, bool hasQuality)
 {
    parameters->cblk_sty = GRK_CBLKSTY_HT;
    parameters->numgbits = 1;
-   if(compressionRatiosArg.isSet() || qualityArg.isSet())
+   if(hasCompressionRatios || hasQuality)
    {
 	  spdlog::warn("HTJ2K compression using rate distortion or quality"
 				   " is not currently supported.");
    }
 }
 
-GrkRC GrkCompress::parseCommandLine(int argc, char** argv, CompressInitParams* initParams)
+bool parseCommaSeparatedIntegers(const std::string& input, std::vector<uint32_t>& output,
+								 size_t numIntegers)
+{
+   std::stringstream ss(input);
+   std::string token;
+   output.clear();
+
+   while(std::getline(ss, token, ','))
+   {
+	  try
+	  {
+		 int32_t value = std::stoi(token);
+		 if(value <= 0)
+		 {
+			spdlog::error("Synthesfmtize values must be positive.");
+			return false;
+		 }
+		 output.push_back((uint32_t)value);
+	  }
+	  catch(const std::invalid_argument& e)
+	  {
+		 std::cerr << "Invalid integer value: " << token << std::endl;
+		 return false;
+	  }
+	  catch(const std::out_of_range& e)
+	  {
+		 std::cerr << "Integer value out of range: " << token << std::endl;
+		 return false;
+	  }
+   }
+
+   if(output.size() != numIntegers)
+   {
+	  std::cerr << "Error: Exactly " << numIntegers << " integer values are required." << std::endl;
+	  return false;
+   }
+
+   return true;
+}
+
+uint8_t charToUint8(char c)
+{
+   switch(c)
+   {
+	  case 'R':
+		 return static_cast<uint8_t>('R');
+	  case 'L':
+		 return static_cast<uint8_t>('L');
+	  case 'C':
+		 return static_cast<uint8_t>('C');
+	  default:
+		 throw CLI::ValidationError("tile_parts",
+									"Invalid value for tile_parts. Expected 'R', 'L', or 'C'.");
+   }
+}
+
+GrkRC GrkCompress::parseCommandLine(int argc, char* argv[], CompressInitParams* initParams)
 {
    grk_cparameters* parameters = &initParams->parameters;
    grk_img_fol* inputFolder = &initParams->inputFolder;
    grk_img_fol* outFolder = &initParams->outFolder;
    char* pluginPath = initParams->pluginPath;
 
-   try
+   CLI::App app{"grk_compress command line"};
+
+   std::string outDir, codeBlockDims, precinctDims, comment, imageOffset, displayRes, rawFormat,
+	   inputFile, license, server, inputFormat, outputFile, outputFormat, progressionOrder, poc,
+	   quality, captureRes, compressionRatios, roi, tiles, tileOffset, broadcast, cinema2K, logfile,
+	   cinema4K, batchSrc, imf, customMCT, pluginPathStr;
+
+   int32_t deviceId;
+   uint8_t resolutions;
+   uint32_t rateControlAlgorithm, repetitions, numThreads, kernelBuildOptions, duration, mode,
+	   guardBits, mct;
+   std::string tileParts;
+   uint16_t rsiz;
+
+   bool eph, applyICC, irreversible, plt, sop, tlm, transferExifTags, verbose;
+
+   auto outDirOpt = app.add_option("-a,--out-dir", outDir, "Output directory");
+   auto rateControlAlgorithmOpt =
+	   app.add_option("-A,--rate-control-algorithm", rateControlAlgorithm, "Rate control algorithm")
+		   ->default_val(0);
+   auto codeBlockDimsOpt =
+	   app.add_option("-b,--code-block-dims", codeBlockDims, "Code block dimensions");
+   auto precinctDimsOpt = app.add_option("-c,--precinct-dims", precinctDims, "Precinct dimensions");
+   auto commentOpt = app.add_option("-C,--comment", comment, "Add a comment");
+   auto imageOffsetOpt = app.add_option("-d,--image-offset", imageOffset,
+										"Image offset in reference grid coordinates");
+   auto displayResOpt = app.add_option("-D,--display-res", displayRes, "Display resolution");
+   auto repetitionsOpt =
+	   app.add_option("-e,--repetitions", repetitions, "Number of compress repetitions")
+		   ->default_val(0);
+   auto ephOpt = app.add_flag("-E,--eph", eph, "Add EPH markers");
+   auto applyICCOpt =
+	   app.add_flag("-f,--apply-icc", applyICC, "Apply ICC profile before compression");
+   auto rawFormatOpt = app.add_option("-F,--raw", rawFormat, "Raw image format parameters");
+   auto pluginPathOpt = app.add_option("-g,--plugin-path", pluginPathStr, "Plugin path");
+   auto deviceIdOpt = app.add_option("-G,--device-id", deviceId, "Device ID")->default_val(0);
+   auto numThreadsOpt =
+	   app.add_option("-H,--num-threads", numThreads, "Number of threads")->default_val(0);
+   auto inputFileOpt = app.add_option("-i,--in-file", inputFile, "Input file");
+   auto irreversibleOpt = app.add_flag("-I,--irreversible", irreversible, "Irreversible");
+   auto licenseOpt = app.add_option("-j,--license", license, "License");
+   auto serverOpt = app.add_option("-J,--server", server, "Server");
+   auto kernelBuildOptionsOpt =
+	   app.add_option("-k,--kernel_build", kernelBuildOptions, "Kernel build options")
+		   ->default_val(0);
+   auto inputFormatOpt = app.add_option("-K,--in-fmt", inputFormat, "Input format");
+   auto durationOpt =
+	   app.add_option("-l,--duration", duration, "Duration in seconds")->default_val(0);
+   auto pltOpt = app.add_flag("-L,--plt", plt, "PLT marker");
+   auto customMCTOpt = app.add_option("-m,--custom-mct", customMCT, "MCT input file");
+   auto modeOpt = app.add_option("-M,--mode", mode, "Mode")->default_val(0);
+   auto resolutionsOpt =
+	   app.add_option("-n,--resolutions", resolutions, "Number of resolutions")->default_val(0);
+   auto guardBitsOpt =
+	   app.add_option("-N,--guard-bits", guardBits, "Number of guard bits")->default_val(2);
+   auto outputFileOpt = app.add_option("-o,--out-file", outputFile, "Output file");
+   auto outputFormatOpt = app.add_option("-O,--out-fmt", outputFormat, "Output format");
+   auto progressionOrderOpt =
+	   app.add_option("-p,--progression_order", progressionOrder, "Progression order");
+   auto pocOpt = app.add_option("-P,--poc", poc, "Progression order changes");
+   auto qualityOpt = app.add_option("-q,--quality", quality, "Layer rates expressed as quality");
+   auto captureResOpt = app.add_option("-Q,--capture-res", captureRes, "Capture resolution");
+   auto compressionRatiosOpt = app.add_option("-r,--compression_ratios", compressionRatios,
+											  "Layer rates expressed as compression ratios");
+   auto roiOpt = app.add_option("-R,--roi", roi, "Region of interest");
+   auto sopOpt = app.add_flag("-S,--sop", sop, "Add SOP markers");
+   auto tilesOpt = app.add_option("-t,--tile-dims", tiles, "Tile dimensions");
+   auto tileOffsetOpt = app.add_option("-T,--tile-offset", tileOffset, "Tile offset");
+   auto tilePartsOpt =
+	   app.add_option("-u,--tile-parts", tileParts, "Tile part generation")->default_val("0");
+   tilePartsOpt->check(CLI::IsMember({"R", "L", "C", "0"}));
+   auto broadcastOpt = app.add_option("-U,--broadcast", broadcast, "Broadcast profile");
+   auto verboseOpt = app.add_flag("-v,--verbose", verbose, "Verbose");
+   auto transferExifTagsOpt =
+	   app.add_flag("-V,--transfer-exif-tags", transferExifTags, "Transfer Exif tags");
+   auto cinema2KOpt =
+	   app.add_option("-w,--cinema-2k", cinema2K, "Digital cinema 2K profile")->default_val("24");
+   auto logfileOpt = app.add_option("-W,--log-file", logfile, "Log file");
+   auto cinema4KOpt =
+	   app.add_option("-x,--cinema-4k", cinema4K, "Digital cinema 4K profile")->default_val("24");
+   auto tlmOpt = app.add_flag("-X,--tlm", tlm, "TLM marker");
+   auto batchSrcOpt = app.add_option("-y,--batch-src", batchSrc,
+									 "Source image directory OR comma separated list of "
+									 "compression settings for shared memory interface");
+   auto mctOpt = app.add_option("-Y,--mct", mct, "Multi component transform")->default_val(0);
+   auto imfOpt = app.add_option("-z,--imf", imf, "IMF profile");
+   auto rsizOpt = app.add_option("-Z,--rsiz", rsiz, "Rsiz")->default_val(0);
+
+   CLI11_PARSE_CUSTOM(app, argc, argv);
+
+   if(logfileOpt->count() > 0)
    {
-	  TCLAP::CmdLine cmd("grk_compress command line", ' ', grk_version());
+	  auto file_logger = spdlog::basic_logger_mt("grk_compress", logfile);
+	  spdlog::set_default_logger(file_logger);
+   }
+   if(verboseOpt->count() > 0)
+	  parameters->verbose = true;
+   else
+	  spdlog::set_level(spdlog::level::level_enum::err);
+   grk_set_msg_handlers(parameters->verbose ? infoCallback : nullptr, nullptr,
+						parameters->verbose ? warningCallback : nullptr, nullptr, errorCallback,
+						nullptr);
 
-	  // set the output
-	  GrokCompressOutput output;
-	  cmd.setOutput(&output);
-	  cmd.setExceptionHandling(false);
-
-	  TCLAP::ValueArg<std::string> outDirArg("a", "out_dir", "Output directory", false, "",
-											 "string", cmd);
-	  TCLAP::ValueArg<std::string> codeBlockDimArg("b", "code_block_dims", "Code block dimensions",
-												   false, "", "string", cmd);
-	  TCLAP::ValueArg<std::string> precinctDimArg("c", "precinct_dims", "Precinct dimensions",
-												  false, "", "string", cmd);
-	  TCLAP::ValueArg<std::string> commentArg("C", "comment", "Add a comment", false, "", "string",
-											  cmd);
-	  TCLAP::ValueArg<std::string> imageOffsetArg("d", "image_offset",
-												  "Image offset in reference grid coordinates",
-												  false, "", "string", cmd);
-	  TCLAP::ValueArg<std::string> displayResArg("D", "display_res", "Display resolution", false,
-												 "", "string", cmd);
-	  TCLAP::ValueArg<uint32_t> repetitionsArg(
-		  "e", "repetitions",
-		  "Number of compress repetitions, for either a folder or a single file", false, 0,
-		  "unsigned integer", cmd);
-	  TCLAP::SwitchArg ephArg("E", "EPH", "Add EPH markers", cmd);
-	  TCLAP::SwitchArg applyICCArg("f", "apply_icc", "Apply ICC profile before compression", cmd);
-	  TCLAP::ValueArg<std::string> rawFormatArg("F", "raw", "raw image format parameters", false,
-												"", "string", cmd);
-	  TCLAP::ValueArg<std::string> pluginPathArg("g", "plugin_path", "Plugin path", false, "",
-												 "string", cmd);
-	  TCLAP::ValueArg<int32_t> deviceIdArg("G", "device_id", "Device ID", false, 0, "integer", cmd);
-	  TCLAP::ValueArg<uint32_t> numThreadsArg("H", "num_threads", "Number of threads", false, 0,
-											  "unsigned integer", cmd);
-	  TCLAP::ValueArg<std::string> inputFileArg("i", "in_file", "Input file", false, "", "string",
-												cmd);
-	  TCLAP::SwitchArg irreversibleArg("I", "irreversible", "Irreversible", cmd);
-	  TCLAP::ValueArg<std::string> licenseArg("j", "license", "License", false, "", "string", cmd);
-	  TCLAP::ValueArg<std::string> serverArg("J", "server", "Server", false, "", "string", cmd);
-	  // Kernel build flags:
-	  // 1 indicates build binary, otherwise load binary
-	  // 2 indicates generate binaries
-	  TCLAP::ValueArg<uint32_t> kernelBuildOptionsArg("k", "kernel_build", "Kernel build options",
-													  false, 0, "unsigned integer", cmd);
-	  TCLAP::ValueArg<std::string> inForArg("K", "in_fmt", "InputFormat format", false, "",
-											"string", cmd);
-	  TCLAP::ValueArg<uint32_t> durationArg("l", "duration", "Duration in seconds", false, 0,
-											"unsigned integer", cmd);
-	  TCLAP::SwitchArg pltArg("L", "PLT", "PLT marker", cmd);
-	  TCLAP::ValueArg<std::string> customMCTArg("m", "custom_mct", "MCT input file", false, "",
-												"string", cmd);
-	  TCLAP::ValueArg<uint32_t> cblkSty("M", "mode", "mode", false, 0, "unsigned integer", cmd);
-	  TCLAP::ValueArg<uint32_t> resolutionArg("n", "num_resolutions", "Resolution", false, 0,
-											  "unsigned integer", cmd);
-	  TCLAP::ValueArg<uint32_t> guardBits("N", "guard_bits", "Number of guard bits", false, 2,
-										  "unsigned integer", cmd);
-	  TCLAP::ValueArg<std::string> outputFileArg("o", "out_file", "Output file", false, "",
-												 "string", cmd);
-	  TCLAP::ValueArg<std::string> outForArg("O", "out_fmt", "Output format", false, "", "string",
-											 cmd);
-	  TCLAP::ValueArg<std::string> progressionOrderArg(
-		  "p", "progression_order", "Progression order", false, "", "string", cmd);
-	  TCLAP::ValueArg<std::string> pocArg("P", "POC", "Progression order changes", false, "",
-										  "string", cmd);
-	  TCLAP::ValueArg<std::string> qualityArg("q", "quality", "layer rates expressed as quality",
-											  false, "", "string", cmd);
-	  TCLAP::ValueArg<std::string> captureResArg("Q", "capture_res", "Capture resolution", false,
-												 "", "string", cmd);
-	  TCLAP::ValueArg<std::string> compressionRatiosArg(
-		  "r", "compression_ratios", "layer rates expressed as compression ratios", false, "",
-		  "string", cmd);
-	  TCLAP::ValueArg<std::string> roiArg("R", "ROI", "Region of interest", false, "", "string",
-										  cmd);
-	  TCLAP::SwitchArg sopArg("S", "SOP", "Add SOP markers", cmd);
-	  TCLAP::ValueArg<std::string> tilesArg("t", "tile_dims", "Tile dimensions", false, "",
-											"string", cmd);
-	  TCLAP::ValueArg<std::string> tileOffsetArg("T", "tile_offset", "Tile offset", false, "",
-												 "string", cmd);
-	  TCLAP::ValueArg<uint8_t> tpArg("u", "tile_parts", "Tile part generation", false, 0, "uint8_t",
-									 cmd);
-	  TCLAP::ValueArg<std::string> BroadcastArg("U", "broadcast", "Broadcast profile", false, "",
-												"string", cmd);
-	  TCLAP::SwitchArg verboseArg("v", "verbose", "Verbose", cmd);
-	  TCLAP::SwitchArg transferExifTagsArg("V", "transfer_exif_tags", "Transfer Exif tags", cmd);
-	  TCLAP::ValueArg<std::string> cinema2KArg("w", "cinema2K", "Digital cinema 2K profile", false,
-											   "24", "string", cmd);
-	  TCLAP::ValueArg<std::string> logfileArg("W", "logfile", "Log file", false, "", "string", cmd);
-	  TCLAP::ValueArg<std::string> cinema4KArg("x", "cinema4K", "Digital cinema 4K profile", false,
-											   "24", "string", cmd);
-	  TCLAP::SwitchArg tlmArg("X", "TLM", "TLM marker", cmd);
-	  TCLAP::ValueArg<std::string> batchSrcArg("y", "batch_src",
-											   "Source image directory OR comma separated list of "
-											   "compression settings for shared memory interface",
-											   false, "", "string", cmd);
-	  TCLAP::ValueArg<uint32_t> mctArg("Y", "MCT", "Multi component transform", false, 0,
-									   "unsigned integer", cmd);
-	  TCLAP::ValueArg<std::string> IMFArg("z", "IMF", "IMF profile", false, "", "string", cmd);
-	  TCLAP::ValueArg<uint16_t> rsizArg("Z", "rsiz", "rsiz", false, 0, "unsigned integer", cmd);
-	  cmd.parse(argc, argv);
-	  if(logfileArg.isSet())
-	  {
-		 auto file_logger = spdlog::basic_logger_mt("grk_compress", logfileArg.getValue());
-		 spdlog::set_default_logger(file_logger);
-	  }
-	  if(verboseArg.isSet())
-		 parameters->verbose = true;
-	  else
-		 spdlog::set_level(spdlog::level::level_enum::err);
-	  grk_set_msg_handlers(parameters->verbose ? infoCallback : nullptr, nullptr,
-						   parameters->verbose ? warningCallback : nullptr, nullptr, errorCallback,
-						   nullptr);
-
-	  bool isHT = false;
-	  if(resolutionArg.isSet())
-		 parameters->numresolution = (uint8_t)resolutionArg.getValue();
-	  else if(cinema4KArg.isSet())
-		 parameters->numresolution = GRK_CINEMA_4K_DEFAULT_NUM_RESOLUTIONS;
+   bool isHT = false;
+   if(resolutionsOpt->count() > 0)
+	  parameters->numresolution = resolutions;
+   else if(cinema4KOpt->count() > 0)
+	  parameters->numresolution = GRK_CINEMA_4K_DEFAULT_NUM_RESOLUTIONS;
 
 #ifndef GRK_BUILD_DCI
-	  initParams->transfer_exif_tags = transferExifTagsArg.isSet();
+   initParams->transfer_exif_tags = transferExifTagsOpt->count() > 0;
 #ifndef GROK_HAVE_EXIFTOOL
-	  if(initParams->transfer_exif_tags)
-	  {
-		 spdlog::warn("Transfer of EXIF tags not supported. Transfer can be achieved by "
-					  "directly calling");
-		 spdlog::warn("exiftool after compression as follows: ");
-		 spdlog::warn("exiftool -TagsFromFile $SOURCE_FILE -all:all>all:all $DEST_FILE");
-		 initParams->transfer_exif_tags = false;
-	  }
+   if(initParams->transfer_exif_tags)
+   {
+	  spdlog::warn("Transfer of EXIF tags not supported. Transfer can be achieved by "
+				   "directly calling");
+	  spdlog::warn("exiftool after compression as follows: ");
+	  spdlog::warn("exiftool -TagsFromFile $SOURCE_FILE -all:all>all:all $DEST_FILE");
+	  initParams->transfer_exif_tags = false;
+   }
 #endif
-	  inputFolder->set_out_format = false;
-	  parameters->raw_cp.width = 0;
-	  if(applyICCArg.isSet())
-		 parameters->apply_icc_ = true;
-	  if(pltArg.isSet())
-		 parameters->write_plt = true;
-	  if(tlmArg.isSet())
-		 parameters->write_tlm = true;
-	  if(repetitionsArg.isSet())
-		 parameters->repeats = repetitionsArg.getValue();
-	  if(numThreadsArg.isSet())
-		 parameters->num_threads = numThreadsArg.getValue();
-	  if(deviceIdArg.isSet())
-		 parameters->device_id = deviceIdArg.getValue();
-	  if(durationArg.isSet())
-		 parameters->duration = durationArg.getValue();
-	  if(inForArg.isSet())
+   inputFolder->set_out_format = false;
+   parameters->raw_cp.width = 0;
+   if(applyICCOpt->count() > 0)
+	  parameters->apply_icc_ = true;
+   if(pltOpt->count() > 0)
+	  parameters->write_plt = true;
+   if(tlmOpt->count() > 0)
+	  parameters->write_tlm = true;
+   if(repetitionsOpt->count() > 0)
+	  parameters->repeats = repetitions;
+   if(rateControlAlgorithmOpt->count() > 0)
+   {
+	  uint32_t algo = rateControlAlgorithm;
+	  if(algo > GRK_RATE_CONTROL_PCRD_OPT)
+		 spdlog::warn("Rate control algorithm %u is not valid. Using default");
+	  else
+		 parameters->rate_control_algorithm = (GRK_RATE_CONTROL_ALGORITHM)rateControlAlgorithm;
+   }
+   if(numThreadsOpt->count() > 0)
+	  parameters->num_threads = numThreads;
+   if(deviceIdOpt->count() > 0)
+	  parameters->device_id = deviceId;
+   if(durationOpt->count() > 0)
+	  parameters->duration = duration;
+   if(inputFormatOpt->count() > 0)
+   {
+	  auto dummy = "dummy." + inputFormat;
+	  char* infile = (char*)(dummy).c_str();
+	  parameters->decod_format = (GRK_SUPPORTED_FILE_FMT)grk_get_file_format((char*)infile);
+	  if(!isDecodedFormatSupported(parameters->decod_format))
 	  {
-		 auto dummy = "dummy." + inForArg.getValue();
-		 char* infile = (char*)(dummy).c_str();
-		 parameters->decod_format = (GRK_SUPPORTED_FILE_FMT)grk_get_file_format((char*)infile);
+		 spdlog::warn(" Ignoring unknown input file format: %s \n"
+					  "Known file formats are *.pnm, *.pgm, "
+					  "*.ppm, *.pgx, *png, *.bmp, *.tif, *.jpg"
+					  " or *.raw",
+					  infile);
+	  }
+   }
+   if(inputFileOpt->count() > 0)
+   {
+	  char* infile = (char*)inputFile.c_str();
+	  if(parameters->decod_format == GRK_FMT_UNK)
+	  {
+		 parameters->decod_format = (GRK_SUPPORTED_FILE_FMT)grk_get_file_format(infile);
 		 if(!isDecodedFormatSupported(parameters->decod_format))
 		 {
-			spdlog::warn(" Ignoring unknown input file format: %s \n"
-						 "Known file formats are *.pnm, *.pgm, "
-						 "*.ppm, *.pgx, *png, *.bmp, *.tif, *.jpg"
-						 " or *.raw",
-						 infile);
+			spdlog::error("Unknown input file format: {} \n"
+						  "        Known file formats are *.pnm, *.pgm, *.ppm, *.pgx, "
+						  "*png, *.bmp, *.tif, *.jpg or *.raw",
+						  infile);
+			return GrkRCFail;
 		 }
 	  }
-	  if(inputFileArg.isSet())
+	  if(grk::strcpy_s(parameters->infile, sizeof(parameters->infile), infile) != 0)
+		 return GrkRCFail;
+   }
+   else
+   {
+	  // check for possible input from STDIN
+	  if(batchSrcOpt->count() == 0 && !initParams->in_image)
 	  {
-		 char* infile = (char*)inputFileArg.getValue().c_str();
-		 if(parameters->decod_format == GRK_FMT_UNK)
-		 {
-			parameters->decod_format = (GRK_SUPPORTED_FILE_FMT)grk_get_file_format(infile);
-			if(!isDecodedFormatSupported(parameters->decod_format))
-			{
-			   spdlog::error("Unknown input file format: {} \n"
-							 "        Known file formats are *.pnm, *.pgm, *.ppm, *.pgx, "
-							 "*png, *.bmp, *.tif, *.jpg or *.raw",
-							 infile);
-			   return GrkRCFail;
-			}
-		 }
-		 if(grk::strcpy_s(parameters->infile, sizeof(parameters->infile), infile) != 0)
+		 bool fail = true;
+		 bool unsupportedStdout =
+			 inputFormatOpt->count() > 0 &&
+			 !grk::supportedStdioFormat((GRK_SUPPORTED_FILE_FMT)parameters->decod_format, false);
+		 if(unsupportedStdout)
+			spdlog::error("Output format does not support decompress to stdout");
+		 else if(inputFormatOpt->count() == 0)
+			spdlog::error("Missing input file");
+		 else
+			fail = false;
+		 if(fail)
 			return GrkRCFail;
+	  }
+   }
+   if(outputFileOpt->count() > 0)
+   {
+	  char* outfile = (char*)outputFile.c_str();
+	  parameters->cod_format = grk_get_file_format(outfile, isHT);
+	  switch(parameters->cod_format)
+	  {
+		 case GRK_FMT_J2K:
+		 case GRK_FMT_JP2:
+			break;
+		 default:
+			spdlog::error(
+				"Unknown output format image {} [only *.j2k, *.j2c, *.jp2, *.jpc, *.jph or "
+				"*.jhc] supported ",
+				outfile);
+			return GrkRCFail;
+	  }
+	  if(isHT)
+		 setHT(parameters, compressionRatiosOpt->count() > 0, qualityOpt->count() > 0);
+	  if(grk::strcpy_s(parameters->outfile, sizeof(parameters->outfile), outfile) != 0)
+	  {
+		 return GrkRCFail;
+	  }
+   }
+   if(rawFormatOpt->count() > 0)
+   {
+	  bool wrong = false;
+	  int width, height, bitdepth, ncomp;
+	  uint32_t len;
+	  bool raw_signed = false;
+	  char* substr2 = (char*)strchr(rawFormat.c_str(), '@');
+	  if(substr2 == nullptr)
+	  {
+		 len = (uint32_t)rawFormat.length();
 	  }
 	  else
 	  {
-		 // check for possible input from STDIN
-		 if(!batchSrcArg.isSet() && !initParams->in_image)
-		 {
-			bool fail = true;
-			bool unsupportedStdout =
-				inForArg.isSet() &&
-				!grk::supportedStdioFormat((GRK_SUPPORTED_FILE_FMT)parameters->decod_format, false);
-			if(unsupportedStdout)
-			   spdlog::error("Output format does not support decompress to stdout");
-			else if(!inForArg.isSet())
-			   spdlog::error("Missing input file");
-			else
-			   fail = false;
-			if(fail)
-			   return GrkRCFail;
-		 }
+		 len = (uint32_t)(substr2 - rawFormat.c_str());
+		 substr2++; /* skip '@' character */
 	  }
-	  if(outputFileArg.isSet())
+	  char* substr1 = (char*)malloc((len + 1) * sizeof(char));
+	  if(substr1 == nullptr)
+		 return GrkRCFail;
+	  memcpy(substr1, rawFormat.c_str(), len);
+	  substr1[len] = '\0';
+	  char signo;
+	  if(sscanf(substr1, "%d,%d,%d,%d,%c", &width, &height, &ncomp, &bitdepth, &signo) == 5)
 	  {
-		 char* outfile = (char*)outputFileArg.getValue().c_str();
-		 parameters->cod_format = grk_get_file_format(outfile, isHT);
-		 switch(parameters->cod_format)
-		 {
-			case GRK_FMT_J2K:
-			case GRK_FMT_JP2:
-			   break;
-			default:
-			   spdlog::error("Unknown output format image {} [only *.j2k, *.j2c, *.jp2, *.jpc, "
-							 "*.jph or *.jhc] supported ",
-							 outfile);
-			   return GrkRCFail;
-		 }
-		 if(isHT)
-			setHT(parameters, compressionRatiosArg, qualityArg);
-		 if(grk::strcpy_s(parameters->outfile, sizeof(parameters->outfile), outfile) != 0)
-		 {
-			return GrkRCFail;
-		 }
-	  }
-	  if(rawFormatArg.isSet())
-	  {
-		 bool wrong = false;
-		 int width, height, bitdepth, ncomp;
-		 uint32_t len;
-		 bool raw_signed = false;
-		 char* substr2 = (char*)strchr(rawFormatArg.getValue().c_str(), '@');
-		 if(substr2 == nullptr)
-		 {
-			len = (uint32_t)rawFormatArg.getValue().length();
-		 }
+		 if(signo == 's')
+			raw_signed = true;
+		 else if(signo == 'u')
+			raw_signed = false;
 		 else
-		 {
-			len = (uint32_t)(substr2 - rawFormatArg.getValue().c_str());
-			substr2++; /* skip '@' character */
-		 }
-		 char* substr1 = (char*)malloc((len + 1) * sizeof(char));
-		 if(substr1 == nullptr)
-			return GrkRCFail;
-		 memcpy(substr1, rawFormatArg.getValue().c_str(), len);
-		 substr1[len] = '\0';
-		 char signo;
-		 if(sscanf(substr1, "%d,%d,%d,%d,%c", &width, &height, &ncomp, &bitdepth, &signo) == 5)
-		 {
-			if(signo == 's')
-			   raw_signed = true;
-			else if(signo == 'u')
-			   raw_signed = false;
-			else
-			   wrong = true;
-		 }
-		 else
-		 {
 			wrong = true;
-		 }
-		 if(!wrong)
+	  }
+	  else
+	  {
+		 wrong = true;
+	  }
+	  if(!wrong)
+	  {
+		 grk_raw_cparameters* raw_cp = &parameters->raw_cp;
+		 uint16_t compno;
+		 uint32_t lastdx = 1;
+		 uint32_t lastdy = 1;
+		 raw_cp->width = (uint32_t)width;
+		 raw_cp->height = (uint32_t)height;
+		 raw_cp->numcomps = (uint16_t)ncomp;
+		 raw_cp->prec = (uint8_t)bitdepth;
+		 raw_cp->sgnd = raw_signed;
+		 raw_cp->comps = (grk_raw_comp_cparameters*)malloc(((uint32_t)(ncomp)) *
+														   sizeof(grk_raw_comp_cparameters));
+		 if(raw_cp->comps == nullptr)
 		 {
-			grk_raw_cparameters* raw_cp = &parameters->raw_cp;
-			uint16_t compno;
-			uint32_t lastdx = 1;
-			uint32_t lastdy = 1;
-			raw_cp->width = (uint32_t)width;
-			raw_cp->height = (uint32_t)height;
-			raw_cp->numcomps = (uint16_t)ncomp;
-			raw_cp->prec = (uint8_t)bitdepth;
-			raw_cp->sgnd = raw_signed;
-			raw_cp->comps = (grk_raw_comp_cparameters*)malloc(((uint32_t)(ncomp)) *
-															  sizeof(grk_raw_comp_cparameters));
-			if(raw_cp->comps == nullptr)
+			free(substr1);
+			return GrkRCFail;
+		 }
+
+		 for(compno = 0; compno < ncomp && !wrong; compno++)
+		 {
+			if(substr2 == nullptr)
 			{
-			   free(substr1);
-			   return GrkRCFail;
+			   raw_cp->comps[compno].dx = static_cast<uint8_t>(lastdx);
+			   raw_cp->comps[compno].dy = static_cast<uint8_t>(lastdy);
 			}
-			for(compno = 0; compno < ncomp && !wrong; compno++)
+			else
 			{
-			   if(substr2 == nullptr)
+			   uint32_t dx, dy;
+			   char buffer[256]; // Adjust size as necessary
+
+			   // Copy the input string to a buffer to ensure it is null-terminated
+			   strncpy(buffer, substr2, sizeof(buffer) - 1);
+			   buffer[sizeof(buffer) - 1] = '\0'; // Ensure null-termination
+
+			   char* sep = strchr(buffer, ':');
+			   if(sep == nullptr)
 			   {
-				  raw_cp->comps[compno].dx = (uint8_t)lastdx;
-				  raw_cp->comps[compno].dy = (uint8_t)lastdy;
-			   }
-			   else
-			   {
-				  uint32_t dx, dy;
-				  char* sep = strchr(substr2, ':');
-				  if(sep == nullptr)
+				  // Use field width limits in sscanf to prevent overflow
+				  if(sscanf(buffer, "%32ux%32u", &dx, &dy) == 2)
 				  {
-					 if(sscanf(substr2, "%ux%u", &dx, &dy) == 2)
-					 {
-						lastdx = dx;
-						lastdy = dy;
-						raw_cp->comps[compno].dx = (uint8_t)dx;
-						raw_cp->comps[compno].dy = (uint8_t)dy;
-						substr2 = nullptr;
-					 }
-					 else
-					 {
-						wrong = true;
-					 }
+					 lastdx = dx;
+					 lastdy = dy;
+					 raw_cp->comps[compno].dx = static_cast<uint8_t>(dx);
+					 raw_cp->comps[compno].dy = static_cast<uint8_t>(dy);
+					 substr2 = nullptr;
 				  }
 				  else
 				  {
-					 if(sscanf(substr2, "%ux%u:%s", &dx, &dy, substr2) == 3)
-					 {
-						raw_cp->comps[compno].dx = (uint8_t)dx;
-						raw_cp->comps[compno].dy = (uint8_t)dy;
-					 }
-					 else
-					 {
-						wrong = true;
-					 }
+					 wrong = true;
+				  }
+			   }
+			   else
+			   {
+				  // Use field width limits in sscanf to prevent overflow
+				  if(sscanf(buffer, "%32ux%32u:%255s", &dx, &dy, substr2) == 3)
+				  { // Adjust width as necessary
+					 raw_cp->comps[compno].dx = static_cast<uint8_t>(dx);
+					 raw_cp->comps[compno].dy = static_cast<uint8_t>(dy);
+				  }
+				  else
+				  {
+					 wrong = true;
 				  }
 			   }
 			}
 		 }
-		 free(substr1);
-		 if(wrong)
-		 {
-			spdlog::error("\n invalid raw image parameters");
-			spdlog::error("Please use the Format option -F:");
-			spdlog::error(
-				"-F <width>,<height>,<ncomp>,<bitdepth>,{s,u}@<dx1>x<dy1>:...:<dxn>x<dyn>");
-			spdlog::error("If subsampling is omitted, 1x1 is assumed for all components");
-			spdlog::error("Example: -i image.raw -o image.j2k -F 512,512,3,8,u@1x1:2x2:2x2");
-			spdlog::error("         for raw 512x512 image with 4:2:0 subsampling");
-			return GrkRCFail;
-		 }
 	  }
-	  if(precinctDimArg.isSet())
+	  free(substr1);
+	  if(wrong)
 	  {
-		 char sep;
-		 int res_spec = 0;
+		 spdlog::error("\n invalid raw image parameters");
+		 spdlog::error("Please use the Format option -F:");
+		 spdlog::error("-F <width>,<height>,<ncomp>,<bitdepth>,{s,u}@<dx1>x<dy1>:...:<dxn>x<dyn>");
+		 spdlog::error("If subsampling is omitted, 1x1 is assumed for all components");
+		 spdlog::error("Example: -i image.raw -o image.j2k -F 512,512,3,8,u@1x1:2x2:2x2");
+		 spdlog::error("         for raw 512x512 image with 4:2:0 subsampling");
+		 return GrkRCFail;
+	  }
+   }
+   if(precinctDimsOpt->count() > 0)
+   {
+	  char sep;
+	  int res_spec = 0;
 
-		 char* s = (char*)precinctDimArg.getValue().c_str();
-		 do
-		 {
-			sep = 0;
-			int ret = sscanf(s, "[%u,%u]%c", &parameters->prcw_init[res_spec],
-							 &parameters->prch_init[res_spec], &sep);
-			if(!(ret == 2 && sep == 0) && !(ret == 3 && sep == ','))
-			{
-			   spdlog::error("Could not parse precinct dimension: {} {}", s, sep);
-			   spdlog::error("Example: -i lena.raw -o lena.j2k -c [128,128],[128,128]");
-			   return GrkRCFail;
-			}
-			parameters->csty |= 0x01;
-			res_spec++;
-			s = strpbrk(s, "]") + 2;
-		 } while(sep == ',');
-		 parameters->res_spec = (uint32_t)res_spec;
-	  }
-	  if(codeBlockDimArg.isSet())
+	  char* s = (char*)precinctDims.c_str();
+	  do
 	  {
-		 int cblockw_init = 0, cblockh_init = 0;
-		 if(sscanf(codeBlockDimArg.getValue().c_str(), "%d,%d", &cblockw_init, &cblockh_init) ==
-			EOF)
+		 sep = 0;
+		 int ret = sscanf(s, "[%u,%u]%c", &parameters->prcw_init[res_spec],
+						  &parameters->prch_init[res_spec], &sep);
+		 if(!(ret == 2 && sep == 0) && !(ret == 3 && sep == ','))
 		 {
-			spdlog::error("sscanf failed for code block dimension argument");
+			spdlog::error("Could not parse precinct dimension: {} {}", s, sep);
+			spdlog::error("Example: -i lena.raw -o lena.j2k -c [128,128],[128,128]");
 			return GrkRCFail;
 		 }
-		 if(cblockw_init * cblockh_init > 4096 || cblockw_init > 1024 || cblockw_init < 4 ||
-			cblockh_init > 1024 || cblockh_init < 4)
-		 {
-			spdlog::error("Size of code block error (option -b)\n\nRestriction :\n"
-						  "    * width*height<=4096\n    * 4<=width,height<= 1024");
-			return GrkRCFail;
-		 }
-		 parameters->cblockw_init = (uint32_t)cblockw_init;
-		 parameters->cblockh_init = (uint32_t)cblockh_init;
-	  }
-	  if(pocArg.isSet())
+		 parameters->csty |= 0x01;
+		 res_spec++;
+		 s = strpbrk(s, "]") + 2;
+	  } while(sep == ',');
+	  parameters->res_spec = (uint32_t)res_spec;
+   }
+   if(codeBlockDimsOpt->count() > 0)
+   {
+	  int cblockw_init = 0, cblockh_init = 0;
+	  if(sscanf(codeBlockDims.c_str(), "%d,%d", &cblockw_init, &cblockh_init) == EOF)
 	  {
-		 uint32_t numProgressions = 0;
-		 char* s = (char*)pocArg.getValue().c_str();
-		 auto progression = parameters->progression;
-		 uint32_t res_s, comp_s, lay_e, res_e, comp_e;
+		 spdlog::error("sscanf failed for code block dimension argument");
+		 return GrkRCFail;
+	  }
+	  if(cblockw_init * cblockh_init > 4096 || cblockw_init > 1024 || cblockw_init < 4 ||
+		 cblockh_init > 1024 || cblockh_init < 4)
+	  {
+		 spdlog::error("Size of code block error (option -b)\n\nRestriction :\n"
+					   "    * width*height<=4096\n    * 4<=width,height<= 1024");
+		 return GrkRCFail;
+	  }
+	  parameters->cblockw_init = (uint32_t)cblockw_init;
+	  parameters->cblockh_init = (uint32_t)cblockh_init;
+   }
+   if(pocOpt->count() > 0)
+   {
+	  uint32_t numProgressions = 0;
+	  char* s = (char*)poc.c_str();
+	  auto progression = parameters->progression;
+	  uint32_t res_s, comp_s, lay_e, res_e, comp_e;
 
-		 while(sscanf(s, "T%u=%u,%u,%u,%u,%u,%4s", &progression[numProgressions].tileno, &res_s,
-					  &comp_s, &lay_e, &res_e, &comp_e,
-					  progression[numProgressions].progression_str) == 7)
+	  while(sscanf(s, "T%u=%u,%u,%u,%u,%u,%4s", &progression[numProgressions].tileno, &res_s,
+				   &comp_s, &lay_e, &res_e, &comp_e,
+				   progression[numProgressions].progression_str) == 7)
+	  {
+		 progression[numProgressions].res_s = (uint8_t)res_s;
+		 progression[numProgressions].comp_s = (uint16_t)comp_s;
+		 progression[numProgressions].lay_e = (uint16_t)lay_e;
+		 progression[numProgressions].res_e = (uint8_t)res_e;
+		 progression[numProgressions].comp_e = (uint16_t)comp_e;
+		 progression[numProgressions].specified_compression_poc_prog =
+			 getProgression(progression[numProgressions].progression_str);
+		 // sanity check on layer
+		 if(progression[numProgressions].lay_e > parameters->numlayers)
 		 {
-			progression[numProgressions].res_s = (uint8_t)res_s;
-			progression[numProgressions].comp_s = (uint16_t)comp_s;
-			progression[numProgressions].lay_e = (uint16_t)lay_e;
-			progression[numProgressions].res_e = (uint8_t)res_e;
-			progression[numProgressions].comp_e = (uint16_t)comp_e;
-			progression[numProgressions].specified_compression_poc_prog =
-				getProgression(progression[numProgressions].progression_str);
-			// sanity check on layer
-			if(progression[numProgressions].lay_e > parameters->numlayers)
-			{
-			   spdlog::warn("End layer {} in POC {} is greater than"
-							" total number of layers {}. Truncating.",
-							progression[numProgressions].lay_e, numProgressions,
-							parameters->numlayers);
-			   progression[numProgressions].lay_e = parameters->numlayers;
-			}
-			if(progression[numProgressions].res_e > parameters->numresolution)
-			{
-			   spdlog::warn("POC end resolution {} cannot be greater than"
-							"the number of resolutions {}",
-							progression[numProgressions].res_e, parameters->numresolution);
-			   progression[numProgressions].res_e = parameters->numresolution;
-			}
-			if(progression[numProgressions].res_s >= progression[numProgressions].res_e)
-			{
-			   spdlog::error("POC beginning resolution must be strictly less than end resolution");
-			   return GrkRCFail;
-			}
-			if(progression[numProgressions].comp_s >= progression[numProgressions].comp_e)
-			{
-			   spdlog::error("POC beginning component must be strictly less than end component");
-			   return GrkRCFail;
-			}
-			numProgressions++;
-			while(*s && *s != '/')
-			   s++;
-			if(!*s)
-			   break;
+			spdlog::warn("End layer {} in POC {} is greater than"
+						 " total number of layers {}. Truncating.",
+						 progression[numProgressions].lay_e, numProgressions,
+						 parameters->numlayers);
+			progression[numProgressions].lay_e = parameters->numlayers;
+		 }
+		 if(progression[numProgressions].res_e > parameters->numresolution)
+		 {
+			spdlog::warn("POC end resolution {} cannot be greater than"
+						 "the number of resolutions {}",
+						 progression[numProgressions].res_e, parameters->numresolution);
+			progression[numProgressions].res_e = parameters->numresolution;
+		 }
+		 if(progression[numProgressions].res_s >= progression[numProgressions].res_e)
+		 {
+			spdlog::error("POC beginning resolution must be strictly less than end resolution");
+			return GrkRCFail;
+		 }
+		 if(progression[numProgressions].comp_s >= progression[numProgressions].comp_e)
+		 {
+			spdlog::error("POC beginning component must be strictly less than end component");
+			return GrkRCFail;
+		 }
+		 numProgressions++;
+		 while(*s && *s != '/')
+			s++;
+		 if(!*s)
+			break;
+		 s++;
+	  }
+	  if(numProgressions <= 1)
+	  {
+		 spdlog::error("POC argument must have at least two progressions");
+		 return GrkRCFail;
+	  }
+	  parameters->numpocs = numProgressions - 1;
+   }
+   else if(progressionOrderOpt->count() > 0)
+   {
+	  bool recognized = false;
+	  if(progressionOrder.length() == 4)
+	  {
+		 char progression[5];
+		 progression[4] = 0;
+		 strncpy(progression, progressionOrder.c_str(), 4);
+		 parameters->prog_order = getProgression(progression);
+		 recognized = parameters->prog_order != -1;
+	  }
+	  if(!recognized)
+	  {
+		 spdlog::error("Unrecognized progression order {} is not one of "
+					   "[LRCP, RLCP, RPCL, PCRL, CPRL]",
+					   progressionOrder);
+		 return GrkRCFail;
+	  }
+   }
+   if(sopOpt->count() > 0)
+	  parameters->csty |= 0x02;
+   if(ephOpt->count() > 0)
+	  parameters->csty |= 0x04;
+   if(irreversibleOpt->count() > 0)
+	  parameters->irreversible = true;
+   if(guardBitsOpt->count() > 0)
+   {
+	  if(guardBits > 7)
+	  {
+		 spdlog::error("Number of guard bits {} is greater than 7", guardBits);
+		 return GrkRCFail;
+	  }
+	  parameters->numgbits = (uint8_t)guardBits;
+   }
+   if(captureResOpt->count() > 0)
+   {
+	  if(sscanf(captureRes.c_str(), "%lf,%lf", parameters->capture_resolution,
+				parameters->capture_resolution + 1) != 2)
+	  {
+		 spdlog::error("-Q 'capture resolution' argument error  [-Q X0,Y0]");
+		 return GrkRCFail;
+	  }
+	  parameters->write_capture_resolution = true;
+   }
+   if(displayResOpt->count() > 0)
+   {
+	  if(sscanf(captureRes.c_str(), "%lf,%lf", parameters->display_resolution,
+				parameters->display_resolution + 1) != 2)
+	  {
+		 spdlog::error("-D 'display resolution' argument error  [-D X0,Y0]");
+		 return GrkRCFail;
+	  }
+	  parameters->write_display_resolution = true;
+   }
+   if(mctOpt->count() > 0)
+   {
+	  uint32_t mct_mode = mct;
+	  if(mct_mode > 2)
+	  {
+		 spdlog::error("Incorrect MCT value {}. Must be equal to 0, 1 or 2.", mct_mode);
+		 return GrkRCFail;
+	  }
+	  parameters->mct = (uint8_t)mct_mode;
+   }
+   if(customMCTOpt->count() > 0)
+   {
+	  char* lFilename = (char*)customMCT.c_str();
+	  char* lMatrix = nullptr;
+	  char* lCurrentPtr = nullptr;
+	  float* lCurrentDoublePtr = nullptr;
+	  float* lSpace = nullptr;
+	  int* int_ptr = nullptr;
+	  int lNbComp = 0, lTotalComp, lMctComp, i2;
+	  size_t lStrLen, lStrFread;
+	  uint32_t rc = 1;
+
+	  /* Open file */
+	  FILE* lFile = fopen(lFilename, "r");
+	  if(!lFile)
+		 goto cleanup;
+
+	  /* Set size of file and read its content*/
+	  if(GRK_FSEEK(lFile, 0U, SEEK_END))
+		 goto cleanup;
+
+	  lStrLen = (size_t)GRK_FTELL(lFile);
+	  if(GRK_FSEEK(lFile, 0U, SEEK_SET))
+		 goto cleanup;
+
+	  lMatrix = (char*)malloc(lStrLen + 1);
+	  if(!lMatrix)
+		 goto cleanup;
+	  lStrFread = fread(lMatrix, 1, lStrLen, lFile);
+	  fclose(lFile);
+	  lFile = nullptr;
+	  if(lStrLen != lStrFread)
+		 goto cleanup;
+
+	  lMatrix[lStrLen] = 0;
+	  lCurrentPtr = lMatrix;
+
+	  /* replace ',' by 0 */
+	  while(*lCurrentPtr != 0)
+	  {
+		 if(*lCurrentPtr == ' ')
+		 {
+			*lCurrentPtr = 0;
+			++lNbComp;
+		 }
+		 ++lCurrentPtr;
+	  }
+	  ++lNbComp;
+	  lCurrentPtr = lMatrix;
+
+	  lNbComp = (int)(sqrt(4 * lNbComp + 1) / 2. - 0.5);
+	  lMctComp = lNbComp * lNbComp;
+	  lTotalComp = lMctComp + lNbComp;
+	  lSpace = (float*)malloc((size_t)lTotalComp * sizeof(float));
+	  if(lSpace == nullptr)
+	  {
+		 free(lMatrix);
+		 return GrkRCFail;
+	  }
+	  lCurrentDoublePtr = lSpace;
+	  for(i2 = 0; i2 < lMctComp; ++i2)
+	  {
+		 lStrLen = strlen(lCurrentPtr) + 1;
+		 *lCurrentDoublePtr++ = (float)atof(lCurrentPtr);
+		 lCurrentPtr += lStrLen;
+	  }
+
+	  int_ptr = (int*)lCurrentDoublePtr;
+	  for(i2 = 0; i2 < lNbComp; ++i2)
+	  {
+		 lStrLen = strlen(lCurrentPtr) + 1;
+		 *int_ptr++ = atoi(lCurrentPtr);
+		 lCurrentPtr += lStrLen;
+	  }
+
+	  /* TODO should not be here ! */
+	  grk_set_MCT(parameters, lSpace, (int*)(lSpace + lMctComp), (uint32_t)lNbComp);
+
+	  rc = 0;
+   cleanup:
+	  if(lFile)
+		 fclose(lFile);
+	  free(lSpace);
+	  free(lMatrix);
+	  if(rc)
+		 return GrkRCFail;
+   }
+   if(roiOpt->count() > 0)
+   {
+	  if(sscanf(roi.c_str(), "c=%u,U=%u", &parameters->roi_compno, &parameters->roi_shift) != 2)
+	  {
+		 spdlog::error("ROI argument must be of the form: [--roi c='compno',U='shift']");
+		 return GrkRCFail;
+	  }
+   }
+   // Canvas coordinates
+   if(tilesOpt->count() > 0)
+   {
+	  int32_t t_width = 0, t_height = 0;
+	  if(sscanf(tiles.c_str(), "%d,%d", &t_width, &t_height) == EOF)
+	  {
+		 spdlog::error("sscanf failed for tiles argument");
+		 return GrkRCFail;
+	  }
+	  // sanity check on tile dimensions
+	  if(t_width <= 0 || t_height <= 0)
+	  {
+		 spdlog::error("Tile dimensions ({}, {}) must be "
+					   "strictly positive",
+					   t_width, t_height);
+		 return GrkRCFail;
+	  }
+	  parameters->t_width = (uint32_t)t_width;
+	  parameters->t_height = (uint32_t)t_height;
+	  parameters->tile_size_on = true;
+   }
+   if(tileOffsetOpt->count() > 0)
+   {
+	  int32_t off1, off2;
+	  if(sscanf(tileOffset.c_str(), "%d,%d", &off1, &off2) != 2)
+	  {
+		 spdlog::error("-T 'tile offset' argument must be in the form: -T X0,Y0");
+		 return GrkRCFail;
+	  }
+	  if(off1 < 0 || off2 < 0)
+	  {
+		 spdlog::error("-T 'tile offset' values ({},{}) can't be negative", off1, off2);
+		 return GrkRCFail;
+	  }
+	  parameters->tx0 = (uint32_t)off1;
+	  parameters->ty0 = (uint32_t)off2;
+   }
+   if(imageOffsetOpt->count() > 0)
+   {
+	  int32_t off1, off2;
+	  if(sscanf(imageOffset.c_str(), "%d,%d", &off1, &off2) != 2)
+	  {
+		 spdlog::error("-d 'image offset' argument must be specified as:  -d x0,y0");
+		 return GrkRCFail;
+	  }
+	  if(off1 < 0 || off2 < 0)
+	  {
+		 spdlog::error("-T 'image offset' values ({},{}) can't be negative", off1, off2);
+		 return GrkRCFail;
+	  }
+	  parameters->image_offset_x0 = (uint32_t)off1;
+	  parameters->image_offset_y0 = (uint32_t)off2;
+   }
+
+   if(imageOffsetOpt->count() == 0 && tileOffsetOpt->count() > 0)
+   {
+	  parameters->image_offset_x0 = parameters->tx0;
+	  parameters->image_offset_y0 = parameters->ty0;
+   }
+   else
+   {
+	  if(parameters->tx0 > parameters->image_offset_x0 ||
+		 parameters->ty0 > parameters->image_offset_y0)
+	  {
+		 spdlog::error("Tile offset ({},{}) must be top left of "
+					   "image offset ({},{})",
+					   parameters->tx0, parameters->ty0, parameters->image_offset_x0,
+					   parameters->image_offset_y0);
+		 return GrkRCFail;
+	  }
+	  if(tilesOpt->count() > 0)
+	  {
+		 auto tx1 = uint_adds(parameters->tx0, parameters->t_width); /* manage overflow */
+		 auto ty1 = uint_adds(parameters->ty0, parameters->t_height); /* manage overflow */
+		 if(tx1 <= parameters->image_offset_x0 || ty1 <= parameters->image_offset_y0)
+		 {
+			spdlog::error("Tile grid: first tile bottom, right hand corner\n"
+						  "({},{}) must lie to the right and bottom of"
+						  " image offset ({},{})\n so that the tile overlaps with the image area.",
+						  tx1, ty1, parameters->image_offset_x0, parameters->image_offset_y0);
+			return GrkRCFail;
+		 }
+	  }
+   }
+   if(commentOpt->count() > 0)
+   {
+	  std::istringstream f(comment);
+	  std::string s;
+	  while(getline(f, s, '|'))
+	  {
+		 if(s.empty())
+			continue;
+		 if(s.length() > GRK_MAX_COMMENT_LENGTH)
+		 {
+			spdlog::warn(" Comment length {} is greater than maximum comment length {}. Ignoring",
+						 (uint32_t)s.length(), GRK_MAX_COMMENT_LENGTH);
+			continue;
+		 }
+		 size_t count = parameters->num_comments;
+		 if(count == GRK_NUM_COMMENTS_SUPPORTED)
+		 {
+			spdlog::warn(
+				" Grok compressor is limited to {} comments. Ignoring subsequent comments.",
+				GRK_NUM_COMMENTS_SUPPORTED);
+			break;
+		 }
+		 // ISO Latin comment
+		 parameters->is_binary_comment[count] = false;
+		 parameters->comment[count] = (char*)new uint8_t[s.length()];
+		 memcpy(parameters->comment[count], s.c_str(), s.length());
+		 parameters->comment_len[count] = (uint16_t)s.length();
+		 parameters->num_comments++;
+	  }
+   }
+   if(tilePartsOpt->count() > 0 && tileParts != "0")
+   {
+	  parameters->new_tile_part_progression_divider = charToUint8(tileParts[0]);
+	  parameters->enable_tile_part_generation = true;
+   }
+   if(!isHT && modeOpt->count() > 0)
+   {
+	  parameters->cblk_sty = mode & 0X7F;
+	  if(parameters->cblk_sty & GRK_CBLKSTY_HT)
+	  {
+		 spdlog::error("High throughput compression mode cannot be be used for non HTJ2K file");
+		 return GrkRCFail;
+	  }
+   }
+   if(!isHT && compressionRatiosOpt->count() > 0 && qualityOpt->count() > 0)
+   {
+	  spdlog::error("compression by both rate distortion and quality is not allowed");
+	  return GrkRCFail;
+   }
+   if(!isHT && compressionRatiosOpt->count() > 0)
+   {
+	  char* s = (char*)compressionRatios.c_str();
+	  parameters->numlayers = 0;
+	  while(sscanf(s, "%lf", &parameters->layer_rate[parameters->numlayers]) == 1)
+	  {
+		 parameters->numlayers++;
+		 while(*s && *s != ',')
+		 {
 			s++;
 		 }
-		 if(numProgressions <= 1)
-		 {
-			spdlog::error("POC argument must have at least two progressions");
-			return GrkRCFail;
-		 }
-		 parameters->numpocs = numProgressions - 1;
-	  }
-	  else if(progressionOrderArg.isSet())
-	  {
-		 bool recognized = false;
-		 if(progressionOrderArg.getValue().length() == 4)
-		 {
-			char progression[5];
-			progression[4] = 0;
-			strncpy(progression, progressionOrderArg.getValue().c_str(), 4);
-			parameters->prog_order = getProgression(progression);
-			recognized = parameters->prog_order != -1;
-		 }
-		 if(!recognized)
-		 {
-			spdlog::error("Unrecognized progression order {} is not one of "
-						  "[LRCP, RLCP, RPCL, PCRL, CPRL]",
-						  progressionOrderArg.getValue());
-			return GrkRCFail;
-		 }
-	  }
-	  if(sopArg.isSet())
-		 parameters->csty |= 0x02;
-	  if(ephArg.isSet())
-		 parameters->csty |= 0x04;
-	  if(irreversibleArg.isSet())
-		 parameters->irreversible = true;
-	  if(guardBits.isSet())
-	  {
-		 if(guardBits.getValue() > 7)
-		 {
-			spdlog::error("Number of guard bits {} is greater than 7", guardBits.getValue());
-			return GrkRCFail;
-		 }
-		 parameters->numgbits = (uint8_t)guardBits.getValue();
-	  }
-	  if(captureResArg.isSet())
-	  {
-		 if(sscanf(captureResArg.getValue().c_str(), "%lf,%lf", parameters->capture_resolution,
-				   parameters->capture_resolution + 1) != 2)
-		 {
-			spdlog::error("-Q 'capture resolution' argument error  [-Q X0,Y0]");
-			return GrkRCFail;
-		 }
-		 parameters->write_capture_resolution = true;
-	  }
-	  if(displayResArg.isSet())
-	  {
-		 if(sscanf(captureResArg.getValue().c_str(), "%lf,%lf", parameters->display_resolution,
-				   parameters->display_resolution + 1) != 2)
-		 {
-			spdlog::error("-D 'display resolution' argument error  [-D X0,Y0]");
-			return GrkRCFail;
-		 }
-		 parameters->write_display_resolution = true;
-	  }
-	  if(mctArg.isSet())
-	  {
-		 uint32_t mct_mode = mctArg.getValue();
-		 if(mct_mode > 2)
-		 {
-			spdlog::error("Incorrect MCT value {}. Must be equal to 0, 1 or 2.", mct_mode);
-			return GrkRCFail;
-		 }
-		 parameters->mct = (uint8_t)mct_mode;
-	  }
-	  if(customMCTArg.isSet())
-	  {
-		 char* lFilename = (char*)customMCTArg.getValue().c_str();
-		 char* lMatrix = nullptr;
-		 char* lCurrentPtr = nullptr;
-		 float* lCurrentDoublePtr = nullptr;
-		 float* lSpace = nullptr;
-		 int* int_ptr = nullptr;
-		 int lNbComp = 0, lTotalComp, lMctComp, i2;
-		 size_t lStrLen, lStrFread;
-		 uint32_t rc = 1;
-
-		 /* Open file */
-		 FILE* lFile = fopen(lFilename, "r");
-		 if(!lFile)
-			goto cleanup;
-
-		 /* Set size of file and read its content*/
-		 if(GRK_FSEEK(lFile, 0U, SEEK_END))
-			goto cleanup;
-
-		 lStrLen = (size_t)GRK_FTELL(lFile);
-		 if(GRK_FSEEK(lFile, 0U, SEEK_SET))
-			goto cleanup;
-
-		 lMatrix = (char*)malloc(lStrLen + 1);
-		 if(!lMatrix)
-			goto cleanup;
-		 lStrFread = fread(lMatrix, 1, lStrLen, lFile);
-		 fclose(lFile);
-		 lFile = nullptr;
-		 if(lStrLen != lStrFread)
-			goto cleanup;
-
-		 lMatrix[lStrLen] = 0;
-		 lCurrentPtr = lMatrix;
-
-		 /* replace ',' by 0 */
-		 while(*lCurrentPtr != 0)
-		 {
-			if(*lCurrentPtr == ' ')
-			{
-			   *lCurrentPtr = 0;
-			   ++lNbComp;
-			}
-			++lCurrentPtr;
-		 }
-		 ++lNbComp;
-		 lCurrentPtr = lMatrix;
-
-		 lNbComp = (int)(sqrt(4 * lNbComp + 1) / 2. - 0.5);
-		 lMctComp = lNbComp * lNbComp;
-		 lTotalComp = lMctComp + lNbComp;
-		 lSpace = (float*)malloc((size_t)lTotalComp * sizeof(float));
-		 if(lSpace == nullptr)
-		 {
-			free(lMatrix);
-			return GrkRCFail;
-		 }
-		 lCurrentDoublePtr = lSpace;
-		 for(i2 = 0; i2 < lMctComp; ++i2)
-		 {
-			lStrLen = strlen(lCurrentPtr) + 1;
-			*lCurrentDoublePtr++ = (float)atof(lCurrentPtr);
-			lCurrentPtr += lStrLen;
-		 }
-
-		 int_ptr = (int*)lCurrentDoublePtr;
-		 for(i2 = 0; i2 < lNbComp; ++i2)
-		 {
-			lStrLen = strlen(lCurrentPtr) + 1;
-			*int_ptr++ = atoi(lCurrentPtr);
-			lCurrentPtr += lStrLen;
-		 }
-
-		 /* TODO should not be here ! */
-		 grk_set_MCT(parameters, lSpace, (int*)(lSpace + lMctComp), (uint32_t)lNbComp);
-
-		 rc = 0;
-	  cleanup:
-		 if(lFile)
-			fclose(lFile);
-		 free(lSpace);
-		 free(lMatrix);
-		 if(rc)
-			return GrkRCFail;
-	  }
-	  if(roiArg.isSet())
-	  {
-		 if(sscanf(roiArg.getValue().c_str(), "c=%u,U=%u", &parameters->roi_compno,
-				   &parameters->roi_shift) != 2)
-		 {
-			spdlog::error("ROI argument must be of the form: [-ROI c='compno',U='shift']");
-			return GrkRCFail;
-		 }
-	  }
-	  // Canvas coordinates
-	  if(tilesArg.isSet())
-	  {
-		 int32_t t_width = 0, t_height = 0;
-		 if(sscanf(tilesArg.getValue().c_str(), "%d,%d", &t_width, &t_height) == EOF)
-		 {
-			spdlog::error("sscanf failed for tiles argument");
-			return GrkRCFail;
-		 }
-		 // sanity check on tile dimensions
-		 if(t_width <= 0 || t_height <= 0)
-		 {
-			spdlog::error("Tile dimensions ({}, {}) must be "
-						  "strictly positive",
-						  t_width, t_height);
-			return GrkRCFail;
-		 }
-		 parameters->t_width = (uint32_t)t_width;
-		 parameters->t_height = (uint32_t)t_height;
-		 parameters->tile_size_on = true;
-	  }
-	  if(tileOffsetArg.isSet())
-	  {
-		 int32_t off1, off2;
-		 if(sscanf(tileOffsetArg.getValue().c_str(), "%d,%d", &off1, &off2) != 2)
-		 {
-			spdlog::error("-T 'tile offset' argument must be in the form: -T X0,Y0");
-			return GrkRCFail;
-		 }
-		 if(off1 < 0 || off2 < 0)
-		 {
-			spdlog::error("-T 'tile offset' values ({},{}) can't be negative", off1, off2);
-			return GrkRCFail;
-		 }
-		 parameters->tx0 = (uint32_t)off1;
-		 parameters->ty0 = (uint32_t)off2;
-	  }
-	  if(imageOffsetArg.isSet())
-	  {
-		 int32_t off1, off2;
-		 if(sscanf(imageOffsetArg.getValue().c_str(), "%d,%d", &off1, &off2) != 2)
-		 {
-			spdlog::error("-d 'image offset' argument must be specified as:  -d x0,y0");
-			return GrkRCFail;
-		 }
-		 if(off1 < 0 || off2 < 0)
-		 {
-			spdlog::error("-T 'image offset' values ({},{}) can't be negative", off1, off2);
-			return GrkRCFail;
-		 }
-		 parameters->image_offset_x0 = (uint32_t)off1;
-		 parameters->image_offset_y0 = (uint32_t)off2;
+		 if(!*s)
+			break;
+		 s++;
 	  }
 
-	  if(!imageOffsetArg.isSet() && tileOffsetArg.isSet())
+	  // sanity check on rates
+	  double lastRate = DBL_MAX;
+	  for(uint32_t i = 0; i < parameters->numlayers; ++i)
 	  {
-		 parameters->image_offset_x0 = parameters->tx0;
-		 parameters->image_offset_y0 = parameters->ty0;
+		 if(parameters->layer_rate[i] > lastRate)
+		 {
+			spdlog::error("rates must be listed in descending order");
+			return GrkRCFail;
+		 }
+		 if(parameters->layer_rate[i] < 1.0)
+		 {
+			spdlog::error("rates must be greater than or equal to one");
+			return GrkRCFail;
+		 }
+		 lastRate = parameters->layer_rate[i];
+	  }
+
+	  parameters->allocation_by_rate_distortion = true;
+	  // set compression ratio of 1 equal to 0, to signal lossless layer
+	  for(uint32_t i = 0; i < parameters->numlayers; ++i)
+	  {
+		 if(parameters->layer_rate[i] == 1)
+			parameters->layer_rate[i] = 0;
+	  }
+   }
+   else if(!isHT && qualityOpt->count() > 0)
+   {
+	  char* s = (char*)quality.c_str();
+	  ;
+	  while(sscanf(s, "%lf", &parameters->layer_distortion[parameters->numlayers]) == 1)
+	  {
+		 parameters->numlayers++;
+		 while(*s && *s != ',')
+		 {
+			s++;
+		 }
+		 if(!*s)
+			break;
+		 s++;
+	  }
+	  parameters->allocation_by_quality = true;
+
+	  // sanity check on quality values
+	  double lastDistortion = -1;
+	  for(uint16_t i = 0; i < parameters->numlayers; ++i)
+	  {
+		 auto distortion = parameters->layer_distortion[i];
+		 if(distortion < 0)
+		 {
+			spdlog::error("PSNR values must be greater than or equal to zero");
+			return GrkRCFail;
+		 }
+		 if(distortion < lastDistortion &&
+			!(i == (uint16_t)(parameters->numlayers - 1) && distortion == 0))
+		 {
+			spdlog::error("PSNR values must be listed in ascending order");
+			return GrkRCFail;
+		 }
+		 lastDistortion = distortion;
+	  }
+   }
+#else
+   if(!cinema2KOpt->count() > 0 && !cinema4KOpt->count() > 0)
+	  return GrkRCFail;
+
+#endif
+   if(pluginPathOpt->count() > 0)
+   {
+	  if(pluginPath)
+		 strcpy(pluginPath, pluginPathStr.c_str());
+   }
+   inputFolder->set_imgdir = false;
+   if(batchSrcOpt->count() > 0)
+   {
+	  // first check if this is a comma separated list
+	  std::stringstream ss(batchSrc);
+	  uint32_t count = 0;
+	  while(ss.good())
+	  {
+		 std::string substr;
+		 std::getline(ss, substr, ',');
+		 count++;
+	  }
+	  if(count >= 6)
+	  {
+		 parameters->shared_memory_interface = true;
 	  }
 	  else
 	  {
-		 if(parameters->tx0 > parameters->image_offset_x0 ||
-			parameters->ty0 > parameters->image_offset_y0)
+		 if(!validateDirectory(batchSrc))
+			return GrkRCFail;
+	  }
+	  inputFolder->imgdirpath = (char*)malloc(strlen(batchSrc.c_str()) + 1);
+	  strcpy(inputFolder->imgdirpath, batchSrc.c_str());
+	  inputFolder->set_imgdir = true;
+   }
+   if(outFolder)
+   {
+	  outFolder->set_imgdir = false;
+	  if(outDirOpt->count() > 0)
+	  {
+		 if(!validateDirectory(outDir))
+			return GrkRCFail;
+		 outFolder->imgdirpath = (char*)malloc(strlen(outDir.c_str()) + 1);
+		 strcpy(outFolder->imgdirpath, outDir.c_str());
+		 outFolder->set_imgdir = true;
+	  }
+   }
+   if(kernelBuildOptionsOpt->count() > 0)
+	  parameters->kernel_build_options = kernelBuildOptions;
+   if(!isHT && qualityOpt->count() == 0 && compressionRatiosOpt->count() == 0)
+   {
+	  /* if no rate was entered, then lossless by default */
+	  parameters->layer_rate[0] = 0;
+	  parameters->numlayers = 1;
+	  parameters->allocation_by_rate_distortion = false;
+   }
+   // cinema/broadcast profiles
+   if(!isHT)
+   {
+	  if(cinema2KOpt->count() > 0)
+	  {
+		 if(!validateCinema(cinema2K, GRK_PROFILE_CINEMA_2K, parameters))
+			return GrkRCFail;
+		 parameters->write_tlm = true;
+		 spdlog::warn("Cinema 2K profile activated. Other options specified may be overridden");
+	  }
+	  else if(cinema4KOpt->count() > 0)
+	  {
+		 if(!validateCinema(cinema4K, GRK_PROFILE_CINEMA_4K, parameters))
+			return GrkRCFail;
+		 spdlog::warn("Cinema 4K profile activated. Other options specified may be overridden");
+		 parameters->write_tlm = true;
+	  }
+	  else if(broadcastOpt->count() > 0)
+	  {
+		 int mainlevel = 0;
+		 int profile = 0;
+		 int framerate = 0;
+		 const char* msg = "Wrong value for --broadcast. Should be "
+						   "<PROFILE>[,mainlevel=X][,framerate=FPS] where <PROFILE> is one "
+						   "of SINGLE/MULTI/MULTI_R.";
+		 char* arg = (char*)broadcast.c_str();
+		 char* comma;
+
+		 comma = strstr(arg, ",mainlevel=");
+		 if(comma && sscanf(comma + 1, "mainvalidateCinemalevel=%d", &mainlevel) != 1)
 		 {
-			spdlog::error("Tile offset ({},{}) must be top left of "
-						  "image offset ({},{})",
-						  parameters->tx0, parameters->ty0, parameters->image_offset_x0,
-						  parameters->image_offset_y0);
+			spdlog::error("{}", msg);
 			return GrkRCFail;
 		 }
-		 if(tilesArg.isSet())
+		 comma = strstr(arg, ",framerate=");
+		 if(comma && sscanf(comma + 1, "framerate=%d", &framerate) != 1)
 		 {
-			auto tx1 = uint_adds(parameters->tx0, parameters->t_width); /* manage overflow */
-			auto ty1 = uint_adds(parameters->ty0, parameters->t_height); /* manage overflow */
-			if(tx1 <= parameters->image_offset_x0 || ty1 <= parameters->image_offset_y0)
-			{
-			   spdlog::error(
-				   "Tile grid: first tile bottom, right hand corner\n"
-				   "({},{}) must lie to the right and bottom of"
-				   " image offset ({},{})\n so that the tile overlaps with the image area.",
-				   tx1, ty1, parameters->image_offset_x0, parameters->image_offset_y0);
-			   return GrkRCFail;
-			}
-		 }
-	  }
-	  if(commentArg.isSet())
-	  {
-		 std::istringstream f(commentArg.getValue());
-		 std::string s;
-		 while(getline(f, s, '|'))
-		 {
-			if(s.empty())
-			   continue;
-			if(s.length() > GRK_MAX_COMMENT_LENGTH)
-			{
-			   spdlog::warn(
-				   " Comment length {} is greater than maximum comment length {}. Ignoring",
-				   (uint32_t)s.length(), GRK_MAX_COMMENT_LENGTH);
-			   continue;
-			}
-			size_t count = parameters->num_comments;
-			if(count == GRK_NUM_COMMENTS_SUPPORTED)
-			{
-			   spdlog::warn(
-				   " Grok compressor is limited to {} comments. Ignoring subsequent comments.",
-				   GRK_NUM_COMMENTS_SUPPORTED);
-			   break;
-			}
-			// ISO Latin comment
-			parameters->is_binary_comment[count] = false;
-			parameters->comment[count] = (char*)new uint8_t[s.length()];
-			memcpy(parameters->comment[count], s.c_str(), s.length());
-			parameters->comment_len[count] = (uint16_t)s.length();
-			parameters->num_comments++;
-		 }
-	  }
-	  if(tpArg.isSet())
-	  {
-		 parameters->new_tile_part_progression_divider = tpArg.getValue();
-		 parameters->enable_tile_part_generation = true;
-	  }
-	  if(!isHT && cblkSty.isSet())
-	  {
-		 parameters->cblk_sty = cblkSty.getValue() & 0X7F;
-		 if(parameters->cblk_sty == GRK_CBLKSTY_HT)
-		 {
-			spdlog::error("High throughput compression mode cannot be be used for non HTJ2K file");
+			spdlog::error("{}", msg);
 			return GrkRCFail;
 		 }
-	  }
-	  if(!isHT && compressionRatiosArg.isSet() && qualityArg.isSet())
-	  {
-		 spdlog::error("compression by both rate distortion and quality is not allowed");
-		 return GrkRCFail;
-	  }
-	  if(!isHT && compressionRatiosArg.isSet())
-	  {
-		 char* s = (char*)compressionRatiosArg.getValue().c_str();
-		 parameters->numlayers = 0;
-		 while(sscanf(s, "%lf", &parameters->layer_rate[parameters->numlayers]) == 1)
+		 comma = strchr(arg, ',');
+		 if(comma != nullptr)
 		 {
-			parameters->numlayers++;
-			while(*s && *s != ',')
-			{
-			   s++;
-			}
-			if(!*s)
-			   break;
-			s++;
+			*comma = 0;
 		 }
-
-		 // sanity check on rates
-		 double lastRate = DBL_MAX;
-		 for(uint32_t i = 0; i < parameters->numlayers; ++i)
+		 if(strcmp(arg, "SINGLE") == 0)
 		 {
-			if(parameters->layer_rate[i] > lastRate)
-			{
-			   spdlog::error("rates must be listed in descending order");
-			   return GrkRCFail;
-			}
-			if(parameters->layer_rate[i] < 1.0)
-			{
-			   spdlog::error("rates must be greater than or equal to one");
-			   return GrkRCFail;
-			}
-			lastRate = parameters->layer_rate[i];
+			profile = GRK_PROFILE_BC_SINGLE;
 		 }
-
-		 parameters->allocation_by_rate_distortion = true;
-		 // set compression ratio of 1 equal to 0, to signal lossless layer
-		 for(uint32_t i = 0; i < parameters->numlayers; ++i)
+		 else if(strcmp(arg, "MULTI") == 0)
 		 {
-			if(parameters->layer_rate[i] == 1)
-			   parameters->layer_rate[i] = 0;
+			profile = GRK_PROFILE_BC_MULTI;
 		 }
-	  }
-	  else if(!isHT && qualityArg.isSet())
-	  {
-		 char* s = (char*)qualityArg.getValue().c_str();
-		 ;
-		 while(sscanf(s, "%lf", &parameters->layer_distortion[parameters->numlayers]) == 1)
+		 else if(strcmp(arg, "MULTI_R") == 0)
 		 {
-			parameters->numlayers++;
-			while(*s && *s != ',')
-			{
-			   s++;
-			}
-			if(!*s)
-			   break;
-			s++;
-		 }
-		 parameters->allocation_by_quality = true;
-
-		 // sanity check on quality values
-		 double lastDistortion = -1;
-		 for(uint16_t i = 0; i < parameters->numlayers; ++i)
-		 {
-			auto distortion = parameters->layer_distortion[i];
-			if(distortion < 0)
-			{
-			   spdlog::error("PSNR values must be greater than or equal to zero");
-			   return GrkRCFail;
-			}
-			if(distortion < lastDistortion &&
-			   !(i == (uint16_t)(parameters->numlayers - 1) && distortion == 0))
-			{
-			   spdlog::error("PSNR values must be listed in ascending order");
-			   return GrkRCFail;
-			}
-			lastDistortion = distortion;
-		 }
-	  }
-#else
-	  if(!cinema2KArg.isSet() && !cinema4KArg.isSet())
-		 return GrkRCFail;
-
-#endif
-	  if(pluginPathArg.isSet())
-	  {
-		 if(pluginPath)
-			strcpy(pluginPath, pluginPathArg.getValue().c_str());
-	  }
-	  inputFolder->set_imgdir = false;
-	  if(batchSrcArg.isSet())
-	  {
-		 // first check if this is a comma separated list
-		 std::stringstream ss(batchSrcArg.getValue());
-		 uint32_t count = 0;
-		 while(ss.good())
-		 {
-			std::string substr;
-			std::getline(ss, substr, ',');
-			count++;
-		 }
-		 if(count >= 6)
-		 {
-			parameters->shared_memory_interface = true;
+			profile = GRK_PROFILE_BC_MULTI_R;
 		 }
 		 else
 		 {
-			if(!validateDirectory(batchSrcArg.getValue()))
-			   return GrkRCFail;
+			spdlog::error("{}", msg);
+			return GrkRCFail;
 		 }
-		 inputFolder->imgdirpath = (char*)malloc(strlen(batchSrcArg.getValue().c_str()) + 1);
-		 strcpy(inputFolder->imgdirpath, batchSrcArg.getValue().c_str());
-		 inputFolder->set_imgdir = true;
-	  }
-	  if(outFolder)
-	  {
-		 outFolder->set_imgdir = false;
-		 if(outDirArg.isSet())
+
+		 if(!(mainlevel >= 0 && mainlevel <= 11))
 		 {
-			if(!validateDirectory(outDirArg.getValue()))
-			   return GrkRCFail;
-			outFolder->imgdirpath = (char*)malloc(strlen(outDirArg.getValue().c_str()) + 1);
-			strcpy(outFolder->imgdirpath, outDirArg.getValue().c_str());
-			outFolder->set_imgdir = true;
+			/* Voluntarily rough validation. More fine grained done in library */
+			spdlog::error("Invalid mainlevel value {}.", mainlevel);
+			return GrkRCFail;
 		 }
-	  }
-	  if(kernelBuildOptionsArg.isSet())
-		 parameters->kernel_build_options = kernelBuildOptionsArg.getValue();
-	  if(!isHT && !qualityArg.isSet() && !compressionRatiosArg.isSet())
-	  {
-		 /* if no rate was entered, then lossless by default */
-		 parameters->layer_rate[0] = 0;
-		 parameters->numlayers = 1;
-		 parameters->allocation_by_rate_distortion = false;
-	  }
-	  // cinema/broadcast profiles
-	  if(!isHT)
-	  {
-		 if(cinema2KArg.isSet())
+		 parameters->rsiz = (uint16_t)(profile | mainlevel);
+		 spdlog::warn("Broadcast profile activated. Other options specified may be overridden");
+		 parameters->framerate = (uint16_t)framerate;
+		 if(framerate > 0)
 		 {
-			if(!validateCinema(&cinema2KArg, GRK_PROFILE_CINEMA_2K, parameters))
-			   return GrkRCFail;
-			parameters->write_tlm = true;
-			spdlog::warn("Cinema 2K profile activated. Other options specified may be overridden");
-		 }
-		 else if(cinema4KArg.isSet())
-		 {
-			if(!validateCinema(&cinema4KArg, GRK_PROFILE_CINEMA_4K, parameters))
-			   return GrkRCFail;
-			spdlog::warn("Cinema 4K profile activated. Other options specified may be overridden");
+			const int limitMBitsSec[] = {0,
+										 GRK_BROADCAST_LEVEL_1_MBITSSEC,
+										 GRK_BROADCAST_LEVEL_2_MBITSSEC,
+										 GRK_BROADCAST_LEVEL_3_MBITSSEC,
+										 GRK_BROADCAST_LEVEL_4_MBITSSEC,
+										 GRK_BROADCAST_LEVEL_5_MBITSSEC,
+										 GRK_BROADCAST_LEVEL_6_MBITSSEC,
+										 GRK_BROADCAST_LEVEL_7_MBITSSEC,
+										 GRK_BROADCAST_LEVEL_8_MBITSSEC,
+										 GRK_BROADCAST_LEVEL_9_MBITSSEC,
+										 GRK_BROADCAST_LEVEL_10_MBITSSEC,
+										 GRK_BROADCAST_LEVEL_11_MBITSSEC};
+			parameters->max_cs_size =
+				(uint64_t)(limitMBitsSec[mainlevel] * (1000.0 * 1000 / 8) / framerate);
+			spdlog::info("Setting max code stream size to {} bytes.", parameters->max_cs_size);
 			parameters->write_tlm = true;
 		 }
-		 else if(BroadcastArg.isSet())
-		 {
-			int mainlevel = 0;
-			int profile = 0;
-			int framerate = 0;
-			const char* msg = "Wrong value for -broadcast. Should be "
-							  "<PROFILE>[,mainlevel=X][,framerate=FPS] where <PROFILE> is one "
-							  "of SINGLE/MULTI/MULTI_R.";
-			char* arg = (char*)BroadcastArg.getValue().c_str();
-			char* comma;
-
-			comma = strstr(arg, ",mainlevel=");
-			if(comma && sscanf(comma + 1, "mainlevel=%d", &mainlevel) != 1)
-			{
-			   spdlog::error("{}", msg);
-			   return GrkRCFail;
-			}
-			comma = strstr(arg, ",framerate=");
-			if(comma && sscanf(comma + 1, "framerate=%d", &framerate) != 1)
-			{
-			   spdlog::error("{}", msg);
-			   return GrkRCFail;
-			}
-			comma = strchr(arg, ',');
-			if(comma != nullptr)
-			{
-			   *comma = 0;
-			}
-			if(strcmp(arg, "SINGLE") == 0)
-			{
-			   profile = GRK_PROFILE_BC_SINGLE;
-			}
-			else if(strcmp(arg, "MULTI") == 0)
-			{
-			   profile = GRK_PROFILE_BC_MULTI;
-			}
-			else if(strcmp(arg, "MULTI_R") == 0)
-			{
-			   profile = GRK_PROFILE_BC_MULTI_R;
-			}
-			else
-			{
-			   spdlog::error("{}", msg);
-			   return GrkRCFail;
-			}
-
-			if(!(mainlevel >= 0 && mainlevel <= 11))
-			{
-			   /* Voluntarily rough validation. More fine grained done in library */
-			   spdlog::error("Invalid mainlevel value {}.", mainlevel);
-			   return GrkRCFail;
-			}
-			parameters->rsiz = (uint16_t)(profile | mainlevel);
-			spdlog::warn("Broadcast profile activated. Other options specified may be overridden");
-			parameters->framerate = (uint16_t)framerate;
-			if(framerate > 0)
-			{
-			   const int limitMBitsSec[] = {0,
-											GRK_BROADCAST_LEVEL_1_MBITSSEC,
-											GRK_BROADCAST_LEVEL_2_MBITSSEC,
-											GRK_BROADCAST_LEVEL_3_MBITSSEC,
-											GRK_BROADCAST_LEVEL_4_MBITSSEC,
-											GRK_BROADCAST_LEVEL_5_MBITSSEC,
-											GRK_BROADCAST_LEVEL_6_MBITSSEC,
-											GRK_BROADCAST_LEVEL_7_MBITSSEC,
-											GRK_BROADCAST_LEVEL_8_MBITSSEC,
-											GRK_BROADCAST_LEVEL_9_MBITSSEC,
-											GRK_BROADCAST_LEVEL_10_MBITSSEC,
-											GRK_BROADCAST_LEVEL_11_MBITSSEC};
-			   parameters->max_cs_size =
-				   (uint64_t)(limitMBitsSec[mainlevel] * (1000.0 * 1000 / 8) / framerate);
-			   spdlog::info("Setting max code stream size to {} bytes.", parameters->max_cs_size);
-			   parameters->write_tlm = true;
-			}
-		 }
-		 if(IMFArg.isSet())
-		 {
-			int mainlevel = 0;
-			int sublevel = 0;
-			int profile = 0;
-			int framerate = 0;
-			const char* msg =
-				"Wrong value for -IMF. Should be "
-				"<PROFILE>[,mainlevel=X][,sublevel=Y][,framerate=FPS] where <PROFILE> is one "
-				"of 2K/4K/8K/2K_R/4K_R/8K_R.";
-			char* arg = (char*)IMFArg.getValue().c_str();
-			char* comma;
-
-			comma = strstr(arg, ",mainlevel=");
-			if(comma && sscanf(comma + 1, "mainlevel=%d", &mainlevel) != 1)
-			{
-			   spdlog::error("{}", msg);
-			   return GrkRCFail;
-			}
-
-			comma = strstr(arg, ",sublevel=");
-			if(comma && sscanf(comma + 1, "sublevel=%d", &sublevel) != 1)
-			{
-			   spdlog::error("{}", msg);
-			   return GrkRCFail;
-			}
-
-			comma = strstr(arg, ",framerate=");
-			if(comma && sscanf(comma + 1, "framerate=%d", &framerate) != 1)
-			{
-			   spdlog::error("{}", msg);
-			   return GrkRCFail;
-			}
-
-			comma = strchr(arg, ',');
-			if(comma != nullptr)
-			{
-			   *comma = 0;
-			}
-
-			if(strcmp(arg, "2K") == 0)
-			{
-			   profile = GRK_PROFILE_IMF_2K;
-			}
-			else if(strcmp(arg, "4K") == 0)
-			{
-			   profile = GRK_PROFILE_IMF_4K;
-			}
-			else if(strcmp(arg, "8K") == 0)
-			{
-			   profile = GRK_PROFILE_IMF_8K;
-			}
-			else if(strcmp(arg, "2K_R") == 0)
-			{
-			   profile = GRK_PROFILE_IMF_2K_R;
-			}
-			else if(strcmp(arg, "4K_R") == 0)
-			{
-			   profile = GRK_PROFILE_IMF_4K_R;
-			}
-			else if(strcmp(arg, "8K_R") == 0)
-			{
-			   profile = GRK_PROFILE_IMF_8K_R;
-			}
-			else
-			{
-			   spdlog::error("{}", msg);
-			   return GrkRCFail;
-			}
-			if(!(mainlevel >= 0 && mainlevel <= 11))
-			{
-			   /* Voluntarily rough validation. More fine grained done in library */
-			   spdlog::error("Invalid main level {}.", mainlevel);
-			   return GrkRCFail;
-			}
-			if(!(sublevel >= 0 && sublevel <= 9))
-			{
-			   /* Voluntarily rough validation. More fine grained done in library */
-			   spdlog::error("Invalid sub-level {}.", sublevel);
-			   return GrkRCFail;
-			}
-			parameters->rsiz = (uint16_t)(profile | (sublevel << 4) | mainlevel);
-			spdlog::warn("IMF profile activated. Other options specified may be overridden");
-
-			parameters->framerate = (uint16_t)framerate;
-			if(framerate > 0 && sublevel != 0)
-			{
-			   const int limitMBitsSec[] = {0,
-											GRK_IMF_SUBLEVEL_1_MBITSSEC,
-											GRK_IMF_SUBLEVEL_2_MBITSSEC,
-											GRK_IMF_SUBLEVEL_3_MBITSSEC,
-											GRK_IMF_SUBLEVEL_4_MBITSSEC,
-											GRK_IMF_SUBLEVEL_5_MBITSSEC,
-											GRK_IMF_SUBLEVEL_6_MBITSSEC,
-											GRK_IMF_SUBLEVEL_7_MBITSSEC,
-											GRK_IMF_SUBLEVEL_8_MBITSSEC,
-											GRK_IMF_SUBLEVEL_9_MBITSSEC};
-			   parameters->max_cs_size =
-				   (uint64_t)(limitMBitsSec[sublevel] * (1000.0 * 1000 / 8) / framerate);
-			   spdlog::info("Setting max code stream size to {} bytes.", parameters->max_cs_size);
-			}
-			parameters->write_tlm = true;
-		 }
-		 if(rsizArg.isSet())
-		 {
-			if(cinema2KArg.isSet() || cinema4KArg.isSet())
-			   grk::warningCallback("Cinema profile set - rsiz parameter ignored.", nullptr);
-			else if(IMFArg.isSet())
-			   grk::warningCallback("IMF profile set - rsiz parameter ignored.", nullptr);
-			else
-			   parameters->rsiz = rsizArg.getValue();
-		 }
 	  }
-	  else
+	  if(imfOpt->count() > 0)
 	  {
-		 parameters->rsiz |= GRK_JPH_RSIZ_FLAG;
-	  }
-	  if(outForArg.isSet())
-	  {
-		 std::string outformat = std::string(".") + outForArg.getValue();
-		 inputFolder->set_out_format = true;
-		 parameters->cod_format = grk_get_file_format(outformat.c_str(), isHT);
-		 switch(parameters->cod_format)
+		 int mainlevel = 0;
+		 int sublevel = 0;
+		 int profile = 0;
+		 int framerate = 0;
+		 const char* msg =
+			 "Wrong value for --imf. Should be "
+			 "<PROFILE>[,mainlevel=X][,sublevel=Y][,framerate=FPS] where <PROFILE> is one "
+			 "of 2K/4K/8K/2K_R/4K_R/8K_R.";
+		 char* arg = (char*)imf.c_str();
+		 char* comma;
+
+		 comma = strstr(arg, ",mainlevel=");
+		 if(comma && sscanf(comma + 1, "mainlevel=%d", &mainlevel) != 1)
 		 {
-			case GRK_FMT_J2K:
-			   inputFolder->out_format = "j2k";
-			   break;
-			case GRK_FMT_JP2:
-			   inputFolder->out_format = "jp2";
-			   break;
-			default:
-			   spdlog::error("Unknown output format image [only *.j2k, *.j2c, *.jp2, *.jpc, *.jph "
-							 "or *.jhc] supported");
-			   return GrkRCFail;
+			spdlog::error("{}", msg);
+			return GrkRCFail;
 		 }
-		 if(isHT)
-			setHT(parameters, compressionRatiosArg, qualityArg);
+
+		 comma = strstr(arg, ",sublevel=");
+		 if(comma && sscanf(comma + 1, "sublevel=%d", &sublevel) != 1)
+		 {
+			spdlog::error("{}", msg);
+			return GrkRCFail;
+		 }
+
+		 comma = strstr(arg, ",framerate=");
+		 if(comma && sscanf(comma + 1, "framerate=%d", &framerate) != 1)
+		 {
+			spdlog::error("{}", msg);
+			return GrkRCFail;
+		 }
+
+		 comma = strchr(arg, ',');
+		 if(comma != nullptr)
+		 {
+			*comma = 0;
+		 }
+
+		 if(strcmp(arg, "2K") == 0)
+		 {
+			profile = GRK_PROFILE_IMF_2K;
+		 }
+		 else if(strcmp(arg, "4K") == 0)
+		 {
+			profile = GRK_PROFILE_IMF_4K;
+		 }
+		 else if(strcmp(arg, "8K") == 0)
+		 {
+			profile = GRK_PROFILE_IMF_8K;
+		 }
+		 else if(strcmp(arg, "2K_R") == 0)
+		 {
+			profile = GRK_PROFILE_IMF_2K_R;
+		 }
+		 else if(strcmp(arg, "4K_R") == 0)
+		 {
+			profile = GRK_PROFILE_IMF_4K_R;
+		 }
+		 else if(strcmp(arg, "8K_R") == 0)
+		 {
+			profile = GRK_PROFILE_IMF_8K_R;
+		 }
+		 else
+		 {
+			spdlog::error("{}", msg);
+			return GrkRCFail;
+		 }
+		 if(!(mainlevel >= 0 && mainlevel <= 11))
+		 {
+			/* Voluntarily rough validation. More fine grained done in library */
+			spdlog::error("Invalid main level {}.", mainlevel);
+			return GrkRCFail;
+		 }
+		 if(!(sublevel >= 0 && sublevel <= 9))
+		 {
+			/* Voluntarily rough validation. More fine grained done in library */
+			spdlog::error("Invalid sub-level {}.", sublevel);
+			return GrkRCFail;
+		 }
+		 parameters->rsiz = (uint16_t)(profile | (sublevel << 4) | mainlevel);
+		 spdlog::warn("IMF profile activated. Other options specified may be overridden");
+
+		 parameters->framerate = (uint16_t)framerate;
+		 if(framerate > 0 && sublevel != 0)
+		 {
+			const int limitMBitsSec[] = {0,
+										 GRK_IMF_SUBLEVEL_1_MBITSSEC,
+										 GRK_IMF_SUBLEVEL_2_MBITSSEC,
+										 GRK_IMF_SUBLEVEL_3_MBITSSEC,
+										 GRK_IMF_SUBLEVEL_4_MBITSSEC,
+										 GRK_IMF_SUBLEVEL_5_MBITSSEC,
+										 GRK_IMF_SUBLEVEL_6_MBITSSEC,
+										 GRK_IMF_SUBLEVEL_7_MBITSSEC,
+										 GRK_IMF_SUBLEVEL_8_MBITSSEC,
+										 GRK_IMF_SUBLEVEL_9_MBITSSEC};
+			parameters->max_cs_size =
+				(uint64_t)(limitMBitsSec[sublevel] * (1000.0 * 1000 / 8) / framerate);
+			spdlog::info("Setting max code stream size to {} bytes.", parameters->max_cs_size);
+		 }
+		 parameters->write_tlm = true;
 	  }
-	  if(serverArg.isSet() && licenseArg.isSet())
+	  if(rsizOpt->count() > 0)
 	  {
-		 initParams->server_ = serverArg.getValue();
-		 initParams->license_ = licenseArg.getValue();
+		 if(cinema2KOpt->count() > 0 || cinema4KOpt->count() > 0)
+			grk::warningCallback("Cinema profile set - rsiz parameter ignored.", nullptr);
+		 else if(imfOpt->count() > 0)
+			grk::warningCallback("IMF profile set - rsiz parameter ignored.", nullptr);
+		 else
+			parameters->rsiz = rsiz;
 	  }
    }
-   catch(const TCLAP::ArgException& e) // catch any exceptions
+   else
    {
-	  std::cerr << "error: " << e.error() << " for arg " << e.argId() << std::endl;
-	  return GrkRCFail;
+	  parameters->rsiz |= GRK_JPH_RSIZ_FLAG;
    }
-   catch(const TCLAP::ExitException& e) // catch any exceptions
+   if(outputFormatOpt->count() > 0)
    {
-	  return GrkRCUsage;
+	  std::string outformat = std::string(".") + outputFormat;
+	  inputFolder->set_out_format = true;
+	  parameters->cod_format = grk_get_file_format(outformat.c_str(), isHT);
+	  switch(parameters->cod_format)
+	  {
+		 case GRK_FMT_J2K:
+			inputFolder->out_format = "j2k";
+			break;
+		 case GRK_FMT_JP2:
+			inputFolder->out_format = "jp2";
+			break;
+		 default:
+			spdlog::error("Unknown output format image [only *.j2k, *.j2c, *.jp2, *.jpc, *.jph or "
+						  "*.jhc] supported");
+			return GrkRCFail;
+	  }
+	  if(isHT)
+		 setHT(parameters, compressionRatiosOpt->count() > 0, qualityOpt->count() > 0);
+   }
+   if(serverOpt->count() > 0 && licenseOpt->count() > 0)
+   {
+	  initParams->server_ = server;
+	  initParams->license_ = license;
    }
 
    if(inputFolder->set_imgdir)
    {
 	  if(!(parameters->infile[0] == 0))
 	  {
-		 spdlog::error("options -batch_src and -in_file cannot be used together ");
+		 spdlog::error("options --batch-src and --in-file cannot be used together ");
 		 return GrkRCFail;
 	  }
 	  if(!inputFolder->set_out_format)
 	  {
-		 spdlog::error("When -batch_src is used, -out_fmt <FORMAT> must be used ");
+		 spdlog::error("When --batch-src is used, --out-fmt <FORMAT> must be used ");
 		 spdlog::error("Only one format allowed! Valid formats are j2k and jp2");
 		 return GrkRCFail;
 	  }
 	  if(!((parameters->outfile[0] == 0)))
 	  {
-		 spdlog::error("options -batch_src and -out_file cannot be used together ");
-		 spdlog::error("Specify OutputFormat using -out_fmt<FORMAT> ");
+		 spdlog::error("options --batch-src and --out-file cannot be used together ");
+		 spdlog::error("Specify OutputFormat using --out-fmt<FORMAT> ");
 		 return GrkRCFail;
 	  }
    }
@@ -2231,7 +2282,6 @@ static uint64_t pluginCompressCallback(grk_plugin_compress_user_callback_info* i
 		 goto cleanup;
 	  }
    }
-
    // read image from disk if in-memory image is not available
    if(!image)
    {
@@ -2240,11 +2290,13 @@ static uint64_t pluginCompressCallback(grk_plugin_compress_user_callback_info* i
 		 int fmt = grk_get_file_format((char*)info->input_file_name);
 		 if(fmt <= GRK_FMT_UNK)
 		 {
+			spdlog::error("Unknown input format.");
 			goto cleanup;
 		 }
 		 parameters->decod_format = (GRK_SUPPORTED_FILE_FMT)fmt;
 		 if(!isDecodedFormatSupported(parameters->decod_format))
 		 {
+			spdlog::error("Unsupported input format {}.", fmt);
 			goto cleanup;
 		 }
 	  }
@@ -2408,7 +2460,7 @@ static uint64_t pluginCompressCallback(grk_plugin_compress_user_callback_info* i
 	}
 #endif
    // limit to 16 bit precision
-   for(uint32_t i = 0; i < image->numcomps; ++i)
+   for(uint16_t i = 0; i < image->numcomps; ++i)
    {
 	  if(image->comps[i].prec > GRK_MAX_SUPPORTED_IMAGE_PRECISION)
 	  {

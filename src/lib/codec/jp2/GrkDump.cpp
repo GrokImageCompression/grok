@@ -79,7 +79,7 @@ static void decompress_help_display(void)
    fprintf(stdout, "Parameters:\n");
    fprintf(stdout, "-----------\n");
    fprintf(stdout, "\n");
-   fprintf(stdout, "  -batch_src <directory>\n");
+   fprintf(stdout, "  --batch-src <directory>\n");
    fprintf(stdout, "   Image file Directory path \n");
    fprintf(stdout, "  -i <compressed file>\n");
    fprintf(stdout, "    REQUIRED only if an Input image directory not specified\n");
@@ -217,19 +217,19 @@ static int parseCommandLine(int argc, char** argv, grk_decompress_parameters* pa
    {
 	  if(!(parameters->infile[0] == 0))
 	  {
-		 spdlog::error("options -batch_src and -i cannot be used together.");
+		 spdlog::error("options --batch-src and -i cannot be used together.");
 		 return 1;
 	  }
 	  if(!inputFolder->set_out_format)
 	  {
-		 spdlog::error("When -batch_src is used, -out_fmt <FORMAT> must be used.");
+		 spdlog::error("When --batch-src is used, --out-fmt <FORMAT> must be used.");
 		 spdlog::error("Only one format allowed.\n"
 					   "Valid format are PGM, PPM, PNM, PGX, BMP, TIF and RAW.");
 		 return 1;
 	  }
 	  if(!(parameters->outfile[0] == 0))
 	  {
-		 spdlog::error("options -batch_src and -o cannot be used together");
+		 spdlog::error("options --batch-src and -o cannot be used together");
 		 return 1;
 	  }
    }

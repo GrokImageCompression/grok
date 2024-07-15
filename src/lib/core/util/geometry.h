@@ -61,6 +61,7 @@ struct grk_rect;
 using grk_rect32 = grk_rect<uint32_t>;
 using grk_rect16 = grk_rect<uint16_t>;
 using grk_rect_single = grk_rect<float>;
+using grk_rect_double = grk_rect<double>;
 
 template<typename T>
 T clip(int64_t val)

@@ -170,7 +170,7 @@ Output directory where compressed files are stored.
 Only relevant when the \f[C]-batch_src\f[R] flag is set.
 Default: same directory as specified by \f[C]-y\f[R].
 .PP
-\f[C]-O, -out_fmt [J2K|J2C|JP2]\f[R]
+\f[C]-O, --out-fmt [J2K|J2C|JP2]\f[R]
 .PP
 Output format used to compress the images read from the directory
 specified with \f[C]-batch_src\f[R].
@@ -385,7 +385,7 @@ frame rate may be specified to enhance checks and set maximum bit rate
 when Y > 0.
 If specified, it must be positive.
 .PP
-\f[C]-z, -IMF [PROFILE [,mainlevel=X][,sublevel=Y][,framerate=FPS]] ]\f[R]
+\f[C]-z, --imf [PROFILE [,mainlevel=X][,sublevel=Y][,framerate=FPS]] ]\f[R]
 .PP
 Interoperable Master Format (IMF) compliant codestream.
 .IP \[bu] 2
@@ -493,7 +493,7 @@ The two values are respectively for X and Y axis offset.
 The tile anchor point can not be inside the image area.
 Default: no offset.
 .PP
-\f[C]-Y, -MCT [0|1|2]\f[R]
+\f[C]-Y, --mct [0|1|2]\f[R]
 .PP
 Specify explicitly if a Multiple Component Transform has to be used.
 .IP \[bu] 2

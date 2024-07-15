@@ -262,7 +262,7 @@ bool FileFormatDecompress::readHeader(grk_header_info* header_info)
 
    return true;
 }
-bool FileFormatDecompress::setDecompressRegion(grk_rect_single region)
+bool FileFormatDecompress::setDecompressRegion(grk_rect_double region)
 {
    return codeStream->setDecompressRegion(region);
 }
