@@ -61,7 +61,8 @@ void decompress_synch_plugin_with_host(TileProcessor* tcd)
 						throw PluginDecodeUnsupportedException();
 					 }
 					 uint32_t maxPasses =
-						 3 * (uint32_t)((tcd->headerImage->comps[0].prec + GRK_BIBO_EXTRA_BITS) - 2);
+						 3 *
+						 (uint32_t)((tcd->headerImage->comps[0].prec + GRK_BIBO_EXTRA_BITS) - 2);
 					 if(cblk->getSegment(0)->numpasses > maxPasses)
 					 {
 						Logger::logger_.info(

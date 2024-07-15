@@ -382,8 +382,8 @@ void GrkImage::postReadHeader(CodingParams* cp)
    uint8_t prec = comps[0].prec;
    if(precision)
 	  prec = precision->prec;
-   bool isGAorRGBA =
-	   (decompress_num_comps == 4 || decompress_num_comps == 2) && isOpacity(decompress_num_comps - 1);
+   bool isGAorRGBA = (decompress_num_comps == 4 || decompress_num_comps == 2) &&
+					 isOpacity(decompress_num_comps - 1);
    if(meta && meta->color.palette)
 	  decompress_num_comps = meta->color.palette->num_channels;
    else
@@ -431,8 +431,9 @@ void GrkImage::postReadHeader(CodingParams* cp)
 				grk::PlanarToInterleaved<int32_t>::getPackedBytes(ncmp, decompress_width, prec);
 			break;
 	  }
-	  rows_per_strip = has_multiple_tiles ? ceildivpow2(cp->t_height, cp->coding_params_.dec_.reduce_)
-									  : singleTileRowsPerStrip;
+	  rows_per_strip = has_multiple_tiles
+						   ? ceildivpow2(cp->t_height, cp->coding_params_.dec_.reduce_)
+						   : singleTileRowsPerStrip;
    }
    if(rows_per_strip > height())
 	  rows_per_strip = height();
@@ -1083,8 +1084,9 @@ bool GrkImage::compositeInterleaved(const GrkImage* src)
    int32_t const* planes[grk::maxNumPackComponents];
    for(uint16_t i = 0; i < src->numcomps; ++i)
 	  planes[i] = (src->comps + i)->data;
-   iter->interleave(const_cast<int32_t**>(planes), src->numcomps, interleaved_data.data_ + destIndex,
-					destWin.width(), srcComp->stride, destStride, destWin.height(), 0);
+   iter->interleave(const_cast<int32_t**>(planes), src->numcomps,
+					interleaved_data.data_ + destIndex, destWin.width(), srcComp->stride,
+					destStride, destWin.height(), 0);
    delete iter;
 
    return true;

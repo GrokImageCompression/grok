@@ -987,8 +987,7 @@ bool CodeStreamCompress::compressValidation()
 
    /* ISO 15444-1:2004 states between 1 & 33
 	* ergo (number of decomposition levels between 0 -> 32) */
-   if((cp_.tcps->tccps->numresolutions == 0) ||
-	  (cp_.tcps->tccps->numresolutions > GRK_MAXRLVLS))
+   if((cp_.tcps->tccps->numresolutions == 0) || (cp_.tcps->tccps->numresolutions > GRK_MAXRLVLS))
    {
 	  Logger::logger_.error("Invalid number of resolutions : %u not in range [1,%u]",
 							cp_.tcps->tccps->numresolutions, GRK_MAXRLVLS);
@@ -1651,8 +1650,9 @@ uint16_t CodeStreamCompress::getPocSize(uint32_t numComps, uint32_t numPocs)
    return (uint16_t)(4 + (5 + 2 * pocRoom) * numPocs);
 }
 bool CodeStreamCompress::validateProgressionOrders(const grk_progression* progressions,
-												   uint32_t numProgressions, uint8_t num_resolutions,
-												   uint16_t numComps, uint16_t numLayers)
+												   uint32_t numProgressions,
+												   uint8_t num_resolutions, uint16_t numComps,
+												   uint16_t numLayers)
 {
    uint32_t resno, compno, layno;
    uint32_t i;

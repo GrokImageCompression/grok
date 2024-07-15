@@ -292,7 +292,7 @@ bool PacketIter::checkForRemainingValidProgression(int32_t prog, uint32_t pino,
    return false;
 }
 void PacketIter::enable_tile_part_generation(uint32_t pino, bool first_poc_tile_part,
-										  uint32_t newTilePartProgressionPosition)
+											 uint32_t newTilePartProgressionPosition)
 {
    auto cp = packetManager->getCodingParams();
    auto tcp = cp->tcps + packetManager->getTileProcessor()->getIndex();

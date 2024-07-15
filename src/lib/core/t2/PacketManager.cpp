@@ -100,7 +100,7 @@ TileProcessor* PacketManager::getTileProcessor(void)
    return tileProcessor;
 }
 void PacketManager::enable_tile_part_generation(uint32_t pino, bool first_poc_tile_part,
-											 uint32_t newTilePartProgressionPosition)
+												uint32_t newTilePartProgressionPosition)
 {
    (pi_ + pino)
 	   ->enable_tile_part_generation(pino, first_poc_tile_part, newTilePartProgressionPosition);

@@ -406,7 +406,8 @@ bool TIFFFormat::encodePixels()
    if(isFinalOutputSubsampled(image_))
    {
 	  // TIFF-specific
-	  uint64_t packedLengthEncoded = (uint64_t)TIFFVStripSize(tif_, (uint32_t)image_->rows_per_strip);
+	  uint64_t packedLengthEncoded =
+		  (uint64_t)TIFFVStripSize(tif_, (uint32_t)image_->rows_per_strip);
 	  packedBuf = pool.get(packedLengthEncoded);
 	  auto bufPtr = (int8_t*)packedBuf.data_;
 	  uint32_t bytesToWrite = 0;

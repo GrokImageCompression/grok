@@ -1160,7 +1160,7 @@ bool GrkImage::applyColourManagement(void)
 
    bool shouldApplyColourManagement =
 	   force_rgb || (decompress_fmt != GRK_FMT_UNK && meta && meta->color.icc_profile_buf &&
-					((isCIE && !canStoreCIE) || !canStoreICC));
+					 ((isCIE && !canStoreCIE) || !canStoreICC));
    if(!shouldApplyColourManagement)
 	  return true;
 

@@ -37,8 +37,8 @@ class ImageFormat : public IImageFormat
 #ifndef GROK_HAVE_URING
    void reclaim(uint32_t threadId, grk_io_buf pixels);
 #endif
-   virtual bool encodeInit(grk_image* image, const std::string& filename, uint32_t compression_level,
-						   uint32_t concurrency) override;
+   virtual bool encodeInit(grk_image* image, const std::string& filename,
+						   uint32_t compression_level, uint32_t concurrency) override;
    /***
 	* library-orchestrated pixel encoding
 	*/

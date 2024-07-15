@@ -859,8 +859,10 @@ bool TileProcessor::encodeT2(uint32_t* tileBytesWritten)
 			if(!tileBand->num_precincts)
 			   continue;
 			decodeBand->precincts = new Precinct[tileBand->num_precincts];
-			decodeBand->precincts_data_size = (uint32_t)(tileBand->num_precincts * sizeof(Precinct));
-			for(uint64_t precinctIndex = 0; precinctIndex < tileBand->num_precincts; ++precinctIndex)
+			decodeBand->precincts_data_size =
+				(uint32_t)(tileBand->num_precincts * sizeof(Precinct));
+			for(uint64_t precinctIndex = 0; precinctIndex < tileBand->num_precincts;
+				++precinctIndex)
 			{
 			   auto prec = tileBand->precincts + precinctIndex;
 			   auto decodePrec = decodeBand->precincts + precinctIndex;

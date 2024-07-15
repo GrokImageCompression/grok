@@ -547,8 +547,8 @@ bool JPEGFormat::encodePixels(void)
 	   * more than one scanline at a time if that's more convenient.
 	   */
 	  iter->interleave((int32_t**)planes, image_->decompress_num_comps, (uint8_t*)buffer,
-					   image_->decompress_width, image_->comps[0].stride, image_->decompress_width, 1,
-					   adjust);
+					   image_->decompress_width, image_->comps[0].stride, image_->decompress_width,
+					   1, adjust);
 	  JSAMPROW row_pointer[1]; /* pointer to JSAMPLE row[s] */
 	  row_pointer[0] = buffer;
 	  jpeg_write_scanlines(&cinfo, row_pointer, 1);
