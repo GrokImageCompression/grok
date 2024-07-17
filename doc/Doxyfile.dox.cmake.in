@@ -1,8 +1,3 @@
-# Doxyfile 1.7.1
-
-#---------------------------------------------------------------------------
-# Project related configuration options
-#---------------------------------------------------------------------------
 DOXYFILE_ENCODING      = UTF-8
 PROJECT_NAME           = Grok
 PROJECT_NUMBER         = @GROK_VERSION@
@@ -47,9 +42,6 @@ IDL_PROPERTY_SUPPORT   = YES
 DISTRIBUTE_GROUP_DOC   = NO
 SUBGROUPING            = YES
 TYPEDEF_HIDES_STRUCT   = NO
-#---------------------------------------------------------------------------
-# Build related configuration options
-#---------------------------------------------------------------------------
 EXTRACT_ALL            = YES
 EXTRACT_PRIVATE        = YES
 EXTRACT_STATIC         = YES
@@ -82,9 +74,6 @@ SHOW_FILES             = YES
 SHOW_NAMESPACES        = YES
 FILE_VERSION_FILTER    =
 LAYOUT_FILE            =
-#---------------------------------------------------------------------------
-# configuration options related to warning and progress messages
-#---------------------------------------------------------------------------
 QUIET                  = NO
 WARNINGS               = YES
 WARN_IF_UNDOCUMENTED   = YES
@@ -92,12 +81,9 @@ WARN_IF_DOC_ERROR      = YES
 WARN_NO_PARAMDOC       = NO
 WARN_FORMAT            = "$file:$line: $text"
 WARN_LOGFILE           =
-#---------------------------------------------------------------------------
-# configuration options related to the input files
-#---------------------------------------------------------------------------
 INPUT                  = @GROK_SOURCE_DIR@/src/lib/core \
 						 @GROK_SOURCE_DIR@/src/lib/plugin \
-                         @CMAKE_CURRENT_BINARY_DIR@/doc
+                         @CMAKE_CURRENT_BINARY_DIR@
 INPUT_ENCODING         = UTF-8
 FILE_PATTERNS          = *.h \
                          *.c \
@@ -111,13 +97,10 @@ EXCLUDE_SYMBOLS        =
 EXAMPLE_PATH           =
 EXAMPLE_PATTERNS       = *
 EXAMPLE_RECURSIVE      = NO
-IMAGE_PATH             = @GROK_SOURCE_DIR@/doc
+IMAGE_PATH             = @CMAKE_CURRENT_SOURCE_DIR@
 INPUT_FILTER           =
 FILTER_PATTERNS        =
 FILTER_SOURCE_FILES    = NO
-#---------------------------------------------------------------------------
-# configuration options related to source browsing
-#---------------------------------------------------------------------------
 SOURCE_BROWSER         = NO
 INLINE_SOURCES         = NO
 STRIP_CODE_COMMENTS    = YES
@@ -126,15 +109,9 @@ REFERENCES_RELATION    = YES
 REFERENCES_LINK_SOURCE = YES
 USE_HTAGS              = NO
 VERBATIM_HEADERS       = YES
-#---------------------------------------------------------------------------
-# configuration options related to the alphabetical class index
-#---------------------------------------------------------------------------
 ALPHABETICAL_INDEX     = NO
 COLS_IN_ALPHA_INDEX    = 5
 IGNORE_PREFIX          =
-#---------------------------------------------------------------------------
-# configuration options related to the HTML output
-#---------------------------------------------------------------------------
 GENERATE_HTML          = YES
 HTML_OUTPUT            = ./html
 HTML_FILE_EXTENSION    = .html
@@ -177,9 +154,6 @@ FORMULA_FONTSIZE       = 10
 FORMULA_TRANSPARENT    = YES
 SEARCHENGINE           = NO
 SERVER_BASED_SEARCH    = NO
-#---------------------------------------------------------------------------
-# configuration options related to the LaTeX output
-#---------------------------------------------------------------------------
 GENERATE_LATEX         = NO
 LATEX_OUTPUT           = latex
 LATEX_CMD_NAME         = latex
@@ -193,42 +167,24 @@ USE_PDFLATEX           = NO
 LATEX_BATCHMODE        = NO
 LATEX_HIDE_INDICES     = NO
 LATEX_SOURCE_CODE      = NO
-#---------------------------------------------------------------------------
-# configuration options related to the RTF output
-#---------------------------------------------------------------------------
 GENERATE_RTF           = NO
 RTF_OUTPUT             = rtf
 COMPACT_RTF            = NO
 RTF_HYPERLINKS         = NO
 RTF_STYLESHEET_FILE    =
 RTF_EXTENSIONS_FILE    =
-#---------------------------------------------------------------------------
-# configuration options related to the man page output
-#---------------------------------------------------------------------------
 GENERATE_MAN           = NO
 MAN_OUTPUT             = man
 MAN_EXTENSION          = .3
 MAN_LINKS              = NO
-#---------------------------------------------------------------------------
-# configuration options related to the XML output
-#---------------------------------------------------------------------------
 GENERATE_XML           = NO
 XML_OUTPUT             = xml
 XML_PROGRAMLISTING     = YES
-#---------------------------------------------------------------------------
-# configuration options for the AutoGen Definitions output
-#---------------------------------------------------------------------------
 GENERATE_AUTOGEN_DEF   = NO
-#---------------------------------------------------------------------------
-# configuration options related to the Perl module output
-#---------------------------------------------------------------------------
 GENERATE_PERLMOD       = NO
 PERLMOD_LATEX          = NO
 PERLMOD_PRETTY         = YES
 PERLMOD_MAKEVAR_PREFIX =
-#---------------------------------------------------------------------------
-# Configuration options related to the preprocessor
-#---------------------------------------------------------------------------
 ENABLE_PREPROCESSING   = YES
 MACRO_EXPANSION        = NO
 EXPAND_ONLY_PREDEF     = NO
@@ -238,17 +194,11 @@ INCLUDE_FILE_PATTERNS  =
 PREDEFINED             =
 EXPAND_AS_DEFINED      =
 SKIP_FUNCTION_MACROS   = YES
-#---------------------------------------------------------------------------
-# Configuration::additions related to external references
-#---------------------------------------------------------------------------
 TAGFILES               =
 GENERATE_TAGFILE       =
 ALLEXTERNALS           = NO
 EXTERNAL_GROUPS        = YES
 PERL_PATH              = /usr/bin/perl
-#---------------------------------------------------------------------------
-# Configuration options related to the dot tool
-#---------------------------------------------------------------------------
 CLASS_DIAGRAMS         = YES
 MSCGEN_PATH            =
 HIDE_UNDOC_RELATIONS   = YES

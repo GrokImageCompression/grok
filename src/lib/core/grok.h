@@ -878,7 +878,7 @@ GRK_API bool GRK_CALLCONV grk_decompress_detect_format(const char* fileName, GRK
 /**
  * Initialize stream parameters with default values
  *
- * @param parameters stream parameters
+ * @param params stream parameters
  */
 GRK_API void GRK_CALLCONV grk_set_default_stream_params(grk_stream_params* params);
 
