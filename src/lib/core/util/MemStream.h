@@ -46,7 +46,7 @@ void set_up_mem_stream(grk_stream* stream, size_t len, bool is_read_stream);
 /** Create stream from buffer
  *
  * @param buf           buffer
- * @param buffer_len    length of buffer
+ * @param len    length of buffer
  * @param ownsBuffer    if true, library will delete[] buffer. Otherwise, it is the caller's
  *                      responsibility to delete the buffer
  * @param is_read_stream  whether the stream is a read stream (true) or not (false)

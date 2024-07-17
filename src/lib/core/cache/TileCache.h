@@ -23,8 +23,6 @@ namespace grk
 struct TileProcessor;
 class GrkImage;
 
-#include "GrkImage.h"
-
 struct TileCacheEntry
 {
    explicit TileCacheEntry(TileProcessor* p);

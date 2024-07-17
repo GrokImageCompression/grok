@@ -91,7 +91,10 @@ FILE_PATTERNS          = *.h \
                          *.cpp \
                          *.dox
 RECURSIVE              = YES
-EXCLUDE                =
+EXCLUDE                = @GROK_SOURCE_DIR@/src/lib/core/highway \
+                         @GROK_SOURCE_DIR@/src/include \
+                         @GROK_SOURCE_DIR@/tests \
+                         @GROK_SOURCE_DIR@/src/lib/core/t1/OJPH
 EXCLUDE_SYMLINKS       = NO
 EXCLUDE_SYMBOLS        =
 EXAMPLE_PATH           =

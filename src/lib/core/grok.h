@@ -482,38 +482,38 @@ typedef void (*grk_io_register_reclaim_callback)(grk_io_init io_init,
 typedef bool (*grk_io_pixels_callback)(uint32_t threadId, grk_io_buf buffer, void* user_data);
 
 /**
- * read stream callback
+ * @brief read stream callback
  *
- * @buffer buffer to write stream to
- * @numBytes number of bytes to write to buffer
- * @user_data user data
+ * @param buffer buffer to write stream to
+ * @param numBytes number of bytes to write to buffer
+ * @param user_data user data
  *
  */
 typedef size_t (*grk_stream_read_fn)(uint8_t* buffer, size_t numBytes, void* user_data);
 
 /**
- * write stream callback
+ * @brief write stream callback
  *
- * @buffer buffer to read stream from
- * @numBytes number of bytes to read from buffer
- * @user_data user data
+ * @param buffer buffer to read stream from
+ * @param numBytes number of bytes to read from buffer
+ * @param user_data user data
  *
  */
 typedef size_t (*grk_stream_write_fn)(const uint8_t* buffer, size_t numBytes, void* user_data);
 
 /**
- * seek (absolute) callback
+ * @brief seek (absolute) callback
  *
- * @offset absolute stream offset
- * @user_data user data
+ * @param offset 			absolute stream offset
+ * @param user_data user 	data
  *
  */
 typedef bool (*grk_stream_seek_fn)(uint64_t offset, void* user_data);
 
 /**
- * free user data callback
+ * @brief free user data callback
  *
- * @user_data user data
+ * @param user_data user data
  *
  */
 typedef void (*grk_stream_free_user_data_fn)(void* user_data);
@@ -820,10 +820,11 @@ typedef grk_object grk_codec;
 GRK_API const char* GRK_CALLCONV grk_version(void);
 
 /**
- * Initialize library
+ * @brief Initialize library
  *
  * @param pluginPath 	path to plugin
  * @param numthreads 	number of threads to use for compress/decompress
+ * @param verbose 	    toggle verbose mode
  */
 GRK_API bool GRK_CALLCONV grk_initialize(const char* pluginPath, uint32_t numthreads, bool verbose);
 
@@ -1121,15 +1122,15 @@ typedef struct _grk_cparameters
 GRK_API void GRK_CALLCONV grk_compress_set_default_params(grk_cparameters* parameters);
 
 /**
- * Set up the compressor parameters using the current image and user parameters.
+ * @brief Initializes the compression process.
  *
- * @param codec 		compression codec
- * @param parameters 	compression parameters
- * @param image 		input image
+ * @param stream_params Stream parameters (see @ref grk_stream_params).
+ * @param parameters    Compression parameters.
+ * @param image         Input image.
+ * @return A pointer to the initialized codec.
  */
 GRK_API grk_codec* GRK_CALLCONV grk_compress_init(grk_stream_params* stream_params,
-												  grk_cparameters* parameters, grk_image* p_image);
-
+												  grk_cparameters* parameters, grk_image* image);
 /**
  * Compress an image into a JPEG 2000 code stream using plugin
  *
@@ -1500,12 +1501,9 @@ GRK_API int32_t GRK_CALLCONV grk_plugin_compress(grk_cparameters* compress_param
 												 GRK_PLUGIN_COMPRESS_USER_CALLBACK callback);
 
 /**
- * Batch compress with plugin
+ * @brief Batch compress with plugin
  *
- * @param input_dir				directory holding input images
- * @param output_dir			directory holding compressed output images
- * @param compress_parameters 	compress parameters
- * @param callback				callback
+ * @param info	batch compress info (see @ref grk_plugin_compress_batch_info)
  *
  * @return 0 if successful
  *

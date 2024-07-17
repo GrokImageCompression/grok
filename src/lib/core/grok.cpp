@@ -537,9 +537,9 @@ void GRK_CALLCONV grk_compress_set_default_params(grk_cparameters* parameters)
    parameters->repeats = 1;
 }
 grk_codec* GRK_CALLCONV grk_compress_init(grk_stream_params* stream_params,
-										  grk_cparameters* parameters, grk_image* p_image)
+										  grk_cparameters* parameters, grk_image* image)
 {
-   if(!parameters || !p_image)
+   if(!parameters || !image)
 	  return nullptr;
    if(parameters->cod_format != GRK_FMT_J2K && parameters->cod_format != GRK_FMT_JP2)
    {
@@ -580,7 +580,7 @@ grk_codec* GRK_CALLCONV grk_compress_init(grk_stream_params* stream_params,
    }
 
    auto codec = GrkCodec::getImpl(codecWrapper);
-   bool rc = codec->compressor_ ? codec->compressor_->init(parameters, (GrkImage*)p_image) : false;
+   bool rc = codec->compressor_ ? codec->compressor_->init(parameters, (GrkImage*)image) : false;
    if(rc)
    {
 	  rc = grk_compress_start(codecWrapper);

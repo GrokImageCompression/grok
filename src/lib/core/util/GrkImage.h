@@ -28,8 +28,9 @@ class GrkImage : public grk_image
    GrkImage();
    bool subsampleAndReduce(uint32_t reduce);
    /**
-	* Create image
+	* @brief Create image
 	*
+	* @param src     	   source image
 	* @param numcmpts      number of components
 	* @param cmptparms     component parameters
 	* @param clrspc        image color space
@@ -40,13 +41,22 @@ class GrkImage : public grk_image
    static GrkImage* create(grk_image* src, uint16_t numcmpts, grk_image_comp* cmptparms,
 						   GRK_COLOR_SPACE clrspc, bool doAllocation);
    /**
-	* Allocate data for single image component
+	* @brief Allocate data for single image component
+	*
+	* @param imageComp         image component
+	* @param clear             clear image buffer after allocation
+	*
+	* @return 		      true if successful
+	*/
+   static bool allocData(grk_image_comp* imageComp, bool clear);
+
+   /**
+	* @brief Allocate data for single image component
 	*
 	* @param imageComp         image component
 	*
 	* @return 		      true if successful
 	*/
-   static bool allocData(grk_image_comp* imageComp, bool clear);
    static bool allocData(grk_image_comp* imageComp);
    /**
 	* Allocate data for tile compositing
