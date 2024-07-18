@@ -992,7 +992,7 @@ GrkRC GrkCompress::pluginMain(int argc, char* argv[], CompressInitParams* initPa
 
 static void setHT(grk_cparameters* parameters, bool hasCompressionRatios, bool hasQuality)
 {
-   parameters->cblk_sty = GRK_CBLKSTY_HT;
+   parameters->cblk_sty = GRK_CBLKSTY_HT_ONLY;
    parameters->numgbits = 1;
    if(hasCompressionRatios || hasQuality)
    {
@@ -1778,7 +1778,7 @@ GrkRC GrkCompress::parseCommandLine(int argc, char* argv[], CompressInitParams* 
    if(!isHT && modeOpt->count() > 0)
    {
 	  parameters->cblk_sty = mode & 0X7F;
-	  if(parameters->cblk_sty & GRK_CBLKSTY_HT)
+	  if(parameters->cblk_sty & GRK_CBLKSTY_HT_ONLY)
 	  {
 		 spdlog::error("High throughput compression mode cannot be be used for non HTJ2K file");
 		 return GrkRCFail;

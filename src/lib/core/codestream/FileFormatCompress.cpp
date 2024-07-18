@@ -747,7 +747,7 @@ bool FileFormatCompress::init(grk_cparameters* parameters, GrkImage* image)
 	  return false;
 
    /* Profile box */
-   brand = parameters->cblk_sty == GRK_CBLKSTY_HT ? JP2_JPH : JP2_JP2; /* BR */
+   brand = parameters->cblk_sty == GRK_CBLKSTY_HT_ONLY ? JP2_JPH : JP2_JP2; /* BR */
    minversion = 0; /* MinV */
    numcl = 1;
    cl = (uint32_t*)grk_malloc(sizeof(uint32_t) * numcl);

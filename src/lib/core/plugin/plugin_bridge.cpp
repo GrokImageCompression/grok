@@ -82,7 +82,7 @@ void decompress_synch_plugin_with_host(TileProcessor* tcd)
 					 cblk->compressedStream.len = plugin_cblk->compressed_data_length;
 					 cblk->compressedStream.owns_data = false;
 					 plugin_cblk->num_bit_planes = cblk->numbps;
-					 plugin_cblk->num_passes = cblk->getSegment(0)->numpasses;
+					 plugin_cblk->num_passes = (uint8_t)cblk->getSegment(0)->numpasses;
 				  }
 			   }
 			}

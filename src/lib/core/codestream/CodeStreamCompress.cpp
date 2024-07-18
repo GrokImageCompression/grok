@@ -117,7 +117,7 @@ bool CodeStreamCompress::init(grk_cparameters* parameters, GrkImage* image)
    if(!parameters || !image)
 	  return false;
 
-   bool isHT = (parameters->cblk_sty & 0X7F) == GRK_CBLKSTY_HT;
+   bool isHT = (parameters->cblk_sty & 0X7F) == GRK_CBLKSTY_HT_ONLY;
 
    // sanity check on image
    if(image->numcomps < 1 || image->numcomps > maxNumComponentsJ2K)

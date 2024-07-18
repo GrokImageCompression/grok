@@ -107,7 +107,7 @@ static bool seek_from_mem(uint64_t numBytes, void* src)
  * NOTE: this feature is only available for memory mapped and buffer backed streams,
  * not file streams
  *
- * @param		stream	stream to modify (see @ref stream)
+ * @param		stream	stream to modify (see @ref grk_stream)
  * @param		func	function to use as read function. (see @ref grk_stream_zero_copy_read_fn)
  */
 static void grk_stream_set_zero_copy_read_function(grk_stream* stream,

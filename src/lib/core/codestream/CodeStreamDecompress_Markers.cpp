@@ -1183,7 +1183,7 @@ bool CodeStreamDecompress::read_SPCod_SPCoc(uint16_t compno, uint8_t* headerData
    /* SPcoc (G) */
    tccp->cblk_sty = *current_ptr++;
    uint8_t high_bits = (uint8_t)(tccp->cblk_sty >> 6U);
-   if((tccp->cblk_sty & GRK_CBLKSTY_HT))
+   if((tccp->cblk_sty & GRK_CBLKSTY_HT_ONLY) == GRK_CBLKSTY_HT_ONLY)
    {
 	  uint8_t lower_6 = tccp->cblk_sty & 0x3f;
 	  uint8_t non_vsc_modes = lower_6 & (uint8_t)(~GRK_CBLKSTY_VSC);

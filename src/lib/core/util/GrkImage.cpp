@@ -971,9 +971,11 @@ bool GrkImage::composite(const GrkImage* srcImg)
 /**
  * Interleave strip of tile data and copy to interleaved composite image
  *
- * @param srcImg 	source image
+ * @param src 	source image
+ * @param yBegin y coordinate of interleaving beginning
+ * @param yEnd 	y coordinate of interleaving end
  *
- * @return:			true if successful
+ * @return			true if successful
  */
 bool GrkImage::compositeInterleaved(const Tile* src, uint32_t yBegin, uint32_t yEnd)
 {
@@ -1039,7 +1041,7 @@ bool GrkImage::compositeInterleaved(const Tile* src, uint32_t yBegin, uint32_t y
  *
  * @param src 	source image
  *
- * @return:			true if successful
+ * @return			true if successful
  */
 bool GrkImage::compositeInterleaved(const GrkImage* src)
 {
@@ -1097,7 +1099,7 @@ bool GrkImage::compositeInterleaved(const GrkImage* src)
  *
  * @param src 	source image
  *
- * @return:			true if successful
+ * @return			true if successful
  */
 bool GrkImage::compositePlanar(const GrkImage* src)
 {
