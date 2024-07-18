@@ -273,7 +273,7 @@ void _3uto32s(const uint8_t* src, int32_t* dest, size_t w, bool invert)
 	w = w & 7U;
 	if(w)
 	{
-		uint32_t val;
+		uint32_t val = 0;
 		int available = 0;
 		for(size_t j = 0; j < w; ++j)
 			GETBITS(dest[i + j], 3, INV_MASK_3, invert)
@@ -303,7 +303,7 @@ void _5uto32s(const uint8_t* src, int32_t* dest, size_t w, bool invert)
 	w = w & 7U;
 	if(w)
 	{
-		uint32_t val;
+		uint32_t val = 0;
 		int available = 0;
 		for(size_t j = 0; j < w; ++j)
 			GETBITS(dest[i + j], 5, INV_MASK_5, invert)
@@ -335,7 +335,7 @@ void _7uto32s(const uint8_t* src, int32_t* dest, size_t w, bool invert)
 	w = w & 7U;
 	if(w)
 	{
-		uint32_t val;
+		uint32_t val = 0;
 		int available = 0;
 		for(size_t j = 0; j < w; ++j)
 			GETBITS(dest[i + j], 7, INV_MASK_7, invert)
@@ -368,7 +368,7 @@ void _9uto32s(const uint8_t* src, int32_t* dest, size_t w, bool invert)
 	w = w & 7U;
 	if(w)
 	{
-		uint32_t val;
+		uint32_t val = 0;
 		int available = 0;
 		for(size_t j = 0; j < w; ++j)
 			GETBITS(dest[i + j], 9, INV_MASK_9, invert)
@@ -485,7 +485,7 @@ void _11uto32s(const uint8_t* src, int32_t* dest, size_t w, bool invert)
 	w = w & 7U;
 	if(w)
 	{
-		uint32_t val;
+		uint32_t val = 0;
 		int available = 0;
 		for(size_t j = 0; j < w; ++j)
 			GETBITS(dest[i + j], 11, INV_MASK_11, invert)
@@ -568,7 +568,7 @@ void _13uto32s(const uint8_t* src, int32_t* dest, size_t w, bool invert)
 	w = w & 7U;
 	if(w)
 	{
-		uint32_t val;
+		uint32_t val = 0;
 		int available = 0;
 		for(size_t j = 0; j < w; ++j)
 			GETBITS(dest[i + j], 13, INV_MASK_13, invert)
@@ -656,7 +656,7 @@ void _15uto32s(const uint8_t* src, int32_t* dest, size_t w, bool invert)
 	w = w & 7U;
 	if(w)
 	{
-		uint32_t val;
+		uint32_t val = 0;
 		int available = 0;
 		for(size_t j = 0; j < w; ++j)
 			GETBITS(dest[i + j], 15, INV_MASK_15, invert)
