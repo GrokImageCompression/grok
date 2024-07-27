@@ -35,16 +35,14 @@ struct ShiftInfo
 
 struct ScheduleInfo
 {
-   ScheduleInfo(Tile* t, FlowComponent* flow, StripCache* stripCache, uint32_t linesPerTask)
-	   : tile(t), compno(0), flow_(flow), linesPerTask_(linesPerTask), stripCache_(stripCache),
-		 yBegin(0), yEnd(0)
+   ScheduleInfo(Tile* t, FlowComponent* flow, uint32_t linesPerTask)
+	   : tile(t), compno(0), flow_(flow), linesPerTask_(linesPerTask), yBegin(0), yEnd(0)
    {}
    Tile* tile;
    uint16_t compno;
    std::vector<ShiftInfo> shiftInfo;
    FlowComponent* flow_;
    uint32_t linesPerTask_;
-   StripCache* stripCache_;
    uint32_t yBegin;
    uint32_t yEnd;
 };
@@ -52,7 +50,7 @@ struct ScheduleInfo
 class mct
 {
  public:
-   mct(Tile* tile, GrkImage* image, TileCodingParams* tcp, StripCache* stripCache);
+   mct(Tile* tile, GrkImage* image, TileCodingParams* tcp);
 
    /**
 	Apply a reversible multi-component transform to an image
@@ -129,7 +127,6 @@ class mct
    Tile* tile_;
    GrkImage* image_;
    TileCodingParams* tcp_;
-   StripCache* stripCache_;
 };
 
 /* ----------------------------------------------------------------------- */

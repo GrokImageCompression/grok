@@ -637,7 +637,7 @@ uint64_t CodeStreamCompress::compress(grk_plugin_tile* tile)
 		 node[j].work([this, tile, tile_index, &heap, &success] {
 			if(success)
 			{
-			   auto tileProcessor = new TileProcessor(tile_index, this, stream_, true, nullptr);
+			   auto tileProcessor = new TileProcessor(tile_index, this, stream_, true);
 			   tileProcessor->current_plugin_tile = tile;
 			   if(!tileProcessor->preCompressTile() || !tileProcessor->doCompress())
 				  success = false;
@@ -652,7 +652,7 @@ uint64_t CodeStreamCompress::compress(grk_plugin_tile* tile)
    {
 	  for(uint16_t i = 0; i < numTiles; ++i)
 	  {
-		 auto tileProcessor = new TileProcessor(i, this, stream_, true, nullptr);
+		 auto tileProcessor = new TileProcessor(i, this, stream_, true);
 		 tileProcessor->current_plugin_tile = tile;
 		 if(!tileProcessor->preCompressTile() || !tileProcessor->doCompress())
 		 {

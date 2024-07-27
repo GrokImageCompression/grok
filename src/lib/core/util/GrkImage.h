@@ -64,7 +64,6 @@ class GrkImage : public grk_image
 	* @return true if successful
 	*/
    bool allocCompositeData(void);
-   bool supportsStripCache(CodingParams* cp);
 
    /**
 	* Copy only header of image and its component header (no data are copied)

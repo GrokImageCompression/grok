@@ -313,42 +313,6 @@ bool GrkImage::allocData(grk_image_comp* comp, bool clear)
    return true;
 }
 
-bool GrkImage::supportsStripCache(CodingParams* cp)
-{
-   if(!cp->wholeTileDecompress_)
-	  return false;
-
-   if(has_multiple_tiles)
-   {
-	  // packed tile width bits must be divisible by 8
-	  if(((cp->t_width * numcomps * comps->prec) & 7) != 0)
-		 return false;
-   }
-   else
-   {
-	  // only mono supported (why is this restriction relaxed for multiple tiles ?)
-	  if(numcomps > 1)
-		 return false;
-   }
-
-   // difference between image origin y coordinate and tile origin y coordinate
-   // must be multiple of the tile height, so that only the final strip may have
-   // different height than the rest. Otherwise, TIFF will not be successfully
-   // created
-   if(((y0 - cp->ty0) % cp->t_height) != 0)
-	  return false;
-
-   bool supportedFileFormat =
-	   decompress_fmt == GRK_FMT_TIF || (decompress_fmt == GRK_FMT_PXM && !split_by_component);
-   if(isSubsampled() || precision || upsample || needsConversionToRGB() || !supportedFileFormat ||
-	  (meta && (meta->color.palette || meta->color.icc_profile_buf)))
-   {
-	  return false;
-   }
-
-   return componentsEqual(true);
-}
-
 bool GrkImage::isSubsampled()
 {
    for(uint32_t i = 0; i < numcomps; ++i)

@@ -126,7 +126,7 @@ TileProcessor* CodeStreamDecompress::allocateProcessor(uint16_t tile_index)
    auto tileProcessor = tileCache ? tileCache->processor : nullptr;
    if(!tileProcessor)
    {
-	  tileProcessor = new TileProcessor(tile_index, this, stream_, false, &stripCache_);
+	  tileProcessor = new TileProcessor(tile_index, this, stream_, false);
 	  tileCache_->put(tile_index, tileProcessor);
    }
    currentTileProcessor_ = tileProcessor;
@@ -466,20 +466,6 @@ bool CodeStreamDecompress::decompressTiles(void)
 
    auto numRequiredThreads =
 	   std::min<uint32_t>((uint32_t)ExecSingleton::get().num_workers(), numTilesToDecompress);
-   if(outputImage_->supportsStripCache(&cp_))
-   {
-	  uint32_t numStrips = cp_.t_grid_height;
-	  if(numTilesToDecompress == 1)
-	  {
-		 numStrips = (outputImage_->height() + outputImage_->rows_per_strip - 1) /
-					 outputImage_->rows_per_strip;
-	  }
-	  stripCache_.init((uint32_t)ExecSingleton::get().num_workers(), cp_.t_grid_width, numStrips,
-					   numTilesToDecompress > 1 ? cp_.t_height : outputImage_->rows_per_strip,
-					   cp_.coding_params_.dec_.reduce_, outputImage_, ioBufferCallback, ioUserData,
-					   grkRegisterReclaimCallback_);
-   }
-
    std::atomic<bool> success(true);
    std::atomic<uint32_t> numTilesDecompressed(0);
 
@@ -557,26 +543,8 @@ bool CodeStreamDecompress::decompressTiles(void)
 			   auto img = processor->getImage();
 			   if(outputImage_->has_multiple_tiles && img)
 			   {
-				  if(outputImage_->supportsStripCache(&cp_))
-				  {
-					 if(executor)
-					 {
-						uint32_t threadId =
-							executor->num_workers() > 1 ? (uint32_t)executor->this_worker_id() : 0;
-						if(!stripCache_.ingestTile(threadId, img))
-						   success = false;
-					 }
-					 else
-					 {
-						if(!stripCache_.ingestTile(img))
-						   success = false;
-					 }
-				  }
-				  else
-				  {
-					 if(!outputImage_->composite(img))
-						success = false;
-				  }
+				  if(!outputImage_->composite(img))
+					 success = false;
 			   }
 			   processor->release(success ? tileCache_->getStrategy() : GRK_TILE_CACHE_NONE);
 			}
@@ -811,7 +779,7 @@ bool CodeStreamDecompress::createOutputImage(void)
 	  getCompositeImage()->copyHeader(outputImage_);
    }
 
-   return outputImage_->supportsStripCache(&cp_) || outputImage_->allocCompositeData();
+   return outputImage_->allocCompositeData();
 }
 bool CodeStreamDecompress::hasTLM(void)
 {
@@ -883,15 +851,6 @@ bool CodeStreamDecompress::decompressTile(void)
 		 return false;
 	  }
 	  tileProcessor = currentTileProcessor_;
-	  if(outputImage_->supportsStripCache(&cp_))
-	  {
-		 uint32_t numStrips = (outputImage_->height() + outputImage_->rows_per_strip - 1) /
-							  outputImage_->rows_per_strip;
-		 stripCache_.init((uint32_t)ExecSingleton::get().num_workers(), 1, numStrips,
-						  outputImage_->rows_per_strip, cp_.coding_params_.dec_.reduce_,
-						  outputImage_, ioBufferCallback, ioUserData, grkRegisterReclaimCallback_);
-	  }
-
 	  if(!tileProcessor->decompressT2T1(outputImage_))
 		 return false;
 
