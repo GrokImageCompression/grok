@@ -2,6 +2,17 @@
 
 namespace grk
 {
+
+const uint32_t GRK_CIE_DAY = ((((uint32_t)'C') << 24) + (((uint32_t)'T') << 16));
+const uint32_t GRK_CIE_D50 = ((uint32_t)0x00443530);
+const uint32_t GRK_CIE_D65 = ((uint32_t)0x00443635);
+const uint32_t GRK_CIE_D75 = ((uint32_t)0x00443735);
+const uint32_t GRK_CIE_SA = ((uint32_t)0x00005341);
+const uint32_t GRK_CIE_SC = ((uint32_t)0x00005343);
+const uint32_t GRK_CIE_F2 = ((uint32_t)0x00004632);
+const uint32_t GRK_CIE_F7 = ((uint32_t)0x00004637);
+const uint32_t GRK_CIE_F11 = ((uint32_t)0x00463131);
+
 /**
  * return false if :
  * 1. any component's data buffer is NULL

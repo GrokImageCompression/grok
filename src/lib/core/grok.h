@@ -67,7 +67,7 @@ typedef enum _GRK_PROG_ORDER
 } GRK_PROG_ORDER;
 
 /**
- * @brief Supported color space
+ * @brief Grok supported color spaces
  *
  */
 typedef enum _GRK_COLOR_SPACE
@@ -84,21 +84,21 @@ typedef enum _GRK_COLOR_SPACE
 } GRK_COLOR_SPACE;
 
 /**
- * @brief JPEG 2000 standard color space
+ * @brief JPEG 2000 standard color spaces
  *
  */
 typedef enum _GRK_ENUM_COLOUR_SPACE
 {
    GRK_ENUM_CLRSPC_UNKNOWN = 0xFFFFFFFF, /* unknown */
    GRK_ENUM_CLRSPC_BILEVEL1 = 0, /* bilevel 1 */
-   GRK_ENUM_CLRSPC_YCBCR1 = 1, /* YCbCr 1 */
-   GRK_ENUM_CLRSPC_YCBCR2 = 3, /* YCbCr 2 */
-   GRK_ENUM_CLRSPC_YCBCR3 = 4, /* YCbCr 3 */
+   GRK_ENUM_CLRSPC_YCBCR1 = 1, /* YCbCr 4:2:2 */
+   GRK_ENUM_CLRSPC_YCBCR2 = 3, /* YCbCr 4:4:4 */
+   GRK_ENUM_CLRSPC_YCBCR3 = 4, /* YCbCr 4:2:0 */
    GRK_ENUM_CLRSPC_PHOTO_YCC = 9, /* Kodak PhotoYCC */
    GRK_ENUM_CLRSPC_CMY = 11, /* cyan, magenta, yellow */
    GRK_ENUM_CLRSPC_CMYK = 12, /* cyan, magenta, yellow, black */
    GRK_ENUM_CLRSPC_YCCK = 13, /* YCCK */
-   GRK_ENUM_CLRSPC_CIE = 14, /* CIE */
+   GRK_ENUM_CLRSPC_CIE = 14, /* CIE Lab (L*, a*, b*) */
    GRK_ENUM_CLRSPC_BILEVEL2 = 15, /* bilevel 2 */
    GRK_ENUM_CLRSPC_SRGB = 16, /* sRGB */
    GRK_ENUM_CLRSPC_GRAY = 17, /* grayscale */
@@ -257,17 +257,18 @@ typedef enum _GRK_RATE_CONTROL_ALGORITHM
 typedef enum _GRK_SUPPORTED_FILE_FMT
 {
    GRK_FMT_UNK, /* unknown format */
-   GRK_FMT_J2K, /* J2K format */
-   GRK_FMT_JP2, /* JP2 format */
-   GRK_FMT_PXM, /* PXM format */
-   GRK_FMT_PGX, /* PGX format */
-   GRK_FMT_PAM, /* PAM format */
-   GRK_FMT_BMP, /* BMP format */
-   GRK_FMT_TIF, /* TIF format */
+   GRK_FMT_J2K, /* J2K */
+   GRK_FMT_JP2, /* JP2 */
+   GRK_FMT_PXM, /* PXM */
+   GRK_FMT_PGX, /* PGX */
+   GRK_FMT_PAM, /* PAM */
+   GRK_FMT_BMP, /* BMP */
+   GRK_FMT_TIF, /* TIF */
    GRK_FMT_RAW, /* MSB / Big Endian */
-   GRK_FMT_PNG, /* PNG format */
+   GRK_FMT_PNG, /* PNG */
    GRK_FMT_RAWL, /* LSB / Little Endian */
-   GRK_FMT_JPG /* JPG format */
+   GRK_FMT_JPG, /* JPG */
+   GRK_FMT_YUV /* YUV */
 } GRK_SUPPORTED_FILE_FMT;
 
 /**
@@ -295,17 +296,16 @@ typedef enum _GRK_CODEC_FORMAT
 #define GRK_MAXBANDS (3 * GRK_MAXRLVLS - 2) /*  Maximum number of sub-bands allowed by standard */
 
 /**
+ * @brief Component mappings: component index, mapping type, palette column
+ *
  * Note: "component" refers to an image component as decompressed
  * from the code stream, while "channel" refers to a component resulting
  * from the application of a Palette box LUT and a Component mapping box.
- */
-
-/**
- * @brief Component mappings: component index, mapping type, palette column
+ *
  */
 typedef struct _grk_component_mapping_comp
 {
-   uint16_t component_index; /* component index */
+   uint16_t component; /* component index */
    uint8_t mapping_type; /* mapping type */
    uint8_t palette_column; /* palette column */
 } grk_component_mapping_comp;
@@ -372,19 +372,6 @@ typedef struct _grk_channel_definition
    grk_channel_description* descriptions; /* descriptions */
    uint16_t num_channel_descriptions; /* number of channel descriptions */
 } grk_channel_definition;
-
-/**
- * @brief ICC profile, palette, channel definition
- */
-typedef struct _grk_color
-{
-   uint8_t* icc_profile_buf; /* ICC profile buffer */
-   uint32_t icc_profile_len; /* ICC profile length */
-   char* icc_profile_name; /* ICC profile name */
-   grk_channel_definition* channel_definition; /* channel definition */
-   grk_palette_data* palette; /* palette */
-   bool has_colour_specification_box; /* has colour specification box */
-} grk_color;
 
 /**
  * @brief Association box info
@@ -614,7 +601,8 @@ typedef struct _grk_stream_params
 typedef enum _GRK_TILE_CACHE_STRATEGY
 {
    GRK_TILE_CACHE_NONE, /* no tile caching */
-   GRK_TILE_CACHE_IMAGE /* cache final tile image */
+   GRK_TILE_CACHE_IMAGE, /* cache final tile image */
+   GRK_TILE_CACHE_ALL /* cache everything */
 } GRK_TILE_CACHE_STRATEGY;
 
 /**
@@ -734,6 +722,19 @@ typedef struct _grk_image_comp
 } grk_image_comp;
 
 /**
+ * @brief ICC profile, palette, channel definition
+ */
+typedef struct _grk_color
+{
+   uint8_t* icc_profile_buf; /* ICC profile buffer */
+   uint32_t icc_profile_len; /* ICC profile length */
+   char* icc_profile_name; /* ICC profile name */
+   grk_channel_definition* channel_definition; /* channel definition */
+   grk_palette_data* palette; /* palette */
+   bool has_colour_specification_box; /* has colour specification box */
+} grk_color;
+
+/**
  * @brief Image meta data: colour, IPTC and XMP
  */
 typedef struct _grk_image_meta
@@ -794,9 +795,6 @@ typedef struct _grk_image
    grk_image_comp* comps; /* components */
 } grk_image;
 
-/*************************************************
-Structs to pass data between grok and plugin
-************************************************/
 /**
  * @brief Plugin pass
  */
@@ -959,7 +957,7 @@ GRK_API grk_image* GRK_CALLCONV grk_image_new(uint16_t numcmpts, grk_image_comp*
 GRK_API grk_image_meta* GRK_CALLCONV grk_image_meta_new(void);
 
 /**
- * @brief Detect jpeg 2000 format from file
+ * @brief Detect JPEG 2000 format from file
  *
  * Format is either GRK_FMT_J2K or GRK_FMT_JP2
  *
@@ -990,12 +988,12 @@ GRK_API void GRK_CALLCONV grk_decompress_set_default_params(grk_decompress_param
  * @brief Initialize decompressor
  *
  * @param stream_params 	source stream parameters (see @ref grk_stream_params)
- * @param core_params 	decompress core parameters (see @ref grk_decompress_core_params)
+ * @param params 	decompress parameters (see @ref grk_decompress_parameters)
  *
  * @return grk_codec* if successful, otherwise NULL
  */
 GRK_API grk_codec* GRK_CALLCONV grk_decompress_init(grk_stream_params* stream_params,
-													grk_decompress_core_params* core_params);
+													grk_decompress_parameters* params);
 
 /**
  * @brief Decompress JPEG 2000 header
@@ -1235,8 +1233,8 @@ GRK_API void GRK_CALLCONV grk_compress_set_default_params(grk_cparameters* param
 /**
  * @brief Initialize compression process.
  *
- * @param stream_params Stream parameters (see @ref grk_stream_params).
- * @param parameters    Compression parameters.
+ * @param stream_params Stream parameters (see @ref grk_stream_params)
+ * @param parameters    Compression parameters (see @ref grk_cparameters)
  * @param image         Input image (see @ref grk_image)
  *
  * @return pointer to initialized codec.
@@ -1279,19 +1277,19 @@ GRK_API bool GRK_CALLCONV grk_set_MCT(grk_cparameters* parameters, float* encodi
 #define GRK_IMG_INFO 1 /* Basic image information provided to the user */
 #define GRK_MH_INFO 2 /* Codestream information based only on the main header */
 #define GRK_TH_INFO 4 /* Tile information based on the current tile header */
-#define GRK_TCH_INFO 8 /**< Tile/Component information of all tiles */
-#define GRK_MH_IND 16 /**< Codestream index based only on the main header */
-#define GRK_TH_IND 32 /**< Tile index based on the current tile */
+#define GRK_TCH_INFO 8 /** Tile/Component information of all tiles */
+#define GRK_MH_IND 16 /** Codestream index based only on the main header */
+#define GRK_TH_IND 32 /** Tile index based on the current tile */
 
-#define GRK_CBLKSTY_LAZY 0x01 /**< Selective arithmetic coding bypass */
-#define GRK_CBLKSTY_RESET 0x02 /**< Reset context probabilities on coding pass boundaries */
-#define GRK_CBLKSTY_TERMALL 0x04 /**< Termination on each coding pass */
-#define GRK_CBLKSTY_VSC 0x08 /**< Vertical stripe causal context */
-#define GRK_CBLKSTY_PTERM 0x10 /**< Predictable termination */
-#define GRK_CBLKSTY_SEGSYM 0x20 /**< Segmentation symbols are used */
-#define GRK_CBLKSTY_HT_ONLY 0x40 /**< high throughput only block coding */
-#define GRK_CBLKSTY_HT_MIXED 0xC0 /**< mixed high throughput block coding */
-#define GRK_JPH_RSIZ_FLAG 0x4000 /**<for JPH, bit 14 of RSIZ must be set to 1 */
+#define GRK_CBLKSTY_LAZY 0x01 /** Selective arithmetic coding bypass */
+#define GRK_CBLKSTY_RESET 0x02 /** Reset context probabilities on coding pass boundaries */
+#define GRK_CBLKSTY_TERMALL 0x04 /** Termination on each coding pass */
+#define GRK_CBLKSTY_VSC 0x08 /** Vertical stripe causal context */
+#define GRK_CBLKSTY_PTERM 0x10 /** Predictable termination */
+#define GRK_CBLKSTY_SEGSYM 0x20 /** Segmentation symbols are used */
+#define GRK_CBLKSTY_HT_ONLY 0x40 /** high throughput only block coding */
+#define GRK_CBLKSTY_HT_MIXED 0xC0 /** mixed high throughput block coding */
+#define GRK_JPH_RSIZ_FLAG 0x4000 /**for JPH, bit 14 of RSIZ must be set to 1 */
 
 /*****************************************************************************
  * JPEG 2000 Profiles, see Table A.10 from 15444-1 (updated in various AMDs)
@@ -1492,15 +1490,6 @@ GRK_API bool GRK_CALLCONV grk_set_MCT(grk_cparameters* parameters, float* encodi
  */
 #define GRK_CUSTOM_CIELAB_SPACE 0x0
 #define GRK_DEFAULT_CIELAB_SPACE 0x44454600 /* 'DEF' */
-#define GRK_CIE_DAY ((((uint32_t)'C') << 24) + (((uint32_t)'T') << 16))
-#define GRK_CIE_D50 ((uint32_t)0x00443530)
-#define GRK_CIE_D65 ((uint32_t)0x00443635)
-#define GRK_CIE_D75 ((uint32_t)0x00443735)
-#define GRK_CIE_SA ((uint32_t)0x00005341)
-#define GRK_CIE_SC ((uint32_t)0x00005343)
-#define GRK_CIE_F2 ((uint32_t)0x00004632)
-#define GRK_CIE_F7 ((uint32_t)0x00004637)
-#define GRK_CIE_F11 ((uint32_t)0x00463131)
 
 /**
  * Toggle random access markers

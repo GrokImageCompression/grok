@@ -1071,7 +1071,7 @@ bool FileFormatDecompress::read_component_mapping(uint8_t* component_mapping_hea
    for(channel = 0; channel < num_channels; ++channel)
    {
 	  auto mapping = component_mapping + channel;
-	  grk_read<uint16_t>(component_mapping_header_data, &mapping->component_index); /* CMP^i */
+	  grk_read<uint16_t>(component_mapping_header_data, &mapping->component); /* CMP^i */
 	  component_mapping_header_data += 2;
 	  grk_read<uint8_t>(component_mapping_header_data++, &mapping->mapping_type); /* MTYP^i */
 	  if(mapping->mapping_type > 1)

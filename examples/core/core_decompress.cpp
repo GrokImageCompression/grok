@@ -67,17 +67,17 @@ const std::string dataRoot = GRK_DATA_ROOT;
 void errorCallback(const char* msg, [[maybe_unused]] void* client_data)
 {
    auto t = std::string(msg) + "\n";
-   fprintf(stderr, t.c_str());
+   fprintf(stderr, "%s", t.c_str());
 }
 void warningCallback(const char* msg, [[maybe_unused]] void* client_data)
 {
    auto t = std::string(msg) + "\n";
-   fprintf(stdout, t.c_str());
+   fprintf(stdout, "%s", t.c_str());
 }
 void infoCallback(const char* msg, [[maybe_unused]] void* client_data)
 {
    auto t = std::string(msg) + "\n";
-   fprintf(stdout, t.c_str());
+   fprintf(stdout, "%s", t.c_str());
 }
 
 struct ReadStreamInfo
@@ -233,7 +233,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
    {
 	  streamParams.file = inputFileStr;
    }
-   codec = grk_decompress_init(&streamParams, &decompressParams.core);
+   codec = grk_decompress_init(&streamParams, &decompressParams);
    if(!codec)
    {
 	  fprintf(stderr, "Failed to set up decompressor\n");

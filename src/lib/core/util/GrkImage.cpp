@@ -586,10 +586,10 @@ bool GrkImage::check_color(void)
 	  /* verify that all original components match an existing one */
 	  for(i = 0; i < num_channels; i++)
 	  {
-		 if(component_mapping[i].component_index >= numcomps)
+		 if(component_mapping[i].component >= numcomps)
 		 {
 			Logger::logger_.error("Invalid component index %u (>= %u).",
-								  component_mapping[i].component_index, numcomps);
+								  component_mapping[i].component, numcomps);
 			is_sane = false;
 			goto cleanup;
 		 }
@@ -692,7 +692,7 @@ bool GrkImage::apply_palette_clr()
    for(uint16_t channel = 0; channel < num_channels; ++channel)
    {
 	  auto mapping = component_mapping + channel;
-	  uint16_t compno = mapping->component_index;
+	  uint16_t compno = mapping->component;
 	  auto comp = comps + compno;
 	  if(compno >= numcomps)
 	  {
@@ -747,7 +747,7 @@ bool GrkImage::apply_palette_clr()
    {
 	  auto mapping = component_mapping + channel;
 	  uint16_t palette_column = mapping->palette_column;
-	  uint16_t compno = mapping->component_index;
+	  uint16_t compno = mapping->component;
 	  // Direct mapping
 	  uint16_t componentIndex = channel;
 
@@ -776,7 +776,7 @@ bool GrkImage::apply_palette_clr()
    {
 	  /* Palette mapping: */
 	  auto mapping = component_mapping + channel;
-	  uint16_t compno = mapping->component_index;
+	  uint16_t compno = mapping->component;
 	  uint16_t palette_column = mapping->palette_column;
 	  auto src = oldComps[compno].data;
 	  switch(mapping->mapping_type)

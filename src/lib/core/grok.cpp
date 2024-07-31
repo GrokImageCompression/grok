@@ -350,10 +350,11 @@ void GRK_CALLCONV grk_decompress_set_default_params(grk_decompress_parameters* p
 	   GRK_RANDOM_ACCESS_TLM | GRK_RANDOM_ACCESS_PLM | GRK_RANDOM_ACCESS_PLT;
 }
 grk_codec* GRK_CALLCONV grk_decompress_init(grk_stream_params* stream_params,
-											grk_decompress_core_params* core_params)
+											grk_decompress_parameters* params)
 {
-   if(!stream_params || !core_params)
+   if(!stream_params || !params)
 	  return nullptr;
+   auto core_params = &params->core;
    grk_codec* codecWrapper = nullptr;
    if(stream_params->file)
 	  codecWrapper = grk_decompress_create_from_file(stream_params->file);

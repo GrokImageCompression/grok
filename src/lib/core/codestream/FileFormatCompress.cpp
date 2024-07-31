@@ -347,7 +347,7 @@ uint8_t* FileFormatCompress::write_component_mapping(uint32_t* p_nb_bytes_writte
    for(uint32_t i = 0; i < palette->num_channels; ++i)
    {
 	  auto map = palette->component_mapping + i;
-	  grk_write<uint16_t>(cmapPtr, map->component_index); /* CMP^i */
+	  grk_write<uint16_t>(cmapPtr, map->component); /* CMP^i */
 	  cmapPtr += 2;
 	  grk_write<uint8_t>(cmapPtr++, map->mapping_type); /* MTYP^i */
 	  grk_write<uint8_t>(cmapPtr++, map->palette_column); /* PCOL^i */

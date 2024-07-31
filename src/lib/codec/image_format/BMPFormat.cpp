@@ -861,7 +861,7 @@ grk_image* BMPFormat::decode(const std::string& fname, grk_cparameters* paramete
 	  auto cmap = new _grk_component_mapping_comp[num_channels];
 	  for(uint8_t i = 0; i < num_channels; ++i)
 	  {
-		 cmap[i].component_index = 0;
+		 cmap[i].component = 0;
 		 cmap[i].mapping_type = 1;
 		 cmap[i].palette_column = i;
 		 meta->color.palette->channel_prec[i] = 8U;
