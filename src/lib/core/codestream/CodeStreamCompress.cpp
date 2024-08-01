@@ -403,8 +403,8 @@ bool CodeStreamCompress::init(grk_cparameters* parameters, GrkImage* image)
 	  for(uint32_t i = 0; i < image->numcomps; i++)
 		 tcp->qcd_->pull((tcp->tccps + i)->stepsizes);
 
-	  tcp->max_layers_ = parameters->numlayers;
-	  for(uint16_t j = 0; j < tcp->max_layers_; j++)
+	  tcp->num_layers_ = parameters->numlayers;
+	  for(uint16_t j = 0; j < tcp->num_layers_; j++)
 	  {
 		 if(cp_.coding_params_.enc_.allocationByFixedQuality_)
 			tcp->distortion[j] = parameters->layer_distortion[j];
@@ -927,10 +927,10 @@ bool CodeStreamCompress::updateRates(void)
 		 double stride = 0;
 		 if(cp->coding_params_.enc_.enableTilePartGeneration_)
 			stride = (tcp->numTileParts_ - 1) * 14;
-		 double offset = stride / tcp->max_layers_;
+		 double offset = stride / tcp->num_layers_;
 		 auto tileBounds = cp->getTileBounds(image, tile_x, tile_y);
 		 uint64_t numTilePixels = tileBounds.area();
-		 for(uint16_t k = 0; k < tcp->max_layers_; ++k)
+		 for(uint16_t k = 0; k < tcp->num_layers_; ++k)
 		 {
 			double* rates = tcp->rates + k;
 			// convert to target bytes for layer
@@ -960,7 +960,7 @@ bool CodeStreamCompress::updateRates(void)
 			   *rates = 30.0f;
 		 }
 		 ++rates;
-		 for(uint16_t k = 1; k < (uint16_t)(tcp->max_layers_ - 1); ++k)
+		 for(uint16_t k = 1; k < (uint16_t)(tcp->num_layers_ - 1); ++k)
 		 {
 			if(*rates > 0.0)
 			{
@@ -1074,7 +1074,7 @@ bool CodeStreamCompress::write_cod()
    if(!stream_->writeByte((uint8_t)tcp->prg))
 	  return false;
    /* SGcod (B) */
-   if(!stream_->writeShort((uint16_t)tcp->max_layers_))
+   if(!stream_->writeShort((uint16_t)tcp->num_layers_))
 	  return false;
    /* SGcod (C) */
    if(!stream_->writeByte((uint8_t)tcp->mct))
@@ -1245,7 +1245,7 @@ bool CodeStreamCompress::writePoc()
 
 	  /* change the value of the max layer according to the actual number of layers in the file,
 	   * components and resolutions*/
-	  current_prog->lay_e = std::min<uint16_t>(current_prog->lay_e, tcp->max_layers_);
+	  current_prog->lay_e = std::min<uint16_t>(current_prog->lay_e, tcp->num_layers_);
 	  current_prog->res_e = std::min<uint8_t>(current_prog->res_e, tccp->numresolutions);
 	  current_prog->comp_e = std::min<uint16_t>(current_prog->comp_e, numComps);
    }

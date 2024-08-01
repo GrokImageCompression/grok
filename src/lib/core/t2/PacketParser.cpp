@@ -458,7 +458,7 @@ PrecinctPacketParsers::PrecinctPacketParsers(TileProcessor* tileProcessor)
 	: tileProcessor_(tileProcessor), parsers_(nullptr), numParsers_(0), allocatedParsers_(0)
 {
    auto tcp = tileProcessor_->getTileCodingParams();
-   allocatedParsers_ = tcp->max_layers_;
+   allocatedParsers_ = tcp->num_layers_;
    if(allocatedParsers_)
    {
 	  parsers_ = new PacketParser*[allocatedParsers_];

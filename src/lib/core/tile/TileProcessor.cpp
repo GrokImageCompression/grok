@@ -260,7 +260,7 @@ bool TileProcessor::init(void)
 		 }
 	  }
 	  packetTracker_.init(tile->numcomps_, tile->comps->numresolutions, max_precincts,
-						  tcp->max_layers_);
+						  tcp->num_layers_);
    }
 
    return true;
@@ -891,7 +891,7 @@ bool TileProcessor::encodeT2(uint32_t* tileBytesWritten)
 	  }
    }
 #endif
-   if(!l_t2->compressPackets(tileIndex_, tcp_->max_layers_, stream_, tileBytesWritten,
+   if(!l_t2->compressPackets(tileIndex_, tcp_->num_layers_, stream_, tileBytesWritten,
 							 first_poc_tile_part_, newTilePartProgressionPosition, pino))
    {
 	  delete l_t2;
@@ -1145,7 +1145,7 @@ bool TileProcessor::layerNeedsRateControl(uint32_t layno)
 }
 bool TileProcessor::needsRateControl()
 {
-   for(uint16_t i = 0; i < tcp_->max_layers_; ++i)
+   for(uint16_t i = 0; i < tcp_->num_layers_; ++i)
    {
 	  if(layerNeedsRateControl(i))
 		 return true;
@@ -1156,7 +1156,7 @@ bool TileProcessor::needsRateControl()
 // due to irreversible DWT and quantization
 bool TileProcessor::makeSingleLosslessLayer()
 {
-   if(tcp_->max_layers_ == 1 && !layerNeedsRateControl(0))
+   if(tcp_->num_layers_ == 1 && !layerNeedsRateControl(0))
    {
 	  makeLayerFinal(0);
 
@@ -1252,7 +1252,7 @@ bool TileProcessor::pcrdBisectSimple(uint32_t* allPacketBytes, bool disableRateC
    double cumulativeDistortion[maxCompressLayersGRK];
    double upperBound = max_slope;
    uint32_t maxLayerLength = UINT_MAX;
-   for(uint16_t layno = 0; layno < tcp_->max_layers_; layno++)
+   for(uint16_t layno = 0; layno < tcp_->num_layers_; layno++)
    {
 	  maxLayerLength = (!disableRateControl && tcp->rates[layno] > 0.0f)
 						   ? ((uint32_t)ceil(tcp->rates[layno]))
@@ -1314,14 +1314,14 @@ bool TileProcessor::pcrdBisectSimple(uint32_t* allPacketBytes, bool disableRateC
 	  else
 	  {
 		 makeLayerFinal(layno);
-		 assert(layno == tcp_->max_layers_ - 1);
+		 assert(layno == tcp_->num_layers_ - 1);
 	  }
    }
 
    // final simulation will generate correct PLT lengths
    // and correct tile length
    // Logger::logger_.info("Rate control final simulation");
-   return t2.compressPacketsSimulate(tileIndex_, tcp_->max_layers_, allPacketBytes, maxLayerLength,
+   return t2.compressPacketsSimulate(tileIndex_, tcp_->num_layers_, allPacketBytes, maxLayerLength,
 									 newTilePartProgressionPosition, packetLengthCache.getMarkers(),
 									 true, false);
 }

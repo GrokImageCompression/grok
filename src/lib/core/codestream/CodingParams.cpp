@@ -63,7 +63,7 @@ grk_rect32 CodingParams::getTileBounds(const GrkImage* p_image, uint32_t tile_x,
 }
 
 TileCodingParams::TileCodingParams()
-	: csty(0), prg(GRK_PROG_UNKNOWN), max_layers_(0), numLayersToDecompress(0), mct(0), numpocs(0),
+	: csty(0), prg(GRK_PROG_UNKNOWN), num_layers_(0), numLayersToDecompress(0), mct(0), numpocs(0),
 	  ppt_markers_count(0), ppt_markers(nullptr), ppt_data(nullptr), ppt_buffer(nullptr),
 	  ppt_data_size(0), ppt_len(0), main_qcd_qntsty(0), main_qcd_numStepSizes(0), tccps(nullptr),
 	  tilePartCounter_(0), numTileParts_(0), compressedTileData_(nullptr), mct_norms(nullptr),

@@ -135,7 +135,7 @@ struct TileCodingParams
    /** progression order */
    GRK_PROG_ORDER prg;
    /** number of layers */
-   uint16_t max_layers_;
+   uint16_t num_layers_;
    uint16_t numLayersToDecompress;
    /** multi-component transform identifier */
    uint8_t mct;

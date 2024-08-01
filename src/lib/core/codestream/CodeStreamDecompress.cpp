@@ -229,7 +229,7 @@ bool CodeStreamDecompress::readHeader(grk_header_info* header_info)
 	  header_info->t_grid_width = cp_.t_grid_width;
 	  header_info->t_grid_height = cp_.t_grid_height;
 
-	  header_info->max_layers_ = tcp->max_layers_;
+	  header_info->num_layers_ = tcp->num_layers_;
 
 	  header_info->num_comments = cp_.num_comments;
 	  for(size_t i = 0; i < header_info->num_comments; ++i)
@@ -1019,7 +1019,7 @@ void CodeStreamDecompress::dump_tile_info(TileCodingParams* default_tile, uint32
 	  fprintf(outputFileStream, "\t default tile {\n");
 	  fprintf(outputFileStream, "\t\t csty=%#x\n", default_tile->csty);
 	  fprintf(outputFileStream, "\t\t prg=%#x\n", default_tile->prg);
-	  fprintf(outputFileStream, "\t\t numlayers=%u\n", default_tile->max_layers_);
+	  fprintf(outputFileStream, "\t\t numlayers=%u\n", default_tile->num_layers_);
 	  fprintf(outputFileStream, "\t\t mct=%x\n", default_tile->mct);
 
 	  for(uint16_t compno = 0; compno < numcomps; compno++)

@@ -276,9 +276,10 @@ typedef enum _GRK_SUPPORTED_FILE_FMT
  */
 typedef enum _GRK_CODEC_FORMAT
 {
-   GRK_CODEC_UNK, /**< unknown format */
-   GRK_CODEC_J2K, /**< JPEG 2000 code stream format */
-   GRK_CODEC_JP2 /**< JP2 file format */
+   GRK_CODEC_UNK, /** unknown format */
+   GRK_CODEC_J2K, /** JPEG 2000 code stream */
+   GRK_CODEC_JP2, /** JPEG 2000 JP2 file format */
+   GRK_CODEC_MJ2 /** Motion JPEG 2000 */
 } GRK_CODEC_FORMAT;
 
 #define GRK_PATH_LEN 4096 /* Maximum allowed filename size */
@@ -463,12 +464,12 @@ typedef struct _grk_header_info
    uint16_t t_grid_width; /* tile grid width */
    /** tile grid height  */
    uint16_t t_grid_height; /* tile grid height */
-   /** maximum number of layers */
-   uint16_t max_layers_; /* maximum number of layers */
+   /** number of layers */
+   uint16_t num_layers_;
    /*************************************
-   note: xml_data will remain valid
-  until codec is destroyed
-  ************************************/
+	* note: xml_data will remain valid
+	* until codec is destroyed
+	************************************/
    uint8_t* xml_data; /* XML data */
    size_t xml_data_len; /* XML data length */
    size_t num_comments; /* number of comments */

@@ -468,7 +468,7 @@ bool CodeStreamDecompress::read_poc(uint8_t* headerData, uint16_t header_size)
 	  /* LYEpoc_i */
 	  grk_read(headerData, &(current_prog->lay_e));
 	  /* make sure layer end is in acceptable bounds */
-	  current_prog->lay_e = std::min<uint16_t>(current_prog->lay_e, tcp->max_layers_);
+	  current_prog->lay_e = std::min<uint16_t>(current_prog->lay_e, tcp->num_layers_);
 	  headerData += 2;
 	  /* REpoc_i */
 	  grk_read(headerData, &current_prog->res_e);
@@ -1719,10 +1719,10 @@ bool CodeStreamDecompress::read_cod(uint8_t* headerData, uint16_t header_size)
 	  return false;
    }
    tcp->prg = (GRK_PROG_ORDER)tmp;
-   grk_read<uint16_t>(headerData, &tcp->max_layers_); /* SGcod (B) */
+   grk_read<uint16_t>(headerData, &tcp->num_layers_); /* SGcod (B) */
    headerData += 2;
 
-   if(tcp->max_layers_ == 0)
+   if(tcp->num_layers_ == 0)
    {
 	  Logger::logger_.error("Number of layers must be positive");
 	  return false;
@@ -1731,7 +1731,7 @@ bool CodeStreamDecompress::read_cod(uint8_t* headerData, uint16_t header_size)
    /* If user didn't set a number layer to decompress take the max specify in the code stream. */
    tcp->numLayersToDecompress = cp->coding_params_.dec_.layers_to_decompress_
 									? cp->coding_params_.dec_.layers_to_decompress_
-									: tcp->max_layers_;
+									: tcp->num_layers_;
 
    grk_read<uint8_t>(headerData++, &tcp->mct); /* SGcod (C) */
    if(tcp->mct > 1)
