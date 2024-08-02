@@ -140,10 +140,11 @@ typedef enum _GRK_ENUM_COLOUR_SPACE
  *  with colour transform:    5 extra bits
  *
  *  Lossy:
- *  Need 1 extra bit
+ *  1 extra bit
  *
- *  So,  worst-case scenario is lossless with colour transform : need to add 5 more bits to prec to
- * avoid overflow
+ *  Worst-case scenario is lossless with colour transform :
+ *  add 5 more bits to prec to avoid overflow. Add two more bits
+ *  for good measure.
  *
  */
 #define GRK_BIBO_EXTRA_BITS 7
@@ -163,7 +164,7 @@ typedef void (*grk_msg_callback)(const char* msg, void* client_data);
 
 /**
  *
- * @brief reference counted object
+ * @brief Reference counted object
  *
  */
 typedef struct _grk_object
@@ -264,9 +265,9 @@ typedef enum _GRK_SUPPORTED_FILE_FMT
    GRK_FMT_PAM, /* PAM */
    GRK_FMT_BMP, /* BMP */
    GRK_FMT_TIF, /* TIF */
-   GRK_FMT_RAW, /* MSB / Big Endian */
+   GRK_FMT_RAW, /* RAW Big Endian */
    GRK_FMT_PNG, /* PNG */
-   GRK_FMT_RAWL, /* LSB / Little Endian */
+   GRK_FMT_RAWL, /* RAW Little Endian */
    GRK_FMT_JPG, /* JPG */
    GRK_FMT_YUV /* YUV */
 } GRK_SUPPORTED_FILE_FMT;
@@ -277,7 +278,7 @@ typedef enum _GRK_SUPPORTED_FILE_FMT
 typedef enum _GRK_CODEC_FORMAT
 {
    GRK_CODEC_UNK, /** unknown format */
-   GRK_CODEC_J2K, /** JPEG 2000 code stream */
+   GRK_CODEC_J2K, /** JPEG 2000 code-stream */
    GRK_CODEC_JP2, /** JPEG 2000 JP2 file format */
    GRK_CODEC_MJ2 /** Motion JPEG 2000 */
 } GRK_CODEC_FORMAT;
@@ -331,7 +332,7 @@ typedef struct _grk_palette_data
  * in the obvious way : channel `k` corresponds to component `k`.
  * */
 
-/* @brief channel type */
+/* @brief Channel type */
 typedef enum _GRK_CHANNEL_TYPE
 {
    GRK_CHANNEL_TYPE_COLOUR = 0, /* colour */
@@ -342,7 +343,7 @@ typedef enum _GRK_CHANNEL_TYPE
 } GRK_CHANNEL_TYPE;
 
 /**
- * @brief channel association
+ * @brief Channel association
  */
 typedef enum _GRK_CHANNEL_ASSOC
 {
@@ -366,7 +367,7 @@ typedef struct _grk_channel_description
 } grk_channel_description;
 
 /**
- * @brief Channel definitions and number of definitions
+ * @brief Channel definition
  */
 typedef struct _grk_channel_definition
 {
@@ -430,7 +431,7 @@ typedef struct _grk_header_info
    /** 1 : use the irreversible DWT 9-7, 0 : use lossless compression (default) */
    bool irreversible; /* irreversible */
    /** multi-component transform identifier */
-   uint32_t mct; /* multi-component transform */
+   uint8_t mct; /* multi-component transform */
    /** RSIZ value
   To be used to combine GRK_PROFILE_*, GRK_EXTENSION_* and (sub)levels values. */
    uint16_t rsiz; /* RSIZ */
@@ -482,7 +483,7 @@ typedef struct _grk_header_info
 } grk_header_info;
 
 /**
- * @brief Grok io buffer
+ * @brief Grok IO buffer
  */
 typedef struct _grk_io_buf
 {
@@ -494,6 +495,9 @@ typedef struct _grk_io_buf
    uint32_t index_; /* index */
 } grk_io_buf;
 
+/**
+ * @brief Grok IO initialization
+ */
 typedef struct _grk_io_init
 {
    uint32_t max_pooled_requests_; /* max pooled requests */
@@ -501,7 +505,7 @@ typedef struct _grk_io_init
 } grk_io_init;
 
 /**
- * @brief Grok io callback
+ * @brief Grok IO callback
  *
  * @param thread_id thread id
  * @param buffer io buffer (see @ref grk_io_buf)
@@ -510,7 +514,7 @@ typedef struct _grk_io_init
 typedef bool (*grk_io_callback)(uint32_t thread_id, grk_io_buf buffer, void* io_user_data);
 
 /**
- * @brief Grok io register reclaim callback
+ * @brief Grok IO register reclaim callback
  *
  * @param io_init io initialization (see @ref grk_io_init)
  * @param reclaim_callback (see @ref grk_io_callback)
@@ -522,7 +526,7 @@ typedef void (*grk_io_register_reclaim_callback)(grk_io_init io_init,
 												 void* io_user_data, void* reclaim_user_data);
 
 /**
- * @brief Grok io pixels callback
+ * @brief Grok IO pixels callback
  *
  * @param thread_id thread id
  * @param buffer Grok io buffer (see @ref grk_io_buf)
@@ -531,7 +535,7 @@ typedef void (*grk_io_register_reclaim_callback)(grk_io_init io_init,
 typedef bool (*grk_io_pixels_callback)(uint32_t thread_id, grk_io_buf buffer, void* user_data);
 
 /**
- * @brief read stream callback
+ * @brief Read stream callback
  *
  * @param buffer buffer to write stream to
  * @param numBytes number of bytes to write to buffer
@@ -541,7 +545,7 @@ typedef bool (*grk_io_pixels_callback)(uint32_t thread_id, grk_io_buf buffer, vo
 typedef size_t (*grk_stream_read_fn)(uint8_t* buffer, size_t numBytes, void* user_data);
 
 /**
- * @brief write stream callback
+ * @brief Write stream callback
  *
  * @param buffer buffer to read stream from
  * @param numBytes number of bytes to read from buffer
@@ -551,7 +555,7 @@ typedef size_t (*grk_stream_read_fn)(uint8_t* buffer, size_t numBytes, void* use
 typedef size_t (*grk_stream_write_fn)(const uint8_t* buffer, size_t numBytes, void* user_data);
 
 /**
- * @brief seek (absolute) callback
+ * @brief Seek (absolute) callback
  *
  * @param offset 			absolute stream offset
  * @param user_data user 	data
@@ -560,7 +564,7 @@ typedef size_t (*grk_stream_write_fn)(const uint8_t* buffer, size_t numBytes, vo
 typedef bool (*grk_stream_seek_fn)(uint64_t offset, void* user_data);
 
 /**
- * @brief free user data callback
+ * @brief Free user data callback
  *
  * @param user_data user data
  *
@@ -635,6 +639,11 @@ typedef struct _grk_decompress_core_params
    grk_io_register_reclaim_callback io_register_client_callback; /* IO register client callback */
 } grk_decompress_core_params;
 
+/**
+ * @brief default compression level for decompress output file formats
+ * that are also comressed, such as PNG or JPEG
+ *
+ */
 #define GRK_DECOMPRESS_COMPRESSION_LEVEL_DEFAULT (UINT_MAX)
 
 /**
@@ -851,8 +860,8 @@ typedef struct _grk_plugin_band
  */
 typedef struct _grk_plugin_resolution
 {
-   size_t level; /* level */
-   size_t num_bands; /* number of bands */
+   uint8_t level; /* level */
+   uint8_t num_bands; /* number of bands */
    grk_plugin_band** band; /* band */
 } grk_plugin_resolution;
 
@@ -861,7 +870,7 @@ typedef struct _grk_plugin_resolution
  */
 typedef struct grk_plugin_tile_component
 {
-   size_t num_resolutions; /* number of resolutions */
+   uint8_t num_resolutions; /* number of resolutions */
    grk_plugin_resolution** resolutions; /* resolutions */
 } grk_plugin_tile_component;
 
@@ -880,7 +889,7 @@ typedef struct grk_plugin_tile_component
 typedef struct _grk_plugin_tile
 {
    uint32_t decompress_flags; /* decompress flags */
-   size_t num_components; /* number of components */
+   uint16_t num_components; /* number of components */
    grk_plugin_tile_component** tile_components; /* tile components */
 } grk_plugin_tile;
 
@@ -927,7 +936,7 @@ GRK_API grk_object* GRK_CALLCONV grk_object_ref(grk_object* obj);
 GRK_API void GRK_CALLCONV grk_object_unref(grk_object* obj);
 
 /**
- * @brief set log message handlers
+ * @brief Set log message handlers
  *
  * @param info_callback info callback (see @ref grk_msg_callback)
  * @param info_user_data info user data
@@ -955,12 +964,16 @@ GRK_API void GRK_CALLCONV grk_set_msg_handlers(grk_msg_callback info_callback, v
 GRK_API grk_image* GRK_CALLCONV grk_image_new(uint16_t numcmpts, grk_image_comp* cmptparms,
 											  GRK_COLOR_SPACE clrspc, bool alloc_data);
 
+/**
+ * @brief Create meta
+ *
+ */
 GRK_API grk_image_meta* GRK_CALLCONV grk_image_meta_new(void);
 
 /**
  * @brief Detect JPEG 2000 format from file
  *
- * Format is either GRK_FMT_J2K or GRK_FMT_JP2
+ * Format is either GRK_FMT_J2K, GRK_FMT_JP2 or GRK_FMT_MJ2
  *
  * @param file_name file name
  * @param fmt pointer to detected format (see @ref GRK_CODEC_FORMAT)
@@ -991,7 +1004,7 @@ GRK_API void GRK_CALLCONV grk_decompress_set_default_params(grk_decompress_param
  * @param stream_params 	source stream parameters (see @ref grk_stream_params)
  * @param params 	decompress parameters (see @ref grk_decompress_parameters)
  *
- * @return grk_codec* if successful, otherwise NULL
+ * @return pointer to @ref grk_codec if successful, otherwise NULL
  */
 GRK_API grk_codec* GRK_CALLCONV grk_decompress_init(grk_stream_params* stream_params,
 													grk_decompress_parameters* params);
@@ -1014,7 +1027,7 @@ GRK_API bool GRK_CALLCONV grk_decompress_read_header(grk_codec* codec,
  * @param	codec				decompression codec (see @ref grk_codec)
  * @param	tile_index			tile index
  *
- * @return pointer to decompressed image
+ * @return pointer to @ref grk_image
  */
 GRK_API grk_image* GRK_CALLCONV grk_decompress_get_tile_image(grk_codec* codec,
 															  uint16_t tile_index);
@@ -1024,7 +1037,7 @@ GRK_API grk_image* GRK_CALLCONV grk_decompress_get_tile_image(grk_codec* codec,
  *
  * @param	codec	decompression codec (see @ref grk_codec)
  *
- * @return pointer to decompressed image (see @ref grk_image)
+ * @return pointer to @ref grk_image
  */
 GRK_API grk_image* GRK_CALLCONV grk_decompress_get_composited_image(grk_codec* codec);
 
@@ -1669,6 +1682,8 @@ typedef struct _grk_plugin_decompress_callback_info
  * @brief Plugin decompress callback
  *
  * @param info callback info (see @ref grk_plugin_decompress_callback_info)
+ *
+ *  @return 0 if successful, otherwise return error code
  */
 typedef int32_t (*grk_plugin_decompress_callback)(grk_plugin_decompress_callback_info* info);
 
@@ -1677,6 +1692,8 @@ typedef int32_t (*grk_plugin_decompress_callback)(grk_plugin_decompress_callback
  *
  * @param decompress_parameters  decompress parameters (see @ref grk_decompress_parameters)
  * @param callback  			 callback (see @ref grk_plugin_decompress_callback)
+ *
+ *  @return 0 if successful, otherwise return error code
  */
 GRK_API int32_t GRK_CALLCONV grk_plugin_decompress(grk_decompress_parameters* decompress_parameters,
 												   grk_plugin_decompress_callback callback);
@@ -1689,7 +1706,7 @@ GRK_API int32_t GRK_CALLCONV grk_plugin_decompress(grk_decompress_parameters* de
  * @param decompress_parameters  decompress parameters (see @ref grk_decompress_parameters)
  * @param callback  			 callback (see @ref grk_plugin_decompress_callback)
  *
- * @return 0 if successful
+ * @return 0 if successful, otherwise return error code
  */
 GRK_API int32_t GRK_CALLCONV grk_plugin_init_batch_decompress(
 	const char* input_dir, const char* output_dir, grk_decompress_parameters* decompress_parameters,
@@ -1697,6 +1714,8 @@ GRK_API int32_t GRK_CALLCONV grk_plugin_init_batch_decompress(
 
 /**
  * @brief Initiate batch decompress
+ *
+ *  @return 0 if successful, otherwise return error code
  */
 GRK_API int32_t GRK_CALLCONV grk_plugin_batch_decompress(void);
 
