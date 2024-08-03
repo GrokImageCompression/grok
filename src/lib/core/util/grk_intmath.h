@@ -65,11 +65,7 @@ uint8_t floorlog2(uint32_t a);
  */
 static inline int32_t fix_mul(int32_t a, int32_t b)
 {
-#if defined(_MSC_VER) && (_MSC_VER >= 1400) && !defined(__INTEL_COMPILER) && defined(_M_IX86)
-   int64_t temp = __emul(a, b);
-#else
    int64_t temp = (int64_t)a * (int64_t)b;
-#endif
    temp += 4096; // round by adding "0.5" in 13-bit fixed point
    assert((temp >> 13) <= (int64_t)0x7FFFFFFF);
    assert((temp >> 13) >= (-(int64_t)0x7FFFFFFF - (int64_t)1));
