@@ -284,7 +284,7 @@ typedef enum _GRK_CODEC_FORMAT
 } GRK_CODEC_FORMAT;
 
 #define GRK_PATH_LEN 4096 /* Maximum allowed filename size */
-#define GRK_MAX_LAYERS 100 /* Grok maximum number of quality layers */
+#define GRK_MAX_LAYERS 256 /* Grok maximum number of quality layers */
 
 /*
  * Note: range for number of decomposition levels is 0-32
@@ -985,13 +985,6 @@ GRK_API bool GRK_CALLCONV grk_decompress_detect_format(const char* file_name,
 													   GRK_CODEC_FORMAT* fmt);
 
 /**
- * @brief Initialize stream parameters with default values
- *
- * @param params stream parameters (see @ref grk_stream_params)
- */
-GRK_API void GRK_CALLCONV grk_set_default_stream_params(grk_stream_params* params);
-
-/**
  * @brief Initialize decompress parameters with default values
  *
  * @param parameters decompression parameters (see @ref grk_decompress_parameters)
@@ -1003,11 +996,14 @@ GRK_API void GRK_CALLCONV grk_decompress_set_default_params(grk_decompress_param
  *
  * @param stream_params 	source stream parameters (see @ref grk_stream_params)
  * @param params 	decompress parameters (see @ref grk_decompress_parameters)
+ * @param codec double pointer to @ref grk_codec. If *codec is NULL, then a new codec
+ * object will be created, otherwise the codec object stored in *codec will be
+ * re-initialized
  *
- * @return pointer to @ref grk_codec if successful, otherwise NULL
+ * @return true if successful, otherwise false
  */
-GRK_API grk_codec* GRK_CALLCONV grk_decompress_init(grk_stream_params* stream_params,
-													grk_decompress_parameters* params);
+GRK_API bool GRK_CALLCONV grk_decompress_init(grk_stream_params* stream_params,
+											  grk_decompress_parameters* params, grk_codec** codec);
 
 /**
  * @brief Decompress JPEG 2000 header

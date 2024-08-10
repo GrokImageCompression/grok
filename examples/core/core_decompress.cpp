@@ -189,8 +189,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
    grk_set_msg_handlers(infoCallback, nullptr, warningCallback, nullptr, errorCallback, nullptr);
 
    // initialize decompressor
-   grk_stream_params streamParams;
-   grk_set_default_stream_params(&streamParams);
+   grk_stream_params streamParams = {};
    ReadStreamInfo sinfo(&streamParams);
    if(!fromBuffer)
    {
@@ -233,8 +232,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
    {
 	  streamParams.file = inputFileStr;
    }
-   codec = grk_decompress_init(&streamParams, &decompressParams);
-   if(!codec)
+   if(!grk_decompress_init(&streamParams, &decompressParams, &codec))
    {
 	  fprintf(stderr, "Failed to set up decompressor\n");
 	  goto beach;

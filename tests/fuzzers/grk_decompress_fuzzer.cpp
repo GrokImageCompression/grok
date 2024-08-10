@@ -36,20 +36,17 @@ int LLVMFuzzerInitialize(int* argc, char*** argv)
 int LLVMFuzzerTestOneInput(const uint8_t* buf, size_t len)
 {
    grk_image* image = nullptr;
-   grk_header_info headerInfo;
+   grk_header_info headerInfo = {};
    grk_decompress_parameters parameters;
    uint32_t x0, y0, width, height;
    grk_codec* codec = nullptr;
    grk_set_msg_handlers(nullptr, nullptr, nullptr, nullptr, nullptr, nullptr);
    grk_decompress_set_default_params(&parameters);
-   grk_stream_params stream_params;
-   memset(&stream_params, 0, sizeof(stream_params));
+   grk_stream_params stream_params = {};
    stream_params.buf = const_cast<uint8_t*>(buf);
    stream_params.buf_len = len;
-   codec = grk_decompress_init(&stream_params, &parameters);
-   if(!codec)
+   if(!grk_decompress_init(&stream_params, &parameters, &codec))
 	  goto cleanup;
-   memset(&headerInfo, 0, sizeof(grk_header_info));
    if(!grk_decompress_read_header(codec, &headerInfo))
 	  goto cleanup;
    image = grk_decompress_get_composited_image(codec);

@@ -37,8 +37,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
 	  const uint32_t precision = 8;
 	  grk_image_comp* compParams = nullptr;
 	  grk_image* image = nullptr;
-	  grk_stream_params streamParams;
-	  grk_set_default_stream_params(&streamParams);
+	  grk_stream_params streamParams = {};
 	  bool inputFromImage = true;
 	  bool outputToBuffer = true;
 	  if(outputToBuffer)

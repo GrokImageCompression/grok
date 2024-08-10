@@ -24,17 +24,17 @@
 void errorCallback(const char* msg, [[maybe_unused]] void* client_data)
 {
    auto t = std::string(msg) + "\n";
-   fprintf(stderr, t.c_str());
+   fprintf(stderr, "%s", t.c_str());
 }
 void warningCallback(const char* msg, [[maybe_unused]] void* client_data)
 {
    auto t = std::string(msg) + "\n";
-   fprintf(stdout, t.c_str());
+   fprintf(stdout, "%s", t.c_str());
 }
 void infoCallback(const char* msg, [[maybe_unused]] void* client_data)
 {
    auto t = std::string(msg) + "\n";
-   fprintf(stdout, t.c_str());
+   fprintf(stdout, "%s", t.c_str());
 }
 
 struct WriteStreamInfo
@@ -94,8 +94,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
    // initialize library
    grk_initialize(nullptr, 0, false);
 
-   grk_stream_params streamParams;
-   grk_set_default_stream_params(&streamParams);
+   grk_stream_params streamParams = {};
    WriteStreamInfo sinfo(&streamParams);
 
    std::unique_ptr<uint8_t[]> data;

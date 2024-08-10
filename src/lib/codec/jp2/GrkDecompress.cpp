@@ -1235,11 +1235,9 @@ int GrkDecompress::preProcess(grk_plugin_decompress_callback_info* info)
    // 1. initialize
    if(!info->codec)
    {
-	  grk_stream_params stream_params;
-	  memset(&stream_params, 0, sizeof(stream_params));
+	  grk_stream_params stream_params = {};
 	  stream_params.file = infile;
-	  info->codec = grk_decompress_init(&stream_params, parameters);
-	  if(!info->codec)
+	  if(!grk_decompress_init(&stream_params, parameters, &info->codec))
 	  {
 		 spdlog::error("grk_decompress: failed to set up the decompressor");
 		 goto cleanup;

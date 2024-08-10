@@ -90,11 +90,9 @@ int GrkRandomTileAccess::main(int argc, char** argv)
 	  /* Index of corner tiles */
 	  uint16_t tile[4];
 
-	  grk_stream_params stream_params;
-	  memset(&stream_params, 0, sizeof(stream_params));
+	  grk_stream_params stream_params = {};
 	  stream_params.file = parameters.infile;
-	  codec = grk_decompress_init(&stream_params, &parameters);
-	  if(!codec)
+	  if(!grk_decompress_init(&stream_params, &parameters, &codec))
 	  {
 		 fprintf(stderr, "random tile processor: failed to set up decompressor");
 		 goto cleanup;

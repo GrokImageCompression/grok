@@ -346,11 +346,9 @@ int GrkDump::main(int argc, char* argv[])
 		 if(nextFile(imageno, dirptr, &inputFolder, &parameters))
 			continue;
 	  }
-	  grk_stream_params stream_params;
-	  memset(&stream_params, 0, sizeof(stream_params));
+	  grk_stream_params stream_params = {};
 	  stream_params.file = parameters.infile;
-	  codec = grk_decompress_init(&stream_params, &parameters);
-	  if(!codec)
+	  if(!grk_decompress_init(&stream_params, &parameters, &codec))
 	  {
 		 spdlog::error("grk_dump: failed to set up the decompressor");
 		 rc = EXIT_FAILURE;

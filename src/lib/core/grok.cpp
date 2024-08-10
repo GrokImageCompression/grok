@@ -277,11 +277,6 @@ bool GRK_CALLCONV grk_decompress_detect_format(const char* fileName, GRK_CODEC_F
    return grk_decompress_buffer_detect_format(buf, 12, fmt);
 }
 
-void GRK_CALLCONV grk_set_default_stream_params(grk_stream_params* params)
-{
-   memset(params, 0, sizeof(grk_stream_params));
-}
-
 static grk_codec* grk_decompress_create_from_buffer(uint8_t* buf, size_t len)
 {
    auto stream = create_mem_stream(buf, len, false, true);
@@ -349,35 +344,60 @@ void GRK_CALLCONV grk_decompress_set_default_params(grk_decompress_parameters* p
    core_params->random_access_flags_ =
 	   GRK_RANDOM_ACCESS_TLM | GRK_RANDOM_ACCESS_PLM | GRK_RANDOM_ACCESS_PLT;
 }
-grk_codec* GRK_CALLCONV grk_decompress_init(grk_stream_params* stream_params,
-											grk_decompress_parameters* params)
+bool GRK_CALLCONV grk_decompress_init(grk_stream_params* stream_params,
+									  grk_decompress_parameters* params, grk_codec** codec)
 {
-   if(!stream_params || !params)
-	  return nullptr;
-   auto core_params = &params->core;
-   grk_codec* codecWrapper = nullptr;
-   if(stream_params->file)
-	  codecWrapper = grk_decompress_create_from_file(stream_params->file);
-   else if(stream_params->buf)
-	  codecWrapper = grk_decompress_create_from_buffer(stream_params->buf, stream_params->buf_len);
-   else if(stream_params->read_fn)
+   if(!params)
    {
-	  codecWrapper = grk_decompress_create_from_callbacks(stream_params);
+	  std::cerr << "grk_decompress_init: decompress parameters cannot be null.\n";
+	  return false;
    }
-   if(!codecWrapper)
-	  return nullptr;
+   if(!codec)
+   {
+	  std::cerr << "grk_decompress_init: codec double pointer cannot be null.\n";
+	  return false;
+   }
 
-   auto codec = GrkCodec::getImpl(codecWrapper);
-   if(!codec->decompressor_)
+   if(!*codec && !stream_params)
+   {
+	  std::cerr << "grk_decompress_init: stream parameters cannot be null"
+				   " when creating decompression codec.\n";
+	  return false;
+   }
+
+   if(*codec && stream_params)
+   {
+	  std::cout << "grk_decompress_init: non-null stream parameters will be ignored"
+				   " when re-initializing decompression codec.\n";
+   }
+
+   grk_codec* codecWrapper = *codec;
+   if(!codecWrapper)
+   {
+	  if(stream_params->file)
+		 codecWrapper = grk_decompress_create_from_file(stream_params->file);
+	  else if(stream_params->buf)
+		 codecWrapper =
+			 grk_decompress_create_from_buffer(stream_params->buf, stream_params->buf_len);
+	  else if(stream_params->read_fn)
+	  {
+		 codecWrapper = grk_decompress_create_from_callbacks(stream_params);
+	  }
+	  if(!codecWrapper)
+		 return false;
+   }
+   auto codecImpl = GrkCodec::getImpl(codecWrapper);
+   if(!codecImpl->decompressor_)
    {
 	  grk_object_unref(codecWrapper);
 
-	  return nullptr;
+	  return false;
    }
+   codecImpl->decompressor_->init(&params->core);
+   if(!*codec)
+	  *codec = codecWrapper;
 
-   codec->decompressor_->init(core_params);
-
-   return codecWrapper;
+   return true;
 }
 bool GRK_CALLCONV grk_decompress_read_header(grk_codec* codecWrapper, grk_header_info* header_info)
 {
