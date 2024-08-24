@@ -130,7 +130,8 @@ void CompressScheduler::compress(std::vector<CompressBlockExec*>* blocks)
 	  node[i].work([this, maxBlocks] {
 		 auto threadnum = ExecSingleton::get().this_worker_id();
 		 while(compress((size_t)threadnum, maxBlocks))
-		 {}
+		 {
+		 }
 	  });
    }
    ExecSingleton::get().run(taskflow).wait();

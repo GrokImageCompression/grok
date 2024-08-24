@@ -336,7 +336,7 @@ uint32_t FileFormatDecompress::read_asoc(AsocBox* parent, uint8_t** header_data,
 
    // read all children
    uint32_t asocBytesUsed = 0;
-   while(asocBytesUsed<asocSize&& * header_data_size> 8)
+   while(asocBytesUsed < asocSize && *header_data_size > 8)
    {
 	  uint32_t childSize = 0;
 	  grk_read<uint32_t>(*header_data, &childSize);
