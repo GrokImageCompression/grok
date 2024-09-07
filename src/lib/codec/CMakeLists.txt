@@ -82,11 +82,18 @@ add_definitions(-DSPDLOG_COMPILED_LIB)
 add_library(${GROK_CODEC_NAME} ${GROK_CODEC_SRCS})
 set(INSTALL_LIBS ${GROK_CODEC_NAME})
 
-target_link_libraries(${GROK_CODEC_NAME} PRIVATE ${GROK_CORE_NAME}
-                       ${PNG_LIBNAME} ${TIFF_LIBNAME}
-                       ${JPEG_LIBNAME})
+target_link_libraries(${GROK_CODEC_NAME} PRIVATE ${GROK_CORE_NAME})
 
-if (PERLLIBS_FOUND)
+ if(GROK_HAVE_LIBTIFF)
+ target_link_libraries(${GROK_CODEC_NAME} PRIVATE ${TIFF_LIBNAME})
+ endif()
+  if(GROK_HAVE_LIBPNG)
+ target_link_libraries(${GROK_CODEC_NAME} PRIVATE ${PNG_LIBNAME})
+ endif()
+  if(GROK_HAVE_LIBJPEG)
+ target_link_libraries(${GROK_CODEC_NAME} PRIVATE ${JPEG_LIBNAME})
+ endif()
+ if (PERLLIBS_FOUND)
    include_directories(${PERL_INCLUDE_PATH})
    target_link_libraries(${GROK_CODEC_NAME} PUBLIC ${PERL_LIBRARY} )
 endif()
