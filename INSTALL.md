@@ -33,6 +33,12 @@ Grok releases can be found [here](https://github.com/GrokImageCompression/grok/r
 
 # Install from Source
 
+## Perform a recursive clone, as there are submodules
+
+`git clone --recursive https://github.com/GrokImageCompression/grok.git`
+
+## Build
+
 Grok uses [cmake](www.cmake.org) to configure builds across multiple platforms.
 It requires version 3.16 or higher.
 
