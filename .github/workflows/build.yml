@@ -84,7 +84,7 @@ jobs:
         7z x grok-${{ matrix.os }}.zip
 
     - name: publish
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: grok-${{ matrix.os }}
         path: ${{ github.workspace }}/build/grok-${{ matrix.os }}
