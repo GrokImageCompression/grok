@@ -527,7 +527,7 @@ bool CodeStreamDecompress::decompressTiles(void)
 	  // 3. T2 + T1 decompress
 	  // once we schedule a processor for T1 compression, we will destroy it
 	  // regardless of success or not
-	  auto exec = [this, executor, processor, numTilesToDecompress, &numTilesDecompressed,
+	  auto exec = [this, processor, numTilesToDecompress, &numTilesDecompressed,
 				   &success] {
 		 if(success)
 		 {
