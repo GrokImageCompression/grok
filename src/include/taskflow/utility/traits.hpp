@@ -1,7 +1,11 @@
 #pragma once
 
 #if __has_include(<version>)
-#  include <version>
+#include <version>
+#endif
+
+#if __has_include(<latch>)
+#include <latch>
 #endif
 
 #include <type_traits>
@@ -296,6 +300,12 @@ using all_same = all_true<std::is_same_v<T, Ts>...>;
 template <typename T, typename... Ts>
 constexpr bool all_same_v = all_same<T, Ts...>::value;
 
+// ----------------------------------------------------------------------------
+// Iterator
+// ----------------------------------------------------------------------------
+
+template <typename I>
+using deref_t = std::decay_t<decltype(*std::declval<I>())>;
 
 }  // end of namespace tf. ----------------------------------------------------
 

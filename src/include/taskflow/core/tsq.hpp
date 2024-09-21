@@ -157,8 +157,6 @@ class TaskQueue {
   std::atomic<Array*> _array[TF_MAX_PRIORITY];
   std::vector<Array*> _garbage[TF_MAX_PRIORITY];
 
-  //std::atomic<T> _cache {nullptr};
-
   public:
 
     /**
@@ -166,7 +164,7 @@ class TaskQueue {
 
     @param capacity the capacity of the queue (must be power of 2)
     */
-    explicit TaskQueue(int64_t capacity = 512);
+    explicit TaskQueue(int64_t capacity = 1024);
 
     /**
     @brief destructs the queue
@@ -214,7 +212,7 @@ class TaskQueue {
     The operation can trigger the queue to resize its capacity
     if more space is required.
     */
-    TF_FORCE_INLINE void push(T item, unsigned priority);
+    void push(T item, unsigned priority);
 
     /**
     @brief pops out an item from the queue
@@ -232,7 +230,7 @@ class TaskQueue {
     Only the owner thread can pop out an item from the queue.
     The return can be a @c nullptr if this operation failed (empty queue).
     */
-    TF_FORCE_INLINE T pop(unsigned priority);
+    T pop(unsigned priority);
 
     /**
     @brief steals an item from the queue
@@ -253,7 +251,7 @@ class TaskQueue {
     T steal(unsigned priority);
 
   private:
-    TF_NO_INLINE Array* resize_array(Array* a, unsigned p, std::int64_t b, std::int64_t t);
+    Array* resize_array(Array* a, unsigned p, std::int64_t b, std::int64_t t);
 };
 
 // Constructor
@@ -316,7 +314,7 @@ size_t TaskQueue<T, TF_MAX_PRIORITY>::size(unsigned p) const noexcept {
 
 // Function: push
 template <typename T, unsigned TF_MAX_PRIORITY>
-TF_FORCE_INLINE void TaskQueue<T, TF_MAX_PRIORITY>::push(T o, unsigned p) {
+void TaskQueue<T, TF_MAX_PRIORITY>::push(T o, unsigned p) {
 
   int64_t b = _bottom[p].data.load(std::memory_order_relaxed);
   int64_t t = _top[p].data.load(std::memory_order_acquire);
@@ -345,7 +343,7 @@ T TaskQueue<T, TF_MAX_PRIORITY>::pop() {
 
 // Function: pop
 template <typename T, unsigned TF_MAX_PRIORITY>
-TF_FORCE_INLINE T TaskQueue<T, TF_MAX_PRIORITY>::pop(unsigned p) {
+T TaskQueue<T, TF_MAX_PRIORITY>::pop(unsigned p) {
 
   int64_t b = _bottom[p].data.load(std::memory_order_relaxed) - 1;
   Array* a = _array[p].load(std::memory_order_relaxed);
@@ -425,8 +423,8 @@ int64_t TaskQueue<T, TF_MAX_PRIORITY>::capacity(unsigned p) const noexcept {
 }
 
 template <typename T, unsigned TF_MAX_PRIORITY>
-TF_NO_INLINE typename TaskQueue<T, TF_MAX_PRIORITY>::Array*
-  TaskQueue<T, TF_MAX_PRIORITY>::resize_array(Array* a, unsigned p, std::int64_t b, std::int64_t t) {
+typename TaskQueue<T, TF_MAX_PRIORITY>::Array*
+TaskQueue<T, TF_MAX_PRIORITY>::resize_array(Array* a, unsigned p, std::int64_t b, std::int64_t t) {
 
   Array* tmp = a->resize(b, t);
   _garbage[p].push_back(a);

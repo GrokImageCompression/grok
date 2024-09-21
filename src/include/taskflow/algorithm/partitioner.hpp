@@ -46,7 +46,7 @@ enum class PartitionerType : int {
 /**
 @struct DefaultClosureWrapper
 
-@brief default closure wrapper that simplies runs the given closure as is
+@brief default closure wrapper that simply runs the given closure as is
 */
 struct DefaultClosureWrapper {
 };
@@ -790,8 +790,8 @@ class RandomPartitioner : public PartitionerBase<C> {
 /**
 @brief default partitioner set to tf::GuidedPartitioner
 
-Guided partitioner can achieve decent performance for most parallel algorithms,
-especially for those with irregular and unbalanced workload per iteration.
+Guided partitioning algorithm can achieve stable and decent performance
+for most parallel algorithms.
 */
 using DefaultPartitioner = GuidedPartitioner<>;
 

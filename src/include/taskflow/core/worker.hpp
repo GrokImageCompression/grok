@@ -2,7 +2,9 @@
 
 #include "declarations.hpp"
 #include "tsq.hpp"
-#include "notifier.hpp"
+#include "atomic_notifier.hpp"
+#include "nonblocking_notifier.hpp"
+
 
 /**
 @file worker.hpp
@@ -10,6 +12,19 @@
 */
 
 namespace tf {
+
+// ----------------------------------------------------------------------------
+// Default Notifier
+// ----------------------------------------------------------------------------
+
+/**
+@private
+*/
+#ifdef TF_ENABLE_ATOMIC_NOTIFIER
+  using DefaultNotifier = AtomicNotifierV2;
+#else
+  using DefaultNotifier = NonblockingNotifierV2;
+#endif
 
 // ----------------------------------------------------------------------------
 // Class Definition: Worker
@@ -42,11 +57,6 @@ class Worker {
     inline size_t id() const { return _id; }
 
     /**
-    @brief acquires a pointer access to the underlying thread
-    */
-    inline std::thread* thread() const { return _thread; }
-
-    /**
     @brief queries the size of the queue (i.e., number of enqueued tasks to
            run) associated with the worker
     */
@@ -61,42 +71,28 @@ class Worker {
 
     size_t _id;
     size_t _vtm;
-    Executor* _executor;
-    std::thread* _thread;
-    Notifier::Waiter* _waiter;
+    Executor* _executor {nullptr};
     std::default_random_engine _rdgen { std::random_device{}() };
     TaskQueue<Node*> _wsq;
-    Node* _cache;
+    Node* _cache {nullptr};
+
+    DefaultNotifier::Waiter* _waiter;
 };
 
+
 // ----------------------------------------------------------------------------
-// Class Definition: PerThreadWorker
+// Per-thread
 // ----------------------------------------------------------------------------
+
+namespace pt {
 
 /**
 @private
 */
-//struct PerThreadWorker {
-//
-//  Worker* worker;
-//
-//  PerThreadWorker() : worker {nullptr} {}
-//
-//  PerThreadWorker(const PerThreadWorker&) = delete;
-//  PerThreadWorker(PerThreadWorker&&) = delete;
-//
-//  PerThreadWorker& operator = (const PerThreadWorker&) = delete;
-//  PerThreadWorker& operator = (PerThreadWorker&&) = delete;
-//};
+inline thread_local Worker* worker {nullptr};
 
-/**
-@private
-*/
-//inline PerThreadWorker& this_worker() {
-//  thread_local PerThreadWorker worker;
-//  return worker;
-//}
-
+}
+    
 
 // ----------------------------------------------------------------------------
 // Class Definition: WorkerView

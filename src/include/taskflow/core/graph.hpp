@@ -2,11 +2,17 @@
 
 #include "../utility/traits.hpp"
 #include "../utility/iterator.hpp"
+
+#ifdef TF_ENABLE_TASK_POOL
 #include "../utility/object_pool.hpp"
+#endif
+
 #include "../utility/os.hpp"
 #include "../utility/math.hpp"
 #include "../utility/small_vector.hpp"
 #include "../utility/serializer.hpp"
+#include "../utility/latch.hpp"
+#include "../utility/mpmc.hpp"
 #include "error.hpp"
 #include "declarations.hpp"
 #include "semaphore.hpp"
@@ -173,6 +179,11 @@ class Runtime {
   @endcode
   */
   Executor& executor();
+  
+  /**
+  @brief acquire a reference to the underlying worker
+  */
+  inline Worker& worker();
 
   /**
   @brief schedules an active task immediately to the worker's queue
@@ -281,6 +292,8 @@ class Runtime {
   @param params task parameters
   @param f callable
 
+  <p><!-- Doxygen warning workaround --></p>
+
   @code{.cpp}
   taskflow.emplace([&](tf::Runtime& rt){
     auto future = rt.async("my task", [](){});
@@ -323,7 +336,9 @@ class Runtime {
   @tparam F callable type
   @param params task parameters
   @param f callable
-  
+
+  <p><!-- Doxygen warning workaround --></p>
+
   @code{.cpp}
   taskflow.emplace([&](tf::Runtime& rt){
     rt.silent_async("my task", [](){});
@@ -462,9 +477,122 @@ class Runtime {
   inline void corun_all();
 
   /**
-  @brief acquire a reference to the underlying worker
-  */
-  inline Worker& worker();
+  @brief acquires the given semaphores with a deadlock avoidance algorithm
+
+  @tparam S semaphore type (tf::Semaphore)
+  @param semaphores semaphores
+
+  Coruns this worker until acquiring all the semaphores. 
+
+  @code{.cpp}
+  tf::Semaphore semaphore(1);
+  tf::Executor executor;
+
+  // only one worker will enter the "critical_section" at any time
+  for(size_t i=0; i<100; i++) {
+    executor.async([&](tf::Runtime& rt){
+      rt.acquire(semaphore);
+      critical_section();
+      rt.release(semaphore);
+    });
+  }
+  @endcode
+  */ 
+  template <typename... S,
+    std::enable_if_t<all_same_v<Semaphore, std::decay_t<S>...>, void>* = nullptr
+  > 
+  void acquire(S&&... semaphores);
+
+  /**
+  @brief acquires the given range of semaphores with a deadlock avoidance algorithm
+  
+  @tparam I iterator type
+  @param first iterator to the beginning (inclusive)
+  @param last iterator to the end (exclusive)
+
+  Coruns this worker until acquiring all the semaphores. 
+
+  @code{.cpp}
+  std::list<tf::Semaphore> semaphores;
+  semaphores.emplace_back(1);
+  semaphores.emplace_back(1);
+  auto first = semaphores.begin();
+  auto last  = semaphores.end();
+  tf::Executor executor;
+
+  // only one worker will enter the "critical_section" at any time
+  for(size_t i=0; i<100; i++) {
+    executor.async([&](tf::Runtime& rt){
+      rt.acquire(first, last);
+      critical_section();
+      rt.release(first, last);
+    });
+  }
+  @endcode
+  */ 
+  template <typename I,
+    std::enable_if_t<std::is_same_v<deref_t<I>, Semaphore>, void> * = nullptr
+  >
+  void acquire(I first, I last);
+  
+  /**
+  @brief releases the given semaphores
+  
+  @tparam S semaphore type (tf::Semaphore)
+  @param semaphores semaphores
+
+  Releases the given semaphores.
+
+  @code{.cpp}
+  tf::Semaphore semaphore(1);
+  tf::Executor executor;
+
+  // only one worker will enter the "critical_section" at any time
+  for(size_t i=0; i<100; i++) {
+    executor.async([&](tf::Runtime& rt){
+      rt.acquire(semaphore);
+      critical_section();
+      rt.release(semaphore);
+    });
+  }
+  @endcode
+  */ 
+  template <typename... S,
+    std::enable_if_t<all_same_v<Semaphore, std::decay_t<S>...>, void>* = nullptr
+  >
+  void release(S&&... semaphores);
+  
+  /**
+  @brief releases the given range of semaphores
+  
+  @tparam I iterator type
+  @param first iterator to the beginning (inclusive)
+  @param last iterator to the end (exclusive)
+
+  Releases the given range of semaphores.
+
+  @code{.cpp}
+  std::list<tf::Semaphore> semaphores;
+  semaphores.emplace_back(1);
+  semaphores.emplace_back(1);
+  auto first = semaphores.begin();
+  auto last  = semaphores.end();
+  tf::Executor executor;
+
+  // only one worker will enter the "critical_section" at any time
+  for(size_t i=0; i<100; i++) {
+    executor.async([&](tf::Runtime& rt){
+      rt.acquire(first, last);
+      critical_section();
+      rt.release(first, last);
+    });
+  }
+  @endcode
+  */ 
+  template <typename I,
+    std::enable_if_t<std::is_same_v<deref_t<I>, Semaphore>, void> * = nullptr
+  >
+  void release(I first, I last);
 
   protected:
   
@@ -591,14 +719,15 @@ class Node {
     FINISHED = 2
   };
 
+#ifdef TF_ENABLE_TASK_POOL
   TF_ENABLE_POOLABLE_ON_THIS;
+#endif
 
   // state bit flag
   constexpr static int CONDITIONED = 1;
   constexpr static int DETACHED    = 2;
-  constexpr static int ACQUIRED    = 4;
-  constexpr static int READY       = 8;
-  constexpr static int EXCEPTION   = 16;
+  constexpr static int READY       = 4;
+  constexpr static int EXCEPTION   = 8;
 
   using Placeholder = std::monostate;
 
@@ -690,11 +819,6 @@ class Node {
     DependentAsync    // dependent async tasking
   >;
 
-  struct Semaphores {
-    SmallVector<Semaphore*> to_acquire;
-    SmallVector<Semaphore*> to_release;
-  };
-
   public:
 
   // variant index
@@ -731,6 +855,8 @@ class Node {
   const std::string& name() const;
 
   private:
+  
+  std::atomic<int> _state {0};
 
   std::string _name;
   
@@ -744,10 +870,8 @@ class Node {
   SmallVector<Node*> _successors;
   SmallVector<Node*> _dependents;
 
-  std::atomic<int> _state {0};
   std::atomic<size_t> _join_counter {0};
 
-  std::unique_ptr<Semaphores> _semaphores;
   std::exception_ptr _exception_ptr {nullptr};
   
   handle_t _handle;
@@ -770,7 +894,32 @@ class Node {
 /**
 @private
 */
-inline ObjectPool<Node> node_pool;
+#ifdef TF_ENABLE_TASK_POOL
+inline ObjectPool<Node> _task_pool;
+#endif
+
+/**
+@private
+*/
+template <typename... ArgsT>
+TF_FORCE_INLINE Node* animate(ArgsT&&... args) {
+#ifdef TF_ENABLE_TASK_POOL
+  return _task_pool.animate(std::forward<ArgsT>(args)...);
+#else
+  return new Node(std::forward<ArgsT>(args)...);
+#endif
+}
+
+/**
+@private
+*/
+TF_FORCE_INLINE void recycle(Node* ptr) {
+#ifdef TF_ENABLE_TASK_POOL
+  _task_pool.recycle(ptr);
+#else
+  delete ptr;
+#endif
+}
 
 // ----------------------------------------------------------------------------
 // Definition for Node::Static
@@ -941,7 +1090,7 @@ inline Node::~Node() {
 
     //auto& np = Graph::_node_pool();
     for(i=0; i<nodes.size(); ++i) {
-      node_pool.recycle(nodes[i]);
+      recycle(nodes[i]);
     }
   }
 }
@@ -1029,50 +1178,6 @@ inline void Node::_process_exception() {
   }
 }
 
-// Function: _acquire_all
-inline bool Node::_acquire_all(SmallVector<Node*>& nodes) {
-
-  auto& to_acquire = _semaphores->to_acquire;
-
-  for(size_t i = 0; i < to_acquire.size(); ++i) {
-    if(!to_acquire[i]->_try_acquire_or_wait(this)) {
-      for(size_t j = 1; j <= i; ++j) {
-        auto r = to_acquire[i-j]->_release();
-        nodes.insert(std::end(nodes), std::begin(r), std::end(r));
-      }
-      return false;
-    }
-  }
-  return true;
-}
-
-// Function: _release_all
-inline SmallVector<Node*> Node::_release_all() {
-
-  auto& to_release = _semaphores->to_release;
-
-  SmallVector<Node*> nodes;
-  for(const auto& sem : to_release) {
-    auto r = sem->_release();
-    nodes.insert(std::end(nodes), std::begin(r), std::end(r));
-  }
-
-  return nodes;
-}
-
-// ----------------------------------------------------------------------------
-// Node Deleter
-// ----------------------------------------------------------------------------
-
-/**
-@private
-*/
-struct NodeDeleter {
-  void operator ()(Node* ptr) {
-    node_pool.recycle(ptr);
-  }
-};
-
 // ----------------------------------------------------------------------------
 // Graph definition
 // ----------------------------------------------------------------------------
@@ -1102,7 +1207,7 @@ inline void Graph::clear() {
 // Procedure: clear
 inline void Graph::_clear() {
   for(auto node : _nodes) {
-    node_pool.recycle(node);
+    recycle(node);
   }
   _nodes.clear();
 }
@@ -1115,7 +1220,7 @@ inline void Graph::_clear_detached() {
   });
 
   for(auto itr = mid; itr != _nodes.end(); ++itr) {
-    node_pool.recycle(*itr);
+    recycle(*itr);
   }
   _nodes.resize(std::distance(_nodes.begin(), mid));
 }
@@ -1132,7 +1237,7 @@ inline void Graph::_merge(Graph&& g) {
 inline void Graph::_erase(Node* node) {
   if(auto I = std::find(_nodes.begin(), _nodes.end(), node); I != _nodes.end()) {
     _nodes.erase(I);
-    node_pool.recycle(node);
+    recycle(node);
   }
 }
 
@@ -1151,7 +1256,7 @@ inline bool Graph::empty() const {
 */
 template <typename ...ArgsT>
 Node* Graph::_emplace_back(ArgsT&&... args) {
-  _nodes.push_back(node_pool.animate(std::forward<ArgsT>(args)...));
+  _nodes.push_back(animate(std::forward<ArgsT>(args)...));
   return _nodes.back();
 }
 
