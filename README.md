@@ -53,4 +53,4 @@ For more information please contact :
 [badge-actions]: https://github.com/GrokImageCompression/grok/actions/workflows/build.yml/badge.svg?branch=master
 [link-actions]: https://github.com/GrokImageCompression/grok/actions
 [badge-oss-fuzz]: https://oss-fuzz-build-logs.storage.googleapis.com/badges/grok.svg
-[link-oss-fuzz]: https://bugs.chromium.org/p/oss-fuzz/issues/list?sort=-opened&can=1&q=proj:grok
+[link-oss-fuzz]: https://issues.oss-fuzz.com/issues?q=proj:grok
