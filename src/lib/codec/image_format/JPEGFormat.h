@@ -54,5 +54,5 @@ class JPEGFormat : public ImageFormat
 	* to any one struct (and its associated working data) as a "JPEG object".
 	*/
    struct jpeg_compress_struct cinfo;
-   int32_t const* planes[3];
+   int32_t const* planes[4];
 };
