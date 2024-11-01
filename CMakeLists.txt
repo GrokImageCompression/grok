@@ -126,8 +126,6 @@ option(GRK_BUILD_LCMS2 "Build lcms2 library" ON)
 option(GRK_BUILD_JPEG "Build jpeg library" ON)
 add_subdirectory(thirdparty)
 
-# Build Library
-add_subdirectory(src/lib)
 option(BUILD_LUTS_GENERATOR "Build utility to generate t1_luts.h" OFF)
 
 # Build examples
@@ -160,6 +158,23 @@ if (PERLLIBS_FOUND)
       	message(STATUS "ExifTool Perl module not found")     
      endif()
 endif(PERLLIBS_FOUND)
+
+
+add_subdirectory(src/lib/core)
+# Option to build SWIG bindings for grok_core (default OFF)
+option(GRK_BUILD_CORE_SWIG_BINDINGS "Build SWIG Python bindings for grok core library" OFF)
+
+# Conditionally build SWIG bindings for grok_core
+if(GRK_BUILD_CORE_SWIG_BINDINGS)
+    # Enable SWIG and Python dependencies
+    find_package(SWIG REQUIRED)
+    find_package(Python3 COMPONENTS Interpreter Development REQUIRED)
+    include(UseSWIG)
+
+    # Add the bindings subdirectory where the SWIG interface for grok_core is located
+    add_subdirectory(bindings/swig)
+endif()
+
 
 if(GRK_BUILD_CODEC)
   add_subdirectory(src/bin)

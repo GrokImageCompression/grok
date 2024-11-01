@@ -1,0 +1,40 @@
+/*
+ *    Copyright (C) 2016-2024 Grok Image Compression Inc.
+ *
+ *    This source code is free software: you can redistribute it and/or  modify
+ *    it under the terms of the GNU Affero General Public License, version 3,
+ *    as published by the Free Software Foundation.
+ *
+ *    This source code is distributed in the hope that it will be useful,
+ *    but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *    GNU Affero General Public License for more details.
+ *
+ *    You should have received a copy of the GNU Affero General Public License
+ *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ */
+
+%module grok_core
+
+// Dynamically include grok.h using CMake's configured path
+%{
+#include "@GROK_CORE_INCLUDE_PATH@/grok.h"
+%}
+
+%include stdint.i
+
+
+%typemap(out) grk_image_comp* {
+    grk_image* img_ptr = (grk_image*) SWIG_Python_GetSwigThis(*swig_obj);
+    int num_components = img_ptr->numcomps;
+    PyObject* py_list = PyList_New(num_components);
+
+    for (int i = 0; i < num_components; i++) {
+        PyObject* py_comp = SWIG_NewPointerObj((void*)(&($1[i])), SWIGTYPE_p__grk_image_comp, 0);
+        PyList_SetItem(py_list, i, py_comp);
+    }
+    $result = py_list;
+}
+
+%include "@GROK_CORE_INCLUDE_PATH@/grok.h"
