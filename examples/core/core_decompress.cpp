@@ -64,22 +64,6 @@ uint8_t img_buf[] = {
 
 const std::string dataRoot = GRK_DATA_ROOT;
 
-void errorCallback(const char* msg, [[maybe_unused]] void* client_data)
-{
-   auto t = std::string(msg) + "\n";
-   fprintf(stderr, "%s", t.c_str());
-}
-void warningCallback(const char* msg, [[maybe_unused]] void* client_data)
-{
-   auto t = std::string(msg) + "\n";
-   fprintf(stdout, "%s", t.c_str());
-}
-void infoCallback(const char* msg, [[maybe_unused]] void* client_data)
-{
-   auto t = std::string(msg) + "\n";
-   fprintf(stdout, "%s", t.c_str());
-}
-
 struct ReadStreamInfo
 {
    ReadStreamInfo(grk_stream_params* streamParams)
@@ -160,7 +144,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
 
    // if true, decompress a particular tile, otherwise decompress
    // all tiles
-   bool decompressTile = false;
+   bool decompressTile = true;
 
    // index of tile to decompress.
    uint16_t tile_index = 0;
@@ -169,10 +153,10 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
    // otherwise decompress entire image
    bool decompressWindow = false;
 
-   grk_codec* codec = nullptr;
+   grk_object* codec = nullptr;
 
    // initialize library
-   grk_initialize(nullptr, 0, false);
+   grk_initialize(nullptr, 0, true);
 
    // create j2k file stream
    inputFileStr = inputFilePath.c_str();
@@ -184,9 +168,6 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
    {
 	  printf("Decompressing file %s\n", inputFilePath.c_str());
    }
-
-   // set message handlers for info,warning and error
-   grk_set_msg_handlers(infoCallback, nullptr, warningCallback, nullptr, errorCallback, nullptr);
 
    // initialize decompressor
    grk_stream_params streamParams = {};
@@ -232,7 +213,8 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
    {
 	  streamParams.file = inputFileStr;
    }
-   if(!grk_decompress_init(&streamParams, &decompressParams, &codec))
+   codec = grk_decompress_init(&streamParams, &decompressParams);
+   if(!codec)
    {
 	  fprintf(stderr, "Failed to set up decompressor\n");
 	  goto beach;

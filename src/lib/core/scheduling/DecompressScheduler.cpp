@@ -150,8 +150,8 @@ bool DecompressScheduler::scheduleBlocks(uint16_t compno)
    if(blocks.empty())
 	  return true;
 
-   uint8_t num_resolutions = (tile_->comps + compno)->highestResolutionDecompressed + 1;
-   imageComponentFlows_[compno] = new ImageComponentFlow(num_resolutions);
+   uint8_t numresolutions = (tile_->comps + compno)->highestResolutionDecompressed + 1;
+   imageComponentFlows_[compno] = new ImageComponentFlow(numresolutions);
    if(!tile_->comps->isWholeTileDecoding())
 	  imageComponentFlows_[compno]->setRegionDecompression();
 

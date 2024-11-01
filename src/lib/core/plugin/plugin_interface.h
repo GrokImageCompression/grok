@@ -91,7 +91,7 @@ struct PluginDecodeCallbackInfo
    GRK_CODEC_FORMAT decod_format;
    // output file format 0: PGX, 1: PxM, 2: BMP etc
    GRK_SUPPORTED_FILE_FMT cod_format;
-   grk_codec* codec;
+   grk_object* codec;
    grk_decompress_parameters* decompressor_parameters;
    grk_header_info header_info;
    grk_image* image;

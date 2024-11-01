@@ -32,20 +32,7 @@
 namespace grk
 {
 
-static void errorCallback(const char* msg, [[maybe_unused]] void* client_data)
-{
-   fprintf(stderr, "Error: %s\n", msg);
-}
-static void warningCallback(const char* msg, [[maybe_unused]] void* client_data)
-{
-   fprintf(stdin, "Warning: %s\n", msg);
-}
-static void infoCallback(const char* msg, [[maybe_unused]] void* client_data)
-{
-   fprintf(stdin, "Info: %s\n", msg);
-}
-
-static int32_t test_tile(uint16_t tile_index, grk_image* image, grk_codec* codec)
+static int32_t test_tile(uint16_t tile_index, grk_image* image, grk_object* codec)
 {
    fprintf(stdout, "Decompressing tile %d ...", tile_index);
    if(!grk_decompress_tile(codec, tile_index))
@@ -77,11 +64,10 @@ int GrkRandomTileAccess::main(int argc, char** argv)
    }
 
    grk_initialize(nullptr, 0, true);
-   grk_set_msg_handlers(infoCallback, nullptr, warningCallback, nullptr, errorCallback, nullptr);
 
    for(uint32_t i = 0; i < 4; ++i)
    {
-	  grk_codec* codec = nullptr; /* Handle to a decompressor */
+	  grk_object* codec = nullptr; /* Handle to a decompressor */
 	  grk_image* image = nullptr;
 
 	  grk_decompress_set_default_params(&parameters);
@@ -92,7 +78,8 @@ int GrkRandomTileAccess::main(int argc, char** argv)
 
 	  grk_stream_params stream_params = {};
 	  stream_params.file = parameters.infile;
-	  if(!grk_decompress_init(&stream_params, &parameters, &codec))
+	  codec = grk_decompress_init(&stream_params, &parameters);
+	  if(!codec)
 	  {
 		 fprintf(stderr, "random tile processor: failed to set up decompressor");
 		 goto cleanup;

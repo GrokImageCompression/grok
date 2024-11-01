@@ -31,6 +31,7 @@ extern "C" {
 
 #include "grk_config.h"
 
+#ifndef SWIG
 #ifdef _WIN32
 #define GRK_CALLCONV __stdcall
 #ifdef GRK_STATIC
@@ -49,6 +50,11 @@ extern "C" {
 #else
 #define GRK_API __attribute__((visibility("default")))
 #endif
+#endif
+#else
+// Define dummy macros for SWIG to avoid parsing issues
+#define GRK_CALLCONV
+#define GRK_API
 #endif
 
 /**
@@ -161,6 +167,26 @@ typedef enum _GRK_ENUM_COLOUR_SPACE
  * @param client_data       client data passed to callback
  * */
 typedef void (*grk_msg_callback)(const char* msg, void* client_data);
+
+/**
+ * @brief Logging handlers
+ *
+ * @param info_callback info callback (see @ref grk_msg_callback)
+ * @param warn_callback warn callback (see @ref grk_msg_callback)
+ * @param error_callback error callback (see @ref grk_msg_callback)
+ * @param info_user_data info user data
+ * @param warn_user_data warn user data
+ * @param error_user_data error user data
+ */
+typedef struct _grk_msg_handlers
+{
+   grk_msg_callback info_callback;
+   void* info_data;
+   grk_msg_callback warn_callback;
+   void* warn_data;
+   grk_msg_callback error_callback;
+   void* error_data;
+} grk_msg_handlers;
 
 /**
  *
@@ -870,7 +896,7 @@ typedef struct _grk_plugin_resolution
  */
 typedef struct grk_plugin_tile_component
 {
-   uint8_t num_resolutions; /* number of resolutions */
+   uint8_t numresolutions; /* number of resolutions */
    grk_plugin_resolution** resolutions; /* resolutions */
 } grk_plugin_tile_component;
 
@@ -892,13 +918,6 @@ typedef struct _grk_plugin_tile
    uint16_t num_components; /* number of components */
    grk_plugin_tile_component** tile_components; /* tile components */
 } grk_plugin_tile;
-
-/**
- *
- * @brief opaque codec object
- *
- */
-typedef grk_object grk_codec;
 
 /**
  * @brief Library version
@@ -938,18 +957,10 @@ GRK_API void GRK_CALLCONV grk_object_unref(grk_object* obj);
 /**
  * @brief Set log message handlers
  *
- * @param info_callback info callback (see @ref grk_msg_callback)
- * @param info_user_data info user data
- * @param warn_callback warn callback (see @ref grk_msg_callback)
- * @param warn_user_data warn user data
- * @param error_callback error callback (see @ref grk_msg_callback)
- * @param error_user_data error user data
+ * @param msg_handlers see @ref grk_msg_handlers
  *
  */
-GRK_API void GRK_CALLCONV grk_set_msg_handlers(grk_msg_callback info_callback, void* info_user_data,
-											   grk_msg_callback warn_callback, void* warn_user_data,
-											   grk_msg_callback error_callback,
-											   void* error_user_data);
+GRK_API void GRK_CALLCONV grk_set_msg_handlers(grk_msg_handlers msg_handlers);
 
 /**
  * @brief Create image
@@ -996,46 +1007,55 @@ GRK_API void GRK_CALLCONV grk_decompress_set_default_params(grk_decompress_param
  *
  * @param stream_params 	source stream parameters (see @ref grk_stream_params)
  * @param params 	decompress parameters (see @ref grk_decompress_parameters)
- * @param codec double pointer to @ref grk_codec. If *codec is NULL, then a new codec
  * object will be created, otherwise the codec object stored in *codec will be
  * re-initialized
  *
+ * @return pointer to @ref grk_object if successful, otherwise nullptr
+ */
+GRK_API grk_object* GRK_CALLCONV grk_decompress_init(grk_stream_params* stream_params,
+													 grk_decompress_parameters* params);
+
+/**
+ * @brief Update decompressor
+ *
+ * @param params 	decompress parameters (see @ref grk_decompress_parameters)
+ * @param codec codec (see @ref grk_object)
  * @return true if successful, otherwise false
  */
-GRK_API bool GRK_CALLCONV grk_decompress_init(grk_stream_params* stream_params,
-											  grk_decompress_parameters* params, grk_codec** codec);
+GRK_API bool GRK_CALLCONV grk_decompress_update(grk_decompress_parameters* params,
+												grk_object* codec);
 
 /**
  * @brief Decompress JPEG 2000 header
  *
- * @param	codec				decompression codec (see @ref grk_codec)
+ * @param	codec				decompression codec (see @ref grk_object)
  * @param	header_info			information read from JPEG 2000 header (see @ref grk_header_info)
  *
  * @return true					if the main header of the code stream and the JP2 header
  * 							 	is correctly read.
  */
-GRK_API bool GRK_CALLCONV grk_decompress_read_header(grk_codec* codec,
+GRK_API bool GRK_CALLCONV grk_decompress_read_header(grk_object* codec,
 													 grk_header_info* header_info);
 
 /**
  * @brief Get decompressed tile image
  *
- * @param	codec				decompression codec (see @ref grk_codec)
+ * @param	codec				decompression codec (see @ref grk_object)
  * @param	tile_index			tile index
  *
  * @return pointer to @ref grk_image
  */
-GRK_API grk_image* GRK_CALLCONV grk_decompress_get_tile_image(grk_codec* codec,
+GRK_API grk_image* GRK_CALLCONV grk_decompress_get_tile_image(grk_object* codec,
 															  uint16_t tile_index);
 
 /**
  * @brief Get decompressed composite image
  *
- * @param	codec	decompression codec (see @ref grk_codec)
+ * @param	codec	decompression codec (see @ref grk_object)
  *
  * @return pointer to @ref grk_image
  */
-GRK_API grk_image* GRK_CALLCONV grk_decompress_get_composited_image(grk_codec* codec);
+GRK_API grk_image* GRK_CALLCONV grk_decompress_get_composited_image(grk_object* codec);
 
 /**
  * @brief Specifiy area to be decompressed.
@@ -1043,7 +1063,7 @@ GRK_API grk_image* GRK_CALLCONV grk_decompress_get_composited_image(grk_codec* c
  * This function should be called
  * right after grk_decompress_read_header is called, and before any tile header is read.
  *
- * @param	codec			decompression codec (see @ref grk_codec)
+ * @param	codec			decompression codec (see @ref grk_object)
  * @param	start_x		    left position of the rectangle to decompress (in image coordinates).
  * @param	end_x			the right position of the rectangle to decompress (in image
  * coordinates).
@@ -1052,28 +1072,28 @@ GRK_API grk_image* GRK_CALLCONV grk_decompress_get_composited_image(grk_codec* c
  *
  * @return	true			if the area could be set.
  */
-GRK_API bool GRK_CALLCONV grk_decompress_set_window(grk_codec* codec, double start_x,
+GRK_API bool GRK_CALLCONV grk_decompress_set_window(grk_object* codec, double start_x,
 													double start_y, double end_x, double end_y);
 
 /**
  * @brief Decompress image from a JPEG 2000 code stream
  *
- * @param codec 	decompression codec (see @ref grk_codec)
+ * @param codec 	decompression codec (see @ref grk_object)
  * @param tile		tile struct from plugin (see @ref grk_plugin_tile)
  *
  * @return 			true if successful, otherwise false
  * */
-GRK_API bool GRK_CALLCONV grk_decompress(grk_codec* codec, grk_plugin_tile* tile);
+GRK_API bool GRK_CALLCONV grk_decompress(grk_object* codec, grk_plugin_tile* tile);
 
 /**
  * @brief Decompress a specific tile
  *
- * @param	codec			decompression codec (see @ref grk_codec)
+ * @param	codec			decompression codec (see @ref grk_object)
  * @param	tile_index		index of the tile to be decompressed
  *
  * @return					true if successful, otherwise false
  */
-GRK_API bool GRK_CALLCONV grk_decompress_tile(grk_codec* codec, uint16_t tile_index);
+GRK_API bool GRK_CALLCONV grk_decompress_tile(grk_object* codec, uint16_t tile_index);
 
 /* COMPRESSION FUNCTIONS*/
 
@@ -1249,27 +1269,28 @@ GRK_API void GRK_CALLCONV grk_compress_set_default_params(grk_cparameters* param
  *
  * @return pointer to initialized codec.
  */
-GRK_API grk_codec* GRK_CALLCONV grk_compress_init(grk_stream_params* stream_params,
-												  grk_cparameters* parameters, grk_image* image);
+GRK_API grk_object* GRK_CALLCONV grk_compress_init(grk_stream_params* stream_params,
+												   grk_cparameters* parameters, grk_image* image);
 /**
  * @brief Compress an image into a JPEG 2000 code stream using plugin
  *
- * @param codec 		compression codec (see @ref grk_codec)
+ * @param codec 		compression codec (see @ref grk_object)
  * @param tile			plugin tile (see @ref grk_plugin_tile)
  *
  * @return 				number of bytes written if successful, 0 otherwise
  */
-GRK_API uint64_t GRK_CALLCONV grk_compress(grk_codec* codec, grk_plugin_tile* tile);
+GRK_API uint64_t GRK_CALLCONV grk_compress(grk_object* codec, grk_plugin_tile* tile);
 
 /**
  * @brief Dump codec information to file
  *
- * @param	codec			decompression codec (see @ref grk_codec)
+ * @param	codec			decompression codec (see @ref grk_object)
  * @param	info_flag		type of information dump.
  * @param	output_stream	codec information is dumped to output stream
  *
  */
-GRK_API void GRK_CALLCONV grk_dump_codec(grk_codec* codec, uint32_t info_flag, FILE* output_stream);
+GRK_API void GRK_CALLCONV grk_dump_codec(grk_object* codec, uint32_t info_flag,
+										 FILE* output_stream);
 
 /**
  * @brief Set MCT matrix
@@ -1661,7 +1682,7 @@ typedef struct _grk_plugin_decompress_callback_info
    GRK_CODEC_FORMAT decod_format; /* decode format */
    /* output file format 0: PGX, 1: PxM, 2: BMP etc */
    GRK_SUPPORTED_FILE_FMT cod_format; /* code format */
-   grk_codec* codec; /* codec */
+   grk_object* codec; /* codec */
    grk_header_info header_info; /* header info */
    grk_decompress_parameters* decompressor_parameters; /* decompressor parameters */
    grk_image* image; /* image */

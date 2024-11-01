@@ -300,14 +300,14 @@ class CodeStreamCompress : public CodeStream, public ICodeStreamCompress
 	*
 	* @param       progressions          progression orders.
 	* @param       numProgressions       number of progression orders.
-	* @param       num_resolutions        number of resolutions.
+	* @param       numresolutions        number of resolutions.
 	* @param       numcomps              number of components
 	* @param       numlayers             number of layers.
 	*
 	* @return      true if the pocs are valid.
 	*/
    bool validateProgressionOrders(const grk_progression* progressions, uint32_t numProgressions,
-								  uint8_t num_resolutions, uint16_t numcomps, uint16_t numlayers);
+								  uint8_t numresolutions, uint16_t numcomps, uint16_t numlayers);
 
    bool init_mct_encoding(TileCodingParams* p_tcp, GrkImage* p_image);
 

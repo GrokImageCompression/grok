@@ -1163,9 +1163,9 @@ GrkRC GrkCompress::parseCommandLine(int argc, char* argv[], CompressInitParams* 
 	  parameters->verbose = true;
    else
 	  spdlog::set_level(spdlog::level::level_enum::err);
-   grk_set_msg_handlers(parameters->verbose ? infoCallback : nullptr, nullptr,
-						parameters->verbose ? warningCallback : nullptr, nullptr, errorCallback,
-						nullptr);
+   grk_set_msg_handlers({parameters->verbose ? infoCallback : nullptr, nullptr,
+						 parameters->verbose ? warningCallback : nullptr, nullptr, errorCallback,
+						 nullptr});
 
    bool isHT = false;
    if(resolutionsOpt->count() > 0)
@@ -2250,7 +2250,7 @@ static uint64_t pluginCompressCallback(grk_plugin_compress_user_callback_info* i
 {
    auto parameters = info->compressor_parameters;
    uint64_t compressedBytes = 0;
-   grk_codec* codec = nullptr;
+   grk_object* codec = nullptr;
    grk_image* image = info->image;
    bool createdImage = false;
    std::string outfile;

@@ -641,9 +641,9 @@ GrkRC GrkDecompress::parseCommandLine(int argc, char* argv[], DecompressInitPara
 	  parameters->verbose_ = true;
    else
 	  spdlog::set_level(spdlog::level::level_enum::err);
-   grk_set_msg_handlers(parameters->verbose_ ? infoCallback : nullptr, nullptr,
-						parameters->verbose_ ? warningCallback : nullptr, nullptr, errorCallback,
-						nullptr);
+   grk_set_msg_handlers({parameters->verbose_ ? infoCallback : nullptr, nullptr,
+						 parameters->verbose_ ? warningCallback : nullptr, nullptr, errorCallback,
+						 nullptr});
    bool useStdio =
 	   inputFileOpt->count() > 0 && outForOpt->count() > 0 && outputFileOpt->count() == 0;
    // disable verbose mode so we don't write info or warnings to stdout
@@ -1237,7 +1237,8 @@ int GrkDecompress::preProcess(grk_plugin_decompress_callback_info* info)
    {
 	  grk_stream_params stream_params = {};
 	  stream_params.file = infile;
-	  if(!grk_decompress_init(&stream_params, parameters, &info->codec))
+	  info->codec = grk_decompress_init(&stream_params, parameters);
+	  if(!info->codec)
 	  {
 		 spdlog::error("grk_decompress: failed to set up the decompressor");
 		 goto cleanup;

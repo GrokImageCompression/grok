@@ -253,7 +253,7 @@ int GrkDump::main(int argc, char* argv[])
 
    grk_decompress_parameters parameters; /* Decompression parameters */
    grk_image* image = nullptr; /* Image structure */
-   grk_codec* codec = nullptr; /* Handle to a decompressor */
+   grk_object* codec = nullptr; /* Handle to a decompressor */
 
    size_t num_images, imageno;
    inputFolder inputFolder;
@@ -261,7 +261,7 @@ int GrkDump::main(int argc, char* argv[])
    int rc = EXIT_SUCCESS;
 
    grk_initialize(nullptr, 0, true);
-   grk_set_msg_handlers(infoCallback, nullptr, warningCallback, nullptr, errorCallback, nullptr);
+   grk_set_msg_handlers({infoCallback, nullptr, warningCallback, nullptr, errorCallback, nullptr});
 
    /* Set decoding parameters to default values */
    grk_decompress_set_default_params(&parameters);
@@ -348,7 +348,8 @@ int GrkDump::main(int argc, char* argv[])
 	  }
 	  grk_stream_params stream_params = {};
 	  stream_params.file = parameters.infile;
-	  if(!grk_decompress_init(&stream_params, &parameters, &codec))
+	  codec = grk_decompress_init(&stream_params, &parameters);
+	  if(!codec)
 	  {
 		 spdlog::error("grk_dump: failed to set up the decompressor");
 		 rc = EXIT_FAILURE;

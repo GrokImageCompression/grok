@@ -36,11 +36,11 @@ struct GrkCodec
    explicit GrkCodec(grk_stream* stream);
    ~GrkCodec();
 
-   static GrkCodec* getImpl(grk_codec* codec)
+   static GrkCodec* getImpl(grk_object* codec)
    {
 	  return ((GrkObjectWrapperImpl<GrkCodec>*)codec->wrapper)->getWrappee();
    }
-   grk_codec* getWrapper(void)
+   grk_object* getWrapper(void)
    {
 	  return &obj;
    }
@@ -72,7 +72,7 @@ GrkCodec::~GrkCodec()
  * @param codec         compression codec
  *
  */
-static bool grk_compress_start(grk_codec* codec);
+static bool grk_compress_start(grk_object* codec);
 
 /** Create stream from a file identified with its filename with a specific buffer size
  *
@@ -92,7 +92,7 @@ static grk_stream* grk_stream_new(size_t buffer_size, bool is_input)
    return streamImpl->getWrapper();
 }
 
-grk_codec* grk_decompress_create(grk_stream* stream)
+grk_object* grk_decompress_create(grk_stream* stream)
 {
    GrkCodec* codec = nullptr;
    auto bstream = BufferedStream::getImpl(stream);
@@ -111,10 +111,31 @@ grk_codec* grk_decompress_create(grk_stream* stream)
    return &codec->obj;
 }
 
+static void errorCallback(const char* msg, [[maybe_unused]] void* client_data)
+{
+   auto t = std::string(msg) + "\n";
+   fprintf(stderr, "%s", t.c_str());
+}
+static void warningCallback(const char* msg, [[maybe_unused]] void* client_data)
+{
+   auto t = std::string(msg) + "\n";
+   fprintf(stdout, "%s", t.c_str());
+}
+static void infoCallback(const char* msg, [[maybe_unused]] void* client_data)
+{
+   auto t = std::string(msg) + "\n";
+   fprintf(stdout, "%s", t.c_str());
+}
+
 static bool is_plugin_initialized = false;
 bool GRK_CALLCONV grk_initialize(const char* pluginPath, uint32_t numthreads, bool verbose)
 {
    ExecSingleton::instance(numthreads);
+   if(verbose)
+   {
+	  grk_set_msg_handlers(
+		  {infoCallback, nullptr, warningCallback, nullptr, errorCallback, nullptr});
+   }
    if(!is_plugin_initialized)
    {
 	  grk_plugin_load_info info;
@@ -154,19 +175,15 @@ GRK_API void GRK_CALLCONV grk_object_unref(grk_object* obj)
 	  delete wrapper;
 }
 
-GRK_API void GRK_CALLCONV grk_set_msg_handlers(grk_msg_callback info_callback, void* info_user_data,
-											   grk_msg_callback warn_callback, void* warn_user_data,
-											   grk_msg_callback error_callback,
-											   void* error_user_data)
+GRK_API void GRK_CALLCONV grk_set_msg_handlers(grk_msg_handlers msg_handlers)
 {
-   Logger::logger_.info_handler = info_callback;
-   Logger::logger_.info_data_ = info_user_data;
-   Logger::logger_.warning_handler = warn_callback;
-   Logger::logger_.warning_data_ = warn_user_data;
-   Logger::logger_.error_handler = error_callback;
-   Logger::logger_.error_data_ = error_user_data;
+   Logger::logger_.info_handler = msg_handlers.info_callback;
+   Logger::logger_.info_data_ = msg_handlers.info_data;
+   Logger::logger_.warning_handler = msg_handlers.warn_callback;
+   Logger::logger_.warning_data_ = msg_handlers.warn_data;
+   Logger::logger_.error_handler = msg_handlers.error_callback;
+   Logger::logger_.error_data_ = msg_handlers.error_data;
 }
-
 static size_t grk_read_from_file(uint8_t* buffer, size_t numBytes, void* p_file)
 {
    return fread(buffer, 1, numBytes, (FILE*)p_file);
@@ -277,7 +294,7 @@ bool GRK_CALLCONV grk_decompress_detect_format(const char* fileName, GRK_CODEC_F
    return grk_decompress_buffer_detect_format(buf, 12, fmt);
 }
 
-static grk_codec* grk_decompress_create_from_buffer(uint8_t* buf, size_t len)
+static grk_object* grk_decompress_create_from_buffer(uint8_t* buf, size_t len)
 {
    auto stream = create_mem_stream(buf, len, false, true);
    if(!stream)
@@ -296,7 +313,7 @@ static grk_codec* grk_decompress_create_from_buffer(uint8_t* buf, size_t len)
    return codec;
 }
 
-static grk_codec* grk_decompress_create_from_callbacks(grk_stream_params* stream_params)
+static grk_object* grk_decompress_create_from_callbacks(grk_stream_params* stream_params)
 {
    auto stream = grk_stream_create_stream(stream_params);
    if(!stream)
@@ -315,7 +332,7 @@ static grk_codec* grk_decompress_create_from_callbacks(grk_stream_params* stream
    return codec;
 }
 
-static grk_codec* grk_decompress_create_from_file(const char* file_name)
+static grk_object* grk_decompress_create_from_file(const char* file_name)
 {
    auto stream = grk_stream_create_file_stream(file_name, 1000000, true);
    if(!stream)
@@ -344,62 +361,44 @@ void GRK_CALLCONV grk_decompress_set_default_params(grk_decompress_parameters* p
    core_params->random_access_flags_ =
 	   GRK_RANDOM_ACCESS_TLM | GRK_RANDOM_ACCESS_PLM | GRK_RANDOM_ACCESS_PLT;
 }
-bool GRK_CALLCONV grk_decompress_init(grk_stream_params* stream_params,
-									  grk_decompress_parameters* params, grk_codec** codec)
+grk_object* GRK_CALLCONV grk_decompress_init(grk_stream_params* stream_params,
+											 grk_decompress_parameters* params)
 {
    if(!params)
    {
 	  std::cerr << "grk_decompress_init: decompress parameters cannot be null.\n";
-	  return false;
+	  return nullptr;
    }
-   if(!codec)
-   {
-	  std::cerr << "grk_decompress_init: codec double pointer cannot be null.\n";
-	  return false;
-   }
-
-   if(!*codec && !stream_params)
+   if(!stream_params)
    {
 	  std::cerr << "grk_decompress_init: stream parameters cannot be null"
 				   " when creating decompression codec.\n";
-	  return false;
+	  return nullptr;
    }
-
-   if(*codec && stream_params)
+   grk_object* codec = nullptr;
+   if(stream_params->file)
+	  codec = grk_decompress_create_from_file(stream_params->file);
+   else if(stream_params->buf)
+	  codec = grk_decompress_create_from_buffer(stream_params->buf, stream_params->buf_len);
+   else if(stream_params->read_fn)
    {
-	  std::cout << "grk_decompress_init: non-null stream parameters will be ignored"
-				   " when re-initializing decompression codec.\n";
+	  codec = grk_decompress_create_from_callbacks(stream_params);
    }
+   if(!codec)
+	  return nullptr;
 
-   grk_codec* codecWrapper = *codec;
-   if(!codecWrapper)
-   {
-	  if(stream_params->file)
-		 codecWrapper = grk_decompress_create_from_file(stream_params->file);
-	  else if(stream_params->buf)
-		 codecWrapper =
-			 grk_decompress_create_from_buffer(stream_params->buf, stream_params->buf_len);
-	  else if(stream_params->read_fn)
-	  {
-		 codecWrapper = grk_decompress_create_from_callbacks(stream_params);
-	  }
-	  if(!codecWrapper)
-		 return false;
-   }
-   auto codecImpl = GrkCodec::getImpl(codecWrapper);
+   auto codecImpl = GrkCodec::getImpl(codec);
    if(!codecImpl->decompressor_)
    {
-	  grk_object_unref(codecWrapper);
+	  grk_object_unref(codec);
 
-	  return false;
+	  return nullptr;
    }
    codecImpl->decompressor_->init(&params->core);
-   if(!*codec)
-	  *codec = codecWrapper;
 
-   return true;
+   return codec;
 }
-bool GRK_CALLCONV grk_decompress_read_header(grk_codec* codecWrapper, grk_header_info* header_info)
+bool GRK_CALLCONV grk_decompress_read_header(grk_object* codecWrapper, grk_header_info* header_info)
 {
    if(codecWrapper)
    {
@@ -413,8 +412,8 @@ bool GRK_CALLCONV grk_decompress_read_header(grk_codec* codecWrapper, grk_header
    }
    return false;
 }
-bool GRK_CALLCONV grk_decompress_set_window(grk_codec* codecWrapper, double start_x, double start_y,
-											double end_x, double end_y)
+bool GRK_CALLCONV grk_decompress_set_window(grk_object* codecWrapper, double start_x,
+											double start_y, double end_x, double end_y)
 {
    if(codecWrapper)
    {
@@ -425,7 +424,7 @@ bool GRK_CALLCONV grk_decompress_set_window(grk_codec* codecWrapper, double star
    }
    return false;
 }
-bool GRK_CALLCONV grk_decompress(grk_codec* codecWrapper, grk_plugin_tile* tile)
+bool GRK_CALLCONV grk_decompress(grk_object* codecWrapper, grk_plugin_tile* tile)
 {
    if(codecWrapper)
    {
@@ -437,7 +436,7 @@ bool GRK_CALLCONV grk_decompress(grk_codec* codecWrapper, grk_plugin_tile* tile)
    }
    return false;
 }
-bool GRK_CALLCONV grk_decompress_tile(grk_codec* codecWrapper, uint16_t tile_index)
+bool GRK_CALLCONV grk_decompress_tile(grk_object* codecWrapper, uint16_t tile_index)
 {
    if(codecWrapper)
    {
@@ -448,7 +447,7 @@ bool GRK_CALLCONV grk_decompress_tile(grk_codec* codecWrapper, uint16_t tile_ind
    }
    return false;
 }
-void GRK_CALLCONV grk_dump_codec(grk_codec* codecWrapper, uint32_t info_flag, FILE* output_stream)
+void GRK_CALLCONV grk_dump_codec(grk_object* codecWrapper, uint32_t info_flag, FILE* output_stream)
 {
    assert(codecWrapper);
    if(codecWrapper)
@@ -488,7 +487,7 @@ bool GRK_CALLCONV grk_set_MCT(grk_cparameters* parameters, float* pEncodingMatri
    memcpy(((uint8_t*)parameters->mct_data) + l_matrix_size, p_dc_shift, l_dc_shift_size);
    return true;
 }
-grk_image* GRK_CALLCONV grk_decompress_get_tile_image(grk_codec* codecWrapper, uint16_t tile_index)
+grk_image* GRK_CALLCONV grk_decompress_get_tile_image(grk_object* codecWrapper, uint16_t tile_index)
 {
    if(codecWrapper)
    {
@@ -498,7 +497,7 @@ grk_image* GRK_CALLCONV grk_decompress_get_tile_image(grk_codec* codecWrapper, u
    return nullptr;
 }
 
-grk_image* GRK_CALLCONV grk_decompress_get_composited_image(grk_codec* codecWrapper)
+grk_image* GRK_CALLCONV grk_decompress_get_composited_image(grk_object* codecWrapper)
 {
    if(codecWrapper)
    {
@@ -510,7 +509,7 @@ grk_image* GRK_CALLCONV grk_decompress_get_composited_image(grk_codec* codecWrap
 
 /* COMPRESSION FUNCTIONS*/
 
-grk_codec* GRK_CALLCONV grk_compress_create(GRK_CODEC_FORMAT p_format, grk_stream* stream)
+grk_object* GRK_CALLCONV grk_compress_create(GRK_CODEC_FORMAT p_format, grk_stream* stream)
 {
    GrkCodec* codec = nullptr;
    switch(p_format)
@@ -557,8 +556,8 @@ void GRK_CALLCONV grk_compress_set_default_params(grk_cparameters* parameters)
    parameters->device_id = 0;
    parameters->repeats = 1;
 }
-grk_codec* GRK_CALLCONV grk_compress_init(grk_stream_params* stream_params,
-										  grk_cparameters* parameters, grk_image* image)
+grk_object* GRK_CALLCONV grk_compress_init(grk_stream_params* stream_params,
+										   grk_cparameters* parameters, grk_image* image)
 {
    if(!parameters || !image)
 	  return nullptr;
@@ -587,7 +586,7 @@ grk_codec* GRK_CALLCONV grk_compress_init(grk_stream_params* stream_params,
 	  return nullptr;
    }
 
-   grk_codec* codecWrapper = nullptr;
+   grk_object* codecWrapper = nullptr;
    switch(parameters->cod_format)
    {
 	  case GRK_FMT_J2K: /* JPEG 2000 code stream */
@@ -615,7 +614,13 @@ grk_codec* GRK_CALLCONV grk_compress_init(grk_stream_params* stream_params,
 
    return rc ? codecWrapper : nullptr;
 }
-static bool grk_compress_start(grk_codec* codecWrapper)
+
+bool GRK_CALLCONV grk_decompress_update(grk_decompress_parameters* params, grk_object* codec)
+{
+   return false;
+}
+
+static bool grk_compress_start(grk_object* codecWrapper)
 {
    if(codecWrapper)
    {
@@ -625,7 +630,7 @@ static bool grk_compress_start(grk_codec* codecWrapper)
    return false;
 }
 
-uint64_t GRK_CALLCONV grk_compress(grk_codec* codecWrapper, grk_plugin_tile* tile)
+uint64_t GRK_CALLCONV grk_compress(grk_object* codecWrapper, grk_plugin_tile* tile)
 {
    if(codecWrapper)
    {

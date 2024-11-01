@@ -21,22 +21,6 @@
 
 #include "grok.h"
 
-void errorCallback(const char* msg, [[maybe_unused]] void* client_data)
-{
-   auto t = std::string(msg) + "\n";
-   fprintf(stderr, "%s", t.c_str());
-}
-void warningCallback(const char* msg, [[maybe_unused]] void* client_data)
-{
-   auto t = std::string(msg) + "\n";
-   fprintf(stdout, "%s", t.c_str());
-}
-void infoCallback(const char* msg, [[maybe_unused]] void* client_data)
-{
-   auto t = std::string(msg) + "\n";
-   fprintf(stdout, "%s", t.c_str());
-}
-
 struct WriteStreamInfo
 {
    explicit WriteStreamInfo(grk_stream_params* streamParams)
@@ -83,7 +67,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
    compressParams.cod_format = GRK_FMT_JP2;
    compressParams.verbose = true;
 
-   grk_codec* codec = nullptr;
+   grk_object* codec = nullptr;
    grk_image* image = nullptr;
    grk_image_comp* components = nullptr;
    int32_t rc = EXIT_FAILURE;
@@ -92,7 +76,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
    bool useCallbacks = true;
 
    // initialize library
-   grk_initialize(nullptr, 0, false);
+   grk_initialize(nullptr, 0, true);
 
    grk_stream_params streamParams = {};
    WriteStreamInfo sinfo(&streamParams);
@@ -120,9 +104,6 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
    {
 	  streamParams.file = outFile;
    }
-
-   // set library message handlers
-   grk_set_msg_handlers(infoCallback, nullptr, warningCallback, nullptr, errorCallback, nullptr);
 
    // create blank image
    components = new grk_image_comp[numComps];

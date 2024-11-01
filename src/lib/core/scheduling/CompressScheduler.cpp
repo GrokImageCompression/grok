@@ -26,8 +26,8 @@ CompressScheduler::CompressScheduler(Tile* tile, bool needsRateControl, TileCodi
 {
    for(uint16_t compno = 0; compno < numcomps_; ++compno)
    {
-	  uint8_t num_resolutions = (tile->comps + compno)->highestResolutionDecompressed + 1;
-	  imageComponentFlows_[compno] = new ImageComponentFlow(num_resolutions);
+	  uint8_t numresolutions = (tile->comps + compno)->highestResolutionDecompressed + 1;
+	  imageComponentFlows_[compno] = new ImageComponentFlow(numresolutions);
    }
 }
 bool CompressScheduler::schedule(uint16_t compno)

@@ -1650,15 +1650,14 @@ uint16_t CodeStreamCompress::getPocSize(uint32_t numComps, uint32_t numPocs)
    return (uint16_t)(4 + (5 + 2 * pocRoom) * numPocs);
 }
 bool CodeStreamCompress::validateProgressionOrders(const grk_progression* progressions,
-												   uint32_t numProgressions,
-												   uint8_t num_resolutions, uint16_t numComps,
-												   uint16_t numLayers)
+												   uint32_t numProgressions, uint8_t numresolutions,
+												   uint16_t numComps, uint16_t numLayers)
 {
    uint32_t resno, compno, layno;
    uint32_t i;
    uint32_t step_c = 1;
    uint32_t step_r = numComps * step_c;
-   uint32_t step_l = num_resolutions * step_r;
+   uint32_t step_l = numresolutions * step_r;
 
    auto packet_array = new uint8_t[(size_t)step_l * numLayers];
    memset(packet_array, 0, (size_t)step_l * numLayers * sizeof(uint8_t));
@@ -1669,7 +1668,7 @@ bool CodeStreamCompress::validateProgressionOrders(const grk_progression* progre
 	  auto currentPoc = progressions + i;
 	  size_t index = step_r * currentPoc->res_s;
 	  /* take each resolution for each poc */
-	  for(resno = currentPoc->res_s; resno < std::min<uint32_t>(currentPoc->res_e, num_resolutions);
+	  for(resno = currentPoc->res_s; resno < std::min<uint32_t>(currentPoc->res_e, numresolutions);
 		  ++resno)
 	  {
 		 size_t res_index = index + currentPoc->comp_s * step_c;
@@ -1697,7 +1696,7 @@ bool CodeStreamCompress::validateProgressionOrders(const grk_progression* progre
    size_t index = 0;
    for(layno = 0; layno < numLayers; ++layno)
    {
-	  for(resno = 0; resno < num_resolutions; ++resno)
+	  for(resno = 0; resno < numresolutions; ++resno)
 	  {
 		 for(compno = 0; compno < numComps; ++compno)
 		 {
