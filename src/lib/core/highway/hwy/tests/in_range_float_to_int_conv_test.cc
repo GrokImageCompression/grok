@@ -25,6 +25,7 @@
 HWY_BEFORE_NAMESPACE();
 namespace hwy {
 namespace HWY_NAMESPACE {
+namespace {
 
 // HWY_IN_RANGE_F2I_CONV_TEST_CONST_ASSERT(condition, msg) checks that condition
 // is true using static_assert if constexpr BitCastScalar is available and
@@ -402,6 +403,11 @@ class TestConvertInRangeFloatToInt {
         expected[i] = ConvertScalarTo<TTo>(rand_in_range_val);
       }
 
+#if HWY_COMPILER_CLANG && HWY_ARCH_RISCV && HWY_TARGET == HWY_EMU128
+      // Workaround for incorrect codegen. Off by one in the upper lane.
+      if (sizeof(TTo) == 4 && N == 2) return;
+#endif
+
       const auto from = Load(d_from, from_lanes.get());
 
       HWY_ASSERT_VEC_EQ(d_to, expected.get(),
@@ -476,6 +482,10 @@ class TestConvertInRangeFloatToInt {
 };
 
 HWY_NOINLINE void TestAllConvertInRangeFloatToInt() {
+  // Fails due to vfcvt_rtz rounding instead of truncating. This is likely a
+  // continuation of the QEMU issue partially fixed by
+  // https://lists.gnu.org/archive/html/qemu-riscv/2022-12/msg00377.html.
+#if HWY_TARGET != HWY_RVV
 #if HWY_HAVE_FLOAT16
   ForPartialVectors<TestConvertInRangeFloatToInt<int16_t>>()(hwy::float16_t());
   ForPartialVectors<TestConvertInRangeFloatToInt<uint16_t>>()(hwy::float16_t());
@@ -495,6 +505,7 @@ HWY_NOINLINE void TestAllConvertInRangeFloatToInt() {
   ForPartialVectors<TestConvertInRangeFloatToInt<int64_t>>()(double());
   ForPartialVectors<TestConvertInRangeFloatToInt<uint64_t>>()(double());
 #endif
+#endif  // HWY_TARGET != HWY_RVV
 }
 
 template <class TTo>
@@ -610,14 +621,15 @@ HWY_NOINLINE void TestAllPromoteInRangeOddEvenFloatToInt() {
 
 #undef HWY_IN_RANGE_F2I_CONV_TEST_CONST_ASSERT
 
+}  // namespace
 // NOLINTNEXTLINE(google-readability-namespace-comments)
 }  // namespace HWY_NAMESPACE
 }  // namespace hwy
 HWY_AFTER_NAMESPACE();
 
 #if HWY_ONCE
-
 namespace hwy {
+namespace {
 HWY_BEFORE_TEST(HwyInRangeFloatToIntConvTest);
 HWY_EXPORT_AND_TEST_P(HwyInRangeFloatToIntConvTest,
                       TestAllConvertInRangeFloatToInt);
@@ -626,6 +638,7 @@ HWY_EXPORT_AND_TEST_P(HwyInRangeFloatToIntConvTest,
 HWY_EXPORT_AND_TEST_P(HwyInRangeFloatToIntConvTest,
                       TestAllPromoteInRangeOddEvenFloatToInt);
 HWY_AFTER_TEST();
+}  // namespace
 }  // namespace hwy
-
-#endif
+HWY_TEST_MAIN();
+#endif  // HWY_ONCE

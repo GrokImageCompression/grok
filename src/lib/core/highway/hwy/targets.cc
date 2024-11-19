@@ -38,16 +38,16 @@
 #ifndef TOOLCHAIN_MISS_ASM_HWCAP_H
 #include <asm/hwcap.h>
 #endif
-#ifndef TOOLCHAIN_MISS_SYS_AUXV_H
+#if HWY_HAVE_AUXV
 #include <sys/auxv.h>
 #endif
 
 #endif  // HWY_ARCH_*
 
-#ifdef __APPLE__
+#if HWY_OS_APPLE
 #include <sys/sysctl.h>
 #include <sys/utsname.h>
-#endif  // __APPLE__
+#endif  // HWY_OS_APPLE
 
 namespace hwy {
 namespace {
@@ -59,7 +59,7 @@ int64_t supported_targets_for_test_ = 0;
 // Mask of targets disabled at runtime with DisableTargets.
 int64_t supported_mask_ = LimitsMax<int64_t>();
 
-#ifdef __APPLE__
+#if HWY_OS_APPLE
 static HWY_INLINE HWY_MAYBE_UNUSED bool HasCpuFeature(
     const char* feature_name) {
   int result = 0;
@@ -122,7 +122,7 @@ static HWY_INLINE HWY_MAYBE_UNUSED bool IsMacOs12_2OrLater() {
   // or later
   return (major > 21 || (major == 21 && minor >= 3));
 }
-#endif  // __APPLE__
+#endif  // HWY_OS_APPLE
 
 #if HWY_ARCH_X86 && HWY_HAVE_RUNTIME_DISPATCH
 namespace x86 {
@@ -387,7 +387,7 @@ int64_t DetectTargets() {
   constexpr int64_t min_avx2 = HWY_AVX2 | (HWY_AVX2 - 1);
 
   if (has_xsave && has_osxsave) {
-#ifdef __APPLE__
+#if HWY_OS_APPLE
     // On macOS, check for AVX3 XSAVE support by checking that we are running on
     // macOS 12.2 or later and HasCpuFeature("hw.optional.avx512f") returns true
 
@@ -423,7 +423,7 @@ int64_t DetectTargets() {
       bits &= ~min_avx2;
     }
 
-#ifndef __APPLE__
+#if !HWY_OS_APPLE
     // On OS's other than macOS, check for AVX3 XSAVE support by checking that
     // bits 5, 6, and 7 of XCR0 are set.
     const bool have_avx3_xsave_support =
@@ -453,18 +453,43 @@ int64_t DetectTargets() {
 #elif HWY_ARCH_ARM && HWY_HAVE_RUNTIME_DISPATCH
 namespace arm {
 int64_t DetectTargets() {
-  int64_t bits = 0;               // return value of supported targets.
+  int64_t bits = 0;  // return value of supported targets.
+
   using CapBits = unsigned long;  // NOLINT
+#if HWY_OS_APPLE
+  const CapBits hw = 0UL;
+#else
+  // For Android, this has been supported since API 20 (2014).
   const CapBits hw = getauxval(AT_HWCAP);
+#endif
   (void)hw;
 
 #if HWY_ARCH_ARM_A64
   bits |= HWY_NEON_WITHOUT_AES;  // aarch64 always has NEON and VFPv4..
 
+#if HWY_OS_APPLE
+  if (HasCpuFeature("hw.optional.arm.FEAT_AES")) {
+    bits |= HWY_NEON;
+
+    if (HasCpuFeature("hw.optional.AdvSIMD_HPFPCvt") &&
+        HasCpuFeature("hw.optional.arm.FEAT_DotProd") &&
+        HasCpuFeature("hw.optional.arm.FEAT_BF16")) {
+      bits |= HWY_NEON_BF16;
+    }
+  }
+#else  // !HWY_OS_APPLE
   // .. but not necessarily AES, which is required for HWY_NEON.
 #if defined(HWCAP_AES)
   if (hw & HWCAP_AES) {
     bits |= HWY_NEON;
+
+#if defined(HWCAP_ASIMDHP) && defined(HWCAP_ASIMDDP) && defined(HWCAP2_BF16)
+    const CapBits hw2 = getauxval(AT_HWCAP2);
+    const int64_t kGroupF16Dot = HWCAP_ASIMDHP | HWCAP_ASIMDDP;
+    if ((hw & kGroupF16Dot) == kGroupF16Dot && (hw2 & HWCAP2_BF16)) {
+      bits |= HWY_NEON_BF16;
+    }
+#endif  // HWCAP_ASIMDHP && HWCAP_ASIMDDP && HWCAP2_BF16
   }
 #endif  // HWCAP_AES
 
@@ -484,6 +509,7 @@ int64_t DetectTargets() {
   if ((hw2 & HWCAP2_SVE2) && (hw2 & HWCAP2_SVEAES)) {
     bits |= HWY_SVE2;
   }
+#endif  // HWY_OS_APPLE
 
 #else  // !HWY_ARCH_ARM_A64
 
@@ -619,7 +645,31 @@ int64_t DetectTargets() {
   const CapBits hw = getauxval(AT_HWCAP);
 
   if ((hw & COMPAT_HWCAP_ISA_V) == COMPAT_HWCAP_ISA_V) {
-    bits |= HWY_RVV;
+    size_t e8m1_vec_len;
+#if HWY_ARCH_RISCV_64
+    int64_t vtype_reg_val;
+#else
+    int32_t vtype_reg_val;
+#endif
+
+    // Check that a vuint8m1_t vector is at least 16 bytes and that tail
+    // agnostic and mask agnostic mode are supported
+    asm volatile(
+        // Avoid compiler error on GCC or Clang if -march=rv64gcv1p0 or
+        // -march=rv32gcv1p0 option is not specified on the command line
+        ".option push\n\t"
+        ".option arch, +v\n\t"
+        "vsetvli %0, zero, e8, m1, ta, ma\n\t"
+        "csrr %1, vtype\n\t"
+        ".option pop"
+        : "=r"(e8m1_vec_len), "=r"(vtype_reg_val));
+
+    // The RVV target is supported if the VILL bit of VTYPE (the MSB bit of
+    // VTYPE) is not set and the length of a vuint8m1_t vector is at least 16
+    // bytes
+    if (vtype_reg_val >= 0 && e8m1_vec_len >= 16) {
+      bits |= HWY_RVV;
+    }
   }
 
   return bits;

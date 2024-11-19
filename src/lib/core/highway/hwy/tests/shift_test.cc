@@ -24,6 +24,7 @@
 HWY_BEFORE_NAMESPACE();
 namespace hwy {
 namespace HWY_NAMESPACE {
+namespace {
 
 template <bool kSigned>
 struct TestLeftShifts {
@@ -164,146 +165,6 @@ struct TestUnsignedRightShifts {
     HWY_ASSERT_VEC_EQ(d, expected.get(), ShiftRightSame(values, kMaxShift));
   }
 };
-
-struct TestRotateLeft {
-  template <typename T, class D>
-  HWY_NOINLINE void operator()(T /*unused*/, D d) {
-    using TU = MakeUnsigned<T>;
-
-    const size_t N = Lanes(d);
-    auto expected = AllocateAligned<T>(N);
-    HWY_ASSERT(expected);
-
-    constexpr size_t kBits = sizeof(T) * 8;
-    const Vec<D> mask_shift = Set(d, static_cast<T>(kBits - 1));
-    // Cover as many bit positions as possible to test shifting out
-    const Vec<D> values =
-        Shl(Set(d, static_cast<T>(1)), And(Iota(d, 0), mask_shift));
-    const Vec<D> values2 = Xor(values, SignBit(d));
-
-    // Rotate by 0
-    HWY_ASSERT_VEC_EQ(d, values, RotateLeft<0>(values));
-    HWY_ASSERT_VEC_EQ(d, values2, RotateLeft<0>(values2));
-
-    // Rotate by 1
-    Store(values, d, expected.get());
-    for (size_t i = 0; i < N; ++i) {
-      expected[i] =
-          ConvertScalarTo<T>((static_cast<TU>(expected[i]) << 1) |
-                             (static_cast<TU>(expected[i]) >> (kBits - 1)));
-    }
-    HWY_ASSERT_VEC_EQ(d, expected.get(), RotateLeft<1>(values));
-
-    for (size_t i = 0; i < N; ++i) {
-      expected[i] = ConvertScalarTo<T>(expected[i] ^ static_cast<T>(1));
-    }
-    HWY_ASSERT_VEC_EQ(d, expected.get(), RotateLeft<1>(values2));
-
-    // Rotate by half
-    Store(values, d, expected.get());
-    for (size_t i = 0; i < N; ++i) {
-      expected[i] =
-          ConvertScalarTo<T>((static_cast<TU>(expected[i]) << (kBits / 2)) |
-                             (static_cast<TU>(expected[i]) >> (kBits / 2)));
-    }
-    HWY_ASSERT_VEC_EQ(d, expected.get(), RotateLeft<kBits / 2>(values));
-
-    for (size_t i = 0; i < N; ++i) {
-      expected[i] = ConvertScalarTo<T>(
-          expected[i] ^ (static_cast<T>(1) << ((kBits / 2) - 1)));
-    }
-    HWY_ASSERT_VEC_EQ(d, expected.get(), RotateLeft<kBits / 2>(values2));
-
-    // Rotate by max
-    Store(values, d, expected.get());
-    for (size_t i = 0; i < N; ++i) {
-      expected[i] =
-          ConvertScalarTo<T>((static_cast<TU>(expected[i]) << (kBits - 1)) |
-                             (static_cast<TU>(expected[i]) >> 1));
-    }
-    HWY_ASSERT_VEC_EQ(d, expected.get(), RotateLeft<kBits - 1>(values));
-
-    for (size_t i = 0; i < N; ++i) {
-      expected[i] =
-          ConvertScalarTo<T>(expected[i] ^ (static_cast<T>(1) << (kBits - 2)));
-    }
-    HWY_ASSERT_VEC_EQ(d, expected.get(), RotateLeft<kBits - 1>(values2));
-  }
-};
-
-HWY_NOINLINE void TestAllRotateLeft() {
-  ForIntegerTypes(ForPartialVectors<TestRotateLeft>());
-}
-
-struct TestRotateRight {
-  template <typename T, class D>
-  HWY_NOINLINE void operator()(T /*unused*/, D d) {
-    using TU = MakeUnsigned<T>;
-
-    const size_t N = Lanes(d);
-    auto expected = AllocateAligned<T>(N);
-    HWY_ASSERT(expected);
-
-    constexpr size_t kBits = sizeof(T) * 8;
-    const Vec<D> mask_shift = Set(d, static_cast<T>(kBits - 1));
-    // Cover as many bit positions as possible to test shifting out
-    const Vec<D> values =
-        Shl(Set(d, static_cast<T>(1)), And(Iota(d, 0), mask_shift));
-    const Vec<D> values2 = Xor(values, SignBit(d));
-
-    // Rotate by 0
-    HWY_ASSERT_VEC_EQ(d, values, RotateRight<0>(values));
-    HWY_ASSERT_VEC_EQ(d, values2, RotateRight<0>(values2));
-
-    // Rotate by 1
-    Store(values, d, expected.get());
-    for (size_t i = 0; i < N; ++i) {
-      expected[i] =
-          ConvertScalarTo<T>((static_cast<TU>(expected[i]) >> 1) |
-                             (static_cast<TU>(expected[i]) << (kBits - 1)));
-    }
-    HWY_ASSERT_VEC_EQ(d, expected.get(), RotateRight<1>(values));
-
-    for (size_t i = 0; i < N; ++i) {
-      expected[i] =
-          ConvertScalarTo<T>(expected[i] ^ (static_cast<T>(1) << (kBits - 2)));
-    }
-    HWY_ASSERT_VEC_EQ(d, expected.get(), RotateRight<1>(values2));
-
-    // Rotate by half
-    Store(values, d, expected.get());
-    for (size_t i = 0; i < N; ++i) {
-      expected[i] =
-          ConvertScalarTo<T>((static_cast<TU>(expected[i]) >> (kBits / 2)) |
-                             (static_cast<TU>(expected[i]) << (kBits / 2)));
-    }
-    HWY_ASSERT_VEC_EQ(d, expected.get(), RotateRight<kBits / 2>(values));
-
-    for (size_t i = 0; i < N; ++i) {
-      expected[i] = ConvertScalarTo<T>(
-          expected[i] ^ (static_cast<T>(1) << ((kBits / 2) - 1)));
-    }
-    HWY_ASSERT_VEC_EQ(d, expected.get(), RotateRight<kBits / 2>(values2));
-
-    // Rotate by max
-    Store(values, d, expected.get());
-    for (size_t i = 0; i < N; ++i) {
-      expected[i] =
-          ConvertScalarTo<T>((static_cast<TU>(expected[i]) >> (kBits - 1)) |
-                             (static_cast<TU>(expected[i]) << 1));
-    }
-    HWY_ASSERT_VEC_EQ(d, expected.get(), RotateRight<kBits - 1>(values));
-
-    for (size_t i = 0; i < N; ++i) {
-      expected[i] = ConvertScalarTo<T>(expected[i] ^ static_cast<T>(1));
-    }
-    HWY_ASSERT_VEC_EQ(d, expected.get(), RotateRight<kBits - 1>(values2));
-  }
-};
-
-HWY_NOINLINE void TestAllRotateRight() {
-  ForIntegerTypes(ForPartialVectors<TestRotateRight>());
-}
 
 struct TestVariableUnsignedRightShifts {
   template <typename T, class D>
@@ -505,133 +366,158 @@ HWY_NOINLINE void TestAllVariableShifts() {
   ForSignedTypes(ForPartialVectors<TestVariableSignedRightShifts>());
 }
 
-struct TestVariableRotations {
+struct TestRoundingShiftRight {
+  template <int kShiftAmt, class D>
+  static HWY_INLINE void VerifyRoundingShiftRight(
+      D d, const TFromD<D>* HWY_RESTRICT expected, Vec<D> v,
+      const char* filename, const int line) {
+    AssertVecEqual(d, expected, RoundingShiftRight<kShiftAmt>(v), filename,
+                   line);
+    AssertVecEqual(d, expected, RoundingShiftRightSame(v, kShiftAmt), filename,
+                   line);
+  }
+
   template <typename T, class D>
   HWY_NOINLINE void operator()(T /*unused*/, D d) {
     using TU = MakeUnsigned<T>;
-
-    constexpr TU kBits1 = static_cast<TU>(0x7C29085C41482973ULL);
-    constexpr TU kBits2 = static_cast<TU>(0xD3C8835FBD1A89BAULL);
-
-    const auto viota0 = Iota(d, 0);
-    const auto va = Xor(Set(d, static_cast<T>(kBits1)), viota0);
-    const auto vb = Xor(Set(d, static_cast<T>(kBits2)), viota0);
+    const auto iota0 = Iota(d, T{0});
 
     const size_t N = Lanes(d);
-    auto expected1 = AllocateAligned<T>(N);
-    auto expected2 = AllocateAligned<T>(N);
-    auto expected3 = AllocateAligned<T>(N);
-    auto expected4 = AllocateAligned<T>(N);
-    HWY_ASSERT(expected1 && expected2 && expected3 && expected4);
+    auto expected = AllocateAligned<T>(N);
+    HWY_ASSERT(expected);
 
-    constexpr size_t kBits = sizeof(T) * 8;
+    Store(iota0, d, expected.get());
+    VerifyRoundingShiftRight<0>(d, expected.get(), iota0, __FILE__, __LINE__);
 
-    auto vrotate_amt1 = viota0;
-    auto vrotate_amt2 = Sub(Set(d, static_cast<T>(kBits)), viota0);
-    auto vrotate_amt_incr = Set(d, static_cast<T>(N));
+    const auto v1 = Set(d, T{1});
+    const auto iota1 = Add(iota0, v1);
+    Store(iota1, d, expected.get());
+    VerifyRoundingShiftRight<0>(d, expected.get(), iota1, __FILE__, __LINE__);
 
-    const RebindToSigned<decltype(d)> di;
+    const auto v2 = Set(d, T{2});
+    const auto iota2 = Add(iota0, v2);
+    Store(iota2, d, expected.get());
+    VerifyRoundingShiftRight<0>(d, expected.get(), iota2, __FILE__, __LINE__);
 
-    for (size_t i = 0; i < kBits; i += N) {
-      for (size_t j = 0; j < N; j++) {
-        const size_t shift_amt_1 = (i + j) & (kBits - 1);
-        const size_t shift_amt_2 = (size_t{0} - shift_amt_1) & (kBits - 1);
+    const auto iota3 = Add(iota0, Set(d, T{3}));
+    Store(iota3, d, expected.get());
+    VerifyRoundingShiftRight<0>(d, expected.get(), iota3, __FILE__, __LINE__);
 
-        const TU val_a = static_cast<TU>(kBits1 ^ j);
-        const TU val_b = static_cast<TU>(kBits2 ^ j);
+    const auto seq4 = Add(iota0, SignBit(d));
+    Store(seq4, d, expected.get());
+    VerifyRoundingShiftRight<0>(d, expected.get(), seq4, __FILE__, __LINE__);
 
-        expected1[j] =
-            static_cast<T>((val_a << shift_amt_1) | (val_a >> shift_amt_2));
-        expected2[j] =
-            static_cast<T>((val_a >> shift_amt_1) | (val_a << shift_amt_2));
-        expected3[j] =
-            static_cast<T>((val_b << shift_amt_1) | (val_b >> shift_amt_2));
-        expected4[j] =
-            static_cast<T>((val_b >> shift_amt_1) | (val_b << shift_amt_2));
+    const auto seq5 = Add(seq4, v1);
+    Store(seq5, d, expected.get());
+    VerifyRoundingShiftRight<0>(d, expected.get(), seq5, __FILE__, __LINE__);
+
+    const auto v0 = Zero(d);
+    Store(AverageRound(iota1, v0), d, expected.get());
+    VerifyRoundingShiftRight<1>(d, expected.get(), iota1, __FILE__, __LINE__);
+
+    Store(AverageRound(iota2, v0), d, expected.get());
+    VerifyRoundingShiftRight<1>(d, expected.get(), iota2, __FILE__, __LINE__);
+
+    Store(AverageRound(seq4, v0), d, expected.get());
+    VerifyRoundingShiftRight<1>(d, expected.get(), seq4, __FILE__, __LINE__);
+
+    Store(AverageRound(seq5, v0), d, expected.get());
+    VerifyRoundingShiftRight<1>(d, expected.get(), seq5, __FILE__, __LINE__);
+
+    const auto seq6 = And(
+        Xor(iota1,
+            Set(d, static_cast<T>(0x70FB991A05AC6B24ULL & LimitsMax<TU>()))),
+        Set(d, static_cast<T>(~static_cast<T>(0x10))));
+    Store(ShiftRight<5>(seq6), d, expected.get());
+    VerifyRoundingShiftRight<5>(d, expected.get(), seq6, __FILE__, __LINE__);
+
+    const auto seq7 =
+        Or(Xor(iota2,
+               Set(d, static_cast<T>(0x6ED498B16EC87C63ULL & LimitsMax<TU>()))),
+           Set(d, static_cast<T>(0x04)));
+    Store(Add(ShiftRight<3>(seq7), v1), d, expected.get());
+    VerifyRoundingShiftRight<3>(d, expected.get(), seq7, __FILE__, __LINE__);
+
+    const auto seq8 = And(
+        Xor(iota1,
+            Set(d, static_cast<T>(0x186958FE04C94D77ULL & LimitsMax<TU>()))),
+        Set(d, static_cast<T>(~static_cast<T>(0x08))));
+    Store(ShiftRight<4>(seq8), d, expected.get());
+    VerifyRoundingShiftRight<4>(d, expected.get(), seq8, __FILE__, __LINE__);
+
+    const auto seq9 =
+        Or(Xor(iota2,
+               Set(d, static_cast<T>(0x7FC4E62077CC7655ULL & LimitsMax<TU>()))),
+           v2);
+    Store(Add(ShiftRight<2>(seq9), v1), d, expected.get());
+    VerifyRoundingShiftRight<2>(d, expected.get(), seq9, __FILE__, __LINE__);
+  }
+};
+
+HWY_NOINLINE void TestAllRoundingShiftRight() {
+  ForIntegerTypes(ForPartialVectors<TestRoundingShiftRight>());
+}
+
+struct TestVariableRoundingShr {
+  template <typename T, class D>
+  HWY_NOINLINE void operator()(T /*unused*/, D d) {
+    const size_t N = Lanes(d);
+    constexpr size_t kNumOfBits = sizeof(T) * 8;
+    const auto iota1 = Iota(d, T{1});
+
+    const auto v0 = Zero(d);
+    const auto v1 = Set(d, T{1});
+    const auto sign_bit = SignBit(d);
+
+    for (size_t i = 0; i < kNumOfBits; i += N) {
+      auto shift_amt = Iota(d, static_cast<T>(i & (kNumOfBits - 1)));
+
+      HWY_IF_CONSTEXPR(HWY_MAX_LANES_D(D) > kNumOfBits) {
+        shift_amt = And(shift_amt, Set(d, static_cast<T>(kNumOfBits - 1)));
       }
 
-      const auto vrotate_amt3 = BitCast(d, Neg(BitCast(di, vrotate_amt1)));
-      const auto vrotate_amt4 = BitCast(d, Neg(BitCast(di, vrotate_amt2)));
+      const auto half_bit = ShiftRight<1>(Shl(v1, shift_amt));
 
-      HWY_ASSERT_VEC_EQ(d, expected1.get(), Rol(va, vrotate_amt1));
-      HWY_ASSERT_VEC_EQ(d, expected2.get(), Ror(va, vrotate_amt1));
-      HWY_ASSERT_VEC_EQ(d, expected3.get(), Rol(vb, vrotate_amt1));
-      HWY_ASSERT_VEC_EQ(d, expected4.get(), Ror(vb, vrotate_amt1));
+      const auto in_0 = AndNot(half_bit, Or(Shl(iota1, shift_amt), v1));
+      const auto in_1 = Or(in_0, half_bit);
+      const auto in_2 = Xor(in_0, sign_bit);
+      const auto in_3 = Xor(in_1, sign_bit);
 
-      HWY_ASSERT_VEC_EQ(d, expected1.get(), Ror(va, vrotate_amt2));
-      HWY_ASSERT_VEC_EQ(d, expected2.get(), Rol(va, vrotate_amt2));
-      HWY_ASSERT_VEC_EQ(d, expected3.get(), Ror(vb, vrotate_amt2));
-      HWY_ASSERT_VEC_EQ(d, expected4.get(), Rol(vb, vrotate_amt2));
+      const auto round_decr = VecFromMask(d, Ne(half_bit, v0));
 
-      HWY_ASSERT_VEC_EQ(d, expected1.get(), Ror(va, vrotate_amt3));
-      HWY_ASSERT_VEC_EQ(d, expected2.get(), Rol(va, vrotate_amt3));
-      HWY_ASSERT_VEC_EQ(d, expected3.get(), Ror(vb, vrotate_amt3));
-      HWY_ASSERT_VEC_EQ(d, expected4.get(), Rol(vb, vrotate_amt3));
+      const auto expected_0 = Shr(in_0, shift_amt);
+      const auto expected_1 = Sub(Shr(in_1, shift_amt), round_decr);
+      const auto expected_2 = Shr(in_2, shift_amt);
+      const auto expected_3 = Sub(Shr(in_3, shift_amt), round_decr);
 
-      HWY_ASSERT_VEC_EQ(d, expected1.get(), Rol(va, vrotate_amt4));
-      HWY_ASSERT_VEC_EQ(d, expected2.get(), Ror(va, vrotate_amt4));
-      HWY_ASSERT_VEC_EQ(d, expected3.get(), Rol(vb, vrotate_amt4));
-      HWY_ASSERT_VEC_EQ(d, expected4.get(), Ror(vb, vrotate_amt4));
-
-      vrotate_amt1 = Add(vrotate_amt1, vrotate_amt_incr);
-      vrotate_amt2 = Sub(vrotate_amt2, vrotate_amt_incr);
-    }
-
-    for (int i = 0; i < static_cast<int>(kBits); ++i) {
-      for (size_t j = 0; j < N; j++) {
-        const int shift_amt_2 =
-            static_cast<int>(static_cast<size_t>(-i) & (kBits - 1));
-
-        const TU val_a = static_cast<TU>(kBits1 ^ j);
-        const TU val_b = static_cast<TU>(kBits2 ^ j);
-
-        expected1[j] = static_cast<T>((val_a << i) | (val_a >> shift_amt_2));
-        expected2[j] = static_cast<T>((val_a >> i) | (val_a << shift_amt_2));
-        expected3[j] = static_cast<T>((val_b << i) | (val_b >> shift_amt_2));
-        expected4[j] = static_cast<T>((val_b >> i) | (val_b << shift_amt_2));
-      }
-
-      HWY_ASSERT_VEC_EQ(d, expected1.get(), RotateLeftSame(va, i));
-      HWY_ASSERT_VEC_EQ(d, expected2.get(), RotateRightSame(va, i));
-      HWY_ASSERT_VEC_EQ(d, expected3.get(), RotateLeftSame(vb, i));
-      HWY_ASSERT_VEC_EQ(d, expected4.get(), RotateRightSame(vb, i));
-
-      HWY_ASSERT_VEC_EQ(d, expected1.get(), RotateRightSame(va, -i));
-      HWY_ASSERT_VEC_EQ(d, expected2.get(), RotateLeftSame(va, -i));
-      HWY_ASSERT_VEC_EQ(d, expected3.get(), RotateRightSame(vb, -i));
-      HWY_ASSERT_VEC_EQ(d, expected4.get(), RotateLeftSame(vb, -i));
-
-      HWY_ASSERT_VEC_EQ(d, expected1.get(),
-                        RotateRightSame(va, static_cast<int>(kBits) - i));
-      HWY_ASSERT_VEC_EQ(d, expected2.get(),
-                        RotateLeftSame(va, static_cast<int>(kBits) - i));
-      HWY_ASSERT_VEC_EQ(d, expected3.get(),
-                        RotateRightSame(vb, static_cast<int>(kBits) - i));
-      HWY_ASSERT_VEC_EQ(d, expected4.get(),
-                        RotateLeftSame(vb, static_cast<int>(kBits) - i));
+      HWY_ASSERT_VEC_EQ(d, expected_0, RoundingShr(in_0, shift_amt));
+      HWY_ASSERT_VEC_EQ(d, expected_1, RoundingShr(in_1, shift_amt));
+      HWY_ASSERT_VEC_EQ(d, expected_2, RoundingShr(in_2, shift_amt));
+      HWY_ASSERT_VEC_EQ(d, expected_3, RoundingShr(in_3, shift_amt));
     }
   }
 };
 
-HWY_NOINLINE void TestAllVariableRotations() {
-  ForIntegerTypes(ForPartialVectors<TestVariableRotations>());
+HWY_NOINLINE void TestAllVariableRoundingShr() {
+  ForIntegerTypes(ForPartialVectors<TestVariableRoundingShr>());
 }
 
+}  // namespace
 // NOLINTNEXTLINE(google-readability-namespace-comments)
 }  // namespace HWY_NAMESPACE
 }  // namespace hwy
 HWY_AFTER_NAMESPACE();
 
 #if HWY_ONCE
-
 namespace hwy {
+namespace {
 HWY_BEFORE_TEST(HwyShiftTest);
 HWY_EXPORT_AND_TEST_P(HwyShiftTest, TestAllShifts);
 HWY_EXPORT_AND_TEST_P(HwyShiftTest, TestAllVariableShifts);
-HWY_EXPORT_AND_TEST_P(HwyShiftTest, TestAllRotateLeft);
-HWY_EXPORT_AND_TEST_P(HwyShiftTest, TestAllRotateRight);
-HWY_EXPORT_AND_TEST_P(HwyShiftTest, TestAllVariableRotations);
+HWY_EXPORT_AND_TEST_P(HwyShiftTest, TestAllRoundingShiftRight);
+HWY_EXPORT_AND_TEST_P(HwyShiftTest, TestAllVariableRoundingShr);
 HWY_AFTER_TEST();
+}  // namespace
 }  // namespace hwy
-
-#endif
+HWY_TEST_MAIN();
+#endif  // HWY_ONCE

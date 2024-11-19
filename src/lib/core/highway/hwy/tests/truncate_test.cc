@@ -24,6 +24,7 @@
 HWY_BEFORE_NAMESPACE();
 namespace hwy {
 namespace HWY_NAMESPACE {
+namespace {
 
 template <typename From, typename To, class D>
 constexpr bool IsSupportedTruncation() {
@@ -72,6 +73,7 @@ struct TestOrderedTruncate2To {
     const size_t twiceN = N * 2;
     auto from = AllocateAligned<T>(twiceN);
     auto expected = AllocateAligned<TN>(twiceN);
+    HWY_ASSERT(from && expected);
 
     const T max = LimitsMax<TN>();
 
@@ -106,18 +108,20 @@ HWY_NOINLINE void TestAllOrderedTruncate2To() {
   ForU163264(ForShrinkableVectors<TestOrderedTruncate2To>());
 }
 
+}  // namespace
 // NOLINTNEXTLINE(google-readability-namespace-comments)
 }  // namespace HWY_NAMESPACE
 }  // namespace hwy
 HWY_AFTER_NAMESPACE();
 
 #if HWY_ONCE
-
 namespace hwy {
+namespace {
 HWY_BEFORE_TEST(HwyTruncateTest);
 HWY_EXPORT_AND_TEST_P(HwyTruncateTest, TestAllTruncate);
 HWY_EXPORT_AND_TEST_P(HwyTruncateTest, TestAllOrderedTruncate2To);
 HWY_AFTER_TEST();
+}  // namespace
 }  // namespace hwy
-
-#endif
+HWY_TEST_MAIN();
+#endif  // HWY_ONCE

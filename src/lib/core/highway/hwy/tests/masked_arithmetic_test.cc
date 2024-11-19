@@ -24,6 +24,7 @@
 HWY_BEFORE_NAMESPACE();
 namespace hwy {
 namespace HWY_NAMESPACE {
+namespace {
 
 struct TestAddSubMul {
   template <class T, class D>
@@ -201,9 +202,9 @@ struct TestDiv {
     using VI = Vec<decltype(di)>;
 
     // Wrap after 7 so that even float16_t can represent 1 << iota1.
-    const VI iota1 = And(Iota(di, hwy::Unpredictable1()), Set(di, 7));
-    const Vec<D> pows = ConvertTo(d, Shl(Set(di, 1), iota1));
-    const Vec<D> no = ConvertTo(d, iota1);
+    const VI viota1 = And(Iota(di, hwy::Unpredictable1()), Set(di, 7));
+    const Vec<D> pows = ConvertTo(d, Shl(Set(di, 1), viota1));
+    const Vec<D> no = ConvertTo(d, viota1);
 
     const size_t N = Lanes(d);
     auto bool_lanes = AllocateAligned<TI>(N);
@@ -277,7 +278,7 @@ struct TestIntegerDivMod {
     const auto v1 = Set(d, static_cast<T>(1));
     const auto vmax = Set(d, LimitsMax<T>());
 
-    const auto vb = Max(And(Iota(d, static_cast<T>(hwy::Unpredictable1() + 1)),
+    const auto vb = Max(And(Iota(d, hwy::Unpredictable1() + 1),
                             Set(d, static_cast<T>(LimitsMax<T>() >> 1))),
                         Set(d, static_cast<T>(2)));
     const auto va =
@@ -296,6 +297,10 @@ struct TestIntegerDivMod {
     if (sizeof(T) <= 2 && N >= 16) {
       return;
     }
+#endif
+#if HWY_COMPILER_CLANG && HWY_ARCH_RISCV && HWY_TARGET == HWY_EMU128
+    // Workaround for incorrect codegen. Off by one in the lowest lane.
+    if (sizeof(T) == 4) return;
 #endif
 
     auto bool_lanes = AllocateAligned<TI>(N);
@@ -374,14 +379,15 @@ HWY_NOINLINE void TestAllFloatExceptions() {
   ForFloatTypes(ForPartialVectors<TestFloatExceptions>());
 }
 
+}  // namespace
 // NOLINTNEXTLINE(google-readability-namespace-comments)
 }  // namespace HWY_NAMESPACE
 }  // namespace hwy
 HWY_AFTER_NAMESPACE();
 
 #if HWY_ONCE
-
 namespace hwy {
+namespace {
 HWY_BEFORE_TEST(HwyMaskedArithmeticTest);
 HWY_EXPORT_AND_TEST_P(HwyMaskedArithmeticTest, TestAllAddSubMul);
 HWY_EXPORT_AND_TEST_P(HwyMaskedArithmeticTest, TestAllSatAddSub);
@@ -389,6 +395,7 @@ HWY_EXPORT_AND_TEST_P(HwyMaskedArithmeticTest, TestAllDiv);
 HWY_EXPORT_AND_TEST_P(HwyMaskedArithmeticTest, TestAllIntegerDivMod);
 HWY_EXPORT_AND_TEST_P(HwyMaskedArithmeticTest, TestAllFloatExceptions);
 HWY_AFTER_TEST();
+}  // namespace
 }  // namespace hwy
-
-#endif
+HWY_TEST_MAIN();
+#endif  // HWY_ONCE

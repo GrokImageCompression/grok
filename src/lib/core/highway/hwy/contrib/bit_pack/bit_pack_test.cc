@@ -48,6 +48,7 @@ size_t last_bits = 0;
 uint64_t best_target = ~0ull;
 #endif
 namespace HWY_NAMESPACE {
+namespace {
 
 template <size_t kBits, typename T>
 T Random(RandomState& rng) {
@@ -122,7 +123,8 @@ struct TestPack {
               func.Pack(d, raw.get() + i, packed.get() + pi);
             }
             T& val = packed.get()[Random32(&rng) % num_packed];
-            val = static_cast<T>(val + Unpredictable1() - 1);
+            T zero = static_cast<T>(Unpredictable1() - 1);
+            val = static_cast<T>(val + zero);
             for (size_t i = 0, pi = 0; i < num;
                  i += num_per_loop, pi += num_packed_per_loop) {
               func.Unpack(d, packed.get() + pi, raw2.get() + i);
@@ -137,7 +139,8 @@ struct TestPack {
       // Print throughput for pack+unpack round trip
       for (size_t i = 0; i < num_results; ++i) {
         const size_t bytes_per_element = (kBits + 7) / 8;
-        const double bytes = static_cast<double>(results[i].input * bytes_per_element);
+        const double bytes =
+            static_cast<double>(results[i].input * bytes_per_element);
         const double seconds =
             results[i].ticks / platform::InvariantTicksPerSecond();
         printf("Bits:%2d elements:%3d GB/s:%4.1f (+/-%3.1f%%)\n",
@@ -150,7 +153,8 @@ struct TestPack {
         func.Pack(d, raw.get() + i, packed.get() + pi);
       }
       T& val = packed.get()[Random32(&rng) % num_packed];
-      val = static_cast<T>(val + Unpredictable1() - 1);
+      T zero = static_cast<T>(Unpredictable1() - 1);
+      val = static_cast<T>(val + zero);
       for (size_t i = 0, pi = 0; i < num;
            i += num_per_loop, pi += num_packed_per_loop) {
         func.Unpack(d, packed.get() + pi, raw2.get() + i);
@@ -193,18 +197,48 @@ void TestAllPack16() {
   ForShrinkableVectors<TestPack<Pack16, 16, 16>>()(uint16_t());
 }
 
+void TestAllPack32() {
+  ForShrinkableVectors<TestPack<Pack32, 32, 1>>()(uint32_t());
+  ForShrinkableVectors<TestPack<Pack32, 32, 2>>()(uint32_t());
+  ForShrinkableVectors<TestPack<Pack32, 32, 6>>()(uint32_t());
+  ForShrinkableVectors<TestPack<Pack32, 32, 11>>()(uint32_t());
+  ForShrinkableVectors<TestPack<Pack32, 32, 16>>()(uint32_t());
+  ForShrinkableVectors<TestPack<Pack32, 32, 31>>()(uint32_t());
+  ForShrinkableVectors<TestPack<Pack32, 32, 32>>()(uint32_t());
+}
+
+void TestAllPack64() {
+  // Fails, but only on GCC 13.
+#if !(HWY_COMPILER_GCC_ACTUAL && HWY_COMPILER_GCC_ACTUAL < 1400 && \
+      HWY_TARGET == HWY_RVV)
+  ForShrinkableVectors<TestPack<Pack64, 64, 1>>()(uint64_t());
+  ForShrinkableVectors<TestPack<Pack64, 64, 5>>()(uint64_t());
+  ForShrinkableVectors<TestPack<Pack64, 64, 12>>()(uint64_t());
+  ForShrinkableVectors<TestPack<Pack64, 64, 16>>()(uint64_t());
+  ForShrinkableVectors<TestPack<Pack64, 64, 27>>()(uint64_t());
+  ForShrinkableVectors<TestPack<Pack64, 64, 31>>()(uint64_t());
+  ForShrinkableVectors<TestPack<Pack64, 64, 33>>()(uint64_t());
+  ForShrinkableVectors<TestPack<Pack64, 64, 41>>()(uint64_t());
+  ForShrinkableVectors<TestPack<Pack64, 64, 61>>()(uint64_t());
+#endif
+}
+
+}  // namespace
 // NOLINTNEXTLINE(google-readability-namespace-comments)
 }  // namespace HWY_NAMESPACE
 }  // namespace hwy
 HWY_AFTER_NAMESPACE();
 
 #if HWY_ONCE
-
 namespace hwy {
+namespace {
 HWY_BEFORE_TEST(BitPackTest);
 HWY_EXPORT_AND_TEST_P(BitPackTest, TestAllPack8);
 HWY_EXPORT_AND_TEST_P(BitPackTest, TestAllPack16);
+HWY_EXPORT_AND_TEST_P(BitPackTest, TestAllPack32);
+HWY_EXPORT_AND_TEST_P(BitPackTest, TestAllPack64);
 HWY_AFTER_TEST();
+}  // namespace
 }  // namespace hwy
-
-#endif
+HWY_TEST_MAIN();
+#endif  // HWY_ONCE

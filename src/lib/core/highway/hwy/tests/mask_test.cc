@@ -26,23 +26,20 @@
 HWY_BEFORE_NAMESPACE();
 namespace hwy {
 namespace HWY_NAMESPACE {
+namespace {
 
 // All types.
 struct TestMaskFalse {
   template <typename T, class D>
   HWY_NOINLINE void operator()(T /*unused*/, D d) {
-#if HWY_HAVE_SCALABLE || HWY_TARGET == HWY_SVE_256 || \
-    HWY_TARGET == HWY_SVE2_128 || HWY_TARGET == HWY_SCALAR
+#if HWY_HAVE_SCALABLE || HWY_TARGET_IS_SVE || HWY_TARGET == HWY_SCALAR
     // For RVV, SVE and SCALAR, use the underlying native vector.
     const DFromV<Vec<D>> d2;
 #else
     // Other targets are strongly-typed, but we can safely ResizeBitCast to the
     // native vector. All targets have at least 128-bit vectors, but NEON also
     // supports 64-bit vectors.
-    constexpr size_t kMinD2Lanes =
-        ((HWY_TARGET == HWY_NEON || HWY_TARGET == HWY_NEON_WITHOUT_AES) ? 8
-                                                                        : 16) /
-        sizeof(T);
+    constexpr size_t kMinD2Lanes = (HWY_TARGET_IS_NEON ? 8 : 16) / sizeof(T);
     const FixedTag<T, HWY_MAX(HWY_MAX_LANES_D(D), kMinD2Lanes)> d2;
 #endif
     static_assert(d2.MaxBytes() >= d.MaxBytes(),
@@ -54,7 +51,7 @@ struct TestMaskFalse {
     HWY_ASSERT_EQ(0, CountTrue(d, MaskFalse(d)));
     HWY_ASSERT_VEC_EQ(d, Zero(d), VecFromMask(d, MaskFalse(d)));
 
-#if HWY_HAVE_SCALABLE || HWY_TARGET == HWY_SVE_256 || HWY_TARGET == HWY_SVE2_128
+#if HWY_HAVE_SCALABLE || HWY_TARGET_IS_SVE
     // For these targets, we can treat the result as if it were a vector of type
     // `V2`. On SVE, vectors are always full (not fractional) and caps are only
     // enforced by Highway ops. On RVV, LMUL must match but caps can also be
@@ -530,7 +527,7 @@ struct TestDup128MaskFromMaskBits {
         HWY_MIN(HWY_MAX_LANES_D(D), HWY_MIN(kLanesPer16ByteBlock, 10));
     const size_t max_lanes = HWY_MIN(N, kMaxLanesToCheckPerBlk);
 
-    for (size_t code = 0; code < (1ull << max_lanes); ++code) {
+    for (unsigned code = 0; code < (1u << max_lanes); ++code) {
       for (size_t i = 0; i < N; i++) {
         expected[i] = static_cast<TI>(
             -static_cast<TI>((code >> (i & (kLanesPer16ByteBlock - 1))) & 1));
@@ -539,7 +536,7 @@ struct TestDup128MaskFromMaskBits {
       const auto expected_mask =
           MaskFromVec(BitCast(d, LoadDup128(di, expected.get())));
 
-      const auto m = Dup128MaskFromMaskBits(d, static_cast<unsigned>(code));
+      const auto m = Dup128MaskFromMaskBits(d, code);
       HWY_ASSERT_VEC_EQ(di, expected.get(), VecFromMask(di, RebindMask(di, m)));
       HWY_ASSERT_MASK_EQ(d, expected_mask, m);
     }
@@ -550,14 +547,15 @@ HWY_NOINLINE void TestAllDup128MaskFromMaskBits() {
   ForAllTypes(ForPartialVectors<TestDup128MaskFromMaskBits>());
 }
 
+}  // namespace
 // NOLINTNEXTLINE(google-readability-namespace-comments)
 }  // namespace HWY_NAMESPACE
 }  // namespace hwy
 HWY_AFTER_NAMESPACE();
 
 #if HWY_ONCE
-
 namespace hwy {
+namespace {
 HWY_BEFORE_TEST(HwyMaskTest);
 HWY_EXPORT_AND_TEST_P(HwyMaskTest, TestAllMaskFalse);
 HWY_EXPORT_AND_TEST_P(HwyMaskTest, TestAllFromVec);
@@ -574,6 +572,7 @@ HWY_EXPORT_AND_TEST_P(HwyMaskTest, TestAllSetOnlyFirst);
 HWY_EXPORT_AND_TEST_P(HwyMaskTest, TestAllSetAtOrAfterFirst);
 HWY_EXPORT_AND_TEST_P(HwyMaskTest, TestAllDup128MaskFromMaskBits);
 HWY_AFTER_TEST();
+}  // namespace
 }  // namespace hwy
-
-#endif
+HWY_TEST_MAIN();
+#endif  // HWY_ONCE

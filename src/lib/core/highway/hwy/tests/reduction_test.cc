@@ -25,6 +25,7 @@
 HWY_BEFORE_NAMESPACE();
 namespace hwy {
 namespace HWY_NAMESPACE {
+namespace {
 
 struct TestSumOfLanes {
   template <typename D,
@@ -105,6 +106,7 @@ struct TestMinOfLanes {
   HWY_NOINLINE void operator()(T /*unused*/, D d) {
     const size_t N = Lanes(d);
     auto in_lanes = AllocateAligned<T>(N);
+    HWY_ASSERT(in_lanes);
 
     // Lane i = bit i, higher lanes = 2 (not the minimum)
     T min = HighestValue<T>();
@@ -161,6 +163,7 @@ struct TestMaxOfLanes {
   HWY_NOINLINE void operator()(T /*unused*/, D d) {
     const size_t N = Lanes(d);
     auto in_lanes = AllocateAligned<T>(N);
+    HWY_ASSERT(in_lanes);
 
     T max = LowestValue<T>();
     // Avoid setting sign bit and cap at double precision
@@ -228,6 +231,7 @@ struct TestSumsOf2 {
 
     auto in_lanes = AllocateAligned<T>(N);
     auto sum_lanes = AllocateAligned<TW>(N / 2);
+    HWY_ASSERT(in_lanes && sum_lanes);
 
     for (size_t rep = 0; rep < 100; ++rep) {
       for (size_t i = 0; i < N; ++i) {
@@ -279,6 +283,7 @@ struct TestSumsOf4 {
 
     auto in_lanes = AllocateAligned<T>(N);
     auto sum_lanes = AllocateAligned<TW2>(N / 4);
+    HWY_ASSERT(in_lanes && sum_lanes);
 
     for (size_t rep = 0; rep < 100; ++rep) {
       for (size_t i = 0; i < N; ++i) {
@@ -321,6 +326,7 @@ struct TestSumsOf8 {
 
     auto in_lanes = AllocateAligned<T>(N);
     auto sum_lanes = AllocateAligned<TW>(N / 8);
+    HWY_ASSERT(in_lanes && sum_lanes);
 
     for (size_t rep = 0; rep < 100; ++rep) {
       for (size_t i = 0; i < N; ++i) {
@@ -346,14 +352,15 @@ HWY_NOINLINE void TestAllSumsOf8() {
   ForGEVectors<64, TestSumsOf8>()(uint8_t());
 }
 
+}  // namespace
 // NOLINTNEXTLINE(google-readability-namespace-comments)
 }  // namespace HWY_NAMESPACE
 }  // namespace hwy
 HWY_AFTER_NAMESPACE();
 
 #if HWY_ONCE
-
 namespace hwy {
+namespace {
 HWY_BEFORE_TEST(HwyReductionTest);
 HWY_EXPORT_AND_TEST_P(HwyReductionTest, TestAllSumOfLanes);
 HWY_EXPORT_AND_TEST_P(HwyReductionTest, TestAllMinMaxOfLanes);
@@ -361,6 +368,7 @@ HWY_EXPORT_AND_TEST_P(HwyReductionTest, TestAllSumsOf2);
 HWY_EXPORT_AND_TEST_P(HwyReductionTest, TestAllSumsOf4);
 HWY_EXPORT_AND_TEST_P(HwyReductionTest, TestAllSumsOf8);
 HWY_AFTER_TEST();
+}  // namespace
 }  // namespace hwy
-
-#endif
+HWY_TEST_MAIN();
+#endif  // HWY_ONCE

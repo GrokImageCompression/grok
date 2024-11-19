@@ -111,9 +111,6 @@ HWY_API Vec1<T> Zero(D /* tag */) {
 template <class D>
 using VFromD = decltype(Zero(D()));
 
-// ------------------------------ Tuple (VFromD)
-#include "hwy/ops/tuple-inl.h"
-
 // ------------------------------ Set
 template <class D, HWY_IF_LANES_D(D, 1), typename T = TFromD<D>, typename T2>
 HWY_API Vec1<T> Set(D /* tag */, const T2 t) {
@@ -610,13 +607,24 @@ HWY_API Vec1<int16_t> SaturatedSub(const Vec1<int16_t> a,
 
 // Returns (a + b + 1) / 2
 
-HWY_API Vec1<uint8_t> AverageRound(const Vec1<uint8_t> a,
-                                   const Vec1<uint8_t> b) {
-  return Vec1<uint8_t>(static_cast<uint8_t>((a.raw + b.raw + 1) / 2));
-}
-HWY_API Vec1<uint16_t> AverageRound(const Vec1<uint16_t> a,
-                                    const Vec1<uint16_t> b) {
-  return Vec1<uint16_t>(static_cast<uint16_t>((a.raw + b.raw + 1) / 2));
+#ifdef HWY_NATIVE_AVERAGE_ROUND_UI32
+#undef HWY_NATIVE_AVERAGE_ROUND_UI32
+#else
+#define HWY_NATIVE_AVERAGE_ROUND_UI32
+#endif
+
+#ifdef HWY_NATIVE_AVERAGE_ROUND_UI64
+#undef HWY_NATIVE_AVERAGE_ROUND_UI64
+#else
+#define HWY_NATIVE_AVERAGE_ROUND_UI64
+#endif
+
+template <class T, HWY_IF_NOT_FLOAT_NOR_SPECIAL(T)>
+HWY_API Vec1<T> AverageRound(const Vec1<T> a, const Vec1<T> b) {
+  const T a_val = a.raw;
+  const T b_val = b.raw;
+  return Vec1<T>(static_cast<T>(ScalarShr(a_val, 1) + ScalarShr(b_val, 1) +
+                                ((a_val | b_val) & 1)));
 }
 
 // ------------------------------ Absolute value
@@ -834,9 +842,9 @@ HWY_API Vec1<T> Round(const Vec1<T> v) {
 }
 
 // Round-to-nearest even.
-HWY_API Vec1<int32_t> NearestInt(const Vec1<float> v) {
-  using T = float;
-  using TI = int32_t;
+template <class T, HWY_IF_FLOAT3264(T)>
+HWY_API Vec1<MakeSigned<T>> NearestInt(const Vec1<T> v) {
+  using TI = MakeSigned<T>;
 
   const T abs = Abs(v).raw;
   const bool is_sign = ScalarSignBit(v.raw);
@@ -846,12 +854,39 @@ HWY_API Vec1<int32_t> NearestInt(const Vec1<float> v) {
     if (!(abs <= ConvertScalarTo<T>(LimitsMax<TI>()))) {
       return Vec1<TI>(is_sign ? LimitsMin<TI>() : LimitsMax<TI>());
     }
-    return Vec1<int32_t>(ConvertScalarTo<TI>(v.raw));
+    return Vec1<TI>(ConvertScalarTo<TI>(v.raw));
   }
   const T bias =
       ConvertScalarTo<T>(v.raw < ConvertScalarTo<T>(0.0) ? -0.5 : 0.5);
   const TI rounded = ConvertScalarTo<TI>(v.raw + bias);
-  if (rounded == 0) return Vec1<int32_t>(0);
+  if (rounded == 0) return Vec1<TI>(0);
+  TI offset = 0;
+  // Round to even
+  if ((rounded & 1) && ScalarAbs(ConvertScalarTo<T>(rounded) - v.raw) ==
+                           ConvertScalarTo<T>(0.5)) {
+    offset = is_sign ? -1 : 1;
+  }
+  return Vec1<TI>(rounded - offset);
+}
+
+// Round-to-nearest even.
+template <class DI32, HWY_IF_I32_D(DI32)>
+HWY_API VFromD<DI32> DemoteToNearestInt(DI32 /*di32*/, const Vec1<double> v) {
+  using T = double;
+  using TI = int32_t;
+
+  const T abs = Abs(v).raw;
+  const bool is_sign = ScalarSignBit(v.raw);
+
+  // Check if too large to cast or NaN
+  if (!(abs <= ConvertScalarTo<T>(LimitsMax<TI>()))) {
+    return Vec1<TI>(is_sign ? LimitsMin<TI>() : LimitsMax<TI>());
+  }
+
+  const T bias =
+      ConvertScalarTo<T>(v.raw < ConvertScalarTo<T>(0.0) ? -0.5 : 0.5);
+  const TI rounded = ConvertScalarTo<TI>(v.raw + bias);
+  if (rounded == 0) return Vec1<TI>(0);
   TI offset = 0;
   // Round to even
   if ((rounded & 1) && ScalarAbs(ConvertScalarTo<T>(rounded) - v.raw) ==
@@ -1111,6 +1146,9 @@ HWY_API void StoreN(VFromD<D> v, D d, T* HWY_RESTRICT p,
     Store(v, d, p);
   }
 }
+
+// ------------------------------ Tuples
+#include "hwy/ops/inside-inl.h"
 
 // ------------------------------ LoadInterleaved2/3/4
 
@@ -2066,6 +2104,12 @@ HWY_API Vec1<int16_t> SatWidenMulPairwiseAdd(DI16 /* tag */, Vec1<uint8_t> a,
 }
 
 // ------------------------------ ReorderWidenMulAccumulate (MulAdd, ZipLower)
+
+#ifdef HWY_NATIVE_REORDER_WIDEN_MUL_ACC_BF16
+#undef HWY_NATIVE_REORDER_WIDEN_MUL_ACC_BF16
+#else
+#define HWY_NATIVE_REORDER_WIDEN_MUL_ACC_BF16
+#endif
 
 template <class D32, HWY_IF_F32_D(D32)>
 HWY_API Vec1<float> ReorderWidenMulAccumulate(D32 /* tag */, Vec1<bfloat16_t> a,

@@ -11,6 +11,8 @@ freshness: { owner: 'janwas' reviewed: '2024-04-09' }
 
 ### NEON dot product
 
+### F16 WidenMulAccumulate on non-NEON
+
 ### numpy
 
 NeUnordered
@@ -36,8 +38,8 @@ _mm512_getmant, _mm512_scalef, _mm512_getexp (f32/f64)
 
 High-precision! Consider copying from SLEEF. See #1650.
 
-cbrt, cosh, erf, exp2, fmod, hypot, ilogb, lgamma, logb, modf, nextafter,
-nexttoward, pow, scalbn, tan, tgamma
+cbrt, cosh, erf, fmod, ilogb, lgamma, logb, modf, nextafter, nexttoward, pow,
+scalbn, tan, tgamma
 
 ### Remaining STL functions for hwy/contrib/algo
 
@@ -181,3 +183,5 @@ For SVE (svld1sb_u32)+WASM? Compiler can probably already fuse.
 *   ~~New tuple interface for segment load/store~~
 *   ~~Div (integer division) and Mod~~ - by johnplatts
 *   ~~AddSub and MulAddSub~~ - by johnplatts
+*   ~~hypot~~ - by johnplatts
+*   ~~exp2~~ - by johnplatts

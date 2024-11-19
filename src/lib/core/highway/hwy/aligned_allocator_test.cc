@@ -84,6 +84,7 @@ class FakeAllocator {
 }  // namespace
 
 namespace hwy {
+namespace {
 
 #if !HWY_TEST_STANDALONE
 class AlignedAllocatorTest : public testing::Test {};
@@ -233,6 +234,7 @@ TEST(AlignedAllocatorTest, TestAllocateAlignedObjectWithoutDestructor) {
   {
     // This doesn't call the constructor.
     auto obj = AllocateAligned<SampleObject<24>>(1);
+    HWY_ASSERT(obj);
     obj[0].counter_ = &counter;
   }
   // Destroying the unique_ptr shouldn't have called the destructor of the
@@ -281,8 +283,6 @@ TEST(AlignedAllocatorTest, TestDefaultInit) {
   HWY_ASSERT_EQ((addr1 >> (kBits - 1)) >> (kBits - 1),
                 (addr2 >> (kBits - 1)) >> (kBits - 1));
 }
-
-namespace {
 
 using std::array;
 using std::vector;

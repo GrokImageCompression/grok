@@ -197,8 +197,25 @@ TEST_MAIN = select({
 })
 
 cc_test(
+    name = "sort_unit_test",
+    size = "small",
+    srcs = ["sort_unit_test.cc"],
+    # Do not enable fully_static_link (pthread crash on bazel)
+    local_defines = ["HWY_IS_TEST"],
+    # for test_suite.
+    tags = ["hwy_ops_test"],
+    deps = [
+        ":helpers",
+        ":vqsort_for_test",
+        "//:hwy",
+        "//:hwy_test_util",
+    ] + TEST_MAIN,
+)
+
+cc_test(
     name = "sort_test",
     size = "medium",
+    timeout = "long",
     srcs = ["sort_test.cc"],
     # Do not enable fully_static_link (pthread crash on bazel)
     local_defines = ["HWY_IS_TEST"],
@@ -209,6 +226,8 @@ cc_test(
         ":vqsort_for_test",
         "//:hwy",
         "//:hwy_test_util",
+        "//:thread_pool",
+        "//:topology",
     ] + TEST_MAIN,
 )
 
@@ -240,5 +259,6 @@ cc_binary(
         ":vqsort",
         "//:hwy",
         "//:hwy_test_util",
+        "//:nanobenchmark",
     ] + TEST_MAIN,
 )

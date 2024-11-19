@@ -6,7 +6,7 @@ Q0.0: How do I **get the Highway library**?
 
 A: Highway is available in numerous package managers, e.g. under the name
 libhwy-dev. After installing, you can add it to your CMake-based build via
-`find_package(HWY 1.1.0)` and `target_link_libraries(your_project PRIVATE hwy)`.
+`find_package(HWY 1.2.0)` and `target_link_libraries(your_project PRIVATE hwy)`.
 
 Alternatively, if using Git for version control, you can use Highway as a
 'submodule' by adding the following to .gitmodules:
@@ -209,6 +209,19 @@ A: It can be useful for files that just want compiler-dependent macros, for
 example `HWY_RESTRICT` in public headers. This avoids the expense of including
 the full `highway.h`, which can be large because some platform headers declare
 thousands of intrinsics.
+
+Q3.6: What are **restrict pointers** and when to use `HWY_RESTRICT`?
+
+This relates to aliasing. If a function has two pointer arguments of the same
+type, and perhaps also extern/static variables of that type, the compiler might
+have to be very conservative about caching the variables or pointer accesses
+because their value could change after writes to the pointer.
+
+`float* HWY_RESTRICT p` means a pointer to float, and this pointer is the only
+way to access the pointed-to object/array. In particular, this promises that `p`
+does not alias other pointers. This usually improves codegen when there are
+multiple pointers, at least one of which is const. Beware that the generated
+code might not behave as expected if you break the promise.
 
 ## Portability
 

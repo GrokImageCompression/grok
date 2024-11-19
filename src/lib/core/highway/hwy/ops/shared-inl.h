@@ -26,6 +26,7 @@
 #endif
 
 #include "hwy/detect_compiler_arch.h"
+#include "hwy/detect_targets.h"
 
 // Separate header because foreach_target.h re-enables its include guard.
 #include "hwy/ops/set_macros-inl.h"
@@ -61,6 +62,10 @@ namespace HWY_NAMESPACE {
 // We therefore pass by const& only on GCC and (Windows or aarch64). This alias
 // must be used for all vector/mask parameters of functions marked HWY_NOINLINE,
 // and possibly also other functions that are not inlined.
+//
+// Even better is to avoid passing vector arguments to non-inlined functions,
+// because the SVE and RISC-V ABIs are still works in progress and may lead to
+// incorrect codegen.
 #if HWY_COMPILER_GCC_ACTUAL && (HWY_OS_WIN || HWY_ARCH_ARM_A64)
 template <class V>
 using VecArg = const V&;
@@ -145,6 +150,16 @@ HWY_INLINE If<IsConst<T>(), const uint16_t*, uint16_t*> U16LanePointer(T* p) {
 // [-3, 3] but can also be lower for user-specified fractions.
 constexpr size_t ScaleByPower(size_t N, int pow2) {
   return pow2 >= 0 ? (N << pow2) : (N >> (-pow2));
+}
+
+template <typename T>
+HWY_INLINE void MaybePoison(T* HWY_RESTRICT unaligned, size_t count) {
+#if HWY_IS_MSAN
+  __msan_poison(unaligned, count * sizeof(T));
+#else
+  (void)unaligned;
+  (void)count;
+#endif
 }
 
 template <typename T>
@@ -628,7 +643,7 @@ HWY_API bool IsAligned(D d, T* ptr) {
 #define HWY_IF_T_SIZE_ONE_OF_V(V, bit_array) \
   HWY_IF_T_SIZE_ONE_OF(hwy::HWY_NAMESPACE::TFromV<V>, bit_array)
 
-#define HWY_MAX_LANES_V(V) HWY_MAX_LANES_D(DFromV<V>)
+#define HWY_MAX_LANES_V(V) HWY_MAX_LANES_D(hwy::HWY_NAMESPACE::DFromV<V>)
 #define HWY_IF_V_SIZE_V(V, bytes) \
   HWY_IF_V_SIZE(hwy::HWY_NAMESPACE::TFromV<V>, HWY_MAX_LANES_V(V), bytes)
 #define HWY_IF_V_SIZE_LE_V(V, bytes) \
@@ -651,10 +666,11 @@ HWY_API bool IsAligned(D d, T* ptr) {
 #define HWY_IF_MINMAX_OF_LANES_D(D) HWY_IF_LANES_GT_D(D, 1)
 
 #undef HWY_IF_ADDSUB_V
-#define HWY_IF_ADDSUB_V(V) HWY_IF_LANES_GT_D(DFromV<V>, 1)
+#define HWY_IF_ADDSUB_V(V) HWY_IF_LANES_GT_D(hwy::HWY_NAMESPACE::DFromV<V>, 1)
 
 #undef HWY_IF_MULADDSUB_V
-#define HWY_IF_MULADDSUB_V(V) HWY_IF_LANES_GT_D(DFromV<V>, 1)
+#define HWY_IF_MULADDSUB_V(V) \
+  HWY_IF_LANES_GT_D(hwy::HWY_NAMESPACE::DFromV<V>, 1)
 
 // HWY_IF_U2I_DEMOTE_FROM_LANE_SIZE_V is used to disable the default
 // implementation of unsigned to signed DemoteTo/ReorderDemote2To in

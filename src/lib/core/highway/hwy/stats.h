@@ -19,7 +19,6 @@
 #include <stdint.h>
 #include <stdio.h>
 
-#include <algorithm>
 #include <cmath>
 #include <string>
 
@@ -45,7 +44,7 @@ class Bins {
     }
   }
 
-  void Print(const char* caption) {
+  void Print(const char* caption) const {
     fprintf(stderr, "\n%s [%zu]\n", caption, N);
     size_t last_nonzero = 0;
     for (size_t i = N - 1; i < N; --i) {
@@ -77,10 +76,11 @@ class Stats {
   void Notify(const float x) {
     ++n_;
 
-    min_ = std::min(min_, x);
-    max_ = std::max(max_, x);
+    min_ = HWY_MIN(min_, x);
+    max_ = HWY_MAX(max_, x);
 
-    product_ *= x;
+    // Logarithmic transform avoids/delays underflow and overflow.
+    sum_log_ += std::log(static_cast<double>(x));
 
     // Online moments. Reference: https://goo.gl/9ha694
     const double d = x - m1_;
@@ -101,7 +101,7 @@ class Stats {
   float Max() const { return max_; }
 
   double GeometricMean() const {
-    return n_ == 0 ? 0.0 : pow(product_, 1.0 / n_);
+    return n_ == 0 ? 0.0 : std::exp(sum_log_ / n_);
   }
 
   double Mean() const { return m1_; }
@@ -119,7 +119,7 @@ class Stats {
   // Near zero for normal distributions; if positive on a unimodal distribution,
   // the right tail is fatter. Assumes n_ is large.
   double SampleSkewness() const {
-    if (std::abs(m2_) < 1E-7) return 0.0;
+    if (ScalarAbs(m2_) < 1E-7) return 0.0;
     return m3_ * std::sqrt(static_cast<double>(n_)) / std::pow(m2_, 1.5);
   }
   // Corrected for bias (same as Wikipedia and Minitab but not Excel).
@@ -132,7 +132,7 @@ class Stats {
   // Near zero for normal distributions; smaller values indicate fewer/smaller
   // outliers and larger indicates more/larger outliers. Assumes n_ is large.
   double SampleKurtosis() const {
-    if (std::abs(m2_) < 1E-7) return 0.0;
+    if (ScalarAbs(m2_) < 1E-7) return 0.0;
     return m4_ * n_ / (m2_ * m2_);
   }
   // Corrected for bias (same as Wikipedia and Minitab but not Excel).
@@ -166,7 +166,7 @@ class Stats {
     min_ = hwy::HighestValue<float>();
     max_ = hwy::LowestValue<float>();
 
-    product_ = 1.0;
+    sum_log_ = 0.0;
 
     m1_ = 0.0;
     m2_ = 0.0;
@@ -180,7 +180,7 @@ class Stats {
   float min_;
   float max_;
 
-  double product_;  // for geomean
+  double sum_log_;  // for geomean
 
   // Moments
   double m1_;

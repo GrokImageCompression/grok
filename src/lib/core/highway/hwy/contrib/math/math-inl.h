@@ -23,6 +23,7 @@
 #endif
 
 #include <stddef.h>
+#include <stdint.h>
 
 #include "hwy/highway.h"
 
@@ -199,6 +200,21 @@ HWY_NOINLINE V CallExp(const D d, VecArg<V> x) {
 }
 
 /**
+ * Highway SIMD version of std::exp2(x).
+ *
+ * Valid Lane Types: float32, float64
+ *        Max Error: ULP = 2
+ *      Valid Range: float32[-FLT_MAX, +128], float64[-DBL_MAX, +1024]
+ * @return 2^x
+ */
+template <class D, class V>
+HWY_INLINE V Exp2(D d, V x);
+template <class D, class V>
+HWY_NOINLINE V CallExp2(const D d, VecArg<V> x) {
+  return Exp2(d, x);
+}
+
+/**
  * Highway SIMD version of std::expm1(x).
  *
  * Valid Lane Types: float32, float64
@@ -331,8 +347,23 @@ HWY_NOINLINE V CallTanh(const D d, VecArg<V> x) {
 template <class D, class V>
 HWY_INLINE void SinCos(D d, V x, V& s, V& c);
 template <class D, class V>
-HWY_NOINLINE V CallSinCos(const D d, VecArg<V> x, VecArg<V>& s, VecArg<V>& c) {
+HWY_NOINLINE void CallSinCos(const D d, VecArg<V> x, V& s, V& c) {
   SinCos(d, x, s, c);
+}
+
+/**
+ * Highway SIMD version of Hypot
+ *
+ * Valid Lane Types: float32, float64
+ *        Max Error: ULP = 4
+ *      Valid Range: float32[-FLT_MAX, +FLT_MAX], float64[-DBL_MAX, +DBL_MAX]
+ * @return hypotenuse of a and b
+ */
+template <class D, class V>
+HWY_INLINE V Hypot(D d, V a, V b);
+template <class D, class V>
+HWY_NOINLINE V CallHypot(const D d, VecArg<V> a, VecArg<V> b) {
+  return Hypot(d, a, b);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -792,6 +823,12 @@ struct ExpImpl<float> {
     return ConvertTo(Rebind<int32_t, D>(), x);
   }
 
+  // Rounds float to nearest int32_t
+  template <class D, class V>
+  HWY_INLINE Vec<Rebind<int32_t, D>> ToNearestInt32(D /*unused*/, V x) {
+    return NearestInt(x);
+  }
+
   template <class D, class V>
   HWY_INLINE V ExpPoly(D d, V x) {
     const auto k0 = Set(d, +0.5f);
@@ -831,6 +868,13 @@ struct ExpImpl<float> {
     x = MulAdd(qf, kLn2Part1f, x);
     return x;
   }
+
+  template <class D, class V, class VI32>
+  HWY_INLINE V Exp2Reduce(D d, V x, VI32 q) {
+    const V x_frac = Sub(x, ConvertTo(d, q));
+    return MulAdd(x_frac, Set(d, 0.193147182464599609375f),
+                  Mul(x_frac, Set(d, 0.5f)));
+  }
 };
 
 template <>
@@ -864,6 +908,12 @@ struct ExpImpl<double> {
   template <class D, class V>
   HWY_INLINE Vec<Rebind<int32_t, D>> ToInt32(D /*unused*/, V x) {
     return DemoteTo(Rebind<int32_t, D>(), x);
+  }
+
+  // Rounds double to nearest int32_t
+  template <class D, class V>
+  HWY_INLINE Vec<Rebind<int32_t, D>> ToNearestInt32(D /*unused*/, V x) {
+    return DemoteToNearestInt(Rebind<int32_t, D>(), x);
   }
 
   template <class D, class V>
@@ -911,6 +961,13 @@ struct ExpImpl<double> {
     x = MulAdd(qf, kLn2Part0d, x);
     x = MulAdd(qf, kLn2Part1d, x);
     return x;
+  }
+
+  template <class D, class V, class VI32>
+  HWY_INLINE V Exp2Reduce(D d, V x, VI32 q) {
+    const V x_frac = Sub(x, PromoteTo(d, q));
+    return MulAdd(x_frac, Set(d, 0.1931471805599453139823396),
+                  Mul(x_frac, Set(d, 0.5)));
   }
 };
 
@@ -1430,6 +1487,25 @@ HWY_INLINE V Exp(const D d, V x) {
 }
 
 template <class D, class V>
+HWY_INLINE V Exp2(const D d, V x) {
+  using T = TFromD<D>;
+
+  const V kLowerBound =
+      Set(d, static_cast<T>((sizeof(T) == 4 ? -150.0 : -1075.0)));
+  const V kOne = Set(d, static_cast<T>(+1.0));
+
+  impl::ExpImpl<T> impl;
+
+  // q = static_cast<int32_t>(std::lrint(x))
+  const auto q = impl.ToNearestInt32(d, x);
+
+  // Reduce, approximate, and then reconstruct.
+  const V y = impl.LoadExpShortRange(
+      d, Add(impl.ExpPoly(d, impl.Exp2Reduce(d, x, q)), kOne), q);
+  return IfThenElseZero(Ge(x, kLowerBound), y);
+}
+
+template <class D, class V>
 HWY_INLINE V Expm1(const D d, V x) {
   using T = TFromD<D>;
 
@@ -1542,6 +1618,130 @@ HWY_INLINE void SinCos(const D d, V x, V& s, V& c) {
   using T = TFromD<D>;
   impl::SinCosImpl<T> impl;
   impl.SinCos(d, x, s, c);
+}
+
+template <class D, class V>
+HWY_INLINE V Hypot(const D d, V a, V b) {
+  using T = TFromD<D>;
+  using TI = MakeSigned<T>;
+  const RebindToUnsigned<decltype(d)> du;
+  const RebindToSigned<decltype(d)> di;
+  using VI = VFromD<decltype(di)>;
+
+  constexpr int kMaxBiasedExp = static_cast<int>(MaxExponentField<T>());
+  static_assert(kMaxBiasedExp > 0, "kMaxBiasedExp > 0 must be true");
+
+  constexpr int kNumOfMantBits = MantissaBits<T>();
+  static_assert(kNumOfMantBits > 0, "kNumOfMantBits > 0 must be true");
+
+  constexpr int kExpBias = kMaxBiasedExp / 2;
+
+  static_assert(
+      static_cast<unsigned>(kExpBias) + static_cast<unsigned>(kNumOfMantBits) <
+          static_cast<unsigned>(kMaxBiasedExp),
+      "kExpBias + kNumOfMantBits < kMaxBiasedExp must be true");
+
+  // kMinValToSquareBiasedExp is the smallest biased exponent such that
+  // pow(pow(2, kMinValToSquareBiasedExp - kExpBias) * x, 2) is either a normal
+  // floating-point value or infinity if x is a non-zero, non-NaN value
+  constexpr int kMinValToSquareBiasedExp = (kExpBias / 2) + kNumOfMantBits;
+  static_assert(kMinValToSquareBiasedExp < kExpBias,
+                "kMinValToSquareBiasedExp < kExpBias must be true");
+
+  // kMaxValToSquareBiasedExp is the largest biased exponent such that
+  // pow(pow(2, kMaxValToSquareBiasedExp - kExpBias) * x, 2) * 2 is guaranteed
+  // to be a finite value if x is a finite value
+  constexpr int kMaxValToSquareBiasedExp = kExpBias + ((kExpBias / 2) - 1);
+  static_assert(kMaxValToSquareBiasedExp > kExpBias,
+                "kMaxValToSquareBiasedExp > kExpBias must be true");
+  static_assert(kMaxValToSquareBiasedExp < kMaxBiasedExp,
+                "kMaxValToSquareBiasedExp < kMaxBiasedExp must be true");
+
+#if HWY_TARGET == HWY_SCALAR || HWY_TARGET == HWY_EMU128 || \
+    HWY_TARGET == HWY_Z14 || HWY_TARGET == HWY_Z15
+  using TExpSatSub = MakeUnsigned<T>;
+  using TExpMinMax = TI;
+#else
+  using TExpSatSub = uint16_t;
+  using TExpMinMax = int16_t;
+#endif
+
+  const Repartition<TExpSatSub, decltype(d)> d_exp_sat_sub;
+  const Repartition<TExpMinMax, decltype(d)> d_exp_min_max;
+
+  const V abs_a = Abs(a);
+  const V abs_b = Abs(b);
+
+  const MFromD<D> either_inf = Or(IsInf(a), IsInf(b));
+
+  const VI zero = Zero(di);
+
+  // exp_a[i] is the biased exponent of abs_a[i]
+  const VI exp_a = BitCast(di, ShiftRight<kNumOfMantBits>(BitCast(du, abs_a)));
+
+  // exp_b[i] is the biased exponent of abs_b[i]
+  const VI exp_b = BitCast(di, ShiftRight<kNumOfMantBits>(BitCast(du, abs_b)));
+
+  // max_exp[i] is equal to HWY_MAX(exp_a[i], exp_b[i])
+
+  // If abs_a[i] and abs_b[i] are both NaN values, max_exp[i] will be equal to
+  // the biased exponent of the larger value. Otherwise, if either abs_a[i] or
+  // abs_b[i] is NaN, max_exp[i] will be equal to kMaxBiasedExp.
+  const VI max_exp = BitCast(
+      di, Max(BitCast(d_exp_min_max, exp_a), BitCast(d_exp_min_max, exp_b)));
+
+  // If either abs_a[i] or abs_b[i] is zero, min_exp[i] is equal to max_exp[i].
+  // Otherwise, if abs_a[i] and abs_b[i] are both nonzero, min_exp[i] is equal
+  // to HWY_MIN(exp_a[i], exp_b[i]).
+  const VI min_exp = IfThenElse(
+      Or(Eq(BitCast(di, abs_a), zero), Eq(BitCast(di, abs_b), zero)), max_exp,
+      BitCast(di, Min(BitCast(d_exp_min_max, exp_a),
+                      BitCast(d_exp_min_max, exp_b))));
+
+  // scl_pow2[i] is the power of 2 to scale abs_a[i] and abs_b[i] by
+
+  // abs_a[i] and abs_b[i] should be scaled by a factor that is greater than
+  // zero but less than or equal to
+  // pow(2, kMaxValToSquareBiasedExp - max_exp[i]) to ensure that that the
+  // multiplications or addition operations do not overflow if
+  // std::hypot(abs_a[i], abs_b[i]) is finite
+
+  // If either abs_a[i] or abs_b[i] is a a positive value that is less than
+  // pow(2, kMinValToSquareBiasedExp - kExpBias), then scaling up abs_a[i] and
+  // abs_b[i] by pow(2, kMinValToSquareBiasedExp - min_exp[i]) will ensure that
+  // the multiplications and additions result in normal floating point values,
+  // infinities, or NaNs.
+
+  // If HWY_MAX(kMinValToSquareBiasedExp - min_exp[i], 0) is greater than
+  // kMaxValToSquareBiasedExp - max_exp[i], scale abs_a[i] and abs_b[i] up by
+  // pow(2, kMaxValToSquareBiasedExp - max_exp[i]) to ensure that the
+  // multiplication and addition operations result in a finite result if
+  // std::hypot(abs_a[i], abs_b[i]) is finite.
+
+  const VI scl_pow2 = BitCast(
+      di,
+      Min(BitCast(d_exp_min_max,
+                  SaturatedSub(BitCast(d_exp_sat_sub,
+                                       Set(di, static_cast<TI>(
+                                                   kMinValToSquareBiasedExp))),
+                               BitCast(d_exp_sat_sub, min_exp))),
+          BitCast(d_exp_min_max,
+                  Sub(Set(di, static_cast<TI>(kMaxValToSquareBiasedExp)),
+                      max_exp))));
+
+  const VI exp_bias = Set(di, static_cast<TI>(kExpBias));
+
+  const V ab_scl_factor =
+      BitCast(d, ShiftLeft<kNumOfMantBits>(Add(exp_bias, scl_pow2)));
+  const V hypot_scl_factor =
+      BitCast(d, ShiftLeft<kNumOfMantBits>(Sub(exp_bias, scl_pow2)));
+
+  const V scl_a = Mul(abs_a, ab_scl_factor);
+  const V scl_b = Mul(abs_b, ab_scl_factor);
+
+  const V scl_hypot = Sqrt(MulAdd(scl_a, scl_a, Mul(scl_b, scl_b)));
+  // std::hypot returns inf if one input is +/- inf, even if the other is NaN.
+  return IfThenElse(either_inf, Inf(d), Mul(scl_hypot, hypot_scl_factor));
 }
 
 // NOLINTNEXTLINE(google-readability-namespace-comments)
