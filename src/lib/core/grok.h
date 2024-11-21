@@ -54,7 +54,6 @@ extern "C" {
 #endif
 #endif
 #else
-// Define dummy macros for SWIG to avoid parsing issues
 #define GRK_CALLCONV
 #define GRK_API
 #endif
@@ -558,10 +557,10 @@ typedef struct _grk_stream_params
    grk_stream_read_fn read_fn; /* read function */
    grk_stream_write_fn write_fn; /* write function */
    grk_stream_seek_fn seek_fn; /* seek function */
-   grk_stream_free_user_data_fn free_user_data_fn; // optional
+   grk_stream_free_user_data_fn free_user_data_fn; /* optional */
    void* user_data; /* user data */
-   size_t stream_len; // must be set for read stream
-   size_t double_buffer_len; // optional - default value is 1024 * 1024
+   size_t stream_len; /* must be set for read stream */
+   size_t double_buffer_len; /* optional - default value is 1024 * 1024 */
 } grk_stream_params;
 
 /**
@@ -762,8 +761,8 @@ typedef struct _grk_image
    uint8_t decompress_prec; /* decompress precision */
    GRK_COLOR_SPACE decompress_colour_space; /* decompress colour space */
    grk_io_buf interleaved_data; /* interleaved data */
-   uint32_t rows_per_strip; // for storage to output format
-   uint32_t rows_per_task; // for scheduling
+   uint32_t rows_per_strip; /* for storage to output format */
+   uint32_t rows_per_task; /* for scheduling */
    uint64_t packed_row_bytes; /* packed row bytes */
    grk_image_meta* meta; /* meta */
    grk_image_comp* comps; /* components */
@@ -1405,7 +1404,7 @@ GRK_API bool GRK_CALLCONV grk_set_MCT(grk_cparameters* parameters, float* encodi
    0x0900 /** 8K Single/Multi Tile Reversible IMF profile defined in 15444-1 AMD8 */
 #define GRK_PROFILE_MASK 0x0FFF /** Mask for profile bits */
 #define GRK_PROFILE_PART2 0x8000 /** At least 1 extension defined in 15444-2 (Part-2) */
-#define GRK_PROFILE_PART2_EXTENSIONS_MASK 0x3FFF // Mask for Part-2 extension bits
+#define GRK_PROFILE_PART2_EXTENSIONS_MASK 0x3FFF /*  Mask for Part-2 extension bits */
 
 /**
  * JPEG 2000 Part-2 extensions
