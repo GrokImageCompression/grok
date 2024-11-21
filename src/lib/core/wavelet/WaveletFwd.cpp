@@ -583,8 +583,8 @@ bool WaveletFwdImpl::compress(TileComponent* tile_comp, uint8_t qmfbid)
 void dwt53::encode_and_deinterleave_v(int32_t* arrayIn, int32_t* tmpIn, uint32_t height, bool even,
 									  uint32_t stride_width, uint32_t cols)
 {
-   int32_t* GRK_RESTRICT array = (int32_t * GRK_RESTRICT) arrayIn;
-   int32_t* GRK_RESTRICT tmp = (int32_t * GRK_RESTRICT) tmpIn;
+   int32_t* GRK_RESTRICT array = (int32_t* GRK_RESTRICT)arrayIn;
+   int32_t* GRK_RESTRICT tmp = (int32_t* GRK_RESTRICT)tmpIn;
    const uint32_t sn = (height + (even ? 1 : 0)) >> 1;
    const uint32_t dn = height - sn;
 

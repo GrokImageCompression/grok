@@ -579,7 +579,7 @@ void WaveletReverse::decompress_v_strip_97(dwt_data<vec4f>* GRK_RESTRICT vert,
 {
    uint32_t j;
    const size_t vec4f_elts = vec4f::NUM_ELTS;
-   for(j = 0; j < (resWidth & (uint32_t) ~(vec4f_elts - 1)); j += vec4f_elts)
+   for(j = 0; j < (resWidth & (uint32_t)~(vec4f_elts - 1)); j += vec4f_elts)
    {
 	  interleave_v_97(vert, winL, winH, vec4f_elts);
 	  decompress_step_97(vert);

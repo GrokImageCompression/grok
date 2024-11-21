@@ -25,8 +25,10 @@
 #include <stdbool.h>
 #include <limits.h>
 
+#ifndef SWIG
 #ifdef __cplusplus
 extern "C" {
+#endif
 #endif
 
 #include "grk_config.h"
@@ -431,82 +433,18 @@ typedef struct _grk_precision
 } grk_precision;
 
 /**
- * @brief JPEG 2000 header info
+ * @struct grk_progression_state
+ * @brief Stores progression state information
  */
-typedef struct _grk_header_info
+typedef struct _grk_progression_state
 {
-   /******************************************
-   set by client only if decompressing to file
-   *******************************************/
-   GRK_SUPPORTED_FILE_FMT decompress_fmt; /* decompress format */
-   bool force_rgb; /* force RGB */
-   bool upsample; /* upsample */
-   grk_precision* precision; /* precision */
-   uint32_t num_precision; /* number of precision */
-   bool split_by_component; /* split by component */
-   bool single_tile_decompress; /* single tile decompress */
-   /****************************************/
-
-   /*****************************************
-   populated by library after reading header
-   ******************************************/
-   /** initial code block width, default to 64 */
-   uint32_t cblockw_init; /* initial code block width */
-   /** initial code block height, default to 64 */
-   uint32_t cblockh_init; /* initial code block height */
-   /** 1 : use the irreversible DWT 9-7, 0 : use lossless compression (default) */
-   bool irreversible; /* irreversible */
-   /** multi-component transform identifier */
-   uint8_t mct; /* multi-component transform */
-   /** RSIZ value
-  To be used to combine GRK_PROFILE_*, GRK_EXTENSION_* and (sub)levels values. */
-   uint16_t rsiz; /* RSIZ */
-   /** number of resolutions */
-   uint8_t numresolutions; /* number of resolutions */
-   /*********************************************************
-   coding style can be specified in main header COD segment,
-   tile header COD segment, and tile component COC segment.
-   *********************************************************/
-   /* !!!! assume that coding style does not vary across tile components */
-   uint8_t csty; /* coding style */
-   /*******************************************************************
-   code block style is specified in main header COD segment, and can
-   be overridden in a tile header.  !!! Assume that style does
-   not vary across tiles !!!
-   *******************************************************************/
-   uint8_t cblk_sty; /* code block style */
-   /** initial precinct width */
-   uint32_t prcw_init[GRK_MAXRLVLS]; /* initial precinct width */
-   /** initial precinct height */
-   uint32_t prch_init[GRK_MAXRLVLS]; /* initial precinct height */
-   /** XTOsiz */
-   uint32_t tx0; /* tx0 */
-   /** YTOsiz */
-   uint32_t ty0; /* ty0 */
-   /** XTsiz */
-   uint32_t t_width; /* tile width */
-   /** YTsiz */
-   uint32_t t_height; /* tile height */
-   /** tile grid width */
-   uint16_t t_grid_width; /* tile grid width */
-   /** tile grid height  */
-   uint16_t t_grid_height; /* tile grid height */
-   /** number of layers */
-   uint16_t num_layers_;
-   /*************************************
-	* note: xml_data will remain valid
-	* until codec is destroyed
-	************************************/
-   uint8_t* xml_data; /* XML data */
-   size_t xml_data_len; /* XML data length */
-   size_t num_comments; /* number of comments */
-   char* comment[GRK_NUM_COMMENTS_SUPPORTED]; /* comment */
-   uint16_t comment_len[GRK_NUM_COMMENTS_SUPPORTED]; /* comment length */
-   bool is_binary_comment[GRK_NUM_COMMENTS_SUPPORTED]; /* is binary comment */
-
-   grk_asoc asocs[GRK_NUM_ASOC_BOXES_SUPPORTED]; /* associations */
-   uint32_t num_asocs; /* number of associations */
-} grk_header_info;
+   uint8_t numResolutions_;
+   uint16_t layersPerResolution_[33];
+   uint16_t numComps_;
+   uint16_t comp_[256];
+   bool single_tile_;
+   uint16_t tile_index_;
+} grk_progression_state;
 
 /**
  * @brief Grok IO buffer
@@ -832,6 +770,85 @@ typedef struct _grk_image
 } grk_image;
 
 /**
+ * @brief JPEG 2000 header info
+ */
+typedef struct _grk_header_info
+{
+   /******************************************
+   set by client only if decompressing to file
+   *******************************************/
+   GRK_SUPPORTED_FILE_FMT decompress_fmt; /* decompress format */
+   bool force_rgb; /* force RGB */
+   bool upsample; /* upsample */
+   grk_precision* precision; /* precision */
+   uint32_t num_precision; /* number of precision */
+   bool split_by_component; /* split by component */
+   bool single_tile_decompress; /* single tile decompress */
+   /****************************************/
+
+   /*****************************************
+   populated by library after reading header
+   ******************************************/
+   grk_image header_image_;
+   /** initial code block width, default to 64 */
+   uint32_t cblockw_init; /* initial code block width */
+   /** initial code block height, default to 64 */
+   uint32_t cblockh_init; /* initial code block height */
+   /** 1 : use the irreversible DWT 9-7, 0 : use lossless compression (default) */
+   bool irreversible; /* irreversible */
+   /** multi-component transform identifier */
+   uint8_t mct; /* multi-component transform */
+   /** RSIZ value
+  To be used to combine GRK_PROFILE_*, GRK_EXTENSION_* and (sub)levels values. */
+   uint16_t rsiz; /* RSIZ */
+   /** number of resolutions */
+   uint8_t numresolutions; /* number of resolutions */
+   /*********************************************************
+   coding style can be specified in main header COD segment,
+   tile header COD segment, and tile component COC segment.
+   *********************************************************/
+   /* !!!! assume that coding style does not vary across tile components */
+   uint8_t csty; /* coding style */
+   /*******************************************************************
+   code block style is specified in main header COD segment, and can
+   be overridden in a tile header.  !!! Assume that style does
+   not vary across tiles !!!
+   *******************************************************************/
+   uint8_t cblk_sty; /* code block style */
+   /** initial precinct width */
+   uint32_t prcw_init[GRK_MAXRLVLS]; /* initial precinct width */
+   /** initial precinct height */
+   uint32_t prch_init[GRK_MAXRLVLS]; /* initial precinct height */
+   /** XTOsiz */
+   uint32_t tx0; /* tx0 */
+   /** YTOsiz */
+   uint32_t ty0; /* ty0 */
+   /** XTsiz */
+   uint32_t t_width; /* tile width */
+   /** YTsiz */
+   uint32_t t_height; /* tile height */
+   /** tile grid width */
+   uint16_t t_grid_width; /* tile grid width */
+   /** tile grid height  */
+   uint16_t t_grid_height; /* tile grid height */
+   /** number of layers */
+   uint16_t num_layers_;
+   /*************************************
+	* note: xml_data will remain valid
+	* until codec is destroyed
+	************************************/
+   uint8_t* xml_data; /* XML data */
+   size_t xml_data_len; /* XML data length */
+   size_t num_comments; /* number of comments */
+   char* comment[GRK_NUM_COMMENTS_SUPPORTED]; /* comment */
+   uint16_t comment_len[GRK_NUM_COMMENTS_SUPPORTED]; /* comment length */
+   bool is_binary_comment[GRK_NUM_COMMENTS_SUPPORTED]; /* is binary comment */
+
+   grk_asoc asocs[GRK_NUM_ASOC_BOXES_SUPPORTED]; /* associations */
+   uint32_t num_asocs; /* number of associations */
+} grk_header_info;
+
+/**
  * @brief Plugin pass
  */
 typedef struct _grk_plugin_pass
@@ -1003,7 +1020,7 @@ GRK_API bool GRK_CALLCONV grk_decompress_detect_format(const char* file_name,
 GRK_API void GRK_CALLCONV grk_decompress_set_default_params(grk_decompress_parameters* parameters);
 
 /**
- * @brief Initialize decompressor
+ * @brief Initializes decompressor
  *
  * @param stream_params 	source stream parameters (see @ref grk_stream_params)
  * @param params 	decompress parameters (see @ref grk_decompress_parameters)
@@ -1016,7 +1033,7 @@ GRK_API grk_object* GRK_CALLCONV grk_decompress_init(grk_stream_params* stream_p
 													 grk_decompress_parameters* params);
 
 /**
- * @brief Update decompressor
+ * @brief Updates decompressor
  *
  * @param params 	decompress parameters (see @ref grk_decompress_parameters)
  * @param codec codec (see @ref grk_object)
@@ -1024,6 +1041,27 @@ GRK_API grk_object* GRK_CALLCONV grk_decompress_init(grk_stream_params* stream_p
  */
 GRK_API bool GRK_CALLCONV grk_decompress_update(grk_decompress_parameters* params,
 												grk_object* codec);
+
+/**
+ * @brief Gets @ref grk_progression_state for a tile
+ *
+ * @param codec codec (see @ref grk_object)
+ * @param tile_index tile index
+ * @return @ref grk_progression_state. Struct will be all zeros if tile has not been decompressed
+ * yet
+ */
+GRK_API grk_progression_state GRK_CALLCONV
+	grk_decompress_get_progression_state(grk_object* codec, uint16_t tile_index);
+
+/**
+ * @brief Set @ref grk_progression_state for a tile
+ *
+ * @param codec codec (see @ref grk_object)
+ * @param state @ref grk_progression_state
+ * @return true if tile exists in cache and state was set
+ */
+GRK_API bool GRK_CALLCONV grk_decompress_set_progression_state(grk_object* codec,
+															   grk_progression_state state);
 
 /**
  * @brief Decompress JPEG 2000 header
@@ -1741,6 +1779,8 @@ GRK_API int32_t GRK_CALLCONV grk_plugin_batch_decompress(void);
  */
 GRK_API void GRK_CALLCONV grk_plugin_stop_batch_decompress(void);
 
+#ifndef SWIG
 #ifdef __cplusplus
 }
+#endif
 #endif

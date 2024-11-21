@@ -902,7 +902,7 @@ bool CodeStreamDecompress::add_mct(TileCodingParams* p_tcp, GrkImage* p_image, u
 	  for(i = 0; i < p_image->numcomps; ++i)
 	  {
 		 auto tccp = p_tcp->tccps + i;
-		 tccp->dc_level_shift_ = (int32_t) * (current_offset_data++);
+		 tccp->dc_level_shift_ = (int32_t)*(current_offset_data++);
 	  }
 	  grk_free(offset_data);
    }
