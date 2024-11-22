@@ -497,6 +497,22 @@ grk_image* GRK_CALLCONV grk_decompress_get_tile_image(grk_object* codecWrapper, 
    return nullptr;
 }
 
+// no-op
+grk_progression_state GRK_CALLCONV grk_decompress_get_progression_state(grk_object* codec,
+																		uint16_t tile_index)
+{
+   (void)codec;
+   (void)tile_index;
+   return {};
+}
+// no-op
+bool GRK_CALLCONV grk_decompress_set_progression_state(grk_object* codec,
+													   grk_progression_state state)
+{
+   (void)codec;
+   (void)state;
+   return true;
+}
 grk_image* GRK_CALLCONV grk_decompress_get_composited_image(grk_object* codecWrapper)
 {
    if(codecWrapper)
@@ -615,8 +631,11 @@ grk_object* GRK_CALLCONV grk_compress_init(grk_stream_params* stream_params,
    return rc ? codecWrapper : nullptr;
 }
 
+// no-op
 bool GRK_CALLCONV grk_decompress_update(grk_decompress_parameters* params, grk_object* codec)
 {
+   (void)params;
+   (void)codec;
    return false;
 }
 
