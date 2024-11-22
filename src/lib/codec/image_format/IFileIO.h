@@ -28,41 +28,41 @@ struct GrkIOBuf : public grk_io_buf
    GrkIOBuf() : GrkIOBuf(nullptr, 0, 0, 0, false) {}
    GrkIOBuf(uint8_t* data, size_t offset, size_t dataLen, size_t allocLen, bool pooled)
    {
-	  data_ = data;
-	  offset_ = offset;
-	  len_ = dataLen;
-	  alloc_len_ = allocLen;
-	  pooled_ = pooled;
+	  this->data = data;
+	  this->offset = offset;
+	  this->len = dataLen;
+	  this->alloc_len = allocLen;
+	  this->pooled = pooled;
    }
    explicit GrkIOBuf(const grk_io_buf rhs)
    {
-	  data_ = rhs.data_;
-	  offset_ = rhs.offset_;
-	  len_ = rhs.len_;
-	  alloc_len_ = rhs.alloc_len_;
-	  pooled_ = rhs.pooled_;
+	  data = rhs.data;
+	  offset = rhs.offset;
+	  len = rhs.len;
+	  alloc_len = rhs.alloc_len;
+	  pooled = rhs.pooled;
    }
    bool alloc(size_t len)
    {
 	  dealloc();
-	  data_ = (uint8_t*)grk_bin::grk_aligned_malloc(len);
-	  if(data_)
+	  data = (uint8_t*)grk_bin::grk_aligned_malloc(len);
+	  if(data)
 	  {
 		 // printf("Allocated  %p\n", data);
-		 len_ = len;
-		 alloc_len_ = len;
+		 this->len = len;
+		 alloc_len = len;
 	  }
 
-	  return data_ != nullptr;
+	  return data != nullptr;
    }
    void dealloc()
    {
-	  if(data_)
+	  if(data)
 	  {
-		 grk_bin::grk_aligned_free(data_);
+		 grk_bin::grk_aligned_free(data);
 		 // printf("Deallocated  %p\n", data);
 	  }
-	  data_ = nullptr;
+	  data = nullptr;
    }
 };
 

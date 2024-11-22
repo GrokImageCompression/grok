@@ -17,7 +17,7 @@ GrkImage::~GrkImage()
    }
    if(meta)
 	  grk_object_unref(&meta->obj);
-   grk_aligned_free(interleaved_data.data_);
+   grk_aligned_free(interleaved_data.data);
 }
 uint32_t GrkImage::width(void) const
 {
@@ -471,7 +471,7 @@ bool GrkImage::applyColour(void)
 }
 void GrkImage::apply_channel_definition()
 {
-   if(channel_definition_applied_)
+   if(channel_definition_applied)
 	  return;
 
    auto info = meta->color.channel_definition->descriptions;
@@ -525,7 +525,7 @@ void GrkImage::apply_channel_definition()
 		 }
 	  }
    }
-   channel_definition_applied_ = true;
+   channel_definition_applied = true;
 }
 bool GrkImage::check_color(void)
 {
@@ -677,7 +677,7 @@ bool GrkImage::check_color(void)
 }
 bool GrkImage::apply_palette_clr()
 {
-   if(palette_applied_)
+   if(palette_applied)
 	  return true;
 
    auto clr = &meta->color;
@@ -814,7 +814,7 @@ bool GrkImage::apply_palette_clr()
    delete[] oldComps;
    comps = newComps;
    numcomps = num_channels;
-   palette_applied_ = true;
+   palette_applied = true;
 
    return true;
 }
@@ -873,8 +873,8 @@ void GrkImage::transferDataTo(GrkImage* dest)
 	  srcComp->data = nullptr;
    }
 
-   dest->interleaved_data.data_ = interleaved_data.data_;
-   interleaved_data.data_ = nullptr;
+   dest->interleaved_data.data = interleaved_data.data;
+   interleaved_data.data = nullptr;
 }
 
 /**
@@ -929,7 +929,7 @@ void GrkImage::transferDataFrom(const Tile* tile_src_data)
 
 bool GrkImage::composite(const GrkImage* srcImg)
 {
-   return interleaved_data.data_ ? compositeInterleaved(srcImg) : compositePlanar(srcImg);
+   return interleaved_data.data ? compositeInterleaved(srcImg) : compositePlanar(srcImg);
 }
 
 /**
@@ -992,7 +992,7 @@ bool GrkImage::compositeInterleaved(const Tile* src, uint32_t yBegin, uint32_t y
 	  planes[i] = b.buf_ + yBegin * b.stride_;
    }
    iter->interleave(const_cast<int32_t**>(planes), src->numcomps_,
-					interleaved_data.data_ + destIndex, destWin.width(),
+					interleaved_data.data + destIndex, destWin.width(),
 					srcComp->getWindow()->getResWindowBufferHighestStride(), destStride,
 					destWin.height(), 0);
    delete iter;
@@ -1050,9 +1050,8 @@ bool GrkImage::compositeInterleaved(const GrkImage* src)
    int32_t const* planes[grk::maxNumPackComponents];
    for(uint16_t i = 0; i < src->numcomps; ++i)
 	  planes[i] = (src->comps + i)->data;
-   iter->interleave(const_cast<int32_t**>(planes), src->numcomps,
-					interleaved_data.data_ + destIndex, destWin.width(), srcComp->stride,
-					destStride, destWin.height(), 0);
+   iter->interleave(const_cast<int32_t**>(planes), src->numcomps, interleaved_data.data + destIndex,
+					destWin.width(), srcComp->stride, destStride, destWin.height(), 0);
    delete iter;
 
    return true;

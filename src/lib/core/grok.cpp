@@ -358,7 +358,7 @@ void GRK_CALLCONV grk_decompress_set_default_params(grk_decompress_parameters* p
    auto core_params = &parameters->core;
    memset(core_params, 0, sizeof(grk_decompress_core_params));
    core_params->tile_cache_strategy = GRK_TILE_CACHE_NONE;
-   core_params->random_access_flags_ =
+   core_params->random_access_flags =
 	   GRK_RANDOM_ACCESS_TLM | GRK_RANDOM_ACCESS_PLM | GRK_RANDOM_ACCESS_PLT;
 }
 grk_object* GRK_CALLCONV grk_decompress_init(grk_stream_params* stream_params,

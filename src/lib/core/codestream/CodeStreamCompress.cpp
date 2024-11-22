@@ -150,7 +150,7 @@ bool CodeStreamCompress::init(grk_cparameters* parameters, GrkImage* image)
 		 return false;
 	  }
    }
-   if(parameters->apply_icc_)
+   if(parameters->apply_icc)
 	  image->applyICC();
 
    // create private sanitized copy of image

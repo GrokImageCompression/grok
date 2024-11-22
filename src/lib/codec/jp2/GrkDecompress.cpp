@@ -638,18 +638,18 @@ GrkRC GrkDecompress::parseCommandLine(int argc, char* argv[], DecompressInitPara
    CLI11_PARSE_CUSTOM(cmd, argc, argv);
 
    if(verboseOpt->count() > 0)
-	  parameters->verbose_ = true;
+	  parameters->verbose = true;
    else
 	  spdlog::set_level(spdlog::level::level_enum::err);
-   grk_set_msg_handlers({parameters->verbose_ ? infoCallback : nullptr, nullptr,
-						 parameters->verbose_ ? warningCallback : nullptr, nullptr, errorCallback,
+   grk_set_msg_handlers({parameters->verbose ? infoCallback : nullptr, nullptr,
+						 parameters->verbose ? warningCallback : nullptr, nullptr, errorCallback,
 						 nullptr});
    bool useStdio =
 	   inputFileOpt->count() > 0 && outForOpt->count() > 0 && outputFileOpt->count() == 0;
    // disable verbose mode so we don't write info or warnings to stdout
    if(useStdio)
-	  parameters->verbose_ = false;
-   if(!parameters->verbose_)
+	  parameters->verbose = false;
+   if(!parameters->verbose)
 	  spdlog::set_level(spdlog::level::level_enum::err);
 
    if(logfileOpt->count() > 0)
@@ -826,9 +826,9 @@ GrkRC GrkDecompress::parseCommandLine(int argc, char* argv[], DecompressInitPara
 		 parameters->core.reduce = (uint8_t)reduce;
    }
    if(layerOpt->count() > 0)
-	  parameters->core.layers_to_decompress_ = layer;
+	  parameters->core.layers_to_decompress = layer;
    if(randomAccessOpt->count() > 0)
-	  parameters->core.random_access_flags_ = randomAccess;
+	  parameters->core.random_access_flags = randomAccess;
    parameters->single_tile_decompress = tileOpt->count() > 0;
    if(tileOpt->count() > 0)
 	  parameters->tile_index = (uint16_t)tile;
@@ -980,20 +980,20 @@ GrkRC GrkDecompress::pluginMain(int argc, char* argv[], DecompressInitParams* in
    if(parseReturn != GrkRCSuccess)
 	  return parseReturn;
 #ifdef GROK_HAVE_LIBTIFF
-   tiffSetErrorAndWarningHandlers(initParams->parameters.verbose_);
+   tiffSetErrorAndWarningHandlers(initParams->parameters.verbose);
 #endif
 #ifdef GROK_HAVE_LIBPNG
-   pngSetVerboseFlag(initParams->parameters.verbose_);
+   pngSetVerboseFlag(initParams->parameters.verbose);
 #endif
    initParams->initialized = true;
    // loads plugin but does not actually create codec
    grk_initialize(initParams->pluginPath, initParams->parameters.num_threads,
-				  initParams->parameters.verbose_);
+				  initParams->parameters.verbose);
 
    // create codec
    grk_plugin_init_info initInfo;
    initInfo.device_id = initParams->parameters.device_id;
-   initInfo.verbose = initParams->parameters.verbose_;
+   initInfo.verbose = initParams->parameters.verbose;
    if(!grk_plugin_init(initInfo))
 	  goto cleanup;
    initParams->parameters.user_data = this;

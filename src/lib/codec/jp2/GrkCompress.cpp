@@ -1188,7 +1188,7 @@ GrkRC GrkCompress::parseCommandLine(int argc, char* argv[], CompressInitParams* 
    inputFolder->set_out_format = false;
    parameters->raw_cp.width = 0;
    if(applyICCOpt->count() > 0)
-	  parameters->apply_icc_ = true;
+	  parameters->apply_icc = true;
    if(pltOpt->count() > 0)
 	  parameters->write_plt = true;
    if(tlmOpt->count() > 0)

@@ -37,7 +37,7 @@ ImageFormat::ImageFormat()
 	  encodeState(IMAGE_FORMAT_UNENCODED)
 {
    grk_io_init init;
-   init.max_pooled_requests_ = 0;
+   init.max_pooled_requests = 0;
    registerGrkReclaimCallback(init, grkReclaimCallback, &pool);
 }
 ImageFormat::~ImageFormat()
@@ -48,8 +48,8 @@ void ImageFormat::registerGrkReclaimCallback(grk_io_init io_init, grk_io_callbac
 											 void* user_data)
 {
    serializer.registerGrkReclaimCallback(io_init, reclaim_callback, user_data);
-   if(io_init.max_pooled_requests_)
-	  serializer.setMaxPooledRequests(io_init.max_pooled_requests_);
+   if(io_init.max_pooled_requests)
+	  serializer.setMaxPooledRequests(io_init.max_pooled_requests);
 }
 void ImageFormat::ioReclaimBuffer(uint32_t threadId, grk_io_buf buffer)
 {
@@ -129,7 +129,7 @@ void ImageFormat::applicationOrchestratedReclaim([[maybe_unused]] GrkIOBuf buf)
  */
 bool ImageFormat::encodePixelsCoreWrite(grk_io_buf pixels)
 {
-   return (serializer.write(pixels.data_, pixels.len_) == pixels.len_);
+   return (serializer.write(pixels.data, pixels.len) == pixels.len);
 }
 bool ImageFormat::encodeFinish(void)
 {
@@ -153,7 +153,7 @@ uint64_t ImageFormat::write(GrkIOBuf buffer)
 {
    auto rc = fileIO_->write(buffer);
 #ifndef GROK_HAVE_URING
-   if(buffer.pooled_)
+   if(buffer.pooled)
 	  pool.put(buffer);
 #endif
 

@@ -437,12 +437,12 @@ typedef struct _grk_precision
  */
 typedef struct _grk_progression_state
 {
-   uint8_t numResolutions_;
-   uint16_t layersPerResolution_[33];
-   uint16_t numComps_;
-   uint16_t comp_[256];
-   bool single_tile_;
-   uint16_t tile_index_;
+   uint8_t num_resolutions;
+   uint16_t layers_per_resolution[33];
+   uint16_t numComps;
+   uint16_t comp[256];
+   bool single_tile;
+   uint16_t tile_index;
 } grk_progression_state;
 
 /**
@@ -450,12 +450,12 @@ typedef struct _grk_progression_state
  */
 typedef struct _grk_io_buf
 {
-   uint8_t* data_; /* data */
-   size_t offset_; /* offset */
-   size_t len_; /* length */
-   size_t alloc_len_; /* allocated length */
-   bool pooled_; /* pooled */
-   uint32_t index_; /* index */
+   uint8_t* data; /* data */
+   size_t offset; /* offset */
+   size_t len; /* length */
+   size_t alloc_len; /* allocated length */
+   bool pooled; /* pooled */
+   uint32_t index; /* index */
 } grk_io_buf;
 
 /**
@@ -463,7 +463,7 @@ typedef struct _grk_io_buf
  */
 typedef struct _grk_io_init
 {
-   uint32_t max_pooled_requests_; /* max pooled requests */
+   uint32_t max_pooled_requests; /* max pooled requests */
 
 } grk_io_init;
 
@@ -592,10 +592,10 @@ typedef struct _grk_decompress_core_params
   decompressed. if != 0, then only the first "layer" layers are decompressed; if == 0 or not
   used, all the quality layers are decompressed
   */
-   uint16_t layers_to_decompress_; /* layers to decompress */
+   uint16_t layers_to_decompress; /* layers to decompress */
    GRK_TILE_CACHE_STRATEGY tile_cache_strategy; /* tile cache strategy */
 
-   uint32_t random_access_flags_; /* random access flags */
+   uint32_t random_access_flags; /* random access flags */
 
    grk_io_pixels_callback io_buffer_callback; /* IO buffer callback */
    void* io_user_data; /* IO user data */
@@ -652,7 +652,7 @@ typedef struct _grk_decompress_params
    *****************************************************/
    uint32_t compression_level; /* compression level */
    /** Verbose mode */
-   bool verbose_; /* verbose */
+   bool verbose; /* verbose */
    int32_t device_id; /* device ID */
    uint32_t duration; /* in seconds */
    uint32_t kernel_build_options; /* kernel build options */
@@ -742,8 +742,8 @@ typedef struct _grk_image
    /** number of components in the image */
    uint16_t numcomps; /* number of components */
    GRK_COLOR_SPACE color_space; /* color space */
-   bool palette_applied_; /* palette applied */
-   bool channel_definition_applied_; /* channel definition applied */
+   bool palette_applied; /* palette applied */
+   bool channel_definition_applied; /* channel definition applied */
    bool has_capture_resolution; /* has capture resolution */
    double capture_resolution[2]; /* capture resolution */
    bool has_display_resolution; /* has display resolution */
@@ -788,7 +788,7 @@ typedef struct _grk_header_info
    /*****************************************
    populated by library after reading header
    ******************************************/
-   grk_image header_image_;
+   grk_image header_image;
    /** initial code block width, default to 64 */
    uint32_t cblockw_init; /* initial code block width */
    /** initial code block height, default to 64 */
@@ -831,7 +831,7 @@ typedef struct _grk_header_info
    /** tile grid height  */
    uint16_t t_grid_height; /* tile grid height */
    /** number of layers */
-   uint16_t num_layers_;
+   uint16_t num_layers;
    /*************************************
 	* note: xml_data will remain valid
 	* until codec is destroyed
@@ -1139,11 +1139,11 @@ GRK_API bool GRK_CALLCONV grk_decompress_tile(grk_object* codec, uint16_t tile_i
  */
 typedef struct _grk_synthesis
 {
-   bool do_synthesis_; /* do synthesis */
-   uint32_t width_; /* width */
-   uint32_t height_; /* height */
-   uint8_t precision_; /* precision */
-   uint16_t numcomps_; /* number of components */
+   bool do_synthesis; /* do synthesis */
+   uint32_t width; /* width */
+   uint32_t height; /* height */
+   uint8_t precision; /* precision */
+   uint16_t numcomps; /* number of components */
 } grk_synthesis;
 
 /**
@@ -1261,7 +1261,7 @@ typedef struct _grk_cparameters
    bool write_display_resolution; /* write display resolution */
    double display_resolution[2]; /* display resolution */
 
-   bool apply_icc_; /* apply ICC */
+   bool apply_icc; /* apply ICC */
 
    GRK_RATE_CONTROL_ALGORITHM rate_control_algorithm; /* rate control algorithm */
    uint32_t num_threads; /* number of threads */
@@ -1273,7 +1273,7 @@ typedef struct _grk_cparameters
    bool write_tlm; /* write TLM */
    bool verbose; /* verbose */
    bool shared_memory_interface; /* shared memory interface */
-   grk_synthesis synth_; /* synthesis */
+   grk_synthesis synth; /* synthesis */
 } grk_cparameters;
 
 /**

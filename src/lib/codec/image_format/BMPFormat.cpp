@@ -173,11 +173,11 @@ bool BMPFormat::encodeHeader(void)
 		 *header_ptr++ = 0;
 	  }
    }
-   destBuff.data_ = header_;
-   destBuff.offset_ = off_;
-   destBuff.pooled_ = false;
-   destBuff.len_ = header_plus_lut;
-   if(write(destBuff) != destBuff.len_)
+   destBuff.data = header_;
+   destBuff.offset = off_;
+   destBuff.pooled = false;
+   destBuff.len = header_plus_lut;
+   if(write(destBuff) != destBuff.len)
 	  goto cleanup;
    off_ += header_plus_lut;
    ret = true;
@@ -234,7 +234,7 @@ bool BMPFormat::encodePixels()
    // zero out padding at end of line
    if(pad_dest)
    {
-	  uint8_t* ptr = destBuff.data_ + w_dest - pad_dest;
+	  uint8_t* ptr = destBuff.data + w_dest - pad_dest;
 	  for(uint32_t m = 0; m < image_->rows_per_strip; ++m)
 	  {
 		 memset(ptr, 0, pad_dest);
@@ -263,24 +263,24 @@ bool BMPFormat::encodePixels()
 			}
 			if(decompress_num_comps == 1)
 			{
-			   destBuff.data_[destInd++] = rc[0];
+			   destBuff.data[destInd++] = rc[0];
 			}
 			else
 			{
-			   destBuff.data_[destInd++] = rc[2];
-			   destBuff.data_[destInd++] = rc[1];
-			   destBuff.data_[destInd++] = rc[0];
+			   destBuff.data[destInd++] = rc[2];
+			   destBuff.data[destInd++] = rc[1];
+			   destBuff.data[destInd++] = rc[0];
 			   if(decompress_num_comps == 4)
-				  destBuff.data_[destInd++] = rc[3];
+				  destBuff.data[destInd++] = rc[3];
 			}
 		 }
 		 destInd += pad_dest;
 		 srcIndex_ -= stride_src;
 	  }
-	  destBuff.offset_ = off_;
-	  destBuff.pooled_ = true;
-	  destBuff.len_ = destInd;
-	  if(write(destBuff) != destBuff.len_)
+	  destBuff.offset = off_;
+	  destBuff.pooled = true;
+	  destBuff.len = destInd;
+	  if(write(destBuff) != destBuff.len)
 		 goto cleanup;
 	  destBuff = pool.get(packedLen);
 	  // pooled buffer may not have been zero-padded
@@ -310,11 +310,11 @@ bool BMPFormat::encodeFinish(void)
    if(image_->meta && image_->meta->color.icc_profile_buf)
    {
 	  GrkIOBuf destBuff;
-	  destBuff.data_ = image_->meta->color.icc_profile_buf;
-	  destBuff.offset_ = off_;
-	  destBuff.pooled_ = false;
-	  destBuff.len_ = image_->meta->color.icc_profile_len;
-	  if(write(destBuff) != destBuff.len_)
+	  destBuff.data = image_->meta->color.icc_profile_buf;
+	  destBuff.offset = off_;
+	  destBuff.pooled = false;
+	  destBuff.len = image_->meta->color.icc_profile_len;
+	  if(write(destBuff) != destBuff.len)
 		 return false;
 	  off_ += image_->meta->color.icc_profile_len;
    }

@@ -72,11 +72,11 @@ uint64_t FileStreamIO::write(uint8_t* buf, [[maybe_unused]] uint64_t offset, siz
 }
 uint64_t FileStreamIO::write(GrkIOBuf buffer)
 {
-   auto actual = fwrite(buffer.data_, 1, buffer.len_, fileHandle_);
-   if(actual < buffer.len_)
-	  spdlog::error("wrote fewer bytes {} than expected number of bytes {}.", actual, buffer.len_);
+   auto actual = fwrite(buffer.data, 1, buffer.len, fileHandle_);
+   if(actual < buffer.len)
+	  spdlog::error("wrote fewer bytes {} than expected number of bytes {}.", actual, buffer.len);
 
-   return buffer.len_;
+   return buffer.len;
 }
 bool FileStreamIO::read(uint8_t* buf, size_t len)
 {

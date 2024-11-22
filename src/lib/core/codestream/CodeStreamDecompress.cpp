@@ -229,7 +229,7 @@ bool CodeStreamDecompress::readHeader(grk_header_info* header_info)
 	  header_info->t_grid_width = cp_.t_grid_width;
 	  header_info->t_grid_height = cp_.t_grid_height;
 
-	  header_info->num_layers_ = tcp->num_layers_;
+	  header_info->num_layers = tcp->num_layers_;
 
 	  header_info->num_comments = cp_.num_comments;
 	  for(size_t i = 0; i < header_info->num_comments; ++i)
@@ -355,9 +355,9 @@ void CodeStreamDecompress::init(grk_decompress_core_params* parameters)
 {
    assert(parameters);
 
-   cp_.coding_params_.dec_.layers_to_decompress_ = parameters->layers_to_decompress_;
+   cp_.coding_params_.dec_.layers_to_decompress_ = parameters->layers_to_decompress;
    cp_.coding_params_.dec_.reduce_ = parameters->reduce;
-   cp_.coding_params_.dec_.random_access_flags_ = parameters->random_access_flags_;
+   cp_.coding_params_.dec_.random_access_flags_ = parameters->random_access_flags;
    tileCache_->setStrategy(parameters->tile_cache_strategy);
 
    ioBufferCallback = parameters->io_buffer_callback;
