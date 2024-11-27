@@ -93,7 +93,9 @@ mark_as_advanced(LIBRARY_OUTPUT_PATH EXECUTABLE_OUTPUT_PATH)
 
 # Compiler specific flags:
 if (CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
-  set(GROK_COMPILE_OPTIONS ${GROK_COMPILE_OPTIONS} -Wall -Wextra -Wconversion -Wsign-conversion -Wunused-parameter)
+  list(APPEND GROK_COMPILE_OPTIONS -Wall -Wextra -Wconversion -Wsign-conversion -Wunused-parameter)
+elseif(MSVC)
+  list(APPEND GROK_COMPILE_OPTIONS /MP)
 endif()
 
 # grk_config.h generation
