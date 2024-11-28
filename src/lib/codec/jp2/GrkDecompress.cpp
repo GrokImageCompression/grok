@@ -1253,7 +1253,7 @@ int GrkDecompress::preProcess(grk_plugin_decompress_callback_info* info)
 		 spdlog::error("grk_decompress: failed to read the header");
 		 goto cleanup;
 	  }
-	  info->image = grk_decompress_get_composited_image(info->codec);
+	  info->image = grk_decompress_get_image(info->codec);
 	  auto img = info->image;
 
 	  const double val[4] = {

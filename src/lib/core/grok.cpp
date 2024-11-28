@@ -513,7 +513,7 @@ bool GRK_CALLCONV grk_decompress_set_progression_state(grk_object* codec,
    (void)state;
    return true;
 }
-grk_image* GRK_CALLCONV grk_decompress_get_composited_image(grk_object* codecWrapper)
+grk_image* GRK_CALLCONV grk_decompress_get_image(grk_object* codecWrapper)
 {
    if(codecWrapper)
    {

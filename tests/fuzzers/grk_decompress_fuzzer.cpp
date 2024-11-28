@@ -49,7 +49,7 @@ int LLVMFuzzerTestOneInput(const uint8_t* buf, size_t len)
 	  goto cleanup;
    if(!grk_decompress_read_header(codec, &headerInfo))
 	  goto cleanup;
-   image = grk_decompress_get_composited_image(codec);
+   image = grk_decompress_get_image(codec);
    width = image->x1 - image->x0;
    if(width > 1024)
 	  width = 1024;

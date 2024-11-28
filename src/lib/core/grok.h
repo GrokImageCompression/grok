@@ -170,6 +170,7 @@ typedef enum _GRK_ENUM_COLOUR_SPACE
 typedef void (*grk_msg_callback)(const char* msg, void* client_data);
 
 /**
+ * @struct grk_msg_handlers
  * @brief Logging handlers
  *
  * @param info_callback info callback (see @ref grk_msg_callback)
@@ -190,8 +191,8 @@ typedef struct _grk_msg_handlers
 } grk_msg_handlers;
 
 /**
- *
- * @brief Reference counted object
+ * @struct grk_object
+ * @brief Opaque reference-counted object
  *
  */
 typedef struct _grk_object
@@ -200,6 +201,7 @@ typedef struct _grk_object
 } grk_object;
 
 /**
+ * @struct grk_progression
  * @brief Progression order change
  *
  */
@@ -246,6 +248,7 @@ typedef struct _grk_progression
 } grk_progression;
 
 /**
+ * @struct grk_raw_comp_cparameters
  * @brief RAW component compress parameters
  */
 typedef struct _grk_raw_comp_cparameters
@@ -255,6 +258,7 @@ typedef struct _grk_raw_comp_cparameters
 } grk_raw_comp_cparameters;
 
 /**
+ * @struct grk_raw_cparameters
  * @brief RAW image compress parameters
  */
 typedef struct _grk_raw_cparameters
@@ -325,6 +329,7 @@ typedef enum _GRK_CODEC_FORMAT
 #define GRK_MAXBANDS (3 * GRK_MAXRLVLS - 2) /*  Maximum number of sub-bands allowed by standard */
 
 /**
+ * @struct grk_component_mapping_comp
  * @brief Component mappings: component index, mapping type, palette column
  *
  * Note: "component" refers to an image component as decompressed
@@ -340,6 +345,7 @@ typedef struct _grk_component_mapping_comp
 } grk_component_mapping_comp;
 
 /**
+ * @struct grk_palette_data
  * @brief Palette data
  */
 typedef struct _grk_palette_data
@@ -384,6 +390,7 @@ typedef enum _GRK_CHANNEL_ASSOC
 } GRK_CHANNEL_ASSOC;
 
 /**
+ * @struct grk_channel_description
  * @brief Channel definition: channel index, type, association
  */
 typedef struct _grk_channel_description
@@ -394,6 +401,7 @@ typedef struct _grk_channel_description
 } grk_channel_description;
 
 /**
+ * @struct grk_channel_definition
  * @brief Channel definition
  */
 typedef struct _grk_channel_definition
@@ -403,6 +411,7 @@ typedef struct _grk_channel_definition
 } grk_channel_definition;
 
 /**
+ * @struct grk_asoc
  * @brief Association box info
  */
 typedef struct _grk_asoc
@@ -414,6 +423,7 @@ typedef struct _grk_asoc
 } grk_asoc;
 
 /**
+ * @struct grk_precision_mode
  * @brief Precision mode
  */
 typedef enum _grk_precision_mode
@@ -423,6 +433,7 @@ typedef enum _grk_precision_mode
 } grk_precision_mode;
 
 /**
+ * @struct grk_precision
  * @brief Precision
  */
 typedef struct _grk_precision
@@ -439,13 +450,14 @@ typedef struct _grk_progression_state
 {
    uint8_t num_resolutions;
    uint16_t layers_per_resolution[33];
-   uint16_t numComps;
+   uint16_t numcomps;
    uint16_t comp[256];
    bool single_tile;
    uint16_t tile_index;
 } grk_progression_state;
 
 /**
+ * @struct grk_io_buf
  * @brief Grok IO buffer
  */
 typedef struct _grk_io_buf
@@ -459,6 +471,7 @@ typedef struct _grk_io_buf
 } grk_io_buf;
 
 /**
+ * @struct grk_io_init
  * @brief Grok IO initialization
  */
 typedef struct _grk_io_init
@@ -535,7 +548,8 @@ typedef bool (*grk_stream_seek_fn)(uint64_t offset, void* user_data);
 typedef void (*grk_stream_free_user_data_fn)(void* user_data);
 
 /**
- * @brief JPEG 2000 stream parameters.
+ * @struct grk_stream_params
+ * @brief JPEG 2000 stream parameters
  *
  * Client must populate one of the following options :
  * 1. File
@@ -574,6 +588,7 @@ typedef enum _GRK_TILE_CACHE_STRATEGY
 } GRK_TILE_CACHE_STRATEGY;
 
 /**
+ * @struct grk_decompress_core_params
  * @brief Core decompression parameters
  */
 typedef struct _grk_decompress_core_params
@@ -610,6 +625,7 @@ typedef struct _grk_decompress_core_params
 #define GRK_DECOMPRESS_COMPRESSION_LEVEL_DEFAULT (UINT_MAX)
 
 /**
+ * @struct grk_decompress_parameters
  * @brief Decompression parameters
  */
 typedef struct _grk_decompress_params
@@ -662,6 +678,7 @@ typedef struct _grk_decompress_params
 } grk_decompress_parameters;
 
 /**
+ * @struct grk_image_comp
  * @brief Image component
  */
 typedef struct _grk_image_comp
@@ -695,6 +712,7 @@ typedef struct _grk_image_comp
 } grk_image_comp;
 
 /**
+ * @struct grk_color
  * @brief ICC profile, palette, channel definition
  */
 typedef struct _grk_color
@@ -708,6 +726,7 @@ typedef struct _grk_color
 } grk_color;
 
 /**
+ * @struct grk_image_data
  * @brief Image meta data: colour, IPTC and XMP
  */
 typedef struct _grk_image_meta
@@ -721,6 +740,7 @@ typedef struct _grk_image_meta
 } grk_image_meta;
 
 /**
+ * @struct grk_image
  * @brief Grok image
  *
  * Note: do not directly create a grk_image object. Instead use the @ref grk_image_new
@@ -769,6 +789,7 @@ typedef struct _grk_image
 } grk_image;
 
 /**
+ * @struct grk_header_info
  * @brief JPEG 2000 header info
  */
 typedef struct _grk_header_info
@@ -848,6 +869,7 @@ typedef struct _grk_header_info
 } grk_header_info;
 
 /**
+ * @struct grk_plugin_pass
  * @brief Plugin pass
  */
 typedef struct _grk_plugin_pass
@@ -858,6 +880,7 @@ typedef struct _grk_plugin_pass
 } grk_plugin_pass;
 
 /**
+ * @struct grk_plugin_code_block
  * @brief Plugin code block
  */
 typedef struct _grk_plugin_code_block
@@ -878,6 +901,7 @@ typedef struct _grk_plugin_code_block
 } grk_plugin_code_block;
 
 /**
+ * @brief grk_plugin_precinct
  * @brief Plugin precinct
  */
 typedef struct _grk_plugin_precinct
@@ -887,6 +911,7 @@ typedef struct _grk_plugin_precinct
 } grk_plugin_precinct;
 
 /**
+ * @struct grk_plugin_band
  * @brief Plugin band
  */
 typedef struct _grk_plugin_band
@@ -898,6 +923,7 @@ typedef struct _grk_plugin_band
 } grk_plugin_band;
 
 /**
+ * @struct grk_plugin_resolution
  * @brief Plugin resolution
  */
 typedef struct _grk_plugin_resolution
@@ -908,6 +934,7 @@ typedef struct _grk_plugin_resolution
 } grk_plugin_resolution;
 
 /**
+ * @struct grk_plugin_tile_component
  * @brief Plugin tile component
  */
 typedef struct grk_plugin_tile_component
@@ -926,6 +953,7 @@ typedef struct grk_plugin_tile_component
 	GRK_DECODE_POST_T1)
 
 /**
+ * @struct grk_plugin_tile
  * @brief Plugin tile
  */
 typedef struct _grk_plugin_tile
@@ -936,12 +964,12 @@ typedef struct _grk_plugin_tile
 } grk_plugin_tile;
 
 /**
- * @brief Library version
+ * @brief Gets library version
  */
 GRK_API const char* GRK_CALLCONV grk_version(void);
 
 /**
- * @brief Initialize library
+ * @brief Initializes library
  *
  * @param pluginPath 	path to plugin
  * @param num_threads 	number of threads to use for compress/decompress
@@ -951,19 +979,19 @@ GRK_API bool GRK_CALLCONV grk_initialize(const char* pluginPath, uint32_t num_th
 										 bool verbose);
 
 /**
- * @brief De-initialize library
+ * @brief De-initializes library
  */
 GRK_API void GRK_CALLCONV grk_deinitialize();
 
 /**
- * @brief Increment ref count
+ * @brief Increments ref count
  *
  * @param obj Grok object (see @ref grk_object)
  */
 GRK_API grk_object* GRK_CALLCONV grk_object_ref(grk_object* obj);
 
 /*
- * @brief Decrement ref count
+ * @brief Decrements ref count
  *
  * @param obj Grok object (see @ref grk_object)
  *
@@ -971,7 +999,7 @@ GRK_API grk_object* GRK_CALLCONV grk_object_ref(grk_object* obj);
 GRK_API void GRK_CALLCONV grk_object_unref(grk_object* obj);
 
 /**
- * @brief Set log message handlers
+ * @brief Sets log message handlers
  *
  * @param msg_handlers see @ref grk_msg_handlers
  *
@@ -979,7 +1007,7 @@ GRK_API void GRK_CALLCONV grk_object_unref(grk_object* obj);
 GRK_API void GRK_CALLCONV grk_set_msg_handlers(grk_msg_handlers msg_handlers);
 
 /**
- * @brief Create image
+ * @brief Creates image
  *
  * @param numcmpts      number of components
  * @param cmptparms     component parameters (see @ref grk_image_comp)
@@ -992,13 +1020,13 @@ GRK_API grk_image* GRK_CALLCONV grk_image_new(uint16_t numcmpts, grk_image_comp*
 											  GRK_COLOR_SPACE clrspc, bool alloc_data);
 
 /**
- * @brief Create meta
+ * @brief Creates meta
  *
  */
 GRK_API grk_image_meta* GRK_CALLCONV grk_image_meta_new(void);
 
 /**
- * @brief Detect JPEG 2000 format from file
+ * @brief Detects JPEG 2000 format from file
  *
  * Format is either GRK_FMT_J2K, GRK_FMT_JP2 or GRK_FMT_MJ2
  *
@@ -1012,7 +1040,7 @@ GRK_API bool GRK_CALLCONV grk_decompress_detect_format(const char* file_name,
 													   GRK_CODEC_FORMAT* fmt);
 
 /**
- * @brief Initialize decompress parameters with default values
+ * @brief Initializes decompress parameters with default values
  *
  * @param parameters decompression parameters (see @ref grk_decompress_parameters)
  */
@@ -1053,17 +1081,17 @@ GRK_API grk_progression_state GRK_CALLCONV
 	grk_decompress_get_progression_state(grk_object* codec, uint16_t tile_index);
 
 /**
- * @brief Set @ref grk_progression_state for a tile
+ * @brief Sets @ref grk_progression_state for a tile
  *
  * @param codec codec (see @ref grk_object)
  * @param state @ref grk_progression_state
- * @return true if tile exists in cache and state was set
+ * @return true if tile exists in cache and state marked tile as dirty
  */
 GRK_API bool GRK_CALLCONV grk_decompress_set_progression_state(grk_object* codec,
 															   grk_progression_state state);
 
 /**
- * @brief Decompress JPEG 2000 header
+ * @brief Decompresses JPEG 2000 header
  *
  * @param	codec				decompression codec (see @ref grk_object)
  * @param	header_info			information read from JPEG 2000 header (see @ref grk_header_info)
@@ -1075,7 +1103,7 @@ GRK_API bool GRK_CALLCONV grk_decompress_read_header(grk_object* codec,
 													 grk_header_info* header_info);
 
 /**
- * @brief Get decompressed tile image
+ * @brief Gets decompressed tile image
  *
  * @param	codec				decompression codec (see @ref grk_object)
  * @param	tile_index			tile index
@@ -1086,16 +1114,16 @@ GRK_API grk_image* GRK_CALLCONV grk_decompress_get_tile_image(grk_object* codec,
 															  uint16_t tile_index);
 
 /**
- * @brief Get decompressed composite image
+ * @brief Gets decompressed image
  *
  * @param	codec	decompression codec (see @ref grk_object)
  *
  * @return pointer to @ref grk_image
  */
-GRK_API grk_image* GRK_CALLCONV grk_decompress_get_composited_image(grk_object* codec);
+GRK_API grk_image* GRK_CALLCONV grk_decompress_get_image(grk_object* codec);
 
 /**
- * @brief Specifiy area to be decompressed.
+ * @brief Specifies area to be decompressed.
  *
  * This function should be called
  * right after grk_decompress_read_header is called, and before any tile header is read.
@@ -1113,7 +1141,7 @@ GRK_API bool GRK_CALLCONV grk_decompress_set_window(grk_object* codec, double st
 													double start_y, double end_x, double end_y);
 
 /**
- * @brief Decompress image from a JPEG 2000 code stream
+ * @brief Decompresses image from a JPEG 2000 code stream
  *
  * @param codec 	decompression codec (see @ref grk_object)
  * @param tile		tile struct from plugin (see @ref grk_plugin_tile)
@@ -1123,7 +1151,7 @@ GRK_API bool GRK_CALLCONV grk_decompress_set_window(grk_object* codec, double st
 GRK_API bool GRK_CALLCONV grk_decompress(grk_object* codec, grk_plugin_tile* tile);
 
 /**
- * @brief Decompress a specific tile
+ * @brief Decompresses a specific tile
  *
  * @param	codec			decompression codec (see @ref grk_object)
  * @param	tile_index		index of the tile to be decompressed
@@ -1135,7 +1163,8 @@ GRK_API bool GRK_CALLCONV grk_decompress_tile(grk_object* codec, uint16_t tile_i
 /* COMPRESSION FUNCTIONS*/
 
 /*
- * @ compressed image synthesis parameters
+ * @struct grk_synthesis
+ * @ brief compressed image synthesis parameters
  */
 typedef struct _grk_synthesis
 {
@@ -1147,6 +1176,7 @@ typedef struct _grk_synthesis
 } grk_synthesis;
 
 /**
+ * @struct grk_cparameters
  * @brief Compression parameters
  *
  */
@@ -1277,7 +1307,7 @@ typedef struct _grk_cparameters
 } grk_cparameters;
 
 /**
- * @brief Set compression parameters to default values:
+ * @brief Sets compression parameters to default values:
  *
  * Lossless
  * Single tile
@@ -1298,7 +1328,7 @@ typedef struct _grk_cparameters
 GRK_API void GRK_CALLCONV grk_compress_set_default_params(grk_cparameters* parameters);
 
 /**
- * @brief Initialize compression process.
+ * @brief Initializes compression process.
  *
  * @param stream_params Stream parameters (see @ref grk_stream_params)
  * @param parameters    Compression parameters (see @ref grk_cparameters)
@@ -1309,7 +1339,7 @@ GRK_API void GRK_CALLCONV grk_compress_set_default_params(grk_cparameters* param
 GRK_API grk_object* GRK_CALLCONV grk_compress_init(grk_stream_params* stream_params,
 												   grk_cparameters* parameters, grk_image* image);
 /**
- * @brief Compress an image into a JPEG 2000 code stream using plugin
+ * @brief Compresses an image into a JPEG 2000 code stream using plugin
  *
  * @param codec 		compression codec (see @ref grk_object)
  * @param tile			plugin tile (see @ref grk_plugin_tile)
@@ -1319,7 +1349,7 @@ GRK_API grk_object* GRK_CALLCONV grk_compress_init(grk_stream_params* stream_par
 GRK_API uint64_t GRK_CALLCONV grk_compress(grk_object* codec, grk_plugin_tile* tile);
 
 /**
- * @brief Dump codec information to file
+ * @brief Dumps codec information to file
  *
  * @param	codec			decompression codec (see @ref grk_object)
  * @param	info_flag		type of information dump.
@@ -1330,7 +1360,7 @@ GRK_API void GRK_CALLCONV grk_dump_codec(grk_object* codec, uint32_t info_flag,
 										 FILE* output_stream);
 
 /**
- * @brief Set MCT matrix
+ * @brief Sets MCT matrix
  *
  * @param	parameters		compression parameters (see @ref grk_cparameters)
  * @param	encoding_matrix	matrix
@@ -1571,6 +1601,7 @@ GRK_API bool GRK_CALLCONV grk_set_MCT(grk_cparameters* parameters, float* encodi
  *************************************************************************************/
 
 /**
+ * @struct grk_plugin_load_info
  * @brief Plugin load info
  *
  */
@@ -1581,14 +1612,14 @@ typedef struct _grk_plugin_load_info
 } grk_plugin_load_info;
 
 /**
- * @brief Load plugin
+ * @brief Loads plugin
  *
  * @param info		plugin loading info (see @ref grk_plugin_load_info)
  */
 GRK_API bool GRK_CALLCONV grk_plugin_load(grk_plugin_load_info info);
 
 /**
- * @brief Clean up plugin resources
+ * @brief Cleans up plugin resources
  */
 GRK_API void GRK_CALLCONV grk_plugin_cleanup(void);
 
@@ -1618,11 +1649,12 @@ GRK_API void GRK_CALLCONV grk_plugin_cleanup(void);
 #define GRK_PLUGIN_STATE_MCT_ONLY 0x8
 
 /**
- * @brief Get debug state of plugin
+ * @brief Gets debug state of plugin
  */
 GRK_API uint32_t GRK_CALLCONV grk_plugin_get_debug_state();
 
 /*
+ * @struct grk_plugin_init_info
  * @brief Plugin init info
  */
 typedef struct _grk_plugin_init_info
@@ -1634,12 +1666,17 @@ typedef struct _grk_plugin_init_info
 } grk_plugin_init_info;
 
 /**
- * @brief Initialize plugin
+ * @brief Initializes plugin
  *
  * @param init_info plugin init info (see @ref grk_plugin_init_info)
  */
 GRK_API bool GRK_CALLCONV grk_plugin_init(grk_plugin_init_info init_info);
 
+/**
+ * @struct grk_plugin_compress_user_callback_info
+ * @brief Plugin compress user callback info
+ *
+ */
 typedef struct grk_plugin_compress_user_callback_info
 {
    const char* input_file_name; /* input file name */
@@ -1672,7 +1709,7 @@ typedef struct grk_plugin_compress_batch_info
 } grk_plugin_compress_batch_info;
 
 /**
- * Compress with plugin
+ * Compresses with plugin
  *
  * @param compress_parameters 	compress parameters (see @ref grk_cparameters)
  * @param callback				callback (see @ref GRK_PLUGIN_COMPRESS_USER_CALLBACK)
@@ -1681,7 +1718,7 @@ GRK_API int32_t GRK_CALLCONV grk_plugin_compress(grk_cparameters* compress_param
 												 GRK_PLUGIN_COMPRESS_USER_CALLBACK callback);
 
 /**
- * @brief Batch compress with plugin
+ * @brief Batch-compresses with plugin
  *
  * @param info	batch compress info (see @ref grk_plugin_compress_batch_info)
  *
@@ -1691,12 +1728,12 @@ GRK_API int32_t GRK_CALLCONV grk_plugin_compress(grk_cparameters* compress_param
 GRK_API int32_t GRK_CALLCONV grk_plugin_batch_compress(grk_plugin_compress_batch_info info);
 
 /**
- * @brief Wait for batch job to complete
+ * @brief Waits for batch job to complete
  */
 GRK_API void GRK_CALLCONV grk_plugin_wait_for_batch_complete(void);
 
 /**
- * @brief Stop batch compress
+ * @brief Stops batch compress
  */
 GRK_API void GRK_CALLCONV grk_plugin_stop_batch_compress(void);
 
@@ -1706,6 +1743,7 @@ GRK_API void GRK_CALLCONV grk_plugin_stop_batch_compress(void);
 typedef int (*GROK_INIT_DECOMPRESSORS)(grk_header_info* header_info, grk_image* image);
 
 /**
+ * @struct grk_plugin_decompress_callback_info
  * @brief Plugin decompress callback info
  *
  */
@@ -1742,7 +1780,7 @@ typedef struct _grk_plugin_decompress_callback_info
 typedef int32_t (*grk_plugin_decompress_callback)(grk_plugin_decompress_callback_info* info);
 
 /**
- * @brief Decompress single image with plugin
+ * @brief Decompresses single image with plugin
  *
  * @param decompress_parameters  decompress parameters (see @ref grk_decompress_parameters)
  * @param callback  			 callback (see @ref grk_plugin_decompress_callback)
@@ -1753,7 +1791,7 @@ GRK_API int32_t GRK_CALLCONV grk_plugin_decompress(grk_decompress_parameters* de
 												   grk_plugin_decompress_callback callback);
 
 /**
- * @brief Initialize batch decompress with plugin
+ * @brief Initializes batch decompress with plugin
  *
  * @param input_dir input directory holding compressed images
  * @param output_dir output directory holding decompressed images
@@ -1767,14 +1805,14 @@ GRK_API int32_t GRK_CALLCONV grk_plugin_init_batch_decompress(
 	grk_plugin_decompress_callback callback);
 
 /**
- * @brief Initiate batch decompress
+ * @brief Initiates batch decompress
  *
  *  @return 0 if successful, otherwise return error code
  */
 GRK_API int32_t GRK_CALLCONV grk_plugin_batch_decompress(void);
 
 /**
- * @brief Stop batch decompress
+ * @brief Stops batch decompress
  */
 GRK_API void GRK_CALLCONV grk_plugin_stop_batch_decompress(void);
 

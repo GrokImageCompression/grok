@@ -30,7 +30,7 @@ from grok_core import (
     grk_object_unref,
     grk_stream_params,
     grk_header_info,
-    grk_decompress_get_composited_image,
+    grk_decompress_get_image,
 )
 
 class TileViewerContext:
@@ -97,7 +97,7 @@ class TileViewerContext:
             return None
 
         # Retrieve the decompressed image with the components
-        self.image = grk_decompress_get_composited_image(self.codec)
+        self.image = grk_decompress_get_image(self.codec)
         if self.image is None:
             print("Failed to retrieve image.")
             return None

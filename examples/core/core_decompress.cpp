@@ -241,7 +241,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
    }
 
    // retrieve image that will store uncompressed image data
-   image = grk_decompress_get_composited_image(codec);
+   image = grk_decompress_get_image(codec);
    if(!image)
    {
 	  fprintf(stderr, "Failed to retrieve image \n");

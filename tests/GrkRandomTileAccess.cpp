@@ -102,7 +102,7 @@ int GrkRandomTileAccess::main(int argc, char** argv)
 	  tile[2] = (uint16_t)(headerInfo.t_grid_width * headerInfo.t_grid_height - 1);
 	  tile[3] = (uint16_t)(tile[2] - headerInfo.t_grid_width);
 
-	  image = grk_decompress_get_composited_image(codec);
+	  image = grk_decompress_get_image(codec);
 	  rc = test_tile(tile[i], image, codec);
 
 	  grk_object_unref(codec);
