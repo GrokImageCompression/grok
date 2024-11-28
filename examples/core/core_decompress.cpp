@@ -135,7 +135,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
    grk_decompress_parameters decompressParams;
    grk_decompress_set_default_params(&decompressParams);
    decompressParams.compression_level = GRK_DECOMPRESS_COMPRESSION_LEVEL_DEFAULT;
-   decompressParams.verbose_ = true;
+   decompressParams.verbose = true;
 
    grk_image* image = nullptr;
    const char* inputFileStr = nullptr;

@@ -122,16 +122,19 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
 	  }
 	  if(!inputFromImage)
 	  {
-		 argString.push_back("-i " + inputFile);
+		 argString.push_back("-i");
+		 argString.push_back(inputFile);
 	  }
 
 	  if(outputToBuffer)
 	  {
-		 argString.push_back("--out-fmt jp2");
+		 argString.push_back("--out-fmt");
+		 argString.push_back("jp2");
 	  }
 	  else
 	  {
-		 argString.push_back("-o " + outputFile);
+		 argString.push_back("-o");
+		 argString.push_back(outputFile);
 	  }
 
 	  // 2. convert to array of C strings

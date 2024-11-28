@@ -72,6 +72,10 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
    grk_image_comp* components = nullptr;
    int32_t rc = EXIT_FAILURE;
 
+   // Choose one option:
+   // 1. outputToBuffer is true and useCallbacks is false
+   // 2. outputToBuffer is false and useCallbacks is true
+   // 3. outputToBuffer is true and useCallbacks is true
    bool outputToBuffer = false;
    bool useCallbacks = true;
 
