@@ -612,6 +612,8 @@ typedef struct _grk_decompress_core_params
 
    uint32_t random_access_flags; /* random access flags */
 
+   bool alloc_composite; /* allocate composite image data for multi-tile */
+
    grk_io_pixels_callback io_buffer_callback; /* IO buffer callback */
    void* io_user_data; /* IO user data */
    grk_io_register_reclaim_callback io_register_client_callback; /* IO register client callback */
