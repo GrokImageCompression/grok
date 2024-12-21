@@ -172,12 +172,7 @@ static int parseCommandLine(int argc, char** argv, grk_decompress_parameters* pa
 	  {
 		 const char* infile = inputArg.getValue().c_str();
 		 if(!grk_decompress_detect_format(infile, &parameters->decod_format))
-		 {
-			spdlog::error("Unknown input file format: {} \n"
-						  "        Known file formats are *.j2k, *.jp2 or *.jpc",
-						  infile);
 			return 1;
-		 }
 		 if(grk::strcpy_s(parameters->infile, sizeof(parameters->infile), infile) != 0)
 		 {
 			spdlog::error("Path is too long");

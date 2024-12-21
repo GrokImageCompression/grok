@@ -283,13 +283,22 @@ bool GRK_CALLCONV grk_decompress_detect_format(const char* fileName, GRK_CODEC_F
 
    auto reader = fopen(fileName, "rb");
    if(!reader)
+   {
+	  Logger::logger_.error("Unable to open file {}.", fileName);
 	  return false;
+   }
 
    bytesRead = fread(buf, 1, 12, reader);
    if(fclose(reader))
+   {
+	  Logger::logger_.error("Unable to close file {}.", fileName);
 	  return false;
+   }
    if(bytesRead != 12)
+   {
+	  Logger::logger_.error("Insufficient bytes to detect JPEG 2000 format in file {}.", fileName);
 	  return false;
+   }
 
    return grk_decompress_buffer_detect_format(buf, 12, fmt);
 }

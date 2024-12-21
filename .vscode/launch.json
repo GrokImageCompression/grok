@@ -39,6 +39,54 @@
                     "ignoreFailures": true
                 }
             ]
+        },
+        {
+            "name": "crash",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/bin/grk_decompress",
+            "args": [
+                "-i",
+                "~/temp/input_01",
+                "-o",
+                "~/temp/input_01.tif",
+                "-v"
+            ],
+            "stopAtEntry": true,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+        {
+            "name": "dump",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/bin/grk_dump",
+            "args": [
+                "-i",
+                "~/src/grok-test-data/input/nonregression/multi_tile_truncated_rgb.jp2",
+                "-o",
+                "~/temp/trunc.txt",
+                "-v"
+            ],
+            "stopAtEntry": true,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
         }
     ]
 }
