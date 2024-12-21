@@ -43,8 +43,8 @@ PacketManager::PacketManager(bool compression, GrkImage* img, CodingParams* cpar
    uint64_t max_precincts;
    uint32_t dx_min;
    uint32_t dy_min;
-   getParams(image, cp, tileno, &tileBounds_, &dx_min, &dy_min, includeTracker->numPrecinctsPerRes,
-			 &max_precincts, &max_res, precinctByComponent);
+   getParams(image, cp, tileno, &tileBounds_, &dx_min, &dy_min, includeTracker, &max_precincts,
+			 &max_res, precinctByComponent);
 
    pi_ = new PacketIter[numProgressions];
    for(uint32_t pino = 0; pino < numProgressions; ++pino)
@@ -107,7 +107,7 @@ void PacketManager::enable_tile_part_generation(uint32_t pino, bool first_poc_ti
 }
 void PacketManager::getParams(const GrkImage* image, const CodingParams* p_cp, uint16_t tileno,
 							  grk_rect32* tileBounds, uint32_t* dx_min, uint32_t* dy_min,
-							  uint64_t* numPrecinctsPerRes, uint64_t* max_precincts,
+							  IncludeTracker* includeTracker, uint64_t* max_precincts,
 							  uint8_t* max_res, uint32_t** precinctInfoByComponent)
 {
    assert(p_cp != nullptr);
@@ -123,11 +123,9 @@ void PacketManager::getParams(const GrkImage* image, const CodingParams* p_cp, u
    *dx_min = UINT_MAX;
    *dy_min = UINT_MAX;
 
-   if(numPrecinctsPerRes)
-   {
-	  for(uint32_t i = 0; i < GRK_MAXRLVLS; ++i)
-		 numPrecinctsPerRes[i] = 0;
-   }
+   // reset number of precincts per resolution
+   if(includeTracker)
+	  includeTracker->resetNumPrecinctsPerRes();
    auto tcp = &p_cp->tcps[tileno];
    for(uint16_t compno = 0; compno < image->numcomps; ++compno)
    {
@@ -171,8 +169,8 @@ void PacketManager::getParams(const GrkImage* image, const CodingParams* p_cp, u
 			*precinctInfo++ = precinctGridHeight;
 		 }
 		 uint64_t num_precincts = (uint64_t)precinctGridWidth * precinctGridHeight;
-		 if(numPrecinctsPerRes && num_precincts > numPrecinctsPerRes[resno])
-			numPrecinctsPerRes[resno] = num_precincts;
+		 if(includeTracker)
+			includeTracker->updateNumPrecinctsPerRes(resno, num_precincts);
 		 if(num_precincts > *max_precincts)
 			*max_precincts = num_precincts;
 

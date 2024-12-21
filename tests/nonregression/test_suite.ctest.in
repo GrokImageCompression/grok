@@ -737,3 +737,5 @@ grk_decompress -i  @INPUT_NR_PATH@/mono_plt_tlm.j2k -o @TEMP_PATH@/mono_plt_tlm_
 grk_decompress -i  @INPUT_NR_PATH@/mono_plt_tlm.j2k -o @TEMP_PATH@/mono_plt_tlm_tile5.pgm -t 5
 
 grk_decompress -i @INPUT_CONF_PATH@/a1_mono.j2c -o @TEMP_PATH@/a1_mono_tif-r-1.tif -r 1
+
+!grk_decompress -i  @INPUT_NR_PATH@/huge_number_of_precincts.j2k -o @TEMP_PATH@/huge_number_of_precincts.png

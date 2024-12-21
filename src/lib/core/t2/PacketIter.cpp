@@ -617,10 +617,7 @@ uint16_t PacketIter::getLayno(void) const
 {
    return layno;
 }
-uint8_t* PacketIter::get_include(uint16_t layerno)
-{
-   return packetManager->getIncludeTracker()->get_include(layerno, resno);
-}
+
 bool PacketIter::update_include(void)
 {
    if(singleProgression_)

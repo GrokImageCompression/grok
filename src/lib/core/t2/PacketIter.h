@@ -38,37 +38,135 @@ enum J2K_T2_MODE
    FINAL_PASS = 1 /** Function called in Tier 2 process*/
 };
 
+constexpr size_t GRK_INCLUDE_TRACKER_CHUNK_SIZE = 1024; // Define the size of each chunk
+
 struct ResIncludeBuffers
 {
    ResIncludeBuffers()
    {
 	  for(uint8_t i = 0; i < GRK_MAXRLVLS; ++i)
-		 buffers[i] = nullptr;
+	  {
+		 buffers[i] = nullptr; // Buffers start as nullptr
+	  }
    }
+
    ~ResIncludeBuffers()
    {
-	  for(uint8_t i = 0; i < GRK_MAXRLVLS; ++i)
-		 delete[] buffers[i];
+	  clear();
    }
-   uint8_t* buffers[GRK_MAXRLVLS];
+
+   // Lazily get or allocate the specific byte within a chunk for a given resolution
+   uint8_t* get_byte(uint8_t resno, uint64_t index)
+   {
+	  if(resno >= GRK_MAXRLVLS)
+	  {
+		 throw std::out_of_range("Resolution index out of range");
+	  }
+
+	  if(!buffers[resno])
+	  {
+		 buffers[resno] = new std::map<size_t, uint8_t*>(); // Lazily allocate the map
+	  }
+
+	  auto& chunks = *buffers[resno];
+	  uint64_t byteIndex = index / 8; // Byte index within the resolution's buffer
+	  uint64_t chunkIndex =
+		  byteIndex / GRK_INCLUDE_TRACKER_CHUNK_SIZE; // Determine which chunk to access
+	  uint64_t offset = byteIndex % GRK_INCLUDE_TRACKER_CHUNK_SIZE; // Offset within the chunk
+
+	  // Lazily allocate the chunk
+	  if(chunks.find(chunkIndex) == chunks.end())
+	  {
+		 chunks[chunkIndex] =
+			 new uint8_t[GRK_INCLUDE_TRACKER_CHUNK_SIZE](); // Allocate chunk lazily
+	  }
+
+	  return chunks[chunkIndex] + offset;
+   }
+
+   // Clear all allocated memory
+   void clear()
+   {
+	  for(uint8_t i = 0; i < GRK_MAXRLVLS; ++i)
+	  {
+		 if(buffers[i])
+		 {
+			for(auto& chunk : *buffers[i])
+			{
+			   delete[] chunk.second; // Delete each chunk
+			}
+			delete buffers[i]; // Delete the map
+			buffers[i] = nullptr;
+		 }
+	  }
+   }
+
+ private:
+   std::map<size_t, uint8_t*>*
+	   buffers[GRK_MAXRLVLS]; // Lazily allocated maps of chunks for each resolution
 };
+
 struct IncludeTracker
 {
    IncludeTracker(uint16_t numcomponents)
 	   : numcomps(numcomponents), currentLayer(0), currentResBuf(nullptr),
 		 include(new std::map<uint16_t, ResIncludeBuffers*>())
    {
-	  for(uint8_t i = 0; i < GRK_MAXRLVLS; ++i)
-		 numPrecinctsPerRes[i] = 0;
+	  resetNumPrecinctsPerRes();
    }
+
    ~IncludeTracker()
    {
 	  clear();
 	  delete include;
    }
+
+   bool update(uint16_t layno, uint8_t resno, uint16_t compno, uint64_t precno)
+   {
+	  auto include = get_include(layno, resno);
+	  auto numprecs = numPrecinctsPerRes[resno];
+	  uint64_t index = compno * numprecs + precno;
+	  uint64_t include_index = (index >> 3);
+	  uint32_t shift = (index & 7);
+	  uint8_t val = include[include_index];
+	  if(((val >> shift) & 1) == 0)
+	  {
+		 include[include_index] = (uint8_t)(val | (1 << shift));
+		 return true;
+	  }
+
+	  return false;
+   }
+
+   void clear()
+   {
+	  for(auto it = include->begin(); it != include->end(); ++it)
+	  {
+		 delete it->second;
+	  }
+	  include->clear();
+   }
+
+   void resetNumPrecinctsPerRes(void)
+   {
+	  for(uint8_t i = 0; i < GRK_MAXRLVLS; ++i)
+		 numPrecinctsPerRes[i] = 0;
+   }
+
+   void updateNumPrecinctsPerRes(uint8_t resno, uint64_t numPrecincts)
+   {
+	  if(numPrecincts > numPrecinctsPerRes[resno])
+	  {
+		 numPrecinctsPerRes[resno] = numPrecincts;
+	  }
+   }
+
+ private:
    uint8_t* get_include(uint16_t layerno, uint8_t resno)
    {
 	  ResIncludeBuffers* resBuf = nullptr;
+
+	  // Retrieve or create the ResIncludeBuffers for the current layer
 	  if(layerno == currentLayer && currentResBuf)
 	  {
 		 resBuf = currentResBuf;
@@ -87,43 +185,18 @@ struct IncludeTracker
 		 currentResBuf = resBuf;
 		 currentLayer = layerno;
 	  }
-	  auto buf = resBuf->buffers[resno];
-	  if(!buf)
-	  {
-		 auto numprecs = numPrecinctsPerRes[resno];
-		 auto len = (numprecs * numcomps + 7) / 8;
-		 assert(len <= std::numeric_limits<size_t>::max());
-		 buf = new uint8_t[(size_t)len];
-		 memset(buf, 0, (size_t)len);
-		 resBuf->buffers[resno] = buf;
-	  }
-	  return buf;
-   }
-   bool update(uint16_t layno, uint8_t resno, uint16_t compno, uint64_t precno)
-   {
-	  auto include = get_include(layno, resno);
+
+	  // Calculate the index in bits
 	  auto numprecs = numPrecinctsPerRes[resno];
-	  uint64_t index = compno * numprecs + precno;
-	  uint64_t include_index = (index >> 3);
-	  uint32_t shift = (index & 7);
-	  uint8_t val = include[include_index];
-	  if(((val >> shift) & 1) == 0)
-	  {
-		 include[include_index] = (uint8_t)(val | (1 << shift));
-		 return true;
-	  }
+	  auto len = (numprecs * numcomps + 7); // Total number of bits
+	  assert(len <= std::numeric_limits<size_t>::max());
 
-	  return false;
+	  // Use get_byte to allocate lazily
+	  return resBuf->get_byte(resno,
+							  len - 1); // Access the last byte to ensure the chunk is allocated
    }
-   void clear()
-   {
-	  for(auto it = include->begin(); it != include->end(); ++it)
-		 delete it->second;
-	  include->clear();
-   }
+
    uint64_t numPrecinctsPerRes[GRK_MAXRLVLS];
-
- private:
    uint16_t numcomps;
    uint16_t currentLayer;
    ResIncludeBuffers* currentResBuf;
@@ -236,7 +309,6 @@ struct PacketIter
    void genPrecinctInfo();
    void genPrecinctInfo(PiComp* comp, PiResolution* res, uint8_t resNumber);
 
-   uint8_t* get_include(uint16_t layerIndex);
    bool update_include(void);
    void destroy_include(void);
 

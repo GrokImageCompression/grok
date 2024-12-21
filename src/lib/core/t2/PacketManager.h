@@ -89,7 +89,7 @@ class PacketManager
 	*/
    static void getParams(const GrkImage* image, const CodingParams* p_cp, uint16_t tileno,
 						 grk_rect32* tileBounds, uint32_t* dx_min, uint32_t* dy_min,
-						 uint64_t* precincts, uint64_t* max_precincts, uint8_t* max_res,
+						 IncludeTracker* tracker, uint64_t* max_precincts, uint8_t* max_res,
 						 uint32_t** precinctByComponent);
    GrkImage* image;
    CodingParams* cp;
