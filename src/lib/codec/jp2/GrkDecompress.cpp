@@ -694,10 +694,7 @@ GrkRC GrkDecompress::parseCommandLine(int argc, char* argv[], DecompressInitPara
    {
 	  const char* infile = inputFile.c_str();
 	  if(!grk_decompress_detect_format(infile, &parameters->decod_format))
-	  {
-		 spdlog::error("Unable to open file {} for decoding.", infile);
 		 return GrkRCParseArgsFailed;
-	  }
 	  switch(parameters->decod_format)
 	  {
 		 case GRK_CODEC_J2K:
