@@ -49,8 +49,9 @@
                 "-i",
                 "~/temp/input_01",
                 "-o",
-                "~/temp/input_01.tif",
-                "-v"
+                "~/temp/input_01.png",
+                "-v",
+                "-d 0,0,1024,1024"
             ],
             "stopAtEntry": true,
             "cwd": "${workspaceFolder}",

@@ -577,7 +577,7 @@ bool TileProcessor::decompressT2T1(GrkImage* outputImage)
 			catch([[maybe_unused]] const std::bad_alloc& baex)
 			{
 			   std::string msg = std::string("Memory allocation failed: ") + baex.what();
-			   Logger::logger_.error("%s",msg.c_str());
+			   Logger::logger_.error("%s", msg.c_str());
 			   return false;
 			}
 		 }

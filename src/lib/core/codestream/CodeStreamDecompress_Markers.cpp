@@ -942,7 +942,15 @@ bool CodeStreamDecompress::read_cbd(uint8_t* headerData, uint16_t header_size)
 	  grk_read<uint8_t>(headerData++, &comp_def);
 	  auto comp = getHeaderImage()->comps + i;
 	  comp->sgnd = ((uint32_t)(comp_def >> 7U) & 1U);
-	  comp->prec = (uint8_t)((comp_def & 0x7f) + 1U);
+	  auto prec = (uint8_t)((comp_def & 0x7f) + 1U);
+	  if(prec > GRK_MAX_SUPPORTED_IMAGE_PRECISION)
+	  {
+		 Logger::logger_.error("CBD marker: precision %d for component %d is greater than maximum "
+							   "supported precision %d",
+							   prec, i, GRK_MAX_SUPPORTED_IMAGE_PRECISION);
+		 return false;
+	  }
+	  comp->prec = prec;
    }
 
    return true;
