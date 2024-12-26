@@ -174,11 +174,11 @@ typedef void (*grk_msg_callback)(const char* msg, void* client_data);
  * @brief Logging handlers
  *
  * @param info_callback info callback (see @ref grk_msg_callback)
+ * @param info_data info data
  * @param warn_callback warn callback (see @ref grk_msg_callback)
+ * @param warn_data warn data
  * @param error_callback error callback (see @ref grk_msg_callback)
- * @param info_user_data info user data
- * @param warn_user_data warn user data
- * @param error_user_data error user data
+ * @param error_data error data
  */
 typedef struct _grk_msg_handlers
 {
@@ -361,7 +361,7 @@ typedef struct _grk_palette_data
 /***
  * Channel Definition box structures and enums.
  * When no Component mapping box is present, it is still possible to have
- * a Channel defintion box, in which case channels are associated with components
+ * a Channel definition box, in which case channels are associated with components
  * in the obvious way : channel `k` corresponds to component `k`.
  * */
 
@@ -483,11 +483,11 @@ typedef struct _grk_io_init
 /**
  * @brief Grok IO callback
  *
- * @param thread_id thread id
+ * @param worker_id worker id
  * @param buffer io buffer (see @ref grk_io_buf)
  * @param io_user_data user data
  */
-typedef bool (*grk_io_callback)(uint32_t thread_id, grk_io_buf buffer, void* io_user_data);
+typedef bool (*grk_io_callback)(uint32_t worker_id, grk_io_buf buffer, void* io_user_data);
 
 /**
  * @brief Grok IO register reclaim callback
@@ -504,11 +504,11 @@ typedef void (*grk_io_register_reclaim_callback)(grk_io_init io_init,
 /**
  * @brief Grok IO pixels callback
  *
- * @param thread_id thread id
+ * @param worker_id worker id
  * @param buffer Grok io buffer (see @ref grk_io_buf)
  * @param user_data user data
  */
-typedef bool (*grk_io_pixels_callback)(uint32_t thread_id, grk_io_buf buffer, void* user_data);
+typedef bool (*grk_io_pixels_callback)(uint32_t worker_id, grk_io_buf buffer, void* user_data);
 
 /**
  * @brief Read stream callback
@@ -620,8 +620,8 @@ typedef struct _grk_decompress_core_params
 } grk_decompress_core_params;
 
 /**
- * @brief default compression level for decompress output file formats
- * that are also comressed, such as PNG or JPEG
+ * @brief default compression level for decompression output file formats
+ * that support compression
  *
  */
 #define GRK_DECOMPRESS_COMPRESSION_LEVEL_DEFAULT (UINT_MAX)
@@ -675,7 +675,7 @@ typedef struct _grk_decompress_params
    uint32_t duration; /* in seconds */
    uint32_t kernel_build_options; /* kernel build options */
    uint32_t repeats; /* repeats */
-   uint32_t num_threads; /* number of threads */
+   uint32_t num_workers; /* number of worker threads */
    void* user_data; /* user data */
 } grk_decompress_parameters;
 
@@ -974,10 +974,10 @@ GRK_API const char* GRK_CALLCONV grk_version(void);
  * @brief Initializes library
  *
  * @param pluginPath 	path to plugin
- * @param num_threads 	number of threads to use for compress/decompress
+ * @param num_workers 	number of worker threads to use for compress/decompress
  * @param verbose 	    toggle verbose mode
  */
-GRK_API bool GRK_CALLCONV grk_initialize(const char* pluginPath, uint32_t num_threads,
+GRK_API bool GRK_CALLCONV grk_initialize(const char* pluginPath, uint32_t num_workers,
 										 bool verbose);
 
 /**
@@ -1296,7 +1296,7 @@ typedef struct _grk_cparameters
    bool apply_icc; /* apply ICC */
 
    GRK_RATE_CONTROL_ALGORITHM rate_control_algorithm; /* rate control algorithm */
-   uint32_t num_threads; /* number of threads */
+   uint32_t num_workers; /* number of worker threads */
    int32_t device_id; /* device ID */
    uint32_t duration; /* duration seconds */
    uint32_t kernel_build_options; /* kernel build options */

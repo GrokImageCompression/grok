@@ -384,7 +384,7 @@ bool WaveletFwdImpl::encode_procedure(TileComponent* tilec)
    if(tilec->numresolutions == 1U)
 	  return true;
 
-   // const int num_threads = grk_thread_pool_get_thread_count(tp);
+   // const int num_workers = grk_thread_pool_get_thread_count(tp);
    uint32_t stride = tilec->getWindow()->getResWindowBufferHighestSimple().stride_;
    T* GRK_RESTRICT tiledp = (T*)tilec->getWindow()->getResWindowBufferHighestSimple().buf_;
 
@@ -406,7 +406,7 @@ bool WaveletFwdImpl::encode_procedure(TileComponent* tilec)
    if(dataSize != 0 && !bj)
 	  return false;
    int32_t i = maxNumResolutions;
-   uint32_t num_threads = ExecSingleton::get().num_workers() > 1 ? 2 : 1;
+   uint32_t num_workers = ExecSingleton::get().num_workers() > 1 ? 2 : 1;
    DWT dwt;
    while(i--)
    {
@@ -432,7 +432,7 @@ bool WaveletFwdImpl::encode_procedure(TileComponent* tilec)
 	  bool rc = true;
 
 	  /* Perform vertical pass */
-	  if(num_threads <= 1 || rw < 2 * NB_ELTS_V8)
+	  if(num_workers <= 1 || rw < 2 * NB_ELTS_V8)
 	  {
 		 uint32_t j;
 		 for(j = 0; j + NB_ELTS_V8 - 1 < rw; j += NB_ELTS_V8)
@@ -443,7 +443,7 @@ bool WaveletFwdImpl::encode_procedure(TileComponent* tilec)
 	  }
 	  else
 	  {
-		 uint32_t num_jobs = (uint32_t)num_threads;
+		 uint32_t num_jobs = (uint32_t)num_workers;
 		 uint32_t step_j;
 
 		 if(rw < num_jobs)
@@ -501,7 +501,7 @@ bool WaveletFwdImpl::encode_procedure(TileComponent* tilec)
 	  dn = (uint32_t)(rw - rw1);
 
 	  /* Perform horizontal pass */
-	  if(num_threads <= 1 || rh <= 1)
+	  if(num_workers <= 1 || rh <= 1)
 	  {
 		 uint32_t j;
 		 for(j = 0; j < rh; j++)
@@ -512,7 +512,7 @@ bool WaveletFwdImpl::encode_procedure(TileComponent* tilec)
 	  }
 	  else
 	  {
-		 uint32_t num_jobs = (uint32_t)num_threads;
+		 uint32_t num_jobs = (uint32_t)num_workers;
 		 uint32_t step_j;
 
 		 if(rh < num_jobs)

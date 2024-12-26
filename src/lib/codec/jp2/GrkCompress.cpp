@@ -636,7 +636,7 @@ static void compress_help_display(void)
    fprintf(stdout, "\n");
    fprintf(stdout, "Log to file. File name will be set to `output file name`\n");
    fprintf(stdout, "\n");
-   fprintf(stdout, " `-H, --num-threads [number of threads]`\n");
+   fprintf(stdout, " `-H, --num-workers [number of worker threads]`\n");
    fprintf(stdout, "\n");
    fprintf(stdout,
 		   "Number of threads used for T1 compression. Default is total number of logical\n");
@@ -931,7 +931,7 @@ GrkRC GrkCompress::pluginMain(int argc, char* argv[], CompressInitParams* initPa
 #endif
    initParams->initialized = true;
    // load plugin but do not actually create codec
-   if(!grk_initialize(initParams->pluginPath, initParams->parameters.num_threads,
+   if(!grk_initialize(initParams->pluginPath, initParams->parameters.num_workers,
 					  initParams->parameters.verbose))
    {
 	  return GrkRCFail;
@@ -1101,7 +1101,7 @@ GrkRC GrkCompress::parseCommandLine(int argc, char* argv[], CompressInitParams* 
    auto pluginPathOpt = app.add_option("-g,--plugin-path", pluginPathStr, "Plugin path");
    auto deviceIdOpt = app.add_option("-G,--device-id", deviceId, "Device ID")->default_val(0);
    auto numThreadsOpt =
-	   app.add_option("-H,--num-threads", numThreads, "Number of threads")->default_val(0);
+	   app.add_option("-H,--num-workers", numThreads, "Number of threads")->default_val(0);
    auto inputFileOpt = app.add_option("-i,--in-file", inputFile, "Input file");
    auto irreversibleOpt = app.add_flag("-I,--irreversible", irreversible, "Irreversible");
    auto licenseOpt = app.add_option("-j,--license", license, "License");
@@ -1204,7 +1204,7 @@ GrkRC GrkCompress::parseCommandLine(int argc, char* argv[], CompressInitParams* 
 		 parameters->rate_control_algorithm = (GRK_RATE_CONTROL_ALGORITHM)rateControlAlgorithm;
    }
    if(numThreadsOpt->count() > 0)
-	  parameters->num_threads = numThreads;
+	  parameters->num_workers = numThreads;
    if(deviceIdOpt->count() > 0)
 	  parameters->device_id = deviceId;
    if(durationOpt->count() > 0)

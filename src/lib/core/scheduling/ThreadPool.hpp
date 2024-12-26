@@ -37,7 +37,7 @@ class ExecSingleton
    ExecSingleton(const ExecSingleton&) = delete;
    ExecSingleton& operator=(const ExecSingleton&) = delete;
 
-   // Get instance of the Singleton with a specific number of threads
+   // Get instance of the Singleton with a specific number of worker threads
    static tf::Executor& instance(uint32_t numthreads)
    {
 	  std::lock_guard<std::mutex> lock(mutex_);

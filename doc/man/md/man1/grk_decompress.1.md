@@ -91,7 +91,7 @@ Output format used to decompress the code streams. Required when `-batch_src` op
 
 Reduce factor. Set the number of highest resolution levels to be discarded. The image resolution is effectively divided by 2 to the power of the number of discarded levels. The reduce factor is limited by the smallest total number of decomposition levels among tiles.
 
-`-l, --layer [layer number]`
+`-l, --layers [number of layers]`
 
 Layer number. Set the maximum number of quality layers to decode. If there are fewer quality layers than the specified number, all quality layers will be decoded.
 
@@ -169,7 +169,7 @@ argument to work correctly.
 
 Log to file. File name will be set to `output file name`
 
-`-H, -num--threads [number of threads]`
+`-H, --num-workers [number of worker threads]`
 
 Number of threads used for T1 compression. Default is total number of logical cores.
 

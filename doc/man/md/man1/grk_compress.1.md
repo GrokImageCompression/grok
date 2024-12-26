@@ -330,7 +330,7 @@ Apply ICC profile before compression, if present.
 
 Log to file. File name will be set to `output file name`
 
-`-H, --num-threads [number of threads]`
+`-H, --num-workers [number of worker threads]`
 
 Number of threads used for T1 compression. Default is total number of logical cores.
 

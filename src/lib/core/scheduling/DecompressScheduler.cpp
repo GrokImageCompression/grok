@@ -162,9 +162,9 @@ bool DecompressScheduler::scheduleBlocks(uint16_t compno)
 	  t1Implementations.push_back(
 		  T1Factory::makeT1(false, tcp_, codeblock_width, codeblock_height));
 
-   size_t num_threads = ExecSingleton::get().num_workers();
+   size_t num_workers = ExecSingleton::get().num_workers();
    success = true;
-   if(num_threads == 1)
+   if(num_workers == 1)
    {
 	  for(auto& rb : blocks)
 	  {

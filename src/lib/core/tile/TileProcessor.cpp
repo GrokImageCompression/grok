@@ -482,8 +482,8 @@ bool TileProcessor::decompressT2T1(GrkImage* outputImage)
 	  // 2.create and populate tasks, and execute
 	  if(parserCount)
 	  {
-		 auto num_threads = std::min<size_t>(ExecSingleton::get().num_workers(), parserCount);
-		 if(num_threads == 1)
+		 auto num_workers = std::min<size_t>(ExecSingleton::get().num_workers(), parserCount);
+		 if(num_workers == 1)
 		 {
 			for(uint16_t compno = 0; compno < headerImage->numcomps; ++compno)
 			{

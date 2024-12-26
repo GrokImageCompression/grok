@@ -246,7 +246,7 @@ static void decompress_help_display(void)
 		   "discarded levels. The reduce factor is limited by the smallest total number of\n");
    fprintf(stdout, "decomposition levels among tiles.\n");
    fprintf(stdout, "\n");
-   fprintf(stdout, " `-l, --layer [layer number]`\n");
+   fprintf(stdout, " `-l, --layers [number of layers]`\n");
    fprintf(stdout, "\n");
    fprintf(stdout,
 		   "Layer number. Set the maximum number of quality layers to decode. If there are\n");
@@ -377,7 +377,7 @@ static void decompress_help_display(void)
    fprintf(stdout, "\n");
    fprintf(stdout, "Log to file. File name will be set to `output file name`\n");
    fprintf(stdout, "\n");
-   fprintf(stdout, " `-H, --num-threads [number of threads]`\n");
+   fprintf(stdout, " `-H, --num-workers [number of worker threads]`\n");
    fprintf(stdout, "\n");
    fprintf(stdout,
 		   "Number of threads used for T1 compression. Default is total number of logical\n");
@@ -611,11 +611,11 @@ GrkRC GrkDecompress::parseCommandLine(int argc, char* argv[], DecompressInitPara
    auto forceRgbOpt = cmd.add_flag("-f,--force-rgb", forceRgb, "Force RGB");
    auto pluginPathOpt = cmd.add_option("-g,--plugin-path", pluginPathStr, "Plugin path");
    auto deviceIdOpt = cmd.add_option("-G,--device-id", deviceId, "Device ID");
-   auto numThreadsOpt = cmd.add_option("-H,--num-threads", numThreads, "Number of threads");
+   auto numThreadsOpt = cmd.add_option("-H,--num-workers", numThreads, "Number of threads");
    auto inputFileOpt = cmd.add_option("-i,--in-file", inputFile, "Input file");
    auto kernelBuildOptionsOpt =
 	   cmd.add_option("-k,--kernel_build", kernelBuildOptions, "Kernel build options");
-   auto layerOpt = cmd.add_option("-l,--layer", layer, "Layer");
+   auto layerOpt = cmd.add_option("-l,--layers", layer, "Layer");
    auto compressionLevelOpt =
 	   cmd.add_option("-L,--compression-level", compressionLevel, "Compression Level");
    auto randomAccessOpt = cmd.add_option("-m,--random-access", randomAccess,
@@ -832,7 +832,7 @@ GrkRC GrkDecompress::parseCommandLine(int argc, char* argv[], DecompressInitPara
    if(precisionOpt->count() > 0 && !parsePrecision(precision.c_str(), parameters))
 	  return GrkRCParseArgsFailed;
    if(numThreadsOpt->count() > 0)
-	  parameters->num_threads = numThreads;
+	  parameters->num_workers = numThreads;
    if(decodeRegionOpt->count() > 0)
    {
 	  size_t size_optarg = (size_t)strlen(decodeRegion.c_str()) + 1U;
@@ -984,7 +984,7 @@ GrkRC GrkDecompress::pluginMain(int argc, char* argv[], DecompressInitParams* in
 #endif
    initParams->initialized = true;
    // loads plugin but does not actually create codec
-   grk_initialize(initParams->pluginPath, initParams->parameters.num_threads,
+   grk_initialize(initParams->pluginPath, initParams->parameters.num_workers,
 				  initParams->parameters.verbose);
 
    // create codec
@@ -1153,8 +1153,8 @@ bool GrkDecompress::encodeInit(grk_plugin_decompress_callback_info* info)
    else if(cod_format == GRK_FMT_JPG || cod_format == GRK_FMT_PNG)
 	  compression_level = parameters->compression_level;
    if(!imageFormat->encodeInit(info->image, outfileStr, compression_level,
-							   info->decompressor_parameters->num_threads
-								   ? info->decompressor_parameters->num_threads
+							   info->decompressor_parameters->num_workers
+								   ? info->decompressor_parameters->num_workers
 								   : std::thread::hardware_concurrency()))
    {
 	  spdlog::error("Outfile {} not generated", outfileStr);
