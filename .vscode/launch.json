@@ -47,9 +47,9 @@
             "program": "${workspaceFolder}/build/bin/grk_decompress",
             "args": [
                 "-i",
-                "~/temp/input_01",
+                "~/Downloads/clusterfuzz-testcase-minimized-grk_decompress_fuzzer-5319359051923456",
                 "-o",
-                "~/temp/input_01.png",
+                "~/temp/fuzz.pgx",
                 "-v",
                 "-d 0,0,1024,1024"
             ],
