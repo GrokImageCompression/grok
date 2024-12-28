@@ -580,12 +580,14 @@ typedef struct _grk_stream_params
 /**
  * @brief Grok tile cache strategy
  */
-typedef enum _GRK_TILE_CACHE_STRATEGY
-{
-   GRK_TILE_CACHE_NONE, /* no tile caching */
-   GRK_TILE_CACHE_IMAGE, /* cache final tile image */
-   GRK_TILE_CACHE_ALL /* cache everything */
-} GRK_TILE_CACHE_STRATEGY;
+/* no tile caching */
+#define GRK_TILE_CACHE_NONE 0
+/* cache final tile image */
+#define GRK_TILE_CACHE_IMAGE 1
+/* cache each code block output */
+#define GRK_TILE_CACHE_BLOCK 2
+/* cache everything */
+#define GRK_TILE_CACHE_ALL 4
 
 /**
  * @struct grk_decompress_core_params
@@ -608,7 +610,7 @@ typedef struct _grk_decompress_core_params
   used, all the quality layers are decompressed
   */
    uint16_t layers_to_decompress; /* layers to decompress */
-   GRK_TILE_CACHE_STRATEGY tile_cache_strategy; /* tile cache strategy */
+   uint32_t tile_cache_strategy; /* tile cache strategy */
 
    uint32_t random_access_flags; /* random access flags */
 

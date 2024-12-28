@@ -35,13 +35,13 @@ struct TileCacheEntry
 class TileCache
 {
  public:
-   TileCache(GRK_TILE_CACHE_STRATEGY strategy);
+   TileCache(uint32_t strategy);
    TileCache(void);
    virtual ~TileCache();
 
    bool empty(void);
-   void setStrategy(GRK_TILE_CACHE_STRATEGY strategy);
-   GRK_TILE_CACHE_STRATEGY getStrategy(void);
+   void setStrategy(uint32_t strategy);
+   uint32_t getStrategy(void);
    TileCacheEntry* put(uint16_t tile_index, TileProcessor* processor);
    TileCacheEntry* get(uint16_t tile_index);
    GrkImage* getComposite(void);
@@ -52,7 +52,7 @@ class TileCache
    // each component is sub-sampled and resolution-reduced
    GrkImage* tileComposite;
    std::map<uint32_t, TileCacheEntry*> cache_;
-   GRK_TILE_CACHE_STRATEGY strategy_;
+   uint32_t strategy_;
 };
 
 } // namespace grk

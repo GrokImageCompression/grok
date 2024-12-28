@@ -161,7 +161,7 @@ GrkImage* TileProcessor::getImage(void)
 {
    return image_;
 }
-void TileProcessor::release(GRK_TILE_CACHE_STRATEGY strategy)
+void TileProcessor::release(uint32_t strategy)
 {
    // delete image in absence of tile cache strategy
    if(strategy == GRK_TILE_CACHE_NONE)

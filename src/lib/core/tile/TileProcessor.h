@@ -93,7 +93,7 @@ struct TileProcessor
    bool cacheTilePartPackets(CodeStreamDecompress* codeStream);
    void generateImage(GrkImage* src_image, Tile* src_tile);
    GrkImage* getImage(void);
-   void release(GRK_TILE_CACHE_STRATEGY strategy);
+   void release(uint32_t strategy);
    void setCorruptPacket(void);
    PacketTracker* getPacketTracker(void);
    grk_rect32 getUnreducedTileWindow(void);
