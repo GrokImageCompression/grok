@@ -503,12 +503,15 @@ bool GRK_CALLCONV grk_set_MCT(grk_cparameters* parameters, float* pEncodingMatri
 }
 grk_image* GRK_CALLCONV grk_decompress_get_tile_image(grk_object* codecWrapper, uint16_t tile_index)
 {
-   if(codecWrapper)
-   {
-	  auto codec = GrkCodec::getImpl(codecWrapper);
-	  return codec->decompressor_ ? codec->decompressor_->getImage(tile_index) : nullptr;
-   }
-   return nullptr;
+   if(!codecWrapper)
+	  return nullptr;
+   auto codec = GrkCodec::getImpl(codecWrapper);
+   if(!codec->decompressor_)
+	  return nullptr;
+   auto img = codec->decompressor_->getImage(tile_index);
+   if(!img)
+	  img = codec->decompressor_->getImage();
+   return img;
 }
 
 // no-op
