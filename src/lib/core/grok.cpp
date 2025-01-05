@@ -445,6 +445,11 @@ bool GRK_CALLCONV grk_decompress(grk_object* codecWrapper, grk_plugin_tile* tile
    }
    return false;
 }
+
+void GRK_CALLCONV grk_decompress_wait(grk_object* codecWrapper)
+{
+   (void)codecWrapper;
+}
 bool GRK_CALLCONV grk_decompress_tile(grk_object* codecWrapper, uint16_t tile_index)
 {
    if(codecWrapper)

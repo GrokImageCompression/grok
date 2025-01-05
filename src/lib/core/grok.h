@@ -18,6 +18,7 @@
  *    Please see the LICENSE file in the root directory for details.
  *
  */
+
 #pragma once
 
 #include <stdint.h>
@@ -560,6 +561,7 @@ typedef struct _grk_stream_params
 {
    /* 1. File */
    const char* file; /* file */
+   size_t file_offset; /* offset into file */
 
    /* 2. Buffer */
    uint8_t* buf; /* buffer */
@@ -636,6 +638,8 @@ typedef struct _grk_decompress_params
 {
    /** core library parameters */
    grk_decompress_core_params core; /* core */
+   /* If false then decompression is executed asynchronously */
+   bool synchronous;
    /** input file name */
    char infile[GRK_PATH_LEN]; /* input file */
    /** output file name */
@@ -1153,6 +1157,13 @@ GRK_API bool GRK_CALLCONV grk_decompress_set_window(grk_object* codec, double st
  * @return 			true if successful, otherwise false
  * */
 GRK_API bool GRK_CALLCONV grk_decompress(grk_object* codec, grk_plugin_tile* tile);
+
+/**
+ * @brief Waits for an asynchronous decompression to complete
+ *
+ * @param codecWrapper codec wrapper @ref grk_object
+ */
+GRK_API void GRK_CALLCONV grk_decompress_wait(grk_object* codecWrapper);
 
 /**
  * @brief Decompresses a specific tile
