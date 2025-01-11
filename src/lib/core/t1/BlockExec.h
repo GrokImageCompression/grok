@@ -22,8 +22,8 @@ namespace grk
 struct BlockExec
 {
    BlockExec()
-	   : tilec(nullptr), bandIndex(0), bandNumbps(0), bandOrientation(BAND_ORIENT_LL), stepsize(0),
-		 cblk_sty(0), qmfbid(0), x(0), y(0), k_msbs(0), R_b(0)
+       : tilec(nullptr), bandIndex(0), bandNumbps(0), bandOrientation(BAND_ORIENT_LL), stepsize(0),
+         cblk_sty(0), qmfbid(0), x(0), y(0), k_msbs(0), R_b(0)
    {}
    virtual bool open(T1Interface* t1) = 0;
    virtual ~BlockExec() = default;
@@ -46,7 +46,7 @@ struct DecompressBlockExec : public BlockExec
    DecompressBlockExec() : cblk(nullptr), resno(0), roishift(0) {}
    bool open(T1Interface* t1)
    {
-	  return t1->decompress(this);
+      return t1->decompress(this);
    }
    void close(void) {}
    DecompressCodeblock* cblk;
@@ -56,16 +56,16 @@ struct DecompressBlockExec : public BlockExec
 struct CompressBlockExec : public BlockExec
 {
    CompressBlockExec()
-	   : cblk(nullptr), tile(nullptr), doRateControl(false), distortion(0), tiledp(nullptr),
-		 compno(0), resno(0), precinctIndex(0), cblkno(0), inv_step_ht(0), mct_norms(nullptr),
+       : cblk(nullptr), tile(nullptr), doRateControl(false), distortion(0), tiledp(nullptr),
+         compno(0), resno(0), precinctIndex(0), cblkno(0), inv_step_ht(0), mct_norms(nullptr),
 #ifdef DEBUG_LOSSLESS_T1
-		 unencodedData(nullptr),
+         unencodedData(nullptr),
 #endif
-		 mct_numcomps(0)
+         mct_numcomps(0)
    {}
    bool open(T1Interface* t1)
    {
-	  return t1->compress(this);
+      return t1->compress(this);
    }
    void close(void) {}
    CompressCodeblock* cblk;

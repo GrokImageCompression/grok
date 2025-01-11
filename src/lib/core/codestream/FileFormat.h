@@ -59,9 +59,9 @@ namespace grk
 
 #define JP2_MAX_NUM_UUIDS 128
 const uint8_t IPTC_UUID[16] = {0x33, 0xC7, 0xA4, 0xD2, 0xB8, 0x1D, 0x47, 0x23,
-							   0xA0, 0xBA, 0xF1, 0xA3, 0xE0, 0x97, 0xAD, 0x38};
+                               0xA0, 0xBA, 0xF1, 0xA3, 0xE0, 0x97, 0xAD, 0x38};
 const uint8_t XMP_UUID[16] = {0xBE, 0x7A, 0xCF, 0xCB, 0x97, 0xA9, 0x42, 0xE8,
-							  0x9C, 0x71, 0x99, 0x94, 0x91, 0xE3, 0xAF, 0xAC};
+                              0x9C, 0x71, 0x99, 0x94, 0x91, 0xE3, 0xAF, 0xAC};
 
 #define GRK_BOX_SIZE 1024
 #define GRK_RESOLUTION_BOX_SIZE (4 + 4 + 10)
@@ -97,16 +97,16 @@ struct AsocBox : FileFormatBox, grk_buf8
 {
    ~AsocBox() override
    {
-	  dealloc();
+      dealloc();
    }
    void dealloc() override
    {
-	  grk_buf8::dealloc();
-	  for(auto& as : children)
-	  {
-		 delete as;
-	  }
-	  children.clear();
+      grk_buf8::dealloc();
+      for(auto& as : children)
+      {
+         delete as;
+      }
+      children.clear();
    }
    std::string label;
    std::vector<AsocBox*> children;
@@ -116,12 +116,12 @@ struct UUIDBox : public FileFormatBox, grk_buf8
 {
    UUIDBox()
    {
-	  memset(uuid, 0, sizeof(uuid));
+      memset(uuid, 0, sizeof(uuid));
    }
    UUIDBox(const uint8_t myuuid[16], uint8_t* buf, size_t size)
-	   : FileFormatBox(), grk_buf8(buf, size, false)
+       : FileFormatBox(), grk_buf8(buf, size, false)
    {
-	  memcpy(uuid, myuuid, 16);
+      memcpy(uuid, myuuid, 16);
    }
    uint8_t uuid[16];
 };

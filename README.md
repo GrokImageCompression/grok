@@ -13,7 +13,6 @@
 ### Features
 
 * support for High Throughput JPEG 2000 (HTJ2K) encode/decode
-* fast random-access sub-image decoding using `TLM` markers
 * full encode/decode support for `ICC` colour profiles
 * full encode/decode support for `XML`,`IPTC`, `XMP` and `EXIF` meta-data
 * full encode/decode support for `monochrome`, `sRGB`, `palette`, `YCC`, `extended YCC`, `CIELab` and `CMYK` colour spaces

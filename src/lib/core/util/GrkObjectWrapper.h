@@ -26,14 +26,14 @@ class GrkObjectWrapperImpl : public GrkObjectWrapper
    virtual ~GrkObjectWrapperImpl(void) = default;
    virtual void release(void)
    {
-	  assert(wrappee);
-	  delete wrappee;
-	  wrappee = nullptr;
+      assert(wrappee);
+      delete wrappee;
+      wrappee = nullptr;
    }
    T* getWrappee(void)
    {
-	  assert(wrappee);
-	  return wrappee;
+      assert(wrappee);
+      return wrappee;
    }
 
  private:

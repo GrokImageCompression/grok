@@ -107,11 +107,11 @@ passes, so as to restore the bytes temporarily overwritten.
 
 @param mqc MQC handle
 @param bp Pointer to the start of the buffer from which the bytes will be read
-	  Note that OPJ_COMMON_CBLK_DATA_EXTRA bytes at the end of the buffer
-	  will be temporarily overwritten with an artificial 0xFF 0xFF marker.
-	  (they will be backuped in the mqc structure to be restored later)
-	  So bp must be at least len + OPJ_COMMON_CBLK_DATA_EXTRA large, and
-	  writable.
+       Note that OPJ_COMMON_CBLK_DATA_EXTRA bytes at the end of the buffer
+       will be temporarily overwritten with an artificial 0xFF 0xFF marker.
+       (they will be backuped in the mqc structure to be restored later)
+       So bp must be at least len + OPJ_COMMON_CBLK_DATA_EXTRA large, and
+       writable.
 @param len Length of the input buffer
 */
 void mqc_init_dec(mqcoder* mqc, uint8_t* bp, uint32_t len);
@@ -124,11 +124,11 @@ passes, so as to restore the bytes temporarily overwritten.
 
 @param mqc MQC handle
 @param bp Pointer to the start of the buffer from which the bytes will be read
-	  Note that OPJ_COMMON_CBLK_DATA_EXTRA bytes at the end of the buffer
-	  will be temporarily overwritten with an artificial 0xFF 0xFF marker.
-	  (they will be backuped in the mqc structure to be restored later)
-	  So bp must be at least len + OPJ_COMMON_CBLK_DATA_EXTRA large, and
-	  writable.
+       Note that OPJ_COMMON_CBLK_DATA_EXTRA bytes at the end of the buffer
+       will be temporarily overwritten with an artificial 0xFF 0xFF marker.
+       (they will be backuped in the mqc structure to be restored later)
+       So bp must be at least len + OPJ_COMMON_CBLK_DATA_EXTRA large, and
+       writable.
 @param len Length of the input buffer
 */
 void mqc_raw_init_dec(mqcoder* mqc, uint8_t* bp, uint32_t len);

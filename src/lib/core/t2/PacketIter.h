@@ -53,148 +53,148 @@ constexpr size_t GRK_INCLUDE_TRACKER_CHUNK_SIZE = 1024;
 struct LayerIncludeBuffers
 {
    /**
-	* @brief Construct a new LayerIncludeBuffers object
-	*
-	*/
+    * @brief Construct a new LayerIncludeBuffers object
+    *
+    */
    LayerIncludeBuffers()
    {
-	  for(uint8_t i = 0; i < GRK_MAXRLVLS; ++i)
-		 chunkMap[i] = nullptr; // Buffers start as nullptr
+      for(uint8_t i = 0; i < GRK_MAXRLVLS; ++i)
+         chunkMap[i] = nullptr; // Buffers start as nullptr
    }
 
    /**
-	* @brief Destroy the LayerIncludeBuffers object
-	*
-	*/
+    * @brief Destroy the LayerIncludeBuffers object
+    *
+    */
    ~LayerIncludeBuffers()
    {
-	  clear();
+      clear();
    }
 
    /**
-	* @brief Get the byte object
-	* Lazily get or allocate a resolution's specific byte within its include buffer's matching
-	* chunk
-	*
-	* @param resno resolution
-	* @param precinctIndex compno * (num precincts for this resolution) + precinct number
-	* @return uint8_t* pointer to byte
-	*/
+    * @brief Get the byte object
+    * Lazily get or allocate a resolution's specific byte within its include buffer's matching
+    * chunk
+    *
+    * @param resno resolution
+    * @param precinctIndex compno * (num precincts for this resolution) + precinct number
+    * @return uint8_t* pointer to byte
+    */
    bool update(uint8_t resno, uint64_t bitIndex)
    {
-	  if(resno >= GRK_MAXRLVLS)
-		 throw std::out_of_range("Resolution index out of range");
+      if(resno >= GRK_MAXRLVLS)
+         throw std::out_of_range("Resolution index out of range");
 
-	  if(!chunkMap[resno])
-		 chunkMap[resno] = new std::map<size_t, uint8_t*>(); // Lazily allocate the map
+      if(!chunkMap[resno])
+         chunkMap[resno] = new std::map<size_t, uint8_t*>(); // Lazily allocate the map
 
-	  auto& chunks = *chunkMap[resno];
-	  uint64_t byteIndex = bitIndex >> 3; // Byte index within the resolution's buffer
-	  uint64_t chunkIndex =
-		  byteIndex / GRK_INCLUDE_TRACKER_CHUNK_SIZE; // Determine which chunk to access
-	  uint64_t chunkOffset = byteIndex % GRK_INCLUDE_TRACKER_CHUNK_SIZE; // Offset within the chunk
+      auto& chunks = *chunkMap[resno];
+      uint64_t byteIndex = bitIndex >> 3; // Byte index within the resolution's buffer
+      uint64_t chunkIndex =
+          byteIndex / GRK_INCLUDE_TRACKER_CHUNK_SIZE; // Determine which chunk to access
+      uint64_t chunkOffset = byteIndex % GRK_INCLUDE_TRACKER_CHUNK_SIZE; // Offset within the chunk
 
-	  // Lazily allocate the chunk
-	  if(chunks.find(chunkIndex) == chunks.end())
-		 chunks[chunkIndex] =
-			 new uint8_t[GRK_INCLUDE_TRACKER_CHUNK_SIZE](); // Allocate chunk lazily
+      // Lazily allocate the chunk
+      if(chunks.find(chunkIndex) == chunks.end())
+         chunks[chunkIndex] =
+             new uint8_t[GRK_INCLUDE_TRACKER_CHUNK_SIZE](); // Allocate chunk lazily
 
-	  auto include = chunks[chunkIndex] + chunkOffset;
-	  uint8_t bit = (bitIndex & 7);
-	  uint8_t val = include[byteIndex];
-	  if(((val >> bit) & 1) == 0)
-	  {
-		 include[byteIndex] = (uint8_t)(val | (1 << bit));
-		 return true;
-	  }
+      auto include = chunks[chunkIndex] + chunkOffset;
+      uint8_t bit = (bitIndex & 7);
+      uint8_t val = include[byteIndex];
+      if(((val >> bit) & 1) == 0)
+      {
+         include[byteIndex] = (uint8_t)(val | (1 << bit));
+         return true;
+      }
 
-	  return false;
+      return false;
    }
 
    /**
-	* @brief Clears all chunks and chunkMaps
-	*
-	*/
+    * @brief Clears all chunks and chunkMaps
+    *
+    */
    void clear()
    {
-	  for(uint8_t i = 0; i < GRK_MAXRLVLS; ++i)
-	  {
-		 if(chunkMap[i])
-		 {
-			for(auto& chunk : *chunkMap[i])
-			   delete[] chunk.second; // Delete each chunk
-			delete chunkMap[i]; // Delete the map
-			chunkMap[i] = nullptr;
-		 }
-	  }
+      for(uint8_t i = 0; i < GRK_MAXRLVLS; ++i)
+      {
+         if(chunkMap[i])
+         {
+            for(auto& chunk : *chunkMap[i])
+               delete[] chunk.second; // Delete each chunk
+            delete chunkMap[i]; // Delete the map
+            chunkMap[i] = nullptr;
+         }
+      }
    }
 
  private:
    /**
-	* @brief Lazily allocated maps of chunks for each resolution
-	*
-	*/
+    * @brief Lazily allocated maps of chunks for each resolution
+    *
+    */
    std::map<size_t, uint8_t*>* chunkMap[GRK_MAXRLVLS];
 };
 
 struct IncludeTracker
 {
    IncludeTracker(uint16_t numcomponents)
-	   : numcomps(numcomponents), currentLayer(0), currentLayerIncludeBuf(nullptr),
-		 include(new std::map<uint16_t, LayerIncludeBuffers*>())
+       : numcomps(numcomponents), currentLayer(0), currentLayerIncludeBuf(nullptr),
+         include(new std::map<uint16_t, LayerIncludeBuffers*>())
    {
-	  resetNumPrecinctsPerRes();
+      resetNumPrecinctsPerRes();
    }
 
    ~IncludeTracker()
    {
-	  clear();
-	  delete include;
+      clear();
+      delete include;
    }
 
    bool update(uint16_t layno, uint8_t resno, uint16_t compno, uint64_t precno)
    {
-	  LayerIncludeBuffers* layerBuf = nullptr;
+      LayerIncludeBuffers* layerBuf = nullptr;
 
-	  // Retrieve or create the ResIncludeBuffers for the current layer
-	  if(layno == currentLayer && currentLayerIncludeBuf)
-	  {
-		 layerBuf = currentLayerIncludeBuf;
-	  }
-	  else
-	  {
-		 if(include->find(layno) == include->end())
-			include->operator[](layno) = layerBuf = new LayerIncludeBuffers;
-		 else
-			layerBuf = include->operator[](layno);
-		 currentLayerIncludeBuf = layerBuf;
-		 currentLayer = layno;
-	  }
+      // Retrieve or create the ResIncludeBuffers for the current layer
+      if(layno == currentLayer && currentLayerIncludeBuf)
+      {
+         layerBuf = currentLayerIncludeBuf;
+      }
+      else
+      {
+         if(include->find(layno) == include->end())
+            include->operator[](layno) = layerBuf = new LayerIncludeBuffers;
+         else
+            layerBuf = include->operator[](layno);
+         currentLayerIncludeBuf = layerBuf;
+         currentLayer = layno;
+      }
 
-	  // Calculate the index in bits
-	  auto numprecs = numPrecinctsPerRes[resno];
-	  uint64_t bitIndex = compno * numprecs + precno;
+      // Calculate the index in bits
+      auto numprecs = numPrecinctsPerRes[resno];
+      uint64_t bitIndex = compno * numprecs + precno;
 
-	  return layerBuf->update(resno, bitIndex);
+      return layerBuf->update(resno, bitIndex);
    }
 
    void clear()
    {
-	  for(auto it = include->begin(); it != include->end(); ++it)
-		 delete it->second;
-	  include->clear();
+      for(auto it = include->begin(); it != include->end(); ++it)
+         delete it->second;
+      include->clear();
    }
 
    void resetNumPrecinctsPerRes(void)
    {
-	  for(uint8_t i = 0; i < GRK_MAXRLVLS; ++i)
-		 numPrecinctsPerRes[i] = 0;
+      for(uint8_t i = 0; i < GRK_MAXRLVLS; ++i)
+         numPrecinctsPerRes[i] = 0;
    }
 
    void updateNumPrecinctsPerRes(uint8_t resno, uint64_t numPrecincts)
    {
-	  if(numPrecincts > numPrecinctsPerRes[resno])
-		 numPrecinctsPerRes[resno] = numPrecincts;
+      if(numPrecincts > numPrecinctsPerRes[resno])
+         numPrecinctsPerRes[resno] = numPrecincts;
    }
 
  private:
@@ -216,7 +216,7 @@ struct ResPrecinctInfo
 {
    ResPrecinctInfo();
    bool init(uint8_t resno, uint8_t decomplevel, grk_rect32 tileBounds, uint32_t dx, uint32_t dy,
-			 bool windowed, grk_rect32 tileWindow);
+             bool windowed, grk_rect32 tileWindow);
    void print(void);
    uint32_t precWidthExp;
    uint32_t precHeightExp;
@@ -253,12 +253,12 @@ struct ResPrecinctInfo
 struct PiResolution
 {
    PiResolution()
-	   : precWidthExp(0), precHeightExp(0), precinctGridWidth(0), precinctGridHeight(0),
-		 precinctInfo(nullptr)
+       : precWidthExp(0), precHeightExp(0), precinctGridWidth(0), precinctGridHeight(0),
+         precinctInfo(nullptr)
    {}
    ~PiResolution()
    {
-	  delete precinctInfo;
+      delete precinctInfo;
    }
    uint32_t precWidthExp;
    uint32_t precHeightExp;
@@ -275,7 +275,7 @@ struct PiComp
    PiComp() : dx(0), dy(0), numresolutions(0), resolutions(nullptr) {}
    ~PiComp()
    {
-	  delete[] resolutions;
+      delete[] resolutions;
    }
 
    // component sub-sampling factors
@@ -294,18 +294,18 @@ struct PacketIter
    ~PacketIter();
 
    void init(PacketManager* packetMan, uint32_t pino, TileCodingParams* tcp, grk_rect32 tileBounds,
-			 bool compression, uint8_t max_res, uint64_t max_precincts,
-			 uint32_t* resolutionPrecinctGrid, uint32_t** precinctByComponent);
+             bool compression, uint8_t max_res, uint64_t max_precincts,
+             uint32_t* resolutionPrecinctGrid, uint32_t** precinctByComponent);
 
    void printStaticState(void);
    void printDynamicState(void);
 
    /**
-	Modify the packet iterator for enabling tile part generation
-	@param pino   	packet iterator number
-	@param first_poc_tile_part true for first POC tile part
-	@param tppos 	The position of the tile part flag in the progression order
-	*/
+     Modify the packet iterator for enabling tile part generation
+     @param pino   	packet iterator number
+     @param first_poc_tile_part true for first POC tile part
+     @param tppos 	The position of the tile part flag in the progression order
+     */
    void enable_tile_part_generation(uint32_t pino, bool first_poc_tile_part, uint32_t tppos);
 
    void genPrecinctInfo();
@@ -315,9 +315,9 @@ struct PacketIter
    void destroy_include(void);
 
    /**
-	Modify the packet iterator to point to the next packet
-	@return false if pi pointed to the final packet, otherwise true
-	*/
+     Modify the packet iterator to point to the next packet
+     @return false if pi pointed to the final packet, otherwise true
+     */
    bool next(SparseBuffer* src);
    GRK_PROG_ORDER getProgression(void) const;
    uint16_t getCompno(void) const;
@@ -366,32 +366,32 @@ struct PacketIter
    bool isWholeTile(void);
 
    /**
-	Get next packet in component-precinct-resolution-layer order.
-	@return returns false if pi pointed to the final packet, otherwise true
-	*/
+     Get next packet in component-precinct-resolution-layer order.
+     @return returns false if pi pointed to the final packet, otherwise true
+     */
    bool next_cprl(SparseBuffer* src);
    bool next_cprlOPT(SparseBuffer* src);
 
    /**
-	Get next packet in precinct-component-resolution-layer order.
-	@return returns false if pi pointed to the final packet, otherwise true
-	*/
+     Get next packet in precinct-component-resolution-layer order.
+     @return returns false if pi pointed to the final packet, otherwise true
+     */
    bool next_pcrl(SparseBuffer* src);
 
    /**
-	Get next packet in layer-resolution-component-precinct order.
-	@return returns false if pi pointed to the final packet, otherwise true
-	*/
+     Get next packet in layer-resolution-component-precinct order.
+     @return returns false if pi pointed to the final packet, otherwise true
+     */
    bool next_lrcp(SparseBuffer* src);
    /**
-	Get next packet in resolution-layer-component-precinct order.
-	@return returns false if pi pointed to the final packet, otherwise true
-	*/
+     Get next packet in resolution-layer-component-precinct order.
+     @return returns false if pi pointed to the final packet, otherwise true
+     */
    bool next_rlcp(SparseBuffer* src);
    /**
-	Get next packet in resolution-precinct-component-layer order.
-	@return returns false if pi pointed to the final packet, otherwise true
-	*/
+     Get next packet in resolution-precinct-component-layer order.
+     @return returns false if pi pointed to the final packet, otherwise true
+     */
    bool next_rpcl(SparseBuffer* src);
 
    bool skipPackets(SparseBuffer* src, uint64_t numPackets);

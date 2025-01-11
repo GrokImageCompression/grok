@@ -24,7 +24,7 @@
 namespace grk
 {
 void MycmsLogErrorHandlerFunction([[maybe_unused]] cmsContext ContextID,
-								  [[maybe_unused]] cmsUInt32Number ErrorCode, const char* Text)
+                                  [[maybe_unused]] cmsUInt32Number ErrorCode, const char* Text)
 {
    Logger::logger_.warn(" LCMS error: {}", Text);
 }
@@ -39,20 +39,20 @@ struct BoxWriteHandler
 };
 
 FileFormatCompress::FileFormatCompress(BufferedStream* stream)
-	: FileFormat(), codeStream(new CodeStreamCompress(stream)), needs_xl_jp2c_box_length(false),
-	  j2k_codestream_offset(0), inputImage_(nullptr)
+    : FileFormat(), codeStream(new CodeStreamCompress(stream)), needs_xl_jp2c_box_length(false),
+      j2k_codestream_offset(0), inputImage_(nullptr)
 {}
 FileFormatCompress::~FileFormatCompress()
 {
    if(inputImage_)
-	  grk_object_unref(&inputImage_->obj);
+      grk_object_unref(&inputImage_->obj);
    delete codeStream;
 }
 
 grk_color* FileFormatCompress::getColour(void)
 {
    if(!inputImage_ || !inputImage_->meta)
-	  return nullptr;
+      return nullptr;
 
    return &inputImage_->meta->color;
 }
@@ -63,13 +63,13 @@ bool FileFormatCompress::write_jp(void)
 
    /* write box length */
    if(!stream->writeInt(12))
-	  return false;
+      return false;
    /* writes box type */
    if(!stream->writeInt(JP2_JP))
-	  return false;
+      return false;
    /* writes magic number*/
    if(!stream->writeInt(0x0d0a870a))
-	  return false;
+      return false;
    return true;
 }
 bool FileFormatCompress::write_jp2c(void)
@@ -82,8 +82,8 @@ bool FileFormatCompress::write_jp2c(void)
    uint64_t j2k_codestream_exit = stream->tell();
    if(!stream->seek(j2k_codestream_offset))
    {
-	  Logger::logger_.error("Failed to seek in the stream.");
-	  return false;
+      Logger::logger_.error("Failed to seek in the stream.");
+      return false;
    }
 
    /* size of code stream */
@@ -92,26 +92,26 @@ bool FileFormatCompress::write_jp2c(void)
    // when file was written
    uint32_t signaledLength = 0;
    if(needs_xl_jp2c_box_length)
-	  signaledLength = 1;
+      signaledLength = 1;
    else
    {
-	  if(actualLength < (uint64_t)1 << 32)
-		 signaledLength = (uint32_t)actualLength;
+      if(actualLength < (uint64_t)1 << 32)
+         signaledLength = (uint32_t)actualLength;
    }
    if(!stream->writeInt(signaledLength))
-	  return false;
+      return false;
    if(!stream->writeInt(JP2_JP2C))
-	  return false;
+      return false;
    // XL box
    if(signaledLength == 1)
    {
-	  if(!stream->write64(actualLength))
-		 return false;
+      if(!stream->write64(actualLength))
+         return false;
    }
    if(!stream->seek(j2k_codestream_exit))
    {
-	  Logger::logger_.error("Failed to seek in the stream.");
-	  return false;
+      Logger::logger_.error("Failed to seek in the stream.");
+      return false;
    }
 
    return true;
@@ -126,39 +126,39 @@ bool FileFormatCompress::write_ftyp(void)
 
    if(!stream->writeInt(ftyp_size))
    {
-	  result = false;
-	  goto end;
+      result = false;
+      goto end;
    }
    if(!stream->writeInt(JP2_FTYP))
    {
-	  result = false;
-	  goto end;
+      result = false;
+      goto end;
    }
    if(!stream->writeInt(brand))
    {
-	  result = false;
-	  goto end;
+      result = false;
+      goto end;
    }
    /* MinV */
    if(!stream->writeInt(minversion))
    {
-	  result = false;
-	  goto end;
+      result = false;
+      goto end;
    }
 
    /* CL */
    for(uint32_t i = 0; i < numcl; i++)
    {
-	  if(!stream->writeInt(cl[i]))
-	  {
-		 result = false;
-		 goto end;
-	  }
+      if(!stream->writeInt(cl[i]))
+      {
+         result = false;
+         goto end;
+      }
    }
 
 end:
    if(!result)
-	  Logger::logger_.error("Error while writing ftyp data to stream");
+      Logger::logger_.error("Error while writing ftyp data to stream");
    return result;
 }
 bool FileFormatCompress::write_uuids(void)
@@ -169,21 +169,21 @@ bool FileFormatCompress::write_uuids(void)
    // write the uuids
    for(size_t i = 0; i < numUuids; ++i)
    {
-	  auto uuid = uuids + i;
-	  if(uuid->buf && uuid->len)
-	  {
-		 /* write box size */
-		 stream->writeInt((uint32_t)(8 + 16 + uuid->len));
+      auto uuid = uuids + i;
+      if(uuid->buf && uuid->len)
+      {
+         /* write box size */
+         stream->writeInt((uint32_t)(8 + 16 + uuid->len));
 
-		 /* JP2_UUID */
-		 stream->writeInt(JP2_UUID);
+         /* JP2_UUID */
+         stream->writeInt(JP2_UUID);
 
-		 /* uuid  */
-		 stream->writeBytes(uuid->uuid, 16);
+         /* uuid  */
+         stream->writeBytes(uuid->uuid, 16);
 
-		 /* uuid data */
-		 stream->writeBytes(uuid->buf, (uint32_t)uuid->len);
-	  }
+         /* uuid data */
+         stream->writeBytes(uuid->buf, (uint32_t)uuid->len);
+      }
    }
    return true;
 }
@@ -198,82 +198,82 @@ bool FileFormatCompress::write_jp2h(void)
    assert(stream != nullptr);
 
    writers[nb_writers++].handler =
-	   std::bind(&FileFormatCompress::write_ihdr, this, std::placeholders::_1);
+       std::bind(&FileFormatCompress::write_ihdr, this, std::placeholders::_1);
    if(bpc == 0xFF)
-	  writers[nb_writers++].handler =
-		  std::bind(&FileFormatCompress::write_bpc, this, std::placeholders::_1);
+      writers[nb_writers++].handler =
+          std::bind(&FileFormatCompress::write_bpc, this, std::placeholders::_1);
    writers[nb_writers++].handler =
-	   std::bind(&FileFormatCompress::write_colr, this, std::placeholders::_1);
+       std::bind(&FileFormatCompress::write_colr, this, std::placeholders::_1);
    if(inputImage_->meta)
    {
-	  if(getColour()->channel_definition)
-		 writers[nb_writers++].handler =
-			 std::bind(&FileFormatCompress::write_channel_definition, this, std::placeholders::_1);
-	  if(getColour()->palette)
-	  {
-		 writers[nb_writers++].handler =
-			 std::bind(&FileFormatCompress::write_palette_clr, this, std::placeholders::_1);
-		 writers[nb_writers++].handler =
-			 std::bind(&FileFormatCompress::write_component_mapping, this, std::placeholders::_1);
-	  }
+      if(getColour()->channel_definition)
+         writers[nb_writers++].handler =
+             std::bind(&FileFormatCompress::write_channel_definition, this, std::placeholders::_1);
+      if(getColour()->palette)
+      {
+         writers[nb_writers++].handler =
+             std::bind(&FileFormatCompress::write_palette_clr, this, std::placeholders::_1);
+         writers[nb_writers++].handler =
+             std::bind(&FileFormatCompress::write_component_mapping, this, std::placeholders::_1);
+      }
    }
    if(has_display_resolution || has_capture_resolution)
    {
-	  bool storeCapture = capture_resolution[0] > 0 && capture_resolution[1] > 0;
-	  bool storeDisplay = display_resolution[0] > 0 && display_resolution[1] > 0;
-	  if(storeCapture || storeDisplay)
-		 writers[nb_writers++].handler =
-			 std::bind(&FileFormatCompress::write_res, this, std::placeholders::_1);
+      bool storeCapture = capture_resolution[0] > 0 && capture_resolution[1] > 0;
+      bool storeDisplay = display_resolution[0] > 0 && display_resolution[1] > 0;
+      if(storeCapture || storeDisplay)
+         writers[nb_writers++].handler =
+             std::bind(&FileFormatCompress::write_res, this, std::placeholders::_1);
    }
    if(xml.buf && xml.len)
-	  writers[nb_writers++].handler =
-		  std::bind(&FileFormatCompress::write_xml, this, std::placeholders::_1);
+      writers[nb_writers++].handler =
+          std::bind(&FileFormatCompress::write_xml, this, std::placeholders::_1);
    for(i = 0; i < nb_writers; ++i)
    {
-	  auto current_writer = writers + i;
-	  current_writer->data_ = current_writer->handler(&(current_writer->size_));
-	  if(current_writer->data_ == nullptr)
-	  {
-		 Logger::logger_.error("Not enough memory to hold JP2 Header data");
-		 result = false;
-		 break;
-	  }
-	  jp2h_size += current_writer->size_;
+      auto current_writer = writers + i;
+      current_writer->data_ = current_writer->handler(&(current_writer->size_));
+      if(current_writer->data_ == nullptr)
+      {
+         Logger::logger_.error("Not enough memory to hold JP2 Header data");
+         result = false;
+         break;
+      }
+      jp2h_size += current_writer->size_;
    }
 
    if(!result)
    {
-	  for(i = 0; i < nb_writers; ++i)
-	  {
-		 auto current_writer = writers + i;
-		 grk_free(current_writer->data_);
-	  }
-	  return false;
+      for(i = 0; i < nb_writers; ++i)
+      {
+         auto current_writer = writers + i;
+         grk_free(current_writer->data_);
+      }
+      return false;
    }
 
    /* write super box size */
    if(!stream->writeInt(jp2h_size))
-	  result = false;
+      result = false;
    if(!stream->writeInt(JP2_JP2H))
-	  result = false;
+      result = false;
 
    if(result)
    {
-	  for(i = 0; i < nb_writers; ++i)
-	  {
-		 auto current_writer = writers + i;
-		 if(stream->writeBytes(current_writer->data_, current_writer->size_) !=
-			current_writer->size_)
-		 {
-			result = false;
-			break;
-		 }
-	  }
+      for(i = 0; i < nb_writers; ++i)
+      {
+         auto current_writer = writers + i;
+         if(stream->writeBytes(current_writer->data_, current_writer->size_) !=
+            current_writer->size_)
+         {
+            result = false;
+            break;
+         }
+      }
    }
    for(i = 0; i < nb_writers; ++i)
    {
-	  auto current_writer = writers + i;
-	  grk_free(current_writer->data_);
+      auto current_writer = writers + i;
+      grk_free(current_writer->data_);
    }
 
    return result;
@@ -285,10 +285,10 @@ uint8_t* FileFormatCompress::write_palette_clr(uint32_t* p_nb_bytes_written)
 
    uint32_t bytesPerEntry = 0;
    for(uint32_t i = 0; i < palette->num_channels; ++i)
-	  bytesPerEntry += ((palette->channel_prec[i] + 7U) / 8U);
+      bytesPerEntry += ((palette->channel_prec[i] + 7U) / 8U);
 
    uint32_t boxSize =
-	   4U + 4U + 2U + 1U + palette->num_channels + bytesPerEntry * palette->num_entries;
+       4U + 4U + 2U + 1U + palette->num_channels + bytesPerEntry * palette->num_entries;
 
    uint8_t* paletteBuf = (uint8_t*)grk_malloc(boxSize);
    uint8_t* palette_ptr = paletteBuf;
@@ -309,19 +309,19 @@ uint8_t* FileFormatCompress::write_palette_clr(uint32_t* p_nb_bytes_written)
    grk_write<uint8_t>(palette_ptr++, palette->num_channels);
 
    for(uint8_t i = 0; i < palette->num_channels; ++i)
-	  grk_write<uint8_t>(palette_ptr++, (uint8_t)(palette->channel_prec[i] - 1U)); // Bi
+      grk_write<uint8_t>(palette_ptr++, (uint8_t)(palette->channel_prec[i] - 1U)); // Bi
 
    // LUT values for all components
    auto lut_ptr = palette->lut;
    for(uint16_t j = 0; j < palette->num_entries; ++j)
    {
-	  for(uint8_t i = 0; i < palette->num_channels; ++i)
-	  {
-		 uint32_t bytes_to_write = (uint32_t)((palette->channel_prec[i] + 7U) >> 3);
-		 grk_write<int32_t>(palette_ptr, *lut_ptr, bytes_to_write); /* Cji */
-		 lut_ptr++;
-		 palette_ptr += bytes_to_write;
-	  }
+      for(uint8_t i = 0; i < palette->num_channels; ++i)
+      {
+         uint32_t bytes_to_write = (uint32_t)((palette->channel_prec[i] + 7U) >> 3);
+         grk_write<int32_t>(palette_ptr, *lut_ptr, bytes_to_write); /* Cji */
+         lut_ptr++;
+         palette_ptr += bytes_to_write;
+      }
    }
 
    *p_nb_bytes_written = boxSize;
@@ -346,11 +346,11 @@ uint8_t* FileFormatCompress::write_component_mapping(uint32_t* p_nb_bytes_writte
 
    for(uint32_t i = 0; i < palette->num_channels; ++i)
    {
-	  auto map = palette->component_mapping + i;
-	  grk_write<uint16_t>(cmapPtr, map->component); /* CMP^i */
-	  cmapPtr += 2;
-	  grk_write<uint8_t>(cmapPtr++, map->mapping_type); /* MTYP^i */
-	  grk_write<uint8_t>(cmapPtr++, map->palette_column); /* PCOL^i */
+      auto map = palette->component_mapping + i;
+      grk_write<uint16_t>(cmapPtr, map->component); /* CMP^i */
+      cmapPtr += 2;
+      grk_write<uint8_t>(cmapPtr++, map->mapping_type); /* MTYP^i */
+      grk_write<uint8_t>(cmapPtr++, map->palette_column); /* PCOL^i */
    }
 
    *p_nb_bytes_written = boxSize;
@@ -366,20 +366,20 @@ uint8_t* FileFormatCompress::write_colr(uint32_t* p_nb_bytes_written)
 
    switch(meth)
    {
-	  case 1:
-		 colr_size += 4; /* EnumCS */
-		 break;
-	  case 2:
-		 assert(getColour()->icc_profile_len); /* ICC profile */
-		 colr_size += getColour()->icc_profile_len;
-		 break;
-	  default:
-		 return nullptr;
+      case 1:
+         colr_size += 4; /* EnumCS */
+         break;
+      case 2:
+         assert(getColour()->icc_profile_len); /* ICC profile */
+         colr_size += getColour()->icc_profile_len;
+         break;
+      default:
+         return nullptr;
    }
 
    auto colr_data = (uint8_t*)grk_calloc(1, colr_size);
    if(!colr_data)
-	  return nullptr;
+      return nullptr;
 
    auto current_colr_ptr = colr_data;
 
@@ -401,17 +401,17 @@ uint8_t* FileFormatCompress::write_colr(uint32_t* p_nb_bytes_written)
    /* Meth value is restricted to 1 or 2 (Table I.9 of part 1) */
    if(meth == 1)
    {
-	  /* EnumCS */
-	  grk_write<uint32_t>(current_colr_ptr, enumcs, 4);
+      /* EnumCS */
+      grk_write<uint32_t>(current_colr_ptr, enumcs, 4);
    }
    else
    {
-	  /* ICC profile */
-	  if(meth == 2)
-	  {
-		 memcpy(current_colr_ptr, getColour()->icc_profile_buf, getColour()->icc_profile_len);
-		 current_colr_ptr += getColour()->icc_profile_len;
-	  }
+      /* ICC profile */
+      if(meth == 2)
+      {
+         memcpy(current_colr_ptr, getColour()->icc_profile_buf, getColour()->icc_profile_len);
+         current_colr_ptr += getColour()->icc_profile_len;
+      }
    }
    *p_nb_bytes_written = colr_size;
 
@@ -430,7 +430,7 @@ uint8_t* FileFormatCompress::write_channel_definition(uint32_t* p_nb_bytes_writt
 
    auto cdef_data = (uint8_t*)grk_malloc(cdef_size);
    if(!cdef_data)
-	  return nullptr;
+      return nullptr;
 
    auto current_cdef_ptr = cdef_data;
 
@@ -448,16 +448,16 @@ uint8_t* FileFormatCompress::write_channel_definition(uint32_t* p_nb_bytes_writt
 
    for(uint16_t i = 0U; i < getColour()->channel_definition->num_channel_descriptions; ++i)
    {
-	  /* Cni */
-	  grk_write<uint16_t>(current_cdef_ptr,
-						  getColour()->channel_definition->descriptions[i].channel);
-	  current_cdef_ptr += 2;
-	  /* Typi */
-	  grk_write<uint16_t>(current_cdef_ptr, getColour()->channel_definition->descriptions[i].typ);
-	  current_cdef_ptr += 2;
-	  /* Asoci */
-	  grk_write<uint16_t>(current_cdef_ptr, getColour()->channel_definition->descriptions[i].asoc);
-	  current_cdef_ptr += 2;
+      /* Cni */
+      grk_write<uint16_t>(current_cdef_ptr,
+                          getColour()->channel_definition->descriptions[i].channel);
+      current_cdef_ptr += 2;
+      /* Typi */
+      grk_write<uint16_t>(current_cdef_ptr, getColour()->channel_definition->descriptions[i].typ);
+      current_cdef_ptr += 2;
+      /* Asoci */
+      grk_write<uint16_t>(current_cdef_ptr, getColour()->channel_definition->descriptions[i].asoc);
+      current_cdef_ptr += 2;
    }
    *p_nb_bytes_written = cdef_size;
 
@@ -473,7 +473,7 @@ uint8_t* FileFormatCompress::write_bpc(uint32_t* p_nb_bytes_written)
 
    auto bpcc_data = (uint8_t*)grk_calloc(1, bpcc_size);
    if(!bpcc_data)
-	  return nullptr;
+      return nullptr;
 
    auto current_bpc_ptr = bpcc_data;
 
@@ -486,7 +486,7 @@ uint8_t* FileFormatCompress::write_bpc(uint32_t* p_nb_bytes_written)
    current_bpc_ptr += 4;
 
    for(i = 0; i < numcomps; ++i)
-	  grk_write(current_bpc_ptr++, comps[i].bpc);
+      grk_write(current_bpc_ptr++, comps[i].bpc);
    *p_nb_bytes_written = bpcc_size;
 
    return bpcc_data;
@@ -502,11 +502,11 @@ uint8_t* FileFormatCompress::write_res(uint32_t* p_nb_bytes_written)
 
    uint32_t size = (4 + 4) + GRK_RESOLUTION_BOX_SIZE;
    if(storeCapture && storeDisplay)
-	  size += GRK_RESOLUTION_BOX_SIZE;
+      size += GRK_RESOLUTION_BOX_SIZE;
 
    res_data = (uint8_t*)grk_calloc(1, size);
    if(!res_data)
-	  return nullptr;
+      return nullptr;
 
    current_res_ptr = res_data;
 
@@ -519,11 +519,11 @@ uint8_t* FileFormatCompress::write_res(uint32_t* p_nb_bytes_written)
    current_res_ptr += 4;
 
    if(storeCapture)
-	  write_res_box(capture_resolution[0], capture_resolution[1], JP2_CAPTURE_RES,
-					&current_res_ptr);
+      write_res_box(capture_resolution[0], capture_resolution[1], JP2_CAPTURE_RES,
+                    &current_res_ptr);
    if(storeDisplay)
-	  write_res_box(display_resolution[0], display_resolution[1], JP2_DISPLAY_RES,
-					&current_res_ptr);
+      write_res_box(display_resolution[0], display_resolution[1], JP2_DISPLAY_RES,
+                    &current_res_ptr);
    *p_nb_bytes_written = size;
 
    return res_data;
@@ -548,20 +548,20 @@ void FileFormatCompress::find_cf(double x, uint16_t* num, uint16_t* den)
    // The rest of the convergents (and continued fraction)
    for(i = 2; i < MAX_ITER; ++i)
    {
-	  a[i] = lrint(floor(x));
-	  p[i] = a[i] * p[i - 1] + p[i - 2];
-	  q[i] = a[i] * q[i - 1] + q[i - 2];
-	  bool overflow = (p[i] > USHRT_MAX) || (q[i] > USHRT_MAX);
-	  if(fabs(x - (double)a[i]) < eps || overflow)
-		 break;
-	  x = 1.0 / (x - (double)a[i]);
+      a[i] = lrint(floor(x));
+      p[i] = a[i] * p[i - 1] + p[i - 2];
+      q[i] = a[i] * q[i - 1] + q[i - 2];
+      bool overflow = (p[i] > USHRT_MAX) || (q[i] > USHRT_MAX);
+      if(fabs(x - (double)a[i]) < eps || overflow)
+         break;
+      x = 1.0 / (x - (double)a[i]);
    }
 
    *num = (uint16_t)(p[i - 1]);
    *den = (uint16_t)(q[i - 1]);
 }
 void FileFormatCompress::write_res_box(double resx, double resy, uint32_t box_id,
-									   uint8_t** current_res_ptr)
+                                       uint8_t** current_res_ptr)
 {
    /* write box size */
    grk_write<uint32_t>(*current_res_ptr, GRK_RESOLUTION_BOX_SIZE, 4);
@@ -582,42 +582,42 @@ void FileFormatCompress::write_res_box(double resx, double resy, uint32_t box_id
 
    for(size_t i = 0; i < 2; ++i)
    {
-	  // special case when res[i] is a whole number.
-	  exponent[i] = 0;
-	  double r = res[i];
-	  while(floor(r) == r)
-	  {
-		 if(r <= USHRT_MAX)
-			break;
-		 r /= 10;
-		 exponent[i]++;
-	  }
-	  if(floor(r) == r)
-	  {
-		 num[i] = (uint16_t)r;
-		 den[i] = 1;
-		 continue;
-	  }
-	  //////////////////////////////////////////
+      // special case when res[i] is a whole number.
+      exponent[i] = 0;
+      double r = res[i];
+      while(floor(r) == r)
+      {
+         if(r <= USHRT_MAX)
+            break;
+         r /= 10;
+         exponent[i]++;
+      }
+      if(floor(r) == r)
+      {
+         num[i] = (uint16_t)r;
+         den[i] = 1;
+         continue;
+      }
+      //////////////////////////////////////////
 
-	  exponent[i] = (int32_t)log10(res[i]);
-	  if(exponent[i] < 1)
-		 exponent[i] = 0;
-	  if(exponent[i] >= 1)
-		 res[i] /= pow(10, exponent[i]);
-	  find_cf(res[i], num + i, den + i);
+      exponent[i] = (int32_t)log10(res[i]);
+      if(exponent[i] < 1)
+         exponent[i] = 0;
+      if(exponent[i] >= 1)
+         res[i] /= pow(10, exponent[i]);
+      find_cf(res[i], num + i, den + i);
    }
    for(size_t i = 0; i < 2; ++i)
    {
-	  grk_write<uint16_t>(*current_res_ptr, num[i]);
-	  *current_res_ptr += 2;
-	  grk_write<uint16_t>(*current_res_ptr, den[i]);
-	  *current_res_ptr += 2;
+      grk_write<uint16_t>(*current_res_ptr, num[i]);
+      *current_res_ptr += 2;
+      grk_write<uint16_t>(*current_res_ptr, den[i]);
+      *current_res_ptr += 2;
    }
    for(size_t i = 0; i < 2; ++i)
    {
-	  grk_write<uint8_t>(*current_res_ptr, (uint8_t)exponent[i]);
-	  *current_res_ptr += 1;
+      grk_write<uint8_t>(*current_res_ptr, (uint8_t)exponent[i]);
+      *current_res_ptr += 1;
    }
 }
 uint8_t* FileFormatCompress::write_xml(uint32_t* p_nb_bytes_written)
@@ -625,7 +625,7 @@ uint8_t* FileFormatCompress::write_xml(uint32_t* p_nb_bytes_written)
    return write_buffer(JP2_XML, &xml, p_nb_bytes_written);
 }
 uint8_t* FileFormatCompress::write_buffer(uint32_t boxId, grk_buf8* buffer,
-										  uint32_t* p_nb_bytes_written)
+                                          uint32_t* p_nb_bytes_written)
 {
    assert(p_nb_bytes_written);
 
@@ -633,7 +633,7 @@ uint8_t* FileFormatCompress::write_buffer(uint32_t boxId, grk_buf8* buffer,
    uint32_t total_size = 8 + (uint32_t)buffer->len;
    auto data = (uint8_t*)grk_calloc(1, total_size);
    if(!data)
-	  return nullptr;
+      return nullptr;
 
    uint8_t* current_ptr = data;
 
@@ -659,7 +659,7 @@ uint8_t* FileFormatCompress::write_ihdr(uint32_t* p_nb_bytes_written)
    /* default image header is 22 bytes wide */
    auto ihdr_data = (uint8_t*)grk_calloc(1, 22);
    if(ihdr_data == nullptr)
-	  return nullptr;
+      return nullptr;
 
    auto current_ihdr_ptr = ihdr_data;
 
@@ -706,7 +706,7 @@ bool FileFormatCompress::start(void)
 
    /* validation of the parameters codec */
    if(!exec(validation_list_))
-	  return false;
+      return false;
 
    /* customization of the compressing */
    init_header_writing();
@@ -716,14 +716,14 @@ bool FileFormatCompress::start(void)
    uint64_t image_size = 0;
    for(auto i = 0U; i < p_image->numcomps; ++i)
    {
-	  auto comp = p_image->comps + i;
-	  image_size += (uint64_t)comp->w * comp->h * ((comp->prec + 7U) / 8);
+      auto comp = p_image->comps + i;
+      image_size += (uint64_t)comp->w * comp->h * ((comp->prec + 7U) / 8);
    }
    needs_xl_jp2c_box_length = (image_size > (uint64_t)1 << 30) ? true : false;
 
    /* write header */
    if(!exec(procedure_list_))
-	  return false;
+      return false;
 
    return codeStream->start();
 }
@@ -736,7 +736,7 @@ bool FileFormatCompress::init(grk_cparameters* parameters, GrkImage* image)
    uint16_t color_channels = 0U;
 
    if(!parameters || !image)
-	  return false;
+      return false;
 
    inputImage_ = image;
    grk_object_ref(&image->obj);
@@ -744,7 +744,7 @@ bool FileFormatCompress::init(grk_cparameters* parameters, GrkImage* image)
    cmsSetLogErrorHandler(MycmsLogErrorHandlerFunction);
 
    if(codeStream->init(parameters, inputImage_) == false)
-	  return false;
+      return false;
 
    /* Profile box */
    brand = parameters->cblk_sty == GRK_CBLKSTY_HT_ONLY ? JP2_JPH : JP2_JP2; /* BR */
@@ -753,8 +753,8 @@ bool FileFormatCompress::init(grk_cparameters* parameters, GrkImage* image)
    cl = (uint32_t*)grk_malloc(sizeof(uint32_t) * numcl);
    if(!cl)
    {
-	  Logger::logger_.error("Not enough memory when set up the JP2 compressor");
-	  return false;
+      Logger::logger_.error("Not enough memory when set up the JP2 compressor");
+      return false;
    }
    cl[0] = brand;
 
@@ -769,10 +769,10 @@ bool FileFormatCompress::init(grk_cparameters* parameters, GrkImage* image)
    bpc = (uint8_t)(depth_0 + (sign << 7));
    for(i = 1; i < inputImage_->numcomps; i++)
    {
-	  uint32_t depth = inputImage_->comps[i].prec - 1U;
-	  sign = inputImage_->comps[i].sgnd;
-	  if(depth_0 != depth)
-		 bpc = 0xFF;
+      uint32_t depth = inputImage_->comps[i].prec - 1U;
+      sign = inputImage_->comps[i].sgnd;
+      if(depth_0 != depth)
+         bpc = 0xFF;
    }
    C = 7; /* C : Always 7 */
    UnkC = 0; /* UnkC, colorspace specified in colr box */
@@ -781,9 +781,9 @@ bool FileFormatCompress::init(grk_cparameters* parameters, GrkImage* image)
    /* bit per component box */
    for(i = 0; i < inputImage_->numcomps; i++)
    {
-	  comps[i].bpc = (uint8_t)(inputImage_->comps[i].prec - 1);
-	  if(inputImage_->comps[i].sgnd)
-		 comps[i].bpc = (uint8_t)(comps[i].bpc + (1 << 7));
+      comps[i].bpc = (uint8_t)(inputImage_->comps[i].prec - 1);
+      if(inputImage_->comps[i].sgnd)
+         comps[i].bpc = (uint8_t)(comps[i].bpc + (1 << 7));
    }
 
    inputImage_->validateICC();
@@ -791,124 +791,124 @@ bool FileFormatCompress::init(grk_cparameters* parameters, GrkImage* image)
    /* Colour Specification box */
    if(inputImage_->color_space == GRK_CLRSPC_ICC)
    {
-	  meth = 2;
-	  enumcs = GRK_ENUM_CLRSPC_UNKNOWN;
+      meth = 2;
+      enumcs = GRK_ENUM_CLRSPC_UNKNOWN;
    }
    else
    {
-	  meth = 1;
-	  if(inputImage_->color_space == GRK_CLRSPC_CMYK)
-		 enumcs = GRK_ENUM_CLRSPC_CMYK;
-	  else if(inputImage_->color_space == GRK_CLRSPC_DEFAULT_CIE)
-		 enumcs = GRK_ENUM_CLRSPC_CIE;
-	  else if(inputImage_->color_space == GRK_CLRSPC_SRGB)
-		 enumcs = GRK_ENUM_CLRSPC_SRGB; /* sRGB as defined by IEC 61966-2-1 */
-	  else if(inputImage_->color_space == GRK_CLRSPC_GRAY)
-		 enumcs = GRK_ENUM_CLRSPC_GRAY; /* greyscale */
-	  else if(inputImage_->color_space == GRK_CLRSPC_SYCC)
-		 enumcs = GRK_ENUM_CLRSPC_SYCC; /* YUV */
-	  else if(inputImage_->color_space == GRK_CLRSPC_EYCC)
-		 enumcs = GRK_ENUM_CLRSPC_EYCC; /* YUV */
-	  else
-	  {
-		 Logger::logger_.error("Unsupported colour space enumeration %u", inputImage_->color_space);
-		 return false;
-	  }
+      meth = 1;
+      if(inputImage_->color_space == GRK_CLRSPC_CMYK)
+         enumcs = GRK_ENUM_CLRSPC_CMYK;
+      else if(inputImage_->color_space == GRK_CLRSPC_DEFAULT_CIE)
+         enumcs = GRK_ENUM_CLRSPC_CIE;
+      else if(inputImage_->color_space == GRK_CLRSPC_SRGB)
+         enumcs = GRK_ENUM_CLRSPC_SRGB; /* sRGB as defined by IEC 61966-2-1 */
+      else if(inputImage_->color_space == GRK_CLRSPC_GRAY)
+         enumcs = GRK_ENUM_CLRSPC_GRAY; /* greyscale */
+      else if(inputImage_->color_space == GRK_CLRSPC_SYCC)
+         enumcs = GRK_ENUM_CLRSPC_SYCC; /* YUV */
+      else if(inputImage_->color_space == GRK_CLRSPC_EYCC)
+         enumcs = GRK_ENUM_CLRSPC_EYCC; /* YUV */
+      else
+      {
+         Logger::logger_.error("Unsupported colour space enumeration %u", inputImage_->color_space);
+         return false;
+      }
    }
 
    // transfer buffer to uuid
    if(inputImage_->meta)
    {
-	  if(inputImage_->meta->iptc_len && inputImage_->meta->iptc_buf)
-		 uuids[numUuids++] =
-			 UUIDBox(IPTC_UUID, inputImage_->meta->iptc_buf, inputImage_->meta->iptc_len);
+      if(inputImage_->meta->iptc_len && inputImage_->meta->iptc_buf)
+         uuids[numUuids++] =
+             UUIDBox(IPTC_UUID, inputImage_->meta->iptc_buf, inputImage_->meta->iptc_len);
 
-	  if(inputImage_->meta->xmp_len && inputImage_->meta->xmp_buf)
-		 uuids[numUuids++] =
-			 UUIDBox(XMP_UUID, inputImage_->meta->xmp_buf, inputImage_->meta->xmp_len);
+      if(inputImage_->meta->xmp_len && inputImage_->meta->xmp_buf)
+         uuids[numUuids++] =
+             UUIDBox(XMP_UUID, inputImage_->meta->xmp_buf, inputImage_->meta->xmp_len);
    }
    /* Channel Definition box */
    for(i = 0; i < inputImage_->numcomps; i++)
    {
-	  if(inputImage_->comps[i].type != GRK_CHANNEL_TYPE_COLOUR)
-	  {
-		 alpha_count++;
-		 // technically, this is an error, but we will let it pass
-		 if(inputImage_->comps[i].sgnd)
-			Logger::logger_.warn("signed alpha channel %u", i);
-	  }
+      if(inputImage_->comps[i].type != GRK_CHANNEL_TYPE_COLOUR)
+      {
+         alpha_count++;
+         // technically, this is an error, but we will let it pass
+         if(inputImage_->comps[i].sgnd)
+            Logger::logger_.warn("signed alpha channel %u", i);
+      }
    }
    switch(enumcs)
    {
-	  case GRK_ENUM_CLRSPC_CMYK:
-		 color_channels = 4;
-		 break;
-	  case GRK_ENUM_CLRSPC_CIE:
-	  case GRK_ENUM_CLRSPC_SRGB:
-	  case GRK_ENUM_CLRSPC_SYCC:
-	  case GRK_ENUM_CLRSPC_EYCC:
-		 color_channels = 3;
-		 break;
-	  case GRK_ENUM_CLRSPC_GRAY:
-		 color_channels = 1;
-		 break;
-	  default:
-		 break;
+      case GRK_ENUM_CLRSPC_CMYK:
+         color_channels = 4;
+         break;
+      case GRK_ENUM_CLRSPC_CIE:
+      case GRK_ENUM_CLRSPC_SRGB:
+      case GRK_ENUM_CLRSPC_SYCC:
+      case GRK_ENUM_CLRSPC_EYCC:
+         color_channels = 3;
+         break;
+      case GRK_ENUM_CLRSPC_GRAY:
+         color_channels = 1;
+         break;
+      default:
+         break;
    }
    if(alpha_count)
    {
-	  if(!inputImage_->meta)
-		 inputImage_->meta = grk_image_meta_new();
-	  getColour()->channel_definition = new grk_channel_definition();
-	  getColour()->channel_definition->descriptions =
-		  new grk_channel_description[inputImage_->numcomps];
-	  getColour()->channel_definition->num_channel_descriptions = inputImage_->numcomps;
-	  for(i = 0U; i < color_channels; i++)
-	  {
-		 getColour()->channel_definition->descriptions[i].channel = i;
-		 getColour()->channel_definition->descriptions[i].typ = GRK_CHANNEL_TYPE_COLOUR;
-		 getColour()->channel_definition->descriptions[i].asoc = (uint16_t)(i + 1U);
-	  }
-	  for(; i < inputImage_->numcomps; i++)
-	  {
-		 getColour()->channel_definition->descriptions[i].channel = i;
-		 getColour()->channel_definition->descriptions[i].typ = inputImage_->comps[i].type;
-		 getColour()->channel_definition->descriptions[i].asoc = inputImage_->comps[i].association;
-	  }
+      if(!inputImage_->meta)
+         inputImage_->meta = grk_image_meta_new();
+      getColour()->channel_definition = new grk_channel_definition();
+      getColour()->channel_definition->descriptions =
+          new grk_channel_description[inputImage_->numcomps];
+      getColour()->channel_definition->num_channel_descriptions = inputImage_->numcomps;
+      for(i = 0U; i < color_channels; i++)
+      {
+         getColour()->channel_definition->descriptions[i].channel = i;
+         getColour()->channel_definition->descriptions[i].typ = GRK_CHANNEL_TYPE_COLOUR;
+         getColour()->channel_definition->descriptions[i].asoc = (uint16_t)(i + 1U);
+      }
+      for(; i < inputImage_->numcomps; i++)
+      {
+         getColour()->channel_definition->descriptions[i].channel = i;
+         getColour()->channel_definition->descriptions[i].typ = inputImage_->comps[i].type;
+         getColour()->channel_definition->descriptions[i].asoc = inputImage_->comps[i].association;
+      }
    }
    precedence = 0; /* PRECEDENCE */
    approx = 0; /* APPROX */
    has_capture_resolution =
-	   parameters->write_capture_resolution || parameters->write_capture_resolution_from_file;
+       parameters->write_capture_resolution || parameters->write_capture_resolution_from_file;
    if(parameters->write_capture_resolution)
    {
-	  for(i = 0; i < 2; ++i)
-		 capture_resolution[i] = parameters->capture_resolution[i];
+      for(i = 0; i < 2; ++i)
+         capture_resolution[i] = parameters->capture_resolution[i];
    }
    else if(parameters->write_capture_resolution_from_file)
    {
-	  for(i = 0; i < 2; ++i)
-		 capture_resolution[i] = parameters->capture_resolution_from_file[i];
+      for(i = 0; i < 2; ++i)
+         capture_resolution[i] = parameters->capture_resolution_from_file[i];
    }
    if(parameters->write_display_resolution)
    {
-	  has_display_resolution = true;
-	  display_resolution[0] = parameters->display_resolution[0];
-	  display_resolution[1] = parameters->display_resolution[1];
-	  // if display resolution equals (0,0), then use capture resolution
-	  // if available
-	  if(parameters->display_resolution[0] == 0 && parameters->display_resolution[1] == 0)
-	  {
-		 if(has_capture_resolution)
-		 {
-			display_resolution[0] = parameters->capture_resolution[0];
-			display_resolution[1] = parameters->capture_resolution[1];
-		 }
-		 else
-		 {
-			has_display_resolution = false;
-		 }
-	  }
+      has_display_resolution = true;
+      display_resolution[0] = parameters->display_resolution[0];
+      display_resolution[1] = parameters->display_resolution[1];
+      // if display resolution equals (0,0), then use capture resolution
+      // if available
+      if(parameters->display_resolution[0] == 0 && parameters->display_resolution[1] == 0)
+      {
+         if(has_capture_resolution)
+         {
+            display_resolution[0] = parameters->capture_resolution[0];
+            display_resolution[1] = parameters->capture_resolution[1];
+         }
+         else
+         {
+            has_display_resolution = false;
+         }
+      }
    }
 
    return true;
@@ -917,7 +917,7 @@ uint64_t FileFormatCompress::compress(grk_plugin_tile* tile)
 {
    auto rc = codeStream->compress(tile);
    if(rc && !end())
-	  return 0;
+      return 0;
 
    return rc;
 }
@@ -977,7 +977,7 @@ bool FileFormatCompress::default_validation(void)
    /* number of components */
    /* precision */
    for(i = 0; i < numcomps; ++i)
-	  valid &= ((comps[i].bpc & 0x7FU) < maxPrecisionJ2K); /* 0 is valid, ignore sign for check */
+      valid &= ((comps[i].bpc & 0x7FU) < maxPrecisionJ2K); /* 0 is valid, ignore sign for check */
 
    /* METH */
    valid &= ((meth > 0) && (meth < 3));

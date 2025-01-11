@@ -33,7 +33,7 @@ struct TileComponent : public grk_rect32
    void createWindow(grk_rect32 unreducedTileCompOrImageCompWindow);
    void dealloc(void);
    bool init(TileProcessor* tileProcessor, grk_rect32 unreducedTileComp, uint8_t prec,
-			 TileComponentCodingParams* tccp);
+             TileComponentCodingParams* tccp);
    bool subbandIntersectsAOI(uint8_t resno, eBandOrientation orient, const grk_rect32* aoi) const;
 
    TileComponentWindow<int32_t>* getWindow() const;

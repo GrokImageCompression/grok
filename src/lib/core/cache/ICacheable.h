@@ -32,19 +32,19 @@ class ICacheable
    virtual ~ICacheable() = default;
    bool isOpen(void)
    {
-	  return state_ == GRK_CACHE_STATE_OPEN;
+      return state_ == GRK_CACHE_STATE_OPEN;
    }
    bool isClosed(void)
    {
-	  return state_ == GRK_CACHE_STATE_CLOSED;
+      return state_ == GRK_CACHE_STATE_CLOSED;
    }
    bool isError(void)
    {
-	  return state_ == GRK_CACHE_STATE_ERROR;
+      return state_ == GRK_CACHE_STATE_ERROR;
    }
    void setCacheState(GrkCacheState state)
    {
-	  state_ = state;
+      state_ = state;
    }
 
  private:

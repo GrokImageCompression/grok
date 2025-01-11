@@ -54,14 +54,14 @@ bool grk_memcheck_all(const T* buf, size_t len, std::string msg)
    bool rc = true;
    for(uint32_t i = 0; i < len; ++i)
    {
-	  auto val = grk_memcheck<T>(buf + i, 1);
-	  if(val != grk_mem_ok)
-	  {
-		 std::ostringstream ss;
-		 ss << msg << " " << "offset = " << i + val;
-		 Logger::logger_.error(ss.str().c_str());
-		 rc = false;
-	  }
+      auto val = grk_memcheck<T>(buf + i, 1);
+      if(val != grk_mem_ok)
+      {
+         std::ostringstream ss;
+         ss << msg << " " << "offset = " << i + val;
+         Logger::logger_.error(ss.str().c_str());
+         rc = false;
+      }
    }
    return rc;
 }

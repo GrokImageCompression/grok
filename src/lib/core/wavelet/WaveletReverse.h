@@ -32,17 +32,17 @@ template<typename T, typename S>
 struct TaskInfo
 {
    TaskInfo(S data, grk_buf2d_simple<T> winLL, grk_buf2d_simple<T> winHL, grk_buf2d_simple<T> winLH,
-			grk_buf2d_simple<T> winHH, grk_buf2d_simple<T> winDest, uint32_t indexMin,
-			uint32_t indexMax)
-	   : data(data), winLL(winLL), winHL(winHL), winLH(winLH), winHH(winHH), winDest(winDest),
-		 indexMin_(indexMin), indexMax_(indexMax)
+            grk_buf2d_simple<T> winHH, grk_buf2d_simple<T> winDest, uint32_t indexMin,
+            uint32_t indexMax)
+       : data(data), winLL(winLL), winHL(winHL), winLH(winLH), winHH(winHH), winDest(winDest),
+         indexMin_(indexMin), indexMax_(indexMax)
    {}
    TaskInfo(S data, uint32_t indexMin, uint32_t indexMax)
-	   : data(data), indexMin_(indexMin), indexMax_(indexMax)
+       : data(data), indexMin_(indexMin), indexMax_(indexMax)
    {}
    ~TaskInfo(void)
    {
-	  data.release();
+      data.release();
    }
    S data;
    grk_buf2d_simple<T> winLL;
@@ -67,51 +67,51 @@ template<typename T>
 struct dwt_data
 {
    dwt_data(void)
-	   : allocatedMem(nullptr), lenBytes_(0), paddingBytes_(0), mem(nullptr), memL(nullptr),
-		 memH(nullptr), sn_full(0), dn_full(0), parity(0), resno(0)
+       : allocatedMem(nullptr), lenBytes_(0), paddingBytes_(0), mem(nullptr), memL(nullptr),
+         memH(nullptr), sn_full(0), dn_full(0), parity(0), resno(0)
    {}
    dwt_data(const dwt_data& rhs)
-	   : allocatedMem(nullptr), lenBytes_(0), paddingBytes_(0), mem(nullptr), memL(nullptr),
-		 memH(nullptr), sn_full(rhs.sn_full), dn_full(rhs.dn_full), parity(rhs.parity),
-		 win_l(rhs.win_l), win_h(rhs.win_h), resno(rhs.resno)
+       : allocatedMem(nullptr), lenBytes_(0), paddingBytes_(0), mem(nullptr), memL(nullptr),
+         memH(nullptr), sn_full(rhs.sn_full), dn_full(rhs.dn_full), parity(rhs.parity),
+         win_l(rhs.win_l), win_h(rhs.win_h), resno(rhs.resno)
    {}
    ~dwt_data(void)
    {
-	  release();
+      release();
    }
    bool alloc(size_t len)
    {
-	  return alloc(len, 0);
+      return alloc(len, 0);
    }
    bool alloc(size_t len, size_t padding)
    {
-	  release();
+      release();
 
-	  /* overflow check */
-	  if(len > (SIZE_MAX / sizeof(T)))
-	  {
-		 Logger::logger_.error("data size overflow");
-		 return false;
-	  }
-	  paddingBytes_ = grk_make_aligned_width((uint32_t)padding * 2 + 32) * sizeof(T);
-	  lenBytes_ = len * sizeof(T) + 2 * paddingBytes_;
-	  allocatedMem = (T*)grk_aligned_malloc(lenBytes_);
-	  if(!allocatedMem)
-	  {
-		 Logger::logger_.error("Failed to allocate %u bytes", lenBytes_);
-		 return false;
-	  }
-	  mem = allocatedMem + paddingBytes_ / sizeof(T);
+      /* overflow check */
+      if(len > (SIZE_MAX / sizeof(T)))
+      {
+         Logger::logger_.error("data size overflow");
+         return false;
+      }
+      paddingBytes_ = grk_make_aligned_width((uint32_t)padding * 2 + 32) * sizeof(T);
+      lenBytes_ = len * sizeof(T) + 2 * paddingBytes_;
+      allocatedMem = (T*)grk_aligned_malloc(lenBytes_);
+      if(!allocatedMem)
+      {
+         Logger::logger_.error("Failed to allocate %u bytes", lenBytes_);
+         return false;
+      }
+      mem = allocatedMem + paddingBytes_ / sizeof(T);
 
-	  return (allocatedMem != nullptr) ? true : false;
+      return (allocatedMem != nullptr) ? true : false;
    }
    void release(void)
    {
-	  grk_aligned_free(allocatedMem);
-	  allocatedMem = nullptr;
-	  mem = nullptr;
-	  memL = nullptr;
-	  memH = nullptr;
+      grk_aligned_free(allocatedMem);
+      allocatedMem = nullptr;
+      mem = nullptr;
+      memL = nullptr;
+      memH = nullptr;
    }
    T* allocatedMem;
    size_t lenBytes_;
@@ -140,7 +140,7 @@ class WaveletReverse
 {
  public:
    WaveletReverse(TileProcessor* tileProcessor, TileComponent* tilec, uint16_t compno,
-				  grk_rect32 window, uint8_t numres, uint8_t qmfbid);
+                  grk_rect32 window, uint8_t numres, uint8_t qmfbid);
    ~WaveletReverse(void);
    bool decompress(void);
 
@@ -155,53 +155,53 @@ class WaveletReverse
 #endif
    static Params97 makeParams97(dwt_data<vec4f>* dwt, bool isBandL, bool step1);
    void interleave_h_97(dwt_data<vec4f>* GRK_RESTRICT dwt, grk_buf2d_simple<float> winL,
-						grk_buf2d_simple<float> winH, uint32_t remaining_height);
+                        grk_buf2d_simple<float> winH, uint32_t remaining_height);
    void decompress_h_strip_97(dwt_data<vec4f>* GRK_RESTRICT horiz, const uint32_t resHeight,
-							  grk_buf2d_simple<float> winL, grk_buf2d_simple<float> winH,
-							  grk_buf2d_simple<float> winDest);
+                              grk_buf2d_simple<float> winL, grk_buf2d_simple<float> winH,
+                              grk_buf2d_simple<float> winDest);
    bool decompress_h_97(uint8_t res, uint32_t num_workers, size_t dataLength,
-						dwt_data<vec4f>& GRK_RESTRICT horiz, const uint32_t resHeight,
-						grk_buf2d_simple<float> winL, grk_buf2d_simple<float> winH,
-						grk_buf2d_simple<float> winDest);
+                        dwt_data<vec4f>& GRK_RESTRICT horiz, const uint32_t resHeight,
+                        grk_buf2d_simple<float> winL, grk_buf2d_simple<float> winH,
+                        grk_buf2d_simple<float> winDest);
    void interleave_v_97(dwt_data<vec4f>* GRK_RESTRICT dwt, grk_buf2d_simple<float> winL,
-						grk_buf2d_simple<float> winH, uint32_t nb_elts_read);
+                        grk_buf2d_simple<float> winH, uint32_t nb_elts_read);
    void decompress_v_strip_97(dwt_data<vec4f>* GRK_RESTRICT vert, const uint32_t resWidth,
-							  const uint32_t resHeight, grk_buf2d_simple<float> winL,
-							  grk_buf2d_simple<float> winH, grk_buf2d_simple<float> winDest);
+                              const uint32_t resHeight, grk_buf2d_simple<float> winL,
+                              grk_buf2d_simple<float> winH, grk_buf2d_simple<float> winDest);
    bool decompress_v_97(uint8_t res, uint32_t num_workers, size_t dataLength,
-						dwt_data<vec4f>& GRK_RESTRICT vert, const uint32_t resWidth,
-						const uint32_t resHeight, grk_buf2d_simple<float> winL,
-						grk_buf2d_simple<float> winH, grk_buf2d_simple<float> winDest);
+                        dwt_data<vec4f>& GRK_RESTRICT vert, const uint32_t resWidth,
+                        const uint32_t resHeight, grk_buf2d_simple<float> winL,
+                        grk_buf2d_simple<float> winH, grk_buf2d_simple<float> winDest);
    bool decompress_tile_97(void);
    void decompress_h_parity_even_53(int32_t* buf, int32_t* bandL, /* even */
-									const uint32_t wL, int32_t* bandH, const uint32_t wH,
-									int32_t* dest);
+                                    const uint32_t wL, int32_t* bandH, const uint32_t wH,
+                                    int32_t* dest);
    void decompress_h_parity_odd_53(int32_t* buf, int32_t* bandL, /* odd */
-								   const uint32_t wL, int32_t* bandH, const uint32_t wH,
-								   int32_t* dest);
+                                   const uint32_t wL, int32_t* bandH, const uint32_t wH,
+                                   int32_t* dest);
    void decompress_v_parity_even_53(int32_t* buf, int32_t* bandL, const uint32_t hL,
-									const uint32_t strideL, int32_t* bandH, const uint32_t hH,
-									const uint32_t strideH, int32_t* dest,
-									const uint32_t strideDest);
+                                    const uint32_t strideL, int32_t* bandH, const uint32_t hH,
+                                    const uint32_t strideH, int32_t* dest,
+                                    const uint32_t strideDest);
    void decompress_v_parity_odd_53(int32_t* buf, int32_t* bandL, const uint32_t hL,
-								   const uint32_t strideL, int32_t* bandH, const uint32_t hH,
-								   const uint32_t strideH, int32_t* dest,
-								   const uint32_t strideDest);
+                                   const uint32_t strideL, int32_t* bandH, const uint32_t hH,
+                                   const uint32_t strideH, int32_t* dest,
+                                   const uint32_t strideDest);
    void decompress_h_53(const dwt_data<int32_t>* dwt, int32_t* bandL, int32_t* bandH,
-						int32_t* dest);
+                        int32_t* dest);
    void decompress_v_53(const dwt_data<int32_t>* dwt, grk_buf2d_simple<int32_t> winL,
-						grk_buf2d_simple<int32_t> winH, grk_buf2d_simple<int32_t> winDest,
-						uint32_t nb_cols);
+                        grk_buf2d_simple<int32_t> winH, grk_buf2d_simple<int32_t> winDest,
+                        uint32_t nb_cols);
    void decompress_h_strip_53(const dwt_data<int32_t>* horiz, uint32_t hMin, uint32_t hMax,
-							  grk_buf2d_simple<int32_t> winL, grk_buf2d_simple<int32_t> winH,
-							  grk_buf2d_simple<int32_t> winDest);
+                              grk_buf2d_simple<int32_t> winL, grk_buf2d_simple<int32_t> winH,
+                              grk_buf2d_simple<int32_t> winDest);
    bool decompress_h_53(uint8_t res, TileComponentWindow<int32_t>* buf, uint32_t resHeight,
-						size_t dataLength);
+                        size_t dataLength);
    void decompress_v_strip_53(const dwt_data<int32_t>* vert, uint32_t wMin, uint32_t wMax,
-							  grk_buf2d_simple<int32_t> winL, grk_buf2d_simple<int32_t> winH,
-							  grk_buf2d_simple<int32_t> winDest);
+                              grk_buf2d_simple<int32_t> winL, grk_buf2d_simple<int32_t> winH,
+                              grk_buf2d_simple<int32_t> winDest);
    bool decompress_v_53(uint8_t res, TileComponentWindow<int32_t>* buf, uint32_t resWidth,
-						size_t dataLength);
+                        size_t dataLength);
    bool decompress_tile_53(void);
 
    TileProcessor* tileProcessor_;

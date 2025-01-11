@@ -38,7 +38,7 @@ class DecompressScheduler : public Scheduler
 {
  public:
    DecompressScheduler(TileProcessor* tileProcessor, Tile* tile, TileCodingParams* tcp,
-					   uint8_t prec);
+                       uint8_t prec);
    ~DecompressScheduler();
 
    bool schedule(uint16_t compno) override;

@@ -51,26 +51,26 @@ static int parse_cmdline_cmp(int argc, char** argv, test_cmp_parameters* param)
    int index = 0;
    try
    {
-	  TCLAP::CmdLine cmd("compare_raw_files command line", ' ', "");
+      TCLAP::CmdLine cmd("compare_raw_files command line", ' ', "");
 
-	  TCLAP::ValueArg<std::string> baseArg("b", "base", "base file", false, "", "string", cmd);
-	  TCLAP::ValueArg<std::string> testArg("t", "test", "test file", false, "", "string", cmd);
-	  cmd.parse(argc, argv);
-	  if(baseArg.isSet())
-	  {
-		 strcpy(param->base_filename, baseArg.getValue().c_str());
-		 index++;
-	  }
-	  if(testArg.isSet())
-	  {
-		 strcpy(param->test_filename, testArg.getValue().c_str());
-		 index++;
-	  }
+      TCLAP::ValueArg<std::string> baseArg("b", "base", "base file", false, "", "string", cmd);
+      TCLAP::ValueArg<std::string> testArg("t", "test", "test file", false, "", "string", cmd);
+      cmd.parse(argc, argv);
+      if(baseArg.isSet())
+      {
+         strcpy(param->base_filename, baseArg.getValue().c_str());
+         index++;
+      }
+      if(testArg.isSet())
+      {
+         strcpy(param->test_filename, testArg.getValue().c_str());
+         index++;
+      }
    }
    catch(const TCLAP::ArgException& e) // catch any exceptions
    {
-	  std::cerr << "error: " << e.error() << " for arg " << e.argId() << std::endl;
-	  return 0;
+      std::cerr << "error: " << e.error() << " for arg " << e.argId() << std::endl;
+      return 0;
    }
 
    return index;
@@ -82,7 +82,7 @@ int GrkCompareRawFiles::main(int argc, char** argv)
    std::string out;
    for(int i = 0; i < argc; ++i)
    {
-	  out += std::string(" ") + argv[i];
+      out += std::string(" ") + argv[i];
    }
    out += "\n";
    printf("%s", out.c_str());
@@ -93,8 +93,8 @@ int GrkCompareRawFiles::main(int argc, char** argv)
    bool equal = false;
    if(parse_cmdline_cmp(argc, argv, &inParam) == 1)
    {
-	  compare_raw_files_help_display();
-	  goto cleanup;
+      compare_raw_files_help_display();
+      goto cleanup;
    }
 
 #ifdef COPY_TEST_FILES_TO_REPO
@@ -104,53 +104,53 @@ int GrkCompareRawFiles::main(int argc, char** argv)
    file_test = fopen(inParam.test_filename, "rb");
    if(!file_test)
    {
-	  fprintf(stderr, "Failed to open %s for reading !!\n", inParam.test_filename);
-	  goto cleanup;
+      fprintf(stderr, "Failed to open %s for reading !!\n", inParam.test_filename);
+      goto cleanup;
    }
    file_base = fopen(inParam.base_filename, "rb");
    if(!file_base)
    {
-	  fprintf(stderr, "Failed to open %s for reading !!\n", inParam.base_filename);
-	  goto cleanup;
+      fprintf(stderr, "Failed to open %s for reading !!\n", inParam.base_filename);
+      goto cleanup;
    }
    equal = true;
    while(equal)
    {
-	  bool value_test = false;
-	  bool eof_test = false;
-	  bool value_base = false;
-	  bool eof_base = false;
+      bool value_test = false;
+      bool eof_test = false;
+      bool value_base = false;
+      bool eof_base = false;
 
-	  if(!fread(&value_test, 1, 1, file_test))
-		 eof_test = true;
-	  if(!fread(&value_base, 1, 1, file_base))
-		 eof_base = true;
-	  if(eof_test && eof_base)
-		 break;
+      if(!fread(&value_test, 1, 1, file_test))
+         eof_test = true;
+      if(!fread(&value_base, 1, 1, file_base))
+         eof_base = true;
+      if(eof_test && eof_base)
+         break;
 
-	  /* End of file reached only by one file?*/
-	  if(eof_test || eof_base)
-	  {
-		 fprintf(stdout, "Files have different sizes.\n");
-		 equal = false;
-	  }
-	  if(value_test != value_base)
-	  {
-		 fprintf(stdout,
-				 "Binary values read in the file are different %x vs %x at "
-				 "position %u.\n",
-				 value_test, value_base, pos);
-		 equal = false;
-	  }
-	  pos++;
+      /* End of file reached only by one file?*/
+      if(eof_test || eof_base)
+      {
+         fprintf(stdout, "Files have different sizes.\n");
+         equal = false;
+      }
+      if(value_test != value_base)
+      {
+         fprintf(stdout,
+                 "Binary values read in the file are different %x vs %x at "
+                 "position %u.\n",
+                 value_test, value_base, pos);
+         equal = false;
+      }
+      pos++;
    }
    if(equal)
-	  fprintf(stdout, "---- TEST SUCCEED: Files are equal ----\n");
+      fprintf(stdout, "---- TEST SUCCEED: Files are equal ----\n");
 cleanup:
    if(file_test)
-	  fclose(file_test);
+      fclose(file_test);
    if(file_base)
-	  fclose(file_base);
+      fclose(file_base);
 
    return equal ? EXIT_SUCCESS : EXIT_FAILURE;
 }

@@ -25,64 +25,64 @@ class SparseCache
 {
  public:
    SparseCache(uint64_t maxChunkSize)
-	   : chunkSize_(std::min<uint64_t>(maxChunkSize, 1024)), currChunk_(nullptr), currChunkIndex_(0)
+       : chunkSize_(std::min<uint64_t>(maxChunkSize, 1024)), currChunk_(nullptr), currChunkIndex_(0)
    {}
    virtual ~SparseCache(void)
    {
-	  for(auto& ch : chunks)
-	  {
-		 for(size_t i = 0; i < chunkSize_; ++i)
-			delete ch.second[i];
-		 delete[] ch.second;
-	  }
+      for(auto& ch : chunks)
+      {
+         for(size_t i = 0; i < chunkSize_; ++i)
+            delete ch.second[i];
+         delete[] ch.second;
+      }
    }
 
    T* tryGet(uint64_t index)
    {
-	  uint64_t chunkIndex = index / chunkSize_;
-	  uint64_t itemIndex = index % chunkSize_;
-	  if(currChunk_ == nullptr || (chunkIndex != currChunkIndex_))
-	  {
-		 auto iter = chunks.find(chunkIndex);
-		 if(iter != chunks.end())
-		 {
-			currChunk_ = iter->second;
-			currChunkIndex_ = chunkIndex; // Update currChunkIndex_ when the chunk is found
-		 }
-		 else
-		 {
-			return nullptr;
-		 }
-	  }
-	  return currChunk_[itemIndex];
+      uint64_t chunkIndex = index / chunkSize_;
+      uint64_t itemIndex = index % chunkSize_;
+      if(currChunk_ == nullptr || (chunkIndex != currChunkIndex_))
+      {
+         auto iter = chunks.find(chunkIndex);
+         if(iter != chunks.end())
+         {
+            currChunk_ = iter->second;
+            currChunkIndex_ = chunkIndex; // Update currChunkIndex_ when the chunk is found
+         }
+         else
+         {
+            return nullptr;
+         }
+      }
+      return currChunk_[itemIndex];
    }
 
    T* get(uint64_t index)
    {
-	  uint64_t chunkIndex = index / chunkSize_;
-	  uint64_t itemIndex = index % chunkSize_;
-	  if(currChunk_ == nullptr || (chunkIndex != currChunkIndex_))
-	  {
-		 currChunkIndex_ = chunkIndex;
-		 auto iter = chunks.find(chunkIndex);
-		 if(iter != chunks.end())
-		 {
-			currChunk_ = iter->second;
-		 }
-		 else
-		 {
-			currChunk_ = new T*[chunkSize_];
-			memset(currChunk_, 0, chunkSize_ * sizeof(T*));
-			chunks[chunkIndex] = currChunk_;
-		 }
-	  }
-	  auto item = currChunk_[itemIndex];
-	  if(!item)
-	  {
-		 item = create(index);
-		 currChunk_[itemIndex] = item;
-	  }
-	  return item;
+      uint64_t chunkIndex = index / chunkSize_;
+      uint64_t itemIndex = index % chunkSize_;
+      if(currChunk_ == nullptr || (chunkIndex != currChunkIndex_))
+      {
+         currChunkIndex_ = chunkIndex;
+         auto iter = chunks.find(chunkIndex);
+         if(iter != chunks.end())
+         {
+            currChunk_ = iter->second;
+         }
+         else
+         {
+            currChunk_ = new T*[chunkSize_];
+            memset(currChunk_, 0, chunkSize_ * sizeof(T*));
+            chunks[chunkIndex] = currChunk_;
+         }
+      }
+      auto item = currChunk_[itemIndex];
+      if(!item)
+      {
+         item = create(index);
+         currChunk_[itemIndex] = item;
+      }
+      return item;
    }
 
  protected:

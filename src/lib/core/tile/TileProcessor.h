@@ -64,7 +64,7 @@ struct PacketTracker
    uint32_t numlayers_;
 
    uint64_t get_buffer_len(uint32_t numcomps, uint32_t numres, uint64_t numprec,
-						   uint32_t numlayers);
+                           uint32_t numlayers);
    uint64_t index(uint32_t comps, uint32_t res, uint64_t prec, uint32_t layer);
 };
 
@@ -77,7 +77,7 @@ class mct;
 struct TileProcessor
 {
    explicit TileProcessor(uint16_t index, CodeStream* codeStream, BufferedStream* stream,
-						  bool isCompressor);
+                          bool isCompressor);
    ~TileProcessor();
    bool init(void);
    bool createWindowBuffers(const GrkImage* outputImage);
@@ -109,15 +109,15 @@ struct TileProcessor
    bool isCompressor(void);
 
    /** Compression Only
-	*  true for first POC tile part, otherwise false*/
+    *  true for first POC tile part, otherwise false*/
    bool first_poc_tile_part_;
    /** Compressing Only
-	*  index of tile part being currently coding.
-	*  tilePartCounter_ holds the total number of tile parts encoded thus far
-	*  while the compressor is compressing the current tile part.*/
+    *  index of tile part being currently coding.
+    *  tilePartCounter_ holds the total number of tile parts encoded thus far
+    *  while the compressor is compressing the current tile part.*/
    uint8_t tilePartCounter_;
    /** Compression Only
-	*  Current packet iterator number */
+    *  Current packet iterator number */
    uint32_t pino;
    GrkImage* headerImage;
    grk_plugin_tile* current_plugin_tile;
@@ -126,7 +126,7 @@ struct TileProcessor
    uint64_t getTilePartDataLength(void);
    bool subtractMarkerSegmentLength(uint16_t markerLen);
    bool setTilePartDataLength(uint16_t tilePart, uint32_t tilePartLength,
-							  bool lastTilePartInCodeStream);
+                              bool lastTilePartInCodeStream);
    uint64_t getNumProcessedPackets(void);
    void incNumProcessedPackets(void);
    void incNumProcessedPackets(uint64_t numPackets);

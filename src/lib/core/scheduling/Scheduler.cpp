@@ -23,19 +23,19 @@ namespace grk
 {
 
 Scheduler::Scheduler(Tile* tile)
-	: success(true), tile_(tile), numcomps_(tile->numcomps_), prePostProc_(nullptr)
+    : success(true), tile_(tile), numcomps_(tile->numcomps_), prePostProc_(nullptr)
 {
    imageComponentFlows_ = new ImageComponentFlow*[numcomps_];
    for(uint16_t compno = 0; compno < numcomps_; ++compno)
-	  imageComponentFlows_[compno] = nullptr;
+      imageComponentFlows_[compno] = nullptr;
 }
 Scheduler::~Scheduler()
 {
    for(uint16_t compno = 0; compno < numcomps_; ++compno)
-	  delete imageComponentFlows_[compno];
+      delete imageComponentFlows_[compno];
    delete[] imageComponentFlows_;
    for(const auto& t : t1Implementations)
-	  delete t;
+      delete t;
    delete prePostProc_;
 }
 bool Scheduler::run(void)
@@ -62,8 +62,8 @@ FlowComponent* Scheduler::getPrePostProc(void)
 {
    if(!prePostProc_)
    {
-	  prePostProc_ = new FlowComponent();
-	  prePostProc_->addTo(codecFlow_);
+      prePostProc_ = new FlowComponent();
+      prePostProc_->addTo(codecFlow_);
    }
 
    return prePostProc_;

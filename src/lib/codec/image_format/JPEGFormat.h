@@ -48,11 +48,11 @@ class JPEGFormat : public ImageFormat
    bool readFromStdin;
 
    /* This struct contains the JPEG compression parameters and pointers to
-	* working space (which is allocated as needed by the JPEG library).
-	* It is possible to have several such structures, representing multiple
-	* compression/decompression processes, in existence at once.  We refer
-	* to any one struct (and its associated working data) as a "JPEG object".
-	*/
+    * working space (which is allocated as needed by the JPEG library).
+    * It is possible to have several such structures, representing multiple
+    * compression/decompression processes, in existence at once.  We refer
+    * to any one struct (and its associated working data) as a "JPEG object".
+    */
    struct jpeg_compress_struct cinfo;
    int32_t const* planes[4];
 };

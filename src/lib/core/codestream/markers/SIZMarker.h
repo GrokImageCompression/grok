@@ -30,21 +30,21 @@ class SIZMarker
 {
  public:
    /**
-	* Decompress a SIZ marker (image and tile size)
-	* @param       codeStream           JPEG 2000 code stream.
-	* @param       headerData   the data contained in the SIZ box.
-	* @param       header_size   the size of the data contained in the SIZ marker.
+     * Decompress a SIZ marker (image and tile size)
+     * @param       codeStream           JPEG 2000 code stream.
+     * @param       headerData   the data contained in the SIZ box.
+     * @param       header_size   the size of the data contained in the SIZ marker.
 
-	*/
+     */
    bool read(CodeStreamDecompress* codeStream, uint8_t* headerData, uint16_t header_size);
 
    /**
-	* Write the SIZ marker (image and tile size)
-	*
-	* @param       codeStream           JPEG 2000 code stream
-	* @param       stream        buffered stream.
+     * Write the SIZ marker (image and tile size)
+     *
+     * @param       codeStream           JPEG 2000 code stream
+     * @param       stream        buffered stream.
 
-	*/
+     */
    bool write(CodeStreamCompress* codeStream, BufferedStream* stream);
 
  private:

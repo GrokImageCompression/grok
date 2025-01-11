@@ -19,15 +19,15 @@
 namespace grk
 {
 ResFlow::ResFlow(void)
-	: packets_(nullptr), blocks_(new FlowComponent()), waveletHoriz_(new FlowComponent()),
-	  waveletVert_(new FlowComponent()), doWavelet_(true)
+    : packets_(nullptr), blocks_(new FlowComponent()), waveletHoriz_(new FlowComponent()),
+      waveletVert_(new FlowComponent()), doWavelet_(true)
 {}
 FlowComponent* ResFlow::getPacketsFlow(void)
 {
    if(!packets_)
    {
-	  packets_ = new FlowComponent();
-	  packets_->precede(blocks_);
+      packets_ = new FlowComponent();
+      packets_->precede(blocks_);
    }
 
    return packets_;
@@ -40,20 +40,20 @@ void ResFlow::graph(void)
 {
    if(doWavelet_)
    {
-	  blocks_->precede(waveletHoriz_);
-	  waveletHoriz_->precede(waveletVert_);
+      blocks_->precede(waveletHoriz_);
+      waveletHoriz_->precede(waveletVert_);
    }
 }
 ResFlow* ResFlow::addTo(tf::Taskflow& composition)
 {
    if(packets_)
-	  packets_->addTo(composition);
+      packets_->addTo(composition);
    assert(blocks_);
    blocks_->addTo(composition);
    if(doWavelet_)
    {
-	  waveletHoriz_->addTo(composition);
-	  waveletVert_->addTo(composition);
+      waveletHoriz_->addTo(composition);
+      waveletVert_->addTo(composition);
    }
 
    return this;
@@ -62,7 +62,7 @@ ResFlow* ResFlow::precede(ResFlow* successor)
 {
    assert(successor);
    if(doWavelet_)
-	  waveletVert_->precede(successor->blocks_);
+      waveletVert_->precede(successor->blocks_);
 
    return this;
 }
@@ -70,9 +70,9 @@ ResFlow* ResFlow::precede(FlowComponent* successor)
 {
    assert(successor);
    if(doWavelet_)
-	  waveletVert_->precede(successor);
+      waveletVert_->precede(successor);
    else
-	  blocks_->precede(successor);
+      blocks_->precede(successor);
 
    return this;
 }
@@ -88,19 +88,19 @@ ResFlow::~ResFlow(void)
    delete waveletVert_;
 }
 ImageComponentFlow::ImageComponentFlow(uint8_t numresolutions)
-	: numResFlows_(numresolutions), resFlows_(nullptr), waveletFinalCopy_(nullptr),
-	  prePostProc_(nullptr)
+    : numResFlows_(numresolutions), resFlows_(nullptr), waveletFinalCopy_(nullptr),
+      prePostProc_(nullptr)
 {
    if(numResFlows_)
    {
-	  bool noWavelet = numResFlows_ == 1;
+      bool noWavelet = numResFlows_ == 1;
 
-	  // lowest two resolutions are grouped together
-	  if(numResFlows_ > 1)
-		 numResFlows_--;
-	  resFlows_ = new ResFlow[numResFlows_];
-	  if(noWavelet)
-		 resFlows_[0].disableWavelet();
+      // lowest two resolutions are grouped together
+      if(numResFlows_ > 1)
+         numResFlows_--;
+      resFlows_ = new ResFlow[numResFlows_];
+      if(noWavelet)
+         resFlows_[0].disableWavelet();
    }
 }
 ImageComponentFlow::~ImageComponentFlow()
@@ -116,11 +116,11 @@ void ImageComponentFlow::setRegionDecompression(void)
 void ImageComponentFlow::graph(void)
 {
    for(uint8_t i = 0; i < numResFlows_; ++i)
-	  (resFlows_ + i)->graph();
+      (resFlows_ + i)->graph();
    for(uint8_t i = 0; i < numResFlows_ - 1; ++i)
-	  (resFlows_ + i)->precede(resFlows_ + i + 1);
+      (resFlows_ + i)->precede(resFlows_ + i + 1);
    if(waveletFinalCopy_)
-	  (resFlows_ + numResFlows_ - 1)->precede(waveletFinalCopy_);
+      (resFlows_ + numResFlows_ - 1)->precede(waveletFinalCopy_);
 }
 FlowComponent* ImageComponentFlow::getFinalFlowT1(void)
 {
@@ -129,9 +129,9 @@ FlowComponent* ImageComponentFlow::getFinalFlowT1(void)
 ImageComponentFlow* ImageComponentFlow::addTo(tf::Taskflow& composition)
 {
    for(uint8_t i = 0; i < numResFlows_; ++i)
-	  (resFlows_ + i)->addTo(composition);
+      (resFlows_ + i)->addTo(composition);
    if(waveletFinalCopy_)
-	  waveletFinalCopy_->addTo(composition);
+      waveletFinalCopy_->addTo(composition);
 
    return this;
 }
@@ -143,8 +143,8 @@ FlowComponent* ImageComponentFlow::getPrePostProc(tf::Taskflow& codecFlow)
 {
    if(!prePostProc_)
    {
-	  prePostProc_ = new FlowComponent();
-	  prePostProc_->addTo(codecFlow);
+      prePostProc_ = new FlowComponent();
+      prePostProc_->addTo(codecFlow);
    }
 
    return prePostProc_;

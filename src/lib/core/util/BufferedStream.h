@@ -48,13 +48,13 @@ struct BufferedStream
    void setWriteFunction(grk_stream_write_fn fn);
    void setSeekFunction(grk_stream_seek_fn fn);
    /**
-	* Reads some bytes from the stream.
-	* @param		buffer	pointer to the data buffer
-	* 							that will receive the data.
-	* @param		p_size		number of bytes to read.
+     * Reads some bytes from the stream.
+     * @param		buffer	pointer to the data buffer
+     * 							that will receive the data.
+     * @param		p_size		number of bytes to read.
 
-	* @return		the number of bytes read
-	*/
+     * @return		the number of bytes read
+     */
    size_t read(uint8_t* buffer, size_t p_size);
 
    // low-level write methods (endian taken into account)
@@ -66,50 +66,50 @@ struct BufferedStream
    // low-level write methods (endian NOT taken into account)
    bool writeByte(uint8_t value);
    /**
-	* Write bytes to stream (no correction for endian!).
-	* @param		buffer	pointer to the data buffer holds the data
-	* 							to be written.
-	* @param		p_size		number of bytes to write.
+     * Write bytes to stream (no correction for endian!).
+     * @param		buffer	pointer to the data buffer holds the data
+     * 							to be written.
+     * @param		p_size		number of bytes to write.
 
-	* @return		the number of bytes written
-	*/
+     * @return		the number of bytes written
+     */
    size_t writeBytes(const uint8_t* buffer, size_t p_size);
 
    /**
-	* Flush stream to disk
+     * Flush stream to disk
 
-	* @return		true if the data could be flushed, otherwise false.
-	*/
+     * @return		true if the data could be flushed, otherwise false.
+     */
    bool flush();
    /**
-	* Skip bytes in stream.
-	* @param		p_size		the number of bytes to skip.
+     * Skip bytes in stream.
+     * @param		p_size		the number of bytes to skip.
 
-	* @return		true if successful, otherwise false
-	*/
+     * @return		true if successful, otherwise false
+     */
    bool skip(int64_t p_size);
    /**
-	* Tells byte offset of stream (similar to ftell).
-	*
-	* @return		the current position of the stream.
-	*/
+    * Tells byte offset of stream (similar to ftell).
+    *
+    * @return		the current position of the stream.
+    */
    uint64_t tell(void);
    /**
-	* Get the number of bytes left before end of stream
-	*
-	* @return		Number of bytes left before the end of the stream.
-	*/
+    * Get the number of bytes left before end of stream
+    *
+    * @return		Number of bytes left before the end of the stream.
+    */
    uint64_t numBytesLeft(void);
    /**
-	* Seek bytes from the stream (absolute)
-	* @param		offset		the number of bytes to skip.
-	*
-	* @return		true if successful, otherwise false
-	*/
+    * Seek bytes from the stream (absolute)
+    * @param		offset		the number of bytes to skip.
+    *
+    * @return		true if successful, otherwise false
+    */
    bool seek(uint64_t offset);
    /**
-	* Check if stream is seekable.
-	*/
+    * Check if stream is seekable.
+    */
    bool hasSeek();
    bool supportsZeroCopy();
    uint8_t* getZeroCopyPtr();
@@ -120,34 +120,34 @@ struct BufferedStream
  private:
    ~BufferedStream();
    /**
-	* Skip bytes in write stream.
-	* @param		p_size		the number of bytes to skip.
+     * Skip bytes in write stream.
+     * @param		p_size		the number of bytes to skip.
 
-	* @return		true if successful, otherwise false
-	*/
+     * @return		true if successful, otherwise false
+     */
    bool write_skip(int64_t p_size);
 
    /**
-	* Skip bytes in read stream.
-	* @param		p_size		the number of bytes to skip.
+     * Skip bytes in read stream.
+     * @param		p_size		the number of bytes to skip.
 
-	* @return		true if successful, otherwise false
-	*/
+     * @return		true if successful, otherwise false
+     */
    bool read_skip(int64_t p_size);
 
    /**
-	* Absolute seek in read stream.
-	* @param		offset		absolute offset
+     * Absolute seek in read stream.
+     * @param		offset		absolute offset
 
-	* @return		true if successful, otherwise false
-	*/
+     * @return		true if successful, otherwise false
+     */
    bool read_seek(uint64_t offset);
 
    /**
-	* Absolute seek in write stream.
-	* @param		offset		absolute offset
-	* @return		true if successful, otherwise false
-	*/
+    * Absolute seek in write stream.
+    * @param		offset		absolute offset
+    * @return		true if successful, otherwise false
+    */
    bool write_seek(uint64_t offset);
 
    void writeIncrement(size_t p_size);
@@ -160,40 +160,40 @@ struct BufferedStream
    grk_object obj;
 
    /**
-	* user data
-	*/
+    * user data
+    */
    void* user_data_;
    /**
-	* Pointer to function to free user_data_ (nullptr at initialization)
-	* when destroying the stream. If pointer is nullptr the function is not
-	* called and the user_data_ is not freed (even if it isn't nullptr).
-	*/
+    * Pointer to function to free user_data_ (nullptr at initialization)
+    * when destroying the stream. If pointer is nullptr the function is not
+    * called and the user_data_ is not freed (even if it isn't nullptr).
+    */
    grk_stream_free_user_data_fn free_user_data_fn_;
    /**
-	* User data length.
-	* Currently set to size of file for file read stream,
-	* and size of buffer for buffer read/write stream
-	*/
+    * User data length.
+    * Currently set to size of file for file read stream,
+    * and size of buffer for buffer read/write stream
+    */
    uint64_t user_data_length_;
    /**
-	* Pointer to actual read function (nullptr at initialization).
-	*/
+    * Pointer to actual read function (nullptr at initialization).
+    */
    grk_stream_read_fn read_fn_;
    /**
-	* Pointer to actual zero copy read function (nullptr at initialization).
-	*/
+    * Pointer to actual zero copy read function (nullptr at initialization).
+    */
    grk_stream_zero_copy_read_fn zero_copy_read_fn_;
    /**
-	* Pointer to actual write function (nullptr at initialization).
-	*/
+    * Pointer to actual write function (nullptr at initialization).
+    */
    grk_stream_write_fn write_fn_;
    /**
-	* Pointer to actual seek function (if available).
-	*/
+    * Pointer to actual seek function (if available).
+    */
    grk_stream_seek_fn seek_fn_;
    /**
-	* Stream status flags
-	*/
+    * Stream status flags
+    */
    uint32_t status_;
 
    grk_buf8* buf_;
@@ -217,7 +217,7 @@ template<typename TYPE>
 void grk_write(uint8_t* buffer, TYPE value, uint32_t numBytes)
 {
    if(numBytes == 0)
-	  return;
+      return;
    assert(numBytes <= sizeof(TYPE));
 #if defined(GROK_BIG_ENDIAN)
    const uint8_t* dataPtr = ((const uint8_t*)&value) + sizeof(TYPE) - numBytes;
@@ -225,7 +225,7 @@ void grk_write(uint8_t* buffer, TYPE value, uint32_t numBytes)
 #else
    const uint8_t* dataPtr = ((const uint8_t*)&value) + (size_t)(numBytes - 1);
    for(uint32_t i = 0; i < numBytes; ++i)
-	  *(buffer++) = *(dataPtr--);
+      *(buffer++) = *(dataPtr--);
 #endif
 }
 
@@ -247,7 +247,7 @@ void grk_read(const uint8_t* buffer, TYPE* value, uint32_t numBytes)
    auto dataPtr = ((uint8_t*)value) + numBytes - 1;
    *value = 0;
    for(uint32_t i = 0; i < numBytes; ++i)
-	  *(dataPtr--) = *(buffer++);
+      *(dataPtr--) = *(buffer++);
 #endif
 }
 

@@ -24,16 +24,16 @@
 namespace grk
 {
 FileFormat::FileFormat(void)
-	: validation_list_(new std::vector<PROCEDURE_FUNC>()),
-	  procedure_list_(new std::vector<PROCEDURE_FUNC>()), w(0), h(0), numcomps(0), bpc(0), C(0),
-	  UnkC(0), IPR(0), meth(0), approx(0), enumcs(GRK_ENUM_CLRSPC_UNKNOWN), precedence(0), brand(0),
-	  minversion(0), numcl(0), cl(nullptr), comps(nullptr), has_capture_resolution(false),
-	  has_display_resolution(false), numUuids(0)
+    : validation_list_(new std::vector<PROCEDURE_FUNC>()),
+      procedure_list_(new std::vector<PROCEDURE_FUNC>()), w(0), h(0), numcomps(0), bpc(0), C(0),
+      UnkC(0), IPR(0), meth(0), approx(0), enumcs(GRK_ENUM_CLRSPC_UNKNOWN), precedence(0), brand(0),
+      minversion(0), numcl(0), cl(nullptr), comps(nullptr), has_capture_resolution(false),
+      has_display_resolution(false), numUuids(0)
 {
    for(uint32_t i = 0; i < 2; ++i)
    {
-	  capture_resolution[i] = 0;
-	  display_resolution[i] = 0;
+      capture_resolution[i] = 0;
+      display_resolution[i] = 0;
    }
 }
 FileFormat::~FileFormat()
@@ -42,7 +42,7 @@ FileFormat::~FileFormat()
    grk_free(cl);
    xml.dealloc();
    for(uint32_t i = 0; i < numUuids; ++i)
-	  (uuids + i)->dealloc();
+      (uuids + i)->dealloc();
    delete validation_list_;
    delete procedure_list_;
 }
@@ -53,8 +53,8 @@ bool FileFormat::exec(std::vector<PROCEDURE_FUNC>* procs)
 
    for(auto it = procs->begin(); it != procs->end(); ++it)
    {
-	  if(!(*it)())
-		 return false;
+      if(!(*it)())
+         return false;
    }
    procs->clear();
 

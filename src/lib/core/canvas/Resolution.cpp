@@ -21,8 +21,8 @@ namespace grk
 {
 
 Resolution::Resolution(void)
-	: initialized(false), numTileBandWindows(0), precinctGridWidth(0), precinctGridHeight(0),
-	  current_plugin_tile(nullptr), parserMap_(nullptr)
+    : initialized(false), numTileBandWindows(0), precinctGridWidth(0), precinctGridHeight(0),
+      current_plugin_tile(nullptr), parserMap_(nullptr)
 {}
 Resolution::~Resolution(void)
 {
@@ -33,14 +33,14 @@ void Resolution::print(void) const
    grk_rect32::print();
    for(uint32_t i = 0; i < numTileBandWindows; ++i)
    {
-	  std::cout << "band " << i << " : ";
-	  tileBand[i].print();
+      std::cout << "band " << i << " : ";
+      tileBand[i].print();
    }
 }
 bool Resolution::init(TileProcessor* tileProcessor, TileComponentCodingParams* tccp, uint8_t resno)
 {
    if(initialized)
-	  return true;
+      return true;
 
    current_plugin_tile = tileProcessor->current_plugin_tile;
 
@@ -49,35 +49,35 @@ bool Resolution::init(TileProcessor* tileProcessor, TileComponentCodingParams* t
 
    /* p. 64, B.6, ISO/IEC FDIS15444-1 : 2000 (18 august 2000)  */
    precinctPartitionTopLeft = grk_pt32(floordivpow2(x0, precinctExpn.x) << precinctExpn.x,
-									   floordivpow2(y0, precinctExpn.y) << precinctExpn.y);
+                                       floordivpow2(y0, precinctExpn.y) << precinctExpn.y);
 
    uint64_t num_precincts = (uint64_t)precinctGridWidth * precinctGridHeight;
    if(resno != 0)
    {
-	  precinctPartitionTopLeft = grk_pt32(ceildivpow2<uint32_t>(precinctPartitionTopLeft.x, 1),
-										  ceildivpow2<uint32_t>(precinctPartitionTopLeft.y, 1));
-	  precinctExpn.x--;
-	  precinctExpn.y--;
+      precinctPartitionTopLeft = grk_pt32(ceildivpow2<uint32_t>(precinctPartitionTopLeft.x, 1),
+                                          ceildivpow2<uint32_t>(precinctPartitionTopLeft.y, 1));
+      precinctExpn.x--;
+      precinctExpn.y--;
    }
    cblkExpn = grk_pt32(std::min<uint32_t>(tccp->cblkw, precinctExpn.x),
-					   std::min<uint32_t>(tccp->cblkh, precinctExpn.y));
+                       std::min<uint32_t>(tccp->cblkh, precinctExpn.y));
    for(uint8_t bandIndex = 0; bandIndex < numTileBandWindows; ++bandIndex)
    {
-	  auto curr_band = tileBand + bandIndex;
-	  curr_band->num_precincts = num_precincts;
-	  if(tileProcessor->isCompressor())
-	  {
-		 for(uint64_t precinctIndex = 0; precinctIndex < num_precincts; ++precinctIndex)
-		 {
-			if(!curr_band->createPrecinct(tileProcessor, precinctIndex, precinctPartitionTopLeft,
-										  precinctExpn, precinctGridWidth, cblkExpn))
-			   return false;
-		 }
-	  }
+      auto curr_band = tileBand + bandIndex;
+      curr_band->num_precincts = num_precincts;
+      if(tileProcessor->isCompressor())
+      {
+         for(uint64_t precinctIndex = 0; precinctIndex < num_precincts; ++precinctIndex)
+         {
+            if(!curr_band->createPrecinct(tileProcessor, precinctIndex, precinctPartitionTopLeft,
+                                          precinctExpn, precinctGridWidth, cblkExpn))
+               return false;
+         }
+      }
    }
 
    if(!tileProcessor->isCompressor())
-	  parserMap_ = new ParserMap(tileProcessor);
+      parserMap_ = new ParserMap(tileProcessor);
    initialized = true;
 
    return true;
@@ -86,7 +86,7 @@ bool Resolution::init(TileProcessor* tileProcessor, TileComponentCodingParams* t
 ResSimple Resolution::genResSimple(void)
 {
    grk_rect32 bands[BAND_NUM_INDICES] = {tileBand[BAND_INDEX_HL], tileBand[BAND_INDEX_LH],
-										 tileBand[BAND_INDEX_HH]};
+                                         tileBand[BAND_INDEX_HH]};
 
    return ResSimple(this, numTileBandWindows, bands);
 }

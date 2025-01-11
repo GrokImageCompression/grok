@@ -26,17 +26,17 @@ class dwt53
 {
  public:
    void encode_and_deinterleave_v(int32_t* arrayIn, int32_t* tmpIn, uint32_t height, bool even,
-								  uint32_t stride_width, uint32_t cols);
+                                  uint32_t stride_width, uint32_t cols);
 
    void encode_and_deinterleave_h_one_row(int32_t* rowIn, int32_t* tmpIn, uint32_t width,
-										  bool even);
+                                          bool even);
 };
 
 class dwt97
 {
  public:
    void encode_and_deinterleave_v(float* arrayIn, float* tmpIn, uint32_t height, bool even,
-								  uint32_t stride_width, uint32_t cols);
+                                  uint32_t stride_width, uint32_t cols);
 
    void encode_and_deinterleave_h_one_row(float* rowIn, float* tmpIn, uint32_t width, bool even);
 
@@ -46,7 +46,7 @@ class dwt97
    void encode_step2(float* fl, float* fw, uint32_t end, uint32_t m, float c);
 
    void encode_step1_combined(float* fw, uint32_t iters_c1, uint32_t iters_c2, const float c1,
-							  const float c2);
+                              const float c2);
    void encode_1_real(float* w, int32_t dn, int32_t sn, int32_t parity);
 };
 

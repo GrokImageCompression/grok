@@ -19,17 +19,17 @@ namespace grk
 {
 
 PrecinctImpl::PrecinctImpl(bool isCompressor, grk_rect32* bounds, grk_pt32 cblk_expn)
-	: enc(nullptr), dec(nullptr), bounds_(*bounds), cblk_expn_(cblk_expn),
-	  isCompressor_(isCompressor), incltree(nullptr), imsbtree(nullptr)
+    : enc(nullptr), dec(nullptr), bounds_(*bounds), cblk_expn_(cblk_expn),
+      isCompressor_(isCompressor), incltree(nullptr), imsbtree(nullptr)
 {
    cblk_grid_ =
-	   grk_rect32(floordivpow2(bounds->x0, cblk_expn.x), floordivpow2(bounds->y0, cblk_expn.y),
-				  ceildivpow2<uint32_t>(bounds->x1, cblk_expn.x),
-				  ceildivpow2<uint32_t>(bounds->y1, cblk_expn.y));
+       grk_rect32(floordivpow2(bounds->x0, cblk_expn.x), floordivpow2(bounds->y0, cblk_expn.y),
+                  ceildivpow2<uint32_t>(bounds->x1, cblk_expn.x),
+                  ceildivpow2<uint32_t>(bounds->y1, cblk_expn.y));
    if(!cblk_grid_.valid())
    {
-	  Logger::logger_.error("Invalid code block grid");
-	  throw std::exception();
+      Logger::logger_.error("Invalid code block grid");
+      throw std::exception();
    }
 }
 PrecinctImpl::~PrecinctImpl()
@@ -41,25 +41,25 @@ PrecinctImpl::~PrecinctImpl()
 grk_rect32 PrecinctImpl::getCodeBlockBounds(uint64_t cblkno)
 {
    auto cblk_start =
-	   grk_pt32((cblk_grid_.x0 + (uint32_t)(cblkno % cblk_grid_.width())) << cblk_expn_.x,
-				(cblk_grid_.y0 + (uint32_t)(cblkno / cblk_grid_.width())) << cblk_expn_.y);
+       grk_pt32((cblk_grid_.x0 + (uint32_t)(cblkno % cblk_grid_.width())) << cblk_expn_.x,
+                (cblk_grid_.y0 + (uint32_t)(cblkno / cblk_grid_.width())) << cblk_expn_.y);
    auto cblk_bounds = grk_rect32(cblk_start.x, cblk_start.y, cblk_start.x + (1U << cblk_expn_.x),
-								 cblk_start.y + (1U << cblk_expn_.y));
+                                 cblk_start.y + (1U << cblk_expn_.y));
 
    return cblk_bounds.intersection(&bounds_);
 }
 bool PrecinctImpl::initCodeBlocks(uint16_t numLayers, grk_rect32* bounds)
 {
    if((isCompressor_ && enc) || (!isCompressor_ && dec))
-	  return true;
+      return true;
    bounds_ = *bounds;
    auto num_blocks = cblk_grid_.area();
    if(!num_blocks)
-	  return true;
+      return true;
    if(isCompressor_)
-	  enc = new BlockCache<CompressCodeblock, PrecinctImpl>(numLayers, num_blocks, this);
+      enc = new BlockCache<CompressCodeblock, PrecinctImpl>(numLayers, num_blocks, this);
    else
-	  dec = new BlockCache<DecompressCodeblock, PrecinctImpl>(numLayers, num_blocks, this);
+      dec = new BlockCache<DecompressCodeblock, PrecinctImpl>(numLayers, num_blocks, this);
 
    return true;
 }
@@ -67,7 +67,7 @@ template<typename T>
 bool PrecinctImpl::initCodeBlock(T* block, uint64_t cblkno)
 {
    if(!block->empty())
-	  return true;
+      return true;
    block->init();
    block->setRect(getCodeBlockBounds(cblkno));
 
@@ -89,19 +89,19 @@ TagTreeU16* PrecinctImpl::getIncludeTagTree(void)
    auto grid_height = cblk_grid_.height();
    if(grid_width > 0 && grid_height > 0)
    {
-	  if(!incltree)
-	  {
-		 try
-		 {
-			incltree = new TagTreeU16(grid_width, grid_height);
-		 }
-		 catch([[maybe_unused]] const std::exception& e)
-		 {
-			Logger::logger_.warn("No incltree created.");
-			throw;
-		 }
-	  }
-	  return incltree;
+      if(!incltree)
+      {
+         try
+         {
+            incltree = new TagTreeU16(grid_width, grid_height);
+         }
+         catch([[maybe_unused]] const std::exception& e)
+         {
+            Logger::logger_.warn("No incltree created.");
+            throw;
+         }
+      }
+      return incltree;
    }
    return nullptr;
 }
@@ -114,27 +114,27 @@ TagTreeU8* PrecinctImpl::getIMsbTagTree(void)
    auto grid_height = cblk_grid_.height();
    if(grid_width > 0 && grid_height > 0)
    {
-	  if(!imsbtree)
-	  {
-		 try
-		 {
-			imsbtree = new TagTreeU8(grid_width, grid_height);
-		 }
-		 catch([[maybe_unused]] const std::exception& e)
-		 {
-			Logger::logger_.warn("No imsbtree created.");
-			throw;
-		 }
-	  }
-	  return imsbtree;
+      if(!imsbtree)
+      {
+         try
+         {
+            imsbtree = new TagTreeU8(grid_width, grid_height);
+         }
+         catch([[maybe_unused]] const std::exception& e)
+         {
+            Logger::logger_.warn("No imsbtree created.");
+            throw;
+         }
+      }
+      return imsbtree;
    }
    return nullptr;
 }
 
 Precinct::Precinct(TileProcessor* tileProcessor, const grk_rect32& bounds, grk_pt32 cblk_expn)
-	: grk_rect32(bounds), precinctIndex(0),
-	  numLayers_(tileProcessor->getTileCodingParams()->num_layers_),
-	  impl(new PrecinctImpl(tileProcessor->isCompressor(), this, cblk_expn)), cblk_expn_(cblk_expn)
+    : grk_rect32(bounds), precinctIndex(0),
+      numLayers_(tileProcessor->getTileCodingParams()->num_layers_),
+      impl(new PrecinctImpl(tileProcessor->isCompressor(), this, cblk_expn)), cblk_expn_(cblk_expn)
 
 {}
 Precinct::~Precinct()

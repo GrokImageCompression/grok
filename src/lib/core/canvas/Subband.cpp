@@ -23,14 +23,14 @@ namespace grk
 Subband::Subband() : orientation(BAND_ORIENT_LL), num_precincts(0), numbps(0), stepsize(0) {}
 // note: don't copy precinct array
 Subband::Subband(const Subband& rhs)
-	: grk_rect32(rhs), orientation(rhs.orientation), num_precincts(0), numbps(rhs.numbps),
-	  stepsize(rhs.stepsize)
+    : grk_rect32(rhs), orientation(rhs.orientation), num_precincts(0), numbps(rhs.numbps),
+      stepsize(rhs.stepsize)
 {}
 Subband& Subband::operator=(const Subband& rhs)
 {
    if(this != &rhs)
    { // self-assignment check expected
-	  *this = Subband(rhs);
+      *this = Subband(rhs);
    }
    return *this;
 }
@@ -45,39 +45,39 @@ bool Subband::empty()
 Precinct* Subband::getPrecinct(uint64_t precinctIndex)
 {
    if(precinctMap.find(precinctIndex) == precinctMap.end())
-	  return nullptr;
+      return nullptr;
    uint64_t index = precinctMap[precinctIndex];
 
    return precincts[index];
 }
 grk_rect32 Subband::generatePrecinctBounds(uint64_t precinctIndex,
-										   grk_pt32 precinctPartitionTopLeft, grk_pt32 precinctExpn,
-										   uint32_t precinctGridWidth)
+                                           grk_pt32 precinctPartitionTopLeft, grk_pt32 precinctExpn,
+                                           uint32_t precinctGridWidth)
 {
    auto precinctTopLeft =
-	   grk_pt32(precinctPartitionTopLeft.x +
-					(uint32_t)((precinctIndex % precinctGridWidth) << precinctExpn.x),
-				precinctPartitionTopLeft.y +
-					(uint32_t)((precinctIndex / precinctGridWidth) << precinctExpn.y));
+       grk_pt32(precinctPartitionTopLeft.x +
+                    (uint32_t)((precinctIndex % precinctGridWidth) << precinctExpn.x),
+                precinctPartitionTopLeft.y +
+                    (uint32_t)((precinctIndex / precinctGridWidth) << precinctExpn.y));
    return grk_rect32(precinctTopLeft.x, precinctTopLeft.y,
-					 precinctTopLeft.x + (1U << precinctExpn.x),
-					 precinctTopLeft.y + (1U << precinctExpn.y))
-	   .intersection(this);
+                     precinctTopLeft.x + (1U << precinctExpn.x),
+                     precinctTopLeft.y + (1U << precinctExpn.y))
+       .intersection(this);
 }
 Precinct* Subband::createPrecinct(TileProcessor* tileProcessor, uint64_t precinctIndex,
-								  grk_pt32 precinctPartitionTopLeft, grk_pt32 precinctExpn,
-								  uint32_t precinctGridWidth, grk_pt32 cblk_expn)
+                                  grk_pt32 precinctPartitionTopLeft, grk_pt32 precinctExpn,
+                                  uint32_t precinctGridWidth, grk_pt32 cblk_expn)
 {
    auto temp = precinctMap.find(precinctIndex);
    if(temp != precinctMap.end())
-	  return precincts[temp->second];
+      return precincts[temp->second];
 
    auto bounds = generatePrecinctBounds(precinctIndex, precinctPartitionTopLeft, precinctExpn,
-										precinctGridWidth);
+                                        precinctGridWidth);
    if(!bounds.valid())
    {
-	  Logger::logger_.error("createPrecinct: invalid precinct bounds.");
-	  return nullptr;
+      Logger::logger_.error("createPrecinct: invalid precinct bounds.");
+      return nullptr;
    }
    auto currPrec = new Precinct(tileProcessor, bounds, cblk_expn);
    currPrec->precinctIndex = precinctIndex;

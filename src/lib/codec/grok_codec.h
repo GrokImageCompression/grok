@@ -47,7 +47,7 @@ GRK_API int grk_codec_dump(int argc, char* argv[]);
  * return 0 if successful
  */
 GRK_API int grk_codec_compress(int argc, char* argv[], grk_image* in_image,
-							   grk_stream_params* out_buffer);
+                               grk_stream_params* out_buffer);
 
 /**
  * Decompress image.

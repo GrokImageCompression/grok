@@ -42,13 +42,13 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
    // otherwise a file from the Grok test suite, specified below, will be used.
 
    std::string inputFile = dataRoot + std::filesystem::path::preferred_separator + "input" +
-						   std::filesystem::path::preferred_separator + "nonregression" +
-						   std::filesystem::path::preferred_separator + "boats_cprl.j2k";
+                           std::filesystem::path::preferred_separator + "nonregression" +
+                           std::filesystem::path::preferred_separator + "boats_cprl.j2k";
    std::string outputFile = "boats_cprl.tif";
    if(argc > 1)
    {
-	  inputFile = argv[1];
-	  outputFile = inputFile + ".tif";
+      inputFile = argv[1];
+      outputFile = inputFile + ".tif";
    }
    argString.push_back("-i " + inputFile);
 
@@ -59,20 +59,20 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
    std::vector<char*> args;
    for(auto& s : argString)
    {
-	  char* arg = new char[s.size() + 1];
-	  copy(s.begin(), s.end(), arg);
-	  arg[s.size()] = '\0';
-	  args.push_back(arg);
+      char* arg = new char[s.size() + 1];
+      copy(s.begin(), s.end(), arg);
+      arg[s.size()] = '\0';
+      args.push_back(arg);
    }
 
    // 3. decompress
    int rc = grk_codec_decompress((int)args.size(), &args[0]);
    if(rc)
-	  fprintf(stderr, "Failed to decompress\n");
+      fprintf(stderr, "Failed to decompress\n");
 
    // 4. cleanup
    for(auto& s : args)
-	  delete[] s;
+      delete[] s;
 
    return rc;
 }

@@ -21,8 +21,8 @@ void TileSet::schedule(grk_rect16 tiles)
    assert(!tiles.empty());
    for(uint16_t j = tiles.y0; j < tiles.y1; ++j)
    {
-	  for(uint16_t i = tiles.x0; i < tiles.x1; ++i)
-		 tilesToDecompress_.insert((uint16_t)(i + j * allTiles_.width()));
+      for(uint16_t i = tiles.x0; i < tiles.x1; ++i)
+         tilesToDecompress_.insert((uint16_t)(i + j * allTiles_.width()));
    }
    lastTileToDecompress_ = (uint16_t)((tiles.x1 - 1) + (tiles.y1 - 1) * allTiles_.width());
 }
@@ -60,10 +60,10 @@ void TileSet::setComplete(uint16_t tile_index)
 {
    if(isScheduled(tile_index))
    {
-	  tilesDecompressed_.insert(tile_index);
-	  // Logger::logger_.info("Complete %d", tile_index);
-	  // if (allComplete())
-	  //	Logger::logger_.info("Complete");
+      tilesDecompressed_.insert(tile_index);
+      // Logger::logger_.info("Complete %d", tile_index);
+      // if (allComplete())
+      //	Logger::logger_.info("Complete");
    }
 }
 bool TileSet::isComplete(uint16_t tile_index)

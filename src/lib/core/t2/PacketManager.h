@@ -23,23 +23,23 @@ class PacketManager
 {
  public:
    PacketManager(bool compression, GrkImage* img, CodingParams* cparams, uint16_t tilenumber,
-				 J2K_T2_MODE t2_mode, TileProcessor* tileProc);
+                 J2K_T2_MODE t2_mode, TileProcessor* tileProc);
    virtual ~PacketManager();
    PacketIter* getPacketIter(uint32_t poc) const;
    /**
-	Modify the packet iterator for enabling tile part generation
-	@param pino   	packet iterator number
-	@param first_poc_tile_part true for first POC tile part
-	@param tppos 	The position of the tile part flag in the progression order
-	*/
+     Modify the packet iterator for enabling tile part generation
+     @param pino   	packet iterator number
+     @param first_poc_tile_part true for first POC tile part
+     @param tppos 	The position of the tile part flag in the progression order
+     */
    void enable_tile_part_generation(uint32_t pino, bool first_poc_tile_part, uint32_t tppos);
    /**
-	* Updates the compressing parameters of the codec.
-	*
-	* @param	p_image		the image being encoded.
-	* @param	p_cp		the coding parameters.
-	* @param	tile_no	index of the tile being encoded.
-	*/
+    * Updates the compressing parameters of the codec.
+    *
+    * @param	p_image		the image being encoded.
+    * @param	p_cp		the coding parameters.
+    * @param	tile_no	index of the tile being encoded.
+    */
    static void updateCompressParams(const GrkImage* p_image, CodingParams* p_cp, uint16_t tile_no);
 
    IncludeTracker* getIncludeTracker(void);
@@ -52,45 +52,45 @@ class PacketManager
 
  private:
    /**
-	* Updates the coding parameters
-	*
-	* @param	p_cp		the coding parameters to modify
-	* @param	num_comps		the number of components
-	* @param	tileno	the tile index being concerned.
-	* @param	tileBounds tile bounds
-	* @param	max_precincts	the maximum number of precincts for all the bands of the tile
-	* @param	max_res	the maximum number of resolutions for all the poc inside the tile.
-	* @param	dx_min		the minimum dx of all the components of all the resolutions for the
-	* tile.
-	* @param	dy_min		the minimum dy of all the components of all the resolutions for the
-	* tile.
-	*/
+    * Updates the coding parameters
+    *
+    * @param	p_cp		the coding parameters to modify
+    * @param	num_comps		the number of components
+    * @param	tileno	the tile index being concerned.
+    * @param	tileBounds tile bounds
+    * @param	max_precincts	the maximum number of precincts for all the bands of the tile
+    * @param	max_res	the maximum number of resolutions for all the poc inside the tile.
+    * @param	dx_min		the minimum dx of all the components of all the resolutions for the
+    * tile.
+    * @param	dy_min		the minimum dy of all the components of all the resolutions for the
+    * tile.
+    */
    static void updateCompressTcpProgressions(CodingParams* p_cp, uint16_t num_comps,
-											 uint16_t tileno, grk_rect32 tileBounds,
-											 uint64_t max_precincts, uint8_t max_res,
-											 uint32_t dx_min, uint32_t dy_min, bool poc);
+                                             uint16_t tileno, grk_rect32 tileBounds,
+                                             uint64_t max_precincts, uint8_t max_res,
+                                             uint32_t dx_min, uint32_t dy_min, bool poc);
    /**
-	* Get the compression parameters needed to update the coding parameters and all the pocs.
-	* The precinct widths, heights, dx and dy for each component at each resolution will be stored
-	* as well. the last parameter of the function should be an array of pointers of size nb
-	* components, each pointer leading to an area of size 4 * max_res. The data is stored inside
-	* this area with the following pattern : dx_compi_res0 , dy_compi_res0 , w_compi_res0,
-	* h_compi_res0 , dx_compi_res1 , dy_compi_res1 , w_compi_res1, h_compi_res1 , ...
-	*
-	* @param	p_image		the image being encoded.
-	* @param	p_cp		the coding parameters.
-	* @param	tileno		the tile index of the tile being encoded.
-	* @param	tileBounds	tile bounds
-	* @param	max_precincts	maximum number of precincts for all the bands of the tile
-	* @param	max_res		maximum number of resolutions for all the poc inside the tile.
-	* @param	dx_min		minimum dx of all the components of all the resolutions for the tile.
-	* @param	dy_min		minimum dy of all the components of all the resolutions for the tile.
-	* @param	precinctByComponent	stores log2 precinct grid dimensions by component
-	*/
+    * Get the compression parameters needed to update the coding parameters and all the pocs.
+    * The precinct widths, heights, dx and dy for each component at each resolution will be stored
+    * as well. the last parameter of the function should be an array of pointers of size nb
+    * components, each pointer leading to an area of size 4 * max_res. The data is stored inside
+    * this area with the following pattern : dx_compi_res0 , dy_compi_res0 , w_compi_res0,
+    * h_compi_res0 , dx_compi_res1 , dy_compi_res1 , w_compi_res1, h_compi_res1 , ...
+    *
+    * @param	p_image		the image being encoded.
+    * @param	p_cp		the coding parameters.
+    * @param	tileno		the tile index of the tile being encoded.
+    * @param	tileBounds	tile bounds
+    * @param	max_precincts	maximum number of precincts for all the bands of the tile
+    * @param	max_res		maximum number of resolutions for all the poc inside the tile.
+    * @param	dx_min		minimum dx of all the components of all the resolutions for the tile.
+    * @param	dy_min		minimum dy of all the components of all the resolutions for the tile.
+    * @param	precinctByComponent	stores log2 precinct grid dimensions by component
+    */
    static void getParams(const GrkImage* image, const CodingParams* p_cp, uint16_t tileno,
-						 grk_rect32* tileBounds, uint32_t* dx_min, uint32_t* dy_min,
-						 IncludeTracker* tracker, uint64_t* max_precincts, uint8_t* max_res,
-						 uint32_t** precinctByComponent);
+                         grk_rect32* tileBounds, uint32_t* dx_min, uint32_t* dy_min,
+                         IncludeTracker* tracker, uint64_t* max_precincts, uint8_t* max_res,
+                         uint32_t** precinctByComponent);
    GrkImage* image;
    CodingParams* cp;
    uint16_t tileno;

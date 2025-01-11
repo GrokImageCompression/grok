@@ -206,7 +206,7 @@ struct TileCodingParams
 struct EncodingParams
 {
    /** Maximum rate for each component.
-	* If == 0, component size limitation is not considered */
+    * If == 0, component size limitation is not considered */
    size_t max_comp_size_;
    /** Position of tile part flag in progression order*/
    uint32_t newTilePartProgressionPosition;
@@ -229,13 +229,13 @@ struct EncodingParams
 struct DecodingParams
 {
    /** if != 0, then original dimension divided by 2^(reduce); if == 0 or not used, image is
-	* decompressed to the full resolution */
+    * decompressed to the full resolution */
    uint8_t reduce_;
    /** if != 0, then only the first "layer" layers are decompressed; if == 0 or not used, all the
-	* quality layers are decompressed */
+    * quality layers are decompressed */
    uint16_t layers_to_decompress_;
 
-   uint32_t random_access_flags_;
+   uint32_t disable_random_access_flags_;
 };
 
 /**
@@ -276,8 +276,8 @@ struct CodingParams
    TileCodingParams* tcps;
    union
    {
-	  DecodingParams dec_;
-	  EncodingParams enc_;
+      DecodingParams dec_;
+      EncodingParams enc_;
    } coding_params_;
    TileLengthMarkers* tlm_markers;
    PLMarkerMgr* plm_markers;
@@ -296,12 +296,12 @@ enum DECOMPRESS_STATE
    DECOMPRESS_STATE_MH = 0x0004, /**< the decoding process is in the main header */
    DECOMPRESS_STATE_TPH = 0x0008, /**< the decoding process is in a tile part header */
    DECOMPRESS_STATE_TPH_SOT = 0x0010, /**< the decoding process is in a tile part header
-					 and expects a SOT marker */
+                          and expects a SOT marker */
    DECOMPRESS_STATE_DATA = 0x0020, /**< the decoding process is expecting
-				 to read tile data from the code stream */
+                     to read tile data from the code stream */
    DECOMPRESS_STATE_EOC = 0x0040, /**< the decoding process has encountered the EOC marker */
    DECOMPRESS_STATE_NO_EOC = 0x0080, /**< the decoding process must not expect a EOC marker
-				   because the code stream is truncated */
+                       because the code stream is truncated */
 };
 
 class CodeStreamDecompress;
@@ -325,15 +325,15 @@ struct DecompressorState
    /** Position of the last SOT marker read */
    uint64_t lastSotReadPosition;
    /**
-	* Indicate that the current tile-part is assumed to be the last tile part of the code stream.
-	* This is useful in the case when PSot is equal to zero. The SOT length will be computed in the
-	* SOD reader function.
-	*/
+    * Indicate that the current tile-part is assumed to be the last tile part of the code stream.
+    * This is useful in the case when PSot is equal to zero. The SOT length will be computed in the
+    * SOD reader function.
+    */
    bool lastTilePartInCodeStream;
 
  private:
    /** Decoder state: used to indicate in which part of the code stream
-	*  the decompressor is (main header, tile header, end) */
+    *  the decompressor is (main header, tile header, end) */
    uint16_t state_;
 };
 

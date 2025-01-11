@@ -23,13 +23,13 @@
 namespace grk
 {
 CodeStream::CodeStream(BufferedStream* stream)
-	: codeStreamInfo(nullptr), headerImage_(nullptr), currentTileProcessor_(nullptr),
-	  stream_(stream), current_plugin_tile(nullptr)
+    : codeStreamInfo(nullptr), headerImage_(nullptr), currentTileProcessor_(nullptr),
+      stream_(stream), current_plugin_tile(nullptr)
 {}
 CodeStream::~CodeStream()
 {
    if(headerImage_)
-	  grk_object_unref(&headerImage_->obj);
+      grk_object_unref(&headerImage_->obj);
    delete codeStreamInfo;
 }
 CodingParams* CodeStream::getCodingParams(void)
@@ -47,7 +47,7 @@ TileProcessor* CodeStream::currentProcessor(void)
 bool CodeStream::exec(std::vector<PROCEDURE_FUNC>& procs)
 {
    bool result =
-	   std::all_of(procs.begin(), procs.end(), [](const PROCEDURE_FUNC& proc) { return proc(); });
+       std::all_of(procs.begin(), procs.end(), [](const PROCEDURE_FUNC& proc) { return proc(); });
    procs.clear();
 
    return result;
@@ -65,59 +65,59 @@ std::string CodeStream::markerString(uint16_t marker)
 {
    switch(marker)
    {
-	  case J2K_SOC:
-		 return "SOC";
-	  case J2K_SOT:
-		 return "SOT";
-	  case J2K_SOD:
-		 return "SOD";
-	  case J2K_EOC:
-		 return "EOC";
-	  case J2K_CAP:
-		 return "CAP";
-	  case J2K_SIZ:
-		 return "SIZ";
-	  case J2K_COD:
-		 return "COD";
-	  case J2K_COC:
-		 return "COC";
-	  case J2K_RGN:
-		 return "RGN";
-	  case J2K_QCD:
-		 return "QCD";
-	  case J2K_QCC:
-		 return "QCC";
-	  case J2K_POC:
-		 return "POC";
-	  case J2K_TLM:
-		 return "TLM";
-	  case J2K_PLM:
-		 return "PLM";
-	  case J2K_PLT:
-		 return "PLT";
-	  case J2K_PPM:
-		 return "PPM";
-	  case J2K_PPT:
-		 return "PPT";
-	  case J2K_SOP:
-		 return "SOP";
-	  case J2K_EPH:
-		 return "EPH";
-	  case J2K_CRG:
-		 return "CRG";
-	  case J2K_COM:
-		 return "COM";
-	  case J2K_CBD:
-		 return "CBD";
-	  case J2K_MCC:
-		 return "MCC";
-	  case J2K_MCT:
-		 return "MCT";
-	  case J2K_MCO:
-		 return "MCO";
-	  case J2K_UNK:
-	  default:
-		 return "Unknown";
+      case J2K_SOC:
+         return "SOC";
+      case J2K_SOT:
+         return "SOT";
+      case J2K_SOD:
+         return "SOD";
+      case J2K_EOC:
+         return "EOC";
+      case J2K_CAP:
+         return "CAP";
+      case J2K_SIZ:
+         return "SIZ";
+      case J2K_COD:
+         return "COD";
+      case J2K_COC:
+         return "COC";
+      case J2K_RGN:
+         return "RGN";
+      case J2K_QCD:
+         return "QCD";
+      case J2K_QCC:
+         return "QCC";
+      case J2K_POC:
+         return "POC";
+      case J2K_TLM:
+         return "TLM";
+      case J2K_PLM:
+         return "PLM";
+      case J2K_PLT:
+         return "PLT";
+      case J2K_PPM:
+         return "PPM";
+      case J2K_PPT:
+         return "PPT";
+      case J2K_SOP:
+         return "SOP";
+      case J2K_EPH:
+         return "EPH";
+      case J2K_CRG:
+         return "CRG";
+      case J2K_COM:
+         return "COM";
+      case J2K_CBD:
+         return "CBD";
+      case J2K_MCC:
+         return "MCC";
+      case J2K_MCT:
+         return "MCT";
+      case J2K_MCO:
+         return "MCO";
+      case J2K_UNK:
+      default:
+         return "Unknown";
    }
 }
 

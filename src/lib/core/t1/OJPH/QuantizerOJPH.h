@@ -62,7 +62,7 @@ struct QuantizerOJPH : public grk::Quantizer
  public:
    QuantizerOJPH(bool reversible, uint8_t guard_bits);
    void generate(uint32_t decomps, uint32_t max_bit_depth, bool color_transform,
-				 bool is_signed) override;
+                 bool is_signed) override;
    bool write(grk::BufferedStream* stream) override;
 
  private:

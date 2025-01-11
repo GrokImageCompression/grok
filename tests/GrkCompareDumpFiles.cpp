@@ -66,48 +66,48 @@ static int parse_cmdline_cmp(int argc, char** argv, test_cmp_parameters* param)
    param->test_filename = nullptr;
    try
    {
-	  TCLAP::CmdLine cmd("compare_dump_files command line", ' ', "");
+      TCLAP::CmdLine cmd("compare_dump_files command line", ' ', "");
 
-	  TCLAP::ValueArg<std::string> baseArg("b", "base", "base file", false, "", "string", cmd);
+      TCLAP::ValueArg<std::string> baseArg("b", "base", "base file", false, "", "string", cmd);
 
-	  TCLAP::ValueArg<std::string> testArg("t", "test", "test file", false, "", "string", cmd);
+      TCLAP::ValueArg<std::string> testArg("t", "test", "test file", false, "", "string", cmd);
 
-	  cmd.parse(argc, argv);
+      cmd.parse(argc, argv);
 
-	  if(baseArg.isSet())
-	  {
-		 sizemembasefile = baseArg.getValue().length() + 1;
-		 param->base_filename = (char*)malloc(sizemembasefile);
-		 if(!param->base_filename)
-		 {
-			fprintf(stderr, "Out of memory");
-			return 1;
-		 }
-		 strcpy(param->base_filename, baseArg.getValue().c_str());
-		 /*printf("param->base_filename = %s [%u / %u]\n", param->base_filename,
-		  * strlen(param->base_filename), sizemembasefile );*/
-		 index++;
-	  }
+      if(baseArg.isSet())
+      {
+         sizemembasefile = baseArg.getValue().length() + 1;
+         param->base_filename = (char*)malloc(sizemembasefile);
+         if(!param->base_filename)
+         {
+            fprintf(stderr, "Out of memory");
+            return 1;
+         }
+         strcpy(param->base_filename, baseArg.getValue().c_str());
+         /*printf("param->base_filename = %s [%u / %u]\n", param->base_filename,
+          * strlen(param->base_filename), sizemembasefile );*/
+         index++;
+      }
 
-	  if(testArg.isSet())
-	  {
-		 sizememtestfile = testArg.getValue().length() + 1;
-		 param->test_filename = (char*)malloc(sizememtestfile);
-		 if(!param->test_filename)
-		 {
-			fprintf(stderr, "Out of memory");
-			return 1;
-		 }
-		 strcpy(param->test_filename, testArg.getValue().c_str());
-		 /*printf("param->test_filename = %s [%u / %u]\n", param->test_filename,
-		  * strlen(param->test_filename), sizememtestfile);*/
-		 index++;
-	  }
+      if(testArg.isSet())
+      {
+         sizememtestfile = testArg.getValue().length() + 1;
+         param->test_filename = (char*)malloc(sizememtestfile);
+         if(!param->test_filename)
+         {
+            fprintf(stderr, "Out of memory");
+            return 1;
+         }
+         strcpy(param->test_filename, testArg.getValue().c_str());
+         /*printf("param->test_filename = %s [%u / %u]\n", param->test_filename,
+          * strlen(param->test_filename), sizememtestfile);*/
+         index++;
+      }
    }
    catch(const TCLAP::ArgException& e) // catch any exceptions
    {
-	  std::cerr << "error: " << e.error() << " for arg " << e.argId() << std::endl;
-	  return 0;
+      std::cerr << "error: " << e.error() << " for arg " << e.argId() << std::endl;
+      return 0;
    }
    return index;
 }
@@ -118,7 +118,7 @@ int GrkCompareDumpFiles::main(int argc, char** argv)
    std::string out;
    for(int i = 0; i < argc; ++i)
    {
-	  out += std::string(" ") + argv[i];
+      out += std::string(" ") + argv[i];
    }
    out += "\n";
    printf("%s", out.c_str());
@@ -134,15 +134,15 @@ int GrkCompareDumpFiles::main(int argc, char** argv)
 
    if(parse_cmdline_cmp(argc, argv, &inParam) == 1)
    {
-	  compare_dump_files_help_display();
-	  goto cleanup;
+      compare_dump_files_help_display();
+      goto cleanup;
    }
 
    /* Display Parameters*/
    printf("******Parameters********* \n");
    printf(" base_filename = %s\n"
-		  " test_filename = %s\n",
-		  inParam.base_filename, inParam.test_filename);
+          " test_filename = %s\n",
+          inParam.base_filename, inParam.test_filename);
    printf("************************* \n");
 
 #ifdef COPY_TEST_FILES_TO_REPO
@@ -153,7 +153,7 @@ int GrkCompareDumpFiles::main(int argc, char** argv)
    printf("Try to open: %s for reading ... ", inParam.base_filename);
    if((fbase = fopen(inParam.base_filename, "rb")) == nullptr)
    {
-	  goto cleanup;
+      goto cleanup;
    }
    printf("Ok.\n");
 
@@ -161,25 +161,25 @@ int GrkCompareDumpFiles::main(int argc, char** argv)
    printf("Try to open: %s for reading ... ", inParam.test_filename);
    if((ftest = fopen(inParam.test_filename, "rb")) == nullptr)
    {
-	  goto cleanup;
+      goto cleanup;
    }
    printf("Ok.\n");
 
    while(fgets(lbase, sizeof(lbase), fbase) && fgets(ltest, sizeof(ltest), ftest))
    {
-	  int nbase = sscanf(lbase, "%511[^\r\n]", strbase);
-	  int ntest = sscanf(ltest, "%511[^\r\n]", strtest);
-	  assert(nbase != 511 && ntest != 511);
-	  if(nbase != 1 || ntest != 1)
-	  {
-		 fprintf(stderr, "could not parse line from files\n");
-		 goto cleanup;
-	  }
-	  if(strcmp(strbase, strtest) != 0)
-	  {
-		 fprintf(stderr, "<%s> vs. <%s>\n", strbase, strtest);
-		 goto cleanup;
-	  }
+      int nbase = sscanf(lbase, "%511[^\r\n]", strbase);
+      int ntest = sscanf(ltest, "%511[^\r\n]", strtest);
+      assert(nbase != 511 && ntest != 511);
+      if(nbase != 1 || ntest != 1)
+      {
+         fprintf(stderr, "could not parse line from files\n");
+         goto cleanup;
+      }
+      if(strcmp(strbase, strtest) != 0)
+      {
+         fprintf(stderr, "<%s> vs. <%s>\n", strbase, strtest);
+         goto cleanup;
+      }
    }
 
    same = 1;
@@ -187,9 +187,9 @@ int GrkCompareDumpFiles::main(int argc, char** argv)
 cleanup:
    /*Close File*/
    if(fbase)
-	  fclose(fbase);
+      fclose(fbase);
    if(ftest)
-	  fclose(ftest);
+      fclose(ftest);
 
    /* Free memory*/
    free(inParam.base_filename);

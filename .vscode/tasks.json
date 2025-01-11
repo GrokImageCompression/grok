@@ -1,0 +1,28 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+      {
+        "label": "build",
+        "type": "shell",
+        "command": "make",
+        "options": {
+            "cwd": "${workspaceFolder}/build"
+        },
+        "args": [
+          "-j$(nproc)"
+        ],
+        "group": {
+          "kind": "build",
+          "isDefault": true
+        },
+        "presentation": {
+            "reveal": "always",
+            "panel": "shared",
+            "clear": false,
+            "focus": true
+         },
+        "problemMatcher": [],
+        "detail": "Run the custom Makefile to build the project."
+      }
+    ]
+  }

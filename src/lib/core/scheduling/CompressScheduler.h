@@ -22,7 +22,7 @@ class CompressScheduler : public Scheduler
 {
  public:
    CompressScheduler(Tile* tile, bool needsRateControl, TileCodingParams* tcp,
-					 const double* mct_norms, uint16_t mct_numcomps);
+                     const double* mct_norms, uint16_t mct_numcomps);
    ~CompressScheduler() = default;
    bool schedule(uint16_t compno) override;
 

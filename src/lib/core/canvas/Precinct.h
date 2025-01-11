@@ -23,16 +23,16 @@ class BlockCache : public SparseCache<T>
 {
  public:
    BlockCache(uint16_t numLayers, uint64_t maxChunkSize, P* blockInitializer)
-	   : SparseCache<T>(maxChunkSize), blockInitializer_(blockInitializer), numLayers_(numLayers)
+       : SparseCache<T>(maxChunkSize), blockInitializer_(blockInitializer), numLayers_(numLayers)
    {}
    virtual ~BlockCache() = default;
 
  protected:
    virtual T* create(uint64_t index) override
    {
-	  auto item = new T(numLayers_);
-	  blockInitializer_->initCodeBlock(item, index);
-	  return item;
+      auto item = new T(numLayers_);
+      blockInitializer_->initCodeBlock(item, index);
+      return item;
    }
 
  private:
@@ -87,8 +87,8 @@ struct Precinct : public grk_rect32
    grk_pt32 cblk_expn_;
    PrecinctImpl* getImpl(void)
    {
-	  impl->initCodeBlocks(numLayers_, this);
-	  return impl;
+      impl->initCodeBlocks(numLayers_, this);
+      return impl;
    }
 };
 

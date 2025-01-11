@@ -109,26 +109,19 @@ struct TileLengthMarkers
    explicit TileLengthMarkers(BufferedStream* stream);
    ~TileLengthMarkers();
 
-   bool read(uint8_t* headerData, uint16_t header_size);
-   void rewind(void);
-   TilePartLengthInfo* next(void);
-   TilePartLengthInfo* next(bool peek);
-   void invalidate(void);
-   bool valid(void);
-   void seek(TileSet* tilesToDecompress, CodingParams* cp, BufferedStream* stream);
    bool writeBegin(uint16_t numTilePartsTotal);
    void push(uint16_t tile_index, uint32_t tile_part_size);
    bool writeEnd(void);
    /**
-	Add tile header marker information
-	@param tileno       tile index number
-	@param codeStreamInfo   Codestream information structure
-	@param type         marker type
-	@param pos          byte offset of marker segment
-	@param len          length of marker segment
-	*/
+     Add tile header marker information
+     @param tileno       tile index number
+     @param codeStreamInfo   Codestream information structure
+     @param type         marker type
+     @param pos          byte offset of marker segment
+     @param len          length of marker segment
+     */
    static bool addTileMarkerInfo(uint16_t tileno, CodeStreamInfo* codeStreamInfo, uint16_t type,
-								 uint64_t pos, uint32_t len);
+                                 uint64_t pos, uint32_t len);
 
  private:
    void push(uint8_t i_TLM, TilePartLengthInfo curr_vec);

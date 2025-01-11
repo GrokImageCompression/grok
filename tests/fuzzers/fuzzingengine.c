@@ -28,14 +28,14 @@ int main(int argc, char* argv[])
 
    // handle absent file name
    if(argc < 2)
-	  return LLVMFuzzerTestOneInput(" ", 1);
+      return LLVMFuzzerTestOneInput(" ", 1);
 
    // open file
    auto fileHandle = fopen(argv[1], "rb");
    if(!fileHandle)
    {
-	  fprintf(stderr, "%s not found.\n", argv[1]);
-	  exit(1);
+      fprintf(stderr, "%s not found.\n", argv[1]);
+      exit(1);
    }
 
    // find file length
@@ -47,18 +47,18 @@ int main(int argc, char* argv[])
    auto buffer = malloc(fileLength);
    if(!buffer)
    {
-	  fprintf(stderr, "malloc failed.\n");
-	  fclose(fileHandle);
-	  exit(1);
+      fprintf(stderr, "malloc failed.\n");
+      fclose(fileHandle);
+      exit(1);
    }
 
    // read file into buffer
    if(fread(buffer, fileLength, 1, fileHandle) != 1)
    {
-	  fprintf(stderr, "fread failed.\n");
-	  fclose(fileHandle);
-	  free(buffer);
-	  exit(1);
+      fprintf(stderr, "fread failed.\n");
+      fclose(fileHandle);
+      free(buffer);
+      exit(1);
    }
    fclose(fileHandle);
 

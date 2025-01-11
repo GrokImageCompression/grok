@@ -28,8 +28,8 @@ class PacketParser
 {
  public:
    PacketParser(TileProcessor* tileProcessor, uint16_t packetSequenceNumber, uint16_t compno,
-				uint8_t resno, uint64_t precinctIndex, uint16_t layno, uint8_t* data,
-				uint32_t lengthFromMarker, size_t tileBytes, size_t remainingTilePartBytes);
+                uint8_t resno, uint64_t precinctIndex, uint16_t layno, uint8_t* data,
+                uint32_t lengthFromMarker, size_t tileBytes, size_t remainingTilePartBytes);
    virtual ~PacketParser(void) = default;
    void readHeader(void);
    void readData(void);

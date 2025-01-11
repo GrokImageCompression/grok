@@ -158,6 +158,6 @@
 #include "CompressScheduler.h"
 
 #if (defined(__aarch64__) || defined(_M_ARM64)) && !defined(__ARM_FEATURE_SVE2) && \
-	!defined(__ARM_FEATURE_SVE2)
+    !defined(__ARM_FEATURE_SVE2)
 #define HWY_DISABLED_TARGETS (HWY_SVE | HWY_SVE2 | HWY_SVE_256 | HWY_SVE2_128)
 #endif

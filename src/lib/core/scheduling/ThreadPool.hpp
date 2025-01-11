@@ -40,32 +40,32 @@ class ExecSingleton
    // Get instance of the Singleton with a specific number of worker threads
    static tf::Executor& instance(uint32_t numthreads)
    {
-	  std::lock_guard<std::mutex> lock(mutex_);
-	  instance_ = std::make_unique<tf::Executor>(numthreads ? numthreads
-															: std::thread::hardware_concurrency());
+      std::lock_guard<std::mutex> lock(mutex_);
+      instance_ = std::make_unique<tf::Executor>(numthreads ? numthreads
+                                                            : std::thread::hardware_concurrency());
 
-	  return *instance_;
+      return *instance_;
    }
 
    // Get current instance of the Singleton (create with hardware concurrency if null)
    static tf::Executor& get(void)
    {
-	  std::lock_guard<std::mutex> lock(mutex_);
-	  if(!instance_)
-		 return instance(0);
-	  return *instance_;
+      std::lock_guard<std::mutex> lock(mutex_);
+      if(!instance_)
+         return instance(0);
+      return *instance_;
    }
 
    // Destroy the Singleton instance
    static void destroy()
    {
-	  std::lock_guard<std::mutex> lock(mutex_);
-	  instance_.reset();
+      std::lock_guard<std::mutex> lock(mutex_);
+      instance_.reset();
    }
 
    static uint32_t threadId(void)
    {
-	  return get().num_workers() > 1 ? (uint32_t)get().this_worker_id() : 0;
+      return get().num_workers() > 1 ? (uint32_t)get().this_worker_id() : 0;
    }
 
  private:

@@ -83,6 +83,6 @@ typedef minpf_exit_func (*minpf_post_load_func)(const minpf_platform_services*);
 #endif /* !GRK_STATIC || !_WIN32 */
 
 extern "C" PLUGIN_API minpf_exit_func minpf_init_plugin(const char* pluginPath,
-														const minpf_platform_services* params);
+                                                        const minpf_platform_services* params);
 
 } // namespace grk

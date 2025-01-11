@@ -27,27 +27,27 @@ bool FileStreamIO::open(const std::string& fileName, const std::string& mode)
    bool useStdio = grk::useStdio(fileName);
    switch(mode[0])
    {
-	  case 'r':
-		 if(useStdio)
-		 {
-			if(!grk::grk_set_binary_mode(stdin))
-			   return false;
-			fileHandle_ = stdin;
-		 }
-		 else
-		 {
-			fileHandle_ = fopen(fileName.c_str(), "rb");
-			if(!fileHandle_)
-			{
-			   spdlog::error("Failed to open {} for reading", fileName);
-			   return false;
-			}
-		 }
-		 break;
-	  case 'w':
-		 if(!grk::grk_open_for_output(&fileHandle_, fileName.c_str(), useStdio))
-			return false;
-		 break;
+      case 'r':
+         if(useStdio)
+         {
+            if(!grk::grk_set_binary_mode(stdin))
+               return false;
+            fileHandle_ = stdin;
+         }
+         else
+         {
+            fileHandle_ = fopen(fileName.c_str(), "rb");
+            if(!fileHandle_)
+            {
+               spdlog::error("Failed to open {} for reading", fileName);
+               return false;
+            }
+         }
+         break;
+      case 'w':
+         if(!grk::grk_open_for_output(&fileHandle_, fileName.c_str(), useStdio))
+            return false;
+         break;
    }
    fileName_ = fileName;
 
@@ -57,16 +57,16 @@ bool FileStreamIO::close(void)
 {
    bool rc = true;
    if(!grk::useStdio(fileName_) && fileHandle_)
-	  rc = grk::safe_fclose(fileHandle_);
+      rc = grk::safe_fclose(fileHandle_);
    fileHandle_ = nullptr;
    return rc;
 }
 uint64_t FileStreamIO::write(uint8_t* buf, [[maybe_unused]] uint64_t offset, size_t len,
-							 [[maybe_unused]] size_t maxLen, [[maybe_unused]] bool pooled)
+                             [[maybe_unused]] size_t maxLen, [[maybe_unused]] bool pooled)
 {
    auto actual = fwrite(buf, 1, len, fileHandle_);
    if(actual < len)
-	  spdlog::error("wrote fewer bytes {} than expected number of bytes {}.", actual, len);
+      spdlog::error("wrote fewer bytes {} than expected number of bytes {}.", actual, len);
 
    return (uint64_t)actual;
 }
@@ -74,7 +74,7 @@ uint64_t FileStreamIO::write(GrkIOBuf buffer)
 {
    auto actual = fwrite(buffer.data, 1, buffer.len, fileHandle_);
    if(actual < buffer.len)
-	  spdlog::error("wrote fewer bytes {} than expected number of bytes {}.", actual, buffer.len);
+      spdlog::error("wrote fewer bytes {} than expected number of bytes {}.", actual, buffer.len);
 
    return buffer.len;
 }
@@ -82,7 +82,7 @@ bool FileStreamIO::read(uint8_t* buf, size_t len)
 {
    auto actual = fread(buf, 1, len, fileHandle_);
    if(actual < len)
-	  spdlog::error("read fewer bytes {} than expected number of bytes {}.", actual, len);
+      spdlog::error("read fewer bytes {} than expected number of bytes {}.", actual, len);
 
    return actual == len;
 }

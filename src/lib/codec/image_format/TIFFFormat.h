@@ -36,18 +36,18 @@ class TIFFFormat : public ImageFormat
    TIFFFormat();
    ~TIFFFormat();
    void registerGrkReclaimCallback(grk_io_init io_init, grk_io_callback reclaim_callback,
-								   void* user_data) override;
+                                   void* user_data) override;
 
    bool encodeInit(grk_image* image, const std::string& filename, uint32_t compression_level,
-				   uint32_t concurrency) override;
+                   uint32_t concurrency) override;
    bool encodeHeader(void) override;
    /***
-	* application-orchestrated pixel encoding
-	*/
+    * application-orchestrated pixel encoding
+    */
    bool encodePixels() override;
    /***
-	* library-orchestrated pixel encoding
-	*/
+    * library-orchestrated pixel encoding
+    */
    virtual bool encodePixels(uint32_t threadId, grk_io_buf pixels) override;
    bool encodeFinish(void) override;
    grk_image* decode(const std::string& filename, grk_cparameters* parameters) override;
@@ -55,8 +55,8 @@ class TIFFFormat : public ImageFormat
  private:
    bool encodeHeader(TIFF* tif);
    /***
-	* Common core pixel encoding write to disk
-	*/
+    * Common core pixel encoding write to disk
+    */
    bool encodePixelsCoreWrite(grk_io_buf pixels) override;
    TIFF* tif_;
    uint32_t chroma_subsample_x;

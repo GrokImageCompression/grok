@@ -32,53 +32,53 @@ static void mqc_codelps_enc(mqcoder* mqc);
 static void mqc_setbits_enc(mqcoder* mqc);
 
 static const mqc_state mqc_states[47 * 2] = {
-	{0x5601, 0, &mqc_states[2], &mqc_states[3]},   {0x5601, 1, &mqc_states[3], &mqc_states[2]},
-	{0x3401, 0, &mqc_states[4], &mqc_states[12]},  {0x3401, 1, &mqc_states[5], &mqc_states[13]},
-	{0x1801, 0, &mqc_states[6], &mqc_states[18]},  {0x1801, 1, &mqc_states[7], &mqc_states[19]},
-	{0x0ac1, 0, &mqc_states[8], &mqc_states[24]},  {0x0ac1, 1, &mqc_states[9], &mqc_states[25]},
-	{0x0521, 0, &mqc_states[10], &mqc_states[58]}, {0x0521, 1, &mqc_states[11], &mqc_states[59]},
-	{0x0221, 0, &mqc_states[76], &mqc_states[66]}, {0x0221, 1, &mqc_states[77], &mqc_states[67]},
-	{0x5601, 0, &mqc_states[14], &mqc_states[13]}, {0x5601, 1, &mqc_states[15], &mqc_states[12]},
-	{0x5401, 0, &mqc_states[16], &mqc_states[28]}, {0x5401, 1, &mqc_states[17], &mqc_states[29]},
-	{0x4801, 0, &mqc_states[18], &mqc_states[28]}, {0x4801, 1, &mqc_states[19], &mqc_states[29]},
-	{0x3801, 0, &mqc_states[20], &mqc_states[28]}, {0x3801, 1, &mqc_states[21], &mqc_states[29]},
-	{0x3001, 0, &mqc_states[22], &mqc_states[34]}, {0x3001, 1, &mqc_states[23], &mqc_states[35]},
-	{0x2401, 0, &mqc_states[24], &mqc_states[36]}, {0x2401, 1, &mqc_states[25], &mqc_states[37]},
-	{0x1c01, 0, &mqc_states[26], &mqc_states[40]}, {0x1c01, 1, &mqc_states[27], &mqc_states[41]},
-	{0x1601, 0, &mqc_states[58], &mqc_states[42]}, {0x1601, 1, &mqc_states[59], &mqc_states[43]},
-	{0x5601, 0, &mqc_states[30], &mqc_states[29]}, {0x5601, 1, &mqc_states[31], &mqc_states[28]},
-	{0x5401, 0, &mqc_states[32], &mqc_states[28]}, {0x5401, 1, &mqc_states[33], &mqc_states[29]},
-	{0x5101, 0, &mqc_states[34], &mqc_states[30]}, {0x5101, 1, &mqc_states[35], &mqc_states[31]},
-	{0x4801, 0, &mqc_states[36], &mqc_states[32]}, {0x4801, 1, &mqc_states[37], &mqc_states[33]},
-	{0x3801, 0, &mqc_states[38], &mqc_states[34]}, {0x3801, 1, &mqc_states[39], &mqc_states[35]},
-	{0x3401, 0, &mqc_states[40], &mqc_states[36]}, {0x3401, 1, &mqc_states[41], &mqc_states[37]},
-	{0x3001, 0, &mqc_states[42], &mqc_states[38]}, {0x3001, 1, &mqc_states[43], &mqc_states[39]},
-	{0x2801, 0, &mqc_states[44], &mqc_states[38]}, {0x2801, 1, &mqc_states[45], &mqc_states[39]},
-	{0x2401, 0, &mqc_states[46], &mqc_states[40]}, {0x2401, 1, &mqc_states[47], &mqc_states[41]},
-	{0x2201, 0, &mqc_states[48], &mqc_states[42]}, {0x2201, 1, &mqc_states[49], &mqc_states[43]},
-	{0x1c01, 0, &mqc_states[50], &mqc_states[44]}, {0x1c01, 1, &mqc_states[51], &mqc_states[45]},
-	{0x1801, 0, &mqc_states[52], &mqc_states[46]}, {0x1801, 1, &mqc_states[53], &mqc_states[47]},
-	{0x1601, 0, &mqc_states[54], &mqc_states[48]}, {0x1601, 1, &mqc_states[55], &mqc_states[49]},
-	{0x1401, 0, &mqc_states[56], &mqc_states[50]}, {0x1401, 1, &mqc_states[57], &mqc_states[51]},
-	{0x1201, 0, &mqc_states[58], &mqc_states[52]}, {0x1201, 1, &mqc_states[59], &mqc_states[53]},
-	{0x1101, 0, &mqc_states[60], &mqc_states[54]}, {0x1101, 1, &mqc_states[61], &mqc_states[55]},
-	{0x0ac1, 0, &mqc_states[62], &mqc_states[56]}, {0x0ac1, 1, &mqc_states[63], &mqc_states[57]},
-	{0x09c1, 0, &mqc_states[64], &mqc_states[58]}, {0x09c1, 1, &mqc_states[65], &mqc_states[59]},
-	{0x08a1, 0, &mqc_states[66], &mqc_states[60]}, {0x08a1, 1, &mqc_states[67], &mqc_states[61]},
-	{0x0521, 0, &mqc_states[68], &mqc_states[62]}, {0x0521, 1, &mqc_states[69], &mqc_states[63]},
-	{0x0441, 0, &mqc_states[70], &mqc_states[64]}, {0x0441, 1, &mqc_states[71], &mqc_states[65]},
-	{0x02a1, 0, &mqc_states[72], &mqc_states[66]}, {0x02a1, 1, &mqc_states[73], &mqc_states[67]},
-	{0x0221, 0, &mqc_states[74], &mqc_states[68]}, {0x0221, 1, &mqc_states[75], &mqc_states[69]},
-	{0x0141, 0, &mqc_states[76], &mqc_states[70]}, {0x0141, 1, &mqc_states[77], &mqc_states[71]},
-	{0x0111, 0, &mqc_states[78], &mqc_states[72]}, {0x0111, 1, &mqc_states[79], &mqc_states[73]},
-	{0x0085, 0, &mqc_states[80], &mqc_states[74]}, {0x0085, 1, &mqc_states[81], &mqc_states[75]},
-	{0x0049, 0, &mqc_states[82], &mqc_states[76]}, {0x0049, 1, &mqc_states[83], &mqc_states[77]},
-	{0x0025, 0, &mqc_states[84], &mqc_states[78]}, {0x0025, 1, &mqc_states[85], &mqc_states[79]},
-	{0x0015, 0, &mqc_states[86], &mqc_states[80]}, {0x0015, 1, &mqc_states[87], &mqc_states[81]},
-	{0x0009, 0, &mqc_states[88], &mqc_states[82]}, {0x0009, 1, &mqc_states[89], &mqc_states[83]},
-	{0x0005, 0, &mqc_states[90], &mqc_states[84]}, {0x0005, 1, &mqc_states[91], &mqc_states[85]},
-	{0x0001, 0, &mqc_states[90], &mqc_states[86]}, {0x0001, 1, &mqc_states[91], &mqc_states[87]},
-	{0x5601, 0, &mqc_states[92], &mqc_states[92]}, {0x5601, 1, &mqc_states[93], &mqc_states[93]},
+    {0x5601, 0, &mqc_states[2], &mqc_states[3]},   {0x5601, 1, &mqc_states[3], &mqc_states[2]},
+    {0x3401, 0, &mqc_states[4], &mqc_states[12]},  {0x3401, 1, &mqc_states[5], &mqc_states[13]},
+    {0x1801, 0, &mqc_states[6], &mqc_states[18]},  {0x1801, 1, &mqc_states[7], &mqc_states[19]},
+    {0x0ac1, 0, &mqc_states[8], &mqc_states[24]},  {0x0ac1, 1, &mqc_states[9], &mqc_states[25]},
+    {0x0521, 0, &mqc_states[10], &mqc_states[58]}, {0x0521, 1, &mqc_states[11], &mqc_states[59]},
+    {0x0221, 0, &mqc_states[76], &mqc_states[66]}, {0x0221, 1, &mqc_states[77], &mqc_states[67]},
+    {0x5601, 0, &mqc_states[14], &mqc_states[13]}, {0x5601, 1, &mqc_states[15], &mqc_states[12]},
+    {0x5401, 0, &mqc_states[16], &mqc_states[28]}, {0x5401, 1, &mqc_states[17], &mqc_states[29]},
+    {0x4801, 0, &mqc_states[18], &mqc_states[28]}, {0x4801, 1, &mqc_states[19], &mqc_states[29]},
+    {0x3801, 0, &mqc_states[20], &mqc_states[28]}, {0x3801, 1, &mqc_states[21], &mqc_states[29]},
+    {0x3001, 0, &mqc_states[22], &mqc_states[34]}, {0x3001, 1, &mqc_states[23], &mqc_states[35]},
+    {0x2401, 0, &mqc_states[24], &mqc_states[36]}, {0x2401, 1, &mqc_states[25], &mqc_states[37]},
+    {0x1c01, 0, &mqc_states[26], &mqc_states[40]}, {0x1c01, 1, &mqc_states[27], &mqc_states[41]},
+    {0x1601, 0, &mqc_states[58], &mqc_states[42]}, {0x1601, 1, &mqc_states[59], &mqc_states[43]},
+    {0x5601, 0, &mqc_states[30], &mqc_states[29]}, {0x5601, 1, &mqc_states[31], &mqc_states[28]},
+    {0x5401, 0, &mqc_states[32], &mqc_states[28]}, {0x5401, 1, &mqc_states[33], &mqc_states[29]},
+    {0x5101, 0, &mqc_states[34], &mqc_states[30]}, {0x5101, 1, &mqc_states[35], &mqc_states[31]},
+    {0x4801, 0, &mqc_states[36], &mqc_states[32]}, {0x4801, 1, &mqc_states[37], &mqc_states[33]},
+    {0x3801, 0, &mqc_states[38], &mqc_states[34]}, {0x3801, 1, &mqc_states[39], &mqc_states[35]},
+    {0x3401, 0, &mqc_states[40], &mqc_states[36]}, {0x3401, 1, &mqc_states[41], &mqc_states[37]},
+    {0x3001, 0, &mqc_states[42], &mqc_states[38]}, {0x3001, 1, &mqc_states[43], &mqc_states[39]},
+    {0x2801, 0, &mqc_states[44], &mqc_states[38]}, {0x2801, 1, &mqc_states[45], &mqc_states[39]},
+    {0x2401, 0, &mqc_states[46], &mqc_states[40]}, {0x2401, 1, &mqc_states[47], &mqc_states[41]},
+    {0x2201, 0, &mqc_states[48], &mqc_states[42]}, {0x2201, 1, &mqc_states[49], &mqc_states[43]},
+    {0x1c01, 0, &mqc_states[50], &mqc_states[44]}, {0x1c01, 1, &mqc_states[51], &mqc_states[45]},
+    {0x1801, 0, &mqc_states[52], &mqc_states[46]}, {0x1801, 1, &mqc_states[53], &mqc_states[47]},
+    {0x1601, 0, &mqc_states[54], &mqc_states[48]}, {0x1601, 1, &mqc_states[55], &mqc_states[49]},
+    {0x1401, 0, &mqc_states[56], &mqc_states[50]}, {0x1401, 1, &mqc_states[57], &mqc_states[51]},
+    {0x1201, 0, &mqc_states[58], &mqc_states[52]}, {0x1201, 1, &mqc_states[59], &mqc_states[53]},
+    {0x1101, 0, &mqc_states[60], &mqc_states[54]}, {0x1101, 1, &mqc_states[61], &mqc_states[55]},
+    {0x0ac1, 0, &mqc_states[62], &mqc_states[56]}, {0x0ac1, 1, &mqc_states[63], &mqc_states[57]},
+    {0x09c1, 0, &mqc_states[64], &mqc_states[58]}, {0x09c1, 1, &mqc_states[65], &mqc_states[59]},
+    {0x08a1, 0, &mqc_states[66], &mqc_states[60]}, {0x08a1, 1, &mqc_states[67], &mqc_states[61]},
+    {0x0521, 0, &mqc_states[68], &mqc_states[62]}, {0x0521, 1, &mqc_states[69], &mqc_states[63]},
+    {0x0441, 0, &mqc_states[70], &mqc_states[64]}, {0x0441, 1, &mqc_states[71], &mqc_states[65]},
+    {0x02a1, 0, &mqc_states[72], &mqc_states[66]}, {0x02a1, 1, &mqc_states[73], &mqc_states[67]},
+    {0x0221, 0, &mqc_states[74], &mqc_states[68]}, {0x0221, 1, &mqc_states[75], &mqc_states[69]},
+    {0x0141, 0, &mqc_states[76], &mqc_states[70]}, {0x0141, 1, &mqc_states[77], &mqc_states[71]},
+    {0x0111, 0, &mqc_states[78], &mqc_states[72]}, {0x0111, 1, &mqc_states[79], &mqc_states[73]},
+    {0x0085, 0, &mqc_states[80], &mqc_states[74]}, {0x0085, 1, &mqc_states[81], &mqc_states[75]},
+    {0x0049, 0, &mqc_states[82], &mqc_states[76]}, {0x0049, 1, &mqc_states[83], &mqc_states[77]},
+    {0x0025, 0, &mqc_states[84], &mqc_states[78]}, {0x0025, 1, &mqc_states[85], &mqc_states[79]},
+    {0x0015, 0, &mqc_states[86], &mqc_states[80]}, {0x0015, 1, &mqc_states[87], &mqc_states[81]},
+    {0x0009, 0, &mqc_states[88], &mqc_states[82]}, {0x0009, 1, &mqc_states[89], &mqc_states[83]},
+    {0x0005, 0, &mqc_states[90], &mqc_states[84]}, {0x0005, 1, &mqc_states[91], &mqc_states[85]},
+    {0x0001, 0, &mqc_states[90], &mqc_states[86]}, {0x0001, 1, &mqc_states[91], &mqc_states[87]},
+    {0x5601, 0, &mqc_states[92], &mqc_states[92]}, {0x5601, 1, &mqc_states[93], &mqc_states[93]},
 };
 
 /* ENCODE */
@@ -90,39 +90,39 @@ void mqc_byteout(mqcoder* mqc)
    assert(mqc->bp >= mqc->start - 1);
    if(*mqc->bp == 0xff)
    {
-	  mqc->bp++;
-	  *mqc->bp = (uint8_t)(mqc->c >> 20);
-	  mqc->c &= 0xfffff;
-	  mqc->ct = 7;
+      mqc->bp++;
+      *mqc->bp = (uint8_t)(mqc->c >> 20);
+      mqc->c &= 0xfffff;
+      mqc->ct = 7;
    }
    else
    {
-	  if((mqc->c & 0x8000000) == 0)
-	  {
-		 mqc->bp++;
-		 *mqc->bp = (uint8_t)(mqc->c >> 19);
-		 mqc->c &= 0x7ffff;
-		 mqc->ct = 8;
-	  }
-	  else
-	  {
-		 (*mqc->bp)++;
-		 if(*mqc->bp == 0xff)
-		 {
-			mqc->c &= 0x7ffffff;
-			mqc->bp++;
-			*mqc->bp = (uint8_t)(mqc->c >> 20);
-			mqc->c &= 0xfffff;
-			mqc->ct = 7;
-		 }
-		 else
-		 {
-			mqc->bp++;
-			*mqc->bp = (uint8_t)(mqc->c >> 19);
-			mqc->c &= 0x7ffff;
-			mqc->ct = 8;
-		 }
-	  }
+      if((mqc->c & 0x8000000) == 0)
+      {
+         mqc->bp++;
+         *mqc->bp = (uint8_t)(mqc->c >> 19);
+         mqc->c &= 0x7ffff;
+         mqc->ct = 8;
+      }
+      else
+      {
+         (*mqc->bp)++;
+         if(*mqc->bp == 0xff)
+         {
+            mqc->c &= 0x7ffffff;
+            mqc->bp++;
+            *mqc->bp = (uint8_t)(mqc->c >> 20);
+            mqc->c &= 0xfffff;
+            mqc->ct = 7;
+         }
+         else
+         {
+            mqc->bp++;
+            *mqc->bp = (uint8_t)(mqc->c >> 19);
+            mqc->c &= 0x7ffff;
+            mqc->ct = 8;
+         }
+      }
    }
 }
 
@@ -130,11 +130,11 @@ static void mqc_renorm_enc(mqcoder* mqc)
 {
    do
    {
-	  mqc->a <<= 1;
-	  mqc->c <<= 1;
-	  mqc->ct--;
-	  if(mqc->ct == 0)
-		 mqc_byteout(mqc);
+      mqc->a <<= 1;
+      mqc->c <<= 1;
+      mqc->ct--;
+      if(mqc->ct == 0)
+         mqc_byteout(mqc);
    } while((mqc->a & 0x8000) == 0);
 }
 
@@ -143,16 +143,16 @@ static void mqc_codemps_enc(mqcoder* mqc)
    mqc->a -= (*mqc->curctx)->qeval;
    if((mqc->a & 0x8000) == 0)
    {
-	  if(mqc->a < (*mqc->curctx)->qeval)
-		 mqc->a = (*mqc->curctx)->qeval;
-	  else
-		 mqc->c += (*mqc->curctx)->qeval;
-	  *mqc->curctx = (*mqc->curctx)->nmps;
-	  mqc_renorm_enc(mqc);
+      if(mqc->a < (*mqc->curctx)->qeval)
+         mqc->a = (*mqc->curctx)->qeval;
+      else
+         mqc->c += (*mqc->curctx)->qeval;
+      *mqc->curctx = (*mqc->curctx)->nmps;
+      mqc_renorm_enc(mqc);
    }
    else
    {
-	  mqc->c += (*mqc->curctx)->qeval;
+      mqc->c += (*mqc->curctx)->qeval;
    }
 }
 
@@ -160,9 +160,9 @@ static void mqc_codelps_enc(mqcoder* mqc)
 {
    mqc->a -= (*mqc->curctx)->qeval;
    if(mqc->a < (*mqc->curctx)->qeval)
-	  mqc->c += (*mqc->curctx)->qeval;
+      mqc->c += (*mqc->curctx)->qeval;
    else
-	  mqc->a = (*mqc->curctx)->qeval;
+      mqc->a = (*mqc->curctx)->qeval;
    *mqc->curctx = (*mqc->curctx)->nlps;
    mqc_renorm_enc(mqc);
 }
@@ -172,7 +172,7 @@ static void mqc_setbits_enc(mqcoder* mqc)
    uint32_t tempc = mqc->c + mqc->a;
    mqc->c |= 0xffff;
    if(mqc->c >= tempc)
-	  mqc->c -= 0x8000;
+      mqc->c -= 0x8000;
 }
 uint32_t mqc_numbytes_enc(mqcoder* mqc)
 {
@@ -205,9 +205,9 @@ void mqc_init_enc(mqcoder* mqc, uint8_t* bp)
 void mqc_encode(mqcoder* mqc, uint32_t d)
 {
    if((*mqc->curctx)->mps == d)
-	  mqc_codemps_enc(mqc);
+      mqc_codemps_enc(mqc);
    else
-	  mqc_codelps_enc(mqc);
+      mqc_codelps_enc(mqc);
 }
 
 void mqc_flush_enc(mqcoder* mqc)
@@ -223,7 +223,7 @@ void mqc_flush_enc(mqcoder* mqc)
    /* Advance pointer if current byte != 0xff */
    /* (it is forbidden that a coding pass ends with 0xff) */
    if(*mqc->bp != 0xff)
-	  mqc->bp++;
+      mqc->bp++;
 }
 
 void mqc_bypass_init_enc(mqcoder* mqc)
@@ -259,33 +259,33 @@ void mqc_bypass_flush_enc(mqcoder* mqc, bool erterm)
    /* in -fussy mode) */
    if(mqc->ct < 7 || (mqc->ct == 7 && (erterm || mqc->bp[-1] != 0xff)))
    {
-	  uint8_t bit_value = 0;
-	  /* If so, fill the remaining lsbs with an alternating sequence of */
-	  /* 0,1,... */
-	  /* Note: it seems the standard only requires that for a ERTERM flush */
-	  /* and doesn't specify what to do for a regular BYPASS flush */
-	  while(mqc->ct > 0)
-	  {
-		 mqc->ct--;
-		 mqc->c += (uint32_t)(bit_value << mqc->ct);
-		 bit_value = (uint8_t)(1U - bit_value);
-	  }
-	  *mqc->bp = (uint8_t)mqc->c;
-	  /* Advance pointer so that mqc_numbytes() returns a valid value */
-	  mqc->bp++;
+      uint8_t bit_value = 0;
+      /* If so, fill the remaining lsbs with an alternating sequence of */
+      /* 0,1,... */
+      /* Note: it seems the standard only requires that for a ERTERM flush */
+      /* and doesn't specify what to do for a regular BYPASS flush */
+      while(mqc->ct > 0)
+      {
+         mqc->ct--;
+         mqc->c += (uint32_t)(bit_value << mqc->ct);
+         bit_value = (uint8_t)(1U - bit_value);
+      }
+      *mqc->bp = (uint8_t)mqc->c;
+      /* Advance pointer so that mqc_numbytes() returns a valid value */
+      mqc->bp++;
    }
    else if(mqc->ct == 7 && mqc->bp[-1] == 0xff)
    {
-	  /* Discard last 0xff */
-	  assert(!erterm);
-	  mqc->bp--;
+      /* Discard last 0xff */
+      assert(!erterm);
+      mqc->bp--;
    }
    else if(mqc->ct == 8 && !erterm && mqc->bp[-1] == 0x7f && mqc->bp[-2] == 0xff)
    {
-	  /* Tiny optimization: discard terminating 0xff 0x7f since it is */
-	  /* interpreted as 0xff 0x7f [0xff 0xff] by the decompressor, and given */
-	  /* the bit stuffing, in fact as 0xff 0xff [0xff ..] */
-	  mqc->bp -= 2;
+      /* Tiny optimization: discard terminating 0xff 0x7f since it is */
+      /* interpreted as 0xff 0x7f [0xff 0xff] by the decompressor, and given */
+      /* the bit stuffing, in fact as 0xff 0xff [0xff ..] */
+      mqc->bp -= 2;
    }
 
    assert(mqc->bp[-1] != 0xff);
@@ -306,7 +306,7 @@ void mqc_restart_init_enc(mqcoder* mqc)
    assert(mqc->bp >= mqc->start - 1);
    assert(*mqc->bp != 0xff);
    if(*mqc->bp == 0xff)
-	  mqc->ct = 13;
+      mqc->ct = 13;
 }
 
 void mqc_erterm_enc(mqcoder* mqc)
@@ -315,20 +315,20 @@ void mqc_erterm_enc(mqcoder* mqc)
 
    while(k > 0)
    {
-	  mqc->c <<= mqc->ct;
-	  mqc->ct = 0;
-	  mqc_byteout(mqc);
-	  k -= (int32_t)mqc->ct;
+      mqc->c <<= mqc->ct;
+      mqc->ct = 0;
+      mqc_byteout(mqc);
+      k -= (int32_t)mqc->ct;
    }
    if(*mqc->bp != 0xff)
-	  mqc_byteout(mqc);
+      mqc_byteout(mqc);
 }
 
 void mqc_segmark_enc(mqcoder* mqc)
 {
    mqc_setcurctx(mqc, 18);
    for(uint32_t i = 1; i < 5; i++)
-	  mqc_encode(mqc, i % 2);
+      mqc_encode(mqc, i % 2);
 }
 
 } // namespace grk

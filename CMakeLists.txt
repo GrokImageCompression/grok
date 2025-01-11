@@ -6,11 +6,11 @@ project(GROK)
 # GROK version
 set(GROK_VERSION_MAJOR 14)
 set(GROK_VERSION_MINOR 2)
-set(GROK_VERSION_BUILD 0)
+set(GROK_VERSION_PATCH 0)
 set(GROK_VERSION
-  "${GROK_VERSION_MAJOR}.${GROK_VERSION_MINOR}.${GROK_VERSION_BUILD}")
+  "${GROK_VERSION_MAJOR}.${GROK_VERSION_MINOR}.${GROK_VERSION_PATCH}")
 set(PACKAGE_VERSION
-  "${GROK_VERSION_MAJOR}.${GROK_VERSION_MINOR}.${GROK_VERSION_BUILD}")
+  "${GROK_VERSION_MAJOR}.${GROK_VERSION_MINOR}.${GROK_VERSION_PATCH}")
 
 # As autotools does not support X.Y notation for SOVERSION, we have to use
 # two different versions, one for Grok itself and one for its .so
@@ -18,7 +18,7 @@ if(NOT GROK_SOVERSION)
   set(GROK_SOVERSION 1)
 endif(NOT GROK_SOVERSION)
 set(GROK_LIBRARY_PROPERTIES
-  VERSION   "${GROK_VERSION_MAJOR}.${GROK_VERSION_MINOR}.${GROK_VERSION_BUILD}"
+  VERSION   "${GROK_VERSION_MAJOR}.${GROK_VERSION_MINOR}.${GROK_VERSION_PATCH}"
   SOVERSION "${GROK_SOVERSION}"
 )
 #######################################
@@ -213,8 +213,24 @@ endif()
 
 # install all targets referenced as GrokTargets
 if (BUILD_SHARED_LIBS AND NOT CMAKE_SYSTEM_NAME STREQUAL Emscripten)
-install(EXPORT GrokTargets DESTINATION ${GROK_INSTALL_PACKAGE_DIR})
+  # Install the GrokTargets file
+  install(EXPORT GrokTargets
+          DESTINATION ${GROK_INSTALL_PACKAGE_DIR}
+          NAMESPACE GROK::)
+
+  # Generate the GrokConfig.cmake file
+  include(CMakePackageConfigHelpers)
+  configure_package_config_file(
+    ${CMAKE_CURRENT_SOURCE_DIR}/cmake/GrokConfig.cmake.in
+    ${CMAKE_CURRENT_BINARY_DIR}/GrokConfig.cmake
+    INSTALL_DESTINATION ${GROK_INSTALL_PACKAGE_DIR}
+    PATH_VARS CMAKE_INSTALL_INCLUDEDIR)
+
+  # Install the GrokConfig.cmake file
+  install(FILES ${CMAKE_CURRENT_BINARY_DIR}/GrokConfig.cmake
+          DESTINATION ${GROK_INSTALL_PACKAGE_DIR})
 endif()
+
 
 if(GRK_BUILD_DOC)
    install(FILES LICENSE DESTINATION ${CMAKE_INSTALL_DOCDIR})

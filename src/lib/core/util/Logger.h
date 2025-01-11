@@ -28,36 +28,36 @@ namespace grk
 struct Logger : public ILogger
 {
    Logger()
-	   : error_data_(nullptr), warning_data_(nullptr), info_data_(nullptr), error_handler(nullptr),
-		 warning_handler(nullptr), info_handler(nullptr)
+       : error_data_(nullptr), warning_data_(nullptr), info_data_(nullptr), error_handler(nullptr),
+         warning_handler(nullptr), info_handler(nullptr)
    {}
 
    void info(const char* fmt, ...) override
    {
-	  if(!info_handler)
-		 return;
-	  va_list arg;
-	  va_start(arg, fmt);
-	  log_message(info_handler, info_data_, fmt, arg);
-	  va_end(arg);
+      if(!info_handler)
+         return;
+      va_list arg;
+      va_start(arg, fmt);
+      log_message(info_handler, info_data_, fmt, arg);
+      va_end(arg);
    }
    void warn(const char* fmt, ...) override
    {
-	  if(!warning_handler)
-		 return;
-	  va_list arg;
-	  va_start(arg, fmt);
-	  log_message(warning_handler, warning_data_, fmt, arg);
-	  va_end(arg);
+      if(!warning_handler)
+         return;
+      va_list arg;
+      va_start(arg, fmt);
+      log_message(warning_handler, warning_data_, fmt, arg);
+      va_end(arg);
    }
    void error(const char* fmt, ...) override
    {
-	  if(!error_handler)
-		 return;
-	  va_list arg;
-	  va_start(arg, fmt);
-	  log_message(error_handler, error_data_, fmt, arg);
-	  va_end(arg);
+      if(!error_handler)
+         return;
+      va_list arg;
+      va_start(arg, fmt);
+      log_message(error_handler, error_data_, fmt, arg);
+      va_end(arg);
    }
 
    void* error_data_;
@@ -72,16 +72,16 @@ struct Logger : public ILogger
  private:
    template<typename... Args>
    void log_message(grk_msg_callback msg_handler, void* l_data, char const* const format,
-					Args&... args) noexcept
+                    Args&... args) noexcept
    {
-	  const int message_size = 512;
-	  if((format != nullptr))
-	  {
-		 char message[message_size];
-		 memset(message, 0, message_size);
-		 vsnprintf(message, message_size, format, args...);
-		 msg_handler(message, l_data);
-	  }
+      const int message_size = 512;
+      if((format != nullptr))
+      {
+         char message[message_size];
+         memset(message, 0, message_size);
+         vsnprintf(message, message_size, format, args...);
+         msg_handler(message, l_data);
+      }
    }
 };
 

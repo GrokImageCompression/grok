@@ -57,7 +57,7 @@ typedef void (*PLUGIN_DEBUG_MQC_NEXT_PLANE)(grk_plugin_debug_mqc* mqc);
 typedef bool (*PLUGIN_INIT)(grk_plugin_init_info initInfo);
 
 typedef int32_t (*PLUGIN_ENCODE)(grk_cparameters* encoding_parameters,
-								 GRK_PLUGIN_COMPRESS_USER_CALLBACK callback);
+                                 GRK_PLUGIN_COMPRESS_USER_CALLBACK callback);
 
 typedef int32_t (*PLUGIN_BATCH_ENCODE)(grk_plugin_compress_batch_info info);
 
@@ -73,15 +73,15 @@ struct PluginDecodeCallbackInfo
 {
    PluginDecodeCallbackInfo() : PluginDecodeCallbackInfo("", "", nullptr, GRK_CODEC_UNK, 0) {}
    PluginDecodeCallbackInfo(std::string input, std::string output,
-							grk_decompress_parameters* decompressorParameters,
-							GRK_CODEC_FORMAT format, uint32_t flags)
-	   : device_id(0), init_decompressors_func(nullptr), inputFile(input), outputFile(output),
-		 decod_format(format), cod_format(GRK_FMT_UNK), codec(nullptr),
-		 decompressor_parameters(decompressorParameters), image(nullptr), plugin_owns_image(false),
-		 tile(nullptr), error_code(0), decompress_flags(flags), user_data(nullptr)
+                            grk_decompress_parameters* decompressorParameters,
+                            GRK_CODEC_FORMAT format, uint32_t flags)
+       : device_id(0), init_decompressors_func(nullptr), inputFile(input), outputFile(output),
+         decod_format(format), cod_format(GRK_FMT_UNK), codec(nullptr),
+         decompressor_parameters(decompressorParameters), image(nullptr), plugin_owns_image(false),
+         tile(nullptr), error_code(0), decompress_flags(flags), user_data(nullptr)
 
    {
-	  memset(&header_info, 0, sizeof(header_info));
+      memset(&header_info, 0, sizeof(header_info));
    }
    size_t device_id;
    GROK_INIT_DECOMPRESSORS init_decompressors_func;
@@ -105,11 +105,11 @@ struct PluginDecodeCallbackInfo
 typedef int32_t (*PLUGIN_DECODE_USER_CALLBACK)(PluginDecodeCallbackInfo* info);
 
 typedef int32_t (*PLUGIN_DECODE)(grk_decompress_parameters* decoding_parameters,
-								 PLUGIN_DECODE_USER_CALLBACK userCallback);
+                                 PLUGIN_DECODE_USER_CALLBACK userCallback);
 
 typedef int32_t (*PLUGIN_INIT_BATCH_DECODE)(const char* input_dir, const char* output_dir,
-											grk_decompress_parameters* decoding_parameters,
-											PLUGIN_DECODE_USER_CALLBACK userCallback);
+                                            grk_decompress_parameters* decoding_parameters,
+                                            PLUGIN_DECODE_USER_CALLBACK userCallback);
 
 typedef int32_t (*PLUGIN_BATCH_DECODE)(void);
 

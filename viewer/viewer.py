@@ -22,7 +22,6 @@ from grok_core import (
     grk_initialize,
     grk_deinitialize,
     grk_decompress_parameters,
-    grk_decompress_set_default_params,
     grk_decompress_init,
     grk_decompress_read_header,
     grk_decompress_set_window,
@@ -50,7 +49,6 @@ class TileViewerContext:
         self.stream_params.file = input_file
 
         self.decompress_params = grk_decompress_parameters()
-        grk_decompress_set_default_params(self.decompress_params)
         self.decompress_params.verbose_ = True
         #self.layers_to_decompress = 1
         #self.decompress_params.core.layers_to_decompress_ = self.layers_to_decompress

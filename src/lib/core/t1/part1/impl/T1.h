@@ -34,12 +34,12 @@ struct T1
    ~T1();
 
    bool decompress_cblk(DecompressCodeblock* cblk, uint8_t* compressed_data, uint8_t orientation,
-						uint32_t cblksty);
+                        uint32_t cblksty);
    void code_block_enc_deallocate(cblk_enc* p_code_block);
    bool alloc(uint32_t w, uint32_t h);
    double compress_cblk(cblk_enc* cblk, uint32_t max, uint8_t orientation, uint16_t compno,
-						uint8_t level, uint8_t qmfbid, double stepsize, uint32_t cblksty,
-						const double* mct_norms, uint16_t mct_numcomps, bool doRateControl);
+                        uint8_t level, uint8_t qmfbid, double stepsize, uint32_t cblksty,
+                        const double* mct_norms, uint16_t mct_numcomps, bool doRateControl);
    mqcoder coder;
 
    int32_t* getUncompressedData(void);
@@ -65,10 +65,10 @@ struct T1
    /////////////////////////////////////
 
    /** Flags used by decompressor and compressor.
-	* Such that flags[1+0] is for state of col=0,row=0..3,
-	flags[1+1] for col=1, row=0..3, flags[1+flags_stride] for col=0,row=4..7, ...
-	This array avoids too much cache trashing when processing by 4 vertical samples
-	as done in the various decoding steps. */
+     * Such that flags[1+0] is for state of col=0,row=0..3,
+     flags[1+1] for col=1, row=0..3, flags[1+flags_stride] for col=0,row=4..7, ...
+     This array avoids too much cache trashing when processing by 4 vertical samples
+     as done in the various decoding steps. */
    grk_flag* flags;
    uint32_t flagssize;
    bool compressor;
@@ -83,32 +83,32 @@ struct T1
    void dec_refpass_mqc(int32_t bpno);
    inline void dec_refpass_step_raw(grk_flag* flagsp, int32_t* datap, int32_t poshalf, uint32_t ci);
    inline void dec_sigpass_step_raw(grk_flag* flagsp, int32_t* datap, int32_t oneplushalf,
-									uint32_t vsc, uint32_t ci);
+                                    uint32_t vsc, uint32_t ci);
    void enc_clnpass(int32_t bpno, int32_t* nmsedec, uint32_t cblksty);
    void enc_sigpass(int32_t bpno, int32_t* nmsedec, uint8_t type, uint32_t cblksty);
    void enc_refpass(int32_t bpno, int32_t* nmsedec, uint8_t type);
    int enc_is_term_pass(cblk_enc* cblk, uint32_t cblksty, int32_t bpno, uint32_t passtype);
    void code_block_enc_allocate(cblk_enc* p_code_block);
    /**
-	Get the norm of a wavelet function of a subband at a specified level for the reversible 5-3
-	DWT.
-	@param level Level of the wavelet function
-	@param orientation Band of the wavelet function
-	@return the norm of the wavelet function
-	*/
+     Get the norm of a wavelet function of a subband at a specified level for the reversible 5-3
+     DWT.
+     @param level Level of the wavelet function
+     @param orientation Band of the wavelet function
+     @return the norm of the wavelet function
+     */
    double getnorm_53(uint32_t level, uint8_t orientation);
    /**
-	Get the norm of a wavelet function of a subband at a specified level for the irreversible 9-7
-	DWT
-	@param level Level of the wavelet function
-	@param orientation Band of the wavelet function
-	@return the norm of the 9-7 wavelet
-	*/
+     Get the norm of a wavelet function of a subband at a specified level for the irreversible 9-7
+     DWT
+     @param level Level of the wavelet function
+     @param orientation Band of the wavelet function
+     @return the norm of the 9-7 wavelet
+     */
    double getnorm_97(uint32_t level, uint8_t orientation);
 
    double getwmsedec(int32_t nmsedec, uint16_t compno, uint32_t level, uint8_t orientation,
-					 int32_t bpno, uint32_t qmfbid, double stepsize, const double* mct_norms,
-					 uint32_t mct_numcomps);
+                     int32_t bpno, uint32_t qmfbid, double stepsize, const double* mct_norms,
+                     uint32_t mct_numcomps);
 };
 
 } // namespace grk

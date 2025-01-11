@@ -28,67 +28,67 @@ class SequentialPtrCache
  public:
    SequentialPtrCache(void) : SequentialPtrCache(kSequentialChunkSize) {}
    SequentialPtrCache(uint64_t maxChunkSize)
-	   : currChunk_(nullptr), chunkSize_(std::min<uint64_t>(maxChunkSize, kSequentialChunkSize)),
-		 index_(0)
+       : currChunk_(nullptr), chunkSize_(std::min<uint64_t>(maxChunkSize, kSequentialChunkSize)),
+         index_(0)
    {}
    virtual ~SequentialPtrCache(void)
    {
-	  for(auto& ch : chunks)
-	  {
-		 for(size_t i = 0; i < chunkSize_; ++i)
-			delete ch[i];
-		 delete[] ch;
-	  }
+      for(auto& ch : chunks)
+      {
+         for(size_t i = 0; i < chunkSize_; ++i)
+            delete ch[i];
+         delete[] ch;
+      }
    }
    void rewind(void)
    {
-	  if(chunks.empty())
-		 return;
-	  index_ = 0;
-	  currChunk_ = chunks[0];
+      if(chunks.empty())
+         return;
+      index_ = 0;
+      currChunk_ = chunks[0];
    }
    // get next item
    T* get()
    {
-	  uint64_t itemIndex = index_ % chunkSize_;
-	  uint64_t chunkIndex = index_ / chunkSize_;
-	  bool isInitialized = (currChunk_ != nullptr);
-	  bool isLastChunk = (chunkIndex == chunks.size() - 1);
-	  bool isEndOfChunk = (itemIndex == chunkSize_ - 1);
-	  bool createNewChunk = !isInitialized || (isLastChunk && isEndOfChunk);
-	  itemIndex++;
-	  if(createNewChunk || isEndOfChunk)
-	  {
-		 itemIndex = 0;
-		 chunkIndex++;
-		 if(createNewChunk)
-		 {
-			currChunk_ = new T*[chunkSize_];
-			memset(currChunk_, 0, chunkSize_ * sizeof(T*));
-			chunks.push_back(currChunk_);
-		 }
-		 else
-		 {
-			currChunk_ = chunks[chunkIndex];
-		 }
-	  }
-	  auto item = currChunk_[itemIndex];
-	  // create new item if null
-	  if(!item)
-	  {
-		 item = create();
-		 currChunk_[itemIndex] = item;
-	  }
-	  if(isInitialized)
-		 index_++;
-	  return item;
+      uint64_t itemIndex = index_ % chunkSize_;
+      uint64_t chunkIndex = index_ / chunkSize_;
+      bool isInitialized = (currChunk_ != nullptr);
+      bool isLastChunk = (chunkIndex == chunks.size() - 1);
+      bool isEndOfChunk = (itemIndex == chunkSize_ - 1);
+      bool createNewChunk = !isInitialized || (isLastChunk && isEndOfChunk);
+      itemIndex++;
+      if(createNewChunk || isEndOfChunk)
+      {
+         itemIndex = 0;
+         chunkIndex++;
+         if(createNewChunk)
+         {
+            currChunk_ = new T*[chunkSize_];
+            memset(currChunk_, 0, chunkSize_ * sizeof(T*));
+            chunks.push_back(currChunk_);
+         }
+         else
+         {
+            currChunk_ = chunks[chunkIndex];
+         }
+      }
+      auto item = currChunk_[itemIndex];
+      // create new item if null
+      if(!item)
+      {
+         item = create();
+         currChunk_[itemIndex] = item;
+      }
+      if(isInitialized)
+         index_++;
+      return item;
    }
 
  protected:
    virtual T* create(void)
    {
-	  auto item = new T();
-	  return item;
+      auto item = new T();
+      return item;
    }
 
  private:

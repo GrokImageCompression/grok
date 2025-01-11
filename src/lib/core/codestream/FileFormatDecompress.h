@@ -45,22 +45,22 @@ class FileFormatDecompress : public FileFormat, public ICodeStreamDecompress
  private:
    grk_color* getColour(void);
    uint32_t read_asoc(AsocBox* parent, uint8_t** header_data, uint32_t* header_data_size,
-					  uint32_t asocSize);
+                      uint32_t asocSize);
    bool readHeaderProcedureImpl(void);
    bool read_box_hdr(FileFormatBox* box, uint32_t* p_number_bytes_read, bool codeStreamBoxWasRead,
-					 BufferedStream* stream);
+                     BufferedStream* stream);
    bool read_ihdr(uint8_t* p_image_header_data, uint32_t image_header_size);
    bool read_xml(uint8_t* p_xml_data, uint32_t xml_size);
    bool read_uuid(uint8_t* headerData, uint32_t header_size);
    bool read_res_box(uint32_t* id, uint32_t* num, uint32_t* den, uint32_t* exponent,
-					 uint8_t** p_resolution_data);
+                     uint8_t** p_resolution_data);
    bool read_res(uint8_t* p_resolution_data, uint32_t resolution_size);
    double calc_res(uint16_t num, uint16_t den, uint8_t exponent);
    bool read_bpc(uint8_t* p_bpc_header_data, uint32_t bpc_header_size);
    bool read_channel_definition(uint8_t* p_cdef_header_data, uint32_t cdef_header_size);
    bool read_colr(uint8_t* p_colr_header_data, uint32_t colr_header_size);
    bool read_component_mapping(uint8_t* component_mapping_header_data,
-							   uint32_t component_mapping_header_size);
+                               uint32_t component_mapping_header_size);
    bool read_palette_clr(uint8_t* p_pclr_header_data, uint32_t pclr_header_size);
    const BOX_FUNC find_handler(uint32_t id);
    const BOX_FUNC img_find_handler(uint32_t id);
@@ -68,7 +68,7 @@ class FileFormatDecompress : public FileFormat, public ICodeStreamDecompress
    bool read_ftyp(uint8_t* headerData, uint32_t header_size);
    bool read_jp2h(uint8_t* headerData, uint32_t header_size);
    bool read_box(FileFormatBox* box, uint8_t* p_data, uint32_t* p_number_bytes_read,
-				 uint64_t p_box_max_size);
+                 uint64_t p_box_max_size);
    bool read_asoc(uint8_t* header_data, uint32_t header_data_size);
    void serializeAsoc(AsocBox* asoc, grk_asoc* serial_asocs, uint32_t* num_asocs, uint32_t level);
    std::map<uint32_t, BOX_FUNC> header;

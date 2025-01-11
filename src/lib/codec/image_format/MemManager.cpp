@@ -39,7 +39,7 @@ uint32_t grkMakeAlignedWidth(uint32_t width)
 {
    assert(width);
    return (uint32_t)((((uint64_t)width + grkWidthAlignment - 1) / grkWidthAlignment) *
-					 grkWidthAlignment);
+                     grkWidthAlignment);
 }
 static inline void* grkAlignedAllocN(size_t alignment, size_t size)
 {
@@ -51,7 +51,7 @@ static inline void* grkAlignedAllocN(size_t alignment, size_t size)
    assert(alignment >= sizeof(void*));
 
    if(size == 0U) /* prevent implementation defined behavior of realloc */
-	  return nullptr;
+      return nullptr;
 
    // make new_size a multiple of alignment
    size = ((size + alignment - 1) / alignment) * alignment;

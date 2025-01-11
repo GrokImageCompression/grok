@@ -25,7 +25,7 @@ class T1Factory
 {
  public:
    static T1Interface* makeT1(bool isCompressor, TileCodingParams* tcp, uint32_t maxCblkW,
-							  uint32_t maxCblkH);
+                              uint32_t maxCblkH);
    static Quantizer* makeQuantizer(bool ht, bool reversible, uint8_t guardBits);
 };
 

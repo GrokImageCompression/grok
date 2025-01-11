@@ -33,57 +33,57 @@ struct T2Compress
    T2Compress(TileProcessor* tileProc);
 
    /*
-	Encode the packets of a tile to a destination buffer
-	@param tileno           number of the tile encoded
-	@param maxlayers        maximum number of layers
-	@param dest             the destination buffer
-	@param p_data_written   amount of data written
-	@param first_poc_tile_part true if first POC tile part, otherwise false
-	@param tppos            The position of the tile part flag in the progression order
-	@param pino             packet iterator number
-	*/
+     Encode the packets of a tile to a destination buffer
+     @param tileno           number of the tile encoded
+     @param maxlayers        maximum number of layers
+     @param dest             the destination buffer
+     @param p_data_written   amount of data written
+     @param first_poc_tile_part true if first POC tile part, otherwise false
+     @param tppos            The position of the tile part flag in the progression order
+     @param pino             packet iterator number
+     */
    bool compressPackets(uint16_t tileno, uint16_t maxlayers, BufferedStream* stream,
-						uint32_t* p_data_written, bool first_poc_tile_part, uint32_t tppos,
-						uint32_t pino);
+                        uint32_t* p_data_written, bool first_poc_tile_part, uint32_t tppos,
+                        uint32_t pino);
 
    /**
-	Simulate compressing packets of a tile to a destination buffer
-	@param tileno           number of the tile encoded
-	@param maxlayers        maximum number of layers
-	@param p_data_written   amount of data written
-	@param max_len          the max length of the destination buffer
-	@param tppos            position of the tile part flag in the progression order
-	@param markers			 markers
-	*/
+     Simulate compressing packets of a tile to a destination buffer
+     @param tileno           number of the tile encoded
+     @param maxlayers        maximum number of layers
+     @param p_data_written   amount of data written
+     @param max_len          the max length of the destination buffer
+     @param tppos            position of the tile part flag in the progression order
+     @param markers			 markers
+     */
    bool compressPacketsSimulate(uint16_t tileno, uint16_t maxlayers, uint32_t* p_data_written,
-								uint32_t max_len, uint32_t tppos, PLMarkerMgr* markers,
-								bool isFinal, bool debug);
+                                uint32_t max_len, uint32_t tppos, PLMarkerMgr* markers,
+                                bool isFinal, bool debug);
 
  private:
    TileProcessor* tileProcessor;
 
    /**
-	Encode a packet of a tile to a destination buffer
-	@param tcp 			Tile coding parameters
-	@param pi 				packet iterator
-	@param stream 			stream
-	@param p_data_written  amount of data written
-	@return
-	*/
+     Encode a packet of a tile to a destination buffer
+     @param tcp 			Tile coding parameters
+     @param pi 				packet iterator
+     @param stream 			stream
+     @param p_data_written  amount of data written
+     @return
+     */
    bool compressPacket(TileCodingParams* tcp, PacketIter* pi, BufferedStream* stream,
-					   uint32_t* p_data_written);
+                       uint32_t* p_data_written);
 
    /**
-	Encode a packet of a tile to a destination buffer
-	@param tcp 			Tile coding parameters
-	@param pi 				packet iterator
-	@param p_data_written  amount of data written
-	@param len 			length of the destination buffer
-	@param markers			packet length markers
-	@return
-	*/
+     Encode a packet of a tile to a destination buffer
+     @param tcp 			Tile coding parameters
+     @param pi 				packet iterator
+     @param p_data_written  amount of data written
+     @param len 			length of the destination buffer
+     @param markers			packet length markers
+     @return
+     */
    bool compressPacketSimulate(TileCodingParams* tcp, PacketIter* pi, uint32_t* p_data_written,
-							   uint32_t len, PLMarkerMgr* markers, bool debug);
+                               uint32_t len, PLMarkerMgr* markers, bool debug);
 
    bool compressHeader(BitIO* bio, Resolution* res, uint16_t layno, uint64_t precinctIndex);
 };

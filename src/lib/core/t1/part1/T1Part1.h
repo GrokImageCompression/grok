@@ -24,16 +24,16 @@ namespace t1_part1
 {
    class T1Part1 : public T1Interface
    {
-	public:
-	  T1Part1(bool isCompressor, uint32_t maxCblkW, uint32_t maxCblkH);
-	  virtual ~T1Part1();
+    public:
+      T1Part1(bool isCompressor, uint32_t maxCblkW, uint32_t maxCblkH);
+      virtual ~T1Part1();
 
-	  bool compress(CompressBlockExec* block);
-	  bool decompress(DecompressBlockExec* block);
+      bool compress(CompressBlockExec* block);
+      bool decompress(DecompressBlockExec* block);
 
-	private:
-	  bool preCompress(CompressBlockExec* block, uint32_t& max);
-	  T1* t1;
+    private:
+      bool preCompress(CompressBlockExec* block, uint32_t& max);
+      T1* t1;
    };
 } // namespace t1_part1
 } // namespace grk

@@ -25,7 +25,7 @@ struct MinHeapComparator
 {
    bool operator()(const T a, const T b) const
    {
-	  return a.getIndex() > b.getIndex();
+      return a.getIndex() > b.getIndex();
    }
 };
 
@@ -36,22 +36,22 @@ class MinHeap
    MinHeap() : nextIndex(0) {}
    void push(T val)
    {
-	  L locker(queue_mutex);
-	  queue.push(val);
+      L locker(queue_mutex);
+      queue.push(val);
    }
    bool pop(T& val)
    {
-	  L locker(queue_mutex);
-	  if(queue.empty() || queue.top().getIndex() != nextIndex)
-		 return false;
-	  val = queue.top();
-	  queue.pop();
-	  nextIndex++;
-	  return true;
+      L locker(queue_mutex);
+      if(queue.empty() || queue.top().getIndex() != nextIndex)
+         return false;
+      val = queue.top();
+      queue.pop();
+      nextIndex++;
+      return true;
    }
    size_t size(void)
    {
-	  return queue.size();
+      return queue.size();
    }
 
  private:
@@ -65,7 +65,7 @@ struct MinHeapPtrComparator
 {
    bool operator()(const T* a, const T* b) const
    {
-	  return a->getIndex() > b->getIndex();
+      return a->getIndex() > b->getIndex();
    }
 };
 
@@ -76,22 +76,22 @@ class MinHeapPtr
    MinHeapPtr() : nextIndex(0) {}
    void push(T* val)
    {
-	  L locker(queue_mutex);
-	  queue.push(val);
+      L locker(queue_mutex);
+      queue.push(val);
    }
    T* pop(void)
    {
-	  L locker(queue_mutex);
-	  if(queue.empty() || queue.top()->getIndex() != nextIndex)
-		 return nullptr;
-	  auto val = queue.top();
-	  queue.pop();
-	  nextIndex++;
-	  return val;
+      L locker(queue_mutex);
+      if(queue.empty() || queue.top()->getIndex() != nextIndex)
+         return nullptr;
+      auto val = queue.top();
+      queue.pop();
+      nextIndex++;
+      return val;
    }
    size_t size(void)
    {
-	  return queue.size();
+      return queue.size();
    }
 
  private:

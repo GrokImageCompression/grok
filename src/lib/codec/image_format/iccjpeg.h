@@ -28,7 +28,7 @@
  */
 
 extern void write_icc_profile JPP((j_compress_ptr cinfo, const JOCTET* icc_data_ptr,
-								   unsigned int icc_data_len));
+                                   unsigned int icc_data_len));
 
 /*
  * Reading a JPEG file that may contain an ICC profile requires two steps:
@@ -64,4 +64,4 @@ extern void setup_read_icc_profile JPP((j_decompress_ptr cinfo));
  */
 
 extern bool read_icc_profile JPP((j_decompress_ptr cinfo, JOCTET** icc_data_ptr,
-								  unsigned int* icc_data_len));
+                                  unsigned int* icc_data_len));

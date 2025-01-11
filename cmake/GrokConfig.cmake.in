@@ -1,0 +1,51 @@
+#-----------------------------------------------------------------------------
+#
+# GrokConfig.cmake - CMake configuration file for external projects.
+#
+# This file is configured by Grok and used to load Grok's settings for external projects.
+@PACKAGE_INIT@
+
+# The Grok version number
+set(Grok_VERSION_MAJOR "@GROK_VERSION_MAJOR@")
+set(Grok_VERSION_MINOR "@GROK_VERSION_MINOR@")
+set(Grok_VERSION_PATCH "@GROK_VERSION_PATCH@")
+set(Grok_VERSION "@GROK_VERSION_MAJOR@.@GROK_VERSION_MINOR@.@GROK_VERSION_PATCH@")
+
+# The libraries
+set(Grok_LIBRARIES "GROK::@GROK_CORE_NAME@" "GROK::@GROK_CODEC_NAME@")
+
+# CMake macros directory
+set(Grok_CMAKE_DIR "@GROK_INSTALL_PACKAGE_DIR@")
+
+# Configuration options
+set(Grok_BUILD_SHARED_LIBS "@BUILD_SHARED_LIBS@")
+
+# Determine the prefix directory
+set(PACKAGE_PREFIX_DIR "@CMAKE_INSTALL_PREFIX@")
+
+# Detect install or build tree
+get_filename_component(SELF_DIR "${CMAKE_CURRENT_LIST_FILE}" PATH)
+if(EXISTS "${SELF_DIR}/GrokTargets.cmake")
+    # Install tree
+    include("${SELF_DIR}/GrokTargets.cmake")
+
+    # Include directories
+    set(Grok_INCLUDE_DIRS "@PACKAGE_CMAKE_INSTALL_INCLUDEDIR@/@GROK_INSTALL_SUBDIR@")
+
+elseif(EXISTS "${SELF_DIR}/GrokExports.cmake")
+    # Build tree
+    include("${SELF_DIR}/GrokExports.cmake")
+
+    # Include directories for build tree
+    set(Grok_INCLUDE_DIRS "@GROK_INCLUDE_PATH@")
+
+else()
+    # Error if neither install nor build tree targets are found
+    message(FATAL_ERROR
+        "Could not find GrokTargets.cmake (install tree) or GrokExports.cmake (build tree). "
+        "Ensure Grok is built and installed correctly.")
+endif()
+
+# Backward compatibility variables
+set(Grok_FOUND TRUE)
+

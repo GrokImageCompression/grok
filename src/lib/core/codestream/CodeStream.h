@@ -93,9 +93,9 @@ void j2k_write(const void* p_src_data, void* p_dest_data, uint64_t nb_elem)
    S* src_data = (S*)p_src_data;
    for(uint32_t i = 0; i < nb_elem; ++i)
    {
-	  D temp = (D) * (src_data++);
-	  grk_write<D>(dest_data, temp, sizeof(D));
-	  dest_data += sizeof(D);
+      D temp = (D) * (src_data++);
+      grk_write<D>(dest_data, temp, sizeof(D));
+      dest_data += sizeof(D);
    }
 }
 

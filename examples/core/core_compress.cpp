@@ -24,7 +24,7 @@
 struct WriteStreamInfo
 {
    explicit WriteStreamInfo(grk_stream_params* streamParams)
-	   : streamParams_(streamParams), data_(nullptr), dataLen_(0), offset_(0)
+       : streamParams_(streamParams), data_(nullptr), dataLen_(0), offset_(0)
    {}
    grk_stream_params* streamParams_;
    uint8_t* data_;
@@ -36,7 +36,7 @@ size_t stream_write_fn(const uint8_t* buffer, size_t numBytes, void* user_data)
 {
    auto sinfo = (WriteStreamInfo*)user_data;
    if(sinfo->offset_ + numBytes <= sinfo->dataLen_)
-	  memcpy(sinfo->data_ + sinfo->offset_, buffer, numBytes);
+      memcpy(sinfo->data_ + sinfo->offset_, buffer, numBytes);
 
    return numBytes;
 }
@@ -44,9 +44,9 @@ bool stream_seek_fn(uint64_t offset, void* user_data)
 {
    auto sinfo = (WriteStreamInfo*)user_data;
    if(offset <= sinfo->dataLen_)
-	  sinfo->offset_ = offset;
+      sinfo->offset_ = offset;
    else
-	  sinfo->offset_ = sinfo->dataLen_;
+      sinfo->offset_ = sinfo->dataLen_;
 
    return true;
 }
@@ -89,37 +89,37 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
    size_t bufLen = (size_t)numComps * ((precision + 7) / 8) * dimX * dimY;
    if(useCallbacks || outputToBuffer)
    {
-	  data = std::make_unique<uint8_t[]>(bufLen);
+      data = std::make_unique<uint8_t[]>(bufLen);
    }
    if(useCallbacks)
    {
-	  streamParams.seek_fn = stream_seek_fn;
-	  streamParams.write_fn = stream_write_fn;
-	  streamParams.user_data = &sinfo;
-	  sinfo.data_ = data.get();
-	  sinfo.dataLen_ = bufLen;
+      streamParams.seek_fn = stream_seek_fn;
+      streamParams.write_fn = stream_write_fn;
+      streamParams.user_data = &sinfo;
+      sinfo.data_ = data.get();
+      sinfo.dataLen_ = bufLen;
    }
    else if(outputToBuffer)
    {
-	  streamParams.buf = data.get();
-	  streamParams.buf_len = bufLen;
+      streamParams.buf = data.get();
+      streamParams.buf_len = bufLen;
    }
    else
    {
-	  streamParams.file = outFile;
+      streamParams.file = outFile;
    }
 
    // create blank image
    components = new grk_image_comp[numComps];
    for(uint32_t i = 0; i < numComps; ++i)
    {
-	  auto c = components + i;
-	  c->w = dimX;
-	  c->h = dimY;
-	  c->dx = 1;
-	  c->dy = 1;
-	  c->prec = precision;
-	  c->sgnd = false;
+      auto c = components + i;
+      c->w = dimX;
+      c->h = dimY;
+      c->dx = 1;
+      c->dy = 1;
+      c->prec = precision;
+      c->sgnd = false;
    }
    image = grk_image_new(numComps, components, GRK_CLRSPC_SRGB, true);
 
@@ -127,43 +127,43 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
    // see grok.h header for full details of image structure
    for(uint16_t compno = 0; compno < image->numcomps; ++compno)
    {
-	  auto comp = image->comps + compno;
-	  auto compWidth = comp->w;
-	  auto compHeight = comp->h;
-	  auto compData = comp->data;
-	  if(!compData)
-	  {
-		 fprintf(stderr, "Image has null data for component %d\n", compno);
-		 goto beach;
-	  }
-	  // fill in component data, taking component stride into account
-	  // in this example, we just zero out each component
-	  auto srcData = new int32_t[compWidth * compHeight];
-	  memset(srcData, 0, compWidth * compHeight * sizeof(int32_t));
-	  auto srcPtr = srcData;
-	  for(uint32_t j = 0; j < compHeight; ++j)
-	  {
-		 memcpy(compData, srcPtr, compWidth * sizeof(int32_t));
-		 srcPtr += compWidth;
-		 compData += comp->stride;
-	  }
-	  delete[] srcData;
+      auto comp = image->comps + compno;
+      auto compWidth = comp->w;
+      auto compHeight = comp->h;
+      auto compData = comp->data;
+      if(!compData)
+      {
+         fprintf(stderr, "Image has null data for component %d\n", compno);
+         goto beach;
+      }
+      // fill in component data, taking component stride into account
+      // in this example, we just zero out each component
+      auto srcData = new int32_t[compWidth * compHeight];
+      memset(srcData, 0, compWidth * compHeight * sizeof(int32_t));
+      auto srcPtr = srcData;
+      for(uint32_t j = 0; j < compHeight; ++j)
+      {
+         memcpy(compData, srcPtr, compWidth * sizeof(int32_t));
+         srcPtr += compWidth;
+         compData += comp->stride;
+      }
+      delete[] srcData;
    }
 
    // initialize compressor
    codec = grk_compress_init(&streamParams, &compressParams, image);
    if(!codec)
    {
-	  fprintf(stderr, "Failed to initialize compressor\n");
-	  goto beach;
+      fprintf(stderr, "Failed to initialize compressor\n");
+      goto beach;
    }
 
    // compress
    compressedLength = grk_compress(codec, nullptr);
    if(compressedLength == 0)
    {
-	  fprintf(stderr, "Failed to compress\n");
-	  goto beach;
+      fprintf(stderr, "Failed to compress\n");
+      goto beach;
    }
 
    printf("Compression succeeded: %ld bytes used.\n", compressedLength);
@@ -171,21 +171,21 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
    // write buffer to file
    if(outputToBuffer)
    {
-	  auto fp = fopen(outFile, "wb");
-	  if(!fp)
-	  {
-		 fprintf(stderr, "Buffer compress: failed to open file %s for writing", outFile);
-	  }
-	  else
-	  {
-		 size_t written = fwrite(streamParams.buf, 1, compressedLength, fp);
-		 if(written != compressedLength)
-		 {
-			fprintf(stderr, "Buffer compress: only %ld bytes written out of %ld total",
-					compressedLength, written);
-		 }
-		 fclose(fp);
-	  }
+      auto fp = fopen(outFile, "wb");
+      if(!fp)
+      {
+         fprintf(stderr, "Buffer compress: failed to open file %s for writing", outFile);
+      }
+      else
+      {
+         size_t written = fwrite(streamParams.buf, 1, compressedLength, fp);
+         if(written != compressedLength)
+         {
+            fprintf(stderr, "Buffer compress: only %ld bytes written out of %ld total",
+                    compressedLength, written);
+         }
+         fclose(fp);
+      }
    }
 
    rc = EXIT_SUCCESS;

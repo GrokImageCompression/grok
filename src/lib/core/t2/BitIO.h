@@ -36,36 +36,36 @@ class BitIO : public IBitIO
    BitIO(BufferedStream* stream, bool isCompressor);
 
    /*
-	Number of bytes written.
-	@return the number of bytes written
-	*/
+     Number of bytes written.
+     @return the number of bytes written
+     */
    size_t numBytes(void) override;
 
    /*
-	Write bits
-	@param v Value of bits
-	@param n Number of bits to write
-	*/
+     Write bits
+     @param v Value of bits
+     @param n Number of bits to write
+     */
    bool write(uint32_t v, uint32_t n) override;
    bool write(uint32_t v) override;
    /*
-	Read bits
-	@param n Number of bits to read
-	*/
+     Read bits
+     @param n Number of bits to read
+     */
    void read(uint32_t* bits, uint8_t n) override;
 
    /*
-	Read bit
-	*/
+     Read bit
+     */
    uint8_t read(void) override;
    /*
-	Flush bits
-	@return true if successful, returns false otherwise
-	*/
+     Flush bits
+     @return true if successful, returns false otherwise
+     */
    bool flush(void) override;
    /*
-	Passes the ending bits (coming from flushing)
-	*/
+     Passes the ending bits (coming from flushing)
+     */
    void inalign(void) override;
 
    bool putcommacode(uint8_t n);
@@ -90,29 +90,29 @@ class BitIO : public IBitIO
    bool read0xFF;
 
    /*
-	Write a bit
-	@param bio BIO handle
-	@param b Bit to write (0 or 1)
-	*/
+     Write a bit
+     @param bio BIO handle
+     @param b Bit to write (0 or 1)
+     */
    bool putbit(uint8_t b);
    /*
-	Read a bit
-	@param bio BIO handle
-	*/
+     Read a bit
+     @param bio BIO handle
+     */
    void getbit(uint32_t* bits, uint8_t pos);
 
    uint8_t getbit(void);
 
    /*
-	Write a byte
-	@param bio BIO handle
-	@return true if successful, returns false otherwise
-	*/
+     Write a byte
+     @param bio BIO handle
+     @return true if successful, returns false otherwise
+     */
    bool writeByte(void);
    /*
-	Read a byte
-	@param bio BIO handle
-	*/
+     Read a byte
+     @param bio BIO handle
+     */
    void bytein(void);
 };
 

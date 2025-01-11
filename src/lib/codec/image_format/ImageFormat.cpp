@@ -22,19 +22,19 @@
 #include "FileStreamIO.h"
 
 static bool grkReclaimCallback([[maybe_unused]] uint32_t threadId, grk_io_buf buffer,
-							   void* io_user_data)
+                               void* io_user_data)
 {
    auto pool = static_cast<BufferPool*>(io_user_data);
    if(pool)
-	  pool->put(GrkIOBuf(buffer));
+      pool->put(GrkIOBuf(buffer));
 
    return true;
 }
 
 ImageFormat::ImageFormat()
-	: image_(nullptr), fileIO_(new FileStreamIO()), fileStream_(nullptr), fileName_(""),
-	  compressionLevel_(GRK_DECOMPRESS_COMPRESSION_LEVEL_DEFAULT), useStdIO_(false),
-	  encodeState(IMAGE_FORMAT_UNENCODED)
+    : image_(nullptr), fileIO_(new FileStreamIO()), fileStream_(nullptr), fileName_(""),
+      compressionLevel_(GRK_DECOMPRESS_COMPRESSION_LEVEL_DEFAULT), useStdIO_(false),
+      encodeState(IMAGE_FORMAT_UNENCODED)
 {
    grk_io_init init;
    init.max_pooled_requests = 0;
@@ -45,17 +45,17 @@ ImageFormat::~ImageFormat()
    delete fileIO_;
 }
 void ImageFormat::registerGrkReclaimCallback(grk_io_init io_init, grk_io_callback reclaim_callback,
-											 void* user_data)
+                                             void* user_data)
 {
    serializer.registerGrkReclaimCallback(io_init, reclaim_callback, user_data);
    if(io_init.max_pooled_requests)
-	  serializer.setMaxPooledRequests(io_init.max_pooled_requests);
+      serializer.setMaxPooledRequests(io_init.max_pooled_requests);
 }
 void ImageFormat::ioReclaimBuffer(uint32_t threadId, grk_io_buf buffer)
 {
    auto cb = serializer.getIOReclaimCallback();
    if(cb)
-	  cb(threadId, buffer, serializer.getIOReclaimUserData());
+      cb(threadId, buffer, serializer.getIOReclaimUserData());
 }
 #ifndef GROK_HAVE_URING
 void ImageFormat::reclaim(uint32_t threadId, grk_io_buf pixels)
@@ -65,7 +65,7 @@ void ImageFormat::reclaim(uint32_t threadId, grk_io_buf pixels)
 }
 #endif
 bool ImageFormat::encodeInit(grk_image* image, const std::string& filename,
-							 uint32_t compression_level, [[maybe_unused]] uint32_t concurrency)
+                             uint32_t compression_level, [[maybe_unused]] uint32_t concurrency)
 {
    compressionLevel_ = compression_level;
    fileName_ = filename;
@@ -81,9 +81,9 @@ bool ImageFormat::encodePixels(uint32_t threadId, grk_io_buf pixels)
 {
    std::unique_lock<std::mutex> lk(encodePixelmutex);
    if(encodeState & IMAGE_FORMAT_ENCODED_PIXELS)
-	  return true;
+      return true;
    if(!isHeaderEncoded() && !encodeHeader())
-	  return false;
+      return false;
 
    return encodePixelsCore(threadId, pixels);
 }
@@ -99,17 +99,17 @@ bool ImageFormat::encodePixelsCore([[maybe_unused]] uint32_t threadId, grk_io_bu
    if(success)
    {
 #ifndef GROK_HAVE_URING
-	  serializer.incrementPooled();
-	  // for synchronous encode, we immediately return the pixel buffer to the pool
-	  reclaim(threadId, GrkIOBuf(pixels));
+      serializer.incrementPooled();
+      // for synchronous encode, we immediately return the pixel buffer to the pool
+      reclaim(threadId, GrkIOBuf(pixels));
 #endif
-	  if(serializer.allPooledRequestsComplete())
-		 encodeFinish();
+      if(serializer.allPooledRequestsComplete())
+         encodeFinish();
    }
    else
    {
-	  spdlog::error("TIFFFormat::encodePixelsCore: error in pixels encode");
-	  encodeState |= IMAGE_FORMAT_ERROR;
+      spdlog::error("TIFFFormat::encodePixelsCore: error in pixels encode");
+      encodeState |= IMAGE_FORMAT_ERROR;
    }
 
    return success;
@@ -120,7 +120,7 @@ void ImageFormat::applicationOrchestratedReclaim([[maybe_unused]] GrkIOBuf buf)
 #ifndef GROK_HAVE_URING
    if(!serializer.getIOReclaimCallback())
    {
-	  pool.put(buf);
+      pool.put(buf);
    }
 #endif
 }
@@ -154,7 +154,7 @@ uint64_t ImageFormat::write(GrkIOBuf buffer)
    auto rc = fileIO_->write(buffer);
 #ifndef GROK_HAVE_URING
    if(buffer.pooled)
-	  pool.put(buffer);
+      pool.put(buffer);
 #endif
 
    return rc;
@@ -175,7 +175,7 @@ bool ImageFormat::openFile(void)
 {
    bool rc = fileIO_->open(fileName_, "w");
    if(rc)
-	  fileStream_ = static_cast<FileStreamIO*>(fileIO_)->getFileStream();
+      fileStream_ = static_cast<FileStreamIO*>(fileIO_)->getFileStream();
 
    return rc;
 }
@@ -186,36 +186,36 @@ uint32_t ImageFormat::maxY(uint32_t rows)
 void ImageFormat::scaleComponent(grk_image_comp* component, uint8_t precision)
 {
    if(component->prec == precision)
-	  return;
+      return;
    uint32_t stride_diff = component->stride - component->w;
    auto data = component->data;
    if(component->prec < precision)
    {
-	  int32_t scale = 1 << (uint32_t)(precision - component->prec);
-	  size_t index = 0;
-	  for(uint32_t j = 0; j < component->h; ++j)
-	  {
-		 for(uint32_t i = 0; i < component->w; ++i)
-		 {
-			data[index] = data[index] * scale;
-			index++;
-		 }
-		 index += stride_diff;
-	  }
+      int32_t scale = 1 << (uint32_t)(precision - component->prec);
+      size_t index = 0;
+      for(uint32_t j = 0; j < component->h; ++j)
+      {
+         for(uint32_t i = 0; i < component->w; ++i)
+         {
+            data[index] = data[index] * scale;
+            index++;
+         }
+         index += stride_diff;
+      }
    }
    else
    {
-	  int32_t scale = 1 << (uint32_t)(component->prec - precision);
-	  size_t index = 0;
-	  for(uint32_t j = 0; j < component->h; ++j)
-	  {
-		 for(uint32_t i = 0; i < component->w; ++i)
-		 {
-			data[index] = data[index] / scale;
-			index++;
-		 }
-		 index += stride_diff;
-	  }
+      int32_t scale = 1 << (uint32_t)(component->prec - precision);
+      size_t index = 0;
+      for(uint32_t j = 0; j < component->h; ++j)
+      {
+         for(uint32_t i = 0; i < component->w; ++i)
+         {
+            data[index] = data[index] / scale;
+            index++;
+         }
+         index += stride_diff;
+      }
    }
    component->prec = precision;
 }
@@ -244,7 +244,7 @@ void ImageFormat::copy_icc(grk_image* dest, uint8_t* iccbuf, uint32_t icclen)
 void ImageFormat::create_meta(grk_image* img)
 {
    if(img && !img->meta)
-	  img->meta = grk_image_meta_new();
+      img->meta = grk_image_meta_new();
 }
 /**
  * return false if :
@@ -258,32 +258,32 @@ bool ImageFormat::allComponentsSanityCheck(grk_image* image, bool checkEqualPrec
 {
    assert(image);
    if(image->decompress_num_comps == 0)
-	  return false;
+      return false;
    if(image_->precision)
-	  checkEqualPrecision = false;
+      checkEqualPrecision = false;
    auto comp0 = image->comps;
    if(comp0->prec == 0 || comp0->prec > GRK_MAX_SUPPORTED_IMAGE_PRECISION)
    {
-	  spdlog::warn("component 0 precision {} is not supported.", 0, comp0->prec);
-	  return false;
+      spdlog::warn("component 0 precision {} is not supported.", 0, comp0->prec);
+      return false;
    }
    for(uint16_t i = 1U; i < image->decompress_num_comps; ++i)
    {
-	  auto comp_i = image->comps + i;
-	  if(checkEqualPrecision && comp0->prec != comp_i->prec)
-	  {
-		 spdlog::warn("precision {} of component {}"
-					  " differs from precision {} of component 0.",
-					  comp_i->prec, i, comp0->prec);
-		 return false;
-	  }
-	  if(comp0->sgnd != comp_i->sgnd)
-	  {
-		 spdlog::warn("signedness {} of component {}"
-					  " differs from signedness {} of component 0.",
-					  comp_i->sgnd, i, comp0->sgnd);
-		 return false;
-	  }
+      auto comp_i = image->comps + i;
+      if(checkEqualPrecision && comp0->prec != comp_i->prec)
+      {
+         spdlog::warn("precision {} of component {}"
+                      " differs from precision {} of component 0.",
+                      comp_i->prec, i, comp0->prec);
+         return false;
+      }
+      if(comp0->sgnd != comp_i->sgnd)
+      {
+         spdlog::warn("signedness {} of component {}"
+                      " differs from signedness {} of component 0.",
+                      comp_i->sgnd, i, comp0->sgnd);
+         return false;
+      }
    }
 
    return true;
@@ -292,18 +292,18 @@ bool ImageFormat::areAllComponentsSameSubsampling(grk_image* image)
 {
    assert(image);
    if(image->decompress_num_comps == 1)
-	  return true;
+      return true;
    if(image->upsample || image->force_rgb)
-	  return true;
+      return true;
    auto comp0 = image->comps;
    for(uint32_t i = 0; i < image->decompress_num_comps; ++i)
    {
-	  auto comp = image->comps + i;
-	  if(comp->dx != comp0->dx || comp->dy != comp0->dy)
-	  {
-		 spdlog::error("Not all components have same sub-sampling");
-		 return false;
-	  }
+      auto comp = image->comps + i;
+      if(comp->dx != comp0->dx || comp->dy != comp0->dy)
+      {
+         spdlog::error("Not all components have same sub-sampling");
+         return false;
+      }
    }
 
    return true;
@@ -313,11 +313,11 @@ bool ImageFormat::isFinalOutputSubsampled(grk_image* image)
 {
    assert(image);
    if(image->upsample || image->force_rgb)
-	  return false;
+      return false;
    for(uint32_t i = 0; i < image->decompress_num_comps; ++i)
    {
-	  if(image->comps[i].dx != 1 || image->comps[i].dy != 1)
-		 return true;
+      if(image->comps[i].dx != 1 || image->comps[i].dy != 1)
+         return true;
    }
 
    return false;
@@ -326,22 +326,22 @@ bool ImageFormat::isChromaSubsampled(grk_image* image)
 {
    assert(image);
    if(image->decompress_num_comps < 3 || image->force_rgb || image->upsample)
-	  return false;
+      return false;
    for(uint32_t i = 0; i < image->decompress_num_comps; ++i)
    {
-	  auto comp = image->comps + i;
-	  switch(i)
-	  {
-		 case 1:
-		 case 2:
-			if(comp->type != GRK_CHANNEL_TYPE_COLOUR)
-			   return false;
-			break;
-		 default:
-			if(comp->dx != 1 || comp->dy != 1)
-			   return false;
-			break;
-	  }
+      auto comp = image->comps + i;
+      switch(i)
+      {
+         case 1:
+         case 2:
+            if(comp->type != GRK_CHANNEL_TYPE_COLOUR)
+               return false;
+            break;
+         default:
+            if(comp->dx != 1 || comp->dy != 1)
+               return false;
+            break;
+      }
    }
    auto compB = image->comps + 1;
    auto compR = image->comps + 2;

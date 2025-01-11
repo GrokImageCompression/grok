@@ -32,16 +32,16 @@ class ImageFormat : public IImageFormat
    ImageFormat();
    virtual ~ImageFormat();
    virtual void registerGrkReclaimCallback(grk_io_init io_init, grk_io_callback reclaim_callback,
-										   void* user_data) override;
+                                           void* user_data) override;
    void ioReclaimBuffer(uint32_t threadId, grk_io_buf buffer);
 #ifndef GROK_HAVE_URING
    void reclaim(uint32_t threadId, grk_io_buf pixels);
 #endif
    virtual bool encodeInit(grk_image* image, const std::string& filename,
-						   uint32_t compression_level, uint32_t concurrency) override;
+                           uint32_t compression_level, uint32_t concurrency) override;
    /***
-	* library-orchestrated pixel encoding
-	*/
+    * library-orchestrated pixel encoding
+    */
    virtual bool encodePixels(uint32_t threadId, grk_io_buf pixels) override;
    virtual bool encodeFinish(void) override;
    uint32_t getEncodeState(void) override;
@@ -50,12 +50,12 @@ class ImageFormat : public IImageFormat
  protected:
    void applicationOrchestratedReclaim(GrkIOBuf buf);
    /***
-	* Common core pixel encoding
-	*/
+    * Common core pixel encoding
+    */
    virtual bool encodePixelsCore(uint32_t threadId, grk_io_buf pixels);
    /***
-	* Common core pixel encoding write to disk
-	*/
+    * Common core pixel encoding write to disk
+    */
    virtual bool encodePixelsCoreWrite(grk_io_buf pixels);
    bool open(const std::string& fname, const std::string& mode);
    uint64_t write(GrkIOBuf buffer);

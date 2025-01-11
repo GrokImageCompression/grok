@@ -28,56 +28,56 @@ class GrkImage : public grk_image
    GrkImage();
    bool subsampleAndReduce(uint32_t reduce);
    /**
-	* @brief Create image
-	*
-	* @param src     	   source image
-	* @param numcmpts      number of components
-	* @param cmptparms     component parameters
-	* @param clrspc        image color space
-	* @param doAllocation  true if data is to be allocated, otherwise false
-	*
-	* @return 		     a new image if successful, otherwise nullptr
-	* */
+    * @brief Create image
+    *
+    * @param src     	   source image
+    * @param numcmpts      number of components
+    * @param cmptparms     component parameters
+    * @param clrspc        image color space
+    * @param doAllocation  true if data is to be allocated, otherwise false
+    *
+    * @return 		     a new image if successful, otherwise nullptr
+    * */
    static GrkImage* create(grk_image* src, uint16_t numcmpts, grk_image_comp* cmptparms,
-						   GRK_COLOR_SPACE clrspc, bool doAllocation);
+                           GRK_COLOR_SPACE clrspc, bool doAllocation);
    /**
-	* @brief Allocate data for single image component
-	*
-	* @param imageComp         image component
-	* @param clear             clear image buffer after allocation
-	*
-	* @return 		      true if successful
-	*/
+    * @brief Allocate data for single image component
+    *
+    * @param imageComp         image component
+    * @param clear             clear image buffer after allocation
+    *
+    * @return 		      true if successful
+    */
    static bool allocData(grk_image_comp* imageComp, bool clear);
 
    /**
-	* @brief Allocate data for single image component
-	*
-	* @param imageComp         image component
-	*
-	* @return 		      true if successful
-	*/
+    * @brief Allocate data for single image component
+    *
+    * @param imageComp         image component
+    *
+    * @return 		      true if successful
+    */
    static bool allocData(grk_image_comp* imageComp);
    /**
-	* Allocate data for tile compositing
-	*
-	* @return true if successful
-	*/
+    * Allocate data for tile compositing
+    *
+    * @return true if successful
+    */
    bool allocCompositeData(void);
 
    /**
-	* Copy only header of image and its component header (no data are copied)
-	* if dest image have data, they will be freed
-	*
-	* @param	dest	the dest image
-	*
-	*
-	*/
+    * Copy only header of image and its component header (no data are copied)
+    * if dest image have data, they will be freed
+    *
+    * @param	dest	the dest image
+    *
+    *
+    */
    void copyHeader(GrkImage* dest);
    /**
-	Transfer data to dest for each component, and null out "this" data.
-	Assumption:  "this" and dest have the same number of components
-	*/
+     Transfer data to dest for each component, and null out "this" data.
+     Assumption:  "this" and dest have the same number of components
+     */
    void transferDataTo(GrkImage* dest);
    void transferDataFrom(const Tile* tile_src_data);
    GrkImage* duplicate(const Tile* tile_src);
@@ -117,12 +117,12 @@ class GrkImage : public grk_image
    bool isOpacity(uint16_t compno);
    bool compositePlanar(const GrkImage* srcImg);
    bool generateCompositeBounds(const grk_image_comp* srcComp, uint16_t destCompno,
-								grk_rect32* destWin);
+                                grk_rect32* destWin);
    bool generateCompositeBounds(grk_rect32 src, uint16_t destCompno, grk_rect32* destWin);
    bool allComponentsSanityCheck(bool equalPrecision);
    grk_image* createRGB(uint16_t numcmpts, uint32_t w, uint32_t h, uint8_t prec);
    void sycc_to_rgb(int32_t offset, int32_t upb, int32_t y, int32_t cb, int32_t cr, int32_t* out_r,
-					int32_t* out_g, int32_t* out_b);
+                    int32_t* out_g, int32_t* out_b);
    bool sycc444_to_rgb(void);
    bool sycc422_to_rgb(bool oddFirstX);
    bool sycc420_to_rgb(bool oddFirstX, bool oddFirstY);
