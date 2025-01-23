@@ -674,8 +674,7 @@ static void grkFree_file(void* p_user_data)
 static grk_stream* grk_stream_create_stream(grk_stream_params* stream_params)
 {
    bool readStream = stream_params->read_fn;
-   size_t doubleBufferLen =
-       stream_params->double_buffer_len ? stream_params->double_buffer_len : 1024 * 1024;
+   size_t doubleBufferLen = 16 * 1024 * 1024;
    if(stream_params->stream_len)
       doubleBufferLen = std::min(doubleBufferLen, stream_params->stream_len);
    auto stream = grk_stream_new(doubleBufferLen, readStream);
