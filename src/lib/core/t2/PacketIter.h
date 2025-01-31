@@ -98,13 +98,12 @@ struct LayerIncludeBuffers
       if(chunks.find(chunkIndex) == chunks.end())
          chunks[chunkIndex] =
              new uint8_t[GRK_INCLUDE_TRACKER_CHUNK_SIZE](); // Allocate chunk lazily
-
       auto include = chunks[chunkIndex] + chunkOffset;
       uint8_t bit = (bitIndex & 7);
-      uint8_t val = include[byteIndex];
+      uint8_t val = *include;
       if(((val >> bit) & 1) == 0)
       {
-         include[byteIndex] = (uint8_t)(val | (1 << bit));
+         *include = (uint8_t)(val | (1 << bit));
          return true;
       }
 
