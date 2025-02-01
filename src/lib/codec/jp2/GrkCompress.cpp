@@ -931,7 +931,7 @@ GrkRC GrkCompress::pluginMain(int argc, char* argv[], CompressInitParams* initPa
 #endif
    initParams->initialized = true;
    // load plugin but do not actually create codec
-   if(!grk_initialize(initParams->pluginPath, initParams->parameters.num_workers,
+   if(!grk_initialize(initParams->pluginPath, initParams->parameters.num_threads,
                       initParams->parameters.verbose))
    {
       return GrkRCFail;
@@ -1204,7 +1204,7 @@ GrkRC GrkCompress::parseCommandLine(int argc, char* argv[], CompressInitParams* 
          parameters->rate_control_algorithm = (GRK_RATE_CONTROL_ALGORITHM)rateControlAlgorithm;
    }
    if(numThreadsOpt->count() > 0)
-      parameters->num_workers = numThreads;
+      parameters->num_threads = numThreads;
    if(deviceIdOpt->count() > 0)
       parameters->device_id = deviceId;
    if(durationOpt->count() > 0)

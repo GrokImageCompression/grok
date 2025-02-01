@@ -832,7 +832,7 @@ GrkRC GrkDecompress::parseCommandLine(int argc, char* argv[], DecompressInitPara
    if(precisionOpt->count() > 0 && !parsePrecision(precision.c_str(), parameters))
       return GrkRCParseArgsFailed;
    if(numThreadsOpt->count() > 0)
-      parameters->num_workers = numThreads;
+      parameters->num_threads = numThreads;
    if(decodeRegionOpt->count() > 0)
    {
       size_t size_optarg = (size_t)strlen(decodeRegion.c_str()) + 1U;
@@ -984,7 +984,7 @@ GrkRC GrkDecompress::pluginMain(int argc, char* argv[], DecompressInitParams* in
 #endif
    initParams->initialized = true;
    // loads plugin but does not actually create codec
-   grk_initialize(initParams->pluginPath, initParams->parameters.num_workers,
+   grk_initialize(initParams->pluginPath, initParams->parameters.num_threads,
                   initParams->parameters.verbose);
 
    // create codec
@@ -1153,8 +1153,8 @@ bool GrkDecompress::encodeInit(grk_plugin_decompress_callback_info* info)
    else if(cod_format == GRK_FMT_JPG || cod_format == GRK_FMT_PNG)
       compression_level = parameters->compression_level;
    if(!imageFormat->encodeInit(info->image, outfileStr, compression_level,
-                               info->decompressor_parameters->num_workers
-                                   ? info->decompressor_parameters->num_workers
+                               info->decompressor_parameters->num_threads
+                                   ? info->decompressor_parameters->num_threads
                                    : std::thread::hardware_concurrency()))
    {
       spdlog::error("Outfile {} not generated", outfileStr);
