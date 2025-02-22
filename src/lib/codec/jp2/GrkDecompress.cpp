@@ -614,7 +614,7 @@ GrkRC GrkDecompress::parseCommandLine(int argc, char* argv[], DecompressInitPara
    auto numThreadsOpt = cmd.add_option("-H,--num-workers", numThreads, "Number of threads");
    auto inputFileOpt = cmd.add_option("-i,--in-file", inputFile, "Input file");
    auto kernelBuildOptionsOpt =
-       cmd.add_option("-k,--kernel_build", kernelBuildOptions, "Kernel build options");
+       cmd.add_option("-k,--kernel-build", kernelBuildOptions, "Kernel build options");
    auto layerOpt = cmd.add_option("-l,--layers", layer, "Layer");
    auto compressionLevelOpt =
        cmd.add_option("-L,--compression-level", compressionLevel, "Compression Level");
@@ -625,7 +625,7 @@ GrkRC GrkDecompress::parseCommandLine(int argc, char* argv[], DecompressInitPara
    auto precisionOpt = cmd.add_option("-p,--precision", precision, "Force precision");
    auto reduceOpt = cmd.add_option("-r,--reduce", reduce, "Reduce resolutions");
    auto splitPnmOpt = cmd.add_flag("-s,--split-pnm", splitPnm, "Split PNM");
-   auto tileOpt = cmd.add_option("-t,--tile_info", tile, "Input tile index");
+   auto tileOpt = cmd.add_option("-t,--tile-index", tile, "Input tile index");
    auto upsampleOpt = cmd.add_flag("-u,--upsample", upsample, "Upsample");
    auto verboseOpt = cmd.add_flag("-v,--verbose", verbose, "Verbose");
    auto transferExifTagsOpt =
