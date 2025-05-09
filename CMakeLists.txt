@@ -4,8 +4,8 @@ project(GROK)
 
 #######################################
 # GROK version
-set(GROK_VERSION_MAJOR 14)
-set(GROK_VERSION_MINOR 3)
+set(GROK_VERSION_MAJOR 15)
+set(GROK_VERSION_MINOR 0)
 set(GROK_VERSION_PATCH 0)
 set(GROK_VERSION
   "${GROK_VERSION_MAJOR}.${GROK_VERSION_MINOR}.${GROK_VERSION_PATCH}")
