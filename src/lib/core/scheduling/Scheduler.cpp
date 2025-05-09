@@ -18,6 +18,7 @@
 
 std::unique_ptr<tf::Executor> ExecSingleton::instance_ = nullptr;
 std::mutex ExecSingleton::mutex_;
+size_t ExecSingleton::numThreads_;
 
 namespace grk
 {

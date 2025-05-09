@@ -3,7 +3,6 @@
 #endif
 
 #include "Serializer.h"
-#include "spdlog/spdlog.h"
 #include "common.h"
 #define IO_MAX 2147483647U
 

@@ -17,5 +17,6 @@
 namespace grk
 {
 Logger Logger::logger_;
+Logger& grklog = Logger::logger_;
 
 } // namespace grk

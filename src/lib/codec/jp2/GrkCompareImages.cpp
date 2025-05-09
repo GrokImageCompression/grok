@@ -28,7 +28,6 @@
 
 #include "grk_apps_config.h"
 #include "grok.h"
-#include "spdlog/spdlog.h"
 #include "BMPFormat.h"
 #include "PGXFormat.h"
 #include "PNMFormat.h"

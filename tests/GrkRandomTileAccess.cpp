@@ -63,7 +63,7 @@ int GrkRandomTileAccess::main(int argc, char** argv)
       return EXIT_FAILURE;
    }
 
-   grk_initialize(nullptr, 0, true);
+   grk_initialize(nullptr, 0);
 
    for(uint32_t i = 0; i < 4; ++i)
    {

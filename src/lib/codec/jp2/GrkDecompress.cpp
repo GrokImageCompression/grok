@@ -39,7 +39,6 @@
 #include "grk_apps_config.h"
 #include "common.h"
 #include "grok.h"
-#include "spdlog/spdlog.h"
 #include "RAWFormat.h"
 #include "PNMFormat.h"
 #include "PGXFormat.h"
@@ -599,7 +598,7 @@ GrkRC GrkDecompress::parseCommandLine(int argc, char* argv[], DecompressInitPara
             tile = 0, duration = 0;
    uint16_t layer = 0;
    int32_t deviceId = 0;
-   bool forceRgb = false, splitPnm = false, upsample = false, verbose = false,
+   bool forceRgb = false, splitPnm = false, upsample = false,
         transferExifTags = false, xml = false;
 
    auto outDirOpt = cmd.add_option("-a,--out-dir", outDir, "Output Directory");
@@ -627,7 +626,6 @@ GrkRC GrkDecompress::parseCommandLine(int argc, char* argv[], DecompressInitPara
    auto splitPnmOpt = cmd.add_flag("-s,--split-pnm", splitPnm, "Split PNM");
    auto tileOpt = cmd.add_option("-t,--tile-index", tile, "Input tile index");
    auto upsampleOpt = cmd.add_flag("-u,--upsample", upsample, "Upsample");
-   auto verboseOpt = cmd.add_flag("-v,--verbose", verbose, "Verbose");
    auto transferExifTagsOpt =
        cmd.add_flag("-V,--transfer-exif-tags", transferExifTags, "Transfer Exif tags");
    auto logfileOpt = cmd.add_option("-W,--log-file", logfile, "Log file");
@@ -636,21 +634,6 @@ GrkRC GrkDecompress::parseCommandLine(int argc, char* argv[], DecompressInitPara
    auto durationOpt = cmd.add_option("-z,--Duration", duration, "Duration in seconds");
 
    CLI11_PARSE_CUSTOM(cmd, argc, argv);
-
-   if(verboseOpt->count() > 0)
-      parameters->verbose = true;
-   else
-      spdlog::set_level(spdlog::level::level_enum::err);
-   grk_set_msg_handlers({parameters->verbose ? infoCallback : nullptr, nullptr,
-                         parameters->verbose ? warningCallback : nullptr, nullptr, errorCallback,
-                         nullptr});
-   bool useStdio =
-       inputFileOpt->count() > 0 && outForOpt->count() > 0 && outputFileOpt->count() == 0;
-   // disable verbose mode so we don't write info or warnings to stdout
-   if(useStdio)
-      parameters->verbose = false;
-   if(!parameters->verbose)
-      spdlog::set_level(spdlog::level::level_enum::err);
 
    if(logfileOpt->count() > 0)
    {
@@ -977,20 +960,18 @@ GrkRC GrkDecompress::pluginMain(int argc, char* argv[], DecompressInitParams* in
    if(parseReturn != GrkRCSuccess)
       return parseReturn;
 #ifdef GROK_HAVE_LIBTIFF
-   tiffSetErrorAndWarningHandlers(initParams->parameters.verbose);
+   tiffSetErrorAndWarningHandlers(true);
 #endif
 #ifdef GROK_HAVE_LIBPNG
-   pngSetVerboseFlag(initParams->parameters.verbose);
+   pngSetVerboseFlag(true);
 #endif
    initParams->initialized = true;
    // loads plugin but does not actually create codec
-   grk_initialize(initParams->pluginPath, initParams->parameters.num_threads,
-                  initParams->parameters.verbose);
+   grk_initialize(initParams->pluginPath, initParams->parameters.num_threads);
 
    // create codec
    grk_plugin_init_info initInfo;
    initInfo.device_id = initParams->parameters.device_id;
-   initInfo.verbose = initParams->parameters.verbose;
    if(!grk_plugin_init(initInfo))
       goto cleanup;
    initParams->parameters.user_data = this;

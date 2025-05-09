@@ -178,12 +178,15 @@ typedef struct _grk_msg_handlers
 {
   grk_msg_callback info_callback;
   void* info_data;
+  grk_msg_callback debug_callback;
+  void* debug_data;
+  grk_msg_callback trace_callback;
+  void* trace_data;
   grk_msg_callback warn_callback;
   void* warn_data;
   grk_msg_callback error_callback;
   void* error_data;
 } grk_msg_handlers;
-
 /**
  * @struct grk_object
  * @brief Opaque reference-counted object
@@ -535,25 +538,39 @@ typedef void (*grk_stream_free_user_data_fn)(void* user_data);
  */
 typedef struct _grk_stream_params
 {
+  /* 0. General Streaming */
   size_t initial_offset; /* initial offset into stream */
+  size_t double_buffer_len; /* length of internal double buffer
+                               for stdio and callback streaming */
+  size_t initial_double_buffer_len; /* choose a larger initial length
+                                       to read the main header in one go */
+  bool from_network; /* indicates stream source is on network if true */
+  bool is_read_stream;
 
-  /* 1. File */
-  const char* file; /* file */
+  /* 1. File Streaming */
+  const char* file;
+  bool use_stdio; /* use C file api - if false then use memory mapping */
 
-  /* 2. Buffer */
-  uint8_t* buf; /* buffer */
+  /* 2. Buffer Streaming */
+  uint8_t* buf;
   size_t buf_len; /* buffer length */
-  /* length of compressed stream (set by compressor, not client) */
-  size_t buf_compressed_len; /* buffer compressed length */
+  size_t buf_compressed_len; /* length of compressed stream (set by compressor, not client) */
 
-  /* 3. Callback */
+  /* 3. Callback Streaming */
   grk_stream_read_fn read_fn; /* read function */
   grk_stream_write_fn write_fn; /* write function */
   grk_stream_seek_fn seek_fn; /* seek function */
   grk_stream_free_user_data_fn free_user_data_fn; /* optional */
   void* user_data; /* user data */
-  size_t stream_len; /* must be set for read stream */
-  size_t double_buffer_len; /* optional - default value is 1024 * 1024 */
+  size_t stream_len; /* mandatory for read stream */
+
+  /* 4 Authorization */
+  const char* username;
+  const char* password;
+  const char* bearer_token;
+  const char* custom_header;
+  const char* region;
+
 } grk_stream_params;
 
 /**
@@ -573,11 +590,11 @@ typedef void (*grk_decompress_callback)(void* codec, uint16_t tile_index, grk_im
                                         uint8_t reduction, void* user_data);
 
 /**
- * Decompression: toggle random access markers
+ * Decompression: disable random access markers
  */
-#define GRK_RANDOM_ACCESS_PLT 1 /* use PLT marker if present */
-#define GRK_RANDOM_ACCESS_TLM 2 /* use TLM marker if present */
-#define GRK_RANDOM_ACCESS_PLM 4 /* use PLM marker if present */
+#define GRK_RANDOM_ACCESS_PLT 1 /* Disable PLT marker if present */
+#define GRK_RANDOM_ACCESS_TLM 2 /* Disable TLM marker if present */
+#define GRK_RANDOM_ACCESS_PLM 4 /* Disable PLM marker if present */
 
 /**
  * @struct grk_decompress_core_params
@@ -603,7 +620,7 @@ typedef struct _grk_decompress_core_params
   uint16_t layers_to_decompress;
   uint32_t tile_cache_strategy; /* tile cache strategy */
   uint32_t disable_random_access_flags; /* disable random access flags */
-  bool skip_alloc_composite; /* skip allocate composite image data for multi-tile */
+  bool skip_allocate_composite; /* skip allocate composite image data for multi-tile */
   grk_io_pixels_callback io_buffer_callback; /* IO buffer callback */
   void* io_user_data; /* IO user data */
   grk_io_register_reclaim_callback io_register_client_callback; /* IO register client callback */
@@ -623,6 +640,7 @@ typedef struct _grk_decompress_params
 {
   grk_decompress_core_params core; /* core parameters */
   bool asynchronous; /* if true then decompression is executed asynchronously */
+  bool simulate_synchronous;
   grk_decompress_callback decompress_callback; /* callback for asynchronous decompression */
   void* decompress_callback_user_data; /* user data passed to callback for asynchronous
                                           decompression */
@@ -634,10 +652,6 @@ typedef struct _grk_decompress_params
   double dw_x1; /* decompress window right boundary*/
   double dw_y0; /* decompress window top boundary*/
   double dw_y1; /* decompress window bottom boundary*/
-  uint16_t dtw_x0; /* decompress tile window left boundary*/
-  uint16_t dtw_x1; /* decompress tile window right boundary*/
-  uint16_t dtw_y0; /* decompress tile window top boundary*/
-  uint16_t dtw_y1; /* decompress tile window bottom boundary*/
   uint16_t tile_index; /* index of decompressed tile*/
   bool single_tile_decompress; /* single tile decompress */
   grk_precision* precision; /* precision array */
@@ -648,7 +662,6 @@ typedef struct _grk_decompress_params
   bool io_xml; /* serialize XML metedata to disk*/
   uint32_t compression; /* compression */
   uint32_t compression_level; /* compression "quality" - meaning depends on output file format */
-  bool verbose; /* verbose output */
   uint32_t duration; /* duration of decompression in seconds */
   uint32_t repeats; /* number of repetitions */
   uint32_t num_threads; /* number of CPU threads */
@@ -810,6 +823,24 @@ typedef struct _grk_header_info
 } grk_header_info;
 
 /**
+ * @struct grk_wait_swath
+ * @brief Specify swath to wait on
+ * Holds swath coordinates and tile indices covering swath
+ * Tile indices are set by library
+ */
+typedef struct grk_wait_swath
+{
+  uint32_t x0; // Pixel coordinate: top-left x
+  uint32_t y0; // Pixel coordinate: top-left y
+  uint32_t x1; // Pixel coordinate: bottom-right x (exclusive)
+  uint32_t y1; // Pixel coordinate: bottom-right y (exclusive)
+  uint16_t tile_x0; // Global tile coordinate: start x (inclusive)
+  uint16_t tile_y0; // Global tile coordinate: start y (inclusive)
+  uint16_t tile_x1; // Global tile coordinate: end x (exclusive)
+  uint16_t tile_y1; // Global tile coordinate: end y (exclusive)
+  uint16_t num_tile_cols; // Number of tile columns in the image's tile grid
+} grk_wait_swath;
+/**
  * @struct grk_plugin_pass
  * @brief Plugin pass
  */
@@ -914,10 +945,8 @@ GRK_API const char* GRK_CALLCONV grk_version(void);
  * Must be called before any Grok API calls
  * @param pluginPath 	path to plugin
  * @param num_threads number of threads to use for compress/decompress
- * @param verbose true if verbose output requested
  */
-GRK_API bool GRK_CALLCONV grk_initialize(const char* pluginPath, uint32_t num_threads,
-                                         bool verbose);
+GRK_API bool GRK_CALLCONV grk_initialize(const char* pluginPath, uint32_t num_threads);
 
 /**
  * @brief De-initializes Grok library
@@ -1026,7 +1055,7 @@ GRK_API bool GRK_CALLCONV grk_decompress_read_header(grk_object* codec,
  * @return pointer to @ref grk_image
  */
 GRK_API grk_image* GRK_CALLCONV grk_decompress_get_tile_image(grk_object* codec,
-                                                              uint16_t tile_index);
+                                                              uint16_t tile_index, bool wait);
 
 /**
  * @brief Gets decompressed image
@@ -1060,9 +1089,11 @@ GRK_API bool GRK_CALLCONV grk_decompress(grk_object* codec, grk_plugin_tile* til
 
 /**
  * @brief Waits for an asynchronous decompression to complete
- * @param codecWrapper codec wrapper @ref grk_object
+ * @param codec codec @ref grk_object
+ * @param swath @ref grk_wait_swath to wait for. If null, then wait for
+ * entire decompression to complete
  */
-GRK_API void GRK_CALLCONV grk_decompress_wait(grk_object* codecWrapper);
+GRK_API void GRK_CALLCONV grk_decompress_wait(grk_object* codec, grk_wait_swath* swath);
 
 /**
  * @brief Decompresses a specific tile
@@ -1237,7 +1268,7 @@ GRK_API void GRK_CALLCONV grk_dump_codec(grk_object* codec, uint32_t info_flag,
  * @param	nb_comp			number of components of the image.
  * @return	true if matrix was successfully set
  */
-GRK_API bool GRK_CALLCONV grk_set_MCT(grk_cparameters* parameters, float* encoding_matrix,
+GRK_API bool GRK_CALLCONV grk_set_MCT(grk_cparameters* parameters, const float* encoding_matrix,
                                       int32_t* dc_shift, uint32_t nb_comp);
 
 /* Decoder state flags */

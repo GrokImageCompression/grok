@@ -21,7 +21,6 @@
 #include <cstdio>
 #include <cstdlib>
 #include "grk_apps_config.h"
-#include "spdlog/spdlog.h"
 #include "grok.h"
 #include "BMPFormat.h"
 #include "convert.h"

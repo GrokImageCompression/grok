@@ -32,6 +32,15 @@
 #endif /* _WIN32 */
 #include <chrono>
 
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wsign-conversion"
+#include "spdlog/spdlog.h"
+#include <spdlog/sinks/basic_file_sink.h> // Required for basic_logger_mt
+#include <spdlog/sinks/stdout_color_sinks.h>
+#pragma GCC diagnostic pop
+
+
 #include "grok.h"
 #include "Serializer.h"
 

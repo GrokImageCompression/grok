@@ -44,7 +44,6 @@
 using namespace grk;
 #include "grk_apps_config.h"
 #include "grok.h"
-#include "spdlog/spdlog.h"
 #include "RAWFormat.h"
 #include "PNMFormat.h"
 #include "PGXFormat.h"
@@ -211,8 +210,6 @@ static void compress_help_display(void)
    fprintf(stdout, " `--version`\n");
    fprintf(stdout, "\n");
    fprintf(stdout, "Print library version and exit.\n");
-   fprintf(stdout, "\n");
-   fprintf(stdout, " `-v, --verbose`\n");
    fprintf(stdout, "\n");
    fprintf(stdout,
            "Output information and warnings about encoding to console (errors are always\n");
@@ -931,8 +928,7 @@ GrkRC GrkCompress::pluginMain(int argc, char* argv[], CompressInitParams* initPa
 #endif
    initParams->initialized = true;
    // load plugin but do not actually create codec
-   if(!grk_initialize(initParams->pluginPath, initParams->parameters.num_threads,
-                      initParams->parameters.verbose))
+   if(!grk_initialize(initParams->pluginPath, initParams->parameters.num_threads))
    {
       return GrkRCFail;
    }
@@ -1136,7 +1132,6 @@ GrkRC GrkCompress::parseCommandLine(int argc, char* argv[], CompressInitParams* 
        app.add_option("-u,--tile-parts", tileParts, "Tile part generation")->default_val("0");
    tilePartsOpt->check(CLI::IsMember({"R", "L", "C", "0"}));
    auto broadcastOpt = app.add_option("-U,--broadcast", broadcast, "Broadcast profile");
-   auto verboseOpt = app.add_flag("-v,--verbose", verbose, "Verbose");
    auto transferExifTagsOpt =
        app.add_flag("-V,--transfer-exif-tags", transferExifTags, "Transfer Exif tags");
    auto cinema2KOpt =
@@ -1159,14 +1154,6 @@ GrkRC GrkCompress::parseCommandLine(int argc, char* argv[], CompressInitParams* 
       auto file_logger = spdlog::basic_logger_mt("grk_compress", logfile);
       spdlog::set_default_logger(file_logger);
    }
-   if(verboseOpt->count() > 0)
-      parameters->verbose = true;
-   else
-      spdlog::set_level(spdlog::level::level_enum::err);
-   grk_set_msg_handlers({parameters->verbose ? infoCallback : nullptr, nullptr,
-                         parameters->verbose ? warningCallback : nullptr, nullptr, errorCallback,
-                         nullptr});
-
    bool isHT = false;
    if(resolutionsOpt->count() > 0)
       parameters->numresolution = resolutions;

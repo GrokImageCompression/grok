@@ -155,7 +155,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
    grk_object* codec = nullptr;
 
    // initialize library
-   grk_initialize(nullptr, 0, true);
+   grk_initialize(nullptr, 0);
 
    // create j2k file stream
    inputFileStr = inputFilePath.c_str();

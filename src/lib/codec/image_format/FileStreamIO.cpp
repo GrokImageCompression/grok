@@ -17,7 +17,6 @@
  */
 
 #include <FileStreamIO.h>
-#include "spdlog/spdlog.h"
 #include "common.h"
 
 FileStreamIO::FileStreamIO() : fileHandle_(nullptr) {}

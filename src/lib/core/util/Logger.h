@@ -85,4 +85,6 @@ struct Logger : public ILogger
    }
 };
 
+extern Logger& grklog;
+
 } // namespace grk

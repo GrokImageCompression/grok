@@ -80,7 +80,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
    bool useCallbacks = true;
 
    // initialize library
-   grk_initialize(nullptr, 0, true);
+   grk_initialize(nullptr, 0);
 
    grk_stream_params streamParams = {};
    WriteStreamInfo sinfo(&streamParams);

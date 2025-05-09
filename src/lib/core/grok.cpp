@@ -111,44 +111,101 @@ grk_object* grk_decompress_create(grk_stream* stream)
    return &codec->obj;
 }
 
-static void errorCallback(const char* msg, [[maybe_unused]] void* client_data)
+static void infoCallback(const char* msg, [[maybe_unused]] void* client_data)
 {
-   auto t = std::string(msg) + "\n";
-   fprintf(stderr, "%s", t.c_str());
+  auto t = std::string(msg) + "\n";
+  fprintf(stdout, "[INFO] %s", t.c_str());
+}
+static void debugCallback(const char* msg, [[maybe_unused]] void* client_data)
+{
+  auto t = std::string(msg) + "\n";
+  fprintf(stdout, "[DEBUG] %s", t.c_str());
+}
+static void traceCallback(const char* msg, [[maybe_unused]] void* client_data)
+{
+  auto t = std::string(msg) + "\n";
+  fprintf(stdout, "[TRACE] %s", t.c_str());
 }
 static void warningCallback(const char* msg, [[maybe_unused]] void* client_data)
 {
-   auto t = std::string(msg) + "\n";
-   fprintf(stdout, "%s", t.c_str());
-}
-static void infoCallback(const char* msg, [[maybe_unused]] void* client_data)
-{
-   auto t = std::string(msg) + "\n";
-   fprintf(stdout, "%s", t.c_str());
+  auto t = std::string(msg) + "\n";
+  fprintf(stdout, "[WARNING] %s", t.c_str());
 }
 
-static bool is_plugin_initialized = false;
-bool GRK_CALLCONV grk_initialize(const char* pluginPath, uint32_t numthreads, bool verbose)
+static void errorCallback(const char* msg, [[maybe_unused]] void* client_data)
 {
-   ExecSingleton::instance(numthreads);
-   if(verbose)
-   {
-      grk_set_msg_handlers(
-          {infoCallback, nullptr, warningCallback, nullptr, errorCallback, nullptr});
-   }
-   if(!is_plugin_initialized)
-   {
-      grk_plugin_load_info info;
-      info.pluginPath = pluginPath;
-      info.verbose = verbose;
-      is_plugin_initialized = grk_plugin_load(info);
-      if(!is_plugin_initialized)
-         return false;
-      else
-         Logger::logger_.info("Plugin loaded");
-   }
+  auto t = std::string(msg) + "\n";
+  fprintf(stderr, "%s", t.c_str());
+}
 
-   return true;
+struct InitState
+{
+  InitState(const char* pluginPath, uint32_t numThreads)
+      : pluginPath_(pluginPath), numThreads_(numThreads), initialized_(false),
+        pluginInitialized_(false)
+  {}
+  InitState(void) : InitState(nullptr, 0) {}
+  bool operator==(const InitState& rhs) const
+  {
+    return pluginPath_ == rhs.pluginPath_ && numThreads_ == rhs.numThreads_;
+  }
+  const char* pluginPath_;
+  uint32_t numThreads_;
+  bool initialized_;
+  bool pluginInitialized_;
+};
+
+static InitState initState_;
+bool grk_initialize(const char* pluginPath, uint32_t numThreads)
+{
+  const char* singleThreadEnv = std::getenv("GRK_TEST_SINGLE");
+  if(singleThreadEnv && std::atoi(singleThreadEnv) == 1)
+  {
+    numThreads = 1; // Force single-threaded execution
+  }
+
+  InitState newState(pluginPath, numThreads);
+  if(initState_.initialized_ && newState == initState_)
+    return true;
+  // 1. set up executor
+  ExecSingleton::create(numThreads);
+
+  if(!Logger::logger_.info_handler)
+  {
+    grk_msg_handlers handlers = {};
+    const char* debug_env = std::getenv("GRK_DEBUG");
+    if(debug_env)
+    {
+      int level = std::atoi(debug_env);
+      if(level >= 1)
+        handlers.error_callback = errorCallback;
+      if(level >= 2)
+        handlers.warn_callback = warningCallback;
+      if(level >= 3)
+        handlers.info_callback = infoCallback;
+      if(level >= 4)
+        handlers.debug_callback = debugCallback;
+      if(level >= 5)
+        handlers.trace_callback = traceCallback;
+    }
+    grk_set_msg_handlers(handlers);
+  }
+
+  initState_ = newState;
+
+  // 2. try to load plugin
+  if(!initState_.pluginInitialized_)
+  {
+    grk_plugin_load_info info;
+    info.pluginPath = pluginPath;
+    initState_.pluginInitialized_ = grk_plugin_load(info);
+    if(!initState_.pluginInitialized_)
+      return false;
+    else
+      grklog.info("Plugin loaded");
+  }
+
+  return true;
 }
 
 GRK_API void GRK_CALLCONV grk_deinitialize()
@@ -462,7 +519,7 @@ void GRK_CALLCONV grk_dump_codec(grk_object* codecWrapper, uint32_t info_flag, F
    }
 }
 
-bool GRK_CALLCONV grk_set_MCT(grk_cparameters* parameters, float* pEncodingMatrix,
+bool grk_set_MCT(grk_cparameters* parameters, const float* pEncodingMatrix,
                               int32_t* p_dc_shift, uint32_t pNbComp)
 {
    uint32_t l_matrix_size = pNbComp * pNbComp * (uint32_t)sizeof(float);

@@ -27,7 +27,6 @@
 #define strcasecmp _stricmp
 #endif
 
-#include "spdlog/spdlog.h"
 #include "common.h"
 
 namespace grk
@@ -387,5 +386,70 @@ void infoCallback(const char* msg, [[maybe_unused]] void* client_data)
 {
 	spdlog::default_logger()->info(msg);
 }
+void debugCallback(const char* msg, [[maybe_unused]] void* client_data)
+{
+  spdlog::default_logger()->debug(msg);
+}
+
+void traceCallback(const char* msg, [[maybe_unused]] void* client_data)
+{
+  spdlog::default_logger()->trace(msg);
+}
+
+
+// Configuration function
+void configureLogging(const std::string& logfile) {
+  // Step 1: Set up the logger
+  std::shared_ptr<spdlog::logger> logger;
+  if (!logfile.empty()) {
+    logger = spdlog::basic_logger_mt("grk", logfile); // File logger
+  } else {
+    // Console logger with color
+    auto sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
+    logger = std::make_shared<spdlog::logger>("grk", sink);
+  }
+  spdlog::set_default_logger(logger);
+
+  // Step 2: Determine log level
+  spdlog::level::level_enum log_level = spdlog::level::err; // Default to errors only
+
+  const char* debug_env = std::getenv("GRK_DEBUG");
+  if (debug_env) {
+    int level = std::atoi(debug_env);
+    switch (level) {
+      case 0: log_level = spdlog::level::off; break;
+      case 1: log_level = spdlog::level::err; break;
+      case 2: log_level = spdlog::level::warn; break;
+      case 3: log_level = spdlog::level::info; break;
+      case 4: log_level = spdlog::level::debug; break;
+      case 5: log_level = spdlog::level::trace; break;
+      default:
+        if (level > 5) log_level = spdlog::level::trace; // Cap at trace
+        break;
+    }
+  } else {
+    log_level = spdlog::level::off;
+  }
+  spdlog::set_level(log_level);
+  spdlog::set_pattern("[%Y-%m-%d %H:%M:%S.%e] [%^%l%$] %v");
+
+  // Step 3: Set up grk_msg_handlers
+  grk_msg_handlers handlers = {
+    infoCallback,
+    nullptr,
+    debugCallback,
+    nullptr,
+   traceCallback,
+    nullptr,
+     warningCallback,
+    nullptr,
+    errorCallback, // Always active
+    nullptr
+  };
+
+  grk_set_msg_handlers(handlers);
+
+}
+
 
 } // namespace grk

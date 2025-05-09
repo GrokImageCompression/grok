@@ -23,7 +23,6 @@
 #include <cstdlib>
 #include "grk_apps_config.h"
 #include "grok.h"
-#include "spdlog/spdlog.h"
 #include "PNGFormat.h"
 #include "convert.h"
 #include <cstring>

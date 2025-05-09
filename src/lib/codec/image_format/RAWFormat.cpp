@@ -23,7 +23,6 @@
 #include <cstdlib>
 #include "grk_apps_config.h"
 #include "grok.h"
-#include "spdlog/spdlog.h"
 #include "RAWFormat.h"
 #include "convert.h"
 #include "common.h"

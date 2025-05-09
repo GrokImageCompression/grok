@@ -39,7 +39,7 @@ class TileViewerContext:
         self.pan_x, self.pan_y = 0, 0
         self.input_file = input_file
 
-        grk_initialize(None, 0, True)
+        grk_initialize(None, 0)
         self.codec = None
         self.header_info = grk_header_info()
         self.image = None

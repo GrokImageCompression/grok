@@ -29,7 +29,6 @@
 #endif /* _WIN32 */
 
 #include "grk_config.h"
-#include "spdlog/spdlog.h"
 #include "common.h"
 #define TCLAP_NAMESTARTSTRING "-"
 #include "tclap/CmdLine.h"
@@ -255,8 +254,7 @@ int GrkDump::main(int argc, char* argv[])
    dircnt* dirptr = nullptr;
    int rc = EXIT_SUCCESS;
 
-   grk_initialize(nullptr, 0, true);
-   grk_set_msg_handlers({infoCallback, nullptr, warningCallback, nullptr, errorCallback, nullptr});
+   grk_initialize(nullptr, 0);
 
    /* Initialize inputFolder */
    memset(&inputFolder, 0, sizeof(inputFolder));
