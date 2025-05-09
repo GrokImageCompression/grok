@@ -32,13 +32,18 @@
 #endif /* _WIN32 */
 #include <chrono>
 
-
+#if defined(__GNUC__) || defined(__clang__)
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wsign-conversion"
+#endif
+
 #include "spdlog/spdlog.h"
-#include <spdlog/sinks/basic_file_sink.h> // Required for basic_logger_mt
+#include <spdlog/sinks/basic_file_sink.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
+
+#if defined(__GNUC__) || defined(__clang__)
 #pragma GCC diagnostic pop
+#endif
 
 
 #include "grok.h"
