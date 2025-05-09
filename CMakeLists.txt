@@ -46,7 +46,7 @@ endif (CMAKE_SYSTEM_PROCESSOR MATCHES "unknown")
 message(STATUS "Architecture: " ${GRK_ARCH})
 
 IF(MSVC)
-    string(APPEND CMAKE_CXX_FLAGS " /EHsc")
+    string(APPEND CMAKE_CXX_FLAGS " /EHsc /utf-8")
 ENDIF(MSVC)
 
 # Set a default build type if none was specified
