@@ -26,33 +26,33 @@ namespace grk
  */
 struct SparseBuffer
 {
-   SparseBuffer();
-   ~SparseBuffer();
-   grk_buf8* pushBack(uint8_t* buf, size_t len, bool ownsData);
-   void incrementCurrentChunkOffset(size_t offset);
-   size_t getCurrentChunkLength(void);
-   // Treat segmented buffer as single contiguous buffer, and get current pointer
-   uint8_t* getCurrentChunkPtr(void);
-   // Reset all offsets to zero, and set current chunk to beginning of list
-   void rewind(void);
-   size_t skip(size_t numBytes);
-   void increment(void);
-   size_t read(void* buffer, size_t numBytes);
-   size_t totalLength(void) const;
+  SparseBuffer();
+  ~SparseBuffer();
+  grk_buf8* pushBack(uint8_t* buf, size_t len, bool ownsData);
+  void incrementCurrentChunkOffset(size_t offset);
+  size_t getCurrentChunkLength(void);
+  // Treat segmented buffer as single contiguous buffer, and get current pointer
+  uint8_t* getCurrentChunkPtr(void);
+  // Reset all offsets to zero, and set current chunk to beginning of list
+  void rewind(void);
+  size_t skip(size_t numBytes);
+  void increment(void);
+  size_t read(void* buffer, size_t numBytes);
+  size_t totalLength(void) const;
 
- private:
-   // Treat segmented buffer as single contiguous buffer, and get current offset
-   size_t getGlobalOffset(void);
-   // Copy all chunks, in sequence, into contiguous array
-   bool copyToContiguousBuffer(uint8_t* buffer);
-   // Clean up internal resources
-   void cleanup(void);
-   size_t getCurrentChunkOffset(void);
-   void pushBack(grk_buf8* chunk);
-   size_t dataLen; /* total length of all chunks*/
-   size_t currentChunkId; /* current index into chunk vector */
-   std::vector<grk_buf8*> chunks;
-   bool reachedEnd_;
+private:
+  // Treat segmented buffer as single contiguous buffer, and get current offset
+  size_t getGlobalOffset(void);
+  // Copy all chunks, in sequence, into contiguous array
+  bool copyToContiguousBuffer(uint8_t* buffer);
+  // Clean up internal resources
+  void cleanup(void);
+  size_t getCurrentChunkOffset(void);
+  void pushBack(grk_buf8* chunk);
+  size_t dataLen; /* total length of all chunks*/
+  size_t currentChunkId; /* current index into chunk vector */
+  std::vector<grk_buf8*> chunks;
+  bool reachedEnd_;
 };
 
 } // namespace grk

@@ -31,14 +31,14 @@ typedef size_t (*grk_stream_zero_copy_read_fn)(uint8_t** buffer, size_t numBytes
 
 struct MemStream
 {
-   MemStream(uint8_t* buffer, size_t offset, size_t length, bool owns);
-   MemStream();
-   ~MemStream();
-   uint8_t* buf;
-   size_t off;
-   size_t len;
-   grk_handle fd; // for file mapping
-   bool ownsBuffer;
+  MemStream(uint8_t* buffer, size_t offset, size_t length, bool owns);
+  MemStream();
+  ~MemStream();
+  uint8_t* buf;
+  size_t off;
+  size_t len;
+  grk_handle fd; // for file mapping
+  bool ownsBuffer;
 };
 
 void set_up_mem_stream(grk_stream* stream, size_t len, bool is_read_stream);

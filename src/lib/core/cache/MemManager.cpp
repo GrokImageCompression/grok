@@ -34,67 +34,67 @@ namespace grk
 const size_t grk_buffer_alignment = 64;
 uint32_t grk_make_aligned_width(uint32_t width)
 {
-   assert(width);
-   return (uint32_t)((((uint64_t)width + grk_buffer_alignment - 1) / grk_buffer_alignment) *
-                     grk_buffer_alignment);
+  assert(width);
+  return (uint32_t)((((uint64_t)width + grk_buffer_alignment - 1) / grk_buffer_alignment) *
+                    grk_buffer_alignment);
 }
 static inline void* grk_aligned_alloc_N(size_t alignment, size_t size)
 {
-   /* alignment shall be power of 2 */
-   assert((alignment != 0U) && ((alignment & (alignment - 1U)) == 0U));
-   /* alignment shall be at least sizeof(void*) */
-   assert(alignment >= sizeof(void*));
+  /* alignment shall be power of 2 */
+  assert((alignment != 0U) && ((alignment & (alignment - 1U)) == 0U));
+  /* alignment shall be at least sizeof(void*) */
+  assert(alignment >= sizeof(void*));
 
-   if(size == 0U) /* prevent implementation defined behavior of realloc */
-      return nullptr;
+  if(size == 0U) /* prevent implementation defined behavior of realloc */
+    return nullptr;
 
-   // make new_size a multiple of alignment
-   size = ((size + alignment - 1) / alignment) * alignment;
+  // make new_size a multiple of alignment
+  size = ((size + alignment - 1) / alignment) * alignment;
 
 #ifdef _WIN32
-   return _aligned_malloc(size, alignment);
+  return _aligned_malloc(size, alignment);
 #else
-   return std::aligned_alloc(alignment, size);
+  return std::aligned_alloc(alignment, size);
 #endif
 }
 void* grk_malloc(size_t size)
 {
-   // prevent implementation defined behavior of realloc
-   if(size == 0U)
-      return nullptr;
+  // prevent implementation defined behavior of realloc
+  if(size == 0U)
+    return nullptr;
 
-   return malloc(size);
+  return malloc(size);
 }
 void* grk_calloc(size_t num, size_t size)
 {
-   // prevent implementation defined behavior of realloc
-   if(num == 0 || size == 0)
-      return nullptr;
+  // prevent implementation defined behavior of realloc
+  if(num == 0 || size == 0)
+    return nullptr;
 
-   return calloc(num, size);
+  return calloc(num, size);
 }
 void* grk_aligned_malloc(size_t size)
 {
-   return grk_aligned_alloc_N(grk_buffer_alignment, size);
+  return grk_aligned_alloc_N(grk_buffer_alignment, size);
 }
 void grk_aligned_free(void* ptr)
 {
 #ifdef _WIN32
-   _aligned_free(ptr);
+  _aligned_free(ptr);
 #else
-   free(ptr);
+  free(ptr);
 #endif
 }
 void* grk_realloc(void* ptr, size_t new_size)
 {
-   // prevent implementation defined behavior of realloc
-   if(new_size == 0U)
-      return nullptr;
+  // prevent implementation defined behavior of realloc
+  if(new_size == 0U)
+    return nullptr;
 
-   return realloc(ptr, new_size);
+  return realloc(ptr, new_size);
 }
 void grk_free(void* ptr)
 {
-   free(ptr);
+  free(ptr);
 }
 } // namespace grk

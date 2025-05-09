@@ -25,34 +25,34 @@ class GrkImage;
 
 struct TileCacheEntry
 {
-   explicit TileCacheEntry(TileProcessor* p);
-   TileCacheEntry();
-   ~TileCacheEntry();
+  explicit TileCacheEntry(TileProcessor* p);
+  TileCacheEntry();
+  ~TileCacheEntry();
 
-   TileProcessor* processor;
+  TileProcessor* processor;
 };
 
 class TileCache
 {
- public:
-   TileCache(uint32_t strategy);
-   TileCache(void);
-   virtual ~TileCache();
+public:
+  TileCache(uint32_t strategy);
+  TileCache(void);
+  virtual ~TileCache();
 
-   bool empty(void);
-   void setStrategy(uint32_t strategy);
-   uint32_t getStrategy(void);
-   TileCacheEntry* put(uint16_t tile_index, TileProcessor* processor);
-   TileCacheEntry* get(uint16_t tile_index);
-   GrkImage* getComposite(void);
-   std::vector<GrkImage*> getAllImages(void);
-   std::vector<GrkImage*> getTileImages(void);
+  bool empty(void);
+  void setStrategy(uint32_t strategy);
+  uint32_t getStrategy(void);
+  TileCacheEntry* put(uint16_t tile_index, TileProcessor* processor);
+  TileCacheEntry* get(uint16_t tile_index);
+  GrkImage* getComposite(void);
+  std::vector<GrkImage*> getAllImages(void);
+  std::vector<GrkImage*> getTileImages(void);
 
- private:
-   // each component is sub-sampled and resolution-reduced
-   GrkImage* tileComposite;
-   std::map<uint32_t, TileCacheEntry*> cache_;
-   uint32_t strategy_;
+private:
+  // each component is sub-sampled and resolution-reduced
+  GrkImage* tileComposite;
+  std::map<uint32_t, TileCacheEntry*> cache_;
+  uint32_t strategy_;
 };
 
 } // namespace grk

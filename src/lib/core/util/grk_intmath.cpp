@@ -21,12 +21,12 @@ namespace grk
 {
 uint8_t floorlog2(uint32_t a)
 {
-   uint8_t l;
-   for(l = 0; a > 1; l++)
-   {
-      a >>= 1;
-   }
-   return l;
+  uint8_t l;
+  for(l = 0; a > 1; l++)
+  {
+    a >>= 1;
+  }
+  return l;
 }
 
 } // namespace grk

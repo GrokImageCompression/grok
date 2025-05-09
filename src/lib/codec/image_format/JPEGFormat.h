@@ -28,31 +28,31 @@ typedef unsigned char boolean;
 
 class JPEGFormat : public ImageFormat
 {
- public:
-   JPEGFormat(void);
-   bool encodeHeader(void) override;
-   bool encodePixels() override;
-   using ImageFormat::encodePixels;
-   bool encodeFinish(void) override;
-   grk_image* decode(const std::string& filename, grk_cparameters* parameters) override;
+public:
+  JPEGFormat(void);
+  bool encodeHeader(void) override;
+  bool encodePixels() override;
+  using ImageFormat::encodePixels;
+  bool encodeFinish(void) override;
+  grk_image* decode(const std::string& filename, grk_cparameters* parameters) override;
 
- private:
-   grk_image* jpegtoimage(const char* filename, grk_cparameters* parameters);
-   bool imagetojpeg(grk_image* image, const char* filename, uint32_t compression_level);
+private:
+  grk_image* jpegtoimage(const char* filename, grk_cparameters* parameters);
+  bool imagetojpeg(grk_image* image, const char* filename, uint32_t compression_level);
 
-   bool success;
-   uint8_t* buffer;
-   int32_t* buffer32s;
-   J_COLOR_SPACE color_space;
-   int32_t adjust;
-   bool readFromStdin;
+  bool success;
+  uint8_t* buffer;
+  int32_t* buffer32s;
+  J_COLOR_SPACE color_space;
+  int32_t adjust;
+  bool readFromStdin;
 
-   /* This struct contains the JPEG compression parameters and pointers to
-    * working space (which is allocated as needed by the JPEG library).
-    * It is possible to have several such structures, representing multiple
-    * compression/decompression processes, in existence at once.  We refer
-    * to any one struct (and its associated working data) as a "JPEG object".
-    */
-   struct jpeg_compress_struct cinfo;
-   int32_t const* planes[4];
+  /* This struct contains the JPEG compression parameters and pointers to
+   * working space (which is allocated as needed by the JPEG library).
+   * It is possible to have several such structures, representing multiple
+   * compression/decompression processes, in existence at once.  We refer
+   * to any one struct (and its associated working data) as a "JPEG object".
+   */
+  struct jpeg_compress_struct cinfo;
+  int32_t const* planes[4];
 };

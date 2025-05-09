@@ -28,36 +28,36 @@ namespace grk
  */
 struct grk_stepsize
 {
-   grk_stepsize() : expn(0), mant(0) {}
-   /** exponent - 5 bits */
-   uint8_t expn;
-   /** mantissa  -11 bits */
-   uint16_t mant;
+  grk_stepsize() : expn(0), mant(0) {}
+  /** exponent - 5 bits */
+  uint8_t expn;
+  /** mantissa  -11 bits */
+  uint16_t mant;
 };
 
 struct Quantizer
 {
- public:
-   Quantizer(bool reversible, uint8_t guard_bits);
-   virtual ~Quantizer() = default;
-   // for compress
-   void pull(grk_stepsize* stepptr);
-   // for decompress
-   void push(grk_stepsize* stepptr);
-   virtual void generate(uint32_t decomps, uint32_t max_bit_depth, bool color_transform,
-                         bool is_signed);
-   virtual bool write(BufferedStream* stream);
+public:
+  Quantizer(bool reversible, uint8_t guard_bits);
+  virtual ~Quantizer() = default;
+  // for compress
+  void pull(grk_stepsize* stepptr);
+  // for decompress
+  void push(grk_stepsize* stepptr);
+  virtual void generate(uint32_t decomps, uint32_t max_bit_depth, bool color_transform,
+                        bool is_signed);
+  virtual bool write(BufferedStream* stream);
 
- protected:
-   uint32_t get_num_guard_bits() const;
-   uint8_t Sqcd;
-   union
-   {
-      uint8_t u8_SPqcd[97];
-      uint16_t u16_SPqcd[97];
-   };
-   uint32_t num_decomps;
-   bool isReversible;
+protected:
+  uint32_t get_num_guard_bits() const;
+  uint8_t Sqcd;
+  union
+  {
+    uint8_t u8_SPqcd[97];
+    uint16_t u16_SPqcd[97];
+  };
+  uint32_t num_decomps;
+  bool isReversible;
 };
 
 } // namespace grk

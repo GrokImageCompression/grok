@@ -25,18 +25,18 @@ namespace grk
 T1Interface* T1Factory::makeT1(bool isCompressor, TileCodingParams* tcp, uint32_t maxCblkW,
                                uint32_t maxCblkH)
 {
-   if(tcp->isHT())
-      return new ojph::T1OJPH(isCompressor, tcp, maxCblkW, maxCblkH);
-   else
-      return new t1_part1::T1Part1(isCompressor, maxCblkW, maxCblkH);
+  if(tcp->isHT())
+    return new ojph::T1OJPH(isCompressor, tcp, maxCblkW, maxCblkH);
+  else
+    return new t1_part1::T1Part1(isCompressor, maxCblkW, maxCblkH);
 }
 
 Quantizer* T1Factory::makeQuantizer(bool ht, bool reversible, uint8_t guardBits)
 {
-   if(ht)
-      return new ojph::QuantizerOJPH(reversible, guardBits);
-   else
-      return new Quantizer(reversible, guardBits);
+  if(ht)
+    return new ojph::QuantizerOJPH(reversible, guardBits);
+  else
+    return new Quantizer(reversible, guardBits);
 }
 
 } // namespace grk

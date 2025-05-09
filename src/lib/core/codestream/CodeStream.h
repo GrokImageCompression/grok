@@ -89,14 +89,14 @@ class GrkImage;
 template<typename S, typename D>
 void j2k_write(const void* p_src_data, void* p_dest_data, uint64_t nb_elem)
 {
-   uint8_t* dest_data = (uint8_t*)p_dest_data;
-   S* src_data = (S*)p_src_data;
-   for(uint32_t i = 0; i < nb_elem; ++i)
-   {
-      D temp = (D) * (src_data++);
-      grk_write<D>(dest_data, temp, sizeof(D));
-      dest_data += sizeof(D);
-   }
+  uint8_t* dest_data = (uint8_t*)p_dest_data;
+  S* src_data = (S*)p_src_data;
+  for(uint32_t i = 0; i < nb_elem; ++i)
+  {
+    D temp = (D) * (src_data++);
+    grk_write<D>(dest_data, temp, sizeof(D));
+    dest_data += sizeof(D);
+  }
 }
 
 const uint32_t MCT_ELEMENT_SIZE[] = {2, 4, 4, 8};
@@ -105,56 +105,56 @@ typedef std::function<bool(void)> PROCEDURE_FUNC;
 
 struct ICodeStreamCompress
 {
-   virtual ~ICodeStreamCompress() = default;
-   virtual bool init(grk_cparameters* p_param, GrkImage* p_image) = 0;
-   virtual bool start(void) = 0;
-   virtual uint64_t compress(grk_plugin_tile* tile) = 0;
+  virtual ~ICodeStreamCompress() = default;
+  virtual bool init(grk_cparameters* p_param, GrkImage* p_image) = 0;
+  virtual bool start(void) = 0;
+  virtual uint64_t compress(grk_plugin_tile* tile) = 0;
 };
 
 struct ICodeStreamDecompress
 {
- public:
-   virtual ~ICodeStreamDecompress() = default;
-   virtual bool readHeader(grk_header_info* header_info) = 0;
-   virtual GrkImage* getImage(uint16_t tile_index) = 0;
-   virtual GrkImage* getImage(void) = 0;
-   virtual void init(grk_decompress_core_params* p_param) = 0;
-   virtual bool setDecompressRegion(grk_rect_double region) = 0;
-   virtual bool decompress(grk_plugin_tile* tile) = 0;
-   virtual bool decompressTile(uint16_t tile_index) = 0;
-   virtual bool preProcess(void) = 0;
-   virtual bool postProcess(void) = 0;
-   virtual void dump(uint32_t flag, FILE* outputFileStream) = 0;
+public:
+  virtual ~ICodeStreamDecompress() = default;
+  virtual bool readHeader(grk_header_info* header_info) = 0;
+  virtual GrkImage* getImage(uint16_t tile_index) = 0;
+  virtual GrkImage* getImage(void) = 0;
+  virtual void init(grk_decompress_core_params* p_param) = 0;
+  virtual bool setDecompressRegion(grk_rect_double region) = 0;
+  virtual bool decompress(grk_plugin_tile* tile) = 0;
+  virtual bool decompressTile(uint16_t tile_index) = 0;
+  virtual bool preProcess(void) = 0;
+  virtual bool postProcess(void) = 0;
+  virtual void dump(uint32_t flag, FILE* outputFileStream) = 0;
 };
 
 class TileCache;
 
 class CodeStream
 {
- public:
-   CodeStream(BufferedStream* stream);
-   virtual ~CodeStream();
+public:
+  CodeStream(BufferedStream* stream);
+  virtual ~CodeStream();
 
-   TileProcessor* currentProcessor(void);
-   BufferedStream* getStream();
-   GrkImage* getHeaderImage(void);
-   grk_plugin_tile* getCurrentPluginTile();
-   CodingParams* getCodingParams(void);
-   static std::string markerString(uint16_t marker);
+  TileProcessor* currentProcessor(void);
+  BufferedStream* getStream();
+  GrkImage* getHeaderImage(void);
+  grk_plugin_tile* getCurrentPluginTile();
+  CodingParams* getCodingParams(void);
+  static std::string markerString(uint16_t marker);
 
- protected:
-   bool exec(std::vector<PROCEDURE_FUNC>& p_procedure_list);
-   CodingParams cp_;
-   CodeStreamInfo* codeStreamInfo;
-   std::vector<PROCEDURE_FUNC> procedure_list_;
-   std::vector<PROCEDURE_FUNC> validation_list_;
-   // stores header image information (decompress/compress)
-   // decompress: components are subsampled and resolution-reduced
-   GrkImage* headerImage_;
-   TileProcessor* currentTileProcessor_;
-   BufferedStream* stream_;
-   std::map<uint32_t, TileProcessor*> processors_;
-   grk_plugin_tile* current_plugin_tile;
+protected:
+  bool exec(std::vector<PROCEDURE_FUNC>& p_procedure_list);
+  CodingParams cp_;
+  CodeStreamInfo* codeStreamInfo;
+  std::vector<PROCEDURE_FUNC> procedure_list_;
+  std::vector<PROCEDURE_FUNC> validation_list_;
+  // stores header image information (decompress/compress)
+  // decompress: components are subsampled and resolution-reduced
+  GrkImage* headerImage_;
+  TileProcessor* currentTileProcessor_;
+  BufferedStream* stream_;
+  std::map<uint32_t, TileProcessor*> processors_;
+  grk_plugin_tile* current_plugin_tile;
 };
 
 /** @name Exported functions */

@@ -23,32 +23,32 @@ namespace grk
 {
 struct CompressInitParams
 {
-   CompressInitParams();
-   ~CompressInitParams();
-   bool initialized;
-   grk_cparameters parameters;
-   char pluginPath[GRK_PATH_LEN];
-   grk_img_fol inputFolder;
-   grk_img_fol outFolder;
-   bool transfer_exif_tags;
-   grk_image* in_image;
-   grk_stream_params* stream_;
-   std::string license_;
-   std::string server_;
+  CompressInitParams();
+  ~CompressInitParams();
+  bool initialized;
+  grk_cparameters parameters;
+  char pluginPath[GRK_PATH_LEN];
+  grk_img_fol inputFolder;
+  grk_img_fol outFolder;
+  bool transfer_exif_tags;
+  grk_image* in_image;
+  grk_stream_params* stream_;
+  std::string license_;
+  std::string server_;
 };
 
 class GrkCompress
 {
- public:
-   GrkCompress(void) = default;
-   ~GrkCompress(void) = default;
-   int main(int argc, char** argv, grk_image* in_image, grk_stream_params* out_buffer);
+public:
+  GrkCompress(void) = default;
+  ~GrkCompress(void) = default;
+  int main(int argc, char** argv, grk_image* in_image, grk_stream_params* out_buffer);
 
- private:
-   int pluginBatchCompress(CompressInitParams* initParams);
-   GrkRC pluginMain(int argc, char** argv, CompressInitParams* initParams);
-   GrkRC parseCommandLine(int argc, char** argv, CompressInitParams* initParams);
-   int compress(const std::string& inputFile, CompressInitParams* initParams);
+private:
+  int pluginBatchCompress(CompressInitParams* initParams);
+  GrkRC pluginMain(int argc, char** argv, CompressInitParams* initParams);
+  GrkRC parseCommandLine(int argc, char** argv, CompressInitParams* initParams);
+  int compress(const std::string& inputFile, CompressInitParams* initParams);
 };
 
 } // namespace grk

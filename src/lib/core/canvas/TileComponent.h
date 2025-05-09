@@ -26,37 +26,37 @@ namespace grk
 {
 struct TileComponent : public grk_rect32
 {
-   TileComponent();
-   ~TileComponent();
-   bool allocRegionWindow(uint32_t numres, bool truncatedTile);
-   bool canCreateWindow(grk_rect32 unreducedTileCompOrImageCompWindow);
-   void createWindow(grk_rect32 unreducedTileCompOrImageCompWindow);
-   void dealloc(void);
-   bool init(TileProcessor* tileProcessor, grk_rect32 unreducedTileComp, uint8_t prec,
-             TileComponentCodingParams* tccp);
-   bool subbandIntersectsAOI(uint8_t resno, eBandOrientation orient, const grk_rect32* aoi) const;
+  TileComponent();
+  ~TileComponent();
+  bool allocRegionWindow(uint32_t numres, bool truncatedTile);
+  bool canCreateWindow(grk_rect32 unreducedTileCompOrImageCompWindow);
+  void createWindow(grk_rect32 unreducedTileCompOrImageCompWindow);
+  void dealloc(void);
+  bool init(TileProcessor* tileProcessor, grk_rect32 unreducedTileComp, uint8_t prec,
+            TileComponentCodingParams* tccp);
+  bool subbandIntersectsAOI(uint8_t resno, eBandOrientation orient, const grk_rect32* aoi) const;
 
-   TileComponentWindow<int32_t>* getWindow() const;
-   bool isWholeTileDecoding();
-   ISparseCanvas* getRegionWindow();
-   void postProcess(int32_t* srcData, DecompressBlockExec* block);
-   void postProcessHT(int32_t* srcData, DecompressBlockExec* block, uint16_t stride);
+  TileComponentWindow<int32_t>* getWindow() const;
+  bool isWholeTileDecoding();
+  ISparseCanvas* getRegionWindow();
+  void postProcess(int32_t* srcData, DecompressBlockExec* block);
+  void postProcessHT(int32_t* srcData, DecompressBlockExec* block, uint16_t stride);
 
-   Resolution* resolutions_; // in canvas coordinates
-   uint8_t numresolutions;
-   uint8_t numResolutionsToDecompress; // desired number of resolutions to decompress
-   std::atomic<uint8_t> highestResolutionDecompressed; // highest resolution actually decompressed
+  Resolution* resolutions_; // in canvas coordinates
+  uint8_t numresolutions;
+  uint8_t numResolutionsToDecompress; // desired number of resolutions to decompress
+  std::atomic<uint8_t> highestResolutionDecompressed; // highest resolution actually decompressed
 #ifdef DEBUG_LOSSLESS_T2
-   Resolution* round_trip_resolutions; /* round trip resolution information */
+  Resolution* round_trip_resolutions; /* round trip resolution information */
 #endif
- private:
-   template<typename F>
-   void postDecompressImpl(int32_t* srcData, DecompressBlockExec* block, uint16_t stride);
-   ISparseCanvas* regionWindow_;
-   bool wholeTileDecompress;
-   bool isCompressor_;
-   TileComponentWindow<int32_t>* window_;
-   TileComponentCodingParams* tccp_;
+private:
+  template<typename F>
+  void postDecompressImpl(int32_t* srcData, DecompressBlockExec* block, uint16_t stride);
+  ISparseCanvas* regionWindow_;
+  bool wholeTileDecompress;
+  bool isCompressor_;
+  TileComponentWindow<int32_t>* window_;
+  TileComponentCodingParams* tccp_;
 };
 
 } // namespace grk

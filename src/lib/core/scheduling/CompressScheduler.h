@@ -20,26 +20,26 @@ namespace grk
 {
 class CompressScheduler : public Scheduler
 {
- public:
-   CompressScheduler(Tile* tile, bool needsRateControl, TileCodingParams* tcp,
-                     const double* mct_norms, uint16_t mct_numcomps);
-   ~CompressScheduler() = default;
-   bool schedule(uint16_t compno) override;
+public:
+  CompressScheduler(Tile* tile, bool needsRateControl, TileCodingParams* tcp,
+                    const double* mct_norms, uint16_t mct_numcomps);
+  ~CompressScheduler() = default;
+  bool schedule(uint16_t compno) override;
 
- private:
-   bool scheduleBlocks(uint16_t compno);
-   void compress(std::vector<CompressBlockExec*>* blocks);
-   bool compress(size_t threadId, uint64_t maxBlocks);
-   void compress(T1Interface* impl, CompressBlockExec* block);
+private:
+  bool scheduleBlocks(uint16_t compno);
+  void compress(std::vector<CompressBlockExec*>* blocks);
+  bool compress(size_t threadId, uint64_t maxBlocks);
+  void compress(T1Interface* impl, CompressBlockExec* block);
 
-   Tile* tile;
-   mutable std::mutex distortion_mutex;
-   bool needsRateControl;
-   CompressBlockExec** encodeBlocks;
-   std::atomic<int64_t> blockCount;
-   TileCodingParams* tcp_;
-   const double* mct_norms_;
-   uint16_t mct_numcomps_;
+  Tile* tile;
+  mutable std::mutex distortion_mutex;
+  bool needsRateControl;
+  CompressBlockExec** encodeBlocks;
+  std::atomic<int64_t> blockCount;
+  TileCodingParams* tcp_;
+  const double* mct_norms_;
+  uint16_t mct_numcomps_;
 };
 
 } // namespace grk

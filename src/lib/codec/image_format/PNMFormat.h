@@ -21,27 +21,27 @@
 
 class PNMFormat : public ImageFormat
 {
- public:
-   explicit PNMFormat(bool split);
-   bool encodeHeader(void) override;
-   bool encodePixels() override;
-   using ImageFormat::encodePixels;
-   bool encodeFinish(void) override;
-   grk_image* decode(const std::string& filename, grk_cparameters* parameters) override;
+public:
+  explicit PNMFormat(bool split);
+  bool encodeHeader(void) override;
+  bool encodePixels() override;
+  using ImageFormat::encodePixels;
+  bool encodeFinish(void) override;
+  grk_image* decode(const std::string& filename, grk_cparameters* parameters) override;
 
- private:
-   bool forceSplit;
-   bool hasAlpha(void);
-   bool isOpacity(uint16_t compno);
-   bool hasOpacity(void);
-   bool doNonSplitEncode(void);
-   bool writeHeader(bool doPGM);
-   template<typename T>
-   bool writeRows(uint32_t rowsOffset, uint32_t rows, uint16_t compno, T* buf, size_t* outCount);
-   template<typename T>
-   bool encodeRows(uint32_t rows);
-   bool closeStream(void);
+private:
+  bool forceSplit;
+  bool hasAlpha(void);
+  bool isOpacity(uint16_t compno);
+  bool hasOpacity(void);
+  bool doNonSplitEncode(void);
+  bool writeHeader(bool doPGM);
+  template<typename T>
+  bool writeRows(uint32_t rowsOffset, uint32_t rows, uint16_t compno, T* buf, size_t* outCount);
+  template<typename T>
+  bool encodeRows(uint32_t rows);
+  bool closeStream(void);
 
-   grk_image* decode(grk_cparameters* parameters);
-   bool decodeHeader(struct pnm_header* ph);
+  grk_image* decode(grk_cparameters* parameters);
+  bool decodeHeader(struct pnm_header* ph);
 };

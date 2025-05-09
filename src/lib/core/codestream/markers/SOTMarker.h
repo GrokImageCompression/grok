@@ -29,43 +29,43 @@ class CodeStreamDecompress;
 
 class SOTMarker
 {
- public:
-   SOTMarker(void);
+public:
+  SOTMarker(void);
 
-   /**
-    * Writes the SOT marker (Start of tile-part)
+  /**
+   * Writes the SOT marker (Start of tile-part)
+   *
+   */
+  bool write(TileProcessor* proc, uint32_t tileLength);
+  bool write_psot(BufferedStream* stream, uint32_t tileLength);
+
+  /**
+    * Decompress a SOT marker (Start of tile-part)
     *
+    * @param       headerData   the data contained in the SOT marker.
+    * @param       header_size     the size of the data contained in the PPT marker.
+
     */
-   bool write(TileProcessor* proc, uint32_t tileLength);
-   bool write_psot(BufferedStream* stream, uint32_t tileLength);
+  bool read(CodeStreamDecompress* codeStream, uint8_t* headerData, uint16_t header_size);
 
-   /**
-     * Decompress a SOT marker (Start of tile-part)
-     *
-     * @param       headerData   the data contained in the SOT marker.
-     * @param       header_size     the size of the data contained in the PPT marker.
+private:
+  uint64_t psot_location_;
 
-     */
-   bool read(CodeStreamDecompress* codeStream, uint8_t* headerData, uint16_t header_size);
+  /**
+    * Reads values from a SOT marker (Start of tile-part)
+    *
+    * the j2k decompressor state is not affected. No side effects,
+    *  no checks except for header_size.
+    *
+    * @param       headerData   the data contained in the SOT marker.
+    * @param       header_size   the size of the data contained in the SOT marker.
+    * @param       tot_len       Psot.
+    * @param       current_part  TPsot.
+    * @param       num_parts     TNsot.
 
- private:
-   uint64_t psot_location_;
-
-   /**
-     * Reads values from a SOT marker (Start of tile-part)
-     *
-     * the j2k decompressor state is not affected. No side effects,
-     *  no checks except for header_size.
-     *
-     * @param       headerData   the data contained in the SOT marker.
-     * @param       header_size   the size of the data contained in the SOT marker.
-     * @param       tot_len       Psot.
-     * @param       current_part  TPsot.
-     * @param       num_parts     TNsot.
-
-     */
-   bool read(CodeStreamDecompress* codeStream, uint8_t* headerData, uint32_t header_size,
-             uint32_t* tot_len, uint16_t* tile_index, uint8_t* current_part, uint8_t* num_parts);
+    */
+  bool read(CodeStreamDecompress* codeStream, uint8_t* headerData, uint32_t header_size,
+            uint32_t* tot_len, uint16_t* tile_index, uint8_t* current_part, uint8_t* num_parts);
 };
 
 } /* namespace grk */

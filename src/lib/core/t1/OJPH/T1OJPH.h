@@ -28,23 +28,23 @@ struct TileCodingParams;
 
 class T1OJPH : public grk::T1Interface
 {
- public:
-   T1OJPH(bool isCompressor, grk::TileCodingParams* tcp, uint32_t maxCblkW, uint32_t maxCblkH);
-   virtual ~T1OJPH();
+public:
+  T1OJPH(bool isCompressor, grk::TileCodingParams* tcp, uint32_t maxCblkW, uint32_t maxCblkH);
+  virtual ~T1OJPH();
 
-   bool compress(grk::CompressBlockExec* block);
-   bool decompress(grk::DecompressBlockExec* block);
+  bool compress(grk::CompressBlockExec* block);
+  bool decompress(grk::DecompressBlockExec* block);
 
- private:
-   void preCompress(grk::CompressBlockExec* block, grk::Tile* tile);
-   bool postProcess(grk::DecompressBlockExec* block);
+private:
+  void preCompress(grk::CompressBlockExec* block, grk::Tile* tile);
+  bool postProcess(grk::DecompressBlockExec* block);
 
-   uint32_t coded_data_size;
-   uint8_t* coded_data;
-   uint32_t unencoded_data_size;
-   int32_t* unencoded_data;
+  uint32_t coded_data_size;
+  uint8_t* coded_data;
+  uint32_t unencoded_data_size;
+  int32_t* unencoded_data;
 
-   mem_fixed_allocator* allocator;
-   mem_elastic_allocator* elastic_alloc;
+  mem_fixed_allocator* allocator;
+  mem_elastic_allocator* elastic_alloc;
 };
 } // namespace ojph

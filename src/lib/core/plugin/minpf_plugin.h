@@ -25,14 +25,14 @@ struct minpf_platform_services;
 
 typedef struct minpf_object_params
 {
-   const char* id;
-   const struct minpf_platform_services* platformServices;
+  const char* id;
+  const struct minpf_platform_services* platformServices;
 } minpf_object_params;
 
 typedef struct minpf_plugin_api_version
 {
-   int32_t major;
-   int32_t minor;
+  int32_t major;
+  int32_t minor;
 } minpf_plugin_api_version;
 
 typedef void* (*minpf_create_func)(minpf_object_params*);
@@ -40,7 +40,7 @@ typedef int32_t (*minpf_destroy_func)(void*);
 
 typedef struct minpf_register_params
 {
-   minpf_plugin_api_version version;
+  minpf_plugin_api_version version;
 } minpf_register_params;
 
 typedef int32_t (*minpf_register_func)(const char* nodeType, const minpf_register_params* params);
@@ -48,13 +48,13 @@ typedef int32_t (*minpf_invoke_service_func)(const char* serviceName, void* serv
 
 typedef struct minpf_platform_services
 {
-   minpf_plugin_api_version version;
-   minpf_register_func registerObject;
-   minpf_invoke_service_func invokeService;
+  minpf_plugin_api_version version;
+  minpf_register_func registerObject;
+  minpf_invoke_service_func invokeService;
 
-   const char* pluginPath;
-   bool verbose;
-   grk::ILogger* logger;
+  const char* pluginPath;
+  bool verbose;
+  grk::ILogger* logger;
 } minpf_platform_services;
 
 typedef int32_t (*minpf_exit_func)();

@@ -77,53 +77,53 @@ static const mqc_state mqc_states[47 * 2] = {
 
 static void mqc_init_dec_common(mqcoder* mqc, uint8_t* bp, uint32_t len)
 {
-   mqc->start = bp;
-   mqc->end = bp + len;
-   /* Insert an artificial 0xFF 0xFF marker at end of the code block */
-   /* data so that the bytein routines stop on it. This saves us comparing */
-   /* the bp and end pointers */
-   /* But before inserting it, backup the bytes we will overwrite */
-   memcpy(mqc->backup, mqc->end, grk_cblk_dec_compressed_data_pad_right);
-   mqc->end[0] = 0xFF;
-   mqc->end[1] = 0xFF;
-   mqc->bp = bp;
+  mqc->start = bp;
+  mqc->end = bp + len;
+  /* Insert an artificial 0xFF 0xFF marker at end of the code block */
+  /* data so that the bytein routines stop on it. This saves us comparing */
+  /* the bp and end pointers */
+  /* But before inserting it, backup the bytes we will overwrite */
+  memcpy(mqc->backup, mqc->end, grk_cblk_dec_compressed_data_pad_right);
+  mqc->end[0] = 0xFF;
+  mqc->end[1] = 0xFF;
+  mqc->bp = bp;
 }
 void mqc_init_dec(mqcoder* mqc, uint8_t* bp, uint32_t len)
 {
-   /* Implements ISO 15444-1 C.3.5 Initialization of the decoder (INITDEC) */
-   /* Note: alternate "J.1 - Initialization of the software-conventions */
-   /* decoder" has been tried, but does */
-   /* not bring any improvement. */
-   mqc_init_dec_common(mqc, bp, len);
-   mqc_setcurctx(mqc, 0);
-   mqc->end_of_byte_stream_counter = 0;
-   mqc->c = (uint32_t)(((len == 0) ? 0xff : *mqc->bp) << 16);
-   mqc_bytein(mqc);
-   mqc->c <<= 7;
-   mqc->ct -= 7;
-   mqc->a = A_MIN;
+  /* Implements ISO 15444-1 C.3.5 Initialization of the decoder (INITDEC) */
+  /* Note: alternate "J.1 - Initialization of the software-conventions */
+  /* decoder" has been tried, but does */
+  /* not bring any improvement. */
+  mqc_init_dec_common(mqc, bp, len);
+  mqc_setcurctx(mqc, 0);
+  mqc->end_of_byte_stream_counter = 0;
+  mqc->c = (uint32_t)(((len == 0) ? 0xff : *mqc->bp) << 16);
+  mqc_bytein(mqc);
+  mqc->c <<= 7;
+  mqc->ct -= 7;
+  mqc->a = A_MIN;
 }
 
 void mqc_raw_init_dec(mqcoder* mqc, uint8_t* bp, uint32_t len)
 {
-   mqc_init_dec_common(mqc, bp, len);
-   mqc->c = 0;
-   mqc->ct = 0;
+  mqc_init_dec_common(mqc, bp, len);
+  mqc->c = 0;
+  mqc->ct = 0;
 }
 
 void mqc_finish_dec(mqcoder* mqc)
 {
-   /* Restore the bytes overwritten by mqc_init_dec_common() */
-   memcpy(mqc->end, mqc->backup, grk_cblk_dec_compressed_data_pad_right);
+  /* Restore the bytes overwritten by mqc_init_dec_common() */
+  memcpy(mqc->end, mqc->backup, grk_cblk_dec_compressed_data_pad_right);
 }
 
 void mqc_resetstates(mqcoder* mqc)
 {
-   for(uint32_t i = 0; i < MQC_NUMCTXS; i++)
-      mqc->ctxs[i] = mqc_states;
-   mqc->ctxs[T1_CTXNO_UNI] = mqc_states + (uint32_t)(46 << 1);
-   mqc->ctxs[T1_CTXNO_AGG] = mqc_states + (uint32_t)(3 << 1);
-   mqc->ctxs[T1_CTXNO_ZC] = mqc_states + (uint32_t)(4 << 1);
+  for(uint32_t i = 0; i < MQC_NUMCTXS; i++)
+    mqc->ctxs[i] = mqc_states;
+  mqc->ctxs[T1_CTXNO_UNI] = mqc_states + (uint32_t)(46 << 1);
+  mqc->ctxs[T1_CTXNO_AGG] = mqc_states + (uint32_t)(3 << 1);
+  mqc->ctxs[T1_CTXNO_ZC] = mqc_states + (uint32_t)(4 << 1);
 }
 
 } // namespace grk

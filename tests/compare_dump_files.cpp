@@ -18,5 +18,5 @@
 
 int main(int argc, char** argv)
 {
-   return grk::GrkCompareDumpFiles().main(argc, argv);
+  return grk::GrkCompareDumpFiles().main(argc, argv);
 }

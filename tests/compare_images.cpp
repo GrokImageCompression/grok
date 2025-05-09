@@ -17,5 +17,5 @@
 
 int main(int argc, char** argv)
 {
-   return grk_codec_compare_images(argc, argv);
+  return grk_codec_compare_images(argc, argv);
 }

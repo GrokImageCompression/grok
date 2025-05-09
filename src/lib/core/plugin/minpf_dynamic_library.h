@@ -33,8 +33,8 @@ namespace grk
 {
 struct minpf_dynamic_library
 {
-   char path[MINPF_MAX_PATH_LEN];
-   dynamic_handle_t handle;
+  char path[MINPF_MAX_PATH_LEN];
+  dynamic_handle_t handle;
 };
 
 minpf_dynamic_library* minpf_load_dynamic_library(const char* path, char* error);

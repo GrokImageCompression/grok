@@ -47,10 +47,10 @@ class CorruptPacketDataException : public CorruptPacketException
 };
 class InvalidMarkerException : public std::exception
 {
- public:
-   explicit InvalidMarkerException(uint16_t marker) : marker_(marker) {}
+public:
+  explicit InvalidMarkerException(uint16_t marker) : marker_(marker) {}
 
-   uint16_t marker_;
+  uint16_t marker_;
 };
 class BadAsocException : public std::exception
 {

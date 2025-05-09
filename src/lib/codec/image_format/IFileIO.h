@@ -24,57 +24,56 @@
 
 struct GrkIOBuf : public grk_io_buf
 {
- public:
-   GrkIOBuf() : GrkIOBuf(nullptr, 0, 0, 0, false) {}
-   GrkIOBuf(uint8_t* data, size_t offset, size_t dataLen, size_t allocLen, bool pooled)
-   {
-      this->data = data;
-      this->offset = offset;
-      this->len = dataLen;
-      this->alloc_len = allocLen;
-      this->pooled = pooled;
-   }
-   explicit GrkIOBuf(const grk_io_buf rhs)
-   {
-      data = rhs.data;
-      offset = rhs.offset;
-      len = rhs.len;
-      alloc_len = rhs.alloc_len;
-      pooled = rhs.pooled;
-   }
-   bool alloc(size_t len)
-   {
-      dealloc();
-      data = (uint8_t*)grk_bin::grk_aligned_malloc(len);
-      if(data)
-      {
-         // printf("Allocated  %p\n", data);
-         this->len = len;
-         alloc_len = len;
-      }
+public:
+  GrkIOBuf() : GrkIOBuf(nullptr, 0, 0, 0, false) {}
+  GrkIOBuf(uint8_t* data, size_t offset, size_t dataLen, size_t allocLen, bool pooled)
+  {
+    this->data = data;
+    this->offset = offset;
+    this->len = dataLen;
+    this->alloc_len = allocLen;
+    this->pooled = pooled;
+  }
+  explicit GrkIOBuf(const grk_io_buf rhs)
+  {
+    data = rhs.data;
+    offset = rhs.offset;
+    len = rhs.len;
+    alloc_len = rhs.alloc_len;
+    pooled = rhs.pooled;
+  }
+  bool alloc(size_t len)
+  {
+    dealloc();
+    data = (uint8_t*)grk_bin::grk_aligned_malloc(len);
+    if(data)
+    {
+      // printf("Allocated  %p\n", data);
+      this->len = len;
+      alloc_len = len;
+    }
 
-      return data != nullptr;
-   }
-   void dealloc()
-   {
-      if(data)
-      {
-         grk_bin::grk_aligned_free(data);
-         // printf("Deallocated  %p\n", data);
-      }
-      data = nullptr;
-   }
+    return data != nullptr;
+  }
+  void dealloc()
+  {
+    if(data)
+    {
+      grk_bin::grk_aligned_free(data);
+      // printf("Deallocated  %p\n", data);
+    }
+    data = nullptr;
+  }
 };
 
 class IFileIO
 {
- public:
-   virtual ~IFileIO() = default;
-   virtual bool open(const std::string& fileName, const std::string& mode) = 0;
-   virtual bool close(void) = 0;
-   virtual uint64_t write(uint8_t* buf, uint64_t offset, size_t len, size_t maxLen,
-                          bool pooled) = 0;
-   virtual uint64_t write(GrkIOBuf buffer) = 0;
-   virtual bool read(uint8_t* buf, size_t len) = 0;
-   virtual uint64_t seek(int64_t off, int whence) = 0;
+public:
+  virtual ~IFileIO() = default;
+  virtual bool open(const std::string& fileName, const std::string& mode) = 0;
+  virtual bool close(void) = 0;
+  virtual uint64_t write(uint8_t* buf, uint64_t offset, size_t len, size_t maxLen, bool pooled) = 0;
+  virtual uint64_t write(GrkIOBuf buffer) = 0;
+  virtual bool read(uint8_t* buf, size_t len) = 0;
+  virtual uint64_t seek(int64_t off, int whence) = 0;
 };

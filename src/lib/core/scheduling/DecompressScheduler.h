@@ -23,12 +23,12 @@ namespace grk
 {
 struct ResDecompressBlocks
 {
-   ResDecompressBlocks(void) = default;
-   void clear(void);
-   bool empty(void) const;
-   void release(void);
+  ResDecompressBlocks(void) = default;
+  void clear(void);
+  bool empty(void) const;
+  void release(void);
 
-   std::vector<DecompressBlockExec*> blocks_;
+  std::vector<DecompressBlockExec*> blocks_;
 };
 
 typedef std::vector<ResDecompressBlocks> ComponentDecompressBlocks;
@@ -36,24 +36,24 @@ typedef std::vector<ComponentDecompressBlocks> TileDecompressBlocks;
 
 class DecompressScheduler : public Scheduler
 {
- public:
-   DecompressScheduler(TileProcessor* tileProcessor, Tile* tile, TileCodingParams* tcp,
-                       uint8_t prec);
-   ~DecompressScheduler();
+public:
+  DecompressScheduler(TileProcessor* tileProcessor, Tile* tile, TileCodingParams* tcp,
+                      uint8_t prec);
+  ~DecompressScheduler();
 
-   bool schedule(uint16_t compno) override;
+  bool schedule(uint16_t compno) override;
 
- private:
-   bool scheduleBlocks(uint16_t compno);
-   bool scheduleWavelet(uint16_t compno);
-   bool decompressBlock(T1Interface* impl, DecompressBlockExec* block);
-   void releaseBlocks(uint16_t compno);
-   TileProcessor* tileProcessor_;
-   TileCodingParams* tcp_;
-   uint8_t prec_;
-   uint16_t numcomps_;
-   TileDecompressBlocks tileBlocks_;
-   WaveletReverse** waveletReverse_;
+private:
+  bool scheduleBlocks(uint16_t compno);
+  bool scheduleWavelet(uint16_t compno);
+  bool decompressBlock(T1Interface* impl, DecompressBlockExec* block);
+  void releaseBlocks(uint16_t compno);
+  TileProcessor* tileProcessor_;
+  TileCodingParams* tcp_;
+  uint8_t prec_;
+  uint16_t numcomps_;
+  TileDecompressBlocks tileBlocks_;
+  WaveletReverse** waveletReverse_;
 };
 
 } // namespace grk

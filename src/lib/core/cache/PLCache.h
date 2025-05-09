@@ -24,17 +24,17 @@ namespace grk
 {
 class PLCache
 {
- public:
-   PLCache();
-   virtual ~PLCache();
-   PLMarkerMgr* createMarkers(BufferedStream* strm);
-   PLMarkerMgr* getMarkers(void);
-   void deleteMarkers(void);
+public:
+  PLCache();
+  virtual ~PLCache();
+  PLMarkerMgr* createMarkers(BufferedStream* strm);
+  PLMarkerMgr* getMarkers(void);
+  void deleteMarkers(void);
 
- private:
-   PLMarkerMgr* pltMarkers;
+private:
+  PLMarkerMgr* pltMarkers;
 #ifdef ENABLE_PACKET_CACHE
-   SequentialPtrCache<PacketInfo> packetInfoCache;
+  SequentialPtrCache<PacketInfo> packetInfoCache;
 #endif
 };
 

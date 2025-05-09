@@ -27,22 +27,22 @@ const uint32_t IMAGE_FORMAT_ERROR = 8;
 
 class IImageFormat
 {
- public:
-   virtual ~IImageFormat() = default;
-   virtual void registerGrkReclaimCallback(grk_io_init io_init, grk_io_callback reclaim_callback,
-                                           void* user_data) = 0;
-   virtual bool encodeInit(grk_image* image, const std::string& filename,
-                           uint32_t compression_level, uint32_t concurrency) = 0;
-   virtual bool encodeHeader(void) = 0;
-   /***
-    * application-orchestrated pixel encoding
-    */
-   virtual bool encodePixels(void) = 0;
-   /***
-    * library-orchestrated pixel encoding
-    */
-   virtual bool encodePixels(uint32_t threadId, grk_io_buf pixels) = 0;
-   virtual bool encodeFinish(void) = 0;
-   virtual grk_image* decode(const std::string& filename, grk_cparameters* parameters) = 0;
-   virtual uint32_t getEncodeState(void) = 0;
+public:
+  virtual ~IImageFormat() = default;
+  virtual void registerGrkReclaimCallback(grk_io_init io_init, grk_io_callback reclaim_callback,
+                                          void* user_data) = 0;
+  virtual bool encodeInit(grk_image* image, const std::string& filename, uint32_t compression_level,
+                          uint32_t concurrency) = 0;
+  virtual bool encodeHeader(void) = 0;
+  /***
+   * application-orchestrated pixel encoding
+   */
+  virtual bool encodePixels(void) = 0;
+  /***
+   * library-orchestrated pixel encoding
+   */
+  virtual bool encodePixels(uint32_t threadId, grk_io_buf pixels) = 0;
+  virtual bool encodeFinish(void) = 0;
+  virtual grk_image* decode(const std::string& filename, grk_cparameters* parameters) = 0;
+  virtual uint32_t getEncodeState(void) = 0;
 };

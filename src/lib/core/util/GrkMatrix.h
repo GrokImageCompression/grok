@@ -23,17 +23,17 @@ namespace grk
 {
 class GrkMatrix
 {
- public:
-   bool matrix_inversion_f(float* pSrcMatrix, float* pDestMatrix, uint32_t nb_compo);
+public:
+  bool matrix_inversion_f(float* pSrcMatrix, float* pDestMatrix, uint32_t nb_compo);
 
- private:
-   void lupInvert(float* pSrcMatrix, float* pDestMatrix, uint32_t nb_compo, uint32_t* pPermutations,
-                  float* p_src_temp, float* p_dest_temp, float* p_swap_area);
+private:
+  void lupInvert(float* pSrcMatrix, float* pDestMatrix, uint32_t nb_compo, uint32_t* pPermutations,
+                 float* p_src_temp, float* p_dest_temp, float* p_swap_area);
 
-   bool lupDecompose(float* matrix, uint32_t* permutations, float* p_swap_area, uint32_t nb_compo);
+  bool lupDecompose(float* matrix, uint32_t* permutations, float* p_swap_area, uint32_t nb_compo);
 
-   void lupSolve(float* pResult, float* pMatrix, float* pVector, uint32_t* pPermutations,
-                 uint32_t nb_compo, float* p_intermediate_data);
+  void lupSolve(float* pResult, float* pMatrix, float* pVector, uint32_t* pPermutations,
+                uint32_t nb_compo, float* p_intermediate_data);
 };
 
 } // namespace grk

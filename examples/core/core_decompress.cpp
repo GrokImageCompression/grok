@@ -66,245 +66,245 @@ const std::string dataRoot = GRK_DATA_ROOT;
 
 struct ReadStreamInfo
 {
-   ReadStreamInfo(grk_stream_params* streamParams)
-       : streamParams_(streamParams), data_(nullptr), dataLen_(0), offset_(0), fp_(nullptr)
-   {}
-   grk_stream_params* streamParams_;
-   uint8_t* data_;
-   size_t dataLen_;
-   size_t offset_;
-   FILE* fp_;
+  ReadStreamInfo(grk_stream_params* streamParams)
+      : streamParams_(streamParams), data_(nullptr), dataLen_(0), offset_(0), fp_(nullptr)
+  {}
+  grk_stream_params* streamParams_;
+  uint8_t* data_;
+  size_t dataLen_;
+  size_t offset_;
+  FILE* fp_;
 };
 
 size_t stream_read_fn(uint8_t* buffer, size_t numBytes, void* user_data)
 {
-   auto sinfo = (ReadStreamInfo*)user_data;
-   size_t readBytes = numBytes;
-   if(sinfo->data_)
-   {
-      size_t bytesAvailable = sinfo->dataLen_ - sinfo->offset_;
-      readBytes = std::min(numBytes, bytesAvailable);
-   }
-   if(readBytes)
-   {
-      if(sinfo->data_)
-         memcpy(buffer, sinfo->data_ + sinfo->offset_, readBytes);
-      else if(sinfo->fp_)
-      {
-         readBytes = fread(buffer, 1, readBytes, sinfo->fp_);
-      }
-   }
+  auto sinfo = (ReadStreamInfo*)user_data;
+  size_t readBytes = numBytes;
+  if(sinfo->data_)
+  {
+    size_t bytesAvailable = sinfo->dataLen_ - sinfo->offset_;
+    readBytes = std::min(numBytes, bytesAvailable);
+  }
+  if(readBytes)
+  {
+    if(sinfo->data_)
+      memcpy(buffer, sinfo->data_ + sinfo->offset_, readBytes);
+    else if(sinfo->fp_)
+    {
+      readBytes = fread(buffer, 1, readBytes, sinfo->fp_);
+    }
+  }
 
-   return readBytes;
+  return readBytes;
 }
 bool stream_seek_fn(uint64_t offset, void* user_data)
 {
-   auto sinfo = (ReadStreamInfo*)user_data;
-   if(offset <= sinfo->dataLen_)
-      sinfo->offset_ = offset;
-   else
-      sinfo->offset_ = sinfo->dataLen_;
-   if(sinfo->fp_)
-   {
-      return fseek(sinfo->fp_, (long int)offset, SEEK_SET) == 0;
-   }
-   else
-   {
-      return true;
-   }
+  auto sinfo = (ReadStreamInfo*)user_data;
+  if(offset <= sinfo->dataLen_)
+    sinfo->offset_ = offset;
+  else
+    sinfo->offset_ = sinfo->dataLen_;
+  if(sinfo->fp_)
+  {
+    return fseek(sinfo->fp_, (long int)offset, SEEK_SET) == 0;
+  }
+  else
+  {
+    return true;
+  }
 }
 
 int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
 {
-   int rc = EXIT_FAILURE;
+  int rc = EXIT_FAILURE;
 
-   uint16_t numTiles = 0;
+  uint16_t numTiles = 0;
 
-   // a file can be passed in as a command line argument
-   // example:
-   // $ core_decompress foo.jp2
-   // otherwise a file from the Grok test suite, specified below, will be used.
+  // a file can be passed in as a command line argument
+  // example:
+  // $ core_decompress foo.jp2
+  // otherwise a file from the Grok test suite, specified below, will be used.
 
-   std::string inputFilePath = dataRoot + std::filesystem::path::preferred_separator + "input" +
-                               std::filesystem::path::preferred_separator + "nonregression" +
-                               std::filesystem::path::preferred_separator + "boats_cprl.j2k";
-   if(argc > 1)
-      inputFilePath = argv[1];
+  std::string inputFilePath = dataRoot + std::filesystem::path::preferred_separator + "input" +
+                              std::filesystem::path::preferred_separator + "nonregression" +
+                              std::filesystem::path::preferred_separator + "boats_cprl.j2k";
+  if(argc > 1)
+    inputFilePath = argv[1];
 
-   // initialize decompress parameters
-   grk_decompress_parameters decompressParams = {};
-   decompressParams.compression_level = GRK_DECOMPRESS_COMPRESSION_LEVEL_DEFAULT;
-   decompressParams.verbose = true;
+  // initialize decompress parameters
+  grk_decompress_parameters decompressParams = {};
+  decompressParams.compression_level = GRK_DECOMPRESS_COMPRESSION_LEVEL_DEFAULT;
+  decompressParams.verbose = true;
 
-   grk_image* image = nullptr;
-   const char* inputFileStr = nullptr;
-   bool fromBuffer = (argc == 1);
-   bool useCallbacks = true;
+  grk_image* image = nullptr;
+  const char* inputFileStr = nullptr;
+  bool fromBuffer = (argc == 1);
+  bool useCallbacks = true;
 
-   // if true, decompress a particular tile, otherwise decompress
-   // all tiles
-   bool decompressTile = true;
+  // if true, decompress a particular tile, otherwise decompress
+  // all tiles
+  bool decompressTile = true;
 
-   // index of tile to decompress.
-   uint16_t tile_index = 0;
+  // index of tile to decompress.
+  uint16_t tile_index = 0;
 
-   // if true, decompress window of dimension specified below,
-   // otherwise decompress entire image
-   bool decompressWindow = false;
+  // if true, decompress window of dimension specified below,
+  // otherwise decompress entire image
+  bool decompressWindow = false;
 
-   grk_object* codec = nullptr;
+  grk_object* codec = nullptr;
 
-   // initialize library
-   grk_initialize(nullptr, 0);
+  // initialize library
+  grk_initialize(nullptr, 0);
 
-   // create j2k file stream
-   inputFileStr = inputFilePath.c_str();
-   if(fromBuffer)
-   {
-      printf("Decompressing buffer\n");
-   }
-   else
-   {
-      printf("Decompressing file %s\n", inputFilePath.c_str());
-   }
+  // create j2k file stream
+  inputFileStr = inputFilePath.c_str();
+  if(fromBuffer)
+  {
+    printf("Decompressing buffer\n");
+  }
+  else
+  {
+    printf("Decompressing file %s\n", inputFilePath.c_str());
+  }
 
-   // initialize decompressor
-   grk_stream_params streamParams = {};
-   ReadStreamInfo sinfo(&streamParams);
-   if(!fromBuffer)
-   {
-      sinfo.fp_ = fopen(inputFilePath.c_str(), "rb");
-      if(!sinfo.fp_)
-      {
-         fprintf(stderr, "Failed to open file %s for reading\n", inputFilePath.c_str());
-         goto beach;
-      }
-   }
-
-   if(useCallbacks)
-   {
-      streamParams.seek_fn = stream_seek_fn;
-      streamParams.read_fn = stream_read_fn;
-      streamParams.user_data = &sinfo;
-      if(fromBuffer)
-      {
-         streamParams.stream_len = sizeof(img_buf);
-         sinfo.data_ = img_buf;
-         sinfo.dataLen_ = sizeof(img_buf);
-      }
-      else
-      {
-         // Move the file pointer to the end and get the file size
-         fseek(sinfo.fp_, 0, SEEK_END);
-         auto len = ftell(sinfo.fp_);
-         if(len == -1)
-            goto beach;
-         streamParams.stream_len = (size_t)len;
-         rewind(sinfo.fp_);
-      }
-   }
-   else if(fromBuffer)
-   {
-      streamParams.buf = img_buf;
-      streamParams.buf_len = sizeof(img_buf);
-   }
-   else
-   {
-      streamParams.file = inputFileStr;
-   }
-   codec = grk_decompress_init(&streamParams, &decompressParams);
-   if(!codec)
-   {
-      fprintf(stderr, "Failed to set up decompressor\n");
+  // initialize decompressor
+  grk_stream_params streamParams = {};
+  ReadStreamInfo sinfo(&streamParams);
+  if(!fromBuffer)
+  {
+    sinfo.fp_ = fopen(inputFilePath.c_str(), "rb");
+    if(!sinfo.fp_)
+    {
+      fprintf(stderr, "Failed to open file %s for reading\n", inputFilePath.c_str());
       goto beach;
-   }
+    }
+  }
 
-   // read j2k header
-   grk_header_info headerInfo;
-   memset(&headerInfo, 0, sizeof(headerInfo));
-   if(!grk_decompress_read_header(codec, &headerInfo))
-   {
-      fprintf(stderr, "Failed to read the header\n");
+  if(useCallbacks)
+  {
+    streamParams.seek_fn = stream_seek_fn;
+    streamParams.read_fn = stream_read_fn;
+    streamParams.user_data = &sinfo;
+    if(fromBuffer)
+    {
+      streamParams.stream_len = sizeof(img_buf);
+      sinfo.data_ = img_buf;
+      sinfo.dataLen_ = sizeof(img_buf);
+    }
+    else
+    {
+      // Move the file pointer to the end and get the file size
+      fseek(sinfo.fp_, 0, SEEK_END);
+      auto len = ftell(sinfo.fp_);
+      if(len == -1)
+        goto beach;
+      streamParams.stream_len = (size_t)len;
+      rewind(sinfo.fp_);
+    }
+  }
+  else if(fromBuffer)
+  {
+    streamParams.buf = img_buf;
+    streamParams.buf_len = sizeof(img_buf);
+  }
+  else
+  {
+    streamParams.file = inputFileStr;
+  }
+  codec = grk_decompress_init(&streamParams, &decompressParams);
+  if(!codec)
+  {
+    fprintf(stderr, "Failed to set up decompressor\n");
+    goto beach;
+  }
+
+  // read j2k header
+  grk_header_info headerInfo;
+  memset(&headerInfo, 0, sizeof(headerInfo));
+  if(!grk_decompress_read_header(codec, &headerInfo))
+  {
+    fprintf(stderr, "Failed to read the header\n");
+    goto beach;
+  }
+
+  // set decompress window
+  if(decompressWindow)
+  {
+    // decompress window of dimensions {0,0,1000,1000}
+    if(!grk_decompress_set_window(codec, 0, 0, 1000, 1000))
+    {
+      fprintf(stderr, "Failed to set decompress region\n");
       goto beach;
-   }
+    }
+  }
 
-   // set decompress window
-   if(decompressWindow)
-   {
-      // decompress window of dimensions {0,0,1000,1000}
-      if(!grk_decompress_set_window(codec, 0, 0, 1000, 1000))
-      {
-         fprintf(stderr, "Failed to set decompress region\n");
-         goto beach;
-      }
-   }
+  // retrieve image that will store uncompressed image data
+  image = grk_decompress_get_image(codec);
+  if(!image)
+  {
+    fprintf(stderr, "Failed to retrieve image \n");
+    goto beach;
+  }
 
-   // retrieve image that will store uncompressed image data
-   image = grk_decompress_get_image(codec);
-   if(!image)
-   {
-      fprintf(stderr, "Failed to retrieve image \n");
+  numTiles = (uint16_t)(headerInfo.t_grid_width * headerInfo.t_grid_height);
+  printf("\nImage Info\n");
+  printf("Width: %d\n", image->x1 - image->x0);
+  printf("Height: %d\n", image->y1 - image->y0);
+  printf("Number of components: %d\n", image->numcomps);
+  for(uint16_t compno = 0; compno < image->numcomps; ++compno)
+    printf("Precision of component %d : %d\n", compno, image->comps[compno].prec);
+  printf("Number of tiles: %d\n", numTiles);
+  if(numTiles > 1)
+  {
+    printf("Nominal tile dimensions: (%d,%d)\n", headerInfo.t_width, headerInfo.t_height);
+  }
+
+  if(decompressTile)
+  {
+    // decompress a particular tile
+    if(!grk_decompress_tile(codec, tile_index))
       goto beach;
-   }
+  }
+  else
+  {
+    // decompress all tiles
+    if(!grk_decompress(codec, nullptr))
+      goto beach;
+  }
 
-   numTiles = (uint16_t)(headerInfo.t_grid_width * headerInfo.t_grid_height);
-   printf("\nImage Info\n");
-   printf("Width: %d\n", image->x1 - image->x0);
-   printf("Height: %d\n", image->y1 - image->y0);
-   printf("Number of components: %d\n", image->numcomps);
-   for(uint16_t compno = 0; compno < image->numcomps; ++compno)
-      printf("Precision of component %d : %d\n", compno, image->comps[compno].prec);
-   printf("Number of tiles: %d\n", numTiles);
-   if(numTiles > 1)
-   {
-      printf("Nominal tile dimensions: (%d,%d)\n", headerInfo.t_width, headerInfo.t_height);
-   }
+  // see grok.h header for full details of image structure
+  for(uint16_t compno = 0; compno < image->numcomps; ++compno)
+  {
+    auto comp = image->comps + compno;
+    auto compWidth = comp->w;
+    auto compHeight = comp->h;
+    auto compData = comp->data;
+    if(!compData)
+    {
+      fprintf(stderr, "Image has null data for component %d\n", compno);
+      goto beach;
+    }
+    printf("Component %d : dimensions (%d,%d) at precision %d\n", compno, compWidth, compHeight,
+           comp->prec);
 
-   if(decompressTile)
-   {
-      // decompress a particular tile
-      if(!grk_decompress_tile(codec, tile_index))
-         goto beach;
-   }
-   else
-   {
-      // decompress all tiles
-      if(!grk_decompress(codec, nullptr))
-         goto beach;
-   }
+    // copy data, taking component stride into account
+    auto copiedData = new int32_t[compWidth * compHeight];
+    auto copyPtr = copiedData;
+    for(uint32_t j = 0; j < compHeight; ++j)
+    {
+      memcpy(copyPtr, compData, compWidth * sizeof(int32_t));
+      copyPtr += compWidth;
+      compData += comp->stride;
+    }
+    delete[] copiedData;
+  }
 
-   // see grok.h header for full details of image structure
-   for(uint16_t compno = 0; compno < image->numcomps; ++compno)
-   {
-      auto comp = image->comps + compno;
-      auto compWidth = comp->w;
-      auto compHeight = comp->h;
-      auto compData = comp->data;
-      if(!compData)
-      {
-         fprintf(stderr, "Image has null data for component %d\n", compno);
-         goto beach;
-      }
-      printf("Component %d : dimensions (%d,%d) at precision %d\n", compno, compWidth, compHeight,
-             comp->prec);
-
-      // copy data, taking component stride into account
-      auto copiedData = new int32_t[compWidth * compHeight];
-      auto copyPtr = copiedData;
-      for(uint32_t j = 0; j < compHeight; ++j)
-      {
-         memcpy(copyPtr, compData, compWidth * sizeof(int32_t));
-         copyPtr += compWidth;
-         compData += comp->stride;
-      }
-      delete[] copiedData;
-   }
-
-   rc = EXIT_SUCCESS;
+  rc = EXIT_SUCCESS;
 beach:
-   // cleanup
-   grk_object_unref(codec);
-   grk_deinitialize();
+  // cleanup
+  grk_object_unref(codec);
+  grk_deinitialize();
 
-   return rc;
+  return rc;
 }

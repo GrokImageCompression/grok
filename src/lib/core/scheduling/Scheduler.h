@@ -20,25 +20,25 @@ namespace grk
 {
 class Scheduler
 {
- public:
-   Scheduler(Tile* tile);
-   virtual ~Scheduler();
+public:
+  Scheduler(Tile* tile);
+  virtual ~Scheduler();
 
-   virtual bool schedule(uint16_t compno) = 0;
-   void graph(uint16_t compno);
-   bool run(void);
-   ImageComponentFlow* getImageComponentFlow(uint16_t compno);
-   tf::Taskflow& getCodecFlow(void);
-   FlowComponent* getPrePostProc(void);
+  virtual bool schedule(uint16_t compno) = 0;
+  void graph(uint16_t compno);
+  bool run(void);
+  ImageComponentFlow* getImageComponentFlow(uint16_t compno);
+  tf::Taskflow& getCodecFlow(void);
+  FlowComponent* getPrePostProc(void);
 
- protected:
-   std::atomic_bool success;
-   std::vector<T1Interface*> t1Implementations;
-   ImageComponentFlow** imageComponentFlows_;
-   tf::Taskflow codecFlow_;
-   Tile* tile_;
-   uint16_t numcomps_;
-   FlowComponent* prePostProc_;
+protected:
+  std::atomic_bool success;
+  std::vector<T1Interface*> t1Implementations;
+  ImageComponentFlow** imageComponentFlows_;
+  tf::Taskflow codecFlow_;
+  Tile* tile_;
+  uint16_t numcomps_;
+  FlowComponent* prePostProc_;
 };
 
 } // namespace grk

@@ -24,45 +24,45 @@ namespace grk
 template<typename T, size_t N>
 struct vec
 {
-   vec(void) : val{0} {}
-   explicit vec(T m)
-   {
-      for(size_t i = 0; i < N; ++i)
-         val[i] = m;
-   }
-   vec operator+(const vec& rhs)
-   {
-      vec rc;
-      for(size_t i = 0; i < N; ++i)
-         rc.val[i] = val[i] + rhs.val[i];
+  vec(void) : val{0} {}
+  explicit vec(T m)
+  {
+    for(size_t i = 0; i < N; ++i)
+      val[i] = m;
+  }
+  vec operator+(const vec& rhs)
+  {
+    vec rc;
+    for(size_t i = 0; i < N; ++i)
+      rc.val[i] = val[i] + rhs.val[i];
 
-      return rc;
-   }
-   vec& operator+=(const vec& rhs)
-   {
-      for(size_t i = 0; i < N; ++i)
-         val[i] += rhs.val[i];
+    return rc;
+  }
+  vec& operator+=(const vec& rhs)
+  {
+    for(size_t i = 0; i < N; ++i)
+      val[i] += rhs.val[i];
 
-      return *this;
-   }
-   vec operator-(const vec& rhs)
-   {
-      vec rc;
-      for(size_t i = 0; i < N; ++i)
-         rc.val[i] = val[i] - rhs.val[i];
+    return *this;
+  }
+  vec operator-(const vec& rhs)
+  {
+    vec rc;
+    for(size_t i = 0; i < N; ++i)
+      rc.val[i] = val[i] - rhs.val[i];
 
-      return rc;
-   }
-   vec& operator-=(const vec& rhs)
-   {
-      for(size_t i = 0; i < N; ++i)
-         val[i] -= rhs.val[i];
+    return rc;
+  }
+  vec& operator-=(const vec& rhs)
+  {
+    for(size_t i = 0; i < N; ++i)
+      val[i] -= rhs.val[i];
 
-      return *this;
-   }
+    return *this;
+  }
 
-   constexpr static size_t NUM_ELTS = N;
-   T val[N];
+  constexpr static size_t NUM_ELTS = N;
+  T val[N];
 };
 
 } // namespace grk

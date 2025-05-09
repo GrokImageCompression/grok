@@ -24,137 +24,137 @@ ResFlow::ResFlow(void)
 {}
 FlowComponent* ResFlow::getPacketsFlow(void)
 {
-   if(!packets_)
-   {
-      packets_ = new FlowComponent();
-      packets_->precede(blocks_);
-   }
+  if(!packets_)
+  {
+    packets_ = new FlowComponent();
+    packets_->precede(blocks_);
+  }
 
-   return packets_;
+  return packets_;
 }
 void ResFlow::disableWavelet(void)
 {
-   doWavelet_ = false;
+  doWavelet_ = false;
 }
 void ResFlow::graph(void)
 {
-   if(doWavelet_)
-   {
-      blocks_->precede(waveletHoriz_);
-      waveletHoriz_->precede(waveletVert_);
-   }
+  if(doWavelet_)
+  {
+    blocks_->precede(waveletHoriz_);
+    waveletHoriz_->precede(waveletVert_);
+  }
 }
 ResFlow* ResFlow::addTo(tf::Taskflow& composition)
 {
-   if(packets_)
-      packets_->addTo(composition);
-   assert(blocks_);
-   blocks_->addTo(composition);
-   if(doWavelet_)
-   {
-      waveletHoriz_->addTo(composition);
-      waveletVert_->addTo(composition);
-   }
+  if(packets_)
+    packets_->addTo(composition);
+  assert(blocks_);
+  blocks_->addTo(composition);
+  if(doWavelet_)
+  {
+    waveletHoriz_->addTo(composition);
+    waveletVert_->addTo(composition);
+  }
 
-   return this;
+  return this;
 }
 ResFlow* ResFlow::precede(ResFlow* successor)
 {
-   assert(successor);
-   if(doWavelet_)
-      waveletVert_->precede(successor->blocks_);
+  assert(successor);
+  if(doWavelet_)
+    waveletVert_->precede(successor->blocks_);
 
-   return this;
+  return this;
 }
 ResFlow* ResFlow::precede(FlowComponent* successor)
 {
-   assert(successor);
-   if(doWavelet_)
-      waveletVert_->precede(successor);
-   else
-      blocks_->precede(successor);
+  assert(successor);
+  if(doWavelet_)
+    waveletVert_->precede(successor);
+  else
+    blocks_->precede(successor);
 
-   return this;
+  return this;
 }
 FlowComponent* ResFlow::getFinalFlowT1(void)
 {
-   return doWavelet_ ? waveletVert_ : blocks_;
+  return doWavelet_ ? waveletVert_ : blocks_;
 }
 ResFlow::~ResFlow(void)
 {
-   delete packets_;
-   delete blocks_;
-   delete waveletHoriz_;
-   delete waveletVert_;
+  delete packets_;
+  delete blocks_;
+  delete waveletHoriz_;
+  delete waveletVert_;
 }
 ImageComponentFlow::ImageComponentFlow(uint8_t numresolutions)
     : numResFlows_(numresolutions), resFlows_(nullptr), waveletFinalCopy_(nullptr),
       prePostProc_(nullptr)
 {
-   if(numResFlows_)
-   {
-      bool noWavelet = numResFlows_ == 1;
+  if(numResFlows_)
+  {
+    bool noWavelet = numResFlows_ == 1;
 
-      // lowest two resolutions are grouped together
-      if(numResFlows_ > 1)
-         numResFlows_--;
-      resFlows_ = new ResFlow[numResFlows_];
-      if(noWavelet)
-         resFlows_[0].disableWavelet();
-   }
+    // lowest two resolutions are grouped together
+    if(numResFlows_ > 1)
+      numResFlows_--;
+    resFlows_ = new ResFlow[numResFlows_];
+    if(noWavelet)
+      resFlows_[0].disableWavelet();
+  }
 }
 ImageComponentFlow::~ImageComponentFlow()
 {
-   delete[] resFlows_;
-   delete waveletFinalCopy_;
-   delete prePostProc_;
+  delete[] resFlows_;
+  delete waveletFinalCopy_;
+  delete prePostProc_;
 }
 void ImageComponentFlow::setRegionDecompression(void)
 {
-   waveletFinalCopy_ = new FlowComponent();
+  waveletFinalCopy_ = new FlowComponent();
 }
 void ImageComponentFlow::graph(void)
 {
-   for(uint8_t i = 0; i < numResFlows_; ++i)
-      (resFlows_ + i)->graph();
-   for(uint8_t i = 0; i < numResFlows_ - 1; ++i)
-      (resFlows_ + i)->precede(resFlows_ + i + 1);
-   if(waveletFinalCopy_)
-      (resFlows_ + numResFlows_ - 1)->precede(waveletFinalCopy_);
+  for(uint8_t i = 0; i < numResFlows_; ++i)
+    (resFlows_ + i)->graph();
+  for(uint8_t i = 0; i < numResFlows_ - 1; ++i)
+    (resFlows_ + i)->precede(resFlows_ + i + 1);
+  if(waveletFinalCopy_)
+    (resFlows_ + numResFlows_ - 1)->precede(waveletFinalCopy_);
 }
 FlowComponent* ImageComponentFlow::getFinalFlowT1(void)
 {
-   return waveletFinalCopy_ ? waveletFinalCopy_ : (resFlows_ + numResFlows_ - 1)->getFinalFlowT1();
+  return waveletFinalCopy_ ? waveletFinalCopy_ : (resFlows_ + numResFlows_ - 1)->getFinalFlowT1();
 }
 ImageComponentFlow* ImageComponentFlow::addTo(tf::Taskflow& composition)
 {
-   for(uint8_t i = 0; i < numResFlows_; ++i)
-      (resFlows_ + i)->addTo(composition);
-   if(waveletFinalCopy_)
-      waveletFinalCopy_->addTo(composition);
+  for(uint8_t i = 0; i < numResFlows_; ++i)
+    (resFlows_ + i)->addTo(composition);
+  if(waveletFinalCopy_)
+    waveletFinalCopy_->addTo(composition);
 
-   return this;
+  return this;
 }
 ResFlow* ImageComponentFlow::getResFlow(uint8_t resFlowNo)
 {
-   return (resFlows_ && resFlowNo < numResFlows_) ? resFlows_ + resFlowNo : nullptr;
+  return (resFlows_ && resFlowNo < numResFlows_) ? resFlows_ + resFlowNo : nullptr;
 }
 FlowComponent* ImageComponentFlow::getPrePostProc(tf::Taskflow& codecFlow)
 {
-   if(!prePostProc_)
-   {
-      prePostProc_ = new FlowComponent();
-      prePostProc_->addTo(codecFlow);
-   }
+  if(!prePostProc_)
+  {
+    prePostProc_ = new FlowComponent();
+    prePostProc_->addTo(codecFlow);
+  }
 
-   return prePostProc_;
+  return prePostProc_;
 }
 std::string ImageComponentFlow::genBlockFlowTaskName(uint8_t resFlowNo)
 {
-   std::stringstream ss;
-   ss << "blockFlowTask-" << resFlowNo;
+  std::stringstream ss;
+  ss << "blockFlowTask-" << resFlowNo;
 
-   return ss.str();
+  return ss.str();
 }
 
 } // namespace grk

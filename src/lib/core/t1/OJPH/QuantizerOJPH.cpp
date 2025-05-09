@@ -61,24 +61,24 @@ namespace ojph
 {
 class sqrt_energy_gains
 {
- public:
-   static float get_gain_l(uint32_t num_decomp, bool reversible);
-   static float get_gain_h(uint32_t num_decomp, bool reversible);
+public:
+  static float get_gain_l(uint32_t num_decomp, bool reversible);
+  static float get_gain_h(uint32_t num_decomp, bool reversible);
 
- private:
-   static const float gain_9x7_l[34];
-   static const float gain_9x7_h[34];
-   static const float gain_5x3_l[34];
-   static const float gain_5x3_h[34];
+private:
+  static const float gain_9x7_l[34];
+  static const float gain_9x7_h[34];
+  static const float gain_5x3_l[34];
+  static const float gain_5x3_h[34];
 };
 
 float sqrt_energy_gains::get_gain_l(uint32_t num_decomp, bool reversible)
 {
-   return reversible ? gain_5x3_l[num_decomp] : gain_9x7_l[num_decomp];
+  return reversible ? gain_5x3_l[num_decomp] : gain_9x7_l[num_decomp];
 }
 float sqrt_energy_gains::get_gain_h(uint32_t num_decomp, bool reversible)
 {
-   return reversible ? gain_5x3_h[num_decomp] : gain_9x7_h[num_decomp];
+  return reversible ? gain_5x3_h[num_decomp] : gain_9x7_h[num_decomp];
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -111,21 +111,21 @@ const float sqrt_energy_gains::gain_5x3_h[34] = {
 // static
 class bibo_gains
 {
- public:
-   static float get_bibo_gain_l(uint32_t num_decomp, bool reversible)
-   {
-      return reversible ? gain_5x3_l[num_decomp] : gain_9x7_l[num_decomp];
-   }
-   static float get_bibo_gain_h(uint32_t num_decomp, bool reversible)
-   {
-      return reversible ? gain_5x3_h[num_decomp] : gain_9x7_h[num_decomp];
-   }
+public:
+  static float get_bibo_gain_l(uint32_t num_decomp, bool reversible)
+  {
+    return reversible ? gain_5x3_l[num_decomp] : gain_9x7_l[num_decomp];
+  }
+  static float get_bibo_gain_h(uint32_t num_decomp, bool reversible)
+  {
+    return reversible ? gain_5x3_h[num_decomp] : gain_9x7_h[num_decomp];
+  }
 
- private:
-   static const float gain_9x7_l[34];
-   static const float gain_9x7_h[34];
-   static const float gain_5x3_l[34];
-   static const float gain_5x3_h[34];
+private:
+  static const float gain_9x7_l[34];
+  static const float gain_9x7_h[34];
+  static const float gain_5x3_l[34];
+  static const float gain_5x3_h[34];
 };
 
 //////////////////////////////////////////////////////////////////////////
@@ -160,146 +160,146 @@ QuantizerOJPH::QuantizerOJPH(bool reversible, uint8_t guard_bits)
 void QuantizerOJPH::generate(uint32_t decomps, uint32_t max_bit_depth, bool color_transform,
                              bool is_signed)
 {
-   num_decomps = decomps;
-   if(isReversible)
-   {
-      set_rev_quant(max_bit_depth, color_transform);
-   }
-   else
-   {
-      if(base_delta == -1.0f)
-         base_delta = 1.0f / (float)(1 << (max_bit_depth + is_signed));
-      set_irrev_quant();
-   }
+  num_decomps = decomps;
+  if(isReversible)
+  {
+    set_rev_quant(max_bit_depth, color_transform);
+  }
+  else
+  {
+    if(base_delta == -1.0f)
+      base_delta = 1.0f / (float)(1 << (max_bit_depth + is_signed));
+    set_irrev_quant();
+  }
 }
 void QuantizerOJPH::set_rev_quant(uint32_t bit_depth, bool is_employing_color_transform)
 {
-   int B = (int)bit_depth;
-   B += is_employing_color_transform ? 1 : 0; // 1 bit for RCT
-   uint32_t s = 0;
-   float bibo_l = bibo_gains::get_bibo_gain_l(num_decomps, true);
-   // we leave some leeway for numerical error by multiplying by 1.1f
-   int X = (int)ceil(log(bibo_l * bibo_l * 1.1f) / M_LN2);
-   u8_SPqcd[s++] = (uint8_t)((B + X) << 3);
-   for(int d = (int32_t)num_decomps - 1; d >= 0; --d)
-   {
-      bibo_l = bibo_gains::get_bibo_gain_l((uint32_t)(d + 1), true);
-      float bibo_h = bibo_gains::get_bibo_gain_h((uint32_t)d, true);
-      X = (int)ceil(log(bibo_h * bibo_l * 1.1f) / M_LN2);
-      u8_SPqcd[s++] = (uint8_t)((B + X) << 3);
-      u8_SPqcd[s++] = (uint8_t)((B + X) << 3);
-      X = (int)ceil(log(bibo_h * bibo_h * 1.1f) / M_LN2);
-      u8_SPqcd[s++] = (uint8_t)((B + X) << 3);
-   }
+  int B = (int)bit_depth;
+  B += is_employing_color_transform ? 1 : 0; // 1 bit for RCT
+  uint32_t s = 0;
+  float bibo_l = bibo_gains::get_bibo_gain_l(num_decomps, true);
+  // we leave some leeway for numerical error by multiplying by 1.1f
+  int X = (int)ceil(log(bibo_l * bibo_l * 1.1f) / M_LN2);
+  u8_SPqcd[s++] = (uint8_t)((B + X) << 3);
+  for(int d = (int32_t)num_decomps - 1; d >= 0; --d)
+  {
+    bibo_l = bibo_gains::get_bibo_gain_l((uint32_t)(d + 1), true);
+    float bibo_h = bibo_gains::get_bibo_gain_h((uint32_t)d, true);
+    X = (int)ceil(log(bibo_h * bibo_l * 1.1f) / M_LN2);
+    u8_SPqcd[s++] = (uint8_t)((B + X) << 3);
+    u8_SPqcd[s++] = (uint8_t)((B + X) << 3);
+    X = (int)ceil(log(bibo_h * bibo_h * 1.1f) / M_LN2);
+    u8_SPqcd[s++] = (uint8_t)((B + X) << 3);
+  }
 }
 void QuantizerOJPH::set_irrev_quant()
 {
-   int s = 0;
-   float gain_l = sqrt_energy_gains::get_gain_l(num_decomps, false);
-   float delta_b = base_delta / (gain_l * gain_l);
-   int exp = 0, mantissa;
-   while(delta_b < 1.0f)
-   {
+  int s = 0;
+  float gain_l = sqrt_energy_gains::get_gain_l(num_decomps, false);
+  float delta_b = base_delta / (gain_l * gain_l);
+  int exp = 0, mantissa;
+  while(delta_b < 1.0f)
+  {
+    exp++;
+    delta_b *= 2.0f;
+  }
+  // with rounding, there is a risk of becoming equal to 1<<12
+  // but that should not happen in reality
+  mantissa = (int)round(delta_b * (float)(1 << 11)) - (1 << 11);
+  mantissa = mantissa < (1 << 11) ? mantissa : 0x7FF;
+  u16_SPqcd[s++] = (uint16_t)((exp << 11) | mantissa);
+  for(uint32_t d = num_decomps; d > 0; --d)
+  {
+    float gain_l = sqrt_energy_gains::get_gain_l(d, false);
+    float gain_h = sqrt_energy_gains::get_gain_h(d - 1, false);
+
+    delta_b = base_delta / (gain_l * gain_h);
+
+    int exp = 0, mantissa;
+    while(delta_b < 1.0f)
+    {
       exp++;
       delta_b *= 2.0f;
-   }
-   // with rounding, there is a risk of becoming equal to 1<<12
-   // but that should not happen in reality
-   mantissa = (int)round(delta_b * (float)(1 << 11)) - (1 << 11);
-   mantissa = mantissa < (1 << 11) ? mantissa : 0x7FF;
-   u16_SPqcd[s++] = (uint16_t)((exp << 11) | mantissa);
-   for(uint32_t d = num_decomps; d > 0; --d)
-   {
-      float gain_l = sqrt_energy_gains::get_gain_l(d, false);
-      float gain_h = sqrt_energy_gains::get_gain_h(d - 1, false);
+    }
+    mantissa = (int)round(delta_b * (float)(1 << 11)) - (1 << 11);
+    mantissa = mantissa < (1 << 11) ? mantissa : 0x7FF;
+    u16_SPqcd[s++] = (uint16_t)((exp << 11) | mantissa);
+    u16_SPqcd[s++] = (uint16_t)((exp << 11) | mantissa);
 
-      delta_b = base_delta / (gain_l * gain_h);
+    delta_b = base_delta / (gain_h * gain_h);
 
-      int exp = 0, mantissa;
-      while(delta_b < 1.0f)
-      {
-         exp++;
-         delta_b *= 2.0f;
-      }
-      mantissa = (int)round(delta_b * (float)(1 << 11)) - (1 << 11);
-      mantissa = mantissa < (1 << 11) ? mantissa : 0x7FF;
-      u16_SPqcd[s++] = (uint16_t)((exp << 11) | mantissa);
-      u16_SPqcd[s++] = (uint16_t)((exp << 11) | mantissa);
-
-      delta_b = base_delta / (gain_h * gain_h);
-
-      exp = 0;
-      while(delta_b < 1)
-      {
-         exp++;
-         delta_b *= 2.0f;
-      }
-      mantissa = (int)round(delta_b * (float)(1 << 11)) - (1 << 11);
-      mantissa = mantissa < (1 << 11) ? mantissa : 0x7FF;
-      u16_SPqcd[s++] = (uint16_t)((exp << 11) | mantissa);
-   }
+    exp = 0;
+    while(delta_b < 1)
+    {
+      exp++;
+      delta_b *= 2.0f;
+    }
+    mantissa = (int)round(delta_b * (float)(1 << 11)) - (1 << 11);
+    mantissa = mantissa < (1 << 11) ? mantissa : 0x7FF;
+    u16_SPqcd[s++] = (uint16_t)((exp << 11) | mantissa);
+  }
 }
 uint32_t QuantizerOJPH::get_MAGBp() const
 {
-   uint32_t B = 0;
-   uint32_t irrev = Sqcd & 0x1F;
-   if(irrev == 0) // reversible
-      for(uint32_t i = 0; i < 3 * num_decomps + 1; ++i)
-         B = (std::max)(B, uint32_t(u8_SPqcd[i] >> 3U) + get_num_guard_bits() - 1U);
-   else if(irrev == 2) // scalar expounded
-      for(uint32_t i = 0; i < 3 * num_decomps + 1; ++i)
-      {
-         uint32_t nb = num_decomps - (i ? (i - 1) / 3 : 0); // decomposition level
-         B = (std::max)(B, uint32_t(u16_SPqcd[i] >> 11U) + get_num_guard_bits() - nb);
-      }
-   else
-      assert(0);
+  uint32_t B = 0;
+  uint32_t irrev = Sqcd & 0x1F;
+  if(irrev == 0) // reversible
+    for(uint32_t i = 0; i < 3 * num_decomps + 1; ++i)
+      B = (std::max)(B, uint32_t(u8_SPqcd[i] >> 3U) + get_num_guard_bits() - 1U);
+  else if(irrev == 2) // scalar expounded
+    for(uint32_t i = 0; i < 3 * num_decomps + 1; ++i)
+    {
+      uint32_t nb = num_decomps - (i ? (i - 1) / 3 : 0); // decomposition level
+      B = (std::max)(B, uint32_t(u16_SPqcd[i] >> 11U) + get_num_guard_bits() - nb);
+    }
+  else
+    assert(0);
 
-   return B;
+  return B;
 }
 bool QuantizerOJPH::write(grk::BufferedStream* stream)
 {
-   // marker size excluding header
-   uint16_t Lcap = 8;
-   uint32_t Pcap = 0x00020000; // for jph, Pcap^15 must be set, the 15th MSB
-   uint16_t Ccap[32]; // a maximum of 32
-   memset(Ccap, 0, sizeof(Ccap));
+  // marker size excluding header
+  uint16_t Lcap = 8;
+  uint32_t Pcap = 0x00020000; // for jph, Pcap^15 must be set, the 15th MSB
+  uint16_t Ccap[32]; // a maximum of 32
+  memset(Ccap, 0, sizeof(Ccap));
 
-   if(isReversible)
-      Ccap[0] &= 0xFFDF;
-   else
-      Ccap[0] |= 0x0020;
-   Ccap[0] &= 0xFFE0;
+  if(isReversible)
+    Ccap[0] &= 0xFFDF;
+  else
+    Ccap[0] |= 0x0020;
+  Ccap[0] &= 0xFFE0;
 
-   uint32_t Bp = 0;
-   uint32_t B = get_MAGBp();
-   if(B <= 8)
-      Bp = 0;
-   else if(B < 28)
-      Bp = B - 8;
-   else if(B < 48)
-      Bp = 13 + (B >> 2);
-   else
-      Bp = 31;
-   Ccap[0] = (uint16_t)(Ccap[0] | Bp);
+  uint32_t Bp = 0;
+  uint32_t B = get_MAGBp();
+  if(B <= 8)
+    Bp = 0;
+  else if(B < 28)
+    Bp = B - 8;
+  else if(B < 48)
+    Bp = 13 + (B >> 2);
+  else
+    Bp = 31;
+  Ccap[0] = (uint16_t)(Ccap[0] | Bp);
 
-   /* CAP */
-   if(!stream->writeShort(grk::J2K_CAP))
-   {
-      return false;
-   }
+  /* CAP */
+  if(!stream->writeShort(grk::J2K_CAP))
+  {
+    return false;
+  }
 
-   /* L_CAP */
-   if(!stream->writeShort(Lcap))
-      return false;
-   /* PCAP */
-   if(!stream->writeInt(Pcap))
-      return false;
-   /* CCAP */
-   if(!stream->writeShort(Ccap[0]))
-      return false;
+  /* L_CAP */
+  if(!stream->writeShort(Lcap))
+    return false;
+  /* PCAP */
+  if(!stream->writeInt(Pcap))
+    return false;
+  /* CCAP */
+  if(!stream->writeShort(Ccap[0]))
+    return false;
 
-   return true;
+  return true;
 }
 
 } // namespace ojph

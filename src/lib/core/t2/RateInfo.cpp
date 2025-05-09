@@ -24,26 +24,26 @@ RateInfo::RateInfo() : minimumSlope(USHRT_MAX), maximumSlope(0) {}
  */
 void RateInfo::synch(CompressCodeblock* cblk)
 {
-   for(auto passno = 0U; passno < cblk->numPassesTotal; passno++)
-   {
-      CodePass* pass = &cblk->passes[passno];
+  for(auto passno = 0U; passno < cblk->numPassesTotal; passno++)
+  {
+    CodePass* pass = &cblk->passes[passno];
 
-      // 2. only process feasible truncation points
-      if(pass->slope == 0)
-         continue;
+    // 2. only process feasible truncation points
+    if(pass->slope == 0)
+      continue;
 
-      uint16_t s = pass->slope;
+    uint16_t s = pass->slope;
 
-      // 4. update min and max
-      if(s < minimumSlope)
-         minimumSlope = s;
-      if(s > maximumSlope)
-         maximumSlope = s;
-   }
+    // 4. update min and max
+    if(s < minimumSlope)
+      minimumSlope = s;
+    if(s > maximumSlope)
+      maximumSlope = s;
+  }
 }
 uint16_t RateInfo::getMinimumThresh()
 {
-   return minimumSlope;
+  return minimumSlope;
 }
 
 } // namespace grk

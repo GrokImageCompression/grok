@@ -26,15 +26,15 @@ namespace grk
 
 typedef struct minpf_plugin_manager
 {
-   minpf_dynamic_library* dynamic_libraries[MINPF_MAX_PLUGINS];
-   size_t num_libraries;
+  minpf_dynamic_library* dynamic_libraries[MINPF_MAX_PLUGINS];
+  size_t num_libraries;
 
-   minpf_exit_func exit_functions[MINPF_MAX_PLUGINS];
-   size_t num_exit_functions;
+  minpf_exit_func exit_functions[MINPF_MAX_PLUGINS];
+  size_t num_exit_functions;
 
-   minpf_platform_services platformServices;
+  minpf_platform_services platformServices;
 
-   std::map<const char*, minpf_register_params*>* plugins;
+  std::map<const char*, minpf_register_params*>* plugins;
 
 } minpf_plugin_manager;
 

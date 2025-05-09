@@ -28,51 +28,51 @@ typedef std::map<uint32_t, PL_MARKER*> PL_MARKERS;
 
 struct PLMarkerMgr
 {
-   PLMarkerMgr(void);
-   ~PLMarkerMgr(void);
+  PLMarkerMgr(void);
+  ~PLMarkerMgr(void);
 
-   void disable(void);
-   bool isEnabled(void);
+  void disable(void);
+  bool isEnabled(void);
 
-   //////////////////////////////////////////
-   // compress
-   void pushInit(bool isFinal);
-   bool pushPL(uint32_t len);
-   bool write(void);
-   uint32_t getTotalBytesWritten(void);
-   /////////////////////////////////////////
+  //////////////////////////////////////////
+  // compress
+  void pushInit(bool isFinal);
+  bool pushPL(uint32_t len);
+  bool write(void);
+  uint32_t getTotalBytesWritten(void);
+  /////////////////////////////////////////
 
-   /////////////////////////////////////////////
-   // decompress
-   PLMarkerMgr(BufferedStream* strm);
-   void rewind(void);
-   uint32_t pop(void);
-   uint64_t pop(uint64_t numPackets);
-   ////////////////////////////////////////////
- private:
-   void clearMarkers(void);
-   bool findMarker(uint32_t index, bool compress);
-   grk_buf8* addNewMarker(uint8_t* data, uint16_t len);
-   PL_MARKERS* rawMarkers_;
-   PL_MARKERS::iterator currMarkerIter_;
+  /////////////////////////////////////////////
+  // decompress
+  PLMarkerMgr(BufferedStream* strm);
+  void rewind(void);
+  uint32_t pop(void);
+  uint64_t pop(uint64_t numPackets);
+  ////////////////////////////////////////////
+private:
+  void clearMarkers(void);
+  bool findMarker(uint32_t index, bool compress);
+  grk_buf8* addNewMarker(uint8_t* data, uint16_t len);
+  PL_MARKERS* rawMarkers_;
+  PL_MARKERS::iterator currMarkerIter_;
 
-   ////////////////////////////////
-   // compress
-   uint32_t totalBytesWritten_;
-   bool isFinal_;
-   BufferedStream* stream_;
-   ////////////////////////////////
+  ////////////////////////////////
+  // compress
+  uint32_t totalBytesWritten_;
+  bool isFinal_;
+  BufferedStream* stream_;
+  ////////////////////////////////
 
-   //////////////////////////
-   // decompress
-   bool readNextByte(uint8_t Iplm, uint32_t* packetLength);
-   bool sequential_;
-   uint32_t packetLen_;
-   uint32_t currMarkerBufIndex_;
-   grk_buf8* currMarkerBuf_;
-   ///////////////////////////////
+  //////////////////////////
+  // decompress
+  bool readNextByte(uint8_t Iplm, uint32_t* packetLength);
+  bool sequential_;
+  uint32_t packetLen_;
+  uint32_t currMarkerBufIndex_;
+  grk_buf8* currMarkerBuf_;
+  ///////////////////////////////
 
-   bool enabled_;
+  bool enabled_;
 };
 
 } // namespace grk

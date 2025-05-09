@@ -26,48 +26,48 @@ namespace grk
 Scheduler::Scheduler(Tile* tile)
     : success(true), tile_(tile), numcomps_(tile->numcomps_), prePostProc_(nullptr)
 {
-   imageComponentFlows_ = new ImageComponentFlow*[numcomps_];
-   for(uint16_t compno = 0; compno < numcomps_; ++compno)
-      imageComponentFlows_[compno] = nullptr;
+  imageComponentFlows_ = new ImageComponentFlow*[numcomps_];
+  for(uint16_t compno = 0; compno < numcomps_; ++compno)
+    imageComponentFlows_[compno] = nullptr;
 }
 Scheduler::~Scheduler()
 {
-   for(uint16_t compno = 0; compno < numcomps_; ++compno)
-      delete imageComponentFlows_[compno];
-   delete[] imageComponentFlows_;
-   for(const auto& t : t1Implementations)
-      delete t;
-   delete prePostProc_;
+  for(uint16_t compno = 0; compno < numcomps_; ++compno)
+    delete imageComponentFlows_[compno];
+  delete[] imageComponentFlows_;
+  for(const auto& t : t1Implementations)
+    delete t;
+  delete prePostProc_;
 }
 bool Scheduler::run(void)
 {
-   ExecSingleton::get().run(codecFlow_).wait();
+  ExecSingleton::get().run(codecFlow_).wait();
 
-   return success;
+  return success;
 }
 void Scheduler::graph(uint16_t compno)
 {
-   assert(compno < numcomps_);
-   imageComponentFlows_[compno]->graph();
+  assert(compno < numcomps_);
+  imageComponentFlows_[compno]->graph();
 }
 ImageComponentFlow* Scheduler::getImageComponentFlow(uint16_t compno)
 {
-   return (imageComponentFlows_ && compno < numcomps_) ? imageComponentFlows_[compno] : nullptr;
+  return (imageComponentFlows_ && compno < numcomps_) ? imageComponentFlows_[compno] : nullptr;
 }
 tf::Taskflow& Scheduler::getCodecFlow(void)
 {
-   return codecFlow_;
+  return codecFlow_;
 }
 
 FlowComponent* Scheduler::getPrePostProc(void)
 {
-   if(!prePostProc_)
-   {
-      prePostProc_ = new FlowComponent();
-      prePostProc_->addTo(codecFlow_);
-   }
+  if(!prePostProc_)
+  {
+    prePostProc_ = new FlowComponent();
+    prePostProc_->addTo(codecFlow_);
+  }
 
-   return prePostProc_;
+  return prePostProc_;
 }
 
 } // namespace grk

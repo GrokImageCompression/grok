@@ -23,22 +23,22 @@
 
 #define BYPASS_CT_INIT 0xDEADBEEF
 
-#define PUSH_MQC()                         \
-   const mqc_state** curctx = mqc->curctx; \
-   uint32_t c = mqc->c;                    \
-   uint32_t a = mqc->a;                    \
-   uint32_t ct = mqc->ct
+#define PUSH_MQC()                        \
+  const mqc_state** curctx = mqc->curctx; \
+  uint32_t c = mqc->c;                    \
+  uint32_t a = mqc->a;                    \
+  uint32_t ct = mqc->ct
 
-#define POP_MQC()        \
-   mqc->curctx = curctx; \
-   mqc->c = c;           \
-   mqc->a = a;           \
-   mqc->ct = ct;
+#define POP_MQC()       \
+  mqc->curctx = curctx; \
+  mqc->c = c;           \
+  mqc->a = a;           \
+  mqc->ct = ct;
 
 #ifdef PLUGIN_DEBUG_ENCODE
-#define mqc_setcurctx(mqc, ctxno)           \
-   (mqc)->debug_mqc.context_number = ctxno; \
-   (mqc)->curctx = (mqc)->ctxs + (uint32_t)(ctxno)
+#define mqc_setcurctx(mqc, ctxno)          \
+  (mqc)->debug_mqc.context_number = ctxno; \
+  (mqc)->curctx = (mqc)->ctxs + (uint32_t)(ctxno)
 #else
 
 #define mqc_setcurctx(mqc, ctxno) (mqc)->curctx = (mqc)->ctxs + (uint32_t)(ctxno)

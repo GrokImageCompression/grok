@@ -27,41 +27,41 @@ namespace grk
 {
 struct grk_ppx
 {
-   uint8_t* data_; /* data_ == nullptr => Zppx not read yet */
-   uint32_t data_size_;
+  uint8_t* data_; /* data_ == nullptr => Zppx not read yet */
+  uint32_t data_size_;
 };
 
 class PPMMarker
 {
- public:
-   PPMMarker();
-   ~PPMMarker();
+public:
+  PPMMarker();
+  ~PPMMarker();
 
-   /**
-     * Read a PPM marker (Packed headers, main header)
-     *
-     * @param       headerData   the data contained in the POC box.
-     * @param       header_size   the size of the data contained in the POC marker.
-
-     */
-   bool read(uint8_t* headerData, uint16_t header_size);
-
-   /**
-    * Merges all PPM markers read (Packed headers, main header)
+  /**
+    * Read a PPM marker (Packed headers, main header)
     *
+    * @param       headerData   the data contained in the POC box.
+    * @param       header_size   the size of the data contained in the POC marker.
+
     */
-   bool merge(void);
+  bool read(uint8_t* headerData, uint16_t header_size);
 
-   std::vector<grk_buf8> packetHeaders;
+  /**
+   * Merges all PPM markers read (Packed headers, main header)
+   *
+   */
+  bool merge(void);
 
- private:
-   /** number of ppm markers (reserved size) */
-   uint32_t markers_count;
-   /** ppm markers data (table indexed by Zppm) */
-   grk_ppx* markers;
+  std::vector<grk_buf8> packetHeaders;
 
-   /** packet header storage original buffer */
-   uint8_t* buffer;
+private:
+  /** number of ppm markers (reserved size) */
+  uint32_t markers_count;
+  /** ppm markers data (table indexed by Zppm) */
+  grk_ppx* markers;
+
+  /** packet header storage original buffer */
+  uint8_t* buffer;
 };
 
 } /* namespace grk */

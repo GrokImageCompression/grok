@@ -62,21 +62,21 @@ namespace grk
 
 struct pass_enc
 {
-   uint32_t rate;
-   double distortiondec;
-   uint32_t len;
-   bool term;
+  uint32_t rate;
+  double distortiondec;
+  uint32_t len;
+  bool term;
 };
 
 struct cblk_enc
 {
-   uint8_t* data;
-   pass_enc* passes;
-   uint32_t x0, y0, x1, y1;
-   uint8_t numbps;
-   uint32_t numPassesTotal;
+  uint8_t* data;
+  pass_enc* passes;
+  uint32_t x0, y0, x1, y1;
+  uint8_t numbps;
+  uint32_t numPassesTotal;
 #ifdef PLUGIN_DEBUG_ENCODE
-   uint32_t* context_stream;
+  uint32_t* context_stream;
 #endif
 };
 

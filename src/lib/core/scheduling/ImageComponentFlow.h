@@ -23,40 +23,40 @@ namespace grk
 {
 struct ResFlow
 {
-   ResFlow(void);
-   ~ResFlow(void);
+  ResFlow(void);
+  ~ResFlow(void);
 
-   FlowComponent* getPacketsFlow(void);
-   void disableWavelet(void);
-   void graph(void);
-   ResFlow* addTo(tf::Taskflow& composition);
-   ResFlow* precede(ResFlow* successor);
-   ResFlow* precede(FlowComponent* successor);
-   FlowComponent* getFinalFlowT1(void);
-   FlowComponent* packets_;
-   FlowComponent* blocks_;
-   FlowComponent* waveletHoriz_;
-   FlowComponent* waveletVert_;
-   bool doWavelet_;
+  FlowComponent* getPacketsFlow(void);
+  void disableWavelet(void);
+  void graph(void);
+  ResFlow* addTo(tf::Taskflow& composition);
+  ResFlow* precede(ResFlow* successor);
+  ResFlow* precede(FlowComponent* successor);
+  FlowComponent* getFinalFlowT1(void);
+  FlowComponent* packets_;
+  FlowComponent* blocks_;
+  FlowComponent* waveletHoriz_;
+  FlowComponent* waveletVert_;
+  bool doWavelet_;
 };
 
 class ImageComponentFlow
 {
- public:
-   ImageComponentFlow(uint8_t numresolutions);
-   virtual ~ImageComponentFlow(void);
-   void setRegionDecompression(void);
-   std::string genBlockFlowTaskName(uint8_t resFlowNo);
-   ResFlow* getResFlow(uint8_t resFlowNo);
-   void graph(void);
-   ImageComponentFlow* addTo(tf::Taskflow& composition);
-   FlowComponent* getFinalFlowT1(void);
-   FlowComponent* getPrePostProc(tf::Taskflow& codecFlow);
+public:
+  ImageComponentFlow(uint8_t numresolutions);
+  virtual ~ImageComponentFlow(void);
+  void setRegionDecompression(void);
+  std::string genBlockFlowTaskName(uint8_t resFlowNo);
+  ResFlow* getResFlow(uint8_t resFlowNo);
+  void graph(void);
+  ImageComponentFlow* addTo(tf::Taskflow& composition);
+  FlowComponent* getFinalFlowT1(void);
+  FlowComponent* getPrePostProc(tf::Taskflow& codecFlow);
 
-   uint8_t numResFlows_;
-   ResFlow* resFlows_;
-   FlowComponent* waveletFinalCopy_;
-   FlowComponent* prePostProc_;
+  uint8_t numResFlows_;
+  ResFlow* resFlows_;
+  FlowComponent* waveletFinalCopy_;
+  FlowComponent* prePostProc_;
 };
 
 } // namespace grk

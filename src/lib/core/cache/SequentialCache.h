@@ -25,78 +25,78 @@ namespace grk
 template<typename T>
 class SequentialPtrCache
 {
- public:
-   SequentialPtrCache(void) : SequentialPtrCache(kSequentialChunkSize) {}
-   SequentialPtrCache(uint64_t maxChunkSize)
-       : currChunk_(nullptr), chunkSize_(std::min<uint64_t>(maxChunkSize, kSequentialChunkSize)),
-         index_(0)
-   {}
-   virtual ~SequentialPtrCache(void)
-   {
-      for(auto& ch : chunks)
+public:
+  SequentialPtrCache(void) : SequentialPtrCache(kSequentialChunkSize) {}
+  SequentialPtrCache(uint64_t maxChunkSize)
+      : currChunk_(nullptr), chunkSize_(std::min<uint64_t>(maxChunkSize, kSequentialChunkSize)),
+        index_(0)
+  {}
+  virtual ~SequentialPtrCache(void)
+  {
+    for(auto& ch : chunks)
+    {
+      for(size_t i = 0; i < chunkSize_; ++i)
+        delete ch[i];
+      delete[] ch;
+    }
+  }
+  void rewind(void)
+  {
+    if(chunks.empty())
+      return;
+    index_ = 0;
+    currChunk_ = chunks[0];
+  }
+  // get next item
+  T* get()
+  {
+    uint64_t itemIndex = index_ % chunkSize_;
+    uint64_t chunkIndex = index_ / chunkSize_;
+    bool isInitialized = (currChunk_ != nullptr);
+    bool isLastChunk = (chunkIndex == chunks.size() - 1);
+    bool isEndOfChunk = (itemIndex == chunkSize_ - 1);
+    bool createNewChunk = !isInitialized || (isLastChunk && isEndOfChunk);
+    itemIndex++;
+    if(createNewChunk || isEndOfChunk)
+    {
+      itemIndex = 0;
+      chunkIndex++;
+      if(createNewChunk)
       {
-         for(size_t i = 0; i < chunkSize_; ++i)
-            delete ch[i];
-         delete[] ch;
+        currChunk_ = new T*[chunkSize_];
+        memset(currChunk_, 0, chunkSize_ * sizeof(T*));
+        chunks.push_back(currChunk_);
       }
-   }
-   void rewind(void)
-   {
-      if(chunks.empty())
-         return;
-      index_ = 0;
-      currChunk_ = chunks[0];
-   }
-   // get next item
-   T* get()
-   {
-      uint64_t itemIndex = index_ % chunkSize_;
-      uint64_t chunkIndex = index_ / chunkSize_;
-      bool isInitialized = (currChunk_ != nullptr);
-      bool isLastChunk = (chunkIndex == chunks.size() - 1);
-      bool isEndOfChunk = (itemIndex == chunkSize_ - 1);
-      bool createNewChunk = !isInitialized || (isLastChunk && isEndOfChunk);
-      itemIndex++;
-      if(createNewChunk || isEndOfChunk)
+      else
       {
-         itemIndex = 0;
-         chunkIndex++;
-         if(createNewChunk)
-         {
-            currChunk_ = new T*[chunkSize_];
-            memset(currChunk_, 0, chunkSize_ * sizeof(T*));
-            chunks.push_back(currChunk_);
-         }
-         else
-         {
-            currChunk_ = chunks[chunkIndex];
-         }
+        currChunk_ = chunks[chunkIndex];
       }
-      auto item = currChunk_[itemIndex];
-      // create new item if null
-      if(!item)
-      {
-         item = create();
-         currChunk_[itemIndex] = item;
-      }
-      if(isInitialized)
-         index_++;
-      return item;
-   }
+    }
+    auto item = currChunk_[itemIndex];
+    // create new item if null
+    if(!item)
+    {
+      item = create();
+      currChunk_[itemIndex] = item;
+    }
+    if(isInitialized)
+      index_++;
+    return item;
+  }
 
- protected:
-   virtual T* create(void)
-   {
-      auto item = new T();
-      return item;
-   }
+protected:
+  virtual T* create(void)
+  {
+    auto item = new T();
+    return item;
+  }
 
- private:
-   std::vector<T**> chunks;
-   T** currChunk_;
-   uint64_t chunkSize_;
-   uint64_t index_;
-   static constexpr uint64_t kSequentialChunkSize = 1024;
+private:
+  std::vector<T**> chunks;
+  T** currChunk_;
+  uint64_t chunkSize_;
+  uint64_t index_;
+  static constexpr uint64_t kSequentialChunkSize = 1024;
 };
 
 } // namespace grk

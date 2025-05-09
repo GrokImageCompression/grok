@@ -19,5 +19,5 @@
 
 int main(int argc, char** argv)
 {
-   return grk_codec_compress(argc, argv, nullptr, nullptr);
+  return grk_codec_compress(argc, argv, nullptr, nullptr);
 }

@@ -19,10 +19,10 @@
 
 class PGXFormat : public ImageFormat
 {
- public:
-   bool encodeHeader(void) override;
-   bool encodePixels() override;
-   using ImageFormat::encodePixels;
-   bool encodeFinish(void) override;
-   grk_image* decode(const std::string& filename, grk_cparameters* parameters) override;
+public:
+  bool encodeHeader(void) override;
+  bool encodePixels() override;
+  using ImageFormat::encodePixels;
+  bool encodeFinish(void) override;
+  grk_image* decode(const std::string& filename, grk_cparameters* parameters) override;
 };

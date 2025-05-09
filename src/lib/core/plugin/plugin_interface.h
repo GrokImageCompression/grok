@@ -33,15 +33,15 @@ namespace grk
 // debugging variables
 struct grk_plugin_debug_mqc
 {
-   uint32_t debug_state;
-   uint8_t context_number;
-   uint32_t* context_stream;
-   uint32_t contextStreamByteCount;
-   uint8_t contextCache[DEBUG_CONTEXT_CACHE_SIZE];
-   uint32_t contextCacheCount;
-   uint8_t orientation;
-   uint16_t compno;
-   uint32_t level;
+  uint32_t debug_state;
+  uint8_t context_number;
+  uint32_t* context_stream;
+  uint32_t contextStreamByteCount;
+  uint8_t contextCache[DEBUG_CONTEXT_CACHE_SIZE];
+  uint32_t contextCacheCount;
+  uint8_t orientation;
+  uint16_t compno;
+  uint32_t level;
 };
 
 typedef uint32_t (*PLUGIN_GET_DEBUG_STATE)(void);
@@ -71,35 +71,35 @@ typedef void (*PLUGIN_WAIT_FOR_BATCH_COMPLETE)(void);
 
 struct PluginDecodeCallbackInfo
 {
-   PluginDecodeCallbackInfo() : PluginDecodeCallbackInfo("", "", nullptr, GRK_CODEC_UNK, 0) {}
-   PluginDecodeCallbackInfo(std::string input, std::string output,
-                            grk_decompress_parameters* decompressorParameters,
-                            GRK_CODEC_FORMAT format, uint32_t flags)
-       : device_id(0), init_decompressors_func(nullptr), inputFile(input), outputFile(output),
-         decod_format(format), cod_format(GRK_FMT_UNK), codec(nullptr),
-         decompressor_parameters(decompressorParameters), image(nullptr), plugin_owns_image(false),
-         tile(nullptr), error_code(0), decompress_flags(flags), user_data(nullptr)
+  PluginDecodeCallbackInfo() : PluginDecodeCallbackInfo("", "", nullptr, GRK_CODEC_UNK, 0) {}
+  PluginDecodeCallbackInfo(std::string input, std::string output,
+                           grk_decompress_parameters* decompressorParameters,
+                           GRK_CODEC_FORMAT format, uint32_t flags)
+      : device_id(0), init_decompressors_func(nullptr), inputFile(input), outputFile(output),
+        decod_format(format), cod_format(GRK_FMT_UNK), codec(nullptr),
+        decompressor_parameters(decompressorParameters), image(nullptr), plugin_owns_image(false),
+        tile(nullptr), error_code(0), decompress_flags(flags), user_data(nullptr)
 
-   {
-      memset(&header_info, 0, sizeof(header_info));
-   }
-   size_t device_id;
-   GROK_INIT_DECOMPRESSORS init_decompressors_func;
-   std::string inputFile;
-   std::string outputFile;
-   // input file format 0: J2K, 1: JP2
-   GRK_CODEC_FORMAT decod_format;
-   // output file format 0: PGX, 1: PxM, 2: BMP etc
-   GRK_SUPPORTED_FILE_FMT cod_format;
-   grk_object* codec;
-   grk_decompress_parameters* decompressor_parameters;
-   grk_header_info header_info;
-   grk_image* image;
-   bool plugin_owns_image;
-   grk_plugin_tile* tile;
-   int32_t error_code;
-   uint32_t decompress_flags;
-   void* user_data;
+  {
+    memset(&header_info, 0, sizeof(header_info));
+  }
+  size_t device_id;
+  GROK_INIT_DECOMPRESSORS init_decompressors_func;
+  std::string inputFile;
+  std::string outputFile;
+  // input file format 0: J2K, 1: JP2
+  GRK_CODEC_FORMAT decod_format;
+  // output file format 0: PGX, 1: PxM, 2: BMP etc
+  GRK_SUPPORTED_FILE_FMT cod_format;
+  grk_object* codec;
+  grk_decompress_parameters* decompressor_parameters;
+  grk_header_info header_info;
+  grk_image* image;
+  bool plugin_owns_image;
+  grk_plugin_tile* tile;
+  int32_t error_code;
+  uint32_t decompress_flags;
+  void* user_data;
 };
 
 typedef int32_t (*PLUGIN_DECODE_USER_CALLBACK)(PluginDecodeCallbackInfo* info);

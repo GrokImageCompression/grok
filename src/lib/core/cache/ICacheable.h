@@ -20,35 +20,35 @@ namespace grk
 {
 enum GrkCacheState
 {
-   GRK_CACHE_STATE_CLOSED,
-   GRK_CACHE_STATE_OPEN,
-   GRK_CACHE_STATE_ERROR
+  GRK_CACHE_STATE_CLOSED,
+  GRK_CACHE_STATE_OPEN,
+  GRK_CACHE_STATE_ERROR
 };
 
 class ICacheable
 {
- public:
-   ICacheable() : state_(GRK_CACHE_STATE_CLOSED) {}
-   virtual ~ICacheable() = default;
-   bool isOpen(void)
-   {
-      return state_ == GRK_CACHE_STATE_OPEN;
-   }
-   bool isClosed(void)
-   {
-      return state_ == GRK_CACHE_STATE_CLOSED;
-   }
-   bool isError(void)
-   {
-      return state_ == GRK_CACHE_STATE_ERROR;
-   }
-   void setCacheState(GrkCacheState state)
-   {
-      state_ = state;
-   }
+public:
+  ICacheable() : state_(GRK_CACHE_STATE_CLOSED) {}
+  virtual ~ICacheable() = default;
+  bool isOpen(void)
+  {
+    return state_ == GRK_CACHE_STATE_OPEN;
+  }
+  bool isClosed(void)
+  {
+    return state_ == GRK_CACHE_STATE_CLOSED;
+  }
+  bool isError(void)
+  {
+    return state_ == GRK_CACHE_STATE_ERROR;
+  }
+  void setCacheState(GrkCacheState state)
+  {
+    state_ = state;
+  }
 
- private:
-   GrkCacheState state_;
+private:
+  GrkCacheState state_;
 };
 
 } // namespace grk

@@ -21,26 +21,26 @@ namespace grk
 PLCache::PLCache() : pltMarkers(nullptr) {}
 PLCache::~PLCache()
 {
-   delete pltMarkers;
+  delete pltMarkers;
 }
 
 PLMarkerMgr* PLCache::createMarkers(BufferedStream* strm)
 {
-   if(!pltMarkers)
-      pltMarkers = strm ? new PLMarkerMgr(strm) : new PLMarkerMgr();
+  if(!pltMarkers)
+    pltMarkers = strm ? new PLMarkerMgr(strm) : new PLMarkerMgr();
 
-   return pltMarkers;
+  return pltMarkers;
 }
 
 PLMarkerMgr* PLCache::getMarkers(void)
 {
-   return pltMarkers;
+  return pltMarkers;
 }
 
 void PLCache::deleteMarkers(void)
 {
-   delete pltMarkers;
-   pltMarkers = nullptr;
+  delete pltMarkers;
+  pltMarkers = nullptr;
 }
 
 } // namespace grk

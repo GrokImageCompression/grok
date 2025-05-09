@@ -32,14 +32,14 @@ namespace grk
 template<typename T>
 uint32_t ceildiv(T a, T b)
 {
-   assert(b);
-   return (uint32_t)((a + (uint64_t)b - 1) / b);
+  assert(b);
+  return (uint32_t)((a + (uint64_t)b - 1) / b);
 }
 
 template<typename T>
 T ceildivpow2(T a, uint32_t b)
 {
-   return (T)((a + ((uint64_t)1 << b) - 1) >> b);
+  return (T)((a + ((uint64_t)1 << b) - 1) >> b);
 }
 /**
  Divide an unsigned integer by a power of 2 and round downwards
@@ -47,7 +47,7 @@ T ceildivpow2(T a, uint32_t b)
  */
 static inline uint32_t floordivpow2(uint32_t a, uint32_t b)
 {
-   return a >> b;
+  return a >> b;
 }
 /**
  Get logarithm of an integer and round downwards
@@ -65,12 +65,12 @@ uint8_t floorlog2(uint32_t a);
  */
 static inline int32_t fix_mul(int32_t a, int32_t b)
 {
-   int64_t temp = (int64_t)a * (int64_t)b;
-   temp += 4096; // round by adding "0.5" in 13-bit fixed point
-   assert((temp >> 13) <= (int64_t)0x7FFFFFFF);
-   assert((temp >> 13) >= (-(int64_t)0x7FFFFFFF - (int64_t)1));
+  int64_t temp = (int64_t)a * (int64_t)b;
+  temp += 4096; // round by adding "0.5" in 13-bit fixed point
+  assert((temp >> 13) <= (int64_t)0x7FFFFFFF);
+  assert((temp >> 13) >= (-(int64_t)0x7FFFFFFF - (int64_t)1));
 
-   // return to N-bit precision
-   return (int32_t)(temp >> 13);
+  // return to N-bit precision
+  return (int32_t)(temp >> 13);
 }
 } // namespace grk

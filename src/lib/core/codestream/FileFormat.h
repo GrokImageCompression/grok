@@ -68,26 +68,26 @@ const uint8_t XMP_UUID[16] = {0xBE, 0x7A, 0xCF, 0xCB, 0x97, 0xA9, 0x42, 0xE8,
 
 enum JP2_STATE
 {
-   JP2_STATE_NONE = 0x0,
-   JP2_STATE_SIGNATURE = 0x1,
-   JP2_STATE_FILE_TYPE = 0x2,
-   JP2_STATE_HEADER = 0x4,
-   JP2_STATE_CODESTREAM = 0x8,
-   JP2_STATE_END_CODESTREAM = 0x10,
-   JP2_STATE_UNKNOWN = 0x7fffffff /* ISO C restricts enumerator values to range of 'int' */
+  JP2_STATE_NONE = 0x0,
+  JP2_STATE_SIGNATURE = 0x1,
+  JP2_STATE_FILE_TYPE = 0x2,
+  JP2_STATE_HEADER = 0x4,
+  JP2_STATE_CODESTREAM = 0x8,
+  JP2_STATE_END_CODESTREAM = 0x10,
+  JP2_STATE_UNKNOWN = 0x7fffffff /* ISO C restricts enumerator values to range of 'int' */
 };
 
 struct FileFormatBox
 {
-   FileFormatBox() : length(0), type(0) {}
-   uint64_t length;
-   uint32_t type;
+  FileFormatBox() : length(0), type(0) {}
+  uint64_t length;
+  uint32_t type;
 };
 
 struct ComponentInfo
 {
-   ComponentInfo() : bpc(0) {}
-   uint8_t bpc;
+  ComponentInfo() : bpc(0) {}
+  uint8_t bpc;
 };
 
 /**
@@ -95,35 +95,35 @@ struct ComponentInfo
 */
 struct AsocBox : FileFormatBox, grk_buf8
 {
-   ~AsocBox() override
-   {
-      dealloc();
-   }
-   void dealloc() override
-   {
-      grk_buf8::dealloc();
-      for(auto& as : children)
-      {
-         delete as;
-      }
-      children.clear();
-   }
-   std::string label;
-   std::vector<AsocBox*> children;
+  ~AsocBox() override
+  {
+    dealloc();
+  }
+  void dealloc() override
+  {
+    grk_buf8::dealloc();
+    for(auto& as : children)
+    {
+      delete as;
+    }
+    children.clear();
+  }
+  std::string label;
+  std::vector<AsocBox*> children;
 };
 
 struct UUIDBox : public FileFormatBox, grk_buf8
 {
-   UUIDBox()
-   {
-      memset(uuid, 0, sizeof(uuid));
-   }
-   UUIDBox(const uint8_t myuuid[16], uint8_t* buf, size_t size)
-       : FileFormatBox(), grk_buf8(buf, size, false)
-   {
-      memcpy(uuid, myuuid, 16);
-   }
-   uint8_t uuid[16];
+  UUIDBox()
+  {
+    memset(uuid, 0, sizeof(uuid));
+  }
+  UUIDBox(const uint8_t myuuid[16], uint8_t* buf, size_t size)
+      : FileFormatBox(), grk_buf8(buf, size, false)
+  {
+    memcpy(uuid, myuuid, 16);
+  }
+  uint8_t uuid[16];
 };
 
 /**
@@ -131,46 +131,46 @@ struct UUIDBox : public FileFormatBox, grk_buf8
  */
 class FileFormat
 {
- public:
-   FileFormat(void);
-   virtual ~FileFormat();
+public:
+  FileFormat(void);
+  virtual ~FileFormat();
 
- protected:
-   bool exec(std::vector<PROCEDURE_FUNC>* procs);
-   /** list of validation procedures */
-   std::vector<PROCEDURE_FUNC>* validation_list_;
-   /** list of execution procedures */
-   std::vector<PROCEDURE_FUNC>* procedure_list_;
+protected:
+  bool exec(std::vector<PROCEDURE_FUNC>* procs);
+  /** list of validation procedures */
+  std::vector<PROCEDURE_FUNC>* validation_list_;
+  /** list of execution procedures */
+  std::vector<PROCEDURE_FUNC>* procedure_list_;
 
-   /* width of image */
-   uint32_t w;
-   /* height of image */
-   uint32_t h;
-   /* number of components in the image */
-   uint16_t numcomps;
-   uint8_t bpc;
-   uint8_t C;
-   uint8_t UnkC;
-   uint8_t IPR;
-   uint8_t meth;
-   uint8_t approx;
-   GRK_ENUM_COLOUR_SPACE enumcs;
-   uint8_t precedence;
-   uint32_t brand;
-   uint32_t minversion;
-   uint32_t numcl;
-   uint32_t* cl;
-   ComponentInfo* comps;
+  /* width of image */
+  uint32_t w;
+  /* height of image */
+  uint32_t h;
+  /* number of components in the image */
+  uint16_t numcomps;
+  uint8_t bpc;
+  uint8_t C;
+  uint8_t UnkC;
+  uint8_t IPR;
+  uint8_t meth;
+  uint8_t approx;
+  GRK_ENUM_COLOUR_SPACE enumcs;
+  uint8_t precedence;
+  uint32_t brand;
+  uint32_t minversion;
+  uint32_t numcl;
+  uint32_t* cl;
+  ComponentInfo* comps;
 
-   bool has_capture_resolution;
-   double capture_resolution[2];
-   bool has_display_resolution;
-   double display_resolution[2];
+  bool has_capture_resolution;
+  double capture_resolution[2];
+  bool has_display_resolution;
+  double display_resolution[2];
 
-   grk_buf8 xml;
+  grk_buf8 xml;
 
-   UUIDBox uuids[JP2_MAX_NUM_UUIDS];
-   uint32_t numUuids;
+  UUIDBox uuids[JP2_MAX_NUM_UUIDS];
+  uint32_t numUuids;
 };
 
 /** @name Exported functions */

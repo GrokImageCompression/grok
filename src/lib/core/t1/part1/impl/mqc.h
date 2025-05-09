@@ -35,43 +35,43 @@ struct mqcoder;
 
 struct mqc_state
 {
-   /** the probability of the Least Probable Symbol (0.75->0x8000, 1.5->0xffff) */
-   uint32_t qeval;
-   /** the Most Probable Symbol (0 or 1) */
-   uint32_t mps;
-   /** next state if the next encoded symbol is the MPS */
-   const mqc_state* nmps;
-   /** next state if the next encoded symbol is the LPS */
-   const mqc_state* nlps;
+  /** the probability of the Least Probable Symbol (0.75->0x8000, 1.5->0xffff) */
+  uint32_t qeval;
+  /** the Most Probable Symbol (0 or 1) */
+  uint32_t mps;
+  /** next state if the next encoded symbol is the MPS */
+  const mqc_state* nmps;
+  /** next state if the next encoded symbol is the LPS */
+  const mqc_state* nlps;
 };
 
 #define MQC_NUMCTXS 19
 struct mqcoder
 {
-   /** temporary buffer where bits are coded or decoded */
-   uint32_t c;
-   /** only used by MQ decoder */
-   uint32_t a;
-   /** number of bits already read or free to write */
-   uint32_t ct;
-   /* only used by decoder, to count the number of times a terminating 0xFF >0x8F marker is read */
-   uint32_t end_of_byte_stream_counter;
-   /** pointer to the current position in the buffer */
-   uint8_t* bp;
-   /** pointer to the start of the buffer */
-   uint8_t* start;
-   /** pointer to the end of the buffer */
-   uint8_t* end;
-   /** Array of contexts */
-   const mqc_state* ctxs[MQC_NUMCTXS];
-   /** Active context */
-   const mqc_state** curctx;
-   /* lut_ctxno_zc shifted by (1 << 9) * bandIndex */
-   const uint8_t* lut_ctxno_zc_orient;
-   /** Original value of the 2 bytes at end[0] and end[1] */
-   uint8_t backup[grk_cblk_dec_compressed_data_pad_right];
+  /** temporary buffer where bits are coded or decoded */
+  uint32_t c;
+  /** only used by MQ decoder */
+  uint32_t a;
+  /** number of bits already read or free to write */
+  uint32_t ct;
+  /* only used by decoder, to count the number of times a terminating 0xFF >0x8F marker is read */
+  uint32_t end_of_byte_stream_counter;
+  /** pointer to the current position in the buffer */
+  uint8_t* bp;
+  /** pointer to the start of the buffer */
+  uint8_t* start;
+  /** pointer to the end of the buffer */
+  uint8_t* end;
+  /** Array of contexts */
+  const mqc_state* ctxs[MQC_NUMCTXS];
+  /** Active context */
+  const mqc_state** curctx;
+  /* lut_ctxno_zc shifted by (1 << 9) * bandIndex */
+  const uint8_t* lut_ctxno_zc_orient;
+  /** Original value of the 2 bytes at end[0] and end[1] */
+  uint8_t backup[grk_cblk_dec_compressed_data_pad_right];
 #ifdef PLUGIN_DEBUG_ENCODE
-   grk_plugin_debug_mqc debug_mqc;
+  grk_plugin_debug_mqc debug_mqc;
 #endif
 };
 

@@ -24,9 +24,9 @@ namespace grk
 
 struct ILogger
 {
-   virtual void info(const char* fmt, ...) = 0;
-   virtual void warn(const char* fmt, ...) = 0;
-   virtual void error(const char* fmt, ...) = 0;
+  virtual void info(const char* fmt, ...) = 0;
+  virtual void warn(const char* fmt, ...) = 0;
+  virtual void error(const char* fmt, ...) = 0;
 };
 
 } // namespace grk

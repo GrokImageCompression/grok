@@ -20,8 +20,8 @@ namespace grk
 
 class GrkCompareDumpFiles
 {
- public:
-   int main(int argc, char** argv);
+public:
+  int main(int argc, char** argv);
 };
 
 } // namespace grk

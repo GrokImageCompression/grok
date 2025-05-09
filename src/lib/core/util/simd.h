@@ -41,28 +41,28 @@ static inline long grk_lrintf(float f)
 {
 #if defined(_MSC_VER)
 #ifdef _M_X64
-   return _mm_cvt_ss2si(_mm_load_ss(&f));
+  return _mm_cvt_ss2si(_mm_load_ss(&f));
 #elif defined(_M_IX86)
-   int i;
-   _asm {
+  int i;
+  _asm {
         fld f
         fistp i
-   }
-   ;
-   return i;
+  }
+  ;
+  return i;
 #else
-   return (long)((f > 0.0f) ? (f + 0.5f) : (f - 0.5f));
+  return (long)((f > 0.0f) ? (f + 0.5f) : (f - 0.5f));
 #endif
 #else
-   return lrintf(f);
+  return lrintf(f);
 #endif
 }
 
 static inline uint32_t grk_population_count(uint32_t val)
 {
 #ifdef _MSC_VER
-   return (uint32_t)__popcnt(val);
+  return (uint32_t)__popcnt(val);
 #else
-   return (uint32_t)__builtin_popcount(val);
+  return (uint32_t)__builtin_popcount(val);
 #endif
 }

@@ -20,15 +20,15 @@ namespace grk
 {
 class RateInfo
 {
- public:
-   RateInfo();
-   void synch(CompressCodeblock* cblk);
+public:
+  RateInfo();
+  void synch(CompressCodeblock* cblk);
 
-   uint16_t getMinimumThresh();
+  uint16_t getMinimumThresh();
 
- private:
-   uint16_t minimumSlope;
-   uint16_t maximumSlope;
+private:
+  uint16_t minimumSlope;
+  uint16_t maximumSlope;
 };
 
 } // namespace grk

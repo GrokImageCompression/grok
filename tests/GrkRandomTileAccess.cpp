@@ -34,85 +34,85 @@ namespace grk
 
 static int32_t test_tile(uint16_t tile_index, grk_image* image, grk_object* codec)
 {
-   fprintf(stdout, "Decompressing tile %d ...", tile_index);
-   if(!grk_decompress_tile(codec, tile_index))
-   {
+  fprintf(stdout, "Decompressing tile %d ...", tile_index);
+  if(!grk_decompress_tile(codec, tile_index))
+  {
+    fprintf(stderr, "random tile processor: failed to decompress tile %d", tile_index);
+    return EXIT_FAILURE;
+  }
+  for(uint32_t index = 0; index < image->numcomps; ++index)
+  {
+    if(image->comps[index].data == nullptr)
+    {
       fprintf(stderr, "random tile processor: failed to decompress tile %d", tile_index);
       return EXIT_FAILURE;
-   }
-   for(uint32_t index = 0; index < image->numcomps; ++index)
-   {
-      if(image->comps[index].data == nullptr)
-      {
-         fprintf(stderr, "random tile processor: failed to decompress tile %d", tile_index);
-         return EXIT_FAILURE;
-      }
-   }
-   fprintf(stdin, "Tile %d decoded successfully", tile_index);
-   return EXIT_SUCCESS;
+    }
+  }
+  fprintf(stdin, "Tile %d decoded successfully", tile_index);
+  return EXIT_SUCCESS;
 }
 
 int GrkRandomTileAccess::main(int argc, char** argv)
 {
-   grk_decompress_parameters parameters; /* decompression parameters */
-   int32_t ret = EXIT_FAILURE, rc;
+  grk_decompress_parameters parameters; /* decompression parameters */
+  int32_t ret = EXIT_FAILURE, rc;
 
-   if(argc != 2)
-   {
-      fprintf(stderr, "Usage: %s <input_file>", argv[0]);
-      return EXIT_FAILURE;
-   }
+  if(argc != 2)
+  {
+    fprintf(stderr, "Usage: %s <input_file>", argv[0]);
+    return EXIT_FAILURE;
+  }
 
-   grk_initialize(nullptr, 0);
+  grk_initialize(nullptr, 0);
 
-   for(uint32_t i = 0; i < 4; ++i)
-   {
-      grk_object* codec = nullptr; /* Handle to a decompressor */
-      grk_image* image = nullptr;
-      parameters = {};
-      strncpy(parameters.infile, argv[1], GRK_PATH_LEN - 1);
+  for(uint32_t i = 0; i < 4; ++i)
+  {
+    grk_object* codec = nullptr; /* Handle to a decompressor */
+    grk_image* image = nullptr;
+    parameters = {};
+    strncpy(parameters.infile, argv[1], GRK_PATH_LEN - 1);
 
-      /* Index of corner tiles */
-      uint16_t tile[4];
+    /* Index of corner tiles */
+    uint16_t tile[4];
 
-      grk_stream_params stream_params = {};
-      stream_params.file = parameters.infile;
-      codec = grk_decompress_init(&stream_params, &parameters);
-      if(!codec)
-      {
-         fprintf(stderr, "random tile processor: failed to set up decompressor");
-         goto cleanup;
-      }
+    grk_stream_params stream_params = {};
+    stream_params.file = parameters.infile;
+    codec = grk_decompress_init(&stream_params, &parameters);
+    if(!codec)
+    {
+      fprintf(stderr, "random tile processor: failed to set up decompressor");
+      goto cleanup;
+    }
 
-      /* Read the main header of the codestream and if necessary the JP2 boxes*/
-      grk_header_info headerInfo;
-      memset(&headerInfo, 0, sizeof(grk_header_info));
-      if(!grk_decompress_read_header(codec, &headerInfo))
-      {
-         fprintf(stderr, "random tile processor : failed to read header");
-         goto cleanup;
-      }
+    /* Read the main header of the codestream and if necessary the JP2 boxes*/
+    grk_header_info headerInfo;
+    memset(&headerInfo, 0, sizeof(grk_header_info));
+    if(!grk_decompress_read_header(codec, &headerInfo))
+    {
+      fprintf(stderr, "random tile processor : failed to read header");
+      goto cleanup;
+    }
 
-      fprintf(stdin, "The file contains %dx%d tiles", headerInfo.t_grid_width,
-              headerInfo.t_grid_height);
+    fprintf(stdin, "The file contains %dx%d tiles", headerInfo.t_grid_width,
+            headerInfo.t_grid_height);
 
-      tile[0] = 0;
-      tile[1] = (uint16_t)(headerInfo.t_grid_width - 1);
-      tile[2] = (uint16_t)(headerInfo.t_grid_width * headerInfo.t_grid_height - 1);
-      tile[3] = (uint16_t)(tile[2] - headerInfo.t_grid_width);
+    tile[0] = 0;
+    tile[1] = (uint16_t)(headerInfo.t_grid_width - 1);
+    tile[2] = (uint16_t)(headerInfo.t_grid_width * headerInfo.t_grid_height - 1);
+    tile[3] = (uint16_t)(tile[2] - headerInfo.t_grid_width);
 
-      image = grk_decompress_get_image(codec);
-      rc = test_tile(tile[i], image, codec);
+    image = grk_decompress_get_image(codec);
+    rc = test_tile(tile[i], image, codec);
 
-      grk_object_unref(codec);
-      if(rc)
-         goto cleanup;
-   }
-   ret = EXIT_SUCCESS;
+    grk_object_unref(codec);
+    if(rc)
+      goto cleanup;
+  }
+  ret = EXIT_SUCCESS;
 cleanup:
-   grk_deinitialize();
+  grk_deinitialize();
 
-   return ret;
+  return ret;
 }
 
 } // namespace grk

@@ -59,17 +59,17 @@ namespace ojph
 {
 struct QuantizerOJPH : public grk::Quantizer
 {
- public:
-   QuantizerOJPH(bool reversible, uint8_t guard_bits);
-   void generate(uint32_t decomps, uint32_t max_bit_depth, bool color_transform,
-                 bool is_signed) override;
-   bool write(grk::BufferedStream* stream) override;
+public:
+  QuantizerOJPH(bool reversible, uint8_t guard_bits);
+  void generate(uint32_t decomps, uint32_t max_bit_depth, bool color_transform,
+                bool is_signed) override;
+  bool write(grk::BufferedStream* stream) override;
 
- private:
-   uint32_t get_MAGBp() const;
-   void set_rev_quant(uint32_t bit_depth, bool is_employing_color_transform);
-   void set_irrev_quant();
-   float base_delta;
+private:
+  uint32_t get_MAGBp() const;
+  void set_rev_quant(uint32_t bit_depth, bool is_employing_color_transform);
+  void set_irrev_quant();
+  float base_delta;
 };
 
 } // namespace ojph

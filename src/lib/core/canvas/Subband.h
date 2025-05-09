@@ -24,25 +24,25 @@ namespace grk
 
 struct Subband : public grk_rect32
 {
-   Subband();
-   Subband(const Subband& rhs);
-   virtual ~Subband() = default;
-   Subband& operator=(const Subband& rhs);
-   void print() const override;
-   bool empty();
-   Precinct* getPrecinct(uint64_t precinctIndex);
-   grk_rect32 generatePrecinctBounds(uint64_t precinctIndex, grk_pt32 precinctPartitionTopLeft,
-                                     grk_pt32 precinctExpn, uint32_t precinctGridWidth);
-   Precinct* createPrecinct(TileProcessor* tileProcessor, uint64_t precinctIndex,
-                            grk_pt32 precinctPartitionTopLeft, grk_pt32 precinctExpn,
-                            uint32_t precinctGridWidth, grk_pt32 cblk_expn);
-   eBandOrientation orientation;
-   std::vector<Precinct*> precincts;
-   // maps global precinct index to precincts vector index
-   std::map<uint64_t, uint64_t> precinctMap;
-   uint64_t num_precincts;
-   uint8_t numbps;
-   float stepsize;
+  Subband();
+  Subband(const Subband& rhs);
+  virtual ~Subband() = default;
+  Subband& operator=(const Subband& rhs);
+  void print() const override;
+  bool empty();
+  Precinct* getPrecinct(uint64_t precinctIndex);
+  grk_rect32 generatePrecinctBounds(uint64_t precinctIndex, grk_pt32 precinctPartitionTopLeft,
+                                    grk_pt32 precinctExpn, uint32_t precinctGridWidth);
+  Precinct* createPrecinct(TileProcessor* tileProcessor, uint64_t precinctIndex,
+                           grk_pt32 precinctPartitionTopLeft, grk_pt32 precinctExpn,
+                           uint32_t precinctGridWidth, grk_pt32 cblk_expn);
+  eBandOrientation orientation;
+  std::vector<Precinct*> precincts;
+  // maps global precinct index to precincts vector index
+  std::map<uint64_t, uint64_t> precinctMap;
+  uint64_t num_precincts;
+  uint8_t numbps;
+  float stepsize;
 };
 
 } // namespace grk
