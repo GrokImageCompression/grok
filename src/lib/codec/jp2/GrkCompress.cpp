@@ -1060,7 +1060,7 @@ GrkRC GrkCompress::parseCommandLine(int argc, char* argv[], CompressInitParams* 
   std::string tileParts;
   uint16_t rsiz;
 
-  bool eph, applyICC, irreversible, plt, sop, tlm, transferExifTags, verbose;
+  bool eph, applyICC, irreversible, plt, sop, tlm, transferExifTags;
 
   auto outDirOpt = app.add_option("-a,--out-dir", outDir, "Output directory");
   auto rateControlAlgorithmOpt =
@@ -1122,7 +1122,7 @@ GrkRC GrkCompress::parseCommandLine(int argc, char* argv[], CompressInitParams* 
       app.add_flag("-V,--transfer-exif-tags", transferExifTags, "Transfer Exif tags");
   auto cinema2KOpt =
       app.add_option("-w,--cinema-2k", cinema2K, "Digital cinema 2K profile")->default_val("24");
-  auto logfileOpt = app.add_option("-W,--log-file", logfile, "Log file");
+  app.add_option("-W,--log-file", logfile, "Log file");
   auto cinema4KOpt =
       app.add_option("-x,--cinema-4k", cinema4K, "Digital cinema 4K profile")->default_val("24");
   auto tlmOpt = app.add_flag("-X,--tlm", tlm, "TLM marker");
@@ -1134,12 +1134,7 @@ GrkRC GrkCompress::parseCommandLine(int argc, char* argv[], CompressInitParams* 
   auto rsizOpt = app.add_option("-Z,--rsiz", rsiz, "Rsiz")->default_val(0);
 
   CLI11_PARSE_CUSTOM(app, argc, argv);
-
-  if(logfileOpt->count() > 0)
-  {
-    auto file_logger = spdlog::basic_logger_mt("grk_compress", logfile);
-    spdlog::set_default_logger(file_logger);
-  }
+  configureLogging(logfile);
   bool isHT = false;
   if(resolutionsOpt->count() > 0)
     parameters->numresolution = resolutions;

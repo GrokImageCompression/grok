@@ -617,19 +617,14 @@ GrkRC GrkDecompress::parseCommandLine(int argc, char* argv[], DecompressInitPara
   auto upsampleOpt = cmd.add_flag("-u,--upsample", upsample, "Upsample");
   auto transferExifTagsOpt =
       cmd.add_flag("-V,--transfer-exif-tags", transferExifTags, "Transfer Exif tags");
-  auto logfileOpt = cmd.add_option("-W,--log-file", logfile, "Log file");
+  cmd.add_option("-W,--log-file", logfile, "Log file");
   auto xmlOpt = cmd.add_flag("-X,--xml", xml, "XML metadata");
   auto inDirOpt = cmd.add_option("-y,--batch-src", inDir, "Image Directory");
   auto durationOpt = cmd.add_option("-z,--Duration", duration, "Duration in seconds");
 
   CLI11_PARSE_CUSTOM(cmd, argc, argv);
 
-  if(logfileOpt->count() > 0)
-  {
-    auto file_logger = spdlog::basic_logger_mt("grk_decompress", logfile);
-    spdlog::set_default_logger(file_logger);
-  }
-
+  configureLogging(logfile);
   initParams->transfer_exif_tags = transferExifTagsOpt->count() > 0;
 #ifndef GROK_HAVE_EXIFTOOL
   if(initParams->transfer_exif_tags)

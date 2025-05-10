@@ -236,11 +236,16 @@ GRK_API void GRK_CALLCONV grk_set_msg_handlers(grk_msg_handlers msg_handlers)
 {
   Logger::logger_.info_handler = msg_handlers.info_callback;
   Logger::logger_.info_data_ = msg_handlers.info_data;
+  Logger::logger_.debug_handler = msg_handlers.debug_callback;
+  Logger::logger_.debug_data_ = msg_handlers.debug_data;
+  Logger::logger_.trace_handler = msg_handlers.trace_callback;
+  Logger::logger_.trace_data_ = msg_handlers.trace_data;
   Logger::logger_.warning_handler = msg_handlers.warn_callback;
   Logger::logger_.warning_data_ = msg_handlers.warn_data;
   Logger::logger_.error_handler = msg_handlers.error_callback;
   Logger::logger_.error_data_ = msg_handlers.error_data;
 }
+
 static size_t grk_read_from_file(uint8_t* buffer, size_t numBytes, void* p_file)
 {
   return fread(buffer, 1, numBytes, (FILE*)p_file);
@@ -317,10 +322,12 @@ bool grk_decompress_buffer_detect_format(uint8_t* buffer, size_t len, GRK_CODEC_
   if(memcmp(buffer, JP2_RFC3745_MAGIC, 12) == 0)
   {
     magic_format = GRK_CODEC_JP2;
+    grklog.debug("Detected JP2 image format");
   }
   else if(memcmp(buffer, J2K_CODESTREAM_MAGIC, 4) == 0)
   {
     magic_format = GRK_CODEC_J2K;
+    grklog.debug("Detected J2K image format");
   }
   else
   {
@@ -341,7 +348,7 @@ bool GRK_CALLCONV grk_decompress_detect_format(const char* fileName, GRK_CODEC_F
   auto reader = fopen(fileName, "rb");
   if(!reader)
   {
-    Logger::logger_.error("Unable to open file {}.", fileName);
+    Logger::logger_.error("Unable to open file %s.", fileName);
     return false;
   }
 

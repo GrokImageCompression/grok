@@ -234,7 +234,7 @@ void errorCallback(const char* msg, void* client_data);
 void warningCallback(const char* msg, void* client_data);
 void infoCallback(const char* msg, void* client_data);
 
-
+void configureLogging(const std::string& logfile);
 
 
 #define CLI11_PARSE_CUSTOM(app, ...)                                                                                          \

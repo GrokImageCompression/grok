@@ -16,10 +16,7 @@
 
 #pragma once
 
-#include <cstring>
-#include <cstdarg>
-
-#include "grok.h"
+#include "grok.h" // for grk_msg_callback
 #include "ILogger.h"
 
 namespace grk
@@ -28,59 +25,84 @@ namespace grk
 struct Logger : public ILogger
 {
   Logger()
-      : error_data_(nullptr), warning_data_(nullptr), info_data_(nullptr), error_handler(nullptr),
-        warning_handler(nullptr), info_handler(nullptr)
+      : error_data_(nullptr), warning_data_(nullptr), info_data_(nullptr), debug_data_(nullptr),
+        trace_data_(nullptr), error_handler(nullptr), warning_handler(nullptr),
+        info_handler(nullptr), debug_handler(nullptr), trace_handler(nullptr)
   {}
 
   void info(const char* fmt, ...) override
   {
     if(!info_handler)
       return;
-    va_list arg;
-    va_start(arg, fmt);
-    log_message(info_handler, info_data_, fmt, arg);
-    va_end(arg);
+    va_list args;
+    va_start(args, fmt);
+    log_message(info_handler, info_data_, fmt, args);
+    va_end(args);
   }
+
   void warn(const char* fmt, ...) override
   {
     if(!warning_handler)
       return;
-    va_list arg;
-    va_start(arg, fmt);
-    log_message(warning_handler, warning_data_, fmt, arg);
-    va_end(arg);
+    va_list args;
+    va_start(args, fmt);
+    log_message(warning_handler, warning_data_, fmt, args);
+    va_end(args);
   }
+
   void error(const char* fmt, ...) override
   {
     if(!error_handler)
       return;
-    va_list arg;
-    va_start(arg, fmt);
-    log_message(error_handler, error_data_, fmt, arg);
-    va_end(arg);
+    va_list args;
+    va_start(args, fmt);
+    log_message(error_handler, error_data_, fmt, args);
+    va_end(args);
+  }
+
+  void debug(const char* fmt, ...) override
+  {
+    if(!debug_handler)
+      return;
+    va_list args;
+    va_start(args, fmt);
+    log_message(debug_handler, debug_data_, fmt, args);
+    va_end(args);
+  }
+
+  void trace(const char* fmt, ...) override
+  {
+    if(!trace_handler)
+      return;
+    va_list args;
+    va_start(args, fmt);
+    log_message(trace_handler, trace_data_, fmt, args);
+    va_end(args);
   }
 
   void* error_data_;
   void* warning_data_;
   void* info_data_;
+  void* debug_data_;
+  void* trace_data_;
   grk_msg_callback error_handler;
   grk_msg_callback warning_handler;
   grk_msg_callback info_handler;
+  grk_msg_callback debug_handler;
+  grk_msg_callback trace_handler;
 
   static Logger logger_;
 
 private:
-  template<typename... Args>
-  void log_message(grk_msg_callback msg_handler, void* l_data, char const* const format,
-                   Args&... args) noexcept
+  void log_message(grk_msg_callback msg_handler, void* l_data, const char* fmt,
+                   va_list args) noexcept
   {
-    const int message_size = 512;
-    if((format != nullptr))
+    constexpr int message_size = 512;
+    if(fmt != nullptr)
     {
-      char message[message_size];
-      memset(message, 0, message_size);
-      vsnprintf(message, message_size, format, args...);
-      msg_handler(message, l_data);
+      char buffer[message_size];
+      vsnprintf(buffer, message_size, fmt, args);
+      msg_handler(buffer, l_data);
     }
   }
 };

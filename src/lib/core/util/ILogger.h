@@ -13,7 +13,6 @@
  *    You should have received a copy of the GNU Affero General Public License
  *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-
 #pragma once
 
 #include <cstring>
@@ -24,9 +23,12 @@ namespace grk
 
 struct ILogger
 {
+  virtual ~ILogger() = default; // Virtual destructor for polymorphism
   virtual void info(const char* fmt, ...) = 0;
   virtual void warn(const char* fmt, ...) = 0;
   virtual void error(const char* fmt, ...) = 0;
+  virtual void debug(const char* fmt, ...) = 0; // Added debug
+  virtual void trace(const char* fmt, ...) = 0; // Added trace
 };
 
 } // namespace grk
