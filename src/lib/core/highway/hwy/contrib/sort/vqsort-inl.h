@@ -1199,19 +1199,6 @@ HWY_INLINE V MedianOf3(Traits st, V v0, V v1, V v2) {
   return v1;
 }
 
-// Based on https://github.com/numpy/numpy/issues/16313#issuecomment-641897028
-HWY_INLINE uint64_t RandomBits(uint64_t* HWY_RESTRICT state) {
-  const uint64_t a = state[0];
-  const uint64_t b = state[1];
-  const uint64_t w = state[2] + 1;
-  const uint64_t next = a ^ w;
-  state[0] = (b + (b << 3)) ^ (b >> 11);
-  const uint64_t rot = (b << 24) | (b >> 40);
-  state[1] = rot + next;
-  state[2] = w;
-  return next;
-}
-
 // Returns slightly biased random index of a chunk in [0, num_chunks).
 // See https://www.pcg-random.org/posts/bounded-rands.html.
 HWY_INLINE size_t RandomChunkIndex(const uint32_t num_chunks, uint32_t bits) {
@@ -1917,8 +1904,8 @@ HWY_INLINE bool HandleSpecialCases(D d, Traits st, T* HWY_RESTRICT keys,
   const bool huge_vec = kPotentiallyHuge && (2 * N > base_case_num);
   if (partial_128 || huge_vec) {
     if (VQSORT_PRINT >= 1) {
-      fprintf(stderr, "WARNING: using slow HeapSort: partial %d huge %d\n",
-              partial_128, huge_vec);
+      HWY_WARN("using slow HeapSort: partial %d huge %d\n", partial_128,
+               huge_vec);
     }
     HeapSort(st, keys, num);
     return true;
@@ -1998,7 +1985,7 @@ void Sort(D d, Traits st, T* HWY_RESTRICT keys, const size_t num,
   (void)d;
   (void)buf;
   if (VQSORT_PRINT >= 1) {
-    fprintf(stderr, "WARNING: using slow HeapSort because vqsort disabled\n");
+    HWY_WARN("using slow HeapSort because vqsort disabled\n");
   }
   detail::HeapSort(st, keys, num);
 #endif  // VQSORT_ENABLED
@@ -2043,7 +2030,7 @@ void PartialSort(D d, Traits st, T* HWY_RESTRICT keys, size_t num, size_t k,
   (void)d;
   (void)buf;
   if (VQSORT_PRINT >= 1) {
-    fprintf(stderr, "WARNING: using slow HeapSort because vqsort disabled\n");
+    HWY_WARN("using slow HeapSort because vqsort disabled\n");
   }
   detail::HeapPartialSort(st, keys, num, k);
 #endif  // VQSORT_ENABLED
@@ -2084,7 +2071,7 @@ void Select(D d, Traits st, T* HWY_RESTRICT keys, const size_t num,
   (void)d;
   (void)buf;
   if (VQSORT_PRINT >= 1) {
-    fprintf(stderr, "WARNING: using slow HeapSort because vqsort disabled\n");
+    HWY_WARN("using slow HeapSort because vqsort disabled\n");
   }
   detail::HeapSelect(st, keys, num, k);
 #endif  // VQSORT_ENABLED
@@ -2189,50 +2176,30 @@ using MakeTraits =
 // SortAscending or SortDescending.
 template <typename Key, class Order>
 void VQSortStatic(Key* HWY_RESTRICT keys, const size_t num_keys, Order) {
-#if VQSORT_ENABLED
   const detail::MakeTraits<Key, Order> st;
   using LaneType = typename decltype(st)::LaneType;
   const SortTag<LaneType> d;
   Sort(d, st, reinterpret_cast<LaneType*>(keys), num_keys * st.LanesPerKey());
-#else
-  (void)keys;
-  (void)num_keys;
-  HWY_ASSERT(0);
-#endif  // VQSORT_ENABLED
 }
 
 template <typename Key, class Order>
 void VQPartialSortStatic(Key* HWY_RESTRICT keys, const size_t num_keys,
                          const size_t k_keys, Order) {
-#if VQSORT_ENABLED
   const detail::MakeTraits<Key, Order> st;
   using LaneType = typename decltype(st)::LaneType;
   const SortTag<LaneType> d;
   PartialSort(d, st, reinterpret_cast<LaneType*>(keys),
               num_keys * st.LanesPerKey(), k_keys * st.LanesPerKey());
-#else
-  (void)keys;
-  (void)num_keys;
-  (void)k_keys;
-  HWY_ASSERT(0);
-#endif  // VQSORT_ENABLED
 }
 
 template <typename Key, class Order>
 void VQSelectStatic(Key* HWY_RESTRICT keys, const size_t num_keys,
                     const size_t k_keys, Order) {
-#if VQSORT_ENABLED
   const detail::MakeTraits<Key, Order> st;
   using LaneType = typename decltype(st)::LaneType;
   const SortTag<LaneType> d;
   Select(d, st, reinterpret_cast<LaneType*>(keys), num_keys * st.LanesPerKey(),
          k_keys * st.LanesPerKey());
-#else
-  (void)keys;
-  (void)num_keys;
-  (void)k_keys;
-  HWY_ASSERT(0);
-#endif  // VQSORT_ENABLED
 }
 
 // NOLINTNEXTLINE(google-readability-namespace-comments)

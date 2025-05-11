@@ -59,33 +59,6 @@ if(CHECK_PIE_SUPPORTED)
   endif()
 endif()
 
-if (CMAKE_CXX_COMPILER_ARCHITECTURE_ID MATCHES "RISCV32|RISCV64|RISCV128" OR CMAKE_SYSTEM_PROCESSOR MATCHES "riscv32|riscv64|riscv128")
-  include(CheckCSourceCompiles)
-  check_c_source_compiles("
-  #if __riscv_xlen == 64
-  int main() { return 0; }
-  #else
-  #error Not RISCV-64
-  #endif
-  " IS_RISCV_XLEN_64)
-
-  check_c_source_compiles("
-  #if __riscv_xlen == 32
-  int main() { return 0; }
-  #else
-  #error Not RISCV-32
-  #endif
-  " IS_RISCV_XLEN_32)
-
-  if(IS_RISCV_XLEN_32)
-    set(RISCV_XLEN 32)
-  elseif(IS_RISCV_XLEN_64)
-    set(RISCV_XLEN 64)
-  else()
-    message(WARNING "Unable to determine RISC-V XLEN")
-  endif()
-endif()
-
 include(GNUInstallDirs)
 
 if (NOT CMAKE_BUILD_TYPE)
@@ -163,6 +136,65 @@ check_cxx_source_compiles(
   HWY_RISCV
 )
 
+if (WIN32)
+  set (ORIG_CMAKE_REQUIRED_LIBRARIES ${CMAKE_REQUIRED_LIBRARIES})
+  set (CMAKE_REQUIRED_LIBRARIES synchronization)
+  check_cxx_source_compiles(
+    "#ifndef NOMINMAX
+     #define NOMINMAX
+     #endif
+
+     #include <windows.h>
+
+     int main() {
+       unsigned val1 = 0u;
+       unsigned val2 = 1u;
+       WaitOnAddress(&val1, &val2, sizeof(unsigned), 1);
+       WakeByAddressAll(&val1);
+       WakeByAddressSingle(&val1);
+       return 0;
+     }"
+  HWY_HAVE_WIN32_SYNCHRONIZATION_LIB)
+  set (CMAKE_REQUIRED_LIBRARIES ${ORIG_CMAKE_REQUIRED_LIBRARIES})
+else()
+  set (HWY_HAVE_WIN32_SYNCHRONIZATION_LIB OFF)
+endif ()
+
+if (HWY_HAVE_WIN32_SYNCHRONIZATION_LIB OR NOT WIN32)
+  set (HWY_DISABLE_FUTEX OFF CACHE BOOL "Disable futex for thread_pool")
+else()
+  # Force HWY_DISABLE_FUTEX to ON if compiling for Win32 and
+  # libsynchronization.a or synchronization.lib is not available
+  set (HWY_DISABLE_FUTEX ON CACHE BOOL "Disable futex for thread_pool" FORCE)
+endif()
+
+if (HWY_RISCV OR CMAKE_CXX_COMPILER_ARCHITECTURE_ID MATCHES "RISCV32|RISCV64|RISCV128" OR CMAKE_SYSTEM_PROCESSOR MATCHES "riscv32|riscv64|riscv128")
+  include(CheckCSourceCompiles)
+  check_c_source_compiles("
+  #if __riscv_xlen == 64
+  int main() { return 0; }
+  #else
+  #error Not RISCV-64
+  #endif
+  " IS_RISCV_XLEN_64)
+
+  check_c_source_compiles("
+  #if __riscv_xlen == 32
+  int main() { return 0; }
+  #else
+  #error Not RISCV-32
+  #endif
+  " IS_RISCV_XLEN_32)
+
+  if(IS_RISCV_XLEN_32)
+    set(RISCV_XLEN 32)
+  elseif(IS_RISCV_XLEN_64)
+    set(RISCV_XLEN 64)
+  else()
+    message(WARNING "Unable to determine RISC-V XLEN")
+  endif()
+endif()
+
 if (HWY_ENABLE_CONTRIB)
 # Glob all the traits so we don't need to modify this file when adding
 # additional special cases.
@@ -184,6 +216,7 @@ list(APPEND HWY_CONTRIB_SOURCES
     hwy/contrib/sort/vqsort.cc
     hwy/contrib/sort/vqsort.h
     hwy/contrib/thread_pool/futex.h
+    hwy/contrib/thread_pool/spin.h
     hwy/contrib/thread_pool/thread_pool.h
     hwy/contrib/thread_pool/topology.cc
     hwy/contrib/thread_pool/topology.h
@@ -197,6 +230,7 @@ endif()  # HWY_ENABLE_CONTRIB
 set(HWY_SOURCES
     hwy/abort.h
     hwy/aligned_allocator.h
+    hwy/auto_tune.h
     hwy/base.h
     hwy/cache_control.h
     hwy/detect_compiler_arch.h  # private
@@ -219,6 +253,7 @@ set(HWY_SOURCES
     hwy/ops/x86_128-inl.h
     hwy/ops/x86_256-inl.h
     hwy/ops/x86_512-inl.h
+    hwy/ops/x86_avx3-inl.h
     hwy/per_target.h
     hwy/print-inl.h
     hwy/print.h
@@ -227,6 +262,7 @@ set(HWY_SOURCES
     hwy/targets.h
     hwy/timer-inl.h
     hwy/timer.h
+    hwy/x86_cpuid.h
 )
 
 if (NOT HWY_CMAKE_HEADER_ONLY)
@@ -235,6 +271,7 @@ if (NOT HWY_CMAKE_HEADER_ONLY)
     hwy/aligned_allocator.cc
     hwy/nanobenchmark.cc
     hwy/per_target.cc
+    hwy/perf_counters.cc
     hwy/print.cc
     hwy/targets.cc
     hwy/timer.cc
@@ -436,6 +473,10 @@ else()
 
 endif()  # !MSVC
 
+if (HWY_DISABLE_FUTEX)
+  list(APPEND HWY_FLAGS -DHWY_DISABLE_FUTEX)
+endif()
+
 if (HWY_CMAKE_HEADER_ONLY)
   list(APPEND HWY_FLAGS -DHWY_HEADER_ONLY)
 endif()
@@ -512,6 +553,11 @@ set_target_properties(hwy_contrib PROPERTIES
   LINK_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/hwy/hwy.version)
 # For GCC __atomic_store_8, see #887
 target_link_libraries(hwy_contrib PRIVATE ${ATOMICS_LIBRARIES})
+
+if (WIN32 AND NOT MSVC AND NOT HWY_DISABLE_FUTEX)
+target_link_libraries(hwy_contrib PUBLIC synchronization)
+endif()
+
 # not supported by MSVC/Clang, safe to skip (we use DLLEXPORT annotations)
 if(UNIX AND NOT APPLE)
   set_property(TARGET hwy_contrib APPEND_STRING PROPERTY
@@ -613,6 +659,19 @@ endif()  # HWY_ENABLE_TESTS
 # Add a pkg-config file for libhwy and the contrib/test libraries.
 set(HWY_LIBRARY_VERSION "${CMAKE_PROJECT_VERSION}")
 set(HWY_PC_FILES libhwy.pc)
+
+if (HWY_DISABLE_FUTEX)
+  set(HWY_PC_DISABLE_FUTEX_CFLAGS "-DHWY_DISABLE_FUTEX")
+else()
+  set(HWY_PC_DISABLE_FUTEX_CFLAGS "")
+endif()
+
+if (WIN32 AND NOT MSVC AND NOT HWY_DISABLE_FUTEX)
+  set(HWY_PC_WIN32_SYNCHRONIZATION_LIBS "-lsynchronization")
+else()
+  set(HWY_PC_WIN32_SYNCHRONIZATION_LIBS "")
+endif()
+
 if (HWY_ENABLE_CONTRIB)
 list(APPEND HWY_PC_FILES libhwy-contrib.pc)
 endif()  # HWY_ENABLE_CONTRIB
@@ -708,15 +767,14 @@ endif()  # HWY_SYSTEM_GTEST
 endif()  # HWY_TEST_STANDALONE
 
 set(HWY_TEST_FILES
-  hwy/contrib/algo/copy_test.cc
-  hwy/contrib/algo/find_test.cc
-  hwy/contrib/algo/transform_test.cc
   hwy/abort_test.cc
   hwy/aligned_allocator_test.cc
+  hwy/auto_tune_test.cc
   hwy/base_test.cc
   hwy/bit_set_test.cc
   hwy/highway_test.cc
   hwy/nanobenchmark_test.cc
+  hwy/perf_counters_test.cc
   hwy/targets_test.cc
   hwy/examples/skeleton_test.cc
   hwy/tests/arithmetic_test.cc
@@ -727,6 +785,7 @@ set(HWY_TEST_FILES
   hwy/tests/cast_test.cc
   hwy/tests/combine_test.cc
   hwy/tests/compare_test.cc
+  hwy/tests/complex_arithmetic_test.cc
   hwy/tests/compress_test.cc
   hwy/tests/concat_test.cc
   hwy/tests/convert_test.cc
@@ -746,12 +805,15 @@ set(HWY_TEST_FILES
   hwy/tests/mask_combine_test.cc
   hwy/tests/mask_convert_test.cc
   hwy/tests/mask_mem_test.cc
+  hwy/tests/mask_set_test.cc
   hwy/tests/mask_slide_test.cc
   hwy/tests/mask_test.cc
   hwy/tests/masked_arithmetic_test.cc
   hwy/tests/masked_minmax_test.cc
   hwy/tests/memory_test.cc
+  hwy/tests/minmax_magnitude_test.cc
   hwy/tests/minmax_test.cc
+  hwy/tests/minmax128_test.cc
   hwy/tests/mul_by_pow2_test.cc
   hwy/tests/mul_pairwise_test.cc
   hwy/tests/mul_test.cc
@@ -780,6 +842,9 @@ if (HWY_ENABLE_CONTRIB)
 list(APPEND HWY_TEST_LIBS hwy_contrib)
 
 list(APPEND HWY_TEST_FILES
+  hwy/contrib/algo/copy_test.cc
+  hwy/contrib/algo/find_test.cc
+  hwy/contrib/algo/transform_test.cc
   hwy/contrib/bit_pack/bit_pack_test.cc
   hwy/contrib/dot/dot_test.cc
   hwy/contrib/matvec/matvec_test.cc
@@ -791,6 +856,7 @@ list(APPEND HWY_TEST_FILES
   hwy/contrib/sort/bench_sort.cc
   hwy/contrib/sort/sort_test.cc
   hwy/contrib/sort/sort_unit_test.cc
+  hwy/contrib/thread_pool/spin_test.cc
   hwy/contrib/thread_pool/thread_pool_test.cc
   hwy/contrib/thread_pool/topology_test.cc
   hwy/contrib/unroller/unroller_test.cc
