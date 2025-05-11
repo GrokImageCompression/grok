@@ -41,21 +41,22 @@
             ]
         },
         {
-            "name": "crash",
+            "name": "test",
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/build/bin/grk_decompress",
             "args": [
                 "-i",
-                "~/Downloads/clusterfuzz-testcase-minimized-grk_decompress_fuzzer-5319359051923456",
+                "$HOME/src/grok-test-data/input/nonregression/boats_cprl.j2k",
                 "-o",
-                "~/temp/fuzz.pgx",
-                "-v",
+                "~/temp/bit16_layer5.tif",
                 "-d 0,0,1024,1024"
             ],
             "stopAtEntry": true,
             "cwd": "${workspaceFolder}",
-            "environment": [],
+            "environment": [
+                { "name": "GRK_DEBUG", "value": "4" },
+            ],
             "MIMode": "gdb",
             "setupCommands": [
                 {
@@ -74,8 +75,7 @@
                 "-i",
                 "~/src/grok-test-data/input/nonregression/multi_tile_truncated_rgb.jp2",
                 "-o",
-                "~/temp/trunc.txt",
-                "-v"
+                "~/temp/trunc.txt"
             ],
             "stopAtEntry": true,
             "cwd": "${workspaceFolder}",
