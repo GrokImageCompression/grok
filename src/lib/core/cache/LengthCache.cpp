@@ -66,7 +66,7 @@ bool TileInfo::checkResize(void)
       markerInfo = nullptr;
       allocatedMarkers = 0;
       numMarkers = 0;
-      Logger::logger_.error("Not enough memory to add TLM marker");
+      grklog.error("Not enough memory to add TLM marker");
       return false;
     }
     markerInfo = new_marker;
@@ -215,7 +215,7 @@ bool CodeStreamInfo::seekFirstTilePart(uint16_t tile_index)
   // move just past SOT marker of first tile part for this tile
   if(!(stream->seek(tileInfoForTile->getTilePartInfo(0)->startPosition + MARKER_BYTES)))
   {
-    Logger::logger_.error("Error in seek");
+    grklog.error("Error in seek");
     return false;
   }
 

@@ -51,7 +51,7 @@ size_t SparseBuffer::read(void* buffer, size_t numBytes)
   if(numBytes > contiguousBytesRemaining)
   {
 #ifdef DEBUG_CHUNK_BUF
-    Logger::logger_.warn("attempt to read past end of chunk buffer");
+    grklog.warn("attempt to read past end of chunk buffer");
 #endif
     numBytes = contiguousBytesRemaining;
   }
@@ -79,7 +79,7 @@ size_t SparseBuffer::skip(size_t numBytes)
   if(numBytes + getGlobalOffset() > dataLen)
   {
 #ifdef DEBUG_CHUNK_BUF
-    Logger::logger_.warn("attempt to skip past end of chunk buffer");
+    grklog.warn("attempt to skip past end of chunk buffer");
 #endif
     return numBytes;
   }

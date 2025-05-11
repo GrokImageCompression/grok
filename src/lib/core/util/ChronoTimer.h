@@ -18,7 +18,7 @@ public:
   {
     auto finish = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> elapsed = finish - startTime;
-    Logger::logger_.info("%s : %f ms", message.c_str(), elapsed.count() * 1000);
+    grklog.info("%s : %f ms", message.c_str(), elapsed.count() * 1000);
   }
 
 private:

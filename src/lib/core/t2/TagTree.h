@@ -66,7 +66,7 @@ public:
     {
       if(numLevels == 32)
       {
-        Logger::logger_.error("TagTree constructor: num level overflow");
+        grklog.error("TagTree constructor: num level overflow");
         throw std::exception();
       }
       nodesPerLevel = (uint64_t)resLeavesWidth[numLevels] * resLeavesHeight[numLevels];
@@ -78,7 +78,7 @@ public:
 
     if(nodeCount == 0)
     {
-      Logger::logger_.warn("tgt_create numnodes == 0, no tree created.");
+      grklog.warn("tgt_create numnodes == 0, no tree created.");
       throw std::runtime_error("tgt_create numnodes == 0, no tree created");
     }
 

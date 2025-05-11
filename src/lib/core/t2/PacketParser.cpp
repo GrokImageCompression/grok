@@ -90,8 +90,8 @@ void PacketParser::readHeader(void)
           (uint16_t)(((uint16_t)currentData[4] << 8) | currentData[5]);
       if(signalledPacketSequenceNumber != (packetSequenceNumber_))
       {
-        Logger::logger_.warn("SOP marker packet counter %u does not match expected counter %u",
-                             signalledPacketSequenceNumber, packetSequenceNumber_);
+        grklog.warn("SOP marker packet counter %u does not match expected counter %u",
+                    signalledPacketSequenceNumber, packetSequenceNumber_);
         headerError_ = true;
         throw CorruptPacketHeaderException();
       }
@@ -106,8 +106,8 @@ void PacketParser::readHeader(void)
   {
     if(tileProcessor_->getIndex() >= cp->ppm_marker->packetHeaders.size())
     {
-      Logger::logger_.error("PPM marker has no packed packet header data for tile %u",
-                            tileProcessor_->getIndex() + 1);
+      grklog.error("PPM marker has no packed packet header data for tile %u",
+                   tileProcessor_->getIndex() + 1);
       headerError_ = true;
       throw CorruptPacketHeaderException();
     }
@@ -128,7 +128,7 @@ void PacketParser::readHeader(void)
   try
   {
     tagBitsPresent_ = bio->read();
-    // Logger::logger_.info("present=%u ", present);
+    // grklog.info("present=%u ", present);
     if(tagBitsPresent_)
     {
       for(uint32_t bandIndex = 0; bandIndex < res->numTileBandWindows; ++bandIndex)
@@ -158,9 +158,9 @@ void PacketParser::readHeader(void)
             incl->decodeValue(bio.get(), cblkno, layno_ + 1, &value);
             if(value != incl->getUninitializedValue() && value != layno_)
             {
-              Logger::logger_.warn("Tile number: %u", tileProcessor_->getIndex() + 1);
+              grklog.warn("Tile number: %u", tileProcessor_->getIndex() + 1);
               std::string msg = "Corrupt inclusion tag tree found when decoding packet header.";
-              Logger::logger_.warn("%s", msg.c_str());
+              grklog.warn("%s", msg.c_str());
               headerError_ = true;
               throw CorruptPacketHeaderException();
             }
@@ -188,9 +188,9 @@ void PacketParser::readHeader(void)
               ++K_msbs;
               if(K_msbs > maxBitPlanesGRK)
               {
-                Logger::logger_.warn("More missing code block bit planes (%u)"
-                                     " than supported number of bit planes (%u) in library.",
-                                     K_msbs, maxBitPlanesGRK);
+                grklog.warn("More missing code block bit planes (%u)"
+                            " than supported number of bit planes (%u) in library.",
+                            K_msbs, maxBitPlanesGRK);
                 headerError_ = true;
                 throw CorruptPacketHeaderException();
               }
@@ -200,9 +200,9 @@ void PacketParser::readHeader(void)
             K_msbs--;
             if(K_msbs > band->numbps)
             {
-              Logger::logger_.warn("More missing code block bit planes (%u) than band bit planes "
-                                   "(%u).",
-                                   K_msbs, band->numbps);
+              grklog.warn("More missing code block bit planes (%u) than band bit planes "
+                          "(%u).",
+                          K_msbs, band->numbps);
               headerError_ = true;
               throw CorruptPacketHeaderException();
             }
@@ -212,8 +212,8 @@ void PacketParser::readHeader(void)
             }
             if(cblk->numbps > maxBitPlanesGRK)
             {
-              Logger::logger_.warn("Number of bit planes %u is larger than maximum %u",
-                                   cblk->numbps, maxBitPlanesGRK);
+              grklog.warn("Number of bit planes %u is larger than maximum %u", cblk->numbps,
+                          maxBitPlanesGRK);
               headerError_ = true;
               throw CorruptPacketHeaderException();
             }
@@ -244,9 +244,9 @@ void PacketParser::readHeader(void)
             {
               if(blockPassesInPacket > (int32_t)maxPassesPerSegmentJ2K)
               {
-                Logger::logger_.warn("Number of code block passes (%u) in packet is "
-                                     "suspiciously large.",
-                                     blockPassesInPacket);
+                grklog.warn("Number of code block passes (%u) in packet is "
+                            "suspiciously large.",
+                            blockPassesInPacket);
                 headerError_ = true;
                 throw CorruptPacketHeaderException();
               }
@@ -264,7 +264,7 @@ void PacketParser::readHeader(void)
             uint8_t bits_to_read = cblk->numlenbits + floorlog2(seg->numPassesInPacket);
             if(bits_to_read > 32)
             {
-              Logger::logger_.warn("readHeader: too many bits in segment length ");
+              grklog.warn("readHeader: too many bits in segment length ");
               headerError_ = true;
               throw CorruptPacketHeaderException();
             }
@@ -302,7 +302,7 @@ void PacketParser::readHeader(void)
         (uint16_t)(((uint16_t)(*currentHeaderPtr) << 8) | (uint16_t)(*(currentHeaderPtr + 1)));
     if(marker != J2K_EPH)
     {
-      Logger::logger_.warn("Expected EPH marker, but found 0x%x", marker);
+      grklog.warn("Expected EPH marker, but found 0x%x", marker);
       headerError_ = true;
       throw CorruptPacketHeaderException();
     }
@@ -318,9 +318,9 @@ void PacketParser::readHeader(void)
   // validate PL marker against parsed packet
   if(lengthFromMarker_ && lengthFromMarker_ != numSignalledBytes())
   {
-    Logger::logger_.error("Corrupt PL marker reports %u bytes for packet;"
-                          " parsed bytes are in fact %u",
-                          lengthFromMarker_, numSignalledBytes());
+    grklog.error("Corrupt PL marker reports %u bytes for packet;"
+                 " parsed bytes are in fact %u",
+                 lengthFromMarker_, numSignalledBytes());
     headerError_ = true;
     throw CorruptPacketHeaderException();
   }
@@ -385,10 +385,10 @@ void PacketParser::readData(void)
       {
         if(remainingTilePartBytes_ == 0)
         {
-          Logger::logger_.warn("Packet data is truncated or packet header is corrupt :");
-          Logger::logger_.warn("at component=%02d resolution=%02d precinct=%03d "
-                               "layer=%02d",
-                               compno_, resno_, precinctIndex_, layno_);
+          grklog.warn("Packet data is truncated or packet header is corrupt :");
+          grklog.warn("at component=%02d resolution=%02d precinct=%03d "
+                      "layer=%02d",
+                      compno_, resno_, precinctIndex_, layno_);
           goto finish;
         }
         if(((seg->numBytesInPacket) > remainingTilePartBytes_))
@@ -406,9 +406,9 @@ void PacketParser::readData(void)
           // sanity check on seg->numBytesInPacket
           if(UINT_MAX - seg->numBytesInPacket < seg->len)
           {
-            Logger::logger_.error("Segment packet length %u plus total segment length %u must be "
-                                  "less than 2^32",
-                                  seg->numBytesInPacket, seg->len);
+            grklog.error("Segment packet length %u plus total segment length %u must be "
+                         "less than 2^32",
+                         seg->numBytesInPacket, seg->len);
             throw CorruptPacketDataException();
           }
           // correct for truncated packet
@@ -475,7 +475,7 @@ void PrecinctPacketParsers::pushParser(PacketParser* parser)
     return;
   if(numParsers_ >= allocatedParsers_)
   {
-    Logger::logger_.warn("Attempt to add parser for layer larger than max number of layers.");
+    grklog.warn("Attempt to add parser for layer larger than max number of layers.");
     return;
   }
   parsers_[numParsers_++] = parser;

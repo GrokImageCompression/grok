@@ -78,19 +78,19 @@ bool ResPrecinctInfo::init(uint8_t resno, uint8_t decompLevel, grk_rect32 tileBo
 }
 void ResPrecinctInfo::print(void)
 {
-  Logger::logger_.info("\n");
-  Logger::logger_.info("RESOLUTION PRECINCT INFO for resolution level %u", resno_);
-  Logger::logger_.info("precinct exponents: (%u,%u)", precWidthExp, precHeightExp);
-  Logger::logger_.info("precinct dimensions (projected): (%u,%u)", precWidthPRJ, precHeightPRJ);
-  Logger::logger_.info("number of precincts: %u", numPrecincts_);
-  Logger::logger_.info("subsampling (projected): (%u,%u)", dxPRJ, dyPRJ);
-  Logger::logger_.info("tile bounds aligned to precincts (projected) =>");
+  grklog.info("\n");
+  grklog.info("RESOLUTION PRECINCT INFO for resolution level %u", resno_);
+  grklog.info("precinct exponents: (%u,%u)", precWidthExp, precHeightExp);
+  grklog.info("precinct dimensions (projected): (%u,%u)", precWidthPRJ, precHeightPRJ);
+  grklog.info("number of precincts: %u", numPrecincts_);
+  grklog.info("subsampling (projected): (%u,%u)", dxPRJ, dyPRJ);
+  grklog.info("tile bounds aligned to precincts (projected) =>");
   tileBoundsPrecPRJ.print();
-  Logger::logger_.info("tile bounds mapped to precinct grid (resolution) =>");
+  grklog.info("tile bounds mapped to precinct grid (resolution) =>");
   tileBoundsPrecGrid.print();
-  Logger::logger_.info("window bounds aligned to precincts (projected) =>");
+  grklog.info("window bounds aligned to precincts (projected) =>");
   winPrecPRJ.print();
-  Logger::logger_.info("window bounds mapped to precinct grid (resolution) =>");
+  grklog.info("window bounds mapped to precinct grid (resolution) =>");
   winPrecGrid.print();
 }
 
@@ -114,9 +114,9 @@ void PacketIter::printStaticState(void)
 {
   if(precinctInfoOPT_)
   {
-    Logger::logger_.info("Packet Iterator Static State");
-    Logger::logger_.info("progression bounds [C-R-P-L] : [%u %u %u %u] ", prog.comp_e, prog.res_e,
-                         prog.prec_e, prog.lay_e);
+    grklog.info("Packet Iterator Static State");
+    grklog.info("progression bounds [C-R-P-L] : [%u %u %u %u] ", prog.comp_e, prog.res_e,
+                prog.prec_e, prog.lay_e);
     for(uint32_t resno = 0; resno < comps->numresolutions; resno++)
     {
       auto inf = precinctInfoOPT_ + resno;
@@ -128,10 +128,9 @@ void PacketIter::printDynamicState(void)
 {
   if(precinctInfoOPT_)
   {
-    Logger::logger_.info("Packet Iterator Dynamic State");
-    Logger::logger_.info("progression state [C-R-P-L] : [%u %u (%u,%u) %u] ", compno, resno, x, y,
-                         layno);
-    Logger::logger_.info("precinct index: %" PRIu64 ".", precinctIndex);
+    grklog.info("Packet Iterator Dynamic State");
+    grklog.info("progression state [C-R-P-L] : [%u %u (%u,%u) %u] ", compno, resno, x, y, layno);
+    grklog.info("precinct index: %" PRIu64 ".", precinctIndex);
   }
 }
 
@@ -1056,7 +1055,7 @@ bool PacketIter::skipPackets(SparseBuffer* src, uint64_t numPackets)
   auto skipLen = src->skip(len);
   if(len != skipLen)
   {
-    Logger::logger_.error("Packet iterator: unable to skip precincts.");
+    grklog.error("Packet iterator: unable to skip precincts.");
     return false;
   }
   tp->incNumProcessedPackets(numPackets);

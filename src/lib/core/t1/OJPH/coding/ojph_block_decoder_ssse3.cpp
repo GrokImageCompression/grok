@@ -1033,7 +1033,7 @@ namespace ojph {
 
       if (num_passes > 1 && lengths2 == 0)
       {
-        grk::Logger::logger_.warn("A malformed codeblock that has more than "
+        grk::grklog.warn("A malformed codeblock that has more than "
                               "one coding pass, but zero length for "
                               "2nd and potential 3rd pass.\n");
         num_passes = 1;
@@ -1041,7 +1041,7 @@ namespace ojph {
 
       if (num_passes > 3)
       {
-        grk::Logger::logger_.warn("We do not support more than 3 coding passes; "
+        grk::grklog.warn("We do not support more than 3 coding passes; "
                               "This codeblocks has %d passes.\n",
                               num_passes);
         return false;
@@ -1052,7 +1052,7 @@ namespace ojph {
         if (insufficient_precision == false) 
         {
           insufficient_precision = true;
-          grk::Logger::logger_.warn("32 bits are not enough to decode this "
+          grk::grklog.warn("32 bits are not enough to decode this "
                                 "codeblock. This message will not be "
                                 "displayed again.\n");
         }
@@ -1062,7 +1062,7 @@ namespace ojph {
       { // not enough precision to decode and set the bin center to 1
         if (modify_code == false) {
           modify_code = true;
-          grk::Logger::logger_.warn("Not enough precision to decode the cleanup "
+          grk::grklog.warn("Not enough precision to decode the cleanup "
                                 "pass. The code can be modified to support "
                                 "this case. This message will not be "
                                 "displayed again.\n");
@@ -1075,7 +1075,7 @@ namespace ojph {
           num_passes = 1;
           if (truncate_spp_mrp == false) {
             truncate_spp_mrp = true;
-            grk::Logger::logger_.warn("Not enough precision to decode the SgnProp "
+            grk::grklog.warn("Not enough precision to decode the SgnProp "
                                   "nor MagRef passes; both will be skipped. "
                                   "This message will not be displayed "
                                   "again.\n");
@@ -1088,7 +1088,7 @@ namespace ojph {
 
       if (lengths1 < 2)
       {
-        grk::Logger::logger_.warn("Wrong codeblock length.\n");
+        grk::grklog.warn("Wrong codeblock length.\n");
         return false;
       }
 

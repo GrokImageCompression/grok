@@ -90,7 +90,7 @@ struct dwt_data
     /* overflow check */
     if(len > (SIZE_MAX / sizeof(T)))
     {
-      Logger::logger_.error("data size overflow");
+      grklog.error("data size overflow");
       return false;
     }
     paddingBytes_ = grk_make_aligned_width((uint32_t)padding * 2 + 32) * sizeof(T);
@@ -98,7 +98,7 @@ struct dwt_data
     allocatedMem = (T*)grk_aligned_malloc(lenBytes_);
     if(!allocatedMem)
     {
-      Logger::logger_.error("Failed to allocate %u bytes", lenBytes_);
+      grklog.error("Failed to allocate %u bytes", lenBytes_);
       return false;
     }
     mem = allocatedMem + paddingBytes_ / sizeof(T);

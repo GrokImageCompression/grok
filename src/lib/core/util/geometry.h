@@ -174,7 +174,7 @@ struct grk_rect
   }
   virtual void print(void) const
   {
-    Logger::logger_.info("[%u,%u,%u,%u,%u,%u]", origin_x0, origin_y0, x0, y0, x1, y1);
+    grklog.info("[%u,%u,%u,%u,%u,%u]", origin_x0, origin_y0, x0, y0, x1, y1);
   }
   std::string boundsString() const
   {

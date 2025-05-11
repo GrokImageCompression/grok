@@ -71,8 +71,8 @@ bool CodeStreamDecompress::readSOTorEOC(void)
     return false;
   }
   if(curr_marker_ != J2K_SOT && curr_marker_ != J2K_EOC)
-    Logger::logger_.warn("Expected SOT or EOC marker - read %s marker instead.",
-                         markerString(curr_marker_).c_str());
+    grklog.warn("Expected SOT or EOC marker - read %s marker instead.",
+                markerString(curr_marker_).c_str());
 
   return true;
 }
@@ -85,13 +85,13 @@ bool CodeStreamDecompress::readCurrentMarkerBody(uint16_t* markerLength)
   }
   else if(*markerLength < MARKER_LENGTH_BYTES)
   {
-    Logger::logger_.error("Marker length %u for marker 0x%x is less than marker length bytes (2)",
-                          *markerLength, curr_marker_);
+    grklog.error("Marker length %u for marker 0x%x is less than marker length bytes (2)",
+                 *markerLength, curr_marker_);
     return false;
   }
   else if(*markerLength == MARKER_LENGTH_BYTES)
   {
-    Logger::logger_.error("Zero-size marker in header.");
+    grklog.error("Zero-size marker in header.");
     return false;
   }
   if(decompressorState_.getState() & DECOMPRESS_STATE_TPH)
@@ -105,12 +105,12 @@ bool CodeStreamDecompress::readCurrentMarkerBody(uint16_t* markerLength)
   auto marker_handler = get_marker_handler(curr_marker_);
   if(!marker_handler)
   {
-    Logger::logger_.error("Unknown marker 0x%x encountered", curr_marker_);
+    grklog.error("Unknown marker 0x%x encountered", curr_marker_);
     return false;
   }
   if(!(decompressorState_.getState() & marker_handler->states))
   {
-    Logger::logger_.error("Marker 0x%x is not compliant with its expected position", curr_marker_);
+    grklog.error("Marker 0x%x is not compliant with its expected position", curr_marker_);
     return false;
   }
 
@@ -129,7 +129,7 @@ bool CodeStreamDecompress::parseTileParts(bool* canDecompress)
   /* We need to encounter a SOT marker (a new tile-part header) */
   if(decompressorState_.getState() != DECOMPRESS_STATE_TPH_SOT)
   {
-    Logger::logger_.error("parseTileParts: no SOT marker found");
+    grklog.error("parseTileParts: no SOT marker found");
     return false;
   }
 
@@ -168,13 +168,13 @@ bool CodeStreamDecompress::parseTileParts(bool* canDecompress)
                stream_->tell() - markerSize - MARKER_PLUS_MARKER_LENGTH_BYTES,
                markerSize + MARKER_PLUS_MARKER_LENGTH_BYTES))
         {
-          Logger::logger_.error("Not enough memory to add tl marker");
+          grklog.error("Not enough memory to add tl marker");
           return false;
         }
       }
       if(curr_marker_ == J2K_SOT)
       {
-        // Logger::logger_.info("Found SOT for tile %d",currentTileProcessor_->getIndex());
+        // grklog.info("Found SOT for tile %d",currentTileProcessor_->getIndex());
         //  cache SOT position
         uint64_t sot_pos = stream_->tell() - markerSize - MARKER_PLUS_MARKER_LENGTH_BYTES;
         if(sot_pos > decompressorState_.lastSotReadPosition)
@@ -185,7 +185,7 @@ bool CodeStreamDecompress::parseTileParts(bool* canDecompress)
         {
           if(!stream_->skip((int64_t)currentTileProcessor_->getTilePartDataLength()))
           {
-            Logger::logger_.error("Stream too short");
+            grklog.error("Stream too short");
             return false;
           }
           expectSOD_ = false;
@@ -222,7 +222,7 @@ bool CodeStreamDecompress::parseTileParts(bool* canDecompress)
   }
   if(!currentTileProcessor_)
   {
-    Logger::logger_.error("Missing SOT marker");
+    grklog.error("Missing SOT marker");
     return false;
   }
   // ensure lossy wavelet has quantization set
@@ -233,12 +233,11 @@ bool CodeStreamDecompress::parseTileParts(bool* canDecompress)
     auto tccp = tcp->tccps + k;
     if(tccp->qmfbid == 0 && tccp->qntsty == J2K_CCP_QNTSTY_NOQNT)
     {
-      Logger::logger_.error(
-          "Tile-components compressed using the irreversible processing path\n"
-          "must have quantization parameters specified in the QCD/QCC marker segments,\n"
-          "either explicitly, or through implicit derivation from the quantization\n"
-          "parameters for the LL subband, as explained in the JPEG2000 standard, ISO/IEC\n"
-          "15444-1.  The present set of code-stream parameters is not legal.");
+      grklog.error("Tile-components compressed using the irreversible processing path\n"
+                   "must have quantization parameters specified in the QCD/QCC marker segments,\n"
+                   "either explicitly, or through implicit derivation from the quantization\n"
+                   "parameters for the LL subband, as explained in the JPEG2000 standard, ISO/IEC\n"
+                   "15444-1.  The present set of code-stream parameters is not legal.");
       return false;
     }
   }
@@ -265,11 +264,11 @@ bool CodeStreamDecompress::parseTileParts(bool* canDecompress)
     }
     if((tcp->main_qcd_numStepSizes < 3 * (uint32_t)maxDecompositions + 1))
     {
-      Logger::logger_.error("From Main QCD marker, "
-                            "number of step sizes (%u) is less than "
-                            "3* (maximum decompositions) + 1, "
-                            "where maximum decompositions = %u ",
-                            tcp->main_qcd_numStepSizes, maxDecompositions);
+      grklog.error("From Main QCD marker, "
+                   "number of step sizes (%u) is less than "
+                   "3* (maximum decompositions) + 1, "
+                   "where maximum decompositions = %u ",
+                   tcp->main_qcd_numStepSizes, maxDecompositions);
       return false;
     }
     // 2. Check Tile QCD
@@ -303,11 +302,11 @@ bool CodeStreamDecompress::parseTileParts(bool* canDecompress)
       }
       if((qcd_comp->numStepSizes < 3 * maxTileDecompositions + 1))
       {
-        Logger::logger_.error("From Tile QCD marker, "
-                              "number of step sizes (%u) is less than"
-                              " 3* (maximum tile decompositions) + 1, "
-                              "where maximum tile decompositions = %u ",
-                              qcd_comp->numStepSizes, maxTileDecompositions);
+        grklog.error("From Tile QCD marker, "
+                     "number of step sizes (%u) is less than"
+                     " 3* (maximum tile decompositions) + 1, "
+                     "where maximum tile decompositions = %u ",
+                     qcd_comp->numStepSizes, maxTileDecompositions);
 
         return false;
       }
@@ -329,12 +328,12 @@ bool CodeStreamDecompress::parseTileParts(bool* canDecompress)
   }
   if(!merge_ppt(cp_.tcps + currentTileProcessor_->getIndex()))
   {
-    Logger::logger_.error("Failed to merge PPT data");
+    grklog.error("Failed to merge PPT data");
     return false;
   }
   if(!currentTileProcessor_->init())
   {
-    Logger::logger_.error("Cannot decompress tile %u", currentTileProcessor_->getIndex());
+    grklog.error("Cannot decompress tile %u", currentTileProcessor_->getIndex());
     return false;
   }
   *canDecompress = true;
@@ -369,15 +368,15 @@ bool CodeStreamDecompress::read_poc(uint8_t* headerData, uint16_t header_size)
 
   if((currentNumProgressions == 0) || (currentRemainingProgressions != 0))
   {
-    Logger::logger_.error("Error reading POC marker");
+    grklog.error("Error reading POC marker");
     return false;
   }
   uint32_t oldNumProgressions = tcp->getNumProgressions();
   currentNumProgressions += oldNumProgressions;
   if(currentNumProgressions > GRK_MAXRLVLS)
   {
-    Logger::logger_.error("read_poc: number of progressions %u exceeds Grok maximum number %u",
-                          currentNumProgressions, GRK_MAXRLVLS);
+    grklog.error("read_poc: number of progressions %u exceeds Grok maximum number %u",
+                 currentNumProgressions, GRK_MAXRLVLS);
     return false;
   }
 
@@ -389,8 +388,7 @@ bool CodeStreamDecompress::read_poc(uint8_t* headerData, uint16_t header_size)
     ++headerData;
     if(current_prog->res_s >= maxNumResLevels)
     {
-      Logger::logger_.error("read_poc: invalid POC start resolution number %u",
-                            current_prog->res_s);
+      grklog.error("read_poc: invalid POC start resolution number %u", current_prog->res_s);
       return false;
     }
     /* CSpoc_i */
@@ -398,7 +396,7 @@ bool CodeStreamDecompress::read_poc(uint8_t* headerData, uint16_t header_size)
     headerData += componentRoom;
     if(current_prog->comp_s > image->numcomps)
     {
-      Logger::logger_.error("read_poc: invalid POC start component %u", current_prog->comp_s);
+      grklog.error("read_poc: invalid POC start component %u", current_prog->comp_s);
       return false;
     }
     /* LYEpoc_i */
@@ -412,7 +410,7 @@ bool CodeStreamDecompress::read_poc(uint8_t* headerData, uint16_t header_size)
     current_prog->res_e = std::min<uint8_t>(current_prog->res_e, maxNumResLevels);
     if(current_prog->res_e <= current_prog->res_s)
     {
-      Logger::logger_.error("read_poc: invalid POC end resolution %u", current_prog->res_e);
+      grklog.error("read_poc: invalid POC end resolution %u", current_prog->res_e);
       return false;
     }
     /* CEpoc_i */
@@ -421,9 +419,9 @@ bool CodeStreamDecompress::read_poc(uint8_t* headerData, uint16_t header_size)
     current_prog->comp_e = std::min<uint16_t>(current_prog->comp_e, numComps);
     if(current_prog->comp_e <= current_prog->comp_s)
     {
-      Logger::logger_.error("read_poc: invalid POC end component (%u) : end component is "
-                            "less than or equal to POC start component (%u)",
-                            current_prog->comp_e, current_prog->comp_s);
+      grklog.error("read_poc: invalid POC end component (%u) : end component is "
+                   "less than or equal to POC start component (%u)",
+                   current_prog->comp_e, current_prog->comp_s);
       return false;
     }
     /* Ppoc_i */
@@ -431,7 +429,7 @@ bool CodeStreamDecompress::read_poc(uint8_t* headerData, uint16_t header_size)
     grk_read(headerData++, &tmp);
     if(tmp >= GRK_NUM_PROGRESSION_ORDERS)
     {
-      Logger::logger_.error("read_poc: unknown POC progression order %u", tmp);
+      grklog.error("read_poc: unknown POC progression order %u", tmp);
       return false;
     }
     current_prog->progression = (GRK_PROG_ORDER)tmp;
@@ -453,7 +451,7 @@ bool CodeStreamDecompress::read_crg(uint8_t* headerData, uint16_t header_size)
   uint32_t numComps = getHeaderImage()->numcomps;
   if(header_size != numComps * 4)
   {
-    Logger::logger_.error("Error reading CRG marker");
+    grklog.error("Error reading CRG marker");
     return false;
   }
   for(uint32_t i = 0; i < numComps; ++i)
@@ -534,14 +532,13 @@ bool CodeStreamDecompress::read_ppt(uint8_t* headerData, uint16_t header_size)
   /* We need to have the Z_ppt element + 1 byte of Ippt at minimum */
   if(header_size < 2)
   {
-    Logger::logger_.error("Error reading PPT marker");
+    grklog.error("Error reading PPT marker");
     return false;
   }
   if(cp_.ppm_marker)
   {
-    Logger::logger_.error(
-        "Error reading PPT marker: packet header have been previously found in the main "
-        "header (PPM marker).");
+    grklog.error("Error reading PPT marker: packet header have been previously found in the main "
+                 "header (PPM marker).");
     return false;
   }
 
@@ -561,7 +558,7 @@ bool CodeStreamDecompress::read_ppt(uint8_t* headerData, uint16_t header_size)
     tcp->ppt_markers = (grk_ppx*)grk_calloc(newCount, sizeof(grk_ppx));
     if(tcp->ppt_markers == nullptr)
     {
-      Logger::logger_.error("Not enough memory to read PPT marker");
+      grklog.error("Not enough memory to read PPT marker");
       return false;
     }
     tcp->ppt_markers_count = newCount;
@@ -574,7 +571,7 @@ bool CodeStreamDecompress::read_ppt(uint8_t* headerData, uint16_t header_size)
     if(new_ppt_markers == nullptr)
     {
       /* clean up to be done on tcp destruction */
-      Logger::logger_.error("Not enough memory to read PPT marker");
+      grklog.error("Not enough memory to read PPT marker");
       return false;
     }
     tcp->ppt_markers = new_ppt_markers;
@@ -586,7 +583,7 @@ bool CodeStreamDecompress::read_ppt(uint8_t* headerData, uint16_t header_size)
   if(tcp->ppt_markers[Z_ppt].data_ != nullptr)
   {
     /* clean up to be done on tcp destruction */
-    Logger::logger_.error("Zppt %u already read", Z_ppt);
+    grklog.error("Zppt %u already read", Z_ppt);
     return false;
   }
 
@@ -594,7 +591,7 @@ bool CodeStreamDecompress::read_ppt(uint8_t* headerData, uint16_t header_size)
   if(tcp->ppt_markers[Z_ppt].data_ == nullptr)
   {
     /* clean up to be done on tcp destruction */
-    Logger::logger_.error("Not enough memory to read PPT marker");
+    grklog.error("Not enough memory to read PPT marker");
     return false;
   }
   tcp->ppt_markers[Z_ppt].data_size_ = header_size;
@@ -616,7 +613,7 @@ bool CodeStreamDecompress::merge_ppt(TileCodingParams* p_tcp)
 
   if(p_tcp->ppt_buffer != nullptr)
   {
-    Logger::logger_.error("multiple calls to CodeStreamDecompress::merge_ppt()");
+    grklog.error("multiple calls to CodeStreamDecompress::merge_ppt()");
     return false;
   }
 
@@ -685,7 +682,7 @@ bool CodeStreamDecompress::read_rgn(uint8_t* headerData, uint16_t header_size)
 
   if(header_size != 2 + comp_room)
   {
-    Logger::logger_.error("Error reading RGN marker");
+    grklog.error("Error reading RGN marker");
     return false;
   }
 
@@ -698,14 +695,13 @@ bool CodeStreamDecompress::read_rgn(uint8_t* headerData, uint16_t header_size)
   grk_read<uint32_t>(headerData++, &roi_sty, 1);
   if(roi_sty != 0)
   {
-    Logger::logger_.error("RGN marker RS value of %u is not supported by JPEG 2000 Part 1",
-                          roi_sty);
+    grklog.error("RGN marker RS value of %u is not supported by JPEG 2000 Part 1", roi_sty);
     return false;
   }
   if(comp_no >= numComps)
   {
-    Logger::logger_.error("bad component number in RGN (%u is >= number of components %u)", comp_no,
-                          numComps);
+    grklog.error("bad component number in RGN (%u is >= number of components %u)", comp_no,
+                 numComps);
     return false;
   }
 
@@ -713,7 +709,7 @@ bool CodeStreamDecompress::read_rgn(uint8_t* headerData, uint16_t header_size)
   grk_read<uint8_t>(headerData++, &(tcp->tccps[comp_no].roishift));
   if(tcp->tccps[comp_no].roishift >= 32)
   {
-    Logger::logger_.error("Unsupported ROI shift : %u", tcp->tccps[comp_no].roishift);
+    grklog.error("Unsupported ROI shift : %u", tcp->tccps[comp_no].roishift);
     return false;
   }
 
@@ -736,7 +732,7 @@ bool CodeStreamDecompress::read_mco(uint8_t* headerData, uint16_t header_size)
 
   if(header_size < 1)
   {
-    Logger::logger_.error("Error reading MCO marker");
+    grklog.error("Error reading MCO marker");
     return false;
   }
   /* Nmco : only one transform stage*/
@@ -745,13 +741,13 @@ bool CodeStreamDecompress::read_mco(uint8_t* headerData, uint16_t header_size)
 
   if(nb_stages > 1)
   {
-    Logger::logger_.warn("Multiple transformation stages not supported.");
+    grklog.warn("Multiple transformation stages not supported.");
     return true;
   }
 
   if(header_size != nb_stages + 1)
   {
-    Logger::logger_.warn("Error reading MCO marker");
+    grklog.warn("Error reading MCO marker");
     return false;
   }
   for(i = 0; i < image->numcomps; ++i)
@@ -857,7 +853,7 @@ bool CodeStreamDecompress::read_cbd(uint8_t* headerData, uint16_t header_size)
   assert(headerData != nullptr);
   if(header_size < 2 || (header_size - 2) != getHeaderImage()->numcomps)
   {
-    Logger::logger_.error("Error reading CBD marker");
+    grklog.error("Error reading CBD marker");
     return false;
   }
   /* Ncbd */
@@ -867,7 +863,7 @@ bool CodeStreamDecompress::read_cbd(uint8_t* headerData, uint16_t header_size)
 
   if(numComps != getHeaderImage()->numcomps)
   {
-    Logger::logger_.error("Error reading CBD marker");
+    grklog.error("Error reading CBD marker");
     return false;
   }
 
@@ -881,9 +877,9 @@ bool CodeStreamDecompress::read_cbd(uint8_t* headerData, uint16_t header_size)
     auto prec = (uint8_t)((comp_def & 0x7f) + 1U);
     if(prec > GRK_MAX_SUPPORTED_IMAGE_PRECISION)
     {
-      Logger::logger_.error("CBD marker: precision %d for component %d is greater than maximum "
-                            "supported precision %d",
-                            prec, i, GRK_MAX_SUPPORTED_IMAGE_PRECISION);
+      grklog.error("CBD marker: precision %d for component %d is greater than maximum "
+                   "supported precision %d",
+                   prec, i, GRK_MAX_SUPPORTED_IMAGE_PRECISION);
       return false;
     }
     comp->prec = prec;
@@ -915,7 +911,7 @@ bool CodeStreamDecompress::read_SQcd_SQcc(bool fromQCC, uint16_t comp_no, uint8_
 
   if(*header_size < 1)
   {
-    Logger::logger_.error("Error reading SQcd or SQcc element");
+    grklog.error("Error reading SQcd or SQcc element");
     return false;
   }
   /* Sqcx */
@@ -926,7 +922,7 @@ bool CodeStreamDecompress::read_SQcd_SQcc(bool fromQCC, uint16_t comp_no, uint8_
   *header_size = (uint16_t)(*header_size - 1);
   if(qntsty > J2K_CCP_QNTSTY_SEQNT)
   {
-    Logger::logger_.error("Undefined quantization style %u", qntsty);
+    grklog.error("Undefined quantization style %u", qntsty);
     return false;
   }
 
@@ -976,12 +972,12 @@ bool CodeStreamDecompress::read_SQcd_SQcc(bool fromQCC, uint16_t comp_no, uint8_
                                                                   : (uint8_t)((*header_size) / 2);
       if(tccp->numStepSizes > GRK_MAXBANDS)
       {
-        Logger::logger_.warn("While reading QCD or QCC marker segment, "
-                             "number of step sizes (%u) is greater"
-                             " than GRK_MAXBANDS (%u).\n"
-                             "So, number of elements stored is limited to "
-                             "GRK_MAXBANDS (%u) and the rest are skipped.",
-                             tccp->numStepSizes, GRK_MAXBANDS, GRK_MAXBANDS);
+        grklog.warn("While reading QCD or QCC marker segment, "
+                    "number of step sizes (%u) is greater"
+                    " than GRK_MAXBANDS (%u).\n"
+                    "So, number of elements stored is limited to "
+                    "GRK_MAXBANDS (%u) and the rest are skipped.",
+                    tccp->numStepSizes, GRK_MAXBANDS, GRK_MAXBANDS);
       }
     }
     if(mainQCD)
@@ -991,7 +987,7 @@ bool CodeStreamDecompress::read_SQcd_SQcc(bool fromQCC, uint16_t comp_no, uint8_
   {
     if(*header_size < tccp->numStepSizes)
     {
-      Logger::logger_.error("Error reading SQcd_SQcc marker");
+      grklog.error("Error reading SQcd_SQcc marker");
       return false;
     }
     for(uint32_t band_no = 0; band_no < tccp->numStepSizes; band_no++)
@@ -1015,7 +1011,7 @@ bool CodeStreamDecompress::read_SQcd_SQcc(bool fromQCC, uint16_t comp_no, uint8_
   {
     if(*header_size < 2 * tccp->numStepSizes)
     {
-      Logger::logger_.error("Error reading SQcd_SQcc marker");
+      grklog.error("Error reading SQcd_SQcc marker");
       return false;
     }
     for(uint32_t band_no = 0; band_no < tccp->numStepSizes; band_no++)
@@ -1071,7 +1067,7 @@ bool CodeStreamDecompress::read_SPCod_SPCoc(uint16_t compno, uint8_t* headerData
   /* make sure room is sufficient */
   if(*header_size < SPCod_SPCoc_len)
   {
-    Logger::logger_.error("Error reading SPCod SPCoc element");
+    grklog.error("Error reading SPCod SPCoc element");
     return false;
   }
   /* SPcox (D) */
@@ -1079,9 +1075,9 @@ bool CodeStreamDecompress::read_SPCod_SPCoc(uint16_t compno, uint8_t* headerData
   grk_read<uint8_t>(current_ptr++, &tccp->numresolutions);
   if(tccp->numresolutions > GRK_MAX_DECOMP_LVLS)
   {
-    Logger::logger_.error("Invalid number of decomposition levels : %u. The JPEG 2000 standard\n"
-                          "allows a maximum number of %u decomposition levels.",
-                          tccp->numresolutions, GRK_MAX_DECOMP_LVLS);
+    grklog.error("Invalid number of decomposition levels : %u. The JPEG 2000 standard\n"
+                 "allows a maximum number of %u decomposition levels.",
+                 tccp->numresolutions, GRK_MAX_DECOMP_LVLS);
     return false;
   }
   ++tccp->numresolutions;
@@ -1091,11 +1087,11 @@ bool CodeStreamDecompress::read_SPCod_SPCoc(uint16_t compno, uint8_t* headerData
   /* If user wants to remove more resolutions than the code stream contains, return error */
   if(cp->coding_params_.dec_.reduce_ >= tccp->numresolutions)
   {
-    Logger::logger_.error("Error decoding component %u.\nThe number of resolutions "
-                          " to remove (%u) must be strictly less than the number "
-                          "of resolutions (%u) of this component.\n"
-                          "Please decrease the reduce parameter.",
-                          compno, cp->coding_params_.dec_.reduce_, tccp->numresolutions);
+    grklog.error("Error decoding component %u.\nThe number of resolutions "
+                 " to remove (%u) must be strictly less than the number "
+                 "of resolutions (%u) of this component.\n"
+                 "Please decrease the reduce parameter.",
+                 compno, cp->coding_params_.dec_.reduce_, tccp->numresolutions);
     return false;
   }
   /* SPcoc (E) */
@@ -1105,12 +1101,11 @@ bool CodeStreamDecompress::read_SPCod_SPCoc(uint16_t compno, uint8_t* headerData
 
   if(tccp->cblkw > 8 || tccp->cblkh > 8 || (tccp->cblkw + tccp->cblkh) > 8)
   {
-    Logger::logger_.error(
-        "Illegal code-block width/height (2^%u, 2^%u) found in COD/COC marker segment.\n"
-        "Code-block dimensions must be powers of 2, must be in the range 4-1024, and "
-        "their product must "
-        "lie in the range 16-4096.",
-        (uint32_t)tccp->cblkw + 2, (uint32_t)tccp->cblkh + 2);
+    grklog.error("Illegal code-block width/height (2^%u, 2^%u) found in COD/COC marker segment.\n"
+                 "Code-block dimensions must be powers of 2, must be in the range 4-1024, and "
+                 "their product must "
+                 "lie in the range 16-4096.",
+                 (uint32_t)tccp->cblkw + 2, (uint32_t)tccp->cblkh + 2);
     return false;
   }
 
@@ -1126,7 +1121,7 @@ bool CodeStreamDecompress::read_SPCod_SPCoc(uint16_t compno, uint8_t* headerData
     uint8_t non_vsc_modes = lower_6 & (uint8_t)(~GRK_CBLKSTY_VSC);
     if(high_bits == 1 && non_vsc_modes != 0)
     {
-      Logger::logger_.error(
+      grklog.error(
           "Unrecognized code-block style byte 0x%x found in COD/COC marker segment.\nWith bit-6 "
           "set and bit-7 not set i.e all blocks are HT blocks, only vertically causal context "
           "mode is supported.",
@@ -1136,10 +1131,9 @@ bool CodeStreamDecompress::read_SPCod_SPCoc(uint16_t compno, uint8_t* headerData
   }
   if(high_bits == 2)
   {
-    Logger::logger_.error(
-        "Unrecognized code-block style byte 0x%x found in COD/COC marker segment. "
-        "Most significant 2 bits can be 00, 01 or 11, but not 10",
-        tccp->cblk_sty);
+    grklog.error("Unrecognized code-block style byte 0x%x found in COD/COC marker segment. "
+                 "Most significant 2 bits can be 00, 01 or 11, but not 10",
+                 tccp->cblk_sty);
     return false;
   }
 
@@ -1147,9 +1141,9 @@ bool CodeStreamDecompress::read_SPCod_SPCoc(uint16_t compno, uint8_t* headerData
   tccp->qmfbid = *current_ptr++;
   if(tccp->qmfbid > 1)
   {
-    Logger::logger_.error("Invalid qmfbid : %u. "
-                          "Should be either 0 or 1",
-                          tccp->qmfbid);
+    grklog.error("Invalid qmfbid : %u. "
+                 "Should be either 0 or 1",
+                 tccp->qmfbid);
     return false;
   }
   *header_size = (uint16_t)(*header_size - SPCod_SPCoc_len);
@@ -1159,7 +1153,7 @@ bool CodeStreamDecompress::read_SPCod_SPCoc(uint16_t compno, uint8_t* headerData
   {
     if(*header_size < tccp->numresolutions)
     {
-      Logger::logger_.error("Error reading SPCod SPCoc element");
+      grklog.error("Error reading SPCod SPCoc element");
       return false;
     }
 
@@ -1172,7 +1166,7 @@ bool CodeStreamDecompress::read_SPCod_SPCoc(uint16_t compno, uint8_t* headerData
       /* Precinct exponent 0 is only allowed for lowest resolution level (Table A.21) */
       if((i != 0) && (((tmp & 0xf) == 0) || ((tmp >> 4) == 0)))
       {
-        Logger::logger_.error("Invalid precinct size");
+        grklog.error("Invalid precinct size");
         return false;
       }
       tccp->precWidthExp[i] = tmp & 0xf;
@@ -1214,7 +1208,7 @@ bool CodeStreamDecompress::read_mcc(uint8_t* headerData, uint16_t header_size)
 
   if(header_size < 2)
   {
-    Logger::logger_.error("Error reading MCC marker");
+    grklog.error("Error reading MCC marker");
     return false;
   }
 
@@ -1224,12 +1218,12 @@ bool CodeStreamDecompress::read_mcc(uint8_t* headerData, uint16_t header_size)
   headerData += sizeof(uint16_t);
   if(tmp != 0)
   {
-    Logger::logger_.warn("Multiple data spanning not supported");
+    grklog.warn("Multiple data spanning not supported");
     return true;
   }
   if(header_size < 7)
   {
-    Logger::logger_.error("Error reading MCC marker");
+    grklog.error("Error reading MCC marker");
     return false;
   }
 
@@ -1263,7 +1257,7 @@ bool CodeStreamDecompress::read_mcc(uint8_t* headerData, uint16_t header_size)
         tcp->mcc_records_ = nullptr;
         tcp->nb_max_mcc_records_ = 0;
         tcp->nb_mcc_records_ = 0;
-        Logger::logger_.error("Not enough memory to read MCC marker");
+        grklog.error("Not enough memory to read MCC marker");
         return false;
       }
       tcp->mcc_records_ = new_mcc_records;
@@ -1284,7 +1278,7 @@ bool CodeStreamDecompress::read_mcc(uint8_t* headerData, uint16_t header_size)
   headerData += sizeof(uint16_t);
   if(tmp != 0)
   {
-    Logger::logger_.warn("Multiple data spanning not supported");
+    grklog.warn("Multiple data spanning not supported");
     return true;
   }
 
@@ -1294,7 +1288,7 @@ bool CodeStreamDecompress::read_mcc(uint8_t* headerData, uint16_t header_size)
 
   if(nb_collections > 1)
   {
-    Logger::logger_.warn("Multiple collections not supported");
+    grklog.warn("Multiple collections not supported");
     return true;
   }
   header_size = (uint16_t)(header_size - 7);
@@ -1303,7 +1297,7 @@ bool CodeStreamDecompress::read_mcc(uint8_t* headerData, uint16_t header_size)
   {
     if(header_size < 3)
     {
-      Logger::logger_.error("Error reading MCC marker");
+      grklog.error("Error reading MCC marker");
       return false;
     }
     grk_read<uint32_t>(headerData++, &tmp,
@@ -1311,7 +1305,7 @@ bool CodeStreamDecompress::read_mcc(uint8_t* headerData, uint16_t header_size)
 
     if(tmp != 1)
     {
-      Logger::logger_.warn("Collections other than array decorrelations not supported");
+      grklog.warn("Collections other than array decorrelations not supported");
       return true;
     }
     grk_read(headerData, &nb_comps);
@@ -1323,7 +1317,7 @@ bool CodeStreamDecompress::read_mcc(uint8_t* headerData, uint16_t header_size)
 
     if(header_size < (nb_bytes_by_comp * mcc_record->nb_comps_ + 2))
     {
-      Logger::logger_.error("Error reading MCC marker");
+      grklog.error("Error reading MCC marker");
       return false;
     }
 
@@ -1337,7 +1331,7 @@ bool CodeStreamDecompress::read_mcc(uint8_t* headerData, uint16_t header_size)
 
       if(tmp != j)
       {
-        Logger::logger_.warn("Collections with index shuffle are not supported");
+        grklog.warn("Collections with index shuffle are not supported");
         return true;
       }
     }
@@ -1350,13 +1344,13 @@ bool CodeStreamDecompress::read_mcc(uint8_t* headerData, uint16_t header_size)
 
     if(nb_comps != mcc_record->nb_comps_)
     {
-      Logger::logger_.warn("Collections with differing number of indices are not supported");
+      grklog.warn("Collections with differing number of indices are not supported");
       return true;
     }
 
     if(header_size < (nb_bytes_by_comp * mcc_record->nb_comps_ + 3))
     {
-      Logger::logger_.error("Error reading MCC marker");
+      grklog.error("Error reading MCC marker");
       return false;
     }
 
@@ -1370,7 +1364,7 @@ bool CodeStreamDecompress::read_mcc(uint8_t* headerData, uint16_t header_size)
 
       if(tmp != j)
       {
-        Logger::logger_.warn("Collections with index shuffle not supported");
+        grklog.warn("Collections with index shuffle not supported");
         return true;
       }
     }
@@ -1397,7 +1391,7 @@ bool CodeStreamDecompress::read_mcc(uint8_t* headerData, uint16_t header_size)
 
       if(mcc_record->decorrelation_array_ == nullptr)
       {
-        Logger::logger_.error("Error reading MCC marker");
+        grklog.error("Error reading MCC marker");
         return false;
       }
     }
@@ -1417,7 +1411,7 @@ bool CodeStreamDecompress::read_mcc(uint8_t* headerData, uint16_t header_size)
 
       if(mcc_record->offset_array_ == nullptr)
       {
-        Logger::logger_.error("Error reading MCC marker");
+        grklog.error("Error reading MCC marker");
         return false;
       }
     }
@@ -1425,7 +1419,7 @@ bool CodeStreamDecompress::read_mcc(uint8_t* headerData, uint16_t header_size)
 
   if(header_size != 0)
   {
-    Logger::logger_.error("Error reading MCC marker");
+    grklog.error("Error reading MCC marker");
     return false;
   }
 
@@ -1453,7 +1447,7 @@ bool CodeStreamDecompress::read_mct(uint8_t* headerData, uint16_t header_size)
 
   if(header_size < 2)
   {
-    Logger::logger_.error("Error reading MCT marker");
+    grklog.error("Error reading MCT marker");
     return false;
   }
   /* first marker */
@@ -1462,7 +1456,7 @@ bool CodeStreamDecompress::read_mct(uint8_t* headerData, uint16_t header_size)
   headerData += 2;
   if(tmp != 0)
   {
-    Logger::logger_.warn("mct data within multiple MCT records not supported.");
+    grklog.warn("mct data within multiple MCT records not supported.");
     return true;
   }
 
@@ -1498,7 +1492,7 @@ bool CodeStreamDecompress::read_mct(uint8_t* headerData, uint16_t header_size)
         tcp->mct_records_ = nullptr;
         tcp->nb_max_mct_records_ = 0;
         tcp->nb_mct_records_ = 0;
-        Logger::logger_.error("Not enough memory to read MCT marker");
+        grklog.error("Not enough memory to read MCT marker");
         return false;
       }
 
@@ -1544,12 +1538,12 @@ bool CodeStreamDecompress::read_mct(uint8_t* headerData, uint16_t header_size)
   headerData += 2;
   if(tmp != 0)
   {
-    Logger::logger_.warn("multiple MCT markers not supported");
+    grklog.warn("multiple MCT markers not supported");
     return true;
   }
   if(header_size <= 6)
   {
-    Logger::logger_.error("Error reading MCT marker");
+    grklog.error("Error reading MCT marker");
     return false;
   }
   header_size = (uint16_t)(header_size - 6);
@@ -1557,7 +1551,7 @@ bool CodeStreamDecompress::read_mct(uint8_t* headerData, uint16_t header_size)
   mct_data->data_ = (uint8_t*)grk_malloc(header_size);
   if(!mct_data->data_)
   {
-    Logger::logger_.error("Error reading MCT marker");
+    grklog.error("Error reading MCT marker");
     return false;
   }
   memcpy(mct_data->data_, headerData, header_size);
@@ -1579,7 +1573,7 @@ bool CodeStreamDecompress::read_unk(void)
     {
       if(!readMarker(true))
       {
-        Logger::logger_.error("Unable to read unknown marker 0x%02x.", unknownMarker);
+        grklog.error("Unable to read unknown marker 0x%02x.", unknownMarker);
         return false;
       }
     }
@@ -1624,24 +1618,23 @@ bool CodeStreamDecompress::read_cod(uint8_t* headerData, uint16_t header_size)
   /* Only one COD per tile */
   if(tcp->cod)
   {
-    Logger::logger_.warn(
-        "Multiple COD markers detected for tile part %u."
-        " The JPEG 2000 standard does not allow more than one COD marker per tile.",
-        tcp->tilePartCounter_ - 1);
+    grklog.warn("Multiple COD markers detected for tile part %u."
+                " The JPEG 2000 standard does not allow more than one COD marker per tile.",
+                tcp->tilePartCounter_ - 1);
   }
   tcp->cod = true;
 
   /* Make sure room is sufficient */
   if(header_size < cod_coc_len)
   {
-    Logger::logger_.error("Error reading COD marker");
+    grklog.error("Error reading COD marker");
     return false;
   }
   grk_read<uint8_t>(headerData++, &tcp->csty); /* Scod */
   /* Make sure we know how to decompress this */
   if((tcp->csty & ~(uint32_t)(J2K_CP_CSTY_PRT | J2K_CP_CSTY_SOP | J2K_CP_CSTY_EPH)) != 0U)
   {
-    Logger::logger_.error("Unknown Scod value in COD marker");
+    grklog.error("Unknown Scod value in COD marker");
     return false;
   }
   uint8_t tmp;
@@ -1649,7 +1642,7 @@ bool CodeStreamDecompress::read_cod(uint8_t* headerData, uint16_t header_size)
   /* Make sure progression order is valid */
   if(tmp >= GRK_NUM_PROGRESSION_ORDERS)
   {
-    Logger::logger_.error("Unknown progression order %u in COD marker", tmp);
+    grklog.error("Unknown progression order %u in COD marker", tmp);
     return false;
   }
   tcp->prg = (GRK_PROG_ORDER)tmp;
@@ -1658,7 +1651,7 @@ bool CodeStreamDecompress::read_cod(uint8_t* headerData, uint16_t header_size)
 
   if(tcp->num_layers_ == 0)
   {
-    Logger::logger_.error("Number of layers must be positive");
+    grklog.error("Number of layers must be positive");
     return false;
   }
 
@@ -1670,7 +1663,7 @@ bool CodeStreamDecompress::read_cod(uint8_t* headerData, uint16_t header_size)
   grk_read<uint8_t>(headerData++, &tcp->mct); /* SGcod (C) */
   if(tcp->mct > 1)
   {
-    Logger::logger_.error("Invalid MCT value : %u. Should be either 0 or 1", tcp->mct);
+    grklog.error("Invalid MCT value : %u. Should be either 0 or 1", tcp->mct);
     return false;
   }
   header_size = (uint16_t)(header_size - cod_coc_len);
@@ -1686,7 +1679,7 @@ bool CodeStreamDecompress::read_cod(uint8_t* headerData, uint16_t header_size)
 
   if(header_size != 0)
   {
-    Logger::logger_.error("Error reading COD marker");
+    grklog.error("Error reading COD marker");
     return false;
   }
   /* Apply the coding style to other components of the current tile or the default_tcp_*/
@@ -1730,7 +1723,7 @@ bool CodeStreamDecompress::read_coc(uint8_t* headerData, uint16_t header_size)
   /* make sure room is sufficient*/
   if(header_size < comp_room + 1)
   {
-    Logger::logger_.error("Error reading COC marker");
+    grklog.error("Error reading COC marker");
     return false;
   }
   header_size = (uint16_t)(header_size - (comp_room + 1));
@@ -1739,7 +1732,7 @@ bool CodeStreamDecompress::read_coc(uint8_t* headerData, uint16_t header_size)
   headerData += comp_room;
   if(comp_no >= image->numcomps)
   {
-    Logger::logger_.error("Error reading COC marker : invalid component number %u", comp_no);
+    grklog.error("Error reading COC marker : invalid component number %u", comp_no);
     return false;
   }
 
@@ -1752,7 +1745,7 @@ bool CodeStreamDecompress::read_coc(uint8_t* headerData, uint16_t header_size)
 
   if(header_size != 0)
   {
-    Logger::logger_.error("Error reading COC marker");
+    grklog.error("Error reading COC marker");
     return false;
   }
   return true;
@@ -1770,7 +1763,7 @@ bool CodeStreamDecompress::read_qcd(uint8_t* headerData, uint16_t header_size)
     return false;
   if(header_size != 0)
   {
-    Logger::logger_.error("Error reading QCD marker");
+    grklog.error("Error reading QCD marker");
     return false;
   }
 
@@ -1814,7 +1807,7 @@ bool CodeStreamDecompress::read_qcc(uint8_t* headerData, uint16_t header_size)
   {
     if(header_size < 1)
     {
-      Logger::logger_.error("Error reading QCC marker");
+      grklog.error("Error reading QCC marker");
       return false;
     }
     grk_read<uint32_t>(headerData++, &comp_no, 1);
@@ -1824,7 +1817,7 @@ bool CodeStreamDecompress::read_qcc(uint8_t* headerData, uint16_t header_size)
   {
     if(header_size < 2)
     {
-      Logger::logger_.error("Error reading QCC marker");
+      grklog.error("Error reading QCC marker");
       return false;
     }
     grk_read<uint32_t>(headerData, &comp_no, 2);
@@ -1834,9 +1827,9 @@ bool CodeStreamDecompress::read_qcc(uint8_t* headerData, uint16_t header_size)
 
   if(comp_no >= getHeaderImage()->numcomps)
   {
-    Logger::logger_.error("QCC component: component number: %u must be less than"
-                          " total number of components: %u",
-                          comp_no, getHeaderImage()->numcomps);
+    grklog.error("QCC component: component number: %u must be less than"
+                 " total number of components: %u",
+                 comp_no, getHeaderImage()->numcomps);
     return false;
   }
 
@@ -1847,7 +1840,7 @@ bool CodeStreamDecompress::read_qcc(uint8_t* headerData, uint16_t header_size)
 
   if(header_size != 0)
   {
-    Logger::logger_.error("Error reading QCC marker");
+    grklog.error("Error reading QCC marker");
     return false;
   }
 
@@ -1890,7 +1883,7 @@ bool CodeStreamDecompress::read_cap(uint8_t* headerData, uint16_t header_size)
   CodingParams* cp = &(cp_);
   if(header_size < sizeof(cp->pcap))
   {
-    Logger::logger_.error("Error with SIZ marker size");
+    grklog.error("Error with SIZ marker size");
     return false;
   }
 
@@ -1898,12 +1891,12 @@ bool CodeStreamDecompress::read_cap(uint8_t* headerData, uint16_t header_size)
   grk_read<uint32_t>(headerData, &tmp); /* Pcap */
   if(tmp & 0xFFFDFFFF)
   {
-    Logger::logger_.error("Pcap in CAP marker has unsupported options.");
+    grklog.error("Pcap in CAP marker has unsupported options.");
     return false;
   }
   if((tmp & 0x00020000) == 0)
   {
-    Logger::logger_.error("Pcap in CAP marker should have its 15th MSB set. ");
+    grklog.error("Pcap in CAP marker should have its 15th MSB set. ");
     return false;
   }
   headerData += sizeof(uint32_t);
@@ -1912,7 +1905,7 @@ bool CodeStreamDecompress::read_cap(uint8_t* headerData, uint16_t header_size)
   uint32_t expected_size = (uint32_t)sizeof(cp->pcap) + 2U * count;
   if(header_size != expected_size)
   {
-    Logger::logger_.error("CAP marker size %u != expected size %u", header_size, expected_size);
+    grklog.error("CAP marker size %u != expected size %u", header_size, expected_size);
     return false;
   }
   for(uint32_t i = 0; i < count; ++i)
@@ -1954,18 +1947,18 @@ bool CodeStreamDecompress::read_com(uint8_t* headerData, uint16_t header_size)
   assert(header_size != 0);
   if(header_size < 2)
   {
-    Logger::logger_.error("CodeStreamDecompress::read_com: Corrupt COM segment ");
+    grklog.error("CodeStreamDecompress::read_com: Corrupt COM segment ");
     return false;
   }
   else if(header_size == 2)
   {
-    Logger::logger_.warn("CodeStreamDecompress::read_com: Empty COM segment. Ignoring ");
+    grklog.warn("CodeStreamDecompress::read_com: Empty COM segment. Ignoring ");
     return true;
   }
   if(cp_.num_comments == GRK_NUM_COMMENTS_SUPPORTED)
   {
-    Logger::logger_.warn("CodeStreamDecompress::read_com: Only %u comments are supported. Ignoring",
-                         GRK_NUM_COMMENTS_SUPPORTED);
+    grklog.warn("CodeStreamDecompress::read_com: Only %u comments are supported. Ignoring",
+                GRK_NUM_COMMENTS_SUPPORTED);
     return true;
   }
 
@@ -1975,10 +1968,9 @@ bool CodeStreamDecompress::read_com(uint8_t* headerData, uint16_t header_size)
   cp_.is_binary_comment[numComments] = (commentType == 0);
   if(commentType > 1)
   {
-    Logger::logger_.warn(
-        "CodeStreamDecompress::read_com: Unrecognized comment type 0x%x. Assuming IS "
-        "8859-15:1999 (Latin) values",
-        commentType);
+    grklog.warn("CodeStreamDecompress::read_com: Unrecognized comment type 0x%x. Assuming IS "
+                "8859-15:1999 (Latin) values",
+                commentType);
   }
 
   headerData += 2;
@@ -1989,7 +1981,7 @@ bool CodeStreamDecompress::read_com(uint8_t* headerData, uint16_t header_size)
   cp_.comment[numComments] = (char*)new uint8_t[commentSizeToAlloc];
   if(!cp_.comment[numComments])
   {
-    Logger::logger_.error(
+    grklog.error(
         "CodeStreamDecompress::read_com: Out of memory when allocating memory for comment ");
     return false;
   }

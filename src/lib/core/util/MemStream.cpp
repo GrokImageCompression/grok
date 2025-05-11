@@ -150,7 +150,7 @@ grk_stream* create_mem_stream(uint8_t* buf, size_t len, bool ownsBuffer, bool is
     return nullptr;
   if(len < 12)
   {
-    Logger::logger_.error("Buffer of length %d is invalid\n", len);
+    grklog.error("Buffer of length %d is invalid\n", len);
     return nullptr;
   }
   GRK_CODEC_FORMAT format;

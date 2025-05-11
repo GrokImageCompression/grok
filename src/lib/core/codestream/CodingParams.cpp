@@ -116,9 +116,9 @@ bool TileCodingParams::advanceTilePartCounter(uint16_t tile_index, uint8_t tileP
   /* should appear in increasing order. */
   if(uint8_t(tilePartCounter_) != tilePartIndex)
   {
-    Logger::logger_.error("Invalid tile part index for tile number %u. "
-                          "Got %u, expected %u",
-                          tile_index, tilePartIndex, tilePartCounter_);
+    grklog.error("Invalid tile part index for tile number %u. "
+                 "Got %u, expected %u",
+                 tile_index, tilePartIndex, tilePartCounter_);
     return false;
   }
   tilePartCounter_++;
@@ -286,17 +286,17 @@ bool DecompressorState::findNextSOT(CodeStreamDecompress* codeStream)
     {
       if(!codeStream->readMarker())
       {
-        Logger::logger_.warn("findNextTile: Not enough data to read another marker.\n"
-                             "Tile may be truncated.");
+        grklog.warn("findNextTile: Not enough data to read another marker.\n"
+                    "Tile may be truncated.");
         return true;
       }
     }
     catch([[maybe_unused]] const InvalidMarkerException& ume)
     {
       setState(DECOMPRESS_STATE_NO_EOC);
-      Logger::logger_.warn("findNextTile: expected EOC or SOT "
-                           "but found invalid marker 0x%x.",
-                           codeStream->getCurrentMarker());
+      grklog.warn("findNextTile: expected EOC or SOT "
+                  "but found invalid marker 0x%x.",
+                  codeStream->getCurrentMarker());
       throw DecodeUnknownMarkerAtEndOfTileException();
     }
 
@@ -315,10 +315,10 @@ bool DecompressorState::findNextSOT(CodeStreamDecompress* codeStream)
       default: {
         auto bytesLeft = stream->numBytesLeft();
         setState(DECOMPRESS_STATE_NO_EOC);
-        Logger::logger_.warn("findNextTile: expected EOC or SOT "
-                             "but found marker 0x%x.\nIgnoring %u bytes "
-                             "remaining in the stream.",
-                             codeStream->getCurrentMarker(), bytesLeft + 2);
+        grklog.warn("findNextTile: expected EOC or SOT "
+                    "but found marker 0x%x.\nIgnoring %u bytes "
+                    "remaining in the stream.",
+                    codeStream->getCurrentMarker(), bytesLeft + 2);
         throw DecodeUnknownMarkerAtEndOfTileException();
       }
       break;

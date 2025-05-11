@@ -61,9 +61,9 @@ void TileSet::setComplete(uint16_t tile_index)
   if(isScheduled(tile_index))
   {
     tilesDecompressed_.insert(tile_index);
-    // Logger::logger_.info("Complete %d", tile_index);
+    // grklog.info("Complete %d", tile_index);
     // if (allComplete())
-    //	Logger::logger_.info("Complete");
+    //	grklog.info("Complete");
   }
 }
 bool TileSet::isComplete(uint16_t tile_index)

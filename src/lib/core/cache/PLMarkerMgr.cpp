@@ -65,7 +65,7 @@ void PLMarkerMgr::pushInit(bool isFinal)
 bool PLMarkerMgr::pushPL(uint32_t len)
 {
   assert(len);
-  // Logger::logger_.info("Push packet length: %u", len);
+  // grklog.info("Push packet length: %u", len);
   uint32_t numbits = floorlog2(len) + 1;
   uint32_t numBytes = (numbits + 6) / 7;
   assert(numBytes <= 5);
@@ -110,7 +110,7 @@ bool PLMarkerMgr::pushPL(uint32_t len)
   {
     // write period
     // static int count = 0;
-    // Logger::logger_.info("Wrote PLT packet %u, length %u", count++,len);
+    // grklog.info("Wrote PLT packet %u, length %u", count++,len);
     uint8_t temp[5];
     int32_t counter = (int32_t)(numBytes - 1);
     temp[counter--] = (len & 0x7F);
@@ -192,7 +192,7 @@ bool PLMarkerMgr::findMarker(uint32_t nextIndex, bool compress)
         {
           if(rawMarkers_->size() > 256)
           {
-            Logger::logger_.error("PLT: sequential marker assumption has been broken.");
+            grklog.error("PLT: sequential marker assumption has been broken.");
             return false;
           }
         }
@@ -253,7 +253,7 @@ uint32_t PLMarkerMgr::pop(void)
 
   if(currMarkerIter_ == rawMarkers_->end())
   {
-    Logger::logger_.error("Attempt to pop PLT beyond PLT marker range.");
+    grklog.error("Attempt to pop PLT beyond PLT marker range.");
     return 0;
   }
   if(currMarkerIter_ != rawMarkers_->end() && currMarkerBuf_)
@@ -287,7 +287,7 @@ uint32_t PLMarkerMgr::pop(void)
   }
 
   // static int count = 0;
-  // Logger::logger_.info("Read PLT packet %u, length %u", count++,rc);
+  // grklog.info("Read PLT packet %u, length %u", count++,rc);
   return rc;
 }
 

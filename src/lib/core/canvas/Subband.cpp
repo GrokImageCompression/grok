@@ -76,7 +76,7 @@ Precinct* Subband::createPrecinct(TileProcessor* tileProcessor, uint64_t precinc
                                        precinctGridWidth);
   if(!bounds.valid())
   {
-    Logger::logger_.error("createPrecinct: invalid precinct bounds.");
+    grklog.error("createPrecinct: invalid precinct bounds.");
     return nullptr;
   }
   auto currPrec = new Precinct(tileProcessor, bounds, cblk_expn);

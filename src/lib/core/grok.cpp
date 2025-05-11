@@ -99,7 +99,7 @@ grk_object* grk_decompress_create(grk_stream* stream)
   auto format = bstream->getFormat();
   if(format == GRK_CODEC_UNK)
   {
-    Logger::logger_.error("Invalid codec format.");
+    grklog.error("Invalid codec format.");
     return nullptr;
   }
   codec = new GrkCodec(stream);
@@ -170,7 +170,7 @@ bool grk_initialize(const char* pluginPath, uint32_t numThreads)
   // 1. set up executor
   ExecSingleton::create(numThreads);
 
-  if(!Logger::logger_.info_handler)
+  if(!grklog.info_handler)
   {
     grk_msg_handlers handlers = {};
     const char* debug_env = std::getenv("GRK_DEBUG");
@@ -234,16 +234,16 @@ GRK_API void GRK_CALLCONV grk_object_unref(grk_object* obj)
 
 GRK_API void GRK_CALLCONV grk_set_msg_handlers(grk_msg_handlers msg_handlers)
 {
-  Logger::logger_.info_handler = msg_handlers.info_callback;
-  Logger::logger_.info_data_ = msg_handlers.info_data;
-  Logger::logger_.debug_handler = msg_handlers.debug_callback;
-  Logger::logger_.debug_data_ = msg_handlers.debug_data;
-  Logger::logger_.trace_handler = msg_handlers.trace_callback;
-  Logger::logger_.trace_data_ = msg_handlers.trace_data;
-  Logger::logger_.warning_handler = msg_handlers.warn_callback;
-  Logger::logger_.warning_data_ = msg_handlers.warn_data;
-  Logger::logger_.error_handler = msg_handlers.error_callback;
-  Logger::logger_.error_data_ = msg_handlers.error_data;
+  grklog.info_handler = msg_handlers.info_callback;
+  grklog.info_data_ = msg_handlers.info_data;
+  grklog.debug_handler = msg_handlers.debug_callback;
+  grklog.debug_data_ = msg_handlers.debug_data;
+  grklog.trace_handler = msg_handlers.trace_callback;
+  grklog.trace_data_ = msg_handlers.trace_data;
+  grklog.warning_handler = msg_handlers.warn_callback;
+  grklog.warning_data_ = msg_handlers.warn_data;
+  grklog.error_handler = msg_handlers.error_callback;
+  grklog.error_data_ = msg_handlers.error_data;
 }
 
 static size_t grk_read_from_file(uint8_t* buffer, size_t numBytes, void* p_file)
@@ -331,7 +331,7 @@ bool grk_decompress_buffer_detect_format(uint8_t* buffer, size_t len, GRK_CODEC_
   }
   else
   {
-    Logger::logger_.error("No JPEG 2000 code stream detected.");
+    grklog.error("No JPEG 2000 code stream detected.");
     *fmt = GRK_CODEC_UNK;
 
     return false;
@@ -348,19 +348,19 @@ bool GRK_CALLCONV grk_decompress_detect_format(const char* fileName, GRK_CODEC_F
   auto reader = fopen(fileName, "rb");
   if(!reader)
   {
-    Logger::logger_.error("Unable to open file %s.", fileName);
+    grklog.error("Unable to open file %s.", fileName);
     return false;
   }
 
   bytesRead = fread(buf, 1, 12, reader);
   if(fclose(reader))
   {
-    Logger::logger_.error("Unable to close file {}.", fileName);
+    grklog.error("Unable to close file {}.", fileName);
     return false;
   }
   if(bytesRead != 12)
   {
-    Logger::logger_.error("Insufficient bytes to detect JPEG 2000 format in file {}.", fileName);
+    grklog.error("Insufficient bytes to detect JPEG 2000 format in file {}.", fileName);
     return false;
   }
 
@@ -372,13 +372,13 @@ static grk_object* grk_decompress_create_from_buffer(uint8_t* buf, size_t len)
   auto stream = create_mem_stream(buf, len, false, true);
   if(!stream)
   {
-    Logger::logger_.error("Unable to create memory stream.");
+    grklog.error("Unable to create memory stream.");
     return nullptr;
   }
   auto codec = grk_decompress_create(stream);
   if(!codec)
   {
-    Logger::logger_.error("Unable to create codec");
+    grklog.error("Unable to create codec");
     grk_object_unref(stream);
     return nullptr;
   }
@@ -391,13 +391,13 @@ static grk_object* grk_decompress_create_from_callbacks(grk_stream_params* strea
   auto stream = grk_stream_create_stream(stream_params);
   if(!stream)
   {
-    Logger::logger_.error("Unable to create callback stream.");
+    grklog.error("Unable to create callback stream.");
     return nullptr;
   }
   auto codec = grk_decompress_create(stream);
   if(!codec)
   {
-    Logger::logger_.error("Unable to create codec");
+    grklog.error("Unable to create codec");
     grk_object_unref(stream);
     return nullptr;
   }
@@ -410,13 +410,13 @@ static grk_object* grk_decompress_create_from_file(const char* file_name)
   auto stream = grk_stream_create_file_stream(file_name, 1000000, true);
   if(!stream)
   {
-    Logger::logger_.error("Unable to create stream for file %s.", file_name);
+    grklog.error("Unable to create stream for file %s.", file_name);
     return nullptr;
   }
   auto codec = grk_decompress_create(stream);
   if(!codec)
   {
-    Logger::logger_.error("Unable to create codec for file %s", file_name);
+    grklog.error("Unable to create codec for file %s", file_name);
     grk_object_unref(stream);
     return nullptr;
   }
@@ -650,7 +650,7 @@ grk_object* GRK_CALLCONV grk_compress_init(grk_stream_params* stream_params,
     return nullptr;
   if(parameters->cod_format != GRK_FMT_J2K && parameters->cod_format != GRK_FMT_JP2)
   {
-    Logger::logger_.error("Unknown stream format.");
+    grklog.error("Unknown stream format.");
     return nullptr;
   }
   grk_stream* stream = nullptr;
@@ -669,7 +669,7 @@ grk_object* GRK_CALLCONV grk_compress_init(grk_stream_params* stream_params,
   }
   if(!stream)
   {
-    Logger::logger_.error("failed to create stream");
+    grklog.error("failed to create stream");
     return nullptr;
   }
 
@@ -694,7 +694,7 @@ grk_object* GRK_CALLCONV grk_compress_init(grk_stream_params* stream_params,
   }
   else
   {
-    Logger::logger_.error("Failed to initialize codec.");
+    grklog.error("Failed to initialize codec.");
     grk_object_unref(codecWrapper);
     codecWrapper = nullptr;
   }
@@ -756,7 +756,7 @@ static grk_stream* grk_stream_create_stream(grk_stream_params* stream_params)
     GRK_CODEC_FORMAT fmt;
     if(!grk_decompress_buffer_detect_format(buf, 12, &fmt))
     {
-      Logger::logger_.error("Unable to detect codec format.");
+      grklog.error("Unable to detect codec format.");
       return nullptr;
     }
     bstream->setFormat(fmt);
@@ -807,7 +807,7 @@ static grk_stream* grk_stream_create_file_stream(const char* fname, size_t buffe
     GRK_CODEC_FORMAT fmt;
     if(!grk_decompress_buffer_detect_format(buf, 12, &fmt))
     {
-      Logger::logger_.error("Unable to detect codec format.");
+      grklog.error("Unable to detect codec format.");
       return nullptr;
     }
     bstream->setFormat(fmt);

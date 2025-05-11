@@ -161,7 +161,7 @@ void* minpf_get_symbol([[maybe_unused]] minpf_dynamic_library* library,
 #ifdef _WIN32
   rc = GetProcAddress((HMODULE)library->handle, symbol);
   if(!rc)
-    Logger::logger_.error("Error getting symbol : %d", GetLastError());
+    grklog.error("Error getting symbol : %d", GetLastError());
 #else
   rc = dlsym(library->handle, symbol);
 #endif

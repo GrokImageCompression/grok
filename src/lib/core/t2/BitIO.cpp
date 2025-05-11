@@ -63,9 +63,9 @@ void BitIO::bytein(void)
   {
     uint16_t marker = (uint16_t)(((uint16_t)0xFF << 8) | (uint16_t)buf);
     if(marker != J2K_EPH && marker != J2K_SOP)
-      Logger::logger_.warn("Invalid marker 0x%x detected in packet header", marker);
+      grklog.warn("Invalid marker 0x%x detected in packet header", marker);
     else
-      Logger::logger_.warn("Unexpected SOP/EPH marker 0x%x detected in packet header", marker);
+      grklog.warn("Unexpected SOP/EPH marker 0x%x detected in packet header", marker);
 
     throw InvalidMarkerException(marker);
   }

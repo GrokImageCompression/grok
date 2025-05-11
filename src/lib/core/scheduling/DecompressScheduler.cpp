@@ -223,7 +223,7 @@ bool DecompressScheduler::decompressBlock(T1Interface* impl, DecompressBlockExec
   catch(const std::runtime_error& rerr)
   {
     delete block;
-    Logger::logger_.error(rerr.what());
+    grklog.error(rerr.what());
     return false;
   }
 

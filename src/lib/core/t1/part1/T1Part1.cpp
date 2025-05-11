@@ -41,7 +41,7 @@ namespace t1_part1
     auto h = cblk->height();
     if(w == 0 || h == 0)
     {
-      Logger::logger_.error("Unable to compress degenerate code block of dimensions %ux%u", w, h);
+      grklog.error("Unable to compress degenerate code block of dimensions %ux%u", w, h);
       return false;
     }
     if(!t1->alloc(w, h))

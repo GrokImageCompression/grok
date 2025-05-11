@@ -158,13 +158,13 @@ struct grk_buf : A<T>
     {
       if(offset > (size_t)(SIZE_MAX - (size_t)off))
       {
-        Logger::logger_.warn("grk_buf8: overflow");
+        grklog.warn("grk_buf8: overflow");
         offset = len;
       }
       else if(offset + (size_t)off > len)
       {
 #ifdef DEBUG_SEG_BUF
-        Logger::logger_.warn("grk_buf8: attempt to increment buffer offset out of bounds");
+        grklog.warn("grk_buf8: attempt to increment buffer offset out of bounds");
 #endif
         offset = len;
       }
@@ -177,7 +177,7 @@ struct grk_buf : A<T>
     {
       if(offset < (size_t)(-off))
       {
-        Logger::logger_.warn("grk_buf8: underflow");
+        grklog.warn("grk_buf8: underflow");
         offset = 0;
       }
       else
@@ -278,8 +278,8 @@ struct grk_buf2d : protected grk_buf<T, A>, public grk_rect32
         return true;
       if(!grk_buf<T, A>::alloc(data_size_needed))
       {
-        grk::Logger::logger_.error("Failed to allocate aligned memory buffer of dimensions %u x %u",
-                                   stride, height());
+        grk::grklog.error("Failed to allocate aligned memory buffer of dimensions %u x %u", stride,
+                          height());
         return false;
       }
       if(clear)
