@@ -23,22 +23,45 @@
             ]
         },
         {
-            "name": "codec compress",
+            "name": "compress corrupt sop",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/build/bin/codec_compress",
-            "args": [],
-            "stopAtEntry": true,
+            "program": "${workspaceFolder}/build/bin/grk_compress",
+            "args": [
+                "-i",
+                "$HOME/temp/florence.png",
+                "-o",
+                "$HOME/temp/florence.jp2",
+                "-S",
+                "-u",
+                "R"
+
+            ],
             "cwd": "${workspaceFolder}",
-            "environment": [],
+            "environment": [
+                { "name": "GRK_DEBUG", "value": "4" }
+            ],
             "MIMode": "gdb",
-            "setupCommands": [
+            "miDebuggerPath": "/usr/bin/gdb"
+        },
                 {
-                    "description": "Enable pretty-printing for gdb",
-                    "text": "-enable-pretty-printing",
-                    "ignoreFailures": true
-                }
-            ]
+            "name": "decompress corrupt sop",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/bin/grk_decompress",
+            "args": [
+                "-i",
+                "$HOME/temp/florence.jp2",
+                "-o",
+                "$HOME/temp/florence.jp2.tif",
+
+            ],
+            "cwd": "${workspaceFolder}",
+            "environment": [
+                { "name": "GRK_DEBUG", "value": "4" }
+            ],
+            "MIMode": "gdb",
+            "miDebuggerPath": "/usr/bin/gdb"
         },
         {
             "name": "test",

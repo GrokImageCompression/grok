@@ -196,7 +196,6 @@ bool T2Compress::compressPackets(uint16_t tile_no, uint16_t max_layers, Buffered
       if(!compressPacket(tcp, current_pi, stream, &numBytes))
         return false;
       *tileBytesWritten += numBytes;
-      tileProcessor->incNumProcessedPackets(1);
     }
   }
 
@@ -420,6 +419,7 @@ bool T2Compress::compressPacket(TileCodingParams* tcp, PacketIter* pi, BufferedS
     }
   }
   *packet_bytes_written += (uint32_t)(stream->tell() - stream_start);
+  tileProcessor->incNumProcessedPackets(1);
 
   return true;
 }
