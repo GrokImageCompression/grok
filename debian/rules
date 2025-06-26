@@ -1,0 +1,39 @@
+#!/usr/bin/make -f
+#export DH_VERBOSE=1
+
+DEB_HOST_MULTIARCH ?= $(shell dpkg-architecture -qDEB_HOST_MULTIARCH)
+
+# as per upstream request:
+export DEB_CXXFLAGS_MAINT_APPEND = -fvisibility=hidden
+
+%:
+	dh $@
+
+CMAKE_EXTRA_FLAGS += -DCMAKE_SKIP_RPATH=ON \
+  -DCMAKE_BUILD_TYPE:STRING=Release \
+  -DBUILD_TESTING:BOOL=OFF \
+  -DGRK_BUILD_DOC:BOOL=ON \
+  -DGRK_BUILD_LCMS2:BOOL=OFF \
+  -DGRK_BUILD_LIBPNG:BOOL=OFF \
+  -DGRK_BUILD_LIBTIFF:BOOL=OFF
+
+override_dh_auto_configure:
+	dh_auto_configure -- $(CMAKE_EXTRA_FLAGS)
+
+SOVERSION=1
+pkg_lib = libgrokj2k$(SOVERSION)
+pkg_dev = libgrokj2k$(SOVERSION)-dev
+pkg_bin = grokj2k-tools
+
+override_dh_missing:
+	# annoying cmake-fatal-error export stuff:
+	sed -i -e "s/FATAL_ERROR/STATUS/g" debian/tmp/usr/lib/$(DEB_HOST_MULTIARCH)/cmake/grok-10.0/GrokTargets*.cmake
+	dh_missing --list-missing
+
+VER_FULL = $(shell dpkg-parsechangelog -Sversion | cut -d - -f 1)
+
+debian/%.1: debian/grk_common.1.in
+	help2man --include=$< --output=$@ --name="Works with JPEG2000 files" \
+		--no-info --no-discard-stderr `basename $@ .1` --help-option=-h --version-string=$(VER_FULL)
+
+	echo "all missing man pages done"
