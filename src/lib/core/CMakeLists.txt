@@ -150,8 +150,8 @@ set_target_properties(${GROK_CORE_NAME} PROPERTIES ${GROK_LIBRARY_PROPERTIES})
 target_compile_options(${GROK_CORE_NAME} PRIVATE ${GROK_COMPILE_OPTIONS} PRIVATE ${HWY_FLAGS})
 # set emcc options
 if (CMAKE_SYSTEM_NAME STREQUAL Emscripten)
-  target_link_options(${exe} PUBLIC -sASSERTIONS=1 -sPROXY_TO_PTHREAD -sTOTAL_MEMORY=1536MB -sEXIT_RUNTIME=1 -sUSE_PTHREADS=1)
-  target_compile_options(${exe} PUBLIC -matomics)
+  target_link_options(${GROK_CORE_NAME} PUBLIC -sASSERTIONS=1 -sPROXY_TO_PTHREAD -sTOTAL_MEMORY=1536MB -sEXIT_RUNTIME=1 -sUSE_PTHREADS=1)
+  target_compile_options(${GROK_CORE_NAME} PUBLIC -matomics)
 endif()
 
 if (CMAKE_CXX_COMPILER_ID MATCHES "GNU")
