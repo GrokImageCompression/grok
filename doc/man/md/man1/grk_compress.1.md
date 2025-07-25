@@ -145,7 +145,7 @@ Number of resolutions. It corresponds to the `number of DWT decompositions +1`. 
 
 Code-block size. The dimension must respect the constraint defined in the JPEG-2000 standard (no dimension smaller than 4 or greater than 1024, no code-block with more than 4096 coefficients). The maximum value authorized is 64x64. Default: 64x64.
 
-`-c, ---precinct-dims [  [prec width,prec height],[prec width,prec height],... ]`
+`-c, --precinct-dims [  [prec width,prec height],[prec width,prec height],... ]`
 
 Precinct dimensions. Dimensions specified must be powers of 2. Multiple records may be specified, in which case the first record refers to the highest resolution level and subsequent records refer to lower resolution levels. The last specified record's dimensions are progressively right-shifted (halved in size) for each remaining lower resolution level. Default: `2^15x2^15` at each resolution i.e. precincts are not used. Note: the inner square brackets must actually be present.
 

@@ -287,7 +287,7 @@ static void compress_help_display(void)
   fprintf(stdout, "* 1: Bisection search for optimal threshold using only feasible truncation\n");
   fprintf(stdout, "points, on convex hull (default). Faster than algorithm 0.\n");
   fprintf(stdout, "\n");
-  fprintf(stdout, " `-r, -compression_ratios [<compression ratio>,<compression ratio>,...]`\n");
+  fprintf(stdout, " `-r, --compression-ratios [<compression ratio>,<compression ratio>,...]`\n");
   fprintf(stdout, "\n");
   fprintf(stdout, "Note: not supported for Part 15 (HTJ2K) compression\n");
   fprintf(stdout, "\n");
@@ -1108,7 +1108,7 @@ GrkRC GrkCompress::parseCommandLine(int argc, char* argv[], CompressInitParams* 
   auto pocOpt = app.add_option("-P,--poc", poc, "Progression order changes");
   auto qualityOpt = app.add_option("-q,--quality", quality, "Layer rates expressed as quality");
   auto captureResOpt = app.add_option("-Q,--capture-res", captureRes, "Capture resolution");
-  auto compressionRatiosOpt = app.add_option("-r,--compression_ratios", compressionRatios,
+  auto compressionRatiosOpt = app.add_option("-r,--compression-ratios", compressionRatios,
                                              "Layer rates expressed as compression ratios");
   auto roiOpt = app.add_option("-R,--roi", roi, "Region of interest");
   auto sopOpt = app.add_flag("-S,--sop", sop, "Add SOP markers");
