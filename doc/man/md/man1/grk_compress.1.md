@@ -111,7 +111,7 @@ Output directory where compressed files are stored. Only relevant when the `--ba
 
 `-O, --out-fmt [J2K|J2C|JPC|JP2|JHC|JPH]`
 
-Output format used to compress the images read from the directory specified with `-batch_src`. Required when `-batch_src` option is used. Supported formats are `J2K`, `J2C`,`JP2`, `JHC` and `JPH`.
+Output format used to compress the images read from the directory specified with `--batch-src`. Required when `--batch-src` option is used. Supported formats are `J2K`, `J2C`,`JP2`, `JHC` and `JPH`.
 
 `-K, --in-fmt [pbm|pgm|ppm|pnm|pam|pgx|png|bmp|tif|raw|rawl|jpg]`
 

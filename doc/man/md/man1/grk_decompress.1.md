@@ -32,7 +32,7 @@ Limitations
 
 stdout
 
-The decompresser can write output to `stdout` for the following formats: `BMP`,`PNG`, `JPG`, `PNM`, `RAW` and `RAWL`.  To enable writing to `stdout`, please ensure that the `-o` parameter is **not** present in the command line, and that the `-out_fmt` parameter is set to one of the supported formats listed above. Note: the verbose flag `-v` will be ignored in this mode, as verbose output would corrupt the output file.
+The decompresser can write output to `stdout` for the following formats: `BMP`,`PNG`, `JPG`, `PNM`, `RAW` and `RAWL`.  To enable writing to `stdout`, please ensure that the `-o` parameter is **not** present in the command line, and that the `--out-fmt` parameter is set to one of the supported formats listed above. Note: the verbose flag `-v` will be ignored in this mode, as verbose output would corrupt the output file.
 
 Embedded ICC Profile
 
@@ -69,7 +69,7 @@ Output information and warnings about decoding to console (errors are always out
 
 `-i, --in-file [file]`
 
-Input file. Either this argument or the `-batch_src` argument described below is required. Valid input image extensions are J2K, JP2 and JPC. When using this option output file must be specified using -o.
+Input file. Either this argument or the `--batch-src` argument described below is required. Valid input image extensions are J2K, JP2 and JPC. When using this option output file must be specified using -o.
 
 `-o, --out-file [file]`
 
@@ -77,15 +77,15 @@ Output file. Required when using `-i` option. See above for supported file types
 
 `-y, --batch-src [directory path]`
 
-Path to the folder where the compressed images are stored. Either this argument or the `-i` argument described above is required. When image files are in the same directory as the executable, this can be indicated by a dot `.` argument. When using this option, the output format must be specified using `-out_fmt`. Output images are saved in the same folder.
+Path to the folder where the compressed images are stored. Either this argument or the `-i` argument described above is required. When image files are in the same directory as the executable, this can be indicated by a dot `.` argument. When using this option, the output format must be specified using `--out-fmt`. Output images are saved in the same folder.
 
 `-a, --out-dir [output directory]`
 
-Output directory where compressed files are stored. Only relevant when the `-batch_src` flag is set. Default: same directory as specified by `-batch_src`.
+Output directory where compressed files are stored. Only relevant when the `--batch-src` flag is set. Default: same directory as specified by `--batch-src`.
 
 `-O, --out-fmt [format]`
 
-Output format used to decompress the code streams. Required when `-batch_src` option is used. See above for supported formats.
+Output format used to decompress the code streams. Required when `--batch-src` option is used. See above for supported formats.
 
 `-r, --reduce [reduce factor]`
 
