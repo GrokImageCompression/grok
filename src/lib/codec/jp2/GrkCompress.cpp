@@ -368,7 +368,7 @@ static void compress_help_display(void)
           "Color Transformation (ICT) in place of the Reversible Color Transformation (RCT)\n");
   fprintf(stdout, "and the irreversible DWT 9-7 in place of the 5-3 filter. Default: off.\n");
   fprintf(stdout, "\n");
-  fprintf(stdout, " `-p, -progression_order` [progression order]\n");
+  fprintf(stdout, " `-p, --progression-order` [progression order]\n");
   fprintf(stdout, "\n");
   fprintf(stdout, "Progression order. The five progression orders are : `LRCP`, `RLCP`, `RPCL`,\n");
   fprintf(stdout, "`PCRL` and `CPRL`. Default: `LRCP`.\n");
@@ -1089,7 +1089,7 @@ GrkRC GrkCompress::parseCommandLine(int argc, char* argv[], CompressInitParams* 
   auto licenseOpt = app.add_option("-j,--license", license, "License");
   auto serverOpt = app.add_option("-J,--server", server, "Server");
   auto kernelBuildOptionsOpt =
-      app.add_option("-k,--kernel_build", kernelBuildOptions, "Kernel build options")
+      app.add_option("-k,--kernel-build", kernelBuildOptions, "Kernel build options")
           ->default_val(0);
   auto inputFormatOpt = app.add_option("-K,--in-fmt", inputFormat, "Input format");
   auto durationOpt =
@@ -1104,7 +1104,7 @@ GrkRC GrkCompress::parseCommandLine(int argc, char* argv[], CompressInitParams* 
   auto outputFileOpt = app.add_option("-o,--out-file", outputFile, "Output file");
   auto outputFormatOpt = app.add_option("-O,--out-fmt", outputFormat, "Output format");
   auto progressionOrderOpt =
-      app.add_option("-p,--progression_order", progressionOrder, "Progression order");
+      app.add_option("-p,--progression-order", progressionOrder, "Progression order");
   auto pocOpt = app.add_option("-P,--poc", poc, "Progression order changes");
   auto qualityOpt = app.add_option("-q,--quality", quality, "Layer rates expressed as quality");
   auto captureResOpt = app.add_option("-Q,--capture-res", captureRes, "Capture resolution");

@@ -89,7 +89,7 @@ Output information and warnings about encoding to console (errors are always out
 
 `-i, --in-file [file]`
 
-Input file. Either this argument or the `-batch_src` argument described below is required.  See above for supported input formats.
+Input file. Either this argument or the `--batch-src` argument described below is required.  See above for supported input formats.
 
 * `PNG` requires `libpng` while `TIF/TIFF` requires `libtiff`
 * `JPG` requires `libjpeg` (or `libjpeg-turbo`), and only 8 bit precision is supported
@@ -107,7 +107,7 @@ Path to the folder where the images to be compressed are stored. Either this arg
 
 `-a, --out-dir [output directory]`
 
-Output directory where compressed files are stored. Only relevant when the `-batch_src` flag is set. Default: same directory as specified by `-y`.
+Output directory where compressed files are stored. Only relevant when the `--batch-src` flag is set. Default: same directory as specified by `-y`.
 
 `-O, --out-fmt [J2K|J2C|JPC|JP2|JHC|JPH]`
 
