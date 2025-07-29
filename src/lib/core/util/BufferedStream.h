@@ -236,19 +236,80 @@ void grk_write(uint8_t* buffer, TYPE value)
 }
 
 template<typename TYPE>
-void grk_read(const uint8_t* buffer, TYPE* value, uint32_t numBytes)
+void grk_read(const uint8_t* src, TYPE* value, uint32_t numBytes)
 {
   assert(numBytes > 0 && numBytes <= sizeof(TYPE));
-#if defined(GROK_BIG_ENDIAN)
-  auto dataPtr = ((uint8_t*)value);
+  if(numBytes == 0 || numBytes > sizeof(TYPE))
+    throw std::runtime_error("read size too large");
+
   *value = 0;
-  memcpy(dataPtr + sizeof(TYPE) - numBytes, buffer, numBytes);
-#else
-  auto dataPtr = ((uint8_t*)value) + numBytes - 1;
-  *value = 0;
-  for(uint32_t i = 0; i < numBytes; ++i)
-    *(dataPtr--) = *(buffer++);
+  memcpy(value, src, numBytes); // Copy bytes directly
+
+  if(std::getenv("GRK_DEBUG"))
+  {
+    std::cout << "grk_read: src=" << (void*)src << ", bytes=";
+    for(uint32_t i = 0; i < numBytes; ++i)
+    {
+      std::cout << std::hex << std::setw(2) << std::setfill('0') << (int)src[i] << " ";
+    }
+    std::cout << ", raw value=0x" << std::hex << *value;
+    std::cout << std::dec << " (" << *value << ")";
+  }
+
+#if defined(_MSC_VER) // MSVC
+  if(numBytes == 8)
+  {
+    *value = (TYPE)_byteswap_uint64((uint64_t)*value); // Big-endian to little-endian
+  }
+  else if(numBytes == 4)
+  {
+    *value = (TYPE)_byteswap_ulong((uint32_t)*value);
+  }
+  else if(numBytes == 2)
+  {
+    *value = (TYPE)_byteswap_ushort((uint16_t)*value);
+  }
+#elif defined(__linux__) || defined(__FreeBSD__) || defined(__NetBSD__) || \
+    defined(__OpenBSD__) // POSIX with byteswap.h
+#include <byteswap.h>
+  if(numBytes == 8)
+  {
+    *value = (TYPE)bswap_64((uint64_t)*value);
+  }
+  else if(numBytes == 4)
+  {
+    *value = (TYPE)bswap_32((uint32_t)*value);
+  }
+  else if(numBytes == 2)
+  {
+    *value = (TYPE)bswap_16((uint16_t)*value);
+  }
+#else // Fallback for other POSIX systems
+  if(numBytes == 8)
+  {
+    uint64_t tmp = *(uint64_t*)value;
+    *value = (TYPE)(((tmp >> 56) & 0xFF) | ((tmp >> 40) & 0xFF00) | ((tmp >> 24) & 0xFF0000) |
+                    ((tmp >> 8) & 0xFF000000) | ((tmp << 8) & 0xFF00000000) |
+                    ((tmp << 24) & 0xFF0000000000) | ((tmp << 40) & 0xFF000000000000) |
+                    ((tmp << 56) & 0xFF00000000000000));
+  }
+  else if(numBytes == 4)
+  {
+    uint32_t tmp = *(uint32_t*)value;
+    *value = (TYPE)(((tmp >> 24) & 0xFF) | ((tmp >> 8) & 0xFF00) | ((tmp << 8) & 0xFF0000) |
+                    ((tmp << 24) & 0xFF000000));
+  }
+  else if(numBytes == 2)
+  {
+    uint16_t tmp = *(uint16_t*)value;
+    *value = (TYPE)(((tmp >> 8) & 0xFF) | ((tmp << 8) & 0xFF00));
+  }
 #endif
+
+  if(std::getenv("GRK_DEBUG"))
+  {
+    std::cout << ", converted value=" << *value << ", type size=" << sizeof(TYPE) << std::endl;
+  }
 }
 
 template<typename TYPE>
