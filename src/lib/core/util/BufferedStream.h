@@ -244,18 +244,6 @@ void grk_read(const uint8_t* src, TYPE* value, uint32_t numBytes)
 
   *value = 0;
   memcpy(value, src, numBytes); // Copy bytes directly
-
-  if(std::getenv("GRK_DEBUG"))
-  {
-    std::cout << "grk_read: src=" << (void*)src << ", bytes=";
-    for(uint32_t i = 0; i < numBytes; ++i)
-    {
-      std::cout << std::hex << std::setw(2) << std::setfill('0') << (int)src[i] << " ";
-    }
-    std::cout << ", raw value=0x" << std::hex << *value;
-    std::cout << std::dec << " (" << *value << ")";
-  }
-
 #if defined(_MSC_VER) // MSVC
   if(numBytes == 8)
   {
@@ -305,11 +293,6 @@ void grk_read(const uint8_t* src, TYPE* value, uint32_t numBytes)
     *value = (TYPE)(((tmp >> 8) & 0xFF) | ((tmp << 8) & 0xFF00));
   }
 #endif
-
-  if(std::getenv("GRK_DEBUG"))
-  {
-    std::cout << ", converted value=" << *value << ", type size=" << sizeof(TYPE) << std::endl;
-  }
 }
 
 template<typename TYPE>
