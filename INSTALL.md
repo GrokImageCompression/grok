@@ -112,7 +112,7 @@ to `glibc`. For a purely static build, the library can be built
 on [Alpine Linux](https://www.alpinelinux.org/). Alpine uses
 [musl libc](https://musl.libc.org/), which can be linked to statically.
 
-Note: `cmake` must also be configured with `-DCMAKE_EXE_LINKER_FLAGS="-static"`.
+`cmake` must also be configured with `-DBUILD_SHARED_LIBS:bool=off -DGRK_ENABLE_EXIFTOOL:bool=off -DCMAKE_EXE_LINKER_FLAGS="-static"`.
 
 ### Fedora
 
@@ -122,8 +122,8 @@ from the build folder, then
 must be added to the `.bashrc` file. Note that the build binary folder is
 entered before the system binary folder, so that build shared libraries
 are given priority when loading at run time.
-1. for a static build, the following library must be installed:
-`sudo dnf install libstdc++-static`
+1. for a static build, the following libraries must be installed:
+`sudo dnf install libstdc++-static glibc-static`
 
 ### Debug/Release
 

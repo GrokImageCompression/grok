@@ -148,19 +148,24 @@ option(GRK_BUILD_CODEC "Build the CODEC executables" ON)
 option(GRK_BUILD_PLUGIN_LOADER "Enable loading of T1 plugin" OFF)
 mark_as_advanced(GRK_BUILD_PLUGIN_LOADER)
 
-find_package(PerlLibs)
-if (PERLLIBS_FOUND)
- 	message(STATUS "Perl libraries found")
- 	execute_process(COMMAND ${PERL_EXECUTABLE} -MImage::ExifTool -e ""
-     ERROR_QUIET RESULT_VARIABLE status)
-     if (NOT status)
-      	message(STATUS "ExifTool Perl module found")
-       	set(GROK_HAVE_EXIFTOOL define)  
-     else()
-      	message(STATUS "ExifTool Perl module not found")     
-     endif()
-endif(PERLLIBS_FOUND)
+# Add an option to enable or disable the ExifTool check
+option(GRK_ENABLE_EXIFTOOL "Enable detection of ExifTool Perl module" ON)
 
+# Check for Perl library
+if (GRK_ENABLE_EXIFTOOL)
+  find_package(PerlLibs)
+  if (PERLLIBS_FOUND)
+    message(STATUS "Perl libraries found")
+    execute_process(COMMAND ${PERL_EXECUTABLE} -MImage::ExifTool -e ""
+      ERROR_QUIET RESULT_VARIABLE status)
+      if (NOT status)
+          message(STATUS "ExifTool Perl module found")
+          set(GROK_HAVE_EXIFTOOL define)
+      else()
+          message(STATUS "ExifTool Perl module not found")
+      endif()
+  endif(PERLLIBS_FOUND)
+endif()
 
 add_subdirectory(src/lib/core)
 # Option to build SWIG bindings for grok_core (default OFF)
