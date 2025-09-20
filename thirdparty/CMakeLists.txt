@@ -67,7 +67,7 @@ if (GRK_BUILD_JPEG)
 	                        -DCMAKE_POSITION_INDEPENDENT_CODE=ON
 	                        -DWITH_TURBOJPEG=0
 	  				      GIT_REPOSITORY https://github.com/libjpeg-turbo/libjpeg-turbo.git
-	  					  GIT_TAG        2.1.5.1)
+	  					  GIT_TAG        3.1.2)
     set(JPEG_LIBNAME ${CMAKE_CURRENT_BINARY_DIR}/bin/${JPEG_LIBNAME} PARENT_SCOPE)
     set(JPEG_INCLUDE_DIRS ${CMAKE_CURRENT_BINARY_DIR}/libjpeg-turbo/include/ PARENT_SCOPE)
 endif()
