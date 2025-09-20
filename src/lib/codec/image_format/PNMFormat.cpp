@@ -34,6 +34,7 @@
 #include <iterator>
 #include <vector>
 #include <climits>
+#include <iomanip>
 #ifdef GROK_HAVE_URING
 #include "FileUringIO.h"
 #endif
@@ -54,7 +55,9 @@ struct pnm_header
   PNM_COLOUR_SPACE colour_space;
 };
 
-PNMFormat::PNMFormat(bool split) : forceSplit(split) {}
+PNMFormat::PNMFormat(bool split)
+    : forceSplit(split), maxPosition_(-1), maxNewline_(false), currentCompno_(UINT16_MAX)
+{}
 
 bool PNMFormat::encodeHeader(void)
 {
@@ -102,14 +105,31 @@ bool PNMFormat::encodeHeader(void)
 bool PNMFormat::writeHeader(bool doPGM)
 {
   std::ostringstream iss;
-  uint32_t prec = image_->decompress_prec;
   uint32_t width = image_->decompress_width;
   uint32_t height = image_->decompress_height;
-  uint32_t max = (uint32_t)((1U << prec) - 1);
+
+  std::string placeholder = "     ";
+  maxNewline_ = true;
 
   if(doPGM || image_->decompress_num_comps == 1)
   {
-    iss << "P5\n#Grok-" << grk_version() << "\n" << width << " " << height << "\n" << max << "\n";
+    iss << "P5\n#Grok-" << grk_version() << "\n" << width << " " << height << "\n";
+    auto str = iss.str();
+    size_t res;
+    if(fileStream_)
+      res = fwrite(str.c_str(), sizeof(uint8_t), str.size(), fileStream_);
+    else
+      res = serializer.write((uint8_t*)str.c_str(), str.size());
+    if(res != str.size())
+      return false;
+    maxPosition_ = fileStream_ ? ftell(fileStream_) : (int64_t)serializer.getOffset();
+    placeholder += "\n";
+    if(fileStream_)
+      res = fwrite(placeholder.c_str(), sizeof(uint8_t), placeholder.size(), fileStream_);
+    else
+      res = serializer.write((uint8_t*)placeholder.c_str(), placeholder.size());
+    if(res != placeholder.size())
+      return false;
   }
   else
   {
@@ -117,24 +137,55 @@ bool PNMFormat::writeHeader(bool doPGM)
     {
       uint16_t ncomp = image_->decompress_num_comps;
       iss << "P7\n# Grok-" << grk_version() << "\nWIDTH " << width << "\nHEIGHT " << height;
-      iss << "\nDEPTH " << ncomp << "\nMAXVAL " << max;
-      iss << "\nTUPLTYPE " << ((ncomp >= 3) ? "RGB_ALPHA" : "GRAYSCALE_ALPHA") << "\nENDHDR\n";
+      iss << "\nDEPTH " << ncomp << "\nMAXVAL ";
+      auto str = iss.str();
+      size_t res;
+      if(fileStream_)
+        res = fwrite(str.c_str(), sizeof(uint8_t), str.size(), fileStream_);
+      else
+        res = serializer.write((uint8_t*)str.c_str(), str.size());
+      if(res != str.size())
+        return false;
+      maxPosition_ = fileStream_ ? ftell(fileStream_) : (int64_t)serializer.getOffset();
+      maxNewline_ = false;
+      if(fileStream_)
+        res = fwrite(placeholder.c_str(), sizeof(uint8_t), placeholder.size(), fileStream_);
+      else
+        res = serializer.write((uint8_t*)placeholder.c_str(), placeholder.size());
+      if(res != placeholder.size())
+        return false;
+      std::ostringstream iss2;
+      iss2 << "\nTUPLTYPE " << ((ncomp >= 3) ? "RGB_ALPHA" : "GRAYSCALE_ALPHA") << "\nENDHDR\n";
+      auto str2 = iss2.str();
+      if(fileStream_)
+        res = fwrite(str2.c_str(), sizeof(uint8_t), str2.size(), fileStream_);
+      else
+        res = serializer.write((uint8_t*)str2.c_str(), str2.size());
+      if(res != str2.size())
+        return false;
     }
     else
     {
-      iss << "P6\n# Grok-" << grk_version() << "\n"
-          << width << " " << height << "\n"
-          << max << "\n";
+      iss << "P6\n# Grok-" << grk_version() << "\n" << width << " " << height << "\n";
+      auto str = iss.str();
+      size_t res;
+      if(fileStream_)
+        res = fwrite(str.c_str(), sizeof(uint8_t), str.size(), fileStream_);
+      else
+        res = serializer.write((uint8_t*)str.c_str(), str.size());
+      if(res != str.size())
+        return false;
+      maxPosition_ = fileStream_ ? ftell(fileStream_) : (int64_t)serializer.getOffset();
+      placeholder += "\n";
+      if(fileStream_)
+        res = fwrite(placeholder.c_str(), sizeof(uint8_t), placeholder.size(), fileStream_);
+      else
+        res = serializer.write((uint8_t*)placeholder.c_str(), placeholder.size());
+      if(res != placeholder.size())
+        return false;
     }
   }
-  auto str = iss.str();
-  size_t res;
-  if(fileStream_)
-    res = fwrite(str.c_str(), sizeof(uint8_t), str.size(), fileStream_);
-  else
-    res = serializer.write((uint8_t*)str.c_str(), str.size());
-
-  return res == str.size();
+  return true;
 }
 
 const size_t bufSize = 4096;
@@ -225,7 +276,8 @@ bool PNMFormat::encodeRows([[maybe_unused]] uint32_t rows)
       applicationOrchestratedReclaim(packedBuf);
     }
     delete iter;
-
+    if(!closeStream())
+      goto cleanup;
     if(!serializer.close())
       goto cleanup;
     if(!forceSplit)
@@ -255,6 +307,7 @@ bool PNMFormat::encodeRows([[maybe_unused]] uint32_t rows)
     {
       destname = fileName_;
     }
+    currentCompno_ = compno;
     if(!grk::grk_open_for_output(&fileStream_, destname.c_str(), useStdIO_))
       goto cleanup;
     if(!writeHeader(true))
@@ -364,6 +417,64 @@ bool PNMFormat::hasOpacity(void)
 bool PNMFormat::closeStream(void)
 {
   bool rc = true;
+  if(maxPosition_ != -1)
+  {
+    int32_t adjust = (image_->comps[0].sgnd ? 1 << (image_->decompress_prec - 1) : 0);
+    uint16_t start = (currentCompno_ != UINT16_MAX) ? currentCompno_ : 0;
+    uint16_t end =
+        (currentCompno_ != UINT16_MAX) ? currentCompno_ + 1 : image_->decompress_num_comps;
+    uint32_t maxVal = 0;
+    for(uint16_t c = start; c < end; ++c)
+    {
+      auto comp = image_->comps + c;
+      if(!comp->data)
+        continue;
+      auto data = comp->data;
+      uint32_t ww = comp->w;
+      uint32_t hh = comp->h;
+      uint32_t strd = comp->stride;
+      for(uint32_t y = 0; y < hh; ++y)
+      {
+        auto ptr = data + y * strd;
+        for(uint32_t x = 0; x < ww; ++x)
+        {
+          uint32_t val = (uint32_t)(*ptr++ + adjust);
+          if(val > maxVal)
+            maxVal = val;
+        }
+      }
+    }
+    int64_t curr = fileStream_ ? ftell(fileStream_) : (int64_t)serializer.getOffset();
+    int seek_rc;
+    if(fileStream_)
+      seek_rc = fseek(fileStream_, maxPosition_, SEEK_SET);
+    else
+      seek_rc = (int)serializer.seek(maxPosition_, SEEK_SET);
+    if(seek_rc == -1)
+      rc = false;
+    else
+    {
+      std::ostringstream oss;
+      oss << std::setfill(' ') << std::setw(5) << std::right << maxVal;
+      if(maxNewline_)
+        oss << "\n";
+      auto str = oss.str();
+      size_t res;
+      if(fileStream_)
+        res = fwrite(str.c_str(), 1, str.size(), fileStream_);
+      else
+        res = serializer.write((uint8_t*)str.c_str(), str.size());
+      if(res != str.size())
+        rc = false;
+      if(fileStream_)
+        seek_rc = fseek(fileStream_, curr, SEEK_SET);
+      else
+        seek_rc = (int)serializer.seek(curr, SEEK_SET);
+      if(seek_rc == -1)
+        rc = false;
+    }
+    maxPosition_ = -1;
+  }
   if(!useStdIO_ && !grk::safe_fclose(fileStream_))
     rc = false;
   fileStream_ = nullptr;
