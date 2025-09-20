@@ -19,7 +19,7 @@ Previously, the project used
 to track bugs. All remaining tickets in that bugzilla instance were
 migrated to GitLab issues, and this system should no longer be used.
 All bugs filed in a older bugzilla at
-`RemoteSensing.org <http://bugzilla.remotesensing.org/>`_ (pre-April 2008)
+'RemoteSensing.org (bugzilla.remotesensing.org)' (pre-April 2008)
 have unfortunately been lost.
 
 

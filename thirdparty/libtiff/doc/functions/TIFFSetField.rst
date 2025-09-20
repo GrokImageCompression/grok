@@ -11,9 +11,9 @@ Synopsis
     #include <tiffio.h>
     #include <stdarg.h>"
 
-.. c:function:: int TIFFSetField(TIFF* tif, ttag_t tag, ...)
+.. c:function:: int TIFFSetField(TIFF* tif, uint32_t tag, ...)
 
-.. c:function:: int TIFFVSetField(TIFF* tif, ttag_t tag, va_list ap)
+.. c:function:: int TIFFVSetField(TIFF* tif, uint32_t tag, va_list ap)
 
 .. c:function:: int TIFFUnsetField(TIFF* tif, uint32_t tag)
 

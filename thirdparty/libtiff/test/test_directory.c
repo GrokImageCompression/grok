@@ -30,6 +30,10 @@
  * Furthermore, tests are performed with big-endian, little-endian and BigTIFF
  * images.
  *
+ * Furthermore the correctness of tif_curdir = TIFFCurrentDirectory() when
+ * moving though a multi-IFD file and creating new IFDs, overwriting or
+ * re-writing IFDs as well for reading and writing SubIFDs is tested.
+ *
  */
 
 #include "tif_config.h"
@@ -58,6 +62,51 @@ const uint16_t planarconfig = PLANARCONFIG_CONTIG;
 char *openModeStrings[] = {"wl", "wb", "w8l", "w8b"};
 char *openModeText[] = {"non-BigTIFF and LE", "non-BigTIFF and BE",
                         "BigTIFF and LE", "BigTIFF and BE"};
+
+/* Some functions and macros to get more readable test code. */
+int CheckCurDirNum(TIFF *tif, tdir_t expected_dirnum, int line)
+{
+
+    tdir_t curdir = TIFFCurrentDirectory(tif);
+    if (curdir != expected_dirnum)
+    {
+        fprintf(stderr,
+                "Error: curdir %d is different to expected one %d at line %d\n",
+                curdir, expected_dirnum, line);
+        return 1;
+    }
+    return 0;
+}
+
+#define TIFFWriteDirectory_M(tif, filename, line)                              \
+    if (!TIFFWriteDirectory(tif))                                              \
+    {                                                                          \
+        fprintf(stderr, "Can't write directory to %s at line %d\n", filename,  \
+                line);                                                         \
+        goto failure;                                                          \
+    }
+
+#define TIFFCheckpointDirectory_M(tif, dirnum, filename, line)                 \
+    if (!TIFFCheckpointDirectory(tif))                                         \
+    {                                                                          \
+        fprintf(stderr, "Can't checkpoint directory %d of %s at line %d\n",    \
+                dirnum, filename, line);                                       \
+        goto failure;                                                          \
+    }
+
+#define TIFFSetDirectory_M(tif, dirnum, filename, line)                        \
+    if (!TIFFSetDirectory(tif, dirnum))                                        \
+    {                                                                          \
+        fprintf(stderr, "Can't set directory %d of %s at line %d\n", dirnum,   \
+                filename, line);                                               \
+        goto failure;                                                          \
+    }
+
+#define CHECKCURDIRNUM_M(tif, x, line)                                         \
+    if (CheckCurDirNum(tif, x, line))                                          \
+    {                                                                          \
+        goto failure;                                                          \
+    }
 
 /* Writes basic tags to current directory (IFD) as well one pixel to the file.
  * For is_corrupted = TRUE a corrupted IFD (missing image width tag) is
@@ -180,9 +229,10 @@ int count_directories(const char *filename, int *count)
 
     do
     {
+        CHECKCURDIRNUM_M(tif, (tdir_t)(*count), __LINE__);
         (*count)++;
     } while (TIFFReadDirectory(tif));
-
+failure:
     TIFFClose(tif);
     return 0;
 }
@@ -303,6 +353,7 @@ int test_arbitrary_directrory_loading(unsigned int openMode)
     TIFF *tif;
     uint64_t offsets_base[N_DIRECTORIES];
     int expected_original_dirnumber;
+    tdir_t expected_curdir = (tdir_t)(-1);
 
     if (openMode >= (sizeof(openModeStrings) / sizeof(openModeStrings[0])))
     {
@@ -324,6 +375,7 @@ int test_arbitrary_directrory_loading(unsigned int openMode)
         return 1;
     }
     TIFFSetDirectory(tif, 0);
+    CHECKCURDIRNUM_M(tif, expected_curdir, __LINE__);
     for (int i = 0; i < N_DIRECTORIES; i++)
     {
         if (write_data_to_current_directory(tif, i, false))
@@ -337,11 +389,15 @@ int test_arbitrary_directrory_loading(unsigned int openMode)
             fprintf(stderr, "Can't write directory to %s\n", filename);
             goto failure;
         }
+        expected_curdir++;
+        /* Fails in 4.6.0 */
+        CHECKCURDIRNUM_M(tif, expected_curdir, __LINE__);
         if (i >= 2 && i <= 4)
         {
             if (i == 3)
             {
-                /* Invalidate directory - TIFFSetSubDirectory() will fail */
+                /* Invalidate directory - TIFFSetSubDirectory() will fail.
+                 * The next TIFFSetDirectory(i) will revoke this action.*/
                 if (TIFFSetSubDirectory(tif, 0))
                 {
                     fprintf(stderr,
@@ -362,7 +418,10 @@ int test_arbitrary_directrory_loading(unsigned int openMode)
             }
             if (i == 4)
             {
-                /* Invalidate directory - TIFFSetSubDirectory() will fail */
+                /* Invalidate directory - TIFFSetSubDirectory() will fail.
+                 * This time, tif_curdir keeps set to -1 and counts now again
+                 * from 0, despite the directory number in the file is equal
+                 * "i". */
                 if (TIFFSetSubDirectory(tif, 0))
                 {
                     fprintf(stderr,
@@ -413,6 +472,7 @@ int test_arbitrary_directrory_loading(unsigned int openMode)
                 N_DIRECTORIES + 1, filename);
         goto failure;
     }
+    CHECKCURDIRNUM_M(tif, N_DIRECTORIES - 1, __LINE__);
 
     /* Test very fast  TIFFSetDirectory() using IFD loop directory list.
      * First populate IFD loop directory list and then go through directories in
@@ -425,8 +485,10 @@ int test_arbitrary_directrory_loading(unsigned int openMode)
             fprintf(stderr, "Can't set %d.th directory from %s\n", i, filename);
             goto failure;
         }
+        CHECKCURDIRNUM_M(tif, i, __LINE__);
     }
     TIFFReadDirectory(tif);
+    CHECKCURDIRNUM_M(tif, N_DIRECTORIES - 1, __LINE__);
     for (int i = N_DIRECTORIES - 1; i >= 0; i--)
     {
         if (!TIFFSetDirectory(tif, i))
@@ -438,6 +500,7 @@ int test_arbitrary_directrory_loading(unsigned int openMode)
         {
             goto failure;
         }
+        CHECKCURDIRNUM_M(tif, i, __LINE__);
     }
 
     /* Test not existing directory number */
@@ -449,6 +512,7 @@ int test_arbitrary_directrory_loading(unsigned int openMode)
                 N_DIRECTORIES, filename);
         goto failure;
     }
+    CHECKCURDIRNUM_M(tif, 0, __LINE__);
 
     /* Close and Reopen prepared testfile */
     TIFFClose(tif);
@@ -471,6 +535,7 @@ int test_arbitrary_directrory_loading(unsigned int openMode)
         {
             goto failure;
         }
+        CHECKCURDIRNUM_M(tif, i, __LINE__);
     }
 
     /* More specialized test cases for relative seeking within TIFFSetDirectory.
@@ -481,6 +546,7 @@ int test_arbitrary_directrory_loading(unsigned int openMode)
         fprintf(stderr, "Can't set directory %d within %s\n", 2, filename);
         goto failure;
     }
+    CHECKCURDIRNUM_M(tif, 2, __LINE__);
     uint64_t off2 = TIFFCurrentDirOffset(tif);
     /* Note that dirnum = 2 is deleted here since TIFFUnlinkDirectory()
      * starts with 1 instead of 0. */
@@ -500,6 +566,7 @@ int test_arbitrary_directrory_loading(unsigned int openMode)
         goto failure;
     }
     /*Check if correct directory is loaded */
+    CHECKCURDIRNUM_M(tif, 0, __LINE__);
     expected_original_dirnumber = 2;
     if (!is_requested_directory(tif, expected_original_dirnumber, filename))
     {
@@ -512,6 +579,7 @@ int test_arbitrary_directrory_loading(unsigned int openMode)
         fprintf(stderr, "Can't set new directory %d within %s\n", 3, filename);
         goto failure;
     }
+    CHECKCURDIRNUM_M(tif, 3, __LINE__);
     expected_original_dirnumber = 4;
     if (!is_requested_directory(tif, expected_original_dirnumber, filename))
     {
@@ -544,6 +612,7 @@ int test_arbitrary_directrory_loading(unsigned int openMode)
                 2, filename);
         goto failure;
     }
+    CHECKCURDIRNUM_M(tif, 2, __LINE__);
     /* which should now be the previous dir-3. */
     expected_original_dirnumber = 4;
     if (!is_requested_directory(tif, expected_original_dirnumber, filename))
@@ -551,8 +620,11 @@ int test_arbitrary_directrory_loading(unsigned int openMode)
         goto failure;
     }
 
-    /* Check, if third original directory could be loaded and the following,
-     * still chained one. This is like for a SubIFD. */
+    /* Check, if third original directory, which is unlinked, could be loaded
+     * and the following, still chained one. This is like for a SubIFD.
+     * tif_curdir will be set to 0 because deleted IFD is not in main sequence
+     * and then incremented to 1 when reading the still chained next IFD using
+     * TIFFReadDirectory(). */
     if (!TIFFSetSubDirectory(tif, offsets_base[2]))
     {
         fprintf(stderr,
@@ -561,6 +633,7 @@ int test_arbitrary_directrory_loading(unsigned int openMode)
                 offsets_base[2], offsets_base[2], filename);
         goto failure;
     }
+    CHECKCURDIRNUM_M(tif, 0, __LINE__);
     if (!TIFFReadDirectory(tif))
     {
         fprintf(stderr,
@@ -572,6 +645,7 @@ int test_arbitrary_directrory_loading(unsigned int openMode)
     /* Check if correct directory is loaded, which was unlinked the second
      * time.
      */
+    CHECKCURDIRNUM_M(tif, 1, __LINE__);
     expected_original_dirnumber = 3;
     if (!is_requested_directory(tif, expected_original_dirnumber, filename))
     {
@@ -589,6 +663,7 @@ int test_arbitrary_directrory_loading(unsigned int openMode)
                 offsets_base[2], offsets_base[2], filename);
         goto failure;
     }
+    CHECKCURDIRNUM_M(tif, 0, __LINE__);
     if (!TIFFSetDirectory(tif, 3))
     {
         fprintf(stderr, "Can't set new directory %d within %s\n", 3, filename);
@@ -600,6 +675,7 @@ int test_arbitrary_directrory_loading(unsigned int openMode)
                 3, filename);
         goto failure;
     }
+    CHECKCURDIRNUM_M(tif, 3, __LINE__);
     /*Check if correct directory is loaded. Because two original IFDs are
      * unlinked / missing, the original dirnumber is now 5. */
     expected_original_dirnumber = 5;
@@ -653,11 +729,13 @@ int test_arbitrary_directrory_loading(unsigned int openMode)
      * Furthermore, this test checks that TIFFUnlinkDirectory() can unlink
      * the first directory dirnum = 0 and a following TIFFSetDirectory(0)
      * does not load the unlinked directory. */
+    CHECKCURDIRNUM_M(tif, 3, __LINE__);
     if (!TIFFUnlinkDirectory(tif, 1))
     {
         fprintf(stderr, "Can't unlink directory %d within %s\n", 0, filename);
         goto failure;
     }
+    CHECKCURDIRNUM_M(tif, (tdir_t)(-1), __LINE__);
     /* Now three directories are missing (0,2,3) and thus directory 0 is
      * original directory 1 and directory 2 is original directory 5. */
     if (!TIFFSetDirectory(tif, 0))
@@ -668,6 +746,7 @@ int test_arbitrary_directrory_loading(unsigned int openMode)
                 0, filename);
         goto failure;
     }
+    CHECKCURDIRNUM_M(tif, 0, __LINE__);
     expected_original_dirnumber = 1;
     if (!is_requested_directory(tif, expected_original_dirnumber, filename))
     {
@@ -690,11 +769,15 @@ int test_arbitrary_directrory_loading(unsigned int openMode)
     /* TIFFUnlinkDirectory(0) is not allowed, because dirnum starts for
      * this function with 1 instead of 0.
      * An error return is expected here. */
+    CHECKCURDIRNUM_M(tif, 2, __LINE__);
+    fprintf(stderr, "----- Expect error messages about 'TIFFUnlinkDirectory() "
+                    "first directory starts with number 1 and not 0.' -----\n");
     if (TIFFUnlinkDirectory(tif, 0))
     {
         fprintf(stderr, "TIFFUnlinkDirectory(0) did not return an error.\n");
         goto failure;
     }
+    CHECKCURDIRNUM_M(tif, 2, __LINE__);
 
     TIFFClose(tif);
     unlink(filename);
@@ -717,7 +800,7 @@ int test_SubIFD_directrory_handling(unsigned int openMode)
     char filename[128] = {0};
 
 /* Define the number of sub-IFDs you are going to write */
-#define NUMBER_OF_SUBIFDs 3
+#define NUMBER_OF_SUBIFDs 4
     uint16_t number_of_sub_IFDs = NUMBER_OF_SUBIFDs;
     toff_t sub_IFDs_offsets[NUMBER_OF_SUBIFDs] = {
         0UL}; /* array for SubIFD tag */
@@ -763,6 +846,8 @@ int test_SubIFD_directrory_handling(unsigned int openMode)
                 goto failure;
         }
 
+        expected_original_dirnumber = blnWriteSubIFD ? 0 : iIFD - 1;
+
         /* For the second multi-page image, trigger TIFFWriteDirectory() to
          * switch for the next number_of_sub_IFDs calls to add those as SubIFDs
          * e.g. for thumbnails */
@@ -772,10 +857,11 @@ int test_SubIFD_directrory_handling(unsigned int openMode)
             /* Now here is the trick: the next n directories written
              * will be sub-IFDs of the main-IFD (where n is number_of_sub_IFDs
              * specified when you set the TIFFTAG_SUBIFD field.
-             * The SubIFD offset array sub_IFDs_offsets is filled automatically
-             * with the proper offset values by the following number_of_sub_IFDs
-             * TIFFWriteDirectory() calls and are updated in the related
-             * main-IFD with the last call.
+             * The contents of sub_IFDs_offsets is initially copied to the
+             * internal SubIFD offset array and written to the main-IFD. Those
+             * SubIFD offsets in the main-IFD are then patched by the following
+             * number_of_sub_IFDs TIFFWriteDirectory() calls which write the
+             * sub-IFDs to file.
              */
             if (!TIFFSetField(tif, TIFFTAG_SUBIFD, number_of_sub_IFDs,
                               sub_IFDs_offsets))
@@ -787,6 +873,8 @@ int test_SubIFD_directrory_handling(unsigned int openMode)
             fprintf(stderr, "Can't write directory to %s\n", filename);
             goto failure;
         }
+        /* Fails in 4.6.0 */
+        CHECKCURDIRNUM_M(tif, expected_original_dirnumber, __LINE__);
 
         if (iSubIFD >= number_of_sub_IFDs)
             blnWriteSubIFD = 0;
@@ -802,6 +890,7 @@ int test_SubIFD_directrory_handling(unsigned int openMode)
     }
 
     tdir_t numberOfMainIFDs = TIFFNumberOfDirectories(tif);
+    CHECKCURDIRNUM_M(tif, 0, __LINE__);
     if (numberOfMainIFDs != (tdir_t)N_DIRECTORIES - number_of_sub_IFDs)
     {
         fprintf(stderr,
@@ -835,14 +924,56 @@ int test_SubIFD_directrory_handling(unsigned int openMode)
                 {
                     goto failure;
                 }
+                /* For SubIFDs, curdir is always set to 0 for the first SubIFD
+                 * read.
+                 * When SubIFDs are not concatenated, curdir is 0 for all
+                 * SubIFDs read.
+                 * When the SubIFDs are concatenated the following
+                 * ones after the first read one get incremented curdir numbers.
+                 * The curdir sequence gets updated when a previous one before
+                 * the firstly read one is read. I.e. curdir behaves in the
+                 * SubIFD chain like in the main IFD chain to support IFD loop
+                 * checking.
+                 */
                 /* Check if there is a SubIFD chain behind the first one from
                  * the array, as specified by Adobe */
                 int n = 0;
+                /* subdirnum starts with 1 because first SubIFD is already
+                 * read with TIFFSetSubDirectory() */
+                CHECKCURDIRNUM_M(tif, 0, __LINE__);
+                tdir_t subdirnum = 1;
+                /* analyse SubIFD chain */
                 while (TIFFReadDirectory(tif))
                 {
-                    /* analyse subfile */
                     if (!is_requested_directory(tif, 201 + i + n++, filename))
                         goto failure;
+                    /* Fails in 4.6.0 when SubIFD chaining is enabled. */
+                    CHECKCURDIRNUM_M(tif, subdirnum, __LINE__);
+                    subdirnum++;
+                }
+            }
+            /*-- Go through SubIFDs in reverse order --*/
+            /* Activate main-IFD to reset SubIFD loop list from above. */
+            TIFFSetDirectory(tif, 0);
+            for (i = number_of_sub_IFDs - 1; i >= 0; i--)
+            {
+                if (!TIFFSetSubDirectory(tif, sub_IFDs_offsets[i]))
+                    goto failure;
+                if (!is_requested_directory(tif, 200 + i, filename))
+                {
+                    goto failure;
+                }
+                int n = 0;
+                tdir_t subdirnum = 1;
+                CHECKCURDIRNUM_M(tif, 0, __LINE__);
+                /* analyse SubIFD chain */
+                while (TIFFReadDirectory(tif))
+                {
+                    if (!is_requested_directory(tif, 201 + i + n++, filename))
+                        goto failure;
+                    /* Fails in 4.6.0 when SubIFD chaining is enabled. */
+                    CHECKCURDIRNUM_M(tif, subdirnum, __LINE__);
+                    subdirnum++;
                 }
             }
             /* Go back to main-IFD chain and re-read that main-IFD directory */
@@ -852,6 +983,8 @@ int test_SubIFD_directrory_handling(unsigned int openMode)
         /* Read next main-IFD directory (subfile) */
         blnRead = TIFFReadDirectory(tif);
         currentDirNumber = TIFFCurrentDirectory(tif);
+        if (blnRead)
+            CHECKCURDIRNUM_M(tif, expected_original_dirnumber, __LINE__);
         if (blnRead && !is_requested_directory(
                            tif, expected_original_dirnumber++, filename))
             goto failure;
@@ -864,6 +997,59 @@ int test_SubIFD_directrory_handling(unsigned int openMode)
     {
         goto failure;
     }
+    CHECKCURDIRNUM_M(tif, 0, __LINE__);
+
+    /*-- Test TIFFCheckpointDirectory() with SubIFDs --
+     * However, SubIFDs cannot be re-written to another location because
+     * TIFFRewriteDirectory() does not support SubIFDs. Overwriting works. */
+    tdir_t expected_curdir = TIFFNumberOfDirectories(tif);
+    TIFFCreateDirectory(tif);
+    if (write_data_to_current_directory(tif, expected_curdir, false))
+    {
+        fprintf(stderr,
+                "Can't write data to current directory in %s at line %d\n",
+                filename, __LINE__);
+        goto failure;
+    }
+    /* prepare to write next directory as SubIFD */
+    number_of_sub_IFDs = 1;
+    if (!TIFFSetField(tif, TIFFTAG_SUBIFD, number_of_sub_IFDs,
+                      sub_IFDs_offsets))
+        goto failure;
+    TIFFWriteDirectory_M(tif, filename, __LINE__);
+    /* Fails in 4.6.0 */
+    CHECKCURDIRNUM_M(tif, expected_curdir, __LINE__);
+    /* write SubIFD */
+    if (write_data_to_current_directory(tif, 700, false))
+    {
+        fprintf(stderr, "Can't write data to current directory in %s\n",
+                filename);
+        goto failure;
+    }
+    /* SUBFILETYPE tag is not mandatory for SubIFD writing, but a
+     * good idea to indicate thumbnails */
+    if (!TIFFSetField(tif, TIFFTAG_SUBFILETYPE, FILETYPE_REDUCEDIMAGE))
+        goto failure;
+
+    /* Checkpoint SubIFD test */
+    TIFFCheckpointDirectory_M(tif, expected_curdir, filename, __LINE__);
+    /* The next four CHECKKURDIRNUM_M fail in 4.6.0 */
+    CHECKCURDIRNUM_M(tif, 0, __LINE__);
+    /* Overwriting works but re-writing will not. */
+    TIFFWriteDirectory_M(tif, filename, __LINE__);
+    CHECKCURDIRNUM_M(tif, 0, __LINE__);
+    /* Write another main-IFD */
+    expected_curdir++;
+    if (write_data_to_current_directory(tif, expected_curdir, false))
+    {
+        fprintf(stderr, "Can't write data to current directory in %s\n",
+                filename);
+        goto failure;
+    }
+    TIFFCheckpointDirectory_M(tif, expected_curdir, filename, __LINE__);
+    CHECKCURDIRNUM_M(tif, expected_curdir, __LINE__);
+    TIFFWriteDirectory_M(tif, filename, __LINE__);
+    CHECKCURDIRNUM_M(tif, expected_curdir, __LINE__);
 
     TIFFClose(tif);
     unlink(filename);
@@ -880,7 +1066,7 @@ failure:
 /* Test failure in TIFFSetSubDirectory() (see issue #618 and MR !543)
  *
  * If int TIFFSetSubDirectory(TIFF *tif, uint64_t diroff) fails due to
- * TIFFReadDirectory() error, subsequent calls to TIFFSetDirectory() can not
+ * TIFFReadDirectory() error, subsequent calls to TIFFSetDirectory() cannot
  * recover a consistent state. This is reproducible in master, 4.6, 4.5.1.
  * This issue surfaced around the time when relative seeking
  * support / IFD hash map optimiazions were introduced. This can be reproduced
@@ -897,6 +1083,7 @@ int test_SetSubDirectory_failure(unsigned int openMode)
     toff_t sub_IFDs_offsets[NUMBER_OF_SUBIFDs2] = {
         0UL}; /* array for SubIFD tag */
     TIFF *tif;
+    tdir_t expected_curdir = 0;
 
     if (openMode >= (sizeof(openModeStrings) / sizeof(openModeStrings[0])))
     {
@@ -934,10 +1121,10 @@ int test_SetSubDirectory_failure(unsigned int openMode)
         fprintf(stderr, "Can't write directory to %s\n", filename);
         goto failure;
     }
+    CHECKCURDIRNUM_M(tif, expected_curdir, __LINE__);
     /* write corrupted SubIFD */
-    fprintf(
-        stderr,
-        "--- Expect some error messages about 'scanline size is zero' ---.\n");
+    fprintf(stderr, "----- Expect some error messages about 'scanline size is "
+                    "zero' -----\n");
     if (write_data_to_current_directory(tif, 310, true))
     {
         fprintf(stderr, "Can't write data to current directory in %s\n",
@@ -954,6 +1141,7 @@ int test_SetSubDirectory_failure(unsigned int openMode)
         fprintf(stderr, "Can't write directory to %s\n", filename);
         goto failure;
     }
+    CHECKCURDIRNUM_M(tif, expected_curdir, __LINE__);
     TIFFClose(tif);
 
     /* Reopen prepared testfile */
@@ -968,6 +1156,7 @@ int test_SetSubDirectory_failure(unsigned int openMode)
     {
         goto failure;
     }
+    CHECKCURDIRNUM_M(tif, expected_curdir, __LINE__);
 
     /* Check if there are SubIFD subfiles */
     void *ptr;
@@ -1006,6 +1195,7 @@ int test_SetSubDirectory_failure(unsigned int openMode)
         /* Go back to main-IFD chain and re-read that main-IFD directory */
         if (!TIFFSetDirectory(tif, 0))
             goto failure;
+        CHECKCURDIRNUM_M(tif, 0, __LINE__);
     }
 
     TIFFClose(tif);
@@ -1175,6 +1365,7 @@ int test_rewrite_lastdir_offset(unsigned int openMode)
                 filename, N_DIRECTORIES, count);
         goto failure;
     }
+    /* hint: file was closed by count_directories() */
     unlink(filename);
     return 0;
 
@@ -1321,6 +1512,8 @@ int test_lastdir_offset(unsigned int openMode)
             }
         }
     }
+    /* hint: files are always closed by count_directories() and
+     * get_dir_offsets() */
     unlink(filename_optimized);
     unlink(filename_non_optimized);
     return 0;
@@ -1333,12 +1526,779 @@ failure:
     return 1;
 } /*-- test_lastdir_offset() --*/
 
+/* Adds an EXIF IFD with some default values to the active IFD.
+ */
+int write_EXIF_data_to_current_directory(TIFF *tif, int i,
+                                         uint64_t *dir_offset_EXIF)
+{
+    char auxString[128];
+
+    if (!tif)
+    {
+        fprintf(stderr, "Invalid TIFF handle.\n");
+        return 1;
+    }
+
+    /*-- Now create an EXIF directory. */
+    if (TIFFCreateEXIFDirectory(tif) != 0)
+    {
+        fprintf(stderr, "TIFFCreateEXIFDirectory() failed.\n");
+        return 1;
+    }
+
+    if (!TIFFSetField(tif, EXIFTAG_EXIFVERSION, "0231"))
+    {
+        fprintf(stderr, "Can't write EXIFTAG_EXIFVERSION\n");
+        return 1;
+    }
+
+    /* Write IFD identification number to ASCII string of SUBSECTIMEORIGINAL
+     * tag. */
+    sprintf(auxString, "EXIF-%d-EXIF", i);
+    if (!TIFFSetField(tif, EXIFTAG_SUBSECTIMEORIGINAL, auxString))
+    {
+        fprintf(stderr, "Can't set EXIFTAG_SUBSECTIMEORIGINAL tag.\n");
+        return 1;
+    }
+
+    if (!TIFFWriteCustomDirectory(tif, dir_offset_EXIF))
+    {
+        fprintf(stderr, "TIFFWriteCustomDirectory() with EXIF failed.\n");
+        return 1;
+    }
+
+    return 0;
+} /*-- write_EXIF_data_to_current_directory() --*/
+
+/* Test correct incrementing of tif_curdir TIFFCurrentDirectory()
+ *
+ * Up to 4.6.0 there are cases where tif_curdir is set inconsistently or
+ * incorrectly, depending on the previous history. This function shows some of
+ * these cases and tests them after the improvements.
+ */
+int test_current_dirnum_incrementing(int testcase, unsigned int openMode)
+{
+#define N_DIRECTORIES_2 2
+    char filename[128] = {0};
+    tdir_t lastdir;
+    tdir_t expected_curdir = (tdir_t)(-1);
+
+    if (openMode >= (sizeof(openModeStrings) / sizeof(openModeStrings[0])))
+    {
+        fprintf(stderr, "Index %d for openMode parameter out of range.\n",
+                openMode);
+        return 1;
+    }
+
+    /* Get individual filenames and delete existent ones. */
+    sprintf(filename, "test_current_dirnum_incrementing_%s.tif",
+            openModeStrings[openMode]);
+    unlink(filename);
+
+    /* Create a file and write N_DIRECTORIES_2 directories to it. */
+    TIFF *tif = TIFFOpen(filename, openModeStrings[openMode]);
+    if (!tif)
+    {
+        fprintf(stderr, "Can't create %s\n", filename);
+        return 1;
+    }
+
+    /*-- Standard case for writing sequential IFDs. --*/
+    for (int i = 0; i < N_DIRECTORIES_2; i++)
+    {
+        if (write_data_to_current_directory(tif, i, false))
+        {
+            fprintf(stderr,
+                    "Can't write data to current directory in %s at %d\n",
+                    filename, __LINE__);
+            goto failure;
+        }
+        TIFFWriteDirectory_M(tif, filename, __LINE__);
+        expected_curdir++;
+        CHECKCURDIRNUM_M(tif, expected_curdir, __LINE__);
+    }
+
+    /*-- Standard case for sequential reading up to the end. --*/
+    expected_curdir = 0;
+    TIFFSetDirectory_M(tif, expected_curdir, filename, __LINE__);
+    while (TIFFReadDirectory(tif))
+    {
+        expected_curdir++;
+        CHECKCURDIRNUM_M(tif, expected_curdir, __LINE__);
+    }
+    /* Last read for next_offset 0 shall not increment tif_curdir. */
+    CHECKCURDIRNUM_M(tif, expected_curdir, __LINE__);
+
+    /* Now, go back to IFD 0 and overwrite it in the first loop and rewrite it
+     * in the second loop (due to "i" having two digits then).
+     * tif_curdir should stay to that IFD-number.  */
+    expected_curdir = 0;
+    for (unsigned int i = 9; i < 11; i++)
+    {
+        TIFFSetDirectory_M(tif, expected_curdir, filename, __LINE__);
+        if (write_data_to_current_directory(tif, i, false))
+        {
+            fprintf(stderr,
+                    "Can't write data to current directory in %s at %d\n",
+                    filename, __LINE__);
+            goto failure;
+        }
+        TIFFWriteDirectory_M(tif, filename, __LINE__);
+        /* Fails in 4.6.0 */
+        CHECKCURDIRNUM_M(tif, expected_curdir, __LINE__);
+    }
+
+    /* Now, go back to IFD 1 and overwrite it in the first loop and rewrite it
+     * in the second loop (due to "i" having two digits then).
+     * tif_curdir should stay to that IFD-number.  */
+    expected_curdir = 1;
+    for (unsigned int i = 8; i < 13; i += 4)
+    {
+        TIFFSetDirectory_M(tif, expected_curdir, filename, __LINE__);
+        if (write_data_to_current_directory(tif, i, false))
+        {
+            fprintf(stderr,
+                    "Can't write data to current directory in %s at %d\n",
+                    filename, __LINE__);
+            goto failure;
+        }
+        TIFFWriteDirectory_M(tif, filename, __LINE__);
+        /* Fails in 4.6.0 */
+        CHECKCURDIRNUM_M(tif, expected_curdir, __LINE__);
+    }
+
+    /* Set IFD 0 and append new IFDs.  */
+    if (testcase == 0)
+    {
+        expected_curdir = TIFFNumberOfDirectories(tif);
+    }
+    else if (testcase == 1)
+    {
+        TIFFClose(tif);
+        tif = TIFFOpen(filename, openModeStrings[openMode]);
+        expected_curdir = 0;
+    }
+    else if (testcase == 2)
+    {
+        expected_curdir = TIFFNumberOfDirectories(tif);
+        TIFFClose(tif);
+        /* Replace 'w' for write by 'a' for append. */
+        char strAux[8] = {0};
+        strncpy(strAux, openModeStrings[openMode], sizeof(strAux) - 1);
+        strAux[0] = 'a';
+        tif = TIFFOpen(filename, strAux);
+    }
+    for (unsigned int setdir = 0; setdir < 3; setdir += 2)
+    {
+        for (unsigned int i = 0; i < 2; i++)
+        {
+            if (testcase == 0)
+            {
+                TIFFSetDirectory_M(tif, setdir, filename, __LINE__);
+                TIFFCreateDirectory(tif);
+            }
+            if (write_data_to_current_directory(tif, expected_curdir, false))
+            {
+                fprintf(
+                    stderr,
+                    "Can't write data to current directory in %s at line %d\n",
+                    filename, __LINE__);
+                goto failure;
+            }
+            TIFFWriteDirectory_M(tif, filename, __LINE__);
+            /* Fails in 4.6.0, except for testcase TIFFOpen("w") */
+            CHECKCURDIRNUM_M(tif, expected_curdir, __LINE__);
+            expected_curdir++;
+        }
+    }
+
+    /*-- Several CheckpointDirectory() testing --*/
+    /* Set state such as if the last directory would have been just written.
+     * - read last IFD from file and then
+     * - create and activate a newly initialized IFD, not written yet. */
+    if (testcase == 0)
+    {
+        lastdir = TIFFNumberOfDirectories(tif) - 1;
+        expected_curdir = lastdir + 1;
+        TIFFSetDirectory(tif, lastdir);
+        TIFFCreateDirectory(tif);
+    }
+    else if (testcase == 1)
+    {
+        TIFFClose(tif);
+        tif = TIFFOpen(filename, openModeStrings[openMode]);
+        expected_curdir = 0;
+    }
+    /* Fill the new IFD and checkpoint several times before writing. */
+    if (write_data_to_current_directory(tif, expected_curdir, false))
+    {
+        fprintf(stderr, "Can't write data to current directory in %s at %d\n",
+                filename, __LINE__);
+        goto failure;
+    }
+    for (unsigned int i = 0; i < 2; i++)
+    {
+        TIFFCheckpointDirectory_M(tif, expected_curdir, filename, __LINE__);
+        /* Fails in 4.6.0 only in second loop */
+        CHECKCURDIRNUM_M(tif, expected_curdir, __LINE__);
+        if (i == 1)
+        {
+            /* In last loop force IFD to be rewritten. */
+            TIFFSetField(tif, TIFFTAG_PAGENAME, "6.th IFD rewritten");
+        }
+        TIFFCheckpointDirectory_M(tif, expected_curdir, filename, __LINE__);
+        /* Fails in 4.6.0 */
+        CHECKCURDIRNUM_M(tif, expected_curdir, __LINE__);
+        TIFFWriteDirectory_M(tif, filename, __LINE__);
+        /* Fails in 4.6.0 */
+        CHECKCURDIRNUM_M(tif, expected_curdir, __LINE__);
+        /* Prepare checkpointing of same IFD in next loop after reading it from
+         * file. */
+        TIFFSetDirectory_M(tif, expected_curdir, filename, __LINE__);
+    }
+
+    /*-- RewriteDirectory() testing --*/
+    /* RewriteDirectory() forces to write the IFD to another location
+     * and set-up a new, empty IFD. */
+    /* Set state such as if the last directory would have been just written.
+     * - read last IFD from file and then
+     * - create and activate a newly initialized IFD, not written yet. */
+    if (testcase == 0 || testcase == 2)
+    {
+        lastdir = TIFFNumberOfDirectories(tif) - 1;
+    }
+    else
+    {
+        lastdir = expected_curdir;
+    }
+    TIFFSetDirectory(tif, lastdir);
+    TIFFCreateDirectory(tif);
+    expected_curdir = lastdir + 1;
+    /* Write a new IFD using TIFFRewriteDirectory, read it and rewrite it again.
+     * First with curdir set to the last IFD and then set to the first one. */
+    for (unsigned int i = 0; i < 2; i++)
+    {
+        if (write_data_to_current_directory(tif, expected_curdir, false))
+        {
+            fprintf(stderr,
+                    "Can't write data to current directory in %s at %d\n",
+                    filename, __LINE__);
+            goto failure;
+        }
+        if (!TIFFRewriteDirectory(tif))
+        {
+            fprintf(stderr, "Can't rewrite directory to %s at line %d\n",
+                    filename, __LINE__);
+            goto failure;
+        }
+        /* Fails in 4.6.0 only in second loop */
+        CHECKCURDIRNUM_M(tif, expected_curdir, __LINE__);
+        /* Read IFD and write it to another location. */
+        TIFFSetDirectory_M(tif, expected_curdir, filename, __LINE__);
+        if (!TIFFRewriteDirectory(tif))
+        {
+            fprintf(stderr, "Can't rewrite directory to %s at line %d\n",
+                    filename, __LINE__);
+            goto failure;
+        }
+        /* Fails in 4.6.0 */
+        CHECKCURDIRNUM_M(tif, expected_curdir, __LINE__);
+        expected_curdir++;
+        /* Second loop starts with IFD 0 read from file. */
+        TIFFSetDirectory_M(tif, 0, filename, __LINE__);
+        TIFFCreateDirectory(tif);
+    }
+
+    /*-- CustomDirectory testing --*/
+    /* Set state such as if the last directory would have been just written.
+     * - Read last IFD from file and then
+     * - create and activate a newly initialized IFD, not written yet and
+     *   attach an EXIF IFD to it with forcing a re-write of the IFD by
+     *   adding the EXIF-IFD tag.
+     * - Do that two times:
+     *     - first  set last  IFD and append a new one,
+     *     - second set first IFD and append a new one. */
+    if (testcase == 0 || testcase == 1)
+    {
+        lastdir = TIFFNumberOfDirectories(tif) - 1;
+    }
+    else
+    {
+        lastdir = expected_curdir - 1;
+    }
+    TIFFSetDirectory(tif, lastdir);
+    TIFFCreateDirectory(tif);
+    expected_curdir = lastdir + 1;
+    uint64_t offsetEXIFBase[2];
+    for (unsigned int i = 0; i < 2; i++)
+    {
+        if (write_data_to_current_directory(tif, expected_curdir, false))
+        {
+            fprintf(stderr,
+                    "Can't write data to current directory in %s at %d\n",
+                    filename, __LINE__);
+            goto failure;
+        }
+        TIFFWriteDirectory_M(tif, filename, __LINE__);
+        /* Fails in 4.6.0 only in second loop */
+        CHECKCURDIRNUM_M(tif, expected_curdir, __LINE__);
+        if (write_EXIF_data_to_current_directory(tif, i, &offsetEXIFBase[i]))
+        {
+            fprintf(stderr,
+                    "Can't write EXIF data to current directory in %s. "
+                    "Testline %d\n",
+                    filename, __LINE__);
+            goto failure;
+        }
+        /* CustomDirectory invalidates directory number. */
+        CHECKCURDIRNUM_M(tif, (tdir_t)(-1), __LINE__);
+        /* Go back to current main-IFD and update EXIF-IFD offset. */
+        TIFFSetDirectory_M(tif, expected_curdir, filename, __LINE__);
+        if (!TIFFSetField(tif, TIFFTAG_EXIFIFD, offsetEXIFBase[i]))
+        {
+            fprintf(stderr, "Can't set TIFFTAG_EXIFIFD tag. Testline %d\n",
+                    __LINE__);
+            goto failure;
+        }
+        TIFFWriteDirectory_M(tif, filename, __LINE__);
+        /* Fails in 4.6.0 */
+        CHECKCURDIRNUM_M(tif, expected_curdir, __LINE__);
+        expected_curdir++;
+
+        /* Second loop starts with IFD 0 read from file. */
+        TIFFSetDirectory_M(tif, 0, filename, __LINE__);
+        TIFFCreateDirectory(tif);
+    }
+
+    /*-- Read EXIF Custom-Directory --*/
+    for (unsigned int i = 0; i < 2; i++)
+    {
+        if (!TIFFReadEXIFDirectory(tif, offsetEXIFBase[i]))
+        {
+            fprintf(stderr,
+                    "TIFFReadEXIFDirectory(%" PRIu64 ") failed for %s "
+                    "at %d\n",
+                    offsetEXIFBase[i], filename, __LINE__);
+            goto failure;
+        }
+        CHECKCURDIRNUM_M(tif, 0, __LINE__);
+    }
+
+    /*-- Test for fail of ReadDirectory() and fail of SetDirectory() --*/
+    /*-- Writing IFD0, IFD1 as valid IFD and IFD2 as corrupted. --*/
+    uint64_t offsetBase[4];
+    TIFFClose(tif);
+    tif = TIFFOpen(filename, openModeStrings[openMode]);
+    expected_curdir = 0;
+    fprintf(stderr, "----- Expect some error messages about 'scanline size is "
+                    "zero' -----\n");
+    for (int i = 0; i < 3; i++)
+    {
+        if (write_data_to_current_directory(tif, i, (i == 2 ? true : false)))
+        {
+            fprintf(stderr,
+                    "Can't write data to current directory in %s at %d\n",
+                    filename, __LINE__);
+            goto failure;
+        }
+        TIFFWriteDirectory_M(tif, filename, __LINE__);
+        /* Expect offsetBase{0,0,0} here, because TIFFWriteDirectory() returns
+         * a new and empty IFD after writing. */
+        offsetBase[i] = TIFFCurrentDirOffset(tif);
+        CHECKCURDIRNUM_M(tif, expected_curdir, __LINE__);
+        expected_curdir++;
+    }
+    TIFFSetDirectory_M(tif, 0, filename, __LINE__);
+    offsetBase[0] = TIFFCurrentDirOffset(tif);
+    CHECKCURDIRNUM_M(tif, 0, __LINE__);
+    TIFFSetDirectory_M(tif, 1, filename, __LINE__);
+    offsetBase[1] = TIFFCurrentDirOffset(tif);
+    CHECKCURDIRNUM_M(tif, 1, __LINE__);
+    /* TIFFReadDirectory() shall fail but curdir shall be incremented,
+     * because parts of corrupt IFD2 are read in. */
+    if (TIFFReadDirectory(tif))
+    {
+        fprintf(stderr,
+                "TIFFReadDirectory() for IFD2 was expected to fail but "
+                "succeeded for %s "
+                "at %d\n",
+                filename, __LINE__);
+        goto failure;
+    }
+    offsetBase[2] = TIFFCurrentDirOffset(tif);
+    CHECKCURDIRNUM_M(tif, 2, __LINE__);
+    TIFFSetDirectory_M(tif, 0, filename, __LINE__);
+    CHECKCURDIRNUM_M(tif, 0, __LINE__);
+    /* TIFFSetDirectory() shall fail on IFD2 but curdir shall be incremented,
+     * because parts of corrupt IFD2 are read in. */
+    if (TIFFSetDirectory(tif, 2))
+    {
+        fprintf(stderr,
+                "TIFFSetDirectory(2) was expected to fail but succeeded for %s "
+                "at %d\n",
+                filename, __LINE__);
+        goto failure;
+    }
+    CHECKCURDIRNUM_M(tif, 2, __LINE__);
+    /* Also TIFFSetSubDirectory() shall fail for IFD2 and curdir shall be
+     * set correctly to 2. Therefore, set it back to IFD0 first. */
+    TIFFSetDirectory_M(tif, 0, filename, __LINE__);
+    CHECKCURDIRNUM_M(tif, 0, __LINE__);
+    if (TIFFSetSubDirectory(tif, offsetBase[2]))
+    {
+        fprintf(stderr,
+                "TIFFSetSubDirectory(%" PRIu64
+                ") was expected to fail but succeeded for %s "
+                "at %d\n",
+                offsetBase[2], filename, __LINE__);
+        goto failure;
+    }
+    /* Fails in 4.6.0 */
+    CHECKCURDIRNUM_M(tif, 2, __LINE__);
+
+    /* However, TIFFSetSubDirectory() on a non valid IFD "offset" shall fail,
+     * and tif_curdir shall be set to "unknown" (-1). */
+    fprintf(stderr, "----- Expect error messages about 'Sanity check AND "
+                    "Failed to read directory' -----\n");
+    if (TIFFSetSubDirectory(tif, 10))
+    {
+        fprintf(stderr,
+                "TIFFSetSubDirectory(%" PRIu64
+                ") was expected to fail but succeeded for %s "
+                "at %d\n",
+                offsetBase[1], filename, __LINE__);
+        goto failure;
+    }
+    /* Fails in 4.6.0 */
+    CHECKCURDIRNUM_M(tif, (tdir_t)(-1), __LINE__);
+    /* Set IFD0 for next test */
+    TIFFSetSubDirectory(tif, offsetBase[0]);
+    CHECKCURDIRNUM_M(tif, 0, __LINE__);
+
+    /* TIFFSetSubDirectory(0) shall invalidate the active IFD read from file by
+     * setting tif_nextdiroff and tif_diroff=0 */
+    TIFFSetSubDirectory(tif, 0);
+    CHECKCURDIRNUM_M(tif, (tdir_t)(-1), __LINE__);
+
+    /*-- Patch offset of IFD2 to not existing IFD3 without entries.
+     *   Thus TIFFFetchDirectory() will fail. --*/
+#define TIFFReadFile_M(tif, buf, size)                                         \
+    ((*TIFFGetReadProc(tif))(TIFFClientdata(tif), (buf), (size)));
+#define TIFFWriteFile_M(tif, buf, size)                                        \
+    ((*TIFFGetWriteProc(tif))(TIFFClientdata(tif), (buf), (size)));
+#define TIFFSeekFile_M(tif, off, whence)                                       \
+    ((*TIFFGetSeekProc(tif))(TIFFClientdata(tif), (off), (whence)));
+
+    /* ---------------------------------------------------------------------
+     * Test IFD index incrementing in case the functions return with certain
+     * errors. To provoke that errors, the file is patched by writing bytes
+     * directly into the file. Therefore, code below does only handle
+     * Classic-TIFF and little-endian files.
+     * The code works also on big endian machines, which have to swap some
+     * directly read/written values.
+     * --------------------------------------------------------------------- */
+    if (!(TIFFIsBigEndian(tif) || TIFFIsBigTIFF(tif)))
+    {
+        /* Patch nextIFDOffset of IFD2, which is 0, with offset to itself.
+         * This generates an IFD3 without any elements at the end of file.
+         * Reading IFD3 should provoke reading error. */
+        uint64_t ss = TIFFSeekFile_M(tif, offsetBase[2], 0);
+        uint16_t cnt = 0;
+        uint64_t rr = TIFFReadFile_M(tif, &cnt, 2);
+        if (TIFFIsByteSwapped(tif))
+            TIFFSwabShort(&cnt);
+        ss = TIFFSeekFile_M(tif, offsetBase[2] + cnt * 12 + 2, 0);
+        uint32_t wt = (uint32_t)ss;
+        if (TIFFIsByteSwapped(tif))
+            TIFFSwabLong(&wt);
+        rr = TIFFWriteFile_M(tif, &wt, 4);
+        (void)rr;
+
+        /* Now there are offsets to four IFDs in the file, where the last one is
+         * not existing and has a non-valid dircount and entries behind EOF.
+         * (dircount is 458 (as offset) */
+        fprintf(stderr, "----- Expect error messages about 'Error fetching "
+                        "directory link.' -----\n");
+        /* TIFFNumberOfDirectories() returns 3 and omits the invalid fourth IFD.
+         */
+        lastdir = TIFFNumberOfDirectories(tif);
+        TIFFSetDirectory(tif, 0);
+        CHECKCURDIRNUM_M(tif, 0, __LINE__);
+
+        /* TIFFSetDirectory(3) fails with error messages:
+         *   TIFFFetchDirectory: test_current_dirnum_incrementing_wl.tif:
+         *   Can not read TIFF directory.
+         *   TIFFReadDirectory: Failed to read directory at offset 458. */
+        fprintf(stderr, "----- Expect error messages about 'Cannot read TIFF "
+                        "directory.' -----\n");
+        if (TIFFSetDirectory(tif, 3))
+        {
+            fprintf(stderr,
+                    "TIFFSetDirectory(3) for IFD3 was expected to fail but "
+                    "succeeded for %s "
+                    "at %d\n",
+                    filename, __LINE__);
+            goto failure;
+        }
+
+        /* Fails in 4.6.0 */
+        /* Reading invalid IFD 3 leads to an error and was not read in.
+         * Therefore, curdir shall be 65535 (non-existing directory) */
+        CHECKCURDIRNUM_M(tif, (tdir_t)(-1), __LINE__);
+        offsetBase[3] = TIFFCurrentDirOffset(tif);
+
+        /* Point IFD3 to a location within the file, where it has now for
+         * little-endian TIFF files a non-valid dircount=0, which leads also to
+         * an error and the IFD is not read in. */
+        ss = TIFFSeekFile_M(tif, offsetBase[2] + cnt * 12 + 2, 0);
+        wt = (uint32_t)(offsetBase[1] + 8);
+        // wt = (uint32_t)(ss + 400);
+        if (TIFFIsByteSwapped(tif))
+            TIFFSwabLong(&wt);
+        rr = TIFFWriteFile_M(tif, &wt, 4);
+
+        fprintf(stderr, "----- Expect error messages about 'Error fetching "
+                        "directory link.' -----\n");
+        /* TIFFNumberOfDirectories() returns now 4, because for an IFD linked
+         * list dircount=0 is not treated as an error and there is an offset
+         * (=1) to a next IFD. Then, at the fifth IFD a link error occurs. */
+        lastdir = TIFFNumberOfDirectories(tif);
+        TIFFSetDirectory(tif, 0);
+        CHECKCURDIRNUM_M(tif, 0, __LINE__);
+
+        /* TIFFSetDirectory(3) fails with error messages:
+         *    test_current_dirnum_incrementing_wl.tif: Failed to allocate
+         *    memory for to read TIFF directory (0 elements of 12 bytes each).
+         *    TIFFReadDirectory: Failed to read directory at offset 178.
+         * The IFD 3 is not read in and curdir is set to 65535 (non-existing
+         * directory).
+         */
+        fprintf(stderr,
+                "----- Expect error messages about 'Failed to allocate "
+                "memory for to read TIFF directory.' AND 'Failed to read "
+                "directory ..' -----\n");
+        if (TIFFSetDirectory(tif, 3))
+        {
+            fprintf(stderr,
+                    "TIFFSetDirectory(3) for IFD3 was expected to fail but "
+                    "succeeded for %s "
+                    "at %d\n",
+                    filename, __LINE__);
+            goto failure;
+        }
+
+        /* Fails in 4.6.0 */
+        CHECKCURDIRNUM_M(tif, (tdir_t)(-1), __LINE__);
+    }
+
+    TIFFClose(tif);
+    unlink(filename);
+    return 0;
+
+failure:
+    if (tif)
+    {
+        TIFFClose(tif);
+    }
+    return 1;
+} /*-- test_current_dirnum_incrementing() --*/
+
+/* Test correct setting of tif_curdircount.
+ *
+ */
+int test_curdircount_setting(unsigned int openMode)
+{
+#define N_DIRECTORIES_2 2
+    char filename[128] = {0};
+    tdir_t expected_curdir = (tdir_t)(-1);
+
+    if (openMode >= (sizeof(openModeStrings) / sizeof(openModeStrings[0])))
+    {
+        fprintf(stderr, "Index %d for openMode parameter out of range.\n",
+                openMode);
+        return 1;
+    }
+
+    /* Get individual filenames and delete existent ones. */
+    sprintf(filename, "test_dircount_%s.tif", openModeStrings[openMode]);
+    unlink(filename);
+
+    /* Create a file and write N_DIRECTORIES_2 directories to it. */
+    TIFF *tif = TIFFOpen(filename, openModeStrings[openMode]);
+    if (!tif)
+    {
+        fprintf(stderr, "Can't create %s\n", filename);
+        return 1;
+    }
+
+    /*-- Standard case for writing sequential IFDs. --*/
+    for (int i = 0; i < N_DIRECTORIES_2; i++)
+    {
+        if (write_data_to_current_directory(tif, i, false))
+        {
+            fprintf(stderr,
+                    "Can't write data to current directory in %s at %d\n",
+                    filename, __LINE__);
+            goto failure;
+        }
+        TIFFWriteDirectory_M(tif, filename, __LINE__);
+        expected_curdir++;
+        CHECKCURDIRNUM_M(tif, expected_curdir, __LINE__);
+    }
+    TIFFClose(tif);
+
+    /* Simulate case for trap in TIFFLinkDirectory() where tif_lastdiroff is set
+     * but tif_curdircount is not.
+     * https://gitlab.com/libtiff/libtiff/-/merge_requests/634#note_1990250515
+     */
+    tif = TIFFOpen(filename, "r+");
+    CHECKCURDIRNUM_M(tif, 0, __LINE__);
+    TIFFRewriteDirectory(tif);
+    CHECKCURDIRNUM_M(tif, 0, __LINE__);
+    TIFFCreateDirectory(tif);
+    TIFFWriteDirectory(tif);
+    CHECKCURDIRNUM_M(tif, 2, __LINE__);
+    tdir_t numdir = TIFFNumberOfDirectories(tif);
+    TIFFClose(tif);
+
+    /* Testcase iswrittentofile=0 for SetSubDirectory(0). */
+    tif = TIFFOpen(filename, "r+");
+    TIFFSetSubDirectory(tif, 0);
+    /* After TIFFSetSubDirectory(tif, 0) the read IFD is re-written as a
+     * new IFD and tif_curdir and tif_curdircount shall be updated.
+     * The latter was not the case before resetting iswrittentofile=0 at
+     * SetSubDirectory(0). Even an IFD-Loop was then wrongly assumed at the next
+     * TIFFNumberOfDirectories() call. */
+    TIFFWriteDirectory(tif);
+    CHECKCURDIRNUM_M(tif, numdir, __LINE__);
+
+    /* Unlink all directories. */
+    numdir = TIFFNumberOfDirectories(tif);
+    for (int i = numdir; 0 < i; i--)
+    {
+        TIFFUnlinkDirectory(tif, i);
+        CHECKCURDIRNUM_M(tif, (tdir_t)(-1), __LINE__);
+    }
+
+    TIFFClose(tif);
+    unlink(filename);
+    return 0;
+
+failure:
+    TIFFClose(tif);
+    return 1;
+} /*-- test_curdircount_setting() --*/
+
+/* Test writing and reading of a custom directory only (solitary) without having
+ * touched a normal directory.
+ * Reproduces issue https://gitlab.com/libtiff/libtiff/-/issues/643.
+ * Error analysis of issue 643:
+ *   Opening a file as read with "h" option does not initialize a default
+ *   directory and thus, the pointer tif->tif_tagmethods.vsetfield and
+ *   tif->tif_tagmethods.vgetfield are not initialized. This is done in
+ *   TIFFDefaultDirectory(). In standard read functions, that default directory
+ *   is set up but not for reading custom directories. Any call to
+ *   TIFFSetField() or TIFFGetField() within TIFFReadCustomDirectory() will then
+ *   fail or cause a SegFault.
+ */
+int test_solitary_custom_directory(unsigned int openMode)
+{
+    char filename[128] = {0};
+
+    if (openMode >= (sizeof(openModeStrings) / sizeof(openModeStrings[0])))
+    {
+        fprintf(stderr, "Index %d for openMode parameter out of range.\n",
+                openMode);
+        return 1;
+    }
+
+    /* Get individual filenames and delete existent ones. */
+    sprintf(filename, "test_solitary_custom_directory_%s.tif",
+            openModeStrings[openMode]);
+    unlink(filename);
+
+    /* Create a dummy file without IFD. */
+    TIFF *tif = TIFFOpen(filename, openModeStrings[openMode]);
+    if (!tif)
+    {
+        fprintf(stderr, "Can't create %s\n", filename);
+        return 1;
+    }
+    /* A TIFFSetFiled() here would work. */
+    TIFFSetField(tif, TIFFTAG_DOCUMENTNAME, "DocName");
+    TIFFClose(tif);
+
+    /* Open file without reading a directory using option "h".
+     * Option "h" suppresses to load the directory. Thus reading functions are
+     * hot set. Read TIFF header only, do not load the first image directory.
+     * That could be useful in case of the broken first directory. We can open
+     * the file and proceed to the other directories.
+     */
+    tif = TIFFOpen(filename, "r+h");
+    if (!tif)
+    {
+        fprintf(stderr, "Can't open %s\n", filename);
+        return 1;
+    }
+    /* A TIFFSetField() here would fail or cause a SegFault, because of the "h"
+     * option before fix of issue 643. */
+    TIFFSetField(tif, TIFFTAG_DOCUMENTNAME, "DocName");
+
+    /* Write a custom directory. */
+    uint64_t offsetEXIFBase;
+    if (write_EXIF_data_to_current_directory(tif, 0, &offsetEXIFBase))
+    {
+        fprintf(stderr,
+                "Can't write solitary EXIF data into %s. "
+                "Testline %d\n",
+                filename, __LINE__);
+        goto failure;
+    }
+    TIFFClose(tif);
+
+    /* Open and read custom directory without touching another IFD. */
+    tif = TIFFOpen(filename, "rh");
+    if (!tif)
+    {
+        fprintf(stderr, "Can't open %s\n", filename);
+        return 1;
+    }
+    /* This custom directory reading will cause a SegFault due to the "h"
+     * option before fix of issue 643. */
+    if (!TIFFReadEXIFDirectory(tif, offsetEXIFBase))
+    {
+        fprintf(stderr,
+                "Can't read solitary EXIF data from %s. "
+                "Testline %d\n",
+                filename, __LINE__);
+        goto failure;
+    }
+
+    TIFFClose(tif);
+    unlink(filename);
+    return 0;
+
+failure:
+    TIFFClose(tif);
+    return 1;
+} /*-- test_solitary_custom_directory() --*/
+
 int main()
 {
+
     unsigned int openModeMax =
         (sizeof(openModeStrings) / sizeof(openModeStrings[0]));
-    for (unsigned int openMode = 1; openMode < openModeMax; openMode++)
+    for (unsigned int openMode = 0; openMode < openModeMax; openMode++)
     {
+        fprintf(stderr, "\n--- Test for %s open option. ---\n",
+                openModeText[openMode]);
+        if (test_curdircount_setting(openMode))
+        {
+            fprintf(stderr, "Failed during %s test_curdircount_setting test.\n",
+                    openModeText[openMode]);
+            return 1;
+        }
+
         if (test_lastdir_offset(openMode))
         {
             fprintf(stderr, "Failed during %s WriteDirectory test.\n",
@@ -1374,6 +2334,43 @@ int main()
         if (test_SetSubDirectory_failure(openMode))
         {
             fprintf(stderr, "Failed during %s SetSubDirectory_failure test.\n",
+                    openModeText[openMode]);
+            return 1;
+        }
+    }
+
+    /* Test for correct "current directory number" incrementing.*/
+    for (unsigned int openMode = 0; openMode < openModeMax; openMode++)
+    {
+        for (int i = 0; i <= 2; i++)
+        {
+            fprintf(stderr,
+                    "\n--- Test for test_current_dirnum_incrementing %s "
+                    "testcase %d. "
+                    "---\n",
+                    openModeText[openMode], i);
+            if (test_current_dirnum_incrementing(i, openMode))
+            {
+                fprintf(stderr,
+                        "Failed during Current Directory Number Incrementing "
+                        "test #%d in %s.\n",
+                        i, openModeText[openMode]);
+                return 1;
+            }
+        }
+    }
+
+    /* Test for reading / writing custom directory (e.g. EXIF) without having
+     * touched a normal directory. */
+    for (unsigned int openMode = 0; openMode < openModeMax; openMode++)
+    {
+        fprintf(stderr,
+                "\n--- Test for test_solitary_custom_directory %s ---\n",
+                openModeText[openMode]);
+        if (test_solitary_custom_directory(openMode))
+        {
+            fprintf(stderr,
+                    "Failed during test_solitary_custom_directory in %s.\n",
                     openModeText[openMode]);
             return 1;
         }

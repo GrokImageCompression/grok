@@ -79,17 +79,11 @@ image have been requested.
 Notes
 -----
 
-In C++ the *stopOnError* parameter defaults to 0.
-
-``SamplesPerPixel`` must be either 1, 2, 4, 8, or 16 bits.
-Colorimetric samples/pixel must be either 1, 3, or 4 (i.e.
-``SamplesPerPixel`` minus ``ExtraSamples``).
-
-Palettte image colormaps that appear to be incorrectly written
-as 8-bit values are automatically scaled to 16-bits.
-
 :c:func:`IFFReadRGBAImage` is just a wrapper around the more general
 :doc:`TIFFRGBAImage` facilities.
+
+For general notes see
+:ref:`TIFFRGBImage notes <TIFFRGBAImage_Restriction_Notes>`.
 
 Return values
 -------------

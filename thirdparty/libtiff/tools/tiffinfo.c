@@ -81,8 +81,9 @@ int main(int argc, char *argv[])
     long flags = 0;
     uint64_t diroff = 0;
     int chopstrips = 0; /* disable strip chopping */
+    int warn_about_unknown_tags = FALSE;
 
-    while ((c = getopt(argc, argv, "f:o:M:cdDSjilmrsvwz0123456789h")) != -1)
+    while ((c = getopt(argc, argv, "f:o:M:cdDSjilmrsvwz0123456789hW")) != -1)
         switch (c)
         {
             case '0':
@@ -143,6 +144,9 @@ int main(int argc, char *argv[])
                 usage(EXIT_SUCCESS);
                 /*NOTREACHED*/
                 break;
+            case 'W':
+                warn_about_unknown_tags = TRUE;
+                break;
             case '?':
                 usage(EXIT_FAILURE);
                 /*NOTREACHED*/
@@ -165,6 +169,7 @@ int main(int argc, char *argv[])
             break;
         }
         TIFFOpenOptionsSetMaxSingleMemAlloc(opts, maxMalloc);
+        TIFFOpenOptionsSetWarnAboutUnknownTags(opts, warn_about_unknown_tags);
         tif = TIFFOpenExt(argv[optind], chopstrips ? "rC" : "rc", opts);
         TIFFOpenOptionsFree(opts);
         if (tif != NULL)
@@ -284,7 +289,9 @@ static const char usage_info[] =
     " -w		display raw data in words rather than bytes\n"
     " -z		enable strip chopping\n"
     " -M size	set the memory allocation limit in MiB. 0 to disable limit\n"
-    " -#		set initial directory (first directory is # 0)\n";
+    " -#		set initial directory (first directory is # 0)\n"
+    " -w		show image data as 16-bit words\n"
+    " -W		warn about unknown tags\n";
 
 static void usage(int code)
 {

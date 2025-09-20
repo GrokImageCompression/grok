@@ -25,7 +25,7 @@
 
 docdir = $(LIBTIFF_DOCDIR)
 
-AUTOMAKE_OPTIONS = 1.12 dist-zip foreign
+AUTOMAKE_OPTIONS = 1.11 dist-zip foreign
 ACLOCAL_AMFLAGS = -I m4
 
 docfiles = \
@@ -60,7 +60,7 @@ distcheck-hook:
 	rm -rf $(distdir)/_build/cmake
 	rm -rf $(distdir)/_inst/cmake
 
-SUBDIRS = port libtiff tools build contrib test doc tools/unsupported
+SUBDIRS = port libtiff tools build contrib test doc
 
 
 NEW_LIBTIFF_RELEASE_DATE=$(shell date +"%Y%m%d")

@@ -24,8 +24,8 @@ dnl OF THIS SOFTWARE.
 
 dnl Process this file with autoconf to produce a configure script.
 
-AC_PREREQ(2.64)
-AC_INIT([LibTIFF Software],[4.6.0],[tiff@lists.osgeo.org],[tiff])
+AC_PREREQ([2.69])
+AC_INIT([LibTIFF Software],[4.7.1],[tiff@lists.osgeo.org],[tiff])
 AC_CONFIG_AUX_DIR(config)
 AC_CONFIG_MACRO_DIR(m4)
 AC_LANG(C)
@@ -40,8 +40,8 @@ AM_MAINTAINER_MODE
 dnl Versioning.
 dnl Don't fill the ALPHA_VERSION field, if not applicable.
 LIBTIFF_MAJOR_VERSION=4
-LIBTIFF_MINOR_VERSION=6
-LIBTIFF_MICRO_VERSION=0
+LIBTIFF_MINOR_VERSION=7
+LIBTIFF_MICRO_VERSION=1
 LIBTIFF_ALPHA_VERSION=
 LIBTIFF_VERSION=$LIBTIFF_MAJOR_VERSION.$LIBTIFF_MINOR_VERSION.$LIBTIFF_MICRO_VERSION$LIBTIFF_ALPHA_VERSION
 dnl This (LIBTIFF_RELEASE_DATE) is used to set the #define TIFFLIB_VERSION in tiffvers.h.
@@ -77,9 +77,9 @@ dnl  5. If any interfaces have been added since the last public release, then
 dnl     increment age.
 dnl  6. If any interfaces have been removed since the last public release,
 dnl     then set age to 0.                                
-LIBTIFF_CURRENT=6
-LIBTIFF_REVISION=2
-LIBTIFF_AGE=0
+LIBTIFF_CURRENT=8
+LIBTIFF_REVISION=0
+LIBTIFF_AGE=2
 LIBTIFF_VERSION_INFO=$LIBTIFF_CURRENT:$LIBTIFF_REVISION:$LIBTIFF_AGE
 
 # This is a special hack for OpenBSD and MirOS systems. The dynamic linker
@@ -104,8 +104,8 @@ AC_SUBST(LIBTIFF_VERSION_INFO)
 AC_SUBST(LIBTIFF_RELEASE_DATE)
 
 dnl Checks for programs.
-AC_PROG_CC_C99
-AM_PROG_CC_C_O
+AC_PROG_CC
+AM_PROG_CC_C_O  # Necessary if objects are placed in subdirectories.
 
 dnl We want warnings. As many warnings as possible.
 VL_PROG_CC_WARNINGS()
@@ -164,7 +164,12 @@ AC_SUBST(tiff_libs_private)
 tiff_requires_private=
 AC_SUBST(tiff_requires_private)
 
+
 AM_CONDITIONAL(BUILD_STATIC, test "$enable_static" = "yes")
+
+dnl Avoid -Werror to interfere with feature detection
+SAVED_CFLAGS="$CFLAGS"
+CFLAGS=$(echo "$CFLAGS " | sed "s/-Werror //")
 
 dnl We don't need to add math library to all targets
 case "${host_os}" in
@@ -187,7 +192,7 @@ AC_C_CONST
 AC_C_BIGENDIAN
 AC_TYPE_OFF_T
 AC_TYPE_SIZE_T
-AC_HEADER_TIME
+
 AC_STRUCT_TM
 
 dnl If the `fseeko' function is available, define `HAVE_FSEEKO'. Define
@@ -319,12 +324,6 @@ AC_ARG_ENABLE(tools,
                              [Disable building of tools]),
                              [TIFF_TOOLS=$enableval], [TIFF_TOOLS=yes])
 AM_CONDITIONAL(TIFF_TOOLS, test "$TIFF_TOOLS" = "yes")
-
-AC_ARG_ENABLE(tools-unsupported,
-              AS_HELP_STRING([--enable-tools-unsupported],
-                             [Enable building of unsupported tools]),
-                             [TIFF_TOOLS_UNSUPPORTED=$enableval], [TIFF_TOOLS_UNSUPPORTED=no])
-AM_CONDITIONAL(TIFF_TOOLS_UNSUPPORTED, test "$TIFF_TOOLS_UNSUPPORTED" = "yes")
 
 AC_ARG_ENABLE(tests,
               AS_HELP_STRING([--disable-tests],
@@ -583,7 +582,7 @@ if test "x$enable_jpeg" != "xno" ; then
   fi
 
   if test "$jpeg_lib" = "yes" -a "$jpeg_h" = "yes" ; then
-    dnl Check for jpeg12_read_scanlines which has been added in libjpeg-turbo 2.2
+    dnl Check for jpeg12_read_scanlines which has been added in libjpeg-turbo 3.0
     dnl for dual 8/12 bit mode.
     AC_CHECK_LIB(jpeg, jpeg12_read_scanlines, [HAVE_JPEGTURBO_DUAL_MODE_8_12=yes], [HAVE_JPEGTURBO_DUAL_MODE_8_12=no],)
     HAVE_JPEG=yes
@@ -602,7 +601,7 @@ if test "$HAVE_JPEG" = "yes" ; then
   fi
 
   if test "$HAVE_JPEGTURBO_DUAL_MODE_8_12" = "yes"; then
-      AC_DEFINE(HAVE_JPEGTURBO_DUAL_MODE_8_12,1,[libjpeg-turbo >= 2.2 dual mode enabled])
+      AC_DEFINE(HAVE_JPEGTURBO_DUAL_MODE_8_12,1,[libjpeg-turbo >= 3.0 dual mode enabled])
   fi
 fi
 
@@ -615,12 +614,12 @@ dnl ---------------------------------------------------------------------------
 
 AC_ARG_ENABLE(old-jpeg,
 	      AS_HELP_STRING([--disable-old-jpeg],
-			     [disable support for Old JPEG compresson (read-only, enabled by default)]),
+			     [disable support for Old JPEG compression (read-only, enabled by default)]),
 	      [HAVE_OJPEG=${enableval}], [HAVE_OJPEG=yes])
 
 if test "$HAVE_JPEG" = "yes" -a "$HAVE_OJPEG" = "yes" ; then
   AC_DEFINE(OJPEG_SUPPORT, 1,
-	    [Support Old JPEG compresson (read-only)])
+	    [Support Old JPEG compression (read-only)])
 else
   HAVE_OJPEG=no
 fi
@@ -688,14 +687,6 @@ dnl Check for liblerc.
 dnl ---------------------------------------------------------------------------
 
 HAVE_LERC=no
-STATIC_LERC=no
-
-if test "$enable_static" = "no"; then
-    static_lerc=no
-else
-    static_lerc=yes
-fi
-AM_CONDITIONAL([STATIC_LERC], [ test "$static_lerc" = yes ])
 
 AC_ARG_ENABLE(lerc,
       AS_HELP_STRING([--disable-lerc],
@@ -741,11 +732,15 @@ if test "$HAVE_LERC" = "yes" ; then
   AC_DEFINE(LERC_SUPPORT,1,[Support lerc compression])
   LIBS="-l${lerc_lib_name} $LIBS"
   tiff_libs_private="-l${lerc_lib_name} ${tiff_libs_private}"
+  tiff_requires_private="Lerc ${tiff_requires_private}"
 
   if test "$HAVE_RPATH" = "yes" -a "x$with_lerc_lib_dir" != "x" ; then
     LIBDIR="-R $with_lerc_lib_dir $LIBDIR"
   fi
 
+  if test "$enable_static" != "no"; then
+    AC_DEFINE([LERC_STATIC], 1, [Define to 1 when building a static libtiff with LERC enabled.])
+  fi
 fi
 
 AM_CONDITIONAL(HAVE_LERC, test "$HAVE_LERC" = 'yes')
@@ -917,7 +912,7 @@ AM_CONDITIONAL(HAVE_WEBP, test "$HAVE_WEBP" = 'yes')
 
 dnl ---------------------------------------------------------------------------
 dnl Should 8/12 bit jpeg mode be enabled?
-dnl This should not be used starting with libjpeg-turbo >= 2.2 that has
+dnl This should not be used starting with libjpeg-turbo >= 3.0 that has
 dnl built-in support for dual mode.
 dnl ---------------------------------------------------------------------------
 
@@ -926,7 +921,7 @@ if test "$HAVE_JPEGTURBO_DUAL_MODE_8_12" = "no"; then
 
     AC_ARG_ENABLE(jpeg12,
               AS_HELP_STRING([--enable-jpeg12],
-                     [enable libjpeg 8/12bit dual mode (not to be used with libjpeg-turbo >= 2.2)]),,)
+                     [enable libjpeg 8/12bit dual mode (not to be used with libjpeg-turbo >= 3.0)]),,)
     AC_ARG_WITH(jpeg12-include-dir,
             AS_HELP_STRING([--with-jpeg12-include-dir=DIR],
                    [location of libjpeg 12bit headers]),,)
@@ -965,6 +960,38 @@ else
 fi
 
 AM_CONDITIONAL(HAVE_CXX, test "$HAVE_CXX" = "yes")
+
+dnl ---------------------------------------------------------------------------
+dnl Check for OpenGL and GLUT.
+dnl ---------------------------------------------------------------------------
+
+HAVE_OPENGL=no
+
+AC_ARG_ENABLE(opengl,
+	      AS_HELP_STRING([--disable-opengl],
+			     [disable OpenGL usage (required by tiffgt, enabled by default)]),,)
+
+if test "x$enable_opengl" != "xno" ; then
+
+  AC_PATH_XTRA
+
+  dnl AX_CHECK_GL sets GL_CFLAGS & GL_LIBS.  Also PTHREAD_LIBS,
+  dnl PTHREAD_CFLAGS, & PTHREAD_CC as a side-effect
+  AX_CHECK_GL
+
+  dnl AX_CHECK_GLU sets GLU_CFLAGS & GLU_LIBS
+  AX_CHECK_GLU
+
+  dnl AX_CHECK_GLUT sets GLUT_CFLAGS & GLUT_LIBS
+  AX_CHECK_GLUT
+
+  if test "$no_x" != "yes" -a "$no_gl" != "yes" \
+      -a "$no_glu" != "yes" -a "$no_glut" != "yes" ; then
+    HAVE_OPENGL=yes
+  fi
+fi
+
+AM_CONDITIONAL(HAVE_OPENGL, test "$HAVE_OPENGL" = "yes")
 
 dnl ---------------------------------------------------------------------------
 dnl Check for Win32 IO: make sure we have windows.h but not cygwin
@@ -1120,8 +1147,7 @@ if test "$CHECK_JPEG_YCBCR_SUBSAMPLING" = "yes" ; then
 	    [Pick up YCbCr subsampling info from the JPEG data stream to support files lacking the tag (default enabled).])
 fi
 
-
-for python in python3.9 python3.8 python3.7 python3.6 python3.5 python3.4 python3.3 python3.2 python3.1 python3.0 python3 python; do
+for python in python3.16 python3.15 python3.14 python3.13 python3.12 python3.11 python3.10 python3.9 python3.8 python3.7 python3.6 python3.5 python3.4 python3.3 python3.2 python3.1 python3.0 python3 python; do
   AC_CHECK_PROGS(PYTHON_BIN, [$python])
   if test "x$PYTHON_BIN" != "x"; then
     break
@@ -1163,6 +1189,7 @@ fi
 
 dnl ---------------------------------------------------------------------------
 
+CFLAGS="$SAVED_CFLAGS"
 
 AC_SUBST(LIBDIR)
 
@@ -1187,8 +1214,7 @@ AC_CONFIG_FILES([Makefile \
 		 libtiff/tiffvers.h \
 		 port/Makefile \
 		 test/Makefile \
-		 tools/Makefile \
-		 tools/unsupported/Makefile])
+		 tools/Makefile])
 AC_OUTPUT
 
 dnl ---------------------------------------------------------------------------
@@ -1207,7 +1233,6 @@ LOC_MSG([  Documentation directory:            ${LIBTIFF_DOCDIR}])
 LOC_MSG([  C compiler:                         ${CC} ${CFLAGS}])
 LOC_MSG([  C++ compiler:                       ${CXX} ${CXXFLAGS}])
 LOC_MSG([  Build tools:                        ${TIFF_TOOLS}])
-LOC_MSG([  Build tools-unsupported:            ${TIFF_TOOLS_UNSUPPORTED}])
 LOC_MSG([  Build tests:                        ${TIFF_TESTS}])
 LOC_MSG([  Build contrib:                      ${TIFF_CONTRIB}])
 LOC_MSG([  Build docs:                         ${TIFF_DOCS}])
@@ -1232,7 +1257,7 @@ LOC_MSG([  Pixar log-format algorithm:         ${HAVE_PIXARLOG}])
 LOC_MSG([  JPEG support:                       ${HAVE_JPEG}])
 LOC_MSG([  Old JPEG support:                   ${HAVE_OJPEG}])
 if test "$HAVE_JPEGTURBO_DUAL_MODE_8_12" = "yes"; then
-    LOC_MSG([  JPEG 8/12 bit dual mode:            ${HAVE_JPEGTURBO_DUAL_MODE_8_12} (libjpeg turbo >= 2.2 dual mode)])
+    LOC_MSG([  JPEG 8/12 bit dual mode:            ${HAVE_JPEGTURBO_DUAL_MODE_8_12} (libjpeg turbo >= 3.0 dual mode)])
 else
     LOC_MSG([  JPEG 8/12 bit dual mode:            ${HAVE_JPEG12}])
 fi
@@ -1245,5 +1270,6 @@ LOC_MSG()
 LOC_MSG([  C++ support:                        ${HAVE_CXX}])
 LOC_MSG()
 dnl LOC_MSG([  X Athena Widgets support:           ${HAVE_XAW}])
+LOC_MSG([  OpenGL support:                     ${HAVE_OPENGL}])
 LOC_MSG()
 

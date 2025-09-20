@@ -10,7 +10,7 @@ Synopsis
 
     #include <tiffio.h>
 
-.. c:function:: tsize_t TIFFReadTile(TIFF* tif, tdata_t buf, uint32_t x, uint32_t y, uint32_t z, tsample_t sample)
+.. c:function:: tmsize_t TIFFReadTile(TIFF* tif, void *buf, uint32_t x, uint32_t y, uint32_t z, uint16_t sample)
 
 Description
 -----------

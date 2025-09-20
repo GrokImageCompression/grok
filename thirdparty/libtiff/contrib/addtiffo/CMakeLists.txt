@@ -23,6 +23,7 @@
 # OF THIS SOFTWARE.
 
 add_executable(addtiffo addtiffo.c tif_overview.c tif_ovrcache.c tif_ovrcache.h)
+set_target_properties(addtiffo PROPERTIES LINKER_LANGUAGE CXX)
 target_link_libraries(addtiffo tiff tiff_port)
 
 if(WEBP_SUPPORT AND EMSCRIPTEN)

@@ -40,7 +40,7 @@ if (old-jpeg AND JPEG_SUPPORT)
 endif()
 
 if (JPEG_SUPPORT)
-    # Check for jpeg12_read_scanlines() which has been added in libjpeg-turbo 2.2
+    # Check for jpeg12_read_scanlines() which has been added in libjpeg-turbo 3.0
     # for dual 8/12 bit mode.
     include(CheckCSourceCompiles)
     include(CMakePushCheckState)

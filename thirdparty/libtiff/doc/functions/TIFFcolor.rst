@@ -31,9 +31,16 @@ itself. In particular, these routines used in the :doc:`TIFFRGBAImage`
 interface.
 
 :c:func:`TIFFYCbCrToRGBInit` used to initialize *YCbCr* to *RGB*
-conversion state. Allocating and freeing of the *ycbcr* structure
-belongs to programmer.  :c:struct:`TIFFYCbCrToRGB` is defined in
-:file:`tiffio.h` as:
+conversion state.
+
+.. note::
+  The calling program is responsible for allocating and releasing the required
+  buffer for the structure :c:struct:`TIFFYCbCrToRGB` and its required tables,
+  pointed to by *ycbcr*. The pointers to these tables are stored in the
+  structure :c:struct:`TIFFYCbCrToRGB`, which is located at the beginning
+  of that buffer. Thus, this memory has to be allocated as shown in the example below.
+
+:c:struct:`TIFFYCbCrToRGB` is defined in :file:`tiffio.h` as:
 
 ::
 
@@ -64,7 +71,7 @@ understand the the technique:
     uint16_t hs, vs;
 
     /* Initialize structures */
-    ycbcr = (TIFFYCbCrToRGB*)
+    TIFFYCbCrToRGB *ycbcr = (TIFFYCbCrToRGB*)
         _TIFFmalloc(TIFFroundup(sizeof(TIFFYCbCrToRGB), sizeof(long))
             + 4*256*sizeof(TIFFRGBValue)
             + 2*256*sizeof(int)

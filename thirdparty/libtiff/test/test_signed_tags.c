@@ -5,15 +5,15 @@
  * its documentation for any purpose is hereby granted without fee, provided
  * that (i) the above copyright notices and this permission notice appear in
  * all copies of the software and related documentation, and (ii) the names of
- * Sam Leffler and Silicon Graphics may not be used in any advertising or
+ * the author may not be used in any advertising or
  * publicity relating to the software without the specific, prior written
- * permission of Sam Leffler and Silicon Graphics.
+ * permission of the author.
  *
  * THE SOFTWARE IS PROVIDED "AS-IS" AND WITHOUT WARRANTY OF ANY KIND,
  * EXPRESS, IMPLIED OR OTHERWISE, INCLUDING WITHOUT LIMITATION, ANY
  * WARRANTY OF MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE.
  *
- * IN NO EVENT SHALL SAM LEFFLER OR SILICON GRAPHICS BE LIABLE FOR
+ * IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
  * ANY SPECIAL, INCIDENTAL, INDIRECT OR CONSEQUENTIAL DAMAGES OF ANY KIND,
  * OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS,
  * WHETHER OR NOT ADVISED OF THE POSSIBILITY OF DAMAGE, AND ON ANY THEORY OF
@@ -21,7 +21,21 @@
  * OF THIS SOFTWARE.
  */
 
+/* ===========  Purpose ===============================================
+ * Tests the following points:
+ *  - Handling of signed tags
+ *  - Definition of additional, user-defined tags
+ *  - Specification of field name strings or with field_name = NULL
+ *  - Prevent reading anonymous tags by specifying them as FIELD_IGNORE
+ *    (see https://gitlab.com/libtiff/libtiff/-/issues/532)
+ *  - Immediate clearing of the memory for the definition of the additional tags
+ *    (allocate memory for TIFFFieldInfo structure and free that memory
+ *     immediately after calling TIFFMergeFieldInfo().
+ */
+
+#include <memory.h> /* necessary for linux compiler (memset) */
 #include <stdio.h>
+#include <stdlib.h> /* necessary for linux compiler */
 
 #include "tif_config.h" /* necessary for linux compiler to get HAVE_UNISTD_H */
 #ifdef HAVE_UNISTD_H
@@ -35,6 +49,8 @@
 #define GOTOFAILURE goto failure;
 
 #define N(a) (sizeof(a) / sizeof(a[0]))
+
+#define FIELD_IGNORE 0 /* same as FIELD_PSEUDO */
 
 enum
 {
@@ -54,6 +70,7 @@ enum
     C32_SINT16,
     C32_SINT32,
     C32_SINT64,
+    C32_SINT64NULL,
 };
 
 static const TIFFFieldInfo tiff_field_info[] = {
@@ -81,17 +98,34 @@ static const TIFFFieldInfo tiff_field_info[] = {
      "C32_SINT32"},
     {C32_SINT64, TIFF_VARIABLE2, TIFF_VARIABLE2, TIFF_SLONG8, FIELD_CUSTOM, 0,
      1, "C32_SINT64"},
+    /* Test field_name=NULL in static const array, which is now possible because
+     * handled within TIFFMergeFieldInfo(). */
+    {C32_SINT64NULL, TIFF_VARIABLE2, TIFF_VARIABLE2, TIFF_SLONG8, FIELD_CUSTOM,
+     0, 1, NULL},
 };
+
+/* Global parameter for the field array to be passed to extender, which can be
+ * changed during runtime. */
+static TIFFFieldInfo *p_tiff_field_info = (TIFFFieldInfo *)tiff_field_info;
+static uint32_t N_tiff_field_info =
+    sizeof(tiff_field_info) / sizeof(tiff_field_info[0]);
 
 static TIFFExtendProc parent = NULL;
 
 static void extender(TIFF *tif)
 {
-    TIFFMergeFieldInfo(tif, tiff_field_info,
-                       sizeof(tiff_field_info) / sizeof(tiff_field_info[0]));
-    if (parent)
+    if (p_tiff_field_info != NULL)
     {
-        (*parent)(tif);
+        TIFFMergeFieldInfo(tif, p_tiff_field_info, N_tiff_field_info);
+        if (parent)
+        {
+            (*parent)(tif);
+        }
+    }
+    else
+    {
+        TIFFErrorExtR(tif, "field_info_extender",
+                      "Pointer to tiff_field_info array is NULL.");
     }
 }
 
@@ -185,6 +219,12 @@ static int writeTestTiff(const char *szFileName, int isBigTiff)
         if (ret != 1)
         {
             fprintf(stdout, "Error writing C32_SINT64: ret=%d\n", ret);
+            GOTOFAILURE;
+        }
+        ret = TIFFSetField(tif, C32_SINT64NULL, N(s64), &s64);
+        if (ret != 1)
+        {
+            fprintf(stdout, "Error writing C32_SINT64NULL: ret=%d\n", ret);
             GOTOFAILURE;
         }
     }
@@ -506,20 +546,145 @@ failure:
     TIFFClose(tif);
     return (retcode);
 }
+/*-- readTestTiff() --*/
+
+static int readTestTiff_ignore_some_tags(const char *szFileName)
+{
+    int ret;
+    int8_t s8l;
+    int16_t s16l;
+    int32_t s32l;
+    int retcode = FAULT_RETURN;
+
+    /* There is a use case, where LibTIFF shall be prevented from reading
+     * unknown tags that are present in the file as anonymous tags. This can be
+     * achieved by defining these tags with ".field_bit = FIELD_IGNORE". */
+
+    /* Copy const array to be manipulated and freed just after TIFFMergeFields()
+     * within the "extender()" called by TIFFOpen(). */
+    TIFFFieldInfo *tiff_field_info2;
+    tiff_field_info2 = (TIFFFieldInfo *)malloc(sizeof(tiff_field_info));
+    if (tiff_field_info2 == (TIFFFieldInfo *)NULL)
+    {
+        fprintf(stdout,
+                "Can't allocate memoy for tiff_field_info2 structure.\n");
+        return (FAULT_RETURN);
+    }
+    memcpy(tiff_field_info2, tiff_field_info, sizeof(tiff_field_info));
+    /* Switch field array for extender callback. */
+    p_tiff_field_info = tiff_field_info2;
+
+    /*-- Adapt tiff_field_info array for ignoring unknown tags to LibTIFF, which
+     * have been written to file before. --*/
+    /* a.) Just set field_bit to FIELD_IGNORE = 0 */
+    tiff_field_info2[2].field_bit = FIELD_IGNORE;
+    /* b.) Usecase with all field array infos zero but the tag value. */
+    ttag_t tag = tiff_field_info2[4].field_tag;
+    memset(&tiff_field_info2[4], 0, sizeof(tiff_field_info2[4]));
+    tiff_field_info2[4].field_tag = tag;
+
+    fprintf(stdout, "\n-- Reading file with unknown tags to be ignored ...\n");
+    TIFF *tif = TIFFOpen(szFileName, "r");
+
+    /* tiff_field_info2 should not be needed anymore, as long as the still
+     * active extender() is not called again. Therefore, the extender callback
+     * should be disabled by resetting it to the saved one. */
+    free(tiff_field_info2);
+    tiff_field_info2 = NULL;
+    TIFFSetTagExtender(parent);
+
+    if (!tif)
+    {
+        fprintf(stdout, "Can't open test TIFF file %s.\n", szFileName);
+        return (FAULT_RETURN);
+    }
+
+    /* Read the first two known tags for testing */
+    ret = TIFFGetField(tif, SINT8, &s8l);
+    if (ret != 1)
+    {
+        fprintf(stdout, "Error reading SINT8: ret=%d\n", ret);
+        GOTOFAILURE
+    }
+    else
+    {
+        if (s8l != s8[idxSingle])
+        {
+            fprintf(stdout,
+                    "Read value of SINT8  %d differs from set value %d\n", s8l,
+                    s8[idxSingle]);
+            GOTOFAILURE
+        }
+    }
+    ret = TIFFGetField(tif, SINT16, &s16l);
+    if (ret != 1)
+    {
+        fprintf(stdout, "Error reading SINT16: ret=%d\n", ret);
+        GOTOFAILURE
+    }
+    else
+    {
+        if (s16l != s16[idxSingle])
+        {
+            fprintf(stdout,
+                    "Read value of SINT16  %d differs from set value %d\n",
+                    s16l, s16[idxSingle]);
+            GOTOFAILURE
+        }
+    }
+
+    /* The two ignored tags shall not be present. */
+    ret = TIFFGetField(tif, tiff_field_info[2].field_tag, &s32l);
+    if (ret != 0)
+    {
+        fprintf(stdout,
+                "Error: Tag %d, set to be ignored, has been read from file.\n",
+                tiff_field_info[2].field_tag);
+        GOTOFAILURE
+    }
+
+    ret = TIFFGetField(tif, tiff_field_info[4].field_tag, &s32l);
+    if (ret != 0)
+    {
+        fprintf(stdout,
+                "Error: Tag %d, set to be ignored, has been read from file.\n",
+                tiff_field_info[4].field_tag);
+        GOTOFAILURE
+    }
+
+    retcode = OK_RETURN;
+failure:
+
+    fprintf(stdout,
+            "-- End of test for ignored unknown tags. Closing TIFF file. --\n");
+    TIFFClose(tif);
+    return (retcode);
+}
+/*-- readTestTiff_ignore_some_tags() --*/
 
 int main(void)
 {
+    /*-- Signed tags test --*/
     parent = TIFFSetTagExtender(&extender);
     if (writeTestTiff("temp.tif", 0) != OK_RETURN)
         return (-1);
     if (readTestTiff("temp.tif", 0) != OK_RETURN)
         return (-1);
-    unlink("temp.tif");
+
     if (writeTestTiff("tempBig.tif", 1) != OK_RETURN)
         return (-1);
     if (readTestTiff("tempBig.tif", 1) != OK_RETURN)
         return (-1);
     unlink("tempBig.tif");
-    fprintf(stdout, "---------- Test finished OK -----------\n");
+    fprintf(stdout, "---------- Signed tag test finished OK -----------\n");
+
+    /*-- Adapt tiff_field_info array for ignoring unknown tags to LibTIFF, which
+     * have been written to file. --*/
+    if (readTestTiff_ignore_some_tags("temp.tif") != OK_RETURN)
+        return (-1);
+    unlink("temp.tif");
+    fprintf(stdout,
+            "---------- Ignoring unknown tag test finished OK -----------\n");
+
     return 0;
 }

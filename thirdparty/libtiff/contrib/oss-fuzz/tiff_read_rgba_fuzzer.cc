@@ -83,34 +83,83 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size)
         TIFFClose(tif);
         return 0;
     }
-    /* another hack to work around an OOM in tif_fax3.c */
-    uint32_t tilewidth = 0;
-    uint32_t imagewidth = 0;
-    TIFFGetField(tif, TIFFTAG_TILEWIDTH, &tilewidth);
-    TIFFGetField(tif, TIFFTAG_IMAGEWIDTH, &imagewidth);
-    tilewidth = __TIFFSafeMultiply(uint32_t, tilewidth, 2);
-    imagewidth = __TIFFSafeMultiply(uint32_t, imagewidth, 2);
-    if (tilewidth * 2 > MAX_SIZE || imagewidth * 2 > MAX_SIZE ||
-        tilewidth == 0 || imagewidth == 0)
+
+    if (TIFFIsTiled(tif))
     {
-        TIFFClose(tif);
-        return 0;
+        /* another hack to work around an OOM in tif_fax3.c */
+        uint32_t tilewidth = 0;
+        uint32_t imagewidth = 0;
+        TIFFGetField(tif, TIFFTAG_TILEWIDTH, &tilewidth);
+        TIFFGetField(tif, TIFFTAG_IMAGEWIDTH, &imagewidth);
+        tilewidth = __TIFFSafeMultiply(uint32_t, tilewidth, 2);
+        imagewidth = __TIFFSafeMultiply(uint32_t, imagewidth, 2);
+        if (tilewidth * 2 > MAX_SIZE || imagewidth * 2 > MAX_SIZE ||
+            tilewidth == 0 || imagewidth == 0)
+        {
+            TIFFClose(tif);
+            return 0;
+        }
     }
+    else
+    {
+        // check the size of the non-tiled image
+        uint32_t rowsize = 0;
+        TIFFGetField(tif, TIFFTAG_ROWSPERSTRIP, &rowsize);
+        uint32_t stripsize = TIFFStripSize(tif);
+        rowsize = __TIFFSafeMultiply(uint32_t, rowsize, 2);
+        stripsize = __TIFFSafeMultiply(uint32_t, stripsize, 2);
+        if (rowsize * 2 > MAX_SIZE || stripsize * 2 > MAX_SIZE ||
+            rowsize == 0 || stripsize == 0)
+        {
+            TIFFClose(tif);
+            return 0;
+        }
+    }
+
     uint32_t size = __TIFFSafeMultiply(uint32_t, w, h);
+
     if (size > MAX_SIZE || size == 0)
     {
         TIFFClose(tif);
         return 0;
     }
+
     raster = (uint32_t *)_TIFFmalloc(size * sizeof(uint32_t));
+    int ret = 0;
     if (raster != NULL)
     {
         TIFFReadRGBAImage(tif, w, h, raster, 0);
+
+        if (!TIFFIsTiled(tif))
+        {
+            // Allocate a buffer to hold one scanline
+            tsize_t scanlineSize = TIFFScanlineSize(tif);
+            void *buffer = _TIFFmalloc(scanlineSize);
+            if (!buffer)
+            {
+                fprintf(stderr, "Memory allocation failed\n");
+                ret = 1;
+                goto cleanup;
+            }
+
+            // Read each scanline
+            for (uint32_t row = 0; row < h; row++)
+            {
+                if (TIFFReadScanline(tif, buffer, row, 0) < 0)
+                {
+                    _TIFFfree(buffer);
+                    ret = 1;
+                    goto cleanup;
+                }
+            }
+            _TIFFfree(buffer);
+        }
+    cleanup:
         _TIFFfree(raster);
     }
     TIFFClose(tif);
 
-    return 0;
+    return ret;
 }
 
 #ifdef STANDALONE

@@ -30,14 +30,6 @@ Detailed information on the interfaces to the library are given in
 the :doc:`functions` that accompany this software.
 An alphabetic list of all the public functions with a brief description can be found at :ref:`list_of_routines`
 
-.. warning::
-    The following hyperlink does no more work, at least no libtiff introduction:
-
-    Michael Still has also written a useful introduction to libtiff for the
-    IBM DeveloperWorks site available at
-    `<http://www.ibm.com/developerworks/linux/library/l-libtiff>`_.
-
-
 How to tell which version you have
 ----------------------------------
 
@@ -492,7 +484,7 @@ is assumed to be organized in strips, the following might be used:
         TIFF* tif = TIFFOpen("myfile.tif", "r");
         if (tif) {
             uint32_t imagelength;
-            tdata_t buf;
+            void *buf;
             uint32_t row;
             
             TIFFGetField(tif, TIFFTAG_IMAGELENGTH, &imagelength);
@@ -519,7 +511,7 @@ to handle either case one might use the following instead:
         TIFF* tif = TIFFOpen("myfile.tif", "r");
         if (tif) {
             uint32_t imagelength;
-            tdata_t buf;
+            void *buf;
             uint32_t row;
             
             TIFFGetField(tif, TIFFTAG_IMAGELENGTH, &imagelength);
@@ -528,10 +520,10 @@ to handle either case one might use the following instead:
             if (config == PLANARCONFIG_CONTIG) {
                 for (row = 0; row < imagelength; row++)
                     TIFFReadScanline(tif, buf, row, 0);
-            } else if (config == planarconfig_separate) {
+            } else if (config == PLANARCONFIG_SEPARATE) {
                 uint16_t s, nsamples;
                 
-                tiffgetfield(tif, tifftag_samplesperpixel, &nsamples);
+                TIFFGetField(tif, TIFFTAG_SAMPLESPERPIXEL, &nsamples);
                 for (s = 0; s < nsamples; s++)
                     for (row = 0; row < imagelength; row++)
                         TIFFReadScanline(tif, buf, row, s);
@@ -574,12 +566,12 @@ A simple example of reading an image by strips is:
     {
         TIFF* tif = TIFFOpen("myfile.tif", "r");
         if (tif) {
-            tdata_t buf;
-            tstrip_t strip;
+            void *buf;
+            uint32_t strip;
             
             buf = _TIFFmalloc(TIFFStripSize(tif));
-            for (strip = 0; strip < tiffnumberofstrips(tif); strip++)
-                tiffreadencodedstrip(tif, strip, buf, (tsize_t) -1);
+            for (strip = 0; strip < TIFFNumberOfStrips(tif); strip++)
+                TIFFReadEncodedStrip(tif, strip, buf, (tmsize_t) -1);
             _TIFFfree(buf);
             TIFFClose(tif);
         }
@@ -609,15 +601,15 @@ a file:
     {
         TIFF* tif = TIFFOpen("myfile.tif", "r");
         if (tif) {
-            tdata_t buf;
-            tstrip_t strip;
-            uint32_t* bc;
+            void *buf;
+            uint32_t strip;
+            uint32_t *bc;
             uint32_t stripsize;
             
             TIFFGetField(tif, TIFFTAG_STRIPBYTECOUNTS, &bc);
             stripsize = bc[0];
             buf = _TIFFmalloc(stripsize);
-            for (strip = 0; strip < tiffnumberofstrips(tif); strip++) {
+            for (strip = 0; strip < TIFFNumberOfStrips(tif); strip++) {
                 if (bc[strip] > stripsize) {
                     buf = _TIFFrealloc(buf, bc[strip]);
                     stripsize = bc[strip];
@@ -666,7 +658,7 @@ code of the following sort might be used:
             uint32_t imageWidth, imageLength;
             uint32_t tileWidth, tileLength;
             uint32_t x, y;
-            tdata_t buf;
+            void *buf;
             
             TIFFGetField(tif, TIFFTAG_IMAGEWIDTH, &imageWidth);
             TIFFGetField(tif, TIFFTAG_IMAGELENGTH, &imageLength);
@@ -675,7 +667,7 @@ code of the following sort might be used:
             buf = _TIFFmalloc(TIFFTileSize(tif));
             for (y = 0; y < imagelength; y += tilelength)
                 for (x = 0; x < imagewidth; x += tilewidth)
-                    tiffreadtile(tif, buf, x, y, 0);
+                    TIFFReadTile(tif, buf, x, y, 0);
             _TIFFfree(buf);
             TIFFClose(tif);
         }
@@ -696,16 +688,55 @@ and written with :c:func:`TIFFWriteEncodedTile` or
     {
         TIFF* tif = TIFFOpen("myfile.tif", "r");
         if (tif) {
-            tdata_t buf;
-            ttile_t tile;
+            void *buf;
+            uint32_t tile;
 
             buf = _TIFFmalloc(TIFFTileSize(tif));
-            for (tile = 0; tile < tiffnumberoftiles(tif); tile++)
-                tiffreadencodedtile(tif, tile, buf, (tsize_t) -1);
+            for (tile = 0; tile < TIFFNumberOfTiles(tif); tile++)
+                TIFFReadEncodedTile(tif, tile, buf, (tmsize_t) -1);
             _TIFFfree(buf);
             TIFFClose(tif);
         }
     }
+
+Re-entrancy and Thread Safety
+-----------------------------
+
+``Libtiff`` contains no static state except for the registered error /
+warning handler.
+All data for an opened TIFF file is encapsulated via the TIFF handle
+returned by :c:func:`TIFFOpen`. Only the error handlers
+:c:func:`TIFFError` and :c:func:`TIFFErrorExt`, 
+(as well as :c:func:`TIFFWarning` and :c:func:`TIFFWarningExt`)
+use TIFF handle independent, common error handler functions.
+
+:c:func:`TIFFErrorHandlerExtR` and :c:func:`TIFFWarningHandlerExtR`
+(introduced in ``libtiff`` 4.5) offer the option of registering
+a separate error handler for each TIFF handle.
+This error handler is called via the TIFF handle and is therefore
+re-entrant, which means that it is naturally thread-safe.
+
+These handlers can already be set before opening a TIFF file using the
+:c:func:`TIFFOpenOptionsSetErrorHandlerExtR` and
+:c:func:`TIFFOpenOptionsSetWarningHandlerExtR` functions, respectively.
+
+This allows multiple TIFF files to be processed simultaneously
+with multiple threads, with each thread having its own TIFF file.
+It is not possible (safe) to edit a single TIFF file with multiple
+threads at the same time.
+
+Multi Page / Multi Image TIFF
+-----------------------------
+
+TIFF images can contain more than one image or page and each image can
+have sub-images. Furthermore, additional information about an image
+can be put into *custom* TIFF directories, such as EXIF or GPS.
+Writing TIFF files with more than one directory (IFD) is not easy
+because some side effects need to be known.
+How to read and write multi page TIFF files using ``libtiff`` is explained
+in :doc:`/multi_page`.
+For custom directories refer to :doc:`/functions/TIFFCustomDirectory`.
+ 
 
 Other Stuff
 -----------

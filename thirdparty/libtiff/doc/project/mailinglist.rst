@@ -21,7 +21,9 @@ Posts to the list are only accepted from members of the list.
 Archive
 -------
 
-A `Long Term Archive <http://www.awaresystems.be/imaging/tiff/tml.html>`_
-including recent messages, and most messages back to 1993,
-with search capabilities is available.  This archive has been prepared
-and hosted by `AWare Systems <http://www.awaresystems.be>`_.
+A Long Term Archive
+including most messages from April 2024 back to 1993 has been archived in a text file archive
+that can be download: `TML.zip <https://download.osgeo.org/libtiff/old/TML.zip>`_
+or `TML.tar.xz <https://download.osgeo.org/libtiff/old/TML.tar.xz>`_.
+
+There is no archive for the mailing list messages anymore.

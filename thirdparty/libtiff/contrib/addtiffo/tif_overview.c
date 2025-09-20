@@ -165,7 +165,7 @@ uint32_t TIFF_WriteOverview(TIFF *hTIFF, uint32_t nXSize, uint32_t nYSize,
 
     TIFFSetSubDirectory(hTIFF, nBaseDirOffset);
 
-    return nOffset;
+    return (uint32_t)nOffset;
 }
 
 /************************************************************************/
@@ -617,6 +617,8 @@ void TIFF_ProcessFullResBlock(TIFF *hTIFF, int nPlanarConfig, int bSubsampled,
             }
             else
             {
+                /* Silence Coverity Scan warning about checking return. */
+                /* coverity[check_return:SUPPRESS] */
                 TIFFReadEncodedStrip(
                     hTIFF, TIFFComputeStrip(hTIFF, nSYOff, (tsample_t)iSample),
                     pabySrcTile, TIFFStripSize(hTIFF));

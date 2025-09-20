@@ -461,9 +461,11 @@ int main(int argc, char *argv[])
             fsize = TIFFftell(fp) + 1;
             rewind(fp);
 
-            if (fsize >
-                    TIFF_TMSIZE_T_MAX || /* for x32 tmsize_t is only int32_t */
-                fsize <= 0)
+            /* for x32 tmsize_t is only int32_t. The - 1 is just here to make
+             * Coverity Scan happy on 64 bit builds where the condition would
+             * be always true otherwise.
+             */
+            if (fsize > TIFF_TMSIZE_T_MAX - 1 || fsize <= 0)
             {
                 fprintf(
                     stderr,

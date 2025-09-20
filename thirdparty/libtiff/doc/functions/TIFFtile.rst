@@ -12,23 +12,23 @@ Synopsis
 
 .. c:function:: void TIFFDefaultTileSize(TIFF* tif, uint32_t* tw, uint32_t* th)
 
-.. c:function:: tsize_t TIFFTileSize(TIFF* tif)
+.. c:function:: tmsize_t TIFFTileSize(TIFF* tif)
 
 .. c:function:: uint64_t TIFFTileSize64(TIFF* tif)
 
-.. c:function:: tsize_t TIFFTileRowSize(TIFF* tif)
+.. c:function:: tmsize_t TIFFTileRowSize(TIFF* tif)
 
 .. c:function:: uint64_t TIFFTileRowSize64(TIFF* tif)
 
-.. c:function:: tsize_t TIFFVTileSize(TIFF* tif, uint32_t nrows)
+.. c:function:: tmsize_t TIFFVTileSize(TIFF* tif, uint32_t nrows)
 
 .. c:function:: uint64_t TIFFVTileSize64(TIFF* tif, uint32_t nrows)
 
-.. c:function:: ttile_t TIFFComputeTile(TIFF* tif, uint32_t x, uint32_t y, uint32_t z, tsample_t sample)
+.. c:function:: uint32_t TIFFComputeTile(TIFF* tif, uint32_t x, uint32_t y, uint32_t z, uint16_t sample)
 
-.. c:function:: int TIFFCheckTile(TIFF* tif, uint32_t x, uint32_t y, uint32_t z, tsample_t sample)
+.. c:function:: int TIFFCheckTile(TIFF* tif, uint32_t x, uint32_t y, uint32_t z, uint16_t sample)
 
-.. c:function:: ttile_t TIFFNumberOfTiles(TIFF* tif)
+.. c:function:: uint32_t TIFFNumberOfTiles(TIFF* tif)
 
 Description
 -----------

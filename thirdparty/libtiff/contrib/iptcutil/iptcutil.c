@@ -296,6 +296,9 @@ int formatIPTC(FILE *ifile, FILE *ofile)
         else
             fprintf(ofile, "%d#%d=", (unsigned int)dataset,
                     (unsigned int)recnum);
+        /* Silence Coverity Scan warning about tainted_data: Passing tainted
+         * expression *str to formatString, which uses it as an offset. */
+        /* coverity[tainted_data:SUPPRESS] */
         formatString(ofile, str, taglen);
         free(str);
 

@@ -1,27 +1,23 @@
 #!/bin/sh
+
+retval=0
+
 set -x
-case `uname` in
-  Darwin*)
-    glibtoolize --force --copy
-    ;;
-  *)
-    libtoolize --force --copy
-    ;;
-esac
-aclocal -I ./m4
-autoheader
-automake --foreign --add-missing --copy
-autoconf
+
+autoreconf --install --force || retval=$?
+
 # Get latest config.guess and config.sub from upstream master since
-# these are often out of date.
+# these are often out of date.  This requires network connectivity and
+# sometimes the site is down, a failure here does not result in
+# failure of the whole script.
 for file in config.guess config.sub
 do
     echo "$0: getting $file..."
-    wget -q --timeout=5 -O config/$file.tmp \
+    wget --timeout=5 -O config/$file.tmp \
       "https://git.savannah.gnu.org/cgit/config.git/plain/${file}" \
       && mv -f config/$file.tmp config/$file \
       && chmod a+x config/$file
-    retval=$?
     rm -f config/$file.tmp
-    test $retval -eq 0 || exit $retval
 done
+
+exit $retval

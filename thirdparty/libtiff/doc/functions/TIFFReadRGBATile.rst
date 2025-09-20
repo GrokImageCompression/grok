@@ -50,19 +50,15 @@ types are converted to RGBA values.
 Notes
 -----
 
-Samples must be either 1, 2, 4, 8, or 16 bits.
-Colorimetric samples/pixel must be either 1, 3, or 4 (i.e.
-``SamplesPerPixel`` - ``ExtraSamples``).
-
-Palette image colormaps that appear to be incorrectly written as 8-bit
-values are automatically scaled to 16-bits.
-
 :c:func:`TIFFReadRGBATile` is just a wrapper around the more general
 :doc:`TIFFRGBAImage` facilities.  It's main advantage over the similar
 :c:func:`TIFFReadRGBAImage` function is that for large images a single
 buffer capable of holding the whole image doesn't need to be allocated,
 only enough for one tile.  The :c:func:`TIFFReadRGBAStrip` function
 does a similar operation for stripped images.
+
+For general notes see
+:ref:`TIFFRGBImage notes <TIFFRGBAImage_Restriction_Notes>`.
 
 Return values
 -------------

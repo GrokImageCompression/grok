@@ -18,7 +18,7 @@ There are two mechanisms for storing multiple images in a TIFF file:
     - such as a subsampled version of the parent image. 
     SubIFD chains are rarely supported.
     For SubIFD refer also to
-    `Adobe PageMaker® 6.0 TIFF Technical Notes <https://www.awaresystems.be/imaging/tiff/specification/TIFFPM6.pdf>`_
+    `Adobe PageMaker® 6.0 TIFF Technical Notes <https://download.osgeo.org/libtiff/doc/TIFFPM6.pdf>`_
 
 .. _SubIFDAccess:
 
@@ -42,7 +42,7 @@ and thus gets arbitrary values when parsing through SubIFD chains.
 When the SubIFDs are not chained, each offset
 within the SubIFD array has to be activated and read individually.
 :c:func:`TIFFSetDirectory()` only works with main-IFD chains because
-allways starts with the first main-IFD and thus is able to reset
+always starts with the first main-IFD and thus is able to reset
 the SubIFD reading chain to the main-IFD chain.
 
 Writing Multi Page TIFF
@@ -116,7 +116,7 @@ additionally, as Adobe PageMaker® 6.0 TIFF Technical Notes suggests.
           if (blnWriteSubIFD)
           {
              /* A SubIFD tag has been written for that main-IFD and this
-              * triggers that pervious TIFFWriteDirectory() to switch to the
+              * triggers that previous TIFFWriteDirectory() to switch to the
               * SubIFD-chain for the next number_of_sub_IFDs writings.
               * Thus, only the thumbnail images need to be
               * set up and written to file using TIFFWriteDirectory().
@@ -209,5 +209,5 @@ See also
 :doc:`terms`,
 :doc:`/functions/TIFFSetDirectory` (3tiff),
 :doc:`/functions/TIFFWriteDirectory` (3tiff),
-`Adobe PageMaker® 6.0 TIFF Technical Notes <https://www.awaresystems.be/imaging/tiff/specification/TIFFPM6.pdf>`_,
+`Adobe PageMaker® 6.0 TIFF Technical Notes <https://download.osgeo.org/libtiff/doc/TIFFPM6.pdf>`_,
 `Example from StackOverflow <https://stackoverflow.com/questions/11959617/in-a-tiff-create-a-sub-ifd-with-thumbnail-libtiff>`_

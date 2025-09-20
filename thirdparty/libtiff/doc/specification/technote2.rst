@@ -138,7 +138,7 @@ means that the control logic must know a great deal more about JPEG details
 than we would like.  The parsing and reconstruction of the markers also
 represents a fair amount of unnecessary work.
 
-Quite a few implementors have proposed writing "TIFF/JPEG" files in which
+Quite a few implementers have proposed writing "TIFF/JPEG" files in which
 a standard JPEG datastream is simply dumped into the file and pointed to
 by JPEGInterchangeFormat.  To avoid parsing the JPEG datastream, they
 suggest not writing the JPEG auxiliary fields (JPEGxxTables etc) nor even
@@ -149,7 +149,7 @@ is arguably not TIFF at all, since *all* TIFF-reading applications expect
 to find strip or tile pointers.  A subset implementation that is not
 upward-compatible with the full spec is clearly unacceptable.  However,
 the frequency with which this idea has come up makes it clear that
-implementors find the existing Section 22 too complex.
+implementers find the existing Section 22 too complex.
 
 
 Overview of the solution
@@ -260,7 +260,7 @@ will provide additional ``PhotometricInterpretation`` values and a more general
 way of defining subsampling, so as to allow more flexibility in
 JPEG-compressed files.  But that issue is not addressed in this Tech Note.
 
-Implementors should note that many popular JPEG codecs
+Implementers should note that many popular JPEG codecs
 (compressor/decompressors) provide automatic color conversion and
 downsampling, so that the application may supply full-size RGB data which
 is nonetheless converted to downsampled YCbCr.  This is an implementation
@@ -556,7 +556,7 @@ single-datastream files.  Support for tiled TIFF files is strongly
 recommended but not required.
 
 
-Other recommendations for implementors
+Other recommendations for implementers
 --------------------------------------
 
 The TIFF tag ``Compression=7`` guarantees only that the compressed data is
@@ -621,7 +621,7 @@ Compression Standard", Van Nostrand Reinhold, 1993, ISBN 0-442-01272-1.
 
 This textbook is by far the most complete exposition of JPEG in existence.
 It includes the full text of the ISO JPEG standards (DIS 10918-1 and draft
-DIS 10918-2).  No would-be JPEG implementor should be without it.
+DIS 10918-2).  No would-be JPEG implementer should be without it.
 
 [3] ISO/IEC IS 10918-1, "Digital Compression and Coding of Continuous-tone
 Still Images, Part 1: Requirements and guidelines", February 1994.

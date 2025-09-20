@@ -13,7 +13,8 @@ The images are kept in a separate archive that should be located in
 the same directory as this software.
 
 The latest archive of test images is located at
-`<https://download.osgeo.org/libtiff/pics-3.8.0.tar.gz>`_.
+`<https://download.osgeo.org/libtiff/pics-3.8.0.tar.gz>`_,
+or at `<https://gitlab.com/libtiff/libtiff-pics>`_.
 
 There are two other good sources for TIFF test images:
 the contributed software :file:`contrib/dbs` includes several

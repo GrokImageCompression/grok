@@ -11,3 +11,4 @@ of the libtiff project are conducted.
     :titlesonly:
 
     rfc1_psc
+    rfc2_restoring_needed_tools

@@ -38,7 +38,8 @@ The :c:func:`TIFFRewriteDirectory` function operates similarly to
 :c:func:`TIFFWriteDirectory`, but can be called with directories
 previously read or written that already have an established location
 in the file.  It will rewrite the directory, but instead of placing it
-at its old location (as :c:func:`TIFFWriteDirectory` would) it will
+at its old location (as :c:func:`TIFFWriteDirectory` would, if the size
+of the directory has not grown) it will
 place them at the end of the file, correcting the pointer from the
 preceding directory or file header to point to it's new location.  This
 is particularly important in cases where the size of the directory and
@@ -56,7 +57,9 @@ is incomplete, but you will at least get all the valid data in the file
 before that.  When the file is complete, just use
 :c:func:`TIFFWriteDirectory` as usual to finish it off cleanly.
 
-The :c:func:`TIFFSetWriteOffset` sets the current write offset.
+The :c:func:`TIFFSetWriteOffset` sets the current write offset for image data
+(i.e.pixels). The offset for writing the directory (:ref:`IFD <ImageFileDirectory>`)
+data is not affected.
 This should only be used to set the offset to a known previous location
 (very carefully), or to 0 so that the next write gets appended to the end
 of the file.

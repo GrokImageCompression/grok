@@ -11,13 +11,13 @@ Synopsis
     #include <tiffio.h>
     #include <stdarg.h>
 
-.. c:function:: int TIFFGetField(TIFF* tif, ttag_t tag, ...)
+.. c:function:: int TIFFGetField(TIFF* tif, uint32_t tag, ...)
 
-.. c:function:: int TIFFVGetField(TIFF* tif, ttag_t tag, va_list ap)
+.. c:function:: int TIFFVGetField(TIFF* tif, uint32_t tag, va_list ap)
 
-.. c:function:: int TIFFGetFieldDefaulted(TIFF* tif, ttag_t tag, ...)
+.. c:function:: int TIFFGetFieldDefaulted(TIFF* tif, uint32_t tag, ...)
 
-.. c:function:: int TIFFVGetFieldDefaulted(TIFF* tif, ttag_t tag, va_list ap)
+.. c:function:: int TIFFVGetFieldDefaulted(TIFF* tif, uint32_t tag, va_list ap)
 
 Description
 -----------

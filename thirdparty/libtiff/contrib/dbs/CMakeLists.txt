@@ -23,15 +23,19 @@
 # OF THIS SOFTWARE.
 
 add_executable(tiff-bi tiff-bi.c)
+set_target_properties(tiff-bi PROPERTIES LINKER_LANGUAGE CXX)
 target_link_libraries(tiff-bi tiff tiff_port)
 
 add_executable(tiff-grayscale tiff-grayscale.c)
+set_target_properties(tiff-grayscale PROPERTIES LINKER_LANGUAGE CXX)
 target_link_libraries(tiff-grayscale tiff tiff_port CMath::CMath)
 
 add_executable(tiff-palette tiff-palette.c)
+set_target_properties(tiff-palette PROPERTIES LINKER_LANGUAGE CXX)
 target_link_libraries(tiff-palette tiff tiff_port)
 
 add_executable(tiff-rgb tiff-rgb.c)
+set_target_properties(tiff-rgb PROPERTIES LINKER_LANGUAGE CXX)
 target_link_libraries(tiff-rgb tiff tiff_port CMath::CMath)
 
 if(WEBP_SUPPORT AND EMSCRIPTEN)

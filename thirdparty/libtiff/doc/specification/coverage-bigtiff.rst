@@ -2,22 +2,23 @@ LibTIFF Coverage of the BigTIFF Specification
 =============================================
 
 Since LibTIFF version 4.0.0, the BigTIFF format specification has been implemented within LibTIFF.
-BigTIFF is a backward-compatible extension to the `TIFF <http://www.awaresystems.be/imaging/tiff.html>`_
-file format.
+BigTIFF is a backward-compatible extension to the TIFF file format.
 
 BigTIFF logically extends the original TIFF file format (referred to as 'ClassicTIFF' from now on).
 The BigTIFF specification is the result of work by a variety of parties on the LibTIFF mailing list, including
 the then current LibTIFF maintainers, Joris Van Damme and Adobe staff. The BigTIFF specification has not yet
 been officially approved by the TIFF specification owner (Adobe), but implementation within LibTIFF
-could accelerate that process.  For more information on the BigTIFF file format, we recommend AWare Systems'
-`BigTIFF page <http://www.awaresystems.be/imaging/tiff/bigtiff.html>`_.
+could accelerate that process.  For more information on the BigTIFF file format, for example see :doc:`bigtiff`.
+Another overview and some further links can be found at
+`<https://www.loc.gov/preservation/digital/formats/fdd/fdd000328.shtml>`_.
 
 BigTIFF is especially useful for people and vendors that are confronted with very large images, and
 still seek to use an open, simple, and extendable format. This requirement is frequently encountered in the
 geospatial field, but also concerns large format scanners, medical imaging and other fields.
 
 The LibTiff BigTIFF support was made possible by four sponsors funding the project. The programming work was
-primarily done by `Joris Van Damme (AWare Systems) <http://www.awaresystems.be/index.html>`_.
+primarily done by Joris Van Damme (AWare Systems) from 2004 to 2008.
+
 The sponsors for the BigTIFF support work in LibTIFF, in alphabetical order:
 
 .. list-table:: Sponsors
@@ -35,7 +36,7 @@ The sponsors for the BigTIFF support work in LibTIFF, in alphabetical order:
     * - .. image:: bigtiffpr_images/leica.png
             :width: 100%
             :alt: Leica Geosystems Geospatial Imaging
-      - `Leica Geosystems Geospatial Imaging <http://gi.leica-geosystems.com/default.aspx>`_ offers a
+      - 'Leica Geosystems Geospatial Imaging' offers a
         range of workflow solutions for photogrammetry, mapping, remote sensing, catalog management and exploitation
         of geospatial imagery. Enterprise organizations use this imagery as the basis for generating information for
         both education and decision making processes. Those who use Leica Geosystems products every day trust them
@@ -51,7 +52,7 @@ The sponsors for the BigTIFF support work in LibTIFF, in alphabetical order:
     * - .. image:: bigtiffpr_images/weogeo.png
             :width: 100%
             :alt: WeoGeo
-      - `WeoGeo <http://www.weogeo.com/>`_ is a web-based data management resource for the geospatial
+      - 'WeoGeo' is a web-based data management resource for the geospatial
         industry that allows the free market exchange of mapping related imagery products, featuring an innovative
         solution that efficiently manages digital mapping files of any size. With an intuitive user interface
         and the scalable power of Amazon Web Services (AWS), geospatial professionals can view, sort, search,

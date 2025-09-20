@@ -105,7 +105,7 @@ The default generator for UNIX is ``Unix Makefiles``, and on Windows is
 ``NMake Makefiles`` or ``MSBuild`` depending upon the setup.
 Run :command:`cmake --help` to list all the
 generators available for your platform.  For example, to use the Ninja
-`build system <https://martine.github.io/ninja/>`_ on UNIX or
+`build system <https://ninja-build.org/>`_ on UNIX or
 Windows:
 
 .. code-block:: shell
@@ -617,16 +617,20 @@ necessary to manually do this work on a non-UNIX system.
 Testing the software
 --------------------
 
-You can try
+Assuming you have working versions of :doc:`/tools/tiffgt`, you can now use
+it to view any of the sample images available for testing, or try
 :doc:`/tools/tiffinfo` to display the file metadata.  See the
-:doc:`images` section on obtaining the test images.
-Otherwise, you can do a cursory check of the library
-with the :doc:`/tools/tiffcp` program. For example,
+:doc:`images` section on obtaining the test images.  Otherwise, you can
+do a cursory check of the library with the :doc:`/tools/tiffcp` and
+:doc:`/tools/tiffcmp` programs. For example,
 
 .. code-block:: shell
 
     tiffcp -lzw cramps.tif x.tif
+    tiffcmp cramps.tif x.tif
 
+(:program:`tiffcmp` should be silent if the files compare
+correctly).
 
 
 LibTIFF source files

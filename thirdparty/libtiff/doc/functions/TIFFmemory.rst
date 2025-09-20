@@ -10,17 +10,17 @@ Synopsis
 
     #include <tiffio.h>
 
-.. c:function:: tdata_t _TIFFmalloc(tsize_t size)
+.. c:function:: void *_TIFFmalloc(tmsize_t size)
 
-.. c:function:: tdata_t _TIFFrealloc(tdata_t buffer, tsize_t size)
+.. c:function:: void *_TIFFrealloc(void *buffer, tmsize_t size)
 
-.. c:function:: void _TIFFfree(tdata_t buffer)
+.. c:function:: void _TIFFfree(void *buffer)
 
-.. c:function:: void _TIFFmemset(tdata_t s, int c, tsize_t n)
+.. c:function:: void _TIFFmemset(void *s, int c, tmsize_t n)
 
-.. c:function:: void _TIFFmemcpy(tdata_t dest, const tdata_t src, tsize_t n)
+.. c:function:: void _TIFFmemcpy(void *dest, const void *src, tmsize_t n)
 
-.. c:function:: int _TIFFmemcmp(const tdata_t s1, const tdata_ts2, tsize_t n)
+.. c:function:: int _TIFFmemcmp(const void *s1, const void *s2, tmsize_t n)
 
 .. c:function:: void* _TIFFCheckMalloc(TIFF* tif, tmsize_t nmemb, tmsize_t elem_size, const char* what)
 

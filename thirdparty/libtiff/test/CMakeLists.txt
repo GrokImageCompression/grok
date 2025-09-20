@@ -48,6 +48,7 @@ set(TIFFIMAGES
     images/lzw-single-strip.tiff
     images/testfax4.tiff
     images/testfax3_bug_513.tiff
+    images/32bpp-None.tiff
 )
 # TIFF images using old-jpeg.  Unused unless JPEG support is enabled.
 set(TIFFIMAGES_OJPEG)
@@ -93,6 +94,7 @@ set(UNCOMPRESSEDIMAGES
 set(IMAGES_EXTRA_DIST
     images/README.txt
     images/miniswhite-1c-1b.g3
+    images/32bpp-None-jpeg.tiff
     ${BMPIMAGES}
     ${GIFIMAGES}
     ${PNMIMAGES}
@@ -105,43 +107,51 @@ set(simple_tests)
 # Test programs
 add_executable(test_signed_tags ../placeholder.h)
 target_sources(test_signed_tags PRIVATE test_signed_tags.c)
+set_target_properties(test_signed_tags PROPERTIES LINKER_LANGUAGE CXX)
 target_link_libraries(test_signed_tags PRIVATE tiff tiff_port)
 list(APPEND simple_tests test_signed_tags)
 
 add_executable(ascii_tag ../placeholder.h)
 target_sources(ascii_tag PRIVATE ascii_tag.c)
+set_target_properties(ascii_tag PROPERTIES LINKER_LANGUAGE CXX)
 target_link_libraries(ascii_tag PRIVATE tiff tiff_port)
 list(APPEND simple_tests ascii_tag)
 
 add_executable(long_tag ../placeholder.h)
 target_sources(long_tag PRIVATE long_tag.c check_tag.c)
+set_target_properties(long_tag PROPERTIES LINKER_LANGUAGE CXX)
 target_link_libraries(long_tag PRIVATE tiff tiff_port)
 list(APPEND simple_tests long_tag)
 
 add_executable(short_tag ../placeholder.h)
 target_sources(short_tag PRIVATE short_tag.c check_tag.c)
+set_target_properties(short_tag PROPERTIES LINKER_LANGUAGE CXX)
 target_link_libraries(short_tag PRIVATE tiff tiff_port)
 list(APPEND simple_tests short_tag)
 
 add_executable(strip_rw ../placeholder.h)
 target_sources(strip_rw PRIVATE strip_rw.c strip.c test_arrays.c test_arrays.h)
+set_target_properties(strip_rw PROPERTIES LINKER_LANGUAGE CXX)
 target_link_libraries(strip_rw PRIVATE tiff tiff_port)
 list(APPEND simple_tests strip_rw)
 
 add_executable(rewrite ../placeholder.h)
 target_sources(rewrite PRIVATE rewrite_tag.c)
+set_target_properties(rewrite PROPERTIES LINKER_LANGUAGE CXX)
 target_link_libraries(rewrite PRIVATE tiff tiff_port)
 list(APPEND simple_tests rewrite)
 
 if(JPEG_SUPPORT)
   add_executable(raw_decode ../placeholder.h)
   target_sources(raw_decode PRIVATE raw_decode.c)
+  set_target_properties(raw_decode PROPERTIES LINKER_LANGUAGE CXX)
   target_link_libraries(raw_decode PRIVATE tiff tiff_port JPEG::JPEG)
   list(APPEND simple_tests raw_decode)
 endif()
 
 add_executable(custom_dir ../placeholder.h)
 target_sources(custom_dir PRIVATE custom_dir.c)
+set_target_properties(custom_dir PROPERTIES LINKER_LANGUAGE CXX)
 target_link_libraries(custom_dir PRIVATE tiff tiff_port)
 list(APPEND simple_tests custom_dir)
 
@@ -149,65 +159,84 @@ list(APPEND simple_tests custom_dir)
 if(NOT BUILD_SHARED_LIBS)
   add_executable(rational_precision2double ../placeholder.h)
   target_sources(rational_precision2double PRIVATE rational_precision2double.c)
+  set_target_properties(rational_precision2double PROPERTIES LINKER_LANGUAGE CXX)
   target_link_libraries(rational_precision2double PRIVATE tiff tiff_port)
   list(APPEND simple_tests rational_precision2double)
   
   add_executable(test_write_read_tags ../placeholder.h)
   target_sources(test_write_read_tags PRIVATE test_write_read_tags.c)
+  set_target_properties(test_write_read_tags PROPERTIES LINKER_LANGUAGE CXX)
   target_link_libraries(test_write_read_tags PRIVATE tiff)
   list(APPEND simple_tests test_write_read_tags)
   
   add_executable(test_transferfunction_write_read ../placeholder.h)
   target_sources(test_transferfunction_write_read PRIVATE test_transferfunction_write_read.c)
+  set_target_properties(test_transferfunction_write_read PROPERTIES LINKER_LANGUAGE CXX)
   target_link_libraries(test_transferfunction_write_read PRIVATE tiff)
   list(APPEND simple_tests test_transferfunction_write_read)
 endif()
 
 add_executable(custom_dir_EXIF_231 ../placeholder.h)
 target_sources(custom_dir_EXIF_231 PRIVATE custom_dir_EXIF_231.c)
+set_target_properties(custom_dir_EXIF_231 PROPERTIES LINKER_LANGUAGE CXX)
 target_link_libraries(custom_dir_EXIF_231 PRIVATE tiff tiff_port)
 list(APPEND simple_tests custom_dir_EXIF_231)
 
 add_executable(defer_strile_loading ../placeholder.h)
 target_sources(defer_strile_loading PRIVATE defer_strile_loading.c)
+set_target_properties(defer_strile_loading PROPERTIES LINKER_LANGUAGE CXX)
 target_link_libraries(defer_strile_loading PRIVATE tiff tiff_port)
 list(APPEND simple_tests defer_strile_loading)
 
 add_executable(defer_strile_writing ../placeholder.h)
 target_sources(defer_strile_writing PRIVATE defer_strile_writing.c)
+set_target_properties(defer_strile_writing PROPERTIES LINKER_LANGUAGE CXX)
 target_link_libraries(defer_strile_writing PRIVATE tiff tiff_port)
 list(APPEND simple_tests defer_strile_writing)
 
 add_executable(test_directory ../placeholder.h)
 target_sources(test_directory PRIVATE test_directory.c)
+set_target_properties(test_directory PROPERTIES LINKER_LANGUAGE CXX)
 target_link_libraries(test_directory PRIVATE tiff tiff_port)
 list(APPEND simple_tests test_directory)
 
 add_executable(test_IFD_enlargement ../placeholder.h)
 target_sources(test_IFD_enlargement PRIVATE test_IFD_enlargement.c)
+set_target_properties(test_IFD_enlargement PROPERTIES LINKER_LANGUAGE CXX)
 target_link_libraries(test_IFD_enlargement PRIVATE tiff tiff_port)
 list(APPEND simple_tests test_IFD_enlargement)
 
 add_executable(testtypes ../placeholder.h)
 target_sources(testtypes PRIVATE testtypes.c)
+set_target_properties(testtypes PROPERTIES LINKER_LANGUAGE CXX)
 target_link_libraries(testtypes PRIVATE tiff tiff_port)
 list(APPEND simple_tests testtypes)
 
 add_executable(test_open_options ../placeholder.h)
 target_sources(test_open_options PRIVATE test_open_options.c)
+set_target_properties(test_open_options PROPERTIES LINKER_LANGUAGE CXX)
 target_link_libraries(test_open_options PRIVATE tiff tiff_port)
 list(APPEND simple_tests test_open_options)
 
 add_executable(test_append_to_strip ../placeholder.h)
 target_sources(test_append_to_strip PRIVATE test_append_to_strip.c)
+set_target_properties(test_append_to_strip PROPERTIES LINKER_LANGUAGE CXX)
 target_link_libraries(test_append_to_strip PRIVATE tiff tiff_port)
 list(APPEND simple_tests test_append_to_strip)
 
 add_executable(test_ifd_loop_detection ../placeholder.h)
 target_sources(test_ifd_loop_detection PRIVATE test_ifd_loop_detection.c)
+set_target_properties(test_ifd_loop_detection PROPERTIES LINKER_LANGUAGE CXX)
 target_link_libraries(test_ifd_loop_detection PRIVATE tiff tiff_port)
 target_compile_definitions(test_ifd_loop_detection PRIVATE SOURCE_DIR=\"${CMAKE_CURRENT_SOURCE_DIR}\")
 list(APPEND simple_tests test_ifd_loop_detection)
+
+add_executable(test_RGBAImage ../placeholder.h)
+target_sources(test_RGBAImage PRIVATE test_RGBAImage.c)
+set_target_properties(test_RGBAImage PROPERTIES LINKER_LANGUAGE CXX)
+target_link_libraries(test_RGBAImage PRIVATE tiff tiff_port)
+target_compile_definitions(test_RGBAImage PRIVATE SOURCE_DIR=\"${CMAKE_CURRENT_SOURCE_DIR}\")
+list(APPEND simple_tests test_RGBAImage)
 
 if(WEBP_SUPPORT AND EMSCRIPTEN)
   # Emscripten is pretty finnicky about linker flags.
@@ -291,6 +320,39 @@ function(tiff_test_reader name command infile)
            "-DINFILE=${infile}"
            ${tiff_test_extra_args}
            -P "${CMAKE_CURRENT_SOURCE_DIR}/TiffTest.cmake")
+endfunction()
+
+function(add_convert_test_multi_out_in commandname1 commandname2 commandname3
+      categoryname commandargs1 commandargs2 commandargs3
+      image validate)
+  string(REPLACE " " "^" escaped_commandargs1 "${commandargs1}")
+  string(REPLACE " " "^" escaped_commandargs2 "${commandargs2}")
+  string(REPLACE " " "^" escaped_commandargs3 "${commandargs3}")
+  get_filename_component(name "${image}" NAME)
+  get_filename_component(base "${image}" NAME_WE)
+  set(testname "${commandname1}-${categoryname}-${base}")
+  if(commandname1)
+    set(command1
+        "$<TARGET_FILE:${commandname1}>^${escaped_commandargs1}")
+  else()
+    set(command1)
+  endif()
+  if(commandname2)
+    set(command2
+        "$<TARGET_FILE:${commandname2}>^${escaped_commandargs2}")
+  else()
+    set(command2)
+  endif()
+  if(commandname3)
+    set(command3
+        "$<TARGET_FILE:${commandname3}>^${escaped_commandargs3}")
+  else()
+    set(command3)
+  endif()
+  set(infile "${TEST_OUTPUT}/${image}")
+  set(outfile "${TEST_OUTPUT}/${commandname1}-${categoryname}-${base}.tiff")
+  tiff_test_convert("${testname}" "${command1}" "${command2}" "${command3}"
+                    "${infile}" "${outfile}" "${validate}")
 endfunction()
 
 function(add_convert_test_multi commandname1 commandname2 commandname3
@@ -381,10 +443,17 @@ foreach(target IN LISTS simple_tests)
 endforeach()
 
 if(tiff-tools)
-# Reading / writing TIFF images with different encoding schemes.
-add_convert_tests(tiffcp TIFFIMG    ""                         TIFFIMAGES TRUE)
+  # PPM
+  add_convert_test(ppm2tiff miniswhite "" "images/miniswhite-1c-1b.pbm" TRUE)
+  add_convert_test(ppm2tiff minisblack "" "images/minisblack-1c-8b.pgm" TRUE)
+  add_convert_test(ppm2tiff rgb        "" "images/rgb-3c-16b.ppm"       TRUE)
+  add_convert_test(ppm2tiff rgb        "" "images/rgb-3c-8b.ppm"        TRUE)
 
-# Convert some images to another coding scheme.
+  # tiffcp
+  # Reading / writing TIFF images with different encoding schemes.
+  add_convert_tests(tiffcp TIFFIMG    ""                         TIFFIMAGES TRUE)
+
+  # Convert some images to another coding scheme.
   add_convert_test(tiffcp   g3         "-c g3"         "images/miniswhite-1c-1b.tiff" FALSE)
   add_convert_test(tiffcp   g31d       "-c g3:1d"      "images/miniswhite-1c-1b.tiff" FALSE)
   add_convert_test(tiffcp   g31dfill   "-c g3:1d:fill" "images/miniswhite-1c-1b.tiff" FALSE)
@@ -393,17 +462,34 @@ add_convert_tests(tiffcp TIFFIMG    ""                         TIFFIMAGES TRUE)
   add_convert_test(tiffcp   g4         "-c g4"         "images/miniswhite-1c-1b.tiff" FALSE)
   add_convert_test_multi(tiffcp tiffcp "" logluv "-c none" "-c sgilog" ""
                          "images/logluv-3c-16b.tiff"    FALSE)
+  add_convert_test_multi(tiffcp thumbnail "" thumbnail "-c g3:1d" "" ""
+                         "images/miniswhite-1c-1b.tiff"    FALSE)
   add_convert_test(tiffcp   none       "-c none"       "images/quad-lzw-compat.tiff" FALSE)
   add_convert_test(tiffcp   noner1     "-c none -r 1"  "images/lzw-single-strip.tiff" FALSE)
   add_convert_test(tiffcp   float64_lzw_2_le "-c lzw:2"       "images/test_float64_predictor2_le_lzw.tif" FALSE)
   add_convert_test(tiffcp   float64_lzw_2_be "-c lzw:2"       "images/test_float64_predictor2_be_lzw.tif" FALSE)
+
+  # Test for Group 3 fax 1d without EOL
+  add_convert_test(tiffcp   testfax3_bug54_1dnoEOL "-c none"  "images/testfax3_bug54_1dnoEOL.tif" TRUE)
+  
+
   if(WEBP_SUPPORT)
-      add_convert_test(tiffcp   webp_lossless_rgba_alpha_fully_opaque "-c none"       "images/webp_lossless_rgba_alpha_fully_opaque.tif" FALSE)
+    add_convert_test(tiffcp   webp_lossless_rgba_alpha_fully_opaque "-c none"    "images/webp_lossless_rgba_alpha_fully_opaque.tif" FALSE)
   endif()
-# Old-JPEG tests
-#--- tiffcp does not support subsampled images, as the OldJPEG ones are ---
-#    ToDo: a test for OldJPEG is missing.
-#add_convert_tests(test_tiffcp OldJPEG    ""                         TIFFIMAGES_OJPEG TRUE)
+  
+  add_convert_test(tiff2rgba 32BPP    "-B 255 -n"     "images/32bpp-None.tiff" TRUE)
+  if(JPEG_SUPPORT)
+    add_convert_test(tiffcp 32BPP-JPEG "-c jpeg"      "images/32bpp-None-jpeg.tiff" TRUE)
+  endif()
+
+  if(JBIG_SUPPORT)
+    add_convert_test(tiffcp   jbig         "-c jbig"         "images/lzw-single-strip.tiff" TRUE)
+  endif()
+  
+  # Old-JPEG tests
+  #--- tiffcp does not support subsampled images, as the OldJPEG ones are ---
+  #    ToDo: a test for OldJPEG is missing.
+  #add_convert_tests(test_tiffcp OldJPEG    ""                         TIFFIMAGES_OJPEG TRUE)
 
   # tiffdump
   add_reader_test(tiffdump "" "images/miniswhite-1c-1b.tiff")
@@ -434,4 +520,28 @@ add_convert_tests(tiffcp TIFFIMG    ""                         TIFFIMAGES TRUE)
            ${tiff_test_extra_args}
            -P "${CMAKE_CURRENT_SOURCE_DIR}/TiffSplitTest.cmake")
 
+  # PDF
+  add_stdout_test(tiff2pdf "" "" "images/miniswhite-1c-1b.tiff" TRUE)
+
+  # PS
+  add_stdout_test(tiff2ps "ps-1" "-a -p -1" "images/miniswhite-1c-1b.tiff" TRUE)
+  add_stdout_test(tiff2ps "ps-2" "-a -p -2" "images/miniswhite-1c-1b.tiff" TRUE)
+  add_stdout_test(tiff2ps "ps-3" "-a -p -3" "images/miniswhite-1c-1b.tiff" TRUE)
+  add_stdout_test(tiff2ps "eps-1" "-e -1" "images/miniswhite-1c-1b.tiff" TRUE)
+
+  # BW
+  add_convert_tests(tiff2bw default      ""                         RGBIMAGES TRUE)
+
+  # RGBA
+  add_convert_tests(tiff2rgba default    ""                         TIFFIMAGES TRUE)
+  # RGBA (old-jpeg)
+  add_convert_tests(tiff2rgba default    ""                         TIFFIMAGES_OJPEG TRUE)
+  # Test rotations
+  add_convert_tests(tiffcrop  R90        "-R90"                     TIFFIMAGES TRUE)
+  # Test flip (mirror)
+  add_convert_tests(tiffcrop  doubleflip "-F both"                  TIFFIMAGES TRUE)
+  # Test extracting a section 60 pixels wide and 60 pixels high
+  add_convert_tests(tiffcrop  extract    "-U px -E top -X 60 -Y 60" TIFFIMAGES TRUE)
+  # Test extracting the first and fourth quarters from the left side.
+  add_convert_tests(tiffcrop  extractz14 "-E left -Z1:4,2:4"        TIFFIMAGES TRUE)
 endif()

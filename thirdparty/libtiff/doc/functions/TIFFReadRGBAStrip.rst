@@ -24,7 +24,7 @@ The raster is assumed to be an array of ``ImageWidth`` × ``RowsPerStrip``
 (:c:macro:`TIFFTAG_IMAGEWIDTH`) and ``RowsPerStrip`` is the maximum lines
 in a strip (:c:macro:`TIFFTAG_ROWSPERSTRIP`).
 
-:c:func:`TIFFReadRGBAStripExt` provides the paramater `stop_on_error`.
+:c:func:`TIFFReadRGBAStripExt` provides the parameter `stop_on_error`.
 Its behaviour is described at :doc:`TIFFReadRGBAImage`.
 
 The *row* value should be the row of the first row in the strip
@@ -48,19 +48,15 @@ are converted to RGBA values.
 Notes
 -----
 
-Samples must be either 1, 2, 4, 8, or 16 bits.
-Colorimetric samples/pixel must be either 1, 3, or 4 (i.e. ``SamplesPerPixel``
-- ``ExtraSamples``).
-
-Palette image colormaps that appear to be incorrectly written as 8-bit values
-are automatically scaled to 16-bits.
-
 :c:func:`TIFFReadRGBAStrip` is just a wrapper around the more general
 :doc:`TIFFRGBAImage` facilities.  It's main advantage over the similar
 :c:func:`TIFFReadRGBAImage` function is that for large images a single
 buffer capable of holding the whole image doesn't need to be allocated,
 only enough for one strip.  The :c:func:`TIFFReadRGBATile` function
 does a similar operation for tiled images.
+
+For general notes see
+:ref:`TIFFRGBImage notes <TIFFRGBAImage_Restriction_Notes>`.
 
 Return values
 -------------

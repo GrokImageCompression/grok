@@ -22,7 +22,7 @@ contents with :c:func:`TIFFReadDirectory`.  The parameter *dirnum*
 specifies the subfile/directory as an integer number, with the first
 directory numbered zero. 
 :c:func:`TIFFSetDirectory()` only works with main-IFD chains because
-allways starts with the first main-IFD and thus is able to reset
+always starts with the first main-IFD and thus is able to reset
 the SubIFD reading chain to the main-IFD chain.
 
 :c:func:`TIFFSetSubDirectory` acts like :c:func:`TIFFSetDirectory`,

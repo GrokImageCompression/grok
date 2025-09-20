@@ -12,7 +12,7 @@ Synopsis
 
 TIFFWriteTile \- encode and write a tile of data to an open TIFF file
 
-.. c:function:: tsize_t TIFFWriteTile(TIFF* tif, tdata_t buf, uint32_t x, uint32_t y, uint32_t z, tsample_t sample)
+.. c:function:: tmsize_t TIFFWriteTile(TIFF* tif, void *buf, uint32_t x, uint32_t y, uint32_t z, uint16_t sample)
 
 Description
 -----------

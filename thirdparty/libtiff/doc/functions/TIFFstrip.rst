@@ -24,9 +24,9 @@ Synopsis
 
 .. c:function:: uint64_t TIFFRawStripSize64(TIFF* tif, uint32_t strip)
 
-.. c:function:: tstrip_t TIFFComputeStrip(TIFF* tif, uint32_t row, tsample_t sample)
+.. c:function:: uint32_t TIFFComputeStrip(TIFF* tif, uint32_t row, uint16_t sample)
 
-.. c:function:: tstrip_t TIFFNumberOfStrips(TIFF* tif)
+.. c:function:: uint32_t TIFFNumberOfStrips(TIFF* tif)
 
 .. c:function:: int TIFFSetupStrips(TIFF* tif)
 

@@ -20,7 +20,7 @@ This structure looks like this:
 ::
 
     typedef struct {
-      ttag_t         field_tag;        /* field's tag */
+      uint32_t       field_tag;        /* field's tag */
       short          field_readcount;  /* read count / TIFF_VARIABLE / TIFF_VARIABLE2 / TIFF_SPP */
       short          field_writecount; /* write count / TIFF_VARIABLE / TIFF_VARIABLE2 */
       TIFFDataType   field_type;       /* type of associated data */
@@ -31,7 +31,7 @@ This structure looks like this:
     } TIFFFieldInfo;
 
 
-.. c:member:: ttag_t TIFFFieldInfo.field_tag
+.. c:member:: uint32_t TIFFFieldInfo.field_tag
 
     The tag number.  For instance 277 for the
     SamplesPerPixel tag.  Builtin tags will generally have a ``#define`` in
@@ -229,27 +229,81 @@ architecture can then be avoided.
 Adding New Builtin Tags
 -----------------------
 
-A similar approach is taken to the above.  However, the :c:struct:`TIFFFieldInfo`
-should be added to the :c:expr:`tiffFieldInfo[]` list in :file:`tif_dirinfo.c`.
-Ensure that new tags are added in sorted order by the tag number.
+A similar approach is taken to the above.  However, the :c:struct:`_TIFFField`
+information should be added to the :c:expr:`tiffFields[]` list in
+:file:`tif_dirinfo.c`. This :c:struct:`_TIFFField` structure is like
+TIFFFieldInfo structure but has additional members:
 
-Normally new built-in tags should be defined with :c:macro:`FIELD_CUSTOM`; however, if
-it is desirable for the tag value to have it's own field in the :c:struct:`TIFFDirectory`
-structure, then you will need to ``#define`` a new :c:macro:`FIELD_` value for it, and
-add appropriate handling as follows:
+The tags in the :c:expr:`tiffFields[]` list need not to be in sorted
+order by the tag number. Sorting is done when setting up the
+:c:expr:`TIFFFieldArray` at IFD initialization.
+
+.. highlight:: c
+
+::
+
+    typedef struct _TIFFField {
+      uint32_t             field_tag;        /* field's tag */
+      short                field_readcount;  /* read count / TIFF_VARIABLE / TIFF_VARIABLE2 / TIFF_SPP */
+      short                field_writecount; /* write count / TIFF_VARIABLE / TIFF_VARIABLE2 */
+      TIFFDataType         field_type;       /* type of associated data */
+      uint32_t             field_anonymous;  /* if true, this is a unknown / anonymous tag */
+      TIFFSetGetFieldType  set_field_type;   /* type to be passed to TIFFSetField and TIFFGetField */
+      TIFFSetGetFieldType  get_field_type;   /* not used */
+      unsigned short       field_bit;        /* bit in fieldsset bit vector */
+      unsigned char        field_oktochange; /* if true, can change while writing */
+      unsigned char        field_passcount;  /* if true, pass dir count on set */
+      char                *field_name;       /* ASCII name */
+      TIFFFieldArray      *field_subfields;  /* if field points to child ifds, child ifd field definition array */ 
+    };
+
+
+.. c:member:: uint32_t _TIFFField.field_anonymous
+
+    Used internally to indicate auto-registered tags.
+    See :c:func:`TIFFFieldIsAnonymous`.
+
+.. c:member:: TIFFSetGetFieldType _TIFFField.set_field_type
+
+    | The enummeration identifier gives a hint and defines the `vararg`
+      parameters passed to :c:func:`TIFFSetField` and :c:func:`TIFFGetField`.
+    | For example :c:enum:`TIFF_SETGET_UINT64` defines a single
+      ``uint64_t`` parameter to be passed to `TIFFSetField()` and
+      `TIFFGetField()`, respectively.
+    | To distinguish the three different array types, there are three
+      strings before the value type within the enummeration identifier
+      (e.g. TIFF_SETGET_C0_UINT64):
+    | "**_C0_**" for fixed arrays and thus no count parameter is required
+      for TIFFSetField() and TIFFGetField(), respectively.
+      The array length is constant and given by `field_readcount` or
+      `field_writecount`, respectively.
+    | "**_C16_**" and "**_C32_**" are for variable arrays with ``uint16_t``
+      or ``uint32_t`` count parameter required for TIFFSetField() and
+      TIFFGetField(), respectively. But then, `field_readcount` and
+      `field_writecount` has to be set to -1 for _C16_ and -3 for _C32_,
+      respectively.
+
+.. c:member:: TIFFSetGetFieldType _TIFFField.get_field_type
+
+    Currently, this parameter is not used for TIFFGetField().
+    Nevertheless, it is set as a copy of set_field_type or set to
+    `TIFF_SETGET_UNDEFINED`.
+
+Normally new built-in tags should be defined with :c:macro:`FIELD_CUSTOM`
+and then only two points need to be done:
 
 #. Define the tag in :file:`tiff.h`.
-#. Add a field to the directory structure in :file:`tif_dir.h`
-   and define a ``FIELD_*`` bit (also update the definition of
+#. Add an entry in the :c:expr:`tiffFields[]` array list defined at the
+   top of :file:`tif_dirinfo.c`.
+
+However, if it is desirable for the tag value to have its own field in
+the :c:struct:`TIFFDirectory` structure, then you will also need to
+``#define`` a new :c:macro:`FIELD_` value for it, and add appropriate
+handling as follows:
+
+#. Add a field to the :c:struct:`TIFFDirectory` structure in :file:`tif_dir.h`
+   and define a ``FIELD_*`` bit number (also update the definition of
    :c:macro:`FIELD_CODEC` to reflect your addition).
-#. Add an entry in the :c:struct:`TIFFFieldInfo` array defined at the top of
-   :file:`tif_dirinfo.c`.
-
-   .. note::
-
-       Note that you must keep this array sorted by tag
-       number and that the widest variant entry for a tag should come
-       first (e.g. :c:macro:`LONG` before :c:macro:`SHORT`).
 #. Add entries in :c:func:`_TIFFVSetField` and :c:func:`_TIFFVGetField`
    for the new tag.
 #. (*optional*) If the value associated with the tag is not a scalar value
@@ -259,7 +313,7 @@ add appropriate handling as follows:
    :c:func:`TIFFWriteDirectory`.  You're best off finding a similar tag and
    cribbing code.
 #. Add support to :c:func:`TIFFPrintDirectory` in :file:`tif_print.c`
-    to print the tag's value.
+   to print the tag's value.
 
 If you want to maintain portability, beware of making assumptions
 about data types.  Use the typedefs (:c:type:`uint16_t`, etc. when dealing with
@@ -311,6 +365,6 @@ algorithm is used* follow these steps:
 
 Note that space has been allocated in the ``FIELD_*`` bit space for
 codec-private tags.  Define your bits as ``FIELD_CODEC+<offset>`` to
-keep them away from the core tags.  If you need more tags than there
-is room for, just increase :c:macro:`FIELD_SETLONGS` at the top of
-:file:`tiffiop.h`.
+keep them away from the core tags. If you need more tags than there
+is room for, just increase :c:macro:`td_fieldsset` at the top of
+:file:`tif_dir.h`.

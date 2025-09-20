@@ -10,7 +10,7 @@ Synopsis
 
     #include <tiffio.h>
 
-.. c:function:: int TIFFWriteScanline(TIFF* tif, tdata_t buf, uint32_t row, tsample_t sample)
+.. c:function:: int TIFFWriteScanline(TIFF* tif, void *buf, uint32_t row, uint16_t sample)
 
 Description
 -----------

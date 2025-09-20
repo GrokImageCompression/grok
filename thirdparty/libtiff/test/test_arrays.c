@@ -214,6 +214,11 @@ const unsigned char byte_array3[YSIZE * XSIZE] = {
 
 const size_t byte_array3_size = sizeof(byte_array3);
 
+#ifdef _MSC_VER
+/* suppress warning about shortening of "double" to "const float" */
+#pragma warning(disable : 4305)
+#endif
+
 const float array_float1[YSIZE * XSIZE] = {
     234.866, 229.404, 234.866, 245.790, 243.059, 232.135, 245.790, 213.018,
     210.287, 215.749, 204.825, 210.287, 215.749, 234.866, 237.597, 226.673,

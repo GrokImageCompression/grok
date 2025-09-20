@@ -55,6 +55,8 @@ fields are defined differently on a per-sample basis
 ``Compression``
 tag is not defined on a per-sample basis, so this is immaterial).
 
+.. _DataTypes:
+
 Data types
 ----------
 
@@ -69,16 +71,25 @@ definitions or through parameters passed through the varargs interfaces.
 
 ::
 
-    typedef uint32_t ttag_t;    // directory tag
-    typedef uint32_t tdir_t;    // directory index
-    typedef uint16_t tsample_t; // sample number
-    typedef uint32_t tstrip_t;  // strip number
-    typedef uint32_t ttile_t;   // tile number
-    typedef int64_t tmsize_t;   // signed size type (int32_t on 32-bit platforms)
-    typedef tmsize_t tsize_t;   // i/o size in bytes
-    typedef void* tdata_t;      // image data ref
-    typedef void* thandle_t;    // client data handle
-    typedef uint64_t toff_t;    // file offset
+    typedef int64_t tmsize_t;   /* signed size type (int32_t on 32-bit platforms) */
+    typedef void* thandle_t;    /* client data handle */
+    typedef uint64_t toff_t;    /* file offset */
+    typedef uint32_t tdir_t;    /* directory index */
+
+The following typedefs are deprecated and should be replaced by their
+defining counterparts.
+
+.. highlight:: c
+
+::
+
+    typedef uint32_t ttag_t;    /* directory tag */
+    typedef uint16_t tsample_t; /* sample number */
+    typedef uint32_t tstrile_t; /* strip or tile number */
+    typedef tstrile_t tstrip_t; /* strip number */
+    typedef tstrile_t ttile_t;  /* tile number */
+    typedef tmsize_t tsize_t;   /* i/o size in bytes */
+    typedef void *tdata_t;      /* image data ref */
 
 Note that
 :c:type:`tstrip_t`,
@@ -534,7 +545,7 @@ will work.
     * - :c:func:`TIFFYCbCrToRGBInit`
       - initialize YCbCr to RGB conversion state
 
-.. list-table:: *Libtiff auxillary functions*
+.. list-table:: *Libtiff auxiliary functions*
     :widths: 5 20
     :header-rows: 1
 
@@ -814,9 +825,19 @@ Warning messages are likewise directed through the
 See also
 --------
 
+:doc:`/tools/fax2tiff`,
+:doc:`/tools/pal2rgb`,
+:doc:`/tools/ppm2tiff`,
+:doc:`/tools/rgb2ycbcr`,
+:doc:`/tools/raw2tiff`,
+:doc:`/tools/tiff2bw`,
+:doc:`/tools/tiffdither`,
 :doc:`/tools/tiffdump`,
 :doc:`/tools/tiffcp`,
+:doc:`/tools/tiffcmp`,
+:doc:`/tools/tiffgt`,
 :doc:`/tools/tiffinfo`,
+:doc:`/tools/tiffmedian`,
 :doc:`/tools/tiffsplit`,
 
 **"Tag Image File Format Specification *Revision 6.0*"**,

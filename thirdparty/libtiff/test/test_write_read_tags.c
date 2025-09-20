@@ -140,7 +140,7 @@ uint32_t listTagsNotToWrite[] = {TIFFTAG_OSUBFILETYPE,
                                  TIFFTAG_MATTEING};
 
 /* Some tag definitions do not follow the rules for
- * readcount/writecount/set_field_type/passcount-flag.
+ * readcount/writecount/set_get_field_type/passcount-flag.
  * Most of them are handled by LibTIFF in special cases anyway, so the tag
  * definition is irrelevant.
  */
@@ -231,7 +231,7 @@ int main()
 
 /* ==== check_tag_definitions() =======================================
  * Check for correct definition of tags within tags FieldArray wrt passcount
- * flag and set_field_type.
+ * flag and set_get_field_type.
  */
 int check_tag_definitions(void)
 {
@@ -355,7 +355,7 @@ int write_test_tiff(TIFF *tif, const char *filenameRead)
     const TIFFFieldArray *tFieldArray = _TIFFGetFields();
 
     /*-- write_all_tags() writes all tags automatically with the defined
-     *   precision according to its set_field_type definition. --*/
+     *   precision according to its set_get_field_type definition. --*/
     uint32_t iDataCnt = 0;
     if (write_all_tags(tif, tFieldArray, listTagsNotToWrite,
                        NUM_ELEMENTS(listTagsNotToWrite), &iDataCnt))
@@ -400,7 +400,7 @@ int write_test_tiff(TIFF *tif, const char *filenameRead)
     /*====== Create GPS Directory and write all GPS fields ==============*/
     /* - Create the GPS directory.
      * - Get GPS field array, where tag fields are defined.
-     * - Then write all tags automatically according to their set_field_type
+     * - Then write all tags automatically according to their set_get_field_type
      *   definition.
      */
     fprintf(stderr, "----Write GPS tags ...\n");
@@ -464,7 +464,7 @@ int write_test_tiff(TIFF *tif, const char *filenameRead)
     /*====== Create EXIF Directory and write all EXIF fields ============*/
     /* - Create the EXIF directory.
      * - Get EXIF field array, where tag fields are defined.
-     * - Then write all tags automatically according to their set_field_type
+     * - Then write all tags automatically according to their set_get_field_type
      *   definition.
      */
     fprintf(stderr, "----Write EXIF tags ...\n");
@@ -761,7 +761,7 @@ int testPasscountFlag(const char *szMsg, const TIFFFieldArray *tFieldArray,
                 nFails++;
             }
             else if (tFieldArray->fields[t].field_type == TIFF_ASCII &&
-                     tFieldArray->fields[t].set_field_type ==
+                     tFieldArray->fields[t].set_get_field_type ==
                          TIFF_SETGET_ASCII &&
                      tFieldArray->fields[t].field_writecount !=
                          TIFF_VARIABLE2 &&
@@ -823,7 +823,7 @@ int testPasscountFlag(const char *szMsg, const TIFFFieldArray *tFieldArray,
 
     /*-- Test correct read-/writecount and TIFF_SETGET type. --*/
     nFails = 0;
-    fprintf(stderr, "%-16s Check if writecount fits to set_field_type ... ",
+    fprintf(stderr, "%-16s Check if writecount fits to set_get_field_type ... ",
             szMsg);
     for (t = 0; t < nTags; t++)
     {
@@ -833,30 +833,33 @@ int testPasscountFlag(const char *szMsg, const TIFFFieldArray *tFieldArray,
 
         /* TIFF_SETGET_UNDEFINED tags FIELD_IGNORE tags are not written to file.
          * Thus definition is obsolete. */
-        // if (tFieldArray->fields[t].set_field_type >= TIFF_SETGET_UNDEFINED &&
+        // if (tFieldArray->fields[t].set_get_field_type >=
+        // TIFF_SETGET_UNDEFINED &&
         //     tFieldArray->fields[t].field_bit == FIELD_IGNORE)
         //     continue;
 
         if (tFieldArray->fields[t].field_writecount == TIFF_VARIABLE2 &&
-            !(tFieldArray->fields[t].set_field_type >= TIFF_SETGET_C32_ASCII &&
-              tFieldArray->fields[t].set_field_type <= TIFF_SETGET_C32_IFD8))
+            !(tFieldArray->fields[t].set_get_field_type >=
+                  TIFF_SETGET_C32_ASCII &&
+              tFieldArray->fields[t].set_get_field_type <=
+                  TIFF_SETGET_C32_IFD8))
         {
             if (nFails == 0)
                 fprintf(stderr, "\n");
             fprintf(stderr,
                     "WriteCount %d for tag \t%-25s does not fit to "
-                    "'set_field_type' %d. "
+                    "'set_get_field_type' %d. "
                     "Should be TIFF_VARIABLE2=-3\n",
                     tFieldArray->fields[t].field_writecount,
                     tFieldArray->fields[t].field_name,
-                    tFieldArray->fields[t].set_field_type);
+                    tFieldArray->fields[t].set_get_field_type);
             nFails++;
         }
         else if (tFieldArray->fields[t].field_writecount == TIFF_VARIABLE &&
                  tFieldArray->fields[t].field_type != TIFF_ASCII &&
-                 !(tFieldArray->fields[t].set_field_type >=
+                 !(tFieldArray->fields[t].set_get_field_type >=
                        TIFF_SETGET_C16_ASCII &&
-                   tFieldArray->fields[t].set_field_type <=
+                   tFieldArray->fields[t].set_get_field_type <=
                        TIFF_SETGET_C16_IFD8))
         {
             if (tFieldArray->fields[t].field_readcount == TIFF_SPP)
@@ -872,22 +875,23 @@ int testPasscountFlag(const char *szMsg, const TIFFFieldArray *tFieldArray,
                     fprintf(stderr, "\n");
                 fprintf(stderr,
                         "WriteCount %d for tag \t%-25s does not fit to "
-                        "'set_field_type' %d. "
+                        "'set_get_field_type' %d. "
                         "Should be TIFF_VARIABLE=-1\n",
                         tFieldArray->fields[t].field_writecount,
                         tFieldArray->fields[t].field_name,
-                        tFieldArray->fields[t].set_field_type);
+                        tFieldArray->fields[t].set_get_field_type);
                 nFails++;
             }
         }
         else if (tFieldArray->fields[t].field_writecount > 1 &&
-                 !((tFieldArray->fields[t].set_field_type >=
+                 !((tFieldArray->fields[t].set_get_field_type >=
                         TIFF_SETGET_C0_ASCII &&
-                    tFieldArray->fields[t].set_field_type <=
+                    tFieldArray->fields[t].set_get_field_type <=
                         TIFF_SETGET_C0_IFD8) ||
-                   tFieldArray->fields[t].set_field_type == TIFF_SETGET_ASCII))
+                   tFieldArray->fields[t].set_get_field_type ==
+                       TIFF_SETGET_ASCII))
         {
-            if (!(tFieldArray->fields[t].set_field_type ==
+            if (!(tFieldArray->fields[t].set_get_field_type ==
                       TIFF_SETGET_UINT16_PAIR &&
                   tFieldArray->fields[t].field_writecount == 2))
             {
@@ -896,28 +900,29 @@ int testPasscountFlag(const char *szMsg, const TIFFFieldArray *tFieldArray,
                     fprintf(stderr, "\n");
                 fprintf(stderr,
                         "WriteCount %d for tag \t%-25s does not fit to "
-                        "'set_field_type' %d. "
+                        "'set_get_field_type' %d. "
                         "Should be >1. \n",
                         tFieldArray->fields[t].field_writecount,
                         tFieldArray->fields[t].field_name,
-                        tFieldArray->fields[t].set_field_type);
+                        tFieldArray->fields[t].set_get_field_type);
                 nFails++;
             }
         }
         else if (tFieldArray->fields[t].field_writecount == 1 &&
-                 !(tFieldArray->fields[t].set_field_type >=
+                 !(tFieldArray->fields[t].set_get_field_type >=
                        TIFF_SETGET_UNDEFINED &&
-                   tFieldArray->fields[t].set_field_type <= TIFF_SETGET_INT))
+                   tFieldArray->fields[t].set_get_field_type <=
+                       TIFF_SETGET_INT))
         {
             if (nFails == 0)
                 fprintf(stderr, "\n");
             fprintf(stderr,
                     "WriteCount %d for tag \t%-25s does not fit to "
-                    "'set_field_type' %d. "
+                    "'set_get_field_type' %d. "
                     "Should be 1. \n",
                     tFieldArray->fields[t].field_writecount,
                     tFieldArray->fields[t].field_name,
-                    tFieldArray->fields[t].set_field_type);
+                    tFieldArray->fields[t].set_get_field_type);
             nFails++;
         }
     } /* for - read-/writecount and TIFF_SETGET type */
@@ -930,7 +935,7 @@ int testPasscountFlag(const char *szMsg, const TIFFFieldArray *tFieldArray,
 } /*-- testPassountFlag() --*/
 
 /* ==== write_all_tags() ==============================================
- * Writes all tags within tFieldArray according to their set_field_type
+ * Writes all tags within tFieldArray according to their set_get_field_type
  * definition except tags listed in listTagsNotToWrite.
  * iCnt is an index into predefined arrays for the values to write.
  */
@@ -959,11 +964,11 @@ int write_all_tags(TIFF *tif, const TIFFFieldArray *tFieldArray,
         short tWriteCount = tFieldArray->fields[t].field_writecount;
         TIFFSetGetFieldType tSetFieldType =
             tFieldArray->fields[t]
-                .set_field_type; /* e.g. TIFF_SETGET_C0_FLOAT */
+                .set_get_field_type; /* e.g. TIFF_SETGET_C0_FLOAT */
         char *tFieldName = tFieldArray->fields[t].field_name;
         void *pVoid = NULL;
 
-        /*-- dependent on set_field_type write value --*/
+        /*-- dependent on set_get_field_type write value --*/
         uint32_t auxUint32 = 0;
         switch (tSetFieldType)
         {
@@ -1098,7 +1103,7 @@ int write_all_tags(TIFF *tif, const TIFFFieldArray *tFieldArray,
                 else
                 {
                     fprintf(stderr,
-                            "WriteCount for .set_field_type %d should be "
+                            "WriteCount for .set_get_field_type %d should be "
                             "1!  %s\n",
                             tSetFieldType, tFieldArray->fields[t].field_name);
                 }
@@ -1202,7 +1207,7 @@ int write_all_tags(TIFF *tif, const TIFFFieldArray *tFieldArray,
             if (tWriteCount == 1)
             {
                 fprintf(stderr,
-                        "WriteCount for .set_field_type %d should be -1 or "
+                        "WriteCount for .set_get_field_type %d should be -1 or "
                         "greater than 1!  %s\n",
                         tSetFieldType, tFieldArray->fields[t].field_name);
             }
@@ -1265,7 +1270,7 @@ int tagIsInList(uint32_t tTag, uint32_t *list, uint32_t nTagsInList)
 } /*--- tagIsInList() ---*/
 
 /* ==== read_all_tags() ===============================================
- * Reads all tags within tFieldArray according to their set_field_type
+ * Reads all tags within tFieldArray according to their set_get_field_type
  * definition except tags listed in listTagsNotToWrite.
  * iCnt is an index into predefined arrays for the values written.
  * The read values are compared to the written ones.
@@ -1313,12 +1318,12 @@ int read_all_tags(TIFF *tif, const TIFFFieldArray *tFieldArray,
         short tWriteCount = tFieldArray->fields[t].field_writecount;
         TIFFSetGetFieldType tSetFieldType =
             tFieldArray->fields[t]
-                .set_field_type; /* e.g. TIFF_SETGET_C0_FLOAT */
+                .set_get_field_type; /* e.g. TIFF_SETGET_C0_FLOAT */
         char *tFieldName = tFieldArray->fields[t].field_name;
         if (tagIsInList(tTag, plistTagsNotToWrite, nTagsNotToWrite))
             continue;
 
-        /*-- dependent on set_field_type read value --*/
+        /*-- dependent on set_get_field_type read value --*/
         switch (tSetFieldType)
         {
             case TIFF_SETGET_ASCII:
@@ -1624,11 +1629,12 @@ int read_all_tags(TIFF *tif, const TIFFFieldArray *tFieldArray,
                  */
                 if (tWriteCount == 1)
                 {
-                    fprintf(stderr,
-                            "WriteCount for .set_field_type %d should be -1, "
-                            "-2, -3 or "
-                            "greater than 1!  %s\n",
-                            tSetFieldType, tFieldArray->fields[t].field_name);
+                    fprintf(
+                        stderr,
+                        "WriteCount for .set_get_field_type %d should be -1, "
+                        "-2, -3 or "
+                        "greater than 1!  %s\n",
+                        tSetFieldType, tFieldArray->fields[t].field_name);
                     GOTOFAILURE
                 }
                 else

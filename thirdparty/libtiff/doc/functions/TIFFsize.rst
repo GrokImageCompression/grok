@@ -10,11 +10,11 @@ Synopsis
 
     #include <tiffio.h>
 
-.. c:function:: tsize_t TIFFRasterScanlineSize(TIFF* tif)
+.. c:function:: tmsize_t TIFFRasterScanlineSize(TIFF* tif)
 
 .. c:function:: uint64_t TIFFRasterScanlineSize64(TIFF* tif)
 
-.. c:function:: tsize_t TIFFScanlineSize(TIFF* tif)
+.. c:function:: tmsize_t TIFFScanlineSize(TIFF* tif)
 
 .. c:function:: uint64_t TIFFScanlineSize64(TIFF* tif)
 

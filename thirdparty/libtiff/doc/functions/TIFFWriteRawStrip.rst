@@ -10,7 +10,7 @@ Synopsis
 
     #include <tiffio.h>
 
-.. c:function:: tsize_t TIFFWriteRawStrip(TIFF* tif, tstrip_t strip, tdata_t buf, tsize_t size)
+.. c:function:: tmsize_t TIFFWriteRawStrip(TIFF* tif, uint32_t strip, void *buf, tmsize_t size)
 
 Description
 -----------

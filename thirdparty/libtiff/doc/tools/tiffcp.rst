@@ -247,7 +247,9 @@ as follows:
 See also
 --------
 
+:doc:`pal2rgb` (1),
 :doc:`tiffinfo` (1),
-:doc:`tiffdump` (1),
+:doc:`tiffcmp` (1),
+:doc:`tiffmedian` (1),
 :doc:`tiffsplit` (1),
 :doc:`/functions/libtiff` (3tiff)

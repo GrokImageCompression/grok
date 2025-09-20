@@ -66,7 +66,7 @@ Furthermore, a **custom defined data structure** *user_data* for the
 error handler can be given along.
 
 Please refer to :doc:`/functions/TIFFOpenOptions` for how to setup the
-application-specific handler introduced with libtiff 4.5.
+application-specific handler introduced with ``libtiff`` 4.5.
 
 Note
 ----
@@ -101,5 +101,6 @@ See also
 
 :doc:`TIFFWarning` (3tiff),
 :doc:`TIFFOpen` (3tiff),
+:doc:`/functions/TIFFOpenOptions`,
 :doc:`libtiff` (3tiff),
 printf (3)

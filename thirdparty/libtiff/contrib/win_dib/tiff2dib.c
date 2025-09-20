@@ -85,7 +85,7 @@ HDIB LoadTIFFinDIB(LPSTR lpFileName)
     TIFFGetField(tif, TIFFTAG_ROWSPERSTRIP, &RowsPerStrip);
     TIFFGetField(tif, TIFFTAG_PHOTOMETRIC, &PhotometricInterpretation);
 
-    LineSize = TIFFScanlineSize(tif); // Number of byte in ine line
+    LineSize = TIFFScanlineSize(tif); // Number of byte in one line
 
     SamplePerPixel = (int)(LineSize / imageWidth);
 

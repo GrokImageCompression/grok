@@ -28,7 +28,7 @@ Description
 The routines described here provide a high-level interface through which
 TIFF images may be read into memory.
 Images may be strip- or tile-based and have a variety of different
-characteristics: bits/sample, samples/pixel, photometric, etc.
+characteristics: bits/sample, samples/pixel, photometric, orientation, etc.
 Decoding state is encapsulated in a :c:type:`TIFFRGBAImage`
 structure making it possible to capture state for multiple images
 and quickly switch between them.
@@ -59,7 +59,7 @@ If the raster dimensions are smaller than the image, the image data
 is cropped to the raster bounds.
 If the raster height is greater than that of the image, then the
 image data are placed in the lower part of the raster.
-(Note that the raster is assume to be organized such that the pixel
+(Note that the raster is assumed to be organized such that the pixel
 at location (*x*, *y*) is *raster* [ *y* × *width* + *x* ];
 with the raster origin in the *lower-left hand corner*.)
 
@@ -87,7 +87,7 @@ Alternate raster formats
 To use the core support for reading and processing  TIFF images, but
 write the resulting raster data in a different format one need only
 override the "put methods" used to store raster data.
-These methods are are defined in the :c:type:`TIFFRGBAImage`
+These methods are defined in the :c:type:`TIFFRGBAImage`
 structure and initially setup by :c:func:`TIFFRGBAImageBegin`
 to point to routines that pack raster data in the default
 ABGR pixel format.
@@ -108,8 +108,8 @@ by overriding the put methods as described above for supporting
 alternate raster formats.
 Simply keep a reference to the default put methods setup by
 :c:func:`TIFFRGBAImageBegin` and then invoke them before or after
-each display operation. 
-An example for a "put" method to
+each display operation. For example, the
+:doc:`/tools/tiffgt` utility uses the following put method to
 update the display as the raster is being filled:
 
 ::
@@ -144,15 +144,35 @@ Details of doing this are a bit involved, it is best to make a copy
 of an existing get method and modify it to suit the needs of an
 application.
 
+.. _TIFFRGBAImage_Restriction_Notes:
+
 Notes
 -----
 
-Samples must be either 1, 2, 4, 8, or 16 bits.
+In C++ the *stopOnError* parameter defaults to 0.
+
+``SamplesPerPixel`` must be either 1, 2, 4, 8, or 16 bits.
 Colorimetric samples/pixel must be either 1, 3, or 4 (i.e.
-``SamplesPerPixel`` -``ExtraSamples``).
+``SamplesPerPixel`` minus ``ExtraSamples``).
 
 Palette image colormaps that appear to be incorrectly written
 as 8-bit values are automatically scaled to 16-bits.
+
+Within the :c:type:`TIFFRGBAImage` structure the TIFF orientation
+and also the required orientation in the raster can be defined.
+However, the lower level :c:func:`TIFFRGBAImageGet` functions
+- also called by :c:func:`TIFFReadRGBAImage` and :c:func:`TIFFReadRGBAImageOriented` -
+can mirror the image orientations across both axes, but cannot rotate them.
+Therefore, images with a TIFF orientation of 5 (LeftTop) to 8 (LeftBottom)
+are not stored correctly in the raster, as this would require an additional
+rotation of 90 degrees and an exchange of width and height dimension.
+
+If an alpha channel is used in an image, there are two common representations
+that are available: straight (unassociated) alpha and premultiplied (associated)
+alpha, which is specified by the value of ExtraSamples tag.
+For files with unassociated alpha, the :c:func:`TIFFRGBAImage` reading routines
+multiply the RGB values by the alpha channel values before saving them in the raster.
+The other TIFFReadxxx (like :c:func:`TIFFReadScanline`) functions do not do this.
 
 Return values
 -------------
@@ -231,4 +251,5 @@ See also
 :doc:`TIFFReadRGBAImage` (3tiff),
 :doc:`TIFFReadRGBAStrip` (3tiff),
 :doc:`TIFFReadRGBATile` (3tiff),
+:doc:`TIFFcolor` (3tiff),
 :doc:`libtiff` (3tiff)

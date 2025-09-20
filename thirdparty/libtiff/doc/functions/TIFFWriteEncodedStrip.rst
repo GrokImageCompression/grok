@@ -10,7 +10,7 @@ Synopsis
 
     #include <tiffio.h>
 
-.. c:function:: tsize_t TIFFWriteEncodedStrip(TIFF* tif, tstrip_t strip, tdata_t buf, tsize_t size)
+.. c:function:: tmsize_t TIFFWriteEncodedStrip(TIFF* tif, uint32_t strip, void *buf, tmsize_t size)
 
 Description
 -----------

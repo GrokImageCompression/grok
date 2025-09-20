@@ -11,8 +11,8 @@ Synopsis
     #include <tiffio.h>
 
 
-.. c:function:: int TIFFReadBufferSetup(TIFF* tif, tdata_t buffer, tsize_t size)
-.. c:function:: int TIFFWriteBufferSetup(TIFF* tif, tdata_t buffer, tsize_t size)
+.. c:function:: int TIFFReadBufferSetup(TIFF* tif, void *buffer, tmsize_t size)
+.. c:function:: int TIFFWriteBufferSetup(TIFF* tif, void *buffer, tmsize_t size)
 
 Description
 -----------

@@ -10,7 +10,7 @@ Synopsis
 
     #include <tiffio.h>
 
-.. c:function:: tsize_t TIFFWriteRawTile(TIFF* tif, ttile_t tile, tdata_t buf, tsize_tsize)
+.. c:function:: tmsize_t TIFFWriteRawTile(TIFF* tif, uint32_t tile, void *buf, tmsize_t size)
 
 Description
 -----------

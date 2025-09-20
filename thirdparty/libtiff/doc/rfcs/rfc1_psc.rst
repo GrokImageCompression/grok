@@ -104,4 +104,4 @@ authored by Frank Warmerdam.
 Voting history
 --------------
 
-Adopted by +1 vote from all above mentionned initial members of the PSC.
+Adopted by +1 vote from all above mentioned initial members of the PSC.

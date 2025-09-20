@@ -12,7 +12,7 @@
         Load the TIFF data from the file into memory.  Return
         a pointer to a valid DIB (or NULL for errors).
         Uses the TIFFRGBA interface to libtiff.lib to convert
-        most file formats to a useable form.  We just keep the 32 bit
+        most file formats to a usable form.  We just keep the 32 bit
         form of the data to display, rather than optimizing for the
         display.
 
@@ -291,7 +291,7 @@ DECLAREContigPutFunc(putContig1bitTile);
 static int getStripContig1Bit(TIFFRGBAImage *img, uint32_t *uraster, uint32_t w,
                               uint32_t h);
 
-// typdef struct TIFFDibImage {
+// typedef struct TIFFDibImage {
 //     TIFFRGBAImage tif;
 //     dibinstalled;
 // } TIFFDibImage ;

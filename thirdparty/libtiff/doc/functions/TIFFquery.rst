@@ -20,9 +20,9 @@ Synopsis
 
 .. c:function:: uint32_t TIFFCurrentRow(TIFF* tif)
 
-.. c:function:: tstrip_t TIFFCurrentStrip(TIFF* tif)
+.. c:function:: uint32_t TIFFCurrentStrip(TIFF* tif)
 
-.. c:function:: ttile_t TIFFCurrentTile(TIFF* tif)
+.. c:function:: uint32_t TIFFCurrentTile(TIFF* tif)
 
 .. c:function:: int TIFFFileno(TIFF* tif)
 
@@ -50,20 +50,39 @@ Description
 The following query routines return status information about the directory
 structure of an open TIFF file.
 
-:c:func:`TIFFCurrentDirectory` returns the index of the current directory
-(directories are numbered starting at 0). This number is suitable for
+:c:func:`TIFFCurrentDirectory` returns the index of the current
+:ref:`Image File Directory (IFD) <ImageFileDirectory>`.
+Directories are numbered starting at 0. This number is suitable for
 use with the :c:func:`TIFFSetDirectory` routine.
-A value of 65535 (non-existing directory) is returned if the directory
-has not yet been written to the file after opening it. 
+There are :ref:`IFDs <ImageFileDirectory>` in the file and an "active"
+:ref:`IFD <ImageFileDirectory>`  in memory, from which fields
+are "set" and "get". The index of the current directory returned is:
+
+a) 65535 (non-existing directory) if there is no IFD in the file after opening,
+   or the state is unknown,
+   or the last read (i.e. TIFFFetchDirectory()) failed,
+   or a custom directory was written.
+b) IFD index of last IFD written in the file.
+   In this case the active IFD is a new (empty) one and the current directory offset
+   from TIFFCurrentDirOffset() is zero.
+   If writing fails, the IFD index is not changed.
+c) IFD index of IFD read from file into memory (=active IFD),
+   even if IFD is corrupt and TIFFReadDirectory() returns 0.
+   Then the current directory offset is the offset of the IFD in the file.
+d) IFD index „0“, whenever a custom directory or an unchained SubIFD
+   was read.
 
 :c:func:`TIFFCurrentDirOffset` returns the file offset of the current
 directory (instead of an index).
 The file offset is suitable for use with the :c:func:`TIFFSetSubDirectory`
 routine. This is required for accessing subdirectories linked through a
-``SubIFD`` tag.
+``SubIFD`` tag. See also :ref:`SubIFD access <SubIFDAccess>`.
 
 :c:func:`TIFFLastDirectory` returns a non-zero value if the current
 directory is the last directory in the file; otherwise zero is returned.
+A new (empty) directory in the memory (after :c:func:`TIFFWriteDirectory`
+or :c:func:`TIFFCreateDirectory`)
+also counts as the last directory, even if it has not yet been written to a file.
 
 :c:func:`TIFFNumberOfDirectories` returns the number of directories in a
 file. Be aware that just created directories, which are not "written" to

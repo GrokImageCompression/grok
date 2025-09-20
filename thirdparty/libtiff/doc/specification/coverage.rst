@@ -179,7 +179,10 @@ proposal given in TIFF Technical Note #2.
 The following table shows the tags that are recognized
 and how they are used by the library.  If no use is indicated,
 then the library reads and writes the tag, but does not use it internally.
-For the meaning of the tags look in https://www.awaresystems.be/imaging/tiff/tifftags.html
+
+Apart of the TIFF 6.0 specification the meaning of tags can be found on various places
+in the internet. For example:
+https://www.loc.gov/preservation/digital/formats/content/tiff_tags.shtml
 
 :file:`libtiff` supports also many private tags allocated for organizations that wish to
 store additional information in a TIFF file.

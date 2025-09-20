@@ -43,7 +43,7 @@
 
 int main()
 {
-    int ret;
+    tmsize_t ret;
     TIFF *tif = TIFFOpen("test_append_to_strip.tif", "w");
     if (tif == NULL)
     {

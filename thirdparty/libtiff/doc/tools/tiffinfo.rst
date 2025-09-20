@@ -55,8 +55,15 @@ Options
 
   Set the initial TIFF directory to *#*.
 
+.. option:: -W
+
+  Warn about unknown tags.
+
 See also
 --------
 
-:doc:`tiffdump`,
+:doc:`pal2rgb`,
+:doc:`tiffcp`,
+:doc:`tiffcmp`,
+:doc:`tiffmedian`,
 :doc:`/functions/libtiff`

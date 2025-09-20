@@ -83,12 +83,16 @@ static tmsize_t _tiffReadProc(thandle_t fd, void *buf, tmsize_t size)
         size_t io_size = bytes_total - bytes_read;
         if (io_size > TIFF_IO_MAX)
             io_size = TIFF_IO_MAX;
+        /* Below is an obvious false positive of Coverity Scan */
+        /* coverity[overflow_sink] */
         count = read(fdh.fd, buf_offset, (TIFFIOSize_t)io_size);
         if (count <= 0)
             break;
     }
     if (count < 0)
         return (tmsize_t)-1;
+    /* Silence Coverity Scan warning about unsigned to signed underflow. */
+    /* coverity[return_overflow:SUPPRESS] */
     return (tmsize_t)bytes_read;
 }
 
@@ -110,12 +114,16 @@ static tmsize_t _tiffWriteProc(thandle_t fd, void *buf, tmsize_t size)
         size_t io_size = bytes_total - bytes_written;
         if (io_size > TIFF_IO_MAX)
             io_size = TIFF_IO_MAX;
+        /* Below is an obvious false positive of Coverity Scan */
+        /* coverity[overflow_sink] */
         count = write(fdh.fd, buf_offset, (TIFFIOSize_t)io_size);
         if (count <= 0)
             break;
     }
     if (count < 0)
         return (tmsize_t)-1;
+    /* Silence Coverity Scan warning about unsigned to signed underflow. */
+    /* coverity[return_overflow:SUPPRESS] */
     return (tmsize_t)bytes_written;
     /* return ((tmsize_t) write(fdh.fd, buf, bytes_total)); */
 }

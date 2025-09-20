@@ -49,7 +49,7 @@ set(tiff_private_HEADERS
         ${CMAKE_CURRENT_BINARY_DIR}/tif_config.h)
 
 
-add_library(tiff libtiff.def)
+add_library(tiff ${TIFF_BUILD_LIB_VALUE} libtiff.def)
 add_library(TIFF::tiff ALIAS tiff)
 
 target_sources(tiff PRIVATE
@@ -150,9 +150,7 @@ endif()
 if(JPEG_SUPPORT)
   target_link_libraries(tiff PRIVATE JPEG::JPEG)
   string(APPEND tiff_requires_private " libjpeg")
-  if(HAVE_JPEGTURBO_DUAL_MODE_8_12)
-    target_compile_definitions(tiff PRIVATE HAVE_JPEGTURBO_DUAL_MODE_8_12)
-  elseif(JPEG_DUAL_MODE_8_12)
+  if(JPEG_DUAL_MODE_8_12 AND NOT HAVE_JPEGTURBO_DUAL_MODE_8_12)
     target_include_directories(tiff PRIVATE ${JPEG12_INCLUDE_DIR})
     target_link_libraries(tiff PRIVATE ${JPEG12_LIBRARIES})
   endif()
@@ -164,9 +162,6 @@ endif()
 if(LERC_SUPPORT)
   target_link_libraries(tiff PRIVATE LERC::LERC)
   if(LERC_VERSION_STRING VERSION_GREATER_EQUAL "4.0")
-    if(NOT BUILD_SHARED_LIBS)
-      set_target_properties(tiff PROPERTIES COMPILE_DEFINITIONS LERC_STATIC)
-    endif()
     string(APPEND tiff_requires_private " Lerc")
   else()
     list(APPEND tiff_libs_private_list "${LERC_LIBRARY}")
@@ -201,8 +196,13 @@ if(NOT CYGWIN)
     set_target_properties(tiff PROPERTIES VERSION ${SO_VERSION})
 endif()
 if(HAVE_LD_VERSION_SCRIPT)
-  set_target_properties(tiff PROPERTIES LINK_FLAGS
-                        "-Wl,--version-script=${CMAKE_CURRENT_SOURCE_DIR}/libtiff.map")
+  if (CMAKE_VERSION GREATER_EQUAL 3.29 AND CMAKE_C_COMPILER_LINKER_ID STREQUAL "LLD" AND CMAKE_C_COMPILER_LINKER_VERSION GREATER_EQUAL 17)
+    set_target_properties(tiff PROPERTIES LINK_FLAGS
+                              "-Wl,--undefined-version -Wl,--version-script=${CMAKE_CURRENT_SOURCE_DIR}/libtiff.map")
+  else()
+    set_target_properties(tiff PROPERTIES LINK_FLAGS
+                              "-Wl,--version-script=${CMAKE_CURRENT_SOURCE_DIR}/libtiff.map")
+  endif()
 endif()
 
 if(tiff-install)
@@ -242,7 +242,7 @@ if(CXX_SUPPORT)
   if (WIN32 AND NOT MINGW)
       add_library(tiffxx STATIC ../placeholder.h)
   else()
-      add_library(tiffxx ../placeholder.h)
+      add_library(tiffxx ${TIFF_BUILD_LIB_VALUE} ../placeholder.h)
   endif()
 
   add_library(TIFF::CXX ALIAS tiffxx)
@@ -265,7 +265,7 @@ if(CXX_SUPPORT)
   endif()
 
   if(tiff-install)
-    install(TARGETS tiffxx
+    install(TARGETS tiffxx EXPORT TiffTargets
             RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
             LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
             ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
@@ -273,17 +273,6 @@ if(CXX_SUPPORT)
     install(FILES ${tiffxx_HEADERS}
             DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")
   endif()
-      
+
 endif()
 
-if(NOT CMAKE_CROSSCOMPILING)
-  add_executable(tiff_mkg3states ../placeholder.h)
-  target_sources(tiff_mkg3states PRIVATE mkg3states.c tif_fax3.h)
-  target_link_libraries(tiff_mkg3states tiff tiff_port)
-
-  add_custom_target(tiff_faxtable
-          DEPENDS tiff_mkg3states
-          COMMAND ${CMAKE_COMMAND} -E rm "tif_fax3sm.c"
-          COMMAND tiff_mkg3states -b -c const "tif_fax3sm.c"
-          WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
-endif()
