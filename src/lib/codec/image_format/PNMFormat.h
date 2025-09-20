@@ -44,8 +44,4 @@ private:
 
   grk_image* decode(grk_cparameters* parameters);
   bool decodeHeader(struct pnm_header* ph);
-
-  int64_t maxPosition_;
-  bool maxNewline_;
-  uint16_t currentCompno_;
 };
