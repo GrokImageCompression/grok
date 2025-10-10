@@ -1,9 +1,5 @@
 find_package(Threads REQUIRED)
 
-if (NOT APPLE)
-include(BundleStatic)
-endif(NOT APPLE)
-
 IF(UNIX)
 find_package(Valgrind)
 if (Valgrind_FOUND)
@@ -22,27 +18,46 @@ install( FILES  ${CMAKE_CURRENT_BINARY_DIR}/grk_config.h
  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${GROK_INSTALL_SUBDIR} COMPONENT Headers)
 
 include_directories(
+  ${CMAKE_CURRENT_BINARY_DIR}/../../bin # grk_apps_config.h
   ${CMAKE_CURRENT_BINARY_DIR} # grk_config.h and grk_config_private.h
   ${GROK_SOURCE_DIR}/src/lib/codec/common
   ${GROK_SOURCE_DIR}/src/lib/codec
   ${GROK_SOURCE_DIR}/src/include
   ${CMAKE_CURRENT_SOURCE_DIR}
   ${CMAKE_CURRENT_SOURCE_DIR}/plugin
-  ${CMAKE_CURRENT_SOURCE_DIR}/wavelet
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/wavelet
   ${CMAKE_CURRENT_SOURCE_DIR}/t1
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/part1
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/part1/impl
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/part1/block_coder
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/part1/block_coder/mqcoder
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/OJPH/common
   ${CMAKE_CURRENT_SOURCE_DIR}/util
   ${CMAKE_CURRENT_SOURCE_DIR}/canvas
+  ${CMAKE_CURRENT_SOURCE_DIR}/canvas/codeblock
+  ${CMAKE_CURRENT_SOURCE_DIR}/canvas/precinct
+  ${CMAKE_CURRENT_SOURCE_DIR}/canvas/resolution
+  ${CMAKE_CURRENT_SOURCE_DIR}/canvas/subband
+  ${CMAKE_CURRENT_SOURCE_DIR}/canvas/tile
   ${CMAKE_CURRENT_SOURCE_DIR}/codestream
+  ${CMAKE_CURRENT_SOURCE_DIR}/fileformat
+  ${CMAKE_CURRENT_SOURCE_DIR}/fileformat/compress
+  ${CMAKE_CURRENT_SOURCE_DIR}/fileformat/decompress
   ${CMAKE_CURRENT_SOURCE_DIR}/codestream/markers
+  ${CMAKE_CURRENT_SOURCE_DIR}/codestream/decompress
+  ${CMAKE_CURRENT_SOURCE_DIR}/codestream/compress
   ${CMAKE_CURRENT_SOURCE_DIR}/point_transform
   ${CMAKE_CURRENT_SOURCE_DIR}/t2
-  ${CMAKE_CURRENT_SOURCE_DIR}/tile
+  ${CMAKE_CURRENT_SOURCE_DIR}/tile_processor
   ${CMAKE_CURRENT_SOURCE_DIR}/scheduling
+  ${CMAKE_CURRENT_SOURCE_DIR}/scheduling/whole_tile
+  ${CMAKE_CURRENT_SOURCE_DIR}/scheduling/whole_tile/flow
+  ${CMAKE_CURRENT_SOURCE_DIR}/scheduling/window
+  ${CMAKE_CURRENT_SOURCE_DIR}/stream
+  ${CMAKE_CURRENT_SOURCE_DIR}/stream/fetchers
+  ${CMAKE_CURRENT_SOURCE_DIR}/stream/fetchers/s3
   ${CMAKE_CURRENT_SOURCE_DIR}/filters
   ${CMAKE_CURRENT_SOURCE_DIR}/cache
+  ${CMAKE_CURRENT_SOURCE_DIR}/debug
   ${LCMS_INCLUDE_DIRNAME}
 )
 
@@ -53,83 +68,103 @@ set(GROK_EXECUTABLES_SRCS
 )
 
 set(GROK_LIBRARY_SRCS
-  ${CMAKE_CURRENT_SOURCE_DIR}/util/BufferedStream.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/util/Logger.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/util/MemStream.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/util/grk_intmath.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/util/SparseBuffer.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/util/GrkImage.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/util/GrkImage_Conversion.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/util/GrkObjectWrapper.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/util/GrkMatrix.cpp
+
+  ${CMAKE_CURRENT_SOURCE_DIR}/stream/MemStream.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/stream/MappedFile.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/stream/StreamIO.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/stream/StreamGenerator.cpp
   
   ${CMAKE_CURRENT_SOURCE_DIR}/plugin/minpf_dynamic_library.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/plugin/minpf_plugin_manager.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/plugin/plugin_bridge.cpp
 
-  ${CMAKE_CURRENT_SOURCE_DIR}/codestream/TileSet.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/codestream/TileWindow.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/codestream/Profile.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/codestream/CodeStream.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/codestream/CodeStreamCompress.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/codestream/CodeStreamDecompress.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/codestream/CodeStreamDecompress_Markers.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/codestream/FileFormat.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/codestream/FileFormatCompress.cpp
-   ${CMAKE_CURRENT_SOURCE_DIR}/codestream/FileFormatDecompress.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/codestream/CodingParams.cpp
+
+  ${CMAKE_CURRENT_SOURCE_DIR}/fileformat/FileFormatJP2Family.cpp
+   ${CMAKE_CURRENT_SOURCE_DIR}/fileformat/FileFormatMJ2.cpp
+    
+  ${CMAKE_CURRENT_SOURCE_DIR}/fileformat/compress/FileFormatJP2Compress.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/fileformat/compress/FileFormatMJ2Compress.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/fileformat/decompress/FileFormatJP2Decompress.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/fileformat/decompress/FileFormatMJ2Decompress.cpp
+  
+  ${CMAKE_CURRENT_SOURCE_DIR}/codestream/compress/CodeStreamCompress.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/codestream/decompress/CodeStreamDecompress.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/codestream/decompress/CodeStreamDecompress_ReadMarkers.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/codestream/decompress/CodeStreamDecompress_Dump.cpp
+  
   ${CMAKE_CURRENT_SOURCE_DIR}/codestream/markers/SIZMarker.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/codestream/markers/PPMMarker.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/codestream/markers/SOTMarker.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/codestream/markers/TLMMarker.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/codestream/markers/PLMarker.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/codestream/markers/MarkerParser.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/codestream/markers/MarkerCache.cpp
 
-  ${CMAKE_CURRENT_SOURCE_DIR}/cache/TileCache.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/cache/MemManager.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/cache/LengthCache.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/cache/PLMarkerMgr.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/cache/PLCache.cpp
-
+  ${CMAKE_CURRENT_SOURCE_DIR}/debug/debug_context.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/point_transform/mct.cpp
   
   ${CMAKE_CURRENT_SOURCE_DIR}/t2/PacketManager.cpp
-
   ${CMAKE_CURRENT_SOURCE_DIR}/t2/T2Compress.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/t2/T2Decompress.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/t2/RateControl.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/t2/RateInfo.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/t2/PacketIter.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/t2/PacketParser.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/t2/PacketCache.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/t2/BitIO.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/t2/BitIO.h
 
   ${CMAKE_CURRENT_SOURCE_DIR}/grok.cpp
 
-  ${CMAKE_CURRENT_SOURCE_DIR}/scheduling/ImageComponentFlow.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/scheduling/Scheduler.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/scheduling/DecompressScheduler.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/scheduling/CompressScheduler.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/scheduling/whole_tile/flow/ImageComponentFlow.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/scheduling/whole_tile/WholeTileScheduler.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/scheduling/whole_tile/DecompressScheduler.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/scheduling/whole_tile/CompressScheduler.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/scheduling/window/DecompressWindowScheduler.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/scheduling/window/CompressWindowScheduler.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/scheduling/window/WindowScheduler.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/scheduling/CodecScheduler.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/scheduling/CoderPool.cpp
 
-  ${CMAKE_CURRENT_SOURCE_DIR}/wavelet/WaveletFwd.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/wavelet/WaveletReverse.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/wavelet/WaveletFwd.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/wavelet/WaveletReverse.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/wavelet/WaveletReverse97.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/wavelet/WaveletReversePartial.cpp
 
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/T1Factory.cpp  
-  
-  ${CMAKE_CURRENT_SOURCE_DIR}/canvas/Resolution.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/canvas/Precinct.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/canvas/Subband.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/canvas/TileComponent.cpp
-  
-  ${CMAKE_CURRENT_SOURCE_DIR}/tile/TileProcessor.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/CoderFactory.cpp
 
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/OJPH/T1OJPH.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/canvas/precinct/Precinct.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/canvas/precinct/PrecinctImpl.cpp  
+  ${CMAKE_CURRENT_SOURCE_DIR}/canvas/resolution/Resolution.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/canvas/subband/Subband.cpp
+   
+  ${CMAKE_CURRENT_SOURCE_DIR}/tile_processor/TileProcessor.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/tile_processor/TileProcessorCompress.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/tile_processor/TileProcessor_RateControl.cpp
+ 
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/OJPH/CoderOJPH.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/OJPH/QuantizerOJPH.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/OJPH/coding/ojph_block_common.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/OJPH/coding/ojph_block_decoder.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/OJPH/coding/ojph_block_encoder.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/OJPH/others/ojph_mem.cpp
 
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/part1/impl/T1.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/part1/impl/mqc_enc.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/part1/impl/mqc_dec.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/part1/T1Part1.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/part1/block_coder/BlockCoderDec.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/part1/block_coder/BlockCoderEnc.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/part1/Coder.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/part1//Quantizer.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/part1/block_coder/mqcoder/mqc.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/part1/block_coder/mqcoder/mqc_base.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/part1/block_coder/mqcoder/mqc_backup.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/part1/block_coder/mqcoder/mqc_state.cpp
 )
 
 add_definitions(-DSPDLOG_COMPILED_LIB)
@@ -150,8 +185,8 @@ set_target_properties(${GROK_CORE_NAME} PROPERTIES ${GROK_LIBRARY_PROPERTIES})
 target_compile_options(${GROK_CORE_NAME} PRIVATE ${GROK_COMPILE_OPTIONS} PRIVATE ${HWY_FLAGS})
 # set emcc options
 if (CMAKE_SYSTEM_NAME STREQUAL Emscripten)
-  target_link_options(${GROK_CORE_NAME} PUBLIC -sASSERTIONS=1 -sPROXY_TO_PTHREAD -sTOTAL_MEMORY=1536MB -sEXIT_RUNTIME=1 -sUSE_PTHREADS=1)
-  target_compile_options(${GROK_CORE_NAME} PUBLIC -matomics)
+  target_link_options(${exe} PUBLIC -sASSERTIONS=1 -sPROXY_TO_PTHREAD -sTOTAL_MEMORY=1536MB -sEXIT_RUNTIME=1 -sUSE_PTHREADS=1)
+  target_compile_options(${exe} PUBLIC -matomics)
 endif()
 
 if (CMAKE_CXX_COMPILER_ID MATCHES "GNU")
@@ -172,9 +207,18 @@ if(UNIX)
   target_link_libraries(${GROK_CORE_NAME} PUBLIC ${CMAKE_THREAD_LIBS_INIT})
 endif(UNIX)
 target_link_libraries(${GROK_CORE_NAME} PRIVATE hwy ${LCMS_LIBNAME} )
+if(GROK_HAVE_LIBCURL)
+target_link_libraries(${GROK_CORE_NAME} PRIVATE CURL::libcurl)
+target_include_directories(${GROK_CORE_NAME} PRIVATE
+    ${CURL_INCLUDE_DIRS}
+    ${curl_SOURCE_DIR}/include
+)
+endif(GROK_HAVE_LIBCURL)
+
 
 # bundle all static libraries into a single library
 if (GRK_BUNDLE_STATIC_CORE AND NOT BUILD_SHARED_LIBS AND NOT APPLE)
+    include(BundleStatic)
 	bundle_static_library(${GROK_CORE_NAME} ${GROK_CORE_NAME}_bundled)
 endif(GRK_BUNDLE_STATIC_CORE AND NOT BUILD_SHARED_LIBS AND NOT APPLE)
 

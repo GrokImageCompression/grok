@@ -13,9 +13,6 @@
  *    You should have received a copy of the GNU Affero General Public License
  *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
- *    This source code incorporates work covered by the BSD 2-clause license.
- *    Please see the LICENSE file in the root directory for details.
- *
  */
 
 #include "grk_includes.h"
@@ -29,16 +26,16 @@ BitIO::BitIO(uint8_t* bp, uint64_t len, bool isCompressor)
   assert(isCompressor || bp);
 }
 
-BitIO::BitIO(BufferedStream* strm, bool isCompressor)
+BitIO::BitIO(IStream* strm, bool isCompressor)
     : start(nullptr), offset(0), buf_len(0), buf(0), ct(isCompressor ? 8 : 0), stream(strm),
       read0xFF(false)
 {}
 
-bool BitIO::writeByte(void)
+bool BitIO::write8u(void)
 {
   if(stream)
   {
-    if(!stream->writeByte(buf))
+    if(!stream->write8u(buf))
       return false;
   }
   else
@@ -62,7 +59,7 @@ void BitIO::bytein(void)
   if(read0xFF && (buf >= 0x90))
   {
     uint16_t marker = (uint16_t)(((uint16_t)0xFF << 8) | (uint16_t)buf);
-    if(marker != J2K_EPH && marker != J2K_SOP)
+    if(marker != EPH && marker != SOP)
       grklog.warn("Invalid marker 0x%x detected in packet header", marker);
     else
       grklog.warn("Unexpected SOP/EPH marker 0x%x detected in packet header", marker);
@@ -77,7 +74,7 @@ void BitIO::bytein(void)
 
 bool BitIO::putbit(uint8_t b)
 {
-  if(ct == 0 && !writeByte())
+  if(ct == 0 && !write8u())
     return false;
   ct--;
   buf = static_cast<uint8_t>(buf | (b << ct));
@@ -85,14 +82,6 @@ bool BitIO::putbit(uint8_t b)
   return true;
 }
 
-void BitIO::getbit(uint32_t* bits, uint8_t pos)
-{
-  if(ct == 0)
-    bytein();
-  assert(ct > 0);
-  ct = (uint8_t)(ct - 1);
-  *bits |= (uint32_t)(((buf >> ct) & 1) << pos);
-}
 uint8_t BitIO::getbit(void)
 {
   if(ct == 0)
@@ -108,10 +97,10 @@ size_t BitIO::numBytes(void)
   return offset;
 }
 
-bool BitIO::write(uint32_t v, uint32_t n)
+bool BitIO::write(uint32_t v, uint8_t n)
 {
   assert(n != 0 && n <= 32);
-  for(int32_t i = (int32_t)(n - 1); i >= 0; i--)
+  for(int8_t i = (int8_t)(n - 1); i >= 0; i--)
   {
     if(!putbit((v >> i) & 1))
       return false;
@@ -119,7 +108,7 @@ bool BitIO::write(uint32_t v, uint32_t n)
   return true;
 }
 
-bool BitIO::write(uint32_t v)
+bool BitIO::write(uint8_t v)
 {
   return putbit(v & 1);
 }
@@ -129,30 +118,15 @@ uint8_t BitIO::read(void)
   return getbit();
 }
 
-void BitIO::read(uint32_t* bits, uint8_t n)
-{
-  assert(n != 0 && n <= 32U);
-#ifdef GRK_UBSAN_BUILD
-  /* This assert fails for some corrupted images which are gracefully rejected */
-  /* Add this assert only for ubsan build. */
-  /* This is the condition for overflow not to occur below which is needed because of
-   * GROK_NOSANITIZE */
-  assert(n <= 32U);
-#endif
-  *bits = 0U;
-  for(int8_t i = (int8_t)(n - 1); i >= 0; i--)
-    getbit(bits, static_cast<uint8_t>(i));
-}
-
 bool BitIO::flush()
 {
-  if(!writeByte())
+  if(!write8u())
     return false;
 
-  return (ct == 7) ? writeByte() : true;
+  return (ct == 7) ? write8u() : true;
 }
 
-void BitIO::inalign()
+void BitIO::readFinalHeaderByte()
 {
   if(buf == 0xff)
     bytein();
@@ -184,7 +158,7 @@ uint8_t BitIO::getcommacode(void)
   return n;
 }
 
-bool BitIO::putnumpasses(uint32_t n)
+bool BitIO::putnumpasses(uint8_t n)
 {
   if(n == 1)
   {
@@ -215,7 +189,7 @@ bool BitIO::putnumpasses(uint32_t n)
   return true;
 }
 
-void BitIO::getnumpasses(uint32_t* numpasses)
+void BitIO::getnumpasses(uint8_t* numpasses)
 {
   uint32_t n = read();
   if(!n)
@@ -232,17 +206,17 @@ void BitIO::getnumpasses(uint32_t* numpasses)
   read(&n, 2);
   if(n != 3)
   {
-    *numpasses = n + 3;
+    *numpasses = (uint8_t)(n + 3);
     return;
   }
   read(&n, 5);
   if(n != 31)
   {
-    *numpasses = n + 6;
+    *numpasses = (uint8_t)(n + 6);
     return;
   }
   read(&n, 7);
-  *numpasses = n + 37;
+  *numpasses = (uint8_t)(n + 37);
 }
 
 } // namespace grk

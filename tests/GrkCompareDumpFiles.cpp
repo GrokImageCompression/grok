@@ -13,103 +13,67 @@
  *    You should have received a copy of the GNU Affero General Public License
  *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
- *
- *    This source code incorporates work covered by the BSD 2-clause license.
- *    Please see the LICENSE file in the root directory for details.
  */
 
-#include <cassert>
-#include <cctype>
-#include <cstdio>
-#include <cstdlib>
-#include <cstring>
-#include <sstream>
+#include <memory>
 #include <string>
-
-#define TCLAP_NAMESTARTSTRING "-"
-#include "tclap/CmdLine.h"
+#include <filesystem>
 #include "test_common.h"
+#include <iostream>
+#include <CLI/CLI.hpp>
+#include "grk_apps_config.h"
+#include "spdlog/spdlog.h"
 #include "GrkCompareDumpFiles.h"
 
 namespace grk
 {
 
-typedef struct test_cmp_parameters
-{
-  /**  */
-  char* base_filename;
-  /**  */
-  char* test_filename;
-} test_cmp_parameters;
+namespace fs = std::filesystem;
 
-/*******************************************************************************
- * Command line help function
- *******************************************************************************/
-static void compare_dump_files_help_display(void)
+struct TestCmpParameters
 {
-  fprintf(stdout, "\nList of parameters for the compare_dump_files function  \n");
-  fprintf(stdout, "\n");
-  fprintf(stdout, "  -b \t REQUIRED \t filename to the reference/baseline dump file \n");
-  fprintf(stdout, "  -t \t REQUIRED \t filename to the test dump file image\n");
-  fprintf(stdout, "\n");
+  std::string base_filename;
+  std::string test_filename;
+};
+
+// RAII wrapper for FILE*
+struct FileCloser
+{
+  void operator()(FILE* file) const
+  {
+    if(file)
+    {
+      fclose(file);
+    }
+  }
+};
+using FilePtr = std::unique_ptr<FILE, FileCloser>;
+
+static void compare_dump_files_help_display()
+{
+  std::cout << "\nList of parameters for the compare_dump_files utility\n\n"
+            << "-b  REQUIRED  Reference/baseline dump file\n"
+            << "-t  REQUIRED  Test dump file\n"
+            << "\n";
 }
-/*******************************************************************************
- * Parse command line
- *******************************************************************************/
-static int parse_cmdline_cmp(int argc, char** argv, test_cmp_parameters* param)
-{
-  size_t sizemembasefile, sizememtestfile;
-  int index = 0;
 
-  /* Init parameters */
-  param->base_filename = nullptr;
-  param->test_filename = nullptr;
+static int parse_cmdline_cmp(int argc, char** argv, TestCmpParameters& param)
+{
+  CLI::App app{"compare_dump_files command line"};
+
+  app.add_option("-b,--base", param.base_filename, "Base file")->required();
+  app.add_option("-t,--test", param.test_filename, "Test file")->required();
+
   try
   {
-    TCLAP::CmdLine cmd("compare_dump_files command line", ' ', "");
-
-    TCLAP::ValueArg<std::string> baseArg("b", "base", "base file", false, "", "string", cmd);
-
-    TCLAP::ValueArg<std::string> testArg("t", "test", "test file", false, "", "string", cmd);
-
-    cmd.parse(argc, argv);
-
-    if(baseArg.isSet())
-    {
-      sizemembasefile = baseArg.getValue().length() + 1;
-      param->base_filename = (char*)malloc(sizemembasefile);
-      if(!param->base_filename)
-      {
-        fprintf(stderr, "Out of memory");
-        return 1;
-      }
-      strcpy(param->base_filename, baseArg.getValue().c_str());
-      /*printf("param->base_filename = %s [%u / %u]\n", param->base_filename,
-       * strlen(param->base_filename), sizemembasefile );*/
-      index++;
-    }
-
-    if(testArg.isSet())
-    {
-      sizememtestfile = testArg.getValue().length() + 1;
-      param->test_filename = (char*)malloc(sizememtestfile);
-      if(!param->test_filename)
-      {
-        fprintf(stderr, "Out of memory");
-        return 1;
-      }
-      strcpy(param->test_filename, testArg.getValue().c_str());
-      /*printf("param->test_filename = %s [%u / %u]\n", param->test_filename,
-       * strlen(param->test_filename), sizememtestfile);*/
-      index++;
-    }
+    app.parse(argc, argv);
   }
-  catch(const TCLAP::ArgException& e) // catch any exceptions
+  catch(const CLI::ParseError& e)
   {
-    std::cerr << "error: " << e.error() << " for arg " << e.argId() << std::endl;
-    return 0;
+    return app.exit(e);
   }
-  return index;
+
+  return 0;
 }
 
 int GrkCompareDumpFiles::main(int argc, char** argv)
@@ -124,78 +88,75 @@ int GrkCompareDumpFiles::main(int argc, char** argv)
   printf("%s", out.c_str());
 #endif
 
-  test_cmp_parameters inParam;
-  FILE *fbase = nullptr, *ftest = nullptr;
-  int same = 0;
-  char lbase[512];
-  char strbase[512];
-  char ltest[512];
-  char strtest[512];
-
-  if(parse_cmdline_cmp(argc, argv, &inParam) == 1)
+  TestCmpParameters params;
+  if(parse_cmdline_cmp(argc, argv, params) != 0)
   {
     compare_dump_files_help_display();
-    goto cleanup;
+    return EXIT_FAILURE;
   }
 
-  /* Display Parameters*/
-  printf("******Parameters********* \n");
-  printf(" base_filename = %s\n"
-         " test_filename = %s\n",
-         inParam.base_filename, inParam.test_filename);
-  printf("************************* \n");
+  // Log parameters using spdlog
+  spdlog::info("******Parameters*********");
+  spdlog::info("Base_filename = {}", params.base_filename);
+  spdlog::info("Test_filename = {}", params.test_filename);
 
 #ifdef COPY_TEST_FILES_TO_REPO
-  rename(inParam.test_filename, inParam.base_filename);
+  if(!fs::exists(params.base_filename))
+  {
+    fs::rename(params.test_filename, params.base_filename);
+  }
 #endif
 
-  /* open base file */
-  printf("Try to open: %s for reading ... ", inParam.base_filename);
-  if((fbase = fopen(inParam.base_filename, "rb")) == nullptr)
+  // Open files with RAII
+  spdlog::info("Try to open: {} for reading ...", params.base_filename);
+  FilePtr fbase(fopen(params.base_filename.c_str(), "rb"));
+  if(!fbase)
   {
-    goto cleanup;
+    spdlog::error("Failed to open base file: {}", params.base_filename);
+    return EXIT_FAILURE;
   }
-  printf("Ok.\n");
+  spdlog::info("Ok");
 
-  /* open test file */
-  printf("Try to open: %s for reading ... ", inParam.test_filename);
-  if((ftest = fopen(inParam.test_filename, "rb")) == nullptr)
+  spdlog::info("Try to open: {} for reading ...", params.test_filename);
+  FilePtr ftest(fopen(params.test_filename.c_str(), "rb"));
+  if(!ftest)
   {
-    goto cleanup;
+    spdlog::error("Failed to open test file: {}", params.test_filename);
+    return EXIT_FAILURE;
   }
-  printf("Ok.\n");
+  spdlog::info("Ok");
 
-  while(fgets(lbase, sizeof(lbase), fbase) && fgets(ltest, sizeof(ltest), ftest))
+  // Compare files line by line
+  char lbase[512];
+  char ltest[512];
+  while(fgets(lbase, sizeof(lbase), fbase.get()) && fgets(ltest, sizeof(ltest), ftest.get()))
   {
-    int nbase = sscanf(lbase, "%511[^\r\n]", strbase);
-    int ntest = sscanf(ltest, "%511[^\r\n]", strtest);
-    assert(nbase != 511 && ntest != 511);
-    if(nbase != 1 || ntest != 1)
+    // Remove trailing newlines
+    std::string base_str(lbase);
+    std::string test_str(ltest);
+    base_str.erase(std::remove(base_str.begin(), base_str.end(), '\n'), base_str.end());
+    base_str.erase(std::remove(base_str.begin(), base_str.end(), '\r'), base_str.end());
+    test_str.erase(std::remove(test_str.begin(), test_str.end(), '\n'), test_str.end());
+    test_str.erase(std::remove(test_str.begin(), test_str.end(), '\r'), test_str.end());
+
+    if(base_str != test_str)
     {
-      fprintf(stderr, "could not parse line from files\n");
-      goto cleanup;
-    }
-    if(strcmp(strbase, strtest) != 0)
-    {
-      fprintf(stderr, "<%s> vs. <%s>\n", strbase, strtest);
-      goto cleanup;
+      spdlog::error("Mismatch found:");
+      spdlog::error("Base: <{}>", base_str);
+      spdlog::error("Test: <{}>", test_str);
+      return EXIT_FAILURE;
     }
   }
 
-  same = 1;
-  printf("\n***** TEST SUCCEED: Files are the same. *****\n");
-cleanup:
-  /*Close File*/
-  if(fbase)
-    fclose(fbase);
-  if(ftest)
-    fclose(ftest);
+  // Check if one file has more lines than the other
+  if(fgets(lbase, sizeof(lbase), fbase.get()) || fgets(ltest, sizeof(ltest), ftest.get()))
+  {
+    spdlog::error("Files have different number of lines");
+    return EXIT_FAILURE;
+  }
 
-  /* Free memory*/
-  free(inParam.base_filename);
-  free(inParam.test_filename);
-
-  return same ? EXIT_SUCCESS : EXIT_FAILURE;
+  spdlog::info("***** TEST SUCCEEDED: Files are identical *****");
+  return EXIT_SUCCESS;
 }
 
 } // namespace grk

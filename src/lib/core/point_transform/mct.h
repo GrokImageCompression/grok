@@ -13,10 +13,6 @@
  *    You should have received a copy of the GNU Affero General Public License
  *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
- *
- *    This source code incorporates work covered by the BSD 2-clause license.
- *    Please see the LICENSE file in the root directory for details.
- *
  */
 
 #pragma once
@@ -47,77 +43,77 @@ struct ScheduleInfo
   uint32_t yEnd;
 };
 
-class mct
+class Mct
 {
 public:
-  mct(Tile* tile, GrkImage* image, TileCodingParams* tcp);
+  Mct(Tile* tile, GrkImage* image, TileCodingParams* tcp);
 
   /**
-    Apply a reversible multi-component transform to an image
-    */
+   Apply a reversible multi-component transform to an image
+   */
   void compress_rev(FlowComponent* flow);
   /**
-    Apply a reversible multi-component inverse transform to an image
-    */
-  void decompress_rev(FlowComponent* flow);
+   Apply a reversible multi-component inverse transform to an image
+   */
+  void schedule_decompress_rev(FlowComponent* flow);
 
   /**
-    Apply an irreversible multi-component transform to an image
-    */
+   Apply an irreversible multi-component transform to an image
+   */
   void compress_irrev(FlowComponent* flow);
   /**
-    Apply an irreversible multi-component inverse transform to an image
-    */
-  void decompress_irrev(FlowComponent* flow);
+   Apply an irreversible multi-component inverse transform to an image
+   */
+  void schedule_decompress_irrev(FlowComponent* flow);
 
   /**
-    Apply a reversible inverse dc shift to an image
-    */
-  void decompress_dc_shift_rev(FlowComponent* flow, uint16_t compno);
+   Apply a reversible inverse dc shift to an image
+   */
+  void schedule_decompress_dc_shift_rev(FlowComponent* flow, uint16_t compno);
 
   /**
-    Apply an irreversible inverse dc shift to an image
-    */
-  void decompress_dc_shift_irrev(FlowComponent* flow, uint16_t compno);
+   Apply an irreversible inverse dc shift to an image
+   */
+  void schedule_decompress_dc_shift_irrev(FlowComponent* flow, uint16_t compno);
 
   /**
-    Get wavelet norms for reversible transform
-    */
+   Get wavelet norms for reversible transform
+   */
   static const double* get_norms_rev(void);
 
   /**
-    Get wavelet norms for irreversible transform
-    */
+   Get wavelet norms for irreversible transform
+   */
   static const double* get_norms_irrev(void);
 
   /**
-    Custom MCT transform
-    @param p_coding_data    MCT data
-    @param n                size of components
-    @param p_data           components
-    @param numComps          nb of components (i.e. size of p_data)
-    @param is_signed        indicates if the data is signed
-    @return false if function encounter a problem, true otherwise
-    */
+   Custom MCT transform
+   @param p_coding_data    MCT data
+   @param n                size of components
+   @param p_data           components
+   @param numComps          nb of components (i.e. size of p_data)
+   @param is_signed        indicates if the data is signed
+   @return false if function encounter a problem, true otherwise
+   */
   static bool compress_custom(uint8_t* p_coding_data, uint64_t n, uint8_t** p_data,
                               uint16_t numComps, uint32_t is_signed);
   /**
-    Custom MCT decode
-    @param pDecodingData    MCT data
-    @param n                size of components
-    @param pData            components
-    @param pNbComp          nb of components (i.e. size of p_data)
-    @param isSigned         tells if the data is signed
-    @return false if function encounter a problem, true otherwise
-    */
-  static bool decompress_custom(uint8_t* pDecodingData, uint64_t n, uint8_t** pData,
-                                uint16_t pNbComp, uint32_t isSigned);
+   Custom MCT decode
+   @param pDecodingData    MCT data
+   @param n                size of components
+   @param pData            components
+   @param pNbComp          nb of components (i.e. size of p_data)
+   @param isSigned         tells if the data is signed
+   @return false if function encounter a problem, true otherwise
+   */
+  static bool schedule_decompress_custom(uint8_t* pDecodingData, uint64_t n, uint8_t** pData,
+                                         uint16_t pNbComp, uint32_t isSigned);
   /**
-    Calculate norm of MCT transform
-    @param pNorms         MCT data
-    @param nb_comps       number of components
-    @param pMatrix        components
-    */
+   Calculate norm of MCT transform
+   @param pNorms         MCT data
+   @param nb_comps       number of components
+   @param pMatrix        components
+   */
   static void calculate_norms(double* pNorms, uint16_t nb_comps, float* pMatrix);
 
 private:

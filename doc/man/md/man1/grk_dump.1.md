@@ -19,23 +19,23 @@ Options
 -------
 
 
-`-h`
+#### `-h` 
 
 Print a help message and exit.
 
-`ImgDir`
+#### `ImgDir`
 
 Path to image files directory, required if `-i` option not provided
 
-`-i`
+#### `-i`
 
 Path to image file, required if `-ImgDir` option not provided
 
-`-o`
+#### `-o`
 
 Optional path to output file, default is output to stdout 
 
-`-v`
+#### `-v`
 
 Enable verbose mode, default verbose mode is set to disabled
 

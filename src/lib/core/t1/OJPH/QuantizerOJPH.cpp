@@ -13,10 +13,8 @@
  *    You should have received a copy of the GNU Affero General Public License
  *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
- *
- *    This source code incorporates work covered by the following license:
- *    Please see the LICENSE file in the root directory for details.
  */
+
 // This software is released under the 2-Clause BSD license, included
 // below.
 //
@@ -157,7 +155,7 @@ const float bibo_gains::gain_5x3_h[34] = {
 QuantizerOJPH::QuantizerOJPH(bool reversible, uint8_t guard_bits)
     : Quantizer(reversible, guard_bits), base_delta(-1.0f)
 {}
-void QuantizerOJPH::generate(uint32_t decomps, uint32_t max_bit_depth, bool color_transform,
+void QuantizerOJPH::generate(uint8_t decomps, uint8_t max_bit_depth, bool color_transform,
                              bool is_signed)
 {
   num_decomps = decomps;
@@ -172,7 +170,7 @@ void QuantizerOJPH::generate(uint32_t decomps, uint32_t max_bit_depth, bool colo
     set_irrev_quant();
   }
 }
-void QuantizerOJPH::set_rev_quant(uint32_t bit_depth, bool is_employing_color_transform)
+void QuantizerOJPH::set_rev_quant(uint8_t bit_depth, bool is_employing_color_transform)
 {
   int B = (int)bit_depth;
   B += is_employing_color_transform ? 1 : 0; // 1 bit for RCT
@@ -257,7 +255,7 @@ uint32_t QuantizerOJPH::get_MAGBp() const
 
   return B;
 }
-bool QuantizerOJPH::write(grk::BufferedStream* stream)
+bool QuantizerOJPH::write(grk::IStream* stream)
 {
   // marker size excluding header
   uint16_t Lcap = 8;
@@ -284,19 +282,19 @@ bool QuantizerOJPH::write(grk::BufferedStream* stream)
   Ccap[0] = (uint16_t)(Ccap[0] | Bp);
 
   /* CAP */
-  if(!stream->writeShort(grk::J2K_CAP))
+  if(!stream->write(grk::CAP))
   {
     return false;
   }
 
   /* L_CAP */
-  if(!stream->writeShort(Lcap))
+  if(!stream->write(Lcap))
     return false;
   /* PCAP */
-  if(!stream->writeInt(Pcap))
+  if(!stream->write(Pcap))
     return false;
   /* CCAP */
-  if(!stream->writeShort(Ccap[0]))
+  if(!stream->write(Ccap[0]))
     return false;
 
   return true;

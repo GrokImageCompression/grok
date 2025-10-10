@@ -12,107 +12,143 @@
  *
  *    You should have received a copy of the GNU Affero General Public License
  *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
- *
- *    This source code incorporates work covered by the BSD 2-clause license.
- *    Please see the LICENSE file in the root directory for details.
  *
  */
 
 #pragma once
 
-#include "IBitIO.h"
-#include "BufferedStream.h"
+#include "IStream.h"
 
 namespace grk
 {
-/*
- Bit input/output
+
+/**
+ * @class BitIO
+ * @brief Bit IO
  */
-class BitIO : public IBitIO
+class BitIO
 {
 public:
+  /**
+   * @brief Constructs a BitIO object
+   * @param bp bit buffer
+   * @aram len length of bit buffer
+   * @param isCompressor flag indicating compression or lack thereof
+   */
   BitIO(uint8_t* bp, uint64_t len, bool isCompressor);
-  BitIO(BufferedStream* stream, bool isCompressor);
 
-  /*
-    Number of bytes written.
-    @return the number of bytes written
-    */
-  size_t numBytes(void) override;
+  /**
+   * @brief Constructs a BitIO objecxt
+   * @param @ref IStream
+   * @param isCompressor flag indicating compression or lack thereof
+   */
+  BitIO(IStream* stream, bool isCompressor);
 
-  /*
-    Write bits
-    @param v Value of bits
-    @param n Number of bits to write
-    */
-  bool write(uint32_t v, uint32_t n) override;
-  bool write(uint32_t v) override;
-  /*
-    Read bits
-    @param n Number of bits to read
-    */
-  void read(uint32_t* bits, uint8_t n) override;
+  /**
+   * @brief Gets number of bytes written
+   * @return number of bytes written
+   */
+  size_t numBytes();
 
-  /*
-    Read bit
-    */
-  uint8_t read(void) override;
-  /*
-    Flush bits
-    @return true if successful, returns false otherwise
-    */
-  bool flush(void) override;
-  /*
-    Passes the ending bits (coming from flushing)
-    */
-  void inalign(void) override;
+  /**
+   * @brief Writes bits
+   * @param v bits to write
+   * @param n number of bits to write (must be <= 32)
+   * @return true if successful
+   */
+  bool write(uint32_t v, uint8_t n);
 
+  /**
+   * @brief Writes one bit
+   * @param v bit to write
+   * @return true if successful
+   */
+  bool write(uint8_t v);
+
+  /**
+   * @brief Reads bits
+   * @param bits pointer to bits buffer
+   * @param n number of bits to read (must be <= sizeof(T) << 3)
+   */
+  template<typename T>
+  void read(T* bits, uint8_t n)
+  {
+    assert(n > 0 && n <= sizeof(T) << 3);
+    *bits = 0U;
+    for(int8_t i = (int8_t)(n - 1); i >= 0; i--)
+    {
+      if(ct == 0)
+        bytein();
+      assert(ct > 0);
+      ct = (uint8_t)(ct - 1);
+      *bits |= (T)(((buf >> ct) & 1) << i);
+    }
+  }
+
+  /**
+   * @brief Reads bit
+   * @return bit that was read
+   */
+  uint8_t read(void);
+
+  /**
+   * @brief Flushes remaining bits
+   * @return true if successful
+   */
+  bool flush();
+
+  /**
+   * @brief Reads bits at end of packet header
+   */
+  void readFinalHeaderByte();
+  /**
+   * @brief Writes comma code
+   * @param n comma code
+   * @return true if successful
+   */
   bool putcommacode(uint8_t n);
+
+  /**
+   * @brief Reads comma code
+   * @return comma code
+   */
   uint8_t getcommacode(void);
-  bool putnumpasses(uint32_t n);
-  void getnumpasses(uint32_t* numpasses);
+
+  /**
+   * @brief Writes number of passes
+   * @param n number of passes
+   */
+  bool putnumpasses(uint8_t n);
+
+  /**
+   * @brief Reads number of passes
+   * @param numpasses pointer to receive number of passes
+   */
+  void getnumpasses(uint8_t* numpasses);
 
 private:
   /* pointer to the start of the buffer */
   uint8_t* start;
-
   size_t offset;
   size_t buf_len;
 
-  /* temporary place where each byte is read or written */
+  /**
+   * @brief Temporary buffer where bytes are read from or written to
+   */
   uint8_t buf;
-  /* coder : number of bits free to write. decoder : number of bits read */
+
+  /**
+   * @brief Number of bits free to write for encoder or number of bits
+   * to read for decoder
+   */
   uint8_t ct;
 
-  BufferedStream* stream;
-
+  IStream* stream;
   bool read0xFF;
 
-  /*
-    Write a bit
-    @param bio BIO handle
-    @param b Bit to write (0 or 1)
-    */
   bool putbit(uint8_t b);
-  /*
-    Read a bit
-    @param bio BIO handle
-    */
-  void getbit(uint32_t* bits, uint8_t pos);
-
   uint8_t getbit(void);
-
-  /*
-    Write a byte
-    @param bio BIO handle
-    @return true if successful, returns false otherwise
-    */
-  bool writeByte(void);
-  /*
-    Read a byte
-    @param bio BIO handle
-    */
+  bool write8u(void);
   void bytein(void);
 };
 

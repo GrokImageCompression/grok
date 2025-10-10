@@ -12,6 +12,7 @@
  *
  *    You should have received a copy of the GNU Affero General Public License
  *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
  */
 
 #include "grk_apps_config.h"
@@ -45,28 +46,27 @@ namespace grk
 #ifdef GROK_HAVE_EXIFTOOL
 class PerlInterp
 {
-  public:
-	PerlInterp() : my_perl(nullptr)
-	{
-		constexpr int NUM_ARGS = 3;
-		PERL_SYS_INIT3(nullptr, nullptr, nullptr);
-		my_perl = perl_alloc();
-		if(my_perl)
-		{
-			perl_construct(my_perl);
-			const char* embedding[NUM_ARGS] = {"", "-e", "0"};
-			if(perl_parse(my_perl, nullptr, NUM_ARGS, (char**)embedding, nullptr))
-			{
-				dealloc();
-				throw std::runtime_error("Unable to parse Perl script used to extract exif tags");
-			}
-			if(perl_run(my_perl))
-			{
-				dealloc();
-				throw std::runtime_error(
-					"Unable to run Perl interpreter used to extract exif tags");
-			}
-			std::string script{R"x(
+public:
+  PerlInterp() : my_perl(nullptr)
+  {
+    constexpr int NUM_ARGS = 3;
+    PERL_SYS_INIT3(nullptr, nullptr, nullptr);
+    my_perl = perl_alloc();
+    if(my_perl)
+    {
+      perl_construct(my_perl);
+      const char* embedding[NUM_ARGS] = {"", "-e", "0"};
+      if(perl_parse(my_perl, nullptr, NUM_ARGS, (char**)embedding, nullptr))
+      {
+        dealloc();
+        throw std::runtime_error("Unable to parse Perl script used to extract exif tags");
+      }
+      if(perl_run(my_perl))
+      {
+        dealloc();
+        throw std::runtime_error("Unable to run Perl interpreter used to extract exif tags");
+      }
+      std::string script{R"x(
 	                use strict;
 					use warnings;
 					use Image::ExifTool;
@@ -78,67 +78,67 @@ class PerlInterp
 						my $result = $exifTool->WriteInfo($outFile);
 					}
 			    )x"};
-			if(!eval_pv(script.c_str(), TRUE))
-			{
-				dealloc();
-				throw std::runtime_error(
-					"Unable to evaluate Perl script used to extract exif tags");
-			}
-		}
-		else
-		{
-			PERL_SYS_TERM();
-		}
-	}
+      if(!eval_pv(script.c_str(), TRUE))
+      {
+        dealloc();
+        throw std::runtime_error("Unable to evaluate Perl script used to extract exif tags");
+      }
+    }
+    else
+    {
+      PERL_SYS_TERM();
+    }
+  }
 
-	~PerlInterp()
-	{
-		dealloc();
-	}
+  ~PerlInterp()
+  {
+    dealloc();
+  }
 
-  private:
-	void dealloc(void)
-	{
-		if(my_perl)
-		{
-			perl_destruct(my_perl);
-			perl_free(my_perl);
-			PERL_SYS_TERM();
-		}
-		my_perl = nullptr;
-	}
-	PerlInterpreter* my_perl;
+private:
+  void dealloc(void)
+  {
+    if(my_perl)
+    {
+      perl_destruct(my_perl);
+      perl_free(my_perl);
+      PERL_SYS_TERM();
+    }
+    my_perl = nullptr;
+  }
+  PerlInterpreter* my_perl;
 };
 
 class PerlScriptRunner
 {
-  public:
-	static PerlInterp* instance(void)
-	{
-		static PerlInterp interp;
-		return &interp;
-	}
+public:
+  static PerlInterp* instance(void)
+  {
+    static PerlInterp interp;
+    return &interp;
+  }
 };
 #endif
 
-void transfer_exif_tags([[maybe_unused]] const std::string &src, [[maybe_unused]] const std::string &dest)
+void transfer_exif_tags([[maybe_unused]] const std::string& src,
+                        [[maybe_unused]] const std::string& dest)
 {
 #ifdef GROK_HAVE_EXIFTOOL
-	try
-	{
-		PerlScriptRunner::instance();
-	}
-	catch(const std::runtime_error& re)
-	{
-		std::cout << re.what() << std::endl;
-		return;
-	}
-	dTHX;
-	char* args[] = {(char*)src.c_str(), (char*)dest.c_str(), nullptr};
-	if(call_argv("transfer", G_DISCARD, args))
-		std::cout << "Unable to run Perl script used to extract exif tags" << std::endl;
+  try
+  {
+    PerlScriptRunner::instance();
+  }
+  catch(const std::runtime_error& re)
+  {
+    std::cout << re.what() << std::endl;
+    return;
+  }
+  dTHX;
+  char* args[] = {(char*)src.c_str(), (char*)dest.c_str(), nullptr};
+  if(call_argv("transfer", G_DISCARD, args))
+    std::cout << "Unable to run Perl script used to extract exif tags" << std::endl;
 #else
-	std::cout << "ExifTool not available; unable to transfer Exif tags" << std::endl;
+  std::cout << "ExifTool not available; unable to transfer Exif tags" << std::endl;
 #endif
 }
 

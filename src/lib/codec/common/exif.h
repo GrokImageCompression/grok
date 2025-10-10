@@ -12,6 +12,7 @@
  *
  *    You should have received a copy of the GNU Affero General Public License
  *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
  */
 
 #include <string>
@@ -19,6 +20,6 @@
 namespace grk
 {
 // transfer metadata
-void transfer_exif_tags(const std::string &src, const std::string &dest);
+void transfer_exif_tags(const std::string& src, const std::string& dest);
 
 } // namespace grk

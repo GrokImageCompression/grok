@@ -1,4 +1,5 @@
-	include(FindPkgConfig)
+include(FindPkgConfig)
+include(FetchContent)
 
 # Try to find lib Z
 if(GRK_BUILD_LIBPNG OR GRK_BUILD_LIBTIFF)
@@ -19,6 +20,7 @@ else(GRK_BUILD_LIBPNG OR GRK_BUILD_LIBTIFF)
   endif(ZLIB_FOUND)
 endif(GRK_BUILD_LIBPNG OR GRK_BUILD_LIBTIFF)
 
+
 # JPEG library
 #if(CMAKE_GENERATOR STREQUAL "Ninja")
 #  set(GRK_BUILD_JPEG OFF)
@@ -38,7 +40,7 @@ if (GRK_BUILD_JPEG)
 	FetchContent_Declare(
 	    libjpeg-turbo
 	    GIT_REPOSITORY https://github.com/libjpeg-turbo/libjpeg-turbo.git
-	    GIT_TAG        2.1.5.1
+	    GIT_TAG        3.1.2
 	)
 	# Set configuration variables before populating and adding the subdirectory
 	set(ENABLE_SHARED OFF CACHE BOOL "" FORCE)
@@ -68,8 +70,8 @@ if (GRK_BUILD_JPEG)
 	                        -DWITH_TURBOJPEG=0
 	  				      GIT_REPOSITORY https://github.com/libjpeg-turbo/libjpeg-turbo.git
 	  					  GIT_TAG        3.1.2)
-    set(JPEG_LIBNAME ${CMAKE_CURRENT_BINARY_DIR}/bin/${JPEG_LIBNAME} PARENT_SCOPE)
-    set(JPEG_INCLUDE_DIRS ${CMAKE_CURRENT_BINARY_DIR}/libjpeg-turbo/include/ PARENT_SCOPE)
+	set(JPEG_LIBNAME ${CMAKE_CURRENT_BINARY_DIR}/bin/${JPEG_LIBNAME} PARENT_SCOPE)
+	set(JPEG_INCLUDE_DIRS ${CMAKE_CURRENT_BINARY_DIR}/libjpeg-turbo/include/ PARENT_SCOPE)
 endif()
 else(GRK_BUILD_JPEG)
 	find_package(JPEG)
@@ -209,3 +211,65 @@ else(GRK_BUILD_LCMS2)
       message(FATAL_ERROR "LCMS2 library with minimum version not found - please activate GRK_BUILD_LCMS2")
   endif(LCMS2_FOUND)
 endif(GRK_BUILD_LCMS2)
+
+
+if(NOT APPLE)
+
+  # Option to build libcurl from source (default ON)
+  option(GRK_BUILD_CURL "Build libcurl from source instead of using system libcurl" ON)
+
+  # Try to find system libcurl first
+  find_package(CURL QUIET)
+
+  if(CURL_FOUND AND NOT GRK_BUILD_CURL)
+      message(STATUS "Using system libcurl: ${CURL_VERSION_STRING}")
+      # Ensure CURL::libcurl exists
+      if(NOT TARGET CURL::libcurl)
+          if(CURL_LIBRARIES AND CURL_INCLUDE_DIRS)
+              message(STATUS "Manually defining CURL::libcurl")
+              add_library(CURL::libcurl UNKNOWN IMPORTED)
+              set_target_properties(CURL::libcurl PROPERTIES
+                  IMPORTED_LOCATION "${CURL_LIBRARIES}"
+                  INTERFACE_INCLUDE_DIRECTORIES "${CURL_INCLUDE_DIRS}"
+              )
+              # Windows might need extra libs
+              if(WIN32)
+                  set_target_properties(CURL::libcurl PROPERTIES
+                      INTERFACE_LINK_LIBRARIES "ws2_32"
+                  )
+              endif()
+          else()
+              message(FATAL_ERROR "CURL found but no CURL_LIBRARIES or CURL_INCLUDE_DIRS set")
+          endif()
+      else()
+        message(STATUS "Target CURL::libcurl exists")
+        get_target_property(IS_GLOBAL CURL::libcurl IMPORTED_GLOBAL)
+        if(NOT IS_GLOBAL)
+            message(STATUS "Making CURL::libcurl GLOBAL")
+            set_target_properties(CURL::libcurl PROPERTIES IMPORTED_GLOBAL TRUE)
+        endif()
+      endif()
+      set(GROK_HAVE_LIBCURL ON CACHE BOOL "libcurl availability" FORCE)
+  else()
+      message(STATUS "System libcurl not found or GRK_BUILD_CURL is ON. Building from Git...")
+      include(FetchContent)
+      FetchContent_Declare(
+          curl
+          GIT_REPOSITORY https://github.com/curl/curl.git
+          GIT_TAG curl-8_12_1  # Version 8.12.1
+          GIT_SHALLOW TRUE     # Fetch only the tag
+      )
+      FetchContent_MakeAvailable(curl)
+      set(CURL_STATICLIB ON CACHE BOOL "Build curl as a static library" FORCE)
+      set(CURL_DISABLE_TESTS ON CACHE BOOL "Disable curl tests" FORCE)
+      set(CURL_DISABLE_LDAP ON CACHE BOOL "Disable LDAP" FORCE)
+      if(WIN32)
+          set(CURL_USE_SCHANNEL ON CACHE BOOL "Use Windows Schannel" FORCE)
+          set(CURL_USE_OPENSSL OFF CACHE BOOL "Disable OpenSSL" FORCE)
+      else()
+      set(CURL_USE_OPENSSL ON CACHE BOOL "Use OpenSSL" FORCE)
+      endif()
+      set(GROK_HAVE_LIBCURL ON CACHE BOOL "libcurl availability" FORCE)
+  endif()
+
+endif()

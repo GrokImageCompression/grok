@@ -14,12 +14,15 @@
  *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
+
 #include <cstdio>
-#include <string>
 #include <cstring>
 #include <memory>
+#include <inttypes.h>
 
 #include "grok.h"
+
+#include "core.h"
 
 struct WriteStreamInfo
 {
@@ -51,7 +54,7 @@ bool stream_seek_fn(uint64_t offset, void* user_data)
   return true;
 }
 
-int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
+int main([[maybe_unused]] int argc, [[maybe_unused]] const char** argv)
 {
   const uint32_t dimX = 640;
   const uint32_t dimY = 480;
@@ -69,13 +72,8 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
 
   grk_object* codec = nullptr;
   grk_image* image = nullptr;
-  grk_image_comp* components = nullptr;
   int32_t rc = EXIT_FAILURE;
 
-  // Choose one option:
-  // 1. outputToBuffer is true and useCallbacks is false
-  // 2. outputToBuffer is false and useCallbacks is true
-  // 3. outputToBuffer is true and useCallbacks is true
   bool outputToBuffer = false;
   bool useCallbacks = true;
 
@@ -106,14 +104,14 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
   }
   else
   {
-    streamParams.file = outFile;
+    safe_strcpy(streamParams.file, outFile);
   }
 
   // create blank image
-  components = new grk_image_comp[numComps];
+  auto components = std::make_unique<grk_image_comp[]>(numComps);
   for(uint32_t i = 0; i < numComps; ++i)
   {
-    auto c = components + i;
+    auto c = &components[i];
     c->w = dimX;
     c->h = dimY;
     c->dx = 1;
@@ -121,7 +119,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
     c->prec = precision;
     c->sgnd = false;
   }
-  image = grk_image_new(numComps, components, GRK_CLRSPC_SRGB, true);
+  image = grk_image_new(numComps, components.get(), GRK_CLRSPC_SRGB, true);
 
   // fill in component data
   // see grok.h header for full details of image structure
@@ -130,7 +128,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
     auto comp = image->comps + compno;
     auto compWidth = comp->w;
     auto compHeight = comp->h;
-    auto compData = comp->data;
+    auto compData = (int32_t*)comp->data;
     if(!compData)
     {
       fprintf(stderr, "Image has null data for component %d\n", compno);
@@ -138,12 +136,12 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
     }
     // fill in component data, taking component stride into account
     // in this example, we just zero out each component
-    auto srcData = new int32_t[compWidth * compHeight];
-    memset(srcData, 0, compWidth * compHeight * sizeof(int32_t));
+    auto srcData = new int32_t[(size_t)compWidth * compHeight];
+    memset(srcData, 0, (size_t)compWidth * compHeight * sizeof(int32_t));
     auto srcPtr = srcData;
     for(uint32_t j = 0; j < compHeight; ++j)
     {
-      memcpy(compData, srcPtr, compWidth * sizeof(int32_t));
+      memcpy(compData, srcPtr, (size_t)compWidth * sizeof(int32_t));
       srcPtr += compWidth;
       compData += comp->stride;
     }
@@ -166,7 +164,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
     goto beach;
   }
 
-  printf("Compression succeeded: %ld bytes used.\n", compressedLength);
+  printf("Compression succeeded: %" PRIu64 " bytes used.\n", compressedLength);
 
   // write buffer to file
   if(outputToBuffer)
@@ -181,7 +179,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
       size_t written = fwrite(streamParams.buf, 1, compressedLength, fp);
       if(written != compressedLength)
       {
-        fprintf(stderr, "Buffer compress: only %ld bytes written out of %ld total",
+        fprintf(stderr, "Buffer compress: only %" PRIu64 " bytes written out of %" PRIu64 " total",
                 compressedLength, written);
       }
       fclose(fp);
@@ -191,7 +189,6 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
   rc = EXIT_SUCCESS;
 beach:
   // cleanup
-  delete[] components;
   grk_object_unref(codec);
   grk_object_unref(&image->obj);
   grk_deinitialize();

@@ -22,7 +22,7 @@ class RateInfo
 {
 public:
   RateInfo();
-  void synch(CompressCodeblock* cblk);
+  void synch(CodeblockCompress* cblk);
 
   uint16_t getMinimumThresh();
 

@@ -1,11 +1,26 @@
+# Copyright (C) 2016-2025 Grok Image Compression Inc.
+#
+# This source code is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License, version 3,
+# as published by the Free Software Foundation.
+#
+# This source code is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU Affero General Public License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+
 cmake_minimum_required(VERSION 3.20)
 
 project(GROK)
 
 #######################################
 # GROK version
-set(GROK_VERSION_MAJOR 15)
-set(GROK_VERSION_MINOR 1)
+set(GROK_VERSION_MAJOR 20)
+set(GROK_VERSION_MINOR 0)
 set(GROK_VERSION_PATCH 0)
 set(GROK_VERSION
   "${GROK_VERSION_MAJOR}.${GROK_VERSION_MINOR}.${GROK_VERSION_PATCH}")
@@ -27,12 +42,10 @@ set(GROK_CORE_NAME grokj2k)
 set(GROK_CODEC_NAME grokj2kcodec)
 set(GROK_PLUGIN_NAME grokj2k_plugin)
 
-set(CMAKE_CXX_STANDARD 23)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-if ( (CMAKE_CXX_COMPILER_ID MATCHES "GNU") AND (CMAKE_CXX_COMPILER_VERSION LESS 11.0) )
-   message(FATAL_ERROR "GNU compiler version must be at least 11.0")
-endif()
 
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 if (CMAKE_SYSTEM_PROCESSOR MATCHES "unknown")
   # uname -p is broken on this system.  Try uname -m
@@ -45,9 +58,13 @@ else (CMAKE_SYSTEM_PROCESSOR MATCHES "unknown")
 endif (CMAKE_SYSTEM_PROCESSOR MATCHES "unknown")
 message(STATUS "Architecture: " ${GRK_ARCH})
 
-IF(MSVC)
-    string(APPEND CMAKE_CXX_FLAGS " /EHsc /utf-8")
-ENDIF(MSVC)
+if(MSVC)
+    add_compile_options(/EHsc /utf-8)
+endif()
+
+if ( (CMAKE_CXX_COMPILER_ID MATCHES "GNU") AND (CMAKE_CXX_COMPILER_VERSION LESS 10.0) )
+   message(FATAL_ERROR "GNU compiler version must be at least 10.0")
+endif()
 
 # Set a default build type if none was specified
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
@@ -63,6 +80,11 @@ check_pie_supported(LANGUAGES CXX)
  if(CMAKE_CXX_LINK_PIE_SUPPORTED)
    set(CMAKE_POSITION_INDEPENDENT_CODE TRUE)
 endif()
+
+set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} -fno-omit-frame-pointer")
+set(CMAKE_C_FLAGS_RELWITHDEBINFO "${CMAKE_C_FLAGS_RELWITHDEBINFO} -fno-omit-frame-pointer")
+set(CMAKE_SHARED_LINKER_FLAGS_RELWITHDEBINFO "${CMAKE_SHARED_LINKER_FLAGS_RELWITHDEBINFO} -Wl,--build-id")
+
 
 # Path to additional CMake modules
 set(CMAKE_MODULE_PATH
@@ -128,10 +150,11 @@ option(GRK_BUILD_LCMS2 "Build lcms2 library" ON)
 option(GRK_BUILD_JPEG "Build jpeg library" ON)
 add_subdirectory(thirdparty)
 
+# Build Library
 option(BUILD_LUTS_GENERATOR "Build utility to generate t1_luts.h" OFF)
 
 # Build examples
-option(GRK_BUILD_CORE_EXAMPLES "Build core examples" OFF)
+option(GRK_BUILD_CORE_EXAMPLES "Build core examples" ON)
 option(GRK_BUILD_CODEC_EXAMPLES "Build codec examples" OFF)
 
 # examples use files from data folder
@@ -142,6 +165,26 @@ if (GRK_BUILD_CORE_EXAMPLES OR GRK_BUILD_CODEC_EXAMPLES)
 	  NO_CMAKE_FIND_ROOT_PATH)
 endif()
 
+if(CMAKE_BUILD_TYPE STREQUAL "Release")
+    if(WIN32)
+        # Ensure no debug symbols & remove Debug Directory
+        set(CMAKE_EXE_LINKER_FLAGS_RELEASE "${CMAKE_EXE_LINKER_FLAGS_RELEASE} /DEBUG:NONE /RELEASE")
+        set(CMAKE_SHARED_LINKER_FLAGS_RELEASE "${CMAKE_SHARED_LINKER_FLAGS_RELEASE} /DEBUG:NONE /RELEASE")
+
+        if(MSVC)
+            # Ensure MSVC does not generate .pdb files
+            set(CMAKE_MSVC_DEBUG_INFORMATION_FORMAT "None")
+        endif()
+    elseif(APPLE)
+        # Strip all local symbols for macOS
+        set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,-x")
+        set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,-x")
+    else()
+        # Strip all symbols for shared libraries on other non-Windows platforms (e.g., Linux)
+        set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,--strip-all")
+        set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,--strip-all")
+    endif()
+endif()
 
 # Build Applications
 option(GRK_BUILD_CODEC "Build the CODEC executables" ON)
@@ -151,20 +194,24 @@ mark_as_advanced(GRK_BUILD_PLUGIN_LOADER)
 # Add an option to enable or disable the ExifTool check
 option(GRK_ENABLE_EXIFTOOL "Enable detection of ExifTool Perl module" ON)
 
-# Check for Perl library
+# Check for Perl libraries and ExifTool only if the option is enabled
 if (GRK_ENABLE_EXIFTOOL)
-  find_package(PerlLibs)
-  if (PERLLIBS_FOUND)
-    message(STATUS "Perl libraries found")
-    execute_process(COMMAND ${PERL_EXECUTABLE} -MImage::ExifTool -e ""
-      ERROR_QUIET RESULT_VARIABLE status)
-      if (NOT status)
-          message(STATUS "ExifTool Perl module found")
-          set(GROK_HAVE_EXIFTOOL define)
-      else()
-          message(STATUS "ExifTool Perl module not found")
-      endif()
-  endif(PERLLIBS_FOUND)
+    find_package(PerlLibs)
+    if (PERLLIBS_FOUND)
+        message(STATUS "Perl libraries found")
+        execute_process(COMMAND ${PERL_EXECUTABLE} -MImage::ExifTool -e ""
+            ERROR_QUIET RESULT_VARIABLE status)
+        if (NOT status)
+            message(STATUS "ExifTool Perl module found")
+            set(GROK_HAVE_EXIFTOOL define)
+        else()
+            message(STATUS "ExifTool Perl module not found")
+        endif()
+    else()
+        message(STATUS "Perl libraries not found")
+    endif()
+else()
+    message(STATUS "ExifTool detection is disabled")
 endif()
 
 add_subdirectory(src/lib/core)
@@ -181,6 +228,7 @@ if(GRK_BUILD_CORE_SWIG_BINDINGS)
     # Add the bindings subdirectory where the SWIG interface for grok_core is located
     add_subdirectory(bindings/swig)
 endif()
+
 
 
 if(GRK_BUILD_CODEC)
@@ -214,6 +262,7 @@ if(BUILD_TESTING AND GRK_BUILD_CODEC)
 	  PATHS $ENV{GRK_DATA_ROOT} ${CMAKE_SOURCE_DIR}/../grok-test-data
 	  NO_CMAKE_FIND_ROOT_PATH)
 	add_subdirectory(tests)
+  set(GRK_BUILD_CORE_EXAMPLES ON CACHE BOOL "Build core examples" FORCE)
 endif()
 
 # install all targets referenced as GrokTargets
@@ -235,7 +284,6 @@ if (BUILD_SHARED_LIBS AND NOT CMAKE_SYSTEM_NAME STREQUAL Emscripten)
   install(FILES ${CMAKE_CURRENT_BINARY_DIR}/GrokConfig.cmake
           DESTINATION ${GROK_INSTALL_PACKAGE_DIR})
 endif()
-
 
 if(GRK_BUILD_DOC)
    install(FILES LICENSE DESTINATION ${CMAKE_INSTALL_DOCDIR})

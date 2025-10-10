@@ -12,6 +12,7 @@
  *
  *    You should have received a copy of the GNU Affero General Public License
  *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
  */
 
 #include <stdlib.h>
@@ -21,7 +22,7 @@
 int LLVMFuzzerTestOneInput(void* buf, size_t len);
 int LLVMFuzzerInitialize(int* argc, char*** argv);
 
-int main(int argc, char* argv[])
+int main(int argc, const char* argv[])
 {
   // parse command line args
   LLVMFuzzerInitialize(&argc, &argv);

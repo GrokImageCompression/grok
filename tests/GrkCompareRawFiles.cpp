@@ -13,67 +13,70 @@
  *    You should have received a copy of the GNU Affero General Public License
  *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
- *
- *    This source code incorporates work covered by the BSD 2-clause license.
- *    Please see the LICENSE file in the root directory for details.
  */
 
-#include <cctype>
-#include <cstdio>
-#include <cstdlib>
-#include <cstring>
+#include <memory>
 #include <string>
-
-#define TCLAP_NAMESTARTSTRING "-"
-#include "tclap/CmdLine.h"
+#include <filesystem>
 #include "test_common.h"
+#include <CLI/CLI.hpp>
+#include "grk_apps_config.h"
+#include "spdlog/spdlog.h"
 #include "GrkCompareRawFiles.h"
 
 namespace grk
 {
 
-struct test_cmp_parameters
+namespace fs = std::filesystem;
+
+struct TestCmpParameters
 {
-  char base_filename[4096];
-  char test_filename[4096];
+  std::string base_filename;
+  std::string test_filename;
 };
 
-static void compare_raw_files_help_display(void)
+// RAII wrapper for FILE*
+struct FileCloser
 {
-  fprintf(stdout, "\nList of parameters for the compare_raw_files function  \n");
-  fprintf(stdout, "\n");
-  fprintf(stdout, "  -b \t REQUIRED \t filename to the reference/baseline RAW image \n");
-  fprintf(stdout, "  -t \t REQUIRED \t filename to the test RAW image\n");
-  fprintf(stdout, "\n");
+  void operator()(FILE* file) const
+  {
+    if(file)
+    {
+      fclose(file);
+    }
+  }
+};
+using FilePtr = std::unique_ptr<FILE, FileCloser>;
+
+static void compare_raw_files_help_display()
+{
+  std::cout << "\nList of parameters for the compare_raw_files utility\n\n"
+            << "-b  REQUIRED  Reference/baseline RAW image file\n"
+            << "-t  REQUIRED  Test RAW image file\n"
+            << "\n";
 }
-static int parse_cmdline_cmp(int argc, char** argv, test_cmp_parameters* param)
+
+static int parse_cmdline_cmp(int argc, char** argv, TestCmpParameters& param)
 {
-  int index = 0;
+  CLI::App app{"compare_raw_files command line"};
+
+  app.add_option("-b,--base", param.base_filename, "Base file")
+      ->required()
+      ->check(CLI::ExistingFile);
+  app.add_option("-t,--test", param.test_filename, "Test file")
+      ->required()
+      ->check(CLI::ExistingFile);
+
   try
   {
-    TCLAP::CmdLine cmd("compare_raw_files command line", ' ', "");
-
-    TCLAP::ValueArg<std::string> baseArg("b", "base", "base file", false, "", "string", cmd);
-    TCLAP::ValueArg<std::string> testArg("t", "test", "test file", false, "", "string", cmd);
-    cmd.parse(argc, argv);
-    if(baseArg.isSet())
-    {
-      strcpy(param->base_filename, baseArg.getValue().c_str());
-      index++;
-    }
-    if(testArg.isSet())
-    {
-      strcpy(param->test_filename, testArg.getValue().c_str());
-      index++;
-    }
+    app.parse(argc, argv);
   }
-  catch(const TCLAP::ArgException& e) // catch any exceptions
+  catch(const CLI::ParseError& e)
   {
-    std::cerr << "error: " << e.error() << " for arg " << e.argId() << std::endl;
-    return 0;
+    return app.exit(e);
   }
 
-  return index;
+  return 0;
 }
 
 int GrkCompareRawFiles::main(int argc, char** argv)
@@ -85,74 +88,83 @@ int GrkCompareRawFiles::main(int argc, char** argv)
     out += std::string(" ") + argv[i];
   }
   out += "\n";
-  printf("%s", out.c_str());
+  spdlog::debug(out);
 #endif
-  int pos = 0;
-  test_cmp_parameters inParam;
-  FILE *file_test = nullptr, *file_base = nullptr;
-  bool equal = false;
-  if(parse_cmdline_cmp(argc, argv, &inParam) == 1)
+
+  TestCmpParameters params;
+  if(parse_cmdline_cmp(argc, argv, params) != 0)
   {
     compare_raw_files_help_display();
-    goto cleanup;
+    return EXIT_FAILURE;
   }
+
+  // Log parameters
+  spdlog::info("******Parameters*********");
+  spdlog::info("Base_filename = {}", params.base_filename);
+  spdlog::info("Test_filename = {}", params.test_filename);
 
 #ifdef COPY_TEST_FILES_TO_REPO
-  rename(inParam.test_filename, inParam.base_filename);
+  if(!fs::exists(params.base_filename))
+  {
+    try
+    {
+      fs::rename(params.test_filename, params.base_filename);
+    }
+    catch(const fs::filesystem_error& e)
+    {
+      spdlog::error("Failed to rename test file to base file: {}", e.what());
+      return EXIT_FAILURE;
+    }
+  }
 #endif
 
-  file_test = fopen(inParam.test_filename, "rb");
-  if(!file_test)
-  {
-    fprintf(stderr, "Failed to open %s for reading !!\n", inParam.test_filename);
-    goto cleanup;
-  }
-  file_base = fopen(inParam.base_filename, "rb");
+  // Open files with RAII
+  FilePtr file_base(fopen(params.base_filename.c_str(), "rb"));
   if(!file_base)
   {
-    fprintf(stderr, "Failed to open %s for reading !!\n", inParam.base_filename);
-    goto cleanup;
+    spdlog::error("Failed to open base file for reading: {}", params.base_filename);
+    return EXIT_FAILURE;
   }
-  equal = true;
-  while(equal)
+
+  FilePtr file_test(fopen(params.test_filename.c_str(), "rb"));
+  if(!file_test)
   {
-    bool value_test = false;
-    bool eof_test = false;
-    bool value_base = false;
-    bool eof_base = false;
+    spdlog::error("Failed to open test file for reading: {}", params.test_filename);
+    return EXIT_FAILURE;
+  }
 
-    if(!fread(&value_test, 1, 1, file_test))
-      eof_test = true;
-    if(!fread(&value_base, 1, 1, file_base))
-      eof_base = true;
+  // Compare files byte by byte
+  uint32_t pos = 0;
+  while(true)
+  {
+    uint8_t value_test = 0;
+    uint8_t value_base = 0;
+    bool eof_test = (fread(&value_test, 1, 1, file_test.get()) != 1);
+    bool eof_base = (fread(&value_base, 1, 1, file_base.get()) != 1);
+
     if(eof_test && eof_base)
-      break;
-
-    /* End of file reached only by one file?*/
-    if(eof_test || eof_base)
     {
-      fprintf(stdout, "Files have different sizes.\n");
-      equal = false;
+      // Both files reached EOF simultaneously
+      break;
     }
+
+    if(eof_test != eof_base)
+    {
+      spdlog::error("Files have different sizes at position {}", pos);
+      return EXIT_FAILURE;
+    }
+
     if(value_test != value_base)
     {
-      fprintf(stdout,
-              "Binary values read in the file are different %x vs %x at "
-              "position %u.\n",
-              value_test, value_base, pos);
-      equal = false;
+      spdlog::error("Binary values differ at position {}: 0x{:02x} vs 0x{:02x}", pos, value_test,
+                    value_base);
+      return EXIT_FAILURE;
     }
     pos++;
   }
-  if(equal)
-    fprintf(stdout, "---- TEST SUCCEED: Files are equal ----\n");
-cleanup:
-  if(file_test)
-    fclose(file_test);
-  if(file_base)
-    fclose(file_base);
 
-  return equal ? EXIT_SUCCESS : EXIT_FAILURE;
+  spdlog::info("---- TEST SUCCEEDED: Files are identical ----");
+  return EXIT_SUCCESS;
 }
 
 } // namespace grk

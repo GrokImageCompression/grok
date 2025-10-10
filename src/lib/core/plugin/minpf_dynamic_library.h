@@ -1,4 +1,4 @@
-/**
+/*
  *    Copyright (C) 2016-2025 Grok Image Compression Inc.
  *
  *    This source code is free software: you can redistribute it and/or  modify

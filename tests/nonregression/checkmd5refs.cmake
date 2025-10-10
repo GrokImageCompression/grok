@@ -13,9 +13,7 @@
 #    You should have received a copy of the GNU Affero General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-#
-#    This source code incorporates work covered by the BSD 2-clause license.
-#    Please see the LICENSE file in the root directory for details.
+
 
 # check md5 refs
 #
@@ -39,29 +37,38 @@
 # OUTFILENAME: The name of the generated file we want to check The script will
 # check whether a PGX or a PNG file was generated in the test suite (computed
 # from OUTFILENAME)
+# Extract filename without extension
+get_filename_component(OUTFILENAME_NAME_WE ${OUTFILENAME} NAME_WE)
 
-get_filename_component(OUTFILENAME_NAME ${OUTFILENAME} NAME)
-string(FIND ${OUTFILENAME_NAME} "." SHORTEST_EXT_POS REVERSE)
-string(SUBSTRING ${OUTFILENAME_NAME} 0 ${SHORTEST_EXT_POS} OUTFILENAME_NAME_WE)
-file(GLOB globfiles "Temporary/${OUTFILENAME_NAME_WE}*.pgx" "Temporary/${OUTFILENAME_NAME_WE}*.png" "Temporary/${OUTFILENAME_NAME_WE}*.bmp" "Temporary/${OUTFILENAME_NAME_WE}*.tif")
+# Search for the files with different extensions
+file(GLOB globfiles
+    "Temporary/${OUTFILENAME_NAME_WE}*.pgx"
+    "Temporary/${OUTFILENAME_NAME_WE}*.pgm"
+    "Temporary/${OUTFILENAME_NAME_WE}*.png"
+    "Temporary/${OUTFILENAME_NAME_WE}*.bmp"
+    "Temporary/${OUTFILENAME_NAME_WE}*.tif")
+
+# Check if no files are found
 if(NOT globfiles)
-  message(SEND_ERROR "Could not find output PGX files: ${OUTFILENAME_NAME_WE}")
+    message(SEND_ERROR "Could not find output PGX/PGM/PNG/BMP/TIF files: ${OUTFILENAME_NAME_WE}")
 endif()
 
-# REFFILE follow what `md5sum -c` would expect as input:
-file(READ ${REFFILE} variable)
+# Read the reference file (REFFILE) content to variable
+file(READ ${REFFILE} ref_content)
 
-foreach(pgxfullpath ${globfiles})
-  file(MD5 ${pgxfullpath} output)
-  get_filename_component(pgxfile ${pgxfullpath} NAME)
+# Loop through all globbed files and compare MD5 hash
+foreach(file_path ${globfiles})
+  # Get MD5 hash and filename
+  file(MD5 ${file_path} file_md5)
+  get_filename_component(file_name ${file_path} NAME)
 
-  string(REGEX MATCH "[0-9a-f]+  ${pgxfile}" output_var "${variable}")
+  # Construct the expected output format: "md5_hash  filename"
+  set(expected_entry "${file_md5}  ${file_name}")
 
-  set(output "${output}  ${pgxfile}")
-
-  if("${output_var}" STREQUAL "${output}")
-    message(STATUS "equal: [${output_var}] vs [${output}]")
+  # Check if the expected entry exists in the reference content
+  if(ref_content MATCHES "${expected_entry}")
+    message(STATUS "Match: [${expected_entry}]")
   else()
-    message(SEND_ERROR "not equal: [${output_var}] vs [${output}]")
+    message(SEND_ERROR "Mismatch: Expected [${expected_entry}] was not found in reference file")
   endif()
 endforeach()

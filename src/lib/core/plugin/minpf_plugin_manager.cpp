@@ -1,4 +1,4 @@
-/**
+/*
  *    Copyright (C) 2016-2025 Grok Image Compression Inc.
  *
  *    This source code is free software: you can redistribute it and/or  modify
@@ -14,6 +14,7 @@
  *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
+
 #include <plugin/minpf_plugin.h>
 #include <plugin/minpf_plugin_manager.h>
 #include <filesystem>
@@ -90,7 +91,7 @@ void minpf_initialize_plugin_manager(minpf_plugin_manager* manager)
   manager->platformServices.invokeService = nullptr;
   manager->platformServices.registerObject = minpf_register_object;
 
-  manager->plugins = new std::map<const char*, minpf_register_params*>();
+  manager->plugins = new std::unordered_map<const char*, minpf_register_params*>();
 }
 
 minpf_plugin_manager* minpf_get_plugin_manager(void)

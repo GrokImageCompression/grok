@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../core/async.hpp"
+#include "../taskflow.hpp"
 
 namespace tf::detail {
 
@@ -39,7 +39,8 @@ inline T* align_cacheline(T* p) {
 #else
   std::size_t ip = reinterpret_cast<std::size_t>(p);
 #endif
-  ip = (ip + cacheline_size - 1) & -cacheline_size;
+  //ip = (ip + cacheline_size - 1) & -cacheline_size;
+  ip = (ip + cacheline_size - 1) & ~(cacheline_size - 1);
   return reinterpret_cast<T*>(ip);
 }
 
@@ -224,7 +225,7 @@ std::pair<Iter, bool> partition_right_branchless(Iter begin, Iter end, Compare c
 
       // Fill the offset blocks.
       if (left_split >= block_size) {
-        for (size_t i = 0; i < block_size;) {
+        for (unsigned char i = 0; i < block_size;) {
           offsets_l[num_l] = i++; num_l += !comp(*first, pivot); ++first;
           offsets_l[num_l] = i++; num_l += !comp(*first, pivot); ++first;
           offsets_l[num_l] = i++; num_l += !comp(*first, pivot); ++first;
@@ -235,13 +236,13 @@ std::pair<Iter, bool> partition_right_branchless(Iter begin, Iter end, Compare c
           offsets_l[num_l] = i++; num_l += !comp(*first, pivot); ++first;
         }
       } else {
-        for (size_t i = 0; i < left_split;) {
+        for (unsigned char i = 0; i < left_split;) {
           offsets_l[num_l] = i++; num_l += !comp(*first, pivot); ++first;
         }
       }
 
       if (right_split >= block_size) {
-        for (size_t i = 0; i < block_size;) {
+        for (unsigned char i = 0; i < block_size;) {
           offsets_r[num_r] = ++i; num_r += comp(*--last, pivot);
           offsets_r[num_r] = ++i; num_r += comp(*--last, pivot);
           offsets_r[num_r] = ++i; num_r += comp(*--last, pivot);
@@ -252,7 +253,7 @@ std::pair<Iter, bool> partition_right_branchless(Iter begin, Iter end, Compare c
           offsets_r[num_r] = ++i; num_r += comp(*--last, pivot);
         }
       } else {
-        for (size_t i = 0; i < right_split;) {
+        for (unsigned char i = 0; i < right_split;) {
           offsets_r[num_r] = ++i; num_r += comp(*--last, pivot);
         }
       }
@@ -387,7 +388,7 @@ RandItr partition_left(RandItr begin, RandItr end, Compare comp) {
 
 template<typename Iter, typename Compare, bool Branchless>
 void parallel_pdqsort(
-  tf::Runtime& rt,
+  Runtime& rt,
   Iter begin, Iter end, Compare comp,
   int bad_allowed, bool leftmost = true
 ) {
@@ -512,13 +513,12 @@ void parallel_pdqsort(
 
     // Sort the left partition first using recursion and
     // do tail recursion elimination for the right-hand partition.
-    rt.silent_async(
-      [&rt, begin, pivot_pos, comp, bad_allowed, leftmost] () mutable {
-        parallel_pdqsort<Iter, Compare, Branchless>(
-          rt, begin, pivot_pos, comp, bad_allowed, leftmost
-        );
-      }
-    );
+    // here we need to copy runtime so it stays alive during the sort recursion
+    rt.silent_async([=] () mutable {
+      parallel_pdqsort<Iter, Compare, Branchless>(
+        rt, begin, pivot_pos, comp, bad_allowed, leftmost
+      );
+    });
     begin = pivot_pos + 1;
     leftmost = false;
   }
@@ -530,7 +530,7 @@ void parallel_pdqsort(
 
 // 3-way quick sort
 template <typename RandItr, typename C>
-void parallel_3wqsort(tf::Runtime& rt, RandItr first, RandItr last, C compare) {
+void parallel_3wqsort(Runtime& rt, RandItr first, RandItr last, C compare) {
 
   using namespace std::string_literals;
 
@@ -573,26 +573,15 @@ void parallel_3wqsort(tf::Runtime& rt, RandItr first, RandItr last, C compare) {
   }
 
   if(l - first > 1 && is_swapped_l) {
-    //rt.emplace([&](tf::Runtime& rtl) mutable {
-    //  parallel_3wqsort(rtl, first, l-1, compare);
-    //});
-    rt.silent_async([&rt, first, l, &compare] () mutable {
+    rt.silent_async([=] () mutable {
       parallel_3wqsort(rt, first, l-1, compare);
     });
   }
 
   if(last - r > 1 && is_swapped_r) {
-    //rt.emplace([&](tf::Runtime& rtr) mutable {
-    //  parallel_3wqsort(rtr, r+1, last, compare);
-    //});
-    //rt.silent_async([&rt, r, last, &compare] () mutable {
-    //  parallel_3wqsort(rt, r+1, last, compare);
-    //});
     first = r+1;
     goto sort_partition;
   }
-
-  //rt.join();
 }
 
 }  // end of namespace tf::detail ---------------------------------------------
@@ -601,7 +590,7 @@ namespace tf {
 
 // Function: make_sort_task
 template <typename B, typename E, typename C>
-TF_FORCE_INLINE auto make_sort_task(B b, E e, C cmp) {
+auto make_sort_task(B b, E e, C cmp) {
   
   return [b, e, cmp] (Runtime& rt) mutable {
 
@@ -625,18 +614,18 @@ TF_FORCE_INLINE auto make_sort_task(B b, E e, C cmp) {
       return;
     }
 
-    //parallel_3wqsort(rt, beg, end-1, cmp);
+    PreemptionGuard preemption_guard(rt);
+
+    //detail::parallel_3wqsort(rt, beg, end-1, cmp);
     detail::parallel_pdqsort<B_t, C,
       is_std_compare_v<std::decay_t<C>> &&
       std::is_arithmetic_v<typename std::iterator_traits<B_t>::value_type>
-    >(rt, beg, end, cmp, log2(end - beg));
-
-    rt.corun_all();
+    >(rt, beg, end, cmp, log2(size_t(end - beg)));
   };
 }
   
 template <typename B, typename E>
-TF_FORCE_INLINE auto make_sort_task(B beg, E end) {
+auto make_sort_task(B beg, E end) {
   using value_type = std::decay_t<decltype(*std::declval<B>())>;
   return make_sort_task(beg, end, std::less<value_type>{});
 }

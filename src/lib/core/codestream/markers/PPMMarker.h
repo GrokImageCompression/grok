@@ -13,10 +13,6 @@
  *    You should have received a copy of the GNU Affero General Public License
  *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
- *
- *    This source code incorporates work covered by the BSD 2-clause license.
- *    Please see the LICENSE file in the root directory for details.
- *
  */
 
 #pragma once
@@ -38,13 +34,13 @@ public:
   ~PPMMarker();
 
   /**
-    * Read a PPM marker (Packed headers, main header)
-    *
-    * @param       headerData   the data contained in the POC box.
-    * @param       header_size   the size of the data contained in the POC marker.
+   * Read a PPM marker (Packed headers, main header)
+   *
+   * @param       headerData   the data contained in the POC box.
+   * @param       headerSize   the size of the data contained in the POC marker.
 
-    */
-  bool read(uint8_t* headerData, uint16_t header_size);
+   */
+  bool read(uint8_t* headerData, uint16_t headerSize);
 
   /**
    * Merges all PPM markers read (Packed headers, main header)
@@ -52,7 +48,7 @@ public:
    */
   bool merge(void);
 
-  std::vector<grk_buf8> packetHeaders;
+  std::vector<Buffer8> packetHeaders;
 
 private:
   /** number of ppm markers (reserved size) */

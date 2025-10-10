@@ -12,10 +12,6 @@
  *
  *    You should have received a copy of the GNU Affero General Public License
  *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
- *
- *    This source code incorporates work covered by the BSD 2-clause license.
- *    Please see the LICENSE file in the root directory for details.
  *
  */
 
@@ -30,28 +26,32 @@ PPMMarker::~PPMMarker()
   if(markers)
   {
     for(uint32_t i = 0U; i < markers_count; ++i)
-      grk_free(markers[i].data_);
+    {
+      if(markers[i].data_ != nullptr)
+        grk_free(markers[i].data_);
+    }
     markers_count = 0U;
     grk_free(markers);
   }
   delete[] buffer;
 }
 
-bool PPMMarker::read(uint8_t* headerData, uint16_t header_size)
+bool PPMMarker::read(uint8_t* headerData, uint16_t headerSize)
 {
   uint8_t i_ppm;
+
   assert(headerData != nullptr);
 
   /* We need to have the i_ppm element + 1 byte of Nppm/Ippm at minimum */
-  if(header_size < 2)
+  if(headerSize < 2)
   {
     grklog.error("Error reading PPM marker");
     return false;
   }
 
   /* i_ppm */
-  grk_read(headerData++, &i_ppm);
-  --header_size;
+  grk_read(&headerData, &i_ppm);
+  --headerSize;
 
   /* check allocation needed */
   if(!markers)
@@ -73,6 +73,7 @@ bool PPMMarker::read(uint8_t* headerData, uint16_t header_size)
     auto new_ppm_markers = (grk_ppx*)grk_realloc(markers, newCount * sizeof(grk_ppx));
     if(new_ppm_markers == nullptr)
     {
+      /* clean up to be done on cp destruction */
       grklog.error("Not enough memory to read PPM marker");
       return false;
     }
@@ -83,18 +84,20 @@ bool PPMMarker::read(uint8_t* headerData, uint16_t header_size)
 
   if(markers[i_ppm].data_ != nullptr)
   {
+    /* clean up to be done on cp destruction */
     grklog.error("ippm %u already read", i_ppm);
     return false;
   }
 
-  markers[i_ppm].data_ = (uint8_t*)grk_malloc(header_size);
+  markers[i_ppm].data_ = (uint8_t*)grk_malloc(headerSize);
   if(markers[i_ppm].data_ == nullptr)
   {
+    /* clean up to be done on cp destruction */
     grklog.error("Not enough memory to read PPM marker");
     return false;
   }
-  markers[i_ppm].data_size_ = header_size;
-  memcpy(markers[i_ppm].data_, headerData, header_size);
+  markers[i_ppm].data_size_ = headerSize;
+  memcpy(markers[i_ppm].data_, headerData, headerSize);
 
   return true;
 }
@@ -110,117 +113,120 @@ bool PPMMarker::merge()
   {
     if(markers[i].data_ != nullptr)
     { /* standard doesn't seem to require contiguous Zppm */
-      uint32_t bytes_remaining = markers[i].data_size_;
+      uint32_t data_size = markers[i].data_size_;
       const uint8_t* data = markers[i].data_;
 
-      if(N_ppm_remaining >= bytes_remaining)
+      if(N_ppm_remaining >= data_size)
       {
-        N_ppm_remaining -= bytes_remaining;
-        bytes_remaining = 0U;
+        N_ppm_remaining -= data_size;
+        data_size = 0U;
       }
       else
       {
         data += N_ppm_remaining;
-        bytes_remaining -= N_ppm_remaining;
+        data_size -= N_ppm_remaining;
         N_ppm_remaining = 0U;
       }
-      if(bytes_remaining > 0U)
+      if(data_size > 0U)
       {
         do
         {
           /* read Nppm */
-          if(bytes_remaining < 4U)
+          if(data_size < 4U)
           {
+            /* clean up to be done on cp destruction */
             grklog.error("Not enough bytes to read Nppm");
             return false;
           }
           uint32_t N_ppm;
-          grk_read(data, &N_ppm);
-          data += 4;
-          bytes_remaining -= 4;
-          packetHeaders.push_back(grk_buf8(nullptr, total_data_size, N_ppm, false));
-          total_data_size += N_ppm;
-          if(bytes_remaining >= N_ppm)
+          grk_read((uint8_t**)&data, &N_ppm);
+          data_size -= 4;
+          packetHeaders.push_back(Buffer8(nullptr, total_data_size, N_ppm, false));
+          total_data_size += N_ppm; /* can't overflow, max 256 markers of max 65536 bytes,
+                         that is when PPM markers are not corrupted
+                          which is checked elsewhere */
+          if(data_size >= N_ppm)
           {
-            bytes_remaining -= N_ppm;
+            data_size -= N_ppm;
             data += N_ppm;
           }
           else
           {
-            N_ppm_remaining = N_ppm - bytes_remaining;
-            bytes_remaining = 0U;
+            N_ppm_remaining = N_ppm - data_size;
+            data_size = 0U;
           }
-        } while(bytes_remaining > 0U);
+        } while(data_size > 0U);
       }
     }
   }
   if(N_ppm_remaining != 0U)
   {
+    /* clean up to be done on cp destruction */
     grklog.error("Corrupted PPM markers");
     return false;
   }
   buffer = new uint8_t[total_data_size];
   for(auto& b : packetHeaders)
   {
-    b.buf = buffer + b.offset;
-    b.offset = 0;
+    b.set_buf(buffer + b.offset(), total_data_size - b.offset());
+    b.set_offset(0);
   }
 
   total_data_size = 0U;
   N_ppm_remaining = 0U;
   for(uint32_t i = 0U; i < markers_count; ++i)
   {
-    if(markers[i].data_)
+    if(markers[i].data_ != nullptr)
     { /* standard doesn't seem to require contiguous Zppm */
-      uint32_t bytes_remaining = markers[i].data_size_;
+      uint32_t data_size = markers[i].data_size_;
       const uint8_t* data = markers[i].data_;
 
-      if(N_ppm_remaining >= bytes_remaining)
+      if(N_ppm_remaining >= data_size)
       {
-        memcpy(buffer + total_data_size, data, bytes_remaining);
-        total_data_size += bytes_remaining;
-        N_ppm_remaining -= bytes_remaining;
-        bytes_remaining = 0U;
+        memcpy(buffer + total_data_size, data, data_size);
+        total_data_size += data_size;
+        N_ppm_remaining -= data_size;
+        data_size = 0U;
       }
       else
       {
         memcpy(buffer + total_data_size, data, N_ppm_remaining);
         total_data_size += N_ppm_remaining;
         data += N_ppm_remaining;
-        bytes_remaining -= N_ppm_remaining;
+        data_size -= N_ppm_remaining;
         N_ppm_remaining = 0U;
       }
 
-      if(bytes_remaining > 0U)
+      if(data_size > 0U)
       {
         do
         {
           /* read Nppm */
-          if(bytes_remaining < 4U)
+          if(data_size < 4U)
           {
+            /* clean up to be done on cp destruction */
             grklog.error("Not enough bytes to read Nppm");
             return false;
           }
           uint32_t N_ppm;
-          grk_read(data, &N_ppm);
-          data += 4;
-          bytes_remaining -= 4;
+          grk_read((uint8_t**)&data, &N_ppm);
+          data_size -= 4;
 
-          if(bytes_remaining >= N_ppm)
+          if(data_size >= N_ppm)
           {
             memcpy(buffer + total_data_size, data, N_ppm);
             total_data_size += N_ppm;
-            bytes_remaining -= N_ppm;
+            data_size -= N_ppm;
             data += N_ppm;
           }
           else
           {
-            memcpy(buffer + total_data_size, data, bytes_remaining);
-            total_data_size += bytes_remaining;
-            N_ppm_remaining = N_ppm - bytes_remaining;
-            bytes_remaining = 0U;
+            memcpy(buffer + total_data_size, data, data_size);
+            total_data_size += data_size;
+            N_ppm_remaining = N_ppm - data_size;
+            data_size = 0U;
           }
-        } while(bytes_remaining > 0U);
+        } while(data_size > 0U);
       }
       grk_free(markers[i].data_);
       markers[i].data_ = nullptr;

@@ -9,11 +9,12 @@
  *    but WITHOUT ANY WARRANTY; without even the implied warranty of
  *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *    GNU Affero General Public License for more details.
-
+ *
  *    You should have received a copy of the GNU Affero General Public License
  *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
+
 #include "grk_includes.h"
 
 namespace grk
@@ -22,17 +23,17 @@ RateInfo::RateInfo() : minimumSlope(USHRT_MAX), maximumSlope(0) {}
 /*
  Synchronize with code block
  */
-void RateInfo::synch(CompressCodeblock* cblk)
+void RateInfo::synch(CodeblockCompress* cblk)
 {
-  for(auto passno = 0U; passno < cblk->numPassesTotal; passno++)
+  for(uint8_t passno = 0U; passno < cblk->getNumPasses(); passno++)
   {
-    CodePass* pass = &cblk->passes[passno];
+    auto pass = cblk->getPass(passno);
 
     // 2. only process feasible truncation points
-    if(pass->slope == 0)
+    if(pass->slope_ == 0)
       continue;
 
-    uint16_t s = pass->slope;
+    uint16_t s = pass->slope_;
 
     // 4. update min and max
     if(s < minimumSlope)

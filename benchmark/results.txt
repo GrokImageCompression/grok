@@ -1,0 +1,73 @@
+GDAL JP2 Driver Benchmarks
+
+GDAL settings:
+
+export VSI_CACHE=YES
+export CPL_VSIL_CURL_CHUNK_SIZE=1048576
+export CPL_VSIL_CURL_INITIAL_READ_SIZE=65536
+
+
+GDAl drivers: JP2Grok(Grok 20.0), JP2OpenJPEG(OpenJPEG 2.5.4) and JP2KAK (Kakadu 8.4)
+
+Timing is in seconds.
+
+
+A) Spot 6 : 26kx26k, 12 bit, 2kx2k tiles, without TLM marker
+
+Local File
+gdal_translate $HOME/spot6.jp2 -if JP2*  $HOME/spot6.tif
+
+Grok 		xx
+OpenJPEG 	xx
+KAK         xx
+
+gdal_translate $HOME/spot6.jp2 -if JP2* -srcwin 18000 18000 6000 6000 $HOME/spot6.tif
+
+Grok 		xx
+OpenJPEG 	xx
+KAK         xx
+
+MinIO with 50ms latency
+gdal_translate /vsis3/grok/spot6.jp2 -if JP2*  $HOME/spot6.tif
+
+Grok 		xx
+OpenJPEG 	xx
+KAK         xx
+
+
+gdal_translate /vsis3/grok/spot6.jp2 -if JP2* -srcwin 18000 18000 6000 6000 $HOME/spot6.tif
+
+Grok 		xx
+OpenJPEG 	xx
+KAK         xx
+
+//////////////////////////////////////////////////////////////////////////////////////////
+
+B) Spot 6 : 26kx26k, 12 bit, 2kx2k tiles, with TLM marker
+
+Local File
+gdal_translate $HOME/spot6_tlm.jp2 -if JP2*  $HOME/spot6.tif
+
+Grok 		xx
+OpenJPEG 	xx
+KAK         xx
+
+gdal_translate $HOME/spot6_tlm.jp2 -if JP2* -srcwin 18000 18000 6000 6000 $HOME/spot6.tif
+
+Grok 		xx
+OpenJPEG 	xx
+KAK         xx
+
+MinIO with 50ms latency
+gdal_translate /vsis3/grok/spot6_tlm.jp2 -if JP2*  $HOME/spot6.tif
+
+Grok 		xx
+OpenJPEG 	xx
+KAK         xx
+
+
+gdal_translate $HOME/spot6_tlm.jp2 -if JP2* -srcwin 18000 18000 6000 6000 $HOME/spot6.tif
+
+Grok 		xx
+OpenJPEG 	xx
+KAK         xx

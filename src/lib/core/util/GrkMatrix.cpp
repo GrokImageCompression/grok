@@ -12,14 +12,14 @@
  *
  *    You should have received a copy of the GNU Affero General Public License
  *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
- *
- *    This source code incorporates work covered by the BSD 2-clause license.
- *    Please see the LICENSE file in the root directory for details.
  *
  */
 
-#include <grk_includes.h>
+#include <cassert>
+#include <cstring>
+
+#include "GrkMatrix.h"
+#include "MemManager.h"
 
 namespace grk
 {
@@ -155,8 +155,8 @@ bool GrkMatrix::lupDecompose(float* matrix, uint32_t* permutations, float* p_swa
   }
   return true;
 }
-void GrkMatrix::lupSolve(float* pResult, float* pMatrix, float* pVector, uint32_t* pPermutations,
-                         uint32_t nb_compo, float* p_intermediate_data)
+void GrkMatrix::lupSolve(float* pResult, float* pMatrix, const float* pVector,
+                         uint32_t* pPermutations, uint32_t nb_compo, float* p_intermediate_data)
 {
   int32_t k;
   uint32_t i, j;

@@ -3,4 +3,4 @@
 #cmakedefine GROK_HAVE_LIBPNG @HAVE_LIBPNG@
 #cmakedefine GROK_HAVE_LIBTIFF @HAVE_LIBTIFF@
 #cmakedefine GROK_HAVE_LIBJPEG @HAVE_LIBJPEG@
-#cmakedefine GROK_HAVE_URING
+

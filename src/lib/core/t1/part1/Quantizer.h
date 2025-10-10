@@ -13,10 +13,6 @@
  *    You should have received a copy of the GNU Affero General Public License
  *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
- *
- *    This source code incorporates work covered by the BSD 2-clause license.
- *    Please see the LICENSE file in the root directory for details.
- *
  */
 
 #pragma once
@@ -44,9 +40,9 @@ public:
   void pull(grk_stepsize* stepptr);
   // for decompress
   void push(grk_stepsize* stepptr);
-  virtual void generate(uint32_t decomps, uint32_t max_bit_depth, bool color_transform,
+  virtual void generate(uint8_t decomps, uint8_t max_bit_depth, bool color_transform,
                         bool is_signed);
-  virtual bool write(BufferedStream* stream);
+  virtual bool write(IStream* stream);
 
 protected:
   uint32_t get_num_guard_bits() const;

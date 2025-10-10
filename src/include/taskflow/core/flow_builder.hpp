@@ -51,6 +51,28 @@ class FlowBuilder {
     std::enable_if_t<is_static_task_v<C>, void>* = nullptr
   >
   Task emplace(C&& callable);
+  
+  /**
+  @brief creates a runtime task
+
+  @tparam C callable type constructible from std::function<void(tf::Runtime&)>
+
+  @param callable callable to construct a runtime task
+
+  @return a tf::Task handle
+
+  The following example creates a runtime task.
+
+  @code{.cpp}
+  tf::Task static_task = taskflow.emplace([](tf::Runtime&){});
+  @endcode
+
+  Please refer to @ref RuntimeTasking for details.
+  */
+  template <typename C,
+    std::enable_if_t<is_runtime_task_v<C>, void>* = nullptr
+  >
+  Task emplace(C&& callable);
 
   /**
   @brief creates a dynamic task
@@ -343,7 +365,7 @@ class FlowBuilder {
   }
   @endcode
 
-  Iterators are templated to enable stateful range using std::reference_wrapper.
+  Iterators can be made stateful by using std::reference_wrapper
   The callable needs to take a single argument of
   the dereferenced iterator type.
 
@@ -353,7 +375,7 @@ class FlowBuilder {
   Task for_each(B first, E last, C callable, P part = P());
   
   /**
-  @brief constructs an STL-styled index-based parallel-for task 
+  @brief constructs an index-based parallel-for task 
 
   @tparam B beginning index type (must be integral)
   @tparam E ending index type (must be integral)
@@ -385,15 +407,51 @@ class FlowBuilder {
   }
   @endcode
 
-  Iterators are templated to enable stateful range using std::reference_wrapper.
+  Iterators can be made stateful by using std::reference_wrapper
   The callable needs to take a single argument of the integral index type.
 
   Please refer to @ref ParallelIterations for details.
   */
   template <typename B, typename E, typename S, typename C, typename P = DefaultPartitioner>
-  Task for_each_index(
-    B first, E last, S step, C callable, P part = P()
-  );
+  Task for_each_index(B first, E last, S step, C callable, P part = P());
+
+  /**
+  @brief constructs an index range-based parallel-for task
+
+  @tparam R index range type (tf::IndexRange)
+  @tparam C callable type
+  @tparam P partitioner type (default tf::DefaultPartitioner)
+
+  @param range index range 
+  @param callable callable object to apply to each valid index
+  @param part partitioning algorithm to schedule parallel iterations
+
+  @return a tf::Task handle
+
+  The task spawns asynchronous tasks that applies the callable object to 
+  in the range <tt>[first, last)</tt> with the step size.
+
+  @code{.cpp}
+  // [0, 17) with a step size of 2 using tf::IndexRange
+  tf::IndexRange<int> range(0, 17, 2);
+  
+  // parallelize the sequence [0, 2, 4, 6, 8, 10, 12, 14, 16]
+  taskflow.for_each_by_index(range, [](tf::IndexRange<int> range) {
+    // iterate each index in the subrange
+    for(int i=range.begin(); i<range.end(); i+=range.step_size()) {
+      printf("iterate %d\n", i);
+    }
+  });
+  
+  executor.run(taskflow).wait();
+  @endcode
+
+  The callable needs to take a single argument of type tf::IndexRange.
+
+  Please refer to @ref ParallelIterations for details.
+  */
+  template <typename R, typename C, typename P = DefaultPartitioner>
+  Task for_each_by_index(R range, C callable, P part = P());
 
   // ------------------------------------------------------------------------
   // transform
@@ -426,7 +484,7 @@ class FlowBuilder {
   }
   @endcode
 
-  Iterators are templated to enable stateful range using std::reference_wrapper.
+  Iterators can be made stateful by using std::reference_wrapper
   The callable needs to take a single argument of the dereferenced
   iterator type.
   
@@ -467,7 +525,7 @@ class FlowBuilder {
   }
   @endcode
 
-  Iterators are templated to enable stateful range using std::reference_wrapper.
+  Iterators can be made stateful by using std::reference_wrapper
   The callable needs to take two arguments of dereferenced elements
   from the two input ranges.
   
@@ -484,7 +542,7 @@ class FlowBuilder {
   // ------------------------------------------------------------------------
 
   /**
-  @brief constructs an STL-styled parallel-reduce task
+  @brief constructs an STL-styled parallel-reduction task
 
   @tparam B beginning iterator type
   @tparam E ending iterator type
@@ -511,12 +569,68 @@ class FlowBuilder {
   }
   @endcode
 
-  Iterators are templated to enable stateful range using std::reference_wrapper.
+  Iterators can be made stateful by using std::reference_wrapper
 
   Please refer to @ref ParallelReduction for details.
   */
   template <typename B, typename E, typename T, typename O, typename P = DefaultPartitioner>
   Task reduce(B first, E last, T& init, O bop, P part = P());
+
+  /**
+  @brief constructs an index range-based parallel-reduction task
+
+  @tparam R index range type (tf::IndexRange)
+  @tparam T result type
+  @tparam L local reducer type
+  @tparam G global reducer type
+  @tparam P partitioner type (default tf::DefaultPartitioner)
+
+  @param range index range 
+  @param init initial value of the reduction and the storage for the reduced result
+  @param lop binary operator that will be applied locally per worker
+  @param gop binary operator that will be applied globally among worker 
+  @param part partitioning algorithm to schedule parallel iterations
+
+  @return a tf::Task handle
+
+  The task spawns asynchronous tasks to perform parallel reduction over a range with @c init.
+  The reduced result is store in @c init.
+  Unlike the iterator-based reduction, 
+  index range-based reduction is particularly useful for applications that benefit from SIMD optimizations 
+  or other range-based processing strategies.
+
+  @code{.cpp}
+  const size_t N = 1000000;
+  std::vector<int> data(N);  // uninitialized data vector
+  int res = 1;               // res will participate in the reduction
+
+  taskflow.reduce_by_index(
+    tf::IndexRange<size_t>(0, N, 1),
+    // final result
+    res,
+    // local reducer
+    [&](tf::IndexRange<size_t> subrange, std::optional<int> running_total) -> int {
+      int residual = running_total ? *running_total : 0.0;
+      for(size_t i=subrange.begin(); i<subrange.end(); i+=subrange.step_size()) {
+        data[i] = 1.0;
+        residual += data[i];
+      }
+      printf("partial sum = %lf\n", residual);
+      return residual;
+    },
+    // global reducer
+    std::plus<int>()
+  );
+  executor.run(taskflow).wait();
+  assert(res = N + 1);
+  @endcode
+
+  Range can be made stateful by using std::reference_wrapper.
+
+  Please refer to @ref ParallelReduction for details.
+  */
+  template <typename R, typename T, typename L, typename G, typename P = DefaultPartitioner>
+  Task reduce_by_index(R range, T& init, L lop, G gop, P part = P());
   
   // ------------------------------------------------------------------------
   // transform and reduction
@@ -552,7 +666,7 @@ class FlowBuilder {
   }
   @endcode
 
-  Iterators are templated to enable stateful range using std::reference_wrapper.
+  Iterators can be made stateful by using std::reference_wrapper
 
   Please refer to @ref ParallelReduction for details.
   */
@@ -593,7 +707,7 @@ class FlowBuilder {
   }
   @endcode
  
-  Iterators are templated to enable stateful range using std::reference_wrapper.
+  Iterators can be made stateful by using std::reference_wrapper
 
   Please refer to @ref ParallelReduction for details.
   */
@@ -610,28 +724,26 @@ class FlowBuilder {
   // ------------------------------------------------------------------------
   // scan
   // ------------------------------------------------------------------------
-  
-  /**
+
+    /**
   @brief creates an STL-styled parallel inclusive-scan task
 
   @tparam B beginning iterator type
   @tparam E ending iterator type
   @tparam D destination iterator type
   @tparam BOP summation operator type
-  @tparam P partitioner type (default tf::DefaultPartitioner)
 
   @param first start of input range
   @param last end of input range
   @param d_first start of output range (may be the same as input range)
   @param bop function to perform summation
-  @param part partitioning algorithm to schedule parallel iterations
 
   Performs the cumulative sum (aka prefix sum, aka scan) of the input range
-  and writes the result to the output range. 
+  and writes the result to the output range.
   Each element of the output range contains the
   running total of all earlier elements using the given binary operator
   for summation.
-  
+
   This function generates an @em inclusive scan, meaning that the N-th element
   of the output range is the sum of the first N input elements,
   so the N-th input element is included.
@@ -642,18 +754,16 @@ class FlowBuilder {
     input.begin(), input.end(), input.begin(), std::plus<int>{}
   );
   executor.run(taskflow).wait();
-  
+
   // input is {1, 3, 6, 10, 15}
   @endcode
-  
-  Iterators are templated to enable stateful range using std::reference_wrapper.
-  
+
+  Iterators can be made stateful by using std::reference_wrapper
+
   Please refer to @ref ParallelScan for details.
   */
-  template <typename B, typename E, typename D, typename BOP, typename P = DefaultPartitioner,
-    std::enable_if_t<is_partitioner_v<std::decay_t<P>>, void>* = nullptr
-  >
-  Task inclusive_scan(B first, E last, D d_first, BOP bop, P part = P());
+  template <typename B, typename E, typename D, typename BOP>
+  Task inclusive_scan(B first, E last, D d_first, BOP bop);
   
   /**
   @brief creates an STL-styled parallel inclusive-scan task with an initial value
@@ -663,14 +773,12 @@ class FlowBuilder {
   @tparam D destination iterator type
   @tparam BOP summation operator type
   @tparam T initial value type
-  @tparam P partitioner type (default tf::DefaultPartitioner)
 
   @param first start of input range
   @param last end of input range
   @param d_first start of output range (may be the same as input range)
   @param bop function to perform summation
   @param init initial value
-  @param part partitioning algorithm to schedule parallel iterations
 
   Performs the cumulative sum (aka prefix sum, aka scan) of the input range
   and writes the result to the output range. 
@@ -692,15 +800,13 @@ class FlowBuilder {
   // input is {0, 2, 5, 9, 14}
   @endcode
   
-  Iterators are templated to enable stateful range using std::reference_wrapper.
+  Iterators can be made stateful by using std::reference_wrapper
  
   Please refer to @ref ParallelScan for details.
 
   */
-  template <typename B, typename E, typename D, typename BOP, typename T, typename P = DefaultPartitioner,
-    std::enable_if_t<!is_partitioner_v<std::decay_t<T>>, void>* = nullptr
-  >
-  Task inclusive_scan(B first, E last, D d_first, BOP bop, T init, P part = P());
+  template <typename B, typename E, typename D, typename BOP, typename T>
+  Task inclusive_scan(B first, E last, D d_first, BOP bop, T init);
   
   /**
   @brief creates an STL-styled parallel exclusive-scan task
@@ -710,14 +816,12 @@ class FlowBuilder {
   @tparam D destination iterator type
   @tparam T initial value type
   @tparam BOP summation operator type
-  @tparam P partitioner type (default tf::DefaultPartitioner)
 
   @param first start of input range
   @param last end of input range
   @param d_first start of output range (may be the same as input range)
   @param init initial value
   @param bop function to perform summation
-  @param part partitioning algorithm to schedule parallel iterations
 
   Performs the cumulative sum (aka prefix sum, aka scan) of the input range
   and writes the result to the output range. 
@@ -739,12 +843,12 @@ class FlowBuilder {
   // input is {-1, 0, 2, 5, 9}
   @endcode
   
-  Iterators are templated to enable stateful range using std::reference_wrapper.
+  Iterators can be made stateful by using std::reference_wrapper
   
   Please refer to @ref ParallelScan for details.
   */
-  template <typename B, typename E, typename D, typename T, typename BOP, typename P = DefaultPartitioner>
-  Task exclusive_scan(B first, E last, D d_first, T init, BOP bop, P part = P());
+  template <typename B, typename E, typename D, typename T, typename BOP>
+  Task exclusive_scan(B first, E last, D d_first, T init, BOP bop);
   
   // ------------------------------------------------------------------------
   // transform scan
@@ -758,14 +862,12 @@ class FlowBuilder {
   @tparam D destination iterator type
   @tparam BOP summation operator type
   @tparam UOP transform operator type
-  @tparam P partitioner type (default tf::DefaultPartitioner)
 
   @param first start of input range
   @param last end of input range
   @param d_first start of output range (may be the same as input range)
   @param bop function to perform summation
   @param uop function to transform elements of the input range
-  @param part partitioning algorithm to schedule parallel iterations
 
   Write the cumulative sum (aka prefix sum, aka scan) of the input range
   to the output range. Each element of the output range contains the
@@ -788,14 +890,12 @@ class FlowBuilder {
   // input is {-1, -3, -6, -10, -15}
   @endcode
   
-  Iterators are templated to enable stateful range using std::reference_wrapper.
+  Iterators can be made stateful by using std::reference_wrapper
   
   Please refer to @ref ParallelScan for details.
   */
-  template <typename B, typename E, typename D, typename BOP, typename UOP, typename P = DefaultPartitioner,
-    std::enable_if_t<is_partitioner_v<std::decay_t<P>>, void>* = nullptr
-  >
-  Task transform_inclusive_scan(B first, E last, D d_first, BOP bop, UOP uop, P part = P());
+  template <typename B, typename E, typename D, typename BOP, typename UOP>
+  Task transform_inclusive_scan(B first, E last, D d_first, BOP bop, UOP uop);
   
   /**
   @brief creates an STL-styled parallel transform-inclusive scan task
@@ -806,7 +906,6 @@ class FlowBuilder {
   @tparam BOP summation operator type
   @tparam UOP transform operator type
   @tparam T initial value type
-  @tparam P partitioner type (default tf::DefaultPartitioner)
 
   @param first start of input range
   @param last end of input range
@@ -814,7 +913,6 @@ class FlowBuilder {
   @param bop function to perform summation
   @param uop function to transform elements of the input range
   @param init initial value
-  @param part partitioning algorithm to schedule parallel iterations
 
   Write the cumulative sum (aka prefix sum, aka scan) of the input range
   to the output range. Each element of the output range contains the
@@ -838,14 +936,12 @@ class FlowBuilder {
   // input is {-2, -4, -7, -11, -16}
   @endcode
   
-  Iterators are templated to enable stateful range using std::reference_wrapper.
+  Iterators can be made stateful by using std::reference_wrapper
   
   Please refer to @ref ParallelScan for details.
   */
-  template <typename B, typename E, typename D, typename BOP, typename UOP, typename T, typename P = DefaultPartitioner,
-    std::enable_if_t<!is_partitioner_v<std::decay_t<T>>, void>* = nullptr
-  >
-  Task transform_inclusive_scan(B first, E last, D d_first, BOP bop, UOP uop, T init, P part = P());
+  template <typename B, typename E, typename D, typename BOP, typename UOP, typename T>
+  Task transform_inclusive_scan(B first, E last, D d_first, BOP bop, UOP uop, T init);
   
   /**
   @brief creates an STL-styled parallel transform-exclusive scan task
@@ -856,7 +952,6 @@ class FlowBuilder {
   @tparam BOP summation operator type
   @tparam UOP transform operator type
   @tparam T initial value type
-  @tparam P partitioner type (default tf::DefaultPartitioner)
 
   @param first start of input range
   @param last end of input range
@@ -864,7 +959,6 @@ class FlowBuilder {
   @param bop function to perform summation
   @param uop function to transform elements of the input range
   @param init initial value
-  @param part partitioning algorithm to schedule parallel iterations
 
   Write the cumulative sum (aka prefix sum, aka scan) of the input range
   to the output range. Each element of the output range contains the
@@ -887,12 +981,12 @@ class FlowBuilder {
   // input is {-1, -2, -4, -7, -11}
   @endcode
   
-  Iterators are templated to enable stateful range using std::reference_wrapper.
+  Iterators can be made stateful by using std::reference_wrapper
   
   Please refer to @ref ParallelScan for details.
   */
-  template <typename B, typename E, typename D, typename T, typename BOP, typename UOP, typename P = DefaultPartitioner>
-  Task transform_exclusive_scan(B first, E last, D d_first, T init, BOP bop, UOP uop, P part = P());
+  template <typename B, typename E, typename D, typename T, typename BOP, typename UOP>
+  Task transform_exclusive_scan(B first, E last, D d_first, T init, BOP bop, UOP uop);
 
   // ------------------------------------------------------------------------
   // find
@@ -941,7 +1035,7 @@ class FlowBuilder {
   assert(*result == 22);
   @endcode
   
-  Iterators are templated to enable stateful range using std::reference_wrapper.
+  Iterators can be made stateful by using std::reference_wrapper
   */
   template <typename B, typename E, typename T, typename UOP, typename P = DefaultPartitioner>
   Task find_if(B first, E last, T &result, UOP predicate, P part = P());
@@ -989,7 +1083,7 @@ class FlowBuilder {
   assert(*result == 22);
   @endcode
   
-  Iterators are templated to enable stateful range using std::reference_wrapper.
+  Iterators can be made stateful by using std::reference_wrapper
   */
   template <typename B, typename E, typename T, typename UOP, typename P = DefaultPartitioner>
   Task find_if_not(B first, E last, T &result, UOP predicate, P part = P());
@@ -1041,7 +1135,7 @@ class FlowBuilder {
   assert(*result == -1);
   @endcode
   
-  Iterators are templated to enable stateful range using std::reference_wrapper.
+  Iterators can be made stateful by using std::reference_wrapper
   */
   template <typename B, typename E, typename T, typename C, typename P>
   Task min_element(B first, E last, T& result, C comp, P part);
@@ -1093,7 +1187,7 @@ class FlowBuilder {
   assert(*result == 2);
   @endcode
   
-  Iterators are templated to enable stateful range using std::reference_wrapper.
+  Iterators can be made stateful by using std::reference_wrapper
   */
   template <typename B, typename E, typename T, typename C, typename P>
   Task max_element(B first, E last, T& result, C comp, P part);
@@ -1116,7 +1210,7 @@ class FlowBuilder {
   The task spawns asynchronous tasks to sort elements in the range
   <tt>[first, last)</tt> in parallel.
 
-  Iterators are templated to enable stateful range using std::reference_wrapper.
+  Iterators can be made stateful by using std::reference_wrapper
 
   Please refer to @ref ParallelSort for details.
   */
@@ -1137,7 +1231,7 @@ class FlowBuilder {
   <tt>[first, last)</tt> using the @c std::less<T> comparator,
   where @c T is the dereferenced iterator type.
 
-  Iterators are templated to enable stateful range using std::reference_wrapper.
+  Iterators can be made stateful by using std::reference_wrapper
 
   Please refer to @ref ParallelSort for details.
    */
@@ -1165,15 +1259,23 @@ inline FlowBuilder::FlowBuilder(Graph& graph) :
 // Function: emplace
 template <typename C, std::enable_if_t<is_static_task_v<C>, void>*>
 Task FlowBuilder::emplace(C&& c) {
-  return Task(_graph._emplace_back("", 0, nullptr, nullptr, 0,
+  return Task(_graph._emplace_back(NSTATE::NONE, ESTATE::NONE, DefaultTaskParams{}, nullptr, nullptr, 0,
     std::in_place_type_t<Node::Static>{}, std::forward<C>(c)
+  ));
+}
+
+// Function: emplace
+template <typename C, std::enable_if_t<is_runtime_task_v<C>, void>*>
+Task FlowBuilder::emplace(C&& c) {
+  return Task(_graph._emplace_back(NSTATE::NONE, ESTATE::NONE, DefaultTaskParams{}, nullptr, nullptr, 0,
+    std::in_place_type_t<Node::Runtime>{}, std::forward<C>(c)
   ));
 }
 
 // Function: emplace
 template <typename C, std::enable_if_t<is_subflow_task_v<C>, void>*>
 Task FlowBuilder::emplace(C&& c) {
-  return Task(_graph._emplace_back("", 0, nullptr, nullptr, 0,
+  return Task(_graph._emplace_back(NSTATE::NONE, ESTATE::NONE, DefaultTaskParams{}, nullptr, nullptr, 0,
     std::in_place_type_t<Node::Subflow>{}, std::forward<C>(c)
   ));
 }
@@ -1181,7 +1283,7 @@ Task FlowBuilder::emplace(C&& c) {
 // Function: emplace
 template <typename C, std::enable_if_t<is_condition_task_v<C>, void>*>
 Task FlowBuilder::emplace(C&& c) {
-  return Task(_graph._emplace_back("", 0, nullptr, nullptr, 0,
+  return Task(_graph._emplace_back(NSTATE::NONE, ESTATE::NONE, DefaultTaskParams{}, nullptr, nullptr, 0,
     std::in_place_type_t<Node::Condition>{}, std::forward<C>(c)
   ));
 }
@@ -1189,9 +1291,26 @@ Task FlowBuilder::emplace(C&& c) {
 // Function: emplace
 template <typename C, std::enable_if_t<is_multi_condition_task_v<C>, void>*>
 Task FlowBuilder::emplace(C&& c) {
-  return Task(_graph._emplace_back("", 0, nullptr, nullptr, 0,
+  return Task(_graph._emplace_back(NSTATE::NONE, ESTATE::NONE, DefaultTaskParams{}, nullptr, nullptr, 0,
     std::in_place_type_t<Node::MultiCondition>{}, std::forward<C>(c)
   ));
+}
+
+// Function: composed_of
+template <typename T>
+Task FlowBuilder::composed_of(T& object) {
+  auto node = _graph._emplace_back(NSTATE::NONE, ESTATE::NONE, DefaultTaskParams{}, nullptr, nullptr, 0,
+    std::in_place_type_t<Node::Module>{}, object
+  );
+  return Task(node);
+}
+
+// Function: placeholder
+inline Task FlowBuilder::placeholder() {
+  auto node = _graph._emplace_back(NSTATE::NONE, ESTATE::NONE, DefaultTaskParams{}, nullptr, nullptr, 0,
+    std::in_place_type_t<Node::Placeholder>{}
+  );
+  return Task(node);
 }
 
 // Function: emplace
@@ -1207,39 +1326,19 @@ inline void FlowBuilder::erase(Task task) {
     return;
   }
 
-  task.for_each_dependent([&] (Task dependent) {
-    auto& S = dependent._node->_successors;
-    if(auto I = std::find(S.begin(), S.end(), task._node); I != S.end()) {
-      S.erase(I);
-    }
-  });
+  // remove task from its successors' predecessor list
+  for(size_t i=0; i<task._node->_num_successors; ++i) {
+    task._node->_edges[i]->_remove_predecessors(task._node);
+  }
 
-  task.for_each_successor([&] (Task dependent) {
-    auto& D = dependent._node->_dependents;
-    if(auto I = std::find(D.begin(), D.end(), task._node); I != D.end()) {
-      D.erase(I);
-    }
-  });
+  // remove task from its precedessors' successor list
+  for(size_t i=task._node->_num_successors; i<task._node->_edges.size(); ++i) {
+    task._node->_edges[i]->_remove_successors(task._node);
+  }
 
   _graph._erase(task._node);
 }
 
-// Function: composed_of
-template <typename T>
-Task FlowBuilder::composed_of(T& object) {
-  auto node = _graph._emplace_back("", 0, nullptr, nullptr, 0,
-    std::in_place_type_t<Node::Module>{}, object
-  );
-  return Task(node);
-}
-
-// Function: placeholder
-inline Task FlowBuilder::placeholder() {
-  auto node = _graph._emplace_back("", 0, nullptr, nullptr, 0,
-    std::in_place_type_t<Node::Placeholder>{}
-  );
-  return Task(node);
-}
 
 // Procedure: _linearize
 template <typename L>
@@ -1276,11 +1375,11 @@ inline void FlowBuilder::linearize(std::initializer_list<Task> keys) {
 
 @brief class to construct a subflow graph from the execution of a dynamic task
 
-tf::Subflow is a derived class from tf::Runtime with a specialized mechanism
-to manage the execution of a child graph.
-By default, a subflow automatically @em joins its parent node.
-You may explicitly join or detach a subflow by calling tf::Subflow::join
-or tf::Subflow::detach, respectively.
+tf::Subflow is spawned from the execution of a task to dynamically manage a 
+child graph that may depend on runtime variables.
+You can explicitly join a subflow by calling tf::Subflow::join, respectively.
+By default, the %Taskflow runtime will implicitly join a subflow it is is joinable.
+
 The following example creates a taskflow graph that spawns a subflow from
 the execution of task @c B, and the subflow contains three tasks, @c B1,
 @c B2, and @c B3, where @c B3 runs after @c B1 and @c B2.
@@ -1307,15 +1406,13 @@ C.precede(D);  // D runs after C
 @endcode
 
 */
-class Subflow : public FlowBuilder,
-                public Runtime {
+class Subflow : public FlowBuilder {
 
   friend class Executor;
   friend class FlowBuilder;
-  friend class Runtime;
 
   public:
-
+    
     /**
     @brief enables the subflow to join its parent task
 
@@ -1334,38 +1431,10 @@ class Subflow : public FlowBuilder,
     void join();
 
     /**
-    @brief enables the subflow to detach from its parent task
-
-    Performs an immediate action to detach the subflow. Once the subflow is detached,
-    it is considered finished and you may not modify the subflow anymore.
-
-    @code{.cpp}
-    taskflow.emplace([](tf::Subflow& sf){
-      sf.emplace([](){});
-      sf.detach();
-    });
-    @endcode
-
-    Only the worker that spawns this subflow can detach it.
-    */
-    void detach();
-
-    /**
-    @brief resets the subflow to a joinable state
-
-    @param clear_graph specifies whether to clear the associated graph (default @c true)
-
-    Clears the underlying task graph depending on the 
-    given variable @c clear_graph (default @c true) and then
-    updates the subflow to a joinable state.
-    */
-    void reset(bool clear_graph = true);
-
-    /**
     @brief queries if the subflow is joinable
 
     This member function queries if the subflow is joinable.
-    When a subflow is joined or detached, it becomes not joinable.
+    When a subflow is joined, it becomes not joinable.
 
     @code{.cpp}
     taskflow.emplace([](tf::Subflow& sf){
@@ -1378,33 +1447,87 @@ class Subflow : public FlowBuilder,
     */
     bool joinable() const noexcept;
 
+    /**
+    @brief acquires the associated executor
+    */
+    Executor& executor() noexcept;
+    
+    /**
+    @brief acquires the associated graph
+    */
+    Graph& graph() { return _graph; }
+    
+    /**
+    @brief specifies whether to keep the subflow after it is joined
+
+    @param flag `true` to retain the subflow after it is joined; `false` to discard it
+
+    By default, the runtime automatically clears a spawned subflow once it is joined.
+    Setting this flag to `true` allows the application to retain the subflow's structure 
+    for post-execution analysis like visualization.
+    */
+    void retain(bool flag) noexcept;
+
+    /**
+    @brief queries if the subflow will be retained after it is joined
+    @return `true` if the subflow will be retained after it is joined; `false` otherwise
+    */
+    bool retain() const;
+
   private:
-
-    bool _joinable {true};
-
+    
     Subflow(Executor&, Worker&, Node*, Graph&);
+    
+    Subflow() = delete;
+    Subflow(const Subflow&) = delete;
+    Subflow(Subflow&&) = delete;
+
+    Executor& _executor;
+    Worker& _worker;
+    Node* _parent;
 };
 
 // Constructor
-inline Subflow::Subflow(
-  Executor& executor, Worker& worker, Node* parent, Graph& graph
-) :
-  FlowBuilder {graph},
-  Runtime {executor, worker, parent} {
-  // assert(_parent != nullptr);
+inline Subflow::Subflow(Executor& executor, Worker& worker, Node* parent, Graph& graph) :
+  FlowBuilder {graph}, 
+  _executor   {executor}, 
+  _worker     {worker}, 
+  _parent     {parent} {
+  
+  // need to reset since there could have iterative control flow
+  _parent->_nstate &= ~(NSTATE::JOINED_SUBFLOW | NSTATE::RETAIN_SUBFLOW);
+
+  // clear the graph
+  graph.clear();
 }
 
-// Function: joined
+// Function: joinable
 inline bool Subflow::joinable() const noexcept {
-  return _joinable;
+  return !(_parent->_nstate & NSTATE::JOINED_SUBFLOW);
 }
 
-// Procedure: reset
-inline void Subflow::reset(bool clear_graph) {
-  if(clear_graph) {
-    _graph._clear();
+// Function: executor
+inline Executor& Subflow::executor() noexcept {
+  return _executor;
+}
+
+// Function: retain
+inline void Subflow::retain(bool flag) noexcept {
+  // default value is not to retain 
+  if TF_LIKELY(flag == true) {
+    _parent->_nstate |= NSTATE::RETAIN_SUBFLOW;
   }
-  _joinable = true;
+  else {
+    _parent->_nstate &= ~NSTATE::RETAIN_SUBFLOW;
+  }
+
+  //_parent->_nstate = (_parent->_nstate & ~NSTATE::RETAIN_SUBFLOW) | 
+  //                   (-static_cast<int>(flag) & NSTATE::RETAIN_SUBFLOW);
+}
+
+// Function: retain
+inline bool Subflow::retain() const {
+  return _parent->_nstate & NSTATE::RETAIN_SUBFLOW;
 }
 
 }  // end of namespace tf. ---------------------------------------------------

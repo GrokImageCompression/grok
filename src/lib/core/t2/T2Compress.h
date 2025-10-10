@@ -13,10 +13,6 @@
  *    You should have received a copy of the GNU Affero General Public License
  *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
- *
- *    This source code incorporates work covered by the BSD 2-clause license.
- *    Please see the LICENSE file in the root directory for details.
- *
  */
 
 #pragma once
@@ -30,60 +26,66 @@ struct TileProcessor;
  */
 struct T2Compress
 {
-  T2Compress(TileProcessor* tileProc);
+  T2Compress(TileProcessorCompress* tileProc);
 
   /*
-    Encode the packets of a tile to a destination buffer
-    @param tileno           number of the tile encoded
-    @param maxlayers        maximum number of layers
-    @param dest             the destination buffer
-    @param p_data_written   amount of data written
-    @param first_poc_tile_part true if first POC tile part, otherwise false
-    @param tppos            The position of the tile part flag in the progression order
-    @param pino             packet iterator number
-    */
-  bool compressPackets(uint16_t tileno, uint16_t maxlayers, BufferedStream* stream,
-                       uint32_t* p_data_written, bool first_poc_tile_part, uint32_t tppos,
-                       uint32_t pino);
+   Encode the packets of a tile to a destination buffer
+   @param tileno           number of the tile encoded
+   @param maxlayers        maximum number of layers
+   @param dest             the destination buffer
+   @param p_data_written   amount of data written
+   @param first_poc_tile_part true if first POC tile part, otherwise false
+   @param newTilePartProgressionPosition            The position of the tile part flag in the
+   progression order
+   @param prog_iter_num             packet iterator number
+   */
+  bool compressPackets(uint16_t tileno, uint16_t maxlayers, IStream* stream,
+                       uint32_t* p_data_written, bool first_poc_tile_part,
+                       uint8_t newTilePartProgressionPosition, uint32_t prog_iter_num);
 
   /**
-    Simulate compressing packets of a tile to a destination buffer
-    @param tileno           number of the tile encoded
-    @param maxlayers        maximum number of layers
-    @param p_data_written   amount of data written
-    @param max_len          the max length of the destination buffer
-    @param tppos            position of the tile part flag in the progression order
-    @param markers			 markers
-    */
+   * \brief Simulate compressing packets of a tile to a destination buffer
+   * @param tileno           number of the tile encoded
+   * @param maxlayers        maximum number of layers
+   * @param p_data_written   amount of data written
+   * @param max_len          the max length of the destination buffer
+   * @param newTilePartProgressionPosition            position of the tile part flag in the
+   *                                                  progression order
+   * @param markers			 markers (see @ref PLMarker)
+   * @param isFinal          true if this is final T2 pass
+   * @param debug            true if in debug mode
+   */
   bool compressPacketsSimulate(uint16_t tileno, uint16_t maxlayers, uint32_t* p_data_written,
-                               uint32_t max_len, uint32_t tppos, PLMarkerMgr* markers, bool isFinal,
-                               bool debug);
+                               uint32_t max_len, uint8_t newTilePartProgressionPosition,
+                               PLMarker* markers, bool isFinal, bool debug);
 
 private:
-  TileProcessor* tileProcessor;
+  TileProcessorCompress* tileProcessor;
 
   /**
-    Encode a packet of a tile to a destination buffer
-    @param tcp 			Tile coding parameters
-    @param pi 				packet iterator
-    @param stream 			stream
-    @param p_data_written  amount of data written
-    @return
-    */
-  bool compressPacket(TileCodingParams* tcp, PacketIter* pi, BufferedStream* stream,
+   Encode a packet of a tile to a destination buffer
+   @param tcp 			Tile coding parameters
+   @param pi 				packet iterator
+   @param stream 			stream
+   @param p_data_written  amount of data written
+   @return
+   */
+  bool compressPacket(TileCodingParams* tcp, PacketIter* pi, IStream* stream,
                       uint32_t* p_data_written);
 
   /**
-    Encode a packet of a tile to a destination buffer
-    @param tcp 			Tile coding parameters
-    @param pi 				packet iterator
-    @param p_data_written  amount of data written
-    @param len 			length of the destination buffer
-    @param markers			packet length markers
-    @return
-    */
+   * Encode a packet of a tile to a destination buffer
+   * @param tcp 			Tile coding parameters
+   * @param pi 				packet iterator
+   * @param p_data_written  amount of data written
+   * @param len 			length of the destination buffer
+   * @param markers			packet length markers
+   * @param debug			true if in debug mode
+   *
+   * @return true if successful
+   */
   bool compressPacketSimulate(TileCodingParams* tcp, PacketIter* pi, uint32_t* p_data_written,
-                              uint32_t len, PLMarkerMgr* markers, bool debug);
+                              uint32_t len, PLMarker* markers, bool debug);
 
   bool compressHeader(BitIO* bio, Resolution* res, uint16_t layno, uint64_t precinctIndex);
 };

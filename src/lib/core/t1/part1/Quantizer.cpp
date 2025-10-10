@@ -13,13 +13,10 @@
  *    You should have received a copy of the GNU Affero General Public License
  *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
- *
- *    This source code incorporates work covered by the BSD 2-clause license.
- *    Please see the LICENSE file in the root directory for details.
- *
  */
 
 #include "grk_includes.h"
+#include "BlockCoder.h"
 
 namespace grk
 {
@@ -77,24 +74,24 @@ void Quantizer::push(grk_stepsize* stepptr)
       u16_SPqcd[bn] = (uint16_t)((step->expn << 11) + step->mant);
   }
 }
-void Quantizer::generate(uint32_t decomps, uint32_t max_bit_depth,
+void Quantizer::generate(uint8_t decomps, uint8_t max_bit_depth,
                          [[maybe_unused]] bool color_transform, [[maybe_unused]] bool is_signed)
 {
   num_decomps = decomps;
 
-  uint32_t numresolutions = decomps + 1;
-  uint32_t numbands = 3 * numresolutions - 2;
-  for(uint32_t bandno = 0; bandno < numbands; bandno++)
+  uint8_t numresolutions = decomps + 1;
+  uint8_t numbands = (uint8_t)(3 * numresolutions - 2);
+  for(uint8_t bandno = 0; bandno < numbands; bandno++)
   {
-    uint32_t resno = (bandno == 0) ? 0 : ((bandno - 1) / 3 + 1);
+    uint8_t resno = (bandno == 0) ? 0 : (uint8_t)(((bandno - 1) / 3 + 1));
     uint8_t orient = (uint8_t)((bandno == 0) ? 0 : ((bandno - 1) % 3 + 1));
-    uint32_t level = numresolutions - 1 - resno;
+    uint8_t level = (uint8_t)(numresolutions - 1 - resno);
     uint32_t gain =
         (!isReversible) ? 0 : ((orient == 0) ? 0 : (((orient == 1) || (orient == 2)) ? 1 : 2));
 
     double stepsize = 1.0;
     if(!isReversible)
-      stepsize = (1 << (gain)) / T1::getnorm(level, orient, false);
+      stepsize = (1 << (gain)) / BlockCoder::getnorm(level, orient, false);
     uint32_t step = (uint32_t)floor(stepsize * 8192.0);
     int32_t p, n;
     p = floorlog2(step) - 13;
@@ -110,7 +107,7 @@ void Quantizer::generate(uint32_t decomps, uint32_t max_bit_depth,
 }
 
 // no-op
-bool Quantizer::write([[maybe_unused]] BufferedStream* stream)
+bool Quantizer::write([[maybe_unused]] IStream* stream)
 {
   return true;
 }

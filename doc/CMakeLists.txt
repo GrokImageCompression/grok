@@ -6,6 +6,7 @@
 find_package(Doxygen)
 
 if(DOXYGEN_FOUND)
+  message(STATUS "Documentation will be generated")
   # Configure the doxygen config file with variable from CMake and move it
   configure_file(${CMAKE_CURRENT_SOURCE_DIR}/Doxyfile.dox.cmake.in
     ${CMAKE_CURRENT_BINARY_DIR}/Doxyfile-html.dox @ONLY)

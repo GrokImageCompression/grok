@@ -12,10 +12,12 @@
  *
  *    You should have received a copy of the GNU Affero General Public License
  *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
  */
+
 #include "grok_codec.h"
 
-int main(int argc, char** argv)
+int main(int argc, const char* argv[])
 {
   return grk_codec_compare_images(argc, argv);
 }

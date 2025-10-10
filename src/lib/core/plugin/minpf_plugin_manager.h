@@ -1,4 +1,4 @@
-/**
+/*
  *    Copyright (C) 2016-2025 Grok Image Compression Inc.
  *
  *    This source code is free software: you can redistribute it and/or  modify
@@ -17,7 +17,7 @@
 
 #pragma once
 #include <plugin/minpf_dynamic_library.h>
-#include <map>
+#include <unordered_map>
 #include <stdint.h>
 
 namespace grk
@@ -34,7 +34,7 @@ typedef struct minpf_plugin_manager
 
   minpf_platform_services platformServices;
 
-  std::map<const char*, minpf_register_params*>* plugins;
+  std::unordered_map<const char*, minpf_register_params*>* plugins;
 
 } minpf_plugin_manager;
 

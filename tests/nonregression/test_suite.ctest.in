@@ -336,7 +336,7 @@ grk_decompress -i @INPUT_NR_PATH@/issue226.j2k                   -o @TEMP_PATH@/
 # issue 390  (from pdfium fuzz engine) Invalid segment size
 !grk_decompress -i @INPUT_NR_PATH@/issue390.jp2 -o @TEMP_PATH@/issue390.jp2.pgx
 # issue 391  (from pdfium fuzz engine) Invalid segment size
-!grk_decompress -i @INPUT_NR_PATH@/issue391.jp2 -o @TEMP_PATH@/issue391.jp2.pgx
+grk_decompress -i @INPUT_NR_PATH@/issue391.jp2 -o @TEMP_PATH@/issue391.jp2.pgx
 # issue 400  (from pdfium fuzz engine) Unknown Scod value in COD marker
 !grk_decompress -i @INPUT_NR_PATH@/issue400.jp2 -o @TEMP_PATH@/issue400.jp2.pgx
 # issue 413  (from pdfium fuzz engine) Unknown progression order in COD marker
@@ -351,7 +351,7 @@ grk_decompress -i @INPUT_NR_PATH@/issue226.j2k                   -o @TEMP_PATH@/
 # issue 395  (from pdfium fuzz engine) Stream too short
 !grk_decompress -i @INPUT_NR_PATH@/issue395.jp2 -o @TEMP_PATH@/issue395.jp2.pgx
 # issue 397  (from pdfium fuzz engine) Incomplete channel definitions.
-!grk_decompress -i @INPUT_NR_PATH@/issue397.jp2 -o @TEMP_PATH@/issue397.jp2.pgx
+grk_decompress -i @INPUT_NR_PATH@/issue397.jp2 -o @TEMP_PATH@/issue397.jp2.pgx
 # issue 399  (from pdfium fuzz engine) Incomplete channel definitions.
 grk_decompress -i @INPUT_NR_PATH@/issue399.j2k -o @TEMP_PATH@/issue399.j2k.pgx
 # issue 408  (from pdfium fuzz engine) No COD marker in main j2k header.
@@ -359,7 +359,7 @@ grk_decompress -i @INPUT_NR_PATH@/issue399.j2k -o @TEMP_PATH@/issue399.j2k.pgx
 # issue 412 Palette image with cdef fails to decompress.
 grk_decompress -i @INPUT_NR_PATH@/issue412.jp2 -o @TEMP_PATH@/issue412.jp2.pgx
 # issue 428 Palette image with cdef fails to decompress properly.
-grk_decompress -i @INPUT_NR_PATH@/issue412.jp2 -o @TEMP_PATH@/issue428.jp2.pgx -t 0
+!grk_decompress -i @INPUT_NR_PATH@/issue428.jp2 -o @TEMP_PATH@/issue428.jp2.pgx -t 0
 # issue 414 Image with per channel alpha (cdef) does not decode properly.
 grk_decompress -i @INPUT_NR_PATH@/issue414.jp2 -o @TEMP_PATH@/issue414.jp2.pgx
 # issue 418 (from pdfium fuzz engine) Tile part length size inconsistent with stream length.
@@ -737,5 +737,27 @@ grk_decompress -i  @INPUT_NR_PATH@/mono_plt_tlm.j2k -o @TEMP_PATH@/mono_plt_tlm_
 grk_decompress -i  @INPUT_NR_PATH@/mono_plt_tlm.j2k -o @TEMP_PATH@/mono_plt_tlm_tile5.pgm -t 5
 
 grk_decompress -i @INPUT_CONF_PATH@/a1_mono.j2c -o @TEMP_PATH@/a1_mono_tif-r-1.tif -r 1
+grk_decompress -i  @INPUT_NR_PATH@/multi_tile_truncated_rgb.jp2 -o @TEMP_PATH@/multi_tile_truncated_rgb.tif
+
+grk_decompress -i  @INPUT_NR_PATH@/bit16_layer5.jp2 -o @TEMP_PATH@/t_bit16_layer5.tif -l 1
+grk_decompress -i  @INPUT_NR_PATH@/bit16_layer5.jp2 -o @TEMP_PATH@/p_bit16_layer5.pgm -l 1
+grk_decompress -i  @INPUT_NR_PATH@/bit16_layer5.jp2 -o @TEMP_PATH@/b_bit16_layer5.bmp
+
+grk_compress -i @INPUT_NR_PATH@/mono_multi_layer_plt_tlm.tif -o @TEMP_PATH@/mono_multi_layer_plt_tlm.tif.jp2 -XV -r 2,1
 
 !grk_decompress -i  @INPUT_NR_PATH@/huge_number_of_precincts.j2k -o @TEMP_PATH@/huge_number_of_precincts.png
+
+grk_decompress -i  @INPUT_NR_PATH@/ESP_011261_1960_RGB.NOMAP_TRUNC.jp2 -o @TEMP_PATH@/ESP_011261_1960_RGB.NOMAP_TRUNC.jp2.tif -r 5
+
+grk_decompress -i  @INPUT_NR_PATH@/tnsot_0.jp2 -o @TEMP_PATH@/tnsot_0.tif -t 30
+grk_decompress -i  @INPUT_NR_PATH@/tnsot_0_tlm.jp2 -o @TEMP_PATH@/tnsot_0_tlm.tif -t 30
+grk_decompress -i  @INPUT_NR_PATH@/tnsot_non_0.jp2 -o @TEMP_PATH@/tnsot_non_0.tif -t 30
+grk_decompress -i  @INPUT_NR_PATH@/tnsot_non_0_tlm.jp2 -o @TEMP_PATH@/tnsot_non_0_tlm.tif -t 30
+
+
+# disable for now
+!core_decompress -i  @INPUT_CONF_PATH@/p0_04.j2k -l 10 -f
+
+# 34 tile image with corrupt SOT starting at tile 23
+grk_decompress -i  @INPUT_NR_PATH@/page.jp2 -o @TEMP_PATH@/page.tif
+grk_decompress -i  @INPUT_NR_PATH@/page_tlm.jp2 -o @TEMP_PATH@/page_tlm.tif

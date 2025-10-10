@@ -13,10 +13,6 @@
  *    You should have received a copy of the GNU Affero General Public License
  *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
- *
- *    This source code incorporates work covered by the BSD 2-clause license.
- *    Please see the LICENSE file in the root directory for details.
- *
  */
 
 #pragma once
@@ -58,6 +54,21 @@ extern "C" {
 #define GRK_CALLCONV
 #define GRK_API
 #endif
+
+/**
+ * @brief Environment variables
+ *
+ * @brief If this variable is set (to any value) then codec is
+ * forced into single thread mode
+ *
+ * GRK_TEST_SINGLE
+ *
+ * @brief If this variable is set to non-zero value, then codec scheduling
+ * is set to windowed, otherwise it is set to whole-tile
+ *
+ * GRK_WINDOWED_SCHEDULING
+ *
+ */
 
 /**
  * @brief Progression orders
@@ -187,6 +198,7 @@ typedef struct _grk_msg_handlers
   grk_msg_callback error_callback;
   void* error_data;
 } grk_msg_handlers;
+
 /**
  * @struct grk_object
  * @brief Opaque reference-counted object
@@ -414,7 +426,6 @@ typedef struct _grk_asoc
 } grk_asoc;
 
 /**
- * @struct grk_precision_mode
  * @brief Precision mode
  */
 typedef enum _grk_precision_mode
@@ -548,7 +559,7 @@ typedef struct _grk_stream_params
   bool is_read_stream;
 
   /* 1. File Streaming */
-  const char* file;
+  char file[GRK_PATH_LEN];
   bool use_stdio; /* use C file api - if false then use memory mapping */
 
   /* 2. Buffer Streaming */
@@ -565,11 +576,11 @@ typedef struct _grk_stream_params
   size_t stream_len; /* mandatory for read stream */
 
   /* 4 Authorization */
-  const char* username;
-  const char* password;
-  const char* bearer_token;
-  const char* custom_header;
-  const char* region;
+  char username[129]; // AWS access key ID: max 128 chars + null
+  char password[129]; // Secret access key: max 128 chars + null
+  char bearer_token[4097]; // Session token: up to 4096 chars + null
+  char custom_header[1024]; // Single header: fits within 8KB total limit
+  char region[64]; // Region code: max 50 chars + buffer
 
 } grk_stream_params;
 
@@ -578,8 +589,7 @@ typedef struct _grk_stream_params
  */
 #define GRK_TILE_CACHE_NONE 0 /* no tile caching */
 #define GRK_TILE_CACHE_IMAGE 1 /* cache final tile image */
-#define GRK_TILE_CACHE_BLOCK 2 /* cache each code block output */
-#define GRK_TILE_CACHE_ALL 4 /* cache everything */
+#define GRK_TILE_CACHE_ALL 2 /* cache everything */
 
 typedef struct _grk_image grk_image;
 
@@ -672,6 +682,20 @@ typedef struct _grk_decompress_params
 } grk_decompress_parameters;
 
 /**
+ * @brief Grok Data types
+ * Used to specify the actual data type of Grok image components
+ *
+ */
+typedef enum _grk_data_type
+{
+  GRK_INT_32,
+  GRK_INT_16,
+  GRK_INT_8,
+  GRK_FLOAT,
+  GRK_DOUBLE
+} grk_data_type;
+
+/**
  * @struct grk_image_comp
  * @brief Image component
  */
@@ -690,7 +714,8 @@ typedef struct _grk_image_comp
   GRK_CHANNEL_ASSOC association; /* channel association */
   uint16_t crg_x; /* CRG x */
   uint16_t crg_y; /* CRG x */
-  int32_t* data; /* component data */
+  grk_data_type data_type;
+  void* data; /* component data */
 } grk_image_comp;
 
 /**
@@ -989,17 +1014,6 @@ GRK_API grk_image* GRK_CALLCONV grk_image_new(uint16_t numcmpts, grk_image_comp*
 GRK_API grk_image_meta* GRK_CALLCONV grk_image_meta_new(void);
 
 /**
- * @brief Detects JPEG 2000 format from file
- * Format is either GRK_FMT_J2K, GRK_FMT_JP2 or GRK_FMT_MJ2
- * @param file_name file name
- * @param fmt pointer to detected format (see @ref GRK_CODEC_FORMAT)
- * @return true if format was detected, otherwise false
- *
- */
-GRK_API bool GRK_CALLCONV grk_decompress_detect_format(const char* file_name,
-                                                       GRK_CODEC_FORMAT* fmt);
-
-/**
  * @brief Initializes decompressor
  * @param stream_params 	source stream parameters (see @ref grk_stream_params)
  * @param params 	decompress parameters (see @ref grk_decompress_parameters)
@@ -1065,21 +1079,6 @@ GRK_API grk_image* GRK_CALLCONV grk_decompress_get_tile_image(grk_object* codec,
 GRK_API grk_image* GRK_CALLCONV grk_decompress_get_image(grk_object* codec);
 
 /**
- * @brief Specifies area to be decompressed.
- * This function should be called
- * right after grk_decompress_read_header is called, and before any tile header is read.
- * @param	codec			decompression codec (see @ref grk_object)
- * @param	start_x		    left position of the rectangle to decompress (in image coordinates).
- * @param	end_x			the right position of the rectangle to decompress (in image
- * coordinates).
- * @param	start_y		    up position of the rectangle to decompress (in image coordinates).
- * @param	end_y			bottom position of the rectangle to decompress (in image coordinates).
- * @return	true			if the area could be set.
- */
-GRK_API bool GRK_CALLCONV grk_decompress_set_window(grk_object* codec, double start_x,
-                                                    double start_y, double end_x, double end_y);
-
-/**
  * @brief Decompresses image from a JPEG 2000 code stream
  * @param codec 	decompression codec (see @ref grk_object)
  * @param tile		tile struct from plugin (see @ref grk_plugin_tile)
@@ -1104,19 +1103,6 @@ GRK_API void GRK_CALLCONV grk_decompress_wait(grk_object* codec, grk_wait_swath*
 GRK_API bool GRK_CALLCONV grk_decompress_tile(grk_object* codec, uint16_t tile_index);
 
 /* COMPRESSION FUNCTIONS*/
-
-/**
- * @struct grk_synthesis
- * @brief compressed image synthesis parameters
- */
-typedef struct _grk_synthesis
-{
-  bool do_synthesis; /* do synthesis */
-  uint32_t width; /* width */
-  uint32_t height; /* height */
-  uint8_t precision; /* precision */
-  uint16_t numcomps; /* number of components */
-} grk_synthesis;
 
 /**
  * @struct grk_cparameters
@@ -1210,7 +1196,6 @@ typedef struct _grk_cparameters
   bool write_tlm; /* write TLM */
   bool verbose; /* verbose */
   bool shared_memory_interface; /* shared memory interface */
-  grk_synthesis synth; /* synthesis */
 } grk_cparameters;
 
 /**
@@ -1269,7 +1254,7 @@ GRK_API void GRK_CALLCONV grk_dump_codec(grk_object* codec, uint32_t info_flag,
  * @return	true if matrix was successfully set
  */
 GRK_API bool GRK_CALLCONV grk_set_MCT(grk_cparameters* parameters, const float* encoding_matrix,
-                                      int32_t* dc_shift, uint32_t nb_comp);
+                                      const int32_t* dc_shift, uint32_t nb_comp);
 
 /* Decoder state flags */
 #define GRK_IMG_INFO 1 /* Basic image information provided to the user */

@@ -14,6 +14,7 @@
  *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
+
 #pragma once
 
 #include "grok.h"
@@ -32,7 +33,7 @@ extern "C" {
  *
  * return 0 if successful
  */
-GRK_API int grk_codec_dump(int argc, char* argv[]);
+GRK_API int grk_codec_dump(int argc, const char* argv[]);
 
 /**
  * Compress image.
@@ -46,7 +47,7 @@ GRK_API int grk_codec_dump(int argc, char* argv[]);
  *
  * return 0 if successful
  */
-GRK_API int grk_codec_compress(int argc, char* argv[], grk_image* in_image,
+GRK_API int grk_codec_compress(int argc, const char* argv[], grk_image* in_image,
                                grk_stream_params* out_buffer);
 
 /**
@@ -59,7 +60,7 @@ GRK_API int grk_codec_compress(int argc, char* argv[], grk_image* in_image,
  *
  * return 0 if successful
  */
-GRK_API int grk_codec_decompress(int argc, char* argv[]);
+GRK_API int grk_codec_decompress(int argc, const char* argv[]);
 
 /**
  * Compare images
@@ -71,7 +72,7 @@ GRK_API int grk_codec_decompress(int argc, char* argv[]);
  *
  * return 0 if successful
  */
-GRK_API int grk_codec_compare_images(int argc, char* argv[]);
+GRK_API int grk_codec_compare_images(int argc, const char* argv[]);
 
 #ifdef __cplusplus
 }

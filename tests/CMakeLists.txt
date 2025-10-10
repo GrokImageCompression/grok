@@ -1,3 +1,18 @@
+# Copyright (C) 2016-2025 Grok Image Compression Inc.
+#
+# This source code is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License, version 3,
+# as published by the Free Software Foundation.
+#
+# This source code is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU Affero General Public License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+
 include_directories(
   ${CMAKE_CURRENT_BINARY_DIR}/../src/lib/core # grk_config.h
   ${CMAKE_CURRENT_BINARY_DIR}/../src/bin/ # grk_apps_config.h
@@ -5,6 +20,7 @@ include_directories(
   ${GROK_SOURCE_DIR}/src/lib/codec
   ${GROK_SOURCE_DIR}/src/lib/core
   ${GROK_SOURCE_DIR}/src/include
+  ${GROK_SOURCE_DIR}/src/include/CLI11/include
 )
 
 add_executable(compare_images compare_images.cpp)
@@ -25,4 +41,3 @@ endif()
 
 add_subdirectory(conformance)
 add_subdirectory(nonregression)
-#add_executable(pdf2jp2 pdf2jp2.cpp)

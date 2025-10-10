@@ -1,18 +1,19 @@
 # Copyright (C) 2016-2025 Grok Image Compression Inc.
-
-# This source code is free software: you can redistribute it and/or  modify
+#
+# This source code is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License, version 3,
 # as published by the Free Software Foundation.
-
+#
 # This source code is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU Affero General Public License for more details.
-
+#
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
+#
 import numpy as np
+import time
 import argparse
 import ctypes
 from vispy import scene, app
@@ -24,25 +25,77 @@ from grok_core import (
     grk_decompress_parameters,
     grk_decompress_init,
     grk_decompress_read_header,
-    grk_decompress_set_window,
     grk_decompress_tile,
     grk_object_unref,
     grk_stream_params,
     grk_header_info,
+    grk_decompress_get_tile_image,
     grk_decompress_get_image,
+    grk_decompress_get_progression_state,
+    grk_decompress_set_progression_state,
 )
 
+
+class TileCacheEntry:
+    def __init__(self, data):
+        self.data = data
+        self.dirty = False
+
+
+class TileCache:
+    def __init__(self, max_tiles=100):
+        self.cache = {}
+        self.max_tiles = max_tiles
+        self.lru_order = []  # For LRU tracking
+
+    def get(self, tile_index):
+        if tile_index in self.cache:
+            # Move the tile to the front of the LRU list
+            self.lru_order.remove(tile_index)
+            self.lru_order.insert(0, tile_index)
+            return self.cache[tile_index]
+        return None
+
+    def put(self, tile_index, data):
+        # Evict the least recently used tile if cache is full
+        if len(self.cache) >= self.max_tiles:
+            oldest_tile = self.lru_order.pop()
+            if oldest_tile in self.cache:
+                del self.cache[oldest_tile]
+            else:
+                print(
+                    f"Warning: Attempted to evict nonexistent cache entry: {oldest_tile}"
+                )
+
+        # Add the tile to the cache and LRU list
+        entry = TileCacheEntry(data)
+        self.cache[tile_index] = entry
+        self.lru_order.insert(0, tile_index)
+        return entry
+
+    def set_dirty(self, tile_index, dirty=True):
+        if tile_index in self.cache:
+            self.cache[tile_index].dirty = dirty
+
+    def is_dirty(self, tile_index):
+        return self.cache.get(tile_index, TileCacheEntry(None)).dirty
+
+
 class TileViewerContext:
-    def __init__(self, input_file):
-        self.vispy_image = None
-        self.zoom_level = 1.0
+    def __init__(self, input_file, layers):
+        self.cache = TileCache(max_tiles=50)  # Set cache size as needed
+        self.vispy_images = []  # To hold images for each viewport dynamically
         self.pan_x, self.pan_y = 0, 0
+        self.initialized = False
+        self.current_zoom = None
+        self.current_center = None
+
         self.input_file = input_file
+        self.default_layers = layers
 
         grk_initialize(None, 0)
         self.codec = None
         self.header_info = grk_header_info()
-        self.image = None
         self.tx, self.ty = 0, 0  # Tile grid coordinates
 
         self.stream_params = grk_stream_params()
@@ -50,8 +103,8 @@ class TileViewerContext:
 
         self.decompress_params = grk_decompress_parameters()
         self.decompress_params.verbose_ = True
-        #self.layers_to_decompress = 1
-        #self.decompress_params.core.layers_to_decompress_ = self.layers_to_decompress
+        self.decompress_params.core.tile_cache_strategy = GRK_TILE_CACHE_ALL
+        self.decompress_params.core.layers_to_decompress = self.default_layers
         self.codec = grk_decompress_init(self.stream_params, self.decompress_params)
 
         if not grk_decompress_read_header(self.codec, self.header_info):
@@ -62,14 +115,16 @@ class TileViewerContext:
         )
         self.tx = self.t_grid_width // 2
         self.ty = self.t_grid_height // 2
-        self.max_resolutions = self.header_info.numresolutions;
-        self.max_layers = self.header_info.num_layers_
-        self.layers_to_decompress = self.max_layers
+        self.max_resolutions = self.header_info.numresolutions
         self.reduce = 0
         self.resolutions_to_decompress = self.max_resolutions - self.reduce
         self.decompress_params.core.reduce = self.reduce
-        grk_object_unref(self.codec)
-        self.codec = None
+
+        canvas = scene.SceneCanvas(
+            keys="interactive", size=(1600, 1200), title="Tile Viewer"
+        )
+        self.setup_osd(canvas)
+        self.num_components = self.header_info.header_image.numcomps
 
     def cleanup(self):
         """Explicit cleanup to release codec and other resources."""
@@ -81,164 +136,233 @@ class TileViewerContext:
     def __del__(self):
         self.cleanup()
 
-    def decompress_tile(self, input_file, tile_index=0):
-        self.codec = grk_decompress_init(self.stream_params, self.decompress_params)
-        if self.codec is None:
-            print("Failed to update codec.")
-            return None
+    def update_decomression_time(self, elapsed):
+        self.decompression_time_text.text = f"Decompression Time: {elapsed:.2f} ms"
 
-        if not grk_decompress_read_header(self.codec, self.header_info):
-            print("Failed to read header.")
-        
+    def decompress_tile(self, tile_index=0):
+        """Decompress and cache the specified tile."""
+        cache_entry = self.cache.get(tile_index)
+        if cache_entry and not cache_entry.dirty:
+            self.update_decomression_time(0)
+            return cache_entry.data
+
+        start_time = time.time()
+
         if not grk_decompress_tile(self.codec, tile_index):
             print("Tile decompression failed.")
             return None
 
-        # Retrieve the decompressed image with the components
-        self.image = grk_decompress_get_image(self.codec)
-        if self.image is None:
+        end_time = time.time()
+        decompression_time = (end_time - start_time) * 1000
+        self.update_decomression_time(decompression_time)
+
+        prog = grk_decompress_get_progression_state(self.codec, tile_index)
+        image = grk_decompress_get_tile_image(self.codec, tile_index)
+        if image is None:
             print("Failed to retrieve image.")
             return None
 
-        # Access the components from the grk_image structure
-        num_comps = self.image.numcomps
-        width, height = self.image.comps[0].w, self.image.comps[0].h
+        width, height = image.comps[0].w, image.comps[0].h
+        data = np.zeros((height, width, self.num_components), dtype=np.uint16)
 
-        # Prepare the NumPy array for the data
-        data = np.zeros((height, width, num_comps), dtype=np.uint16)
-
-        for c in range(num_comps):
-            comp = self.image.comps[c]
+        for c in range(self.num_components):
+            comp = image.comps[c]
             expected_length = comp.h * comp.stride
-
-            # Access data, cast it as int32, then view as uint16
             data_ptr = ctypes.cast(
                 int(comp.data), ctypes.POINTER(ctypes.c_int32 * expected_length)
             )
             comp_data = np.ctypeslib.as_array(data_ptr.contents)
 
-            # Convert int32 to uint16 by taking only the lower 16 bits
-            comp_data = (comp_data & 0xFFFF).astype(np.uint16)
-            comp_data = comp_data.reshape((comp.h, comp.stride))[:, :width]
+            if comp.prec == 8:
+                comp_data = (comp_data & 0xFF).astype(np.uint8)
+            elif comp.prec == 16:
+                comp_data = (comp_data & 0xFFFF).astype(np.uint16)
+            else:
+                max_value = (1 << comp.prec) - 1
+                comp_data = ((comp_data & max_value) / max_value * 65535).astype(
+                    np.uint16
+                )
 
+            comp_data = comp_data.reshape((comp.h, comp.stride))[:, :width]
             data[:, :, c] = comp_data
 
-        grk_object_unref(self.codec)
-        self.codec = None    
-
+        cache_entry = self.cache.put(tile_index, data)
+        cache_entry.dirty = False
         return data
 
-    def display_image(self, canvas, image_data, view):
-        """Display 16-bit image data using VisPy on an existing canvas and view."""
-        # Normalize the data to [0, 1] for VisPy rendering
-        image_data_normalized = np.flipud(image_data.astype(np.float32) / 65535.0)
-
-        # Remove the existing image if there is one
-        if self.vispy_image:
-            self.vispy_image.parent = None
-
-        # Display the 16-bit image with ImageVisual
-        self.vispy_image = scene.visuals.Image(
-            image_data_normalized, parent=view.scene, cmap="gray"
-        )
-
-    def _format_osd(self):
-         self.osd_text.text = f"Resolutions: {self.resolutions_to_decompress:02}/{self.max_resolutions:02}  Layers: {self.layers_to_decompress:02}/{self.max_layers:02}"
-
-
     def setup_osd(self, canvas):
-        """Setup the OSD text in the bottom left corner."""
-        self.osd_text = Text(
-            color='white',
+        self.tile_coords_text = Text(
+            text=f"Tile: ({self.tx}, {self.ty})",
+            color="white",
             font_size=12,
-            anchor_x='left',
-            anchor_y='bottom',
-            parent=canvas.scene
+            anchor_x="right",
+            anchor_y="top",
+            parent=canvas.scene,
         )
-        # Position text in the bottom left
-        self.osd_text.pos = (10, canvas.size[1] - 20)
-        self.set_layers(self.layers_to_decompress)
+        self.res_layers_text = Text(
+            text=f"Resolutions: {self.resolutions_to_decompress}/{self.max_resolutions}  Layers: {self.default_layers}/{self.header_info.num_layers}",
+            color="white",
+            font_size=12,
+            anchor_x="right",
+            anchor_y="top",
+            parent=canvas.scene,
+        )
+        self.decompression_time_text = Text(
+            text="Decompression Time: -- ms",
+            color="white",
+            font_size=12,
+            anchor_x="right",
+            anchor_y="top",
+            parent=canvas.scene,
+        )
+        self.position_osd(canvas)
+        canvas.update()
 
-    def set_layers(self, layers):
-        self.layers_to_decompress = 1 if layers > self.max_layers else layers
-        self.decompress_params.core.layers_to_decompress_ = self.layers_to_decompress
-        self._format_osd()
- 
-    def update_view(self, canvas, view):
+    def position_osd(self, canvas):
+        canvas_width = canvas.size[0]
+        self.tile_coords_text.pos = (canvas_width - 10, canvas.size[1] - 20)
+        self.res_layers_text.pos = (canvas_width - 10, canvas.size[1] - 40)
+        self.decompression_time_text.pos = (canvas_width - 10, canvas.size[1] - 60)
+
+    def update_osd(self):
+        self.tile_coords_text.text = f"Tile: ({self.tx}, {self.ty})"
         tile_index = self.tx + self.ty * self.t_grid_width
-        tile_data = self.decompress_tile(self.input_file, tile_index)
+        prog = grk_decompress_get_progression_state(self.codec, tile_index)
+        self.res_layers_text.text = f"Resolutions: {self.resolutions_to_decompress}/{self.max_resolutions}  Layers: {prog.get_max_layers()}/{self.header_info.num_layers}"
+
+    def update_views(self, canvas, views):
+        tile_index = self.tx + self.ty * self.t_grid_width
+        tile_data = self.decompress_tile(tile_index)
         if tile_data is None:
             print(f"Failed to decompress tile {tile_index}.")
             return
 
         img_height, img_width = tile_data.shape[:2]
-        view.camera.set_range(x=(0, img_width), y=(0, img_height))
-        self.display_image(canvas, tile_data, view)
 
-    def key_press(self, canvas, view, event):
+        if not self.initialized:
+            for view in views:
+                view.camera.set_range(x=(0, img_width), y=(0, img_height))
+            self.initialized = True
+
+        self.display_components_in_views(canvas, tile_data, views)
+
+    def display_components_in_views(self, canvas, image_data, views):
+        max_value = 65535 if image_data.dtype == np.uint16 else 255
+
+        for i, view in enumerate(views):
+            if i >= image_data.shape[2]:
+                print(f"Warning: Not enough components for view {i}.")
+                break
+
+            component_data = np.flipud(
+                image_data[:, :, i].astype(np.float32) / max_value
+            )
+
+            if i < len(self.vispy_images) and self.vispy_images[i]:
+                self.vispy_images[i].parent = None
+
+            image_visual = scene.visuals.Image(
+                component_data, parent=view.scene, cmap="gray"
+            )
+            if i < len(self.vispy_images):
+                self.vispy_images[i] = image_visual
+            else:
+                self.vispy_images.append(image_visual)
+
+    def key_press(self, canvas, views, event):
+        needs_update = False
+        """Handle arrow key presses to navigate the tile grid and update OSD."""
         if event.key == "Right" and self.tx < self.t_grid_width - 1:
             self.tx += 1
-            self.update_view(canvas, view)
+            needs_update = True
         elif event.key == "Left" and self.tx > 0:
             self.tx -= 1
-            self.update_view(canvas, view)
+            needs_update = True
         elif event.key == "Up" and self.ty > 0:
             self.ty -= 1
-            self.update_view(canvas, view)
+            needs_update = True
         elif event.key == "Down" and self.ty < self.t_grid_height - 1:
             self.ty += 1
-            self.update_view(canvas, view)
-        elif event.key == "L":
-            self.set_layers(self.layers_to_decompress + 1)
-            self.update_view(canvas, view)
+            needs_update = True
+        elif event.key == "l":
+            tile_index = self.tx + self.ty * self.t_grid_width
+            prog = grk_decompress_get_progression_state(self.codec, tile_index)
+            if prog.get_max_layers() < self.header_info.num_layers:
+                self.set_layers(prog.get_max_layers() + 1)
+                tile_index = self.tx + self.ty * self.t_grid_width
+                self.cache.set_dirty(tile_index)  # Mark tile as dirty
+                needs_update = True
+
+        # Update the view and OSD text after any key press
+        if needs_update:
+            self.update_views(canvas, views)
+        else:
+            self.update_decomression_time(0)
+        self.update_osd()
+
+    def set_layers(self, layers):
+        if layers > self.header_info.num_layers:
+            layers = self.header_info.num_layers
+        tile_index = self.tx + self.ty * self.t_grid_width
+        prog = grk_decompress_get_progression_state(self.codec, tile_index)
+        prog.set_max_layers(layers)
+        if grk_decompress_set_progression_state(self.codec, prog):
+            self.update_osd()
+
 
 def main():
     parser = argparse.ArgumentParser(
         description="16-bit Tile Viewer with Decompression"
     )
-    parser.add_argument("-i", "--input", required=True, help="Input file path")
+    parser.add_argument("-i", "--in-file", required=True, help="Input file path")
+    parser.add_argument(
+        "-l",
+        "--layers",
+        type=int,
+        default=1,
+        help="Initial number of decompressed layers for tile (default: 1)",
+    )
+
     args = parser.parse_args()
 
-    # Create a VisPy canvas
     canvas = scene.SceneCanvas(
         keys="interactive", size=(1600, 1200), title="Tile Viewer"
     )
-    # Set up the image view
-    view = canvas.central_widget.add_view()
-    view.camera = scene.PanZoomCamera(aspect=1)
+    context = TileViewerContext(args.in_file, args.layers)
 
-    context = TileViewerContext(args.input)
+    # Create a grid with enough cells for each component
+    grid_size = int(np.ceil(np.sqrt(context.num_components)))
+    grid = canvas.central_widget.add_grid(margin=10)
+    views = []
+
+    for i in range(context.num_components):
+        row, col = divmod(i, grid_size)
+        view = grid.add_view(row=row, col=col)
+        view.camera = scene.PanZoomCamera(aspect=1)
+        views.append(view)
+
     context.setup_osd(canvas)
 
-    # Create OSD text for displaying filename
-    osd_text = Text(
-        text=f"File: {args.input}",
-        color="white",
-        font_size=12,
-        pos=(10, 20),  # Position in the upper left corner
-        parent=canvas.scene,
-        anchor_x="left",
-        anchor_y="top",
-    )
-
-    # Handle arrow keys to navigate through the tile grid
     def on_key_press(event):
-        context.key_press(canvas, view, event)
+        context.key_press(canvas, views, event)
 
-    # Connect keyboard events for navigating tiles
+    def on_resize(event):
+        context.position_osd(canvas)
+        event.source.update()
+
+    canvas.events.resize.connect(on_resize)
     canvas.events.key_press.connect(on_key_press)
 
-    # Initial display of the middle tile
-    context.update_view(canvas, view)
+    # Initial update to load and display the image in all views
+    context.update_views(canvas, views)
     canvas.show()
 
-    # Run the VisPy app
     app.run()
 
-    # Explicitly clean up resources after the app closes
     context.cleanup()
     canvas.close()
     app.quit()
+
 
 if __name__ == "__main__":
     main()

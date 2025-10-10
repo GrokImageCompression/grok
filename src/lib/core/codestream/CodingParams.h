@@ -13,22 +13,22 @@
  *    You should have received a copy of the GNU Affero General Public License
  *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
- *
- *    This source code incorporates work covered by the BSD 2-clause license.
- *    Please see the LICENSE file in the root directory for details.
- *
  */
 
 #pragma once
 
-#include "Quantizer.h"
+#include "PacketCache.h"
+#include <memory>
+#include <mutex>
 
 namespace grk
 {
+
+typedef void (*mct_function)(const void* p_src_data, void* p_dest_data, uint64_t nb_elem);
 /**
  * Type of elements storing in the MCT data
  */
-enum J2K_MCT_ELEMENT_TYPE
+enum MCT_ELEMENT_TYPE
 {
   MCT_TYPE_INT16 = 0, /** MCT data is stored as signed shorts*/
   MCT_TYPE_INT32 = 1, /** MCT data is stored as signed integers*/
@@ -39,7 +39,7 @@ enum J2K_MCT_ELEMENT_TYPE
 /**
  * Type of MCT array
  */
-enum J2K_MCT_ARRAY_TYPE
+enum MCT_ARRAY_TYPE
 {
   MCT_TYPE_DEPENDENCY = 0,
   MCT_TYPE_DECORRELATION = 1,
@@ -53,40 +53,40 @@ struct TileComponentCodingParams
 {
   TileComponentCodingParams();
   /** coding style */
-  uint8_t csty;
+  uint8_t csty_;
   /** number of resolutions */
-  uint8_t numresolutions;
+  uint8_t numresolutions_;
   /** log2(code-blocks width) */
-  uint8_t cblkw;
+  uint8_t cblkw_expn_;
   /** log2(code-blocks height) */
-  uint8_t cblkh;
+  uint8_t cblkh_expn_;
   /** code-block mode */
-  uint8_t cblk_sty;
+  uint8_t cblkStyle_;
   /** discrete wavelet transform identifier */
-  uint8_t qmfbid;
+  uint8_t qmfbid_;
   // true if quantization marker has been read for this component,
   // false otherwise
-  bool quantizationMarkerSet;
+  bool quantizationMarkerSet_;
   // true if quantization marker was read from QCC otherwise false
-  bool fromQCC;
+  bool fromQCC_;
   // true if quantization marker was read from tile header
-  bool fromTileHeader;
+  bool fromTileHeader_;
   /** quantisation style */
-  uint8_t qntsty;
+  uint8_t qntsty_;
   /** stepsizes used for quantization */
-  grk_stepsize stepsizes[GRK_MAXBANDS];
+  grk_stepsize stepsizes_[GRK_MAXBANDS];
   // number of step sizes read from QCC marker
-  uint8_t numStepSizes;
+  uint8_t numStepSizes_;
   /** number of guard bits */
-  uint8_t numgbits;
+  uint8_t numgbits_;
   /** Region Of Interest shift */
-  uint8_t roishift;
+  uint8_t roishift_;
   /** precinct width (power of 2 exponent, < 16) */
-  uint32_t precWidthExp[GRK_MAXRLVLS];
+  uint8_t precWidthExp_[GRK_MAXRLVLS];
   /** precinct height (power of 2 exponent, < 16) */
-  uint32_t precHeightExp[GRK_MAXRLVLS];
+  uint8_t precHeightExp_[GRK_MAXRLVLS];
   /** the dc_level_shift **/
-  int32_t dc_level_shift_;
+  int32_t dcLevelShift_;
 };
 
 /**
@@ -94,8 +94,8 @@ struct TileComponentCodingParams
  */
 struct grk_mct_data
 {
-  J2K_MCT_ELEMENT_TYPE element_type_;
-  J2K_MCT_ARRAY_TYPE array_type_;
+  MCT_ELEMENT_TYPE element_type_;
+  MCT_ARRAY_TYPE array_type_;
   uint32_t index_;
   uint8_t* data_;
   uint32_t data_size_;
@@ -116,100 +116,227 @@ struct grk_simple_mcc_decorrelation_data
 /**
  Tile coding parameters :
  this structure is used to store coding/decoding parameters common to all
- tiles (information like COD, COC in main header)
+ tiles (information like COD, COC in main header). It also stores compressed
+ packets for a particular tile.
  */
 struct TileCodingParams
 {
-  TileCodingParams();
+  TileCodingParams(CodingParams* cp);
+  TileCodingParams(const TileCodingParams& rhs);
   ~TileCodingParams();
 
-  bool advanceTilePartCounter(uint16_t tile_index, uint8_t tilePartIndex);
-  bool copy(const TileCodingParams* rhs, const GrkImage* image);
+  bool advanceTilePartCounter(uint16_t tileIndex, uint8_t tilePartIndex);
+  bool initDefault(GrkImage* headerImage);
+
+  /**
+   * Reads a PPT marker (Packed packet headers, tile-part header)
+   * @param headerData header data
+   * @param headerSize size of header data
+   * @return true if successful
+   */
+  bool readPpt(uint8_t* headerData, uint16_t headerSize);
+
+  /**
+   * @brief Merges all PPT markers read (Packed headers, tile-part header)
+   * @param tcp @ref TileCodingParams
+   * @return true if successful
+   */
+  bool mergePpt(void);
+
+  /**
+   * @brief Reads a SPCod or SPCoc element, i.e. the coding style of a given component of a tile.
+   * @param compno          component number
+   * @param headerData header data
+   * @param headerSize size of header data
+   * @return true if successful
+   */
+  bool readSPCodSPCoc(uint16_t compno, uint8_t* headerData, uint16_t* headerSize);
+
+  /**
+   * @brief Reads a SQcd or SQcc element, i.e. the quantization values of a band
+   * in the QCD or QCC.
+   * @param fromTileHeader true if marker is from tile header
+   * @param	fromQCC true if reading QCC, otherwise false (reading QCD)
+   * @param compno  the component number to output.
+   * @param headerData the data buffer.
+   * @param headerSize pointer to the size of the data buffer,
+   *        it is changed by the function.
+   * @return true if successful
+   */
+  bool readSQcdSQcc(bool fromTileHeader, bool fromQCC, uint16_t compno, uint8_t* headerData,
+                    uint16_t* headerSize);
+
+  /**
+   * @brief Reads a COD marker (Coding Style defaults)
+   * @param headerData header data
+   * @param headerSize size of header data
+   * @return true if successful
+   */
+  bool readCod(uint8_t* headerData, uint16_t headerSize);
+
+  /**
+   * @brief Reads a COC marker (Coding Style Component)
+   * @param headerData header data
+   * @param headerSize size of header data
+   * @return true if successful
+   */
+  bool readCoc(uint8_t* headerData, uint16_t headerSize);
+
+  /**
+   * @brief Reads a QCD marker (Quantization defaults)
+   * @param fromTileHeader true if marker is from tile header
+   * @param headerData header data
+   * @param headerSize size of header data
+   * @return true if successful
+   */
+  bool readQcd(bool fromTileHeader, uint8_t* headerData, uint16_t headerSize);
+
+  /**
+   * @brief Reads a QCC marker (Quantization component)
+   * @brief fromTileHeader true if marker from tile header
+   * @param headerData header data
+   * @param headerSize size of header data
+   * @return true if successful
+   */
+  bool readQcc(bool fromTileHeader, uint8_t* headerData, uint16_t headerSize);
+
+  /**
+   * @brief Reads a RGN marker (Region Of Interest)
+   * @param headerData header data
+   * @param headerSize size of header data
+   * @return true if successful
+   */
+  bool readRgn(uint8_t* headerData, uint16_t headerSize);
+
+  /**
+   * @brief Reads a POC marker (Progression Order Change)
+   * @param headerData header data
+   * @param headerSize size of header data
+   * @param tilePartIndex the tile part index (-1 for main header)
+   * @return true if successful
+   */
+  bool readPoc(uint8_t* headerData, uint16_t headerSize, int tilePartIndex);
+
+  /**
+   * @brief Reads a MCT marker (Multiple Component Transform)
+   * @param headerData header data
+   * @param headerSize size of header data
+   * @return true if successful
+   */
+  bool readMct(uint8_t* headerData, uint16_t headerSize);
+
+  /**
+   * @brief Reads a MCO marker (Multiple Component Transform Ordering)
+   * @param headerData header data
+   * @param headerSize size of header data
+   * @return true if successful
+   */
+  bool readMco(uint8_t* headerData, uint16_t headerSize);
+
+  /**
+   * @brief Reads a MCC marker (Multiple Component Collection)
+   * @param headerData header data
+   * @param headerSize size of header data
+   * @return true if successful
+   */
+  bool readMcc(uint8_t* headerData, uint16_t headerSize);
+
+  bool addMct(uint32_t index);
+
+  void updateLayersToDecompress(void);
+
+  bool validateQuantization(void);
+
   void setIsHT(bool ht, bool reversible, uint8_t guardBits);
   bool isHT(void);
   uint32_t getNumProgressions(void);
   bool hasPoc(void);
+  void finalizePocs(void);
+
+  CodingParams* cp_ = nullptr;
+
+  bool wholeTileDecompress_ = true;
 
   /** coding style */
-  uint8_t csty;
+  uint8_t csty_ = 0;
   /** progression order */
-  GRK_PROG_ORDER prg;
+  GRK_PROG_ORDER prg_ = GRK_PROG_UNKNOWN;
   /** number of layers */
-  uint16_t num_layers_;
-  uint16_t numLayersToDecompress;
+  uint16_t numLayers_ = 0;
+  /* layers slated for decompression */
+  uint16_t layersToDecompress_ = 0;
   /** multi-component transform identifier */
-  uint8_t mct;
+  uint8_t mct_ = 0;
   /** rates of layers */
-  double rates[maxCompressLayersGRK];
+  double rates_[maxCompressLayersGRK];
   /** number of progression order changes */
-  uint32_t numpocs;
+  uint32_t numpocs_ = 0;
   /** progression order changes */
-  grk_progression progressionOrderChange[GRK_MAXRLVLS];
+  grk_progression progressionOrderChange_[GRK_MAXRLVLS];
   /** number of ppt markers (reserved size) */
-  uint32_t ppt_markers_count;
+  uint32_t pptMarkersCount_ = 0;
   /** ppt markers data (table indexed by Zppt) */
-  grk_ppx* ppt_markers;
+  grk_ppx* pptMarkers_ = nullptr;
   /** packet header store there for future use in t2_decode_packet */
-  uint8_t* ppt_data;
+  uint8_t* pptData_ = nullptr;
   /** used to keep a track of the allocated memory */
-  uint8_t* ppt_buffer;
-  /** Number of bytes stored inside ppt_data*/
-  size_t ppt_data_size;
+  uint8_t* pptBuffer_ = nullptr;
   /** size of ppt_data*/
-  size_t ppt_len;
+  size_t pptLength_ = 0;
   /** fixed_quality */
-  double distortion[maxCompressLayersGRK];
+  double distortion_[maxCompressLayersGRK];
   // quantization style as read from main QCD marker
-  uint32_t main_qcd_qntsty;
+  uint32_t mainQcdQntsty = 0;
   // number of step sizes as read from main QCD marker
-  uint32_t main_qcd_numStepSizes;
+  uint32_t mainQcdNumStepSizes = 0;
   /** tile-component coding parameters */
-  TileComponentCodingParams* tccps;
-  // current tile part index, based on count of tile parts
-  // (-1 if never incremented)
-  // NOTES:
-  // 1. tile parts must appear in code stream in strictly increasing
+  TileComponentCodingParams* tccps_ = nullptr;
+  // tile part counter
+  // NOTES: tile parts must appear in code stream in strictly increasing
   // order
-  // 2. tile part index must be  <= 255
-  uint8_t tilePartCounter_;
-  /** number of tile parts for the tile. */
-  uint8_t numTileParts_;
-  SparseBuffer* compressedTileData_;
+  uint8_t tilePartCounter_ = 0;
+  /** number of tile parts for the tile, signlled by TLM or SOT marker. */
+  uint8_t signalledNumTileParts_ = 0;
+  // packets
+  PacketCache* packets_ = nullptr;
   /** compressing norms */
-  double* mct_norms;
+  double* mct_norms_ = nullptr;
   /** the mct decoding matrix */
-  float* mct_decoding_matrix_;
+  float* mctDecodingMatrix_ = nullptr;
   /** the mct coding matrix */
-  float* mct_coding_matrix_;
+  float* mctCodingMatrix_ = nullptr;
   /** mct records */
-  grk_mct_data* mct_records_;
+  grk_mct_data* mctRecords_ = nullptr;
   /** the number of mct records. */
-  uint32_t nb_mct_records_;
+  uint32_t numMctRecords_ = 0;
   /** the max number of mct records. */
-  uint32_t nb_max_mct_records_;
+  uint32_t numMaxMctRecords_ = 0;
   /** mcc records */
-  grk_simple_mcc_decorrelation_data* mcc_records_;
+  grk_simple_mcc_decorrelation_data* mccRecords_ = nullptr;
   /** the number of mct records. */
-  uint32_t nb_mcc_records_;
+  uint32_t numMccRecords_ = 0;
   /** the max number of mct records. */
-  uint32_t nb_max_mcc_records_;
+  uint32_t numMaxMccRecords_ = 0;
   /** If cod == true --> there was a COD marker for the present tile */
-  bool cod;
+  uint32_t cod_ = 0;
   /** If ppt == true --> there was a PPT marker for the present tile */
-  bool ppt;
-  Quantizer* qcd_;
+  bool ppt_ = false;
+  Quantizer* qcd_ = nullptr;
+  uint16_t numComps_ = 0;
 
 private:
-  bool ht_;
+  bool ht_ = false;
+  std::mutex pocMutex_;
+  std::vector<std::vector<grk_progression>> pocLists_;
 };
 
 struct EncodingParams
 {
   /** Maximum rate for each component.
-   * If == 0, component size limitation is not considered */
-  size_t max_comp_size_;
+   * If == 0, component rate limitation is not considered */
+  size_t maxComponentRate_;
   /** Position of tile part flag in progression order*/
-  uint32_t newTilePartProgressionPosition;
+  uint8_t newTilePartProgressionPosition_;
   /** Flag determining tile part generation*/
   uint8_t newTilePartProgressionDivider_;
   /** allocation by rate/distortion */
@@ -219,24 +346,51 @@ struct EncodingParams
   /** Enabling Tile part generation*/
   bool enableTilePartGeneration_;
   /* write plt marker */
-  bool write_plt;
+  bool writePlt_;
   /* write TLM marker */
-  bool write_tlm;
+  bool writeTlm_;
   /* rate control algorithm */
-  uint32_t rate_control_algorithm;
+  uint32_t rateControlAlgorithm_;
 };
 
 struct DecodingParams
 {
-  /** if != 0, then original dimension divided by 2^(reduce); if == 0 or not used, image is
-   * decompressed to the full resolution */
+  /** if != 0, then original dimension divided by 2^(reduce);
+   *  if == 0 or not used, image is decompressed to the full resolution */
   uint8_t reduce_;
-  /** if != 0, then only the first "layer" layers are decompressed; if == 0 or not used, all the
-   * quality layers are decompressed */
-  uint16_t layers_to_decompress_;
-
-  uint32_t disable_random_access_flags_;
+  /** if != 0, then only the first "layersToDecompress_" layers are decompressed;
+   *  if == 0 or not used, all the quality layers are decompressed */
+  uint16_t layersToDecompress_;
+  uint32_t disableRandomAccessFlags_;
+  bool skipAllocateComposite_;
 };
+
+struct TLMMarker;
+
+class TileCodingParamsPool
+{
+public:
+  TileCodingParamsPool() = default;
+
+  TileCodingParams* get(uint16_t tileIndex)
+  {
+    std::unique_lock<std::mutex> lock(mutex_);
+    auto it = tileMap_.find(tileIndex);
+
+    if(it == tileMap_.end()) // Check if tile exists
+    {
+      auto tcp = std::make_unique<TileCodingParams>(nullptr);
+      it = tileMap_.emplace(tileIndex, std::move(tcp)).first;
+    }
+    return it->second.get(); // Return raw pointer
+  }
+
+private:
+  std::unordered_map<uint16_t, std::unique_ptr<TileCodingParams>> tileMap_;
+  mutable std::mutex mutex_; // Mutex for thread safety
+};
+
+class TileCache;
 
 /**
  * Coding parameters
@@ -245,104 +399,59 @@ struct CodingParams
 {
   CodingParams();
   ~CodingParams();
-  grk_rect32 getTileBounds(const GrkImage* p_image, uint32_t tile_x, uint32_t tile_y) const;
+  Rect32 getTileBounds(Rect32 imageBounds, uint16_t tile_x, uint16_t tile_y) const;
 
-  /** Rsiz*/
-  uint16_t rsiz;
-  /* Pcap */
-  uint32_t pcap;
-  /* Ccap */
-  uint16_t ccap[32];
-  /** XTOsiz */
-  uint32_t tx0;
-  /** YTOsiz */
-  uint32_t ty0;
-  /** XTsiz */
-  uint32_t t_width;
-  /** YTsiz */
-  uint32_t t_height;
-  /** comments */
-  size_t num_comments;
-  char* comment[GRK_NUM_COMMENTS_SUPPORTED];
-  uint16_t comment_len[GRK_NUM_COMMENTS_SUPPORTED];
-  bool is_binary_comment[GRK_NUM_COMMENTS_SUPPORTED];
-  // note: maximum number of tiles is 65535
-  /** number of tiles in width */
-  uint16_t t_grid_width;
-  /** number of tiles in height */
-  uint16_t t_grid_height;
-  PPMMarker* ppm_marker;
-  /** tile coding parameters */
-  TileCodingParams* tcps;
+  /**
+   * @brief Reads a COM marker (comments)
+   * @param headerData header data
+   * @param headerSize size of header data
+   * @return true if successful
+   */
+  bool readCom(uint8_t* headerData, uint16_t headerSize);
+
+  /**
+   * @brief Gets the number of tile parts for a given tile index from TLM marker
+   * @param tileIndex Index of the tile
+   * @return Number of tile parts, or 0 if invalid
+   */
+  uint8_t getNumTilePartsFromTLM(uint16_t tileIndex) const noexcept;
+
+  bool hasTLM(void) const noexcept;
+
+  void init(grk_decompress_parameters* parameters, std::unique_ptr<TileCache>& tileCache);
+
+  uint16_t rsiz_; /** Rsiz*/
+  uint32_t pcap_; /* Pcap */
+  uint16_t ccap_[32]; /* Ccap */
+  uint32_t tx0_; /** XTOsiz */
+  uint32_t ty0_; /** YTOsiz */
+  uint32_t t_width_; /** XTsiz */
+  uint32_t t_height_; /** YTsiz */
+  std::mutex commentMutex;
+  size_t numComments_; /** comments */
+  char* comment_[GRK_NUM_COMMENTS_SUPPORTED];
+  uint16_t commentLength_[GRK_NUM_COMMENTS_SUPPORTED];
+  bool isBinaryComment_[GRK_NUM_COMMENTS_SUPPORTED];
+  uint16_t t_grid_width_; /** number of tiles in width */
+  uint16_t t_grid_height_; /** number of tiles in height */
+
+  double dw_x0 = 0; /* decompress window left boundary*/
+  double dw_x1 = 0; /* decompress window right boundary*/
+  double dw_y0 = 0; /* decompress window top boundary*/
+  double dw_y1 = 0; /* decompress window bottom boundary*/
+  std::unique_ptr<PPMMarker> ppmMarkers_;
+  TileCodingParamsPool tcps_; /** default tile coding parameters */
   union
   {
     DecodingParams dec_;
     EncodingParams enc_;
-  } coding_params_;
-  TileLengthMarkers* tlm_markers;
-  PLMarkerMgr* plm_markers;
-  bool wholeTileDecompress_;
-};
-
-/**
- * Status of decoding process when decoding main header or tile header.
- * These values may be combined with the | operator.
- * */
-enum DECOMPRESS_STATE
-{
-  DECOMPRESS_STATE_NONE = 0x0000, /**< no decompress state */
-  DECOMPRESS_STATE_MH_SOC = 0x0001, /**< a SOC marker is expected */
-  DECOMPRESS_STATE_MH_SIZ = 0x0002, /**< a SIZ marker is expected */
-  DECOMPRESS_STATE_MH = 0x0004, /**< the decoding process is in the main header */
-  DECOMPRESS_STATE_TPH = 0x0008, /**< the decoding process is in a tile part header */
-  DECOMPRESS_STATE_TPH_SOT = 0x0010, /**< the decoding process is in a tile part header
-                         and expects a SOT marker */
-  DECOMPRESS_STATE_DATA = 0x0020, /**< the decoding process is expecting
-                    to read tile data from the code stream */
-  DECOMPRESS_STATE_EOC = 0x0040, /**< the decoding process has encountered the EOC marker */
-  DECOMPRESS_STATE_NO_EOC = 0x0080, /**< the decoding process must not expect a EOC marker
-                      because the code stream is truncated */
-};
-
-class CodeStreamDecompress;
-
-struct DecompressorState
-{
-  DecompressorState();
-  bool findNextSOT(CodeStreamDecompress* codeStream);
-  uint16_t getState(void);
-  void setState(uint16_t state);
-  void orState(uint16_t state);
-  void andState(uint16_t state);
-  void setComplete(uint16_t tile_index);
-
-  // store decoding parameters common to all tiles (information
-  // like COD, COC and RGN in main header)
-  TileCodingParams* default_tcp_;
-
-  TileSet tilesToDecompress_;
-
-  /** Position of the last SOT marker read */
-  uint64_t lastSotReadPosition;
-  /**
-   * Indicate that the current tile-part is assumed to be the last tile part of the code stream.
-   * This is useful in the case when PSot is equal to zero. The SOT length will be computed in the
-   * SOD reader function.
-   */
-  bool lastTilePartInCodeStream;
-
-private:
-  /** Decoder state: used to indicate in which part of the code stream
-   *  the decompressor is (main header, tile header, end) */
-  uint16_t state_;
-};
-
-struct CompressorState
-{
-  CompressorState() : total_tile_parts_(0) {}
-  /** Total num of tile parts in whole image = num tiles* num tileparts in each tile*/
-  /** used in TLMmarker*/
-  uint16_t total_tile_parts_; /* numTilePartsTotal */
+  } codingParams_;
+  std::unique_ptr<TLMMarker> tlmMarkers_;
+  std::unique_ptr<PLMarker> plmMarkers_;
+  bool asynchronous_;
+  bool simulate_synchronous_;
+  grk_decompress_callback decompressCallback_;
+  void* decompressCallbackUserData_;
 };
 
 } // namespace grk

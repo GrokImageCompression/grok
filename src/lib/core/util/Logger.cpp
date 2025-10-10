@@ -10,13 +10,17 @@
  *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *    GNU Affero General Public License for more details.
  *
+ *    You should have received a copy of the GNU Affero General Public License
+ *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
  */
 
-#include "grk_includes.h"
+#include "Logger.h"
 
 namespace grk
 {
 Logger Logger::logger_;
+// Define grklog as a reference to Logger::logger_
 Logger& grklog = Logger::logger_;
 
 } // namespace grk

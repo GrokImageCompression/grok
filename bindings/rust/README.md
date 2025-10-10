@@ -1,4 +1,4 @@
-## Rust Bindings for Grok JPEG 2000 SDK
+## Rust Bindings for Grok
 
 ### Build Bindings
 

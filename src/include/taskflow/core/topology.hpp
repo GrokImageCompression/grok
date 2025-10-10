@@ -12,16 +12,13 @@ class TopologyBase {
 class Topology {
 
   friend class Executor;
+  friend class Subflow;
   friend class Runtime;
   friend class Node;
 
   template <typename T>
   friend class Future;
   
-  constexpr static int CLEAN = 0;
-  constexpr static int CANCELLED = 1;
-  constexpr static int EXCEPTION = 2;
-
   public:
 
     template <typename P, typename C>
@@ -34,14 +31,12 @@ class Topology {
     Taskflow& _taskflow;
 
     std::promise<void> _promise;
-
-    SmallVector<Node*> _sources;
-
+    
     std::function<bool()> _pred;
     std::function<void()> _call;
 
     std::atomic<size_t> _join_counter {0};
-    std::atomic<int> _state {CLEAN};
+    std::atomic<ESTATE::underlying_type> _estate {ESTATE::NONE};
 
     std::exception_ptr _exception_ptr {nullptr};
 
@@ -70,7 +65,7 @@ inline void Topology::_carry_out_promise() {
 
 // Function: cancelled
 inline bool Topology::cancelled() const {
-  return _state.load(std::memory_order_relaxed) & CANCELLED;
+  return _estate.load(std::memory_order_relaxed) & ESTATE::CANCELLED;
 }
 
 }  // end of namespace tf. ----------------------------------------------------

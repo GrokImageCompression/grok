@@ -18,8 +18,8 @@ This program converts non-`JPEG 2000` images to the `JPEG 2000` format.
 
 * Supported input formats:  `JPEG`, `BMP`, `PNM`, `PGX`, `PNG`, `RAW`, `RAWL` and `TIFF`
 * Supported input image extensions:  `jpg`, `.jpeg`, `.bmp`, `.pgm`, `.pgx`, `.pnm`, `.ppm`, `.pam`, `.png`, `.raw`, `.rawl`, `.tif` and `.tiff`
-* Supported output formats: `JP2`, `J2K`/`J2C`/`JPC`, `JPH` and `JHC`
-* Supported output image extensions: `.jp2`, `.j2k`/`.j2c`/`.jpc`, `.jph` and `.jhc`
+* Supported output formats: `JP2` and `J2K`/`J2C`
+* Supported output image extensions: `.jp2` and `.j2k`/`.j2c`
 * For `PNG` the library must have `libpng` available.
 * For `TIF/TIFF` the library must have `libtiff` available.
 * For `JPG/JPEG` the library must have a `libjpeg` variant available.
@@ -31,21 +31,21 @@ limitations
 stdin
 
 Input from `stdin` is supported for the following formats: `PNG`, `JPG`, `RAW` and `RAWL`.  To read from `stdin`,
-make sure that the `-i` parameter is **not** present, and that the `-in-fmt` parameter is set to one of the supported formats listed above.
+make sure that the `-i` parameter is **not** present, and that the `--in-fmt` parameter is set to one of the supported formats listed above.
 
-Embedded ICC Profile (JP2/JPH Only)
+Embedded ICC Profile (JP2 Only)
 
 If there is an embedded ICC profile in the input file, then the profile will be stored in the compressed file.
 
-IPTC (JP2/JPH Only)
+IPTC (JP2 Only)
 
 If an input `TIF/TIFF` file contains `IPTC` metadata, this metadata will be stored in the compressed file.
 
-XMP (JP2/JPH Only)
+XMP (JP2 Only)
 
 If an input `TIF/TIFF` or `PNG` file contains `XMP` metadata, this metadata will be stored in the compressed file.
 
-Exif (JP2/JPH only)
+Exif (JP2 only)
 
 To transfer Exif and all other meta-data tags, use the command line argument `-V` described below. To transfer the tags, Grok uses the wonderful [ExifTool](https://exiftool.org/) Perl module. ExifTool must be installed for this command line argument to work properly.
 Note: transferring Exif tags may add a few hundred ms to the decompress time, depending on the system.
@@ -67,23 +67,21 @@ When only the input and output files are specified, the following default option
     * no image origin offset
     * no tile origin offset
 
-**Important note on command line argument notation below**: the outer square braces appear for clarity only,
-and **should not** be included in the actual command line argument. Square braces appearing
-inside the outer braces **should** be included.
+**Important note on command line argument notation below**: the outer square braces appear for clarity only, and **should not** be included in the actual command line argument. Square braces appearing inside the outer braces **should** be included.
+
 
 Options
 -------
 
-
-`-h, --help`
+`-h, -help`
 
 Print a help message and exit.
 
-`--version`
+`-version`
 
 Print library version and exit.
 
-`-v, --verbose`
+`-v, -verbose`
 
 Output information and warnings about encoding to console (errors are always output). Default is false i.e. console is silent by default.
 
@@ -99,9 +97,9 @@ Input file. Either this argument or the `--batch-src` argument described below i
 
 `-o, --out-file [file]`
 
-Output file. Required when using `-i` option. Valid output image extensions are `J2K`, `JPC`, `J2C, `JP2`, `JPH` and `JHC`.
+Output file. Required when using `-i` option. Valid output image extensions are `J2K`, `JP2` and `J2C`.
 
-`-y, --batch-src [Source image directory OR comma separated list of compression settings for shared memory interface]`
+`-y, --batch-src [input directory]`
 
 Path to the folder where the images to be compressed are stored. Either this argument or the `-i` argument described above is required. When image files are in the same directory as the executable, this can be indicated by a dot `.` argument. When using this option, output format must be specified using `-O`. 
 
@@ -109,15 +107,15 @@ Path to the folder where the images to be compressed are stored. Either this arg
 
 Output directory where compressed files are stored. Only relevant when the `--batch-src` flag is set. Default: same directory as specified by `-y`.
 
-`-O, --out-fmt [J2K|J2C|JPC|JP2|JHC|JPH]`
+`-O, --out-fmt [J2K|J2C|JP2]`
 
-Output format used to compress the images read from the directory specified with `--batch-src`. Required when `--batch-src` option is used. Supported formats are `J2K`, `J2C`,`JP2`, `JHC` and `JPH`.
+Output format used to compress the images read from the directory specified with `--batch-src`. Required when `--batch-src` option is used. Supported formats are `J2K`, `J2C`, and `JP2`.
 
 `-K, --in-fmt [pbm|pgm|ppm|pnm|pam|pgx|png|bmp|tif|raw|rawl|jpg]`
 
 Input format. Will override file tag.
 
-`-F, --raw [width,height,number of components,bit depth,[s,u]@<dx1>x<dy1>:...:<dxn>x<dyn>]`
+`-F, -raw [width,height,number of components,bit depth,[s,u]@<dx1>x<dy1>:...:<dxn>x<dyn>]`
 
 Raw input image characteristics. Required only if RAW or RAWL (RAW little endian) input file is provided. Note: If sub-sampling is omitted, `1x1` is assumed for all components. 
 
@@ -125,23 +123,29 @@ Example of a raw `512x512` unsigned image with `4:2:0` sub-sampling
 
        -F 512,512,3,8,u@1x1:2x2:2x2
 
+`-A, --rate--control-algorithm [0|1]`
+
+Select algorithm used for rate control.
+* 0: Bisection search for optimal threshold using all code passes in code blocks. Slightly higher PSNR than algorithm 1.
+* 1: Bisection search for optimal threshold using only feasible truncation points, on convex hull (default). Faster than algorithm 0.
+
 `-r, --compression-ratios [<compression ratio>,<compression ratio>,...]`
 
 Note: not supported for Part 15 (HTJ2K) compression
 
 Compression ratio values (double precision, greater than or equal to one). Each value is a factor of compression, thus 20 means 20 times compressed. Each value represents a quality layer. The order used to define the different levels of compression is important and must be from left to right in descending order. A final lossless quality layer (including all remaining code passes) will be signified by the value 1. Default: 1 single lossless quality layer.
 
-`-q, --quality [quality in dB,quality in dB,...]`
+`-q, -quality [quality in dB,quality in dB,...]`
 
 Note: not supported for Part 15 (HTJ2K) compression
 
 Quality values (double precision, greater than or equal to zero). Each value is a PSNR measure, given in dB, representing a quality layer. The order used to define the different PSNR values is important and must be from left to right in ascending order. A value of 0 signifies a final lossless quality layer (including all remaining code passes) Default: 1 single lossless quality layer.
 
-`-n, --resolutions [number of resolutions]`
+`-n, -numresolutions [number of resolutions]`
 
 Number of resolutions. It corresponds to the `number of DWT decompositions +1`. Default: 6.
 
-`-b, --code-block-dims [code block width,code block height]`
+`-b, --code--block-dims [code block width,code block height]`
 
 Code-block size. The dimension must respect the constraint defined in the JPEG-2000 standard (no dimension smaller than 4 or greater than 1024, no code-block with more than 4096 coefficients). The maximum value authorized is 64x64. Default: 64x64.
 
@@ -157,15 +161,15 @@ Example for image with 6 resolutions :
 
 Tile size. Default: the dimension of the whole image, thus only one tile.
 
-`-L, --plt`
+`-L, -PLT`
 
 Use PLT markers. Default: off
 
-`-X, --tlm`
+`-X, -TLM`
 
 Use TLM markers. Default: off
 
-`-I, --irreversible`
+`-I, -irreversible`
 
 Irreversible compression (ICT + DWT 9-7). This option enables the Irreversible Color Transformation (ICT) in place of the Reversible Color Transformation (RCT) and the irreversible DWT 9-7 in place of the 5-3 filter. Default: off.
 
@@ -173,7 +177,7 @@ Irreversible compression (ICT + DWT 9-7). This option enables the Irreversible C
 
 Progression order. The five progression orders are : `LRCP`, `RLCP`, `RPCL`, `PCRL` and `CPRL`. Default: `LRCP`.
 
-`-Z, --rsiz [rsiz]`
+`-Z, -rsiz [rsiz]`
 
 Profile, main level, sub level and version. Note: this flag will be ignored if cinema profile flags are used.
 
@@ -181,7 +185,7 @@ Profile, main level, sub level and version. Note: this flag will be ignored if c
 
 Number of guard bits to use in block coder. Must be between 0 and 7.
 
-`-w, --cinema-2k [24|48]`
+`-w, -cinema2K [24|48]`
 
 2K digital cinema profile. This option generates a codes stream compliant with the DCI specifications for 2K resolution content. The value given is the frame rate, which can be either 24 or 48 fps. The main specifications of the JPEG 2000 Profile-3 (2K Digital Cinema Profile) are:
 
@@ -196,7 +200,7 @@ Number of guard bits to use in block coder. Must be between 0 and 7.
 * Tile parts = 3; Each tile part contains data necessary to decompress one 2K color component
 * 12 bits per component.
 
-`-x, --cinema-4k`
+`-x, -cinema4k`
 
 4K digital cinema profile. This option generates a code stream compliant with the DCI specifications for 4K resolution content. The value given is the frame rate, which can be either 24 or 48 fps. The main specifications of the JPEG 2000 Profile-4 (4K Digital Cinema Profile) are:
 
@@ -210,7 +214,7 @@ Number of guard bits to use in block coder. Must be between 0 and 7.
 * Tile parts = 6; Each of first 3 tile parts contains data necessary to decompress one 2K color component, and each of last 3 tile parts contains data necessary to decompress one 4K color component.
 * 12 bits per component
 
-`-U, --broadcast [PROFILE [,mainlevel=X][,framerate=FPS] ]`
+`-U, -broadcast [PROFILE [,mainlevel=X][,framerate=FPS] ]`
 
 Broadcast compliant code stream
 
@@ -219,7 +223,7 @@ Broadcast compliant code stream
 * frame rate may be specified to enhance checks and set maximum bit rate when Y > 0. 
 If specified, it must be positive.
 
-`-z, --imf [PROFILE [,mainlevel=X][,sublevel=Y][,framerate=FPS]] ]`
+`-z, -IMF [PROFILE [,mainlevel=X][,sublevel=Y][,framerate=FPS]] ]`
 
 Interoperable Master Format (IMF) compliant codestream.
 
@@ -228,7 +232,7 @@ Interoperable Master Format (IMF) compliant codestream.
 * Y must be between 0 and 9
 * frame rate may be specified to enhance checks and set maximum bit rate when Y > 0. If specified, it must be positive.
 
-`-P, --poc [T<tile number 0>=resolution number start>,component number start,layer number end,resolution number end,component number end,progression order/T<tile number 1>= ...]`
+`-P, -POC [T<tile number 0>=resolution number start>,component number start,layer number end,resolution number end,component number end,progression order/T<tile number 1>= ...]`
 
 Progression order change. This specifies a list of progression orders and their bounds if a progression order change is desired.
 Note: there must be at least two progression orders specified.
@@ -236,15 +240,15 @@ Note: there must be at least two progression orders specified.
 Example:
       ` -POC T0=0,0,1,3,2,CPRL/T0=0,0,1,6,3,CPRL`
 
-`-S, --sop`
+`-S, -SOP`
 
 SOP marker is added before each packet. Default: no SOP.
 
-`-E, --eph`
+`-E, -EPH`
 
 EPH marker is added after each packet header. Default: no EPH.
 
-`-M, --mode [value]`
+`-M, -mode [value]`
 
 Non-default encode modes. There are 7 modes available.
 The first six are:
@@ -255,16 +259,19 @@ The first six are:
 * VSC [8] 
 * ERTERM(SEGTERM) [16] 
 * SEGMARK(SEGSYM) [32] 
+* HT [64] 
 
 and they can be combined together. If more than one mode is used, the values between the brackets `[]` must be added together. Default: no mode.
 
     Example : RESTART(4) + RESET(2) + SEGMARK(32) => -M 38
 
+Mode HT [64], for High Throughput encoding, *cannot* be combined with any of the other flags.
+
 `-u, --tile-parts [R|L|C]`
 
 Divide packets of every tile into tile-parts. The division is made by grouping Resolutions (R), Layers (L) or Components (C). The type of division is specified by setting the single letter `R`, `L`, or `C` as the value for this flag.
 
-`-R, --roi [c=component index,U=upshifting value]`
+`-R, -ROI [c=component index,U=upshifting value]`
 
 Quantization indices upshifted for a component. 
 
@@ -278,7 +285,7 @@ Offset of the image origin. The division in tile could be modified as the anchor
 
 Offset of the tile origin. The two values are respectively for X and Y axis offset. The tile anchor point can not be inside the image area. Default: no offset.
 
-`-Y, --mct [0|1|2]`
+`-Y, -MCT [0|1|2]`
 
 Specify explicitly if a Multiple Component Transform has to be used. 
 
@@ -292,7 +299,7 @@ For custom MCT, `-m` option has to be used (see below). By default, `RGB`->`YCC`
 
 Use custom array-based MCT of 32 bit signed values, comma separated, line-by-line no specific separators between lines, no space allowed between values. If this option is used, it automatically sets `[-Y|-mct]` option equal to 2.
 
-`-V, --transfer-exif-tags`
+`-V, --transfer--exif-tags`
 
 Transfer all Exif tags to output file.
 
@@ -318,25 +325,25 @@ Capture resolution in pixels/metre, in double precision.
 Display resolution in pixels/metre, in double precision. 
 The special values `[0,0]` for `-D` will force the encoder to set the display resolution equal to the capture resolution. 
 
-`-C, --comment [comment]`
+`-C, -comment [comment]`
 
 Add `<comment>` in comment marker segment(s). Multiple comments (up to a total of 256) can be specified, separated by the `|` character. For example:   `-C "This is my first comment|This is my second` will store `This is my first comment` in the first comment marker segment, and `This is my second` in a second comment marker.
 
-`-f, --apply-icc`
-
-Apply ICC profile before compression, if present.
-
-`-W, --log-file [output file name]`
+`-W, -logfile [output file name]`
 
 Log to file. File name will be set to `output file name`
 
-`-H, --num-workers [number of worker threads]`
+`-H, --num-threads [number of threads]`
 
 Number of threads used for T1 compression. Default is total number of logical cores.
 
-`-J, --duration [duration]`
+`-J, -duration [duration]`
 
 Duration in seconds for a batch compress job. `grk_compress` will exit when duration has been reached.
+
+`-e, -repetitions [number of repetitions]`
+
+Number of repetitions, for either a single image, or a folder of images. Default value is `1`. Unlimited repetitions are specified by a value of `0`.
 
 FILES
 =====

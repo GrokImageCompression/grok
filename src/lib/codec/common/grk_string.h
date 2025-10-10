@@ -12,57 +12,51 @@
  *
  *    You should have received a copy of the GNU Affero General Public License
  *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
- *
- *    This source code incorporates work covered by the BSD 2-clause license.
- *    Please see the LICENSE file in the root directory for details.
  *
  */
 
 #pragma once
 
 #include <errno.h>
-#include <string.h>
+#include <cstring>
+#include <stdexcept>
+#include <system_error>
 
 namespace grk
 {
-/* strnlen is not standard, strlen_s is C11... */
-/* keep in mind there still is a buffer read overflow possible */
+
+// Simplified and safe version of strnlen_s
 static size_t strnlen_s(const char* src, size_t max_len)
 {
-	size_t len;
-
-	if(src == nullptr)
-	{
-		return 0U;
-	}
-	for(len = 0U; (*src != '\0') && (len < max_len); src++, len++)
-		;
-	return len;
+  if(src == nullptr)
+  {
+    return 0U;
+  }
+  return std::char_traits<char>::length(src) < max_len ? std::char_traits<char>::length(src)
+                                                       : max_len;
 }
 
-/* should be equivalent to C11 function except for the handler */
-/* keep in mind there still is a buffer read overflow possible */
+// Simplified and safe version of strcpy_s
 static int strcpy_s(char* dst, size_t dst_size, const char* src)
 {
-	size_t src_len = 0U;
-	if((dst == nullptr) || (dst_size == 0U))
-	{
-		return EINVAL;
-	}
-	if(src == nullptr)
-	{
-		dst[0] = '\0';
-		return EINVAL;
-	}
-	src_len = strnlen_s(src, dst_size);
-	if(src_len >= dst_size)
-	{
-		return ERANGE;
-	}
-	memcpy(dst, src, src_len);
-	dst[src_len] = '\0';
-	return 0;
+  if(dst == nullptr || dst_size == 0U)
+  {
+    return EINVAL;
+  }
+  if(src == nullptr)
+  {
+    dst[0] = '\0';
+    return EINVAL;
+  }
+  size_t src_len = strnlen_s(src, dst_size);
+  if(src_len >= dst_size)
+  {
+    dst[0] = '\0'; // Ensure null-termination on error
+    return ERANGE;
+  }
+  std::strncpy(dst, src, dst_size - 1);
+  dst[dst_size - 1] = '\0'; // Ensure null-termination
+  return 0;
 }
 
 } // namespace grk

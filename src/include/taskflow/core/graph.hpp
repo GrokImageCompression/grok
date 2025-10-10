@@ -1,5 +1,6 @@
 #pragma once
 
+#include "../utility/macros.hpp"
 #include "../utility/traits.hpp"
 #include "../utility/iterator.hpp"
 
@@ -11,14 +12,14 @@
 #include "../utility/math.hpp"
 #include "../utility/small_vector.hpp"
 #include "../utility/serializer.hpp"
-#include "../utility/latch.hpp"
-#include "../utility/mpmc.hpp"
+#include "../utility/lazy_string.hpp"
 #include "error.hpp"
 #include "declarations.hpp"
 #include "semaphore.hpp"
 #include "environment.hpp"
 #include "topology.hpp"
 #include "tsq.hpp"
+
 
 /**
 @file graph.hpp
@@ -47,7 +48,7 @@ class to interact with the executor through taskflow composition.
 
 A graph object is move-only.
 */
-class Graph {
+class Graph : public std::vector<std::unique_ptr<Node>> {
 
   friend class Node;
   friend class FlowBuilder;
@@ -57,594 +58,42 @@ class Graph {
 
   public:
 
-    /**
-    @brief constructs a graph object
-    */
-    Graph() = default;
+  /**
+  @brief constructs a graph object
+  */
+  Graph() = default;
 
-    /**
-    @brief disabled copy constructor
-    */
-    Graph(const Graph&) = delete;
+  /**
+  @brief disabled copy constructor
+  */
+  Graph(const Graph&) = delete;
 
-    /**
-    @brief constructs a graph using move semantics
-    */
-    Graph(Graph&&);
+  /**
+  @brief constructs a graph using move semantics
+  */
+  Graph(Graph&&) = default;
 
-    /**
-    @brief destructs the graph object
-    */
-    ~Graph();
+  /**
+  @brief disabled copy assignment operator
+  */
+  Graph& operator = (const Graph&) = delete;
 
-    /**
-    @brief disabled copy assignment operator
-    */
-    Graph& operator = (const Graph&) = delete;
-
-    /**
-    @brief assigns a graph using move semantics
-    */
-    Graph& operator = (Graph&&);
-
-    /**
-    @brief queries if the graph is empty
-    */
-    bool empty() const;
-
-    /**
-    @brief queries the number of nodes in the graph
-    */
-    size_t size() const;
-
-    /**
-    @brief clears the graph
-    */
-    void clear();
+  /**
+  @brief assigns a graph using move semantics
+  */
+  Graph& operator = (Graph&&) = default;
+  
 
   private:
 
-    std::vector<Node*> _nodes;
-
-    void _clear();
-    void _clear_detached();
-    void _merge(Graph&&);
-    void _erase(Node*);
-    
-    /**
-    @private
-    */
-    template <typename ...ArgsT>
-    Node* _emplace_back(ArgsT&&...);
+  void _erase(Node*);
+  
+  /**
+  @private
+  */
+  template <typename ...ArgsT>
+  Node* _emplace_back(ArgsT&&...);
 };
-
-// ----------------------------------------------------------------------------
-
-/**
-@class Runtime
-
-@brief class to include a runtime object in a task
-
-A runtime object allows users to interact with the
-scheduling runtime inside a task, such as scheduling an active task,
-spawning a subflow, and so on.
-
-@code{.cpp}
-tf::Task A, B, C, D;
-std::tie(A, B, C, D) = taskflow.emplace(
-  [] () { return 0; },
-  [&C] (tf::Runtime& rt) {  // C must be captured by reference
-    std::cout << "B\n";
-    rt.schedule(C);
-  },
-  [] () { std::cout << "C\n"; },
-  [] () { std::cout << "D\n"; }
-);
-A.precede(B, C, D);
-executor.run(taskflow).wait();
-@endcode
-
-A runtime object is associated with the worker and the executor
-that runs the task.
-
-*/
-class Runtime {
-
-  friend class Executor;
-  friend class FlowBuilder;
-
-  public:
-  
-  /**
-  @brief destroys the runtime object
-
-  Issues a tf::Runtime::corun_all to finish all spawned asynchronous tasks
-  and then destroys the runtime object.
-  */
-  ~Runtime();
-
-  /**
-  @brief obtains the running executor
-
-  The running executor of a runtime task is the executor that runs
-  the parent taskflow of that runtime task.
-
-  @code{.cpp}
-  tf::Executor executor;
-  tf::Taskflow taskflow;
-  taskflow.emplace([&](tf::Runtime& rt){
-    assert(&(rt.executor()) == &executor);
-  });
-  executor.run(taskflow).wait();
-  @endcode
-  */
-  Executor& executor();
-  
-  /**
-  @brief acquire a reference to the underlying worker
-  */
-  inline Worker& worker();
-
-  /**
-  @brief schedules an active task immediately to the worker's queue
-
-  @param task the given active task to schedule immediately
-
-  This member function immediately schedules an active task to the
-  task queue of the associated worker in the runtime task.
-  An active task is a task in a running taskflow.
-  The task may or may not be running, and scheduling that task
-  will immediately put the task into the task queue of the worker
-  that is running the runtime task.
-  Consider the following example:
-
-  @code{.cpp}
-  tf::Task A, B, C, D;
-  std::tie(A, B, C, D) = taskflow.emplace(
-    [] () { return 0; },
-    [&C] (tf::Runtime& rt) {  // C must be captured by reference
-      std::cout << "B\n";
-      rt.schedule(C);
-    },
-    [] () { std::cout << "C\n"; },
-    [] () { std::cout << "D\n"; }
-  );
-  A.precede(B, C, D);
-  executor.run(taskflow).wait();
-  @endcode
-
-  The executor will first run the condition task @c A which returns @c 0
-  to inform the scheduler to go to the runtime task @c B.
-  During the execution of @c B, it directly schedules task @c C without
-  going through the normal taskflow graph scheduling process.
-  At this moment, task @c C is active because its parent taskflow is running.
-  When the taskflow finishes, we will see both @c B and @c C in the output.
-  */
-  void schedule(Task task);
-  
-  /**
-  @brief runs the given callable asynchronously
-
-  @tparam F callable type
-  @param f callable object
-    
-  The method creates an asynchronous task to launch the given
-  function on the given arguments.
-  The difference to tf::Executor::async is that the created asynchronous task
-  pertains to the runtime object.
-  Applications can explicitly issue tf::Runtime::corun_all
-  to wait for all spawned asynchronous tasks to finish.
-  For example:
-
-  @code{.cpp}
-  std::atomic<int> counter(0);
-  taskflow.emplace([&](tf::Runtime& rt){
-    auto fu1 = rt.async([&](){ counter++; });
-    auto fu2 = rt.async([&](){ counter++; });
-    fu1.get();
-    fu2.get();
-    assert(counter == 2);
-    
-    // spawn 100 asynchronous tasks from the worker of the runtime
-    for(int i=0; i<100; i++) {
-      rt.async([&](){ counter++; });
-    }
-    
-    // wait for the 100 asynchronous tasks to finish
-    rt.corun_all();
-    assert(counter == 102);
-  });
-  @endcode
-
-  This method is thread-safe and can be called by multiple workers
-  that hold the reference to the runtime.
-  For example, the code below spawns 100 tasks from the worker of
-  a runtime, and each of the 100 tasks spawns another task
-  that will be run by another worker.
-  
-  @code{.cpp}
-  std::atomic<int> counter(0);
-  taskflow.emplace([&](tf::Runtime& rt){
-    // worker of the runtime spawns 100 tasks each spawning another task
-    // that will be run by another worker
-    for(int i=0; i<100; i++) {
-      rt.async([&](){ 
-        counter++; 
-        rt.async([](){ counter++; });
-      });
-    }
-    
-    // wait for the 200 asynchronous tasks to finish
-    rt.corun_all();
-    assert(counter == 200);
-  });
-  @endcode
-  */
-  template <typename F>
-  auto async(F&& f);
-  
-  /**
-  @brief runs the given callable asynchronously
-
-  @tparam F callable type
-  @tparam P task parameters type
-
-  @param params task parameters
-  @param f callable
-
-  <p><!-- Doxygen warning workaround --></p>
-
-  @code{.cpp}
-  taskflow.emplace([&](tf::Runtime& rt){
-    auto future = rt.async("my task", [](){});
-    future.get();
-  });
-  @endcode
-
-  */
-  template <typename P, typename F>
-  auto async(P&& params, F&& f);
-
-  /**
-  @brief runs the given function asynchronously without returning any future object
-
-  @tparam F callable type
-  @param f callable
-
-  This member function is more efficient than tf::Runtime::async
-  and is encouraged to use when there is no data returned.
-
-  @code{.cpp}
-  std::atomic<int> counter(0);
-  taskflow.emplace([&](tf::Runtime& rt){
-    for(int i=0; i<100; i++) {
-      rt.silent_async([&](){ counter++; });
-    }
-    rt.corun_all();
-    assert(counter == 100);
-  });
-  @endcode
-
-  This member function is thread-safe.
-  */
-  template <typename F>
-  void silent_async(F&& f);
-  
-  /**
-  @brief runs the given function asynchronously without returning any future object
-
-  @tparam F callable type
-  @param params task parameters
-  @param f callable
-
-  <p><!-- Doxygen warning workaround --></p>
-
-  @code{.cpp}
-  taskflow.emplace([&](tf::Runtime& rt){
-    rt.silent_async("my task", [](){});
-    rt.corun_all();
-  });
-  @endcode
-  */
-  template <typename P, typename F>
-  void silent_async(P&& params, F&& f);
-  
-  /**
-  @brief similar to tf::Runtime::silent_async but the caller must be the worker of the runtime
-
-  @tparam F callable type
-
-  @param f callable
-
-  The method bypass the check of the caller worker from the executor 
-  and thus can only called by the worker of this runtime.
-
-  @code{.cpp}
-  taskflow.emplace([&](tf::Runtime& rt){
-    // running by the worker of this runtime
-    rt.silent_async_unchecked([](){});
-    rt.corun_all();
-  });
-  @endcode
-  */
-  template <typename F>
-  void silent_async_unchecked(F&& f);
-  
-  /**
-  @brief similar to tf::Runtime::silent_async but the caller must be the worker of the runtime
-
-  @tparam F callable type
-  @tparam P task parameters type
-
-  @param params task parameters
-  @param f callable
-
-  The method bypass the check of the caller worker from the executor 
-  and thus can only called by the worker of this runtime.
-
-  @code{.cpp}
-  taskflow.emplace([&](tf::Runtime& rt){
-    // running by the worker of this runtime
-    rt.silent_async_unchecked("my task", [](){});
-    rt.corun_all();
-  });
-  @endcode
-  */
-  template <typename P, typename F>
-  void silent_async_unchecked(P&& params, F&& f);
-
-  /**
-  @brief co-runs the given target and waits until it completes
-  
-  A target can be one of the following forms:
-    + a subflow task to spawn a subflow or
-    + a composable graph object with `tf::Graph& T::graph()` defined
-
-  @code{.cpp}
-  // co-run a subflow and wait until all tasks complete
-  taskflow.emplace([](tf::Runtime& rt){
-    rt.corun([](tf::Subflow& sf){
-      tf::Task A = sf.emplace([](){});
-      tf::Task B = sf.emplace([](){});
-    }); 
-  });
-  
-  // co-run a taskflow and wait until all tasks complete
-  tf::Taskflow taskflow1, taskflow2;
-  taskflow1.emplace([](){ std::cout << "running taskflow1\n"; });
-  taskflow2.emplace([&](tf::Runtime& rt){
-    std::cout << "running taskflow2\n";
-    rt.corun(taskflow1);
-  });
-  executor.run(taskflow2).wait();
-  @endcode
-
-  Although tf::Runtime::corun blocks until the operation completes, 
-  the caller thread (worker) is not blocked (e.g., sleeping or holding any lock). 
-  Instead, the caller thread joins the work-stealing loop of the executor 
-  and returns when all tasks in the target completes.
-  
-  @attention
-  Only the worker of this tf::Runtime can issue corun.
-  */
-  template <typename T>
-  void corun(T&& target);
-
-  /**
-  @brief keeps running the work-stealing loop until the predicate becomes true
-  
-  @tparam P predicate type
-  @param predicate a boolean predicate to indicate when to stop the loop
-
-  The method keeps the caller worker running in the work-stealing loop
-  until the stop predicate becomes true.
-  
-  @attention
-  Only the worker of this tf::Runtime can issue corun.
-  */
-  template <typename P>
-  void corun_until(P&& predicate);
-  
-  /**
-  @brief corun all asynchronous tasks spawned by this runtime with other workers
-
-  Coruns all asynchronous tasks (tf::Runtime::async,
-  tf::Runtime::silent_async) with other workers until all those 
-  asynchronous tasks finish.
-    
-  @code{.cpp}
-  std::atomic<size_t> counter{0};
-  taskflow.emplace([&](tf::Runtime& rt){
-    // spawn 100 async tasks and wait
-    for(int i=0; i<100; i++) {
-      rt.silent_async([&](){ counter++; });
-    }
-    rt.corun_all();
-    assert(counter == 100);
-    
-    // spawn another 100 async tasks and wait
-    for(int i=0; i<100; i++) {
-      rt.silent_async([&](){ counter++; });
-    }
-    rt.corun_all();
-    assert(counter == 200);
-  });
-  @endcode
-
-  @attention
-  Only the worker of this tf::Runtime can issue tf::Runtime::corun_all.
-  */
-  inline void corun_all();
-
-  /**
-  @brief acquires the given semaphores with a deadlock avoidance algorithm
-
-  @tparam S semaphore type (tf::Semaphore)
-  @param semaphores semaphores
-
-  Coruns this worker until acquiring all the semaphores. 
-
-  @code{.cpp}
-  tf::Semaphore semaphore(1);
-  tf::Executor executor;
-
-  // only one worker will enter the "critical_section" at any time
-  for(size_t i=0; i<100; i++) {
-    executor.async([&](tf::Runtime& rt){
-      rt.acquire(semaphore);
-      critical_section();
-      rt.release(semaphore);
-    });
-  }
-  @endcode
-  */ 
-  template <typename... S,
-    std::enable_if_t<all_same_v<Semaphore, std::decay_t<S>...>, void>* = nullptr
-  > 
-  void acquire(S&&... semaphores);
-
-  /**
-  @brief acquires the given range of semaphores with a deadlock avoidance algorithm
-  
-  @tparam I iterator type
-  @param first iterator to the beginning (inclusive)
-  @param last iterator to the end (exclusive)
-
-  Coruns this worker until acquiring all the semaphores. 
-
-  @code{.cpp}
-  std::list<tf::Semaphore> semaphores;
-  semaphores.emplace_back(1);
-  semaphores.emplace_back(1);
-  auto first = semaphores.begin();
-  auto last  = semaphores.end();
-  tf::Executor executor;
-
-  // only one worker will enter the "critical_section" at any time
-  for(size_t i=0; i<100; i++) {
-    executor.async([&](tf::Runtime& rt){
-      rt.acquire(first, last);
-      critical_section();
-      rt.release(first, last);
-    });
-  }
-  @endcode
-  */ 
-  template <typename I,
-    std::enable_if_t<std::is_same_v<deref_t<I>, Semaphore>, void> * = nullptr
-  >
-  void acquire(I first, I last);
-  
-  /**
-  @brief releases the given semaphores
-  
-  @tparam S semaphore type (tf::Semaphore)
-  @param semaphores semaphores
-
-  Releases the given semaphores.
-
-  @code{.cpp}
-  tf::Semaphore semaphore(1);
-  tf::Executor executor;
-
-  // only one worker will enter the "critical_section" at any time
-  for(size_t i=0; i<100; i++) {
-    executor.async([&](tf::Runtime& rt){
-      rt.acquire(semaphore);
-      critical_section();
-      rt.release(semaphore);
-    });
-  }
-  @endcode
-  */ 
-  template <typename... S,
-    std::enable_if_t<all_same_v<Semaphore, std::decay_t<S>...>, void>* = nullptr
-  >
-  void release(S&&... semaphores);
-  
-  /**
-  @brief releases the given range of semaphores
-  
-  @tparam I iterator type
-  @param first iterator to the beginning (inclusive)
-  @param last iterator to the end (exclusive)
-
-  Releases the given range of semaphores.
-
-  @code{.cpp}
-  std::list<tf::Semaphore> semaphores;
-  semaphores.emplace_back(1);
-  semaphores.emplace_back(1);
-  auto first = semaphores.begin();
-  auto last  = semaphores.end();
-  tf::Executor executor;
-
-  // only one worker will enter the "critical_section" at any time
-  for(size_t i=0; i<100; i++) {
-    executor.async([&](tf::Runtime& rt){
-      rt.acquire(first, last);
-      critical_section();
-      rt.release(first, last);
-    });
-  }
-  @endcode
-  */ 
-  template <typename I,
-    std::enable_if_t<std::is_same_v<deref_t<I>, Semaphore>, void> * = nullptr
-  >
-  void release(I first, I last);
-
-  protected:
-  
-  /**
-  @private
-  */
-  explicit Runtime(Executor&, Worker&, Node*);
-  
-  /**
-  @private
-  */
-  Executor& _executor;
-  
-  /**
-  @private
-  */
-  Worker& _worker;
-  
-  /**
-  @private
-  */
-  Node* _parent;
-
-  /**
-  @private
-  */
-  template <typename P, typename F>
-  auto _async(Worker& w, P&& params, F&& f);
-  
-  /**
-  @private
-  */
-  template <typename P, typename F>
-  void _silent_async(Worker& w, P&& params, F&& f);
-};
-
-// constructor
-inline Runtime::Runtime(Executor& e, Worker& w, Node* p) :
-  _executor{e},
-  _worker  {w},
-  _parent  {p}{
-}
-
-// Function: executor
-inline Executor& Runtime::executor() {
-  return _executor;
-}
-
-// Function: worker
-inline Worker& Runtime::worker() {
-  return _worker;
-}
 
 // ----------------------------------------------------------------------------
 // TaskParams
@@ -660,11 +109,6 @@ struct TaskParams {
   @brief name of the task
   */
   std::string name;
-
-  /**
-  @brief priority of the tassk
-  */
-  unsigned priority {0};
 
   /**
   @brief C-styled pointer to user data
@@ -712,22 +156,15 @@ class Node {
   friend class FlowBuilder;
   friend class Subflow;
   friend class Runtime;
+  friend class AnchorGuard;
+  friend class PreemptionGuard;
 
-  enum class AsyncState : int {
-    UNFINISHED = 0,
-    LOCKED = 1,
-    FINISHED = 2
-  };
+  //template <typename T>
+  //friend class Freelist;
 
 #ifdef TF_ENABLE_TASK_POOL
   TF_ENABLE_POOLABLE_ON_THIS;
 #endif
-
-  // state bit flag
-  constexpr static int CONDITIONED = 1;
-  constexpr static int DETACHED    = 2;
-  constexpr static int READY       = 4;
-  constexpr static int EXCEPTION   = 8;
 
   using Placeholder = std::monostate;
 
@@ -737,9 +174,16 @@ class Node {
     template <typename C>
     Static(C&&);
 
-    std::variant<
-      std::function<void()>, std::function<void(Runtime&)>
-    > work;
+    std::function<void()> work;
+  };
+  
+  // runtime work handle
+  struct Runtime {
+
+    template <typename C>
+    Runtime(C&&);
+
+    std::function<void(tf::Runtime&)> work;
   };
 
   // subflow work handle
@@ -758,9 +202,7 @@ class Node {
     template <typename C>
     Condition(C&&);
     
-    std::variant<
-      std::function<int()>, std::function<int(Runtime&)>
-    > work;
+    std::function<int()> work;
   };
 
   // multi-condition work handle
@@ -769,9 +211,7 @@ class Node {
     template <typename C>
     MultiCondition(C&&);
 
-    std::variant<
-      std::function<SmallVector<int>()>, std::function<SmallVector<int>(Runtime&)>
-    > work;
+    std::function<SmallVector<int>()> work;
   };
 
   // module work handle
@@ -790,7 +230,9 @@ class Node {
     Async(T&&);
 
     std::variant<
-      std::function<void()>, std::function<void(Runtime&)>
+      std::function<void()>, 
+      std::function<void(tf::Runtime&)>,       // silent async
+      std::function<void(tf::Runtime&, bool)>  // async
     > work;
   };
   
@@ -801,16 +243,19 @@ class Node {
     DependentAsync(C&&);
     
     std::variant<
-      std::function<void()>, std::function<void(Runtime&)>
+      std::function<void()>, 
+      std::function<void(tf::Runtime&)>,       // silent async
+      std::function<void(tf::Runtime&, bool)>  // async
     > work;
    
     std::atomic<size_t> use_count {1};
-    std::atomic<AsyncState> state {AsyncState::UNFINISHED};
+    std::atomic<ASTATE::underlying_type> state {ASTATE::UNFINISHED};
   };
 
   using handle_t = std::variant<
     Placeholder,      // placeholder
     Static,           // static tasking
+    Runtime,          // runtime tasking
     Subflow,          // subflow tasking
     Condition,        // conditional tasking
     MultiCondition,   // multi-conditional tasking
@@ -819,11 +264,17 @@ class Node {
     DependentAsync    // dependent async tasking
   >;
 
+  struct Semaphores {
+    SmallVector<Semaphore*> to_acquire;
+    SmallVector<Semaphore*> to_release;
+  };
+
   public:
 
   // variant index
   constexpr static auto PLACEHOLDER     = get_index_v<Placeholder, handle_t>;
   constexpr static auto STATIC          = get_index_v<Static, handle_t>;
+  constexpr static auto RUNTIME         = get_index_v<Runtime, handle_t>;
   constexpr static auto SUBFLOW         = get_index_v<Subflow, handle_t>;
   constexpr static auto CONDITION       = get_index_v<Condition, handle_t>;
   constexpr static auto MULTI_CONDITION = get_index_v<MultiCondition, handle_t>;
@@ -832,59 +283,53 @@ class Node {
   constexpr static auto DEPENDENT_ASYNC = get_index_v<DependentAsync, handle_t>;
 
   Node() = default;
-
-  template <typename... Args>
-  Node(const std::string&, unsigned, Topology*, Node*, size_t, Args&&...);
   
   template <typename... Args>
-  Node(const std::string&, Topology*, Node*, size_t, Args&&...);
+  Node(nstate_t, estate_t, const TaskParams&, Topology*, Node*, size_t, Args&&...);
   
   template <typename... Args>
-  Node(const TaskParams&, Topology*, Node*, size_t, Args&&...);
-  
-  template <typename... Args>
-  Node(const DefaultTaskParams&, Topology*, Node*, size_t, Args&&...);
-
-  ~Node();
+  Node(nstate_t, estate_t, const DefaultTaskParams&, Topology*, Node*, size_t, Args&&...);
 
   size_t num_successors() const;
-  size_t num_dependents() const;
-  size_t num_strong_dependents() const;
-  size_t num_weak_dependents() const;
+  size_t num_predecessors() const;
+  size_t num_strong_dependencies() const;
+  size_t num_weak_dependencies() const;
 
   const std::string& name() const;
 
   private:
   
-  std::atomic<int> _state {0};
+  nstate_t _nstate              {NSTATE::NONE};
+  std::atomic<estate_t> _estate {ESTATE::NONE};
 
   std::string _name;
-  
-  unsigned _priority {0};
   
   void* _data {nullptr};
   
   Topology* _topology {nullptr};
   Node* _parent {nullptr};
 
-  SmallVector<Node*> _successors;
-  SmallVector<Node*> _dependents;
+  size_t _num_successors {0};
+  SmallVector<Node*, 4> _edges;
 
   std::atomic<size_t> _join_counter {0};
-
-  std::exception_ptr _exception_ptr {nullptr};
   
   handle_t _handle;
-
-  void _precede(Node*);
-  void _set_up_join_counter();
-  void _process_exception();
+  
+  std::unique_ptr<Semaphores> _semaphores;
+  
+  std::exception_ptr _exception_ptr {nullptr};
 
   bool _is_cancelled() const;
   bool _is_conditioner() const;
+  bool _is_preempted() const;
   bool _acquire_all(SmallVector<Node*>&);
-
-  SmallVector<Node*> _release_all();
+  void _release_all(SmallVector<Node*>&);
+  void _precede(Node*);
+  void _set_up_join_counter();
+  void _rethrow_exception();
+  void _remove_successors(Node*);
+  void _remove_predecessors(Node*);
 };
 
 // ----------------------------------------------------------------------------
@@ -928,6 +373,15 @@ TF_FORCE_INLINE void recycle(Node* ptr) {
 // Constructor
 template <typename C>
 Node::Static::Static(C&& c) : work {std::forward<C>(c)} {
+}
+
+// ----------------------------------------------------------------------------
+// Definition for Node::Runtime
+// ----------------------------------------------------------------------------
+
+// Constructor
+template <typename C>
+Node::Runtime::Runtime(C&& c) : work {std::forward<C>(c)} {
 }
 
 // ----------------------------------------------------------------------------
@@ -991,48 +445,17 @@ Node::DependentAsync::DependentAsync(C&& c) : work {std::forward<C>(c)} {
 // Constructor
 template <typename... Args>
 Node::Node(
-  const std::string& name, 
-  unsigned priority,
-  Topology* topology, 
-  Node* parent, 
-  size_t join_counter,
-  Args&&... args
-) :
-  _name         {name},
-  _priority     {priority},
-  _topology     {topology},
-  _parent       {parent},
-  _join_counter {join_counter},
-  _handle       {std::forward<Args>(args)...} {
-}
-
-// Constructor
-template <typename... Args>
-Node::Node(
-  const std::string& name,
-  Topology* topology, 
-  Node* parent, 
-  size_t join_counter,
-  Args&&... args
-) :
-  _name         {name},
-  _topology     {topology},
-  _parent       {parent},
-  _join_counter {join_counter},
-  _handle       {std::forward<Args>(args)...} {
-}
-
-// Constructor
-template <typename... Args>
-Node::Node(
+  nstate_t nstate,
+  estate_t estate,
   const TaskParams& params,
   Topology* topology, 
   Node* parent, 
   size_t join_counter,
   Args&&... args
 ) :
+  _nstate       {nstate},
+  _estate       {estate},
   _name         {params.name},
-  _priority     {params.priority},
   _data         {params.data},
   _topology     {topology},
   _parent       {parent},
@@ -1043,94 +466,80 @@ Node::Node(
 // Constructor
 template <typename... Args>
 Node::Node(
+  nstate_t nstate,
+  estate_t estate,
   const DefaultTaskParams&,
   Topology* topology, 
   Node* parent, 
   size_t join_counter,
   Args&&... args
 ) :
+  _nstate       {nstate},
+  _estate       {estate},
   _topology     {topology},
   _parent       {parent},
   _join_counter {join_counter},
   _handle       {std::forward<Args>(args)...} {
 }
 
-// Destructor
-inline Node::~Node() {
-  // this is to avoid stack overflow
+// Procedure: _precede
+/*
+u successor   layout: s1, s2, s3, p1, p2 (num_successors = 3)
+v predecessor layout: s1, p1, p2
 
-  if(_handle.index() == SUBFLOW) {
-    // using std::get_if instead of std::get makes this compatible
-    // with older macOS versions
-    // the result of std::get_if is guaranteed to be non-null
-    // due to the index check above
-    auto& subgraph = std::get_if<Subflow>(&_handle)->subgraph;
-    std::vector<Node*> nodes;
-    nodes.reserve(subgraph.size());
-
-    std::move(
-      subgraph._nodes.begin(), subgraph._nodes.end(), std::back_inserter(nodes)
-    );
-    subgraph._nodes.clear();
-
-    size_t i = 0;
-
-    while(i < nodes.size()) {
-
-      if(nodes[i]->_handle.index() == SUBFLOW) {
-        auto& sbg = std::get_if<Subflow>(&(nodes[i]->_handle))->subgraph;
-        std::move(
-          sbg._nodes.begin(), sbg._nodes.end(), std::back_inserter(nodes)
-        );
-        sbg._nodes.clear();
-      }
-
-      ++i;
-    }
-
-    //auto& np = Graph::_node_pool();
-    for(i=0; i<nodes.size(); ++i) {
-      recycle(nodes[i]);
-    }
-  }
+add a new successor: u->v
+u successor   layout: 
+  s1, s2, s3, p1, p2, v (push_back v)
+  s1, s2, s3, v, p2, p1 (swap adj[num_successors] with adj[n-1])
+v predecessor layout: 
+  s1, p1, p2, u         (push_back u)
+*/ 
+inline void Node::_precede(Node* v) {
+  _edges.push_back(v);
+  std::swap(_edges[_num_successors++], _edges[_edges.size() - 1]);
+  v->_edges.push_back(this);
 }
 
-// Procedure: _precede
-inline void Node::_precede(Node* v) {
-  _successors.push_back(v);
-  v->_dependents.push_back(this);
+// Function: _remove_successors
+inline void Node::_remove_successors(Node* node) {
+  auto sit = std::remove(_edges.begin(), _edges.begin() + _num_successors, node);
+  size_t new_num_successors = std::distance(_edges.begin(), sit);
+  std::move(_edges.begin() + _num_successors, _edges.end(), sit);
+  _edges.resize(_edges.size() - (_num_successors - new_num_successors));
+  _num_successors = new_num_successors;
+}
+
+// Function: _remove_predecessors
+inline void Node::_remove_predecessors(Node* node) {
+  _edges.erase( 
+    std::remove(_edges.begin() + _num_successors, _edges.end(), node), _edges.end()
+  );
 }
 
 // Function: num_successors
 inline size_t Node::num_successors() const {
-  return _successors.size();
+  return _num_successors;
 }
 
-// Function: dependents
-inline size_t Node::num_dependents() const {
-  return _dependents.size();
+// Function: predecessors
+inline size_t Node::num_predecessors() const {
+  return _edges.size() - _num_successors;
 }
 
-// Function: num_weak_dependents
-inline size_t Node::num_weak_dependents() const {
+// Function: num_weak_dependencies
+inline size_t Node::num_weak_dependencies() const {
   size_t n = 0;
-  for(size_t i=0; i<_dependents.size(); i++) {
-    //if(_dependents[i]->_handle.index() == Node::CONDITION) {
-    if(_dependents[i]->_is_conditioner()) {
-      n++;
-    }
+  for(size_t i=_num_successors; i<_edges.size(); i++) {
+    n += _edges[i]->_is_conditioner();
   }
   return n;
 }
 
-// Function: num_strong_dependents
-inline size_t Node::num_strong_dependents() const {
+// Function: num_strong_dependencies
+inline size_t Node::num_strong_dependencies() const {
   size_t n = 0;
-  for(size_t i=0; i<_dependents.size(); i++) {
-    //if(_dependents[i]->_handle.index() != Node::CONDITION) {
-    if(!_dependents[i]->_is_conditioner()) {
-      n++;
-    }
+  for(size_t i=_num_successors; i<_edges.size(); i++) {
+    n += !_edges[i]->_is_conditioner();
   }
   return n;
 }
@@ -1146,31 +555,33 @@ inline bool Node::_is_conditioner() const {
          _handle.index() == Node::MULTI_CONDITION;
 }
 
+// Function: _is_preempted
+inline bool Node::_is_preempted() const {
+  return _nstate & NSTATE::PREEMPTED;
+}
+
 // Function: _is_cancelled
 // we currently only support cancellation of taskflow (no async task)
 inline bool Node::_is_cancelled() const {
-  //return _topology && _topology->_is_cancelled.load(std::memory_order_relaxed);
-  return _topology &&
-         (_topology->_state.load(std::memory_order_relaxed) & Topology::CANCELLED);
+  return (_topology && (_topology->_estate.load(std::memory_order_relaxed) & ESTATE::CANCELLED)) 
+         ||
+         (_parent && (_parent->_estate.load(std::memory_order_relaxed) & ESTATE::CANCELLED));
 }
 
 // Procedure: _set_up_join_counter
 inline void Node::_set_up_join_counter() {
   size_t c = 0;
-  for(auto p : _dependents) {
-    //if(p->_handle.index() == Node::CONDITION) {
-    if(p->_is_conditioner()) {
-      _state.fetch_or(Node::CONDITIONED, std::memory_order_relaxed);
-    }
-    else {
-      c++;
-    }
+  //for(auto p : _predecessors) {
+  for(size_t i=_num_successors; i<_edges.size(); i++) {
+    bool is_cond = _edges[i]->_is_conditioner();
+    _nstate = (_nstate + is_cond) | (is_cond * NSTATE::CONDITIONED);  // weak dependency
+    c += !is_cond;  // strong dependency
   }
   _join_counter.store(c, std::memory_order_relaxed);
 }
 
-// Procedure: _process_exception
-inline void Node::_process_exception() {
+// Procedure: _rethrow_exception
+inline void Node::_rethrow_exception() {
   if(_exception_ptr) {
     auto e = _exception_ptr;
     _exception_ptr = nullptr;
@@ -1178,77 +589,69 @@ inline void Node::_process_exception() {
   }
 }
 
+// Function: _acquire_all
+inline bool Node::_acquire_all(SmallVector<Node*>& nodes) {
+  // assert(_semaphores != nullptr);
+  auto& to_acquire = _semaphores->to_acquire;
+  for(size_t i = 0; i < to_acquire.size(); ++i) {
+    if(!to_acquire[i]->_try_acquire_or_wait(this)) {
+      for(size_t j = 1; j <= i; ++j) {
+        to_acquire[i-j]->_release(nodes);
+      }
+      return false;
+    }
+  }
+  return true;
+}
+
+// Function: _release_all
+inline void Node::_release_all(SmallVector<Node*>& nodes) {
+  // assert(_semaphores != nullptr);
+  auto& to_release = _semaphores->to_release;
+  for(const auto& sem : to_release) {
+    sem->_release(nodes);
+  }
+}
+
+
+
+// ----------------------------------------------------------------------------
+// AnchorGuard
+// ----------------------------------------------------------------------------
+
+/**
+@private
+*/
+class AnchorGuard {
+
+  public:
+  
+  // anchor is at estate as it may be accessed by multiple threads (e.g., corun's
+  // parent with tear_down_async's parent).
+  AnchorGuard(Node* node) : _node{node} { 
+    _node->_estate.fetch_or(ESTATE::ANCHORED, std::memory_order_relaxed);
+  }
+
+  ~AnchorGuard() {
+    _node->_estate.fetch_and(~ESTATE::ANCHORED, std::memory_order_relaxed);
+  }
+  
+  private:
+
+  Node* _node;
+};
+
+
 // ----------------------------------------------------------------------------
 // Graph definition
 // ----------------------------------------------------------------------------
 
-// Destructor
-inline Graph::~Graph() {
-  _clear();
-}
-
-// Move constructor
-inline Graph::Graph(Graph&& other) :
-  _nodes {std::move(other._nodes)} {
-}
-
-// Move assignment
-inline Graph& Graph::operator = (Graph&& other) {
-  _clear();
-  _nodes = std::move(other._nodes);
-  return *this;
-}
-
-// Procedure: clear
-inline void Graph::clear() {
-  _clear();
-}
-
-// Procedure: clear
-inline void Graph::_clear() {
-  for(auto node : _nodes) {
-    recycle(node);
-  }
-  _nodes.clear();
-}
-
-// Procedure: clear_detached
-inline void Graph::_clear_detached() {
-
-  auto mid = std::partition(_nodes.begin(), _nodes.end(), [] (Node* node) {
-    return !(node->_state.load(std::memory_order_relaxed) & Node::DETACHED);
-  });
-
-  for(auto itr = mid; itr != _nodes.end(); ++itr) {
-    recycle(*itr);
-  }
-  _nodes.resize(std::distance(_nodes.begin(), mid));
-}
-
-// Procedure: merge
-inline void Graph::_merge(Graph&& g) {
-  for(auto n : g._nodes) {
-    _nodes.push_back(n);
-  }
-  g._nodes.clear();
-}
-
 // Function: erase
 inline void Graph::_erase(Node* node) {
-  if(auto I = std::find(_nodes.begin(), _nodes.end(), node); I != _nodes.end()) {
-    _nodes.erase(I);
-    recycle(node);
-  }
-}
-
-// Function: size
-inline size_t Graph::size() const {
-  return _nodes.size();
-}
-
-// Function: empty
-inline bool Graph::empty() const {
-  return _nodes.empty();
+  erase(
+    std::remove_if(begin(), end(), [&](auto& p){ return p.get() == node; }),
+    end()
+  );
 }
 
 /**
@@ -1256,19 +659,84 @@ inline bool Graph::empty() const {
 */
 template <typename ...ArgsT>
 Node* Graph::_emplace_back(ArgsT&&... args) {
-  _nodes.push_back(animate(std::forward<ArgsT>(args)...));
-  return _nodes.back();
+  push_back(std::make_unique<Node>(std::forward<ArgsT>(args)...));
+  return back().get();
 }
 
+// ----------------------------------------------------------------------------
+// Graph checker
+// ----------------------------------------------------------------------------
 
-}  // end of namespace tf. ---------------------------------------------------
+/**
+@private
+ */
+template <typename T, typename = void>
+struct has_graph : std::false_type {};
+
+/**
+@private
+ */
+template <typename T>
+struct has_graph<T, std::void_t<decltype(std::declval<T>().graph())>>
+    : std::is_same<decltype(std::declval<T>().graph()), Graph&> {};
+
+/**
+ * @brief determines if the given type has a member function `Graph& graph()`
+ *
+ * This trait determines if the provided type `T` contains a member function
+ * with the exact signature `tf::Graph& graph()`. It uses SFINAE and `std::void_t`
+ * to detect the presence of the member function and its return type.
+ *
+ * @tparam T The type to inspect.
+ * @retval true If the type `T` has a member function `tf::Graph& graph()`.
+ * @retval false Otherwise.
+ *
+ * Example usage:
+ * @code
+ *
+ * struct A {
+ *   tf::Graph& graph() { return my_graph; };
+ *   tf::Graph my_graph;
+ *
+ *   // other custom members to alter my_graph
+ * };
+ *
+ * struct C {}; // No graph function
+ *
+ * static_assert(has_graph_v<A>, "A has graph()");
+ * static_assert(!has_graph_v<C>, "C does not have graph()");
+ * @endcode
+ */
+template <typename T>
+constexpr bool has_graph_v = has_graph<T>::value;
+
+// ----------------------------------------------------------------------------
+// detailed helper functions
+// ----------------------------------------------------------------------------
+
+namespace detail {
+
+/**
+@private
+*/
+template <typename T>
+TF_FORCE_INLINE Node* get_node_ptr(T& node) {
+  using U = std::decay_t<T>;
+  if constexpr (std::is_same_v<U, Node*>) {
+    return node;
+  } 
+  else if constexpr (std::is_same_v<U, std::unique_ptr<Node>>) {
+    return node.get();
+  } 
+  else {
+    static_assert(dependent_false_v<T>, "Unsupported type for get_node_ptr");
+  }
+} 
+
+}  // end of namespace tf::detail ---------------------------------------------
 
 
-
-
-
-
-
+}  // end of namespace tf. ----------------------------------------------------
 
 
 

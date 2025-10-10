@@ -13,10 +13,6 @@
  *    You should have received a copy of the GNU Affero General Public License
  *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
- *
- *    This source code incorporates work covered by the BSD 2-clause license.
- *    Please see the LICENSE file in the root directory for details.
- *
  */
 
 #include "grk_includes.h"
@@ -28,7 +24,7 @@ namespace grk
 static const uint16_t tabMaxSubLevelFromMainLevel[] = {15, /* unspecified */
                                                        1,  1, 1, 2, 3, 4, 5, 6, 7, 8, 9};
 
-int Profile::get_imf_max_NL(grk_cparameters* parameters, GrkImage* image)
+int Profile::getImfMaxNumDecompLevels(grk_cparameters* parameters, GrkImage* image)
 {
   /* Decomposition levels */
   const uint16_t rsiz = parameters->rsiz;
@@ -75,7 +71,7 @@ int Profile::get_imf_max_NL(grk_cparameters* parameters, GrkImage* image)
   return -1;
 }
 
-void Profile::set_imf_parameters(grk_cparameters* parameters, GrkImage* image)
+void Profile::setImfParams(grk_cparameters* parameters, GrkImage* image)
 {
   const uint16_t rsiz = parameters->rsiz;
   const uint16_t profile = GRK_GET_IMF_OR_BROADCAST_PROFILE(rsiz);
@@ -103,7 +99,7 @@ void Profile::set_imf_parameters(grk_cparameters* parameters, GrkImage* image)
   /* Adjust the number of resolutions if set to its defaults */
   if(parameters->numresolution == GRK_DEFAULT_NUMRESOLUTION && image->x0 == 0 && image->y0 == 0)
   {
-    const int max_NL = Profile::get_imf_max_NL(parameters, image);
+    const int max_NL = Profile::getImfMaxNumDecompLevels(parameters, image);
     if(max_NL >= 0 && parameters->numresolution > (uint32_t)max_NL)
       parameters->numresolution = (uint8_t)(max_NL + 1);
 
@@ -130,7 +126,7 @@ void Profile::set_imf_parameters(grk_cparameters* parameters, GrkImage* image)
   /* Set defaults precincts */
   if(parameters->csty == 0)
   {
-    parameters->csty |= J2K_CP_CSTY_PRT;
+    parameters->csty |= CP_CSTY_PRT;
     if(parameters->numresolution == 1)
     {
       parameters->res_spec = 1;
@@ -149,7 +145,7 @@ void Profile::set_imf_parameters(grk_cparameters* parameters, GrkImage* image)
   }
 }
 
-bool Profile::is_imf_compliant(grk_cparameters* parameters, GrkImage* image)
+bool Profile::isImfCompliant(grk_cparameters* parameters, GrkImage* image)
 {
   assert(parameters->numresolution > 0);
   if(parameters->numresolution == 0)
@@ -235,7 +231,7 @@ bool Profile::is_imf_compliant(grk_cparameters* parameters, GrkImage* image)
     }
     else
     {
-      if((uint32_t)parameters->t_width >= image->x1 && (uint32_t)parameters->t_height >= image->y1)
+      if(parameters->t_width >= image->x1 && parameters->t_height >= image->y1)
       {
         /* ok */
       }
@@ -268,7 +264,7 @@ bool Profile::is_imf_compliant(grk_cparameters* parameters, GrkImage* image)
   }
 
   /* Bitdepth */
-  for(uint32_t i = 0; i < image->numcomps; i++)
+  for(uint16_t i = 0; i < image->numcomps; i++)
   {
     if(!(image->comps[i].prec >= 8 && image->comps[i].prec <= 16) || (image->comps[i].sgnd))
     {
@@ -284,7 +280,7 @@ bool Profile::is_imf_compliant(grk_cparameters* parameters, GrkImage* image)
   }
 
   /* Sub-sampling */
-  for(uint32_t i = 0; i < image->numcomps; i++)
+  for(uint16_t i = 0; i < image->numcomps; i++)
   {
     if(i == 0 && image->comps[i].dx != 1)
     {
@@ -618,7 +614,7 @@ bool Profile::is_imf_compliant(grk_cparameters* parameters, GrkImage* image)
 
 //////////////////////////////////////////////////////////////
 
-int Profile::get_broadcast_max_NL(grk_cparameters* parameters, GrkImage* image)
+int Profile::getBroadcastMaxDecompLevels(grk_cparameters* parameters, GrkImage* image)
 {
   /* Decomposition levels */
   const uint16_t rsiz = parameters->rsiz;
@@ -665,7 +661,7 @@ int Profile::get_broadcast_max_NL(grk_cparameters* parameters, GrkImage* image)
   return -1;
 }
 
-void Profile::set_broadcast_parameters(grk_cparameters* parameters)
+void Profile::setBroadcastParams(grk_cparameters* parameters)
 {
   const uint16_t rsiz = parameters->rsiz;
   const uint16_t profile = GRK_GET_IMF_OR_BROADCAST_PROFILE(rsiz);
@@ -693,7 +689,7 @@ void Profile::set_broadcast_parameters(grk_cparameters* parameters)
   /* Set defaults precincts */
   if(parameters->csty == 0)
   {
-    parameters->csty |= J2K_CP_CSTY_PRT;
+    parameters->csty |= CP_CSTY_PRT;
     if(parameters->numresolution == 1)
     {
       parameters->res_spec = 1;
@@ -712,7 +708,7 @@ void Profile::set_broadcast_parameters(grk_cparameters* parameters)
   }
 }
 
-bool Profile::is_broadcast_compliant(grk_cparameters* parameters, GrkImage* image)
+bool Profile::isBroadcastCompliant(grk_cparameters* parameters, GrkImage* image)
 {
   assert(parameters->numresolution > 0);
   if(parameters->numresolution == 0 || image->numcomps == 0)
@@ -790,7 +786,7 @@ bool Profile::is_broadcast_compliant(grk_cparameters* parameters, GrkImage* imag
   }
 
   /* Bitdepth */
-  for(uint32_t i = 0; i < image->numcomps; i++)
+  for(uint16_t i = 0; i < image->numcomps; i++)
   {
     if(!(image->comps[i].prec >= 8 && image->comps[i].prec <= 12) || (image->comps[i].sgnd))
     {
@@ -980,26 +976,26 @@ bool Profile::is_broadcast_compliant(grk_cparameters* parameters, GrkImage* imag
  * Cinema Profile
  *****************/
 
-void Profile::initialise_4K_poc(grk_progression* POC, uint8_t numres)
+void Profile::init4kPoc(grk_progression* prog, uint8_t numres)
 {
   assert(numres > 0);
-  POC[0].tileno = 0;
-  POC[0].res_s = 0;
-  POC[0].comp_s = 0;
-  POC[0].lay_e = 1;
-  POC[0].res_e = (uint8_t)(numres - 1);
-  POC[0].comp_e = 3;
-  POC[0].specified_compression_poc_prog = GRK_CPRL;
-  POC[1].tileno = 0;
-  POC[1].res_s = (uint8_t)(numres - 1);
-  POC[1].comp_s = 0;
-  POC[1].lay_e = 1;
-  POC[1].res_e = numres;
-  POC[1].comp_e = 3;
-  POC[1].specified_compression_poc_prog = GRK_CPRL;
+  prog[0].tileno = 0;
+  prog[0].res_s = 0;
+  prog[0].comp_s = 0;
+  prog[0].lay_e = 1;
+  prog[0].res_e = (uint8_t)(numres - 1);
+  prog[0].comp_e = 3;
+  prog[0].specified_compression_poc_prog = GRK_CPRL;
+  prog[1].tileno = 0;
+  prog[1].res_s = (uint8_t)(numres - 1);
+  prog[1].comp_s = 0;
+  prog[1].lay_e = 1;
+  prog[1].res_e = numres;
+  prog[1].comp_e = 3;
+  prog[1].specified_compression_poc_prog = GRK_CPRL;
 }
 
-void Profile::set_cinema_parameters(grk_cparameters* parameters, GrkImage* image)
+void Profile::setCinemaParams(grk_cparameters* parameters, GrkImage* image)
 {
   /* No tiling */
   parameters->tile_size_on = false;
@@ -1081,7 +1077,7 @@ void Profile::set_cinema_parameters(grk_cparameters* parameters, GrkImage* image
   }
 
   /* Precincts */
-  parameters->csty |= J2K_CP_CSTY_PRT;
+  parameters->csty |= CP_CSTY_PRT;
   parameters->res_spec = (uint32_t)(parameters->numresolution - 1);
   for(uint32_t i = 0; i < parameters->res_spec; i++)
   {
@@ -1095,7 +1091,7 @@ void Profile::set_cinema_parameters(grk_cparameters* parameters, GrkImage* image
   /* Progression order changes for 4K, disallowed for 2K */
   if(parameters->rsiz == GRK_PROFILE_CINEMA_4K)
   {
-    Profile::initialise_4K_poc(parameters->progression, parameters->numresolution);
+    Profile::init4kPoc(parameters->progression, parameters->numresolution);
     parameters->numpocs = 1;
     parameters->numgbits = 2;
   }
@@ -1130,7 +1126,7 @@ void Profile::set_cinema_parameters(grk_cparameters* parameters, GrkImage* image
       ((double)parameters->max_cs_size * 8 * image->comps[0].dx * image->comps[0].dy);
 }
 
-bool Profile::is_cinema_compliant(GrkImage* image, uint16_t rsiz)
+bool Profile::isCinemaCompliant(GrkImage* image, uint16_t rsiz)
 {
   /* Number of components */
   if(image->numcomps != 3)
@@ -1144,7 +1140,7 @@ bool Profile::is_cinema_compliant(GrkImage* image, uint16_t rsiz)
   }
 
   /* Bitdepth */
-  for(uint32_t i = 0; i < image->numcomps; i++)
+  for(uint16_t i = 0; i < image->numcomps; i++)
   {
     if((image->comps[i].prec != 12) | (image->comps[i].sgnd))
     {

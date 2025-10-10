@@ -13,11 +13,8 @@
  *    You should have received a copy of the GNU Affero General Public License
  *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
- *
- *    This source code incorporates work covered by the BSD 2-clause license.
- *    Please see the LICENSE file in the root directory for details.
- *
  */
+
 #pragma once
 
 // #define GRK_FORCE_SIGNED_COMPRESS
@@ -31,7 +28,7 @@
 #include <cstdlib>
 #include <string>
 #ifdef _MSC_VER
-#define _USE_MATH_DEFINES
+#define _USE_MATH_DEFINES // for C++
 #endif
 #include <cmath>
 #include <cfloat>
@@ -46,7 +43,7 @@
 #include <sstream>
 #include <iostream>
 #include <vector>
-#include <algorithm>
+
 #include <numeric>
 /*
  Use fseeko() and ftello() if they are available since they use
@@ -82,11 +79,15 @@
 #define CMS_NO_REGISTER_KEYWORD 1
 #include "lcms2.h"
 
-#include "grok_private.h"
+#include "EnvVarManager.h"
+#include "flag_query.h"
+#include "grk_exceptions.h"
 #include "ILogger.h"
 #include <Logger.h>
+#include "IniParser.h"
+#include "SimpleXmlParser.h"
 #include "simd.h"
-#include "ThreadPool.hpp"
+#include "ExecSingleton.h"
 #include "packer.h"
 #include "MinHeap.h"
 #include "SequentialCache.h"
@@ -95,67 +96,108 @@
 #include "geometry.h"
 #include "MemManager.h"
 #include "buffer.h"
+#include "ChunkBuffer.h"
 #include "minpf_plugin_manager.h"
 #include "plugin_interface.h"
-#include "ICacheable.h"
-#include "TileSet.h"
+#include "TileWindow.h"
 #include "GrkObjectWrapper.h"
 #include "ChronoTimer.h"
 #include "testing.h"
-#include "MemStream.h"
+#include "MappedFile.h"
 #include "GrkMatrix.h"
-#include "GrkImage.h"
-#include "grk_exceptions.h"
+#include "Quantizer.h"
 #include "SparseBuffer.h"
-#include "BitIO.h"
-#include "BufferedStream.h"
+#include "ResSimple.h"
+#include "SparseCanvas.h"
+#include "intmath.h"
+#include "ImageComponentFlow.h"
+#include "MarkerCache.h"
+#include "SlabPool.h"
+#include "StreamIO.h"
+#include "IStream.h"
+#include "MemAdvisor.h"
+
+#include "FetchCommon.h"
+#include "TPFetchSeq.h"
+
+#include "GrkImageMeta.h"
+#include "GrkImage.h"
+#include "ICompressor.h"
+#include "IDecompressor.h"
+
+#include "MemStream.h"
+
+#include "StreamGenerator.h"
 #include "Profile.h"
-#include "LengthCache.h"
-#include "PLMarkerMgr.h"
-#include "PLCache.h"
+#include "MarkerParser.h"
+#include "Codec.h"
+
+#include "PLMarker.h"
 #include "SIZMarker.h"
 #include "PPMMarker.h"
-#include "SOTMarker.h"
-#include "CodeStream.h"
+namespace grk
+{
+struct TileProcessor;
+struct TileProcessorCompress;
+} // namespace grk
+#include "PacketParser.h"
+#include "PacketCache.h"
 #include "CodingParams.h"
-#include "CodeStreamCompress.h"
-#include "CodeStreamDecompress.h"
-#include "FileFormat.h"
-#include "FileFormatCompress.h"
-#include "FileFormatDecompress.h"
+#include "CodeStream.h"
+#include "PacketIter.h"
+
+#include "PacketLengthCache.h"
+#include "TLMMarker.h"
+#include "ICoder.h"
+#include "CoderPool.h"
+#include "FileFormatJP2Family.h"
+#include "FileFormatJP2Compress.h"
+#include "FileFormatJP2Decompress.h"
+#include "FileFormatMJ2.h"
+#include "FileFormatMJ2Compress.h"
+#include "FileFormatMJ2Decompress.h"
+
 #include "BitIO.h"
 #include "TagTree.h"
-#include "t1_common.h"
-#include "T1Interface.h"
+
 #include "Codeblock.h"
-#include "PacketParser.h"
-#include "ResSimple.h"
+#include "CodeblockCompress.h"
+#include "CodeblockDecompress.h"
+
 #include "Precinct.h"
 #include "Subband.h"
 #include "Resolution.h"
 #include "BlockExec.h"
-#include "ImageComponentFlow.h"
-#include "Scheduler.h"
-#include "SparseCanvas.h"
-#include "TileComponentWindow.h"
+#include "WindowScheduler.h"
+#include "WholeTileScheduler.h"
+
+#include "canvas/tile/TileComponentWindow.h"
 #include "WaveletCommon.h"
 #include "WaveletReverse.h"
 #include "WaveletFwd.h"
-#include "PacketIter.h"
+
 #include "PacketManager.h"
-#include "ImageComponentFlow.h"
-#include "TileComponent.h"
+#include "canvas/tile/TileComponent.h"
+#include "canvas/tile/Tile.h"
 #include "mct.h"
+
 #include "TileProcessor.h"
+#include "TileProcessorCompress.h"
+#include "SOTMarker.h"
+#include "CodeStreamCompress.h"
 #include "TileCache.h"
+#include "TileCompletion.h"
+#include "CodeStreamDecompress.h"
 #include "T2Compress.h"
 #include "T2Decompress.h"
-#include "grk_intmath.h"
 #include "plugin_bridge.h"
+#include "RateControl.h"
 #include "RateInfo.h"
-#include "T1Factory.h"
+#include "CoderFactory.h"
 #include "DecompressScheduler.h"
 #include "CompressScheduler.h"
+#include "DecompressWindowScheduler.h"
+#include "CompressWindowScheduler.h"
 
 #if (defined(__aarch64__) || defined(_M_ARM64)) && !defined(__ARM_FEATURE_SVE2) && \
     !defined(__ARM_FEATURE_SVE2)

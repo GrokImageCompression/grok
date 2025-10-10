@@ -13,13 +13,7 @@
  *    You should have received a copy of the GNU Affero General Public License
  *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
- *
- *    This source code incorporates work covered by the BSD 2-clause license.
- *    Please see the LICENSE file in the root directory for details.
- *
  */
-
-#include "grk_includes.h"
 
 namespace grk
 {
@@ -28,17 +22,17 @@ class GrkImage;
 class Profile
 {
 public:
-  static void initialise_4K_poc(grk_progression* POC, uint8_t numres);
-  static void set_cinema_parameters(grk_cparameters* parameters, GrkImage* image);
-  static bool is_cinema_compliant(GrkImage* image, uint16_t rsiz);
-  static void set_imf_parameters(grk_cparameters* parameters, GrkImage* image);
-  static bool is_imf_compliant(grk_cparameters* parameters, GrkImage* image);
-  static void set_broadcast_parameters(grk_cparameters* parameters);
-  static bool is_broadcast_compliant(grk_cparameters* parameters, GrkImage* image);
+  static void init4kPoc(grk_progression* prog, uint8_t numres);
+  static void setCinemaParams(grk_cparameters* parameters, GrkImage* image);
+  static bool isCinemaCompliant(GrkImage* image, uint16_t rsiz);
+  static void setImfParams(grk_cparameters* parameters, GrkImage* image);
+  static bool isImfCompliant(grk_cparameters* parameters, GrkImage* image);
+  static void setBroadcastParams(grk_cparameters* parameters);
+  static bool isBroadcastCompliant(grk_cparameters* parameters, GrkImage* image);
 
 private:
-  static int get_imf_max_NL(grk_cparameters* parameters, GrkImage* image);
-  static int get_broadcast_max_NL(grk_cparameters* parameters, GrkImage* image);
+  static int getImfMaxNumDecompLevels(grk_cparameters* parameters, GrkImage* image);
+  static int getBroadcastMaxDecompLevels(grk_cparameters* parameters, GrkImage* image);
 };
 
 } // namespace grk

@@ -21,9 +21,9 @@ cb28787aa7c223f03e6acad71e244108  issue104_jpxstream.jp2_2.pgx
 c74edbb49e132b2cfc1eaf7908197b17  issue134.jp2_0.pgx
 16fe8ed450da10a6aaae4cf6f467fc21  issue134.jp2_1.pgx
 c6091c07bf0ff221008dfb60d893cdff  issue134.jp2_2.pgx
-b2e61fe3f63014844e04323d4383b700  issue135.j2k_0.pgx
-9151bac2db01400cd1715da9754d7068  issue135.j2k_1.pgx
-4931571446d50834bf39d598c05e04be  issue135.j2k_2.pgx
+393b4c1f6fc03ec3a3402d01f8347454  issue135.j2k_0.pgx
+c13d9f28491244adda4cf1583124051b  issue135.j2k_1.pgx
+3fc0abdc1e2b9587026d3cadabdf8577  issue135.j2k_2.pgx
 aa7461b31e14641586803b23b7fb04f2  issue142.j2k_0.pgx
 a809006e7a0c1eed68bc86c96af43fe3  issue142.j2k_1.pgx
 74f7a7a194a74a947245b843c62c4054  issue142.j2k_2.pgx
@@ -55,12 +55,12 @@ e58242abc2c6d44df187397c55e6fbff  issue254.jp2_2.pgx
 ce4e556aaa0844b92a92c35c200fc43e  j2k32.j2k_1.pgx
 ea926520f990640862f3fe6616097613  j2k32.j2k_2.pgx
 66b60e866991e03f9a2de18e80d3102b  kakadu_v4-4_openjpegv2_broken.j2k_0.pgx
-b2e61fe3f63014844e04323d4383b700  kodak_2layers_lrcp.j2c_0.pgx
-9151bac2db01400cd1715da9754d7068  kodak_2layers_lrcp.j2c_1.pgx
-4931571446d50834bf39d598c05e04be  kodak_2layers_lrcp.j2c_2.pgx
-b2e61fe3f63014844e04323d4383b700  kodak_2layers_lrcp-l2.j2c_0.pgx
-9151bac2db01400cd1715da9754d7068  kodak_2layers_lrcp-l2.j2c_1.pgx
-4931571446d50834bf39d598c05e04be  kodak_2layers_lrcp-l2.j2c_2.pgx
+393b4c1f6fc03ec3a3402d01f8347454  kodak_2layers_lrcp.j2c_0.pgx
+c13d9f28491244adda4cf1583124051b  kodak_2layers_lrcp.j2c_1.pgx
+3fc0abdc1e2b9587026d3cadabdf8577  kodak_2layers_lrcp.j2c_2.pgx
+393b4c1f6fc03ec3a3402d01f8347454  kodak_2layers_lrcp-l2.j2c_0.pgx
+c13d9f28491244adda4cf1583124051b  kodak_2layers_lrcp-l2.j2c_1.pgx
+3fc0abdc1e2b9587026d3cadabdf8577  kodak_2layers_lrcp-l2.j2c_2.pgx
 05c062aca83d13b8095460f38a690a08  MarkerIsNotCompliant.j2k_0.pgx
 ff73d2bd32951d9e55b02186aac24aff  Marrin.jp2_0.pgx
 55ce884dd2346af6a5172a434ee578fa  Marrin.jp2_1.pgx
@@ -180,6 +180,9 @@ c678b04f4d3e59b9d66a8bce37c553c0  relax.jp2_2.pgx
 efc9c7f21a542a7888a9eeb73b0f7092  text_GBR.jp2_0.pgx
 54790b332b3dcbda28e1bcb31270b946  text_GBR.jp2_1.pgx
 d9bcbdc818febb8c0a6bc5f940a4ea85  text_GBR.jp2_2.pgx
+d90d3d4dcc9c7f56647bd50f6cdf5373  issue391.jp2_0.pgx
+d90d3d4dcc9c7f56647bd50f6cdf5373  issue391.jp2_1.pgx
+d90d3d4dcc9c7f56647bd50f6cdf5373  issue391.jp2_2.pgx
 a73bec4d6d82c8a64203e8fdf893b86d  issue412.jp2_0.pgx
 a73bec4d6d82c8a64203e8fdf893b86d  issue428.jp2_0.pgx
 2354cf24a1cc5e4a3b72896b333ba361  issue412.jp2_1.pgx
@@ -335,7 +338,7 @@ fc57ca26d22d7e909a6760c038b82eda  ybr-cat_2.pgx
 9d0151e0e4dd8d47a569db5eb6815755  clusterfuzz-testcase-minimized-grk_decompress_fuzzer-4772443124269056_1.pgx
 9d0151e0e4dd8d47a569db5eb6815755  clusterfuzz-testcase-minimized-grk_decompress_fuzzer-4772443124269056_2.pgx
 5df4122edbaec97a5f4e58d4047de289  1615b673ff67eddf0a79b3fce6950a9ece638d65_0.pgx
-de75e4c39f8d67ee953bc4c1ab2dd4b5  clusterfuzz-testcase-minimized-grk_decompress_fuzzer-5764218712358912_0.pgx
+ac8d6dd8f21fc54f977e4c69510ff215  clusterfuzz-testcase-minimized-grk_decompress_fuzzer-5764218712358912_0.pgx
 54ad80205edb6332c87efb56a966e6fa  foo.j2k_0.pgx
 3db312dd7f0883b085b2e5857302899a  foo.j2k_1.pgx
 5259082e6ca17d21a628e7ee5125115e  foo.j2k_2.pgx
@@ -368,7 +371,7 @@ d402c4aefdb7aa7d14696757a245cc38  issue205.jp2_r0.tif
 9a3743e3324fd6fc8f17f35267c37a83  cmyk_no_wavelet.tif
 3a93ed9d92b12549951198d45bc1fc09  cmyk_no_wavelet_region.tif
 736bce9529d10291df556b36218f2314  1802.pdf.SIGSEGV.36e.894.jp2_0.pgx
-f6c1fe3bc48d15e93cbf9052043b5931  mono_plt_tlm.tif
+2eee236bdf29409ae68249e30e20f547  mono_plt_tlm.tif
 a1e13f1bef73098e20611455cbd39472  mono_plt.tif
 9da8451c99d0f2e7df16d8a647ffa1d2  mono_plt_tlm_tp_region.tif
 2b4ed519757e91aa3a362b5efdf98c27  mono_plt_tlm_tp_tile5.tif
@@ -377,3 +380,22 @@ f6c1fe3bc48d15e93cbf9052043b5931  mono_plt_tlm_tile5.tif
 6b6674a5c134e3297103570507e6bad   mono_plt_region.tif
 f6b6674a5c134e3297103570507e6bad  mono_plt_region.tif
 1119cee36ed01399868a65b2978ad62a  a1_mono_tif-r-1.tif
+e674a7d3c6fa71e775c96dca29807794  multi_tile_truncated_rgb.tif
+49ba508cf753dce65f60c6cbe15de63d  issue397.jp2_0.pgx
+727f667ee5af05ab90fc16b1c45eaf12  issue397.jp2_1.pgx
+41991335cc70d6fb057f6596abb49b13  issue397.jp2_2.pgx
+20b01525d03f22e3a2bc58c578947fb1  t_bit16_layer5.tif
+8d878870c3fc07b580ebaefd57ac822c  b_bit16_layer5.bmp
+81c1cb30a79271f34c96d58a26a3f93b  ESP_011261_1960_RGB.NOMAP_TRUNC.jp2.tif
+
+56e2d97cd7645cb581fb8b560eef92b3  tnsot_0.tif
+56e2d97cd7645cb581fb8b560eef92b3  tnsot_0_tlm.tif
+56e2d97cd7645cb581fb8b560eef92b3  tnsot_non_0.tif
+56e2d97cd7645cb581fb8b560eef92b3  tnsot_non_0_tlm.tif
+
+0c58b0be9cc75a1d17ba05a712c57019  p_bit16_layer5.pgm
+9e879f015c3757dc288d3a334c774711  mono_plt_tlm_tile5.pgm
+c58d024ee421d36b836c1af546175fd0  mono_plt_tlm_tile.pgm
+
+2d0ee6c27449e24a1908065299ede44d  page_tlm.tif
+e674a7d3c6fa71e775c96dca29807794  page.tif

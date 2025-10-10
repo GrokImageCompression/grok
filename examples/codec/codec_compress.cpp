@@ -14,28 +14,31 @@
  *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
+
 #include <string>
 #include <cstring>
-#include <vector>
 #include <filesystem>
+#include <inttypes.h>
 
-#include "grok.h"
 #include "grok_codec.h"
 #include "grk_examples_config.h"
+#include "arg_converter.h"
 
 const std::string dataRoot = GRK_DATA_ROOT;
 
-int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
+int main([[maybe_unused]] int argc, [[maybe_unused]] const char** argv)
 {
+  auto cvt = std::make_unique<ArgConverter>("codec_decompress_from_memory");
+  cvt->push("-v");
+
   int rc = 1;
   // perform two identical compressions
   for(uint32_t i = 0; i < 2; ++i)
   {
     const uint32_t dimX = 640;
     const uint32_t dimY = 480;
-    const uint32_t numComps = 3;
-    const uint32_t precision = 8;
-    grk_image_comp* compParams = nullptr;
+    const uint16_t numComps = 3;
+    const uint8_t precision = 8;
     grk_image* image = nullptr;
     grk_stream_params streamParams = {};
     bool inputFromImage = true;
@@ -52,10 +55,10 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
     if(inputFromImage)
     {
       // create blank image
-      compParams = new grk_image_comp[numComps];
-      for(uint32_t i = 0; i < numComps; ++i)
+      auto compParams = std::make_unique<grk_image_comp[]>(numComps);
+      for(uint16_t compno = 0; compno < numComps; ++compno)
       {
-        auto c = compParams + i;
+        auto c = &compParams[compno];
         memset(c, 0, sizeof(grk_image_comp));
         c->w = dimX;
         c->h = dimY;
@@ -64,7 +67,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
         c->prec = precision;
         c->sgnd = false;
       }
-      image = grk_image_new(numComps, compParams, GRK_CLRSPC_SRGB, true);
+      image = grk_image_new(numComps, compParams.get(), GRK_CLRSPC_SRGB, true);
 
       // fill in component data
       // see grok.h header for full details of image structure
@@ -73,7 +76,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
         auto comp = image->comps + compno;
         auto compWidth = comp->w;
         auto compHeight = comp->h;
-        auto compData = comp->data;
+        auto compData = (int32_t*)comp->data;
         if(!compData)
         {
           fprintf(stderr, "Image has null data for component %d\n", compno);
@@ -84,27 +87,18 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
         // matches the precision specified above.
         // !! do not pass in data whose precision exceeds the precision specified above
         auto srcData = new int32_t[compWidth * compHeight];
-        for(uint32_t i = 0; i < compWidth * compHeight; ++i)
-          srcData[i] = 0xFF;
+        for(uint32_t k = 0; k < compWidth * compHeight; ++k)
+          srcData[k] = 0xFF;
         auto srcPtr = srcData;
         for(uint32_t j = 0; j < compHeight; ++j)
         {
-          memcpy(compData, srcPtr, compWidth * sizeof(int32_t));
+          memcpy(compData, srcPtr, (size_t)compWidth * sizeof(int32_t));
           srcPtr += compWidth;
           compData += comp->stride;
         }
         delete[] srcData;
       }
     }
-
-    // 1. form vector of command line args
-
-    // first entry must always be the name of the program, as is
-    // required by argv/argc variables in main method
-    argString.push_back("codec_compress");
-
-    // verbose output
-    argString.push_back("-v");
 
     // a file can be passed in as a command line argument
     // example:
@@ -121,43 +115,25 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
       outputFile = inputFile + ".tif";
     }
     if(!inputFromImage)
-    {
-      argString.push_back("-i");
-      argString.push_back(inputFile);
-    }
+      cvt->push("-i", inputFile);
 
     if(outputToBuffer)
     {
-      argString.push_back("--out-fmt");
-      argString.push_back("jp2");
+      cvt->push("--out-fmt", "jp2");
     }
     else
     {
-      argString.push_back("-o");
-      argString.push_back(outputFile);
+      cvt->push("-o", outputFile);
     }
-
-    // 2. convert to array of C strings
-    for(auto& s : argString)
-    {
-      char* arg = new char[s.size() + 1];
-      copy(s.begin(), s.end(), arg);
-      arg[s.size()] = '\0';
-      args.push_back(arg);
-    }
-
     // 3. decompress
-    rc = grk_codec_compress((int)args.size(), &args[0], image,
+    rc = grk_codec_compress(cvt->argc(), cvt->argv(), image,
                             outputToBuffer ? &streamParams : nullptr);
     if(rc)
       fprintf(stderr, "Failed to compress\n");
 
     if(outputToBuffer)
-      printf("Compressed to memory : %ld bytes\n", streamParams.buf_compressed_len);
-
-    // write buffer to file
-    if(outputToBuffer)
     {
+      printf("Compressed to memory : %lu bytes\n", streamParams.buf_compressed_len);
       auto fp = fopen(outputFile.c_str(), "wb");
       if(!fp)
       {
@@ -168,7 +144,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
         size_t written = fwrite(streamParams.buf, 1, streamParams.buf_compressed_len, fp);
         if(written != streamParams.buf_compressed_len)
         {
-          fprintf(stderr, "Buffer compress: only %ld bytes written out of %ld total",
+          fprintf(stderr, "Buffer compress: only %" PRIu64 " bytes written out of %lu total",
                   streamParams.buf_compressed_len, written);
         }
         fclose(fp);
@@ -177,9 +153,6 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
 
   beach:
     // 4. cleanup
-    for(auto& s : args)
-      delete[] s;
-    delete[] compParams;
     delete[] streamParams.buf;
     grk_object_unref(&image->obj);
   }

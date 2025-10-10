@@ -13,106 +13,138 @@
  *    You should have received a copy of the GNU Affero General Public License
  *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
- *
- *    This source code incorporates work covered by the BSD 2-clause license.
- *    Please see the LICENSE file in the root directory for details.
  */
-#include <cmath>
-#include <cstdio>
-#include <cstdlib>
-#include <cstring>
-#ifdef _WIN32
-#include <windows.h>
-#endif /* _WIN32 */
 
+#include <memory>
+#include <string>
+#include <vector>
+#include <array>
+#include "grk_apps_config.h"
 #include "grok.h"
-#include "grk_config.h"
+#include "spdlog/spdlog.h"
 #include "GrkRandomTileAccess.h"
+
+template<size_t N>
+void safe_strcpy(char (&dest)[N], const char* src)
+{
+  size_t len = strnlen(src, N - 1);
+  memcpy(dest, src, len);
+  dest[len] = '\0';
+}
 
 namespace grk
 {
 
-static int32_t test_tile(uint16_t tile_index, grk_image* image, grk_object* codec)
+// RAII wrapper for codec
+struct CodecDeleter
 {
-  fprintf(stdout, "Decompressing tile %d ...", tile_index);
-  if(!grk_decompress_tile(codec, tile_index))
+  void operator()(grk_object* codec) const
   {
-    fprintf(stderr, "random tile processor: failed to decompress tile %d", tile_index);
+    if(codec)
+    {
+      grk_object_unref(codec);
+    }
+  }
+};
+using CodecPtr = std::unique_ptr<grk_object, CodecDeleter>;
+
+static int32_t testTile(uint16_t tileIndex, const grk_image* image, grk_object* codec)
+{
+  spdlog::info("Decompressing tile {}", tileIndex);
+
+  if(!grk_decompress_tile(codec, tileIndex))
+  {
+    spdlog::error("Failed to decompress tile {}", tileIndex);
     return EXIT_FAILURE;
   }
-  for(uint32_t index = 0; index < image->numcomps; ++index)
+
+  for(uint16_t index = 0; index < image->numcomps; ++index)
   {
     if(image->comps[index].data == nullptr)
     {
-      fprintf(stderr, "random tile processor: failed to decompress tile %d", tile_index);
+      spdlog::error("Tile {} component {} has no data", tileIndex, index);
       return EXIT_FAILURE;
     }
   }
-  fprintf(stdin, "Tile %d decoded successfully", tile_index);
+
+  spdlog::info("Tile {} decoded successfully", tileIndex);
   return EXIT_SUCCESS;
 }
 
 int GrkRandomTileAccess::main(int argc, char** argv)
 {
-  grk_decompress_parameters parameters; /* decompression parameters */
-  int32_t ret = EXIT_FAILURE, rc;
+  // Initialize Grok
+  grk_initialize(nullptr, 0);
+
+  // RAII for cleanup
+  struct GrkCleanup
+  {
+    ~GrkCleanup()
+    {
+      grk_deinitialize();
+    }
+  } cleanup;
 
   if(argc != 2)
   {
-    fprintf(stderr, "Usage: %s <input_file>", argv[0]);
+    spdlog::error("Usage: {} <input_file>", argv[0]);
     return EXIT_FAILURE;
   }
 
-  grk_initialize(nullptr, 0);
+  std::string input_file(argv[1]);
+  grk_decompress_parameters parameters{};
 
+  // Test four corner tiles
+  std::array<uint16_t, 4> tiles{};
   for(uint32_t i = 0; i < 4; ++i)
   {
-    grk_object* codec = nullptr; /* Handle to a decompressor */
-    grk_image* image = nullptr;
-    parameters = {};
-    strncpy(parameters.infile, argv[1], GRK_PATH_LEN - 1);
+    // Set up codec with RAII
+    grk_stream_params stream_params{};
+    safe_strcpy(stream_params.file, input_file.data());
 
-    /* Index of corner tiles */
-    uint16_t tile[4];
-
-    grk_stream_params stream_params = {};
-    stream_params.file = parameters.infile;
-    codec = grk_decompress_init(&stream_params, &parameters);
+    CodecPtr codec(grk_decompress_init(&stream_params, &parameters));
     if(!codec)
     {
-      fprintf(stderr, "random tile processor: failed to set up decompressor");
-      goto cleanup;
+      spdlog::error("Failed to initialize decompressor for {}", input_file);
+      return EXIT_FAILURE;
     }
 
-    /* Read the main header of the codestream and if necessary the JP2 boxes*/
-    grk_header_info headerInfo;
-    memset(&headerInfo, 0, sizeof(grk_header_info));
-    if(!grk_decompress_read_header(codec, &headerInfo))
+    // Read header
+    grk_header_info headerInfo{};
+    if(!grk_decompress_read_header(codec.get(), &headerInfo))
     {
-      fprintf(stderr, "random tile processor : failed to read header");
-      goto cleanup;
+      spdlog::error("Failed to read header from {}", input_file);
+      return EXIT_FAILURE;
     }
 
-    fprintf(stdin, "The file contains %dx%d tiles", headerInfo.t_grid_width,
-            headerInfo.t_grid_height);
+    if(i == 0)
+    { // Only log tile grid info once
+      spdlog::info("File contains {}x{} tiles", headerInfo.t_grid_width, headerInfo.t_grid_height);
+    }
 
-    tile[0] = 0;
-    tile[1] = (uint16_t)(headerInfo.t_grid_width - 1);
-    tile[2] = (uint16_t)(headerInfo.t_grid_width * headerInfo.t_grid_height - 1);
-    tile[3] = (uint16_t)(tile[2] - headerInfo.t_grid_width);
+    // Calculate corner tile indices
+    tiles[0] = 0; // Top-left
+    tiles[1] = static_cast<uint16_t>(headerInfo.t_grid_width - 1); // Top-right
+    tiles[2] = static_cast<uint16_t>(headerInfo.t_grid_width * headerInfo.t_grid_height -
+                                     1); // Bottom-right
+    tiles[3] = static_cast<uint16_t>(tiles[2] - headerInfo.t_grid_width); // Bottom-left
 
-    image = grk_decompress_get_image(codec);
-    rc = test_tile(tile[i], image, codec);
+    const grk_image* image = grk_decompress_get_image(codec.get());
+    if(!image)
+    {
+      spdlog::error("Failed to get image data for {}", input_file);
+      return EXIT_FAILURE;
+    }
 
-    grk_object_unref(codec);
-    if(rc)
-      goto cleanup;
+    int32_t rc = testTile(tiles[i], image, codec.get());
+    if(rc != EXIT_SUCCESS)
+    {
+      return EXIT_FAILURE;
+    }
   }
-  ret = EXIT_SUCCESS;
-cleanup:
-  grk_deinitialize();
 
-  return ret;
+  spdlog::info("All corner tiles decoded successfully");
+  return EXIT_SUCCESS;
 }
 
 } // namespace grk

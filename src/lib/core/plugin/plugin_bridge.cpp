@@ -1,4 +1,4 @@
-/**
+/*
  *    Copyright (C) 2016-2025 Grok Image Compression Inc.
  *
  *    This source code is free software: you can redistribute it and/or  modify
@@ -16,80 +16,12 @@
  */
 
 #include "grk_includes.h"
+#include "TileProcessorCompress.h"
 
 namespace grk
 {
-// Performed after T2, just before plugin decompress is triggered
-// note: only support single segment at the moment
-void decompress_synch_plugin_with_host(TileProcessor* tcd)
-{
-  if(tcd->current_plugin_tile && tcd->current_plugin_tile->tile_components)
-  {
-    auto tile = tcd->getTile();
-    for(uint16_t compno = 0; compno < tile->numcomps_; compno++)
-    {
-      auto tilec = &tile->comps[compno];
-      auto plugin_tilec = tcd->current_plugin_tile->tile_components[compno];
-      assert(tilec->numresolutions == plugin_tilec->numresolutions);
-      for(uint32_t resno = 0; resno < tilec->numresolutions; resno++)
-      {
-        auto res = &tilec->resolutions_[resno];
-        auto plugin_res = plugin_tilec->resolutions[resno];
-        assert(plugin_res->num_bands == res->numTileBandWindows);
-        for(uint32_t bandIndex = 0; bandIndex < res->numTileBandWindows; bandIndex++)
-        {
-          auto band = &res->tileBand[bandIndex];
-          auto plugin_band = plugin_res->band[bandIndex];
-          assert(plugin_band->num_precincts ==
-                 (uint64_t)res->precinctGridWidth * res->precinctGridHeight);
-          //!!!! plugin still uses stepsize/2
-          plugin_band->stepsize = band->stepsize / 2;
-          for(auto prc : band->precincts)
-          {
-            auto plugin_prc = plugin_band->precincts[prc->precinctIndex];
-            assert(plugin_prc->num_blocks == prc->getNumCblks());
-            for(uint64_t cblkno = 0; cblkno < prc->getNumCblks(); cblkno++)
-            {
-              auto cblk = prc->getDecompressedBlockPtr(cblkno);
-              if(!cblk->getNumSegments())
-                continue;
-              // sanity check
-              if(cblk->getNumSegments() != 1)
-              {
-                grklog.info("Plugin does not handle code blocks with multiple "
-                            "segments. Image will be decompressed on CPU.");
-                throw PluginDecodeUnsupportedException();
-              }
-              uint32_t maxPasses =
-                  3 * (uint32_t)((tcd->headerImage->comps[0].prec + GRK_BIBO_EXTRA_BITS) - 2);
-              if(cblk->getSegment(0)->numpasses > maxPasses)
-              {
-                grklog.info("Number of passes %u in segment exceeds BIBO maximum %u. "
-                            "Image will be decompressed on CPU.",
-                            cblk->getSegment(0)->numpasses, maxPasses);
-                throw PluginDecodeUnsupportedException();
-              }
 
-              auto plugin_cblk = plugin_prc->blocks[cblkno];
-
-              // copy segments into plugin codeblock buffer, and point host code block
-              // data to plugin data buffer
-              plugin_cblk->compressed_data_length = (uint32_t)cblk->getSegBuffersLen();
-              cblk->copyToContiguousBuffer(plugin_cblk->compressed_data);
-              cblk->compressedStream.buf = plugin_cblk->compressed_data;
-              cblk->compressedStream.len = plugin_cblk->compressed_data_length;
-              cblk->compressedStream.owns_data = false;
-              plugin_cblk->num_bit_planes = cblk->numbps;
-              plugin_cblk->num_passes = (uint8_t)cblk->getSegment(0)->numpasses;
-            }
-          }
-        }
-      }
-    }
-  }
-}
-
-bool tile_equals(grk_plugin_tile* plugin_tile, Tile* tilePtr)
+bool tile_equals(grk_plugin_tile* plugin_tile, const Tile* tilePtr)
 {
   uint32_t state = grk_plugin_get_debug_state();
   if(!(state & GRK_PLUGIN_STATE_DEBUG))
@@ -102,37 +34,35 @@ bool tile_equals(grk_plugin_tile* plugin_tile, Tile* tilePtr)
     return false;
   for(uint16_t compno = 0; compno < tilePtr->numcomps_; ++compno)
   {
-    auto tilecomp = tilePtr->comps + compno;
+    auto tilecomp = tilePtr->comps_ + compno;
     auto plugin_tilecomp = plugin_tile->tile_components[compno];
-    if(tilecomp->numresolutions != plugin_tilecomp->numresolutions)
+    if(tilecomp->num_resolutions_ != plugin_tilecomp->numresolutions)
       return false;
-    for(uint32_t resno = 0; resno < tilecomp->numresolutions; ++resno)
+    for(uint8_t resno = 0; resno < tilecomp->num_resolutions_; ++resno)
     {
       auto resolution = tilecomp->resolutions_ + resno;
       auto plugin_resolution = plugin_tilecomp->resolutions[resno];
-      if(resolution->numTileBandWindows != plugin_resolution->num_bands)
+      if(resolution->numBands_ != plugin_resolution->num_bands)
         return false;
-      for(uint32_t bandIndex = 0; bandIndex < resolution->numTileBandWindows; ++bandIndex)
+      for(uint32_t bandIndex = 0; bandIndex < resolution->numBands_; ++bandIndex)
       {
-        auto band = resolution->tileBand + bandIndex;
+        auto band = resolution->band + bandIndex;
         auto plugin_band = plugin_resolution->band[bandIndex];
-        size_t num_precincts = band->num_precincts;
-        if(num_precincts != plugin_band->num_precincts)
-          return false;
-        for(auto precinct : band->precincts)
+        for(auto [precinctIndex, vectorIndex] : band->precinctMap_)
         {
-          auto plugin_precinct = plugin_band->precincts[precinct->precinctIndex];
+          auto precinct = band->precincts_[vectorIndex];
+          auto plugin_precinct = plugin_band->precincts[precinctIndex];
           uint64_t num_blocks = precinct->getNumCblks();
           if(num_blocks != plugin_precinct->num_blocks)
           {
             return false;
           }
-          for(uint64_t cblkno = 0; cblkno < num_blocks; ++cblkno)
+          for(uint32_t cblkno = 0; cblkno < num_blocks; ++cblkno)
           {
-            auto cblk = precinct->getDecompressedBlockPtr(cblkno);
+            auto cblk = precinct->getDecompressedBlock(cblkno);
             auto plugin_cblk = plugin_precinct->blocks[cblkno];
-            if(cblk->x0 != plugin_cblk->x0 || cblk->x1 != plugin_cblk->x1 ||
-               cblk->y0 != plugin_cblk->y0 || cblk->y1 != plugin_cblk->y1)
+            if(cblk->x0() != plugin_cblk->x0 || cblk->x1() != plugin_cblk->x1 ||
+               cblk->y0() != plugin_cblk->y0 || cblk->y1() != plugin_cblk->y1)
               return false;
           }
         }
@@ -142,14 +72,15 @@ bool tile_equals(grk_plugin_tile* plugin_tile, Tile* tilePtr)
   return true;
 }
 
-void compress_synch_with_plugin(TileProcessor* tcd, uint16_t compno, uint32_t resno,
-                                uint32_t bandIndex, uint64_t precinctIndex, uint64_t cblkno,
-                                Subband* band, CompressCodeblock* cblk, uint32_t* num_pix)
+void compress_synch_with_plugin(TileProcessorCompress* tileProcessor, uint16_t compno,
+                                uint8_t resno, uint8_t bandIndex, uint64_t precinctIndex,
+                                uint32_t cblkno, Subband* band, CodeblockCompress* cblk,
+                                uint32_t* num_pix)
 {
-  if(tcd->current_plugin_tile && tcd->current_plugin_tile->tile_components)
+  auto pluginTile = tileProcessor->getCurrentPluginTile();
+  if(pluginTile && pluginTile->tile_components)
   {
-    auto plugin_band =
-        tcd->current_plugin_tile->tile_components[compno]->resolutions[resno]->band[bandIndex];
+    auto plugin_band = pluginTile->tile_components[compno]->resolutions[resno]->band[bandIndex];
     auto precinct = plugin_band->precincts[precinctIndex];
     auto plugin_cblk = precinct->blocks[cblkno];
     uint32_t state = grk_plugin_get_debug_state();
@@ -157,19 +88,19 @@ void compress_synch_with_plugin(TileProcessor* tcd, uint16_t compno, uint32_t re
 
     if(debugPlugin)
     {
-      if(band->stepsize != plugin_band->stepsize)
+      if(band->stepsize_ != plugin_band->stepsize)
       {
-        grklog.warn("grok band step size %u differs from plugin step size %u", band->stepsize,
+        grklog.warn("grok band step size %u differs from plugin step size %u", band->stepsize_,
                     plugin_band->stepsize);
       }
-      if(cblk->numPassesTotal != plugin_cblk->num_passes)
+      if(cblk->getNumPasses() != plugin_cblk->num_passes)
         grklog.warn("CPU total number of passes (%u) differs from "
                     "plugin total number of passes (%u) : component=%u, res=%u, band=%u, block=%u",
-                    cblk->numPassesTotal, (uint32_t)plugin_cblk->num_passes, compno, resno,
+                    cblk->getNumPasses(), (uint32_t)plugin_cblk->num_passes, compno, resno,
                     bandIndex, cblkno);
     }
 
-    cblk->numPassesTotal = (uint32_t)plugin_cblk->num_passes;
+    cblk->setNumPasses(plugin_cblk->num_passes);
     *num_pix = (uint32_t)plugin_cblk->num_pix;
 
     if(debugPlugin)
@@ -187,9 +118,9 @@ void compress_synch_with_plugin(TileProcessor* tcd, uint16_t compno, uint32_t re
     if(debugPlugin)
     {
       uint32_t totalRate = 0;
-      if(cblk->numPassesTotal > 0)
+      if(cblk->getNumPasses() > 0)
       {
-        totalRate = (cblk->passes + cblk->numPassesTotal - 1)->rate;
+        totalRate = cblk->getLastPass()->rate_;
         if(totalRatePlugin != totalRate)
         {
           grklog.warn("Total CPU rate %u differs from total plugin rate %u, "
@@ -201,7 +132,8 @@ void compress_synch_with_plugin(TileProcessor* tcd, uint16_t compno, uint32_t re
 
       for(uint32_t p = 0; p < totalRate; ++p)
       {
-        if(cblk->paddedCompressedStream[p] != plugin_cblk->compressed_data[p])
+        auto stream = cblk->getPaddedCompressedStream();
+        if(stream[p] != plugin_cblk->compressed_data[p])
         {
           grklog.warn("data differs at position=%u, component=%u, res=%u, band=%u, "
                       "block=%u, CPU rate =%u, plugin rate=%u",
@@ -213,39 +145,40 @@ void compress_synch_with_plugin(TileProcessor* tcd, uint16_t compno, uint32_t re
     }
 
     if(goodData)
-      cblk->paddedCompressedStream = plugin_cblk->compressed_data;
-    cblk->compressedStream.len = (uint32_t)(plugin_cblk->compressed_data_length);
-    cblk->compressedStream.owns_data = false;
-    cblk->numbps = plugin_cblk->num_bit_planes;
+      cblk->setPaddedCompressedStream(plugin_cblk->compressed_data);
+    auto blockStream = cblk->getCompressedStream();
+    blockStream->set_num_elts((uint32_t)plugin_cblk->compressed_data_length);
+    blockStream->set_owns_data(false);
+    cblk->setNumBps(plugin_cblk->num_bit_planes);
     if(debugPlugin)
     {
-      if(cblk->x0 != plugin_cblk->x0 || cblk->y0 != plugin_cblk->y0 ||
-         cblk->x1 != plugin_cblk->x1 || cblk->y1 != plugin_cblk->y1)
+      if(cblk->x0() != plugin_cblk->x0 || cblk->y0() != plugin_cblk->y0 ||
+         cblk->x1() != plugin_cblk->x1 || cblk->y1() != plugin_cblk->y1)
       {
         grklog.error("CPU code block bounding box differs from plugin code block");
       }
     }
     uint32_t lastRate = 0;
-    for(uint32_t passno = 0; passno < cblk->numPassesTotal; passno++)
+    for(uint8_t passno = 0; passno < cblk->getNumPasses(); passno++)
     {
-      auto pass = cblk->passes + passno;
+      auto pass = cblk->getPass(passno);
       auto pluginPass = plugin_cblk->passes + passno;
 
       // synch distortion, if applicable
-      if(tcd->needsRateControl())
+      if(tileProcessor->needsRateControl())
       {
         if(debugPlugin)
         {
-          if(fabs(pass->distortiondec - pluginPass->distortion_decrease) /
-                 fabs(pass->distortiondec) >
+          if(fabs(pass->distortiondec_ - pluginPass->distortion_decrease) /
+                 fabs(pass->distortiondec_) >
              0.01)
           {
             grklog.warn("distortion decrease for pass %u differs between plugin and CPU:  "
                         "plugin: %u, CPU : %u",
-                        passno, pluginPass->distortion_decrease, pass->distortiondec);
+                        passno, pluginPass->distortion_decrease, pass->distortiondec_);
           }
         }
-        pass->distortiondec = pluginPass->distortion_decrease;
+        pass->distortiondec_ = pluginPass->distortion_decrease;
       }
       uint16_t pluginRate = (uint16_t)(pluginPass->rate + 1);
       if(pluginRate > totalRatePlugin)
@@ -256,17 +189,17 @@ void compress_synch_with_plugin(TileProcessor* tcd, uint16_t compno, uint32_t re
         pluginRate--;
       if(debugPlugin)
       {
-        if(pluginRate != pass->rate)
+        if(pluginRate != pass->rate_)
         {
           grklog.warn("CPU rate %u differs from plugin rate %u,pass=%u, "
                       "component=%u,res=%u,band=%u, "
                       "block=%u",
-                      pass->rate, pluginRate, passno, compno, resno, bandIndex, cblkno);
+                      pass->rate_, pluginRate, passno, compno, resno, bandIndex, cblkno);
         }
       }
-      pass->rate = pluginRate;
-      pass->len = (uint16_t)(pass->rate - lastRate);
-      lastRate = pass->rate;
+      pass->rate_ = pluginRate;
+      pass->len_ = (uint16_t)(pass->rate_ - lastRate);
+      lastRate = pass->rate_;
     }
   }
 }
@@ -279,7 +212,7 @@ void set_context_stream(TileProcessor* p_tileProcessor)
   for(uint16_t compno = 0; compno < tile->numcomps_; compno++)
   {
     auto tilec = tile->comps + compno;
-    for(uint32_t resno = 0; resno < tilec->numresolutions; resno++)
+    for(uint8_t resno = 0; resno < tilec->numresolutions; resno++)
     {
       auto res = &tilec->resolutions_[resno];
       for(uint32_t bandIndex = 0; bandIndex < res->numTileBandWindows; bandIndex++)
@@ -287,9 +220,9 @@ void set_context_stream(TileProcessor* p_tileProcessor)
         auto band = &res->tileBand[bandIndex];
         for(auto prc : band->precincts)
         {
-          for(uint64_t cblkno = 0; cblkno < prc->getNumCblks(); cblkno++)
+          for(uint32_t cblkno = 0; cblkno < prc->getNumCblks(); cblkno++)
           {
-            auto cblk = prc->getCompressedBlockPtr(cblkno);
+            auto cblk = prc->getCompressedBlock(cblkno);
             if(p_tileProcessor->current_plugin_tile &&
                p_tileProcessor->current_plugin_tile->tile_components)
             {

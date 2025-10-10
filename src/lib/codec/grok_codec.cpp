@@ -14,26 +14,26 @@
  *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
+
 #include "grok_codec.h"
 #include "GrkDump.h"
 #include "GrkDecompress.h"
 #include "GrkCompress.h"
 #include "GrkCompareImages.h"
 
-int GRK_CALLCONV grk_codec_dump(int argc, char* argv[])
+int grk_codec_dump(int argc, const char* argv[])
 {
   return grk::GrkDump().main(argc, argv);
 }
-int GRK_CALLCONV grk_codec_compress(int argc, char* argv[], grk_image* in_image,
-                                    grk_stream_params* stream)
+int grk_codec_compress(int argc, const char* argv[], grk_image* in_image, grk_stream_params* stream)
 {
   return grk::GrkCompress().main(argc, argv, in_image, stream);
 }
-int GRK_CALLCONV grk_codec_decompress(int argc, char* argv[])
+int grk_codec_decompress(int argc, const char* argv[])
 {
   return grk::GrkDecompress().main(argc, argv);
 }
-int GRK_CALLCONV grk_codec_compare_images(int argc, char* argv[])
+int grk_codec_compare_images(int argc, const char* argv[])
 {
   return grk::GrkCompareImages().main(argc, argv);
 }

@@ -22,6 +22,13 @@ if(EXISTS "${CMAKE_ROOT}/Modules/CPack.cmake")
   set(CPACK_PACKAGE_VERSION_PATCH    "${GROK_VERSION_PATCH}")
   set(CPACK_PACKAGE_INSTALL_DIRECTORY "Grok ${CPACK_PACKAGE_VERSION_MAJOR}.${CPACK_PACKAGE_VERSION_MINOR}")
   set(CPACK_SOURCE_PACKAGE_FILE_NAME  "Grok-${CPACK_PACKAGE_VERSION_MAJOR}.${CPACK_PACKAGE_VERSION_MINOR}.${CPACK_PACKAGE_VERSION_PATCH}")
+  set(CPACK_STRIP_FILES ON)
+  if(WIN32 AND MSVC)
+    file(GLOB_RECURSE PDB_FILES "${CMAKE_BINARY_DIR}/*.pdb")
+    foreach(PDB ${PDB_FILES})
+        file(REMOVE ${PDB})  # Deletes all .pdb files before packaging
+    endforeach()
+  endif(WIN32 AND MSVC)
 
   # Make this explicit here, rather than accepting the CPack default value,
   # so we can refer to it:

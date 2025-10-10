@@ -12,7 +12,9 @@
  *
  *    You should have received a copy of the GNU Affero General Public License
  *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
  */
+
 #pragma once
 
 #include <cstdint>
@@ -23,10 +25,10 @@
 
 /***
  *
- * SparseCanvas stores blocks of size LBW x LBH in canvase coordinate system (with offset)
+ * SparseCanvas stores blocks of size LBW x LBH in canvas coordinate system (with offset)
  * Blocks are only allocated for active sub-bands for reduced resolutions
  *
- * Data is pass in and out in a linear array, chunked either along the y axis
+ * Data is passed in and out in a linear array, chunked either along the y axis
  * or along the x axis, depending on whether we are working with a horizontal strip
  * or a vertical strip of data.
  *
@@ -35,6 +37,7 @@
 
 namespace grk
 {
+template<typename T>
 class ISparseCanvas
 {
 public:
@@ -42,16 +45,17 @@ public:
   /**
    * Read window of data into dest buffer.
    */
-  virtual bool read(uint8_t resno, grk_rect32 window, int32_t* dest, const uint32_t destChunkY,
+  virtual bool read(uint8_t resno, Rect32 window, T* dest, const uint32_t destChunkY,
                     const uint32_t destChunkX) = 0;
   /**
    * Write window of data from src buffer
    */
-  virtual bool write(uint8_t resno, grk_rect32 window, const int32_t* src, const uint32_t srcChunkY,
+  virtual bool write(uint8_t resno, Rect32 window, const T* src, const uint32_t srcChunkY,
                      const uint32_t srcChunkX) = 0;
 
-  virtual bool alloc(grk_rect32 window, bool zeroOutBuffer) = 0;
+  virtual bool alloc(Rect32 window, bool zeroOutBuffer) = 0;
 };
+template<typename T>
 struct SparseBlock
 {
   SparseBlock(void) : data(nullptr) {}
@@ -61,28 +65,36 @@ struct SparseBlock
   }
   void alloc(uint32_t block_area, bool zeroOutBuffer)
   {
-    data = new int32_t[block_area];
+    data = new T[block_area];
     if(zeroOutBuffer)
-      memset(data, 0, block_area * sizeof(int32_t));
+      memset(data, 0, (size_t)block_area * sizeof(T));
   }
-  int32_t* data;
+  T* data;
 };
-template<uint32_t LBW, uint32_t LBH>
-class SparseCanvas : public ISparseCanvas
+template<typename T, uint32_t LBW, uint32_t LBH>
+class SparseCanvas : public ISparseCanvas<T>
 {
 public:
-  SparseCanvas(grk_rect32 bds)
+  SparseCanvas(Rect32 bds)
       : blockWidth(1 << LBW), blockHeight(1 << LBH), blocks(nullptr), bounds(bds)
   {
     if(!bounds.width() || !bounds.height() || !LBW || !LBH)
       throw std::runtime_error("invalid window for sparse canvas");
     grid = bounds.scaleDownPow2(LBW, LBH);
     auto blockCount = grid.area();
-    blocks = new SparseBlock*[blockCount];
+    try
+    {
+      blocks = new SparseBlock<T>*[blockCount];
+    }
+    catch([[maybe_unused]] const std::bad_alloc& baex)
+    {
+      grklog.error("Sparse canvas: out of memory while allocating %d blocks", blockCount);
+      throw;
+    }
     for(uint64_t i = 0; i < blockCount; ++i)
       blocks[i] = nullptr;
   }
-  SparseCanvas(uint32_t width, uint32_t height) : SparseCanvas(grk_rect32(0, 0, width, height)) {}
+  SparseCanvas(uint32_t width, uint32_t height) : SparseCanvas(Rect32(0, 0, width, height)) {}
   ~SparseCanvas()
   {
     if(blocks)
@@ -95,17 +107,17 @@ public:
       delete[] blocks;
     }
   }
-  bool read(uint8_t resno, grk_rect32 window, int32_t* dest, const uint32_t destChunkY,
+  bool read(uint8_t resno, Rect32 window, T* dest, const uint32_t destChunkY,
             const uint32_t destChunkX)
   {
     return readWrite(resno, window, dest, destChunkY, destChunkX, true);
   }
-  bool write(uint8_t resno, grk_rect32 window, const int32_t* src, const uint32_t srcChunkY,
+  bool write(uint8_t resno, Rect32 window, const T* src, const uint32_t srcChunkY,
              const uint32_t srcChunkX)
   {
-    return readWrite(resno, window, (int32_t*)src, srcChunkY, srcChunkX, false);
+    return readWrite(resno, window, (T*)src, srcChunkY, srcChunkX, false);
   }
-  bool alloc(grk_rect32 win, bool zeroOutBuffer)
+  bool alloc(Rect32 win, bool zeroOutBuffer)
   {
     if(!SparseCanvas::isWindowValid(win))
       return true;
@@ -131,7 +143,7 @@ public:
         auto srcBlock = getBlock(gridX, gridY);
         if(!srcBlock)
         {
-          auto b = new SparseBlock();
+          auto b = new SparseBlock<T>();
           b->alloc(blockWidth * blockHeight, zeroOutBuffer);
           assert(grid.contains(gridX, gridY));
           assert(b->data);
@@ -144,17 +156,17 @@ public:
   }
 
 private:
-  inline SparseBlock* getBlock(uint32_t block_x, uint32_t block_y)
+  inline SparseBlock<T>* getBlock(uint32_t block_x, uint32_t block_y)
   {
     uint64_t index = (uint64_t)(block_y - grid.y0) * grid.width() + (block_x - grid.x0);
     return blocks[index];
   }
-  bool isWindowValid(grk_rect32 win)
+  bool isWindowValid(Rect32 win)
   {
     return !(win.x0 >= bounds.x1 || win.x1 <= win.x0 || win.x1 > bounds.x1 || win.y0 >= bounds.y1 ||
              win.y1 <= win.y0 || win.y1 > bounds.y1);
   }
-  bool readWrite(uint8_t resno, grk_rect32 win, int32_t* buf, const uint32_t spacingX,
+  bool readWrite(uint8_t resno, Rect32 win, T* buf, const uint32_t spacingX,
                  const uint32_t spacingY, bool isReadOperation)
   {
     if(!win.valid())
@@ -229,7 +241,7 @@ private:
         }
         else
         {
-          const int32_t* src = nullptr;
+          const T* src = nullptr;
           if(buf)
             src = buf + (y - win.y0) * spacingY + (x - win.x0) * spacingX;
           auto dest = srcBlock->data + ((uint64_t)blockOffsetY << LBW) + blockOffsetX;
@@ -241,7 +253,7 @@ private:
 #ifdef GRK_DEBUG_VALGRIND
               if(src)
               {
-                grk_pt32 pt((uint32_t)(x + blockX), y_);
+                Point32 pt((uint32_t)(x + blockX), y_);
                 size_t val = grk_memcheck<int32_t>(src + srcInd, 1);
                 if(val != grk_mem_ok)
                   grklog.error("sparse canvas @ resno %u,  write block(%u,%u): "
@@ -265,9 +277,9 @@ private:
 private:
   const uint32_t blockWidth;
   const uint32_t blockHeight;
-  SparseBlock** blocks;
-  grk_rect32 bounds; // canvas bounds
-  grk_rect32 grid; // block grid bounds
+  SparseBlock<T>** blocks;
+  Rect32 bounds; // canvas bounds
+  Rect32 grid; // block grid bounds
 };
 
 } // namespace grk

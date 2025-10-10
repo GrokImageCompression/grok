@@ -12,10 +12,6 @@
  *
  *    You should have received a copy of the GNU Affero General Public License
  *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
- *
- *    This source code incorporates work covered by the BSD 2-clause license.
- *    Please see the LICENSE file in the root directory for details.
  *
  */
 
@@ -32,22 +28,8 @@
 #endif /* _WIN32 */
 #include <chrono>
 
-#if defined(__GNUC__) || defined(__clang__)
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wsign-conversion"
-#endif
-
-#include "spdlog/spdlog.h"
-#include <spdlog/sinks/basic_file_sink.h>
-#include <spdlog/sinks/stdout_color_sinks.h>
-
-#if defined(__GNUC__) || defined(__clang__)
-#pragma GCC diagnostic pop
-#endif
-
-
 #include "grok.h"
-#include "Serializer.h"
+#include "FileOrchestratorIO.h"
 
 #if defined(_WIN32)
 #define GRK_FSEEK(stream, offset, whence) _fseeki64(stream, /* __int64 */ offset, whence)
@@ -70,70 +52,71 @@
 namespace grk
 {
 
-enum GrkRC {
-	GrkRCSuccess,
-	GrkRCFail,
-	GrkRCParseArgsFailed,
-	GrkRCUsage
+enum GrkRC
+{
+  GrkRCSuccess,
+  GrkRCFail,
+  GrkRCParseArgsFailed,
+  GrkRCUsage
 };
 
 template<typename... Args>
 void log(grk_msg_callback msg_handler, void* data, char const* const format, Args&... args) noexcept
 {
-	const int message_size = 512;
-	if((format != nullptr))
-	{
-		char message[message_size];
-		memset(message, 0, message_size);
-		vsnprintf(message, message_size, format, args...);
-		msg_handler(message, data);
-	}
+  const int message_size = 512;
+  if((format != nullptr))
+  {
+    char message[message_size];
+    memset(message, 0, message_size);
+    vsnprintf(message, message_size, format, args...);
+    msg_handler(message, data);
+  }
 }
 
 const GRK_SUPPORTED_FILE_FMT supportedStdoutFileFormatsCompress[] = {
-	GRK_FMT_PNG, GRK_FMT_PXM, GRK_FMT_RAW, GRK_FMT_RAWL, GRK_FMT_JPG
-};
+    GRK_FMT_PNG, GRK_FMT_PXM, GRK_FMT_RAW, GRK_FMT_RAWL, GRK_FMT_JPG};
 const GRK_SUPPORTED_FILE_FMT supportedStdoutFileFormatsDecompress[] = {
-    GRK_FMT_BMP, GRK_FMT_PNG, GRK_FMT_PXM, GRK_FMT_RAW, GRK_FMT_RAWL, GRK_FMT_JPG
-};
+    GRK_FMT_BMP, GRK_FMT_PNG, GRK_FMT_PXM, GRK_FMT_RAW, GRK_FMT_RAWL, GRK_FMT_JPG};
 
 const size_t maxICCProfileBufferLen = 10000000;
 
-
-class ChronoTimer {
-public:
-	explicit ChronoTimer(const std::string &msg);
-	void start(void);
-	void finish(void);
-private:
-	std::string message;
-	std::chrono::high_resolution_clock::time_point startTime;
-};
-
-struct grk_dircnt
+template<size_t N>
+void safe_strcpy(char (&dest)[N], const char* src)
 {
-	char* filename_buf;
-	char** filename;
+  size_t len = strnlen(src, N - 1);
+  memcpy(dest, src, len);
+  dest[len] = '\0';
+}
+
+class ChronoTimer
+{
+public:
+  explicit ChronoTimer(const std::string& msg);
+  void start(void);
+  void finish(void);
+
+private:
+  std::string message;
+  std::chrono::high_resolution_clock::time_point startTime;
 };
 
 struct grk_img_fol
 {
-	char* imgdirpath;
-	const char* out_format;
-	bool set_imgdir;
-	bool set_out_format;
+  char* imgdirpath;
+  const char* out_format;
+  bool set_imgdir;
+  bool set_out_format;
 };
 
 bool validateDirectory(std::string dir);
 std::string convertFileFmtToString(GRK_SUPPORTED_FILE_FMT fmt);
-bool parseWindowBounds(char* inArg, double* dw_x0, double* dw_y0, double* dw_x1,
-		double* dw_y1);
+bool parseWindowBounds(char* inArg, double* dw_x0, double* dw_y0, double* dw_x1, double* dw_y1);
 bool safe_fclose(FILE* fd);
-bool useStdio(const std::string &filename);
+bool useStdio(const std::string& filename);
 bool supportedStdioFormat(GRK_SUPPORTED_FILE_FMT format, bool compress);
 bool grk_open_for_output(FILE** fdest, const char* outfile, bool writeToStdout);
 bool grk_set_binary_mode(FILE* file);
-GRK_SUPPORTED_FILE_FMT grk_get_file_format(const char* filename, bool &isHTJ2K);
+GRK_SUPPORTED_FILE_FMT grk_get_file_format(const char* filename, bool& isHTJ2K);
 GRK_SUPPORTED_FILE_FMT grk_get_file_format(const char* filename);
 const char* pathSeparator();
 char* get_file_name(char* name);
@@ -145,112 +128,95 @@ bool isFinalOutputSubsampled(grk_image* image);
 template<typename T>
 inline T swap(T x)
 {
-	return (T)((x >> 8) | ((x & 0x00ff) << 8));
+  return (T)((x >> 8) | ((x & 0x00ff) << 8));
 }
 // specialization for 32 bit unsigned
 template<>
 inline uint32_t swap(uint32_t x)
 {
-	return (uint32_t)((x >> 24) | ((x & 0x00ff0000) >> 8) | ((x & 0x0000ff00) << 8) |
-					  ((x & 0x000000ff) << 24));
+  return (uint32_t)((x >> 24) | ((x & 0x00ff0000) >> 8) | ((x & 0x0000ff00) << 8) |
+                    ((x & 0x000000ff) << 24));
 }
-// no-op specialization for 8 bit
+// no-op specialization for unsigned 8 bit
 template<>
 inline uint8_t swap(uint8_t x)
 {
-	return x;
+  return x;
 }
-// no-op specialization for 8 bit
+// no-op specialization for signed 8 bit
 template<>
 inline int8_t swap(int8_t x)
 {
-	return x;
+  return x;
 }
 template<typename T>
 inline T endian(T x, bool to_big_endian)
 {
 #ifdef GROK_BIG_ENDIAN
-	if(!to_big_endian)
-		return swap<T>(x);
+  if(!to_big_endian)
+    return swap<T>(x);
 #else
-	if(to_big_endian)
-		return swap<T>(x);
+  if(to_big_endian)
+    return swap<T>(x);
 #endif
-	return x;
+  return x;
 }
 
 template<typename T>
 uint32_t ceildiv(T a, T b)
 {
-	assert(b);
-	return (uint32_t)((a + (uint64_t)b - 1) / b);
+  assert(b);
+  return (uint32_t)((a + (uint64_t)b - 1) / b);
 }
 
 template<typename T>
 inline bool writeBytes(T val, T* buf, T** outPtr, size_t* outCount, size_t len, bool big_endian,
-					   FILE* out)
+                       FILE* out)
 {
-	if(*outCount >= len)
-		return false;
-	*(*outPtr)++ = grk::endian<T>(val, big_endian);
-	(*outCount)++;
-	if(*outCount == len)
-	{
-		size_t res = fwrite(buf, 1, sizeof(T) * len, out);
-		if(res != sizeof(T) * len)
-			return false;
-		*outCount = 0;
-		*outPtr = buf;
-	}
-	return true;
+  if(*outCount >= len)
+    return false;
+  *(*outPtr)++ = grk::endian<T>(val, big_endian);
+  (*outCount)++;
+  if(*outCount == len)
+  {
+    size_t res = fwrite(buf, 1, sizeof(T) * len, out);
+    if(res != sizeof(T) * len)
+      return false;
+    *outCount = 0;
+    *outPtr = buf;
+  }
+  return true;
 }
 
 template<typename T>
 inline bool writeBytes(T val, T* buf, T** outPtr, size_t* outCount, size_t len, bool big_endian,
-					   Serializer *ser)
+                       FileOrchestratorIO* ser)
 {
-	if(*outCount >= len)
-		return false;
-	*(*outPtr)++ = grk::endian<T>(val, big_endian);
-	(*outCount)++;
-	if(*outCount == len)
-	{
-		if (!ser->write((uint8_t*)buf, sizeof(T) * len))
-			return false;
-		*outCount = 0;
-		*outPtr = buf;
-	}
-	return true;
+  if(*outCount >= len)
+    return false;
+  *(*outPtr)++ = grk::endian<T>(val, big_endian);
+  (*outCount)++;
+  if(*outCount == len)
+  {
+    if(!ser->write((uint8_t*)buf, sizeof(T) * len))
+      return false;
+    *outCount = 0;
+    *outPtr = buf;
+  }
+  return true;
 }
-
-
 
 uint32_t uint_adds(uint32_t a, uint32_t b);
 int population_count(uint32_t val);
 int count_leading_zeros(uint32_t val);
 int count_trailing_zeros(uint32_t val);
 
-void errorCallback(const char* msg, void* client_data);
-void warningCallback(const char* msg, void* client_data);
 void infoCallback(const char* msg, void* client_data);
+void debugCallback(const char* msg, void* client_data);
+void traceCallback(const char* msg, void* client_data);
+void warningCallback(const char* msg, void* client_data);
+void errorCallback(const char* msg, void* client_data);
 
 void configureLogging(const std::string& logfile);
-
-
-#define CLI11_PARSE_CUSTOM(app, ...)                                                                                          \
-    try {                                                                                                              \
-        (app).parse(__VA_ARGS__);                                                                                      \
-    } catch(const CLI::ParseError &e) {                                                                                \
-        int ret = (app).exit(e);                                                                                       \
-        if (ret == 0)                                                                                                  \
-            return GrkRCSuccess;                                                                                       \
-        else if (ret == 1)                                                                                             \
-            return GrkRCParseArgsFailed;                                                                               \
-        else                                                                                                           \
-            return GrkRCFail;                                                                                          \
-    }
-
-
-
 
 } // namespace grk

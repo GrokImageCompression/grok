@@ -17,7 +17,7 @@
 
 #include "grok_codec.h"
 
-int main(int argc, char** argv)
+int main(int argc, const char* argv[])
 {
   return grk_codec_decompress(argc, argv);
 }

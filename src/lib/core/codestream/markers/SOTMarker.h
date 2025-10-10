@@ -13,59 +13,41 @@
  *    You should have received a copy of the GNU Affero General Public License
  *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
- *
- *    This source code incorporates work covered by the BSD 2-clause license.
- *    Please see the LICENSE file in the root directory for details.
- *
  */
 
 #pragma once
 
 namespace grk
 {
-struct TileProcessor;
-class CodeStreamCompress;
-class CodeStreamDecompress;
-
 class SOTMarker
 {
 public:
+  /**
+   * @brief Constructs a new SOTMarker object
+   *
+   */
   SOTMarker(void);
 
   /**
-   * Writes the SOT marker (Start of tile-part)
+   * @brief Write SOT marker
    *
+   * @param compressor compressor
+   * @param tilePartLength tile part length
+   * @return true if successful
    */
-  bool write(TileProcessor* proc, uint32_t tileLength);
-  bool write_psot(BufferedStream* stream, uint32_t tileLength);
+  bool write(TileProcessorCompress* compressor, uint32_t tilePartLength);
 
   /**
-    * Decompress a SOT marker (Start of tile-part)
-    *
-    * @param       headerData   the data contained in the SOT marker.
-    * @param       header_size     the size of the data contained in the PPT marker.
-
-    */
-  bool read(CodeStreamDecompress* codeStream, uint8_t* headerData, uint16_t header_size);
+   * @brief write psot i.e. tile part length
+   *
+   * @param stream @ref IStream
+   * @param tileLength tile length
+   * @return true if successful
+   */
+  bool write_psot(IStream* stream, uint32_t tilePartLength);
 
 private:
   uint64_t psot_location_;
-
-  /**
-    * Reads values from a SOT marker (Start of tile-part)
-    *
-    * the j2k decompressor state is not affected. No side effects,
-    *  no checks except for header_size.
-    *
-    * @param       headerData   the data contained in the SOT marker.
-    * @param       header_size   the size of the data contained in the SOT marker.
-    * @param       tot_len       Psot.
-    * @param       current_part  TPsot.
-    * @param       num_parts     TNsot.
-
-    */
-  bool read(CodeStreamDecompress* codeStream, uint8_t* headerData, uint32_t header_size,
-            uint32_t* tot_len, uint16_t* tile_index, uint8_t* current_part, uint8_t* num_parts);
 };
 
 } /* namespace grk */
