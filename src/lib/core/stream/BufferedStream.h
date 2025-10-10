@@ -22,8 +22,6 @@
 namespace grk
 {
 
-class CurlFetcher;
-
 #define GROK_STREAM_STATUS_OUTPUT 0x1U
 #define GROK_STREAM_STATUS_INPUT 0x2U
 #define GROK_STREAM_STATUS_END 0x4U
@@ -94,21 +92,21 @@ struct BufferedStream : public IStream
   }
 
   /**
-   * @brief Sets the @ref CurlFetcher
+   * @brief Sets the @ref IFetcher
    *
-   * @param fetcher @ref CurlFetcher
+   * @param fetcher @ref IFetcher
    */
-  void setFetcher(CurlFetcher* fetcher)
+  void setFetcher(IFetcher* fetcher)
   {
     fetcher_ = fetcher;
   }
 
   /**
-   * @brief Gets the @ref CurlFetcher
+   * @brief Gets the @ref IFetcher
    *
-   * @return CurlFetcher<TileFetchContext>*
+   * @return IFetcher*
    */
-  CurlFetcher* getFetcher(void) override
+  IFetcher* getFetcher(void) override
   {
     return fetcher_;
   }
@@ -674,7 +672,7 @@ private:
   bool firstCache_ = true;
   size_t originalBufferLength_ = 0;
 
-  CurlFetcher* fetcher_ = nullptr;
+  IFetcher* fetcher_ = nullptr;
   MemAdvisor* memAdvisor_ = nullptr;
 };
 

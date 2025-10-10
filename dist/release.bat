@@ -17,7 +17,7 @@ REM along with this program. If not, see <http://www.gnu.org/licenses/>.
 cd %USERPROFILE%\src\grok
 set VCPKG_ROOT=%USERPROFILE%\src\vcpkg
 if exist build rmdir /s /q build
-cmake -B build -DGRK_BUILD_CURL=OFF -DCMAKE_TOOLCHAIN_FILE=%VCPKG_ROOT%\scripts\buildsystems\vcpkg.cmake -DVCPKG_TARGET_TRIPLET=x64-windows-static
+cmake -B build -DGRK_BUILD_LIBCURL=OFF -DCMAKE_TOOLCHAIN_FILE=%VCPKG_ROOT%\scripts\buildsystems\vcpkg.cmake -DVCPKG_TARGET_TRIPLET=x64-windows-static
 cmake --build build --config Release -- /m
 cd build
 cpack -G 7Z

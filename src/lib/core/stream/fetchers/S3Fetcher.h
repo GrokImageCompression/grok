@@ -17,12 +17,15 @@
 
 #pragma once
 
+#include "grk_config_private.h"
 #include "CurlFetcher.h"
 #include "FetchPathParser.h"
 #include <cstdlib>
 #include <ctime>
 #include <string>
 #include <curl/curl.h>
+
+#ifdef GRK_ENABLE_LIBCURL
 
 namespace grk
 {
@@ -640,3 +643,5 @@ private:
 };
 
 } // namespace grk
+
+#endif

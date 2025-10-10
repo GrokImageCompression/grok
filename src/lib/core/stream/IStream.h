@@ -50,7 +50,7 @@ struct StreamCallbacks
   grk_stream_write_fn writeCallback_;
 };
 
-class CurlFetcher;
+class IFetcher;
 
 struct IStream
 {
@@ -184,11 +184,11 @@ struct IStream
   virtual bool isMemStream() = 0;
 
   /**
-   * @brief Gets the @ref CurlFetcher
+   * @brief Gets the @ref IFetcher
    *
-   * @return CurlFetcher<TileFetchContext>*
+   * @return IFetcher*
    */
-  virtual CurlFetcher* getFetcher(void) = 0;
+  virtual IFetcher* getFetcher(void) = 0;
 
   virtual IStream* bifurcate(void) = 0;
 

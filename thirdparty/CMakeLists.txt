@@ -213,15 +213,17 @@ else(GRK_BUILD_LCMS2)
 endif(GRK_BUILD_LCMS2)
 
 
-if(NOT APPLE)
+option(GRK_ENABLE_LIBCURL "Enable libcurl" ON)
+
+if(GRK_ENABLE_LIBCURL AND NOT APPLE)
 
   # Option to build libcurl from source (default ON)
-  option(GRK_BUILD_CURL "Build libcurl from source instead of using system libcurl" ON)
+  option(GRK_BUILD_LIBCURL "Build libcurl from source instead of using system libcurl" ON)
 
   # Try to find system libcurl first
   find_package(CURL QUIET)
 
-  if(CURL_FOUND AND NOT GRK_BUILD_CURL)
+  if(CURL_FOUND AND NOT GRK_BUILD_LIBCURL)
       message(STATUS "Using system libcurl: ${CURL_VERSION_STRING}")
       # Ensure CURL::libcurl exists
       if(NOT TARGET CURL::libcurl)
@@ -251,7 +253,7 @@ if(NOT APPLE)
       endif()
       set(GRK_HAVE_LIBCURL ON CACHE BOOL "libcurl availability" FORCE)
   else()
-      message(STATUS "System libcurl not found or GRK_BUILD_CURL is ON. Building from Git...")
+      message(STATUS "System libcurl not found or GRK_BUILD_LIBCURL is ON. Building from Git...")
       include(FetchContent)
       FetchContent_Declare(
           curl

@@ -1,3 +1,8 @@
 {
-    "codeQL.githubDatabase.download": "never"
+  "clangd.arguments": [
+    "--background-index",
+    "--log=verbose",
+    "--clang-tidy"
+  ]
 }
+

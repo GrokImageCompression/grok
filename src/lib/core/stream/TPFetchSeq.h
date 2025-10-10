@@ -99,16 +99,6 @@ private:
   std::vector<std::shared_ptr<T>> objStore_;
 };
 
-struct DataSlice
-{
-  DataSlice(uint64_t offset, uint64_t length)
-      : offset_(offset), length_(length), end_(length_ > 0 ? offset_ + length_ - 1 : offset)
-  {}
-  uint64_t offset_;
-  uint64_t length_;
-  uint64_t end_;
-};
-
 /**
  * @struct TPSeq
  * @brief Sequence of shared_ptr<DataSlice> tile parts

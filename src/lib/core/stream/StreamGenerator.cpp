@@ -107,7 +107,7 @@ IStream* StreamGenerator::createCurlFetchStream(void)
     return nullptr;
   }
 
-#ifdef GROK_HAVE_LIBCURL
+#ifdef GRK_ENABLE_LIBCURL
   FetchAuth auth{};
   if(streamParams_.username[0])
     auth.username_ = streamParams_.username;

@@ -27,123 +27,60 @@
 #include <set>
 #include <vector>
 #include <curl/curl.h>
-#include <chrono> // Added for retry delay
 #include <map>
 #include <sstream>
+
+#include "grk_config_private.h"
+#include "FetchCommon.h"
 
 namespace grk
 {
 
-template<typename C>
-struct TileResult
-{
-  TileResult() = default;
-  TileResult(size_t id) : requestIndex_(id), retryCount_(0) {}
-
-  std::shared_ptr<C> ctx_;
-  size_t requestIndex_ = 0;
-  std::vector<uint8_t> data_;
-  long responseCode_ = 0;
-  bool success_ = false;
-  uint32_t retryCount_; // Added to track retries
-};
-
-// Job struct for tile fetch queue
-struct FetchJob
-{
-  FetchJob(std::set<uint16_t>&& s) : slated(std::move(s)) {}
-  std::set<uint16_t> slated;
-  std::promise<bool> promise_;
-};
-
-// Request for a chunk fetch
-struct ChunkRequest : public DataSlice
-{
-  ChunkRequest(uint16_t id, uint64_t start, uint64_t end)
-      : DataSlice(start, end >= start ? end - start + 1 : 0), requestIndex_(id)
-  {}
-  uint16_t requestIndex_;
-};
-
-struct ChunkContext;
-
-struct ChunkResult
-{
-  ChunkResult() = default;
-  ChunkResult(uint16_t id) : requestIndex_(id), retryCount_(0) {}
-
-  std::shared_ptr<ChunkContext> ctx_;
-  uint16_t requestIndex_ = 0;
-  std::vector<uint8_t> data_; // Buffer containing fetched data
-  long responseCode_ = 0; // HTTP response code
-  bool success_ = false; // Indicates if the fetch was successful
-  uint32_t retryCount_; // Added to track retries
-};
-
-struct ChunkContext
-{
-  ChunkContext(std::shared_ptr<ChunkBuffer<>> chunkBuffer,
-               std::shared_ptr<std::vector<ChunkRequest>> requests)
-      : chunkBuffer_(chunkBuffer), requests_(requests)
-  {}
-  std::shared_ptr<ChunkBuffer<>> chunkBuffer_;
-  std::shared_ptr<std::vector<ChunkRequest>> requests_;
-};
-
-static size_t chunkWriteCallback(void* contents, size_t size, size_t nmemb, void* userp)
-{
-  size_t total_size = size * nmemb;
-  auto* res = static_cast<ChunkResult*>(userp);
-  res->data_.insert(res->data_.end(), static_cast<uint8_t*>(contents),
-                    static_cast<uint8_t*>(contents) + total_size);
-  auto& req = (*res->ctx_->requests_)[res->requestIndex_];
-  if(res->data_.size() == req.length_)
-    res->ctx_->chunkBuffer_->add(res->requestIndex_, res->data_.data(), req.length_);
-
-  return total_size;
-}
-
-// Job struct for chunk fetch queue
-struct ChunkTask
-{
-  ChunkTask(std::shared_ptr<ChunkBuffer<>> chunkBuffer,
-            std::shared_ptr<std::vector<ChunkRequest>> reqs)
-      : chunkBuffer_(chunkBuffer), requests_(reqs)
-  {
-    promises_.resize(requests_->size());
-  }
-  std::shared_ptr<ChunkBuffer<>> chunkBuffer_;
-  std::shared_ptr<std::vector<ChunkRequest>> requests_;
-  std::vector<std::promise<ChunkResult>> promises_;
-};
-
-// Struct to manage a scheduled batch of chunk fetches
-struct ScheduledChunkFetch
-{
-  ScheduledChunkFetch(std::shared_ptr<ChunkContext> ctx,
-                      std::shared_ptr<std::vector<ChunkRequest>> reqs,
-                      std::shared_ptr<std::vector<ChunkResult>> res,
-                      std::shared_ptr<std::vector<std::promise<ChunkResult>>> proms)
-      : ctx_(ctx), requests_(reqs), results_(res), promises_(proms), scheduled_(0), completed_(0)
-  {
-    if(requests_)
-      requestIter_ = requests_->begin();
-  }
-  ScheduledChunkFetch() = default;
-
-  std::shared_ptr<ChunkContext> ctx_;
-  std::shared_ptr<std::vector<ChunkRequest>> requests_;
-  std::shared_ptr<std::vector<ChunkResult>> results_;
-  std::shared_ptr<std::vector<std::promise<ChunkResult>>> promises_;
-  std::vector<ChunkRequest>::iterator requestIter_;
-  size_t scheduled_; // Total scheduled requests so far
-  size_t completed_; // Total completed requests
-};
-
-class CurlFetcher;
 struct TileFetchContext;
-
 using TileFetchCallback = std::function<void(size_t requestIndex, TileFetchContext* context)>;
+
+class IFetcher
+{
+public:
+  virtual ~IFetcher() = default;
+
+  // Initialize the fetcher with a path and authentication details
+  virtual void init(const std::string& path, const FetchAuth& auth) = 0;
+
+  // Read data into a buffer
+  virtual size_t read(uint8_t* buffer, size_t numBytes) = 0;
+
+  // Seek to a specific offset
+  virtual bool seek(uint64_t offset) = 0;
+
+  // Get the total size of the resource
+  virtual uint64_t size() const = 0;
+
+  // Get the current offset
+  virtual uint64_t offset() const = 0;
+
+  // Fetch tiles asynchronously
+  virtual std::future<bool> fetchTiles(const TPSEQ_VEC& allTileParts, std::set<uint16_t>& slated,
+                                       void* user_data, TileFetchCallback callback) = 0;
+
+  virtual void onFetchTilesComplete(std::shared_ptr<TileFetchContext> context, bool success) = 0;
+
+  // Fetch chunks asynchronously (overload with single ChunkBuffer)
+  virtual std::vector<std::future<ChunkResult>>
+      fetchChunks(std::shared_ptr<ChunkBuffer<>> chunkBuffer) = 0;
+
+  // Fetch chunks asynchronously (overload with ChunkBuffer and requests)
+  virtual std::vector<std::future<ChunkResult>>
+      fetchChunks(std::shared_ptr<ChunkBuffer<>> chunkBuffer,
+                  std::shared_ptr<std::vector<ChunkRequest>> requests) = 0;
+
+  // List directory contents
+  virtual std::vector<std::string> listDirectory(const std::string& path) = 0;
+
+  // Retrieve metadata
+  virtual bool getMetadata(const std::string& path,
+                           std::map<std::string, std::string>& metadata) = 0;
+};
 
 struct TileFetchContext : public std::enable_shared_from_this<TileFetchContext>
 {
@@ -151,13 +88,13 @@ struct TileFetchContext : public std::enable_shared_from_this<TileFetchContext>
   void* user_data_ = nullptr;
   std::shared_ptr<std::unordered_map<uint16_t, std::shared_ptr<TPFetchSeq>>> tilePartFetchByTile_;
   TileFetchCallback callback_; // Use the nested type
-  CurlFetcher* fetcher_ = nullptr;
+  IFetcher* fetcher_ = nullptr;
 
   TileFetchContext(std::shared_ptr<TPFetchSeq>& requests, void* user_data,
                    std::shared_ptr<std::unordered_map<uint16_t, std::shared_ptr<TPFetchSeq>>>&
                        tilePartFetchByTile,
                    TileFetchCallback callback, // Update parameter type
-                   CurlFetcher* fetcher)
+                   IFetcher* fetcher)
       : requests_(requests), user_data_(user_data), tilePartFetchByTile_(tilePartFetchByTile),
         callback_(callback), fetcher_(fetcher)
   {}
@@ -167,28 +104,6 @@ struct TileFetchContext : public std::enable_shared_from_this<TileFetchContext>
 private:
   mutable size_t completeCount_ = 0;
 };
-
-static size_t tileWriteCallback(void* contents, size_t size, size_t nmemb, void* userp)
-{
-  size_t total_size = size * nmemb;
-  auto result = static_cast<TileResult<TileFetchContext>*>(userp);
-  if(result->ctx_)
-  {
-    auto& tpseq = (*result->ctx_->requests_)[result->requestIndex_];
-    tpseq->copy(static_cast<uint8_t*>(contents), total_size);
-    if(tpseq->fetchOffset_ == tpseq->length_)
-    {
-      result->ctx_->callback_(result->requestIndex_, result->ctx_.get());
-      result->ctx_->incrementCompleteCount();
-    }
-  }
-  else
-  {
-    result->data_.insert(result->data_.end(), static_cast<const uint8_t*>(contents),
-                         static_cast<const uint8_t*>(contents) + total_size);
-  }
-  return total_size;
-}
 
 // ScheduledTileFetch struct with completed request tracking
 struct ScheduledTileFetch
@@ -212,7 +127,44 @@ struct ScheduledTileFetch
 typedef size_t (*CURL_FETCHER_WRITE_CALLBACK)(void* contents, size_t size, size_t nmemb,
                                               void* userp);
 
-class CurlFetcher
+#ifdef GRK_ENABLE_LIBCURL
+
+static size_t tileWriteCallback(void* contents, size_t size, size_t nmemb, void* userp)
+{
+  size_t total_size = size * nmemb;
+  auto result = static_cast<TileResult<TileFetchContext>*>(userp);
+  if(result->ctx_)
+  {
+    auto& tpseq = (*result->ctx_->requests_)[result->requestIndex_];
+    tpseq->copy(static_cast<uint8_t*>(contents), total_size);
+    if(tpseq->fetchOffset_ == tpseq->length_)
+    {
+      result->ctx_->callback_(result->requestIndex_, result->ctx_.get());
+      result->ctx_->incrementCompleteCount();
+    }
+  }
+  else
+  {
+    result->data_.insert(result->data_.end(), static_cast<const uint8_t*>(contents),
+                         static_cast<const uint8_t*>(contents) + total_size);
+  }
+  return total_size;
+}
+
+static size_t chunkWriteCallback(void* contents, size_t size, size_t nmemb, void* userp)
+{
+  size_t total_size = size * nmemb;
+  auto* res = static_cast<ChunkResult*>(userp);
+  res->data_.insert(res->data_.end(), static_cast<uint8_t*>(contents),
+                    static_cast<uint8_t*>(contents) + total_size);
+  auto& req = (*res->ctx_->requests_)[res->requestIndex_];
+  if(res->data_.size() == req.length_)
+    res->ctx_->chunkBuffer_->add(res->requestIndex_, res->data_.data(), req.length_);
+
+  return total_size;
+}
+
+class CurlFetcher : public IFetcher
 {
 public:
   CurlFetcher(void) : tileWriteCallback_(tileWriteCallback)
@@ -225,7 +177,7 @@ public:
     fetchThread_ = std::thread(&CurlFetcher::fetchWorker, this);
   }
 
-  virtual ~CurlFetcher()
+  virtual ~CurlFetcher() override
   {
     {
       std::lock_guard<std::mutex> lock(queue_mutex_);
@@ -239,14 +191,14 @@ public:
     curl_global_cleanup();
   }
 
-  void init(const std::string& path, const FetchAuth& auth)
+  void init(const std::string& path, const FetchAuth& auth) override
   {
     auth_ = auth;
     parse(path);
     fetch_total_size();
   }
 
-  size_t read(uint8_t* buffer, size_t numBytes)
+  size_t read(uint8_t* buffer, size_t numBytes) override
   {
     if(current_offset_ + numBytes > total_size_)
     {
@@ -289,7 +241,7 @@ public:
     return bytes_read;
   }
 
-  bool seek(uint64_t offset)
+  bool seek(uint64_t offset) override
   {
     if(offset >= total_size_)
     {
@@ -301,12 +253,12 @@ public:
     return true;
   }
 
-  uint64_t size() const
+  uint64_t size() const override
   {
     return total_size_;
   }
 
-  uint64_t offset() const
+  uint64_t offset() const override
   {
     return current_offset_;
   }
@@ -322,7 +274,7 @@ public:
    * @return std::future<bool> future
    */
   std::future<bool> fetchTiles(const TPSEQ_VEC& allTileParts, std::set<uint16_t>& slated,
-                               void* user_data, TileFetchCallback callback)
+                               void* user_data, TileFetchCallback callback) override
   {
     // 1. cache fetch data
     {
@@ -354,7 +306,7 @@ public:
    * @param context context
    * @param success true if fetch was successful, otherwise false
    */
-  void onFetchTilesComplete(std::shared_ptr<TileFetchContext> context, bool success)
+  void onFetchTilesComplete(std::shared_ptr<TileFetchContext> context, bool success) override
   {
     std::lock_guard<std::mutex> lock(active_jobs_mutex_);
     auto it = active_jobs_.find(context);
@@ -370,7 +322,8 @@ public:
     }
   }
 
-  std::vector<std::future<ChunkResult>> fetchChunks(std::shared_ptr<ChunkBuffer<>> chunkBuffer)
+  std::vector<std::future<ChunkResult>>
+      fetchChunks(std::shared_ptr<ChunkBuffer<>> chunkBuffer) override
   {
     auto requests = std::make_shared<std::vector<ChunkRequest>>();
     auto length = chunkBuffer->size();
@@ -392,7 +345,7 @@ public:
 
   std::vector<std::future<ChunkResult>>
       fetchChunks(std::shared_ptr<ChunkBuffer<>> chunkBuffer,
-                  std::shared_ptr<std::vector<ChunkRequest>> requests)
+                  std::shared_ptr<std::vector<ChunkRequest>> requests) override
   {
     ChunkTask task(chunkBuffer, requests);
     std::vector<std::future<ChunkResult>> futures;
@@ -422,7 +375,7 @@ public:
   }
 
   // Directory listing
-  std::vector<std::string> listDirectory(const std::string& path)
+  std::vector<std::string> listDirectory(const std::string& path) override
   {
     std::vector<std::string> files;
     CURL* curl = curl_easy_init();
@@ -504,7 +457,7 @@ public:
   }
 
   // Metadata retrieval (HEAD request)
-  bool getMetadata(const std::string& path, std::map<std::string, std::string>& metadata)
+  bool getMetadata(const std::string& path, std::map<std::string, std::string>& metadata) override
   {
     CURL* curl = curl_easy_init();
     if(!curl)
@@ -1173,6 +1126,8 @@ private:
   ScheduledTileFetch currentTileFetch_;
   ScheduledChunkFetch currentChunkFetch_;
 };
+
+#endif
 
 inline void TileFetchContext::incrementCompleteCount()
 {

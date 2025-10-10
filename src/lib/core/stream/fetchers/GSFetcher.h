@@ -17,9 +17,12 @@
 
 #pragma once
 
+#include "grk_config_private.h"
 #include "CurlFetcher.h"
 #include "FetchPathParser.h"
 #include <ctime>
+
+#ifdef GRK_ENABLE_LIBCURL
 
 namespace grk
 {
@@ -111,3 +114,5 @@ protected:
 };
 
 } // namespace grk
+
+#endif

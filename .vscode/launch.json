@@ -1,41 +1,223 @@
 {
-    // Use IntelliSense to learn about possible attributes.
-    // Hover to view descriptions of existing attributes.
-    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
     "configurations": [
-        {
-            "name": "core compres${selectedText}",
+                  {
+            "name": "Differential Store Tile 100",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/build/bin/core_compress",
-            "args": [],
-            "stopAtEntry": true,
+            "program": "${workspaceFolder}/build/bin/core_decompress",
+            "args": [
+                "-i",
+                "$HOME/temp/IMG_PHR1B_P_202406071720183_SEN_7038440101-1_R1C1.JP2",
+                "-l",
+                "10",
+                "-r",
+                "0",
+                "-s",
+                "-f",
+                "-t",
+                "100"
+            ],
             "cwd": "${workspaceFolder}",
-            "environment": [],
             "MIMode": "gdb",
-            "setupCommands": [
-                {
-                    "description": "Enable pretty-printing for gdb",
-                    "text": "-enable-pretty-printing",
-                    "ignoreFailures": true
-                }
-            ]
+            "miDebuggerPath": "/usr/bin/gdb"
+        },
+          {
+            "name": "Differential Store TLM Tile 100",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/bin/core_decompress",
+            "args": [
+                "-i",
+                "$HOME/temp/IMG_PHR1B_P_202406071720183_SEN_7038440101-1_R1C1_TLM.JP2",
+                "-l",
+                "10",
+                "-r",
+                "0",
+                "-s",
+                "-f",
+                "-t",
+                "100"
+            ],
+            "cwd": "${workspaceFolder}",
+            "MIMode": "gdb",
+            "miDebuggerPath": "/usr/bin/gdb"
         },
         {
-            "name": "compress corrupt sop",
+            "name": "Differential TLM Store",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/bin/core_decompress",
+            "args": [
+                "-i",
+                "$HOME/temp/IMG_PHR1B_P_202406071720183_SEN_7038440101-1_R1C1_TLM.JP2",
+                "-l",
+                "10",
+                "-r",
+                "0",
+                "-s",
+                "-f",
+            ],
+            "cwd": "${workspaceFolder}",
+            "MIMode": "gdb",
+            "miDebuggerPath": "/usr/bin/gdb"
+        },
+        {
+            "name": "Differential Store",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/bin/core_decompress",
+            "args": [
+                "-i",
+                "$HOME/temp/IMG_PHR1B_P_202406071720183_SEN_7038440101-1_R1C1.JP2",
+                "-l",
+                "10",
+                "-r",
+                "0",
+                "-s",
+                "-f",
+            ],
+            "cwd": "${workspaceFolder}",
+            "MIMode": "gdb",
+            "miDebuggerPath": "/usr/bin/gdb"
+        },
+                {
+            "name": "SPOT6 MINIO",
+            "type": "cppdbg",
+            "request": "launch",
+            // "program": "/usr/bin/time",
+            "program": "/usr/bin/time",
+            "args": [
+                "-v",
+                "${workspaceFolder}/build/bin/core_decompress",
+                "-i",
+                "/vsis3/grok/IMG_SPOT6_PMS_201305251604372_ORT_816009101_R1C1.JP2",
+            ],
+            "cwd": "${workspaceFolder}",
+            "environment": [
+                { "name": "GRK_DEBUG", "value": "3" },
+                { "name": "AWS_ACCESS_KEY_ID", "value": "minioadmin" },
+                { "name": "AWS_SECRET_ACCESS_KEY", "value": "minioadmin" },
+                { "name": "AWS_S3_ENDPOINT", "value": "https://minio.example.com:9000" },
+                { "name": "AWS_VIRTUAL_HOSTING", "value": "FALSE" },
+                { "name": "GDAL_HTTP_UNSAFESSL", "value": "YES" }
+            ],
+            "MIMode": "gdb",
+            "miDebuggerPath": "/usr/bin/gdb"
+        },
+        {
+            "name": "SPOT6 TLM MINIO",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "/usr/bin/time",
+            "args": [
+                "-v",
+                "${workspaceFolder}/build/bin/core_decompress",
+                "-i",
+                "/vsis3/grok/IMG_SPOT6_PMS_201305251604372_ORT_816009101_R1C1_TLM.JP2",
+                // "-o",
+                // "$HOME/temp/spot.tif",
+                // "-d",
+                // "0,0,4096,4096"
+            ],
+            "cwd": "${workspaceFolder}",
+            "environment": [
+                { "name": "GRK_DEBUG", "value": "3" },
+                { "name": "AWS_ACCESS_KEY_ID", "value": "minioadmin" },
+                { "name": "AWS_SECRET_ACCESS_KEY", "value": "minioadmin" },
+                { "name": "AWS_S3_ENDPOINT", "value": "https://minio.example.com:9000" },
+                { "name": "AWS_VIRTUAL_HOSTING", "value": "FALSE" },
+                { "name": "GDAL_HTTP_UNSAFESSL", "value": "YES" }
+            ],
+            "MIMode": "gdb",
+            "miDebuggerPath": "/usr/bin/gdb"
+        },
+        {
+            "name": "SPOT6",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "/usr/bin/time",
+            "args": [
+                "-v",
+                "${workspaceFolder}/build/bin/core_decompress",
+                "-i",
+                "$HOME/temp/IMG_SPOT6_PMS_201305251604372_ORT_816009101_R1C1.JP2"
+            ],
+            "cwd": "${workspaceFolder}",
+            "environment": [
+                { "name": "GRK_DEBUG", "value": "3" },
+                { "name": "GRK_WINDOWED_SCHEDULING", "value": "0" }
+            ],
+            "MIMode": "gdb",
+            "miDebuggerPath": "/usr/bin/gdb"
+        },
+        {
+            "name": "SPOT6 TLM",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "/usr/bin/time",
+            "args": [
+                "-v",
+                "${workspaceFolder}/build/bin/core_decompress",
+                "-i",
+                "$HOME/temp/IMG_SPOT6_PMS_201305251604372_ORT_816009101_R1C1_TLM.JP2"
+            ],
+            "cwd": "${workspaceFolder}",
+            "environment": [
+                { "name": "GRK_DEBUG", "value": "3" },
+                { "name": "GRK_WINDOWED_SCHEDULING", "value": "0" }
+            ],
+            "MIMode": "gdb",
+            "miDebuggerPath": "/usr/bin/gdb"
+        },        
+        {
+            "name": "test",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/bin/grk_decompress",
+            "args": [
+                "-i",
+                "$HOME/src/grok-test-data/input/conformance/file1.jp2",
+                "-o",
+                "$HOME/temp/test.tif",
+            ],
+            "environment": [
+                { "name": "GRK_DEBUG", "value": "3" }
+            ],
+            "cwd": "${workspaceFolder}",
+            "MIMode": "gdb",
+            "miDebuggerPath": "/usr/bin/gdb"
+        },
+        {
+            "name": "concurrent POC markers",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/bin/grk_decompress",
+            "args": [
+                "-i",
+                "$HOME/src/grok-test-data/input/conformance/p0_07.j2k",
+                "-o",
+                "$HOME/temp/test.tif",
+                 "-d",
+                "0,0,129,128",
+            ],
+            "environment": [
+                { "name": "GRK_DEBUG", "value": "3" }
+            ],
+            "cwd": "${workspaceFolder}",
+            "MIMode": "gdb",
+            "miDebuggerPath": "/usr/bin/gdb"
+        },
+        {
+            "name": "compress RGB",
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/build/bin/grk_compress",
             "args": [
                 "-i",
-                "$HOME/temp/florence.png",
+                "$HOME/temp/Bretagne.jpeg",
                 "-o",
-                "$HOME/temp/florence.jp2",
-                "-S",
-                "-u",
-                "R"
-
+                "$HOME/temp/Bretagne.jp2",
             ],
             "cwd": "${workspaceFolder}",
             "environment": [
@@ -64,53 +246,680 @@
             "miDebuggerPath": "/usr/bin/gdb"
         },
         {
-            "name": "test",
+            "name": "test failed local",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/bin/grk_decompress",
+            "args": [
+                  "-i",
+                  "$HOME/temp/CT.j2k",
+                  "-o",
+                  "$HOME/temp/test_failed.tif"
+            ],
+            "cwd": "${workspaceFolder}",
+            "environment": [
+                { "name": "GRK_DEBUG", "value": "4" }
+            ],
+            "MIMode": "gdb",
+            "miDebuggerPath": "/usr/bin/gdb"
+        },
+        {
+            "name": "test failed",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/bin/grk_decompress",
+            "args": [
+                  "-i",
+                  "$HOME/src/grok-test-data/input/nonregression/CT_Phillips_JPEG2K_Decompr_Problem.j2k",
+                  "-H 1",
+                  "-r 4",
+                  "-o",
+                  "$HOME/temp/test_failed.tif"
+            ],
+            "cwd": "${workspaceFolder}",
+            "environment": [
+                { "name": "GRK_DEBUG", "value": "4" }
+            ],
+            "MIMode": "gdb",
+            "miDebuggerPath": "/usr/bin/gdb"
+        },
+        {
+            "name": "page",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/bin/grk_decompress",
+            "args": [
+                  "-i",
+                  "$HOME/temp/page.jp2",
+                  "-t",
+                  "30",
+                  "-o",
+                  "$HOME/temp/page.tif"
+            ],
+            "cwd": "${workspaceFolder}",
+            "environment": [
+                { "name": "GRK_DEBUG", "value": "4" }
+            ],
+            "MIMode": "gdb",
+            "miDebuggerPath": "/usr/bin/gdb"
+        },
+        {
+            "name": "page_tlm",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/bin/grk_decompress",
+            "args": [
+                  "-i",
+                  "$HOME/temp/page_tlm.jp2",
+                  "-t",
+                  "30",
+                  "-o",
+                  "$HOME/temp/page_tlm.tif"
+            ],
+            "cwd": "${workspaceFolder}",
+            "environment": [
+                { "name": "GRK_DEBUG", "value": "4" }
+            ],
+            "MIMode": "gdb",
+            "miDebuggerPath": "/usr/bin/gdb"
+        },
+        {
+            "name": "Luxembourg",
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/build/bin/grk_decompress",
             "args": [
                 "-i",
-                "$HOME/src/grok-test-data/input/nonregression/boats_cprl.j2k",
+                "$HOME/temp/Luxembourg-2020_ortho10cm_RVB_LUREF.jp2",
                 "-o",
-                "~/temp/bit16_layer5.tif",
-                "-d 0,0,1024,1024"
+                "$HOME/temp/Luxembourg-2020_ortho10cm_RVB_LUREF.tif",
+                 "-r",
+                 "8"
             ],
-            "stopAtEntry": true,
             "cwd": "${workspaceFolder}",
-            "environment": [
-                { "name": "GRK_DEBUG", "value": "4" },
-            ],
             "MIMode": "gdb",
-            "setupCommands": [
-                {
-                    "description": "Enable pretty-printing for gdb",
-                    "text": "-enable-pretty-printing",
-                    "ignoreFailures": true
-                }
-            ]
+            "miDebuggerPath": "/usr/bin/gdb"
         },
         {
-            "name": "dump",
+            "name": "Luxembourg kdu",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/build/bin/grk_dump",
+            "program": "$HOME/bin/kdu/kdu_expand",
             "args": [
                 "-i",
-                "~/src/grok-test-data/input/nonregression/multi_tile_truncated_rgb.jp2",
+                "$HOME/temp/Luxembourg-2020_ortho10cm_RVB_LUREF.jp2",
                 "-o",
-                "~/temp/trunc.txt"
+                "$HOME/temp/Luxembourg-2020_ortho10cm_RVB_LUREF.tif",
+                 "-reduce",
+                 "8"
             ],
-            "stopAtEntry": true,
             "cwd": "${workspaceFolder}",
-            "environment": [],
             "MIMode": "gdb",
-            "setupCommands": [
+            "miDebuggerPath": "/usr/bin/gdb"
+        },
+        {
+            "name": "Pleiades S3",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "/usr/bin/time",
+            "args": [
+                "-v",
+                "${workspaceFolder}/build/bin/core_decompress",
+                "-i",
+                "/vsis3/grokj2k/IMG_PHR1B_P_202406071720183_SEN_7038440101-1_R1C1_TLM.JP2",
+                // "-d",
+                // "19000,19000,20000,20000"
+             ],
+            "cwd": "${workspaceFolder}",
+            "environment": [
+                { "name": "GRK_DEBUG", "value": "3" },
+                { "name": "AWS_REGION", "value": "us-east-2" },
+                // { "name": "AWS_ACCESS_KEY_ID", "value": "FOO" },
+                // { "name": "AWS_SECRET_ACCESS_KEY", "value": "BAR" },
+                { "name": "AWS_VIRTUAL_HOSTING", "value": "TRUE" }
+            ],
+            "MIMode": "gdb",
+            "miDebuggerPath": "/usr/bin/gdb"
+        },
+        {
+            "name": "Pleiades MINIO",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "/usr/bin/time",
+            "args": [
+                "-v",
+                "${workspaceFolder}/build/bin/core_decompress",
+                "-i",
+                "/vsis3/grok/IMG_PHR1B_P_202406071720183_SEN_7038440101-1_R1C1.JP2",
+                "-d",
+                "19000,19000,20000,20000"
+             ],
+            "cwd": "${workspaceFolder}",
+            "environment": [
+                { "name": "GRK_DEBUG", "value": "3" },
+                { "name": "AWS_ACCESS_KEY_ID", "value": "minioadmin" },
+                { "name": "AWS_SECRET_ACCESS_KEY", "value": "minioadmin" },
+                { "name": "AWS_S3_ENDPOINT", "value": "https://minio.example.com:9000" },
+                { "name": "AWS_VIRTUAL_HOSTING", "value": "FALSE" },
+                { "name": "GDAL_HTTP_UNSAFESSL", "value": "YES" }
+            ],
+            "MIMode": "gdb",
+            "miDebuggerPath": "/usr/bin/gdb"
+        },
+        {
+            "name": "Pleiades",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "/usr/bin/time",
+            "args": [
+                "-v",
+                "${workspaceFolder}/build/bin/core_decompress",
+                "-i",
+                "$HOME/temp/IMG_PHR1B_P_202406071720183_SEN_7038440101-1_R1C1.JP2",
+            ],
+            "cwd": "${workspaceFolder}",
+            "environment": [
+                { "name": "GRK_DEBUG", "value": "3" },
+            ],
+            "MIMode": "gdb",
+            "miDebuggerPath": "/usr/bin/gdb"
+        },
+        {
+            "name": "Bretagne MINIO",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/bin/core_decompress",
+            "args": [
+                "-i",
+                "/vsis3/grok/Bretagne.jp2",
+            ],
+            "cwd": "${workspaceFolder}",
+            "environment": [
+                { "name": "GRK_DEBUG", "value": "3" },
+                { "name": "AWS_ACCESS_KEY_ID", "value": "minioadmin" },
+                { "name": "AWS_SECRET_ACCESS_KEY", "value": "minioadmin" },
+                { "name": "AWS_S3_ENDPOINT", "value": "https://minio.example.com:9000" },
+                { "name": "AWS_VIRTUAL_HOSTING", "value": "FALSE" },
+                { "name": "GDAL_HTTP_UNSAFESSL", "value": "YES" }
+            ],
+            "MIMode": "gdb",
+            "miDebuggerPath": "/usr/bin/gdb"
+        },
+        {
+            "name": "Eskimo tiled S3",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "/usr/bin/time",
+            "args": [
+                "-v",
+                "${workspaceFolder}/build/bin/grk_decompress",
+                "-i",
+                "/vsis3/grokj2k/eskimo_tiled.jp2",
+                "-o",
+                "$HOME/temp/eskimo_tiled_round.tif",
+            ],
+            "cwd": "${workspaceFolder}",
+            "environment": [
+                { "name": "GRK_DEBUG", "value": "3" },
+                { "name": "AWS_REGION", "value": "us-east-2" },
+                // { "name": "AWS_ACCESS_KEY_ID", "value": "FOO" },
+                // { "name": "AWS_SECRET_ACCESS_KEY", "value": "BAR" },
+                { "name": "AWS_VIRTUAL_HOSTING", "value": "TRUE" }
+            ],
+            "MIMode": "gdb",
+            "miDebuggerPath": "/usr/bin/gdb"
+        },
+        {
+            "name": "Eskimo tiled",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/bin/core_decompress",
+            "args": [
+                "-i",
+                "$HOME/temp/eskimo_tiled.jp2",
+            ],
+            "cwd": "${workspaceFolder}",
+            "environment": [
+                { "name": "GRK_DEBUG", "value": "3" },
+            ],
+            "MIMode": "gdb",
+            "miDebuggerPath": "/usr/bin/gdb"
+        },
+        {
+            "name": "SPOT6 mini",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "/usr/bin/time",
+            "args": [
+                "-v",
+                "${workspaceFolder}/build/bin/core_decompress",
+                "-i",
+                "$HOME/temp/spot6_mini_tlm.jp2"
+            ],
+            "cwd": "${workspaceFolder}",
+            "environment": [
+                { "name": "GRK_DEBUG", "value": "3" },
+                { "name": "GRK_WINDOWED_SCHEDULING", "value": "0" }
+            ],
+            "MIMode": "gdb",
+            "miDebuggerPath": "/usr/bin/gdb"
+        },
+        {
+            "name": "pleiades",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/bin/core_decompress",
+            "args": [
+                "-i",
+                "$HOME/temp/IMG_PHR1B_P_202406071720183_SEN_7038440101-1_R1C1.JP2",
+            ],
+            "cwd": "${workspaceFolder}",
+            "environment": [
+                { "name": "GRK_DEBUG", "value": "3" },
+            ],
+            "MIMode": "gdb",
+            "miDebuggerPath": "/usr/bin/gdb"
+        },
+        {
+            "name": "pleiades kdu",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "$HOME/bin/kdu/kdu_expand",
+            "args": [
+                "-i",
+                "$HOME/temp/IMG_PHR1B_P_202406071720183_SEN_7038440101-1_R1C1.JP2",
+                "-o",
+                "$HOME/temp/IMG_PHR1B_P_202406071720183_SEN_7038440101-1_R1C1.tif"
+            ],
+            "cwd": "${workspaceFolder}",
+            "MIMode": "gdb",
+            "miDebuggerPath": "/usr/bin/gdb"
+        },
+        {
+            "name": "pleiades core",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/bin/core_decompress",
+            "args": [
+                "-i",
+                "$HOME/temp/IMG_PHR1B_P_202406071720183_SEN_7038440101-1_R1C1.JP2",
+                "-d 0,0,4096,4096"
+            ],
+            "environment": [
+                { "name": "GRK_DEBUG", "value": "3" },
+                { "name": "GRK_WINDOWED_SCHEDULING", "value": "0" }
+            ],
+            "cwd": "${workspaceFolder}",
+            "MIMode": "gdb",
+            "miDebuggerPath": "/usr/bin/gdb"
+        },
+        {
+            "name": "pleiades4x4 TLM non-zero # tile parts in SOT, tile 3000 ",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/bin/core_decompress",
+            "args": [
+                "-i",
+                "$HOME/temp/pleiades4x4_tlm.jp2",
+                "-t 4000"
+            ],
+            "cwd": "${workspaceFolder}",
+            "MIMode": "gdb",
+            "miDebuggerPath": "/usr/bin/gdb"
+        },
+        {
+            "name": "pleiades4x4 non-zero # tile parts in SOT, window ",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "/usr/bin/time",
+            // "program": "${workspaceFolder}/build/bin/core_decompress",
+            "args": [
+                "-v",
+                "${workspaceFolder}/build/bin/core_decompress",
+                "-i",
+                "$HOME/temp/pleiades4x4.jp2",
+                "-d 41984,55296,51200,56320"
+            ],
+            "environment": [
+                { "name": "GRK_DEBUG", "value": "3" },
+                { "name": "GRK_WINDOWED_SCHEDULING", "value": "0" }
+            ],
+            "cwd": "${workspaceFolder}",
+            "MIMode": "gdb",
+            "miDebuggerPath": "/usr/bin/gdb"
+        },
                 {
-                    "description": "Enable pretty-printing for gdb",
-                    "text": "-enable-pretty-printing",
-                    "ignoreFailures": true
-                }
-            ]
+            "name": "pleiades4x4 TLM non-zero # tile parts in SOT, window ",
+            "type": "cppdbg",
+            "request": "launch",
+             "program": "/usr/bin/time",
+            //"program": "${workspaceFolder}/build/bin/core_decompress",
+            "args": [
+                "-v",
+                "${workspaceFolder}/build/bin/core_decompress",
+                "-i",
+                "$HOME/temp/pleiades4x4_tlm.jp2",
+                "-d 41984,55296,51200,56320"
+            ],
+            "environment": [
+                { "name": "GRK_DEBUG", "value": "3" },
+                { "name": "GRK_WINDOWED_SCHEDULING", "value": "0" }
+            ],
+            "cwd": "${workspaceFolder}",
+            "MIMode": "gdb",
+            "miDebuggerPath": "/usr/bin/gdb"
+        },
+        {
+            "name": "pleiades4x4 non-zero # tile parts in SOT, tile 3000 ",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/bin/core_decompress",
+            "args": [
+                "-i",
+                "$HOME/temp/pleiades4x4_rlcp_tlm.jp2",
+                "-t 3000"
+            ],
+            "cwd": "${workspaceFolder}",
+            "MIMode": "gdb",
+            "miDebuggerPath": "/usr/bin/gdb"
+        },
+        {
+            "name": "pleiades4x4 TLM ZERO # tile parts in SOT, tile 3000 MINIO",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/bin/core_decompress",
+            "args": [
+                "-i",
+                "/vsis3/grok/pleiades4x4_rlcp_tlm.jp2",
+                "-t 3000"
+            ],
+            "environment": [
+                { "name": "GRK_DEBUG", "value": "4" },
+                { "name": "AWS_ACCESS_KEY_ID", "value": "minioadmin" },
+                { "name": "AWS_SECRET_ACCESS_KEY", "value": "minioadmin" },
+                { "name": "AWS_S3_ENDPOINT", "value": "https://minio.example.com:9000" },
+                { "name": "AWS_VIRTUAL_HOSTING", "value": "TRUE" },
+                { "name": "GDAL_HTTP_UNSAFESSL", "value": "TRUE" },
+            ],
+            "cwd": "${workspaceFolder}",
+            "MIMode": "gdb",
+            "miDebuggerPath": "/usr/bin/gdb"
+        },
+        {
+            "name": "pleiades4x4 TLM ZERO # tile parts in SOT, tile 3000 ",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/bin/core_decompress",
+            "args": [
+                "-i",
+                "$HOME/temp/pleiades4x4_rlcp_tlm.jp2",
+                "-t 3000"
+            ],
+            "cwd": "${workspaceFolder}",
+            "MIMode": "gdb",
+            "miDebuggerPath": "/usr/bin/gdb"
+        },
+        {
+            "name": "pleiades4x4 TLM ZERO # tile parts in SOT, window ",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/bin/core_decompress",
+            "args": [
+                "-i",
+                "$HOME/temp/pleiades4x4_rlcp_tlm.jp2",
+                "-d 50000,50000,58000,58000"
+            ],
+            "environment": [
+                { "name": "GRK_DEBUG", "value": "4" }
+            ],
+            "cwd": "${workspaceFolder}",
+            "MIMode": "gdb",
+            "miDebuggerPath": "/usr/bin/gdb"
+        },
+        {
+            "name": "pleiades4x4 TLM ZERO # tile parts in SOT, window MINIO",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/bin/core_decompress",
+            "args": [
+                "-i",
+                "/vsis3/grok/pleiades4x4_rlcp_tlm.jp2",
+                "-d 50000,50000,58000,58000",
+            ],
+            "environment": [
+                { "name": "GRK_DEBUG", "value": "3" },
+                { "name": "AWS_ACCESS_KEY_ID", "value": "minioadmin" },
+                { "name": "AWS_SECRET_ACCESS_KEY", "value": "minioadmin" },
+                { "name": "AWS_S3_ENDPOINT", "value": "https://minio.example.com:9000" },
+                { "name": "AWS_VIRTUAL_HOSTING", "value": "FALSE" },
+                { "name": "GDAL_HTTP_UNSAFESSL", "value": "TRUE" },
+            ],
+            "cwd": "${workspaceFolder}",
+            "MIMode": "gdb",
+            "miDebuggerPath": "/usr/bin/gdb"
+        },
+        {
+            "name": "fuzzer",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/bin/grk_decompress",
+            "args": [
+                "-i",
+                "$HOME/Downloads/clusterfuzz-testcase-minimized-grk_decompress_fuzzer-6466697174843392",
+                "-o",
+                "$HOME/temp/fuzzer.tif"
+            ],
+            "cwd": "${workspaceFolder}",
+            "MIMode": "gdb",
+            "miDebuggerPath": "/usr/bin/gdb"
+        },
+        {
+            "name": "Core Decompress No Store No differential",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/bin/core_decompress",
+            "args": [
+                "-i",
+                "$HOME/temp/IMG_PHR1B_P_202406071720183_SEN_7038440101-1_R1C1.JP2",
+            ],
+            "cwd": "${workspaceFolder}",
+            "MIMode": "gdb",
+            "miDebuggerPath": "/usr/bin/gdb"
+        },
+        {
+            "name": "Core Decompress Window No Store No differential",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/bin/core_decompress",
+            "args": [
+                "-i",
+                "$HOME/temp/pleiades4x4_tlm.jp2",
+                "-d 2048,2048,4096,4096"
+            ],
+            "cwd": "${workspaceFolder}",
+            "MIMode": "gdb",
+            "miDebuggerPath": "/usr/bin/gdb"
+        },
+        {
+            "name": "Core Decompress Tile 90 TLM No Store No differential",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/bin/core_decompress",
+            "args": [
+                "-i",
+                "$HOME/temp/IMG_PHR1B_P_202406071720183_SEN_7038440101-1_R1C1_TLM.JP2",
+                "-t",
+                "90"
+            ],
+            "cwd": "${workspaceFolder}",
+            "MIMode": "gdb",
+            "miDebuggerPath": "/usr/bin/gdb"
+        },
+        {
+            "name": "Core Decompress Tile 90 NO-TLM No Store No differential",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/bin/core_decompress",
+            "args": [
+                "-i",
+                "$HOME/temp/IMG_PHR1B_P_202406071720183_SEN_7038440101-1_R1C1.JP2",
+                "-t",
+                "90"
+            ],
+            "cwd": "${workspaceFolder}",
+            "MIMode": "gdb",
+            "miDebuggerPath": "/usr/bin/gdb"
+        },
+        {
+            "name": "Core Decompress No Store",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/bin/core_decompress",
+            "args": [
+                "-i",
+                "$HOME/temp/IMG_PHR1B_P_202406071720183_SEN_7038440101-1_R1C1.JP2",
+                "-l",
+                "10",
+                "-r",
+                "0",
+                "-f"
+            ],
+            "cwd": "${workspaceFolder}",
+            "MIMode": "gdb",
+            "miDebuggerPath": "/usr/bin/gdb"
+        },
+        {
+            "name": "Core Decompress Bretagne Store",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/bin/core_decompress",
+            "args": [
+                "-i",
+                "$HOME/temp/Bretagne.jp2",
+                "-l",
+                "10",
+                "-r",
+                "0",
+                "-s",
+                "-f",
+            ],
+            "cwd": "${workspaceFolder}",
+            "MIMode": "gdb",
+            "miDebuggerPath": "/usr/bin/gdb"
+        },
+        {
+            "name": "Core Decompress Store Resolution",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/bin/core_decompress",
+            "args": [
+                "-i",
+                "$HOME/temp/IMG_PHR1B_P_202406071720183_SEN_7038440101-1_R1C1.JP2",
+                "-l",
+                "0",
+                "-r",
+                "6",
+                "-s",
+                "-f",
+            ],
+            "cwd": "${workspaceFolder}",
+            "MIMode": "gdb",
+            "miDebuggerPath": "/usr/bin/gdb"
+        },
+      
+        {
+            "name": "Core Decompress Store Conformance",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/bin/core_decompress",
+            "args": [
+                "-i",
+                "$HOME/src/grok-test-data/input/conformance/p0_04.j2k",
+                "-l",
+                "0",
+                "-r",
+                "6",
+                "-s",
+                "-f",
+                "-t",
+                "0"
+            ],
+            "cwd": "${workspaceFolder}",
+            "MIMode": "gdb",
+            "miDebuggerPath": "/usr/bin/gdb"
+        },           
+        {
+            "name": "test suite multi threaded (windows)",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/bin/grk_decompress",
+            "args": [
+                "-i",
+                "%USERPROFILE%/src/grok-test-data/input/conformance/file5.jp2",
+                "-o",
+                "%USERPROFILE%/src/grok/build/tests/conformance/Temporary/file5.jp2.tif",
+                "-p",
+                "8S",
+                "--force-rgb"
+            ],
+            "cwd": "${workspaceFolder}",
+            "MIMode": "gdb",
+            "miDebuggerPath": "/usr/bin/gdb"
+        },
+        {
+            "name": "Test suite decompress",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/bin/grk_decompress",
+            "args": [
+                "-i",
+                "$HOME/src/grok-test-data/input/nonregression/mono_plt_tlm_tp.j2k",
+                "-o",
+                "$HOME/temp/output.bmp",
+                "-t",
+                "0"
+            ],
+            "stopAtEntry": false,
+            "cwd": "${fileDirname}",
+            "environment": [],
+            "console": "externalTerminal"
+        },
+        {
+            "name": "Test suite decompress (windows)",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/bin/debug/grk_decompress.exe",
+            "args": [
+                "-i",
+                "%USERPROFILE%/src/grok-test-data/input/conformance/file5.jp2",
+                "-o",
+                "%USERPROFILE%/src/grok/build/tests/conformance/Temporary/file5.jp2.tif",
+                "-p",
+                "8S",
+                "--force-rgb"
+            ],
+            "stopAtEntry": false,
+            "cwd": "${fileDirname}",
+            "environment": [],
+            "console": "externalTerminal"
+        },
+        {
+            "name": "Test suite compress (windows)",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/bin/debug/grk_compress.exe",
+            "args": [
+                "-i",
+                "%USERPROFILE%/src/grok-test-data/input/nonregression/X_4_2K_24_185_CBR_WB_000.tif",
+                "-o",
+                "%USERPROFILE%/src/grok/build/tests/nonregression/Temporary/X_4_2K_24_185_CBR_WB_000_C2K_24.j2k",
+                "--cinema-2k",
+                "24"
+            ],
+            "stopAtEntry": false,
+            "cwd": "${fileDirname}",
+            "environment": [],
+            "console": "externalTerminal"
         }
     ]
 }

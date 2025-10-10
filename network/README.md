@@ -32,7 +32,8 @@ docker run -d --rm --cap-add=NET_ADMIN -v minio-data:/data  --name minio-contain
 
 ```
 
-Admin web page is at localhost:9001. Credentials are  minioadmin/minioadmin
+Admin web page is at https://localhost:9001
+Credentials are  minioadmin/minioadmin
 
 As the container runs as a daemon, it can be stopped by
 
