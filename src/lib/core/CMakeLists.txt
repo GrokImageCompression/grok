@@ -207,13 +207,13 @@ if(UNIX)
   target_link_libraries(${GROK_CORE_NAME} PUBLIC ${CMAKE_THREAD_LIBS_INIT})
 endif(UNIX)
 target_link_libraries(${GROK_CORE_NAME} PRIVATE hwy ${LCMS_LIBNAME} )
-if(GROK_HAVE_LIBCURL)
-target_link_libraries(${GROK_CORE_NAME} PRIVATE CURL::libcurl)
-target_include_directories(${GROK_CORE_NAME} PRIVATE
-    ${CURL_INCLUDE_DIRS}
-    ${curl_SOURCE_DIR}/include
-)
-endif(GROK_HAVE_LIBCURL)
+if(GRK_HAVE_LIBCURL)
+  target_link_libraries(${GROK_CORE_NAME} PRIVATE CURL::libcurl)
+  target_include_directories(${GROK_CORE_NAME} PRIVATE
+      ${CURL_INCLUDE_DIRS}
+      ${curl_SOURCE_DIR}/include
+  )
+endif(GRK_HAVE_LIBCURL)
 
 
 # bundle all static libraries into a single library
