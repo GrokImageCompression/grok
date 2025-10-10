@@ -16,7 +16,6 @@
  */
 
 #include "MemAdvisor.h"
-#include "grk_apps_config.h"
 
 #ifdef _WIN32
 #include <windows.h>
