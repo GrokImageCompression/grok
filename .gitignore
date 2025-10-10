@@ -2,6 +2,7 @@
 build
 obj-x86_64-linux-gnu
 debian/tmp
+nohup.out
 
 #Ignore thumbnails created by Windows
 Thumbs.db
@@ -25,7 +26,7 @@ Thumbs.db
 *.log
 [Bb]in
 !/src/bin/
-[Dd]ebug*/
+Debug*/
 *.lib
 *.sbr
 obj/
@@ -35,4 +36,4 @@ _ReSharper*/
 .vs/
 #Nuget packages folder
 packages/
-
+*.bmp

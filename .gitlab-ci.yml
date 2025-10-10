@@ -1,0 +1,79 @@
+stages:
+  - build
+  - test
+  - package
+  - publish
+
+variables:
+  GIT_SUBMODULE_STRATEGY: recursive
+  BUILD_TYPE: Release
+  DATA_ROOT: "$CI_PROJECT_DIR/data"
+  DATA_BRANCH: "master"
+
+before_script:
+  - |
+    if [[ "$CI_RUNNER_TAGS" == *"linux"* ]]; then
+      echo "Running on a Linux runner"
+      apt-get update -yqq
+      apt-get install -yqq g++ exiftool cmake
+    elif [[ "$CI_RUNNER_TAGS" == *"windows"* ]]; then
+      echo "Running on a Windows runner"
+      # Add Windows-specific setup commands if needed
+    else
+      echo "No recognized runner tags found"
+    fi
+
+.build_template: &build_definition
+  stage: build
+  script:
+    - 'mkdir -p $DATA_ROOT'
+    - echo '#!/bin/sh' > askpass.sh
+    - echo 'echo $CI_JOB_TOKEN' >> askpass.sh
+    - chmod +x askpass.sh
+    - export GIT_ASKPASS=$(pwd)/askpass.sh
+    - git clone --depth=1 --branch=$DATA_BRANCH https://gitlab.com/GrokImageCompression/grok-test-data.git $DATA_ROOT      
+    - 'cmake -E make_directory $CI_PROJECT_DIR/build'
+    - 'cd $CI_PROJECT_DIR/build'
+    - 'cmake $CI_PROJECT_DIR -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DBUILD_SHARED_LIBS=$BUILD_SHARED_LIBS -DBUILD_TESTING:BOOL=ON -DGRK_DATA_ROOT=$DATA_ROOT'
+    - 'cmake --build . --config $BUILD_TYPE'
+  artifacts:
+    paths:
+      - $CI_PROJECT_DIR/build/
+      - $DATA_ROOT
+
+.build-tmpl:
+  extends: .build_template
+
+build-linux:
+  extends: .build-tmpl
+  parallel:
+    matrix:
+      - BUILD_SHARED_LIBS: ["ON", "OFF"]
+  tags:
+    - saas-linux-medium-amd64
+
+.test_template: &test_definition
+  stage: test
+  script:
+    - 'cd $CI_PROJECT_DIR/build'
+    - 'ctest --output-on-failure -C $BUILD_TYPE'
+
+test-linux:
+  extends: .test_template
+  tags:
+    - saas-linux-medium-amd64
+
+.package_template: &package_definition
+  stage: package
+  script:
+    - 'cd $CI_PROJECT_DIR/build'
+    - 'cmake --build . --config $BUILD_TYPE --target package'
+  artifacts:
+    paths:
+      - $CI_PROJECT_DIR/build/*.zip
+
+package-linux:
+  extends: .package_template
+  tags:
+    - saas-linux-medium-amd64
+
