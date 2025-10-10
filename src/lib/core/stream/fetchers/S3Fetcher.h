@@ -23,7 +23,6 @@
 #include <cstdlib>
 #include <ctime>
 #include <string>
-#include <curl/curl.h>
 
 #ifdef GRK_ENABLE_LIBCURL
 

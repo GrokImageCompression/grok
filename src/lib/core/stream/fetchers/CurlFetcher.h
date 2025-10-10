@@ -26,7 +26,9 @@
 #include <future>
 #include <set>
 #include <vector>
+#ifdef GRK_ENABLE_LIBCURL
 #include <curl/curl.h>
+#endif
 #include <map>
 #include <sstream>
 

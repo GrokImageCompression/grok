@@ -213,7 +213,7 @@ else(GRK_BUILD_LCMS2)
 endif(GRK_BUILD_LCMS2)
 
 
-option(GRK_ENABLE_LIBCURL "Enable libcurl" ON)
+option(GRK_ENABLE_LIBCURL "Enable libcurl" OFF)
 
 if(GRK_ENABLE_LIBCURL AND NOT APPLE)
 
