@@ -17,11 +17,11 @@ Fuzzer build logs can be found [here](https://oss-fuzz-build-logs.storage.google
     $ cd /tmp
     $ git clone https://github.com/GrokImageCompression/grok
     $ cd grok
-    $ git clone --depth 1 https://github.com/GrokImageCompression/grok-test-data data
+    $ git clone --depth 1 https://github.com/GrokImageCompression/grok-test-data grok-data
     $ mkdir build
     $ cd build
-    $ cmake ..
-    $ make
+    $ cmake .. -DBUILD_SHARED_LIBS=OFF
+    $ make -j$(nproc)
     $ cd ..
 ```
 
@@ -29,7 +29,7 @@ Fuzzer build logs can be found [here](https://oss-fuzz-build-logs.storage.google
 
  ```  
     $ cd tests/fuzzers
-    $ make
+    $ make -j$(nproc)
 ```
 
 Fuzzers created in `/tmp/*_fuzzer`, with `/tmp/*_fuzzer_seed_corpus.zip` corpus files

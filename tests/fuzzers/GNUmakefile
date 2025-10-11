@@ -10,4 +10,4 @@ dummyfuzzers: fuzzingengine.o
 	$(AR) r libFuzzingEngine.a fuzzingengine.o
 	LIB_FUZZING_ENGINE="-lFuzzingEngine" CXX="${CXX}" CXXFLAGS="-L. ${CXXFLAGS}" \
 	    SRC=/tmp OUT=/tmp ./build_google_oss_fuzzers.sh
-	OUT=/tmp ./build_seed_corpus.sh
+	SRC=/tmp OUT=/tmp ./build_seed_corpus.sh
