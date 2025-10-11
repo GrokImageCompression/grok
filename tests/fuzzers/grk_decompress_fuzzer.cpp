@@ -37,7 +37,6 @@ int LLVMFuzzerInitialize(int* argc, char*** argv)
 }
 int LLVMFuzzerTestOneInput(const uint8_t* buf, size_t len)
 {
-  grk_image* image = nullptr;
   grk_header_info headerInfo = {};
   grk_decompress_parameters parameters = {};
   parameters.dw_x1 = 1024;
