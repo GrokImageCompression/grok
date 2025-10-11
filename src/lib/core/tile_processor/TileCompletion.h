@@ -48,8 +48,8 @@ public:
     if(imageWidth == 0 || imageHeight == 0 || tileWidth == 0 || tileHeight == 0)
       throw std::invalid_argument("Dimensions must be positive");
 
-    numTileCols_ = static_cast<uint16_t>((imageWidth + tileWidth - 1) / tileWidth);
-    numTileRows_ = static_cast<uint16_t>((imageHeight + tileHeight - 1) / tileHeight);
+    numTileCols_ = static_cast<uint16_t>(((uint64_t)imageWidth + tileWidth - 1) / tileWidth);
+    numTileRows_ = static_cast<uint16_t>(((uint64_t)imageHeight + tileHeight - 1) / tileHeight);
 
     // Default to full region if subregion is not provided
     if(tileSubRegion.has_value())
