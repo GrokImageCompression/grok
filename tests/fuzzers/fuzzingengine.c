@@ -22,7 +22,7 @@
 int LLVMFuzzerTestOneInput(void* buf, size_t len);
 int LLVMFuzzerInitialize(int* argc, char*** argv);
 
-int main(int argc, const char* argv[])
+int main(int argc, char* argv[])
 {
   // parse command line args
   LLVMFuzzerInitialize(&argc, &argv);
