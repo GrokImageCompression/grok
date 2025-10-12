@@ -31,35 +31,32 @@
 
 ### Performance
 
-Below is a benchmark comparing time and memory performance for **Grok 9.7.8** and **Kakadu 8.05** on the following workflows:
-
-1. decompress large single-tiled [image of Mars](https://hirise.lpl.arizona.edu/PDS/RDR/ESP/ORB_011200_011299/ESP_011277_1825/ESP_011277_1825_RED.JP2) to TIF output
-1. decompress region `(1000,1000,5000,5000)` from large single-tiled [image of Mars](https://hirise.lpl.arizona.edu/PDS/RDR/ESP/ORB_011200_011299/ESP_011277_1825/ESP_011277_1825_RED.JP2) to TIF output
-1. decompress 6 resolutions from `580000x825000` single-tiled [image of Luxembourg](https://s3.eu-central-1.amazonaws.com/download.data.public.lu/resources/orthophoto-officelle-du-grand-duche-de-luxembourg-edition-2020/20210602-110516/Luxembourg-2020_ortho10cm_RVB_LUREF.jp2)
-1. decompress 7 resolutions from `580000x825000` single-tiled [image of Luxembourg](https://s3.eu-central-1.amazonaws.com/download.data.public.lu/resources/orthophoto-officelle-du-grand-duche-de-luxembourg-edition-2020/20210602-110516/Luxembourg-2020_ortho10cm_RVB_LUREF.jp2)
-1. decompress 8 resolutions from `580000x825000` single-tiled [image of Luxembourg](https://s3.eu-central-1.amazonaws.com/download.data.public.lu/resources/orthophoto-officelle-du-grand-duche-de-luxembourg-edition-2020/20210602-110516/Luxembourg-2020_ortho10cm_RVB_LUREF.jp2)
-1. decompress region `(574200,816750,580000,825000)` from `580000x825000` single-tiled [image of Luxembourg](https://s3.eu-central-1.amazonaws.com/download.data.public.lu/resources/orthophoto-officelle-du-grand-duche-de-luxembourg-edition-2020/20210602-110516/Luxembourg-2020_ortho10cm_RVB_LUREF.jp2)
-
-
+Grok can be integrated into the Geospatial Data Abstraction Layer ([GDAL](https://gdal.org/en/stable/)) software with this downstream [driver](https://github.com/GrokImageCompression/gdal). Below is a benchmark comparing **decompression** time performance for **GDAL** using **JP2Grok**, **JP2KAK**, and **JP2OpenJPEG** drivers.
 
 #### Benchmark Details
 
-* test system : 24 core / 48 thread `AMD Threadripper`
-running `Fedora 36` with `5.17` Linux kernel and `xfs` file system
-* codecs were configured to use all 48 threads
-* file cache was cleared before each decompression using `$ sudo sysctl vm.drop_caches=3`
-* Grok was built in release mode using `GCC 10`
+* test system : 8 core / 16 thread CPU running `Fedora 42` with `6.10` Linux kernel and `btrfs` file system
+* Grok 20.0.0, Kakadu 8.4.1 and OpenJPEG 2.5.4 were used, configured to use all 16 threads
+* Grok was built in release mode using `GCC 15.2`
+* Linux page cache was cleared before each local file decompression
+* decompress command: `gdal_translate $FILE -if $DRIVER output.tif`
+
+#### Test Files
+
+- **Spot 6 (Network Storage)**: 26624 x 26624 image, 4 components, TLM, lossless, 12-bit, 2048 x 2048 tiles, 10 layers, stored on MinIO with 20 ms latency.
+- **Spot 6 (Local Storage)**: 26624 x 26624 image, 4 components, TLM, lossless, 12-bit, 2048 x 2048 tiles, 10 layers, stored locally.
+- **Pleiades (Region)**: 82704 x 81100 image, 8000 x 8000 region at (50000,50000), 1 component, TLM, lossy, 16-bit, 1024 x 1024 tiles, 15 layers, stored locally.
+
 
 #### Results
 
-| Test  | Grok               | Kakadu
-| :---- | :-----             | :------: 
-| 1     | 13.74 s / 16.6 GB  | 9.02 s / 0.05 GB
-| 2     | 0.25 s / 0.4 GB    | 0.12 s   
-| 3     | 0.37 s / 0.7 GB    | 2.72 s / 1.0 GB
-| 4     | 0.67 s / 1.0 GB    | 3.02 s / 1.0 GB
-| 5     | 1.76 s / 1.8 GB    | 3.72 s / 1.1 GB
-| 6     | 2.89 s / 6.0 GB    | 7.39 s / 1.1 GB
+
+| Workflow                     | JP2Grok       | JP2KAK       | JP2OpenJPEG       |
+|------------------------------|---------------|--------------|-------------------|
+| Spot 6 (Network Storage)     | 35.17 s       | 344 s        | 85 s              |
+| Spot 6 (Local Storage)       | 26.92 s       | 30.57 s      | 34.91 s           |
+| Pleiades (Region)            | 0.74 s        | 1.41 s       | 4.28 s            |
+
 
 ### Library Details
 
