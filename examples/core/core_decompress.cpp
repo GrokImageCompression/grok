@@ -577,6 +577,9 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] const char** argv)
     return app.exit(e); // Handle parsing errors
   }
 
+  // initialize library
+  grk_initialize(nullptr, numThreads);
+
 // #define TEST_FUZZER
 #ifdef TEST_FUZZER
   {
@@ -705,9 +708,6 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] const char** argv)
   grk_object* codec_full = nullptr;
   grk_header_info headerInfo = {};
   std::pair<grk_object*, bool> drc;
-
-  // initialize library
-  grk_initialize(nullptr, numThreads);
 
   // create j2k file stream
   inputFileStr = inputFilePath.c_str();
