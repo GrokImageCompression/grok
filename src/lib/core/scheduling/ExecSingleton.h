@@ -164,7 +164,19 @@ public:
   {
     std::lock_guard<std::mutex> lock(mutex_);
     if(!instance_)
-      create(0);
+    {
+      // Initialize with default thread count if instance is null
+      uint32_t numThreads = std::thread::hardware_concurrency() + 1;
+      numThreads_ = numThreads;
+      if(numThreads > 1)
+      {
+        instance_ = std::make_unique<tf::Executor>(numThreads - 1);
+      }
+    }
+    if(!instance_)
+    {
+      throw std::runtime_error("Executor not initialized (single-threaded mode)");
+    }
     return *instance_;
   }
 
@@ -175,6 +187,7 @@ public:
    */
   static size_t num_threads()
   {
+    std::lock_guard<std::mutex> lock(mutex_);
     return numThreads_;
   }
 
