@@ -65,7 +65,7 @@ jobs:
       # and build directories, but this is only available with CMake 3.13 and higher.  
       # The CMake binaries on the Github Actions machines are (as of this writing) 3.12
       run: |
-        if [[ "${{ matrix.os }}" == "macos-latest" ]]; then
+        if [[ "${{ matrix.os }}" != "ubuntu-latest" ]]; then
           cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DBUILD_SHARED_LIBS=${{ matrix.shared_libs_flag }} -DBUILD_TESTING:BOOL=ON -DGRK_DATA_ROOT=$DATA_ROOT -DGRK_ENABLE_LIBCURL=OFF $GENERATOR_PLATFORM
         else
           cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DBUILD_SHARED_LIBS=${{ matrix.shared_libs_flag }} -DBUILD_TESTING:BOOL=ON -DGRK_DATA_ROOT=$DATA_ROOT -DGRK_ENABLE_LIBCURL=ON $GENERATOR_PLATFORM
