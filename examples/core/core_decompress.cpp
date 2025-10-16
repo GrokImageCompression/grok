@@ -580,87 +580,6 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] const char** argv)
   // initialize library
   grk_initialize(nullptr, numThreads);
 
-// #define TEST_FUZZER
-#ifdef TEST_FUZZER
-  {
-    grk_header_info headerInfo = {};
-    grk_decompress_parameters parameters = {};
-    parameters.dw_x1 = 1024;
-    parameters.dw_y1 = 1024;
-    grk_object* codec = nullptr;
-    grk_stream_params stream_params = {};
-    size_t len = 0;
-    uint8_t* buf = nullptr;
-    FILE* file = nullptr;
-
-    auto cleanup = [&]() {
-      if(buf)
-        free(buf);
-      if(codec)
-        grk_object_unref(codec);
-      if(file)
-        fclose(file);
-    };
-
-    // Open the file
-    file = fopen(inputFilePath.c_str(), "rb");
-    if(!file)
-    {
-      fprintf(stderr, "Failed to open file: %s\n", inputFilePath.c_str());
-      cleanup();
-      return -1;
-    }
-
-    // Get file size
-    fseek(file, 0, SEEK_END);
-    len = (size_t)ftell(file);
-    fseek(file, 0, SEEK_SET);
-
-    // Allocate buffer
-    buf = (uint8_t*)malloc(len);
-    if(!buf)
-    {
-      fprintf(stderr, "Failed to allocate buffer for file\n");
-      cleanup();
-      return -1;
-    }
-
-    // Read file into buffer
-    size_t bytesRead = fread(buf, 1, len, file);
-    if(bytesRead != len)
-    {
-      fprintf(stderr, "Failed to read file: %s\n", inputFilePath.c_str());
-      cleanup();
-      return -1;
-    }
-
-    // Close the file
-    fclose(file);
-
-    // Set stream parameters
-    stream_params.buf = buf;
-    stream_params.buf_len = len;
-
-    // Proceed with decompression
-    codec = grk_decompress_init(&stream_params, &parameters);
-    if(!codec)
-    {
-      cleanup();
-      return -1;
-    }
-    if(!grk_decompress_read_header(codec, &headerInfo))
-    {
-      cleanup();
-      return -1;
-    }
-    if(!grk_decompress(codec, nullptr))
-    {
-      cleanup();
-      return -1;
-    }
-  }
-#endif
-
   // initialize decompress parameters
   grk_decompress_parameters decompressParams = {};
   decompressParams.core.skip_allocate_composite = !doStore;
@@ -718,6 +637,94 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] const char** argv)
 
   grk_stream_params streamParams = {};
   ReadStreamInfoExample sinfo(&streamParams);
+
+#define TEST_FUZZER
+#ifdef TEST_FUZZER
+  {
+    grk_header_info headerInfo = {};
+    grk_decompress_parameters parameters = {};
+    parameters.dw_x1 = 1024;
+    parameters.dw_y1 = 1024;
+    grk_object* codec = nullptr;
+    grk_stream_params stream_params = {};
+    size_t len = 0;
+    uint8_t* buf = nullptr;
+    FILE* file = nullptr;
+    size_t bytesRead = 0;
+
+    auto cleanup = [&]() {
+      if(buf)
+        free(buf);
+      if(codec)
+        grk_object_unref(codec);
+      if(file)
+        fclose(file);
+    };
+
+    // Open the file
+    file = fopen(inputFilePath.c_str(), "rb");
+    if(!file)
+    {
+      fprintf(stderr, "Failed to open file: %s\n", inputFilePath.c_str());
+      cleanup();
+      return -1;
+    }
+
+    // Get file size
+    fseek(file, 0, SEEK_END);
+    len = (size_t)ftell(file);
+    fseek(file, 0, SEEK_SET);
+
+    // Allocate buffer
+    buf = (uint8_t*)malloc(len);
+    if(!buf)
+    {
+      fprintf(stderr, "Failed to allocate buffer for file\n");
+      cleanup();
+      return -1;
+    }
+
+    // Read file into buffer
+    bytesRead = fread(buf, 1, len, file);
+    if(bytesRead != len)
+    {
+      fprintf(stderr, "Failed to read file: %s\n", inputFilePath.c_str());
+      cleanup();
+      return -1;
+    }
+
+    // Close the file
+    fclose(file);
+    file = nullptr;
+
+    // Set stream parameters
+    stream_params.buf = buf;
+    stream_params.buf_len = len;
+
+    grk_initialize(nullptr, 0);
+
+    // Proceed with decompression
+    codec = grk_decompress_init(&stream_params, &parameters);
+    if(!codec)
+    {
+      cleanup();
+      return -1;
+    }
+    if(!grk_decompress_read_header(codec, &headerInfo))
+    {
+      cleanup();
+      return -1;
+    }
+    if(!grk_decompress(codec, nullptr))
+    {
+      cleanup();
+      return -1;
+    }
+    cleanup();
+    goto beach;
+  }
+#endif
+
   if(useCallbacks)
   {
     streamParams.seek_fn = stream_seek_fn;
