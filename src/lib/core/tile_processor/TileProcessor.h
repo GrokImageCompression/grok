@@ -81,9 +81,10 @@ struct TileProcessor
   /**
    * @brief Prepares for decompresion
    *
-   * @return true if successful
+   * If this fails, then TileProcessor doesn't get initialized.
+   *
    */
-  bool prepareForDecompression(void);
+  void prepareForDecompression(void);
 
   /**
    * @brief Parses tile part
@@ -342,6 +343,8 @@ struct TileProcessor
 
   bool hasError(void);
 
+  bool isInitialized(void);
+
 protected:
   /**
    * @brief header @ref GrkImage
@@ -401,6 +404,8 @@ protected:
   CodecScheduler* scheduler_ = nullptr;
 
 private:
+  bool initialized_ = false;
+
   void prepareConcurrentParsing(void);
 
   std::atomic<bool> success_ = true;

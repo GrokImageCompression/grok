@@ -188,6 +188,12 @@ grk_progression_state TileProcessor::getProgressionState()
 
   return rc;
 }
+
+bool TileProcessor::isInitialized(void)
+{
+  return initialized_;
+}
+
 bool TileProcessor::init(void)
 {
   uint32_t state = grk_plugin_get_debug_state();
@@ -291,6 +297,8 @@ bool TileProcessor::init(void)
       grklog.warn("plugin tile differs from grok tile");
   }
 
+  initialized_ = true;
+
   return true;
 }
 
@@ -367,7 +375,9 @@ bool TileProcessor::decompressPrepareWithTLM(const std::shared_ptr<TPFetchSeq>& 
 
   tilePartFetchSeq_ = tilePartFetchSeq;
 
-  return prepareForDecompression();
+  prepareForDecompression();
+
+  return true;
 }
 
 bool TileProcessor::decompressWithTLM(const std::shared_ptr<TPFetchSeq>& tilePartFetchSeq,
@@ -664,7 +674,7 @@ void TileProcessor::prepareConcurrentParsing(void)
     prepareFlow_ = std::make_unique<FlowComponent>();
 }
 
-bool TileProcessor::prepareForDecompression(void)
+void TileProcessor::prepareForDecompression(void)
 {
   auto prep = [this]() {
     // now we can get ready to decompress this tile
@@ -689,8 +699,6 @@ bool TileProcessor::prepareForDecompression(void)
     prepareFlow_->nextTask().work(prep);
   else
     prep();
-
-  return true;
 }
 
 Mct* TileProcessor::getMCT(void)
@@ -766,6 +774,8 @@ bool TileProcessor::readPLT(uint8_t* headerData, uint16_t headerSize)
 
 bool TileProcessor::createDecompressTileComponentWindows(void)
 {
+  if(!initialized_)
+    return false;
   for(uint16_t compno = 0; compno < tile_->numcomps_; ++compno)
   {
     auto imageComp = headerImage_->comps + compno;
@@ -952,7 +962,7 @@ bool TileProcessor::scheduleT2T1(CoderPool* coderPool, Rect32 unreducedImageBoun
     }
   };
 
-  auto t2Parse = [this, allocAndSchedule]() {
+  auto t2Parse = [this]() {
     // synch plugin with T2 data
     // todo re-enable decompress synch
     // decompress_synch_plugin_with_host(this);

@@ -1055,11 +1055,7 @@ bool CodeStreamDecompress::scheduleNextSlatedTile(bool multiTile)
     return false;
   }
 
-  if(!currTileProcessor_->prepareForDecompression())
-  {
-    success_ = false;
-    return false;
-  }
+  currTileProcessor_->prepareForDecompression();
 
   auto tileProcessor = currTileProcessor_;
   currTileProcessor_ = nullptr;
