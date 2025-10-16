@@ -68,11 +68,8 @@ struct Segment
     totalPasses_ = 0;
     totalBytes_ = 0;
     maxPasses_ = 0;
-    for(uint8_t i = 0; i < numLayers_; ++i)
-    {
-      calculatedPassesInLayer_[i] = 0;
-      signalledBytesInLayer_[i] = 0;
-    }
+    memset(calculatedPassesInLayer_, 0, numLayers_ * sizeof(uint8_t));
+    memset(signalledBytesInLayer_, 0, numLayers_ * sizeof(uint16_t));
     for(auto& b : data_chunks_)
       delete b;
     data_chunks_.clear();
@@ -119,17 +116,17 @@ struct Segment
   /**
    * @brief Number of layers for this code block
    */
-  uint16_t numLayers_;
+  uint16_t numLayers_ = 0;
 
   /**
    * @brief Running total of number of passes across multiple layers
    */
-  uint8_t totalPasses_;
+  uint8_t totalPasses_ = 0;
   /**
    * @brief Maximum number of passes in this code block
    * This is determined by the code block style i.e. mode switch
    */
-  uint8_t maxPasses_;
+  uint8_t maxPasses_ = 0;
   /**
    * @brief Number of passes contributed by layer, calculated by decompress codeblock
    * when parsing packet header
@@ -139,7 +136,7 @@ struct Segment
   /**
    * @brief Total number of bytes in segment
    */
-  uint32_t totalBytes_;
+  uint32_t totalBytes_ = 0;
 
   /**
    * @brief Number of bytes signalled by layer
