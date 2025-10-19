@@ -92,68 +92,67 @@ bool DecompressWindowScheduler::schedule(TileProcessor* tileProcessor)
         auto paddedBandWindow = tilec->getWindow()->getBandWindowPadded(resno, band->orientation_);
         for(auto precinct : band->precincts_)
         {
+          // skip precincts that don't overlap with padded decompression window
           if(!wholeTileDecoding && !paddedBandWindow->nonEmptyIntersection(precinct))
             continue;
           for(uint32_t cblkno = 0; cblkno < precinct->getNumCblks(); ++cblkno)
           {
             auto cblkBounds = precinct->getCodeBlockBounds(cblkno);
-            if(wholeTileDecoding || paddedBandWindow->nonEmptyIntersection(&cblkBounds))
-            {
-              auto cblk = precinct->getDecompressedBlock(cblkno);
-              auto block = new DecompressBlockExec(cacheAll);
-              block->x = cblk->x0();
-              block->y = cblk->y0();
-              block->tilec = tilec;
-              block->bandIndex = bandIndex;
-              block->bandNumbps = band->maxBitPlanes_;
-              block->bandOrientation = band->orientation_;
-              block->cblk = cblk;
-              block->cblk_sty = tccp->cblkStyle_;
-              block->qmfbid = tccp->qmfbid_;
-              block->resno = resno;
-              block->roishift = tccp->roishift_;
-              block->stepsize = band->stepsize_;
-              block->k_msbs = (uint8_t)(band->maxBitPlanes_ - cblk->numbps());
-              block->R_b = prec_ + gain_b[band->orientation_];
-              block->finalLayer_ = finalLayer;
+            // skip code blocks that don't overlap with padded decompression window
+            if(!wholeTileDecoding && !paddedBandWindow->nonEmptyIntersection(&cblkBounds))
+              continue;
 
-              auto t = placeholder();
-              tileProcessor->blockTasks_.emplace_back(t);
-              auto blockFunc = [this, activePool, singleThread, tileProcessor, block, cbw, cbh,
-                                cacheAll] {
-                if(!success)
+            auto cblk = precinct->getDecompressedBlock(cblkno);
+            auto block = new DecompressBlockExec(cacheAll);
+            block->x = cblk->x0();
+            block->y = cblk->y0();
+            block->tilec = tilec;
+            block->bandIndex = bandIndex;
+            block->bandNumbps = band->maxBitPlanes_;
+            block->bandOrientation = band->orientation_;
+            block->cblk = cblk;
+            block->cblk_sty = tccp->cblkStyle_;
+            block->qmfbid = tccp->qmfbid_;
+            block->resno = resno;
+            block->roishift = tccp->roishift_;
+            block->stepsize = band->stepsize_;
+            block->k_msbs = (uint8_t)(band->maxBitPlanes_ - cblk->numbps());
+            block->R_b = prec_ + gain_b[band->orientation_];
+            block->finalLayer_ = finalLayer;
+
+            auto t = placeholder();
+            tileProcessor->blockTasks_.emplace_back(t);
+            auto blockFunc = [this, activePool, singleThread, tileProcessor, block, cbw, cbh,
+                              cacheAll] {
+              if(success)
+              {
+                ICoder* coder = nullptr;
+                if(block->needsCachedCoder())
                 {
+                  coder = CoderFactory::makeCoder(tileProcessor->getTCP()->isHT(), false, cbw, cbh,
+                                                  tileProcessor->getTileCacheStrategy());
                 }
-                else
+                else if(!cacheAll)
                 {
-                  ICoder* coder = nullptr;
-                  if(block->needsCachedCoder())
-                  {
-                    coder = CoderFactory::makeCoder(tileProcessor->getTCP()->isHT(), false, cbw,
-                                                    cbh, tileProcessor->getTileCacheStrategy());
-                  }
-                  else if(!cacheAll)
-                  {
-                    auto threadnum = singleThread ? 0 : ExecSingleton::get().this_worker_id();
-                    coder = activePool->getCoder((size_t)threadnum, cbw, cbh).get();
-                  }
-                  try
-                  {
-                    success = block->open(coder);
-                  }
-                  catch(const std::runtime_error& rerr)
-                  {
-                    grklog.error(rerr.what());
-                    success = false;
-                  }
-                  delete block;
+                  auto threadnum = singleThread ? 0 : ExecSingleton::get().this_worker_id();
+                  coder = activePool->getCoder((size_t)threadnum, cbw, cbh).get();
                 }
-              };
-              if(singleThread)
-                blockFunc();
-              else
-                t.work(blockFunc);
-            }
+                try
+                {
+                  success = block->open(coder);
+                }
+                catch(const std::runtime_error& rerr)
+                {
+                  grklog.error(rerr.what());
+                  success = false;
+                }
+                delete block;
+              }
+            };
+            if(singleThread)
+              blockFunc();
+            else
+              t.work(blockFunc);
           }
         }
       }

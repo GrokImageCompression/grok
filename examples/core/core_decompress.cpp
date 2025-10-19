@@ -638,7 +638,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] const char** argv)
   grk_stream_params streamParams = {};
   ReadStreamInfoExample sinfo(&streamParams);
 
-//#define TEST_FUZZER
+// #define TEST_FUZZER
 #ifdef TEST_FUZZER
   {
     grk_header_info headerInfo = {};
