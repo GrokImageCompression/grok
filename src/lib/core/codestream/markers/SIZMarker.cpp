@@ -29,6 +29,11 @@ bool SIZMarker::read(CodeStreamDecompress* codeStream, uint8_t* headerData, uint
   uint32_t nb_comp_remain;
   uint32_t remaining_size;
   auto headerImage = codeStream->getHeaderImage();
+  if(headerImage->numcomps > 0)
+  {
+    grklog.error("Only one SIZ marker allowed");
+    return false;
+  }
   auto cp = codeStream->getCodingParams();
 
   /* minimum size == 39 - 3 (= minimum component parameter) */
