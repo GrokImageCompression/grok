@@ -573,13 +573,18 @@ bool TileProcessor::parseTilePart(std::vector<std::unique_ptr<MarkerParser>>* pa
           }
           tpi.remainingTilePartBytes_ -= segmentLength;
         }
+        if(!parser->readId(false))
+        {
+          success_ = false;
+          return;
+        }
       }
       catch(const CorruptSOTMarkerException& csme)
       {
         success_ = false;
         return;
       }
-      if(!parser->readId(false))
+      catch(const InvalidMarkerException& ime)
       {
         success_ = false;
         return;
