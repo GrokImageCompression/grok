@@ -435,7 +435,7 @@ uint8_t* FileFormatJP2Compress::write_res(uint32_t* p_nb_bytes_written)
   grk_write(&current_res_ptr, size);
 
   /* Super-box ID */
-  grk_write(current_res_ptr, (uint32_t)JP2_RES);
+  grk_write(&current_res_ptr, (uint32_t)JP2_RES);
 
   if(storeCapture)
     write_res_box(capture_resolution[0], capture_resolution[1], JP2_CAPTURE_RES, &current_res_ptr);
