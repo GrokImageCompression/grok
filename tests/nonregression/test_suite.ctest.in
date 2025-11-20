@@ -761,3 +761,5 @@ grk_decompress -i  @INPUT_NR_PATH@/tnsot_non_0_tlm.jp2 -o @TEMP_PATH@/tnsot_non_
 # 34 tile image with corrupt SOT starting at tile 23
 grk_decompress -i  @INPUT_NR_PATH@/page.jp2 -o @TEMP_PATH@/page.tif
 grk_decompress -i  @INPUT_NR_PATH@/page_tlm.jp2 -o @TEMP_PATH@/page_tlm.tif
+
+grk_compress -i @INPUT_NR_PATH@/resolution.tif -o @TEMP_PATH@/resolution.jp2
