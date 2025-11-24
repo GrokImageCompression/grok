@@ -30,6 +30,9 @@
 #include <spdlog/sinks/basic_file_sink.h> // Required for basic_logger_mt
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include "common.h"
+#include <string>
+#include <algorithm>
+#include <cctype>
 
 namespace grk
 {
@@ -242,6 +245,10 @@ GRK_SUPPORTED_FILE_FMT grk_get_file_format(const char* filename, bool& isHTJ2K)
   ext++;
   if(*ext)
   {
+    std::string lower_ext(ext);
+    std::transform(lower_ext.begin(), lower_ext.end(), lower_ext.begin(),
+                   [](unsigned char c) { return std::tolower(c); });
+
     static const std::unordered_map<std::string, GRK_SUPPORTED_FILE_FMT> extension_map = {
         {"pgx", GRK_FMT_PGX},   {"pam", GRK_FMT_PXM}, {"pnm", GRK_FMT_PXM},  {"pgm", GRK_FMT_PXM},
         {"ppm", GRK_FMT_PXM},   {"pbm", GRK_FMT_PXM}, {"bmp", GRK_FMT_BMP},  {"tif", GRK_FMT_TIF},
@@ -252,10 +259,10 @@ GRK_SUPPORTED_FILE_FMT grk_get_file_format(const char* filename, bool& isHTJ2K)
 
     static const std::unordered_set<std::string> htj2k_extensions = {"jph", "jhc"};
 
-    auto it = extension_map.find(ext);
+    auto it = extension_map.find(lower_ext);
     if(it != extension_map.end())
     {
-      if(htj2k_extensions.contains(ext))
+      if(htj2k_extensions.contains(lower_ext))
       {
         isHTJ2K = true;
       }
