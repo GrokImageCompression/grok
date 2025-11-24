@@ -478,7 +478,7 @@ void configureLogging(const std::string& logfile)
   }
   else
   {
-    log_level = spdlog::level::off;
+    log_level = spdlog::level::err;
   }
   spdlog::set_level(log_level);
   spdlog::set_pattern("[%Y-%m-%d %H:%M:%S.%e] [%^%l%$] %v");
