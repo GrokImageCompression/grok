@@ -991,6 +991,8 @@ grk_image* TIFFFormat<T>::decode(const std::string& filename, grk_cparameters* p
   uint16_t compress;
   float *luma = nullptr, *refBlackWhite = nullptr;
   uint16_t *red_orig = nullptr, *green_orig = nullptr, *blue_orig = nullptr;
+  uint32_t num_pages = 0;
+  uint32_t cur_dir;
 
   tif_ = TIFFOpen(filename.c_str(), "r");
   if(!tif_)
@@ -1002,6 +1004,9 @@ grk_image* TIFFFormat<T>::decode(const std::string& filename, grk_cparameters* p
   if(TIFFIsTiled(tif_))
   {
     spdlog::error("TIFFFormat<T>::decode: tiled TIFF images not supported");
+    if(tif_)
+      TIFFClose(tif_);
+    tif_ = nullptr;
     return 0;
   }
 
@@ -1032,6 +1037,29 @@ grk_image* TIFFFormat<T>::decode(const std::string& filename, grk_cparameters* p
   bool needSignedPixelReader = isSigned && (tiBps == 8 || tiBps == 16);
 
   // 1. sanity checks
+
+  cur_dir = TIFFCurrentDirectory(tif_);
+  do
+  {
+    uint32_t subfiletype = 0;
+    if(TIFFGetField(tif_, TIFFTAG_SUBFILETYPE, &subfiletype))
+    {
+      if(subfiletype == FILETYPE_PAGE)
+        num_pages++;
+    }
+    else
+    {
+      num_pages++;
+    }
+  } while(TIFFReadDirectory(tif_));
+  if(num_pages > 1)
+    spdlog::warn(
+        "TIFFFormat<T>::decode: multi-page document detected. Only the first page will be encoded");
+  if(!TIFFSetDirectory(tif_, cur_dir))
+  {
+    spdlog::error("TIFFFormat<T>::decode: failed to reset to directory {}", cur_dir);
+    goto cleanup;
+  }
 
   // check for supported photometric interpretation
   if(tiPhoto != PHOTOMETRIC_MINISBLACK && tiPhoto != PHOTOMETRIC_MINISWHITE &&
