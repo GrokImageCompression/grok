@@ -396,6 +396,6 @@ e674a7d3c6fa71e775c96dca29807794  multi_tile_truncated_rgb.tif
 2d0ee6c27449e24a1908065299ede44d  page_tlm.tif
 e674a7d3c6fa71e775c96dca29807794  page.tif
 
-aa0db270db9ae49d6c6c9ddb61f0f07f  p_bit16_layer5.pgm
-69fe43bf29958ca6495ed31fe12b29b8  mono_plt_tlm_tile5.pgm
-996b396b9710d1490b0ccdebdde69a35  mono_plt_tlm_tile.pgm
+13dda739805c6567196ce35ce7cfcc10  p_bit16_layer5.pgm
+541e8779f1fcf0f2875634025b0ff8a2  mono_plt_tlm_tile5.pgm
+170a5822c68999fb3ba8b0d375b25fa2  mono_plt_tlm_tile.pgm
