@@ -8,6 +8,7 @@ include_directories(
 
 foreach(exe core_decompress
             core_compress
+            core_compress_decompress
 )
   add_executable(${exe} ${exe}.cpp ${common_SRCS})
   target_compile_options(${exe} PRIVATE ${GROK_COMPILE_OPTIONS})
