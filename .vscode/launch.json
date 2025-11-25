@@ -169,7 +169,38 @@
             ],
             "MIMode": "gdb",
             "miDebuggerPath": "/usr/bin/gdb"
-        },        
+        },
+        {
+            "name": "core compress",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/bin/core_compress",
+            "args": [],
+            "environment": [
+                { "name": "GRK_DEBUG", "value": "3" }
+            ],
+            "cwd": "${workspaceFolder}",
+            "MIMode": "gdb",
+            "miDebuggerPath": "/usr/bin/gdb"
+        },
+        {
+            "name": "encode TIFF",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/bin/grk_compress",
+            "args": [
+                "-i",
+                "$HOME/temp/test.tif",
+                "-o",
+                "$HOME/temp/test.tif.jp2",
+            ],
+            "environment": [
+                { "name": "GRK_DEBUG", "value": "3" }
+            ],
+            "cwd": "${workspaceFolder}",
+            "MIMode": "gdb",
+            "miDebuggerPath": "/usr/bin/gdb"
+        },
         {
             "name": "test",
             "type": "cppdbg",
@@ -407,6 +438,28 @@
             "miDebuggerPath": "/usr/bin/gdb"
         },
         {
+            "name": "Pleiades KDU",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "/usr/bin/time",
+            "args": [
+                "-v",
+                "$HOME/src/gorgon/gorgon/bin/Linux-x86-64-gcc/kdu_expand",
+                "-i",
+                "$HOME/temp/IMG_PHR1B_P_202406071720183_SEN_7038440101-1_R1C1.JP2",
+                "-region",
+                "\"{0.00000000000000000,0.00000000000000000},{0.10101109741060420,0.09905204101373573}\"",
+                "-o",
+                "/tmp/pleiades.tif"
+            ],
+            "cwd": "${workspaceFolder}",
+            "environment": [
+                { "name": "GRK_DEBUG", "value": "3" },
+            ],
+            "MIMode": "gdb",
+            "miDebuggerPath": "/usr/bin/gdb"
+        },
+                {
             "name": "Pleiades",
             "type": "cppdbg",
             "request": "launch",
@@ -416,10 +469,12 @@
                 "${workspaceFolder}/build/bin/core_decompress",
                 "-i",
                 "$HOME/temp/IMG_PHR1B_P_202406071720183_SEN_7038440101-1_R1C1.JP2",
+                "-d 0,0,2048,2048",
             ],
             "cwd": "${workspaceFolder}",
             "environment": [
                 { "name": "GRK_DEBUG", "value": "3" },
+                { "name": "GRK_WINDOWED_SCHEDULING", "value": "1" }
             ],
             "MIMode": "gdb",
             "miDebuggerPath": "/usr/bin/gdb"
@@ -705,9 +760,14 @@
             "program": "${workspaceFolder}/build/bin/grk_decompress",
             "args": [
                 "-i",
-                "$HOME/Downloads/clusterfuzz-testcase-minimized-grk_decompress_fuzzer-6466697174843392",
+                "$HOME/temp/clusterfuzz-testcase-minimized-grk_decompress_fuzzer-4734814600364032",
+                "-d 0,0,1024,1024",
                 "-o",
-                "$HOME/temp/fuzzer.tif"
+                "$HOME/temp/fuzz.tif"
+
+            ],
+            "environment": [
+                { "name": "GRK_DEBUG", "value": "3" },
             ],
             "cwd": "${workspaceFolder}",
             "MIMode": "gdb",

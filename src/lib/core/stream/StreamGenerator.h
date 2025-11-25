@@ -78,7 +78,7 @@ public:
   {
     if(streamParams_.buf && streamParams_.buf_len)
     {
-      return createBufferReadStream();
+      return createBufferStream(streamParams_.is_read_stream);
     }
 
     if(streamParams_.read_fn || streamParams_.write_fn)
@@ -125,10 +125,10 @@ private:
 
   IStream* createCallbackStream(void);
 
-  IStream* createBufferReadStream(void)
+  IStream* createBufferStream(bool isReadStream)
   {
     auto stream = memStreamCreate(streamParams_.buf, streamParams_.buf_len, false, nullptr,
-                                  GRK_CODEC_FORMAT::GRK_CODEC_UNK, true);
+                                  GRK_CODEC_FORMAT::GRK_CODEC_UNK, isReadStream);
     if(!stream)
     {
       grklog.error("Unable to create memory stream.");

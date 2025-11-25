@@ -556,15 +556,15 @@ typedef struct _grk_stream_params
   size_t initial_double_buffer_len; /* choose a larger initial length
                                        to read the main header in one go */
   bool from_network; /* indicates stream source is on network if true */
-  bool is_read_stream;
+  bool is_read_stream; /* true if read stream, otherwise false */
 
   /* 1. File Streaming */
   char file[GRK_PATH_LEN];
   bool use_stdio; /* use C file api - if false then use memory mapping */
 
   /* 2. Buffer Streaming */
-  uint8_t* buf;
-  size_t buf_len; /* buffer length */
+  uint8_t* buf; /* data buffer */
+  size_t buf_len; /* data buffer length */
   size_t buf_compressed_len; /* length of compressed stream (set by compressor, not client) */
 
   /* 3. Callback Streaming */
