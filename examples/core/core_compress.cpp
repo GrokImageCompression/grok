@@ -14,6 +14,18 @@
  *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
+
+/*********************************************************************
+
+Example demonstrating compression from a memory buffer using one
+of three approaches for the destination:
+
+1) memory buffer
+2) memory buffer using callbacks
+3) file
+
+**********************************************************************/
+
 #include <cstdio>
 #include <cstring>
 #include <memory>

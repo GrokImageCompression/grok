@@ -15,6 +15,12 @@
  *
  */
 
+/*************************************************************************
+
+Complex example demonstrating a variety of options for decompression
+
+**************************************************************************/
+
 #include <cstdio>
 #include <string>
 #include <cstring>

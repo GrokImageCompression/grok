@@ -14,6 +14,14 @@
  *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
+
+/***********************************************************
+
+Simple example demonstrating compression and decompression
+with memory buffers as source and destination
+
+************************************************************/
+
 #include <cstdio>
 #include <cstring>
 #include <memory>

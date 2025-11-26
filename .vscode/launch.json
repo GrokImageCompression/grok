@@ -171,10 +171,10 @@
             "miDebuggerPath": "/usr/bin/gdb"
         },
         {
-            "name": "core compress decompress",
+            "name": "core simple",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/build/bin/core_compress_decompress",
+            "program": "${workspaceFolder}/build/bin/core_simple",
             "args": [],
             "environment": [
                 { "name": "GRK_DEBUG", "value": "3" }
