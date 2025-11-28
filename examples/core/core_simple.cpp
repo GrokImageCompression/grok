@@ -38,15 +38,16 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] const char** argv)
   const uint32_t numComps = colourSpace == GRK_CLRSPC_SRGB ? 3 : 1;
   const uint32_t precision = 16;
 
-  grk_object* codec = nullptr;
-  grk_image* inputImage = nullptr;
-  grk_image* outputImage = nullptr;
-  grk_header_info headerInfo = {};
+  grk_object* codec = nullptr; // compression/decompression codec object
+  grk_image* encInputImage = nullptr; // uncompressed image passed into compressor
+  grk_image* decOutputImage = nullptr; // uncompressed image created by decompressor
+  grk_header_info headerInfo = {}; // compressed image header info
   int32_t rc = EXIT_FAILURE;
 
-  uint64_t compressedLength = 0;
+  uint64_t compressedLength = 0; // length of compressed stream
 
   bool images_equal = true;
+  grk_stream_params decCompressedStream = {}; // compressed stream passed to decompressor
 
   // 1. initialize library
   grk_initialize(nullptr, 0);
@@ -56,22 +57,22 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] const char** argv)
   grk_compress_set_default_params(&compressParams);
   compressParams.cod_format = GRK_FMT_JP2;
   compressParams.verbose = true;
-  compressParams.irreversible = 0; // Enable reversible (lossless) compression
+  compressParams.irreversible = false; // Enable reversible (lossless) compression
 
   grk_decompress_parameters decompressParams = {};
 
-  // 3.initialize input and output stream parameters
-  grk_stream_params outputStreamParams = {};
-  std::unique_ptr<uint8_t[]> data;
+  // 3.initialize struct holding encoder compressed stream
+  std::unique_ptr<uint8_t[]> compressedData;
+  // allocate size of input image, assuming that compressed stream
+  // is smaller than input
   size_t bufLen = (size_t)numComps * ((precision + 7) / 8) * dimX * dimY;
-  data = std::make_unique<uint8_t[]>(bufLen);
-  outputStreamParams.buf = data.get();
-  outputStreamParams.buf_len = bufLen;
+  compressedData = std::make_unique<uint8_t[]>(bufLen);
 
-  grk_stream_params inputStreamParams = {};
-  inputStreamParams.buf = data.get();
+  grk_stream_params encCompressedStream = {};
+  encCompressedStream.buf = compressedData.get();
+  encCompressedStream.buf_len = bufLen;
 
-  // 4. create input image
+  // 4. create image that will be passed to encoder
   auto components = std::make_unique<grk_image_comp[]>(numComps);
   for(uint32_t i = 0; i < numComps; ++i)
   {
@@ -83,15 +84,17 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] const char** argv)
     c->prec = precision;
     c->sgnd = false;
   }
-  inputImage = grk_image_new(numComps, components.get(), colourSpace, true);
+  encInputImage = grk_image_new(numComps, components.get(), colourSpace, true);
 
-  // create original data buffers (contiguous, stride == width)
-  std::vector<std::unique_ptr<int32_t[]>> originalBuffers(numComps);
+  // create uncompressed data buffers (contiguous, stride == width)
+  // these buffers will be copied to the grk_image component data
+  // before compression
+  std::vector<std::unique_ptr<int32_t[]>> uncompressedData(numComps);
 
   // fill in component data: see grok.h header for full details of image structure
-  for(uint16_t compno = 0; compno < inputImage->numcomps; ++compno)
+  for(uint16_t compno = 0; compno < encInputImage->numcomps; ++compno)
   {
-    auto comp = inputImage->comps + compno;
+    auto comp = encInputImage->comps + compno;
     auto compWidth = comp->w;
     auto compHeight = comp->h;
     auto destData = (int32_t*)comp->data;
@@ -101,21 +104,20 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] const char** argv)
       goto beach;
     }
 
-    // allocate and fill original buffer with grid pattern (contiguous)
-    originalBuffers[compno] = std::make_unique<int32_t[]>((size_t)compWidth * compHeight);
-    auto srcPtr = originalBuffers[compno].get();
+    // allocate and fill uncompressedData buffer with grid pattern (contiguous)
+    uncompressedData[compno] = std::make_unique<int32_t[]>((size_t)compWidth * compHeight);
+    auto srcPtr = uncompressedData[compno].get();
+    const int32_t white = (1 << precision) - 1;
     for(uint32_t j = 0; j < compHeight; ++j)
     {
       for(uint32_t i = 0; i < compWidth; ++i)
-      {
-        srcPtr[i] = (i % 32 == 0 || j % 32 == 0) ? 65535 : 0;
-      }
+        srcPtr[i] = (i % 32 == 0 || j % 32 == 0) ? white : 0;
       srcPtr += compWidth;
     }
 
-    // copy from original buffer to input image data, respecting stride
+    // copy from uncompressedData to encInputImage data, respecting stride
     auto destPtr = destData;
-    srcPtr = originalBuffers[compno].get();
+    srcPtr = uncompressedData[compno].get();
     for(uint32_t j = 0; j < compHeight; ++j)
     {
       memcpy(destPtr, srcPtr, (size_t)compWidth * sizeof(int32_t));
@@ -124,79 +126,78 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] const char** argv)
     }
   }
 
-  // 5. initialize compressor
-  codec = grk_compress_init(&outputStreamParams, &compressParams, inputImage);
+  // 5. compress
+  codec = grk_compress_init(&encCompressedStream, &compressParams, encInputImage);
   if(!codec)
   {
     fprintf(stderr, "Failed to initialize compressor\n");
     goto beach;
   }
-
-  // 6. compress
   compressedLength = grk_compress(codec, nullptr);
   if(compressedLength == 0)
   {
     fprintf(stderr, "Failed to compress\n");
     goto beach;
   }
-  printf("Compression succeeded: %" PRIu64 " bytes used.\n", compressedLength);
-
-  // 7. complete initialization of input stream parameters
-  inputStreamParams.buf_len = compressedLength;
-
+  // destroy compression codec
   grk_object_unref(codec);
-  codec = grk_decompress_init(&inputStreamParams, &decompressParams);
+  printf("Compression succeeded: %" PRIu64 " bytes used\n", compressedLength);
+
+  // 6. copy encCompressedStream to decCompressedStream to prepare for decompression
+  decCompressedStream.buf = encCompressedStream.buf;
+  decCompressedStream.buf_len = compressedLength;
+
+  // 7. decompress
+  codec = grk_decompress_init(&decCompressedStream, &decompressParams);
   if(!grk_decompress_read_header(codec, &headerInfo))
   {
     fprintf(stderr, "Failed to read the header\n");
     goto beach;
   }
-
-  // 8. decompress image
   if(!grk_decompress(codec, nullptr))
   {
     fprintf(stderr, "Decompression failed\n");
     goto beach;
   }
 
-  // 9. retrieve decompressed image
-  outputImage = grk_decompress_get_image(codec);
-  if(!outputImage)
+  // 8. retrieve decompressed image
+  decOutputImage = grk_decompress_get_image(codec);
+  if(!decOutputImage)
   {
     fprintf(stderr, "Decompression failed\n");
     goto beach;
   }
-
   printf("Decompression succeeded\n");
 
-  // 10. compare original buffers and output image
-  if(inputImage->numcomps != outputImage->numcomps || inputImage->x0 != outputImage->x0 ||
-     inputImage->y0 != outputImage->y0 || inputImage->x1 != outputImage->x1 ||
-     inputImage->y1 != outputImage->y1 || inputImage->color_space != outputImage->color_space)
+  // 9. compare original uncompressedData to decompressed decInputmage
+  if(encInputImage->numcomps != decOutputImage->numcomps ||
+     encInputImage->x0 != decOutputImage->x0 || encInputImage->y0 != decOutputImage->y0 ||
+     encInputImage->x1 != decOutputImage->x1 || encInputImage->y1 != decOutputImage->y1 ||
+     encInputImage->color_space != decOutputImage->color_space)
   {
     images_equal = false;
   }
   else
   {
-    for(uint32_t compno = 0; compno < inputImage->numcomps; ++compno)
+    for(uint32_t compno = 0; compno < encInputImage->numcomps; ++compno)
     {
-      auto in_comp = inputImage->comps + compno;
-      auto out_comp = outputImage->comps + compno;
-      if(in_comp->dx != out_comp->dx || in_comp->dy != out_comp->dy || in_comp->w != out_comp->w ||
-         in_comp->h != out_comp->h || in_comp->prec != out_comp->prec ||
-         in_comp->sgnd != out_comp->sgnd)
+      auto encImageComp = encInputImage->comps + compno;
+      auto decImageComp = decOutputImage->comps + compno;
+      if(encImageComp->dx != decImageComp->dx || encImageComp->dy != decImageComp->dy ||
+         encImageComp->w != decImageComp->w || encImageComp->h != decImageComp->h ||
+         encImageComp->prec != decImageComp->prec || encImageComp->sgnd != decImageComp->sgnd)
       {
         images_equal = false;
         break;
       }
-      auto in_data = originalBuffers[compno].get();
-      auto in_stride = in_comp->w;
-      auto out_data = (int32_t*)out_comp->data;
-      auto out_stride = out_comp->stride;
+      auto in_data = uncompressedData[compno].get();
+      auto in_stride = encImageComp->w;
+      auto out_data = (int32_t*)decImageComp->data;
+      auto out_stride = decImageComp->stride;
       bool comp_equal = true;
-      for(uint32_t j = 0; j < in_comp->h; ++j)
+      for(uint32_t j = 0; j < encImageComp->h; ++j)
       {
-        if(memcmp(in_data, out_data, in_comp->w * sizeof(int32_t)) != 0)
+        if(memcmp(in_data, out_data, encImageComp->w * sizeof(int32_t)) != 0)
         {
           comp_equal = false;
           break;
@@ -212,23 +213,18 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] const char** argv)
     }
   }
   if(images_equal)
-  {
-    printf("Input and output images are identical\n");
-  }
+    printf("Input and output data buffers are identical\n");
   else
-  {
-    printf("Input and output images differ\n");
-  }
+    printf("Input and output data bufffers differ\n");
 
   rc = EXIT_SUCCESS;
-beach:
 
+beach:
   // cleanup
   grk_object_unref(codec);
-  if(inputImage)
-    grk_object_unref(&inputImage->obj);
-  // note: since outputImage was allocated by library, it will be cleaned
-  // up by library
+  if(encInputImage)
+    grk_object_unref(&encInputImage->obj);
+  // note: since decImage was allocated by library, it will be cleaned up by library
   grk_deinitialize();
 
   return rc;
