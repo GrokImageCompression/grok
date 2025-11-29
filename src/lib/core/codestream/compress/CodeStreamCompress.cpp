@@ -159,8 +159,8 @@ bool CodeStreamCompress::init(grk_cparameters* parameters, GrkImage* image)
       if(image->comps[compno].data)
       {
         headerImage_->comps[compno].data = image->comps[compno].data;
+        headerImage_->comps[compno].owns_data = false;
         headerImage_->comps[compno].stride = image->comps[compno].stride;
-        GrkImage::setDataToNull(image->comps + compno);
       }
     }
   }

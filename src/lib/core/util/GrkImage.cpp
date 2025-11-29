@@ -316,10 +316,11 @@ void GrkImage::copyHeaderTo(GrkImage* dest) const
   }
   dest->numcomps = numcomps;
   dest->comps = new grk_image_comp[dest->numcomps];
+  // copy components, but set data ownership to false
   for(uint16_t compno = 0; compno < dest->numcomps; compno++)
   {
     *(dest->comps + compno) = *(comps + compno);
-    setDataToNull(dest->comps + compno);
+    dest->comps[compno].owns_data = false;
   }
 
   dest->color_space = color_space;
