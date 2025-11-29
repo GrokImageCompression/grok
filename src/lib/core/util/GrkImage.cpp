@@ -158,16 +158,23 @@ GrkImage* GrkImage::create(grk_image* src, uint16_t numcmpts, grk_image_comp* cm
   for(uint16_t compno = 0; compno < numcmpts; compno++)
   {
     auto comp = &image->comps[compno];
+    auto params = cmptparms + compno;
 
-    comp->dx = cmptparms[compno].dx == 0 ? 1 : cmptparms[compno].dx;
-    comp->dy = cmptparms[compno].dy == 0 ? 1 : cmptparms[compno].dy;
-    comp->w = cmptparms[compno].w;
-    comp->h = cmptparms[compno].h;
-    comp->x0 = cmptparms[compno].x0;
-    comp->y0 = cmptparms[compno].y0;
-    comp->prec = cmptparms[compno].prec;
-    comp->sgnd = cmptparms[compno].sgnd;
-    if(doAllocation && !allocData(comp))
+    comp->dx = params->dx == 0 ? 1 : params->dx;
+    comp->dy = params->dy == 0 ? 1 : params->dy;
+    comp->w = params->w;
+    comp->h = params->h;
+    comp->x0 = params->x0;
+    comp->y0 = params->y0;
+    comp->prec = params->prec;
+    comp->sgnd = params->sgnd;
+    if(params->data)
+    {
+      comp->data = params->data;
+      comp->stride = params->stride ? params->stride : params->w;
+      comp->unowned_data = true;
+    }
+    else if(doAllocation && !allocData(comp))
     {
       grk::grklog.error("Unable to allocate memory for image.");
       delete image;
@@ -279,6 +286,7 @@ bool GrkImage::subsampleAndReduce(uint8_t reduce)
 void GrkImage::setDataToNull(grk_image_comp* comp)
 {
   comp->data = nullptr;
+  comp->unowned_data = true;
   comp->stride = 0;
 }
 
@@ -310,7 +318,7 @@ void GrkImage::copyHeaderTo(GrkImage* dest) const
   dest->comps = new grk_image_comp[dest->numcomps];
   for(uint16_t compno = 0; compno < dest->numcomps; compno++)
   {
-    memcpy(dest->comps + compno, comps + compno, sizeof(grk_image_comp));
+    *(dest->comps + compno) = *(comps + compno);
     setDataToNull(dest->comps + compno);
   }
 
@@ -372,6 +380,7 @@ bool GrkImage::allocData(grk_image_comp* comp, bool clear)
   if(clear)
     memset(data, 0, dataSize);
   comp->data = data;
+  comp->unowned_data = false;
   comp->stride = stride;
 
   return true;
@@ -762,6 +771,7 @@ void GrkImage::transferDataTo(GrkImage* dest)
 
     single_component_data_free(destComp);
     destComp->data = srcComp->data;
+    destComp->unowned_data = srcComp->unowned_data;
     if(srcComp->stride)
     {
       assert(srcComp->data);
@@ -863,7 +873,7 @@ bool GrkImage::generateCompositeBounds(const grk_image_comp* srcComp, uint16_t d
 
 void GrkImage::single_component_data_free(grk_image_comp* comp)
 {
-  if(!comp || !comp->data)
+  if(!comp || !comp->data || comp->unowned_data)
   {
     // assert(!comp || !comp->stride);
     return;
@@ -1248,8 +1258,10 @@ bool GrkImage::greyToRGB(void)
 
   // attach first new component to old component
   new_components->data = comps->data;
+  new_components->unowned_data = comps->unowned_data;
   new_components->stride = comps->stride;
   comps->data = nullptr;
+  comps->unowned_data = true;
   all_components_data_free();
   delete[] comps;
   comps = new_components;
@@ -1270,6 +1282,7 @@ void GrkImage::transferDataFrom_T(const Tile* tile_src_data)
     // transfer memory from tile component to output image
     single_component_data_free(destComp);
     srcComp->getWindow()->transfer((T**)&destComp->data, &destComp->stride);
+    destComp->unowned_data = false;
   }
 }
 void GrkImage::transferDataFrom(const Tile* tile_src_data)

@@ -133,7 +133,7 @@ template<typename T>
 GrkImagePtr readImageFromFilePGX(const std::string& filename, uint16_t numFiles,
                                  const std::string& separator)
 {
-  auto numComponents = (separator.empty()) ? 1 : numFiles;
+  uint16_t numComponents = (separator.empty()) ? 1 : numFiles;
   if(numComponents == 0)
   {
     return GrkImagePtr(nullptr);
@@ -160,12 +160,12 @@ GrkImagePtr readImageFromFilePGX(const std::string& filename, uint16_t numFiles,
     }
 
     components[i] = *src->comps;
+    components[i].data = nullptr;
     componentData[i].resize(static_cast<size_t>(src->comps->h) * src->comps->stride);
     std::copy_n((T*)src->comps->data, componentData[i].size(), componentData[i].begin());
   }
 
-  GrkImagePtr dest(grk_image_new(static_cast<uint16_t>(numComponents), components.data(),
-                                 GRK_CLRSPC_UNKNOWN, true));
+  GrkImagePtr dest(grk_image_new(numComponents, components.data(), GRK_CLRSPC_UNKNOWN, true));
   if(!dest || !dest->comps)
   {
     return GrkImagePtr(nullptr);
@@ -275,6 +275,7 @@ GrkImagePtr readImageFromFilePPM(const std::string& filename, uint16_t numFiles,
       return GrkImagePtr(nullptr);
     }
     components[i] = *src->comps;
+    components[i].data = nullptr;
     componentData[i].resize(static_cast<size_t>(src->comps->h) * src->comps->stride);
     std::copy_n((T*)src->comps->data, componentData[i].size(), componentData[i].begin());
   }

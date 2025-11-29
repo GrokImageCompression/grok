@@ -716,6 +716,7 @@ typedef struct _grk_image_comp
   uint16_t crg_y; /* CRG x */
   grk_data_type data_type;
   void* data; /* component data */
+  bool unowned_data; /* true if data is not owned by library */
 } grk_image_comp;
 
 /**

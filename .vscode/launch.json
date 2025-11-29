@@ -202,6 +202,30 @@
             "miDebuggerPath": "/usr/bin/gdb"
         },
         {
+            "name": "compare images",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/bin/compare_images",
+            "args": [
+                "-b",
+                "/home/aaron/src/grok-test-data/baseline/conformance/subsampling_1.ppm",
+                "-t",
+                "/home/aaron/src/grok/build/tests/conformance/Temporary/subsampling_1.jp2.ppm",
+                "-n",
+                "1",
+                "-p",
+                "4:4:4",
+                "-m",
+                "2:2:2"
+            ],
+            "environment": [
+                { "name": "GRK_DEBUG", "value": "3" }
+            ],
+            "cwd": "${workspaceFolder}",
+            "MIMode": "gdb",
+            "miDebuggerPath": "/usr/bin/gdb"
+        },
+        {
             "name": "test",
             "type": "cppdbg",
             "request": "launch",
@@ -760,7 +784,7 @@
             "program": "${workspaceFolder}/build/bin/grk_decompress",
             "args": [
                 "-i",
-                "$HOME/temp/clusterfuzz-testcase-minimized-grk_decompress_fuzzer-4734814600364032",
+                "$HOME/temp/leak-1f5cb2a62872cec6518647013eea6c91cdd515b9",
                 "-d 0,0,1024,1024",
                 "-o",
                 "$HOME/temp/fuzz.tif"

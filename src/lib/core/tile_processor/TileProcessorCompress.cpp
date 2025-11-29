@@ -91,8 +91,33 @@ bool TileProcessorCompress::preCompressTile([[maybe_unused]] size_t thread_id)
       return false;
     }
   }
+  // otherwise copy image data to tile
   if(!attachTileToImage)
-    transferTileDataFromImage();
+  {
+    for(uint16_t i = 0; i < headerImage_->numcomps; ++i)
+    {
+      auto tilec = tile_->comps_ + i;
+      auto img_comp = headerImage_->comps + i;
+      if(!img_comp->data)
+        continue;
+
+      uint32_t offset_x = ceildiv<uint32_t>(headerImage_->x0, img_comp->dx);
+      uint32_t offset_y = ceildiv<uint32_t>(headerImage_->y0, img_comp->dy);
+      uint64_t image_offset =
+          (tilec->x0 - offset_x) + (uint64_t)(tilec->y0 - offset_y) * img_comp->stride;
+      auto src = (int32_t*)img_comp->data + image_offset;
+      auto dest = tilec->getWindow()->getResWindowBufferHighestSimple();
+      if(!dest.buf_)
+        continue;
+
+      for(uint32_t j = 0; j < tilec->height(); ++j)
+      {
+        memcpy(dest.buf_, src, (size_t)tilec->width() * sizeof(int32_t));
+        src += img_comp->stride;
+        dest.buf_ += dest.stride_;
+      }
+    }
+  }
 
   return true;
 }
@@ -331,32 +356,6 @@ void TileProcessorCompress::incTilePartCounter(void)
 void TileProcessorCompress::setProgIterNum(uint32_t num)
 {
   prog_iter_num = num;
-}
-void TileProcessorCompress::transferTileDataFromImage()
-{
-  for(uint16_t i = 0; i < headerImage_->numcomps; ++i)
-  {
-    auto tilec = tile_->comps_ + i;
-    auto img_comp = headerImage_->comps + i;
-    if(!img_comp->data)
-      continue;
-
-    uint32_t offset_x = ceildiv<uint32_t>(headerImage_->x0, img_comp->dx);
-    uint32_t offset_y = ceildiv<uint32_t>(headerImage_->y0, img_comp->dy);
-    uint64_t image_offset =
-        (tilec->x0 - offset_x) + (uint64_t)(tilec->y0 - offset_y) * img_comp->stride;
-    auto src = (int32_t*)img_comp->data + image_offset;
-    auto dest = tilec->getWindow()->getResWindowBufferHighestSimple();
-    if(!dest.buf_)
-      continue;
-
-    for(uint32_t j = 0; j < tilec->height(); ++j)
-    {
-      memcpy(dest.buf_, src, (size_t)tilec->width() * sizeof(int32_t));
-      src += img_comp->stride;
-      dest.buf_ += dest.stride_;
-    }
-  }
 }
 
 /**
