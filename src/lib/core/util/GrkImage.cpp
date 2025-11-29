@@ -159,10 +159,8 @@ GrkImage* GrkImage::create(grk_image* src, uint16_t numcmpts, grk_image_comp* cm
   {
     auto comp = &image->comps[compno];
 
-    assert(cmptparms[compno].dx);
-    assert(cmptparms[compno].dy);
-    comp->dx = cmptparms[compno].dx;
-    comp->dy = cmptparms[compno].dy;
+    comp->dx = cmptparms[compno].dx == 0 ? 1 : cmptparms[compno].dx;
+    comp->dy = cmptparms[compno].dy == 0 ? 1 : cmptparms[compno].dy;
     comp->w = cmptparms[compno].w;
     comp->h = cmptparms[compno].h;
     comp->x0 = cmptparms[compno].x0;
@@ -961,15 +959,10 @@ grk_image* GrkImage::createRGB(uint16_t numcmpts, uint32_t w, uint32_t h, uint8_
   auto cmptparms = new grk_image_comp[numcmpts];
   for(uint16_t compno = 0U; compno < numcmpts; ++compno)
   {
-    memset(cmptparms + compno, 0, sizeof(grk_image_comp));
-    cmptparms[compno].dx = 1;
-    cmptparms[compno].dy = 1;
+    *(cmptparms + compno) = {};
     cmptparms[compno].w = w;
     cmptparms[compno].h = h;
-    cmptparms[compno].x0 = 0U;
-    cmptparms[compno].y0 = 0U;
     cmptparms[compno].prec = prec;
-    cmptparms[compno].sgnd = 0U;
   }
   auto img = GrkImage::create(this, numcmpts, (grk_image_comp*)cmptparms, GRK_CLRSPC_SRGB, true);
   delete[] cmptparms;

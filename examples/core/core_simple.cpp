@@ -77,12 +77,10 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] const char** argv)
   for(uint32_t i = 0; i < numComps; ++i)
   {
     auto c = &components[i];
+    *c = {};
     c->w = dimX;
     c->h = dimY;
-    c->dx = 1;
-    c->dy = 1;
     c->prec = precision;
-    c->sgnd = false;
   }
   encInputImage = grk_image_new(numComps, components.get(), colourSpace, true);
 

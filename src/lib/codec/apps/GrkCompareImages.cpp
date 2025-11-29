@@ -160,11 +160,6 @@ GrkImagePtr readImageFromFilePGX(const std::string& filename, uint16_t numFiles,
     }
 
     components[i] = *src->comps;
-    components[i].x0 = 0;
-    components[i].y0 = 0;
-    components[i].dx = 1;
-    components[i].dy = 1;
-
     componentData[i].resize(static_cast<size_t>(src->comps->h) * src->comps->stride);
     std::copy_n((T*)src->comps->data, componentData[i].size(), componentData[i].begin());
   }
@@ -279,13 +274,7 @@ GrkImagePtr readImageFromFilePPM(const std::string& filename, uint16_t numFiles,
       spdlog::error("Unable to load ppm file: {}", file);
       return GrkImagePtr(nullptr);
     }
-
     components[i] = *src->comps;
-    components[i].x0 = 0;
-    components[i].y0 = 0;
-    components[i].dx = 1;
-    components[i].dy = 1;
-
     componentData[i].resize(static_cast<size_t>(src->comps->h) * src->comps->stride);
     std::copy_n((T*)src->comps->data, componentData[i].size(), componentData[i].begin());
   }
