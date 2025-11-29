@@ -712,11 +712,11 @@ typedef struct _grk_image_comp
   bool sgnd; /* true if component data is signed */
   GRK_CHANNEL_TYPE type; /* channel type */
   GRK_CHANNEL_ASSOC association; /* channel association */
-  uint16_t crg_x; /* CRG x */
-  uint16_t crg_y; /* CRG x */
+  uint16_t crg_x; /* component registration x coordinate */
+  uint16_t crg_y; /* component registration y coordinate */
   grk_data_type data_type;
   void* data; /* component data */
-  bool unowned_data; /* true if data is not owned by library */
+  bool owns_data; /* true if data is owned by component */
 } grk_image_comp;
 
 /**

@@ -172,7 +172,7 @@ GrkImage* GrkImage::create(grk_image* src, uint16_t numcmpts, grk_image_comp* cm
     {
       comp->data = params->data;
       comp->stride = params->stride ? params->stride : params->w;
-      comp->unowned_data = true;
+      comp->owns_data = false;
     }
     else if(doAllocation && !allocData(comp))
     {
@@ -286,7 +286,7 @@ bool GrkImage::subsampleAndReduce(uint8_t reduce)
 void GrkImage::setDataToNull(grk_image_comp* comp)
 {
   comp->data = nullptr;
-  comp->unowned_data = true;
+  comp->owns_data = false;
   comp->stride = 0;
 }
 
@@ -380,7 +380,7 @@ bool GrkImage::allocData(grk_image_comp* comp, bool clear)
   if(clear)
     memset(data, 0, dataSize);
   comp->data = data;
-  comp->unowned_data = false;
+  comp->owns_data = true;
   comp->stride = stride;
 
   return true;
@@ -771,7 +771,7 @@ void GrkImage::transferDataTo(GrkImage* dest)
 
     single_component_data_free(destComp);
     destComp->data = srcComp->data;
-    destComp->unowned_data = srcComp->unowned_data;
+    destComp->owns_data = srcComp->owns_data;
     if(srcComp->stride)
     {
       assert(srcComp->data);
@@ -873,7 +873,7 @@ bool GrkImage::generateCompositeBounds(const grk_image_comp* srcComp, uint16_t d
 
 void GrkImage::single_component_data_free(grk_image_comp* comp)
 {
-  if(!comp || !comp->data || comp->unowned_data)
+  if(!comp || !comp->data || !comp->owns_data)
   {
     // assert(!comp || !comp->stride);
     return;
@@ -1258,10 +1258,10 @@ bool GrkImage::greyToRGB(void)
 
   // attach first new component to old component
   new_components->data = comps->data;
-  new_components->unowned_data = comps->unowned_data;
+  new_components->owns_data = comps->owns_data;
   new_components->stride = comps->stride;
   comps->data = nullptr;
-  comps->unowned_data = true;
+  comps->owns_data = false;
   all_components_data_free();
   delete[] comps;
   comps = new_components;
@@ -1282,7 +1282,7 @@ void GrkImage::transferDataFrom_T(const Tile* tile_src_data)
     // transfer memory from tile component to output image
     single_component_data_free(destComp);
     srcComp->getWindow()->transfer((T**)&destComp->data, &destComp->stride);
-    destComp->unowned_data = false;
+    destComp->owns_data = true;
   }
 }
 void GrkImage::transferDataFrom(const Tile* tile_src_data)
