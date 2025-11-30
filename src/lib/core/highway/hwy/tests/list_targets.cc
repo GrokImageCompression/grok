@@ -25,16 +25,22 @@
 namespace {
 
 void PrintCompiler() {
-  if (HWY_COMPILER_CLANG) {
-    fprintf(stderr, "Compiler: Clang %d\n", HWY_COMPILER_CLANG);
+  if (HWY_COMPILER_ICX) {
+    // HWY_COMPILER_ICX needs to be checked first as ICX is clang-based and as
+    // it is also possible for both HWY_COMPILER_CLANGCL and HWY_COMPILER_CLANG
+    // to be nonzero when compiling with ICX on Windows.
+    fprintf(stderr, "Compiler: ISX %d\n", HWY_COMPILER_ICX);
   } else if (HWY_COMPILER_CLANGCL) {
+    // HWY_COMPILER_CLANGCL needs to be checked before HWY_COMPILER_CLANG as
+    // HWY_COMPILER_CLANG and HWY_COMPILER_CLANGCL are usually both nonzero if
+    // compiling with clang-cl.
     fprintf(stderr, "Compiler: Clang-cl %d\n", HWY_COMPILER_CLANGCL);
+  } else if (HWY_COMPILER_CLANG) {
+    fprintf(stderr, "Compiler: Clang %d\n", HWY_COMPILER_CLANG);
   } else if (HWY_COMPILER_GCC_ACTUAL) {
     fprintf(stderr, "Compiler: GCC %d\n", HWY_COMPILER_GCC_ACTUAL);
   } else if (HWY_COMPILER_ICC) {
     fprintf(stderr, "Compiler: ICC %d\n", HWY_COMPILER_ICC);
-  } else if (HWY_COMPILER_ICX) {
-    fprintf(stderr, "Compiler: ISX %d\n", HWY_COMPILER_ICX);
   } else if (HWY_COMPILER_MSVC) {
     fprintf(stderr, "Compiler: MSVC %d\n", HWY_COMPILER_MSVC);
   } else {
@@ -75,7 +81,7 @@ void PrintConfig() {
 
 void PrintHave() {
   fprintf(stderr,
-          "Have: constexpr_lanes:%d runtime_dispatch:%d auxv:%d"
+          "Have: constexpr_lanes:%d runtime_dispatch:%d auxv:%d "
           "f16 type:%d/ops%d bf16 type:%d/ops%d\n",
           HWY_HAVE_CONSTEXPR_LANES, HWY_HAVE_RUNTIME_DISPATCH, HWY_HAVE_AUXV,
           HWY_HAVE_SCALAR_F16_TYPE, HWY_HAVE_SCALAR_F16_OPERATORS,
@@ -93,6 +99,15 @@ void PrintTargets(const char* msg, int64_t targets) {
   fprintf(stderr, "\n");
 }
 
+void TestVisitor() {
+  long long enabled = 0;  // NOLINT
+#define PER_TARGET(TARGET, NAMESPACE) enabled |= TARGET;
+  HWY_VISIT_TARGETS(PER_TARGET)
+  if (enabled != HWY_TARGETS) {
+    HWY_ABORT("Enabled %llx != HWY_TARGETS %llx\n", enabled, HWY_TARGETS);
+  }
+}
+
 }  // namespace
 
 int main() {
@@ -107,5 +122,6 @@ int main() {
   PrintTargets("HWY_BROKEN_TARGETS:    ", HWY_BROKEN_TARGETS);
   PrintTargets("HWY_DISABLED_TARGETS:  ", HWY_DISABLED_TARGETS);
   PrintTargets("Current CPU supports:  ", hwy::SupportedTargets());
+  TestVisitor();
   return 0;
 }

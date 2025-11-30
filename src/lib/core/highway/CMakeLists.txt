@@ -36,7 +36,7 @@ if(POLICY CMP0128)
   cmake_policy(SET CMP0128 NEW)
 endif()
 
-project(hwy VERSION 1.2.0)  # Keep in sync with base.h version
+project(hwy VERSION 1.3.0)  # Keep in sync with base.h version
 # `hwy` is lowercase to handle find_package() in Config mode:
 set(namespace "${PROJECT_NAME}::")
 
@@ -67,6 +67,14 @@ endif()
 
 # The following is only required with GCC < 6.1.0 or CLANG < 16.0
 set(HWY_CMAKE_ARM7 OFF CACHE BOOL "Set copts for Armv7 with NEON (requires vfpv4)?")
+
+# Upstream compilers(GCC 14 or CLANG 18) start enabling LSX by default, but
+# enabling LASX still require -mlasx flag to be passed explicitly, in order
+# to enable all targets, we can check them directly, adding them if they are
+# supported.  In this way, Our local compilers(GCC 8.3.0 or CLANG 8.0.1) also
+# could enable LSX & LASX targets.  Any better ideas or suggestions are welcome.
+set(HWY_CMAKE_LSX ON CACHE BOOL "Add -mlsx flag?")
+set(HWY_CMAKE_LASX ON CACHE BOOL "Add -mlasx flag?")
 
 # This must be set on 32-bit x86 with GCC < 13.1, otherwise math_test will be
 # skipped. For GCC 13.1+, you can also build with -fexcess-precision=standard.
@@ -136,6 +144,34 @@ check_cxx_source_compiles(
   HWY_RISCV
 )
 
+if (CMAKE_SYSTEM_PROCESSOR MATCHES "loongarch32|loongarch64")
+  include(CheckCXXCompilerFlag)
+  if (HWY_CMAKE_LSX)
+    set (CMAKE_REQUIRED_FLAGS -mlsx)
+    check_cxx_source_compiles(
+       "int main() {
+          #if !defined(__loongarch_sx)
+          static_assert(false, \"__loongarch_sx is not defined\");
+          #endif
+          return 0;
+        }"
+      COMPILER_SUPPORT_LSX_FLAG
+    )
+  endif()
+  if (HWY_CMAKE_LASX)
+    set (CMAKE_REQUIRED_FLAGS -mlasx)
+    check_cxx_source_compiles(
+       "int main() {
+          #if !defined(__loongarch_asx)
+          static_assert(false, \"__loongarch_asx is not defined\");
+          #endif
+          return 0;
+       }"
+      COMPILER_SUPPORT_LASX_FLAG
+    )
+  endif()
+endif()
+
 if (WIN32)
   set (ORIG_CMAKE_REQUIRED_LIBRARIES ${CMAKE_REQUIRED_LIBRARIES})
   set (CMAKE_REQUIRED_LIBRARIES synchronization)
@@ -166,6 +202,29 @@ else()
   # Force HWY_DISABLE_FUTEX to ON if compiling for Win32 and
   # libsynchronization.a or synchronization.lib is not available
   set (HWY_DISABLE_FUTEX ON CACHE BOOL "Disable futex for thread_pool" FORCE)
+endif()
+
+find_package(Threads)
+
+if (NOT Threads_FOUND AND HWY_ENABLE_CONTRIB)
+  message(FATAL_ERROR "Threads must be available if HWY_ENABLE_CONTRIB is ON")
+endif()
+
+if(Threads_FOUND)
+  if(THREADS_HAVE_PTHREAD_ARG)
+    set(HWY_THREAD_FLAGS "-pthread")
+  else()
+    set(HWY_THREAD_FLAGS "")
+  endif()
+
+  if(CMAKE_THREAD_LIBS_INIT)
+    set(HWY_THREAD_LIBS ${CMAKE_THREAD_LIBS_INIT})
+  else()
+    set(HWY_THREAD_LIBS "")
+  endif()
+else()
+  set(HWY_THREAD_FLAGS "")
+  set(HWY_THREAD_LIBS "")
 endif()
 
 if (HWY_RISCV OR CMAKE_CXX_COMPILER_ARCHITECTURE_ID MATCHES "RISCV32|RISCV64|RISCV128" OR CMAKE_SYSTEM_PROCESSOR MATCHES "riscv32|riscv64|riscv128")
@@ -244,6 +303,8 @@ set(HWY_SOURCES
     hwy/ops/emu128-inl.h
     hwy/ops/generic_ops-inl.h
     hwy/ops/inside-inl.h
+    hwy/ops/loongarch_lsx-inl.h
+    hwy/ops/loongarch_lasx-inl.h
     hwy/ops/ppc_vsx-inl.h
     hwy/ops/rvv-inl.h
     hwy/ops/scalar-inl.h
@@ -273,6 +334,7 @@ if (NOT HWY_CMAKE_HEADER_ONLY)
     hwy/per_target.cc
     hwy/perf_counters.cc
     hwy/print.cc
+    hwy/profiler.cc
     hwy/targets.cc
     hwy/timer.cc
   )
@@ -357,6 +419,14 @@ else()
     -Wcast-align # see -Wcast-align=strict on x86
   )
 
+  # In case LSX/LASX are available but not enabled by defautl.
+  if(COMPILER_SUPPORT_LSX_FLAG)
+    list(APPEND HWY_FLAGS -mlsx)
+  endif()
+  if(COMPILER_SUPPORT_LASX_FLAG)
+    list(APPEND HWY_FLAGS -mlasx)
+  endif()
+
   if(${CMAKE_CXX_COMPILER_ID} MATCHES "Clang")
     list(APPEND HWY_FLAGS
       -Wfloat-overflow-conversion
@@ -434,6 +504,8 @@ else()
       -march=armv7-a
       -mfpu=neon-vfpv4
       -mfloat-abi=hard  # must match the toolchain specified as CXX=
+      -DHWY_HAVE_SCALAR_F16_TYPE=0  # See #2625
+      -DHWY_NEON_HAVE_F16C=0
     )
     if(${CMAKE_CXX_COMPILER_ID} MATCHES "GNU")
       # using GCC
@@ -539,7 +611,7 @@ endif()
 if (HWY_ENABLE_CONTRIB)
 add_library(hwy_contrib ${HWY_LIBRARY_TYPE} ${HWY_CONTRIB_SOURCES})
 target_link_libraries(hwy_contrib PUBLIC hwy)
-target_compile_options(hwy_contrib PRIVATE ${HWY_FLAGS})
+target_compile_options(hwy_contrib PRIVATE ${HWY_FLAGS} ${HWY_THREAD_FLAGS})
 set_property(TARGET hwy_contrib PROPERTY POSITION_INDEPENDENT_CODE ON)
 set_target_properties(hwy_contrib PROPERTIES VERSION ${LIBRARY_VERSION} SOVERSION ${LIBRARY_SOVERSION})
 target_include_directories(hwy_contrib PUBLIC
@@ -553,6 +625,9 @@ set_target_properties(hwy_contrib PROPERTIES
   LINK_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/hwy/hwy.version)
 # For GCC __atomic_store_8, see #887
 target_link_libraries(hwy_contrib PRIVATE ${ATOMICS_LIBRARIES})
+
+# Avoid linker errors if libpthread needs to be linked
+target_link_libraries(hwy_contrib PRIVATE ${HWY_THREAD_LIBS})
 
 if (WIN32 AND NOT MSVC AND NOT HWY_DISABLE_FUTEX)
 target_link_libraries(hwy_contrib PUBLIC synchronization)
@@ -714,15 +789,18 @@ set_target_properties(hwy_benchmark
     PROPERTIES RUNTIME_OUTPUT_DIRECTORY "examples/")
 
 # Profiler demo
+if (HWY_ENABLE_CONTRIB)
 add_executable(hwy_profiler_example hwy/examples/profiler_example.cc)
 target_sources(hwy_profiler_example PRIVATE
     hwy/profiler.h)
-target_compile_options(hwy_profiler_example PRIVATE ${HWY_FLAGS})
+target_compile_options(hwy_profiler_example PRIVATE ${HWY_FLAGS} ${HWY_THREAD_FLAGS})
 target_compile_features(hwy_profiler_example PRIVATE ${HWY_CXX_STD_TGT_COMPILE_FEATURE})
-target_link_libraries(hwy_profiler_example PRIVATE hwy)
+target_link_libraries(hwy_profiler_example PRIVATE hwy hwy_contrib)
 target_link_libraries(hwy_profiler_example PRIVATE ${ATOMICS_LIBRARIES})
+target_link_libraries(hwy_profiler_example PRIVATE ${HWY_THREAD_LIBS})
 set_target_properties(hwy_profiler_example
     PROPERTIES RUNTIME_OUTPUT_DIRECTORY "examples/")
+endif()  # HWY_ENABLE_CONTRIB
 
 endif()  # HWY_ENABLE_EXAMPLES
 # -------------------------------------------------------- Tests
@@ -769,7 +847,6 @@ endif()  # HWY_TEST_STANDALONE
 set(HWY_TEST_FILES
   hwy/abort_test.cc
   hwy/aligned_allocator_test.cc
-  hwy/auto_tune_test.cc
   hwy/base_test.cc
   hwy/bit_set_test.cc
   hwy/highway_test.cc
@@ -812,6 +889,7 @@ set(HWY_TEST_FILES
   hwy/tests/masked_minmax_test.cc
   hwy/tests/memory_test.cc
   hwy/tests/minmax_magnitude_test.cc
+  hwy/tests/minmax_number_test.cc
   hwy/tests/minmax_test.cc
   hwy/tests/minmax128_test.cc
   hwy/tests/mul_by_pow2_test.cc
@@ -842,6 +920,7 @@ if (HWY_ENABLE_CONTRIB)
 list(APPEND HWY_TEST_LIBS hwy_contrib)
 
 list(APPEND HWY_TEST_FILES
+  hwy/auto_tune_test.cc
   hwy/contrib/algo/copy_test.cc
   hwy/contrib/algo/find_test.cc
   hwy/contrib/algo/transform_test.cc
@@ -882,7 +961,7 @@ foreach (TESTFILE IN LISTS HWY_TEST_FILES)
   # The TESTNAME is the name without the extension or directory.
   get_filename_component(TESTNAME ${TESTFILE} NAME_WE)
   add_executable(${TESTNAME} ${TESTFILE})
-  target_compile_options(${TESTNAME} PRIVATE ${HWY_FLAGS})
+  target_compile_options(${TESTNAME} PRIVATE ${HWY_FLAGS} ${HWY_THREAD_FLAGS})
   # Test all targets, not just the best/baseline. This changes the default
   # policy to all-attainable; note that setting -DHWY_COMPILE_* directly can
   # cause compile errors because only one may be set, and other CMakeLists.txt
@@ -896,6 +975,10 @@ foreach (TESTFILE IN LISTS HWY_TEST_FILES)
   target_link_libraries(${TESTNAME} PRIVATE ${HWY_TEST_LIBS} ${HWY_GTEST_LIBS})
   # For GCC __atomic_store_8, see #887
   target_link_libraries(${TESTNAME} PRIVATE ${ATOMICS_LIBRARIES})
+
+  # Avoid linker errors if libpthread needs to be linked
+  target_link_libraries(${TESTNAME} PRIVATE ${HWY_THREAD_LIBS})
+
   # Output test targets in the test directory.
   set_target_properties(${TESTNAME} PROPERTIES RUNTIME_OUTPUT_DIRECTORY "tests")
 

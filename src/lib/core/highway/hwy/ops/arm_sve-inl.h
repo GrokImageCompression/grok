@@ -1645,8 +1645,10 @@ HWY_API svbool_t LowerHalfOfMask(D /*d*/, svbool_t m) {
 #endif
 
 namespace detail {
-HWY_SVE_FOREACH(HWY_SVE_RETV_ARGMVV, MaskedMin, min)
-HWY_SVE_FOREACH(HWY_SVE_RETV_ARGMVV, MaskedMax, max)
+HWY_SVE_FOREACH_F(HWY_SVE_RETV_ARGMVV, MaskedMin, minnm)
+HWY_SVE_FOREACH_F(HWY_SVE_RETV_ARGMVV, MaskedMax, maxnm)
+HWY_SVE_FOREACH_UI(HWY_SVE_RETV_ARGMVV, MaskedMin, min)
+HWY_SVE_FOREACH_UI(HWY_SVE_RETV_ARGMVV, MaskedMax, max)
 HWY_SVE_FOREACH(HWY_SVE_RETV_ARGMVV, MaskedAdd, add)
 HWY_SVE_FOREACH(HWY_SVE_RETV_ARGMVV, MaskedSub, sub)
 HWY_SVE_FOREACH(HWY_SVE_RETV_ARGMVV, MaskedMul, mul)
@@ -1971,9 +1973,8 @@ HWY_API V Min(V a, V b) {
 }
 template <class V, HWY_IF_FLOAT_OR_SPECIAL_V(V)>
 HWY_API V Min(V a, V b) {
-  return IfThenElse(Lt(a, b), a, b);
+  return IfThenElse(Or(Lt(a, b), Ne(b, b)), a, b);
 }
-
 #else
 HWY_SVE_FOREACH_I(HWY_SVE_RETV_ARGPVV, Min, min)
 HWY_SVE_FOREACH_F(HWY_SVE_RETV_ARGPVV, Min, minnm)
@@ -2469,12 +2470,13 @@ HWY_API VFromD<D> LoadDup128(D d, const TFromD<D>* HWY_RESTRICT p) {
 #define HWY_NATIVE_STORE_TRUNCATED
 #endif
 
-#define HWY_SVE_STORE_TRUNCATED(BASE, CHAR, BITS, HALF, NAME, OP, TO_BITS)    \
-  template <size_t N, int kPow2>                                              \
-  HWY_API void NAME(HWY_SVE_V(BASE, BITS) v,                                  \
-                    const HWY_SVE_D(BASE, BITS, N, kPow2) d,                  \
-                    HWY_SVE_T(BASE, TO_BITS) * HWY_RESTRICT p) {              \
-    sv##OP##_##CHAR##BITS(detail::PTrue(d), detail::NativeLanePointer(p), v); \
+#define HWY_SVE_STORE_TRUNCATED(BASE, CHAR, BITS, HALF, NAME, OP, TO_BITS)   \
+  template <size_t N, int kPow2>                                             \
+  HWY_API void NAME(HWY_SVE_V(BASE, BITS) v,                                 \
+                    const HWY_SVE_D(BASE, BITS, N, kPow2) d,                 \
+                    HWY_SVE_T(BASE, TO_BITS) * HWY_RESTRICT p) {             \
+    sv##OP##_##CHAR##BITS(detail::MakeMask(d), detail::NativeLanePointer(p), \
+                          v);                                                \
   }
 
 #define HWY_SVE_STORE_TRUNCATED_BYTE(BASE, CHAR, BITS, HALF, NAME, OP) \

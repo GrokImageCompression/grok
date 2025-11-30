@@ -1,8 +1,7 @@
 # Placeholder#1 for Guitar, do not remove
+# Placeholder for cc_test, do not remove
 load("@bazel_skylib//lib:selects.bzl", "selects")
 load("@rules_license//rules:license.bzl", "license")
-
-load("@rules_cc//cc:defs.bzl", "cc_test")
 # Placeholder#2 for Guitar, do not remove
 
 package(
@@ -285,16 +284,15 @@ cc_library(
 
 cc_library(
     name = "profiler",
-    hdrs = [
-        "hwy/profiler.h",
-    ],
+    srcs = ["hwy/profiler.cc"],
+    hdrs = ["hwy/profiler.h"],
     compatible_with = [],
     copts = COPTS,
     deps = [
+        ":bit_set",
         ":hwy",
         ":robust_statistics",
         ":timer",
-        "//hwy/contrib/sort:vqsort",
     ],
 )
 
@@ -305,6 +303,7 @@ cc_binary(
     deps = [
         ":hwy",
         ":profiler",
+        ":thread_pool",
         ":timer",
     ],
 )
@@ -572,7 +571,7 @@ HWY_CONTRIB_TESTS = (
     (
         "hwy/contrib/thread_pool/",
         "thread_pool_test",
-        (":topology", ":thread_pool"),
+        (":topology", ":thread_pool", ":profiler"),
     ),
     (
         "hwy/contrib/thread_pool/",
@@ -651,6 +650,7 @@ HWY_TESTS = HWY_CONTRIB_TESTS + (
     ("hwy/tests/", "masked_minmax_test", []),
     ("hwy/tests/", "memory_test", []),
     ("hwy/tests/", "minmax_magnitude_test", []),
+    ("hwy/tests/", "minmax_number_test", []),
     ("hwy/tests/", "minmax_test", []),
     ("hwy/tests/", "minmax128_test", []),
     ("hwy/tests/", "mul_by_pow2_test", []),

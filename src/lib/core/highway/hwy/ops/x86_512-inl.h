@@ -1734,6 +1734,68 @@ HWY_API Vec512<double> Max(Vec512<double> a, Vec512<double> b) {
   return Vec512<double>{_mm512_max_pd(a.raw, b.raw)};
 }
 
+// ------------------------------ MinNumber and MaxNumber
+
+#if HWY_X86_HAVE_AVX10_2_OPS
+
+#if HWY_HAVE_FLOAT16
+HWY_API Vec512<float16_t> MinNumber(Vec512<float16_t> a, Vec512<float16_t> b) {
+  return Vec512<float16_t>{_mm512_minmax_ph(a.raw, b.raw, 0x14)};
+}
+#endif
+HWY_API Vec512<float> MinNumber(Vec512<float> a, Vec512<float> b) {
+  return Vec512<float>{_mm512_minmax_ps(a.raw, b.raw, 0x14)};
+}
+HWY_API Vec512<double> MinNumber(Vec512<double> a, Vec512<double> b) {
+  return Vec512<double>{_mm512_minmax_pd(a.raw, b.raw, 0x14)};
+}
+
+#if HWY_HAVE_FLOAT16
+HWY_API Vec512<float16_t> MaxNumber(Vec512<float16_t> a, Vec512<float16_t> b) {
+  return Vec512<float16_t>{_mm512_minmax_ph(a.raw, b.raw, 0x15)};
+}
+#endif
+HWY_API Vec512<float> MaxNumber(Vec512<float> a, Vec512<float> b) {
+  return Vec512<float>{_mm512_minmax_ps(a.raw, b.raw, 0x15)};
+}
+HWY_API Vec512<double> MaxNumber(Vec512<double> a, Vec512<double> b) {
+  return Vec512<double>{_mm512_minmax_pd(a.raw, b.raw, 0x15)};
+}
+
+#endif
+
+// ------------------------------ MinMagnitude and MaxMagnitude
+
+#if HWY_X86_HAVE_AVX10_2_OPS
+
+#if HWY_HAVE_FLOAT16
+HWY_API Vec512<float16_t> MinMagnitude(Vec512<float16_t> a,
+                                       Vec512<float16_t> b) {
+  return Vec512<float16_t>{_mm512_minmax_ph(a.raw, b.raw, 0x16)};
+}
+#endif
+HWY_API Vec512<float> MinMagnitude(Vec512<float> a, Vec512<float> b) {
+  return Vec512<float>{_mm512_minmax_ps(a.raw, b.raw, 0x16)};
+}
+HWY_API Vec512<double> MinMagnitude(Vec512<double> a, Vec512<double> b) {
+  return Vec512<double>{_mm512_minmax_pd(a.raw, b.raw, 0x16)};
+}
+
+#if HWY_HAVE_FLOAT16
+HWY_API Vec512<float16_t> MaxMagnitude(Vec512<float16_t> a,
+                                       Vec512<float16_t> b) {
+  return Vec512<float16_t>{_mm512_minmax_ph(a.raw, b.raw, 0x17)};
+}
+#endif
+HWY_API Vec512<float> MaxMagnitude(Vec512<float> a, Vec512<float> b) {
+  return Vec512<float>{_mm512_minmax_ps(a.raw, b.raw, 0x17)};
+}
+HWY_API Vec512<double> MaxMagnitude(Vec512<double> a, Vec512<double> b) {
+  return Vec512<double>{_mm512_minmax_pd(a.raw, b.raw, 0x17)};
+}
+
+#endif
+
 // ------------------------------ Integer multiplication
 
 // Unsigned
@@ -1858,11 +1920,19 @@ HWY_API V GetExponent(V v) {
 #endif
 template <class V, HWY_IF_F32(TFromV<V>), HWY_IF_V_SIZE_V(V, 64)>
 HWY_API V GetExponent(V v) {
+  // Work around warnings in the intrinsic definitions (passing -1 as a mask).
+  HWY_DIAGNOSTICS(push)
+  HWY_DIAGNOSTICS_OFF(disable : 4245 4365, ignored "-Wsign-conversion")
   return V{_mm512_getexp_ps(v.raw)};
+  HWY_DIAGNOSTICS(pop)
 }
 template <class V, HWY_IF_F64(TFromV<V>), HWY_IF_V_SIZE_V(V, 64)>
 HWY_API V GetExponent(V v) {
+  // Work around warnings in the intrinsic definitions (passing -1 as a mask).
+  HWY_DIAGNOSTICS(push)
+  HWY_DIAGNOSTICS_OFF(disable : 4245 4365, ignored "-Wsign-conversion")
   return V{_mm512_getexp_pd(v.raw)};
+  HWY_DIAGNOSTICS(pop)
 }
 
 // ------------------------------ MaskedMinOr
@@ -5503,7 +5573,9 @@ HWY_API VFromD<D> PromoteTo(D /* tag */, Vec256<uint32_t> v) {
 
 template <class D, HWY_IF_V_SIZE_D(D, 64), HWY_IF_I64_D(D)>
 HWY_API VFromD<D> PromoteInRangeTo(D /*di64*/, VFromD<Rebind<float, D>> v) {
-#if HWY_COMPILER_GCC_ACTUAL
+#if HWY_X86_HAVE_AVX10_2_OPS
+  return VFromD<D>{_mm512_cvtts_ps_epi64(v.raw)};
+#elif HWY_COMPILER_GCC_ACTUAL
   // Workaround for undefined behavior with GCC if any values of v[i] are not
   // within the range of an int64_t
 
@@ -5535,7 +5607,9 @@ HWY_API VFromD<D> PromoteInRangeTo(D /*di64*/, VFromD<Rebind<float, D>> v) {
 }
 template <class D, HWY_IF_V_SIZE_D(D, 64), HWY_IF_U64_D(D)>
 HWY_API VFromD<D> PromoteInRangeTo(D /* tag */, VFromD<Rebind<float, D>> v) {
-#if HWY_COMPILER_GCC_ACTUAL
+#if HWY_X86_HAVE_AVX10_2_OPS
+  return VFromD<D>{_mm512_cvtts_ps_epu64(v.raw)};
+#elif HWY_COMPILER_GCC_ACTUAL
   // Workaround for undefined behavior with GCC if any values of v[i] are not
   // within the range of an uint64_t
 
@@ -5823,7 +5897,9 @@ HWY_API VFromD<D> DemoteTo(D /* tag */, Vec512<double> v) {
 
 template <class D, HWY_IF_V_SIZE_D(D, 32), HWY_IF_I32_D(D)>
 HWY_API VFromD<D> DemoteInRangeTo(D /* tag */, Vec512<double> v) {
-#if HWY_COMPILER_GCC_ACTUAL
+#if HWY_X86_HAVE_AVX10_2_OPS
+  return VFromD<D>{_mm512_cvtts_pd_epi32(v.raw)};
+#elif HWY_COMPILER_GCC_ACTUAL
   // Workaround for undefined behavior in _mm512_cvttpd_epi32 with GCC if any
   // values of v[i] are not within the range of an int32_t
 
@@ -5831,7 +5907,8 @@ HWY_API VFromD<D> DemoteInRangeTo(D /* tag */, Vec512<double> v) {
   if (detail::IsConstantX86VecForF2IConv<int32_t>(v)) {
     typedef double GccF64RawVectType __attribute__((__vector_size__(64)));
     const auto raw_v = reinterpret_cast<GccF64RawVectType>(v.raw);
-    return VFromD<D>{_mm256_setr_epi32(
+    return VFromD<D>{
+        _mm256_setr_epi32(
         detail::X86ConvertScalarFromFloat<int32_t>(raw_v[0]),
         detail::X86ConvertScalarFromFloat<int32_t>(raw_v[1]),
         detail::X86ConvertScalarFromFloat<int32_t>(raw_v[2]),
@@ -5839,7 +5916,8 @@ HWY_API VFromD<D> DemoteInRangeTo(D /* tag */, Vec512<double> v) {
         detail::X86ConvertScalarFromFloat<int32_t>(raw_v[4]),
         detail::X86ConvertScalarFromFloat<int32_t>(raw_v[5]),
         detail::X86ConvertScalarFromFloat<int32_t>(raw_v[6]),
-        detail::X86ConvertScalarFromFloat<int32_t>(raw_v[7]))};
+        detail::X86ConvertScalarFromFloat<int32_t>(raw_v[7]))
+        };
   }
 #endif
 
@@ -5856,7 +5934,9 @@ HWY_API VFromD<D> DemoteInRangeTo(D /* tag */, Vec512<double> v) {
 
 template <class D, HWY_IF_V_SIZE_D(D, 32), HWY_IF_U32_D(D)>
 HWY_API VFromD<D> DemoteInRangeTo(D /* tag */, Vec512<double> v) {
-#if HWY_COMPILER_GCC_ACTUAL
+#if HWY_X86_HAVE_AVX10_2_OPS
+  return VFromD<D>{_mm512_cvtts_pd_epu32(v.raw)};
+#elif HWY_COMPILER_GCC_ACTUAL
   // Workaround for undefined behavior in _mm512_cvttpd_epu32 with GCC if any
   // values of v[i] are not within the range of an uint32_t
 
@@ -6202,7 +6282,9 @@ HWY_API VFromD<D> ConvertInRangeTo(D /* tag */, VFromD<RebindToFloat<D>> v) {
 #endif  // HWY_HAVE_FLOAT16
 template <class D, HWY_IF_V_SIZE_D(D, 64), HWY_IF_I32_D(D)>
 HWY_API VFromD<D> ConvertInRangeTo(D /*d*/, Vec512<float> v) {
-#if HWY_COMPILER_GCC_ACTUAL
+#if HWY_X86_HAVE_AVX10_2_OPS
+  return VFromD<D>{_mm512_cvtts_ps_epi32(v.raw)};
+#elif HWY_COMPILER_GCC_ACTUAL
   // Workaround for undefined behavior in _mm512_cvttps_epi32 with GCC if any
   // values of v[i] are not within the range of an int32_t
 
@@ -6242,7 +6324,9 @@ HWY_API VFromD<D> ConvertInRangeTo(D /*d*/, Vec512<float> v) {
 }
 template <class D, HWY_IF_V_SIZE_D(D, 64), HWY_IF_I64_D(D)>
 HWY_API VFromD<D> ConvertInRangeTo(D /*di*/, Vec512<double> v) {
-#if HWY_COMPILER_GCC_ACTUAL
+#if HWY_X86_HAVE_AVX10_2_OPS
+  return VFromD<D>{_mm512_cvtts_pd_epi64(v.raw)};
+#elif HWY_COMPILER_GCC_ACTUAL
   // Workaround for undefined behavior in _mm512_cvttpd_epi64 with GCC if any
   // values of v[i] are not within the range of an int64_t
 
@@ -6274,7 +6358,9 @@ HWY_API VFromD<D> ConvertInRangeTo(D /*di*/, Vec512<double> v) {
 }
 template <class DU, HWY_IF_V_SIZE_D(DU, 64), HWY_IF_U32_D(DU)>
 HWY_API VFromD<DU> ConvertInRangeTo(DU /*du*/, VFromD<RebindToFloat<DU>> v) {
-#if HWY_COMPILER_GCC_ACTUAL
+#if HWY_X86_HAVE_AVX10_2_OPS
+  return VFromD<DU>{_mm512_cvtts_ps_epu32(v.raw)};
+#elif HWY_COMPILER_GCC_ACTUAL
   // Workaround for undefined behavior in _mm512_cvttps_epu32 with GCC if any
   // values of v[i] are not within the range of an uint32_t
 
@@ -6330,7 +6416,9 @@ HWY_API VFromD<DU> ConvertInRangeTo(DU /*du*/, VFromD<RebindToFloat<DU>> v) {
 }
 template <class DU, HWY_IF_V_SIZE_D(DU, 64), HWY_IF_U64_D(DU)>
 HWY_API VFromD<DU> ConvertInRangeTo(DU /*du*/, VFromD<RebindToFloat<DU>> v) {
-#if HWY_COMPILER_GCC_ACTUAL
+#if HWY_X86_HAVE_AVX10_2_OPS
+  return VFromD<DU>{_mm512_cvtts_pd_epu64(v.raw)};
+#elif HWY_COMPILER_GCC_ACTUAL
   // Workaround for undefined behavior in _mm512_cvttpd_epu64 with GCC if any
   // values of v[i] are not within the range of an uint64_t
 

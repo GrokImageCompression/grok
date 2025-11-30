@@ -16,7 +16,20 @@
 // RISC-V V vectors (length not known at compile time).
 // External include guard in highway.h - see comment there.
 
+#pragma push_macro("__riscv_v_elen")
+
+// Workaround that ensures that all of the __riscv_vsetvl_* and
+// __riscv_vsetvlmax_* macros in riscv_vector.h are defined when compiling with
+// Clang 20 with dynamic dispatch and a baseline target of SCALAR or EMU128
+#if HWY_COMPILER_CLANG >= 2000 && HWY_COMPILER_CLANG < 2100 && \
+    (!defined(__riscv_v_elen) || __riscv_v_elen < 64)
+#undef __riscv_v_elen
+#define __riscv_v_elen 64
+#endif
+
 #include <riscv_vector.h>
+
+#pragma pop_macro("__riscv_v_elen")
 
 #include "hwy/ops/shared-inl.h"
 
@@ -1188,9 +1201,9 @@ HWY_RVV_FOREACH_I(HWY_RVV_RETV_ARGVV, SaturatedSub, ssub, _ALL)
 #if HWY_COMPILER_GCC_ACTUAL && HWY_COMPILER_GCC_ACTUAL < 1400
 #define HWY_RVV_AVOID_VXRM
 // Clang 16 with __riscv_v_intrinsic == 11000 may either require VXRM or avoid.
-// Assume earlier versions avoid.
+// Assume that Clang 16 and earlier avoid VXRM.
 #elif HWY_COMPILER_CLANG && \
-    (HWY_COMPILER_CLANG < 1600 || __riscv_v_intrinsic < 11000)
+    (HWY_COMPILER_CLANG < 1700 || __riscv_v_intrinsic < 11000)
 #define HWY_RVV_AVOID_VXRM
 #endif
 
@@ -5934,9 +5947,13 @@ HWY_API V64 BitShuffle(V64 values, VI idx) {
 template <class V, HWY_IF_T_SIZE_ONE_OF_V(V, (1 << 1) | (1 << 2) | (1 << 4)),
           class D = DFromV<V>, class DW = RepartitionToWide<D>>
 HWY_API VFromD<DW> MulEven(const V a, const V b) {
-  const auto lo = Mul(a, b);
-  const auto hi = MulHigh(a, b);
-  return BitCast(DW(), OddEven(detail::Slide1Up(hi), lo));
+  constexpr int maskVal = sizeof(TFromD<D>) == 4 ? 5
+                          : sizeof(TFromD<D>) == 2 ? 0x55
+                                                   : 0x5555;
+  const auto mask = Dup128MaskFromMaskBits(D(), maskVal);
+  const auto hi = Slide1Up(D(), MulHigh(a, b));
+  const auto res = MaskedMulOr(hi, mask, a, b);
+  return BitCast(DW(), res);
 }
 
 template <class V, HWY_IF_T_SIZE_ONE_OF_V(V, (1 << 1) | (1 << 2) | (1 << 4)),
@@ -5950,9 +5967,9 @@ HWY_API VFromD<DW> MulOdd(const V a, const V b) {
 // There is no 64x64 vwmul.
 template <class V, HWY_IF_T_SIZE_V(V, 8)>
 HWY_INLINE V MulEven(const V a, const V b) {
-  const auto lo = Mul(a, b);
-  const auto hi = MulHigh(a, b);
-  return OddEven(detail::Slide1Up(hi), lo);
+  const auto mask = Dup128MaskFromMaskBits(DFromV<V>(), 1);
+  const auto hi = Slide1Up(DFromV<V>(), MulHigh(a, b));
+  return MaskedMulOr(hi, mask, a, b);
 }
 
 template <class V, HWY_IF_T_SIZE_V(V, 8)>

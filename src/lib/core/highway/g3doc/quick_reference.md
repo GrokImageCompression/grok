@@ -356,6 +356,13 @@ instructions (implying the target CPU must support them).
     if they are not marked as available by the compiler. On MSVC, the only ways
     to enable SSSE3 and SSE4 are defining these, or enabling AVX.
 
+*   `HWY_VISIT_TARGETS(VISITOR)` expands to `VISITOR(HWY_AVX2, N_AVX2)` for all
+    enabled targets (here: AVX2). The latter is the namespace name. This can be
+    used to declare target-specific functions in a header, so that they can be
+    called from within that namespace without the overhead of an additional
+    `HWY_DYNAMIC_DISPATCH`. Note that the `foreach_targets.h` mechanism does not
+    work for that because it must reside in a .cc file.
+
 You can detect and influence the set of supported targets:
 
 *   `TargetName(t)` returns a string literal identifying the single target `t`,
@@ -702,6 +709,28 @@ is qNaN, and NaN if both are.
 
 *   <code>V **Max**(V a, V b)</code>: returns `max(a[i], b[i])`.
 
+*   <code>V **MinNumber**(V a, V b)</code>: returns `min(a[i], b[i])` if `a[i]`
+    and `b[i]` are both non-NaN.
+
+    If one of `a[i]` or `b[i]` is qNaN and the other value is non-NaN,
+    `MinNumber(a, b)` returns the non-NaN value.
+
+    If one of `a[i]` or `b[i]` is sNaN and the other value is non-NaN, it is
+    implementation-defined whether `MinNumber(a, b)` returns `a[i]` or `b[i]`.
+
+    Otherwise, if `a[i]` and `b[i]` are both NaN, `MinNumber(a, b)` returns NaN.
+
+*   <code>V **MaxNumber**(V a, V b)</code>: returns `max(a[i], b[i])` if `a[i]`
+    and `b[i]` are both non-NaN.
+
+    If one of `a[i]` or `b[i]` is qNaN and the other value is non-NaN,
+    `MaxNumber(a, b)` returns the non-NaN value.
+
+    If one of `a[i]` or `b[i]` is sNaN and the other value is non-NaN, it is
+    implementation-defined whether `MaxNumber(a, b)` returns `a[i]` or `b[i]`.
+
+    Otherwise, if `a[i]` and `b[i]` are both NaN, `MaxNumber(a, b)` returns NaN.
+
 *   <code>V **MinMagnitude**(V a, V b)</code>: returns the number with the
     smaller magnitude if `a[i]` and `b[i]` are both non-NaN values.
 
@@ -863,9 +892,9 @@ All other ops in this section are only available if `HWY_TARGET != HWY_SCALAR`:
 
 *   `V`: `{u,i}{8,16,32},{f}16`, \
     `VW`: `Vec<RepartitionToWide<DFromV<V>>`: \
-    `VW WidenMulAccumulate(D, V a, V b, VW low, VW& high)`: widens `a` and `b`,
-    multiplies them together, then adds them to the concatenated vectors
-    high:low. Returns the lower half of the result, and sets high to the upper
+    `VW **WidenMulAccumulate**(D, V a, V b, VW low, VW& high)`: widens `a` and
+    `b`, multiplies them together, then adds them to `Combine(Twice<D>(), high,
+    low)`. Returns the lower half of the result, and sets high to the upper
     half.
 
 #### Fused multiply-add
@@ -2180,10 +2209,9 @@ or `ConcatOdd` followed by `PromoteLowerTo`:
     the output order is the result of demoting the elements of `a` in the lower
     half of the result followed by the result of demoting the elements of `b` in
     the upper half of the result. `OrderedDemote2To(d, a, b)` is equivalent to
-    `Combine(d, DemoteTo(Half<D>(), b), DemoteTo(Half<D>(), a))`, but
-    `OrderedDemote2To(d, a, b)` is typically more efficient than `Combine(d,
-    DemoteTo(Half<D>(), b), DemoteTo(Half<D>(), a))`. Only available if
-    `HWY_TARGET != HWY_SCALAR`.
+    `Combine(d, DemoteTo(Half<D>(), b), DemoteTo(Half<D>(), a))`, but typically
+    more efficient. Note that integer inputs are saturated to the destination
+    range as with `DemoteTo`. Only available if `HWY_TARGET != HWY_SCALAR`.
 
 *   `V`,`D`: (`u16,u8`), (`u32,u16`), (`u64,u32`), \
     <code>Vec&lt;D&gt; **OrderedTruncate2To**(D d, V a, V b)</code>: as above,

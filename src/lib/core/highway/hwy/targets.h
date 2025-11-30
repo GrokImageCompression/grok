@@ -82,9 +82,17 @@ HWY_INLINE std::vector<int64_t> SupportedAndGeneratedTargets() {
 
 #endif  // HWY_NO_LIBCXX
 
+// Returns a string that satisfies gtest IsValidParamName(). No longer report
+// targets as "Unknown" if they are for a different architecture, because some
+// users unconditionally disable targets and we want to see which.
 static inline HWY_MAYBE_UNUSED const char* TargetName(int64_t target) {
   switch (target) {
-#if HWY_ARCH_X86
+    case HWY_EMU128:
+      return "EMU128";
+    case HWY_SCALAR:
+      return "SCALAR";
+
+    // X86
     case HWY_SSE2:
       return "SSE2";
     case HWY_SSSE3:
@@ -99,15 +107,12 @@ static inline HWY_MAYBE_UNUSED const char* TargetName(int64_t target) {
       return "AVX3_DL";
     case HWY_AVX3_ZEN4:
       return "AVX3_ZEN4";
-    case HWY_AVX10_2:
-      return "AVX10_2";
     case HWY_AVX3_SPR:
       return "AVX3_SPR";
-    case HWY_AVX10_2_512:
-      return "AVX10_2_512";
-#endif
+    case HWY_AVX10_2:
+      return "AVX10_2";
 
-#if HWY_ARCH_ARM
+      // ARM
     case HWY_SVE2_128:
       return "SVE2_128";
     case HWY_SVE_256:
@@ -122,52 +127,70 @@ static inline HWY_MAYBE_UNUSED const char* TargetName(int64_t target) {
       return "NEON";
     case HWY_NEON_WITHOUT_AES:
       return "NEON_WITHOUT_AES";
-#endif
 
-#if HWY_ARCH_PPC
+      // PPC
     case HWY_PPC8:
       return "PPC8";
     case HWY_PPC9:
       return "PPC9";
     case HWY_PPC10:
       return "PPC10";
-#endif
 
-#if HWY_ARCH_S390X
+      // S390X
     case HWY_Z14:
       return "Z14";
     case HWY_Z15:
       return "Z15";
-#endif
 
-#if HWY_ARCH_WASM
+      // WASM
     case HWY_WASM:
       return "WASM";
     case HWY_WASM_EMU256:
       return "WASM_EMU256";
-#endif
 
-#if HWY_ARCH_RISCV
+      // RISCV
     case HWY_RVV:
       return "RVV";
-#endif
 
-#if HWY_ARCH_LOONGARCH
+      // LOONGARCH
     case HWY_LSX:
       return "LSX";
     case HWY_LASX:
       return "LASX";
-#endif
-
-    case HWY_EMU128:
-      return "EMU128";
-    case HWY_SCALAR:
-      return "SCALAR";
-
-    default:
-      return "Unknown";  // must satisfy gtest IsValidParamName()
   }
+
+  return "Unknown";
 }
+
+// Invokes VISITOR(TARGET, NAMESPACE) for all enabled targets. Alphabetic order.
+#define HWY_VISIT_TARGETS(VISITOR)    \
+  HWY_VISIT_AVX10_2(VISITOR)          \
+  HWY_VISIT_AVX2(VISITOR)             \
+  HWY_VISIT_AVX3(VISITOR)             \
+  HWY_VISIT_AVX3_DL(VISITOR)          \
+  HWY_VISIT_AVX3_SPR(VISITOR)         \
+  HWY_VISIT_AVX3_ZEN4(VISITOR)        \
+  HWY_VISIT_FALLBACK(VISITOR)         \
+  HWY_VISIT_LASX(VISITOR)             \
+  HWY_VISIT_LSX(VISITOR)              \
+  HWY_VISIT_NEON(VISITOR)             \
+  HWY_VISIT_NEON_BF16(VISITOR)        \
+  HWY_VISIT_NEON_WITHOUT_AES(VISITOR) \
+  HWY_VISIT_PPC10(VISITOR)            \
+  HWY_VISIT_PPC8(VISITOR)             \
+  HWY_VISIT_PPC9(VISITOR)             \
+  HWY_VISIT_RVV(VISITOR)              \
+  HWY_VISIT_SSE2(VISITOR)             \
+  HWY_VISIT_SSE4(VISITOR)             \
+  HWY_VISIT_SSSE3(VISITOR)            \
+  HWY_VISIT_SVE(VISITOR)              \
+  HWY_VISIT_SVE2(VISITOR)             \
+  HWY_VISIT_SVE2_128(VISITOR)         \
+  HWY_VISIT_SVE_256(VISITOR)          \
+  HWY_VISIT_WASM(VISITOR)             \
+  HWY_VISIT_WASM_EMU256(VISITOR)      \
+  HWY_VISIT_Z14(VISITOR)              \
+  HWY_VISIT_Z15(VISITOR)
 
 // The maximum number of dynamic targets on any architecture is defined by
 // HWY_MAX_DYNAMIC_TARGETS and depends on the arch.
@@ -212,22 +235,22 @@ static inline HWY_MAYBE_UNUSED const char* TargetName(int64_t target) {
 // HWY_MAX_DYNAMIC_TARGETS) bit. This list must contain exactly
 // HWY_MAX_DYNAMIC_TARGETS elements and does not include SCALAR. The first entry
 // corresponds to the best target. Don't include a "," at the end of the list.
-#define HWY_CHOOSE_TARGET_LIST(func_name)                       \
-  nullptr,                               /* reserved */         \
-      nullptr,                           /* reserved */         \
-      nullptr,                           /* reserved */         \
-      HWY_CHOOSE_AVX10_2_512(func_name), /* AVX10_2_512 */      \
-      HWY_CHOOSE_AVX3_SPR(func_name),    /* AVX3_SPR */         \
-      HWY_CHOOSE_AVX10_2(func_name),     /* reserved */         \
-      HWY_CHOOSE_AVX3_ZEN4(func_name),   /* AVX3_ZEN4 */        \
-      HWY_CHOOSE_AVX3_DL(func_name),     /* AVX3_DL */          \
-      HWY_CHOOSE_AVX3(func_name),        /* AVX3 */             \
-      HWY_CHOOSE_AVX2(func_name),        /* AVX2 */             \
-      nullptr,                           /* AVX */              \
-      HWY_CHOOSE_SSE4(func_name),        /* SSE4 */             \
-      HWY_CHOOSE_SSSE3(func_name),       /* SSSE3 */            \
-      nullptr,                           /* reserved - SSE3? */ \
-      HWY_CHOOSE_SSE2(func_name)         /* SSE2 */
+#define HWY_CHOOSE_TARGET_LIST(func_name)                     \
+  nullptr,                             /* reserved */         \
+      nullptr,                         /* reserved */         \
+      nullptr,                         /* reserved */         \
+      HWY_CHOOSE_AVX10_2(func_name),   /* AVX10_2 */          \
+      HWY_CHOOSE_AVX3_SPR(func_name),  /* AVX3_SPR */         \
+      nullptr,                         /* reserved */         \
+      HWY_CHOOSE_AVX3_ZEN4(func_name), /* AVX3_ZEN4 */        \
+      HWY_CHOOSE_AVX3_DL(func_name),   /* AVX3_DL */          \
+      HWY_CHOOSE_AVX3(func_name),      /* AVX3 */             \
+      HWY_CHOOSE_AVX2(func_name),      /* AVX2 */             \
+      nullptr,                         /* AVX */              \
+      HWY_CHOOSE_SSE4(func_name),      /* SSE4 */             \
+      HWY_CHOOSE_SSSE3(func_name),     /* SSSE3 */            \
+      nullptr,                         /* reserved - SSE3? */ \
+      HWY_CHOOSE_SSE2(func_name)       /* SSE2 */
 
 #elif HWY_ARCH_ARM
 // See HWY_ARCH_X86 above for details.

@@ -245,8 +245,8 @@ struct TestIntegerDivMod {
       Vec<D> vb) {
     using T = TFromD<D>;
 
-    const auto v1 = Set(d, static_cast<T>(1));
-    const auto vneg1 = Set(d, static_cast<T>(-1));
+    const auto v1 = Set(d, static_cast<T>(hwy::Unpredictable1()));
+    const auto vneg1 = Neg(v1);
 
     const auto neg_a = Neg(va);
     const auto neg_b = Neg(vb);
@@ -322,7 +322,8 @@ struct TestIntegerDivMod {
         const auto b = static_cast<T>(HWY_MAX(b0, 2));
         const auto a = static_cast<T>(HWY_MAX(a0, b + b));
 
-        bool_lanes[i] = (Random32(&rng) & 1024) ? TI(1) : TI(0);
+        bool_lanes[i] =
+            (Random32(&rng) & 1024) ? TI(hwy::Unpredictable1()) : TI(0);
         if (bool_lanes[i]) {
           expected_quot[i] = static_cast<T>(a / b);
           expected_mod[i] = static_cast<T>(a % b);

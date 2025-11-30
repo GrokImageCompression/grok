@@ -240,7 +240,10 @@ std::unique_ptr<WaveletReverse::BufferPtr[]> WaveletReverse::vertPoolData_ = nul
 bool WaveletReverse::is_allocated_ = false;
 std::once_flag WaveletReverse::alloc_flag_;
 
-static const uint32_t PLL_COLS_53 = HWY_DYNAMIC_DISPATCH(GetHWY_PLL_COLS_53)();
+uint32_t get_PLL_COLS_53() {
+  static uint32_t value = HWY_DYNAMIC_DISPATCH(GetHWY_PLL_COLS_53)();
+  return value;
+}
 
 bool WaveletReverse::allocPoolData(size_t maxDim)
 {
@@ -260,7 +263,7 @@ bool WaveletReverse::allocPoolData(size_t maxDim)
       vertPoolData_ = std::make_unique<BufferPtr[]>(num_threads);
 
       size_t buffer_size = maxDim;
-      auto multiplier = std::max(sizeof(int32_t) * PLL_COLS_53, sizeof(vec4f));
+      auto multiplier = std::max(sizeof(int32_t) * get_PLL_COLS_53(), sizeof(vec4f));
       buffer_size *= multiplier;
       for(size_t i = 0; i < num_threads; ++i)
       {
@@ -616,7 +619,7 @@ void WaveletReverse::v_53(const dwt_scratch<int32_t>* scratch, Buffer2dSimple<in
     }
     else
     {
-      if(nb_cols == PLL_COLS_53)
+      if(nb_cols == get_PLL_COLS_53())
       {
         /* Same as below general case, except that thanks to SSE2/AVX2 */
         /* we can efficiently process 8/16 columns in parallel */
@@ -650,7 +653,7 @@ void WaveletReverse::v_53(const dwt_scratch<int32_t>* scratch, Buffer2dSimple<in
     }
     else
     {
-      if(nb_cols == PLL_COLS_53)
+      if(nb_cols == get_PLL_COLS_53())
       {
         /* Same as below general case, except that thanks to SSE2/AVX2 */
         /* we can efficiently process 8/16 columns in parallel */
@@ -673,12 +676,12 @@ void WaveletReverse::v_strip_53(const dwt_scratch<int32_t>* scratch, uint32_t wM
                                 Buffer2dSimple<int32_t> winDest)
 {
   uint32_t j;
-  for(j = wMin; j + PLL_COLS_53 <= wMax; j += PLL_COLS_53)
+  for(j = wMin; j + get_PLL_COLS_53() <= wMax; j += get_PLL_COLS_53())
   {
-    v_53(scratch, winL, winH, winDest, PLL_COLS_53);
-    winL.incX_IN_PLACE(PLL_COLS_53);
-    winH.incX_IN_PLACE(PLL_COLS_53);
-    winDest.incX_IN_PLACE(PLL_COLS_53);
+    v_53(scratch, winL, winH, winDest, get_PLL_COLS_53());
+    winL.incX_IN_PLACE(get_PLL_COLS_53());
+    winH.incX_IN_PLACE(get_PLL_COLS_53());
+    winDest.incX_IN_PLACE(get_PLL_COLS_53());
   }
   if(j < wMax)
     v_53(scratch, winL, winH, winDest, wMax - j);

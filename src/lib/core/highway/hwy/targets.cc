@@ -26,7 +26,8 @@
 #if HWY_ARCH_X86
 #include <xmmintrin.h>
 
-#elif (HWY_ARCH_ARM || HWY_ARCH_PPC || HWY_ARCH_S390X || HWY_ARCH_RISCV) && \
+#elif (HWY_ARCH_ARM || HWY_ARCH_PPC || HWY_ARCH_S390X || HWY_ARCH_RISCV || \
+       HWY_ARCH_LOONGARCH) &&                                              \
     HWY_OS_LINUX
 // sys/auxv.h does not always include asm/hwcap.h, or define HWCAP*, hence we
 // still include this directly. See #1199.
@@ -244,9 +245,14 @@ static constexpr uint64_t kGroupSSE2 =
 static constexpr uint64_t kGroupSSSE3 =
     Bit(FeatureIndex::kSSE3) | Bit(FeatureIndex::kSSSE3) | kGroupSSE2;
 
+#ifdef HWY_DISABLE_PCLMUL_AES
+static constexpr uint64_t kGroupSSE4 =
+    Bit(FeatureIndex::kSSE41) | Bit(FeatureIndex::kSSE42) | kGroupSSSE3;
+#else
 static constexpr uint64_t kGroupSSE4 =
     Bit(FeatureIndex::kSSE41) | Bit(FeatureIndex::kSSE42) |
     Bit(FeatureIndex::kCLMUL) | Bit(FeatureIndex::kAES) | kGroupSSSE3;
+#endif  // HWY_DISABLE_PCLMUL_AES
 
 // We normally assume BMI/BMI2/FMA are available if AVX2 is. This allows us to
 // use BZHI and (compiler-generated) MULX. However, VirtualBox lacks them
@@ -341,13 +347,10 @@ static int64_t DetectTargets() {
       // AVX10.1 or later with support for 512-bit vectors implies support for
       // the AVX3/AVX3_DL/AVX3_SPR targets
       bits |= (HWY_AVX3_SPR | HWY_AVX3_DL | HWY_AVX3);
-    }
 
-    if (avx10_ver >= 2) {
-      // AVX10.2 is supported if avx10_ver >= 2 is true
-      bits |= HWY_AVX10_2;
-      if (has_avx10_with_512bit_vectors) {
-        bits |= HWY_AVX10_2_512;
+      if (avx10_ver >= 2) {
+        // AVX10.2 is supported if avx10_ver >= 2 is true
+        bits |= HWY_AVX10_2;
       }
     }
   }
@@ -405,7 +408,7 @@ static int64_t DetectTargets() {
 #endif
 
     const uint32_t xcr0 = ReadXCR0();
-    constexpr int64_t min_avx3 = HWY_AVX3 | HWY_AVX3_DL | HWY_AVX3_SPR;
+    constexpr int64_t min_avx3 = HWY_AVX3 | (HWY_AVX3 - 1);
     // XMM/YMM
     if (!IsBitSet(xcr0, 1) || !IsBitSet(xcr0, 2)) {
       // Clear the AVX2/AVX3 bits if XMM/YMM XSAVE is not enabled
@@ -482,7 +485,10 @@ static int64_t DetectTargets() {
   if (HasCpuFeature("hw.optional.arm.FEAT_AES")) {
     bits |= HWY_NEON;
 
-    if (HasCpuFeature("hw.optional.AdvSIMD_HPFPCvt") &&
+    // Some macOS versions report AdvSIMD_HPFPCvt under a different key.
+    // Check both known variants for compatibility.
+    if ((HasCpuFeature("hw.optional.AdvSIMD_HPFPCvt") ||
+         HasCpuFeature("hw.optional.arm.AdvSIMD_HPFPCvt")) &&
         HasCpuFeature("hw.optional.arm.FEAT_DotProd") &&
         HasCpuFeature("hw.optional.arm.FEAT_BF16")) {
       bits |= HWY_NEON_BF16;
@@ -698,6 +704,7 @@ static int64_t DetectTargets() {
 }
 }  // namespace rvv
 #elif HWY_ARCH_LOONGARCH && HWY_HAVE_RUNTIME_DISPATCH
+
 namespace loongarch {
 
 #ifndef LA_HWCAP_LSX
@@ -712,8 +719,8 @@ using CapBits = unsigned long;  // NOLINT
 static int64_t DetectTargets() {
   int64_t bits = 0;
   const CapBits hw = getauxval(AT_HWCAP);
-  if (hwcap & LA_HWCAP_LSX) bits |= HWY_LSX;
-  if (hwcap & LA_HWCAP_LASX) bits |= HWY_LASX;
+  if (hw & LA_HWCAP_LSX) bits |= HWY_LSX;
+  if (hw & LA_HWCAP_LASX) bits |= HWY_LASX;
   return bits;
 }
 }  // namespace loongarch

@@ -204,7 +204,6 @@ struct Mask256 {
 template <typename T>
 using Full256 = Simd<T, 32 / sizeof(T), 0>;
 
-
 // ------------------------------ Zero
 
 // Cannot use VFromD here because it is defined in terms of Zero.
@@ -1786,6 +1785,68 @@ HWY_API Vec256<float> Max(const Vec256<float> a, const Vec256<float> b) {
 HWY_API Vec256<double> Max(const Vec256<double> a, const Vec256<double> b) {
   return Vec256<double>{_mm256_max_pd(a.raw, b.raw)};
 }
+
+// ------------------------------ MinNumber and MaxNumber
+
+#if HWY_X86_HAVE_AVX10_2_OPS
+
+#if HWY_HAVE_FLOAT16
+HWY_API Vec256<float16_t> MinNumber(Vec256<float16_t> a, Vec256<float16_t> b) {
+  return Vec256<float16_t>{_mm256_minmax_ph(a.raw, b.raw, 0x14)};
+}
+#endif
+HWY_API Vec256<float> MinNumber(Vec256<float> a, Vec256<float> b) {
+  return Vec256<float>{_mm256_minmax_ps(a.raw, b.raw, 0x14)};
+}
+HWY_API Vec256<double> MinNumber(Vec256<double> a, Vec256<double> b) {
+  return Vec256<double>{_mm256_minmax_pd(a.raw, b.raw, 0x14)};
+}
+
+#if HWY_HAVE_FLOAT16
+HWY_API Vec256<float16_t> MaxNumber(Vec256<float16_t> a, Vec256<float16_t> b) {
+  return Vec256<float16_t>{_mm256_minmax_ph(a.raw, b.raw, 0x15)};
+}
+#endif
+HWY_API Vec256<float> MaxNumber(Vec256<float> a, Vec256<float> b) {
+  return Vec256<float>{_mm256_minmax_ps(a.raw, b.raw, 0x15)};
+}
+HWY_API Vec256<double> MaxNumber(Vec256<double> a, Vec256<double> b) {
+  return Vec256<double>{_mm256_minmax_pd(a.raw, b.raw, 0x15)};
+}
+
+#endif
+
+// ------------------------------ MinMagnitude and MaxMagnitude
+
+#if HWY_X86_HAVE_AVX10_2_OPS
+
+#if HWY_HAVE_FLOAT16
+HWY_API Vec256<float16_t> MinMagnitude(Vec256<float16_t> a,
+                                       Vec256<float16_t> b) {
+  return Vec256<float16_t>{_mm256_minmax_ph(a.raw, b.raw, 0x16)};
+}
+#endif
+HWY_API Vec256<float> MinMagnitude(Vec256<float> a, Vec256<float> b) {
+  return Vec256<float>{_mm256_minmax_ps(a.raw, b.raw, 0x16)};
+}
+HWY_API Vec256<double> MinMagnitude(Vec256<double> a, Vec256<double> b) {
+  return Vec256<double>{_mm256_minmax_pd(a.raw, b.raw, 0x16)};
+}
+
+#if HWY_HAVE_FLOAT16
+HWY_API Vec256<float16_t> MaxMagnitude(Vec256<float16_t> a,
+                                       Vec256<float16_t> b) {
+  return Vec256<float16_t>{_mm256_minmax_ph(a.raw, b.raw, 0x17)};
+}
+#endif
+HWY_API Vec256<float> MaxMagnitude(Vec256<float> a, Vec256<float> b) {
+  return Vec256<float>{_mm256_minmax_ps(a.raw, b.raw, 0x17)};
+}
+HWY_API Vec256<double> MaxMagnitude(Vec256<double> a, Vec256<double> b) {
+  return Vec256<double>{_mm256_minmax_pd(a.raw, b.raw, 0x17)};
+}
+
+#endif
 
 // ------------------------------ Iota
 
@@ -6446,7 +6507,9 @@ HWY_API VFromD<D> PromoteTo(D /* tag */, Vec32<int8_t> v) {
 #if HWY_TARGET <= HWY_AVX3
 template <class D, HWY_IF_V_SIZE_D(D, 32), HWY_IF_I64_D(D)>
 HWY_API VFromD<D> PromoteInRangeTo(D /*di64*/, VFromD<Rebind<float, D>> v) {
-#if HWY_COMPILER_GCC_ACTUAL
+#if HWY_X86_HAVE_AVX10_2_OPS
+  return VFromD<D>{_mm256_cvtts_ps_epi64(v.raw)};
+#elif HWY_COMPILER_GCC_ACTUAL
   // Workaround for undefined behavior with GCC if any values of v[i] are not
   // within the range of an int64_t
 
@@ -6474,7 +6537,9 @@ HWY_API VFromD<D> PromoteInRangeTo(D /*di64*/, VFromD<Rebind<float, D>> v) {
 }
 template <class D, HWY_IF_V_SIZE_D(D, 32), HWY_IF_U64_D(D)>
 HWY_API VFromD<D> PromoteInRangeTo(D /* tag */, VFromD<Rebind<float, D>> v) {
-#if HWY_COMPILER_GCC_ACTUAL
+#if HWY_X86_HAVE_AVX10_2_OPS
+  return VFromD<D>{_mm256_cvtts_ps_epu64(v.raw)};
+#elif HWY_COMPILER_GCC_ACTUAL
   // Workaround for undefined behavior with GCC if any values of v[i] are not
   // within the range of an uint64_t
 #if HWY_COMPILER_GCC_ACTUAL >= 700 && !HWY_IS_DEBUG_BUILD
@@ -6853,7 +6918,9 @@ HWY_API VFromD<D> DemoteTo(D /* tag */, Vec256<double> v) {
 
 template <class D, HWY_IF_V_SIZE_D(D, 16), HWY_IF_I32_D(D)>
 HWY_API VFromD<D> DemoteInRangeTo(D /* tag */, Vec256<double> v) {
-#if HWY_COMPILER_GCC_ACTUAL
+#if HWY_X86_HAVE_AVX10_2_OPS
+  return VFromD<D>{_mm256_cvtts_pd_epi32(v.raw)};
+#elif HWY_COMPILER_GCC_ACTUAL
   // Workaround for undefined behavior in _mm256_cvttpd_epi32 with GCC if any
   // values of v[i] are not within the range of an int32_t
 
@@ -6883,7 +6950,9 @@ HWY_API VFromD<D> DemoteInRangeTo(D /* tag */, Vec256<double> v) {
 #if HWY_TARGET <= HWY_AVX3
 template <class D, HWY_IF_V_SIZE_D(D, 16), HWY_IF_U32_D(D)>
 HWY_API VFromD<D> DemoteInRangeTo(D /* tag */, Vec256<double> v) {
-#if HWY_COMPILER_GCC_ACTUAL
+#if HWY_X86_HAVE_AVX10_2_OPS
+  return VFromD<D>{_mm256_cvtts_pd_epu32(v.raw)};
+#elif HWY_COMPILER_GCC_ACTUAL
   // Workaround for undefined behavior in _mm256_cvttpd_epu32 with GCC if any
   // values of v[i] are not within the range of an uint32_t
 
@@ -7178,7 +7247,9 @@ HWY_API VFromD<D> ConvertInRangeTo(D /* tag */, VFromD<RebindToFloat<D>> v) {
 
 template <class D, HWY_IF_V_SIZE_D(D, 32), HWY_IF_I32_D(D)>
 HWY_API VFromD<D> ConvertInRangeTo(D /*d*/, Vec256<float> v) {
-#if HWY_COMPILER_GCC_ACTUAL
+#if HWY_X86_HAVE_AVX10_2_OPS
+  return VFromD<D>{_mm256_cvtts_ps_epi32(v.raw)};
+#elif HWY_COMPILER_GCC_ACTUAL
   // Workaround for undefined behavior in _mm256_cvttps_epi32 with GCC if any
   // values of v[i] are not within the range of an int32_t
 
@@ -7212,7 +7283,9 @@ HWY_API VFromD<D> ConvertInRangeTo(D /*d*/, Vec256<float> v) {
 #if HWY_TARGET <= HWY_AVX3
 template <class D, HWY_IF_V_SIZE_D(D, 32), HWY_IF_I64_D(D)>
 HWY_API VFromD<D> ConvertInRangeTo(D /*di*/, Vec256<double> v) {
-#if HWY_COMPILER_GCC_ACTUAL
+#if HWY_X86_HAVE_AVX10_2_OPS
+  return VFromD<D>{_mm256_cvtts_pd_epi64(v.raw)};
+#elif HWY_COMPILER_GCC_ACTUAL
   // Workaround for undefined behavior in _mm256_cvttpd_epi64 with GCC if any
   // values of v[i] are not within the range of an int64_t
 
@@ -7240,7 +7313,9 @@ HWY_API VFromD<D> ConvertInRangeTo(D /*di*/, Vec256<double> v) {
 }
 template <class DU, HWY_IF_V_SIZE_D(DU, 32), HWY_IF_U32_D(DU)>
 HWY_API VFromD<DU> ConvertInRangeTo(DU /*du*/, VFromD<RebindToFloat<DU>> v) {
-#if HWY_COMPILER_GCC_ACTUAL
+#if HWY_X86_HAVE_AVX10_2_OPS
+  return VFromD<DU>{_mm256_cvtts_ps_epu32(v.raw)};
+#elif HWY_COMPILER_GCC_ACTUAL
   // Workaround for undefined behavior in _mm256_cvttps_epu32 with GCC if any
   // values of v[i] are not within the range of an uint32_t
 
@@ -7280,7 +7355,9 @@ HWY_API VFromD<DU> ConvertInRangeTo(DU /*du*/, VFromD<RebindToFloat<DU>> v) {
 }
 template <class DU, HWY_IF_V_SIZE_D(DU, 32), HWY_IF_U64_D(DU)>
 HWY_API VFromD<DU> ConvertInRangeTo(DU /*du*/, VFromD<RebindToFloat<DU>> v) {
-#if HWY_COMPILER_GCC_ACTUAL
+#if HWY_X86_HAVE_AVX10_2_OPS
+  return VFromD<DU>{_mm256_cvtts_pd_epu64(v.raw)};
+#elif HWY_COMPILER_GCC_ACTUAL
   // Workaround for undefined behavior in _mm256_cvttpd_epu64 with GCC if any
   // values of v[i] are not within the range of an uint64_t
 

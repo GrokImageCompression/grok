@@ -16,6 +16,7 @@
 // Ensure incompatibilities with Windows macros (e.g. #define StoreFence) are
 // detected. Must come before Highway headers.
 #include "hwy/base.h"
+#include "hwy/nanobenchmark.h"
 #include "hwy/tests/test_util.h"
 #if HWY_OS_WIN
 #ifndef NOMINMAX
@@ -506,7 +507,7 @@ class TestStoreN {
     HWY_ASSERT(full_dvec_N <= (static_cast<size_t>(~size_t(0)) / 8));
 
     const size_t buf_offset = HWY_MAX(kMaxLanesPerBlock, full_dvec_N);
-    const size_t buf_size = buf_offset + 3 * full_dvec_N + 4;
+    size_t buf_size = buf_offset + 3 * full_dvec_N + 4;
     auto expected = AllocateAligned<T>(buf_size);
     auto actual = AllocateAligned<T>(buf_size);
     HWY_ASSERT(expected && actual);
@@ -537,23 +538,26 @@ class TestStoreN {
 
     const size_t lplb = HWY_MAX(N / 4, lpb);
     for (size_t i = HWY_MAX(lpb * 2, lplb); i <= N * 2; i += lplb) {
-      const size_t max_num_of_lanes_to_store = i + (11 & (lpb - 1));
-      const size_t expected_num_of_lanes_written =
-          HWY_MIN(max_num_of_lanes_to_store, N);
+      size_t max_lanes_to_store =
+          i + (11 & (lpb - 1)) + static_cast<size_t>(hwy::Unpredictable1() - 1);
 
-      const Vec<D> v = IotaForSpecial(d, max_num_of_lanes_to_store + 1);
-      const Vec<D> v_expected = IfThenElse(
-          FirstN(d, expected_num_of_lanes_written), v, v_neg_fill_val);
+      const Vec<D> v = IotaForSpecial(d, max_lanes_to_store + 1);
+      const Vec<D> v_expected =
+          IfThenElse(FirstN(d, max_lanes_to_store), v, v_neg_fill_val);
 
       Store(v_expected, d, expected.get() + buf_offset);
       Store(v_neg_fill_val, d, actual.get() + buf_offset);
-      StoreN(v, d, actual.get() + buf_offset, max_num_of_lanes_to_store);
+      StoreN(v, d, actual.get() + buf_offset, max_lanes_to_store);
+
+      // Clang arm7 workaround; requires these to be non-const.
+      PreventElision(max_lanes_to_store);
+      PreventElision(buf_size);
 
       HWY_ASSERT_ARRAY_EQ(expected.get(), actual.get(), buf_size);
 
       StoreU(v_expected, d, expected.get() + buf_offset + 3);
       StoreU(v_neg_fill_val, d, actual.get() + buf_offset + 3);
-      StoreN(v, d, actual.get() + buf_offset + 3, max_num_of_lanes_to_store);
+      StoreN(v, d, actual.get() + buf_offset + 3, max_lanes_to_store);
       HWY_ASSERT_ARRAY_EQ(expected.get(), actual.get(), buf_size);
     }
   }

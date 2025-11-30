@@ -83,8 +83,8 @@ TEST(PerfCountersTest, TestMem) {
   HWY_ASSERT(values[PerfCounters::kPageFaults] == 0.0 ||
              values[PerfCounters::kPageFaults] > 1);  // 4..500K
   HWY_ASSERT(values[PerfCounters::kBranches] == 0.0 ||
-             values[PerfCounters::kBranches] > 1E6);
-  HWY_ASSERT(values[PerfCounters::kBranchMispredicts] < 1E7);  // 273K..1M
+             values[PerfCounters::kBranches] > 1E5);           // > 900K
+  HWY_ASSERT(values[PerfCounters::kBranchMispredicts] < 1E9);  // 273K..400M
 
   HWY_ASSERT(values[PerfCounters::kL3Loads] == 0.0 ||
              values[PerfCounters::kL3Loads] > 10.0);  // ~90K, 50 with L4
@@ -96,7 +96,7 @@ TEST(PerfCountersTest, TestMem) {
   HWY_ASSERT(values[PerfCounters::kCacheMisses] == 0.0 ||
              values[PerfCounters::kCacheMisses] > 1.0);  // 10..51M
   HWY_ASSERT(values[PerfCounters::kBusCycles] == 0.0 ||
-             values[PerfCounters::kBusCycles] > 1E7);  // 82M
+             values[PerfCounters::kBusCycles] > 1E6);  // 8M
 }
 
 // Ensures a branch-heavy workload has high branch-related counters and not

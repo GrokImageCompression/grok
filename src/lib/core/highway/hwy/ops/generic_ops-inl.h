@@ -519,6 +519,37 @@ HWY_API V InterleaveEven(V a, V b) {
 }
 #endif
 
+// ------------------------------ MinNumber/MaxNumber
+
+#if (defined(HWY_NATIVE_FLOAT_MIN_MAX_NUMBER) == defined(HWY_TARGET_TOGGLE))
+#ifdef HWY_NATIVE_FLOAT_MIN_MAX_NUMBER
+#undef HWY_NATIVE_FLOAT_MIN_MAX_NUMBER
+#else
+#define HWY_NATIVE_FLOAT_MIN_MAX_NUMBER
+#endif
+
+template <class V, HWY_IF_FLOAT_OR_SPECIAL_V(V)>
+HWY_API V MinNumber(V a, V b) {
+  return Min(a, b);
+}
+
+template <class V, HWY_IF_FLOAT_OR_SPECIAL_V(V)>
+HWY_API V MaxNumber(V a, V b) {
+  return Max(a, b);
+}
+
+#endif
+
+template <class V, HWY_IF_NOT_FLOAT_NOR_SPECIAL_V(V)>
+HWY_API V MinNumber(V a, V b) {
+  return Min(a, b);
+}
+
+template <class V, HWY_IF_NOT_FLOAT_NOR_SPECIAL_V(V)>
+HWY_API V MaxNumber(V a, V b) {
+  return Max(a, b);
+}
+
 // ------------------------------ MinMagnitude/MaxMagnitude
 
 #if (defined(HWY_NATIVE_FLOAT_MIN_MAX_MAGNITUDE) == defined(HWY_TARGET_TOGGLE))
@@ -644,12 +675,18 @@ HWY_API V MaskedMulOr(V no, M m, V a, V b) {
 
 template <class V, class M>
 HWY_API V MaskedDivOr(V no, M m, V a, V b) {
-  return IfThenElse(m, Div(a, b), no);
+  const DFromV<V> d;
+  // Avoid division by zero for masked-out lanes.
+  const V nonzero = Set(d, TFromD<decltype(d)>{1});
+  return IfThenElse(m, Div(a, IfThenElse(m, b, nonzero)), no);
 }
 
 template <class V, class M>
 HWY_API V MaskedModOr(V no, M m, V a, V b) {
-  return IfThenElse(m, Mod(a, b), no);
+  const DFromV<V> d;
+  // Avoid division by zero for masked-out lanes.
+  const V nonzero = Set(d, TFromD<decltype(d)>{1});
+  return IfThenElse(m, Mod(a, IfThenElse(m, b, nonzero)), no);
 }
 
 template <class V, class M>
@@ -1090,6 +1127,7 @@ HWY_API VFromD<D> MaxOfLanes(D /* tag */, VFromD<D> v) {
 #else
 #define HWY_NATIVE_REDUCE_SUM_4_UI8
 #endif
+
 template <class D, HWY_IF_V_SIZE_D(D, 4), HWY_IF_UI8_D(D)>
 HWY_API TFromD<D> ReduceSum(D d, VFromD<D> v) {
   const Twice<RepartitionToWide<decltype(d)>> dw;
@@ -5287,7 +5325,9 @@ HWY_INLINE V IntDiv(V a, V b) {
 template <size_t kOrigLaneSize, class V, HWY_IF_NOT_FLOAT_NOR_SPECIAL_V(V),
           HWY_IF_T_SIZE_ONE_OF_V(V, ((HWY_TARGET <= HWY_SSE2 ||
                                       HWY_TARGET == HWY_WASM ||
-                                      HWY_TARGET == HWY_WASM_EMU256)
+                                      HWY_TARGET == HWY_WASM_EMU256 ||
+                                      HWY_TARGET == HWY_LSX ||
+                                      HWY_TARGET == HWY_LASX)
                                          ? 0
                                          : (1 << 1)) |
                                         (1 << 2) | (1 << 4) | (1 << 8))>
@@ -5295,8 +5335,9 @@ HWY_INLINE V IntMod(V a, V b) {
   return hwy::HWY_NAMESPACE::NegMulAdd(IntDiv<kOrigLaneSize>(a, b), b, a);
 }
 
-#if HWY_TARGET <= HWY_SSE2 || HWY_TARGET == HWY_WASM || \
-    HWY_TARGET == HWY_WASM_EMU256
+#if HWY_TARGET <= HWY_SSE2 || HWY_TARGET == HWY_WASM ||       \
+    HWY_TARGET == HWY_WASM_EMU256 || HWY_TARGET == HWY_LSX || \
+    HWY_TARGET == HWY_LASX
 template <size_t kOrigLaneSize, class V, HWY_IF_UI8(TFromV<V>),
           HWY_IF_V_SIZE_LE_V(V, HWY_MAX_BYTES / 2)>
 HWY_INLINE V IntMod(V a, V b) {
@@ -5315,7 +5356,7 @@ HWY_INLINE V IntMod(V a, V b) {
       IntMod<kOrigLaneSize>(PromoteUpperTo(dw, a), PromoteUpperTo(dw, b)));
 }
 #endif  // HWY_TARGET <= HWY_SSE2 || HWY_TARGET == HWY_WASM || HWY_TARGET ==
-        // HWY_WASM_EMU256
+        // HWY_WASM_EMU256 || HWY_TARGET == HWY_LSX || HWY_TARGET == HWY_LASX
 
 }  // namespace detail
 
@@ -7398,7 +7439,8 @@ namespace detail {
 
 // detail::BlockwiseConcatOddEven(d, v) returns the even lanes of each block of
 // v followed by the odd lanes of v
-#if HWY_TARGET_IS_NEON || HWY_TARGET_IS_SVE || HWY_TARGET == HWY_RVV
+#if HWY_TARGET_IS_NEON || HWY_TARGET_IS_SVE || HWY_TARGET == HWY_RVV || \
+    HWY_TARGET == HWY_LSX || HWY_TARGET == HWY_LASX
 template <class D, HWY_IF_T_SIZE_ONE_OF_D(D, (1 << 1) | (1 << 2) | (1 << 4)),
           HWY_IF_V_SIZE_GT_D(D, 8)>
 static HWY_INLINE HWY_MAYBE_UNUSED Vec<D> BlockwiseConcatOddEven(D d,
