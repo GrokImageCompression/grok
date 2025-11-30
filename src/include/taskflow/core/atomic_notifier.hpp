@@ -5,10 +5,68 @@
 #include <atomic>
 #include <thread>
 #include <vector>
+#include <assert.h>
+#include "../utility/os.hpp"
 
 namespace tf {
 
 //-----------------------------------------------------------------------------
+
+/**
+
+@class AtomicNotifier
+
+@brief class to create a notifier for inter-thread synchronization
+
+A notifier is a lightweight synchronization primitive for waiting on arbitrary predicates
+without traditional mutex-based blocking
+The notifier enables non-blocking coordination between threads. Conceptually, it plays
+a similar role to a condition variable, but the waiting condition (predicate) does not
+need to be guarded by a mutex.
+
+**Typical usage**
+
+In a waiting thread:
+
+@code{.cpp}
+if (predicate)
+  return act();
+Notifier::Waiter& w = waiters[my_index];
+ec.prepare_wait(&w);
+if (predicate) {
+  ec.cancel_wait(&w);
+  return act();
+}
+ec.commit_wait(&w);
+@endcode
+
+In a notifying thread:
+
+@code{.cpp}
+predicate = true;
+ec.notify(true);
+@endcode
+
+The `notify` operation is inexpensive when there are no waiting threads.
+`prepare_wait` and `commit_wait` are more costly but are only executed when
+the predicate check fails initially.
+
+**Algorithm overview**
+
+The design relies on two key variables: the user-managed `predicate` and an internal
+`_state`. The synchronization behavior is reminiscent of Dekker’s algorithm
+(see: https://en.wikipedia.org/wiki/Dekker%27s_algorithm).
+
+- A waiting thread first updates `_state`, then checks the predicate.
+- A notifying thread updates the predicate, then checks `_state`.
+
+Sequentially consistent fences ensure visibility between threads. As a result,
+at least one side will observe the other's update—either:
+ - The waiter sees the predicate become true and avoids blocking, or
+ - The notifier sees `_state` change and wakes the waiter.
+
+This protocol prevents the deadlock case where both threads miss each other’s updates.
+*/
 
 class AtomicNotifier {
 
@@ -17,7 +75,7 @@ class AtomicNotifier {
   public:
   
   struct Waiter {
-    alignas (2*TF_CACHELINE_SIZE) uint32_t epoch;
+    alignas (2*std::hardware_destructive_interference_size) uint32_t epoch;
   };
 
   AtomicNotifier(size_t N) noexcept : _state(0), _waiters(N) {}
@@ -67,13 +125,8 @@ inline size_t AtomicNotifier::num_waiters() const noexcept {
 
 inline void AtomicNotifier::notify_one() noexcept {
   std::atomic_thread_fence(std::memory_order_seq_cst);
-  //if((_state.load(std::memory_order_acquire) & WAITER_MASK) != 0) {
-  //  _state.fetch_add(EPOCH_INC, std::memory_order_relaxed);
-  //  _state.notify_one(); 
-  //}
-
-  for(uint64_t state = _state.load(std::memory_order_acquire); state & WAITER_MASK;) {
-    if(_state.compare_exchange_weak(state, state + EPOCH_INC, std::memory_order_acquire)) {
+  for(uint64_t state = _state.load(std::memory_order_relaxed); state & WAITER_MASK;) {
+    if(_state.compare_exchange_weak(state, state + EPOCH_INC, std::memory_order_relaxed)) {
       _state.notify_one(); 
       break;
     }
@@ -82,12 +135,8 @@ inline void AtomicNotifier::notify_one() noexcept {
 
 inline void AtomicNotifier::notify_all() noexcept {
   std::atomic_thread_fence(std::memory_order_seq_cst);
-  //if((_state.load(std::memory_order_acquire) & WAITER_MASK) != 0) {
-  //  _state.fetch_add(EPOCH_INC, std::memory_order_relaxed);
-  //  _state.notify_all(); 
-  //}
-  for(uint64_t state = _state.load(std::memory_order_acquire); state & WAITER_MASK;) {
-    if(_state.compare_exchange_weak(state, state + EPOCH_INC, std::memory_order_acquire)) {
+  for(uint64_t state = _state.load(std::memory_order_relaxed); state & WAITER_MASK;) {
+    if(_state.compare_exchange_weak(state, state + EPOCH_INC, std::memory_order_relaxed)) {
       _state.notify_all(); 
       break;
     }
@@ -112,19 +161,16 @@ inline void AtomicNotifier::prepare_wait(Waiter* waiter) noexcept {
 }
 
 inline void AtomicNotifier::cancel_wait(Waiter*) noexcept {
-  _state.fetch_sub(WAITER_INC, std::memory_order_seq_cst);
+  _state.fetch_sub(WAITER_INC, std::memory_order_relaxed);
 }
 
 inline void AtomicNotifier::commit_wait(Waiter* waiter) noexcept {
-  uint64_t prev = _state.load(std::memory_order_acquire);
+  uint64_t prev = _state.load(std::memory_order_relaxed);
   while((prev >> EPOCH_SHIFT) == waiter->epoch) {
-    _state.wait(prev, std::memory_order_acquire); 
-    prev = _state.load(std::memory_order_acquire);
+    _state.wait(prev, std::memory_order_relaxed); 
+    prev = _state.load(std::memory_order_relaxed);
   }
-  // memory_order_relaxed would suffice for correctness, but the faster
-  // #waiters gets to 0, the less likely it is that we'll do spurious wakeups
-  // (and thus system calls)
-  _state.fetch_sub(WAITER_INC, std::memory_order_seq_cst);
+  _state.fetch_sub(WAITER_INC, std::memory_order_relaxed);
 }
 
 

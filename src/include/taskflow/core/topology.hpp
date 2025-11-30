@@ -4,16 +4,15 @@ namespace tf {
 
 // ----------------------------------------------------------------------------
 
-class TopologyBase {
-
-};
-
-// class: Topology
+/**
+@private
+*/
 class Topology {
 
   friend class Executor;
   friend class Subflow;
   friend class Runtime;
+  friend class NonpreemptiveRuntime;
   friend class Node;
 
   template <typename T>
@@ -21,10 +20,14 @@ class Topology {
   
   public:
 
-    template <typename P, typename C>
-    Topology(Taskflow&, P&&, C&&);
+    Topology(Taskflow&);
+
+    virtual ~Topology() = default;
 
     bool cancelled() const;
+
+    virtual bool predicate() = 0;
+    virtual void callback() = 0;
 
   private:
 
@@ -32,9 +35,6 @@ class Topology {
 
     std::promise<void> _promise;
     
-    std::function<bool()> _pred;
-    std::function<void()> _call;
-
     std::atomic<size_t> _join_counter {0};
     std::atomic<ESTATE::underlying_type> _estate {ESTATE::NONE};
 
@@ -44,11 +44,8 @@ class Topology {
 };
 
 // Constructor
-template <typename P, typename C>
-Topology::Topology(Taskflow& tf, P&& p, C&& c):
-  _taskflow(tf),
-  _pred {std::forward<P>(p)},
-  _call {std::forward<C>(c)} {
+inline Topology::Topology(Taskflow& tf):
+  _taskflow(tf) {
 }
 
 // Procedure
@@ -68,4 +65,36 @@ inline bool Topology::cancelled() const {
   return _estate.load(std::memory_order_relaxed) & ESTATE::CANCELLED;
 }
 
+// ----------------------------------------------------------------------------
+
+
+/**
+@private
+*/
+template <typename P, typename C>
+class DerivedTopology : public Topology {
+  
+  public:
+
+  DerivedTopology(Taskflow& tf, P&& pred, C&& clbk) :
+    Topology::Topology(tf), _pred(std::forward<P>(pred)), _clbk(std::forward<C>(clbk)) {
+  }
+    
+  bool predicate() override final { return _pred(); }
+  void callback() override final { _clbk(); }   
+
+  private:
+
+  P _pred;       // predicate, of function type, bool()
+  C _clbk;       // callback, of function type, void()
+};
+
 }  // end of namespace tf. ----------------------------------------------------
+
+
+
+
+
+
+
+

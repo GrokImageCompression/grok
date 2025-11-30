@@ -13,11 +13,11 @@ class FlowBuilder;
 class Semaphore;
 class Subflow;
 class Runtime;
+class NonpreemptiveRuntime;
 class Task;
 class TaskView;
 class Taskflow;
 class Topology;
-class TopologyBase;
 class Executor;
 class Worker;
 class WorkerView;
@@ -51,8 +51,8 @@ class cudaGraphExecBase;
 // ----------------------------------------------------------------------------
 // struct 
 // ----------------------------------------------------------------------------
-struct TaskParams;
-struct DefaultTaskParams;
+class TaskParams;
+class DefaultTaskParams;
 
 
 }  // end of namespace tf -----------------------------------------------------

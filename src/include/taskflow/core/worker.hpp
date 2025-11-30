@@ -102,30 +102,9 @@ class Worker {
     std::thread _thread;
     
     std::default_random_engine _rdgen;
-    //std::uniform_int_distribution<size_t> _udist;
 
     BoundedTaskQueue<Node*> _wsq;
-
-    //TF_FORCE_INLINE size_t _rdvtm() {
-    //  auto r = _udist(_rdgen);
-    //  return r + (r >= _id);
-    //}
-
 };
-
-
-// ----------------------------------------------------------------------------
-// Per-thread
-// ----------------------------------------------------------------------------
-
-namespace pt {
-
-/**
-@private
-*/
-inline thread_local Worker* this_worker {nullptr};
-
-}
 
 // ----------------------------------------------------------------------------
 // Class Definition: WorkerView
@@ -247,7 +226,7 @@ are invoked by each worker simultaneously.
 class WorkerInterface {
 
   public:
-
+  
   /**
   @brief default destructor
   */

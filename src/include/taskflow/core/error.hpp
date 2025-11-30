@@ -12,7 +12,8 @@ namespace tf {
 struct NSTATE {
 
   using underlying_type = int;
-
+  
+  // state bits
   constexpr static underlying_type NONE           = 0x00000000;  
   constexpr static underlying_type CONDITIONED    = 0x10000000;  
   constexpr static underlying_type PREEMPTED      = 0x20000000;  
@@ -20,7 +21,7 @@ struct NSTATE {
   constexpr static underlying_type JOINED_SUBFLOW = 0x80000000;
 
   // mask to isolate state bits - non-state bits store # weak dependents
-  constexpr static underlying_type MASK        = 0xF0000000;
+  constexpr static underlying_type MASK           = 0xF0000000;
 };
 
 using nstate_t = NSTATE::underlying_type;
@@ -70,4 +71,19 @@ void throw_re(const char* fname, const size_t line, ArgsT&&... args) {
 }  // ------------------------------------------------------------------------
 
 #define TF_THROW(...) tf::throw_re(__FILE__, __LINE__, __VA_ARGS__);
+
+// ----------------------------------------------------------------------------
+
+#ifdef TF_DISABLE_EXCEPTION_HANDLING
+  #define TF_EXECUTOR_EXCEPTION_HANDLER(worker, node, code_block) \
+    code_block;
+#else
+  #define TF_EXECUTOR_EXCEPTION_HANDLER(worker, node, code_block)  \
+    try {                                          \
+      code_block;                                  \
+    } catch(...) {                                 \
+      _process_exception(worker, node);            \
+    }
+#endif
+
 

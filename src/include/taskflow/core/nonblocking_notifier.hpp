@@ -13,7 +13,7 @@
 #include <algorithm>
 #include <numeric>
 #include <cassert>
-
+#include "../utility/os.hpp"
 // This file is part of Eigen, a lightweight C++ template library
 // for linear algebra.
 //
@@ -67,7 +67,7 @@ class NonblockingNotifierV1 {
   public:
 
   struct Waiter {
-    alignas (2*TF_CACHELINE_SIZE) std::atomic<Waiter*> next;
+    alignas (2*std::hardware_destructive_interference_size) std::atomic<Waiter*> next;
     uint64_t epoch;
     enum : unsigned {
       kNotSignaled = 0,
@@ -265,7 +265,7 @@ class NonblockingNotifierV1 {
       }
       uint64_t waiters = (state & kWaiterMask) >> kWaiterShift;
       uint64_t newstate;
-      if (all) {
+      if constexpr (all) {
         // Reset prewait counter and empty wait list.
         newstate = (state & kEpochMask) + (kEpochInc * waiters) + kStackMask;
       } else if (waiters) {
@@ -287,11 +287,11 @@ class NonblockingNotifierV1 {
         newstate = (state & kEpochMask) + next;
       }
       if (_state.compare_exchange_weak(state, newstate,
-                                       std::memory_order_acquire)) {
-        if (!all && waiters) return;  // unblocked pre-wait thread
+                                      std::memory_order_acquire)) {
+        if constexpr (!all) { if(waiters) return; }  // unblocked pre-wait thread
         if ((state & kStackMask) == kStackMask) return;
         Waiter* w = &_waiters[state & kStackMask];
-        if (!all) {
+        if constexpr (!all) {
           w->next.store(nullptr, std::memory_order_relaxed);
         }
         _unpark(w);
@@ -336,7 +336,7 @@ class NonblockingNotifierV2 {
   public:
   
   struct Waiter {
-    alignas (2*TF_CACHELINE_SIZE) std::atomic<uint64_t> next{kStackMask};
+    alignas (2*std::hardware_destructive_interference_size) std::atomic<uint64_t> next{kStackMask};
     uint64_t epoch{0};
     enum : unsigned {
       kNotSignaled = 0,
@@ -447,10 +447,6 @@ class NonblockingNotifierV2 {
     }
   }
 
-  size_t size() const {
-    return _waiters.size();
-  }
-
   private:
 
 
@@ -505,14 +501,14 @@ class NonblockingNotifierV2 {
     for (;;) {
       //_check_state(state);
       const uint64_t waiters = (state & kWaiterMask) >> kWaiterShift;
-      const uint64_t signals = (state & kSignalMask) >> kSignalShift;
+      const uint64_t sigs = (state & kSignalMask) >> kSignalShift;
       // Easy case: no waiters.
-      if ((state & kStackMask) == kStackMask && waiters == signals) return;
+      if ((state & kStackMask) == kStackMask && waiters == sigs) return;
       uint64_t newstate;
-      if (notifyAll) {
+      if constexpr (notifyAll) {
         // Empty wait stack and set signal to number of pre-wait threads.
         newstate = (state & kWaiterMask) | (waiters << kSignalShift) | kStackMask;
-      } else if (signals < waiters) {
+      } else if (sigs < waiters) {
         // There is a thread in pre-wait state, unblock it.
         newstate = state + kSignalInc;
       } else {
@@ -523,10 +519,10 @@ class NonblockingNotifierV2 {
       }
       //_check_state(newstate);
       if (_state.compare_exchange_weak(state, newstate, std::memory_order_acq_rel)) {
-        if (!notifyAll && (signals < waiters)) return;  // unblocked pre-wait thread
+        if constexpr (!notifyAll) { if (sigs < waiters) return; } // unblocked pre-wait thread
         if ((state & kStackMask) == kStackMask) return;
         Waiter* w = &_waiters[state & kStackMask];
-        if (!notifyAll) w->next.store(kStackMask, std::memory_order_relaxed);
+        if constexpr (!notifyAll) { w->next.store(kStackMask, std::memory_order_relaxed); }
         _unpark(w);
         return;
       }
