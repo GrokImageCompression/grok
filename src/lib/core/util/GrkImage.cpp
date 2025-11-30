@@ -168,13 +168,7 @@ GrkImage* GrkImage::create(grk_image* src, uint16_t numcmpts, grk_image_comp* cm
     comp->y0 = params->y0;
     comp->prec = params->prec;
     comp->sgnd = params->sgnd;
-    if(params->data)
-    {
-      comp->data = params->data;
-      comp->stride = params->stride ? params->stride : params->w;
-      comp->owns_data = false;
-    }
-    else if(doAllocation && !allocData(comp))
+    if(doAllocation && !allocData(comp))
     {
       grk::grklog.error("Unable to allocate memory for image.");
       delete image;
