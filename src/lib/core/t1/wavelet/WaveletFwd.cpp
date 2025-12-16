@@ -34,8 +34,6 @@ struct encode_info;
 
 namespace HWY_NAMESPACE
 {
-  using namespace hwy::HWY_NAMESPACE;
-
   static const float alpha = -1.586134342f;
   static const float beta = -0.052980118f;
   static const float gamma = 0.882911075f;

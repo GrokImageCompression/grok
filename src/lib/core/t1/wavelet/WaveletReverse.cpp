@@ -39,8 +39,6 @@ namespace grk
 {
 namespace HWY_NAMESPACE
 {
-  using namespace hwy::HWY_NAMESPACE;
-
   static uint32_t GetHWY_PLL_COLS_53()
   {
     static const uint32_t value = []() {

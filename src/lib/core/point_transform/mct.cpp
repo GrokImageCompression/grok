@@ -26,7 +26,6 @@ namespace grk
 {
 namespace HWY_NAMESPACE
 {
-  using namespace hwy::HWY_NAMESPACE;
   /**
    * Apply dc shift for irreversible decompressed image.
    * (assumes mono with no  MCT)

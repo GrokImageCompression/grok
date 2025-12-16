@@ -34,8 +34,6 @@ namespace grk
 {
 namespace HWY_NAMESPACE
 {
-  using namespace hwy::HWY_NAMESPACE;
-
   static size_t num_lanes(void)
   {
     const HWY_FULL(int32_t) di;
