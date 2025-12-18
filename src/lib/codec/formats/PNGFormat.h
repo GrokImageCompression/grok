@@ -59,13 +59,14 @@ private:
 
 static bool pngWarningHandlerVerbose = true;
 
-static void png_warning_fn([[maybe_unused]] png_structp png_ptr, png_const_charp warning_message)
+static inline void png_warning_fn([[maybe_unused]] png_structp png_ptr,
+                                  png_const_charp warning_message)
 {
   if(pngWarningHandlerVerbose)
     spdlog::warn("libpng: {}", warning_message);
 }
 
-static void png_error_fn([[maybe_unused]] png_structp png_ptr, png_const_charp error_message)
+static inline void png_error_fn([[maybe_unused]] png_structp png_ptr, png_const_charp error_message)
 {
   spdlog::error("libpng: {}", error_message);
 }

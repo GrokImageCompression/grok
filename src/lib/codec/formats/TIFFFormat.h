@@ -88,12 +88,12 @@ private:
 
 #ifdef GRK_CUSTOM_TIFF_IO
 
-static tmsize_t TiffRead([[maybe_unused]] thandle_t handle, [[maybe_unused]] void* buf,
-                         tmsize_t size)
+static inline tmsize_t TiffRead([[maybe_unused]] thandle_t handle, [[maybe_unused]] void* buf,
+                                tmsize_t size)
 {
   return size;
 }
-static tmsize_t TiffWrite(thandle_t handle, void* buf, tmsize_t size)
+static inline tmsize_t TiffWrite(thandle_t handle, void* buf, tmsize_t size)
 {
   auto* serializer = static_cast<FileOrchestratorIO*>(handle);
   const size_t bytes_total = (size_t)size;
@@ -109,7 +109,7 @@ static tmsize_t TiffWrite(thandle_t handle, void* buf, tmsize_t size)
     return (tmsize_t)-1;
 }
 
-static uint64_t TiffSeek(thandle_t handle, uint64_t off, int32_t whence)
+static inline uint64_t TiffSeek(thandle_t handle, uint64_t off, int32_t whence)
 {
   auto* serializer = static_cast<FileOrchestratorIO*>(handle);
   _TIFF_off_t off_io = (_TIFF_off_t)off;
@@ -123,14 +123,14 @@ static uint64_t TiffSeek(thandle_t handle, uint64_t off, int32_t whence)
   return serializer->seek((int64_t)off, whence);
 }
 
-static int TiffClose(thandle_t handle)
+static inline int TiffClose(thandle_t handle)
 {
   auto* serializer = static_cast<FileOrchestratorIO*>(handle);
 
   return serializer->close() ? 0 : EINVAL;
 }
 
-static uint64_t TiffSize([[maybe_unused]] thandle_t handle)
+static inline uint64_t TiffSize([[maybe_unused]] thandle_t handle)
 {
   return 0U;
 }
@@ -606,7 +606,7 @@ bool TIFFFormat<T>::encodeFinish(void)
 
 ////////////////////////////////////////////////////////////////////////////////////////////////
 
-static std::string getSampleFormatString(uint16_t tiSampleFormat)
+static inline std::string getSampleFormatString(uint16_t tiSampleFormat)
 {
   switch(tiSampleFormat)
   {
@@ -633,7 +633,7 @@ static std::string getSampleFormatString(uint16_t tiSampleFormat)
   }
 }
 
-static std::string getColourFormatString(uint16_t tiPhoto)
+static inline std::string getColourFormatString(uint16_t tiPhoto)
 {
   switch(tiPhoto)
   {
@@ -681,7 +681,7 @@ static std::string getColourFormatString(uint16_t tiPhoto)
   }
 }
 
-static void set_resolution(double* res, float resx, float resy, short resUnit)
+static inline void set_resolution(double* res, float resx, float resy, short resUnit)
 {
   // resolution is in pels / metre
   res[0] = resx;
