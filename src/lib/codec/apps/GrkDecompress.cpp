@@ -1510,7 +1510,6 @@ int GrkDecompress::main(int argc, const char* argv[])
   }
 cleanup:
   destoryParams(&initParams.parameters);
-  grk_deinitialize();
   return rc;
 }
 

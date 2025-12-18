@@ -21,7 +21,6 @@ from vispy.scene.visuals import Text
 from grok_core import (
     GRK_TILE_CACHE_ALL,
     grk_initialize,
-    grk_deinitialize,
     grk_decompress_parameters,
     grk_decompress_init,
     grk_decompress_read_header,
@@ -131,7 +130,6 @@ class TileViewerContext:
         if self.codec is not None:
             grk_object_unref(self.codec)
             self.codec = None
-        grk_deinitialize()
 
     def __del__(self):
         self.cleanup()

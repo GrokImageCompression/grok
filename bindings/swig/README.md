@@ -21,7 +21,6 @@ Now Grok api methods can be imported, for example
 from grok_core import (
     GRK_TILE_CACHE_ALL,
     grk_initialize,
-    grk_deinitialize,
     grk_decompress_parameters,
     grk_decompress_init,
     grk_decompress_read_header,

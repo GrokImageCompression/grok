@@ -989,7 +989,6 @@ beach:
   // cleanup
   grk_object_unref(codec_diff);
   grk_object_unref(codec_full);
-  grk_deinitialize();
 
   return rc;
 }

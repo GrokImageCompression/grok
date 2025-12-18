@@ -360,7 +360,6 @@ cleanup:
   grk_object_unref(codec);
   if(fout)
     fclose(fout);
-  grk_deinitialize();
 
   return rc;
 }

@@ -220,7 +220,6 @@ beach:
   if(encInputImage)
     grk_object_unref(&encInputImage->obj);
   // note: since decImage was allocated by library, it will be cleaned up by library
-  grk_deinitialize();
 
   return rc;
 }

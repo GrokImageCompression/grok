@@ -224,7 +224,6 @@ beach:
   // cleanup
   grk_object_unref(codec);
   grk_object_unref(&inputImage->obj);
-  grk_deinitialize();
 
   return rc;
 }

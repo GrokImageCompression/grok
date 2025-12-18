@@ -39,7 +39,6 @@ fn str_to_slice(src: &str) -> Result<[i8; 4096], GrokError> {
 /// Clean up resources safely
 fn cleanup(grk_cparameters: *mut _grk_cparameters) {
     unsafe {
-        grk_deinitialize();
         libc::free(grk_cparameters as *mut libc::c_void);
     }
 }

@@ -978,12 +978,6 @@ GRK_API void GRK_CALLCONV grk_initialize(const char* plugin_path, uint32_t num_t
                                          bool* plugin_initialized);
 
 /**
- * @brief De-initializes Grok library
- * Not usually necessary to explicitly call this to de-initialize
- */
-GRK_API void GRK_CALLCONV grk_deinitialize();
-
-/**
  * @brief Increments ref count
  * @param obj Grok object (see @ref grk_object)
  */

@@ -18,7 +18,6 @@ import numpy as np
 from PIL import Image, ImageChops  # Assumes Pillow is installed
 from grok_core import (
     grk_initialize,
-    grk_deinitialize,
     grk_decompress_parameters,
     grk_image_comp,
     grk_object,
@@ -135,7 +134,6 @@ def decompress_image(
         return False
 
     grk_object_unref(codec)
-    grk_deinitialize()
     return True
 
 

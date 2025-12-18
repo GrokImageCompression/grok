@@ -79,10 +79,7 @@ int GrkRandomTileAccess::main(int argc, char** argv)
   // RAII for cleanup
   struct GrkCleanup
   {
-    ~GrkCleanup()
-    {
-      grk_deinitialize();
-    }
+    ~GrkCleanup() {}
   } cleanup;
 
   if(argc != 2)

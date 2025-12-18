@@ -870,7 +870,6 @@ int GrkCompress::main(int argc, const char** argv, grk_image* in_image, grk_stre
     goto cleanup;
   }
 cleanup:
-  grk_deinitialize();
 
   return success;
 }
