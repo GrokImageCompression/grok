@@ -290,7 +290,7 @@
                 "-i",
                 "$HOME/temp/florence.jp2",
                 "-o",
-                "$HOME/temp/florence.jp2.tif",
+                "$HOME/temp/florence.jp2.jpg",
 
             ],
             "cwd": "${workspaceFolder}",

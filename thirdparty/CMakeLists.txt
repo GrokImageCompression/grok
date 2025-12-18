@@ -60,18 +60,28 @@ if (GRK_BUILD_JPEG)
 	    ${CMAKE_CURRENT_BINARY_DIR}/../_deps/libjpeg-turbo-build
 	    PARENT_SCOPE)
   else()
-	  ExternalProject_Add(libjpeg-turbo
-	                      CMAKE_ARGS
-	                        -DENABLE_SHARED=OFF
-	                        -DENABLE_STATIC=ON
-	                        -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_BINARY_DIR}/libjpeg-turbo
-	                        -DCMAKE_INSTALL_LIBDIR=${CMAKE_CURRENT_BINARY_DIR}/bin
-	                        -DCMAKE_POSITION_INDEPENDENT_CODE=ON
-	                        -DWITH_TURBOJPEG=0
-	  				      GIT_REPOSITORY https://github.com/libjpeg-turbo/libjpeg-turbo.git
-	  					  GIT_TAG        3.1.2)
-	set(JPEG_LIBNAME ${CMAKE_CURRENT_BINARY_DIR}/bin/${JPEG_LIBNAME} PARENT_SCOPE)
-	set(JPEG_INCLUDE_DIRS ${CMAKE_CURRENT_BINARY_DIR}/libjpeg-turbo/include/ PARENT_SCOPE)
+    ExternalProject_Add(libjpeg-turbo
+                          CMAKE_ARGS
+                            -DENABLE_SHARED=OFF
+                            -DENABLE_STATIC=ON
+                            -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_BINARY_DIR}/libjpeg-turbo
+                            -DCMAKE_INSTALL_LIBDIR=${CMAKE_CURRENT_BINARY_DIR}/bin
+                            -DCMAKE_POSITION_INDEPENDENT_CODE=ON
+                            -DWITH_TURBOJPEG=0
+                          GIT_REPOSITORY https://github.com/libjpeg-turbo/libjpeg-turbo.git
+                          GIT_TAG        3.1.2)
+
+    # Create imported target for the static library
+    add_library(jpeg-imported STATIC IMPORTED GLOBAL)
+    set_target_properties(jpeg-imported PROPERTIES
+      IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/bin/${JPEG_LIBNAME}
+      INTERFACE_INCLUDE_DIRECTORIES ${CMAKE_CURRENT_BINARY_DIR}/libjpeg-turbo/include
+    )
+    add_dependencies(jpeg-imported libjpeg-turbo)
+
+    # Use the imported target instead of raw lib path
+    set(JPEG_LIBNAME jpeg-imported PARENT_SCOPE)
+    set(JPEG_INCLUDE_DIRS ${CMAKE_CURRENT_BINARY_DIR}/libjpeg-turbo/include/ PARENT_SCOPE)
 endif()
 else(GRK_BUILD_JPEG)
 	find_package(JPEG)
