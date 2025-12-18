@@ -46,8 +46,8 @@ void MarkerCache::dump(FILE* out)
   fprintf(out, "Codestream index from main header: {\n");
 
   // Print main header positions
-  fprintf(out, "\t Main header start position=%zu\n", mainHeaderStart_);
-  fprintf(out, "\t Main header end position=%zu\n", tileStreamStart_);
+  fprintf(out, "\t Main header start position=%" PRIu64 "\n", mainHeaderStart_);
+  fprintf(out, "\t Main header end position=%" PRIu64 "\n", tileStreamStart_);
 
   // Print marker list
   fprintf(out, "\t Marker list: {\n");
