@@ -214,7 +214,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] const char** argv)
       size_t written = fwrite(outputStreamParams.buf, 1, compressedLength, fp);
       if(written != compressedLength)
       {
-        fprintf(stderr, "Buffer compress: only %" PRIu64 " bytes written out of %" PRIu64 " total",
+        fprintf(stderr, "Buffer compress: only %" PRIu64 " bytes written out of %zu total",
                 compressedLength, written);
       }
       fclose(fp);
