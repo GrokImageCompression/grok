@@ -24,8 +24,8 @@
 #include <sys/mman.h>
 #endif
 #include <fcntl.h>
-
 #include <filesystem>
+#include <mutex>
 
 #include "grk_includes.h"
 
@@ -108,6 +108,19 @@ static grk_object* grkDecompressCreate(grk::IStream* stream)
   return &codec->obj;
 }
 
+static inline bool areStringsEqual(const char* lhs, const char* rhs)
+{
+  if(lhs == nullptr && rhs == nullptr)
+  {
+    return true;
+  }
+  if(lhs == nullptr || rhs == nullptr)
+  {
+    return false;
+  }
+  return std::strcmp(lhs, rhs) == 0;
+}
+
 struct InitState
 {
   InitState(const char* pluginPath, uint32_t numThreads)
@@ -117,7 +130,7 @@ struct InitState
   InitState(void) : InitState(nullptr, 0) {}
   bool operator==(const InitState& rhs) const
   {
-    return pluginPath_ == rhs.pluginPath_ && numThreads_ == rhs.numThreads_;
+    return areStringsEqual(pluginPath_, rhs.pluginPath_) && numThreads_ == rhs.numThreads_;
   }
   const char* pluginPath_;
   uint32_t numThreads_;
@@ -126,6 +139,8 @@ struct InitState
 };
 
 static InitState initState_;
+static std::mutex initMutex;
+
 void grk_initialize(const char* pluginPath, uint32_t numThreads, bool* plugin_initialized)
 {
   const char* singleThreadEnv = std::getenv("GRK_TEST_SINGLE");
@@ -134,50 +149,54 @@ void grk_initialize(const char* pluginPath, uint32_t numThreads, bool* plugin_in
     numThreads = 1; // Force single-threaded execution
   }
   InitState newState(pluginPath, numThreads);
-  if(initState_.initialized_ && newState == initState_)
   {
-    if(plugin_initialized)
-      *plugin_initialized = initState_.pluginInitialized_;
-    return;
-  }
-  // 1. set up executor
-  ExecSingleton::create(numThreads);
-
-  if(!Logger::logger_.info_handler)
-  {
-    grk_msg_handlers handlers = {};
-    const char* debug_env = std::getenv("GRK_DEBUG");
-    if(debug_env)
+    std::lock_guard<std::mutex> guard(initMutex);
+    if(initState_.initialized_ && newState == initState_)
     {
-      int level = std::atoi(debug_env);
-      if(level >= 1)
-        handlers.error_callback = errorCallback;
-      if(level >= 2)
-        handlers.warn_callback = warningCallback;
-      if(level >= 3)
-        handlers.info_callback = infoCallback;
-      if(level >= 4)
-        handlers.debug_callback = debugCallback;
-      if(level >= 5)
-        handlers.trace_callback = traceCallback;
-    }
-    grk_set_msg_handlers(handlers);
-  }
-
-  initState_ = newState;
-
-  // 2. try to load plugin
-  if(!initState_.pluginInitialized_)
-  {
-    grk_plugin_load_info info;
-    info.pluginPath = pluginPath;
-    initState_.pluginInitialized_ = grk_plugin_load(info);
-    if(initState_.pluginInitialized_)
-    {
-      grklog.info("Plugin loaded");
       if(plugin_initialized)
-        *plugin_initialized = true;
+        *plugin_initialized = initState_.pluginInitialized_;
+      return;
     }
+    // 1. set up executor
+    ExecSingleton::create(numThreads);
+
+    if(!Logger::logger_.info_handler)
+    {
+      grk_msg_handlers handlers = {};
+      const char* debug_env = std::getenv("GRK_DEBUG");
+      if(debug_env)
+      {
+        int level = std::atoi(debug_env);
+        if(level >= 1)
+          handlers.error_callback = errorCallback;
+        if(level >= 2)
+          handlers.warn_callback = warningCallback;
+        if(level >= 3)
+          handlers.info_callback = infoCallback;
+        if(level >= 4)
+          handlers.debug_callback = debugCallback;
+        if(level >= 5)
+          handlers.trace_callback = traceCallback;
+      }
+      grk_set_msg_handlers(handlers);
+    }
+
+    initState_ = newState;
+
+    // 2. try to load plugin
+    if(!initState_.pluginInitialized_)
+    {
+      grk_plugin_load_info info;
+      info.pluginPath = pluginPath;
+      initState_.pluginInitialized_ = grk_plugin_load(info);
+      if(initState_.pluginInitialized_)
+      {
+        grklog.info("Plugin loaded");
+        if(plugin_initialized)
+          *plugin_initialized = true;
+      }
+    }
+    initState_.initialized_ = true;
   }
 }
 
@@ -353,6 +372,7 @@ void grk_decompress_wait(grk_object* codecWrapper, grk_wait_swath* swath)
 }
 bool grk_decompress(grk_object* codecWrapper, grk_plugin_tile* tile)
 {
+  grk_initialize(nullptr, 0, nullptr);
   if(codecWrapper)
   {
     auto codec = Codec::getImpl(codecWrapper);
@@ -546,6 +566,7 @@ grk_object* grk_compress_init(grk_stream_params* streamParams, grk_cparameters* 
 
 uint64_t grk_compress(grk_object* codecWrapper, grk_plugin_tile* tile)
 {
+  grk_initialize(nullptr, 0, nullptr);
   if(codecWrapper)
   {
     auto codec = Codec::getImpl(codecWrapper);

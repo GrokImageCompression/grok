@@ -49,10 +49,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] const char** argv)
   bool images_equal = true;
   grk_stream_params decCompressedStream = {}; // compressed stream passed to decompressor
 
-  // 1. initialize library
-  grk_initialize(nullptr, 0, nullptr);
-
-  // 2. initialize compress and decompress parameters
+  // 1. initialize compress and decompress parameters
   grk_cparameters compressParams;
   grk_compress_set_default_params(&compressParams);
   compressParams.cod_format = GRK_FMT_JP2;
@@ -61,7 +58,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] const char** argv)
 
   grk_decompress_parameters decompressParams = {};
 
-  // 3.initialize struct holding encoder compressed stream
+  // 2.initialize struct holding encoder compressed stream
   std::unique_ptr<uint8_t[]> compressedData;
   // allocate size of input image, assuming that compressed stream
   // is smaller than input
@@ -72,7 +69,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] const char** argv)
   encCompressedStream.buf = compressedData.get();
   encCompressedStream.buf_len = bufLen;
 
-  // 4. create image that will be passed to encoder
+  // 3. create image that will be passed to encoder
   auto components = std::make_unique<grk_image_comp[]>(numComps);
   for(uint32_t i = 0; i < numComps; ++i)
   {
@@ -124,7 +121,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] const char** argv)
     }
   }
 
-  // 5. compress
+  // 4. compress
   codec = grk_compress_init(&encCompressedStream, &compressParams, encInputImage);
   if(!codec)
   {
@@ -141,11 +138,11 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] const char** argv)
   grk_object_unref(codec);
   printf("Compression succeeded: %" PRIu64 " bytes used\n", compressedLength);
 
-  // 6. copy encCompressedStream to decCompressedStream to prepare for decompression
+  // 5. copy encCompressedStream to decCompressedStream to prepare for decompression
   decCompressedStream.buf = encCompressedStream.buf;
   decCompressedStream.buf_len = compressedLength;
 
-  // 7. decompress
+  // 6. decompress
   codec = grk_decompress_init(&decCompressedStream, &decompressParams);
   if(!grk_decompress_read_header(codec, &headerInfo))
   {
@@ -158,7 +155,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] const char** argv)
     goto beach;
   }
 
-  // 8. retrieve decompressed image
+  // 7. retrieve decompressed image
   decOutputImage = grk_decompress_get_image(codec);
   if(!decOutputImage)
   {
@@ -167,7 +164,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] const char** argv)
   }
   printf("Decompression succeeded\n");
 
-  // 9. compare original uncompressedData to decompressed decInputmage
+  // 8. compare original uncompressedData to decompressed decInputmage
   if(encInputImage->numcomps != decOutputImage->numcomps ||
      encInputImage->x0 != decOutputImage->x0 || encInputImage->y0 != decOutputImage->y0 ||
      encInputImage->x1 != decOutputImage->x1 || encInputImage->y1 != decOutputImage->y1 ||

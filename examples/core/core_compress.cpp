@@ -99,16 +99,13 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] const char** argv)
 
   uint64_t compressedLength = 0;
 
-  // 1. initialize library
-  grk_initialize(nullptr, 0, nullptr);
-
-  // 2. initialize compress parameters
+  // 1. initialize compress parameters
   grk_cparameters compressParams;
   grk_compress_set_default_params(&compressParams);
   compressParams.cod_format = GRK_FMT_JP2;
   compressParams.verbose = true;
 
-  // 3.initialize output stream
+  // 2.initialize output stream
   enum eStreamOutput
   {
     STREAM_OUTPUT_BUFFER, // output to buffer
@@ -144,7 +141,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] const char** argv)
     safe_strcpy(outputStreamParams.file, outFile);
   }
 
-  // 4. create input image (blank)
+  // 3. create input image (blank)
   auto components = std::make_unique<grk_image_comp[]>(numComps);
   for(uint32_t i = 0; i < numComps; ++i)
   {
@@ -184,7 +181,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] const char** argv)
     delete[] srcData;
   }
 
-  // 5. initialize compressor
+  // 4. initialize compressor
   codec = grk_compress_init(&outputStreamParams, &compressParams, inputImage);
   if(!codec)
   {
@@ -192,7 +189,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] const char** argv)
     goto beach;
   }
 
-  // 6. compress
+  // 5. compress
   compressedLength = grk_compress(codec, nullptr);
   if(compressedLength == 0)
   {
@@ -201,7 +198,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] const char** argv)
   }
   printf("Compression succeeded: %" PRIu64 " bytes used.\n", compressedLength);
 
-  // 7. write buffer to file if needed
+  // 6. write buffer to file if needed
   if(output == STREAM_OUTPUT_FILE)
   {
     auto fp = fopen(outFile, "wb");
