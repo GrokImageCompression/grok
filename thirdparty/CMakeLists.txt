@@ -73,6 +73,8 @@ if (GRK_BUILD_JPEG)
 
     # Create imported target for the static library
     add_library(jpeg-imported STATIC IMPORTED GLOBAL)
+    file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/libjpeg-turbo/include)
+    file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/bin)
     set_target_properties(jpeg-imported PROPERTIES
       IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/bin/${JPEG_LIBNAME}
       INTERFACE_INCLUDE_DIRECTORIES ${CMAKE_CURRENT_BINARY_DIR}/libjpeg-turbo/include
