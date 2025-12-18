@@ -93,7 +93,7 @@ class TileViewerContext:
         self.input_file = input_file
         self.default_layers = layers
 
-        grk_initialize(None, 0)
+        grk_initialize(None, 0, None)
         self.codec = None
         self.header_info = grk_header_info()
         self.tx, self.ty = 0, 0  # Tile grid coordinates

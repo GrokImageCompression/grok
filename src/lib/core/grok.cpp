@@ -126,17 +126,20 @@ struct InitState
 };
 
 static InitState initState_;
-bool grk_initialize(const char* pluginPath, uint32_t numThreads)
+void grk_initialize(const char* pluginPath, uint32_t numThreads, bool* plugin_initialized)
 {
   const char* singleThreadEnv = std::getenv("GRK_TEST_SINGLE");
   if(singleThreadEnv && std::atoi(singleThreadEnv) == 1)
   {
     numThreads = 1; // Force single-threaded execution
   }
-
   InitState newState(pluginPath, numThreads);
   if(initState_.initialized_ && newState == initState_)
-    return true;
+  {
+    if(plugin_initialized)
+      *plugin_initialized = initState_.pluginInitialized_;
+    return;
+  }
   // 1. set up executor
   ExecSingleton::create(numThreads);
 
@@ -169,13 +172,13 @@ bool grk_initialize(const char* pluginPath, uint32_t numThreads)
     grk_plugin_load_info info;
     info.pluginPath = pluginPath;
     initState_.pluginInitialized_ = grk_plugin_load(info);
-    if(!initState_.pluginInitialized_)
-      return false;
-    else
+    if(initState_.pluginInitialized_)
+    {
       grklog.info("Plugin loaded");
+      if(plugin_initialized)
+        *plugin_initialized = true;
+    }
   }
-
-  return true;
 }
 
 GRK_API void GRK_CALLCONV grk_deinitialize()

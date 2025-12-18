@@ -584,7 +584,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] const char** argv)
   }
 
   // initialize library
-  grk_initialize(nullptr, numThreads);
+  grk_initialize(nullptr, numThreads, nullptr);
 
   // initialize decompress parameters
   grk_decompress_parameters decompressParams = {};
@@ -707,7 +707,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] const char** argv)
     stream_params.buf = buf;
     stream_params.buf_len = len;
 
-    grk_initialize(nullptr, 0);
+    grk_initialize(nullptr, 0, nullptr);
 
     // Proceed with decompression
     codec = grk_decompress_init(&stream_params, &parameters);

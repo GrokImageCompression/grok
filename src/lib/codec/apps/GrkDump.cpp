@@ -239,7 +239,7 @@ int GrkDump::main(int argc, const char* argv[])
   dircnt* dirptr = nullptr;
   int rc = EXIT_SUCCESS;
 
-  grk_initialize(nullptr, 0);
+  grk_initialize(nullptr, 0, nullptr);
   configureLogging("");
 
   /* Initialize inputFolder */

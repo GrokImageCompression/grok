@@ -969,10 +969,13 @@ GRK_API const char* GRK_CALLCONV grk_version(void);
 /**
  * @brief Initializes Grok library
  * Must be called before any Grok API calls
- * @param pluginPath 	path to plugin
- * @param num_threads number of threads to use for compress/decompress
+ * @param plugin_path 	path to plugin - set this to NULL
+ * @param num_threads number of threads to use for compress/decompress - set to 0 to use all threads
+ * @param plugin_initialized if plugin is initialized, this pointer to bool will be set to true,
+ * otherwise false. Set this to NULL.
  */
-GRK_API bool GRK_CALLCONV grk_initialize(const char* pluginPath, uint32_t num_threads);
+GRK_API void GRK_CALLCONV grk_initialize(const char* plugin_path, uint32_t num_threads,
+                                         bool* plugin_initialized);
 
 /**
  * @brief De-initializes Grok library

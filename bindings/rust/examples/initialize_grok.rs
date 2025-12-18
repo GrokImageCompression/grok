@@ -46,10 +46,9 @@ fn cleanup(grk_cparameters: *mut _grk_cparameters) {
 
 fn initialize_grk() -> Result<(), GrokError> {
     let num_threads = 0;  // Pass 0 for number of threads
-    let verbose = true;   // Example: set verbose to true
 
     unsafe {
-        grk_initialize(ptr::null(), num_threads, verbose);
+        grk_initialize(ptr::null(), num_threads, ptr::null());
     }
 
     Ok(())

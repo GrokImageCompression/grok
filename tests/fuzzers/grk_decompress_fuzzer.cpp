@@ -27,7 +27,7 @@ struct Initializer
 {
   Initializer()
   {
-    grk_initialize(nullptr, 0);
+    grk_initialize(nullptr, 0, nullptr);
   }
 };
 int LLVMFuzzerInitialize(int* argc, char*** argv)

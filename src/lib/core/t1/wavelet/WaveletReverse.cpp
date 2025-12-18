@@ -238,7 +238,8 @@ std::unique_ptr<WaveletReverse::BufferPtr[]> WaveletReverse::vertPoolData_ = nul
 bool WaveletReverse::is_allocated_ = false;
 std::once_flag WaveletReverse::alloc_flag_;
 
-uint32_t get_PLL_COLS_53() {
+uint32_t get_PLL_COLS_53()
+{
   static uint32_t value = HWY_DYNAMIC_DISPATCH(GetHWY_PLL_COLS_53)();
   return value;
 }

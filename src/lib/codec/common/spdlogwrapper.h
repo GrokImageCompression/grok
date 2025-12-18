@@ -25,7 +25,7 @@
 #pragma GCC diagnostic ignored "-Wsign-conversion"
 #elif defined(_MSC_VER)
 #pragma warning(push)
-#pragma warning(disable : 4365)  // 'conversion' : signed/unsigned mismatch
+#pragma warning(disable : 4365) // 'conversion' : signed/unsigned mismatch
 #endif
 
 #include <spdlog/spdlog.h>

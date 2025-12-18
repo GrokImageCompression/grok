@@ -50,7 +50,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] const char** argv)
   grk_stream_params decCompressedStream = {}; // compressed stream passed to decompressor
 
   // 1. initialize library
-  grk_initialize(nullptr, 0);
+  grk_initialize(nullptr, 0, nullptr);
 
   // 2. initialize compress and decompress parameters
   grk_cparameters compressParams;

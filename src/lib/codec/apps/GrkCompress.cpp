@@ -914,7 +914,9 @@ GrkRC GrkCompress::pluginMain(int argc, const char* argv[], CompressInitParams* 
 #endif
   initParams->initialized = true;
   // load plugin but do not actually create codec
-  if(!grk_initialize(initParams->pluginPath, initParams->parameters.num_threads))
+  bool pluginInitialised;
+  grk_initialize(initParams->pluginPath, initParams->parameters.num_threads, &pluginInitialised);
+  if(!pluginInitialised)
   {
     return GrkRCFail;
   }

@@ -100,7 +100,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] const char** argv)
   uint64_t compressedLength = 0;
 
   // 1. initialize library
-  grk_initialize(nullptr, 0);
+  grk_initialize(nullptr, 0, nullptr);
 
   // 2. initialize compress parameters
   grk_cparameters compressParams;

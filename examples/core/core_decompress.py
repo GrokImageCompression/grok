@@ -97,7 +97,7 @@ def decompress_image(
     tile_index=0,
     decompress_window=False,
 ):
-    grk_initialize(None, 0, True)
+    grk_initialize(None, 0, None)
 
     decompress_params = grk_decompress_parameters()
 
