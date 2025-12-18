@@ -70,12 +70,12 @@ static void png_error_fn([[maybe_unused]] png_structp png_ptr, png_const_charp e
   spdlog::error("libpng: {}", error_message);
 }
 
-static void user_warning_fn([[maybe_unused]] png_structp png_ptr, png_const_charp message)
+static inline void user_warning_fn([[maybe_unused]] png_structp png_ptr, png_const_charp message)
 {
   spdlog::warn("libpng warning: {}", message);
 }
 
-static void user_error_fn([[maybe_unused]] png_structp png_ptr, png_const_charp message)
+static inline void user_error_fn([[maybe_unused]] png_structp png_ptr, png_const_charp message)
 {
   spdlog::error("libpng error: {}", message);
 }
