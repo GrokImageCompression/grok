@@ -108,11 +108,16 @@ static grk_object* grkDecompressCreate(grk::IStream* stream)
   return &codec->obj;
 }
 
-static inline void grk_deinitialize()
+class GrkCleanup
 {
-  grk_plugin_cleanup();
-  ExecSingleton::destroy();
-}
+public:
+  GrkCleanup() = default;
+  ~GrkCleanup()
+  {
+    grk_plugin_cleanup();
+    ExecSingleton::destroy();
+  }
+};
 
 static inline bool areStringsEqual(const char* lhs, const char* rhs)
 {
@@ -163,17 +168,7 @@ void grk_initialize(const char* pluginPath, uint32_t numThreads, bool* plugin_in
         *plugin_initialized = initState_.pluginInitialized_;
       return;
     }
-
-    // Register cleanup once, before doing init work
-    static bool atexit_registered = false;
-    if(!atexit_registered)
-    {
-      if(std::atexit(grk_deinitialize) != 0)
-      {
-        // Handle registration failure (e.g., log error)
-      }
-      atexit_registered = true;
-    }
+    static GrkCleanup cleanup;
 
     // 1. set up executor
     ExecSingleton::create(numThreads);
