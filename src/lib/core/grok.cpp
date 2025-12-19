@@ -162,7 +162,9 @@ void grk_initialize(const char* pluginPath, uint32_t numThreads, bool* plugin_in
   InitState newState(pluginPath, numThreads);
   {
     std::lock_guard<std::mutex> guard(initMutex);
-    if(initState_.initialized_ && newState == initState_)
+    // library is initialized, then if either plugin is initialized or new state is identical
+    // to old state, then do not re-initialize and return right away
+    if(initState_.initialized_ && (initState_.pluginInitialized_ || newState == initState_))
     {
       if(plugin_initialized)
         *plugin_initialized = initState_.pluginInitialized_;
