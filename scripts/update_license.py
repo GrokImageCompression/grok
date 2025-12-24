@@ -1,4 +1,4 @@
-# Copyright (C) 2016-2025 Grok Image Compression Inc.
+# Copyright (C) 2016-2026 Grok Image Compression Inc.
 #
 # This source code is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License, version 3,
@@ -16,13 +16,13 @@ import os
 
 # Define the existing license header to identify
 existing_license_start = (
-    "/*\n *    Copyright (C) 2016-2025 Grok Image Compression Inc.\n"
+    "/*\n *    Copyright (C) 2016-2026 Grok Image Compression Inc.\n"
 )
 existing_license_end = "*/"
 
 # Define the new license header
 new_license = """/*
- *    Copyright (C) 2016-2025 Grok Image Compression Inc.
+ *    Copyright (C) 2016-2026 Grok Image Compression Inc.
  *
  *    All rights reserved. This source code is proprietary and confidential.
  *    Unauthorized copying of this file, via any medium, is strictly prohibited.

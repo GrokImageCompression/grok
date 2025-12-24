@@ -1,4 +1,4 @@
-REM Copyright (C) 2016-2025 Grok Image Compression Inc.
+REM Copyright (C) 2016-2026 Grok Image Compression Inc.
 REM
 REM This source code is free software: you can redistribute it and/or modify
 REM it under the terms of the GNU Affero General Public License, version 3,
