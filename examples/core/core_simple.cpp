@@ -223,6 +223,8 @@ beach:
 
 int main([[maybe_unused]] int argc, [[maybe_unused]] const char** argv)
 {
+  grk_initialize(nullptr, 0, nullptr);
+
   const uint16_t numComps = 1U;
   const auto dimX = 640U;
   const auto dimY = 480U;

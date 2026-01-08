@@ -74,7 +74,7 @@ static int32_t testTile(uint16_t tileIndex, const grk_image* image, grk_object* 
 int GrkRandomTileAccess::main(int argc, char** argv)
 {
   // Initialize Grok
-  grk_initialize(nullptr, 0, nullptr);
+  grk_initialize(nullptr, UINT32_MAX, nullptr);
 
   // RAII for cleanup
   struct GrkCleanup

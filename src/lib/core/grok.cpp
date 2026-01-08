@@ -15,6 +15,7 @@
  *
  */
 
+#include <cstdint>
 #include <memory>
 #ifdef _WIN32
 #include <windows.h>
@@ -162,14 +163,22 @@ void grk_initialize(const char* pluginPath, uint32_t numThreads, bool* plugin_in
   InitState newState(pluginPath, numThreads);
   {
     std::lock_guard<std::mutex> guard(initMutex);
-    // library is initialized, then if either plugin is initialized or new state is identical
-    // to old state, then do not re-initialize and return right away
-    if(initState_.initialized_ && (initState_.pluginInitialized_ || newState == initState_))
+    /*
+    if library is initialized, then if either of the following conditions apply:
+    1. plugin is initialized
+    2. new state is identical to old state
+    3. numThreads equals special value UINT32_MAX
+    , then DO NOT re-initialize, and return right away
+    */
+    if(initState_.initialized_ &&
+       (initState_.pluginInitialized_ || newState == initState_ || numThreads == UINT32_MAX))
     {
       if(plugin_initialized)
         *plugin_initialized = initState_.pluginInitialized_;
       return;
     }
+    if(numThreads == UINT32_MAX)
+      numThreads = 0;
     static GrkCleanup cleanup;
 
     // 1. set up executor
@@ -381,7 +390,7 @@ void grk_decompress_wait(grk_object* codecWrapper, grk_wait_swath* swath)
 }
 bool grk_decompress(grk_object* codecWrapper, grk_plugin_tile* tile)
 {
-  grk_initialize(nullptr, 0, nullptr);
+  grk_initialize(nullptr, UINT32_MAX, nullptr);
   if(codecWrapper)
   {
     auto codec = Codec::getImpl(codecWrapper);
@@ -575,7 +584,7 @@ grk_object* grk_compress_init(grk_stream_params* streamParams, grk_cparameters* 
 
 uint64_t grk_compress(grk_object* codecWrapper, grk_plugin_tile* tile)
 {
-  grk_initialize(nullptr, 0, nullptr);
+  grk_initialize(nullptr, UINT32_MAX, nullptr);
   if(codecWrapper)
   {
     auto codec = Codec::getImpl(codecWrapper);
