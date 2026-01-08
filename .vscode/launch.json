@@ -174,12 +174,12 @@
             "name": "core simple",
             "type": "cppdbg",
             "request": "launch",
-            // "program": "${workspaceFolder}/build/bin/core_simple",
-            // "args": [],
-            "program": "/usr/bin/time",
-            "args": ["-v", "${workspaceFolder}/build/bin/core_simple"],
+            "program": "${workspaceFolder}/build/bin/core_simple",
+            "args": ["640","480"],
+            // "program": "/usr/bin/time",
+            // "args": ["-v", "${workspaceFolder}/build/bin/core_simple"],
             "environment": [
-                { "name": "GRK_DEBUG", "value": "3", "name": "GRK_TEST_SINGLE", "value": "1" }
+                { "name": "GRK_DEBUG", "value": "3" }
             ],
             "cwd": "${workspaceFolder}",
             "MIMode": "gdb",
