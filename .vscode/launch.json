@@ -228,7 +228,7 @@
             "miDebuggerPath": "/usr/bin/gdb"
         },
         {
-            "name": "test",
+            "name": "test single threaded",
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/build/bin/grk_decompress",
@@ -239,7 +239,7 @@
                 "$HOME/temp/test.tif",
             ],
             "environment": [
-                { "name": "GRK_DEBUG", "value": "3" }
+                { "name": "GRK_DEBUG", "value": "4",  "name": "GRK_TEST_SINGLE", "value": "1"  }
             ],
             "cwd": "${workspaceFolder}",
             "MIMode": "gdb",

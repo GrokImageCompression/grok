@@ -193,6 +193,9 @@ bool TIFFFormat<T>::encodeHeader(void)
   if(isHeaderEncoded())
     return true;
 
+  if(!image_)
+    return false;
+
   uint32_t width = image_->decompress_width;
   uint32_t height = image_->decompress_height;
   uint8_t bps = image_->decompress_prec;

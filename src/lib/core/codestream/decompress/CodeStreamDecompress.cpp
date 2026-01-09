@@ -182,7 +182,6 @@ GrkImage* CodeStreamDecompress::getImage(uint16_t tile_index, bool doWait)
     wait(tile_index);
 
   auto entry = tileCache_->get(tile_index);
-  assert(entry && entry->processor->getImage());
   return entry ? entry->processor->getImage() : nullptr;
 }
 GrkImage* CodeStreamDecompress::getImage()
