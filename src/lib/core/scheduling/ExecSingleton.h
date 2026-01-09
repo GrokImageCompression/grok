@@ -208,8 +208,10 @@ public:
    */
   static uint32_t workerId(void)
   {
-    int id = get().this_worker_id();
-    return (numThreads_ > 1 && id >= 0) ? (uint32_t)id : 0;
+    if(numThreads_ == 1)
+      return 0;
+    auto id = get().this_worker_id();
+    return (id >= 0) ? (uint32_t)id : 0;
   }
 
 private:
