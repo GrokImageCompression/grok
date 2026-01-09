@@ -104,17 +104,14 @@ int GrkCompareRawFiles::main(int argc, char** argv)
   spdlog::info("Test_filename = {}", params.test_filename);
 
 #ifdef COPY_TEST_FILES_TO_REPO
-  if(!fs::exists(params.base_filename))
+  try
   {
-    try
-    {
-      fs::rename(params.test_filename, params.base_filename);
-    }
-    catch(const fs::filesystem_error& e)
-    {
-      spdlog::error("Failed to rename test file to base file: {}", e.what());
-      return EXIT_FAILURE;
-    }
+    fs::rename(params.test_filename, params.base_filename);
+  }
+  catch(const fs::filesystem_error& e)
+  {
+    spdlog::error("Failed to rename test file to base file: {}", e.what());
+    return EXIT_FAILURE;
   }
 #endif
 

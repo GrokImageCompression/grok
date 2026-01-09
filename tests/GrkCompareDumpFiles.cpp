@@ -101,10 +101,7 @@ int GrkCompareDumpFiles::main(int argc, char** argv)
   spdlog::info("Test_filename = {}", params.test_filename);
 
 #ifdef COPY_TEST_FILES_TO_REPO
-  if(!fs::exists(params.base_filename))
-  {
-    fs::rename(params.test_filename, params.base_filename);
-  }
+  fs::rename(params.test_filename, params.base_filename);
 #endif
 
   // Open files with RAII
