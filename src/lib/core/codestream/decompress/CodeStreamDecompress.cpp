@@ -682,6 +682,10 @@ std::function<bool()> CodeStreamDecompress::genDecompressTileTLMTask(
     {
       return false;
     }
+    catch(const CorruptSOTMarkerException& ex)
+    {
+      return false;
+    }
     return true;
   };
 }
@@ -964,6 +968,10 @@ bool CodeStreamDecompress::decompressTileImpl(uint16_t tileIndex)
     }
   }
   catch(const CorruptTLMException& ex)
+  {
+    return false;
+  }
+  catch(const CorruptSOTMarkerException& ex)
   {
     return false;
   }
