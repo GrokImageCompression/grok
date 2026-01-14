@@ -119,13 +119,19 @@ static size_t memStreamWrite(const uint8_t* src, size_t numBytes, void* dest)
 static bool memStreamSeek(uint64_t numBytes, void* src)
 {
   auto srcStream = (MemStream*)src;
+  bool rc = true;
 
-  if(numBytes < srcStream->len_)
+  if(numBytes <= srcStream->len_)
+  {
     srcStream->off_ = numBytes;
+  }
   else
+  {
     srcStream->off_ = srcStream->len_;
+    rc = false;
+  }
 
-  return true;
+  return rc;
 }
 
 void memStreamSetup(IStream* stream, bool isReadStream)
