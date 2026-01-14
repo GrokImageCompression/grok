@@ -207,7 +207,7 @@ void BlockCoder::checkSegSym(int32_t cblksty)
   }
 }
 
-template<uint8_t w_, uint8_t h_, bool vsc>
+template<uint16_t w_, uint16_t h_, bool vsc>
 void BlockCoder::dec_clnpass(int8_t bpno)
 {
   DEC_PASS_CLN_IMPL(bpno, vsc, w_, h_, w_ + 2);
@@ -228,7 +228,7 @@ void BlockCoder::dec_clnpass(int8_t bpno, int32_t cblksty)
   checkSegSym(cblksty);
 }
 
-template<uint8_t w_, uint8_t h_, bool vsc>
+template<uint16_t w_, uint16_t h_, bool vsc>
 void BlockCoder::dec_sigpass(int8_t bpno)
 {
   DEC_PASS_SIG_IMPL(bpno, vsc, w_, h_, w_ + 2);
@@ -248,7 +248,7 @@ void BlockCoder::dec_sigpass(int8_t bpno, int32_t cblksty)
   }
 }
 
-template<uint8_t w_, uint8_t h_>
+template<uint16_t w_, uint16_t h_>
 void BlockCoder::dec_refpass(int8_t bpno)
 {
   DEC_PASS_REF_IMPL(bpno, w_, h_, w_ + 2);
@@ -532,7 +532,7 @@ void BlockCoder::dec_refpass(int8_t bpno)
     POP_MQC();                                                                                  \
   }
 
-template<uint8_t w_, uint8_t h_, bool vsc>
+template<uint16_t w_, uint16_t h_, bool vsc>
 void BlockCoder::dec_sigpass_diff(int8_t bpno, uint8_t passno, uint8_t passtype)
 {
   DEC_PASS_SIG_IMPL_DIFF(bpno, vsc, w_, h_, w_ + 2);
@@ -551,7 +551,7 @@ void BlockCoder::dec_sigpass_diff(int8_t bpno, uint8_t passno, uint8_t passtype,
     DEC_PASS_SIG_IMPL_DIFF(bpno, cblksty & GRK_CBLKSTY_VSC, w_, h_, w_ + 2);
   }
 }
-template<uint8_t w_, uint8_t h_, bool vsc>
+template<uint16_t w_, uint16_t h_, bool vsc>
 void BlockCoder::dec_sigpass_diff_final(int8_t bpno, uint8_t passno, uint8_t passtype)
 {
   // suppress warning
@@ -650,7 +650,7 @@ void BlockCoder::dec_sigpass_diff_final(int8_t bpno, uint8_t passno, uint8_t pas
     POP_MQC();                                                           \
   }
 
-template<uint8_t w_, uint8_t h_>
+template<uint16_t w_, uint16_t h_>
 void BlockCoder::dec_refpass_diff(int8_t bpno, uint8_t passno, uint8_t passtype)
 {
   DEC_PASS_REF_IMPL_DIFF(bpno, w_, h_, w_ + 2);
@@ -666,7 +666,7 @@ void BlockCoder::dec_refpass_diff(int8_t bpno, uint8_t passno, uint8_t passtype)
     DEC_PASS_REF_IMPL_DIFF(bpno, w_, h_, w_ + 2);
   }
 }
-template<uint8_t w_, uint8_t h_>
+template<uint16_t w_, uint16_t h_>
 void BlockCoder::dec_refpass_diff_final(int8_t bpno, uint8_t passno, uint8_t passtype)
 {
   // suppress warning
@@ -685,7 +685,7 @@ void BlockCoder::dec_refpass_diff_final(int8_t bpno, uint8_t passno, uint8_t pas
   }
 }
 
-template<uint8_t w_, uint8_t h_, bool vsc>
+template<uint16_t w_, uint16_t h_, bool vsc>
 void BlockCoder::dec_clnpass_diff(int8_t bpno, uint8_t passno, uint8_t passtype)
 {
   DEC_PASS_CLN_IMPL_DIFF(bpno, vsc, w_, h_, w_ + 2);
@@ -705,7 +705,7 @@ void BlockCoder::dec_clnpass_diff(int8_t bpno, uint8_t passno, uint8_t passtype,
   }
   checkSegSym(cblksty);
 }
-template<uint8_t w_, uint8_t h_, bool vsc>
+template<uint16_t w_, uint16_t h_, bool vsc>
 void BlockCoder::dec_clnpass_diff_final(int8_t bpno, uint8_t passno, uint8_t passtype)
 {
   // suppress warning

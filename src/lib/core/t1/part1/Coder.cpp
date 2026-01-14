@@ -25,7 +25,7 @@ namespace grk
 {
 namespace t1_part1
 {
-  Coder::Coder(bool isCompressor, uint8_t maxCblkW, uint8_t maxCblkH, uint32_t cacheStrategy)
+  Coder::Coder(bool isCompressor, uint16_t maxCblkW, uint16_t maxCblkH, uint32_t cacheStrategy)
       : blockCoder_(nullptr), cacheStrategy_(cacheStrategy)
   {
     blockCoder_ = new BlockCoder(isCompressor, maxCblkW, maxCblkH, cacheStrategy);

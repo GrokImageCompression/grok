@@ -20,25 +20,25 @@
 namespace grk
 {
 
-bool CoderPool::contains(uint8_t maxCblkW, uint8_t maxCblkH)
+bool CoderPool::contains(uint8_t maxCblkWExp, uint8_t maxCblkHExp)
 {
-  auto key = CoderKey(maxCblkW, maxCblkH);
+  auto key = CoderKey(maxCblkWExp, maxCblkHExp);
   return coderMap_.find(key) != coderMap_.end();
 }
 
-void CoderPool::makeCoders(uint32_t numCoders, uint8_t maxCblkW, uint8_t maxCblkH,
+void CoderPool::makeCoders(uint32_t numCoders, uint8_t maxCblkWExp, uint8_t maxCblkHExp,
                            std::function<std::shared_ptr<ICoder>()> creator)
 {
-  if(contains(maxCblkW, maxCblkH))
+  if(contains(maxCblkWExp, maxCblkHExp))
     return;
   std::vector<std::shared_ptr<ICoder>> coders;
   for(uint32_t i = 0; i < numCoders; ++i)
     coders.push_back(creator());
-  coderMap_[{maxCblkW, maxCblkH}] = std::move(coders);
+  coderMap_[{maxCblkWExp, maxCblkHExp}] = std::move(coders);
 }
-std::shared_ptr<ICoder> CoderPool::getCoder(size_t worker, uint8_t maxCblkW, uint8_t maxCblkH)
+std::shared_ptr<ICoder> CoderPool::getCoder(size_t worker, uint8_t maxCblkWExp, uint8_t maxCblkHExp)
 {
-  auto it = coderMap_.find({maxCblkW, maxCblkH});
+  auto it = coderMap_.find({maxCblkWExp, maxCblkHExp});
   if(it == coderMap_.end())
   {
     throw std::out_of_range("CoderKey not found in coderMap");

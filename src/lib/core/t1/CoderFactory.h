@@ -24,7 +24,7 @@ namespace grk
 class CoderFactory
 {
 public:
-  static ICoder* makeCoder(bool isHT, bool isCompressor, uint8_t maxCblkW, uint8_t maxCblkH,
+  static ICoder* makeCoder(bool isHT, bool isCompressor, uint16_t maxCblkW, uint16_t maxCblkH,
                            uint32_t cacheStrategy);
   static Quantizer* makeQuantizer(bool ht, bool reversible, uint8_t guardBits);
 };

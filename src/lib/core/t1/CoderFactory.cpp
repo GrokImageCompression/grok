@@ -22,7 +22,7 @@
 
 namespace grk
 {
-ICoder* CoderFactory::makeCoder(bool isHT, bool isCompressor, uint8_t maxCblkW, uint8_t maxCblkH,
+ICoder* CoderFactory::makeCoder(bool isHT, bool isCompressor, uint16_t maxCblkW, uint16_t maxCblkH,
                                 uint32_t cacheStrategy)
 {
   if(isHT)

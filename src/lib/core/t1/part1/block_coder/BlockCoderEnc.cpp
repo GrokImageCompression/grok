@@ -115,7 +115,7 @@ static inline void update_flags(grk_flag* flagsPtr, uint32_t ci, uint32_t s, uin
   UPDATE_FLAGS(*flagsPtr, flagsPtr, ci, s, stride, vsc);
 }
 
-BlockCoder::BlockCoder(bool isCompressor, uint8_t maxCblkW, uint8_t maxCblkH,
+BlockCoder::BlockCoder(bool isCompressor, uint16_t maxCblkW, uint16_t maxCblkH,
                        uint32_t cacheStrategy)
     : cacheStrategy_(cacheStrategy), coder(cacheAll(cacheStrategy_)), w_(0), stride_(0), h_(0),
       uncompressedData_(nullptr), flags_(nullptr), flagsLen_(0), compressor(isCompressor)
@@ -146,7 +146,7 @@ void BlockCoder::print(void)
   printf("Block coder state: 0x%x 0x%x 0x%x\n", coder.c, coder.a, coder.ct);
 }
 
-bool BlockCoder::alloc(uint8_t width, uint8_t height)
+bool BlockCoder::alloc(uint16_t width, uint16_t height)
 {
   // uncompressed data
   if(width == 0 || height == 0)
@@ -306,7 +306,7 @@ void BlockCoder::dec_refpass_raw(int8_t bpno)
   const int32_t one = 1 << bpno;
   const int32_t poshalf = one >> 1;
 
-  uint8_t i = 0, j = 0, k = 0;
+  uint16_t i = 0, j = 0, k = 0;
 
   // Main loop: Process blocks of 4 rows.
   for(; k < (h_ & ~3U); k += 4, flagsPtr += 2, dataPtr += 3 * w_)
@@ -326,7 +326,7 @@ void BlockCoder::dec_refpass_raw(int8_t bpno)
   }
 
   // Handle the remaining rows (less than 4).
-  uint8_t remainingRows = h_ - k;
+  uint16_t remainingRows = h_ - k;
   if(remainingRows > 0)
   {
     for(i = 0; i < w_; ++i, ++flagsPtr, ++dataPtr)
@@ -338,19 +338,19 @@ void BlockCoder::dec_refpass_raw(int8_t bpno)
     }
   }
 }
-uint8_t BlockCoder::getFlagsStride(void)
+uint16_t BlockCoder::getFlagsStride(void)
 {
   return w_ + 2U;
 }
-uint8_t BlockCoder::getFlagsHeight(void)
+uint16_t BlockCoder::getFlagsHeight(void)
 {
-  return (uint8_t)((h_ + 3U) >> 2);
+  return (uint16_t)((h_ + 3U) >> 2);
 }
 
 void BlockCoder::initFlags(void)
 {
-  uint8_t flagsStride = getFlagsStride();
-  uint8_t flagsHeight = getFlagsHeight();
+  uint16_t flagsStride = getFlagsStride();
+  uint16_t flagsHeight = getFlagsHeight();
   memset(flags_, 0, flagsLen_ * sizeof(grk_flag));
 
   // Precompute the magic value used to stop passes.
@@ -464,7 +464,7 @@ int BlockCoder::enc_is_term_pass(cblk_enc* cblk, uint32_t cblksty, int8_t bpno, 
   }
 void BlockCoder::enc_sigpass(int8_t bpno, int32_t* nmsedec, uint8_t type, uint32_t cblksty)
 {
-  uint8_t i, k;
+  uint16_t i, k;
   int32_t const one = 1 << (bpno + T1_NMSEDEC_FRACBITS);
   // flags top left hand corner
   auto flagsPtr = flags_ + 1 + (w_ + 2);
@@ -503,7 +503,7 @@ void BlockCoder::enc_sigpass(int8_t bpno, int32_t* nmsedec, uint8_t type, uint32
         continue;
       }
       auto pdata = uncompressedData_ + k * stride_ + i;
-      for(uint8_t j = k; j < h_; ++j)
+      for(uint16_t j = k; j < h_; ++j)
       {
         enc_sigpass_step_macro(pdata, 3U * (j - k), (j == k && (cblksty & GRK_CBLKSTY_VSC) != 0));
         pdata += stride_;
@@ -538,7 +538,7 @@ void BlockCoder::enc_refpass(int8_t bpno, int32_t* nmsedec, uint8_t type)
   const uint8_t extra = 2U;
   if(nmsedec)
     *nmsedec = 0;
-  uint8_t k;
+  uint16_t k;
   for(k = 0; k < (h_ & ~3U); k += 4)
   {
     for(uint8_t i = 0; i < w_; ++i)
@@ -564,7 +564,7 @@ void BlockCoder::enc_refpass(int8_t bpno, int32_t* nmsedec, uint8_t type)
   }
   if(k < h_)
   {
-    for(uint8_t i = 0; i < w_; ++i)
+    for(uint16_t i = 0; i < w_; ++i)
     {
       if((*flagsPtr & (T1_SIGMA_4 | T1_SIGMA_7 | T1_SIGMA_10 | T1_SIGMA_13)) == 0)
       {
@@ -572,7 +572,7 @@ void BlockCoder::enc_refpass(int8_t bpno, int32_t* nmsedec, uint8_t type)
         flagsPtr++;
         continue;
       }
-      for(uint8_t j = k; j < h_; ++j)
+      for(uint16_t j = k; j < h_; ++j)
         enc_refpass_step_macro(uncompressedData_ + j * stride_ + i, 3 * (j - k));
       ++flagsPtr;
     }
@@ -587,10 +587,10 @@ void BlockCoder::enc_clnpass(int8_t bpno, int32_t* nmsedec, uint32_t cblksty)
   if(nmsedec)
     *nmsedec = 0;
   auto flagsPtr = flags_ + 1 + (w_ + 2);
-  uint8_t k;
+  uint16_t k;
   for(k = 0; k < (h_ & ~3U); k += 4, flagsPtr += 2)
   {
-    for(uint8_t i = 0; i < w_; ++i, ++flagsPtr)
+    for(uint16_t i = 0; i < w_; ++i, ++flagsPtr)
     {
       uint32_t agg = !(*flagsPtr);
       uint8_t runlen = 0;

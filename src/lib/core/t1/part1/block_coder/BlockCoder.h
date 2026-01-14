@@ -23,11 +23,11 @@ namespace grk
 class BlockCoder
 {
 public:
-  BlockCoder(bool isCompressor, uint8_t maxCblkW, uint8_t maxCblkH, uint32_t cacheStrategy);
+  BlockCoder(bool isCompressor, uint16_t maxCblkW, uint16_t maxCblkH, uint32_t cacheStrategy);
   ~BlockCoder();
 
   void print(void);
-  bool alloc(uint8_t w, uint8_t h);
+  bool alloc(uint16_t w, uint16_t h);
 
   void code_block_enc_deallocate(cblk_enc* p_code_block);
   double compress_cblk(cblk_enc* cblk, uint32_t max, uint8_t orientation, uint16_t compno,
@@ -51,8 +51,8 @@ public:
 
 private:
   void initFlags(void);
-  uint8_t getFlagsStride(void);
-  uint8_t getFlagsHeight(void);
+  uint16_t getFlagsStride(void);
+  uint16_t getFlagsHeight(void);
 
   uint32_t cacheStrategy_;
   mqcoder coder;
@@ -60,7 +60,7 @@ private:
   /**
    * @brief cached block width
    */
-  uint8_t w_;
+  uint16_t w_;
   /**
    * @brief cached block stride
    */
@@ -68,7 +68,7 @@ private:
   /**
    * @brief cached block height
    */
-  uint8_t h_;
+  uint16_t h_;
 
   /**
    * @brief uncompressed data buffer
@@ -90,33 +90,33 @@ private:
 
   void checkSegSym(int32_t cblksty);
 
-  template<uint8_t w, uint8_t h, bool vsc>
+  template<uint16_t w, uint16_t h, bool vsc>
   void dec_clnpass(int8_t bpno);
   void dec_clnpass(int8_t bpno, int32_t cblksty);
-  template<uint8_t w, uint8_t h, bool vsc>
+  template<uint16_t w, uint16_t h, bool vsc>
   void dec_clnpass_diff(int8_t bpno, uint8_t passno, uint8_t passtype);
   void dec_clnpass_diff(int8_t bpno, uint8_t passno, uint8_t passtype, int32_t cblksty);
-  template<uint8_t w, uint8_t h, bool vsc>
+  template<uint16_t w, uint16_t h, bool vsc>
   void dec_clnpass_diff_final(int8_t bpno, uint8_t passno, uint8_t passtype);
   void dec_clnpass_diff_final(int8_t bpno, uint8_t passno, uint8_t passtype, int32_t cblksty);
 
-  template<uint8_t w, uint8_t h, bool vsc>
+  template<uint16_t w, uint16_t h, bool vsc>
   void dec_sigpass(int8_t bpno);
   void dec_sigpass(int8_t bpno, int32_t cblksty);
-  template<uint8_t w, uint8_t h, bool vsc>
+  template<uint16_t w, uint16_t h, bool vsc>
   void dec_sigpass_diff(int8_t bpno, uint8_t passno, uint8_t passtype);
   void dec_sigpass_diff(int8_t bpno, uint8_t passno, uint8_t passtype, int32_t cblksty);
-  template<uint8_t w, uint8_t h, bool vsc>
+  template<uint16_t w, uint16_t h, bool vsc>
   void dec_sigpass_diff_final(int8_t bpno, uint8_t passno, uint8_t passtype);
   void dec_sigpass_diff_final(int8_t bpno, uint8_t passno, uint8_t passtype, int32_t cblksty);
 
-  template<uint8_t w, uint8_t h>
+  template<uint16_t w, uint16_t h>
   void dec_refpass(int8_t bpno);
   void dec_refpass(int8_t bpno);
-  template<uint8_t w, uint8_t h>
+  template<uint16_t w, uint16_t h>
   void dec_refpass_diff(int8_t bpno, uint8_t passno, uint8_t passtype);
   void dec_refpass_diff(int8_t bpno, uint8_t passno, uint8_t passtype);
-  template<uint8_t w, uint8_t h>
+  template<uint16_t w, uint16_t h>
   void dec_refpass_diff_final(int8_t bpno, uint8_t passno, uint8_t passtype);
   void dec_refpass_diff_final(int8_t bpno, uint8_t passno, uint8_t passtype);
 

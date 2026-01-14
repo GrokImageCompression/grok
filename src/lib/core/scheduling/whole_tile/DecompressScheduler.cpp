@@ -83,18 +83,19 @@ bool DecompressScheduler::schedule(TileProcessor* tileProcessor)
     // schedule blocks
     auto tccp = tcp->tccps_ + compno;
     // nominal code block dimensions
-    uint8_t cbw = (uint8_t)(tccp->cblkw_expn_ ? (uint8_t)1 << tccp->cblkw_expn_ : 0);
-    uint8_t cbh = (uint8_t)(tccp->cblkh_expn_ ? (uint8_t)1 << tccp->cblkh_expn_ : 0);
+    uint16_t cbw = tccp->cblkw_expn_ ? (uint16_t)1 << tccp->cblkw_expn_ : 0;
+    uint16_t cbh = tccp->cblkh_expn_ ? (uint16_t)1 << tccp->cblkh_expn_ : 0;
     auto activePool = &coderPool_;
-    if(streamPool_ && streamPool_->contains(cbw, cbh))
+    if(streamPool_ && streamPool_->contains(tccp->cblkw_expn_, tccp->cblkh_expn_))
       activePool = streamPool_;
     if(!cacheAll)
     {
-      activePool->makeCoders(
-          num_threads, cbw, cbh, [tcp, cbw, cbh, tileProcessor]() -> std::shared_ptr<ICoder> {
-            return std::shared_ptr<ICoder>(CoderFactory::makeCoder(
-                tcp->isHT(), false, cbw, cbh, tileProcessor->getTileCacheStrategy()));
-          });
+      activePool->makeCoders(num_threads, tccp->cblkw_expn_, tccp->cblkh_expn_,
+                             [tcp, cbw, cbh, tileProcessor]() -> std::shared_ptr<ICoder> {
+                               return std::shared_ptr<ICoder>(
+                                   CoderFactory::makeCoder(tcp->isHT(), false, cbw, cbh,
+                                                           tileProcessor->getTileCacheStrategy()));
+                             });
     }
     auto tilec = tileProcessor->getTile()->comps_ + compno;
     auto wholeTileDecoding = tilec->isWholeTileDecoding();
@@ -190,8 +191,8 @@ bool DecompressScheduler::schedule(TileProcessor* tileProcessor)
         resFlow = imageComponentFlow_[compno]->resFlows_ + resno;
       for(auto& block : rblocks.blocks_)
       {
-        auto blockFunc = [this, activePool, singleThread, tileProcessor, &block, cbw, cbh, cacheAll,
-                          finalLayer] {
+        auto blockFunc = [this, activePool, singleThread, tileProcessor, &block, tccp, cbw, cbh,
+                          cacheAll, finalLayer] {
           if(!success)
           {
             block.reset();
@@ -210,7 +211,8 @@ bool DecompressScheduler::schedule(TileProcessor* tileProcessor)
             {
               // get coder from pool
               auto threadnum = singleThread ? 0 : ExecSingleton::get().this_worker_id();
-              coder = activePool->getCoder((size_t)threadnum, cbw, cbh).get();
+              coder = activePool->getCoder((size_t)threadnum, tccp->cblkw_expn_, tccp->cblkh_expn_)
+                          .get();
             }
             try
             {

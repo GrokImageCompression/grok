@@ -179,12 +179,12 @@ bool CodeStreamDecompress::readHeader(grk_header_info* headerInfo)
     headerImage_->copyHeaderTo(multiTileComposite_.get());
     multiTileComposite_->validateColourSpace();
     uint32_t num_threads = (uint32_t)ExecSingleton::num_threads();
-    coderPool_.makeCoders(num_threads, 64, 64, [this]() -> std::shared_ptr<ICoder> {
+    coderPool_.makeCoders(num_threads, 6, 6, [this]() -> std::shared_ptr<ICoder> {
       return std::shared_ptr<ICoder>(
           CoderFactory::makeCoder(isHT_, false, 64, 64, tileCache_->getStrategy()));
     });
 
-    coderPool_.makeCoders(num_threads, 32, 32, [this]() -> std::shared_ptr<ICoder> {
+    coderPool_.makeCoders(num_threads, 5, 5, [this]() -> std::shared_ptr<ICoder> {
       return std::shared_ptr<ICoder>(
           CoderFactory::makeCoder(isHT_, false, 32, 32, tileCache_->getStrategy()));
     });

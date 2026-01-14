@@ -50,10 +50,10 @@ struct CoderPool
 public:
   CoderPool(void) = default;
   ~CoderPool(void) = default;
-  void makeCoders(uint32_t numCoders, uint8_t maxCblkW, uint8_t maxCblkH,
+  void makeCoders(uint32_t numCoders, uint8_t maxCblkWExp, uint8_t maxCblkHExp,
                   std::function<std::shared_ptr<ICoder>()> creator);
-  bool contains(uint8_t maxCblkW, uint8_t maxCblkH);
-  std::shared_ptr<ICoder> getCoder(size_t worker, uint8_t maxCblkW, uint8_t maxCblkH);
+  bool contains(uint8_t maxCblkWExp, uint8_t maxCblkHExp);
+  std::shared_ptr<ICoder> getCoder(size_t worker, uint8_t maxCblkWExp, uint8_t maxCblkHExp);
 
 private:
   CODERMAP coderMap_;

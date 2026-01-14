@@ -29,7 +29,7 @@ namespace grk::t1_part1
 class Coder : public ICoder
 {
 public:
-  Coder(bool isCompressor, uint8_t maxCblkW, uint8_t maxCblkH, uint32_t cacheStrategy);
+  Coder(bool isCompressor, uint16_t maxCblkW, uint16_t maxCblkH, uint32_t cacheStrategy);
   virtual ~Coder();
 
   bool compress(CompressBlockExec* block) override;
