@@ -17,7 +17,8 @@
 
 #pragma once
 #include <vector>
-#include <unordered_map>
+#include <map>
+#include <memory>
 
 namespace grk
 {
@@ -27,7 +28,7 @@ namespace grk
  *
  * Packet lengths are stored using comma code
  */
-typedef std::vector<Buffer8*> RAW_PL_MARKER;
+typedef std::vector<std::unique_ptr<Buffer8>> RAW_PL_MARKER;
 
 /**
  * @brief collection of @ref RAW_PL_MARKER pointers
@@ -39,7 +40,7 @@ typedef std::vector<Buffer8*> RAW_PL_MARKER;
  * Note: order is important for this map
  *
  */
-typedef std::map<uint32_t, RAW_PL_MARKER*> RAW_PL_MARKER_MAP;
+typedef std::map<uint32_t, std::unique_ptr<RAW_PL_MARKER>> RAW_PL_MARKER_MAP;
 
 /**
  * @struct PLMarker
@@ -142,7 +143,7 @@ private:
   void clearMarkers(void);
   bool findMarker(uint32_t index, bool compress);
   Buffer8* addNewMarker(uint8_t* data, uint16_t len, int16_t tilePartIndex = -1);
-  RAW_PL_MARKER_MAP* rawMarkers_;
+  std::unique_ptr<RAW_PL_MARKER_MAP> rawMarkers_;
   RAW_PL_MARKER_MAP::iterator currMarkerIter_;
 
   ////////////////////////////////

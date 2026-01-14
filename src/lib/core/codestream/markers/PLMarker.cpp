@@ -25,7 +25,7 @@ namespace grk
 const uint16_t plWriteBufferLen = USHRT_MAX - 4;
 
 PLMarker::PLMarker()
-    : rawMarkers_(new RAW_PL_MARKER_MAP()), currMarkerIter_(rawMarkers_->end()),
+    : rawMarkers_(std::make_unique<RAW_PL_MARKER_MAP>()), currMarkerIter_(rawMarkers_->end()),
       totalBytesWritten_(0), isFinal_(false), stream_(nullptr), sequential_(false), packetLen_(0),
       currMarkerBufIndex_(0), currMarkerBuf_(nullptr), enabled_(true)
 {}
@@ -37,7 +37,6 @@ PLMarker::PLMarker(IStream* strm) : PLMarker()
 PLMarker::~PLMarker()
 {
   clearMarkers();
-  delete rawMarkers_;
 }
 void PLMarker::disable(void)
 {
@@ -49,13 +48,6 @@ bool PLMarker::isEnabled(void)
 }
 void PLMarker::clearMarkers(void)
 {
-  for(auto it = rawMarkers_->begin(); it != rawMarkers_->end(); it++)
-  {
-    auto v = it->second;
-    for(auto itv = v->begin(); itv != v->end(); ++itv)
-      delete *itv;
-    delete it->second;
-  }
   rawMarkers_->clear();
   currMarkerIter_ = rawMarkers_->end();
   currMarkerBuf_ = nullptr;
@@ -81,6 +73,8 @@ bool PLMarker::pushPL(uint32_t len)
     if(!findMarker((uint32_t)rawMarkers_->size(), true))
       return false;
     auto buf = addNewMarker(nullptr, isFinal_ ? plWriteBufferLen : 0);
+    if(!buf)
+      return false;
     if(isFinal_ && !buf->write(markerId))
       return false;
     // account for marker header
@@ -105,7 +99,7 @@ bool PLMarker::pushPL(uint32_t len)
       len = (uint32_t)(len >> 7);
     }
     assert(counter == -1);
-    auto buf = currMarkerIter_->second->back();
+    auto buf = currMarkerIter_->second->back().get();
     if(!buf->write(temp, numBytes))
       return false;
   }
@@ -122,10 +116,10 @@ bool PLMarker::write(void)
   assert(isFinal_);
   for(auto it = rawMarkers_->begin(); it != rawMarkers_->end(); ++it)
   {
-    auto v = it->second;
-    for(auto itv = v->begin(); itv != v->end(); ++itv)
+    auto& v = *it->second;
+    for(auto itv = v.begin(); itv != v.end(); ++itv)
     {
-      auto b = *itv;
+      auto b = itv->get();
       if(!stream_->write(PLT))
         return false;
       if(!stream_->write((uint16_t)(b->offset() + 2)))
@@ -159,6 +153,7 @@ bool PLMarker::readPLM(uint8_t* headerData, uint16_t headerSize)
     clearMarkers();
     return true;
   }
+  bool hasAddedMarkers = false;
   while(headerSize > 0)
   {
     // 1. read Nplm
@@ -174,57 +169,84 @@ bool PLMarker::readPLM(uint8_t* headerData, uint16_t headerSize)
     }
     // 2. push packets for nth tile part into current raw marker
     addNewMarker(headerData, tilePartPacketInfoLength, -1);
+    hasAddedMarkers = true;
 
     // 3. advance src buffer
     headerSize = (uint16_t)(headerSize - tilePartPacketInfoLength);
     headerData += Nplm;
+  }
+  // If no markers were added (degenerate case with only Zplm), clean up empty vector
+  if(!hasAddedMarkers && currMarkerIter_->second->empty())
+  {
+    rawMarkers_->erase(currMarkerIter_);
+    currMarkerIter_ = rawMarkers_->end();
+    grklog.warn("PLM marker segment had no tile-part info. Ignoring PLM.");
   }
 
   return true;
 }
 Buffer8* PLMarker::addNewMarker(uint8_t* data, uint16_t len, int16_t tilePartIndex)
 {
-  auto b = new Buffer8();
+  if(tilePartIndex < -1)
+  {
+    grklog.error("Invalid tile part index %d for adding marker.", tilePartIndex);
+    return nullptr;
+  }
+
+  std::unique_ptr<Buffer8> b;
+  try
+  {
+    b = std::make_unique<Buffer8>();
+  }
+  catch(const std::bad_alloc&)
+  {
+    grklog.error("Failed to allocate Buffer8.");
+    return nullptr;
+  }
+
   if(data || len)
-    b->alloc(len);
-  if(data)
+  {
+    if(!b->alloc(len))
+    {
+      grklog.error("Failed to allocate buffer for new marker.");
+      return nullptr;
+    }
+  }
+  if(data && len)
     memcpy(b->buf(), data, len);
 
   auto& vec = *currMarkerIter_->second;
+  Buffer8* rawPtr = nullptr;
   if(tilePartIndex == -1)
   {
-    vec.push_back(b);
+    vec.push_back(std::move(b));
+    rawPtr = vec.back().get();
 #ifdef DEBUG_PLT
     grklog.info("Tile part %d, length %u", tilePartIndex, len);
 #endif
   }
   else
   {
-    if(tilePartIndex < -1)
-    { // Safety check for invalid negative indices
-      delete b;
-      grklog.error("Invalid tile part index %d for adding marker.", tilePartIndex);
-      return nullptr;
-    }
-    if(static_cast<size_t>(tilePartIndex) >= vec.size())
+    size_t index = static_cast<size_t>(tilePartIndex);
+    if(index >= vec.size())
     {
-      vec.resize(static_cast<size_t>(tilePartIndex) + 1, nullptr);
+      vec.resize(index + 1);
     }
-    if(vec[(size_t)tilePartIndex] != nullptr)
+    if(vec[index])
     {
-      delete b;
       grklog.error("Tile part index %d already occupied for marker key %u.", tilePartIndex,
                    currMarkerIter_->first);
       return nullptr;
     }
-    vec[(size_t)tilePartIndex] = b;
+    vec[index] = std::move(b);
+    rawPtr = vec[index].get();
 
 #ifdef DEBUG_PLT
     grklog.info("Tile part %d, length %u", tilePartIndex, len);
 #endif
   }
 
-  return b;
+  return rawPtr;
 }
 bool PLMarker::readPLT(uint8_t* headerData, uint16_t headerSize, int16_t tilePartIndex)
 {
@@ -239,7 +261,9 @@ bool PLMarker::readPLT(uint8_t* headerData, uint16_t headerSize, int16_t tilePar
   if(!findMarker(Zpl, false))
     return false;
 
-  addNewMarker(headerData, headerSize, tilePartIndex);
+  auto buf = addNewMarker(headerData, headerSize, tilePartIndex);
+  if(!buf)
+    return false;
 #ifdef DEBUG_PLT
   grklog.info("Tile part %d, PLT marker %u, length %u", tilePartIndex, Zpl, headerSize);
 #endif
@@ -291,7 +315,17 @@ bool PLMarker::findMarker(uint32_t nextIndex, bool compress)
   currMarkerIter_ = rawMarkers_->find(nextIndex);
   if(currMarkerIter_ == rawMarkers_->end())
   {
-    rawMarkers_->operator[](nextIndex) = new RAW_PL_MARKER();
+    std::unique_ptr<RAW_PL_MARKER> newVec;
+    try
+    {
+      newVec = std::make_unique<RAW_PL_MARKER>();
+    }
+    catch(const std::bad_alloc&)
+    {
+      grklog.error("Failed to allocate new RAW_PL_MARKER vector.");
+      return false;
+    }
+    (*rawMarkers_)[nextIndex] = std::move(newVec);
     currMarkerIter_ = rawMarkers_->find(nextIndex);
   }
 
@@ -327,7 +361,7 @@ uint64_t PLMarker::pop(uint64_t numPackets)
 uint32_t PLMarker::pop(void)
 {
   uint32_t rc = 0;
-  assert(rawMarkers_);
+  assert(rawMarkers_.get());
 
   if(currMarkerIter_ == rawMarkers_->end())
   {
@@ -351,15 +385,21 @@ uint32_t PLMarker::pop(void)
       currMarkerBufIndex_++;
       if(currMarkerBufIndex_ < currMarkerIter_->second->size())
       {
-        currMarkerBuf_ = currMarkerIter_->second->operator[](currMarkerBufIndex_);
+        currMarkerBuf_ = (*currMarkerIter_->second)[currMarkerBufIndex_].get();
       }
       else
       {
         currMarkerIter_++;
         if(currMarkerIter_ != rawMarkers_->end())
         {
+          if(currMarkerIter_->second->empty())
+          {
+            grklog.error("Encountered empty vector in PL marker pop advancement.");
+            currMarkerBuf_ = nullptr;
+            return 0;
+          }
           currMarkerBufIndex_ = 0;
-          currMarkerBuf_ = currMarkerIter_->second->front();
+          currMarkerBuf_ = currMarkerIter_->second->front().get();
         }
         else
         {
@@ -381,11 +421,18 @@ void PLMarker::rewind(void)
     currMarkerIter_ = rawMarkers_->begin();
     for(const auto& entry : *rawMarkers_)
     {
-      RAW_PL_MARKER* markerVector = entry.second;
-      size_t idx = 0;
-      for(auto* buffer : *markerVector)
+      auto& markerVector = *entry.second;
+      if(markerVector.empty())
       {
-        if(buffer == nullptr)
+        grklog.error("Non-contiguous PL marker vector for key %u (empty vector). Disabling.",
+                     entry.first);
+        disable();
+        return;
+      }
+      size_t idx = 0;
+      for(auto& buffer_uptr : markerVector)
+      {
+        if(!buffer_uptr)
         {
           grklog.error(
               "Non-contiguous PL marker vector for key %u (nullptr at index %zu). Disabling.",
@@ -393,12 +440,18 @@ void PLMarker::rewind(void)
           disable();
           return;
         }
-        buffer->set_offset(0);
+        buffer_uptr->set_offset(0);
         ++idx;
       }
     }
     currMarkerBufIndex_ = 0;
-    currMarkerBuf_ = currMarkerIter_->second->front();
+    if(currMarkerIter_->second->empty())
+    {
+      grklog.error("First marker vector is empty in rewind. Disabling.");
+      disable();
+      return;
+    }
+    currMarkerBuf_ = currMarkerIter_->second->front().get();
   }
 }
 
