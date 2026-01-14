@@ -501,7 +501,7 @@ private:
    */
   bool readSeek(uint64_t offset)
   {
-    if(status_ & GROK_STREAM_STATUS_ERROR)
+    if((status_ & GROK_STREAM_STATUS_ERROR) || (status_ & GROK_STREAM_STATUS_END))
       return false;
 
     if(chunk_buf_)
