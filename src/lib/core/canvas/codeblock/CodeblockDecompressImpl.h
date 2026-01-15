@@ -383,7 +383,7 @@ struct CodeblockDecompressImpl : public CodeblockImpl
       if(signalledPassesInLayer > 0)
         dSeg = nextDataParsedSegment();
 
-    } while(signalledPassesInLayer > 0);
+    } while(*dSeg && signalledPassesInLayer > 0);
   }
 
   /**
