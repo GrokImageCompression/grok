@@ -1008,7 +1008,7 @@ bool CodeStreamDecompress::scheduleNextSlatedTile(bool multiTile)
                                tilesToDecompress_.getSlatedTiles().size() > 1 &&
                                stream_->isMemStream();
   while(((currTileIndex_ == -1) || !tilesToDecompress_.isSlated((uint16_t)currTileIndex_) ||
-         !currTileProcessor_->allSOTMarkersParsed()) &&
+         (currTileProcessor_ && !currTileProcessor_->allSOTMarkersParsed())) &&
         markerParser_.currId() != EOC && stream_->numBytesLeft() != 0)
   {
     try
