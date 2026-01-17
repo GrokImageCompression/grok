@@ -213,6 +213,9 @@ struct TPFetchSeq : SharedPtrSeq<TPFetch>
 {
   void push_back(uint16_t tileIndex, const std::unique_ptr<TPSeq>& tileParts)
   {
+    if(!tileParts)
+      return;
+
     for(auto& part : *tileParts)
     {
       SharedPtrSeq<TPFetch>::push_back(
@@ -222,6 +225,9 @@ struct TPFetchSeq : SharedPtrSeq<TPFetch>
   void push_back(uint16_t tileIndex, const std::unique_ptr<TPSeq>& tileParts,
                  std::vector<std::shared_ptr<TPFetch>>& outParts)
   {
+    if(!tileParts)
+      return;
+
     for(auto& part : *tileParts)
     {
       auto fetchPtr = std::make_shared<TPFetch>(part->offset_, part->length_, tileIndex);
