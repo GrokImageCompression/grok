@@ -346,8 +346,16 @@ bool TileProcessor::decompressPrepareWithTLM(const std::shared_ptr<TPFetchSeq>& 
       break;
 
     // read next tile part header marker
-    if(!markerParser_->readId(false))
-      return false;
+    try
+    {
+      if(!markerParser_->readId(false))
+        return false;
+    }
+    catch(const InvalidMarkerException& ime)
+    {
+      truncated_ = true;
+      continue;
+    }
 
     // parse tile part
     if(!parseTilePart(nullptr, nullptr, markerParser_->currId(), tilePartInfo_))
