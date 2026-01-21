@@ -617,14 +617,17 @@ bool FileFormatMJ2Decompress::readHeader(grk_header_info* header_info)
   bool rc = FileFormatJP2Family::readHeader(header_info, headerImage_);
   if(!rc)
     return false;
-  for(const auto& sample : current_track_->samples_)
+  if(current_track_)
   {
-    auto ptr = stream_->currPtr() + sample.offset_;
-    // cross-check sample size with box length
-    // as long as box is not XL
-    uint32_t len;
-    grk_read(ptr, &len);
-    assert(len == 1 || len == sample.samples_size_);
+    for(const auto& sample : current_track_->samples_)
+    {
+      auto ptr = stream_->currPtr() + sample.offset_;
+      // cross-check sample size with box length
+      // as long as box is not XL
+      uint32_t len;
+      grk_read(ptr, &len);
+      assert(len == 1 || len == sample.samples_size_);
+    }
   }
 
   return true;
@@ -643,6 +646,8 @@ grk_progression_state
 bool FileFormatMJ2Decompress::decompress([[maybe_unused]] grk_plugin_tile* tile)
 {
   auto tk = current_track_;
+  if(!current_track_)
+    return false;
   for(uint32_t i = 0; i < current_track_->num_samples_; ++i)
   {
     std::string filename = "$HOME/temp/mj2_" + std::to_string(i) + "_.j2k";
