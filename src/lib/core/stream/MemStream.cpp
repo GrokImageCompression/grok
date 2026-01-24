@@ -63,11 +63,8 @@ static void memStreamFree(void* user_data)
 
 static size_t memStreamZeroCopyRead(uint8_t** buffer, size_t numBytes, void* src)
 {
-  size_t nb_read = 0;
   auto srcStream = (MemStream*)src;
-
-  if(((size_t)srcStream->off_ + numBytes) < srcStream->len_)
-    nb_read = numBytes;
+  size_t nb_read = std::min(numBytes, srcStream->len_ - srcStream->off_);
 
   *buffer = srcStream->buf_ + srcStream->off_;
   assert(srcStream->off_ + nb_read <= srcStream->len_);
@@ -78,17 +75,11 @@ static size_t memStreamZeroCopyRead(uint8_t** buffer, size_t numBytes, void* src
 
 static size_t memStreamRead(uint8_t* dest, size_t numBytes, void* src)
 {
-  size_t nb_read;
-
   if(!dest)
     return 0;
 
   auto srcStream = (MemStream*)src;
-
-  if(srcStream->off_ + numBytes < srcStream->len_)
-    nb_read = numBytes;
-  else
-    nb_read = (size_t)(srcStream->len_ - srcStream->off_);
+  size_t nb_read = std::min(numBytes, srcStream->len_ - srcStream->off_);
 
   if(nb_read)
   {
@@ -105,15 +96,14 @@ static size_t memStreamRead(uint8_t* dest, size_t numBytes, void* src)
 static size_t memStreamWrite(const uint8_t* src, size_t numBytes, void* dest)
 {
   auto destStream = (MemStream*)dest;
-  if(destStream->off_ + numBytes >= destStream->len_)
-    return 0;
+  size_t nb_write = std::min(numBytes, destStream->len_ - destStream->off_);
 
-  if(numBytes)
+  if(nb_write)
   {
-    memcpy(destStream->buf_ + (size_t)destStream->off_, src, numBytes);
-    destStream->off_ += numBytes;
+    memcpy(destStream->buf_ + destStream->off_, src, nb_write);
+    destStream->off_ += nb_write;
   }
-  return numBytes;
+  return nb_write;
 }
 
 static bool memStreamSeek(uint64_t numBytes, void* src)
