@@ -111,7 +111,7 @@ static bool memStreamSeek(uint64_t numBytes, void* src)
   auto srcStream = (MemStream*)src;
   bool rc = true;
 
-  if(numBytes <= srcStream->len_)
+  if(numBytes < srcStream->len_)
   {
     srcStream->off_ = numBytes;
   }

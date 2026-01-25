@@ -997,7 +997,8 @@ std::function<void()> CodeStreamDecompress::postSingleTile(TileProcessor* tilePr
 
 bool CodeStreamDecompress::scheduleNextSlatedTile(bool multiTile)
 {
-  assert(markerParser_.currId() == SOT);
+  if(markerParser_.currId() != SOT)
+    return false;
 
   /* Parse tile parts until we satisfy one of the conditions below:
    * 1. read a complete slated tile
