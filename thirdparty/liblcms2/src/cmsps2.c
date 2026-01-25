@@ -1,7 +1,7 @@
 //---------------------------------------------------------------------------------
 //
 //  Little Color Management System
-//  Copyright (c) 1998-2024 Marti Maria Saguer
+//  Copyright (c) 1998-2026 Marti Maria Saguer
 //
 // Permission is hereby granted, free of charge, to any person obtaining
 // a copy of this software and associated documentation files (the "Software"),
@@ -1351,6 +1351,13 @@ cmsBool WriteOutputLUT(cmsIOHANDLER* m, cmsHPROFILE hProfile, cmsUInt32Number In
 
     first = cmsPipelineGetPtrToFirstStage(DeviceLink);
     if (first != NULL) {
+        if (first->Type != cmsSigCLutElemType) {
+            cmsPipelineFree(DeviceLink);
+            cmsDeleteTransform(xform);
+            cmsSignalError(m->ContextID, cmsERROR_CORRUPTION_DETECTED, "Cannot create CLUT, revise your flags!");
+            return FALSE;
+        }
+
         WriteCLUT(m, first, "<", ">\n", "", "", lFixWhite, ColorSpace);
     }
 
