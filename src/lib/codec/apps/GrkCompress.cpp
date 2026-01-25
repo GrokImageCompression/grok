@@ -667,7 +667,6 @@ static GRK_PROG_ORDER getProgression(const char progression[4])
   return GRK_PROG_UNKNOWN;
 }
 CompressInitParams::CompressInitParams()
-    : initialized(false), transfer_exif_tags(false), in_image(nullptr), stream_(nullptr)
 {
   pluginPath[0] = 0;
   memset(&inputFolder, 0, sizeof(inputFolder));

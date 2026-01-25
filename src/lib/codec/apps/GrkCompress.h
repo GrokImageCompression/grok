@@ -26,14 +26,14 @@ struct CompressInitParams
 {
   CompressInitParams();
   ~CompressInitParams();
-  bool initialized;
-  grk_cparameters parameters;
+  bool initialized = false;
+  grk_cparameters parameters = {};
   char pluginPath[GRK_PATH_LEN];
   grk_img_fol inputFolder;
   grk_img_fol outFolder;
-  bool transfer_exif_tags;
-  grk_image* in_image;
-  grk_stream_params* stream_;
+  bool transfer_exif_tags = false;
+  grk_image* in_image = nullptr;
+  grk_stream_params* stream_ = nullptr;
   std::string license_;
   std::string server_;
 };

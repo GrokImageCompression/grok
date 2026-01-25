@@ -155,11 +155,11 @@ static std::mutex initMutex;
 
 void grk_initialize(const char* pluginPath, uint32_t numThreads, bool* plugin_initialized)
 {
+  if(plugin_initialized)
+    *plugin_initialized = false;
   const char* singleThreadEnv = std::getenv("GRK_TEST_SINGLE");
   if(singleThreadEnv && std::atoi(singleThreadEnv) == 1)
-  {
     numThreads = 1; // Force single-threaded execution
-  }
   InitState newState(pluginPath, numThreads);
   {
     std::lock_guard<std::mutex> guard(initMutex);
@@ -214,14 +214,12 @@ void grk_initialize(const char* pluginPath, uint32_t numThreads, bool* plugin_in
       info.pluginPath = pluginPath;
       initState_.pluginInitialized_ = grk_plugin_load(info);
       if(initState_.pluginInitialized_)
-      {
         grklog.info("Plugin loaded");
-        if(plugin_initialized)
-          *plugin_initialized = true;
-      }
     }
     initState_.initialized_ = true;
   }
+  if(plugin_initialized)
+    *plugin_initialized = initState_.pluginInitialized_;
 }
 
 GRK_API grk_object* GRK_CALLCONV grk_object_ref(grk_object* obj)
