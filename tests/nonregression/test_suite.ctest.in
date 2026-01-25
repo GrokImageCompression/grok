@@ -763,3 +763,17 @@ grk_decompress -i  @INPUT_NR_PATH@/page.jp2 -o @TEMP_PATH@/page.tif
 grk_decompress -i  @INPUT_NR_PATH@/page_tlm.jp2 -o @TEMP_PATH@/page_tlm.tif
 
 grk_compress -i @INPUT_NR_PATH@/resolution.tif -o @TEMP_PATH@/resolution.jp2
+
+
+!grk_decompress -i @INPUT_NR_PATH@/clusterfuzz-testcase-minimized-grk_decompress_fuzzer-4771109856935936 -o @TEMP_PATH@/clusterfuzz-testcase-minimized-grk_decompress_fuzzer-4771109856935936.pgx -d 0,0,1024,1024
+!grk_decompress -i @INPUT_NR_PATH@/clusterfuzz-testcase-minimized-grk_decompress_fuzzer-4848395914379264 -o @TEMP_PATH@/clusterfuzz-testcase-minimized-grk_decompress_fuzzer-4848395914379264.pgx -d 0,0,1024,1024
+!grk_decompress -i @INPUT_NR_PATH@/clusterfuzz-testcase-minimized-grk_decompress_fuzzer-5081241794969600 -o @TEMP_PATH@/clusterfuzz-testcase-minimized-grk_decompress_fuzzer-5081241794969600.pgx -d 0,0,1024,1024
+!grk_decompress -i @INPUT_NR_PATH@/clusterfuzz-testcase-minimized-grk_decompress_fuzzer-5119623367557120 -o @TEMP_PATH@/clusterfuzz-testcase-minimized-grk_decompress_fuzzer-5119623367557120.pgx -d 0,0,1024,1024
+!grk_decompress -i @INPUT_NR_PATH@/clusterfuzz-testcase-minimized-grk_decompress_fuzzer-5626836959952896 -o @TEMP_PATH@/clusterfuzz-testcase-minimized-grk_decompress_fuzzer-5626836959952896.pgx -d 0,0,1024,1024
+!grk_decompress -i @INPUT_NR_PATH@/clusterfuzz-testcase-minimized-grk_decompress_fuzzer-5881032753872896 -o @TEMP_PATH@/clusterfuzz-testcase-minimized-grk_decompress_fuzzer-5881032753872896.pgx -d 0,0,1024,1024
+!grk_decompress -i @INPUT_NR_PATH@/clusterfuzz-testcase-minimized-grk_decompress_fuzzer-5963933373759488 -o @TEMP_PATH@/clusterfuzz-testcase-minimized-grk_decompress_fuzzer-5963933373759488.pgx -d 0,0,1024,1024
+!grk_decompress -i @INPUT_NR_PATH@/clusterfuzz-testcase-minimized-grk_decompress_fuzzer-6001050783121408 -o @TEMP_PATH@/clusterfuzz-testcase-minimized-grk_decompress_fuzzer-6001050783121408.pgx -d 0,0,1024,1024
+!grk_decompress -i @INPUT_NR_PATH@/clusterfuzz-testcase-minimized-grk_decompress_fuzzer-6102120322629632 -o @TEMP_PATH@/clusterfuzz-testcase-minimized-grk_decompress_fuzzer-6102120322629632.pgx -d 0,0,1024,1024
+!grk_decompress -i @INPUT_NR_PATH@/clusterfuzz-testcase-minimized-grk_decompress_fuzzer-6144311698980864 -o @TEMP_PATH@/clusterfuzz-testcase-minimized-grk_decompress_fuzzer-6144311698980864.pgx -d 0,0,1024,1024
+!grk_decompress -i @INPUT_NR_PATH@/clusterfuzz-testcase-minimized-grk_decompress_fuzzer-6463215033974784 -o @TEMP_PATH@/clusterfuzz-testcase-minimized-grk_decompress_fuzzer-6463215033974784.pgx -d 0,0,1024,1024
+
