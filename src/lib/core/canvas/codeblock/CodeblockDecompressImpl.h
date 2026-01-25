@@ -329,6 +329,9 @@ struct CodeblockDecompressImpl : public CodeblockImpl
     auto dSeg = currDataParsedSegment();
     if(dSeg == segs_.end() || ((*dSeg)->totalPasses_ == (*dSeg)->maxPasses_))
       dSeg = nextDataParsedSegment();
+    if(dSeg == segs_.end() || !*dSeg)
+      return;
+
     dataParsedLayers_ = std::max(dataParsedLayers_, (uint16_t)(layno + 1));
     uint8_t signalledPassesInLayer = signalledPassesByLayer_[layno];
 
@@ -383,7 +386,7 @@ struct CodeblockDecompressImpl : public CodeblockImpl
       if(signalledPassesInLayer > 0)
         dSeg = nextDataParsedSegment();
 
-    } while(*dSeg && signalledPassesInLayer > 0);
+    } while(dSeg != segs_.end() && *dSeg && signalledPassesInLayer > 0);
   }
 
   /**
