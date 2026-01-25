@@ -991,7 +991,10 @@ bool GrkImage::sycc444_to_rgb(void)
   color_space = GRK_CLRSPC_SRGB;
 
   for(uint16_t i = 0; i < numcomps; ++i)
+  {
     comps[i].stride = dst->comps[i].stride;
+    comps[i].owns_data = true;
+  }
   grk_unref(dst);
 
   return true;
@@ -1082,7 +1085,10 @@ bool GrkImage::sycc422_to_rgb(bool oddFirstX)
   color_space = GRK_CLRSPC_SRGB;
 
   for(uint32_t i = 0; i < numcomps; ++i)
+  {
     comps[i].stride = dst->comps[i].stride;
+    comps[i].owns_data = true;
+  }
   grk_unref(dst);
 
   return true;
@@ -1116,22 +1122,21 @@ bool GrkImage::sycc420_to_rgb(bool oddFirstX, bool oddFirstY)
     return false;
   }
 
-  auto dst = createRGB(3, w, h, comps[0].prec);
-  if(!dst)
+  auto rgbImg = createRGB(3, w, h, comps[0].prec);
+  if(!rgbImg)
     return false;
 
   T offset = (T)(1 << (comps[0].prec - 1));
   T upb = (T)((1 << comps[0].prec) - 1);
 
-  T* src[3];
-  T* dest[3];
-  T* dest_ptr[3];
   uint32_t stride_src[3];
   uint32_t stride_src_diff[3];
 
-  uint32_t stride_dest = dst->comps[0].stride;
-  uint32_t stride_dest_diff = dst->comps[0].stride - w;
+  uint32_t stride_dest = rgbImg->comps[0].stride;
+  uint32_t stride_dest_diff = rgbImg->comps[0].stride - w;
 
+  T* src[3];
+  T* dest_ptr[3];
   for(uint32_t i = 0; i < 3; ++i)
   {
     auto srcComp = comps + i;
@@ -1139,8 +1144,7 @@ bool GrkImage::sycc420_to_rgb(bool oddFirstX, bool oddFirstY)
     stride_src[i] = srcComp->stride;
     stride_src_diff[i] = srcComp->stride - srcComp->w;
 
-    dest[i] = dest_ptr[i] = (T*)dst->comps[i].data;
-    dst->comps[i].data = nullptr;
+    dest_ptr[i] = (T*)rgbImg->comps[i].data;
   }
   // if img->y0 is odd, then first line shall use Cb/Cr = 0
   if(oddFirstY)
@@ -1212,16 +1216,18 @@ bool GrkImage::sycc420_to_rgb(bool oddFirstX, bool oddFirstY)
   all_components_data_free();
   for(uint32_t k = 0; k < 3; ++k)
   {
-    comps[k].data = dest[k];
-    comps[k].stride = dst->comps[k].stride;
-    dst->comps[k].stride = 0;
+    comps[k].data = rgbImg->comps[k].data;
+    comps[k].stride = rgbImg->comps[k].stride;
+    comps[k].owns_data = true;
+    rgbImg->comps[k].data = nullptr;
   }
+  grk_unref(rgbImg);
+
   comps[1].w = comps[2].w = comps[0].w;
   comps[1].h = comps[2].h = comps[0].h;
   comps[1].dx = comps[2].dx = comps[0].dx;
   comps[1].dy = comps[2].dy = comps[0].dy;
   color_space = GRK_CLRSPC_SRGB;
-  grk_unref(dst);
 
   return true;
 
