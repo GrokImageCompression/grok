@@ -1,14 +1,43 @@
 name: Build
-
 on: [push, pull_request, workflow_dispatch]
-
 env:
   BUILD_TYPE: Release
   DATA_ROOT: ${{ github.workspace }}/data
   DATA_BRANCH: master
   GENERATOR_PLATFORM:
-
 jobs:
+
+  source-package:
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        submodules: true
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.x'
+
+    - name: Install git-archive-all
+      run: python -m pip install git-archive-all
+
+    - name: Generate source archives with submodules
+      shell: bash
+      run: |
+        TAG="${GITHUB_REF#refs/tags/}"
+        echo "TAG=$TAG" >> $GITHUB_ENV
+        git-archive-all --prefix="grok-${TAG}/" "grok-source-full.tar.gz"
+        git-archive-all --prefix="grok-${TAG}/" "grok-source-full.zip"
+
+    - name: Upload source archives to release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: |
+          grok-source-full.tar.gz
+          grok-source-full.zip
+
   build:
     strategy:
       matrix:
@@ -16,22 +45,18 @@ jobs:
         shared_libs_flag: [ON, OFF]
       fail-fast: false # Allow all matrix jobs to run, even if one fails
     runs-on: ${{ matrix.os }}
-
     steps:
     - uses: actions/checkout@v3
       with:
         submodules: true # Recursively clone submodules
-
     - name: Delete workflow runs
       if: startsWith(matrix.os, 'ubuntu') && matrix.shared_libs_flag == 'ON'
       uses: Mattraks/delete-workflow-runs@v2.0.6
-
     - name: ubuntu-dependencies
       if: startsWith(matrix.os, 'ubuntu')
       run: |
         #echo DATA_BRANCH=linux-release >> $GITHUB_ENV
         sudo apt install exiftool libpsl-dev
-
     - name: macos-dependencies
       if: startsWith(matrix.os, 'macos')
       run: |
@@ -39,7 +64,6 @@ jobs:
         brew install exiftool libpsl libssh2
         #perl -MImage::ExifTool -e ""
         # Add macOS-specific dependencies if needed
-
     - name: windows-dependencies
       if: startsWith(matrix.os, 'windows')
       run: |
@@ -50,19 +74,17 @@ jobs:
         echo "GENERATOR_PLATFORM=$generator" >> $env:GITHUB_ENV
         C:\vcpkg\vcpkg.exe install libpsl:x64-windows
         echo "CMAKE_TOOLCHAIN_FILE=C:\vcpkg\scripts\buildsystems\vcpkg.cmake" >> $env:GITHUB_ENV
-
     - name: dependencies
       run: |
         cmake -E make_directory ${{ github.workspace }}/build
         git clone --depth=1 --branch=${{ env.DATA_BRANCH }} https://github.com/GrokImageCompression/grok-test-data.git ${{ env.DATA_ROOT }}
-
     - name: configure cmake
       # Use a bash shell so we can use the same syntax for environment variable
       # access regardless of the host operating system
       shell: bash
       working-directory: ${{ github.workspace }}/build
-      # Note the current convention is to use the -S and -B options here to specify source 
-      # and build directories, but this is only available with CMake 3.13 and higher.  
+      # Note the current convention is to use the -S and -B options here to specify source
+      # and build directories, but this is only available with CMake 3.13 and higher.
       # The CMake binaries on the Github Actions machines are (as of this writing) 3.12
       run: |
         if [[ "${{ matrix.os }}" != "ubuntu-latest" ]]; then
@@ -70,13 +92,11 @@ jobs:
         else
           cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DBUILD_SHARED_LIBS=${{ matrix.shared_libs_flag }} -DBUILD_TESTING:BOOL=ON -DGRK_DATA_ROOT=$DATA_ROOT -DGRK_ENABLE_LIBCURL=ON $GENERATOR_PLATFORM
         fi
-
     - name: build
       working-directory: ${{ github.workspace }}/build
       shell: bash
       # Execute the build. You can specify a specific target with "--target <NAME>"
       run: cmake --build . --config $BUILD_TYPE
-
     - name: test
       working-directory: ${{ github.workspace }}/build
       shell: bash
@@ -88,7 +108,6 @@ jobs:
         else
           echo "Tests had failures (ignored due to continue-on-error)" > test-status.txt
         fi
-
     - name: Upload test results
       if: always() # Upload even if tests fail
       uses: actions/upload-artifact@v4
@@ -97,7 +116,6 @@ jobs:
         path: |
           ${{ github.workspace }}/build/test-results-${{ matrix.os }}-${{ matrix.shared_libs_flag }}.xml
           ${{ github.workspace }}/build/test-status.txt
-
     - name: package
       if: ${{ matrix.shared_libs_flag == 'ON' }}
       working-directory: ${{ github.workspace }}/build
@@ -106,13 +124,11 @@ jobs:
         cmake -Wno-dev -D CPACK_GENERATOR:STRING=ZIP -D CPACK_PACKAGE_FILE_NAME:STRING=grok-${{ matrix.os }} .
         cmake --build . --config $BUILD_TYPE --target package
         7z x grok-${{ matrix.os }}.zip
-
     - name: publish
       uses: actions/upload-artifact@v4
       with:
         name: grok-${{ matrix.os }}
         path: ${{ github.workspace }}/build/grok-${{ matrix.os }}
-
     - name: Upload binaries to release
       uses: softprops/action-gh-release@v1
       if: ${{ startsWith(github.ref, 'refs/tags/') }}
