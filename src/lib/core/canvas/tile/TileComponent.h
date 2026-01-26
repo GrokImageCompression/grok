@@ -52,7 +52,7 @@ struct TileComponent : public Rect32
     {
       for(auto resno = 0U; resno < num_resolutions_; ++resno)
       {
-        auto res = resolutions_ + resno;
+        const auto res = resolutions_ + resno;
         for(auto bandIndex = 0U; bandIndex < 3; ++bandIndex)
         {
           auto band = res->band + bandIndex;
@@ -81,7 +81,7 @@ struct TileComponent : public Rect32
     // 1. find outside bounds of all relevant code blocks, in relative coordinates
     for(uint8_t resno = 0U; resno < numres; ++resno)
     {
-      auto res = &resolutions_[resno];
+      const auto res = &resolutions_[resno];
       for(auto bandIndex = 0U; bandIndex < res->numBands_; ++bandIndex)
       {
         auto band = res->band + bandIndex;
@@ -142,7 +142,7 @@ struct TileComponent : public Rect32
     // 3. allocate sparse blocks
     for(uint8_t resno = 0; resno < numres; ++resno)
     {
-      auto res = resolutions_ + resno;
+      const auto res = resolutions_ + resno;
       for(auto bandIndex = 0U; bandIndex < res->numBands_; ++bandIndex)
       {
         auto band = res->band + bandIndex;

@@ -86,10 +86,8 @@ CodeStreamDecompress::CodeStreamDecompress(IStream* stream)
         })}});
 
   tileMarkerParsers_.resize(ExecSingleton::num_threads());
-  for(auto& p : tileMarkerParsers_)
-  {
-    p = std::make_unique<MarkerParser>();
-  }
+  std::generate(tileMarkerParsers_.begin(), tileMarkerParsers_.end(),
+                []() { return std::make_unique<MarkerParser>(); });
 }
 void CodeStreamDecompress::init(grk_decompress_parameters* parameters)
 {

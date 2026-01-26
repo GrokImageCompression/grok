@@ -102,6 +102,7 @@ static grk_object* grkDecompressCreate(grk::IStream* stream)
       codec->decompressor_ = new FileFormatMJ2Decompress(stream);
       break;
     default:
+      delete codec;
       return nullptr;
       break;
   }
