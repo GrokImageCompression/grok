@@ -128,11 +128,9 @@ static void decompress_help_display(void)
   fprintf(stdout, "`BMP`,`PNG`, `JPG`, `PNM`, `RAW` and `RAWL`.  To enable writing to `stdout`,\n");
   fprintf(stdout,
           "please ensure that the `-o` parameter is **not** present in the command line,\n");
-  fprintf(stdout,
-          "and that the `--out-fmt` parameter is set to one of the supported formats listed\n");
-  fprintf(stdout, "above. Note: the verbose flag `-v` will be ignored in this mode, as verbose\n");
-  fprintf(stdout, "output would corrupt the output file.\n");
-  fprintf(stdout, "\n");
+  fprintf(
+      stdout,
+      "and that the `--out-fmt` parameter is set to one of the supported formats listed above.\n");
   fprintf(stdout, " Embedded ICC Profile\n");
   fprintf(stdout, "\n");
   fprintf(stdout,
@@ -178,8 +176,6 @@ static void decompress_help_display(void)
   fprintf(stdout, "   `--version`\n");
   fprintf(stdout, "\n");
   fprintf(stdout, "Print library version and exit.\n");
-  fprintf(stdout, "\n");
-  fprintf(stdout, "  `-v, --verbose`\n");
   fprintf(stdout, "\n");
   fprintf(stdout, "Output information and warnings about decoding to console (errors are always\n");
   fprintf(stdout, "output). Console is silent by default.\n");
@@ -1027,7 +1023,6 @@ GrkRC GrkDecompress::pluginMain(int argc, const char* argv[], DecompressInitPara
   // create codec
   grk_plugin_init_info initInfo;
   initInfo.device_id = initParams->parameters.device_id;
-  initInfo.verbose = true;
   if(!grk_plugin_init(initInfo))
     goto cleanup;
   initParams->parameters.user_data = this;

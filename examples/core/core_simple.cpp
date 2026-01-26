@@ -51,7 +51,6 @@ int core_compress(uint32_t dimX, uint32_t dimY, uint8_t precision,
   grk_cparameters compressParams;
   grk_compress_set_default_params(&compressParams);
   compressParams.cod_format = jp2 ? GRK_FMT_JP2 : GRK_FMT_J2K;
-  compressParams.verbose = true;
   compressParams.irreversible = false; // Enable reversible (lossless) compression
   if(htj2k)
     compressParams.cblk_sty = GRK_CBLKSTY_HT_MIXED;

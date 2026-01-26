@@ -206,8 +206,6 @@ static void compress_help_display(void)
   fprintf(stdout, "\n");
   fprintf(stdout, "Print library version and exit.\n");
   fprintf(stdout, "\n");
-  fprintf(stdout, " `-v, --verbose`\n");
-  fprintf(stdout, "\n");
   fprintf(stdout, "Output information and warnings about encoding to console (errors are always\n");
   fprintf(stdout, "output). Default is false i.e. console is silent by default.\n");
   fprintf(stdout, "\n");
@@ -925,7 +923,6 @@ GrkRC GrkCompress::pluginMain(int argc, const char* argv[], CompressInitParams* 
   grk_plugin_init_info initInfo;
   memset(&initInfo, 0, sizeof(initInfo));
   initInfo.device_id = initParams->parameters.device_id;
-  initInfo.verbose = initParams->parameters.verbose;
   initInfo.license = initParams->license_.c_str();
   initInfo.server = initParams->server_.c_str();
   if(!grk_plugin_init(initInfo))

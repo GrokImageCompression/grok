@@ -623,14 +623,14 @@ bool grk_plugin_load(grk_plugin_load_info info)
   // form absolute plugin path
   auto pluginPath = std::string(info.pluginPath) +
                     static_cast<char>(std::filesystem::path::preferred_separator) + pluginName;
-  int32_t rc = minpf_load_from_path(pluginPath.c_str(), info.verbose, nullptr);
+  int32_t rc = minpf_load_from_path(pluginPath.c_str(), nullptr);
 
   // if fails, try local path
   if(rc)
   {
     std::string localPlugin =
         std::string(".") + (char)std::filesystem::path::preferred_separator + pluginName;
-    rc = minpf_load_from_path(localPlugin.c_str(), info.verbose, nullptr);
+    rc = minpf_load_from_path(localPlugin.c_str(), nullptr);
   }
   pluginLoaded = !rc;
   if(!pluginLoaded)

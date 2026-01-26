@@ -143,7 +143,6 @@ def progressive_decompression(input_file, tile_index=0):
     max_resolutions = 0xFF
 
     decompress_params = grk_decompress_parameters()
-    decompress_params.verbose_ = True
     stream_params = grk_stream_params()
     stream_params.file = input_file
     codec_diff = None

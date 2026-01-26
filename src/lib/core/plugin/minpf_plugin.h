@@ -54,7 +54,6 @@ typedef struct minpf_platform_services
   minpf_invoke_service_func invokeService;
 
   const char* pluginPath;
-  bool verbose;
   grk::ILogger* logger;
 } minpf_platform_services;
 

@@ -103,7 +103,6 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] const char** argv)
   grk_cparameters compressParams;
   grk_compress_set_default_params(&compressParams);
   compressParams.cod_format = GRK_FMT_JP2;
-  compressParams.verbose = true;
 
   // 2.initialize output stream
   enum eStreamOutput

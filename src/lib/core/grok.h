@@ -1192,7 +1192,6 @@ typedef struct _grk_cparameters
   uint32_t repeats; /* repeats */
   bool write_plt; /* write PLT */
   bool write_tlm; /* write TLM */
-  bool verbose; /* verbose */
   bool shared_memory_interface; /* shared memory interface */
 } grk_cparameters;
 
@@ -1485,7 +1484,6 @@ GRK_API bool GRK_CALLCONV grk_set_MCT(grk_cparameters* parameters, const float* 
 typedef struct _grk_plugin_load_info
 {
   const char* pluginPath; /* plugin path */
-  bool verbose; /* verbose */
 } grk_plugin_load_info;
 
 /**
@@ -1537,7 +1535,6 @@ GRK_API uint32_t GRK_CALLCONV grk_plugin_get_debug_state();
 typedef struct _grk_plugin_init_info
 {
   int32_t device_id; /* device ID */
-  bool verbose; /* verbose */
   const char* license; /* license */
   const char* server; /* server */
 } grk_plugin_init_info;
