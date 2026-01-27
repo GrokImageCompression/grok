@@ -255,14 +255,14 @@ endif()
 
 # Build Testing
 option(BUILD_TESTING "Build tests." OFF)
-if(BUILD_TESTING AND GRK_BUILD_CODEC)
-	enable_testing()
-	include(CTest)
-	find_path(GRK_DATA_ROOT README-GROK-TEST-DATA
-	  PATHS $ENV{GRK_DATA_ROOT} ${CMAKE_SOURCE_DIR}/../grok-test-data
-	  NO_CMAKE_FIND_ROOT_PATH)
-	add_subdirectory(tests)
-  set(GRK_BUILD_CORE_EXAMPLES ON CACHE BOOL "Build core examples" FORCE)
+if(BUILD_TESTING AND GRK_BUILD_CODEC AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/tests/CMakeLists.txt")
+    enable_testing()
+    include(CTest)
+    find_path(GRK_DATA_ROOT README-GROK-TEST-DATA
+      PATHS $ENV{GRK_DATA_ROOT} ${CMAKE_SOURCE_DIR}/../grok-test-data
+      NO_CMAKE_FIND_ROOT_PATH)
+    add_subdirectory(tests)
+    set(GRK_BUILD_CORE_EXAMPLES ON CACHE BOOL "Build core examples" FORCE)
 endif()
 
 # install all targets referenced as GrokTargets
