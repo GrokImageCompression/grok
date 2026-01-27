@@ -28,15 +28,15 @@ jobs:
       run: |
         TAG="${GITHUB_REF#refs/tags/}"
         echo "TAG=$TAG" >> $GITHUB_ENV
-        git-archive-all --prefix="grok-${TAG}/" "grok-source-full.tar.gz"
-        git-archive-all --prefix="grok-${TAG}/" "grok-source-full.zip"
+        git-archive-all --prefix="grok-${TAG}/" "source-full.tar.gz"
+        git-archive-all --prefix="grok-${TAG}/" "source-full.zip"
 
     - name: Upload source archives to release
       uses: softprops/action-gh-release@v1
       with:
         files: |
-          grok-source-full.tar.gz
-          grok-source-full.zip
+          source-full.tar.gz
+          source-full.zip
 
   build:
     strategy:
