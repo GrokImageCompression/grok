@@ -356,16 +356,16 @@ struct TileComponent : public Rect32
     if(block->roishift)
     {
       if(block->qmfbid == 1)
-        postDecompressImpl<T, ojph::RoiShiftOJPHFilter<T>>(srcData, block, stride);
+        postDecompressImpl<T, t1::ojph::RoiShiftOJPHFilter<T>>(srcData, block, stride);
       else
-        postDecompressImpl<T, ojph::RoiScaleOJPHFilter<T>>(srcData, block, stride);
+        postDecompressImpl<T, t1::ojph::RoiScaleOJPHFilter<T>>(srcData, block, stride);
     }
     else
     {
       if(block->qmfbid == 1)
-        postDecompressImpl<T, ojph::ShiftOJPHFilter<T>>(srcData, block, stride);
+        postDecompressImpl<T, t1::ojph::ShiftOJPHFilter<T>>(srcData, block, stride);
       else
-        postDecompressImpl<T, ojph::ScaleOJPHFilter<T>>(srcData, block, stride);
+        postDecompressImpl<T, t1::ojph::ScaleOJPHFilter<T>>(srcData, block, stride);
     }
   }
 

@@ -42,7 +42,7 @@
 #include <cstdint>
 #include "ojph_version.h"
 
-namespace ojph {
+namespace grk::t1::ojph {
 
 /////////////////////////////////////////////////////////////////////////////
 //                               types

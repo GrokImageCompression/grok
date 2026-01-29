@@ -19,7 +19,7 @@
 
 #include "TileProcessor.h"
 
-namespace ojph
+namespace grk::t1::ojph
 {
 class mem_fixed_allocator;
 class mem_elastic_allocator;
@@ -47,4 +47,4 @@ private:
   mem_fixed_allocator* allocator;
   mem_elastic_allocator* elastic_alloc;
 };
-} // namespace ojph
+} // namespace grk::t1::ojph

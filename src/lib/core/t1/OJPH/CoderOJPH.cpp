@@ -27,7 +27,7 @@
 
 const uint8_t grk_cblk_dec_compressed_data_pad_ht = 8;
 
-namespace ojph
+namespace grk::t1::ojph
 {
 T1OJPH::T1OJPH(bool isCompressor, uint32_t maxCblkW, uint32_t maxCblkH)
     : coded_data_size(isCompressor ? 0 : (uint32_t)(maxCblkW * maxCblkH * sizeof(int32_t))),
@@ -106,8 +106,8 @@ bool T1OJPH::compress(grk::CompressBlockExec* block)
   uint16_t h = (uint16_t)cblk->height();
 
   uint32_t pass_length[2] = {0, 0};
-  ojph::local::ojph_encode_codeblock((uint32_t*)unencoded_data, block->k_msbs, 1, w, h, w,
-                                     pass_length, elastic_alloc, next_coded);
+  t1::ojph::local::ojph_encode_codeblock((uint32_t*)unencoded_data, block->k_msbs, 1, w, h, w,
+                                         pass_length, elastic_alloc, next_coded);
 
   cblk->setNumPasses(1);
   cblk->getPass(0)->len_ = (uint16_t)pass_length[0];
@@ -148,7 +148,7 @@ bool T1OJPH::decompress(grk::DecompressBlockExec* block)
     bool rc = false;
     if(num_passes && cblk->getDataChunksLength())
     {
-      rc = ojph::local::ojph_decode_codeblock(
+      rc = t1::ojph::local::ojph_decode_codeblock(
           actual_coded_data, (uint32_t*)unencoded_data, block->k_msbs, (uint32_t)num_passes,
           (uint32_t)cblk->getDataChunksLength(), 0, cblk->width(), cblk->height(), stride, false);
     }
@@ -167,4 +167,4 @@ bool T1OJPH::decompress(grk::DecompressBlockExec* block)
 
   return true;
 }
-} // namespace ojph
+} // namespace grk::t1::ojph

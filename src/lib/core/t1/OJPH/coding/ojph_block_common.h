@@ -37,7 +37,7 @@
 
 #include "ojph_defs.h"
 
-namespace ojph{
+namespace grk::t1::ojph{
   namespace local {
     
     extern ui16 vlc_tbl0[1024];
@@ -46,4 +46,4 @@ namespace ojph{
     extern ui16 uvlc_tbl1[256];
 
   } // !namespace local
-} // !namespace ojph
+} // !namespace grk::t1::ojph

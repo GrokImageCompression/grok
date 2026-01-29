@@ -46,7 +46,7 @@
 
 #include "ojph_arch.h"
 
-namespace ojph {
+namespace grk::t1::ojph {
 
   /////////////////////////////////////////////////////////////////////////////
   class mem_fixed_allocator

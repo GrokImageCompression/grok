@@ -26,15 +26,15 @@ ICoder* CoderFactory::makeCoder(bool isHT, bool isCompressor, uint16_t maxCblkW,
                                 uint32_t cacheStrategy)
 {
   if(isHT)
-    return new ojph::T1OJPH(isCompressor, maxCblkW, maxCblkH);
+    return new t1::ojph::T1OJPH(isCompressor, maxCblkW, maxCblkH);
   else
-    return new t1_part1::Coder(isCompressor, maxCblkW, maxCblkH, cacheStrategy);
+    return new t1::part1::Coder(isCompressor, maxCblkW, maxCblkH, cacheStrategy);
 }
 
 Quantizer* CoderFactory::makeQuantizer(bool ht, bool reversible, uint8_t guardBits)
 {
   if(ht)
-    return new ojph::QuantizerOJPH(reversible, guardBits);
+    return new t1::ojph::QuantizerOJPH(reversible, guardBits);
   else
     return new Quantizer(reversible, guardBits);
 }

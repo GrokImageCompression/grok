@@ -23,7 +23,7 @@
 #include "ICoder.h"
 #include "BlockExec.h"
 
-namespace grk::t1_part1
+namespace grk::t1::part1
 {
 
 class Coder : public ICoder
@@ -41,4 +41,4 @@ private:
   uint32_t cacheStrategy_;
 };
 
-} // namespace grk::t1_part1
+} // namespace grk::t1::part1

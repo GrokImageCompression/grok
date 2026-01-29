@@ -63,7 +63,7 @@
 #include "ojph_arch.h"
 #include "ojph_message.h"
 
-namespace ojph {
+namespace grk::t1::ojph {
   namespace local {
 
     //************************************************************************/

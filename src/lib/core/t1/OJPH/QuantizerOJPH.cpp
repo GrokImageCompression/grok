@@ -55,7 +55,7 @@
 #include "grk_includes.h"
 #include "QuantizerOJPH.h"
 
-namespace ojph
+namespace grk::t1::ojph
 {
 class sqrt_energy_gains
 {
@@ -300,4 +300,4 @@ bool QuantizerOJPH::write(grk::IStream* stream)
   return true;
 }
 
-} // namespace ojph
+} // namespace grk::t1::ojph

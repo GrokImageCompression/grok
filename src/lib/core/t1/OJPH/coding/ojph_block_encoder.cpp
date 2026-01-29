@@ -51,7 +51,7 @@
 #include "ojph_arch.h"
 #include "ojph_block_encoder.h"
 
-namespace ojph {
+namespace grk::t1::ojph {
   namespace local {
 
     /////////////////////////////////////////////////////////////////////////
@@ -471,8 +471,8 @@ namespace ojph {
     void ojph_encode_codeblock(ui32* buf, ui32 missing_msbs, ui32 num_passes,
                                ui32 width, ui32 height, ui32 stride,
                                ui32* lengths,
-                               ojph::mem_elastic_allocator *elastic,
-                               ojph::coded_lists *& coded)
+                               t1::ojph::mem_elastic_allocator *elastic,
+                               t1::ojph::coded_lists *& coded)
     {
       assert(num_passes == 1);
       (void)num_passes;                      //currently not used

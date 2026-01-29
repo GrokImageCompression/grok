@@ -41,7 +41,7 @@
 
 #include "ojph_defs.h"
 
-namespace ojph {
+namespace grk::t1::ojph {
 
   ////////////////////////////////////////////////////////////////////////////
   // defined elsewhere
@@ -55,8 +55,8 @@ namespace ojph {
       ojph_encode_codeblock(ui32* buf, ui32 missing_msbs, ui32 num_passes,
                             ui32 width, ui32 height, ui32 stride,
                             ui32* lengths, 
-                            ojph::mem_elastic_allocator *elastic,
-                            ojph::coded_lists *& coded);
+                            t1::ojph::mem_elastic_allocator *elastic,
+                            t1::ojph::coded_lists *& coded);
   }
 }
 

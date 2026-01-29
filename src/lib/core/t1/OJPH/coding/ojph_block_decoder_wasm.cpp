@@ -52,7 +52,7 @@
 
 #include <wasm_simd128.h>
 
-namespace ojph {
+namespace grk::t1::ojph {
   namespace local {
 
     //************************************************************************/

@@ -19,7 +19,7 @@
 
 #include "grk_includes.h"
 
-namespace ojph
+namespace grk::t1::ojph
 {
 template<typename T>
 class RoiShiftOJPHFilter
@@ -116,4 +116,4 @@ private:
   float scale;
 };
 
-} // namespace ojph
+} // namespace grk::t1::ojph
