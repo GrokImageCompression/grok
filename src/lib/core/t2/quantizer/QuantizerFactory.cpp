@@ -17,18 +17,15 @@
 
 #include "simd.h"
 #include "grk_includes.h"
-#include "Coder.h"
-#include "htconfig.h"
 
-namespace grk::t1
+namespace grk
 {
-ICoder* CoderFactory::makeCoder(bool isHT, bool isCompressor, uint16_t maxCblkW, uint16_t maxCblkH,
-                                uint32_t cacheStrategy)
+Quantizer* QuantizerFactory::makeQuantizer(bool ht, bool reversible, uint8_t guardBits)
 {
-  if(isHT)
-    return new t1::ojph::T1OJPH(isCompressor, maxCblkW, maxCblkH);
+  if(ht)
+    return new ojph::QuantizerOJPH(reversible, guardBits);
   else
-    return new t1::part1::Coder(isCompressor, maxCblkW, maxCblkH, cacheStrategy);
+    return new Quantizer(reversible, guardBits);
 }
 
-} // namespace grk::t1
+} // namespace grk

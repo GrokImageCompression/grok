@@ -19,7 +19,7 @@
 
 #include "IWriter.h"
 
-namespace grk::t1
+namespace grk
 {
 /**
  * Quantization stepsize
@@ -58,4 +58,4 @@ protected:
   bool isReversible;
 };
 
-} // namespace grk::t1
+} // namespace grk

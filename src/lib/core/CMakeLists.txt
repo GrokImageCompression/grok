@@ -47,6 +47,9 @@ include_directories(
   ${CMAKE_CURRENT_SOURCE_DIR}/codestream/compress
   ${CMAKE_CURRENT_SOURCE_DIR}/point_transform
   ${CMAKE_CURRENT_SOURCE_DIR}/t2
+  ${CMAKE_CURRENT_SOURCE_DIR}/t2/quantizer
+  ${CMAKE_CURRENT_SOURCE_DIR}/t2/quantizer/part15
+  ${CMAKE_CURRENT_SOURCE_DIR}/t2/quantizer/part1
   ${CMAKE_CURRENT_SOURCE_DIR}/tile_processor
   ${CMAKE_CURRENT_SOURCE_DIR}/scheduling
   ${CMAKE_CURRENT_SOURCE_DIR}/scheduling/whole_tile
@@ -121,6 +124,9 @@ set(GROK_LIBRARY_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/t2/PacketCache.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/t2/BitIO.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/t2/BitIO.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/t2/quantizer/QuantizerFactory.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/t2/quantizer/part15/QuantizerOJPH.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/t2/quantizer/part1//Quantizer.cpp
 
   ${CMAKE_CURRENT_SOURCE_DIR}/grok.cpp
 
@@ -150,7 +156,6 @@ set(GROK_LIBRARY_SRCS
 
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/CoderFactory.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/CoderOJPH.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/QuantizerOJPH.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/coding/ojph_block_common.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/coding/ojph_block_decoder.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/coding/ojph_block_encoder.cpp
@@ -159,7 +164,6 @@ set(GROK_LIBRARY_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/part1/block_coder/BlockCoderDec.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/part1/block_coder/BlockCoderEnc.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/part1/Coder.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/part1//Quantizer.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/part1/block_coder/mqcoder/mqc.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/part1/block_coder/mqcoder/mqc_base.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/part1/block_coder/mqcoder/mqc_backup.cpp

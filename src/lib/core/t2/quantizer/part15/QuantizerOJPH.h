@@ -54,7 +54,7 @@
 #pragma once
 #include <Quantizer.h>
 
-namespace grk::t1::ojph
+namespace grk::ojph
 {
 struct QuantizerOJPH : public Quantizer
 {
@@ -71,4 +71,4 @@ private:
   float base_delta;
 };
 
-} // namespace  grk::t1::ojph
+} // namespace  grk::ojph

@@ -194,6 +194,7 @@ struct TileProcessorCompress;
 #include "RateControl.h"
 #include "RateInfo.h"
 #include "CoderFactory.h"
+#include "QuantizerFactory.h"
 #include "DecompressScheduler.h"
 #include "CompressScheduler.h"
 #include "DecompressWindowScheduler.h"

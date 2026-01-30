@@ -18,7 +18,7 @@
 #include "grk_includes.h"
 #include "BlockCoder.h"
 
-namespace grk::t1
+namespace grk
 {
 Quantizer::Quantizer(bool reversible, uint8_t guard_bits)
     : Sqcd((uint8_t)(guard_bits << 5)), num_decomps(0), isReversible(reversible)
@@ -91,7 +91,7 @@ void Quantizer::generate(uint8_t decomps, uint8_t max_bit_depth,
 
     double stepsize = 1.0;
     if(!isReversible)
-      stepsize = (1 << (gain)) / BlockCoder::getnorm(level, orient, false);
+      stepsize = (1 << (gain)) / t1::BlockCoder::getnorm(level, orient, false);
     uint32_t step = (uint32_t)floor(stepsize * 8192.0);
     int32_t p, n;
     p = floorlog2(step) - 13;
@@ -112,4 +112,4 @@ bool Quantizer::write([[maybe_unused]] IWriter* stream)
   return true;
 }
 
-} // namespace grk::t1
+} // namespace grk

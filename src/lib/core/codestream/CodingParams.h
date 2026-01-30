@@ -74,7 +74,7 @@ struct TileComponentCodingParams
   /** quantisation style */
   uint8_t qntsty_;
   /** stepsizes used for quantization */
-  t1::grk_stepsize stepsizes_[GRK_MAXBANDS];
+  grk_stepsize stepsizes_[GRK_MAXBANDS];
   // number of step sizes read from QCC marker
   uint8_t numStepSizes_;
   /** number of guard bits */
@@ -321,7 +321,7 @@ struct TileCodingParams
   uint32_t cod_ = 0;
   /** If ppt == true --> there was a PPT marker for the present tile */
   bool ppt_ = false;
-  t1::Quantizer* qcd_ = nullptr;
+  Quantizer* qcd_ = nullptr;
   uint16_t numComps_ = 0;
 
 private:
