@@ -84,13 +84,13 @@ struct PrecinctImpl
    * @brief Cache of @ref CodeblockCompress
    *
    */
-  BlockCache<CodeblockCompress, PrecinctImpl>* enc_;
+  BlockCache<t1::CodeblockCompress, PrecinctImpl>* enc_;
 
   /**
    * @brief Cache of @ref CodeblockDecompress
    *
    */
-  BlockCache<CodeblockDecompress, PrecinctImpl>* dec_;
+  BlockCache<t1::CodeblockDecompress, PrecinctImpl>* dec_;
 
   /**
    * @brief code block grid

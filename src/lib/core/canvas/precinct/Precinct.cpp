@@ -61,15 +61,15 @@ uint32_t Precinct::getNumCblks(void)
 {
   return (uint32_t)getImpl()->cblk_grid_.area();
 }
-CodeblockCompress* Precinct::getCompressedBlock(uint32_t cblkno)
+t1::CodeblockCompress* Precinct::getCompressedBlock(uint32_t cblkno)
 {
   return getImpl()->enc_->get(cblkno);
 }
-CodeblockDecompress* Precinct::getDecompressedBlock(uint32_t cblkno)
+t1::CodeblockDecompress* Precinct::getDecompressedBlock(uint32_t cblkno)
 {
   return getImpl()->dec_->get(cblkno);
 }
-CodeblockDecompress* Precinct::tryGetDecompressedBlock(uint32_t cblkno)
+t1::CodeblockDecompress* Precinct::tryGetDecompressedBlock(uint32_t cblkno)
 {
   return getImpl()->dec_->tryGet(cblkno);
 }

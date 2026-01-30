@@ -17,18 +17,13 @@
 
 #pragma once
 
-#include <memory>
-#include <stdexcept>
-
 #include "CodeblockImpl.h"
 #include "CodeStreamLimits.h"
-#include "BitIO.h"
 #include "grk_exceptions.h"
 #include "t1_common.h"
 #include "mqc.h"
-#include "debug_context.h"
 
-namespace grk
+namespace grk::t1
 {
 
 /**
@@ -713,4 +708,4 @@ private:
   uint16_t dataParsedLayers_;
 };
 
-} // namespace grk
+} // namespace grk::t1

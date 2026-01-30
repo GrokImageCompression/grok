@@ -17,7 +17,7 @@
 
 #pragma once
 
-namespace grk
+namespace grk::t1
 {
 // note: block lives in canvas coordinates
 struct CodeblockImpl
@@ -84,4 +84,4 @@ private:
   CodeblockImpl& operator=(const CodeblockImpl& rhs) = default;
 };
 
-} // namespace grk
+} // namespace grk::t1

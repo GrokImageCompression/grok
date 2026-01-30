@@ -23,7 +23,7 @@ RateInfo::RateInfo() : minimumSlope(USHRT_MAX), maximumSlope(0) {}
 /*
  Synchronize with code block
  */
-void RateInfo::synch(CodeblockCompress* cblk)
+void RateInfo::synch(t1::CodeblockCompress* cblk)
 {
   for(uint8_t passno = 0U; passno < cblk->getNumPasses(); passno++)
   {

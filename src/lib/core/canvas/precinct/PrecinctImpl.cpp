@@ -119,7 +119,7 @@ PrecinctImplCompress::PrecinctImplCompress(Precinct* prec, uint16_t numLayers) :
   auto num_blocks = cblk_grid_.area();
   if(num_blocks)
   {
-    enc_ = new BlockCache<CodeblockCompress, PrecinctImpl>(numLayers, num_blocks, this);
+    enc_ = new BlockCache<t1::CodeblockCompress, PrecinctImpl>(numLayers, num_blocks, this);
   }
 }
 PrecinctImplDecompress::PrecinctImplDecompress(Precinct* prec, uint16_t numLayers)
@@ -128,7 +128,7 @@ PrecinctImplDecompress::PrecinctImplDecompress(Precinct* prec, uint16_t numLayer
   auto num_blocks = cblk_grid_.area();
   if(num_blocks)
   {
-    dec_ = new BlockCache<CodeblockDecompress, PrecinctImpl>(numLayers, num_blocks, this);
+    dec_ = new BlockCache<t1::CodeblockDecompress, PrecinctImpl>(numLayers, num_blocks, this);
   }
 }
 

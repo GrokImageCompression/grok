@@ -72,7 +72,7 @@ private:
   void makeLayerSimple(uint16_t layno, double thresh, bool finalAttempt);
   bool pcrdBisectFeasible(uint32_t* p_data_written, bool disableRateControl);
   bool makeLayerFeasible(uint16_t layno, uint16_t thresh, bool finalAttempt);
-  void prepareBlockForFirstLayer(CodeblockCompress* cblk);
+  void prepareBlockForFirstLayer(t1::CodeblockCompress* cblk);
 
   uint32_t preCalculatedTileLen_ = 0;
   /** Compression Only

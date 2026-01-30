@@ -20,7 +20,7 @@
 #include "Codeblock.h"
 #include "CodeblockCompressImpl.h"
 
-namespace grk
+namespace grk::t1
 {
 
 /**
@@ -178,4 +178,4 @@ private:
   CodeblockCompress& operator=(const CodeblockCompress& rhs) = delete;
 };
 
-} // namespace grk
+} // namespace grk::t1

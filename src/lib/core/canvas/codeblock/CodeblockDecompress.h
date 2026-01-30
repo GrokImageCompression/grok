@@ -20,7 +20,7 @@
 #include "Codeblock.h"
 #include "CodeblockDecompressImpl.h"
 
-namespace grk
+namespace grk::t1
 {
 
 struct CodeblockDecompress : public Codeblock
@@ -112,4 +112,4 @@ private:
   CodeblockDecompressImpl* impl_;
 };
 
-} // namespace grk
+} // namespace grk::t1

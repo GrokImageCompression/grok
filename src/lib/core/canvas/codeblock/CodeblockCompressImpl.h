@@ -20,7 +20,7 @@
 #include "CodeblockImpl.h"
 const uint8_t grk_cblk_enc_compressed_data_pad_left = 2;
 
-namespace grk
+namespace grk::t1
 {
 
 /**
@@ -186,4 +186,4 @@ private:
 #endif
 };
 
-} // namespace grk
+} // namespace grk::t1

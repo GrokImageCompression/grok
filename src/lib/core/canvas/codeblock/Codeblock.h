@@ -24,7 +24,7 @@
 #include "t1_common.h"
 #include "CodeblockImpl.h"
 
-namespace grk
+namespace grk::t1
 {
 
 /**
@@ -56,4 +56,4 @@ private:
   Codeblock& operator=(const Codeblock& rhs) = default;
 };
 
-} // namespace grk
+} // namespace grk::t1
