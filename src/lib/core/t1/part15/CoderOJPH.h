@@ -36,7 +36,7 @@ public:
   bool decompress(DecompressBlockExec* block) override;
 
 private:
-  void preCompress(CompressBlockExec* block, grk::Tile* tile);
+  void preCompress(CompressBlockExec* block);
   bool postProcess(DecompressBlockExec* block);
 
   uint32_t coded_data_size;

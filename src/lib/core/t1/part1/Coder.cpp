@@ -35,7 +35,6 @@ Coder::~Coder()
 }
 bool Coder::preCompress(CompressBlockExec* block, uint32_t& maximum)
 {
-  auto tile = block->tile;
   auto cblk = block->cblk;
   auto w = (uint8_t)cblk->width();
   auto h = (uint8_t)cblk->height();
@@ -46,8 +45,7 @@ bool Coder::preCompress(CompressBlockExec* block, uint32_t& maximum)
   }
   if(!blockCoder_->alloc(w, h))
     return false;
-  auto tileLineAdvance =
-      (tile->comps_ + block->compno)->getWindow()->getResWindowBufferHighestStride() - w;
+  auto tileLineAdvance = block->tile_width - w;
   uint32_t tile_index = 0;
   uint32_t cblk_index = 0;
   maximum = 0;
@@ -110,11 +108,10 @@ bool Coder::compress(CompressBlockExec* block)
   cblkexp.context_stream = cblk->context_stream;
 #endif
 
-  auto distortion = blockCoder_->compress_cblk(
-      &cblkexp, max, block->bandOrientation, block->compno,
-      (uint8_t)((block->tile->comps_ + block->compno)->num_resolutions_ - 1 - block->resno),
-      block->qmfbid, block->stepsize, block->cblk_sty, block->mct_norms, block->mct_numcomps,
-      block->doRateControl);
+  auto distortion =
+      blockCoder_->compress_cblk(&cblkexp, max, block->bandOrientation, block->compno, block->level,
+                                 block->qmfbid, block->stepsize, block->cblk_sty, block->mct_norms,
+                                 block->mct_numcomps, block->doRateControl);
 
   cblk->setNumPasses(cblkexp.numPassesTotal);
   cblk->setNumBps(cblkexp.numbps);

@@ -22,24 +22,21 @@ namespace grk::t1
 
 struct BlockExec
 {
-  BlockExec()
-      : bandIndex(0), bandNumbps(0), bandOrientation(BAND_ORIENT_LL), stepsize(0), cblk_sty(0),
-        qmfbid(0), x(0), y(0), k_msbs(0), R_b(0)
-  {}
+  BlockExec() = default;
   virtual ~BlockExec() = default;
   virtual bool open(ICoder* coder) = 0;
-  uint8_t bandIndex;
-  uint8_t bandNumbps;
-  eBandOrientation bandOrientation;
-  float stepsize;
-  uint8_t cblk_sty;
-  uint8_t qmfbid;
+  uint8_t bandIndex = 0;
+  uint8_t bandNumbps = 0;
+  eBandOrientation bandOrientation = BAND_ORIENT_LL;
+  float stepsize = 0;
+  uint8_t cblk_sty = 0;
+  uint8_t qmfbid = 0;
   /* code block offset in buffer coordinates*/
-  uint32_t x;
-  uint32_t y;
+  uint32_t x = 0;
+  uint32_t y = 0;
   // missing bit planes for all blocks in band
-  uint8_t k_msbs;
-  uint8_t R_b;
+  uint8_t k_msbs = 0;
+  uint8_t R_b = 0;
 
   // Delete copy constructor and assignment operator
   BlockExec(const BlockExec&) = delete;
@@ -102,34 +99,28 @@ struct DecompressBlockExec : public BlockExec
 };
 struct CompressBlockExec : public BlockExec
 {
-  CompressBlockExec()
-      : cblk(nullptr), tile(nullptr), doRateControl(false), distortion(0), tiledp(nullptr),
-        compno(0), resno(0), precinctIndex(0), inv_step_ht(0), mct_norms(nullptr),
-#ifdef DEBUG_LOSSLESS_T1
-        unencodedData(nullptr),
-#endif
-        mct_numcomps(0)
-  {}
+  CompressBlockExec() = default;
   ~CompressBlockExec() = default;
   bool open(ICoder* coder)
   {
     return coder->compress(this);
   }
   void close(void) {}
-  CodeblockCompress* cblk;
-  Tile* tile;
-  bool doRateControl;
-  double distortion;
-  int32_t* tiledp;
-  uint16_t compno;
-  uint8_t resno;
-  uint64_t precinctIndex;
-  float inv_step_ht;
-  const double* mct_norms;
+  CodeblockCompress* cblk = nullptr;
+  uint32_t tile_width = 0;
+  bool doRateControl = false;
+  double distortion = 0;
+  int32_t* tiledp = nullptr;
+  uint16_t compno = 0;
+  uint8_t resno = 0;
+  uint8_t level = 0;
+  uint64_t precinctIndex = 0;
+  float inv_step_ht = 0;
+  const double* mct_norms = nullptr;
 #ifdef DEBUG_LOSSLESS_T1
-  int32_t* unencodedData;
+  int32_t* unencodedData = nullptr;
 #endif
-  uint16_t mct_numcomps;
+  uint16_t mct_numcomps = 0;
 
   // Delete copy constructor and assignment operator
   CompressBlockExec(const CompressBlockExec&) = delete;

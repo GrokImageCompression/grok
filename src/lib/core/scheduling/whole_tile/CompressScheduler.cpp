@@ -54,7 +54,8 @@ bool CompressScheduler::schedule(TileProcessor* proc)
             if(!cblk->allocData(nominalBlockSize))
               continue;
             auto block = new t1::CompressBlockExec();
-            block->tile = tile_;
+            block->tile_width =
+                (tile_->comps_ + compno)->getWindow()->getResWindowBufferHighestStride();
             block->doRateControl = needsRateControl_;
             block->x = cblk->x0();
             block->y = cblk->y0();
@@ -71,6 +72,7 @@ bool CompressScheduler::schedule(TileProcessor* proc)
             block->cblk_sty = tccp->cblkStyle_;
             block->qmfbid = tccp->qmfbid_;
             block->resno = resno;
+            block->level = (uint8_t)((tile_->comps_ + compno)->num_resolutions_ - 1 - resno);
             block->inv_step_ht = 1.0f / band->stepsize_;
             block->stepsize = band->stepsize_;
             block->mct_norms = mct_norms_;

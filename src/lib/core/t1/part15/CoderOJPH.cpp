@@ -45,14 +45,12 @@ T1OJPH::~T1OJPH()
   delete allocator;
   delete elastic_alloc;
 }
-void T1OJPH::preCompress([[maybe_unused]] CompressBlockExec* block,
-                         [[maybe_unused]] grk::Tile* tile)
+void T1OJPH::preCompress([[maybe_unused]] CompressBlockExec* block)
 {
   auto cblk = block->cblk;
   uint16_t w = (uint16_t)cblk->width();
   uint16_t h = (uint16_t)cblk->height();
-  uint32_t tile_width =
-      (tile->comps_ + block->compno)->getWindow()->getResWindowBufferHighestStride();
+  uint32_t tile_width = block->tile_width;
   auto tileLineAdvance = tile_width - w;
   uint32_t cblk_index = 0;
   int32_t shift = 31 - (block->k_msbs + 1);
@@ -95,7 +93,7 @@ void T1OJPH::preCompress([[maybe_unused]] CompressBlockExec* block,
 }
 bool T1OJPH::compress(CompressBlockExec* block)
 {
-  preCompress(block, block->tile);
+  preCompress(block);
 
   coded_lists* next_coded = nullptr;
   auto cblk = block->cblk;
