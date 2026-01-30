@@ -107,7 +107,17 @@ bool DecompressWindowScheduler::schedule(TileProcessor* tileProcessor)
             auto block = new t1::DecompressBlockExec(cacheAll);
             block->x = cblk->x0();
             block->y = cblk->y0();
-            block->tilec = tilec;
+            block->postProcessor_ =
+                tcp->isHT() ? t1::DecompressBlockPostProcessor<int32_t>(
+                                  [tilec](int32_t* srcData, t1::DecompressBlockExec* block,
+                                          uint16_t stride) {
+                                    tilec->postProcessHT(srcData, block, stride);
+                                  })
+                            : t1::DecompressBlockPostProcessor<int32_t>(
+                                  [tilec](int32_t* srcData, t1::DecompressBlockExec* block,
+                                          [[maybe_unused]] uint16_t stride) {
+                                    tilec->postProcess(srcData, block);
+                                  });
             block->bandIndex = bandIndex;
             block->bandNumbps = band->maxBitPlanes_;
             block->bandOrientation = band->orientation_;

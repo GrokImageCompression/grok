@@ -163,7 +163,7 @@ bool T1OJPH::decompress(DecompressBlockExec* block)
     }
   }
 
-  block->tilec->postProcessHT(unencoded_data, block, stride);
+  block->postProcessor_(unencoded_data, block, stride);
 
   return true;
 }

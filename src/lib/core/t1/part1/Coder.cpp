@@ -146,7 +146,7 @@ bool Coder::decompress(DecompressBlockExec* block)
     return false;
   // 3. post process
   if(!Scheduling::isWindowedScheduling())
-    block->tilec->postProcess<int32_t>(blockCoder_->getUncompressedData(), block);
+    block->postProcessor_(blockCoder_->getUncompressedData(), block, 0);
 
   return true;
 }

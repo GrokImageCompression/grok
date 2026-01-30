@@ -19,15 +19,15 @@
 
 namespace grk::t1
 {
+
 struct BlockExec
 {
   BlockExec()
-      : tilec(nullptr), bandIndex(0), bandNumbps(0), bandOrientation(BAND_ORIENT_LL), stepsize(0),
-        cblk_sty(0), qmfbid(0), x(0), y(0), k_msbs(0), R_b(0)
+      : bandIndex(0), bandNumbps(0), bandOrientation(BAND_ORIENT_LL), stepsize(0), cblk_sty(0),
+        qmfbid(0), x(0), y(0), k_msbs(0), R_b(0)
   {}
   virtual ~BlockExec() = default;
   virtual bool open(ICoder* coder) = 0;
-  TileComponent* tilec;
   uint8_t bandIndex;
   uint8_t bandNumbps;
   eBandOrientation bandOrientation;
@@ -45,12 +45,16 @@ struct BlockExec
   BlockExec(const BlockExec&) = delete;
   BlockExec& operator=(const BlockExec&) = delete;
 };
+
+struct DecompressBlockExec;
+
+template<typename T>
+using DecompressBlockPostProcessor =
+    std::function<void(T* srcData, DecompressBlockExec* block, uint16_t stride)>;
+
 struct DecompressBlockExec : public BlockExec
 {
-  DecompressBlockExec(bool cacheCoder)
-      : cblk(nullptr), resno(0), roishift(0), cachedCoder_(nullptr), shouldCacheCoder_(cacheCoder),
-        finalLayer_(false), uncompressedBuf_(nullptr)
-  {}
+  DecompressBlockExec(bool cacheCoder) : shouldCacheCoder_(cacheCoder) {}
   ~DecompressBlockExec()
   {
     delete cachedCoder_;
@@ -83,14 +87,14 @@ struct DecompressBlockExec : public BlockExec
     delete cachedCoder_;
     cachedCoder_ = nullptr;
   }
-
-  CodeblockDecompress* cblk;
-  uint8_t resno;
-  uint8_t roishift;
-  ICoder* cachedCoder_;
-  bool shouldCacheCoder_;
-  bool finalLayer_;
-  Buffer2dAligned32* uncompressedBuf_;
+  DecompressBlockPostProcessor<int32_t> postProcessor_;
+  CodeblockDecompress* cblk = nullptr;
+  uint8_t resno = 0;
+  uint8_t roishift = 0;
+  ICoder* cachedCoder_ = nullptr;
+  bool shouldCacheCoder_ = false;
+  bool finalLayer_ = false;
+  Buffer2dAligned32* uncompressedBuf_ = nullptr;
 
   // Delete copy constructor and assignment operator
   DecompressBlockExec(const DecompressBlockExec&) = delete;
