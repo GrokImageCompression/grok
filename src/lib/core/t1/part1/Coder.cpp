@@ -36,8 +36,8 @@ Coder::~Coder()
 bool Coder::preCompress(CompressBlockExec* block, uint32_t& maximum)
 {
   auto cblk = block->cblk;
-  auto w = (uint8_t)cblk->width();
-  auto h = (uint8_t)cblk->height();
+  auto w = cblk->width();
+  auto h = cblk->height();
   if(w == 0 || h == 0)
   {
     grklog.error("Unable to compress degenerate code block of dimensions %ux%u", w, h);

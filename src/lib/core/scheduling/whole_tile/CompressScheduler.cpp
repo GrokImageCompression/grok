@@ -30,8 +30,8 @@ bool CompressScheduler::schedule(TileProcessor* proc)
   (void)proc;
   tile_->distortion_ = 0;
   std::vector<t1::CompressBlockExec*> blocks;
-  uint8_t maxCblkW = 0;
-  uint8_t maxCblkH = 0;
+  uint16_t maxCblkW = 0;
+  uint16_t maxCblkH = 0;
 
   for(uint16_t compno = 0; compno < tile_->numcomps_; ++compno)
   {
@@ -64,8 +64,8 @@ bool CompressScheduler::schedule(TileProcessor* proc)
             auto highest = tilec->getWindow()->getResWindowBufferHighestSimple();
             block->tiledp =
                 highest.buf_ + (uint64_t)block->x + block->y * (uint64_t)highest.stride_;
-            maxCblkW = std::max<uint8_t>(maxCblkW, (uint8_t)(1 << tccp->cblkw_expn_));
-            maxCblkH = std::max<uint8_t>(maxCblkH, (uint8_t)(1 << tccp->cblkh_expn_));
+            maxCblkW = std::max<uint16_t>(maxCblkW, (uint16_t)(1 << tccp->cblkw_expn_));
+            maxCblkH = std::max<uint16_t>(maxCblkH, (uint16_t)(1 << tccp->cblkh_expn_));
             block->compno = compno;
             block->bandOrientation = band->orientation_;
             block->cblk = cblk;

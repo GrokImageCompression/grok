@@ -48,8 +48,8 @@ T1OJPH::~T1OJPH()
 void T1OJPH::preCompress([[maybe_unused]] CompressBlockExec* block)
 {
   auto cblk = block->cblk;
-  uint16_t w = (uint16_t)cblk->width();
-  uint16_t h = (uint16_t)cblk->height();
+  auto w = cblk->width();
+  auto h = cblk->height();
   uint32_t tile_width = block->tile_width;
   auto tileLineAdvance = tile_width - w;
   uint32_t cblk_index = 0;

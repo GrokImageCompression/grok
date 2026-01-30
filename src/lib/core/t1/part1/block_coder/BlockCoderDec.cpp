@@ -169,7 +169,7 @@ void BlockCoder::decompressFinish(uint32_t cblksty, bool finalLayer)
 
 bool BlockCoder::decompress_cblk(CodeblockDecompress* cblk, uint8_t orientation, uint32_t cblksty)
 {
-  if(!alloc((uint8_t)cblk->width(), (uint8_t)cblk->height()))
+  if(!alloc(cblk->width(), cblk->height()))
     return false;
   if(!cacheAll(cacheStrategy_))
     coder.reinit();
