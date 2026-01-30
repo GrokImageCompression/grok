@@ -151,4 +151,4 @@ bool Coder::decompress(DecompressBlockExec* block)
   return true;
 }
 
-} // namespace grk::t1::part1
+} // namespace  grk::t1::part1

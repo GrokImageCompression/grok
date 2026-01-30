@@ -20,7 +20,7 @@
 #include "BlockCoder.h"
 #include "BlockCoderMacros.h"
 
-namespace grk
+namespace grk::t1
 {
 
 void BlockCoder::decompressInitOrientation(uint8_t orientation)
@@ -729,4 +729,4 @@ void BlockCoder::dec_clnpass_diff_final(int8_t bpno, uint8_t passno, uint8_t pas
   checkSegSym(cblksty);
 }
 
-} // namespace grk
+} // namespace grk::t1

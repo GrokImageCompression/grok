@@ -205,7 +205,7 @@ struct TileComponentWindow : public TileComponentWindowBase<T>
   }
   template<typename F>
   void postProcess(Buf2dAligned& src, uint8_t resno, eBandOrientation bandOrientation,
-                   DecompressBlockExec* block)
+                   t1::DecompressBlockExec* block)
   {
     Buffer2d<int32_t, AllocatorAligned> dst;
     dst = getCodeBlockDestWindowREL(resno, bandOrientation);

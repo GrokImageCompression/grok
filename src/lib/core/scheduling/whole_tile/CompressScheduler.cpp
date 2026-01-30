@@ -29,7 +29,7 @@ bool CompressScheduler::schedule(TileProcessor* proc)
 {
   (void)proc;
   tile_->distortion_ = 0;
-  std::vector<CompressBlockExec*> blocks;
+  std::vector<t1::CompressBlockExec*> blocks;
   uint8_t maxCblkW = 0;
   uint8_t maxCblkH = 0;
 
@@ -53,7 +53,7 @@ bool CompressScheduler::schedule(TileProcessor* proc)
               continue;
             if(!cblk->allocData(nominalBlockSize))
               continue;
-            auto block = new CompressBlockExec();
+            auto block = new t1::CompressBlockExec();
             block->tile = tile_;
             block->doRateControl = needsRateControl_;
             block->x = cblk->x0();
@@ -86,7 +86,7 @@ bool CompressScheduler::schedule(TileProcessor* proc)
     return true;
 
   for(auto i = 0U; i < ExecSingleton::num_threads(); ++i)
-    coders_.push_back(CoderFactory::makeCoder(tcp_->isHT(), true, maxCblkW, maxCblkH, 0));
+    coders_.push_back(t1::CoderFactory::makeCoder(tcp_->isHT(), true, maxCblkW, maxCblkH, 0));
 
   size_t num_threads = ExecSingleton::num_threads();
   if(num_threads == 1)
@@ -135,7 +135,7 @@ bool CompressScheduler::compress(size_t workerId, uint64_t maxBlocks)
 
   return true;
 }
-void CompressScheduler::compress(ICoder* coder, CompressBlockExec* block)
+void CompressScheduler::compress(t1::ICoder* coder, t1::CompressBlockExec* block)
 {
   block->open(coder);
   if(needsRateControl_)

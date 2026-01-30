@@ -69,7 +69,7 @@ struct ResBlocks
   /**
    * @brief vector of block arrays, indexed by resolution
    */
-  std::vector<std::shared_ptr<DecompressBlockExec>> blocks_;
+  std::vector<std::shared_ptr<t1::DecompressBlockExec>> blocks_;
 };
 
 typedef std::vector<ResBlocks> ComponentBlocks;

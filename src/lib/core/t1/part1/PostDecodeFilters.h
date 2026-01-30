@@ -20,7 +20,7 @@
 #include <cstdint>
 #include "BlockExec.h"
 
-namespace grk
+namespace grk::t1
 {
 template<typename T>
 class RoiShiftFilter
@@ -100,4 +100,4 @@ private:
   float scale;
 };
 
-} // namespace grk
+} // namespace grk::t1

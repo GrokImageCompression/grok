@@ -21,7 +21,7 @@
 #include <math.h>
 #include <cassert>
 
-namespace grk
+namespace grk::t1
 {
 const uint32_t T1_NUMCTXS_ZC = 9;
 const uint32_t T1_NUMCTXS_SC = 5;
@@ -66,4 +66,4 @@ struct cblk_enc
 #define smr_sign(x) (uint8_t)(((uint32_t)(x)) >> 31)
 #define to_smr(x) ((x) >= 0 ? (uint32_t)(x) : ((uint32_t)(-x) | 0x80000000U))
 
-} // namespace grk
+} // namespace grk::t1

@@ -17,7 +17,7 @@
 
 #pragma once
 
-namespace grk
+namespace grk::t1
 {
 struct CompressBlockExec;
 struct DecompressBlockExec;
@@ -44,4 +44,4 @@ public:
   virtual bool decompress(DecompressBlockExec* block) = 0;
 };
 
-} // namespace grk
+} // namespace grk::t1

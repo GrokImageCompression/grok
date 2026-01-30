@@ -20,7 +20,7 @@
 #include "Coder.h"
 #include "htconfig.h"
 
-namespace grk
+namespace grk::t1
 {
 ICoder* CoderFactory::makeCoder(bool isHT, bool isCompressor, uint16_t maxCblkW, uint16_t maxCblkH,
                                 uint32_t cacheStrategy)
@@ -39,4 +39,4 @@ Quantizer* CoderFactory::makeQuantizer(bool ht, bool reversible, uint8_t guardBi
     return new Quantizer(reversible, guardBits);
 }
 
-} // namespace grk
+} // namespace grk::t1

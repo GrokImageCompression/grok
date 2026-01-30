@@ -27,16 +27,17 @@ bool CoderPool::contains(uint8_t maxCblkWExp, uint8_t maxCblkHExp)
 }
 
 void CoderPool::makeCoders(uint32_t numCoders, uint8_t maxCblkWExp, uint8_t maxCblkHExp,
-                           std::function<std::shared_ptr<ICoder>()> creator)
+                           std::function<std::shared_ptr<t1::ICoder>()> creator)
 {
   if(contains(maxCblkWExp, maxCblkHExp))
     return;
-  std::vector<std::shared_ptr<ICoder>> coders;
+  std::vector<std::shared_ptr<t1::ICoder>> coders;
   for(uint32_t i = 0; i < numCoders; ++i)
     coders.push_back(creator());
   coderMap_[{maxCblkWExp, maxCblkHExp}] = std::move(coders);
 }
-std::shared_ptr<ICoder> CoderPool::getCoder(size_t worker, uint8_t maxCblkWExp, uint8_t maxCblkHExp)
+std::shared_ptr<t1::ICoder> CoderPool::getCoder(size_t worker, uint8_t maxCblkWExp,
+                                                uint8_t maxCblkHExp)
 {
   auto it = coderMap_.find({maxCblkWExp, maxCblkHExp});
   if(it == coderMap_.end())

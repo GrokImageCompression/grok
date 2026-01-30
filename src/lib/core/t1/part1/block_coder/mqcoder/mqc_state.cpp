@@ -17,7 +17,7 @@
 
 #include "mqc_state.h"
 
-namespace grk
+namespace grk::t1
 {
 
 const mqc_state mqc_states[47 * 2] = {

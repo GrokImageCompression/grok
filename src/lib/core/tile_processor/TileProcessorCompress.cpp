@@ -291,7 +291,7 @@ bool TileProcessorCompress::doCompress(void)
       {
         auto tile_comp = tile_->comps_ + compno;
         auto tccp = tcp_->tccps_ + compno;
-        WaveletFwdImpl w;
+        t1::WaveletFwdImpl w;
         if(!w.compress(tile_comp, tccp->qmfbid_))
           return false;
       }

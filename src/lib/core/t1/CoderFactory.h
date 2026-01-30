@@ -19,7 +19,7 @@
 
 #include "ICoder.h"
 
-namespace grk
+namespace grk::t1
 {
 class CoderFactory
 {
@@ -29,4 +29,4 @@ public:
   static Quantizer* makeQuantizer(bool ht, bool reversible, uint8_t guardBits);
 };
 
-} // namespace grk
+} // namespace grk::t1

@@ -21,7 +21,7 @@
 #include "debug_context.h"
 #include "mqc_state.h"
 
-namespace grk
+namespace grk::t1
 {
 
 mqcoder::mqcoder(void) : mqcoder(false) {}
@@ -336,4 +336,4 @@ void mqcoder::segmark_enc(void)
   }
 }
 
-} // namespace grk
+} // namespace grk::t1

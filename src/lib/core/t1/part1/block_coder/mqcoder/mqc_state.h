@@ -19,7 +19,7 @@
 
 #include <cstdint>
 
-namespace grk
+namespace grk::t1
 {
 
 /**
@@ -53,4 +53,4 @@ struct mqc_state
 
 extern const mqc_state mqc_states[47 * 2];
 
-} // namespace grk
+} // namespace grk::t1

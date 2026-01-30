@@ -17,7 +17,7 @@
 
 #include "mqc_backup.h"
 
-namespace grk
+namespace grk::t1
 {
 
 mqcoder_backup::mqcoder_backup(void)
@@ -96,4 +96,4 @@ bool mqcoder_backup::operator==(const mqcoder_backup& other) const
   return true;
 }
 
-} // namespace grk
+} // namespace grk::t1

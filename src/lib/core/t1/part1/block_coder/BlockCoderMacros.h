@@ -17,7 +17,7 @@
 
 #pragma once
 
-namespace grk
+namespace grk::t1
 {
 
 // Decode Cleanup Pass
@@ -223,4 +223,4 @@ namespace grk
     POP_MQC();                                                           \
   }
 
-} // namespace grk
+} // namespace grk::t1

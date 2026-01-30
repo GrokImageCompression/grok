@@ -28,7 +28,7 @@
 #include "plugin_interface.h"
 #endif
 
-namespace grk
+namespace grk::t1
 {
 
 /**
@@ -163,4 +163,4 @@ struct mqcoder : public mqcoder_base
 
 /* DECODE */
 
-} // namespace grk
+} // namespace grk::t1

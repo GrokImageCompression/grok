@@ -43,7 +43,8 @@ struct CoderKeyHash
   }
 };
 
-typedef std::unordered_map<CoderKey, std::vector<std::shared_ptr<ICoder>>, CoderKeyHash> CODERMAP;
+typedef std::unordered_map<CoderKey, std::vector<std::shared_ptr<t1::ICoder>>, CoderKeyHash>
+    CODERMAP;
 
 struct CoderPool
 {
@@ -51,9 +52,9 @@ public:
   CoderPool(void) = default;
   ~CoderPool(void) = default;
   void makeCoders(uint32_t numCoders, uint8_t maxCblkWExp, uint8_t maxCblkHExp,
-                  std::function<std::shared_ptr<ICoder>()> creator);
+                  std::function<std::shared_ptr<t1::ICoder>()> creator);
   bool contains(uint8_t maxCblkWExp, uint8_t maxCblkHExp);
-  std::shared_ptr<ICoder> getCoder(size_t worker, uint8_t maxCblkWExp, uint8_t maxCblkHExp);
+  std::shared_ptr<t1::ICoder> getCoder(size_t worker, uint8_t maxCblkWExp, uint8_t maxCblkHExp);
 
 private:
   CODERMAP coderMap_;

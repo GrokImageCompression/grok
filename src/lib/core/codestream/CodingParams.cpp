@@ -292,7 +292,7 @@ TileCodingParams::TileCodingParams(const TileCodingParams& rhs)
     // Or recreate
     bool reversible = (rhs.tccps_[0].qmfbid_ == 1);
     uint8_t guardBits = rhs.tccps_[0].numgbits_;
-    qcd_ = CoderFactory::makeQuantizer(rhs.ht_, reversible, guardBits);
+    qcd_ = t1::CoderFactory::makeQuantizer(rhs.ht_, reversible, guardBits);
   }
 
   // Deep copy other pointers if necessary, e.g. packets_, mct_norms_, mctCodingMatrix_,
@@ -404,7 +404,7 @@ bool TileCodingParams::readQcd(bool fromTileHeader, uint8_t* headerData, uint16_
     {
       dest->qntsty_ = src->qntsty_;
       dest->numgbits_ = src->numgbits_;
-      auto size = GRK_MAXBANDS * sizeof(grk_stepsize);
+      auto size = GRK_MAXBANDS * sizeof(t1::grk_stepsize);
       memcpy(dest->stepsizes_, src->stepsizes_, size);
     }
   }
@@ -1761,7 +1761,7 @@ void TileCodingParams::setIsHT(bool ht, bool reversible, uint8_t guardBits)
 {
   ht_ = ht;
   if(!qcd_)
-    qcd_ = CoderFactory::makeQuantizer(ht, reversible, guardBits);
+    qcd_ = t1::CoderFactory::makeQuantizer(ht, reversible, guardBits);
 }
 
 bool TileCodingParams::isHT(void)

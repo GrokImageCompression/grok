@@ -20,7 +20,7 @@
 #include <cstdint>
 #include "TileComponent.h"
 
-namespace grk
+namespace grk::t1
 {
 class dwt53
 {
@@ -49,4 +49,4 @@ public:
   bool compress(TileComponent* tile_comp, uint8_t qmfbid);
 };
 
-} // namespace grk
+} // namespace grk::t1

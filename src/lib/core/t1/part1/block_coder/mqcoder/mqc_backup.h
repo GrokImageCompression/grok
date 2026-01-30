@@ -20,7 +20,7 @@
 #include "buffer.h"
 #include "mqc_base.h"
 
-namespace grk
+namespace grk::t1
 {
 
 const uint8_t BACKUP_DISABLED = 0xFF;
@@ -119,4 +119,4 @@ struct mqcoder_backup : public mqcoder_base
   uint16_t layer_;
 };
 
-} // namespace grk
+} // namespace grk::t1

@@ -17,7 +17,7 @@
 
 #include "mqc_base.h"
 
-namespace grk
+namespace grk::t1
 {
 
 /**
@@ -103,4 +103,4 @@ void mqcoder_base::print(const std::string& msg)
          end_of_byte_stream_counter, bp);
 }
 
-} // namespace grk
+} // namespace grk::t1

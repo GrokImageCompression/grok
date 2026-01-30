@@ -63,7 +63,7 @@ private:
   /**
    * @brief vector of @ref CompressBlockExec encode blocks
    */
-  std::vector<CompressBlockExec*> encodeBlocks_;
+  std::vector<t1::CompressBlockExec*> encodeBlocks_;
 
   /**
    * @brief atomic counter to keep track of number of encoded blocks

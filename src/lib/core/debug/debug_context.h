@@ -26,14 +26,14 @@ namespace grk
 {
 
 using ResolutionLayerKey = std::pair<uint8_t, uint16_t>;
-using QueueMap = std::map<ResolutionLayerKey, std::queue<mqcoder>>;
+using QueueMap = std::map<ResolutionLayerKey, std::queue<t1::mqcoder>>;
 
 struct BackupCache
 {
-  BackupCache(const mqcoder& coder, uint8_t passno, uint8_t position, uint16_t i, uint16_t k)
+  BackupCache(const t1::mqcoder& coder, uint8_t passno, uint8_t position, uint16_t i, uint16_t k)
       : coder_(coder), passno_(passno), position_(position), i_(i), k_(k)
   {}
-  mqcoder coder_;
+  t1::mqcoder coder_;
   uint8_t passno_;
   uint8_t position_;
   uint16_t i_;
@@ -58,7 +58,7 @@ class DebugContext
 public:
   static DebugContext& getInstance();
 
-  bool handle(const mqcoder& mq, uint8_t passno, uint8_t position, uint16_t i, uint16_t k);
+  bool handle(const t1::mqcoder& mq, uint8_t passno, uint8_t position, uint16_t i, uint16_t k);
   void incrementDifferentialLayer();
   void restoreBackup(void);
 
@@ -76,7 +76,7 @@ public:
 private:
   DebugContext();
   void checkEmpty() const;
-  std::queue<mqcoder>& getQueue(uint16_t layer);
+  std::queue<t1::mqcoder>& getQueue(uint16_t layer);
   void logProbe(bool differential, uint16_t layer, size_t order, uint32_t c, uint8_t passno,
                 uint8_t position, uint16_t i, uint16_t k) const;
 

@@ -45,7 +45,7 @@ T1OJPH::~T1OJPH()
   delete allocator;
   delete elastic_alloc;
 }
-void T1OJPH::preCompress([[maybe_unused]] grk::CompressBlockExec* block,
+void T1OJPH::preCompress([[maybe_unused]] CompressBlockExec* block,
                          [[maybe_unused]] grk::Tile* tile)
 {
   auto cblk = block->cblk;
@@ -93,7 +93,7 @@ void T1OJPH::preCompress([[maybe_unused]] grk::CompressBlockExec* block,
     }
   }
 }
-bool T1OJPH::compress(grk::CompressBlockExec* block)
+bool T1OJPH::compress(CompressBlockExec* block)
 {
   preCompress(block, block->tile);
 
@@ -118,7 +118,7 @@ bool T1OJPH::compress(grk::CompressBlockExec* block)
 
   return true;
 }
-bool T1OJPH::decompress(grk::DecompressBlockExec* block)
+bool T1OJPH::decompress(DecompressBlockExec* block)
 {
   auto cblk = block->cblk;
   if(!cblk->area())

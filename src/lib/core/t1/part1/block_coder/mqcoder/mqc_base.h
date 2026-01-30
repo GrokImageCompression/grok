@@ -21,7 +21,7 @@
 
 #pragma once
 
-namespace grk
+namespace grk::t1
 {
 
 typedef uint32_t grk_flag;
@@ -278,4 +278,4 @@ struct mqcoder_base
   bool finalLayer_;
 };
 
-} // namespace grk
+} // namespace grk::t1

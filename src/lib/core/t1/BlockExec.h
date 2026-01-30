@@ -17,7 +17,7 @@
 
 #pragma once
 
-namespace grk
+namespace grk::t1
 {
 struct BlockExec
 {
@@ -132,4 +132,4 @@ struct CompressBlockExec : public BlockExec
   CompressBlockExec& operator=(const CompressBlockExec&) = delete;
 };
 
-} // namespace grk
+} // namespace grk::t1

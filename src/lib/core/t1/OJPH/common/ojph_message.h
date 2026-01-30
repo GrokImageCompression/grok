@@ -41,7 +41,7 @@
 #include <cstring>
 #include "ojph_arch.h"
 
-namespace grk::t1::ojph {
+namespace  grk::t1::ojph {
 
   ////////////////////////////////////////////////////////////////////////////
   enum OJPH_MSG_LEVEL : int

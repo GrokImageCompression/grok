@@ -17,7 +17,7 @@
 
 #pragma once
 
-namespace grk
+namespace grk::t1
 {
 
 class BlockCoder
@@ -154,4 +154,4 @@ private:
                     uint32_t mct_numcomps);
 };
 
-} // namespace grk
+} // namespace grk::t1

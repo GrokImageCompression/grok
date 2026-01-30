@@ -63,7 +63,7 @@
 #include <intrin.h>
 #endif
 
-namespace grk::t1::ojph {
+namespace  grk::t1::ojph {
 
   ////////////////////////////////////////////////////////////////////////////
   //                         OS detection definitions

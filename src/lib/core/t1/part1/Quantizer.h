@@ -17,7 +17,7 @@
 
 #pragma once
 
-namespace grk
+namespace grk::t1
 {
 /**
  * Quantization stepsize
@@ -56,4 +56,4 @@ protected:
   bool isReversible;
 };
 
-} // namespace grk
+} // namespace grk::t1

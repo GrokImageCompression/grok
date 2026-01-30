@@ -18,7 +18,7 @@
 #include "grk_includes.h"
 #include <algorithm>
 
-namespace grk
+namespace grk::t1
 {
 
 /*************************************************************************************
@@ -783,4 +783,4 @@ bool WaveletReverse::decompressPartial(void)
   }
 }
 
-} // namespace grk
+} // namespace grk::t1

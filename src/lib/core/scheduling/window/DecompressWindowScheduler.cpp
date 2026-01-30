@@ -66,12 +66,12 @@ bool DecompressWindowScheduler::schedule(TileProcessor* tileProcessor)
 
     if(!cacheAll)
     {
-      activePool->makeCoders(num_threads, tccp->cblkw_expn_, tccp->cblkh_expn_,
-                             [tcp, cbw, cbh, tileProcessor]() -> std::shared_ptr<ICoder> {
-                               return std::shared_ptr<ICoder>(
-                                   CoderFactory::makeCoder(tcp->isHT(), false, cbw, cbh,
-                                                           tileProcessor->getTileCacheStrategy()));
-                             });
+      activePool->makeCoders(
+          num_threads, tccp->cblkw_expn_, tccp->cblkh_expn_,
+          [tcp, cbw, cbh, tileProcessor]() -> std::shared_ptr<t1::ICoder> {
+            return std::shared_ptr<t1::ICoder>(t1::CoderFactory::makeCoder(
+                tcp->isHT(), false, cbw, cbh, tileProcessor->getTileCacheStrategy()));
+          });
     }
 
     auto tilec = tileProcessor->getTile()->comps_ + compno;
@@ -104,7 +104,7 @@ bool DecompressWindowScheduler::schedule(TileProcessor* tileProcessor)
               continue;
 
             auto cblk = precinct->getDecompressedBlock(cblkno);
-            auto block = new DecompressBlockExec(cacheAll);
+            auto block = new t1::DecompressBlockExec(cacheAll);
             block->x = cblk->x0();
             block->y = cblk->y0();
             block->tilec = tilec;
@@ -127,11 +127,11 @@ bool DecompressWindowScheduler::schedule(TileProcessor* tileProcessor)
                               cacheAll] {
               if(success)
               {
-                ICoder* coder = nullptr;
+                t1::ICoder* coder = nullptr;
                 if(block->needsCachedCoder())
                 {
-                  coder = CoderFactory::makeCoder(tileProcessor->getTCP()->isHT(), false, cbw, cbh,
-                                                  tileProcessor->getTileCacheStrategy());
+                  coder = t1::CoderFactory::makeCoder(tileProcessor->getTCP()->isHT(), false, cbw,
+                                                      cbh, tileProcessor->getTileCacheStrategy());
                 }
                 else if(!cacheAll)
                 {

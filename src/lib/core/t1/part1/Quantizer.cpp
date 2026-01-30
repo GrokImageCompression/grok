@@ -18,7 +18,7 @@
 #include "grk_includes.h"
 #include "BlockCoder.h"
 
-namespace grk
+namespace grk::t1
 {
 Quantizer::Quantizer(bool reversible, uint8_t guard_bits)
     : Sqcd((uint8_t)(guard_bits << 5)), num_decomps(0), isReversible(reversible)
@@ -112,4 +112,4 @@ bool Quantizer::write([[maybe_unused]] IStream* stream)
   return true;
 }
 
-} // namespace grk
+} // namespace grk::t1

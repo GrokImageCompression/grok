@@ -325,21 +325,23 @@ struct TileComponent : public Rect32
    * @param block @ref DecompressBlockExec
    */
   template<typename T>
-  void postProcess(T* srcData, DecompressBlockExec* block)
+  void postProcess(T* srcData, t1::DecompressBlockExec* block)
   {
     if(block->roishift)
     {
       if(block->qmfbid == 1)
-        postDecompressImpl<T, RoiShiftFilter<T>>(srcData, block, (uint16_t)block->cblk->width());
+        postDecompressImpl<T, t1::RoiShiftFilter<T>>(srcData, block,
+                                                     (uint16_t)block->cblk->width());
       else
-        postDecompressImpl<T, RoiScaleFilter<T>>(srcData, block, (uint16_t)block->cblk->width());
+        postDecompressImpl<T, t1::RoiScaleFilter<T>>(srcData, block,
+                                                     (uint16_t)block->cblk->width());
     }
     else
     {
       if(block->qmfbid == 1)
-        postDecompressImpl<T, ShiftFilter<T>>(srcData, block, (uint16_t)block->cblk->width());
+        postDecompressImpl<T, t1::ShiftFilter<T>>(srcData, block, (uint16_t)block->cblk->width());
       else
-        postDecompressImpl<T, ScaleFilter<T>>(srcData, block, (uint16_t)block->cblk->width());
+        postDecompressImpl<T, t1::ScaleFilter<T>>(srcData, block, (uint16_t)block->cblk->width());
     }
   }
 
@@ -351,7 +353,7 @@ struct TileComponent : public Rect32
    * @param stride source data stride
    */
   template<typename T>
-  void postProcessHT(T* srcData, DecompressBlockExec* block, uint16_t stride)
+  void postProcessHT(T* srcData, t1::DecompressBlockExec* block, uint16_t stride)
   {
     if(block->roishift)
     {
@@ -405,7 +407,7 @@ private:
    * @param stride source data stride
    */
   template<typename T, typename F>
-  void postDecompressImpl(T* srcData, DecompressBlockExec* block, uint16_t stride)
+  void postDecompressImpl(T* srcData, t1::DecompressBlockExec* block, uint16_t stride)
   {
     auto cblk = block->cblk;
     bool empty = cblk->dataChunksEmpty();

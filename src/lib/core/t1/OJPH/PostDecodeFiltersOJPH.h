@@ -25,7 +25,7 @@ template<typename T>
 class RoiShiftOJPHFilter
 {
 public:
-  explicit RoiShiftOJPHFilter(grk::DecompressBlockExec* block)
+  explicit RoiShiftOJPHFilter(DecompressBlockExec* block)
       : roiShift(block->roishift), shift(31U - (block->k_msbs + 1U))
   {}
   inline void copy(T* dest, const T* src, uint32_t len)
@@ -50,7 +50,7 @@ template<typename T>
 class ShiftOJPHFilter
 {
 public:
-  explicit ShiftOJPHFilter(grk::DecompressBlockExec* block) : shift(31U - (block->k_msbs + 1U)) {}
+  explicit ShiftOJPHFilter(DecompressBlockExec* block) : shift(31U - (block->k_msbs + 1U)) {}
   inline void copy(T* dest, const T* src, uint32_t len)
   {
     for(uint32_t i = 0; i < len; ++i)
@@ -69,7 +69,7 @@ template<typename T>
 class RoiScaleOJPHFilter
 {
 public:
-  explicit RoiScaleOJPHFilter(grk::DecompressBlockExec* block)
+  explicit RoiScaleOJPHFilter(DecompressBlockExec* block)
       : roiShift(block->roishift), scale(block->stepsize / (float)(1u << (31 - block->bandNumbps)))
   {
     assert(block->bandNumbps <= 31);
@@ -97,7 +97,7 @@ template<typename T>
 class ScaleOJPHFilter
 {
 public:
-  explicit ScaleOJPHFilter(grk::DecompressBlockExec* block)
+  explicit ScaleOJPHFilter(DecompressBlockExec* block)
       : scale(block->stepsize / (float)(1u << (31 - block->bandNumbps)))
   {
     assert(block->bandNumbps <= 31);
@@ -116,4 +116,4 @@ private:
   float scale;
 };
 
-} // namespace grk::t1::ojph
+} // namespace  grk::t1::ojph

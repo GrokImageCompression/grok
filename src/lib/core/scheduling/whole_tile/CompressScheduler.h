@@ -55,7 +55,7 @@ private:
    * @param coder @ref ICoder coder implementation
    * @param block @ref CompressBlockExec compression block
    */
-  void compress(ICoder* coder, CompressBlockExec* block);
+  void compress(t1::ICoder* coder, t1::CompressBlockExec* block);
 
   /**
    * @brief @ref Tile to compress
@@ -73,7 +73,7 @@ private:
   /**
    * @brief vector of @ref CompressBlockExec encode blocks
    */
-  std::vector<CompressBlockExec*> encodeBlocks_;
+  std::vector<t1::CompressBlockExec*> encodeBlocks_;
 
   /**
    * @brief atomic counter to keep track of number of encoded blocks

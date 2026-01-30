@@ -45,7 +45,7 @@
  *  @brief defines tables used for decoding HTJ2K blocks
  */
 
-namespace grk::t1::ojph {
+namespace  grk::t1::ojph {
   namespace local {
 
     //************************************************************************/
@@ -326,4 +326,4 @@ namespace grk::t1::ojph {
     static bool uvlc_tables_initialized = uvlc_init_tables();
 
   } // !namespace local
-} // !namespace grk::t1::ojph
+} // !namespace  grk::t1::ojph

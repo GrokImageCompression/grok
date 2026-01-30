@@ -403,7 +403,7 @@ struct Buffer2d : protected Buffer<T, A>, public Rect32
   {
     if(!height() || !width())
       return true;
-    uint32_t newStride = stride ? stride : alignedBufferWidth(width());
+    uint32_t newStride = stride ? stride : t1::alignedBufferWidth(width());
     uint64_t eltsNeeded = (uint64_t)newStride * height();
     // avoid reallocation
     if(!eltsNeeded || eltsNeeded <= this->num_elts())

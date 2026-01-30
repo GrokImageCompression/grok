@@ -53,7 +53,7 @@
 #pragma GCC diagnostic pop
 #endif
 
-namespace grk::t1::ojph {
+namespace  grk::t1::ojph {
 
   ////////////////////////////////////////////////////////////////////////////
   //

@@ -179,14 +179,14 @@ bool CodeStreamDecompress::readHeader(grk_header_info* headerInfo)
     headerImage_->copyHeaderTo(multiTileComposite_.get());
     multiTileComposite_->validateColourSpace();
     uint32_t num_threads = (uint32_t)ExecSingleton::num_threads();
-    coderPool_.makeCoders(num_threads, 6, 6, [this]() -> std::shared_ptr<ICoder> {
-      return std::shared_ptr<ICoder>(
-          CoderFactory::makeCoder(isHT_, false, 64, 64, tileCache_->getStrategy()));
+    coderPool_.makeCoders(num_threads, 6, 6, [this]() -> std::shared_ptr<t1::ICoder> {
+      return std::shared_ptr<t1::ICoder>(
+          t1::CoderFactory::makeCoder(isHT_, false, 64, 64, tileCache_->getStrategy()));
     });
 
-    coderPool_.makeCoders(num_threads, 5, 5, [this]() -> std::shared_ptr<ICoder> {
-      return std::shared_ptr<ICoder>(
-          CoderFactory::makeCoder(isHT_, false, 32, 32, tileCache_->getStrategy()));
+    coderPool_.makeCoders(num_threads, 5, 5, [this]() -> std::shared_ptr<t1::ICoder> {
+      return std::shared_ptr<t1::ICoder>(
+          t1::CoderFactory::makeCoder(isHT_, false, 32, 32, tileCache_->getStrategy()));
     });
     defaultTcp_->finalizePocs();
     if(isHT_)
@@ -473,7 +473,7 @@ bool CodeStreamDecompress::readSIZ(uint8_t* headerData, uint16_t headerSize)
     headerImage_->has_multiple_tiles = numTilesToDecompress > 1;
   }
   auto maxDim = std::max(cp_.t_width_, cp_.t_height_);
-  WaveletReverse::allocPoolData(maxDim);
+  t1::WaveletReverse::allocPoolData(maxDim);
 
   return rc;
 }

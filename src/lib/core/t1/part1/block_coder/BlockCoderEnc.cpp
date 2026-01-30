@@ -19,7 +19,7 @@
 #include "t1_luts.h"
 #include "BlockCoder.h"
 
-namespace grk
+namespace grk::t1
 {
 
 static const double dwt_norms[4][32] = {
@@ -893,4 +893,4 @@ double BlockCoder::compress_cblk(cblk_enc* cblk, uint32_t max, uint8_t orientati
   return cumwmsedec;
 }
 
-} // namespace grk
+} // namespace grk::t1

@@ -41,7 +41,7 @@
 
 #include "ojph_defs.h"
 
-namespace grk::t1::ojph {
+namespace  grk::t1::ojph {
 
   ////////////////////////////////////////////////////////////////////////////
   // defined elsewhere

@@ -56,7 +56,7 @@
 
 namespace grk::t1::ojph
 {
-struct QuantizerOJPH : public grk::Quantizer
+struct QuantizerOJPH : public Quantizer
 {
 public:
   QuantizerOJPH(bool reversible, uint8_t guard_bits);
@@ -71,4 +71,4 @@ private:
   float base_delta;
 };
 
-} // namespace grk::t1::ojph
+} // namespace  grk::t1::ojph

@@ -121,7 +121,7 @@ protected:
    * @brief pool of @ref ICoder
    *
    */
-  std::vector<ICoder*> coders_;
+  std::vector<t1::ICoder*> coders_;
 
   /**
    * @brief @ref tf::Future<void> resulting from running scheduler

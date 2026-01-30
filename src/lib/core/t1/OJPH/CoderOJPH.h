@@ -26,18 +26,18 @@ class mem_elastic_allocator;
 
 struct TileCodingParams;
 
-class T1OJPH : public grk::ICoder
+class T1OJPH : public t1::ICoder
 {
 public:
   T1OJPH(bool isCompressor, uint32_t maxCblkW, uint32_t maxCblkH);
   virtual ~T1OJPH();
 
-  bool compress(grk::CompressBlockExec* block) override;
-  bool decompress(grk::DecompressBlockExec* block) override;
+  bool compress(CompressBlockExec* block) override;
+  bool decompress(DecompressBlockExec* block) override;
 
 private:
-  void preCompress(grk::CompressBlockExec* block, grk::Tile* tile);
-  bool postProcess(grk::DecompressBlockExec* block);
+  void preCompress(CompressBlockExec* block, grk::Tile* tile);
+  bool postProcess(DecompressBlockExec* block);
 
   uint32_t coded_data_size;
   uint8_t* coded_data;

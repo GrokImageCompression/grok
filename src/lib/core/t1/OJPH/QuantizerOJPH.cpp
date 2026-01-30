@@ -300,4 +300,4 @@ bool QuantizerOJPH::write(grk::IStream* stream)
   return true;
 }
 
-} // namespace grk::t1::ojph
+} // namespace  grk::t1::ojph

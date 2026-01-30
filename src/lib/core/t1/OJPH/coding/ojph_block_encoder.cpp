@@ -51,7 +51,7 @@
 #include "ojph_arch.h"
 #include "ojph_block_encoder.h"
 
-namespace grk::t1::ojph {
+namespace  grk::t1::ojph {
   namespace local {
 
     /////////////////////////////////////////////////////////////////////////

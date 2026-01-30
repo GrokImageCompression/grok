@@ -23,7 +23,7 @@
 #include <hwy/foreach_target.h>
 #include <hwy/highway.h>
 HWY_BEFORE_NAMESPACE();
-namespace grk
+namespace grk::t1
 {
 
 template<typename T>
@@ -920,14 +920,14 @@ namespace HWY_NAMESPACE
   }
 
 } // namespace HWY_NAMESPACE
-} // namespace grk
+} // namespace grk::t1
 HWY_AFTER_NAMESPACE();
 
 #if HWY_ONCE
 
 #include "WaveletFwd.h"
 
-namespace grk
+namespace grk::t1
 {
 HWY_EXPORT(encode_53_v);
 HWY_EXPORT(encode_53_h);
@@ -1008,5 +1008,5 @@ void dwt97::encode_h(float* res, float* scratch, const uint32_t width, const uin
   HWY_DYNAMIC_DISPATCH(encode_97_h)(res, scratch, width, parity, stride, numrows);
 }
 
-} // namespace grk
+} // namespace grk::t1
 #endif

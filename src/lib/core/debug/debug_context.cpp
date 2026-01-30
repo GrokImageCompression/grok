@@ -44,7 +44,7 @@ DebugContext& DebugContext::getInstance()
 }
 
 // Handling the mqcoder
-bool DebugContext::handle(const mqcoder& mq, uint8_t passno, uint8_t position, uint16_t i,
+bool DebugContext::handle(const t1::mqcoder& mq, uint8_t passno, uint8_t position, uint16_t i,
                           uint16_t k)
 {
   uint16_t layer = static_cast<uint16_t>(mq.cur_buffer_index);
@@ -58,9 +58,9 @@ bool DebugContext::handle(const mqcoder& mq, uint8_t passno, uint8_t position, u
   }
   else if(!queue.empty())
   {
-    if(mq.backup_->i != BACKUP_DISABLED)
+    if(mq.backup_->i != t1::BACKUP_DISABLED)
       return true;
-    mqcoder ref = queue.front();
+    t1::mqcoder ref = queue.front();
     queue.pop();
     bool isEqual = (mq == ref);
     logProbe(true, layer, queue.size(), ref.c, passno, position, i, k);
@@ -113,7 +113,7 @@ void DebugContext::checkEmpty() const
 }
 
 // Getting the queue for a specific layer
-std::queue<mqcoder>& DebugContext::getQueue(uint16_t layer)
+std::queue<t1::mqcoder>& DebugContext::getQueue(uint16_t layer)
 {
   return referenceCoders_[{resno_, layer}];
 }
