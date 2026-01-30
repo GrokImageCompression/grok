@@ -17,16 +17,15 @@
 
 #pragma once
 
-#include "TileProcessor.h"
+#include "ICoder.h"
+#include "BlockExec.h"
 
 namespace grk::t1::ojph
 {
 class mem_fixed_allocator;
 class mem_elastic_allocator;
 
-struct TileCodingParams;
-
-class T1OJPH : public t1::ICoder
+class T1OJPH : public ICoder
 {
 public:
   T1OJPH(bool isCompressor, uint32_t maxCblkW, uint32_t maxCblkH);

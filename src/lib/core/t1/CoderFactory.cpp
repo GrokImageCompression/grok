@@ -16,9 +16,10 @@
  */
 
 #include "simd.h"
-#include "grk_includes.h"
 #include "Coder.h"
+#include "CoderOJPH.h"
 #include "htconfig.h"
+#include "CoderFactory.h"
 
 namespace grk::t1
 {

@@ -29,6 +29,7 @@ include_directories(
   ${CMAKE_CURRENT_SOURCE_DIR}/t1
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/codeblock
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/part1
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/part1/block_coder
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/part1/block_coder/mqcoder
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/common

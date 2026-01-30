@@ -17,7 +17,7 @@
 
 #pragma once
 
-#include "grk_includes.h"
+#include "BlockExec.h"
 
 namespace grk::t1::ojph
 {

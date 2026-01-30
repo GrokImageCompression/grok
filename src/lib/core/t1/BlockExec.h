@@ -17,6 +17,13 @@
 
 #pragma once
 
+#include <functional>
+
+#include "t1_common.h"
+#include "CodeblockCompress.h"
+#include "CodeblockDecompress.h"
+#include "ICoder.h"
+
 namespace grk::t1
 {
 

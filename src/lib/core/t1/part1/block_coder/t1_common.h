@@ -21,8 +21,34 @@
 #include <math.h>
 #include <cassert>
 
+namespace grk
+{
+
+enum eBandOrientation
+{
+  BAND_ORIENT_LL,
+  BAND_ORIENT_HL,
+  BAND_ORIENT_LH,
+  BAND_ORIENT_HH,
+  BAND_NUM_ORIENTATIONS
+};
+// LL band index when resolution == 0
+const uint32_t BAND_RES_ZERO_INDEX_LL = 0;
+
+// band indices when resolution > 0
+enum eBandIndex
+{
+  BAND_INDEX_HL,
+  BAND_INDEX_LH,
+  BAND_INDEX_HH,
+  BAND_NUM_INDICES
+};
+
+} // namespace grk
+
 namespace grk::t1
 {
+
 const uint32_t T1_NUMCTXS_ZC = 9;
 const uint32_t T1_NUMCTXS_SC = 5;
 const uint32_t T1_NUMCTXS_MAG = 3;

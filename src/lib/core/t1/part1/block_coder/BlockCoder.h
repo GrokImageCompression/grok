@@ -18,6 +18,8 @@
 #pragma once
 
 #include "t1_common.h"
+#include "CodeblockCompress.h"
+#include "CodeblockDecompress.h"
 
 namespace grk::t1
 {

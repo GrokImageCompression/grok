@@ -15,15 +15,12 @@
  *
  */
 
-#include "grk_includes.h"
 #include "simd.h"
 #include "../part15/common/ojph_mem.h"
 #include "coding/ojph_block_decoder.h"
 #include "coding/ojph_block_encoder.h"
 #include "ojph_mem.h"
 #include "CoderOJPH.h"
-
-#include "grk_includes.h"
 
 const uint8_t grk_cblk_dec_compressed_data_pad_ht = 8;
 

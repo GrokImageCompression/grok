@@ -15,7 +15,7 @@
  *
  */
 
-#include "grk_includes.h"
+ #include "simd.h"
 #include "Coder.h"
 #include "t1_common.h"
 #include "BlockCoder.h"
