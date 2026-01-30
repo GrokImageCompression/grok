@@ -68,7 +68,7 @@ private:
   /**
    * @brief vector of @ref WaveletReverse pointers
    */
-  std::vector<t1::WaveletReverse*> waveletReverse_;
+  std::vector<WaveletReverse*> waveletReverse_;
 
   DifferentialInfo* differentialInfo_;
 

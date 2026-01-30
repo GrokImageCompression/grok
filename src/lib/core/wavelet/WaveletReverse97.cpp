@@ -30,7 +30,7 @@
 #include <hwy/highway.h>
 
 HWY_BEFORE_NAMESPACE();
-namespace grk::t1
+namespace grk
 {
 namespace HWY_NAMESPACE
 {
@@ -41,11 +41,11 @@ namespace HWY_NAMESPACE
   }
 
 } // namespace HWY_NAMESPACE
-} // namespace grk::t1
+} // namespace grk
 HWY_AFTER_NAMESPACE();
 
 #if HWY_ONCE
-namespace grk::t1
+namespace grk
 {
 HWY_EXPORT(num_lanes);
 
@@ -539,5 +539,5 @@ bool WaveletReverse::tile_97(void)
   return true;
 }
 
-} // namespace grk::t1
+} // namespace grk
 #endif

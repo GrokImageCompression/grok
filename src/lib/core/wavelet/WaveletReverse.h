@@ -19,7 +19,7 @@
 
 #include "WaveletCommon.h"
 
-namespace grk::t1
+namespace grk
 {
 
 uint32_t max_resolution(const Resolution* GRK_RESTRICT r, uint32_t i);
@@ -253,4 +253,4 @@ private:
   ///////////////////////////////////////////////////////////////////////////////////////////////
 };
 
-} // namespace grk::t1
+} // namespace grk

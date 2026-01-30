@@ -17,7 +17,7 @@
 
 #pragma once
 
-namespace grk::t1
+namespace grk
 {
 
 template<typename T, size_t N>
@@ -68,4 +68,4 @@ uint32_t alignedBufferWidth(uint32_t width);
 
 typedef vec<float, 4> vec4f;
 
-} // namespace grk::t1
+} // namespace grk

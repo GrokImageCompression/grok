@@ -473,7 +473,7 @@ bool CodeStreamDecompress::readSIZ(uint8_t* headerData, uint16_t headerSize)
     headerImage_->has_multiple_tiles = numTilesToDecompress > 1;
   }
   auto maxDim = std::max(cp_.t_width_, cp_.t_height_);
-  t1::WaveletReverse::allocPoolData(maxDim);
+  WaveletReverse::allocPoolData(maxDim);
 
   return rc;
 }

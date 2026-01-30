@@ -25,7 +25,7 @@ include_directories(
   ${GROK_SOURCE_DIR}/src/include
   ${CMAKE_CURRENT_SOURCE_DIR}
   ${CMAKE_CURRENT_SOURCE_DIR}/plugin
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/wavelet
+  ${CMAKE_CURRENT_SOURCE_DIR}/wavelet
   ${CMAKE_CURRENT_SOURCE_DIR}/t1
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/part1
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/part1/block_coder
@@ -134,10 +134,10 @@ set(GROK_LIBRARY_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/scheduling/CodecScheduler.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/scheduling/CoderPool.cpp
 
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/wavelet/WaveletFwd.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/wavelet/WaveletReverse.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/wavelet/WaveletReverse97.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/wavelet/WaveletReversePartial.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/wavelet/WaveletFwd.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/wavelet/WaveletReverse.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/wavelet/WaveletReverse97.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/wavelet/WaveletReversePartial.cpp
 
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/CoderFactory.cpp
 

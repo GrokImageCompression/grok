@@ -252,9 +252,9 @@ bool DecompressScheduler::schedule(TileProcessor* tileProcessor)
     {
       if(waveletReverse_[compno])
         delete waveletReverse_[compno];
-      waveletReverse_[compno] = new t1::WaveletReverse(tileProcessor, tilec, compno,
-                                                       tilec->getWindow()->unreducedBounds(),
-                                                       numRes, (tcp->tccps_ + compno)->qmfbid_);
+      waveletReverse_[compno] =
+          new WaveletReverse(tileProcessor, tilec, compno, tilec->getWindow()->unreducedBounds(),
+                             numRes, (tcp->tccps_ + compno)->qmfbid_);
 
       if(!waveletReverse_[compno]->decompress())
         return false;
