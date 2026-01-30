@@ -15,7 +15,10 @@
  *
  */
 
-#include "grk_includes.h"
+#include "flag_query.h"
+#include "CodeStreamLimits.h"
+#include "CodeblockCompress.h"
+#include "CodeblockDecompress.h"
 #include "t1_luts.h"
 #include "BlockCoder.h"
 

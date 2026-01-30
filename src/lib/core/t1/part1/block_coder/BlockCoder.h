@@ -17,6 +17,8 @@
 
 #pragma once
 
+#include "t1_common.h"
+
 namespace grk::t1
 {
 

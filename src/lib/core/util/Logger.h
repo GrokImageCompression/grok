@@ -108,6 +108,6 @@ private:
   }
 };
 
-extern Logger& grklog;
+extern ILogger& grklog;
 
 } // namespace grk

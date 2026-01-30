@@ -24,6 +24,9 @@
 #include <cstdint>
 #include <stdexcept>
 #include <list>
+#include <iostream>
+
+#include "MinHeap.h"
 
 namespace grk
 {
@@ -124,7 +127,7 @@ public:
     // 1. Handle out of bounds
     if(end_offset > length_ - initialOffset_)
     {
-      grklog.warn("Out of bounds - truncating");
+      std::cout << "Warning: Out of bounds - truncating";
       end_offset = length_ - initialOffset_;
     }
 

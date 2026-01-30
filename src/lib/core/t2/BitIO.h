@@ -17,6 +17,7 @@
 
 #pragma once
 
+#include <cassert>
 #include "IStream.h"
 
 namespace grk

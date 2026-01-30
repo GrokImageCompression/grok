@@ -17,6 +17,7 @@
 
 #pragma once
 
+#include "BitIO.h"
 #include "Codeblock.h"
 #include "CodeblockDecompressImpl.h"
 

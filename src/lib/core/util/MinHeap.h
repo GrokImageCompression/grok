@@ -21,11 +21,10 @@
 #include <queue>
 #include <vector>
 #include <concepts>
+#include <optional>
 
 namespace grk
 {
-
-#include <optional>
 
 /**
  * @brief A simple non-thread-safe min-heap for tracking contiguous sequences of size_t indices.

@@ -17,6 +17,9 @@
 
 #pragma once
 
+#include <memory>
+
+#include "BitIO.h"
 #include "CodeblockImpl.h"
 #include "CodeStreamLimits.h"
 #include "grk_exceptions.h"

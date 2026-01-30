@@ -17,8 +17,13 @@
 
 #pragma once
 
+#include <memory>
+
+#include "grok.h"
+
 #include "IMemAdvisor.h"
 #include "IWriter.h"
+#include "ChunkBuffer.h"
 
 namespace grk
 {

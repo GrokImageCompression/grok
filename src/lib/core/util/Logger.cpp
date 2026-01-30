@@ -21,6 +21,6 @@ namespace grk
 {
 Logger Logger::logger_;
 // Define grklog as a reference to Logger::logger_
-Logger& grklog = Logger::logger_;
+ILogger& grklog = Logger::logger_;
 
 } // namespace grk
