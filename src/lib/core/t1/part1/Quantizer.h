@@ -17,6 +17,8 @@
 
 #pragma once
 
+#include "IWriter.h"
+
 namespace grk::t1
 {
 /**
@@ -42,7 +44,7 @@ public:
   void push(grk_stepsize* stepptr);
   virtual void generate(uint8_t decomps, uint8_t max_bit_depth, bool color_transform,
                         bool is_signed);
-  virtual bool write(IStream* stream);
+  virtual bool write(IWriter* stream);
 
 protected:
   uint32_t get_num_guard_bits() const;

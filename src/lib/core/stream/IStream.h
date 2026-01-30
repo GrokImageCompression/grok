@@ -18,6 +18,7 @@
 #pragma once
 
 #include "IMemAdvisor.h"
+#include "IWriter.h"
 
 namespace grk
 {
@@ -52,7 +53,7 @@ struct StreamCallbacks
 
 class IFetcher;
 
-struct IStream
+struct IStream : public IWriter
 {
   virtual ~IStream() = default;
 
@@ -195,22 +196,6 @@ struct IStream
   virtual void setChunkBuffer(std::shared_ptr<ChunkBuffer<>> chunkBuffer) = 0;
 
   virtual void memAdvise(size_t virtual_offset, size_t length, GrkAccessPattern pattern) = 0;
-
-  /**
-   * @brief Writes to stream
-   *
-   * @tparam TYPE type of value to write
-   * @param value value
-   * @return true if successful
-   */
-  template<typename TYPE>
-  bool write(TYPE value)
-  {
-    return write_non_template((const uint8_t*)&value, sizeof(TYPE), sizeof(TYPE));
-  }
-
-private:
-  virtual bool write_non_template(const uint8_t* value, uint8_t sizeOfType, uint8_t numBytes) = 0;
 };
 
 } // namespace grk

@@ -62,7 +62,7 @@ public:
   QuantizerOJPH(bool reversible, uint8_t guard_bits);
   void generate(uint8_t decomps, uint8_t max_bit_depth, bool color_transform,
                 bool is_signed) override;
-  bool write(grk::IStream* stream) override;
+  bool write(grk::IWriter* stream) override;
 
 private:
   uint32_t get_MAGBp() const;

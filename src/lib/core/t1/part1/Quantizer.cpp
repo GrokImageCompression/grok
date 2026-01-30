@@ -107,7 +107,7 @@ void Quantizer::generate(uint8_t decomps, uint8_t max_bit_depth,
 }
 
 // no-op
-bool Quantizer::write([[maybe_unused]] IStream* stream)
+bool Quantizer::write([[maybe_unused]] IWriter* stream)
 {
   return true;
 }
