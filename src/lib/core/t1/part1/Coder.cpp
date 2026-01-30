@@ -142,7 +142,7 @@ bool Coder::decompress(DecompressBlockExec* block)
   if(!blockCoder_->decompress_cblk(cblk, block->bandOrientation, block->cblk_sty))
     return false;
   // 3. post process
-  if(!Scheduling::isWindowedScheduling())
+  if(!Scheduling::isWindowedScheduling() && block->postProcessor_)
     block->postProcessor_(blockCoder_->getUncompressedData(), block, 0);
 
   return true;

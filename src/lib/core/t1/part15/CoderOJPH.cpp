@@ -161,7 +161,8 @@ bool T1OJPH::decompress(DecompressBlockExec* block)
     }
   }
 
-  block->postProcessor_(unencoded_data, block, stride);
+  if(block->postProcessor_)
+    block->postProcessor_(unencoded_data, block, stride);
 
   return true;
 }
