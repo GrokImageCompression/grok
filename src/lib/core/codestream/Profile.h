@@ -15,6 +15,8 @@
  *
  */
 
+#pragma once
+
 namespace grk
 {
 class GrkImage;

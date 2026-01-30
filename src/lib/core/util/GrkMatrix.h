@@ -15,6 +15,8 @@
  *
  */
 
+ #pragma once
+
 #include <cstdint>
 
 namespace grk
