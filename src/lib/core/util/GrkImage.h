@@ -135,24 +135,6 @@ public:
    */
   bool subsampleAndReduce(uint8_t reduce);
 
-  bool convertToRGB()
-  {
-    switch(comps->data_type)
-    {
-      case GRK_INT_32:
-        return convertToRGB_T<int32_t>();
-      case GRK_INT_16:
-        return convertToRGB_T<int16_t>();
-      // case GRK_INT_8:
-      //   return convertToRGB_T<int8_t>();
-      // case GRK_FLOAT:
-      //   return convertToRGB_T<float>();
-      // case GRK_DOUBLE:
-      //   return convertToRGB_T<double>();
-      default:
-        return false;
-    }
-  }
   bool compositeInterleaved(const Tile* src, uint32_t yBegin, uint32_t yEnd)
   {
     switch(comps->data_type)
@@ -1913,7 +1895,6 @@ bool GrkImage::postProcess_T(void)
 {
   if(!applyColour())
     return false;
-
   applyColourManagement();
   if(!convertToRGB_T<T>())
     return false;

@@ -215,10 +215,10 @@ void GrkImage::all_components_data_free()
  */
 bool GrkImage::needsConversionToRGB(void) const
 {
-  return (((color_space == GRK_CLRSPC_SYCC || color_space == GRK_CLRSPC_EYCC ||
-            color_space == GRK_CLRSPC_CMYK) &&
-           (decompress_fmt != GRK_FMT_UNK && decompress_fmt != GRK_FMT_TIF)) ||
-          force_rgb);
+  return ((color_space == GRK_CLRSPC_SYCC || color_space == GRK_CLRSPC_EYCC ||
+           color_space == GRK_CLRSPC_CMYK) &&
+          (decompress_fmt != GRK_FMT_UNK && decompress_fmt != GRK_FMT_TIF)) ||
+         force_rgb;
 }
 
 bool GrkImage::subsampleAndReduce(uint8_t reduce)
