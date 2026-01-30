@@ -27,13 +27,13 @@ include_directories(
   ${CMAKE_CURRENT_SOURCE_DIR}/plugin
   ${CMAKE_CURRENT_SOURCE_DIR}/wavelet
   ${CMAKE_CURRENT_SOURCE_DIR}/t1
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/codeblock
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/part1
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/part1/block_coder
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/part1/block_coder/mqcoder
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/common
   ${CMAKE_CURRENT_SOURCE_DIR}/util
   ${CMAKE_CURRENT_SOURCE_DIR}/canvas
-  ${CMAKE_CURRENT_SOURCE_DIR}/canvas/codeblock
   ${CMAKE_CURRENT_SOURCE_DIR}/canvas/precinct
   ${CMAKE_CURRENT_SOURCE_DIR}/canvas/resolution
   ${CMAKE_CURRENT_SOURCE_DIR}/canvas/subband
@@ -139,8 +139,6 @@ set(GROK_LIBRARY_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/wavelet/WaveletReverse97.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/wavelet/WaveletReversePartial.cpp
 
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/CoderFactory.cpp
-
   ${CMAKE_CURRENT_SOURCE_DIR}/canvas/precinct/Precinct.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/canvas/precinct/PrecinctImpl.cpp  
   ${CMAKE_CURRENT_SOURCE_DIR}/canvas/resolution/Resolution.cpp
@@ -149,7 +147,8 @@ set(GROK_LIBRARY_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/tile_processor/TileProcessor.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/tile_processor/TileProcessorCompress.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/tile_processor/TileProcessor_RateControl.cpp
- 
+
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/CoderFactory.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/CoderOJPH.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/QuantizerOJPH.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/coding/ojph_block_common.cpp
