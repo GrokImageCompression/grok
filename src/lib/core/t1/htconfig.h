@@ -17,6 +17,6 @@
 
 #pragma once
 
-#include "OJPH/CoderOJPH.h"
-#include "OJPH/PostDecodeFiltersOJPH.h"
-#include "OJPH/QuantizerOJPH.h"
+#include "part15/CoderOJPH.h"
+#include "part15/PostDecodeFiltersOJPH.h"
+#include "part15/QuantizerOJPH.h"

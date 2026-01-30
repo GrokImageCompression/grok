@@ -30,7 +30,7 @@ include_directories(
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/part1
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/part1/block_coder
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/part1/block_coder/mqcoder
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/OJPH/common
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/common
   ${CMAKE_CURRENT_SOURCE_DIR}/util
   ${CMAKE_CURRENT_SOURCE_DIR}/canvas
   ${CMAKE_CURRENT_SOURCE_DIR}/canvas/codeblock
@@ -150,12 +150,12 @@ set(GROK_LIBRARY_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/tile_processor/TileProcessorCompress.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/tile_processor/TileProcessor_RateControl.cpp
  
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/OJPH/CoderOJPH.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/OJPH/QuantizerOJPH.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/OJPH/coding/ojph_block_common.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/OJPH/coding/ojph_block_decoder.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/OJPH/coding/ojph_block_encoder.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/OJPH/others/ojph_mem.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/CoderOJPH.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/QuantizerOJPH.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/coding/ojph_block_common.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/coding/ojph_block_decoder.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/coding/ojph_block_encoder.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/others/ojph_mem.cpp
 
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/part1/block_coder/BlockCoderDec.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/part1/block_coder/BlockCoderEnc.cpp
