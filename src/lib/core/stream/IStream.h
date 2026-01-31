@@ -28,7 +28,7 @@
 namespace grk
 {
 
-/*
+/*src/lib/core/t1
  * Callback function prototype for zero copy read function
  */
 typedef size_t (*readZeroCopyCallback)(uint8_t** buffer, size_t numBytes, void* user_data);
@@ -58,7 +58,7 @@ struct StreamCallbacks
 
 class IFetcher;
 
-struct IStream : public IStreamWriter
+struct IStream : public t1::IStreamWriter
 {
   virtual ~IStream() = default;
 

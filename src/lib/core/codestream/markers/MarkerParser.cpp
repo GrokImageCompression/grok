@@ -109,7 +109,7 @@ bool MarkerParser::readSOTafterSOD(void)
         return true;
       }
     }
-    catch([[maybe_unused]] const InvalidMarkerException& ume)
+    catch([[maybe_unused]] const t1::InvalidMarkerException& ume)
     {
       grklog.warn("readSOTafterSOD: expected EOC or SOT "
                   "but found invalid marker 0x%.4x",
@@ -182,7 +182,7 @@ bool MarkerParser::readId(bool suppressWarning)
   {
     if(!suppressWarning)
       grklog.warn("marker ID 0x%.4x does not match JPEG 2000 marker format 0xffxx", currMarkerId_);
-    throw InvalidMarkerException(currMarkerId_);
+    throw t1::InvalidMarkerException(currMarkerId_);
   }
 
   return true;

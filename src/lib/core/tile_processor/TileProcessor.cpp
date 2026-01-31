@@ -334,7 +334,7 @@ bool TileProcessor::decompressPrepareWithTLM(const std::shared_ptr<TPFetchSeq>& 
       if(!markerParser_->readSOTorEOC())
         return false;
     }
-    catch(const InvalidMarkerException& ime)
+    catch(const t1::InvalidMarkerException& ime)
     {
       truncated_ = true;
       continue;
@@ -351,7 +351,7 @@ bool TileProcessor::decompressPrepareWithTLM(const std::shared_ptr<TPFetchSeq>& 
       if(!markerParser_->readId(false))
         return false;
     }
-    catch(const InvalidMarkerException& ime)
+    catch(const t1::InvalidMarkerException& ime)
     {
       truncated_ = true;
       continue;
@@ -592,7 +592,7 @@ bool TileProcessor::parseTilePart(std::vector<std::unique_ptr<MarkerParser>>* pa
         success_ = false;
         return;
       }
-      catch(const InvalidMarkerException& ime)
+      catch(const t1::InvalidMarkerException& ime)
       {
         success_ = false;
         return;

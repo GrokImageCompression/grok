@@ -57,7 +57,7 @@ bool T2Decompress::parsePackets(uint16_t tile_no, PacketCache* compressedPackets
           return true;
         }
       }
-      catch([[maybe_unused]] const TruncatedPacketHeaderException& tex)
+      catch([[maybe_unused]] const t1::TruncatedPacketHeaderException& tex)
       {
         grklog.warn("Truncated packet: tile=%u component=%02d resolution=%02d precinct=%03d "
                     "layer=%02d",
@@ -65,7 +65,7 @@ bool T2Decompress::parsePackets(uint16_t tile_no, PacketCache* compressedPackets
                     currPi->getLayno());
         return true;
       }
-      catch([[maybe_unused]] const CorruptPacketException& cex)
+      catch([[maybe_unused]] const t1::CorruptPacketException& cex)
       {
         // we can skip corrupt packet if PLT markers are present
         if(!tileProcessor->getPacketLengthCache()->getMarkers())

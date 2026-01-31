@@ -20,12 +20,31 @@
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
+#include <stdexcept>
 
 #include "IStreamWriter.h"
-#include "grk_exceptions.h"
 
 namespace grk::t1
 {
+
+class TruncatedPacketHeaderException : public std::exception
+{
+};
+
+class InvalidMarkerException : public std::exception
+{
+public:
+  class BadAsocException : public std::exception
+  {
+  };
+
+  class CorruptMarkerException : public std::exception
+  {
+  };
+  explicit InvalidMarkerException(uint16_t marker) : marker_(marker) {}
+
+  uint16_t marker_;
+};
 
 /**
  * @class t1::BitIO

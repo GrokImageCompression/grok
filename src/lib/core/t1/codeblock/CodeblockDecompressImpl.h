@@ -22,7 +22,6 @@
 #include "BitIO.h"
 #include "CodeblockImpl.h"
 #include "CodeStreamLimits.h"
-#include "grk_exceptions.h"
 #include "t1_common.h"
 #include "mqc.h"
 

@@ -768,7 +768,7 @@ void CodeStreamDecompress::decompressSequential(void)
         break;
       }
     }
-    catch(const InvalidMarkerException& ime)
+    catch(const t1::InvalidMarkerException& ime)
     {
       grklog.warn("Found invalid marker : 0x%.4x", ime.marker_);
       success_ = false;
@@ -911,7 +911,7 @@ bool CodeStreamDecompress::decompressTileImpl(uint16_t tileIndex)
         if(!scheduleNextSlatedTile(false))
           return false;
       }
-      catch(const InvalidMarkerException& ime)
+      catch(const t1::InvalidMarkerException& ime)
       {
         grklog.warn("Found invalid marker 0x%.4x in tile %u header", ime.marker_, tileIndex);
         invalidMarker = true;
@@ -936,7 +936,7 @@ bool CodeStreamDecompress::decompressTileImpl(uint16_t tileIndex)
             return false;
         }
       }
-      catch(const InvalidMarkerException& ime)
+      catch(const t1::InvalidMarkerException& ime)
       {
         grklog.warn("Found invalid marker 0x%.4x in tile %u header", ime.marker_, tileIndex);
       }

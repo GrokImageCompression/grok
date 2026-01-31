@@ -2,7 +2,7 @@
 
 #include <cstdint>
 
-namespace grk
+namespace grk::t1
 {
 
 struct IStreamWriter
@@ -35,4 +35,4 @@ protected:
   virtual bool write_non_template(const uint8_t* value, uint8_t sizeOfType, uint8_t numBytes) = 0;
 };
 
-} // namespace grk
+} // namespace grk::t1

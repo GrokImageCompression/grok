@@ -27,6 +27,16 @@
 namespace grk::t1
 {
 
+class CorruptPacketException : public std::exception
+{
+};
+class CorruptPacketHeaderException : public CorruptPacketException
+{
+};
+class CorruptPacketDataException : public CorruptPacketException
+{
+};
+
 /**
  * @struct Codeblock
  * @brief Code block information for both compression and decompression
