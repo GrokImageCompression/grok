@@ -171,6 +171,8 @@ bool CodeStreamDecompress::readHeader(grk_header_info* headerInfo)
           headerImage_->has_multiple_tiles && !headerInfo->single_tile_decompress;
 
       headerImage_->decompress_fmt = headerInfo->decompress_fmt;
+      if(headerImage_->color_space == GRK_CLRSPC_UNKNOWN)
+        headerImage_->color_space = headerInfo->color_space;
       headerImage_->force_rgb = headerInfo->force_rgb;
       headerImage_->upsample = headerInfo->upsample;
       headerImage_->precision = headerInfo->precision;

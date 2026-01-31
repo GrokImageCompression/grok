@@ -971,6 +971,7 @@ int GrkDecompress::decompress(const std::string& fileName, DecompressInitParams*
       info.cod_format != GRK_FMT_UNK ? info.cod_format : info.decompressor_parameters->cod_format;
   info.header_info.decompress_fmt = info.cod_format;
 
+  info.header_info.color_space = info.decompressor_parameters->color_space;
   info.header_info.force_rgb = info.decompressor_parameters->force_rgb;
   info.header_info.upsample = info.decompressor_parameters->upsample;
   info.header_info.precision = info.decompressor_parameters->precision;

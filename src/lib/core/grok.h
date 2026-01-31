@@ -669,6 +669,7 @@ typedef struct _grk_decompress_params
      on the HeaderInfo struct before reading the header. Otherwise they
      will be ignored
   */
+  GRK_COLOR_SPACE color_space;
   bool force_rgb; /* force output to sRGB */
   bool upsample; /* upsample components according to their dx and dy values*/
   grk_precision* precision; /* precision array */
@@ -844,9 +845,10 @@ typedef struct _grk_header_info
   grk_asoc asocs[GRK_NUM_ASOC_BOXES_SUPPORTED]; /* associations */
   uint32_t num_asocs; /* number of associations */
 
-  /**************************************************************
-  Variables below are set by client only if decompressing to file
-  **************************************************************/
+  /********************************
+  Variables below are set by client
+  ********************************/
+  GRK_COLOR_SPACE color_space;
   GRK_SUPPORTED_FILE_FMT decompress_fmt; /* decompress format */
   bool force_rgb; /* force RGB */
   bool upsample; /* upsample */

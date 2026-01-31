@@ -124,10 +124,14 @@ beach:
 
 // template parameter T determines the type of input data: uint8_t, uint16_t etc
 template<typename T>
-int core_decompress(std::vector<uint8_t>& compressedData, grk_object*& codec)
+int core_decompress(std::vector<uint8_t>& compressedData, grk_object*& codec,
+                    GRK_COLOR_SPACE colourSpace)
 {
   grk_header_info headerInfo = {}; // compressed image header info
-  headerInfo.force_rgb = true;
+  headerInfo.color_space = colourSpace;
+
+  // uncomment to force to sRGB
+  // headerInfo.force_rgb = true;
 
   grk_stream_params decCompressedStream = {};
   decCompressedStream.buf = compressedData.data();
@@ -190,22 +194,21 @@ int core_simple(uint32_t dimX, uint32_t dimY, uint8_t precision)
   if(rc == 0)
   {
     grk_object* codec = nullptr;
+    GRK_COLOR_SPACE colourSpace = numComps == 3 ? GRK_CLRSPC_SRGB : GRK_CLRSPC_GRAY;
     auto start_decompress = std::chrono::high_resolution_clock::now();
-    rc = core_decompress<uint16_t>(compressedData, codec);
+    rc = core_decompress<uint16_t>(compressedData, codec, colourSpace);
     auto end_decompress = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> decompress_time = end_decompress - start_decompress;
     printf("Decompression time: %f seconds\n", decompress_time.count());
 
     // 1. retrieve decompressed image
     bool images_equal = true;
-    GRK_COLOR_SPACE colourSpace;
     grk_image* decOutputImage = nullptr; // uncompressed image created by decompressor
     if(numComps != (uint16_t)uncompressedData.size())
     {
       fprintf(stderr, "Decompression failed\n");
       goto beach;
     }
-    colourSpace = numComps == 3 ? GRK_CLRSPC_SRGB : GRK_CLRSPC_GRAY;
     decOutputImage = grk_decompress_get_image(codec);
     if(!decOutputImage)
     {
