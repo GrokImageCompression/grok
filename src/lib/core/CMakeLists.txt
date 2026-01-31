@@ -123,8 +123,6 @@ set(GROK_LIBRARY_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/t2/PacketIter.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/t2/PacketParser.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/t2/PacketCache.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/t2/BitIO.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/t2/BitIO.h
   ${CMAKE_CURRENT_SOURCE_DIR}/t2/quantizer/QuantizerFactory.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/t2/quantizer/part15/QuantizerOJPH.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/t2/quantizer/part1//Quantizer.cpp

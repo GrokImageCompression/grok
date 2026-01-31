@@ -120,7 +120,7 @@ bool T2Compress::compressPacketSimulate(TileCodingParams* tcp, PacketIter* pi,
       max_bytes_available -= 6;
     byteCount += 6;
   }
-  std::unique_ptr<BitIO> bio(new BitIO(nullptr, max_bytes_available, true));
+  std::unique_ptr<t1::BitIO> bio(new t1::BitIO(nullptr, max_bytes_available, true));
   if(!compressHeader(bio.get(), res, layno, precinctIndex))
     return false;
 
@@ -207,7 +207,8 @@ bool T2Compress::compressPackets(uint16_t tile_no, uint16_t max_layers, IStream*
 
   return true;
 }
-bool T2Compress::compressHeader(BitIO* bio, Resolution* res, uint16_t layno, uint64_t precinctIndex)
+bool T2Compress::compressHeader(t1::BitIO* bio, Resolution* res, uint16_t layno,
+                                uint64_t precinctIndex)
 {
   if(layno == 0)
   {
@@ -391,7 +392,7 @@ bool T2Compress::compressPacket(TileCodingParams* tcp, PacketIter* pi, IStream* 
     if(!stream->write8u((uint8_t)(numProcessedPackets & 0xff)))
       return false;
   }
-  auto bio = std::unique_ptr<BitIO>(new BitIO(stream, true));
+  auto bio = std::unique_ptr<t1::BitIO>(new t1::BitIO(stream, true));
 
   // initialize precinct and code blocks if this is the first layer
   auto res = tilec->resolutions_ + resno;

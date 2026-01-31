@@ -117,7 +117,7 @@ uint32_t PacketParser::readHeader(void)
   if(*remainingBytes == 0)
     throw TruncatedPacketHeaderException();
   auto currentHeaderPtr = *headerStart;
-  std::shared_ptr<BitIO> bio(new BitIO(currentHeaderPtr, *remainingBytes, false));
+  std::shared_ptr<t1::BitIO> bio(new t1::BitIO(currentHeaderPtr, *remainingBytes, false));
   auto tccp = tcp->tccps_ + compno_;
   try
   {
