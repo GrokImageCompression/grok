@@ -62,7 +62,8 @@ bool DecompressScheduler::schedule(TileProcessor* tileProcessor)
     mctPostProc = genPrePostProc();
   uint32_t num_threads = (uint32_t)ExecSingleton::num_threads();
   bool singleThread = num_threads == 1;
-  bool cacheAll = FlagQuery::supports(tileProcessor->getTileCacheStrategy(), GRK_TILE_CACHE_ALL);
+  bool cacheAll =
+      (tileProcessor->getTileCacheStrategy() & GRK_TILE_CACHE_ALL) == GRK_TILE_CACHE_ALL;
 
   uint8_t resMin = std::numeric_limits<uint8_t>::max();
   uint8_t resMax = 0;

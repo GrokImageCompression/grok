@@ -29,18 +29,13 @@ class PluginDecodeUnsupportedException : public std::exception
 class CorruptJP2BoxException : public std::exception
 {
 };
+class TruncatedPacketHeaderException : public std::exception
+{
+};
 class SparseBufferOverrunException : public std::exception
 {
 };
-class CorruptPacketException : public std::exception
-{
-};
-class CorruptPacketHeaderException : public CorruptPacketException
-{
-};
-class CorruptPacketDataException : public CorruptPacketException
-{
-};
+
 class BadAsocException : public std::exception
 {
 };

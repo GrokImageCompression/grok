@@ -721,7 +721,7 @@ Mct* TileProcessor::getMCT(void)
 
 void TileProcessor::release(uint32_t strategy)
 {
-  if(FlagQuery::supports(strategy, GRK_TILE_CACHE_ALL))
+  if((strategy & GRK_TILE_CACHE_ALL) == GRK_TILE_CACHE_ALL)
     return;
 
   // delete image in absence of tile cache strategy

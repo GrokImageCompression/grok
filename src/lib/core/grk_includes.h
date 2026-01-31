@@ -80,7 +80,6 @@
 #include "lcms2.h"
 
 #include "EnvVarManager.h"
-#include "flag_query.h"
 #include "grk_exceptions.h"
 #include "ILogger.h"
 #include <Logger.h>

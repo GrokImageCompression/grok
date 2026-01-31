@@ -15,8 +15,6 @@
  *
  */
 
-#include "flag_query.h"
-#include "CodeStreamLimits.h"
 #include "CodeblockCompress.h"
 #include "CodeblockDecompress.h"
 #include "t1_luts.h"
@@ -142,7 +140,7 @@ BlockCoder::~BlockCoder()
 }
 bool BlockCoder::cacheAll(uint32_t strategy)
 {
-  return FlagQuery::supports(strategy, GRK_TILE_CACHE_ALL);
+  return (strategy & GRK_TILE_CACHE_ALL) == GRK_TILE_CACHE_ALL;
 }
 void BlockCoder::print(void)
 {

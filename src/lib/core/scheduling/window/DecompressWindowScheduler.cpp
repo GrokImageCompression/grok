@@ -35,7 +35,8 @@ void DecompressWindowScheduler::release(void) {}
 bool DecompressWindowScheduler::schedule(TileProcessor* tileProcessor)
 {
   auto tcp = tileProcessor->getTCP();
-  bool cacheAll = FlagQuery::supports(tileProcessor->getTileCacheStrategy(), GRK_TILE_CACHE_ALL);
+  bool cacheAll =
+      (tileProcessor->getTileCacheStrategy() & GRK_TILE_CACHE_ALL) == GRK_TILE_CACHE_ALL;
   uint32_t num_threads = (uint32_t)ExecSingleton::num_threads();
   bool singleThread = num_threads == 1;
   bool finalLayer = tcp->layersToDecompress_ == tcp->numLayers_;
