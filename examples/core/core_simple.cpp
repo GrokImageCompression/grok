@@ -127,6 +127,7 @@ template<typename T>
 int core_decompress(std::vector<uint8_t>& compressedData, grk_object*& codec)
 {
   grk_header_info headerInfo = {}; // compressed image header info
+  headerInfo.force_rgb = true;
 
   grk_stream_params decCompressedStream = {};
   decCompressedStream.buf = compressedData.data();

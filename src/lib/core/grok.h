@@ -663,12 +663,20 @@ typedef struct _grk_decompress_params
   double dw_y0; /* decompress window top boundary*/
   double dw_y1; /* decompress window bottom boundary*/
   uint16_t tile_index; /* index of decompressed tile*/
-  bool single_tile_decompress; /* single tile decompress */
-  grk_precision* precision; /* precision array */
-  uint32_t num_precision; /* size of precision array*/
+
+  /***************************************************************************
+     Note: when using Grok API, the following parameters should be set
+     on the HeaderInfo struct before reading the header. Otherwise they
+     will be ignored
+  */
   bool force_rgb; /* force output to sRGB */
   bool upsample; /* upsample components according to their dx and dy values*/
-  bool split_pnm; /* split output components to different files for PNM */
+  grk_precision* precision; /* precision array */
+  uint32_t num_precision; /* size of precision array*/
+  bool split_by_component; /* split output components to different files for PNM */
+  bool single_tile_decompress; /* single tile decompress */
+  /************************************************************************** */
+
   bool io_xml; /* serialize XML metedata to disk*/
   uint32_t compression; /* compression */
   uint32_t compression_level; /* compression "quality" - meaning depends on output file format */

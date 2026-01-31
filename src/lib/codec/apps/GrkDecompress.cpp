@@ -725,7 +725,7 @@ GrkRC GrkDecompress::parseCommandLine(int argc, const char* argv[],
     else
       parameters->upsample = true;
   }
-  parameters->split_pnm = splitPnmOpt->count() > 0;
+  parameters->split_by_component = splitPnmOpt->count() > 0;
   if(compressionOpt->count() > 0)
   {
     uint32_t comp = getCompressionCode(compression);
@@ -970,12 +970,14 @@ int GrkDecompress::decompress(const std::string& fileName, DecompressInitParams*
   info.cod_format =
       info.cod_format != GRK_FMT_UNK ? info.cod_format : info.decompressor_parameters->cod_format;
   info.header_info.decompress_fmt = info.cod_format;
+
   info.header_info.force_rgb = info.decompressor_parameters->force_rgb;
   info.header_info.upsample = info.decompressor_parameters->upsample;
   info.header_info.precision = info.decompressor_parameters->precision;
   info.header_info.num_precision = info.decompressor_parameters->num_precision;
-  info.header_info.split_by_component = info.decompressor_parameters->split_pnm;
+  info.header_info.split_by_component = info.decompressor_parameters->split_by_component;
   info.header_info.single_tile_decompress = info.decompressor_parameters->single_tile_decompress;
+
   if(preProcess(&info))
   {
     grk_object_unref(info.codec);
@@ -1207,7 +1209,7 @@ int GrkDecompress::preProcess(grk_plugin_decompress_callback_info* info)
   switch(cod_format)
   {
     case GRK_FMT_PXM:
-      imageFormat = new PNMFormat<int32_t>(parameters->split_pnm);
+      imageFormat = new PNMFormat<int32_t>(parameters->split_by_component);
       break;
     case GRK_FMT_PGX:
       imageFormat = new PGXFormat<int32_t>();
