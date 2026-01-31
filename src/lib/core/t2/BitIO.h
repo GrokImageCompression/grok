@@ -18,7 +18,9 @@
 #pragma once
 
 #include <cassert>
-#include "IStream.h"
+#include <cstddef>
+
+#include "IStreamWriter.h"
 
 namespace grk
 {
@@ -40,10 +42,10 @@ public:
 
   /**
    * @brief Constructs a BitIO objecxt
-   * @param @ref IStream
+   * @param @ref IStreamWriter
    * @param isCompressor flag indicating compression or lack thereof
    */
-  BitIO(IStream* stream, bool isCompressor);
+  BitIO(IStreamWriter* stream, bool isCompressor);
 
   /**
    * @brief Gets number of bytes written
@@ -144,7 +146,7 @@ private:
    */
   uint8_t ct;
 
-  IStream* stream;
+  IStreamWriter* stream;
   bool read0xFF;
 
   bool putbit(uint8_t b);

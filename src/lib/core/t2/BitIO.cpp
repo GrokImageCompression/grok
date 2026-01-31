@@ -15,7 +15,8 @@
  *
  */
 
-#include "grk_includes.h"
+#include "BitIO.h"
+#include "grk_exceptions.h"
 
 namespace grk
 {
@@ -26,7 +27,7 @@ BitIO::BitIO(uint8_t* bp, uint64_t len, bool isCompressor)
   assert(isCompressor || bp);
 }
 
-BitIO::BitIO(IStream* strm, bool isCompressor)
+BitIO::BitIO(IStreamWriter* strm, bool isCompressor)
     : start(nullptr), offset(0), buf_len(0), buf(0), ct(isCompressor ? 8 : 0), stream(strm),
       read0xFF(false)
 {}
@@ -59,10 +60,10 @@ void BitIO::bytein(void)
   if(read0xFF && (buf >= 0x90))
   {
     uint16_t marker = (uint16_t)(((uint16_t)0xFF << 8) | (uint16_t)buf);
-    if(marker != EPH && marker != SOP)
-      grklog.warn("Invalid marker 0x%x detected in packet header", marker);
-    else
-      grklog.warn("Unexpected SOP/EPH marker 0x%x detected in packet header", marker);
+    // if(marker != EPH && marker != SOP)
+    //   grklog.warn("Invalid marker 0x%x detected in packet header", marker);
+    // else
+    //   grklog.warn("Unexpected SOP/EPH marker 0x%x detected in packet header", marker);
 
     throw InvalidMarkerException(marker);
   }

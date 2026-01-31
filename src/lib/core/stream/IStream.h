@@ -22,7 +22,7 @@
 #include "grok.h"
 
 #include "IMemAdvisor.h"
-#include "IWriter.h"
+#include "IStreamWriter.h"
 #include "ChunkBuffer.h"
 
 namespace grk
@@ -58,7 +58,7 @@ struct StreamCallbacks
 
 class IFetcher;
 
-struct IStream : public IWriter
+struct IStream : public IStreamWriter
 {
   virtual ~IStream() = default;
 
@@ -98,15 +98,6 @@ struct IStream : public IWriter
    * @return true if successful
    */
   virtual bool write24u(uint32_t value) = 0;
-
-  /**
-   * @brief Writes byte
-   *
-   * Endian is NOT taken into account
-   * @param value byte to write
-   * @return true if successful
-   */
-  virtual bool write8u(uint8_t value) = 0;
 
   /**
    * @brief Writes bytes to stream (no correction for endian!).
