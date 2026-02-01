@@ -15,7 +15,17 @@
  *
  */
 
+#include "geometry.h"
+#include "BitIO.h"
+#include "TagTree.h"
+#include "CodeblockDecompress.h"
+#include "CodeblockCompress.h"
+#include "Precinct.h"
+#include "Subband.h"
+
 #include "grk_includes.h"
+
+#include "Resolution.h"
 
 namespace grk
 {

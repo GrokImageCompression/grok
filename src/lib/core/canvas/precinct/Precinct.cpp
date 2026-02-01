@@ -15,13 +15,13 @@
  *
  */
 
- #include "geometry.h"
- #include "BitIO.h"
- #include "TagTree.h"
- #include "SparseCache.h"
- #include "CodeblockDecompress.h"
- #include "CodeblockCompress.h"
- #include "Precinct.h"
+#include "geometry.h"
+#include "BitIO.h"
+#include "TagTree.h"
+#include "SparseCache.h"
+#include "CodeblockDecompress.h"
+#include "CodeblockCompress.h"
+#include "Precinct.h"
 #include "PrecinctImpl.h"
 
 namespace grk

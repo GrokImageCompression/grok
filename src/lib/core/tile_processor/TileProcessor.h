@@ -17,8 +17,10 @@
 
 #pragma once
 
-#include "PacketTracker.h"
 #include <mutex>
+#include <memory>
+
+#include "PacketTracker.h"
 
 namespace grk
 {

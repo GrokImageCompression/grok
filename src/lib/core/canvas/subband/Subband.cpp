@@ -15,8 +15,15 @@
  *
  */
 
-#include "grk_includes.h"
-#include <unordered_map>
+#include <vector>
+
+#include "geometry.h"
+#include "BitIO.h"
+#include "TagTree.h"
+#include "CodeblockDecompress.h"
+#include "CodeblockCompress.h"
+#include "Precinct.h"
+#include "Subband.h"
 
 namespace grk
 {
