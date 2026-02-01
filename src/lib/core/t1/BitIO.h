@@ -34,13 +34,6 @@ class TruncatedPacketHeaderException : public std::exception
 class InvalidMarkerException : public std::exception
 {
 public:
-  class BadAsocException : public std::exception
-  {
-  };
-
-  class CorruptMarkerException : public std::exception
-  {
-  };
   explicit InvalidMarkerException(uint16_t marker) : marker_(marker) {}
 
   uint16_t marker_;
