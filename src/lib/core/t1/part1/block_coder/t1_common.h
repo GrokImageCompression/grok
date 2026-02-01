@@ -21,7 +21,7 @@
 #include <math.h>
 #include <cassert>
 
-namespace grk
+namespace grk::t1
 {
 
 enum eBandOrientation
@@ -43,11 +43,6 @@ enum eBandIndex
   BAND_INDEX_HH,
   BAND_NUM_INDICES
 };
-
-} // namespace grk
-
-namespace grk::t1
-{
 
 const uint32_t T1_NUMCTXS_ZC = 9;
 const uint32_t T1_NUMCTXS_SC = 5;

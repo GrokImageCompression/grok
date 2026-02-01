@@ -179,7 +179,7 @@ struct TileComponentWindow : public TileComponentWindowBase<T>
    * @param offsety y offset of code block in canvas coordinates
    *
    */
-  void toRelativeCoordinates(uint8_t resno, eBandOrientation orientation, uint32_t& offsetx,
+  void toRelativeCoordinates(uint8_t resno, t1::eBandOrientation orientation, uint32_t& offsetx,
                              uint32_t& offsety) const
   {
     assert(resno < this->resolution_.size());
@@ -204,7 +204,7 @@ struct TileComponentWindow : public TileComponentWindowBase<T>
     }
   }
   template<typename F>
-  void postProcess(Buf2dAligned& src, uint8_t resno, eBandOrientation bandOrientation,
+  void postProcess(Buf2dAligned& src, uint8_t resno, t1::eBandOrientation bandOrientation,
                    t1::DecompressBlockExec* block)
   {
     Buffer2d<int32_t, AllocatorAligned> dst;
@@ -222,10 +222,10 @@ struct TileComponentWindow : public TileComponentWindowBase<T>
    *
    */
   const Buf2dAligned* getBandWindowBufferPaddedREL(uint8_t resno,
-                                                   eBandOrientation orientation) const
+                                                   t1::eBandOrientation orientation) const
   {
     assert(resno < this->resolution_.size());
-    assert(resno > 0 || orientation == BAND_ORIENT_LL);
+    assert(resno > 0 || orientation == t1::BAND_ORIENT_LL);
 
     if(resno == 0 && (this->compress_ || this->wholeTileDecompress_))
       return this->resWindows[0]->getResWindowBufferREL();
@@ -241,11 +241,11 @@ struct TileComponentWindow : public TileComponentWindowBase<T>
    * If resno is > 0, return LL,HL,LH or HH band window, otherwise return LL resolution window
    *
    */
-  const Buffer2dSimple<int32_t> getBandWindowBufferPaddedSimple(uint8_t resno,
-                                                                eBandOrientation orientation) const
+  const Buffer2dSimple<int32_t>
+      getBandWindowBufferPaddedSimple(uint8_t resno, t1::eBandOrientation orientation) const
   {
     assert(resno < this->resolution_.size());
-    assert(resno > 0 || orientation == BAND_ORIENT_LL);
+    assert(resno > 0 || orientation == t1::BAND_ORIENT_LL);
 
     if(resno == 0 && (this->compress_ || this->wholeTileDecompress_))
       return this->resWindows[0]->getResWindowBufferSimple();
@@ -261,11 +261,11 @@ struct TileComponentWindow : public TileComponentWindowBase<T>
    * If resno is > 0, return LL,HL,LH or HH band window, otherwise return LL resolution window
    *
    */
-  const Buffer2dSimple<float> getBandWindowBufferPaddedSimpleF(uint8_t resno,
-                                                               eBandOrientation orientation) const
+  const Buffer2dSimple<float>
+      getBandWindowBufferPaddedSimpleF(uint8_t resno, t1::eBandOrientation orientation) const
   {
     assert(resno < this->resolution_.size());
-    assert(resno > 0 || orientation == BAND_ORIENT_LL);
+    assert(resno > 0 || orientation == t1::BAND_ORIENT_LL);
 
     if(resno == 0 && (this->compress_ || this->wholeTileDecompress_))
       return this->resWindows[0]->getResWindowBufferSimpleF();
@@ -280,7 +280,7 @@ struct TileComponentWindow : public TileComponentWindowBase<T>
    * @param orientation band orientation {0,1,2,3} for {LL,HL,LH,HH} band windows
    *
    */
-  const Rect32* getBandWindowPadded(uint8_t resno, eBandOrientation orientation) const
+  const Rect32* getBandWindowPadded(uint8_t resno, t1::eBandOrientation orientation) const
   {
     return this->resWindows[resno]->getBandWindowPadded(orientation);
   }
@@ -401,7 +401,8 @@ private:
    * @param orientation band orientation {LL,HL,LH,HH}
    *
    */
-  const Buf2dAligned* getCodeBlockDestWindowREL(uint8_t resno, eBandOrientation orientation) const
+  const Buf2dAligned* getCodeBlockDestWindowREL(uint8_t resno,
+                                                t1::eBandOrientation orientation) const
   {
     return (useBufferCoordinatesForCodeblock()) ? getResWindowBufferHighestREL()
                                                 : getBandWindowBufferPaddedREL(resno, orientation);
@@ -419,7 +420,7 @@ private:
   {
     return this->compress_ || !this->wholeTileDecompress_;
   }
-  uint8_t getBandIndex(uint8_t resno, eBandOrientation orientation) const
+  uint8_t getBandIndex(uint8_t resno, t1::eBandOrientation orientation) const
   {
     return resno > 0 ? (uint8_t)orientation - 1 : 0;
   }

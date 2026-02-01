@@ -461,7 +461,7 @@ template<uint32_t FILTER_WIDTH>
 struct PartialBandInfo
 {
   // 1. set up windows for horizontal and vertical passes
-  Rect32 bandWindowREL_[BAND_NUM_ORIENTATIONS];
+  Rect32 bandWindowREL_[t1::BAND_NUM_ORIENTATIONS];
   // two windows formed by horizontal pass and used as input for vertical pass
   Rect32 splitWindowREL_[SPLIT_NUM_ORIENTATIONS];
   Rect32 resWindowREL_;
@@ -469,27 +469,27 @@ struct PartialBandInfo
   bool alloc(ISparseCanvas<int32_t>* sa, uint8_t resno, Resolution* fullRes,
              TileComponentWindow<int32_t>* tileWindow)
   {
-    bandWindowREL_[BAND_ORIENT_LL] =
-        tileWindow->getBandWindowBufferPaddedREL(resno, BAND_ORIENT_LL);
-    bandWindowREL_[BAND_ORIENT_HL] =
-        tileWindow->getBandWindowBufferPaddedREL(resno, BAND_ORIENT_HL);
-    bandWindowREL_[BAND_ORIENT_LH] =
-        tileWindow->getBandWindowBufferPaddedREL(resno, BAND_ORIENT_LH);
-    bandWindowREL_[BAND_ORIENT_HH] =
-        tileWindow->getBandWindowBufferPaddedREL(resno, BAND_ORIENT_HH);
+    bandWindowREL_[t1::BAND_ORIENT_LL] =
+        tileWindow->getBandWindowBufferPaddedREL(resno, t1::BAND_ORIENT_LL);
+    bandWindowREL_[t1::BAND_ORIENT_HL] =
+        tileWindow->getBandWindowBufferPaddedREL(resno, t1::BAND_ORIENT_HL);
+    bandWindowREL_[t1::BAND_ORIENT_LH] =
+        tileWindow->getBandWindowBufferPaddedREL(resno, t1::BAND_ORIENT_LH);
+    bandWindowREL_[t1::BAND_ORIENT_HH] =
+        tileWindow->getBandWindowBufferPaddedREL(resno, t1::BAND_ORIENT_HH);
 
     // band windows in band coordinates - needed to pre-allocate sparse blocks
-    Rect32 tileBandWindowREL[BAND_NUM_ORIENTATIONS];
+    Rect32 tileBandWindowREL[t1::BAND_NUM_ORIENTATIONS];
 
-    tileBandWindowREL[BAND_ORIENT_LL] = bandWindowREL_[BAND_ORIENT_LL];
-    tileBandWindowREL[BAND_ORIENT_HL] =
-        bandWindowREL_[BAND_ORIENT_HL].pan(fullRes->band[BAND_INDEX_LH].width(), 0);
-    tileBandWindowREL[BAND_ORIENT_LH] =
-        bandWindowREL_[BAND_ORIENT_LH].pan(0, fullRes->band[BAND_INDEX_HL].height());
-    tileBandWindowREL[BAND_ORIENT_HH] = bandWindowREL_[BAND_ORIENT_HH].pan(
-        fullRes->band[BAND_INDEX_LH].width(), fullRes->band[BAND_INDEX_HL].height());
+    tileBandWindowREL[t1::BAND_ORIENT_LL] = bandWindowREL_[t1::BAND_ORIENT_LL];
+    tileBandWindowREL[t1::BAND_ORIENT_HL] =
+        bandWindowREL_[t1::BAND_ORIENT_HL].pan(fullRes->band[t1::BAND_INDEX_LH].width(), 0);
+    tileBandWindowREL[t1::BAND_ORIENT_LH] =
+        bandWindowREL_[t1::BAND_ORIENT_LH].pan(0, fullRes->band[t1::BAND_INDEX_HL].height());
+    tileBandWindowREL[t1::BAND_ORIENT_HH] = bandWindowREL_[t1::BAND_ORIENT_HH].pan(
+        fullRes->band[t1::BAND_INDEX_LH].width(), fullRes->band[t1::BAND_INDEX_HL].height());
     // 2. pre-allocate sparse blocks
-    for(uint32_t i = 0; i < BAND_NUM_ORIENTATIONS; ++i)
+    for(uint32_t i = 0; i < t1::BAND_NUM_ORIENTATIONS; ++i)
     {
       auto temp = tileBandWindowREL[i];
       if(!sa->alloc(temp.grow_IN_PLACE(2 * FILTER_WIDTH, fullRes->width(), fullRes->height()),
@@ -686,8 +686,8 @@ bool WaveletReverse::partial_tile(ISparseCanvas<int32_t>* sa,
     };
 
     // 3. calculate synthesis
-    horiz.win_l = bandInfo.bandWindowREL_[BAND_ORIENT_LL].dimX();
-    horiz.win_h = bandInfo.bandWindowREL_[BAND_ORIENT_HL].dimX();
+    horiz.win_l = bandInfo.bandWindowREL_[t1::BAND_ORIENT_LL].dimX();
+    horiz.win_h = bandInfo.bandWindowREL_[t1::BAND_ORIENT_HL].dimX();
     horiz.resno = resno;
     size_t dataLength =
         (bandInfo.splitWindowREL_[0].width() + 2 * FILTER_WIDTH) * HORIZ_PASS_HEIGHT;
@@ -726,8 +726,8 @@ bool WaveletReverse::partial_tile(ISparseCanvas<int32_t>* sa,
     }
     dataLength = (bandInfo.resWindowREL_.height() + 2 * FILTER_WIDTH) * VERT_PASS_WIDTH *
                  sizeof(T) / sizeof(int32_t);
-    vert.win_l = bandInfo.bandWindowREL_[BAND_ORIENT_LL].dimY();
-    vert.win_h = bandInfo.bandWindowREL_[BAND_ORIENT_LH].dimY();
+    vert.win_l = bandInfo.bandWindowREL_[t1::BAND_ORIENT_LL].dimY();
+    vert.win_h = bandInfo.bandWindowREL_[t1::BAND_ORIENT_LH].dimY();
     vert.resno = resno;
     uint32_t numTasks = num_threads;
     uint32_t numColumns = bandInfo.resWindowREL_.width();

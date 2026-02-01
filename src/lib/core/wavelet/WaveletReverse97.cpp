@@ -521,11 +521,11 @@ bool WaveletReverse::tile_97(void)
     auto winSplitH = buf->getResWindowBufferSplitSimpleF(res, SPLIT_H);
     if(!h_97(res, num_threads, dataLength, horiz97, vert97.sn,
              buf->getResWindowBufferSimpleF((uint8_t)(res - 1U)),
-             buf->getBandWindowBufferPaddedSimpleF(res, BAND_ORIENT_HL), winSplitL))
+             buf->getBandWindowBufferPaddedSimpleF(res, t1::BAND_ORIENT_HL), winSplitL))
       return false;
     if(!h_97(res, num_threads, dataLength, horiz97, resHeight - vert97.sn,
-             buf->getBandWindowBufferPaddedSimpleF(res, BAND_ORIENT_LH),
-             buf->getBandWindowBufferPaddedSimpleF(res, BAND_ORIENT_HH), winSplitH))
+             buf->getBandWindowBufferPaddedSimpleF(res, t1::BAND_ORIENT_LH),
+             buf->getBandWindowBufferPaddedSimpleF(res, t1::BAND_ORIENT_HH), winSplitH))
       return false;
     vert97.dn = resHeight - vert97.sn;
     vert97.parity = tr->y0 & 1;

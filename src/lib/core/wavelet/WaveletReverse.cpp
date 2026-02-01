@@ -463,13 +463,13 @@ bool WaveletReverse::h_53(uint8_t res, TileComponentWindow<int32_t>* tileBuffer,
     if(orient == 0)
     {
       winL = tileBuffer->getResWindowBufferSimple((uint8_t)(res - 1U));
-      winH = tileBuffer->getBandWindowBufferPaddedSimple(res, BAND_ORIENT_HL);
+      winH = tileBuffer->getBandWindowBufferPaddedSimple(res, t1::BAND_ORIENT_HL);
       winDest = tileBuffer->getResWindowBufferSplitSimple(res, SPLIT_L);
     }
     else
     {
-      winL = tileBuffer->getBandWindowBufferPaddedSimple(res, BAND_ORIENT_LH);
-      winH = tileBuffer->getBandWindowBufferPaddedSimple(res, BAND_ORIENT_HH);
+      winL = tileBuffer->getBandWindowBufferPaddedSimple(res, t1::BAND_ORIENT_LH);
+      winH = tileBuffer->getBandWindowBufferPaddedSimple(res, t1::BAND_ORIENT_HH);
       winDest = tileBuffer->getResWindowBufferSplitSimple(res, SPLIT_H);
     }
     if(num_threads == 1)

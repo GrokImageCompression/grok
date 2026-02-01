@@ -25,7 +25,7 @@ namespace grk
 struct ResSimple : public Rect32
 {
   ResSimple(void) : numTileBandWindows(0) {}
-  ResSimple(Rect32* res, uint8_t numTileBandWindows, Rect32 (&tileBand)[BAND_NUM_INDICES])
+  ResSimple(Rect32* res, uint8_t numTileBandWindows, Rect32 (&tileBand)[t1::BAND_NUM_INDICES])
   {
     setRect(res);
     this->numTileBandWindows = numTileBandWindows;
@@ -60,7 +60,7 @@ struct ResSimple : public Rect32
   static Rect32 getBandWindow(uint8_t numDecomps, uint8_t orientation,
                               Rect32 tileCompWindowUnreduced)
   {
-    assert(orientation < BAND_NUM_ORIENTATIONS);
+    assert(orientation < t1::BAND_NUM_ORIENTATIONS);
     if(numDecomps == 0)
       return tileCompWindowUnreduced;
 
@@ -88,7 +88,7 @@ struct ResSimple : public Rect32
         (tcy1 <= by0Offset) ? 0 : ceildivpow2<uint32_t>(tcy1 - by0Offset, numDecomps));
   }
 
-  Rect32 tileBand[BAND_NUM_INDICES]; // unreduced tile component bands in canvas coordinates
+  Rect32 tileBand[t1::BAND_NUM_INDICES]; // unreduced tile component bands in canvas coordinates
   uint8_t numTileBandWindows; // 1 or 3
 };
 

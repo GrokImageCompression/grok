@@ -103,7 +103,7 @@ struct Subband : public Rect32
    * @brief band orientation
    *
    */
-  eBandOrientation orientation_ = BAND_ORIENT_LL;
+  t1::eBandOrientation orientation_ = t1::BAND_ORIENT_LL;
 
   /**
    * @brief flat vector of precincts

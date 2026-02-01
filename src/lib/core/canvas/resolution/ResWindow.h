@@ -85,15 +85,15 @@ private:
     uint8_t numDecomps =
         (resno == 0) ? (uint8_t)(numresolutions - 1U) : (uint8_t)(numresolutions - resno);
     Rect32 resWindowPadded;
-    for(uint8_t orient = 0; orient < ((resno) > 0 ? BAND_NUM_ORIENTATIONS : 1); orient++)
+    for(uint8_t orient = 0; orient < ((resno) > 0 ? t1::BAND_NUM_ORIENTATIONS : 1); orient++)
     {
       // todo: should only need padding equal to FILTER_WIDTH, not 2*FILTER_WIDTH
       auto bandWindow = getPaddedBandWindow(numDecomps, orient, tileCompWindowUnreduced,
                                             tileCompUnreduced, 2 * FILTER_WIDTH, resWindowPadded);
-      Rect32 band = tileCompAtRes_.tileBand[BAND_ORIENT_LL];
+      Rect32 band = tileCompAtRes_.tileBand[t1::BAND_ORIENT_LL];
       if(resno > 0)
-        band = orient == BAND_ORIENT_LL ? Rect32(tileCompAtLowerRes_)
-                                        : tileCompAtRes_.tileBand[orient - 1];
+        band = orient == t1::BAND_ORIENT_LL ? Rect32(tileCompAtLowerRes_)
+                                            : tileCompAtRes_.tileBand[orient - 1];
       bandWindow.setOrigin(band, true);
       assert(bandWindow.intersection(band).setOrigin(bandWindow, true) == bandWindow);
       bandWindowsBoundsPadded_.push_back(bandWindow);
@@ -108,18 +108,18 @@ private:
         resWindowBufferREL_->setRect(resWindowBuffer_->toRelative());
         resWindowBuffer_->toAbsolute();
 
-        for(uint8_t orient = 0; orient < BAND_NUM_ORIENTATIONS; orient++)
+        for(uint8_t orient = 0; orient < t1::BAND_NUM_ORIENTATIONS; orient++)
         {
           auto bandWindow = bandWindowsBoundsPadded_[orient];
           bandWindowsBuffersPadded_.push_back(new Buf2dAligned(bandWindow, true));
           bandWindowsBuffersPaddedREL_.push_back(new Buf2dAligned(bandWindow.toRelative(), true));
         }
         genSplitWindowBuffers(resWindowBufferSplit_, resWindowBuffer_,
-                              bandWindowsBuffersPadded_[BAND_ORIENT_LL],
-                              bandWindowsBuffersPadded_[BAND_ORIENT_LH], true);
+                              bandWindowsBuffersPadded_[t1::BAND_ORIENT_LL],
+                              bandWindowsBuffersPadded_[t1::BAND_ORIENT_LH], true);
         genSplitWindowBuffers(resWindowBufferSplitREL_, resWindowBuffer_,
-                              bandWindowsBuffersPadded_[BAND_ORIENT_LL],
-                              bandWindowsBuffersPadded_[BAND_ORIENT_LH], false);
+                              bandWindowsBuffersPadded_[t1::BAND_ORIENT_LL],
+                              bandWindowsBuffersPadded_[t1::BAND_ORIENT_LH], false);
       }
     }
     else
@@ -222,15 +222,15 @@ private:
         {
           switch(orientation)
           {
-            case BAND_ORIENT_HL:
+            case t1::BAND_ORIENT_HL:
               bandWindowsBuffersPaddedREL_[orientation]->attach(resWindowBufferHighestResREL_,
                                                                 tileCompAtLowerRes_.width(), 0);
               break;
-            case BAND_ORIENT_LH:
+            case t1::BAND_ORIENT_LH:
               bandWindowsBuffersPaddedREL_[orientation]->attach(resWindowBufferHighestResREL_, 0,
                                                                 tileCompAtLowerRes_.height());
               break;
-            case BAND_ORIENT_HH:
+            case t1::BAND_ORIENT_HH:
               bandWindowsBuffersPaddedREL_[orientation]->attach(resWindowBufferHighestResREL_,
                                                                 tileCompAtLowerRes_.width(),
                                                                 tileCompAtLowerRes_.height());
@@ -314,7 +314,7 @@ private:
                                     Rect32 unreducedTileCompWindow, Rect32 unreducedTileComp,
                                     uint32_t padding, Rect32& paddedResWindow)
   {
-    assert(orientation < BAND_NUM_ORIENTATIONS);
+    assert(orientation < t1::BAND_NUM_ORIENTATIONS);
     if(numDecomps == 0)
     {
       assert(orientation == 0);
@@ -349,19 +349,21 @@ private:
   {
     return resWindowBufferSplitREL_[orientation];
   }
-  const Rect32* getBandWindowPadded(eBandOrientation orientation) const
+  const Rect32* getBandWindowPadded(t1::eBandOrientation orientation) const
   {
     return &bandWindowsBoundsPadded_[orientation];
   }
-  const Buf2dAligned* getBandWindowBufferPaddedREL(eBandOrientation orientation) const
+  const Buf2dAligned* getBandWindowBufferPaddedREL(t1::eBandOrientation orientation) const
   {
     return bandWindowsBuffersPaddedREL_[orientation];
   }
-  const Buffer2dSimple<int32_t> getBandWindowBufferPaddedSimple(eBandOrientation orientation) const
+  const Buffer2dSimple<int32_t>
+      getBandWindowBufferPaddedSimple(t1::eBandOrientation orientation) const
   {
     return bandWindowsBuffersPadded_[orientation]->simple();
   }
-  const Buffer2dSimple<float> getBandWindowBufferPaddedSimpleF(eBandOrientation orientation) const
+  const Buffer2dSimple<float>
+      getBandWindowBufferPaddedSimpleF(t1::eBandOrientation orientation) const
   {
     return bandWindowsBuffersPadded_[orientation]->simpleF();
   }

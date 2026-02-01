@@ -63,7 +63,7 @@ struct Resolution : public Rect32
    * @brief unreduced bands (canvas coordinates)
    *
    */
-  Subband band[BAND_NUM_INDICES];
+  Subband band[t1::BAND_NUM_INDICES];
 
   uint8_t numBands_ = 0; // 1 or 3
   Rect32 precinctPartition_;

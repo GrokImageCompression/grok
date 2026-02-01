@@ -227,7 +227,7 @@ bool TileProcessor::init(void)
     for(auto resno = 0U; resno < numres; ++resno)
     {
       auto res = resolutions + resno;
-      res->setRect(ResSimple::getBandWindow((uint8_t)(numres - (resno + 1)), BAND_ORIENT_LL,
+      res->setRect(ResSimple::getBandWindow((uint8_t)(numres - (resno + 1)), t1::BAND_ORIENT_LL,
                                             unreducedTileComp));
 
       /* p. 35, table A-23, ISO/IEC FDIS154444-1 : 2000 (18 august 2000) */
@@ -251,8 +251,8 @@ bool TileProcessor::init(void)
       for(auto bandIndex = 0U; bandIndex < res->numBands_; ++bandIndex)
       {
         auto band = res->band + bandIndex;
-        eBandOrientation orientation =
-            (resno == 0) ? BAND_ORIENT_LL : (eBandOrientation)(bandIndex + 1);
+        t1::eBandOrientation orientation =
+            (resno == 0) ? t1::BAND_ORIENT_LL : (t1::eBandOrientation)(bandIndex + 1);
         band->orientation_ = orientation;
         uint8_t numDecomps = (resno == 0) ? (uint8_t)(numres - 1U) : (uint8_t)(numres - resno);
         band->setRect(ResSimple::getBandWindow(numDecomps, band->orientation_, unreducedTileComp));
