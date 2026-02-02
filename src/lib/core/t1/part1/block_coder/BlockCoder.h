@@ -68,7 +68,7 @@ private:
   /**
    * @brief cached block stride
    */
-  uint8_t stride_;
+  uint16_t stride_;
   /**
    * @brief cached block height
    */

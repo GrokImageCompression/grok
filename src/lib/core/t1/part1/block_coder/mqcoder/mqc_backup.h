@@ -69,12 +69,12 @@ struct mqcoder_backup : public mqcoder_base
   /**
    * @brief local position of backup in loop
    */
-  uint8_t position;
+  uint16_t position;
 
   /**
    * @brief local loop variables
    */
-  uint8_t i, j, k;
+  uint16_t i, j, k;
 
   /**
    * @brief local partial

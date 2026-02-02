@@ -38,7 +38,7 @@ const uint8_t B12_POS = 12;
   auto dataPtr = uncompressedData_;           \
   auto flagsPtr = flags_ + flagsStride + 1;   \
   grk_flag _flags = 0;                        \
-  uint8_t i = 0, j = 0, k = 0;                \
+  uint16_t i = 0, j = 0, k = 0;               \
   bool approaching_red;                       \
   (void)approaching_red;                      \
   PUSH_MQC();
@@ -49,7 +49,7 @@ const uint8_t B12_POS = 12;
   auto dataPtr = uncompressedData_;                                                      \
   auto flagsPtr = flags_ + flagsStride + 1;                                              \
   grk_flag _flags = 0;                                                                   \
-  uint8_t i = 0, j = 0, k = 0;                                                           \
+  uint16_t i = 0, j = 0, k = 0;                                                          \
   const mqc_state** curctx;                                                              \
   uint32_t c, a;                                                                         \
   uint8_t ct;                                                                            \

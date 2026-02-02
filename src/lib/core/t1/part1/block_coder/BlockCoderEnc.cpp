@@ -162,7 +162,7 @@ bool BlockCoder::alloc(uint16_t width, uint16_t height)
   if(!compressor && !cacheAll(cacheStrategy_))
     uncompressedBuf_.clear();
   uncompressedData_ = uncompressedBuf_.getBuffer();
-  stride_ = (uint8_t)uncompressedBuf_.getStride();
+  stride_ = (uint16_t)uncompressedBuf_.getStride();
 
   // if coder is cached and height and width haven't change, then return immediately
   if(cacheAll(cacheStrategy_) && w_ == width && h_ == height)
@@ -232,7 +232,7 @@ void BlockCoder::dec_sigpass_raw(int8_t bpno, int32_t cblksty)
   // Main processing loop: process rows in blocks of 4.
   for(uint32_t k = 0; k < (h_ & ~3U); k += 4, flagsPtr += 2, dataPtr += 3 * w_)
   {
-    for(uint8_t i = 0; i < w_; ++i, ++flagsPtr, ++dataPtr)
+    for(uint16_t i = 0; i < w_; ++i, ++flagsPtr, ++dataPtr)
     {
       if(*flagsPtr != 0)
       {
@@ -248,9 +248,9 @@ void BlockCoder::dec_sigpass_raw(int8_t bpno, int32_t cblksty)
   uint32_t remainingRows = h_ & 3U;
   if(remainingRows > 0)
   {
-    for(uint8_t i = 0; i < w_; ++i, ++flagsPtr, ++dataPtr)
+    for(uint16_t i = 0; i < w_; ++i, ++flagsPtr, ++dataPtr)
     {
-      for(uint8_t j = 0; j < remainingRows; ++j)
+      for(uint16_t j = 0; j < remainingRows; ++j)
       {
         dec_sigpass_step_raw(flagsPtr, dataPtr + j * w_, oneplushalf, vscEnabled, 3 * j);
       }
@@ -542,7 +542,7 @@ void BlockCoder::enc_refpass(int8_t bpno, int32_t* nmsedec, uint8_t type)
   uint16_t k;
   for(k = 0; k < (h_ & ~3U); k += 4)
   {
-    for(uint8_t i = 0; i < w_; ++i)
+    for(uint16_t i = 0; i < w_; ++i)
     {
       if((*flagsPtr & (T1_SIGMA_4 | T1_SIGMA_7 | T1_SIGMA_10 | T1_SIGMA_13)) == 0)
       { /* none significant */
@@ -671,7 +671,7 @@ void BlockCoder::enc_clnpass(int8_t bpno, int32_t* nmsedec, uint32_t cblksty)
   if(k < h_)
   {
     uint8_t runlen = 0;
-    for(uint8_t i = 0; i < w_; ++i, ++flagsPtr)
+    for(uint16_t i = 0; i < w_; ++i, ++flagsPtr)
     {
       auto datap = uncompressedData_ + ((k + runlen) * stride_) + i;
       const uint32_t check = (T1_SIGMA_4 | T1_SIGMA_7 | T1_SIGMA_10 | T1_SIGMA_13 | T1_PI_0 |
