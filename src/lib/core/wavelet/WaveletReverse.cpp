@@ -735,6 +735,9 @@ bool WaveletReverse::tile_53(void)
   if(numres_ == 1U)
     return true;
 
+  if(!WaveletReverse::horizPoolData_ || !WaveletReverse::vertPoolData_)
+    return false;
+
   // for resolution n, tileCompRes points to LL subband at res n-1
   auto bandLL = tilec_->resolutions_;
   auto tileBuffer = tilec_->getWindow();
