@@ -24,7 +24,7 @@
 
 #include "IStreamWriter.h"
 
-namespace grk::t1
+namespace grk::t1_t2
 {
 
 class TruncatedPacketHeaderException : public std::exception
@@ -341,4 +341,4 @@ private:
   }
 };
 
-} // namespace grk::t1
+} // namespace grk::t1_t2

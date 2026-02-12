@@ -222,7 +222,7 @@ struct CodeblockDecompressImpl : public CodeblockImpl
    * @param layno layer number
    * @param cblk_sty code block style
    */
-  void readPacketHeader(std::shared_ptr<BitIO> bio, uint32_t& signalledLayerDataBytes,
+  void readPacketHeader(std::shared_ptr<t1_t2::BitIO> bio, uint32_t& signalledLayerDataBytes,
                         uint16_t layno, uint8_t cblk_sty)
   {
     // 1. read signalled passes in layer

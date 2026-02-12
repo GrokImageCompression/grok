@@ -166,7 +166,7 @@ public:
    @param threshold Threshold to use when encoding value of the leaf
    @return true if successful, otherwise false
    */
-  bool encode(t1::BitIO* bio, uint64_t leafno, T threshold)
+  bool encode(t1_t2::BitIO* bio, uint64_t leafno, T threshold)
   {
     TagTreeNode<T>* nodeStack[15];
     auto nodeStackPtr = nodeStack;
@@ -215,7 +215,7 @@ public:
    @param threshold Threshold to use when decoding value of the leaf
    @param value the node's value
    */
-  void decode(t1::BitIO* bio, uint64_t leafno, T threshold, T* value)
+  void decode(t1_t2::BitIO* bio, uint64_t leafno, T threshold, T* value)
   {
     TagTreeNode<T>* nodeStack[15];
     *value = getUninitializedValue();

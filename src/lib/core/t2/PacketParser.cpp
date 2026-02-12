@@ -78,7 +78,7 @@ uint32_t PacketParser::readHeader(void)
       if(layerBytesAvailable_ < 6)
       {
         headerError_ = true;
-        throw t1::TruncatedPacketHeaderException();
+        throw t1_t2::TruncatedPacketHeaderException();
       }
       uint16_t signalledPacketSequenceNumber =
           (uint16_t)(((uint16_t)layerDataPtr[4] << 8) | layerDataPtr[5]);
@@ -115,9 +115,9 @@ uint32_t PacketParser::readHeader(void)
     remainingBytes = &tcp->pptLength_;
   }
   if(*remainingBytes == 0)
-    throw t1::TruncatedPacketHeaderException();
+    throw t1_t2::TruncatedPacketHeaderException();
   auto currentHeaderPtr = *headerStart;
-  std::shared_ptr<t1::BitIO> bio(new t1::BitIO(currentHeaderPtr, *remainingBytes, false));
+  std::shared_ptr<t1_t2::BitIO> bio(new t1_t2::BitIO(currentHeaderPtr, *remainingBytes, false));
   auto tccp = tcp->tccps_ + compno_;
   try
   {
@@ -139,7 +139,7 @@ uint32_t PacketParser::readHeader(void)
         if((numPrecCodeBlocks >> 3) > packets_->length())
         {
           headerError_ = true;
-          throw t1::TruncatedPacketHeaderException();
+          throw t1_t2::TruncatedPacketHeaderException();
         }
         for(uint32_t cblkno = 0; cblkno < numPrecCodeBlocks; cblkno++)
         {
@@ -221,7 +221,7 @@ uint32_t PacketParser::readHeader(void)
     bio->readFinalHeaderByte();
     currentHeaderPtr += bio->numBytes();
   }
-  catch([[maybe_unused]] const t1::InvalidMarkerException& ex)
+  catch([[maybe_unused]] const t1_t2::InvalidMarkerException& ex)
   {
     headerError_ = true;
     throw t1::CorruptPacketHeaderException();
@@ -237,7 +237,7 @@ uint32_t PacketParser::readHeader(void)
     if((*remainingBytes - (uint32_t)(currentHeaderPtr - *headerStart)) < 2U)
     {
       headerError_ = true;
-      throw t1::TruncatedPacketHeaderException();
+      throw t1_t2::TruncatedPacketHeaderException();
     }
     uint16_t marker =
         (uint16_t)(((uint16_t)(*currentHeaderPtr) << 8) | (uint16_t)(*(currentHeaderPtr + 1)));

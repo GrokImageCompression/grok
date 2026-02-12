@@ -123,7 +123,7 @@ bool CodeStreamDecompress::readHeaderProcedure(void)
 
     return true;
   }
-  catch(const t1::InvalidMarkerException& ime)
+  catch(const t1_t2::InvalidMarkerException& ime)
   {
     grklog.warn("Found invalid marker in main header : 0x%.4x", ime.marker_);
     return false;
@@ -392,7 +392,7 @@ bool CodeStreamDecompress::readUNK(void)
         return false;
       }
     }
-    catch(const t1::InvalidMarkerException&)
+    catch(const t1_t2::InvalidMarkerException&)
     {
       size_unk += MARKER_BYTES;
       continue;

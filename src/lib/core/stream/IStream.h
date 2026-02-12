@@ -58,7 +58,7 @@ struct StreamCallbacks
 
 class IFetcher;
 
-struct IStream : public t1::IStreamWriter
+struct IStream : public t1_t2::IStreamWriter
 {
   virtual ~IStream() = default;
 

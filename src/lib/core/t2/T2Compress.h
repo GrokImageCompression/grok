@@ -87,7 +87,7 @@ private:
   bool compressPacketSimulate(TileCodingParams* tcp, PacketIter* pi, uint32_t* p_data_written,
                               uint32_t len, PLMarker* markers, bool debug);
 
-  bool compressHeader(t1::BitIO* bio, Resolution* res, uint16_t layno, uint64_t precinctIndex);
+  bool compressHeader(t1_t2::BitIO* bio, Resolution* res, uint16_t layno, uint64_t precinctIndex);
 };
 
 } // namespace grk
