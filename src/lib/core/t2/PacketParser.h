@@ -86,78 +86,80 @@ private:
    */
   TileProcessor* tileProcessor_;
 
+  uint16_t tileIndex_ = 0;
+
   /**
    * @brief packet sequence number
    *
    * This is the generated packet sequence number. We compare to the signalled
    * sequence number to detect pack stream corruption
    */
-  uint16_t packetSequenceNumber_;
+  uint16_t packetSequenceNumber_ = 0;
 
   /**
    * @brief component number
    */
-  uint16_t compno_;
+  uint16_t compno_ = 0;
 
   /**
    * @brief resolution number
    */
-  uint8_t resno_;
+  uint8_t resno_ = 0;
 
   /**
    * @brief precinct index
    */
-  uint64_t precinctIndex_;
+  uint64_t precinctIndex_ = 0;
 
   /**
    * @brief layer number
    */
-  uint16_t layno_;
+  uint16_t layno_ = 0;
 
   /**
    * @brief @ref SparseBuffer of all packets
    */
-  SparseBuffer* packets_;
+  SparseBuffer* packets_ = nullptr;
 
   /**
    * @brief packets_ current chunk pointer aka layer data
    */
-  uint8_t* layerData_;
+  uint8_t* layerData_ = nullptr;
 
   /**
    * @brief all available bytes in layer (includes packet header and data)
    */
-  size_t layerBytesAvailable_;
+  size_t layerBytesAvailable_ = 0;
 
   /**
    * @brief true if tag bits present in packet header
    */
-  bool tagBitsPresent_;
+  bool tagBitsPresent_ = false;
 
   /**
    * @brief packet header length - does not include packed header bytes
    */
-  uint32_t headerLength_;
+  uint32_t headerLength_ = 0;
 
   /**
    * @brief length of packet data as signalled in packet header
    */
-  uint32_t signalledLayerDataBytes_;
+  uint32_t signalledLayerDataBytes_ = 0;
 
   /**
    * @brief total packet length as signalled in marker (PLT/PLM)
    */
-  uint32_t plLength_;
+  uint32_t plLength_ = 0;
 
   /**
    * @brief true if header has been parsed
    */
-  bool parsedHeader_;
+  bool parsedHeader_ = false;
 
   /**
    * @brief true of there was an error reading the header
    */
-  bool headerError_;
+  bool headerError_ = false;
 };
 
 /**
@@ -259,6 +261,7 @@ struct AllLayersPrecinctPacketParser
    * @brief @ref TileProcessor
    */
   TileProcessor* tileProcessor_;
+
   /**
    * @brief Queue of @ref PacketParser
    */

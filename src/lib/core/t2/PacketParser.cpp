@@ -23,12 +23,11 @@ namespace grk
 PacketParser::PacketParser(TileProcessor* tileProcessor, uint16_t packetSequenceNumber,
                            uint16_t compno, uint8_t resno, uint64_t precinctIndex, uint16_t layno,
                            uint32_t plLength, SparseBuffer* compressedPackets)
-    : tileProcessor_(tileProcessor), packetSequenceNumber_(packetSequenceNumber), compno_(compno),
-      resno_(resno), precinctIndex_(precinctIndex), layno_(layno), packets_(compressedPackets),
+    : tileProcessor_(tileProcessor), tileIndex_(tileProcessor->getIndex()),
+      packetSequenceNumber_(packetSequenceNumber), compno_(compno), resno_(resno),
+      precinctIndex_(precinctIndex), layno_(layno), packets_(compressedPackets),
       layerData_(compressedPackets->chunkPtr()),
-      layerBytesAvailable_(compressedPackets->chunkLength()), tagBitsPresent_(false),
-      headerLength_(0), signalledLayerDataBytes_(0), plLength_(plLength), parsedHeader_(false),
-      headerError_(false)
+      layerBytesAvailable_(compressedPackets->chunkLength()), plLength_(plLength)
 {}
 void PacketParser::print(void)
 {
@@ -98,14 +97,13 @@ uint32_t PacketParser::readHeader(void)
   auto cp = tileProcessor_->getCodingParams();
   if(cp->ppmMarkers_)
   {
-    if(tileProcessor_->getIndex() >= cp->ppmMarkers_->packetHeaders.size())
+    if(tileIndex_ >= cp->ppmMarkers_->packetHeaders.size())
     {
-      grklog.error("PPM marker has no packed packet header data for tile %u",
-                   tileProcessor_->getIndex() + 1);
+      grklog.error("PPM marker has no packed packet header data for tile %u", tileIndex_ + 1);
       headerError_ = true;
       throw t1::CorruptPacketHeaderException();
     }
-    auto header = &cp->ppmMarkers_->packetHeaders[tileProcessor_->getIndex()];
+    auto header = &cp->ppmMarkers_->packetHeaders[tileIndex_];
     headerStart = header->ptr_to_buf();
     remainingBytes = header->num_elts_ptr();
   }
@@ -152,7 +150,7 @@ uint32_t PacketParser::readHeader(void)
             incl->decode(bio.get(), cblkno, layno_ + 1, &value);
             if(value != incl->getUninitializedValue() && value != layno_)
             {
-              grklog.warn("Tile number: %u", tileProcessor_->getIndex() + 1);
+              grklog.warn("Tile number: %u", tileIndex_ + 1);
               std::string msg = "Corrupt inclusion tag tree found when decoding packet header.";
               grklog.warn("%s", msg.c_str());
               throw t1::CorruptPacketHeaderException();
