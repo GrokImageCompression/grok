@@ -43,12 +43,13 @@ void Resolution::print(void) const
     band[i].print();
   }
 }
-bool Resolution::init(TileProcessor* tileProcessor, TileComponentCodingParams* tccp, uint8_t resno)
+bool Resolution::init(grk_plugin_tile* currentPluginTile, bool isCompressor, uint16_t numLayers,
+                      TileProcessor* tileProcessor, TileComponentCodingParams* tccp, uint8_t resno)
 {
   if(initialized_)
     return true;
 
-  current_plugin_tile_ = tileProcessor->getCurrentPluginTile();
+  current_plugin_tile_ = currentPluginTile;
 
   /* p. 35, table A-23, ISO/IEC FDIS154444-1 : 2000 (18 august 2000) */
   bandPrecinctExpn_ = Point8(tccp->precWidthExp_[resno], tccp->precHeightExp_[resno]);
@@ -65,7 +66,7 @@ bool Resolution::init(TileProcessor* tileProcessor, TileComponentCodingParams* t
                      std::min(tccp->cblkh_expn_, bandPrecinctExpn_.y));
 
   // create all precincts up front if we are compressing
-  if(tileProcessor->isCompressor())
+  if(isCompressor)
   {
     uint64_t num_precincts = precinctGrid_.area();
     for(uint8_t bandIndex = 0; bandIndex < numBands_; ++bandIndex)
@@ -73,15 +74,15 @@ bool Resolution::init(TileProcessor* tileProcessor, TileComponentCodingParams* t
       auto curr_band = band + bandIndex;
       for(uint64_t precinctIndex = 0; precinctIndex < num_precincts; ++precinctIndex)
       {
-        if(!curr_band->createPrecinct(
-               tileProcessor->isCompressor(), tileProcessor->getTCP()->numLayers_, precinctIndex,
-               bandPrecinctPartition_, bandPrecinctExpn_, precinctGrid_.width(), cblkExpn_))
+        if(!curr_band->createPrecinct(isCompressor, numLayers, precinctIndex,
+                                      bandPrecinctPartition_, bandPrecinctExpn_,
+                                      precinctGrid_.width(), cblkExpn_))
           return false;
       }
     }
   }
 
-  if(!tileProcessor->isCompressor())
+  if(!isCompressor)
     packetParser_ = new ResolutionPacketParser(tileProcessor);
   initialized_ = true;
 

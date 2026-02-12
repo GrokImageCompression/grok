@@ -281,7 +281,7 @@ bool TileProcessor::init(void)
         // assert(band->numbps <= maxBitPlanesJ2K);
       }
       // initialize precincts and code blocks
-      if(!res->init(this, tccp, resno))
+      if(!res->init(current_plugin_tile_, isCompressor_, tcp_->numLayers_, this, tccp, resno))
       {
         delete[] resolutions;
         return false;
