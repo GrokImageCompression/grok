@@ -396,6 +396,10 @@ e674a7d3c6fa71e775c96dca29807794  multi_tile_truncated_rgb.tif
 2d0ee6c27449e24a1908065299ede44d  page_tlm.tif
 e674a7d3c6fa71e775c96dca29807794  page.tif
 
+7a371ddf1f6ca7df2af6f274ea9b2eda  clusterfuzz-testcase-minimized-grk_decompress_fuzzer-6033353920020480_0.pgx
+7a371ddf1f6ca7df2af6f274ea9b2eda  clusterfuzz-testcase-minimized-grk_decompress_fuzzer-6033353920020480_1.pgx
+7a371ddf1f6ca7df2af6f274ea9b2eda  clusterfuzz-testcase-minimized-grk_decompress_fuzzer-6033353920020480_2.pgx
+
 5fdc11a205233e8f72caa83ca78eccc2  p_bit16_layer5.pgm
 9daefd1bccef4a67314acf7fe13fbe4b  mono_plt_tlm_tile5.pgm
 40f9382d2a613f8daf93304c572b75fe  mono_plt_tlm_tile.pgm

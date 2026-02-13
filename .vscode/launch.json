@@ -786,7 +786,7 @@
             "program": "${workspaceFolder}/build/bin/grk_decompress",
             "args": [
                 "-i",
-                "$HOME/Downloads/clusterfuzz-testcase-minimized-grk_decompress_fuzzer-4979323915534336",
+                "$HOME/Downloads/clusterfuzz-testcase-minimized-grk_decompress_fuzzer-6033353920020480",
                 "-d 0,0,1024,1024",
                 "-o",
                 "$HOME/temp/fuzz.tif"
