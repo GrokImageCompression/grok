@@ -67,6 +67,7 @@ bool DecompressScheduler::schedule(TileProcessor* tileProcessor)
 
   uint8_t resMin = std::numeric_limits<uint8_t>::max();
   uint8_t resMax = 0;
+  uint32_t mctCompHasBlocks = 0;
   for(uint16_t compno = 0; compno < numcomps_; ++compno)
   {
     auto tilec = tileProcessor->getTile()->comps_ + compno;
@@ -184,6 +185,8 @@ bool DecompressScheduler::schedule(TileProcessor* tileProcessor)
     else
     {
       // 2. prepare for decompression
+      if(compno < 3)
+        mctCompHasBlocks++;
       if(imageComponentFlow_[compno])
         delete imageComponentFlow_[compno];
       imageComponentFlow_[compno] =
@@ -297,7 +300,7 @@ bool DecompressScheduler::schedule(TileProcessor* tileProcessor)
   }
 
   // sanity check on MCT scheduling
-  if(doPostT1 && numcomps_ >= 3 && mctPostProc)
+  if(doPostT1 && numcomps_ >= 3 && mctPostProc && mctCompHasBlocks == 3)
   {
     // custom MCT
     if(tcp->mct_ == 2)
