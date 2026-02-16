@@ -777,5 +777,4 @@ grk_compress -i @INPUT_NR_PATH@/resolution.tif -o @TEMP_PATH@/resolution.jp2
 !grk_decompress -i @INPUT_NR_PATH@/clusterfuzz-testcase-minimized-grk_decompress_fuzzer-6144311698980864 -o @TEMP_PATH@/clusterfuzz-testcase-minimized-grk_decompress_fuzzer-6144311698980864.pgx -d 0,0,1024,1024
 !grk_decompress -i @INPUT_NR_PATH@/clusterfuzz-testcase-minimized-grk_decompress_fuzzer-6463215033974784 -o @TEMP_PATH@/clusterfuzz-testcase-minimized-grk_decompress_fuzzer-6463215033974784.pgx -d 0,0,1024,1024
 grk_decompress -i @INPUT_NR_PATH@/clusterfuzz-testcase-minimized-grk_decompress_fuzzer-6033353920020480 -o @TEMP_PATH@/clusterfuzz-testcase-minimized-grk_decompress_fuzzer-6033353920020480.pgx -d 0,0,1024,1024
-
-
+!grk_decompress -i @INPUT_NR_PATH@/clusterfuzz-testcase-minimized-grk_decompress_fuzzer-5457536781451264 -o @TEMP_PATH@/clusterfuzz-testcase-minimized-grk_decompress_fuzzer-5457536781451264.pgx -d 0,0,1024,1024

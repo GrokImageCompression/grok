@@ -1249,11 +1249,11 @@ bool GrkImage::apply_palette_clr()
                    compno);
       return false;
     }
-    if(comp->prec > pal->num_entries)
+    if((1ULL << comp->prec) > pal->num_entries)
     {
-      grklog.error("Precision %u of component %u is greater than "
+      grklog.error("Precision %u of component %u implies max value greater than "
                    "number of palette entries %u",
-                   compno, comps[compno].prec, pal->num_entries);
+                   comp->prec, compno, pal->num_entries);
       return false;
     }
     uint16_t paletteColumn = mapping->palette_column;
@@ -1279,6 +1279,24 @@ bool GrkImage::apply_palette_clr()
         break;
     }
   }
+
+  // check for unique palette columns in mappings
+  std::set<uint16_t> usedColumns;
+  for(uint16_t channel = 0; channel < num_channels; ++channel)
+  {
+    auto mapping = component_mapping + channel;
+    if(mapping->mapping_type == 1)
+    {
+      uint16_t paletteColumn = mapping->palette_column;
+      if(usedColumns.count(paletteColumn))
+      {
+        grklog.error("apply_palette_clr: duplicate palette column %u in mappings", paletteColumn);
+        return false;
+      }
+      usedColumns.insert(paletteColumn);
+    }
+  }
+
   auto oldComps = comps;
   auto newComps = new grk_image_comp[num_channels];
   memset(newComps, 0, num_channels * sizeof(grk_image_comp));
@@ -1286,21 +1304,14 @@ bool GrkImage::apply_palette_clr()
   {
     auto mapping = component_mapping + channel;
     uint16_t compno = mapping->component;
-    // Direct mapping
-    uint16_t componentIndex = channel;
-
-    if(mapping->mapping_type != 0)
-      componentIndex = mapping->palette_column;
-
-    newComps[componentIndex] = oldComps[compno];
-    setDataToNull(newComps + componentIndex);
+    newComps[channel] = oldComps[compno];
+    newComps[channel].data = nullptr; // null out to avoid double-free
 
     if(!GrkImage::allocData(newComps + channel))
     {
-      while(channel > 0)
+      for(uint16_t ch = 0; ch < channel; ++ch)
       {
-        --channel;
-        grk_aligned_free(newComps[channel].data);
+        grk_aligned_free(newComps[ch].data);
       }
       delete[] newComps;
       grklog.error("Memory allocation failure in apply_palette_clr().");
@@ -1309,34 +1320,33 @@ bool GrkImage::apply_palette_clr()
     newComps[channel].prec = channel_prec[channel];
     newComps[channel].sgnd = channel_sign[channel];
   }
-  int32_t top_k = pal->num_entries - 1;
+  uint32_t top_k = pal->num_entries - 1;
   for(uint16_t channel = 0; channel < num_channels; ++channel)
   {
     /* Palette mapping: */
     auto mapping = component_mapping + channel;
     uint16_t compno = mapping->component;
     auto src = (T*)oldComps[compno].data;
+    auto dst = (T*)newComps[channel].data;
+    size_t num_pixels = (size_t)newComps[channel].stride * newComps[channel].h;
+    uint32_t diff = (uint32_t)(newComps[channel].stride - newComps[channel].w);
+    size_t ind = 0;
+
     switch(mapping->mapping_type)
     {
       case 0: {
-        size_t num_pixels = (size_t)newComps[channel].stride * newComps[channel].h;
-        memcpy(newComps[channel].data, src, num_pixels * sizeof(T));
+        memcpy(dst, src, num_pixels * sizeof(T));
       }
       break;
       case 1: {
         uint16_t palette_column = mapping->palette_column;
-        auto dst = (T*)newComps[palette_column].data;
-        uint32_t diff = (uint32_t)(newComps[palette_column].stride - newComps[palette_column].w);
-        size_t ind = 0;
         // note: 1 <= n <= 255
-        for(uint32_t n = 0; n < newComps[palette_column].h; ++n)
+        for(uint32_t n = 0; n < newComps[channel].h; ++n)
         {
-          for(uint32_t m = 0; m < newComps[palette_column].w; ++m)
+          for(uint32_t m = 0; m < newComps[channel].w; ++m)
           {
-            int32_t k = 0;
-            if((k = src[ind]) < 0)
-              k = 0;
-            else if(k > top_k)
+            uint32_t k = static_cast<uint32_t>(src[ind]); // unsigned cast to avoid signed issues
+            if(k > top_k)
               k = top_k;
             dst[ind++] = (T)lut[k * num_channels + palette_column];
           }
