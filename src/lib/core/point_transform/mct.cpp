@@ -94,14 +94,24 @@ namespace HWY_NAMESPACE
   public:
     void transform(ScheduleInfo info)
     {
+      auto w0 = info.tile->comps_[0].getWindow()->getResWindowBufferHighestSimple();
+      auto w1 = info.tile->comps_[1].getWindow()->getResWindowBufferHighestSimple();
+      auto w2 = info.tile->comps_[2].getWindow()->getResWindowBufferHighestSimple();
+
+      if(w0.stride_ != w1.stride_ || w1.stride_ != w2.stride_ || w0.height_ != w1.height_ ||
+         w1.height_ != w2.height_)
+      {
+        grklog.warn("MCT components have differing dimensions - skipping MCT transform");
+        return;
+      }
       auto highestResBufferStride =
           info.tile->comps_[info.compno].getWindow()->getResWindowBufferHighestStride();
       auto index = (uint64_t)info.yBegin * highestResBufferStride;
       auto chunkSize = (uint64_t)(info.yEnd - info.yBegin) * highestResBufferStride;
       const std::vector<ShiftInfo>& shiftInfo = info.shiftInfo;
-      auto chan0 = info.tile->comps_[0].getWindow()->getResWindowBufferHighestSimple().buf_;
-      auto chan1 = info.tile->comps_[1].getWindow()->getResWindowBufferHighestSimple().buf_;
-      auto chan2 = info.tile->comps_[2].getWindow()->getResWindowBufferHighestSimple().buf_;
+      auto chan0 = w0.buf_;
+      auto chan1 = w1.buf_;
+      auto chan2 = w2.buf_;
       int32_t shift[3] = {shiftInfo[0]._shift, shiftInfo[1]._shift, shiftInfo[2]._shift};
       int32_t _min[3] = {shiftInfo[0]._min, shiftInfo[1]._min, shiftInfo[2]._min};
       int32_t _max[3] = {shiftInfo[0]._max, shiftInfo[1]._max, shiftInfo[2]._max};
@@ -141,14 +151,24 @@ namespace HWY_NAMESPACE
   public:
     void transform(ScheduleInfo info)
     {
+      auto w0 = info.tile->comps_[0].getWindow()->getResWindowBufferHighestSimpleF();
+      auto w1 = info.tile->comps_[1].getWindow()->getResWindowBufferHighestSimpleF();
+      auto w2 = info.tile->comps_[2].getWindow()->getResWindowBufferHighestSimpleF();
+
+      if(w0.stride_ != w1.stride_ || w1.stride_ != w2.stride_ || w0.height_ != w1.height_ ||
+         w1.height_ != w2.height_)
+      {
+        grklog.warn("MCT components have differing dimensions - skipping MCT transform");
+        return;
+      }
       auto highestResBufferStride =
           info.tile->comps_[info.compno].getWindow()->getResWindowBufferHighestStride();
       auto index = (uint64_t)info.yBegin * highestResBufferStride;
       auto chunkSize = (uint64_t)(info.yEnd - info.yBegin) * highestResBufferStride;
       const std::vector<ShiftInfo>& shiftInfo = info.shiftInfo;
-      auto chan0 = info.tile->comps_[0].getWindow()->getResWindowBufferHighestSimpleF().buf_;
-      auto chan1 = info.tile->comps_[1].getWindow()->getResWindowBufferHighestSimpleF().buf_;
-      auto chan2 = info.tile->comps_[2].getWindow()->getResWindowBufferHighestSimpleF().buf_;
+      auto chan0 = w0.buf_;
+      auto chan1 = w1.buf_;
+      auto chan2 = w2.buf_;
 
       auto c0 = (int32_t*)chan0;
       auto c1 = (int32_t*)chan1;
