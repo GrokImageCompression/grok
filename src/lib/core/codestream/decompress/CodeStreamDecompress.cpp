@@ -1020,9 +1020,18 @@ bool CodeStreamDecompress::scheduleNextSlatedTile(bool multiTile)
     {
       return false;
     }
-    // read next marker id
-    if(!markerParser_.readId(false))
+    // Attempt to read next SOT marker. If we hit an invalid marker, we still try to
+    // decompress the tile, as truncated.
+    try
+    {
+      if(!markerParser_.readId(false))
+        break;
+    }
+    catch(const t1_t2::InvalidMarkerException& ime)
+    {
       break;
+    }
+
     if(!tilesToDecompress_.isSlated((uint16_t)currTileIndex_))
       continue;
 

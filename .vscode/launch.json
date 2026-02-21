@@ -347,11 +347,11 @@
             "program": "${workspaceFolder}/build/bin/grk_decompress",
             "args": [
                   "-i",
-                  "$HOME/temp/page.jp2",
+                  "$HOME/temp/Page.jp2",
                   "-t",
-                  "30",
+                  "27",
                   "-o",
-                  "$HOME/temp/page.tif"
+                  "$HOME/temp/Page.tif"
             ],
             "cwd": "${workspaceFolder}",
             "environment": [
