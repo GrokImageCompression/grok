@@ -1066,7 +1066,7 @@ bool CodeStreamDecompress::scheduleNextSlatedTile(bool multiTile)
 
   if(!currTileProcessor_)
   {
-    grklog.error("Missing SOT marker");
+    grklog.error("scheduleNextSlatedTile: no slated SOT markers found");
     return false;
   }
 
