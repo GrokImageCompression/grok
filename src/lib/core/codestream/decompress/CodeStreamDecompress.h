@@ -171,13 +171,14 @@ private:
   void decompressSequentialPrepare(void);
 
   bool schedule(TileProcessor* tileProcessor, bool multiTile);
+  bool sequentialSchedule(TileProcessor* tileProcessor, bool multiTile);
 
   /**
    * @brief Parses next slated tile
    *
    * @return true if successful
    */
-  bool scheduleNextSlatedTile(bool multiTile);
+  bool parseAndSchedule(bool multiTile);
 
   /**
    * @brief Reads unknown marker

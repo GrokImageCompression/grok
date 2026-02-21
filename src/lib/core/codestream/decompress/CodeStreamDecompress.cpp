@@ -557,6 +557,30 @@ bool CodeStreamDecompress::decompressImpl(std::set<uint16_t> slated)
   return true;
 }
 
+bool CodeStreamDecompress::sequentialSchedule(TileProcessor* tileProcessor, bool multiTile)
+{
+  tileProcessor->prepareForDecompression();
+  bool doSchedule = true;
+  if(doTileBatching())
+  {
+    std::unique_lock<std::mutex> lock(batchTileQueueMutex_);
+    if(batchTileScheduleHeadroomSequential_ > 0)
+    {
+      batchTileScheduleHeadroomSequential_--;
+      batchTileUnscheduledSequential_--;
+    }
+    else
+    {
+      batchTileQueueSequential_.push(tileProcessor);
+      doSchedule = false;
+    }
+  }
+  if(doSchedule && !schedule(tileProcessor, multiTile))
+    return false;
+
+  return true;
+}
+
 bool CodeStreamDecompress::schedule(TileProcessor* tileProcessor, bool multiTile)
 {
   if(cp_.hasTLM())
@@ -762,7 +786,7 @@ void CodeStreamDecompress::decompressSequential(void)
     // 1. parse and schedule tile
     try
     {
-      if(!scheduleNextSlatedTile(true))
+      if(!parseAndSchedule(true))
       {
         success_ = false;
         break;
@@ -908,7 +932,7 @@ bool CodeStreamDecompress::decompressTileImpl(uint16_t tileIndex)
       decompressSequentialPrepare();
       try
       {
-        if(!scheduleNextSlatedTile(false))
+        if(!parseAndSchedule(false))
           return false;
       }
       catch(const t1_t2::InvalidMarkerException& ime)
@@ -993,10 +1017,12 @@ std::function<void()> CodeStreamDecompress::postSingleTile(TileProcessor* tilePr
   };
 }
 
-bool CodeStreamDecompress::scheduleNextSlatedTile(bool multiTile)
+bool CodeStreamDecompress::parseAndSchedule(bool multiTile)
 {
   if(markerParser_.currId() != SOT)
     return false;
+
+  // A) Parse
 
   /* Parse tile parts until we satisfy one of the conditions below:
    * 1. read a complete slated tile
@@ -1066,35 +1092,16 @@ bool CodeStreamDecompress::scheduleNextSlatedTile(bool multiTile)
 
   if(!currTileProcessor_)
   {
-    grklog.error("scheduleNextSlatedTile: no slated SOT markers found");
+    grklog.error("parseAndSchedule: no slated SOT markers found");
     return false;
   }
-
-  currTileProcessor_->prepareForDecompression();
-
   auto tileProcessor = currTileProcessor_;
   currTileProcessor_ = nullptr;
   currTileIndex_ = -1;
 
-  bool doSchedule = true;
-  if(doTileBatching())
-  {
-    std::unique_lock<std::mutex> lock(batchTileQueueMutex_);
-    if(batchTileScheduleHeadroomSequential_ > 0)
-    {
-      batchTileScheduleHeadroomSequential_--;
-      batchTileUnscheduledSequential_--;
-    }
-    else
-    {
-      batchTileQueueSequential_.push(tileProcessor);
-      doSchedule = false;
-    }
-  }
-  if(doSchedule && !schedule(tileProcessor, multiTile))
-    return false;
+  // B) schedule
 
-  return true;
+  return sequentialSchedule(tileProcessor, multiTile);
 }
 
 } // namespace grk
