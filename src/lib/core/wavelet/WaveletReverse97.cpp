@@ -21,8 +21,13 @@
  *
  ***********************************/
 
-#include "grk_includes.h"
 #include <algorithm>
+
+#include "simd.h"
+#include "CodeStreamLimits.h"
+#include "TileWindow.h"
+#include "Quantizer.h"
+#include "grk_includes.h"
 
 #undef HWY_TARGET_INCLUDE
 #define HWY_TARGET_INCLUDE "wavelet/WaveletReverse97.cpp"

@@ -17,10 +17,10 @@
 
 #pragma once
 
-#include "grok.h"
-
 #include <cassert>
 #include <cstdint>
+
+#include "grok.h"
 #include "RefCounted.h"
 
 namespace grk

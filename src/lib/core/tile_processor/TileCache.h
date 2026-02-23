@@ -17,7 +17,6 @@
 
 #pragma once
 
-#include <grk_includes.h>
 #include <vector>
 #include <algorithm>
 

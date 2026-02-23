@@ -14,7 +14,10 @@
  *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
-
+#include "grk_exceptions.h"
+#include "CodeStreamLimits.h"
+#include "TileWindow.h"
+#include "Quantizer.h"
 #include "grk_includes.h"
 
 namespace grk

@@ -17,6 +17,8 @@
 
 #pragma once
 
+#include "ExecSingleton.h"
+
 /**
  * @class FlowComponent
  * @brief A collection of tasks which can be scheduled as a single task.

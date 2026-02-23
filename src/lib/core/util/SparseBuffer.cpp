@@ -21,7 +21,10 @@
  * @brief SparseBuffer stores a series of non-contiguous buffers. These buffers
  *  can also be treated as a single contiguous buffer.
  */
-
+#include "grk_exceptions.h"
+#include "CodeStreamLimits.h"
+#include "TileWindow.h"
+#include "Quantizer.h"
 #include "grk_includes.h"
 
 /* #define DEBUG_CHUNK_BUF */

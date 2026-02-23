@@ -15,6 +15,10 @@
  *
  */
 
+#include "CodeStreamLimits.h"
+#include "TileWindow.h"
+#include "MappedFile.h"
+#include "Quantizer.h"
 #include "grk_includes.h"
 #include "CurlFetcher.h"
 #include "BufferedStream.h"

@@ -17,12 +17,14 @@
 
 #pragma once
 
-#include "grk_config_private.h"
-#include "CurlFetcher.h"
-#include "FetchPathParser.h"
 #include <cstdlib>
 #include <ctime>
 #include <string>
+
+#include "grk_config_private.h"
+#include "CurlFetcher.h"
+#include "FetchPathParser.h"
+#include "IniParser.h"
 
 #ifdef GRK_ENABLE_LIBCURL
 

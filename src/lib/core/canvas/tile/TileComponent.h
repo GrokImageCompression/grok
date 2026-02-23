@@ -17,6 +17,7 @@
 
 #pragma once
 
+#include "geometry.h"
 #include "PacketProgressionState.h"
 #include "PostDecodeFilters.h"
 #include "htconfig.h"

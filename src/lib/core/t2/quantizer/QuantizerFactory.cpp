@@ -16,6 +16,9 @@
  */
 
 #include "simd.h"
+#include "CodeStreamLimits.h"
+#include "TileWindow.h"
+#include "Quantizer.h"
 #include "grk_includes.h"
 
 namespace grk

@@ -15,6 +15,9 @@
  *
  */
 
+#include "CodeStreamLimits.h"
+#include "TileWindow.h"
+#include "Quantizer.h"
 #include "grk_includes.h"
 
 std::unique_ptr<tf::Executor> ExecSingleton::instance_ = nullptr;

@@ -26,6 +26,9 @@
 #endif
 #include <fcntl.h>
 
+#include "CodeStreamLimits.h"
+#include "TileWindow.h"
+#include "Quantizer.h"
 #include "grk_includes.h"
 #include "BufferedStream.h"
 

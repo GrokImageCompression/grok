@@ -17,6 +17,8 @@
 
 #pragma once
 
+#include <vector>
+
 #include "WholeTileScheduler.h"
 #include "TileBlocks.h"
 

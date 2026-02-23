@@ -15,6 +15,10 @@
  *
  */
 
+#include "CodeStreamLimits.h"
+#include "grk_exceptions.h"
+#include "TileWindow.h"
+#include "Quantizer.h"
 #include "grk_includes.h"
 
 const bool debugBoxes = false;

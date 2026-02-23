@@ -17,6 +17,10 @@
 
 #pragma once
 
+#include <vector>
+#include <memory>
+#include <cinttypes>
+
 namespace grk
 {
 

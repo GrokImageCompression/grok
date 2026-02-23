@@ -27,6 +27,10 @@ odd += (previous + next) >> 1;
 
 ************************************************************************/
 
+#include "simd.h"
+#include "CodeStreamLimits.h"
+#include "TileWindow.h"
+#include "Quantizer.h"
 #include "grk_includes.h"
 
 #undef HWY_TARGET_INCLUDE

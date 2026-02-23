@@ -15,16 +15,40 @@
  *
  */
 
-#include "geometry.h"
+#include "CodeStreamLimits.h"
+#include "MemManager.h"
+#include "buffer.h"
+#include "GrkObjectWrapper.h"
+#include "Quantizer.h"
+#include "SparseBuffer.h"
+#include "MarkerCache.h"
+#include "IStream.h"
+
+#include "GrkImageMeta.h"
+#include "GrkImage.h"
+#include "ICompressor.h"
+#include "IDecompressor.h"
+#include "MarkerParser.h"
+#include "Codec.h"
+
+#include "PLMarker.h"
+#include "SIZMarker.h"
+#include "PPMMarker.h"
+namespace grk
+{
+struct TileProcessor;
+}
+#include "PacketParser.h"
+#include "CodingParams.h"
+#include "CodeStream.h"
 #include "BitIO.h"
 #include "TagTree.h"
-#include "CodeblockDecompress.h"
+
 #include "CodeblockCompress.h"
+#include "CodeblockDecompress.h"
+
 #include "Precinct.h"
 #include "Subband.h"
-
-#include "grk_includes.h"
-
 #include "Resolution.h"
 
 namespace grk

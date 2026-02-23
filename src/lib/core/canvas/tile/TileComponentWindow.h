@@ -35,7 +35,6 @@ with "REL", to signify relative coordinates.
 
 #pragma once
 
-#include "grk_includes.h"
 #include <algorithm>
 
 #include "ResWindow.h"

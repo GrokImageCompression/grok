@@ -17,9 +17,10 @@
 
 #pragma once
 
-#include "PacketCache.h"
 #include <memory>
 #include <mutex>
+
+#include "PacketCache.h"
 
 namespace grk
 {

@@ -15,6 +15,8 @@
  *
  */
 
+#include <functional>
+
 #pragma once
 
 namespace grk

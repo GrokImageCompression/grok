@@ -15,9 +15,14 @@
  *
  */
 
-#include "grk_includes.h"
 #include <memory>
 #include <ranges>
+
+#include "grk_exceptions.h"
+#include "CodeStreamLimits.h"
+#include "TileWindow.h"
+#include "Quantizer.h"
+#include "grk_includes.h"
 
 #include "TLMFile.h"
 

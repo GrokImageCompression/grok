@@ -76,39 +76,15 @@
 #define GROK_NOSANITIZE(kind)
 #endif
 
-#define CMS_NO_REGISTER_KEYWORD 1
-#include "lcms2.h"
-
-#include "EnvVarManager.h"
-#include "grk_exceptions.h"
-#include "ILogger.h"
-#include <Logger.h>
-#include "IniParser.h"
-#include "SimpleXmlParser.h"
-#include "simd.h"
-#include "ExecSingleton.h"
-#include "packer.h"
-#include "MinHeap.h"
-#include "SequentialCache.h"
-#include "SparseCache.h"
-#include "CodeStreamLimits.h"
+#include "Logger.h"
 #include "geometry.h"
 #include "MemManager.h"
 #include "buffer.h"
-#include "ChunkBuffer.h"
-#include "minpf_plugin_manager.h"
-#include "plugin_interface.h"
-#include "TileWindow.h"
 #include "GrkObjectWrapper.h"
-#include "ChronoTimer.h"
-#include "testing.h"
-#include "MappedFile.h"
-#include "GrkMatrix.h"
-#include "Quantizer.h"
+
 #include "SparseBuffer.h"
 #include "ResSimple.h"
 #include "SparseCanvas.h"
-#include "intmath.h"
 #include "ImageComponentFlow.h"
 #include "MarkerCache.h"
 #include "SlabPool.h"
@@ -170,7 +146,7 @@ struct TileProcessorCompress;
 #include "WindowScheduler.h"
 #include "WholeTileScheduler.h"
 
-#include "canvas/tile/TileComponentWindow.h"
+#include "TileComponentWindow.h"
 #include "WaveletCommon.h"
 #include "WaveletReverse.h"
 #include "WaveletFwd.h"

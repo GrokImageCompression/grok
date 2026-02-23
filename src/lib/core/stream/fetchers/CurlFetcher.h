@@ -26,14 +26,17 @@
 #include <future>
 #include <set>
 #include <vector>
-#ifdef GRK_ENABLE_LIBCURL
-#include <curl/curl.h>
-#endif
 #include <map>
 #include <sstream>
 
+#ifdef GRK_ENABLE_LIBCURL
+#include <curl/curl.h>
+#endif
+
 #include "grk_config_private.h"
 #include "FetchCommon.h"
+#include "EnvVarManager.h"
+#include "SimpleXmlParser.h"
 
 namespace grk
 {

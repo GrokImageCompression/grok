@@ -17,6 +17,14 @@
 
 #pragma once
 
+#include <set>
+#include <algorithm>
+#include <cmath>
+
+#include "lcms2.h"
+
+#include "packer.h"
+
 namespace grk
 {
 struct Tile;

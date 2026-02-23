@@ -15,8 +15,6 @@
  *
  */
 
-#include <vector>
-
 #include "geometry.h"
 #include "BitIO.h"
 #include "TagTree.h"

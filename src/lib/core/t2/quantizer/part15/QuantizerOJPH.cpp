@@ -51,7 +51,10 @@
 // Date: 28 August 2019
 //***************************************************************************/
 
-#define _USE_MATH_DEFINES
+#define _USE_MATH_DEFINE
+#include "CodeStreamLimits.h"
+#include "TileWindow.h"
+#include "Quantizer.h"
 #include "grk_includes.h"
 #include "QuantizerOJPH.h"
 

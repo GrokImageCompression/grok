@@ -28,7 +28,108 @@
 #include <filesystem>
 #include <mutex>
 
-#include "grk_includes.h"
+#if defined(GROK_HAVE_FSEEKO) && !defined(fseek)
+#define fseek fseeko
+#define ftell ftello
+#endif
+#if defined(_WIN32)
+#define GRK_FSEEK(stream, offset, whence) _fseeki64(stream, /* __int64 */ offset, whence)
+#define GRK_FTELL(stream) /* __int64 */ _ftelli64(stream)
+#else
+#define GRK_FSEEK(stream, offset, whence) fseek(stream, offset, whence)
+#define GRK_FTELL(stream) ftell(stream)
+#endif
+
+#include "MinHeap.h"
+#include "SequentialCache.h"
+#include "SparseCache.h"
+#include "CodeStreamLimits.h"
+#include "geometry.h"
+#include "MemManager.h"
+#include "buffer.h"
+#include "ChunkBuffer.h"
+#include "minpf_plugin_manager.h"
+#include "plugin_interface.h"
+#include "TileWindow.h"
+#include "GrkObjectWrapper.h"
+#include "ChronoTimer.h"
+#include "testing.h"
+#include "MappedFile.h"
+#include "GrkMatrix.h"
+#include "Quantizer.h"
+#include "SparseBuffer.h"
+#include "ResSimple.h"
+#include "SparseCanvas.h"
+#include "intmath.h"
+#include "ImageComponentFlow.h"
+#include "MarkerCache.h"
+#include "SlabPool.h"
+#include "StreamIO.h"
+#include "IStream.h"
+#include "MemAdvisor.h"
+
+#include "FetchCommon.h"
+#include "TPFetchSeq.h"
+
+#include "GrkImageMeta.h"
+#include "GrkImage.h"
+#include "ICompressor.h"
+#include "IDecompressor.h"
+
+#include "MemStream.h"
+
+#include "StreamGenerator.h"
+#include "Profile.h"
+#include "MarkerParser.h"
+#include "Codec.h"
+
+#include "PLMarker.h"
+#include "SIZMarker.h"
+#include "PPMMarker.h"
+namespace grk
+{
+struct TileProcessor;
+struct TileProcessorCompress;
+} // namespace grk
+#include "PacketParser.h"
+#include "PacketCache.h"
+#include "CodingParams.h"
+#include "CodeStream.h"
+#include "PacketIter.h"
+
+#include "PacketLengthCache.h"
+#include "TLMMarker.h"
+#include "ICoder.h"
+#include "CoderPool.h"
+#include "FileFormatJP2Family.h"
+#include "FileFormatJP2Compress.h"
+#include "FileFormatJP2Decompress.h"
+#include "FileFormatMJ2.h"
+#include "FileFormatMJ2Compress.h"
+#include "FileFormatMJ2Decompress.h"
+
+#include "BitIO.h"
+#include "TagTree.h"
+
+#include "Codeblock.h"
+#include "CodeblockCompress.h"
+#include "CodeblockDecompress.h"
+
+#include "Precinct.h"
+#include "Subband.h"
+#include "Resolution.h"
+#include "BlockExec.h"
+#include "CodecScheduler.h"
+
+#include "TileComponentWindow.h"
+
+#include "TileProcessor.h"
+#include "TileProcessorCompress.h"
+#include "SOTMarker.h"
+#include "CodeStreamCompress.h"
+#include "TileCache.h"
+#include "TileCompletion.h"
+#include "CodeStreamDecompress.h"
 
 using namespace grk;
 
