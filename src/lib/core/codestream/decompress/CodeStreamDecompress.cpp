@@ -817,12 +817,6 @@ void CodeStreamDecompress::decompressSequential(void)
     catch([[maybe_unused]] const DecodeUnknownMarkerAtEndOfTileException& e)
     {
       foundUnknownMarker = true;
-      // schedule incomplete tiles
-      if(!cp_.hasTLM())
-      {
-        tileCache_->forEachIncompleteTile(
-            [this](TileProcessor* processor) { sequentialSchedule(processor, true); });
-      }
     }
 
     // check for corrupt Adobe files where 5 tile parts per tile are signalled

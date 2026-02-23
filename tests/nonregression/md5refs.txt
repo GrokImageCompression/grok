@@ -380,7 +380,7 @@ f6c1fe3bc48d15e93cbf9052043b5931  mono_plt_tlm_tile5.tif
 6b6674a5c134e3297103570507e6bad   mono_plt_region.tif
 f6b6674a5c134e3297103570507e6bad  mono_plt_region.tif
 1119cee36ed01399868a65b2978ad62a  a1_mono_tif-r-1.tif
-2d0ee6c27449e24a1908065299ede44d  multi_tile_truncated_rgb.tif
+e674a7d3c6fa71e775c96dca29807794  multi_tile_truncated_rgb.tif
 49ba508cf753dce65f60c6cbe15de63d  issue397.jp2_0.pgx
 727f667ee5af05ab90fc16b1c45eaf12  issue397.jp2_1.pgx
 41991335cc70d6fb057f6596abb49b13  issue397.jp2_2.pgx
@@ -394,7 +394,7 @@ f6b6674a5c134e3297103570507e6bad  mono_plt_region.tif
 56e2d97cd7645cb581fb8b560eef92b3  tnsot_non_0_tlm.tif
 
 2d0ee6c27449e24a1908065299ede44d  page_tlm.tif
-2d0ee6c27449e24a1908065299ede44d  page.tif
+e674a7d3c6fa71e775c96dca29807794  page.tif
 
 7a371ddf1f6ca7df2af6f274ea9b2eda  clusterfuzz-testcase-minimized-grk_decompress_fuzzer-6033353920020480_0.pgx
 7a371ddf1f6ca7df2af6f274ea9b2eda  clusterfuzz-testcase-minimized-grk_decompress_fuzzer-6033353920020480_1.pgx

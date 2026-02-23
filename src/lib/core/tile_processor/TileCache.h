@@ -162,17 +162,6 @@ public:
     }
   }
 
-  void forEachIncompleteTile(std::function<void(TileProcessor*)> func)
-  {
-    for(auto entry : cache_)
-    {
-      if(entry && entry->processor && !entry->processor->allSOTMarkersParsed())
-      {
-        func(entry->processor);
-      }
-    }
-  }
-
   bool allSlatedSOTMarkersParsed(const std::set<uint16_t>& tilesSlatedForDecompression)
   {
     return std::all_of(tilesSlatedForDecompression.begin(), tilesSlatedForDecompression.end(),
