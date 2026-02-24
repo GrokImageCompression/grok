@@ -19,6 +19,38 @@
 #include "TileWindow.h"
 #include "Quantizer.h"
 #include "grk_includes.h"
+#include "FetchCommon.h"
+#include "TPFetchSeq.h"
+#include "GrkImageMeta.h"
+#include "GrkImage.h"
+#include "MarkerParser.h"
+#include "PLMarker.h"
+#include "SIZMarker.h"
+#include "PPMMarker.h"
+namespace grk
+{
+struct TileProcessor;
+}
+#include "CodeStream.h"
+#include "PacketLengthCache.h"
+#include "ICoder.h"
+#include "CoderPool.h"
+#include "BitIO.h"
+
+#include "TagTree.h"
+
+#include "CodeblockCompress.h"
+
+#include "CodeblockDecompress.h"
+#include "Precinct.h"
+#include "Subband.h"
+#include "Resolution.h"
+
+#include "CodecScheduler.h"
+#include "TileComponentWindow.h"
+#include "WaveletFwd.h"
+#include "canvas/tile/Tile.h"
+#include "TileProcessor.h"
 
 std::unique_ptr<tf::Executor> ExecSingleton::instance_ = nullptr;
 std::mutex ExecSingleton::mutex_;

@@ -17,6 +17,8 @@
 
 #pragma once
 
+#include "ICoder.h"
+
 namespace grk
 {
 

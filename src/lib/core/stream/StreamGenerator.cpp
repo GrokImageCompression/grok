@@ -20,6 +20,11 @@
 #include "MappedFile.h"
 #include "Quantizer.h"
 #include "grk_includes.h"
+#include "StreamIO.h"
+#include "FetchCommon.h"
+#include "TPFetchSeq.h"
+#include "MemStream.h"
+#include "StreamGenerator.h"
 #include "CurlFetcher.h"
 #include "BufferedStream.h"
 

@@ -20,6 +20,39 @@
 #include "Quantizer.h"
 #include "GrkMatrix.h"
 #include "grk_includes.h"
+#include "StreamIO.h"
+#include "FetchCommon.h"
+#include "TPFetchSeq.h"
+#include "GrkImageMeta.h"
+#include "GrkImage.h"
+#include "GrkImageMeta.h"
+#include "GrkImage.h"
+#include "ICompressor.h"
+#include "IDecompressor.h"
+#include "Profile.h"
+#include "MarkerParser.h"
+#include "PLMarker.h"
+#include "SIZMarker.h"
+#include "PPMMarker.h"
+namespace grk
+{
+struct TileProcessor;
+}
+#include "CodeStream.h"
+#include "PacketIter.h"
+#include "PacketLengthCache.h"
+#include "TLMMarker.h"
+
+#include "ICoder.h"
+#include "CoderPool.h"
+#include "CodeblockCompress.h"
+#include "WindowScheduler.h"
+#include "PacketManager.h"
+#include "mct.h"
+#include "TileProcessor.h"
+#include "TileProcessorCompress.h"
+#include "SOTMarker.h"
+#include "CodeStreamCompress.h"
 #include "TileProcessorCompress.h"
 
 namespace grk

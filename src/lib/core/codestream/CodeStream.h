@@ -20,6 +20,8 @@
 #include <unordered_map>
 #include <functional>
 
+#include "CodingParams.h"
+
 namespace grk
 {
 const uint32_t default_numbers_segments = 10;

@@ -38,7 +38,6 @@ namespace grk
 {
 struct TileProcessor;
 }
-#include "CodingParams.h"
 #include "CodeStream.h"
 
 #include "Profile.h"

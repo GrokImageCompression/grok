@@ -19,6 +19,14 @@
 #include "TileWindow.h"
 #include "Quantizer.h"
 #include "grk_includes.h"
+namespace grk
+{
+struct TileProcessor;
+}
+#include "ICoder.h"
+#include "CoderPool.h"
+#include "CodecScheduler.h"
+#include "WholeTileScheduler.h"
 
 namespace grk
 {

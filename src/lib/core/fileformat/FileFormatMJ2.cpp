@@ -19,6 +19,18 @@
 #include "TileWindow.h"
 #include "Quantizer.h"
 #include "grk_includes.h"
+#include "GrkImageMeta.h"
+#include "GrkImage.h"
+#include "PLMarker.h"
+#include "SIZMarker.h"
+#include "PPMMarker.h"
+namespace grk
+{
+struct TileProcessor;
+}
+#include "CodeStream.h"
+#include "FileFormatJP2Family.h"
+#include "FileFormatMJ2.h"
 
 namespace grk
 {

@@ -19,6 +19,26 @@
 #include "TileWindow.h"
 #include "Quantizer.h"
 #include "grk_includes.h"
+#include "FetchCommon.h"
+#include "TPFetchSeq.h"
+#include "GrkImageMeta.h"
+#include "GrkImage.h"
+#include "MarkerParser.h"
+#include "PLMarker.h"
+#include "SIZMarker.h"
+#include "PPMMarker.h"
+namespace grk
+{
+struct TileProcessor;
+}
+#include "CodeStream.h"
+#include "PacketIter.h"
+#include "PacketLengthCache.h"
+#include "ICoder.h"
+#include "CoderPool.h"
+#include "CodecScheduler.h"
+#include "PacketManager.h"
+#include "TileProcessor.h"
 
 namespace grk
 {

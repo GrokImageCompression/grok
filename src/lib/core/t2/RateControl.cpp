@@ -19,6 +19,9 @@
 #include "TileWindow.h"
 #include "Quantizer.h"
 #include "grk_includes.h"
+#include "CodeblockCompress.h"
+
+#include "RateControl.h"
 
 namespace grk
 {

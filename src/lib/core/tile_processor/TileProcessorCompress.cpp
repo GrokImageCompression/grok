@@ -19,6 +19,47 @@
 #include "TileWindow.h"
 #include "Quantizer.h"
 #include "grk_includes.h"
+#include "FetchCommon.h"
+#include "TPFetchSeq.h"
+#include "GrkImageMeta.h"
+#include "GrkImage.h"
+#include "ICompressor.h"
+#include "IDecompressor.h"
+#include "MarkerParser.h"
+#include "PLMarker.h"
+#include "SIZMarker.h"
+#include "PPMMarker.h"
+namespace grk
+{
+struct TileProcessor;
+}
+#include "CodeStream.h"
+#include "PacketIter.h"
+#include "PacketLengthCache.h"
+#include "ICoder.h"
+#include "CoderPool.h"
+#include "BitIO.h"
+
+#include "TagTree.h"
+
+#include "CodeblockCompress.h"
+
+#include "CodeblockDecompress.h"
+#include "Precinct.h"
+#include "Subband.h"
+#include "Resolution.h"
+
+#include "CodecScheduler.h"
+#include "WholeTileScheduler.h"
+#include "TileComponentWindow.h"
+#include "WaveletFwd.h"
+#include "canvas/tile/Tile.h"
+#include "mct.h"
+#include "TileProcessor.h"
+#include "TileProcessorCompress.h"
+#include "CodeStreamCompress.h"
+#include "T2Compress.h"
+#include "CompressScheduler.h"
 #include "TileProcessorCompress.h"
 
 namespace grk

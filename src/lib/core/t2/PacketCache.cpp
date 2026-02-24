@@ -19,6 +19,11 @@
 #include "TileWindow.h"
 #include "Quantizer.h"
 #include "grk_includes.h"
+namespace grk
+{
+struct TileProcessor;
+}
+#include "PacketCache.h"
 
 namespace grk
 {

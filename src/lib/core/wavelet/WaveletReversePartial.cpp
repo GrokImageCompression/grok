@@ -22,6 +22,35 @@
 #include "TileWindow.h"
 #include "Quantizer.h"
 #include "grk_includes.h"
+#include "GrkImageMeta.h"
+#include "GrkImage.h"
+#include "PLMarker.h"
+#include "SIZMarker.h"
+#include "PPMMarker.h"
+namespace grk
+{
+struct TileProcessor;
+}
+#include "CodingParams.h"
+
+#include "ICoder.h"
+#include "CoderPool.h"
+#include "BitIO.h"
+
+#include "TagTree.h"
+
+#include "CodeblockCompress.h"
+
+#include "CodeblockDecompress.h"
+#include "Precinct.h"
+#include "Subband.h"
+#include "Resolution.h"
+
+#include "CodecScheduler.h"
+#include "TileComponentWindow.h"
+#include "WaveletReverse.h"
+#include "WaveletFwd.h"
+#include "DecompressScheduler.h"
 
 namespace grk
 {

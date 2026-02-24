@@ -78,7 +78,6 @@ struct TileProcessorCompress;
 } // namespace grk
 #include "PacketParser.h"
 #include "PacketCache.h"
-#include "CodingParams.h"
 #include "CodeStream.h"
 #include "PacketIter.h"
 

@@ -18,6 +18,7 @@
 #pragma once
 
 #include "CodecScheduler.h"
+#include "ICoder.h"
 
 namespace grk
 {

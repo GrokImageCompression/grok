@@ -18,6 +18,7 @@
 #pragma once
 
 #include "TileBlocks.h"
+#include "WindowScheduler.h"
 
 namespace grk
 {

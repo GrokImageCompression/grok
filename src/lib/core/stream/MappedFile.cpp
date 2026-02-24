@@ -30,6 +30,11 @@
 #include "TileWindow.h"
 #include "Quantizer.h"
 #include "grk_includes.h"
+#include "StreamIO.h"
+#include "FetchCommon.h"
+#include "TPFetchSeq.h"
+#include "MemStream.h"
+#include "StreamGenerator.h"
 #include "BufferedStream.h"
 
 namespace grk

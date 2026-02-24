@@ -19,6 +19,8 @@
 #include "TileWindow.h"
 #include "Quantizer.h"
 #include "grk_includes.h"
+#include "ICoder.h"
+#include "CoderPool.h"
 
 namespace grk
 {

@@ -15,11 +15,28 @@
  *
  */
 
+#include <cinttypes>
+
 #include "CodeStreamLimits.h"
 #include "grk_exceptions.h"
 #include "TileWindow.h"
 #include "Quantizer.h"
 #include "grk_includes.h"
+#include "StreamIO.h"
+#include "GrkImageMeta.h"
+#include "GrkImage.h"
+#include "ICompressor.h"
+#include "IDecompressor.h"
+#include "PLMarker.h"
+#include "SIZMarker.h"
+#include "PPMMarker.h"
+namespace grk
+{
+struct TileProcessor;
+}
+#include "CodeStream.h"
+#include "FileFormatJP2Family.h"
+#include "FileFormatJP2Decompress.h"
 
 const bool debugBoxes = false;
 

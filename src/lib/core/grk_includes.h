@@ -24,27 +24,11 @@
  * since they are affected by macros defined therein
  */
 #include "grk_config_private.h"
-#include <memory.h>
-#include <cstdlib>
-#include <string>
+
 #ifdef _MSC_VER
 #define _USE_MATH_DEFINES // for C++
 #endif
-#include <cmath>
-#include <cfloat>
-#include <time.h>
-#include <cstdio>
-#include <cstdarg>
-#include <ctype.h>
-#include <cassert>
-#include <cinttypes>
-#include <climits>
-#include <algorithm>
-#include <sstream>
-#include <iostream>
-#include <vector>
 
-#include <numeric>
 /*
  Use fseeko() and ftello() if they are available since they use
  'int64_t' rather than 'long'.  It is wrong to use fseeko() and
@@ -62,18 +46,11 @@
 #define GRK_FSEEK(stream, offset, whence) fseek(stream, offset, whence)
 #define GRK_FTELL(stream) ftell(stream)
 #endif
+
 #if defined(__GNUC__)
 #define GRK_RESTRICT __restrict__
 #else
 #define GRK_RESTRICT /* GRK_RESTRICT */
-#endif
-#ifdef __has_attribute
-#if __has_attribute(no_sanitize)
-#define GROK_NOSANITIZE(kind) __attribute__((no_sanitize(kind)))
-#endif
-#endif
-#ifndef GROK_NOSANITIZE
-#define GROK_NOSANITIZE(kind)
 #endif
 
 #include "Logger.h"
@@ -86,94 +63,7 @@
 #include "ResSimple.h"
 #include "SparseCanvas.h"
 #include "ImageComponentFlow.h"
-#include "MarkerCache.h"
-#include "SlabPool.h"
-#include "StreamIO.h"
 #include "IStream.h"
-#include "MemAdvisor.h"
-
-#include "FetchCommon.h"
-#include "TPFetchSeq.h"
-
-#include "GrkImageMeta.h"
-#include "GrkImage.h"
-#include "ICompressor.h"
-#include "IDecompressor.h"
-
-#include "MemStream.h"
-
-#include "StreamGenerator.h"
-#include "Profile.h"
-#include "MarkerParser.h"
-#include "Codec.h"
-
-#include "PLMarker.h"
-#include "SIZMarker.h"
-#include "PPMMarker.h"
-namespace grk
-{
-struct TileProcessor;
-struct TileProcessorCompress;
-} // namespace grk
-#include "PacketParser.h"
-#include "PacketCache.h"
-#include "CodingParams.h"
-#include "CodeStream.h"
-#include "PacketIter.h"
-
-#include "PacketLengthCache.h"
-#include "TLMMarker.h"
-#include "ICoder.h"
-#include "CoderPool.h"
-#include "FileFormatJP2Family.h"
-#include "FileFormatJP2Compress.h"
-#include "FileFormatJP2Decompress.h"
-#include "FileFormatMJ2.h"
-#include "FileFormatMJ2Compress.h"
-#include "FileFormatMJ2Decompress.h"
-
-#include "BitIO.h"
-#include "TagTree.h"
-
-#include "Codeblock.h"
-#include "CodeblockCompress.h"
-#include "CodeblockDecompress.h"
-
-#include "Precinct.h"
-#include "Subband.h"
-#include "Resolution.h"
-#include "BlockExec.h"
-#include "WindowScheduler.h"
-#include "WholeTileScheduler.h"
-
-#include "TileComponentWindow.h"
-#include "WaveletCommon.h"
-#include "WaveletReverse.h"
-#include "WaveletFwd.h"
-
-#include "PacketManager.h"
-#include "canvas/tile/TileComponent.h"
-#include "canvas/tile/Tile.h"
-#include "mct.h"
-
-#include "TileProcessor.h"
-#include "TileProcessorCompress.h"
-#include "SOTMarker.h"
-#include "CodeStreamCompress.h"
-#include "TileCache.h"
-#include "TileCompletion.h"
-#include "CodeStreamDecompress.h"
-#include "T2Compress.h"
-#include "T2Decompress.h"
-#include "plugin_bridge.h"
-#include "RateControl.h"
-#include "RateInfo.h"
-#include "CoderFactory.h"
-#include "QuantizerFactory.h"
-#include "DecompressScheduler.h"
-#include "CompressScheduler.h"
-#include "DecompressWindowScheduler.h"
-#include "CompressWindowScheduler.h"
 
 #if (defined(__aarch64__) || defined(_M_ARM64)) && !defined(__ARM_FEATURE_SVE2) && \
     !defined(__ARM_FEATURE_SVE2)
