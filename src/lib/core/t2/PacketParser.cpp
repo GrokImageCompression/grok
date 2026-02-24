@@ -186,7 +186,7 @@ uint32_t PacketParser::readHeader(void)
             if(value != incl->getUninitializedValue() && value != layno_)
             {
               grklog.warn("Tile number: %u", tileIndex_ + 1);
-              std::string msg = "Corrupt inclusion tag tree found when decoding packet header.";
+              std::string msg = "Corrupt inclusion tag tree found when decoding packet header.\n";
               grklog.warn("%s", msg.c_str());
               throw t1::CorruptPacketHeaderException();
             }
