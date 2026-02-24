@@ -15,6 +15,7 @@
  *
  */
 
+#include "grk_fseek.h"
 #include "MemAdvisor.h"
 
 #ifdef _WIN32
@@ -30,6 +31,7 @@
 #include "TileWindow.h"
 #include "Quantizer.h"
 #include "grk_includes.h"
+#include "IStream.h"
 #include "StreamIO.h"
 #include "FetchCommon.h"
 #include "TPFetchSeq.h"

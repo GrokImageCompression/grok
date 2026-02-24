@@ -21,6 +21,8 @@
 #include "PacketProgressionState.h"
 #include "PostDecodeFilters.h"
 #include "htconfig.h"
+#include "SparseCanvas.h"
+
 const bool DEBUG_TILE_COMPONENT = false;
 
 namespace grk

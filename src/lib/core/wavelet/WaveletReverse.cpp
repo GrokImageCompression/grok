@@ -27,11 +27,15 @@ odd += (previous + next) >> 1;
 
 ************************************************************************/
 
+#include "grk_restrict.h"
 #include "simd.h"
 #include "CodeStreamLimits.h"
 #include "TileWindow.h"
 #include "Quantizer.h"
 #include "grk_includes.h"
+#include "ISparseCanvas.h"
+#include "FlowComponent.h"
+#include "IStream.h"
 #include "FetchCommon.h"
 #include "TPFetchSeq.h"
 #include "GrkImageMeta.h"
@@ -50,6 +54,8 @@ struct TileProcessor;
 #include "CoderPool.h"
 #include "BitIO.h"
 
+#include "ImageComponentFlow.h"
+
 #include "TagTree.h"
 #include "CodeblockCompress.h"
 
@@ -57,6 +63,9 @@ struct TileProcessor;
 #include "Precinct.h"
 #include "Subband.h"
 #include "Resolution.h"
+
+#include "TileFutureManager.h"
+#include "FlowComponent.h"
 
 #include "CodecScheduler.h"
 #include "TileComponentWindow.h"

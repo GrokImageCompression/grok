@@ -35,42 +35,11 @@
  *
  */
 
+#include "ISparseCanvas.h"
+
 namespace grk
 {
-template<typename T>
-class ISparseCanvas
-{
-public:
-  virtual ~ISparseCanvas() = default;
-  /**
-   * Read window of data into dest buffer.
-   */
-  virtual bool read(uint8_t resno, Rect32 window, T* dest, const uint32_t destChunkY,
-                    const uint32_t destChunkX) = 0;
-  /**
-   * Write window of data from src buffer
-   */
-  virtual bool write(uint8_t resno, Rect32 window, const T* src, const uint32_t srcChunkY,
-                     const uint32_t srcChunkX) = 0;
 
-  virtual bool alloc(Rect32 window, bool zeroOutBuffer) = 0;
-};
-template<typename T>
-struct SparseBlock
-{
-  SparseBlock(void) : data(nullptr) {}
-  ~SparseBlock()
-  {
-    delete[] data;
-  }
-  void alloc(uint32_t block_area, bool zeroOutBuffer)
-  {
-    data = new T[block_area];
-    if(zeroOutBuffer)
-      memset(data, 0, (size_t)block_area * sizeof(T));
-  }
-  T* data;
-};
 template<typename T, uint32_t LBW, uint32_t LBH>
 class SparseCanvas : public ISparseCanvas<T>
 {

@@ -17,23 +17,8 @@
 
 #include <memory>
 
-#if defined(GROK_HAVE_FSEEKO) && !defined(fseek)
-#define fseek fseeko
-#define ftell ftello
-#endif
-#if defined(_WIN32)
-#define GRK_FSEEK(stream, offset, whence) _fseeki64(stream, /* __int64 */ offset, whence)
-#define GRK_FTELL(stream) /* __int64 */ _ftelli64(stream)
-#else
-#define GRK_FSEEK(stream, offset, whence) fseek(stream, offset, whence)
-#define GRK_FTELL(stream) ftell(stream)
-#endif
-#if defined(__GNUC__)
-#define GRK_RESTRICT __restrict__
-#else
-#define GRK_RESTRICT /* GRK_RESTRICT */
-#endif
-
+#include "grk_fseek.h"
+#include "grk_restrict.h"
 #include "grk_exceptions.h"
 #include <Logger.h>
 #include "MinHeap.h"
@@ -56,6 +41,7 @@
 #include "SparseCanvas.h"
 #include "intmath.h"
 #include "ImageComponentFlow.h"
+#include "TileFutureManager.h"
 #include "MarkerCache.h"
 #include "SlabPool.h"
 #include "StreamIO.h"

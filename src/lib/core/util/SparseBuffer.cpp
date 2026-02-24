@@ -26,6 +26,7 @@
 #include "TileWindow.h"
 #include "Quantizer.h"
 #include "grk_includes.h"
+#include "SparseBuffer.h"
 
 /* #define DEBUG_CHUNK_BUF */
 

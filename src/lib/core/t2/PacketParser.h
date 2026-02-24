@@ -22,6 +22,8 @@
 #include <queue>
 #include <optional>
 
+#include "SparseBuffer.h"
+
 namespace grk
 {
 

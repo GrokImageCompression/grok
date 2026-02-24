@@ -15,22 +15,22 @@
  *
  */
 
-#include "CodeStreamLimits.h"
-#include "TileWindow.h"
-#include "Quantizer.h"
-#include "grk_includes.h"
-#include "ImageComponentFlow.h"
-namespace grk
-{
-struct TileProcessor;
-}
-#include "ICoder.h"
-#include "WindowScheduler.h"
+#pragma once
 
-namespace grk
-{
-
-WindowScheduler::WindowScheduler(uint16_t numComps) : CodecScheduler(numComps) {}
-WindowScheduler::~WindowScheduler() {}
-
-} // namespace grk
+/*
+ Use fseeko() and ftello() if they are available since they use
+ 'int64_t' rather than 'long'.  It is wrong to use fseeko() and
+ ftello() only on systems with special LFS support since some systems
+ (e.g. FreeBSD) support a 64-bit int64_t by default.
+ */
+#if defined(GROK_HAVE_FSEEKO) && !defined(fseek)
+#define fseek fseeko
+#define ftell ftello
+#endif
+#if defined(_WIN32)
+#define GRK_FSEEK(stream, offset, whence) _fseeki64(stream, /* __int64 */ offset, whence)
+#define GRK_FTELL(stream) /* __int64 */ _ftelli64(stream)
+#else
+#define GRK_FSEEK(stream, offset, whence) fseek(stream, offset, whence)
+#define GRK_FTELL(stream) ftell(stream)
+#endif

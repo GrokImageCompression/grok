@@ -17,10 +17,15 @@
 
 #include <cinttypes>
 
+#include "grk_taskflow.h"
+
 #include "CodeStreamLimits.h"
 #include "TileWindow.h"
 #include "Quantizer.h"
 #include "grk_includes.h"
+#include "TileFutureManager.h"
+#include "FlowComponent.h"
+#include "IStream.h"
 #include "FetchCommon.h"
 #include "TPFetchSeq.h"
 #include "GrkImageMeta.h"

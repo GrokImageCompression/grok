@@ -19,6 +19,8 @@
 #include "TileWindow.h"
 #include "Quantizer.h"
 #include "grk_includes.h"
+#include "SparseBuffer.h"
+#include "IStream.h"
 #include "GrkImageMeta.h"
 #include "GrkImage.h"
 #include "PLMarker.h"

@@ -15,10 +15,14 @@
  *
  */
 
+#include "TileFutureManager.h"
+
 #include "CodeStreamLimits.h"
 #include "TileWindow.h"
 #include "Quantizer.h"
 #include "grk_includes.h"
+#include "FlowComponent.h"
+#include "IStream.h"
 #include "MarkerCache.h"
 #include "FetchCommon.h"
 #include "TPFetchSeq.h"

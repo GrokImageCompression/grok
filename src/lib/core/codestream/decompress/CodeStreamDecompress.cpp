@@ -17,12 +17,16 @@
 
 #include <functional>
 
+#include "grk_fseek.h"
 #include "geometry.h"
 #include "grk_exceptions.h"
 #include "CodeStreamLimits.h"
 #include "TileWindow.h"
 #include "Quantizer.h"
 #include "grk_includes.h"
+#include "TileFutureManager.h"
+#include "FlowComponent.h"
+#include "IStream.h"
 #include "MarkerCache.h"
 #include "FetchCommon.h"
 #include "TPFetchSeq.h"

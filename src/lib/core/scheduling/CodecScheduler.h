@@ -17,6 +17,8 @@
 
 #pragma once
 
+#include "grk_taskflow.h"
+
 namespace grk
 {
 

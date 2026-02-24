@@ -19,6 +19,7 @@
 #include "TileWindow.h"
 #include "Quantizer.h"
 #include "grk_includes.h"
+#include "ImageComponentFlow.h"
 namespace grk
 {
 struct TileProcessor;

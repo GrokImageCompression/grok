@@ -14,11 +14,17 @@
  *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
+#include "TileFutureManager.h"
 
+#include "grk_restrict.h"
 #include "CodeStreamLimits.h"
 #include "TileWindow.h"
 #include "Quantizer.h"
 #include "grk_includes.h"
+#include "ISparseCanvas.h"
+#include "TileFutureManager.h"
+#include "ImageComponentFlow.h"
+#include "IStream.h"
 #include "FetchCommon.h"
 #include "TPFetchSeq.h"
 #include "GrkImageMeta.h"

@@ -47,6 +47,7 @@
 #include "SparseCanvas.h"
 #include "intmath.h"
 #include "ImageComponentFlow.h"
+#include "TileFutureManager.h"
 #include "MarkerCache.h"
 #include "SlabPool.h"
 #include "StreamIO.h"

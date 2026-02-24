@@ -48,6 +48,8 @@
 
 #pragma once
 
+#include "ResSimple.h"
+
 namespace grk
 {
 

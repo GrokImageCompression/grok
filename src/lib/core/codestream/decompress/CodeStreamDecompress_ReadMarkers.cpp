@@ -15,11 +15,14 @@
  *
  */
 
+#include "grk_restrict.h"
 #include "simd.h"
 #include "CodeStreamLimits.h"
 #include "TileWindow.h"
 #include "Quantizer.h"
 #include "grk_includes.h"
+#include "ISparseCanvas.h"
+#include "IStream.h"
 #include "StreamIO.h"
 #include "MarkerCache.h"
 #include "FetchCommon.h"
@@ -53,6 +56,9 @@ struct TileProcessor;
 #include "Precinct.h"
 #include "Subband.h"
 #include "Resolution.h"
+
+#include "TileFutureManager.h"
+#include "FlowComponent.h"
 
 #include "CodecScheduler.h"
 #include "TileComponentWindow.h"

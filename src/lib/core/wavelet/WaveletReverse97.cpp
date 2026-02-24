@@ -22,12 +22,18 @@
  ***********************************/
 
 #include <algorithm>
+#include <functional>
 
+#include "grk_restrict.h"
 #include "simd.h"
 #include "CodeStreamLimits.h"
 #include "TileWindow.h"
 #include "Quantizer.h"
 #include "grk_includes.h"
+#include "ISparseCanvas.h"
+#include "TileFutureManager.h"
+#include "ImageComponentFlow.h"
+#include "IStream.h"
 #include "GrkImageMeta.h"
 #include "GrkImage.h"
 #include "PLMarker.h"
