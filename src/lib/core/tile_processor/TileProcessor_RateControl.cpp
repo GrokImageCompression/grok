@@ -57,7 +57,6 @@ struct TileProcessorCompress;
 #include "TileComponentWindow.h"
 #include "WaveletFwd.h"
 #include "canvas/tile/Tile.h"
-#include "TileProcessor.h"
 #include "T2Compress.h"
 #include "plugin_bridge.h"
 #include "RateControl.h"

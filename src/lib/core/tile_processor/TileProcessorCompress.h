@@ -18,6 +18,7 @@
 #pragma once
 
 #include "TileProcessor.h"
+#include "ITileProcessorCompress.h"
 
 namespace grk
 {
@@ -29,7 +30,7 @@ namespace grk
  * @struct TileProcesorCompress
  * @brief Manages tile compression
  */
-struct TileProcessorCompress : public TileProcessor
+struct TileProcessorCompress : public ITileProcessorCompress, public TileProcessor
 {
   /**
    * @brief Constructs a TileProcessorCompress

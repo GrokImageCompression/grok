@@ -30,7 +30,7 @@ namespace grk
  * @struct TileProcesor
  * @brief Manages tile compression/decompression
  */
-struct TileProcessor : public ITileProcessor
+struct TileProcessor : virtual public ITileProcessor
 {
   /**
    * @brief Constructs a TileProcessor
