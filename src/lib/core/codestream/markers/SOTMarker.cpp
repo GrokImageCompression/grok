@@ -33,7 +33,7 @@
 namespace grk
 {
 struct ITileProcessor;
-struct TileProcessorCompress;
+struct ITileProcessorCompress;
 } // namespace grk
 
 #include "CodeStream.h"
@@ -46,7 +46,7 @@ struct TileProcessorCompress;
 #include "CodecScheduler.h"
 #include "ITileProcessor.h"
 #include "SOTMarker.h"
-#include "TileProcessorCompress.h"
+#include "ITileProcessorCompress.h"
 
 namespace grk
 {
@@ -65,7 +65,7 @@ bool SOTMarker::write_psot(IStream* stream, uint32_t tilePartLength)
   return true;
 }
 
-bool SOTMarker::write(TileProcessorCompress* compressor, uint32_t tilePartLength)
+bool SOTMarker::write(ITileProcessorCompress* compressor, uint32_t tilePartLength)
 {
   auto stream = compressor->getStream();
   /* SOT */

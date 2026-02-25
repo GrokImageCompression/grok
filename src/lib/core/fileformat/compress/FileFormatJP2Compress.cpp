@@ -48,7 +48,7 @@ struct ITileProcessor;
 #include "CodeblockCompress.h"
 
 #include "ITileProcessor.h"
-#include "TileProcessorCompress.h"
+#include "ITileProcessorCompress.h"
 #include "CodeStreamCompress.h"
 
 namespace grk

@@ -36,8 +36,8 @@ public:
 private:
   bool init_header_writing(void);
   bool end(void);
-  bool writeTilePart(TileProcessorCompress* tileProcessor);
-  bool writeTileParts(TileProcessorCompress* tileProcessor);
+  bool writeTilePart(ITileProcessorCompress* tileProcessor);
+  bool writeTileParts(ITileProcessorCompress* tileProcessor);
   bool updateRates(void);
   bool compressValidation(void);
   bool mct_validation(void);
@@ -307,8 +307,8 @@ private:
 
   uint32_t totalTileParts_;
   mutable std::mutex heapMutex_;
-  void handleTileProcessor(TileProcessorCompress* proc,
-                           MinHeapPtr<TileProcessorCompress, uint16_t, MinHeapLocker>& heap,
+  void handleTileProcessor(ITileProcessorCompress* proc,
+                           MinHeapPtr<ITileProcessorCompress, uint16_t, MinHeapLocker>& heap,
                            std::atomic<bool>& success);
 };
 

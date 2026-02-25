@@ -53,7 +53,7 @@ struct ITileProcessor;
 #include "PacketManager.h"
 #include "mct.h"
 #include "ITileProcessor.h"
-#include "TileProcessorCompress.h"
+#include "ITileProcessorCompress.h"
 #include "SOTMarker.h"
 #include "CodeStreamCompress.h"
 #include "TileProcessorCompress.h"
@@ -644,7 +644,7 @@ bool CodeStreamCompress::init(grk_cparameters* parameters, GrkImage* image)
 }
 
 void CodeStreamCompress::handleTileProcessor(
-    TileProcessorCompress* proc, MinHeapPtr<TileProcessorCompress, uint16_t, MinHeapLocker>& heap,
+    ITileProcessorCompress* proc, MinHeapPtr<ITileProcessorCompress, uint16_t, MinHeapLocker>& heap,
     std::atomic<bool>& success)
 {
   std::unique_lock<std::mutex> lk(heapMutex_);
@@ -663,7 +663,7 @@ void CodeStreamCompress::handleTileProcessor(
 
 uint64_t CodeStreamCompress::compress(grk_plugin_tile* tile)
 {
-  MinHeapPtr<TileProcessorCompress, uint16_t, MinHeapLocker> heap;
+  MinHeapPtr<ITileProcessorCompress, uint16_t, MinHeapLocker> heap;
   uint32_t numTiles = (uint32_t)cp_.t_grid_height_ * cp_.t_grid_width_;
   if(numTiles > maxNumTilesJ2K)
   {
@@ -840,7 +840,7 @@ bool CodeStreamCompress::init_header_writing(void)
 
   return true;
 }
-bool CodeStreamCompress::writeTilePart(TileProcessorCompress* tileProcessor)
+bool CodeStreamCompress::writeTilePart(ITileProcessorCompress* tileProcessor)
 {
   uint64_t currentPos = 0;
   if(tileProcessor->canPreCalculateTileLen())
@@ -889,7 +889,7 @@ bool CodeStreamCompress::writeTilePart(TileProcessorCompress* tileProcessor)
 
   return true;
 }
-bool CodeStreamCompress::writeTileParts(TileProcessorCompress* tileProcessor)
+bool CodeStreamCompress::writeTileParts(ITileProcessorCompress* tileProcessor)
 {
   if(tileProcessor->getTilePartCounter() != 0)
     return false;

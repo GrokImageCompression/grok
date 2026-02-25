@@ -35,7 +35,7 @@ public:
    * @param tilePartLength tile part length
    * @return true if successful
    */
-  bool write(TileProcessorCompress* compressor, uint32_t tilePartLength);
+  bool write(ITileProcessorCompress* compressor, uint32_t tilePartLength);
 
   /**
    * @brief write psot i.e. tile part length

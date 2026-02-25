@@ -33,7 +33,7 @@
 namespace grk
 {
 struct ITileProcessor;
-struct TileProcessorCompress;
+struct ITileProcessorCompress;
 } // namespace grk
 
 #include "CodeStream.h"
@@ -59,11 +59,11 @@ struct TileProcessorCompress;
 #include "canvas/tile/Tile.h"
 #include "ITileProcessor.h"
 #include "T2Compress.h"
-#include "TileProcessorCompress.h"
+#include "ITileProcessorCompress.h"
 
 namespace grk
 {
-T2Compress::T2Compress(TileProcessorCompress* tileProc) : tileProcessor(tileProc) {}
+T2Compress::T2Compress(ITileProcessorCompress* tileProc) : tileProcessor(tileProc) {}
 
 bool T2Compress::compressPacketsSimulate(uint16_t tile_no, uint16_t max_layers,
                                          uint32_t* allPacketBytes, uint32_t maxBytes,

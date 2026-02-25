@@ -46,7 +46,7 @@ struct ITileProcessor;
 #include "CodeblockCompress.h"
 #include "CodecScheduler.h"
 #include "ITileProcessor.h"
-#include "TileProcessorCompress.h"
+#include "ITileProcessorCompress.h"
 #include "CodeStreamCompress.h"
 #include "TileCache.h"
 #include "TileCompletion.h"

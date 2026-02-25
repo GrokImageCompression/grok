@@ -26,7 +26,7 @@ struct ITileProcessor;
  */
 struct T2Compress
 {
-  T2Compress(TileProcessorCompress* tileProc);
+  T2Compress(ITileProcessorCompress* tileProc);
 
   /*
    Encode the packets of a tile to a destination buffer
@@ -60,7 +60,7 @@ struct T2Compress
                                PLMarker* markers, bool isFinal, bool debug);
 
 private:
-  TileProcessorCompress* tileProcessor;
+  ITileProcessorCompress* tileProcessor;
 
   /**
    Encode a packet of a tile to a destination buffer

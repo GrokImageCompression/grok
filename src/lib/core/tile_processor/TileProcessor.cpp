@@ -65,7 +65,7 @@
 namespace grk
 {
 struct ITileProcessor;
-struct TileProcessorCompress;
+struct ITileProcessorCompress;
 } // namespace grk
 #include "PacketParser.h"
 #include "PacketCache.h"

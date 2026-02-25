@@ -35,7 +35,7 @@
 namespace grk
 {
 struct ITileProcessor;
-struct TileProcessorCompress;
+struct ITileProcessorCompress;
 } // namespace grk
 #include "CodeStream.h"
 #include "PacketIter.h"

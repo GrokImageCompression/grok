@@ -19,7 +19,7 @@
 
 namespace grk
 {
-void compress_synch_with_plugin(TileProcessorCompress* tcd, uint16_t compno, uint8_t resno,
+void compress_synch_with_plugin(ITileProcessorCompress* tcd, uint16_t compno, uint8_t resno,
                                 uint8_t bandIndex, uint64_t precinctIndex, uint32_t cblkno,
                                 Subband* band, t1::CodeblockCompress* cblk, uint32_t* num_pix);
 
