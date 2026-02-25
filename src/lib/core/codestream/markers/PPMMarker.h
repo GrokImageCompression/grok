@@ -19,6 +19,8 @@
 
 #include <vector>
 
+#include "buffer.h"
+
 namespace grk
 {
 struct grk_ppx

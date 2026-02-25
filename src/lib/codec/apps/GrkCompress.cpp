@@ -34,8 +34,9 @@
 #include <fcntl.h>
 #endif /* _WIN32 */
 #include <chrono>
-
 #include <filesystem>
+#include "CLI/CLI.hpp"
+
 #include "common.h"
 using namespace grk;
 #include "grk_apps_config.h"
@@ -60,7 +61,7 @@ using namespace grk;
 #include "spdlog/sinks/basic_file_sink.h"
 #include "exif.h"
 #include "GrkCompress.h"
-#include "CLI/CLI.hpp"
+
 
 void exit_func()
 {

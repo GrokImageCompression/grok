@@ -52,7 +52,7 @@
 //***************************************************************************/
 
 #pragma once
-#include <Quantizer.h>
+#include "Quantizer.h"
 
 namespace grk::ojph
 {

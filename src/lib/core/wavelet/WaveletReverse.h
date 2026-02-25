@@ -22,8 +22,6 @@
 namespace grk
 {
 
-uint32_t max_resolution(const Resolution* GRK_RESTRICT r, uint32_t i);
-
 template<typename ST>
 struct dwt_scratch
 {

@@ -20,6 +20,7 @@
 #include <vector>
 #include <algorithm>
 #include <CLI/CLI.hpp>
+
 #include "grk_apps_config.h"
 #include "grok.h"
 #include "spdlogwrapper.h"

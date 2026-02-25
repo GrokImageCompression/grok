@@ -16,12 +16,13 @@
  */
 #include "TileFutureManager.h"
 
+#include "geometry.h"
+#include "ISparseCanvas.h"
 #include "grk_restrict.h"
 #include "CodeStreamLimits.h"
 #include "TileWindow.h"
 #include "Quantizer.h"
 #include "grk_includes.h"
-#include "ISparseCanvas.h"
 #include "TileFutureManager.h"
 #include "ImageComponentFlow.h"
 #include "IStream.h"

@@ -24,6 +24,7 @@
 #include <optional>
 #include <vector>
 #include <functional>
+
 #include "MinHeap.h"
 
 namespace grk

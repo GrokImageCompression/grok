@@ -36,14 +36,11 @@
 #include "MappedFile.h"
 #include "GrkMatrix.h"
 #include "Quantizer.h"
-#include "SparseBuffer.h"
-#include "ResSimple.h"
-#include "SparseCanvas.h"
+#include "ISparseCanvas.h"
 #include "intmath.h"
 #include "ImageComponentFlow.h"
 #include "TileFutureManager.h"
 #include "MarkerCache.h"
-#include "SlabPool.h"
 #include "StreamIO.h"
 #include "IStream.h"
 #include "MemAdvisor.h"
@@ -57,7 +54,6 @@
 #include "IDecompressor.h"
 
 #include "MemStream.h"
-
 #include "StreamGenerator.h"
 #include "Profile.h"
 #include "MarkerParser.h"

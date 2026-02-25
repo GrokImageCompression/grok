@@ -17,6 +17,8 @@
 
 #pragma once
 
+#include "WholeTileScheduler.h"
+
 namespace grk
 {
 class CompressScheduler : public WholeTileScheduler

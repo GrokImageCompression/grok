@@ -15,6 +15,9 @@
  *
  */
 
+#include <exception>
+#include <stdexcept>
+
 #include "CodeStreamLimits.h"
 #include "TileWindow.h"
 #include "Quantizer.h"
@@ -36,8 +39,6 @@ struct TileProcessor;
 #include "FileFormatJP2Family.h"
 #include "FileFormatMJ2.h"
 #include "FileFormatMJ2Decompress.h"
-#include <exception>
-#include <stdexcept>
 
 namespace grk
 {

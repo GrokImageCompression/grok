@@ -24,12 +24,13 @@
 #include <windows.h>
 #endif /* _WIN32 */
 
+#include <CLI/CLI.hpp>
+
 #include "grk_config.h"
 #include "spdlogwrapper.h"
 #include "common.h"
 #include "grk_string.h"
 #include "GrkDump.h"
-#include <CLI/CLI.hpp>
 
 namespace grk
 {

@@ -30,6 +30,7 @@
 #include "PLMarker.h"
 #include "SIZMarker.h"
 #include "PPMMarker.h"
+
 namespace grk
 {
 struct TileProcessor;
@@ -52,7 +53,6 @@ struct TileProcessor;
 #include "TileComponentWindow.h"
 #include "WaveletReverse.h"
 #include "WaveletFwd.h"
-#include "TileComponent.h"
 
 #undef HWY_TARGET_INCLUDE
 #define HWY_TARGET_INCLUDE "wavelet/WaveletFwd.cpp"
@@ -972,24 +972,6 @@ HWY_EXPORT(encode_97_h);
 HWY_EXPORT(encode_53);
 HWY_EXPORT(encode_97);
 HWY_EXPORT(num_lanes);
-
-/* <summary>                             */
-/* Determine maximum computed resolution level for inverse wavelet transform */
-/* </summary>                            */
-uint32_t max_resolution(const Resolution* GRK_RESTRICT r, uint32_t i)
-{
-  uint32_t mr = 0;
-  while(--i)
-  {
-    ++r;
-    uint32_t w;
-    if(mr < (w = r->x1 - r->x0))
-      mr = w;
-    if(mr < (w = r->y1 - r->y0))
-      mr = w;
-  }
-  return mr;
-}
 
 uint32_t alignedBufferWidth(uint32_t width)
 {

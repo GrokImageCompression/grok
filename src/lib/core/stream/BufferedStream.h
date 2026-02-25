@@ -18,6 +18,7 @@
 #pragma once
 
 #include "MemAdvisor.h"
+#include "buffer.h"
 
 namespace grk
 {

@@ -19,8 +19,6 @@
 
 #include <memory>
 
-#include "grok.h"
-
 #include "IMemAdvisor.h"
 #include "IStreamWriter.h"
 #include "ChunkBuffer.h"

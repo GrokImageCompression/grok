@@ -21,6 +21,8 @@
 #include <stdexcept>
 #include <mutex>
 
+#include "buffer.h"
+
 namespace grk
 {
 

@@ -16,6 +16,7 @@
  */
 
 #pragma once
+
 namespace grk
 {
 class RateControl

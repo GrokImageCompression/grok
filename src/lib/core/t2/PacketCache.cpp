@@ -15,11 +15,8 @@
  *
  */
 
-#include "CodeStreamLimits.h"
-#include "TileWindow.h"
-#include "Quantizer.h"
-#include "grk_includes.h"
-#include "ImageComponentFlow.h"
+ #include <memory>
+
 namespace grk
 {
 struct TileProcessor;

@@ -17,6 +17,8 @@
 
 #pragma once
 
+#include "grk_restrict.h"
+
 namespace grk
 {
 
@@ -75,5 +77,26 @@ struct Resolution : public Rect32
   grk_plugin_tile* current_plugin_tile_ = nullptr;
   ResolutionPacketParser* packetParser_ = nullptr;
 };
+
+
+
+/* <summary>                             */
+/* Determine maximum computed resolution level for inverse wavelet transform */
+/* </summary>                            */
+inline uint32_t max_resolution(const Resolution* GRK_RESTRICT r, uint32_t i)
+{
+  uint32_t mr = 0;
+  while(--i)
+  {
+    ++r;
+    uint32_t w;
+    if(mr < (w = r->x1 - r->x0))
+      mr = w;
+    if(mr < (w = r->y1 - r->y0))
+      mr = w;
+  }
+  return mr;
+}
+
 
 } // namespace grk

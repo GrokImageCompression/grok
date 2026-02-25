@@ -17,9 +17,10 @@
 
 #pragma once
 
+#include <string_view>
+
 #include "grk_config_private.h"
 #include "grok.h"
-#include <string_view>
 #include "S3Fetcher.h"
 #include "GSFetcher.h"
 #include "AZFetcher.h"
