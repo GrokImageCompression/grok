@@ -47,9 +47,9 @@ public:
   /**
    * @brief Gets tile processor for specified tile index
    * @param tile_index tile index
-   * @return @ref TileProcessor
+   * @return @ref ITileProcessor
    */
-  TileProcessor* getTileProcessor(uint16_t tile_index);
+  ITileProcessor* getTileProcessor(uint16_t tile_index);
 
   /**
    * @brief Initializes tile completeness set
@@ -170,8 +170,8 @@ private:
    */
   void decompressSequentialPrepare(void);
 
-  bool schedule(TileProcessor* tileProcessor, bool multiTile);
-  bool sequentialSchedule(TileProcessor* tileProcessor, bool multiTile);
+  bool schedule(ITileProcessor* tileProcessor, bool multiTile);
+  bool sequentialSchedule(ITileProcessor* tileProcessor, bool multiTile);
 
   /**
    * @brief Parses next slated tile
@@ -289,16 +289,16 @@ private:
    * @param tileProcessor
    * @return std::function<void()>
    */
-  std::function<void()> postMultiTile(TileProcessor* tileProcessor);
+  std::function<void()> postMultiTile(ITileProcessor* tileProcessor);
   std::function<void()> postMultiTile(void);
 
-  std::function<void()> postSingleTile(TileProcessor* tileProcessor);
+  std::function<void()> postSingleTile(ITileProcessor* tileProcessor);
 
   std::function<bool()>
-      genDecompressTileTLMTask(TileProcessor* tileProcessor,
+      genDecompressTileTLMTask(ITileProcessor* tileProcessor,
                                const std::shared_ptr<TPFetchSeq>& tilePartFetchSeq,
                                Rect32 unreducedImageBounds,
-                               std::function<std::function<void()>(TileProcessor*)> postGenerator);
+                               std::function<std::function<void()>(ITileProcessor*)> postGenerator);
 
   void decompressSequential(void);
   void decompressTLM(const std::set<uint16_t>& slated);
@@ -324,7 +324,7 @@ private:
    * @brief Tile processor currently being parsed
    *
    */
-  TileProcessor* currTileProcessor_ = nullptr;
+  ITileProcessor* currTileProcessor_ = nullptr;
 
   TilePartInfo currTilePartInfo_;
   int32_t currTileIndex_ = -1;
@@ -401,7 +401,7 @@ private:
   std::vector<std::future<bool>> fetchByTileFutures_;
 
   bool fetchByTile(std::set<uint16_t>& slated, Rect32 unreducedImageBounds,
-                   std::function<std::function<void()>(TileProcessor*)> postGenerator);
+                   std::function<std::function<void()>(ITileProcessor*)> postGenerator);
 
   /**
    * @brief Scratch @ref GrkImage for decompressor
@@ -450,7 +450,7 @@ private:
 
   // batch sequential
   bool batchDequeueSequential(void);
-  std::queue<TileProcessor*> batchTileQueueSequential_;
+  std::queue<ITileProcessor*> batchTileQueueSequential_;
   uint16_t batchTileScheduleHeadroomSequential_ = 0;
   uint16_t batchTileUnscheduledSequential_ = 0;
 

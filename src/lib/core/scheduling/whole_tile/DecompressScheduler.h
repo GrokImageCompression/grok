@@ -47,7 +47,7 @@ public:
    */
   ~DecompressScheduler();
 
-  bool schedule(TileProcessor* tileProcessor) override;
+  bool schedule(ITileProcessor* tileProcessor) override;
 
   void release(void) override;
 

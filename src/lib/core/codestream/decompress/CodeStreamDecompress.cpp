@@ -42,7 +42,7 @@
 #include "PPMMarker.h"
 namespace grk
 {
-struct TileProcessor;
+struct ITileProcessor;
 }
 #include "CodeStream.h"
 #include "PacketLengthCache.h"
@@ -186,7 +186,7 @@ bool CodeStreamDecompress::activateScratch(bool singleTile, GrkImage* scratch)
   return cp_.codingParams_.dec_.skipAllocateComposite_ || scratch->allocCompositeData();
 }
 
-TileProcessor* CodeStreamDecompress::getTileProcessor(uint16_t tileIndex)
+ITileProcessor* CodeStreamDecompress::getTileProcessor(uint16_t tileIndex)
 {
   auto cached = tileCache_->get(tileIndex);
   auto tileProcessor = cached ? cached->processor : nullptr;
@@ -524,7 +524,7 @@ bool CodeStreamDecompress::decompressImpl(std::set<uint16_t> slated)
   else if(cp_.hasTLM())
   {
     // a) begin network fetch
-    auto generator = [this](TileProcessor* tp) {
+    auto generator = [this](ITileProcessor* tp) {
       return postMultiTile(tp); // Return the result directly
     };
 
@@ -596,7 +596,7 @@ bool CodeStreamDecompress::decompressImpl(std::set<uint16_t> slated)
   return true;
 }
 
-bool CodeStreamDecompress::sequentialSchedule(TileProcessor* tileProcessor, bool multiTile)
+bool CodeStreamDecompress::sequentialSchedule(ITileProcessor* tileProcessor, bool multiTile)
 {
   tileProcessor->prepareForDecompression();
   bool doSchedule = true;
@@ -620,11 +620,11 @@ bool CodeStreamDecompress::sequentialSchedule(TileProcessor* tileProcessor, bool
   return true;
 }
 
-bool CodeStreamDecompress::schedule(TileProcessor* tileProcessor, bool multiTile)
+bool CodeStreamDecompress::schedule(ITileProcessor* tileProcessor, bool multiTile)
 {
   if(cp_.hasTLM())
   {
-    auto generator = [this](TileProcessor* tp) { return postMultiTile(tp); };
+    auto generator = [this](ITileProcessor* tp) { return postMultiTile(tp); };
     auto decompressTileTask =
         genDecompressTileTLMTask(tileProcessor, (*tilePartFetchByTile_)[tileProcessor->getIndex()],
                                  scratchImage_->getBounds(), generator);
@@ -700,7 +700,7 @@ void CodeStreamDecompress::decompressTLM(const std::set<uint16_t>& slated)
 
 bool CodeStreamDecompress::fetchByTile(
     std::set<uint16_t>& slated, Rect32 unreducedImageBounds,
-    std::function<std::function<void()>(TileProcessor*)> postGenerator)
+    std::function<std::function<void()>(ITileProcessor*)> postGenerator)
 {
   auto fetcher = stream_->getFetcher();
   if(!fetcher)
@@ -726,8 +726,9 @@ bool CodeStreamDecompress::fetchByTile(
 }
 
 std::function<bool()> CodeStreamDecompress::genDecompressTileTLMTask(
-    TileProcessor* tileProcessor, const std::shared_ptr<TPFetchSeq>& tilePartFetchSeq,
-    Rect32 unreducedImageBounds, std::function<std::function<void()>(TileProcessor*)> postGenerator)
+    ITileProcessor* tileProcessor, const std::shared_ptr<TPFetchSeq>& tilePartFetchSeq,
+    Rect32 unreducedImageBounds,
+    std::function<std::function<void()>(ITileProcessor*)> postGenerator)
 {
   auto post = postGenerator(tileProcessor);
   return [this, tileProcessor, &tilePartFetchSeq, unreducedImageBounds, post]() {
@@ -783,7 +784,7 @@ std::function<void()> CodeStreamDecompress::postMultiTile(void)
   };
 }
 
-std::function<void()> CodeStreamDecompress::postMultiTile(TileProcessor* tileProcessor)
+std::function<void()> CodeStreamDecompress::postMultiTile(ITileProcessor* tileProcessor)
 {
   return [this, tileProcessor]() {
     if(!success_)
@@ -1010,7 +1011,7 @@ bool CodeStreamDecompress::decompressTileImpl(uint16_t tileIndex)
 
   // TLM
   std::set<uint16_t> slated = {tileIndex};
-  auto generator = [this](TileProcessor* tp) {
+  auto generator = [this](ITileProcessor* tp) {
     return postSingleTile(tp); // Return the result directly
   };
   if(fetchByTile(slated, headerImage_->getBounds(), generator))
@@ -1039,7 +1040,7 @@ bool CodeStreamDecompress::decompressTileImpl(uint16_t tileIndex)
   return true;
 }
 
-std::function<void()> CodeStreamDecompress::postSingleTile(TileProcessor* tileProcessor)
+std::function<void()> CodeStreamDecompress::postSingleTile(ITileProcessor* tileProcessor)
 {
   return [this, tileProcessor]() {
     auto rawActive = activeImage_.release();

@@ -27,7 +27,7 @@ bool tile_equals(grk_plugin_tile* plugin_tile, const Tile* tilePtr);
 
 #ifdef PLUGIN_DEBUG_ENCODE
 // set context stream for debugging purposes
-void set_context_stream(TileProcessor* p_tileProcessor);
+void set_context_stream(ITileProcessor* p_tileProcessor);
 
 void nextCXD(grk_plugin_debug_mqc* mqc, uint32_t d);
 

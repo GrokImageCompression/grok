@@ -46,7 +46,7 @@ odd += (previous + next) >> 1;
 #include "PPMMarker.h"
 namespace grk
 {
-struct TileProcessor;
+struct ITileProcessor;
 }
 #include "CodeStream.h"
 #include "PacketLengthCache.h"
@@ -71,7 +71,7 @@ struct TileProcessor;
 #include "TileComponentWindow.h"
 #include "WaveletReverse.h"
 #include "WaveletFwd.h"
-#include "TileProcessor.h"
+#include "ITileProcessor.h"
 #include "DecompressScheduler.h"
 
 #undef HWY_TARGET_INCLUDE
@@ -338,7 +338,7 @@ bool WaveletReverse::allocPoolData(size_t maxDim)
   return is_allocated_;
 }
 
-WaveletReverse::WaveletReverse(TileProcessor* tileProcessor, TileComponent* tilec, uint16_t compno,
+WaveletReverse::WaveletReverse(ITileProcessor* tileProcessor, TileComponent* tilec, uint16_t compno,
                                Rect32 unreducedWindow, uint8_t numres, uint8_t qmfbid)
     : tileProcessor_(tileProcessor), scheduler_(tileProcessor->getScheduler()), tilec_(tilec),
       compno_(compno), unreducedWindow_(unreducedWindow), numres_(numres), qmfbid_(qmfbid)

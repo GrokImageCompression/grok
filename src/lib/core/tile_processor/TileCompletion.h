@@ -224,7 +224,7 @@ public:
               if(completedTiles_[localIndex])
               {
                 grklog.debug(
-                    "Clearing TileProcessor at tile index %d (local %d, tileX=%u, tileY=%u)",
+                    "Clearing ITileProcessor at tile index %d (local %d, tileX=%u, tileY=%u)",
                     tileIndex, localIndex, tileX, clearTileY);
                 tileCache_->release(tileIndex);
               }

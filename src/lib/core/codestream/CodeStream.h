@@ -123,7 +123,7 @@ protected:
   // decompress: components are subsampled and resolution-reduced
   GrkImage* headerImage_;
   IStream* stream_;
-  std::unordered_map<uint32_t, TileProcessor*> processors_;
+  std::unordered_map<uint32_t, ITileProcessor*> processors_;
   grk_plugin_tile* current_plugin_tile;
 };
 

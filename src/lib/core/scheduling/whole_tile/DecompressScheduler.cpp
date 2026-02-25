@@ -36,7 +36,7 @@
 #include "PPMMarker.h"
 namespace grk
 {
-struct TileProcessor;
+struct ITileProcessor;
 }
 #include "CodeStream.h"
 #include "PacketLengthCache.h"
@@ -59,7 +59,7 @@ struct TileProcessor;
 #include "WaveletFwd.h"
 #include "canvas/tile/Tile.h"
 #include "mct.h"
-#include "TileProcessor.h"
+#include "ITileProcessor.h"
 #include "CoderFactory.h"
 #include "DecompressScheduler.h"
 
@@ -97,7 +97,7 @@ void DecompressScheduler::release(void)
   prePostProc_ = nullptr;
 }
 
-bool DecompressScheduler::schedule(TileProcessor* tileProcessor)
+bool DecompressScheduler::schedule(ITileProcessor* tileProcessor)
 {
   auto tcp = tileProcessor->getTCP();
   auto mct = tileProcessor->getMCT();

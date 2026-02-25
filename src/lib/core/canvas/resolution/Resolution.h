@@ -45,13 +45,13 @@ struct Resolution : public Rect32
   /**
    * @brief Initializes a Resolution
    *
-   * @param tileProcessor @ref TileProcessor
+   * @param tileProcessor @ref ITileProcessor
    * @param tccp @ref TileComponentCodingParams
    * @param resno resolution number (0 is lowest resolution)
    * @return true if successful, otherwise false
    */
   bool init(grk_plugin_tile* currentPluginTile, bool isCompressor, uint16_t numLayers,
-            TileProcessor* tileProcessor, TileComponentCodingParams* tccp, uint8_t resno);
+            ITileProcessor* tileProcessor, TileComponentCodingParams* tccp, uint8_t resno);
 
   static Rect32 genPrecinctPartition(const Rect32& window, uint8_t precWidthExp,
                                      uint8_t precHeightExp);

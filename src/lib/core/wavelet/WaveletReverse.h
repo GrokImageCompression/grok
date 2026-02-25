@@ -96,8 +96,8 @@ struct dwt_scratch
 class WaveletReverse
 {
 public:
-  WaveletReverse(TileProcessor* tileProcessor, TileComponent* tilec, uint16_t compno, Rect32 window,
-                 uint8_t numres, uint8_t qmfbid);
+  WaveletReverse(ITileProcessor* tileProcessor, TileComponent* tilec, uint16_t compno,
+                 Rect32 window, uint8_t numres, uint8_t qmfbid);
   ~WaveletReverse(void);
   bool decompress(void);
 
@@ -131,7 +131,7 @@ private:
   static bool is_allocated_;
   static std::once_flag alloc_flag_;
 
-  TileProcessor* tileProcessor_;
+  ITileProcessor* tileProcessor_;
   CodecScheduler* scheduler_;
   TileComponent* tilec_;
   uint16_t compno_;

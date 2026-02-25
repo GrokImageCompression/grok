@@ -36,7 +36,7 @@
 #include "PPMMarker.h"
 namespace grk
 {
-struct TileProcessor;
+struct ITileProcessor;
 }
 #include "PacketParser.h"
 #include "CodingParams.h"
@@ -68,7 +68,7 @@ void Resolution::print(void) const
   }
 }
 bool Resolution::init(grk_plugin_tile* currentPluginTile, bool isCompressor, uint16_t numLayers,
-                      TileProcessor* tileProcessor, TileComponentCodingParams* tccp, uint8_t resno)
+                      ITileProcessor* tileProcessor, TileComponentCodingParams* tccp, uint8_t resno)
 {
   if(initialized_)
     return true;

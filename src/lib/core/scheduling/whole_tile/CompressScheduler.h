@@ -39,7 +39,7 @@ public:
    */
   ~CompressScheduler() = default;
 
-  bool schedule(TileProcessor* proc) override;
+  bool schedule(ITileProcessor* proc) override;
 
 private:
   /**

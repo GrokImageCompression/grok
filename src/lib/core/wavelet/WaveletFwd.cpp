@@ -33,7 +33,7 @@
 
 namespace grk
 {
-struct TileProcessor;
+struct ITileProcessor;
 }
 #include "CodingParams.h"
 #include "ICoder.h"

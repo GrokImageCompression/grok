@@ -32,7 +32,7 @@
 #include "PPMMarker.h"
 namespace grk
 {
-struct TileProcessor;
+struct ITileProcessor;
 }
 #include "CodeStream.h"
 #include "PacketLengthCache.h"
@@ -53,7 +53,7 @@ struct TileProcessor;
 #include "TileComponentWindow.h"
 #include "WaveletFwd.h"
 #include "canvas/tile/Tile.h"
-#include "TileProcessor.h"
+#include "ITileProcessor.h"
 #include "CoderFactory.h"
 #include "DecompressWindowScheduler.h"
 
@@ -72,7 +72,7 @@ DecompressWindowScheduler::~DecompressWindowScheduler()
 
 void DecompressWindowScheduler::release(void) {}
 
-bool DecompressWindowScheduler::schedule(TileProcessor* tileProcessor)
+bool DecompressWindowScheduler::schedule(ITileProcessor* tileProcessor)
 {
   auto tcp = tileProcessor->getTCP();
   bool cacheAll =
@@ -172,8 +172,8 @@ bool DecompressWindowScheduler::schedule(TileProcessor* tileProcessor)
             block->R_b = prec_ + gain_b[band->orientation_];
             block->finalLayer_ = finalLayer;
 
-            auto t = placeholder();
-            tileProcessor->blockTasks_.emplace_back(t);
+            tf::Task t = placeholder();
+            tileProcessor->emplaceBlockTask(t);
             auto blockFunc = [this, activePool, singleThread, tileProcessor, block, tccp, cbw, cbh,
                               cacheAll] {
               if(success)

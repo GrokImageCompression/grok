@@ -21,7 +21,7 @@
 #include "ImageComponentFlow.h"
 namespace grk
 {
-struct TileProcessor;
+struct ITileProcessor;
 }
 #include "ICoder.h"
 #include "CoderPool.h"

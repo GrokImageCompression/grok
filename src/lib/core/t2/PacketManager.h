@@ -188,7 +188,7 @@ class PacketManager
 {
 public:
   PacketManager(bool compression, GrkImage* img, CodingParams* cparams, uint16_t tilenumber,
-                T2_MODE t2_mode, TileProcessor* tileProc);
+                T2_MODE t2_mode, ITileProcessor* tileProc);
   virtual ~PacketManager();
   PacketIter* getPacketIter(uint32_t poc) const;
   /**
@@ -212,7 +212,7 @@ public:
 
   IncludeTracker* getIncludeTracker(void);
   uint32_t getNumProgressions(void);
-  TileProcessor* getTileProcessor(void);
+  ITileProcessor* getTileProcessor(void);
   GrkImage* getImage();
   Rect32 getTileBounds(void);
   CodingParams* getCodingParams(void);
@@ -267,7 +267,7 @@ private:
   IncludeTracker* includeTracker_;
   PacketIter* pi_;
   T2_MODE t2Mode_;
-  TileProcessor* tileProcessor_;
+  ITileProcessor* tileProcessor_;
   Rect32 tileBounds_;
 };
 

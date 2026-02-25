@@ -32,7 +32,7 @@
 #include "PPMMarker.h"
 namespace grk
 {
-struct TileProcessor;
+struct ITileProcessor;
 }
 #include "CodeStream.h"
 #include "PacketLengthCache.h"
@@ -53,12 +53,12 @@ struct TileProcessor;
 #include "TileComponentWindow.h"
 #include "WaveletFwd.h"
 #include "canvas/tile/Tile.h"
-#include "TileProcessor.h"
+#include "ITileProcessor.h"
 
 namespace grk
 {
 
-PacketParser::PacketParser(TileProcessor* tileProcessor, uint16_t packetSequenceNumber,
+PacketParser::PacketParser(ITileProcessor* tileProcessor, uint16_t packetSequenceNumber,
                            uint16_t compno, uint8_t resno, uint64_t precinctIndex, uint16_t layno,
                            uint32_t plLength, SparseBuffer* compressedPackets)
     : tileProcessor_(tileProcessor), tileIndex_(tileProcessor->getIndex()),
@@ -377,7 +377,7 @@ void PacketParser::readDataFinalize(void)
   tileProcessor_->incNumReadDataPackets();
 }
 
-AllLayersPrecinctPacketParser::AllLayersPrecinctPacketParser(TileProcessor* tileProcessor)
+AllLayersPrecinctPacketParser::AllLayersPrecinctPacketParser(ITileProcessor* tileProcessor)
     : tileProcessor_(tileProcessor), parserQueue_(tileProcessor_->getTCP()->numLayers_)
 {}
 
@@ -387,7 +387,7 @@ void AllLayersPrecinctPacketParser::enqueue(PacketParser* parser)
     grklog.warn("Attempt to add parser for layer larger than max number of layers.");
 }
 
-ResolutionPacketParser::ResolutionPacketParser(TileProcessor* tileProcessor)
+ResolutionPacketParser::ResolutionPacketParser(ITileProcessor* tileProcessor)
     : tileProcessor_(tileProcessor)
 {}
 

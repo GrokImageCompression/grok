@@ -74,7 +74,7 @@
 #include "PPMMarker.h"
 namespace grk
 {
-struct TileProcessor;
+struct ITileProcessor;
 struct TileProcessorCompress;
 } // namespace grk
 #include "PacketParser.h"
@@ -107,7 +107,7 @@ struct TileProcessorCompress;
 #include "canvas/tile/Tile.h"
 #include "mct.h"
 
-#include "TileProcessor.h"
+#include "ITileProcessor.h"
 #include "TileProcessorCompress.h"
 #include "SOTMarker.h"
 #include "CodeStreamCompress.h"

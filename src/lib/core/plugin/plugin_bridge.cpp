@@ -32,7 +32,7 @@
 #include "PPMMarker.h"
 namespace grk
 {
-struct TileProcessor;
+struct ITileProcessor;
 }
 #include "CodeStream.h"
 #include "PacketLengthCache.h"
@@ -53,7 +53,7 @@ struct TileProcessor;
 #include "TileComponentWindow.h"
 #include "WaveletFwd.h"
 #include "canvas/tile/Tile.h"
-#include "TileProcessor.h"
+#include "ITileProcessor.h"
 #include "TileProcessorCompress.h"
 
 namespace grk
@@ -244,7 +244,7 @@ void compress_synch_with_plugin(TileProcessorCompress* tileProcessor, uint16_t c
 
 // set context stream for debugging purposes
 #ifdef PLUGIN_DEBUG_ENCODE
-void set_context_stream(TileProcessor* p_tileProcessor)
+void set_context_stream(ITileProcessor* p_tileProcessor)
 {
   auto tile = p_tileProcessor->getTile();
   for(uint16_t compno = 0; compno < tile->numcomps_; compno++)

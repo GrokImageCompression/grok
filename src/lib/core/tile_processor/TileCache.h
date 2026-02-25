@@ -29,14 +29,14 @@ namespace grk
  */
 struct TileCacheEntry
 {
-  explicit TileCacheEntry(TileProcessor* p) : processor(p), dirty_(true) {}
+  explicit TileCacheEntry(ITileProcessor* p) : processor(p), dirty_(true) {}
   TileCacheEntry() : TileCacheEntry(nullptr) {}
   ~TileCacheEntry()
   {
     delete processor;
   }
 
-  TileProcessor* processor;
+  ITileProcessor* processor;
   bool dirty_;
 };
 
@@ -121,25 +121,25 @@ public:
     return cache_[tileIndex] ? cache_[tileIndex]->dirty_ : false;
   }
 
-  TileCacheEntry* put(uint16_t tile_index, TileProcessor* processor)
+  TileCacheEntry* put(uint16_t tile_index, ITileProcessor* processor)
   {
     if(tile_index >= cache_.size())
       return nullptr;
     if(!cache_[tile_index])
     {
       cache_[tile_index] = new TileCacheEntry(processor);
-      grklog.debug("Added TileProcessor at tile index %u, address %p", tile_index, processor);
+      grklog.debug("Added ITileProcessor at tile index %u, address %p", tile_index, processor);
     }
     else
     {
       if(cache_[tile_index]->processor)
       {
-        grklog.debug("Removing TileProcessor at tile index %u, address %p", tile_index,
+        grklog.debug("Removing ITileProcessor at tile index %u, address %p", tile_index,
                      cache_[tile_index]->processor);
         delete cache_[tile_index]->processor; // Delete old processor
       }
       cache_[tile_index]->processor = processor;
-      grklog.debug("Added TileProcessor at tile index %u, address %p", tile_index, processor);
+      grklog.debug("Added ITileProcessor at tile index %u, address %p", tile_index, processor);
     }
     return cache_[tile_index];
   }
@@ -156,7 +156,7 @@ public:
     // Release the tile processor if it exists
     if(cache_[tileIndex] && cache_[tileIndex]->processor)
     {
-      grklog.debug("Releasing TileProcessor at tile index %u, address %p", tileIndex,
+      grklog.debug("Releasing ITileProcessor at tile index %u, address %p", tileIndex,
                    cache_[tileIndex]->processor);
       cache_[tileIndex]->processor->release(GRK_TILE_CACHE_NONE);
     }

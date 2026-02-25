@@ -28,7 +28,7 @@
 #include "PPMMarker.h"
 namespace grk
 {
-struct TileProcessor;
+struct ITileProcessor;
 }
 #include "CodingParams.h"
 
@@ -61,7 +61,7 @@ CompressScheduler::CompressScheduler(Tile* tile, bool needsRateControl, TileCodi
       blockCount_(-1), tcp_(tcp), mct_norms_(mct_norms), mct_numcomps_(mct_numcomps)
 {}
 
-bool CompressScheduler::schedule(TileProcessor* proc)
+bool CompressScheduler::schedule(ITileProcessor* proc)
 {
   (void)proc;
   tile_->distortion_ = 0;

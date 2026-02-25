@@ -35,7 +35,7 @@
 #include "PPMMarker.h"
 namespace grk
 {
-struct TileProcessor;
+struct ITileProcessor;
 }
 #include "CodeStream.h"
 #include "PacketLengthCache.h"
@@ -47,7 +47,7 @@ struct TileProcessor;
 #include "CodecScheduler.h"
 #include "CodeblockCompress.h"
 
-#include "TileProcessor.h"
+#include "ITileProcessor.h"
 #include "TileProcessorCompress.h"
 #include "CodeStreamCompress.h"
 

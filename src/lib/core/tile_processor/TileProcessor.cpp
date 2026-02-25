@@ -64,7 +64,7 @@
 #include "PPMMarker.h"
 namespace grk
 {
-struct TileProcessor;
+struct ITileProcessor;
 struct TileProcessorCompress;
 } // namespace grk
 #include "PacketParser.h"
@@ -144,6 +144,11 @@ TileProcessor::~TileProcessor()
   if(!isCompressor_)
     delete tcp_;
   delete markerParser_;
+}
+
+void TileProcessor::emplaceBlockTask(tf::Task& t)
+{
+  blockTasks_.emplace_back(t);
 }
 
 void TileProcessor::setProcessors(MarkerParser* parser)

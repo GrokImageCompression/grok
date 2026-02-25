@@ -21,7 +21,7 @@
 
 namespace grk
 {
-struct TileProcessor;
+struct ITileProcessor;
 
 /**
  * @class T2Decompress
@@ -34,7 +34,7 @@ struct T2Decompress
    * @brief Constructs a T2Decompress object
    * @param tileProc @ref TileProcesor
    */
-  T2Decompress(TileProcessor* tileProc);
+  T2Decompress(ITileProcessor* tileProc);
 
   /**
    * @brief Destroys a T2Decompress object
@@ -57,9 +57,9 @@ struct T2Decompress
 
 private:
   /**
-   * @brief @ref TileProcessor for this tile
+   * @brief @ref ITileProcessor for this tile
    */
-  TileProcessor* tileProcessor;
+  ITileProcessor* tileProcessor;
 
   /**
    * @brief Parses packet

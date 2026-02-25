@@ -34,7 +34,7 @@
 #include "PPMMarker.h"
 namespace grk
 {
-struct TileProcessor;
+struct ITileProcessor;
 struct TileProcessorCompress;
 } // namespace grk
 #include "CodeStream.h"

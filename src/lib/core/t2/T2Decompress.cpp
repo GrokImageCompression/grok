@@ -33,7 +33,7 @@
 #include "PPMMarker.h"
 namespace grk
 {
-struct TileProcessor;
+struct ITileProcessor;
 }
 #include "CodeStream.h"
 #include "PacketIter.h"
@@ -56,12 +56,12 @@ struct TileProcessor;
 #include "WaveletFwd.h"
 #include "PacketManager.h"
 #include "canvas/tile/Tile.h"
-#include "TileProcessor.h"
+#include "ITileProcessor.h"
 #include "T2Decompress.h"
 
 namespace grk
 {
-T2Decompress::T2Decompress(TileProcessor* tileProc) : tileProcessor(tileProc) {}
+T2Decompress::T2Decompress(ITileProcessor* tileProc) : tileProcessor(tileProc) {}
 
 bool T2Decompress::parsePackets(uint16_t tile_no, PacketCache* compressedPackets)
 {

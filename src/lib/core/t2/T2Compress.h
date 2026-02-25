@@ -19,7 +19,7 @@
 
 namespace grk
 {
-struct TileProcessor;
+struct ITileProcessor;
 
 /**
  Tier-2 coding

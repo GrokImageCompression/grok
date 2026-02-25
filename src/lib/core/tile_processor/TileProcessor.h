@@ -44,14 +44,14 @@ struct TileProcessor : public ITileProcessor
   TileProcessor(uint16_t index, TileCodingParams* tcp, CodeStream* codeStream, IStream* stream,
                 bool isCompressor, uint32_t tileCacheStrategy);
 
-  std::vector<tf::Task> blockTasks_;
-
   /**
    * @brief Destroys a TileProcessor
    */
   virtual ~TileProcessor();
 
   void setProcessors(MarkerParser* parser);
+
+  void emplaceBlockTask(tf::Task& t);
 
   /**
    * @brief Initializes a TileProcessor
@@ -398,6 +398,8 @@ protected:
   CodecScheduler* scheduler_ = nullptr;
 
 private:
+  std::vector<tf::Task> blockTasks_;
+
   bool initialized_ = false;
 
   void prepareConcurrentParsing(void);

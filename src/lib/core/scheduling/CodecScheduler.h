@@ -25,7 +25,7 @@ namespace grk
 class ResolutionChecker
 {
 public:
-  ResolutionChecker(uint16_t numComponents, TileProcessor* tileProcessor, bool cacheAll);
+  ResolutionChecker(uint16_t numComponents, ITileProcessor* tileProcessor, bool cacheAll);
 
   // Check if a specific component contains a given resolution
   bool contains(uint16_t compno, uint8_t resolution) const;
@@ -81,12 +81,12 @@ public:
   virtual ~CodecScheduler();
 
   /**
-   * @brief Schedules all T1 tasks for a @ref TileProcessor
+   * @brief Schedules all T1 tasks for a @ref ITileProcessor
    *
-   * @param proc @ref TileProcessor
+   * @param proc @ref ITileProcessor
    * @return true if successful
    */
-  virtual bool schedule(TileProcessor* proc) = 0;
+  virtual bool schedule(ITileProcessor* proc) = 0;
 
   /**
    * @brief Runs tf::Executor

@@ -63,7 +63,7 @@ public:
    * @param cachedLength signalled length from PLT/PLM marker, or cached length
    * from previous read of header
    */
-  PacketParser* gen(TileProcessor* tileProcessor, uint16_t packetSequenceNumber, uint16_t compno,
+  PacketParser* gen(ITileProcessor* tileProcessor, uint16_t packetSequenceNumber, uint16_t compno,
                     uint8_t resno, uint64_t precinctIndex, uint16_t layno, uint32_t cachedLength);
 
 private:

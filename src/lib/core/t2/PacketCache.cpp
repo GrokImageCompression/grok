@@ -19,7 +19,7 @@
 
 namespace grk
 {
-struct TileProcessor;
+struct ITileProcessor;
 }
 #include "PacketCache.h"
 
@@ -50,7 +50,7 @@ void PacketCache::rewind(void)
   iter_ = parsers_.begin();
 }
 
-PacketParser* PacketCache::gen(TileProcessor* tileProcessor, uint16_t packetSequenceNumber,
+PacketParser* PacketCache::gen(ITileProcessor* tileProcessor, uint16_t packetSequenceNumber,
                                uint16_t compno, uint8_t resno, uint64_t precinctIndex,
                                uint16_t layno, uint32_t cachedLength)
 {

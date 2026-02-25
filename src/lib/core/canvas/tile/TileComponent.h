@@ -253,7 +253,7 @@ struct TileComponent : public Rect32
   /**
    * @brief Initalizes tile component
    *
-   * @param tileProcessor @ref TileProcessor
+   * @param tileProcessor @ref ITileProcessor
    * @param unreducedTileComp unreduced bounds
    * @param prec precision
    * @param tccp @ref TileComponentCodingParams
@@ -281,7 +281,7 @@ struct TileComponent : public Rect32
   /**
    * @brief Differential decompression update
    *
-   * @param tileProcessor @ref TileProcessor
+   * @param tileProcessor @ref ITileProcessor
    */
 
   void update(uint8_t reduce)

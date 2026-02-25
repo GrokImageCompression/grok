@@ -35,14 +35,14 @@
 #include "PPMMarker.h"
 namespace grk
 {
-struct TileProcessor;
+struct ITileProcessor;
 }
 #include "CodeStream.h"
 #include "PacketLengthCache.h"
 #include "CoderPool.h"
 #include "ICoder.h"
 #include "WindowScheduler.h"
-#include "TileProcessor.h"
+#include "ITileProcessor.h"
 #include "TileCache.h"
 #include "TileCompletion.h"
 #include "CodeStreamDecompress.h"

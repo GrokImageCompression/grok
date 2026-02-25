@@ -32,7 +32,7 @@
 #include "PPMMarker.h"
 namespace grk
 {
-struct TileProcessor;
+struct ITileProcessor;
 }
 #include "CodeStream.h"
 #include "PacketLengthCache.h"
@@ -53,7 +53,7 @@ struct TileProcessor;
 #include "TileComponentWindow.h"
 #include "WaveletFwd.h"
 #include "canvas/tile/Tile.h"
-#include "TileProcessor.h"
+#include "ITileProcessor.h"
 
 std::unique_ptr<tf::Executor> ExecSingleton::instance_ = nullptr;
 std::mutex ExecSingleton::mutex_;
@@ -62,7 +62,7 @@ size_t ExecSingleton::numThreads_;
 namespace grk
 {
 
-ResolutionChecker::ResolutionChecker(uint16_t numComponents, TileProcessor* tileProcessor,
+ResolutionChecker::ResolutionChecker(uint16_t numComponents, ITileProcessor* tileProcessor,
                                      bool cacheAll)
 {
   for(uint16_t compno = 0; compno < numComponents; ++compno)

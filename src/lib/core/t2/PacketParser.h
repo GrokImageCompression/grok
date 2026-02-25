@@ -46,7 +46,7 @@ public:
    * from previous read of header
    * @param compressedPackets @ref SparseBuffer holding packets
    */
-  PacketParser(TileProcessor* tileProcessor, uint16_t packetSequenceNumber, uint16_t compno,
+  PacketParser(ITileProcessor* tileProcessor, uint16_t packetSequenceNumber, uint16_t compno,
                uint8_t resno, uint64_t precinctIndex, uint16_t layno, uint32_t cachedLength,
                SparseBuffer* compressedPackets);
 
@@ -86,7 +86,7 @@ private:
   /**
    * @brief tile processor
    */
-  TileProcessor* tileProcessor_;
+  ITileProcessor* tileProcessor_;
 
   uint16_t tileIndex_ = 0;
 
@@ -247,9 +247,9 @@ struct AllLayersPrecinctPacketParser
 {
   /**
    * @brief Constructs an AllLayersPrecinctPacketParser
-   * @param tileProcess @ref TileProcessor
+   * @param tileProcess @ref ITileProcessor
    */
-  AllLayersPrecinctPacketParser(TileProcessor* tileProcessor);
+  AllLayersPrecinctPacketParser(ITileProcessor* tileProcessor);
   /**
    * @brief Destroys an AllLayersPrecinctPacketParser
    */
@@ -260,9 +260,9 @@ struct AllLayersPrecinctPacketParser
    */
   void enqueue(PacketParser* parser);
   /**
-   * @brief @ref TileProcessor
+   * @brief @ref ITileProcessor
    */
-  TileProcessor* tileProcessor_;
+  ITileProcessor* tileProcessor_;
 
   /**
    * @brief Queue of @ref PacketParser
@@ -278,9 +278,9 @@ struct ResolutionPacketParser
 {
   /**
    * @brief Constructs a ResolutionPacketParser
-   * @param tileProcess @ref TileProcessor
+   * @param tileProcess @ref ITileProcessor
    */
-  ResolutionPacketParser(TileProcessor* tileProcessor);
+  ResolutionPacketParser(ITileProcessor* tileProcessor);
   /**
    * @brief Destroys a ResolutionPacketParser
    */
@@ -298,9 +298,9 @@ struct ResolutionPacketParser
    */
   void enqueue(uint64_t precinctIndex, PacketParser* parser);
   /**
-   * @brief @ref TileProcessor
+   * @brief @ref ITileProcessor
    */
-  TileProcessor* tileProcessor_;
+  ITileProcessor* tileProcessor_;
 
   /**
    * @brief map of @ref AllLayersPrecinctPacketParser, indexed by precinct index

@@ -32,7 +32,7 @@
 #include "PPMMarker.h"
 namespace grk
 {
-struct TileProcessor;
+struct ITileProcessor;
 struct TileProcessorCompress;
 } // namespace grk
 
@@ -57,7 +57,7 @@ struct TileProcessorCompress;
 #include "WaveletFwd.h"
 #include "PacketManager.h"
 #include "canvas/tile/Tile.h"
-#include "TileProcessor.h"
+#include "ITileProcessor.h"
 #include "T2Compress.h"
 #include "TileProcessorCompress.h"
 

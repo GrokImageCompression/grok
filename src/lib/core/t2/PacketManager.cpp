@@ -32,7 +32,7 @@
 #include "PPMMarker.h"
 namespace grk
 {
-struct TileProcessor;
+struct ITileProcessor;
 }
 #include "CodeStream.h"
 #include "PacketIter.h"
@@ -41,13 +41,13 @@ struct TileProcessor;
 #include "CoderPool.h"
 #include "CodecScheduler.h"
 #include "PacketManager.h"
-#include "TileProcessor.h"
+#include "ITileProcessor.h"
 
 namespace grk
 {
 
 PacketManager::PacketManager(bool compression, GrkImage* img, CodingParams* cparams,
-                             uint16_t tilenumber, T2_MODE t2_mode, TileProcessor* tileProc)
+                             uint16_t tilenumber, T2_MODE t2_mode, ITileProcessor* tileProc)
     : image_(img), cp_(cparams), tileIndex_(tilenumber), includeTracker_(new IncludeTracker()),
       pi_(nullptr), t2Mode_(t2_mode), tileProcessor_(tileProc)
 {
@@ -119,7 +119,7 @@ PacketIter* PacketManager::getPacketIter(uint32_t poc) const
 {
   return pi_ + poc;
 }
-TileProcessor* PacketManager::getTileProcessor(void)
+ITileProcessor* PacketManager::getTileProcessor(void)
 {
   return tileProcessor_;
 }
