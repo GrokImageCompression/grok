@@ -15,7 +15,7 @@
  *
  */
 
- #include <memory>
+#include <memory>
 
 namespace grk
 {

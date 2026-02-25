@@ -78,8 +78,6 @@ struct Resolution : public Rect32
   ResolutionPacketParser* packetParser_ = nullptr;
 };
 
-
-
 /* <summary>                             */
 /* Determine maximum computed resolution level for inverse wavelet transform */
 /* </summary>                            */
@@ -97,6 +95,5 @@ inline uint32_t max_resolution(const Resolution* GRK_RESTRICT r, uint32_t i)
   }
   return mr;
 }
-
 
 } // namespace grk

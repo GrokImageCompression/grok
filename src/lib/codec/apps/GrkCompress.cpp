@@ -62,7 +62,6 @@ using namespace grk;
 #include "exif.h"
 #include "GrkCompress.h"
 
-
 void exit_func()
 {
   grk_plugin_stop_batch_compress();

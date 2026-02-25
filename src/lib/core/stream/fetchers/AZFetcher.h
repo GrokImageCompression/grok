@@ -23,7 +23,6 @@
 #include "CurlFetcher.h"
 #include "FetchPathParser.h"
 
-
 #ifdef GRK_ENABLE_LIBCURL
 
 namespace grk

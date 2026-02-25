@@ -19,7 +19,6 @@
 #include "TileWindow.h"
 #include "Quantizer.h"
 
-
 namespace grk
 {
 

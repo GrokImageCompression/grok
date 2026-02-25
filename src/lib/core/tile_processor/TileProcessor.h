@@ -21,24 +21,16 @@
 #include <memory>
 
 #include "PacketTracker.h"
+#include "ITileProcessor.h"
 
 namespace grk
 {
-
-struct TilePartInfo
-{
-  uint32_t tilePartLength_ = 0;
-  uint8_t tilePart_ = 0;
-  uint64_t remainingTilePartBytes_ = 0;
-};
-
-class Mct;
 
 /**
  * @struct TileProcesor
  * @brief Manages tile compression/decompression
  */
-struct TileProcessor
+struct TileProcessor : public ITileProcessor
 {
   /**
    * @brief Constructs a TileProcessor
