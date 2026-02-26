@@ -23,12 +23,12 @@ MinIO is an open-source, high-performance, distributed object storage system des
 ## Build/run docker
 
 docker volume create minio-data
-docker build -t minio-ubuntu .
+docker build -t minio-alpine .
 
 ### Run the Docker container
 
 ```
-docker run -d --rm --cap-add=NET_ADMIN -v minio-data:/data  --name minio-container-latest -p 9000:9000 -p 9001:9001 minio-ubuntu
+docker run -d --rm --cap-add=NET_ADMIN -v minio-data:/data  --name minio-container -p 9000:9000 -p 9001:9001 minio-alpine
 
 ```
 
@@ -55,6 +55,10 @@ docker exec -it minio-container /bin/sh
 ### Create Bucket
 
 Go to `localhost:9001` on host and create `grok` bucket
+
+or
+
+`mc mb local/grok --insecure`
 
 
 ### Minio Client
@@ -85,6 +89,11 @@ export AWS_SECRET_ACCESS_KEY="minioadmin"
 export AWS_S3_ENDPOINT="http://localhost:9000"
 export AWS_VIRTUAL_HOSTING=False
 ```
+
+Also map `minio.example.com` to localhost
+
+`sudo bash -c 'echo "127.0.0.1 minio.example.com" >> /etc/hosts'`
+
 
 ### See logs
 

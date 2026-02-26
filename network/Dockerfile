@@ -1,26 +1,30 @@
 # MinIO Dockerfile
 
-# Use Ubuntu as the base image
-FROM ubuntu:latest
+# Builder stage to compile MinIO and mc from source
+FROM alpine:latest AS builder
+
+# Install Go for building
+RUN apk add --no-cache go
+
+# Set GOPATH and compile minio and mc
+ENV GOPATH=/go
+RUN go install github.com/minio/minio@latest && \
+    go install github.com/minio/mc@latest
+
+# Final stage
+FROM alpine:latest
 
 # Install dependencies
-RUN apt-get update && apt-get install -y \
-    wget \
+RUN apk add --no-cache \
     ca-certificates \
     curl \
     iproute2 \
     openssl \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/cache/apk/*
 
-# Download MinIO server binary
-RUN wget https://dl.min.io/server/minio/release/linux-amd64/minio \
-    && chmod +x minio \
-    && mv minio /usr/local/bin/
-
-# Download MinIO client (mc) binary
-RUN wget https://dl.min.io/client/mc/release/linux-amd64/mc \
-    && chmod +x mc \
-    && mv mc /usr/local/bin/
+# Copy compiled binaries from builder
+COPY --from=builder /go/bin/minio /usr/local/bin/minio
+COPY --from=builder /go/bin/mc /usr/local/bin/mc
 
 # Create directories for data and certificates
 RUN mkdir -p /data /root/.minio/certs
@@ -41,10 +45,8 @@ EXPOSE 9000 9001
 # Set the working directory
 WORKDIR /root
 
-# Set environment variables for credentials and domain
-ENV MINIO_ROOT_USER=minioadmin \
-    MINIO_ROOT_PASSWORD=minioadmin \
-    MINIO_DOMAIN=minio.example.com
+# Set environment variable for domain (non-sensitive default)
+ENV MINIO_DOMAIN=minio.example.com
 
 # Use custom entrypoint to configure virtual host support
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]

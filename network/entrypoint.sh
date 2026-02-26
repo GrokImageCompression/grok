@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 # Ensure /data and /root/.minio/certs are preserved
 if [ ! -d /data ]; then
@@ -11,7 +11,7 @@ if [ ! -d /root/.minio/certs ]; then
 fi
 
 # Get the container's IP address
-CONTAINER_IP=$(ip addr show eth0 | grep -oP '(?<=inet\s)\d+(\.\d+){3}' | head -1)
+CONTAINER_IP=$(ip addr show eth0 | awk '/inet / {print $2}' | cut -d/ -f1 | head -1)
 if [ -z "$CONTAINER_IP" ]; then
     echo "Failed to determine container IP address"
     exit 1
@@ -25,11 +25,13 @@ else
     echo "$CONTAINER_IP $MINIO_DOMAIN" >> /etc/hosts
 
     if [ ! -z "$MINIO_BUCKETS" ]; then
-        IFS=',' read -ra BUCKET_ARRAY <<< "$MINIO_BUCKETS"
-        for bucket in "${BUCKET_ARRAY[@]}"; do
+        old_IFS="$IFS"
+        IFS=','
+        for bucket in $MINIO_BUCKETS; do
             echo "$CONTAINER_IP ${bucket}.$MINIO_DOMAIN" >> /etc/hosts
             echo "Added ${bucket}.$MINIO_DOMAIN to /etc/hosts"
         done
+        IFS="$old_IFS"
     fi
 fi
 
