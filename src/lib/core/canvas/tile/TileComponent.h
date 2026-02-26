@@ -22,6 +22,7 @@
 #include "PostDecodeFilters.h"
 #include "htconfig.h"
 #include "SparseCanvas.h"
+#include "TileComponentWindow.h"
 
 const bool DEBUG_TILE_COMPONENT = false;
 

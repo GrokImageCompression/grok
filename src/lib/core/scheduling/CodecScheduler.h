@@ -22,10 +22,12 @@
 namespace grk
 {
 
+struct ITileProcessor;
+struct TileComponent;
 class ResolutionChecker
 {
 public:
-  ResolutionChecker(uint16_t numComponents, ITileProcessor* tileProcessor, bool cacheAll);
+  ResolutionChecker(uint16_t numComponents, TileComponent* comps, bool cacheAll);
 
   // Check if a specific component contains a given resolution
   bool contains(uint16_t compno, uint8_t resolution) const;

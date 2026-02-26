@@ -61,12 +61,11 @@ size_t ExecSingleton::numThreads_;
 namespace grk
 {
 
-ResolutionChecker::ResolutionChecker(uint16_t numComponents, ITileProcessor* tileProcessor,
-                                     bool cacheAll)
+ResolutionChecker::ResolutionChecker(uint16_t numComponents, TileComponent* comps, bool cacheAll)
 {
   for(uint16_t compno = 0; compno < numComponents; ++compno)
   {
-    auto tilec = tileProcessor->getTile()->comps_ + compno;
+    auto tilec = comps + compno;
     uint8_t resBegin =
         cacheAll ? (uint8_t)tilec->currentPacketProgressionState_.numResolutionsRead() : 0;
     uint8_t resUpperBound = tilec->nextPacketProgressionState_.numResolutionsRead();

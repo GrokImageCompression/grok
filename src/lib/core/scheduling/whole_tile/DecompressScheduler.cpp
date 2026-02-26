@@ -123,7 +123,7 @@ bool DecompressScheduler::schedule(ITileProcessor* tileProcessor)
     resMin = std::min(resMin, resBegin);
     resMax = std::max(resMax, resUpperBound);
   }
-  ResolutionChecker rChecker(numcomps_, tileProcessor, cacheAll);
+  ResolutionChecker rChecker(numcomps_, tileProcessor->getTile()->comps_, cacheAll);
 
   for(uint16_t compno = 0; compno < numcomps_; ++compno)
   {
@@ -311,9 +311,14 @@ bool DecompressScheduler::schedule(ITileProcessor* tileProcessor)
     {
       if(waveletReverse_[compno])
         delete waveletReverse_[compno];
-      waveletReverse_[compno] =
-          new WaveletReverse(tileProcessor, tilec, compno, tilec->getWindow()->unreducedBounds(),
-                             numRes, (tcp->tccps_ + compno)->qmfbid_);
+
+      auto maxDim = std::max(tileProcessor->getCodingParams()->t_width_,
+                             tileProcessor->getCodingParams()->t_height_);
+
+      waveletReverse_[compno] = new WaveletReverse(tileProcessor->getScheduler(), tilec, compno,
+                                                   tilec->getWindow()->unreducedBounds(), numRes,
+                                                   (tcp->tccps_ + compno)->qmfbid_, maxDim,
+                                                   tileProcessor->getTCP()->wholeTileDecompress_);
 
       if(!waveletReverse_[compno]->decompress())
         return false;

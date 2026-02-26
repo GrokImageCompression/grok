@@ -17,6 +17,7 @@
 
 #pragma once
 
+#include "CodecScheduler.h"
 #include "WaveletCommon.h"
 
 namespace grk
@@ -96,8 +97,8 @@ struct dwt_scratch
 class WaveletReverse
 {
 public:
-  WaveletReverse(ITileProcessor* tileProcessor, TileComponent* tilec, uint16_t compno,
-                 Rect32 window, uint8_t numres, uint8_t qmfbid);
+  WaveletReverse(CodecScheduler* scheduler, TileComponent* tilec, uint16_t compno, Rect32 window,
+                 uint8_t numres, uint8_t qmfbid, uint32_t maxDim, bool wholeTileDecompress);
   ~WaveletReverse(void);
   bool decompress(void);
 
@@ -119,13 +120,14 @@ private:
   static bool is_allocated_;
   static std::once_flag alloc_flag_;
 
-  ITileProcessor* tileProcessor_;
-  CodecScheduler* scheduler_;
-  TileComponent* tilec_;
-  uint16_t compno_;
+  CodecScheduler* scheduler_ = nullptr;
+  TileComponent* tilec_ = nullptr;
+  uint16_t compno_ = 0;
   Rect32 unreducedWindow_;
-  uint8_t numres_;
-  uint8_t qmfbid_;
+  uint8_t numres_ = 0;
+  uint8_t qmfbid_ = 0;
+  uint32_t maxDim_ = 0;
+  bool wholeTileDecompress_ = true;
 
   // 5/3 ////////////////////////////////////////////////////////////////////////////////////
   void load_h_p0_53(int32_t* scratch, const uint32_t width, int32_t* bandL, int32_t* bandH,

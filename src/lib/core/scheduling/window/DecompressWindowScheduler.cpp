@@ -51,6 +51,7 @@ struct ITileProcessor;
 
 #include "CodecScheduler.h"
 #include "TileComponentWindow.h"
+#include "TileComponent.h"
 #include "canvas/tile/Tile.h"
 #include "ITileProcessor.h"
 #include "CoderFactory.h"
@@ -92,7 +93,7 @@ bool DecompressWindowScheduler::schedule(ITileProcessor* tileProcessor)
     resMin = std::min(resMin, resBegin);
     resMax = std::max(resMax, resUpperBound);
   }
-  ResolutionChecker rChecker(numcomps_, tileProcessor, cacheAll);
+  ResolutionChecker rChecker(numcomps_, tileProcessor->getTile()->comps_, cacheAll);
   for(uint16_t compno = 0; compno < numcomps_; ++compno)
   {
     // schedule blocks

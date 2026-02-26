@@ -338,10 +338,11 @@ bool WaveletReverse::allocPoolData(size_t maxDim)
   return is_allocated_;
 }
 
-WaveletReverse::WaveletReverse(ITileProcessor* tileProcessor, TileComponent* tilec, uint16_t compno,
-                               Rect32 unreducedWindow, uint8_t numres, uint8_t qmfbid)
-    : tileProcessor_(tileProcessor), scheduler_(tileProcessor->getScheduler()), tilec_(tilec),
-      compno_(compno), unreducedWindow_(unreducedWindow), numres_(numres), qmfbid_(qmfbid)
+WaveletReverse::WaveletReverse(CodecScheduler* scheduler, TileComponent* tilec, uint16_t compno,
+                               Rect32 unreducedWindow, uint8_t numres, uint8_t qmfbid,
+                               uint32_t maxDim, bool wholeTileDecompress)
+    : scheduler_(scheduler), tilec_(tilec), compno_(compno), unreducedWindow_(unreducedWindow),
+      numres_(numres), qmfbid_(qmfbid), maxDim_(maxDim), wholeTileDecompress_(wholeTileDecompress)
 {}
 WaveletReverse::~WaveletReverse(void)
 {
@@ -833,11 +834,9 @@ bool WaveletReverse::tile_53(void)
 
 bool WaveletReverse::decompress(void)
 {
-  auto maxDim = std::max(tileProcessor_->getCodingParams()->t_width_,
-                         tileProcessor_->getCodingParams()->t_height_);
-  WaveletReverse::allocPoolData(maxDim);
+  WaveletReverse::allocPoolData(maxDim_);
 
-  if(!tileProcessor_->getTCP()->wholeTileDecompress_)
+  if(!wholeTileDecompress_)
     return decompressPartial();
 
   if(qmfbid_ == 1)

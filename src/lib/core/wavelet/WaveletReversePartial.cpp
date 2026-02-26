@@ -51,7 +51,6 @@ struct ITileProcessor;
 #include "Subband.h"
 #include "Resolution.h"
 
-#include "CodecScheduler.h"
 #include "TileComponentWindow.h"
 #include "WaveletReverse.h"
 #include "TileComponent.h"

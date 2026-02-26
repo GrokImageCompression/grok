@@ -19,10 +19,6 @@
 #include "TileWindow.h"
 #include "Quantizer.h"
 #include "ImageComponentFlow.h"
-namespace grk
-{
-struct ITileProcessor;
-}
 #include "ICoder.h"
 #include "CoderPool.h"
 #include "CodecScheduler.h"

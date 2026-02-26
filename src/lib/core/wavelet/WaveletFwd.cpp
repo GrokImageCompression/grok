@@ -15,9 +15,6 @@
  *
  */
 
-#include "grk_taskflow.h"
-#include "grk_restrict.h"
-#include "simd.h"
 #include "CodeStreamLimits.h"
 #include "TileWindow.h"
 #include "Quantizer.h"
@@ -49,7 +46,6 @@ struct ITileProcessor;
 #include "Subband.h"
 #include "Resolution.h"
 
-#include "CodecScheduler.h"
 #include "TileComponentWindow.h"
 #include "WaveletCommon.h"
 #include "WaveletReverse.h"

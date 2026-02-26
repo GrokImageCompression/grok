@@ -22,7 +22,8 @@
 namespace grk
 {
 struct ITileProcessor;
-}
+struct TileComponent;
+} // namespace grk
 #include "ICoder.h"
 #include "WindowScheduler.h"
 
