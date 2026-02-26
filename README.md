@@ -54,7 +54,7 @@ Grok can be integrated into the Geospatial Data Abstraction Layer ([GDAL](https:
 | Workflow                     | JP2Grok       | JP2KAK       | JP2OpenJPEG       |
 |------------------------------|---------------|--------------|-------------------|
 | Spot 6 (Network Storage)     | 35.17 s       | 344 s        | 85 s              |
-| Spot 6 (Local Storage)       | 26.92 s       | 30.57 s      | 34.91 s           |
+| Spot 6 (Local Storage)       | 26.92 s       | 30.57 s      | 52.09 s           |
 | Pleiades (Region)            | 0.74 s        | 1.41 s       | 4.28 s            |
 
 

@@ -17,11 +17,6 @@
 
 #pragma once
 
-#include <mutex>
-#include <memory>
-#include <vector>
-#include <atomic>
-#include <functional>
 
 namespace grk
 {
