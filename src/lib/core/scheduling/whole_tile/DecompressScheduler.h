@@ -21,6 +21,7 @@
 
 #include "WholeTileScheduler.h"
 #include "TileBlocks.h"
+#include "WaveletReverse.h"
 
 namespace grk
 {

@@ -578,20 +578,16 @@ bool CodeStreamDecompress::decompressImpl(std::set<uint16_t> slated)
     return true;
   }
 
-  if(cp_.asynchronous_ && ExecSingleton::num_threads() > 1)
-  {
-    if(cp_.hasTLM())
-      decompressWorker_ = std::thread(&CodeStreamDecompress::decompressTLM, this, slated);
-    else
-      decompressWorker_ = std::thread(&CodeStreamDecompress::decompressSequential, this);
-  }
+  std::function<void()> task;
+  if(cp_.hasTLM())
+    task = [this, slated]() { decompressTLM(slated); };
   else
-  {
-    if(cp_.hasTLM())
-      decompressTLM(slated);
-    else
-      decompressSequential();
-  }
+    task = [this]() { decompressSequential(); };
+
+  if(cp_.asynchronous_ && ExecSingleton::num_threads() > 1)
+    decompressWorker_ = std::thread(task);
+  else
+    task();
 
   return true;
 }
