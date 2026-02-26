@@ -62,7 +62,6 @@ struct ITileProcessor;
 
 #include "CodecScheduler.h"
 #include "TileComponentWindow.h"
-#include "WaveletReverse.h"
 #include "ITileProcessor.h"
 #include "TileCache.h"
 #include "TileCompletion.h"
@@ -525,8 +524,6 @@ bool CodeStreamDecompress::readSIZ(uint8_t* headerData, uint16_t headerSize)
     uint16_t numTilesToDecompress = (uint16_t)(cp_.t_grid_height_ * cp_.t_grid_width_);
     headerImage_->has_multiple_tiles = numTilesToDecompress > 1;
   }
-  auto maxDim = std::max(cp_.t_width_, cp_.t_height_);
-  WaveletReverse::allocPoolData(maxDim);
 
   return rc;
 }

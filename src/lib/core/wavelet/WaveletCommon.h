@@ -20,6 +20,26 @@
 namespace grk
 {
 
+class dwt53
+{
+public:
+  void encode_v(int32_t* res, int32_t* scratch, uint32_t height, uint8_t parity, uint32_t stride,
+                uint32_t cols);
+
+  void encode_h(int32_t* row, int32_t* scratch, uint32_t width, uint8_t parity, uint32_t stride,
+                uint32_t rows);
+};
+
+class dwt97
+{
+public:
+  void encode_v(float* res, float* scratch, uint32_t height, uint8_t parity, uint32_t stride,
+                uint32_t cols);
+
+  void encode_h(float* row, float* scratch, uint32_t width, uint8_t parity, uint32_t stride,
+                uint32_t rows);
+};
+
 template<typename T, size_t N>
 struct vec
 {
@@ -63,8 +83,6 @@ struct vec
   constexpr static size_t NUM_ELTS = N;
   T val[N];
 };
-
-uint32_t alignedBufferWidth(uint32_t width);
 
 typedef vec<float, 4> vec4f;
 

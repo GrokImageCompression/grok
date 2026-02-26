@@ -35,12 +35,6 @@ struct ITileProcessorCompress : virtual public ITileProcessor
   virtual ~ITileProcessorCompress() = default;
 
   /**
-   * @brief Initializes the compressor
-   * @return true if initialization succeeds, false otherwise
-   */
-  virtual bool init(void) = 0;
-
-  /**
    * @brief Gets the packet tracker
    * @return Pointer to the PacketTracker
    */

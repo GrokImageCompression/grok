@@ -104,18 +104,6 @@ public:
   static void step_97(dwt_scratch<vec4f>* GRK_RESTRICT dwt);
   static bool allocPoolData(size_t maxDim);
 
-  static void freePoolData()
-  {
-    if(!is_allocated_)
-    {
-      return;
-    }
-    // Reset arrays to release all buffers via AlignedDeleter
-    horizPoolData_.reset();
-    vertPoolData_.reset();
-    is_allocated_ = false;
-  }
-
 private:
   struct AlignedDeleter
   {

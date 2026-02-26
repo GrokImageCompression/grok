@@ -55,7 +55,6 @@ struct ITileProcessorCompress;
 
 #include "CodecScheduler.h"
 #include "TileComponentWindow.h"
-#include "WaveletFwd.h"
 #include "canvas/tile/Tile.h"
 #include "T2Compress.h"
 #include "plugin_bridge.h"

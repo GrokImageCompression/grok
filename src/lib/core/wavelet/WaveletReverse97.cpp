@@ -60,7 +60,7 @@ struct ITileProcessor;
 #include "CodecScheduler.h"
 #include "TileComponentWindow.h"
 #include "WaveletReverse.h"
-#include "WaveletFwd.h"
+#include "TileComponent.h"
 #include "DecompressScheduler.h"
 
 #undef HWY_TARGET_INCLUDE

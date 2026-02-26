@@ -54,7 +54,6 @@ struct ITileProcessorCompress;
 
 #include "CodecScheduler.h"
 #include "TileComponentWindow.h"
-#include "WaveletFwd.h"
 #include "PacketManager.h"
 #include "canvas/tile/Tile.h"
 #include "ITileProcessor.h"

@@ -51,7 +51,6 @@ struct ITileProcessor;
 
 #include "WindowScheduler.h"
 #include "TileComponentWindow.h"
-#include "WaveletFwd.h"
 #include "canvas/tile/Tile.h"
 #include "ITileProcessor.h"
 #include "ITileProcessorCompress.h"

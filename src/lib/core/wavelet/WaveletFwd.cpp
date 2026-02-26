@@ -51,6 +51,7 @@ struct ITileProcessor;
 
 #include "CodecScheduler.h"
 #include "TileComponentWindow.h"
+#include "WaveletCommon.h"
 #include "WaveletReverse.h"
 #include "WaveletFwd.h"
 
@@ -76,12 +77,6 @@ namespace HWY_NAMESPACE
   static const float delta = 0.443506852f;
   static const float K = 1.230174105f;
   static const float invK = (float)(1.0 / 1.230174105);
-
-  uint32_t num_lanes(void)
-  {
-    const HWY_FULL(int32_t) di;
-    return (uint32_t)Lanes(di);
-  }
 
   template<typename T>
   void deinterleave_h(const T* src, T* dst, const uint32_t dn, const uint32_t sn,
@@ -971,13 +966,6 @@ HWY_EXPORT(encode_97_v);
 HWY_EXPORT(encode_97_h);
 HWY_EXPORT(encode_53);
 HWY_EXPORT(encode_97);
-HWY_EXPORT(num_lanes);
-
-uint32_t alignedBufferWidth(uint32_t width)
-{
-  static uint32_t align = HWY_DYNAMIC_DISPATCH(num_lanes)();
-  return (uint32_t)((((uint64_t)width + align - 1) / align) * align);
-}
 
 template<typename T>
 struct dwt_line
@@ -1000,8 +988,10 @@ struct encode_info
   DWT dwt;
 };
 
-bool WaveletFwdImpl::compress(TileComponent* tile_comp, uint8_t qmfbid)
+bool WaveletFwdImpl::compress(TileComponent* tile_comp, uint8_t qmfbid, uint32_t maxDim)
 {
+  WaveletReverse::allocPoolData(maxDim);
+
   return (qmfbid == 1) ? HWY_DYNAMIC_DISPATCH(encode_53)(tile_comp)
                        : HWY_DYNAMIC_DISPATCH(encode_97)(tile_comp);
 }

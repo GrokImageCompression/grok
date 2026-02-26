@@ -70,7 +70,7 @@ struct ITileProcessor;
 #include "CodecScheduler.h"
 #include "TileComponentWindow.h"
 #include "WaveletReverse.h"
-#include "WaveletFwd.h"
+#include "TileComponent.h"
 #include "ITileProcessor.h"
 #include "DecompressScheduler.h"
 
@@ -833,6 +833,10 @@ bool WaveletReverse::tile_53(void)
 
 bool WaveletReverse::decompress(void)
 {
+  auto maxDim = std::max(tileProcessor_->getCodingParams()->t_width_,
+                         tileProcessor_->getCodingParams()->t_height_);
+  WaveletReverse::allocPoolData(maxDim);
+
   if(!tileProcessor_->getTCP()->wholeTileDecompress_)
     return decompressPartial();
 

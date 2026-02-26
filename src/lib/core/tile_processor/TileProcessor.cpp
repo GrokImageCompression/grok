@@ -98,10 +98,7 @@ struct ITileProcessorCompress;
 #include "WholeTileScheduler.h"
 
 #include "canvas/tile/TileComponentWindow.h"
-#include "WaveletCommon.h"
 #include "WaveletReverse.h"
-#include "WaveletFwd.h"
-
 #include "PacketManager.h"
 #include "canvas/tile/TileComponent.h"
 #include "canvas/tile/Tile.h"

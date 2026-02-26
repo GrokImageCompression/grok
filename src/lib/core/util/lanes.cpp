@@ -15,19 +15,39 @@
  *
  */
 
-#pragma once
+#undef HWY_TARGET_INCLUDE
+#define HWY_TARGET_INCLUDE "lanes.cpp"
+#include <hwy/foreach_target.h>
+#include <hwy/highway.h>
 
-#include <cstdint>
-#include "TileComponent.h"
+HWY_BEFORE_NAMESPACE();
 
-namespace grk
+namespace grok
 {
 
-class WaveletFwdImpl
+namespace HWY_NAMESPACE
 {
-public:
-  virtual ~WaveletFwdImpl() = default;
-  bool compress(TileComponent* tile_comp, uint8_t qmfbid, uint32_t maxDim);
-};
 
-} // namespace grk
+  uint32_t num_lanes(void)
+  {
+    const HWY_FULL(int32_t) di;
+    return (uint32_t)Lanes(di);
+  }
+
+} // namespace HWY_NAMESPACE
+HWY_AFTER_NAMESPACE();
+
+#if HWY_ONCE
+
+HWY_EXPORT(num_lanes);
+
+uint32_t NumLanes(void)
+{
+  static uint32_t lanes = HWY_DYNAMIC_DISPATCH(num_lanes)();
+
+  return lanes;
+}
+
+#endif // HWY_ONCE
+
+} // namespace grok

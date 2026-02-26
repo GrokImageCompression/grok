@@ -77,6 +77,7 @@ set(GROK_LIBRARY_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/util/SparseBuffer.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/util/GrkImage.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/util/GrkMatrix.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/util/lanes.cpp
 
   ${CMAKE_CURRENT_SOURCE_DIR}/stream/MemStream.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/stream/MappedFile.cpp

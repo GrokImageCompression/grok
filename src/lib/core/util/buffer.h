@@ -19,7 +19,7 @@
 
 #include "geometry.h"
 #include "MemManager.h"
-#include "WaveletCommon.h"
+#include "lanes.h"
 
 namespace grk
 {
@@ -398,6 +398,11 @@ struct Buffer2d : protected Buffer<T, A>, public Rect32
   {
     uint64_t bytesNeeded = (uint64_t)stride * height() * sizeof(T);
     memset(this->buf_, 0, bytesNeeded);
+  }
+  uint32_t alignedBufferWidth(uint32_t width)
+  {
+    static uint32_t align = grok::NumLanes();
+    return (uint32_t)((((uint64_t)width + align - 1) / align) * align);
   }
   bool alloc2d(bool clear)
   {

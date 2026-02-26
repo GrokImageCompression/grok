@@ -17,17 +17,8 @@
 
 #pragma once
 
-#include <cstdint>
-#include "TileComponent.h"
-
-namespace grk
+namespace grok
 {
+uint32_t NumLanes(void);
 
-class WaveletFwdImpl
-{
-public:
-  virtual ~WaveletFwdImpl() = default;
-  bool compress(TileComponent* tile_comp, uint8_t qmfbid, uint32_t maxDim);
-};
-
-} // namespace grk
+}

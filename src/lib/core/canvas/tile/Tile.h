@@ -19,6 +19,8 @@
 
 #include <memory>
 
+#include "TileComponent.h"
+
 namespace grk
 {
 
