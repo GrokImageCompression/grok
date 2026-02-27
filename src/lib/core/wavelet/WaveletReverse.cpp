@@ -479,7 +479,7 @@ void WaveletReverse::h_strip_53(const dwt_scratch<int32_t>* scratch, uint32_t hM
     winDest.incY_IN_PLACE(1);
   }
 }
-bool WaveletReverse::h_53(uint8_t res, TileComponentWindow<int32_t>* tileBuffer, uint32_t resHeight)
+void WaveletReverse::h_53(uint8_t res, TileComponentWindow<int32_t>* tileBuffer, uint32_t resHeight)
 {
   uint32_t num_threads = (uint32_t)ExecSingleton::num_threads();
   Buffer2dSimple<int32_t> winL, winH, winDest;
@@ -542,8 +542,6 @@ bool WaveletReverse::h_53(uint8_t res, TileComponentWindow<int32_t>* tileBuffer,
       }
     }
   }
-
-  return true;
 }
 
 /** Vertical inverse 5x3 wavelet transform for one column, when top-most
@@ -729,10 +727,10 @@ void WaveletReverse::v_strip_53(const dwt_scratch<int32_t>* scratch, uint32_t wM
     v_53(scratch, winL, winH, winDest, wMax - j);
 }
 
-bool WaveletReverse::v_53(uint8_t res, TileComponentWindow<int32_t>* buf, uint32_t resWidth)
+void WaveletReverse::v_53(uint8_t res, TileComponentWindow<int32_t>* buf, uint32_t resWidth)
 {
   if(resWidth == 0)
-    return true;
+    return;
   uint32_t num_threads = (uint32_t)ExecSingleton::num_threads();
   auto winL = buf->getResWindowBufferSplitSimple(res, SPLIT_L);
   auto winH = buf->getResWindowBufferSplitSimple(res, SPLIT_H);
@@ -767,7 +765,6 @@ bool WaveletReverse::v_53(uint8_t res, TileComponentWindow<int32_t>* buf, uint32
       winDest.incX_IN_PLACE(widthIncr);
     }
   }
-  return true;
 }
 
 /* <summary>                            */
@@ -820,10 +817,8 @@ bool WaveletReverse::tile_53(void)
     }
     if(num_threads == 1)
       vertPool_[0].mem = horizPool_[0].mem;
-    if(!h_53(res, tileBuffer, resHeight))
-      return false;
-    if(!v_53(res, tileBuffer, resWidth))
-      return false;
+    h_53(res, tileBuffer, resHeight);
+    v_53(res, tileBuffer, resWidth);
   }
 
   return true;

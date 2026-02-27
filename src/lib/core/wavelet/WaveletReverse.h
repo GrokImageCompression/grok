@@ -136,7 +136,7 @@ private:
   void load_h_p1_53(int32_t* scratch, const uint32_t width, int32_t* bandL, int32_t* bandH,
                     int32_t* dest);
 
-  bool h_53(uint8_t res, TileComponentWindow<int32_t>* scratch, uint32_t resHeight);
+  void h_53(uint8_t res, TileComponentWindow<int32_t>* scratch, uint32_t resHeight);
 
   void h_strip_53(const dwt_scratch<int32_t>* scratch, uint32_t hMin, uint32_t hMax,
                   Buffer2dSimple<int32_t> winL, Buffer2dSimple<int32_t> winH,
@@ -158,7 +158,7 @@ private:
                   Buffer2dSimple<int32_t> winL, Buffer2dSimple<int32_t> winH,
                   Buffer2dSimple<int32_t> winDest);
 
-  bool v_53(uint8_t res, TileComponentWindow<int32_t>* buf, uint32_t resWidth);
+  void v_53(uint8_t res, TileComponentWindow<int32_t>* buf, uint32_t resWidth);
 
   bool tile_53(void);
 
