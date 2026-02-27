@@ -118,10 +118,10 @@ bool TileProcessorCompress::preCompressTile([[maybe_unused]] size_t thread_id)
     if(imageComp->dx == 0 || imageComp->dy == 0)
       return false;
     auto tileComp = tile_->comps_ + compno;
-    if(!tileComp->canCreateWindow(tileComp))
+    if(!tileComp->canCreateWindow(Rect32(tileComp)))
       return false;
     auto unreducedTileComp = tileComp;
-    tileComp->createWindow(unreducedTileComp);
+    tileComp->createWindow(Rect32(unreducedTileComp));
   }
   uint32_t numTiles = (uint32_t)cp_->t_grid_height_ * cp_->t_grid_width_;
 

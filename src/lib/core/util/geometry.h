@@ -174,7 +174,7 @@ struct Rect
   {}
   Rect(T x0, T y0, T x1, T y1) : Rect(x0, y0, x0, y0, x1, y1) {}
   Rect(const Rect& rhs) : Rect(&rhs) {}
-  Rect(const Rect* rhs)
+  explicit Rect(const Rect* rhs)
       : origin_x0(rhs->origin_x0), origin_y0(rhs->origin_y0), x0(rhs->x0), y0(rhs->y0), x1(rhs->x1),
         y1(rhs->y1)
   {

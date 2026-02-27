@@ -143,7 +143,7 @@ private:
         }
         for(uint8_t i = 0; i < SPLIT_NUM_ORIENTATIONS; i++)
         {
-          Rect32 split = resWindowBuffer_;
+          Rect32 split = Rect32(resWindowBuffer_);
           split.y0 =
               (resWindowBuffer_->y0 == 0 ? 0 : ceildivpow2<uint32_t>(resWindowBuffer_->y0 - i, 1));
           split.y1 =

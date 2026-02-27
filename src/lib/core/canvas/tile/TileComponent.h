@@ -235,7 +235,7 @@ struct TileComponent : public Rect32
     dealloc();
     window_ = new TileComponentWindow<int32_t>(
         isCompressor_, tccp_->qmfbid_ == 1, wholeTileDecompress_,
-        resolutions_ + num_resolutions_ - 1, this, unreducedTileCompOrImageCompWindow,
+        Rect32(resolutions_ + num_resolutions_ - 1), Rect32(this), Rect32(unreducedTileCompOrImageCompWindow),
         num_resolutions_, isCompressor_ ? num_resolutions_ : resolutions_to_decompress_);
   }
 
