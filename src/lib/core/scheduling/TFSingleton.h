@@ -26,10 +26,10 @@
 #include "grk_taskflow.h"
 
 /**
- * @class ExecSingleton
+ * @class TFSingleton
  * @brief Manages Taskflow Executor singleton instance
  */
-class ExecSingleton
+class TFSingleton
 {
 public:
   /**
@@ -88,7 +88,7 @@ public:
   }
 
   /**
-   * @brief Destroys ExecSingleton
+   * @brief Destroys TFSingleton
    */
   static void destroy()
   {
@@ -112,12 +112,12 @@ public:
 
 private:
   // Deleted copy constructor and assignment operator
-  ExecSingleton(const ExecSingleton&) = delete;
-  ExecSingleton& operator=(const ExecSingleton&) = delete;
+  TFSingleton(const TFSingleton&) = delete;
+  TFSingleton& operator=(const TFSingleton&) = delete;
   /**
-   * @brief Constructs an ExecSingleton
+   * @brief Constructs an TFSingleton
    */
-  ExecSingleton() = default;
+  TFSingleton() = default;
 
   /**
    * @brief Taskflow Executor instance

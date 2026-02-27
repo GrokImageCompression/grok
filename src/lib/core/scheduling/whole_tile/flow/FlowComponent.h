@@ -17,7 +17,7 @@
 
 #pragma once
 
-#include "ExecSingleton.h"
+#include "TFSingleton.h"
 
 /**
  * @class FlowComponent

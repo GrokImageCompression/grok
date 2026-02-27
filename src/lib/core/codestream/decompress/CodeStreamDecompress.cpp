@@ -125,7 +125,7 @@ CodeStreamDecompress::CodeStreamDecompress(IStream* stream)
           return defaultTcp_->readMco(data, len);
         })}});
 
-  tileMarkerParsers_.resize(ExecSingleton::num_threads());
+  tileMarkerParsers_.resize(TFSingleton::num_threads());
   std::generate(tileMarkerParsers_.begin(), tileMarkerParsers_.end(),
                 []() { return std::make_unique<MarkerParser>(); });
 }
@@ -585,7 +585,7 @@ bool CodeStreamDecompress::decompressImpl(std::set<uint16_t> slated)
   else
     task = [this]() { decompressSequential(); };
 
-  if(cp_.asynchronous_ && ExecSingleton::num_threads() > 1)
+  if(cp_.asynchronous_ && TFSingleton::num_threads() > 1)
     decompressWorker_ = std::thread(task);
   else
     task();
@@ -1061,7 +1061,7 @@ bool CodeStreamDecompress::parseAndSchedule(bool multiTile)
    * 2. read EOC
    * 3. run out of data
    */
-  bool concurrentTileParsing = ExecSingleton::num_threads() > 1 &&
+  bool concurrentTileParsing = TFSingleton::num_threads() > 1 &&
                                tilesToDecompress_.getSlatedTiles().size() > 1 &&
                                stream_->isMemStream();
   while(((currTileIndex_ == -1) || !tilesToDecompress_.isSlated((uint16_t)currTileIndex_) ||

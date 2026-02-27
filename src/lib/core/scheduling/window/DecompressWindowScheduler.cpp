@@ -79,7 +79,7 @@ bool DecompressWindowScheduler::schedule(ITileProcessor* tileProcessor)
   auto tcp = tileProcessor->getTCP();
   bool cacheAll =
       (tileProcessor->getTileCacheStrategy() & GRK_TILE_CACHE_ALL) == GRK_TILE_CACHE_ALL;
-  uint32_t num_threads = (uint32_t)ExecSingleton::num_threads();
+  uint32_t num_threads = (uint32_t)TFSingleton::num_threads();
   bool singleThread = num_threads == 1;
   bool finalLayer = tcp->layersToDecompress_ == tcp->numLayers_;
 
@@ -188,7 +188,7 @@ bool DecompressWindowScheduler::schedule(ITileProcessor* tileProcessor)
                 }
                 else if(!cacheAll)
                 {
-                  auto threadnum = singleThread ? 0 : ExecSingleton::get().this_worker_id();
+                  auto threadnum = singleThread ? 0 : TFSingleton::get().this_worker_id();
                   coder =
                       activePool->getCoder((size_t)threadnum, tccp->cblkw_expn_, tccp->cblkh_expn_)
                           .get();

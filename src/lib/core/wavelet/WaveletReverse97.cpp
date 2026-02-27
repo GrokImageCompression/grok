@@ -544,7 +544,7 @@ bool WaveletReverse::tile_97(void)
     return false;
   }
   vert97.mem = horiz97.mem;
-  uint32_t num_threads = (uint32_t)ExecSingleton::num_threads();
+  uint32_t num_threads = (uint32_t)TFSingleton::num_threads();
   for(uint8_t res = 1; res < numres_; ++res)
   {
     horiz97.sn = resWidth;

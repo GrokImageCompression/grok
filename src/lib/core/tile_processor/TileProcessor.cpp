@@ -87,7 +87,7 @@ TileProcessor::TileProcessor(uint16_t tile_index, TileCodingParams* tcp, CodeStr
   setProcessors(markerParser_);
   if(!isCompressor_)
     tcp_->packets_ = new PacketCache();
-  threadTilePart_.resize(ExecSingleton::num_threads());
+  threadTilePart_.resize(TFSingleton::num_threads());
 }
 TileProcessor::~TileProcessor()
 {
@@ -143,7 +143,7 @@ void TileProcessor::setProcessors(MarkerParser* parser)
        {POC, new MarkerProcessor(POC,
                                  [this](uint8_t* data, uint16_t len) {
                                    return tcp_->readPoc(data, len,
-                                                        threadTilePart_[ExecSingleton::workerId()]);
+                                                        threadTilePart_[TFSingleton::workerId()]);
                                  })},
 
        {COM, new MarkerProcessor(
@@ -599,7 +599,7 @@ bool TileProcessor::parseTilePart(std::vector<std::unique_ptr<MarkerParser>>* pa
                       streamGuard, owned_by_parser]() {
     auto tpi = tilePartInfo;
     auto parser = markerParser_;
-    auto id = ExecSingleton::workerId();
+    auto id = TFSingleton::workerId();
     threadTilePart_[id] = tpi.tilePart_;
     if(concurrent)
     {
@@ -833,7 +833,7 @@ bool TileProcessor::readPLT(uint8_t* headerData, uint16_t headerSize)
 {
   assert(headerData != nullptr);
   auto cp = getCodingParams();
-  auto tilePart = threadTilePart_[ExecSingleton::workerId()];
+  auto tilePart = threadTilePart_[TFSingleton::workerId()];
   bool rc;
   {
     std::lock_guard<std::mutex> lock(pltMutex_);
@@ -1109,7 +1109,7 @@ void TileProcessor::scheduleT2T1(CoderPool* coderPool, Rect32 unreducedImageBoun
     }
   };
 
-  if(ExecSingleton::num_threads() > 1)
+  if(TFSingleton::num_threads() > 1)
   {
     if(!t2ParseFlow_)
       t2ParseFlow_ = std::make_unique<FlowComponent>();
@@ -1157,7 +1157,7 @@ void TileProcessor::scheduleT2T1(CoderPool* coderPool, Rect32 unreducedImageBoun
     postDecompressFlow_->addTo(*rootFlow_);
     scheduler_->precede(*postDecompressFlow_);
 
-    futures.add(tileIndex_, ExecSingleton::get().run(*rootFlow_));
+    futures.add(tileIndex_, TFSingleton::get().run(*rootFlow_));
   }
   else
   {

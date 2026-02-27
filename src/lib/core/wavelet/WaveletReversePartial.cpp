@@ -604,7 +604,7 @@ bool WaveletReverse::partial_tile(ISparseCanvas<int32_t>* sa,
       synthesisWindow.pan(-(int64_t)fullResTopLevel->x0, -(int64_t)fullResTopLevel->y0);
   if(synthesisWindow.empty())
     return true;
-  uint32_t num_threads = (uint32_t)ExecSingleton::num_threads();
+  uint32_t num_threads = (uint32_t)TFSingleton::num_threads();
   auto imageComponentFlow = ((DecompressScheduler*)scheduler_)->getImageComponentFlow(compno_);
   // imageComponentFlow == nullptr ==> no blocks were decompressed for this component
   if(!imageComponentFlow)

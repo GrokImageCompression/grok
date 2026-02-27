@@ -208,7 +208,7 @@ public:
   ~GrkCleanup()
   {
     grk_plugin_cleanup();
-    ExecSingleton::destroy();
+    TFSingleton::destroy();
   }
 };
 
@@ -274,7 +274,7 @@ void grk_initialize(const char* pluginPath, uint32_t numThreads, bool* plugin_in
     static GrkCleanup cleanup;
 
     // 1. set up executor
-    ExecSingleton::create(numThreads);
+    TFSingleton::create(numThreads);
 
     if(!Logger::logger_.info_handler)
     {
@@ -494,7 +494,7 @@ bool grk_decompress_tile(grk_object* codecWrapper, uint16_t tile_index)
     return false;
 
   auto codec = Codec::getImpl(codecWrapper);
-  if(ExecSingleton::num_threads() == 1)
+  if(TFSingleton::num_threads() == 1)
   {
     return codec->decompressor_ ? codec->decompressor_->decompressTile(tile_index) : false;
   }

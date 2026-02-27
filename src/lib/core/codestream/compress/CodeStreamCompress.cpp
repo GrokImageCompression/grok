@@ -671,7 +671,7 @@ uint64_t CodeStreamCompress::compress(grk_plugin_tile* tile)
                  numTiles, maxNumTilesJ2K);
     return 0;
   }
-  auto numRequiredThreads = std::min<uint32_t>((uint32_t)ExecSingleton::num_threads(), numTiles);
+  auto numRequiredThreads = std::min<uint32_t>((uint32_t)TFSingleton::num_threads(), numTiles);
   std::atomic<bool> success(true);
   if(numRequiredThreads > 1)
   {

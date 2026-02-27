@@ -124,10 +124,10 @@ bool CompressScheduler::schedule(ITileProcessor* proc)
   if(blocks.size() == 0)
     return true;
 
-  for(auto i = 0U; i < ExecSingleton::num_threads(); ++i)
+  for(auto i = 0U; i < TFSingleton::num_threads(); ++i)
     coders_.push_back(t1::CoderFactory::makeCoder(tcp_->isHT(), true, maxCblkW, maxCblkH, 0));
 
-  size_t num_threads = ExecSingleton::num_threads();
+  size_t num_threads = TFSingleton::num_threads();
   if(num_threads == 1)
   {
     auto impl = coders_[0];
@@ -143,20 +143,20 @@ bool CompressScheduler::schedule(ITileProcessor* proc)
   const size_t maxBlocks = blocks.size();
 
   tf::Taskflow taskflow;
-  num_threads = ExecSingleton::num_threads();
+  num_threads = TFSingleton::num_threads();
   auto node = new tf::Task[num_threads];
   for(auto i = 0U; i < num_threads; i++)
     node[i] = taskflow.placeholder();
   for(auto i = 0U; i < num_threads; i++)
   {
     node[i].work([this, maxBlocks] {
-      auto threadnum = ExecSingleton::get().this_worker_id();
+      auto threadnum = TFSingleton::get().this_worker_id();
       while(compress((size_t)threadnum, maxBlocks))
       {
       }
     });
   }
-  ExecSingleton::get().run(taskflow).wait();
+  TFSingleton::get().run(taskflow).wait();
   delete[] node;
 
   return true;

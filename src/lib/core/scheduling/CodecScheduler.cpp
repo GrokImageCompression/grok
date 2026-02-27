@@ -56,9 +56,9 @@ struct ITileProcessor;
 #include "canvas/tile/Tile.h"
 #include "ITileProcessor.h"
 
-std::unique_ptr<tf::Executor> ExecSingleton::instance_ = nullptr;
-std::mutex ExecSingleton::mutex_;
-size_t ExecSingleton::numThreads_;
+std::unique_ptr<tf::Executor> TFSingleton::instance_ = nullptr;
+std::mutex TFSingleton::mutex_;
+size_t TFSingleton::numThreads_;
 
 namespace grk
 {
@@ -109,7 +109,7 @@ void CodecScheduler::releaseCoders(void)
 
 void CodecScheduler::run(void)
 {
-  runFuture_ = ExecSingleton::get().run(*this);
+  runFuture_ = TFSingleton::get().run(*this);
 }
 
 bool CodecScheduler::wait(void)

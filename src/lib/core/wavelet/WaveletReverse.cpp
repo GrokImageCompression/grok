@@ -292,7 +292,7 @@ bool WaveletReverse::allocPoolData(size_t maxDim)
   {
     return false;
   }
-  size_t num_threads = ExecSingleton::num_threads();
+  size_t num_threads = TFSingleton::num_threads();
   if(num_threads == 0)
   {
     return false;
@@ -481,7 +481,7 @@ void WaveletReverse::h_strip_53(const dwt_scratch<int32_t>* scratch, uint32_t hM
 }
 void WaveletReverse::h_53(uint8_t res, TileComponentWindow<int32_t>* tileBuffer, uint32_t resHeight)
 {
-  uint32_t num_threads = (uint32_t)ExecSingleton::num_threads();
+  uint32_t num_threads = (uint32_t)TFSingleton::num_threads();
   Buffer2dSimple<int32_t> winL, winH, winDest;
   auto imageComponentFlow = ((DecompressScheduler*)scheduler_)->getImageComponentFlow(compno_);
   auto resFlow = imageComponentFlow->getResflow(res - 1);
@@ -531,10 +531,10 @@ void WaveletReverse::h_53(uint8_t res, TileComponentWindow<int32_t>* tileBuffer,
         uint32_t parity = horiz_.parity;
         resFlow->waveletHoriz_->nextTask().work(
             [this, sn, dn, parity, winL, winH, winDest, hMin, hMax] {
-              horizPool_[ExecSingleton::workerId()].sn = sn;
-              horizPool_[ExecSingleton::workerId()].dn = dn;
-              horizPool_[ExecSingleton::workerId()].parity = parity;
-              h_strip_53(&horizPool_[ExecSingleton::workerId()], hMin, hMax, winL, winH, winDest);
+              horizPool_[TFSingleton::workerId()].sn = sn;
+              horizPool_[TFSingleton::workerId()].dn = dn;
+              horizPool_[TFSingleton::workerId()].parity = parity;
+              h_strip_53(&horizPool_[TFSingleton::workerId()], hMin, hMax, winL, winH, winDest);
             });
         winL.incY_IN_PLACE(heightIncr);
         winH.incY_IN_PLACE(heightIncr);
@@ -731,7 +731,7 @@ void WaveletReverse::v_53(uint8_t res, TileComponentWindow<int32_t>* buf, uint32
 {
   if(resWidth == 0)
     return;
-  uint32_t num_threads = (uint32_t)ExecSingleton::num_threads();
+  uint32_t num_threads = (uint32_t)TFSingleton::num_threads();
   auto winL = buf->getResWindowBufferSplitSimple(res, SPLIT_L);
   auto winH = buf->getResWindowBufferSplitSimple(res, SPLIT_H);
   auto winDest = buf->getResWindowBufferSimple(res);
@@ -754,11 +754,11 @@ void WaveletReverse::v_53(uint8_t res, TileComponentWindow<int32_t>* buf, uint32
       uint32_t parity = vert_.parity;
       resFlow->waveletVert_->nextTask().work(
           [this, sn, dn, parity, wMin, wMax, winL, winH, winDest] {
-            vertPool_[ExecSingleton::workerId()].dn = dn;
-            vertPool_[ExecSingleton::workerId()].sn = sn;
-            vertPool_[ExecSingleton::workerId()].parity = parity;
+            vertPool_[TFSingleton::workerId()].dn = dn;
+            vertPool_[TFSingleton::workerId()].sn = sn;
+            vertPool_[TFSingleton::workerId()].parity = parity;
 
-            v_strip_53(&vertPool_[ExecSingleton::workerId()], wMin, wMax, winL, winH, winDest);
+            v_strip_53(&vertPool_[TFSingleton::workerId()], wMin, wMax, winL, winH, winDest);
           });
       winL.incX_IN_PLACE(widthIncr);
       winH.incX_IN_PLACE(widthIncr);
@@ -782,7 +782,7 @@ bool WaveletReverse::tile_53(void)
   auto bandLL = tilec_->resolutions_;
   auto tileBuffer = tilec_->getWindow();
 
-  uint32_t num_threads = (uint32_t)ExecSingleton::num_threads();
+  uint32_t num_threads = (uint32_t)TFSingleton::num_threads();
   horizPool_ = std::make_unique<dwt_scratch<int32_t>[]>(num_threads);
   vertPool_ = std::make_unique<dwt_scratch<int32_t>[]>(num_threads);
   for(uint8_t res = 1; res < numres_; ++res)

@@ -801,7 +801,7 @@ namespace HWY_NAMESPACE
     const size_t thick = lanes;
     dataSize *= thick * sizeof(int32_t);
     int32_t i = maxNumResolutions;
-    const uint32_t num_threads = (uint32_t)ExecSingleton::num_threads();
+    const uint32_t num_threads = (uint32_t)TFSingleton::num_threads();
     T* scratch_pool = nullptr;
     if(dataSize)
     {
@@ -880,7 +880,7 @@ namespace HWY_NAMESPACE
           }
         }
         if(node)
-          ExecSingleton::get().run(taskflow).wait();
+          TFSingleton::get().run(taskflow).wait();
       }
 
       sn = rw_lower;
@@ -924,7 +924,7 @@ namespace HWY_NAMESPACE
             encode_h(info);
         }
         if(node)
-          ExecSingleton::get().run(taskflow).wait();
+          TFSingleton::get().run(taskflow).wait();
       }
       currentRes = lastRes;
       --lastRes;

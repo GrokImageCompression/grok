@@ -231,7 +231,7 @@ bool CodeStreamDecompress::readHeader(grk_header_info* headerInfo)
     }
     headerImage_->copyHeaderTo(multiTileComposite_.get());
     multiTileComposite_->validateColourSpace();
-    uint32_t num_threads = (uint32_t)ExecSingleton::num_threads();
+    uint32_t num_threads = (uint32_t)TFSingleton::num_threads();
     coderPool_.makeCoders(num_threads, 6, 6, [this]() -> std::shared_ptr<t1::ICoder> {
       return std::shared_ptr<t1::ICoder>(
           t1::CoderFactory::makeCoder(isHT_, false, 64, 64, tileCache_->getStrategy()));
