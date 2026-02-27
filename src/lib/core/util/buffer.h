@@ -379,7 +379,7 @@ struct Buffer2d : protected Buffer<T, A>, public Rect32
     }
     return *this;
   }
-  virtual ~Buffer2d() = default;
+  virtual ~Buffer2d() override = default;
   size_t length(void)
   {
     return this->num_elts();

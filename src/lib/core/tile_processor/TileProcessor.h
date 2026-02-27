@@ -49,28 +49,28 @@ struct TileProcessor : virtual public ITileProcessor
    */
   virtual ~TileProcessor();
 
-  void setProcessors(MarkerParser* parser);
+  void setProcessors(MarkerParser* parser) override;
 
-  void emplaceBlockTask(tf::Task& t);
+  void emplaceBlockTask(tf::Task& t) override;
 
   /**
    * @brief Initializes a TileProcessor
    */
-  virtual bool init(void);
+  virtual bool init(void) override;
 
-  void setStream(IStream* stream, bool ownsStream);
+  void setStream(IStream* stream, bool ownsStream) override;
 
   bool decompressWithTLM(const std::shared_ptr<TPFetchSeq>& tilePartFetchSeq, CoderPool* streamPool,
                          Rect32 unreducedImageBounds, std::function<void()> post,
-                         TileFutureManager& futures);
+                         TileFutureManager& futures) override;
 
-  bool decompressPrepareWithTLM(const std::shared_ptr<TPFetchSeq>& tilePartFetchSeq);
+  bool decompressPrepareWithTLM(const std::shared_ptr<TPFetchSeq>& tilePartFetchSeq) override;
 
   /**
    * @brief Performs post T1 processing
    * @return true if successful
    */
-  bool doPostT1(void);
+  bool doPostT1(void) override;
 
   /**
    * @brief Prepares for decompresion
@@ -78,7 +78,7 @@ struct TileProcessor : virtual public ITileProcessor
    * If this fails, then TileProcessor doesn't get initialized.
    *
    */
-  void prepareForDecompression(void);
+  void prepareForDecompression(void) override;
 
   /**
    * @brief Parses tile part
@@ -86,7 +86,7 @@ struct TileProcessor : virtual public ITileProcessor
    * @return true if successful
    */
   bool parseTilePart(std::vector<std::unique_ptr<MarkerParser>>* parsers, IStream* bifurcatedStream,
-                     uint16_t mainMarkerId, TilePartInfo tilePartInfo);
+                     uint16_t mainMarkerId, TilePartInfo tilePartInfo) override;
 
   /**
    * @brief Reads SOT marker
@@ -98,7 +98,7 @@ struct TileProcessor : virtual public ITileProcessor
    * @return true
    */
   bool readSOT(IStream* stream, uint8_t* headerData, uint16_t headerSize,
-               TilePartInfo& tilePartInfo, bool needToReadIndexAndLength);
+               TilePartInfo& tilePartInfo, bool needToReadIndexAndLength) override;
 
   /**
    * @brief Schedule T2/T1 decompression
@@ -110,13 +110,13 @@ struct TileProcessor : virtual public ITileProcessor
    * @return true if successful
    */
   bool scheduleT2T1(CoderPool* coderPool, Rect32 unreducedImageBounds, std::function<void()> post,
-                    TileFutureManager& futures);
+                    TileFutureManager& futures) override;
   /**
    * @brief Performs post T2+T1 processing
    *
    * @param scratch
    */
-  void post_decompressT2T1(GrkImage* scratch);
+  void post_decompressT2T1(GrkImage* scratch) override;
 
   /**
    * @brief Updates differential decompress state
@@ -125,62 +125,62 @@ struct TileProcessor : virtual public ITileProcessor
    * @return true
    * @return false
    */
-  bool differentialUpdate(Rect32 unreducedImageBounds);
+  bool differentialUpdate(Rect32 unreducedImageBounds) override;
 
   /**
    * @brief Gets the tile @ref GrkImage
    *
    * @return GrkImage*
    */
-  GrkImage* getImage(void);
+  GrkImage* getImage(void) override;
 
   /**
    * @brief Gets the tile @ref GrkImage
    *
    * @param img @ref GrkImage
    */
-  void setImage(GrkImage* img);
+  void setImage(GrkImage* img) override;
 
   /**
    * @brief Get the Unreduced Tile Window object
    *
    * @return Rect32
    */
-  Rect32 getUnreducedTileWindow(void);
+  Rect32 getUnreducedTileWindow(void) override;
 
   /**
    * @brief
    *
    * @return TileCodingParams*
    */
-  TileCodingParams* getTCP(void);
+  TileCodingParams* getTCP(void) override;
 
   /**
    * @brief Get the Max Num Decompress Resolutions object
    *
    * @return uint8_t
    */
-  uint8_t getMaxNumDecompressResolutions(void);
+  uint8_t getMaxNumDecompressResolutions(void) override;
 
   /**
    * @brief Get the Stream object
    *
    * @return IStream*
    */
-  IStream* getStream(void);
+  IStream* getStream(void) override;
 
   /**
    * @brief Get the Index object
    *
    * @return uint16_t
    */
-  uint16_t getIndex(void) const;
+  uint16_t getIndex(void) const override;
 
   /**
    * @brief
    *
    */
-  void incrementIndex(void);
+  void incrementIndex(void) override;
 
   /**
    * @brief Get the Tile object
@@ -189,14 +189,14 @@ struct TileProcessor : virtual public ITileProcessor
    */
   Tile* getTile(void);
 
-  grk_progression_state getProgressionState();
+  grk_progression_state getProgressionState() override;
 
   /**
    * @brief Get the Scheduler object
    *
    * @return CodecScheduler*
    */
-  CodecScheduler* getScheduler(void);
+  CodecScheduler* getScheduler(void) override;
 
   /**
    * @brief
@@ -204,75 +204,75 @@ struct TileProcessor : virtual public ITileProcessor
    * @return true
    * @return false
    */
-  bool isCompressor(void);
+  bool isCompressor(void) override;
 
   /**
    * @brief Get the Num Processed Packets object
    *
    * @return uint64_t
    */
-  uint64_t getNumProcessedPackets(void);
+  uint64_t getNumProcessedPackets(void) override;
 
   /**
    * @brief
    *
    */
-  void incNumProcessedPackets(void);
+  void incNumProcessedPackets(void) override;
 
   /**
    * @brief
    *
    * @param numPackets
    */
-  void incNumProcessedPackets(uint64_t numPackets);
+  void incNumProcessedPackets(uint64_t numPackets) override;
 
   /**
    * @brief
    *
    */
-  void incNumReadDataPackets(void);
+  void incNumReadDataPackets(void) override;
 
   /**
    * @brief Gets the Tile Cache Strategy object
    *
    * @return uint32_t
    */
-  uint32_t getTileCacheStrategy(void);
+  uint32_t getTileCacheStrategy(void) override;
 
   /**
    * @brief Gets the Current Plugin Tile object
    *
    * @return grk_plugin_tile*
    */
-  grk_plugin_tile* getCurrentPluginTile(void) const;
+  grk_plugin_tile* getCurrentPluginTile(void) const override;
 
   /**
    * @brief Set the Current Plugin Tile object
    *
    * @param tile
    */
-  void setCurrentPluginTile(grk_plugin_tile* tile);
+  void setCurrentPluginTile(grk_plugin_tile* tile) override;
 
   /**
    * @brief Get the Coding Params object
    *
    * @return CodingParams*
    */
-  CodingParams* getCodingParams(void);
+  CodingParams* getCodingParams(void) override;
 
   /**
    * @brief Get the Header Image object
    *
    * @return GrkImage*
    */
-  GrkImage* getHeaderImage(void);
+  GrkImage* getHeaderImage(void) override;
 
   /**
    * @brief Get the Packet Length Cache object
    *
    * @return std::shared_ptr<PacketLengthCache<uint32_t>>
    */
-  std::shared_ptr<PacketLengthCache<uint32_t>> getPacketLengthCache(void);
+  std::shared_ptr<PacketLengthCache<uint32_t>> getPacketLengthCache(void) override;
 
   /**
    * @brief
@@ -281,7 +281,7 @@ struct TileProcessor : virtual public ITileProcessor
    * @return true
    * @return false
    */
-  bool needsMctDecompress(uint16_t compno);
+  bool needsMctDecompress(uint16_t compno) override;
 
   /**
    * @brief
@@ -289,27 +289,27 @@ struct TileProcessor : virtual public ITileProcessor
    * @return true
    * @return false
    */
-  bool needsMctDecompress(void);
+  bool needsMctDecompress(void) override;
 
   /**
    * @brief gets @ref Mct
    *
    * @return Mct*
    */
-  Mct* getMCT(void);
+  Mct* getMCT(void) override;
 
   /**
    * @brief Releases resources - image and tile
    *
    */
-  void release(void);
+  void release(void) override;
 
   /**
    * @brief release select resources
    *
    * @param strategy tile cache strategy
    */
-  void release(uint32_t strategy);
+  void release(uint32_t strategy) override;
 
   /**
    * @brief Reads a PLT marker (Packet length, tile-part header)
@@ -317,7 +317,7 @@ struct TileProcessor : virtual public ITileProcessor
    * @param headerSize size of header data
    * @return true if successful
    */
-  bool readPLT(uint8_t* headerData, uint16_t headerSize);
+  bool readPLT(uint8_t* headerData, uint16_t headerSize) override;
 
   /**
    * @brief Checks if tile is completely parsed.
@@ -326,18 +326,18 @@ struct TileProcessor : virtual public ITileProcessor
    *
    * @return true if completely parsed, otherwise false
    */
-  bool allSOTMarkersParsed();
+  bool allSOTMarkersParsed() override;
 
   /**
    * @brief Sets processor to truncated if not all tile parts have
    * been parsed
    *
    */
-  void setTruncated(void);
+  void setTruncated(void) override;
 
-  bool hasError(void);
+  bool hasError(void) override;
 
-  bool isInitialized(void);
+  bool isInitialized(void) override;
 
 protected:
   /**

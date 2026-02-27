@@ -44,23 +44,23 @@ struct TileProcessorCompress : public ITileProcessorCompress, public TileProcess
   /**
    * @brief Destroys a TileProcessorCompress
    */
-  ~TileProcessorCompress();
+  ~TileProcessorCompress() override;
 
   bool init(void) override;
 
-  PacketTracker* getPacketTracker(void);
-  bool preCompressTile(size_t thread_id);
-  bool canWritePocMarker(void);
-  bool writeTilePartT2(uint32_t* tileBytesWritten);
-  bool doCompress(void);
-  bool ingestUncompressedData(uint8_t* p_src, uint64_t src_length);
-  bool needsRateControl(void);
-  uint32_t getPreCalculatedTileLen(void);
-  bool canPreCalculateTileLen(void);
-  void setFirstPocTilePart(bool res);
-  void setProgIterNum(uint32_t num);
-  uint8_t getTilePartCounter(void) const;
-  void incTilePartCounter(void);
+  PacketTracker* getPacketTracker(void) override;
+  bool preCompressTile(size_t thread_id) override;
+  bool canWritePocMarker(void) override;
+  bool writeTilePartT2(uint32_t* tileBytesWritten) override;
+  bool doCompress(void) override;
+  bool ingestUncompressedData(uint8_t* p_src, uint64_t src_length) override;
+  bool needsRateControl(void) override;
+  uint32_t getPreCalculatedTileLen(void) override;
+  bool canPreCalculateTileLen(void) override;
+  void setFirstPocTilePart(bool res) override;
+  void setProgIterNum(uint32_t num) override;
+  uint8_t getTilePartCounter(void) const override;
+  void incTilePartCounter(void) override;
 
 private:
   void transferTileDataFromImage(void);
