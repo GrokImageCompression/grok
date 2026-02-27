@@ -42,7 +42,7 @@ struct ITileProcessor;
 #include "PacketLengthCache.h"
 #include "CoderPool.h"
 #include "ICoder.h"
-#include "WindowScheduler.h"
+#include "CodecScheduler.h"
 #include "ITileProcessor.h"
 #include "TileCache.h"
 #include "TileCompletion.h"

@@ -20,7 +20,7 @@
 #include "Quantizer.h"
 #include "Logger.h"
 #include "buffer.h"
-#include "GrkObjectWrapper.h">
+#include "GrkObjectWrapper.h"
 #include "SparseCanvas.h"
 #include "ImageComponentFlow.h"
 #include "IStream.h"

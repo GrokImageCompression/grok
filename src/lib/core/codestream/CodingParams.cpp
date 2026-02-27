@@ -32,7 +32,7 @@
 #define GRK_RESTRICT /* GRK_RESTRICT */
 #endif
 
-#include <Logger.h>
+#include "Logger.h"
 
 #include "CodeStreamLimits.h"
 #include "geometry.h"

@@ -326,16 +326,15 @@
             "request": "launch",
             "program": "${workspaceFolder}/build/bin/grk_decompress",
             "args": [
-                  "-i",
-                  "$HOME/src/grok-test-data/input/nonregression/CT_Phillips_JPEG2K_Decompr_Problem.j2k",
-                  "-H 1",
-                  "-r 4",
-                  "-o",
-                  "$HOME/temp/test_failed.tif"
+                "-i",
+                "/home/aaron/src/grok-test-data/input/nonregression/issue391.jp2",
+                "-o",
+                "/home/aaron/temp/issue391.jp2.tif"
             ],
             "cwd": "${workspaceFolder}",
             "environment": [
-                { "name": "GRK_DEBUG", "value": "4" }
+                { "name": "GRK_DEBUG", "value": "4"} ,
+                { "name": "GRK_TEST_SINGLE", "value": "1"}
             ],
             "MIMode": "gdb",
             "miDebuggerPath": "/usr/bin/gdb"
@@ -786,10 +785,12 @@
             "program": "${workspaceFolder}/build/bin/grk_decompress",
             "args": [
                 "-i",
-                "$HOME/Downloads/clusterfuzz-testcase-minimized-grk_decompress_fuzzer-6033353920020480",
-                "-d 0,0,1024,1024",
-                "-o",
-                "$HOME/temp/fuzz.tif"
+                "$HOME/temp/clusterfuzz-testcase-minimized-grk_decompress_fuzzer-5280426615963648",
+                // "-d 0,0,1024,1024",
+                "-t",
+                 "20",
+                 "-o",
+                "$HOME/temp/fuzz.pgx"
 
             ],
             "environment": [

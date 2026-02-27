@@ -16,7 +16,7 @@
  */
 
 #include "grk_exceptions.h"
-#include <Logger.h>
+#include "Logger.h"
 #include "CodeStreamLimits.h"
 #include "geometry.h"
 #include "buffer.h"
@@ -992,45 +992,7 @@ bool TileProcessor::scheduleT2T1(CoderPool* coderPool, Rect32 unreducedImageBoun
     scheduler_->release();
   }
 
-  bool doT2 = !current_plugin_tile_ || (current_plugin_tile_->decompress_flags & GRK_DECODE_T2);
-
-  auto allocAndSchedule = [this]() {
-    if(!Scheduling::isWindowedScheduling())
-    {
-      for(uint16_t compno = 0; compno < tile_->numcomps_; ++compno)
-      {
-        auto tilec = tile_->comps_ + compno;
-        if(!tcp_->wholeTileDecompress_)
-        {
-          try
-          {
-            tilec->allocRegionWindow(tilec->nextPacketProgressionState_.numResolutionsRead(),
-                                     truncated_);
-          }
-          catch([[maybe_unused]] const std::runtime_error& ex)
-          {
-            continue;
-          }
-          catch([[maybe_unused]] const std::bad_alloc& baex)
-          {
-            success_ = false;
-            return;
-          }
-        }
-        if(!tilec->getWindow()->alloc())
-        {
-          grklog.error("Not enough memory for tile data");
-          success_ = false;
-          return;
-        }
-      }
-    }
-    if(!scheduler_->schedule(this))
-    {
-      success_ = false;
-      return;
-    }
-  };
+  // bool doT2 = !current_plugin_tile_ || (current_plugin_tile_->decompress_flags & GRK_DECODE_T2);
 
   auto t2Parse = [this]() {
     // synch plugin with T2 data
@@ -1107,40 +1069,68 @@ bool TileProcessor::scheduleT2T1(CoderPool* coderPool, Rect32 unreducedImageBoun
     }
   };
 
-  if(doT2)
-  {
-    if(ExecSingleton::num_threads() > 1)
+  auto allocAndSchedule = [this]() {
+    if(!Scheduling::isWindowedScheduling())
     {
-      if(!t2ParseFlow_)
-        t2ParseFlow_ = std::make_unique<FlowComponent>();
-      else
-        t2ParseFlow_->clear();
-      t2ParseFlow_->nextTask().work(t2Parse);
-
-      if(!allocAndScheduleFlow_)
-        allocAndScheduleFlow_ = std::make_unique<FlowComponent>();
-      else
-        allocAndScheduleFlow_->clear();
-      allocAndScheduleFlow_->nextTask().work(allocAndSchedule);
+      for(uint16_t compno = 0; compno < tile_->numcomps_; ++compno)
+      {
+        auto tilec = tile_->comps_ + compno;
+        if(!tcp_->wholeTileDecompress_)
+        {
+          try
+          {
+            tilec->allocRegionWindow(tilec->nextPacketProgressionState_.numResolutionsRead(),
+                                     truncated_);
+          }
+          catch([[maybe_unused]] const std::runtime_error& ex)
+          {
+            continue;
+          }
+          catch([[maybe_unused]] const std::bad_alloc& baex)
+          {
+            success_ = false;
+            return;
+          }
+        }
+        if(!tilec->getWindow()->alloc())
+        {
+          grklog.error("Not enough memory for tile data");
+          success_ = false;
+          return;
+        }
+      }
     }
-    else
+    if(!scheduler_->schedule(this))
     {
-      t2Parse();
-      allocAndSchedule();
+      success_ = false;
+      return;
     }
-  }
+  };
 
   if(ExecSingleton::num_threads() > 1)
   {
+    if(!t2ParseFlow_)
+      t2ParseFlow_ = std::make_unique<FlowComponent>();
+    else
+      t2ParseFlow_->clear();
+    t2ParseFlow_->nextTask().work(t2Parse);
+
+    if(!allocAndScheduleFlow_)
+      allocAndScheduleFlow_ = std::make_unique<FlowComponent>();
+    else
+      allocAndScheduleFlow_->clear();
+    allocAndScheduleFlow_->nextTask().work(allocAndSchedule);
+
+    // 1. create root flow
     if(!rootFlow_)
       rootFlow_ = new FlowComponent();
     else
       rootFlow_->clear();
-
-    std::function<int()> condition_lambda = [this]() -> int { return hasError() ? 1 : 0; };
-
     scheduler_->addTo(*rootFlow_);
 
+    // 2. schedule T2
+
+    std::function<int()> condition_lambda = [this]() -> int { return hasError() ? 1 : 0; };
     allocAndScheduleFlow_->addTo(*rootFlow_);
     allocAndScheduleFlow_->conditional_precede(rootFlow_, scheduler_, condition_lambda);
 
@@ -1156,18 +1146,21 @@ bool TileProcessor::scheduleT2T1(CoderPool* coderPool, Rect32 unreducedImageBoun
       tileHeaderParseFlow_->conditional_precede(rootFlow_, prepareFlow_.get(), condition_lambda);
     }
 
+    // 3. schedule post decompression
     if(!postDecompressFlow_)
       postDecompressFlow_ = new FlowComponent();
     else
       postDecompressFlow_->clear();
     postDecompressFlow_->nextTask().work(post);
     postDecompressFlow_->addTo(*rootFlow_);
-
     scheduler_->precede(*postDecompressFlow_);
+
     futures.add(tileIndex_, ExecSingleton::get().run(*rootFlow_));
   }
   else
   {
+    t2Parse();
+    allocAndSchedule();
     post();
   }
   return true;
