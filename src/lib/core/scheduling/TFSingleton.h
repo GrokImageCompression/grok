@@ -27,7 +27,7 @@
 
 /**
  * @class TFSingleton
- * @brief Manages Taskflow Executor singleton instance
+ * @brief Manages TFSingleton instance
  */
 class TFSingleton
 {
@@ -35,21 +35,16 @@ public:
   /**
    * @brief Creates singleton instance.
    * @param numThreads total number of threads including main thread
-   * i.e. number of taskflow worker threads + 1
+   * i.e. number of taskflow worker threads
    */
-  static void create(uint32_t numThreads)
+  static void create(size_t numThreads)
   {
     std::lock_guard<std::mutex> lock(mutex_);
-    numThreads = numThreads ? numThreads : std::thread::hardware_concurrency() + 1;
+    numThreads = numThreads ? numThreads : std::thread::hardware_concurrency();
     if(numThreads_ == numThreads)
       return;
     numThreads_ = numThreads;
-    if(numThreads_ == 1)
-    {
-      instance_.reset();
-      return;
-    }
-    instance_ = std::make_unique<tf::Executor>(numThreads_ - 1);
+    instance_ = std::make_unique<tf::Executor>(numThreads_);
   }
 
   /**
@@ -62,22 +57,16 @@ public:
     if(!instance_)
     {
       // Initialize with default thread count if instance is null
-      uint32_t numThreads = std::thread::hardware_concurrency() + 1;
-      numThreads_ = numThreads;
-      if(numThreads > 1)
-      {
-        instance_ = std::make_unique<tf::Executor>(numThreads - 1);
-      }
+      numThreads_ = std::thread::hardware_concurrency();
+      ;
+      instance_ = std::make_unique<tf::Executor>(numThreads_);
     }
-    if(!instance_)
-    {
-      throw std::runtime_error("Executor not initialized (single-threaded mode)");
-    }
+    assert(instance_); // Should always be valid now
     return *instance_;
   }
 
   /**
-   * @brief Gets total number of threads
+   * @brief Gets total number of threads (including driver thread)
    *
    * @return size_t number of threads
    */
@@ -100,14 +89,12 @@ public:
    * @brief Gets worker id for current worker
    *
    * @return TaskFlow thread id if more than one thread is configured AND
-   * the method is called from inside a TaskFlow task. Otherwise returns zero
+   * the method is called from inside a TaskFlow task. Otherwise returns zero.
    */
   static uint32_t workerId(void)
   {
-    if(numThreads_ == 1)
-      return 0;
     auto id = get().this_worker_id();
-    return (id >= 0) ? (uint32_t)id : 0;
+    return (id >= 0) ? (uint32_t)id : 0u;
   }
 
 private:
@@ -131,7 +118,6 @@ private:
 
   /**
    * @brief total number of threads
-   *
    */
   static size_t numThreads_;
 };

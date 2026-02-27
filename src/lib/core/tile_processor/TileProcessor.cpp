@@ -1109,66 +1109,53 @@ void TileProcessor::scheduleT2T1(CoderPool* coderPool, Rect32 unreducedImageBoun
     }
   };
 
-  if(TFSingleton::num_threads() > 1)
-  {
-    if(!t2ParseFlow_)
-      t2ParseFlow_ = std::make_unique<FlowComponent>();
-    else
-      t2ParseFlow_->clear();
-    t2ParseFlow_->nextTask().work(t2Parse);
-
-    if(!allocAndScheduleFlow_)
-      allocAndScheduleFlow_ = std::make_unique<FlowComponent>();
-    else
-      allocAndScheduleFlow_->clear();
-    allocAndScheduleFlow_->nextTask().work(allocAndSchedule);
-
-    // 1. create root flow
-    if(!rootFlow_)
-      rootFlow_ = new FlowComponent();
-    else
-      rootFlow_->clear();
-    scheduler_->addTo(*rootFlow_);
-
-    // 2. schedule T2
-
-    std::function<int()> condition_lambda = [this]() -> int { return hasError() ? 1 : 0; };
-    allocAndScheduleFlow_->addTo(*rootFlow_);
-    allocAndScheduleFlow_->conditional_precede(rootFlow_, scheduler_, condition_lambda);
-
-    t2ParseFlow_->addTo(*rootFlow_);
-    t2ParseFlow_->conditional_precede(rootFlow_, allocAndScheduleFlow_.get(), condition_lambda);
-
-    if(tileHeaderParseFlow_ && prepareFlow_)
-    {
-      prepareFlow_->addTo(*rootFlow_);
-      prepareFlow_->conditional_precede(rootFlow_, t2ParseFlow_.get(), condition_lambda);
-
-      tileHeaderParseFlow_->addTo(*rootFlow_);
-      tileHeaderParseFlow_->conditional_precede(rootFlow_, prepareFlow_.get(), condition_lambda);
-    }
-
-    // 3. schedule post decompression
-    if(!postDecompressFlow_)
-      postDecompressFlow_ = new FlowComponent();
-    else
-      postDecompressFlow_->clear();
-    postDecompressFlow_->nextTask().work(post);
-    postDecompressFlow_->addTo(*rootFlow_);
-    scheduler_->precede(*postDecompressFlow_);
-
-    futures.add(tileIndex_, TFSingleton::get().run(*rootFlow_));
-  }
+  if(!t2ParseFlow_)
+    t2ParseFlow_ = std::make_unique<FlowComponent>();
   else
+    t2ParseFlow_->clear();
+  t2ParseFlow_->nextTask().work(t2Parse);
+
+  if(!allocAndScheduleFlow_)
+    allocAndScheduleFlow_ = std::make_unique<FlowComponent>();
+  else
+    allocAndScheduleFlow_->clear();
+  allocAndScheduleFlow_->nextTask().work(allocAndSchedule);
+
+  // 1. create root flow
+  if(!rootFlow_)
+    rootFlow_ = new FlowComponent();
+  else
+    rootFlow_->clear();
+  scheduler_->addTo(*rootFlow_);
+
+  // 2. schedule T2
+
+  std::function<int()> condition_lambda = [this]() -> int { return hasError() ? 1 : 0; };
+  allocAndScheduleFlow_->addTo(*rootFlow_);
+  allocAndScheduleFlow_->conditional_precede(rootFlow_, scheduler_, condition_lambda);
+
+  t2ParseFlow_->addTo(*rootFlow_);
+  t2ParseFlow_->conditional_precede(rootFlow_, allocAndScheduleFlow_.get(), condition_lambda);
+
+  if(tileHeaderParseFlow_ && prepareFlow_)
   {
-    t2Parse();
-    if(success_)
-    {
-      allocAndSchedule();
-      if(success_)
-        post();
-    }
+    prepareFlow_->addTo(*rootFlow_);
+    prepareFlow_->conditional_precede(rootFlow_, t2ParseFlow_.get(), condition_lambda);
+
+    tileHeaderParseFlow_->addTo(*rootFlow_);
+    tileHeaderParseFlow_->conditional_precede(rootFlow_, prepareFlow_.get(), condition_lambda);
   }
+
+  // 3. schedule post decompression
+  if(!postDecompressFlow_)
+    postDecompressFlow_ = new FlowComponent();
+  else
+    postDecompressFlow_->clear();
+  postDecompressFlow_->nextTask().work(post);
+  postDecompressFlow_->addTo(*rootFlow_);
+  scheduler_->precede(*postDecompressFlow_);
+
+  futures.add(tileIndex_, TFSingleton::get().run(*rootFlow_));
 }
 
 uint8_t TileProcessor::getMaxNumDecompressResolutions(void)

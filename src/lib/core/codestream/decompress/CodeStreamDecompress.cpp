@@ -585,11 +585,7 @@ bool CodeStreamDecompress::decompressImpl(std::set<uint16_t> slated)
   else
     task = [this]() { decompressSequential(); };
 
-  if(cp_.asynchronous_ && TFSingleton::num_threads() > 1)
-    decompressWorker_ = std::thread(task);
-  else
-    task();
-
+  decompressWorker_ = std::thread(task);
   return true;
 }
 

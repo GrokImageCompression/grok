@@ -494,15 +494,8 @@ bool grk_decompress_tile(grk_object* codecWrapper, uint16_t tile_index)
     return false;
 
   auto codec = Codec::getImpl(codecWrapper);
-  if(TFSingleton::num_threads() == 1)
-  {
-    return codec->decompressor_ ? codec->decompressor_->decompressTile(tile_index) : false;
-  }
-  else
-  {
-    auto f = codec->queueDecompressTile(tile_index);
-    return f.get();
-  }
+  auto f = codec->queueDecompressTile(tile_index);
+  return f.get();
 }
 void grk_dump_codec(grk_object* codecWrapper, uint32_t info_flag, FILE* output_stream)
 {

@@ -128,17 +128,6 @@ bool CompressScheduler::schedule(ITileProcessor* proc)
     coders_.push_back(t1::CoderFactory::makeCoder(tcp_->isHT(), true, maxCblkW, maxCblkH, 0));
 
   size_t num_threads = TFSingleton::num_threads();
-  if(num_threads == 1)
-  {
-    auto impl = coders_[0];
-    for(auto iter = blocks.begin(); iter != blocks.end(); ++iter)
-    {
-      auto b = *iter;
-      compress(impl, b);
-      delete b;
-    }
-    return true;
-  }
   encodeBlocks_ = blocks;
   const size_t maxBlocks = blocks.size();
 

@@ -350,49 +350,33 @@ namespace HWY_NAMESPACE
   {
     auto highestResBuffer =
         info.tile->comps_[info.compno].getWindow()->getResWindowBufferHighestSimple();
-    if(TFSingleton::num_threads() > 1)
+
+    tf::Task* tasks = nullptr;
+    tf::Taskflow taskflow;
+    uint32_t numTasks = (highestResBuffer.height_ + info.linesPerTask_ - 1) / info.linesPerTask_;
+    if(!info.flow_)
     {
-      tf::Task* tasks = nullptr;
-      tf::Taskflow taskflow;
-      uint32_t numTasks = (highestResBuffer.height_ + info.linesPerTask_ - 1) / info.linesPerTask_;
-      if(!info.flow_)
-      {
-        tasks = new tf::Task[numTasks];
-        for(uint64_t i = 0; i < numTasks; i++)
-          tasks[i] = taskflow.placeholder();
-      }
-      for(uint32_t t = 0; t < numTasks; ++t)
-      {
-        info.yBegin = t * info.linesPerTask_;
-        info.yEnd = (t != numTasks - 1) ? (t + 1) * info.linesPerTask_ : highestResBuffer.height_;
-        auto compressor = [info]() {
-          T transform;
-          transform.transform(info);
-        };
-        if(info.flow_)
-          info.flow_->nextTask().work([compressor] { compressor(); });
-        else
-          tasks[t].work(compressor);
-      }
-      if(tasks)
-      {
-        TFSingleton::get().run(taskflow).wait();
-        delete[] tasks;
-      }
+      tasks = new tf::Task[numTasks];
+      for(uint64_t i = 0; i < numTasks; i++)
+        tasks[i] = taskflow.placeholder();
     }
-    else
+    for(uint32_t t = 0; t < numTasks; ++t)
     {
-      uint32_t numTasks = (highestResBuffer.height_ + info.linesPerTask_ - 1) / info.linesPerTask_;
-      for(uint32_t t = 0; t < numTasks; ++t)
-      {
-        info.yBegin = t * info.linesPerTask_;
-        info.yEnd = (t != numTasks - 1) ? (t + 1) * info.linesPerTask_ : highestResBuffer.height_;
-        auto compressor = [info]() {
-          T transform;
-          transform.transform(info);
-        };
-        compressor();
-      }
+      info.yBegin = t * info.linesPerTask_;
+      info.yEnd = (t != numTasks - 1) ? (t + 1) * info.linesPerTask_ : highestResBuffer.height_;
+      auto compressor = [info]() {
+        T transform;
+        transform.transform(info);
+      };
+      if(info.flow_)
+        info.flow_->nextTask().work([compressor] { compressor(); });
+      else
+        tasks[t].work(compressor);
+    }
+    if(tasks)
+    {
+      TFSingleton::get().run(taskflow).wait();
+      delete[] tasks;
     }
   }
   void hwy_compress_rev(ScheduleInfo info)
