@@ -107,9 +107,8 @@ struct TileProcessor : virtual public ITileProcessor
    * @param unreducedImageBounds
    * @param post
    * @param futures
-   * @return true if successful
    */
-  bool scheduleT2T1(CoderPool* coderPool, Rect32 unreducedImageBounds, std::function<void()> post,
+  void scheduleT2T1(CoderPool* coderPool, Rect32 unreducedImageBounds, std::function<void()> post,
                     TileFutureManager& futures) override;
   /**
    * @brief Performs post T2+T1 processing

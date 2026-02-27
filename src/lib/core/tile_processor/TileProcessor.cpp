@@ -452,7 +452,9 @@ bool TileProcessor::decompressWithTLM(const std::shared_ptr<TPFetchSeq>& tilePar
   if(!decompressPrepareWithTLM(tilePartFetchSeq))
     return false;
 
-  return scheduleT2T1(coderPool, unreducedImageBounds, post, futures);
+  scheduleT2T1(coderPool, unreducedImageBounds, post, futures);
+
+  return true;
 }
 
 bool TileProcessor::readSOT(IStream* stream, uint8_t* headerData, uint16_t headerSize,
@@ -973,7 +975,7 @@ void TileProcessor::post_decompressT2T1(GrkImage* scratch)
   }
 }
 
-bool TileProcessor::scheduleT2T1(CoderPool* coderPool, Rect32 unreducedImageBounds,
+void TileProcessor::scheduleT2T1(CoderPool* coderPool, Rect32 unreducedImageBounds,
                                  std::function<void()> post, TileFutureManager& futures)
 {
   unreducedImageWindow_ = unreducedImageBounds;
@@ -1160,10 +1162,13 @@ bool TileProcessor::scheduleT2T1(CoderPool* coderPool, Rect32 unreducedImageBoun
   else
   {
     t2Parse();
-    allocAndSchedule();
-    post();
+    if(success_)
+    {
+      allocAndSchedule();
+      if(success_)
+        post();
+    }
   }
-  return true;
 }
 
 uint8_t TileProcessor::getMaxNumDecompressResolutions(void)

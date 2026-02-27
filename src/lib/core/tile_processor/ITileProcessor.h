@@ -126,9 +126,8 @@ struct ITileProcessor
    * @param unreducedImageBounds Bounds of the unreduced image
    * @param post Post-scheduling callback function
    * @param futures Manager for tile futures
-   * @return true if scheduling succeeds, false otherwise
    */
-  virtual bool scheduleT2T1(CoderPool* coderPool, Rect32 unreducedImageBounds,
+  virtual void scheduleT2T1(CoderPool* coderPool, Rect32 unreducedImageBounds,
                             std::function<void()> post, TileFutureManager& futures) = 0;
 
   /**
