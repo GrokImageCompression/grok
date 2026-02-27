@@ -24,7 +24,6 @@
 #include "MarkerCache.h"
 #include "IStream.h"
 
-#include "GrkImageMeta.h"
 #include "GrkImage.h"
 #include "ICompressor.h"
 #include "IDecompressor.h"

@@ -43,19 +43,14 @@ struct ITileProcessorCompress;
 #include "ICoder.h"
 #include "CoderPool.h"
 #include "BitIO.h"
-
 #include "TagTree.h"
-
 #include "CodeblockCompress.h"
-
 #include "CodeblockDecompress.h"
 #include "Precinct.h"
 #include "Subband.h"
 #include "Resolution.h"
-
 #include "CodecScheduler.h"
-#include "TileComponentWindow.h"
-#include "canvas/tile/Tile.h"
+#include "Tile.h"
 #include "T2Compress.h"
 #include "plugin_bridge.h"
 #include "RateControl.h"

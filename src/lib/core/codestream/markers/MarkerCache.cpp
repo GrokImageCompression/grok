@@ -21,7 +21,6 @@
 #include "grk_includes.h"
 #include "IStream.h"
 #include "MarkerCache.h"
-#include "GrkImageMeta.h"
 #include "GrkImage.h"
 #include "PLMarker.h"
 #include "SIZMarker.h"

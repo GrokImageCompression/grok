@@ -24,7 +24,6 @@
 #endif
 
 #include "Logger.h"
-#include "geometry.h"
 #include "buffer.h"
 #include "GrkObjectWrapper.h"
 

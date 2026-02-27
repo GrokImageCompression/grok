@@ -62,7 +62,6 @@
 #include "FetchCommon.h"
 #include "TPFetchSeq.h"
 
-#include "GrkImageMeta.h"
 #include "GrkImage.h"
 #include "ICompressor.h"
 #include "IDecompressor.h"

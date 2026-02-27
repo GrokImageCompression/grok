@@ -53,20 +53,15 @@ struct ITileProcessor;
 #include "ICoder.h"
 #include "CoderPool.h"
 #include "BitIO.h"
-
 #include "ImageComponentFlow.h"
-
 #include "TagTree.h"
 #include "CodeblockCompress.h"
-
 #include "CodeblockDecompress.h"
 #include "Precinct.h"
 #include "Subband.h"
 #include "Resolution.h"
-
 #include "TileFutureManager.h"
 #include "FlowComponent.h"
-
 #include "CodecScheduler.h"
 #include "TileComponentWindow.h"
 #include "WaveletReverse.h"

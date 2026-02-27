@@ -32,7 +32,6 @@
 #include "FetchCommon.h"
 #include "TPFetchSeq.h"
 
-#include "GrkImageMeta.h"
 #include "GrkImage.h"
 
 #include "MarkerParser.h"
@@ -62,8 +61,7 @@ struct ITileProcessorCompress;
 #include "Resolution.h"
 #include "CodecScheduler.h"
 
-#include "canvas/tile/TileComponent.h"
-#include "canvas/tile/Tile.h"
+#include "Tile.h"
 #include "mct.h"
 
 #include "TileProcessor.h"

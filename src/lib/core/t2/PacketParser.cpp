@@ -24,7 +24,6 @@
 #include "IStream.h"
 #include "FetchCommon.h"
 #include "TPFetchSeq.h"
-#include "GrkImageMeta.h"
 #include "GrkImage.h"
 #include "MarkerParser.h"
 #include "PLMarker.h"
@@ -39,19 +38,15 @@ struct ITileProcessor;
 #include "ICoder.h"
 #include "CoderPool.h"
 #include "BitIO.h"
-
 #include "TagTree.h"
-
 #include "CodeblockCompress.h"
-
 #include "CodeblockDecompress.h"
 #include "Precinct.h"
 #include "Subband.h"
 #include "Resolution.h"
 
 #include "CodecScheduler.h"
-#include "TileComponentWindow.h"
-#include "canvas/tile/Tile.h"
+#include "Tile.h"
 #include "ITileProcessor.h"
 
 namespace grk

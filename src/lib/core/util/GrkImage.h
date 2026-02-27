@@ -24,6 +24,7 @@
 #include "lcms2.h"
 
 #include "packer.h"
+#include "GrkImageMeta.h"
 
 namespace grk
 {
