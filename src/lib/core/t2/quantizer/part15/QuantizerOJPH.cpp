@@ -51,7 +51,11 @@
 // Date: 28 August 2019
 //***************************************************************************/
 
-#define _USE_MATH_DEFINE
+#ifdef _MSC_VER
+#define _USE_MATH_DEFINES // for C++
+#endif
+#include <cmath>
+
 #include "CodeStreamLimits.h"
 #include "TileWindow.h"
 #include "Quantizer.h"

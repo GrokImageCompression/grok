@@ -19,10 +19,6 @@
 
 // #define GRK_FORCE_SIGNED_COMPRESS
 
-#ifdef _MSC_VER
-#define _USE_MATH_DEFINES // for C++
-#endif
-
 #include "Logger.h"
 #include "buffer.h"
 #include "GrkObjectWrapper.h"

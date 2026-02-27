@@ -18,7 +18,7 @@
 #pragma once
 
 #include <cstdint>
-#include <math.h>
+#include <cmath>
 #include <cassert>
 
 namespace grk::t1
