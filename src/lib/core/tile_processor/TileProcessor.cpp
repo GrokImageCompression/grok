@@ -15,52 +15,29 @@
  *
  */
 
-#include <memory>
-
-#include "grk_fseek.h"
-#include "grk_restrict.h"
 #include "grk_exceptions.h"
 #include <Logger.h>
-#include "MinHeap.h"
-#include "SequentialCache.h"
-#include "SparseCache.h"
 #include "CodeStreamLimits.h"
 #include "geometry.h"
-#include "MemManager.h"
 #include "buffer.h"
-#include "ChunkBuffer.h"
-#include "TileWindow.h"
 #include "GrkObjectWrapper.h"
-#include "ChronoTimer.h"
-#include "testing.h"
-#include "MappedFile.h"
-#include "GrkMatrix.h"
 #include "Quantizer.h"
-#include "ISparseCanvas.h"
-#include "intmath.h"
+
 #include "ImageComponentFlow.h"
 #include "TileFutureManager.h"
-#include "MarkerCache.h"
+
 #include "StreamIO.h"
 #include "IStream.h"
-#include "MemAdvisor.h"
 
 #include "FetchCommon.h"
 #include "TPFetchSeq.h"
 
 #include "GrkImageMeta.h"
 #include "GrkImage.h"
-#include "ICompressor.h"
-#include "IDecompressor.h"
 
-#include "MemStream.h"
-#include "StreamGenerator.h"
-#include "Profile.h"
 #include "MarkerParser.h"
-#include "Codec.h"
 
 #include "PLMarker.h"
-#include "SIZMarker.h"
 #include "PPMMarker.h"
 namespace grk
 {
@@ -70,43 +47,27 @@ struct ITileProcessorCompress;
 #include "PacketParser.h"
 #include "PacketCache.h"
 #include "CodeStream.h"
-#include "PacketIter.h"
 
 #include "PacketLengthCache.h"
-#include "TLMMarker.h"
-#include "ICoder.h"
 #include "CoderPool.h"
-#include "FileFormatJP2Family.h"
-#include "FileFormatJP2Compress.h"
-#include "FileFormatJP2Decompress.h"
-#include "FileFormatMJ2.h"
-#include "FileFormatMJ2Compress.h"
-#include "FileFormatMJ2Decompress.h"
 
 #include "BitIO.h"
 #include "TagTree.h"
 
-#include "Codeblock.h"
 #include "CodeblockCompress.h"
 #include "CodeblockDecompress.h"
 
 #include "Precinct.h"
 #include "Subband.h"
 #include "Resolution.h"
-#include "BlockExec.h"
-#include "WindowScheduler.h"
-#include "WholeTileScheduler.h"
+#include "CodecScheduler.h"
 
-#include "canvas/tile/TileComponentWindow.h"
-#include "PacketManager.h"
 #include "canvas/tile/TileComponent.h"
 #include "canvas/tile/Tile.h"
 #include "mct.h"
 
 #include "TileProcessor.h"
 #include "SchedulerFactory.h"
-#include "TileCache.h"
-#include "T2Compress.h"
 #include "T2Decompress.h"
 #include "plugin_bridge.h"
 #include "DecompressScheduler.h"
