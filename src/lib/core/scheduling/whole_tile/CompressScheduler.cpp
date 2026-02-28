@@ -62,7 +62,7 @@ CompressScheduler::CompressScheduler(Tile* tile, bool needsRateControl, TileCodi
       blockCount_(-1), tcp_(tcp), mct_norms_(mct_norms), mct_numcomps_(mct_numcomps)
 {}
 
-bool CompressScheduler::schedule(ITileProcessor* proc)
+bool CompressScheduler::scheduleT1(ITileProcessor* proc)
 {
   (void)proc;
   tile_->distortion_ = 0;

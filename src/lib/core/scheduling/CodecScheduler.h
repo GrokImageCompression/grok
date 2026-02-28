@@ -88,7 +88,7 @@ public:
    * @param proc @ref ITileProcessor
    * @return true if successful
    */
-  virtual bool schedule(ITileProcessor* proc) = 0;
+  virtual bool scheduleT1(ITileProcessor* proc) = 0;
 
   /**
    * @brief Runs tf::Executor

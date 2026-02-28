@@ -1102,7 +1102,7 @@ void TileProcessor::scheduleT2T1(CoderPool* coderPool, Rect32 unreducedImageBoun
         }
       }
     }
-    if(!scheduler_->schedule(this))
+    if(!scheduler_->scheduleT1(this))
     {
       success_ = false;
       return;

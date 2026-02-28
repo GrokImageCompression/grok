@@ -97,7 +97,7 @@ void DecompressScheduler::release(void)
   prePostProc_ = nullptr;
 }
 
-bool DecompressScheduler::schedule(ITileProcessor* tileProcessor)
+bool DecompressScheduler::scheduleT1(ITileProcessor* tileProcessor)
 {
   auto tcp = tileProcessor->getTCP();
   auto mct = tileProcessor->getMCT();

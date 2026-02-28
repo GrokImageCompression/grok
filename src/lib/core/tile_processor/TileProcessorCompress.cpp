@@ -268,7 +268,7 @@ void TileProcessorCompress::scheduleCompressT1()
   }
 
   scheduler_ = new CompressScheduler(tile_, needsRateControl(), tcp, mct_norms, mct_numcomps);
-  scheduler_->schedule(nullptr);
+  scheduler_->scheduleT1(nullptr);
 }
 bool TileProcessorCompress::compressT2(uint32_t* tileBytesWritten)
 {

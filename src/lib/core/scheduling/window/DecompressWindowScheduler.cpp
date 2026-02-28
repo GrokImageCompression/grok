@@ -74,7 +74,7 @@ DecompressWindowScheduler::~DecompressWindowScheduler()
 
 void DecompressWindowScheduler::release(void) {}
 
-bool DecompressWindowScheduler::schedule(ITileProcessor* tileProcessor)
+bool DecompressWindowScheduler::scheduleT1(ITileProcessor* tileProcessor)
 {
   auto tcp = tileProcessor->getTCP();
   bool cacheAll =
