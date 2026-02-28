@@ -249,9 +249,6 @@ void grk_initialize(const char* pluginPath, uint32_t numThreads, bool* plugin_in
 {
   if(plugin_initialized)
     *plugin_initialized = false;
-  const char* singleThreadEnv = std::getenv("GRK_TEST_SINGLE");
-  if(singleThreadEnv && std::atoi(singleThreadEnv) == 1)
-    numThreads = 1; // Force single-threaded execution
   InitState newState(pluginPath, numThreads);
   {
     std::lock_guard<std::mutex> guard(initMutex);
@@ -918,6 +915,7 @@ void grk_plugin_stop_batch_decompress(void)
 {
   if(!pluginLoaded)
     return;
+
   auto mgr = minpf_get_plugin_manager();
   if(mgr && mgr->num_libraries > 0)
   {

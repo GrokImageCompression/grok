@@ -239,7 +239,7 @@
                 "$HOME/temp/test.tif",
             ],
             "environment": [
-                { "name": "GRK_DEBUG", "value": "4",  "name": "GRK_TEST_SINGLE", "value": "1"  }
+                { "name": "GRK_DEBUG", "value": "4" }
             ],
             "cwd": "${workspaceFolder}",
             "MIMode": "gdb",
@@ -333,8 +333,7 @@
             ],
             "cwd": "${workspaceFolder}",
             "environment": [
-                { "name": "GRK_DEBUG", "value": "4"} ,
-                { "name": "GRK_TEST_SINGLE", "value": "1"}
+                { "name": "GRK_DEBUG", "value": "4"}
             ],
             "MIMode": "gdb",
             "miDebuggerPath": "/usr/bin/gdb"

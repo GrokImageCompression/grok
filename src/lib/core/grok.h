@@ -58,11 +58,6 @@ extern "C" {
 /**
  * @brief Environment variables
  *
- * @brief If this variable is set (to any value) then codec is
- * forced into single thread mode
- *
- * GRK_TEST_SINGLE
- *
  * @brief If this variable is set to non-zero value, then codec scheduling
  * is set to windowed, otherwise it is set to whole-tile
  *
