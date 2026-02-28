@@ -79,11 +79,6 @@ void PacketParser::print(void)
   std::cout << "/////////////////////////////////" << std::endl << std::endl;
 }
 
-uint32_t PacketParser::getLength(void)
-{
-  return signalledLayerDataBytes_ + headerLength_;
-}
-
 uint32_t PacketParser::readHeader(void)
 {
   if(parsedHeader_)
@@ -371,6 +366,19 @@ finish:
 void PacketParser::readDataFinalize(void)
 {
   tileProcessor_->incNumReadDataPackets();
+}
+
+void PacketParser::parsePacketData(void)
+{
+  try
+  {
+    readHeader();
+    readData();
+  }
+  catch([[maybe_unused]] const std::exception& ex)
+  {
+    throw;
+  }
 }
 
 AllLayersPrecinctPacketParser::AllLayersPrecinctPacketParser(ITileProcessor* tileProcessor)

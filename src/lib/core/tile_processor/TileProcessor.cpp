@@ -452,7 +452,7 @@ bool TileProcessor::decompressWithTLM(const std::shared_ptr<TPFetchSeq>& tilePar
   if(!decompressPrepareWithTLM(tilePartFetchSeq))
     return false;
 
-  scheduleT2T1(coderPool, unreducedImageBounds, post, futures);
+  scheduleDecompress(coderPool, unreducedImageBounds, post, futures);
 
   return true;
 }
@@ -975,8 +975,8 @@ void TileProcessor::post_decompressT2T1(GrkImage* scratch)
   }
 }
 
-void TileProcessor::scheduleT2T1(CoderPool* coderPool, Rect32 unreducedImageBounds,
-                                 std::function<void()> post, TileFutureManager& futures)
+void TileProcessor::scheduleDecompress(CoderPool* coderPool, Rect32 unreducedImageBounds,
+                                       std::function<void()> post, TileFutureManager& futures)
 {
   unreducedImageWindow_ = unreducedImageBounds;
 
@@ -1056,15 +1056,12 @@ void TileProcessor::scheduleT2T1(CoderPool* coderPool, Rect32 unreducedImageBoun
           for(const auto& pp : res->packetParser_->allLayerPrecinctParsers_)
           {
             const auto& ppair = pp;
-            auto t2Decompressor = [&ppair]() {
-              auto parser = ppair.second->parserQueue_.pop();
-              while(parser != std::nullopt)
-              {
-                T2Decompress::parsePacketData(parser.value());
-                parser = ppair.second->parserQueue_.pop();
-              }
-            };
-            t2Decompressor();
+            auto parser = ppair.second->parserQueue_.pop();
+            while(parser != std::nullopt)
+            {
+              parser.value()->parsePacketData();
+              parser = ppair.second->parserQueue_.pop();
+            }
           }
         }
       }

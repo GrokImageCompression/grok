@@ -239,18 +239,7 @@ bool T2Decompress::parsePacket(uint16_t compno, uint8_t resno, uint64_t precinct
 
   return true;
 }
-void T2Decompress::parsePacketData(PacketParser* parser)
-{
-  try
-  {
-    parser->readHeader();
-    parser->readData();
-  }
-  catch([[maybe_unused]] const std::exception& ex)
-  {
-    throw;
-  }
-}
+
 void T2Decompress::parsePacketData(Resolution* res, PacketParser* parser, uint64_t precinctIndex,
                                    bool enqueue)
 {
@@ -260,7 +249,7 @@ void T2Decompress::parsePacketData(Resolution* res, PacketParser* parser, uint64
   }
   else
   {
-    parsePacketData(parser);
+    parser->parsePacketData();
   }
 }
 } // namespace grk

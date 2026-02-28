@@ -49,12 +49,6 @@ struct T2Decompress
    */
   bool parsePackets(uint16_t tileno, PacketCache* compressedPackets);
 
-  /**
-   * @brief Parses packet data
-   * @param parser @ref PacketParser
-   */
-  static void parsePacketData(PacketParser* parser);
-
 private:
   /**
    * @brief @ref ITileProcessor for this tile

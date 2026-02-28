@@ -61,16 +61,7 @@ public:
    */
   uint32_t readHeader(void);
 
-  /**
-   * @brief Gets length
-   * @return length
-   */
-  uint32_t getLength(void);
-
-  /**
-   * @brief Reads packet data
-   */
-  void readData(void);
+  void parsePacketData(void);
 
   /**
    * @brief Printout for debugging
@@ -78,6 +69,11 @@ public:
   void print(void);
 
 private:
+  /**
+   * @brief Reads packet data
+   */
+  void readData(void);
+
   /**
    * @brief Finalizes packet data reading after it is complete
    */

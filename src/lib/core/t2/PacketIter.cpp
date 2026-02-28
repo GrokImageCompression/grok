@@ -133,10 +133,6 @@ void ResPrecinctInfo::print(void)
 }
 
 PacketIter::PacketIter()
-    : compno(0), resno(0), precinctIndex(0), layno(0), numcomps(0), comps(nullptr), x(0), y(0),
-      dx(0), dy(0), dxActive(0), dyActive(0), incrementInner(false), packetManager(nullptr),
-      maxNumDecompositionResolutions(0), singleProgression_(false), compression_(false),
-      precinctInfoOPT_(nullptr), px0grid_(0), py0grid_(0), skippedLeft_(false)
 {
   prog = {};
 }

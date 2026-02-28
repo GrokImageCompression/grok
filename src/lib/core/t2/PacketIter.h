@@ -241,19 +241,19 @@ struct PacketIter
   uint16_t getLayno(void) const;
 
 private:
-  uint16_t compno;
-  uint8_t resno;
-  uint64_t precinctIndex;
-  uint16_t layno;
+  uint16_t compno = 0;
+  uint8_t resno = 0;
+  uint64_t precinctIndex = 0;
+  uint16_t layno = 0;
   grk_progression prog;
-  uint16_t numcomps;
-  PacketIterInfoComponent* comps;
+  uint16_t numcomps = 0;
+  PacketIterInfoComponent* comps = nullptr;
 
   /** packet coordinates */
-  uint64_t x, y;
+  uint64_t x = 0, y = 0;
   /** component sub-sampling */
-  uint32_t dx, dy;
-  uint32_t dxActive, dyActive;
+  uint32_t dx = 0, dy = 0;
+  uint32_t dxActive = 0, dyActive = 0;
   void update_dxy(void);
   bool checkForRemainingValidProgression(int32_t prog, uint32_t prog_iter_num,
                                          const char* progString);
@@ -262,19 +262,19 @@ private:
   // i.e. it is not incremented before the very first packet is processed,
   // but rather before all subsequent packets are processed.
   // This flag keeps track of this state.
-  bool incrementInner;
+  bool incrementInner = false;
 
-  PacketManager* packetManager;
-  uint8_t maxNumDecompositionResolutions;
-  bool singleProgression_;
-  bool compression_;
-  ResPrecinctInfo* precinctInfoOPT_;
+  PacketManager* packetManager = nullptr;
+  uint8_t maxNumDecompositionResolutions = 0;
+  bool singleProgression_ = false;
+  bool compression_ = false;
+  ResPrecinctInfo* precinctInfoOPT_ = nullptr;
 
   // precinct top,left grid coordinates
-  uint32_t px0grid_;
-  uint32_t py0grid_;
+  uint32_t px0grid_ = 0;
+  uint32_t py0grid_ = 0;
 
-  bool skippedLeft_;
+  bool skippedLeft_ = false;
   bool genPrecinctY0Grid(ResPrecinctInfo* rpInfo);
   bool genPrecinctX0Grid(ResPrecinctInfo* rpInfo);
   void genPrecinctY0GridRPCL_OPT(ResPrecinctInfo* rpInfo);
