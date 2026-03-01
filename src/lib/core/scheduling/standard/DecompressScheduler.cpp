@@ -107,7 +107,6 @@ bool DecompressScheduler::scheduleT1(ITileProcessor* tileProcessor)
   if(doPostT1 && tileProcessor->needsMctDecompress())
     mctPostProc = genPrePostProc();
   uint32_t num_threads = (uint32_t)TFSingleton::num_threads();
-  bool singleThread = num_threads == 1;
   bool cacheAll =
       (tileProcessor->getTileCacheStrategy() & GRK_TILE_CACHE_ALL) == GRK_TILE_CACHE_ALL;
 
@@ -247,12 +246,11 @@ bool DecompressScheduler::scheduleT1(ITileProcessor* tileProcessor)
     for(auto& rblocks : componentBlocks)
     {
       Resflow* resFlow = nullptr;
-      if(!singleThread)
-        resFlow = imageComponentFlow_[compno]->resFlows_ + resno;
+      resFlow = imageComponentFlow_[compno]->resFlows_ + resno;
       for(auto& block : rblocks.blocks_)
       {
-        auto blockFunc = [this, activePool, singleThread, tileProcessor, &block, tccp, cbw, cbh,
-                          cacheAll, finalLayer] {
+        auto blockFunc = [this, activePool, tileProcessor, &block, tccp, cbw, cbh, cacheAll,
+                          finalLayer] {
           if(!success)
           {
             block.reset();
@@ -270,7 +268,7 @@ bool DecompressScheduler::scheduleT1(ITileProcessor* tileProcessor)
             else if(!cacheAll)
             {
               // get coder from pool
-              auto threadnum = singleThread ? 0 : TFSingleton::get().this_worker_id();
+              auto threadnum = TFSingleton::get().this_worker_id();
               coder = activePool->getCoder((size_t)threadnum, tccp->cblkw_expn_, tccp->cblkh_expn_)
                           .get();
             }
@@ -287,13 +285,9 @@ bool DecompressScheduler::scheduleT1(ITileProcessor* tileProcessor)
             }
           }
         };
-        if(singleThread)
-          blockFunc();
-        else
-          resFlow->blocks_->nextTask().work(blockFunc);
+        resFlow->blocks_->nextTask().work(blockFunc);
       }
-      if(!singleThread)
-        resno++;
+      resno++;
     }
     tilec->currentPacketProgressionState_ = tilec->nextPacketProgressionState_;
     if(!success)

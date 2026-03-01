@@ -617,10 +617,7 @@ bool WaveletReverse::partial_tile(ISparseCanvas<int32_t>* sa,
 
       return ret;
     };
-    if(num_threads > 1)
-      imageComponentFlow->waveletFinalCopy_->nextTask().work([final_read] { final_read(); });
-    else
-      final_read();
+    imageComponentFlow->waveletFinalCopy_->nextTask().work([final_read] { final_read(); });
 
     return true;
   }
@@ -735,8 +732,6 @@ bool WaveletReverse::partial_tile(ISparseCanvas<int32_t>* sa,
       if(num_rows < numTasks)
         numTasks = num_rows;
       uint32_t incrPerJob = numTasks ? (num_rows / numTasks) : 0;
-      if(num_threads == 1)
-        numTasks = 1;
       if(incrPerJob == 0)
         continue;
       for(uint32_t j = 0; j < numTasks; ++j)
@@ -754,10 +749,7 @@ bool WaveletReverse::partial_tile(ISparseCanvas<int32_t>* sa,
           return false;
         }
         tasks.push_back(taskInfo);
-        if(num_threads > 1)
-          resFlow->waveletHoriz_->nextTask().work([taskInfo, executor_h] { executor_h(taskInfo); });
-        else
-          executor_h(taskInfo);
+        resFlow->waveletHoriz_->nextTask().work([taskInfo, executor_h] { executor_h(taskInfo); });
       }
     }
     dataLength = (bandInfo.resWindowREL_.height() + 2 * FILTER_WIDTH) * VERT_PASS_WIDTH *
@@ -770,8 +762,6 @@ bool WaveletReverse::partial_tile(ISparseCanvas<int32_t>* sa,
     if(numColumns < numTasks)
       numTasks = numColumns;
     uint32_t incrPerJob = numTasks ? (numColumns / numTasks) : 0;
-    if(num_threads == 1)
-      numTasks = 1;
     for(uint32_t j = 0; j < numTasks && incrPerJob > 0 && dataLength; ++j)
     {
       uint32_t indexMin = bandInfo.resWindowREL_.x0 + j * incrPerJob;
@@ -786,18 +776,11 @@ bool WaveletReverse::partial_tile(ISparseCanvas<int32_t>* sa,
         return false;
       }
       tasks.push_back(taskInfo);
-      if(num_threads > 1)
-        resFlow->waveletVert_->nextTask().work([taskInfo, executor_v] { executor_v(taskInfo); });
-      else
-        executor_v(taskInfo);
+      resFlow->waveletVert_->nextTask().work([taskInfo, executor_v] { executor_v(taskInfo); });
     }
   }
 
-  if(num_threads > 1)
-    imageComponentFlow->waveletFinalCopy_->nextTask().work([final_read] { final_read(); });
-  else
-    final_read();
-
+  imageComponentFlow->waveletFinalCopy_->nextTask().work([final_read] { final_read(); });
   return true;
 }
 

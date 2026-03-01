@@ -390,39 +390,32 @@ bool WaveletReverse::h_97(uint8_t res, uint32_t num_threads, size_t dataLength,
 {
   if(resHeight == 0)
     return true;
-  if(num_threads == 1)
+  uint32_t numTasks = num_threads;
+  if(resHeight < numTasks)
+    numTasks = resHeight;
+  const uint32_t incrPerJob = resHeight / numTasks;
+  auto imageComponentFlow = ((DecompressScheduler*)scheduler_)->getImageComponentFlow(compno_);
+  // return if no code blocks were decoded for this component
+  if(!imageComponentFlow)
+    return true;
+  auto resFlow = imageComponentFlow->getResflow(res - 1);
+  for(uint32_t j = 0; j < numTasks; ++j)
   {
-    h_strip_97(&scratch, resHeight, winL, winH, winDest);
-  }
-  else
-  {
-    uint32_t numTasks = num_threads;
-    if(resHeight < numTasks)
-      numTasks = resHeight;
-    const uint32_t incrPerJob = resHeight / numTasks;
-    auto imageComponentFlow = ((DecompressScheduler*)scheduler_)->getImageComponentFlow(compno_);
-    // return if no code blocks were decoded for this component
-    if(!imageComponentFlow)
-      return true;
-    auto resFlow = imageComponentFlow->getResflow(res - 1);
-    for(uint32_t j = 0; j < numTasks; ++j)
+    auto indexMin = j * incrPerJob;
+    auto indexMax = (j < (numTasks - 1U) ? (j + 1U) * incrPerJob : resHeight) - indexMin;
+    auto myhoriz = new dwt_scratch<vec4f>(scratch);
+    if(!myhoriz->alloc(dataLength))
     {
-      auto indexMin = j * incrPerJob;
-      auto indexMax = (j < (numTasks - 1U) ? (j + 1U) * incrPerJob : resHeight) - indexMin;
-      auto myhoriz = new dwt_scratch<vec4f>(scratch);
-      if(!myhoriz->alloc(dataLength))
-      {
-        grklog.error("Out of memory");
-        return false;
-      }
-      resFlow->waveletHoriz_->nextTask().work([this, myhoriz, indexMax, winL, winH, winDest] {
-        h_strip_97(myhoriz, indexMax, winL, winH, winDest);
-        delete myhoriz;
-      });
-      winL.incY_IN_PLACE(incrPerJob);
-      winH.incY_IN_PLACE(incrPerJob);
-      winDest.incY_IN_PLACE(incrPerJob);
+      grklog.error("Out of memory");
+      return false;
     }
+    resFlow->waveletHoriz_->nextTask().work([this, myhoriz, indexMax, winL, winH, winDest] {
+      h_strip_97(myhoriz, indexMax, winL, winH, winDest);
+      delete myhoriz;
+    });
+    winL.incY_IN_PLACE(incrPerJob);
+    winH.incY_IN_PLACE(incrPerJob);
+    winDest.incY_IN_PLACE(incrPerJob);
   }
   return true;
 }
@@ -485,41 +478,35 @@ bool WaveletReverse::v_97(uint8_t res, uint32_t num_threads, size_t dataLength,
 {
   if(resWidth == 0)
     return true;
-  if(num_threads == 1)
+
+  auto numTasks = num_threads;
+  if(resWidth < numTasks)
+    numTasks = resWidth;
+  const auto incrPerJob = resWidth / numTasks;
+  auto imageComponentFlow = ((DecompressScheduler*)scheduler_)->getImageComponentFlow(compno_);
+  // return if no code blocks were decoded for this component
+  if(!imageComponentFlow)
+    return true;
+  auto resFlow = imageComponentFlow->getResflow(res - 1);
+  for(uint32_t j = 0; j < numTasks; j++)
   {
-    v_strip_97(&scratch, resWidth, resHeight, winL, winH, winDest);
-  }
-  else
-  {
-    auto numTasks = num_threads;
-    if(resWidth < numTasks)
-      numTasks = resWidth;
-    const auto incrPerJob = resWidth / numTasks;
-    auto imageComponentFlow = ((DecompressScheduler*)scheduler_)->getImageComponentFlow(compno_);
-    // return if no code blocks were decoded for this component
-    if(!imageComponentFlow)
-      return true;
-    auto resFlow = imageComponentFlow->getResflow(res - 1);
-    for(uint32_t j = 0; j < numTasks; j++)
+    auto indexMin = j * incrPerJob;
+    auto indexMax = (j < (numTasks - 1U) ? (j + 1U) * incrPerJob : resWidth) - indexMin;
+    auto myvert = new dwt_scratch<vec4f>(scratch);
+    if(!myvert->alloc(dataLength))
     {
-      auto indexMin = j * incrPerJob;
-      auto indexMax = (j < (numTasks - 1U) ? (j + 1U) * incrPerJob : resWidth) - indexMin;
-      auto myvert = new dwt_scratch<vec4f>(scratch);
-      if(!myvert->alloc(dataLength))
-      {
-        grklog.error("Out of memory");
-        delete myvert;
-        return false;
-      }
-      resFlow->waveletVert_->nextTask().work(
-          [this, myvert, resHeight, indexMax, winL, winH, winDest] {
-            v_strip_97(myvert, indexMax, resHeight, winL, winH, winDest);
-            delete myvert;
-          });
-      winL.incX_IN_PLACE(incrPerJob);
-      winH.incX_IN_PLACE(incrPerJob);
-      winDest.incX_IN_PLACE(incrPerJob);
+      grklog.error("Out of memory");
+      delete myvert;
+      return false;
     }
+    resFlow->waveletVert_->nextTask().work(
+        [this, myvert, resHeight, indexMax, winL, winH, winDest] {
+          v_strip_97(myvert, indexMax, resHeight, winL, winH, winDest);
+          delete myvert;
+        });
+    winL.incX_IN_PLACE(incrPerJob);
+    winH.incX_IN_PLACE(incrPerJob);
+    winDest.incX_IN_PLACE(incrPerJob);
   }
 
   return true;

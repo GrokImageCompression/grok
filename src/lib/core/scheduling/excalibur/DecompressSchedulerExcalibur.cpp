@@ -80,7 +80,6 @@ bool DecompressSchedulerExcalibur::scheduleT1(ITileProcessor* tileProcessor)
   bool cacheAll =
       (tileProcessor->getTileCacheStrategy() & GRK_TILE_CACHE_ALL) == GRK_TILE_CACHE_ALL;
   uint32_t num_threads = (uint32_t)TFSingleton::num_threads();
-  bool singleThread = num_threads == 1;
   bool finalLayer = tcp->layersToDecompress_ == tcp->numLayers_;
 
   uint8_t resMin = std::numeric_limits<uint8_t>::max();
@@ -176,8 +175,7 @@ bool DecompressSchedulerExcalibur::scheduleT1(ITileProcessor* tileProcessor)
 
             tf::Task t = placeholder();
             tileProcessor->emplaceBlockTask(t);
-            auto blockFunc = [this, activePool, singleThread, tileProcessor, block, tccp, cbw, cbh,
-                              cacheAll] {
+            auto blockFunc = [this, activePool, tileProcessor, block, tccp, cbw, cbh, cacheAll] {
               if(success)
               {
                 t1::ICoder* coder = nullptr;
@@ -188,7 +186,7 @@ bool DecompressSchedulerExcalibur::scheduleT1(ITileProcessor* tileProcessor)
                 }
                 else if(!cacheAll)
                 {
-                  auto threadnum = singleThread ? 0 : TFSingleton::get().this_worker_id();
+                  auto threadnum = TFSingleton::get().this_worker_id();
                   coder =
                       activePool->getCoder((size_t)threadnum, tccp->cblkw_expn_, tccp->cblkh_expn_)
                           .get();
@@ -205,10 +203,7 @@ bool DecompressSchedulerExcalibur::scheduleT1(ITileProcessor* tileProcessor)
                 delete block;
               }
             };
-            if(singleThread)
-              blockFunc();
-            else
-              t.work(blockFunc);
+            t.work(blockFunc);
           }
         }
       }
