@@ -308,10 +308,12 @@
             "request": "launch",
             "program": "${workspaceFolder}/build/bin/grk_decompress",
             "args": [
-                  "-i",
-                  "$HOME/temp/CT.j2k",
-                  "-o",
-                  "$HOME/temp/test_failed.tif"
+            "-i",
+             "/home/aaron/src/grok-test-data/input/nonregression/kodak_2layers_lrcp.j2c",
+             "-o",
+             "/home/aaron/temp/kodak_2layers_lrcp-l2.j2c.tif",
+            "-l",
+             "2"
             ],
             "cwd": "${workspaceFolder}",
             "environment": [
