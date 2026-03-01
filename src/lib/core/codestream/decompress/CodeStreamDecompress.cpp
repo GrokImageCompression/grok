@@ -33,7 +33,6 @@
 #include "FetchCommon.h"
 #include "TPFetchSeq.h"
 #include "GrkImage.h"
-#include "ICompressor.h"
 #include "IDecompressor.h"
 #include "MemStream.h"
 #include "StreamGenerator.h"
@@ -142,327 +141,7 @@ void CodeStreamDecompress::init(grk_decompress_parameters* parameters)
   postReadHeader();
 }
 
-void CodeStreamDecompress::initTilesToDecompress(Rect16 region)
-{
-  tilesToDecompress_.init(region);
-}
-void CodeStreamDecompress::setNumComponents(uint16_t numComps)
-{
-  defaultTcp_->numComps_ = numComps;
-}
-bool CodeStreamDecompress::initDefaultTCP()
-{
-  return defaultTcp_->initDefault(headerImage_);
-}
-
-bool CodeStreamDecompress::setProgressionState(grk_progression_state state)
-{
-  return tileCache_->setProgressionState(state);
-}
-grk_progression_state CodeStreamDecompress::getProgressionState(uint16_t tileIndex)
-{
-  return tileCache_->getProgressionState(tileIndex);
-}
-
-void CodeStreamDecompress::setPostPostProcess(std::function<bool(GrkImage*)> func)
-{
-  postPostProcess_ = func;
-}
-
-void CodeStreamDecompress::differentialUpdate(GrkImage* scratch)
-{
-  headerImage_->subsampleAndReduce(cp_.codingParams_.dec_.reduce_);
-  scratch->subsampleAndReduce(cp_.codingParams_.dec_.reduce_);
-}
-
-bool CodeStreamDecompress::activateScratch(bool singleTile, GrkImage* scratch)
-{
-  multiTileComposite_->copyHeaderTo(scratch);
-
-  // no need to allocate composite data if there is only one tile
-  // i.e. no compositing
-  if(singleTile || !headerImage_->has_multiple_tiles)
-    return true;
-
-  return cp_.codingParams_.dec_.skipAllocateComposite_ || scratch->allocCompositeData();
-}
-
-ITileProcessor* CodeStreamDecompress::getTileProcessor(uint16_t tileIndex)
-{
-  auto cached = tileCache_->get(tileIndex);
-  auto tileProcessor = cached ? cached->processor : nullptr;
-  if(!tileProcessor)
-  {
-    auto tcp = new TileCodingParams(*defaultTcp_);
-    // set number of tile parts if we have TLM markers
-    tcp->signalledNumTileParts_ = cp_.getNumTilePartsFromTLM(tileIndex);
-
-    uint16_t tile_x = tileIndex % cp_.t_grid_width_;
-    uint16_t tile_y = tileIndex / cp_.t_grid_width_;
-    auto tileBounds = cp_.getTileBounds(headerImage_->getBounds(), tile_x, tile_y);
-    if(!region_.empty())
-    {
-      auto inter = tileBounds.intersection(region_);
-      tcp->wholeTileDecompress_ = (inter.x0 == tileBounds.x0 && inter.y0 == tileBounds.y0 &&
-                                   inter.x1 == tileBounds.x1 && inter.y1 == tileBounds.y1);
-    }
-
-    tileProcessor =
-        new TileProcessor(tileIndex, tcp, this, stream_, false, tileCache_->getStrategy());
-    tileCache_->put(tileIndex, tileProcessor);
-  }
-  return tileProcessor;
-}
-
-GrkImage* CodeStreamDecompress::getImage(uint16_t tile_index, bool doWait)
-{
-  if(doWait)
-    wait(tile_index);
-
-  auto entry = tileCache_->get(tile_index);
-  return entry ? entry->processor->getImage() : nullptr;
-}
-GrkImage* CodeStreamDecompress::getImage()
-{
-  wait(nullptr);
-
-  return multiTileComposite_.get();
-}
-
-void CodeStreamDecompress::onRowCompleted(uint16_t tileIndexBegin, uint16_t tileIndexEnd)
-{
-  if(!doTileBatching())
-    return;
-  grklog.debug("CodeStreamDecompress: %u to %u completed", tileIndexBegin, tileIndexEnd);
-  if(cp_.hasTLM())
-  {
-    {
-      std::unique_lock<std::mutex> lock(batchTileQueueMutex_);
-      size_t tilesToSchedule =
-          batchTileHeadroomIncrement(batchTileNextRows_, (uint16_t)batchTileQueueTLM_.size());
-      for(size_t i = 0; i < tilesToSchedule; ++i)
-      {
-        auto tileIndex = batchTileQueueTLM_.front();
-        batchTileQueueTLM_.pop();
-        if(!schedule(getTileProcessor(tileIndex), true))
-        {
-          lock.unlock();
-          batchTileQueueCondition_.notify_one();
-          return;
-        }
-      }
-    }
-  }
-  else
-  {
-    std::unique_lock<std::mutex> lock(batchTileQueueMutex_);
-    batchTileScheduleHeadroomSequential_ +=
-        batchTileHeadroomIncrement(batchTileNextRows_, (uint16_t)batchTileUnscheduledSequential_);
-    batchDequeueSequential();
-  }
-  batchTileQueueCondition_.notify_one();
-}
-
-bool CodeStreamDecompress::batchDequeueSequential(void)
-{
-  while((batchTileScheduleHeadroomSequential_ > 0) && !batchTileQueueSequential_.empty())
-  {
-    auto t = batchTileQueueSequential_.front();
-    if(!schedule(t, true) && !success_)
-      return false;
-    batchTileQueueSequential_.pop();
-    batchTileScheduleHeadroomSequential_--;
-    batchTileUnscheduledSequential_--;
-  }
-
-  return true;
-}
-
-bool CodeStreamDecompress::setDecompressRegion(RectD region)
-{
-  auto image = headerImage_;
-  auto imageBounds = headerImage_->getBounds();
-
-  if(region != RectD(0, 0, 0, 0))
-  {
-    const double val[4] = {region.x0, region.y0, region.x1, region.y1};
-    bool allLessThanOne = true;
-    for(uint8_t i = 0; i < 4; ++i)
-    {
-      if(val[i] > 1.0)
-        allLessThanOne = false;
-    }
-    if(allLessThanOne)
-    {
-      auto w = double(image->x1 - image->x0);
-      auto h = double(image->y1 - image->y0);
-      region.x0 = (double)floor(val[0] * w);
-      region.y0 = (double)floor(val[1] * h);
-      region.x1 = (double)ceil(val[2] * w);
-      region.y1 = (double)ceil(val[3] * h);
-    }
-    Rect16 tilesToDecompress;
-    auto canvasRegion = Rect32((uint32_t)region.x0 + image->x0, (uint32_t)region.y0 + image->y0,
-                               (uint32_t)region.x1 + image->x0, (uint32_t)region.y1 + image->y0);
-    /* Left */
-    if(canvasRegion.x0 > image->x1)
-    {
-      grklog.error("Left position of the decompress region (%u)"
-                   " is outside of the image area (Xsiz=%u).",
-                   canvasRegion.x0, image->x1);
-      return false;
-    }
-    else
-    {
-      tilesToDecompress.x0 = uint16_t((canvasRegion.x0 - cp_.tx0_) / cp_.t_width_);
-      multiTileComposite_->x0 = canvasRegion.x0;
-    }
-
-    /* Up */
-    if(canvasRegion.y0 > image->y1)
-    {
-      grklog.error("Top position of the decompress region (%u)"
-                   " is outside of the image area (Ysiz=%u).",
-                   canvasRegion.y0, image->y1);
-      return false;
-    }
-    else
-    {
-      tilesToDecompress.y0 = uint16_t((canvasRegion.y0 - cp_.ty0_) / cp_.t_height_);
-      multiTileComposite_->y0 = canvasRegion.y0;
-    }
-
-    /* Right */
-    if(canvasRegion.x1 > image->x1)
-    {
-      grklog.warn("Right position of the decompress region (%u)"
-                  " is outside the image area (Xsiz=%u).",
-                  canvasRegion.x1, image->x1);
-      tilesToDecompress.x1 = cp_.t_grid_width_;
-      multiTileComposite_->x1 = image->x1;
-      canvasRegion.x1 = image->x1;
-    }
-    else
-    {
-      // avoid divide by zero
-      if(cp_.t_width_ == 0)
-        return false;
-      tilesToDecompress.x1 = uint16_t(ceildiv<uint32_t>(canvasRegion.x1 - cp_.tx0_, cp_.t_width_));
-      multiTileComposite_->x1 = canvasRegion.x1;
-    }
-
-    /* Bottom */
-    if(canvasRegion.y1 > image->y1)
-    {
-      grklog.warn("Bottom position of the decompress region (%u)"
-                  " is outside of the image area (Ysiz=%u).",
-                  canvasRegion.y1, image->y1);
-      tilesToDecompress.y1 = cp_.t_grid_height_;
-      multiTileComposite_->y1 = image->y1;
-      canvasRegion.y1 = image->y1;
-    }
-    else
-    {
-      // avoid divide by zero
-      if(cp_.t_height_ == 0)
-        return false;
-      tilesToDecompress.y1 =
-          (uint16_t)(ceildiv<uint32_t>(canvasRegion.y1 - cp_.ty0_, cp_.t_height_));
-      multiTileComposite_->y1 = canvasRegion.y1;
-    }
-    tilesToDecompress_.slate(tilesToDecompress);
-    region_ = canvasRegion;
-
-    if(cp_.asynchronous_ && cp_.simulate_synchronous_)
-    {
-      tileCompletion_ = std::make_unique<TileCompletion>(
-          tileCache_.get(), imageBounds, cp_.t_width_, cp_.t_height_,
-          [this](uint16_t tileIndexBegin, uint16_t tileIndexEnd) {
-            onRowCompleted(tileIndexBegin, tileIndexEnd);
-          },
-          tilesToDecompress);
-    }
-    if(!multiTileComposite_->subsampleAndReduce(cp_.codingParams_.dec_.reduce_))
-      return false;
-
-    grklog.info("Decompress region canvas coordinates:\n(%u,%u,%u,%u)", multiTileComposite_->x0,
-                multiTileComposite_->y0, multiTileComposite_->x1, multiTileComposite_->y1);
-    auto scaledX0 = double(multiTileComposite_->x0 - image->x0) / double(image->width());
-    auto scaledY0 = double(multiTileComposite_->y0 - image->y0) / double(image->height());
-    auto scaledX1 = double(multiTileComposite_->x1 - image->x0) / double(image->width());
-    auto scaledY1 = double(multiTileComposite_->y1 - image->y0) / double(image->height());
-    grklog.info("Decompress region scaled coordinates:\n(%1.17f,%1.17f,%1.17f,%1.17f)", scaledX0,
-                scaledY0, scaledX1, scaledY1);
-    grklog.info("Decompress region scaled coordinates in {<top>,<left>},{<height>,<width>} format"
-                ":\n\"{%1.17f,%1.17f},{%1.17f,%1.17f}\"",
-                scaledY0, scaledX0, scaledY1 - scaledY0, scaledX1 - scaledX0);
-    grklog.info("Full image canvas coordinates:\n(%u,%u,%u,%u)", image->x0, image->y0, image->x1,
-                image->y1);
-  }
-
-  return true;
-}
-
-void CodeStreamDecompress::wait(uint16_t tile_index)
-{
-  for(auto& ff : fetchByTileFutures_)
-  {
-    if(ff.valid())
-    {
-      ff.wait();
-      bool success = ff.get();
-      if(!success)
-      {
-        grklog.error("CodeStreamDecompress::wait : failed to get fetch future for tile %d",
-                     tile_index);
-        return;
-      }
-    }
-  }
-  fetchByTileFutures_.clear();
-
-  decompressTileFutureManager_.wait(tile_index);
-}
-void CodeStreamDecompress::wait(grk_wait_swath* swath)
-{
-  // 1. wait for swath
-  if(swath && tileCompletion_)
-  {
-    bool rc = tileCompletion_->wait(swath);
-    if(!rc)
-      return;
-  }
-
-  // 2. wait for sequential parse
-  if(decompressWorker_.joinable())
-    decompressWorker_.join();
-
-  // 3. wait for all fetch operations
-  for(auto& ff : fetchByTileFutures_)
-  {
-    if(ff.valid())
-    {
-      ff.wait();
-      bool success = ff.get();
-      if(!success)
-      {
-        grklog.error("CodeStreamDecompress::wait : failed to get fetch future");
-        return;
-      }
-    }
-  }
-  fetchByTileFutures_.clear();
-
-  // 4. wait for all tile decompression operations
-  decompressTileFutureManager_.waitAndClear();
-
-  // 5. clear postMulti lambda
-  if(postMulti_)
-  {
-    postMulti_();
-    postMulti_ = nullptr;
-  }
-}
+// Multi Tile //////////////////////////////////////////////////////////
 
 bool CodeStreamDecompress::decompress(grk_plugin_tile* tile)
 {
@@ -589,30 +268,6 @@ bool CodeStreamDecompress::decompressImpl(std::set<uint16_t> slated)
   return true;
 }
 
-bool CodeStreamDecompress::sequentialSchedule(ITileProcessor* tileProcessor, bool multiTile)
-{
-  tileProcessor->prepareForDecompression();
-  bool doSchedule = true;
-  if(doTileBatching())
-  {
-    std::unique_lock<std::mutex> lock(batchTileQueueMutex_);
-    if(batchTileScheduleHeadroomSequential_ > 0)
-    {
-      batchTileScheduleHeadroomSequential_--;
-      batchTileUnscheduledSequential_--;
-    }
-    else
-    {
-      batchTileQueueSequential_.push(tileProcessor);
-      doSchedule = false;
-    }
-  }
-  if(doSchedule && !schedule(tileProcessor, multiTile))
-    return false;
-
-  return true;
-}
-
 bool CodeStreamDecompress::schedule(ITileProcessor* tileProcessor, bool multiTile)
 {
   if(cp_.hasTLM())
@@ -637,16 +292,7 @@ bool CodeStreamDecompress::schedule(ITileProcessor* tileProcessor, bool multiTil
   }
 }
 
-bool CodeStreamDecompress::doTileBatching(void)
-{
-  return tilesToDecompress_.getSlatedTiles().size() > 1 && cp_.asynchronous_ &&
-         !stream_->getFetcher();
-}
-
-uint16_t CodeStreamDecompress::batchTileHeadroomIncrement(uint16_t numRows, uint16_t tilesLeft)
-{
-  return std::min(uint16_t(tilesToDecompress_.getSlatedTileRect().width() * numRows), tilesLeft);
-}
+// TLM ///////////////////////////////////////////////////////////////
 
 void CodeStreamDecompress::decompressTLM(const std::set<uint16_t>& slated)
 {
@@ -686,33 +332,6 @@ void CodeStreamDecompress::decompressTLM(const std::set<uint16_t>& slated)
   }
 }
 
-bool CodeStreamDecompress::fetchByTile(
-    std::set<uint16_t>& slated, Rect32 unreducedImageBounds,
-    std::function<std::function<void()>(ITileProcessor*)> postGenerator)
-{
-  auto fetcher = stream_->getFetcher();
-  if(!fetcher)
-    return false;
-  fetchByTileFutures_.push_back(fetcher->fetchTiles(
-      cp_.tlmMarkers_->getTileParts(), slated, nullptr,
-      [this, unreducedImageBounds, postGenerator](size_t requestIndex, TileFetchContext* context) {
-        auto& tilePart = (*context->requests_)[requestIndex];
-        tilePart->stream_ = std::unique_ptr<IStream>(memStreamCreate(
-            tilePart->data_.get(), tilePart->length_, false, nullptr, stream_->getFormat(), true));
-        auto& tilePartSeq = (*context->tilePartFetchByTile_)[tilePart->tileIndex_];
-        if(tilePartSeq->incrementFetchCount() == tilePartSeq->size())
-        {
-          grklog.debug("Decompressing tile %d", tilePart->tileIndex_);
-          const auto tileProcessor = getTileProcessor(tilePart->tileIndex_);
-          auto decompressTask = genDecompressTileTLMTask(tileProcessor, tilePartSeq,
-                                                         unreducedImageBounds, postGenerator);
-          decompressTask();
-        }
-      }));
-
-  return true;
-}
-
 std::function<bool()> CodeStreamDecompress::genDecompressTileTLMTask(
     ITileProcessor* tileProcessor, const std::shared_ptr<TPFetchSeq>& tilePartFetchSeq,
     Rect32 unreducedImageBounds,
@@ -740,63 +359,8 @@ std::function<bool()> CodeStreamDecompress::genDecompressTileTLMTask(
   };
 }
 
-bool CodeStreamDecompress::postProcess(GrkImage* img)
-{
-  if(!img->postProcess())
-    return false;
-  return postPostProcess_ ? postPostProcess_(img) : true;
-}
+// Sequential /////////////////////////////////////////////////////////////////////
 
-std::function<void()> CodeStreamDecompress::postMultiTile(void)
-{
-  return [this]() {
-    if(!success_)
-      return;
-    uint16_t numTilesToDecompress = (uint16_t)tilesToDecompress_.getSlatedTiles().size();
-    if(numTilesDecompressed_ == 0)
-    {
-      grklog.error("No tiles were decompressed.");
-      success_ = false;
-      return;
-    }
-    else if(numTilesDecompressed_ < numTilesToDecompress)
-    {
-      uint32_t decompressed = numTilesDecompressed_;
-      grklog.warn("Only %u out of %u tiles were decompressed", decompressed, numTilesToDecompress);
-    }
-    if(!cp_.codingParams_.dec_.skipAllocateComposite_)
-    {
-      scratchImage_->transferDataTo(multiTileComposite_.get());
-      success_ = postProcess(multiTileComposite_.get());
-    }
-  };
-}
-
-std::function<void()> CodeStreamDecompress::postMultiTile(ITileProcessor* tileProcessor)
-{
-  return [this, tileProcessor]() {
-    if(!success_)
-      return;
-    tileProcessor->post_decompressT2T1(scratchImage_.get());
-    numTilesDecompressed_++;
-    auto tileImage = tileProcessor->getImage();
-    if(!cp_.codingParams_.dec_.skipAllocateComposite_ && scratchImage_->has_multiple_tiles &&
-       tileImage)
-    {
-      success_ = scratchImage_->composite(tileImage);
-    }
-    // complete tile
-    auto tileIndex = tileProcessor->getIndex();
-    if(cp_.decompressCallback_)
-      cp_.decompressCallback_(this, tileIndex, tileImage, cp_.codingParams_.dec_.reduce_,
-                              cp_.decompressCallbackUserData_);
-
-    if(tileCompletion_)
-      tileCompletion_->complete(tileIndex);
-    else
-      tileProcessor->release();
-  };
-}
 void CodeStreamDecompress::decompressSequentialPrepare(void)
 {
   stream_->seek(markerCache_->getTileStreamStart() + MARKER_BYTES);
@@ -814,7 +378,7 @@ void CodeStreamDecompress::decompressSequential(void)
     // 1. parse and schedule tile
     try
     {
-      if(!parseAndSchedule(true))
+      if(!sequentialParseAndSchedule(true))
       {
         success_ = false;
         break;
@@ -857,7 +421,113 @@ void CodeStreamDecompress::decompressSequential(void)
   }
 }
 
-/// SINGLE TILE ////////////////////////////////////////////////////////////////////
+bool CodeStreamDecompress::sequentialParseAndSchedule(bool multiTile)
+{
+  if(markerParser_.currId() != SOT)
+    return false;
+
+  // A) Parse
+
+  /* Parse tile parts until we satisfy one of the conditions below:
+   * 1. read a complete slated tile
+   * 2. read EOC
+   * 3. run out of data
+   */
+  bool concurrentTileParsing = TFSingleton::num_threads() > 1 &&
+                               tilesToDecompress_.getSlatedTiles().size() > 1 &&
+                               stream_->isMemStream();
+  while(((currTileIndex_ == -1) || !tilesToDecompress_.isSlated((uint16_t)currTileIndex_) ||
+         (currTileProcessor_ && !currTileProcessor_->allSOTMarkersParsed())) &&
+        markerParser_.currId() != EOC && stream_->numBytesLeft() != 0)
+  {
+    try
+    {
+      auto [processed, length] = markerParser_.processMarker();
+      if(!processed)
+        return false;
+    }
+    catch(const CorruptSOTMarkerException& csme)
+    {
+      return false;
+    }
+    // Attempt to read next SOT marker. If we hit an invalid marker, we still try to
+    // decompress the tile, as truncated.
+    try
+    {
+      if(!markerParser_.readId(false))
+        break;
+    }
+    catch(const t1_t2::InvalidMarkerException& ime)
+    {
+      break;
+    }
+
+    if(!tilesToDecompress_.isSlated((uint16_t)currTileIndex_))
+      continue;
+
+    bool completelyParsed = currTileProcessor_->allSOTMarkersParsed();
+    IStream* bifurcatedStream = nullptr;
+    if(concurrentTileParsing)
+    {
+      // skip to beginning of next SOT marker (or EOC)
+      auto tpl = currTilePartInfo_.tilePartLength_;
+      uint32_t adjust = sotMarkerSegmentLen + sizeof(uint16_t);
+      if(tpl < adjust)
+        break;
+      bifurcatedStream = stream_->bifurcate();
+      auto skip = (uint64_t)(tpl - adjust);
+      skip = std::min(skip, stream_->numBytesLeft());
+      if(!stream_->skip((int64_t)skip))
+      {
+        delete bifurcatedStream;
+        break;
+      }
+    }
+    // parse tile part
+    if(!currTileProcessor_->parseTilePart(concurrentTileParsing ? &tileMarkerParsers_ : nullptr,
+                                          bifurcatedStream, markerParser_.currId(),
+                                          currTilePartInfo_))
+      return false;
+
+    // read next SOT if there are remaining unparsed tile parts for this tile
+    if(!completelyParsed && !markerParser_.readSOTorEOC())
+      break;
+  }
+
+  if(!currTileProcessor_)
+  {
+    grklog.error("sequentialParseAndSchedule: no slated SOT markers found");
+    return false;
+  }
+  auto tileProcessor = currTileProcessor_;
+  currTileProcessor_ = nullptr;
+  currTileIndex_ = -1;
+
+  // B) schedule
+
+  tileProcessor->prepareForDecompression();
+  bool doSchedule = true;
+  if(doTileBatching())
+  {
+    std::unique_lock<std::mutex> lock(batchTileQueueMutex_);
+    if(batchTileScheduleHeadroomSequential_ > 0)
+    {
+      batchTileScheduleHeadroomSequential_--;
+      batchTileUnscheduledSequential_--;
+    }
+    else
+    {
+      batchTileQueueSequential_.push(tileProcessor);
+      doSchedule = false;
+    }
+  }
+  if(doSchedule && !schedule(tileProcessor, multiTile))
+    return false;
+
+  return true;
+}
+
+/// Single Tile ////////////////////////////////////////////////////
 
 bool CodeStreamDecompress::decompressTile(uint16_t tileIndex)
 {
@@ -960,7 +630,7 @@ bool CodeStreamDecompress::decompressTileImpl(uint16_t tileIndex)
       decompressSequentialPrepare();
       try
       {
-        if(!parseAndSchedule(false))
+        if(!sequentialParseAndSchedule(false))
           return false;
       }
       catch(const t1_t2::InvalidMarkerException& ime)
@@ -1045,91 +715,434 @@ std::function<void()> CodeStreamDecompress::postSingleTile(ITileProcessor* tileP
   };
 }
 
-bool CodeStreamDecompress::parseAndSchedule(bool multiTile)
+// Post Processing/////////////////////////////////////////////////
+
+bool CodeStreamDecompress::postProcess(GrkImage* img)
 {
-  if(markerParser_.currId() != SOT)
+  if(!img->postProcess())
     return false;
+  return postPostProcess_ ? postPostProcess_(img) : true;
+}
 
-  // A) Parse
-
-  /* Parse tile parts until we satisfy one of the conditions below:
-   * 1. read a complete slated tile
-   * 2. read EOC
-   * 3. run out of data
-   */
-  bool concurrentTileParsing = TFSingleton::num_threads() > 1 &&
-                               tilesToDecompress_.getSlatedTiles().size() > 1 &&
-                               stream_->isMemStream();
-  while(((currTileIndex_ == -1) || !tilesToDecompress_.isSlated((uint16_t)currTileIndex_) ||
-         (currTileProcessor_ && !currTileProcessor_->allSOTMarkersParsed())) &&
-        markerParser_.currId() != EOC && stream_->numBytesLeft() != 0)
-  {
-    try
+std::function<void()> CodeStreamDecompress::postMultiTile(void)
+{
+  return [this]() {
+    if(!success_)
+      return;
+    uint16_t numTilesToDecompress = (uint16_t)tilesToDecompress_.getSlatedTiles().size();
+    if(numTilesDecompressed_ == 0)
     {
-      auto [processed, length] = markerParser_.processMarker();
-      if(!processed)
-        return false;
+      grklog.error("No tiles were decompressed.");
+      success_ = false;
+      return;
     }
-    catch(const CorruptSOTMarkerException& csme)
+    else if(numTilesDecompressed_ < numTilesToDecompress)
     {
+      uint32_t decompressed = numTilesDecompressed_;
+      grklog.warn("Only %u out of %u tiles were decompressed", decompressed, numTilesToDecompress);
+    }
+    if(!cp_.codingParams_.dec_.skipAllocateComposite_)
+    {
+      scratchImage_->transferDataTo(multiTileComposite_.get());
+      success_ = postProcess(multiTileComposite_.get());
+    }
+  };
+}
+
+std::function<void()> CodeStreamDecompress::postMultiTile(ITileProcessor* tileProcessor)
+{
+  return [this, tileProcessor]() {
+    if(!success_)
+      return;
+    tileProcessor->post_decompressT2T1(scratchImage_.get());
+    numTilesDecompressed_++;
+    auto tileImage = tileProcessor->getImage();
+    if(!cp_.codingParams_.dec_.skipAllocateComposite_ && scratchImage_->has_multiple_tiles &&
+       tileImage)
+    {
+      success_ = scratchImage_->composite(tileImage);
+    }
+    // complete tile
+    auto tileIndex = tileProcessor->getIndex();
+    if(cp_.decompressCallback_)
+      cp_.decompressCallback_(this, tileIndex, tileImage, cp_.codingParams_.dec_.reduce_,
+                              cp_.decompressCallbackUserData_);
+
+    if(tileCompletion_)
+      tileCompletion_->complete(tileIndex);
+    else
+      tileProcessor->release();
+  };
+}
+
+//////////////////////////////////////////////////////////////////
+
+bool CodeStreamDecompress::setDecompressRegion(RectD region)
+{
+  auto image = headerImage_;
+  auto imageBounds = headerImage_->getBounds();
+
+  if(region != RectD(0, 0, 0, 0))
+  {
+    const double val[4] = {region.x0, region.y0, region.x1, region.y1};
+    bool allLessThanOne = true;
+    for(uint8_t i = 0; i < 4; ++i)
+    {
+      if(val[i] > 1.0)
+        allLessThanOne = false;
+    }
+    if(allLessThanOne)
+    {
+      auto w = double(image->x1 - image->x0);
+      auto h = double(image->y1 - image->y0);
+      region.x0 = (double)floor(val[0] * w);
+      region.y0 = (double)floor(val[1] * h);
+      region.x1 = (double)ceil(val[2] * w);
+      region.y1 = (double)ceil(val[3] * h);
+    }
+    Rect16 tilesToDecompress;
+    auto canvasRegion = Rect32((uint32_t)region.x0 + image->x0, (uint32_t)region.y0 + image->y0,
+                               (uint32_t)region.x1 + image->x0, (uint32_t)region.y1 + image->y0);
+    /* Left */
+    if(canvasRegion.x0 > image->x1)
+    {
+      grklog.error("Left position of the decompress region (%u)"
+                   " is outside of the image area (Xsiz=%u).",
+                   canvasRegion.x0, image->x1);
       return false;
     }
-    // Attempt to read next SOT marker. If we hit an invalid marker, we still try to
-    // decompress the tile, as truncated.
-    try
+    else
     {
-      if(!markerParser_.readId(false))
-        break;
-    }
-    catch(const t1_t2::InvalidMarkerException& ime)
-    {
-      break;
+      tilesToDecompress.x0 = uint16_t((canvasRegion.x0 - cp_.tx0_) / cp_.t_width_);
+      multiTileComposite_->x0 = canvasRegion.x0;
     }
 
-    if(!tilesToDecompress_.isSlated((uint16_t)currTileIndex_))
-      continue;
-
-    bool completelyParsed = currTileProcessor_->allSOTMarkersParsed();
-    IStream* bifurcatedStream = nullptr;
-    if(concurrentTileParsing)
+    /* Up */
+    if(canvasRegion.y0 > image->y1)
     {
-      // skip to beginning of next SOT marker (or EOC)
-      auto tpl = currTilePartInfo_.tilePartLength_;
-      uint32_t adjust = sotMarkerSegmentLen + sizeof(uint16_t);
-      if(tpl < adjust)
-        break;
-      bifurcatedStream = stream_->bifurcate();
-      auto skip = (uint64_t)(tpl - adjust);
-      skip = std::min(skip, stream_->numBytesLeft());
-      if(!stream_->skip((int64_t)skip))
+      grklog.error("Top position of the decompress region (%u)"
+                   " is outside of the image area (Ysiz=%u).",
+                   canvasRegion.y0, image->y1);
+      return false;
+    }
+    else
+    {
+      tilesToDecompress.y0 = uint16_t((canvasRegion.y0 - cp_.ty0_) / cp_.t_height_);
+      multiTileComposite_->y0 = canvasRegion.y0;
+    }
+
+    /* Right */
+    if(canvasRegion.x1 > image->x1)
+    {
+      grklog.warn("Right position of the decompress region (%u)"
+                  " is outside the image area (Xsiz=%u).",
+                  canvasRegion.x1, image->x1);
+      tilesToDecompress.x1 = cp_.t_grid_width_;
+      multiTileComposite_->x1 = image->x1;
+      canvasRegion.x1 = image->x1;
+    }
+    else
+    {
+      // avoid divide by zero
+      if(cp_.t_width_ == 0)
+        return false;
+      tilesToDecompress.x1 = uint16_t(ceildiv<uint32_t>(canvasRegion.x1 - cp_.tx0_, cp_.t_width_));
+      multiTileComposite_->x1 = canvasRegion.x1;
+    }
+
+    /* Bottom */
+    if(canvasRegion.y1 > image->y1)
+    {
+      grklog.warn("Bottom position of the decompress region (%u)"
+                  " is outside of the image area (Ysiz=%u).",
+                  canvasRegion.y1, image->y1);
+      tilesToDecompress.y1 = cp_.t_grid_height_;
+      multiTileComposite_->y1 = image->y1;
+      canvasRegion.y1 = image->y1;
+    }
+    else
+    {
+      // avoid divide by zero
+      if(cp_.t_height_ == 0)
+        return false;
+      tilesToDecompress.y1 =
+          (uint16_t)(ceildiv<uint32_t>(canvasRegion.y1 - cp_.ty0_, cp_.t_height_));
+      multiTileComposite_->y1 = canvasRegion.y1;
+    }
+    tilesToDecompress_.slate(tilesToDecompress);
+    region_ = canvasRegion;
+
+    if(cp_.asynchronous_ && cp_.simulate_synchronous_)
+    {
+      tileCompletion_ = std::make_unique<TileCompletion>(
+          tileCache_.get(), imageBounds, cp_.t_width_, cp_.t_height_,
+          [this](uint16_t tileIndexBegin, uint16_t tileIndexEnd) {
+            onRowCompleted(tileIndexBegin, tileIndexEnd);
+          },
+          tilesToDecompress);
+    }
+    if(!multiTileComposite_->subsampleAndReduce(cp_.codingParams_.dec_.reduce_))
+      return false;
+
+    grklog.info("Decompress region canvas coordinates:\n(%u,%u,%u,%u)", multiTileComposite_->x0,
+                multiTileComposite_->y0, multiTileComposite_->x1, multiTileComposite_->y1);
+    auto scaledX0 = double(multiTileComposite_->x0 - image->x0) / double(image->width());
+    auto scaledY0 = double(multiTileComposite_->y0 - image->y0) / double(image->height());
+    auto scaledX1 = double(multiTileComposite_->x1 - image->x0) / double(image->width());
+    auto scaledY1 = double(multiTileComposite_->y1 - image->y0) / double(image->height());
+    grklog.info("Decompress region scaled coordinates:\n(%1.17f,%1.17f,%1.17f,%1.17f)", scaledX0,
+                scaledY0, scaledX1, scaledY1);
+    grklog.info("Decompress region scaled coordinates in {<top>,<left>},{<height>,<width>} format"
+                ":\n\"{%1.17f,%1.17f},{%1.17f,%1.17f}\"",
+                scaledY0, scaledX0, scaledY1 - scaledY0, scaledX1 - scaledX0);
+    grklog.info("Full image canvas coordinates:\n(%u,%u,%u,%u)", image->x0, image->y0, image->x1,
+                image->y1);
+  }
+
+  return true;
+}
+
+// batching
+
+bool CodeStreamDecompress::doTileBatching(void)
+{
+  return tilesToDecompress_.getSlatedTiles().size() > 1 && cp_.asynchronous_ &&
+         !stream_->getFetcher();
+}
+
+uint16_t CodeStreamDecompress::batchTileHeadroomIncrement(uint16_t numRows, uint16_t tilesLeft)
+{
+  return std::min(uint16_t(tilesToDecompress_.getSlatedTileRect().width() * numRows), tilesLeft);
+}
+
+bool CodeStreamDecompress::batchDequeueSequential(void)
+{
+  while((batchTileScheduleHeadroomSequential_ > 0) && !batchTileQueueSequential_.empty())
+  {
+    auto t = batchTileQueueSequential_.front();
+    if(!schedule(t, true) && !success_)
+      return false;
+    batchTileQueueSequential_.pop();
+    batchTileScheduleHeadroomSequential_--;
+    batchTileUnscheduledSequential_--;
+  }
+
+  return true;
+}
+
+// Wait  //////////////////////////////////////////////
+
+void CodeStreamDecompress::wait(uint16_t tile_index)
+{
+  for(auto& ff : fetchByTileFutures_)
+  {
+    if(ff.valid())
+    {
+      ff.wait();
+      bool success = ff.get();
+      if(!success)
       {
-        delete bifurcatedStream;
-        break;
+        grklog.error("CodeStreamDecompress::wait : failed to get fetch future for tile %d",
+                     tile_index);
+        return;
       }
     }
-    // parse tile part
-    if(!currTileProcessor_->parseTilePart(concurrentTileParsing ? &tileMarkerParsers_ : nullptr,
-                                          bifurcatedStream, markerParser_.currId(),
-                                          currTilePartInfo_))
-      return false;
-
-    // read next SOT if there are remaining unparsed tile parts for this tile
-    if(!completelyParsed && !markerParser_.readSOTorEOC())
-      break;
   }
+  fetchByTileFutures_.clear();
 
-  if(!currTileProcessor_)
+  decompressTileFutureManager_.wait(tile_index);
+}
+void CodeStreamDecompress::wait(grk_wait_swath* swath)
+{
+  // 1. wait for swath
+  if(swath && tileCompletion_)
   {
-    grklog.error("parseAndSchedule: no slated SOT markers found");
-    return false;
+    bool rc = tileCompletion_->wait(swath);
+    if(!rc)
+      return;
   }
-  auto tileProcessor = currTileProcessor_;
-  currTileProcessor_ = nullptr;
-  currTileIndex_ = -1;
 
-  // B) schedule
+  // 2. wait for sequential parse
+  if(decompressWorker_.joinable())
+    decompressWorker_.join();
 
-  return sequentialSchedule(tileProcessor, multiTile);
+  // 3. wait for all fetch operations
+  for(auto& ff : fetchByTileFutures_)
+  {
+    if(ff.valid())
+    {
+      ff.wait();
+      bool success = ff.get();
+      if(!success)
+      {
+        grklog.error("CodeStreamDecompress::wait : failed to get fetch future");
+        return;
+      }
+    }
+  }
+  fetchByTileFutures_.clear();
+
+  // 4. wait for all tile decompression operations
+  decompressTileFutureManager_.waitAndClear();
+
+  // 5. clear postMulti lambda
+  if(postMulti_)
+  {
+    postMulti_();
+    postMulti_ = nullptr;
+  }
+}
+
+void CodeStreamDecompress::onRowCompleted(uint16_t tileIndexBegin, uint16_t tileIndexEnd)
+{
+  if(!doTileBatching())
+    return;
+  grklog.debug("CodeStreamDecompress: %u to %u completed", tileIndexBegin, tileIndexEnd);
+  if(cp_.hasTLM())
+  {
+    {
+      std::unique_lock<std::mutex> lock(batchTileQueueMutex_);
+      size_t tilesToSchedule =
+          batchTileHeadroomIncrement(batchTileNextRows_, (uint16_t)batchTileQueueTLM_.size());
+      for(size_t i = 0; i < tilesToSchedule; ++i)
+      {
+        auto tileIndex = batchTileQueueTLM_.front();
+        batchTileQueueTLM_.pop();
+        if(!schedule(getTileProcessor(tileIndex), true))
+        {
+          lock.unlock();
+          batchTileQueueCondition_.notify_one();
+          return;
+        }
+      }
+    }
+  }
+  else
+  {
+    std::unique_lock<std::mutex> lock(batchTileQueueMutex_);
+    batchTileScheduleHeadroomSequential_ +=
+        batchTileHeadroomIncrement(batchTileNextRows_, (uint16_t)batchTileUnscheduledSequential_);
+    batchDequeueSequential();
+  }
+  batchTileQueueCondition_.notify_one();
+}
+
+// Fetching ////////////////////////////////////////////////////////
+
+bool CodeStreamDecompress::fetchByTile(
+    std::set<uint16_t>& slated, Rect32 unreducedImageBounds,
+    std::function<std::function<void()>(ITileProcessor*)> postGenerator)
+{
+  auto fetcher = stream_->getFetcher();
+  if(!fetcher)
+    return false;
+  fetchByTileFutures_.push_back(fetcher->fetchTiles(
+      cp_.tlmMarkers_->getTileParts(), slated, nullptr,
+      [this, unreducedImageBounds, postGenerator](size_t requestIndex, TileFetchContext* context) {
+        auto& tilePart = (*context->requests_)[requestIndex];
+        tilePart->stream_ = std::unique_ptr<IStream>(memStreamCreate(
+            tilePart->data_.get(), tilePart->length_, false, nullptr, stream_->getFormat(), true));
+        auto& tilePartSeq = (*context->tilePartFetchByTile_)[tilePart->tileIndex_];
+        if(tilePartSeq->incrementFetchCount() == tilePartSeq->size())
+        {
+          grklog.debug("Decompressing tile %d", tilePart->tileIndex_);
+          const auto tileProcessor = getTileProcessor(tilePart->tileIndex_);
+          auto decompressTask = genDecompressTileTLMTask(tileProcessor, tilePartSeq,
+                                                         unreducedImageBounds, postGenerator);
+          decompressTask();
+        }
+      }));
+
+  return true;
+}
+
+/////////////////////////////////////////////////////////////////////
+
+void CodeStreamDecompress::initTilesToDecompress(Rect16 region)
+{
+  tilesToDecompress_.init(region);
+}
+void CodeStreamDecompress::setNumComponents(uint16_t numComps)
+{
+  defaultTcp_->numComps_ = numComps;
+}
+bool CodeStreamDecompress::initDefaultTCP()
+{
+  return defaultTcp_->initDefault(headerImage_);
+}
+
+bool CodeStreamDecompress::setProgressionState(grk_progression_state state)
+{
+  return tileCache_->setProgressionState(state);
+}
+grk_progression_state CodeStreamDecompress::getProgressionState(uint16_t tileIndex)
+{
+  return tileCache_->getProgressionState(tileIndex);
+}
+
+void CodeStreamDecompress::setPostPostProcess(std::function<bool(GrkImage*)> func)
+{
+  postPostProcess_ = func;
+}
+
+void CodeStreamDecompress::differentialUpdate(GrkImage* scratch)
+{
+  headerImage_->subsampleAndReduce(cp_.codingParams_.dec_.reduce_);
+  scratch->subsampleAndReduce(cp_.codingParams_.dec_.reduce_);
+}
+
+bool CodeStreamDecompress::activateScratch(bool singleTile, GrkImage* scratch)
+{
+  multiTileComposite_->copyHeaderTo(scratch);
+
+  // no need to allocate composite data if there is only one tile
+  // i.e. no compositing
+  if(singleTile || !headerImage_->has_multiple_tiles)
+    return true;
+
+  return cp_.codingParams_.dec_.skipAllocateComposite_ || scratch->allocCompositeData();
+}
+
+ITileProcessor* CodeStreamDecompress::getTileProcessor(uint16_t tileIndex)
+{
+  auto cached = tileCache_->get(tileIndex);
+  auto tileProcessor = cached ? cached->processor : nullptr;
+  if(!tileProcessor)
+  {
+    auto tcp = new TileCodingParams(*defaultTcp_);
+    // set number of tile parts if we have TLM markers
+    tcp->signalledNumTileParts_ = cp_.getNumTilePartsFromTLM(tileIndex);
+
+    uint16_t tile_x = tileIndex % cp_.t_grid_width_;
+    uint16_t tile_y = tileIndex / cp_.t_grid_width_;
+    auto tileBounds = cp_.getTileBounds(headerImage_->getBounds(), tile_x, tile_y);
+    if(!region_.empty())
+    {
+      auto inter = tileBounds.intersection(region_);
+      tcp->wholeTileDecompress_ = (inter.x0 == tileBounds.x0 && inter.y0 == tileBounds.y0 &&
+                                   inter.x1 == tileBounds.x1 && inter.y1 == tileBounds.y1);
+    }
+
+    tileProcessor =
+        new TileProcessor(tileIndex, tcp, this, stream_, false, tileCache_->getStrategy());
+    tileCache_->put(tileIndex, tileProcessor);
+  }
+  return tileProcessor;
+}
+
+GrkImage* CodeStreamDecompress::getImage(uint16_t tile_index, bool doWait)
+{
+  if(doWait)
+    wait(tile_index);
+
+  auto entry = tileCache_->get(tile_index);
+  return entry ? entry->processor->getImage() : nullptr;
+}
+GrkImage* CodeStreamDecompress::getImage()
+{
+  wait(nullptr);
+
+  return multiTileComposite_.get();
 }
 
 } // namespace grk

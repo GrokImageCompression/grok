@@ -171,14 +171,13 @@ private:
   void decompressSequentialPrepare(void);
 
   bool schedule(ITileProcessor* tileProcessor, bool multiTile);
-  bool sequentialSchedule(ITileProcessor* tileProcessor, bool multiTile);
 
   /**
    * @brief Parses next slated tile
    *
    * @return true if successful
    */
-  bool parseAndSchedule(bool multiTile);
+  bool sequentialParseAndSchedule(bool multiTile);
 
   /**
    * @brief Reads unknown marker
@@ -445,6 +444,12 @@ private:
 
   // Tile batching
 
+  std::mutex batchTileQueueMutex_;
+  std::condition_variable batchTileQueueCondition_;
+  uint16_t batchTileInitialRows_ = 2;
+  uint16_t batchTileNextRows_ = 2;
+  uint16_t batchTileHeadroomIncrement(uint16_t numRows, uint16_t tilesLeft);
+
   // batch TLM
   std::queue<uint16_t> batchTileQueueTLM_;
 
@@ -453,13 +458,6 @@ private:
   std::queue<ITileProcessor*> batchTileQueueSequential_;
   uint16_t batchTileScheduleHeadroomSequential_ = 0;
   uint16_t batchTileUnscheduledSequential_ = 0;
-
-  // batch
-  std::mutex batchTileQueueMutex_;
-  std::condition_variable batchTileQueueCondition_;
-  uint16_t batchTileInitialRows_ = 2;
-  uint16_t batchTileNextRows_ = 2;
-  uint16_t batchTileHeadroomIncrement(uint16_t numRows, uint16_t tilesLeft);
 };
 
 } // namespace grk
