@@ -326,7 +326,7 @@ bool DecompressScheduler::scheduleT1(ITileProcessor* tileProcessor)
       if(mctPostProc && compno < 3)
       {
         // link to MCT
-        imageComponentFlow->getFinalFlowT1()->precede(mctPostProc);
+        imageComponentFlow->getFinalFlowT1()->precede(*mctPostProc);
       }
       else if(doPostT1)
       {
@@ -334,7 +334,7 @@ bool DecompressScheduler::scheduleT1(ITileProcessor* tileProcessor)
         if(!tileProcessor->needsMctDecompress(compno) || tcp->mct_ == 2)
         {
           auto dcPostProc = imageComponentFlow->getPrePostProc(*this);
-          imageComponentFlow->getFinalFlowT1()->precede(dcPostProc);
+          imageComponentFlow->getFinalFlowT1()->precede(*dcPostProc);
           if((tcp->tccps_ + compno)->qmfbid_ == 1)
             mct->schedule_decompress_dc_shift_rev(dcPostProc, compno);
           else

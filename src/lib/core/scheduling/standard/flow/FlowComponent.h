@@ -50,17 +50,11 @@ public:
   }
 
   /**
-   * @brief Schedule this FlowComponent before another FlowComponent
+   * @brief Schedule this Taskflow before another FlowComponent
    *
-   * @param successor pointer to FlowComponent that will succeed
+   * @param successor pointer to Taskflow that will succeed
    * this FlowComponent
    */
-  void precede(FlowComponent* successor)
-  {
-    assert(successor);
-    compositionTask_.precede(successor->compositionTask_);
-  }
-
   void precede(tf::Task& successor)
   {
     compositionTask_.precede(successor);
