@@ -51,7 +51,7 @@ struct ITileProcessor;
 #include "Subband.h"
 #include "Resolution.h"
 
-#include "WindowScheduler.h"
+#include "SchedulerExcalibur.h"
 #include "TileComponentWindow.h"
 #include "canvas/tile/Tile.h"
 #include "ITileProcessor.h"

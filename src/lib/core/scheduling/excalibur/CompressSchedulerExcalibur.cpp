@@ -50,15 +50,15 @@ struct ITileProcessor;
 
 #include "TileComponentWindow.h"
 #include "canvas/tile/Tile.h"
-#include "CompressWindowScheduler.h"
+#include "CompressSchedulerExcalibur.h"
 
 namespace grk
 {
 
-CompressWindowScheduler::CompressWindowScheduler(Tile* tile, bool needsRateControl,
+CompressSchedulerExcalibur::CompressSchedulerExcalibur(Tile* tile, bool needsRateControl,
                                                  TileCodingParams* tcp, const double* mct_norms,
                                                  uint16_t mct_numcomps)
-    : WindowScheduler(tile->numcomps_), tile_(tile), needsRateControl_(needsRateControl),
+    : SchedulerExcalibur(tile->numcomps_), tile_(tile), needsRateControl_(needsRateControl),
       blockCount_(-1), tcp_(tcp), mct_norms_(mct_norms), mct_numcomps_(mct_numcomps)
 
 {}

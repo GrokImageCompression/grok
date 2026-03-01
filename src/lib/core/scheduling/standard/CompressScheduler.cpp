@@ -48,7 +48,7 @@ struct ITileProcessor;
 #include "Resolution.h"
 
 #include "CodecScheduler.h"
-#include "WholeTileScheduler.h"
+#include "SchedulerStandard.h"
 #include "TileComponentWindow.h"
 #include "canvas/tile/Tile.h"
 #include "CoderFactory.h"
@@ -58,7 +58,7 @@ namespace grk
 {
 CompressScheduler::CompressScheduler(Tile* tile, bool needsRateControl, TileCodingParams* tcp,
                                      const double* mct_norms, uint16_t mct_numcomps)
-    : WholeTileScheduler(tile->numcomps_), tile_(tile), needsRateControl_(needsRateControl),
+    : SchedulerStandard(tile->numcomps_), tile_(tile), needsRateControl_(needsRateControl),
       blockCount_(-1), tcp_(tcp), mct_norms_(mct_norms), mct_numcomps_(mct_numcomps)
 {}
 

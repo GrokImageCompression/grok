@@ -47,7 +47,7 @@ struct ITileProcessor;
 #include "ICoder.h"
 #include "FileFormatJP2Family.h"
 #include "FileFormatJP2Decompress.h"
-#include "WindowScheduler.h"
+#include "SchedulerExcalibur.h"
 #include "ITileProcessor.h"
 #include "TileCache.h"
 #include "TileCompletion.h"

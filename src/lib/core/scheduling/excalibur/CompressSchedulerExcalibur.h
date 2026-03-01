@@ -17,48 +17,36 @@
 
 #pragma once
 
-#include "WholeTileScheduler.h"
+#include "SchedulerExcalibur.h"
 
 namespace grk
 {
-class CompressScheduler : public WholeTileScheduler
+
+/**
+ * @class CompressSchedulerExcalibur
+ * @brief Compresses a tile using windowed design
+ *
+ */
+class CompressSchedulerExcalibur : public SchedulerExcalibur
 {
 public:
   /**
-   * @brief Constructs a CompressScheduler
+   * @brief Constructs a CompressSchedulerExcalibur
    * @param tile @ref Tile
    * @param needsRateControl true if rate control needed
    * @param tcp @ref TileCodingParams
    * @param mct_norms array of mct norms
    * @param mct_numcomps number of mct components
    */
-  CompressScheduler(Tile* tile, bool needsRateControl, TileCodingParams* tcp,
-                    const double* mct_norms, uint16_t mct_numcomps);
-  /**
-   * @brief Destroys a CompressScheduler
-   */
-  ~CompressScheduler() = default;
+  CompressSchedulerExcalibur(Tile* tile, bool needsRateControl, TileCodingParams* tcp,
+                          const double* mct_norms, uint16_t mct_numcomps);
 
-  bool scheduleT1(ITileProcessor* proc) override;
+  /**
+   * @brief Destroys a SchedulerExcalibur
+   */
+  virtual ~CompressSchedulerExcalibur() = default;
 
 private:
-  /**
-   * @brief compress next block
-   *
-   * @param workerId worker id
-   * @param maxBlocks maximum number of blocks
-   * @return true if successful
-   */
-  bool compress(size_t workerId, uint64_t maxBlocks);
-
-  /**
-   * @brief compress block
-   *
-   * @param coder @ref ICoder coder implementation
-   * @param block @ref CompressBlockExec compression block
-   */
-  void compress(t1::ICoder* coder, t1::CompressBlockExec* block);
-
   /**
    * @brief @ref Tile to compress
    */

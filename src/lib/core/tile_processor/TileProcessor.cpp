@@ -69,7 +69,7 @@ struct ITileProcessorCompress;
 #include "T2Decompress.h"
 #include "plugin_bridge.h"
 #include "DecompressScheduler.h"
-#include "DecompressWindowScheduler.h"
+#include "DecompressSchedulerExcalibur.h"
 
 namespace grk
 {
@@ -983,7 +983,7 @@ void TileProcessor::scheduleAndRunDecompress(CoderPool* coderPool, Rect32 unredu
   if(!scheduler_)
   {
     if(Scheduling::isWindowedScheduling())
-      scheduler_ = new DecompressWindowScheduler(headerImage_->numcomps, headerImage_->comps->prec,
+      scheduler_ = new DecompressSchedulerExcalibur(headerImage_->numcomps, headerImage_->comps->prec,
                                                  coderPool);
     else
       scheduler_ =

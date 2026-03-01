@@ -17,47 +17,53 @@
 
 #pragma once
 
-#include "TileBlocks.h"
-#include "WindowScheduler.h"
+#include "CodecScheduler.h"
 
 namespace grk
 {
 
 /**
- * @class DecompressWindowScheduler
- * @brief abstract class to graph and execute T1 tasks for windowed tile
+ * @class SchedulerStandard
+ * @brief abstract class to graph and execute T1 tasks for whole tile
  *
  * Task scheduling will be performed by derived classes
  */
-class DecompressWindowScheduler : public WindowScheduler
+class SchedulerStandard : public CodecScheduler
 {
 public:
   /**
-   * @brief Constructs a WindowScheduler
+   * @brief Constructs a SchedulerStandard
    * @param numComps number of components
-   * @param streamPool code stream pool
    */
-  DecompressWindowScheduler(uint16_t numComps, uint8_t prec, CoderPool* streamPool);
+  SchedulerStandard(uint16_t numComps);
 
   /**
-   * @brief Destroys a WindowScheduler
+   * @brief Destroys a SchedulerStandard
    */
-  virtual ~DecompressWindowScheduler();
-
-  bool scheduleT1(ITileProcessor* tileProcessor) override;
-
-  void release(void) override;
-
-private:
-  DifferentialInfo* differentialInfo_;
+  virtual ~SchedulerStandard();
 
   /**
-   * @brief precision of input image
+   * @brief Releases flow components
    */
-  uint8_t prec_;
+  virtual void release(void) override;
 
-  CoderPool coderPool_;
-  CoderPool* streamPool_;
+  /**
+   * @brief Gets @ref ImageComponentFlow for component
+   * @brief compno component number
+   */
+  ImageComponentFlow* getImageComponentFlow(uint16_t compno);
+
+protected:
+  /**
+   * @brief Calculates task graph for component
+   * @param compno component number
+   */
+  void graph(uint16_t compno);
+
+  /**
+   * @brief store image component flows
+   */
+  std::vector<ImageComponentFlow*> imageComponentFlow_;
 };
 
 } // namespace grk

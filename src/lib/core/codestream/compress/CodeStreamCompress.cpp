@@ -48,7 +48,7 @@ struct ITileProcessor;
 #include "ICoder.h"
 #include "CoderPool.h"
 #include "CodeblockCompress.h"
-#include "WindowScheduler.h"
+#include "SchedulerExcalibur.h"
 #include "PacketManager.h"
 #include "mct.h"
 #include "ITileProcessor.h"

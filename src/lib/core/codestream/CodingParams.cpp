@@ -97,8 +97,8 @@ struct ITileProcessorCompress;
 #include "Subband.h"
 #include "Resolution.h"
 #include "BlockExec.h"
-#include "WindowScheduler.h"
-#include "WholeTileScheduler.h"
+#include "SchedulerExcalibur.h"
+#include "SchedulerStandard.h"
 
 #include "TileComponentWindow.h"
 #include "PacketManager.h"

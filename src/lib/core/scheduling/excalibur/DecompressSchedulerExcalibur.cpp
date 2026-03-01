@@ -57,24 +57,24 @@ struct ITileProcessor;
 #include "canvas/tile/Tile.h"
 #include "ITileProcessor.h"
 #include "CoderFactory.h"
-#include "DecompressWindowScheduler.h"
+#include "DecompressSchedulerExcalibur.h"
 
 namespace grk
 {
 
-DecompressWindowScheduler::DecompressWindowScheduler(uint16_t numComps, uint8_t prec,
+DecompressSchedulerExcalibur::DecompressSchedulerExcalibur(uint16_t numComps, uint8_t prec,
                                                      CoderPool* streamPool)
-    : WindowScheduler(numComps), differentialInfo_(new DifferentialInfo[numComps]), prec_(prec),
+    : SchedulerExcalibur(numComps), differentialInfo_(new DifferentialInfo[numComps]), prec_(prec),
       streamPool_(streamPool)
 {}
-DecompressWindowScheduler::~DecompressWindowScheduler()
+DecompressSchedulerExcalibur::~DecompressSchedulerExcalibur()
 {
   delete[] differentialInfo_;
 }
 
-void DecompressWindowScheduler::release(void) {}
+void DecompressSchedulerExcalibur::release(void) {}
 
-bool DecompressWindowScheduler::scheduleT1(ITileProcessor* tileProcessor)
+bool DecompressSchedulerExcalibur::scheduleT1(ITileProcessor* tileProcessor)
 {
   auto tcp = tileProcessor->getTCP();
   bool cacheAll =

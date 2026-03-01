@@ -17,33 +17,47 @@
 
 #pragma once
 
-#include "CodecScheduler.h"
-#include "ICoder.h"
+#include "TileBlocks.h"
+#include "SchedulerExcalibur.h"
 
 namespace grk
 {
 
 /**
- * @class WindowScheduler
+ * @class DecompressSchedulerExcalibur
  * @brief abstract class to graph and execute T1 tasks for windowed tile
  *
  * Task scheduling will be performed by derived classes
  */
-class WindowScheduler : public CodecScheduler
+class DecompressSchedulerExcalibur : public SchedulerExcalibur
 {
 public:
   /**
-   * @brief Constructs a WindowScheduler
+   * @brief Constructs a SchedulerExcalibur
    * @param numComps number of components
+   * @param streamPool code stream pool
    */
-  WindowScheduler(uint16_t numComps);
+  DecompressSchedulerExcalibur(uint16_t numComps, uint8_t prec, CoderPool* streamPool);
 
   /**
-   * @brief Destroys a WindowScheduler
+   * @brief Destroys a SchedulerExcalibur
    */
-  virtual ~WindowScheduler();
+  virtual ~DecompressSchedulerExcalibur();
 
-protected:
+  bool scheduleT1(ITileProcessor* tileProcessor) override;
+
+  void release(void) override;
+
+private:
+  DifferentialInfo* differentialInfo_;
+
+  /**
+   * @brief precision of input image
+   */
+  uint8_t prec_;
+
+  CoderPool coderPool_;
+  CoderPool* streamPool_;
 };
 
 } // namespace grk

@@ -54,9 +54,9 @@ include_directories(
   ${CMAKE_CURRENT_SOURCE_DIR}/t2/quantizer/part1
   ${CMAKE_CURRENT_SOURCE_DIR}/tile_processor
   ${CMAKE_CURRENT_SOURCE_DIR}/scheduling
-  ${CMAKE_CURRENT_SOURCE_DIR}/scheduling/whole_tile
-  ${CMAKE_CURRENT_SOURCE_DIR}/scheduling/whole_tile/flow
-  ${CMAKE_CURRENT_SOURCE_DIR}/scheduling/window
+  ${CMAKE_CURRENT_SOURCE_DIR}/scheduling/standard
+  ${CMAKE_CURRENT_SOURCE_DIR}/scheduling/standard/flow
+  ${CMAKE_CURRENT_SOURCE_DIR}/scheduling/excalibur
   ${CMAKE_CURRENT_SOURCE_DIR}/stream
   ${CMAKE_CURRENT_SOURCE_DIR}/stream/fetchers
   ${CMAKE_CURRENT_SOURCE_DIR}/stream/fetchers/s3
@@ -131,13 +131,13 @@ set(GROK_LIBRARY_SRCS
 
   ${CMAKE_CURRENT_SOURCE_DIR}/grok.cpp
 
-  ${CMAKE_CURRENT_SOURCE_DIR}/scheduling/whole_tile/flow/ImageComponentFlow.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/scheduling/whole_tile/WholeTileScheduler.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/scheduling/whole_tile/DecompressScheduler.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/scheduling/whole_tile/CompressScheduler.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/scheduling/window/DecompressWindowScheduler.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/scheduling/window/CompressWindowScheduler.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/scheduling/window/WindowScheduler.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/scheduling/standard/flow/ImageComponentFlow.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/scheduling/standard/SchedulerStandard.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/scheduling/standard/DecompressScheduler.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/scheduling/standard/CompressScheduler.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/scheduling/excalibur/DecompressSchedulerExcalibur.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/scheduling/excalibur/CompressSchedulerExcalibur.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/scheduling/excalibur/SchedulerExcalibur.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/scheduling/CodecScheduler.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/scheduling/CoderPool.cpp
 

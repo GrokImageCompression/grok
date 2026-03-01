@@ -18,52 +18,32 @@
 #pragma once
 
 #include "CodecScheduler.h"
+#include "ICoder.h"
 
 namespace grk
 {
 
 /**
- * @class WholeTileScheduler
- * @brief abstract class to graph and execute T1 tasks for whole tile
+ * @class SchedulerExcalibur
+ * @brief abstract class to graph and execute T1 tasks for windowed tile
  *
  * Task scheduling will be performed by derived classes
  */
-class WholeTileScheduler : public CodecScheduler
+class SchedulerExcalibur : public CodecScheduler
 {
 public:
   /**
-   * @brief Constructs a WholeTileScheduler
+   * @brief Constructs a SchedulerExcalibur
    * @param numComps number of components
    */
-  WholeTileScheduler(uint16_t numComps);
+  SchedulerExcalibur(uint16_t numComps);
 
   /**
-   * @brief Destroys a WholeTileScheduler
+   * @brief Destroys a SchedulerExcalibur
    */
-  virtual ~WholeTileScheduler();
-
-  /**
-   * @brief Releases flow components
-   */
-  virtual void release(void) override;
-
-  /**
-   * @brief Gets @ref ImageComponentFlow for component
-   * @brief compno component number
-   */
-  ImageComponentFlow* getImageComponentFlow(uint16_t compno);
+  virtual ~SchedulerExcalibur();
 
 protected:
-  /**
-   * @brief Calculates task graph for component
-   * @param compno component number
-   */
-  void graph(uint16_t compno);
-
-  /**
-   * @brief store image component flows
-   */
-  std::vector<ImageComponentFlow*> imageComponentFlow_;
 };
 
 } // namespace grk

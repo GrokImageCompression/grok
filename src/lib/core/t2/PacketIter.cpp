@@ -51,7 +51,7 @@ struct ITileProcessor;
 #include "CoderPool.h"
 #include "CodeblockCompress.h"
 
-#include "WindowScheduler.h"
+#include "SchedulerExcalibur.h"
 #include "PacketManager.h"
 #include "ITileProcessor.h"
 #include "ITileProcessorCompress.h"

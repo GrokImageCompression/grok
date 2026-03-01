@@ -19,7 +19,7 @@
 
 #include <vector>
 
-#include "WholeTileScheduler.h"
+#include "SchedulerStandard.h"
 #include "TileBlocks.h"
 #include "WaveletReverse.h"
 
@@ -31,7 +31,7 @@ namespace grk
  * @brief schedule and run T1 decompression
  *
  */
-class DecompressScheduler : public WholeTileScheduler
+class DecompressScheduler : public SchedulerStandard
 {
 public:
   /**

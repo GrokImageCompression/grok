@@ -67,7 +67,7 @@ namespace grk
 {
 
 DecompressScheduler::DecompressScheduler(uint16_t numcomps, uint8_t prec, CoderPool* streamPool)
-    : WholeTileScheduler(numcomps), prec_(prec), blocksByTile_(TileBlocks(numcomps)),
+    : SchedulerStandard(numcomps), prec_(prec), blocksByTile_(TileBlocks(numcomps)),
       differentialInfo_(new DifferentialInfo[numcomps]), prePostProc_(nullptr),
       streamPool_(streamPool)
 {
@@ -92,7 +92,7 @@ DecompressScheduler::~DecompressScheduler()
 
 void DecompressScheduler::release(void)
 {
-  WholeTileScheduler::release();
+  SchedulerStandard::release();
   delete prePostProc_;
   prePostProc_ = nullptr;
 }

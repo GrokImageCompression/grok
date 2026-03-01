@@ -19,40 +19,18 @@
 #include "TileWindow.h"
 #include "Quantizer.h"
 #include "ImageComponentFlow.h"
+namespace grk
+{
+struct ITileProcessor;
+struct TileComponent;
+} // namespace grk
 #include "ICoder.h"
-#include "CoderPool.h"
-#include "CodecScheduler.h"
-#include "WholeTileScheduler.h"
+#include "SchedulerExcalibur.h"
 
 namespace grk
 {
 
-WholeTileScheduler::WholeTileScheduler(uint16_t numComps) : CodecScheduler(numComps)
-{
-  for(uint16_t compno = 0; compno < numcomps_; ++compno)
-    imageComponentFlow_.push_back(nullptr);
-}
-WholeTileScheduler::~WholeTileScheduler()
-{
-  release();
-}
-void WholeTileScheduler::release(void)
-{
-  for(const auto& flow : imageComponentFlow_)
-    delete flow;
-  imageComponentFlow_.clear();
-  for(uint16_t compno = 0; compno < numcomps_; ++compno)
-    imageComponentFlow_.push_back(nullptr);
-  clear();
-}
-void WholeTileScheduler::graph(uint16_t compno)
-{
-  assert(compno < numcomps_);
-  imageComponentFlow_[compno]->graph();
-}
-ImageComponentFlow* WholeTileScheduler::getImageComponentFlow(uint16_t compno)
-{
-  return (compno < numcomps_) ? imageComponentFlow_[compno] : nullptr;
-}
+SchedulerExcalibur::SchedulerExcalibur(uint16_t numComps) : CodecScheduler(numComps) {}
+SchedulerExcalibur::~SchedulerExcalibur() {}
 
 } // namespace grk
