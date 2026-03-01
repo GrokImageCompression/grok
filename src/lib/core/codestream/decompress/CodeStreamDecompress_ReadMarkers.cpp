@@ -16,6 +16,7 @@
  */
 
 #include "grk_restrict.h"
+#include "TFSingleton.h"
 #include "simd.h"
 #include "CodeStreamLimits.h"
 #include "TileWindow.h"

@@ -14,6 +14,7 @@
  *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
+#include "TFSingleton.h"
 
 #include "CodeStreamLimits.h"
 #include "TileWindow.h"

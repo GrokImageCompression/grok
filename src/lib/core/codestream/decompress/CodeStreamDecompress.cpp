@@ -17,6 +17,7 @@
 
 #include <functional>
 
+#include "TFSingleton.h"
 #include "grk_fseek.h"
 #include "geometry.h"
 #include "grk_exceptions.h"

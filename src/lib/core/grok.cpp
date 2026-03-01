@@ -29,6 +29,7 @@
 #include <mutex>
 
 #include "grk_fseek.h"
+#include "TFSingleton.h"
 
 #include "MinHeap.h"
 #include "SequentialCache.h"

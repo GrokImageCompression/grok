@@ -15,6 +15,7 @@
  *
  */
 
+#include "TFSingleton.h"
 #include "CodeStreamLimits.h"
 #include "TileWindow.h"
 #include "Quantizer.h"

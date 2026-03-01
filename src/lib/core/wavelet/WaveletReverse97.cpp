@@ -24,6 +24,7 @@
 #include <algorithm>
 #include <functional>
 
+#include "TFSingleton.h"
 #include "grk_restrict.h"
 #include "simd.h"
 #include "CodeStreamLimits.h"

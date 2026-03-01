@@ -17,7 +17,7 @@
 
 #pragma once
 
-#include "TFSingleton.h"
+#include "grk_taskflow.h"
 
 /**
  * @class FlowComponent

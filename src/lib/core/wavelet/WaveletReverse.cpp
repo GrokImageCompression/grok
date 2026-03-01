@@ -27,6 +27,7 @@ odd += (previous + next) >> 1;
 
 ************************************************************************/
 
+#include "TFSingleton.h"
 #include "grk_restrict.h"
 #include "simd.h"
 #include "CodeStreamLimits.h"

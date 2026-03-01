@@ -15,6 +15,7 @@
  *
  */
 
+#include "TFSingleton.h"
 #include "grk_exceptions.h"
 #include "Logger.h"
 #include "CodeStreamLimits.h"
