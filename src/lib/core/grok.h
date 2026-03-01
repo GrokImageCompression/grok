@@ -58,10 +58,12 @@ extern "C" {
 /**
  * @brief Environment variables
  *
- * @brief If this variable is set to non-zero value, then codec scheduling
- * is set to windowed, otherwise it is set to whole-tile
+ * @brief Set this environment variable to enable various levels of debug logging
+ * levels: 1 - 5
+ * level 1 provides only error logging
+ * level 3 provides error, warning and information logging
  *
- * GRK_WINDOWED_SCHEDULING
+ * GRK_DEBUG
  *
  */
 

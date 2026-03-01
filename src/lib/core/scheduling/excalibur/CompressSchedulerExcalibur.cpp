@@ -56,8 +56,9 @@ namespace grk
 {
 
 CompressSchedulerExcalibur::CompressSchedulerExcalibur(Tile* tile, bool needsRateControl,
-                                                 TileCodingParams* tcp, const double* mct_norms,
-                                                 uint16_t mct_numcomps)
+                                                       TileCodingParams* tcp,
+                                                       const double* mct_norms,
+                                                       uint16_t mct_numcomps)
     : SchedulerExcalibur(tile->numcomps_), tile_(tile), needsRateControl_(needsRateControl),
       blockCount_(-1), tcp_(tcp), mct_norms_(mct_norms), mct_numcomps_(mct_numcomps)
 

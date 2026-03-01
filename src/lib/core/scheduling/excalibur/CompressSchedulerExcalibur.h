@@ -39,7 +39,7 @@ public:
    * @param mct_numcomps number of mct components
    */
   CompressSchedulerExcalibur(Tile* tile, bool needsRateControl, TileCodingParams* tcp,
-                          const double* mct_norms, uint16_t mct_numcomps);
+                             const double* mct_norms, uint16_t mct_numcomps);
 
   /**
    * @brief Destroys a SchedulerExcalibur

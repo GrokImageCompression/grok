@@ -63,7 +63,7 @@ namespace grk
 {
 
 DecompressSchedulerExcalibur::DecompressSchedulerExcalibur(uint16_t numComps, uint8_t prec,
-                                                     CoderPool* streamPool)
+                                                           CoderPool* streamPool)
     : SchedulerExcalibur(numComps), differentialInfo_(new DifferentialInfo[numComps]), prec_(prec),
       streamPool_(streamPool)
 {}

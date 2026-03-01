@@ -146,7 +146,7 @@
             "cwd": "${workspaceFolder}",
             "environment": [
                 { "name": "GRK_DEBUG", "value": "3" },
-                { "name": "GRK_WINDOWED_SCHEDULING", "value": "0" }
+                { "name": "GRK_EXCALIBUR", "value": "0" }
             ],
             "MIMode": "gdb",
             "miDebuggerPath": "/usr/bin/gdb"
@@ -165,7 +165,7 @@
             "cwd": "${workspaceFolder}",
             "environment": [
                 { "name": "GRK_DEBUG", "value": "3" },
-                { "name": "GRK_WINDOWED_SCHEDULING", "value": "0" }
+                { "name": "GRK_EXCALIBUR", "value": "0" }
             ],
             "MIMode": "gdb",
             "miDebuggerPath": "/usr/bin/gdb"
@@ -498,7 +498,7 @@
             "cwd": "${workspaceFolder}",
             "environment": [
                 { "name": "GRK_DEBUG", "value": "3" },
-                { "name": "GRK_WINDOWED_SCHEDULING", "value": "1" }
+                { "name": "GRK_EXCALIBUR", "value": "1" }
             ],
             "MIMode": "gdb",
             "miDebuggerPath": "/usr/bin/gdb"
@@ -578,7 +578,7 @@
             "cwd": "${workspaceFolder}",
             "environment": [
                 { "name": "GRK_DEBUG", "value": "3" },
-                { "name": "GRK_WINDOWED_SCHEDULING", "value": "0" }
+                { "name": "GRK_EXCALIBUR", "value": "0" }
             ],
             "MIMode": "gdb",
             "miDebuggerPath": "/usr/bin/gdb"
@@ -626,7 +626,7 @@
             ],
             "environment": [
                 { "name": "GRK_DEBUG", "value": "3" },
-                { "name": "GRK_WINDOWED_SCHEDULING", "value": "0" }
+                { "name": "GRK_EXCALIBUR", "value": "0" }
             ],
             "cwd": "${workspaceFolder}",
             "MIMode": "gdb",
@@ -661,7 +661,7 @@
             ],
             "environment": [
                 { "name": "GRK_DEBUG", "value": "3" },
-                { "name": "GRK_WINDOWED_SCHEDULING", "value": "0" }
+                { "name": "GRK_EXCALIBUR", "value": "0" }
             ],
             "cwd": "${workspaceFolder}",
             "MIMode": "gdb",
@@ -682,7 +682,7 @@
             ],
             "environment": [
                 { "name": "GRK_DEBUG", "value": "3" },
-                { "name": "GRK_WINDOWED_SCHEDULING", "value": "0" }
+                { "name": "GRK_EXCALIBUR", "value": "0" }
             ],
             "cwd": "${workspaceFolder}",
             "MIMode": "gdb",

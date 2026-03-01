@@ -982,9 +982,9 @@ void TileProcessor::scheduleAndRunDecompress(CoderPool* coderPool, Rect32 unredu
 
   if(!scheduler_)
   {
-    if(Scheduling::isWindowedScheduling())
-      scheduler_ = new DecompressSchedulerExcalibur(headerImage_->numcomps, headerImage_->comps->prec,
-                                                 coderPool);
+    if(Scheduling::isExcalibur())
+      scheduler_ = new DecompressSchedulerExcalibur(headerImage_->numcomps,
+                                                    headerImage_->comps->prec, coderPool);
     else
       scheduler_ =
           new DecompressScheduler(headerImage_->numcomps, headerImage_->comps->prec, coderPool);
@@ -1073,7 +1073,7 @@ void TileProcessor::scheduleAndRunDecompress(CoderPool* coderPool, Rect32 unredu
     {
       auto tilec = tile_->comps_ + compno;
 
-      if(Scheduling::isWindowedScheduling())
+      if(Scheduling::isExcalibur())
       {
       }
       else

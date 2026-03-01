@@ -26,9 +26,9 @@ namespace grk
 class Scheduling
 {
 public:
-  static bool isWindowedScheduling()
+  static bool isExcalibur()
   {
-    const char* env = std::getenv("GRK_WINDOWED_SCHEDULING");
+    const char* env = std::getenv("GRK_EXCALIBUR");
     if(!env)
     {
       return false; // Unset variable
