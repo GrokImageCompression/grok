@@ -426,8 +426,6 @@ bool CodeStreamDecompress::sequentialParseAndSchedule(bool multiTile)
   if(markerParser_.currId() != SOT)
     return false;
 
-  // A) Parse
-
   /* Parse tile parts until we satisfy one of the conditions below:
    * 1. read a complete slated tile
    * 2. read EOC
@@ -503,10 +501,8 @@ bool CodeStreamDecompress::sequentialParseAndSchedule(bool multiTile)
   currTileProcessor_ = nullptr;
   currTileIndex_ = -1;
 
-  // B) schedule
-
+  // batch
   tileProcessor->prepareForDecompression();
-  bool doSchedule = true;
   if(doTileBatching())
   {
     std::unique_lock<std::mutex> lock(batchTileQueueMutex_);
@@ -518,13 +514,12 @@ bool CodeStreamDecompress::sequentialParseAndSchedule(bool multiTile)
     else
     {
       batchTileQueueSequential_.push(tileProcessor);
-      doSchedule = false;
+      return true;
     }
   }
-  if(doSchedule && !schedule(tileProcessor, multiTile))
-    return false;
 
-  return true;
+  // schedule
+  return schedule(tileProcessor, multiTile);
 }
 
 /// Single Tile ////////////////////////////////////////////////////
