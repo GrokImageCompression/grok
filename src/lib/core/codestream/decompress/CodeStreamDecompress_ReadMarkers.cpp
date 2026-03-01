@@ -184,7 +184,7 @@ bool CodeStreamDecompress::readHeaderProcedure(void)
 
 void CodeStreamDecompress::postReadHeader(void)
 {
-  // set up tile completion based on time and image bounds
+  // set up tile completion based on tile and image bounds
   if(headerRead_)
   {
     if(cp_.asynchronous_ && cp_.simulate_synchronous_)
