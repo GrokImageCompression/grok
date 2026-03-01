@@ -76,6 +76,7 @@ private:
 
   /**
    * @brief uncompressed data buffer
+   *
    */
   Buffer2dAligned32 uncompressedBuf_;
   /**

@@ -62,7 +62,6 @@ struct DecompressBlockExec : public BlockExec
   ~DecompressBlockExec()
   {
     delete cachedCoder_;
-    delete uncompressedBuf_;
   }
   bool open(ICoder* coder) override
   {
@@ -98,7 +97,6 @@ struct DecompressBlockExec : public BlockExec
   ICoder* cachedCoder_ = nullptr;
   bool shouldCacheCoder_ = false;
   bool finalLayer_ = false;
-  Buffer2dAligned32* uncompressedBuf_ = nullptr;
 
   // Delete copy constructor and assignment operator
   DecompressBlockExec(const DecompressBlockExec&) = delete;
