@@ -127,8 +127,8 @@ struct ITileProcessor
    * @param post Post-scheduling callback function
    * @param futures Manager for tile futures
    */
-  virtual void scheduleDecompress(CoderPool* coderPool, Rect32 unreducedImageBounds,
-                                  std::function<void()> post, TileFutureManager& futures) = 0;
+  virtual void scheduleAndRunDecompress(CoderPool* coderPool, Rect32 unreducedImageBounds,
+                                        std::function<void()> post, TileFutureManager& futures) = 0;
 
   /**
    * @brief Performs post-T2+T1 decompression processing

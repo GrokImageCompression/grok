@@ -452,7 +452,7 @@ bool TileProcessor::decompressWithTLM(const std::shared_ptr<TPFetchSeq>& tilePar
   if(!decompressPrepareWithTLM(tilePartFetchSeq))
     return false;
 
-  scheduleDecompress(coderPool, unreducedImageBounds, post, futures);
+  scheduleAndRunDecompress(coderPool, unreducedImageBounds, post, futures);
 
   return true;
 }
@@ -975,8 +975,8 @@ void TileProcessor::post_decompressT2T1(GrkImage* scratch)
   }
 }
 
-void TileProcessor::scheduleDecompress(CoderPool* coderPool, Rect32 unreducedImageBounds,
-                                       std::function<void()> post, TileFutureManager& futures)
+void TileProcessor::scheduleAndRunDecompress(CoderPool* coderPool, Rect32 unreducedImageBounds,
+                                             std::function<void()> post, TileFutureManager& futures)
 {
   unreducedImageWindow_ = unreducedImageBounds;
 
@@ -997,8 +997,8 @@ void TileProcessor::scheduleDecompress(CoderPool* coderPool, Rect32 unreducedIma
   // bool doT2 = !current_plugin_tile_ || (current_plugin_tile_->decompress_flags & GRK_DECODE_T2);
 
   auto t2Parse = [this]() {
-    // synch plugin with T2 data
     // todo re-enable decompress synch
+    // synch plugin with T2 data
     // decompress_synch_plugin_with_host(this);
 
     if(tcp_->packets_->empty())
@@ -1069,11 +1069,15 @@ void TileProcessor::scheduleDecompress(CoderPool* coderPool, Rect32 unreducedIma
   };
 
   auto allocAndSchedule = [this]() {
-    if(!Scheduling::isWindowedScheduling())
+    for(uint16_t compno = 0; compno < tile_->numcomps_; ++compno)
     {
-      for(uint16_t compno = 0; compno < tile_->numcomps_; ++compno)
+      auto tilec = tile_->comps_ + compno;
+
+      if(Scheduling::isWindowedScheduling())
       {
-        auto tilec = tile_->comps_ + compno;
+      }
+      else
+      {
         if(!tcp_->wholeTileDecompress_)
         {
           try
@@ -1100,10 +1104,7 @@ void TileProcessor::scheduleDecompress(CoderPool* coderPool, Rect32 unreducedIma
       }
     }
     if(!scheduler_->scheduleT1(this))
-    {
       success_ = false;
-      return;
-    }
   };
 
   if(!t2ParseFlow_)

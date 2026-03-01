@@ -108,8 +108,8 @@ struct TileProcessor : virtual public ITileProcessor
    * @param post
    * @param futures
    */
-  void scheduleDecompress(CoderPool* coderPool, Rect32 unreducedImageBounds,
-                          std::function<void()> post, TileFutureManager& futures) override;
+  void scheduleAndRunDecompress(CoderPool* coderPool, Rect32 unreducedImageBounds,
+                                std::function<void()> post, TileFutureManager& futures) override;
   /**
    * @brief Performs post T2+T1 processing
    *

@@ -283,7 +283,7 @@ bool CodeStreamDecompress::schedule(ITileProcessor* tileProcessor, bool multiTil
     // T2 + T1 decompression
     // Once we schedule a processor for T1 compression, we will destroy it
     // regardless of success or not
-    tileProcessor->scheduleDecompress(
+    tileProcessor->scheduleAndRunDecompress(
         &coderPool_, multiTile ? scratchImage_->getBounds() : headerImage_->getBounds(),
         multiTile ? postMultiTile(tileProcessor) : postSingleTile(tileProcessor),
         decompressTileFutureManager_);
