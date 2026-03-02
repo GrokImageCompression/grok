@@ -51,8 +51,6 @@ struct TileProcessor : virtual public ITileProcessor
 
   void setProcessors(MarkerParser* parser) override;
 
-  void emplaceBlockTask(tf::Task& t) override;
-
   /**
    * @brief Initializes a TileProcessor
    */

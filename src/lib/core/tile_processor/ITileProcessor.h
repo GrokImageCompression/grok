@@ -47,12 +47,6 @@ struct ITileProcessor
   virtual void setProcessors(MarkerParser* parser) = 0;
 
   /**
-   * @brief Emplaces block decoding task
-   * @param task The task to emplace
-   */
-  virtual void emplaceBlockTask(tf::Task& t) = 0;
-
-  /**
    * @brief Initializes the TileProcessor
    * @return true if initialization succeeds, false otherwise
    */

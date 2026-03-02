@@ -176,7 +176,6 @@ bool DecompressSchedulerExcalibur::scheduleT1(ITileProcessor* tileProcessor)
             block->finalLayer_ = finalLayer;
 
             tf::Task t = placeholder();
-            tileProcessor->emplaceBlockTask(t);
             auto blockFunc = [this, activePool, tileProcessor, block, tccp, cbw, cbh, cacheAll] {
               if(success)
               {

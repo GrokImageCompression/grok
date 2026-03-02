@@ -102,11 +102,6 @@ TileProcessor::~TileProcessor()
   delete markerParser_;
 }
 
-void TileProcessor::emplaceBlockTask(tf::Task& t)
-{
-  blockTasks_.emplace_back(t);
-}
-
 void TileProcessor::setProcessors(MarkerParser* parser)
 {
   if(!parser)
