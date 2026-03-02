@@ -27,8 +27,15 @@
 namespace grk::t1
 {
 
-struct BlockExec
+struct IOpenable
 {
+  virtual void open() = 0;
+};
+
+struct BlockExec : public IOpenable
+{
+  using IOpenable::open;
+
   BlockExec() = default;
   virtual ~BlockExec() = default;
   virtual bool open(ICoder* coder) = 0;
@@ -63,6 +70,15 @@ struct DecompressBlockExec : public BlockExec
   ~DecompressBlockExec()
   {
     delete cachedCoder_;
+  }
+  void setOpen(std::function<void()>& open)
+  {
+    open_ = open;
+  }
+  void open(void) override
+  {
+    if(open_)
+      open_();
   }
   bool open(ICoder* coder) override
   {
@@ -99,14 +115,22 @@ struct DecompressBlockExec : public BlockExec
   bool shouldCacheCoder_ = false;
   bool finalLayer_ = false;
 
+private:
+  std::function<void()> open_;
+
   // Delete copy constructor and assignment operator
   DecompressBlockExec(const DecompressBlockExec&) = delete;
   DecompressBlockExec& operator=(const DecompressBlockExec&) = delete;
 };
 struct CompressBlockExec : public BlockExec
 {
+  using IOpenable::open;
+
   CompressBlockExec() = default;
   ~CompressBlockExec() = default;
+
+  void open(void) override {}
+
   bool open(ICoder* coder)
   {
     return coder->compress(this);

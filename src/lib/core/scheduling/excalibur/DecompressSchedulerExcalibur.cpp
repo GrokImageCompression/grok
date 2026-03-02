@@ -175,8 +175,8 @@ bool DecompressSchedulerExcalibur::scheduleT1(ITileProcessor* tileProcessor)
             block->R_b = prec_ + gain_b[band->orientation_];
             block->finalLayer_ = finalLayer;
 
-            tf::Task t = placeholder();
-            auto blockFunc = [this, activePool, tileProcessor, block, tccp, cbw, cbh, cacheAll] {
+            std::function<void()> op = [this, activePool, tileProcessor, block, tccp, cbw, cbh,
+                                        cacheAll] {
               if(success_)
               {
                 t1::ICoder* coder = nullptr;
@@ -203,7 +203,9 @@ bool DecompressSchedulerExcalibur::scheduleT1(ITileProcessor* tileProcessor)
                 }
               }
             };
-            t.work(blockFunc);
+            block->setOpen(op);
+            tf::Task t = placeholder();
+            t.work([block] { block->open(); });
           }
         }
       }
