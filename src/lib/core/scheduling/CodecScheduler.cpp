@@ -95,7 +95,7 @@ std::pair<uint8_t, uint8_t> ResolutionChecker::getResBounds(uint16_t compno)
   return componentResolutions_[compno];
 }
 
-CodecScheduler::CodecScheduler(uint16_t numComps) : success(true), numcomps_(numComps) {}
+CodecScheduler::CodecScheduler(uint16_t numComps) : success_(true), numcomps_(numComps) {}
 
 CodecScheduler::~CodecScheduler()
 {
@@ -126,7 +126,7 @@ bool CodecScheduler::wait(void)
   // Reset the future to indicate it is no longer in use
   runFuture_ = tf::Future<void>();
 
-  return success; // Assume success is set elsewhere in your code
+  return success_; // Assume success is set elsewhere in your code
 }
 
 } // namespace grk

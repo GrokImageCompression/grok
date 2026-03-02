@@ -114,7 +114,7 @@ protected:
   /**
    * @brief atomic tracking of compress/decompress success
    */
-  std::atomic_bool success;
+  std::atomic_bool success_;
 
   /**
    * @brief number of components

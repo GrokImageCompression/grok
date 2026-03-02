@@ -45,6 +45,7 @@ struct BlockExec
   uint8_t k_msbs = 0;
   uint8_t R_b = 0;
 
+private:
   // Delete copy constructor and assignment operator
   BlockExec(const BlockExec&) = delete;
   BlockExec& operator=(const BlockExec&) = delete;

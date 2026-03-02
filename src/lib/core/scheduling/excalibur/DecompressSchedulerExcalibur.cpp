@@ -177,7 +177,7 @@ bool DecompressSchedulerExcalibur::scheduleT1(ITileProcessor* tileProcessor)
 
             tf::Task t = placeholder();
             auto blockFunc = [this, activePool, tileProcessor, block, tccp, cbw, cbh, cacheAll] {
-              if(success)
+              if(success_)
               {
                 t1::ICoder* coder = nullptr;
                 if(block->needsCachedCoder())
@@ -194,14 +194,13 @@ bool DecompressSchedulerExcalibur::scheduleT1(ITileProcessor* tileProcessor)
                 }
                 try
                 {
-                  success = block->open(coder);
+                  success_ = block->open(coder);
                 }
                 catch(const std::runtime_error& rerr)
                 {
                   grklog.error(rerr.what());
-                  success = false;
+                  success_ = false;
                 }
-                delete block;
               }
             };
             t.work(blockFunc);
@@ -211,11 +210,11 @@ bool DecompressSchedulerExcalibur::scheduleT1(ITileProcessor* tileProcessor)
     }
 
     tilec->currentPacketProgressionState_ = tilec->nextPacketProgressionState_;
-    if(!success)
+    if(!success_)
       return false;
   }
 
-  return success;
+  return success_;
 }
 
 } // namespace grk

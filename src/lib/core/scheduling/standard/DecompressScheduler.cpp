@@ -242,7 +242,7 @@ bool DecompressScheduler::scheduleT1(ITileProcessor* tileProcessor)
         imageComponentFlow_[compno]->setRegionDecompression();
 
       // 3. decompress
-      success = true;
+      success_ = true;
       resno = 0;
     }
     for(auto& rblocks : componentBlocks)
@@ -253,7 +253,7 @@ bool DecompressScheduler::scheduleT1(ITileProcessor* tileProcessor)
       {
         auto blockFunc = [this, activePool, tileProcessor, &block, tccp, cbw, cbh, cacheAll,
                           finalLayer] {
-          if(!success)
+          if(!success_)
           {
             block.reset();
           }
@@ -277,13 +277,13 @@ bool DecompressScheduler::scheduleT1(ITileProcessor* tileProcessor)
             try
             {
               if(!block->open(coder))
-                success = false;
+                success_ = false;
             }
             catch(const std::runtime_error& rerr)
             {
               block.reset();
               grklog.error(rerr.what());
-              success = false;
+              success_ = false;
             }
           }
         };
@@ -292,7 +292,7 @@ bool DecompressScheduler::scheduleT1(ITileProcessor* tileProcessor)
       resno++;
     }
     tilec->currentPacketProgressionState_ = tilec->nextPacketProgressionState_;
-    if(!success)
+    if(!success_)
       return false;
 
     auto imageFlow = getImageComponentFlow(compno);
