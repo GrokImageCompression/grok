@@ -187,7 +187,7 @@ void TileProcessor::decompress_synch_plugin_with_host(void)
             assert(plugin_prc->num_blocks == prc->getNumCblks());
             for(uint32_t cblkno = 0; cblkno < prc->getNumCblks(); cblkno++)
             {
-              auto cblk = prc->getDecompressedBlock(cblkno);
+              auto cblk = prc->getDecompressBlock(cblkno);
               if(!cblk->getNumDataParsedSegments())
                 continue;
               // sanity check

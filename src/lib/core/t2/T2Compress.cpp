@@ -188,7 +188,7 @@ bool T2Compress::compressPacketSimulate(TileCodingParams* tcp, PacketIter* pi,
     auto nb_blocks = prc->getNumCblks();
     for(auto cblkno = 0U; cblkno < nb_blocks; ++cblkno)
     {
-      auto cblk = prc->getCompressedBlock(cblkno);
+      auto cblk = prc->getCompressBlock(cblkno);
       auto layer = cblk->getLayer(layno);
 
       if(!layer->totalPasses_)
@@ -278,7 +278,7 @@ bool T2Compress::compressHeader(t1_t2::BitIO* bio, Resolution* res, uint16_t lay
         prc->getImsbTree()->reset();
       for(auto cblkno = 0U; cblkno < nb_blocks; ++cblkno)
       {
-        auto cblk = prc->getCompressedBlock(cblkno);
+        auto cblk = prc->getCompressBlock(cblkno);
         cblk->setNumPassesInLayer(0, 0);
         assert(band->maxBitPlanes_ >= cblk->numbps());
         if(cblk->numbps() > band->maxBitPlanes_)
@@ -308,14 +308,14 @@ bool T2Compress::compressHeader(t1_t2::BitIO* bio, Resolution* res, uint16_t lay
       continue;
     for(auto cblkno = 0U; cblkno < nb_blocks; ++cblkno)
     {
-      auto cblk = prc->getCompressedBlock(cblkno);
+      auto cblk = prc->getCompressBlock(cblkno);
       auto layer = cblk->getLayer(layno);
       if(!cblk->getNumPassesInLayer(0) && layer->totalPasses_)
         prc->getInclTree()->set(cblkno, layno);
     }
     for(uint32_t cblkno = 0; cblkno < nb_blocks; cblkno++)
     {
-      auto cblk = prc->getCompressedBlock(cblkno);
+      auto cblk = prc->getCompressBlock(cblkno);
       auto layer = cblk->getLayer(layno);
       uint8_t increment = 0;
       uint32_t nump = 0;
@@ -463,7 +463,7 @@ bool T2Compress::compressPacket(TileCodingParams* tcp, PacketIter* pi, IStream* 
       continue;
     for(auto cblkno = 0U; cblkno < nb_blocks; ++cblkno)
     {
-      auto cblk = prc->getCompressedBlock(cblkno);
+      auto cblk = prc->getCompressBlock(cblkno);
       auto cblk_layer = cblk->getLayer(layno);
       if(!cblk_layer->totalPasses_)
         continue;

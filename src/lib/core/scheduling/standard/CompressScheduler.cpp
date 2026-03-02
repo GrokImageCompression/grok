@@ -86,7 +86,7 @@ bool CompressScheduler::scheduleT1(ITileProcessor* proc)
           auto nominalBlockSize = prc->getNominalBlockSize();
           for(uint32_t cblkno = 0; cblkno < prc->getNumCblks(); ++cblkno)
           {
-            auto cblk = prc->getCompressedBlock(cblkno);
+            auto cblk = prc->getCompressBlock(cblkno);
             if(cblk->empty())
               continue;
             if(!cblk->allocData(nominalBlockSize))

@@ -28,7 +28,6 @@
 #include "IStream.h"
 #include "FetchCommon.h"
 #include "TPFetchSeq.h"
-#include "GrkImageMeta.h"
 #include "GrkImage.h"
 #include "MarkerParser.h"
 #include "PLMarker.h"
@@ -42,7 +41,6 @@ struct ITileProcessorCompress;
 #include "CodeStream.h"
 #include "PacketIter.h"
 #include "PacketLengthCache.h"
-#include "ICoder.h"
 #include "CoderPool.h"
 #include "BitIO.h"
 #include "TagTree.h"
@@ -116,7 +114,7 @@ bool TileProcessorCompress::makeLayerFeasible(uint16_t layno, uint16_t thresh, b
         {
           for(uint32_t cblkno = 0; cblkno < prc->getNumCblks(); cblkno++)
           {
-            auto cblk = prc->getCompressedBlock(cblkno);
+            auto cblk = prc->getCompressBlock(cblkno);
             auto layer = cblk->getLayer(layno);
             uint8_t cumulative_included_passes_in_block;
 
@@ -206,7 +204,7 @@ bool TileProcessorCompress::pcrdBisectFeasible(uint32_t* allPacketBytes, bool di
           for(uint32_t cblkno = 0; cblkno < prc->getNumCblks(); cblkno++)
           {
             numCodeBlocks++;
-            auto cblk = prc->getCompressedBlock(cblkno);
+            auto cblk = prc->getCompressBlock(cblkno);
             uint32_t num_pix = (uint32_t)cblk->area();
             if(!(state & GRK_PLUGIN_STATE_PRE_TR1))
             {
@@ -351,7 +349,7 @@ bool TileProcessorCompress::pcrdBisectSimple(uint32_t* allPacketBytes, bool disa
           numPacketsPerLayer++;
           for(uint32_t cblkno = 0; cblkno < prc->getNumCblks(); cblkno++)
           {
-            auto cblk = prc->getCompressedBlock(cblkno);
+            auto cblk = prc->getCompressBlock(cblkno);
             uint32_t num_pix = (uint32_t)cblk->area();
             numCodeBlocks++;
             if(!(state & GRK_PLUGIN_STATE_PRE_TR1))
@@ -500,7 +498,7 @@ void TileProcessorCompress::makeLayerSimple(uint16_t layno, double thresh, bool 
         {
           for(uint32_t cblkno = 0; cblkno < prc->getNumCblks(); cblkno++)
           {
-            auto cblk = prc->getCompressedBlock(cblkno);
+            auto cblk = prc->getCompressBlock(cblkno);
             auto layer = cblk->getLayer(layno);
             uint8_t included_blk_passes;
             if(thresh == 0)
@@ -590,7 +588,7 @@ void TileProcessorCompress::makeLayerFinal(uint16_t layno)
         {
           for(uint32_t cblkno = 0; cblkno < prc->getNumCblks(); cblkno++)
           {
-            auto cblk = prc->getCompressedBlock(cblkno);
+            auto cblk = prc->getCompressBlock(cblkno);
             auto layer = cblk->getLayer(layno);
             uint8_t included_blk_passes = cblk->getNumPassesInPreviousLayers();
             if(cblk->getNumPasses() > cblk->getNumPassesInPreviousLayers())

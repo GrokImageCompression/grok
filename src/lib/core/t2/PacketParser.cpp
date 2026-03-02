@@ -170,7 +170,7 @@ uint32_t PacketParser::readHeader(void)
         }
         for(uint32_t cblkno = 0; cblkno < numPrecCodeBlocks; cblkno++)
         {
-          auto cblk = prc->tryGetDecompressedBlock(cblkno);
+          auto cblk = prc->tryGetDecompressBlock(cblkno);
           uint8_t included;
           if(!cblk || !cblk->numlenbits())
           {
@@ -193,7 +193,7 @@ uint32_t PacketParser::readHeader(void)
           if(!included)
             continue;
           if(!cblk)
-            cblk = prc->getDecompressedBlock(cblkno);
+            cblk = prc->getDecompressBlock(cblkno);
           if(!cblk->numlenbits())
           {
             uint8_t K_msbs = 0;
@@ -332,7 +332,7 @@ void PacketParser::readData(void)
     bool isHT = tileProcessor_->getTCP()->isHT();
     for(uint32_t cblkno = 0; cblkno < prc->getNumCblks(); ++cblkno)
     {
-      auto cblk = prc->getDecompressedBlock(cblkno);
+      auto cblk = prc->getDecompressBlock(cblkno);
       try
       {
         cblk->parsePacketData(layno_, layerBytesAvailable_, isHT, layerData_, layerDataOffset);

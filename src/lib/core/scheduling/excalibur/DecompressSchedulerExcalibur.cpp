@@ -147,7 +147,7 @@ bool DecompressSchedulerExcalibur::scheduleT1(ITileProcessor* tileProcessor)
             if(!wholeTileDecoding && !paddedBandWindow->nonEmptyIntersection(&cblkBounds))
               continue;
 
-            auto cblk = precinct->getDecompressedBlock(cblkno);
+            auto cblk = precinct->getDecompressBlock(cblkno);
             auto block = new t1::DecompressBlockExec(cacheAll);
             block->x = cblk->x0();
             block->y = cblk->y0();

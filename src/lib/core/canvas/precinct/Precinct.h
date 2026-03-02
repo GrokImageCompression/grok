@@ -109,7 +109,7 @@ struct Precinct : public Rect32_16
    * @param cblkno code block index
    * @return t1::CodeblockCompress* @ref CodeblockCompress
    */
-  t1::CodeblockCompress* getCompressedBlock(uint32_t cblkno);
+  t1::CodeblockCompress* getCompressBlock(uint32_t cblkno);
 
   /**
    * @brief Gets @ref CodeblockDecompress for a code block
@@ -119,7 +119,7 @@ struct Precinct : public Rect32_16
    * @param cblkno code block index
    * @return t1::CodeblockDecompress* @ref CodeblockDecompress
    */
-  t1::CodeblockDecompress* getDecompressedBlock(uint32_t cblkno);
+  t1::CodeblockDecompress* getDecompressBlock(uint32_t cblkno);
 
   /**
    * @brief Gets a @ref CodeblockDecompress if it exists, otherwise
@@ -128,7 +128,7 @@ struct Precinct : public Rect32_16
    * @param cblkno code block index
    * @return CodeblockDecompress*
    */
-  t1::CodeblockDecompress* tryGetDecompressedBlock(uint32_t cblkno);
+  t1::CodeblockDecompress* tryGetDecompressBlock(uint32_t cblkno);
 
   /**
    * @brief Gets log2 of nominal code block dimensions

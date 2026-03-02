@@ -175,7 +175,7 @@ bool DecompressScheduler::scheduleT1(ITileProcessor* tileProcessor)
             auto cblkBounds = precinct->getCodeBlockBounds(cblkno);
             if(wholeTileDecoding || paddedBandWindow->nonEmptyIntersection(&cblkBounds))
             {
-              auto cblk = precinct->getDecompressedBlock(cblkno);
+              auto cblk = precinct->getDecompressBlock(cblkno);
               auto block = std::make_shared<t1::DecompressBlockExec>(cacheAll);
               block->x = cblk->x0();
               block->y = cblk->y0();
