@@ -485,7 +485,26 @@
             "MIMode": "gdb",
             "miDebuggerPath": "/usr/bin/gdb"
         },
-                {
+        {
+            "name": "Excalibur Test",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "/usr/bin/time",
+            "args": [
+                "-v",
+                "${workspaceFolder}/build/bin/core_decompress",
+                "-i",
+                "$HOME/temp/2048x2048.jp2",
+            ],
+            "cwd": "${workspaceFolder}",
+            "environment": [
+                { "name": "GRK_DEBUG", "value": "3" },
+                { "name": "GRK_EXCALIBUR", "value": "1" }
+            ],
+            "MIMode": "gdb",
+            "miDebuggerPath": "/usr/bin/gdb"
+        },        
+        {
             "name": "Pleiades",
             "type": "cppdbg",
             "request": "launch",

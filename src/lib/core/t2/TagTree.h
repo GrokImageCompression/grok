@@ -20,27 +20,11 @@
 #include <limits>
 #include <stdexcept>
 #include <iostream>
+#include <vector>
 
 namespace grk
 {
 
-/**
- Tag node
- */
-template<typename T>
-struct TagTreeNode
-{
-  TagTreeNode() : parent(nullptr), value(0), low(0), known(false) {}
-
-  TagTreeNode* parent;
-  T value;
-  T low;
-  bool known;
-};
-
-/**
- Tag tree
- */
 template<typename T>
 class TagTree
 {
@@ -53,79 +37,17 @@ public:
    *
    * @return a new tag tree if successful, otherwise nullptr
    */
+
   TagTree(uint16_t leavesWidth, uint16_t leavesHeight)
-      : leavesWidth_(leavesWidth), leavesHeight_(leavesHeight), nodeCount(0), nodes(nullptr)
+      : leavesWidth_(leavesWidth), leavesHeight_(leavesHeight)
   {
-    uint16_t resLeavesWidth[16];
-    uint16_t resLeavesHeight[16];
-    int8_t numLevels = 0;
-    resLeavesWidth[0] = leavesWidth_;
-    resLeavesHeight[0] = leavesHeight_;
-    nodeCount = 0;
-    uint32_t nodesPerLevel;
-
-    do
-    {
-      if(numLevels == 16)
-      {
-        grklog.error("TagTree constructor: num level overflow");
-        throw std::runtime_error("TagTree constructor: num level overflow");
-      }
-      nodesPerLevel = static_cast<uint32_t>(resLeavesWidth[numLevels]) * resLeavesHeight[numLevels];
-      resLeavesWidth[numLevels + 1] = (uint16_t)((resLeavesWidth[numLevels] + 1) >> 1);
-      resLeavesHeight[numLevels + 1] = (uint16_t)((resLeavesHeight[numLevels] + 1) >> 1);
-      nodeCount += nodesPerLevel;
-      ++numLevels;
-    } while(nodesPerLevel > 1);
-
-    if(nodeCount == 0)
-    {
-      grklog.warn("tgt_create numnodes == 0, no tree created.");
-      throw std::runtime_error("tgt_create numnodes == 0, no tree created");
-    }
-
-    nodes = new TagTreeNode<T>[nodeCount];
-    auto currentNode = nodes;
-    auto parentNode = nodes + static_cast<uint32_t>(leavesWidth_) * leavesHeight_;
-    auto parentNodeNext = parentNode;
-
-    for(int8_t i = 0; i < numLevels - 1; ++i)
-    {
-      for(uint16_t j = 0U; j < resLeavesHeight[i]; ++j)
-      {
-        int64_t k = resLeavesWidth[i];
-        while(--k >= 0)
-        {
-          currentNode->parent = parentNode;
-          ++currentNode;
-          if(--k >= 0)
-          {
-            currentNode->parent = parentNode;
-            ++currentNode;
-          }
-          ++parentNode;
-        }
-        if((j & 1) || j == resLeavesHeight[i] - 1)
-        {
-          parentNodeNext = parentNode;
-        }
-        else
-        {
-          parentNode = parentNodeNext;
-          parentNodeNext += resLeavesWidth[i];
-        }
-      }
-    }
-    currentNode->parent = nullptr;
+    buildTree();
     reset();
   }
 
-  ~TagTree()
-  {
-    delete[] nodes;
-  }
+  ~TagTree() = default;
 
-  constexpr T getUninitializedValue(void)
+  constexpr T getUninitializedValue() const noexcept
   {
     return (std::numeric_limits<T>::max)();
   }
@@ -135,13 +57,14 @@ public:
    */
   void reset()
   {
-    for(auto i = 0U; i < nodeCount; ++i)
+    for(auto& n : nodes_)
     {
-      auto current_node = nodes + i;
-      current_node->value = getUninitializedValue();
-      current_node->low = 0;
-      current_node->known = false;
+      n.value = getUninitializedValue();
+      n.low = 0;
+      n.known = false;
     }
+    for(auto& v : leafCache_)
+      v = getUninitializedValue();
   }
 
   /**
@@ -151,11 +74,11 @@ public:
    */
   void set(uint64_t leafno, T value)
   {
-    auto node = nodes + leafno;
-    while(node && node->value > value)
+    uint32_t node = static_cast<uint32_t>(leafno);
+    while(node != UINT32_MAX && nodes_[node].value > value)
     {
-      node->value = value;
-      node = node->parent;
+      nodes_[node].value = value;
+      node = parents_[node];
     }
   }
 
@@ -168,31 +91,33 @@ public:
    */
   bool encode(t1_t2::BitIO* bio, uint64_t leafno, T threshold)
   {
-    TagTreeNode<T>* nodeStack[15];
-    auto nodeStackPtr = nodeStack;
-    auto node = nodes + leafno;
-    while(node->parent)
+    // exact original encode logic, using flat indices
+    uint32_t nodeStack[16];
+    int stackPtr = 0;
+    uint32_t node = static_cast<uint32_t>(leafno);
+    while(parents_[node] != UINT32_MAX)
     {
-      *nodeStackPtr++ = node;
-      node = node->parent;
+      nodeStack[stackPtr++] = node;
+      node = parents_[node];
     }
     T low = 0;
     while(true)
     {
-      if(node->low < low)
-        node->low = low;
+      auto& n = nodes_[node];
+      if(n.low < low)
+        n.low = low;
       else
-        low = node->low;
+        low = n.low;
 
       while(low < threshold)
       {
-        if(low >= node->value)
+        if(low >= n.value)
         {
-          if(!node->known)
+          if(!n.known)
           {
             if(!bio->write(1))
               return false;
-            node->known = true;
+            n.known = true;
           }
           break;
         }
@@ -200,10 +125,10 @@ public:
           return false;
         ++low;
       }
-      node->low = low;
-      if(nodeStackPtr == nodeStack)
+      n.low = low;
+      if(stackPtr == 0)
         break;
-      node = *--nodeStackPtr;
+      node = nodeStack[--stackPtr];
     }
     return true;
   }
@@ -217,46 +142,113 @@ public:
    */
   void decode(t1_t2::BitIO* bio, uint64_t leafno, T threshold, T* value)
   {
-    TagTreeNode<T>* nodeStack[15];
-    *value = getUninitializedValue();
-    auto nodeStackPtr = nodeStack;
-    auto node = nodes + leafno;
-    // climb to top of tree
-    while(node->parent)
+    if(leafCache_[leafno] < threshold) [[likely]]
     {
-      *nodeStackPtr++ = node;
-      node = node->parent;
+      *value = leafCache_[leafno];
+      return;
     }
-    // descend to bottom of tree
+
+    *value = getUninitializedValue();
+
+    uint32_t nodeStack[16];
+    int stackPtr = 0;
+    uint32_t node = static_cast<uint32_t>(leafno);
+
+    // climb to root (exact same path as encode)
+    while(parents_[node] != UINT32_MAX)
+    {
+      nodeStack[stackPtr++] = node;
+      node = parents_[node];
+    }
+
     T low = 0;
     while(true)
     {
-      if(node->low < low)
-        node->low = low;
+      auto& n = nodes_[node];
+
+      if(n.low < low)
+        n.low = low;
       else
-        low = node->low;
-      while(low < threshold && low < node->value)
+        low = n.low;
+
+      while(low < threshold && low < n.value) [[likely]]
       {
         if(bio->read())
         {
-          node->value = low;
+          n.value = low;
           break;
         }
-        low++;
+        ++low;
       }
-      node->low = low;
-      if(nodeStackPtr == nodeStack)
+      n.low = low;
+
+      if(stackPtr == 0) [[unlikely]]
         break;
-      node = *--nodeStackPtr;
+
+      node = nodeStack[--stackPtr]; // descend to child
     }
-    *value = node->value;
+
+    *value = nodes_[node].value; // now guaranteed to be the leaf node
+    if(*value < threshold)
+      leafCache_[leafno] = *value;
   }
 
 private:
+  struct Node
+  {
+    T value;
+    T low;
+    bool known;
+  };
+
+  void buildTree()
+  {
+    // same level calculation as original
+    uint16_t resW[16]{}, resH[16]{};
+    int8_t levels = 0;
+    resW[0] = leavesWidth_;
+    resH[0] = leavesHeight_;
+    uint64_t totalNodes = 0;
+    uint32_t nodesPerLevel;
+
+    do
+    {
+      nodesPerLevel = static_cast<uint32_t>(resW[levels]) * resH[levels];
+      resW[levels + 1] = (uint16_t)((resW[levels] + 1) >> 1);
+      resH[levels + 1] = (uint16_t)((resH[levels] + 1) >> 1);
+      totalNodes += nodesPerLevel;
+      ++levels;
+    } while(nodesPerLevel > 1);
+
+    nodes_.resize(totalNodes);
+    parents_.resize(totalNodes, UINT32_MAX);
+    leafCache_.resize(static_cast<uint64_t>(leavesWidth_) * leavesHeight_);
+
+    // build parents (exact same linking logic as original, but with indices)
+    uint64_t parentBase = static_cast<uint64_t>(leavesWidth_) * leavesHeight_;
+    uint64_t cur = 0;
+
+    for(int8_t lvl = 0; lvl < levels - 1; ++lvl)
+    {
+      uint32_t w = resW[lvl];
+      uint32_t h = resH[lvl];
+      for(uint32_t j = 0; j < h; ++j)
+      {
+        for(uint32_t k = 0; k < w; ++k)
+        {
+          parents_[cur] = static_cast<uint32_t>(parentBase + (j >> 1) * resW[lvl + 1] + (k >> 1));
+          ++cur;
+        }
+      }
+      parentBase += static_cast<uint64_t>(resW[lvl + 1]) * resH[lvl + 1];
+    }
+  }
+
   uint16_t leavesWidth_;
   uint16_t leavesHeight_;
-  uint64_t nodeCount;
-  TagTreeNode<T>* nodes;
+  std::vector<Node> nodes_;
+  std::vector<uint32_t> parents_; // UINT32_MAX = root
+  std::vector<T> leafCache_;
 };
 
 using TagTreeU8 = TagTree<uint8_t>;
