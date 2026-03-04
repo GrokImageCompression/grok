@@ -29,6 +29,7 @@ of three approaches for the destination:
 #include <cstdio>
 #include <cstring>
 #include <memory>
+#include <cstdlib>
 #include <inttypes.h>
 
 #include "grok.h"
