@@ -131,7 +131,7 @@ struct CompressBlockExec : public BlockExec
 
   void open(void) override {}
 
-  bool open(ICoder* coder)
+  bool open(ICoder* coder) override
   {
     return coder->compress(this);
   }

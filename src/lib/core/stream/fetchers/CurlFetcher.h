@@ -28,6 +28,7 @@
 #include <vector>
 #include <map>
 #include <sstream>
+#include <functional>
 
 #ifdef GRK_ENABLE_LIBCURL
 #include <curl/curl.h>
