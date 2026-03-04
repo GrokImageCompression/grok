@@ -23,21 +23,17 @@
 #include "CodeblockCompress.h"
 #include "CodeblockDecompress.h"
 #include "ICoder.h"
+#include "IOpenable.h"
 
 namespace grk::t1
 {
 
-struct IOpenable
-{
-  virtual void open() = 0;
-};
-
-struct BlockExec : public IOpenable
+struct BlockExec : public exc::IOpenable
 {
   using IOpenable::open;
 
   BlockExec() = default;
-  virtual ~BlockExec() = default;
+  virtual ~BlockExec() override = default;
   virtual bool open(ICoder* coder) = 0;
   uint8_t bandIndex = 0;
   uint8_t bandNumbps = 0;
@@ -67,7 +63,7 @@ using DecompressBlockPostProcessor =
 struct DecompressBlockExec : public BlockExec
 {
   DecompressBlockExec(bool cacheCoder) : shouldCacheCoder_(cacheCoder) {}
-  ~DecompressBlockExec()
+  ~DecompressBlockExec() override
   {
     delete cachedCoder_;
   }
@@ -127,7 +123,7 @@ struct CompressBlockExec : public BlockExec
   using IOpenable::open;
 
   CompressBlockExec() = default;
-  ~CompressBlockExec() = default;
+  ~CompressBlockExec() override = default;
 
   void open(void) override {}
 
