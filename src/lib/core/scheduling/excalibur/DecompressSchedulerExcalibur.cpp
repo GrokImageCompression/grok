@@ -148,7 +148,7 @@ bool DecompressSchedulerExcalibur::scheduleT1(ITileProcessor* tileProcessor)
               continue;
 
             auto cblk = precinct->getDecompressBlock(cblkno);
-            auto block = new t1::DecompressBlockExec(cacheAll);
+            auto block = std::make_shared<t1::DecompressBlockExec>(cacheAll);
             block->x = cblk->x0();
             block->y = cblk->y0();
             // block->postProcessor_ =

@@ -76,6 +76,13 @@ struct DecompressBlockExec : public BlockExec
     if(open_)
       open_();
   }
+  void close(void) override
+  {
+    delete cachedCoder_;
+    cachedCoder_ = nullptr;
+    if(cblk)
+      cblk->release();
+  }
   bool open(ICoder* coder) override
   {
     auto activeCoder = cachedCoder_ ? cachedCoder_ : coder;
@@ -120,18 +127,17 @@ private:
 };
 struct CompressBlockExec : public BlockExec
 {
-  using IOpenable::open;
-
   CompressBlockExec() = default;
   ~CompressBlockExec() override = default;
 
   void open(void) override {}
+  void close(void) override {}
 
   bool open(ICoder* coder) override
   {
     return coder->compress(this);
   }
-  void close(void) {}
+
   CodeblockCompress* cblk = nullptr;
   uint32_t tile_width = 0;
   bool doRateControl = false;

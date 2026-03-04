@@ -24,6 +24,7 @@ struct IOpenable
 {
   virtual ~IOpenable() = default;
   virtual void open() = 0;
+  virtual void close() = 0;
 };
 
 } // namespace exc
