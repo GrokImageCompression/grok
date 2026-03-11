@@ -159,6 +159,10 @@ struct Rect32_16
   {
     setRect(&rhs);
   }
+  virtual void print(void) const
+  {
+    grklog.info("[%u,%u,%u,%u]", x0_, y0_, x1(), y1());
+  }
 
 private:
   uint32_t x0_, y0_;
