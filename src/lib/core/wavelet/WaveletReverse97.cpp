@@ -87,7 +87,7 @@ namespace HWY_NAMESPACE
   static uint32_t GetHWY_PLL_ROWS_97(void)
   {
     const HWY_FULL(float) df;
-    return (uint32_t)Lanes(df);
+    return 2 * (uint32_t)Lanes(df);
   }
 
   /* 9/7 lifting constants (inside HWY_NAMESPACE for multi-target compilation) */
@@ -175,6 +175,70 @@ namespace HWY_NAMESPACE
     }
   }
 
+  /* step2 for 2*L-wide elements (two SIMD vectors per element).
+   * Same lifting step as hwy_step2_97 but each element is 2*Lanes wide,
+   * matching the 5/3 pattern of processing 2*Lanes columns at once. */
+  static void hwy_step2_97_2x(float* data, float* dataPrev, uint32_t len, uint32_t lenMax, float c)
+  {
+    const HWY_FULL(float) df;
+    const size_t L = Lanes(df);
+    const size_t PLL = 2 * L;
+    auto cv = Set(df, c);
+
+    uint32_t imax = (std::min<uint32_t>)(len, lenMax);
+
+    auto tmp1_a = Load(df, dataPrev);
+    auto tmp1_b = Load(df, dataPrev + L);
+    uint32_t i = 0;
+    for(; i + 1 < imax; i += 2)
+    {
+      auto tgt0_a = Load(df, data - PLL);
+      auto tgt0_b = Load(df, data - PLL + L);
+      auto src0_a = Load(df, data);
+      auto src0_b = Load(df, data + L);
+      auto tgt1_a = Load(df, data + PLL);
+      auto tgt1_b = Load(df, data + PLL + L);
+      auto src1_a = Load(df, data + 2 * PLL);
+      auto src1_b = Load(df, data + 2 * PLL + L);
+
+      Store(Add(tgt0_a, Mul(Add(tmp1_a, src0_a), cv)), df, data - PLL);
+      Store(Add(tgt0_b, Mul(Add(tmp1_b, src0_b), cv)), df, data - PLL + L);
+      Store(Add(tgt1_a, Mul(Add(src0_a, src1_a), cv)), df, data + PLL);
+      Store(Add(tgt1_b, Mul(Add(src0_b, src1_b), cv)), df, data + PLL + L);
+
+      tmp1_a = src1_a;
+      tmp1_b = src1_b;
+      data += 4 * PLL;
+    }
+
+    for(; i < imax; ++i)
+    {
+      auto tgt_a = Load(df, data - PLL);
+      auto tgt_b = Load(df, data - PLL + L);
+      auto src_a = Load(df, data);
+      auto src_b = Load(df, data + L);
+
+      Store(Add(tgt_a, Mul(Add(tmp1_a, src_a), cv)), df, data - PLL);
+      Store(Add(tgt_b, Mul(Add(tmp1_b, src_b), cv)), df, data - PLL + L);
+
+      tmp1_a = src_a;
+      tmp1_b = src_b;
+      data += 2 * PLL;
+    }
+
+    if(lenMax < len)
+    {
+      assert(lenMax + 1 == len);
+      auto cv2 = Add(cv, cv);
+      auto prev_a = Load(df, data - 2 * PLL);
+      auto prev_b = Load(df, data - 2 * PLL + L);
+      auto tgt_a = Load(df, data - PLL);
+      auto tgt_b = Load(df, data - PLL + L);
+      Store(Add(tgt_a, Mul(prev_a, cv2)), df, data - PLL);
+      Store(Add(tgt_b, Mul(prev_b, cv2)), df, data - PLL + L);
+    }
+  }
+
   /* Full 9/7 inverse lifting step on interleaved scratch buffer.
    * Each element is Lanes(float) wide. */
   static void hwy_step_97_full(float* mem, uint32_t sn, uint32_t dn, uint32_t parity,
@@ -236,8 +300,101 @@ namespace HWY_NAMESPACE
     }
   }
 
-  /* Horizontal strip: interleave L rows, apply lifting steps, scatter to dest.
-   * Uses GatherIndex/ScatterIndex to SIMD-ize the strided row access pattern. */
+  /* Lift-only for L-wide elements (no K/invK scaling, for fused-scale path). */
+  static void hwy_step_97_lift(float* mem, uint32_t sn, uint32_t dn, uint32_t parity,
+                                Line32 win_l, Line32 win_h)
+  {
+    const HWY_FULL(float) df;
+    const size_t L = Lanes(df);
+
+    if((!parity && dn == 0 && sn <= 1) || (parity && sn == 0 && dn >= 1))
+      return;
+
+    auto make_step2 = [&](bool isBandL) -> std::tuple<float*, float*, uint32_t, uint32_t> {
+      int64_t parityOff = isBandL ? (int64_t)parity : (int64_t)!parity;
+      int64_t band_0 = isBandL ? win_l.x0 : win_h.x0;
+      int64_t band_1 = isBandL ? win_l.x1 : win_h.x1;
+      int64_t lmax = isBandL ? (std::min<int64_t>)(sn, (int64_t)dn - parityOff)
+                              : (std::min<int64_t>)(dn, (int64_t)sn - parityOff);
+      if(lmax < 0)
+        lmax = 0;
+      assert(lmax >= band_0);
+      lmax -= band_0;
+      float* d = mem + (parityOff + band_0 - win_l.x0) * L;
+      d += L;
+      float* dPrev = parityOff ? d - 2 * L : d;
+      return {d, dPrev, (uint32_t)(band_1 - band_0), (uint32_t)lmax};
+    };
+
+    /* skip step1 (K/invK scaling already done during interleave) */
+    {
+      auto [d, dPrev, len, lmax] = make_step2(true);
+      hwy_step2_97(d, dPrev, len, lmax, hwy_dwt_delta);
+    }
+    {
+      auto [d, dPrev, len, lmax] = make_step2(false);
+      hwy_step2_97(d, dPrev, len, lmax, hwy_dwt_gamma);
+    }
+    {
+      auto [d, dPrev, len, lmax] = make_step2(true);
+      hwy_step2_97(d, dPrev, len, lmax, hwy_dwt_beta);
+    }
+    {
+      auto [d, dPrev, len, lmax] = make_step2(false);
+      hwy_step2_97(d, dPrev, len, lmax, hwy_dwt_alpha);
+    }
+  }
+
+  /* Lift-only for 2*L-wide elements (no K/invK scaling, for fused-scale 2x path).
+   * Processes 2*Lanes columns at once, matching the 5/3 inverse pattern. */
+  static void hwy_step_97_lift_2x(float* mem, uint32_t sn, uint32_t dn, uint32_t parity,
+                                    Line32 win_l, Line32 win_h)
+  {
+    const HWY_FULL(float) df;
+    const size_t L = Lanes(df);
+    const size_t PLL = 2 * L;
+
+    if((!parity && dn == 0 && sn <= 1) || (parity && sn == 0 && dn >= 1))
+      return;
+
+    auto make_step2 = [&](bool isBandL) -> std::tuple<float*, float*, uint32_t, uint32_t> {
+      int64_t parityOff = isBandL ? (int64_t)parity : (int64_t)!parity;
+      int64_t band_0 = isBandL ? win_l.x0 : win_h.x0;
+      int64_t band_1 = isBandL ? win_l.x1 : win_h.x1;
+      int64_t lmax = isBandL ? (std::min<int64_t>)(sn, (int64_t)dn - parityOff)
+                              : (std::min<int64_t>)(dn, (int64_t)sn - parityOff);
+      if(lmax < 0)
+        lmax = 0;
+      assert(lmax >= band_0);
+      lmax -= band_0;
+      float* d = mem + (parityOff + band_0 - win_l.x0) * PLL;
+      d += PLL;
+      float* dPrev = parityOff ? d - 2 * PLL : d;
+      return {d, dPrev, (uint32_t)(band_1 - band_0), (uint32_t)lmax};
+    };
+
+    /* skip step1 (K/invK scaling already done during interleave) */
+    {
+      auto [d, dPrev, len, lmax] = make_step2(true);
+      hwy_step2_97_2x(d, dPrev, len, lmax, hwy_dwt_delta);
+    }
+    {
+      auto [d, dPrev, len, lmax] = make_step2(false);
+      hwy_step2_97_2x(d, dPrev, len, lmax, hwy_dwt_gamma);
+    }
+    {
+      auto [d, dPrev, len, lmax] = make_step2(true);
+      hwy_step2_97_2x(d, dPrev, len, lmax, hwy_dwt_beta);
+    }
+    {
+      auto [d, dPrev, len, lmax] = make_step2(false);
+      hwy_step2_97_2x(d, dPrev, len, lmax, hwy_dwt_alpha);
+    }
+  }
+
+  /* Horizontal strip: interleave rows, apply lifting steps, scatter to dest.
+   * Uses GatherIndex/ScatterIndex. 3-tier: 2*L main, L fallback, masked remainder.
+   * K/invK scaling is fused into the interleave phase when lifting is needed. */
   static void hwy_h_strip_97(float* scratchMem, uint32_t sn, uint32_t dn, uint32_t parity,
                               Line32 win_l, Line32 win_h, const uint32_t resHeight,
                               float* srcL, uint32_t strideL, float* srcH, uint32_t strideH,
@@ -247,95 +404,140 @@ namespace HWY_NAMESPACE
     namespace hn = hwy::HWY_NAMESPACE;
     const auto di = hn::RebindToSigned<decltype(df)>();
     const uint32_t L = (uint32_t)Lanes(df);
+    const uint32_t PLL = 2 * L;
     const uint32_t x0_l = win_l.x0, x1_l = win_l.x1;
     const uint32_t x0_h = win_h.x0, x1_h = win_h.x1;
+    const auto kV = Set(df, hwy_K);
+    const auto invKV = Set(df, hwy_twice_invK);
+    /* When trivial, step_97_full returns early without scaling — don't fuse */
+    const bool trivial = (!parity && dn == 0 && sn <= 1) || (parity && sn == 0 && dn >= 1);
+    const auto scaleL = trivial ? Set(df, 1.0f) : kV;
+    const auto scaleH = trivial ? Set(df, 1.0f) : invKV;
 
-    uint32_t j;
-    for(j = 0; j + L <= resHeight; j += L)
+    uint32_t j = 0;
+
+    /* Main loop: process 2*L rows at once with fused scaling */
+    for(; j + PLL <= resHeight; j += PLL)
     {
-      /* Interleave: gather L rows into scratch using SIMD gather */
+      {
+        float* sd = scratchMem + parity * PLL;
+        float* src = srcL;
+        uint32_t stride = strideL;
+        uint32_t x0 = x0_l, x1 = x1_l;
+        auto scaleV = scaleL;
+        for(uint32_t k = 0; k < 2; ++k)
+        {
+          auto gi = Mul(Set(di, (int32_t)stride), Iota(di, 0));
+          for(uint32_t i = x0; i < x1; ++i, sd += PLL * 2)
+          {
+            Store(Mul(GatherIndex(df, src + i, gi), scaleV), df, sd);
+            Store(Mul(GatherIndex(df, src + i + L * stride, gi), scaleV), df, sd + L);
+          }
+          sd = scratchMem + (1 - parity) * PLL;
+          src = srcH;
+          stride = strideH;
+          x0 = x0_h;
+          x1 = x1_h;
+          scaleV = scaleH;
+        }
+      }
+
+      if(!trivial)
+        hwy_step_97_lift_2x(scratchMem, sn, dn, parity, win_l, win_h);
+
+      /* Scatter: write 2*L rows via two ScatterIndex per column */
+      {
+        auto si = Mul(Set(di, (int32_t)strideDest), Iota(di, 0));
+        for(uint32_t k = 0; k < (uint32_t)(sn + dn); k++)
+        {
+          ScatterIndex(Load(df, scratchMem + k * PLL), df, dest + k, si);
+          ScatterIndex(Load(df, scratchMem + k * PLL + L), df, dest + k + L * strideDest, si);
+        }
+      }
+
+      srcL += strideL * PLL;
+      srcH += strideH * PLL;
+      dest += strideDest * PLL;
+    }
+
+    /* Fallback: process L rows with fused scaling */
+    if(j + L <= resHeight)
+    {
       {
         float* sd = scratchMem + parity * L;
         float* src = srcL;
         uint32_t stride = strideL;
         uint32_t x0 = x0_l, x1 = x1_l;
+        auto scaleV = scaleL;
         for(uint32_t k = 0; k < 2; ++k)
         {
           auto gi = Mul(Set(di, (int32_t)stride), Iota(di, 0));
           for(uint32_t i = x0; i < x1; ++i, sd += L * 2)
-          {
-            auto v = GatherIndex(df, src + i, gi);
-            Store(v, df, sd);
-          }
+            Store(Mul(GatherIndex(df, src + i, gi), scaleV), df, sd);
           sd = scratchMem + (1 - parity) * L;
           src = srcH;
           stride = strideH;
           x0 = x0_h;
           x1 = x1_h;
+          scaleV = scaleH;
         }
       }
 
-      hwy_step_97_full(scratchMem, sn, dn, parity, win_l, win_h);
+      if(!trivial)
+        hwy_step_97_lift(scratchMem, sn, dn, parity, win_l, win_h);
 
-      /* Scatter: write L rows to dest using SIMD scatter */
       {
         auto si = Mul(Set(di, (int32_t)strideDest), Iota(di, 0));
         for(uint32_t k = 0; k < (uint32_t)(sn + dn); k++)
-        {
-          auto v = Load(df, scratchMem + k * L);
-          ScatterIndex(v, df, dest + k, si);
-        }
+          ScatterIndex(Load(df, scratchMem + k * L), df, dest + k, si);
       }
 
       srcL += strideL * L;
       srcH += strideH * L;
       dest += strideDest * L;
+      j += L;
     }
 
-    /* Remainder: process remaining rows (< L) */
+    /* Masked remainder: process remaining rows (< L) with fused scaling */
     if(j < resHeight)
     {
       uint32_t remaining = resHeight - j;
       const auto m = hn::FirstN(df, remaining);
 
-      /* Interleave remaining rows, zero-fill padding lanes via MaskedGatherIndex */
       {
         float* sd = scratchMem + parity * L;
         float* src = srcL;
         uint32_t stride = strideL;
         uint32_t x0 = x0_l, x1 = x1_l;
+        auto scaleV = scaleL;
         for(uint32_t k = 0; k < 2; ++k)
         {
           auto gi = Mul(Set(di, (int32_t)stride), Iota(di, 0));
           for(uint32_t i = x0; i < x1; ++i, sd += L * 2)
-          {
-            auto v = MaskedGatherIndex(m, df, src + i, gi);
-            Store(v, df, sd);
-          }
+            Store(Mul(MaskedGatherIndex(m, df, src + i, gi), scaleV), df, sd);
           sd = scratchMem + (1 - parity) * L;
           src = srcH;
           stride = strideH;
           x0 = x0_h;
           x1 = x1_h;
+          scaleV = scaleH;
         }
       }
 
-      hwy_step_97_full(scratchMem, sn, dn, parity, win_l, win_h);
+      if(!trivial)
+        hwy_step_97_lift(scratchMem, sn, dn, parity, win_l, win_h);
 
-      /* Scatter remaining rows */
       {
         auto si = Mul(Set(di, (int32_t)strideDest), Iota(di, 0));
         for(uint32_t k = 0; k < (uint32_t)(sn + dn); k++)
-        {
-          auto v = Load(df, scratchMem + k * L);
-          MaskedScatterIndex(v, m, df, dest + k, si);
-        }
+          MaskedScatterIndex(Load(df, scratchMem + k * L), m, df, dest + k, si);
       }
     }
   }
 
-  /* Vertical strip: interleave L columns, apply lifting steps, scatter to dest.
-   * Uses Highway Load/Store instead of memcpy for full SIMD width transfers. */
+  /* Vertical strip: interleave columns, apply lifting steps, scatter to dest.
+   * Uses Highway Load/Store. 3-tier: 2*L main, L fallback, masked remainder.
+   * K/invK scaling is fused into the interleave phase when lifting is needed. */
   static void hwy_v_strip_97(float* scratchMem, uint32_t sn, uint32_t dn, uint32_t parity,
                               Line32 win_l, Line32 win_h, const uint32_t resWidth,
                               const uint32_t resHeight, float* srcL, uint32_t strideL,
@@ -344,31 +546,78 @@ namespace HWY_NAMESPACE
     const HWY_FULL(float) df;
     namespace hn = hwy::HWY_NAMESPACE;
     const uint32_t L = (uint32_t)Lanes(df);
+    const uint32_t PLL = 2 * L;
+    const auto kV = Set(df, hwy_K);
+    const auto invKV = Set(df, hwy_twice_invK);
+    /* When trivial, step_97_full returns early without scaling — don't fuse */
+    const bool trivial = (!parity && dn == 0 && sn <= 1) || (parity && sn == 0 && dn >= 1);
+    const auto scaleL = trivial ? Set(df, 1.0f) : kV;
+    const auto scaleH = trivial ? Set(df, 1.0f) : invKV;
 
-    uint32_t j;
-    for(j = 0; j + L <= resWidth; j += L)
+    uint32_t j = 0;
+
+    /* Main loop: process 2*L columns at once with fused scaling */
+    for(; j + PLL <= resWidth; j += PLL)
     {
-      /* Interleave: load L columns from source bands to scratch */
+      {
+        auto bi = scratchMem + parity * PLL;
+        auto band = srcL + win_l.x0 * strideL;
+        for(uint32_t i = win_l.x0; i < win_l.x1; ++i, bi += 2 * PLL)
+        {
+          Store(Mul(LoadU(df, band), scaleL), df, bi);
+          Store(Mul(LoadU(df, band + L), scaleL), df, bi + L);
+          band += strideL;
+        }
+        bi = scratchMem + (1 - parity) * PLL;
+        band = srcH + win_h.x0 * strideH;
+        for(uint32_t i = win_h.x0; i < win_h.x1; ++i, bi += 2 * PLL)
+        {
+          Store(Mul(LoadU(df, band), scaleH), df, bi);
+          Store(Mul(LoadU(df, band + L), scaleH), df, bi + L);
+          band += strideH;
+        }
+      }
+
+      if(!trivial)
+        hwy_step_97_lift_2x(scratchMem, sn, dn, parity, win_l, win_h);
+
+      /* Scatter: store 2*L columns (two vectors per row) */
+      auto destPtr = dest;
+      for(uint32_t k = 0; k < resHeight; ++k)
+      {
+        StoreU(Load(df, scratchMem + k * PLL), df, destPtr);
+        StoreU(Load(df, scratchMem + k * PLL + L), df, destPtr + L);
+        destPtr += strideDest;
+      }
+
+      srcL += PLL;
+      srcH += PLL;
+      dest += PLL;
+    }
+
+    /* Fallback: process L columns with fused scaling */
+    if(j + L <= resWidth)
+    {
       {
         auto bi = scratchMem + parity * L;
         auto band = srcL + win_l.x0 * strideL;
         for(uint32_t i = win_l.x0; i < win_l.x1; ++i, bi += 2 * L)
         {
-          Store(LoadU(df, band), df, bi);
+          Store(Mul(LoadU(df, band), scaleL), df, bi);
           band += strideL;
         }
         bi = scratchMem + (1 - parity) * L;
         band = srcH + win_h.x0 * strideH;
         for(uint32_t i = win_h.x0; i < win_h.x1; ++i, bi += 2 * L)
         {
-          Store(LoadU(df, band), df, bi);
+          Store(Mul(LoadU(df, band), scaleH), df, bi);
           band += strideH;
         }
       }
 
-      hwy_step_97_full(scratchMem, sn, dn, parity, win_l, win_h);
+      if(!trivial)
+        hwy_step_97_lift(scratchMem, sn, dn, parity, win_l, win_h);
 
-      /* Scatter: store from scratch to dest */
       auto destPtr = dest;
       for(uint32_t k = 0; k < resHeight; ++k)
       {
@@ -379,35 +628,35 @@ namespace HWY_NAMESPACE
       srcL += L;
       srcH += L;
       dest += L;
+      j += L;
     }
 
-    /* Remainder: process remaining columns (< L) */
+    /* Masked remainder: process remaining columns (< L) with fused scaling */
     if(j < resWidth)
     {
       uint32_t remaining = resWidth - j;
       const auto m = hn::FirstN(df, remaining);
 
-      /* Interleave remaining columns, zero-fill padding */
       {
         auto bi = scratchMem + parity * L;
         auto band = srcL + win_l.x0 * strideL;
         for(uint32_t i = win_l.x0; i < win_l.x1; ++i, bi += 2 * L)
         {
-          Store(hn::MaskedLoad(m, df, band), df, bi);
+          Store(Mul(hn::MaskedLoad(m, df, band), scaleL), df, bi);
           band += strideL;
         }
         bi = scratchMem + (1 - parity) * L;
         band = srcH + win_h.x0 * strideH;
         for(uint32_t i = win_h.x0; i < win_h.x1; ++i, bi += 2 * L)
         {
-          Store(hn::MaskedLoad(m, df, band), df, bi);
+          Store(Mul(hn::MaskedLoad(m, df, band), scaleH), df, bi);
           band += strideH;
         }
       }
 
-      hwy_step_97_full(scratchMem, sn, dn, parity, win_l, win_h);
+      if(!trivial)
+        hwy_step_97_lift(scratchMem, sn, dn, parity, win_l, win_h);
 
-      /* Scatter remaining columns */
       auto destPtr = dest;
       for(uint32_t k = 0; k < resHeight; ++k)
       {
