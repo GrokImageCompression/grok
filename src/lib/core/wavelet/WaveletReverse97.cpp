@@ -84,6 +84,339 @@ namespace HWY_NAMESPACE
     return Lanes(di);
   }
 
+  static uint32_t GetHWY_PLL_ROWS_97(void)
+  {
+    const HWY_FULL(float) df;
+    return (uint32_t)Lanes(df);
+  }
+
+  /* 9/7 lifting constants (inside HWY_NAMESPACE for multi-target compilation) */
+  static const float hwy_K = 1.230174105f;
+  static const float hwy_twice_invK = 1.625732422f;
+  static const float hwy_dwt_alpha = 1.586134342f;
+  static const float hwy_dwt_beta = 0.052980118f;
+  static const float hwy_dwt_gamma = -0.882911075f;
+  static const float hwy_dwt_delta = -0.443506852f;
+
+  /* step1: multiply each element in a band by constant c.
+   * data points to first element; stride between same-band elements = 2*L floats
+   * (interleaved L/H layout, each element is L floats wide). */
+  static void hwy_step1_97(float* data, uint32_t len, float c)
+  {
+    const HWY_FULL(float) df;
+    const size_t L = Lanes(df);
+    const size_t stride = 2 * L;
+    auto cv = Set(df, c);
+
+    /* process 4 elements at a time */
+    uint32_t i;
+    for(i = 0; i + 3 < len; i += 4, data += stride * 4)
+    {
+      Store(Mul(Load(df, data), cv), df, data);
+      Store(Mul(Load(df, data + stride), cv), df, data + stride);
+      Store(Mul(Load(df, data + stride * 2), cv), df, data + stride * 2);
+      Store(Mul(Load(df, data + stride * 3), cv), df, data + stride * 3);
+    }
+    for(; i < len; ++i, data += stride)
+      Store(Mul(Load(df, data), cv), df, data);
+  }
+
+  /* step2: lifting step.
+   * data points to first source element; targets are at data[-L].
+   * Update: target += (prev_source + source) * c */
+  static void hwy_step2_97(float* data, float* dataPrev, uint32_t len, uint32_t lenMax, float c)
+  {
+    const HWY_FULL(float) df;
+    const size_t L = Lanes(df);
+    auto cv = Set(df, c);
+
+    uint32_t imax = (std::min<uint32_t>)(len, lenMax);
+
+    /* initial tmp1 value is only necessary when
+     * absolute start of line is at 0 */
+    auto tmp1 = Load(df, dataPrev);
+    uint32_t i = 0;
+    for(; i + 3 < imax; i += 4)
+    {
+      auto tgt0 = Load(df, data - L);
+      auto src0 = Load(df, data);
+      auto tgt1 = Load(df, data + L);
+      auto src1 = Load(df, data + 2 * L);
+      auto tgt2 = Load(df, data + 3 * L);
+      auto src2 = Load(df, data + 4 * L);
+      auto tgt3 = Load(df, data + 5 * L);
+      auto src3 = Load(df, data + 6 * L);
+
+      Store(Add(tgt0, Mul(Add(tmp1, src0), cv)), df, data - L);
+      Store(Add(tgt1, Mul(Add(src0, src1), cv)), df, data + L);
+      Store(Add(tgt2, Mul(Add(src1, src2), cv)), df, data + 3 * L);
+      Store(Add(tgt3, Mul(Add(src2, src3), cv)), df, data + 5 * L);
+
+      tmp1 = src3;
+      data += 8 * L;
+    }
+
+    for(; i < imax; ++i)
+    {
+      auto tgt = Load(df, data - L);
+      auto src = Load(df, data);
+      Store(Add(tgt, Mul(Add(tmp1, src), cv)), df, data - L);
+      tmp1 = src;
+      data += 2 * L;
+    }
+
+    if(lenMax < len)
+    {
+      assert(lenMax + 1 == len);
+      auto cv2 = Add(cv, cv);
+      auto prev = Load(df, data - 2 * L);
+      auto tgt = Load(df, data - L);
+      Store(Add(tgt, Mul(prev, cv2)), df, data - L);
+    }
+  }
+
+  /* Full 9/7 inverse lifting step on interleaved scratch buffer.
+   * Each element is Lanes(float) wide. */
+  static void hwy_step_97_full(float* mem, uint32_t sn, uint32_t dn, uint32_t parity,
+                                Line32 win_l, Line32 win_h)
+  {
+    const HWY_FULL(float) df;
+    const size_t L = Lanes(df);
+
+    if((!parity && dn == 0 && sn <= 1) || (parity && sn == 0 && dn >= 1))
+      return;
+
+    auto make_step1 = [&](bool isBandL) -> std::pair<float*, uint32_t> {
+      int64_t parityOff = isBandL ? (int64_t)parity : (int64_t)!parity;
+      int64_t band_0 = isBandL ? win_l.x0 : win_h.x0;
+      int64_t band_1 = isBandL ? win_l.x1 : win_h.x1;
+      float* d = mem + (parityOff + band_0 - win_l.x0) * L;
+      return {d, (uint32_t)(band_1 - band_0)};
+    };
+
+    auto make_step2 = [&](bool isBandL) -> std::tuple<float*, float*, uint32_t, uint32_t> {
+      int64_t parityOff = isBandL ? (int64_t)parity : (int64_t)!parity;
+      int64_t band_0 = isBandL ? win_l.x0 : win_h.x0;
+      int64_t band_1 = isBandL ? win_l.x1 : win_h.x1;
+      int64_t lmax = isBandL ? (std::min<int64_t>)(sn, (int64_t)dn - parityOff)
+                              : (std::min<int64_t>)(dn, (int64_t)sn - parityOff);
+      if(lmax < 0)
+        lmax = 0;
+      assert(lmax >= band_0);
+      lmax -= band_0;
+      float* d = mem + (parityOff + band_0 - win_l.x0) * L;
+      d += L;
+      float* dPrev = parityOff ? d - 2 * L : d;
+      return {d, dPrev, (uint32_t)(band_1 - band_0), (uint32_t)lmax};
+    };
+
+    {
+      auto [d, len] = make_step1(true);
+      hwy_step1_97(d, len, hwy_K);
+    }
+    {
+      auto [d, len] = make_step1(false);
+      hwy_step1_97(d, len, hwy_twice_invK);
+    }
+    {
+      auto [d, dPrev, len, lmax] = make_step2(true);
+      hwy_step2_97(d, dPrev, len, lmax, hwy_dwt_delta);
+    }
+    {
+      auto [d, dPrev, len, lmax] = make_step2(false);
+      hwy_step2_97(d, dPrev, len, lmax, hwy_dwt_gamma);
+    }
+    {
+      auto [d, dPrev, len, lmax] = make_step2(true);
+      hwy_step2_97(d, dPrev, len, lmax, hwy_dwt_beta);
+    }
+    {
+      auto [d, dPrev, len, lmax] = make_step2(false);
+      hwy_step2_97(d, dPrev, len, lmax, hwy_dwt_alpha);
+    }
+  }
+
+  /* Horizontal strip: interleave L rows, apply lifting steps, scatter to dest.
+   * Uses GatherIndex/ScatterIndex to SIMD-ize the strided row access pattern. */
+  static void hwy_h_strip_97(float* scratchMem, uint32_t sn, uint32_t dn, uint32_t parity,
+                              Line32 win_l, Line32 win_h, const uint32_t resHeight,
+                              float* srcL, uint32_t strideL, float* srcH, uint32_t strideH,
+                              float* dest, uint32_t strideDest)
+  {
+    const HWY_FULL(float) df;
+    namespace hn = hwy::HWY_NAMESPACE;
+    const auto di = hn::RebindToSigned<decltype(df)>();
+    const uint32_t L = (uint32_t)Lanes(df);
+    const uint32_t x0_l = win_l.x0, x1_l = win_l.x1;
+    const uint32_t x0_h = win_h.x0, x1_h = win_h.x1;
+
+    uint32_t j;
+    for(j = 0; j + L <= resHeight; j += L)
+    {
+      /* Interleave: gather L rows into scratch using SIMD gather */
+      {
+        float* sd = scratchMem + parity * L;
+        float* src = srcL;
+        uint32_t stride = strideL;
+        uint32_t x0 = x0_l, x1 = x1_l;
+        for(uint32_t k = 0; k < 2; ++k)
+        {
+          auto gi = Mul(Set(di, (int32_t)stride), Iota(di, 0));
+          for(uint32_t i = x0; i < x1; ++i, sd += L * 2)
+          {
+            auto v = GatherIndex(df, src + i, gi);
+            Store(v, df, sd);
+          }
+          sd = scratchMem + (1 - parity) * L;
+          src = srcH;
+          stride = strideH;
+          x0 = x0_h;
+          x1 = x1_h;
+        }
+      }
+
+      hwy_step_97_full(scratchMem, sn, dn, parity, win_l, win_h);
+
+      /* Scatter: write L rows to dest using SIMD scatter */
+      {
+        auto si = Mul(Set(di, (int32_t)strideDest), Iota(di, 0));
+        for(uint32_t k = 0; k < (uint32_t)(sn + dn); k++)
+        {
+          auto v = Load(df, scratchMem + k * L);
+          ScatterIndex(v, df, dest + k, si);
+        }
+      }
+
+      srcL += strideL * L;
+      srcH += strideH * L;
+      dest += strideDest * L;
+    }
+
+    /* Remainder: process remaining rows (< L) */
+    if(j < resHeight)
+    {
+      uint32_t remaining = resHeight - j;
+      const auto m = hn::FirstN(df, remaining);
+
+      /* Interleave remaining rows, zero-fill padding lanes via MaskedGatherIndex */
+      {
+        float* sd = scratchMem + parity * L;
+        float* src = srcL;
+        uint32_t stride = strideL;
+        uint32_t x0 = x0_l, x1 = x1_l;
+        for(uint32_t k = 0; k < 2; ++k)
+        {
+          auto gi = Mul(Set(di, (int32_t)stride), Iota(di, 0));
+          for(uint32_t i = x0; i < x1; ++i, sd += L * 2)
+          {
+            auto v = MaskedGatherIndex(m, df, src + i, gi);
+            Store(v, df, sd);
+          }
+          sd = scratchMem + (1 - parity) * L;
+          src = srcH;
+          stride = strideH;
+          x0 = x0_h;
+          x1 = x1_h;
+        }
+      }
+
+      hwy_step_97_full(scratchMem, sn, dn, parity, win_l, win_h);
+
+      /* Scatter remaining rows */
+      {
+        auto si = Mul(Set(di, (int32_t)strideDest), Iota(di, 0));
+        for(uint32_t k = 0; k < (uint32_t)(sn + dn); k++)
+        {
+          auto v = Load(df, scratchMem + k * L);
+          MaskedScatterIndex(v, m, df, dest + k, si);
+        }
+      }
+    }
+  }
+
+  /* Vertical strip: interleave L columns, apply lifting steps, scatter to dest.
+   * Uses Highway Load/Store instead of memcpy for full SIMD width transfers. */
+  static void hwy_v_strip_97(float* scratchMem, uint32_t sn, uint32_t dn, uint32_t parity,
+                              Line32 win_l, Line32 win_h, const uint32_t resWidth,
+                              const uint32_t resHeight, float* srcL, uint32_t strideL,
+                              float* srcH, uint32_t strideH, float* dest, uint32_t strideDest)
+  {
+    const HWY_FULL(float) df;
+    namespace hn = hwy::HWY_NAMESPACE;
+    const uint32_t L = (uint32_t)Lanes(df);
+
+    uint32_t j;
+    for(j = 0; j + L <= resWidth; j += L)
+    {
+      /* Interleave: load L columns from source bands to scratch */
+      {
+        auto bi = scratchMem + parity * L;
+        auto band = srcL + win_l.x0 * strideL;
+        for(uint32_t i = win_l.x0; i < win_l.x1; ++i, bi += 2 * L)
+        {
+          Store(LoadU(df, band), df, bi);
+          band += strideL;
+        }
+        bi = scratchMem + (1 - parity) * L;
+        band = srcH + win_h.x0 * strideH;
+        for(uint32_t i = win_h.x0; i < win_h.x1; ++i, bi += 2 * L)
+        {
+          Store(LoadU(df, band), df, bi);
+          band += strideH;
+        }
+      }
+
+      hwy_step_97_full(scratchMem, sn, dn, parity, win_l, win_h);
+
+      /* Scatter: store from scratch to dest */
+      auto destPtr = dest;
+      for(uint32_t k = 0; k < resHeight; ++k)
+      {
+        StoreU(Load(df, scratchMem + k * L), df, destPtr);
+        destPtr += strideDest;
+      }
+
+      srcL += L;
+      srcH += L;
+      dest += L;
+    }
+
+    /* Remainder: process remaining columns (< L) */
+    if(j < resWidth)
+    {
+      uint32_t remaining = resWidth - j;
+      const auto m = hn::FirstN(df, remaining);
+
+      /* Interleave remaining columns, zero-fill padding */
+      {
+        auto bi = scratchMem + parity * L;
+        auto band = srcL + win_l.x0 * strideL;
+        for(uint32_t i = win_l.x0; i < win_l.x1; ++i, bi += 2 * L)
+        {
+          Store(hn::MaskedLoad(m, df, band), df, bi);
+          band += strideL;
+        }
+        bi = scratchMem + (1 - parity) * L;
+        band = srcH + win_h.x0 * strideH;
+        for(uint32_t i = win_h.x0; i < win_h.x1; ++i, bi += 2 * L)
+        {
+          Store(hn::MaskedLoad(m, df, band), df, bi);
+          band += strideH;
+        }
+      }
+
+      hwy_step_97_full(scratchMem, sn, dn, parity, win_l, win_h);
+
+      /* Scatter remaining columns */
+      auto destPtr = dest;
+      for(uint32_t k = 0; k < resHeight; ++k)
+      {
+        hn::BlendedStore(Load(df, scratchMem + k * L), m, df, destPtr);
+        destPtr += strideDest;
+      }
+    }
+  }
+
 } // namespace HWY_NAMESPACE
 } // namespace grk
 HWY_AFTER_NAMESPACE();
@@ -92,6 +425,15 @@ HWY_AFTER_NAMESPACE();
 namespace grk
 {
 HWY_EXPORT(num_lanes);
+HWY_EXPORT(GetHWY_PLL_ROWS_97);
+HWY_EXPORT(hwy_h_strip_97);
+HWY_EXPORT(hwy_v_strip_97);
+
+static uint32_t get_PLL_ROWS_97(void)
+{
+  static uint32_t value = HWY_DYNAMIC_DISPATCH(GetHWY_PLL_ROWS_97)();
+  return value;
+}
 
 static const float dwt_alpha = 1.586134342f; /*  12994 */
 static const float dwt_beta = 0.052980118f; /*    434 */
@@ -347,44 +689,9 @@ void WaveletReverse::h_strip_97(dwt_scratch<vec4f>* GRK_RESTRICT scratch, const 
                                 Buffer2dSimple<float> winL, Buffer2dSimple<float> winH,
                                 Buffer2dSimple<float> winDest)
 {
-  float* GRK_RESTRICT dest = winDest.buf_;
-  const uint32_t strideDest = winDest.stride_;
-  uint32_t j;
-  const size_t vec4f_elts = vec4f::NUM_ELTS;
-  for(j = 0; j < (resHeight & (uint32_t)(~(vec4f_elts - 1))); j += vec4f_elts)
-  {
-    interleave_h_97(scratch, winL, winH, resHeight - j);
-    step_97(scratch);
-    for(uint32_t k = 0; k < scratch->sn + scratch->dn; k++)
-    {
-      dest[k] = scratch->mem[k].val[0];
-      dest[k + (size_t)strideDest] = scratch->mem[k].val[1];
-      dest[k + (size_t)strideDest * 2] = scratch->mem[k].val[2];
-      dest[k + (size_t)strideDest * 3] = scratch->mem[k].val[3];
-    }
-    winL.buf_ += winL.stride_ << 2;
-    winH.buf_ += winH.stride_ << 2;
-    dest += strideDest << 2;
-  }
-  if(j < resHeight)
-  {
-    interleave_h_97(scratch, winL, winH, resHeight - j);
-    step_97(scratch);
-    for(uint32_t k = 0; k < scratch->sn + scratch->dn; k++)
-    {
-      switch(resHeight - j)
-      {
-        case 3:
-          dest[k + (strideDest << 1)] = scratch->mem[k].val[2];
-        /* FALLTHRU */
-        case 2:
-          dest[k + strideDest] = scratch->mem[k].val[1];
-        /* FALLTHRU */
-        case 1:
-          dest[k] = scratch->mem[k].val[0];
-      }
-    }
-  }
+  HWY_DYNAMIC_DISPATCH(hwy_h_strip_97)
+  ((float*)scratch->mem, scratch->sn, scratch->dn, scratch->parity, scratch->win_l, scratch->win_h,
+   resHeight, winL.buf_, winL.stride_, winH.buf_, winH.stride_, winDest.buf_, winDest.stride_);
 }
 bool WaveletReverse::h_97(uint8_t res, uint32_t num_threads, size_t dataLength,
                           dwt_scratch<vec4f>& GRK_RESTRICT scratch, const uint32_t resHeight,
@@ -407,7 +714,7 @@ bool WaveletReverse::h_97(uint8_t res, uint32_t num_threads, size_t dataLength,
     auto indexMin = j * incrPerJob;
     auto indexMax = (j < (numTasks - 1U) ? (j + 1U) * incrPerJob : resHeight) - indexMin;
     auto myhoriz = new dwt_scratch<vec4f>(scratch);
-    if(!myhoriz->alloc(dataLength))
+    if(!myhoriz->alloc(dataLength * get_PLL_ROWS_97() / vec4f::NUM_ELTS))
     {
       grklog.error("Out of memory");
       return false;
@@ -445,34 +752,10 @@ void WaveletReverse::v_strip_97(dwt_scratch<vec4f>* GRK_RESTRICT scratch, const 
                                 const uint32_t resHeight, Buffer2dSimple<float> winL,
                                 Buffer2dSimple<float> winH, Buffer2dSimple<float> winDest)
 {
-  uint32_t j;
-  const size_t vec4f_elts = vec4f::NUM_ELTS;
-  for(j = 0; j < (resWidth & (uint32_t)~(vec4f_elts - 1)); j += vec4f_elts)
-  {
-    interleave_v_97(scratch, winL, winH, vec4f_elts);
-    step_97(scratch);
-    auto destPtr = winDest.buf_;
-    for(uint32_t k = 0; k < resHeight; ++k)
-    {
-      memcpy(destPtr, scratch->mem + k, sizeof(vec4f));
-      destPtr += winDest.stride_;
-    }
-    winL.buf_ += vec4f_elts;
-    winH.buf_ += vec4f_elts;
-    winDest.buf_ += vec4f_elts;
-  }
-  if(j < resWidth)
-  {
-    j = resWidth & (vec4f_elts - 1);
-    interleave_v_97(scratch, winL, winH, j);
-    step_97(scratch);
-    auto destPtr = winDest.buf_;
-    for(uint32_t k = 0; k < resHeight; ++k)
-    {
-      memcpy(destPtr, scratch->mem + k, j * sizeof(float));
-      destPtr += winDest.stride_;
-    }
-  }
+  HWY_DYNAMIC_DISPATCH(hwy_v_strip_97)
+  ((float*)scratch->mem, scratch->sn, scratch->dn, scratch->parity, scratch->win_l, scratch->win_h,
+   resWidth, resHeight, winL.buf_, winL.stride_, winH.buf_, winH.stride_, winDest.buf_,
+   winDest.stride_);
 }
 bool WaveletReverse::v_97(uint8_t res, uint32_t num_threads, size_t dataLength,
                           dwt_scratch<vec4f>& GRK_RESTRICT scratch, const uint32_t resWidth,
@@ -496,7 +779,7 @@ bool WaveletReverse::v_97(uint8_t res, uint32_t num_threads, size_t dataLength,
     auto indexMin = j * incrPerJob;
     auto indexMax = (j < (numTasks - 1U) ? (j + 1U) * incrPerJob : resWidth) - indexMin;
     auto myvert = new dwt_scratch<vec4f>(scratch);
-    if(!myvert->alloc(dataLength))
+    if(!myvert->alloc(dataLength * get_PLL_ROWS_97() / vec4f::NUM_ELTS))
     {
       grklog.error("Out of memory");
       delete myvert;
@@ -528,7 +811,8 @@ bool WaveletReverse::tile_97(void)
   uint32_t resHeight = tr->height();
 
   size_t dataLength = max_resolution(tr, numres_);
-  if(!horiz97.alloc(dataLength))
+  size_t scaledDataLength = dataLength * get_PLL_ROWS_97() / vec4f::NUM_ELTS;
+  if(!horiz97.alloc(scaledDataLength))
   {
     grklog.error("tile_97: out of memory");
     return false;
