@@ -15,6 +15,8 @@
  *
  */
 
+#include "hwy_arm_disable_targets.h"
+
 #undef HWY_TARGET_INCLUDE
 #define HWY_TARGET_INCLUDE "lanes.cpp"
 #include <hwy/foreach_target.h>

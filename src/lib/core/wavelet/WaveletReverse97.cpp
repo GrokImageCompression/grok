@@ -24,6 +24,8 @@
 #include <algorithm>
 #include <functional>
 
+#include "hwy_arm_disable_targets.h"
+
 #include "TFSingleton.h"
 #include "grk_restrict.h"
 #include "simd.h"

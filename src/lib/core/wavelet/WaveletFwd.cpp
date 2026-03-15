@@ -15,6 +15,8 @@
  *
  */
 
+#include "hwy_arm_disable_targets.h"
+
 #include "TFSingleton.h"
 #include "CodeStreamLimits.h"
 #include "TileWindow.h"

@@ -26,6 +26,7 @@ F.3, page 118, ITU-T Rec. T.800 final draft
 odd += (previous + next) >> 1;
 
 ************************************************************************/
+#include "hwy_arm_disable_targets.h"
 
 #include "TFSingleton.h"
 #include "grk_restrict.h"
