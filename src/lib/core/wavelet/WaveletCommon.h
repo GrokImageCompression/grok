@@ -24,20 +24,20 @@ class dwt53
 {
 public:
   void encode_v(int32_t* res, int32_t* scratch, uint32_t height, uint8_t parity, uint32_t stride,
-                uint32_t cols);
+                uint32_t cols, int32_t dcShift = 0);
 
   void encode_h(int32_t* row, int32_t* scratch, uint32_t width, uint8_t parity, uint32_t stride,
-                uint32_t rows);
+                uint32_t rows, int32_t dcShift = 0);
 };
 
 class dwt97
 {
 public:
   void encode_v(float* res, float* scratch, uint32_t height, uint8_t parity, uint32_t stride,
-                uint32_t cols);
+                uint32_t cols, float dcShift = 0.0f);
 
   void encode_h(float* row, float* scratch, uint32_t width, uint8_t parity, uint32_t stride,
-                uint32_t rows);
+                uint32_t rows, float dcShift = 0.0f);
 };
 
 template<typename T, size_t N>

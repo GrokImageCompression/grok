@@ -94,21 +94,38 @@ namespace HWY_NAMESPACE
   static uint32_t HWY_PLL_COLS_53 = GetHWY_PLL_COLS_53();
 
   static void hwy_v_final_store_53(const int32_t* scratch, const uint32_t height, int32_t* dest,
-                                   const size_t strideDest)
+                                   const size_t strideDest, int32_t dcShift, int32_t dcMin,
+                                   int32_t dcMax)
   {
     const HWY_FULL(int32_t) di;
-    for(uint32_t i = 0; i < height; ++i)
+    if(dcShift != 0)
     {
-      StoreU(Load(di, scratch + HWY_PLL_COLS_53 * i + 0), di, &dest[(size_t)i * strideDest + 0]);
-      StoreU(Load(di, scratch + HWY_PLL_COLS_53 * i + Lanes(di)), di,
-             dest + (size_t)i * strideDest + Lanes(di));
+      const auto vshift = Set(di, dcShift);
+      const auto vmin = Set(di, dcMin);
+      const auto vmax = Set(di, dcMax);
+      for(uint32_t i = 0; i < height; ++i)
+      {
+        auto v0 = Clamp(Load(di, scratch + HWY_PLL_COLS_53 * i + 0) + vshift, vmin, vmax);
+        auto v1 = Clamp(Load(di, scratch + HWY_PLL_COLS_53 * i + Lanes(di)) + vshift, vmin, vmax);
+        StoreU(v0, di, &dest[(size_t)i * strideDest + 0]);
+        StoreU(v1, di, dest + (size_t)i * strideDest + Lanes(di));
+      }
+    }
+    else
+    {
+      for(uint32_t i = 0; i < height; ++i)
+      {
+        StoreU(Load(di, scratch + HWY_PLL_COLS_53 * i + 0), di, &dest[(size_t)i * strideDest + 0]);
+        StoreU(Load(di, scratch + HWY_PLL_COLS_53 * i + Lanes(di)), di,
+               dest + (size_t)i * strideDest + Lanes(di));
+      }
     }
   }
   /** Vertical inverse 5x3 wavelet transform for 8 columns in SSE2, or
    * 16 in AVX2, when top-most pixel is on even coordinate */
   static void hwy_v_p0_53(int32_t* scratch, const uint32_t height, int32_t* bandL,
                           const size_t strideL, int32_t* bandH, const size_t strideH, int32_t* dest,
-                          const uint32_t strideDest)
+                          const uint32_t strideDest, int32_t dcShift, int32_t dcMin, int32_t dcMax)
   {
     const HWY_FULL(int32_t) di;
     const auto two = Set(di, 2);
@@ -186,14 +203,15 @@ namespace HWY_NAMESPACE
       Store(d1n_0 + s0n_0, di, scratch + HWY_PLL_COLS_53 * (height - 1) + 0);
       Store(d1n_1 + s0n_1, di, scratch + HWY_PLL_COLS_53 * (height - 1) + Lanes(di));
     }
-    hwy_v_final_store_53(scratch, height, dest, strideDest);
+    hwy_v_final_store_53(scratch, height, dest, strideDest, dcShift, dcMin, dcMax);
   }
 
   /** Vertical inverse 5x3 wavelet transform for 8 columns in SSE2, or
    * 16 in AVX2, when top-most pixel is on odd coordinate */
   static void hwy_v_p1_53(int32_t* scratch, const uint32_t height, int32_t* bandL,
                           const uint32_t strideL, int32_t* bandH, const uint32_t strideH,
-                          int32_t* dest, const uint32_t strideDest)
+                          int32_t* dest, const uint32_t strideDest, int32_t dcShift, int32_t dcMin,
+                          int32_t dcMax)
   {
     const HWY_FULL(int32_t) di;
     const auto two = Set(di, 2);
@@ -263,7 +281,7 @@ namespace HWY_NAMESPACE
       Store(d1_0 + sc_0, di, scratch + HWY_PLL_COLS_53 * (height - 1) + 0);
       Store(d1_1 + sc_1, di, scratch + HWY_PLL_COLS_53 * (height - 1) + Lanes(di));
     }
-    hwy_v_final_store_53(scratch, height, dest, strideDest);
+    hwy_v_final_store_53(scratch, height, dest, strideDest, dcShift, dcMin, dcMax);
   }
 
 } // namespace HWY_NAMESPACE
@@ -335,9 +353,10 @@ bool WaveletReverse::allocPoolData(size_t maxDim)
 
 WaveletReverse::WaveletReverse(CodecScheduler* scheduler, TileComponent* tilec, uint16_t compno,
                                Rect32 unreducedWindow, uint8_t numres, uint8_t qmfbid,
-                               uint32_t maxDim, bool wholeTileDecompress)
+                               uint32_t maxDim, bool wholeTileDecompress, DcShiftParam dcShift)
     : scheduler_(scheduler), tilec_(tilec), compno_(compno), unreducedWindow_(unreducedWindow),
-      numres_(numres), qmfbid_(qmfbid), maxDim_(maxDim), wholeTileDecompress_(wholeTileDecompress)
+      numres_(numres), qmfbid_(qmfbid), maxDim_(maxDim), wholeTileDecompress_(wholeTileDecompress),
+      dcShift_(dcShift)
 {}
 WaveletReverse::~WaveletReverse(void)
 {
@@ -636,16 +655,27 @@ void WaveletReverse::v_p1_53(int32_t* scratch, const uint32_t height, int32_t* b
 /** Number of columns that we can process in parallel in the vertical pass */
 void WaveletReverse::v_53(const dwt_scratch<int32_t>* scratch, Buffer2dSimple<int32_t> winL,
                           Buffer2dSimple<int32_t> winH, Buffer2dSimple<int32_t> winDest,
-                          uint32_t nb_cols)
+                          uint32_t nb_cols, DcShiftParam dcShift)
 {
   const uint32_t height = scratch->sn + scratch->dn;
   assert(height != 0);
+  int32_t dc = dcShift.enabled ? dcShift.shift : 0;
+  int32_t dcMin = dcShift.min;
+  int32_t dcMax = dcShift.max;
   if(scratch->parity == 0)
   {
     if(height == 1)
     {
-      for(uint32_t c = 0; c < nb_cols; c++, winL.buf_++, winDest.buf_++)
-        winDest.buf_[0] = winL.buf_[0];
+      if(dcShift.enabled)
+      {
+        for(uint32_t c = 0; c < nb_cols; c++, winL.buf_++, winDest.buf_++)
+          winDest.buf_[0] = std::clamp(winL.buf_[0] + dc, dcMin, dcMax);
+      }
+      else
+      {
+        for(uint32_t c = 0; c < nb_cols; c++, winL.buf_++, winDest.buf_++)
+          winDest.buf_[0] = winL.buf_[0];
+      }
     }
     else
     {
@@ -655,13 +685,21 @@ void WaveletReverse::v_53(const dwt_scratch<int32_t>* scratch, Buffer2dSimple<in
         /* we can efficiently process 8/16 columns in parallel */
         HWY_DYNAMIC_DISPATCH(hwy_v_p0_53)
         (scratch->mem, height, winL.buf_, winL.stride_, winH.buf_, winH.stride_, winDest.buf_,
-         winDest.stride_);
+         winDest.stride_, dc, dcMin, dcMax);
       }
       else
       {
         for(uint32_t c = 0; c < nb_cols; c++, winL.buf_++, winH.buf_++, winDest.buf_++)
           v_p0_53(scratch->mem, height, winL.buf_, winL.stride_, winH.buf_, winL.stride_,
                   winDest.buf_, winDest.stride_);
+        /* Apply DC shift to scalar output (data just written, still in cache) */
+        if(dcShift.enabled)
+        {
+          auto d = winDest.buf_ - nb_cols;
+          for(uint32_t c = 0; c < nb_cols; c++, d++)
+            for(uint32_t r = 0; r < height; r++)
+              d[r * winDest.stride_] = std::clamp(d[r * winDest.stride_] + dc, dcMin, dcMax);
+        }
       }
     }
   }
@@ -669,16 +707,36 @@ void WaveletReverse::v_53(const dwt_scratch<int32_t>* scratch, Buffer2dSimple<in
   {
     if(height == 1)
     {
-      for(uint32_t c = 0; c < nb_cols; c++, winL.buf_++, winDest.buf_++)
-        winDest.buf_[0] = winL.buf_[0] >> 1;
+      if(dcShift.enabled)
+      {
+        for(uint32_t c = 0; c < nb_cols; c++, winL.buf_++, winDest.buf_++)
+          winDest.buf_[0] = std::clamp((winL.buf_[0] >> 1) + dc, dcMin, dcMax);
+      }
+      else
+      {
+        for(uint32_t c = 0; c < nb_cols; c++, winL.buf_++, winDest.buf_++)
+          winDest.buf_[0] = winL.buf_[0] >> 1;
+      }
     }
     else if(height == 2)
     {
-      for(uint32_t c = 0; c < nb_cols; c++, winL.buf_++, winH.buf_++, winDest.buf_++)
+      if(dcShift.enabled)
       {
-        scratch->mem[1] = winL.buf_[0] - ((winH.buf_[0] + 1) >> 1);
-        winDest.buf_[0] = winH.buf_[0] + scratch->mem[1];
-        winDest.buf_[1] = scratch->mem[1];
+        for(uint32_t c = 0; c < nb_cols; c++, winL.buf_++, winH.buf_++, winDest.buf_++)
+        {
+          scratch->mem[1] = winL.buf_[0] - ((winH.buf_[0] + 1) >> 1);
+          winDest.buf_[0] = std::clamp(winH.buf_[0] + scratch->mem[1] + dc, dcMin, dcMax);
+          winDest.buf_[1] = std::clamp(scratch->mem[1] + dc, dcMin, dcMax);
+        }
+      }
+      else
+      {
+        for(uint32_t c = 0; c < nb_cols; c++, winL.buf_++, winH.buf_++, winDest.buf_++)
+        {
+          scratch->mem[1] = winL.buf_[0] - ((winH.buf_[0] + 1) >> 1);
+          winDest.buf_[0] = winH.buf_[0] + scratch->mem[1];
+          winDest.buf_[1] = scratch->mem[1];
+        }
       }
     }
     else
@@ -689,13 +747,21 @@ void WaveletReverse::v_53(const dwt_scratch<int32_t>* scratch, Buffer2dSimple<in
         /* we can efficiently process 8/16 columns in parallel */
         HWY_DYNAMIC_DISPATCH(hwy_v_p1_53)
         (scratch->mem, height, winL.buf_, winL.stride_, winH.buf_, winH.stride_, winDest.buf_,
-         winDest.stride_);
+         winDest.stride_, dc, dcMin, dcMax);
       }
       else
       {
         for(uint32_t c = 0; c < nb_cols; c++, winL.buf_++, winH.buf_++, winDest.buf_++)
           v_p1_53(scratch->mem, height, winL.buf_, winL.stride_, winH.buf_, winH.stride_,
                   winDest.buf_, winDest.stride_);
+        /* Apply DC shift to scalar output (data just written, still in cache) */
+        if(dcShift.enabled)
+        {
+          auto d = winDest.buf_ - nb_cols;
+          for(uint32_t c = 0; c < nb_cols; c++, d++)
+            for(uint32_t r = 0; r < height; r++)
+              d[r * winDest.stride_] = std::clamp(d[r * winDest.stride_] + dc, dcMin, dcMax);
+        }
       }
     }
   }
@@ -703,24 +769,26 @@ void WaveletReverse::v_53(const dwt_scratch<int32_t>* scratch, Buffer2dSimple<in
 
 void WaveletReverse::v_strip_53(const dwt_scratch<int32_t>* scratch, uint32_t wMin, uint32_t wMax,
                                 Buffer2dSimple<int32_t> winL, Buffer2dSimple<int32_t> winH,
-                                Buffer2dSimple<int32_t> winDest)
+                                Buffer2dSimple<int32_t> winDest, DcShiftParam dcShift)
 {
   uint32_t j;
   for(j = wMin; j + get_PLL_COLS_53() <= wMax; j += get_PLL_COLS_53())
   {
-    v_53(scratch, winL, winH, winDest, get_PLL_COLS_53());
+    v_53(scratch, winL, winH, winDest, get_PLL_COLS_53(), dcShift);
     winL.incX_IN_PLACE(get_PLL_COLS_53());
     winH.incX_IN_PLACE(get_PLL_COLS_53());
     winDest.incX_IN_PLACE(get_PLL_COLS_53());
   }
   if(j < wMax)
-    v_53(scratch, winL, winH, winDest, wMax - j);
+    v_53(scratch, winL, winH, winDest, wMax - j, dcShift);
 }
 
 void WaveletReverse::v_53(uint8_t res, TileComponentWindow<int32_t>* buf, uint32_t resWidth)
 {
   if(resWidth == 0)
     return;
+  /* Apply DC shift only on the last resolution level */
+  DcShiftParam dcShift = (res == numres_ - 1) ? dcShift_ : DcShiftParam{};
   uint32_t num_threads = (uint32_t)TFSingleton::num_threads();
   auto winL = buf->getResWindowBufferSplitSimple(res, SPLIT_L);
   auto winH = buf->getResWindowBufferSplitSimple(res, SPLIT_H);
@@ -736,13 +804,15 @@ void WaveletReverse::v_53(uint8_t res, TileComponentWindow<int32_t>* buf, uint32
     uint32_t sn = vert_.sn;
     uint32_t dn = vert_.dn;
     uint32_t parity = vert_.parity;
-    resFlow->waveletVert_->nextTask().work([this, sn, dn, parity, wMin, wMax, winL, winH, winDest] {
-      vertPool_[TFSingleton::workerId()].dn = dn;
-      vertPool_[TFSingleton::workerId()].sn = sn;
-      vertPool_[TFSingleton::workerId()].parity = parity;
+    resFlow->waveletVert_->nextTask().work(
+        [this, sn, dn, parity, wMin, wMax, winL, winH, winDest, dcShift] {
+          vertPool_[TFSingleton::workerId()].dn = dn;
+          vertPool_[TFSingleton::workerId()].sn = sn;
+          vertPool_[TFSingleton::workerId()].parity = parity;
 
-      v_strip_53(&vertPool_[TFSingleton::workerId()], wMin, wMax, winL, winH, winDest);
-    });
+          v_strip_53(&vertPool_[TFSingleton::workerId()], wMin, wMax, winL, winH, winDest,
+                     dcShift);
+        });
     winL.incX_IN_PLACE(widthIncr);
     winH.incX_IN_PLACE(widthIncr);
     winDest.incX_IN_PLACE(widthIncr);

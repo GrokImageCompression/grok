@@ -541,9 +541,11 @@ namespace HWY_NAMESPACE
   static void hwy_v_strip_97(float* scratchMem, uint32_t sn, uint32_t dn, uint32_t parity,
                               Line32 win_l, Line32 win_h, const uint32_t resWidth,
                               const uint32_t resHeight, float* srcL, uint32_t strideL,
-                              float* srcH, uint32_t strideH, float* dest, uint32_t strideDest)
+                              float* srcH, uint32_t strideH, float* dest, uint32_t strideDest,
+                              int32_t dcShift, int32_t dcMin, int32_t dcMax)
   {
     const HWY_FULL(float) df;
+    const HWY_FULL(int32_t) di;
     namespace hn = hwy::HWY_NAMESPACE;
     const uint32_t L = (uint32_t)Lanes(df);
     const uint32_t PLL = 2 * L;
@@ -553,6 +555,11 @@ namespace HWY_NAMESPACE
     const bool trivial = (!parity && dn == 0 && sn <= 1) || (parity && sn == 0 && dn >= 1);
     const auto scaleL = trivial ? Set(df, 1.0f) : kV;
     const auto scaleH = trivial ? Set(df, 1.0f) : invKV;
+
+    const bool hasDcShift = (dcShift != 0);
+    const auto vShift = Set(di, dcShift);
+    const auto vmin = Set(di, dcMin);
+    const auto vmax = Set(di, dcMax);
 
     uint32_t j = 0;
 
@@ -582,12 +589,27 @@ namespace HWY_NAMESPACE
         hwy_step_97_lift_2x(scratchMem, sn, dn, parity, win_l, win_h);
 
       /* Scatter: store 2*L columns (two vectors per row) */
-      auto destPtr = dest;
-      for(uint32_t k = 0; k < resHeight; ++k)
+      if(hasDcShift)
       {
-        StoreU(Load(df, scratchMem + k * PLL), df, destPtr);
-        StoreU(Load(df, scratchMem + k * PLL + L), df, destPtr + L);
-        destPtr += strideDest;
+        auto destI = (int32_t*)dest;
+        for(uint32_t k = 0; k < resHeight; ++k)
+        {
+          auto v0 = NearestInt(Load(df, scratchMem + k * PLL));
+          auto v1 = NearestInt(Load(df, scratchMem + k * PLL + L));
+          StoreU(Clamp(v0 + vShift, vmin, vmax), di, destI);
+          StoreU(Clamp(v1 + vShift, vmin, vmax), di, destI + L);
+          destI += strideDest;
+        }
+      }
+      else
+      {
+        auto destPtr = dest;
+        for(uint32_t k = 0; k < resHeight; ++k)
+        {
+          StoreU(Load(df, scratchMem + k * PLL), df, destPtr);
+          StoreU(Load(df, scratchMem + k * PLL + L), df, destPtr + L);
+          destPtr += strideDest;
+        }
       }
 
       srcL += PLL;
@@ -618,11 +640,24 @@ namespace HWY_NAMESPACE
       if(!trivial)
         hwy_step_97_lift(scratchMem, sn, dn, parity, win_l, win_h);
 
-      auto destPtr = dest;
-      for(uint32_t k = 0; k < resHeight; ++k)
+      if(hasDcShift)
       {
-        StoreU(Load(df, scratchMem + k * L), df, destPtr);
-        destPtr += strideDest;
+        auto destI = (int32_t*)dest;
+        for(uint32_t k = 0; k < resHeight; ++k)
+        {
+          auto v0 = NearestInt(Load(df, scratchMem + k * L));
+          StoreU(Clamp(v0 + vShift, vmin, vmax), di, destI);
+          destI += strideDest;
+        }
+      }
+      else
+      {
+        auto destPtr = dest;
+        for(uint32_t k = 0; k < resHeight; ++k)
+        {
+          StoreU(Load(df, scratchMem + k * L), df, destPtr);
+          destPtr += strideDest;
+        }
       }
 
       srcL += L;
@@ -636,6 +671,7 @@ namespace HWY_NAMESPACE
     {
       uint32_t remaining = resWidth - j;
       const auto m = hn::FirstN(df, remaining);
+      const auto mi = hn::FirstN(di, remaining);
 
       {
         auto bi = scratchMem + parity * L;
@@ -657,11 +693,24 @@ namespace HWY_NAMESPACE
       if(!trivial)
         hwy_step_97_lift(scratchMem, sn, dn, parity, win_l, win_h);
 
-      auto destPtr = dest;
-      for(uint32_t k = 0; k < resHeight; ++k)
+      if(hasDcShift)
       {
-        hn::BlendedStore(Load(df, scratchMem + k * L), m, df, destPtr);
-        destPtr += strideDest;
+        auto destI = (int32_t*)dest;
+        for(uint32_t k = 0; k < resHeight; ++k)
+        {
+          auto v0 = NearestInt(Load(df, scratchMem + k * L));
+          hn::BlendedStore(Clamp(v0 + vShift, vmin, vmax), mi, di, destI);
+          destI += strideDest;
+        }
+      }
+      else
+      {
+        auto destPtr = dest;
+        for(uint32_t k = 0; k < resHeight; ++k)
+        {
+          hn::BlendedStore(Load(df, scratchMem + k * L), m, df, destPtr);
+          destPtr += strideDest;
+        }
       }
     }
   }
@@ -999,12 +1048,13 @@ void WaveletReverse::interleave_v_97(dwt_scratch<vec4f>* GRK_RESTRICT scratch,
 }
 void WaveletReverse::v_strip_97(dwt_scratch<vec4f>* GRK_RESTRICT scratch, const uint32_t resWidth,
                                 const uint32_t resHeight, Buffer2dSimple<float> winL,
-                                Buffer2dSimple<float> winH, Buffer2dSimple<float> winDest)
+                                Buffer2dSimple<float> winH, Buffer2dSimple<float> winDest,
+                                DcShiftParam dcShift)
 {
   HWY_DYNAMIC_DISPATCH(hwy_v_strip_97)
   ((float*)scratch->mem, scratch->sn, scratch->dn, scratch->parity, scratch->win_l, scratch->win_h,
    resWidth, resHeight, winL.buf_, winL.stride_, winH.buf_, winH.stride_, winDest.buf_,
-   winDest.stride_);
+   winDest.stride_, dcShift.enabled ? dcShift.shift : 0, dcShift.min, dcShift.max);
 }
 bool WaveletReverse::v_97(uint8_t res, uint32_t num_threads, size_t dataLength,
                           dwt_scratch<vec4f>& GRK_RESTRICT scratch, const uint32_t resWidth,
@@ -1013,6 +1063,9 @@ bool WaveletReverse::v_97(uint8_t res, uint32_t num_threads, size_t dataLength,
 {
   if(resWidth == 0)
     return true;
+
+  /* Apply DC shift only on the last resolution level */
+  DcShiftParam dcShift = (res == numres_ - 1) ? dcShift_ : DcShiftParam{};
 
   auto numTasks = num_threads;
   if(resWidth < numTasks)
@@ -1035,8 +1088,8 @@ bool WaveletReverse::v_97(uint8_t res, uint32_t num_threads, size_t dataLength,
       return false;
     }
     resFlow->waveletVert_->nextTask().work(
-        [this, myvert, resHeight, indexMax, winL, winH, winDest] {
-          v_strip_97(myvert, indexMax, resHeight, winL, winH, winDest);
+        [this, myvert, resHeight, indexMax, winL, winH, winDest, dcShift] {
+          v_strip_97(myvert, indexMax, resHeight, winL, winH, winDest, dcShift);
           delete myvert;
         });
     winL.incX_IN_PLACE(incrPerJob);

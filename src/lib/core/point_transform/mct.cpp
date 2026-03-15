@@ -452,11 +452,11 @@ void Mct::schedule_decompress_dc_shift_rev(FlowComponent* flow, uint16_t compno)
  * inverse irreversible MCT (with dc shift)
  * (vector routines are disabled)
  */
-void Mct::schedule_decompress_irrev(FlowComponent* flow)
+void Mct::schedule_decompress_irrev(FlowComponent* flow, bool applyDcShift)
 {
   ScheduleInfo info(tile_, flow, image_->rows_per_task);
   hwy::DisableTargets(uint32_t(~HWY_SCALAR));
-  genShift(1, info.shiftInfo);
+  genShift(applyDcShift ? 1 : 0, info.shiftInfo);
   HWY_DYNAMIC_DISPATCH(hwy_schedule_decompress_irrev)
   (info);
 }
@@ -464,30 +464,30 @@ void Mct::schedule_decompress_irrev(FlowComponent* flow)
 /***
  * inverse reversible MCT (with dc shift)
  */
-void Mct::schedule_decompress_rev(FlowComponent* flow)
+void Mct::schedule_decompress_rev(FlowComponent* flow, bool applyDcShift)
 {
   ScheduleInfo info(tile_, flow, image_->rows_per_task);
-  genShift(1, info.shiftInfo);
+  genShift(applyDcShift ? 1 : 0, info.shiftInfo);
   HWY_DYNAMIC_DISPATCH(hwy_schedule_decompress_rev)
   (info);
 }
 /* <summary> */
 /* Forward reversible MCT. */
 /* </summary> */
-void Mct::compress_rev(FlowComponent* flow)
+void Mct::compress_rev(FlowComponent* flow, bool applyDcShift)
 {
   ScheduleInfo info(tile_, flow, singleTileRowsPerStrip);
-  genShift(-1, info.shiftInfo);
+  genShift(applyDcShift ? -1 : 0, info.shiftInfo);
   HWY_DYNAMIC_DISPATCH(hwy_compress_rev)
   (info);
 }
 /* <summary> */
 /* Forward irreversible MCT. */
 /* </summary> */
-void Mct::compress_irrev(FlowComponent* flow)
+void Mct::compress_irrev(FlowComponent* flow, bool applyDcShift)
 {
   ScheduleInfo info(tile_, flow, singleTileRowsPerStrip);
-  genShift(-1, info.shiftInfo);
+  genShift(applyDcShift ? -1 : 0, info.shiftInfo);
   HWY_DYNAMIC_DISPATCH(hwy_compress_irrev)
   (info);
 }

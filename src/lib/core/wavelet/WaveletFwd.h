@@ -19,6 +19,7 @@
 
 #include <cstdint>
 #include "TileComponent.h"
+#include "WaveletReverse.h"
 
 namespace grk
 {
@@ -27,7 +28,8 @@ class WaveletFwdImpl
 {
 public:
   virtual ~WaveletFwdImpl() = default;
-  bool compress(TileComponent* tile_comp, uint8_t qmfbid, uint32_t maxDim);
+  bool compress(TileComponent* tile_comp, uint8_t qmfbid, uint32_t maxDim,
+                DcShiftParam dcShift = {});
 };
 
 } // namespace grk

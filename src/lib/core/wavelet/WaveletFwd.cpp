@@ -137,7 +137,8 @@ namespace HWY_NAMESPACE
   }
 
   HWY_ATTR void encode_53_v(int32_t* resolution, int32_t* scratch, const uint32_t height,
-                            const uint8_t parity, const uint32_t stride, const uint32_t numcols)
+                            const uint8_t parity, const uint32_t stride, const uint32_t numcols,
+                            int32_t dcShift)
   {
     const HWY_FULL(int32_t) d;
     if(height <= 1)
@@ -145,6 +146,8 @@ namespace HWY_NAMESPACE
       if(parity == 1 && height == 1)
       {
         auto v = Load(d, resolution);
+        if(dcShift != 0)
+          v = v - Set(d, dcShift);
         auto res = ShiftLeft<1>(v);
         StoreN(res, d, resolution, numcols);
       }
@@ -219,8 +222,6 @@ namespace HWY_NAMESPACE
         // low pass reflection
         Store(s_0 + ShiftRight<2>(ShiftLeft<1>(d_0) + c_d2), d, &scratch[0]);
       }
-
-      deinterleave_v(scratch, resolution, dn, sn, stride, parity, numcols);
     }
     else
     {
@@ -268,11 +269,19 @@ namespace HWY_NAMESPACE
       }
     }
 
+    // apply DC shift to low-pass band before deinterleaving
+    if(dcShift != 0)
+    {
+      const auto vshift = Set(d, dcShift);
+      for(uint32_t k = parity; k < height; k += 2)
+        Store(Load(d, &scratch[k * lanes]) - vshift, d, &scratch[k * lanes]);
+    }
     deinterleave_v(scratch, resolution, dn, sn, stride, parity, numcols);
   }
 
   HWY_ATTR void encode_53_h(int32_t* resolution, int32_t* scratch, const uint32_t width,
-                            const uint8_t parity, const uint32_t stride, const uint32_t numrows)
+                            const uint8_t parity, const uint32_t stride, const uint32_t numrows,
+                            int32_t dcShift)
   {
     const HWY_FULL(int32_t) d;
     const auto indices = Iota(d, 0) * Set(d, static_cast<int32_t>(stride));
@@ -280,7 +289,9 @@ namespace HWY_NAMESPACE
     {
       if(parity == 1 && width == 1)
       {
-        const auto v = GatherIndexN(d, resolution, indices, numrows);
+        auto v = GatherIndexN(d, resolution, indices, numrows);
+        if(dcShift != 0)
+          v = v - Set(d, dcShift);
         ScatterIndexN(ShiftLeft<1>(v), d, resolution, indices, numrows);
       }
       return;
@@ -358,8 +369,6 @@ namespace HWY_NAMESPACE
         // low pass reflection
         Store(s_0 + ShiftRight<2>(ShiftLeft<1>(d_0) + c_d2), d, &scratch[0]);
       }
-
-      deinterleave_h(scratch, resolution, dn, sn, stride, parity, numrows);
     }
     else
     {
@@ -417,11 +426,18 @@ namespace HWY_NAMESPACE
       }
     }
 
+    // apply DC shift to low-pass band before deinterleaving
+    if(dcShift != 0)
+    {
+      const auto vshift = Set(d, dcShift);
+      for(uint32_t k = parity; k < width; k += 2)
+        Store(Load(d, &scratch[k * lanes]) - vshift, d, &scratch[k * lanes]);
+    }
     deinterleave_h(scratch, resolution, dn, sn, stride, parity, numrows);
   }
 
   void encode_97_h(float* res, float* scratch, const uint32_t width, const uint8_t parity,
-                   const uint32_t stride, const uint32_t numrows)
+                   const uint32_t stride, const uint32_t numrows, float dcShift)
   {
     if(width == 1)
       return;
@@ -440,11 +456,24 @@ namespace HWY_NAMESPACE
     auto temp = scratch;
     const HWY_FULL(int32_t) di;
     const auto indices = Iota(di, 0) * Set(di, static_cast<int32_t>(stride));
-    for(auto j = 0U; j < width; ++j)
+    if(dcShift != 0.0f)
     {
-      auto ind = indices + Set(di, static_cast<int32_t>(j));
-      Store(GatherIndexN(d, res, ind, numrows), d, temp);
-      temp += lanes;
+      const auto vshift = Set(d, dcShift);
+      for(auto j = 0U; j < width; ++j)
+      {
+        auto ind = indices + Set(di, static_cast<int32_t>(j));
+        Store(GatherIndexN(d, res, ind, numrows) - vshift, d, temp);
+        temp += lanes;
+      }
+    }
+    else
+    {
+      for(auto j = 0U; j < width; ++j)
+      {
+        auto ind = indices + Set(di, static_cast<int32_t>(j));
+        Store(GatherIndexN(d, res, ind, numrows), d, temp);
+        temp += lanes;
+      }
     }
 
     // high pass 1
@@ -588,7 +617,7 @@ namespace HWY_NAMESPACE
   }
 
   void encode_97_v(float* res, float* scratch, const uint32_t height, const uint8_t parity,
-                   const uint32_t stride, const uint32_t numcols)
+                   const uint32_t stride, const uint32_t numcols, float dcShift)
   {
     const HWY_FULL(float) d;
     const size_t lanes = Lanes(d);
@@ -600,12 +629,26 @@ namespace HWY_NAMESPACE
 
     auto temp = scratch;
     auto in = res;
-    for(auto j = 0U; j < height; ++j)
+    if(dcShift != 0.0f)
     {
-      // Store the full SIMD vector, even if numcols < lanes
-      Store(Load(d, in), d, temp);
-      temp += lanes;
-      in += stride;
+      const auto vshift = Set(d, dcShift);
+      for(auto j = 0U; j < height; ++j)
+      {
+        // Store the full SIMD vector, even if numcols < lanes
+        Store(Load(d, in) - vshift, d, temp);
+        temp += lanes;
+        in += stride;
+      }
+    }
+    else
+    {
+      for(auto j = 0U; j < height; ++j)
+      {
+        // Store the full SIMD vector, even if numcols < lanes
+        Store(Load(d, in), d, temp);
+        temp += lanes;
+        in += stride;
+      }
     }
 
     const uint32_t off_s = parity;
@@ -763,10 +806,10 @@ namespace HWY_NAMESPACE
     size_t inc = lanes * task->stride;
     for(j = task->min_j; j + lanes - 1 < task->max_j; j += (uint32_t)lanes, ind += inc)
       task->dwt.encode_h((T*)task->tiledp + ind, (T*)task->line.mem, task->r_dim, task->line.parity,
-                         task->stride, (uint32_t)lanes);
+                         task->stride, (uint32_t)lanes, task->dcShift);
     if(j < task->max_j)
       task->dwt.encode_h((T*)task->tiledp + ind, (T*)task->line.mem, task->r_dim, task->line.parity,
-                         task->stride, task->max_j - j);
+                         task->stride, task->max_j - j, task->dcShift);
   }
 
   template<typename T, typename DWT>
@@ -779,14 +822,14 @@ namespace HWY_NAMESPACE
     size_t inc = lanes;
     for(j = task->min_j; j + lanes - 1 < task->max_j; j += (uint32_t)lanes, ind += inc)
       task->dwt.encode_v((T*)task->tiledp + ind, (T*)task->line.mem, task->r_dim, task->line.parity,
-                         task->stride, (uint32_t)lanes);
+                         task->stride, (uint32_t)lanes, task->dcShift);
     if(j < task->max_j)
       task->dwt.encode_v((T*)task->tiledp + ind, (T*)task->line.mem, task->r_dim, task->line.parity,
-                         task->stride, task->max_j - j);
+                         task->stride, task->max_j - j, task->dcShift);
   }
 
   template<typename T, typename DWT>
-  bool encode(TileComponent* tilec)
+  bool encode(TileComponent* tilec, T dcShiftVal)
   {
     if(tilec->num_resolutions_ == 1U)
       return true;
@@ -825,6 +868,9 @@ namespace HWY_NAMESPACE
     }
     while(i--)
     {
+      // DC shift only on first (finest) resolution level
+      T currentDcShift = (i == maxNumResolutions - 1) ? dcShiftVal : T(0);
+
       // width of the resolution level computed
       const uint32_t rw = (uint32_t)(currentRes->x1 - currentRes->x0);
       // height of the resolution level computed
@@ -843,9 +889,11 @@ namespace HWY_NAMESPACE
       {
         uint32_t j;
         for(j = 0; j + lanes - 1 < rw; j += lanes)
-          dwt.encode_v((T*)tiledp + j, scratch_pool, rh, parity_col, stride, lanes);
+          dwt.encode_v((T*)tiledp + j, scratch_pool, rh, parity_col, stride, lanes,
+                       currentDcShift);
         if(j < rw)
-          dwt.encode_v((T*)tiledp + j, scratch_pool, rh, parity_col, stride, rw - j);
+          dwt.encode_v((T*)tiledp + j, scratch_pool, rh, parity_col, stride, rw - j,
+                       currentDcShift);
       }
       else
       {
@@ -870,6 +918,7 @@ namespace HWY_NAMESPACE
           info->r_dim = rh;
           info->min_j = j * step_j;
           info->max_j = (j + 1 == num_tasks) ? rw : (j + 1) * step_j;
+          info->dcShift = currentDcShift;
           if(node)
           {
             node[j].work([info] {
@@ -886,6 +935,8 @@ namespace HWY_NAMESPACE
           TFSingleton::get().run(taskflow).wait();
       }
 
+      // DC shift applied only during vertical pass for first level;
+      // horizontal pass processes already-shifted data
       sn = rw_lower;
       dn = (uint32_t)(rw - rw_lower);
       if(num_threads <= 1 || rh < (lanes << 1))
@@ -921,6 +972,7 @@ namespace HWY_NAMESPACE
           info->r_dim = rw;
           info->min_j = j * step_j;
           info->max_j = (j + 1 == num_tasks) ? rh : (j + 1U) * step_j;
+          info->dcShift = T(0);
           if(node)
             node[j].work([info] { encode_h(info); });
           else
@@ -937,13 +989,13 @@ namespace HWY_NAMESPACE
     return true;
   }
 
-  bool encode_53(TileComponent* tilec)
+  bool encode_53(TileComponent* tilec, int32_t dcShift)
   {
-    return encode<int32_t, dwt53>(tilec);
+    return encode<int32_t, dwt53>(tilec, dcShift);
   }
-  bool encode_97(TileComponent* tilec)
+  bool encode_97(TileComponent* tilec, float dcShift)
   {
-    return encode<float, dwt97>(tilec);
+    return encode<float, dwt97>(tilec, dcShift);
   }
 
 } // namespace HWY_NAMESPACE
@@ -981,35 +1033,41 @@ struct encode_info
   T* tiledp;
   uint32_t min_j;
   uint32_t max_j;
+  T dcShift;
   DWT dwt;
 };
 
-bool WaveletFwdImpl::compress(TileComponent* tile_comp, uint8_t qmfbid, uint32_t maxDim)
+bool WaveletFwdImpl::compress(TileComponent* tile_comp, uint8_t qmfbid, uint32_t maxDim,
+                              DcShiftParam dcShift)
 {
   WaveletReverse::allocPoolData(maxDim);
 
-  return (qmfbid == 1) ? HWY_DYNAMIC_DISPATCH(encode_53)(tile_comp)
-                       : HWY_DYNAMIC_DISPATCH(encode_97)(tile_comp);
+  if(qmfbid == 1)
+    return HWY_DYNAMIC_DISPATCH(encode_53)(tile_comp,
+                                           dcShift.enabled ? dcShift.shift : 0);
+  else
+    return HWY_DYNAMIC_DISPATCH(encode_97)(tile_comp,
+                                           dcShift.enabled ? (float)dcShift.shift : 0.0f);
 }
 void dwt53::encode_v(int32_t* res, int32_t* scratch, const uint32_t height, const uint8_t parity,
-                     const uint32_t stride, const uint32_t numcols)
+                     const uint32_t stride, const uint32_t numcols, int32_t dcShift)
 {
-  HWY_DYNAMIC_DISPATCH(encode_53_v)(res, scratch, height, parity, stride, numcols);
+  HWY_DYNAMIC_DISPATCH(encode_53_v)(res, scratch, height, parity, stride, numcols, dcShift);
 }
 void dwt53::encode_h(int32_t* res, int32_t* scratch, const uint32_t width, const uint8_t parity,
-                     const uint32_t stride, const uint32_t numrows)
+                     const uint32_t stride, const uint32_t numrows, int32_t dcShift)
 {
-  HWY_DYNAMIC_DISPATCH(encode_53_h)(res, scratch, width, parity, stride, numrows);
+  HWY_DYNAMIC_DISPATCH(encode_53_h)(res, scratch, width, parity, stride, numrows, dcShift);
 }
 void dwt97::encode_v(float* res, float* scratch, const uint32_t height, const uint8_t parity,
-                     const uint32_t stride, const uint32_t numcols)
+                     const uint32_t stride, const uint32_t numcols, float dcShift)
 {
-  HWY_DYNAMIC_DISPATCH(encode_97_v)(res, scratch, height, parity, stride, numcols);
+  HWY_DYNAMIC_DISPATCH(encode_97_v)(res, scratch, height, parity, stride, numcols, dcShift);
 }
 void dwt97::encode_h(float* res, float* scratch, const uint32_t width, const uint8_t parity,
-                     const uint32_t stride, const uint32_t numrows)
+                     const uint32_t stride, const uint32_t numrows, float dcShift)
 {
-  HWY_DYNAMIC_DISPATCH(encode_97_h)(res, scratch, width, parity, stride, numrows);
+  HWY_DYNAMIC_DISPATCH(encode_97_h)(res, scratch, width, parity, stride, numrows, dcShift);
 }
 
 } // namespace grk

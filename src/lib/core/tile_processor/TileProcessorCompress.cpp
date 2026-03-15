@@ -207,13 +207,20 @@ bool TileProcessorCompress::writeTilePartT2(uint32_t* tileBytesWritten)
 
 void TileProcessorCompress::dcLevelShiftCompress(void)
 {
+  // DC shift is normally fused into the wavelet transform.
+  // This function handles:
+  // - fallback DC shift for components with no wavelet (num_resolutions == 1)
+  // - int32 → float conversion for irreversible non-MCT components
   for(uint16_t compno = 0; compno < tile_->numcomps_; compno++)
   {
     auto tile_comp = tile_->comps_ + compno;
     auto tccp = tcp_->tccps_ + compno;
     auto current_ptr = tile_comp->getWindow()->getResWindowBufferHighestSimple().buf_;
     uint64_t samples = tile_comp->getWindow()->stridedArea();
+    bool hasWavelet = (tile_comp->num_resolutions_ > 1);
+
 #ifndef GRK_FORCE_SIGNED_COMPRESS
+    // MCT components: DC shift is handled by MCT (no-wavelet) or wavelet (with wavelet)
     if(needsMctDecompress(compno))
       continue;
 #else
@@ -222,8 +229,10 @@ void TileProcessorCompress::dcLevelShiftCompress(void)
 
     if(tccp->qmfbid_ == 1)
     {
-      if(tccp->dcLevelShift_ == 0)
+      // reversible: DC shift is applied in wavelet first level when wavelet is used
+      if(hasWavelet || tccp->dcLevelShift_ == 0)
         continue;
+      // no wavelet: apply DC shift here as fallback
       for(uint64_t i = 0; i < samples; ++i)
       {
         *current_ptr -= tccp->dcLevelShift_;
@@ -232,14 +241,19 @@ void TileProcessorCompress::dcLevelShiftCompress(void)
     }
     else
     {
-      // output float
-
-      // Note: we need to convert to FP even if level shift is zero
-      // todo: skip this inefficiency for zero level shift
-
+      // irreversible: int32 → float conversion
+      // DC shift is applied in wavelet when wavelet is used, otherwise apply here
       float* floatPtr = (float*)current_ptr;
-      for(uint64_t i = 0; i < samples; ++i)
-        *floatPtr++ = (float)(*current_ptr++ - tccp->dcLevelShift_);
+      if(hasWavelet)
+      {
+        for(uint64_t i = 0; i < samples; ++i)
+          *floatPtr++ = (float)(*current_ptr++);
+      }
+      else
+      {
+        for(uint64_t i = 0; i < samples; ++i)
+          *floatPtr++ = (float)(*current_ptr++ - tccp->dcLevelShift_);
+      }
     }
 #ifdef GRK_FORCE_SIGNED_COMPRESS
     tccp->dc_level_shift_ = 0;
@@ -329,9 +343,14 @@ bool TileProcessorCompress::doCompress(void)
           return false;
         }
         else if(tcp_->tccps_->qmfbid_ == 0)
-          mct_->compress_irrev(nullptr);
+        {
+          // MCT always handles DC shift (wavelet doesn't fuse it for MCT components)
+          mct_->compress_irrev(nullptr, true);
+        }
         else
-          mct_->compress_rev(nullptr);
+        {
+          mct_->compress_rev(nullptr, true);
+        }
       }
     }
     if(!debugEncode || debugMCT)
@@ -341,8 +360,35 @@ bool TileProcessorCompress::doCompress(void)
         auto tile_comp = tile_->comps_ + compno;
         auto tccp = tcp_->tccps_ + compno;
         auto maxDim = std::max(cp_->t_width_, cp_->t_height_);
+
+        // compute DC shift for fusion into wavelet first level
+        DcShiftParam dcShift;
+        if(tile_comp->num_resolutions_ > 1)
+        {
+          bool isMctComp = needsMctDecompress(compno) && tcp_->mct_ == 1;
+          // Don't fuse DC shift for MCT components:
+          // MCT handles DC shift before color transform
+          if(!isMctComp)
+          {
+            auto img_comp = headerImage_->comps + compno;
+            // positive shift: forward wavelet subtracts it from data
+            dcShift.shift = (int32_t)tccp->dcLevelShift_;
+            if(img_comp->sgnd)
+            {
+              dcShift.min = -(1 << (img_comp->prec - 1));
+              dcShift.max = (1 << (img_comp->prec - 1)) - 1;
+            }
+            else
+            {
+              dcShift.min = 0;
+              dcShift.max = (1 << img_comp->prec) - 1;
+            }
+            dcShift.enabled = (tccp->dcLevelShift_ != 0);
+          }
+        }
+
         WaveletFwdImpl w;
-        if(!w.compress(tile_comp, tccp->qmfbid_, maxDim))
+        if(!w.compress(tile_comp, tccp->qmfbid_, maxDim, dcShift))
           return false;
       }
     }

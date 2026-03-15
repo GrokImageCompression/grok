@@ -94,11 +94,20 @@ struct dwt_scratch
   uint8_t resno = 0;
 };
 
+struct DcShiftParam
+{
+  int32_t shift = 0;
+  int32_t min = 0;
+  int32_t max = 0;
+  bool enabled = false;
+};
+
 class WaveletReverse
 {
 public:
   WaveletReverse(CodecScheduler* scheduler, TileComponent* tilec, uint16_t compno, Rect32 window,
-                 uint8_t numres, uint8_t qmfbid, uint32_t maxDim, bool wholeTileDecompress);
+                 uint8_t numres, uint8_t qmfbid, uint32_t maxDim, bool wholeTileDecompress,
+                 DcShiftParam dcShift = {});
   ~WaveletReverse(void);
   bool decompress(void);
 
@@ -128,6 +137,7 @@ private:
   uint8_t qmfbid_ = 0;
   uint32_t maxDim_ = 0;
   bool wholeTileDecompress_ = true;
+  DcShiftParam dcShift_;
 
   // 5/3 ////////////////////////////////////////////////////////////////////////////////////
   void load_h_p0_53(int32_t* scratch, const uint32_t width, int32_t* bandL, int32_t* bandH,
@@ -152,11 +162,12 @@ private:
                int32_t* bandH, const uint32_t strideH, int32_t* dest, const uint32_t strideDest);
 
   void v_53(const dwt_scratch<int32_t>* scratch, Buffer2dSimple<int32_t> winL,
-            Buffer2dSimple<int32_t> winH, Buffer2dSimple<int32_t> winDest, uint32_t nb_cols);
+            Buffer2dSimple<int32_t> winH, Buffer2dSimple<int32_t> winDest, uint32_t nb_cols,
+            DcShiftParam dcShift);
 
   void v_strip_53(const dwt_scratch<int32_t>* scratch, uint32_t wMin, uint32_t wMax,
                   Buffer2dSimple<int32_t> winL, Buffer2dSimple<int32_t> winH,
-                  Buffer2dSimple<int32_t> winDest);
+                  Buffer2dSimple<int32_t> winDest, DcShiftParam dcShift);
 
   void v_53(uint8_t res, TileComponentWindow<int32_t>* buf, uint32_t resWidth);
 
@@ -185,7 +196,7 @@ private:
 
   void v_strip_97(dwt_scratch<vec4f>* GRK_RESTRICT vert, const uint32_t resWidth,
                   const uint32_t resHeight, Buffer2dSimple<float> winL, Buffer2dSimple<float> winH,
-                  Buffer2dSimple<float> winDest);
+                  Buffer2dSimple<float> winDest, DcShiftParam dcShift);
 
   bool v_97(uint8_t res, uint32_t num_threads, size_t dataLength,
             dwt_scratch<vec4f>& GRK_RESTRICT vert, const uint32_t resWidth,

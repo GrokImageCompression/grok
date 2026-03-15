@@ -52,20 +52,20 @@ public:
   /**
    Apply a reversible multi-component transform to an image
    */
-  void compress_rev(FlowComponent* flow);
+  void compress_rev(FlowComponent* flow, bool applyDcShift = false);
   /**
    Apply a reversible multi-component inverse transform to an image
    */
-  void schedule_decompress_rev(FlowComponent* flow);
+  void schedule_decompress_rev(FlowComponent* flow, bool applyDcShift = false);
 
   /**
    Apply an irreversible multi-component transform to an image
    */
-  void compress_irrev(FlowComponent* flow);
+  void compress_irrev(FlowComponent* flow, bool applyDcShift = false);
   /**
    Apply an irreversible multi-component inverse transform to an image
    */
-  void schedule_decompress_irrev(FlowComponent* flow);
+  void schedule_decompress_irrev(FlowComponent* flow, bool applyDcShift = false);
 
   /**
    Apply a reversible inverse dc shift to an image
