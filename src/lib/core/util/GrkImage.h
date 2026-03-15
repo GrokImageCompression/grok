@@ -25,6 +25,7 @@
 
 #include "packer.h"
 #include "GrkImageMeta.h"
+#include "GrkImageSIMD.h"
 
 namespace grk
 {
@@ -564,14 +565,22 @@ void clip(grk_image_comp* component, uint8_t precision)
   }
 
   // Clip the data
-  for(uint32_t j = 0; j < component->h; ++j)
+  if constexpr(std::is_same_v<T, int32_t>)
   {
-    for(uint32_t i = 0; i < component->w; ++i)
+    hwy_clip_i32(data, component->w, component->h, component->stride, (int32_t)minimum,
+                 (int32_t)maximum);
+  }
+  else
+  {
+    for(uint32_t j = 0; j < component->h; ++j)
     {
-      data[index] = std::clamp<T>(data[index], minimum, maximum);
-      index++;
+      for(uint32_t i = 0; i < component->w; ++i)
+      {
+        data[index] = std::clamp<T>(data[index], minimum, maximum);
+        index++;
+      }
+      index += stride_diff;
     }
-    index += stride_diff;
   }
   component->prec = precision;
 }
@@ -678,45 +687,53 @@ bool GrkImage::color_esycc_to_rgb(void)
   auto yd = (T*)comps[0].data;
   auto bd = (T*)comps[1].data;
   auto rd = (T*)comps[2].data;
-  for(uint32_t j = 0; j < h; ++j)
+
+  if constexpr(std::is_same_v<T, int32_t>)
   {
-    for(uint32_t i = 0; i < w; ++i)
+    hwy_esycc_to_rgb_i32(yd, bd, rd, w, h, comps[0].stride, max_value, flip_value, sign1, sign2);
+  }
+  else
+  {
+    for(uint32_t j = 0; j < h; ++j)
     {
-      T y = yd[dest_index];
-      T cb = bd[dest_index];
-      T cr = rd[dest_index];
+      for(uint32_t i = 0; i < w; ++i)
+      {
+        T y = yd[dest_index];
+        T cb = bd[dest_index];
+        T cr = rd[dest_index];
 
-      if(!sign1)
-        cb -= flip_value;
-      if(!sign2)
-        cr -= flip_value;
+        if(!sign1)
+          cb -= flip_value;
+        if(!sign2)
+          cr -= flip_value;
 
-      T val = (T)(y - 0.0000368 * cb + 1.40199 * cr + 0.5);
+        T val = (T)(y - 0.0000368 * cb + 1.40199 * cr + 0.5);
 
-      if(val > max_value)
-        val = max_value;
-      else if(val < 0)
-        val = 0;
-      yd[dest_index] = val;
+        if(val > max_value)
+          val = max_value;
+        else if(val < 0)
+          val = 0;
+        yd[dest_index] = val;
 
-      val = (T)(1.0003 * y - 0.344125 * cb - 0.7141128 * cr + 0.5);
+        val = (T)(1.0003 * y - 0.344125 * cb - 0.7141128 * cr + 0.5);
 
-      if(val > max_value)
-        val = max_value;
-      else if(val < 0)
-        val = 0;
-      bd[dest_index] = val;
+        if(val > max_value)
+          val = max_value;
+        else if(val < 0)
+          val = 0;
+        bd[dest_index] = val;
 
-      val = (T)(0.999823 * y + 1.77204 * cb - 0.000008 * cr + 0.5);
+        val = (T)(0.999823 * y + 1.77204 * cb - 0.000008 * cr + 0.5);
 
-      if(val > max_value)
-        val = max_value;
-      else if(val < 0)
-        val = 0;
-      rd[dest_index] = val;
-      dest_index++;
+        if(val > max_value)
+          val = max_value;
+        else if(val < 0)
+          val = 0;
+        rd[dest_index] = val;
+        dest_index++;
+      }
+      dest_index += stride_diff;
     }
-    dest_index += stride_diff;
   }
   color_space = GRK_CLRSPC_SRGB;
 
@@ -853,23 +870,37 @@ void GrkImage::scaleComponent(grk_image_comp* component, uint8_t precision)
   if(component->prec < precision)
   {
     T scale = (T)(1ULL << diff);
-    size_t index = 0;
-    for(uint32_t j = 0; j < component->h; ++j)
+    if constexpr(std::is_same_v<T, int32_t>)
     {
-      for(uint32_t i = 0; i < component->w; ++i)
-        data[index++] *= scale;
-      index += stride_diff;
+      hwy_scale_mul_i32(data, component->w, component->h, component->stride, scale);
+    }
+    else
+    {
+      size_t index = 0;
+      for(uint32_t j = 0; j < component->h; ++j)
+      {
+        for(uint32_t i = 0; i < component->w; ++i)
+          data[index++] *= scale;
+        index += stride_diff;
+      }
     }
   }
   else
   {
     T scale = (T)(1ULL << diff);
-    size_t index = 0;
-    for(uint32_t j = 0; j < component->h; ++j)
+    if constexpr(std::is_same_v<T, int32_t>)
     {
-      for(uint32_t i = 0; i < component->w; ++i)
-        data[index++] /= scale;
-      index += stride_diff;
+      hwy_scale_div_i32(data, component->w, component->h, component->stride, scale);
+    }
+    else
+    {
+      size_t index = 0;
+      for(uint32_t j = 0; j < component->h; ++j)
+      {
+        for(uint32_t i = 0; i < component->w; ++i)
+          data[index++] /= scale;
+        index += stride_diff;
+      }
     }
   }
   component->prec = precision;
@@ -990,16 +1021,24 @@ bool GrkImage::sycc444_to_rgb(void)
   dst->comps[1].data = nullptr;
   dst->comps[2].data = nullptr;
 
-  for(uint32_t j = 0; j < h; ++j)
+  if constexpr(std::is_same_v<T, int32_t>)
   {
-    for(uint32_t i = 0; i < w; ++i)
-      sycc_to_rgb<T>(offset, upb, *y++, *cb++, *cr++, r++, g++, b++);
-    y += src_stride_diff;
-    cb += src_stride_diff;
-    cr += src_stride_diff;
-    r += dst_stride_diff;
-    g += dst_stride_diff;
-    b += dst_stride_diff;
+    hwy_sycc444_to_rgb_i32(y, cb, cr, r, g, b, w, h, comps[0].stride, dst->comps[0].stride,
+                            offset, upb);
+  }
+  else
+  {
+    for(uint32_t j = 0; j < h; ++j)
+    {
+      for(uint32_t i = 0; i < w; ++i)
+        sycc_to_rgb<T>(offset, upb, *y++, *cb++, *cr++, r++, g++, b++);
+      y += src_stride_diff;
+      cb += src_stride_diff;
+      cr += src_stride_diff;
+      r += dst_stride_diff;
+      g += dst_stride_diff;
+      b += dst_stride_diff;
+    }
   }
 
   all_components_data_free();
@@ -1735,18 +1774,25 @@ bool GrkImage::applyICC(void)
       auto g = (T*)comps[1].data;
       auto b = (T*)comps[2].data;
 
-      size_t src_index = 0;
-      size_t dest_index = 0;
-      for(uint32_t j = 0; j < h; ++j)
+      if constexpr(std::is_same_v<T, int32_t>)
       {
-        for(uint32_t i = 0; i < w; ++i)
+        hwy_planar_to_packed_8(r, g, b, inbuf, w, h, comps[0].stride);
+      }
+      else
+      {
+        size_t src_index = 0;
+        size_t dest_index = 0;
+        for(uint32_t j = 0; j < h; ++j)
         {
-          inbuf[dest_index++] = (uint8_t)r[src_index];
-          inbuf[dest_index++] = (uint8_t)g[src_index];
-          inbuf[dest_index++] = (uint8_t)b[src_index];
-          src_index++;
+          for(uint32_t i = 0; i < w; ++i)
+          {
+            inbuf[dest_index++] = (uint8_t)r[src_index];
+            inbuf[dest_index++] = (uint8_t)g[src_index];
+            inbuf[dest_index++] = (uint8_t)b[src_index];
+            src_index++;
+          }
+          src_index += stride_diff;
         }
-        src_index += stride_diff;
       }
 
       if(w > UINT32_MAX / 3)
@@ -1759,18 +1805,25 @@ bool GrkImage::applyICC(void)
 
       cmsDoTransformLineStride(transform, inbuf, outbuf, w, h, 3 * w, 3 * w, 0, 0);
 
-      src_index = 0;
-      dest_index = 0;
-      for(uint32_t j = 0; j < h; ++j)
+      if constexpr(std::is_same_v<T, int32_t>)
       {
-        for(uint32_t i = 0; i < w; ++i)
+        hwy_packed_to_planar_8(outbuf, r, g, b, w, h, comps[0].stride);
+      }
+      else
+      {
+        size_t src_index = 0;
+        size_t dest_index = 0;
+        for(uint32_t j = 0; j < h; ++j)
         {
-          r[dest_index] = (T)outbuf[src_index++];
-          g[dest_index] = (T)outbuf[src_index++];
-          b[dest_index] = (T)outbuf[src_index++];
-          dest_index++;
+          for(uint32_t i = 0; i < w; ++i)
+          {
+            r[dest_index] = (T)outbuf[src_index++];
+            g[dest_index] = (T)outbuf[src_index++];
+            b[dest_index] = (T)outbuf[src_index++];
+            dest_index++;
+          }
+          dest_index += stride_diff;
         }
-        dest_index += stride_diff;
       }
       delete[] inbuf;
       delete[] outbuf;
@@ -1790,18 +1843,25 @@ bool GrkImage::applyICC(void)
       auto g = (T*)comps[1].data;
       auto b = (T*)comps[2].data;
 
-      size_t src_index = 0;
-      size_t dest_index = 0;
-      for(uint32_t j = 0; j < h; ++j)
+      if constexpr(std::is_same_v<T, int32_t>)
       {
-        for(uint32_t i = 0; i < w; ++i)
+        hwy_planar_to_packed_16(r, g, b, inbuf, w, h, comps[0].stride);
+      }
+      else
+      {
+        size_t src_index = 0;
+        size_t dest_index = 0;
+        for(uint32_t j = 0; j < h; ++j)
         {
-          inbuf[dest_index++] = (uint16_t)r[src_index];
-          inbuf[dest_index++] = (uint16_t)g[src_index];
-          inbuf[dest_index++] = (uint16_t)b[src_index];
-          src_index++;
+          for(uint32_t i = 0; i < w; ++i)
+          {
+            inbuf[dest_index++] = (uint16_t)r[src_index];
+            inbuf[dest_index++] = (uint16_t)g[src_index];
+            inbuf[dest_index++] = (uint16_t)b[src_index];
+            src_index++;
+          }
+          src_index += stride_diff;
         }
-        src_index += stride_diff;
       }
 
       if(w > UINT32_MAX / (3 * sizeof(uint16_t)))
@@ -1813,18 +1873,25 @@ bool GrkImage::applyICC(void)
       }
       cmsDoTransformLineStride(transform, inbuf, outbuf, w, h, 3 * w * sizeof(uint16_t),
                                3 * w * sizeof(uint16_t), 0, 0);
-      src_index = 0;
-      dest_index = 0;
-      for(uint32_t j = 0; j < h; ++j)
+      if constexpr(std::is_same_v<T, int32_t>)
       {
-        for(uint32_t i = 0; i < w; ++i)
+        hwy_packed_to_planar_16(outbuf, r, g, b, w, h, comps[0].stride);
+      }
+      else
+      {
+        size_t src_index = 0;
+        size_t dest_index = 0;
+        for(uint32_t j = 0; j < h; ++j)
         {
-          r[dest_index] = (T)outbuf[src_index++];
-          g[dest_index] = (T)outbuf[src_index++];
-          b[dest_index] = (T)outbuf[src_index++];
-          dest_index++;
+          for(uint32_t i = 0; i < w; ++i)
+          {
+            r[dest_index] = (T)outbuf[src_index++];
+            g[dest_index] = (T)outbuf[src_index++];
+            b[dest_index] = (T)outbuf[src_index++];
+            dest_index++;
+          }
+          dest_index += stride_diff;
         }
-        dest_index += stride_diff;
       }
       delete[] inbuf;
       delete[] outbuf;
