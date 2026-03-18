@@ -857,21 +857,28 @@ typedef struct _grk_header_info
 
 /**
  * @struct grk_wait_swath
- * @brief Specify swath to wait on
- * Holds swath coordinates and tile indices covering swath
- * Tile indices are set by library
+ * @brief Specify swath region to wait on during asynchronous decompression.
+ *
+ * Input: Set pixel coordinates (x0, y0, x1, y1) before calling grk_decompress_wait().
+ * Output: After grk_decompress_wait() returns, tile_x0/y0/x1/y1 and num_tile_cols
+ *         are populated with the tile grid indices covering the requested swath.
+ *         These can be used with grk_decompress_get_tile_image() to retrieve
+ *         per-tile decoded data.
+ *
+ * Note: tile coordinates are only populated when grk_decompress_wait() is called
+ * with a non-null swath pointer and asynchronous+simulate_synchronous mode is enabled.
  */
 typedef struct grk_wait_swath
 {
-  uint32_t x0; // Pixel coordinate: top-left x
-  uint32_t y0; // Pixel coordinate: top-left y
-  uint32_t x1; // Pixel coordinate: bottom-right x (exclusive)
-  uint32_t y1; // Pixel coordinate: bottom-right y (exclusive)
-  uint16_t tile_x0; // Global tile coordinate: start x (inclusive)
-  uint16_t tile_y0; // Global tile coordinate: start y (inclusive)
-  uint16_t tile_x1; // Global tile coordinate: end x (exclusive)
-  uint16_t tile_y1; // Global tile coordinate: end y (exclusive)
-  uint16_t num_tile_cols; // Number of tile columns in the image's tile grid
+  uint32_t x0; /**< Input: Pixel coordinate: top-left x */
+  uint32_t y0; /**< Input: Pixel coordinate: top-left y */
+  uint32_t x1; /**< Input: Pixel coordinate: bottom-right x (exclusive) */
+  uint32_t y1; /**< Input: Pixel coordinate: bottom-right y (exclusive) */
+  uint16_t tile_x0; /**< Output: Global tile column start (inclusive) */
+  uint16_t tile_y0; /**< Output: Global tile row start (inclusive) */
+  uint16_t tile_x1; /**< Output: Global tile column end (exclusive) */
+  uint16_t tile_y1; /**< Output: Global tile row end (exclusive) */
+  uint16_t num_tile_cols; /**< Output: Total tile columns in the image tile grid */
 } grk_wait_swath;
 /**
  * @struct grk_plugin_pass
@@ -1068,16 +1075,29 @@ GRK_API bool GRK_CALLCONV grk_decompress_read_header(grk_object* codec,
                                                      grk_header_info* header_info);
 
 /**
- * @brief Gets decompressed tile image
- * @param	codec				decompression codec (see @ref grk_object)
- * @param	tile_index			tile index
- * @return pointer to @ref grk_image
+ * @brief Gets decompressed tile image by tile index.
+ *
+ * Returns per-tile decoded data after decompression completes.
+ * Works for both single-tile and multi-tile images.
+ * The tile index is: tile_y * num_tile_cols + tile_x
+ * (use grk_wait_swath output fields to compute).
+ *
+ * @param	codec		decompression codec (see @ref grk_object)
+ * @param	tile_index	tile index (row-major within the image tile grid)
+ * @param	wait		if true, block until the specified tile is decompressed
+ * @return pointer to @ref grk_image for the tile, or NULL if tile not available
  */
 GRK_API grk_image* GRK_CALLCONV grk_decompress_get_tile_image(grk_object* codec,
                                                               uint16_t tile_index, bool wait);
 
 /**
- * @brief Gets decompressed image
+ * @brief Gets the composite decompressed image.
+ *
+ * Returns the composited output image (all tiles merged).
+ * Only valid after full decompression completes (grk_decompress_wait with null swath).
+ * Requires skip_allocate_composite=false in decompress parameters for data to be present.
+ * For per-tile access, prefer grk_decompress_get_tile_image() instead.
+ *
  * @param	codec	decompression codec (see @ref grk_object)
  * @return pointer to @ref grk_image
  */
@@ -1092,10 +1112,18 @@ GRK_API grk_image* GRK_CALLCONV grk_decompress_get_image(grk_object* codec);
 GRK_API bool GRK_CALLCONV grk_decompress(grk_object* codec, grk_plugin_tile* tile);
 
 /**
- * @brief Waits for an asynchronous decompression to complete
+ * @brief Waits for an asynchronous decompression to complete.
+ *
+ * If swath is non-null: waits for all tiles covering the swath region,
+ * then populates swath->tile_x0/y0/x1/y1 and swath->num_tile_cols with
+ * the tile grid indices. Use these with grk_decompress_get_tile_image()
+ * to retrieve per-tile data.
+ *
+ * If swath is null: waits for the entire decompression to complete
+ * (all tiles, all post-processing). No tile coordinates are output.
+ *
  * @param codec codec @ref grk_object
- * @param swath @ref grk_wait_swath to wait for. If null, then wait for
- * entire decompression to complete
+ * @param swath @ref grk_wait_swath to wait for, or NULL for full wait
  */
 GRK_API void GRK_CALLCONV grk_decompress_wait(grk_object* codec, grk_wait_swath* swath);
 
