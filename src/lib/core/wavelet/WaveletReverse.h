@@ -17,6 +17,7 @@
 
 #pragma once
 
+#include <mutex>
 #include "CodecScheduler.h"
 #include "WaveletCommon.h"
 
@@ -127,7 +128,8 @@ private:
   static std::unique_ptr<BufferPtr[]> horizPoolData_;
   static std::unique_ptr<BufferPtr[]> vertPoolData_;
   static bool is_allocated_;
-  static std::once_flag alloc_flag_;
+  static std::mutex alloc_mutex_;
+  static size_t allocatedMaxDim_;
 
   CodecScheduler* scheduler_ = nullptr;
   TileComponent* tilec_ = nullptr;

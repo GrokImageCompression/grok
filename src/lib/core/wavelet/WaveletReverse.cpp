@@ -298,7 +298,8 @@ HWY_EXPORT(GetHWY_PLL_COLS_53); // Export GetHWY_PLL_COLS_53
 std::unique_ptr<WaveletReverse::BufferPtr[]> WaveletReverse::horizPoolData_ = nullptr;
 std::unique_ptr<WaveletReverse::BufferPtr[]> WaveletReverse::vertPoolData_ = nullptr;
 bool WaveletReverse::is_allocated_ = false;
-std::once_flag WaveletReverse::alloc_flag_;
+std::mutex WaveletReverse::alloc_mutex_;
+size_t WaveletReverse::allocatedMaxDim_ = 0;
 
 uint32_t get_PLL_COLS_53()
 {
@@ -312,41 +313,45 @@ bool WaveletReverse::allocPoolData(size_t maxDim)
   {
     return false;
   }
+  std::lock_guard<std::mutex> lock(alloc_mutex_);
+  if(is_allocated_ && maxDim <= allocatedMaxDim_)
+  {
+    return true;
+  }
   size_t num_threads = TFSingleton::num_threads();
-  std::call_once(alloc_flag_, [&]() {
-    try
-    {
-      horizPoolData_ = std::make_unique<BufferPtr[]>(num_threads);
-      vertPoolData_ = std::make_unique<BufferPtr[]>(num_threads);
+  try
+  {
+    horizPoolData_ = std::make_unique<BufferPtr[]>(num_threads);
+    vertPoolData_ = std::make_unique<BufferPtr[]>(num_threads);
 
-      size_t buffer_size = maxDim;
-      auto multiplier = std::max(sizeof(int32_t) * get_PLL_COLS_53(), sizeof(vec4f));
-      buffer_size *= multiplier;
-      for(size_t i = 0; i < num_threads; ++i)
+    size_t buffer_size = maxDim;
+    auto multiplier = std::max(sizeof(int32_t) * get_PLL_COLS_53(), sizeof(vec4f));
+    buffer_size *= multiplier;
+    for(size_t i = 0; i < num_threads; ++i)
+    {
+      void* horiz_ptr = grk_aligned_malloc(buffer_size);
+      void* vert_ptr = grk_aligned_malloc(buffer_size);
+      if(!horiz_ptr || !vert_ptr)
       {
-        void* horiz_ptr = grk_aligned_malloc(buffer_size);
-        void* vert_ptr = grk_aligned_malloc(buffer_size);
-        if(!horiz_ptr || !vert_ptr)
-        {
-          if(horiz_ptr)
-            grk_aligned_free(horiz_ptr);
-          if(vert_ptr)
-            grk_aligned_free(vert_ptr);
-          throw std::bad_alloc();
-        }
-        horizPoolData_[i] = BufferPtr(static_cast<uint8_t*>(horiz_ptr));
-        vertPoolData_[i] = BufferPtr(static_cast<uint8_t*>(vert_ptr));
+        if(horiz_ptr)
+          grk_aligned_free(horiz_ptr);
+        if(vert_ptr)
+          grk_aligned_free(vert_ptr);
+        throw std::bad_alloc();
       }
+      horizPoolData_[i] = BufferPtr(static_cast<uint8_t*>(horiz_ptr));
+      vertPoolData_[i] = BufferPtr(static_cast<uint8_t*>(vert_ptr));
+    }
 
-      is_allocated_ = true;
-    }
-    catch(const std::bad_alloc&)
-    {
-      horizPoolData_.reset();
-      vertPoolData_.reset();
-      is_allocated_ = false;
-    }
-  });
+    allocatedMaxDim_ = maxDim;
+    is_allocated_ = true;
+  }
+  catch(const std::bad_alloc&)
+  {
+    horizPoolData_.reset();
+    vertPoolData_.reset();
+    is_allocated_ = false;
+  }
 
   return is_allocated_;
 }
