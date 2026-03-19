@@ -337,7 +337,7 @@ bool DecompressScheduler::scheduleT1(ITileProcessor* tileProcessor)
             dcShift.min = 0;
             dcShift.max = (1 << img_comp->prec) - 1;
           }
-          dcShift.enabled = (dcShift.shift != 0);
+          dcShift.enabled = (dcShift.shift != 0) || (tccp->qmfbid_ == 0);
         }
       }
 

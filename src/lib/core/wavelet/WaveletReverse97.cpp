@@ -556,7 +556,7 @@ namespace HWY_NAMESPACE
     const auto scaleL = trivial ? Set(df, 1.0f) : kV;
     const auto scaleH = trivial ? Set(df, 1.0f) : invKV;
 
-    const bool hasDcShift = (dcShift != 0);
+    const bool hasDcShift = (dcShift != 0) || (dcMin != dcMax);
     const auto vShift = Set(di, dcShift);
     const auto vmin = Set(di, dcMin);
     const auto vmax = Set(di, dcMax);
