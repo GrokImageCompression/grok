@@ -241,8 +241,8 @@ namespace HWY_NAMESPACE
 
   /* Full 9/7 inverse lifting step on interleaved scratch buffer.
    * Each element is Lanes(float) wide. */
-  static void hwy_step_97_full(float* mem, uint32_t sn, uint32_t dn, uint32_t parity,
-                                Line32 win_l, Line32 win_h)
+  static void hwy_step_97_full(float* mem, uint32_t sn, uint32_t dn, uint32_t parity, Line32 win_l,
+                               Line32 win_h)
   {
     const HWY_FULL(float) df;
     const size_t L = Lanes(df);
@@ -263,7 +263,7 @@ namespace HWY_NAMESPACE
       int64_t band_0 = isBandL ? win_l.x0 : win_h.x0;
       int64_t band_1 = isBandL ? win_l.x1 : win_h.x1;
       int64_t lmax = isBandL ? (std::min<int64_t>)(sn, (int64_t)dn - parityOff)
-                              : (std::min<int64_t>)(dn, (int64_t)sn - parityOff);
+                             : (std::min<int64_t>)(dn, (int64_t)sn - parityOff);
       if(lmax < 0)
         lmax = 0;
       assert(lmax >= band_0);
@@ -301,8 +301,8 @@ namespace HWY_NAMESPACE
   }
 
   /* Lift-only for L-wide elements (no K/invK scaling, for fused-scale path). */
-  static void hwy_step_97_lift(float* mem, uint32_t sn, uint32_t dn, uint32_t parity,
-                                Line32 win_l, Line32 win_h)
+  static void hwy_step_97_lift(float* mem, uint32_t sn, uint32_t dn, uint32_t parity, Line32 win_l,
+                               Line32 win_h)
   {
     const HWY_FULL(float) df;
     const size_t L = Lanes(df);
@@ -315,7 +315,7 @@ namespace HWY_NAMESPACE
       int64_t band_0 = isBandL ? win_l.x0 : win_h.x0;
       int64_t band_1 = isBandL ? win_l.x1 : win_h.x1;
       int64_t lmax = isBandL ? (std::min<int64_t>)(sn, (int64_t)dn - parityOff)
-                              : (std::min<int64_t>)(dn, (int64_t)sn - parityOff);
+                             : (std::min<int64_t>)(dn, (int64_t)sn - parityOff);
       if(lmax < 0)
         lmax = 0;
       assert(lmax >= band_0);
@@ -348,7 +348,7 @@ namespace HWY_NAMESPACE
   /* Lift-only for 2*L-wide elements (no K/invK scaling, for fused-scale 2x path).
    * Processes 2*Lanes columns at once, matching the 5/3 inverse pattern. */
   static void hwy_step_97_lift_2x(float* mem, uint32_t sn, uint32_t dn, uint32_t parity,
-                                    Line32 win_l, Line32 win_h)
+                                  Line32 win_l, Line32 win_h)
   {
     const HWY_FULL(float) df;
     const size_t L = Lanes(df);
@@ -362,7 +362,7 @@ namespace HWY_NAMESPACE
       int64_t band_0 = isBandL ? win_l.x0 : win_h.x0;
       int64_t band_1 = isBandL ? win_l.x1 : win_h.x1;
       int64_t lmax = isBandL ? (std::min<int64_t>)(sn, (int64_t)dn - parityOff)
-                              : (std::min<int64_t>)(dn, (int64_t)sn - parityOff);
+                             : (std::min<int64_t>)(dn, (int64_t)sn - parityOff);
       if(lmax < 0)
         lmax = 0;
       assert(lmax >= band_0);
@@ -396,9 +396,9 @@ namespace HWY_NAMESPACE
    * Uses GatherIndex/ScatterIndex. 3-tier: 2*L main, L fallback, masked remainder.
    * K/invK scaling is fused into the interleave phase when lifting is needed. */
   static void hwy_h_strip_97(float* scratchMem, uint32_t sn, uint32_t dn, uint32_t parity,
-                              Line32 win_l, Line32 win_h, const uint32_t resHeight,
-                              float* srcL, uint32_t strideL, float* srcH, uint32_t strideH,
-                              float* dest, uint32_t strideDest)
+                             Line32 win_l, Line32 win_h, const uint32_t resHeight, float* srcL,
+                             uint32_t strideL, float* srcH, uint32_t strideH, float* dest,
+                             uint32_t strideDest)
   {
     const HWY_FULL(float) df;
     namespace hn = hwy::HWY_NAMESPACE;
@@ -539,10 +539,10 @@ namespace HWY_NAMESPACE
    * Uses Highway Load/Store. 3-tier: 2*L main, L fallback, masked remainder.
    * K/invK scaling is fused into the interleave phase when lifting is needed. */
   static void hwy_v_strip_97(float* scratchMem, uint32_t sn, uint32_t dn, uint32_t parity,
-                              Line32 win_l, Line32 win_h, const uint32_t resWidth,
-                              const uint32_t resHeight, float* srcL, uint32_t strideL,
-                              float* srcH, uint32_t strideH, float* dest, uint32_t strideDest,
-                              int32_t dcShift, int32_t dcMin, int32_t dcMax)
+                             Line32 win_l, Line32 win_h, const uint32_t resWidth,
+                             const uint32_t resHeight, float* srcL, uint32_t strideL, float* srcH,
+                             uint32_t strideH, float* dest, uint32_t strideDest, int32_t dcShift,
+                             int32_t dcMin, int32_t dcMax)
   {
     const HWY_FULL(float) df;
     const HWY_FULL(int32_t) di;

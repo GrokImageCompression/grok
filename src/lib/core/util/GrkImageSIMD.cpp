@@ -31,7 +31,7 @@ namespace HWY_NAMESPACE
 
   /* ─── clip ─── */
   static void Hwy_clip_i32(int32_t* data, uint32_t w, uint32_t h, uint32_t stride, int32_t minVal,
-                            int32_t maxVal)
+                           int32_t maxVal)
   {
     const HWY_FULL(int32_t) di;
     const uint32_t L = (uint32_t)Lanes(di);
@@ -58,7 +58,7 @@ namespace HWY_NAMESPACE
 
   /* ─── scale multiply ─── */
   static void Hwy_scale_mul_i32(int32_t* data, uint32_t w, uint32_t h, uint32_t stride,
-                                 int32_t scale)
+                                int32_t scale)
   {
     const HWY_FULL(int32_t) di;
     const uint32_t L = (uint32_t)Lanes(di);
@@ -84,7 +84,7 @@ namespace HWY_NAMESPACE
 
   /* ─── scale divide (truncation toward zero, matching C integer division) ─── */
   static void Hwy_scale_div_i32(int32_t* data, uint32_t w, uint32_t h, uint32_t stride,
-                                 int32_t scale)
+                                int32_t scale)
   {
     const HWY_FULL(float) df;
     const HWY_FULL(int32_t) di;
@@ -114,9 +114,9 @@ namespace HWY_NAMESPACE
    * Matches scalar: cb -= offset; cr -= offset; r = y + (int)(1.402 * cr); etc.
    * Key: truncation to int happens between the float multiply and the int add. */
   static void Hwy_sycc444_to_rgb_i32(const int32_t* y, const int32_t* cb, const int32_t* cr,
-                                      int32_t* r, int32_t* g, int32_t* b, uint32_t w, uint32_t h,
-                                      uint32_t src_stride, uint32_t dst_stride, int32_t offset,
-                                      int32_t upb)
+                                     int32_t* r, int32_t* g, int32_t* b, uint32_t w, uint32_t h,
+                                     uint32_t src_stride, uint32_t dst_stride, int32_t offset,
+                                     int32_t upb)
   {
     const HWY_FULL(float) df;
     const HWY_FULL(int32_t) di;
@@ -154,8 +154,8 @@ namespace HWY_NAMESPACE
         /* r = y + (int)(1.402 * cr) */
         auto vr = Clamp(Add(vi_y, ConvertTo(di, Mul(c_cr_r, fcr))), vZero_i, vUpb_i);
         /* g = y - (int)(0.344 * cb + 0.714 * cr) */
-        auto vg = Clamp(Sub(vi_y, ConvertTo(di, Add(Mul(c_cb_g, fcb), Mul(c_cr_g, fcr)))),
-                         vZero_i, vUpb_i);
+        auto vg = Clamp(Sub(vi_y, ConvertTo(di, Add(Mul(c_cb_g, fcb), Mul(c_cr_g, fcr)))), vZero_i,
+                        vUpb_i);
         /* b = y + (int)(1.772 * cb) */
         auto vb = Clamp(Add(vi_y, ConvertTo(di, Mul(c_cb_b, fcb))), vZero_i, vUpb_i);
 
@@ -174,8 +174,8 @@ namespace HWY_NAMESPACE
         auto fcr = ConvertTo(df, vi_cr);
 
         auto vr = Clamp(Add(vi_y, ConvertTo(di, Mul(c_cr_r, fcr))), vZero_i, vUpb_i);
-        auto vg = Clamp(Sub(vi_y, ConvertTo(di, Add(Mul(c_cb_g, fcb), Mul(c_cr_g, fcr)))),
-                         vZero_i, vUpb_i);
+        auto vg = Clamp(Sub(vi_y, ConvertTo(di, Add(Mul(c_cb_g, fcb), Mul(c_cr_g, fcr)))), vZero_i,
+                        vUpb_i);
         auto vb = Clamp(Add(vi_y, ConvertTo(di, Mul(c_cb_b, fcb))), vZero_i, vUpb_i);
 
         hn::BlendedStore(vr, m_i, di, rRow + i);
@@ -190,8 +190,8 @@ namespace HWY_NAMESPACE
    * Original uses double precision (implicit C++ promotion), so we use double vectors.
    * On AVX2 this gives 4 lanes per vector instead of 8. */
   static void Hwy_esycc_to_rgb_i32(int32_t* yd, int32_t* bd, int32_t* rd, uint32_t w, uint32_t h,
-                                    uint32_t stride, int32_t max_value, int32_t flip_value,
-                                    bool sign1, bool sign2)
+                                   uint32_t stride, int32_t max_value, int32_t flip_value,
+                                   bool sign1, bool sign2)
   {
     const HWY_FULL(double) dd;
     const HWY_FULL(int32_t) di;
@@ -233,14 +233,13 @@ namespace HWY_NAMESPACE
         auto vcr = PromoteTo(dd, vi_cr);
 
         /* R = (int)(y - 0.0000368*cb + 1.40199*cr + 0.5) */
-        auto vr = Clamp(Add(Add(vy, Add(Mul(c_cb_y, vcb), Mul(c_cr_r, vcr))), vHalf), vZero,
-                         vMax);
+        auto vr = Clamp(Add(Add(vy, Add(Mul(c_cb_y, vcb), Mul(c_cr_r, vcr))), vHalf), vZero, vMax);
         /* G = (int)(1.0003*y - 0.344125*cb - 0.7141128*cr + 0.5) */
         auto vg = Clamp(Add(Add(Mul(c_y_g, vy), Add(Mul(c_cb_g, vcb), Mul(c_cr_g, vcr))), vHalf),
-                         vZero, vMax);
+                        vZero, vMax);
         /* B = (int)(0.999823*y + 1.77204*cb - 0.000008*cr + 0.5) */
         auto vb = Clamp(Add(Add(Mul(c_y_b, vy), Add(Mul(c_cb_b, vcb), Mul(c_cr_b, vcr))), vHalf),
-                         vZero, vMax);
+                        vZero, vMax);
 
         StoreU(DemoteTo(di_half, vr), di_half, yRow + i);
         StoreU(DemoteTo(di_half, vg), di_half, bRow + i);
@@ -253,16 +252,22 @@ namespace HWY_NAMESPACE
         double cr_val = (double)(rRow[i] - (sign2 ? 0 : flip_value));
 
         int32_t rv = (int32_t)(y_val - 0.0000368 * cb_val + 1.40199 * cr_val + 0.5);
-        if(rv > max_value) rv = max_value;
-        else if(rv < 0) rv = 0;
+        if(rv > max_value)
+          rv = max_value;
+        else if(rv < 0)
+          rv = 0;
 
         int32_t gv = (int32_t)(1.0003 * y_val - 0.344125 * cb_val - 0.7141128 * cr_val + 0.5);
-        if(gv > max_value) gv = max_value;
-        else if(gv < 0) gv = 0;
+        if(gv > max_value)
+          gv = max_value;
+        else if(gv < 0)
+          gv = 0;
 
         int32_t bv = (int32_t)(0.999823 * y_val + 1.77204 * cb_val - 0.000008 * cr_val + 0.5);
-        if(bv > max_value) bv = max_value;
-        else if(bv < 0) bv = 0;
+        if(bv > max_value)
+          bv = max_value;
+        else if(bv < 0)
+          bv = 0;
 
         yRow[i] = rv;
         bRow[i] = gv;
@@ -273,7 +278,7 @@ namespace HWY_NAMESPACE
 
   /* ─── Planar int32_t → packed uint8_t RGB ─── */
   static void Hwy_planar_to_packed_8(const int32_t* r, const int32_t* g, const int32_t* b,
-                                      uint8_t* out, uint32_t w, uint32_t h, uint32_t src_stride)
+                                     uint8_t* out, uint32_t w, uint32_t h, uint32_t src_stride)
   {
     const HWY_FULL(int32_t) di;
     const uint32_t L = (uint32_t)Lanes(di);
@@ -310,7 +315,7 @@ namespace HWY_NAMESPACE
 
   /* ─── Packed uint8_t RGB → planar int32_t ─── */
   static void Hwy_packed_to_planar_8(const uint8_t* in, int32_t* r, int32_t* g, int32_t* b,
-                                      uint32_t w, uint32_t h, uint32_t dst_stride)
+                                     uint32_t w, uint32_t h, uint32_t dst_stride)
   {
     const HWY_FULL(int32_t) di;
     const uint32_t L = (uint32_t)Lanes(di);
@@ -350,7 +355,7 @@ namespace HWY_NAMESPACE
 
   /* ─── Planar int32_t → packed uint16_t RGB ─── */
   static void Hwy_planar_to_packed_16(const int32_t* r, const int32_t* g, const int32_t* b,
-                                       uint16_t* out, uint32_t w, uint32_t h, uint32_t src_stride)
+                                      uint16_t* out, uint32_t w, uint32_t h, uint32_t src_stride)
   {
     const HWY_FULL(int32_t) di;
     const uint32_t L = (uint32_t)Lanes(di);
@@ -386,7 +391,7 @@ namespace HWY_NAMESPACE
 
   /* ─── Packed uint16_t RGB → planar int32_t ─── */
   static void Hwy_packed_to_planar_16(const uint16_t* in, int32_t* r, int32_t* g, int32_t* b,
-                                       uint32_t w, uint32_t h, uint32_t dst_stride)
+                                      uint32_t w, uint32_t h, uint32_t dst_stride)
   {
     const HWY_FULL(int32_t) di;
     const uint32_t L = (uint32_t)Lanes(di);
@@ -458,17 +463,16 @@ void hwy_scale_div_i32(int32_t* data, uint32_t w, uint32_t h, uint32_t stride, i
 }
 
 void hwy_sycc444_to_rgb_i32(const int32_t* y, const int32_t* cb, const int32_t* cr, int32_t* r,
-                             int32_t* g, int32_t* b, uint32_t w, uint32_t h,
-                             uint32_t src_stride, uint32_t dst_stride, int32_t offset,
-                             int32_t upb)
+                            int32_t* g, int32_t* b, uint32_t w, uint32_t h, uint32_t src_stride,
+                            uint32_t dst_stride, int32_t offset, int32_t upb)
 {
   HWY_DYNAMIC_DISPATCH(Hwy_sycc444_to_rgb_i32)
   (y, cb, cr, r, g, b, w, h, src_stride, dst_stride, offset, upb);
 }
 
 void hwy_esycc_to_rgb_i32(int32_t* yd, int32_t* bd, int32_t* rd, uint32_t w, uint32_t h,
-                           uint32_t stride, int32_t max_value, int32_t flip_value, bool sign1,
-                           bool sign2)
+                          uint32_t stride, int32_t max_value, int32_t flip_value, bool sign1,
+                          bool sign2)
 {
   HWY_DYNAMIC_DISPATCH(Hwy_esycc_to_rgb_i32)
   (yd, bd, rd, w, h, stride, max_value, flip_value, sign1, sign2);

@@ -1023,8 +1023,8 @@ bool GrkImage::sycc444_to_rgb(void)
 
   if constexpr(std::is_same_v<T, int32_t>)
   {
-    hwy_sycc444_to_rgb_i32(y, cb, cr, r, g, b, w, h, comps[0].stride, dst->comps[0].stride,
-                            offset, upb);
+    hwy_sycc444_to_rgb_i32(y, cb, cr, r, g, b, w, h, comps[0].stride, dst->comps[0].stride, offset,
+                           upb);
   }
   else
   {

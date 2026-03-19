@@ -36,15 +36,14 @@ void hwy_scale_div_i32(int32_t* data, uint32_t w, uint32_t h, uint32_t stride, i
  * Reads from planar y/cb/cr, writes to planar r/g/b.
  * offset = 1 << (prec - 1), upb = (1 << prec) - 1 */
 void hwy_sycc444_to_rgb_i32(const int32_t* y, const int32_t* cb, const int32_t* cr, int32_t* r,
-                             int32_t* g, int32_t* b, uint32_t w, uint32_t h,
-                             uint32_t src_stride, uint32_t dst_stride, int32_t offset,
-                             int32_t upb);
+                            int32_t* g, int32_t* b, uint32_t w, uint32_t h, uint32_t src_stride,
+                            uint32_t dst_stride, int32_t offset, int32_t upb);
 
 /* eYCC to RGB conversion using Highway SIMD.
  * In-place: reads/writes from the same yd/bd/rd arrays. */
 void hwy_esycc_to_rgb_i32(int32_t* yd, int32_t* bd, int32_t* rd, uint32_t w, uint32_t h,
-                           uint32_t stride, int32_t max_value, int32_t flip_value, bool sign1,
-                           bool sign2);
+                          uint32_t stride, int32_t max_value, int32_t flip_value, bool sign1,
+                          bool sign2);
 
 /* Planar int32_t (3 components) → packed uint8_t RGB */
 void hwy_planar_to_packed_8(const int32_t* r, const int32_t* g, const int32_t* b, uint8_t* out,

@@ -810,8 +810,7 @@ void WaveletReverse::v_53(uint8_t res, TileComponentWindow<int32_t>* buf, uint32
           vertPool_[TFSingleton::workerId()].sn = sn;
           vertPool_[TFSingleton::workerId()].parity = parity;
 
-          v_strip_53(&vertPool_[TFSingleton::workerId()], wMin, wMax, winL, winH, winDest,
-                     dcShift);
+          v_strip_53(&vertPool_[TFSingleton::workerId()], wMin, wMax, winL, winH, winDest, dcShift);
         });
     winL.incX_IN_PLACE(widthIncr);
     winH.incX_IN_PLACE(widthIncr);

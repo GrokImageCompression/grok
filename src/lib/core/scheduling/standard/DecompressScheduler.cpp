@@ -341,11 +341,10 @@ bool DecompressScheduler::scheduleT1(ITileProcessor* tileProcessor)
         }
       }
 
-      waveletReverse_[compno] = new WaveletReverse(tileProcessor->getScheduler(), tilec, compno,
-                                                   tilec->getWindow()->unreducedBounds(), numRes,
-                                                   (tcp->tccps_ + compno)->qmfbid_, maxDim,
-                                                   tileProcessor->getTCP()->wholeTileDecompress_,
-                                                   dcShift);
+      waveletReverse_[compno] = new WaveletReverse(
+          tileProcessor->getScheduler(), tilec, compno, tilec->getWindow()->unreducedBounds(),
+          numRes, (tcp->tccps_ + compno)->qmfbid_, maxDim,
+          tileProcessor->getTCP()->wholeTileDecompress_, dcShift);
 
       if(!waveletReverse_[compno]->decompress())
         return false;

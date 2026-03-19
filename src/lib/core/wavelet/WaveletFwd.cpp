@@ -889,8 +889,7 @@ namespace HWY_NAMESPACE
       {
         uint32_t j;
         for(j = 0; j + lanes - 1 < rw; j += lanes)
-          dwt.encode_v((T*)tiledp + j, scratch_pool, rh, parity_col, stride, lanes,
-                       currentDcShift);
+          dwt.encode_v((T*)tiledp + j, scratch_pool, rh, parity_col, stride, lanes, currentDcShift);
         if(j < rw)
           dwt.encode_v((T*)tiledp + j, scratch_pool, rh, parity_col, stride, rw - j,
                        currentDcShift);
@@ -1043,8 +1042,7 @@ bool WaveletFwdImpl::compress(TileComponent* tile_comp, uint8_t qmfbid, uint32_t
   WaveletReverse::allocPoolData(maxDim);
 
   if(qmfbid == 1)
-    return HWY_DYNAMIC_DISPATCH(encode_53)(tile_comp,
-                                           dcShift.enabled ? dcShift.shift : 0);
+    return HWY_DYNAMIC_DISPATCH(encode_53)(tile_comp, dcShift.enabled ? dcShift.shift : 0);
   else
     return HWY_DYNAMIC_DISPATCH(encode_97)(tile_comp,
                                            dcShift.enabled ? (float)dcShift.shift : 0.0f);
