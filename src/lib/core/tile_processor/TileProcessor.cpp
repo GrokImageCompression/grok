@@ -957,10 +957,16 @@ void TileProcessor::post_decompressT2T1(GrkImage* scratch)
 {
   if(this->doPostT1())
   {
-    // Always extract per-tile image so grk_decompress_get_tile_image() works
-    // for both single-tile and multi-tile images
-    grk_unref(image_);
-    image_ = scratch->extractFrom(tile_);
+    if(scratch->has_multiple_tiles)
+    {
+      grk_unref(image_);
+      image_ = scratch->extractFrom(tile_);
+    }
+    else
+    {
+      // dispense with image_ when there is only one tile
+      scratch->transferDataFrom(tile_);
+    }
     deallocBuffers();
   }
 }
