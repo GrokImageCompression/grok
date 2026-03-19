@@ -59,3 +59,11 @@ cmake .. -G Ninja -DCMAKE_INSTALL_PREFIX="%CONDA_PREFIX%" -DPython3_EXECUTABLE="
 cmake --build . --config Release --parallel 16
 cmake --install . --config Release
 ```
+
+
+## Run GDAL Tests for Grok Driver
+
+
+```
+ PYTHONPATH=build/swig/python LD_LIBRARY_PATH=build python3 -m pytest autotest/gdrivers/jp2grok.py -v --tb=short
+```
