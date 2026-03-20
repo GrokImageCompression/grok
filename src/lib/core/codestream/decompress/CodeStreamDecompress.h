@@ -36,7 +36,11 @@ public:
   /**
    * @brief Destroys a CodeStreamDecompress
    */
-  ~CodeStreamDecompress() = default;
+  ~CodeStreamDecompress()
+  {
+    if(decompressWorker_.joinable())
+      decompressWorker_.join();
+  }
 
   void init(grk_decompress_parameters* param) override;
 
