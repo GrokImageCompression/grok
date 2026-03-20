@@ -149,8 +149,24 @@ bool CodeStreamDecompress::decompress(grk_plugin_tile* tile)
   current_plugin_tile = tile;
   multiTileComposite_->postReadHeader(&cp_);
   tileCache_->init(cp_.t_grid_width_ * cp_.t_grid_height_);
-  if(!decompressImpl(tilesToDecompress_.getSlatedTiles()))
+  auto slated = tilesToDecompress_.getSlatedTiles();
+  if(!decompressImpl(slated))
     return false;
+
+  // If all slated tiles were already cached, decompressImpl returned
+  // immediately without starting any workers, but the new TileCompletion
+  // (created in postReadHeader) doesn't know about them.  Mark them
+  // complete so that grk_decompress_wait() won't hang.
+  if(tileCompletion_)
+  {
+    for(auto tileIndex : slated)
+    {
+      auto cacheEntry = tileCache_->get(tileIndex);
+      if(cacheEntry && cacheEntry->processor->getImage() && !cacheEntry->dirty_)
+        tileCompletion_->complete(tileIndex);
+    }
+  }
+
   postMulti_ = postMultiTile();
 
   if(cp_.asynchronous_)
