@@ -40,7 +40,7 @@ public:
   TileCompletion(TileCache* tileCache, const Rect32& imageBounds, uint32_t tileWidth,
                  uint32_t tileHeight, RowCompletionCallback callback,
                  std::optional<Rect16> tileSubRegion = std::nullopt)
-      : tileCache_(tileCache), currentTileY_(0), lastClearedTileY_(0), rowCallback_(callback)
+      : tileCache_(tileCache), currentTileY_(0), lastClearedTileY_(-1), rowCallback_(callback)
   {
     // Calculate image dimensions from bounds
     uint32_t imageWidth = imageBounds.x1 - imageBounds.x0;
@@ -205,10 +205,10 @@ public:
     // Check if tile row has advanced for clearing previous rows
     {
       std::lock_guard<std::mutex> lock(mutex_);
-      if(tileY0 > currentTileY_ && tileY0 > lastClearedTileY_)
+      if(tileY0 > currentTileY_ && static_cast<int32_t>(tileY0) > lastClearedTileY_)
       {
         // Clear all completed tiles in previous tile rows
-        for(uint16_t clearTileY = lastClearedTileY_ + 1; clearTileY < tileY0; ++clearTileY)
+        for(uint16_t clearTileY = static_cast<uint16_t>(std::max(static_cast<int32_t>(tileY0_), lastClearedTileY_ + 1)); clearTileY < tileY0; ++clearTileY)
         {
           for(uint16_t tileX = tileX0_; tileX < tileX1_; ++tileX)
           {
@@ -226,16 +226,17 @@ public:
                 grklog.debug(
                     "Clearing ITileProcessor at tile index %d (local %d, tileX=%u, tileY=%u)",
                     tileIndex, localIndex, tileX, clearTileY);
+                grklog.debug("[TC] release tile %d (row %u)\n", tileIndex, clearTileY);
                 tileCache_->release(tileIndex);
               }
             }
           }
         }
-        lastClearedTileY_ = tileY0 - 1;
-        grklog.debug("Cleared tile rows up to tileY=%u", lastClearedTileY_);
+        lastClearedTileY_ = static_cast<int32_t>(tileY0) - 1;
+        grklog.debug("Cleared tile rows up to tileY=%d", lastClearedTileY_);
       }
       currentTileY_ = tileY0;
-      grklog.debug("Tile row transition: currentTileY=%u, lastClearedTileY=%u", currentTileY_,
+      grklog.debug("Tile row transition: currentTileY=%u, lastClearedTileY=%d", currentTileY_,
                    lastClearedTileY_);
     }
 
@@ -304,7 +305,7 @@ private:
   uint16_t tileX0_, tileX1_, tileY0_, tileY1_;
   uint16_t subregionWidth_, subregionHeight_;
   uint16_t currentTileY_; // Tracks the current swath's starting tile row
-  uint16_t lastClearedTileY_; // Tracks the last tile row cleared
+  int32_t lastClearedTileY_; // Tracks the last tile row cleared (-1 = none)
   RowCompletionCallback rowCallback_; // Callback for row completion
 };
 
