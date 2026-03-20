@@ -208,7 +208,9 @@ public:
       if(tileY0 > currentTileY_ && static_cast<int32_t>(tileY0) > lastClearedTileY_)
       {
         // Clear all completed tiles in previous tile rows
-        for(uint16_t clearTileY = static_cast<uint16_t>(std::max(static_cast<int32_t>(tileY0_), lastClearedTileY_ + 1)); clearTileY < tileY0; ++clearTileY)
+        for(uint16_t clearTileY = static_cast<uint16_t>(
+                std::max(static_cast<int32_t>(tileY0_), lastClearedTileY_ + 1));
+            clearTileY < tileY0; ++clearTileY)
         {
           for(uint16_t tileX = tileX0_; tileX < tileX1_; ++tileX)
           {

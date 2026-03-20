@@ -892,7 +892,7 @@ bool FileFormatJP2Family::read_channel_definition([[maybe_unused]] uint8_t* p_cd
           info_i.asoc != GRK_CHANNEL_ASSOC_UNASSOCIATED))
       {
         grklog.warn("CDEF box : channels %u and %u share same type/association pair (%u,%u).",
-                     info_i.channel, info_j.channel, info_j.typ, info_j.asoc);
+                    info_i.channel, info_j.channel, info_j.typ, info_j.asoc);
       }
     }
   }
