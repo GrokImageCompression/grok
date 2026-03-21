@@ -139,7 +139,7 @@
             "program": "/usr/bin/time",
             "args": [
                 "-v",
-                "${workspaceFolder}/build/bin/core_decompress",
+                "${workspaceFolder}/build/bin/core_decompress_async",
                 "-i",
                 "$HOME/temp/IMG_SPOT6_PMS_201305251604372_ORT_816009101_R1C1.JP2"
             ],

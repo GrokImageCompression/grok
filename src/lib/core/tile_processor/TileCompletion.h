@@ -24,7 +24,9 @@
 #include <optional>
 #include <vector>
 #include <functional>
-
+#ifndef _WIN32
+#include <malloc.h>
+#endif
 #include "MinHeap.h"
 
 namespace grk
@@ -35,12 +37,16 @@ class TileCompletion
 public:
   // Callback type for when a full row of tiles is completed
   using RowCompletionCallback = std::function<void(uint16_t tileIndexBegin, uint16_t tileIndexEnd)>;
+  // Callback fired after wait() releases tile rows, to trigger deferred scheduling
+  using RowsReleasedCallback = std::function<void()>;
 
   // Constructor for full region or subregion
   TileCompletion(TileCache* tileCache, const Rect32& imageBounds, uint32_t tileWidth,
                  uint32_t tileHeight, RowCompletionCallback callback,
+                 RowsReleasedCallback rowsReleasedCallback = nullptr,
                  std::optional<Rect16> tileSubRegion = std::nullopt)
-      : tileCache_(tileCache), currentTileY_(0), lastClearedTileY_(-1), rowCallback_(callback)
+      : tileCache_(tileCache), currentTileY_(0), lastClearedTileY_(-1), rowCallback_(callback),
+        rowsReleasedCallback_(rowsReleasedCallback)
   {
     // Calculate image dimensions from bounds
     uint32_t imageWidth = imageBounds.x1 - imageBounds.x0;
@@ -103,40 +109,49 @@ public:
     uint16_t localY = static_cast<uint16_t>(tileY - tileY0_);
     uint16_t localIndex = static_cast<uint16_t>(localY * subregionWidth_ + localX);
 
-    std::lock_guard<std::mutex> lock(mutex_);
-    if(!completedTiles_[localIndex])
+    bool shouldCallback = false;
+    uint16_t cbBegin = 0, cbEnd = 0;
+
     {
-      completedTiles_[localIndex] = true;
-      completedTilesPerRow_[localY]++; // Increment completed tile count for this row
-      grklog.debug("Tile %d (local %d, tileX=%u, tileY=%u) completed", tileIndex, localIndex, tileX,
-                   tileY);
-
-      // Check if the entire row is completed
-      if((completedTilesPerRow_[localY] == subregionWidth_) && rowCallback_)
+      std::lock_guard<std::mutex> lock(mutex_);
+      if(!completedTiles_[localIndex])
       {
-        // Calculate global tile indices for the row (inclusive range)
-        uint16_t tileIndexBegin = (uint16_t)(tileY * numTileCols_ + tileX0_);
-        uint16_t tileIndexEnd = (uint16_t)(tileY * numTileCols_ + tileX1_);
-        grklog.debug("Row %u completed, indices %u up to %u", tileY, tileIndexBegin, tileIndexEnd);
-        rowCallback_(tileIndexBegin, tileIndexEnd);
-      }
+        completedTiles_[localIndex] = true;
+        completedTilesPerRow_[localY]++; // Increment completed tile count for this row
+        grklog.debug("Tile %d (local %d, tileX=%u, tileY=%u) completed", tileIndex, localIndex,
+                     tileX, tileY);
 
-      auto popped = heap_.push_and_pop(localIndex);
-      if(popped.has_value())
-      {
-        localContiguousEnd_ = static_cast<int32_t>(*popped);
-        if(localContiguousEnd_ >= localWaitEnd_)
+        // Check if the entire row is completed
+        if((completedTilesPerRow_[localY] == subregionWidth_) && rowCallback_)
         {
-          completionCV_.notify_one();
-          grklog.debug("Completed tiles until index %d", localContiguousEnd_);
+          shouldCallback = true;
+          cbBegin = (uint16_t)(tileY * numTileCols_ + tileX0_);
+          cbEnd = (uint16_t)(tileY * numTileCols_ + tileX1_);
+          grklog.debug("Row %u completed, indices %u up to %u", tileY, cbBegin, cbEnd);
+        }
+
+        auto popped = heap_.push_and_pop(localIndex);
+        if(popped.has_value())
+        {
+          localContiguousEnd_ = static_cast<int32_t>(*popped);
+          if(localContiguousEnd_ >= localWaitEnd_)
+          {
+            completionCV_.notify_one();
+            grklog.debug("Completed tiles until index %d", localContiguousEnd_);
+          }
         }
       }
+      else
+      {
+        grklog.debug("Tile %d (local %d, tileX=%u, tileY=%u) already completed", tileIndex,
+                     localIndex, tileX, tileY);
+      }
     }
-    else
-    {
-      grklog.debug("Tile %d (local %d, tileX=%u, tileY=%u) already completed", tileIndex,
-                   localIndex, tileX, tileY);
-    }
+
+    // Call row callback OUTSIDE the lock to allow it to block
+    // on back-pressure without deadlocking with wait()
+    if(shouldCallback)
+      rowCallback_(cbBegin, cbEnd);
   }
 
   bool wait(grk_wait_swath* swath)
@@ -145,6 +160,8 @@ public:
     uint32_t y0 = swath->y0;
     uint32_t x1 = swath->x1;
     uint32_t y1 = swath->y1;
+
+    bool shouldNotifyRelease = false;
 
     grklog.debug("Swath canvas: x0=%u, y0=%u, x1=%u, y1=%u", x0, y0, x1, y1);
 
@@ -228,7 +245,6 @@ public:
                 grklog.debug(
                     "Clearing ITileProcessor at tile index %d (local %d, tileX=%u, tileY=%u)",
                     tileIndex, localIndex, tileX, clearTileY);
-                grklog.debug("[TC] release tile %d (row %u)\n", tileIndex, clearTileY);
                 tileCache_->release(tileIndex);
               }
             }
@@ -236,10 +252,21 @@ public:
         }
         lastClearedTileY_ = static_cast<int32_t>(tileY0) - 1;
         grklog.debug("Cleared tile rows up to tileY=%d", lastClearedTileY_);
+        shouldNotifyRelease = true;
       }
       currentTileY_ = tileY0;
       grklog.debug("Tile row transition: currentTileY=%u, lastClearedTileY=%d", currentTileY_,
                    lastClearedTileY_);
+    }
+
+    // Return freed pages to the OS so RSS drops after tile release
+    if(shouldNotifyRelease)
+    {
+#ifndef _WIN32
+      malloc_trim(0);
+#endif
+      if(rowsReleasedCallback_)
+        rowsReleasedCallback_();
     }
 
     // Compute all local indices in the swath
@@ -292,6 +319,17 @@ public:
     return finalWait;
   }
 
+  int32_t getLastClearedTileY() const
+  {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return lastClearedTileY_;
+  }
+
+  uint16_t getNumTileCols() const
+  {
+    return numTileCols_;
+  }
+
 private:
   TileCache* tileCache_ = nullptr; // Stored for row-based clearing
   SimpleHeap<uint16_t> heap_;
@@ -299,7 +337,7 @@ private:
   std::vector<uint16_t> completedTilesPerRow_; // Tracks number of completed tiles per row
   int32_t localWaitEnd_ = -1;
   int32_t localContiguousEnd_ = -1;
-  std::mutex mutex_;
+  mutable std::mutex mutex_;
   std::condition_variable completionCV_;
   uint16_t numTileCols_, numTileRows_;
   uint32_t tileWidth_, tileHeight_;
@@ -309,6 +347,7 @@ private:
   uint16_t currentTileY_; // Tracks the current swath's starting tile row
   int32_t lastClearedTileY_; // Tracks the last tile row cleared (-1 = none)
   RowCompletionCallback rowCallback_; // Callback for row completion
+  RowsReleasedCallback rowsReleasedCallback_; // Callback after wait() releases rows
 };
 
 } // namespace grk

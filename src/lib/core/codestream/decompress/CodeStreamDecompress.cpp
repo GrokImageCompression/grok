@@ -211,6 +211,7 @@ bool CodeStreamDecompress::decompressImpl(std::set<uint16_t> slated)
     batchTileUnscheduledSequential_ = (uint16_t)slated.size();
     batchTileScheduleHeadroomSequential_ =
         batchTileHeadroomIncrement(batchTileInitialRows_, batchTileUnscheduledSequential_);
+    batchTileScheduledRows_ = batchTileInitialRows_;
   }
 
   // prepare for different types of decompression
@@ -331,6 +332,7 @@ void CodeStreamDecompress::decompressTLM(const std::set<uint16_t>& slated)
   // 3. schedule first  N rows
   uint16_t initialBatchCount =
       batchTileHeadroomIncrement(batchTileInitialRows_, (uint16_t)slated.size());
+  batchTileScheduledRows_ = batchTileInitialRows_;
   {
     std::lock_guard<std::mutex> lock(batchTileQueueMutex_);
     for(size_t i = 0; i < initialBatchCount; ++i)
@@ -531,6 +533,17 @@ bool CodeStreamDecompress::sequentialParseAndSchedule(bool multiTile)
     else
     {
       batchTileQueueSequential_.push(tileProcessor);
+      // Block the parser until the queue drains, preventing all compressed
+      // tile data from being loaded into memory at once.
+      // The queue drains when scheduleTileBatch() calls batchDequeueSequential().
+      if(tileCompletion_)
+      {
+        uint16_t numTileCols = tilesToDecompress_.getSlatedTileRect().width();
+        uint16_t maxQueued = numTileCols * (maxRowsAhead_ + 1);
+        batchTileQueueCondition_.wait(lock, [this, maxQueued] {
+          return batchTileQueueSequential_.size() <= maxQueued || !success_;
+        });
+      }
       return true;
     }
   }
@@ -891,7 +904,7 @@ bool CodeStreamDecompress::setDecompressRegion(RectD region)
           [this](uint16_t tileIndexBegin, uint16_t tileIndexEnd) {
             onRowCompleted(tileIndexBegin, tileIndexEnd);
           },
-          tilesToDecompress);
+          [this]() { scheduleTileBatch(); }, tilesToDecompress);
     }
     if(!multiTileComposite_->subsampleAndReduce(cp_.codingParams_.dec_.reduce_))
       return false;
@@ -1010,12 +1023,46 @@ void CodeStreamDecompress::onRowCompleted(uint16_t tileIndexBegin, uint16_t tile
   if(!doTileBatching())
     return;
   grklog.debug("CodeStreamDecompress: %u to %u completed", tileIndexBegin, tileIndexEnd);
+
+  // Back-pressure: skip scheduling if producer is too far ahead of consumer.
+  // The consumer (wait()) will call scheduleTileBatch() after releasing rows.
+  if(tileCompletion_)
+  {
+    int32_t completedRow = tileIndexBegin / tileCompletion_->getNumTileCols();
+    int32_t lastCleared = tileCompletion_->getLastClearedTileY();
+    if(completedRow - lastCleared > maxRowsAhead_)
+      return;
+  }
+
+  scheduleTileBatch();
+}
+
+void CodeStreamDecompress::scheduleTileBatch()
+{
+  // Compute how many rows we're allowed to schedule based on the consumer's position.
+  // We allow up to maxRowsAhead_ rows beyond what the consumer has cleared.
+  uint16_t rowsToSchedule = batchTileNextRows_;
+
+  if(tileCompletion_)
+  {
+    int32_t lastCleared = tileCompletion_->getLastClearedTileY();
+    int32_t maxAllowedRow = lastCleared + maxRowsAhead_ + 1;
+    if(batchTileScheduledRows_ >= maxAllowedRow)
+      return;
+    // Only schedule enough rows to fill the window, not the full batchTileNextRows_
+    int32_t rowsBudget = maxAllowedRow - batchTileScheduledRows_;
+    if(rowsBudget < rowsToSchedule)
+      rowsToSchedule = static_cast<uint16_t>(rowsBudget);
+  }
+
+  uint16_t numTileCols = tilesToDecompress_.getSlatedTileRect().width();
+
   if(cp_.hasTLM())
   {
     {
       std::unique_lock<std::mutex> lock(batchTileQueueMutex_);
       size_t tilesToSchedule =
-          batchTileHeadroomIncrement(batchTileNextRows_, (uint16_t)batchTileQueueTLM_.size());
+          batchTileHeadroomIncrement(rowsToSchedule, (uint16_t)batchTileQueueTLM_.size());
       for(size_t i = 0; i < tilesToSchedule; ++i)
       {
         auto tileIndex = batchTileQueueTLM_.front();
@@ -1027,14 +1074,18 @@ void CodeStreamDecompress::onRowCompleted(uint16_t tileIndexBegin, uint16_t tile
           return;
         }
       }
+      if(numTileCols > 0)
+        batchTileScheduledRows_ += rowsToSchedule;
     }
   }
   else
   {
     std::unique_lock<std::mutex> lock(batchTileQueueMutex_);
     batchTileScheduleHeadroomSequential_ +=
-        batchTileHeadroomIncrement(batchTileNextRows_, (uint16_t)batchTileUnscheduledSequential_);
+        batchTileHeadroomIncrement(rowsToSchedule, (uint16_t)batchTileUnscheduledSequential_);
     batchDequeueSequential();
+    if(numTileCols > 0)
+      batchTileScheduledRows_ += rowsToSchedule;
   }
   batchTileQueueCondition_.notify_one();
 }

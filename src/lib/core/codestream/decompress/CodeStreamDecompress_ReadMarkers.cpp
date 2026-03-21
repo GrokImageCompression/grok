@@ -196,7 +196,7 @@ void CodeStreamDecompress::postReadHeader(void)
           [this](uint16_t tileIndexBegin, uint16_t tileIndexEnd) {
             onRowCompleted(tileIndexBegin, tileIndexEnd);
           },
-          tilesToDecompress_.getSlatedTileRect());
+          [this]() { scheduleTileBatch(); }, tilesToDecompress_.getSlatedTileRect());
     }
 
     setDecompressRegion(RectD(cp_.dw_x0, cp_.dw_y0, cp_.dw_x1, cp_.dw_y1));

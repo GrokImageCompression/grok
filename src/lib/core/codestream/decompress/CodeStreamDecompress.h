@@ -166,6 +166,8 @@ private:
   void postReadHeader(void);
 
   void onRowCompleted(uint16_t tileIndexBegin, uint16_t tileIndexEnd);
+  void scheduleTileBatch();
+  static constexpr int32_t maxRowsAhead_ = 2;
 
   void wait(uint16_t tile_index);
   /**
@@ -462,6 +464,7 @@ private:
   std::queue<ITileProcessor*> batchTileQueueSequential_;
   uint16_t batchTileScheduleHeadroomSequential_ = 0;
   uint16_t batchTileUnscheduledSequential_ = 0;
+  int32_t batchTileScheduledRows_ = 0; // Highest row index we've scheduled up to
 };
 
 } // namespace grk

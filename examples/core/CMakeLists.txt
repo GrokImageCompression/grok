@@ -7,6 +7,7 @@ include_directories(
 )
 
 foreach(exe core_decompress
+            core_decompress_async
             core_compress
             core_simple
 )
