@@ -24,10 +24,8 @@
 #include <optional>
 #include <vector>
 #include <functional>
-#ifndef _WIN32
-#include <malloc.h>
-#endif
 #include "MinHeap.h"
+#include "MemManager.h"
 
 namespace grk
 {
@@ -262,9 +260,7 @@ public:
     // Return freed pages to the OS so RSS drops after tile release
     if(shouldNotifyRelease)
     {
-#ifndef _WIN32
-      malloc_trim(0);
-#endif
+      MemoryManager::releaseFreedPages();
       if(rowsReleasedCallback_)
         rowsReleasedCallback_();
     }

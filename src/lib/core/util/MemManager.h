@@ -28,6 +28,9 @@
 
 #ifdef _WIN32
 #include <malloc.h>
+#include <windows.h>
+#elif defined(__linux__)
+#include <malloc.h>
 #endif
 
 #ifndef SIZE_MAX
@@ -55,6 +58,15 @@ public:
   {
     static MemoryManager instance;
     return instance;
+  }
+
+  static void releaseFreedPages()
+  {
+#ifdef __linux__
+    malloc_trim(0);
+#elif defined(_WIN32)
+    HeapCompact(GetProcessHeap(), 0);
+#endif
   }
 
   void* malloc(size_t size)
