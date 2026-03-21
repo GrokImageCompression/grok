@@ -402,6 +402,7 @@ private:
   void prepareConcurrentParsing(void);
 
   std::atomic<bool> success_ = true;
+  bool concurrentFlowsStale_ = false;
 
   /**
    * @brief root @ref FlowComponent
@@ -411,6 +412,8 @@ private:
 
   std::unique_ptr<FlowComponent> tileHeaderParseFlow_;
   std::unique_ptr<FlowComponent> prepareFlow_;
+  std::unique_ptr<FlowComponent> staleTileHeaderParseFlow_;
+  std::unique_ptr<FlowComponent> stalePrepareFlow_;
   std::unique_ptr<FlowComponent> t2ParseFlow_;
   std::unique_ptr<FlowComponent> allocAndScheduleFlow_;
 

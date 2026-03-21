@@ -17,6 +17,8 @@
 
 #pragma once
 
+#include "TFSingleton.h"
+
 namespace grk
 {
 
@@ -40,6 +42,7 @@ public:
   {
     if(decompressWorker_.joinable())
       decompressWorker_.join();
+    TFSingleton::get().wait_for_all();
   }
 
   void init(grk_decompress_parameters* param) override;

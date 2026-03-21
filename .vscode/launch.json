@@ -805,7 +805,7 @@
             "program": "${workspaceFolder}/build/bin/grk_decompress",
             "args": [
                 "-i",
-                "$HOME/temp/clusterfuzz-testcase-minimized-grk_decompress_fuzzer-5280426615963648",
+                "$HOME/temp/clusterfuzz-testcase-minimized-grk_decompress_fuzzer-4599444736901120",
                 // "-d 0,0,1024,1024",
                 "-t",
                  "20",

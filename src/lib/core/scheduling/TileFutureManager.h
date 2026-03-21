@@ -38,7 +38,7 @@ public:
   void add(uint16_t tile_id, tf::Future<void> future)
   {
     std::unique_lock lock(mutex_);
-    tileFutures_.emplace(tile_id, std::move(future));
+    tileFutures_.insert_or_assign(tile_id, std::move(future));
   }
 
   // Wait for all futures to complete
@@ -83,6 +83,16 @@ public:
     tileFutures_.clear();
   }
 
+  // Cancel all futures
+  void cancelAll()
+  {
+    std::unique_lock lock(mutex_);
+    for(auto& [id, future] : tileFutures_)
+    {
+      future.cancel();
+    }
+  }
+
   // Wait for all futures to complete, then clear the map
   void waitAndClear()
   {
@@ -94,16 +104,13 @@ public:
   void waitAndClear(uint16_t tileIndex)
   {
     std::unique_lock lock(mutex_);
-    assert(tileFutures_.empty() || tileFutures_.size() == 1);
-    if(!tileFutures_.empty())
+    auto it = tileFutures_.find(tileIndex);
+    if(it != tileFutures_.end())
     {
-      auto it = tileFutures_.find(tileIndex);
-      assert(it != tileFutures_.end()); // Ensure tileIndex exists if map isn't empty
-      auto& future = it->second;
+      auto future = std::move(it->second);
+      tileFutures_.erase(it);
       lock.unlock();
       future.wait();
-      lock.lock();
-      tileFutures_.clear();
     }
   }
 

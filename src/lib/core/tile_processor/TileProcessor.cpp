@@ -249,6 +249,8 @@ bool TileProcessor::isInitialized(void)
 
 bool TileProcessor::init(void)
 {
+  if(!tile_)
+    return false;
   uint32_t state = grk_plugin_get_debug_state();
   // generate tile bounds from tile grid coordinates
   uint16_t tile_x = tileIndex_ % cp_->t_grid_width_;
@@ -593,6 +595,8 @@ bool TileProcessor::parseTilePart(std::vector<std::unique_ptr<MarkerParser>>* pa
   }
   auto parseHeader = [this, parsers, bifurcatedStream, concurrent, mainMarkerId, tilePartInfo,
                       streamGuard, owned_by_parser]() {
+    if(hasError())
+      return;
     auto tpi = tilePartInfo;
     auto parser = markerParser_;
     auto id = TFSingleton::workerId();
@@ -736,6 +740,12 @@ bool TileProcessor::allSOTMarkersParsed(void)
 
 void TileProcessor::prepareConcurrentParsing(void)
 {
+  if(concurrentFlowsStale_)
+  {
+    staleTileHeaderParseFlow_ = std::move(tileHeaderParseFlow_);
+    stalePrepareFlow_ = std::move(prepareFlow_);
+    concurrentFlowsStale_ = false;
+  }
   if(!tileHeaderParseFlow_)
     tileHeaderParseFlow_ = std::make_unique<FlowComponent>();
   if(!prepareFlow_)
@@ -745,6 +755,8 @@ void TileProcessor::prepareConcurrentParsing(void)
 void TileProcessor::prepareForDecompression(void)
 {
   auto prep = [this]() {
+    if(hasError())
+      return;
     // now we can get ready to decompress this tile
     if(!tcp_->validateQuantization())
       return;
@@ -957,23 +969,28 @@ void TileProcessor::post_decompressT2T1(GrkImage* scratch)
 {
   if(this->doPostT1())
   {
-    if(scratch->has_multiple_tiles)
+    if(tile_)
     {
-      grk_unref(image_);
-      image_ = scratch->extractFrom(tile_);
+      if(scratch->has_multiple_tiles)
+      {
+        grk_unref(image_);
+        image_ = scratch->extractFrom(tile_);
+      }
+      else
+      {
+        scratch->transferDataFrom(tile_);
+      }
+      deallocBuffers();
     }
-    else
-    {
-      // dispense with image_ when there is only one tile
-      scratch->transferDataFrom(tile_);
-    }
-    deallocBuffers();
   }
 }
 
 void TileProcessor::scheduleAndRunDecompress(CoderPool* coderPool, Rect32 unreducedImageBounds,
                                              std::function<void()> post, TileFutureManager& futures)
 {
+  futures.waitAndClear(tileIndex_);
+  staleTileHeaderParseFlow_.reset();
+  stalePrepareFlow_.reset();
   unreducedImageWindow_ = unreducedImageBounds;
 
   if(!scheduler_)
@@ -993,7 +1010,10 @@ void TileProcessor::scheduleAndRunDecompress(CoderPool* coderPool, Rect32 unredu
   // bool doT2 = !current_plugin_tile_ || (current_plugin_tile_->decompress_flags & GRK_DECODE_T2);
 
   auto t2Parse = [this]() {
-    // todo re-enable decompress synch
+    if(hasError())
+      return;
+    if(!tile_)
+      return;
     // synch plugin with T2 data
     // decompress_synch_plugin_with_host(this);
 
@@ -1065,6 +1085,10 @@ void TileProcessor::scheduleAndRunDecompress(CoderPool* coderPool, Rect32 unredu
   };
 
   auto allocAndSchedule = [this]() {
+    if(hasError())
+      return;
+    if(!tile_)
+      return;
     for(uint16_t compno = 0; compno < tile_->numcomps_; ++compno)
     {
       auto tilec = tile_->comps_ + compno;
@@ -1149,6 +1173,7 @@ void TileProcessor::scheduleAndRunDecompress(CoderPool* coderPool, Rect32 unredu
   postDecompressFlow_->addTo(*rootFlow_);
   scheduler_->precede(*postDecompressFlow_);
 
+  concurrentFlowsStale_ = true;
   futures.add(tileIndex_, TFSingleton::get().run(*rootFlow_));
 }
 
