@@ -133,7 +133,7 @@ b2582edd6532aa3a92721f9f311172d3  p0_14_tif-12.tif
 440da8a2e6f630ec43542b2bc2489e6a  p0_14_tif-15.tif
 357c0589f518eab9053a449cfe1517ac  p0_14_tif-16.tif
 d7ebe84d5109e5e9d4833affa6cbc2fe  p1_04.j2k.png
-42b7e93beb4efb1f7193f461af053b6d  p1_04_1.j2k.png
+919487b5cc9251d29787626725131bcc  p1_04_1.j2k.png
 8f8805cf44a5aaef6a474866ce72cabb  p1_04_2.j2k.png
 3727b3d92fffc5f4f47c37628dbc1790  p1_04_3.j2k.png
 822670ceb7ba3705e4fb8ed02e78cbc4  p1_04_4.j2k.png
@@ -404,6 +404,6 @@ a1de474200c69469f755b9ffc046dae6  clusterfuzz-testcase-minimized-grk_decompress_
 7a371ddf1f6ca7df2af6f274ea9b2eda  clusterfuzz-testcase-minimized-grk_decompress_fuzzer-6690066499174400_1.pgx
 d1b47347aaac6019935aa14c56851a05  clusterfuzz-testcase-minimized-grk_decompress_fuzzer-6690066499174400_2.pgx
 
-3d8d970b75b19e3f38ae9df1bd49f79d  p_bit16_layer5.pgm
-bec18e53cb514efd29583ffd3008f399  mono_plt_tlm_tile5.pgm
-f43d14696afafa69c9c3f092fbe80e41  mono_plt_tlm_tile.pgm
+baea76a75b5d09e21931067493706158  p_bit16_layer5.pgm
+7199b50aa04c58356403598d695bb411  mono_plt_tlm_tile5.pgm
+094d6b22cb5a8044aeee75460228082a  mono_plt_tlm_tile.pgm
