@@ -462,6 +462,12 @@ private:
   // batch TLM
   std::queue<uint16_t> batchTileQueueTLM_;
 
+  // throttle concurrent decompression in fetchByTile path
+  std::mutex decompressThrottleMutex_;
+  std::condition_variable decompressThrottleCV_;
+  uint16_t decompressInFlight_ = 0;
+  uint16_t maxDecompressInFlight_ = 0;
+
   // batch sequential
   bool batchDequeueSequential(void);
   std::queue<ITileProcessor*> batchTileQueueSequential_;

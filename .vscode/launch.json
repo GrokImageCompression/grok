@@ -91,7 +91,7 @@
                 "-v",
                 "${workspaceFolder}/build/bin/core_decompress",
                 "-i",
-                "/vsis3/grok/IMG_SPOT6_PMS_201305251604372_ORT_816009101_R1C1_TLM.JP2",
+                "/vsis3/grok/IMG_SPOT6_PMS_201305251604372_ORT_816009101_R1C1.JP2",
                 // "-o",
                 // "$HOME/temp/spot8.tif"
             ],
