@@ -252,8 +252,8 @@ bool CodeStreamDecompress::decompressImpl(std::set<uint16_t> slated)
     // b) prepare for sequential decompress
     decompressSequentialPrepare();
 
-    if(!doTileBatching())
-      maxDecompressInFlight_ = (uint16_t)((maxRowsAhead_ + 1) * cp_.t_grid_width_);
+    if(!doTileBatching() && stream_->getFetcher())
+      startDecompressConsumer((uint16_t)((maxRowsAhead_ + 1) * cp_.t_grid_width_));
   }
 
   // schedule decompression
@@ -555,13 +555,12 @@ bool CodeStreamDecompress::sequentialParseAndSchedule(bool multiTile)
     }
   }
 
-  // throttle: wait until there's room for another decompression
-  if(maxDecompressInFlight_ > 0)
+  // push onto consumer queue if active, otherwise schedule directly
+  if(decompressQueue_)
   {
-    std::unique_lock<std::mutex> lock(decompressThrottleMutex_);
-    decompressThrottleCV_.wait(
-        lock, [this] { return decompressInFlight_ < maxDecompressInFlight_; });
-    decompressInFlight_++;
+    decompressQueue_->push(
+        [this, tileProcessor, multiTile]() { schedule(tileProcessor, multiTile); });
+    return true;
   }
 
   // schedule
@@ -1007,6 +1006,12 @@ void CodeStreamDecompress::wait(uint16_t tile_index)
   }
   fetchByTileFutures_.clear();
 
+  // close consumer queue and join consumer thread
+  if(decompressQueue_)
+    decompressQueue_->close();
+  if(decompressConsumer_.joinable())
+    decompressConsumer_.join();
+
   decompressTileFutureManager_.wait(tile_index);
 }
 void CodeStreamDecompress::wait(grk_wait_swath* swath)
@@ -1038,6 +1043,12 @@ void CodeStreamDecompress::wait(grk_wait_swath* swath)
     }
   }
   fetchByTileFutures_.clear();
+
+  // 3b. close consumer queue and join consumer thread
+  if(decompressQueue_)
+    decompressQueue_->close();
+  if(decompressConsumer_.joinable())
+    decompressConsumer_.join();
 
   // 4. wait for all tile decompression operations
   if(!success_)
@@ -1124,6 +1135,27 @@ void CodeStreamDecompress::scheduleTileBatch()
   batchTileQueueCondition_.notify_one();
 }
 
+// Producer-consumer pipeline ///////////////////////////////////////
+
+void CodeStreamDecompress::startDecompressConsumer(uint16_t maxInFlight)
+{
+  maxDecompressInFlight_ = maxInFlight;
+  decompressQueue_ = std::make_unique<ConcurrentQueue<std::function<void()>>>();
+  decompressConsumer_ = std::thread([this]() {
+    std::function<void()> task;
+    while(decompressQueue_->pop(task))
+    {
+      {
+        std::unique_lock<std::mutex> lock(decompressThrottleMutex_);
+        decompressThrottleCV_.wait(lock,
+                                   [this] { return decompressInFlight_ < maxDecompressInFlight_; });
+        decompressInFlight_++;
+      }
+      task();
+    }
+  });
+}
+
 // Fetching ////////////////////////////////////////////////////////
 
 bool CodeStreamDecompress::fetchByTile(
@@ -1134,7 +1166,7 @@ bool CodeStreamDecompress::fetchByTile(
   if(!fetcher)
     return false;
 
-  maxDecompressInFlight_ = (uint16_t)((maxRowsAhead_ + 1) * cp_.t_grid_width_);
+  startDecompressConsumer((uint16_t)((maxRowsAhead_ + 1) * cp_.t_grid_width_));
 
   fetchByTileFutures_.push_back(fetcher->fetchTiles(
       cp_.tlmMarkers_->getTileParts(), slated, nullptr,
@@ -1145,19 +1177,16 @@ bool CodeStreamDecompress::fetchByTile(
         auto& tilePartSeq = (*context->tilePartFetchByTile_)[tilePart->tileIndex_];
         if(tilePartSeq->incrementFetchCount() == tilePartSeq->size())
         {
-          // throttle: wait until there's room for another decompression
-          {
-            std::unique_lock<std::mutex> lock(decompressThrottleMutex_);
-            decompressThrottleCV_.wait(
-                lock, [this] { return decompressInFlight_ < maxDecompressInFlight_; });
-            decompressInFlight_++;
-          }
-
-          grklog.debug("Decompressing tile %d", tilePart->tileIndex_);
-          const auto tileProcessor = getTileProcessor(tilePart->tileIndex_);
-          auto decompressTask = genDecompressTileTLMTask(tileProcessor, tilePartSeq,
-                                                         unreducedImageBounds, postGenerator);
-          decompressTask();
+          auto tileIndex = tilePart->tileIndex_;
+          auto tilePartSeqCopy = tilePartSeq;
+          decompressQueue_->push(
+              [this, tileIndex, tilePartSeqCopy, unreducedImageBounds, postGenerator]() {
+                grklog.debug("Decompressing tile %d", tileIndex);
+                const auto tileProcessor = getTileProcessor(tileIndex);
+                auto decompressTask = genDecompressTileTLMTask(tileProcessor, tilePartSeqCopy,
+                                                               unreducedImageBounds, postGenerator);
+                decompressTask();
+              });
         }
       }));
 

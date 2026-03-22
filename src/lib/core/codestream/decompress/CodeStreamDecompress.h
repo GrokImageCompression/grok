@@ -17,6 +17,7 @@
 
 #pragma once
 
+#include "ConcurrentQueue.h"
 #include "TFSingleton.h"
 
 namespace grk
@@ -40,6 +41,10 @@ public:
    */
   ~CodeStreamDecompress()
   {
+    if(decompressQueue_)
+      decompressQueue_->close();
+    if(decompressConsumer_.joinable())
+      decompressConsumer_.join();
     if(decompressWorker_.joinable())
       decompressWorker_.join();
     TFSingleton::get().wait_for_all();
@@ -462,7 +467,10 @@ private:
   // batch TLM
   std::queue<uint16_t> batchTileQueueTLM_;
 
-  // throttle concurrent decompression in fetchByTile path
+  // producer-consumer decompression pipeline
+  void startDecompressConsumer(uint16_t maxInFlight);
+  std::unique_ptr<ConcurrentQueue<std::function<void()>>> decompressQueue_;
+  std::thread decompressConsumer_;
   std::mutex decompressThrottleMutex_;
   std::condition_variable decompressThrottleCV_;
   uint16_t decompressInFlight_ = 0;
