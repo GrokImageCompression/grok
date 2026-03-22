@@ -63,6 +63,11 @@ public:
     return offset_;
   }
 
+  size_t initialOffset() const
+  {
+    return initialOffset_;
+  }
+
   size_t chunkSize() const
   {
     return chunkSize_;

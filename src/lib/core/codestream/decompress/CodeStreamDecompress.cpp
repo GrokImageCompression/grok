@@ -410,6 +410,10 @@ void CodeStreamDecompress::decompressSequential(void)
       break;
     }
 
+    // free chunks that have already been parsed
+    if(chunkBuffer_)
+      chunkBuffer_->free_before(stream_->tell() - chunkBuffer_->initialOffset());
+
     // 2. find next tile (or EOC)
     try
     {

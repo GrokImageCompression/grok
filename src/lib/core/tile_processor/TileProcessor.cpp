@@ -808,8 +808,8 @@ void TileProcessor::release(uint32_t strategy)
   {
     for(const auto& tpfs : *tilePartFetchSeq_)
     {
-      tpfs->data_.release();
-      tpfs->stream_.release();
+      tpfs->data_.reset();
+      tpfs->stream_.reset();
     }
   }
 }
