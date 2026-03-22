@@ -20,7 +20,7 @@
 #include <mutex>
 #include <condition_variable>
 #include <vector>
-#include <map>
+#include <deque>
 #include <cstdint>
 #include <stdexcept>
 #include <list>
@@ -33,7 +33,7 @@ namespace grk
 
 /**
  * @class ChunkBuffer
- * @brief Manages a partially ordered map of buffer chunks that are
+ * @brief Manages a partially ordered deque of buffer chunks that are
  * added asynchronously out of order.
  *
  * Behaves like a single contiguous buffer. Caller may have to wait
@@ -50,7 +50,11 @@ public:
       : chunkSize_(chunkSize > length ? length : chunkSize),
         offset_(offset > length ? length : offset), length_(length), initialOffset_(offset_),
         contiguous_length_(offset_)
-  {}
+  {
+    size_t workingLength = length_ - initialOffset_;
+    size_t numChunks = (workingLength + chunkSize_ - 1) / chunkSize_;
+    buffers_.resize(numChunks);
+  }
   ~ChunkBuffer() = default;
 
   size_t size() const
@@ -137,35 +141,35 @@ public:
     }
 
     // 2. Try to find region in buffers
-    auto it = buffers_.find(static_cast<T>(start_chunk));
-    if(it == buffers_.end())
+    auto chunk_idx = start_chunk - static_cast<size_t>(base_);
+    if(chunk_idx >= buffers_.size() || buffers_[chunk_idx].empty())
     {
       throw std::runtime_error("Missing chunk in contiguous sequence");
     }
-    const auto& chunk_data = it->second;
+    const auto& chunk_data = buffers_[chunk_idx];
     if(offset_in_chunk + desired_region <= chunk_data.size())
     {
       return chunk_data.data() + offset_in_chunk;
     }
 
-    // 3. Create contiguous buffer
-    auto& result = owned_buffers_.emplace_back(offset_, std::vector<uint8_t>());
+    // 3. Create contiguous buffer (store relative offset for correct free_before comparison)
+    auto& result = owned_buffers_.emplace_back(relative_offset, std::vector<uint8_t>());
     auto& buffer = result.second;
     buffer.reserve(desired_region);
     size_t bytes_remaining = desired_region;
     for(size_t i = start_chunk; bytes_remaining > 0 && static_cast<T>(i) <= last_contiguous_chunk_;
         ++i)
     {
-      auto it = buffers_.find(static_cast<T>(i));
-      if(it == buffers_.end())
+      auto idx = i - static_cast<size_t>(base_);
+      if(idx >= buffers_.size() || buffers_[idx].empty())
       {
         throw std::runtime_error("Missing chunk in contiguous sequence");
       }
-      const auto& chunk_data = it->second;
+      const auto& cd = buffers_[idx];
       size_t chunk_start = (i == start_chunk) ? offset_in_chunk : 0;
-      size_t bytes_to_copy = std::min(bytes_remaining, chunk_data.size() - chunk_start);
-      buffer.insert(buffer.end(), chunk_data.begin() + static_cast<ptrdiff_t>(chunk_start),
-                    chunk_data.begin() + static_cast<ptrdiff_t>(chunk_start + bytes_to_copy));
+      size_t bytes_to_copy = std::min(bytes_remaining, cd.size() - chunk_start);
+      buffer.insert(buffer.end(), cd.begin() + static_cast<ptrdiff_t>(chunk_start),
+                    cd.begin() + static_cast<ptrdiff_t>(chunk_start + bytes_to_copy));
       bytes_remaining -= bytes_to_copy;
     }
     return buffer.data();
@@ -180,7 +184,8 @@ public:
     {
       std::unique_lock<std::mutex> lock(mutex_);
       // Add the new chunk to buffers
-      buffers_.emplace(fetch_index, std::vector<uint8_t>(buffer, buffer + size));
+      auto idx = static_cast<size_t>(fetch_index) - static_cast<size_t>(base_);
+      buffers_[idx] = std::vector<uint8_t>(buffer, buffer + size);
       // Update the heap and get the last contiguous chunk
       auto contiguous_chunk = bufferheap_.push_and_pop(fetch_index);
 
@@ -190,13 +195,13 @@ public:
       {
         // Valid contiguous chunk exists
         last_contiguous_chunk_ = *contiguous_chunk;
-        auto it = buffers_.find(last_contiguous_chunk_);
-        if(it == buffers_.end())
+        auto ci = static_cast<size_t>(last_contiguous_chunk_) - static_cast<size_t>(base_);
+        if(ci >= buffers_.size() || buffers_[ci].empty())
         {
           throw std::runtime_error("Invalid contiguous chunk index returned by heap");
         }
         new_contiguous_length =
-            initialOffset_ + last_contiguous_chunk_ * chunkSize_ + it->second.size();
+            initialOffset_ + last_contiguous_chunk_ * chunkSize_ + buffers_[ci].size();
       }
       new_contiguous_length = std::min(new_contiguous_length, length_);
       if(new_contiguous_length > contiguous_length_)
@@ -209,8 +214,10 @@ public:
   void free_before(size_t offset)
   {
     std::lock_guard<std::mutex> lock(mutex_);
-    if(offset > contiguous_length_)
-      offset = contiguous_length_;
+    // offset is relative (from initialOffset_); clamp to relative contiguous length
+    size_t rel_contiguous = contiguous_length_ - initialOffset_;
+    if(offset > rel_contiguous)
+      offset = rel_contiguous;
 
     // 1. remove owned buffers whose end offset is less than or equal to offset
     owned_buffers_.remove_if([offset](const std::pair<size_t, std::vector<uint8_t>>& buf) {
@@ -218,14 +225,21 @@ public:
       return buf_end <= offset;
     });
 
-    // 2. remove chunk buffers whose end offset is less than or equal to offset
-    for(auto it = buffers_.begin(); it != buffers_.end();)
+    // 2. remove chunk buffers from the front
+    while(!buffers_.empty() && !buffers_.front().empty())
     {
-      size_t chunk_end = static_cast<size_t>(it->first) * chunkSize_ + it->second.size();
+      size_t chunk_end = static_cast<size_t>(base_) * chunkSize_ + buffers_.front().size();
       if(chunk_end <= offset)
-        it = buffers_.erase(it);
+      {
+        buffers_.front().clear();
+        buffers_.front().shrink_to_fit();
+        buffers_.pop_front();
+        base_++;
+      }
       else
+      {
         break;
+      }
     }
   }
 
@@ -234,7 +248,8 @@ private:
   size_t offset_;
   size_t length_;
   size_t initialOffset_;
-  std::map<T, std::vector<uint8_t>> buffers_;
+  std::deque<std::vector<uint8_t>> buffers_;
+  T base_ = 0;
   SimpleHeap<T> bufferheap_;
   T last_contiguous_chunk_ = 0;
   size_t contiguous_length_ = 0; // Peak contiguous length, only grows
