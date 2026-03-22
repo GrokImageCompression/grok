@@ -423,13 +423,13 @@ private:
    * @brief track success of scheduled tile decompression
    *
    */
-  std::atomic<bool> success_;
+  std::atomic<bool> success_{true};
 
   /**
    * @brief number of decompressed tiles
    *
    */
-  std::atomic<uint32_t> numTilesDecompressed_;
+  std::atomic<uint32_t> numTilesDecompressed_{0};
 
   /**
    * @brief pool of @ref ICoder

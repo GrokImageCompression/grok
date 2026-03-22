@@ -404,24 +404,18 @@ private:
   std::atomic<bool> success_ = true;
   bool concurrentFlowsStale_ = false;
 
-  /**
-   * @brief root @ref FlowComponent
-   *
-   */
-  FlowComponent* rootFlow_ = nullptr;
-
+  // Flow components for task graph scheduling.
+  // rootFlow_ owns the composed DAG submitted to the executor.
+  // tileHeaderParseFlow_/prepareFlow_ are populated during parsing and may
+  // outlive a single submission cycle, so stale copies are kept alive until
+  // the previous executor run completes (via staleParsing_).
+  std::unique_ptr<FlowComponent> rootFlow_;
   std::unique_ptr<FlowComponent> tileHeaderParseFlow_;
   std::unique_ptr<FlowComponent> prepareFlow_;
-  std::unique_ptr<FlowComponent> staleTileHeaderParseFlow_;
-  std::unique_ptr<FlowComponent> stalePrepareFlow_;
+  std::vector<std::unique_ptr<FlowComponent>> staleParsing_;
   std::unique_ptr<FlowComponent> t2ParseFlow_;
   std::unique_ptr<FlowComponent> allocAndScheduleFlow_;
-
-  /**
-   * @brief post decompression @ref FlowComponent
-   *
-   */
-  FlowComponent* postDecompressFlow_ = nullptr;
+  std::unique_ptr<FlowComponent> postDecompressFlow_;
 
   /**
    * @brief deallocate buffers

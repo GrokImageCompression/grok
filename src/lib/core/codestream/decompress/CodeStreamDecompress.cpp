@@ -1008,6 +1008,8 @@ void CodeStreamDecompress::wait(grk_wait_swath* swath)
   fetchByTileFutures_.clear();
 
   // 4. wait for all tile decompression operations
+  if(!success_)
+    decompressTileFutureManager_.cancelAll();
   decompressTileFutureManager_.waitAndClear();
 
   // 5. clear postMulti lambda

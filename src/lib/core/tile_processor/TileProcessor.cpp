@@ -95,8 +95,6 @@ TileProcessor::~TileProcessor()
   release(GRK_TILE_CACHE_NONE);
   delete scheduler_;
   delete mct_;
-  delete postDecompressFlow_;
-  delete rootFlow_;
   if(!isCompressor_)
     delete tcp_;
   delete markerParser_;
@@ -742,8 +740,12 @@ void TileProcessor::prepareConcurrentParsing(void)
 {
   if(concurrentFlowsStale_)
   {
-    staleTileHeaderParseFlow_ = std::move(tileHeaderParseFlow_);
-    stalePrepareFlow_ = std::move(prepareFlow_);
+    // Move old flows aside — they may still be referenced by the executor.
+    // Destroyed in scheduleAndRunDecompress after waitAndClear.
+    if(tileHeaderParseFlow_)
+      staleParsing_.push_back(std::move(tileHeaderParseFlow_));
+    if(prepareFlow_)
+      staleParsing_.push_back(std::move(prepareFlow_));
     concurrentFlowsStale_ = false;
   }
   if(!tileHeaderParseFlow_)
@@ -989,8 +991,7 @@ void TileProcessor::scheduleAndRunDecompress(CoderPool* coderPool, Rect32 unredu
                                              std::function<void()> post, TileFutureManager& futures)
 {
   futures.waitAndClear(tileIndex_);
-  staleTileHeaderParseFlow_.reset();
-  stalePrepareFlow_.reset();
+  staleParsing_.clear();
   unreducedImageWindow_ = unreducedImageBounds;
 
   if(!scheduler_)
@@ -1127,49 +1128,38 @@ void TileProcessor::scheduleAndRunDecompress(CoderPool* coderPool, Rect32 unredu
       success_ = false;
   };
 
-  if(!t2ParseFlow_)
-    t2ParseFlow_ = std::make_unique<FlowComponent>();
-  else
-    t2ParseFlow_->clear();
+  // Create fresh flow components each submission — avoids stale-state bugs from reuse.
+  // Previous submission was already waited on by waitAndClear above.
+  t2ParseFlow_ = std::make_unique<FlowComponent>();
   t2ParseFlow_->nextTask().work(t2Parse);
 
-  if(!allocAndScheduleFlow_)
-    allocAndScheduleFlow_ = std::make_unique<FlowComponent>();
-  else
-    allocAndScheduleFlow_->clear();
+  allocAndScheduleFlow_ = std::make_unique<FlowComponent>();
   allocAndScheduleFlow_->nextTask().work(allocAndSchedule);
 
-  // 1. create root flow
-  if(!rootFlow_)
-    rootFlow_ = new FlowComponent();
-  else
-    rootFlow_->clear();
-  scheduler_->addTo(*rootFlow_);
+  postDecompressFlow_ = std::make_unique<FlowComponent>();
+  postDecompressFlow_->nextTask().work(post);
 
-  // 2. schedule T2
+  // Build task graph: parse → prepare → t2 → alloc → scheduler → post
+  rootFlow_ = std::make_unique<FlowComponent>();
+  scheduler_->addTo(*rootFlow_);
 
   std::function<int()> condition_lambda = [this]() -> int { return hasError() ? 1 : 0; };
   allocAndScheduleFlow_->addTo(*rootFlow_);
-  allocAndScheduleFlow_->conditional_precede(rootFlow_, scheduler_, condition_lambda);
+  allocAndScheduleFlow_->conditional_precede(rootFlow_.get(), scheduler_, condition_lambda);
 
   t2ParseFlow_->addTo(*rootFlow_);
-  t2ParseFlow_->conditional_precede(rootFlow_, allocAndScheduleFlow_.get(), condition_lambda);
+  t2ParseFlow_->conditional_precede(rootFlow_.get(), allocAndScheduleFlow_.get(), condition_lambda);
 
   if(tileHeaderParseFlow_ && prepareFlow_)
   {
     prepareFlow_->addTo(*rootFlow_);
-    prepareFlow_->conditional_precede(rootFlow_, t2ParseFlow_.get(), condition_lambda);
+    prepareFlow_->conditional_precede(rootFlow_.get(), t2ParseFlow_.get(), condition_lambda);
 
     tileHeaderParseFlow_->addTo(*rootFlow_);
-    tileHeaderParseFlow_->conditional_precede(rootFlow_, prepareFlow_.get(), condition_lambda);
+    tileHeaderParseFlow_->conditional_precede(rootFlow_.get(), prepareFlow_.get(),
+                                              condition_lambda);
   }
 
-  // 3. schedule post decompression
-  if(!postDecompressFlow_)
-    postDecompressFlow_ = new FlowComponent();
-  else
-    postDecompressFlow_->clear();
-  postDecompressFlow_->nextTask().work(post);
   postDecompressFlow_->addTo(*rootFlow_);
   scheduler_->precede(*postDecompressFlow_);
 
