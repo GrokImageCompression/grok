@@ -71,7 +71,7 @@ struct TileProcessor : virtual public ITileProcessor
   bool doPostT1(void) override;
 
   /**
-   * @brief Prepares for decompresion
+   * @brief Prepares for decompression
    *
    * If this fails, then TileProcessor doesn't get initialized.
    *
