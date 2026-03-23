@@ -545,7 +545,7 @@ void WaveletReverse::h_53(uint8_t res, TileComponentWindow<int32_t>* tileBuffer,
       uint32_t dn = horiz_.dn;
       uint32_t parity = horiz_.parity;
       resFlow->waveletHoriz_->nextTask().work(
-          [this, sn, dn, parity, winL, winH, winDest, hMin, hMax] {
+          [this, sn, dn, parity, winL, winH, winDest, hMin, hMax, orient] {
             horizPool_[TFSingleton::workerId()].sn = sn;
             horizPool_[TFSingleton::workerId()].dn = dn;
             horizPool_[TFSingleton::workerId()].parity = parity;
@@ -695,7 +695,7 @@ void WaveletReverse::v_53(const dwt_scratch<int32_t>* scratch, Buffer2dSimple<in
       else
       {
         for(uint32_t c = 0; c < nb_cols; c++, winL.buf_++, winH.buf_++, winDest.buf_++)
-          v_p0_53(scratch->mem, height, winL.buf_, winL.stride_, winH.buf_, winL.stride_,
+          v_p0_53(scratch->mem, height, winL.buf_, winL.stride_, winH.buf_, winH.stride_,
                   winDest.buf_, winDest.stride_);
         /* Apply DC shift to scalar output (data just written, still in cache) */
         if(dcShift.enabled)

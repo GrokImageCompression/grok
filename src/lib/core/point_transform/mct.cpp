@@ -450,12 +450,10 @@ void Mct::schedule_decompress_dc_shift_rev(FlowComponent* flow, uint16_t compno)
 
 /**
  * inverse irreversible MCT (with dc shift)
- * (vector routines are disabled)
  */
 void Mct::schedule_decompress_irrev(FlowComponent* flow, bool applyDcShift)
 {
   ScheduleInfo info(tile_, flow, image_->rows_per_task);
-  hwy::DisableTargets(uint32_t(~HWY_SCALAR));
   genShift(applyDcShift ? 1 : 0, info.shiftInfo);
   HWY_DYNAMIC_DISPATCH(hwy_schedule_decompress_irrev)
   (info);
