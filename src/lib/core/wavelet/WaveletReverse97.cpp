@@ -23,6 +23,7 @@
 
 #include <algorithm>
 #include <functional>
+#include <memory>
 
 #include "hwy_arm_disable_targets.h"
 
@@ -1011,15 +1012,14 @@ bool WaveletReverse::h_97(uint8_t res, uint32_t num_threads, size_t dataLength,
   {
     auto indexMin = j * incrPerJob;
     auto indexMax = (j < (numTasks - 1U) ? (j + 1U) * incrPerJob : resHeight) - indexMin;
-    auto myhoriz = new dwt_scratch<vec4f>(scratch);
+    auto myhoriz = std::make_shared<dwt_scratch<vec4f>>(scratch);
     if(!myhoriz->alloc(dataLength * get_PLL_ROWS_97() / vec4f::NUM_ELTS))
     {
       grklog.error("Out of memory");
       return false;
     }
     resFlow->waveletHoriz_->nextTask().work([this, myhoriz, indexMax, winL, winH, winDest] {
-      h_strip_97(myhoriz, indexMax, winL, winH, winDest);
-      delete myhoriz;
+      h_strip_97(myhoriz.get(), indexMax, winL, winH, winDest);
     });
     winL.incY_IN_PLACE(incrPerJob);
     winH.incY_IN_PLACE(incrPerJob);
@@ -1080,17 +1080,15 @@ bool WaveletReverse::v_97(uint8_t res, uint32_t num_threads, size_t dataLength,
   {
     auto indexMin = j * incrPerJob;
     auto indexMax = (j < (numTasks - 1U) ? (j + 1U) * incrPerJob : resWidth) - indexMin;
-    auto myvert = new dwt_scratch<vec4f>(scratch);
+    auto myvert = std::make_shared<dwt_scratch<vec4f>>(scratch);
     if(!myvert->alloc(dataLength * get_PLL_ROWS_97() / vec4f::NUM_ELTS))
     {
       grklog.error("Out of memory");
-      delete myvert;
       return false;
     }
     resFlow->waveletVert_->nextTask().work(
         [this, myvert, resHeight, indexMax, winL, winH, winDest, dcShift] {
-          v_strip_97(myvert, indexMax, resHeight, winL, winH, winDest, dcShift);
-          delete myvert;
+          v_strip_97(myvert.get(), indexMax, resHeight, winL, winH, winDest, dcShift);
         });
     winL.incX_IN_PLACE(incrPerJob);
     winH.incX_IN_PLACE(incrPerJob);
