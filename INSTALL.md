@@ -39,30 +39,30 @@ Grok releases can be found [here](https://github.com/GrokImageCompression/grok/r
 
 ## Build
 
-Grok uses [cmake](www.cmake.org) to configure builds across multiple platforms.
-It requires version 3.16 or higher.
+Grok uses [cmake](https://www.cmake.org) to configure builds across multiple platforms.
+It requires version 3.20 or higher.
 
 ## Compilers
 
 Supported compilers:
 
-1. g++ : version 10 or higher
-1. clang : version 12 or higher
-1. MSVC : 2019 or higher
+1. g++ : version 12 or higher (C++23 required)
+1. clang : version 16 or higher (C++23 required)
+1. MSVC : 2022 or higher
 1. Binaryen for WebAssembly
 
 ### g++
 
-To ensure that g++ 10 is the default compiler after installation, execute:
+To ensure that g++ 12 is the default compiler after installation, execute:
 
-`$ sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-10 100 --slave /usr/bin/g++ g++ /usr/bin/g++-10`
+`$ sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-12 100 --slave /usr/bin/g++ g++ /usr/bin/g++-12`
 
 ### Clang
 
-To ensure that clang-12 is the default compiler after installation, execute:
+To ensure that clang-16 is the default compiler after installation, execute:
 
 ```
-$ sudo update-alternatives --install /usr/bin/c++ c++ /usr/bin/clang++-12 60
+$ sudo update-alternatives --install /usr/bin/c++ c++ /usr/bin/clang++-16 60
 $ sudo update-alternatives --config c++
 ```
 
@@ -177,10 +177,10 @@ Important `cmake` flags:
 
   Note: when using this option, static libraries are not built and executables are dynamically linked.
 * To build the core codec : `-DGRK_BUILD_CODEC:bool=ON` (default: `ON`)
-* To build the documentation: `-GRK_BUILD_DOC=ON` (default: `OFF`)
+* To build the documentation: `-DGRK_BUILD_DOC=ON` (default: `OFF`)
 * To enable testing :
 
-      $  cmake . -BUILD_TESTING=ON -DGRK_DATA_ROOT:PATH='/PATH/TO/DATA/DIRECTORY'
+      $  cmake . -DBUILD_TESTING=ON -DGRK_DATA_ROOT:PATH='/PATH/TO/DATA/DIRECTORY'
       $  make -j8
       $  ctest -D NightlyMemCheck
 
@@ -219,10 +219,17 @@ Type `cmake --help` for available generators on your platform.
 Third party libraries such as `libtiff` are built by default. To disable
 `libtiff` library build and use the version installed on your system, set :
 
-  `-DGRK_BUILD_LiBTIFF:BOOL=OFF`
+  `-DGRK_BUILD_LIBTIFF:BOOL=OFF`
 
   ## Linking with other Cmake Projects
 
   1. set `CMAKE_INSTALL_PREFIX` to `/PATH/TO/INSTALL/DIR`
   1. build and install
   1. on other project, set `CMAKE_PREFIX_PATH` to `/PATH/TO/INSTALL/DIR`
+
+## Language Bindings
+
+Grok provides bindings for Python, C#, Java, and Rust.
+
+- **Python/C#/Java** (SWIG): see [bindings/swig/README.md](bindings/swig/README.md) for build instructions, API reference, and test information.
+- **Rust** (bindgen): see [bindings/rust/README.md](bindings/rust/README.md) for build and usage instructions.
