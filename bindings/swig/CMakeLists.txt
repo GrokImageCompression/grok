@@ -105,3 +105,81 @@ if(GRK_BUILD_CSHARP_SWIG)
     unset(CMAKE_SWIG_OUTDIR)
     unset(SWIG_OUTFILE_DIR)
 endif()
+
+# --- Java bindings ---
+if(GRK_BUILD_JAVA_SWIG)
+    set(GROK_SWIG_JAVA_NAME grok_core_java)
+    set(GROK_JAVA_OUTPUT_DIR "${CMAKE_BINARY_DIR}/bin/java")
+    set(GROK_JAVA_PACKAGE "org.grok.core")
+    string(REPLACE "." "/" GROK_JAVA_PACKAGE_DIR "${GROK_JAVA_PACKAGE}")
+    set(GROK_JAVA_SRC_DIR "${GROK_JAVA_OUTPUT_DIR}/${GROK_JAVA_PACKAGE_DIR}")
+
+    configure_file(
+      ${CMAKE_CURRENT_SOURCE_DIR}/${GROK_SWIG_JAVA_NAME}.i.in
+      ${CMAKE_CURRENT_BINARY_DIR}/${GROK_SWIG_JAVA_NAME}.i
+      @ONLY
+    )
+
+    file(MAKE_DIRECTORY ${GROK_JAVA_SRC_DIR})
+
+    set(CMAKE_SWIG_OUTDIR ${GROK_JAVA_SRC_DIR})
+    set(SWIG_OUTFILE_DIR ${CMAKE_CURRENT_BINARY_DIR})
+    set(CMAKE_SWIG_FLAGS -package ${GROK_JAVA_PACKAGE})
+
+    swig_add_library(${GROK_SWIG_JAVA_NAME}
+      TYPE MODULE
+      LANGUAGE java
+      SOURCES ${CMAKE_CURRENT_BINARY_DIR}/${GROK_SWIG_JAVA_NAME}.i
+    )
+
+    target_include_directories(${GROK_SWIG_JAVA_NAME} PRIVATE
+        ${GROK_CORE_BUILD_INCLUDE_PATH}
+        ${JNI_INCLUDE_DIRS}
+    )
+
+    target_link_libraries(${GROK_SWIG_JAVA_NAME} PRIVATE ${GROK_CORE_NAME})
+
+    # Copy native library to java output dir
+    add_custom_command(
+        TARGET ${GROK_SWIG_JAVA_NAME}
+        POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy
+            $<TARGET_FILE:${GROK_SWIG_JAVA_NAME}>
+            ${GROK_JAVA_OUTPUT_DIR}/
+        COMMENT "Copying Java native library to java output directory"
+    )
+
+    # Compile Java sources if javac is available
+    find_program(JAVAC_EXECUTABLE javac)
+    find_program(JAVA_EXECUTABLE java)
+    if(JAVAC_EXECUTABLE)
+        # Detect runtime version so javac targets the correct class file format
+        set(JAVAC_RELEASE_FLAG "")
+        if(JAVA_EXECUTABLE)
+            execute_process(
+                COMMAND ${JAVA_EXECUTABLE} -version
+                ERROR_VARIABLE _JAVA_VER_OUT
+                OUTPUT_VARIABLE _JAVA_VER_OUT2
+            )
+            string(CONCAT _JAVA_VER_OUT "${_JAVA_VER_OUT}" "${_JAVA_VER_OUT2}")
+            string(REGEX MATCH "\"([0-9]+)" _JAVA_VER_MATCH "${_JAVA_VER_OUT}")
+            if(CMAKE_MATCH_1)
+                set(JAVAC_RELEASE_FLAG --release ${CMAKE_MATCH_1})
+            endif()
+        endif()
+
+        add_custom_command(
+            TARGET ${GROK_SWIG_JAVA_NAME}
+            POST_BUILD
+            COMMAND ${JAVAC_EXECUTABLE}
+                ${JAVAC_RELEASE_FLAG}
+                -d "${GROK_JAVA_OUTPUT_DIR}"
+                ${GROK_JAVA_SRC_DIR}/*.java
+            COMMENT "Compiling Java bindings"
+        )
+    endif()
+
+    unset(CMAKE_SWIG_OUTDIR)
+    unset(SWIG_OUTFILE_DIR)
+    unset(CMAKE_SWIG_FLAGS)
+endif()

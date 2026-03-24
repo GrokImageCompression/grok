@@ -222,12 +222,14 @@ add_subdirectory(src/lib/core)
 # SWIG bindings for grok_core
 option(GRK_BUILD_CORE_SWIG_BINDINGS "Build SWIG Python bindings for grok core library" ON)
 option(GRK_BUILD_CSHARP_SWIG_BINDINGS "Build SWIG C# bindings for grok core library" OFF)
+option(GRK_BUILD_JAVA_SWIG_BINDINGS "Build SWIG Java bindings for grok core library" OFF)
 
 set(GRK_SWIG_BINDINGS_AVAILABLE FALSE)
 set(GRK_BUILD_PYTHON_SWIG FALSE)
 set(GRK_BUILD_CSHARP_SWIG FALSE)
+set(GRK_BUILD_JAVA_SWIG FALSE)
 
-if(GRK_BUILD_CORE_SWIG_BINDINGS OR GRK_BUILD_CSHARP_SWIG_BINDINGS)
+if(GRK_BUILD_CORE_SWIG_BINDINGS OR GRK_BUILD_CSHARP_SWIG_BINDINGS OR GRK_BUILD_JAVA_SWIG_BINDINGS)
     find_package(SWIG QUIET)
     if(NOT SWIG_FOUND)
         message(STATUS "SWIG not found - all SWIG bindings disabled")
@@ -251,7 +253,18 @@ if(GRK_BUILD_CORE_SWIG_BINDINGS OR GRK_BUILD_CSHARP_SWIG_BINDINGS)
             message(STATUS "C# SWIG bindings enabled")
         endif()
 
-        if(GRK_BUILD_PYTHON_SWIG OR GRK_BUILD_CSHARP_SWIG)
+        # Java bindings
+        if(GRK_BUILD_JAVA_SWIG_BINDINGS)
+            find_package(JNI QUIET)
+            if(JNI_FOUND)
+                set(GRK_BUILD_JAVA_SWIG TRUE)
+                message(STATUS "Java SWIG bindings enabled")
+            else()
+                message(STATUS "JNI not found - Java bindings disabled (install a JDK)")
+            endif()
+        endif()
+
+        if(GRK_BUILD_PYTHON_SWIG OR GRK_BUILD_CSHARP_SWIG OR GRK_BUILD_JAVA_SWIG)
             add_subdirectory(bindings/swig)
         endif()
     endif()
@@ -347,6 +360,39 @@ if(GRK_BUILD_CSHARP_TESTS)
         message(STATUS "C# tests enabled")
     else()
         message(STATUS "dotnet not found - C# tests disabled")
+    endif()
+endif()
+
+# Java tests: auto-enabled when BUILD_TESTING and Java SWIG bindings are available
+option(GRK_BUILD_JAVA_TESTS "Build and register Java JUnit tests" OFF)
+if(NOT DEFINED GRK_BUILD_JAVA_TESTS_SET_BY_USER)
+    if(BUILD_TESTING AND GRK_BUILD_JAVA_SWIG)
+        set(GRK_BUILD_JAVA_TESTS ON)
+    endif()
+endif()
+if(GRK_BUILD_JAVA_TESTS)
+    find_program(JAVA_EXECUTABLE java)
+    find_program(JAVAC_EXECUTABLE javac)
+    if(JAVA_EXECUTABLE AND JAVAC_EXECUTABLE)
+        set(GRK_JAVA_OUTPUT_DIR "${CMAKE_BINARY_DIR}/bin/java")
+        set(GRK_JAVA_TEST_DIR "${CMAKE_SOURCE_DIR}/tests/java")
+        enable_testing()
+        add_test(
+            NAME java_tests
+            COMMAND ${CMAKE_COMMAND}
+                -DJAVA_EXECUTABLE=${JAVA_EXECUTABLE}
+                -DJAVAC_EXECUTABLE=${JAVAC_EXECUTABLE}
+                -DGRK_JAVA_OUTPUT_DIR=${GRK_JAVA_OUTPUT_DIR}
+                -DGRK_JAVA_TEST_DIR=${GRK_JAVA_TEST_DIR}
+                -P "${GRK_JAVA_TEST_DIR}/run_tests.cmake"
+            WORKING_DIRECTORY ${GRK_JAVA_OUTPUT_DIR}
+        )
+        set_tests_properties(java_tests PROPERTIES
+            ENVIRONMENT "LD_LIBRARY_PATH=${GRK_JAVA_OUTPUT_DIR}:${CMAKE_BINARY_DIR}/bin:$ENV{LD_LIBRARY_PATH}"
+        )
+        message(STATUS "Java tests enabled")
+    else()
+        message(STATUS "java/javac not found - Java tests disabled")
     endif()
 endif()
 
