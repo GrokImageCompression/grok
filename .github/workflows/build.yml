@@ -80,7 +80,8 @@ jobs:
         echo "GENERATOR_PLATFORM=$generator" >> $env:GITHUB_ENV
         C:\vcpkg\vcpkg.exe install libpsl:x64-windows
         echo "CMAKE_TOOLCHAIN_FILE=C:\vcpkg\scripts\buildsystems\vcpkg.cmake" >> $env:GITHUB_ENV
-        C:\vcpkg\vcpkg.exe install swig:x64-windows
+        choco install swig -y
+        refreshenv
     - name: dependencies
       run: |
         cmake -E make_directory ${{ github.workspace }}/build
