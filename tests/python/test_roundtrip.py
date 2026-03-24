@@ -24,8 +24,9 @@ import grok_core
 
 
 class TestCompressDecompressRoundTrip:
-    def _compress_to_file(self, path, width, height, num_comps, prec,
-                          color_space, irreversible=False):
+    def _compress_to_file(
+        self, path, width, height, num_comps, prec, color_space, irreversible=False
+    ):
         """Compress a synthetic image to a J2K/JP2 file. Returns True on success."""
         params = grok_core.grk_cparameters()
         grok_core.grk_compress_set_default_params(params)
@@ -150,9 +151,9 @@ class TestCompressDecompressRoundTrip:
         for y in range(h):
             for x in range(w):
                 actual = arr[y * comp.stride + x]
-                assert actual == expected[(x, y)], (
-                    f"Pixel mismatch at ({x},{y}): expected {expected[(x,y)]}, got {actual}"
-                )
+                assert (
+                    actual == expected[(x, y)]
+                ), f"Pixel mismatch at ({x},{y}): expected {expected[(x,y)]}, got {actual}"
         grok_core.grk_object_unref(codec)
 
     def test_lossy_compression(self, tmp_path):

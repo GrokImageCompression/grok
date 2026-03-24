@@ -26,9 +26,9 @@ class TestVersion:
 
     def test_version_format(self):
         version = grok_core.grk_version()
-        assert re.match(r"^\d+\.\d+\.\d+$", version), (
-            f"Version string '{version}' does not match X.Y.Z format"
-        )
+        assert re.match(
+            r"^\d+\.\d+\.\d+$", version
+        ), f"Version string '{version}' does not match X.Y.Z format"
 
     def test_version_not_empty(self):
         version = grok_core.grk_version()

@@ -11,7 +11,7 @@ commands = [
     ["git", "push", "origin", f":{TAG}"],
     ["git", "tag", "-d", TAG],
     ["git", "tag", "-a", TAG, "-m", TAG],
-    ["git", "push", "origin", TAG]
+    ["git", "push", "origin", TAG],
 ]
 
 for cmd in commands:

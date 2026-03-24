@@ -22,8 +22,9 @@ import pytest
 import grok_core
 
 
-def compress_and_read_header(tmp_path, filename, num_comps, width, height, prec,
-                              color_space, setup_params):
+def compress_and_read_header(
+    tmp_path, filename, num_comps, width, height, prec, color_space, setup_params
+):
     """Compress with custom params and return header info from decompressed file."""
     path = str(tmp_path / filename)
 
@@ -68,8 +69,14 @@ class TestResolutionLevels:
             params.numresolution = num_res
 
         header, codec = compress_and_read_header(
-            tmp_path, f"res{num_res}.j2k", 1, 64, 64, 8,
-            grok_core.GRK_CLRSPC_GRAY, setup
+            tmp_path,
+            f"res{num_res}.j2k",
+            1,
+            64,
+            64,
+            8,
+            grok_core.GRK_CLRSPC_GRAY,
+            setup,
         )
         assert header.numresolutions == num_res
         grok_core.grk_object_unref(codec)
@@ -83,8 +90,7 @@ class TestCodeBlockSize:
             params.cblockh_init = cb_size
 
         header, codec = compress_and_read_header(
-            tmp_path, f"cb{cb_size}.j2k", 1, 64, 64, 8,
-            grok_core.GRK_CLRSPC_GRAY, setup
+            tmp_path, f"cb{cb_size}.j2k", 1, 64, 64, 8, grok_core.GRK_CLRSPC_GRAY, setup
         )
         assert header.cblockw_init == cb_size
         assert header.cblockh_init == cb_size
@@ -92,20 +98,22 @@ class TestCodeBlockSize:
 
 
 class TestProgressionOrder:
-    @pytest.mark.parametrize("order,name", [
-        (grok_core.GRK_LRCP, "LRCP"),
-        (grok_core.GRK_RLCP, "RLCP"),
-        (grok_core.GRK_RPCL, "RPCL"),
-        (grok_core.GRK_PCRL, "PCRL"),
-        (grok_core.GRK_CPRL, "CPRL"),
-    ])
+    @pytest.mark.parametrize(
+        "order,name",
+        [
+            (grok_core.GRK_LRCP, "LRCP"),
+            (grok_core.GRK_RLCP, "RLCP"),
+            (grok_core.GRK_RPCL, "RPCL"),
+            (grok_core.GRK_PCRL, "PCRL"),
+            (grok_core.GRK_CPRL, "CPRL"),
+        ],
+    )
     def test_progression_order(self, tmp_path, order, name):
         def setup(params):
             params.prog_order = order
 
         header, codec = compress_and_read_header(
-            tmp_path, f"prog_{name}.j2k", 1, 64, 64, 8,
-            grok_core.GRK_CLRSPC_GRAY, setup
+            tmp_path, f"prog_{name}.j2k", 1, 64, 64, 8, grok_core.GRK_CLRSPC_GRAY, setup
         )
         assert header.prog_order == order
         grok_core.grk_object_unref(codec)
@@ -117,8 +125,7 @@ class TestLossyVsLossless:
             params.irreversible = True
 
         header, codec = compress_and_read_header(
-            tmp_path, "lossy.j2k", 1, 64, 64, 8,
-            grok_core.GRK_CLRSPC_GRAY, setup
+            tmp_path, "lossy.j2k", 1, 64, 64, 8, grok_core.GRK_CLRSPC_GRAY, setup
         )
         assert header.irreversible is True
         grok_core.grk_object_unref(codec)
@@ -128,8 +135,7 @@ class TestLossyVsLossless:
             params.irreversible = False
 
         header, codec = compress_and_read_header(
-            tmp_path, "lossless.j2k", 1, 64, 64, 8,
-            grok_core.GRK_CLRSPC_GRAY, setup
+            tmp_path, "lossless.j2k", 1, 64, 64, 8, grok_core.GRK_CLRSPC_GRAY, setup
         )
         assert header.irreversible is False
         grok_core.grk_object_unref(codec)
@@ -164,7 +170,7 @@ class TestLossyVsLossless:
                 arr = data_ptr.contents
                 for y in range(comp.h):
                     for x in range(comp.w):
-                        arr[y * comp.stride + x] = ((x * 17 + y * 31 + c * 53) % 256)
+                        arr[y * comp.stride + x] = (x * 17 + y * 31 + c * 53) % 256
 
             stream = grok_core.grk_stream_params()
             stream.file = path
@@ -177,9 +183,9 @@ class TestLossyVsLossless:
 
         lossless_size = os.path.getsize(lossless_path)
         lossy_size = os.path.getsize(lossy_path)
-        assert lossy_size < lossless_size, (
-            f"Lossy ({lossy_size}) should be smaller than lossless ({lossless_size})"
-        )
+        assert (
+            lossy_size < lossless_size
+        ), f"Lossy ({lossy_size}) should be smaller than lossless ({lossless_size})"
 
 
 class TestReducedResolutionDecompress:
@@ -268,8 +274,10 @@ class TestJP2Format:
         j2k_path = str(tmp_path / "test.j2k")
         jp2_path = str(tmp_path / "test.jp2")
 
-        for path, fmt in [(j2k_path, grok_core.GRK_FMT_J2K),
-                          (jp2_path, grok_core.GRK_FMT_JP2)]:
+        for path, fmt in [
+            (j2k_path, grok_core.GRK_FMT_J2K),
+            (jp2_path, grok_core.GRK_FMT_JP2),
+        ]:
             params = grok_core.grk_cparameters()
             grok_core.grk_compress_set_default_params(params)
             params.cod_format = fmt

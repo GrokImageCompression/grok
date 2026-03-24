@@ -16,7 +16,7 @@ MD5REFS_PATH = SCRIPT_DIR / "md5refs.txt"
 
 
 def strip_ansi(text):
-    return re.sub(r'\x1b\[[0-9;]*m', '', text)
+    return re.sub(r"\x1b\[[0-9;]*m", "", text)
 
 
 def parse_mismatches(log_path):
@@ -41,22 +41,21 @@ def parse_mismatches(log_path):
       ...
       ----------------------------------------------------------
     """
-    text = strip_ansi(log_path.read_text(errors='replace'))
+    text = strip_ansi(log_path.read_text(errors="replace"))
 
     # Split into test blocks. Each block starts at "N/M Testing: " and ends
     # just before the next such marker (or end of file).
-    block_pattern = re.compile(r'(?=\d+/\d+ Testing: )', re.MULTILINE)
+    block_pattern = re.compile(r"(?=\d+/\d+ Testing: )", re.MULTILINE)
     blocks = block_pattern.split(text)
 
     mismatch_pattern = re.compile(
-        r'Mismatch: Expected \[([0-9a-f]{32})\s+(\S+)\]',
-        re.DOTALL
+        r"Mismatch: Expected \[([0-9a-f]{32})\s+(\S+)\]", re.DOTALL
     )
 
     # Use a dict so duplicate filenames across blocks take the last value.
     seen = {}
     for block in blocks:
-        if 'Test Failed.' not in block:
+        if "Test Failed." not in block:
             continue
         for m in mismatch_pattern.finditer(block):
             md5, filename = m.group(1), m.group(2)
@@ -73,7 +72,7 @@ def update_md5refs(md5refs_path, mismatches):
     line_for_file = {}
     for i, line in enumerate(lines):
         stripped = line.strip()
-        if not stripped or stripped.startswith('#'):
+        if not stripped or stripped.startswith("#"):
             continue
         parts = stripped.split()
         if len(parts) == 2:
@@ -95,7 +94,7 @@ def update_md5refs(md5refs_path, mismatches):
             line_for_file[filename] = len(lines) - 1
             added.append(new_entry.strip())
 
-    md5refs_path.write_text(''.join(lines))
+    md5refs_path.write_text("".join(lines))
     return updated, added
 
 
@@ -106,9 +105,9 @@ def main():
     # Allow overrides from command line
     for arg in sys.argv[1:]:
         p = Path(arg)
-        if p.name == 'LastTest.log':
+        if p.name == "LastTest.log":
             log_path = p
-        elif p.name == 'md5refs.txt':
+        elif p.name == "md5refs.txt":
             md5refs_path = p
 
     if not log_path.exists():
@@ -140,5 +139,5 @@ def main():
     print(f"\nWrote {md5refs_path}")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
