@@ -29,7 +29,7 @@ libc = "0.2"
 
 [build-dependencies]
 pkg-config = "0.3.19"
-bindgen = "0.58.1"
+bindgen = "0.72"
 
 [lib]
 name = "grokj2k_sys"

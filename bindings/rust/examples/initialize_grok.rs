@@ -47,7 +47,7 @@ fn initialize_grk() -> Result<(), GrokError> {
     let num_threads = 0;  // Pass 0 for number of threads
 
     unsafe {
-        grk_initialize(ptr::null(), num_threads, ptr::null());
+        grk_initialize(ptr::null(), num_threads, ptr::null_mut());
     }
 
     Ok(())

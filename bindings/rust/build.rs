@@ -53,7 +53,7 @@ fn main() {
     // Setup bindgen builder to generate Rust bindings from the C header
     let mut builder = bindgen::Builder::default()
         .header(header_path)
-        .parse_callbacks(Box::new(bindgen::CargoCallbacks));
+        .parse_callbacks(Box::new(bindgen::CargoCallbacks::new()));
 
     // Including the found include paths for clang argument in bindgen
     for include_path in &include_paths {
