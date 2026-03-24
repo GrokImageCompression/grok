@@ -215,18 +215,25 @@ else()
 endif()
 
 add_subdirectory(src/lib/core)
-# Option to build SWIG bindings for grok_core (default OFF)
-option(GRK_BUILD_CORE_SWIG_BINDINGS "Build SWIG Python bindings for grok core library" OFF)
+# SWIG Python bindings for grok_core
+option(GRK_BUILD_CORE_SWIG_BINDINGS "Build SWIG Python bindings for grok core library" ON)
 
-# Conditionally build SWIG bindings for grok_core
 if(GRK_BUILD_CORE_SWIG_BINDINGS)
-    # Enable SWIG and Python dependencies
-    find_package(SWIG REQUIRED)
-    find_package(Python3 COMPONENTS Interpreter Development REQUIRED)
-    include(UseSWIG)
-
-    # Add the bindings subdirectory where the SWIG interface for grok_core is located
-    add_subdirectory(bindings/swig)
+    find_package(SWIG QUIET)
+    find_package(Python3 COMPONENTS Interpreter Development QUIET)
+    if(SWIG_FOUND AND Python3_FOUND)
+        include(UseSWIG)
+        add_subdirectory(bindings/swig)
+        set(GRK_SWIG_BINDINGS_AVAILABLE TRUE)
+    else()
+        set(GRK_SWIG_BINDINGS_AVAILABLE FALSE)
+        if(NOT SWIG_FOUND)
+            message(STATUS "SWIG not found - Python bindings disabled")
+        endif()
+        if(NOT Python3_FOUND)
+            message(STATUS "Python3 development files not found - Python bindings disabled")
+        endif()
+    endif()
 endif()
 
 
@@ -263,6 +270,32 @@ if(BUILD_TESTING AND GRK_BUILD_CODEC AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/tes
       NO_CMAKE_FIND_ROOT_PATH)
     add_subdirectory(tests)
     set(GRK_BUILD_CORE_EXAMPLES ON CACHE BOOL "Build core examples" FORCE)
+endif()
+
+# Python tests: auto-enabled when BUILD_TESTING and SWIG bindings are available
+option(GRK_BUILD_PYTHON_TESTS "Build and register pytest-based Python tests" OFF)
+if(NOT DEFINED GRK_BUILD_PYTHON_TESTS_SET_BY_USER)
+    # Auto-enable when BUILD_TESTING is ON and SWIG bindings built
+    if(BUILD_TESTING AND GRK_SWIG_BINDINGS_AVAILABLE)
+        set(GRK_BUILD_PYTHON_TESTS ON)
+    endif()
+endif()
+if(GRK_BUILD_PYTHON_TESTS)
+    if(NOT GRK_SWIG_BINDINGS_AVAILABLE)
+        message(WARNING "GRK_BUILD_PYTHON_TESTS requires SWIG bindings - skipping Python tests")
+    else()
+        execute_process(
+            COMMAND ${Python3_EXECUTABLE} -m pytest --version
+            RESULT_VARIABLE PYTEST_RESULT
+            OUTPUT_QUIET ERROR_QUIET)
+        if(PYTEST_RESULT EQUAL 0)
+            enable_testing()
+            add_subdirectory(tests/python)
+            message(STATUS "Python tests enabled")
+        else()
+            message(STATUS "pytest not found - Python tests disabled (install with: pip install pytest)")
+        endif()
+    endif()
 endif()
 
 # install all targets referenced as GrokTargets

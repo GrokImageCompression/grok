@@ -49,6 +49,12 @@ jobs:
     - uses: actions/checkout@v3
       with:
         submodules: true # Recursively clone submodules
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.x'
+    - name: Install pytest
+      run: pip install pytest
     - name: Delete workflow runs
       if: startsWith(matrix.os, 'ubuntu') && matrix.shared_libs_flag == 'ON'
       uses: Mattraks/delete-workflow-runs@v2.0.6
@@ -56,12 +62,12 @@ jobs:
       if: startsWith(matrix.os, 'ubuntu')
       run: |
         #echo DATA_BRANCH=linux-release >> $GITHUB_ENV
-        sudo apt install exiftool libpsl-dev
+        sudo apt install exiftool libpsl-dev swig
     - name: macos-dependencies
       if: startsWith(matrix.os, 'macos')
       run: |
         #echo DATA_BRANCH=osx >> $GITHUB_ENV
-        brew install exiftool libpsl libssh2
+        brew install exiftool libpsl libssh2 swig
         #perl -MImage::ExifTool -e ""
         # Add macOS-specific dependencies if needed
     - name: windows-dependencies
@@ -74,6 +80,7 @@ jobs:
         echo "GENERATOR_PLATFORM=$generator" >> $env:GITHUB_ENV
         C:\vcpkg\vcpkg.exe install libpsl:x64-windows
         echo "CMAKE_TOOLCHAIN_FILE=C:\vcpkg\scripts\buildsystems\vcpkg.cmake" >> $env:GITHUB_ENV
+        C:\vcpkg\vcpkg.exe install swig:x64-windows
     - name: dependencies
       run: |
         cmake -E make_directory ${{ github.workspace }}/build

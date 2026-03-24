@@ -22,6 +22,38 @@
 
 %include "@GROK_CORE_INCLUDE_PATH@/grok.h"
 
+%inline %{
+/* Create an image where all components share the same dimensions and precision */
+grk_image* grk_image_new_uniform(uint16_t numcmpts, uint32_t w, uint32_t h,
+                                  uint8_t dx, uint8_t dy, uint8_t prec,
+                                  bool sgnd, GRK_COLOR_SPACE clrspc) {
+    grk_image_comp* comps = (grk_image_comp*)calloc(numcmpts, sizeof(grk_image_comp));
+    if (!comps)
+        return NULL;
+    for (uint16_t i = 0; i < numcmpts; i++) {
+        comps[i].w = w;
+        comps[i].h = h;
+        comps[i].dx = dx;
+        comps[i].dy = dy;
+        comps[i].prec = prec;
+        comps[i].sgnd = sgnd;
+    }
+    grk_image* img = grk_image_new(numcmpts, comps, clrspc, true);
+    free(comps);
+    return img;
+}
+
+/* Set a layer rate on grk_cparameters (workaround for C array item assignment) */
+void grk_cparameters_set_layer_rate(grk_cparameters* p, uint16_t layer, double rate) {
+    p->layer_rate[layer] = rate;
+}
+
+/* Set a layer distortion on grk_cparameters */
+void grk_cparameters_set_layer_distortion(grk_cparameters* p, uint16_t layer, double distortion) {
+    p->layer_distortion[layer] = distortion;
+}
+%}
+
 
 %extend _grk_progression_state {
     // Get the maximum layer value in layers_per_resolution
