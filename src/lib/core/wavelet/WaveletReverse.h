@@ -17,9 +17,9 @@
 
 #pragma once
 
-#include <mutex>
 #include "CodecScheduler.h"
 #include "WaveletCommon.h"
+#include "WaveletPoolData.h"
 
 namespace grk
 {
@@ -108,29 +108,14 @@ class WaveletReverse
 public:
   WaveletReverse(CodecScheduler* scheduler, TileComponent* tilec, uint16_t compno, Rect32 window,
                  uint8_t numres, uint8_t qmfbid, uint32_t maxDim, bool wholeTileDecompress,
-                 DcShiftParam dcShift = {});
+                 WaveletPoolData* poolData, DcShiftParam dcShift = {});
   ~WaveletReverse(void);
   bool decompress(void);
 
   static void step_97(dwt_scratch<vec4f>* GRK_RESTRICT dwt);
-  static bool allocPoolData(size_t maxDim);
 
 private:
-  struct AlignedDeleter
-  {
-    void operator()(uint8_t* ptr) const noexcept
-    {
-      grk_aligned_free(ptr);
-    }
-  };
-
-  using BufferPtr = std::unique_ptr<uint8_t[], AlignedDeleter>;
-  static std::unique_ptr<BufferPtr[]> horizPoolData_;
-  static std::unique_ptr<BufferPtr[]> vertPoolData_;
-  static bool is_allocated_;
-  static std::mutex alloc_mutex_;
-  static size_t allocatedMaxDim_;
-
+  WaveletPoolData* poolData_ = nullptr;
   CodecScheduler* scheduler_ = nullptr;
   TileComponent* tilec_ = nullptr;
   uint16_t compno_ = 0;

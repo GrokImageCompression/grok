@@ -295,73 +295,19 @@ HWY_EXPORT(hwy_v_p0_53);
 HWY_EXPORT(hwy_v_p1_53);
 HWY_EXPORT(GetHWY_PLL_COLS_53); // Export GetHWY_PLL_COLS_53
 
-std::unique_ptr<WaveletReverse::BufferPtr[]> WaveletReverse::horizPoolData_ = nullptr;
-std::unique_ptr<WaveletReverse::BufferPtr[]> WaveletReverse::vertPoolData_ = nullptr;
-bool WaveletReverse::is_allocated_ = false;
-std::mutex WaveletReverse::alloc_mutex_;
-size_t WaveletReverse::allocatedMaxDim_ = 0;
-
 uint32_t get_PLL_COLS_53()
 {
   static uint32_t value = HWY_DYNAMIC_DISPATCH(GetHWY_PLL_COLS_53)();
   return value;
 }
 
-bool WaveletReverse::allocPoolData(size_t maxDim)
-{
-  if(maxDim == 0)
-  {
-    return false;
-  }
-  std::lock_guard<std::mutex> lock(alloc_mutex_);
-  if(is_allocated_ && maxDim <= allocatedMaxDim_)
-  {
-    return true;
-  }
-  size_t num_threads = TFSingleton::num_threads();
-  try
-  {
-    horizPoolData_ = std::make_unique<BufferPtr[]>(num_threads);
-    vertPoolData_ = std::make_unique<BufferPtr[]>(num_threads);
-
-    size_t buffer_size = maxDim;
-    auto multiplier = std::max(sizeof(int32_t) * get_PLL_COLS_53(), sizeof(vec4f));
-    buffer_size *= multiplier;
-    for(size_t i = 0; i < num_threads; ++i)
-    {
-      void* horiz_ptr = grk_aligned_malloc(buffer_size);
-      void* vert_ptr = grk_aligned_malloc(buffer_size);
-      if(!horiz_ptr || !vert_ptr)
-      {
-        if(horiz_ptr)
-          grk_aligned_free(horiz_ptr);
-        if(vert_ptr)
-          grk_aligned_free(vert_ptr);
-        throw std::bad_alloc();
-      }
-      horizPoolData_[i] = BufferPtr(static_cast<uint8_t*>(horiz_ptr));
-      vertPoolData_[i] = BufferPtr(static_cast<uint8_t*>(vert_ptr));
-    }
-
-    allocatedMaxDim_ = maxDim;
-    is_allocated_ = true;
-  }
-  catch(const std::bad_alloc&)
-  {
-    horizPoolData_.reset();
-    vertPoolData_.reset();
-    is_allocated_ = false;
-  }
-
-  return is_allocated_;
-}
-
 WaveletReverse::WaveletReverse(CodecScheduler* scheduler, TileComponent* tilec, uint16_t compno,
                                Rect32 unreducedWindow, uint8_t numres, uint8_t qmfbid,
-                               uint32_t maxDim, bool wholeTileDecompress, DcShiftParam dcShift)
-    : scheduler_(scheduler), tilec_(tilec), compno_(compno), unreducedWindow_(unreducedWindow),
-      numres_(numres), qmfbid_(qmfbid), maxDim_(maxDim), wholeTileDecompress_(wholeTileDecompress),
-      dcShift_(dcShift)
+                               uint32_t maxDim, bool wholeTileDecompress, WaveletPoolData* poolData,
+                               DcShiftParam dcShift)
+    : poolData_(poolData), scheduler_(scheduler), tilec_(tilec), compno_(compno),
+      unreducedWindow_(unreducedWindow), numres_(numres), qmfbid_(qmfbid), maxDim_(maxDim),
+      wholeTileDecompress_(wholeTileDecompress), dcShift_(dcShift)
 {}
 WaveletReverse::~WaveletReverse(void)
 {
@@ -831,7 +777,7 @@ bool WaveletReverse::tile_53(void)
   if(numres_ == 1U)
     return true;
 
-  if(!WaveletReverse::horizPoolData_ || !WaveletReverse::vertPoolData_)
+  if(!poolData_ || !poolData_->isAllocated())
     return false;
 
   // for resolution n, tileCompRes points to LL subband at res n-1
@@ -863,13 +809,13 @@ bool WaveletReverse::tile_53(void)
     {
       horizPool_[i].dn = resWidth - horizPool_[i].sn;
       horizPool_[i].parity = bandLL->x0 & 1;
-      horizPool_[i].allocatedMem = (int32_t*)WaveletReverse::horizPoolData_[i].get();
-      horizPool_[i].mem = (int32_t*)WaveletReverse::horizPoolData_[i].get();
+      horizPool_[i].allocatedMem = (int32_t*)poolData_->getHoriz(i);
+      horizPool_[i].mem = (int32_t*)poolData_->getHoriz(i);
 
       vertPool_[i].dn = resHeight - vertPool_[i].sn;
       vertPool_[i].parity = bandLL->y0 & 1;
-      vertPool_[i].allocatedMem = (int32_t*)WaveletReverse::vertPoolData_[i].get();
-      vertPool_[i].mem = (int32_t*)WaveletReverse::vertPoolData_[i].get();
+      vertPool_[i].allocatedMem = (int32_t*)poolData_->getVert(i);
+      vertPool_[i].mem = (int32_t*)poolData_->getVert(i);
     }
     h_53(res, tileBuffer, resHeight);
     v_53(res, tileBuffer, resWidth);
@@ -880,7 +826,8 @@ bool WaveletReverse::tile_53(void)
 
 bool WaveletReverse::decompress(void)
 {
-  WaveletReverse::allocPoolData(maxDim_);
+  if(poolData_)
+    poolData_->alloc(maxDim_);
 
   if(!wholeTileDecompress_)
     return decompressPartial();

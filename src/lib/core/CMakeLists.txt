@@ -143,6 +143,7 @@ set(GROK_LIBRARY_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/scheduling/CoderPool.cpp
 
   ${CMAKE_CURRENT_SOURCE_DIR}/wavelet/WaveletFwd.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/wavelet/WaveletPoolData.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/wavelet/WaveletReverse.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/wavelet/WaveletReverse97.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/wavelet/WaveletReversePartial.cpp

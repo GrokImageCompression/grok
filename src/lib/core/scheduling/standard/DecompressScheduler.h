@@ -22,6 +22,7 @@
 #include "SchedulerStandard.h"
 #include "TileBlocks.h"
 #include "WaveletReverse.h"
+#include "WaveletPoolData.h"
 
 namespace grk
 {
@@ -82,6 +83,7 @@ private:
 
   CoderPool coderPool_;
   CoderPool* streamPool_;
+  WaveletPoolData waveletPoolData_;
 };
 
 } // namespace grk

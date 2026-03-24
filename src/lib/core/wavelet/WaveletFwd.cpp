@@ -1039,8 +1039,6 @@ struct encode_info
 bool WaveletFwdImpl::compress(TileComponent* tile_comp, uint8_t qmfbid, uint32_t maxDim,
                               DcShiftParam dcShift)
 {
-  WaveletReverse::allocPoolData(maxDim);
-
   if(qmfbid == 1)
     return HWY_DYNAMIC_DISPATCH(encode_53)(tile_comp, dcShift.enabled ? dcShift.shift : 0);
   else

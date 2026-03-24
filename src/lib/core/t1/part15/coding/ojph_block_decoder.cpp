@@ -42,6 +42,7 @@
 
 #include <string>
 #include <iostream>
+#include <atomic>
 
 #include <cassert>
 #include <cstring>
@@ -756,9 +757,9 @@ namespace  grk::t1::ojph {
                                ui32 width, ui32 height, ui32 stride,
                                bool stripe_causal)
     {
-      static bool insufficient_precision = false;
-      static bool modify_code = false;
-      static bool truncate_spp_mrp = false;
+      static std::atomic<bool> insufficient_precision{false};
+      static std::atomic<bool> modify_code{false};
+      static std::atomic<bool> truncate_spp_mrp{false};
 
       if (num_passes > 1 && lengths2 == 0)
       {
