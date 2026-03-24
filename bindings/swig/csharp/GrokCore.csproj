@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <RootNamespace>GrokCore</RootNamespace>
+    <AssemblyName>GrokCore</AssemblyName>
+    <Nullable>enable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+  <!-- Include generated SWIG C# source files from build output -->
+  <ItemGroup>
+    <Compile Include="$(GRK_CSHARP_GENERATED_DIR)/**/*.cs" Condition="'$(GRK_CSHARP_GENERATED_DIR)' != ''" />
+  </ItemGroup>
+
+</Project>

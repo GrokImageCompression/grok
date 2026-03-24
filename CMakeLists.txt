@@ -15,6 +15,10 @@
 
 cmake_minimum_required(VERSION 3.20)
 
+if(POLICY CMP0122)
+    cmake_policy(SET CMP0122 NEW)
+endif()
+
 project(GROK)
 
 #######################################
@@ -215,23 +219,40 @@ else()
 endif()
 
 add_subdirectory(src/lib/core)
-# SWIG Python bindings for grok_core
+# SWIG bindings for grok_core
 option(GRK_BUILD_CORE_SWIG_BINDINGS "Build SWIG Python bindings for grok core library" ON)
+option(GRK_BUILD_CSHARP_SWIG_BINDINGS "Build SWIG C# bindings for grok core library" OFF)
 
-if(GRK_BUILD_CORE_SWIG_BINDINGS)
+set(GRK_SWIG_BINDINGS_AVAILABLE FALSE)
+set(GRK_BUILD_PYTHON_SWIG FALSE)
+set(GRK_BUILD_CSHARP_SWIG FALSE)
+
+if(GRK_BUILD_CORE_SWIG_BINDINGS OR GRK_BUILD_CSHARP_SWIG_BINDINGS)
     find_package(SWIG QUIET)
-    find_package(Python3 COMPONENTS Interpreter Development QUIET)
-    if(SWIG_FOUND AND Python3_FOUND)
-        include(UseSWIG)
-        add_subdirectory(bindings/swig)
-        set(GRK_SWIG_BINDINGS_AVAILABLE TRUE)
+    if(NOT SWIG_FOUND)
+        message(STATUS "SWIG not found - all SWIG bindings disabled")
     else()
-        set(GRK_SWIG_BINDINGS_AVAILABLE FALSE)
-        if(NOT SWIG_FOUND)
-            message(STATUS "SWIG not found - Python bindings disabled")
+        include(UseSWIG)
+
+        # Python bindings
+        if(GRK_BUILD_CORE_SWIG_BINDINGS)
+            find_package(Python3 COMPONENTS Interpreter Development QUIET)
+            if(Python3_FOUND)
+                set(GRK_BUILD_PYTHON_SWIG TRUE)
+                set(GRK_SWIG_BINDINGS_AVAILABLE TRUE)
+            else()
+                message(STATUS "Python3 development files not found - Python bindings disabled")
+            endif()
         endif()
-        if(NOT Python3_FOUND)
-            message(STATUS "Python3 development files not found - Python bindings disabled")
+
+        # C# bindings
+        if(GRK_BUILD_CSHARP_SWIG_BINDINGS)
+            set(GRK_BUILD_CSHARP_SWIG TRUE)
+            message(STATUS "C# SWIG bindings enabled")
+        endif()
+
+        if(GRK_BUILD_PYTHON_SWIG OR GRK_BUILD_CSHARP_SWIG)
+            add_subdirectory(bindings/swig)
         endif()
     endif()
 endif()
@@ -295,6 +316,37 @@ if(GRK_BUILD_PYTHON_TESTS)
         else()
             message(STATUS "pytest not found - Python tests disabled (install with: pip install pytest)")
         endif()
+    endif()
+endif()
+
+# C# tests: auto-enabled when BUILD_TESTING and C# SWIG bindings are available
+option(GRK_BUILD_CSHARP_TESTS "Build and register C# xUnit tests" OFF)
+if(NOT DEFINED GRK_BUILD_CSHARP_TESTS_SET_BY_USER)
+    if(BUILD_TESTING AND GRK_BUILD_CSHARP_SWIG)
+        set(GRK_BUILD_CSHARP_TESTS ON)
+    endif()
+endif()
+if(GRK_BUILD_CSHARP_TESTS)
+    find_program(DOTNET_EXECUTABLE dotnet)
+    if(DOTNET_EXECUTABLE)
+        set(GRK_CSHARP_GENERATED_DIR "${CMAKE_BINARY_DIR}/bin/csharp")
+        set(GRK_CSHARP_TEST_DIR "${CMAKE_SOURCE_DIR}/tests/csharp")
+        enable_testing()
+        add_test(
+            NAME csharp_tests
+            COMMAND ${DOTNET_EXECUTABLE} test
+                "${GRK_CSHARP_TEST_DIR}/GrokCoreTests.csproj"
+                --no-restore
+                -p:GRK_CSHARP_GENERATED_DIR=${GRK_CSHARP_GENERATED_DIR}
+                --verbosity normal
+            WORKING_DIRECTORY ${GRK_CSHARP_GENERATED_DIR}
+        )
+        set_tests_properties(csharp_tests PROPERTIES
+            ENVIRONMENT "LD_LIBRARY_PATH=${GRK_CSHARP_GENERATED_DIR}:${CMAKE_BINARY_DIR}/bin:$ENV{LD_LIBRARY_PATH}"
+        )
+        message(STATUS "C# tests enabled")
+    else()
+        message(STATUS "dotnet not found - C# tests disabled")
     endif()
 endif()
 
