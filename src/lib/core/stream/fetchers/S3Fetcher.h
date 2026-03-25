@@ -69,7 +69,7 @@ namespace grk
  * ║     Thread-safe, shared across all S3Fetcher instances.                 ║
  * ║                                                                         ║
  * ║  4. AWS config files (~/.aws/credentials, ~/.aws/config)                ║
- * ║     CPL_AWS_CREDENTIALS_FILE       Override credentials file path       ║
+ * ║     GRK_AWS_CREDENTIALS_FILE       Override credentials file path       ║
  * ║     AWS_CONFIG_FILE                Override config file path            ║
  * ║     AWS_PROFILE                    Profile name (default: "default")    ║
  * ║     AWS_DEFAULT_PROFILE            Deprecated alias for AWS_PROFILE     ║
@@ -96,7 +96,7 @@ namespace grk
  * ║         sso_role_name = MyRole                                          ║
  * ║         sso_session = optional-session-name                             ║
  * ║         Reads cached tokens from ~/.aws/sso/cache/.                     ║
- * ║         CPL_AWS_SSO_ENDPOINT       Override SSO portal endpoint         ║
+ * ║         GRK_AWS_SSO_ENDPOINT       Override SSO portal endpoint         ║
  * ║                                                                         ║
  * ║     4d. Credential process                                              ║
  * ║         [profile X]                                                     ║
@@ -108,7 +108,7 @@ namespace grk
  * ║     AWS_ROLE_ARN                   Role ARN to assume                   ║
  * ║     AWS_WEB_IDENTITY_TOKEN_FILE    Path to OIDC token file              ║
  * ║     AWS_ROLE_SESSION_NAME          Session name (default: grok-session) ║
- * ║     CPL_AWS_WEB_IDENTITY_ENABLE    YES (default) / NO                   ║
+ * ║     GRK_AWS_WEB_IDENTITY_ENABLE    YES (default) / NO                   ║
  * ║                                                                         ║
  * ║  6. ECS container credentials                                           ║
  * ║     AWS_CONTAINER_CREDENTIALS_FULL_URI       Full endpoint URL          ║
@@ -117,8 +117,8 @@ namespace grk
  * ║     AWS_CONTAINER_AUTHORIZATION_TOKEN        Auth token value           ║
  * ║                                                                         ║
  * ║  7. EC2 instance metadata (IMDSv2 → IMDSv1 fallback)                   ║
- * ║     CPL_AWS_EC2_API_ROOT_URL       Override (default: 169.254.169.254)  ║
- * ║     CPL_AWS_AUTODETECT_EC2_DISABLE Set YES to skip EC2 detection        ║
+ * ║     GRK_AWS_EC2_API_ROOT_URL       Override (default: 169.254.169.254)  ║
+ * ║     GRK_AWS_AUTODETECT_EC2_DISABLE Set YES to skip EC2 detection        ║
  * ║                                                                         ║
  * ╠═══════════════════════════════════════════════════════════════════════════╣
  * ║  REGION CONFIGURATION  (resolved in order)                              ║
@@ -142,7 +142,7 @@ namespace grk
  * ║                                                                         ║
  * ║  STS endpoint:                                                          ║
  * ║  AWS_STS_REGIONAL_ENDPOINTS   regional (default) / legacy               ║
- * ║  CPL_AWS_STS_ROOT_URL         Override STS endpoint entirely            ║
+ * ║  GRK_AWS_STS_ROOT_URL         Override STS endpoint entirely            ║
  * ╠═══════════════════════════════════════════════════════════════════════════╣
  * ║  REQUESTER PAYS                                                         ║
  * ╠═══════════════════════════════════════════════════════════════════════════╣
@@ -150,18 +150,18 @@ namespace grk
  * ╠═══════════════════════════════════════════════════════════════════════════╣
  * ║  HTTP / CURL CONFIGURATION                                              ║
  * ╠═══════════════════════════════════════════════════════════════════════════╣
- * ║  CPL_VSIL_CURL_ALLOW_INSECURE     YES / NO — disable SSL verification  ║
- * ║  GDAL_HTTP_UNSAFESSL              YES / NO — same (from CurlFetcher)   ║
- * ║  CPL_VSIL_CURL_TIMEOUT            Request timeout in seconds            ║
- * ║  CPL_VSIL_CURL_CACHE_SIZE         Curl receive buffer size in bytes     ║
- * ║  CPL_VSIL_CURL_NON_CACHED         Disable connection reuse for prefix   ║
- * ║  CPL_VSIL_CURL_PROXY              Proxy URL                            ║
- * ║  CPL_VSIL_CURL_PROXYUSERPWD       Proxy user:password                  ║
- * ║  CPL_VSIL_CURL_PROXYAUTH          Enable proxy auth (CURLAUTH_ANY)     ║
+ * ║  GRK_CURL_ALLOW_INSECURE           YES / NO — disable SSL verification  ║
+ * ║  GRK_HTTP_UNSAFESSL                YES / NO — same (from CurlFetcher)   ║
+ * ║  GRK_CURL_TIMEOUT                  Request timeout in seconds            ║
+ * ║  GRK_CURL_CACHE_SIZE               Curl receive buffer size in bytes     ║
+ * ║  GRK_CURL_NON_CACHED               Disable connection reuse for prefix   ║
+ * ║  GRK_CURL_PROXY                    Proxy URL                            ║
+ * ║  GRK_CURL_PROXYUSERPWD             Proxy user:password                  ║
+ * ║  GRK_CURL_PROXYAUTH                Enable proxy auth (CURLAUTH_ANY)     ║
  * ╠═══════════════════════════════════════════════════════════════════════════╣
  * ║  FILE PATHS                                                              ║
  * ╠═══════════════════════════════════════════════════════════════════════════╣
- * ║  CPL_AWS_ROOT_DIR                  Override ~/.aws root directory        ║
+ * ║  GRK_AWS_ROOT_DIR                  Override ~/.aws root directory        ║
  * ╚═══════════════════════════════════════════════════════════════════════════╝
  *
  * Request signing uses AWS Signature V4 via libcurl's CURLOPT_AWS_SIGV4.
@@ -297,36 +297,36 @@ protected:
     curl_easy_setopt(curl, CURLOPT_AWS_SIGV4, sigv4.c_str());
 
     // SSL verification
-    if(EnvVarManager::test_bool("CPL_VSIL_CURL_ALLOW_INSECURE"))
+    if(EnvVarManager::test_bool("GRK_CURL_ALLOW_INSECURE"))
     {
       curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
       curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L);
     }
 
     // Connection reuse
-    auto nonCached = EnvVarManager::get("CPL_VSIL_CURL_NON_CACHED");
+    auto nonCached = EnvVarManager::get("GRK_CURL_NON_CACHED");
     if(nonCached && nonCached->find("/vsis3/") != std::string::npos)
     {
       curl_easy_setopt(curl, CURLOPT_FORBID_REUSE, 1L);
     }
 
     // Timeout
-    long timeout = EnvVarManager::get_int("CPL_VSIL_CURL_TIMEOUT", 0);
+    long timeout = EnvVarManager::get_int("GRK_CURL_TIMEOUT", 0);
     if(timeout > 0)
       curl_easy_setopt(curl, CURLOPT_TIMEOUT, timeout);
 
     // Buffer size
-    long bufSize = EnvVarManager::get_int("CPL_VSIL_CURL_CACHE_SIZE", 0);
+    long bufSize = EnvVarManager::get_int("GRK_CURL_CACHE_SIZE", 0);
     if(bufSize > 0)
       curl_easy_setopt(curl, CURLOPT_BUFFERSIZE, bufSize);
 
     // Proxy
-    if(auto proxy = EnvVarManager::get("CPL_VSIL_CURL_PROXY"))
+    if(auto proxy = EnvVarManager::get("GRK_CURL_PROXY"))
     {
       curl_easy_setopt(curl, CURLOPT_PROXY, proxy->c_str());
-      if(auto proxyUserPwd = EnvVarManager::get("CPL_VSIL_CURL_PROXYUSERPWD"))
+      if(auto proxyUserPwd = EnvVarManager::get("GRK_CURL_PROXYUSERPWD"))
         curl_easy_setopt(curl, CURLOPT_PROXYUSERPWD, proxyUserPwd->c_str());
-      if(EnvVarManager::get("CPL_VSIL_CURL_PROXYAUTH"))
+      if(EnvVarManager::get("GRK_CURL_PROXYAUTH"))
         curl_easy_setopt(curl, CURLOPT_PROXYAUTH, CURLAUTH_ANY);
     }
   }
@@ -410,7 +410,7 @@ private:
     }
 
     // 4. Web Identity Token from env vars (EKS/IRSA)
-    if(EnvVarManager::test_bool("CPL_AWS_WEB_IDENTITY_ENABLE", true))
+    if(EnvVarManager::test_bool("GRK_AWS_WEB_IDENTITY_ENABLE", true))
     {
       if(tryWebIdentityToken())
       {
@@ -427,7 +427,7 @@ private:
     }
 
     // 6. EC2 instance metadata (IMDSv2 with v1 fallback)
-    if(!EnvVarManager::test_bool("CPL_AWS_AUTODETECT_EC2_DISABLE"))
+    if(!EnvVarManager::test_bool("GRK_AWS_AUTODETECT_EC2_DISABLE"))
     {
       if(tryEC2InstanceMetadata())
       {
@@ -899,7 +899,7 @@ private:
   bool tryEC2InstanceMetadata()
   {
     std::string ec2Root =
-        EnvVarManager::get_string("CPL_AWS_EC2_API_ROOT_URL", "http://169.254.169.254");
+        EnvVarManager::get_string("GRK_AWS_EC2_API_ROOT_URL", "http://169.254.169.254");
 
     // IMDSv2: get session token via PUT
     std::string imdsToken;
@@ -1074,7 +1074,7 @@ private:
     // GetRoleCredentials request
     bool https = useHttps();
     std::string defaultHost = "portal.sso." + ssoRegion + ".amazonaws.com";
-    std::string ssoHost = EnvVarManager::get_string("CPL_AWS_SSO_ENDPOINT", defaultHost);
+    std::string ssoHost = EnvVarManager::get_string("GRK_AWS_SSO_ENDPOINT", defaultHost);
 
     std::string ssoUrl = (https ? "https://" : "http://") + ssoHost +
                          "/federation/credentials?role_name=" + urlEncode(roleName) +
@@ -1451,7 +1451,7 @@ private:
 
   static std::string getCredentialsFilePath()
   {
-    if(auto p = EnvVarManager::get("CPL_AWS_CREDENTIALS_FILE"))
+    if(auto p = EnvVarManager::get("GRK_AWS_CREDENTIALS_FILE"))
       return *p;
 #ifdef _WIN32
     if(auto p = EnvVarManager::get("USERPROFILE"))
@@ -1465,7 +1465,7 @@ private:
 
   static std::string getAWSRootDir()
   {
-    if(auto p = EnvVarManager::get("CPL_AWS_ROOT_DIR"))
+    if(auto p = EnvVarManager::get("GRK_AWS_ROOT_DIR"))
       return *p;
 #ifdef _WIN32
     if(auto p = EnvVarManager::get("USERPROFILE"))
@@ -1491,7 +1491,7 @@ private:
     {
       stsUrl = "https://sts.amazonaws.com";
     }
-    if(auto endpoint = EnvVarManager::get("CPL_AWS_STS_ROOT_URL"))
+    if(auto endpoint = EnvVarManager::get("GRK_AWS_STS_ROOT_URL"))
       stsUrl = *endpoint;
     return stsUrl;
   }

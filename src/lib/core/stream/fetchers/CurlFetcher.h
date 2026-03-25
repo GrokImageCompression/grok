@@ -566,7 +566,7 @@ protected:
   }
   virtual void auth(CURL* curl)
   {
-    if(EnvVarManager::test_bool("GDAL_HTTP_UNSAFESSL"))
+    if(EnvVarManager::test_bool("GRK_HTTP_UNSAFESSL"))
     {
       curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
       curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L);

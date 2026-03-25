@@ -72,7 +72,7 @@ protected:
     std::string password = auth_.password_;
     if(username.empty() && password.empty())
     {
-      if(const char* userpwd = std::getenv("GDAL_HTTP_USERPWD"))
+      if(const char* userpwd = std::getenv("GRK_HTTP_USERPWD"))
       {
         std::string userpwd_str(userpwd);
         size_t colon_pos = userpwd_str.find(':');
@@ -80,7 +80,7 @@ protected:
         {
           username = userpwd_str.substr(0, colon_pos);
           password = userpwd_str.substr(colon_pos + 1);
-          grklog.debug("Set HTTP username = %s and password from GDAL_HTTP_USERPWD",
+          grklog.debug("Set HTTP username = %s and password from GRK_HTTP_USERPWD",
                        username.c_str());
         }
       }
@@ -94,11 +94,11 @@ protected:
       grklog.debug("Applied HTTP basic authentication for username: %s", username.c_str());
     }
 
-    // GDAL /vsicurl/ supports custom headers via GDAL_HTTP_HEADER_FILE
-    if(const char* header_file = std::getenv("GDAL_HTTP_HEADER_FILE"))
+    // Custom headers via GRK_HTTP_HEADER_FILE
+    if(const char* header_file = std::getenv("GRK_HTTP_HEADER_FILE"))
     {
       // Note: Simplified; actual implementation would read headers from the file
-      grklog.debug("GDAL_HTTP_HEADER_FILE set to %s (not fully implemented)", header_file);
+      grklog.debug("GRK_HTTP_HEADER_FILE set to %s (not fully implemented)", header_file);
     }
 
     // Log custom header and bearer token usage
