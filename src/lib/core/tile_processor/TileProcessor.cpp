@@ -565,7 +565,6 @@ bool TileProcessor::readSOT(IStream* stream, uint8_t* headerData, uint16_t heade
   {
     tilePartInfo.remainingTilePartBytes_ = getStream()->numBytesLeft();
   }
-  grklog.debug("Added tile part %d to tile %d", tilePartInfo.tilePart_, tileIndex_);
   if(!tilePartSeq_.push_back(tilePartInfo.tilePart_, numTileParts, startPos_,
                              tilePartInfo.tilePartLength_))
     return false;

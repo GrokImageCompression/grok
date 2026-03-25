@@ -251,9 +251,6 @@ bool CodeStreamDecompress::decompressImpl(std::set<uint16_t> slated)
 
     // b) prepare for sequential decompress
     decompressSequentialPrepare();
-
-    if(!doTileBatching() && stream_->getFetcher())
-      startDecompressConsumer((uint16_t)((maxRowsAhead_ + 1) * cp_.t_grid_width_));
   }
 
   // schedule decompression
@@ -962,8 +959,7 @@ bool CodeStreamDecompress::setDecompressRegion(RectD region)
 
 bool CodeStreamDecompress::doTileBatching(void)
 {
-  return tilesToDecompress_.getSlatedTiles().size() > 1 && cp_.asynchronous_ &&
-         !stream_->getFetcher();
+  return tilesToDecompress_.getSlatedTiles().size() > 1 && cp_.asynchronous_;
 }
 
 uint16_t CodeStreamDecompress::batchTileHeadroomIncrement(uint16_t numRows, uint16_t tilesLeft)
@@ -1067,7 +1063,6 @@ void CodeStreamDecompress::onRowCompleted(uint16_t tileIndexBegin, uint16_t tile
 {
   if(!doTileBatching())
     return;
-  grklog.debug("CodeStreamDecompress: %u to %u completed", tileIndexBegin, tileIndexEnd);
 
   // Back-pressure: skip scheduling if producer is too far ahead of consumer.
   // The consumer (wait()) will call scheduleTileBatch() after releasing rows.
@@ -1166,7 +1161,8 @@ bool CodeStreamDecompress::fetchByTile(
   if(!fetcher)
     return false;
 
-  startDecompressConsumer((uint16_t)((maxRowsAhead_ + 1) * cp_.t_grid_width_));
+  startDecompressConsumer(std::min((uint16_t)TFSingleton::num_threads(),
+                                   (uint16_t)((maxRowsAhead_ + 1) * cp_.t_grid_width_)));
 
   fetchByTileFutures_.push_back(fetcher->fetchTiles(
       cp_.tlmMarkers_->getTileParts(), slated, nullptr,
@@ -1181,7 +1177,6 @@ bool CodeStreamDecompress::fetchByTile(
           auto tilePartSeqCopy = tilePartSeq;
           decompressQueue_->push(
               [this, tileIndex, tilePartSeqCopy, unreducedImageBounds, postGenerator]() {
-                grklog.debug("Decompressing tile %d", tileIndex);
                 const auto tileProcessor = getTileProcessor(tileIndex);
                 auto decompressTask = genDecompressTileTLMTask(tileProcessor, tilePartSeqCopy,
                                                                unreducedImageBounds, postGenerator);
