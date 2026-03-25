@@ -269,7 +269,8 @@ protected:
 
     bool use_https = useHttps();
 
-    if(EnvVarManager::get("AWS_S3_ENDPOINT") && !use_virtual_hosting)
+    if((!auth_.s3_endpoint_.empty() || EnvVarManager::get("AWS_S3_ENDPOINT")) &&
+       !use_virtual_hosting)
     {
       url_ = (use_https ? "https://" : "http://") + parsed.host +
              formatPort(parsed.port, use_https) + "/" + parsed.bucket + "/" + parsed.key;
@@ -297,11 +298,7 @@ protected:
     curl_easy_setopt(curl, CURLOPT_AWS_SIGV4, sigv4.c_str());
 
     // SSL verification
-    if(EnvVarManager::test_bool("GRK_CURL_ALLOW_INSECURE"))
-    {
-      curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
-      curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L);
-    }
+    applyInsecureSSL(curl);
 
     // Connection reuse
     auto nonCached = EnvVarManager::get("GRK_CURL_NON_CACHED");
@@ -770,6 +767,7 @@ private:
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, CurlFetcher::writeCallback);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
     curl_easy_setopt(curl, CURLOPT_TIMEOUT, 10L);
+    applyInsecureSSL(curl);
     curl_easy_setopt(curl, CURLOPT_USERNAME, sourceAccessKey.c_str());
     curl_easy_setopt(curl, CURLOPT_PASSWORD, sourceSecretKey.c_str());
 
@@ -1511,7 +1509,19 @@ private:
 
   // ─── HTTP helpers ─────────────────────────────────────────────────
 
-  static std::string curlGet(const std::string& url, const std::string& header = "")
+  void applyInsecureSSL(CURL* curl)
+  {
+    grklog.debug("applyInsecureSSL: s3_allow_insecure_=%d, GRK_CURL_ALLOW_INSECURE=%d",
+                 (int)auth_.s3_allow_insecure_,
+                 (int)EnvVarManager::test_bool("GRK_CURL_ALLOW_INSECURE"));
+    if(auth_.s3_allow_insecure_ || EnvVarManager::test_bool("GRK_CURL_ALLOW_INSECURE"))
+    {
+      curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
+      curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L);
+    }
+  }
+
+  std::string curlGet(const std::string& url, const std::string& header = "")
   {
     CURL* curl = curl_easy_init();
     if(!curl)
@@ -1522,6 +1532,7 @@ private:
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, CurlFetcher::writeCallback);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
     curl_easy_setopt(curl, CURLOPT_TIMEOUT, 10L);
+    applyInsecureSSL(curl);
 
     struct curl_slist* headers = nullptr;
     if(!header.empty())
@@ -1538,8 +1549,7 @@ private:
     return res == CURLE_OK ? response : std::string{};
   }
 
-  static std::string curlGetWithToken(const std::string& url, const std::string& token,
-                                      long timeout = 5)
+  std::string curlGetWithToken(const std::string& url, const std::string& token, long timeout = 5)
   {
     CURL* curl = curl_easy_init();
     if(!curl)
@@ -1550,6 +1560,7 @@ private:
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, CurlFetcher::writeCallback);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
     curl_easy_setopt(curl, CURLOPT_TIMEOUT, timeout);
+    applyInsecureSSL(curl);
 
     struct curl_slist* headers = nullptr;
     if(!token.empty())

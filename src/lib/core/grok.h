@@ -573,17 +573,18 @@ typedef struct _grk_stream_params
   size_t stream_len; /* mandatory for read stream */
 
   /* 4 Authorization */
-  char username[129]; // AWS access key ID: max 128 chars + null
-  char password[129]; // Secret access key: max 128 chars + null
-  char bearer_token[4097]; // Session token: up to 4096 chars + null
-  char custom_header[1024]; // Single header: fits within 8KB total limit
-  char region[64]; // Region code: max 50 chars + buffer
+  char username[129]; /* AWS access key ID: max 128 chars + null */
+  char password[129]; /* Secret access key: max 128 chars + null */
+  char bearer_token[4097]; /* Session token: up to 4096 chars + null */
+  char custom_header[1024]; /* Single header: fits within 8KB total limit */
+  char region[64]; /* Region code: max 50 chars + buffer */
 
   /* 5 S3 Endpoint Configuration (for S3-compatible services like MinIO) */
-  char s3_endpoint[256]; // Custom S3 endpoint URL (e.g. "http://localhost:9000")
-  int8_t s3_use_https; // 0 = auto (default), 1 = HTTPS, -1 = HTTP
-  int8_t s3_use_virtual_hosting; // 0 = auto (default), 1 = virtual-hosted, -1 = path-style
-  bool s3_no_sign_request; // true = skip authentication (public buckets)
+  char s3_endpoint[256]; /* Custom S3 endpoint URL (e.g. "http://localhost:9000") */
+  int8_t s3_use_https; /* 0 = auto (default), 1 = HTTPS, -1 = HTTP */
+  int8_t s3_use_virtual_hosting; /* 0 = auto (default), 1 = virtual-hosted, -1 = path-style */
+  bool s3_no_sign_request; /* true = skip authentication (public buckets) */
+  bool s3_allow_insecure; /* true = disable SSL certificate verification */
 
 } grk_stream_params;
 
@@ -1325,11 +1326,11 @@ GRK_API bool GRK_CALLCONV grk_set_MCT(grk_cparameters* parameters, const float* 
  *
  * For broadcast profiles, the GRK_PROFILE_X value has to be combined with the target
  * level (3-0 LSB, value between 0 and 11):
- *   Example: rsiz = GRK_PROFILE_BC_MULTI | 0x0005; //level equals 5
+ *   Example: rsiz = GRK_PROFILE_BC_MULTI | 0x0005; (level equals 5)
  *
  * For IMF profiles, the GRK_PROFILE_X value has to be combined with the target main-level
  * (3-0 LSB, value between 0 and 11) and sub-level (7-4 LSB, value between 0 and 9):
- *   Example: rsiz = GRK_PROFILE_IMF_2K | 0x0040 | 0x0005; // main-level equals 5 and sub-level
+ *   Example: rsiz = GRK_PROFILE_IMF_2K | 0x0040 | 0x0005; (main-level equals 5 and sub-level
  * equals 4
  *
  * */

@@ -135,6 +135,9 @@ IStream* StreamGenerator::createCurlFetchStream(void)
   auth.s3_use_https_ = streamParams_.s3_use_https;
   auth.s3_use_virtual_hosting_ = streamParams_.s3_use_virtual_hosting;
   auth.s3_no_sign_request_ = streamParams_.s3_no_sign_request;
+  auth.s3_allow_insecure_ = streamParams_.s3_allow_insecure;
+  grklog.debug("StreamGenerator: s3_allow_insecure: streamParams=%d, auth=%d",
+               (int)streamParams_.s3_allow_insecure, (int)auth.s3_allow_insecure_);
   auto fetcher = new S3Fetcher();
   fetcher->init(streamParams_.file, auth);
   uint64_t dataLen = fetcher->size();

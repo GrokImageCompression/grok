@@ -49,6 +49,7 @@ struct FetchAuth
   int8_t s3_use_https_ = 0; // 0 = auto, 1 = HTTPS, -1 = HTTP
   int8_t s3_use_virtual_hosting_ = 0; // 0 = auto, 1 = virtual-hosted, -1 = path-style
   bool s3_no_sign_request_ = false; // true = skip authentication
+  bool s3_allow_insecure_ = false; // true = disable SSL certificate verification
   FetchAuth() = default;
   FetchAuth(const std::string& u, const std::string& p, const std::string& t, const std::string& h,
             const std::string& r = "", const std::string& st = "") // Added session_token parameter

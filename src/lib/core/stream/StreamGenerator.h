@@ -74,6 +74,12 @@ public:
     safe_strcpy(streamParams_.bearer_token, src->bearer_token);
     safe_strcpy(streamParams_.custom_header, src->custom_header);
     safe_strcpy(streamParams_.region, src->region);
+
+    safe_strcpy(streamParams_.s3_endpoint, src->s3_endpoint);
+    streamParams_.s3_use_https = src->s3_use_https;
+    streamParams_.s3_use_virtual_hosting = src->s3_use_virtual_hosting;
+    streamParams_.s3_no_sign_request = src->s3_no_sign_request;
+    streamParams_.s3_allow_insecure = src->s3_allow_insecure;
   }
   IStream* create(void)
   {
