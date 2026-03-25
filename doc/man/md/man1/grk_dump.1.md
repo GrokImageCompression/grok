@@ -14,30 +14,42 @@ SYNOPSIS
 DESCRIPTION
 ===========
 
+This program dumps the header and/or codestream of a JPEG 2000 file to stdout or to a file.
+
+**Important note on command line argument notation below**: the outer square braces appear for clarity only, and **should not** be included in the actual command line argument. Square braces appearing inside the outer braces **should** be included.
+
 
 Options
 -------
 
 
-#### `-h` 
+`-h`
 
 Print a help message and exit.
 
-#### `ImgDir`
+`--help`
 
-Path to image files directory, required if `-i` option not provided
+Show detailed usage.
 
-#### `-i`
+`-i, --input [file]`
 
-Path to image file, required if `-ImgDir` option not provided
+Input file. Required if `--batch-src` option is not provided.
 
-#### `-o`
+`-o, --output [file]`
 
-Optional path to output file, default is output to stdout 
+Output file. Default: stdout.
 
-#### `-v`
+`-y, --batch-src [directory]`
 
-Enable verbose mode, default verbose mode is set to disabled
+Path to image files directory. Required if `-i` option is not provided.
+
+`-f, --flag [value]`
+
+Flag value. Default: `0`.
+
+* `0` : dump header only
+* `1` : dump codestream only
+* `2` : dump both header and codestream
 
 
 FILES
@@ -59,5 +71,7 @@ Grok Image Compression Inc.
 
 SEE ALSO
 ========
+
+**grk_decompress(1)**, **grk_compress(1)**
 
 

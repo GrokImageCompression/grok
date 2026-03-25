@@ -16,8 +16,8 @@ DESCRIPTION
 
 This program decompresses a JPEG 2000 image and stores it in another image format.
 
-Supported input formats: `JP2` and `J2K\J2C`
-Supported input image extensions are `.jp2` and `.j2k\.j2c`
+Supported input formats: `JP2`, `J2K\J2C`, `JPH` and `JHC`
+Supported input image extensions are `.jp2`, `.j2k\.j2c`, `.jph` and `.jhc`
 
 Supported output formats are `JPEG`, `BMP`, `PNM`, `PGX`, `PNG`, `RAW` and `TIFF`
 Valid output image extensions are `jpg`, `.jpeg`, `.bmp`, `.pgm`, `.pgx`, `.pnm`, `.ppm`, `.pam`, `.png`, `.raw`, `.rawl`, `.tif` and `.tiff`
@@ -42,7 +42,7 @@ IPTC (JP2 only)
 
 If a compressed input contains `IPTC` metadata, this metadata will be stored to the output file if that output file is in `TIF\TIFF` format.
 
-XMP (JP2 only)
+XMP (JP2\JPH only)
 
 If a compressed input contains `XMP` metadata, this metadata will be stored to the output file if that output file is in `TIF\\TIFF` or `PNG` format.
 
@@ -71,7 +71,9 @@ Output information and warnings about decoding to console (errors are always out
 
 `-i, --in-file [file]`
 
-Input file. Either this argument or the `--batch-src` argument described below is required. Valid input image extensions are J2K, JP2 and JPC. When using this option output file must be specified using -o.
+Input file. Either this argument or the `--batch-src` argument described below is required. Valid input image extensions are `J2K`, `JP2`, `JPC`, `JPH` and `JHC`. When using this option output file must be specified using `-o`.
+
+Grok can read from cloud storage paths (`/vsis3/`, `/vsiaz/`, `/vsigs/`, `/vsiadls/`, `/vsicurl/`) and `https://` URLs.
 
 `-o, --out-file [file]`
 
@@ -93,7 +95,7 @@ Output format used to decompress the code streams. Required when `--batch-src` o
 
 Reduce factor. Set the number of highest resolution levels to be discarded. The image resolution is effectively divided by 2 to the power of the number of discarded levels. The reduce factor is limited by the smallest total number of decomposition levels among tiles.
 
-`-l, -layer [number of layers]`
+`-l, --layers [number of layers]`
 
 Layer number. Set the maximum number of quality layers to decode. If there are fewer quality layers than the specified number, all quality layers will be decoded.
 
@@ -189,9 +191,25 @@ Log to file. File name will be set to `output file name`
 
 Number of threads used for T1 compression. Default is total number of logical cores.
 
- `-e, -repetitions [number of repetitions]`
+`-e, --repetitions [number of repetitions]`
 
 Number of repetitions, for either a single image, or a folder of images. Default is 1. 0 signifies unlimited repetitions.
+
+`-g, --plugin-path [plugin path]`
+
+Plugin path for T1 decompression.
+
+`-G, --device-id [device ID]`
+
+GPU device ID. `-1` = round-robin, `-2` = CPU only. Default: `0`.
+
+`-k, --kernel-build [kernel build options]`
+
+Kernel build options for GPU plugin.
+
+`-z, --duration [duration]`
+
+Duration in seconds for a batch decompress job. `grk_decompress` will exit when duration has been reached.
 
 
 FILES

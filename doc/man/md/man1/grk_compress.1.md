@@ -18,8 +18,8 @@ This program converts non-`JPEG 2000` images to the `JPEG 2000` format.
 
 * Supported input formats:  `JPEG`, `BMP`, `PNM`, `PGX`, `PNG`, `RAW`, `RAWL` and `TIFF`
 * Supported input image extensions:  `jpg`, `.jpeg`, `.bmp`, `.pgm`, `.pgx`, `.pnm`, `.ppm`, `.pam`, `.png`, `.raw`, `.rawl`, `.tif` and `.tiff`
-* Supported output formats: `JP2` and `J2K`/`J2C`
-* Supported output image extensions: `.jp2` and `.j2k`/`.j2c`
+* Supported output formats: `JP2`, `J2K`/`J2C`, `JPH` and `JHC`
+* Supported output image extensions: `.jp2`, `.j2k`/`.j2c`, `.jph` and `.jhc`
 * For `PNG` the library must have `libpng` available.
 * For `TIF/TIFF` the library must have `libtiff` available.
 * For `JPG/JPEG` the library must have a `libjpeg` variant available.
@@ -33,7 +33,7 @@ stdin
 Input from `stdin` is supported for the following formats: `PNG`, `JPG`, `RAW` and `RAWL`.  To read from `stdin`,
 make sure that the `-i` parameter is **not** present, and that the `--in-fmt` parameter is set to one of the supported formats listed above.
 
-Embedded ICC Profile (JP2 Only)
+Embedded ICC Profile (JP2\JPH Only)
 
 If there is an embedded ICC profile in the input file, then the profile will be stored in the compressed file.
 
@@ -41,7 +41,7 @@ IPTC (JP2 Only)
 
 If an input `TIF/TIFF` file contains `IPTC` metadata, this metadata will be stored in the compressed file.
 
-XMP (JP2 Only)
+XMP (JP2\JPH Only)
 
 If an input `TIF/TIFF` or `PNG` file contains `XMP` metadata, this metadata will be stored in the compressed file.
 
@@ -97,7 +97,7 @@ Input file. Either this argument or the `--batch-src` argument described below i
 
 `-o, --out-file [file]`
 
-Output file. Required when using `-i` option. Valid output image extensions are `J2K`, `JP2` and `J2C`.
+Output file. Required when using `-i` option. Valid output image extensions are `J2K`, `JP2`, `J2C`, `JPH` and `JHC`.
 
 `-y, --batch-src [input directory]`
 
@@ -107,9 +107,9 @@ Path to the folder where the images to be compressed are stored. Either this arg
 
 Output directory where compressed files are stored. Only relevant when the `--batch-src` flag is set. Default: same directory as specified by `-y`.
 
-`-O, --out-fmt [J2K|J2C|JP2]`
+`-O, --out-fmt [J2K|J2C|JP2|JPH|JHC]`
 
-Output format used to compress the images read from the directory specified with `--batch-src`. Required when `--batch-src` option is used. Supported formats are `J2K`, `J2C`, and `JP2`.
+Output format used to compress the images read from the directory specified with `--batch-src`. Required when `--batch-src` option is used. Supported formats are `J2K`, `J2C`, `JP2`, `JPH` and `JHC`.
 
 `-K, --in-fmt [pbm|pgm|ppm|pnm|pam|pgx|png|bmp|tif|raw|rawl|jpg]`
 
@@ -337,11 +337,23 @@ Log to file. File name will be set to `output file name`
 
 Number of threads used for T1 compression. Default is total number of logical cores.
 
-`-J, -duration [duration]`
+`-J, --server [server URL]`
+
+Server URL.
+
+`-j, --license [license]`
+
+License key.
+
+`-k, --kernel-build [kernel build options]`
+
+Kernel build options for GPU plugin.
+
+`-l, --duration [duration]`
 
 Duration in seconds for a batch compress job. `grk_compress` will exit when duration has been reached.
 
-`-e, -repetitions [number of repetitions]`
+`-e, --repetitions [number of repetitions]`
 
 Number of repetitions, for either a single image, or a folder of images. Default value is `1`. Unlimited repetitions are specified by a value of `0`.
 
