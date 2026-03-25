@@ -55,13 +55,13 @@ namespace  grk::t1::ojph {
      *  \li \c cwd_len : 3bits -> the codeword length of the VLC codeword;    
      *                   the VLC cwd is in the LSB of bitstream              \n
      *  \li \c u_off   : 1bit  -> u_offset, which is 1 if u value is not 0   \n
-     *  \li \c rho     : 4bits -> signficant samples within a quad           \n
+     *  \li \c rho     : 4bits -> significant samples within a quad           \n
      *  \li \c e_1     : 4bits -> EMB e_1                                    \n
      *  \li \c e_k     : 4bits -> EMB e_k                                    \n
      *                                                                       \n
      *  The table index is 10 bits and composed of two parts:                \n
      *  The 7 LSBs contain a codeword which might be shorter than 7 bits;    
-     *  this word is the next decoable bits in the bitstream.                \n
+     *  this word is the next decodable bits in the bitstream.                \n
      *  The 3 MSB is the context of for the codeword.                        \n
      */
 
@@ -75,7 +75,7 @@ namespace  grk::t1::ojph {
     //************************************************************************/
     /** @defgroup uvlc_decoding_tables_grp VLC decoding tables
      *  @{
-     *  UVLC decoding tables used to partiallu decode u values from UVLC     
+     *  UVLC decoding tables used to partially decode u values from UVLC     
      *  codewords.                                                           \n
      *  The table index is 8 (or 9)  bits and composed of two parts:         \n
      *  The 6 LSBs carries the head of the VLC to be decoded. Up to 6 bits to 
@@ -84,11 +84,20 @@ namespace  grk::t1::ojph {
      *  + 4 * mel event for initial row of quads when needed                 \n
      *                                                                       \n
      *  Each entry contains, starting from the LSB                           \n
-     *  \li \c total prefix length for quads 0 and 1 (3 bits)                \n
-     *  \li \c total suffix length for quads 0 and 1 (4 bits)                \n
+     *  \li \c total total prefix length for quads 0 and 1 (3 bits)          \n
+     *  \li \c total total suffix length for quads 0 and 1 (4 bits)          \n
      *  \li \c suffix length for quad 0 (3 bits)                             \n
      *  \li \c prefix for quad 0 (3 bits)                                    \n
      *  \li \c prefix for quad 1 (3 bits)                                    \n
+     *                                                                       \n
+     *  Another table is uvlc_bias, which is needed to correctly decode the 
+     *  extension u_ext for initial row of quads. Under certain condition,
+     *  we deduct 1 or 2 from u_q0 and u_q1 before encoding them; so for us 
+     *  to know that decoding u_ext is needed, we recreate the u_q0 and u_q1
+     *  that we actually encoded.                                            \n
+     *  For simplicity, we use the same index as before                      \n
+     *  \li \c u_q0 bias is 2 bits                                           \n
+     *  \li \c u_q1 bias is 2 bits                                           \n
      */
 
     /// @brief uvlc_tbl0 contains decoding information for initial row of quads
@@ -96,6 +105,8 @@ namespace  grk::t1::ojph {
     /// @brief uvlc_tbl1 contains decoding information for non-initial row of 
     ///        quads
     ui16 uvlc_tbl1[256] = { 0 };
+    /// @brief uvlc_bias contains decoding info. for initial row of quads
+    ui8 uvlc_bias[256+64] = { 0 };
     /// @}
 
     //************************************************************************/
@@ -109,7 +120,7 @@ namespace  grk::t1::ojph {
 
       //Data in the table is arranged in this format (taken from the standard)
       // c_q is the context for a quad
-      // rho is the signficance pattern for a quad
+      // rho is the significance pattern for a quad
       // u_off indicate if u value is 0 (u_off is 0), or communicated
       // e_k, e_1 EMB patterns
       // cwd VLC codeword
@@ -132,7 +143,7 @@ namespace  grk::t1::ojph {
       if (debug) memset(vlc_tbl0, 0, sizeof(vlc_tbl0)); //unnecessary
 
       // this is to convert table entries into values for decoder look up
-      // There can be at most 1024 possibilites, not all of them are valid.
+      // There can be at most 1024 possibilities, not all of them are valid.
       // 
       for (int i = 0; i < 1024; ++i)
       {
@@ -199,8 +210,10 @@ namespace  grk::t1::ojph {
         ui32 mode = i >> 6;
         ui32 vlc = i & 0x3F;
 
-        if (mode == 0)      // both u_off are 0
+        if (mode == 0) {      // both u_off are 0
           uvlc_tbl0[i] = 0;
+          uvlc_bias[i] = 0;
+        }
         else if (mode <= 2) // u_off are either 01 or 10
         {
           ui32 d = dec[vlc & 0x7];   //look at the least significant 3 bits
@@ -232,6 +245,7 @@ namespace  grk::t1::ojph {
             total_suffix = u0_suffix_len;
             u0 = d0 >> 5;
             u1 = (vlc & 1) + 1;
+            uvlc_bias[i] = 4; // 0b00 for u0 and 0b01 for u1
           }
           else
           {
@@ -240,6 +254,7 @@ namespace  grk::t1::ojph {
             total_suffix = u0_suffix_len + ((d1 >> 2) & 0x7);
             u0 = d0 >> 5;
             u1 = d1 >> 5;
+            uvlc_bias[i] = 0;
           }
 
           uvlc_tbl0[i] = (ui16)(total_prefix | 
@@ -265,6 +280,7 @@ namespace  grk::t1::ojph {
                                (u0_suffix_len << 7) |
                                (u0 << 10) |
                                (u1 << 13));
+          uvlc_bias[i] = 10; // 0b10 for u0 and 0b10 for u1
         }
       }
 

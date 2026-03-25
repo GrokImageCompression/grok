@@ -16,6 +16,7 @@
  */
 
 #include "simd.h"
+#include "../part15/common/ojph_arch.h"
 #include "../part15/common/ojph_mem.h"
 #include "coding/ojph_block_decoder.h"
 #include "coding/ojph_block_encoder.h"
@@ -23,6 +24,69 @@
 #include "CoderOJPH.h"
 
 const uint8_t grk_cblk_dec_compressed_data_pad_ht = 8;
+
+// Function pointer types for SIMD-dispatched block coding
+using decode_cb_t = bool (*)(grk::t1::ojph::ui8*, grk::t1::ojph::ui32*,
+                             grk::t1::ojph::ui32, grk::t1::ojph::ui32,
+                             grk::t1::ojph::ui32, grk::t1::ojph::ui32,
+                             grk::t1::ojph::ui32, grk::t1::ojph::ui32,
+                             grk::t1::ojph::ui32, bool);
+using encode_cb_t = void (*)(grk::t1::ojph::ui32*, grk::t1::ojph::ui32,
+                             grk::t1::ojph::ui32, grk::t1::ojph::ui32,
+                             grk::t1::ojph::ui32, grk::t1::ojph::ui32,
+                             grk::t1::ojph::ui32*,
+                             grk::t1::ojph::mem_elastic_allocator*,
+                             grk::t1::ojph::coded_lists*&);
+
+static decode_cb_t dispatch_decoder()
+{
+  using namespace grk::t1::ojph;
+  using namespace grk::t1::ojph::local;
+
+#ifndef OJPH_DISABLE_SIMD
+#if defined(OJPH_ARCH_X86_64) || defined(OJPH_ARCH_I386)
+#ifndef OJPH_DISABLE_AVX2
+  if(get_cpu_ext_level() >= X86_CPU_EXT_LEVEL_AVX2)
+    return ojph_decode_codeblock_avx2;
+#endif
+#ifndef OJPH_DISABLE_SSSE3
+  if(get_cpu_ext_level() >= X86_CPU_EXT_LEVEL_SSSE3)
+    return ojph_decode_codeblock_ssse3;
+#endif
+#endif
+#endif
+  return ojph_decode_codeblock32;
+}
+
+static encode_cb_t dispatch_encoder()
+{
+  using namespace grk::t1::ojph;
+  using namespace grk::t1::ojph::local;
+
+#ifndef OJPH_DISABLE_SIMD
+#if defined(OJPH_ARCH_X86_64) || defined(OJPH_ARCH_I386)
+#if defined(OJPH_ARCH_X86_64) && !defined(OJPH_DISABLE_AVX512)
+  if(get_cpu_ext_level() >= X86_CPU_EXT_LEVEL_AVX512)
+  {
+    initialize_block_encoder_tables_avx512();
+    return ojph_encode_codeblock_avx512;
+  }
+#endif
+#ifndef OJPH_DISABLE_AVX2
+  if(get_cpu_ext_level() >= X86_CPU_EXT_LEVEL_AVX2)
+  {
+    initialize_block_encoder_tables_avx2();
+    return ojph_encode_codeblock_avx2;
+  }
+#endif
+#endif
+#endif
+  initialize_block_encoder_tables();
+  return ojph_encode_codeblock32;
+}
+
+static decode_cb_t g_decode_cb = dispatch_decoder();
+static encode_cb_t g_encode_cb = dispatch_encoder();
 
 namespace grk::t1::ojph
 {
@@ -101,8 +165,8 @@ bool T1OJPH::compress(CompressBlockExec* block)
   uint16_t h = (uint16_t)cblk->height();
 
   uint32_t pass_length[2] = {0, 0};
-  t1::ojph::local::ojph_encode_codeblock((uint32_t*)unencoded_data, block->k_msbs, 1, w, h, w,
-                                         pass_length, elastic_alloc, next_coded);
+  g_encode_cb((uint32_t*)unencoded_data, block->k_msbs, 1, w, h, w,
+              pass_length, elastic_alloc, next_coded);
 
   cblk->setNumPasses(1);
   cblk->getPass(0)->len_ = (uint16_t)pass_length[0];
@@ -143,7 +207,7 @@ bool T1OJPH::decompress(DecompressBlockExec* block)
     bool rc = false;
     if(num_passes && cblk->getDataChunksLength())
     {
-      rc = t1::ojph::local::ojph_decode_codeblock(
+      rc = g_decode_cb(
           actual_coded_data, (uint32_t*)unencoded_data, block->k_msbs, (uint32_t)num_passes,
           (uint32_t)cblk->getDataChunksLength(), 0, cblk->width(), cblk->height(), stride, false);
     }

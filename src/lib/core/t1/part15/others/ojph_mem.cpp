@@ -2,21 +2,21 @@
 // This software is released under the 2-Clause BSD license, included
 // below.
 //
-// Copyright (c) 2019, Aous Naman 
+// Copyright (c) 2019, Aous Naman
 // Copyright (c) 2019, Kakadu Software Pty Ltd, Australia
 // Copyright (c) 2019, The University of New South Wales, Australia
-// 
+//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are
 // met:
-// 
+//
 // 1. Redistributions of source code must retain the above copyright
 // notice, this list of conditions and the following disclaimer.
-// 
+//
 // 2. Redistributions in binary form must reproduce the above copyright
 // notice, this list of conditions and the following disclaimer in the
 // documentation and/or other materials provided with the distribution.
-// 
+//
 // THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS
 // IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
 // TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
@@ -37,21 +37,7 @@
 
 
 #include <new>
-#ifndef _MSC_VER
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wconversion"
-#pragma GCC diagnostic ignored "-Wsign-conversion"
-#pragma GCC diagnostic ignored "-Wunused-parameter"
-#pragma GCC diagnostic ignored "-Wunused-variable"
-#pragma GCC diagnostic ignored "-Wsign-compare"
-#pragma GCC diagnostic ignored "-Wparentheses"
-#endif
-
 #include "ojph_mem.h"
-
-#ifndef _MSC_VER
-#pragma GCC diagnostic pop
-#endif
 
 namespace  grk::t1::ojph {
 
@@ -65,36 +51,32 @@ namespace  grk::t1::ojph {
 
   ////////////////////////////////////////////////////////////////////////////
   template<>
-  void line_buf::finalize_alloc<si32>(mem_fixed_allocator *p)
-  {
-    assert(p != 0 && size != 0);
-    i32 = p->post_alloc_data<si32>(size, pre_size);
-  }
-
-  ////////////////////////////////////////////////////////////////////////////
-  template<>
-  void line_buf::finalize_alloc<float>(mem_fixed_allocator *p)
-  {
-    assert(p != 0 && size != 0);
-    f32 = p->post_alloc_data<float>(size, pre_size);
-  }
-
-  ////////////////////////////////////////////////////////////////////////////
-  template<>
   void line_buf::wrap(si32 *buffer, size_t num_ele, ui32 pre_size)
   {
-    i32 = buffer;
+    this->i32 = buffer;
     this->size = num_ele;
     this->pre_size = pre_size;
+    this->flags = LFT_32BIT | LFT_INTEGER;
   }
 
   ////////////////////////////////////////////////////////////////////////////
   template<>
   void line_buf::wrap(float *buffer, size_t num_ele, ui32 pre_size)
   {
-    f32 = buffer;
+    this->f32 = buffer;
     this->size = num_ele;
     this->pre_size = pre_size;
+    this->flags = LFT_32BIT;
+  }
+
+  ////////////////////////////////////////////////////////////////////////////
+  template<>
+  void line_buf::wrap(si64 *buffer, size_t num_ele, ui32 pre_size)
+  {
+    this->i64 = buffer;
+    this->size = num_ele;
+    this->pre_size = pre_size;
+    this->flags = LFT_64BIT | LFT_INTEGER;
   }
 
   ////////////////////////////////////////////////////////////////////////////
@@ -106,33 +88,56 @@ namespace  grk::t1::ojph {
   ////////////////////////////////////////////////////////////////////////////
 
   ////////////////////////////////////////////////////////////////////////////
+  mem_elastic_allocator::stores_list*
+  mem_elastic_allocator::allocate(mem_elastic_allocator::stores_list** list,
+                                  ui32 extended_bytes)
+  {
+    ui32 bytes = ojph_max(extended_bytes, chunk_size);
+    if (avail != NULL && avail->orig_size >= bytes)
+    {
+      *list = avail;
+      avail = avail->next_store;
+      (*list)->restart();
+      return *list;
+    }
+    else
+    {
+      ui32 store_bytes = stores_list::eval_store_bytes(bytes);
+      *list = (stores_list*) malloc(store_bytes);
+      total_allocated += store_bytes;
+      return new (*list) stores_list(bytes);
+    }
+  }
+
+  ////////////////////////////////////////////////////////////////////////////
   void mem_elastic_allocator::get_buffer(ui32 needed_bytes, coded_lists* &p)
   {
-    ui32 extended_bytes = needed_bytes + (ui32)sizeof(coded_lists);
+    // Round up so each coded_lists (and coded_lists::buf) stays 16-byte aligned
+    // within the store; avoids alignment fault on 32-bit architectures
+    ui32 raw = needed_bytes + (ui32)sizeof (coded_lists);
+    ui32 extended_bytes = (raw + 15u) & ~15u;
 
     if (store == NULL)
-    {
-      ui32 bytes = ojph_max(extended_bytes, chunk_size);
-      ui32 store_bytes = stores_list::eval_store_bytes(bytes);
-      store = (stores_list*)malloc(store_bytes);
-      cur_store = store = new (store) stores_list(bytes);
-      total_allocated += store_bytes;
-    }
-
-    if (cur_store->available < extended_bytes)
-    {
-      ui32 bytes = ojph_max(extended_bytes, chunk_size);
-      ui32 store_bytes = stores_list::eval_store_bytes(bytes);
-      cur_store->next_store = (stores_list*)malloc(store_bytes);
-      cur_store = new (cur_store->next_store) stores_list(bytes);
-      total_allocated += store_bytes;
-    }
+      cur_store = store = allocate(&store, extended_bytes);
+    else if (cur_store->available < extended_bytes)
+      cur_store = allocate(&cur_store->next_store, extended_bytes);
 
     p = new (cur_store->data) coded_lists(needed_bytes);
 
     assert(cur_store->available >= extended_bytes);
     cur_store->available -= extended_bytes;
     cur_store->data += extended_bytes;
+  }
+
+  ////////////////////////////////////////////////////////////////////////////
+  void mem_elastic_allocator::restart()
+  {
+    // move to the end of avail
+    stores_list** p = &avail;
+    while (*p != NULL)
+      p = &((*p)->next_store);
+    *p = store;
+    cur_store = store = NULL;
   }
 
 }

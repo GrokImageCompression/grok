@@ -160,9 +160,12 @@ set(GROK_LIBRARY_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/CoderFactory.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/CoderOJPH.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/coding/ojph_block_common.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/coding/ojph_block_decoder.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/coding/ojph_block_decoder32.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/coding/ojph_block_decoder64.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/coding/ojph_block_encoder.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/others/ojph_arch.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/others/ojph_mem.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/others/ojph_message.cpp
 
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/part1/block_coder/BlockCoderDec.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/part1/block_coder/BlockCoderEnc.cpp
@@ -172,6 +175,43 @@ set(GROK_LIBRARY_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/part1/block_coder/mqcoder/mqc_backup.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/part1/block_coder/mqcoder/mqc_state.cpp
 )
+
+# OpenJPH SIMD-accelerated block coding files
+if(NOT CMAKE_SYSTEM_NAME STREQUAL Emscripten)
+  if(CMAKE_SYSTEM_PROCESSOR MATCHES "(x86_64|AMD64|amd64|i[3-6]86)")
+    # SSSE3-accelerated decoder
+    list(APPEND GROK_LIBRARY_SRCS
+      ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/coding/ojph_block_decoder_ssse3.cpp)
+    # AVX2-accelerated decoder and encoder
+    list(APPEND GROK_LIBRARY_SRCS
+      ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/coding/ojph_block_decoder_avx2.cpp
+      ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/coding/ojph_block_encoder_avx2.cpp)
+    # AVX512-accelerated encoder
+    list(APPEND GROK_LIBRARY_SRCS
+      ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/coding/ojph_block_encoder_avx512.cpp)
+
+    if(MSVC)
+      set_source_files_properties(
+        ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/coding/ojph_block_decoder_avx2.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/coding/ojph_block_encoder_avx2.cpp
+        PROPERTIES COMPILE_FLAGS "/arch:AVX2")
+      set_source_files_properties(
+        ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/coding/ojph_block_encoder_avx512.cpp
+        PROPERTIES COMPILE_FLAGS "/arch:AVX512")
+    else()
+      set_source_files_properties(
+        ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/coding/ojph_block_decoder_ssse3.cpp
+        PROPERTIES COMPILE_FLAGS -mssse3)
+      set_source_files_properties(
+        ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/coding/ojph_block_decoder_avx2.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/coding/ojph_block_encoder_avx2.cpp
+        PROPERTIES COMPILE_FLAGS -mavx2)
+      set_source_files_properties(
+        ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/coding/ojph_block_encoder_avx512.cpp
+        PROPERTIES COMPILE_FLAGS "-mavx512f -mavx512cd")
+    endif()
+  endif()
+endif()
 
 add_definitions(-DSPDLOG_COMPILED_LIB)
 if (GRK_BUILD_PLUGIN_LOADER)

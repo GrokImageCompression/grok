@@ -50,13 +50,24 @@ namespace  grk::t1::ojph {
 
     // generic decoder
     bool
-      ojph_decode_codeblock(ui8* coded_data, ui32* decoded_data,
+      ojph_decode_codeblock32(ui8* coded_data, ui32* decoded_data,
+        ui32 missing_msbs, ui32 num_passes, ui32 lengths1, ui32 lengths2,
+        ui32 width, ui32 height, ui32 stride, bool stripe_causal);
+
+    bool
+      ojph_decode_codeblock64(ui8* coded_data, ui64* decoded_data,
         ui32 missing_msbs, ui32 num_passes, ui32 lengths1, ui32 lengths2,
         ui32 width, ui32 height, ui32 stride, bool stripe_causal);
 
     // SSSE3-accelerated decoder
     bool
       ojph_decode_codeblock_ssse3(ui8* coded_data, ui32* decoded_data,
+        ui32 missing_msbs, ui32 num_passes, ui32 lengths1, ui32 lengths2,
+        ui32 width, ui32 height, ui32 stride, bool stripe_causal);
+
+    // AVX2-accelerated decoder
+    bool
+      ojph_decode_codeblock_avx2(ui8* coded_data, ui32* decoded_data,
         ui32 missing_msbs, ui32 num_passes, ui32 lengths1, ui32 lengths2,
         ui32 width, ui32 height, ui32 stride, bool stripe_causal);
 
