@@ -579,6 +579,12 @@ typedef struct _grk_stream_params
   char custom_header[1024]; // Single header: fits within 8KB total limit
   char region[64]; // Region code: max 50 chars + buffer
 
+  /* 5 S3 Endpoint Configuration (for S3-compatible services like MinIO) */
+  char s3_endpoint[256]; // Custom S3 endpoint URL (e.g. "http://localhost:9000")
+  int8_t s3_use_https; // 0 = auto (default), 1 = HTTPS, -1 = HTTP
+  int8_t s3_use_virtual_hosting; // 0 = auto (default), 1 = virtual-hosted, -1 = path-style
+  bool s3_no_sign_request; // true = skip authentication (public buckets)
+
 } grk_stream_params;
 
 /**

@@ -370,11 +370,20 @@ private:
     requestPayer_ = EnvVarManager::get_string("AWS_REQUEST_PAYER");
 
     // AWS_NO_SIGN_REQUEST — anonymous access for public buckets
-    if(EnvVarManager::test_bool("AWS_NO_SIGN_REQUEST"))
+    if(auth_.s3_no_sign_request_ || EnvVarManager::test_bool("AWS_NO_SIGN_REQUEST"))
     {
       noSignRequest_ = true;
       resolveRegion("default");
       grklog.debug("S3Fetcher: unsigned requests (AWS_NO_SIGN_REQUEST)");
+      return;
+    }
+
+    // 0. Pre-configured credentials (e.g. passed by GDAL after resolving its own auth chain)
+    if(!auth_.username_.empty() && !auth_.password_.empty())
+    {
+      if(auth_.region_.empty())
+        resolveRegion("default");
+      grklog.debug("S3Fetcher: credentials from pre-configured auth");
       return;
     }
 
@@ -1194,8 +1203,10 @@ private:
   //  URL / endpoint helpers
   // ═══════════════════════════════════════════════════════════════════
 
-  static bool useHttps()
+  bool useHttps() const
   {
+    if(auth_.s3_use_https_ != 0)
+      return auth_.s3_use_https_ > 0;
     return EnvVarManager::get_string("AWS_HTTPS", "YES") != "NO";
   }
 
@@ -1205,8 +1216,10 @@ private:
     return port != defaultPort ? ":" + std::to_string(port) : "";
   }
 
-  bool isVirtualHostingEnabled()
+  bool isVirtualHostingEnabled() const
   {
+    if(auth_.s3_use_virtual_hosting_ != 0)
+      return auth_.s3_use_virtual_hosting_ > 0;
     return EnvVarManager::test_bool("AWS_VIRTUAL_HOSTING");
   }
 
@@ -1215,7 +1228,14 @@ private:
     bool https = useHttps();
     int defaultPort = https ? 443 : 80;
 
-    if(auto s3Endpoint = EnvVarManager::get("AWS_S3_ENDPOINT"))
+    // Check pre-configured endpoint first, then env var
+    std::optional<std::string> s3Endpoint;
+    if(!auth_.s3_endpoint_.empty())
+      s3Endpoint = auth_.s3_endpoint_;
+    else
+      s3Endpoint = EnvVarManager::get("AWS_S3_ENDPOINT");
+
+    if(s3Endpoint)
     {
       std::string endpoint = *s3Endpoint;
       if(endpoint.starts_with("https://"))
@@ -1289,9 +1309,13 @@ private:
       }
     }
 
-    // Determine S3 endpoint suffix
-    std::string s3Endpoint =
-        EnvVarManager::get_string("AWS_S3_ENDPOINT", "s3." + auth_.region_ + ".amazonaws.com");
+    // Determine S3 endpoint suffix (check pre-configured first, then env var)
+    std::string s3Endpoint;
+    if(!auth_.s3_endpoint_.empty())
+      s3Endpoint = auth_.s3_endpoint_;
+    else
+      s3Endpoint =
+          EnvVarManager::get_string("AWS_S3_ENDPOINT", "s3." + auth_.region_ + ".amazonaws.com");
     if(s3Endpoint.starts_with("https://"))
       s3Endpoint = s3Endpoint.substr(8);
     else if(s3Endpoint.starts_with("http://"))

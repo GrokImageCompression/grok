@@ -45,6 +45,10 @@ struct FetchAuth
   std::string custom_header_;
   std::string region_;
   std::string session_token_; // Added for AWS_SESSION_TOKEN
+  std::string s3_endpoint_; // Custom S3 endpoint URL (e.g. MinIO)
+  int8_t s3_use_https_ = 0; // 0 = auto, 1 = HTTPS, -1 = HTTP
+  int8_t s3_use_virtual_hosting_ = 0; // 0 = auto, 1 = virtual-hosted, -1 = path-style
+  bool s3_no_sign_request_ = false; // true = skip authentication
   FetchAuth() = default;
   FetchAuth(const std::string& u, const std::string& p, const std::string& t, const std::string& h,
             const std::string& r = "", const std::string& st = "") // Added session_token parameter

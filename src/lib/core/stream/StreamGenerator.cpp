@@ -124,6 +124,17 @@ IStream* StreamGenerator::createCurlFetchStream(void)
     auth.username_ = streamParams_.username;
   if(streamParams_.password[0])
     auth.password_ = streamParams_.password;
+  if(streamParams_.bearer_token[0])
+    auth.session_token_ = streamParams_.bearer_token;
+  if(streamParams_.region[0])
+    auth.region_ = streamParams_.region;
+  if(streamParams_.custom_header[0])
+    auth.custom_header_ = streamParams_.custom_header;
+  if(streamParams_.s3_endpoint[0])
+    auth.s3_endpoint_ = streamParams_.s3_endpoint;
+  auth.s3_use_https_ = streamParams_.s3_use_https;
+  auth.s3_use_virtual_hosting_ = streamParams_.s3_use_virtual_hosting;
+  auth.s3_no_sign_request_ = streamParams_.s3_no_sign_request;
   auto fetcher = new S3Fetcher();
   fetcher->init(streamParams_.file, auth);
   uint64_t dataLen = fetcher->size();

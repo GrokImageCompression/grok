@@ -214,7 +214,7 @@ if(UNIX)
 endif(UNIX)
 target_link_libraries(${GROK_CORE_NAME} PRIVATE hwy ${LCMS_LIBNAME} )
 if(GRK_ENABLE_LIBCURL AND GRK_HAVE_LIBCURL)
-  target_link_libraries(${GROK_CORE_NAME} PRIVATE CURL::libcurl)
+  target_link_libraries(${GROK_CORE_NAME} PRIVATE ${GRK_CURL_TARGET})
   target_include_directories(${GROK_CORE_NAME} PRIVATE
       ${CURL_INCLUDE_DIRS}
       ${curl_SOURCE_DIR}/include
