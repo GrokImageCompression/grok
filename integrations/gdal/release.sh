@@ -9,10 +9,10 @@ git checkout master
 cd "$GROK_ROOT"
 mkdir -p build
 cd build
-cmake .. -DCMAKE_BUILD_TYPE=Release -DGRK_ENABLE_LIBCURL=1
+cmake .. -DCMAKE_BUILD_TYPE=Release -DGRK_ENABLE_LIBCURL=1 -DCMAKE_INSTALL_PREFIX=$HOME/bin/grok
 make -j$(nproc) && make install -j$(nproc)
 
 cd $HOME/src/gdal
 mkdir -p build && cd build
-cmake .. -DCMAKE_BUILD_TYPE=Release
+cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH=$HOME/bin/grok
 make -j$(nproc)

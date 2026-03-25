@@ -8,9 +8,9 @@ cd $HOME/src/grok-test-data
 git checkout master-debug
 cd "$GROK_ROOT"
 mkdir -p build && cd build
-cmake .. -DCMAKE_BUILD_TYPE=Debug -DGRK_ENABLE_LIBCURL=1
+cmake .. -DCMAKE_BUILD_TYPE=Debug -DGRK_ENABLE_LIBCURL=1 -DCMAKE_INSTALL_PREFIX=$HOME/bin/grok
 make -j$(nproc) && make install -j$(nproc)
 cd $HOME/src/gdal
 mkdir -p build && cd build
-cmake .. -DCMAKE_BUILD_TYPE=Debug
+cmake .. -DCMAKE_BUILD_TYPE=Debug -DCMAKE_PREFIX_PATH=$HOME/bin/grok
 make -j$(nproc)
