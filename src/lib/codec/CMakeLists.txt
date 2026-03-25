@@ -57,8 +57,48 @@ endif()
 
 add_definitions(-DSPDLOG_COMPILED_LIB)
 
+# Generate help text headers from markdown man pages
+find_program(GRK_PYTHON3 NAMES python3 python)
+if(GRK_PYTHON3)
+  set(GEN_HELP_SCRIPT ${GROK_SOURCE_DIR}/scripts/gen_help_text.py)
+  set(GEN_HELP_OUTPUT_DIR ${CMAKE_CURRENT_BINARY_DIR}/generated)
+
+  add_custom_command(
+    OUTPUT ${GEN_HELP_OUTPUT_DIR}/compress_help.h
+    COMMAND ${GRK_PYTHON3} ${GEN_HELP_SCRIPT}
+      ${GROK_SOURCE_DIR}/doc/man/md/man1/grk_compress.1.md
+      ${GEN_HELP_OUTPUT_DIR}/compress_help.h
+      compress_help_text
+    DEPENDS ${GROK_SOURCE_DIR}/doc/man/md/man1/grk_compress.1.md ${GEN_HELP_SCRIPT}
+    COMMENT "Generating compress help text from markdown"
+  )
+
+  add_custom_command(
+    OUTPUT ${GEN_HELP_OUTPUT_DIR}/decompress_help.h
+    COMMAND ${GRK_PYTHON3} ${GEN_HELP_SCRIPT}
+      ${GROK_SOURCE_DIR}/doc/man/md/man1/grk_decompress.1.md
+      ${GEN_HELP_OUTPUT_DIR}/decompress_help.h
+      decompress_help_text
+    DEPENDS ${GROK_SOURCE_DIR}/doc/man/md/man1/grk_decompress.1.md ${GEN_HELP_SCRIPT}
+    COMMENT "Generating decompress help text from markdown"
+  )
+
+  add_custom_target(generate_help_headers
+    DEPENDS
+      ${GEN_HELP_OUTPUT_DIR}/compress_help.h
+      ${GEN_HELP_OUTPUT_DIR}/decompress_help.h
+  )
+else()
+  message(WARNING "Python3 not found - help text headers will not be regenerated from markdown")
+endif()
+
 add_library(${GROK_CODEC_NAME} ${GROK_CODEC_SRCS})
 set(INSTALL_LIBS ${GROK_CODEC_NAME})
+
+if(GRK_PYTHON3)
+  add_dependencies(${GROK_CODEC_NAME} generate_help_headers)
+  target_include_directories(${GROK_CODEC_NAME} PRIVATE ${GEN_HELP_OUTPUT_DIR})
+endif()
 
 target_link_libraries(${GROK_CODEC_NAME} PRIVATE ${GROK_CORE_NAME})
 if(GROK_HAVE_LIBPNG)

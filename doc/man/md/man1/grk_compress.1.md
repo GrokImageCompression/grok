@@ -357,6 +357,14 @@ Duration in seconds for a batch compress job. `grk_compress` will exit when dura
 
 Number of repetitions, for either a single image, or a folder of images. Default value is `1`. Unlimited repetitions are specified by a value of `0`.
 
+`-g, --plugin-path [plugin path]`
+
+Path to Grok plugin, which handles T1 compression. Default search path for plugin is in same folder as `grk_compress` binary.
+
+`-G, --device-id [device ID]`
+
+For Grok plugin running on multi-GPU system. Specifies which single GPU accelerator to run codec on. If the flag is set to `-1`, all GPUs are used in round-robin scheduling. If set to `-2`, then plugin is disabled and compression is done on the CPU. Default: `0`.
+
 FILES
 =====
 
