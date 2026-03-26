@@ -23,6 +23,10 @@
 #include "ojph_mem.h"
 #include "CoderOJPH.h"
 
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+
 const uint8_t grk_cblk_dec_compressed_data_pad_ht = 8;
 
 // Function pointer types for SIMD-dispatched block coding
@@ -93,7 +97,8 @@ namespace grk::t1::ojph
 T1OJPH::T1OJPH(bool isCompressor, uint32_t maxCblkW, uint32_t maxCblkH)
     : coded_data_size(isCompressor ? 0 : (uint32_t)(maxCblkW * maxCblkH * sizeof(int32_t))),
       coded_data(isCompressor ? nullptr : new uint8_t[coded_data_size]),
-      unencoded_data_size(maxCblkW * maxCblkH), unencoded_data(new int32_t[unencoded_data_size]),
+      unencoded_data_size(((maxCblkW + 7u) & ~7u) * maxCblkH),
+      unencoded_data(new int32_t[unencoded_data_size]),
       allocator(new mem_fixed_allocator), elastic_alloc(new mem_elastic_allocator(1048576))
 {
   if(!isCompressor)
@@ -182,7 +187,7 @@ bool T1OJPH::decompress(DecompressBlockExec* block)
   auto cblk = block->cblk;
   if(!cblk->area())
     return true;
-  uint16_t stride = (uint16_t)cblk->width();
+  uint16_t stride = (uint16_t)((cblk->width() + 7u) & ~7u);
   if(!cblk->dataChunksEmpty())
   {
     size_t total_seg_len = 2 * grk_cblk_dec_compressed_data_pad_ht + cblk->getDataChunksLength();
