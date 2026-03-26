@@ -97,7 +97,7 @@ Input file. Either this argument or the `--batch-src` argument described below i
 
 `-o, --out-file [file]`
 
-Output file. Required when using `-i` option. Valid output image extensions are `J2K`, `JP2`, `J2C`, `JPH` and `JHC`.
+Output file. Required when using `-i` option. Valid output image extensions are `J2K`, `JP2`, `J2C`, `JPH`, `JHC`, `MJ2` and `MJP2`.
 
 `-y, --batch-src [input directory]`
 
