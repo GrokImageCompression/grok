@@ -18,18 +18,25 @@
 #include <exception>
 #include <stdexcept>
 
+#include "TileFutureManager.h"
+
 #include "CodeStreamLimits.h"
 #include "TileWindow.h"
 #include "Quantizer.h"
 #include "Logger.h"
 #include "buffer.h"
 #include "GrkObjectWrapper.h"
+#include "FlowComponent.h"
 #include "IStream.h"
 #include "StreamIO.h"
+#include "MarkerCache.h"
+#include "FetchCommon.h"
+#include "TPFetchSeq.h"
 #include "GrkImageMeta.h"
 #include "GrkImage.h"
 #include "ICompressor.h"
 #include "IDecompressor.h"
+#include "MarkerParser.h"
 #include "PLMarker.h"
 #include "SIZMarker.h"
 #include "PPMMarker.h"
@@ -38,14 +45,24 @@ namespace grk
 struct ITileProcessor;
 }
 #include "CodeStream.h"
+#include "PacketLengthCache.h"
+#include "ICoder.h"
+#include "CoderPool.h"
 #include "FileFormatJP2Family.h"
 #include "FileFormatMJ2.h"
 #include "FileFormatMJ2Decompress.h"
+#include "SchedulerExcalibur.h"
+#include "ITileProcessor.h"
+#include "TileCache.h"
+#include "TileCompletion.h"
+#include "CodeStreamDecompress.h"
+#include "MemStream.h"
 
 namespace grk
 {
 
-FileFormatMJ2Decompress::FileFormatMJ2Decompress(IStream* stream) : FileFormatMJ2(stream)
+FileFormatMJ2Decompress::FileFormatMJ2Decompress(IStream* stream)
+    : FileFormatMJ2(stream), decompressParams_{}, decompressParamsSet_(false)
 {
   std::unordered_map<uint32_t, BOX_FUNC> handlers = {
       {MJ2_MOOV, nullptr},
@@ -81,6 +98,12 @@ FileFormatMJ2Decompress::FileFormatMJ2Decompress(IStream* stream) : FileFormatMJ
   headerImage_->meta = grk_image_meta_new();
 }
 
+FileFormatMJ2Decompress::~FileFormatMJ2Decompress()
+{
+  for(auto img : decompressedImages_)
+    grk_unref(img);
+}
+
 GrkImage* FileFormatMJ2Decompress::getHeaderImage(void)
 {
   return headerImage_;
@@ -89,8 +112,12 @@ GrkImage* FileFormatMJ2Decompress::getHeaderImage(void)
 void FileFormatMJ2Decompress::read_version_and_flag(uint8_t** headerData, uint8_t& version,
                                                     uint32_t& flag)
 {
-  grk_read(headerData, &version);
-  grk_read(headerData, &flag, 3);
+  // version (1 byte) + flags (3 bytes) form a 4-byte fullbox header
+  // read as a single 32-bit big-endian value to avoid 3-byte swap issues
+  uint32_t vf;
+  grk_read(headerData, &vf);
+  version = (uint8_t)(vf >> 24);
+  flag = vf & 0x00FFFFFF;
 }
 bool FileFormatMJ2Decompress::read_version_and_flag_check(uint8_t** headerData,
                                                           uint32_t* headerSize, uint8_t maxVersion,
@@ -299,8 +326,8 @@ bool FileFormatMJ2Decompress::read_url(uint8_t* headerData, uint32_t headerSize)
 {
   uint8_t version;
   uint32_t flag;
-  grk_read(&headerData, &headerSize, &version);
-  grk_read(&headerData, &headerSize, &flag, 3);
+  read_version_and_flag(&headerData, version, flag);
+  headerSize -= 4;
   if(version > 0)
   {
     grklog.error("MJ2 version %d not supported", version);
@@ -321,8 +348,8 @@ bool FileFormatMJ2Decompress::read_urn(uint8_t* headerData, uint32_t headerSize)
 {
   uint8_t version;
   uint32_t flag;
-  grk_read(&headerData, &headerSize, &version);
-  grk_read(&headerData, &headerSize, &flag, 3);
+  read_version_and_flag(&headerData, version, flag);
+  headerSize -= 4;
   if(version > 0)
   {
     grklog.error("MJ2 version %d not supported", version);
@@ -621,16 +648,36 @@ bool FileFormatMJ2Decompress::read_stco(uint8_t* headerData, uint32_t headerSize
 GrkImage* FileFormatMJ2Decompress::getImage([[maybe_unused]] uint16_t tile_index,
                                             [[maybe_unused]] bool wait)
 {
+  if(tile_index < decompressedImages_.size())
+    return decompressedImages_[tile_index];
   return headerImage_;
 };
 GrkImage* FileFormatMJ2Decompress::getImage(void)
 {
+  if(!decompressedImages_.empty())
+    return decompressedImages_[0];
   return headerImage_;
 };
-void FileFormatMJ2Decompress::init([[maybe_unused]] grk_decompress_parameters* param) {};
-bool FileFormatMJ2Decompress::decompressTile([[maybe_unused]] uint16_t tile_index)
+void FileFormatMJ2Decompress::init(grk_decompress_parameters* param)
 {
-  return true;
+  FileFormatJP2Family::init(param);
+  if(param)
+  {
+    decompressParams_ = *param;
+    decompressParamsSet_ = true;
+  }
+};
+bool FileFormatMJ2Decompress::decompressTile(uint16_t tile_index)
+{
+  if(!current_track_)
+    return false;
+  if(tile_index >= current_track_->num_samples_)
+  {
+    grklog.error("MJ2: sample index %d out of range (num samples=%d)", tile_index,
+                 current_track_->num_samples_);
+    return false;
+  }
+  return decompressSample(tile_index);
 };
 void FileFormatMJ2Decompress::dump([[maybe_unused]] uint32_t flag,
                                    [[maybe_unused]] FILE* outputFileStream) {};
@@ -642,14 +689,22 @@ bool FileFormatMJ2Decompress::readHeader(grk_header_info* header_info)
     return false;
   if(current_track_)
   {
+    // seek to beginning of file to get base pointer for absolute STCO offsets
+    stream_->seek(0);
+    auto basePtr = stream_->currPtr();
     for(const auto& sample : current_track_->samples_)
     {
-      auto ptr = stream_->currPtr() + sample.offset_;
+      auto ptr = basePtr + sample.offset_;
       // cross-check sample size with box length
       // as long as box is not XL
       uint32_t len;
       grk_read(ptr, &len);
-      assert(len == 1 || len == sample.samples_size_);
+      if(len != 1 && len != sample.samples_size_)
+      {
+        grklog.error("MJ2: sample size mismatch at offset %d: box length=%d, expected=%d",
+                     sample.offset_, len, sample.samples_size_);
+        return false;
+      }
     }
   }
 
@@ -666,33 +721,143 @@ grk_progression_state
   return {};
 }
 
-bool FileFormatMJ2Decompress::decompress([[maybe_unused]] grk_plugin_tile* tile)
+bool FileFormatMJ2Decompress::decompressSampleInternal(uint32_t sampleIndex)
 {
   auto tk = current_track_;
-  if(!current_track_)
+  if(!tk || sampleIndex >= tk->num_samples_)
     return false;
-  for(uint32_t i = 0; i < current_track_->num_samples_; ++i)
+
+  auto& sample = tk->samples_[sampleIndex];
+
+  // get base pointer for absolute file offsets
+  stream_->seek(0);
+  auto basePtr = stream_->currPtr();
+
+  auto samplePtr = basePtr + sample.offset_;
+
+  // skip 8-byte JP2C box header (4 bytes length + 4 bytes type)
+  uint32_t boxHeaderSize = 8;
+  uint32_t boxLen;
+  grk_read(samplePtr, &boxLen);
+  // XL box: if length == 1, 8 more bytes for 64-bit length
+  if(boxLen == 1)
+    boxHeaderSize = 16;
+
+  if(sample.samples_size_ <= boxHeaderSize)
   {
-    std::string filename = "$HOME/temp/mj2_" + std::to_string(i) + "_.j2k";
-    auto sample = tk->samples_[i];
-    auto file = fopen(filename.c_str(), "wb");
-    if(file == nullptr)
+    grklog.error("MJ2: sample %d has invalid size %d", sampleIndex, sample.samples_size_);
+    return false;
+  }
+
+  auto j2kData = samplePtr + boxHeaderSize;
+  auto j2kLen = sample.samples_size_ - boxHeaderSize;
+
+  // create a memory stream for this J2K codestream (non-owning)
+  auto subStream = memStreamCreate(j2kData, j2kLen, false, nullptr, GRK_CODEC_J2K, true);
+  if(!subStream)
+  {
+    grklog.error("MJ2: failed to create memory stream for sample %d", sampleIndex);
+    return false;
+  }
+
+  auto codeStream = new CodeStreamDecompress(subStream);
+  bool success = false;
+
+  if(decompressParamsSet_)
+    codeStream->init(&decompressParams_);
+
+  // pass force_rgb/upsample/color_space flags from container into codestream
+  grk_header_info sampleHeaderInfo{};
+  if(decompressParamsSet_)
+  {
+    sampleHeaderInfo.force_rgb = decompressParams_.force_rgb;
+    sampleHeaderInfo.upsample = decompressParams_.upsample;
+  }
+  sampleHeaderInfo.color_space = headerImage_->color_space;
+
+  if(!codeStream->readHeader(&sampleHeaderInfo))
+  {
+    grklog.error("MJ2: failed to read J2K header for sample %d", sampleIndex);
+    goto cleanup;
+  }
+
+  if(!codeStream->decompress(nullptr))
+  {
+    grklog.error("MJ2: failed to decompress J2K codestream for sample %d", sampleIndex);
+    goto cleanup;
+  }
+
+  {
+    auto img = codeStream->getImage();
+    if(img)
     {
-      std::cerr << "Error opening file for writing." << std::endl;
+      // propagate color space from MJ2 container (JP2H/COLR box) to decompressed image
+      if(img->color_space == GRK_CLRSPC_UNKNOWN)
+        img->color_space = headerImage_->color_space;
+
+      grk_ref(img);
+      // grow the vector if needed for out-of-order decompress
+      if(sampleIndex >= (uint32_t)decompressedImages_.size())
+        decompressedImages_.resize(sampleIndex + 1, nullptr);
+      if(decompressedImages_[sampleIndex])
+        grk_unref(decompressedImages_[sampleIndex]);
+      decompressedImages_[sampleIndex] = img;
+    }
+  }
+
+  success = true;
+
+cleanup:
+  delete codeStream;
+  delete subStream;
+
+  return success;
+}
+
+bool FileFormatMJ2Decompress::decompress([[maybe_unused]] grk_plugin_tile* tile)
+{
+  if(!current_track_)
+  {
+    grklog.error("MJ2: no video track found");
+    return false;
+  }
+
+  auto tk = current_track_;
+  for(uint32_t i = 0; i < tk->num_samples_; ++i)
+  {
+    if(!decompressSampleInternal(i))
+    {
+      grklog.error("MJ2: failed to decompress sample %d of %d", i, tk->num_samples_);
       return false;
     }
-    auto ptr = stream_->currPtr() + sample.offset_;
-    // 8 bytes for jp2c box header
-    size_t written = fwrite(ptr + 8, sizeof(char), sample.samples_size_, file);
-    if(written != sample.samples_size_)
-    {
-      std::cerr << "Error writing to file." << std::endl;
-      fclose(file);
-      return 1;
-    }
-    fclose(file);
+  }
+
+  // transfer first frame's pixel data into headerImage_ so callers
+  // that captured the image pointer before decompress see the result
+  if(!decompressedImages_.empty() && decompressedImages_[0])
+  {
+    auto src = decompressedImages_[0];
+    src->copyHeaderTo(headerImage_);
+    src->transferDataTo(headerImage_);
+    grk_unref(src);
+    decompressedImages_[0] = nullptr;
   }
   return true;
+}
+
+uint32_t FileFormatMJ2Decompress::getNumSamples(void)
+{
+  return current_track_ ? current_track_->num_samples_ : 0;
+}
+bool FileFormatMJ2Decompress::decompressSample(uint32_t sampleIndex)
+{
+  return decompressSampleInternal(sampleIndex);
+}
+GrkImage* FileFormatMJ2Decompress::getSampleImage(uint32_t sampleIndex)
+{
+  if(sampleIndex >= (uint32_t)decompressedImages_.size())
+    return nullptr;
+  return decompressedImages_[sampleIndex];
 }
 
 } // namespace grk

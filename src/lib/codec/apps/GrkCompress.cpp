@@ -34,6 +34,7 @@
 #include <fcntl.h>
 #endif /* _WIN32 */
 #include <chrono>
+#include <algorithm>
 #include <filesystem>
 #include "CLI/CLI.hpp"
 
@@ -265,6 +266,39 @@ static void validateCinema(const std::string& arg, uint16_t profile, grk_cparame
   parameters->numgbits = (profile == GRK_PROFILE_CINEMA_2K) ? 1 : 2;
 }
 
+static grk_image* loadInputImage(const char* filename, grk_cparameters* parameters)
+{
+  grk_image* image = nullptr;
+  GRK_SUPPORTED_FILE_FMT fmt = parameters->decod_format;
+  if(fmt == GRK_FMT_UNK)
+  {
+    int f = grk_get_file_format((char*)filename);
+    if(f <= GRK_FMT_UNK)
+      return nullptr;
+    fmt = (GRK_SUPPORTED_FILE_FMT)f;
+  }
+  switch(fmt)
+  {
+    case GRK_FMT_PGX: { PGXFormat<int32_t> pgx; image = pgx.decode(filename, parameters); } break;
+    case GRK_FMT_PXM: { PNMFormat<int32_t> pnm(false); image = pnm.decode(filename, parameters); } break;
+    case GRK_FMT_BMP: { BMPFormat<int32_t> bmp; image = bmp.decode(filename, parameters); } break;
+#ifdef GROK_HAVE_LIBTIFF
+    case GRK_FMT_TIF: { TIFFFormat<int32_t> tif; image = tif.decode(filename, parameters); } break;
+#endif
+    case GRK_FMT_RAW: { RAWFormat<int32_t> raw(true); image = raw.decode(filename, parameters); } break;
+    case GRK_FMT_RAWL: { RAWFormat<int32_t> raw(false); image = raw.decode(filename, parameters); } break;
+    case GRK_FMT_YUV: { YUVFormat yuv; image = yuv.decode(filename, parameters); } break;
+#ifdef GROK_HAVE_LIBPNG
+    case GRK_FMT_PNG: { PNGFormat<int32_t> png; image = png.decode(filename, parameters); } break;
+#endif
+#ifdef GROK_HAVE_LIBJPEG
+    case GRK_FMT_JPG: { JPEGFormat<int32_t> jpeg; image = jpeg.decode(filename, parameters); } break;
+#endif
+    default: break;
+  }
+  return image;
+}
+
 int GrkCompress::main(int argc, const char** argv, grk_image* in_image, grk_stream_params* stream)
 {
   CompressInitParams initParams;
@@ -288,6 +322,101 @@ int GrkCompress::main(int argc, const char** argv, grk_image* in_image, grk_stre
     if(!initParams.initialized)
     {
       success = EXIT_FAILURE;
+      goto cleanup;
+    }
+
+    // MJ2 directory encode: all input images → single .mj2 file
+    if(initParams.parameters.cod_format == GRK_FMT_MJ2 && initParams.inputFolder.set_imgdir)
+    {
+      auto mct = initParams.parameters.mct;
+      auto rate_control_algorithm = initParams.parameters.rate_control_algorithm;
+      std::string mj2OutputPath = initParams.parameters.outfile;
+      grk_object* codec = nullptr;
+      bool first = true;
+
+      // collect and sort input files for deterministic frame order
+      std::vector<std::filesystem::path> inputFiles;
+      for(const auto& entry :
+          std::filesystem::directory_iterator(initParams.inputFolder.imgdirpath))
+      {
+        if(entry.is_regular_file())
+        {
+          int fmt = grk_get_file_format((char*)entry.path().c_str());
+          if(fmt > GRK_FMT_UNK && isDecodedFormatSupported((GRK_SUPPORTED_FILE_FMT)fmt))
+            inputFiles.push_back(entry.path());
+        }
+      }
+      std::sort(inputFiles.begin(), inputFiles.end());
+
+      if(inputFiles.empty())
+      {
+        spdlog::error("No supported input images found in directory");
+        success = EXIT_FAILURE;
+        goto cleanup;
+      }
+
+      uint32_t frameCount = 0;
+      for(const auto& filePath : inputFiles)
+      {
+        spdlog::info("Frame {}: \"{}\"", frameCount, filePath.filename().string());
+        initParams.parameters.mct = mct;
+        initParams.parameters.rate_control_algorithm = rate_control_algorithm;
+        initParams.parameters.decod_format = GRK_FMT_UNK;
+
+        grk_image* image = loadInputImage(filePath.c_str(), &initParams.parameters);
+        if(!image)
+        {
+          spdlog::warn("Skipping unreadable file: {}", filePath.filename().string());
+          continue;
+        }
+
+        if(first)
+        {
+          // resolve MCT auto-detect before first compress
+          if(initParams.parameters.mct == 255)
+            initParams.parameters.mct = (image->numcomps >= 3) ? 1 : 0;
+          grk_stream_params streamParams{};
+          safe_strcpy(streamParams.file, mj2OutputPath.c_str());
+          codec = grk_compress_init(&streamParams, &initParams.parameters, image);
+          if(!codec)
+          {
+            grk_object_unref(&image->obj);
+            success = EXIT_FAILURE;
+            goto mj2_main_cleanup;
+          }
+          if(!grk_compress(codec, nullptr))
+          {
+            grk_object_unref(&image->obj);
+            success = EXIT_FAILURE;
+            goto mj2_main_cleanup;
+          }
+          first = false;
+        }
+        else
+        {
+          if(!grk_compress_frame(codec, image, nullptr))
+          {
+            grk_object_unref(&image->obj);
+            success = EXIT_FAILURE;
+            goto mj2_main_cleanup;
+          }
+        }
+        grk_object_unref(&image->obj);
+        frameCount++;
+      }
+
+      if(!first)
+      {
+        grk_compress_finish(codec);
+        spdlog::info("Compressed {} frames to MJ2: {}", frameCount, mj2OutputPath);
+        success = EXIT_SUCCESS;
+      }
+      else
+      {
+        success = EXIT_FAILURE;
+      }
+mj2_main_cleanup:
+      grk_object_unref(codec);
       goto cleanup;
     }
 
@@ -415,31 +544,30 @@ GrkRC GrkCompress::pluginMain(int argc, const char* argv[], CompressInitParams* 
     return grk_plugin_compress(&initParams->parameters, pluginCompressCallback) ? GrkRCSuccess
                                                                                 : GrkRCFail;
 
-  // 3. directory encode
-  //  cache certain settings
-  auto mct = initParams->parameters.mct;
-  auto rate_control_algorithm = initParams->parameters.rate_control_algorithm;
-  GrkRC rc = GrkRCFail;
-  for(const auto& entry : std::filesystem::directory_iterator(initParams->inputFolder.imgdirpath))
+  // 3. directory encode (non-MJ2)
   {
-    if(nextFile(entry.path().filename().string(), &initParams->inputFolder,
-                initParams->outFolder.imgdirpath ? &initParams->outFolder
-                                                 : &initParams->inputFolder,
-                &initParams->parameters))
+    auto mct = initParams->parameters.mct;
+    auto rate_control_algorithm = initParams->parameters.rate_control_algorithm;
+    GrkRC rc = GrkRCFail;
+    for(const auto& entry :
+        std::filesystem::directory_iterator(initParams->inputFolder.imgdirpath))
     {
-      continue;
+      if(nextFile(entry.path().filename().string(), &initParams->inputFolder,
+                  initParams->outFolder.imgdirpath ? &initParams->outFolder
+                                                   : &initParams->inputFolder,
+                  &initParams->parameters))
+      {
+        continue;
+      }
+      initParams->parameters.mct = mct;
+      initParams->parameters.rate_control_algorithm = rate_control_algorithm;
+      if(grk_plugin_compress(&initParams->parameters, pluginCompressCallback))
+        break;
     }
-    // restore cached settings
-    initParams->parameters.mct = mct;
-    initParams->parameters.rate_control_algorithm = rate_control_algorithm;
-    if(grk_plugin_compress(&initParams->parameters, pluginCompressCallback))
-      break;
+    rc = GrkRCSuccess;
+    return rc;
   }
-  rc = GrkRCSuccess;
-
-  return rc;
 }
-
 static void setHT(grk_cparameters* parameters, bool hasCompressionRatios, bool hasQuality)
 {
   parameters->cblk_sty = GRK_CBLKSTY_HT_ONLY;
@@ -726,10 +854,11 @@ GrkRC GrkCompress::parseCommandLine(int argc, const char* argv[], CompressInitPa
     {
       case GRK_FMT_J2K:
       case GRK_FMT_JP2:
+      case GRK_FMT_MJ2:
         break;
       default:
-        spdlog::error("Unknown output format image {} [only *.j2k, *.j2c, *.jp2, *.jpc, *.jph or "
-                      "*.jhc] supported ",
+        spdlog::error("Unknown output format image {} [only *.j2k, *.j2c, *.jp2, *.jpc, *.jph, "
+                      "*.jhc or *.mj2] supported ",
                       outfile);
         return GrkRCFail;
     }
@@ -1584,9 +1713,12 @@ GrkRC GrkCompress::parseCommandLine(int argc, const char* argv[], CompressInitPa
       case GRK_FMT_JP2:
         inputFolder->out_format = "jp2";
         break;
+      case GRK_FMT_MJ2:
+        inputFolder->out_format = "mj2";
+        break;
       default:
-        spdlog::error("Unknown output format image [only *.j2k, *.j2c, *.jp2, *.jpc, *.jph or "
-                      "*.jhc] supported");
+        spdlog::error("Unknown output format image [only *.j2k, *.j2c, *.jp2, *.jpc, *.jph, "
+                      "*.jhc or *.mj2] supported");
         return GrkRCFail;
     }
     if(isHT)
@@ -1605,17 +1737,29 @@ GrkRC GrkCompress::parseCommandLine(int argc, const char* argv[], CompressInitPa
       spdlog::error("options --batch-src and --in-file cannot be used together ");
       return GrkRCFail;
     }
-    if(!inputFolder->set_out_format)
+    // MJ2 directory encode: allow -y with -o since all frames go into one file
+    if(parameters->cod_format == GRK_FMT_MJ2)
     {
-      spdlog::error("When --batch-src is used, --out-fmt <FORMAT> must be used ");
-      spdlog::error("Only one format allowed! Valid formats are j2k and jp2");
-      return GrkRCFail;
+      if(parameters->outfile[0] == 0)
+      {
+        spdlog::error("MJ2 directory encode requires --out-file <file.mj2>");
+        return GrkRCFail;
+      }
     }
-    if(!((parameters->outfile[0] == 0)))
+    else
     {
-      spdlog::error("options --batch-src and --out-file cannot be used together ");
-      spdlog::error("Specify OutputFormat using --out-fmt<FORMAT> ");
-      return GrkRCFail;
+      if(!inputFolder->set_out_format)
+      {
+        spdlog::error("When --batch-src is used, --out-fmt <FORMAT> must be used ");
+        spdlog::error("Only one format allowed! Valid formats are j2k and jp2");
+        return GrkRCFail;
+      }
+      if(!((parameters->outfile[0] == 0)))
+      {
+        spdlog::error("options --batch-src and --out-file cannot be used together ");
+        spdlog::error("Specify OutputFormat using --out-fmt<FORMAT> ");
+        return GrkRCFail;
+      }
     }
   }
   else

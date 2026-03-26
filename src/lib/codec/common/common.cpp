@@ -255,7 +255,7 @@ GRK_SUPPORTED_FILE_FMT grk_get_file_format(const char* filename, bool& isHTJ2K)
         {"tiff", GRK_FMT_TIF},  {"jpg", GRK_FMT_JPG}, {"jpeg", GRK_FMT_JPG}, {"raw", GRK_FMT_RAW},
         {"rawl", GRK_FMT_RAWL}, {"yuv", GRK_FMT_YUV}, {"png", GRK_FMT_PNG},  {"j2k", GRK_FMT_J2K},
         {"jp2", GRK_FMT_JP2},   {"j2c", GRK_FMT_J2K}, {"jpc", GRK_FMT_J2K},  {"jph", GRK_FMT_JP2},
-        {"jhc", GRK_FMT_J2K}};
+        {"jhc", GRK_FMT_J2K},   {"mj2", GRK_FMT_MJ2}};
 
     static const std::unordered_set<std::string> htj2k_extensions = {"jph", "jhc"};
 

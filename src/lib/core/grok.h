@@ -305,7 +305,8 @@ typedef enum _GRK_SUPPORTED_FILE_FMT
   GRK_FMT_PNG, /* PNG */
   GRK_FMT_RAWL, /* RAW Little Endian */
   GRK_FMT_JPG, /* JPG */
-  GRK_FMT_YUV /* YUV */
+  GRK_FMT_YUV, /* YUV */
+  GRK_FMT_MJ2 /* MJ2 */
 } GRK_SUPPORTED_FILE_FMT;
 
 /**
@@ -1142,6 +1143,32 @@ GRK_API void GRK_CALLCONV grk_decompress_wait(grk_object* codec, grk_wait_swath*
  */
 GRK_API bool GRK_CALLCONV grk_decompress_tile(grk_object* codec, uint16_t tile_index);
 
+/**
+ * @brief Gets the number of samples (frames) in the codec container.
+ * For single-image formats (JP2, J2K) this returns 1.
+ * For multi-frame formats (MJ2) this returns the number of video samples.
+ * @param	codec	decompression codec (see @ref grk_object)
+ * @return number of samples
+ */
+GRK_API uint32_t GRK_CALLCONV grk_decompress_num_samples(grk_object* codec);
+
+/**
+ * @brief Decompresses a single sample (frame) by index.
+ * @param	codec			decompression codec (see @ref grk_object)
+ * @param	sample_index	sample index (0-based)
+ * @return true if successful, otherwise false
+ */
+GRK_API bool GRK_CALLCONV grk_decompress_sample(grk_object* codec, uint32_t sample_index);
+
+/**
+ * @brief Gets the decompressed image for a specific sample (frame).
+ * @param	codec			decompression codec (see @ref grk_object)
+ * @param	sample_index	sample index (0-based)
+ * @return pointer to @ref grk_image, or NULL if sample not decompressed
+ */
+GRK_API grk_image* GRK_CALLCONV grk_decompress_get_sample_image(grk_object* codec,
+                                                                uint32_t sample_index);
+
 /* COMPRESSION FUNCTIONS*/
 
 /**
@@ -1273,6 +1300,25 @@ GRK_API grk_object* GRK_CALLCONV grk_compress_init(grk_stream_params* stream_par
  * @return number of bytes written if successful, 0 otherwise
  */
 GRK_API uint64_t GRK_CALLCONV grk_compress(grk_object* codec, grk_plugin_tile* tile);
+
+/**
+ * @brief Compresses an additional frame into a multi-frame container (MJ2).
+ * For single-image formats (JP2, J2K) this returns 0 (unsupported).
+ * @param codec compression codec (see @ref grk_object)
+ * @param image Input image for this frame (see @ref grk_image)
+ * @param tile	plugin tile (see @ref grk_plugin_tile)
+ * @return number of bytes written if successful, 0 otherwise
+ */
+GRK_API uint64_t GRK_CALLCONV grk_compress_frame(grk_object* codec, grk_image* image,
+                                                 grk_plugin_tile* tile);
+
+/**
+ * @brief Finalizes a multi-frame compress container (e.g. writes MJ2 moov box).
+ * For single-image formats this is a no-op.
+ * @param codec compression codec (see @ref grk_object)
+ * @return true if successful, otherwise false
+ */
+GRK_API bool GRK_CALLCONV grk_compress_finish(grk_object* codec);
 
 /**
  * @brief Dumps codec information to file

@@ -102,6 +102,10 @@ public:
    * @param outputFileStream FILE stream
    */
   virtual void dump(uint32_t flag, FILE* outputFileStream) = 0;
+
+  virtual uint32_t getNumSamples(void) { return 1; }
+  virtual bool decompressSample(uint32_t sampleIndex) { (void)sampleIndex; return decompress(nullptr); }
+  virtual GrkImage* getSampleImage(uint32_t sampleIndex) { (void)sampleIndex; return getImage(); }
 };
 
 } // namespace grk

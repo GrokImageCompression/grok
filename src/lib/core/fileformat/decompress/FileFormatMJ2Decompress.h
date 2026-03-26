@@ -18,6 +18,7 @@
 #pragma once
 
 #include <set>
+#include <vector>
 
 namespace grk
 {
@@ -26,7 +27,7 @@ class FileFormatMJ2Decompress : public IDecompressor, public FileFormatMJ2
 {
 public:
   FileFormatMJ2Decompress(IStream* stream);
-  virtual ~FileFormatMJ2Decompress() = default;
+  virtual ~FileFormatMJ2Decompress();
   bool readHeader(grk_header_info* header_info) override;
   GrkImage* getImage(uint16_t tile_index, bool wait) override;
   GrkImage* getImage(void) override;
@@ -38,7 +39,12 @@ public:
   void dump(uint32_t flag, FILE* outputFileStream) override;
   void wait(grk_wait_swath* swath) override;
 
+  uint32_t getNumSamples(void) override;
+  bool decompressSample(uint32_t sampleIndex) override;
+  GrkImage* getSampleImage(uint32_t sampleIndex) override;
+
 private:
+  bool decompressSampleInternal(uint32_t sampleIndex);
   GrkImage* getHeaderImage(void) override;
   void read_version_and_flag(uint8_t** headerData, uint8_t& version, uint32_t& flag);
   bool read_version_and_flag_check(uint8_t** headerData, uint32_t* headerSize, uint8_t maxVersion,
@@ -69,5 +75,9 @@ private:
   void tts_decompact(mj2_tk* tk);
   void stsc_decompact(mj2_tk* tk);
   void stco_decompact(mj2_tk* tk);
+
+  grk_decompress_parameters decompressParams_;
+  bool decompressParamsSet_;
+  std::vector<GrkImage*> decompressedImages_;
 };
 } // namespace grk

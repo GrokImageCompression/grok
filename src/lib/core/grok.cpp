@@ -495,6 +495,33 @@ bool grk_decompress_tile(grk_object* codecWrapper, uint16_t tile_index)
   auto f = codec->queueDecompressTile(tile_index);
   return f.get();
 }
+uint32_t grk_decompress_num_samples(grk_object* codecWrapper)
+{
+  if(codecWrapper)
+  {
+    auto codec = Codec::getImpl(codecWrapper);
+    return codec->decompressor_ ? codec->decompressor_->getNumSamples() : 0;
+  }
+  return 0;
+}
+bool grk_decompress_sample(grk_object* codecWrapper, uint32_t sample_index)
+{
+  if(codecWrapper)
+  {
+    auto codec = Codec::getImpl(codecWrapper);
+    return codec->decompressor_ ? codec->decompressor_->decompressSample(sample_index) : false;
+  }
+  return false;
+}
+grk_image* grk_decompress_get_sample_image(grk_object* codecWrapper, uint32_t sample_index)
+{
+  if(codecWrapper)
+  {
+    auto codec = Codec::getImpl(codecWrapper);
+    return codec->decompressor_ ? codec->decompressor_->getSampleImage(sample_index) : nullptr;
+  }
+  return nullptr;
+}
 void grk_dump_codec(grk_object* codecWrapper, uint32_t info_flag, FILE* output_stream)
 {
   assert(codecWrapper);
@@ -583,6 +610,10 @@ grk_object* grk_compress_create(GRK_CODEC_FORMAT p_format, grk::IStream* stream)
       codec = new Codec(stream);
       codec->compressor_ = new FileFormatJP2Compress(stream);
       break;
+    case GRK_CODEC_MJ2:
+      codec = new Codec(stream);
+      codec->compressor_ = new FileFormatMJ2Compress(stream);
+      break;
     default:
       return nullptr;
   }
@@ -621,7 +652,8 @@ grk_object* grk_compress_init(grk_stream_params* streamParams, grk_cparameters* 
 {
   if(!parameters || !image)
     return nullptr;
-  if(parameters->cod_format != GRK_FMT_J2K && parameters->cod_format != GRK_FMT_JP2)
+  if(parameters->cod_format != GRK_FMT_J2K && parameters->cod_format != GRK_FMT_JP2 &&
+     parameters->cod_format != GRK_FMT_MJ2)
   {
     grklog.error("Unknown stream format.");
     return nullptr;
@@ -642,6 +674,9 @@ grk_object* grk_compress_init(grk_stream_params* streamParams, grk_cparameters* 
       break;
     case GRK_FMT_JP2: /* JPEG 2000 compressed image data */
       codecWrapper = grk_compress_create(GRK_CODEC_JP2, stream);
+      break;
+    case GRK_FMT_MJ2: /* Motion JPEG 2000 */
+      codecWrapper = grk_compress_create(GRK_CODEC_MJ2, stream);
       break;
     default:
       break;
@@ -672,6 +707,24 @@ uint64_t grk_compress(grk_object* codecWrapper, grk_plugin_tile* tile)
     return codec->compressor_ ? codec->compressor_->compress(tile) : 0;
   }
   return 0;
+}
+uint64_t grk_compress_frame(grk_object* codecWrapper, grk_image* image, grk_plugin_tile* tile)
+{
+  if(codecWrapper && image)
+  {
+    auto codec = Codec::getImpl(codecWrapper);
+    return codec->compressor_ ? codec->compressor_->compressFrame((GrkImage*)image, tile) : 0;
+  }
+  return 0;
+}
+bool grk_compress_finish(grk_object* codecWrapper)
+{
+  if(codecWrapper)
+  {
+    auto codec = Codec::getImpl(codecWrapper);
+    return codec->compressor_ ? codec->compressor_->finalize() : false;
+  }
+  return false;
 }
 
 /**********************************************************************

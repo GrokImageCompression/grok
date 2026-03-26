@@ -366,7 +366,7 @@ void GrkImage::copyHeaderTo(GrkImage* dest) const
   {
     if(dest->meta)
     {
-      auto temp = (GrkImageMeta*)meta;
+      auto temp = (GrkImageMeta*)dest->meta;
       grk_unref(temp);
     }
     auto temp = (GrkImageMeta*)meta;
