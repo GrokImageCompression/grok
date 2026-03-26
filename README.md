@@ -12,10 +12,10 @@
 <p>
 
 Grok is an open-source JPEG 2000 codec licensed under AGPL v3.
-It is integrated into [GDAL](https://gdal.org) via the [JP2Grok driver](https://github.com/GrokImageCompression/gdal).
 
 ### Performance
 
+Grok is integrated into [GDAL](https://gdal.org).
 Benchmark results (16 threads, GDAL release build, Fedora 42):
 
 | Workflow                     | Grok (JP2Grok) | Kakadu (JP2KAK) | OpenJPEG     |
