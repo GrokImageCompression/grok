@@ -17,6 +17,7 @@
 
 #include <cstdint>
 #include <memory>
+#include <stdexcept>
 #ifdef _WIN32
 #include <windows.h>
 #else /* _WIN32 */
@@ -378,7 +379,16 @@ grk_object* grk_decompress_init(grk_stream_params* streamParams,
 
   streamParams->is_read_stream = true;
   StreamGenerator sg(streamParams);
-  auto stream = sg.create();
+  IStream* stream = nullptr;
+  try
+  {
+    stream = sg.create();
+  }
+  catch(const std::exception& e)
+  {
+    grklog.error("grk_decompress_init: failed to create stream: %s", e.what());
+    return nullptr;
+  }
   if(!stream)
   {
     grklog.error("grk_decompress_init: stream is null");
@@ -671,7 +681,16 @@ grk_object* grk_compress_init(grk_stream_params* streamParams, grk_cparameters* 
     return nullptr;
   }
   StreamGenerator sg(streamParams);
-  grk::IStream* stream = sg.create();
+  grk::IStream* stream = nullptr;
+  try
+  {
+    stream = sg.create();
+  }
+  catch(const std::exception& e)
+  {
+    grklog.error("failed to create stream: %s", e.what());
+    return nullptr;
+  }
   if(!stream)
   {
     grklog.error("failed to create stream");
