@@ -106,6 +106,11 @@ public:
   virtual uint32_t getNumSamples(void) { return 1; }
   virtual bool decompressSample(uint32_t sampleIndex) { (void)sampleIndex; return decompress(nullptr); }
   virtual GrkImage* getSampleImage(uint32_t sampleIndex) { (void)sampleIndex; return getImage(); }
+  virtual GrkImage* getSampleTileImage(uint32_t sampleIndex, uint16_t tileIndex)
+  {
+    (void)sampleIndex;
+    return getImage(tileIndex, true);
+  }
 };
 
 } // namespace grk

@@ -341,7 +341,7 @@ int GrkCompress::main(int argc, const char** argv, grk_image* in_image, grk_stre
       {
         if(entry.is_regular_file())
         {
-          int fmt = grk_get_file_format((char*)entry.path().c_str());
+          int fmt = grk_get_file_format((char*)entry.path().string().c_str());
           if(fmt > GRK_FMT_UNK && isDecodedFormatSupported((GRK_SUPPORTED_FILE_FMT)fmt))
             inputFiles.push_back(entry.path());
         }
@@ -363,7 +363,7 @@ int GrkCompress::main(int argc, const char** argv, grk_image* in_image, grk_stre
         initParams.parameters.rate_control_algorithm = rate_control_algorithm;
         initParams.parameters.decod_format = GRK_FMT_UNK;
 
-        grk_image* image = loadInputImage(filePath.c_str(), &initParams.parameters);
+        grk_image* image = loadInputImage(filePath.string().c_str(), &initParams.parameters);
         if(!image)
         {
           spdlog::warn("Skipping unreadable file: {}", filePath.filename().string());

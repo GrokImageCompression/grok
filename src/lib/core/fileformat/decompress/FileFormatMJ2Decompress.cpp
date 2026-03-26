@@ -102,6 +102,11 @@ FileFormatMJ2Decompress::~FileFormatMJ2Decompress()
 {
   for(auto img : decompressedImages_)
     grk_unref(img);
+  for(auto& scs : sampleCodeStreams_)
+  {
+    delete scs.codeStream;
+    delete scs.stream;
+  }
 }
 
 GrkImage* FileFormatMJ2Decompress::getHeaderImage(void)
@@ -808,8 +813,22 @@ bool FileFormatMJ2Decompress::decompressSampleInternal(uint32_t sampleIndex)
   success = true;
 
 cleanup:
-  delete codeStream;
-  delete subStream;
+  if(!success)
+  {
+    delete codeStream;
+    delete subStream;
+  }
+  else
+  {
+    // store the codestream and stream so per-tile access is possible
+    if(sampleIndex >= (uint32_t)sampleCodeStreams_.size())
+      sampleCodeStreams_.resize(sampleIndex + 1);
+    // clean up any previous codestream for this sample
+    delete sampleCodeStreams_[sampleIndex].codeStream;
+    delete sampleCodeStreams_[sampleIndex].stream;
+    sampleCodeStreams_[sampleIndex].codeStream = codeStream;
+    sampleCodeStreams_[sampleIndex].stream = subStream;
+  }
 
   return success;
 }
@@ -861,6 +880,15 @@ GrkImage* FileFormatMJ2Decompress::getSampleImage(uint32_t sampleIndex)
   if(sampleIndex >= (uint32_t)decompressedImages_.size())
     return nullptr;
   return decompressedImages_[sampleIndex];
+}
+GrkImage* FileFormatMJ2Decompress::getSampleTileImage(uint32_t sampleIndex, uint16_t tileIndex)
+{
+  if(sampleIndex >= (uint32_t)sampleCodeStreams_.size())
+    return nullptr;
+  auto& scs = sampleCodeStreams_[sampleIndex];
+  if(!scs.codeStream)
+    return nullptr;
+  return scs.codeStream->getImage(tileIndex, true);
 }
 
 } // namespace grk

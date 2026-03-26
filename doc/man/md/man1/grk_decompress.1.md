@@ -16,8 +16,8 @@ DESCRIPTION
 
 This program decompresses a JPEG 2000 image and stores it in another image format.
 
-Supported input formats: `JP2`, `J2K\J2C`, `JPH` and `JHC`
-Supported input image extensions are `.jp2`, `.j2k\.j2c`, `.jph` and `.jhc`
+Supported input formats: `JP2`, `J2K\J2C`, `JPH`, `JHC` and `MJ2` (Motion JPEG 2000)
+Supported input image extensions are `.jp2`, `.j2k\.j2c`, `.jph`, `.jhc` and `.mj2`
 
 Supported output formats are `JPEG`, `BMP`, `PNM`, `PGX`, `PNG`, `RAW` and `TIFF`
 Valid output image extensions are `jpg`, `.jpeg`, `.bmp`, `.pgm`, `.pgx`, `.pnm`, `.ppm`, `.pam`, `.png`, `.raw`, `.rawl`, `.tif` and `.tiff`
@@ -71,13 +71,15 @@ Output information and warnings about decoding to console (errors are always out
 
 `-i, --in-file [file]`
 
-Input file. Either this argument or the `--batch-src` argument described below is required. Valid input image extensions are `J2K`, `JP2`, `JPC`, `JPH` and `JHC`. When using this option output file must be specified using `-o`.
+Input file. Either this argument or the `--batch-src` argument described below is required. Valid input image extensions are `J2K`, `JP2`, `JPC`, `JPH`, `JHC`, `MJ2` and `MJP2`. When using this option output file must be specified using `-o`.
 
 Grok can read from cloud storage paths (`/vsis3/`, `/vsiaz/`, `/vsigs/`, `/vsiadls/`, `/vsicurl/`) and `https://` URLs.
 
+**MJ2 Multi-Frame Decompress**: When the input file is an MJ2 (Motion JPEG 2000) container, all frames are automatically extracted and saved as individually numbered output files. For example, if `-o frame.png` is specified, the output files will be named `frame_000.png`, `frame_001.png`, `frame_002.png`, etc.
+
 `-o, --out-file [file]`
 
-Output file. Required when using `-i` option. See above for supported file types. If a `PGX` filename is given, there will be as many output files as there are components: an index starting from 0 will then be appended to the output filename, just before the `pgx` extension. If a `PGM` filename is given and there is more than one component, then only the first component will be written to the file.
+Output file. Required when using `-i` option. See above for supported file types. If a `PGX` filename is given, there will be as many output files as there are components: an index starting from 0 will then be appended to the output filename, just before the `pgx` extension. If a `PGM` filename is given and there is more than one component, then only the first component will be written to the file. When decompressing an MJ2 file, the output file name serves as a template for numbered per-frame files (see `-i` above).
 
 `-y, --batch-src [directory path]`
 

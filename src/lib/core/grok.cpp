@@ -522,6 +522,18 @@ grk_image* grk_decompress_get_sample_image(grk_object* codecWrapper, uint32_t sa
   }
   return nullptr;
 }
+grk_image* grk_decompress_get_sample_tile_image(grk_object* codecWrapper, uint32_t sample_index,
+                                                uint16_t tile_index)
+{
+  if(codecWrapper)
+  {
+    auto codec = Codec::getImpl(codecWrapper);
+    return codec->decompressor_
+               ? codec->decompressor_->getSampleTileImage(sample_index, tile_index)
+               : nullptr;
+  }
+  return nullptr;
+}
 void grk_dump_codec(grk_object* codecWrapper, uint32_t info_flag, FILE* output_stream)
 {
   assert(codecWrapper);

@@ -18,8 +18,8 @@ This program converts non-`JPEG 2000` images to the `JPEG 2000` format.
 
 * Supported input formats:  `JPEG`, `BMP`, `PNM`, `PGX`, `PNG`, `RAW`, `RAWL` and `TIFF`
 * Supported input image extensions:  `jpg`, `.jpeg`, `.bmp`, `.pgm`, `.pgx`, `.pnm`, `.ppm`, `.pam`, `.png`, `.raw`, `.rawl`, `.tif` and `.tiff`
-* Supported output formats: `JP2`, `J2K`/`J2C`, `JPH` and `JHC`
-* Supported output image extensions: `.jp2`, `.j2k`/`.j2c`, `.jph` and `.jhc`
+* Supported output formats: `JP2`, `J2K`/`J2C`, `JPH`, `JHC` and `MJ2` (Motion JPEG 2000)
+* Supported output image extensions: `.jp2`, `.j2k`/`.j2c`, `.jph`, `.jhc` and `.mj2`
 * For `PNG` the library must have `libpng` available.
 * For `TIF/TIFF` the library must have `libtiff` available.
 * For `JPG/JPEG` the library must have a `libjpeg` variant available.
@@ -101,7 +101,9 @@ Output file. Required when using `-i` option. Valid output image extensions are 
 
 `-y, --batch-src [input directory]`
 
-Path to the folder where the images to be compressed are stored. Either this argument or the `-i` argument described above is required. When image files are in the same directory as the executable, this can be indicated by a dot `.` argument. When using this option, output format must be specified using `-O`. 
+Path to the folder where the images to be compressed are stored. Either this argument or the `-i` argument described above is required. When image files are in the same directory as the executable, this can be indicated by a dot `.` argument. When using this option, output format must be specified using `-O`.
+
+**MJ2 multi-frame mode:** When the output file (`-o`) has a `.mj2` extension, all images in the input directory are compressed into a single MJ2 (Motion JPEG 2000) file. Files are sorted alphabetically to ensure deterministic frame order. Example: `grk_compress -y /path/to/frames/ -o output.mj2`
 
 `-a, --out-dir [output directory]`
 
@@ -109,7 +111,7 @@ Output directory where compressed files are stored. Only relevant when the `--ba
 
 `-O, --out-fmt [J2K|J2C|JP2|JPH|JHC]`
 
-Output format used to compress the images read from the directory specified with `--batch-src`. Required when `--batch-src` option is used. Supported formats are `J2K`, `J2C`, `JP2`, `JPH` and `JHC`.
+Output format used to compress the images read from the directory specified with `--batch-src`. Required when `--batch-src` option is used. Supported formats are `J2K`, `J2C`, `JP2`, `JPH`, `JHC` and `MJ2`.
 
 `-K, --in-fmt [pbm|pgm|ppm|pnm|pam|pgx|png|bmp|tif|raw|rawl|jpg]`
 

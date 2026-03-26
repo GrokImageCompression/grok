@@ -1169,6 +1169,20 @@ GRK_API bool GRK_CALLCONV grk_decompress_sample(grk_object* codec, uint32_t samp
 GRK_API grk_image* GRK_CALLCONV grk_decompress_get_sample_image(grk_object* codec,
                                                                 uint32_t sample_index);
 
+/**
+ * @brief Gets a decompressed tile image from a specific sample (frame).
+ * Useful for multi-frame containers (MJ2) where each frame may have multiple tiles.
+ * The sample must have been decompressed first via grk_decompress() (for sample 0)
+ * or grk_decompress_sample() (for subsequent samples).
+ * @param	codec			decompression codec (see @ref grk_object)
+ * @param	sample_index	sample index (0-based)
+ * @param	tile_index		tile index within the sample (row-major)
+ * @return pointer to @ref grk_image for the tile, or NULL if not available
+ */
+GRK_API grk_image* GRK_CALLCONV grk_decompress_get_sample_tile_image(grk_object* codec,
+                                                                     uint32_t sample_index,
+                                                                     uint16_t tile_index);
+
 /* COMPRESSION FUNCTIONS*/
 
 /**

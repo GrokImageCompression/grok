@@ -23,6 +23,8 @@
 namespace grk
 {
 
+class CodeStreamDecompress;
+
 class FileFormatMJ2Decompress : public IDecompressor, public FileFormatMJ2
 {
 public:
@@ -42,6 +44,7 @@ public:
   uint32_t getNumSamples(void) override;
   bool decompressSample(uint32_t sampleIndex) override;
   GrkImage* getSampleImage(uint32_t sampleIndex) override;
+  GrkImage* getSampleTileImage(uint32_t sampleIndex, uint16_t tileIndex) override;
 
 private:
   bool decompressSampleInternal(uint32_t sampleIndex);
@@ -79,5 +82,12 @@ private:
   grk_decompress_parameters decompressParams_;
   bool decompressParamsSet_;
   std::vector<GrkImage*> decompressedImages_;
+
+  struct SampleCodeStream
+  {
+    CodeStreamDecompress* codeStream = nullptr;
+    IStream* stream = nullptr;
+  };
+  std::vector<SampleCodeStream> sampleCodeStreams_;
 };
 } // namespace grk
