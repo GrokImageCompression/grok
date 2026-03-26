@@ -40,6 +40,16 @@ grk_image* grk_image_new_uniform(uint16_t numcmpts, uint32_t w, uint32_t h,
     }
     grk_image* img = grk_image_new(numcmpts, comps, clrspc, true);
     free(comps);
+    /* Zero-initialize all component data so unset pixels don't cause
+       undefined behaviour during compression (T1/T2 bit-plane calculations). */
+    if (img) {
+        for (uint16_t i = 0; i < numcmpts; i++) {
+            if (img->comps[i].data) {
+                size_t pixels = (size_t)img->comps[i].stride * img->comps[i].h;
+                memset(img->comps[i].data, 0, pixels * sizeof(int32_t));
+            }
+        }
+    }
     return img;
 }
 
