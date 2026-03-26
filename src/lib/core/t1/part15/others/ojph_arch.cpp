@@ -253,13 +253,9 @@ namespace  grk::t1::ojph {
 #endif
 
   ////////////////////////////////////////////////////////////////////////////
-  static int cpu_level;
-  static bool cpu_level_initialized = init_cpu_ext_level(cpu_level);
-
-  ////////////////////////////////////////////////////////////////////////////
   int get_cpu_ext_level()
   {
-    assert(cpu_level_initialized);
+    static int cpu_level = []{ int l; init_cpu_ext_level(l); return l; }();
     return cpu_level;
   }
 
