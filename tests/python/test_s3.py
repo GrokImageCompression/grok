@@ -33,6 +33,11 @@ import hashlib
 import pytest
 
 try:
+    import grok_core
+except ImportError:
+    grok_core = None
+
+try:
     import grok_codec
 except ImportError:
     grok_codec = None
@@ -310,3 +315,143 @@ class TestS3TileTLM:
         with open(s3_out, "rb") as f:
             s3_hash = hashlib.sha256(f.read()).hexdigest()
         assert local_hash == s3_hash, f"S3 output differs from local for {desc}"
+
+
+# ---------------------------------------------------------------------------
+# Async decompress over S3 (the GDAL JP2Grok driver use case)
+# ---------------------------------------------------------------------------
+
+def async_decompress_s3(s3_path, swath_height=0):
+    """Perform async decompress with swath retrieval from an S3 path.
+
+    Returns (tiles_retrieved, full_width, full_height, num_tiles)
+    where tiles_retrieved is a list of (tile_index, width, height).
+    """
+    grok_core.grk_initialize(None, 0, None)
+
+    params = grok_core.grk_decompress_parameters()
+    params.asynchronous = True
+    params.simulate_synchronous = True
+    params.core.tile_cache_strategy = grok_core.GRK_TILE_CACHE_IMAGE
+
+    stream_params = grok_core.grk_stream_params()
+    stream_params.file = s3_path
+
+    codec = grok_core.grk_decompress_init(stream_params, params)
+    assert codec is not None, f"grk_decompress_init failed for {s3_path}"
+
+    header_info = grok_core.grk_header_info()
+    ok = grok_core.grk_decompress_read_header(codec, header_info)
+    assert ok, "grk_decompress_read_header failed"
+
+    num_tiles = header_info.t_grid_width * header_info.t_grid_height
+    single_tile = (num_tiles == 1)
+
+    if single_tile:
+        params.core.skip_allocate_composite = False
+    else:
+        params.core.skip_allocate_composite = True
+
+    ok = grok_core.grk_decompress_update(params, codec)
+    assert ok, "grk_decompress_update failed"
+
+    ok = grok_core.grk_decompress(codec, None)
+    assert ok, "grk_decompress failed"
+
+    img_x0 = header_info.header_image.x0
+    img_y0 = header_info.header_image.y0
+    img_x1 = header_info.header_image.x1
+    img_y1 = header_info.header_image.y1
+
+    full_width = img_x1 - img_x0
+    full_height = img_y1 - img_y0
+    sh = swath_height if swath_height > 0 else header_info.t_height
+
+    tiles_retrieved = []
+    y = img_y0
+    while y < img_y1:
+        swath_y1 = min(y + sh, img_y1)
+
+        swath = grok_core.grk_wait_swath()
+        swath.x0 = img_x0
+        swath.y0 = y
+        swath.x1 = img_x1
+        swath.y1 = swath_y1
+
+        grok_core.grk_decompress_wait(codec, swath)
+
+        for ty in range(swath.tile_y0, swath.tile_y1):
+            for tx in range(swath.tile_x0, swath.tile_x1):
+                tidx = ty * swath.num_tile_cols + tx
+
+                if single_tile:
+                    tile_img = grok_core.grk_decompress_get_image(codec)
+                else:
+                    tile_img = grok_core.grk_decompress_get_tile_image(
+                        codec, tidx, True
+                    )
+
+                assert tile_img is not None, f"Failed to get tile {tidx}"
+                w = tile_img.comps[0].w
+                h = tile_img.comps[0].h
+                assert w > 0 and h > 0
+                tiles_retrieved.append((tidx, w, h))
+
+        y = swath_y1
+
+    grok_core.grk_object_unref(codec)
+    return tiles_retrieved, full_width, full_height, num_tiles
+
+
+S3_ASYNC_CONFIGS = [
+    ("s3_async_single_tile_tlm", ["-X"], False),
+    ("s3_async_single_tile_no_tlm", [], False),
+    ("s3_async_multi_tile_tlm", ["-t", "64,64", "-X"], True),
+    ("s3_async_multi_tile_no_tlm", ["-t", "64,64"], True),
+]
+
+
+@pytest.fixture(
+    scope="module", params=S3_ASYNC_CONFIGS, ids=[c[0] for c in S3_ASYNC_CONFIGS]
+)
+def async_on_minio(request, tmp_path_factory):
+    """Compress, upload to MinIO, return S3 path and local path."""
+    desc, extra_args, multi_tile = request.param
+    tmp_path = tmp_path_factory.mktemp(desc)
+    filename = f"{desc}.jp2"
+    jp2_path = make_jp2(tmp_path, filename=filename, extra_args=extra_args)
+    key = filename
+    minio_put_object(BUCKET, key, jp2_path)
+    return desc, key, jp2_path, multi_tile
+
+
+@pytest.mark.s3
+@pytest.mark.skipif(grok_core is None, reason="grok_core module not available")
+class TestS3AsyncDecompress:
+    def test_async_s3_succeeds(self, async_on_minio):
+        """Async decompress from S3 with swath retrieval completes."""
+        desc, key, local_jp2, multi_tile = async_on_minio
+        s3_path = f"/vsis3/{BUCKET}/{key}"
+        tiles, full_w, full_h, num_tiles = async_decompress_s3(s3_path)
+        assert len(tiles) > 0, f"No tiles for {desc}"
+
+    def test_async_s3_all_tiles(self, async_on_minio):
+        """All tiles retrieved from async S3 decompress."""
+        desc, key, local_jp2, multi_tile = async_on_minio
+        s3_path = f"/vsis3/{BUCKET}/{key}"
+        tiles, full_w, full_h, num_tiles = async_decompress_s3(s3_path)
+        tile_indices = {t[0] for t in tiles}
+        assert tile_indices == set(range(num_tiles)), (
+            f"{desc}: missing tiles"
+        )
+
+    def test_async_s3_matches_local_async(self, async_on_minio):
+        """Async S3 decompress retrieves same tiles as local async decompress."""
+        desc, key, local_jp2, multi_tile = async_on_minio
+        s3_path = f"/vsis3/{BUCKET}/{key}"
+
+        s3_tiles, _, _, s3_num = async_decompress_s3(s3_path)
+        local_tiles, _, _, local_num = async_decompress_s3(local_jp2)
+
+        assert s3_num == local_num
+        assert {t[0] for t in s3_tiles} == {t[0] for t in local_tiles}
