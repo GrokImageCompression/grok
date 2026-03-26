@@ -31,6 +31,7 @@
 #include <string>
 #include <chrono>
 #include <thread>
+#include <algorithm>
 
 #include "grk_apps_config.h"
 #include "common.h"
@@ -1184,6 +1185,143 @@ int GrkDecompress::main(int argc, const char* argv[])
       rc = EXIT_FAILURE;
       goto cleanup;
     }
+
+    // MJ2 multi-frame decompress: single .mj2 → numbered output images
+    if(!initParams.inputFolder.set_imgdir && initParams.parameters.infile[0])
+    {
+      auto inPath = std::filesystem::path(initParams.parameters.infile);
+      auto ext = inPath.extension().string();
+      std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
+      if(ext == ".mj2" || ext == ".mjp2")
+      {
+        grk_object* codec = nullptr;
+        grk_stream_params streamParams{};
+        safe_strcpy(streamParams.file, initParams.parameters.infile);
+        codec = grk_decompress_init(&streamParams, &initParams.parameters);
+        if(!codec)
+        {
+          spdlog::error("MJ2 decompress: failed to initialize decompressor");
+          rc = EXIT_FAILURE;
+          goto cleanup;
+        }
+
+        grk_header_info headerInfo{};
+        headerInfo.force_rgb = initParams.parameters.force_rgb;
+        headerInfo.upsample = initParams.parameters.upsample;
+        if(!grk_decompress_read_header(codec, &headerInfo))
+        {
+          spdlog::error("MJ2 decompress: failed to read header");
+          grk_object_unref(codec);
+          rc = EXIT_FAILURE;
+          goto cleanup;
+        }
+
+        if(!grk_decompress(codec, nullptr))
+        {
+          spdlog::error("MJ2 decompress: failed to decompress");
+          grk_object_unref(codec);
+          rc = EXIT_FAILURE;
+          goto cleanup;
+        }
+
+        uint32_t numSamples = grk_decompress_num_samples(codec);
+        if(numSamples == 0)
+        {
+          spdlog::error("MJ2 decompress: no samples found");
+          grk_object_unref(codec);
+          rc = EXIT_FAILURE;
+          goto cleanup;
+        }
+
+        // determine output file naming from -o path
+        auto outPath = std::filesystem::path(initParams.parameters.outfile);
+        auto outStem = outPath.stem().string();
+        auto outExt = outPath.extension().string();
+        auto outDir = outPath.parent_path();
+        if(outDir.empty())
+          outDir = ".";
+
+        auto cod_format = initParams.parameters.cod_format;
+
+        for(uint32_t s = 0; s < numSamples; ++s)
+        {
+          auto img = grk_decompress_get_sample_image(codec, s);
+          if(!img)
+          {
+            spdlog::warn("MJ2 decompress: failed to get image for sample {}", s);
+            continue;
+          }
+
+          // generate numbered output filename
+          char numberedName[GRK_PATH_LEN];
+          snprintf(numberedName, sizeof(numberedName), "%s_%03u%s",
+                   outStem.c_str(), s, outExt.c_str());
+          auto outFilePath = (outDir / numberedName).string();
+
+          // create format-specific encoder
+          IImageFormat* fmt = nullptr;
+          switch(cod_format)
+          {
+            case GRK_FMT_PXM:
+              fmt = new PNMFormat<int32_t>(initParams.parameters.split_by_component);
+              break;
+            case GRK_FMT_PGX:
+              fmt = new PGXFormat<int32_t>();
+              break;
+            case GRK_FMT_BMP:
+              fmt = new BMPFormat<int32_t>();
+              break;
+#ifdef GROK_HAVE_LIBTIFF
+            case GRK_FMT_TIF:
+              fmt = new TIFFFormat<int32_t>();
+              break;
+#endif
+            case GRK_FMT_RAW:
+              fmt = new RAWFormat<int32_t>(true);
+              break;
+            case GRK_FMT_RAWL:
+              fmt = new RAWFormat<int32_t>(false);
+              break;
+            case GRK_FMT_YUV:
+              fmt = new YUVFormat();
+              break;
+#ifdef GROK_HAVE_LIBJPEG
+            case GRK_FMT_JPG:
+              fmt = new JPEGFormat<int32_t>();
+              break;
+#endif
+#ifdef GROK_HAVE_LIBPNG
+            case GRK_FMT_PNG:
+              fmt = new PNGFormat<int32_t>();
+              break;
+#endif
+            default:
+              spdlog::error("Unsupported output format");
+              grk_object_unref(codec);
+              rc = EXIT_FAILURE;
+              goto cleanup;
+          }
+
+          if(!fmt->encodeInit(img, outFilePath,
+                              initParams.parameters.compression_level, 1) ||
+             !fmt->encodeHeader() || !fmt->encodePixels() || !fmt->encodeFinish())
+          {
+            spdlog::error("MJ2 decompress: failed to save sample {} to {}", s, outFilePath);
+            delete fmt;
+            grk_object_unref(codec);
+            rc = EXIT_FAILURE;
+            goto cleanup;
+          }
+          delete fmt;
+          spdlog::info("Sample {}: {}", s, outFilePath);
+          numDecompressed++;
+        }
+
+        grk_object_unref(codec);
+        goto cleanup;
+      }
+    }
+
     auto start = std::chrono::high_resolution_clock::now();
     for(uint32_t i = 0; i < initParams.parameters.repeats; ++i)
     {

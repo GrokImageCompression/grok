@@ -855,6 +855,9 @@ bool FileFormatMJ2Decompress::decompressSample(uint32_t sampleIndex)
 }
 GrkImage* FileFormatMJ2Decompress::getSampleImage(uint32_t sampleIndex)
 {
+  // frame 0's data was transferred to headerImage_ during decompress()
+  if(sampleIndex == 0 && (decompressedImages_.empty() || !decompressedImages_[0]))
+    return headerImage_;
   if(sampleIndex >= (uint32_t)decompressedImages_.size())
     return nullptr;
   return decompressedImages_[sampleIndex];

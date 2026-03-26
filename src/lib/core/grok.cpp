@@ -727,6 +727,17 @@ bool grk_compress_finish(grk_object* codecWrapper)
   return false;
 }
 
+uint64_t grk_compress_get_compressed_length(grk_object* codecWrapper)
+{
+  if(codecWrapper)
+  {
+    auto codec = Codec::getImpl(codecWrapper);
+    if(codec->stream_)
+      return codec->stream_->tell();
+  }
+  return 0;
+}
+
 /**********************************************************************
  Plugin interface implementation
  ***********************************************************************/

@@ -1321,6 +1321,13 @@ GRK_API uint64_t GRK_CALLCONV grk_compress_frame(grk_object* codec, grk_image* i
 GRK_API bool GRK_CALLCONV grk_compress_finish(grk_object* codec);
 
 /**
+ * @brief Gets the total compressed length (bytes written to output stream/buffer)
+ * @param	codec	compression codec (see @ref grk_object)
+ * @return	compressed length in bytes, or 0 on failure
+ */
+GRK_API uint64_t GRK_CALLCONV grk_compress_get_compressed_length(grk_object* codec);
+
+/**
  * @brief Dumps codec information to file
  * @param	codec	decompression codec (see @ref grk_object)
  * @param	info_flag	type of information dump.
