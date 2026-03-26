@@ -219,7 +219,13 @@ else()
 endif()
 
 add_subdirectory(src/lib/core)
-# SWIG bindings for grok_core
+
+# Build codec library before SWIG bindings (codec bindings link against it)
+if(GRK_BUILD_CODEC)
+  add_subdirectory(src/lib/codec)
+endif()
+
+# SWIG bindings for grok_core and grok_codec
 option(GRK_BUILD_CORE_SWIG_BINDINGS "Build SWIG Python bindings for grok core library" ON)
 option(GRK_BUILD_CSHARP_SWIG_BINDINGS "Build SWIG C# bindings for grok core library" OFF)
 option(GRK_BUILD_JAVA_SWIG_BINDINGS "Build SWIG Java bindings for grok core library" OFF)
@@ -270,11 +276,9 @@ if(GRK_BUILD_CORE_SWIG_BINDINGS OR GRK_BUILD_CSHARP_SWIG_BINDINGS OR GRK_BUILD_J
     endif()
 endif()
 
-
-
+# Build CLI tools (depends on codec library)
 if(GRK_BUILD_CODEC)
   add_subdirectory(src/bin)
-  add_subdirectory(src/lib/codec)
 endif()
 
 # grk_config.h generation

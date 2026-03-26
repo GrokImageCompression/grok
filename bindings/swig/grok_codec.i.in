@@ -1,0 +1,51 @@
+%module grok_codec
+
+%{
+#include "@GROK_CODEC_INCLUDE_PATH@/grok_codec.h"
+%}
+
+%include stdint.i
+
+/* Typemap: convert Python list of strings to (int argc, const char* argv[])
+   SWIG drops const from argv, so we use char** casts in the generated code. */
+%typemap(in) (int argc, const char* argv[]) {
+    if (!PyList_Check($input)) {
+        PyErr_SetString(PyExc_TypeError, "Expected a list of strings");
+        SWIG_fail;
+    }
+    $1 = (int)PyList_Size($input);
+    $2 = (char**)malloc(($1 + 1) * sizeof(char*));
+    if (!$2) {
+        PyErr_NoMemory();
+        SWIG_fail;
+    }
+    for (int i = 0; i < $1; i++) {
+        PyObject* item = PyList_GetItem($input, i);
+        if (!PyUnicode_Check(item)) {
+            free($2);
+            PyErr_SetString(PyExc_TypeError, "List items must be strings");
+            SWIG_fail;
+        }
+        $2[i] = (char*)PyUnicode_AsUTF8(item);
+        if (!$2[i]) {
+            free($2);
+            SWIG_fail;
+        }
+    }
+    $2[$1] = NULL;
+}
+
+%typemap(freearg) (int argc, const char* argv[]) {
+    free($2);
+}
+
+/* Opaque types from grok.h - allows passing None (mapped to NULL) */
+typedef struct {} grk_image;
+typedef struct {} grk_stream_params;
+
+/* Codec functions */
+int grk_codec_dump(int argc, const char* argv[]);
+int grk_codec_compress(int argc, const char* argv[], grk_image* in_image,
+                       grk_stream_params* out_buffer);
+int grk_codec_decompress(int argc, const char* argv[]);
+int grk_codec_compare_images(int argc, const char* argv[]);

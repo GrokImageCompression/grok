@@ -1,0 +1,99 @@
+%module grok_codec_java
+
+%{
+#include "@GROK_CODEC_INCLUDE_PATH@/grok_codec.h"
+#include <stdlib.h>
+#include <string.h>
+%}
+
+%include stdint.i
+%include various.i
+
+%inline %{
+/* Build an argv array from a space-separated command string.
+   Supports "double-quoted" arguments containing spaces.
+   argv[0] is set to program_name. Caller must call _grk_free_argv(). */
+static char** _grk_build_argv(const char* program_name, const char* cmdline,
+                               int* out_argc) {
+    int cap = 16, argc = 0;
+    char** argv = (char**)malloc(cap * sizeof(char*));
+    if (!argv) { *out_argc = 0; return NULL; }
+    argv[argc++] = strdup(program_name);
+
+    if (cmdline) {
+        const char* p = cmdline;
+        while (*p) {
+            while (*p == ' ' || *p == '\t') p++;
+            if (!*p) break;
+
+            const char* start;
+            int len;
+            if (*p == '"') {
+                p++;
+                start = p;
+                while (*p && *p != '"') p++;
+                len = (int)(p - start);
+                if (*p == '"') p++;
+            } else {
+                start = p;
+                while (*p && *p != ' ' && *p != '\t') p++;
+                len = (int)(p - start);
+            }
+
+            if (argc + 1 >= cap) {
+                cap *= 2;
+                argv = (char**)realloc(argv, cap * sizeof(char*));
+            }
+            argv[argc] = (char*)malloc(len + 1);
+            memcpy(argv[argc], start, len);
+            argv[argc][len] = '\0';
+            argc++;
+        }
+    }
+
+    argv[argc] = NULL;
+    *out_argc = argc;
+    return argv;
+}
+
+static void _grk_free_argv(char** argv, int argc) {
+    for (int i = 0; i < argc; i++) free(argv[i]);
+    free(argv);
+}
+
+int grk_codec_decompress_cmd(const char* cmdline) {
+    int argc;
+    char** argv = _grk_build_argv("grk_decompress", cmdline, &argc);
+    if (!argv) return 1;
+    int rc = grk_codec_decompress(argc, (const char**)argv);
+    _grk_free_argv(argv, argc);
+    return rc;
+}
+
+int grk_codec_compress_cmd(const char* cmdline) {
+    int argc;
+    char** argv = _grk_build_argv("grk_compress", cmdline, &argc);
+    if (!argv) return 1;
+    int rc = grk_codec_compress(argc, (const char**)argv, NULL, NULL);
+    _grk_free_argv(argv, argc);
+    return rc;
+}
+
+int grk_codec_dump_cmd(const char* cmdline) {
+    int argc;
+    char** argv = _grk_build_argv("grk_dump", cmdline, &argc);
+    if (!argv) return 1;
+    int rc = grk_codec_dump(argc, (const char**)argv);
+    _grk_free_argv(argv, argc);
+    return rc;
+}
+
+int grk_codec_compare_images_cmd(const char* cmdline) {
+    int argc;
+    char** argv = _grk_build_argv("grk_compare_images", cmdline, &argc);
+    if (!argv) return 1;
+    int rc = grk_codec_compare_images(argc, (const char**)argv);
+    _grk_free_argv(argv, argc);
+    return rc;
+}
+%}
