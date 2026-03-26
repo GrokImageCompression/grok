@@ -23,6 +23,7 @@
 #include <vector>
 #include <set>
 #include <future>
+#include <functional>
 
 #include "ChunkBuffer.h"
 
@@ -52,24 +53,24 @@ struct FetchAuth
   bool s3_allow_insecure_ = false; // true = disable SSL certificate verification
   FetchAuth() = default;
   FetchAuth(const std::string& u, const std::string& p, const std::string& t, const std::string& h,
-            const std::string& r = "", const std::string& st = "") // Added session_token parameter
+            const std::string& r = "", const std::string& st = "")
       : username_(u), password_(p), bearer_token_(t), custom_header_(h), region_(r),
         session_token_(st)
   {}
 };
 
-template<typename C>
-struct TileResult
+// Unified fetch result — replaces TileResult<C> and ChunkResult
+struct FetchResult
 {
-  TileResult() = default;
-  TileResult(size_t id) : requestIndex_(id), retryCount_(0) {}
+  FetchResult() = default;
+  FetchResult(size_t id) : requestIndex_(id) {}
 
-  std::shared_ptr<C> ctx_;
+  std::shared_ptr<void> ctx_; // type-erased context (TileFetchContext or ChunkContext)
   size_t requestIndex_ = 0;
   std::vector<uint8_t> data_;
   long responseCode_ = 0;
   bool success_ = false;
-  uint32_t retryCount_; // Added to track retries
+  uint32_t retryCount_ = 0;
 };
 
 // Job struct for tile fetch queue
@@ -99,21 +100,6 @@ struct ChunkRequest : public DataSlice
   uint16_t requestIndex_;
 };
 
-struct ChunkContext;
-
-struct ChunkResult
-{
-  ChunkResult() = default;
-  ChunkResult(uint16_t id) : requestIndex_(id), retryCount_(0) {}
-
-  std::shared_ptr<ChunkContext> ctx_;
-  uint16_t requestIndex_ = 0;
-  std::vector<uint8_t> data_; // Buffer containing fetched data
-  long responseCode_ = 0; // HTTP response code
-  bool success_ = false; // Indicates if the fetch was successful
-  uint32_t retryCount_; // Added to track retries
-};
-
 struct ChunkContext
 {
   ChunkContext(std::shared_ptr<ChunkBuffer<>> chunkBuffer,
@@ -135,30 +121,63 @@ struct ChunkTask
   }
   std::shared_ptr<ChunkBuffer<>> chunkBuffer_;
   std::shared_ptr<std::vector<ChunkRequest>> requests_;
-  std::vector<std::promise<ChunkResult>> promises_;
+  std::vector<std::promise<FetchResult>> promises_;
 };
 
-// Struct to manage a scheduled batch of chunk fetches
-struct ScheduledChunkFetch
+// Abstract interface for iterating over fetch requests
+struct IRequestBatch
 {
-  ScheduledChunkFetch(std::shared_ptr<ChunkContext> ctx,
-                      std::shared_ptr<std::vector<ChunkRequest>> reqs,
-                      std::shared_ptr<std::vector<ChunkResult>> res,
-                      std::shared_ptr<std::vector<std::promise<ChunkResult>>> proms)
-      : ctx_(ctx), requests_(reqs), results_(res), promises_(proms), scheduled_(0), completed_(0)
-  {
-    if(requests_)
-      requestIter_ = requests_->begin();
-  }
-  ScheduledChunkFetch() = default;
+  virtual ~IRequestBatch() = default;
+  virtual bool hasMore() const = 0;
+  virtual size_t remaining() const = 0;
+  // Returns (offset, end) for the next request
+  virtual std::pair<uint64_t, uint64_t> next() = 0;
+};
 
-  std::shared_ptr<ChunkContext> ctx_;
+// Unified scheduled fetch — replaces ScheduledTileFetch and ScheduledChunkFetch
+struct ScheduledFetch
+{
+  ScheduledFetch() = default;
+  ScheduledFetch(std::shared_ptr<void> ctx, std::unique_ptr<IRequestBatch> requests,
+                 std::shared_ptr<std::vector<FetchResult>> results,
+                 std::shared_ptr<std::vector<std::promise<FetchResult>>> promises = nullptr)
+      : ctx_(std::move(ctx)), requests_(std::move(requests)), results_(std::move(results)),
+        promises_(std::move(promises))
+  {}
+
+  std::shared_ptr<void> ctx_;
+  std::unique_ptr<IRequestBatch> requests_;
+  std::shared_ptr<std::vector<FetchResult>> results_;
+  std::shared_ptr<std::vector<std::promise<FetchResult>>> promises_; // null for tile path
+  size_t scheduled_ = 0;
+  size_t completed_ = 0;
+};
+
+// IRequestBatch adapter for chunk requests
+struct ChunkRequestBatch : public IRequestBatch
+{
+  ChunkRequestBatch(std::shared_ptr<std::vector<ChunkRequest>> requests)
+      : requests_(std::move(requests))
+  {
+    iter_ = requests_->begin();
+  }
+  bool hasMore() const override
+  {
+    return iter_ != requests_->end();
+  }
+  size_t remaining() const override
+  {
+    return static_cast<size_t>(requests_->end() - iter_);
+  }
+  std::pair<uint64_t, uint64_t> next() override
+  {
+    auto& req = *iter_++;
+    return {req.offset_, req.end_};
+  }
+
+private:
   std::shared_ptr<std::vector<ChunkRequest>> requests_;
-  std::shared_ptr<std::vector<ChunkResult>> results_;
-  std::shared_ptr<std::vector<std::promise<ChunkResult>>> promises_;
-  std::vector<ChunkRequest>::iterator requestIter_;
-  size_t scheduled_; // Total scheduled requests so far
-  size_t completed_; // Total completed requests
+  std::vector<ChunkRequest>::iterator iter_;
 };
 
 } // namespace grk

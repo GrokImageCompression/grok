@@ -71,14 +71,11 @@ public:
 
   virtual void onFetchTilesComplete(std::shared_ptr<TileFetchContext> context, bool success) = 0;
 
-  // Fetch chunks asynchronously (overload with single ChunkBuffer)
-  virtual std::vector<std::future<ChunkResult>>
-      fetchChunks(std::shared_ptr<ChunkBuffer<>> chunkBuffer) = 0;
+  // Fetch chunks asynchronously
+  virtual void fetchChunks(std::shared_ptr<ChunkBuffer<>> chunkBuffer) = 0;
 
-  // Fetch chunks asynchronously (overload with ChunkBuffer and requests)
-  virtual std::vector<std::future<ChunkResult>>
-      fetchChunks(std::shared_ptr<ChunkBuffer<>> chunkBuffer,
-                  std::shared_ptr<std::vector<ChunkRequest>> requests) = 0;
+  virtual void fetchChunks(std::shared_ptr<ChunkBuffer<>> chunkBuffer,
+                           std::shared_ptr<std::vector<ChunkRequest>> requests) = 0;
 
   // List directory contents
   virtual std::vector<std::string> listDirectory(const std::string& path) = 0;
@@ -93,13 +90,13 @@ struct TileFetchContext : public std::enable_shared_from_this<TileFetchContext>
   std::shared_ptr<TPFetchSeq> requests_;
   void* user_data_ = nullptr;
   std::shared_ptr<std::unordered_map<uint16_t, std::shared_ptr<TPFetchSeq>>> tilePartFetchByTile_;
-  TileFetchCallback callback_; // Use the nested type
+  TileFetchCallback callback_;
   IFetcher* fetcher_ = nullptr;
 
   TileFetchContext(std::shared_ptr<TPFetchSeq>& requests, void* user_data,
                    std::shared_ptr<std::unordered_map<uint16_t, std::shared_ptr<TPFetchSeq>>>&
                        tilePartFetchByTile,
-                   TileFetchCallback callback, // Update parameter type
+                   TileFetchCallback callback,
                    IFetcher* fetcher)
       : requests_(requests), user_data_(user_data), tilePartFetchByTile_(tilePartFetchByTile),
         callback_(callback), fetcher_(fetcher)
@@ -111,42 +108,25 @@ private:
   mutable size_t completeCount_ = 0;
 };
 
-// ScheduledTileFetch struct with completed request tracking
-struct ScheduledTileFetch
-{
-  ScheduledTileFetch(std::shared_ptr<TileFetchContext> ctx, std::shared_ptr<TPFetchSeq> requests,
-                     std::shared_ptr<std::vector<TileResult<TileFetchContext>>> results)
-      : ctx_(ctx), requests_(requests), results_(results)
-  {
-    if(requests)
-      requestIter_ = requests->begin();
-  }
-  ScheduledTileFetch() : ScheduledTileFetch(nullptr, nullptr, nullptr) {}
-  std::shared_ptr<TileFetchContext> ctx_;
-  std::shared_ptr<TPFetchSeq> requests_;
-  std::shared_ptr<std::vector<TileResult<TileFetchContext>>> results_;
-  TPFetchSeq::iterator requestIter_;
-  size_t scheduled_ = 0;
-  size_t completed_ = 0;
-};
-
 typedef size_t (*CURL_FETCHER_WRITE_CALLBACK)(void* contents, size_t size, size_t nmemb,
                                               void* userp);
 
 #ifdef GRK_ENABLE_LIBCURL
 
+// Tile write callback — copies data into TPFetch::data_ (zero-copy to tile buffer)
 static size_t tileWriteCallback(void* contents, size_t size, size_t nmemb, void* userp)
 {
   size_t total_size = size * nmemb;
-  auto result = static_cast<TileResult<TileFetchContext>*>(userp);
-  if(result->ctx_)
+  auto result = static_cast<FetchResult*>(userp);
+  auto ctx = std::static_pointer_cast<TileFetchContext>(result->ctx_);
+  if(ctx)
   {
-    auto& tpseq = (*result->ctx_->requests_)[result->requestIndex_];
+    auto& tpseq = (*ctx->requests_)[result->requestIndex_];
     tpseq->copy(static_cast<uint8_t*>(contents), total_size);
     if(tpseq->fetchOffset_ == tpseq->length_)
     {
-      result->ctx_->callback_(result->requestIndex_, result->ctx_.get());
-      result->ctx_->incrementCompleteCount();
+      ctx->callback_(result->requestIndex_, ctx.get());
+      ctx->incrementCompleteCount();
     }
   }
   else
@@ -157,16 +137,18 @@ static size_t tileWriteCallback(void* contents, size_t size, size_t nmemb, void*
   return total_size;
 }
 
+// Chunk write callback — accumulates into result data, delivers to ChunkBuffer when complete
 static size_t chunkWriteCallback(void* contents, size_t size, size_t nmemb, void* userp)
 {
   size_t total_size = size * nmemb;
-  auto* res = static_cast<ChunkResult*>(userp);
+  auto* res = static_cast<FetchResult*>(userp);
   res->data_.insert(res->data_.end(), static_cast<uint8_t*>(contents),
                     static_cast<uint8_t*>(contents) + total_size);
-  auto& req = (*res->ctx_->requests_)[res->requestIndex_];
+  auto ctx = std::static_pointer_cast<ChunkContext>(res->ctx_);
+  auto& req = (*ctx->requests_)[res->requestIndex_];
   if(res->data_.size() == req.length_)
   {
-    res->ctx_->chunkBuffer_->add(res->requestIndex_, res->data_.data(), req.length_);
+    ctx->chunkBuffer_->add(res->requestIndex_, res->data_.data(), req.length_);
     res->data_.clear();
     res->data_.shrink_to_fit();
   }
@@ -217,8 +199,9 @@ public:
       return 0;
     }
 
-    TileResult<TileFetchContext> result;
-    auto curl = configure_handle(current_offset_, current_offset_ + numBytes - 1, result);
+    FetchResult result;
+    auto curl = configureHandle(current_offset_, current_offset_ + numBytes - 1, result,
+                                tileWriteCallback_);
     auto res = curl_easy_perform(curl);
     if(res != CURLE_OK)
     {
@@ -332,8 +315,7 @@ public:
     }
   }
 
-  std::vector<std::future<ChunkResult>>
-      fetchChunks(std::shared_ptr<ChunkBuffer<>> chunkBuffer) override
+  void fetchChunks(std::shared_ptr<ChunkBuffer<>> chunkBuffer) override
   {
     auto requests = std::make_shared<std::vector<ChunkRequest>>();
     auto length = chunkBuffer->size();
@@ -350,29 +332,22 @@ public:
       requests->push_back(ChunkRequest(i, offset, end));
       offset += chunkSize;
     }
-    return fetchChunks(chunkBuffer, requests);
+    fetchChunks(chunkBuffer, requests);
   }
 
-  std::vector<std::future<ChunkResult>>
-      fetchChunks(std::shared_ptr<ChunkBuffer<>> chunkBuffer,
-                  std::shared_ptr<std::vector<ChunkRequest>> requests) override
+  void fetchChunks(std::shared_ptr<ChunkBuffer<>> chunkBuffer,
+                   std::shared_ptr<std::vector<ChunkRequest>> requests) override
   {
     ChunkTask task(chunkBuffer, requests);
-    std::vector<std::future<ChunkResult>> futures;
-    futures.reserve(task.requests_->size());
-    size_t i = 0;
-    for(auto& req : *task.requests_)
+
+    for(size_t i = 0; i < task.requests_->size(); ++i)
     {
+      auto& req = (*task.requests_)[i];
       if(req.end_ < req.offset_ || req.end_ >= total_size_)
       {
         grklog.error("Invalid range %llu-%llu for ID %u (total size: %llu)", req.offset_, req.end_,
                      req.requestIndex_, total_size_);
-        ChunkResult res(req.requestIndex_);
-        res.success_ = false;
-        task.promises_[i].set_value(res);
       }
-      futures.push_back((task.promises_)[i].get_future());
-      i++;
     }
 
     {
@@ -381,7 +356,6 @@ public:
     }
     queue_cv_.notify_one();
     grklog.debug("Queued chunk fetch task with %zu requests", requests->size());
-    return futures;
   }
 
   // Directory listing
@@ -397,12 +371,12 @@ public:
 
     parse(path);
     std::string list_url = url_ + (url_.back() == '/' ? "" : "/") + "?list-type=2";
+
     struct curl_slist* headers = nullptr;
     headers = prepareAuthHeaders(headers);
 
     std::string response;
 
-    // Temporary result for retry logic
     struct TempResult
     {
       long responseCode_ = 0;
@@ -416,7 +390,7 @@ public:
       curl_easy_setopt(curl, CURLOPT_URL, list_url.c_str());
       curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
       auth(curl);
-      curl_initiate_retry(curl); // Configure retry settings
+      curl_initiate_retry(curl);
       curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, writeCallback);
       curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
 
@@ -437,7 +411,7 @@ public:
       }
       else
       {
-        break; // Success or max retries reached
+        break;
       }
     } while(true);
 
@@ -483,7 +457,6 @@ public:
     std::string header_data;
     bool success = false;
 
-    // Temporary result for retry logic
     struct TempResult
     {
       long responseCode_ = 0;
@@ -495,10 +468,10 @@ public:
       temp_result.responseCode_ = 0;
       header_data.clear();
       curl_easy_setopt(curl, CURLOPT_URL, url_.c_str());
-      curl_easy_setopt(curl, CURLOPT_NOBODY, 1L); // HEAD request
+      curl_easy_setopt(curl, CURLOPT_NOBODY, 1L);
       curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
       auth(curl);
-      curl_initiate_retry(curl); // Configure retry settings
+      curl_initiate_retry(curl);
       curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, writeCallback);
       curl_easy_setopt(curl, CURLOPT_HEADERDATA, &header_data);
 
@@ -520,13 +493,12 @@ public:
       else
       {
         success = (res == CURLE_OK && temp_result.responseCode_ == 200);
-        break; // Success or max retries reached
+        break;
       }
     } while(true);
 
     if(success)
     {
-      // Parse headers (simplified, split by \r\n)
       std::istringstream header_stream(header_data);
       std::string line;
       while(std::getline(header_stream, line))
@@ -559,11 +531,13 @@ protected:
   virtual curl_slist* prepareAuthHeaders(curl_slist* headers) = 0;
   virtual void parse(const std::string& path) = 0;
 
-  void fetchError(TileResult<TileFetchContext>* result)
+  void fetchError(FetchResult* result)
   {
-    if(result->ctx_ && result->ctx_->fetcher_)
-      result->ctx_->fetcher_->onFetchTilesComplete(result->ctx_, false);
+    auto ctx = std::static_pointer_cast<TileFetchContext>(result->ctx_);
+    if(ctx && ctx->fetcher_)
+      ctx->fetcher_->onFetchTilesComplete(ctx, false);
   }
+
   virtual void auth(CURL* curl)
   {
     if(EnvVarManager::test_bool("GRK_HTTP_UNSAFESSL"))
@@ -600,7 +574,7 @@ protected:
 
     curl_easy_setopt(curl, CURLOPT_URL, url_.c_str());
     curl_easy_setopt(curl, CURLOPT_NOBODY, 1L);
-    curl_easy_setopt(curl, CURLOPT_FILETIME, 1L); // Request the Last-Modified time
+    curl_easy_setopt(curl, CURLOPT_FILETIME, 1L);
     auth(curl);
 
     auto headers = configureHeaders("");
@@ -628,7 +602,6 @@ protected:
     total_size_ = static_cast<uint64_t>(content_length);
     grklog.debug("Fetched total size: %llu bytes", total_size_);
 
-    // Retrieve the last modified time
     long filetime;
     res = curl_easy_getinfo(curl, CURLINFO_FILETIME, &filetime);
     if(res == CURLE_OK && filetime != -1)
@@ -645,14 +618,17 @@ protected:
     curl_slist_free_all(headers);
   }
 
-  virtual CURL* configure_handle(uint64_t offset, uint64_t end,
-                                 TileResult<TileFetchContext>& result)
-  {
-    return configure<TileResult<TileFetchContext>>(offset, end, result);
-  }
-
-  template<typename R>
-  CURL* configure(uint64_t offset, uint64_t end, R& result)
+  /**
+   * @brief Configures a CURL easy handle for a byte-range fetch request
+   *
+   * @param offset byte range start
+   * @param end byte range end (inclusive)
+   * @param result fetch result to receive data and status
+   * @param callback write callback (tile or chunk)
+   * @return configured CURL* handle
+   */
+  CURL* configureHandle(uint64_t offset, uint64_t end, FetchResult& result,
+                        CURL_FETCHER_WRITE_CALLBACK callback)
   {
     CURL* curl = curl_easy_init();
     if(!curl)
@@ -660,16 +636,9 @@ protected:
 
     curl_easy_setopt(curl, CURLOPT_URL, url_.c_str());
     curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 10L);
-    curl_initiate_retry(curl); // Modified to support retry
+    curl_initiate_retry(curl);
     curl_easy_setopt(curl, CURLOPT_VERBOSE, 0L);
-    if constexpr(std::is_same_v<R, ChunkResult>)
-    {
-      curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, chunkWriteCallback);
-    }
-    else
-    {
-      curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, tileWriteCallback_);
-    }
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, callback);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &result);
     curl_easy_setopt(curl, CURLOPT_PRIVATE, &result);
 
@@ -682,6 +651,13 @@ protected:
     return curl;
   }
 
+  /**
+   * @brief Schedules a tile fetch by creating TileFetchContext, generating
+   * tile part collections, and scheduling the first batch of CURL requests
+   *
+   * @param slated set of tile indices to fetch
+   * @return shared_ptr to TileFetchContext, or nullptr on failure
+   */
   std::shared_ptr<TileFetchContext> scheduleTileFetch(std::set<uint16_t>& slated)
   {
     auto requests = std::make_shared<TPFetchSeq>();
@@ -689,48 +665,71 @@ protected:
         std::make_shared<std::unordered_map<uint16_t, std::shared_ptr<TPFetchSeq>>>();
     TPFetchSeq::genCollections(allTileParts_, slated, requests, tilePartFetchByTile);
 
-    auto results = std::make_shared<std::vector<TileResult<TileFetchContext>>>(requests->size());
+    auto results = std::make_shared<std::vector<FetchResult>>(requests->size());
 
     auto ctx = std::make_shared<TileFetchContext>(requests, user_data_, tilePartFetchByTile,
                                                   tileFetchCallback_, this);
 
-    return scheduleTileFetch(ScheduledTileFetch(ctx, requests, results)) ? ctx : nullptr;
+    auto batch = std::make_unique<TileRequestBatch>(requests);
+    currentFetch_ = ScheduledFetch(ctx, std::move(batch), results);
+
+    // Set context on all results
+    for(auto& r : *results)
+      r.ctx_ = ctx;
+
+    return scheduleNextBatch(tileWriteCallback_) ? ctx : nullptr;
   }
 
-  bool scheduleTileFetch(ScheduledTileFetch scheduled)
+  /**
+   * @brief Schedules a chunk fetch by creating a ScheduledFetch with
+   * ChunkContext and scheduling the first batch of CURL requests
+   *
+   * @param ctx chunk context with buffer and requests
+   * @param requests chunk request descriptors
+   * @param results pre-allocated result vector
+   * @param promises per-request promises for async completion
+   * @return true if scheduling succeeded
+   */
+  bool scheduleChunkFetch(std::shared_ptr<ChunkContext> ctx,
+                          std::shared_ptr<std::vector<ChunkRequest>> requests,
+                          std::shared_ptr<std::vector<FetchResult>> results,
+                          std::shared_ptr<std::vector<std::promise<FetchResult>>> promises)
   {
-    currentTileFetch_ = scheduled;
-    return scheduleNextTileBatch();
+    auto batch = std::make_unique<ChunkRequestBatch>(requests);
+    currentFetch_ = ScheduledFetch(ctx, std::move(batch), results, promises);
+    return scheduleNextBatch(chunkWriteCallback);
   }
 
-  bool scheduleNextTileBatch(void)
+  /**
+   * @brief Schedules the next batch of CURL requests from the current
+   * ScheduledFetch, up to batchSize_ concurrent requests
+   *
+   * @param callback write callback (tile or chunk)
+   * @return true if scheduling succeeded
+   */
+  bool scheduleNextBatch(CURL_FETCHER_WRITE_CALLBACK callback)
   {
-    if(currentTileFetch_.requestIter_ == currentTileFetch_.requests_->end())
-      return true; // No more requests to schedule
+    if(!currentFetch_.requests_ || !currentFetch_.requests_->hasMore())
+      return true;
 
-    size_t activeRequests =
-        currentTileFetch_.scheduled_ - currentTileFetch_.completed_; // Currently active requests
+    size_t activeRequests = currentFetch_.scheduled_ - currentFetch_.completed_;
     size_t remainingBatch = batchSize_ > activeRequests ? batchSize_ - activeRequests : 0;
-    size_t remainingRequests =
-        static_cast<size_t>(currentTileFetch_.requests_->end() - currentTileFetch_.requestIter_);
+    size_t remainingRequests = currentFetch_.requests_->remaining();
     size_t requestsToSchedule = std::min(remainingBatch, remainingRequests);
 
-    for(size_t i = 0; i < requestsToSchedule &&
-                      currentTileFetch_.requestIter_ != currentTileFetch_.requests_->end();
-        ++i)
+    for(size_t i = 0; i < requestsToSchedule && currentFetch_.requests_->hasMore(); ++i)
     {
-      auto req = *currentTileFetch_.requestIter_;
-      uint64_t offset_ = req->offset_;
-      uint64_t end_ = offset_ + req->length_ - 1;
-      if(end_ >= this->total_size_)
+      auto [offset, end] = currentFetch_.requests_->next();
+      if(end >= this->total_size_)
       {
-        grklog.warn("Range %llu-%llu exceeds total size %llu", offset_, end_, total_size_);
-        end_ = this->total_size_ - 1;
+        grklog.warn("Range %llu-%llu exceeds total size %llu", offset, end, total_size_);
+        end = this->total_size_ - 1;
       }
-      auto& res = (*(currentTileFetch_.results_))[currentTileFetch_.scheduled_];
-      res.requestIndex_ = currentTileFetch_.scheduled_;
-      res.ctx_ = currentTileFetch_.ctx_;
-      CURL* handle = configure_handle(offset_, end_, res);
+      auto& res = (*currentFetch_.results_)[currentFetch_.scheduled_];
+      res.requestIndex_ = currentFetch_.scheduled_;
+      if(!res.ctx_)
+        res.ctx_ = currentFetch_.ctx_;
+      CURL* handle = configureHandle(offset, end, res, callback);
       CURLMcode ret = curl_multi_add_handle(multi_handle_, handle);
       if(ret != CURLM_OK)
       {
@@ -738,160 +737,121 @@ protected:
         curl_easy_cleanup(handle);
         return false;
       }
-      grklog.debug("Added tile range request: %llu-%llu (index %zu)", offset_, end_,
-                   currentTileFetch_.scheduled_);
-      currentTileFetch_.scheduled_++;
-      currentTileFetch_.requestIter_++;
+      {
+        std::lock_guard<std::mutex> lock(active_handles_mutex_);
+        active_handles_[handle] = currentFetch_.scheduled_;
+      }
+      grklog.debug("Added fetch range request: %llu-%llu (index %zu)", offset, end,
+                   currentFetch_.scheduled_);
+      currentFetch_.scheduled_++;
     }
     return true;
   }
 
-  virtual CURL* configureChunkHandle(uint64_t offset, uint64_t end, ChunkResult& result)
+  /**
+   * @brief Retries a failed fetch request by resetting its state
+   * and re-adding a CURL handle to the multi handle
+   *
+   * @param result the failed fetch result to retry
+   * @param offset byte range start
+   * @param end byte range end
+   * @param callback write callback (tile or chunk)
+   * @param onFatalError called if the retry itself fails to schedule
+   */
+  void retryRequest(FetchResult* result, uint64_t offset, uint64_t end,
+                    CURL_FETCHER_WRITE_CALLBACK callback, std::function<void()> onFatalError)
   {
-    return configure<ChunkResult>(offset, end, result);
-  }
+    result->retryCount_++;
+    grklog.warn("Retrying request %zu (retry %u/%u)", result->requestIndex_, result->retryCount_,
+                maxRetries_);
 
-  bool scheduleChunkFetch(ScheduledChunkFetch chunkFetch)
-  {
-    currentChunkFetch_ = chunkFetch;
-    return scheduleNextChunkBatch();
-  }
+    result->data_.clear();
+    result->responseCode_ = 0;
+    result->success_ = false;
 
-  bool scheduleNextChunkBatch()
-  {
-    if(currentChunkFetch_.requestIter_ == currentChunkFetch_.requests_->end())
-      return true;
-
-    size_t active_requests = currentChunkFetch_.scheduled_ - currentChunkFetch_.completed_;
-    size_t remaining_batch = batchSize_ > active_requests ? batchSize_ - active_requests : 0;
-    size_t remaining_requests =
-        static_cast<size_t>(currentChunkFetch_.requests_->end() - currentChunkFetch_.requestIter_);
-    size_t requests_to_schedule = std::min(remaining_batch, remaining_requests);
-
-    for(size_t i = 0; i < requests_to_schedule &&
-                      currentChunkFetch_.requestIter_ != currentChunkFetch_.requests_->end();
-        ++i)
+    // For tile retries, reset the TPFetch write offset so data is re-received from scratch
+    if(!currentFetch_.promises_)
     {
-      auto req = *currentChunkFetch_.requestIter_;
-      uint64_t offset = req.offset_;
-      uint64_t end = req.end_;
-      if(end >= total_size_)
+      auto ctx = std::static_pointer_cast<TileFetchContext>(result->ctx_);
+      if(ctx)
       {
-        grklog.warn("Range %llu-%llu exceeds total size %llu for ID %u", offset, end, total_size_,
-                    req.requestIndex_);
-        end = total_size_ - 1;
+        auto& tpseq = (*ctx->requests_)[result->requestIndex_];
+        tpseq->fetchOffset_ = 0;
       }
-      auto& res = (*currentChunkFetch_.results_)[currentChunkFetch_.scheduled_];
-      res.requestIndex_ = req.requestIndex_;
-      res.ctx_ = currentChunkFetch_.ctx_;
-      CURL* handle = configureChunkHandle(offset, end, res);
-      CURLMcode ret = curl_multi_add_handle(multi_handle_, handle);
-      if(ret != CURLM_OK)
-      {
-        grklog.error("curl_multi_add_handle failed: %s", curl_multi_strerror(ret));
-        curl_easy_cleanup(handle);
-        // Do not set promise here; let fetchWorker handle failures
-      }
-      else
-      {
-        active_handles_[handle] = currentChunkFetch_.scheduled_;
-        grklog.debug("Scheduled chunk request %zu: ID %u, range %llu-%llu",
-                     currentChunkFetch_.scheduled_, req.requestIndex_, offset, end);
-        currentChunkFetch_.scheduled_++;
-      }
-      currentChunkFetch_.requestIter_++;
     }
-    return true;
+
+    if(end >= total_size_)
+      end = total_size_ - 1;
+
+    CURL* handle = configureHandle(offset, end, *result, callback);
+    CURLMcode ret = curl_multi_add_handle(multi_handle_, handle);
+    if(ret != CURLM_OK)
+    {
+      grklog.error("Retry curl_multi_add_handle failed: %s", curl_multi_strerror(ret));
+      curl_easy_cleanup(handle);
+      onFatalError();
+    }
+    else
+    {
+      std::lock_guard<std::mutex> lock(active_handles_mutex_);
+      active_handles_[handle] = result->requestIndex_;
+      grklog.debug("Rescheduled retry %u: %llu-%llu (index %zu)", result->retryCount_, offset, end,
+                   result->requestIndex_);
+    }
   }
 
-  // New method to configure retry settings for CURL handle
   void curl_initiate_retry(CURL* curl)
   {
     curl_easy_setopt(curl, CURLOPT_TIMEOUT, 30L);
   }
 
-  // New method to check if a request should be retried
-  template<typename R>
-  bool shouldRetry(const R& result, CURLcode curl_code) const
+  /**
+   * @brief Determines whether a failed fetch request should be retried
+   *
+   * @param result the fetch result to check
+   * @param curl_code the CURL result code
+   * @return true if the request should be retried
+   */
+  bool shouldRetry(const FetchResult& result, CURLcode curl_code) const
   {
     if(result.retryCount_ >= maxRetries_)
       return false;
 
-    // Retry on CURL errors or non-206 HTTP response codes
     bool isCurlError = curl_code != CURLE_OK;
     bool isHttpError = result.responseCode_ != 206 && result.responseCode_ != 0;
 
     return isCurlError || isHttpError;
   }
 
-  // Corrected method to reschedule a failed tile request
-  void retryTileRequest(TileResult<TileFetchContext>* result, const std::shared_ptr<TPFetch>& req)
+  /**
+   * @brief Recovers the byte range (offset, end) for a fetch result
+   * by looking up the original request in the tile or chunk context
+   *
+   * @param result the fetch result
+   * @return (offset, end) byte range pair
+   */
+  std::pair<uint64_t, uint64_t> getRequestRange(const FetchResult& result) const
   {
-    result->retryCount_++;
-    grklog.warn("Retrying tile request %zu (retry %u/%u)", result->requestIndex_,
-                result->retryCount_, maxRetries_);
-
-    // Reset result data for retry
-    result->data_.clear();
-    result->responseCode_ = 0;
-    result->success_ = false;
-
-    uint64_t offset_ = req->offset_;
-    uint64_t end_ = offset_ + req->length_ - 1;
-    if(end_ >= total_size_)
-      end_ = total_size_ - 1;
-
-    CURL* handle = configure_handle(offset_, end_, *result);
-    CURLMcode ret = curl_multi_add_handle(multi_handle_, handle);
-    if(ret != CURLM_OK)
+    if(!currentFetch_.promises_)
     {
-      grklog.error("Retry curl_multi_add_handle failed: %s", curl_multi_strerror(ret));
-      curl_easy_cleanup(handle);
-      fetchError(result);
+      // Tile path — look up from TileFetchContext
+      auto ctx = std::static_pointer_cast<TileFetchContext>(result.ctx_);
+      auto& req = (*ctx->requests_)[result.requestIndex_];
+      return {req->offset_, req->offset_ + req->length_ - 1};
     }
     else
     {
-      grklog.debug("Rescheduled tile retry %u: %llu-%llu (index %zu)", result->retryCount_, offset_,
-                   end_, result->requestIndex_);
-    }
-  }
-
-  // New method to reschedule a failed chunk request
-  void retryChunkRequest(ChunkResult* result, const ChunkRequest& req, size_t idx)
-  {
-    result->retryCount_++;
-    grklog.warn("Retrying chunk request ID %u (retry %u/%u)", result->requestIndex_,
-                result->retryCount_, maxRetries_);
-
-    // Reset result data for retry
-    result->data_.clear();
-    result->responseCode_ = 0;
-    result->success_ = false;
-
-    uint64_t offset = req.offset_;
-    uint64_t end = req.end_;
-    if(end >= total_size_)
-      end = total_size_ - 1;
-
-    CURL* handle = configureChunkHandle(offset, end, *result);
-    CURLMcode ret = curl_multi_add_handle(multi_handle_, handle);
-    if(ret != CURLM_OK)
-    {
-      grklog.error("Retry curl_multi_add_handle failed: %s", curl_multi_strerror(ret));
-      curl_easy_cleanup(handle);
-      result->success_ = false;
-      (*currentChunkFetch_.promises_)[idx].set_value(*result);
-    }
-    else
-    {
-      active_handles_[handle] = idx;
-      grklog.debug("Rescheduled chunk retry %u: ID %u, range %llu-%llu", result->retryCount_,
-                   req.requestIndex_, offset, end);
+      // Chunk path — look up from ChunkContext
+      auto ctx = std::static_pointer_cast<ChunkContext>(result.ctx_);
+      auto& req = (*ctx->requests_)[result.requestIndex_];
+      return {req.offset_, req.end_};
     }
   }
 
   void fetchWorker()
   {
+    CURL_FETCHER_WRITE_CALLBACK activeCallback_ = nullptr;
+
     while(!stop_)
     {
       std::vector<FetchJob> tile_jobs_to_process;
@@ -914,6 +874,7 @@ protected:
 
       if(!tile_jobs_to_process.empty())
       {
+        activeCallback_ = tileWriteCallback_;
         std::lock_guard<std::mutex> lock(active_jobs_mutex_);
         for(auto& job : tile_jobs_to_process)
         {
@@ -927,23 +888,24 @@ protected:
 
       if(!chunk_tasks_to_process.empty())
       {
+        activeCallback_ = chunkWriteCallback;
         for(auto& task : chunk_tasks_to_process)
         {
           auto requests = task.requests_;
-          auto results = std::make_shared<std::vector<ChunkResult>>(requests->size());
+          auto results = std::make_shared<std::vector<FetchResult>>(requests->size());
           auto promises =
-              std::make_shared<std::vector<std::promise<ChunkResult>>>(std::move(task.promises_));
+              std::make_shared<std::vector<std::promise<FetchResult>>>(std::move(task.promises_));
           auto ctx = std::make_shared<ChunkContext>(task.chunkBuffer_, requests);
           for(size_t i = 0; i < results->size(); ++i)
           {
-            (*results)[i] = ChunkResult((*requests)[i].requestIndex_);
+            (*results)[i] = FetchResult((*requests)[i].requestIndex_);
             (*results)[i].ctx_ = ctx;
           }
-          if(!scheduleChunkFetch(ScheduledChunkFetch(ctx, requests, results, promises)))
+          if(!scheduleChunkFetch(ctx, requests, results, promises))
           {
             for(size_t i = 0; i < promises->size(); ++i)
             {
-              (*promises)[i].set_value((*results)[i]); // Fail all promises
+              (*promises)[i].set_value((*results)[i]);
             }
           }
         }
@@ -954,20 +916,32 @@ protected:
       if(ret != CURLM_OK)
       {
         grklog.error("curl_multi_perform failed: %s", curl_multi_strerror(ret));
-        std::lock_guard<std::mutex> lock(active_jobs_mutex_);
-        for(auto& job : active_jobs_)
-          job.second.set_value(false);
-        active_jobs_.clear();
-        std::lock_guard<std::mutex> lock2(active_handles_mutex_);
-        for(auto& [handle, idx] : active_handles_)
+        // Fail all active tile jobs
         {
-          ChunkResult res((*currentChunkFetch_.results_)[idx].requestIndex_);
-          res.success_ = false;
-          (*currentChunkFetch_.promises_)[idx].set_value(res);
-          curl_multi_remove_handle(multi_handle_, handle);
-          curl_easy_cleanup(handle);
+          std::lock_guard<std::mutex> lock(active_jobs_mutex_);
+          for(auto& job : active_jobs_)
+            job.second.set_value(false);
+          active_jobs_.clear();
         }
-        active_handles_.clear();
+        // Fail all active chunk promises
+        {
+          std::lock_guard<std::mutex> lock(active_handles_mutex_);
+          if(currentFetch_.promises_)
+          {
+            for(size_t i = 0; i < currentFetch_.promises_->size(); ++i)
+            {
+              FetchResult res(i);
+              res.success_ = false;
+              (*currentFetch_.promises_)[i].set_value(res);
+            }
+          }
+          for(auto& [handle, idx] : active_handles_)
+          {
+            curl_multi_remove_handle(multi_handle_, handle);
+            curl_easy_cleanup(handle);
+          }
+          active_handles_.clear();
+        }
         continue;
       }
 
@@ -980,80 +954,72 @@ protected:
           CURL* curl = msg->easy_handle;
           void* userp;
           curl_easy_getinfo(curl, CURLINFO_PRIVATE, &userp);
+          auto* result = static_cast<FetchResult*>(userp);
 
-          // Determine if this is a tile or chunk fetch result
-          TileResult<TileFetchContext>* tile_result = nullptr;
-          ChunkResult* chunk_result = nullptr;
-          if(active_handles_.find(curl) == active_handles_.end())
-          {
-            tile_result = static_cast<TileResult<TileFetchContext>*>(userp);
-          }
-          else
-          {
-            chunk_result = static_cast<ChunkResult*>(userp);
-          }
+          curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &result->responseCode_);
+          result->success_ = (msg->data.result == CURLE_OK && result->responseCode_ == 206);
 
-          curl_multi_remove_handle(multi_handle_, curl);
-          curl_easy_cleanup(curl);
-
-          if(tile_result)
-          {
-            if(msg->data.result != CURLE_OK)
-            {
-              grklog.error("Tile CURL request failed: %s", curl_easy_strerror(msg->data.result));
-              this->fetchError(tile_result);
-            }
-            else
-            {
-              currentTileFetch_.completed_++; // Increment completed count
-              grklog.debug("Tile request %zu completed, total completed: %zu",
-                           tile_result->requestIndex_, currentTileFetch_.completed_);
-            }
-
-            if(currentTileFetch_.scheduled_ > currentTileFetch_.completed_ &&
-               currentTileFetch_.completed_ >= batchSize_ / 2 &&
-               currentTileFetch_.requestIter_ != currentTileFetch_.requests_->end())
-            {
-              grklog.debug("Half of tile batch (%zu) completed, scheduling next batch",
-                           batchSize_ / 2);
-              scheduleNextTileBatch();
-            }
-          }
-          else if(chunk_result)
+          size_t idx = 0;
           {
             std::lock_guard<std::mutex> lock(active_handles_mutex_);
             auto it = active_handles_.find(curl);
             if(it != active_handles_.end())
             {
-              size_t idx = it->second;
-              curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &chunk_result->responseCode_);
-              chunk_result->success_ =
-                  (msg->data.result == CURLE_OK && chunk_result->responseCode_ == 206);
-              if(!chunk_result->success_)
-              {
-                grklog.error("Chunk fetch ID %u failed: %s, HTTP %ld", chunk_result->requestIndex_,
-                             curl_easy_strerror(msg->data.result), chunk_result->responseCode_);
-              }
-              else
-              {
-                grklog.debug("Chunk fetch ID %u completed, %zu bytes", chunk_result->requestIndex_,
-                             chunk_result->data_.size());
-                if(tileFetchCallback_)
-                  tileFetchCallback_(idx, nullptr); // No TC context for chunk fetches
-              }
-              (*currentChunkFetch_.promises_)[idx].set_value(*chunk_result);
-              currentChunkFetch_.completed_++;
+              idx = it->second;
               active_handles_.erase(it);
-
-              if(currentChunkFetch_.scheduled_ > currentChunkFetch_.completed_ &&
-                 currentChunkFetch_.completed_ >= batchSize_ / 2 &&
-                 currentChunkFetch_.requestIter_ != currentChunkFetch_.requests_->end())
-              {
-                grklog.debug("Half of chunk batch (%zu) completed, scheduling next batch",
-                             batchSize_ / 2);
-                scheduleNextChunkBatch();
-              }
             }
+          }
+
+          curl_multi_remove_handle(multi_handle_, curl);
+          curl_easy_cleanup(curl);
+
+          if(!result->success_)
+          {
+            if(shouldRetry(*result, msg->data.result))
+            {
+              auto [offset, end] = getRequestRange(*result);
+              grklog.warn("Fetch request %zu failed (HTTP %ld, CURL %s), retrying...",
+                          result->requestIndex_, result->responseCode_,
+                          curl_easy_strerror(msg->data.result));
+              auto callback = activeCallback_;
+              retryRequest(result, offset, end, callback, [this, result, idx]() {
+                // Fatal retry failure
+                if(!currentFetch_.promises_)
+                  fetchError(result);
+                else if(idx < currentFetch_.promises_->size())
+                  (*currentFetch_.promises_)[idx].set_value(*result);
+              });
+              continue; // Don't count as completed — retry is in progress
+            }
+
+            grklog.error("Fetch request %zu failed: %s, HTTP %ld (no more retries)",
+                         result->requestIndex_, curl_easy_strerror(msg->data.result),
+                         result->responseCode_);
+            // For tile fetches, signal error
+            if(!currentFetch_.promises_)
+              fetchError(result);
+          }
+          else
+          {
+            grklog.debug("Fetch request %zu completed", result->requestIndex_);
+          }
+
+          // Set promise for chunk fetches
+          if(currentFetch_.promises_ && idx < currentFetch_.promises_->size())
+          {
+            (*currentFetch_.promises_)[idx].set_value(*result);
+          }
+
+          currentFetch_.completed_++;
+
+          // Schedule next batch when half the current batch is complete
+          if(currentFetch_.scheduled_ > currentFetch_.completed_ &&
+             currentFetch_.completed_ >= batchSize_ / 2 && currentFetch_.requests_ &&
+             currentFetch_.requests_->hasMore())
+          {
+            grklog.debug("Half of batch (%zu) completed, scheduling next batch", batchSize_ / 2);
+            if(activeCallback_)
+              scheduleNextBatch(activeCallback_);
           }
         }
       }
@@ -1083,13 +1049,17 @@ protected:
     active_jobs_.clear();
 
     std::lock_guard<std::mutex> lock2(active_handles_mutex_);
-    for(auto& [handle, idx] : active_handles_)
+    if(currentFetch_.promises_)
     {
-      ChunkResult resp((*currentChunkFetch_.results_)[idx].requestIndex_);
-      resp.success_ = false;
-      (*currentChunkFetch_.promises_)[idx].set_value(resp);
-      curl_multi_remove_handle(multi_handle_, handle);
-      curl_easy_cleanup(handle);
+      for(auto& [handle, idx] : active_handles_)
+      {
+        FetchResult resp(idx);
+        resp.success_ = false;
+        if(idx < currentFetch_.promises_->size())
+          (*currentFetch_.promises_)[idx].set_value(resp);
+        curl_multi_remove_handle(multi_handle_, handle);
+        curl_easy_cleanup(handle);
+      }
     }
     active_handles_.clear();
     grklog.debug("Worker thread exiting");
@@ -1119,22 +1089,20 @@ protected:
   CURLM* multi_handle_ = nullptr;
 
 private:
-  size_t batchSize_ = 30; // Default batch size
+  size_t batchSize_ = 30;
   bool stop_ = false;
   std::thread fetchThread_;
-  // Retry configuration
-  uint32_t maxRetries_ = 3; // Maximum number of retries
-  uint32_t retryDelayMs_ = 1000; // Delay between retries in milliseconds
+  uint32_t maxRetries_ = 3;
+  uint32_t retryDelayMs_ = 1000;
 
 protected:
   TileFetchCallback tileFetchCallback_;
   const TPSEQ_VEC* allTileParts_ = nullptr;
-  time_t last_modified_time_ = -1; // Unix timestamp; -1 if unavailable
+  time_t last_modified_time_ = -1;
 
 private:
   CURL_FETCHER_WRITE_CALLBACK tileWriteCallback_;
-  ScheduledTileFetch currentTileFetch_;
-  ScheduledChunkFetch currentChunkFetch_;
+  ScheduledFetch currentFetch_;
 };
 
 #endif

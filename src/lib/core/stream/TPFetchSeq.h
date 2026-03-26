@@ -23,6 +23,8 @@
 #include <unordered_map>
 #include <atomic>
 
+#include "FetchCommon.h"
+
 namespace grk
 {
 
@@ -268,6 +270,32 @@ struct TPFetchSeq : SharedPtrSeq<TPFetch>
 
 private:
   uint8_t fetchCount_ = 0;
+};
+
+// IRequestBatch adapter for tile part fetch requests
+struct TileRequestBatch : public IRequestBatch
+{
+  TileRequestBatch(std::shared_ptr<TPFetchSeq> requests) : requests_(std::move(requests))
+  {
+    iter_ = requests_->begin();
+  }
+  bool hasMore() const override
+  {
+    return iter_ != requests_->end();
+  }
+  size_t remaining() const override
+  {
+    return static_cast<size_t>(requests_->end() - iter_);
+  }
+  std::pair<uint64_t, uint64_t> next() override
+  {
+    auto& req = *iter_++;
+    return {req->offset_, req->offset_ + req->length_ - 1};
+  }
+
+private:
+  std::shared_ptr<TPFetchSeq> requests_;
+  TPFetchSeq::iterator iter_;
 };
 
 } // namespace grk
