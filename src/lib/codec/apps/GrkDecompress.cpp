@@ -635,7 +635,7 @@ GrkRC GrkDecompress::parseCommandLine(int argc, const char* argv[],
   }
   else
   {
-    if(parameters->decod_format == GRK_CODEC_UNK)
+    if(parameters->cod_format == GRK_FMT_UNK)
     {
       if((parameters->infile[0] == 0) || (parameters->outfile[0] == 0))
       {
