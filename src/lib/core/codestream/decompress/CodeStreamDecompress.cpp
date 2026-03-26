@@ -1087,6 +1087,11 @@ void CodeStreamDecompress::scheduleTileBatch()
   {
     int32_t lastCleared = tileCompletion_->getLastClearedTileY();
     int32_t maxAllowedRow = lastCleared + maxRowsAhead_ + 1;
+    // If the consumer is waiting for rows beyond the back-pressure limit,
+    // extend the limit to avoid deadlock.
+    int32_t neededRow = tileCompletion_->getNeededTileY1();
+    if(neededRow > maxAllowedRow)
+      maxAllowedRow = neededRow;
     if(batchTileScheduledRows_ >= maxAllowedRow)
       return;
     // Only schedule enough rows to fill the window, not the full batchTileNextRows_

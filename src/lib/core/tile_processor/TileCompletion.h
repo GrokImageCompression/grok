@@ -17,6 +17,7 @@
 
 #pragma once
 
+#include <atomic>
 #include <mutex>
 #include <condition_variable>
 #include <stdexcept>
@@ -217,6 +218,9 @@ public:
     swath->tile_y1 = tileY1;
     swath->num_tile_cols = numTileCols_;
 
+    // Tell the scheduler how far ahead we need tiles decompressed
+    neededTileY1_.store(static_cast<int32_t>(tileY1), std::memory_order_release);
+
     // Check if tile row has advanced for clearing previous rows
     {
       std::lock_guard<std::mutex> lock(mutex_);
@@ -321,6 +325,11 @@ public:
     return lastClearedTileY_;
   }
 
+  int32_t getNeededTileY1() const
+  {
+    return neededTileY1_.load(std::memory_order_acquire);
+  }
+
   uint16_t getNumTileCols() const
   {
     return numTileCols_;
@@ -342,6 +351,7 @@ private:
   uint16_t subregionWidth_, subregionHeight_;
   uint16_t currentTileY_; // Tracks the current swath's starting tile row
   int32_t lastClearedTileY_; // Tracks the last tile row cleared (-1 = none)
+  std::atomic<int32_t> neededTileY1_{0}; // Max tile row the consumer is currently waiting for
   RowCompletionCallback rowCallback_; // Callback for row completion
   RowsReleasedCallback rowsReleasedCallback_; // Callback after wait() releases rows
 };
