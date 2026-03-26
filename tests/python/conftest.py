@@ -18,6 +18,28 @@ import pytest
 import grok_core
 
 
+def pytest_addoption(parser):
+    parser.addoption(
+        "--run-s3",
+        action="store_true",
+        default=False,
+        help="Run S3/MinIO integration tests (requires running MinIO on localhost:9000)",
+    )
+
+
+def pytest_configure(config):
+    config.addinivalue_line("markers", "s3: S3/MinIO integration tests (need --run-s3)")
+
+
+def pytest_collection_modifyitems(config, items):
+    if config.getoption("--run-s3"):
+        return
+    skip_s3 = pytest.mark.skip(reason="Need --run-s3 option to run")
+    for item in items:
+        if "s3" in item.keywords:
+            item.add_marker(skip_s3)
+
+
 @pytest.fixture(scope="session", autouse=True)
 def grok_init():
     """Initialize and deinitialize the Grok library once per test session."""
