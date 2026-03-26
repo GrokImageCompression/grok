@@ -664,7 +664,6 @@ void CodeStreamCompress::handleTileProcessor(
 
 uint64_t CodeStreamCompress::compress(grk_plugin_tile* tile)
 {
-  MinHeapPtr<ITileProcessorCompress, uint16_t, MinHeapLocker> heap;
   uint32_t numTiles = (uint32_t)cp_.t_grid_height_ * cp_.t_grid_width_;
   if(numTiles > maxNumTilesJ2K)
   {
@@ -673,59 +672,89 @@ uint64_t CodeStreamCompress::compress(grk_plugin_tile* tile)
                  numTiles, maxNumTilesJ2K);
     return 0;
   }
-  auto numRequiredThreads = std::min<uint32_t>((uint32_t)TFSingleton::num_threads(), numTiles);
   std::atomic<bool> success(true);
-  if(numRequiredThreads > 1)
+
+  if(numTiles == 1)
   {
-    tf::Executor exec(numRequiredThreads);
-    tf::Taskflow taskflow;
-    auto node = new tf::Task[numTiles];
-    for(uint64_t i = 0; i < numTiles; i++)
-      node[i] = taskflow.placeholder();
+    // Single-tile fast path: no DAG needed
+    auto tileProcessor = new TileProcessorCompress(0, cp_.tcps_.get(0), this, stream_);
+    tileProcessor->setCurrentPluginTile(tile);
+    if(!tileProcessor->preCompressTile(0) || !tileProcessor->doCompress())
+    {
+      delete tileProcessor;
+      success = false;
+    }
+    else
+    {
+      if(!writeTileParts(tileProcessor))
+        success = false;
+      delete tileProcessor;
+    }
+    if(success)
+      success = end();
+    return success ? stream_->tell() : 0;
+  }
+
+  // Multi-tile path: use DAG-based scheduling with no nested run().wait()
+  std::vector<TileProcessorCompress*> tileProcessors(numTiles);
+
+  // Create all tile processors
+  for(uint16_t i = 0; i < numTiles; ++i)
+    tileProcessors[i] = new TileProcessorCompress(i, cp_.tcps_.get(i), this, stream_);
+
+  // Phase 1: preCompress all tiles (parallel via TFSingleton)
+  {
+    tf::Taskflow preFlow;
     for(uint16_t j = 0; j < numTiles; ++j)
     {
-      uint16_t tile_index = j;
-      node[j].work([this, &exec, tile_index, &heap, &success] {
+      preFlow.emplace([&tileProcessors, j, &success] {
         if(success)
         {
-          auto tileProcessor =
-              new TileProcessorCompress(tile_index, this->cp_.tcps_.get(tile_index), this, stream_);
-          auto workerId = exec.this_worker_id();
-          if(workerId < 0)
-            grklog.error("Invalid worker id %d", workerId);
-          if(!tileProcessor->preCompressTile((size_t)exec.this_worker_id()) ||
-             !tileProcessor->doCompress())
+          if(!tileProcessors[j]->preCompressTile(0))
             success = false;
-          handleTileProcessor(tileProcessor, heap, success);
         }
       });
     }
-    exec.run(taskflow).wait();
-    delete[] node;
+    TFSingleton::get().run(preFlow).wait();
   }
-  else
+  if(!success)
+    goto cleanup;
+
+  // Phase 2: Build compress DAGs and submit them all
   {
-    for(uint16_t i = 0; i < numTiles; ++i)
+    std::vector<tf::Future<void>> futures;
+    for(uint16_t j = 0; j < numTiles; ++j)
     {
-      auto tileProcessor = new TileProcessorCompress(i, cp_.tcps_.get(i), this, stream_);
-      tileProcessor->setCurrentPluginTile(tile);
-      if(!tileProcessor->preCompressTile(0) || !tileProcessor->doCompress())
-      {
-        delete tileProcessor;
-        success = false;
-        goto cleanup;
-      }
-      bool write_success = writeTileParts(tileProcessor);
-      delete tileProcessor;
-      if(!write_success)
+      tileProcessors[j]->buildCompressDAG();
+      futures.push_back(tileProcessors[j]->submitCompressDAG());
+    }
+    for(auto& f : futures)
+      f.wait();
+    for(uint16_t j = 0; j < numTiles; ++j)
+    {
+      if(!tileProcessors[j]->compressDAGSuccess())
       {
         success = false;
-        goto cleanup;
+        break;
       }
     }
   }
+  if(!success)
+    goto cleanup;
+
+  // Phase 3: Write tile parts sequentially in tile order
+  for(uint16_t j = 0; j < numTiles; ++j)
+  {
+    if(!writeTileParts(tileProcessors[j]))
+    {
+      success = false;
+      break;
+    }
+  }
+
 cleanup:
-  handleTileProcessor(nullptr, heap, success);
+  for(auto tp : tileProcessors)
+    delete tp;
   if(success)
     success = end();
 

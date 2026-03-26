@@ -15,6 +15,7 @@
  *
  */
 
+#include "TFSingleton.h"
 #include "CodeStreamLimits.h"
 #include "TileWindow.h"
 #include "Quantizer.h"
@@ -300,6 +301,200 @@ bool TileProcessorCompress::compressT2(uint32_t* tileBytesWritten)
 void TileProcessorCompress::setFirstPocTilePart(bool res)
 {
   first_poc_tile_part_ = res;
+}
+
+void TileProcessorCompress::buildCompressDAG(void)
+{
+  compressFlow_ = std::make_unique<tf::Taskflow>();
+  dagSuccess_ = true;
+
+  // 1. DC level shift as a single task, then MCT in its own FlowComponent
+  // dcShift is fast and runs as a single task
+  auto dcShiftFlow = std::make_unique<FlowComponent>();
+  dcShiftFlow->nextTask().work([this] {
+    dcLevelShiftCompress();
+  });
+  dcShiftFlow->addTo(*compressFlow_);
+
+  // MCT gets its own FlowComponent so its parallel tasks can run on the executor
+  mctFlow_ = std::make_unique<FlowComponent>();
+  if(tcp_->mct_)
+  {
+    if(tcp_->mct_ == 2)
+    {
+      dagSuccess_ = false;
+      return;
+    }
+    if(tcp_->tccps_->qmfbid_ == 0)
+      mct_->compress_irrev(mctFlow_.get(), true);
+    else
+      mct_->compress_rev(mctFlow_.get(), true);
+  }
+  mctFlow_->addTo(*compressFlow_);
+  dcShiftFlow->precede(*mctFlow_);
+  dwtFlows_.push_back(std::move(dcShiftFlow)); // store to keep alive
+
+  // 2. Per-component DWT levels as FlowComponent pairs (vert, horiz)
+  //    Fan-out from MCT: all components run in parallel.
+  //    Fan-in to T1: T1 waits for all components to finish.
+  std::vector<FlowComponent*> lastDwtPerComponent;
+  for(uint16_t compno = 0; compno < tile_->numcomps_; ++compno)
+  {
+    auto tile_comp = tile_->comps_ + compno;
+    auto tccp = tcp_->tccps_ + compno;
+    auto maxDim = std::max(cp_->t_width_, cp_->t_height_);
+
+    if(tile_comp->num_resolutions_ <= 1)
+      continue;
+
+    uint8_t numLevels = (uint8_t)(tile_comp->num_resolutions_ - 1);
+
+    // Compute DC shift for fusion into wavelet first level
+    DcShiftParam dcShift;
+    bool isMctComp = needsMctDecompress(compno) && tcp_->mct_ == 1;
+    if(!isMctComp)
+    {
+      auto img_comp = headerImage_->comps + compno;
+      dcShift.shift = (int32_t)tccp->dcLevelShift_;
+      if(img_comp->sgnd)
+      {
+        dcShift.min = -(1 << (img_comp->prec - 1));
+        dcShift.max = (1 << (img_comp->prec - 1)) - 1;
+      }
+      else
+      {
+        dcShift.min = 0;
+        dcShift.max = (1 << img_comp->prec) - 1;
+      }
+      dcShift.enabled = (tccp->dcLevelShift_ != 0);
+    }
+
+    // Create FlowComponent pairs for each level
+    std::vector<std::pair<FlowComponent*, FlowComponent*>> levelFlows;
+    for(uint8_t lvl = 0; lvl < numLevels; ++lvl)
+    {
+      auto vertFlow = std::make_unique<FlowComponent>();
+      auto horizFlow = std::make_unique<FlowComponent>();
+      levelFlows.push_back({vertFlow.get(), horizFlow.get()});
+      dwtFlows_.push_back(std::move(vertFlow));
+      dwtFlows_.push_back(std::move(horizFlow));
+    }
+
+    // Schedule DWT tasks into the FlowComponents
+    WaveletFwdImpl w;
+    auto scratch = w.scheduleCompress(tile_comp, tccp->qmfbid_, maxDim, dcShift, levelFlows);
+    if(scratch)
+      dwtScratch_.push_back(std::move(scratch));
+
+    // Compose into parent flow and wire dependencies within this component
+    FlowComponent* prevInComp = nullptr;
+    for(uint8_t lvl = 0; lvl < numLevels; ++lvl)
+    {
+      auto vertFlow = static_cast<FlowComponent*>(levelFlows[lvl].first);
+      auto horizFlow = static_cast<FlowComponent*>(levelFlows[lvl].second);
+
+      vertFlow->addTo(*compressFlow_);
+      horizFlow->addTo(*compressFlow_);
+
+      if(lvl == 0)
+      {
+        // MCT → first vert of this component (fan-out)
+        mctFlow_->precede(*vertFlow);
+      }
+      else
+      {
+        prevInComp->precede(*vertFlow);
+      }
+      vertFlow->precede(*horizFlow);
+      prevInComp = horizFlow;
+    }
+    // Track the last FlowComponent for this component (for fan-in to T1)
+    if(prevInComp)
+      lastDwtPerComponent.push_back(prevInComp);
+  }
+
+  // 3. T1 block encoding
+  t1Flow_ = std::make_unique<FlowComponent>();
+  {
+    const double* mct_norms;
+    uint16_t mct_numcomps = 0U;
+    auto tcp = tcp_;
+    if(tcp->mct_ == 1)
+    {
+      mct_numcomps = 3U;
+      if(tcp->tccps_->qmfbid_ == 0)
+        mct_norms = Mct::get_norms_irrev();
+      else
+        mct_norms = Mct::get_norms_rev();
+    }
+    else
+    {
+      mct_numcomps = headerImage_->numcomps;
+      mct_norms = (const double*)(tcp->mct_norms_);
+    }
+    scheduler_ = new CompressScheduler(tile_, needsRateControl(), tcp, mct_norms, mct_numcomps);
+    static_cast<CompressScheduler*>(scheduler_)->populateT1Flow(t1Flow_.get());
+  }
+  t1Flow_->addTo(*compressFlow_);
+  // Fan-in: all component DWT chains must complete before T1 starts
+  if(lastDwtPerComponent.empty())
+  {
+    // No DWT (all components have num_resolutions == 1): MCT → T1
+    mctFlow_->precede(*t1Flow_);
+  }
+  else
+  {
+    for(auto* lastDwt : lastDwtPerComponent)
+      lastDwt->precede(*t1Flow_);
+  }
+
+  // 4. Rate allocation (single task at the end)
+  auto rateAllocTask = compressFlow_->emplace([this] {
+    packetLengthCache_->deleteMarkers();
+    if(cp_->codingParams_.enc_.writePlt_)
+      packetLengthCache_->createMarkers(stream_);
+    uint32_t allPacketBytes = 0;
+    bool rc = rateAllocate(&allPacketBytes, false);
+    if(!rc)
+    {
+      grklog.warn("Unable to perform rate control on tile %d", tileIndex_);
+      grklog.warn("Rate control will be disabled for this tile");
+      allPacketBytes = 0;
+      rc = rateAllocate(&allPacketBytes, true);
+      if(!rc)
+      {
+        grklog.error("Unable to perform rate control on tile %d", tileIndex_);
+        dagSuccess_ = false;
+        return;
+      }
+    }
+    packetTracker_->clear();
+    if(canPreCalculateTileLen())
+    {
+      preCalculatedTileLen_ = sotMarkerSegmentLen;
+      if(canWritePocMarker())
+      {
+        uint32_t pocSize =
+            CodeStreamCompress::getPocSize(tile_->numcomps_, tcp_->getNumProgressions());
+        preCalculatedTileLen_ += pocSize;
+      }
+      if(packetLengthCache_->getMarkers())
+        preCalculatedTileLen_ += packetLengthCache_->getMarkers()->getTotalBytesWritten();
+      preCalculatedTileLen_ += 2;
+      preCalculatedTileLen_ += allPacketBytes;
+    }
+  }).name("rateAlloc");
+  t1Flow_->precede(rateAllocTask);
+}
+
+tf::Future<void> TileProcessorCompress::submitCompressDAG(void)
+{
+  return TFSingleton::get().run(*compressFlow_);
+}
+
+bool TileProcessorCompress::compressDAGSuccess(void) const
+{
+  return dagSuccess_;
 }
 
 bool TileProcessorCompress::doCompress(void)

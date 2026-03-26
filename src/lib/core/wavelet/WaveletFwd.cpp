@@ -997,6 +997,200 @@ namespace HWY_NAMESPACE
     return encode<float, dwt97>(tilec, dcShift);
   }
 
+  // Holds per-thread encode_info arrays for each (vert, horiz) pass at each level,
+  // plus the shared scratch pool. Must outlive the DAG execution.
+  template<typename T, typename DWT>
+  struct WaveletFwdScheduleDataImpl : public WaveletFwdScheduleData
+  {
+    T* scratch_pool = nullptr;
+    struct LevelPass
+    {
+      std::unique_ptr<encode_info<T, DWT>[]> infos;
+    };
+    std::vector<LevelPass> passes;
+    ~WaveletFwdScheduleDataImpl()
+    {
+      if(scratch_pool)
+        grk_aligned_free(scratch_pool);
+    }
+  };
+
+  // Schedule forward DWT into FlowComponent pairs (vert, horiz) per level.
+  // Instead of run().wait(), tasks are added to the FlowComponents.
+  template<typename T, typename DWT>
+  std::unique_ptr<WaveletFwdScheduleData> schedule_encode(
+      TileComponent* tilec, T dcShiftVal,
+      std::vector<std::pair<FlowComponent*, FlowComponent*>>& levelFlows)
+  {
+    if(tilec->num_resolutions_ == 1U)
+      return nullptr;
+    const HWY_FULL(float) d;
+    const uint32_t lanes = uint32_t(Lanes(d));
+
+    uint32_t stride = tilec->getWindow()->getResWindowBufferHighestSimple().stride_;
+    T* tiledp = (T*)tilec->getWindow()->getResWindowBufferHighestSimple().buf_;
+
+    const uint8_t maxNumResolutions = (uint8_t)(tilec->num_resolutions_ - 1);
+    auto currentRes = tilec->resolutions_ + maxNumResolutions;
+    auto lastRes = currentRes - 1;
+
+    size_t dataSize = max_resolution(tilec->resolutions_, tilec->num_resolutions_);
+    const size_t thick = lanes;
+    dataSize *= thick * sizeof(int32_t);
+    int32_t i = maxNumResolutions;
+    const uint32_t num_threads = (uint32_t)TFSingleton::num_threads();
+
+    auto data = std::make_unique<WaveletFwdScheduleDataImpl<T, DWT>>();
+
+    if(dataSize)
+    {
+      data->scratch_pool = (T*)grk_aligned_malloc(num_threads * dataSize);
+      if(!data->scratch_pool)
+        return nullptr;
+    }
+
+    int levelIdx = 0;
+    while(i--)
+    {
+      // DC shift only on first (finest) resolution level
+      T currentDcShift = (i == maxNumResolutions - 1) ? dcShiftVal : T(0);
+
+      // width of the resolution level computed
+      const uint32_t rw = (uint32_t)(currentRes->x1 - currentRes->x0);
+      // height of the resolution level computed
+      const uint32_t rh = (uint32_t)(currentRes->y1 - currentRes->y0);
+      // width of the resolution level once lower than computed one
+      const uint32_t rw_lower = (uint32_t)(lastRes->x1 - lastRes->x0);
+      // height of the resolution level once lower than computed one
+      const uint32_t rh_lower = (uint32_t)(lastRes->y1 - lastRes->y0);
+
+      const uint8_t parity_row = currentRes->x0 & 1;
+      const uint8_t parity_col = currentRes->y0 & 1;
+
+      auto vertFlow = levelFlows[levelIdx].first;
+      auto horizFlow = levelFlows[levelIdx].second;
+
+      // --- Vertical pass ---
+      {
+        uint32_t sn = rh_lower;
+        uint32_t dn = rh - rh_lower;
+        if(num_threads <= 1 || rw < (lanes << 1))
+        {
+          T* scratch = data->scratch_pool;
+          vertFlow->nextTask().work(
+              [tiledp, scratch, rw, rh, parity_col, stride, lanes, currentDcShift] {
+                DWT dwt;
+                uint32_t j;
+                for(j = 0; j + lanes - 1 < rw; j += lanes)
+                  dwt.encode_v((T*)tiledp + j, scratch, rh, parity_col, stride, lanes,
+                               currentDcShift);
+                if(j < rw)
+                  dwt.encode_v((T*)tiledp + j, scratch, rh, parity_col, stride, rw - j,
+                               currentDcShift);
+              });
+        }
+        else
+        {
+          uint32_t num_tasks = num_threads;
+          if(rw < num_tasks)
+            num_tasks = rw;
+          uint32_t step_j = ((rw / num_tasks) / lanes) * lanes;
+
+          typename WaveletFwdScheduleDataImpl<T, DWT>::LevelPass pass;
+          pass.infos = std::make_unique<encode_info<T, DWT>[]>(num_tasks);
+          for(auto j = 0U; j < num_tasks; j++)
+          {
+            auto info = &pass.infos[j];
+            info->line.mem = data->scratch_pool + (j * dataSize) / sizeof(T);
+            info->stride = stride;
+            info->tiledp = tiledp;
+            info->line.dn = dn;
+            info->line.sn = sn;
+            info->line.parity = parity_col;
+            info->r_dim = rh;
+            info->min_j = j * step_j;
+            info->max_j = (j + 1 == num_tasks) ? rw : (j + 1) * step_j;
+            info->dcShift = currentDcShift;
+            vertFlow->nextTask().work([info] {
+              encode_v(info);
+            });
+          }
+          data->passes.push_back(std::move(pass));
+        }
+      }
+
+      // --- Horizontal pass ---
+      // DC shift applied only during vertical pass for first level;
+      // horizontal pass processes already-shifted data
+      {
+        uint32_t sn = rw_lower;
+        uint32_t dn = (uint32_t)(rw - rw_lower);
+        if(num_threads <= 1 || rh < (lanes << 1))
+        {
+          T* scratch = data->scratch_pool;
+          horizFlow->nextTask().work(
+              [tiledp, scratch, rw, rh, parity_row, stride, lanes] {
+                DWT dwt;
+                uint32_t j;
+                for(j = 0; j + lanes - 1 < rh; j += lanes)
+                  dwt.encode_h((T*)tiledp + size_t(j) * stride, scratch, rw, parity_row, stride,
+                               lanes);
+                if(j < rh)
+                  dwt.encode_h((T*)tiledp + size_t(j) * stride, scratch, rw, parity_row, stride,
+                               rh - j);
+              });
+        }
+        else
+        {
+          uint32_t num_tasks = num_threads;
+          if(rh < num_tasks)
+            num_tasks = rh;
+          uint32_t step_j = ((rh / num_tasks) / lanes) * lanes;
+
+          typename WaveletFwdScheduleDataImpl<T, DWT>::LevelPass pass;
+          pass.infos = std::make_unique<encode_info<T, DWT>[]>(num_tasks);
+          for(auto j = 0U; j < num_tasks; j++)
+          {
+            auto info = &pass.infos[j];
+            info->line.mem = data->scratch_pool + (j * dataSize) / sizeof(T);
+            info->stride = stride;
+            info->tiledp = tiledp;
+            info->line.dn = dn;
+            info->line.sn = sn;
+            info->line.parity = parity_row;
+            info->r_dim = rw;
+            info->min_j = j * step_j;
+            info->max_j = (j + 1 == num_tasks) ? rh : (j + 1U) * step_j;
+            info->dcShift = T(0);
+            horizFlow->nextTask().work([info] {
+              encode_h(info);
+            });
+          }
+          data->passes.push_back(std::move(pass));
+        }
+      }
+
+      currentRes = lastRes;
+      --lastRes;
+      levelIdx++;
+    }
+
+    return data;
+  }
+
+  std::unique_ptr<WaveletFwdScheduleData> schedule_encode_53(
+      TileComponent* tilec, int32_t dcShift,
+      std::vector<std::pair<FlowComponent*, FlowComponent*>>& levelFlows)
+  {
+    return schedule_encode<int32_t, dwt53>(tilec, dcShift, levelFlows);
+  }
+  std::unique_ptr<WaveletFwdScheduleData> schedule_encode_97(
+      TileComponent* tilec, float dcShift,
+      std::vector<std::pair<FlowComponent*, FlowComponent*>>& levelFlows)
+  {
+    return schedule_encode<float, dwt97>(tilec, dcShift, levelFlows);
+  }
+
 } // namespace HWY_NAMESPACE
 } // namespace grk
 HWY_AFTER_NAMESPACE();
@@ -1013,6 +1207,8 @@ HWY_EXPORT(encode_97_v);
 HWY_EXPORT(encode_97_h);
 HWY_EXPORT(encode_53);
 HWY_EXPORT(encode_97);
+HWY_EXPORT(schedule_encode_53);
+HWY_EXPORT(schedule_encode_97);
 
 template<typename T>
 struct dwt_line
@@ -1044,6 +1240,17 @@ bool WaveletFwdImpl::compress(TileComponent* tile_comp, uint8_t qmfbid, uint32_t
   else
     return HWY_DYNAMIC_DISPATCH(encode_97)(tile_comp,
                                            dcShift.enabled ? (float)dcShift.shift : 0.0f);
+}
+std::unique_ptr<WaveletFwdScheduleData> WaveletFwdImpl::scheduleCompress(
+    TileComponent* tile_comp, uint8_t qmfbid, uint32_t maxDim, DcShiftParam dcShift,
+    std::vector<std::pair<FlowComponent*, FlowComponent*>>& levelFlows)
+{
+  if(qmfbid == 1)
+    return HWY_DYNAMIC_DISPATCH(schedule_encode_53)(
+        tile_comp, dcShift.enabled ? dcShift.shift : 0, levelFlows);
+  else
+    return HWY_DYNAMIC_DISPATCH(schedule_encode_97)(
+        tile_comp, dcShift.enabled ? (float)dcShift.shift : 0.0f, levelFlows);
 }
 void dwt53::encode_v(int32_t* res, int32_t* scratch, const uint32_t height, const uint8_t parity,
                      const uint32_t stride, const uint32_t numcols, int32_t dcShift)

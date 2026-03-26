@@ -18,6 +18,7 @@
 #pragma once
 
 #include "SchedulerStandard.h"
+#include "RateControlStats.h"
 
 namespace grk
 {
@@ -40,6 +41,15 @@ public:
   ~CompressScheduler() = default;
 
   bool scheduleT1(ITileProcessor* proc) override;
+  bool populateT1Flow(FlowComponent* flow);
+
+  /**
+   * @brief Get rate control stats collected during T1 encoding
+   */
+  const RateControlStats& getRateControlStats() const
+  {
+    return rateControlStats_;
+  }
 
 private:
   /**
@@ -96,6 +106,11 @@ private:
    * @brief number of components to apply mct to
    */
   uint16_t mct_numcomps_;
+
+  /**
+   * @brief rate control statistics collected during T1 encoding
+   */
+  RateControlStats rateControlStats_;
 };
 
 } // namespace grk

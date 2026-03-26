@@ -22,6 +22,8 @@
 namespace grk
 {
 
+class ImageComponentFlow;
+
 /**
  * @class SchedulerStandard
  * @brief abstract class to graph and execute T1 tasks for whole tile

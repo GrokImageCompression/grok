@@ -18,11 +18,23 @@
 #pragma once
 
 #include <cstdint>
+#include <memory>
+#include <vector>
+#include <utility>
 #include "TileComponent.h"
 #include "WaveletReverse.h"
 
+class FlowComponent;
+
 namespace grk
 {
+
+// Opaque handle owning scratch buffers for scheduled DWT.
+// Must be kept alive until after DAG execution completes.
+struct WaveletFwdScheduleData
+{
+  virtual ~WaveletFwdScheduleData() = default;
+};
 
 class WaveletFwdImpl
 {
@@ -30,6 +42,12 @@ public:
   virtual ~WaveletFwdImpl() = default;
   bool compress(TileComponent* tile_comp, uint8_t qmfbid, uint32_t maxDim,
                 DcShiftParam dcShift = {});
+  // Schedule forward DWT into FlowComponent pairs (vert, horiz) per level.
+  // Returns an opaque handle owning scratch buffers; caller must keep it alive
+  // until DAG execution completes.
+  std::unique_ptr<WaveletFwdScheduleData> scheduleCompress(
+      TileComponent* tile_comp, uint8_t qmfbid, uint32_t maxDim, DcShiftParam dcShift,
+      std::vector<std::pair<FlowComponent*, FlowComponent*>>& levelFlows);
 };
 
 } // namespace grk

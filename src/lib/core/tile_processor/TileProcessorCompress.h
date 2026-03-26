@@ -19,9 +19,16 @@
 
 #include "TileProcessor.h"
 #include "ITileProcessorCompress.h"
+#include "grk_taskflow.h"
+
+#include <memory>
+#include <vector>
+
+class FlowComponent;
 
 namespace grk
 {
+struct WaveletFwdScheduleData;
 
 /**
  Tile processor for compression
@@ -62,6 +69,12 @@ struct TileProcessorCompress : public ITileProcessorCompress, public TileProcess
   uint8_t getTilePartCounter(void) const override;
   void incTilePartCounter(void) override;
 
+  // Build and submit the compress DAG (MCT → DWT → T1 → rateAlloc).
+  // Must be called after preCompressTile().
+  void buildCompressDAG(void);
+  tf::Future<void> submitCompressDAG(void);
+  bool compressDAGSuccess(void) const;
+
 private:
   void transferTileDataFromImage(void);
   void dcLevelShiftCompress();
@@ -92,6 +105,14 @@ private:
   uint8_t newTilePartProgressionPosition_ = 0;
   // track which packets have already been written to the code stream
   PacketTracker* packetTracker_ = nullptr;
+
+  // --- compress DAG state ---
+  std::unique_ptr<tf::Taskflow> compressFlow_;
+  std::unique_ptr<FlowComponent> mctFlow_;
+  std::vector<std::unique_ptr<FlowComponent>> dwtFlows_;
+  std::unique_ptr<FlowComponent> t1Flow_;
+  std::vector<std::unique_ptr<WaveletFwdScheduleData>> dwtScratch_;
+  std::atomic<bool> dagSuccess_{true};
 };
 
 } // namespace grk
