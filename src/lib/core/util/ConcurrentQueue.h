@@ -68,10 +68,16 @@ public:
     cv_.notify_all();
   }
 
+  size_t size() const
+  {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return queue_.size();
+  }
+
 private:
   std::queue<T> queue_;
   bool closed_ = false;
-  std::mutex mutex_;
+  mutable std::mutex mutex_;
   std::condition_variable cv_;
 };
 

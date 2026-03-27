@@ -798,6 +798,10 @@ std::function<void()> CodeStreamDecompress::postMultiTile(ITileProcessor* tilePr
         }
         decompressThrottleCV_.notify_one();
       }
+      // Wake the fetcher so it can schedule more HTTP requests
+      auto fetcher = stream_->getFetcher();
+      if(fetcher)
+        fetcher->notifyThrottleRelease();
     };
 
     if(!success_)
@@ -932,7 +936,14 @@ bool CodeStreamDecompress::setDecompressRegion(RectD region)
           [this](uint16_t tileIndexBegin, uint16_t tileIndexEnd) {
             onRowCompleted(tileIndexBegin, tileIndexEnd);
           },
-          [this]() { scheduleTileBatch(); }, tilesToDecompress);
+          [this]() {
+            scheduleTileBatch();
+            // Wake the fetcher so it can re-check the row-based throttle
+            auto fetcher = stream_->getFetcher();
+            if(fetcher)
+              fetcher->notifyThrottleRelease();
+          },
+          tilesToDecompress);
     }
     if(!multiTileComposite_->subsampleAndReduce(cp_.codingParams_.dec_.reduce_))
       return false;
@@ -986,27 +997,32 @@ bool CodeStreamDecompress::batchDequeueSequential(void)
 
 void CodeStreamDecompress::wait(uint16_t tile_index)
 {
-  for(auto& ff : fetchByTileFutures_)
+  // When swath-based waiting is active the fetch completes progressively;
+  // don't block here waiting for the entire fetch operation.
+  if(!tileCompletion_)
   {
-    if(ff.valid())
+    for(auto& ff : fetchByTileFutures_)
     {
-      ff.wait();
-      bool success = ff.get();
-      if(!success)
+      if(ff.valid())
       {
-        grklog.error("CodeStreamDecompress::wait : failed to get fetch future for tile %d",
-                     tile_index);
-        return;
+        ff.wait();
+        bool success = ff.get();
+        if(!success)
+        {
+          grklog.error("CodeStreamDecompress::wait : failed to get fetch future for tile %d",
+                       tile_index);
+          return;
+        }
       }
     }
-  }
-  fetchByTileFutures_.clear();
+    fetchByTileFutures_.clear();
 
-  // close consumer queue and join consumer thread
-  if(decompressQueue_)
-    decompressQueue_->close();
-  if(decompressConsumer_.joinable())
-    decompressConsumer_.join();
+    // close consumer queue and join consumer thread
+    if(decompressQueue_)
+      decompressQueue_->close();
+    if(decompressConsumer_.joinable())
+      decompressConsumer_.join();
+  }
 
   decompressTileFutureManager_.wait(tile_index);
 }
@@ -1018,6 +1034,11 @@ void CodeStreamDecompress::wait(grk_wait_swath* swath)
     bool rc = tileCompletion_->wait(swath);
     if(!rc)
       return;
+    // When swath-based waiting is active the fetch/decompress pipeline
+    // completes progressively, driven by row releases.  Return after
+    // the swath tiles are ready — full cleanup happens on the final
+    // call (swath == null).
+    return;
   }
 
   // 2. wait for sequential parse
@@ -1166,12 +1187,38 @@ bool CodeStreamDecompress::fetchByTile(
   if(!fetcher)
     return false;
 
+  maxFetchedTileRow_.store(-1, std::memory_order_release);
+
   startDecompressConsumer(std::min((uint16_t)TFSingleton::num_threads(),
                                    (uint16_t)((maxRowsAhead_ + 1) * cp_.t_grid_width_)));
 
+  // Back pressure: prevent the fetcher from scheduling more HTTP requests
+  // when either (a) too many tiles are in-flight for decompression, or
+  // (b) the fetcher is too far ahead of the consumer (swath-based release).
+  auto numTileCols = cp_.t_grid_width_;
+  fetcher->setFetchThrottle([this, numTileCols]() {
+    // Row-based: don't fetch tiles more than maxRowsAhead_ rows beyond
+    // the last row released by the consumer.
+    if(tileCompletion_)
+    {
+      int32_t lastCleared = tileCompletion_->getLastClearedTileY();
+      int32_t maxAllowed = lastCleared + maxRowsAhead_ + 2;
+      if(maxFetchedTileRow_.load(std::memory_order_acquire) >= maxAllowed)
+        return false;
+    }
+    // In-flight: don't overwhelm the decompress pipeline
+    uint16_t inFlight;
+    {
+      std::lock_guard<std::mutex> lock(decompressThrottleMutex_);
+      inFlight = decompressInFlight_;
+    }
+    return decompressQueue_->size() + inFlight < maxDecompressInFlight_;
+  });
+
   fetchByTileFutures_.push_back(fetcher->fetchTiles(
       cp_.tlmMarkers_->getTileParts(), slated, nullptr,
-      [this, unreducedImageBounds, postGenerator](size_t requestIndex, TileFetchContext* context) {
+      [this, numTileCols, unreducedImageBounds, postGenerator](size_t requestIndex,
+                                                                TileFetchContext* context) {
         auto& tilePart = (*context->requests_)[requestIndex];
         tilePart->stream_ = std::unique_ptr<IStream>(memStreamCreate(
             tilePart->data_.get(), tilePart->length_, false, nullptr, stream_->getFormat(), true));
@@ -1179,6 +1226,15 @@ bool CodeStreamDecompress::fetchByTile(
         if(tilePartSeq->incrementFetchCount() == tilePartSeq->size())
         {
           auto tileIndex = tilePart->tileIndex_;
+          // Track the highest tile row that has been fully fetched
+          int32_t tileRow = tileIndex / numTileCols;
+          int32_t prev = maxFetchedTileRow_.load(std::memory_order_acquire);
+          while(prev < tileRow &&
+                !maxFetchedTileRow_.compare_exchange_weak(prev, tileRow,
+                                                          std::memory_order_release,
+                                                          std::memory_order_acquire))
+          {
+          }
           auto tilePartSeqCopy = tilePartSeq;
           decompressQueue_->push(
               [this, tileIndex, tilePartSeqCopy, unreducedImageBounds, postGenerator]() {

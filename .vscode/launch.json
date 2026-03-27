@@ -97,7 +97,7 @@
             ],
             "cwd": "${workspaceFolder}",
             "environment": [
-                { "name": "GRK_DEBUG", "value": "4" },
+                { "name": "GRK_DEBUG", "value": "3" },
                 { "name": "AWS_ACCESS_KEY_ID", "value": "minioadmin" },
                 { "name": "AWS_SECRET_ACCESS_KEY", "value": "minioadmin" },
                 { "name": "AWS_S3_ENDPOINT", "value": "https://minio.example.com:9000" },
@@ -111,10 +111,11 @@
             "name": "SPOT6 TLM MINIO",
             "type": "cppdbg",
             "request": "launch",
-            "program": "/usr/bin/time",
+            //"program": "/usr/bin/time",
+            "program": "${workspaceFolder}/build/bin/core_decompress_async",
             "args": [
-                "-v",
-                "${workspaceFolder}/build/bin/core_decompress_async",
+                // "-v",
+                // "${workspaceFolder}/build/bin/core_decompress_async",
                 "-i",
                 "/vsis3/grok/IMG_SPOT6_PMS_201305251604372_ORT_816009101_R1C1_TLM.JP2",
                 // "-o",
@@ -124,7 +125,7 @@
             ],
             "cwd": "${workspaceFolder}",
             "environment": [
-                { "name": "GRK_DEBUG", "value": "3" },
+                { "name": "GRK_DEBUG", "value": "4" },
                 { "name": "AWS_ACCESS_KEY_ID", "value": "minioadmin" },
                 { "name": "AWS_SECRET_ACCESS_KEY", "value": "minioadmin" },
                 { "name": "AWS_S3_ENDPOINT", "value": "https://minio.example.com:9000" },

@@ -476,6 +476,9 @@ private:
   uint16_t decompressInFlight_ = 0;
   uint16_t maxDecompressInFlight_ = 0;
 
+  // Row-based fetch throttle: highest tile row that has been fully fetched
+  std::atomic<int32_t> maxFetchedTileRow_{-1};
+
   // batch sequential
   bool batchDequeueSequential(void);
   std::queue<ITileProcessor*> batchTileQueueSequential_;

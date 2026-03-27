@@ -83,6 +83,12 @@ public:
   // Retrieve metadata
   virtual bool getMetadata(const std::string& path,
                            std::map<std::string, std::string>& metadata) = 0;
+
+  // Fetch throttle: when set, the fetcher pauses scheduling new HTTP requests
+  // until the callback returns true.  notifyThrottleRelease() wakes the
+  // fetcher so it can re-check the condition.
+  virtual void setFetchThrottle(std::function<bool()> throttle) = 0;
+  virtual void notifyThrottleRelease() = 0;
 };
 
 struct TileFetchContext : public std::enable_shared_from_this<TileFetchContext>
@@ -176,11 +182,23 @@ public:
       stop_ = true;
     }
     queue_cv_.notify_all(); // Wake worker from wait on queue_cv_
+    throttleCV_.notify_all(); // Wake worker from throttle wait
     if(fetchThread_.joinable())
       fetchThread_.join();
     if(multi_handle_)
       curl_multi_cleanup(multi_handle_);
     curl_global_cleanup();
+  }
+
+  void setFetchThrottle(std::function<bool()> throttle) override
+  {
+    std::lock_guard<std::mutex> lock(throttleMutex_);
+    fetchThrottle_ = std::move(throttle);
+  }
+
+  void notifyThrottleRelease() override
+  {
+    throttleCV_.notify_one();
   }
 
   void init(const std::string& path, const FetchAuth& auth) override
@@ -712,6 +730,14 @@ protected:
     if(!currentFetch_.requests_ || !currentFetch_.requests_->hasMore())
       return true;
 
+    // Back pressure: if a throttle is set, skip scheduling when the
+    // downstream pipeline is backlogged.
+    {
+      std::lock_guard<std::mutex> lock(throttleMutex_);
+      if(fetchThrottle_ && !fetchThrottle_())
+        return true;
+    }
+
     size_t activeRequests = currentFetch_.scheduled_ - currentFetch_.completed_;
     size_t remainingBatch = batchSize_ > activeRequests ? batchSize_ - activeRequests : 0;
     size_t remainingRequests = currentFetch_.requests_->remaining();
@@ -1030,15 +1056,38 @@ protected:
       }
       else
       {
-        std::lock_guard<std::mutex> lock(active_jobs_mutex_);
-        std::lock_guard<std::mutex> lock2(active_handles_mutex_);
-        if(active_jobs_.empty() && active_handles_.empty())
+        // Try to resume scheduling if we were previously throttled
+        bool throttled = false;
+        if(currentFetch_.requests_ && currentFetch_.requests_->hasMore() && activeCallback_)
         {
-          grklog.debug("No active requests, waiting");
-          std::unique_lock<std::mutex> qlock(queue_mutex_);
-          queue_cv_.wait(qlock, [this] {
-            return stop_ || !tile_fetch_queue_.empty() || !chunk_fetch_queue_.empty();
-          });
+          {
+            std::lock_guard<std::mutex> tlock(throttleMutex_);
+            throttled = fetchThrottle_ && !fetchThrottle_();
+          }
+          if(!throttled)
+            scheduleNextBatch(activeCallback_);
+        }
+
+        // If throttled with no in-flight requests, wait for the consumer
+        // to release back pressure before continuing
+        if(throttled)
+        {
+          std::unique_lock<std::mutex> tlock(throttleMutex_);
+          throttleCV_.wait_for(tlock, std::chrono::milliseconds(100),
+                               [this] { return stop_ || !fetchThrottle_ || fetchThrottle_(); });
+        }
+        else
+        {
+          std::lock_guard<std::mutex> lock(active_jobs_mutex_);
+          std::lock_guard<std::mutex> lock2(active_handles_mutex_);
+          if(active_jobs_.empty() && active_handles_.empty())
+          {
+            grklog.debug("No active requests, waiting");
+            std::unique_lock<std::mutex> qlock(queue_mutex_);
+            queue_cv_.wait(qlock, [this] {
+              return stop_ || !tile_fetch_queue_.empty() || !chunk_fetch_queue_.empty();
+            });
+          }
         }
       }
     }
@@ -1094,6 +1143,9 @@ private:
   std::thread fetchThread_;
   uint32_t maxRetries_ = 3;
   uint32_t retryDelayMs_ = 1000;
+  std::function<bool()> fetchThrottle_;
+  std::mutex throttleMutex_;
+  std::condition_variable throttleCV_;
 
 protected:
   TileFetchCallback tileFetchCallback_;
