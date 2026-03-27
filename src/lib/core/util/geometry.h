@@ -203,7 +203,7 @@ struct Rect
 
     return *this;
   }
-  Rect<T>& setOrigin(Rect<T>& rhs, bool absolute)
+  Rect<T>& setOrigin(const Rect<T>& rhs, bool absolute)
   {
     return setOrigin(&rhs, absolute);
   }
@@ -298,7 +298,7 @@ struct Rect
   {
     *this = *rhs;
   }
-  void setRect(const Rect rhs)
+  void setRect(const Rect& rhs)
   {
     setRect(&rhs);
   }
@@ -344,7 +344,7 @@ struct Rect
                 ceildivpow2<uint64_t>(x0, powx), ceildivpow2<uint64_t>(y0, powy),
                 ceildivpow2<uint64_t>(x1, powx), ceildivpow2<uint64_t>(y1, powy));
   }
-  Rect<T> intersection(const Rect<T> rhs) const
+  Rect<T> intersection(const Rect<T>& rhs) const
   {
     assert(absoluteCoordinates == rhs.absoluteCoordinates);
 
@@ -459,7 +459,7 @@ struct Rect
   {
     return grow_IN_PLACE(boundaryx, boundaryy, Rect<T>((T)0, (T)0, maxX, maxY));
   }
-  Rect<T>& grow_IN_PLACE(T boundary, Rect<T> bounds)
+  Rect<T>& grow_IN_PLACE(T boundary, const Rect<T>& bounds)
   {
     return grow_IN_PLACE(boundary, boundary, bounds);
   }

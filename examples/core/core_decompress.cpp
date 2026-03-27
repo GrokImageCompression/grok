@@ -891,7 +891,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] const char** argv)
 
     for(uint16_t i = 1; i < maxResolutions; ++i)
     {
-      printf("\nProgressive decompression : resolution %u\n", i + 1);
+      printf("\nProgressive decompression : resolution %u\n", (uint32_t)(i + 1));
       if(sinfo.fp_)
         rewind(sinfo.fp_);
       decompressParams.core.tile_cache_strategy = GRK_TILE_CACHE_ALL;
@@ -907,7 +907,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] const char** argv)
       maxResolutions = std::min(maxResolutions, headerInfo.numresolutions);
       printf("Width: %d\n", image->comps[0].w);
       printf("Height: %d\n", image->comps[0].h);
-      printf("Full decompression up to and including resolution %u\n", i + 1);
+      printf("Full decompression up to and including resolution %u\n", (uint32_t)(i + 1));
       std::string referenceFile = "reference_resolution_" + std::to_string(i + 1);
       decompressParams.core.tile_cache_strategy = fullCacheStrategy;
       drc = decompress(doStore ? referenceFile : "", decompressTile, tileIndex, codec_full,
@@ -948,7 +948,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] const char** argv)
 
     for(uint16_t i = 1; i < headerInfo.numresolutions; ++i)
     {
-      printf("\nProgressive decompression : resolution and layer %u\n", i + 1);
+      printf("\nProgressive decompression : resolution and layer %u\n", (uint32_t)(i + 1));
       if(sinfo.fp_)
         rewind(sinfo.fp_);
       decompressParams.core.tile_cache_strategy = GRK_TILE_CACHE_ALL;
@@ -965,7 +965,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] const char** argv)
       maxResolutions = std::min(maxResolutions, headerInfo.numresolutions);
       printf("Width: %d\n", image->comps[0].w);
       printf("Height: %d\n", image->comps[0].h);
-      printf("Full decompression up to and including resolution %u\n", i + 1);
+      printf("Full decompression up to and including resolution %u\n", (uint32_t)(i + 1));
       std::string referenceFile = "reference_resolution_layer_" + std::to_string(i + 1);
       decompressParams.core.tile_cache_strategy = fullCacheStrategy;
       drc = decompress(doStore ? referenceFile : "", decompressTile, tileIndex, codec_full,

@@ -879,7 +879,7 @@ bool GrkImage::composite(const GrkImage* srcImg)
  * Generate destination window (relative to destination component bounds)
  * Assumption: source region is wholly contained inside destination component region
  */
-bool GrkImage::generateCompositeBounds(Rect32 src, uint16_t destCompno, Rect32* destWin)
+bool GrkImage::generateCompositeBounds(const Rect32& src, uint16_t destCompno, Rect32* destWin)
 {
   auto destComp = comps + destCompno;
   *destWin = src.intersection(Rect32(destComp->x0, destComp->y0, destComp->x0 + destComp->w,

@@ -127,11 +127,11 @@ private:
   DcShiftParam dcShift_;
 
   // 5/3 ////////////////////////////////////////////////////////////////////////////////////
-  void load_h_p0_53(int32_t* scratch, const uint32_t width, int32_t* bandL, int32_t* bandH,
-                    int32_t* dest);
+  void load_h_p0_53(int32_t* scratch, const uint32_t width, const int32_t* bandL,
+                    const int32_t* bandH, int32_t* dest);
 
-  void load_h_p1_53(int32_t* scratch, const uint32_t width, int32_t* bandL, int32_t* bandH,
-                    int32_t* dest);
+  void load_h_p1_53(int32_t* scratch, const uint32_t width, const int32_t* bandL,
+                    const int32_t* bandH, int32_t* dest);
 
   void h_53(uint8_t res, TileComponentWindow<int32_t>* scratch, uint32_t resHeight);
 

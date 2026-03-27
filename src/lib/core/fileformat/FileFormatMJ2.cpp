@@ -54,6 +54,8 @@ mj2_tk::mj2_tk()
     opcolor_[i] = 0;
   for(uint32_t i = 0; i < 2; ++i)
     Dim_[i] = 0;
+  for(uint32_t i = 0; i < 8; ++i)
+    compressorname_[i] = 0;
 }
 mj2_tk::~mj2_tk()
 {

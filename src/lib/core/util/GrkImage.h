@@ -21,6 +21,7 @@
 #include <algorithm>
 #include <cmath>
 
+#define CMS_NO_REGISTER_KEYWORD 1
 #include "lcms2.h"
 
 #include "packer.h"
@@ -231,7 +232,7 @@ private:
   bool needsConversionToRGB(void) const;
   bool isOpacity(uint16_t compno) const;
   bool generateCompositeBounds(const grk_image_comp* srcComp, uint16_t destCompno, Rect32* destWin);
-  bool generateCompositeBounds(Rect32 src, uint16_t destCompno, Rect32* destWin);
+  bool generateCompositeBounds(const Rect32& src, uint16_t destCompno, Rect32* destWin);
   bool allComponentsSanityCheck(bool equalPrecision) const;
   grk_image* createRGB(uint16_t numcmpts, uint32_t w, uint32_t h, uint8_t prec);
   bool componentsEqual(grk_image_comp* src, grk_image_comp* dest, bool checkPrecision) const;
@@ -1767,6 +1768,11 @@ bool GrkImage::applyICC(void)
         grklog.error("nr_samples overflow in applyICC");
         goto cleanup;
       }
+      if(w > UINT32_MAX / 3)
+      {
+        grklog.error("Image width of {} converted to sample size 3 will overflow.", w);
+        goto cleanup;
+      }
       auto inbuf = new uint8_t[nr_samples];
       auto outbuf = new uint8_t[nr_samples];
 
@@ -1793,14 +1799,6 @@ bool GrkImage::applyICC(void)
           }
           src_index += stride_diff;
         }
-      }
-
-      if(w > UINT32_MAX / 3)
-      {
-        grklog.error("Image width of {} converted to sample size 3 will overflow.", w);
-        delete[] inbuf;
-        delete[] outbuf;
-        goto cleanup;
       }
 
       cmsDoTransformLineStride(transform, inbuf, outbuf, w, h, 3 * w, 3 * w, 0, 0);
@@ -1835,6 +1833,11 @@ bool GrkImage::applyICC(void)
         grklog.error("nr_samples overflow in applyICC");
         goto cleanup;
       }
+      if(w > UINT32_MAX / (3 * sizeof(uint16_t)))
+      {
+        grklog.error("Image width of {} converted to sample size 3 @ 16 bits will overflow.", w);
+        goto cleanup;
+      }
       nr_samples = componentSize * 3U * sizeof(uint16_t);
       auto inbuf = new uint16_t[nr_samples / sizeof(uint16_t)];
       auto outbuf = new uint16_t[nr_samples / sizeof(uint16_t)];
@@ -1864,13 +1867,6 @@ bool GrkImage::applyICC(void)
         }
       }
 
-      if(w > UINT32_MAX / (3 * sizeof(uint16_t)))
-      {
-        grklog.error("Image width of {} converted to sample size 3 @ 16 bits will overflow.", w);
-        delete[] inbuf;
-        delete[] outbuf;
-        goto cleanup;
-      }
       cmsDoTransformLineStride(transform, inbuf, outbuf, w, h, 3 * w * sizeof(uint16_t),
                                3 * w * sizeof(uint16_t), 0, 0);
       if constexpr(std::is_same_v<T, int32_t>)
@@ -1922,6 +1918,11 @@ bool GrkImage::applyICC(void)
     comps = newComps;
     if(prec <= 8)
     {
+      if(w > UINT32_MAX / 3)
+      {
+        grklog.error("Image width of {} converted to sample size 3 will overflow.", w);
+        goto cleanup;
+      }
       auto inbuf = new uint8_t[componentSize];
       auto outbuf = new uint8_t[nr_samples];
 
@@ -1933,13 +1934,6 @@ bool GrkImage::applyICC(void)
         for(uint32_t i = 0; i < w; ++i)
           inbuf[dest_index++] = (uint8_t)r[src_index++];
         src_index += stride_diff;
-      }
-      if(w > UINT32_MAX / 3)
-      {
-        grklog.error("Image width of {} converted to sample size 3 will overflow.", w);
-        delete[] inbuf;
-        delete[] outbuf;
-        goto cleanup;
       }
       cmsDoTransformLineStride(transform, inbuf, outbuf, w, h, w, 3 * w, 0, 0);
       T *g = nullptr, *b = nullptr;
@@ -1987,13 +1981,17 @@ bool GrkImage::applyICC(void)
         grklog.error("componentSize overflow in applyICC");
         goto cleanup;
       }
-      auto inbuf = new uint16_t[componentSize];
       if(componentSize * 3U > SIZE_MAX / sizeof(uint16_t))
       {
         grklog.error("nr_samples overflow in applyICC");
-        delete[] inbuf;
         goto cleanup;
       }
+      if(w > UINT32_MAX / (3 * sizeof(uint16_t)))
+      {
+        grklog.error("Image width of {} converted to sample size 3 @ 16 bits will overflow.", w);
+        goto cleanup;
+      }
+      auto inbuf = new uint16_t[componentSize];
       auto outbuf = new uint16_t[componentSize * 3U];
 
       auto r = (T*)comps[0].data;
@@ -2004,13 +2002,6 @@ bool GrkImage::applyICC(void)
         for(uint32_t i = 0; i < w; ++i)
           inbuf[dest_index++] = (uint16_t)r[src_index++];
         src_index += stride_diff;
-      }
-      if(w > UINT32_MAX / (3 * sizeof(uint16_t)))
-      {
-        grklog.error("Image width of {} converted to sample size 3 @ 16 bits will overflow.", w);
-        delete[] inbuf;
-        delete[] outbuf;
-        goto cleanup;
       }
       cmsDoTransformLineStride(transform, inbuf, outbuf, w, h, w * sizeof(uint16_t),
                                3 * w * sizeof(uint16_t), 0, 0);

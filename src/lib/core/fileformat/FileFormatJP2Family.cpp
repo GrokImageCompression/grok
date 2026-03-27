@@ -1156,8 +1156,7 @@ bool FileFormatJP2Family::read_box_header(Box* box, uint8_t* data, uint32_t* byt
       grklog.error("Cannot handle XL box of less than 16 bytes");
       return false;
     }
-    grk_read(data, &box->length);
-    data += 8;
+    grk_read(&data, &box->length);
     *bytesRead += 8;
 
     if(box->length == 0)

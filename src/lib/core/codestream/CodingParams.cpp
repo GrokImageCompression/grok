@@ -159,8 +159,9 @@ namespace
 } // namespace
 
 CodingParams::CodingParams()
-    : rsiz_(0), pcap_(0), tx0_(0), ty0_(0), t_width_(0), t_height_(0), numComments_(0),
-      t_grid_width_(0), t_grid_height_(0), asynchronous_(false), decompressCallback_(nullptr),
+    : rsiz_(0), pcap_(0), ccap_{}, tx0_(0), ty0_(0), t_width_(0), t_height_(0), numComments_(0),
+      comment_{}, commentLength_{}, isBinaryComment_{}, t_grid_width_(0), t_grid_height_(0),
+      asynchronous_(false), simulate_synchronous_(false), decompressCallback_(nullptr),
       decompressCallbackUserData_(nullptr)
 {
   codingParams_ = {};
@@ -324,7 +325,8 @@ TileCodingParams::TileCodingParams(const TileCodingParams& rhs)
     mctDecodingMatrix_ = static_cast<float*>(grk_malloc(mct_size));
     if(!mctDecodingMatrix_)
     {
-      // Handle error, perhaps throw exception
+      grklog.error("TileCodingParams copy: out of memory for mct decode matrix");
+      throw std::bad_alloc();
     }
     memcpy(mctDecodingMatrix_, rhs.mctDecodingMatrix_, mct_size);
   }
@@ -334,7 +336,8 @@ TileCodingParams::TileCodingParams(const TileCodingParams& rhs)
   mctRecords_ = static_cast<grk_mct_data*>(grk_malloc(mct_records_size));
   if(!mctRecords_)
   {
-    // Handle error
+    grklog.error("TileCodingParams copy: out of memory for mct records");
+    throw std::bad_alloc();
   }
   memcpy(mctRecords_, rhs.mctRecords_, mct_records_size);
 
@@ -359,7 +362,8 @@ TileCodingParams::TileCodingParams(const TileCodingParams& rhs)
   mccRecords_ = static_cast<grk_simple_mcc_decorrelation_data*>(grk_malloc(mcc_records_size));
   if(!mccRecords_)
   {
-    // Handle error
+    grklog.error("TileCodingParams copy: out of memory for mcc records");
+    throw std::bad_alloc();
   }
   memcpy(mccRecords_, rhs.mccRecords_, mcc_records_size);
   numMaxMccRecords_ = rhs.numMaxMccRecords_;

@@ -319,8 +319,8 @@ WaveletReverse::~WaveletReverse(void)
 
 /* Performs lifting in one single iteration. Saves memory */
 /* accesses and explicit interleaving. */
-void WaveletReverse::load_h_p0_53(int32_t* scratch, const uint32_t width, int32_t* bandL,
-                                  int32_t* bandH, int32_t* dest)
+void WaveletReverse::load_h_p0_53(int32_t* scratch, const uint32_t width, const int32_t* bandL,
+                                  const int32_t* bandH, int32_t* dest)
 {
   assert(width > 1);
 
@@ -357,8 +357,8 @@ void WaveletReverse::load_h_p0_53(int32_t* scratch, const uint32_t width, int32_
 
 /* Performs lifting in one single iteration. Saves memory
    accesses and explicit interleaving. */
-void WaveletReverse::load_h_p1_53(int32_t* scratch, const uint32_t width, int32_t* bandL,
-                                  int32_t* bandH, int32_t* dest)
+void WaveletReverse::load_h_p1_53(int32_t* scratch, const uint32_t width, const int32_t* bandL,
+                                  const int32_t* bandH, int32_t* dest)
 {
   assert(width > 2);
   int32_t d1c = bandH[1];
@@ -554,27 +554,27 @@ void WaveletReverse::v_p0_53(int32_t* scratch, const uint32_t height, int32_t* b
 }
 /** Vertical inverse 5x3 wavelet transform for one column, when top-most
  * pixel is on odd coordinate */
-void WaveletReverse::v_p1_53(int32_t* scratch, const uint32_t height, int32_t* bandH,
-                             const uint32_t strideH, int32_t* bandL, const uint32_t strideL,
+void WaveletReverse::v_p1_53(int32_t* scratch, const uint32_t height, int32_t* bandL,
+                             const uint32_t strideL, int32_t* bandH, const uint32_t strideH,
                              int32_t* dest, const uint32_t strideDest)
 {
   assert(height > 2);
 
   /* Performs lifting in one single iteration. Saves memory */
   /* accesses and explicit interleaving. */
-  int32_t s1 = bandL[strideL];
-  int32_t dc = bandH[0] - ((bandL[0] + s1 + 2) >> 2);
-  scratch[0] = bandL[0] + dc;
-  auto s2_ptr = bandL + (strideL << 1);
-  auto dn_ptr = bandH + strideH;
+  int32_t s1 = bandH[strideH];
+  int32_t dc = bandL[0] - ((bandH[0] + s1 + 2) >> 2);
+  scratch[0] = bandH[0] + dc;
+  auto s2_ptr = bandH + (strideH << 1);
+  auto dn_ptr = bandL + strideL;
   uint32_t i, j;
   for(i = 1, j = 1; i < (height - 2 - !(height & 1)); i += 2, j++)
   {
     int32_t s2 = *s2_ptr;
-    s2_ptr += strideL;
+    s2_ptr += strideH;
 
     int32_t dn = *dn_ptr - ((s1 + s2 + 2) >> 2);
-    dn_ptr += strideH;
+    dn_ptr += strideL;
 
     scratch[i] = dc;
     scratch[i + 1] = s1 + ((dn + dc) >> 1);
@@ -584,7 +584,7 @@ void WaveletReverse::v_p1_53(int32_t* scratch, const uint32_t height, int32_t* b
   scratch[i] = dc;
   if(!(height & 1))
   {
-    int32_t dn = bandH[((height >> 1) - 1) * strideH] - ((s1 + 1) >> 1);
+    int32_t dn = bandL[((height >> 1) - 1) * strideL] - ((s1 + 1) >> 1);
     scratch[height - 2] = s1 + ((dn + dc) >> 1);
     scratch[height - 1] = dn;
   }

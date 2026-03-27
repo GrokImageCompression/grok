@@ -790,7 +790,7 @@ static Params97 makeParams97(dwt_scratch<vec4f>* dwt, bool isBandL, bool step1)
 };
 
 #ifdef __SSE__
-void step1_sse_97(Params97 d, const __m128 c)
+void step1_sse_97(const Params97& d, const __m128 c)
 {
   // process 4 floats at a time
   auto mmData = (__m128*)d.data;
