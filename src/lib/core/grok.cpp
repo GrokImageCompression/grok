@@ -379,7 +379,7 @@ grk_object* grk_decompress_init(grk_stream_params* streamParams,
 
   streamParams->is_read_stream = true;
   StreamGenerator sg(streamParams);
-  IStream* stream = nullptr;
+  grk::IStream* stream = nullptr;
   try
   {
     stream = sg.create();
