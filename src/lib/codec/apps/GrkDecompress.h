@@ -49,6 +49,8 @@ class GrkDecompress
 public:
   GrkDecompress(void);
   ~GrkDecompress(void);
+  GrkDecompress(const GrkDecompress&) = delete;
+  GrkDecompress& operator=(const GrkDecompress&) = delete;
   int main(int argc, const char* argv[]);
   int preProcess(grk_plugin_decompress_callback_info* info);
   int postProcess(grk_plugin_decompress_callback_info* info);

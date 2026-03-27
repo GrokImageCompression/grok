@@ -25,7 +25,7 @@ namespace grk::t1
  */
 mqcoder_base::mqcoder_base(bool cached)
     : c(0), a(0), ct(0), end_of_byte_stream_counter(0), bp(nullptr), curctx(nullptr),
-      curctx_index_(0), cached_(cached), finalLayer_(false)
+      curctx_index_(0), cached_(cached), finalLayer_(false), ctxs{}
 {}
 
 // Copy constructor
@@ -99,7 +99,7 @@ bool mqcoder_base::operator==(const mqcoder_base& other) const
 
 void mqcoder_base::print(const std::string& msg)
 {
-  printf("\n%s c: 0x%x, a: 0x%x, ct: 0x%x, end_count: %d, bp: %p\n", msg.c_str(), c, a, ct,
+  printf("\n%s c: 0x%x, a: 0x%x, ct: 0x%x, end_count: %u, bp: %p\n", msg.c_str(), c, a, ct,
          end_of_byte_stream_counter, bp);
 }
 

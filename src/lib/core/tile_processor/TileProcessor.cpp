@@ -742,9 +742,15 @@ void TileProcessor::prepareConcurrentParsing(void)
     // Move old flows aside — they may still be referenced by the executor.
     // Destroyed in scheduleAndRunDecompress after waitAndClear.
     if(tileHeaderParseFlow_)
+    {
       staleParsing_.push_back(std::move(tileHeaderParseFlow_));
+      tileHeaderParseFlow_.reset();
+    }
     if(prepareFlow_)
+    {
       staleParsing_.push_back(std::move(prepareFlow_));
+      prepareFlow_.reset();
+    }
     concurrentFlowsStale_ = false;
   }
   if(!tileHeaderParseFlow_)

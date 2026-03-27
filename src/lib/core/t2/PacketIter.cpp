@@ -800,8 +800,8 @@ void PacketIter::update_dxy(void)
   dy = 0;
   for(uint16_t compno = 0; compno < numcomps; compno++)
     update_dxy_for_comp(comps + compno, false);
-  dxActive = (uint32_t)(dx - (x % dx));
-  dyActive = (uint32_t)(dy - (y % dy));
+  dxActive = dx > 0 ? (uint32_t)(dx - (x % dx)) : 0;
+  dyActive = dy > 0 ? (uint32_t)(dy - (y % dy)) : 0;
 }
 void PacketIter::update_dxy_for_comp(PacketIterInfoComponent* comp, bool updateActive)
 {

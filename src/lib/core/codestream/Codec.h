@@ -45,6 +45,9 @@ public:
     delete decompressor_;
   }
 
+  Codec(const Codec&) = delete;
+  Codec& operator=(const Codec&) = delete;
+
   static Codec* getImpl(grk_object* codec)
   {
     return ((GrkObjectWrapperImpl<Codec>*)codec->wrapper)->getWrappee();

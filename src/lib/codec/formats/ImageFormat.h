@@ -32,6 +32,8 @@ class ImageFormat : public IImageFormat
 public:
   ImageFormat();
   virtual ~ImageFormat() override;
+  ImageFormat(const ImageFormat&) = delete;
+  ImageFormat& operator=(const ImageFormat&) = delete;
   virtual void registerGrkReclaimCallback(grk_io_init io_init, grk_io_callback reclaim_callback,
                                           void* user_data) override;
   void ioReclaimBuffer(uint32_t workerId, grk_io_buf buffer);

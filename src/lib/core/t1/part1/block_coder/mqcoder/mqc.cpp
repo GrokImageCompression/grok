@@ -85,7 +85,7 @@ mqcoder::mqcoder(const mqcoder& other) : mqcoder_base(other)
 void mqcoder::print(const std::string& msg)
 {
   mqcoder_base::print(msg);
-  printf("%s end=%p,buffer index=%d, num buffers=%d\n", msg.c_str(), end, cur_buffer_index,
+  printf("%s end=%p,buffer index=%u, num buffers=%u\n", msg.c_str(), end, cur_buffer_index,
          num_buffers);
 }
 

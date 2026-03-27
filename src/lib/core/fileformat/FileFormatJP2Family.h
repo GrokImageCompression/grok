@@ -133,6 +133,8 @@ class FileFormatJP2Family
 public:
   FileFormatJP2Family(IStream* stream);
   virtual ~FileFormatJP2Family();
+  FileFormatJP2Family(const FileFormatJP2Family&) = delete;
+  FileFormatJP2Family& operator=(const FileFormatJP2Family&) = delete;
 
 protected:
   void init(grk_decompress_parameters* param);

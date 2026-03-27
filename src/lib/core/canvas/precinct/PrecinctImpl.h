@@ -42,6 +42,9 @@ struct PrecinctImpl
    */
   virtual ~PrecinctImpl(void);
 
+  PrecinctImpl(const PrecinctImpl&) = delete;
+  PrecinctImpl& operator=(const PrecinctImpl&) = delete;
+
   /**
    * @brief Gets non-nominal bounds for a code block
    *

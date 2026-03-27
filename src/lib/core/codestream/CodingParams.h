@@ -124,6 +124,7 @@ struct TileCodingParams
 {
   TileCodingParams(CodingParams* cp);
   TileCodingParams(const TileCodingParams& rhs);
+  TileCodingParams& operator=(const TileCodingParams&) = delete;
   ~TileCodingParams();
 
   bool advanceTilePartCounter(uint16_t tileIndex, uint8_t tilePartIndex);

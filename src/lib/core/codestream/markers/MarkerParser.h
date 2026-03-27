@@ -46,6 +46,8 @@ struct MarkerScratch
 {
   MarkerScratch(void);
   ~MarkerScratch(void);
+  MarkerScratch(const MarkerScratch&) = delete;
+  MarkerScratch& operator=(const MarkerScratch&) = delete;
   bool process(const IMarkerProcessor* handler, uint16_t markerSize);
   void setStream(IStream* stream);
 
@@ -59,6 +61,8 @@ struct MarkerParser
 {
   MarkerParser() = default;
   ~MarkerParser();
+  MarkerParser(const MarkerParser&) = delete;
+  MarkerParser& operator=(const MarkerParser&) = delete;
   void add(const uint16_t id, IMarkerProcessor* processor);
   void add(const std::initializer_list<std::pair<const uint16_t, IMarkerProcessor*>>& newMarkers);
   void clearProcessors(void);
