@@ -4,3 +4,7 @@
 [submodule "src/lib/core/highway"]
 	path = src/lib/core/highway
 	url = https://github.com/google/highway.git
+[submodule "src/include/spdlog"]
+	path = src/include/spdlog
+	url = https://github.com/gabime/spdlog.git
+	branch = v2.x

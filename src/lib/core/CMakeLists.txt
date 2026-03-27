@@ -213,7 +213,6 @@ if(NOT CMAKE_SYSTEM_NAME STREQUAL Emscripten)
   endif()
 endif()
 
-add_definitions(-DSPDLOG_COMPILED_LIB)
 if (GRK_BUILD_PLUGIN_LOADER)
     add_definitions(-DGRK_BUILD_PLUGIN_LOADER)
 endif()

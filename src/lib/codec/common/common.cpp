@@ -27,7 +27,7 @@
 #endif
 
 #include "spdlogwrapper.h"
-#include <spdlog/sinks/basic_file_sink.h> // Required for basic_logger_mt
+#include <spdlog/sinks/basic_file_sink.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include "common.h"
 #include <string>
@@ -406,24 +406,24 @@ int count_trailing_zeros(uint32_t val)
 
 void errorCallback(const char* msg, [[maybe_unused]] void* client_data)
 {
-  spdlog::default_logger()->error(msg);
+  spdlog::global_logger()->error(msg);
 }
 void warningCallback(const char* msg, [[maybe_unused]] void* client_data)
 {
-  spdlog::default_logger()->warn(msg);
+  spdlog::global_logger()->warn(msg);
 }
 void infoCallback(const char* msg, [[maybe_unused]] void* client_data)
 {
-  spdlog::default_logger()->info(msg);
+  spdlog::global_logger()->info(msg);
 }
 void debugCallback(const char* msg, [[maybe_unused]] void* client_data)
 {
-  spdlog::default_logger()->debug(msg);
+  spdlog::global_logger()->debug(msg);
 }
 
 void traceCallback(const char* msg, [[maybe_unused]] void* client_data)
 {
-  spdlog::default_logger()->trace(msg);
+  spdlog::global_logger()->trace(msg);
 }
 
 // Configuration function
@@ -433,7 +433,8 @@ void configureLogging(const std::string& logfile)
   std::shared_ptr<spdlog::logger> logger;
   if(!logfile.empty())
   {
-    logger = spdlog::basic_logger_mt("grk", logfile); // File logger
+    auto sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>(logfile);
+    logger = std::make_shared<spdlog::logger>("grk", sink);
   }
   else
   {
@@ -441,10 +442,10 @@ void configureLogging(const std::string& logfile)
     auto sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
     logger = std::make_shared<spdlog::logger>("grk", sink);
   }
-  spdlog::set_default_logger(logger);
+  spdlog::set_global_logger(logger);
 
   // Step 2: Determine log level
-  spdlog::level::level_enum log_level = spdlog::level::err; // Default to errors only
+  spdlog::level log_level = spdlog::level::err; // Default to errors only
 
   const char* debug_env = std::getenv("GRK_DEBUG");
   if(debug_env)

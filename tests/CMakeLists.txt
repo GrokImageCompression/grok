@@ -27,13 +27,13 @@ add_executable(compare_images compare_images.cpp)
 target_link_libraries(compare_images ${GROK_CODEC_NAME})
 
 add_executable(compare_dump_files compare_dump_files.cpp GrkCompareDumpFiles.cpp )
-target_link_libraries(compare_dump_files ${GROK_CORE_NAME})
+target_link_libraries(compare_dump_files ${GROK_CORE_NAME} spdlog::spdlog)
 
 add_executable(j2k_random_tile_access j2k_random_tile_access.cpp GrkRandomTileAccess.cpp)
-target_link_libraries(j2k_random_tile_access ${GROK_CORE_NAME})
+target_link_libraries(j2k_random_tile_access ${GROK_CORE_NAME} spdlog::spdlog)
 
 add_executable(compare_raw_files compare_raw_files.cpp GrkCompareRawFiles.cpp)
-target_link_libraries(compare_raw_files ${GROK_CORE_NAME})
+target_link_libraries(compare_raw_files ${GROK_CORE_NAME} spdlog::spdlog)
 
 if(NOT GROK_HAVE_LIBPNG)
   message(WARNING "libpng is not available - running regression tests requires GRK_BUILD_LIBPNG enabled.")

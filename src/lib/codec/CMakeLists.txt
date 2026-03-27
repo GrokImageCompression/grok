@@ -30,13 +30,6 @@ set(GROK_CODEC_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/formats/YUVFormat.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/common/common.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/common/exif.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/common/spdlog/spdlog.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/common/spdlog/color_sinks.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/common/spdlog/stdout_sinks.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/common/spdlog/async.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/common/spdlog/file_sinks.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/common/spdlog/bundled_fmtlib_format.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/common/spdlog/cfg.cpp  
   ${CMAKE_CURRENT_SOURCE_DIR}/apps/GrkCompress.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/apps/GrkDecompress.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/apps/GrkDump.cpp
@@ -55,8 +48,6 @@ if(GROK_HAVE_LIBJPEG)
 endif()
 
 
-add_definitions(-DSPDLOG_COMPILED_LIB)
-
 # Pre-generated help text headers live in source tree; no Python needed to build.
 # Maintainers: run scripts/gen_help_text.py to update after changing man pages.
 set(GEN_HELP_SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/generated)
@@ -66,7 +57,7 @@ set(INSTALL_LIBS ${GROK_CODEC_NAME})
 
 target_include_directories(${GROK_CODEC_NAME} PRIVATE ${GEN_HELP_SRC_DIR})
 
-target_link_libraries(${GROK_CODEC_NAME} PRIVATE ${GROK_CORE_NAME})
+target_link_libraries(${GROK_CODEC_NAME} PRIVATE ${GROK_CORE_NAME} spdlog::spdlog)
 if(GROK_HAVE_LIBPNG)
 target_link_libraries(${GROK_CODEC_NAME} PRIVATE ${PNG_LIBNAME})
 endif()
