@@ -769,7 +769,7 @@ bool GrkImage::allocCompositeData(void)
                    destComp->h);
       return false;
     }
-    if(!destComp->data)
+    if(!destComp->data || !destComp->owns_data)
     {
       if(!GrkImage::allocData(destComp, true))
       {
