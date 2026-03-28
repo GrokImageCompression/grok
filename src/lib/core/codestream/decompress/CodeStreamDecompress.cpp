@@ -762,6 +762,17 @@ bool CodeStreamDecompress::postProcess(GrkImage* img)
   return postPostProcess_ ? postPostProcess_(img) : true;
 }
 
+/**
+ * @brief Final post-processing lambda, executed by wait(nullptr) after all tiles complete.
+ *
+ * For non-skipAllocateComposite mode: transfers pixel data from scratchImage_
+ * to multiTileComposite_ and applies postProcess (colour space, ICC, precision).
+ * After this runs, scratchImage_ is empty and multiTileComposite_ has the
+ * final post-processed image.  getImage() returns multiTileComposite_.
+ *
+ * This lambda is stored in postMulti_ and only runs during a full wait
+ * (wait(nullptr)), NOT during the swath-based tileCompletion early-return path.
+ */
 std::function<void()> CodeStreamDecompress::postMultiTile(void)
 {
   return [this]() {
@@ -787,6 +798,16 @@ std::function<void()> CodeStreamDecompress::postMultiTile(void)
   };
 }
 
+/**
+ * @brief Per-tile post-processing lambda, executed when each tile's decompression future completes.
+ *
+ * Calls post_decompressT2T1(scratchImage_) which:
+ * - Multi-tile (has_multiple_tiles=true): extracts tile data into a new image,
+ *   sets image_ on the processor.  getImage() will return this image.
+ * - Single-tile (has_multiple_tiles=false): transfers tile data INTO scratchImage_.
+ *   image_ is NOT set, so getImage() returns null.  Data stays in scratchImage_
+ *   until postMultiTile() (no-arg) transfers it to multiTileComposite_.
+ */
 std::function<void()> CodeStreamDecompress::postMultiTile(ITileProcessor* tileProcessor)
 {
   return [this, tileProcessor]() {
@@ -1027,9 +1048,28 @@ void CodeStreamDecompress::wait(uint16_t tile_index)
 
   decompressTileFutureManager_.wait(tile_index);
 }
+/**
+ * @brief Wait for tile decompression to complete.
+ *
+ * Two calling modes:
+ *
+ * **Swath-based (swath != nullptr, tileCompletion_ active):**
+ * Returns as soon as the requested swath tiles are decompressed.
+ * Tile data is available via entry->processor->getImage() for multi-tile
+ * images (has_multiple_tiles=true), or in scratchImage_ for single-tile
+ * images.  NOTE: postMulti_() does NOT run in this path, so
+ * scratchImage_ data is raw (no postProcess).  Callers needing
+ * post-processed data for single-tile images must subsequently call
+ * wait(nullptr) or use getImage() which triggers a full wait.
+ *
+ * **Full wait (swath == nullptr, or no tileCompletion_):**
+ * Joins all worker threads, waits for all tile futures, and runs
+ * postMulti_() which transfers scratchImage_ data to
+ * multiTileComposite_ with post-processing applied.
+ */
 void CodeStreamDecompress::wait(grk_wait_swath* swath)
 {
-  // 1. wait for swath
+  // 1. Swath-based early return: tile data ready but NOT post-processed
   if(swath && tileCompletion_)
   {
     bool rc = tileCompletion_->wait(swath);
@@ -1073,7 +1113,9 @@ void CodeStreamDecompress::wait(grk_wait_swath* swath)
     decompressTileFutureManager_.cancelAll();
   decompressTileFutureManager_.waitAndClear();
 
-  // 5. clear postMulti lambda
+  // 5. Run postMulti_: transfers scratchImage_ data to multiTileComposite_
+  // and applies postProcess (colour, ICC, precision, etc.).
+  // Only runs in this full-wait path, never after tileCompletion early return.
   if(postMulti_)
   {
     postMulti_();
@@ -1081,6 +1123,32 @@ void CodeStreamDecompress::wait(grk_wait_swath* swath)
   }
 }
 
+/**
+ * @brief Schedule SIMD-accelerated tile-to-swath copies for decoded tiles.
+ *
+ * For each tile in the swath range, retrieves the decoded tile image and
+ * submits a Taskflow task that converts int32 component data to the
+ * caller's output buffer (int8/int16/int32, signed or unsigned).
+ *
+ * ## Tile image lookup
+ *
+ * - **Multi-tile (has_multiple_tiles=true):** post_decompressT2T1 calls
+ *   extractFrom() which sets image_ on the tile processor.  getImage()
+ *   returns this per-tile image directly — no composite needed.
+ *
+ * - **Single-tile (has_multiple_tiles=false):** post_decompressT2T1 calls
+ *   transferDataFrom() into scratchImage_ but does NOT set image_.
+ *   getImage() returns null, so the fallback to scratchImage_ is used.
+ *   IMPORTANT: scratchImage_ only contains valid data if the caller used
+ *   the swath-based wait path (wait(swath) with tileCompletion_).
+ *   If wait(nullptr) was called instead, postMulti_() will have already
+ *   transferred data from scratchImage_ to multiTileComposite_, leaving
+ *   scratchImage_ empty.  In that case, callers should use getImage()
+ *   (which returns multiTileComposite_) rather than this function.
+ *
+ * @param swath  Tile range and grid info from grk_decompress_wait
+ * @param buf    Output buffer descriptor (data pointer, layout, precision)
+ */
 void CodeStreamDecompress::scheduleSwathCopy(const grk_wait_swath* swath, grk_swath_buffer* buf)
 {
   if(!swath || !buf || !buf->data || buf->prec == 0)
@@ -1097,7 +1165,10 @@ void CodeStreamDecompress::scheduleSwathCopy(const grk_wait_swath* swath, grk_sw
       if(entry)
       {
         tileImg = entry->processor->getImage();
-        // Single-tile path: image_ is not set; data is in scratchImage_ after wait
+        // Single-tile path: image_ is not set; data is in scratchImage_
+        // after the swath-based wait (tileCompletion early return).
+        // If wait(nullptr) has run instead, scratchImage_ will be empty
+        // and callers must use getImage() / multiTileComposite_.
         if(!tileImg)
           tileImg = scratchImage_.get();
       }
