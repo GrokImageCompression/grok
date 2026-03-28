@@ -45,9 +45,10 @@ public:
   // Schedule forward DWT into FlowComponent pairs (vert, horiz) per level.
   // Returns an opaque handle owning scratch buffers; caller must keep it alive
   // until DAG execution completes.
-  std::unique_ptr<WaveletFwdScheduleData> scheduleCompress(
-      TileComponent* tile_comp, uint8_t qmfbid, uint32_t maxDim, DcShiftParam dcShift,
-      std::vector<std::pair<FlowComponent*, FlowComponent*>>& levelFlows);
+  std::unique_ptr<WaveletFwdScheduleData>
+      scheduleCompress(TileComponent* tile_comp, uint8_t qmfbid, uint32_t maxDim,
+                       DcShiftParam dcShift,
+                       std::vector<std::pair<FlowComponent*, FlowComponent*>>& levelFlows);
 };
 
 } // namespace grk

@@ -544,7 +544,8 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] const char** argv)
       // Wait for this swath region to be decoded
       grk_decompress_wait(codec, &swath);
 
-      uint16_t numSwathTiles = (uint16_t)((swath.tile_x1 - swath.tile_x0) * (swath.tile_y1 - swath.tile_y0));
+      uint16_t numSwathTiles =
+          (uint16_t)((swath.tile_x1 - swath.tile_x0) * (swath.tile_y1 - swath.tile_y0));
       printf("Swath %u: rows [%u, %u), %u tiles\n", swathIndex, y, swathY1, numSwathTiles);
 
       if(useSwathBuf)

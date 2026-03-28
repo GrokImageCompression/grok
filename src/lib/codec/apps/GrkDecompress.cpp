@@ -1254,8 +1254,8 @@ int GrkDecompress::main(int argc, const char* argv[])
 
           // generate numbered output filename
           char numberedName[GRK_PATH_LEN];
-          snprintf(numberedName, sizeof(numberedName), "%s_%03u%s",
-                   outStem.c_str(), s, outExt.c_str());
+          snprintf(numberedName, sizeof(numberedName), "%s_%03u%s", outStem.c_str(), s,
+                   outExt.c_str());
           auto outFilePath = (outDir / numberedName).string();
 
           // create format-specific encoder
@@ -1302,8 +1302,7 @@ int GrkDecompress::main(int argc, const char* argv[])
               goto cleanup;
           }
 
-          if(!fmt->encodeInit(img, outFilePath,
-                              initParams.parameters.compression_level, 1) ||
+          if(!fmt->encodeInit(img, outFilePath, initParams.parameters.compression_level, 1) ||
              !fmt->encodeHeader() || !fmt->encodePixels() || !fmt->encodeFinish())
           {
             spdlog::error("MJ2 decompress: failed to save sample {} to {}", s, outFilePath);

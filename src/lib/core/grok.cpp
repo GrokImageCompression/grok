@@ -565,9 +565,8 @@ grk_image* grk_decompress_get_sample_tile_image(grk_object* codecWrapper, uint32
   if(codecWrapper)
   {
     auto codec = Codec::getImpl(codecWrapper);
-    return codec->decompressor_
-               ? codec->decompressor_->getSampleTileImage(sample_index, tile_index)
-               : nullptr;
+    return codec->decompressor_ ? codec->decompressor_->getSampleTileImage(sample_index, tile_index)
+                                : nullptr;
   }
   return nullptr;
 }

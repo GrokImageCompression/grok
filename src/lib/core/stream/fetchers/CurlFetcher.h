@@ -102,8 +102,7 @@ struct TileFetchContext : public std::enable_shared_from_this<TileFetchContext>
   TileFetchContext(std::shared_ptr<TPFetchSeq>& requests, void* user_data,
                    std::shared_ptr<std::unordered_map<uint16_t, std::shared_ptr<TPFetchSeq>>>&
                        tilePartFetchByTile,
-                   TileFetchCallback callback,
-                   IFetcher* fetcher)
+                   TileFetchCallback callback, IFetcher* fetcher)
       : requests_(requests), user_data_(user_data), tilePartFetchByTile_(tilePartFetchByTile),
         callback_(callback), fetcher_(fetcher)
   {}

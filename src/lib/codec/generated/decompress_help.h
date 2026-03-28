@@ -4,7 +4,7 @@
 
 // NOLINTNEXTLINE
 static const char decompress_help_text[] =
-R"HELPTEXT(Supported input formats: `JP2`, `J2K\J2C`, `JPH`, `JHC` and `MJ2` (Motion JPEG 2000)
+    R"HELPTEXT(Supported input formats: `JP2`, `J2K\J2C`, `JPH`, `JHC` and `MJ2` (Motion JPEG 2000)
 Supported input image extensions are `.jp2`, `.j2k\.j2c`, `.jph`, `.jhc` and `.mj2`
 
 Supported output formats are `JPEG`, `BMP`, `PNM`, `PGX`, `PNG`, `RAW` and `TIFF`

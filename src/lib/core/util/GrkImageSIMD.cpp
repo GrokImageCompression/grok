@@ -664,13 +664,16 @@ void hwy_copy_tile_to_swath(const grk_image* tile_img, const grk_swath_buffer* b
         if(buf->prec <= 8)
           HWY_DYNAMIC_DISPATCH(Hwy_copy_i32_to_u8_row)(srcPtr, dstRowBase, cols);
         else if(buf->prec <= 16 && buf->sgnd)
-          HWY_DYNAMIC_DISPATCH(Hwy_copy_i32_to_i16_row)(srcPtr, reinterpret_cast<int16_t*>(dstRowBase), cols);
+          HWY_DYNAMIC_DISPATCH(Hwy_copy_i32_to_i16_row)(
+              srcPtr, reinterpret_cast<int16_t*>(dstRowBase), cols);
         else if(buf->prec <= 16)
-          HWY_DYNAMIC_DISPATCH(Hwy_copy_i32_to_u16_row)(srcPtr, reinterpret_cast<uint16_t*>(dstRowBase), cols);
+          HWY_DYNAMIC_DISPATCH(Hwy_copy_i32_to_u16_row)(
+              srcPtr, reinterpret_cast<uint16_t*>(dstRowBase), cols);
         else if(buf->sgnd)
           memcpy(dstRowBase, srcPtr, static_cast<size_t>(cols) * sizeof(int32_t));
         else
-          HWY_DYNAMIC_DISPATCH(Hwy_copy_i32_to_u32_row)(srcPtr, reinterpret_cast<uint32_t*>(dstRowBase), cols);
+          HWY_DYNAMIC_DISPATCH(Hwy_copy_i32_to_u32_row)(
+              srcPtr, reinterpret_cast<uint32_t*>(dstRowBase), cols);
       }
       else
       {
@@ -712,4 +715,3 @@ void hwy_copy_tile_to_swath(const grk_image* tile_img, const grk_swath_buffer* b
 
 } // namespace grk
 #endif // HWY_ONCE
-

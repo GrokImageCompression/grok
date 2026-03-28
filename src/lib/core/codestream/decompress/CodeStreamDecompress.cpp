@@ -1259,7 +1259,7 @@ bool CodeStreamDecompress::fetchByTile(
   fetchByTileFutures_.push_back(fetcher->fetchTiles(
       cp_.tlmMarkers_->getTileParts(), slated, nullptr,
       [this, numTileCols, unreducedImageBounds, postGenerator](size_t requestIndex,
-                                                                TileFetchContext* context) {
+                                                               TileFetchContext* context) {
         auto& tilePart = (*context->requests_)[requestIndex];
         tilePart->stream_ = std::unique_ptr<IStream>(memStreamCreate(
             tilePart->data_.get(), tilePart->length_, false, nullptr, stream_->getFormat(), true));
@@ -1271,8 +1271,7 @@ bool CodeStreamDecompress::fetchByTile(
           int32_t tileRow = tileIndex / numTileCols;
           int32_t prev = maxFetchedTileRow_.load(std::memory_order_acquire);
           while(prev < tileRow &&
-                !maxFetchedTileRow_.compare_exchange_weak(prev, tileRow,
-                                                          std::memory_order_release,
+                !maxFetchedTileRow_.compare_exchange_weak(prev, tileRow, std::memory_order_release,
                                                           std::memory_order_acquire))
           {
           }

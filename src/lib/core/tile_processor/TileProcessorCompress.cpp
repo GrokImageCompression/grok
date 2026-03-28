@@ -311,9 +311,7 @@ void TileProcessorCompress::buildCompressDAG(void)
   // 1. DC level shift as a single task, then MCT in its own FlowComponent
   // dcShift is fast and runs as a single task
   auto dcShiftFlow = std::make_unique<FlowComponent>();
-  dcShiftFlow->nextTask().work([this] {
-    dcLevelShiftCompress();
-  });
+  dcShiftFlow->nextTask().work([this] { dcLevelShiftCompress(); });
   dcShiftFlow->addTo(*compressFlow_);
 
   // MCT gets its own FlowComponent so its parallel tasks can run on the executor
@@ -449,41 +447,44 @@ void TileProcessorCompress::buildCompressDAG(void)
   }
 
   // 4. Rate allocation (single task at the end)
-  auto rateAllocTask = compressFlow_->emplace([this] {
-    packetLengthCache_->deleteMarkers();
-    if(cp_->codingParams_.enc_.writePlt_)
-      packetLengthCache_->createMarkers(stream_);
-    uint32_t allPacketBytes = 0;
-    bool rc = rateAllocate(&allPacketBytes, false);
-    if(!rc)
-    {
-      grklog.warn("Unable to perform rate control on tile %d", tileIndex_);
-      grklog.warn("Rate control will be disabled for this tile");
-      allPacketBytes = 0;
-      rc = rateAllocate(&allPacketBytes, true);
-      if(!rc)
-      {
-        grklog.error("Unable to perform rate control on tile %d", tileIndex_);
-        dagSuccess_ = false;
-        return;
-      }
-    }
-    packetTracker_->clear();
-    if(canPreCalculateTileLen())
-    {
-      preCalculatedTileLen_ = sotMarkerSegmentLen;
-      if(canWritePocMarker())
-      {
-        uint32_t pocSize =
-            CodeStreamCompress::getPocSize(tile_->numcomps_, tcp_->getNumProgressions());
-        preCalculatedTileLen_ += pocSize;
-      }
-      if(packetLengthCache_->getMarkers())
-        preCalculatedTileLen_ += packetLengthCache_->getMarkers()->getTotalBytesWritten();
-      preCalculatedTileLen_ += 2;
-      preCalculatedTileLen_ += allPacketBytes;
-    }
-  }).name("rateAlloc");
+  auto rateAllocTask =
+      compressFlow_
+          ->emplace([this] {
+            packetLengthCache_->deleteMarkers();
+            if(cp_->codingParams_.enc_.writePlt_)
+              packetLengthCache_->createMarkers(stream_);
+            uint32_t allPacketBytes = 0;
+            bool rc = rateAllocate(&allPacketBytes, false);
+            if(!rc)
+            {
+              grklog.warn("Unable to perform rate control on tile %d", tileIndex_);
+              grklog.warn("Rate control will be disabled for this tile");
+              allPacketBytes = 0;
+              rc = rateAllocate(&allPacketBytes, true);
+              if(!rc)
+              {
+                grklog.error("Unable to perform rate control on tile %d", tileIndex_);
+                dagSuccess_ = false;
+                return;
+              }
+            }
+            packetTracker_->clear();
+            if(canPreCalculateTileLen())
+            {
+              preCalculatedTileLen_ = sotMarkerSegmentLen;
+              if(canWritePocMarker())
+              {
+                uint32_t pocSize =
+                    CodeStreamCompress::getPocSize(tile_->numcomps_, tcp_->getNumProgressions());
+                preCalculatedTileLen_ += pocSize;
+              }
+              if(packetLengthCache_->getMarkers())
+                preCalculatedTileLen_ += packetLengthCache_->getMarkers()->getTotalBytesWritten();
+              preCalculatedTileLen_ += 2;
+              preCalculatedTileLen_ += allPacketBytes;
+            }
+          })
+          .name("rateAlloc");
   t1Flow_->precede(rateAllocTask);
 }
 

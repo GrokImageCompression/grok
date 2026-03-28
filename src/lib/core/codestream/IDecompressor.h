@@ -103,9 +103,20 @@ public:
    */
   virtual void dump(uint32_t flag, FILE* outputFileStream) = 0;
 
-  virtual uint32_t getNumSamples(void) { return 1; }
-  virtual bool decompressSample(uint32_t sampleIndex) { (void)sampleIndex; return decompress(nullptr); }
-  virtual GrkImage* getSampleImage(uint32_t sampleIndex) { (void)sampleIndex; return getImage(); }
+  virtual uint32_t getNumSamples(void)
+  {
+    return 1;
+  }
+  virtual bool decompressSample(uint32_t sampleIndex)
+  {
+    (void)sampleIndex;
+    return decompress(nullptr);
+  }
+  virtual GrkImage* getSampleImage(uint32_t sampleIndex)
+  {
+    (void)sampleIndex;
+    return getImage();
+  }
   virtual GrkImage* getSampleTileImage(uint32_t sampleIndex, uint16_t tileIndex)
   {
     (void)sampleIndex;
@@ -121,7 +132,8 @@ public:
    * their copy deferred via a Taskflow continuation.
    */
   virtual void scheduleSwathCopy([[maybe_unused]] const grk_wait_swath* swath,
-                                 [[maybe_unused]] grk_swath_buffer* buf) {}
+                                 [[maybe_unused]] grk_swath_buffer* buf)
+  {}
 
   /**
    * @brief Wait for all in-flight swath copy tasks to complete.

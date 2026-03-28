@@ -1018,9 +1018,9 @@ namespace HWY_NAMESPACE
   // Schedule forward DWT into FlowComponent pairs (vert, horiz) per level.
   // Instead of run().wait(), tasks are added to the FlowComponents.
   template<typename T, typename DWT>
-  std::unique_ptr<WaveletFwdScheduleData> schedule_encode(
-      TileComponent* tilec, T dcShiftVal,
-      std::vector<std::pair<FlowComponent*, FlowComponent*>>& levelFlows)
+  std::unique_ptr<WaveletFwdScheduleData>
+      schedule_encode(TileComponent* tilec, T dcShiftVal,
+                      std::vector<std::pair<FlowComponent*, FlowComponent*>>& levelFlows)
   {
     if(tilec->num_resolutions_ == 1U)
       return nullptr;
@@ -1077,17 +1077,15 @@ namespace HWY_NAMESPACE
         if(num_threads <= 1 || rw < (lanes << 1))
         {
           T* scratch = data->scratch_pool;
-          vertFlow->nextTask().work(
-              [tiledp, scratch, rw, rh, parity_col, stride, lanes, currentDcShift] {
-                DWT dwt;
-                uint32_t j;
-                for(j = 0; j + lanes - 1 < rw; j += lanes)
-                  dwt.encode_v((T*)tiledp + j, scratch, rh, parity_col, stride, lanes,
-                               currentDcShift);
-                if(j < rw)
-                  dwt.encode_v((T*)tiledp + j, scratch, rh, parity_col, stride, rw - j,
-                               currentDcShift);
-              });
+          vertFlow->nextTask().work([tiledp, scratch, rw, rh, parity_col, stride, lanes,
+                                     currentDcShift] {
+            DWT dwt;
+            uint32_t j;
+            for(j = 0; j + lanes - 1 < rw; j += lanes)
+              dwt.encode_v((T*)tiledp + j, scratch, rh, parity_col, stride, lanes, currentDcShift);
+            if(j < rw)
+              dwt.encode_v((T*)tiledp + j, scratch, rh, parity_col, stride, rw - j, currentDcShift);
+          });
         }
         else
         {
@@ -1111,9 +1109,7 @@ namespace HWY_NAMESPACE
             info->min_j = j * step_j;
             info->max_j = (j + 1 == num_tasks) ? rw : (j + 1) * step_j;
             info->dcShift = currentDcShift;
-            vertFlow->nextTask().work([info] {
-              encode_v(info);
-            });
+            vertFlow->nextTask().work([info] { encode_v(info); });
           }
           data->passes.push_back(std::move(pass));
         }
@@ -1128,17 +1124,15 @@ namespace HWY_NAMESPACE
         if(num_threads <= 1 || rh < (lanes << 1))
         {
           T* scratch = data->scratch_pool;
-          horizFlow->nextTask().work(
-              [tiledp, scratch, rw, rh, parity_row, stride, lanes] {
-                DWT dwt;
-                uint32_t j;
-                for(j = 0; j + lanes - 1 < rh; j += lanes)
-                  dwt.encode_h((T*)tiledp + size_t(j) * stride, scratch, rw, parity_row, stride,
-                               lanes);
-                if(j < rh)
-                  dwt.encode_h((T*)tiledp + size_t(j) * stride, scratch, rw, parity_row, stride,
-                               rh - j);
-              });
+          horizFlow->nextTask().work([tiledp, scratch, rw, rh, parity_row, stride, lanes] {
+            DWT dwt;
+            uint32_t j;
+            for(j = 0; j + lanes - 1 < rh; j += lanes)
+              dwt.encode_h((T*)tiledp + size_t(j) * stride, scratch, rw, parity_row, stride, lanes);
+            if(j < rh)
+              dwt.encode_h((T*)tiledp + size_t(j) * stride, scratch, rw, parity_row, stride,
+                           rh - j);
+          });
         }
         else
         {
@@ -1162,9 +1156,7 @@ namespace HWY_NAMESPACE
             info->min_j = j * step_j;
             info->max_j = (j + 1 == num_tasks) ? rh : (j + 1U) * step_j;
             info->dcShift = T(0);
-            horizFlow->nextTask().work([info] {
-              encode_h(info);
-            });
+            horizFlow->nextTask().work([info] { encode_h(info); });
           }
           data->passes.push_back(std::move(pass));
         }
@@ -1178,15 +1170,15 @@ namespace HWY_NAMESPACE
     return data;
   }
 
-  std::unique_ptr<WaveletFwdScheduleData> schedule_encode_53(
-      TileComponent* tilec, int32_t dcShift,
-      std::vector<std::pair<FlowComponent*, FlowComponent*>>& levelFlows)
+  std::unique_ptr<WaveletFwdScheduleData>
+      schedule_encode_53(TileComponent* tilec, int32_t dcShift,
+                         std::vector<std::pair<FlowComponent*, FlowComponent*>>& levelFlows)
   {
     return schedule_encode<int32_t, dwt53>(tilec, dcShift, levelFlows);
   }
-  std::unique_ptr<WaveletFwdScheduleData> schedule_encode_97(
-      TileComponent* tilec, float dcShift,
-      std::vector<std::pair<FlowComponent*, FlowComponent*>>& levelFlows)
+  std::unique_ptr<WaveletFwdScheduleData>
+      schedule_encode_97(TileComponent* tilec, float dcShift,
+                         std::vector<std::pair<FlowComponent*, FlowComponent*>>& levelFlows)
   {
     return schedule_encode<float, dwt97>(tilec, dcShift, levelFlows);
   }
@@ -1246,8 +1238,8 @@ std::unique_ptr<WaveletFwdScheduleData> WaveletFwdImpl::scheduleCompress(
     std::vector<std::pair<FlowComponent*, FlowComponent*>>& levelFlows)
 {
   if(qmfbid == 1)
-    return HWY_DYNAMIC_DISPATCH(schedule_encode_53)(
-        tile_comp, dcShift.enabled ? dcShift.shift : 0, levelFlows);
+    return HWY_DYNAMIC_DISPATCH(schedule_encode_53)(tile_comp, dcShift.enabled ? dcShift.shift : 0,
+                                                    levelFlows);
   else
     return HWY_DYNAMIC_DISPATCH(schedule_encode_97)(
         tile_comp, dcShift.enabled ? (float)dcShift.shift : 0.0f, levelFlows);

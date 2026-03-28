@@ -896,19 +896,19 @@ typedef struct _grk_header_info
  */
 typedef struct grk_swath_buffer
 {
-  void* data;          /**< Output buffer pointer */
-  uint8_t prec;        /**< Output bit depth: 8, 16, or 32 */
-  bool sgnd;           /**< true = signed output (int16/int32); false = unsigned */
-  uint16_t numcomps;   /**< Number of output bands */
+  void* data; /**< Output buffer pointer */
+  uint8_t prec; /**< Output bit depth: 8, 16, or 32 */
+  bool sgnd; /**< true = signed output (int16/int32); false = unsigned */
+  uint16_t numcomps; /**< Number of output bands */
   int64_t pixel_space; /**< Bytes between adjacent pixels in same row and band (GDAL nPixelSpace) */
-  int64_t line_space;  /**< Bytes between adjacent rows in same band (GDAL nLineSpace) */
-  int64_t band_space;  /**< Bytes between adjacent bands (GDAL nBandSpace) */
-  int* band_map;       /**< numcomps-element array of 1-based component indices, or NULL */
-  int promote_alpha;   /**< 0-based component index for 1-bit alpha promotion, or -1 */
-  uint32_t x0;         /**< Swath image x origin (image pixel coordinates) */
-  uint32_t y0;         /**< Swath image y origin (image pixel coordinates) */
-  uint32_t x1;         /**< Swath image x end, exclusive (image pixel coordinates) */
-  uint32_t y1;         /**< Swath image y end, exclusive (image pixel coordinates) */
+  int64_t line_space; /**< Bytes between adjacent rows in same band (GDAL nLineSpace) */
+  int64_t band_space; /**< Bytes between adjacent bands (GDAL nBandSpace) */
+  int* band_map; /**< numcomps-element array of 1-based component indices, or NULL */
+  int promote_alpha; /**< 0-based component index for 1-bit alpha promotion, or -1 */
+  uint32_t x0; /**< Swath image x origin (image pixel coordinates) */
+  uint32_t y0; /**< Swath image y origin (image pixel coordinates) */
+  uint32_t x1; /**< Swath image x end, exclusive (image pixel coordinates) */
+  uint32_t y1; /**< Swath image y end, exclusive (image pixel coordinates) */
 } grk_swath_buffer;
 
 /**
@@ -1354,7 +1354,7 @@ GRK_API void GRK_CALLCONV grk_decompress_wait_swath_copy(grk_object* codec);
  * @param buf       output swath buffer (must be pre-allocated and fully populated)
  */
 GRK_API void GRK_CALLCONV grk_copy_tile_to_swath(const grk_image* tile_img,
-                                                  const grk_swath_buffer* buf);
+                                                 const grk_swath_buffer* buf);
 
 /**
  * @brief Decompresses a single tile by index.

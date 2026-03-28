@@ -58,7 +58,7 @@ struct mj2_cparameters
 struct MJ2SampleRecord
 {
   uint64_t offset; // absolute file offset of JP2C box start
-  uint32_t size;   // total size including JP2C box header
+  uint32_t size; // total size including JP2C box header
 };
 
 class FileFormatMJ2Compress : public FileFormatJP2Compress

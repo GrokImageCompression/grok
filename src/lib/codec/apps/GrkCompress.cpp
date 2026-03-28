@@ -279,22 +279,59 @@ static grk_image* loadInputImage(const char* filename, grk_cparameters* paramete
   }
   switch(fmt)
   {
-    case GRK_FMT_PGX: { PGXFormat<int32_t> pgx; image = pgx.decode(filename, parameters); } break;
-    case GRK_FMT_PXM: { PNMFormat<int32_t> pnm(false); image = pnm.decode(filename, parameters); } break;
-    case GRK_FMT_BMP: { BMPFormat<int32_t> bmp; image = bmp.decode(filename, parameters); } break;
+    case GRK_FMT_PGX: {
+      PGXFormat<int32_t> pgx;
+      image = pgx.decode(filename, parameters);
+    }
+    break;
+    case GRK_FMT_PXM: {
+      PNMFormat<int32_t> pnm(false);
+      image = pnm.decode(filename, parameters);
+    }
+    break;
+    case GRK_FMT_BMP: {
+      BMPFormat<int32_t> bmp;
+      image = bmp.decode(filename, parameters);
+    }
+    break;
 #ifdef GROK_HAVE_LIBTIFF
-    case GRK_FMT_TIF: { TIFFFormat<int32_t> tif; image = tif.decode(filename, parameters); } break;
+    case GRK_FMT_TIF: {
+      TIFFFormat<int32_t> tif;
+      image = tif.decode(filename, parameters);
+    }
+    break;
 #endif
-    case GRK_FMT_RAW: { RAWFormat<int32_t> raw(true); image = raw.decode(filename, parameters); } break;
-    case GRK_FMT_RAWL: { RAWFormat<int32_t> raw(false); image = raw.decode(filename, parameters); } break;
-    case GRK_FMT_YUV: { YUVFormat yuv; image = yuv.decode(filename, parameters); } break;
+    case GRK_FMT_RAW: {
+      RAWFormat<int32_t> raw(true);
+      image = raw.decode(filename, parameters);
+    }
+    break;
+    case GRK_FMT_RAWL: {
+      RAWFormat<int32_t> raw(false);
+      image = raw.decode(filename, parameters);
+    }
+    break;
+    case GRK_FMT_YUV: {
+      YUVFormat yuv;
+      image = yuv.decode(filename, parameters);
+    }
+    break;
 #ifdef GROK_HAVE_LIBPNG
-    case GRK_FMT_PNG: { PNGFormat<int32_t> png; image = png.decode(filename, parameters); } break;
+    case GRK_FMT_PNG: {
+      PNGFormat<int32_t> png;
+      image = png.decode(filename, parameters);
+    }
+    break;
 #endif
 #ifdef GROK_HAVE_LIBJPEG
-    case GRK_FMT_JPG: { JPEGFormat<int32_t> jpeg; image = jpeg.decode(filename, parameters); } break;
+    case GRK_FMT_JPG: {
+      JPEGFormat<int32_t> jpeg;
+      image = jpeg.decode(filename, parameters);
+    }
+    break;
 #endif
-    default: break;
+    default:
+      break;
   }
   return image;
 }
@@ -415,7 +452,7 @@ int GrkCompress::main(int argc, const char** argv, grk_image* in_image, grk_stre
       {
         success = EXIT_FAILURE;
       }
-mj2_main_cleanup:
+    mj2_main_cleanup:
       grk_object_unref(codec);
       goto cleanup;
     }
@@ -549,8 +586,7 @@ GrkRC GrkCompress::pluginMain(int argc, const char* argv[], CompressInitParams* 
     auto mct = initParams->parameters.mct;
     auto rate_control_algorithm = initParams->parameters.rate_control_algorithm;
     GrkRC rc = GrkRCFail;
-    for(const auto& entry :
-        std::filesystem::directory_iterator(initParams->inputFolder.imgdirpath))
+    for(const auto& entry : std::filesystem::directory_iterator(initParams->inputFolder.imgdirpath))
     {
       if(nextFile(entry.path().filename().string(), &initParams->inputFolder,
                   initParams->outFolder.imgdirpath ? &initParams->outFolder

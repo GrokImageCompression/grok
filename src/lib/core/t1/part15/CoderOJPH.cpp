@@ -30,16 +30,12 @@
 const uint8_t grk_cblk_dec_compressed_data_pad_ht = 8;
 
 // Function pointer types for SIMD-dispatched block coding
-using decode_cb_t = bool (*)(grk::t1::ojph::ui8*, grk::t1::ojph::ui32*,
-                             grk::t1::ojph::ui32, grk::t1::ojph::ui32,
-                             grk::t1::ojph::ui32, grk::t1::ojph::ui32,
-                             grk::t1::ojph::ui32, grk::t1::ojph::ui32,
-                             grk::t1::ojph::ui32, bool);
-using encode_cb_t = void (*)(grk::t1::ojph::ui32*, grk::t1::ojph::ui32,
-                             grk::t1::ojph::ui32, grk::t1::ojph::ui32,
-                             grk::t1::ojph::ui32, grk::t1::ojph::ui32,
-                             grk::t1::ojph::ui32*,
-                             grk::t1::ojph::mem_elastic_allocator*,
+using decode_cb_t = bool (*)(grk::t1::ojph::ui8*, grk::t1::ojph::ui32*, grk::t1::ojph::ui32,
+                             grk::t1::ojph::ui32, grk::t1::ojph::ui32, grk::t1::ojph::ui32,
+                             grk::t1::ojph::ui32, grk::t1::ojph::ui32, grk::t1::ojph::ui32, bool);
+using encode_cb_t = void (*)(grk::t1::ojph::ui32*, grk::t1::ojph::ui32, grk::t1::ojph::ui32,
+                             grk::t1::ojph::ui32, grk::t1::ojph::ui32, grk::t1::ojph::ui32,
+                             grk::t1::ojph::ui32*, grk::t1::ojph::mem_elastic_allocator*,
                              grk::t1::ojph::coded_lists*&);
 
 static decode_cb_t dispatch_decoder()
@@ -98,8 +94,8 @@ T1OJPH::T1OJPH(bool isCompressor, uint32_t maxCblkW, uint32_t maxCblkH)
     : coded_data_size(isCompressor ? 0 : (uint32_t)(maxCblkW * maxCblkH * sizeof(int32_t))),
       coded_data(isCompressor ? nullptr : new uint8_t[coded_data_size]),
       unencoded_data_size(((maxCblkW + 7u) & ~7u) * maxCblkH),
-      unencoded_data(new int32_t[unencoded_data_size]),
-      allocator(new mem_fixed_allocator), elastic_alloc(new mem_elastic_allocator(1048576))
+      unencoded_data(new int32_t[unencoded_data_size]), allocator(new mem_fixed_allocator),
+      elastic_alloc(new mem_elastic_allocator(1048576))
 {
   if(!isCompressor)
     memset(coded_data, 0, grk_cblk_dec_compressed_data_pad_ht);
@@ -170,8 +166,8 @@ bool T1OJPH::compress(CompressBlockExec* block)
   uint16_t h = (uint16_t)cblk->height();
 
   uint32_t pass_length[2] = {0, 0};
-  g_encode_cb((uint32_t*)unencoded_data, block->k_msbs, 1, w, h, w,
-              pass_length, elastic_alloc, next_coded);
+  g_encode_cb((uint32_t*)unencoded_data, block->k_msbs, 1, w, h, w, pass_length, elastic_alloc,
+              next_coded);
 
   cblk->setNumPasses(1);
   cblk->getPass(0)->len_ = (uint16_t)pass_length[0];
@@ -212,9 +208,9 @@ bool T1OJPH::decompress(DecompressBlockExec* block)
     bool rc = false;
     if(num_passes && cblk->getDataChunksLength())
     {
-      rc = g_decode_cb(
-          actual_coded_data, (uint32_t*)unencoded_data, block->k_msbs, (uint32_t)num_passes,
-          (uint32_t)cblk->getDataChunksLength(), 0, cblk->width(), cblk->height(), stride, false);
+      rc = g_decode_cb(actual_coded_data, (uint32_t*)unencoded_data, block->k_msbs,
+                       (uint32_t)num_passes, (uint32_t)cblk->getDataChunksLength(), 0,
+                       cblk->width(), cblk->height(), stride, false);
     }
     else
     {
