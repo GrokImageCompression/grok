@@ -53,6 +53,8 @@ public:
   bool postProcess(GrkImage* img);
   void dump(uint32_t flag, FILE* outputFileStream) override;
   void wait(grk_wait_swath* swath) override;
+  void scheduleSwathCopy(const grk_wait_swath* swath, grk_swath_buffer* buf) override;
+  void waitSwathCopy() override;
 
 private:
   GrkImage* getHeaderImage(void) override;

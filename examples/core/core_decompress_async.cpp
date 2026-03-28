@@ -317,6 +317,10 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] const char** argv)
   bool doStore = false;
   app.add_flag("-s,--store", doStore, "Store output to disk");
 
+  bool useSwathBuf = false;
+  app.add_flag("-B,--swath-buf", useSwathBuf,
+               "Schedule tile copies into a swath buffer via Taskflow + Highway SIMD");
+
   std::vector<double> dwindow;
   app.add_option(
       "-d,--window",
@@ -520,12 +524,16 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] const char** argv)
     printf("Decompressing %ux%u (reduce=%u) in swaths of %u rows\n", fullWidth, fullHeight, reduce,
            swathHeight);
 
+    uint8_t numcomps = headerInfo.header_image.numcomps;
+    uint8_t tilePrecBits = headerInfo.header_image.comps[0].prec;
+
     // Step 2: Wait for swaths and retrieve tile data
     uint32_t y = imgY0;
     uint32_t swathIndex = 0;
     while(y < imgY1)
     {
       uint32_t swathY1 = std::min(y + swathHeight, imgY1);
+      uint32_t thisSwathH = swathY1 - y;
 
       grk_wait_swath swath = {};
       swath.x0 = imgX0;
@@ -539,34 +547,87 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] const char** argv)
       uint16_t numSwathTiles = (swath.tile_x1 - swath.tile_x0) * (swath.tile_y1 - swath.tile_y0);
       printf("Swath %u: rows [%u, %u), %u tiles\n", swathIndex, y, swathY1, numSwathTiles);
 
-      // Step 3: Retrieve per-tile image data
-      for(uint16_t ty = swath.tile_y0; ty < swath.tile_y1; ++ty)
+      if(useSwathBuf)
       {
-        for(uint16_t tx = swath.tile_x0; tx < swath.tile_x1; ++tx)
+        // Step 3a: Schedule tile copies into a user-managed swath buffer via
+        // Taskflow + Highway SIMD.  The copy converts int32_t planar tile data
+        // to 8-bit (or 16-bit if tile precision > 8) packed BSQ output.
+        // Allocation: numcomps planes × swath_height × full_width elements.
+        bool use16bit = (tilePrecBits > 8);
+        size_t elemSize = use16bit ? sizeof(uint16_t) : sizeof(uint8_t);
+        size_t bufBytes = (size_t)numcomps * thisSwathH * fullWidth * elemSize;
+        std::vector<uint8_t> swathBufData(bufBytes, 0);
+
+        grk_swath_buffer swathBuf = {};
+        swathBuf.data = swathBufData.data();
+        swathBuf.prec = use16bit ? (uint8_t)16 : (uint8_t)8;
+        swathBuf.sgnd = false;
+        swathBuf.numcomps = numcomps;
+        swathBuf.pixel_space = (int64_t)elemSize;
+        swathBuf.line_space = (int64_t)fullWidth * (int64_t)elemSize;
+        swathBuf.band_space = (int64_t)thisSwathH * (int64_t)fullWidth * (int64_t)elemSize;
+        swathBuf.band_map = nullptr;
+        swathBuf.promote_alpha = -1;
+        swathBuf.x0 = imgX0;
+        swathBuf.y0 = y;
+        swathBuf.x1 = imgX1;
+        swathBuf.y1 = swathY1;
+
+        // Schedule copies into swathBuf (runs in parallel on the Taskflow executor)
+        grk_decompress_schedule_swath_copy(codec, &swath, &swathBuf);
+
+        // While copies are in-flight, the caller is free to do other work here
+        // (e.g., start reading the next swath, process the previous swath, etc.)
+
+        // Wait for all copy tasks for this swath to finish
+        grk_decompress_wait_swath_copy(codec);
+
+        printf("  Swath %u: %zu bytes copied to swath buffer (%u-bit)\n", swathIndex, bufBytes,
+               swathBuf.prec);
+
+        if(doStore)
         {
-          uint16_t tidx = (uint16_t)(ty * swath.num_tile_cols + tx);
-          grk_image* tileImg;
-          if(singleTile)
+          std::string fname = "swathbuf_swath" + std::to_string(swathIndex) + ".raw";
+          FILE* fp = fopen(fname.c_str(), "wb");
+          if(fp)
           {
-            // Single-tile: use composite image
-            tileImg = grk_decompress_get_image(codec);
+            fwrite(swathBufData.data(), 1, bufBytes, fp);
+            fclose(fp);
+            printf("  Wrote %s\n", fname.c_str());
           }
-          else
+        }
+      }
+      else
+      {
+        // Step 3b: Retrieve per-tile image data directly (original path)
+        for(uint16_t ty = swath.tile_y0; ty < swath.tile_y1; ++ty)
+        {
+          for(uint16_t tx = swath.tile_x0; tx < swath.tile_x1; ++tx)
           {
-            // Multi-tile: get per-tile image
-            tileImg = grk_decompress_get_tile_image(codec, tidx, true);
-          }
-          if(!tileImg)
-          {
-            fprintf(stderr, "Failed to get tile image for tile %u\n", tidx);
-            grk_object_unref(codec);
-            goto beach;
-          }
-          if(doStore)
-          {
-            std::string fname =
-                "async_swath" + std::to_string(swathIndex) + "_tile" + std::to_string(tidx);
-            write_async<int32_t>(tileImg, fname);
+            uint16_t tidx = (uint16_t)(ty * swath.num_tile_cols + tx);
+            grk_image* tileImg;
+            if(singleTile)
+            {
+              // Single-tile: use composite image
+              tileImg = grk_decompress_get_image(codec);
+            }
+            else
+            {
+              // Multi-tile: get per-tile image
+              tileImg = grk_decompress_get_tile_image(codec, tidx, true);
+            }
+            if(!tileImg)
+            {
+              fprintf(stderr, "Failed to get tile image for tile %u\n", tidx);
+              grk_object_unref(codec);
+              goto beach;
+            }
+            if(doStore)
+            {
+              std::string fname =
+                  "async_swath" + std::to_string(swathIndex) + "_tile" + std::to_string(tidx);
+              write_async<int32_t>(tileImg, fname);
+            }
           }
         }
       }

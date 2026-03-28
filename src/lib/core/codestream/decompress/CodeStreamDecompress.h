@@ -112,6 +112,10 @@ public:
 
   void wait(grk_wait_swath* swath) override;
 
+  void scheduleSwathCopy(const grk_wait_swath* swath, grk_swath_buffer* buf) override;
+
+  void waitSwathCopy() override;
+
   /**
    * @brief Sets the Post Post Process object
    *
@@ -408,6 +412,12 @@ private:
    *
    */
   TileFutureManager decompressTileFutureManager_;
+
+  /**
+   * @brief futures for swath copy tasks scheduled via scheduleSwathCopy()
+   *
+   */
+  TileFutureManager swathCopyFutureManager_;
 
   std::shared_ptr<TPFetchSeq> tilePartFetchFlat_;
   std::shared_ptr<std::unordered_map<uint16_t, std::shared_ptr<TPFetchSeq>>> tilePartFetchByTile_;

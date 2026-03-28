@@ -18,6 +18,7 @@
 #pragma once
 
 #include <cstdint>
+#include "grok.h"
 
 namespace grk
 {
@@ -60,5 +61,14 @@ void hwy_planar_to_packed_16(const int32_t* r, const int32_t* g, const int32_t* 
 /* Packed uint16_t RGB → planar int32_t (3 components) */
 void hwy_packed_to_planar_16(const uint16_t* in, int32_t* r, int32_t* g, int32_t* b, uint32_t w,
                              uint32_t h, uint32_t dst_stride);
+
+/**
+ * Copy a decoded tile image (int32_t planar) into a swath output buffer described
+ * by grk_swath_buffer.  Handles any output type (uint8, int16, uint16, int32, uint32)
+ * and any GDAL-style pixel/line/band spacing (BIP, BSQ, etc.).
+ * Conversion follows GDALCopyWords semantics: values are clamped to the output range.
+ * Assumes component subsampling dx == dy == 1.
+ */
+void hwy_copy_tile_to_swath(const grk_image* tile_img, const grk_swath_buffer* buf);
 
 } // namespace grk

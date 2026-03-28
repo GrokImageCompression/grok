@@ -57,6 +57,7 @@ struct ITileProcessor;
 #include "TileProcessor.h"
 #include "TileCache.h"
 #include "TileCompletion.h"
+#include "GrkImageSIMD.h"
 #include "CodeStreamDecompress.h"
 
 namespace grk
@@ -1078,6 +1079,46 @@ void CodeStreamDecompress::wait(grk_wait_swath* swath)
     postMulti_();
     postMulti_ = nullptr;
   }
+}
+
+void CodeStreamDecompress::scheduleSwathCopy(const grk_wait_swath* swath, grk_swath_buffer* buf)
+{
+  if(!swath || !buf || !buf->data || buf->prec == 0)
+    return;
+
+  for(uint16_t ty = swath->tile_y0; ty < swath->tile_y1; ++ty)
+  {
+    for(uint16_t tx = swath->tile_x0; tx < swath->tile_x1; ++tx)
+    {
+      const uint16_t tidx = static_cast<uint16_t>(ty * swath->num_tile_cols + tx);
+
+      GrkImage* tileImg = nullptr;
+      auto* entry = tileCache_->get(tidx);
+      if(entry)
+      {
+        tileImg = entry->processor->getImage();
+        // Single-tile path: image_ is not set; data is in scratchImage_ after wait
+        if(!tileImg)
+          tileImg = scratchImage_.get();
+      }
+      else
+        tileImg = multiTileComposite_.get();
+
+      if(!tileImg)
+        continue;
+
+      // Submit the copy+convert task to the shared Taskflow executor.
+      tf::Taskflow tf_copy;
+      tf_copy.emplace([tileImg, buf]() { hwy_copy_tile_to_swath(tileImg, buf); });
+
+      swathCopyFutureManager_.add(tidx, TFSingleton::get().run(std::move(tf_copy)));
+    }
+  }
+}
+
+void CodeStreamDecompress::waitSwathCopy()
+{
+  swathCopyFutureManager_.waitAndClear();
 }
 
 void CodeStreamDecompress::onRowCompleted(uint16_t tileIndexBegin, uint16_t tileIndexEnd)

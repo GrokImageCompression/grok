@@ -164,6 +164,14 @@ void FileFormatJP2Decompress::wait(grk_wait_swath* swath)
 {
   codeStream->wait(swath);
 }
+void FileFormatJP2Decompress::scheduleSwathCopy(const grk_wait_swath* swath, grk_swath_buffer* buf)
+{
+  codeStream->scheduleSwathCopy(swath, buf);
+}
+void FileFormatJP2Decompress::waitSwathCopy()
+{
+  codeStream->waitSwathCopy();
+}
 
 /** Set up decompressor function handler */
 void FileFormatJP2Decompress::init(grk_decompress_parameters* parameters)

@@ -864,6 +864,54 @@ typedef struct _grk_header_info
 } grk_header_info;
 
 /**
+ * @struct grk_swath_buffer
+ * @brief User-managed output buffer for asynchronous swath tile copy-and-convert.
+ *
+ * After grk_decompress_wait() returns for a given swath, pass this struct to
+ * grk_decompress_schedule_swath_copy() to schedule per-tile copies from the
+ * internal int32_t tile buffers into the caller's output buffer via Taskflow
+ * and Highway SIMD.
+ *
+ * The output buffer layout mirrors GDAL's pixel/line/band spacing convention,
+ * supporting BIP, BSQ, or any other interleaving.  Output type is described by
+ * prec (bit depth: 8, 16, or 32) and sgnd (signed vs unsigned):
+ *   prec=8,  sgnd=false  → uint8_t   (GDT_Byte)
+ *   prec=16, sgnd=false  → uint16_t  (GDT_UInt16)
+ *   prec=16, sgnd=true   → int16_t   (GDT_Int16)
+ *   prec=32, sgnd=false  → uint32_t  (GDT_UInt32)
+ *   prec=32, sgnd=true   → int32_t   (GDT_Int32)
+ *
+ * Conversion from the internal int32_t source follows GDALCopyWords
+ * semantics: values are clamped to the output type's representable range.
+ *
+ * band_map[i] is a 1-based component index (GDAL panBandMap convention):
+ * output band i is sourced from image component band_map[i]-1.
+ * If band_map is NULL, band i is sourced from component i.
+ *
+ * promote_alpha: if >= 0, the component at this 0-based index is a 1-bit
+ * alpha channel and its values are scaled by 255 before output.
+ *
+ * Assumes component subsampling dx == dy == 1.
+ * The user must keep the buffer alive until grk_decompress_wait_swath_copy().
+ */
+typedef struct grk_swath_buffer
+{
+  void* data;          /**< Output buffer pointer */
+  uint8_t prec;        /**< Output bit depth: 8, 16, or 32 */
+  bool sgnd;           /**< true = signed output (int16/int32); false = unsigned */
+  uint16_t numcomps;   /**< Number of output bands */
+  int64_t pixel_space; /**< Bytes between adjacent pixels in same row and band (GDAL nPixelSpace) */
+  int64_t line_space;  /**< Bytes between adjacent rows in same band (GDAL nLineSpace) */
+  int64_t band_space;  /**< Bytes between adjacent bands (GDAL nBandSpace) */
+  int* band_map;       /**< numcomps-element array of 1-based component indices, or NULL */
+  int promote_alpha;   /**< 0-based component index for 1-bit alpha promotion, or -1 */
+  uint32_t x0;         /**< Swath image x origin (image pixel coordinates) */
+  uint32_t y0;         /**< Swath image y origin (image pixel coordinates) */
+  uint32_t x1;         /**< Swath image x end, exclusive (image pixel coordinates) */
+  uint32_t y1;         /**< Swath image y end, exclusive (image pixel coordinates) */
+} grk_swath_buffer;
+
+/**
  * @struct grk_wait_swath
  * @brief Specify swath region to wait on during asynchronous decompression.
  *
@@ -1134,6 +1182,58 @@ GRK_API bool GRK_CALLCONV grk_decompress(grk_object* codec, grk_plugin_tile* til
  * @param swath @ref grk_wait_swath to wait for, or NULL for full wait
  */
 GRK_API void GRK_CALLCONV grk_decompress_wait(grk_object* codec, grk_wait_swath* swath);
+
+/**
+ * @brief Schedule tile-to-swath copies for a completed swath.
+ *
+ * Call after grk_decompress_wait() returns for the given swath. For each tile
+ * in the swath, a Taskflow task is submitted to the library executor that
+ * converts the internal int32_t planar tile data into the user-supplied output
+ * buffer using Highway SIMD (clamp + right-shift to target precision).
+ *
+ * Tiles whose decompression Taskflow future is still in flight (ahead of the
+ * current swath due to parallel scheduling) have their copy task chained as a
+ * Taskflow continuation, so the copy runs as soon as the tile is ready.
+ *
+ * The output buffer (@ref grk_swath_buffer) uses BSQ layout (one plane per
+ * component). Call grk_decompress_wait_swath_copy() to wait for all scheduled
+ * copies before accessing buf->data.
+ *
+ * @param codec codec @ref grk_object
+ * @param swath swath descriptor with tile_x0/y0/x1/y1 populated by grk_decompress_wait
+ * @param buf   user-managed output buffer; must stay valid until
+ *              grk_decompress_wait_swath_copy() returns
+ */
+GRK_API void GRK_CALLCONV grk_decompress_schedule_swath_copy(grk_object* codec,
+                                                             const grk_wait_swath* swath,
+                                                             grk_swath_buffer* buf);
+
+/**
+ * @brief Wait for all in-flight swath copy tasks to complete.
+ *
+ * Blocks until every copy task submitted by grk_decompress_schedule_swath_copy()
+ * has finished. After this returns, buf->data is fully populated and safe to access.
+ *
+ * @param codec codec @ref grk_object
+ */
+GRK_API void GRK_CALLCONV grk_decompress_wait_swath_copy(grk_object* codec);
+
+/**
+ * @brief Copy a single decoded tile image into a swath buffer using Highway SIMD.
+ *
+ * A low-level, synchronous alternative to grk_decompress_schedule_swath_copy()
+ * for callers that manage their own threading.  Copies the source component
+ * data from @p tile_img into @p buf, clipping to buf's x/y window, applying
+ * band_map re-ordering, alpha promotion, and type conversion (int32 → prec/sgnd).
+ *
+ * Thread-safe: multiple tiles may be copied into the same buf concurrently
+ * provided they write to non-overlapping output regions.
+ *
+ * @param tile_img  tile image returned by grk_decompress_get_tile_image()
+ * @param buf       output swath buffer (must be pre-allocated and fully populated)
+ */
+GRK_API void GRK_CALLCONV grk_copy_tile_to_swath(const grk_image* tile_img,
+                                                  const grk_swath_buffer* buf);
 
 /**
  * @brief Decompresses a specific tile

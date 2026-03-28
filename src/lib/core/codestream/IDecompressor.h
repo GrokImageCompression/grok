@@ -111,6 +111,22 @@ public:
     (void)sampleIndex;
     return getImage(tileIndex, true);
   }
+
+  /**
+   * @brief Schedule Taskflow copy tasks for tiles in a completed swath.
+   *
+   * For each tile in swath, submits a Taskflow task to the shared executor that
+   * converts the int32_t planar tile data into buf via Highway SIMD.  Tiles
+   * that are still in-flight (decompressed ahead of the current swath) have
+   * their copy deferred via a Taskflow continuation.
+   */
+  virtual void scheduleSwathCopy([[maybe_unused]] const grk_wait_swath* swath,
+                                 [[maybe_unused]] grk_swath_buffer* buf) {}
+
+  /**
+   * @brief Wait for all in-flight swath copy tasks to complete.
+   */
+  virtual void waitSwathCopy() {}
 };
 
 } // namespace grk

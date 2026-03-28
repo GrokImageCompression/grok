@@ -75,6 +75,8 @@
 #include "MarkerParser.h"
 #include "Codec.h"
 
+#include "GrkImageSIMD.h"
+
 #include "PLMarker.h"
 #include "SIZMarker.h"
 #include "PPMMarker.h"
@@ -485,6 +487,31 @@ void grk_decompress_wait(grk_object* codecWrapper, grk_wait_swath* swath)
   if(!codec->decompressor_)
     return;
   codec->decompressor_->wait(swath);
+}
+void grk_decompress_schedule_swath_copy(grk_object* codecWrapper, const grk_wait_swath* swath,
+                                        grk_swath_buffer* buf)
+{
+  if(!codecWrapper)
+    return;
+
+  auto codec = Codec::getImpl(codecWrapper);
+  if(!codec->decompressor_)
+    return;
+  codec->decompressor_->scheduleSwathCopy(swath, buf);
+}
+void grk_decompress_wait_swath_copy(grk_object* codecWrapper)
+{
+  if(!codecWrapper)
+    return;
+
+  auto codec = Codec::getImpl(codecWrapper);
+  if(!codec->decompressor_)
+    return;
+  codec->decompressor_->waitSwathCopy();
+}
+void grk_copy_tile_to_swath(const grk_image* tile_img, const grk_swath_buffer* buf)
+{
+  hwy_copy_tile_to_swath(tile_img, buf);
 }
 bool grk_decompress(grk_object* codecWrapper, grk_plugin_tile* tile)
 {

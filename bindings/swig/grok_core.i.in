@@ -85,3 +85,75 @@ void grk_cparameters_set_layer_distortion(grk_cparameters* p, uint16_t layer, do
     }
 }
 
+%extend grk_swath_buffer {
+    /*
+     * Bind a Python buffer-protocol object (bytearray, memoryview, etc.) as the
+     * raw data pointer for this swath buffer.  The Python object must remain alive
+     * until grk_decompress_wait_swath_copy() returns.
+     *
+     * Usage:
+     *   buf = bytearray(total_bytes)
+     *   swath_buf.set_data(buf)
+     */
+    void set_data(PyObject* py_buf) {
+        Py_buffer view;
+        if (PyObject_GetBuffer(py_buf, &view, PyBUF_WRITABLE) == -1)
+            return;
+        $self->data = view.buf;
+        PyBuffer_Release(&view);
+    }
+
+    /*
+     * Read the swath buffer contents back as a Python bytes object.
+     * Call only after grk_decompress_wait_swath_copy() has returned.
+     * size_bytes must equal the total buffer size in bytes.
+     */
+    PyObject* get_data_bytes(size_t size_bytes) {
+        if (!$self->data)
+            Py_RETURN_NONE;
+        return PyBytes_FromStringAndSize((const char*)$self->data, (Py_ssize_t)size_bytes);
+    }
+
+    /*
+     * Set the band_map from a Python list of ints (1-based component indices).
+     * The list must have numcomps elements.  A copy is stored internally and
+     * freed on the next call or when the object is destroyed.
+     *
+     * Usage:
+     *   # Identity mapping for 3-band image
+     *   swath_buf.set_band_map([1, 2, 3])
+     */
+    void set_band_map(PyObject* py_list) {
+        if (!PyList_Check(py_list))
+            return;
+        Py_ssize_t n = PyList_Size(py_list);
+        if (n <= 0)
+            return;
+        // Free any previous allocation
+        free($self->band_map);
+        $self->band_map = (int*)malloc(n * sizeof(int));
+        if (!$self->band_map) return;
+        for (Py_ssize_t i = 0; i < n; ++i) {
+            PyObject* item = PyList_GetItem(py_list, i);
+            $self->band_map[i] = (int)PyLong_AsLong(item);
+        }
+        $self->numcomps = (uint16_t)n;
+    }
+
+    /*
+     * Configure BSQ (band-sequential) layout convenience helper.
+     * Sets pixel_space, line_space, band_space for a packed BSQ buffer:
+     *   pixel_space = elem_bytes
+     *   line_space  = width * elem_bytes
+     *   band_space  = height * width * elem_bytes
+     *
+     * Usage:
+     *   swath_buf.set_bsq_layout(width, height)
+     */
+    void set_bsq_layout(uint32_t width, uint32_t height) {
+        int elem_bytes = ($self->prec <= 8) ? 1 : ($self->prec <= 16) ? 2 : 4;
+        $self->pixel_space = elem_bytes;
+        $self->line_space  = (int64_t)width * elem_bytes;
+        $self->band_space  = (int64_t)width * height * elem_bytes;
+    }
+}
