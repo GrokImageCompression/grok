@@ -1032,100 +1032,206 @@ typedef struct _grk_plugin_tile
 } grk_plugin_tile;
 
 /**
- * @brief Gets library version
+ * @brief Gets the Grok library version string.
+ *
+ * Returns a null-terminated string of the form "MAJOR.MINOR.PATCH"
+ * (e.g. "10.0.5").  The string is statically allocated; do not free it.
+ *
+ * @return null-terminated version string
  */
 GRK_API const char* GRK_CALLCONV grk_version(void);
 
 /**
- * @brief Initializes Grok library
- * Must be called before any Grok API calls
- * @param plugin_path 	path to plugin - set this to NULL
- * @param num_threads number of threads to use for compress/decompress - set to 0 to use all threads
- * @param plugin_initialized if plugin is initialized, this pointer to bool will be set to true,
- * otherwise false. Set this to NULL.
+ * @brief Initializes the Grok library.
+ *
+ * Must be called once before any other Grok API function.  It is safe to call
+ * multiple times; subsequent calls are no-ops unless the library was shut down.
+ *
+ * Sets up the Taskflow thread pool used by all async decompress/compress
+ * operations. Pass @p num_threads = 0 to use all available logical CPUs.
+ * The thread pool persists for the lifetime of the process.
+ *
+ * @param plugin_path       path to an optional hardware-accelerator plugin .so;
+ *                          pass NULL for CPU-only operation
+ * @param num_threads       number of worker threads (0 = use all CPUs)
+ * @param plugin_initialized if non-NULL, set to true when a plugin was loaded
+ *                          and initialized successfully, false otherwise
  */
 GRK_API void GRK_CALLCONV grk_initialize(const char* plugin_path, uint32_t num_threads,
                                          bool* plugin_initialized);
 
 /**
- * @brief Increments ref count
- * @param obj Grok object (see @ref grk_object)
+ * @brief Increments the reference count on a Grok object.
+ *
+ * Call this when you want to share ownership of a codec or image object
+ * across multiple owners.  Each call to grk_object_ref() must be matched
+ * by exactly one call to grk_object_unref().
+ *
+ * @param obj Grok object (see @ref grk_object); passing NULL is a no-op
+ * @return the same @p obj pointer (for convenience), or NULL if obj is NULL
  */
 GRK_API grk_object* GRK_CALLCONV grk_object_ref(grk_object* obj);
 
-/*
- * @brief Decrements ref count
- * @param obj Grok object (see @ref grk_object)
+/**
+ * @brief Decrements the reference count on a Grok object.
+ *
+ * When the reference count reaches zero the object (codec or image) is
+ * destroyed and all associated decompressor/compressor resources are freed.
+ * The caller must not access the object after this call if its count reaches
+ * zero.
+ *
+ * For a decompressor codec: completes any in-flight async tasks before
+ * destroying the object.  For an image: frees component data buffers.
+ *
+ * @param obj Grok object (see @ref grk_object); passing NULL is a no-op
  */
 GRK_API void GRK_CALLCONV grk_object_unref(grk_object* obj);
 
 /**
- * @brief Sets log message handlers
- * @param msg_handlers see @ref grk_msg_handlers
+ * @brief Installs application-defined log message handlers.
+ *
+ * Replaces the default handlers (which print to stderr/stdout) with
+ * user-supplied callbacks for info, warning, and error messages.
+ * Call before grk_initialize() or at any point to change handlers.
+ * Passing a NULL function pointer for any handler restores the default
+ * behaviour for that level.
+ *
+ * @param msg_handlers struct of {info, warn, error} function pointers
+ *                     (see @ref grk_msg_handlers)
  */
 GRK_API void GRK_CALLCONV grk_set_msg_handlers(grk_msg_handlers msg_handlers);
 
 /**
- * @brief Creates image
- * @param numcmpts      number of components
- * @param cmptparms     component parameters (see @ref grk_image_comp)
- * @param clrspc        image color space (see @ref GRK_COLOR_SPACE)
- * @param alloc_data    if true, allocate component data buffers
- * @return returns      a new image if successful, otherwise NULL
- * */
+ * @brief Allocates a new Grok image with the specified component layout.
+ *
+ * Creates an image whose component geometry is described by @p cmptparms.
+ * Each entry in @p cmptparms specifies width, height, bit-depth, signedness,
+ * and sub-sampling factors for one component.
+ *
+ * When @p alloc_data is true, a contiguous int32_t data block is allocated
+ * for every component; when false, the component data pointers are NULL and
+ * the caller must supply them before passing the image to grk_compress_init().
+ *
+ * The returned image is reference-counted.  Release with grk_object_unref().
+ *
+ * @param numcmpts   number of components (e.g. 1 for grayscale, 3 for RGB)
+ * @param cmptparms  per-component parameters array — length must be @p numcmpts
+ *                   (see @ref grk_image_comp)
+ * @param clrspc     image colour space (e.g. GRK_CLRSPC_SRGB, GRK_CLRSPC_GRAY
+ *                   — see @ref GRK_COLOR_SPACE)
+ * @param alloc_data if true, allocate int32_t data buffers for all components
+ * @return pointer to newly allocated @ref grk_image, or NULL on failure
+ */
 GRK_API grk_image* GRK_CALLCONV grk_image_new(uint16_t numcmpts, grk_image_comp* cmptparms,
                                               GRK_COLOR_SPACE clrspc, bool alloc_data);
 
 /**
- * @brief Creates meta
+ * @brief Allocates an empty image metadata object.
+ *
+ * Returns a heap-allocated @ref grk_image_meta that holds optional metadata
+ * (ICC profile, XMP, IPTC, EXIF) to associate with an image before
+ * compression.  Free with grk_object_unref() when done.
+ *
+ * @return pointer to newly allocated @ref grk_image_meta, or NULL on OOM
  */
 GRK_API grk_image_meta* GRK_CALLCONV grk_image_meta_new(void);
 
 /**
- * @brief Initializes decompressor
- * @param stream_params 	source stream parameters (see @ref grk_stream_params)
- * @param params 	decompress parameters (see @ref grk_decompress_parameters)
- * object will be created, otherwise the codec object stored in *codec will be
- * re-initialized
+ * @brief Creates and initializes a JPEG 2000 decompressor.
  *
- * @return pointer to @ref grk_object if successful, otherwise nullptr
+ * Opens the source stream and reads enough of the header to determine the
+ * codec type (J2K codestream or JP2 file-format).  The returned object holds
+ * all decompressor state and must be released with grk_object_unref() when
+ * the caller is done with it.
+ *
+ * This function does NOT read the full image header; call
+ * grk_decompress_read_header() next to populate @ref grk_header_info.
+ *
+ * @param stream_params  input stream description (file path, buffer, or
+ *                       callbacks — see @ref grk_stream_params)
+ * @param params         decompression options (tile range, window region,
+ *                       async mode, etc. — see @ref grk_decompress_parameters)
+ * @return pointer to an opaque @ref grk_object on success, NULL on failure
+ *         (bad stream, unsupported format, OOM)
  */
 GRK_API grk_object* GRK_CALLCONV grk_decompress_init(grk_stream_params* stream_params,
                                                      grk_decompress_parameters* params);
 
 /**
- * @brief Updates decompressor
- * @param params 	decompress parameters (see @ref grk_decompress_parameters)
- * @param codec codec (see @ref grk_object)
- * @return true if successful, otherwise false
+ * @brief Updates decompression parameters on an already-initialized codec.
+ *
+ * Allows changing parameters (e.g. decoding region, reduce factor,
+ * quality layers) after grk_decompress_init() but before the first
+ * grk_decompress() call.  Not all parameters can be changed mid-stream;
+ * refer to @ref grk_decompress_parameters for which fields are live-updatable.
+ *
+ * @param params updated decompression parameters (see @ref grk_decompress_parameters)
+ * @param codec  decompression codec to update (see @ref grk_object)
+ * @return true if parameters were applied successfully, false otherwise
  */
 GRK_API bool GRK_CALLCONV grk_decompress_update(grk_decompress_parameters* params,
                                                 grk_object* codec);
 
 /**
- * @brief Gets @ref grk_progression_state for a tile
- * @param codec codec (see @ref grk_object)
- * @param tile_index tile index
- * @return @ref grk_progression_state. Struct will be all zeros if tile has not been decompressed
- * yet
+ * @brief Retrieves the current progression state for a cached tile.
+ *
+ * A progression state describes how many quality layers have been decoded
+ * for each resolution level in a given tile.  This is used to implement
+ * incremental / partial-quality decompression: decode a tile at reduced
+ * quality, inspect it, then decode more layers on demand.
+ *
+ * Returns a zero-initialised struct if the tile has not been decompressed
+ * yet or is not in the tile cache.
+ *
+ * @param codec       decompression codec (see @ref grk_object)
+ * @param tile_index  zero-based tile index (row-major within the tile grid)
+ * @return current @ref grk_progression_state for the tile; all-zeros if
+ *         the tile has not been decoded
  */
 GRK_API grk_progression_state GRK_CALLCONV
     grk_decompress_get_progression_state(grk_object* codec, uint16_t tile_index);
 
 /**
- * @brief Sets @ref grk_progression_state for a tile
- * @param codec codec (see @ref grk_object)
- * @param state @ref grk_progression_state
- * @return true if tile exists in cache and state marked tile as dirty
+ * @brief Applies a new progression state to one or all cached tiles.
+ *
+ * When @p state.single_tile is true, only the tile at @p state.tile_index
+ * is updated.  The maximum number of quality layers to decode for each
+ * resolution level is taken from @p state.layers_per_resolution.
+ * If the new limit differs from the current one, the tile is marked dirty
+ * so that a subsequent grk_decompress() call re-decodes it with the new
+ * layer budget.
+ *
+ * Typical use: decode a full swath quickly with 1 layer, then apply more
+ * layers on demand for specific tiles.
+ *
+ * @param codec  decompression codec (see @ref grk_object)
+ * @param state  desired progression state (see @ref grk_progression_state);
+ *               state.single_tile must be true (multi-tile update not supported)
+ * @return true if the tile was found in the cache and the state was stored;
+ *         false if single_tile is false, the tile is not cached, or the
+ *         codec has no decompressor
  */
 GRK_API bool GRK_CALLCONV grk_decompress_set_progression_state(grk_object* codec,
                                                                grk_progression_state state);
 
 /**
- * @brief Decompresses JPEG 2000 header
- * @param	codec				decompression codec (see @ref grk_object)
- * @param	header_info			information read from JPEG 2000 header (see @ref grk_header_info)
- * @return true	f the main header of the code stream and the JP2 header	is correctly read.
+ * @brief Reads and parses the JPEG 2000 image header.
+ *
+ * Must be called after grk_decompress_init() and before grk_decompress().
+ * Populates @p header_info with image dimensions, tile grid, component
+ * descriptions, color space, bit-depths, ICC profile pointer, and
+ * progression/quality layer counts.
+ *
+ * For asynchronous decoding: the image dimensions reported here reflect
+ * the full unscaled image; the async scheduler uses them when computing
+ * tile ranges for grk_decompress_wait().
+ *
+ * @param codec        decompression codec (see @ref grk_object)
+ * @param header_info  caller-allocated struct to receive header data
+ *                     (see @ref grk_header_info); may be NULL if the caller
+ *                     only needs to prime the codec for grk_decompress()
+ * @return true if the codestream main header (and JP2 superbox, if present)
+ *         were read successfully; false on I/O or parse error
  */
 GRK_API bool GRK_CALLCONV grk_decompress_read_header(grk_object* codec,
                                                      grk_header_info* header_info);
@@ -1160,11 +1266,26 @@ GRK_API grk_image* GRK_CALLCONV grk_decompress_get_tile_image(grk_object* codec,
 GRK_API grk_image* GRK_CALLCONV grk_decompress_get_image(grk_object* codec);
 
 /**
- * @brief Decompresses image from a JPEG 2000 code stream
- * @param codec 	decompression codec (see @ref grk_object)
- * @param tile		tile struct from plugin (see @ref grk_plugin_tile)
- * @return 			true if successful, otherwise false
- * */
+ * @brief Starts (or continues) decompression of the JPEG 2000 image.
+ *
+ * For synchronous decoding (asynchronous = false): blocks until all
+ * requested tiles are decompressed.  After return, component data is
+ * available via grk_decompress_get_image() or grk_decompress_get_tile_image().
+ *
+ * For asynchronous decoding (asynchronous = true): returns immediately
+ * after scheduling decompression tasks on the Taskflow executor.  Use
+ * grk_decompress_wait() to synchronize on individual swath regions, and
+ * grk_decompress_schedule_swath_copy() + grk_decompress_wait_swath_copy()
+ * to copy decoded data into an output buffer.
+ *
+ * The @p tile parameter is only used when integrating a hardware-
+ * accelerator plugin; pass NULL for CPU-only decoding.
+ *
+ * @param codec  decompression codec (see @ref grk_object)
+ * @param tile   plugin tile data, or NULL for CPU-only decoding
+ *               (see @ref grk_plugin_tile)
+ * @return true if successful (sync) or if scheduling succeeded (async)
+ */
 GRK_API bool GRK_CALLCONV grk_decompress(grk_object* codec, grk_plugin_tile* tile);
 
 /**
@@ -1236,10 +1357,18 @@ GRK_API void GRK_CALLCONV grk_copy_tile_to_swath(const grk_image* tile_img,
                                                   const grk_swath_buffer* buf);
 
 /**
- * @brief Decompresses a specific tile
- * @param	codec			decompression codec (see @ref grk_object)
- * @param	tile_index		index of the tile to be decompressed
- * @return					true if successful, otherwise false
+ * @brief Decompresses a single tile by index.
+ *
+ * Decodes only the tile at @p tile_index without decompressing the entire
+ * image.  Useful for random-access workflows where only a subset of tiles
+ * is needed.  The tile index is row-major: tile_y * num_tile_cols + tile_x.
+ *
+ * After this returns, retrieve the decoded image via
+ * grk_decompress_get_tile_image(codec, tile_index, false).
+ *
+ * @param codec       decompression codec (see @ref grk_object)
+ * @param tile_index  zero-based tile index (row-major within the tile grid)
+ * @return true if the tile was decoded successfully, false on error
  */
 GRK_API bool GRK_CALLCONV grk_decompress_tile(grk_object* codec, uint16_t tile_index);
 
@@ -1379,39 +1508,62 @@ typedef struct _grk_cparameters
 } grk_cparameters;
 
 /**
- * @brief Sets compression parameters to default values:
- * Lossless
- * Single tile
- * Size of precinct : 2^15 x 2^15
- * Size of code block : 64 x 64
- * Number of resolutions: 6
- * No SOP marker in the code stream
- * No EPH marker in the code stream
- * No mode switches
- * Progression order: LRCP
- * No ROI upshifted
- * Image origin lies at (0,0)
- * Tile origin lies at (0,0)
- * Reversible DWT 5-3 transform
-
- @param parameters Compression parameters (see @ref grk_cparameters)
+ * @brief Fills a @ref grk_cparameters struct with safe default values.
+ *
+ * Defaults applied:
+ * - No rate constraints (lossless)
+ * - Tile size: entire image (single tile)
+ * - Codeblock size: 64×64
+ * - Precinct size: 2^15×2^15 (effectively no sub-precincts)
+ * - Number of DWT resolutions: 6
+ * - 1 quality layer
+ * - No SOP / EPH markers
+ * - No ROI upshift
+ * - No mode switches (no LAZY, RESET, etc.)
+ * - Progression order: LRCP
+ * - Reversible 5-3 DWT
+ * - Multi-component transform enabled (when 3+ components present)
+ * - Image origin (0,0); tile origin (0,0); no POC
+ * - Sub-sampling: dx=1, dy=1
+ *
+ * @param parameters compression parameter block to initialise
+ *                   (see @ref grk_cparameters); must not be NULL
  */
 GRK_API void GRK_CALLCONV grk_compress_set_default_params(grk_cparameters* parameters);
 
 /**
- * @brief Initializes compression process.
- * @param stream_params Stream parameters (see @ref grk_stream_params)
- * @param parameters  Compression parameters (see @ref grk_cparameters)
- * @param image Input image (see @ref grk_image)
- * @return pointer to initialized codec.
+ * @brief Creates and initializes a JPEG 2000 compressor.
+ *
+ * Allocates and prepares all compression state for the provided image.
+ * The output destination (file, buffer, or callbacks) is described by
+ * @p stream_params. Encoding parameters (tile size, DWT levels, quality
+ * layers, etc.) are taken from @p parameters — call
+ * grk_compress_set_default_params() first to populate defaults.
+ *
+ * The @p image must remain valid until grk_compress() completes. The
+ * returned codec object must be released with grk_object_unref().
+ *
+ * @param stream_params  output stream description (see @ref grk_stream_params)
+ * @param parameters     compression settings (see @ref grk_cparameters)
+ * @param image          source image to compress (see @ref grk_image)
+ * @return pointer to an opaque @ref grk_object on success, NULL on failure
+ *         (invalid parameters, unsupported image, OOM)
  */
 GRK_API grk_object* GRK_CALLCONV grk_compress_init(grk_stream_params* stream_params,
                                                    grk_cparameters* parameters, grk_image* image);
 /**
- * @brief Compresses an image into a JPEG 2000 code stream using plugin
- * @param codec compression codec (see @ref grk_object)
- * @param tile	plugin tile (see @ref grk_plugin_tile)
- * @return number of bytes written if successful, 0 otherwise
+ * @brief Compresses the image into a JPEG 2000 codestream.
+ *
+ * Performs the full encode pipeline (MCT, DWT, T1, rate control, T2)
+ * and writes the result to the output stream supplied to grk_compress_init().
+ *
+ * The @p tile parameter is only used when a hardware-accelerator plugin
+ * performs some encoding stages; pass NULL for CPU-only encoding.
+ *
+ * @param codec  compression codec (see @ref grk_object)
+ * @param tile   plugin tile data, or NULL for CPU-only encoding
+ *               (see @ref grk_plugin_tile)
+ * @return number of bytes written to the output stream, or 0 on failure
  */
 GRK_API uint64_t GRK_CALLCONV grk_compress(grk_object* codec, grk_plugin_tile* tile);
 
@@ -1442,22 +1594,39 @@ GRK_API bool GRK_CALLCONV grk_compress_finish(grk_object* codec);
 GRK_API uint64_t GRK_CALLCONV grk_compress_get_compressed_length(grk_object* codec);
 
 /**
- * @brief Dumps codec information to file
- * @param	codec	decompression codec (see @ref grk_object)
- * @param	info_flag	type of information dump.
- * @param	output_stream	codec information is dumped to output stream
+ * @brief Dumps codec diagnostic information to a stream.
+ *
+ * Writes human-readable codec state (image dimensions, tile grid,
+ * progression order, codestream indices, etc.) to @p output_stream.
+ * Useful for debugging and conformance testing.
+ *
+ * The @p info_flag controls which sections are emitted; combine the
+ * GRK_IMG_INFO, GRK_MH_INFO, GRK_TH_INFO, GRK_TCH_INFO, GRK_MH_IND,
+ * and GRK_TH_IND flags as needed.
+ *
+ * @param codec          codec (decompression or compression — see @ref grk_object)
+ * @param info_flag      bitmask of GRK_*_INFO / GRK_*_IND flags
+ * @param output_stream  destination FILE* (e.g. stdout, stderr, or a log file)
  */
 GRK_API void GRK_CALLCONV grk_dump_codec(grk_object* codec, uint32_t info_flag,
                                          FILE* output_stream);
 
 /**
- * @brief Sets MCT matrix
+ * @brief Installs a custom Multi-Component Transform (MCT) matrix.
  *
- * @param	parameters		compression parameters (see @ref grk_cparameters)
- * @param	encoding_matrix	matrix
- * @param	dc_shift		dc shift coefficients to use
- * @param	nb_comp			number of components of the image.
- * @return	true if matrix was successfully set
+ * Overrides the default RGB→YCbCr colour transform with a user-supplied
+ * floating-point matrix.  The matrix must be square (@p nb_comp × @p nb_comp)
+ * stored in row-major order.  A matching DC shift vector (one value per
+ * component) is applied after the transform.
+ *
+ * Only meaningful for compression; ignored for decompression.
+ * Must be called before grk_compress_init().
+ *
+ * @param parameters       compression parameters to update (see @ref grk_cparameters)
+ * @param encoding_matrix  row-major nb_comp×nb_comp transform matrix
+ * @param dc_shift         per-component DC shift values (array of @p nb_comp int32_t)
+ * @param nb_comp          number of image components (matrix dimension)
+ * @return true if the matrix was stored successfully, false on invalid input
  */
 GRK_API bool GRK_CALLCONV grk_set_MCT(grk_cparameters* parameters, const float* encoding_matrix,
                                       const int32_t* dc_shift, uint32_t nb_comp);
@@ -1696,14 +1865,30 @@ typedef struct _grk_plugin_load_info
 } grk_plugin_load_info;
 
 /**
- * @brief Loads plugin
+ * @brief Loads a hardware-accelerator plugin (.so / .dll).
  *
- * @param info		plugin loading info (see @ref grk_plugin_load_info)
+ * Should be called after grk_initialize(), before grk_compress_init() or
+ * grk_decompress_init().  The plugin extends Grok with GPU or FPGA
+ * acceleration for T1 entropy coding.  If loading fails, Grok falls back
+ * to CPU-only operation transparently.
+ *
+ * Only one plugin may be loaded at a time.  Call grk_plugin_cleanup() to
+ * unload the current plugin before loading a new one.
+ *
+ * @param info  plugin path and options (see @ref grk_plugin_load_info)
+ * @return true if the plugin was loaded and its ABI version is compatible,
+ *         false otherwise
  */
 GRK_API bool GRK_CALLCONV grk_plugin_load(grk_plugin_load_info info);
 
 /**
- * @brief Cleans up plugin resources
+ * @brief Unloads the plugin and releases all plugin-owned resources.
+ *
+ * Signals the plugin to drain any in-flight GPU/FPGA work, then closes
+ * the shared library handle.  Call before process exit or before loading
+ * a different plugin version.
+ *
+ * Safe to call even if no plugin is loaded (no-op in that case).
  */
 GRK_API void GRK_CALLCONV grk_plugin_cleanup(void);
 
@@ -1733,7 +1918,18 @@ GRK_API void GRK_CALLCONV grk_plugin_cleanup(void);
 #define GRK_PLUGIN_STATE_MCT_ONLY 0x8
 
 /**
- * @brief Gets debug state of plugin
+ * @brief Returns the current debug state bitmask of the loaded plugin.
+ *
+ * The returned value is a combination of GRK_PLUGIN_STATE_* flags:
+ * - GRK_PLUGIN_STATE_NO_DEBUG (0x0)         — production mode, no debug output
+ * - GRK_PLUGIN_STATE_DEBUG (0x1)            — T1 debug comparisons enabled
+ * - GRK_PLUGIN_STATE_PRE_TR1 (0x2)          — pre-T1 DWT/MCT data compared
+ * - GRK_PLUGIN_STATE_DWT_QUANTIZATION (0x4) — DWT quantisation compared
+ * - GRK_PLUGIN_STATE_MCT_ONLY (0x8)         — only MCT stage compared
+ *
+ * Returns 0 (GRK_PLUGIN_STATE_NO_DEBUG) if no plugin is loaded.
+ *
+ * @return bitmask of active GRK_PLUGIN_STATE_* flags
  */
 GRK_API uint32_t GRK_CALLCONV grk_plugin_get_debug_state();
 
@@ -1749,8 +1945,16 @@ typedef struct _grk_plugin_init_info
 } grk_plugin_init_info;
 
 /**
- * @brief Initializes plugin
- * @param init_info plugin init info (see @ref grk_plugin_init_info)
+ * @brief Initializes a loaded plugin with a device and license.
+ *
+ * Must be called after grk_plugin_load() and before any compress or
+ * decompress operation that uses the plugin.  Connects the plugin to
+ * the specified accelerator device and validates the license string.
+ *
+ * @param init_info  device ID, license key, and optional server address
+ *                   (see @ref grk_plugin_init_info)
+ * @return true if the plugin accepted the device and license,
+ *         false on invalid license, device unavailable, or no plugin loaded
  */
 GRK_API bool GRK_CALLCONV grk_plugin_init(grk_plugin_init_info init_info);
 
@@ -1789,28 +1993,51 @@ typedef struct grk_plugin_compress_batch_info
 } grk_plugin_compress_batch_info;
 
 /**
- * @brief Compresses with plugin
- * @param compress_parameters 	compress parameters (see @ref grk_cparameters)
- * @param callback				callback (see @ref GRK_PLUGIN_COMPRESS_USER_CALLBACK)
+ * @brief Compresses a single image using the loaded hardware plugin.
+ *
+ * Uses the plugin-accelerated T1 encoder.  For CPU-only encoding use
+ * grk_compress() instead.  The @p callback is invoked on completion
+ * with the compressed byte count and any error code.
+ *
+ * @param compress_parameters  compression settings (see @ref grk_cparameters)
+ * @param callback             completion callback
+ *                             (see @ref GRK_PLUGIN_COMPRESS_USER_CALLBACK)
+ * @return 0 on success, non-zero error code on failure
  */
 GRK_API int32_t GRK_CALLCONV grk_plugin_compress(grk_cparameters* compress_parameters,
                                                  GRK_PLUGIN_COMPRESS_USER_CALLBACK callback);
 
 /**
- * @brief Batch-compresses with plugin
- * @param info	batch compress info (see @ref grk_plugin_compress_batch_info)
- * @return 0 if successful
+ * @brief Compresses a directory of images in batch using the hardware plugin.
  *
+ * Scans @p info.input_dir for supported source images, compresses each one
+ * with plugin acceleration, and writes results to @p info.output_dir.
+ * A per-image @p info.callback is invoked for each file to allow
+ * custom output naming and post-processing.
+ *
+ * @param info  batch job description: input/output directories, compression
+ *              parameters, and per-file callback
+ *              (see @ref grk_plugin_compress_batch_info)
+ * @return 0 if all files were queued successfully, non-zero on error
  */
 GRK_API int32_t GRK_CALLCONV grk_plugin_batch_compress(grk_plugin_compress_batch_info info);
 
 /**
- * @brief Waits for batch job to complete
+ * @brief Blocks until all pending plugin batch jobs have completed.
+ *
+ * Should be called after grk_plugin_batch_compress() returns to ensure
+ * all asynchronously queued compression tasks have finished before the
+ * caller inspects output files or calls grk_plugin_cleanup().
  */
 GRK_API void GRK_CALLCONV grk_plugin_wait_for_batch_complete(void);
 
 /**
- * @brief Stops batch compress
+ * @brief Requests cancellation of a running batch compress operation.
+ *
+ * Sets a stop flag that causes the batch scheduler to skip remaining
+ * queued files.  Already-in-flight jobs are allowed to complete.
+ * Call grk_plugin_wait_for_batch_complete() after this to ensure
+ * a clean shutdown.
  */
 GRK_API void GRK_CALLCONV grk_plugin_stop_batch_compress(void);
 
@@ -1854,34 +2081,57 @@ typedef struct _grk_plugin_decompress_callback_info
 typedef int32_t (*grk_plugin_decompress_callback)(grk_plugin_decompress_callback_info* info);
 
 /**
- * @brief Decompresses single image with plugin
- * @param decompress_parameters  decompress parameters (see @ref grk_decompress_parameters)
- * @param callback  			 callback (see @ref grk_plugin_decompress_callback)
- * @return 0 if successful, otherwise return error code
+ * @brief Decompresses a single JPEG 2000 image using the loaded hardware plugin.
+ *
+ * Uses plugin-accelerated T1 entropy decoding.  For CPU-only decoding use
+ * grk_decompress() instead.  The @p callback is invoked on completion.
+ *
+ * @param decompress_parameters  decompression settings
+ *                               (see @ref grk_decompress_parameters)
+ * @param callback               per-image completion callback
+ *                               (see @ref grk_plugin_decompress_callback)
+ * @return 0 on success, non-zero error code on failure
  */
 GRK_API int32_t GRK_CALLCONV grk_plugin_decompress(grk_decompress_parameters* decompress_parameters,
                                                    grk_plugin_decompress_callback callback);
 
 /**
- * @brief Initializes batch decompress with plugin
- * @param input_dir input directory holding compressed images
- * @param output_dir output directory holding decompressed images
- * @param decompress_parameters  decompress parameters (see @ref grk_decompress_parameters)
- * @param callback  			 callback (see @ref grk_plugin_decompress_callback)
- * @return 0 if successful, otherwise return error code
+ * @brief Initialises a batch plugin decompress operation but does not start it.
+ *
+ * Sets up a batch decompression pipeline: scans @p input_dir, pairs each
+ * file with @p decompress_parameters, and registers @p callback for
+ * per-file results.  Call grk_plugin_batch_decompress() to start decoding.
+ *
+ * @param input_dir              directory containing JPEG 2000 source files
+ * @param output_dir             directory to write decompressed output files
+ * @param decompress_parameters  shared decompression settings for all files
+ *                               (see @ref grk_decompress_parameters)
+ * @param callback               per-image result callback
+ *                               (see @ref grk_plugin_decompress_callback)
+ * @return 0 on success, non-zero on error (missing directory, bad parameters)
  */
 GRK_API int32_t GRK_CALLCONV grk_plugin_init_batch_decompress(
     const char* input_dir, const char* output_dir, grk_decompress_parameters* decompress_parameters,
     grk_plugin_decompress_callback callback);
 
 /**
- * @brief Initiates batch decompress
- * @return 0 if successful, otherwise return error code
+ * @brief Starts (resumes) the queued batch decompress operation.
+ *
+ * Begins processing files registered by grk_plugin_init_batch_decompress().
+ * Returns immediately; use grk_plugin_wait_for_batch_complete() (or poll
+ * via callbacks) to track completion.
+ *
+ * @return 0 on success, non-zero if the batch was not initialised or
+ *         a fatal scheduling error occurred
  */
 GRK_API int32_t GRK_CALLCONV grk_plugin_batch_decompress(void);
 
 /**
- * @brief Stops batch decompress
+ * @brief Requests cancellation of a running batch decompress operation.
+ *
+ * Sets a stop flag that causes the batch scheduler to skip remaining
+ * files.  Already-in-flight jobs complete normally.  After calling this,
+ * wait for grk_plugin_wait_for_batch_complete() before accessing output.
  */
 GRK_API void GRK_CALLCONV grk_plugin_stop_batch_decompress(void);
 
