@@ -1049,7 +1049,7 @@ namespace HWY_NAMESPACE
         return nullptr;
     }
 
-    int levelIdx = 0;
+    uint8_t levelIdx = 0;
     while(i--)
     {
       // DC shift only on first (finest) resolution level

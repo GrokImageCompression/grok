@@ -33,8 +33,8 @@ protected:
   GrkImage* getHeaderImage(void) override;
   uint8_t* write_ihdr(uint32_t* p_nb_bytes_written);
   uint8_t* write_colr(uint32_t* p_nb_bytes_written);
-  CodeStreamCompress* codeStream;
-  GrkImage* inputImage_;
+  CodeStreamCompress* codeStream = nullptr;
+  GrkImage* inputImage_ = nullptr;
 
 private:
   bool end(void);
@@ -58,8 +58,8 @@ private:
   uint8_t* write_xml(uint32_t* p_nb_bytes_written);
   bool skip_jp2c(void);
 
-  bool needs_xl_jp2c_box_length;
-  uint64_t codestream_offset;
+  bool needs_xl_jp2c_box_length = false;
+  uint64_t codestream_offset = 0;
 };
 
 } // namespace grk

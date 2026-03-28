@@ -62,8 +62,7 @@ void MycmsLogErrorHandlerFunction([[maybe_unused]] cmsContext ContextID,
 }
 
 FileFormatJP2Compress::FileFormatJP2Compress(IStream* stream)
-    : FileFormatJP2Family(stream), codeStream(new CodeStreamCompress(stream)),
-      needs_xl_jp2c_box_length(false), codestream_offset(0), inputImage_(nullptr)
+    : FileFormatJP2Family(stream), codeStream(new CodeStreamCompress(stream))
 {}
 FileFormatJP2Compress::~FileFormatJP2Compress()
 {

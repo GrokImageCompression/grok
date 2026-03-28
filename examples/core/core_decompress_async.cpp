@@ -524,16 +524,16 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] const char** argv)
     printf("Decompressing %ux%u (reduce=%u) in swaths of %u rows\n", fullWidth, fullHeight, reduce,
            swathHeight);
 
-    uint8_t numcomps = headerInfo.header_image.numcomps;
-    uint8_t tilePrecBits = headerInfo.header_image.comps[0].prec;
+    auto numcomps = headerInfo.header_image.numcomps;
+    auto tilePrecBits = headerInfo.header_image.comps[0].prec;
 
     // Step 2: Wait for swaths and retrieve tile data
-    uint32_t y = imgY0;
-    uint32_t swathIndex = 0;
+    auto y = imgY0;
+    auto swathIndex = 0;
     while(y < imgY1)
     {
-      uint32_t swathY1 = std::min(y + swathHeight, imgY1);
-      uint32_t thisSwathH = swathY1 - y;
+      auto swathY1 = std::min(y + swathHeight, imgY1);
+      auto thisSwathH = swathY1 - y;
 
       grk_wait_swath swath = {};
       swath.x0 = imgX0;
@@ -544,7 +544,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] const char** argv)
       // Wait for this swath region to be decoded
       grk_decompress_wait(codec, &swath);
 
-      uint16_t numSwathTiles = (swath.tile_x1 - swath.tile_x0) * (swath.tile_y1 - swath.tile_y0);
+      uint16_t numSwathTiles = (uint16_t)((swath.tile_x1 - swath.tile_x0) * (swath.tile_y1 - swath.tile_y0));
       printf("Swath %u: rows [%u, %u), %u tiles\n", swathIndex, y, swathY1, numSwathTiles);
 
       if(useSwathBuf)
