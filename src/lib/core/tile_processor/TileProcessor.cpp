@@ -245,6 +245,22 @@ bool TileProcessor::isInitialized(void)
   return initialized_;
 }
 
+bool TileProcessor::isBestEffortDecompressed(void)
+{
+  return bestEffortDecompressed_;
+}
+
+void TileProcessor::setBestEffortDecompressed(void)
+{
+  bestEffortDecompressed_ = true;
+}
+
+void TileProcessor::resetSOTParsing()
+{
+  numSOTsParsed_ = 0;
+  tcp_->tilePartCounter_ = 0;
+}
+
 bool TileProcessor::init(void)
 {
   if(!tile_)

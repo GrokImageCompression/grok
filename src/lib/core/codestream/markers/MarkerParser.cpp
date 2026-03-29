@@ -89,6 +89,7 @@ uint16_t MarkerParser::currId(void)
 void MarkerParser::setSOT(void)
 {
   currMarkerId_ = SOT;
+  foundEOC_ = false;
 }
 
 bool MarkerParser::readSOTorEOC(void)

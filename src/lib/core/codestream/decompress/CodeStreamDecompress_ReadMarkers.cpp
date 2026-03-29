@@ -188,6 +188,8 @@ void CodeStreamDecompress::postReadHeader(void)
   // set up tile completion based on tile and image bounds
   if(headerRead_)
   {
+    setDecompressRegion(RectD(cp_.dw_x0, cp_.dw_y0, cp_.dw_x1, cp_.dw_y1));
+
     if(cp_.asynchronous_ && cp_.simulate_synchronous_)
     {
       auto bounds = headerImage_->getBounds();
@@ -198,8 +200,6 @@ void CodeStreamDecompress::postReadHeader(void)
           },
           [this]() { scheduleTileBatch(); }, tilesToDecompress_.getSlatedTileRect());
     }
-
-    setDecompressRegion(RectD(cp_.dw_x0, cp_.dw_y0, cp_.dw_x1, cp_.dw_y1));
   }
 }
 
@@ -365,6 +365,15 @@ bool CodeStreamDecompress::readSOT(uint8_t* headerData, uint16_t headerSize)
   grk_read(&headerData, &currTilePartInfo_.tilePartLength_);
   if(!cp_.hasTLM() && !tilesToDecompress_.isSlated(tileIndex))
   {
+    return currTilePartInfo_.tilePartLength_
+               ? stream_->skip((int64_t)(currTilePartInfo_.tilePartLength_ - sotMarkerSegmentLen))
+               : true;
+  }
+
+  auto cached = tileCache_->get(tileIndex);
+  if(cached && cached->processor && cached->processor->isBestEffortDecompressed())
+  {
+    currTileIndex_ = -1;
     return currTilePartInfo_.tilePartLength_
                ? stream_->skip((int64_t)(currTilePartInfo_.tilePartLength_ - sotMarkerSegmentLen))
                : true;

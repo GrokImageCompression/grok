@@ -163,7 +163,11 @@ bool CodeStreamDecompress::decompress(grk_plugin_tile* tile)
     for(auto tileIndex : slated)
     {
       auto cacheEntry = tileCache_->get(tileIndex);
-      if(cacheEntry && cacheEntry->processor->getImage() && !cacheEntry->dirty_)
+      if(!cacheEntry)
+        continue;
+      auto proc = cacheEntry->processor;
+      if(proc->isBestEffortDecompressed() ||
+         (proc->getImage() && (!cacheEntry->dirty_ || proc->allSOTMarkersParsed())))
         tileCompletion_->complete(tileIndex);
     }
   }
@@ -183,7 +187,10 @@ bool CodeStreamDecompress::decompressImpl(std::set<uint16_t> slated)
   // Filter out fully cached tiles from slated
   std::erase_if(slated, [this](uint16_t index) {
     auto cacheEntry = tileCache_->get(index);
-    return cacheEntry && cacheEntry->processor->getImage() && !cacheEntry->dirty_;
+    if(!cacheEntry)
+      return false;
+    auto proc = cacheEntry->processor;
+    return proc->isBestEffortDecompressed() || (proc->getImage() && !cacheEntry->dirty_);
   });
   if(slated.empty())
     return true;
@@ -385,6 +392,7 @@ void CodeStreamDecompress::decompressSequentialPrepare(void)
 {
   stream_->seek(markerCache_->getTileStreamStart() + MARKER_BYTES);
   markerParser_.setSOT();
+  tileCache_->resetSOTParsing();
   if(cp_.plmMarkers_)
     cp_.plmMarkers_->rewind();
   stream_->memAdvise(stream_->tell(), 0, GrkAccessPattern::ACCESS_RANDOM);
@@ -400,6 +408,11 @@ void CodeStreamDecompress::decompressSequential(void)
     {
       if(!sequentialParseAndSchedule(true))
       {
+        // If we've exhausted all slated tiles' markers or the codestream
+        // ran out of data (truncated image), stop gracefully.
+        if(tileCache_->allSlatedSOTMarkersParsed(tilesToDecompress_.getSlatedTiles()) ||
+           markerParser_.endOfCodeStream() || stream_->numBytesLeft() == 0)
+          break;
         success_ = false;
         break;
       }
@@ -443,6 +456,19 @@ void CodeStreamDecompress::decompressSequential(void)
     if(tileCache_->allSlatedSOTMarkersParsed(tilesToDecompress_.getSlatedTiles()))
       break;
   }
+
+  // Mark tiles that were never parsed (missing from truncated codestream)
+  // as complete so wait() doesn't hang.  Tiles that WERE parsed are still
+  // being decompressed asynchronously and must not be completed here.
+  if(tileCompletion_)
+  {
+    for(auto tileIndex : tilesToDecompress_.getSlatedTiles())
+    {
+      auto cached = tileCache_->get(tileIndex);
+      if(!cached || !cached->processor || !cached->processor->allSOTMarkersParsed())
+        tileCompletion_->complete(tileIndex);
+    }
+  }
 }
 
 bool CodeStreamDecompress::sequentialParseAndSchedule(bool multiTile)
@@ -468,7 +494,7 @@ bool CodeStreamDecompress::sequentialParseAndSchedule(bool multiTile)
       if(!processed)
         return false;
     }
-    catch(const CorruptSOTMarkerException& csme)
+    catch([[maybe_unused]] const CorruptSOTMarkerException& csme)
     {
       return false;
     }
@@ -832,6 +858,7 @@ std::function<void()> CodeStreamDecompress::postMultiTile(ITileProcessor* tilePr
       return;
     }
     tileProcessor->post_decompressT2T1(scratchImage_.get());
+    tileProcessor->setBestEffortDecompressed();
     numTilesDecompressed_++;
     auto tileImage = tileProcessor->getImage();
     if(!cp_.codingParams_.dec_.skipAllocateComposite_ && scratchImage_->has_multiple_tiles &&

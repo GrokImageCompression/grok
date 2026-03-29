@@ -32,6 +32,9 @@ target_link_libraries(compare_dump_files ${GROK_CORE_NAME} spdlog::spdlog)
 add_executable(j2k_random_tile_access j2k_random_tile_access.cpp GrkRandomTileAccess.cpp)
 target_link_libraries(j2k_random_tile_access ${GROK_CORE_NAME} spdlog::spdlog)
 
+add_executable(j2k_multi_region_decompress j2k_multi_region_decompress.cpp GrkMultiRegionDecompress.cpp)
+target_link_libraries(j2k_multi_region_decompress ${GROK_CORE_NAME} spdlog::spdlog)
+
 add_executable(compare_raw_files compare_raw_files.cpp GrkCompareRawFiles.cpp)
 target_link_libraries(compare_raw_files ${GROK_CORE_NAME} spdlog::spdlog)
 

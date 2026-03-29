@@ -128,18 +128,12 @@ public:
     if(!cache_[tile_index])
     {
       cache_[tile_index] = new TileCacheEntry(processor);
-      grklog.debug("Added ITileProcessor at tile index %u, address %p", tile_index, processor);
     }
     else
     {
       if(cache_[tile_index]->processor)
-      {
-        grklog.debug("Removing ITileProcessor at tile index %u, address %p", tile_index,
-                     cache_[tile_index]->processor);
-        delete cache_[tile_index]->processor; // Delete old processor
-      }
+        delete cache_[tile_index]->processor;
       cache_[tile_index]->processor = processor;
-      grklog.debug("Added ITileProcessor at tile index %u, address %p", tile_index, processor);
     }
     return cache_[tile_index];
   }
@@ -153,12 +147,18 @@ public:
 
   void release(uint16_t tileIndex)
   {
-    // Release the tile processor if it exists
     if(cache_[tileIndex] && cache_[tileIndex]->processor)
-    {
-      grklog.debug("Releasing ITileProcessor at tile index %u, address %p", tileIndex,
-                   cache_[tileIndex]->processor);
       cache_[tileIndex]->processor->release(GRK_TILE_CACHE_NONE);
+  }
+
+  void resetSOTParsing()
+  {
+    for(auto* entry : cache_)
+    {
+      if(!entry || !entry->processor)
+        continue;
+      if(!entry->processor->isBestEffortDecompressed())
+        entry->processor->resetSOTParsing();
     }
   }
 

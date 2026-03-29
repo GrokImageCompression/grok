@@ -311,6 +311,11 @@ struct ITileProcessor
   virtual bool allSOTMarkersParsed() = 0;
 
   /**
+   * @brief Reset SOT parsing state so the tile can be re-parsed from the codestream.
+   */
+  virtual void resetSOTParsing() = 0;
+
+  /**
    * @brief Sets the processor to truncated state if not all tile parts are parsed
    */
   virtual void setTruncated(void) = 0;
@@ -326,6 +331,13 @@ struct ITileProcessor
    * @return true if initialized, false otherwise
    */
   virtual bool isInitialized(void) = 0;
+
+  /**
+   * @brief Check if tile was decompressed on a best-effort basis (may have been truncated or
+   * errored). Such tiles should not be re-decompressed on codec reuse.
+   */
+  virtual bool isBestEffortDecompressed(void) = 0;
+  virtual void setBestEffortDecompressed(void) = 0;
 };
 
 } // namespace grk

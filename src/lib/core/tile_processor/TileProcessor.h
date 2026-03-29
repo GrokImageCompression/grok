@@ -336,6 +336,10 @@ struct TileProcessor : virtual public ITileProcessor
 
   bool isInitialized(void) override;
 
+  bool isBestEffortDecompressed(void) override;
+  void setBestEffortDecompressed(void) override;
+  void resetSOTParsing() override;
+
 protected:
   /**
    * @brief header @ref GrkImage
@@ -466,6 +470,12 @@ private:
    *
    */
   bool truncated_ = false;
+
+  /**
+   * @brief true if tile was decompressed on a best-effort basis
+   * (may have been truncated or errored). Not re-decompressed on codec reuse.
+   */
+  bool bestEffortDecompressed_ = false;
 
   /**
    * @brief @ref GrkImage for this tile
