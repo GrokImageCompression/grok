@@ -261,6 +261,12 @@ if(GRK_ENABLE_LIBCURL AND GRK_HAVE_LIBCURL)
 endif(GRK_ENABLE_LIBCURL AND GRK_HAVE_LIBCURL)
 
 
+# Public include directory for consumers of the library
+target_include_directories(${GROK_CORE_NAME} PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
+  $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/${GROK_INSTALL_SUBDIR}>
+)
+
 # bundle all static libraries into a single library
 if (GRK_BUNDLE_STATIC_CORE AND NOT BUILD_SHARED_LIBS AND NOT APPLE)
     include(BundleStatic)

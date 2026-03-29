@@ -13,29 +13,25 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 
-cmake_minimum_required(VERSION 3.20)
+cmake_minimum_required(VERSION 3.21)
 
-if(POLICY CMP0122)
-    cmake_policy(SET CMP0122 NEW)
-endif()
-
-project(GROK)
+project(GROK
+  VERSION 20.2.4
+  LANGUAGES C CXX)
 
 #######################################
-# GROK version
-set(GROK_VERSION_MAJOR 20)
-set(GROK_VERSION_MINOR 2)
-set(GROK_VERSION_PATCH 4)
-set(GROK_VERSION
-  "${GROK_VERSION_MAJOR}.${GROK_VERSION_MINOR}.${GROK_VERSION_PATCH}")
-set(PACKAGE_VERSION
-  "${GROK_VERSION_MAJOR}.${GROK_VERSION_MINOR}.${GROK_VERSION_PATCH}")
+# GROK version — derived from project()
+set(GROK_VERSION_MAJOR ${PROJECT_VERSION_MAJOR})
+set(GROK_VERSION_MINOR ${PROJECT_VERSION_MINOR})
+set(GROK_VERSION_PATCH ${PROJECT_VERSION_PATCH})
+set(GROK_VERSION "${PROJECT_VERSION}")
+set(PACKAGE_VERSION "${PROJECT_VERSION}")
 
 # As autotools does not support X.Y notation for SOVERSION, we have to use
 # two different versions, one for Grok itself and one for its .so
 if(NOT GROK_SOVERSION)
   set(GROK_SOVERSION 1)
-endif(NOT GROK_SOVERSION)
+endif()
 set(GROK_LIBRARY_PROPERTIES
   VERSION   "${GROK_VERSION_MAJOR}.${GROK_VERSION_MINOR}.${GROK_VERSION_PATCH}"
   SOVERSION "${GROK_SOVERSION}"
@@ -53,13 +49,13 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 if (CMAKE_SYSTEM_PROCESSOR MATCHES "unknown")
   # uname -p is broken on this system.  Try uname -m
-  EXECUTE_PROCESS( COMMAND uname -m
-		   OUTPUT_STRIP_TRAILING_WHITESPACE
-		   ERROR_QUIET
-		   OUTPUT_VARIABLE GRK_ARCH)
-else (CMAKE_SYSTEM_PROCESSOR MATCHES "unknown")
+  execute_process(COMMAND uname -m
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+    ERROR_QUIET
+    OUTPUT_VARIABLE GRK_ARCH)
+else()
   set(GRK_ARCH ${CMAKE_SYSTEM_PROCESSOR})
-endif (CMAKE_SYSTEM_PROCESSOR MATCHES "unknown")
+endif()
 message(STATUS "Architecture: " ${GRK_ARCH})
 
 if(MSVC)
@@ -81,13 +77,14 @@ endif()
 
 include(CheckPIESupported OPTIONAL RESULT_VARIABLE CHECK_PIE_SUPPORTED)
 check_pie_supported(LANGUAGES CXX)
- if(CMAKE_CXX_LINK_PIE_SUPPORTED)
-   set(CMAKE_POSITION_INDEPENDENT_CODE TRUE)
+if(CMAKE_CXX_LINK_PIE_SUPPORTED)
+  set(CMAKE_POSITION_INDEPENDENT_CODE TRUE)
 endif()
 
-set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} -fno-omit-frame-pointer")
-set(CMAKE_C_FLAGS_RELWITHDEBINFO "${CMAKE_C_FLAGS_RELWITHDEBINFO} -fno-omit-frame-pointer")
-set(CMAKE_SHARED_LINKER_FLAGS_RELWITHDEBINFO "${CMAKE_SHARED_LINKER_FLAGS_RELWITHDEBINFO} -Wl,--build-id")
+add_compile_options(
+  $<$<AND:$<COMPILE_LANGUAGE:C,CXX>,$<CONFIG:RelWithDebInfo>>:-fno-omit-frame-pointer>)
+add_link_options(
+  $<$<CONFIG:RelWithDebInfo>:LINKER:--build-id>)
 
 
 # Path to additional CMake modules
@@ -95,7 +92,7 @@ set(CMAKE_MODULE_PATH
     ${GROK_SOURCE_DIR}/cmake
     ${CMAKE_MODULE_PATH})
 
-include (ExternalProject)
+include(ExternalProject)
 # Install directories
 include(GNUInstallDirs)
 string(TOLOWER ${PROJECT_NAME} projectname)
@@ -106,16 +103,19 @@ if (APPLE)
 endif()
 
 # Big endian test:
-include (${CMAKE_ROOT}/Modules/TestBigEndian.cmake)
-if (NOT CMAKE_SYSTEM_NAME STREQUAL Emscripten)
-TEST_BIG_ENDIAN(GROK_BIG_ENDIAN)
+include(TestBigEndian)
+if(NOT CMAKE_SYSTEM_NAME STREQUAL Emscripten)
+  test_big_endian(GROK_BIG_ENDIAN)
 endif()
 
 # Grok build configuration options.
 option(BUILD_SHARED_LIBS "Build Grok shared library and link executables against it." ON)
-set (EXECUTABLE_OUTPUT_PATH ${CMAKE_CURRENT_BINARY_DIR}/bin CACHE PATH "Single output directory for building all executables.")
-set (LIBRARY_OUTPUT_PATH ${CMAKE_CURRENT_BINARY_DIR}/bin CACHE PATH "Single output directory for building all libraries.")
-mark_as_advanced(LIBRARY_OUTPUT_PATH EXECUTABLE_OUTPUT_PATH)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/bin CACHE PATH "Single output directory for building all executables.")
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/bin CACHE PATH "Single output directory for building all libraries.")
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/bin CACHE PATH "Single output directory for building all archives.")
+# Keep legacy alias for test scripts that reference EXECUTABLE_OUTPUT_PATH
+set(EXECUTABLE_OUTPUT_PATH ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
+mark_as_advanced(CMAKE_RUNTIME_OUTPUT_DIRECTORY CMAKE_LIBRARY_OUTPUT_DIRECTORY CMAKE_ARCHIVE_OUTPUT_DIRECTORY)
 
 # Compiler specific flags:
 if (CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
@@ -130,14 +130,14 @@ include(ucm)
 if(BUILD_SHARED_LIBS)
     ucm_set_runtime(DYNAMIC)
 else()
-	add_definitions(-DGRK_STATIC)
+    add_compile_definitions(GRK_STATIC)
     ucm_set_runtime(STATIC)
 endif()
 
 if(WIN32)
-  add_definitions(-DNOMINMAX)
+  add_compile_definitions(NOMINMAX)
   if(BUILD_SHARED_LIBS)
-    add_definitions(-DGRK_EXPORTS)
+    add_compile_definitions(GRK_EXPORTS)
   endif()
 endif()
 
@@ -161,33 +161,29 @@ option(BUILD_LUTS_GENERATOR "Build utility to generate t1_luts.h" OFF)
 option(GRK_BUILD_CORE_EXAMPLES "Build core examples" ON)
 option(GRK_BUILD_CODEC_EXAMPLES "Build codec examples" OFF)
 
+# Locate test data (shared by examples and tests)
+find_path(GRK_DATA_ROOT README-GROK-TEST-DATA
+  PATHS $ENV{GRK_DATA_ROOT} ${CMAKE_SOURCE_DIR}/../grok-test-data
+  NO_CMAKE_FIND_ROOT_PATH)
+
 # examples use files from data folder
-if (GRK_BUILD_CORE_EXAMPLES OR GRK_BUILD_CODEC_EXAMPLES)
-	add_subdirectory(examples)
-	find_path(GRK_DATA_ROOT README-GROK-TEST-DATA
-	  PATHS $ENV{GRK_DATA_ROOT} ${CMAKE_SOURCE_DIR}/../grok-test-data
-	  NO_CMAKE_FIND_ROOT_PATH)
+if(GRK_BUILD_CORE_EXAMPLES OR GRK_BUILD_CODEC_EXAMPLES)
+  add_subdirectory(examples)
 endif()
 
-if(CMAKE_BUILD_TYPE STREQUAL "Release")
-    if(WIN32)
-        # Ensure no debug symbols & remove Debug Directory
-        set(CMAKE_EXE_LINKER_FLAGS_RELEASE "${CMAKE_EXE_LINKER_FLAGS_RELEASE} /DEBUG:NONE /RELEASE")
-        set(CMAKE_SHARED_LINKER_FLAGS_RELEASE "${CMAKE_SHARED_LINKER_FLAGS_RELEASE} /DEBUG:NONE /RELEASE")
-
-        if(MSVC)
-            # Ensure MSVC does not generate .pdb files
-            set(CMAKE_MSVC_DEBUG_INFORMATION_FORMAT "None")
-        endif()
-    elseif(APPLE)
-        # Strip all local symbols for macOS
-        set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,-x")
-        set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,-x")
-    else()
-        # Strip all symbols for shared libraries on other non-Windows platforms (e.g., Linux)
-        set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,--strip-all")
-        set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,--strip-all")
-    endif()
+if(WIN32)
+  add_link_options(
+    $<$<CONFIG:Release>:/DEBUG:NONE>
+    $<$<CONFIG:Release>:/RELEASE>)
+  if(MSVC)
+    set(CMAKE_MSVC_DEBUG_INFORMATION_FORMAT
+      $<$<CONFIG:Release>:> $<$<NOT:$<CONFIG:Release>>:ProgramDatabase>)
+  endif()
+elseif(APPLE)
+  add_link_options($<$<CONFIG:Release>:LINKER:-x>)
+else()
+  # Strip all symbols in Release builds on Linux/other
+  add_link_options($<$<CONFIG:Release>:LINKER:--strip-all>)
 endif()
 
 # Build Applications
@@ -293,14 +289,14 @@ endif()
 
 # grk_config.h generation
 configure_file(
- ${CMAKE_CURRENT_SOURCE_DIR}/src/lib/core/grk_config.h.cmake.in
- ${CMAKE_CURRENT_BINARY_DIR}/src/lib/core/grk_config.h
- @ONLY)
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/lib/core/grk_config.h.cmake.in
+  ${CMAKE_CURRENT_BINARY_DIR}/src/lib/core/grk_config.h
+  @ONLY)
 
- configure_file(
- ${CMAKE_CURRENT_SOURCE_DIR}/src/lib/core/grk_config_private.h.cmake.in
- ${CMAKE_CURRENT_BINARY_DIR}/src/lib/core/grk_config_private.h
- @ONLY)
+configure_file(
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/lib/core/grk_config_private.h.cmake.in
+  ${CMAKE_CURRENT_BINARY_DIR}/src/lib/core/grk_config_private.h
+  @ONLY)
 
 # Build DOCUMENTATION
 option(GRK_BUILD_DOC "Build HTML documentation (with doxygen if available)." OFF)
@@ -313,9 +309,6 @@ option(BUILD_TESTING "Build tests." OFF)
 if(BUILD_TESTING AND GRK_BUILD_CODEC AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/tests/CMakeLists.txt")
     enable_testing()
     include(CTest)
-    find_path(GRK_DATA_ROOT README-GROK-TEST-DATA
-      PATHS $ENV{GRK_DATA_ROOT} ${CMAKE_SOURCE_DIR}/../grok-test-data
-      NO_CMAKE_FIND_ROOT_PATH)
     add_subdirectory(tests)
     set(GRK_BUILD_CORE_EXAMPLES ON CACHE BOOL "Build core examples" FORCE)
 endif()
@@ -410,7 +403,9 @@ if(GRK_BUILD_JAVA_TESTS)
     endif()
 endif()
 
-# install all targets referenced as GrokTargets
+# ===================================================================
+# PACKAGE CONFIGURATION - FIXED VERSION HANDLING
+# ===================================================================
 if (BUILD_SHARED_LIBS AND NOT CMAKE_SYSTEM_NAME STREQUAL Emscripten)
   # Install the GrokTargets file
   install(EXPORT GrokTargets
@@ -425,8 +420,17 @@ if (BUILD_SHARED_LIBS AND NOT CMAKE_SYSTEM_NAME STREQUAL Emscripten)
     INSTALL_DESTINATION ${GROK_INSTALL_PACKAGE_DIR}
     PATH_VARS CMAKE_INSTALL_INCLUDEDIR)
 
-  # Install the GrokConfig.cmake file
-  install(FILES ${CMAKE_CURRENT_BINARY_DIR}/GrokConfig.cmake
+  # Generate the version file
+  write_basic_package_version_file(
+    "${CMAKE_CURRENT_BINARY_DIR}/GrokConfigVersion.cmake"
+    VERSION "${GROK_VERSION}"
+    COMPATIBILITY SameMinorVersion
+  )
+
+  # Install both config and version files
+  install(FILES
+            ${CMAKE_CURRENT_BINARY_DIR}/GrokConfig.cmake
+            ${CMAKE_CURRENT_BINARY_DIR}/GrokConfigVersion.cmake
           DESTINATION ${GROK_INSTALL_PACKAGE_DIR})
 endif()
 
