@@ -24,6 +24,7 @@ Or just the S3 tests:
     pytest --run-s3 -m s3
 """
 
+import ctypes
 import os
 import socket
 import urllib.request
@@ -455,3 +456,171 @@ class TestS3AsyncDecompress:
 
         assert s3_num == local_num
         assert {t[0] for t in s3_tiles} == {t[0] for t in local_tiles}
+
+
+# ---------------------------------------------------------------------------
+# LRU compressed-chunk cache over S3
+# ---------------------------------------------------------------------------
+
+def _tile_pixel_hash(tile_img):
+    """Return SHA-256 hex digest of a tile image's component 0 pixel data."""
+    comp = tile_img.comps[0]
+    n_elements = comp.h * comp.stride
+    data_ptr = ctypes.cast(
+        int(comp.data),
+        ctypes.POINTER(ctypes.c_int32 * n_elements),
+    )
+    return hashlib.sha256(bytes(data_ptr.contents)).hexdigest()
+
+
+def async_decompress_s3_lru(s3_path, cache_strategy, swath_height=0):
+    """Async decompress collecting per-tile pixel hashes.
+
+    Returns dict {tile_index: sha256_hex} and (full_width, full_height, num_tiles).
+    """
+    grok_core.grk_initialize(None, 0, None)
+
+    params = grok_core.grk_decompress_parameters()
+    params.asynchronous = True
+    params.simulate_synchronous = True
+    params.core.tile_cache_strategy = cache_strategy
+
+    stream_params = grok_core.grk_stream_params()
+    stream_params.file = s3_path
+
+    codec = grok_core.grk_decompress_init(stream_params, params)
+    assert codec is not None, f"grk_decompress_init failed for {s3_path}"
+
+    header_info = grok_core.grk_header_info()
+    ok = grok_core.grk_decompress_read_header(codec, header_info)
+    assert ok, "grk_decompress_read_header failed"
+
+    num_tiles = header_info.t_grid_width * header_info.t_grid_height
+    single_tile = (num_tiles == 1)
+
+    if single_tile:
+        params.core.skip_allocate_composite = False
+    else:
+        params.core.skip_allocate_composite = True
+
+    ok = grok_core.grk_decompress_update(params, codec)
+    assert ok, "grk_decompress_update failed"
+
+    ok = grok_core.grk_decompress(codec, None)
+    assert ok, "grk_decompress failed"
+
+    img_x0 = header_info.header_image.x0
+    img_y0 = header_info.header_image.y0
+    img_x1 = header_info.header_image.x1
+    img_y1 = header_info.header_image.y1
+
+    full_width = img_x1 - img_x0
+    full_height = img_y1 - img_y0
+    sh = swath_height if swath_height > 0 else header_info.t_height
+
+    tile_hashes = {}
+    y = img_y0
+    while y < img_y1:
+        swath_y1 = min(y + sh, img_y1)
+
+        swath = grok_core.grk_wait_swath()
+        swath.x0 = img_x0
+        swath.y0 = y
+        swath.x1 = img_x1
+        swath.y1 = swath_y1
+
+        grok_core.grk_decompress_wait(codec, swath)
+
+        for ty in range(swath.tile_y0, swath.tile_y1):
+            for tx in range(swath.tile_x0, swath.tile_x1):
+                tidx = ty * swath.num_tile_cols + tx
+
+                if single_tile:
+                    tile_img = grok_core.grk_decompress_get_image(codec)
+                else:
+                    tile_img = grok_core.grk_decompress_get_tile_image(
+                        codec, tidx, True
+                    )
+
+                assert tile_img is not None, f"Failed to get tile {tidx}"
+                tile_hashes[tidx] = _tile_pixel_hash(tile_img)
+
+        y = swath_y1
+
+    grok_core.grk_object_unref(codec)
+    return tile_hashes, full_width, full_height, num_tiles
+
+
+@pytest.fixture(scope="module")
+def lru_on_minio(tmp_path_factory):
+    """Compress multi-tile TLM JP2, upload to MinIO."""
+    tmp_path = tmp_path_factory.mktemp("lru_cache")
+    filename = "lru_cache_test.jp2"
+    # Multi-tile with TLM — required for fetchByTile path that activates the cache
+    jp2_path = make_jp2(
+        tmp_path, filename=filename, extra_args=["-t", "64,64", "-X"]
+    )
+    key = filename
+    minio_put_object(BUCKET, key, jp2_path)
+    return key, jp2_path
+
+
+@pytest.mark.s3
+@pytest.mark.skipif(grok_core is None, reason="grok_core module not available")
+class TestS3LRUCache:
+    """Test the compressed-chunk cache (GRK_TILE_CACHE_LRU) over S3."""
+
+    def test_lru_succeeds(self, lru_on_minio):
+        """Async LRU decompress from S3 retrieves all tiles."""
+        key, _ = lru_on_minio
+        s3_path = f"/vsis3/{BUCKET}/{key}"
+        hashes, _, _, num_tiles = async_decompress_s3_lru(
+            s3_path, grok_core.GRK_TILE_CACHE_LRU
+        )
+        assert len(hashes) == num_tiles
+        assert all(h for h in hashes.values())
+
+    def test_lru_matches_image_strategy(self, lru_on_minio):
+        """LRU tile pixels match IMAGE strategy (reference) from S3."""
+        key, _ = lru_on_minio
+        s3_path = f"/vsis3/{BUCKET}/{key}"
+
+        ref_hashes, _, _, ref_n = async_decompress_s3_lru(
+            s3_path, grok_core.GRK_TILE_CACHE_IMAGE
+        )
+        lru_hashes, _, _, lru_n = async_decompress_s3_lru(
+            s3_path, grok_core.GRK_TILE_CACHE_LRU
+        )
+
+        assert ref_n == lru_n
+        for tidx in ref_hashes:
+            assert tidx in lru_hashes, f"Tile {tidx} missing from LRU output"
+            assert ref_hashes[tidx] == lru_hashes[tidx], (
+                f"Tile {tidx} pixel mismatch: IMAGE vs LRU"
+            )
+
+    def test_lru_low_cache_limit(self, lru_on_minio, monkeypatch):
+        """LRU with very low cache limit forces eviction and re-decompress.
+
+        With a 128x128 image and 64x64 tiles we have 4 tiles.  Setting
+        GRK_CACHEMAX to 1 byte ensures every tile is spilled to disk.
+        The result must still match the IMAGE strategy reference.
+        """
+        key, _ = lru_on_minio
+        s3_path = f"/vsis3/{BUCKET}/{key}"
+
+        # Set absurdly small cache to force disk spill on every tile
+        monkeypatch.setenv("GRK_CACHEMAX", "1")
+
+        ref_hashes, _, _, _ = async_decompress_s3_lru(
+            s3_path, grok_core.GRK_TILE_CACHE_IMAGE
+        )
+        lru_hashes, _, _, _ = async_decompress_s3_lru(
+            s3_path, grok_core.GRK_TILE_CACHE_LRU
+        )
+
+        for tidx in ref_hashes:
+            assert tidx in lru_hashes, f"Tile {tidx} missing (low cache)"
+            assert ref_hashes[tidx] == lru_hashes[tidx], (
+                f"Tile {tidx} pixel mismatch with low cache limit"
+            )

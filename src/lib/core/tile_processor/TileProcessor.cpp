@@ -261,6 +261,29 @@ void TileProcessor::resetSOTParsing()
   tcp_->tilePartCounter_ = 0;
 }
 
+bool TileProcessor::reinitForReDecompress()
+{
+  // Already has tile data — nothing to do
+  if(tile_)
+    return true;
+
+  // Recreate tile structure
+  tile_ = new Tile(headerImage_->numcomps);
+  initialized_ = false;
+
+  // Re-run init to set up bounds, resolutions, precincts, code blocks
+  if(!init())
+  {
+    delete tile_;
+    tile_ = nullptr;
+    return false;
+  }
+
+  tcp_->finalizePocs();
+
+  return true;
+}
+
 bool TileProcessor::init(void)
 {
   if(!tile_)
@@ -813,6 +836,16 @@ void TileProcessor::release(uint32_t strategy)
 {
   if((strategy & GRK_TILE_CACHE_ALL) == GRK_TILE_CACHE_ALL)
     return;
+
+  // LRU strategy: release decompressed data but keep processor alive
+  // for re-decompression from cached compressed data
+  if(strategy & GRK_TILE_CACHE_LRU)
+  {
+    delete tile_;
+    tile_ = nullptr;
+    // Keep image_ and tilePartFetchSeq_ for re-decompression
+    return;
+  }
 
   // delete image in absence of tile cache strategy
   if(strategy == GRK_TILE_CACHE_NONE)

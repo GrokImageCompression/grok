@@ -338,6 +338,16 @@ struct ITileProcessor
    */
   virtual bool isBestEffortDecompressed(void) = 0;
   virtual void setBestEffortDecompressed(void) = 0;
+
+  /**
+   * @brief Reinitialize for re-decompression after LRU eviction.
+   *
+   * Recreates the Tile structure and re-runs init() so that the
+   * T2+T1 pipeline can be re-executed from cached packet data.
+   *
+   * @return true if successful
+   */
+  virtual bool reinitForReDecompress(void) = 0;
 };
 
 } // namespace grk

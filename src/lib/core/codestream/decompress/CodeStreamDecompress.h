@@ -19,6 +19,7 @@
 
 #include "ConcurrentQueue.h"
 #include "TFSingleton.h"
+#include "CompressedChunkCache.h"
 
 namespace grk
 {
@@ -465,6 +466,9 @@ private:
   std::thread decompressWorker_;
 
   std::shared_ptr<ChunkBuffer<>> chunkBuffer_;
+
+  // Compressed chunk cache: stores fetched compressed data for re-decompression
+  std::unique_ptr<CompressedChunkCache> compressedChunkCache_;
 
   // Tile batching
 

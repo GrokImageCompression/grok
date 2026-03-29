@@ -595,6 +595,7 @@ typedef struct _grk_stream_params
 #define GRK_TILE_CACHE_NONE 0 /* no tile caching */
 #define GRK_TILE_CACHE_IMAGE 1 /* cache final tile image */
 #define GRK_TILE_CACHE_ALL 2 /* cache everything */
+#define GRK_TILE_CACHE_LRU 4 /* LRU: release decompressed data, keep processor */
 
 typedef struct _grk_image grk_image;
 

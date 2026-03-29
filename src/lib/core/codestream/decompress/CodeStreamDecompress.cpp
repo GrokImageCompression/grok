@@ -140,6 +140,14 @@ void CodeStreamDecompress::init(grk_decompress_parameters* parameters)
   ioUserData_ = core->io_user_data;
   grkRegisterReclaimCallback_ = core->io_register_client_callback;
 
+  // Initialize compressed chunk cache for LRU + network fetches
+  if((core->tile_cache_strategy & GRK_TILE_CACHE_LRU) && stream_->getFetcher())
+  {
+    auto diskCache = std::make_shared<DiskCache>();
+    compressedChunkCache_ =
+        std::make_unique<CompressedChunkCache>(0, diskCache, stream_->getFormat());
+  }
+
   postReadHeader();
 }
 
@@ -195,11 +203,34 @@ bool CodeStreamDecompress::decompressImpl(std::set<uint16_t> slated)
   if(slated.empty())
     return true;
 
-  bool doDifferential = true;
+  // Extract LRU-evicted tiles that can be re-decompressed from cache
+  // (opt-in: only when compressed chunk cache is active and TLM is present)
+  std::set<uint16_t> reDecompressTiles;
+  if(compressedChunkCache_ && cp_.hasTLM())
+  {
+    for(auto it = slated.begin(); it != slated.end();)
+    {
+      auto cacheEntry = tileCache_->get(*it);
+      if(cacheEntry && cacheEntry->processor->getImage() && !cacheEntry->processor->getTile() &&
+         cacheEntry->dirty_ && compressedChunkCache_->contains(*it))
+      {
+        reDecompressTiles.insert(*it);
+        it = slated.erase(it);
+      }
+      else
+      {
+        ++it;
+      }
+    }
+  }
+
+  // Require tile_ to exist for differential updates — an LRU-evicted tile
+  // without cached compressed data must go through the full decompress path
+  bool doDifferential = !slated.empty();
   for(auto& tileIndex : slated)
   {
     auto cacheEntry = tileCache_->get(tileIndex);
-    if(!cacheEntry || !cacheEntry->processor->getImage())
+    if(!cacheEntry || !cacheEntry->processor->getImage() || !cacheEntry->processor->getTile())
     {
       doDifferential = false;
       break;
@@ -212,6 +243,24 @@ bool CodeStreamDecompress::decompressImpl(std::set<uint16_t> slated)
     return false;
   success_ = true;
   numTilesDecompressed_ = 0;
+
+  // Re-decompress LRU-evicted tiles from compressed chunk cache
+  for(auto tileIndex : reDecompressTiles)
+  {
+    auto cacheEntry = tileCache_->get(tileIndex);
+    auto proc = cacheEntry->processor;
+    auto cachedSeq = compressedChunkCache_->get(tileIndex);
+    if(!cachedSeq || !proc->reinitForReDecompress())
+      continue;
+    auto generator = [this](ITileProcessor* tp) { return postMultiTile(tp); };
+    auto decompressTask =
+        genDecompressTileTLMTask(proc, cachedSeq, scratchImage_->getBounds(), generator);
+    decompressTask();
+    cacheEntry->dirty_ = false;
+  }
+
+  if(slated.empty())
+    return true;
 
   // synchronous batch init
   if(doTileBatching() && !cp_.hasTLM())
@@ -1365,6 +1414,11 @@ bool CodeStreamDecompress::fetchByTile(
         if(tilePartSeq->incrementFetchCount() == tilePartSeq->size())
         {
           auto tileIndex = tilePart->tileIndex_;
+
+          // Register compressed data with cache for re-decompression
+          if(compressedChunkCache_)
+            compressedChunkCache_->put(tileIndex, tilePartSeq);
+
           // Track the highest tile row that has been fully fetched
           int32_t tileRow = tileIndex / numTileCols;
           int32_t prev = maxFetchedTileRow_.load(std::memory_order_acquire);

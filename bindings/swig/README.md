@@ -281,6 +281,7 @@ grok_core.grk_object_unref(codec)
 | `GRK_TILE_CACHE_NONE` | 0 | No tile caching |
 | `GRK_TILE_CACHE_IMAGE` | 1 | Cache tile images |
 | `GRK_TILE_CACHE_ALL` | 2 | Cache everything |
+| `GRK_TILE_CACHE_LRU` | 4 | LRU: evict decompressed data, re-decompress from cached compressed chunks |
 
 ## Running Tests
 

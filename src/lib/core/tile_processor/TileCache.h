@@ -18,6 +18,7 @@
 #pragma once
 
 #include <vector>
+#include <list>
 #include <algorithm>
 
 namespace grk
@@ -43,11 +44,16 @@ struct TileCacheEntry
 /**
  * @class TileCache
  * @brief Cache tile processors using a simple array, initialized with the total number of tiles.
+ *
+ * When LRU eviction is enabled (maxActiveTiles_ > 0), accessing a tile promotes it
+ * in the LRU list. When the active tile count exceeds the limit, the least-recently-used
+ * tile's decompressed data is released via GRK_TILE_CACHE_LRU. The processor remains
+ * so re-decompression can occur from the CompressedChunkCache.
  */
 class TileCache
 {
 public:
-  TileCache() : strategy_(GRK_TILE_CACHE_NONE), initialized_(false) {}
+  TileCache() : strategy_(GRK_TILE_CACHE_NONE), initialized_(false), maxActiveTiles_(0) {}
 
   ~TileCache()
   {
@@ -82,6 +88,20 @@ public:
   uint32_t getStrategy() const
   {
     return strategy_;
+  }
+
+  /**
+   * @brief Set the maximum number of tiles that can hold decompressed data simultaneously.
+   * 0 means no limit (all tiles stay active).
+   */
+  void setMaxActiveTiles(uint16_t maxActive)
+  {
+    maxActiveTiles_ = maxActive;
+  }
+
+  uint16_t getMaxActiveTiles() const
+  {
+    return maxActiveTiles_;
   }
 
   void setTruncated(void)
@@ -135,6 +155,11 @@ public:
         delete cache_[tile_index]->processor;
       cache_[tile_index]->processor = processor;
     }
+
+    // LRU: promote this tile and evict if over limit
+    promoteLRU(tile_index);
+    evictLRU();
+
     return cache_[tile_index];
   }
 
@@ -142,6 +167,11 @@ public:
   {
     if(tile_index >= cache_.size())
       return nullptr;
+
+    // LRU: promote on access
+    if(cache_[tile_index] && cache_[tile_index]->processor)
+      promoteLRU(tile_index);
+
     return cache_[tile_index];
   }
 
@@ -207,9 +237,47 @@ public:
   }
 
 private:
+  /**
+   * @brief Move a tile to the front of the LRU list (most recently used).
+   */
+  void promoteLRU(uint16_t tileIndex)
+  {
+    if(maxActiveTiles_ == 0)
+      return; // LRU disabled
+
+    // Remove existing entry if present
+    lruList_.remove(tileIndex);
+    lruList_.push_front(tileIndex);
+  }
+
+  /**
+   * @brief Evict least-recently-used tiles when over the active limit.
+   *
+   * Eviction releases the tile's decompressed data via GRK_TILE_CACHE_LRU
+   * but keeps the processor for potential re-decompression.
+   */
+  void evictLRU()
+  {
+    if(maxActiveTiles_ == 0)
+      return; // LRU disabled
+
+    while(lruList_.size() > maxActiveTiles_)
+    {
+      uint16_t victim = lruList_.back();
+      lruList_.pop_back();
+
+      if(victim < cache_.size() && cache_[victim] && cache_[victim]->processor)
+      {
+        cache_[victim]->processor->release(GRK_TILE_CACHE_LRU);
+      }
+    }
+  }
+
   std::vector<TileCacheEntry*> cache_; // Array of cache entries
+  std::list<uint16_t> lruList_; // Front = MRU, back = LRU (tile indices with active data)
   uint32_t strategy_; // Cache strategy
   bool initialized_; // Flag to prevent reinitialization
+  uint16_t maxActiveTiles_; // Max tiles with decompressed data (0 = unlimited)
 };
 
 } // namespace grk

@@ -339,6 +339,7 @@ struct TileProcessor : virtual public ITileProcessor
   bool isBestEffortDecompressed(void) override;
   void setBestEffortDecompressed(void) override;
   void resetSOTParsing() override;
+  bool reinitForReDecompress(void) override;
 
 protected:
   /**
