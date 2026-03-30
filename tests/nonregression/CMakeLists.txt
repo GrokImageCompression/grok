@@ -198,10 +198,17 @@ function(add_decoder_test EXE_NAME ARGS INPUT_FILENAME OUTPUT_FILENAME TEST_NUM 
   else()
     if(NOT IS_CORE_DEC)
       # MD5 Check: Verify the decoded output against registered md5 checksums
+      # Build a platform key: e.g. "Linux", "Linux-static", "Darwin", "Windows"
+      if(BUILD_SHARED_LIBS)
+          set(_md5_platform "${CMAKE_SYSTEM_NAME}")
+      else()
+          set(_md5_platform "${CMAKE_SYSTEM_NAME}-static")
+      endif()
       add_test(NAME NR-DEC-${INPUT_FILENAME_NAME}-${TEST_NUM}-decode-md5
                COMMAND ${CMAKE_COMMAND}
                        -DREFFILE:STRING=${CMAKE_CURRENT_SOURCE_DIR}/md5refs.txt
                        -DOUTFILENAME:STRING=${OUTPUT_FILENAME}
+                       -DSYSTEM_NAME:STRING=${_md5_platform}
                        -P ${CMAKE_CURRENT_SOURCE_DIR}/checkmd5refs.cmake)
       set_tests_properties(NR-DEC-${INPUT_FILENAME_NAME}-${TEST_NUM}-decode-md5
                            PROPERTIES DEPENDS NR-DEC-${INPUT_FILENAME_NAME}-${TEST_NUM}-decode)

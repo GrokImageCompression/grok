@@ -14,6 +14,23 @@ set(GROK_CODEC_INCLUDE_PATH "${CMAKE_SOURCE_DIR}/src/lib/codec")
 
 # --- Python bindings ---
 if(GRK_BUILD_PYTHON_SWIG)
+    # Python extension modules MUST use the dynamic C++ runtime even in static builds.
+    # ucm_set_runtime(STATIC) adds -static-libstdc++ / -static-libgcc to CMAKE_CXX_FLAGS
+    # globally.  Embedding a private copy inside a .so that Python dlopen's causes
+    # duplicate RTTI / global state alongside Python's own libstdc++ -> segfault.
+    # Strip these flags at directory scope so all SWIG MODULE targets link dynamically.
+    if(NOT BUILD_SHARED_LIBS AND CMAKE_CXX_COMPILER_ID MATCHES "GNU" AND UNIX)
+        string(REGEX REPLACE "-static-libstdc\\+\\+" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+        string(REGEX REPLACE "-static-libgcc" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+        foreach(_config ${CMAKE_CONFIGURATION_TYPES} ${CMAKE_BUILD_TYPE})
+            if(_config)
+                string(TOUPPER "${_config}" _CONFIG)
+                string(REGEX REPLACE "-static-libstdc\\+\\+" "" CMAKE_CXX_FLAGS_${_CONFIG} "${CMAKE_CXX_FLAGS_${_CONFIG}}")
+                string(REGEX REPLACE "-static-libgcc" "" CMAKE_CXX_FLAGS_${_CONFIG} "${CMAKE_CXX_FLAGS_${_CONFIG}}")
+            endif()
+        endforeach()
+    endif()
+
     find_package(Python3 COMPONENTS Interpreter Development REQUIRED)
     include_directories(${Python3_INCLUDE_DIRS})
 
@@ -96,6 +113,7 @@ if(GRK_BUILD_PYTHON_SWIG)
             COMMENT "Copying grok_codec.py to bin directory"
         )
     endif()
+
 endif()
 
 # --- C# bindings ---

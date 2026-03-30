@@ -99,16 +99,39 @@ def update_md5refs(md5refs_path, mismatches):
 
 
 def main():
+    import argparse
+
+    parser = argparse.ArgumentParser(
+        description="Update md5refs.txt (or a platform-specific override) from ctest LastTest.log"
+    )
+    parser.add_argument("files", nargs="*", help="Optional: path to LastTest.log or md5refs.txt")
+    parser.add_argument(
+        "--platform",
+        metavar="NAME",
+        help=(
+            "Write to md5refs-NAME.txt instead of md5refs.txt. "
+            "Use the platform key set by CMake: Darwin, Windows, Linux, "
+            "Linux-static, Darwin-static, Windows-static. "
+            "Example: --platform Linux-static"
+        ),
+    )
+    args = parser.parse_args()
+
     log_path = LOG_PATH
     md5refs_path = MD5REFS_PATH
 
-    # Allow overrides from command line
-    for arg in sys.argv[1:]:
+    for arg in args.files:
         p = Path(arg)
         if p.name == "LastTest.log":
             log_path = p
-        elif p.name == "md5refs.txt":
+        elif "md5refs" in p.name:
             md5refs_path = p
+
+    if args.platform:
+        md5refs_path = md5refs_path.parent / f"md5refs-{args.platform}.txt"
+        if not md5refs_path.exists():
+            md5refs_path.write_text("")
+            print(f"Created new file: {md5refs_path}")
 
     if not log_path.exists():
         sys.exit(f"Log file not found: {log_path}")

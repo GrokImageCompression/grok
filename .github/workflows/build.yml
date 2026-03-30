@@ -107,22 +107,16 @@ jobs:
     - name: test
       working-directory: ${{ github.workspace }}/build
       shell: bash
-      continue-on-error: true # Allow test failures, but no other failures
       run: |
         ctest --output-on-failure -C $BUILD_TYPE --output-junit test-results-${{ matrix.os }}-${{ matrix.shared_libs_flag }}.xml
-        if [ $? -eq 0 ]; then
-          echo "Tests passed" > test-status.txt
-        else
-          echo "Tests had failures (ignored due to continue-on-error)" > test-status.txt
-        fi
     - name: Upload test results
-      if: always() # Upload even if tests fail
+      if: always()
       uses: actions/upload-artifact@v4
       with:
-        name: test-results-${{ matrix.os }}-${{ matrix.shared_libs_flag }}
+        name: test-results-${{ matrix.os }}-shared_${{ matrix.shared_libs_flag }}
         path: |
           ${{ github.workspace }}/build/test-results-${{ matrix.os }}-${{ matrix.shared_libs_flag }}.xml
-          ${{ github.workspace }}/build/test-status.txt
+          ${{ github.workspace }}/build/Testing/Temporary/LastTest.log
     - name: package
       if: ${{ matrix.shared_libs_flag == 'ON' }}
       working-directory: ${{ github.workspace }}/build
@@ -132,6 +126,7 @@ jobs:
         cmake --build . --config $BUILD_TYPE --target package
         7z x grok-${{ matrix.os }}.zip
     - name: publish
+      if: ${{ matrix.shared_libs_flag == 'ON' }}
       uses: actions/upload-artifact@v4
       with:
         name: grok-${{ matrix.os }}

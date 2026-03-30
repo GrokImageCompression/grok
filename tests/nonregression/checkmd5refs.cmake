@@ -32,11 +32,28 @@
 # we do not really care about the exact pixel value, we simply need to known
 # when a code change impact output generation. 
 
-# This script expect two inputs
-# REFFILE: Path to the md5sum.txt file
-# OUTFILENAME: The name of the generated file we want to check The script will
-# check whether a PGX or a PNG file was generated in the test suite (computed
-# from OUTFILENAME)
+# This script expects:
+# REFFILE:      Path to the canonical md5refs.txt file
+# OUTFILENAME:  The name of the generated file to check
+# SYSTEM_NAME:  (optional) CMAKE_SYSTEM_NAME — used to select a platform-specific
+#               md5refs-<SYSTEM_NAME>.txt that overrides REFFILE when it exists.
+#               This lets Linux/macOS/Windows carry different checksums for
+#               floating-point-sensitive codecs (e.g. 9/7 wavelet) without
+#               requiring separate branches.
+
+# Resolve the active reference file: prefer platform-specific override.
+set(ACTIVE_REFFILE "${REFFILE}")
+if(SYSTEM_NAME)
+    get_filename_component(_refdir  "${REFFILE}" DIRECTORY)
+    get_filename_component(_refname "${REFFILE}" NAME_WE)
+    get_filename_component(_refext  "${REFFILE}" EXT)
+    set(_platform_reffile "${_refdir}/${_refname}-${SYSTEM_NAME}${_refext}")
+    if(EXISTS "${_platform_reffile}")
+        set(ACTIVE_REFFILE "${_platform_reffile}")
+        message(STATUS "Using platform-specific MD5 refs: ${_platform_reffile}")
+    endif()
+endif()
+
 # Extract filename without extension
 get_filename_component(OUTFILENAME_NAME_WE ${OUTFILENAME} NAME_WE)
 
@@ -53,8 +70,8 @@ if(NOT globfiles)
     message(SEND_ERROR "Could not find output PGX/PGM/PNG/BMP/TIF files: ${OUTFILENAME_NAME_WE}")
 endif()
 
-# Read the reference file (REFFILE) content to variable
-file(READ ${REFFILE} ref_content)
+# Read the active reference file content
+file(READ ${ACTIVE_REFFILE} ref_content)
 
 # Loop through all globbed files and compare MD5 hash
 foreach(file_path ${globfiles})
