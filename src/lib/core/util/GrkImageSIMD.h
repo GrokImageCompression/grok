@@ -99,31 +99,30 @@ GRK_SIMD_API void hwy_unpack_16be_to_i32(const uint8_t* src, int32_t* dest, size
 
 /* Unpack machine-endian uint16 → int32 array, with optional 16-bit XOR invert.
  * Used by TIFF decode (N=16 path, libtiff already decoded to native byte order). */
-GRK_SIMD_API void hwy_unpack_16le_to_i32(const uint16_t* src, int32_t* dest, size_t w,
-                                          bool invert);
+GRK_SIMD_API void hwy_unpack_16le_to_i32(const uint16_t* src, int32_t* dest, size_t w, bool invert);
 
 /* Deinterleave packed int32 buffer [R0,G0,B0,R1,G1,B1,...] into separate component
  * planes. Optimised for numComps == 3 and 4; falls back to scalar for others. */
 GRK_SIMD_API void hwy_deinterleave_i32(const int32_t* src, int32_t* const* dest, uint32_t w,
-                                        uint16_t numComps);
+                                       uint16_t numComps);
 
 /* Pack N planar int32 components into interleaved uint8 output, one row at a time.
  * Each src[k] points to the start of the k-th component for this row.
  * adjust is added to each sample before narrowing to uint8. */
-GRK_SIMD_API void hwy_pack_planar_to_8(const int32_t* const* src, uint32_t numPlanes,
-                                        uint8_t* dest, uint32_t w, int32_t adjust);
+GRK_SIMD_API void hwy_pack_planar_to_8(const int32_t* const* src, uint32_t numPlanes, uint8_t* dest,
+                                       uint32_t w, int32_t adjust);
 
 /* Pack N planar int32 components into interleaved machine-endian uint16 output.
  * Same semantics as hwy_pack_planar_to_8 but for 16-bit output. */
 GRK_SIMD_API void hwy_pack_planar_to_16(const int32_t* const* src, uint32_t numPlanes,
-                                         uint16_t* dest, uint32_t w, int32_t adjust);
+                                        uint16_t* dest, uint32_t w, int32_t adjust);
 
 /* Scale int32 component data by power-of-two multiply, with stride. */
 GRK_SIMD_API void hwy_scale_component_up(int32_t* data, uint32_t w, uint32_t h, uint32_t stride,
-                                          int32_t scale);
+                                         int32_t scale);
 
 /* Scale int32 component data by power-of-two divide, with stride. */
 GRK_SIMD_API void hwy_scale_component_down(int32_t* data, uint32_t w, uint32_t h, uint32_t stride,
-                                            int32_t scale);
+                                           int32_t scale);
 
 } // namespace grk

@@ -566,8 +566,8 @@ namespace HWY_NAMESPACE
   }
 
   /* ─── Unpack big-endian uint16 pairs → int32 (PNG decode path) ─── */
-  static void Hwy_unpack_16be_to_i32(const uint8_t* HWY_RESTRICT src,
-                                     int32_t* HWY_RESTRICT dest, size_t w, bool invert)
+  static void Hwy_unpack_16be_to_i32(const uint8_t* HWY_RESTRICT src, int32_t* HWY_RESTRICT dest,
+                                     size_t w, bool invert)
   {
     const HWY_FULL(int32_t) di;
     const uint32_t L = (uint32_t)Lanes(di);
@@ -594,8 +594,8 @@ namespace HWY_NAMESPACE
   }
 
   /* ─── Unpack machine-endian uint16 → int32 (TIFF decode path) ─── */
-  static void Hwy_unpack_16le_to_i32(const uint16_t* HWY_RESTRICT src,
-                                     int32_t* HWY_RESTRICT dest, size_t w, bool invert)
+  static void Hwy_unpack_16le_to_i32(const uint16_t* HWY_RESTRICT src, int32_t* HWY_RESTRICT dest,
+                                     size_t w, bool invert)
   {
     const HWY_FULL(int32_t) di;
     const hn::Rebind<uint16_t, decltype(di)> du16_part;
@@ -975,30 +975,32 @@ GRK_SIMD_API void hwy_unpack_16le_to_i32(const uint16_t* src, int32_t* dest, siz
   HWY_DYNAMIC_DISPATCH(Hwy_unpack_16le_to_i32)(src, dest, w, invert);
 }
 
-GRK_SIMD_API void hwy_deinterleave_i32(const int32_t* src, int32_t* const* dest, uint32_t w, uint16_t numComps)
+GRK_SIMD_API void hwy_deinterleave_i32(const int32_t* src, int32_t* const* dest, uint32_t w,
+                                       uint16_t numComps)
 {
   HWY_DYNAMIC_DISPATCH(Hwy_deinterleave_i32)(src, dest, w, numComps);
 }
 
 GRK_SIMD_API void hwy_pack_planar_to_8(const int32_t* const* src, uint32_t numPlanes, uint8_t* dest,
-                          uint32_t w, int32_t adjust)
+                                       uint32_t w, int32_t adjust)
 {
   HWY_DYNAMIC_DISPATCH(Hwy_pack_planar_to_8)(src, numPlanes, dest, w, adjust);
 }
 
-GRK_SIMD_API void hwy_pack_planar_to_16(const int32_t* const* src, uint32_t numPlanes, uint16_t* dest,
-                           uint32_t w, int32_t adjust)
+GRK_SIMD_API void hwy_pack_planar_to_16(const int32_t* const* src, uint32_t numPlanes,
+                                        uint16_t* dest, uint32_t w, int32_t adjust)
 {
   HWY_DYNAMIC_DISPATCH(Hwy_pack_planar_to_16)(src, numPlanes, dest, w, adjust);
 }
 
-GRK_SIMD_API void hwy_scale_component_up(int32_t* data, uint32_t w, uint32_t h, uint32_t stride, int32_t scale)
+GRK_SIMD_API void hwy_scale_component_up(int32_t* data, uint32_t w, uint32_t h, uint32_t stride,
+                                         int32_t scale)
 {
   HWY_DYNAMIC_DISPATCH(Hwy_scale_component_up)(data, w, h, stride, scale);
 }
 
 GRK_SIMD_API void hwy_scale_component_down(int32_t* data, uint32_t w, uint32_t h, uint32_t stride,
-                              int32_t scale)
+                                           int32_t scale)
 {
   HWY_DYNAMIC_DISPATCH(Hwy_scale_component_down)(data, w, h, stride, scale);
 }

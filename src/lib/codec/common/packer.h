@@ -483,8 +483,8 @@ public:
     {
       for(uint32_t i = 0; i < h; i++)
       {
-        grk::hwy_pack_planar_to_8(const_cast<const int32_t* const*>(src), numPlanes, dest,
-                                  srcWidth, adjust);
+        grk::hwy_pack_planar_to_8(const_cast<const int32_t* const*>(src), numPlanes, dest, srcWidth,
+                                  adjust);
         dest += destStride;
         for(size_t k = 0; k < numPlanes; ++k)
           src[k] += srcStride;

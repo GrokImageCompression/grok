@@ -654,8 +654,7 @@ grk_image* PNGFormat<T>::do_decode(grk_cparameters* params)
     for(uint16_t c = 0; c < nr_comp_; ++c)
       planeBase[c] = (T*)image_->comps[c].data;
 
-    auto worker = [&](uint32_t rowBegin, uint32_t rowEnd)
-    {
+    auto worker = [&](uint32_t rowBegin, uint32_t rowEnd) {
       // per-thread temp buffer
       T* row32s = (T*)malloc(pixelCount * sizeof(T));
       if(!row32s)

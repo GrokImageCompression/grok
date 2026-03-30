@@ -213,7 +213,8 @@ bool FileFormatJP2Family::readHeader(grk_header_info* header_info, GrkImage* hea
 
       // expose additional XML boxes
       header_info->num_xml_boxes = (xml.buf() && xml.num_elts()) ? 1 : 0;
-      for(uint32_t i = 0; i < numXmlBoxes && header_info->num_xml_boxes < GRK_NUM_XML_BOXES_SUPPORTED; ++i)
+      for(uint32_t i = 0;
+          i < numXmlBoxes && header_info->num_xml_boxes < GRK_NUM_XML_BOXES_SUPPORTED; ++i)
       {
         auto idx = header_info->num_xml_boxes;
         header_info->xml_boxes_data[idx] = xml_boxes[i].buf();

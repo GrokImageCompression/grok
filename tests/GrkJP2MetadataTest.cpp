@@ -207,8 +207,8 @@ static int testIPR(const std::string& tmpDir)
   spdlog::info("=== Test: IPR box round-trip ===");
 
   const char* iprXml = "<GDALMultiDomainMetadata><Metadata domain=\"xml:IPR\">"
-                        "<TestIPR>Sample IPR Data</TestIPR>"
-                        "</Metadata></GDALMultiDomainMetadata>";
+                       "<TestIPR>Sample IPR Data</TestIPR>"
+                       "</Metadata></GDALMultiDomainMetadata>";
   size_t iprLen = strlen(iprXml);
 
   auto* meta = grk_image_meta_new();
@@ -586,8 +586,7 @@ static int testCombinedMetadata(const std::string& tmpDir)
   bool ok = true;
 
   // Verify GeoTIFF
-  if(!image->meta || !image->meta->geotiff_buf ||
-     image->meta->geotiff_len != strlen(geoData) ||
+  if(!image->meta || !image->meta->geotiff_buf || image->meta->geotiff_len != strlen(geoData) ||
      memcmp(image->meta->geotiff_buf, geoData, strlen(geoData)) != 0)
   {
     spdlog::error("Combined: GeoTIFF mismatch");

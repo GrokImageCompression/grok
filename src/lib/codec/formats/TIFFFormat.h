@@ -1472,8 +1472,7 @@ bool TIFFFormat<T>::readTiffPixels(TIFF* tif, grk_image_comp* comps, uint16_t nu
             }
 
             std::atomic<bool> convOk{true};
-            uint32_t nThreads =
-                (std::min)(rowCount, (uint32_t)std::thread::hardware_concurrency());
+            uint32_t nThreads = (std::min)(rowCount, (uint32_t)std::thread::hardware_concurrency());
             if(nThreads < 2)
               nThreads = 1;
 

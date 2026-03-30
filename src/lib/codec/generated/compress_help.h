@@ -4,7 +4,7 @@
 
 // NOLINTNEXTLINE
 static const char compress_help_text[] =
-R"HELPTEXT(* Supported input formats:  `JPEG`, `BMP`, `PNM`, `PGX`, `PNG`, `RAW`, `RAWL` and `TIFF`
+    R"HELPTEXT(* Supported input formats:  `JPEG`, `BMP`, `PNM`, `PGX`, `PNG`, `RAW`, `RAWL` and `TIFF`
 * Supported input image extensions:  `jpg`, `.jpeg`, `.bmp`, `.pgm`, `.pgx`, `.pnm`, `.ppm`, `.pam`, `.png`, `.raw`, `.rawl`, `.tif` and `.tiff`
 * Supported output formats: `JP2`, `J2K`/`J2C`, `JPH`, `JHC` and `MJ2` (Motion JPEG 2000)
 * Supported output image extensions: `.jp2`, `.j2k`/`.j2c`, `.jph`, `.jhc` and `.mj2`
@@ -287,7 +287,7 @@ For custom MCT, `-m` option has to be used (see below). By default, `RGB`->`YCC`
 `-m, --custom-mct [file]`
 
 )HELPTEXT"
-R"HELPTEXT(Use custom array-based MCT of 32 bit signed values, comma separated, line-by-line no specific separators between lines, no space allowed between values. If this option is used, it automatically sets `[-Y|-mct]` option equal to 2.
+    R"HELPTEXT(Use custom array-based MCT of 32 bit signed values, comma separated, line-by-line no specific separators between lines, no space allowed between values. If this option is used, it automatically sets `[-Y|-mct]` option equal to 2.
 
 `-Q, --capture-res [capture resolution X,capture resolution Y]`
 

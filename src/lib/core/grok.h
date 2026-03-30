@@ -1165,7 +1165,7 @@ GRK_API grk_image_meta* GRK_CALLCONV grk_image_meta_new(void);
  * @return true on success, false on invalid field name or OOM
  */
 GRK_API bool GRK_CALLCONV grk_image_meta_set_field(grk_image_meta* meta, const char* field,
-                                                    const uint8_t* data, size_t len);
+                                                   const uint8_t* data, size_t len);
 
 /**
  * @brief Get a metadata buffer from a grk_image_meta object.
@@ -1181,7 +1181,7 @@ GRK_API bool GRK_CALLCONV grk_image_meta_set_field(grk_image_meta* meta, const c
  * @return true on success (even if data is NULL/empty), false on invalid field
  */
 GRK_API bool GRK_CALLCONV grk_image_meta_get_field(grk_image_meta* meta, const char* field,
-                                                    uint8_t** data, size_t* len);
+                                                   uint8_t** data, size_t* len);
 
 /**
  * @brief Creates and initializes a JPEG 2000 decompressor.

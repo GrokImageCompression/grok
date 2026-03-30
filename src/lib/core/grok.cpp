@@ -399,14 +399,15 @@ static bool resolve_meta_field(grk_image_meta* meta, const char* field, uint8_t*
   return true;
 }
 
-bool grk_image_meta_set_field(grk_image_meta* meta, const char* field, const uint8_t* data, size_t len)
+bool grk_image_meta_set_field(grk_image_meta* meta, const char* field, const uint8_t* data,
+                              size_t len)
 {
   uint8_t** buf_p = nullptr;
   size_t* len_p = nullptr;
   if(!resolve_meta_field(meta, field, &buf_p, &len_p))
     return false;
 
-  delete[] * buf_p;
+  delete[] *buf_p;
   *buf_p = nullptr;
   *len_p = 0;
 
