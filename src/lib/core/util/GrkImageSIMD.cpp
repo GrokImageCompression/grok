@@ -843,20 +843,16 @@ namespace HWY_NAMESPACE
   static void Hwy_scale_component_down(int32_t* data, uint32_t w, uint32_t h, uint32_t stride,
                                        int32_t scale)
   {
-    const HWY_FULL(float) df;
     const HWY_FULL(int32_t) di;
-    const uint32_t L = (uint32_t)Lanes(df);
-    const auto vScale = Set(df, (float)scale);
+    const uint32_t L = (uint32_t)Lanes(di);
+    const auto vScale = Set(di, scale);
 
     for(uint32_t j = 0; j < h; ++j)
     {
       int32_t* row = data + j * stride;
       uint32_t i = 0;
       for(; i + L <= w; i += L)
-      {
-        auto v = ConvertTo(df, LoadU(di, row + i));
-        StoreU(ConvertTo(di, Div(v, vScale)), di, row + i);
-      }
+        StoreU(Div(LoadU(di, row + i), vScale), di, row + i);
       for(; i < w; ++i)
         row[i] /= scale;
     }
