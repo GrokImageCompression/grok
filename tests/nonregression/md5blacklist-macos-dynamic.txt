@@ -1,0 +1,5 @@
+# Platform-specific MD5 blacklist for macOS (shared/dynamic build).
+# Files listed here are skipped during MD5 regression checking because
+# their decoded output is non-deterministic across builds on this platform.
+# One filename per line (e.g. "Bretagne2.j2k_0.pgx"), or "*" to skip all.
+*

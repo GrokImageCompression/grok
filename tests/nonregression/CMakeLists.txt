@@ -198,17 +198,37 @@ function(add_decoder_test EXE_NAME ARGS INPUT_FILENAME OUTPUT_FILENAME TEST_NUM 
   else()
     if(NOT IS_CORE_DEC)
       # MD5 Check: Verify the decoded output against registered md5 checksums
-      # Build a platform key: e.g. "Linux", "Linux-static", "Darwin", "Windows"
-      if(BUILD_SHARED_LIBS)
-          set(_md5_platform "${CMAKE_SYSTEM_NAME}")
+      # Build a platform key matching the CI matrix naming convention:
+      #   ubuntu-dynamic, ubuntu-static, macos-dynamic, macos-static,
+      #   windows-dynamic, windows-static
+      # The canonical md5refs.txt is ubuntu-dynamic, so that combo gets an
+      # empty key (no platform override file needed).
+      set(_os_key "")
+      if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+          set(_os_key "ubuntu")
+      elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+          set(_os_key "macos")
+      elseif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+          set(_os_key "windows")
       else()
-          set(_md5_platform "${CMAKE_SYSTEM_NAME}-static")
+          set(_os_key "${CMAKE_SYSTEM_NAME}")
+      endif()
+      if(BUILD_SHARED_LIBS)
+          set(_link_key "dynamic")
+      else()
+          set(_link_key "static")
+      endif()
+      # ubuntu-dynamic is canonical — no platform key needed
+      if(_os_key STREQUAL "ubuntu" AND _link_key STREQUAL "dynamic")
+          set(_md5_platform "")
+      else()
+          set(_md5_platform "${_os_key}-${_link_key}")
       endif()
       add_test(NAME NR-DEC-${INPUT_FILENAME_NAME}-${TEST_NUM}-decode-md5
                COMMAND ${CMAKE_COMMAND}
                        -DREFFILE:STRING=${CMAKE_CURRENT_SOURCE_DIR}/md5refs.txt
                        -DOUTFILENAME:STRING=${OUTPUT_FILENAME}
-                       -DSYSTEM_NAME:STRING=${_md5_platform}
+                       -DPLATFORM_KEY:STRING=${_md5_platform}
                        -P ${CMAKE_CURRENT_SOURCE_DIR}/checkmd5refs.cmake)
       set_tests_properties(NR-DEC-${INPUT_FILENAME_NAME}-${TEST_NUM}-decode-md5
                            PROPERTIES DEPENDS NR-DEC-${INPUT_FILENAME_NAME}-${TEST_NUM}-decode)

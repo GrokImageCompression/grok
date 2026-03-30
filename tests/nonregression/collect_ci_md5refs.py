@@ -23,13 +23,15 @@ SCRIPT_DIR = Path(__file__).parent
 
 # Maps artifact name pattern -> platform key for update_md5refs.py
 # Artifact names: test-results-<os>-shared_<ON|OFF>
+# Platform keys follow CI matrix naming: <os>-<dynamic|static>
+# ubuntu-dynamic is canonical (md5refs.txt) — no platform override needed.
 ARTIFACT_PLATFORM_MAP = {
-    ("macos-latest",  "ON"):  "Darwin",
-    ("macos-latest",  "OFF"): "Darwin-static",
-    ("windows-latest","ON"):  "Windows",
-    ("windows-latest","OFF"): "Windows-static",
+    ("macos-latest",  "ON"):  "macos-dynamic",
+    ("macos-latest",  "OFF"): "macos-static",
+    ("windows-latest","ON"):  "windows-dynamic",
+    ("windows-latest","OFF"): "windows-static",
     ("ubuntu-latest", "ON"):  None,   # canonical md5refs.txt — skip
-    ("ubuntu-latest", "OFF"): "Linux-static",
+    ("ubuntu-latest", "OFF"): "ubuntu-static",
 }
 
 
@@ -69,6 +71,10 @@ def main():
     parser.add_argument("--repo", default=REPO)
     parser.add_argument("--dry-run", action="store_true",
                         help="Show what would be done without modifying md5refs files")
+    parser.add_argument("--data-dir", metavar="DIR", action="append",
+                        help="Pass --data-dir to update_md5refs.py for lossy verification")
+    parser.add_argument("--no-verify", action="store_true",
+                        help="Pass --no-verify to update_md5refs.py to skip lossy check")
     args = parser.parse_args()
 
     # Check gh is available
@@ -131,6 +137,11 @@ def main():
             print(f"\n--- {name} -> platform key: {platform_key} ---")
             cmd = [sys.executable, str(SCRIPT_DIR / "update_md5refs.py"),
                    "--platform", platform_key, str(log_path)]
+            if args.data_dir:
+                for d in args.data_dir:
+                    cmd.extend(["--data-dir", d])
+            if args.no_verify:
+                cmd.append("--no-verify")
             if args.dry_run:
                 print(f"  [dry-run] would run: {' '.join(cmd)}")
             else:
