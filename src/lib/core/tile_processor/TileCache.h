@@ -178,7 +178,7 @@ public:
   void release(uint16_t tileIndex)
   {
     if(cache_[tileIndex] && cache_[tileIndex]->processor)
-      cache_[tileIndex]->processor->release(GRK_TILE_CACHE_NONE);
+      cache_[tileIndex]->processor->release(strategy_);
   }
 
   void resetSOTParsing()
