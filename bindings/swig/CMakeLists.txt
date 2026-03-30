@@ -38,6 +38,17 @@ if(GRK_BUILD_PYTHON_SWIG)
     target_link_libraries(${GROK_SWIG_CORE_NAME} PRIVATE ${Python3_LIBRARIES} ${GROK_CORE_NAME})
 
     set(GROK_PYTHON_DEST_PATH "${CMAKE_BINARY_DIR}/bin")
+
+    # Force the native module (.so/.pyd) into bin/ on all configurations.
+    # Without this, multi-config generators (e.g. Visual Studio) place it in
+    # bin/<Config>/ which is not on PYTHONPATH and causes ModuleNotFoundError.
+    foreach(_cfg "" "_DEBUG" "_RELEASE" "_RELWITHDEBINFO" "_MINSIZEREL")
+        set_target_properties(${GROK_SWIG_CORE_NAME} PROPERTIES
+            "RUNTIME_OUTPUT_DIRECTORY${_cfg}" "${GROK_PYTHON_DEST_PATH}"
+            "LIBRARY_OUTPUT_DIRECTORY${_cfg}" "${GROK_PYTHON_DEST_PATH}"
+        )
+    endforeach()
+
     add_custom_command(
         TARGET ${GROK_SWIG_CORE_NAME}
         POST_BUILD
@@ -68,6 +79,13 @@ if(GRK_BUILD_PYTHON_SWIG)
 
         target_link_libraries(${GROK_SWIG_CODEC_NAME} PRIVATE
             ${Python3_LIBRARIES} ${GROK_CODEC_NAME} ${GROK_CORE_NAME})
+
+        foreach(_cfg "" "_DEBUG" "_RELEASE" "_RELWITHDEBINFO" "_MINSIZEREL")
+            set_target_properties(${GROK_SWIG_CODEC_NAME} PROPERTIES
+                "RUNTIME_OUTPUT_DIRECTORY${_cfg}" "${GROK_PYTHON_DEST_PATH}"
+                "LIBRARY_OUTPUT_DIRECTORY${_cfg}" "${GROK_PYTHON_DEST_PATH}"
+            )
+        endforeach()
 
         add_custom_command(
             TARGET ${GROK_SWIG_CODEC_NAME}
