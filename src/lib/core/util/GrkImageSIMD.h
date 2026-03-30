@@ -21,10 +21,14 @@
 #include "grok.h"
 
 /* Visibility macro for functions that need to be accessible from the codec library */
-#if defined(_WIN32) && defined(GRK_EXPORTS)
+#if defined(_WIN32)
+#ifdef GRK_STATIC
+#define GRK_SIMD_API
+#elif defined(GRK_EXPORTS)
 #define GRK_SIMD_API __declspec(dllexport)
-#elif defined(_WIN32)
+#else
 #define GRK_SIMD_API __declspec(dllimport)
+#endif
 #elif !defined(GRK_STATIC)
 #define GRK_SIMD_API __attribute__((visibility("default")))
 #else
