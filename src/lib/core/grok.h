@@ -771,6 +771,10 @@ typedef struct _grk_image_meta
   size_t geotiff_len; /* GeoTIFF UUID box data length */
   uint8_t* ipr_data; /* IPR (Intellectual Property) box data */
   size_t ipr_len; /* IPR box data length */
+  uint8_t* xml_buf; /* XML box data */
+  size_t xml_len; /* XML box data length */
+  grk_asoc* asoc_boxes; /* association boxes (for GMLJP2, etc.) */
+  uint32_t num_asoc_boxes; /* number of association box entries */
 } grk_image_meta;
 
 /**
@@ -1184,6 +1188,24 @@ GRK_API bool GRK_CALLCONV grk_image_meta_get_field(grk_image_meta* meta, const c
                                                    uint8_t** data, size_t* len);
 
 /**
+ * @brief Set association boxes on a grk_image_meta object for writing.
+ *
+ * The asoc array uses a flattened tree representation:
+ * - Level 0 entries are top-level association boxes
+ * - Level N entries are children of the most recent level N-1 entry
+ * Each entry has a label and optionally XML content.
+ *
+ * This is used for GMLJP2 metadata.  The data is copied internally.
+ *
+ * @param meta       pointer to an existing grk_image_meta
+ * @param asocs      array of association box entries
+ * @param num_asocs  number of entries in the array
+ * @return true on success, false on OOM or invalid input
+ */
+GRK_API bool GRK_CALLCONV grk_image_meta_set_asocs(grk_image_meta* meta, const grk_asoc* asocs,
+                                                   uint32_t num_asocs);
+
+/**
  * @brief Creates and initializes a JPEG 2000 decompressor.
  *
  * Opens the source stream and reads enough of the header to determine the
@@ -1552,6 +1574,11 @@ typedef struct _grk_cparameters
   bool write_plt; /* write PLT */
   bool write_tlm; /* write TLM */
   bool shared_memory_interface; /* shared memory interface */
+  bool jpx_branding; /* advertise jpx brand (enables asoc/lbl boxes) */
+  bool write_rreq; /* write reader requirements box */
+  uint16_t rreq_standard_features[8]; /* standard features for rreq box */
+  uint8_t num_rreq_standard_features; /* number of standard features */
+  bool geoboxes_after_jp2c; /* write metadata boxes (UUID, asoc, XML) after codestream */
 } grk_cparameters;
 
 /**

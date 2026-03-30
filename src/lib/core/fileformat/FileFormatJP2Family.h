@@ -27,6 +27,7 @@ const uint32_t JP2_SIG = 0x0d0a870a; /** JPEG 2000 signature */
 const uint32_t JP2_FTYP = 0x66747970; /** File type box */
 const uint32_t JP2_JP2 = 0x6a703220; /** File type fields */
 const uint32_t JP2_JPH = 0x6A706820;
+const uint32_t JP2_JPX = 0x6a707820; /** JPX file type */
 
 // JP2 Header
 const uint32_t JP2_JP2H = 0x6a703268; /** JP2 header box (super-box) */
@@ -39,6 +40,15 @@ const uint32_t JP2_CDEF = 0x63646566; /** Channel Definition box */
 const uint32_t JP2_RES = 0x72657320; /** Resolution box (super-box) */
 const uint32_t JP2_CAPTURE_RES = 0x72657363; /** Capture resolution box */
 const uint32_t JP2_DISPLAY_RES = 0x72657364; /** Display resolution box */
+
+// Boxes shared between compress and decompress
+const uint32_t JP2_JP2C = 0x6a703263; /** Contiguous code stream box */
+const uint32_t JP2_JP2I = 0x6a703269; /** Intellectual property box */
+const uint32_t JP2_XML = 0x786d6c20; /** XML box */
+const uint32_t JP2_UUID = 0x75756964; /** UUID box */
+const uint32_t JP2_ASOC = 0x61736f63; /** Associated data box */
+const uint32_t JP2_LBL = 0x6c626c20; /** Label box */
+const uint32_t JP2_RREQ = 0x72726571; /** Reader requirements box */
 
 #define GRK_BOX_SIZE 1024
 #define GRK_RESOLUTION_BOX_SIZE (4 + 4 + 10)

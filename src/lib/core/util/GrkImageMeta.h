@@ -36,6 +36,10 @@ public:
     geotiff_len = 0;
     ipr_data = nullptr;
     ipr_len = 0;
+    xml_buf = nullptr;
+    xml_len = 0;
+    asoc_boxes = nullptr;
+    num_asoc_boxes = 0;
     color = {};
   }
 
@@ -47,6 +51,16 @@ public:
     delete[] exif_buf;
     delete[] geotiff_buf;
     delete[] ipr_data;
+    delete[] xml_buf;
+    if(asoc_boxes)
+    {
+      for(uint32_t i = 0; i < num_asoc_boxes; ++i)
+      {
+        free((void*)asoc_boxes[i].label);
+        free(asoc_boxes[i].xml);
+      }
+      free(asoc_boxes);
+    }
   }
   void allocPalette(uint8_t num_channels, uint16_t num_entries)
   {

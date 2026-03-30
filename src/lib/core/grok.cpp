@@ -436,6 +436,56 @@ bool grk_image_meta_get_field(grk_image_meta* meta, const char* field, uint8_t**
   return true;
 }
 
+bool grk_image_meta_set_asocs(grk_image_meta* meta, const grk_asoc* asocs, uint32_t num_asocs)
+{
+  if(!meta || (!asocs && num_asocs > 0))
+    return false;
+
+  // Free existing asoc data
+  if(meta->asoc_boxes)
+  {
+    for(uint32_t i = 0; i < meta->num_asoc_boxes; ++i)
+    {
+      free((void*)meta->asoc_boxes[i].label);
+      free(meta->asoc_boxes[i].xml);
+    }
+    free(meta->asoc_boxes);
+    meta->asoc_boxes = nullptr;
+    meta->num_asoc_boxes = 0;
+  }
+
+  if(num_asocs == 0)
+    return true;
+
+  meta->asoc_boxes = (grk_asoc*)calloc(num_asocs, sizeof(grk_asoc));
+  if(!meta->asoc_boxes)
+    return false;
+
+  meta->num_asoc_boxes = num_asocs;
+  for(uint32_t i = 0; i < num_asocs; ++i)
+  {
+    meta->asoc_boxes[i].level = asocs[i].level;
+    if(asocs[i].label)
+    {
+      size_t label_len = strlen(asocs[i].label);
+      char* label_copy = (char*)malloc(label_len + 1);
+      if(!label_copy)
+        return false;
+      memcpy(label_copy, asocs[i].label, label_len + 1);
+      meta->asoc_boxes[i].label = label_copy;
+    }
+    if(asocs[i].xml && asocs[i].xml_len > 0)
+    {
+      meta->asoc_boxes[i].xml = (uint8_t*)malloc(asocs[i].xml_len);
+      if(!meta->asoc_boxes[i].xml)
+        return false;
+      memcpy(meta->asoc_boxes[i].xml, asocs[i].xml, asocs[i].xml_len);
+      meta->asoc_boxes[i].xml_len = asocs[i].xml_len;
+    }
+  }
+  return true;
+}
+
 /* DECOMPRESSION FUNCTIONS*/
 grk_object* grk_decompress_init(grk_stream_params* streamParams,
                                 grk_decompress_parameters* decompressParams)

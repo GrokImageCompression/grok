@@ -58,10 +58,20 @@ private:
   uint8_t* write_xml(uint32_t* p_nb_bytes_written);
   bool write_xml_boxes(void);
   bool write_ipr(void);
+  bool write_asoc_boxes(void);
+  bool write_rreq(void);
   bool skip_jp2c(void);
+  uint32_t calcAsocSize(AsocBox* asoc);
+  bool writeAsocBox(IStream* stream, AsocBox* asoc);
+  void buildAsocTree(const grk_asoc* flat, uint32_t count);
 
   bool needs_xl_jp2c_box_length = false;
   uint64_t codestream_offset = 0;
+  bool jpx_branding_ = false;
+  bool write_rreq_ = false;
+  uint16_t rreq_standard_features_[8] = {};
+  uint8_t num_rreq_standard_features_ = 0;
+  bool geoboxes_after_jp2c_ = false;
 };
 
 } // namespace grk

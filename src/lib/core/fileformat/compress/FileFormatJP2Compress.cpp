@@ -715,15 +715,28 @@ bool FileFormatJP2Compress::init(grk_cparameters* parameters, GrkImage* image)
 
   /* Profile box */
   brand = parameters->cblk_sty == GRK_CBLKSTY_HT_ONLY ? JP2_JPH : JP2_JP2; /* BR */
+  jpx_branding_ = parameters->jpx_branding;
+  write_rreq_ = parameters->write_rreq;
+  geoboxes_after_jp2c_ = parameters->geoboxes_after_jp2c;
+  if(write_rreq_)
+  {
+    num_rreq_standard_features_ = parameters->num_rreq_standard_features;
+    for(uint8_t sf = 0; sf < num_rreq_standard_features_ && sf < 8; ++sf)
+      rreq_standard_features_[sf] = parameters->rreq_standard_features[sf];
+  }
+  if(jpx_branding_)
+    brand = JP2_JPX;
   minversion = 0; /* MinV */
-  numcl = 1;
+  numcl = jpx_branding_ ? 2 : 1;
   cl = (uint32_t*)grk_malloc(sizeof(uint32_t) * numcl);
   if(!cl)
   {
     grklog.error("Not enough memory when set up the JP2 compressor");
     return false;
   }
-  cl[0] = brand;
+  cl[0] = JP2_JP2;
+  if(jpx_branding_)
+    cl[1] = JP2_JPX;
 
   /* Image Header box */
   numcomps = inputImage_->numcomps; /* NC */
@@ -807,6 +820,16 @@ bool FileFormatJP2Compress::init(grk_cparameters* parameters, GrkImage* image)
       if(ipr.buf())
         memcpy(ipr.buf(), inputImage_->meta->ipr_data, inputImage_->meta->ipr_len);
     }
+    // XML box
+    if(inputImage_->meta->xml_len && inputImage_->meta->xml_buf)
+    {
+      xml.alloc(inputImage_->meta->xml_len);
+      if(xml.buf())
+        memcpy(xml.buf(), inputImage_->meta->xml_buf, inputImage_->meta->xml_len);
+    }
+    // Build asoc tree from flat representation
+    if(inputImage_->meta->asoc_boxes && inputImage_->meta->num_asoc_boxes > 0)
+      buildAsocTree(inputImage_->meta->asoc_boxes, inputImage_->meta->num_asoc_boxes);
   }
   /* Channel Definition box */
   for(i = 0; i < inputImage_->numcomps; i++)
@@ -900,6 +923,14 @@ uint64_t FileFormatJP2Compress::compress(grk_plugin_tile* tile)
   if(rc && !end())
     return 0;
 
+  // flush any buffered data to the output stream
+  if(rc)
+  {
+    auto stream = codeStream->getStream();
+    if(stream && !stream->flush())
+      return 0;
+  }
+
   return rc;
 }
 bool FileFormatJP2Compress::end(void)
@@ -912,16 +943,29 @@ bool FileFormatJP2Compress::end(void)
 void FileFormatJP2Compress::init_end_header_writing(void)
 {
   procedure_list_->push_back(std::bind(&FileFormatJP2Compress::write_jp2c, this));
+  if(geoboxes_after_jp2c_)
+  {
+    procedure_list_->push_back(std::bind(&FileFormatJP2Compress::write_ipr, this));
+    procedure_list_->push_back(std::bind(&FileFormatJP2Compress::write_asoc_boxes, this));
+    procedure_list_->push_back(std::bind(&FileFormatJP2Compress::write_xml_boxes, this));
+    procedure_list_->push_back(std::bind(&FileFormatJP2Compress::write_uuids, this));
+  }
 }
 
 void FileFormatJP2Compress::init_header_writing(void)
 {
   procedure_list_->push_back(std::bind(&FileFormatJP2Compress::write_signature, this));
   procedure_list_->push_back(std::bind(&FileFormatJP2Compress::write_ftyp, this));
+  if(write_rreq_)
+    procedure_list_->push_back(std::bind(&FileFormatJP2Compress::write_rreq, this));
   procedure_list_->push_back(std::bind(&FileFormatJP2Compress::write_jp2h, this));
-  procedure_list_->push_back(std::bind(&FileFormatJP2Compress::write_xml_boxes, this));
-  procedure_list_->push_back(std::bind(&FileFormatJP2Compress::write_ipr, this));
-  procedure_list_->push_back(std::bind(&FileFormatJP2Compress::write_uuids, this));
+  if(!geoboxes_after_jp2c_)
+  {
+    procedure_list_->push_back(std::bind(&FileFormatJP2Compress::write_xml_boxes, this));
+    procedure_list_->push_back(std::bind(&FileFormatJP2Compress::write_ipr, this));
+    procedure_list_->push_back(std::bind(&FileFormatJP2Compress::write_uuids, this));
+    procedure_list_->push_back(std::bind(&FileFormatJP2Compress::write_asoc_boxes, this));
+  }
   procedure_list_->push_back(std::bind(&FileFormatJP2Compress::skip_jp2c, this));
 }
 bool FileFormatJP2Compress::skip_jp2c(void)
@@ -950,4 +994,170 @@ bool FileFormatJP2Compress::default_validation(void)
 
   return valid;
 }
+
+uint32_t FileFormatJP2Compress::calcAsocSize(AsocBox* asoc)
+{
+  // box header (8 bytes)
+  uint32_t size = 8;
+
+  // lbl box: 8 (header) + label length
+  if(!asoc->label.empty())
+    size += 8 + (uint32_t)asoc->label.size();
+
+  // xml box: 8 (header) + data length
+  if(asoc->buf() && asoc->num_elts() > 0)
+    size += 8 + (uint32_t)asoc->num_elts();
+
+  // nested asoc children
+  for(auto& child : asoc->children)
+    size += calcAsocSize(child);
+
+  return size;
+}
+
+bool FileFormatJP2Compress::writeAsocBox(IStream* stream, AsocBox* asoc)
+{
+  uint32_t boxSize = calcAsocSize(asoc);
+
+  // write asoc box header
+  if(!stream->write(boxSize))
+    return false;
+  if(!stream->write(JP2_ASOC))
+    return false;
+
+  // write lbl sub-box
+  if(!asoc->label.empty())
+  {
+    uint32_t lblSize = 8 + (uint32_t)asoc->label.size();
+    if(!stream->write(lblSize))
+      return false;
+    if(!stream->write(JP2_LBL))
+      return false;
+    if(stream->writeBytes((const uint8_t*)asoc->label.c_str(), (uint32_t)asoc->label.size()) !=
+       (uint32_t)asoc->label.size())
+      return false;
+  }
+
+  // write xml sub-box
+  if(asoc->buf() && asoc->num_elts() > 0)
+  {
+    uint32_t xmlSize = 8 + (uint32_t)asoc->num_elts();
+    if(!stream->write(xmlSize))
+      return false;
+    if(!stream->write(JP2_XML))
+      return false;
+    if(stream->writeBytes(asoc->buf(), (uint32_t)asoc->num_elts()) != (uint32_t)asoc->num_elts())
+      return false;
+  }
+
+  // write nested asoc children
+  for(auto& child : asoc->children)
+  {
+    if(!writeAsocBox(stream, child))
+      return false;
+  }
+
+  return true;
+}
+
+void FileFormatJP2Compress::buildAsocTree(const grk_asoc* flat, uint32_t count)
+{
+  if(!flat || count == 0)
+    return;
+
+  // Stack to track the current parent at each level.
+  // Level 0 entries are children of root_asoc.
+  std::vector<AsocBox*> stack;
+  stack.push_back(&root_asoc);
+
+  for(uint32_t i = 0; i < count; ++i)
+  {
+    auto& entry = flat[i];
+    uint32_t level = entry.level;
+
+    auto asoc = new AsocBox();
+    if(entry.label)
+      asoc->label = entry.label;
+    if(entry.xml && entry.xml_len > 0)
+    {
+      asoc->alloc(entry.xml_len);
+      memcpy(asoc->buf(), entry.xml, entry.xml_len);
+    }
+
+    // Ensure stack is deep enough for this level.
+    // The parent is at stack[level].
+    while(stack.size() > level + 1)
+      stack.pop_back();
+
+    auto parent = stack.back();
+    parent->children.push_back(asoc);
+    stack.push_back(asoc);
+  }
+}
+
+bool FileFormatJP2Compress::write_asoc_boxes(void)
+{
+  auto stream = codeStream->getStream();
+  assert(stream != nullptr);
+
+  for(auto& child : root_asoc.children)
+  {
+    if(!writeAsocBox(stream, child))
+      return false;
+  }
+  return true;
+}
+
+bool FileFormatJP2Compress::write_rreq(void)
+{
+  auto stream = codeStream->getStream();
+  assert(stream != nullptr);
+
+  if(!write_rreq_ || num_rreq_standard_features_ == 0)
+    return true;
+
+  // rreq box: 8 (header) + 1 (ML) + 1 (FUAM) + 1 (DCM) + 2 (NSF)
+  //           + NSF * (2 (SF) + 1 (SM)) + 2 (NVF)
+  uint32_t boxSize = 8 + 1 + 1 + 1 + 2 + num_rreq_standard_features_ * 3 + 2;
+
+  if(!stream->write(boxSize))
+    return false;
+  if(!stream->write(JP2_RREQ))
+    return false;
+
+  // ML = 1 (1 byte mask length)
+  if(!stream->write((uint8_t)1))
+    return false;
+
+  // FUAM - fully understand all mask
+  uint8_t fuam = 0;
+  for(uint8_t i = 0; i < num_rreq_standard_features_ && i < 8; ++i)
+    fuam |= (uint8_t)(0x80 >> i);
+  if(!stream->write(fuam))
+    return false;
+
+  // DCM - decode completely mask
+  if(!stream->write((uint8_t)0x80))
+    return false;
+
+  // NSF
+  if(!stream->write((uint16_t)num_rreq_standard_features_))
+    return false;
+
+  // Standard features
+  for(uint8_t i = 0; i < num_rreq_standard_features_; ++i)
+  {
+    if(!stream->write(rreq_standard_features_[i]))
+      return false;
+    if(!stream->write((uint8_t)(0x80 >> i)))
+      return false;
+  }
+
+  // NVF = 0 (no vendor features)
+  if(!stream->write((uint16_t)0))
+    return false;
+
+  return true;
+}
+
 } // namespace grk

@@ -626,6 +626,154 @@ static int testCombinedMetadata(const std::string& tmpDir)
 }
 
 //==============================================================================
+// Test 7: Association box (GMLJP2-style) round-trip
+//==============================================================================
+static int testAsocBoxes(const std::string& tmpDir)
+{
+  spdlog::info("=== Test: Association box round-trip ===");
+
+  // Build a GMLJP2-style asoc structure (flat representation):
+  // level 0: label="gml.data"
+  // level 1: label="gml.root-instance", xml=<gml...>
+  const char* gmlXml = "<gml:FeatureCollection xmlns:gml=\"http://www.opengis.net/gml\">"
+                       "<test>42</test></gml:FeatureCollection>";
+  size_t gmlLen = strlen(gmlXml);
+
+  grk_asoc asocs[2]{};
+  asocs[0].level = 0;
+  asocs[0].label = "gml.data";
+  asocs[0].xml = nullptr;
+  asocs[0].xml_len = 0;
+
+  asocs[1].level = 1;
+  asocs[1].label = "gml.root-instance";
+  asocs[1].xml = (uint8_t*)gmlXml;
+  asocs[1].xml_len = (uint32_t)gmlLen;
+
+  auto* meta = grk_image_meta_new();
+  if(!grk_image_meta_set_asocs(meta, asocs, 2))
+  {
+    spdlog::error("AsocBoxes: failed to set asocs");
+    grk_object_unref(&meta->obj);
+    return 1;
+  }
+
+  // Compress with jpx branding (required for asoc boxes)
+  grk_cparameters cparams{};
+  grk_compress_set_default_params(&cparams);
+  cparams.cod_format = GRK_FMT_JP2;
+  cparams.irreversible = false;
+  cparams.numlayers = 1;
+  cparams.layer_rate[0] = 0;
+  cparams.jpx_branding = true;
+
+  grk_image_comp comp{};
+  comp.dx = 1;
+  comp.dy = 1;
+  comp.w = 16;
+  comp.h = 16;
+  comp.prec = 8;
+  comp.sgnd = 0;
+
+  auto* image = grk_image_new(1, &comp, GRK_CLRSPC_GRAY, true);
+  if(!image)
+  {
+    spdlog::error("AsocBoxes: failed to create image");
+    grk_object_unref(&meta->obj);
+    return 1;
+  }
+
+  auto* data = static_cast<int32_t*>(image->comps[0].data);
+  for(uint32_t i = 0; i < 16 * 16; ++i)
+    data[i] = static_cast<int32_t>(i % 256);
+
+  image->meta = meta;
+
+  std::string path = tmpDir + "/asoc_test.jp2";
+  grk_stream_params streamParams{};
+  safe_strcpy(streamParams.file, path.c_str());
+
+  auto* codec = grk_compress_init(&streamParams, &cparams, image);
+  if(!codec)
+  {
+    spdlog::error("AsocBoxes: failed to init compressor");
+    image->meta = nullptr;
+    grk_object_unref(&image->obj);
+    grk_object_unref(&meta->obj);
+    return 1;
+  }
+
+  auto length = grk_compress(codec, nullptr);
+  image->meta = nullptr;
+  grk_object_unref(codec);
+  grk_object_unref(&image->obj);
+
+  if(length == 0)
+  {
+    spdlog::error("AsocBoxes: compression failed");
+    grk_object_unref(&meta->obj);
+    return 1;
+  }
+
+  // Decompress and verify
+  grk_header_info header{};
+  grk_image* decImage = nullptr;
+  grk_object* decCodec = nullptr;
+  if(!decompressAndReadHeader(path, &header, &decImage, &decCodec))
+  {
+    grk_object_unref(&meta->obj);
+    return 1;
+  }
+
+  bool ok = true;
+
+  // Verify asoc boxes were read back
+  if(header.num_asocs < 2)
+  {
+    spdlog::error("AsocBoxes: expected >= 2 asoc entries, got {}", header.num_asocs);
+    ok = false;
+  }
+  else
+  {
+    // Find the gml.data entry
+    bool foundGmlData = false;
+    bool foundGmlRoot = false;
+    for(uint32_t i = 0; i < header.num_asocs; ++i)
+    {
+      auto& a = header.asocs[i];
+      if(a.label && strcmp(a.label, "gml.data") == 0)
+        foundGmlData = true;
+      if(a.label && strcmp(a.label, "gml.root-instance") == 0)
+      {
+        foundGmlRoot = true;
+        if(!a.xml || a.xml_len != gmlLen || memcmp(a.xml, gmlXml, gmlLen) != 0)
+        {
+          spdlog::error("AsocBoxes: gml.root-instance XML mismatch");
+          ok = false;
+        }
+      }
+    }
+    if(!foundGmlData)
+    {
+      spdlog::error("AsocBoxes: gml.data label not found");
+      ok = false;
+    }
+    if(!foundGmlRoot)
+    {
+      spdlog::error("AsocBoxes: gml.root-instance label not found");
+      ok = false;
+    }
+  }
+
+  if(ok)
+    spdlog::info("Association box round-trip: PASSED");
+
+  grk_object_unref(decCodec);
+  grk_object_unref(&meta->obj);
+  return ok ? 0 : 1;
+}
+
+//==============================================================================
 // Main
 //==============================================================================
 int GrkJP2MetadataTest::main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
@@ -643,6 +791,7 @@ int GrkJP2MetadataTest::main([[maybe_unused]] int argc, [[maybe_unused]] char** 
   failures += testIPRFlagInIHDR(tmpDir.string());
   failures += testXmlBoxPlacement(tmpDir.string());
   failures += testCombinedMetadata(tmpDir.string());
+  failures += testAsocBoxes(tmpDir.string());
 
   // Cleanup
   std::filesystem::remove_all(tmpDir);
