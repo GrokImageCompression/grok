@@ -20,6 +20,8 @@
 #include <cassert>
 #include <cstdint>
 #include <cstddef>
+#include <type_traits>
+#include "util/GrkImageSIMD.h"
 
 namespace grk
 {
@@ -477,15 +479,29 @@ public:
                   const uint32_t srcStride, const uint64_t destStride, const uint32_t h,
                   const int32_t adjust) override
   {
-    for(uint32_t i = 0; i < h; i++)
+    if constexpr(std::is_same_v<T, int32_t>)
     {
-      auto destPtr = dest;
-      for(size_t j = 0; j < srcWidth; j++)
+      for(uint32_t i = 0; i < h; i++)
+      {
+        grk::hwy_pack_planar_to_8(const_cast<const int32_t* const*>(src), numPlanes, dest,
+                                  srcWidth, adjust);
+        dest += destStride;
         for(size_t k = 0; k < numPlanes; ++k)
-          *destPtr++ = (uint8_t)(src[k][j] + adjust);
-      dest += destStride;
-      for(size_t k = 0; k < numPlanes; ++k)
-        src[k] += srcStride;
+          src[k] += srcStride;
+      }
+    }
+    else
+    {
+      for(uint32_t i = 0; i < h; i++)
+      {
+        auto destPtr = dest;
+        for(size_t j = 0; j < srcWidth; j++)
+          for(size_t k = 0; k < numPlanes; ++k)
+            *destPtr++ = (uint8_t)(src[k][j] + adjust);
+        dest += destStride;
+        for(size_t k = 0; k < numPlanes; ++k)
+          src[k] += srcStride;
+      }
     }
   }
 };
@@ -870,18 +886,32 @@ public:
                   const uint32_t srcStride, const uint64_t destStride, const uint32_t h,
                   const int32_t adjust) override
   {
-    for(uint32_t i = 0; i < h; i++)
+    if constexpr(std::is_same_v<T, int32_t>)
     {
-      auto destPtr = dest;
-      for(size_t j = 0; j < srcWidth; j++)
+      for(uint32_t i = 0; i < h; i++)
+      {
+        grk::hwy_pack_planar_to_16(const_cast<const int32_t* const*>(src), numPlanes,
+                                   (uint16_t*)dest, srcWidth, adjust);
+        dest += destStride;
         for(size_t k = 0; k < numPlanes; ++k)
-        {
-          *(uint16_t*)destPtr = (uint16_t)(src[k][j] + adjust);
-          destPtr += 2;
-        }
-      dest += destStride;
-      for(size_t k = 0; k < numPlanes; ++k)
-        src[k] += srcStride;
+          src[k] += srcStride;
+      }
+    }
+    else
+    {
+      for(uint32_t i = 0; i < h; i++)
+      {
+        auto destPtr = dest;
+        for(size_t j = 0; j < srcWidth; j++)
+          for(size_t k = 0; k < numPlanes; ++k)
+          {
+            *(uint16_t*)destPtr = (uint16_t)(src[k][j] + adjust);
+            destPtr += 2;
+          }
+        dest += destStride;
+        for(size_t k = 0; k < numPlanes; ++k)
+          src[k] += srcStride;
+      }
     }
   }
 };

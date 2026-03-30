@@ -21,6 +21,7 @@
 #define HWY_TARGET_INCLUDE "util/GrkImageSIMD.cpp"
 #include <hwy/foreach_target.h>
 #include <hwy/highway.h>
+#include <cstring>
 
 HWY_BEFORE_NAMESPACE();
 namespace grk
@@ -516,6 +517,351 @@ namespace HWY_NAMESPACE
       dst[i] = src[i] < 0 ? 0u : (uint32_t)src[i];
   }
 
+  /* ─── Unpack uint8 → int32 (unsigned, optional invert) ─── */
+  static void Hwy_unpack_8u_to_i32(const uint8_t* HWY_RESTRICT src, int32_t* HWY_RESTRICT dest,
+                                   size_t w, bool invert)
+  {
+    const HWY_FULL(int32_t) di;
+    const hn::Rebind<uint8_t, decltype(di)> du8_part; // quarter-width u8 matching i32 lanes
+    const uint32_t L = (uint32_t)Lanes(di);
+    const auto vXor = Set(di, invert ? 0xFF : 0);
+
+    size_t i = 0;
+    for(; i + L <= w; i += L)
+    {
+      /* Load L uint8 values, promote to int32, optionally XOR */
+      auto v8 = LoadU(du8_part, src + i);
+      auto vi = PromoteTo(di, v8);
+      StoreU(Xor(vi, vXor), di, dest + i);
+    }
+    for(; i < w; ++i)
+      dest[i] = invert ? ((int32_t)src[i] ^ 0xFF) : (int32_t)src[i];
+  }
+
+  /* ─── Unpack uint8 → int32 (signed with sign extension, optional invert) ─── */
+  static void Hwy_unpack_8s_to_i32(const uint8_t* HWY_RESTRICT src, int32_t* HWY_RESTRICT dest,
+                                   size_t w, bool invert)
+  {
+    const HWY_FULL(int32_t) di;
+    const hn::Rebind<uint8_t, decltype(di)> du8_part;
+    const uint32_t L = (uint32_t)Lanes(di);
+    const auto vXor = Set(di, invert ? 0xFF : 0);
+
+    size_t i = 0;
+    for(; i + L <= w; i += L)
+    {
+      auto v8 = LoadU(du8_part, src + i);
+      auto vi = Xor(PromoteTo(di, v8), vXor);
+      /* sign extend from 8 bits: shift left 24, then arithmetic shift right 24 */
+      vi = ShiftRight<24>(ShiftLeft<24>(vi));
+      StoreU(vi, di, dest + i);
+    }
+    for(; i < w; ++i)
+    {
+      int32_t v = invert ? ((int32_t)src[i] ^ 0xFF) : (int32_t)src[i];
+      v <<= 24;
+      v >>= 24;
+      dest[i] = v;
+    }
+  }
+
+  /* ─── Unpack big-endian uint16 pairs → int32 (PNG decode path) ─── */
+  static void Hwy_unpack_16be_to_i32(const uint8_t* HWY_RESTRICT src,
+                                     int32_t* HWY_RESTRICT dest, size_t w, bool invert)
+  {
+    const HWY_FULL(int32_t) di;
+    const uint32_t L = (uint32_t)Lanes(di);
+    const auto vXor = Set(di, invert ? 0xFFFF : 0);
+
+    size_t i = 0;
+    for(; i + L <= w; i += L)
+    {
+      /* Scalar load + byte swap into aligned temp; vectorized XOR + store */
+      HWY_ALIGN int32_t tmp[HWY_MAX_LANES_D(HWY_FULL(int32_t))];
+      for(uint32_t k = 0; k < L; ++k)
+      {
+        int32_t hi = src[(i + k) * 2];
+        int32_t lo = src[(i + k) * 2 + 1];
+        tmp[k] = (hi << 8) | lo;
+      }
+      StoreU(Xor(Load(di, tmp), vXor), di, dest + i);
+    }
+    for(; i < w; ++i)
+    {
+      int32_t v = ((int32_t)src[i * 2] << 8) | (int32_t)src[i * 2 + 1];
+      dest[i] = invert ? (v ^ 0xFFFF) : v;
+    }
+  }
+
+  /* ─── Unpack machine-endian uint16 → int32 (TIFF decode path) ─── */
+  static void Hwy_unpack_16le_to_i32(const uint16_t* HWY_RESTRICT src,
+                                     int32_t* HWY_RESTRICT dest, size_t w, bool invert)
+  {
+    const HWY_FULL(int32_t) di;
+    const hn::Rebind<uint16_t, decltype(di)> du16_part;
+    const uint32_t L = (uint32_t)Lanes(di);
+    const auto vXor = Set(di, invert ? 0xFFFF : 0);
+
+    size_t i = 0;
+    for(; i + L <= w; i += L)
+    {
+      auto v16 = LoadU(du16_part, src + i);
+      auto vi = PromoteTo(di, v16);
+      StoreU(Xor(vi, vXor), di, dest + i);
+    }
+    for(; i < w; ++i)
+      dest[i] = invert ? ((int32_t)src[i] ^ 0xFFFF) : (int32_t)src[i];
+  }
+
+  /* ─── Deinterleave packed int32 → separate component planes ─── */
+  static void Hwy_deinterleave_i32(const int32_t* HWY_RESTRICT src, int32_t* const* dest,
+                                   uint32_t w, uint16_t numComps)
+  {
+    if(numComps == 1)
+    {
+      memcpy(dest[0], src, w * sizeof(int32_t));
+      return;
+    }
+
+    const HWY_FULL(int32_t) di;
+    const uint32_t L = (uint32_t)Lanes(di);
+
+    if(numComps == 3)
+    {
+      uint32_t i = 0;
+      for(; i + L <= w; i += L)
+      {
+        /* Scalar gather from interleaved source, vectorized store */
+        HWY_ALIGN int32_t t0[HWY_MAX_LANES_D(HWY_FULL(int32_t))];
+        HWY_ALIGN int32_t t1[HWY_MAX_LANES_D(HWY_FULL(int32_t))];
+        HWY_ALIGN int32_t t2[HWY_MAX_LANES_D(HWY_FULL(int32_t))];
+        for(uint32_t k = 0; k < L; ++k)
+        {
+          t0[k] = src[(i + k) * 3 + 0];
+          t1[k] = src[(i + k) * 3 + 1];
+          t2[k] = src[(i + k) * 3 + 2];
+        }
+        StoreU(Load(di, t0), di, dest[0] + i);
+        StoreU(Load(di, t1), di, dest[1] + i);
+        StoreU(Load(di, t2), di, dest[2] + i);
+      }
+      for(; i < w; ++i)
+      {
+        dest[0][i] = src[i * 3 + 0];
+        dest[1][i] = src[i * 3 + 1];
+        dest[2][i] = src[i * 3 + 2];
+      }
+    }
+    else if(numComps == 4)
+    {
+      uint32_t i = 0;
+      for(; i + L <= w; i += L)
+      {
+        HWY_ALIGN int32_t t0[HWY_MAX_LANES_D(HWY_FULL(int32_t))];
+        HWY_ALIGN int32_t t1[HWY_MAX_LANES_D(HWY_FULL(int32_t))];
+        HWY_ALIGN int32_t t2[HWY_MAX_LANES_D(HWY_FULL(int32_t))];
+        HWY_ALIGN int32_t t3[HWY_MAX_LANES_D(HWY_FULL(int32_t))];
+        for(uint32_t k = 0; k < L; ++k)
+        {
+          t0[k] = src[(i + k) * 4 + 0];
+          t1[k] = src[(i + k) * 4 + 1];
+          t2[k] = src[(i + k) * 4 + 2];
+          t3[k] = src[(i + k) * 4 + 3];
+        }
+        StoreU(Load(di, t0), di, dest[0] + i);
+        StoreU(Load(di, t1), di, dest[1] + i);
+        StoreU(Load(di, t2), di, dest[2] + i);
+        StoreU(Load(di, t3), di, dest[3] + i);
+      }
+      for(; i < w; ++i)
+      {
+        dest[0][i] = src[i * 4 + 0];
+        dest[1][i] = src[i * 4 + 1];
+        dest[2][i] = src[i * 4 + 2];
+        dest[3][i] = src[i * 4 + 3];
+      }
+    }
+    else
+    {
+      /* Generic scalar fallback for other component counts */
+      size_t src_index = 0;
+      for(uint32_t i = 0; i < w; ++i)
+        for(uint16_t j = 0; j < numComps; ++j)
+          dest[j][i] = src[src_index++];
+    }
+  }
+
+  /* ─── Pack N planar int32 → interleaved uint8, one row ─── */
+  static void Hwy_pack_planar_to_8(const int32_t* const* src, uint32_t numPlanes, uint8_t* dest,
+                                   uint32_t w, int32_t adjust)
+  {
+    const HWY_FULL(int32_t) di;
+    const uint32_t L = (uint32_t)Lanes(di);
+    const auto vAdj = Set(di, adjust);
+
+    if(numPlanes == 3)
+    {
+      uint32_t i = 0;
+      for(; i + L <= w; i += L)
+      {
+        auto v0 = Add(LoadU(di, src[0] + i), vAdj);
+        auto v1 = Add(LoadU(di, src[1] + i), vAdj);
+        auto v2 = Add(LoadU(di, src[2] + i), vAdj);
+        for(uint32_t k = 0; k < L; ++k)
+        {
+          dest[(i + k) * 3 + 0] = (uint8_t)ExtractLane(v0, k);
+          dest[(i + k) * 3 + 1] = (uint8_t)ExtractLane(v1, k);
+          dest[(i + k) * 3 + 2] = (uint8_t)ExtractLane(v2, k);
+        }
+      }
+      for(; i < w; ++i)
+      {
+        dest[i * 3 + 0] = (uint8_t)(src[0][i] + adjust);
+        dest[i * 3 + 1] = (uint8_t)(src[1][i] + adjust);
+        dest[i * 3 + 2] = (uint8_t)(src[2][i] + adjust);
+      }
+    }
+    else if(numPlanes == 4)
+    {
+      uint32_t i = 0;
+      for(; i + L <= w; i += L)
+      {
+        auto v0 = Add(LoadU(di, src[0] + i), vAdj);
+        auto v1 = Add(LoadU(di, src[1] + i), vAdj);
+        auto v2 = Add(LoadU(di, src[2] + i), vAdj);
+        auto v3 = Add(LoadU(di, src[3] + i), vAdj);
+        for(uint32_t k = 0; k < L; ++k)
+        {
+          dest[(i + k) * 4 + 0] = (uint8_t)ExtractLane(v0, k);
+          dest[(i + k) * 4 + 1] = (uint8_t)ExtractLane(v1, k);
+          dest[(i + k) * 4 + 2] = (uint8_t)ExtractLane(v2, k);
+          dest[(i + k) * 4 + 3] = (uint8_t)ExtractLane(v3, k);
+        }
+      }
+      for(; i < w; ++i)
+      {
+        dest[i * 4 + 0] = (uint8_t)(src[0][i] + adjust);
+        dest[i * 4 + 1] = (uint8_t)(src[1][i] + adjust);
+        dest[i * 4 + 2] = (uint8_t)(src[2][i] + adjust);
+        dest[i * 4 + 3] = (uint8_t)(src[3][i] + adjust);
+      }
+    }
+    else
+    {
+      /* Generic fallback */
+      auto destPtr = dest;
+      for(uint32_t j = 0; j < w; ++j)
+        for(uint32_t k = 0; k < numPlanes; ++k)
+          *destPtr++ = (uint8_t)(src[k][j] + adjust);
+    }
+  }
+
+  /* ─── Pack N planar int32 → interleaved uint16, one row ─── */
+  static void Hwy_pack_planar_to_16(const int32_t* const* src, uint32_t numPlanes, uint16_t* dest,
+                                    uint32_t w, int32_t adjust)
+  {
+    const HWY_FULL(int32_t) di;
+    const uint32_t L = (uint32_t)Lanes(di);
+    const auto vAdj = Set(di, adjust);
+
+    if(numPlanes == 3)
+    {
+      uint32_t i = 0;
+      for(; i + L <= w; i += L)
+      {
+        auto v0 = Add(LoadU(di, src[0] + i), vAdj);
+        auto v1 = Add(LoadU(di, src[1] + i), vAdj);
+        auto v2 = Add(LoadU(di, src[2] + i), vAdj);
+        for(uint32_t k = 0; k < L; ++k)
+        {
+          dest[(i + k) * 3 + 0] = (uint16_t)ExtractLane(v0, k);
+          dest[(i + k) * 3 + 1] = (uint16_t)ExtractLane(v1, k);
+          dest[(i + k) * 3 + 2] = (uint16_t)ExtractLane(v2, k);
+        }
+      }
+      for(; i < w; ++i)
+      {
+        dest[i * 3 + 0] = (uint16_t)(src[0][i] + adjust);
+        dest[i * 3 + 1] = (uint16_t)(src[1][i] + adjust);
+        dest[i * 3 + 2] = (uint16_t)(src[2][i] + adjust);
+      }
+    }
+    else if(numPlanes == 4)
+    {
+      uint32_t i = 0;
+      for(; i + L <= w; i += L)
+      {
+        auto v0 = Add(LoadU(di, src[0] + i), vAdj);
+        auto v1 = Add(LoadU(di, src[1] + i), vAdj);
+        auto v2 = Add(LoadU(di, src[2] + i), vAdj);
+        auto v3 = Add(LoadU(di, src[3] + i), vAdj);
+        for(uint32_t k = 0; k < L; ++k)
+        {
+          dest[(i + k) * 4 + 0] = (uint16_t)ExtractLane(v0, k);
+          dest[(i + k) * 4 + 1] = (uint16_t)ExtractLane(v1, k);
+          dest[(i + k) * 4 + 2] = (uint16_t)ExtractLane(v2, k);
+          dest[(i + k) * 4 + 3] = (uint16_t)ExtractLane(v3, k);
+        }
+      }
+      for(; i < w; ++i)
+      {
+        dest[i * 4 + 0] = (uint16_t)(src[0][i] + adjust);
+        dest[i * 4 + 1] = (uint16_t)(src[1][i] + adjust);
+        dest[i * 4 + 2] = (uint16_t)(src[2][i] + adjust);
+        dest[i * 4 + 3] = (uint16_t)(src[3][i] + adjust);
+      }
+    }
+    else
+    {
+      auto destPtr = dest;
+      for(uint32_t j = 0; j < w; ++j)
+        for(uint32_t k = 0; k < numPlanes; ++k)
+          *destPtr++ = (uint16_t)(src[k][j] + adjust);
+    }
+  }
+
+  /* ─── Scale component data: multiply by power-of-two ─── */
+  static void Hwy_scale_component_up(int32_t* data, uint32_t w, uint32_t h, uint32_t stride,
+                                     int32_t scale)
+  {
+    const HWY_FULL(int32_t) di;
+    const uint32_t L = (uint32_t)Lanes(di);
+    const auto vScale = Set(di, scale);
+
+    for(uint32_t j = 0; j < h; ++j)
+    {
+      int32_t* row = data + j * stride;
+      uint32_t i = 0;
+      for(; i + L <= w; i += L)
+        StoreU(Mul(LoadU(di, row + i), vScale), di, row + i);
+      for(; i < w; ++i)
+        row[i] *= scale;
+    }
+  }
+
+  /* ─── Scale component data: divide by power-of-two ─── */
+  static void Hwy_scale_component_down(int32_t* data, uint32_t w, uint32_t h, uint32_t stride,
+                                       int32_t scale)
+  {
+    const HWY_FULL(float) df;
+    const HWY_FULL(int32_t) di;
+    const uint32_t L = (uint32_t)Lanes(df);
+    const auto vScale = Set(df, (float)scale);
+
+    for(uint32_t j = 0; j < h; ++j)
+    {
+      int32_t* row = data + j * stride;
+      uint32_t i = 0;
+      for(; i + L <= w; i += L)
+      {
+        auto v = ConvertTo(df, LoadU(di, row + i));
+        StoreU(ConvertTo(di, Div(v, vScale)), di, row + i);
+      }
+      for(; i < w; ++i)
+        row[i] /= scale;
+    }
+  }
+
 } // namespace HWY_NAMESPACE
 } // namespace grk
 HWY_AFTER_NAMESPACE();
@@ -525,6 +871,7 @@ HWY_AFTER_NAMESPACE();
 #include <algorithm>
 #include <cstring>
 #include "grok.h"
+#include "GrkImageSIMD.h"
 
 namespace grk
 {
@@ -542,6 +889,15 @@ HWY_EXPORT(Hwy_copy_i32_to_u8_row);
 HWY_EXPORT(Hwy_copy_i32_to_i16_row);
 HWY_EXPORT(Hwy_copy_i32_to_u16_row);
 HWY_EXPORT(Hwy_copy_i32_to_u32_row);
+HWY_EXPORT(Hwy_unpack_8u_to_i32);
+HWY_EXPORT(Hwy_unpack_8s_to_i32);
+HWY_EXPORT(Hwy_unpack_16be_to_i32);
+HWY_EXPORT(Hwy_unpack_16le_to_i32);
+HWY_EXPORT(Hwy_deinterleave_i32);
+HWY_EXPORT(Hwy_pack_planar_to_8);
+HWY_EXPORT(Hwy_pack_planar_to_16);
+HWY_EXPORT(Hwy_scale_component_up);
+HWY_EXPORT(Hwy_scale_component_down);
 
 void hwy_clip_i32(int32_t* data, uint32_t w, uint32_t h, uint32_t stride, int32_t minVal,
                   int32_t maxVal)
@@ -597,6 +953,54 @@ void hwy_packed_to_planar_16(const uint16_t* in, int32_t* r, int32_t* g, int32_t
                              uint32_t h, uint32_t dst_stride)
 {
   HWY_DYNAMIC_DISPATCH(Hwy_packed_to_planar_16)(in, r, g, b, w, h, dst_stride);
+}
+
+GRK_SIMD_API void hwy_unpack_8u_to_i32(const uint8_t* src, int32_t* dest, size_t w, bool invert)
+{
+  HWY_DYNAMIC_DISPATCH(Hwy_unpack_8u_to_i32)(src, dest, w, invert);
+}
+
+GRK_SIMD_API void hwy_unpack_8s_to_i32(const uint8_t* src, int32_t* dest, size_t w, bool invert)
+{
+  HWY_DYNAMIC_DISPATCH(Hwy_unpack_8s_to_i32)(src, dest, w, invert);
+}
+
+GRK_SIMD_API void hwy_unpack_16be_to_i32(const uint8_t* src, int32_t* dest, size_t w, bool invert)
+{
+  HWY_DYNAMIC_DISPATCH(Hwy_unpack_16be_to_i32)(src, dest, w, invert);
+}
+
+GRK_SIMD_API void hwy_unpack_16le_to_i32(const uint16_t* src, int32_t* dest, size_t w, bool invert)
+{
+  HWY_DYNAMIC_DISPATCH(Hwy_unpack_16le_to_i32)(src, dest, w, invert);
+}
+
+GRK_SIMD_API void hwy_deinterleave_i32(const int32_t* src, int32_t* const* dest, uint32_t w, uint16_t numComps)
+{
+  HWY_DYNAMIC_DISPATCH(Hwy_deinterleave_i32)(src, dest, w, numComps);
+}
+
+GRK_SIMD_API void hwy_pack_planar_to_8(const int32_t* const* src, uint32_t numPlanes, uint8_t* dest,
+                          uint32_t w, int32_t adjust)
+{
+  HWY_DYNAMIC_DISPATCH(Hwy_pack_planar_to_8)(src, numPlanes, dest, w, adjust);
+}
+
+GRK_SIMD_API void hwy_pack_planar_to_16(const int32_t* const* src, uint32_t numPlanes, uint16_t* dest,
+                           uint32_t w, int32_t adjust)
+{
+  HWY_DYNAMIC_DISPATCH(Hwy_pack_planar_to_16)(src, numPlanes, dest, w, adjust);
+}
+
+GRK_SIMD_API void hwy_scale_component_up(int32_t* data, uint32_t w, uint32_t h, uint32_t stride, int32_t scale)
+{
+  HWY_DYNAMIC_DISPATCH(Hwy_scale_component_up)(data, w, h, stride, scale);
+}
+
+GRK_SIMD_API void hwy_scale_component_down(int32_t* data, uint32_t w, uint32_t h, uint32_t stride,
+                              int32_t scale)
+{
+  HWY_DYNAMIC_DISPATCH(Hwy_scale_component_down)(data, w, h, stride, scale);
 }
 
 void hwy_copy_tile_to_swath(const grk_image* tile_img, const grk_swath_buffer* buf)

@@ -19,24 +19,26 @@
 
 #include "grk_apps_config.h"
 #include <string.h>
+#include <type_traits>
 #include "grok.h"
 #include "packer.h"
+#include "util/GrkImageSIMD.h"
 
-#define INV_MASK_16 0xFFFF
-#define INV_MASK_15 ((1 << 15) - 1)
-#define INV_MASK_14 ((1 << 14) - 1)
-#define INV_MASK_13 ((1 << 13) - 1)
-#define INV_MASK_12 ((1 << 12) - 1)
-#define INV_MASK_11 ((1 << 11) - 1)
-#define INV_MASK_10 ((1 << 10) - 1)
-#define INV_MASK_9 ((1 << 9) - 1)
-#define INV_MASK_8 0xFF
-#define INV_MASK_7 ((1 << 7) - 1)
-#define INV_MASK_6 ((1 << 6) - 1)
-#define INV_MASK_5 ((1 << 5) - 1)
-#define INV_MASK_4 ((1 << 4) - 1)
-#define INV_MASK_3 ((1 << 3) - 1)
-#define INV_MASK_2 ((1 << 2) - 1)
+static constexpr int32_t INV_MASK_16 = 0xFFFF;
+static constexpr int32_t INV_MASK_15 = (1 << 15) - 1;
+static constexpr int32_t INV_MASK_14 = (1 << 14) - 1;
+static constexpr int32_t INV_MASK_13 = (1 << 13) - 1;
+static constexpr int32_t INV_MASK_12 = (1 << 12) - 1;
+static constexpr int32_t INV_MASK_11 = (1 << 11) - 1;
+static constexpr int32_t INV_MASK_10 = (1 << 10) - 1;
+static constexpr int32_t INV_MASK_9 = (1 << 9) - 1;
+static constexpr int32_t INV_MASK_8 = 0xFF;
+static constexpr int32_t INV_MASK_7 = (1 << 7) - 1;
+static constexpr int32_t INV_MASK_6 = (1 << 6) - 1;
+static constexpr int32_t INV_MASK_5 = (1 << 5) - 1;
+static constexpr int32_t INV_MASK_4 = (1 << 4) - 1;
+static constexpr int32_t INV_MASK_3 = (1 << 3) - 1;
+static constexpr int32_t INV_MASK_2 = (1 << 2) - 1;
 
 #define GETBITS(dest, nb, mask, invert)                           \
   {                                                               \
@@ -72,17 +74,24 @@
 template<typename T>
 void interleave(const T* src, T* const* dest, uint32_t w, uint16_t numComps)
 {
-  if(numComps == 1)
+  if constexpr(std::is_same_v<T, int32_t>)
   {
-    memcpy(dest[0], src, w * sizeof(T));
+    grk::hwy_deinterleave_i32(src, dest, w, numComps);
   }
   else
   {
-    size_t src_index = 0;
-    for(size_t i = 0; i < w; i++)
+    if(numComps == 1)
     {
-      for(size_t j = 0; j < numComps; ++j)
-        dest[j][i] = src[src_index++];
+      memcpy(dest[0], src, w * sizeof(T));
+    }
+    else
+    {
+      size_t src_index = 0;
+      for(size_t i = 0; i < w; i++)
+      {
+        for(size_t j = 0; j < numComps; ++j)
+          dest[j][i] = src[src_index++];
+      }
     }
   }
 }
@@ -303,8 +312,15 @@ void convertToOutput(const uint8_t* src, T* dest, size_t w, bool invert)
   }
   else if constexpr(N == 8)
   {
-    for(size_t i = 0; i < w; i++)
-      dest[i] = INV(src[i], 0xFF, invert);
+    if constexpr(std::is_same_v<T, int32_t>)
+    {
+      grk::hwy_unpack_8u_to_i32(src, dest, w, invert);
+    }
+    else
+    {
+      for(size_t i = 0; i < w; i++)
+        dest[i] = INV(src[i], 0xFF, invert);
+    }
   }
   else if constexpr(N == 9)
   {
@@ -629,20 +645,33 @@ void convertToOutput(const uint8_t* src, T* dest, size_t w, bool invert)
   }
   else if constexpr(N == 16)
   {
-#ifdef GROK_BIG_ENDIAN
-    const uint16_t* typedSrc = (uint16_t*)src;
-    for(size_t i = 0; i < w; i++)
-      dest[i] = INV(typedSrc[i], 0xFFFF, invert);
-#else
-    // convert from big endian (PNG)
-    size_t i;
-    for(i = 0; i < w; i++)
+    if constexpr(std::is_same_v<T, int32_t>)
     {
-      T val0 = *src++;
-      T val1 = *src++;
-      dest[i] = INV(val0 << 8 | val1, 0xFFFF, invert);
-    }
+#ifdef GROK_BIG_ENDIAN
+      /* On big-endian host the packed bytes are already native-order uint16 */
+      grk::hwy_unpack_16le_to_i32((const uint16_t*)src, dest, w, invert);
+#else
+      /* convert from big endian (PNG) */
+      grk::hwy_unpack_16be_to_i32(src, dest, w, invert);
 #endif
+    }
+    else
+    {
+#ifdef GROK_BIG_ENDIAN
+      const uint16_t* typedSrc = (uint16_t*)src;
+      for(size_t i = 0; i < w; i++)
+        dest[i] = INV(typedSrc[i], 0xFFFF, invert);
+#else
+      // convert from big endian (PNG)
+      size_t i;
+      for(i = 0; i < w; i++)
+      {
+        T val0 = *src++;
+        T val1 = *src++;
+        dest[i] = INV(val0 << 8 | val1, 0xFFFF, invert);
+      }
+#endif
+    }
   }
 }
 
@@ -655,10 +684,18 @@ void convertToOutputTIFF(const uint8_t* src, T* dest, size_t w, bool invert)
   }
   else
   {
-    /* libtiff decodes to machine endianness */
-    const uint16_t* typedSrc = (uint16_t*)src;
-    for(size_t i = 0; i < w; i++)
-      dest[i] = INV(typedSrc[i], 0xFFFF, invert);
+    if constexpr(std::is_same_v<T, int32_t>)
+    {
+      /* libtiff decodes to machine endianness */
+      grk::hwy_unpack_16le_to_i32((const uint16_t*)src, dest, w, invert);
+    }
+    else
+    {
+      /* libtiff decodes to machine endianness */
+      const uint16_t* typedSrc = (uint16_t*)src;
+      for(size_t i = 0; i < w; i++)
+        dest[i] = INV(typedSrc[i], 0xFFFF, invert);
+    }
   }
 }
 
@@ -667,28 +704,44 @@ void scaleComponent(grk_image_comp* component, uint8_t precision)
 {
   if(component->prec == precision)
     return;
-  uint32_t stride_diff = component->stride - component->w;
   auto data = (T*)component->data;
-  if(component->prec < precision)
+  if constexpr(std::is_same_v<T, int32_t>)
   {
-    T scale = 1 << (uint32_t)(precision - component->prec);
-    size_t index = 0;
-    for(uint32_t j = 0; j < component->h; ++j)
+    if(component->prec < precision)
     {
-      for(uint32_t i = 0; i < component->w; ++i)
-        data[index++] *= scale;
-      index += stride_diff;
+      int32_t scale = 1 << (uint32_t)(precision - component->prec);
+      grk::hwy_scale_component_up(data, component->w, component->h, component->stride, scale);
+    }
+    else
+    {
+      int32_t scale = 1 << (uint32_t)(component->prec - precision);
+      grk::hwy_scale_component_down(data, component->w, component->h, component->stride, scale);
     }
   }
   else
   {
-    T scale = 1 << (uint32_t)(component->prec - precision);
-    size_t index = 0;
-    for(uint32_t j = 0; j < component->h; ++j)
+    uint32_t stride_diff = component->stride - component->w;
+    if(component->prec < precision)
     {
-      for(uint32_t i = 0; i < component->w; ++i)
-        data[index++] /= scale;
-      index += stride_diff;
+      T scale = 1 << (uint32_t)(precision - component->prec);
+      size_t index = 0;
+      for(uint32_t j = 0; j < component->h; ++j)
+      {
+        for(uint32_t i = 0; i < component->w; ++i)
+          data[index++] *= scale;
+        index += stride_diff;
+      }
+    }
+    else
+    {
+      T scale = 1 << (uint32_t)(component->prec - precision);
+      size_t index = 0;
+      for(uint32_t j = 0; j < component->h; ++j)
+      {
+        for(uint32_t i = 0; i < component->w; ++i)
+          data[index++] /= scale;
+        index += stride_diff;
+      }
     }
   }
   component->prec = precision;

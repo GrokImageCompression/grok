@@ -35,8 +35,10 @@
 #include "convert.h"
 #include "common.h"
 #include <algorithm>
+#include <atomic>
 #include <cstdio>
 #include <cstring>
+#include <thread>
 #include <vector>
 
 // EXIF IFD type sizes (indexed by TIFF datatype enum)
@@ -1311,6 +1313,71 @@ static inline void set_resolution(double* res, float resx, float resy, short res
   }
 }
 
+/* ---------- per-row conversion dispatch (factored from readTiffPixels switch) ---------- */
+template<typename T>
+static inline bool convertRowTIFF(const uint8_t* datau8, T* buffer32s, size_t pixelCount,
+                                  uint8_t prec, bool sgnd, bool invert)
+{
+  switch(prec)
+  {
+    case 1:
+      convertToOutputTIFF<1, false, T>(datau8, buffer32s, pixelCount, invert);
+      break;
+    case 2:
+      convertToOutputTIFF<2, false, T>(datau8, buffer32s, pixelCount, invert);
+      break;
+    case 3:
+      convertToOutputTIFF<3, false, T>(datau8, buffer32s, pixelCount, invert);
+      break;
+    case 4:
+      sgnd ? convertToOutputTIFF<4, true, T>(datau8, buffer32s, pixelCount, invert)
+           : convertToOutputTIFF<4, false, T>(datau8, buffer32s, pixelCount, invert);
+      break;
+    case 5:
+      convertToOutputTIFF<5, false, T>(datau8, buffer32s, pixelCount, invert);
+      break;
+    case 6:
+      convertToOutputTIFF<6, false, T>(datau8, buffer32s, pixelCount, invert);
+      break;
+    case 7:
+      convertToOutputTIFF<7, false, T>(datau8, buffer32s, pixelCount, invert);
+      break;
+    case 8:
+      sgnd ? convertToOutputTIFF<8, true, T>(datau8, buffer32s, pixelCount, invert)
+           : convertToOutputTIFF<8, false, T>(datau8, buffer32s, pixelCount, invert);
+      break;
+    case 9:
+      convertToOutputTIFF<9, false, T>(datau8, buffer32s, pixelCount, invert);
+      break;
+    case 10:
+      sgnd ? convertToOutputTIFF<10, true, T>(datau8, buffer32s, pixelCount, invert)
+           : convertToOutputTIFF<10, false, T>(datau8, buffer32s, pixelCount, invert);
+      break;
+    case 11:
+      convertToOutputTIFF<11, false, T>(datau8, buffer32s, pixelCount, invert);
+      break;
+    case 12:
+      sgnd ? convertToOutputTIFF<12, true, T>(datau8, buffer32s, pixelCount, invert)
+           : convertToOutputTIFF<12, false, T>(datau8, buffer32s, pixelCount, invert);
+      break;
+    case 13:
+      convertToOutputTIFF<13, false, T>(datau8, buffer32s, pixelCount, invert);
+      break;
+    case 14:
+      convertToOutputTIFF<14, false, T>(datau8, buffer32s, pixelCount, invert);
+      break;
+    case 15:
+      convertToOutputTIFF<15, false, T>(datau8, buffer32s, pixelCount, invert);
+      break;
+    case 16:
+      convertToOutputTIFF<16, false, T>(datau8, buffer32s, pixelCount, invert);
+      break;
+    default:
+      return false;
+  }
+  return true;
+}
+
 template<typename T>
 bool TIFFFormat<T>::readTiffPixels(TIFF* tif, grk_image_comp* comps, uint16_t numcomps,
                                    uint16_t tiSpp, uint16_t tiPC, uint16_t tiPhoto,
@@ -1375,83 +1442,106 @@ bool TIFFFormat<T>::readTiffPixels(TIFF* tif, grk_image_comp* comps, uint16_t nu
       {
         if(chroma_subsample_x == 1 && chroma_subsample_y == 1)
         {
-          switch(comps[0].prec)
+          /* Determine how many complete rows remain in this strip */
+          uint32_t rowsInStrip = (uint32_t)(ssize / rowStride);
+          uint32_t rowsAvail = comp->h - height;
+          uint32_t rowCount = (std::min)(rowsInStrip, rowsAvail);
+          if(rowCount == 0)
+            break;
+
+          size_t pixelCount = (size_t)comp->w * tiSpp;
+          uint8_t prec = comps[0].prec;
+          bool sgnd = comps[0].sgnd;
+          uint16_t targetPlanes = (tiSpp == 1) ? (uint16_t)1 : numcomps;
+
+          if(rowCount >= 4)
           {
-            case 1:
-              convertToOutputTIFF<1, false, T>(datau8, buffer32s, (size_t)comp->w * tiSpp, invert);
-              break;
-            case 2:
-              convertToOutputTIFF<2, false, T>(datau8, buffer32s, (size_t)comp->w * tiSpp, invert);
-              break;
-            case 3:
-              convertToOutputTIFF<3, false, T>(datau8, buffer32s, (size_t)comp->w * tiSpp, invert);
-              break;
-            case 4:
-              comps[0].sgnd ? convertToOutputTIFF<4, true, T>(datau8, buffer32s,
-                                                              (size_t)comp->w * tiSpp, invert)
-                            : convertToOutputTIFF<4, false, T>(datau8, buffer32s,
-                                                               (size_t)comp->w * tiSpp, invert);
-              break;
-            case 5:
-              convertToOutputTIFF<5, false, T>(datau8, buffer32s, (size_t)comp->w * tiSpp, invert);
-              break;
-            case 6:
-              convertToOutputTIFF<6, false, T>(datau8, buffer32s, (size_t)comp->w * tiSpp, invert);
-              break;
-            case 7:
-              convertToOutputTIFF<7, false, T>(datau8, buffer32s, (size_t)comp->w * tiSpp, invert);
-              break;
-            case 8:
-              comps[0].sgnd ? convertToOutputTIFF<8, true, T>(datau8, buffer32s,
-                                                              (size_t)comp->w * tiSpp, invert)
-                            : convertToOutputTIFF<8, false, T>(datau8, buffer32s,
-                                                               (size_t)comp->w * tiSpp, invert);
+            /* Parallel: allocate per-row temp buffers and dispatch via threads */
+            size_t bufSize = pixelCount;
+            auto rowBufs = std::make_unique<T*[]>(rowCount);
+            for(uint32_t r = 0; r < rowCount; ++r)
+              rowBufs[r] = new T[bufSize];
 
-              break;
-            case 9:
-              convertToOutputTIFF<9, false, T>(datau8, buffer32s, (size_t)comp->w * tiSpp, invert);
-              break;
-            case 10:
-              comps[0].sgnd ? convertToOutputTIFF<10, true, T>(datau8, buffer32s,
-                                                               (size_t)comp->w * tiSpp, invert)
-                            : convertToOutputTIFF<10, false, T>(datau8, buffer32s,
-                                                                (size_t)comp->w * tiSpp, invert);
+            /* Snapshot plane pointers for each row (row r writes to offset r * stride) */
+            auto rowPlanes = std::make_unique<std::unique_ptr<T*[]>[]>(rowCount);
+            for(uint32_t r = 0; r < rowCount; ++r)
+            {
+              rowPlanes[r] = std::make_unique<T*[]>(numcomps);
+              for(uint16_t k = 0; k < numcomps; ++k)
+                rowPlanes[r][k] = planes[k] + r * comp->stride;
+            }
 
-              break;
-            case 11:
-              convertToOutputTIFF<11, false, T>(datau8, buffer32s, (size_t)comp->w * tiSpp, invert);
-              break;
-            case 12:
-              comps[0].sgnd ? convertToOutputTIFF<12, true, T>(datau8, buffer32s,
-                                                               (size_t)comp->w * tiSpp, invert)
-                            : convertToOutputTIFF<12, false, T>(datau8, buffer32s,
-                                                                (size_t)comp->w * tiSpp, invert);
+            std::atomic<bool> convOk{true};
+            uint32_t nThreads =
+                (std::min)(rowCount, (uint32_t)std::thread::hardware_concurrency());
+            if(nThreads < 2)
+              nThreads = 1;
 
-              break;
-            case 13:
-              convertToOutputTIFF<13, false, T>(datau8, buffer32s, (size_t)comp->w * tiSpp, invert);
-              break;
-            case 14:
-              convertToOutputTIFF<14, false, T>(datau8, buffer32s, (size_t)comp->w * tiSpp, invert);
-              break;
-            case 15:
-              convertToOutputTIFF<15, false, T>(datau8, buffer32s, (size_t)comp->w * tiSpp, invert);
-              break;
-            case 16:
-              convertToOutputTIFF<16, false, T>(datau8, buffer32s, (size_t)comp->w * tiSpp, invert);
-              break;
-            default:
+            auto worker = [&](uint32_t begin, uint32_t end) {
+              for(uint32_t r = begin; r < end; ++r)
+              {
+                if(!convOk.load(std::memory_order_relaxed))
+                  return;
+                const uint8_t* rowData = datau8 + (size_t)r * rowStride;
+                if(!convertRowTIFF<T>(rowData, rowBufs[r], pixelCount, prec, sgnd, invert))
+                {
+                  convOk.store(false, std::memory_order_relaxed);
+                  return;
+                }
+                interleave(rowBufs[r], rowPlanes[r].get(), comp->w, targetPlanes);
+              }
+            };
+
+            /* Split rows across threads */
+            std::vector<std::thread> threads;
+            uint32_t rowsPerThread = rowCount / nThreads;
+            uint32_t remainder = rowCount % nThreads;
+            uint32_t start = 0;
+            for(uint32_t t = 0; t < nThreads; ++t)
+            {
+              uint32_t count = rowsPerThread + (t < remainder ? 1 : 0);
+              if(t == nThreads - 1)
+                worker(start, start + count); // run last chunk on this thread
+              else
+                threads.emplace_back(worker, start, start + count);
+              start += count;
+            }
+            for(auto& th : threads)
+              th.join();
+
+            for(uint32_t r = 0; r < rowCount; ++r)
+              delete[] rowBufs[r];
+
+            if(!convOk.load())
+            {
+              success = false;
               goto beach;
+            }
           }
-          uint16_t targetPlanes = numcomps;
-          if(tiSpp == 1)
-            targetPlanes = 1;
-          interleave(buffer32s, planes.get(), comp->w, targetPlanes);
+          else
+          {
+            /* Small strip: process sequentially (avoid Taskflow overhead) */
+            for(uint32_t r = 0; r < rowCount; ++r)
+            {
+              if(!convertRowTIFF<T>(datau8 + (size_t)r * rowStride, buffer32s, pixelCount, prec,
+                                    sgnd, invert))
+              {
+                success = false;
+                goto beach;
+              }
+              T* rowPlanesArr[16]; // max components
+              for(uint16_t k = 0; k < numcomps; ++k)
+                rowPlanesArr[k] = planes[k] + r * comp->stride;
+              interleave(buffer32s, rowPlanesArr, comp->w, targetPlanes);
+            }
+          }
+
+          /* Advance all state by rowCount rows */
           for(uint16_t k = 0; k < numcomps; ++k)
-            planes[k] += comp->stride;
-          datau8 += rowStride;
-          ssize -= rowStride;
-          height++;
+            planes[k] += (size_t)rowCount * comp->stride;
+          datau8 += (size_t)rowCount * rowStride;
+          ssize -= (tsize_t)((size_t)rowCount * rowStride);
+          height += rowCount;
         }
         else
         {
