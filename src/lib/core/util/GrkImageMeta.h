@@ -32,6 +32,10 @@ public:
     xmp_len = 0;
     exif_buf = nullptr;
     exif_len = 0;
+    geotiff_buf = nullptr;
+    geotiff_len = 0;
+    ipr_data = nullptr;
+    ipr_len = 0;
     color = {};
   }
 
@@ -41,6 +45,8 @@ public:
     delete[] iptc_buf;
     delete[] xmp_buf;
     delete[] exif_buf;
+    delete[] geotiff_buf;
+    delete[] ipr_data;
   }
   void allocPalette(uint8_t num_channels, uint16_t num_entries)
   {

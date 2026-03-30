@@ -198,9 +198,6 @@ bool FileFormatJP2Compress::write_jp2h(void)
       writers[nb_writers++].handler =
           std::bind(&FileFormatJP2Compress::write_res, this, std::placeholders::_1);
   }
-  if(xml.buf() && xml.num_elts())
-    writers[nb_writers++].handler =
-        std::bind(&FileFormatJP2Compress::write_xml, this, std::placeholders::_1);
   for(i = 0; i < nb_writers; ++i)
   {
     auto current_writer = writers + i;
@@ -569,6 +566,67 @@ uint8_t* FileFormatJP2Compress::write_xml(uint32_t* p_nb_bytes_written)
 {
   return write_buffer(JP2_XML, &xml, p_nb_bytes_written);
 }
+bool FileFormatJP2Compress::write_xml_boxes(void)
+{
+  auto stream = codeStream->getStream();
+  assert(stream != nullptr);
+
+  // write the primary xml box
+  if(xml.buf() && xml.num_elts())
+  {
+    uint32_t size = 0;
+    auto data = write_xml(&size);
+    if(data)
+    {
+      if(stream->writeBytes(data, size) != size)
+      {
+        grk_free(data);
+        return false;
+      }
+      grk_free(data);
+    }
+  }
+
+  // write additional xml boxes
+  for(uint32_t i = 0; i < numXmlBoxes; ++i)
+  {
+    auto& xb = xml_boxes[i];
+    if(xb.buf() && xb.num_elts())
+    {
+      uint32_t size = 0;
+      auto data = write_buffer(JP2_XML, &xb, &size);
+      if(data)
+      {
+        if(stream->writeBytes(data, size) != size)
+        {
+          grk_free(data);
+          return false;
+        }
+        grk_free(data);
+      }
+    }
+  }
+
+  return true;
+}
+bool FileFormatJP2Compress::write_ipr(void)
+{
+  auto stream = codeStream->getStream();
+  assert(stream != nullptr);
+
+  if(!ipr.buf() || !ipr.num_elts())
+    return true;
+
+  uint32_t size = 0;
+  auto data = write_buffer(JP2_JP2I, &ipr, &size);
+  if(!data)
+    return false;
+
+  bool result = (stream->writeBytes(data, size) == size);
+  grk_free(data);
+
+  return result;
+}
 
 uint8_t* FileFormatJP2Compress::write_ihdr(uint32_t* p_nb_bytes_written)
 {
@@ -685,7 +743,7 @@ bool FileFormatJP2Compress::init(grk_cparameters* parameters, GrkImage* image)
   }
   C = 7; /* C : Always 7 */
   UnkC = 0; /* UnkC, colorspace specified in colr box */
-  IPR = 0; /* IPR, no intellectual property */
+  IPR = (inputImage_->meta && inputImage_->meta->ipr_len && inputImage_->meta->ipr_data) ? 1 : 0;
 
   /* bit per component box */
   for(i = 0; i < inputImage_->numcomps; i++)
@@ -738,6 +796,17 @@ bool FileFormatJP2Compress::init(grk_cparameters* parameters, GrkImage* image)
     if(inputImage_->meta->exif_len && inputImage_->meta->exif_buf)
       uuids[numUuids++] =
           UUIDBox(EXIF_UUID, inputImage_->meta->exif_buf, inputImage_->meta->exif_len);
+
+    if(inputImage_->meta->geotiff_len && inputImage_->meta->geotiff_buf)
+      uuids[numUuids++] =
+          UUIDBox(GEOTIFF_UUID, inputImage_->meta->geotiff_buf, inputImage_->meta->geotiff_len);
+
+    if(inputImage_->meta->ipr_len && inputImage_->meta->ipr_data)
+    {
+      ipr.alloc(inputImage_->meta->ipr_len);
+      if(ipr.buf())
+        memcpy(ipr.buf(), inputImage_->meta->ipr_data, inputImage_->meta->ipr_len);
+    }
   }
   /* Channel Definition box */
   for(i = 0; i < inputImage_->numcomps; i++)
@@ -850,6 +919,8 @@ void FileFormatJP2Compress::init_header_writing(void)
   procedure_list_->push_back(std::bind(&FileFormatJP2Compress::write_signature, this));
   procedure_list_->push_back(std::bind(&FileFormatJP2Compress::write_ftyp, this));
   procedure_list_->push_back(std::bind(&FileFormatJP2Compress::write_jp2h, this));
+  procedure_list_->push_back(std::bind(&FileFormatJP2Compress::write_xml_boxes, this));
+  procedure_list_->push_back(std::bind(&FileFormatJP2Compress::write_ipr, this));
   procedure_list_->push_back(std::bind(&FileFormatJP2Compress::write_uuids, this));
   procedure_list_->push_back(std::bind(&FileFormatJP2Compress::skip_jp2c, this));
 }

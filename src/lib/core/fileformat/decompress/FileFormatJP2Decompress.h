@@ -29,6 +29,7 @@ const uint32_t JP2_ULST = 0x756c7374; /** UUID list box */
 const uint32_t JP2_URL = 0x75726c20; /** Data entry URL box */
 const uint32_t JP2_ASOC = 0x61736f63; /** Associated data box*/
 const uint32_t JP2_LBL = 0x6c626c20; /** Label box*/
+const uint32_t JP2_JUMB = 0x6a756d62; /** JUMBF super box (ISO/IEC 19566-5) */
 
 const uint8_t IPTC_UUID[16] = {0x33, 0xC7, 0xA4, 0xD2, 0xB8, 0x1D, 0x47, 0x23,
                                0xA0, 0xBA, 0xF1, 0xA3, 0xE0, 0x97, 0xAD, 0x38};
@@ -40,6 +41,12 @@ const uint8_t EXIF_UUID[16] = {0x4A, 0x70, 0x67, 0x54, 0x69, 0x66, 0x66, 0x45,
 // EXIF UUID written by Photoshop/Adobe JPEG2000 plugin
 const uint8_t EXIF_UUID_PS[16] = {0x05, 0x37, 0xCD, 0xAB, 0x9D, 0x0C, 0x44, 0x31,
                                   0xA7, 0x2A, 0xFA, 0x56, 0x1F, 0x2A, 0x11, 0x3E};
+// GeoTIFF UUID (GeoJP2): used by GDAL and other GIS tools for georeferencing
+const uint8_t GEOTIFF_UUID[16] = {0xB1, 0x4B, 0xF8, 0xBD, 0x08, 0x3D, 0x4B, 0x43,
+                                  0xA5, 0xAE, 0x8C, 0xD7, 0xD5, 0xA6, 0xCE, 0x03};
+// MSIG UUID: MapInfo worldfile-style georeferencing (legacy)
+const uint8_t MSIG_UUID[16] = {0x96, 0xA9, 0xF1, 0xF1, 0xDC, 0x98, 0x40, 0x2D,
+                               0xA7, 0xAE, 0xD6, 0x8E, 0x34, 0x45, 0x18, 0x09};
 
 class FileFormatJP2Decompress final : public FileFormatJP2Family, public IDecompressor
 {
@@ -67,6 +74,7 @@ private:
 
   bool read_xml(uint8_t* p_xml_data, uint32_t xml_size);
   bool read_uuid(uint8_t* headerData, uint32_t headerSize);
+  bool read_ipr(uint8_t* headerData, uint32_t headerSize);
 
 protected:
   CodeStreamDecompress* codeStream;

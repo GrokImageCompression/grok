@@ -49,8 +49,8 @@ FileFormatJP2Family::FileFormatJP2Family(IStream* stream)
     : procedure_list_(new std::vector<PROCEDURE_FUNC>()), brand(0), minversion(0), numcl(0),
       cl(nullptr), w(0), h(0), numcomps(0), bpc(0), C(0), UnkC(0), IPR(0), meth(0), approx(0),
       enumcs(GRK_ENUM_CLRSPC_UNKNOWN), precedence(0), comps(nullptr), has_capture_resolution(false),
-      has_display_resolution(false), io_xml_(false), numUuids(0), jp2_state(0), headerError_(false),
-      headerRead_(false), stream_(stream)
+      has_display_resolution(false), numXmlBoxes(0), io_xml_(false), numUuids(0), jp2_state(0),
+      headerError_(false), headerRead_(false), stream_(stream)
 {
   for(uint32_t i = 0; i < 2; ++i)
   {
@@ -74,6 +74,9 @@ FileFormatJP2Family::FileFormatJP2Family(IStream* stream)
 FileFormatJP2Family::~FileFormatJP2Family()
 {
   xml.dealloc();
+  for(uint32_t i = 0; i < numXmlBoxes; ++i)
+    xml_boxes[i].dealloc();
+  ipr.dealloc();
   grk_free(cl);
   for(uint32_t i = 0; i < numUuids; ++i)
     (uuids + i)->dealloc();
@@ -206,6 +209,16 @@ bool FileFormatJP2Family::readHeader(grk_header_info* header_info, GrkImage* hea
             return false;
           }
         }
+      }
+
+      // expose additional XML boxes
+      header_info->num_xml_boxes = (xml.buf() && xml.num_elts()) ? 1 : 0;
+      for(uint32_t i = 0; i < numXmlBoxes && header_info->num_xml_boxes < GRK_NUM_XML_BOXES_SUPPORTED; ++i)
+      {
+        auto idx = header_info->num_xml_boxes;
+        header_info->xml_boxes_data[idx] = xml_boxes[i].buf();
+        header_info->xml_boxes_len[idx] = xml_boxes[i].num_elts();
+        header_info->num_xml_boxes++;
       }
 
       // retrieve ASOCs

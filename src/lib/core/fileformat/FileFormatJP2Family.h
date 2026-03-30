@@ -43,6 +43,7 @@ const uint32_t JP2_DISPLAY_RES = 0x72657364; /** Display resolution box */
 #define GRK_BOX_SIZE 1024
 #define GRK_RESOLUTION_BOX_SIZE (4 + 4 + 10)
 #define JP2_MAX_NUM_UUIDS 128
+#define JP2_MAX_NUM_XML_BOXES 64
 
 enum JP2_STATE
 {
@@ -203,8 +204,12 @@ protected:
   double display_resolution[2];
 
   Buffer8 xml;
+  Buffer8 xml_boxes[JP2_MAX_NUM_XML_BOXES];
+  uint32_t numXmlBoxes;
   bool io_xml_;
   std::string xml_outfile_;
+
+  Buffer8 ipr;
 
   UUIDBox uuids[JP2_MAX_NUM_UUIDS];
   uint32_t numUuids;

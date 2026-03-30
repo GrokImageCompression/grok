@@ -157,3 +157,96 @@ void grk_cparameters_set_layer_distortion(grk_cparameters* p, uint16_t layer, do
         $self->band_space  = (int64_t)width * height * elem_bytes;
     }
 }
+
+%extend _grk_image_meta {
+    /* Set the GeoTIFF UUID buffer from Python bytes */
+    void set_geotiff(PyObject* py_bytes) {
+        if (!PyBytes_Check(py_bytes)) return;
+        grk_image_meta_set_field($self, "geotiff",
+            (const uint8_t*)PyBytes_AsString(py_bytes), (size_t)PyBytes_Size(py_bytes));
+    }
+
+    /* Get the GeoTIFF UUID buffer as Python bytes */
+    PyObject* get_geotiff() {
+        uint8_t* data = NULL; size_t len = 0;
+        grk_image_meta_get_field($self, "geotiff", &data, &len);
+        if (!data || len == 0) Py_RETURN_NONE;
+        return PyBytes_FromStringAndSize((const char*)data, (Py_ssize_t)len);
+    }
+
+    /* Set the IPR buffer from Python bytes */
+    void set_ipr(PyObject* py_bytes) {
+        if (!PyBytes_Check(py_bytes)) return;
+        grk_image_meta_set_field($self, "ipr",
+            (const uint8_t*)PyBytes_AsString(py_bytes), (size_t)PyBytes_Size(py_bytes));
+    }
+
+    /* Get the IPR buffer as Python bytes */
+    PyObject* get_ipr() {
+        uint8_t* data = NULL; size_t len = 0;
+        grk_image_meta_get_field($self, "ipr", &data, &len);
+        if (!data || len == 0) Py_RETURN_NONE;
+        return PyBytes_FromStringAndSize((const char*)data, (Py_ssize_t)len);
+    }
+
+    /* Set the XMP buffer from Python bytes */
+    void set_xmp(PyObject* py_bytes) {
+        if (!PyBytes_Check(py_bytes)) return;
+        grk_image_meta_set_field($self, "xmp",
+            (const uint8_t*)PyBytes_AsString(py_bytes), (size_t)PyBytes_Size(py_bytes));
+    }
+
+    /* Get the XMP buffer as Python bytes */
+    PyObject* get_xmp() {
+        uint8_t* data = NULL; size_t len = 0;
+        grk_image_meta_get_field($self, "xmp", &data, &len);
+        if (!data || len == 0) Py_RETURN_NONE;
+        return PyBytes_FromStringAndSize((const char*)data, (Py_ssize_t)len);
+    }
+
+    /* Set the IPTC buffer from Python bytes */
+    void set_iptc(PyObject* py_bytes) {
+        if (!PyBytes_Check(py_bytes)) return;
+        grk_image_meta_set_field($self, "iptc",
+            (const uint8_t*)PyBytes_AsString(py_bytes), (size_t)PyBytes_Size(py_bytes));
+    }
+
+    /* Get the IPTC buffer as Python bytes */
+    PyObject* get_iptc() {
+        uint8_t* data = NULL; size_t len = 0;
+        grk_image_meta_get_field($self, "iptc", &data, &len);
+        if (!data || len == 0) Py_RETURN_NONE;
+        return PyBytes_FromStringAndSize((const char*)data, (Py_ssize_t)len);
+    }
+
+    /* Set the EXIF buffer from Python bytes */
+    void set_exif(PyObject* py_bytes) {
+        if (!PyBytes_Check(py_bytes)) return;
+        grk_image_meta_set_field($self, "exif",
+            (const uint8_t*)PyBytes_AsString(py_bytes), (size_t)PyBytes_Size(py_bytes));
+    }
+
+    /* Get the EXIF buffer as Python bytes */
+    PyObject* get_exif() {
+        uint8_t* data = NULL; size_t len = 0;
+        grk_image_meta_get_field($self, "exif", &data, &len);
+        if (!data || len == 0) Py_RETURN_NONE;
+        return PyBytes_FromStringAndSize((const char*)data, (Py_ssize_t)len);
+    }
+}
+
+%extend _grk_header_info {
+    /* Get primary XML box data as Python bytes */
+    PyObject* get_xml_data() {
+        if (!$self->xml_data || $self->xml_data_len == 0)
+            Py_RETURN_NONE;
+        return PyBytes_FromStringAndSize((const char*)$self->xml_data, (Py_ssize_t)$self->xml_data_len);
+    }
+
+    /* Get additional XML box data by index (0-based) as Python bytes */
+    PyObject* get_xml_box(uint32_t index) {
+        if (index >= $self->num_xml_boxes || !$self->xml_boxes_data[index] || $self->xml_boxes_len[index] == 0)
+            Py_RETURN_NONE;
+        return PyBytes_FromStringAndSize((const char*)$self->xml_boxes_data[index], (Py_ssize_t)$self->xml_boxes_len[index]);
+    }
+}

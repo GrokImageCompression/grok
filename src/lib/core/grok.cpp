@@ -362,6 +362,79 @@ grk_image_meta* grk_image_meta_new(void)
   return (grk_image_meta*)(new GrkImageMeta());
 }
 
+static bool resolve_meta_field(grk_image_meta* meta, const char* field, uint8_t*** buf_pp,
+                               size_t** len_pp)
+{
+  if(!meta || !field)
+    return false;
+  if(strcmp(field, "geotiff") == 0)
+  {
+    *buf_pp = &meta->geotiff_buf;
+    *len_pp = &meta->geotiff_len;
+  }
+  else if(strcmp(field, "ipr") == 0)
+  {
+    *buf_pp = &meta->ipr_data;
+    *len_pp = &meta->ipr_len;
+  }
+  else if(strcmp(field, "xmp") == 0)
+  {
+    *buf_pp = &meta->xmp_buf;
+    *len_pp = &meta->xmp_len;
+  }
+  else if(strcmp(field, "iptc") == 0)
+  {
+    *buf_pp = &meta->iptc_buf;
+    *len_pp = &meta->iptc_len;
+  }
+  else if(strcmp(field, "exif") == 0)
+  {
+    *buf_pp = &meta->exif_buf;
+    *len_pp = &meta->exif_len;
+  }
+  else
+  {
+    return false;
+  }
+  return true;
+}
+
+bool grk_image_meta_set_field(grk_image_meta* meta, const char* field, const uint8_t* data, size_t len)
+{
+  uint8_t** buf_p = nullptr;
+  size_t* len_p = nullptr;
+  if(!resolve_meta_field(meta, field, &buf_p, &len_p))
+    return false;
+
+  delete[] * buf_p;
+  *buf_p = nullptr;
+  *len_p = 0;
+
+  if(data && len > 0)
+  {
+    *buf_p = new(std::nothrow) uint8_t[len];
+    if(!*buf_p)
+      return false;
+    memcpy(*buf_p, data, len);
+    *len_p = len;
+  }
+  return true;
+}
+
+bool grk_image_meta_get_field(grk_image_meta* meta, const char* field, uint8_t** data, size_t* len)
+{
+  uint8_t** buf_p = nullptr;
+  size_t* len_p = nullptr;
+  if(!resolve_meta_field(meta, field, &buf_p, &len_p))
+    return false;
+
+  if(data)
+    *data = *buf_p;
+  if(len)
+    *len = *len_p;
+  return true;
+}
+
 /* DECOMPRESSION FUNCTIONS*/
 grk_object* grk_decompress_init(grk_stream_params* streamParams,
                                 grk_decompress_parameters* decompressParams)

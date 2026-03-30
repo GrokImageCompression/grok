@@ -56,6 +56,8 @@ private:
   void init_header_writing();
   void init_end_header_writing(void);
   uint8_t* write_xml(uint32_t* p_nb_bytes_written);
+  bool write_xml_boxes(void);
+  bool write_ipr(void);
   bool skip_jp2c(void);
 
   bool needs_xl_jp2c_box_length = false;

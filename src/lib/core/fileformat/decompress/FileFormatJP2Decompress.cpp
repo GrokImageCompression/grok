@@ -62,7 +62,9 @@ FileFormatJP2Decompress::FileFormatJP2Decompress(IStream* stream)
       {JP2_JP2H, [this](uint8_t* data, uint32_t len) { return read_jp2h(data, len); }},
       {JP2_XML, [this](uint8_t* data, uint32_t len) { return read_xml(data, len); }},
       {JP2_UUID, [this](uint8_t* data, uint32_t len) { return read_uuid(data, len); }},
-      {JP2_ASOC, [this](uint8_t* data, uint32_t len) { return read_asoc(data, len); }}};
+      {JP2_ASOC, [this](uint8_t* data, uint32_t len) { return read_asoc(data, len); }},
+      {JP2_JP2I, [this](uint8_t* data, uint32_t len) { return read_ipr(data, len); }},
+      {JP2_JUMB, BOX_FUNC{}} /* JUMBF: registered as super box (nullptr handler) */};
   header.insert(handlers.begin(), handlers.end());
 
   codeStream->setPostPostProcess([this](GrkImage* img) { return postProcess(img); });
@@ -160,6 +162,27 @@ bool FileFormatJP2Decompress::readHeader(grk_header_info* header_info)
           memcpy(image->meta->exif_buf, uuid->buf(), uuid->num_elts());
         }
       }
+      else if(memcmp(uuid->uuid, GEOTIFF_UUID, 16) == 0)
+      {
+        if(image->meta->geotiff_buf)
+        {
+          grklog.warn("Attempt to set a second GeoTIFF buffer. Ignoring");
+        }
+        else if(uuid->num_elts())
+        {
+          image->meta->geotiff_len = uuid->num_elts();
+          image->meta->geotiff_buf = new uint8_t[uuid->num_elts()];
+          memcpy(image->meta->geotiff_buf, uuid->buf(), uuid->num_elts());
+        }
+      }
+    }
+
+    // transfer IPR box data to image meta
+    if(ipr.buf() && ipr.num_elts() && !image->meta->ipr_data)
+    {
+      image->meta->ipr_len = ipr.num_elts();
+      image->meta->ipr_data = new uint8_t[ipr.num_elts()];
+      memcpy(image->meta->ipr_data, ipr.buf(), ipr.num_elts());
     }
   }
 
@@ -242,13 +265,33 @@ bool FileFormatJP2Decompress::read_xml(uint8_t* p_xml_data, uint32_t xml_size)
   if(!p_xml_data || !xml_size)
     return false;
 
-  xml.alloc(xml_size);
+  // first XML box goes into the primary xml buffer for backward compatibility
   if(!xml.buf())
   {
-    xml.set_num_elts(0);
-    return false;
+    xml.alloc(xml_size);
+    if(!xml.buf())
+    {
+      xml.set_num_elts(0);
+      return false;
+    }
+    memcpy(xml.buf(), p_xml_data, xml_size);
   }
-  memcpy(xml.buf(), p_xml_data, xml_size);
+  else
+  {
+    // additional XML boxes go into the xml_boxes array
+    if(numXmlBoxes == JP2_MAX_NUM_XML_BOXES)
+    {
+      grklog.warn("Reached maximum (%u) number of XML boxes read - ignoring XML box",
+                  JP2_MAX_NUM_XML_BOXES);
+      return true;
+    }
+    auto& newXml = xml_boxes[numXmlBoxes];
+    newXml.alloc(xml_size);
+    if(!newXml.buf())
+      return false;
+    memcpy(newXml.buf(), p_xml_data, xml_size);
+    numXmlBoxes++;
+  }
 
   return true;
 }
@@ -274,6 +317,24 @@ bool FileFormatJP2Decompress::read_uuid(uint8_t* headerData, uint32_t headerSize
   uuid->alloc(headerSize - 16);
   memcpy(uuid->buf(), headerData, uuid->num_elts());
   numUuids++;
+
+  return true;
+}
+bool FileFormatJP2Decompress::read_ipr(uint8_t* headerData, uint32_t headerSize)
+{
+  if(!headerData || !headerSize)
+    return false;
+
+  if(ipr.buf())
+  {
+    grklog.warn("Ignoring duplicate IPR box");
+    return true;
+  }
+
+  ipr.alloc(headerSize);
+  if(!ipr.buf())
+    return false;
+  memcpy(ipr.buf(), headerData, headerSize);
 
   return true;
 }

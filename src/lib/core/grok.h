@@ -135,6 +135,11 @@ typedef enum _GRK_ENUM_COLOUR_SPACE
 #define GRK_NUM_ASOC_BOXES_SUPPORTED 256
 
 /**
+ * @brief maximum Grok supported number of XML boxes
+ */
+#define GRK_NUM_XML_BOXES_SUPPORTED 64
+
+/**
  * @brief maximum Grok supported comment length
  */
 #define GRK_MAX_COMMENT_LENGTH (UINT16_MAX - 2)
@@ -762,6 +767,10 @@ typedef struct _grk_image_meta
   size_t xmp_len; /* XMP length */
   uint8_t* exif_buf; /* EXIF buffer (TIFF-structured) */
   size_t exif_len; /* EXIF length */
+  uint8_t* geotiff_buf; /* GeoTIFF UUID box data (degenerate GeoTIFF) */
+  size_t geotiff_len; /* GeoTIFF UUID box data length */
+  uint8_t* ipr_data; /* IPR (Intellectual Property) box data */
+  size_t ipr_len; /* IPR box data length */
 } grk_image_meta;
 
 /**
@@ -846,6 +855,9 @@ typedef struct _grk_header_info
   uint16_t num_layers; /* number of layers */
   uint8_t* xml_data; /* XML data - will remain valid until codec destroyed */
   size_t xml_data_len; /* XML data length */
+  uint8_t* xml_boxes_data[GRK_NUM_XML_BOXES_SUPPORTED]; /* additional XML box data */
+  size_t xml_boxes_len[GRK_NUM_XML_BOXES_SUPPORTED]; /* additional XML box lengths */
+  uint32_t num_xml_boxes; /* total number of XML boxes (including xml_data if present) */
   size_t num_comments; /* number of comments */
   char* comment[GRK_NUM_COMMENTS_SUPPORTED]; /* comment */
   uint16_t comment_len[GRK_NUM_COMMENTS_SUPPORTED]; /* comment length */
@@ -1138,6 +1150,38 @@ GRK_API grk_image* GRK_CALLCONV grk_image_new(uint16_t numcmpts, grk_image_comp*
  * @return pointer to newly allocated @ref grk_image_meta, or NULL on OOM
  */
 GRK_API grk_image_meta* GRK_CALLCONV grk_image_meta_new(void);
+
+/**
+ * @brief Set a metadata buffer on a grk_image_meta object.
+ *
+ * Copies @p len bytes from @p data into the specified metadata field,
+ * replacing any existing data.  The previous buffer (if any) is freed.
+ *
+ * @param meta   pointer to an existing grk_image_meta
+ * @param field  which metadata field to set:
+ *               "geotiff", "ipr", "xmp", "iptc", "exif"
+ * @param data   pointer to source bytes (copied internally)
+ * @param len    number of bytes to copy
+ * @return true on success, false on invalid field name or OOM
+ */
+GRK_API bool GRK_CALLCONV grk_image_meta_set_field(grk_image_meta* meta, const char* field,
+                                                    const uint8_t* data, size_t len);
+
+/**
+ * @brief Get a metadata buffer from a grk_image_meta object.
+ *
+ * Returns a pointer to the internal buffer for the specified metadata field.
+ * The pointer is valid for the lifetime of the grk_image_meta object.
+ *
+ * @param meta      pointer to an existing grk_image_meta
+ * @param field     which metadata field to get:
+ *                  "geotiff", "ipr", "xmp", "iptc", "exif"
+ * @param[out] data set to internal buffer pointer (do not free)
+ * @param[out] len  set to buffer length
+ * @return true on success (even if data is NULL/empty), false on invalid field
+ */
+GRK_API bool GRK_CALLCONV grk_image_meta_get_field(grk_image_meta* meta, const char* field,
+                                                    uint8_t** data, size_t* len);
 
 /**
  * @brief Creates and initializes a JPEG 2000 decompressor.

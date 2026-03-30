@@ -46,6 +46,10 @@ add_test(NAME grk_lru_cache_test COMMAND grk_lru_cache_test)
 add_executable(compare_raw_files compare_raw_files.cpp GrkCompareRawFiles.cpp)
 target_link_libraries(compare_raw_files ${GROK_CORE_NAME} spdlog::spdlog)
 
+add_executable(grk_jp2_metadata_test grk_jp2_metadata_test.cpp GrkJP2MetadataTest.cpp)
+target_link_libraries(grk_jp2_metadata_test ${GROK_CORE_NAME} spdlog::spdlog)
+add_test(NAME grk_jp2_metadata_test COMMAND grk_jp2_metadata_test)
+
 if(NOT GROK_HAVE_LIBPNG)
   message(WARNING "libpng is not available - running regression tests requires GRK_BUILD_LIBPNG enabled.")
 endif()
