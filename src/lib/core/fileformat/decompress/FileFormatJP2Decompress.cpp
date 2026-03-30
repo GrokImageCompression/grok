@@ -64,6 +64,8 @@ FileFormatJP2Decompress::FileFormatJP2Decompress(IStream* stream)
       {JP2_UUID, [this](uint8_t* data, uint32_t len) { return read_uuid(data, len); }},
       {JP2_ASOC, [this](uint8_t* data, uint32_t len) { return read_asoc(data, len); }},
       {JP2_JP2I, [this](uint8_t* data, uint32_t len) { return read_ipr(data, len); }},
+      {JP2_RREQ,
+       []([[maybe_unused]] uint8_t* data, [[maybe_unused]] uint32_t len) { return true; }},
       {JP2_JUMB, BOX_FUNC{}} /* JUMBF: registered as super box (nullptr handler) */};
   header.insert(handlers.begin(), handlers.end());
 
