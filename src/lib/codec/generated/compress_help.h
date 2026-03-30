@@ -4,7 +4,7 @@
 
 // NOLINTNEXTLINE
 static const char compress_help_text[] =
-    R"HELPTEXT(* Supported input formats:  `JPEG`, `BMP`, `PNM`, `PGX`, `PNG`, `RAW`, `RAWL` and `TIFF`
+R"HELPTEXT(* Supported input formats:  `JPEG`, `BMP`, `PNM`, `PGX`, `PNG`, `RAW`, `RAWL` and `TIFF`
 * Supported input image extensions:  `jpg`, `.jpeg`, `.bmp`, `.pgm`, `.pgx`, `.pnm`, `.ppm`, `.pam`, `.png`, `.raw`, `.rawl`, `.tif` and `.tiff`
 * Supported output formats: `JP2`, `J2K`/`J2C`, `JPH`, `JHC` and `MJ2` (Motion JPEG 2000)
 * Supported output image extensions: `.jp2`, `.j2k`/`.j2c`, `.jph`, `.jhc` and `.mj2`
@@ -33,10 +33,9 @@ XMP (JP2\JPH Only)
 
 If an input `TIF/TIFF` or `PNG` file contains `XMP` metadata, this metadata will be stored in the compressed file.
 
-Exif (JP2 only)
+EXIF (JP2 only)
 
-To transfer Exif and all other meta-data tags, use the command line argument `-V` described below. To transfer the tags, Grok uses the wonderful [ExifTool](https://exiftool.org/) Perl module. ExifTool must be installed for this command line argument to work properly.
-Note: transferring Exif tags may add a few hundred ms to the decompress time, depending on the system.
+If an input `JPEG` or `PNG` file contains `EXIF` metadata, this metadata will be automatically stored in the compressed file.
 
 When only the input and output files are specified, the following default option values are used:
 
@@ -283,25 +282,12 @@ Specify explicitly if a Multiple Component Transform has to be used.
 * 1: RGB->YCC conversion 
 * 2: custom MCT. 
 
-)HELPTEXT"
-    R"HELPTEXT(For custom MCT, `-m` option has to be used (see below). By default, `RGB`->`YCC` conversion is used if there are three components or more, otherwise no conversion.
+For custom MCT, `-m` option has to be used (see below). By default, `RGB`->`YCC` conversion is used if there are three components or more, otherwise no conversion.
 
 `-m, --custom-mct [file]`
 
-Use custom array-based MCT of 32 bit signed values, comma separated, line-by-line no specific separators between lines, no space allowed between values. If this option is used, it automatically sets `[-Y|-mct]` option equal to 2.
-
-`-V, --transfer--exif-tags`
-
-Transfer all Exif tags to output file.
-
-Notes:
-
-1. [ExifTool](https://exiftool.org/) must be installed for this command line argument
-to function correctly.
-2. Only supported on Linux. On other platforms, `exiftool` can be used directly after compression to transfer
-tags:
-
-`exiftool -TagsFromFile src.tif "-all:all>all:all" dest.jp2`
+)HELPTEXT"
+R"HELPTEXT(Use custom array-based MCT of 32 bit signed values, comma separated, line-by-line no specific separators between lines, no space allowed between values. If this option is used, it automatically sets `[-Y|-mct]` option equal to 2.
 
 `-Q, --capture-res [capture resolution X,capture resolution Y]`
 

@@ -62,13 +62,12 @@ jobs:
       if: startsWith(matrix.os, 'ubuntu')
       run: |
         #echo DATA_BRANCH=linux-release >> $GITHUB_ENV
-        sudo apt install exiftool libpsl-dev swig
+        sudo apt install libpsl-dev swig
     - name: macos-dependencies
       if: startsWith(matrix.os, 'macos')
       run: |
         #echo DATA_BRANCH=osx >> $GITHUB_ENV
-        brew install exiftool libpsl libssh2 swig
-        #perl -MImage::ExifTool -e ""
+        brew install libpsl libssh2 swig
         # Add macOS-specific dependencies if needed
     - name: windows-dependencies
       if: startsWith(matrix.os, 'windows')

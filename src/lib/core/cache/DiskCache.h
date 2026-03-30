@@ -20,6 +20,11 @@
 #include <cstdint>
 #include <cstdio>
 #include <filesystem>
+#ifdef _WIN32
+#include <process.h>
+#else
+#include <unistd.h>
+#endif
 #include <fstream>
 #include <mutex>
 #include <optional>
@@ -55,6 +60,10 @@ public:
       cacheDir_ = fs::temp_directory_path() / "grok_cache_XXXXXX";
       // Create a unique directory
       std::string tmpl = cacheDir_.string();
+#ifdef _WIN32
+      // mkdtemp not available on Windows; use PID-based name
+      cacheDir_ = fs::temp_directory_path() / ("grok_cache_" + std::to_string(_getpid()));
+#else
       if(!mkdtemp(tmpl.data()))
       {
         // Fallback: use PID-based name
@@ -64,6 +73,7 @@ public:
       {
         cacheDir_ = tmpl;
       }
+#endif
     }
     else
     {

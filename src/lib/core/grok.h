@@ -750,7 +750,7 @@ typedef struct _grk_color
 
 /**
  * @struct grk_image_data
- * @brief Image meta data: colour, IPTC and XMP
+ * @brief Image meta data: colour, IPTC, XMP and EXIF
  */
 typedef struct _grk_image_meta
 {
@@ -760,6 +760,8 @@ typedef struct _grk_image_meta
   size_t iptc_len; /* IPTC length */
   uint8_t* xmp_buf; /* XMP buffer */
   size_t xmp_len; /* XMP length */
+  uint8_t* exif_buf; /* EXIF buffer (TIFF-structured) */
+  size_t exif_len; /* EXIF length */
 } grk_image_meta;
 
 /**
@@ -1973,7 +1975,6 @@ typedef struct grk_plugin_compress_user_callback_info
   grk_plugin_tile* tile; /* tile */
   grk_stream_params stream_params; /* stream parameters */
   unsigned int error_code; /* error code */
-  bool transfer_exif_tags; /* transfer EXIF tags */
 } grk_plugin_compress_user_callback_info;
 
 /**

@@ -68,11 +68,6 @@ if(GROK_HAVE_LIBJPEG)
 	target_link_libraries(${GROK_CODEC_NAME} PRIVATE ${JPEG_LIBNAME})
 endif()
 
-if (PERLLIBS_FOUND)
-   include_directories(${PERL_INCLUDE_PATH})
-   target_link_libraries(${GROK_CODEC_NAME} PUBLIC ${PERL_LIBRARY} )
-endif()
-
 if(UNIX)
   target_link_libraries(${GROK_CODEC_NAME} PUBLIC ${CMAKE_THREAD_LIBS_INIT})
 endif()

@@ -61,7 +61,6 @@ using namespace grk;
 #include "convert.h"
 #include "grk_string.h"
 #include "spdlog/sinks/basic_file_sink.h"
-#include "exif.h"
 #include "GrkCompress.h"
 
 void exit_func()
@@ -692,7 +691,7 @@ GrkRC GrkCompress::parseCommandLine(int argc, const char* argv[], CompressInitPa
   std::string tileParts;
   uint16_t rsiz;
 
-  bool eph, applyICC, irreversible, plt, sop, tlm, transferExifTags;
+  bool eph, applyICC, irreversible, plt, sop, tlm;
 
   auto outDirOpt = app.add_option("-a,--out-dir", outDir, "Output directory");
   auto rateControlAlgorithmOpt =
@@ -750,8 +749,6 @@ GrkRC GrkCompress::parseCommandLine(int argc, const char* argv[], CompressInitPa
       app.add_option("-u,--tile-parts", tileParts, "Tile part generation")->default_val("0");
   tilePartsOpt->check(CLI::IsMember({"R", "L", "C", "0"}));
   auto broadcastOpt = app.add_option("-U,--broadcast", broadcast, "Broadcast profile");
-  auto transferExifTagsOpt =
-      app.add_flag("-V,--transfer-exif-tags", transferExifTags, "Transfer Exif tags");
   auto cinema2KOpt =
       app.add_option("-w,--cinema-2k", cinema2K, "Digital cinema 2K profile")->default_val("24");
   app.add_option("-W,--log-file", logfile, "Log file");
@@ -796,17 +793,6 @@ GrkRC GrkCompress::parseCommandLine(int argc, const char* argv[], CompressInitPa
     parameters->numresolution = GRK_CINEMA_4K_DEFAULT_NUM_RESOLUTIONS;
 
 #ifndef GRK_BUILD_DCI
-  initParams->transfer_exif_tags = transferExifTagsOpt->count() > 0;
-#ifndef GROK_HAVE_EXIFTOOL
-  if(initParams->transfer_exif_tags)
-  {
-    spdlog::warn("Transfer of EXIF tags not supported. Transfer can be achieved by "
-                 "directly calling");
-    spdlog::warn("exiftool after compression as follows: ");
-    spdlog::warn("exiftool -TagsFromFile $SOURCE_FILE -all:all>all:all $DEST_FILE");
-    initParams->transfer_exif_tags = false;
-  }
-#endif
   inputFolder->set_out_format = false;
   parameters->raw_cp.width = 0;
   if(applyICCOpt->count() > 0)
@@ -2187,11 +2173,6 @@ static uint64_t pluginCompressCallback(grk_plugin_compress_user_callback_info* i
     spdlog::error("failed to compress image: grk_compress");
     goto cleanup;
   }
-#ifdef GROK_HAVE_EXIFTOOL
-  if(compressedBytes && info->transfer_exif_tags &&
-     info->compressor_parameters->cod_format == GRK_FMT_JP2)
-    transfer_exif_tags(info->input_file_name, info->output_file_name);
-#endif
 
 cleanup:
   grk_object_unref(codec);
@@ -2239,7 +2220,6 @@ int GrkCompress::compress(const std::string& inputFile, CompressInitParams* init
     callbackInfo.stream_params = *initParams->stream_;
   callbackInfo.output_file_name = initParams->parameters.outfile;
   callbackInfo.input_file_name = initParams->parameters.infile;
-  callbackInfo.transfer_exif_tags = initParams->transfer_exif_tags;
 
   uint64_t compressedBytes = pluginCompressCallback(&callbackInfo);
   if(initParams->stream_)

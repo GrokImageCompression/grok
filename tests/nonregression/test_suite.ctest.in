@@ -743,7 +743,7 @@ grk_decompress -i  @INPUT_NR_PATH@/bit16_layer5.jp2 -o @TEMP_PATH@/t_bit16_layer
 grk_decompress -i  @INPUT_NR_PATH@/bit16_layer5.jp2 -o @TEMP_PATH@/p_bit16_layer5.pgm -l 1
 grk_decompress -i  @INPUT_NR_PATH@/bit16_layer5.jp2 -o @TEMP_PATH@/b_bit16_layer5.bmp
 
-grk_compress -i @INPUT_NR_PATH@/mono_multi_layer_plt_tlm.tif -o @TEMP_PATH@/mono_multi_layer_plt_tlm.tif.jp2 -XV -r 2,1
+grk_compress -i @INPUT_NR_PATH@/mono_multi_layer_plt_tlm.tif -o @TEMP_PATH@/mono_multi_layer_plt_tlm.tif.jp2 -X -r 2,1
 
 !grk_decompress -i  @INPUT_NR_PATH@/huge_number_of_precincts.j2k -o @TEMP_PATH@/huge_number_of_precincts.png
 

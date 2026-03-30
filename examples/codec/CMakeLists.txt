@@ -22,10 +22,4 @@ foreach(exe codec_decompress_from_file
 
   target_link_libraries(${exe} ${GROK_CODEC_NAME} ${GROK_CORE_NAME})
 
-
-  if (PERLLIBS_FOUND)
-  	include_directories(${PERL_INCLUDE_PATH})
-   	target_link_libraries(${exe} ${PERL_LIBRARY} )
-  endif()
-
 endforeach()
