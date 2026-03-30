@@ -734,6 +734,10 @@ bool FileFormatJP2Compress::init(grk_cparameters* parameters, GrkImage* image)
 
     if(inputImage_->meta->xmp_len && inputImage_->meta->xmp_buf)
       uuids[numUuids++] = UUIDBox(XMP_UUID, inputImage_->meta->xmp_buf, inputImage_->meta->xmp_len);
+
+    if(inputImage_->meta->exif_len && inputImage_->meta->exif_buf)
+      uuids[numUuids++] =
+          UUIDBox(EXIF_UUID, inputImage_->meta->exif_buf, inputImage_->meta->exif_len);
   }
   /* Channel Definition box */
   for(i = 0; i < inputImage_->numcomps; i++)

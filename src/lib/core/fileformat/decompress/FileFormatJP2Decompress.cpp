@@ -147,6 +147,19 @@ bool FileFormatJP2Decompress::readHeader(grk_header_info* header_info)
           memcpy(image->meta->xmp_buf, uuid->buf(), uuid->num_elts());
         }
       }
+      else if(memcmp(uuid->uuid, EXIF_UUID, 16) == 0 || memcmp(uuid->uuid, EXIF_UUID_PS, 16) == 0)
+      {
+        if(image->meta->exif_buf)
+        {
+          grklog.warn("Attempt to set a second EXIF buffer. Ignoring");
+        }
+        else if(uuid->num_elts())
+        {
+          image->meta->exif_len = uuid->num_elts();
+          image->meta->exif_buf = new uint8_t[uuid->num_elts()];
+          memcpy(image->meta->exif_buf, uuid->buf(), uuid->num_elts());
+        }
+      }
     }
   }
 

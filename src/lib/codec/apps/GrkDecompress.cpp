@@ -53,7 +53,6 @@
 #include "PNGFormat.h"
 #endif
 #include "grk_string.h"
-#include "exif.h"
 #include "GrkDecompress.h"
 #include "codestream/CodeStreamLimits.h"
 
@@ -348,7 +347,7 @@ GrkRC GrkDecompress::parseCommandLine(int argc, const char* argv[],
   uint8_t reduce = 0;
   uint16_t layer = 0;
   int32_t deviceId = 0;
-  bool forceRgb = false, splitPnm = false, upsample = false, transferExifTags = false, xml = false;
+  bool forceRgb = false, splitPnm = false, upsample = false, xml = false;
 
   auto outDirOpt = cmd.add_option("-a,--out-dir", outDir, "Output directory");
   auto compressionOpt = cmd.add_option("-c,--compression", compression, "Output compression type");
@@ -378,8 +377,6 @@ GrkRC GrkDecompress::parseCommandLine(int argc, const char* argv[],
   auto splitPnmOpt = cmd.add_flag("-s,--split-pnm", splitPnm, "Split PNM");
   auto tileOpt = cmd.add_option("-t,--tile-index", tile, "Index of tile to decompress");
   auto upsampleOpt = cmd.add_flag("-u,--upsample", upsample, "Upsample");
-  auto transferExifTagsOpt =
-      cmd.add_flag("-V,--transfer-exif-tags", transferExifTags, "Transfer Exif tags");
   cmd.add_option("-W,--log-file", logfile, "Log file path");
   auto xmlOpt = cmd.add_flag("-X,--xml", xml, "XML metadata");
   auto inDirOpt = cmd.add_option("-y,--batch-src", inDir, "Input source");
@@ -427,17 +424,6 @@ GrkRC GrkDecompress::parseCommandLine(int argc, const char* argv[],
   }
   configureLogging(logfile);
 
-  initParams->transfer_exif_tags = transferExifTagsOpt->count() > 0;
-#ifndef GROK_HAVE_EXIFTOOL
-  if(initParams->transfer_exif_tags)
-  {
-    spdlog::warn("Transfer of EXIF tags not supported. Transfer can be achieved by "
-                 "directly calling");
-    spdlog::warn("exiftool after decompression as follows: ");
-    spdlog::warn("exiftool -TagsFromFile $SOURCE_FILE -all:all>all:all $DEST_FILE");
-    initParams->transfer_exif_tags = false;
-  }
-#endif
   parameters->io_xml = xmlOpt->count() > 0;
   parameters->force_rgb = forceRgbOpt->count() > 0;
   if(upsampleOpt->count() > 0)
@@ -711,10 +697,6 @@ int GrkDecompress::decompress(const std::string& fileName, DecompressInitParams*
     grk_object_unref(info.codec);
     return 0;
   }
-#ifdef GROK_HAVE_EXIFTOOL
-  if(initParams->transfer_exif_tags && initParams->parameters.decod_format == GRK_CODEC_JP2)
-    transfer_exif_tags(initParams->parameters.infile, initParams->parameters.outfile);
-#endif
   grk_object_unref(info.codec);
   info.codec = nullptr;
   return 1;

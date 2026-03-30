@@ -46,9 +46,9 @@ XMP (JP2\JPH only)
 
 If a compressed input contains `XMP` metadata, this metadata will be stored to the output file if that output file is in `TIF\\TIFF` or `PNG` format.
 
-Exif (JP2 only)
+EXIF (JP2 only)
 
-To transfer Exif and all other meta-data tags, use the command line argument `-V` described below. To transfer the tags, Grok uses the [ExifTool](https://exiftool.org/) Perl module. ExifTool must be installed for this command line argument to work properly. Note: transferring Exif tags may add a few hundred ms to the decompress time, depending on the system.
+If a compressed input contains `EXIF` metadata, this metadata will be automatically stored to the output file if that output file is in `JPEG` or `PNG` format.
 
 **Important note on command line argument notation below**: the outer square braces appear for clarity only,and **should not** be included in the actual command line argument. Square braces appearing inside the outer braces **should** be included.
 
@@ -179,11 +179,6 @@ Split output components into different files when writing to `PNM`.
 `-X, -xml [output file name]`
 
 Store XML metadata to file, if it exists in compressed file. File name will be set to `output file name + ".xml"`
-
-`-V, --transfer-exif-tags`
-
-Transfer all Exif tags to output file. Note: [ExifTool](https://exiftool.org/) must be installed for this command line
-argument to work correctly.
 
 `-W, -logfile [output file name]`
 

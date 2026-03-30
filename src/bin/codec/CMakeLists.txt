@@ -20,10 +20,6 @@ foreach(exe grk_decompress grk_compress grk_dump)
   	target_link_libraries(${exe} ${OPENCL_LIBRARIES} )
   endif(LTK_USE_OPENCL)
 
-  if (PERLLIBS_FOUND)
-  	include_directories(${PERL_INCLUDE_PATH})
-   	target_link_libraries(${exe} ${PERL_LIBRARY} )
-  endif()
  
   install(TARGETS ${exe}
     EXPORT GrokTargets

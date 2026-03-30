@@ -24,7 +24,7 @@ namespace grk
 {
 struct DecompressInitParams
 {
-  DecompressInitParams() : initialized(false), transfer_exif_tags(false)
+  DecompressInitParams() : initialized(false)
   {
     pluginPath[0] = 0;
     memset(&inputFolder, 0, sizeof(inputFolder));
@@ -41,7 +41,6 @@ struct DecompressInitParams
   char pluginPath[GRK_PATH_LEN];
   grk_img_fol inputFolder;
   grk_img_fol outFolder;
-  bool transfer_exif_tags;
 };
 
 class GrkDecompress

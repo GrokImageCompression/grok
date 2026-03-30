@@ -263,6 +263,9 @@ bool PNGFormat<T>::encodeHeader(void)
     png_set_text(png_, info_, &txt, 1);
   }
 
+  if(image_->meta && image_->meta->exif_buf && image_->meta->exif_len)
+    png_set_eXIf_1(png_, info_, (png_uint_32)image_->meta->exif_len, image_->meta->exif_buf);
+
   if(image_->capture_resolution[0] > 0 && image_->capture_resolution[1] > 0)
   {
     png_set_pHYs(png_, info_, (png_uint_32)(image_->capture_resolution[0]),
@@ -607,6 +610,19 @@ grk_image* PNGFormat<T>::do_decode(grk_cparameters* params)
       else
       {
       }
+    }
+  }
+
+  {
+    png_uint_32 exif_len = 0;
+    png_bytep exif_data = nullptr;
+    if(png_get_eXIf_1(png_, info_, &exif_len, &exif_data) == PNG_INFO_eXIf && exif_len > 0 &&
+       exif_data)
+    {
+      createMeta(image_);
+      image_->meta->exif_len = exif_len;
+      image_->meta->exif_buf = new uint8_t[exif_len];
+      memcpy(image_->meta->exif_buf, exif_data, exif_len);
     }
   }
 

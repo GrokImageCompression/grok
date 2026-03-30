@@ -173,6 +173,8 @@ grk_image* JPEGFormat<T>::jpegtoimage(const char* filename, grk_cparameters* par
   /* Now we can initialize the JPEG decompression object. */
   jpeg_create_decompress(&cinfo);
   setup_read_icc_profile(&cinfo);
+  // save APP1 markers for EXIF extraction
+  jpeg_save_markers(&cinfo, JPEG_APP0 + 1, 0xFFFF);
 
   /* Step 2: specify data source (eg, a file) */
   jpeg_stdio_src(&cinfo, fileIO_->getFileHandle());
@@ -244,6 +246,23 @@ grk_image* JPEGFormat<T>::jpegtoimage(const char* filename, grk_cparameters* par
   }
   free(icc_data_ptr);
   icc_data_ptr = nullptr;
+  // extract EXIF from APP1 markers
+  for(auto marker = cinfo.marker_list; marker; marker = marker->next)
+  {
+    if(marker->marker == (JPEG_APP0 + 1) && marker->data_length >= 6 &&
+       memcmp(marker->data, "Exif\0\0", 6) == 0)
+    {
+      size_t exif_len = marker->data_length - 6;
+      if(exif_len > 0)
+      {
+        createMeta(image_);
+        image_->meta->exif_len = exif_len;
+        image_->meta->exif_buf = new uint8_t[exif_len];
+        memcpy(image_->meta->exif_buf, marker->data + 6, exif_len);
+      }
+      break;
+    }
+  }
   /* set image_ offset and reference grid */
   image_->x0 = parameters->image_offset_x0;
   image_->x1 = !image_->x0 ? (w - 1) * 1 + 1 : image_->x0 + (w - 1) * 1 + 1;
@@ -547,6 +566,16 @@ bool JPEGFormat<T>::encodeHeader(void)
   {
     write_icc_profile(&cinfo, image_->meta->color.icc_profile_buf,
                       image_->meta->color.icc_profile_len);
+  }
+  if(image_->meta && image_->meta->exif_buf && image_->meta->exif_len)
+  {
+    // APP1 EXIF marker: "Exif\0\0" prefix + TIFF-structured data
+    auto exif_app1_len = image_->meta->exif_len + 6;
+    auto exif_app1 = new uint8_t[exif_app1_len];
+    memcpy(exif_app1, "Exif\0\0", 6);
+    memcpy(exif_app1 + 6, image_->meta->exif_buf, image_->meta->exif_len);
+    jpeg_write_marker(&cinfo, JPEG_APP0 + 1, exif_app1, (unsigned int)exif_app1_len);
+    delete[] exif_app1;
   }
   encodeState = IMAGE_FORMAT_ENCODED_HEADER;
 

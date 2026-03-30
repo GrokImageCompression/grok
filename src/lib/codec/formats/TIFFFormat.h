@@ -34,6 +34,588 @@
 #include "spdlogwrapper.h"
 #include "convert.h"
 #include "common.h"
+#include <algorithm>
+#include <cstdio>
+#include <cstring>
+#include <vector>
+
+// EXIF IFD type sizes (indexed by TIFF datatype enum)
+static inline uint32_t tiffTypeSize(uint16_t type)
+{
+  switch(type)
+  {
+    case TIFF_BYTE:
+    case TIFF_ASCII:
+    case TIFF_SBYTE:
+    case TIFF_UNDEFINED:
+      return 1;
+    case TIFF_SHORT:
+    case TIFF_SSHORT:
+      return 2;
+    case TIFF_LONG:
+    case TIFF_SLONG:
+    case TIFF_FLOAT:
+    case TIFF_IFD:
+      return 4;
+    case TIFF_RATIONAL:
+    case TIFF_SRATIONAL:
+    case TIFF_DOUBLE:
+    case TIFF_LONG8:
+    case TIFF_SLONG8:
+    case TIFF_IFD8:
+      return 8;
+    default:
+      return 0;
+  }
+}
+
+static inline uint16_t exifReadU16(const uint8_t* p, bool bigEndian)
+{
+  return bigEndian ? (uint16_t)((p[0] << 8) | p[1]) : (uint16_t)(p[0] | (p[1] << 8));
+}
+
+static inline uint32_t exifReadU32(const uint8_t* p, bool bigEndian)
+{
+  return bigEndian ? ((uint32_t)p[0] << 24 | (uint32_t)p[1] << 16 | (uint32_t)p[2] << 8 | p[3])
+                   : (p[0] | (uint32_t)p[1] << 8 | (uint32_t)p[2] << 16 | (uint32_t)p[3] << 24);
+}
+
+static inline void exifWriteU16(uint8_t* p, uint16_t v, bool bigEndian)
+{
+  if(bigEndian)
+  {
+    p[0] = (uint8_t)(v >> 8);
+    p[1] = (uint8_t)(v & 0xff);
+  }
+  else
+  {
+    p[0] = (uint8_t)(v & 0xff);
+    p[1] = (uint8_t)(v >> 8);
+  }
+}
+
+static inline void exifWriteU32(uint8_t* p, uint32_t v, bool bigEndian)
+{
+  if(bigEndian)
+  {
+    p[0] = (uint8_t)((v >> 24) & 0xff);
+    p[1] = (uint8_t)((v >> 16) & 0xff);
+    p[2] = (uint8_t)((v >> 8) & 0xff);
+    p[3] = (uint8_t)(v & 0xff);
+  }
+  else
+  {
+    p[0] = (uint8_t)(v & 0xff);
+    p[1] = (uint8_t)((v >> 8) & 0xff);
+    p[2] = (uint8_t)((v >> 16) & 0xff);
+    p[3] = (uint8_t)((v >> 24) & 0xff);
+  }
+}
+
+// IFD0 metadata tags to preserve during TIFF round-trips
+static constexpr uint16_t ifd0MetaTags[] = {
+    0x010F, // Make
+    0x0110, // Model
+    0x0112, // Orientation
+    0x0131, // Software
+    0x0132, // DateTime
+    0x013B, // Artist
+    0x8298, // Copyright
+};
+
+// helper: read one IFD from a raw TIFF file at the given offset.
+// Returns a vector of 12-byte IFD entries and their associated out-of-line data blocks.
+struct RawIfdEntry
+{
+  std::vector<uint8_t> raw; // 12 bytes
+  std::vector<uint8_t> data; // out-of-line data (empty if value fits in 4 bytes)
+};
+
+static inline bool readRawIfd(FILE* f, uint32_t ifdOffset, bool bigEndian,
+                              std::vector<RawIfdEntry>& entries)
+{
+  if(fseek(f, (long)ifdOffset, SEEK_SET) != 0)
+    return false;
+  uint8_t countBuf[2];
+  if(fread(countBuf, 1, 2, f) != 2)
+    return false;
+  uint16_t numEntries = exifReadU16(countBuf, bigEndian);
+  if(numEntries == 0 || numEntries > 1000)
+    return false;
+
+  entries.resize(numEntries);
+  for(uint16_t i = 0; i < numEntries; i++)
+  {
+    entries[i].raw.resize(12);
+    if(fread(entries[i].raw.data(), 1, 12, f) != 12)
+      return false;
+  }
+  // read out-of-line data for each entry
+  for(auto& e : entries)
+  {
+    uint16_t type = exifReadU16(e.raw.data() + 2, bigEndian);
+    uint32_t count = exifReadU32(e.raw.data() + 4, bigEndian);
+    uint32_t ts = tiffTypeSize(type);
+    if(ts == 0)
+      continue;
+    uint64_t valueSize = (uint64_t)ts * count;
+    if(valueSize > 4)
+    {
+      uint32_t offset = exifReadU32(e.raw.data() + 8, bigEndian);
+      e.data.resize((size_t)valueSize);
+      if(fseek(f, (long)offset, SEEK_SET) != 0)
+        return false;
+      if(fread(e.data.data(), 1, (size_t)valueSize, f) != (size_t)valueSize)
+        return false;
+    }
+  }
+  return true;
+}
+
+// Extract EXIF from a TIFF as a standalone TIFF blob matching JPEG APP1 format:
+//   IFD0 (metadata tags + ExifIFD pointer) → EXIF sub-IFD
+static inline bool extractExifFromTiff(TIFF* tif, uint8_t** outBuf, uint32_t* outLen)
+{
+  *outBuf = nullptr;
+  *outLen = 0;
+
+  uint64_t exifOffset = 0;
+  bool hasExifIFD = TIFFGetField(tif, TIFFTAG_EXIFIFD, &exifOffset) != 0;
+
+  // only transfer IFD0 metadata when there's an actual EXIF sub-IFD
+  // (otherwise Orientation etc. are just structural TIFF tags)
+  if(!hasExifIFD)
+    return true;
+
+  // collect IFD0 metadata tags from libtiff
+  struct Ifd0Tag
+  {
+    uint16_t tag;
+    std::string value;
+  };
+  std::vector<Ifd0Tag> ifd0Tags;
+  for(uint16_t tagId : ifd0MetaTags)
+  {
+    char* val = nullptr;
+    if(tagId == 0x0112) // Orientation is SHORT, not ASCII
+    {
+      uint16_t orient = 0;
+      if(TIFFGetField(tif, tagId, &orient))
+      {
+        // store as raw SHORT; we'll handle specially
+        Ifd0Tag t;
+        t.tag = tagId;
+        t.value = std::to_string(orient);
+        ifd0Tags.push_back(t);
+      }
+    }
+    else if(TIFFGetField(tif, tagId, &val) && val)
+    {
+      Ifd0Tag t;
+      t.tag = tagId;
+      t.value = val;
+      ifd0Tags.push_back(t);
+    }
+  }
+
+  const char* fname = TIFFFileName(tif);
+  if(!fname)
+    return false;
+
+  FILE* f = fopen(fname, "rb");
+  if(!f)
+    return false;
+
+  // read TIFF header for byte order
+  uint8_t header[8];
+  if(fread(header, 1, 8, f) != 8)
+  {
+    fclose(f);
+    return false;
+  }
+  bool bigEndian = (header[0] == 'M' && header[1] == 'M');
+
+  // read EXIF sub-IFD entries from raw file
+  std::vector<RawIfdEntry> exifEntries;
+  if(hasExifIFD)
+  {
+    if(!readRawIfd(f, (uint32_t)exifOffset, bigEndian, exifEntries))
+    {
+      fclose(f);
+      return false;
+    }
+  }
+  fclose(f);
+
+  // --- build standalone TIFF blob with IFD0 + EXIF sub-IFD ---
+  // IFD0 entries: metadata tags + ExifIFD pointer (tag 0x8769)
+  uint16_t ifd0Count = (uint16_t)ifd0Tags.size() + (exifEntries.empty() ? 0 : 1);
+  uint16_t exifCount = (uint16_t)exifEntries.size();
+
+  // layout:
+  // [0..7]   TIFF header (byte order + magic 42 + IFD0 offset=8)
+  // [8..]    IFD0: 2-byte count + ifd0Count*12 entries + 4-byte next=0
+  // [...]    IFD0 out-of-line data (ASCII strings)
+  // [...]    EXIF IFD: 2-byte count + exifCount*12 entries + 4-byte next=0
+  // [...]    EXIF out-of-line data blocks
+
+  uint32_t ifd0Start = 8;
+  uint32_t ifd0DirSize = 2 + ifd0Count * 12 + 4;
+  uint32_t ifd0DataStart = ifd0Start + ifd0DirSize;
+
+  // compute IFD0 out-of-line data
+  uint32_t ifd0DataSize = 0;
+  struct Ifd0BlobEntry
+  {
+    uint16_t tag;
+    uint16_t type;
+    uint32_t count;
+    std::vector<uint8_t> inlineOrData; // 4 bytes inline, or out-of-line data
+    bool outOfLine;
+  };
+  std::vector<Ifd0BlobEntry> ifd0BlobEntries;
+  for(auto& t : ifd0Tags)
+  {
+    Ifd0BlobEntry e;
+    e.tag = t.tag;
+    if(t.tag == 0x0112) // Orientation = SHORT
+    {
+      e.type = TIFF_SHORT;
+      e.count = 1;
+      e.outOfLine = false;
+      e.inlineOrData.resize(4, 0);
+      exifWriteU16(e.inlineOrData.data(), (uint16_t)std::stoi(t.value), bigEndian);
+    }
+    else
+    {
+      e.type = TIFF_ASCII;
+      e.count = (uint32_t)(t.value.size() + 1); // include NUL
+      if(e.count <= 4)
+      {
+        e.outOfLine = false;
+        e.inlineOrData.resize(4, 0);
+        memcpy(e.inlineOrData.data(), t.value.c_str(), e.count);
+      }
+      else
+      {
+        e.outOfLine = true;
+        e.inlineOrData.assign(t.value.c_str(), t.value.c_str() + e.count);
+        ifd0DataSize += e.count;
+        if(ifd0DataSize & 1)
+          ifd0DataSize++; // word-align
+      }
+    }
+    ifd0BlobEntries.push_back(std::move(e));
+  }
+
+  uint32_t exifIfdStart = ifd0DataStart + ifd0DataSize;
+  uint32_t exifDirSize = exifEntries.empty() ? 0 : (2 + exifCount * 12 + 4);
+  uint32_t exifDataStart = exifIfdStart + exifDirSize;
+
+  // compute EXIF out-of-line data layout
+  uint32_t exifDataSize = 0;
+  std::vector<uint32_t> exifBlockOffsets(exifEntries.size());
+  for(size_t i = 0; i < exifEntries.size(); i++)
+  {
+    exifBlockOffsets[i] = exifDataStart + exifDataSize;
+    if(!exifEntries[i].data.empty())
+    {
+      exifDataSize += (uint32_t)exifEntries[i].data.size();
+      if(exifDataSize & 1)
+        exifDataSize++; // word-align
+    }
+  }
+
+  uint32_t blobSize = exifDataStart + exifDataSize;
+  auto* blob = new uint8_t[blobSize];
+  memset(blob, 0, blobSize);
+
+  // --- write TIFF header ---
+  blob[0] = header[0];
+  blob[1] = header[1];
+  exifWriteU16(blob + 2, 42, bigEndian);
+  exifWriteU32(blob + 4, ifd0Start, bigEndian);
+
+  // --- write IFD0 ---
+  uint8_t* p = blob + ifd0Start;
+  exifWriteU16(p, ifd0Count, bigEndian);
+  p += 2;
+
+  uint32_t ifd0DataCursor = ifd0DataStart;
+  // write IFD0 metadata entries (sorted by tag for TIFF compliance)
+  std::sort(ifd0BlobEntries.begin(), ifd0BlobEntries.end(),
+            [](const Ifd0BlobEntry& a, const Ifd0BlobEntry& b) { return a.tag < b.tag; });
+
+  // We need to interleave the ExifIFD pointer tag (0x8769) in sorted order
+  bool exifPtrWritten = false;
+  for(auto& e : ifd0BlobEntries)
+  {
+    // insert ExifIFD pointer before any tag > 0x8769
+    if(!exifPtrWritten && !exifEntries.empty() && e.tag > 0x8769)
+    {
+      exifWriteU16(p, 0x8769, bigEndian); // ExifIFD tag
+      exifWriteU16(p + 2, TIFF_LONG, bigEndian);
+      exifWriteU32(p + 4, 1, bigEndian);
+      exifWriteU32(p + 8, exifIfdStart, bigEndian);
+      p += 12;
+      exifPtrWritten = true;
+    }
+    exifWriteU16(p, e.tag, bigEndian);
+    exifWriteU16(p + 2, e.type, bigEndian);
+    exifWriteU32(p + 4, e.count, bigEndian);
+    if(e.outOfLine)
+    {
+      exifWriteU32(p + 8, ifd0DataCursor, bigEndian);
+      memcpy(blob + ifd0DataCursor, e.inlineOrData.data(), e.inlineOrData.size());
+      ifd0DataCursor += (uint32_t)e.inlineOrData.size();
+      if(ifd0DataCursor & 1)
+        ifd0DataCursor++;
+    }
+    else
+    {
+      memcpy(p + 8, e.inlineOrData.data(), 4);
+    }
+    p += 12;
+  }
+  // ExifIFD pointer may come after all metadata tags
+  if(!exifPtrWritten && !exifEntries.empty())
+  {
+    exifWriteU16(p, 0x8769, bigEndian);
+    exifWriteU16(p + 2, TIFF_LONG, bigEndian);
+    exifWriteU32(p + 4, 1, bigEndian);
+    exifWriteU32(p + 8, exifIfdStart, bigEndian);
+    p += 12;
+  }
+  // next-IFD pointer = 0
+  exifWriteU32(p, 0, bigEndian);
+
+  // --- write EXIF sub-IFD ---
+  if(!exifEntries.empty())
+  {
+    p = blob + exifIfdStart;
+    exifWriteU16(p, exifCount, bigEndian);
+    p += 2;
+    for(size_t i = 0; i < exifEntries.size(); i++)
+    {
+      memcpy(p, exifEntries[i].raw.data(), 12);
+      // remap out-of-line offset
+      if(!exifEntries[i].data.empty())
+      {
+        exifWriteU32(p + 8, exifBlockOffsets[i], bigEndian);
+        memcpy(blob + exifBlockOffsets[i], exifEntries[i].data.data(), exifEntries[i].data.size());
+      }
+      p += 12;
+    }
+    exifWriteU32(p, 0, bigEndian); // next-IFD = 0
+  }
+
+  *outBuf = blob;
+  *outLen = blobSize;
+  return true;
+}
+
+// helper: dispatch a single IFD entry to TIFFSetField on the given TIFF handle
+static inline void setTiffFieldFromEntry(TIFF* tif, const uint8_t* entry, const uint8_t* blob,
+                                         uint32_t blobLen, bool bigEndian)
+{
+  uint16_t tag = exifReadU16(entry, bigEndian);
+  uint16_t type = exifReadU16(entry + 2, bigEndian);
+  uint32_t count = exifReadU32(entry + 4, bigEndian);
+  uint32_t ts = tiffTypeSize(type);
+  if(ts == 0 || count == 0)
+    return;
+
+  uint64_t valueSize = (uint64_t)ts * count;
+  const uint8_t* valuePtr;
+  if(valueSize <= 4)
+    valuePtr = entry + 8;
+  else
+  {
+    uint32_t offset = exifReadU32(entry + 8, bigEndian);
+    if((uint64_t)offset + valueSize > blobLen)
+      return;
+    valuePtr = blob + offset;
+  }
+
+  // skip sub-IFD pointer tags
+  if(tag == 0x8769 || tag == 40965 || tag == 34853)
+    return;
+
+  const TIFFField* fip = TIFFFieldWithTag(tif, tag);
+  if(!fip)
+    return;
+
+  int passcount = TIFFFieldPassCount(fip);
+
+  if(type == TIFF_ASCII)
+  {
+    std::vector<char> str(valuePtr, valuePtr + valueSize);
+    if(str.empty() || str.back() != '\0')
+      str.push_back('\0');
+    TIFFSetField(tif, tag, str.data());
+  }
+  else if(passcount)
+  {
+    TIFFSetField(tif, tag, (uint16_t)count, valuePtr);
+  }
+  else if(count == 1)
+  {
+    switch(type)
+    {
+      case TIFF_BYTE:
+      case TIFF_UNDEFINED:
+        TIFFSetField(tif, tag, valuePtr[0]);
+        break;
+      case TIFF_SHORT:
+        TIFFSetField(tif, tag, exifReadU16(valuePtr, bigEndian));
+        break;
+      case TIFF_LONG:
+        TIFFSetField(tif, tag, exifReadU32(valuePtr, bigEndian));
+        break;
+      case TIFF_RATIONAL: {
+        uint32_t num = exifReadU32(valuePtr, bigEndian);
+        uint32_t den = exifReadU32(valuePtr + 4, bigEndian);
+        float val = (den != 0) ? (float)num / (float)den : 0.0f;
+        TIFFSetField(tif, tag, val);
+        break;
+      }
+      case TIFF_SRATIONAL: {
+        int32_t num = (int32_t)exifReadU32(valuePtr, bigEndian);
+        int32_t den = (int32_t)exifReadU32(valuePtr + 4, bigEndian);
+        float val = (den != 0) ? (float)num / (float)den : 0.0f;
+        TIFFSetField(tif, tag, val);
+        break;
+      }
+      case TIFF_FLOAT: {
+        uint32_t bits = exifReadU32(valuePtr, bigEndian);
+        float val;
+        memcpy(&val, &bits, 4);
+        TIFFSetField(tif, tag, val);
+        break;
+      }
+      case TIFF_DOUBLE: {
+        double val;
+        memcpy(&val, valuePtr, 8);
+        TIFFSetField(tif, tag, val);
+        break;
+      }
+      default:
+        break;
+    }
+  }
+  else
+  {
+    if(type == TIFF_RATIONAL || type == TIFF_SRATIONAL)
+    {
+      std::vector<float> floats(count);
+      for(uint32_t j = 0; j < count; j++)
+      {
+        if(type == TIFF_RATIONAL)
+        {
+          uint32_t num = exifReadU32(valuePtr + j * 8, bigEndian);
+          uint32_t den = exifReadU32(valuePtr + j * 8 + 4, bigEndian);
+          floats[j] = (den != 0) ? (float)num / (float)den : 0.0f;
+        }
+        else
+        {
+          int32_t num = (int32_t)exifReadU32(valuePtr + j * 8, bigEndian);
+          int32_t den = (int32_t)exifReadU32(valuePtr + j * 8 + 4, bigEndian);
+          floats[j] = (den != 0) ? (float)num / (float)den : 0.0f;
+        }
+      }
+      TIFFSetField(tif, tag, floats.data());
+    }
+    else
+    {
+      TIFFSetField(tif, tag, valuePtr);
+    }
+  }
+}
+
+// Write EXIF data from a standalone TIFF blob into a TIFF file.
+// The blob may contain IFD0 (with metadata tags + ExifIFD pointer) → EXIF sub-IFD.
+static inline bool writeExifToTiff(TIFF* tif, const uint8_t* exifBuf, uint32_t exifLen)
+{
+  if(!exifBuf || exifLen < 14)
+    return false;
+
+  bool bigEndian = (exifBuf[0] == 'M' && exifBuf[1] == 'M');
+  uint32_t ifd0Offset = exifReadU32(exifBuf + 4, bigEndian);
+  if(ifd0Offset + 2 > exifLen)
+    return false;
+
+  uint16_t ifd0Count = exifReadU16(exifBuf + ifd0Offset, bigEndian);
+  if(ifd0Count == 0 || ifd0Offset + 2 + (uint32_t)ifd0Count * 12 > exifLen)
+    return false;
+
+  // scan IFD0 for ExifIFD pointer (tag 0x8769) and collect IFD0 metadata entries
+  uint32_t exifIfdOffset = 0;
+  bool hasExifSubIfd = false;
+  std::vector<uint16_t> ifd0MetaIndices; // indices of non-ExifIFD entries
+
+  for(uint16_t i = 0; i < ifd0Count; i++)
+  {
+    const uint8_t* entry = exifBuf + ifd0Offset + 2 + i * 12;
+    uint16_t tag = exifReadU16(entry, bigEndian);
+    if(tag == 0x8769) // ExifIFD pointer
+    {
+      exifIfdOffset = exifReadU32(entry + 8, bigEndian);
+      hasExifSubIfd = true;
+    }
+    else
+    {
+      ifd0MetaIndices.push_back(i);
+    }
+  }
+
+  // if no EXIF sub-IFD, just set IFD0 tags and rewrite
+  if(!hasExifSubIfd)
+  {
+    for(uint16_t idx : ifd0MetaIndices)
+    {
+      const uint8_t* entry = exifBuf + ifd0Offset + 2 + idx * 12;
+      setTiffFieldFromEntry(tif, entry, exifBuf, exifLen, bigEndian);
+    }
+    TIFFRewriteDirectory(tif);
+    return true;
+  }
+
+  // parse and write EXIF sub-IFD
+  if(exifIfdOffset + 2 > exifLen)
+    return false;
+  uint16_t exifCount = exifReadU16(exifBuf + exifIfdOffset, bigEndian);
+  if(exifCount == 0 || exifIfdOffset + 2 + (uint32_t)exifCount * 12 > exifLen)
+    return false;
+
+  TIFFCreateEXIFDirectory(tif);
+
+  for(uint16_t i = 0; i < exifCount; i++)
+  {
+    const uint8_t* entry = exifBuf + exifIfdOffset + 2 + i * 12;
+    setTiffFieldFromEntry(tif, entry, exifBuf, exifLen, bigEndian);
+  }
+
+  uint64_t exifDirOffset = 0;
+  if(!TIFFWriteCustomDirectory(tif, &exifDirOffset))
+    return false;
+
+  if(!TIFFSetDirectory(tif, 0))
+    return false;
+
+  // now set IFD0 metadata tags AFTER TIFFSetDirectory (which reads IFD0 from disk)
+  for(uint16_t idx : ifd0MetaIndices)
+  {
+    const uint8_t* entry = exifBuf + ifd0Offset + 2 + idx * 12;
+    setTiffFieldFromEntry(tif, entry, exifBuf, exifLen, bigEndian);
+  }
+
+  TIFFSetField(tif, TIFFTAG_EXIFIFD, exifDirOffset);
+
+  if(!TIFFRewriteDirectory(tif))
+    return false;
+
+  return true;
+}
 
 /* TIFF conversion*/
 void tiffSetErrorAndWarningHandlers(bool verbose);
@@ -599,9 +1181,30 @@ bool TIFFFormat<T>::encodeFinish(void)
     assert(!tif_);
     return true;
   }
+  // save EXIF data before closing the primary TIFF handle
+  uint8_t* exifBuf = nullptr;
+  uint32_t exifLen = 0;
+  std::string fname;
+  if(image_ && image_->meta && image_->meta->exif_buf && image_->meta->exif_len)
+  {
+    exifBuf = image_->meta->exif_buf;
+    exifLen = (uint32_t)image_->meta->exif_len;
+    fname = fileName_;
+  }
   if(tif_)
     TIFFClose(tif_);
   tif_ = nullptr;
+  // re-open with standard TIFFOpen to inject EXIF sub-IFD
+  if(exifBuf && exifLen && !fname.empty())
+  {
+    TIFF* tif = TIFFOpen(fname.c_str(), "r+");
+    if(tif)
+    {
+      if(!writeExifToTiff(tif, exifBuf, exifLen))
+        spdlog::warn("TIFFFormat: failed to write EXIF metadata");
+      TIFFClose(tif);
+    }
+  }
   encodeState |= IMAGE_FORMAT_ENCODED_PIXELS;
 
   return true;
@@ -1404,6 +2007,17 @@ grk_image* TIFFFormat<T>::decode(const std::string& filename, grk_cparameters* p
     image->meta->xmp_len = xmp_len;
     image->meta->xmp_buf = new uint8_t[xmp_len];
     memcpy(image->meta->xmp_buf, xmp_buf, xmp_len);
+  }
+  // 8b. extract EXIF meta-data
+  {
+    uint8_t* exif_data = nullptr;
+    uint32_t exif_size = 0;
+    if(extractExifFromTiff(tif_, &exif_data, &exif_size) && exif_data && exif_size > 0)
+    {
+      createMeta(image);
+      image->meta->exif_buf = exif_data;
+      image->meta->exif_len = exif_size;
+    }
   }
   // 9. read pixel data
   if(needSignedPixelReader)
