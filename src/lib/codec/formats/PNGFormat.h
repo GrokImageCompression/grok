@@ -18,6 +18,8 @@
 #pragma once
 
 #include <string>
+#include <thread>
+#include <atomic>
 #include <png.h>
 #include "ImageFormat.h"
 #include "grk_apps_config.h"
@@ -27,8 +29,8 @@
 #include "common.h"
 #include "FileStandardIO.h"
 
-#define PNG_MAGIC "\x89PNG\x0d\x0a\x1a\x0a"
-#define MAGIC_SIZE 8
+static constexpr const char PNG_MAGIC[] = "\x89PNG\x0d\x0a\x1a\x0a";
+static constexpr int MAGIC_SIZE = 8;
 /* PNG allows bits per sample: 1, 2, 4, 8, 16 */
 
 void pngSetVerboseFlag(bool verbose);
@@ -641,36 +643,84 @@ grk_image* PNGFormat<T>::do_decode(grk_cparameters* params)
   }
 
   stride = image_->comps[0].stride;
-  row32s_ = (T*)malloc((size_t)width * nr_comp_ * sizeof(int32_t));
-  if(row32s_ == nullptr)
-    goto beach;
-  for(uint32_t i = 0; i < height; ++i)
+
+  // parallel row conversion — all row data is available from png_read_image
   {
-    switch(bit_depth)
+    const size_t pixelCount = (size_t)width * nr_comp_;
+    std::atomic<bool> convError{false};
+
+    // precompute per-component base pointers
+    T* planeBase[4];
+    for(uint16_t c = 0; c < nr_comp_; ++c)
+      planeBase[c] = (T*)image_->comps[c].data;
+
+    auto worker = [&](uint32_t rowBegin, uint32_t rowEnd)
     {
-      case 1:
-        convertToOutput<1, false, T>(row_buf_array_[i], row32s_, (size_t)width * nr_comp_, false);
-        break;
-      case 2:
-        convertToOutput<2, false, T>(row_buf_array_[i], row32s_, (size_t)width * nr_comp_, false);
-        break;
-      case 4:
-        convertToOutput<4, false, T>(row_buf_array_[i], row32s_, (size_t)width * nr_comp_, false);
-        break;
-      case 8:
-        convertToOutput<8, false, T>(row_buf_array_[i], row32s_, (size_t)width * nr_comp_, false);
-        break;
-      case 16: /* 16 bpp is specific to PNG */
-        convertToOutput<16, false, T>(row_buf_array_[i], row32s_, (size_t)width * nr_comp_, false);
-        break;
-      default:
-        goto beach;
+      // per-thread temp buffer
+      T* row32s = (T*)malloc(pixelCount * sizeof(T));
+      if(!row32s)
+      {
+        convError.store(true, std::memory_order_relaxed);
+        return;
+      }
+      for(uint32_t r = rowBegin; r < rowEnd; ++r)
+      {
+        switch(bit_depth)
+        {
+          case 1:
+            convertToOutput<1, false, T>(row_buf_array_[r], row32s, pixelCount, false);
+            break;
+          case 2:
+            convertToOutput<2, false, T>(row_buf_array_[r], row32s, pixelCount, false);
+            break;
+          case 4:
+            convertToOutput<4, false, T>(row_buf_array_[r], row32s, pixelCount, false);
+            break;
+          case 8:
+            convertToOutput<8, false, T>(row_buf_array_[r], row32s, pixelCount, false);
+            break;
+          case 16: /* 16 bpp is specific to PNG */
+            convertToOutput<16, false, T>(row_buf_array_[r], row32s, pixelCount, false);
+            break;
+          default:
+            convError.store(true, std::memory_order_relaxed);
+            free(row32s);
+            return;
+        }
+        // de-interleave into per-component planes at correct row offset
+        T* rowPlanes[4];
+        for(uint16_t c = 0; c < nr_comp_; ++c)
+          rowPlanes[c] = planeBase[c] + (size_t)r * stride;
+        interleave(row32s, rowPlanes, width, nr_comp_);
+      }
+      free(row32s);
+    };
+
+    const uint32_t numThreads =
+        (height >= 4) ? std::min((uint32_t)std::thread::hardware_concurrency(), height) : 1;
+    if(numThreads <= 1)
+    {
+      worker(0, height);
     }
-    interleave(row32s_, planes_, width, nr_comp_);
-    planes_[0] += stride;
-    planes_[1] += stride;
-    planes_[2] += stride;
-    planes_[3] += stride;
+    else
+    {
+      const uint32_t rowsPerThread = height / numThreads;
+      std::vector<std::thread> threads;
+      threads.reserve(numThreads - 1);
+      uint32_t rowBegin = 0;
+      for(uint32_t t = 0; t < numThreads - 1; ++t)
+      {
+        uint32_t rowEnd = rowBegin + rowsPerThread;
+        threads.emplace_back(worker, rowBegin, rowEnd);
+        rowBegin = rowEnd;
+      }
+      // last chunk on calling thread
+      worker(rowBegin, height);
+      for(auto& t : threads)
+        t.join();
+    }
+    if(convError.load())
+      goto beach;
   }
 beach:
   if(row_buf_array_)
