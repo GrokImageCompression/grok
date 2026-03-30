@@ -378,7 +378,7 @@ int GrkLRUCacheTest::main(int argc, char** argv)
     failures++;
 
   // Integration test: compress a test image and verify LRU output
-  std::string testFile = std::filesystem::temp_directory_path() / "grk_lru_test.j2k";
+  std::string testFile = (std::filesystem::temp_directory_path() / "grk_lru_test.j2k").string();
   bool created = createTestImage(testFile, 256, 256, 64, 64); // 4x4 = 16 tiles
   if(!created)
   {
