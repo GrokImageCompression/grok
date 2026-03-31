@@ -1331,6 +1331,632 @@ static int testTranscodeWithPLT(const std::string& tmpDir)
 }
 
 //==============================================================================
+// Test: Transcode with SOP marker injection
+//==============================================================================
+static int testTranscodeWithSOP(const std::string& tmpDir)
+{
+  spdlog::info("=== Test: Transcode with SOP marker injection ===");
+
+  auto* srcMeta = grk_image_meta_new();
+  std::string srcPath = tmpDir + "/transcode_sop_src.jp2";
+  if(!compressWithMeta(srcPath, srcMeta))
+  {
+    grk_object_unref(&srcMeta->obj);
+    return 1;
+  }
+  grk_object_unref(&srcMeta->obj);
+
+  grk_stream_params srcStreamParams{};
+  safe_strcpy(srcStreamParams.file, srcPath.c_str());
+
+  grk_decompress_parameters dparams{};
+  auto* decCodec = grk_decompress_init(&srcStreamParams, &dparams);
+  if(!decCodec)
+  {
+    spdlog::error("Transcode SOP: failed to init decompressor for source");
+    return 1;
+  }
+
+  grk_header_info srcHeader{};
+  if(!grk_decompress_read_header(decCodec, &srcHeader))
+  {
+    spdlog::error("Transcode SOP: failed to read source header");
+    grk_object_unref(decCodec);
+    return 1;
+  }
+
+  auto* srcImage = grk_decompress_get_image(decCodec);
+  if(!srcImage)
+  {
+    spdlog::error("Transcode SOP: failed to get source image");
+    grk_object_unref(decCodec);
+    return 1;
+  }
+
+  std::string dstPath = tmpDir + "/transcode_sop_dst.jp2";
+  grk_cparameters cparams{};
+  grk_compress_set_default_params(&cparams);
+  cparams.cod_format = GRK_FMT_JP2;
+  cparams.write_tlm = true;
+  cparams.write_sop = true;
+
+  grk_stream_params dstStreamParams{};
+  safe_strcpy(dstStreamParams.file, dstPath.c_str());
+
+  grk_stream_params transSrcStreamParams{};
+  safe_strcpy(transSrcStreamParams.file, srcPath.c_str());
+
+  uint64_t written = grk_transcode(&transSrcStreamParams, &dstStreamParams, &cparams, srcImage);
+  grk_object_unref(decCodec);
+
+  if(written == 0)
+  {
+    spdlog::error("Transcode SOP: grk_transcode returned 0");
+    return 1;
+  }
+
+  // Scan for SOP marker (0xFF91)
+  bool foundSOP = false;
+  {
+    FILE* fp = fopen(dstPath.c_str(), "rb");
+    if(!fp)
+    {
+      spdlog::error("Transcode SOP: failed to open output file for raw scan");
+      return 1;
+    }
+    uint8_t prev = 0;
+    int ch;
+    while((ch = fgetc(fp)) != EOF)
+    {
+      if(prev == 0xFF && (uint8_t)ch == 0x91)
+      {
+        foundSOP = true;
+        break;
+      }
+      prev = (uint8_t)ch;
+    }
+    fclose(fp);
+  }
+
+  if(!foundSOP)
+  {
+    spdlog::error("Transcode SOP: SOP marker (0xFF91) not found in output file");
+    return 1;
+  }
+
+  // Decompress and verify pixel data
+  grk_stream_params dstReadStreamParams{};
+  safe_strcpy(dstReadStreamParams.file, dstPath.c_str());
+
+  grk_decompress_parameters dstDparams{};
+  auto* dstCodec = grk_decompress_init(&dstReadStreamParams, &dstDparams);
+  if(!dstCodec)
+  {
+    spdlog::error("Transcode SOP: failed to init decompressor for transcoded file");
+    return 1;
+  }
+
+  grk_header_info dstHeader{};
+  if(!grk_decompress_read_header(dstCodec, &dstHeader))
+  {
+    spdlog::error("Transcode SOP: failed to read transcoded file header");
+    grk_object_unref(dstCodec);
+    return 1;
+  }
+
+  auto* dstImage = grk_decompress_get_image(dstCodec);
+  if(!dstImage)
+  {
+    spdlog::error("Transcode SOP: failed to get image from transcoded file");
+    grk_object_unref(dstCodec);
+    return 1;
+  }
+
+  if(!grk_decompress(dstCodec, nullptr))
+  {
+    spdlog::error("Transcode SOP: failed to decompress transcoded file");
+    grk_object_unref(dstCodec);
+    return 1;
+  }
+
+  bool ok = true;
+  if(dstImage->comps && dstImage->comps[0].data)
+  {
+    auto* pixelData = static_cast<int32_t*>(dstImage->comps[0].data);
+    for(uint32_t i = 0; i < 16 * 16; ++i)
+    {
+      if(pixelData[i] != static_cast<int32_t>(i % 256))
+      {
+        spdlog::error("Transcode SOP: pixel mismatch at index {} (expected {}, got {})", i,
+                      (int)(i % 256), pixelData[i]);
+        ok = false;
+        break;
+      }
+    }
+  }
+  else
+  {
+    spdlog::error("Transcode SOP: no pixel data in decompressed image");
+    ok = false;
+  }
+
+  if(ok)
+    spdlog::info("Transcode SOP: PASSED (wrote {} codestream bytes, SOP marker present)", written);
+
+  grk_object_unref(dstCodec);
+  return ok ? 0 : 1;
+}
+
+//==============================================================================
+// Test: Transcode with EPH marker injection
+//==============================================================================
+static int testTranscodeWithEPH(const std::string& tmpDir)
+{
+  spdlog::info("=== Test: Transcode with EPH marker injection ===");
+
+  auto* srcMeta = grk_image_meta_new();
+  std::string srcPath = tmpDir + "/transcode_eph_src.jp2";
+  if(!compressWithMeta(srcPath, srcMeta))
+  {
+    grk_object_unref(&srcMeta->obj);
+    return 1;
+  }
+  grk_object_unref(&srcMeta->obj);
+
+  grk_stream_params srcStreamParams{};
+  safe_strcpy(srcStreamParams.file, srcPath.c_str());
+
+  grk_decompress_parameters dparams{};
+  auto* decCodec = grk_decompress_init(&srcStreamParams, &dparams);
+  if(!decCodec)
+  {
+    spdlog::error("Transcode EPH: failed to init decompressor for source");
+    return 1;
+  }
+
+  grk_header_info srcHeader{};
+  if(!grk_decompress_read_header(decCodec, &srcHeader))
+  {
+    spdlog::error("Transcode EPH: failed to read source header");
+    grk_object_unref(decCodec);
+    return 1;
+  }
+
+  auto* srcImage = grk_decompress_get_image(decCodec);
+  if(!srcImage)
+  {
+    spdlog::error("Transcode EPH: failed to get source image");
+    grk_object_unref(decCodec);
+    return 1;
+  }
+
+  std::string dstPath = tmpDir + "/transcode_eph_dst.jp2";
+  grk_cparameters cparams{};
+  grk_compress_set_default_params(&cparams);
+  cparams.cod_format = GRK_FMT_JP2;
+  cparams.write_tlm = true;
+  cparams.write_eph = true;
+
+  grk_stream_params dstStreamParams{};
+  safe_strcpy(dstStreamParams.file, dstPath.c_str());
+
+  grk_stream_params transSrcStreamParams{};
+  safe_strcpy(transSrcStreamParams.file, srcPath.c_str());
+
+  uint64_t written = grk_transcode(&transSrcStreamParams, &dstStreamParams, &cparams, srcImage);
+  grk_object_unref(decCodec);
+
+  if(written == 0)
+  {
+    spdlog::error("Transcode EPH: grk_transcode returned 0");
+    return 1;
+  }
+
+  // Scan for EPH marker (0xFF92)
+  bool foundEPH = false;
+  {
+    FILE* fp = fopen(dstPath.c_str(), "rb");
+    if(!fp)
+    {
+      spdlog::error("Transcode EPH: failed to open output file for raw scan");
+      return 1;
+    }
+    uint8_t prev = 0;
+    int ch;
+    while((ch = fgetc(fp)) != EOF)
+    {
+      if(prev == 0xFF && (uint8_t)ch == 0x92)
+      {
+        foundEPH = true;
+        break;
+      }
+      prev = (uint8_t)ch;
+    }
+    fclose(fp);
+  }
+
+  if(!foundEPH)
+  {
+    spdlog::error("Transcode EPH: EPH marker (0xFF92) not found in output file");
+    return 1;
+  }
+
+  // Decompress and verify pixel data
+  grk_stream_params dstReadStreamParams{};
+  safe_strcpy(dstReadStreamParams.file, dstPath.c_str());
+
+  grk_decompress_parameters dstDparams{};
+  auto* dstCodec = grk_decompress_init(&dstReadStreamParams, &dstDparams);
+  if(!dstCodec)
+  {
+    spdlog::error("Transcode EPH: failed to init decompressor for transcoded file");
+    return 1;
+  }
+
+  grk_header_info dstHeader{};
+  if(!grk_decompress_read_header(dstCodec, &dstHeader))
+  {
+    spdlog::error("Transcode EPH: failed to read transcoded file header");
+    grk_object_unref(dstCodec);
+    return 1;
+  }
+
+  auto* dstImage = grk_decompress_get_image(dstCodec);
+  if(!dstImage)
+  {
+    spdlog::error("Transcode EPH: failed to get image from transcoded file");
+    grk_object_unref(dstCodec);
+    return 1;
+  }
+
+  if(!grk_decompress(dstCodec, nullptr))
+  {
+    spdlog::error("Transcode EPH: failed to decompress transcoded file");
+    grk_object_unref(dstCodec);
+    return 1;
+  }
+
+  bool ok = true;
+  if(dstImage->comps && dstImage->comps[0].data)
+  {
+    auto* pixelData = static_cast<int32_t*>(dstImage->comps[0].data);
+    for(uint32_t i = 0; i < 16 * 16; ++i)
+    {
+      if(pixelData[i] != static_cast<int32_t>(i % 256))
+      {
+        spdlog::error("Transcode EPH: pixel mismatch at index {} (expected {}, got {})", i,
+                      (int)(i % 256), pixelData[i]);
+        ok = false;
+        break;
+      }
+    }
+  }
+  else
+  {
+    spdlog::error("Transcode EPH: no pixel data in decompressed image");
+    ok = false;
+  }
+
+  if(ok)
+    spdlog::info("Transcode EPH: PASSED (wrote {} codestream bytes, EPH marker present)", written);
+
+  grk_object_unref(dstCodec);
+  return ok ? 0 : 1;
+}
+
+//==============================================================================
+// Test: Transcode with progression reorder
+//==============================================================================
+static int testTranscodeProgressionReorder(const std::string& tmpDir)
+{
+  spdlog::info("=== Test: Transcode with progression reorder ===");
+
+  auto* srcMeta = grk_image_meta_new();
+  std::string srcPath = tmpDir + "/transcode_prog_src.jp2";
+  if(!compressWithMeta(srcPath, srcMeta))
+  {
+    grk_object_unref(&srcMeta->obj);
+    return 1;
+  }
+  grk_object_unref(&srcMeta->obj);
+
+  grk_stream_params srcStreamParams{};
+  safe_strcpy(srcStreamParams.file, srcPath.c_str());
+
+  grk_decompress_parameters dparams{};
+  auto* decCodec = grk_decompress_init(&srcStreamParams, &dparams);
+  if(!decCodec)
+  {
+    spdlog::error("Transcode ProgReorder: failed to init decompressor for source");
+    return 1;
+  }
+
+  grk_header_info srcHeader{};
+  if(!grk_decompress_read_header(decCodec, &srcHeader))
+  {
+    spdlog::error("Transcode ProgReorder: failed to read source header");
+    grk_object_unref(decCodec);
+    return 1;
+  }
+
+  auto* srcImage = grk_decompress_get_image(decCodec);
+  if(!srcImage)
+  {
+    spdlog::error("Transcode ProgReorder: failed to get source image");
+    grk_object_unref(decCodec);
+    return 1;
+  }
+
+  std::string dstPath = tmpDir + "/transcode_prog_dst.jp2";
+  grk_cparameters cparams{};
+  grk_compress_set_default_params(&cparams);
+  cparams.cod_format = GRK_FMT_JP2;
+  cparams.write_tlm = true;
+  cparams.write_plt = true;
+  cparams.transcode_prog_order = GRK_RLCP;
+
+  grk_stream_params dstStreamParams{};
+  safe_strcpy(dstStreamParams.file, dstPath.c_str());
+
+  grk_stream_params transSrcStreamParams{};
+  safe_strcpy(transSrcStreamParams.file, srcPath.c_str());
+
+  uint64_t written = grk_transcode(&transSrcStreamParams, &dstStreamParams, &cparams, srcImage);
+  grk_object_unref(decCodec);
+
+  if(written == 0)
+  {
+    spdlog::error("Transcode ProgReorder: grk_transcode returned 0");
+    return 1;
+  }
+
+  // Decompress and verify pixel data still correct
+  grk_stream_params dstReadStreamParams{};
+  safe_strcpy(dstReadStreamParams.file, dstPath.c_str());
+
+  grk_decompress_parameters dstDparams{};
+  auto* dstCodec = grk_decompress_init(&dstReadStreamParams, &dstDparams);
+  if(!dstCodec)
+  {
+    spdlog::error("Transcode ProgReorder: failed to init decompressor for transcoded file");
+    return 1;
+  }
+
+  grk_header_info dstHeader{};
+  if(!grk_decompress_read_header(dstCodec, &dstHeader))
+  {
+    spdlog::error("Transcode ProgReorder: failed to read transcoded file header");
+    grk_object_unref(dstCodec);
+    return 1;
+  }
+
+  auto* dstImage = grk_decompress_get_image(dstCodec);
+  if(!dstImage)
+  {
+    spdlog::error("Transcode ProgReorder: failed to get image from transcoded file");
+    grk_object_unref(dstCodec);
+    return 1;
+  }
+
+  if(!grk_decompress(dstCodec, nullptr))
+  {
+    spdlog::error("Transcode ProgReorder: failed to decompress transcoded file");
+    grk_object_unref(dstCodec);
+    return 1;
+  }
+
+  bool ok = true;
+  if(dstImage->comps && dstImage->comps[0].data)
+  {
+    auto* pixelData = static_cast<int32_t*>(dstImage->comps[0].data);
+    for(uint32_t i = 0; i < 16 * 16; ++i)
+    {
+      if(pixelData[i] != static_cast<int32_t>(i % 256))
+      {
+        spdlog::error("Transcode ProgReorder: pixel mismatch at index {} (expected {}, got {})", i,
+                      (int)(i % 256), pixelData[i]);
+        ok = false;
+        break;
+      }
+    }
+  }
+  else
+  {
+    spdlog::error("Transcode ProgReorder: no pixel data in decompressed image");
+    ok = false;
+  }
+
+  if(ok)
+    spdlog::info("Transcode ProgReorder: PASSED (wrote {} codestream bytes, RLCP progression)",
+                 written);
+
+  grk_object_unref(dstCodec);
+  return ok ? 0 : 1;
+}
+
+//==============================================================================
+// Test: Transcode with combined SOP + EPH + progression reorder
+//==============================================================================
+static int testTranscodeCombined(const std::string& tmpDir)
+{
+  spdlog::info("=== Test: Transcode combined (SOP + EPH + RLCP) ===");
+
+  auto* srcMeta = grk_image_meta_new();
+  std::string srcPath = tmpDir + "/transcode_combined_src.jp2";
+  if(!compressWithMeta(srcPath, srcMeta))
+  {
+    grk_object_unref(&srcMeta->obj);
+    return 1;
+  }
+  grk_object_unref(&srcMeta->obj);
+
+  grk_stream_params srcStreamParams{};
+  safe_strcpy(srcStreamParams.file, srcPath.c_str());
+
+  grk_decompress_parameters dparams{};
+  auto* decCodec = grk_decompress_init(&srcStreamParams, &dparams);
+  if(!decCodec)
+  {
+    spdlog::error("Transcode Combined: failed to init decompressor for source");
+    return 1;
+  }
+
+  grk_header_info srcHeader{};
+  if(!grk_decompress_read_header(decCodec, &srcHeader))
+  {
+    spdlog::error("Transcode Combined: failed to read source header");
+    grk_object_unref(decCodec);
+    return 1;
+  }
+
+  auto* srcImage = grk_decompress_get_image(decCodec);
+  if(!srcImage)
+  {
+    spdlog::error("Transcode Combined: failed to get source image");
+    grk_object_unref(decCodec);
+    return 1;
+  }
+
+  std::string dstPath = tmpDir + "/transcode_combined_dst.jp2";
+  grk_cparameters cparams{};
+  grk_compress_set_default_params(&cparams);
+  cparams.cod_format = GRK_FMT_JP2;
+  cparams.write_tlm = true;
+  cparams.write_plt = true;
+  cparams.write_sop = true;
+  cparams.write_eph = true;
+  cparams.transcode_prog_order = GRK_RLCP;
+
+  grk_stream_params dstStreamParams{};
+  safe_strcpy(dstStreamParams.file, dstPath.c_str());
+
+  grk_stream_params transSrcStreamParams{};
+  safe_strcpy(transSrcStreamParams.file, srcPath.c_str());
+
+  uint64_t written = grk_transcode(&transSrcStreamParams, &dstStreamParams, &cparams, srcImage);
+  grk_object_unref(decCodec);
+
+  if(written == 0)
+  {
+    spdlog::error("Transcode Combined: grk_transcode returned 0");
+    return 1;
+  }
+
+  // Scan for SOP (0xFF91), EPH (0xFF92), TLM (0xFF55), PLT (0xFF58)
+  bool foundSOP = false, foundEPH = false, foundTLM = false, foundPLT = false;
+  {
+    FILE* fp = fopen(dstPath.c_str(), "rb");
+    if(!fp)
+    {
+      spdlog::error("Transcode Combined: failed to open output file for raw scan");
+      return 1;
+    }
+    uint8_t prev = 0;
+    int ch;
+    while((ch = fgetc(fp)) != EOF)
+    {
+      if(prev == 0xFF)
+      {
+        if((uint8_t)ch == 0x91)
+          foundSOP = true;
+        if((uint8_t)ch == 0x92)
+          foundEPH = true;
+        if((uint8_t)ch == 0x55)
+          foundTLM = true;
+        if((uint8_t)ch == 0x58)
+          foundPLT = true;
+      }
+      prev = (uint8_t)ch;
+    }
+    fclose(fp);
+  }
+
+  bool ok = true;
+  if(!foundSOP)
+  {
+    spdlog::error("Transcode Combined: SOP marker (0xFF91) not found");
+    ok = false;
+  }
+  if(!foundEPH)
+  {
+    spdlog::error("Transcode Combined: EPH marker (0xFF92) not found");
+    ok = false;
+  }
+  if(!foundTLM)
+  {
+    spdlog::error("Transcode Combined: TLM marker (0xFF55) not found");
+    ok = false;
+  }
+  if(!foundPLT)
+  {
+    spdlog::error("Transcode Combined: PLT marker (0xFF58) not found");
+    ok = false;
+  }
+
+  // Decompress and verify pixel data
+  grk_stream_params dstReadStreamParams{};
+  safe_strcpy(dstReadStreamParams.file, dstPath.c_str());
+
+  grk_decompress_parameters dstDparams{};
+  auto* dstCodec = grk_decompress_init(&dstReadStreamParams, &dstDparams);
+  if(!dstCodec)
+  {
+    spdlog::error("Transcode Combined: failed to init decompressor for transcoded file");
+    return 1;
+  }
+
+  grk_header_info dstHeader{};
+  if(!grk_decompress_read_header(dstCodec, &dstHeader))
+  {
+    spdlog::error("Transcode Combined: failed to read transcoded file header");
+    grk_object_unref(dstCodec);
+    return 1;
+  }
+
+  auto* dstImage = grk_decompress_get_image(dstCodec);
+  if(!dstImage)
+  {
+    spdlog::error("Transcode Combined: failed to get image from transcoded file");
+    grk_object_unref(dstCodec);
+    return 1;
+  }
+
+  if(!grk_decompress(dstCodec, nullptr))
+  {
+    spdlog::error("Transcode Combined: failed to decompress transcoded file");
+    grk_object_unref(dstCodec);
+    return 1;
+  }
+
+  if(dstImage->comps && dstImage->comps[0].data)
+  {
+    auto* pixelData = static_cast<int32_t*>(dstImage->comps[0].data);
+    for(uint32_t i = 0; i < 16 * 16; ++i)
+    {
+      if(pixelData[i] != static_cast<int32_t>(i % 256))
+      {
+        spdlog::error("Transcode Combined: pixel mismatch at index {} (expected {}, got {})", i,
+                      (int)(i % 256), pixelData[i]);
+        ok = false;
+        break;
+      }
+    }
+  }
+  else
+  {
+    spdlog::error("Transcode Combined: no pixel data in decompressed image");
+    ok = false;
+  }
+
+  if(ok)
+    spdlog::info("Transcode Combined: PASSED (wrote {} codestream bytes, SOP+EPH+TLM+PLT+RLCP)",
+                 written);
+
+  grk_object_unref(dstCodec);
+  return ok ? 0 : 1;
+}
+
+//==============================================================================
 // Main
 //==============================================================================
 int GrkJP2MetadataTest::main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
@@ -1352,6 +1978,10 @@ int GrkJP2MetadataTest::main([[maybe_unused]] int argc, [[maybe_unused]] char** 
   failures += testTranscode(tmpDir.string());
   failures += testTranscodeWithTLM(tmpDir.string());
   failures += testTranscodeWithPLT(tmpDir.string());
+  failures += testTranscodeWithSOP(tmpDir.string());
+  failures += testTranscodeWithEPH(tmpDir.string());
+  failures += testTranscodeProgressionReorder(tmpDir.string());
+  failures += testTranscodeCombined(tmpDir.string());
 
   // Cleanup
   std::filesystem::remove_all(tmpDir);

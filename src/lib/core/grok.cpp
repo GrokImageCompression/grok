@@ -816,6 +816,11 @@ void grk_compress_set_default_params(grk_cparameters* parameters)
   parameters->allocation_by_quality = false;
   parameters->write_plt = false;
   parameters->write_tlm = false;
+  parameters->write_sop = false;
+  parameters->write_eph = false;
+  parameters->max_layers_transcode = 0;
+  parameters->max_res_transcode = 0;
+  parameters->transcode_prog_order = GRK_PROG_UNKNOWN;
   parameters->device_id = 0;
   parameters->repeats = 1;
 }

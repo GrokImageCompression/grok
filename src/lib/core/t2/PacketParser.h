@@ -61,6 +61,12 @@ public:
    */
   uint32_t readHeader(void);
 
+  /**
+   * @brief Gets packet header length (valid after readHeader)
+   * @return header length in bytes
+   */
+  uint32_t getHeaderLength(void) const;
+
   void parsePacketData(void);
 
   /**

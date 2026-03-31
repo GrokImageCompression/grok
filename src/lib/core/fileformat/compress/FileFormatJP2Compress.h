@@ -78,6 +78,11 @@ private:
   bool transcode_mode_ = false;
   bool write_tlm_transcode_ = false;
   bool write_plt_transcode_ = false;
+  bool write_sop_transcode_ = false;
+  bool write_eph_transcode_ = false;
+  uint16_t max_layers_transcode_ = 0;
+  uint8_t max_res_transcode_ = 0;
+  GRK_PROG_ORDER transcode_prog_order_ = GRK_PROG_UNKNOWN;
   grk_stream_params transcode_src_{};
   uint64_t transcodeCodestreamWithTLM(IStream* srcStream, uint64_t csStart, uint64_t csLength);
 };

@@ -311,6 +311,10 @@ uint32_t PacketParser::readHeader(void)
 
   return headerLength_ + signalledLayerDataBytes_;
 }
+uint32_t PacketParser::getHeaderLength(void) const
+{
+  return headerLength_;
+}
 void PacketParser::readData(void)
 {
   if(!tagBitsPresent_)

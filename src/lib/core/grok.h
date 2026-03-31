@@ -1583,10 +1583,16 @@ typedef struct _grk_cparameters
   /* Transcode mode: rewrite JP2 boxes while copying the codestream verbatim.
    * Set transcode=true and populate transcode_src with the source stream.
    * The image passed to grk_transcode() provides the metadata for the new boxes.
-   * In the future, codestream modification (TLM/PLT insertion, progression
-   * reordering) will also be supported in this mode. */
+   * Codestream modification (TLM/PLT insertion, SOP/EPH injection, layer/resolution
+   * stripping, progression reorder) is also supported in this mode. */
   bool transcode; /* enable transcode mode */
   grk_stream_params transcode_src; /* source stream to copy codestream from */
+  bool write_sop; /* inject SOP markers during transcode */
+  bool write_eph; /* inject EPH markers during transcode */
+  uint16_t max_layers_transcode; /* max quality layers to keep (0 = all) */
+  uint8_t max_res_transcode; /* max resolutions to keep (0 = all) */
+  GRK_PROG_ORDER
+  transcode_prog_order; /* reorder packets to this progression (GRK_PROG_UNKNOWN = keep) */
 } grk_cparameters;
 
 /**
