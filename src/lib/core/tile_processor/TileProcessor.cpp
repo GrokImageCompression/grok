@@ -1144,6 +1144,9 @@ void TileProcessor::scheduleAndRunDecompress(CoderPool* coderPool, Rect32 unredu
       return;
     if(!tile_)
       return;
+    // skip T1/wavelet/MCT when only recording packet lengths (transcode PLT)
+    if(cp_->recordPacketLengths_)
+      return;
     for(uint16_t compno = 0; compno < tile_->numcomps_; ++compno)
     {
       auto tilec = tile_->comps_ + compno;
