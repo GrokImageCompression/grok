@@ -29,6 +29,9 @@ public:
   bool start(void) override;
   uint64_t compress(grk_plugin_tile* tile) override;
 
+  /* Transcode: write JP2 boxes then copy raw codestream from source */
+  uint64_t transcode(IStream* srcStream);
+
 protected:
   GrkImage* getHeaderImage(void) override;
   uint8_t* write_ihdr(uint32_t* p_nb_bytes_written);
@@ -72,6 +75,7 @@ private:
   uint16_t rreq_standard_features_[8] = {};
   uint8_t num_rreq_standard_features_ = 0;
   bool geoboxes_after_jp2c_ = false;
+  bool transcode_mode_ = false;
 };
 
 } // namespace grk

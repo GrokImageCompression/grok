@@ -1579,6 +1579,14 @@ typedef struct _grk_cparameters
   uint16_t rreq_standard_features[8]; /* standard features for rreq box */
   uint8_t num_rreq_standard_features; /* number of standard features */
   bool geoboxes_after_jp2c; /* write metadata boxes (UUID, asoc, XML) after codestream */
+
+  /* Transcode mode: rewrite JP2 boxes while copying the codestream verbatim.
+   * Set transcode=true and populate transcode_src with the source stream.
+   * The image passed to grk_transcode() provides the metadata for the new boxes.
+   * In the future, codestream modification (TLM/PLT insertion, progression
+   * reordering) will also be supported in this mode. */
+  bool transcode; /* enable transcode mode */
+  grk_stream_params transcode_src; /* source stream to copy codestream from */
 } grk_cparameters;
 
 /**
@@ -1666,6 +1674,40 @@ GRK_API bool GRK_CALLCONV grk_compress_finish(grk_object* codec);
  * @return	compressed length in bytes, or 0 on failure
  */
 GRK_API uint64_t GRK_CALLCONV grk_compress_get_compressed_length(grk_object* codec);
+
+/**
+ * @brief Transcodes a JPEG 2000 file by rewriting JP2 boxes while copying
+ *        the codestream verbatim.
+ *
+ * Opens the source stream, parses box headers to locate the contiguous
+ * codestream (JP2C) box, then writes a new JP2 file to @p dst_stream
+ * using the metadata from @p image and the box-level settings in
+ * @p parameters (branding, resolution, geoboxes placement, etc.).
+ * The raw J2K codestream is copied byte-for-byte from source to
+ * destination without re-encoding.
+ *
+ * The @p image must carry the desired output metadata in its
+ * @c grk_image_meta (XMP, IPTC, EXIF, GeoTIFF, IPR, XML, association
+ * boxes, channel definitions, colour space, ICC profile, etc.).
+ * Populate these fields before calling this function — typically by
+ * decompressing the source header with grk_decompress_read_header(),
+ * then modifying the metadata as needed.
+ *
+ * @param src_stream  source stream description (must be readable,
+ *                    see @ref grk_stream_params)
+ * @param dst_stream  destination stream description (must be writable,
+ *                    see @ref grk_stream_params)
+ * @param parameters  compression / transcode settings
+ *                    (see @ref grk_cparameters); box-level fields
+ *                    (jpx_branding, write_rreq, geoboxes_after_jp2c,
+ *                    resolution, etc.) are honoured
+ * @param image       source image carrying component info and metadata
+ *                    (see @ref grk_image)
+ * @return number of bytes written to the destination stream, or 0 on failure
+ */
+GRK_API uint64_t GRK_CALLCONV grk_transcode(grk_stream_params* src_stream,
+                                            grk_stream_params* dst_stream,
+                                            grk_cparameters* parameters, grk_image* image);
 
 /**
  * @brief Dumps codec diagnostic information to a stream.

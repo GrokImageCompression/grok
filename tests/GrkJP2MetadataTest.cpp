@@ -774,6 +774,220 @@ static int testAsocBoxes(const std::string& tmpDir)
 }
 
 //==============================================================================
+// Test: Transcode — rewrite JP2 boxes with codestream copy
+//==============================================================================
+static int testTranscode(const std::string& tmpDir)
+{
+  spdlog::info("=== Test: Transcode (box rewrite + codestream copy) ===");
+
+  // Step 1: create a source JP2 with known metadata
+  const char* origXmp = "<x:xmpmeta>ORIGINAL_XMP_DATA</x:xmpmeta>";
+  size_t origXmpLen = strlen(origXmp);
+  const char* origGeo = "ORIGINAL_GEOTIFF_UUID_DATA";
+  size_t origGeoLen = strlen(origGeo);
+
+  auto* srcMeta = grk_image_meta_new();
+  srcMeta->xmp_buf = new uint8_t[origXmpLen];
+  memcpy(srcMeta->xmp_buf, origXmp, origXmpLen);
+  srcMeta->xmp_len = origXmpLen;
+  srcMeta->geotiff_buf = new uint8_t[origGeoLen];
+  memcpy(srcMeta->geotiff_buf, origGeo, origGeoLen);
+  srcMeta->geotiff_len = origGeoLen;
+
+  std::string srcPath = tmpDir + "/transcode_src.jp2";
+  if(!compressWithMeta(srcPath, srcMeta))
+  {
+    grk_object_unref(&srcMeta->obj);
+    return 1;
+  }
+  grk_object_unref(&srcMeta->obj);
+
+  // Step 2: decompress header from source to get image info
+  grk_stream_params srcStreamParams{};
+  safe_strcpy(srcStreamParams.file, srcPath.c_str());
+
+  grk_decompress_parameters dparams{};
+  auto* decCodec = grk_decompress_init(&srcStreamParams, &dparams);
+  if(!decCodec)
+  {
+    spdlog::error("Transcode: failed to init decompressor for source");
+    return 1;
+  }
+
+  grk_header_info srcHeader{};
+  if(!grk_decompress_read_header(decCodec, &srcHeader))
+  {
+    spdlog::error("Transcode: failed to read source header");
+    grk_object_unref(decCodec);
+    return 1;
+  }
+
+  auto* srcImage = grk_decompress_get_image(decCodec);
+  if(!srcImage)
+  {
+    spdlog::error("Transcode: failed to get source image");
+    grk_object_unref(decCodec);
+    return 1;
+  }
+
+  // Step 3: modify metadata — replace XMP, remove geotiff, add XML
+  if(srcImage->meta->xmp_buf)
+  {
+    delete[] srcImage->meta->xmp_buf;
+    srcImage->meta->xmp_buf = nullptr;
+    srcImage->meta->xmp_len = 0;
+  }
+  const char* newXmp = "<x:xmpmeta>REPLACED_XMP_DATA_TRANSCODE</x:xmpmeta>";
+  size_t newXmpLen = strlen(newXmp);
+  srcImage->meta->xmp_buf = new uint8_t[newXmpLen];
+  memcpy(srcImage->meta->xmp_buf, newXmp, newXmpLen);
+  srcImage->meta->xmp_len = newXmpLen;
+
+  // Remove geotiff
+  if(srcImage->meta->geotiff_buf)
+  {
+    delete[] srcImage->meta->geotiff_buf;
+    srcImage->meta->geotiff_buf = nullptr;
+    srcImage->meta->geotiff_len = 0;
+  }
+
+  // Add XML box
+  const char* xmlData = "<test>transcode_xml_box</test>";
+  size_t xmlLen = strlen(xmlData);
+  srcImage->meta->xml_buf = new uint8_t[xmlLen];
+  memcpy(srcImage->meta->xml_buf, xmlData, xmlLen);
+  srcImage->meta->xml_len = xmlLen;
+
+  // Step 4: transcode
+  std::string dstPath = tmpDir + "/transcode_dst.jp2";
+  grk_cparameters cparams{};
+  grk_compress_set_default_params(&cparams);
+  cparams.cod_format = GRK_FMT_JP2;
+
+  grk_stream_params dstStreamParams{};
+  safe_strcpy(dstStreamParams.file, dstPath.c_str());
+
+  grk_stream_params transSrcStreamParams{};
+  safe_strcpy(transSrcStreamParams.file, srcPath.c_str());
+
+  uint64_t written = grk_transcode(&transSrcStreamParams, &dstStreamParams, &cparams, srcImage);
+  grk_object_unref(decCodec);
+
+  if(written == 0)
+  {
+    spdlog::error("Transcode: grk_transcode returned 0");
+    return 1;
+  }
+
+  // Step 5: decompress the transcoded file and verify
+  grk_stream_params dstReadStreamParams{};
+  safe_strcpy(dstReadStreamParams.file, dstPath.c_str());
+
+  grk_decompress_parameters dstDparams{};
+  auto* dstCodec = grk_decompress_init(&dstReadStreamParams, &dstDparams);
+  if(!dstCodec)
+  {
+    spdlog::error("Transcode: failed to init decompressor for transcoded file");
+    return 1;
+  }
+
+  grk_header_info dstHeader{};
+  if(!grk_decompress_read_header(dstCodec, &dstHeader))
+  {
+    spdlog::error("Transcode: failed to read transcoded file header");
+    grk_object_unref(dstCodec);
+    return 1;
+  }
+
+  auto* dstImage = grk_decompress_get_image(dstCodec);
+  if(!dstImage)
+  {
+    spdlog::error("Transcode: failed to get image from transcoded file");
+    grk_object_unref(dstCodec);
+    return 1;
+  }
+
+  if(!grk_decompress(dstCodec, nullptr))
+  {
+    spdlog::error("Transcode: failed to decompress transcoded file");
+    grk_object_unref(dstCodec);
+    return 1;
+  }
+
+  bool ok = true;
+
+  // Verify image dimensions are preserved
+  if(dstImage->x1 - dstImage->x0 != 16 || dstImage->y1 - dstImage->y0 != 16)
+  {
+    spdlog::error("Transcode: image dimensions changed");
+    ok = false;
+  }
+
+  // Verify XMP was replaced
+  if(!dstImage->meta || !dstImage->meta->xmp_buf || dstImage->meta->xmp_len != newXmpLen)
+  {
+    spdlog::error("Transcode: XMP data missing or length mismatch (expected {}, got {})", newXmpLen,
+                  dstImage->meta ? dstImage->meta->xmp_len : 0);
+    ok = false;
+  }
+  else if(memcmp(dstImage->meta->xmp_buf, newXmp, newXmpLen) != 0)
+  {
+    spdlog::error("Transcode: XMP data content mismatch");
+    ok = false;
+  }
+
+  // Verify geotiff was removed
+  if(dstImage->meta && dstImage->meta->geotiff_buf && dstImage->meta->geotiff_len > 0)
+  {
+    spdlog::error("Transcode: geotiff should have been removed but is still present");
+    ok = false;
+  }
+
+  // Verify XML box was added (XML comes through header_info, not image->meta)
+  if(!dstHeader.xml_data || dstHeader.xml_data_len != xmlLen)
+  {
+    spdlog::error("Transcode: XML box missing or length mismatch (expected {}, got {})", xmlLen,
+                  dstHeader.xml_data_len);
+    ok = false;
+  }
+  else if(memcmp(dstHeader.xml_data, xmlData, xmlLen) != 0)
+  {
+    spdlog::error("Transcode: XML box content mismatch");
+    ok = false;
+  }
+
+  // Verify pixel data is preserved (codestream copied verbatim)
+  if(dstImage->comps && dstImage->comps[0].data)
+  {
+    auto* pixelData = static_cast<int32_t*>(dstImage->comps[0].data);
+    bool pixelsOk = true;
+    for(uint32_t i = 0; i < 16 * 16; ++i)
+    {
+      if(pixelData[i] != static_cast<int32_t>(i % 256))
+      {
+        spdlog::error("Transcode: pixel mismatch at index {} (expected {}, got {})", i,
+                      (int)(i % 256), pixelData[i]);
+        pixelsOk = false;
+        break;
+      }
+    }
+    if(!pixelsOk)
+      ok = false;
+  }
+  else
+  {
+    spdlog::error("Transcode: no pixel data in decompressed image");
+    ok = false;
+  }
+
+  if(ok)
+    spdlog::info("Transcode: PASSED (wrote {} codestream bytes)", written);
+
+  grk_object_unref(dstCodec);
+  return ok ? 0 : 1;
+}
+
+//==============================================================================
 // Main
 //==============================================================================
 int GrkJP2MetadataTest::main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
@@ -792,6 +1006,7 @@ int GrkJP2MetadataTest::main([[maybe_unused]] int argc, [[maybe_unused]] char** 
   failures += testXmlBoxPlacement(tmpDir.string());
   failures += testCombinedMetadata(tmpDir.string());
   failures += testAsocBoxes(tmpDir.string());
+  failures += testTranscode(tmpDir.string());
 
   // Cleanup
   std::filesystem::remove_all(tmpDir);

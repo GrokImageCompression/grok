@@ -919,6 +919,102 @@ uint64_t grk_compress_get_compressed_length(grk_object* codecWrapper)
   return 0;
 }
 
+uint64_t grk_transcode(grk_stream_params* srcStream, grk_stream_params* dstStream,
+                       grk_cparameters* parameters, grk_image* image)
+{
+  if(!srcStream || !dstStream || !parameters || !image)
+  {
+    grklog.error("grk_transcode: null parameter(s)");
+    return 0;
+  }
+
+  grk_initialize(nullptr, UINT32_MAX, nullptr);
+
+  /* Force JP2 format and transcode mode */
+  parameters->cod_format = GRK_FMT_JP2;
+  parameters->transcode = true;
+
+  /* Create the output stream */
+  dstStream->is_read_stream = false;
+  StreamGenerator dstSg(dstStream);
+  grk::IStream* outStream = nullptr;
+  try
+  {
+    outStream = dstSg.create();
+  }
+  catch(const std::exception& e)
+  {
+    grklog.error("grk_transcode: failed to create destination stream: %s", e.what());
+    return 0;
+  }
+  if(!outStream)
+  {
+    grklog.error("grk_transcode: failed to create destination stream");
+    return 0;
+  }
+
+  /* Create the JP2 compressor */
+  grk_object* codecWrapper = grk_compress_create(GRK_CODEC_JP2, outStream);
+  if(!codecWrapper)
+  {
+    grklog.error("grk_transcode: failed to create codec");
+    delete outStream;
+    return 0;
+  }
+
+  auto codec = Codec::getImpl(codecWrapper);
+  auto compressor = dynamic_cast<FileFormatJP2Compress*>(codec->compressor_);
+  if(!compressor)
+  {
+    grklog.error("grk_transcode: internal error — expected JP2 compressor");
+    grk_object_unref(codecWrapper);
+    return 0;
+  }
+
+  /* Initialize the compressor (transcode mode: skips codestream encoding setup) */
+  if(!compressor->init(parameters, (GrkImage*)image))
+  {
+    grklog.error("grk_transcode: failed to initialize compressor");
+    grk_object_unref(codecWrapper);
+    return 0;
+  }
+
+  /* Write JP2 boxes to destination (signature, ftyp, jp2h, metadata, skip_jp2c) */
+  if(!compressor->start())
+  {
+    grklog.error("grk_transcode: failed to start compressor");
+    grk_object_unref(codecWrapper);
+    return 0;
+  }
+
+  /* Copy the raw codestream from source and finalize */
+  srcStream->is_read_stream = true;
+  StreamGenerator srcSg(srcStream);
+  grk::IStream* inStream = nullptr;
+  try
+  {
+    inStream = srcSg.create();
+  }
+  catch(const std::exception& e)
+  {
+    grklog.error("grk_transcode: failed to open source stream: %s", e.what());
+    grk_object_unref(codecWrapper);
+    return 0;
+  }
+  if(!inStream)
+  {
+    grklog.error("grk_transcode: failed to open source stream");
+    grk_object_unref(codecWrapper);
+    return 0;
+  }
+  std::unique_ptr<grk::IStream> srcStreamGuard(inStream);
+
+  uint64_t bytesWritten = compressor->transcode(inStream);
+  grk_object_unref(codecWrapper);
+
+  return bytesWritten;
+}
+
 /**********************************************************************
  Plugin interface implementation
  ***********************************************************************/

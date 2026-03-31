@@ -680,7 +680,7 @@ bool FileFormatJP2Compress::start(void)
   init_header_writing();
 
   // estimate if codec stream may be larger than 2^32 bytes
-  auto image = codeStream->getHeaderImage();
+  auto image = transcode_mode_ ? inputImage_ : codeStream->getHeaderImage();
   uint64_t image_size = 0;
   for(auto i = 0U; i < image->numcomps; ++i)
   {
@@ -692,6 +692,10 @@ bool FileFormatJP2Compress::start(void)
   /* write header */
   if(!exec(procedure_list_))
     return false;
+
+  /* In transcode mode, skip codestream header writing */
+  if(transcode_mode_)
+    return true;
 
   return codeStream->start();
 }
@@ -707,11 +711,16 @@ bool FileFormatJP2Compress::init(grk_cparameters* parameters, GrkImage* image)
     return false;
 
   inputImage_ = grk_ref(image);
+  transcode_mode_ = parameters->transcode;
 
   cmsSetLogErrorHandler(MycmsLogErrorHandlerFunction);
 
-  if(codeStream->init(parameters, inputImage_) == false)
-    return false;
+  /* In transcode mode, skip codestream encoding setup */
+  if(!transcode_mode_)
+  {
+    if(codeStream->init(parameters, inputImage_) == false)
+      return false;
+  }
 
   /* Profile box */
   brand = parameters->cblk_sty == GRK_CBLKSTY_HT_ONLY ? JP2_JPH : JP2_JP2; /* BR */
@@ -932,6 +941,103 @@ uint64_t FileFormatJP2Compress::compress(grk_plugin_tile* tile)
   }
 
   return rc;
+}
+uint64_t FileFormatJP2Compress::transcode(IStream* srcStream)
+{
+  if(!srcStream)
+  {
+    grklog.error("transcode: source stream cannot be null");
+    return 0;
+  }
+
+  /* Scan source box headers to find JP2C offset and length */
+  uint64_t jp2cDataOffset = 0;
+  uint64_t jp2cDataLength = 0;
+  bool found_jp2c = false;
+  Box box;
+  uint32_t boxHeaderBytesRead;
+  bool codeStreamBoxWasRead = false;
+
+  try
+  {
+    while(read_box_header(&box, srcStream, &boxHeaderBytesRead, codeStreamBoxWasRead))
+    {
+      if(box.type == JP2_JP2C)
+      {
+        jp2cDataOffset = srcStream->tell();
+        jp2cDataLength = box.length - boxHeaderBytesRead;
+        found_jp2c = true;
+        codeStreamBoxWasRead = true;
+        break;
+      }
+      /* skip over this box's data */
+      uint64_t dataLen = box.length - boxHeaderBytesRead;
+      if(dataLen > 0)
+      {
+        if(!srcStream->skip((int64_t)dataLen))
+        {
+          grklog.error("transcode: failed to skip box data in source");
+          return 0;
+        }
+      }
+    }
+  }
+  catch(const std::exception& e)
+  {
+    grklog.error("transcode: error scanning source boxes: %s", e.what());
+    return 0;
+  }
+
+  if(!found_jp2c)
+  {
+    grklog.error("transcode: no JP2C (codestream) box found in source");
+    return 0;
+  }
+
+  /* Seek source to the start of codestream data */
+  if(!srcStream->seek(jp2cDataOffset))
+  {
+    grklog.error("transcode: failed to seek to codestream in source");
+    return 0;
+  }
+
+  /* Copy the raw codestream to the output stream */
+  auto dstStream = codeStream->getStream();
+  assert(dstStream);
+
+  const size_t copyBufSize = 1024 * 1024; /* 1 MB copy buffer */
+  auto copyBuf = std::make_unique<uint8_t[]>(copyBufSize);
+  uint64_t remaining = jp2cDataLength;
+  uint64_t totalWritten = 0;
+
+  while(remaining > 0)
+  {
+    size_t toRead = (size_t)std::min((uint64_t)copyBufSize, remaining);
+    uint8_t* readPtr = copyBuf.get();
+    size_t bytesRead = srcStream->read(readPtr, nullptr, toRead);
+    if(bytesRead == 0)
+    {
+      grklog.error("transcode: unexpected end of source stream");
+      return 0;
+    }
+    size_t bytesWritten = dstStream->writeBytes(readPtr, bytesRead);
+    if(bytesWritten != bytesRead)
+    {
+      grklog.error("transcode: failed to write codestream to destination");
+      return 0;
+    }
+    remaining -= bytesRead;
+    totalWritten += bytesWritten;
+  }
+
+  /* Finalize: write jp2c box header and any post-codestream boxes */
+  if(!end())
+    return 0;
+
+  if(!dstStream->flush())
+    return 0;
+
+  return totalWritten;
 }
 bool FileFormatJP2Compress::end(void)
 {
