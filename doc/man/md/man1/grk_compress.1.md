@@ -41,11 +41,11 @@ IPTC (JP2 Only)
 
 If an input `TIF/TIFF` file contains `IPTC` metadata, this metadata will be stored in the compressed file.
 
-XMP (JP2\JPH Only)
+XMP (JP2 Only)
 
 If an input `TIF/TIFF` or `PNG` file contains `XMP` metadata, this metadata will be stored in the compressed file.
 
-EXIF (JP2 only)
+EXIF (JP2\JPH only)
 
 If an input `JPEG` or `PNG` file contains `EXIF` metadata, this metadata will be automatically stored in the compressed file.
 
@@ -123,6 +123,10 @@ Raw input image characteristics. Required only if RAW or RAWL (RAW little endian
 Example of a raw `512x512` unsigned image with `4:2:0` sub-sampling
 
        -F 512,512,3,8,u@1x1:2x2:2x2
+
+`-f, --apply-icc`
+
+Apply ICC profile before compression, if present.
 
 `-A, --rate--control-algorithm [0|1]`
 

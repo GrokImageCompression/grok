@@ -34,7 +34,7 @@ XMP (JP2\JPH only)
 
 If a compressed input contains `XMP` metadata, this metadata will be stored to the output file if that output file is in `TIF\\TIFF` or `PNG` format.
 
-EXIF (JP2 only)
+EXIF (JP2\\JPH only)
 
 If a compressed input contains `EXIF` metadata, this metadata will be automatically stored to the output file if that output file is in `JPEG` or `PNG` format.
 
