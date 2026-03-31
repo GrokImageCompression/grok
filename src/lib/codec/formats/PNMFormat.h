@@ -705,20 +705,23 @@ bool PNMFormat<T>::decodeHeader(struct pnm_header* ph)
     if(format == 1 || format == 4)
       ph->maxval = 1;
 
-    // sanity check
-    uint64_t area = (uint64_t)ph->width * ph->height;
-    uint64_t minBytes = (ph->maxval != 1) ? area : area / 8;
-    if(minBytes)
+    // sanity check (skip when reading from stdin since pipes are not seekable)
+    if(!useStdIO())
     {
-      int64_t currentPos = GRK_FTELL(fileIO_->getFileHandle());
-      GRK_FSEEK(fileIO_->getFileHandle(), 0L, SEEK_END);
-      uint64_t length = (uint64_t)GRK_FTELL(fileIO_->getFileHandle());
-      if(length < minBytes)
+      uint64_t area = (uint64_t)ph->width * ph->height;
+      uint64_t minBytes = (ph->maxval != 1) ? area : area / 8;
+      if(minBytes)
       {
-        spdlog::error("File is truncated");
-        return false;
+        int64_t currentPos = GRK_FTELL(fileIO_->getFileHandle());
+        GRK_FSEEK(fileIO_->getFileHandle(), 0L, SEEK_END);
+        uint64_t length = (uint64_t)GRK_FTELL(fileIO_->getFileHandle());
+        if(length < minBytes)
+        {
+          spdlog::error("File is truncated");
+          return false;
+        }
+        GRK_FSEEK(fileIO_->getFileHandle(), currentPos, SEEK_SET);
       }
-      GRK_FSEEK(fileIO_->getFileHandle(), currentPos, SEEK_SET);
     }
   }
   return true;
