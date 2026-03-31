@@ -261,6 +261,10 @@ void FileFormatJP2Decompress::dump(uint32_t flag, FILE* outputFileStream)
 {
   codeStream->dump(flag, outputFileStream);
 }
+CodingParams* FileFormatJP2Decompress::getCodingParams(void)
+{
+  return codeStream->getCodingParams();
+}
 
 bool FileFormatJP2Decompress::read_xml(uint8_t* p_xml_data, uint32_t xml_size)
 {

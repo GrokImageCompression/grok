@@ -63,6 +63,7 @@ public:
   void wait(grk_wait_swath* swath) override;
   void scheduleSwathCopy(const grk_wait_swath* swath, grk_swath_buffer* buf) override;
   void waitSwathCopy() override;
+  CodingParams* getCodingParams(void);
 
 private:
   GrkImage* getHeaderImage(void) override;

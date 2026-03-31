@@ -988,6 +988,349 @@ static int testTranscode(const std::string& tmpDir)
 }
 
 //==============================================================================
+// Test: Transcode with TLM — rewrite codestream with TLM marker
+//==============================================================================
+static int testTranscodeWithTLM(const std::string& tmpDir)
+{
+  spdlog::info("=== Test: Transcode with TLM marker ===");
+
+  // Step 1: create source JP2
+  auto* srcMeta = grk_image_meta_new();
+  std::string srcPath = tmpDir + "/transcode_tlm_src.jp2";
+  if(!compressWithMeta(srcPath, srcMeta))
+  {
+    grk_object_unref(&srcMeta->obj);
+    return 1;
+  }
+  grk_object_unref(&srcMeta->obj);
+
+  // Step 2: decompress header from source to get image info
+  grk_stream_params srcStreamParams{};
+  safe_strcpy(srcStreamParams.file, srcPath.c_str());
+
+  grk_decompress_parameters dparams{};
+  auto* decCodec = grk_decompress_init(&srcStreamParams, &dparams);
+  if(!decCodec)
+  {
+    spdlog::error("Transcode TLM: failed to init decompressor for source");
+    return 1;
+  }
+
+  grk_header_info srcHeader{};
+  if(!grk_decompress_read_header(decCodec, &srcHeader))
+  {
+    spdlog::error("Transcode TLM: failed to read source header");
+    grk_object_unref(decCodec);
+    return 1;
+  }
+
+  auto* srcImage = grk_decompress_get_image(decCodec);
+  if(!srcImage)
+  {
+    spdlog::error("Transcode TLM: failed to get source image");
+    grk_object_unref(decCodec);
+    return 1;
+  }
+
+  // Step 3: transcode with write_tlm=true
+  std::string dstPath = tmpDir + "/transcode_tlm_dst.jp2";
+  grk_cparameters cparams{};
+  grk_compress_set_default_params(&cparams);
+  cparams.cod_format = GRK_FMT_JP2;
+  cparams.write_tlm = true;
+
+  grk_stream_params dstStreamParams{};
+  safe_strcpy(dstStreamParams.file, dstPath.c_str());
+
+  grk_stream_params transSrcStreamParams{};
+  safe_strcpy(transSrcStreamParams.file, srcPath.c_str());
+
+  uint64_t written = grk_transcode(&transSrcStreamParams, &dstStreamParams, &cparams, srcImage);
+  grk_object_unref(decCodec);
+
+  if(written == 0)
+  {
+    spdlog::error("Transcode TLM: grk_transcode returned 0");
+    return 1;
+  }
+
+  // Step 4: scan raw output file for TLM marker (0xFF55) in codestream
+  bool foundTLM = false;
+  {
+    FILE* fp = fopen(dstPath.c_str(), "rb");
+    if(!fp)
+    {
+      spdlog::error("Transcode TLM: failed to open output file for raw scan");
+      return 1;
+    }
+    uint8_t prev = 0;
+    int ch;
+    while((ch = fgetc(fp)) != EOF)
+    {
+      if(prev == 0xFF && (uint8_t)ch == 0x55)
+      {
+        foundTLM = true;
+        break;
+      }
+      prev = (uint8_t)ch;
+    }
+    fclose(fp);
+  }
+
+  if(!foundTLM)
+  {
+    spdlog::error("Transcode TLM: TLM marker (0xFF55) not found in output file");
+    return 1;
+  }
+
+  // Step 5: decompress the transcoded file and verify pixel data
+  grk_stream_params dstReadStreamParams{};
+  safe_strcpy(dstReadStreamParams.file, dstPath.c_str());
+
+  grk_decompress_parameters dstDparams{};
+  auto* dstCodec = grk_decompress_init(&dstReadStreamParams, &dstDparams);
+  if(!dstCodec)
+  {
+    spdlog::error("Transcode TLM: failed to init decompressor for transcoded file");
+    return 1;
+  }
+
+  grk_header_info dstHeader{};
+  if(!grk_decompress_read_header(dstCodec, &dstHeader))
+  {
+    spdlog::error("Transcode TLM: failed to read transcoded file header");
+    grk_object_unref(dstCodec);
+    return 1;
+  }
+
+  auto* dstImage = grk_decompress_get_image(dstCodec);
+  if(!dstImage)
+  {
+    spdlog::error("Transcode TLM: failed to get image from transcoded file");
+    grk_object_unref(dstCodec);
+    return 1;
+  }
+
+  if(!grk_decompress(dstCodec, nullptr))
+  {
+    spdlog::error("Transcode TLM: failed to decompress transcoded file");
+    grk_object_unref(dstCodec);
+    return 1;
+  }
+
+  bool ok = true;
+
+  // Verify image dimensions
+  if(dstImage->x1 - dstImage->x0 != 16 || dstImage->y1 - dstImage->y0 != 16)
+  {
+    spdlog::error("Transcode TLM: image dimensions changed");
+    ok = false;
+  }
+
+  // Verify pixel data
+  if(dstImage->comps && dstImage->comps[0].data)
+  {
+    auto* pixelData = static_cast<int32_t*>(dstImage->comps[0].data);
+    for(uint32_t i = 0; i < 16 * 16; ++i)
+    {
+      if(pixelData[i] != static_cast<int32_t>(i % 256))
+      {
+        spdlog::error("Transcode TLM: pixel mismatch at index {} (expected {}, got {})", i,
+                      (int)(i % 256), pixelData[i]);
+        ok = false;
+        break;
+      }
+    }
+  }
+  else
+  {
+    spdlog::error("Transcode TLM: no pixel data in decompressed image");
+    ok = false;
+  }
+
+  if(ok)
+    spdlog::info("Transcode TLM: PASSED (wrote {} codestream bytes, TLM marker present)", written);
+
+  grk_object_unref(dstCodec);
+  return ok ? 0 : 1;
+}
+
+static int testTranscodeWithPLT(const std::string& tmpDir)
+{
+  spdlog::info("=== Test: Transcode with PLT marker ===");
+
+  // Step 1: create source JP2
+  auto* srcMeta = grk_image_meta_new();
+  std::string srcPath = tmpDir + "/transcode_plt_src.jp2";
+  if(!compressWithMeta(srcPath, srcMeta))
+  {
+    grk_object_unref(&srcMeta->obj);
+    return 1;
+  }
+  grk_object_unref(&srcMeta->obj);
+
+  // Step 2: decompress header from source to get image info
+  grk_stream_params srcStreamParams{};
+  safe_strcpy(srcStreamParams.file, srcPath.c_str());
+
+  grk_decompress_parameters dparams{};
+  auto* decCodec = grk_decompress_init(&srcStreamParams, &dparams);
+  if(!decCodec)
+  {
+    spdlog::error("Transcode PLT: failed to init decompressor for source");
+    return 1;
+  }
+
+  grk_header_info srcHeader{};
+  if(!grk_decompress_read_header(decCodec, &srcHeader))
+  {
+    spdlog::error("Transcode PLT: failed to read source header");
+    grk_object_unref(decCodec);
+    return 1;
+  }
+
+  auto* srcImage = grk_decompress_get_image(decCodec);
+  if(!srcImage)
+  {
+    spdlog::error("Transcode PLT: failed to get source image");
+    grk_object_unref(decCodec);
+    return 1;
+  }
+
+  // Step 3: transcode with write_tlm=true AND write_plt=true
+  std::string dstPath = tmpDir + "/transcode_plt_dst.jp2";
+  grk_cparameters cparams{};
+  grk_compress_set_default_params(&cparams);
+  cparams.cod_format = GRK_FMT_JP2;
+  cparams.write_tlm = true;
+  cparams.write_plt = true;
+
+  grk_stream_params dstStreamParams{};
+  safe_strcpy(dstStreamParams.file, dstPath.c_str());
+
+  grk_stream_params transSrcStreamParams{};
+  safe_strcpy(transSrcStreamParams.file, srcPath.c_str());
+
+  uint64_t written = grk_transcode(&transSrcStreamParams, &dstStreamParams, &cparams, srcImage);
+  grk_object_unref(decCodec);
+
+  if(written == 0)
+  {
+    spdlog::error("Transcode PLT: grk_transcode returned 0");
+    return 1;
+  }
+
+  // Step 4: scan raw output file for TLM (0xFF55) and PLT (0xFF58) markers
+  bool foundTLM = false;
+  bool foundPLT = false;
+  {
+    FILE* fp = fopen(dstPath.c_str(), "rb");
+    if(!fp)
+    {
+      spdlog::error("Transcode PLT: failed to open output file for raw scan");
+      return 1;
+    }
+    uint8_t prev = 0;
+    int ch;
+    while((ch = fgetc(fp)) != EOF)
+    {
+      if(prev == 0xFF)
+      {
+        if((uint8_t)ch == 0x55)
+          foundTLM = true;
+        if((uint8_t)ch == 0x58)
+          foundPLT = true;
+      }
+      prev = (uint8_t)ch;
+    }
+    fclose(fp);
+  }
+
+  if(!foundTLM)
+  {
+    spdlog::error("Transcode PLT: TLM marker (0xFF55) not found in output file");
+    return 1;
+  }
+  if(!foundPLT)
+  {
+    spdlog::error("Transcode PLT: PLT marker (0xFF58) not found in output file");
+    return 1;
+  }
+
+  // Step 5: decompress the transcoded file and verify pixel data
+  grk_stream_params dstReadStreamParams{};
+  safe_strcpy(dstReadStreamParams.file, dstPath.c_str());
+
+  grk_decompress_parameters dstDparams{};
+  auto* dstCodec = grk_decompress_init(&dstReadStreamParams, &dstDparams);
+  if(!dstCodec)
+  {
+    spdlog::error("Transcode PLT: failed to init decompressor for transcoded file");
+    return 1;
+  }
+
+  grk_header_info dstHeader{};
+  if(!grk_decompress_read_header(dstCodec, &dstHeader))
+  {
+    spdlog::error("Transcode PLT: failed to read transcoded file header");
+    grk_object_unref(dstCodec);
+    return 1;
+  }
+
+  auto* dstImage = grk_decompress_get_image(dstCodec);
+  if(!dstImage)
+  {
+    spdlog::error("Transcode PLT: failed to get image from transcoded file");
+    grk_object_unref(dstCodec);
+    return 1;
+  }
+
+  if(!grk_decompress(dstCodec, nullptr))
+  {
+    spdlog::error("Transcode PLT: failed to decompress transcoded file");
+    grk_object_unref(dstCodec);
+    return 1;
+  }
+
+  bool ok = true;
+
+  // Verify image dimensions
+  if(dstImage->x1 - dstImage->x0 != 16 || dstImage->y1 - dstImage->y0 != 16)
+  {
+    spdlog::error("Transcode PLT: image dimensions changed");
+    ok = false;
+  }
+
+  // Verify pixel data
+  if(dstImage->comps && dstImage->comps[0].data)
+  {
+    auto* pixelData = static_cast<int32_t*>(dstImage->comps[0].data);
+    for(uint32_t i = 0; i < 16 * 16; ++i)
+    {
+      if(pixelData[i] != static_cast<int32_t>(i % 256))
+      {
+        spdlog::error("Transcode PLT: pixel mismatch at index {} (expected {}, got {})", i,
+                      (int)(i % 256), pixelData[i]);
+        ok = false;
+        break;
+      }
+    }
+  }
+  else
+  {
+    spdlog::error("Transcode PLT: no pixel data in decompressed image");
+    ok = false;
+  }
+
+  if(ok)
+    spdlog::info("Transcode PLT: PASSED (wrote {} codestream bytes, TLM+PLT markers present)",
+                 written);
+
+  grk_object_unref(dstCodec);
+  return ok ? 0 : 1;
+}
+
+//==============================================================================
 // Main
 //==============================================================================
 int GrkJP2MetadataTest::main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
@@ -1007,6 +1350,8 @@ int GrkJP2MetadataTest::main([[maybe_unused]] int argc, [[maybe_unused]] char** 
   failures += testCombinedMetadata(tmpDir.string());
   failures += testAsocBoxes(tmpDir.string());
   failures += testTranscode(tmpDir.string());
+  failures += testTranscodeWithTLM(tmpDir.string());
+  failures += testTranscodeWithPLT(tmpDir.string());
 
   // Cleanup
   std::filesystem::remove_all(tmpDir);

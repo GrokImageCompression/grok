@@ -215,6 +215,16 @@ bool T2Decompress::parsePacket(uint16_t compno, uint8_t resno, uint64_t precinct
     }
   }
 
+  // 6.5. Record packet length for transcode PLT generation
+  auto cpRec = tileProcessor->getCodingParams();
+  if(cpRec->recordPacketLengths_ && packetLength)
+  {
+    auto tileIdx = tileProcessor->getIndex();
+    if(tileIdx >= cpRec->recordedPacketLengths_.size())
+      cpRec->recordedPacketLengths_.resize(tileIdx + 1);
+    cpRec->recordedPacketLengths_[tileIdx].push_back(packetLength);
+  }
+
   // 7. compressedPackets can now increment to next packet
   try
   {

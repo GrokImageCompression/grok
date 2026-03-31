@@ -933,6 +933,7 @@ uint64_t grk_transcode(grk_stream_params* srcStream, grk_stream_params* dstStrea
   /* Force JP2 format and transcode mode */
   parameters->cod_format = GRK_FMT_JP2;
   parameters->transcode = true;
+  parameters->transcode_src = *srcStream;
 
   /* Create the output stream */
   dstStream->is_read_stream = false;

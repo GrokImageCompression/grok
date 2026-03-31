@@ -48,6 +48,7 @@ struct ITileProcessor;
 #include "FileFormatJP2Decompress.h"
 #include "CodecScheduler.h"
 #include "CodeblockCompress.h"
+#include "Codec.h"
 
 #include "ITileProcessor.h"
 #include "ITileProcessorCompress.h"
@@ -712,6 +713,12 @@ bool FileFormatJP2Compress::init(grk_cparameters* parameters, GrkImage* image)
 
   inputImage_ = grk_ref(image);
   transcode_mode_ = parameters->transcode;
+  if(transcode_mode_)
+  {
+    write_tlm_transcode_ = parameters->write_tlm;
+    write_plt_transcode_ = parameters->write_plt;
+    transcode_src_ = parameters->transcode_src;
+  }
 
   cmsSetLogErrorHandler(MycmsLogErrorHandlerFunction);
 
@@ -1001,34 +1008,42 @@ uint64_t FileFormatJP2Compress::transcode(IStream* srcStream)
     return 0;
   }
 
-  /* Copy the raw codestream to the output stream */
   auto dstStream = codeStream->getStream();
   assert(dstStream);
 
-  const size_t copyBufSize = 1024 * 1024; /* 1 MB copy buffer */
-  auto copyBuf = std::make_unique<uint8_t[]>(copyBufSize);
-  uint64_t remaining = jp2cDataLength;
   uint64_t totalWritten = 0;
-
-  while(remaining > 0)
+  if(write_tlm_transcode_)
   {
-    size_t toRead = (size_t)std::min((uint64_t)copyBufSize, remaining);
-    uint8_t* readPtr = copyBuf.get();
-    size_t bytesRead = srcStream->read(readPtr, nullptr, toRead);
-    if(bytesRead == 0)
-    {
-      grklog.error("transcode: unexpected end of source stream");
-      return 0;
-    }
-    size_t bytesWritten = dstStream->writeBytes(readPtr, bytesRead);
-    if(bytesWritten != bytesRead)
-    {
-      grklog.error("transcode: failed to write codestream to destination");
-      return 0;
-    }
-    remaining -= bytesRead;
-    totalWritten += bytesWritten;
+    totalWritten = transcodeCodestreamWithTLM(srcStream, jp2cDataOffset, jp2cDataLength);
   }
+  else
+  {
+    /* Copy the raw codestream verbatim */
+    const size_t copyBufSize = 1024 * 1024;
+    auto copyBuf = std::make_unique<uint8_t[]>(copyBufSize);
+    uint64_t remaining = jp2cDataLength;
+
+    while(remaining > 0)
+    {
+      size_t toRead = (size_t)std::min((uint64_t)copyBufSize, remaining);
+      size_t bytesRead = srcStream->read(copyBuf.get(), nullptr, toRead);
+      if(bytesRead == 0)
+      {
+        grklog.error("transcode: unexpected end of source stream");
+        return 0;
+      }
+      if(dstStream->writeBytes(copyBuf.get(), bytesRead) != bytesRead)
+      {
+        grklog.error("transcode: failed to write codestream to destination");
+        return 0;
+      }
+      remaining -= bytesRead;
+      totalWritten += bytesRead;
+    }
+  }
+
+  if(totalWritten == 0)
+    return 0;
 
   /* Finalize: write jp2c box header and any post-codestream boxes */
   if(!end())
@@ -1036,6 +1051,456 @@ uint64_t FileFormatJP2Compress::transcode(IStream* srcStream)
 
   if(!dstStream->flush())
     return 0;
+
+  return totalWritten;
+}
+uint64_t FileFormatJP2Compress::transcodeCodestreamWithTLM(IStream* srcStream, uint64_t csStart,
+                                                           uint64_t csLength)
+{
+  auto dstStream = codeStream->getStream();
+  uint64_t csEnd = csStart + csLength;
+
+  // Helpers to read big-endian values from source stream
+  auto readU16 = [srcStream](uint16_t* val) -> bool {
+    uint8_t b[2];
+    if(srcStream->read(b, nullptr, 2) != 2)
+      return false;
+    *val = (uint16_t)((b[0] << 8) | b[1]);
+    return true;
+  };
+  auto readU32 = [srcStream](uint32_t* val) -> bool {
+    uint8_t b[4];
+    if(srcStream->read(b, nullptr, 4) != 4)
+      return false;
+    *val =
+        (uint32_t)(((uint32_t)b[0] << 24) | ((uint32_t)b[1] << 16) | ((uint32_t)b[2] << 8) | b[3]);
+    return true;
+  };
+
+  srcStream->seek(csStart);
+
+  // Read and verify SOC
+  uint16_t marker;
+  if(!readU16(&marker) || marker != SOC)
+  {
+    grklog.error("transcode: expected SOC at start of codestream");
+    return 0;
+  }
+
+  // --- Phase 1: Scan main header markers ---
+  struct MainHeaderMarker
+  {
+    uint64_t offset;
+    uint16_t type;
+    uint16_t segLen; // Lxxx value (includes 2 bytes for length field itself)
+  };
+  std::vector<MainHeaderMarker> mainHeaderMarkers;
+
+  while(srcStream->tell() < csEnd)
+  {
+    uint64_t pos = srcStream->tell();
+    if(!readU16(&marker))
+    {
+      grklog.error("transcode: failed to read marker in main header");
+      return 0;
+    }
+
+    if(marker == SOT || marker == EOC)
+    {
+      srcStream->seek(pos);
+      break;
+    }
+
+    uint16_t segLen;
+    if(!readU16(&segLen))
+    {
+      grklog.error("transcode: failed to read marker segment length");
+      return 0;
+    }
+
+    MainHeaderMarker mhm;
+    mhm.offset = pos;
+    mhm.type = marker;
+    mhm.segLen = segLen;
+    mainHeaderMarkers.push_back(mhm);
+
+    if(segLen > 2)
+    {
+      if(!srcStream->skip(segLen - 2))
+      {
+        grklog.error("transcode: failed to skip main header marker data");
+        return 0;
+      }
+    }
+  }
+
+  // --- Phase 2: Scan tile parts ---
+  struct TilePartHeaderMarker
+  {
+    uint64_t offset;
+    uint16_t type;
+    uint16_t segLen;
+  };
+  struct TilePartInfo
+  {
+    uint16_t tileIndex;
+    uint32_t length; // byte length from SOT to end of tile-part data
+    uint64_t srcOffset; // absolute position of SOT in source
+    bool psotWasZero;
+    std::vector<TilePartHeaderMarker> headerMarkers; // markers between SOT and SOD
+    uint64_t sodOffset; // absolute position of SOD in source
+    uint32_t dataSize; // bytes after SOD to end of tile part
+  };
+  std::vector<TilePartInfo> tileParts;
+
+  while(srcStream->tell() < csEnd)
+  {
+    uint64_t sotPos = srcStream->tell();
+    if(!readU16(&marker))
+      break;
+
+    if(marker == EOC)
+      break;
+
+    if(marker != SOT)
+    {
+      grklog.error("transcode: expected SOT at offset %lu, got 0x%04X", (unsigned long)sotPos,
+                   marker);
+      return 0;
+    }
+
+    uint16_t Lsot;
+    if(!readU16(&Lsot))
+      return 0;
+    uint16_t Isot;
+    if(!readU16(&Isot))
+      return 0;
+    uint32_t Psot;
+    if(!readU32(&Psot))
+      return 0;
+    // Skip TPsot(1) + TNsot(1)
+    srcStream->skip(2);
+
+    TilePartInfo tp;
+    tp.tileIndex = Isot;
+    tp.srcOffset = sotPos;
+    tp.psotWasZero = (Psot == 0);
+
+    if(Psot == 0)
+    {
+      // Last tile part extends from SOT to EOC (exclusive)
+      tp.length = (uint32_t)(csEnd - sotPos - 2);
+    }
+    else
+    {
+      tp.length = Psot;
+    }
+
+    // Scan tile-part header markers (between SOT and SOD)
+    tp.sodOffset = 0;
+    tp.dataSize = 0;
+    uint64_t tpEnd = sotPos + tp.length;
+    while(srcStream->tell() < tpEnd)
+    {
+      uint64_t mPos = srcStream->tell();
+      if(!readU16(&marker))
+        break;
+      if(marker == SOD)
+      {
+        tp.sodOffset = mPos;
+        tp.dataSize = (uint32_t)(tpEnd - (mPos + 2));
+        break;
+      }
+      uint16_t sl;
+      if(!readU16(&sl))
+        break;
+      TilePartHeaderMarker tphm;
+      tphm.offset = mPos;
+      tphm.type = marker;
+      tphm.segLen = sl;
+      tp.headerMarkers.push_back(tphm);
+      if(sl > 2)
+        srcStream->skip(sl - 2);
+    }
+
+    tileParts.push_back(tp);
+    if(Psot == 0)
+      break;
+    srcStream->seek(sotPos + Psot);
+  }
+
+  if(tileParts.empty())
+  {
+    grklog.error("transcode: no tile parts found in codestream");
+    return 0;
+  }
+
+  uint32_t numTileParts = (uint32_t)tileParts.size();
+  // Max entries for single TLM marker: (65535 - 4) / 6 = 10921
+  if(numTileParts > 10921)
+  {
+    grklog.error("transcode: too many tile parts (%u) for a single TLM marker (max 10921)",
+                 numTileParts);
+    return 0;
+  }
+
+  // --- Phase 2.5: Extract packet lengths for PLT (if needed) ---
+  // Per-tile-part packet lengths (for PLT generation)
+  std::vector<std::vector<uint32_t>> tpPacketLengths(numTileParts);
+  std::vector<uint32_t> pltMarkerSizes(numTileParts, 0);
+
+  if(write_plt_transcode_)
+  {
+    // Decompress the source file to record packet lengths
+    grk_stream_params decStreamParams = transcode_src_;
+    grk_decompress_parameters dparams{};
+    auto* decCodec = grk_decompress_init(&decStreamParams, &dparams);
+    if(!decCodec)
+    {
+      grklog.error("transcode: failed to init decompressor for PLT extraction");
+      return 0;
+    }
+    grk_header_info hdr{};
+    if(!grk_decompress_read_header(decCodec, &hdr))
+    {
+      grklog.error("transcode: failed to read header for PLT extraction");
+      grk_object_unref(decCodec);
+      return 0;
+    }
+    // Enable packet length recording
+    auto* codecImpl = Codec::getImpl(decCodec);
+    auto* decomp = static_cast<FileFormatJP2Decompress*>(codecImpl->decompressor_);
+    auto* cp = decomp->getCodingParams();
+    cp->recordPacketLengths_ = true;
+
+    // Full decompress to drive T2 packet parsing
+    if(!grk_decompress(decCodec, nullptr))
+    {
+      grklog.error("transcode: failed to decompress source for PLT extraction");
+      grk_object_unref(decCodec);
+      return 0;
+    }
+
+    // Map recorded packet lengths to tile parts
+    auto& recordedLengths = cp->recordedPacketLengths_;
+    std::map<uint16_t, std::vector<uint32_t>> tpIndicesByTile;
+    for(uint32_t tpIdx = 0; tpIdx < numTileParts; ++tpIdx)
+      tpIndicesByTile[tileParts[tpIdx].tileIndex].push_back(tpIdx);
+
+    for(auto& [tileIdx, tpIndices] : tpIndicesByTile)
+    {
+      if(tileIdx >= recordedLengths.size() || recordedLengths[tileIdx].empty())
+        continue;
+
+      auto& lengths = recordedLengths[tileIdx];
+      size_t pktOffset = 0;
+
+      for(auto tpIdx : tpIndices)
+      {
+        auto& tp = tileParts[tpIdx];
+        PLMarker pltSizer;
+        pltSizer.pushInit(true);
+        uint32_t cumulated = 0;
+        while(pktOffset < lengths.size() && cumulated < tp.dataSize)
+        {
+          uint32_t pktLen = lengths[pktOffset];
+          tpPacketLengths[tpIdx].push_back(pktLen);
+          pltSizer.pushPL(pktLen);
+          cumulated += pktLen;
+          pktOffset++;
+        }
+        pltMarkerSizes[tpIdx] = pltSizer.getTotalBytesWritten();
+      }
+    }
+
+    grk_object_unref(decCodec);
+  }
+
+  // Compute adjusted tile-part lengths
+  // newLength = origLength + pltMarkerSize - existingPltSize
+  std::vector<uint32_t> adjustedLengths(numTileParts);
+  for(uint32_t i = 0; i < numTileParts; ++i)
+  {
+    uint32_t existingPltSize = 0;
+    for(auto& hm : tileParts[i].headerMarkers)
+    {
+      if(hm.type == PLT)
+        existingPltSize += 2 + hm.segLen; // marker(2) + segment
+    }
+    adjustedLengths[i] = tileParts[i].length + pltMarkerSizes[i] - existingPltSize;
+  }
+
+  // --- Phase 3: Write new codestream ---
+  uint64_t totalWritten = 0;
+
+  // 3a. Write SOC
+  if(!dstStream->write(SOC))
+    return 0;
+  totalWritten += 2;
+
+  // 3b. Copy main header markers, stripping any existing TLM
+  const size_t copyBufSize = 1024 * 1024;
+  auto copyBuf = std::make_unique<uint8_t[]>(copyBufSize);
+
+  for(auto& mhm : mainHeaderMarkers)
+  {
+    if(mhm.type == TLM)
+      continue;
+
+    uint32_t markerTotalLen = 2 + mhm.segLen;
+    srcStream->seek(mhm.offset);
+
+    uint8_t* buf;
+    std::unique_ptr<uint8_t[]> largeBuf;
+    if(markerTotalLen <= copyBufSize)
+    {
+      buf = copyBuf.get();
+    }
+    else
+    {
+      largeBuf = std::make_unique<uint8_t[]>(markerTotalLen);
+      buf = largeBuf.get();
+    }
+
+    if(srcStream->read(buf, nullptr, markerTotalLen) != markerTotalLen)
+    {
+      grklog.error("transcode: failed to read main header marker");
+      return 0;
+    }
+    if(dstStream->writeBytes(buf, markerTotalLen) != markerTotalLen)
+    {
+      grklog.error("transcode: failed to write main header marker");
+      return 0;
+    }
+    totalWritten += markerTotalLen;
+  }
+
+  // 3c. Write new TLM marker with adjusted tile-part lengths
+  uint16_t Ltlm = (uint16_t)(4 + tlmMarkerBytesPerTilePart * numTileParts);
+  if(!dstStream->write(TLM))
+    return 0;
+  totalWritten += 2;
+  if(!dstStream->write(Ltlm))
+    return 0;
+  totalWritten += 2;
+  if(!dstStream->write8u(0)) // Ztlm = 0
+    return 0;
+  totalWritten += 1;
+  if(!dstStream->write8u(0x60)) // Stlm: ST=2 (16-bit indices), SP=1 (32-bit lengths)
+    return 0;
+  totalWritten += 1;
+
+  for(uint32_t i = 0; i < numTileParts; ++i)
+  {
+    if(!dstStream->write(tileParts[i].tileIndex))
+      return 0;
+    totalWritten += 2;
+    if(!dstStream->write(adjustedLengths[i]))
+      return 0;
+    totalWritten += 4;
+  }
+
+  // 3d. Write tile parts with PLT insertion
+  for(uint32_t tpIdx = 0; tpIdx < numTileParts; ++tpIdx)
+  {
+    auto& tp = tileParts[tpIdx];
+
+    // Write SOT with adjusted Psot
+    uint8_t sotHeader[sotMarkerSegmentLen];
+    srcStream->seek(tp.srcOffset);
+    if(srcStream->read(sotHeader, nullptr, sotMarkerSegmentLen) != sotMarkerSegmentLen)
+    {
+      grklog.error("transcode: failed to read SOT header");
+      return 0;
+    }
+    // Overwrite Psot with adjusted length
+    uint32_t newPsot = adjustedLengths[tpIdx];
+    sotHeader[6] = (uint8_t)(newPsot >> 24);
+    sotHeader[7] = (uint8_t)(newPsot >> 16);
+    sotHeader[8] = (uint8_t)(newPsot >> 8);
+    sotHeader[9] = (uint8_t)(newPsot);
+    if(dstStream->writeBytes(sotHeader, sotMarkerSegmentLen) != sotMarkerSegmentLen)
+    {
+      grklog.error("transcode: failed to write SOT header");
+      return 0;
+    }
+    totalWritten += sotMarkerSegmentLen;
+
+    // Write PLT markers for this tile part (if PLT data was generated)
+    if(pltMarkerSizes[tpIdx] > 0 && !tpPacketLengths[tpIdx].empty())
+    {
+      PLMarker pltWriter(dstStream);
+      pltWriter.pushInit(true);
+      for(auto pktLen : tpPacketLengths[tpIdx])
+        pltWriter.pushPL(pktLen);
+      if(!pltWriter.write())
+      {
+        grklog.error("transcode: failed to write PLT markers");
+        return 0;
+      }
+      totalWritten += pltWriter.getTotalBytesWritten();
+    }
+
+    // Copy non-PLT tile-part header markers from source
+    for(auto& hm : tp.headerMarkers)
+    {
+      if(hm.type == PLT)
+        continue;
+      uint32_t hmLen = 2 + hm.segLen;
+      srcStream->seek(hm.offset);
+      uint8_t* buf;
+      std::unique_ptr<uint8_t[]> largeBuf2;
+      if(hmLen <= copyBufSize)
+        buf = copyBuf.get();
+      else
+      {
+        largeBuf2 = std::make_unique<uint8_t[]>(hmLen);
+        buf = largeBuf2.get();
+      }
+      if(srcStream->read(buf, nullptr, hmLen) != hmLen)
+      {
+        grklog.error("transcode: failed to read tile-part header marker");
+        return 0;
+      }
+      if(dstStream->writeBytes(buf, hmLen) != hmLen)
+      {
+        grklog.error("transcode: failed to write tile-part header marker");
+        return 0;
+      }
+      totalWritten += hmLen;
+    }
+
+    // Write SOD
+    if(!dstStream->write(SOD))
+      return 0;
+    totalWritten += 2;
+
+    // Copy packet data from source (bytes after SOD to end of tile part)
+    srcStream->seek(tp.sodOffset + 2); // skip SOD in source
+    uint32_t dataRemaining = tp.dataSize;
+    while(dataRemaining > 0)
+    {
+      size_t toRead = std::min((size_t)dataRemaining, copyBufSize);
+      size_t bytesRead = srcStream->read(copyBuf.get(), nullptr, toRead);
+      if(bytesRead == 0)
+      {
+        grklog.error("transcode: unexpected end of source stream");
+        return 0;
+      }
+      if(dstStream->writeBytes(copyBuf.get(), bytesRead) != bytesRead)
+      {
+        grklog.error("transcode: failed to write tile part data");
+        return 0;
+      }
+      dataRemaining -= (uint32_t)bytesRead;
+      totalWritten += bytesRead;
+    }
+  }
+
+  // 3e. Write EOC
+  if(!dstStream->write(EOC))
+    return 0;
+  totalWritten += 2;
 
   return totalWritten;
 }

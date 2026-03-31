@@ -76,6 +76,10 @@ private:
   uint8_t num_rreq_standard_features_ = 0;
   bool geoboxes_after_jp2c_ = false;
   bool transcode_mode_ = false;
+  bool write_tlm_transcode_ = false;
+  bool write_plt_transcode_ = false;
+  grk_stream_params transcode_src_{};
+  uint64_t transcodeCodestreamWithTLM(IStream* srcStream, uint64_t csStart, uint64_t csLength);
 };
 
 } // namespace grk

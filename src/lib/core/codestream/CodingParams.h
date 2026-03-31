@@ -454,6 +454,9 @@ struct CodingParams
   bool simulate_synchronous_;
   grk_decompress_callback decompressCallback_;
   void* decompressCallbackUserData_;
+  /* packet length recording for transcode PLT generation */
+  bool recordPacketLengths_ = false;
+  std::vector<std::vector<uint32_t>> recordedPacketLengths_; /* [tileIndex] → lengths */
 };
 
 } // namespace grk
