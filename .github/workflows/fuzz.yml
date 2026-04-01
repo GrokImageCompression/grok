@@ -14,16 +14,18 @@ jobs:
       uses: google/oss-fuzz/infra/cifuzz/actions/build_fuzzers@master
       with:
         oss-fuzz-project-name: 'grok'
+        sanitizer: ${{ matrix.sanitizer }}
         dry-run: false
     - name: Run Fuzzers
       uses: google/oss-fuzz/infra/cifuzz/actions/run_fuzzers@master
       with:
         oss-fuzz-project-name: 'grok'
+        sanitizer: ${{ matrix.sanitizer }}
         fuzz-seconds: 3600
         dry-run: false
     - name: Upload Crash
       uses: actions/upload-artifact@v4
       if: failure() && steps.build.outcome == 'success'
       with:
-        name: artifacts
+        name: artifacts-${{ matrix.sanitizer }}
         path: ./out/artifacts
