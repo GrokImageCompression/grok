@@ -33,6 +33,21 @@ Benchmark results (16 threads, GDAL release build, Fedora 42):
 - JPEG/PNG/BMP/TIFF/RAW/PNM/PAM I/O
 - Linux (x86-64/AArch64), Windows, macOS, WebAssembly
 
+### Transcoding (`grk_transcode`)
+
+`grk_transcode` rewrites JP2/J2K files at the packet level — no full decompression required. Supported operations:
+
+- Insert **TLM** (Tile-part Length) and **PLT** (Packet Length) markers for random access
+- Inject **SOP** / **EPH** markers
+- Truncate quality layers (`--max-layers`)
+- Strip resolution levels (`--max-res`)
+- Reorder packet progression (LRCP, RLCP, RPCL, PCRL, CPRL)
+
+Example — add TLM + PLT markers to an existing file:
+```
+grk_transcode -i input.jp2 -o output.jp2 -X -L
+```
+
 ### Testing
 - 2,000+ unit tests
 - Continuous fuzzing via [OSS-Fuzz](https://issues.oss-fuzz.com/issues?q=proj:grok)
