@@ -35,22 +35,22 @@ with a hex editor is not directly useful.
 ### Preliminary steps
 
 ```
-$ cd /tmp
-$ git clone https://github.com/GrokImageCompression/grok
-$ cd grok
-$ git clone --depth 1 https://github.com/GrokImageCompression/grok-test-data grok-data
-$ mkdir build
-$ cd build
-$ cmake .. -DBUILD_SHARED_LIBS=OFF
-$ make -j$(nproc)
-$ cd ..
+cd /tmp
+git clone --recursive https://github.com/GrokImageCompression/grok
+git clone --depth 1 https://github.com/GrokImageCompression/grok-test-data grok-data
+cd grok
+mkdir build
+cd build
+cmake .. -DBUILD_SHARED_LIBS=OFF
+make -j$(nproc)
+cd ../..
 ```
 
 ### Build fuzzers and seed corpus
 
 ```
-$ cd tests/fuzzers
-$ make -j$(nproc)
+cd grok/tests/fuzzers
+make -j$(nproc)
 ```
 
 Fuzzers created in `/tmp/*_fuzzer`, with `/tmp/*_fuzzer_seed_corpus.zip` corpus files.
@@ -61,6 +61,32 @@ Fuzzers created in `/tmp/*_fuzzer`, with `/tmp/*_fuzzer_seed_corpus.zip` corpus 
 $ /tmp/grk_decompress_fuzzer a_file_name
 $ /tmp/grk_compress_fuzzer a_file_name
 ```
+
+### Build fuzzers for debugging in VSCode
+
+Requires a grok build with debug info (e.g. `Debug` or `RelWithDebInfo`).
+From the repository root:
+
+```
+gcc -g -O0 -c tests/fuzzers/fuzzingengine.c -o /tmp/fuzzingengine.o
+g++ -g -O0 -std=c++20 \
+    -I src/lib/core -I build/src/lib/core \
+    tests/fuzzers/grk_decompress_fuzzer.cpp /tmp/fuzzingengine.o \
+    -o build/bin/grk_decompress_fuzzer \
+    -Lbuild/bin -lgrokj2k -lhwy -llcms2 -lm -lpthread \
+    -Wl,-rpath,'$ORIGIN'
+g++ -g -O0 -std=c++20 \
+    -I src/lib/core -I build/src/lib/core \
+    tests/fuzzers/grk_compress_fuzzer.cpp /tmp/fuzzingengine.o \
+    -o build/bin/grk_compress_fuzzer \
+    -Lbuild/bin -lgrokj2k -lhwy -llcms2 -lm -lpthread \
+    -Wl,-rpath,'$ORIGIN'
+```
+
+The fuzzer binaries are now in `build/bin/` with full debug symbols.
+To debug a crash, open VSCode and select the **"Compress Fuzzer"**
+launch configuration from the Run and Debug panel. It will prompt for
+the path to a crash input file. Set breakpoints and press F5.
 
 
 ## OSS-Fuzz crash reports
