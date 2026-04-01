@@ -63,8 +63,7 @@ CompressScheduler::CompressScheduler(Tile* tile, bool needsRateControl, TileCodi
     : SchedulerStandard(tile->numcomps_), tile_(tile), needsRateControl_(needsRateControl),
       blockCount_(-1), tcp_(tcp), mct_norms_(mct_norms), mct_numcomps_(mct_numcomps)
 {
-  if(needsRateControl_)
-    rateControlStats_.init(tile->numcomps_);
+  rateControlStats_.init(tile->numcomps_);
 }
 
 bool CompressScheduler::scheduleT1(ITileProcessor* proc)

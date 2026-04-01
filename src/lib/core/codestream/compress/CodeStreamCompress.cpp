@@ -112,9 +112,19 @@ char* CodeStreamCompress::convertProgressionOrder(GRK_PROG_ORDER prg_order)
 bool CodeStreamCompress::mct_validation(void)
 {
   bool valid = true;
+  uint32_t numTiles = cp_.t_grid_height_ * cp_.t_grid_width_;
+  for(uint16_t i = 0; i < numTiles; ++i)
+  {
+    auto tcp = cp_.tcps_.get(i);
+    if(tcp->mct_ == 1 && headerImage_->numcomps < 3)
+    {
+      grklog.error("MCT mode 1 (RGB transform) requires at least 3 components, but image has %u",
+                   headerImage_->numcomps);
+      return false;
+    }
+  }
   if((cp_.rsiz_ & 0x8200) == 0x8200)
   {
-    uint32_t numTiles = cp_.t_grid_height_ * cp_.t_grid_width_;
     for(uint16_t i = 0; i < numTiles; ++i)
     {
       auto tcp = cp_.tcps_.get(i);

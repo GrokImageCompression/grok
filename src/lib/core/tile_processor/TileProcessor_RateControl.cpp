@@ -188,13 +188,19 @@ bool TileProcessorCompress::pcrdBisectFeasible(uint32_t* allPacketBytes, bool di
   bool debug = false;
 
   auto t2 = T2Compress(this);
-  if(single_lossless)
+  if(single_lossless || !needsRateControl())
   {
-    makeSingleLosslessLayer();
+    if(single_lossless)
+      makeSingleLosslessLayer();
+    else
+    {
+      for(uint16_t layno = 0; layno < tcp_->numLayers_; layno++)
+        makeLayerFinal(layno);
+    }
 
     // simulation will generate correct PLT lengths
     // and correct tile length
-    return t2.compressPacketsSimulate(tileIndex_, 0 + 1U, allPacketBytes, UINT_MAX,
+    return t2.compressPacketsSimulate(tileIndex_, tcp_->numLayers_, allPacketBytes, UINT_MAX,
                                       newTilePartProgressionPosition_,
                                       packetLengthCache_->getMarkers(), true, false);
   }
@@ -469,11 +475,16 @@ bool TileProcessorCompress::pcrdBisectSimple(uint32_t* allPacketBytes, bool disa
   auto tcp = tcp_;
 
   auto t2 = T2Compress(this);
-  if(single_lossless)
+  if(single_lossless || !needsRateControl())
   {
+    if(!single_lossless)
+    {
+      for(uint16_t layno = 0; layno < tcp_->numLayers_; layno++)
+        makeLayerFinal(layno);
+    }
     // simulation will generate correct PLT lengths
     // and correct tile length
-    return t2.compressPacketsSimulate(tileIndex_, 0 + 1U, allPacketBytes, UINT_MAX,
+    return t2.compressPacketsSimulate(tileIndex_, tcp_->numLayers_, allPacketBytes, UINT_MAX,
                                       newTilePartProgressionPosition_,
                                       packetLengthCache_->getMarkers(), true, false);
   }
@@ -750,7 +761,6 @@ bool TileProcessorCompress::pcrdBisectSimple(uint32_t* allPacketBytes, bool disa
     else
     {
       makeLayerFinal(layno);
-      assert(layno == tcp_->numLayers_ - 1);
     }
   }
 

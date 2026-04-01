@@ -136,41 +136,42 @@ int LLVMFuzzerTestOneInput(const uint8_t* buf, size_t len)
   if(!image)
     return 0;
 
-  /* Fill pixel data from remaining fuzz bytes, zero-pad if insufficient */
+  /* Fill pixel data from remaining fuzz bytes, zero-pad if insufficient.
+   * Use stride-based indexing since the image buffer may have padding. */
   for(uint16_t c = 0; c < numcomps; c++)
   {
     auto* comp_data = (int32_t*)image->comps[c].data;
     if(!comp_data)
       goto cleanup;
-    size_t npixels = (size_t)width * height;
-    for(size_t p = 0; p < npixels; p++)
+    uint32_t stride = image->comps[c].stride;
+    for(uint32_t row = 0; row < height; row++)
     {
-      if(fs.remaining() >= 2)
+      for(uint32_t col = 0; col < width; col++)
       {
-        int32_t val = (int16_t)fs.u16();
-        /* Clamp to valid range for the precision */
-        if(sgnd)
+        int32_t val = 0;
+        if(fs.remaining() >= 2)
         {
-          int32_t lo = -(1 << (prec - 1));
-          int32_t hi = (1 << (prec - 1)) - 1;
-          if(val < lo)
-            val = lo;
-          if(val > hi)
-            val = hi;
+          val = (int16_t)fs.u16();
+          /* Clamp to valid range for the precision */
+          if(sgnd)
+          {
+            int32_t lo = -(1 << (prec - 1));
+            int32_t hi = (1 << (prec - 1)) - 1;
+            if(val < lo)
+              val = lo;
+            if(val > hi)
+              val = hi;
+          }
+          else
+          {
+            int32_t hi = (1 << prec) - 1;
+            if(val < 0)
+              val = -val;
+            if(val > hi)
+              val = val & hi;
+          }
         }
-        else
-        {
-          int32_t hi = (1 << prec) - 1;
-          if(val < 0)
-            val = -val;
-          if(val > hi)
-            val = val & hi;
-        }
-        comp_data[p] = val;
-      }
-      else
-      {
-        comp_data[p] = 0;
+        comp_data[row * stride + col] = val;
       }
     }
   }
