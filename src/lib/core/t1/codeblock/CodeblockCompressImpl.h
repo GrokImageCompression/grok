@@ -17,6 +17,7 @@
 
 #pragma once
 
+#include <algorithm>
 #include "CodeblockImpl.h"
 const uint8_t grk_cblk_enc_compressed_data_pad_left = 2;
 
@@ -124,7 +125,11 @@ struct CodeblockCompressImpl : public CodeblockImpl
    */
   bool allocData(size_t nominalBlockSize)
   {
-    uint32_t desired_data_size = (uint32_t)(nominalBlockSize * sizeof(uint32_t));
+    // The MQ coder output can exceed nominalBlockSize * 4 for small code blocks
+    // with many bit-planes (up to ~30 planes × 3 passes each, with flush/termination
+    // overhead per pass). Use a minimum of 4096 bytes to prevent overflow.
+    uint32_t desired_data_size =
+        std::max((uint32_t)(nominalBlockSize * sizeof(uint32_t)), (uint32_t)4096);
     // we add two fake zero bytes at beginning of buffer, so that mq coder
     // can be initialized to data[-1] == actualData[1], and still point
     // to a valid memory location
