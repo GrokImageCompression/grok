@@ -1061,6 +1061,20 @@ typedef struct _grk_plugin_tile
 GRK_API const char* GRK_CALLCONV grk_version(void);
 
 /**
+ * @brief Detect the JPEG 2000 codec format of a file by reading its magic bytes.
+ *
+ * Reads the first bytes of the file and returns the detected format:
+ * - GRK_CODEC_JP2 for JP2 or JPH container files
+ * - GRK_CODEC_J2K for raw codestream files (J2K, J2C, JPC)
+ * - GRK_CODEC_MJ2 for Motion JPEG 2000 files
+ *
+ * @param file_path  path to the file to inspect
+ * @param format     [out] detected codec format
+ * @return true if a valid JPEG 2000 format was detected, false otherwise
+ */
+GRK_API bool GRK_CALLCONV grk_detect_format(const char* file_path, GRK_CODEC_FORMAT* format);
+
+/**
  * @brief Initializes the Grok library.
  *
  * Must be called once before any other Grok API function.  It is safe to call

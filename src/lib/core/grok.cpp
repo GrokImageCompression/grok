@@ -351,6 +351,27 @@ const char* grk_version(void)
   return GRK_PACKAGE_VERSION;
 }
 
+bool grk_detect_format(const char* file_path, GRK_CODEC_FORMAT* format)
+{
+  if(!file_path || !format)
+    return false;
+
+  *format = GRK_CODEC_UNK;
+
+  FILE* f = fopen(file_path, "rb");
+  if(!f)
+    return false;
+
+  uint8_t buf[GRK_JPEG_2000_NUM_IDENTIFIER_BYTES];
+  size_t bytesRead = fread(buf, 1, GRK_JPEG_2000_NUM_IDENTIFIER_BYTES, f);
+  fclose(f);
+
+  if(bytesRead < GRK_JPEG_2000_NUM_IDENTIFIER_BYTES)
+    return false;
+
+  return detectFormat(buf, format);
+}
+
 grk_image* grk_image_new(uint16_t numcmpts, grk_image_comp* cmptparms, GRK_COLOR_SPACE clrspc,
                          bool alloc_data)
 {

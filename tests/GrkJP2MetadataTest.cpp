@@ -1957,6 +1957,279 @@ static int testTranscodeCombined(const std::string& tmpDir)
 }
 
 //==============================================================================
+// Test: JP2 to J2K extraction — strip boxes, keep raw codestream
+//==============================================================================
+static int testTranscodeJP2ToJ2K(const std::string& tmpDir)
+{
+  spdlog::info("=== Test: JP2 to J2K codestream extraction ===");
+
+  // Step 1: create a source JP2 with metadata
+  auto* srcMeta = grk_image_meta_new();
+  const char* xmpData = "<x:xmpmeta>JP2_TO_J2K_TEST</x:xmpmeta>";
+  size_t xmpLen = strlen(xmpData);
+  srcMeta->xmp_buf = new uint8_t[xmpLen];
+  memcpy(srcMeta->xmp_buf, xmpData, xmpLen);
+  srcMeta->xmp_len = xmpLen;
+
+  std::string srcPath = tmpDir + "/transcode_j2k_src.jp2";
+  if(!compressWithMeta(srcPath, srcMeta))
+  {
+    grk_object_unref(&srcMeta->obj);
+    return 1;
+  }
+  grk_object_unref(&srcMeta->obj);
+
+  // Step 2: verify input is detected as JP2 container
+  GRK_CODEC_FORMAT srcFmt;
+  if(!grk_detect_format(srcPath.c_str(), &srcFmt) || srcFmt != GRK_CODEC_JP2)
+  {
+    spdlog::error("JP2->J2K: source not detected as JP2");
+    return 1;
+  }
+
+  // Step 3: decompress header to get image, then transcode to temp JP2
+  grk_stream_params srcStreamParams{};
+  safe_strcpy(srcStreamParams.file, srcPath.c_str());
+
+  grk_decompress_parameters dparams{};
+  auto* decCodec = grk_decompress_init(&srcStreamParams, &dparams);
+  if(!decCodec)
+  {
+    spdlog::error("JP2->J2K: failed to init decompressor for source");
+    return 1;
+  }
+
+  grk_header_info srcHeader{};
+  if(!grk_decompress_read_header(decCodec, &srcHeader))
+  {
+    spdlog::error("JP2->J2K: failed to read source header");
+    grk_object_unref(decCodec);
+    return 1;
+  }
+
+  auto* srcImage = grk_decompress_get_image(decCodec);
+  if(!srcImage)
+  {
+    spdlog::error("JP2->J2K: failed to get source image");
+    grk_object_unref(decCodec);
+    return 1;
+  }
+
+  // Transcode JP2 -> temp JP2 (with TLM modification to exercise the modified path)
+  std::string tmpJP2Path = tmpDir + "/transcode_j2k_tmp.jp2";
+  grk_cparameters cparams{};
+  grk_compress_set_default_params(&cparams);
+  cparams.cod_format = GRK_FMT_JP2;
+  cparams.write_tlm = true;
+
+  grk_stream_params tmpDstStreamParams{};
+  safe_strcpy(tmpDstStreamParams.file, tmpJP2Path.c_str());
+
+  grk_stream_params transSrcStreamParams{};
+  safe_strcpy(transSrcStreamParams.file, srcPath.c_str());
+
+  uint64_t tmpWritten =
+      grk_transcode(&transSrcStreamParams, &tmpDstStreamParams, &cparams, srcImage);
+  grk_object_unref(decCodec);
+
+  if(tmpWritten == 0)
+  {
+    spdlog::error("JP2->J2K: grk_transcode to temp JP2 failed");
+    return 1;
+  }
+
+  // Step 4: extract codestream from temp JP2 by scanning for jp2c box
+  std::string dstPath = tmpDir + "/transcode_j2k_dst.j2k";
+  FILE* jp2File = fopen(tmpJP2Path.c_str(), "rb");
+  if(!jp2File)
+  {
+    spdlog::error("JP2->J2K: cannot open temp JP2 for reading");
+    return 1;
+  }
+
+  fseek(jp2File, 0, SEEK_END);
+  uint64_t jp2Size = (uint64_t)ftell(jp2File);
+  fseek(jp2File, 0, SEEK_SET);
+
+  uint64_t csOffset = 0, csLength = 0;
+  bool foundJP2C = false;
+
+  while(!foundJP2C)
+  {
+    long pos = ftell(jp2File);
+    if(pos < 0 || (uint64_t)pos >= jp2Size)
+      break;
+
+    uint8_t hdr[8];
+    if(fread(hdr, 1, 8, jp2File) != 8)
+      break;
+
+    uint32_t lbox =
+        ((uint32_t)hdr[0] << 24) | ((uint32_t)hdr[1] << 16) | ((uint32_t)hdr[2] << 8) | hdr[3];
+    uint32_t tbox =
+        ((uint32_t)hdr[4] << 24) | ((uint32_t)hdr[5] << 16) | ((uint32_t)hdr[6] << 8) | hdr[7];
+
+    uint64_t boxLength;
+    uint32_t headerSize = 8;
+    if(lbox == 1)
+    {
+      uint8_t xlBuf[8];
+      if(fread(xlBuf, 1, 8, jp2File) != 8)
+        break;
+      boxLength = ((uint64_t)xlBuf[0] << 56) | ((uint64_t)xlBuf[1] << 48) |
+                  ((uint64_t)xlBuf[2] << 40) | ((uint64_t)xlBuf[3] << 32) |
+                  ((uint64_t)xlBuf[4] << 24) | ((uint64_t)xlBuf[5] << 16) |
+                  ((uint64_t)xlBuf[6] << 8) | xlBuf[7];
+      headerSize = 16;
+    }
+    else if(lbox == 0)
+    {
+      boxLength = jp2Size - (uint64_t)pos;
+    }
+    else
+    {
+      boxLength = lbox;
+    }
+
+    if(tbox == 0x6a703263) /* jp2c */
+    {
+      csOffset = (uint64_t)pos + headerSize;
+      csLength = boxLength - headerSize;
+      foundJP2C = true;
+    }
+    else
+    {
+      fseek(jp2File, (long)(boxLength - headerSize), SEEK_CUR);
+    }
+  }
+
+  if(!foundJP2C)
+  {
+    spdlog::error("JP2->J2K: no jp2c box found in temp JP2");
+    fclose(jp2File);
+    return 1;
+  }
+
+  fseek(jp2File, (long)csOffset, SEEK_SET);
+  FILE* j2kFile = fopen(dstPath.c_str(), "wb");
+  if(!j2kFile)
+  {
+    spdlog::error("JP2->J2K: cannot open output J2K for writing");
+    fclose(jp2File);
+    return 1;
+  }
+
+  const size_t bufSize = 64 * 1024;
+  auto* copyBuf = new uint8_t[bufSize];
+  uint64_t remaining = csLength;
+  while(remaining > 0)
+  {
+    size_t toRead = (remaining > bufSize) ? bufSize : (size_t)remaining;
+    size_t bytesRead = fread(copyBuf, 1, toRead, jp2File);
+    if(bytesRead == 0)
+      break;
+    fwrite(copyBuf, 1, bytesRead, j2kFile);
+    remaining -= bytesRead;
+  }
+  delete[] copyBuf;
+  fclose(jp2File);
+  fclose(j2kFile);
+
+  if(remaining != 0)
+  {
+    spdlog::error("JP2->J2K: I/O error during codestream extraction");
+    return 1;
+  }
+
+  // Step 5: verify the extracted J2K is detected as raw codestream
+  GRK_CODEC_FORMAT dstFmt;
+  if(!grk_detect_format(dstPath.c_str(), &dstFmt) || dstFmt != GRK_CODEC_J2K)
+  {
+    spdlog::error("JP2->J2K: output not detected as J2K codestream (got {})", (int)dstFmt);
+    return 1;
+  }
+
+  // Step 6: decompress the J2K output and verify pixels
+  grk_stream_params dstReadStreamParams{};
+  safe_strcpy(dstReadStreamParams.file, dstPath.c_str());
+
+  grk_decompress_parameters dstDparams{};
+  auto* dstCodec = grk_decompress_init(&dstReadStreamParams, &dstDparams);
+  if(!dstCodec)
+  {
+    spdlog::error("JP2->J2K: failed to init decompressor for output J2K");
+    return 1;
+  }
+
+  grk_header_info dstHeader{};
+  if(!grk_decompress_read_header(dstCodec, &dstHeader))
+  {
+    spdlog::error("JP2->J2K: failed to read output J2K header");
+    grk_object_unref(dstCodec);
+    return 1;
+  }
+
+  auto* dstImage = grk_decompress_get_image(dstCodec);
+  if(!dstImage)
+  {
+    spdlog::error("JP2->J2K: failed to get image from output J2K");
+    grk_object_unref(dstCodec);
+    return 1;
+  }
+
+  if(!grk_decompress(dstCodec, nullptr))
+  {
+    spdlog::error("JP2->J2K: failed to decompress output J2K");
+    grk_object_unref(dstCodec);
+    return 1;
+  }
+
+  bool ok = true;
+
+  // Verify image dimensions preserved
+  if(dstImage->x1 - dstImage->x0 != 16 || dstImage->y1 - dstImage->y0 != 16)
+  {
+    spdlog::error("JP2->J2K: image dimensions changed");
+    ok = false;
+  }
+
+  // Verify pixel data preserved
+  if(dstImage->comps && dstImage->comps[0].data)
+  {
+    auto* pixelData = static_cast<int32_t*>(dstImage->comps[0].data);
+    for(uint32_t i = 0; i < 16 * 16; ++i)
+    {
+      if(pixelData[i] != static_cast<int32_t>(i % 256))
+      {
+        spdlog::error("JP2->J2K: pixel mismatch at index {} (expected {}, got {})", i,
+                      (int)(i % 256), pixelData[i]);
+        ok = false;
+        break;
+      }
+    }
+  }
+  else
+  {
+    spdlog::error("JP2->J2K: no pixel data in decompressed image");
+    ok = false;
+  }
+
+  // Verify metadata is NOT present (J2K has no box metadata)
+  if(dstImage->meta && dstImage->meta->xmp_buf && dstImage->meta->xmp_len > 0)
+  {
+    spdlog::error("JP2->J2K: XMP metadata should not be present in raw codestream");
+    ok = false;
+  }
+
+  if(ok)
+    spdlog::info("JP2->J2K: PASSED (extracted {} byte codestream)", csLength);
+
+  grk_object_unref(dstCodec);
+  std::filesystem::remove(tmpJP2Path);
+  return ok ? 0 : 1;
+}
+
+//==============================================================================
 // Main
 //==============================================================================
 int GrkJP2MetadataTest::main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
@@ -1982,6 +2255,7 @@ int GrkJP2MetadataTest::main([[maybe_unused]] int argc, [[maybe_unused]] char** 
   failures += testTranscodeWithEPH(tmpDir.string());
   failures += testTranscodeProgressionReorder(tmpDir.string());
   failures += testTranscodeCombined(tmpDir.string());
+  failures += testTranscodeJP2ToJ2K(tmpDir.string());
 
   // Cleanup
   std::filesystem::remove_all(tmpDir);

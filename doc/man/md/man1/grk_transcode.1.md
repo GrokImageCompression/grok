@@ -8,16 +8,35 @@ grk_transcode - transcode JPEG 2000 files without full decompression
 SYNOPSIS
 ========
 
-| **grk_transcode** \[**-i** infile.jp2] \[**-o** outfile.jp2] \[options]
+| **grk_transcode** \[**-i** infile] \[**-o** outfile] \[options]
 
 
 DESCRIPTION
 ===========
 
-This program transcodes `JPEG 2000` files (JP2 container format), rewriting
-JP2 boxes and optionally modifying the codestream without full decompression.
-The codestream is parsed at the packet level (T2 only — entropy decoding is
-skipped) and reassembled with the requested modifications.
+This program transcodes `JPEG 2000` files, rewriting boxes or markers and
+optionally modifying the codestream without full decompression. The codestream
+is parsed at the packet level (T2 only — entropy decoding is skipped) and
+reassembled with the requested modifications.
+
+Supported formats:
+
+* JP2 (`.jp2`) — ISO 15444-1 container
+* JPH (`.jph`) — ISO 15444-15 High-Throughput JPEG 2000 container
+* J2K / J2C / JPC (`.j2k`, `.j2c`, `.jpc`) — raw codestream
+
+Format conversion:
+
+When the input is a container (JP2/JPH) and the output is a raw codestream
+(J2K/J2C/JPC), all box metadata (XMP, ICC profile, GeoTIFF UUID, etc.) is
+stripped and only the codestream is written. Any requested codestream
+modifications (TLM, PLT, SOP, EPH, etc.) are applied before extraction.
+
+Converting from raw codestream to container (J2K -> JP2) is not supported;
+use **grk_compress** to create a container from scratch.
+
+The input format is detected automatically from file content (magic bytes),
+not the file extension.
 
 Supported operations:
 
@@ -44,11 +63,11 @@ Print library version and exit.
 
 `-i, --input [file]`
 
-Input JP2 file. Required.
+Input file (JP2, JPH, or raw J2K/J2C/JPC codestream). Required.
 
 `-o, --output [file]`
 
-Output JP2 file. Required.
+Output file (JP2, JPH, or raw J2K/J2C/JPC codestream). Required.
 
 `-X, --tlm`
 
@@ -90,7 +109,7 @@ The five progression orders are:
 EXAMPLES
 ========
 
-Insert TLM and PLT markers:
+Insert TLM and PLT markers into a JP2 file:
 
     grk_transcode -i input.jp2 -o output.jp2 -X -L
 
@@ -101,6 +120,18 @@ Add SOP/EPH markers and change progression to RLCP:
 Keep only 3 quality layers and 4 resolution levels:
 
     grk_transcode -i input.jp2 -o output.jp2 -n 3 -R 4
+
+Transcode a JPH (High-Throughput JPEG 2000) file:
+
+    grk_transcode -i input.jph -o output.jph -X -L
+
+Extract raw codestream from a JP2 container:
+
+    grk_transcode -i input.jp2 -o output.j2k
+
+Extract codestream from JP2 and insert TLM markers:
+
+    grk_transcode -i input.jp2 -o output.j2k -X
 
 FILES
 =====
