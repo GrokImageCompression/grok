@@ -21,6 +21,10 @@
 #include <cinttypes>
 #include <string>
 
+#ifdef _WIN32
+#define strcasecmp _stricmp
+#endif
+
 #include "grok.h"
 
 enum TranscodeFormat
