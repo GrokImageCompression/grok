@@ -43,6 +43,11 @@ bool Coder::preCompress(CompressBlockExec* block, uint32_t& maximum)
     grklog.error("Unable to compress degenerate code block of dimensions %ux%u", w, h);
     return false;
   }
+  if(block->tile_width < w)
+  {
+    grklog.error("Tile width %u less than code block width %u", block->tile_width, w);
+    return false;
+  }
   if(!blockCoder_->alloc(w, h))
     return false;
   auto tileLineAdvance = block->tile_width - w;

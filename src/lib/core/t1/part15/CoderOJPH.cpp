@@ -107,12 +107,14 @@ T1OJPH::~T1OJPH()
   delete allocator;
   delete elastic_alloc;
 }
-void T1OJPH::preCompress([[maybe_unused]] CompressBlockExec* block)
+bool T1OJPH::preCompress([[maybe_unused]] CompressBlockExec* block)
 {
   auto cblk = block->cblk;
   auto w = cblk->width();
   auto h = cblk->height();
   uint32_t tile_width = block->tile_width;
+  if(tile_width < w)
+    return false;
   auto tileLineAdvance = tile_width - w;
   uint32_t cblk_index = 0;
   int32_t shift = 31 - (block->k_msbs + 1);
@@ -152,10 +154,12 @@ void T1OJPH::preCompress([[maybe_unused]] CompressBlockExec* block)
       tiledp += tileLineAdvance;
     }
   }
+  return true;
 }
 bool T1OJPH::compress(CompressBlockExec* block)
 {
-  preCompress(block);
+  if(!preCompress(block))
+    return false;
 
   coded_lists* next_coded = nullptr;
   auto cblk = block->cblk;
