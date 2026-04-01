@@ -343,9 +343,8 @@ int main(int argc, char* argv[])
     return 1;
   }
 
-  bool hasModifications =
-      writeTlm || writePlt || writeSop || writeEph || maxLayers > 0 || maxRes > 0 ||
-      progOrder != GRK_PROG_UNKNOWN;
+  bool hasModifications = writeTlm || writePlt || writeSop || writeEph || maxLayers > 0 ||
+                          maxRes > 0 || progOrder != GRK_PROG_UNKNOWN;
 
   /* JP2/JPH -> J2K: strip boxes, output raw codestream */
   if(inputFmt == TFMT_CONTAINER && outputFmt == TFMT_CODESTREAM)
