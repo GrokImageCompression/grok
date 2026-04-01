@@ -110,6 +110,7 @@ public:
    Assumption:  "this" and dest have the same number of components
    */
   void transferDataTo(GrkImage* dest);
+  void filterComponents(const std::vector<uint16_t>& compsToKeep);
   GrkImage* extractFrom(const Tile* tile_src) const;
   GrkImage* duplicate(void) const;
   bool composite(const GrkImage* src);

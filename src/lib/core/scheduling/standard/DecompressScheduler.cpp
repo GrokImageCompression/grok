@@ -129,6 +129,10 @@ bool DecompressScheduler::scheduleT1(ITileProcessor* tileProcessor)
 
   for(uint16_t compno = 0; compno < numcomps_; ++compno)
   {
+    // skip components not selected for decoding
+    if(!tileProcessor->shouldDecodeComponent(compno))
+      continue;
+
     // schedule blocks
     auto tccp = tcp->tccps_ + compno;
     // nominal code block dimensions

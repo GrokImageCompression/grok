@@ -4,7 +4,7 @@
 
 // NOLINTNEXTLINE
 static const char decompress_help_text[] =
-    R"HELPTEXT(Supported input formats: `JP2`, `J2K\J2C`, `JPH`, `JHC` and `MJ2` (Motion JPEG 2000)
+R"HELPTEXT(Supported input formats: `JP2`, `J2K\J2C`, `JPH`, `JHC` and `MJ2` (Motion JPEG 2000)
 Supported input image extensions are `.jp2`, `.j2k\.j2c`, `.jph`, `.jhc` and `.mj2`
 
 Supported output formats are `JPEG`, `BMP`, `PNM`, `PGX`, `PNG`, `RAW` and `TIFF`
@@ -88,6 +88,20 @@ Reduce factor. Set the number of highest resolution levels to be discarded. The 
 `-l, --layers [number of layers]`
 
 Layer number. Set the maximum number of quality layers to decode. If there are fewer quality layers than the specified number, all quality layers will be decoded.
+
+`-n, --components [component indices]`
+
+Comma-separated list of 0-based component indices to decode. Only the specified components will be present in the output image. If the image uses a multi-component transform (MCT), all components required by the transform will be decoded internally, but only the requested components will appear in the output. By default, all components are decoded.
+
+Example:
+
+     -n 0
+
+Decode only the first component (e.g. the Red channel of an RGB image).
+
+     -n 0,2
+
+Decode components 0 and 2.
 
 `-d, -region [x0,y0,x1,y1]`
 

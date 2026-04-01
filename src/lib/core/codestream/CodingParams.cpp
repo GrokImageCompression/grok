@@ -195,6 +195,11 @@ void CodingParams::init(grk_decompress_parameters* parameters,
     tileCache->setDirty(true);
   }
   codingParams_.dec_.layersToDecompress_ = core->layers_to_decompress;
+  if(core->num_comps_to_decode > 0 && core->comps_to_decode)
+    compsToDecompress_.assign(core->comps_to_decode,
+                              core->comps_to_decode + core->num_comps_to_decode);
+  else
+    compsToDecompress_.clear();
 }
 
 bool CodingParams::hasTLM(void) const noexcept

@@ -280,6 +280,14 @@ struct ITileProcessor
   virtual bool needsMctDecompress(void) = 0;
 
   /**
+   * @brief Check if a component should be decoded based on user selection.
+   * When MCT=1 is active and any of components 0-2 is requested, all three are decoded.
+   * @param compno 0-based component index
+   * @return true if the component should be decoded
+   */
+  virtual bool shouldDecodeComponent(uint16_t compno) = 0;
+
+  /**
    * @brief Gets the MCT (Multi-Component Transform) object
    * @return Pointer to Mct
    */

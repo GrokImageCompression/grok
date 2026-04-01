@@ -29,6 +29,7 @@
 #endif /* _WIN32 */
 #include <climits>
 #include <string>
+#include <sstream>
 #include <chrono>
 #include <thread>
 #include <algorithm>
@@ -340,7 +341,8 @@ GrkRC GrkDecompress::parseCommandLine(int argc, const char* argv[],
   CLI::App cmd("grk_decompress command line", grk_version());
 
   std::string outDir, compression, decodeRegion, pluginPathStr, inputFile, outputFile, outFor,
-      precision, logfile, inDir;
+      precision, logfile, inDir, components;
+  auto& compIndices = initParams->compIndices;
   uint32_t repetitions = 0, numThreads = 0, kernelBuildOptions = 0,
            compressionLevel = std::numeric_limits<uint32_t>::max(), disableRandomAccess = 0,
            tile = 0, duration = 0;
@@ -369,6 +371,9 @@ GrkRC GrkDecompress::parseCommandLine(int argc, const char* argv[],
       cmd.add_option("-L,--compression-level", compressionLevel, "Output compression Level");
   auto randomAccessOpt = cmd.add_option("-m,--random-access", disableRandomAccess,
                                         "Toggle support for random access into code stream");
+  auto componentsOpt = cmd.add_option(
+      "-n,--components", components,
+      "Comma-separated list of 0-based component indices to decode (e.g. '0' or '0,2')");
   auto outputFileOpt = cmd.add_option("-o,--out-file", outputFile, "Output file");
   auto outForOpt = cmd.add_option("-O,--out-fmt", outFor, "Output Format");
   auto precisionOpt = cmd.add_option("-p,--precision", precision, "Force precision");
@@ -563,6 +568,34 @@ GrkRC GrkDecompress::parseCommandLine(int argc, const char* argv[],
     parameters->core.reduce = reduce;
   if(layerOpt->count() > 0)
     parameters->core.layers_to_decompress = layer;
+  if(componentsOpt->count() > 0)
+  {
+    std::istringstream iss(components);
+    std::string token;
+    while(std::getline(iss, token, ','))
+    {
+      try
+      {
+        int val = std::stoi(token);
+        if(val < 0 || val > 16383)
+        {
+          spdlog::error("Component index {} out of range [0, 16383]", val);
+          return GrkRCParseArgsFailed;
+        }
+        compIndices.push_back((uint16_t)val);
+      }
+      catch(...)
+      {
+        spdlog::error("Invalid component index: {}", token);
+        return GrkRCParseArgsFailed;
+      }
+    }
+    if(!compIndices.empty())
+    {
+      parameters->core.comps_to_decode = compIndices.data();
+      parameters->core.num_comps_to_decode = (uint16_t)compIndices.size();
+    }
+  }
   if(randomAccessOpt->count() > 0)
     parameters->core.disable_random_access_flags = disableRandomAccess;
   parameters->single_tile_decompress = tileOpt->count() > 0;

@@ -645,6 +645,15 @@ typedef struct _grk_decompress_core_params
   grk_io_pixels_callback io_buffer_callback; /* IO buffer callback */
   void* io_user_data; /* IO user data */
   grk_io_register_reclaim_callback io_register_client_callback; /* IO register client callback */
+  /**
+   * Array of 0-based component indices to decode.
+   * Only these components will be fully decoded (T1, DWT, etc.).
+   * When MCT is active, components 0-2 will always be decoded if any of them is requested.
+   * If num_comps_to_decode is 0 or comps_to_decode is nullptr, all components are decoded.
+   * Memory is owned by the caller.
+   */
+  uint16_t* comps_to_decode;
+  uint16_t num_comps_to_decode;
 } grk_decompress_core_params;
 
 /**

@@ -834,6 +834,7 @@ bool CodeStreamDecompress::postProcess(GrkImage* img)
 {
   if(!img->postProcess())
     return false;
+  img->filterComponents(cp_.compsToDecompress_);
   return postPostProcess_ ? postPostProcess_(img) : true;
 }
 

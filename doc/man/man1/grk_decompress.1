@@ -72,7 +72,7 @@ If a compressed input contains \f[CR]XMP\f[R] metadata, this metadata
 will be stored to the output file if that output file is in
 \f[CR]TIF\[rs]\[rs]TIFF\f[R] or \f[CR]PNG\f[R] format.
 .PP
-EXIF (JP2 only)
+EXIF (JP2\[rs]JPH only)
 .PP
 If a compressed input contains \f[CR]EXIF\f[R] metadata, this metadata
 will be automatically stored to the output file if that output file is
@@ -172,6 +172,29 @@ Layer number.
 Set the maximum number of quality layers to decode.
 If there are fewer quality layers than the specified number, all quality
 layers will be decoded.
+.PP
+\f[CR]\-n, \-\-components [component indices]\f[R]
+.PP
+Comma\-separated list of 0\-based component indices to decode.
+Only the specified components will be present in the output image.
+If the image uses a multi\-component transform (MCT), all components
+required by the transform will be decoded internally, but only the
+requested components will appear in the output.
+By default, all components are decoded.
+.PP
+Example:
+.IP
+.EX
+ \-n 0
+.EE
+.PP
+Decode only the first component (e.g.\ the Red channel of an RGB image).
+.IP
+.EX
+ \-n 0,2
+.EE
+.PP
+Decode components 0 and 2.
 .PP
 \f[CR]\-d, \-region [x0,y0,x1,y1]\f[R]
 .PP

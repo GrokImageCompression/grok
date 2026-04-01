@@ -813,6 +813,29 @@ void GrkImage::transferDataTo(GrkImage* dest)
   interleaved_data.data = nullptr;
 }
 
+void GrkImage::filterComponents(const std::vector<uint16_t>& compsToKeep)
+{
+  if(compsToKeep.empty() || compsToKeep.size() >= numcomps)
+    return;
+
+  auto newNumComps = (uint16_t)compsToKeep.size();
+  auto newComps = new grk_image_comp[newNumComps];
+  for(uint16_t i = 0; i < newNumComps; ++i)
+  {
+    auto srcIdx = compsToKeep[i];
+    newComps[i] = comps[srcIdx];
+    // null out source so it won't be freed
+    setDataToNull(comps + srcIdx);
+  }
+  // free any remaining component data that wasn't moved
+  for(uint16_t i = 0; i < numcomps; ++i)
+    single_component_data_free(comps + i);
+  delete[] comps;
+  comps = newComps;
+  numcomps = newNumComps;
+  decompress_num_comps = newNumComps;
+}
+
 GrkImage* GrkImage::duplicate(void) const
 {
   auto destImage = new GrkImage();

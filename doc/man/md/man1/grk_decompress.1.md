@@ -101,6 +101,20 @@ Reduce factor. Set the number of highest resolution levels to be discarded. The 
 
 Layer number. Set the maximum number of quality layers to decode. If there are fewer quality layers than the specified number, all quality layers will be decoded.
 
+`-n, --components [component indices]`
+
+Comma-separated list of 0-based component indices to decode. Only the specified components will be present in the output image. If the image uses a multi-component transform (MCT), all components required by the transform will be decoded internally, but only the requested components will appear in the output. By default, all components are decoded.
+
+Example:
+
+     -n 0
+
+Decode only the first component (e.g. the Red channel of an RGB image).
+
+     -n 0,2
+
+Decode components 0 and 2.
+
 `-d, -region [x0,y0,x1,y1]`
 
 Decompress a region of the image. If `(X,Y)` is a location in the image, then it will only be decoded

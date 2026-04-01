@@ -24,6 +24,7 @@
 #include "GrkObjectWrapper.h"
 #include "Quantizer.h"
 
+#include <algorithm>
 #include "ImageComponentFlow.h"
 #include "TileFutureManager.h"
 
@@ -1149,6 +1150,10 @@ void TileProcessor::scheduleAndRunDecompress(CoderPool* coderPool, Rect32 unredu
       return;
     for(uint16_t compno = 0; compno < tile_->numcomps_; ++compno)
     {
+      // skip allocation for components not selected for decoding
+      if(!shouldDecodeComponent(compno))
+        continue;
+
       auto tilec = tile_->comps_ + compno;
 
       if(Scheduling::isExcalibur())
@@ -1277,6 +1282,29 @@ bool TileProcessor::needsMctDecompress(void)
 bool TileProcessor::needsMctDecompress(uint16_t compno)
 {
   return needsMctDecompress() && (compno <= 2);
+}
+bool TileProcessor::shouldDecodeComponent(uint16_t compno)
+{
+  auto& comps = cp_->compsToDecompress_;
+  if(comps.empty())
+    return true; // decode all
+
+  // Check if this component is directly requested
+  bool requested = std::find(comps.begin(), comps.end(), compno) != comps.end();
+  if(requested)
+    return true;
+
+  // If MCT=1 is active and any of components 0-2 is requested, decode all three
+  if(needsMctDecompress() && compno <= 2)
+  {
+    for(auto c : comps)
+    {
+      if(c <= 2)
+        return true;
+    }
+  }
+
+  return false;
 }
 
 } // namespace grk

@@ -448,6 +448,8 @@ struct CodingParams
     DecodingParams dec_;
     EncodingParams enc_;
   } codingParams_;
+  /** Component indices to decode during decompression. Empty = decode all. */
+  std::vector<uint16_t> compsToDecompress_;
   std::unique_ptr<TLMMarker> tlmMarkers_;
   std::unique_ptr<PLMarker> plmMarkers_;
   bool asynchronous_;

@@ -288,6 +288,8 @@ struct TileProcessor : virtual public ITileProcessor
    */
   bool needsMctDecompress(void) override;
 
+  bool shouldDecodeComponent(uint16_t compno) override;
+
   /**
    * @brief gets @ref Mct
    *

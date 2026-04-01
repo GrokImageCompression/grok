@@ -19,6 +19,7 @@
 #include "common.h"
 #include "IImageFormat.h"
 #include "CLI/CLI.hpp"
+#include <vector>
 
 namespace grk
 {
@@ -38,6 +39,7 @@ struct DecompressInitParams
   }
   bool initialized;
   grk_decompress_parameters parameters;
+  std::vector<uint16_t> compIndices;
   char pluginPath[GRK_PATH_LEN];
   grk_img_fol inputFolder;
   grk_img_fol outFolder;
