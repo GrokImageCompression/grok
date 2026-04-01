@@ -27,6 +27,21 @@ foreach(exe grk_decompress grk_compress grk_dump)
   )
 endforeach()
 
+# grk_transcode only needs the core library, not the codec library
+add_executable(grk_transcode grk_transcode.cpp)
+target_compile_options(grk_transcode PRIVATE ${GROK_COMPILE_OPTIONS})
+if (CMAKE_CXX_COMPILER_ID MATCHES "GNU")
+  target_link_options(grk_transcode PUBLIC "LINKER:-z,now")
+endif()
+target_link_libraries(grk_transcode ${GROK_CORE_NAME})
+if (GRK_BUILD_PLUGIN_LOADER AND UNIX)
+  target_link_libraries(grk_transcode ${CMAKE_DL_LIBS})
+endif(GRK_BUILD_PLUGIN_LOADER AND UNIX)
+install(TARGETS grk_transcode
+  EXPORT GrokTargets
+  DESTINATION ${CMAKE_INSTALL_BINDIR} COMPONENT Applications
+)
+
 if(GRK_BUILD_DOC)
 install(
   FILES       ${GROK_SOURCE_DIR}/doc/man/man1/grk_compress.1
