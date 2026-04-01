@@ -59,6 +59,8 @@ Description: command-line tools for the Grok JPEG 2000 library
   - grk_compress: encode pgm, ppm, pnm, pam, pgx, tif, bmp, raw, rawl,
                   jpeg or png file to j2k or jp2 file.
   - grk_dump: dump information contained in a j2k or jp2 file.
+  - grk_transcode: transcode JPEG 2000 files (JP2, JPH, J2K) without
+                  full decompression.
 
 Package: libgrokj2k1-doc
 Section: doc
