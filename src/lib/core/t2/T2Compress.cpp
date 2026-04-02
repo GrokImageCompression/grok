@@ -164,13 +164,13 @@ bool T2Compress::compressPacketSimulate(TileCodingParams* tcp, PacketIter* pi,
       max_bytes_available -= 6;
     byteCount += 6;
   }
-  std::unique_ptr<t1_t2::BitIO> bio(new t1_t2::BitIO(nullptr, max_bytes_available, true));
-  if(!compressHeader(bio.get(), res, layno, precinctIndex))
+  t1_t2::BitIO bio(nullptr, max_bytes_available, true);
+  if(!compressHeader(&bio, res, layno, precinctIndex))
     return false;
 
-  byteCount += (uint32_t)bio->numBytes();
+  byteCount += (uint32_t)bio.numBytes();
   if(max_bytes_available != UINT_MAX)
-    max_bytes_available -= (uint32_t)bio->numBytes();
+    max_bytes_available -= (uint32_t)bio.numBytes();
   if(tcp->csty_ & CP_CSTY_EPH)
   {
     if(max_bytes_available < 2)
