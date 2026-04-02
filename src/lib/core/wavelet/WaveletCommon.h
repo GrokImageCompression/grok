@@ -24,7 +24,7 @@ class dwt53
 {
 public:
   void encode_v(int32_t* res, int32_t* scratch, uint32_t height, uint8_t parity, uint32_t stride,
-                uint32_t cols, int32_t dcShift = 0);
+                uint32_t cols, int32_t dcShift = 0, bool intInput = false);
 
   void encode_h(int32_t* row, int32_t* scratch, uint32_t width, uint8_t parity, uint32_t stride,
                 uint32_t rows, int32_t dcShift = 0);
@@ -34,7 +34,7 @@ class dwt97
 {
 public:
   void encode_v(float* res, float* scratch, uint32_t height, uint8_t parity, uint32_t stride,
-                uint32_t cols, float dcShift = 0.0f);
+                uint32_t cols, float dcShift = 0.0f, bool intInput = false);
 
   void encode_h(float* row, float* scratch, uint32_t width, uint8_t parity, uint32_t stride,
                 uint32_t rows, float dcShift = 0.0f);

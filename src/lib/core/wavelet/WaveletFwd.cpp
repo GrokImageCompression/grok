@@ -617,7 +617,7 @@ namespace HWY_NAMESPACE
   }
 
   void encode_97_v(float* res, float* scratch, const uint32_t height, const uint8_t parity,
-                   const uint32_t stride, const uint32_t numcols, float dcShift)
+                   const uint32_t stride, const uint32_t numcols, float dcShift, bool intInput)
   {
     const HWY_FULL(float) d;
     const size_t lanes = Lanes(d);
@@ -628,26 +628,52 @@ namespace HWY_NAMESPACE
       return;
 
     auto temp = scratch;
-    auto in = res;
-    if(dcShift != 0.0f)
+    if(intInput)
     {
-      const auto vshift = Set(d, dcShift);
-      for(auto j = 0U; j < height; ++j)
+      // First level: tile buffer contains int32_t — convert to float inline
+      const HWY_FULL(int32_t) di;
+      auto intIn = (const int32_t*)res;
+      if(dcShift != 0.0f)
       {
-        // Store the full SIMD vector, even if numcols < lanes
-        Store(Load(d, in) - vshift, d, temp);
-        temp += lanes;
-        in += stride;
+        const auto vshift = Set(d, dcShift);
+        for(auto j = 0U; j < height; ++j)
+        {
+          Store(ConvertTo(d, Load(di, intIn)) - vshift, d, temp);
+          temp += lanes;
+          intIn += stride;
+        }
+      }
+      else
+      {
+        for(auto j = 0U; j < height; ++j)
+        {
+          Store(ConvertTo(d, Load(di, intIn)), d, temp);
+          temp += lanes;
+          intIn += stride;
+        }
       }
     }
     else
     {
-      for(auto j = 0U; j < height; ++j)
+      auto in = res;
+      if(dcShift != 0.0f)
       {
-        // Store the full SIMD vector, even if numcols < lanes
-        Store(Load(d, in), d, temp);
-        temp += lanes;
-        in += stride;
+        const auto vshift = Set(d, dcShift);
+        for(auto j = 0U; j < height; ++j)
+        {
+          Store(Load(d, in) - vshift, d, temp);
+          temp += lanes;
+          in += stride;
+        }
+      }
+      else
+      {
+        for(auto j = 0U; j < height; ++j)
+        {
+          Store(Load(d, in), d, temp);
+          temp += lanes;
+          in += stride;
+        }
       }
     }
 
@@ -822,14 +848,14 @@ namespace HWY_NAMESPACE
     size_t inc = lanes;
     for(j = task->min_j; j + lanes - 1 < task->max_j; j += (uint32_t)lanes, ind += inc)
       task->dwt.encode_v((T*)task->tiledp + ind, (T*)task->line.mem, task->r_dim, task->line.parity,
-                         task->stride, (uint32_t)lanes, task->dcShift);
+                         task->stride, (uint32_t)lanes, task->dcShift, task->intInput);
     if(j < task->max_j)
       task->dwt.encode_v((T*)task->tiledp + ind, (T*)task->line.mem, task->r_dim, task->line.parity,
-                         task->stride, task->max_j - j, task->dcShift);
+                         task->stride, task->max_j - j, task->dcShift, task->intInput);
   }
 
   template<typename T, typename DWT>
-  bool encode(TileComponent* tilec, T dcShiftVal)
+  bool encode(TileComponent* tilec, T dcShiftVal, bool intInput = false)
   {
     if(tilec->num_resolutions_ == 1U)
       return true;
@@ -869,7 +895,9 @@ namespace HWY_NAMESPACE
     while(i--)
     {
       // DC shift only on first (finest) resolution level
-      T currentDcShift = (i == maxNumResolutions - 1) ? dcShiftVal : T(0);
+      bool isFirstLevel = (i == maxNumResolutions - 1);
+      T currentDcShift = isFirstLevel ? dcShiftVal : T(0);
+      bool currentIntInput = isFirstLevel && intInput;
 
       // width of the resolution level computed
       const uint32_t rw = (uint32_t)(currentRes->x1 - currentRes->x0);
@@ -889,10 +917,11 @@ namespace HWY_NAMESPACE
       {
         uint32_t j;
         for(j = 0; j + lanes - 1 < rw; j += lanes)
-          dwt.encode_v((T*)tiledp + j, scratch_pool, rh, parity_col, stride, lanes, currentDcShift);
+          dwt.encode_v((T*)tiledp + j, scratch_pool, rh, parity_col, stride, lanes, currentDcShift,
+                       currentIntInput);
         if(j < rw)
-          dwt.encode_v((T*)tiledp + j, scratch_pool, rh, parity_col, stride, rw - j,
-                       currentDcShift);
+          dwt.encode_v((T*)tiledp + j, scratch_pool, rh, parity_col, stride, rw - j, currentDcShift,
+                       currentIntInput);
       }
       else
       {
@@ -918,6 +947,7 @@ namespace HWY_NAMESPACE
           info->min_j = j * step_j;
           info->max_j = (j + 1 == num_tasks) ? rw : (j + 1) * step_j;
           info->dcShift = currentDcShift;
+          info->intInput = currentIntInput;
           if(node)
           {
             node[j].work([info] {
@@ -990,11 +1020,11 @@ namespace HWY_NAMESPACE
 
   bool encode_53(TileComponent* tilec, int32_t dcShift)
   {
-    return encode<int32_t, dwt53>(tilec, dcShift);
+    return encode<int32_t, dwt53>(tilec, dcShift, false);
   }
-  bool encode_97(TileComponent* tilec, float dcShift)
+  bool encode_97(TileComponent* tilec, float dcShift, bool intInput)
   {
-    return encode<float, dwt97>(tilec, dcShift);
+    return encode<float, dwt97>(tilec, dcShift, intInput);
   }
 
   // Holds per-thread encode_info arrays for each (vert, horiz) pass at each level,
@@ -1020,7 +1050,8 @@ namespace HWY_NAMESPACE
   template<typename T, typename DWT>
   std::unique_ptr<WaveletFwdScheduleData>
       schedule_encode(TileComponent* tilec, T dcShiftVal,
-                      std::vector<std::pair<FlowComponent*, FlowComponent*>>& levelFlows)
+                      std::vector<std::pair<FlowComponent*, FlowComponent*>>& levelFlows,
+                      bool intInput = false)
   {
     if(tilec->num_resolutions_ == 1U)
       return nullptr;
@@ -1053,7 +1084,9 @@ namespace HWY_NAMESPACE
     while(i--)
     {
       // DC shift only on first (finest) resolution level
-      T currentDcShift = (i == maxNumResolutions - 1) ? dcShiftVal : T(0);
+      bool isFirstLevel = (i == maxNumResolutions - 1);
+      T currentDcShift = isFirstLevel ? dcShiftVal : T(0);
+      bool currentIntInput = isFirstLevel && intInput;
 
       // width of the resolution level computed
       const uint32_t rw = (uint32_t)(currentRes->x1 - currentRes->x0);
@@ -1078,13 +1111,15 @@ namespace HWY_NAMESPACE
         {
           T* scratch = data->scratch_pool;
           vertFlow->nextTask().work([tiledp, scratch, rw, rh, parity_col, stride, lanes,
-                                     currentDcShift] {
+                                     currentDcShift, currentIntInput] {
             DWT dwt;
             uint32_t j;
             for(j = 0; j + lanes - 1 < rw; j += lanes)
-              dwt.encode_v((T*)tiledp + j, scratch, rh, parity_col, stride, lanes, currentDcShift);
+              dwt.encode_v((T*)tiledp + j, scratch, rh, parity_col, stride, lanes, currentDcShift,
+                           currentIntInput);
             if(j < rw)
-              dwt.encode_v((T*)tiledp + j, scratch, rh, parity_col, stride, rw - j, currentDcShift);
+              dwt.encode_v((T*)tiledp + j, scratch, rh, parity_col, stride, rw - j, currentDcShift,
+                           currentIntInput);
           });
         }
         else
@@ -1109,6 +1144,7 @@ namespace HWY_NAMESPACE
             info->min_j = j * step_j;
             info->max_j = (j + 1 == num_tasks) ? rw : (j + 1) * step_j;
             info->dcShift = currentDcShift;
+            info->intInput = currentIntInput;
             vertFlow->nextTask().work([info] { encode_v(info); });
           }
           data->passes.push_back(std::move(pass));
@@ -1174,13 +1210,14 @@ namespace HWY_NAMESPACE
       schedule_encode_53(TileComponent* tilec, int32_t dcShift,
                          std::vector<std::pair<FlowComponent*, FlowComponent*>>& levelFlows)
   {
-    return schedule_encode<int32_t, dwt53>(tilec, dcShift, levelFlows);
+    return schedule_encode<int32_t, dwt53>(tilec, dcShift, levelFlows, false);
   }
   std::unique_ptr<WaveletFwdScheduleData>
       schedule_encode_97(TileComponent* tilec, float dcShift,
-                         std::vector<std::pair<FlowComponent*, FlowComponent*>>& levelFlows)
+                         std::vector<std::pair<FlowComponent*, FlowComponent*>>& levelFlows,
+                         bool intInput)
   {
-    return schedule_encode<float, dwt97>(tilec, dcShift, levelFlows);
+    return schedule_encode<float, dwt97>(tilec, dcShift, levelFlows, intInput);
   }
 
 } // namespace HWY_NAMESPACE
@@ -1221,31 +1258,33 @@ struct encode_info
   uint32_t min_j;
   uint32_t max_j;
   T dcShift;
+  bool intInput = false; // true when tile buffer contains int32_t (9/7 first level)
   DWT dwt;
 };
 
 bool WaveletFwdImpl::compress(TileComponent* tile_comp, uint8_t qmfbid, uint32_t maxDim,
-                              DcShiftParam dcShift)
+                              DcShiftParam dcShift, bool intInput)
 {
   if(qmfbid == 1)
     return HWY_DYNAMIC_DISPATCH(encode_53)(tile_comp, dcShift.enabled ? dcShift.shift : 0);
   else
-    return HWY_DYNAMIC_DISPATCH(encode_97)(tile_comp,
-                                           dcShift.enabled ? (float)dcShift.shift : 0.0f);
+    return HWY_DYNAMIC_DISPATCH(encode_97)(tile_comp, dcShift.enabled ? (float)dcShift.shift : 0.0f,
+                                           intInput);
 }
 std::unique_ptr<WaveletFwdScheduleData> WaveletFwdImpl::scheduleCompress(
     TileComponent* tile_comp, uint8_t qmfbid, uint32_t maxDim, DcShiftParam dcShift,
-    std::vector<std::pair<FlowComponent*, FlowComponent*>>& levelFlows)
+    std::vector<std::pair<FlowComponent*, FlowComponent*>>& levelFlows, bool intInput)
 {
   if(qmfbid == 1)
     return HWY_DYNAMIC_DISPATCH(schedule_encode_53)(tile_comp, dcShift.enabled ? dcShift.shift : 0,
                                                     levelFlows);
   else
     return HWY_DYNAMIC_DISPATCH(schedule_encode_97)(
-        tile_comp, dcShift.enabled ? (float)dcShift.shift : 0.0f, levelFlows);
+        tile_comp, dcShift.enabled ? (float)dcShift.shift : 0.0f, levelFlows, intInput);
 }
 void dwt53::encode_v(int32_t* res, int32_t* scratch, const uint32_t height, const uint8_t parity,
-                     const uint32_t stride, const uint32_t numcols, int32_t dcShift)
+                     const uint32_t stride, const uint32_t numcols, int32_t dcShift,
+                     [[maybe_unused]] bool intInput)
 {
   HWY_DYNAMIC_DISPATCH(encode_53_v)(res, scratch, height, parity, stride, numcols, dcShift);
 }
@@ -1255,9 +1294,10 @@ void dwt53::encode_h(int32_t* res, int32_t* scratch, const uint32_t width, const
   HWY_DYNAMIC_DISPATCH(encode_53_h)(res, scratch, width, parity, stride, numrows, dcShift);
 }
 void dwt97::encode_v(float* res, float* scratch, const uint32_t height, const uint8_t parity,
-                     const uint32_t stride, const uint32_t numcols, float dcShift)
+                     const uint32_t stride, const uint32_t numcols, float dcShift, bool intInput)
 {
-  HWY_DYNAMIC_DISPATCH(encode_97_v)(res, scratch, height, parity, stride, numcols, dcShift);
+  HWY_DYNAMIC_DISPATCH(encode_97_v)(res, scratch, height, parity, stride, numcols, dcShift,
+                                    intInput);
 }
 void dwt97::encode_h(float* res, float* scratch, const uint32_t width, const uint8_t parity,
                      const uint32_t stride, const uint32_t numrows, float dcShift)

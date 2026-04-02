@@ -41,14 +41,15 @@ class WaveletFwdImpl
 public:
   virtual ~WaveletFwdImpl() = default;
   bool compress(TileComponent* tile_comp, uint8_t qmfbid, uint32_t maxDim,
-                DcShiftParam dcShift = {});
+                DcShiftParam dcShift = {}, bool intInput = false);
   // Schedule forward DWT into FlowComponent pairs (vert, horiz) per level.
   // Returns an opaque handle owning scratch buffers; caller must keep it alive
   // until DAG execution completes.
-  std::unique_ptr<WaveletFwdScheduleData>
-      scheduleCompress(TileComponent* tile_comp, uint8_t qmfbid, uint32_t maxDim,
-                       DcShiftParam dcShift,
-                       std::vector<std::pair<FlowComponent*, FlowComponent*>>& levelFlows);
+  // intInput: when true, first-level 9/7 reads int32_t from tile buffer and converts to float.
+  //           Set to true for non-MCT irreversible components (MCT already converts to float).
+  std::unique_ptr<WaveletFwdScheduleData> scheduleCompress(
+      TileComponent* tile_comp, uint8_t qmfbid, uint32_t maxDim, DcShiftParam dcShift,
+      std::vector<std::pair<FlowComponent*, FlowComponent*>>& levelFlows, bool intInput = false);
 };
 
 } // namespace grk

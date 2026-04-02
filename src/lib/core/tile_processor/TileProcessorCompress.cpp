@@ -208,32 +208,32 @@ bool TileProcessorCompress::writeTilePartT2(uint32_t* tileBytesWritten)
 
 void TileProcessorCompress::dcLevelShiftCompress(void)
 {
-  // DC shift is normally fused into the wavelet transform.
-  // This function handles:
-  // - fallback DC shift for components with no wavelet (num_resolutions == 1)
-  // - int32 → float conversion for irreversible non-MCT components
+  // DC shift and int→float conversion are fused into the wavelet transform.
+  // This function handles fallback for components with no wavelet (num_resolutions == 1).
   for(uint16_t compno = 0; compno < tile_->numcomps_; compno++)
   {
     auto tile_comp = tile_->comps_ + compno;
     auto tccp = tcp_->tccps_ + compno;
-    auto current_ptr = tile_comp->getWindow()->getResWindowBufferHighestSimple().buf_;
-    uint64_t samples = tile_comp->getWindow()->stridedArea();
     bool hasWavelet = (tile_comp->num_resolutions_ > 1);
 
+    if(hasWavelet)
+      continue;
+
 #ifndef GRK_FORCE_SIGNED_COMPRESS
-    // MCT components: DC shift is handled by MCT (no-wavelet) or wavelet (with wavelet)
     if(needsMctDecompress(compno))
       continue;
 #else
     tccp->dc_level_shift_ = 1 << ((this->headerImage->comps + compno)->prec - 1);
 #endif
 
+    auto current_ptr = tile_comp->getWindow()->getResWindowBufferHighestSimple().buf_;
+    uint64_t samples = tile_comp->getWindow()->stridedArea();
+
     if(tccp->qmfbid_ == 1)
     {
-      // reversible: DC shift is applied in wavelet first level when wavelet is used
-      if(hasWavelet || tccp->dcLevelShift_ == 0)
+      // reversible, no wavelet: apply DC shift as fallback
+      if(tccp->dcLevelShift_ == 0)
         continue;
-      // no wavelet: apply DC shift here as fallback
       for(uint64_t i = 0; i < samples; ++i)
       {
         *current_ptr = (int32_t)((int64_t)*current_ptr - tccp->dcLevelShift_);
@@ -242,19 +242,10 @@ void TileProcessorCompress::dcLevelShiftCompress(void)
     }
     else
     {
-      // irreversible: int32 → float conversion
-      // DC shift is applied in wavelet when wavelet is used, otherwise apply here
+      // irreversible, no wavelet: int32 → float + DC shift as fallback
       float* floatPtr = (float*)current_ptr;
-      if(hasWavelet)
-      {
-        for(uint64_t i = 0; i < samples; ++i)
-          *floatPtr++ = (float)(*current_ptr++);
-      }
-      else
-      {
-        for(uint64_t i = 0; i < samples; ++i)
-          *floatPtr++ = (float)((int64_t)*current_ptr++ - tccp->dcLevelShift_);
-      }
+      for(uint64_t i = 0; i < samples; ++i)
+        *floatPtr++ = (float)((int64_t)*current_ptr++ - tccp->dcLevelShift_);
     }
 #ifdef GRK_FORCE_SIGNED_COMPRESS
     tccp->dc_level_shift_ = 0;
@@ -379,8 +370,12 @@ void TileProcessorCompress::buildCompressDAG(void)
     }
 
     // Schedule DWT tasks into the FlowComponents
+    // For non-MCT irreversible components, the tile buffer still contains int32_t
+    // (MCT handles int→float conversion for its components)
+    bool intInput = !isMctComp && (tccp->qmfbid_ == 0);
     WaveletFwdImpl w;
-    auto scratch = w.scheduleCompress(tile_comp, tccp->qmfbid_, maxDim, dcShift, levelFlows);
+    auto scratch =
+        w.scheduleCompress(tile_comp, tccp->qmfbid_, maxDim, dcShift, levelFlows, intInput);
     if(scratch)
       dwtScratch_.push_back(std::move(scratch));
 
@@ -583,8 +578,10 @@ bool TileProcessorCompress::doCompress(void)
           }
         }
 
+        bool isMctComp2 = needsMctDecompress(compno) && tcp_->mct_ == 1;
+        bool intInput = !isMctComp2 && (tccp->qmfbid_ == 0);
         WaveletFwdImpl w;
-        if(!w.compress(tile_comp, tccp->qmfbid_, maxDim, dcShift))
+        if(!w.compress(tile_comp, tccp->qmfbid_, maxDim, dcShift, intInput))
           return false;
       }
     }
