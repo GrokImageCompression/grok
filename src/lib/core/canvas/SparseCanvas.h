@@ -19,6 +19,7 @@
 
 #include <cstdint>
 #include <algorithm>
+#include <unordered_map>
 
 // SparseCanvas stores blocks in the canvas coordinate system. It covers the active sub-bands for
 // all (reduced) resolutions
@@ -45,36 +46,17 @@ class SparseCanvas : public ISparseCanvas<T>
 {
 public:
   SparseCanvas(Rect32 bds)
-      : blockWidth(1 << LBW), blockHeight(1 << LBH), blocks(nullptr), bounds(bds)
+      : blockWidth(1 << LBW), blockHeight(1 << LBH), bounds(bds)
   {
     if(!bounds.width() || !bounds.height() || !LBW || !LBH)
       throw std::runtime_error("invalid window for sparse canvas");
     grid = bounds.scaleDownPow2(LBW, LBH);
-    auto blockCount = grid.area();
-    try
-    {
-      blocks = new SparseBlock<T>*[blockCount];
-    }
-    catch([[maybe_unused]] const std::bad_alloc& baex)
-    {
-      grklog.error("Sparse canvas: out of memory while allocating %d blocks", blockCount);
-      throw;
-    }
-    for(uint64_t i = 0; i < blockCount; ++i)
-      blocks[i] = nullptr;
   }
   SparseCanvas(uint32_t width, uint32_t height) : SparseCanvas(Rect32(0, 0, width, height)) {}
   ~SparseCanvas()
   {
-    if(blocks)
-    {
-      for(uint64_t i = 0; i < (uint64_t)grid.width() * grid.height(); i++)
-      {
-        delete(blocks[i]);
-        blocks[i] = nullptr;
-      }
-      delete[] blocks;
-    }
+    for(auto& pair : blocks)
+      delete pair.second;
   }
   bool read(uint8_t resno, Rect32 window, T* dest, const uint32_t destChunkY,
             const uint32_t destChunkX)
@@ -109,14 +91,13 @@ public:
                       gridX, gridY, grid.x0, grid.y0, grid.x1, grid.y1);
           return false;
         }
-        auto srcBlock = getBlock(gridX, gridY);
-        if(!srcBlock)
+        uint64_t blockInd = (uint64_t)(gridY - grid.y0) * grid.width() + (gridX - grid.x0);
+        if(blocks.find(blockInd) == blocks.end())
         {
           auto b = new SparseBlock<T>();
           b->alloc(blockWidth * blockHeight, zeroOutBuffer);
           assert(grid.contains(gridX, gridY));
           assert(b->data);
-          uint64_t blockInd = (uint64_t)(gridY - grid.y0) * grid.width() + (gridX - grid.x0);
           blocks[blockInd] = b;
         }
       }
@@ -128,7 +109,8 @@ private:
   inline SparseBlock<T>* getBlock(uint32_t block_x, uint32_t block_y)
   {
     uint64_t index = (uint64_t)(block_y - grid.y0) * grid.width() + (block_x - grid.x0);
-    return blocks[index];
+    auto it = blocks.find(index);
+    return it != blocks.end() ? it->second : nullptr;
   }
   bool isWindowValid(Rect32 win)
   {
@@ -246,7 +228,7 @@ private:
 private:
   const uint32_t blockWidth;
   const uint32_t blockHeight;
-  SparseBlock<T>** blocks;
+  std::unordered_map<uint64_t, SparseBlock<T>*> blocks;
   Rect32 bounds; // canvas bounds
   Rect32 grid; // block grid bounds
 };
