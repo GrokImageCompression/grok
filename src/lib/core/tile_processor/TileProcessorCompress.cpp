@@ -236,7 +236,7 @@ void TileProcessorCompress::dcLevelShiftCompress(void)
       // no wavelet: apply DC shift here as fallback
       for(uint64_t i = 0; i < samples; ++i)
       {
-        *current_ptr -= tccp->dcLevelShift_;
+        *current_ptr = (int32_t)((int64_t)*current_ptr - tccp->dcLevelShift_);
         ++current_ptr;
       }
     }
@@ -253,7 +253,7 @@ void TileProcessorCompress::dcLevelShiftCompress(void)
       else
       {
         for(uint64_t i = 0; i < samples; ++i)
-          *floatPtr++ = (float)(*current_ptr++ - tccp->dcLevelShift_);
+          *floatPtr++ = (float)((int64_t)*current_ptr++ - tccp->dcLevelShift_);
       }
     }
 #ifdef GRK_FORCE_SIGNED_COMPRESS
