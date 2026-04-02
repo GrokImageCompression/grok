@@ -190,6 +190,31 @@ If the `-DGRK_DATA_ROOT:PATH` option is omitted,
 test files will be automatically searched for in
 `${CMAKE_SOURCE_DIR}/../grok-test-data`
 
+### Python Tests
+
+Python tests are automatically enabled when `BUILD_TESTING=ON` and SWIG bindings are built
+(`GRK_BUILD_CORE_SWIG_BINDINGS=ON`). They require [pytest](https://docs.pytest.org/) to be installed.
+
+To run the Python tests via `ctest`:
+
+    $  cd /PATH/TO/BUILD
+    $  ctest -R python_tests -V
+
+To run them directly with `pytest`:
+
+    $  cd /PATH/TO/BUILD/bin
+    $  PYTHONPATH=/PATH/TO/BUILD/bin python -m pytest /PATH/TO/SOURCE/tests/python -v --tb=short
+
+To run a single test file:
+
+    $  cd /PATH/TO/BUILD/bin
+    $  PYTHONPATH=/PATH/TO/BUILD/bin python -m pytest /PATH/TO/SOURCE/tests/python/test_roundtrip.py -v
+
+Note: if the build has address sanitizer enabled (`-DWITH_SANITIZER=Address`),
+Python tests will fail because the ASAN runtime must be loaded before Python.
+Either rebuild without ASAN (`-DWITH_SANITIZER=OFF`) or preload the runtime:
+
+    $  LD_PRELOAD=$(gcc -print-file-name=libasan.so) PYTHONPATH=/PATH/TO/BUILD/bin python -m pytest ...
 
 ## macOS
 
