@@ -424,6 +424,23 @@ bool CodeStreamCompress::init(grk_cparameters* parameters, GrkImage* image)
     cp_.t_width_ = image->x1 - cp_.tx0_;
     cp_.t_height_ = image->y1 - cp_.ty0_;
   }
+  /* Clamp number of resolutions to what is meaningful for the tile dimensions.
+   * Each DWT level halves the dimensions; levels beyond floor(log2(minTileDim)) + 1
+   * produce trivial subbands but dramatically increase
+   * rate-control cost (bisect iterations × packet count). */
+  {
+    uint32_t minTileDim = std::min(cp_.t_width_, cp_.t_height_);
+    uint8_t maxRes = 1;
+    while((1U << maxRes) <= minTileDim && maxRes < GRK_MAXRLVLS)
+      ++maxRes;
+    if(parameters->numresolution > maxRes)
+    {
+      grklog.warn("Number of resolutions %u exceeds useful limit %u for tile size %ux%u."
+                  " Clamping to %u.",
+                  parameters->numresolution, maxRes, cp_.t_width_, cp_.t_height_, maxRes);
+      parameters->numresolution = maxRes;
+    }
+  }
   if(parameters->enable_tile_part_generation)
   {
     cp_.codingParams_.enc_.newTilePartProgressionDivider_ =
