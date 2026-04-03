@@ -452,7 +452,11 @@ void WaveletReverse::h_53(uint8_t res, TileComponentWindow<int32_t>* tileBuffer,
   uint32_t num_threads = (uint32_t)TFSingleton::num_threads();
   Buffer2dSimple<int32_t> winL, winH, winDest;
   auto imageComponentFlow = ((DecompressScheduler*)scheduler_)->getImageComponentFlow(compno_);
+  if(!imageComponentFlow)
+    return;
   auto resFlow = imageComponentFlow->getResflow(res - 1);
+  if(!resFlow)
+    return;
   uint32_t numTasks[2] = {0, 0};
   uint32_t height[2] = {0, 0};
 
@@ -745,7 +749,11 @@ void WaveletReverse::v_53(uint8_t res, TileComponentWindow<int32_t>* buf, uint32
   auto winH = buf->getResWindowBufferSplitSimple(res, SPLIT_H);
   auto winDest = buf->getResWindowBufferSimple(res);
   auto imageComponentFlow = ((DecompressScheduler*)scheduler_)->getImageComponentFlow(compno_);
+  if(!imageComponentFlow)
+    return;
   auto resFlow = imageComponentFlow->getResflow(res - 1);
+  if(!resFlow)
+    return;
   const uint32_t numTasks = resWidth < num_threads ? resWidth : num_threads;
   uint32_t widthIncr = resWidth / numTasks;
   for(uint32_t j = 0; j < numTasks; j++)
