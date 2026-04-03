@@ -810,7 +810,7 @@
             "program": "${workspaceFolder}/build/bin/grk_decompress",
             "args": [
                 "-i",
-                "$HOME/temp/clusterfuzz-testcase-minimized-grk_decompress_fuzzer-5127679409192960",
+                "$HOME/temp/clusterfuzz-testcase-minimized-grk_decompress_fuzzer-4817274774290432",
                 "-d 0,0,1024,1024",
                 // "-t",
                 //  "20",
@@ -985,7 +985,7 @@
             "program": "${workspaceFolder}/build/bin/grk_decompress",
             "args": [
                 "-i",
-                "$HOME/src/grok-test-data/input/nonregression/mono_plt_tlm_tp.j2k",
+                "$HOME/src/grok-test-data/input/nonregression/issue391.jp2",
                 "-o",
                 "$HOME/temp/output.bmp",
                 "-t",
@@ -993,7 +993,9 @@
             ],
             "stopAtEntry": false,
             "cwd": "${fileDirname}",
-            "environment": [],
+            "environment": [
+                { "name": "GRK_DEBUG", "value": "3" },
+            ],
             "console": "externalTerminal"
         },
         {

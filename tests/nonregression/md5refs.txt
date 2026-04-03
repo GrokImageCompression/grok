@@ -180,9 +180,9 @@ c678b04f4d3e59b9d66a8bce37c553c0  relax.jp2_2.pgx
 efc9c7f21a542a7888a9eeb73b0f7092  text_GBR.jp2_0.pgx
 54790b332b3dcbda28e1bcb31270b946  text_GBR.jp2_1.pgx
 d9bcbdc818febb8c0a6bc5f940a4ea85  text_GBR.jp2_2.pgx
-c86c557a8a415c3bd1a55c4586e42634  issue391.jp2_0.pgx
-c86c557a8a415c3bd1a55c4586e42634  issue391.jp2_1.pgx
-c86c557a8a415c3bd1a55c4586e42634  issue391.jp2_2.pgx
+635742af3c433233e5838c70b907f2e6  issue391.jp2_0.pgx
+635742af3c433233e5838c70b907f2e6  issue391.jp2_1.pgx
+635742af3c433233e5838c70b907f2e6  issue391.jp2_2.pgx
 a73bec4d6d82c8a64203e8fdf893b86d  issue412.jp2_0.pgx
 a73bec4d6d82c8a64203e8fdf893b86d  issue428.jp2_0.pgx
 2354cf24a1cc5e4a3b72896b333ba361  issue412.jp2_1.pgx
@@ -367,7 +367,7 @@ db06c4b9283fd307325c17d7d6626d9c  boats_lrcp.tif
 db06c4b9283fd307325c17d7d6626d9c  boats_rlcp.tif
 67d2c8e5ed0f6306d0472657e9d9824c  crash-0a.tif
 807f20a212308293ed8d3121cffea3fe  issue205.jp2_r1.tif
-c61d8bab57ad09c2446c7d433ea0793e  issue205.jp2_r0.tif
+1d6e1ff8782434140bff845ac6d309bc  issue205.jp2_r0.tif
 9a3743e3324fd6fc8f17f35267c37a83  cmyk_no_wavelet.tif
 3a93ed9d92b12549951198d45bc1fc09  cmyk_no_wavelet_region.tif
 77006f429e2b9e22f304743a9f544d32  1802.pdf.SIGSEGV.36e.894.jp2_0.pgx

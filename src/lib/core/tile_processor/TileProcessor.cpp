@@ -433,10 +433,11 @@ bool TileProcessor::decompressPrepareWithTLM(const std::shared_ptr<TPFetchSeq>& 
       continue;
     }
 
-    // process SOT marker
+    // process marker (expected SOT, but corrupt streams may yield other markers
+    // since readSOTorEOC warns and continues on unexpected marker IDs)
     auto [processed, length] = markerParser_->processMarker();
     if(!processed)
-      break;
+      return false;
 
     // read next tile part header marker
     try
