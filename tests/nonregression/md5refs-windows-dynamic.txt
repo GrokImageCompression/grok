@@ -30,9 +30,9 @@ c6091c07bf0ff221008dfb60d893cdff  issue134.jp2_2.pgx
 c13d9f28491244adda4cf1583124051b  issue135.j2k_1.pgx
 3fc0abdc1e2b9587026d3cadabdf8577  issue135.j2k_2.pgx
 1820161df26c360a62d11800d6cf173f  issue211.jp2_1.pgx
-d90d3d4dcc9c7f56647bd50f6cdf5373  issue391.jp2_0.pgx
-d90d3d4dcc9c7f56647bd50f6cdf5373  issue391.jp2_1.pgx
-d90d3d4dcc9c7f56647bd50f6cdf5373  issue391.jp2_2.pgx
+ab3106b5b359a727a09f5bafe7302176  issue391.jp2_0.pgx
+ab3106b5b359a727a09f5bafe7302176  issue391.jp2_1.pgx
+ab3106b5b359a727a09f5bafe7302176  issue391.jp2_2.pgx
 d7ebe84d5109e5e9d4833affa6cbc2fe  p1_04.j2k.png
 42b7e93beb4efb1f7193f461af053b6d  p1_04_1.j2k.png
 8f8805cf44a5aaef6a474866ce72cabb  p1_04_2.j2k.png
