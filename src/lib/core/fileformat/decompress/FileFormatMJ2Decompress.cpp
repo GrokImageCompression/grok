@@ -128,6 +128,11 @@ bool FileFormatMJ2Decompress::read_version_and_flag_check(uint8_t** headerData,
                                                           uint32_t* headerSize, uint8_t maxVersion,
                                                           std::set<uint32_t> allowedFlags)
 {
+  if(*headerSize < 4)
+  {
+    grklog.error("MJ2 box too small for version/flag header");
+    return false;
+  }
   uint8_t version;
   uint32_t flag;
   read_version_and_flag(headerData, version, flag);
