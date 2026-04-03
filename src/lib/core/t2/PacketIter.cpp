@@ -94,11 +94,6 @@ bool ResPrecinctInfo::init(uint8_t resno, uint8_t decompLevel, Rect32 tileBounds
   precHeightPRJ = (uint64_t)compDy << precHeightExpPRJ;
   precHeightPRJMinusOne = precHeightPRJ - 1;
 
-  // projected precinct dimensions must fit in uint32_t for Rect32::scale()
-  if(precWidthPRJ > (std::numeric_limits<uint32_t>::max)() ||
-     precHeightPRJ > (std::numeric_limits<uint32_t>::max)())
-    return false;
-
   dxPRJ = (uint64_t)compDx << decompLevel_;
   dyPRJ = (uint64_t)compDy << decompLevel_;
   resInPrecGridX0 = floordivpow2(res.x0, precWidthExp);
@@ -110,12 +105,21 @@ bool ResPrecinctInfo::init(uint8_t resno, uint8_t decompLevel, Rect32 tileBounds
     // pad resolution window to next precinct
     resWindow.grow_IN_PLACE(1U << precWidthExp, 1U << precHeightExp).clip_IN_PLACE(res);
     winPrecGrid = resWindow.scaleDown(1U << precWidthExp, 1U << precHeightExp);
-    winPrecPRJ = winPrecGrid.scale((uint32_t)precWidthPRJ, (uint32_t)precHeightPRJ);
+    winPrecPRJ = Rect<uint64_t>(
+        (uint64_t)winPrecGrid.origin_x0 * precWidthPRJ,
+        (uint64_t)winPrecGrid.origin_y0 * precHeightPRJ, (uint64_t)winPrecGrid.x0 * precWidthPRJ,
+        (uint64_t)winPrecGrid.y0 * precHeightPRJ, (uint64_t)winPrecGrid.x1 * precWidthPRJ,
+        (uint64_t)winPrecGrid.y1 * precHeightPRJ);
   }
 
   tileBoundsPrecGrid = res.scaleDown(1U << precWidthExp, 1U << precHeightExp);
   numPrecincts_ = tileBoundsPrecGrid.area();
-  tileBoundsPrecPRJ = tileBoundsPrecGrid.scale((uint32_t)precWidthPRJ, (uint32_t)precHeightPRJ);
+  tileBoundsPrecPRJ = Rect<uint64_t>((uint64_t)tileBoundsPrecGrid.origin_x0 * precWidthPRJ,
+                                     (uint64_t)tileBoundsPrecGrid.origin_y0 * precHeightPRJ,
+                                     (uint64_t)tileBoundsPrecGrid.x0 * precWidthPRJ,
+                                     (uint64_t)tileBoundsPrecGrid.y0 * precHeightPRJ,
+                                     (uint64_t)tileBoundsPrecGrid.x1 * precWidthPRJ,
+                                     (uint64_t)tileBoundsPrecGrid.y1 * precHeightPRJ);
   valid = true;
 
   return true;

@@ -131,12 +131,12 @@ struct ResPrecinctInfo
   uint8_t decompLevel_;
 
   /** tile bounds snapped to precinct boundaries, in projected space */
-  Rect32 tileBoundsPrecPRJ;
+  Rect<uint64_t> tileBoundsPrecPRJ;
   /** tile bounds mapped to precinct grid (resolution space) */
   Rect32 tileBoundsPrecGrid;
 
   /** decode window bounds snapped to precinct boundaries, in projected space */
-  Rect32 winPrecPRJ;
+  Rect<uint64_t> winPrecPRJ;
   /** decode window bounds mapped to precinct grid (resolution space) */
   Rect32 winPrecGrid;
 
