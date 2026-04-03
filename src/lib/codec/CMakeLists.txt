@@ -30,7 +30,6 @@ set(GROK_CODEC_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/formats/fileio/FileOrchestratorIO.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/formats/YUVFormat.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/common/common.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/common/exif.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/apps/GrkCompress.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/apps/GrkDecompress.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/apps/GrkDump.cpp
