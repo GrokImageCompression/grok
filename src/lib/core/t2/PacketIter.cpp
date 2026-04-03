@@ -93,6 +93,12 @@ bool ResPrecinctInfo::init(uint8_t resno, uint8_t decompLevel, Rect32 tileBounds
   precWidthPRJMinusOne = precWidthPRJ - 1;
   precHeightPRJ = (uint64_t)compDy << precHeightExpPRJ;
   precHeightPRJMinusOne = precHeightPRJ - 1;
+
+  // projected precinct dimensions must fit in uint32_t for Rect32::scale()
+  if(precWidthPRJ > (std::numeric_limits<uint32_t>::max)() ||
+     precHeightPRJ > (std::numeric_limits<uint32_t>::max)())
+    return false;
+
   dxPRJ = (uint64_t)compDx << decompLevel_;
   dyPRJ = (uint64_t)compDy << decompLevel_;
   resInPrecGridX0 = floordivpow2(res.x0, precWidthExp);
@@ -102,12 +108,12 @@ bool ResPrecinctInfo::init(uint8_t resno, uint8_t decompLevel, Rect32 tileBounds
     auto window = tileWindow;
     auto resWindow = window.scaleDownCeil(resDivisorX, resDivisorY);
     // pad resolution window to next precinct
-    resWindow.grow_IN_PLACE(1 << precWidthExp, 1 << precHeightExp).clip_IN_PLACE(res);
-    winPrecGrid = resWindow.scaleDown(1 << precWidthExp, 1 << precHeightExp);
+    resWindow.grow_IN_PLACE(1U << precWidthExp, 1U << precHeightExp).clip_IN_PLACE(res);
+    winPrecGrid = resWindow.scaleDown(1U << precWidthExp, 1U << precHeightExp);
     winPrecPRJ = winPrecGrid.scale((uint32_t)precWidthPRJ, (uint32_t)precHeightPRJ);
   }
 
-  tileBoundsPrecGrid = res.scaleDown(1 << precWidthExp, 1 << precHeightExp);
+  tileBoundsPrecGrid = res.scaleDown(1U << precWidthExp, 1U << precHeightExp);
   numPrecincts_ = tileBoundsPrecGrid.area();
   tileBoundsPrecPRJ = tileBoundsPrecGrid.scale((uint32_t)precWidthPRJ, (uint32_t)precHeightPRJ);
   valid = true;
@@ -119,9 +125,10 @@ void ResPrecinctInfo::print(void)
   grklog.info("\n");
   grklog.info("RESOLUTION PRECINCT INFO for resolution level %u", resno_);
   grklog.info("precinct exponents: (%u,%u)", precWidthExp, precHeightExp);
-  grklog.info("precinct dimensions (projected): (%u,%u)", precWidthPRJ, precHeightPRJ);
-  grklog.info("number of precincts: %u", numPrecincts_);
-  grklog.info("subsampling (projected): (%u,%u)", dxPRJ, dyPRJ);
+  grklog.info("precinct dimensions (projected): (%" PRIu64 ",%" PRIu64 ")", precWidthPRJ,
+              precHeightPRJ);
+  grklog.info("number of precincts: %" PRIu64, numPrecincts_);
+  grklog.info("subsampling (projected): (%" PRIu64 ",%" PRIu64 ")", dxPRJ, dyPRJ);
   grklog.info("tile bounds aligned to precincts (projected) =>");
   tileBoundsPrecPRJ.print();
   grklog.info("tile bounds mapped to precinct grid (resolution) =>");
@@ -944,11 +951,17 @@ bool PacketIter::next(SparseBuffer* compressedPackets)
     case GRK_RLCP:
       return next_rlcp();
     case GRK_PCRL:
-      return next_pcrl();
     case GRK_RPCL:
-      return next_rpcl(compressedPackets);
     case GRK_CPRL:
-      return next_cprl(compressedPackets);
+      // spatial progressions require non-zero step sizes to avoid infinite loops
+      if(dx == 0 || dy == 0)
+        return false;
+      if(prog.progression == GRK_PCRL)
+        return next_pcrl();
+      else if(prog.progression == GRK_RPCL)
+        return next_rpcl(compressedPackets);
+      else
+        return next_cprl(compressedPackets);
     default:
       return false;
   }
