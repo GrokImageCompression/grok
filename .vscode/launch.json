@@ -1032,6 +1032,29 @@
             "cwd": "${fileDirname}",
             "environment": [],
             "console": "externalTerminal"
+        },
+        {
+            "name": "Decompress Fuzzer",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/bin/grk_decompress_fuzzer",
+            "args": [
+                "$HOME/Downloads/artifacts-address/grk_decompress_fuzzer/address/timeout-eb6aa9ce44474624463e7cc8d23423aac8765fce"
+            ],
+            "cwd": "${workspaceFolder}",
+            "environment": [
+                { "name": "GRK_DEBUG", "value": "4" }
+            ],
+            "MIMode": "gdb",
+            "miDebuggerPath": "/usr/bin/gdb"
+        }
+    ],
+    "inputs": [
+        {
+            "id": "fuzzArtifact",
+            "description": "Path to OSS-Fuzz crash artifact",
+            "type": "promptString",
+            "default": "${env:HOME}/temp/"
         }
     ]
 }
