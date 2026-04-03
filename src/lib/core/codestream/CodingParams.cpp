@@ -1560,19 +1560,22 @@ bool TileCodingParams::readSPCodSPCoc(uint16_t compno, uint8_t* headerData, uint
     return false;
   }
   /* SPcoc (E) */
-  grk_read(&current_ptr, &tccp->cblkw_expn_);
+  uint8_t cblkw_expn, cblkh_expn;
+  grk_read(&current_ptr, &cblkw_expn);
   /* SPcoc (F) */
-  grk_read(&current_ptr, &tccp->cblkh_expn_);
+  grk_read(&current_ptr, &cblkh_expn);
 
-  if(tccp->cblkw_expn_ > 8 || tccp->cblkh_expn_ > 8 || (tccp->cblkw_expn_ + tccp->cblkh_expn_) > 8)
+  if(cblkw_expn > 8 || cblkh_expn > 8 || (cblkw_expn + cblkh_expn) > 8)
   {
     grklog.error("Illegal code-block width/height (2^%u, 2^%u) found in COD/COC marker segment.\n"
                  "Code-block dimensions must be powers of 2, must be in the range 4-1024, and "
                  "their product must "
                  "lie in the range 16-4096.",
-                 (uint32_t)tccp->cblkw_expn_ + 2, (uint32_t)tccp->cblkh_expn_ + 2);
+                 (uint32_t)cblkw_expn + 2, (uint32_t)cblkh_expn + 2);
     return false;
   }
+  tccp->cblkw_expn_ = cblkw_expn;
+  tccp->cblkh_expn_ = cblkh_expn;
 
   tccp->cblkw_expn_ = (uint8_t)(tccp->cblkw_expn_ + 2U);
   tccp->cblkh_expn_ = (uint8_t)(tccp->cblkh_expn_ + 2U);
