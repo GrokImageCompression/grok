@@ -189,6 +189,10 @@ void PacketIter::printDynamicState(void)
   }
 }
 
+/**
+ * Try the OPT path first; if preconditions aren't met, fall back to
+ * per-component, per-resolution init.
+ */
 void PacketIter::genPrecinctInfo()
 {
   if(!genPrecinctInfoOPT())
@@ -204,6 +208,11 @@ void PacketIter::genPrecinctInfo()
     }
   }
 }
+/**
+ * Non-OPT per-resolution precinct info generation.
+ * Allocates and initializes a ResPrecinctInfo for each non-degenerate resolution.
+ * Skipped during compression (precinct info is computed on-the-fly via validatePrecinct).
+ */
 void PacketIter::genPrecinctInfo(PacketIterInfoComponent* comp, PacketIterInfoResolution* res,
                                  uint8_t resNumber)
 {
@@ -228,8 +237,19 @@ void PacketIter::genPrecinctInfo(PacketIterInfoComponent* comp, PacketIterInfoRe
   }
 }
 
-/***
- * Generate and cache precinct info
+/**
+ * Attempt to use the optimized precinct info path.
+ *
+ * Preconditions for OPT:
+ * 1. Decompression (not compression)
+ * 2. Single progression (no POC)
+ * 3. Tile origin at (0,0)
+ * 4. No subsampling (all dx=dy=1)
+ * 5. All components have the same number of resolutions
+ * 6. For PCRL/CPRL: projected precinct sizes are non-decreasing as resolution decreases
+ *    (ensures the highest-resolution precinct grid covers all lower-resolution precincts)
+ *
+ * @return true if OPT path was used, false if caller should use the non-OPT path
  */
 bool PacketIter::genPrecinctInfoOPT(void)
 {
@@ -289,6 +309,10 @@ bool PacketIter::genPrecinctInfoOPT(void)
 
   return true;
 }
+/**
+ * Validate that the current (compno, resno, x, y) maps to a real precinct.
+ * On success, sets px0grid_ and py0grid_ for use by generatePrecinctIndex().
+ */
 bool PacketIter::validatePrecinct(void)
 {
   auto comp = comps + compno;
@@ -801,6 +825,18 @@ void PacketIter::genPrecinctX0GridRPCL_OPT(ResPrecinctInfo* rpInfo)
 {
   px0grid_ = (uint32_t)(ceildivpow2(x, rpInfo->decompLevel_) >> rpInfo->precWidthExp);
 }
+/**
+ * Compute the minimum spatial step sizes (dx, dy) across all components and
+ * resolutions. These are used as the x/y loop increments in spatial progression
+ * orders (PCRL, RPCL, CPRL).
+ *
+ * For each resolution, the projected precinct width is:
+ *   comp->dx * 2^(precWidthExp + numresolutions - 1 - resno)
+ *
+ * The global dx is the minimum of all such values that fit in uint32_t.
+ * If ALL values exceed UINT_MAX, dx remains 0, which is detected by next()
+ * to prevent infinite loops.
+ */
 void PacketIter::update_dxy(void)
 {
   dx = 0;

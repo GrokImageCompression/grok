@@ -45,8 +45,7 @@ template<typename T, uint32_t LBW, uint32_t LBH>
 class SparseCanvas : public ISparseCanvas<T>
 {
 public:
-  SparseCanvas(Rect32 bds)
-      : blockWidth(1 << LBW), blockHeight(1 << LBH), bounds(bds)
+  SparseCanvas(Rect32 bds) : blockWidth(1 << LBW), blockHeight(1 << LBH), bounds(bds)
   {
     if(!bounds.width() || !bounds.height() || !LBW || !LBH)
       throw std::runtime_error("invalid window for sparse canvas");
