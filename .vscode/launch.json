@@ -810,7 +810,7 @@
             "program": "${workspaceFolder}/build/bin/grk_decompress",
             "args": [
                 "-i",
-                "$HOME/temp/clusterfuzz-testcase-minimized-grk_decompress_fuzzer-4817274774290432",
+                "$HOME/temp/clusterfuzz-testcase-minimized-grk_decompress_fuzzer-4737912531910656",
                 "-d 0,0,1024,1024",
                 // "-t",
                 //  "20",
@@ -1036,16 +1036,16 @@
             "console": "externalTerminal"
         },
         {
-            "name": "Decompress Fuzzer",
+            "name": "Compress Fuzzer",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/build/bin/grk_decompress_fuzzer",
+            "program": "${workspaceFolder}/build/bin/grk_compress_fuzzer",
             "args": [
-                "$HOME/Downloads/artifacts-address/grk_decompress_fuzzer/address/timeout-eb6aa9ce44474624463e7cc8d23423aac8765fce"
+                "$HOME/temp/clusterfuzz-testcase-minimized-grk_compress_fuzzer-6012230788513792"
             ],
             "cwd": "${workspaceFolder}",
             "environment": [
-                { "name": "GRK_DEBUG", "value": "4" }
+                { "name": "GRK_DEBUG", "value": "5" }
             ],
             "MIMode": "gdb",
             "miDebuggerPath": "/usr/bin/gdb"
