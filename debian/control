@@ -9,8 +9,7 @@ Build-Depends: cmake (>= 3.20.0),
                libpng-dev,
                libtiff-dev,
                libjpeg-dev,
-               zlib1g-dev,
-               libimage-exiftool-perl,
+               zlib1g-dev
 Build-Depends-Indep: doxygen
 Standards-Version: 4.6.1.0
 Section: libs
