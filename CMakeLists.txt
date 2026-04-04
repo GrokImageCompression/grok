@@ -199,6 +199,19 @@ option(GRK_BUILD_CODEC "Build the CODEC executables" ON)
 option(GRK_BUILD_PLUGIN_LOADER "Enable loading of T1 plugin" OFF)
 mark_as_advanced(GRK_BUILD_PLUGIN_LOADER)
 
+# GPU plugin: install the shared library alongside grok binaries
+option(GRK_GPU_PLUGIN_INSTALL "Install grok-gpu-plugin shared library" OFF)
+set(GROK_GPU_PLUGIN_DIR "" CACHE PATH "Path to grok-gpu-plugin build-shared directory")
+if(GRK_GPU_PLUGIN_INSTALL AND GROK_GPU_PLUGIN_DIR)
+    find_package(GrokGPUPlugin)
+    if(GrokGPUPlugin_FOUND)
+        install(FILES ${GrokGPUPlugin_LIBRARY}
+            DESTINATION ${CMAKE_INSTALL_LIBDIR}
+            RENAME libgrokj2k_plugin${CMAKE_SHARED_LIBRARY_SUFFIX}
+        )
+    endif()
+endif()
+
 set(SPDLOG_INSTALL OFF CACHE BOOL "" FORCE)
 set(SPDLOG_BUILD_EXAMPLE OFF CACHE BOOL "" FORCE)
 set(SPDLOG_BUILD_TESTS OFF CACHE BOOL "" FORCE)
