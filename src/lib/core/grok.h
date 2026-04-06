@@ -1186,7 +1186,7 @@ GRK_API grk_image_meta* GRK_CALLCONV grk_image_meta_new(void);
  *
  * @param meta   pointer to an existing grk_image_meta
  * @param field  which metadata field to set:
- *               "geotiff", "ipr", "xmp", "iptc", "exif"
+ *               "geotiff", "ipr", "xmp", "iptc", "exif", "xml"
  * @param data   pointer to source bytes (copied internally)
  * @param len    number of bytes to copy
  * @return true on success, false on invalid field name or OOM
@@ -1202,7 +1202,7 @@ GRK_API bool GRK_CALLCONV grk_image_meta_set_field(grk_image_meta* meta, const c
  *
  * @param meta      pointer to an existing grk_image_meta
  * @param field     which metadata field to get:
- *                  "geotiff", "ipr", "xmp", "iptc", "exif"
+ *                  "geotiff", "ipr", "xmp", "iptc", "exif", "xml"
  * @param[out] data set to internal buffer pointer (do not free)
  * @param[out] len  set to buffer length
  * @return true on success (even if data is NULL/empty), false on invalid field

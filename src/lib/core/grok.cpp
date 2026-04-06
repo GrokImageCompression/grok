@@ -413,6 +413,11 @@ static bool resolve_meta_field(grk_image_meta* meta, const char* field, uint8_t*
     *buf_pp = &meta->exif_buf;
     *len_pp = &meta->exif_len;
   }
+  else if(strcmp(field, "xml") == 0)
+  {
+    *buf_pp = &meta->xml_buf;
+    *len_pp = &meta->xml_len;
+  }
   else
   {
     return false;
