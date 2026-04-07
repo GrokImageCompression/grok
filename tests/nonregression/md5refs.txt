@@ -367,7 +367,7 @@ db06c4b9283fd307325c17d7d6626d9c  boats_lrcp.tif
 db06c4b9283fd307325c17d7d6626d9c  boats_rlcp.tif
 67d2c8e5ed0f6306d0472657e9d9824c  crash-0a.tif
 807f20a212308293ed8d3121cffea3fe  issue205.jp2_r1.tif
-c61d8bab57ad09c2446c7d433ea0793e  issue205.jp2_r0.tif
+a04a8e6ca05e31e81e18662f81d4587f  issue205.jp2_r0.tif
 9a3743e3324fd6fc8f17f35267c37a83  cmyk_no_wavelet.tif
 3a93ed9d92b12549951198d45bc1fc09  cmyk_no_wavelet_region.tif
 77006f429e2b9e22f304743a9f544d32  1802.pdf.SIGSEGV.36e.894.jp2_0.pgx
@@ -404,9 +404,9 @@ a1de474200c69469f755b9ffc046dae6  clusterfuzz-testcase-minimized-grk_decompress_
 7a371ddf1f6ca7df2af6f274ea9b2eda  clusterfuzz-testcase-minimized-grk_decompress_fuzzer-6690066499174400_1.pgx
 d1b47347aaac6019935aa14c56851a05  clusterfuzz-testcase-minimized-grk_decompress_fuzzer-6690066499174400_2.pgx
 
-804212f79d093e23e6113d37482dcab4  p_bit16_layer5.pgm
-3ddc0e457820c6c061b8c5161dbf8abe  mono_plt_tlm_tile5.pgm
-ab1be092540f526c802ef57ade17d415  mono_plt_tlm_tile.pgm
+f658ddc180dad9696bd0952f01fd0330  p_bit16_layer5.pgm
+20173cbe19c47426c09635eacc55d2d4  mono_plt_tlm_tile5.pgm
+0bac3b609b24429f4c732c954e68e1ff  mono_plt_tlm_tile.pgm
 871e964cd6f1879c7eb603a69c857337  clusterfuzz-testcase-minimized-grk_decompress_fuzzer-4599444736901120_0.pgx
 871e964cd6f1879c7eb603a69c857337  clusterfuzz-testcase-minimized-grk_decompress_fuzzer-4599444736901120_1.pgx
 a746bc84f7e40fea2b6dc2e9abdf786a  clusterfuzz-testcase-minimized-grk_decompress_fuzzer-4599444736901120_2.pgx
