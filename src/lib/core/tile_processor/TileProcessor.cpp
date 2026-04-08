@@ -1071,8 +1071,6 @@ void TileProcessor::scheduleAndRunDecompress(CoderPool* coderPool, Rect32 unredu
       return;
     if(!tile_)
       return;
-    // synch plugin with T2 data
-    // decompress_synch_plugin_with_host(this);
 
     if(tcp_->packets_->empty())
     {
@@ -1104,6 +1102,9 @@ void TileProcessor::scheduleAndRunDecompress(CoderPool* coderPool, Rect32 unredu
 
     auto t2 = std::make_unique<T2Decompress>(this);
     truncated_ = t2->parsePackets(tileIndex_, tcp_->packets_);
+
+    // synch plugin with T2 data (must be AFTER T2 parsing)
+    decompress_synch_plugin_with_host();
 
     // 1. count parsers
     auto tile = getTile();

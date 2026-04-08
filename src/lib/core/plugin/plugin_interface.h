@@ -78,7 +78,8 @@ struct PluginDecodeCallbackInfo
       : device_id(0), init_decompressors_func(nullptr), inputFile(input), outputFile(output),
         decod_format(format), cod_format(GRK_FMT_UNK), codec(nullptr),
         decompressor_parameters(decompressorParameters), image(nullptr), plugin_owns_image(false),
-        tile(nullptr), error_code(0), decompress_flags(flags), user_data(nullptr)
+        tile(nullptr), error_code(0), decompress_flags(flags), user_data(nullptr),
+        format_private(nullptr)
 
   {
     memset(&header_info, 0, sizeof(header_info));
@@ -100,6 +101,7 @@ struct PluginDecodeCallbackInfo
   int32_t error_code;
   uint32_t decompress_flags;
   void* user_data;
+  void* format_private;
 };
 
 typedef int32_t (*PLUGIN_DECODE_USER_CALLBACK)(PluginDecodeCallbackInfo* info);

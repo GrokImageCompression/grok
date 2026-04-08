@@ -1049,6 +1049,127 @@
             ],
             "MIMode": "gdb",
             "miDebuggerPath": "/usr/bin/gdb"
+        },
+        {
+            "name": "compress GPU",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/bin/grk_compress",
+            "args": [
+                "--batch-src",
+                "$HOME/temp/rgb_12",
+                "--out-dir",
+                "$HOME/temp/batch_compressed",
+                "--out-fmt",
+                "jp2",
+                "-k",
+                "1",
+                "-e",
+                "10",
+                "--cinema-2k",
+                "24"
+            ],
+            "cwd": "${workspaceFolder}/build/bin",
+            "environment": [
+                {
+                    "name": "CUDA_MODULE_LOADING",
+                    "value": "EAGER"
+                },
+                {
+                    "name": "GRK_DEBUG",
+                    "value": "3"
+                }
+            ],
+            "MIMode": "gdb",
+            "miDebuggerPath": "/usr/bin/gdb"
+        },
+        {
+            "name": "decompress GPU",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/bin/grk_decompress",
+            "args": [
+                "--batch-src",
+                "$HOME/temp/batch_compressed",
+                "--out-dir",
+                "$HOME/temp/batch_decompressed",
+                "--out-fmt",
+                "tif",
+                "-e",
+                "10",
+                "-k",
+                "1"
+            ],
+            "cwd": "${workspaceFolder}/build/bin",
+            "environment": [
+                {
+                    "name": "CUDA_MODULE_LOADING",
+                    "value": "EAGER"
+                },
+                {
+                    "name": "GRK_DEBUG",
+                    "value": "3"
+                }
+            ],
+            "MIMode": "gdb",
+            "miDebuggerPath": "/usr/bin/gdb"
+        },
+        {
+            "name": "single compress GPU",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/bin/grk_compress",
+            "args": [
+                "-i",
+                "$HOME/temp/test_mono/input.tiff",
+                "-o",
+                "$HOME/temp/test_mono/output.jp2",
+                "-n",
+                "1",
+                "-b 32,32",
+                "-k",
+                "1"
+            ],
+            "cwd": "${workspaceFolder}/build/bin",
+            "environment": [
+                {
+                    "name": "CUDA_MODULE_LOADING",
+                    "value": "EAGER"
+                },
+                {
+                    "name": "GRK_DEBUG",
+                    "value": "3"
+                }
+            ],
+            "MIMode": "gdb",
+            "miDebuggerPath": "/usr/bin/gdb"
+        },
+        {
+            "name": "single decompress GPU",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/bin/grk_decompress",
+            "args": [
+                "-i",
+                "$HOME/temp/test_mono/output.jp2",
+                "-o",
+                "$HOME/temp/test_mono/output_round.tif",
+                "-k",
+                "1"
+            ],
+            "cwd": "${workspaceFolder}/build/bin",
+            "environment": [
+                {
+                    "name": "CUDA_MODULE_LOADING",
+                    "value": "EAGER"
+                },
+                {
+                    "name": "GRK_DEBUG",
+                    "value": "3"
+                }
+            ],
+            "MIMode": "gdb",
+            "miDebuggerPath": "/usr/bin/gdb"
         }
     ],
     "inputs": [

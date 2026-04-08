@@ -11,7 +11,7 @@ foreach(exe grk_decompress grk_compress grk_dump)
 	target_link_options(${exe}  PUBLIC "LINKER:-z,now")
   endif()
 
-  target_link_libraries(${exe} ${GROK_CODEC_NAME})
+  target_link_libraries(${exe} ${GROK_CODEC_NAME} ${GROK_CORE_NAME})
   if (GRK_BUILD_PLUGIN_LOADER AND UNIX)
   	target_link_libraries(${exe} ${CMAKE_DL_LIBS} )
   endif(GRK_BUILD_PLUGIN_LOADER AND UNIX)

@@ -503,7 +503,6 @@ int GrkCompress::main(int argc, const char** argv, grk_image* in_image, grk_stre
     goto cleanup;
   }
 cleanup:
-
   return success;
 }
 
@@ -561,6 +560,10 @@ GrkRC GrkCompress::pluginMain(int argc, const char* argv[], CompressInitParams* 
   initInfo.device_id = initParams->parameters.device_id;
   initInfo.license = initParams->license_.c_str();
   initInfo.server = initParams->server_.c_str();
+  {
+    const char* debug_env = std::getenv("GRK_DEBUG");
+    initInfo.verbose = debug_env && std::atoi(debug_env) >= 3;
+  }
   if(!grk_plugin_init(initInfo))
   {
     spdlog::info("Failed to create codec");

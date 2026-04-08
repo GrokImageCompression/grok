@@ -216,6 +216,12 @@ public:
   }
 };
 
+void grk_deinitialize(void)
+{
+  grk_plugin_cleanup();
+  TFSingleton::destroy();
+}
+
 static inline bool areStringsEqual(const char* lhs, const char* rhs)
 {
   if(lhs == nullptr && rhs == nullptr)
@@ -320,7 +326,8 @@ GRK_API grk_object* GRK_CALLCONV grk_object_ref(grk_object* obj)
   if(!obj)
     return nullptr;
   auto wrapper = (RefCounted*)obj->wrapper;
-  wrapper->ref();
+  if(wrapper)
+    wrapper->ref();
 
   return obj;
 }
@@ -329,6 +336,8 @@ GRK_API void GRK_CALLCONV grk_object_unref(grk_object* obj)
   if(!obj)
     return;
   auto wrapper = (RefCounted*)obj->wrapper;
+  if(!wrapper)
+    return;
   wrapper->unref();
 }
 
@@ -1227,12 +1236,14 @@ int32_t grk_plugin_internal_decode_callback(PluginDecodeCallbackInfo* info)
   grokInfo.tile = info->tile;
   grokInfo.decompress_flags = info->decompress_flags;
   grokInfo.user_data = info->decompressor_parameters->user_data;
+  grokInfo.format_private = info->format_private;
   if(decodeCallback)
     rc = decodeCallback(&grokInfo);
   // synch
   info->image = grokInfo.image;
   info->codec = grokInfo.codec;
   info->header_info = grokInfo.header_info;
+  info->format_private = grokInfo.format_private;
   return rc;
 }
 

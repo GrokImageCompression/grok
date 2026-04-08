@@ -762,7 +762,12 @@ GrkRC GrkDecompress::pluginMain(int argc, const char* argv[], DecompressInitPara
 
   // create codec
   grk_plugin_init_info initInfo;
+  memset(&initInfo, 0, sizeof(initInfo));
   initInfo.device_id = initParams->parameters.device_id;
+  {
+    const char* debug_env = std::getenv("GRK_DEBUG");
+    initInfo.verbose = debug_env && std::atoi(debug_env) >= 3;
+  }
   if(!grk_plugin_init(initInfo))
     goto cleanup;
   initParams->parameters.user_data = this;
@@ -893,7 +898,8 @@ bool GrkDecompress::encodeHeader(grk_plugin_decompress_callback_info* info)
     return true;
   if(!encodeInit(info))
     return false;
-  if(!imageFormat->encodeHeader())
+  auto fmt = info->format_private ? (IImageFormat*)info->format_private : imageFormat;
+  if(!fmt->encodeHeader())
   {
     spdlog::error("Encode header failed.");
     return false;
@@ -917,7 +923,8 @@ bool GrkDecompress::encodeInit(grk_plugin_decompress_callback_info* info)
     compression_level = parameters->compression;
   else if(cod_format == GRK_FMT_JPG || cod_format == GRK_FMT_PNG)
     compression_level = parameters->compression_level;
-  if(!imageFormat->encodeInit(info->image, outfileStr, compression_level,
+  auto fmt = info->format_private ? (IImageFormat*)info->format_private : imageFormat;
+  if(!fmt->encodeInit(info->image, outfileStr, compression_level,
                               info->decompressor_parameters->num_threads
                                   ? info->decompressor_parameters->num_threads
                                   : std::thread::hardware_concurrency()))
@@ -996,6 +1003,7 @@ int GrkDecompress::preProcess(grk_plugin_decompress_callback_info* info)
   parameters->core.io_buffer_callback = grkSerializeBufferCallback;
   parameters->core.io_user_data = imageFormat;
   parameters->core.io_register_client_callback = grkSerializeRegisterClientCallback;
+  info->format_private = imageFormat;
 
   // 1. initialize
   if(!info->codec)
@@ -1067,9 +1075,6 @@ int GrkDecompress::preProcess(grk_plugin_decompress_callback_info* info)
       goto cleanup;
     }
   }
-  if(!encodeInit(info))
-    return false;
-
   // decompress one particular tile
   if(parameters->single_tile_decompress)
   {
@@ -1086,6 +1091,8 @@ int GrkDecompress::preProcess(grk_plugin_decompress_callback_info* info)
     if(!(grk_decompress(info->codec, info->tile)))
       goto cleanup;
   }
+  if(!encodeInit(info))
+    return false;
   if(!encodeHeader(info))
     goto cleanup;
   failed = false;
@@ -1094,8 +1101,17 @@ cleanup:
   {
     cleanUpFile(outfile);
     info->image = nullptr;
-    delete imageFormat;
-    imageFormat = nullptr;
+    if(info->format_private)
+    {
+      delete (IImageFormat*)info->format_private;
+      info->format_private = nullptr;
+      imageFormat = nullptr;
+    }
+    else
+    {
+      delete imageFormat;
+      imageFormat = nullptr;
+    }
   }
 
   return failed ? 1 : 0;
@@ -1108,6 +1124,7 @@ int GrkDecompress::postProcess(grk_plugin_decompress_callback_info* info)
 {
   if(!info)
     return -1;
+  auto fmt = info->format_private ? (IImageFormat*)info->format_private : imageFormat;
   bool failed = true;
   bool imageNeedsDestroy = false;
   const char* infile = nullptr;
@@ -1149,12 +1166,12 @@ int GrkDecompress::postProcess(grk_plugin_decompress_callback_info* info)
   if(storeToDisk)
   {
     auto outfileStr = outfile ? std::string(outfile) : "";
-    if(!imageFormat->encodePixels())
+    if(!fmt->encodePixels())
     {
       spdlog::error("Outfile {} not generated", outfileStr);
       goto cleanup;
     }
-    if(!imageFormat->encodeFinish())
+    if(!fmt->encodeFinish())
     {
       spdlog::error("Outfile {} not generated", outfileStr);
       goto cleanup;
@@ -1162,6 +1179,13 @@ int GrkDecompress::postProcess(grk_plugin_decompress_callback_info* info)
   }
   failed = false;
 cleanup:
+  // GPU decode path: component data pointers were replaced with pool buffer pointers
+  // in deviceToHostMapped. Null them to prevent TileCache from freeing pool memory.
+  if(info->decompress_flags & GRK_DECODE_POST_T1 && info->image)
+  {
+    for(uint32_t i = 0; i < info->image->numcomps; ++i)
+      info->image->comps[i].data = nullptr;
+  }
   grk_object_unref(info->codec);
   info->codec = nullptr;
   if(image && imageNeedsDestroy)
@@ -1169,8 +1193,17 @@ cleanup:
     grk_object_unref(&image->obj);
     info->image = nullptr;
   }
-  delete imageFormat;
-  imageFormat = nullptr;
+  if(info->format_private)
+  {
+    delete (IImageFormat*)info->format_private;
+    info->format_private = nullptr;
+    imageFormat = nullptr;
+  }
+  else
+  {
+    delete imageFormat;
+    imageFormat = nullptr;
+  }
   if(failed)
     cleanUpFile(outfile);
 
