@@ -127,7 +127,7 @@ struct BufferedStream : public IStream
   {
     chunk_buf_ = chunkBuffer;
     streamOffset_ = chunkBuffer->offset();
-    bufferedBytes_ = chunk_buf_->size();
+    bufferedBytes_ = chunk_buf_->size() - streamOffset_;
     readBytesSeekable_ = bufferedBytes_;
   }
 
@@ -343,6 +343,21 @@ private:
       assert(streamOffset_ <= userDataLength_);
       return read_nb_bytes;
     }
+    // 2b. ChunkBuffer exhausted: read remaining and signal end
+    if(chunk_buf_)
+    {
+      if(bufferedBytes_)
+      {
+        read_nb_bytes += bufferedBytes_;
+        if(buffer)
+          memcpy(buffer, chunk_buf_->currPtr(bufferedBytes_), bufferedBytes_);
+        chunk_buf_->increment_offset((ptrdiff_t)bufferedBytes_);
+        streamOffset_ += bufferedBytes_;
+        bufferedBytes_ = 0;
+      }
+      status_ |= GROK_STREAM_STATUS_END;
+      return read_nb_bytes;
+    }
     // 3. if stream is at end, then read remaining bytes in buffer and return
     if(status_ & GROK_STREAM_STATUS_END)
     {
@@ -509,7 +524,11 @@ private:
     {
       bool rc = chunk_buf_->set_offset(offset);
       if(rc)
+      {
         streamOffset_ = chunk_buf_->offset();
+        bufferedBytes_ = chunk_buf_->size() - streamOffset_;
+        readBytesSeekable_ = bufferedBytes_;
+      }
       return rc;
     }
 
