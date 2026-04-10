@@ -66,6 +66,12 @@ include_directories(
   ${LCMS_INCLUDE_DIRNAME}
 )
 
+# When the GPU plugin submodule is present and the loader is enabled,
+# add the submodule's include path for plugin_api.h / plugin_types.h
+if (GRK_BUILD_PLUGIN_LOADER AND EXISTS "${GROK_SOURCE_DIR}/extern/grok-gpu-plugin/include")
+  include_directories(${GROK_SOURCE_DIR}/extern/grok-gpu-plugin/include)
+endif()
+
 # Defines the source code for executables
 set(GROK_EXECUTABLES_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/util/bench_dwt.cpp

@@ -1046,6 +1046,56 @@ void TileProcessor::post_decompressT2T1(GrkImage* scratch)
 void TileProcessor::scheduleAndRunDecompress(CoderPool* coderPool, Rect32 unreducedImageBounds,
                                              std::function<void()> post, TileFutureManager& futures)
 {
+  // GPU plugin T2-only fast path: run T2 parsing inline without task graph overhead
+  if(current_plugin_tile_ && !(current_plugin_tile_->decompress_flags & GRK_DECODE_T1))
+  {
+    unreducedImageWindow_ = unreducedImageBounds;
+    if(tile_ && !tcp_->packets_->empty())
+    {
+      tcp_->packets_->rewind();
+      packetLengthCache_->rewind();
+      numProcessedPackets_ = 0;
+      numReadDataPackets_ = 0;
+      getStream()->memAdvise(startPos_, tilePartInfo_.tilePartLength_,
+                             GrkAccessPattern::ACCESS_SEQUENTIAL);
+      for(uint16_t compno = 0; compno < headerImage_->numcomps; ++compno)
+      {
+        auto tilec = tile_->comps_ + compno;
+        for(uint8_t resno = 0; resno < tilec->resolutions_to_decompress_; ++resno)
+        {
+          auto res = tilec->resolutions_ + resno;
+          res->packetParser_->clearPrecinctParsers();
+        }
+      }
+      if(createDecompressTileComponentWindows())
+      {
+        auto t2 = std::make_unique<T2Decompress>(this);
+        truncated_ = t2->parsePackets(tileIndex_, tcp_->packets_);
+        decompress_synch_plugin_with_host();
+        // parse packet data
+        for(uint16_t compno = 0; compno < headerImage_->numcomps; ++compno)
+        {
+          auto tilec = tile_->comps_ + compno;
+          for(uint8_t resno = 0; resno < tilec->resolutions_to_decompress_; ++resno)
+          {
+            auto res = tilec->resolutions_ + resno;
+            for(const auto& pp : res->packetParser_->allLayerPrecinctParsers_)
+            {
+              auto parser = pp.second->parserQueue_.pop();
+              while(parser != std::nullopt)
+              {
+                parser.value()->parsePacketData();
+                parser = pp.second->parserQueue_.pop();
+              }
+            }
+          }
+        }
+      }
+    }
+    post();
+    return;
+  }
+
   futures.waitAndClear(tileIndex_);
   staleParsing_.clear();
   unreducedImageWindow_ = unreducedImageBounds;
@@ -1149,6 +1199,9 @@ void TileProcessor::scheduleAndRunDecompress(CoderPool* coderPool, Rect32 unredu
       return;
     // skip T1/wavelet/MCT when only recording packet lengths (transcode PLT)
     if(cp_->recordPacketLengths_)
+      return;
+    // GPU plugin T2-only: skip T1/DWT when GPU handles T1 decode
+    if(current_plugin_tile_ && !(current_plugin_tile_->decompress_flags & GRK_DECODE_T1))
       return;
     for(uint16_t compno = 0; compno < tile_->numcomps_; ++compno)
     {

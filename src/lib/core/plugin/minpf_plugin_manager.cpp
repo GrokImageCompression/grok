@@ -217,7 +217,9 @@ static int32_t minpf_post_load_plugin(const char* pluginPath, minpf_post_load_fu
 {
   minpf_plugin_manager* mgr = minpf_get_plugin_manager();
   mgr->platformServices.pluginPath = pluginPath;
-  mgr->platformServices.logger = &grk::Logger::logger_;
+  mgr->platformServices.verbose = false;
+  static grk::GpupLoggerAdapter gpupLoggerAdapter(&grk::Logger::logger_);
+  mgr->platformServices.logger = &gpupLoggerAdapter;
   minpf_exit_func exitFunc = postLoadFunc(&mgr->platformServices);
   if(!exitFunc)
     return -1;

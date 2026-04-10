@@ -17,6 +17,9 @@
 
 #include <plugin/minpf_plugin.h>
 #include "grok.h"
+#define GPUP_TYPES_ONLY
+#include "gpup/gpu_plugin_shared.h"
+#undef GPUP_TYPES_ONLY
 #include <cstring>
 #include <string>
 
@@ -51,15 +54,15 @@ typedef void (*PLUGIN_DEBUG_MQC_NEXT_CXD)(grk_plugin_debug_mqc* mqc, uint32_t d)
 typedef void (*PLUGIN_DEBUG_MQC_NEXT_PLANE)(grk_plugin_debug_mqc* mqc);
 
 /////////////////////
-// compressor interface
+// compressor interface — function signatures match the plugin's gpup API
 /////////////////////
 
-typedef bool (*PLUGIN_INIT)(grk_plugin_init_info initInfo);
+typedef bool (*PLUGIN_INIT)(gpup_init_info initInfo);
 
-typedef int32_t (*PLUGIN_ENCODE)(grk_cparameters* encoding_parameters,
-                                 GRK_PLUGIN_COMPRESS_USER_CALLBACK callback);
+typedef int32_t (*PLUGIN_ENCODE)(gpup_compress_params* encoding_parameters,
+                                 GPUP_COMPRESS_USER_CALLBACK callback);
 
-typedef int32_t (*PLUGIN_BATCH_ENCODE)(grk_plugin_compress_batch_info info);
+typedef int32_t (*PLUGIN_BATCH_ENCODE)(gpup_compress_batch_info info);
 
 typedef void (*PLUGIN_STOP_BATCH_ENCODE)(void);
 
@@ -69,14 +72,17 @@ typedef void (*PLUGIN_WAIT_FOR_BATCH_COMPLETE)(void);
 // decompressor interface
 ////////////////////
 
+/* PluginDecodeCallbackInfo uses gpup_ types because it shuttles data
+   between the plugin (which creates it with gpup types) and grok's
+   bridge code (which converts to grk_ types for the host callback). */
 struct PluginDecodeCallbackInfo
 {
-  PluginDecodeCallbackInfo() : PluginDecodeCallbackInfo("", "", nullptr, GRK_CODEC_UNK, 0) {}
+  PluginDecodeCallbackInfo() : PluginDecodeCallbackInfo("", "", nullptr, GPUP_CODEC_UNK, 0) {}
   PluginDecodeCallbackInfo(std::string input, std::string output,
-                           grk_decompress_parameters* decompressorParameters,
-                           GRK_CODEC_FORMAT format, uint32_t flags)
-      : device_id(0), init_decompressors_func(nullptr), inputFile(input), outputFile(output),
-        decod_format(format), cod_format(GRK_FMT_UNK), codec(nullptr),
+                           gpup_decompress_params* decompressorParameters, gpup_codec_fmt format,
+                           uint32_t flags)
+      : deviceId(0), init_decompressors_func(nullptr), inputFile(input), outputFile(output),
+        decod_format(format), cod_format(GPUP_FMT_UNK), codec(nullptr),
         decompressor_parameters(decompressorParameters), image(nullptr), plugin_owns_image(false),
         tile(nullptr), error_code(0), decompress_flags(flags), user_data(nullptr),
         format_private(nullptr)
@@ -84,20 +90,20 @@ struct PluginDecodeCallbackInfo
   {
     memset(&header_info, 0, sizeof(header_info));
   }
-  size_t device_id;
-  GROK_INIT_DECOMPRESSORS init_decompressors_func;
+  size_t deviceId;
+  GPUP_INIT_DECOMPRESSORS init_decompressors_func;
   std::string inputFile;
   std::string outputFile;
   // input file format 0: J2K, 1: JP2
-  GRK_CODEC_FORMAT decod_format;
+  gpup_codec_fmt decod_format;
   // output file format 0: PGX, 1: PxM, 2: BMP etc
-  GRK_SUPPORTED_FILE_FMT cod_format;
-  grk_object* codec;
-  grk_decompress_parameters* decompressor_parameters;
-  grk_header_info header_info;
-  grk_image* image;
+  gpup_file_fmt cod_format;
+  gpup_codec* codec;
+  gpup_decompress_params* decompressor_parameters;
+  gpup_header_info header_info;
+  gpup_image* image;
   bool plugin_owns_image;
-  grk_plugin_tile* tile;
+  gpup_tile* tile;
   int32_t error_code;
   uint32_t decompress_flags;
   void* user_data;
@@ -106,11 +112,11 @@ struct PluginDecodeCallbackInfo
 
 typedef int32_t (*PLUGIN_DECODE_USER_CALLBACK)(PluginDecodeCallbackInfo* info);
 
-typedef int32_t (*PLUGIN_DECODE)(grk_decompress_parameters* decoding_parameters,
+typedef int32_t (*PLUGIN_DECODE)(gpup_decompress_params* decoding_parameters,
                                  PLUGIN_DECODE_USER_CALLBACK userCallback);
 
 typedef int32_t (*PLUGIN_INIT_BATCH_DECODE)(const char* input_dir, const char* output_dir,
-                                            grk_decompress_parameters* decoding_parameters,
+                                            gpup_decompress_params* decoding_parameters,
                                             PLUGIN_DECODE_USER_CALLBACK userCallback);
 
 typedef int32_t (*PLUGIN_BATCH_DECODE)(void);

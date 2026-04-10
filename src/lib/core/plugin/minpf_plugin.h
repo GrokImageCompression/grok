@@ -20,8 +20,56 @@
 #include "grok.h"
 #include "Logger.h"
 
+namespace gpup
+{
+// Forward-declare the plugin's ILogger (no virtual dtor, 3 methods)
+// so we can pass a compatible pointer across the shared-library boundary.
+struct ILogger
+{
+  virtual void info(const char* fmt, ...) = 0;
+  virtual void warn(const char* fmt, ...) = 0;
+  virtual void error(const char* fmt, ...) = 0;
+};
+} // namespace gpup
+
 namespace grk
 {
+
+// Adapter: wraps grk::ILogger (virtual dtor + 5 methods) in a gpup::ILogger
+// (no virtual dtor, 3 methods) so the vtable layout matches what the plugin expects.
+struct GpupLoggerAdapter : public gpup::ILogger
+{
+  grk::ILogger* grk_logger;
+  GpupLoggerAdapter(grk::ILogger* l) : grk_logger(l) {}
+  void info(const char* fmt, ...) override
+  {
+    va_list args;
+    va_start(args, fmt);
+    char buf[1024];
+    vsnprintf(buf, sizeof(buf), fmt, args);
+    va_end(args);
+    grk_logger->info("%s", buf);
+  }
+  void warn(const char* fmt, ...) override
+  {
+    va_list args;
+    va_start(args, fmt);
+    char buf[1024];
+    vsnprintf(buf, sizeof(buf), fmt, args);
+    va_end(args);
+    grk_logger->warn("%s", buf);
+  }
+  void error(const char* fmt, ...) override
+  {
+    va_list args;
+    va_start(args, fmt);
+    char buf[1024];
+    vsnprintf(buf, sizeof(buf), fmt, args);
+    va_end(args);
+    grk_logger->error("%s", buf);
+  }
+};
+
 struct minpf_platform_services;
 
 typedef struct minpf_object_params
@@ -54,7 +102,8 @@ typedef struct minpf_platform_services
   minpf_invoke_service_func invokeService;
 
   const char* pluginPath;
-  grk::ILogger* logger;
+  bool verbose;
+  gpup::ILogger* logger;
 } minpf_platform_services;
 
 typedef int32_t (*minpf_exit_func)();

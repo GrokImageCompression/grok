@@ -2093,7 +2093,7 @@ GRK_API uint32_t GRK_CALLCONV grk_plugin_get_debug_state();
 typedef struct _grk_plugin_init_info
 {
   int32_t device_id; /* device ID */
-  bool verbose; /* verbose output */
+  bool verbose; /* enable diagnostic logging */
   const char* license; /* license */
   const char* server; /* server */
 } grk_plugin_init_info;
@@ -2224,7 +2224,7 @@ typedef struct _grk_plugin_decompress_callback_info
   uint32_t full_image_x0; /* full image x0 */
   uint32_t full_image_y0; /* full image y0 */
   void* user_data; /* user data */
-  void* format_private; /* per-tile image format (batch decode) */
+  void* format_private; /* format-specific private data */
 } grk_plugin_decompress_callback_info;
 
 /**

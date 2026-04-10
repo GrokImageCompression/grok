@@ -8,3 +8,6 @@
 	path = src/include/spdlog
 	url = https://github.com/gabime/spdlog.git
 	branch = v2.x
+[submodule "extern/grok-gpu-plugin"]
+	path = extern/grok-gpu-plugin
+	url = git@gitlab-rsa:GrokImageCompression/grok_gpu_plugin.git

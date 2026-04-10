@@ -211,6 +211,25 @@ set(BUILD_SHARED_LIBS ${BUILD_SHARED_LIBS_SAVED})
 
 add_subdirectory(src/lib/core)
 
+# Build GPU plugin from submodule (extern/grok-gpu-plugin)
+# Must come after src/lib/core so plugin detects existing hwy target
+if(GRK_BUILD_PLUGIN_LOADER)
+  set(GPUP_BUILD_SHARED ON CACHE BOOL "" FORCE)
+  set(GPUP_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+  set(GPUP_BUILD_TOOLS OFF CACHE BOOL "" FORCE)
+  if(DEFINED GRK_CUDA_ARCH AND NOT GRK_CUDA_ARCH STREQUAL "")
+    set(GPUP_CUDA_ARCH "${GRK_CUDA_ARCH}" CACHE STRING "" FORCE)
+  endif()
+  add_subdirectory(extern/grok-gpu-plugin)
+  # Rename output to match what grok's minpf loader expects
+  set_target_properties(gpup PROPERTIES
+    OUTPUT_NAME "${GROK_PLUGIN_NAME}"
+    LIBRARY_OUTPUT_DIRECTORY "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}"
+    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}"
+    ${GROK_LIBRARY_PROPERTIES}
+  )
+endif()
+
 # Build codec library before SWIG bindings (codec bindings link against it)
 if(GRK_BUILD_CODEC)
   add_subdirectory(src/lib/codec)

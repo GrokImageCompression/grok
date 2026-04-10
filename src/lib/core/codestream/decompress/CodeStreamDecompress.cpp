@@ -156,6 +156,60 @@ void CodeStreamDecompress::init(grk_decompress_parameters* parameters)
 bool CodeStreamDecompress::decompress(grk_plugin_tile* tile)
 {
   current_plugin_tile = tile;
+
+  // GPU plugin T2-only fast path: skip heavy infrastructure
+  if(tile && !(tile->decompress_flags & GRK_DECODE_T1))
+  {
+    tileCache_->init(cp_.t_grid_width_ * cp_.t_grid_height_);
+    decompressSequentialPrepare();
+    success_ = true;
+    // Parse tile parts (SOT markers + tile data)
+    while(!markerParser_.endOfCodeStream() && stream_->numBytesLeft() != 0)
+    {
+      try
+      {
+        auto [processed, length] = markerParser_.processMarker();
+        if(!processed)
+          break;
+      }
+      catch([[maybe_unused]] const CorruptSOTMarkerException&)
+      {
+        break;
+      }
+      try
+      {
+        if(!markerParser_.readId(false))
+          break;
+      }
+      catch([[maybe_unused]] const t1_t2::InvalidMarkerException&)
+      {
+        break;
+      }
+      if(!currTileProcessor_)
+        continue;
+      if(!currTileProcessor_->parseTilePart(nullptr, nullptr, markerParser_.currId(),
+                                            currTilePartInfo_))
+      {
+        success_ = false;
+        break;
+      }
+      if(!currTileProcessor_->allSOTMarkersParsed() && !markerParser_.readSOTorEOC())
+        break;
+      if(currTileProcessor_->allSOTMarkersParsed())
+        break;
+    }
+    if(currTileProcessor_)
+    {
+      currTileProcessor_->prepareForDecompression();
+      // Run T2 inline with no-op post (no image extraction needed)
+      currTileProcessor_->scheduleAndRunDecompress(
+          &coderPool_, headerImage_->getBounds(), []() {}, decompressTileFutureManager_);
+      currTileProcessor_ = nullptr;
+      currTileIndex_ = -1;
+    }
+    return success_;
+  }
+
   multiTileComposite_->postReadHeader(&cp_);
   tileCache_->init(cp_.t_grid_width_ * cp_.t_grid_height_);
   auto slated = tilesToDecompress_.getSlatedTiles();

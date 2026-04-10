@@ -925,9 +925,9 @@ bool GrkDecompress::encodeInit(grk_plugin_decompress_callback_info* info)
     compression_level = parameters->compression_level;
   auto fmt = info->format_private ? (IImageFormat*)info->format_private : imageFormat;
   if(!fmt->encodeInit(info->image, outfileStr, compression_level,
-                              info->decompressor_parameters->num_threads
-                                  ? info->decompressor_parameters->num_threads
-                                  : std::thread::hardware_concurrency()))
+                      info->decompressor_parameters->num_threads
+                          ? info->decompressor_parameters->num_threads
+                          : std::thread::hardware_concurrency()))
   {
     spdlog::error("Outfile {} not generated", outfileStr);
     return false;
@@ -1029,7 +1029,9 @@ int GrkDecompress::preProcess(grk_plugin_decompress_callback_info* info)
     info->image = grk_decompress_get_image(info->codec);
 
     if(info->init_decompressors_func)
+    {
       return info->init_decompressors_func(&info->header_info, info->image);
+    }
   }
   // header-only decompress
   if(info->decompress_flags == GRK_DECODE_HEADER)
@@ -1091,6 +1093,13 @@ int GrkDecompress::preProcess(grk_plugin_decompress_callback_info* info)
     if(!(grk_decompress(info->codec, info->tile)))
       goto cleanup;
   }
+  // GPU path: during T2, grk_decompress does packet parsing and feeds codeblock
+  // data to the GPU plugin. The image is not populated yet (POST_T1 handles that).
+  if(info->init_decompressors_func)
+  {
+    failed = false;
+    goto cleanup;
+  }
   if(!encodeInit(info))
     return false;
   if(!encodeHeader(info))
@@ -1103,7 +1112,7 @@ cleanup:
     info->image = nullptr;
     if(info->format_private)
     {
-      delete (IImageFormat*)info->format_private;
+      delete(IImageFormat*)info->format_private;
       info->format_private = nullptr;
       imageFormat = nullptr;
     }
@@ -1165,6 +1174,42 @@ int GrkDecompress::postProcess(grk_plugin_decompress_callback_info* info)
   }
   if(storeToDisk)
   {
+    // GPU decode path: format was not initialized during preProcess
+    // (encodeInit was skipped because grk_decompress was not called).
+    // Initialize the format now with the bridge image that has actual data.
+    if(info->decompress_flags & GRK_DECODE_POST_T1 &&
+       fmt->getEncodeState() == IMAGE_FORMAT_UNENCODED)
+    {
+      // Set decompress output fields on the bridge image
+      if(image->numcomps > 0)
+      {
+        if(image->decompress_prec == 0)
+        {
+          image->decompress_prec = image->comps[0].prec;
+          image->decompress_width = image->comps[0].w;
+          image->decompress_height = image->comps[0].h;
+          image->decompress_num_comps = image->numcomps;
+          image->decompress_colour_space = image->color_space;
+        }
+        if(image->packed_row_bytes == 0)
+        {
+          uint16_t ncmp = image->numcomps;
+          uint8_t prec = image->comps[0].prec;
+          image->packed_row_bytes = ((uint64_t)image->comps[0].w * ncmp * prec + 7U) / 8U;
+        }
+        if(image->rows_per_strip == 0)
+          image->rows_per_strip = std::min((uint32_t)32, image->comps[0].h);
+      }
+      if(!fmt->encodeInit(
+             image, outfile ? std::string(outfile) : "",
+             info->cod_format == GRK_FMT_TIF ? info->decompressor_parameters->compression : 0,
+             info->decompressor_parameters->num_threads ? info->decompressor_parameters->num_threads
+                                                        : std::thread::hardware_concurrency()))
+      {
+        spdlog::error("Outfile {} not generated", outfile ? std::string(outfile) : "");
+        goto cleanup;
+      }
+    }
     auto outfileStr = outfile ? std::string(outfile) : "";
     if(!fmt->encodePixels())
     {
@@ -1195,7 +1240,7 @@ cleanup:
   }
   if(info->format_private)
   {
-    delete (IImageFormat*)info->format_private;
+    delete(IImageFormat*)info->format_private;
     info->format_private = nullptr;
     imageFormat = nullptr;
   }
