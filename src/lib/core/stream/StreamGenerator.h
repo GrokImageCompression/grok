@@ -99,7 +99,7 @@ public:
       {
         std::string_view file{streamParams_.file};
         bool isNetwork = file.starts_with("http://") || file.starts_with("https://") ||
-                         file.starts_with("/vsis3/");
+                         file.starts_with("/vsis3/") || file.starts_with("/vsicurl/");
         if(isNetwork && !streamParams_.read_fn)
           return createCurlFetchStream();
       }

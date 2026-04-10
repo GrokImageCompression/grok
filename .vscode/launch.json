@@ -334,9 +334,9 @@
             "program": "${workspaceFolder}/build/bin/grk_decompress",
             "args": [
                 "-i",
-                "/home/aaron/src/grok-test-data/input/nonregression/issue391.jp2",
+                "/vsicurl/https://www.opengeodata.nrw.de/produkte/geobasis/lusat/akt/dop/dop_jp2_f10/dop10rgbi_32_280_5653_1_nw_2025.jp2",
                 "-o",
-                "/home/aaron/temp/issue391.jp2.tif"
+                "/home/aaron/temp/test_failed.tif"
             ],
             "cwd": "${workspaceFolder}",
             "environment": [

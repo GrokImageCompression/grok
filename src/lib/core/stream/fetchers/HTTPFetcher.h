@@ -36,9 +36,8 @@ protected:
     std::string mutable_path = path;
     if(mutable_path.starts_with("/vsicurl/"))
     {
-      ParsedFetchPath parsed;
-      FetchPathParser::parseVsiPath(mutable_path, parsed, "vsicurl");
-      url_ = "https://" + parsed.bucket + "/" + parsed.key;
+      // Content after /vsicurl/ is a complete URL — use it directly
+      url_ = mutable_path.substr(9); // strlen("/vsicurl/") == 9
       if(!url_.starts_with("http://") && !url_.starts_with("https://"))
       {
         grklog.error("Invalid /vsicurl/ URL: must start with http:// or https://: %s",

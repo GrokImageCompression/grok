@@ -138,7 +138,10 @@ IStream* StreamGenerator::createCurlFetchStream(void)
   auth.s3_allow_insecure_ = streamParams_.s3_allow_insecure;
   grklog.debug("StreamGenerator: s3_allow_insecure: streamParams=%d, auth=%d",
                (int)streamParams_.s3_allow_insecure, (int)auth.s3_allow_insecure_);
-  auto fetcher = new S3Fetcher();
+  std::string_view file{streamParams_.file};
+  bool isS3 = file.starts_with("/vsis3/") || file.starts_with("/vsis3_streaming/");
+  CurlFetcher* fetcher = isS3 ? static_cast<CurlFetcher*>(new S3Fetcher())
+                               : static_cast<CurlFetcher*>(new HTTPFetcher());
   fetcher->init(streamParams_.file, auth);
   uint64_t dataLen = fetcher->size();
   auto initial_double_buffer_len =
