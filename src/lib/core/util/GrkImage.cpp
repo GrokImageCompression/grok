@@ -618,11 +618,6 @@ bool GrkImage::check_color(uint16_t signalledNumComps)
       if(info[i].asoc == 0 || info[i].asoc == GRK_CHANNEL_ASSOC_UNASSOCIATED)
         continue;
       uint16_t ascMinusOne = (uint16_t)(info[i].asoc - 1);
-      if(ascMinusOne > 2)
-      {
-        grklog.error("Illegal channel association %u ", info[i].asoc);
-        return false;
-      }
       if(hasPalette && ascMinusOne >= num_channels)
       {
         grklog.error("Invalid channel association %u for number of palette channels %u.",

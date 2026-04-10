@@ -868,10 +868,11 @@ bool FileFormatJP2Family::read_channel_definition([[maybe_unused]] uint8_t* p_cd
       goto cleanup;
     }
     grk_read(&p_cdef_header_data, &cdef_info[i].asoc); /* Asoc^i */
-    if(cdef_info[i].asoc > 3 && cdef_info[i].asoc != GRK_CHANNEL_ASSOC_UNASSOCIATED)
+    if(cdef_info[i].asoc > num_channel_descriptions &&
+       cdef_info[i].asoc != GRK_CHANNEL_ASSOC_UNASSOCIATED)
     {
-      grklog.error("CDEF box : Illegal channel association %u", cdef_info[i].asoc);
-      goto cleanup;
+      grklog.warn("CDEF box : channel association %u exceeds number of channel descriptions %u",
+                  cdef_info[i].asoc, num_channel_descriptions);
     }
   }
 
