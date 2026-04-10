@@ -21,7 +21,7 @@ add_test(
         ${PYTHON_TEST_DIR}
         -v
         --tb=short
-    WORKING_DIRECTORY ${GROK_BIN_DIR}
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
 )
 
 # SWIG module and shared lib live in bin/
