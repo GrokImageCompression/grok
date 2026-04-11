@@ -136,6 +136,15 @@ IStream* StreamGenerator::createCurlFetchStream(void)
   auth.s3_use_virtual_hosting_ = streamParams_.s3_use_virtual_hosting;
   auth.s3_no_sign_request_ = streamParams_.s3_no_sign_request;
   auth.s3_allow_insecure_ = streamParams_.s3_allow_insecure;
+  if(streamParams_.cookie[0])
+    auth.cookie_ = streamParams_.cookie;
+  if(streamParams_.cookie_file[0])
+    auth.cookie_file_ = streamParams_.cookie_file;
+  if(streamParams_.cookie_jar[0])
+    auth.cookie_jar_ = streamParams_.cookie_jar;
+  auth.netrc_ = streamParams_.netrc;
+  if(streamParams_.netrc_file[0])
+    auth.netrc_file_ = streamParams_.netrc_file;
   grklog.debug("StreamGenerator: s3_allow_insecure: streamParams=%d, auth=%d",
                (int)streamParams_.s3_allow_insecure, (int)auth.s3_allow_insecure_);
   std::string_view file{streamParams_.file};

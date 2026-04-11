@@ -336,7 +336,9 @@
                 "-i",
                 "/vsicurl/https://www.opengeodata.nrw.de/produkte/geobasis/lusat/akt/dop/dop_jp2_f10/dop10rgbi_32_280_5653_1_nw_2025.jp2",
                 "-o",
-                "/home/aaron/temp/test_failed.tif"
+                "/home/aaron/temp/vsicurl.tif",
+                // "-d",
+                // "0,0,1024,1024"
             ],
             "cwd": "${workspaceFolder}",
             "environment": [

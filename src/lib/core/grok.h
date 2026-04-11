@@ -592,6 +592,19 @@ typedef struct _grk_stream_params
   bool s3_no_sign_request; /* true = skip authentication (public buckets) */
   bool s3_allow_insecure; /* true = disable SSL certificate verification */
 
+  /* 6 HTTP cookies */
+  char cookie[4096]; /* inline cookie string for CURLOPT_COOKIE
+                        (e.g. "name1=value1; name2=value2") */
+  char cookie_file[GRK_PATH_LEN]; /* path passed to CURLOPT_COOKIEFILE
+                                     (read cookies from a Netscape/HTTP file) */
+  char cookie_jar[GRK_PATH_LEN]; /* path passed to CURLOPT_COOKIEJAR
+                                    (write cookies on cleanup) */
+
+  /* 7 .netrc credentials */
+  bool netrc; /* true = enable .netrc lookup (CURLOPT_NETRC=REQUIRED) */
+  char netrc_file[GRK_PATH_LEN]; /* optional explicit .netrc path
+                                    (CURLOPT_NETRC_FILE) */
+
 } grk_stream_params;
 
 /**

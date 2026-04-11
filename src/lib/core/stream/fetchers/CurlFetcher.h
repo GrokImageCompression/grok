@@ -557,7 +557,7 @@ protected:
 
   virtual void auth(CURL* curl)
   {
-    if(EnvVarManager::test_bool("GRK_HTTP_UNSAFESSL"))
+    if(EnvVarManager::test_bool("GRK_HTTP_UNSAFESSL") || auth_.s3_allow_insecure_)
     {
       curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
       curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L);
@@ -565,6 +565,20 @@ protected:
 
     curl_easy_setopt(curl, CURLOPT_USERNAME, auth_.username_.c_str());
     curl_easy_setopt(curl, CURLOPT_PASSWORD, auth_.password_.c_str());
+
+    // Cookies (CURLOPT_COOKIE / COOKIEFILE / COOKIEJAR)
+    if(!auth_.cookie_.empty())
+      curl_easy_setopt(curl, CURLOPT_COOKIE, auth_.cookie_.c_str());
+    if(!auth_.cookie_file_.empty())
+      curl_easy_setopt(curl, CURLOPT_COOKIEFILE, auth_.cookie_file_.c_str());
+    if(!auth_.cookie_jar_.empty())
+      curl_easy_setopt(curl, CURLOPT_COOKIEJAR, auth_.cookie_jar_.c_str());
+
+    // .netrc (CURLOPT_NETRC / CURLOPT_NETRC_FILE)
+    if(auth_.netrc_)
+      curl_easy_setopt(curl, CURLOPT_NETRC, (long)CURL_NETRC_REQUIRED);
+    if(!auth_.netrc_file_.empty())
+      curl_easy_setopt(curl, CURLOPT_NETRC_FILE, auth_.netrc_file_.c_str());
   }
 
   curl_slist* configureHeaders(const std::string& range)

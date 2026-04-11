@@ -51,6 +51,16 @@ struct FetchAuth
   int8_t s3_use_virtual_hosting_ = 0; // 0 = auto, 1 = virtual-hosted, -1 = path-style
   bool s3_no_sign_request_ = false; // true = skip authentication
   bool s3_allow_insecure_ = false; // true = disable SSL certificate verification
+
+  // HTTP cookies (CURLOPT_COOKIE / COOKIEFILE / COOKIEJAR)
+  std::string cookie_; // inline cookie string ("name1=value1; name2=value2")
+  std::string cookie_file_; // file to read cookies from
+  std::string cookie_jar_; // file to write cookies to on cleanup
+
+  // .netrc credentials (CURLOPT_NETRC / CURLOPT_NETRC_FILE)
+  bool netrc_ = false; // enable .netrc lookup
+  std::string netrc_file_; // optional explicit .netrc path
+
   FetchAuth() = default;
   FetchAuth(const std::string& u, const std::string& p, const std::string& t, const std::string& h,
             const std::string& r = "", const std::string& st = "")
