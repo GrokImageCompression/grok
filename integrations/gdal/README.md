@@ -65,5 +65,6 @@ cmake --install . --config Release
 
 
 ```
- PYTHONPATH=build/swig/python LD_LIBRARY_PATH=build python3 -m pytest autotest/gdrivers/jp2grok.py -v --tb=short
+PYTHONPATH=build/swig/python LD_LIBRARY_PATH=build GDAL_RUN_SLOW_TESTS=yes \
+  python3 -m pytest autotest/gdrivers/jp2grok.py -v --tb=short
 ```
