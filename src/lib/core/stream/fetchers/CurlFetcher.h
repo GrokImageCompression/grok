@@ -563,8 +563,10 @@ protected:
       curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L);
     }
 
-    curl_easy_setopt(curl, CURLOPT_USERNAME, auth_.username_.c_str());
-    curl_easy_setopt(curl, CURLOPT_PASSWORD, auth_.password_.c_str());
+    if(!auth_.username_.empty())
+      curl_easy_setopt(curl, CURLOPT_USERNAME, auth_.username_.c_str());
+    if(!auth_.password_.empty())
+      curl_easy_setopt(curl, CURLOPT_PASSWORD, auth_.password_.c_str());
 
     // Cookies (CURLOPT_COOKIE / COOKIEFILE / COOKIEJAR)
     if(!auth_.cookie_.empty())

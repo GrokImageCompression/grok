@@ -155,8 +155,17 @@ IStream* StreamGenerator::createCurlFetchStream(void)
                (int)streamParams_.s3_allow_insecure, (int)auth.s3_allow_insecure_);
   std::string_view file{streamParams_.file};
   bool isS3 = file.starts_with("/vsis3/") || file.starts_with("/vsis3_streaming/");
-  CurlFetcher* fetcher = isS3 ? static_cast<CurlFetcher*>(new S3Fetcher())
-                              : static_cast<CurlFetcher*>(new HTTPFetcher());
+  bool isAZ = file.starts_with("/vsiaz/");
+  bool isGS = file.starts_with("/vsigs/");
+  CurlFetcher* fetcher;
+  if(isS3)
+    fetcher = new S3Fetcher();
+  else if(isAZ)
+    fetcher = new AZFetcher();
+  else if(isGS)
+    fetcher = new GSFetcher();
+  else
+    fetcher = new HTTPFetcher();
   fetcher->init(streamParams_.file, auth);
   uint64_t dataLen = fetcher->size();
   auto initial_double_buffer_len =

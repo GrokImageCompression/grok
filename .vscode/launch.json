@@ -348,6 +348,44 @@
             "miDebuggerPath": "/usr/bin/gdb"
         },
         {
+            "name": "vsigs",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/bin/grk_decompress",
+            "args": [
+                "-i",
+                "/vsigs/gcp-public-data-sentinel-2/tiles/10/S/DG/S2A_MSIL1C_20150918T190346_N0204_R113_T10SDG_20150918T190345.SAFE/GRANULE/L1C_T10SDG_A001254_20150918T190345/IMG_DATA/T10SDG_20150918T190346_B01.jp2",
+                "-o",
+                "/home/aaron/temp/vsigs.tif"
+            ],
+            "cwd": "${workspaceFolder}",
+            "environment": [
+                { "name": "GRK_DEBUG", "value": "3"}
+            ],
+            "MIMode": "gdb",
+            "miDebuggerPath": "/usr/bin/gdb"
+        },
+        {
+            "name": "vsiaz",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/bin/grk_decompress",
+            "args": [
+                "-i",
+                "/vsiaz/CONTAINER/PATH/TO/FILE.jp2",
+                "-o",
+                "/home/aaron/temp/vsiaz.tif"
+            ],
+            "cwd": "${workspaceFolder}",
+            "environment": [
+                { "name": "GRK_DEBUG", "value": "3"},
+                { "name": "AZURE_STORAGE_ACCOUNT", "value": "ACCOUNT_NAME"},
+                { "name": "AZURE_STORAGE_SAS_TOKEN", "value": "?sv=..."}
+            ],
+            "MIMode": "gdb",
+            "miDebuggerPath": "/usr/bin/gdb"
+        },
+        {
             "name": "page",
             "type": "cppdbg",
             "request": "launch",
