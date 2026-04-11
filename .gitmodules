@@ -11,3 +11,4 @@
 [submodule "extern/grok-gpu-plugin"]
 	path = extern/grok-gpu-plugin
 	url = git@gitlab-rsa:GrokImageCompression/grok_gpu_plugin.git
+	update = none

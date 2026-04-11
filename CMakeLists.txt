@@ -211,9 +211,17 @@ set(BUILD_SHARED_LIBS ${BUILD_SHARED_LIBS_SAVED})
 
 add_subdirectory(src/lib/core)
 
-# Build GPU plugin from submodule (extern/grok-gpu-plugin)
-# Must come after src/lib/core so plugin detects existing hwy target
+# Build GPU plugin from submodule (extern/grok-gpu-plugin).
+# The submodule is private and marked `update = none` in .gitmodules, so
+# `git submodule update --init --recursive` skips it on CI. Users who have
+# access init it explicitly: `git submodule update --init extern/grok-gpu-plugin`.
+# Must come after src/lib/core so plugin detects existing hwy target.
 if(GRK_BUILD_PLUGIN_LOADER)
+  if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/extern/grok-gpu-plugin/CMakeLists.txt")
+    message(FATAL_ERROR
+      "GRK_BUILD_PLUGIN_LOADER=ON but extern/grok-gpu-plugin is not checked out. "
+      "Run: git submodule update --init extern/grok-gpu-plugin")
+  endif()
   set(GPUP_BUILD_SHARED ON CACHE BOOL "" FORCE)
   set(GPUP_BUILD_TESTS OFF CACHE BOOL "" FORCE)
   set(GPUP_BUILD_TOOLS OFF CACHE BOOL "" FORCE)
