@@ -316,16 +316,6 @@ protected:
     long bufSize = EnvVarManager::get_int("GRK_CURL_CACHE_SIZE", 0);
     if(bufSize > 0)
       curl_easy_setopt(curl, CURLOPT_BUFFERSIZE, bufSize);
-
-    // Proxy
-    if(auto proxy = EnvVarManager::get("GRK_CURL_PROXY"))
-    {
-      curl_easy_setopt(curl, CURLOPT_PROXY, proxy->c_str());
-      if(auto proxyUserPwd = EnvVarManager::get("GRK_CURL_PROXYUSERPWD"))
-        curl_easy_setopt(curl, CURLOPT_PROXYUSERPWD, proxyUserPwd->c_str());
-      if(EnvVarManager::get("GRK_CURL_PROXYAUTH"))
-        curl_easy_setopt(curl, CURLOPT_PROXYAUTH, CURLAUTH_ANY);
-    }
   }
 
   curl_slist* prepareAuthHeaders(curl_slist* headers) override
@@ -363,8 +353,11 @@ private:
 
   void configureAuth()
   {
-    // Requester pays
-    requestPayer_ = EnvVarManager::get_string("AWS_REQUEST_PAYER");
+    // Requester pays: prefer FetchAuth value (from GDAL), fall back to env var
+    if(!auth_.request_payer_.empty())
+      requestPayer_ = auth_.request_payer_;
+    else
+      requestPayer_ = EnvVarManager::get_string("AWS_REQUEST_PAYER");
 
     // AWS_NO_SIGN_REQUEST — anonymous access for public buckets
     if(auth_.s3_no_sign_request_ || EnvVarManager::test_bool("AWS_NO_SIGN_REQUEST"))

@@ -579,6 +579,23 @@ protected:
       curl_easy_setopt(curl, CURLOPT_NETRC, (long)CURL_NETRC_REQUIRED);
     if(!auth_.netrc_file_.empty())
       curl_easy_setopt(curl, CURLOPT_NETRC_FILE, auth_.netrc_file_.c_str());
+
+    // Proxy (shared by both HTTP and S3 fetchers)
+    if(!auth_.proxy_.empty())
+    {
+      curl_easy_setopt(curl, CURLOPT_PROXY, auth_.proxy_.c_str());
+      if(!auth_.proxy_userpwd_.empty())
+        curl_easy_setopt(curl, CURLOPT_PROXYUSERPWD, auth_.proxy_userpwd_.c_str());
+      curl_easy_setopt(curl, CURLOPT_PROXYAUTH, CURLAUTH_ANY);
+    }
+    else if(auto proxy = EnvVarManager::get("GRK_CURL_PROXY"))
+    {
+      curl_easy_setopt(curl, CURLOPT_PROXY, proxy->c_str());
+      if(auto proxyUserPwd = EnvVarManager::get("GRK_CURL_PROXYUSERPWD"))
+        curl_easy_setopt(curl, CURLOPT_PROXYUSERPWD, proxyUserPwd->c_str());
+      if(EnvVarManager::get("GRK_CURL_PROXYAUTH"))
+        curl_easy_setopt(curl, CURLOPT_PROXYAUTH, CURLAUTH_ANY);
+    }
   }
 
   curl_slist* configureHeaders(const std::string& range)

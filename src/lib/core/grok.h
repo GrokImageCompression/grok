@@ -605,6 +605,13 @@ typedef struct _grk_stream_params
   char netrc_file[GRK_PATH_LEN]; /* optional explicit .netrc path
                                     (CURLOPT_NETRC_FILE) */
 
+  /* 8 Proxy */
+  char proxy[512]; /* proxy URL (e.g. "http://proxy:8080") */
+  char proxy_userpwd[256]; /* proxy credentials ("user:password") */
+
+  /* 9 Requester pays (S3) */
+  char request_payer[64]; /* e.g. "requester" for x-amz-request-payer header */
+
 } grk_stream_params;
 
 /**

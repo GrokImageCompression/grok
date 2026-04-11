@@ -61,6 +61,13 @@ struct FetchAuth
   bool netrc_ = false; // enable .netrc lookup
   std::string netrc_file_; // optional explicit .netrc path
 
+  // Proxy
+  std::string proxy_; // proxy URL
+  std::string proxy_userpwd_; // proxy credentials ("user:password")
+
+  // S3 requester pays
+  std::string request_payer_; // e.g. "requester"
+
   FetchAuth() = default;
   FetchAuth(const std::string& u, const std::string& p, const std::string& t, const std::string& h,
             const std::string& r = "", const std::string& st = "")
