@@ -150,6 +150,13 @@ public:
   }
 };
 
+// 5/3 inverse lifting steps below compute sums of two samples before an
+// arithmetic right shift. With int32_t samples, JPEG 2000-compliant inputs
+// stay well within range, but fuzzer-crafted coefficients can push the
+// intermediate sum past INT32_MAX/MIN and trip UBSan. Widening the sum to
+// int64_t before the shift keeps the arithmetic-shift semantics intact
+// without changing output for in-range inputs. The SIMD paths use
+// _mm_add_epi32 which wraps silently and is unaffected.
 template<typename ST, uint32_t FILTER_WIDTH, uint32_t VERT_PASS_WIDTH>
 class Partial53 : public PartialInterleaver<ST, FILTER_WIDTH, VERT_PASS_WIDTH>
 {
@@ -213,17 +220,17 @@ public:
         if(i < i_max)
         {
           /* Left-most case */
-          S(buf, i) -= (D_(buf, i - 1) + D_(buf, i) + 2) >> 2;
+          S(buf, i) -= (ST)(((int64_t)D_(buf, i - 1) + D_(buf, i) + 2) >> 2);
           i++;
 
           if(i_max > dn_p)
             i_max = dn_p;
           for(; i < i_max; i++)
             /* No bound checking */
-            S(buf, i) -= (get_D(buf, i - 1) + get_D(buf, i) + 2) >> 2;
+            S(buf, i) -= (ST)(((int64_t)get_D(buf, i - 1) + get_D(buf, i) + 2) >> 2);
           for(; i < win_l_x1 - win_l_x0; i++)
             /* Right-most case */
-            S(buf, i) -= (D_(buf, i - 1) + D_(buf, i) + 2) >> 2;
+            S(buf, i) -= (ST)(((int64_t)D_(buf, i - 1) + D_(buf, i) + 2) >> 2);
         }
         i = 0;
         i_max = win_h_x1 - win_h_x0;
@@ -233,10 +240,10 @@ public:
             i_max = sn_p - 1;
           for(; i < i_max; i++)
             /* No bound checking */
-            D(buf, i) += (S(buf, i) + S(buf, i + 1)) >> 1;
+            D(buf, i) += (ST)(((int64_t)S(buf, i) + S(buf, i + 1)) >> 1);
           for(; i < win_h_x1 - win_h_x0; i++)
             /* Right-most case */
-            D(buf, i) += (S_(buf, i) + S_(buf, i + 1)) >> 1;
+            D(buf, i) += (ST)(((int64_t)S_(buf, i) + S_(buf, i + 1)) >> 1);
         }
       }
     }
@@ -250,9 +257,9 @@ public:
       else
       {
         for(i = 0; i < win_l_x1 - win_l_x0; i++)
-          D(buf, i) -= (SS_(buf, i) + SS_(buf, i + 1) + 2) >> 2;
+          D(buf, i) -= (ST)(((int64_t)SS_(buf, i) + SS_(buf, i + 1) + 2) >> 2);
         for(i = 0; i < win_h_x1 - win_h_x0; i++)
-          S(buf, i) += (DD_(buf, i) + DD_(buf, i - 1)) >> 1;
+          S(buf, i) += (ST)(((int64_t)DD_(buf, i) + DD_(buf, i - 1)) >> 1);
       }
     }
   }
@@ -327,7 +334,9 @@ public:
         {
           /* Left-most case */
           for(int64_t off = 0; off < VERT_PASS_WIDTH; off++)
-            S_off(buf, i, off) -= (D_sgnd_off_(buf, i - 1, off) + D_off_(buf, i, off) + 2) >> 2;
+            S_off(buf, i, off) -= (ST)(((int64_t)D_sgnd_off_(buf, i - 1, off) +
+                                        D_off_(buf, i, off) + 2) >>
+                                       2);
           i++;
           if(i_max > dn_p)
             i_max = dn_p;
@@ -355,13 +364,17 @@ public:
           {
             /* No bound checking */
             for(uint32_t off = 0; off < VERT_PASS_WIDTH; off++)
-              S_off(buf, i, off) -= (D_sgnd_off_(buf, i - 1, off) + D_off(buf, i, off) + 2) >> 2;
+              S_off(buf, i, off) -= (ST)(((int64_t)D_sgnd_off_(buf, i - 1, off) +
+                                          D_off(buf, i, off) + 2) >>
+                                         2);
           }
           for(; i < win_l_x1 - win_l_x0; i++)
           {
             /* Right-most case */
             for(uint32_t off = 0; off < VERT_PASS_WIDTH; off++)
-              S_off(buf, i, off) -= (D_sgnd_off_(buf, i - 1, off) + D_off_(buf, i, off) + 2) >> 2;
+              S_off(buf, i, off) -= (ST)(((int64_t)D_sgnd_off_(buf, i - 1, off) +
+                                          D_off_(buf, i, off) + 2) >>
+                                         2);
           }
         }
 
@@ -396,13 +409,15 @@ public:
           {
             /* No bound checking */
             for(uint32_t off = 0; off < VERT_PASS_WIDTH; off++)
-              D_off(buf, i, off) += (S_off(buf, i, off) + S_off(buf, i + 1, off)) >> 1;
+              D_off(buf, i, off) +=
+                  (ST)(((int64_t)S_off(buf, i, off) + S_off(buf, i + 1, off)) >> 1);
           }
           for(; i < win_h_x1 - win_h_x0; i++)
           {
             /* Right-most case */
             for(uint32_t off = 0; off < VERT_PASS_WIDTH; off++)
-              D_off(buf, i, off) += (S_off_(buf, i, off) + S_off_(buf, i + 1, off)) >> 1;
+              D_off(buf, i, off) +=
+                  (ST)(((int64_t)S_off_(buf, i, off) + S_off_(buf, i + 1, off)) >> 1);
           }
         }
       }
@@ -423,7 +438,9 @@ public:
         for(i = 0; i < win_l_x1 - win_l_x0; i++)
         {
           for(uint32_t off = 0; off < VERT_PASS_WIDTH; off++)
-            D_off(buf, i, off) -= (SS_off_(buf, i, off) + SS_off_(buf, i + 1, off) + 2) >> 2;
+            D_off(buf, i, off) -= (ST)(((int64_t)SS_off_(buf, i, off) +
+                                        SS_off_(buf, i + 1, off) + 2) >>
+                                       2);
         }
         assert((uint64_t)(dwt->memH + (win_h_x1 - win_h_x0) * VERT_PASS_WIDTH) -
                    (uint64_t)dwt->allocatedMem <
@@ -431,7 +448,8 @@ public:
         for(i = 0; i < win_h_x1 - win_h_x0; i++)
         {
           for(uint32_t off = 0; off < VERT_PASS_WIDTH; off++)
-            S_off(buf, i, off) += (DD_off_(buf, i, off) + DD_sgnd_off_(buf, i - 1, off)) >> 1;
+            S_off(buf, i, off) +=
+                (ST)(((int64_t)DD_off_(buf, i, off) + DD_sgnd_off_(buf, i - 1, off)) >> 1);
         }
       }
     }
