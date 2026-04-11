@@ -334,9 +334,8 @@ public:
         {
           /* Left-most case */
           for(int64_t off = 0; off < VERT_PASS_WIDTH; off++)
-            S_off(buf, i, off) -= (ST)(((int64_t)D_sgnd_off_(buf, i - 1, off) +
-                                        D_off_(buf, i, off) + 2) >>
-                                       2);
+            S_off(buf, i, off) -=
+                (ST)(((int64_t)D_sgnd_off_(buf, i - 1, off) + D_off_(buf, i, off) + 2) >> 2);
           i++;
           if(i_max > dn_p)
             i_max = dn_p;
@@ -364,17 +363,15 @@ public:
           {
             /* No bound checking */
             for(uint32_t off = 0; off < VERT_PASS_WIDTH; off++)
-              S_off(buf, i, off) -= (ST)(((int64_t)D_sgnd_off_(buf, i - 1, off) +
-                                          D_off(buf, i, off) + 2) >>
-                                         2);
+              S_off(buf, i, off) -=
+                  (ST)(((int64_t)D_sgnd_off_(buf, i - 1, off) + D_off(buf, i, off) + 2) >> 2);
           }
           for(; i < win_l_x1 - win_l_x0; i++)
           {
             /* Right-most case */
             for(uint32_t off = 0; off < VERT_PASS_WIDTH; off++)
-              S_off(buf, i, off) -= (ST)(((int64_t)D_sgnd_off_(buf, i - 1, off) +
-                                          D_off_(buf, i, off) + 2) >>
-                                         2);
+              S_off(buf, i, off) -=
+                  (ST)(((int64_t)D_sgnd_off_(buf, i - 1, off) + D_off_(buf, i, off) + 2) >> 2);
           }
         }
 
@@ -438,9 +435,8 @@ public:
         for(i = 0; i < win_l_x1 - win_l_x0; i++)
         {
           for(uint32_t off = 0; off < VERT_PASS_WIDTH; off++)
-            D_off(buf, i, off) -= (ST)(((int64_t)SS_off_(buf, i, off) +
-                                        SS_off_(buf, i + 1, off) + 2) >>
-                                       2);
+            D_off(buf, i, off) -=
+                (ST)(((int64_t)SS_off_(buf, i, off) + SS_off_(buf, i + 1, off) + 2) >> 2);
         }
         assert((uint64_t)(dwt->memH + (win_h_x1 - win_h_x0) * VERT_PASS_WIDTH) -
                    (uint64_t)dwt->allocatedMem <
