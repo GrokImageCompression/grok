@@ -68,6 +68,17 @@ struct FetchAuth
   // S3 requester pays
   std::string request_payer_; // e.g. "requester"
 
+  // User agent
+  std::string user_agent_;
+
+  // Timeouts (seconds, 0 = use default)
+  long timeout_ = 0;
+  long connect_timeout_ = 0;
+
+  // Retry configuration (0 = use default)
+  uint32_t max_retry_ = 0;
+  uint32_t retry_delay_ = 0;
+
   FetchAuth() = default;
   FetchAuth(const std::string& u, const std::string& p, const std::string& t, const std::string& h,
             const std::string& r = "", const std::string& st = "")

@@ -151,17 +151,26 @@ IStream* StreamGenerator::createCurlFetchStream(void)
     auth.proxy_userpwd_ = streamParams_.proxy_userpwd;
   if(streamParams_.request_payer[0])
     auth.request_payer_ = streamParams_.request_payer;
+  if(streamParams_.user_agent[0])
+    auth.user_agent_ = streamParams_.user_agent;
+  auth.timeout_ = streamParams_.timeout;
+  auth.connect_timeout_ = streamParams_.connect_timeout;
+  auth.max_retry_ = streamParams_.max_retry;
+  auth.retry_delay_ = streamParams_.retry_delay;
   grklog.debug("StreamGenerator: s3_allow_insecure: streamParams=%d, auth=%d",
                (int)streamParams_.s3_allow_insecure, (int)auth.s3_allow_insecure_);
   std::string_view file{streamParams_.file};
   bool isS3 = file.starts_with("/vsis3/") || file.starts_with("/vsis3_streaming/");
   bool isAZ = file.starts_with("/vsiaz/");
+  bool isADLS = file.starts_with("/vsiadls/");
   bool isGS = file.starts_with("/vsigs/");
   CurlFetcher* fetcher;
   if(isS3)
     fetcher = new S3Fetcher();
   else if(isAZ)
     fetcher = new AZFetcher();
+  else if(isADLS)
+    fetcher = new ADLSFetcher();
   else if(isGS)
     fetcher = new GSFetcher();
   else

@@ -203,6 +203,10 @@ public:
   void init(const std::string& path, const FetchAuth& auth) override
   {
     auth_ = auth;
+    if(auth_.max_retry_ > 0)
+      maxRetries_ = auth_.max_retry_;
+    if(auth_.retry_delay_ > 0)
+      retryDelayMs_ = auth_.retry_delay_ * 1000;
     parse(path);
     fetch_total_size();
   }
@@ -598,6 +602,14 @@ protected:
       if(EnvVarManager::get("GRK_CURL_PROXYAUTH"))
         curl_easy_setopt(curl, CURLOPT_PROXYAUTH, CURLAUTH_ANY);
     }
+
+    // User agent
+    if(!auth_.user_agent_.empty())
+      curl_easy_setopt(curl, CURLOPT_USERAGENT, auth_.user_agent_.c_str());
+
+    // Timeouts
+    long connect_timeout = auth_.connect_timeout_ > 0 ? auth_.connect_timeout_ : 10L;
+    curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, connect_timeout);
   }
 
   curl_slist* configureHeaders(const std::string& range)
@@ -685,7 +697,6 @@ protected:
       throw std::runtime_error("Failed to initialize CURL easy handle");
 
     curl_easy_setopt(curl, CURLOPT_URL, url_.c_str());
-    curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 10L);
     curl_initiate_retry(curl);
     curl_easy_setopt(curl, CURLOPT_VERBOSE, 0L);
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, callback);
@@ -860,7 +871,8 @@ protected:
 
   void curl_initiate_retry(CURL* curl)
   {
-    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 30L);
+    long timeout = auth_.timeout_ > 0 ? auth_.timeout_ : 30L;
+    curl_easy_setopt(curl, CURLOPT_TIMEOUT, timeout);
   }
 
   /**

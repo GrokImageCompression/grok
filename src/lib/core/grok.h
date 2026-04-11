@@ -612,6 +612,17 @@ typedef struct _grk_stream_params
   /* 9 Requester pays (S3) */
   char request_payer[64]; /* e.g. "requester" for x-amz-request-payer header */
 
+  /* 10 User agent */
+  char user_agent[256]; /* custom User-Agent header string */
+
+  /* 11 Timeouts (seconds, 0 = use default) */
+  long timeout; /* overall request timeout (CURLOPT_TIMEOUT) */
+  long connect_timeout; /* connection timeout (CURLOPT_CONNECTTIMEOUT) */
+
+  /* 12 Retry configuration (0 = use default) */
+  uint32_t max_retry; /* maximum number of retries */
+  uint32_t retry_delay; /* delay between retries in seconds */
+
 } grk_stream_params;
 
 /**
