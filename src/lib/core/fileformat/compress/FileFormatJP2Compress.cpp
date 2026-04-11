@@ -1018,9 +1018,16 @@ uint64_t FileFormatJP2Compress::transcode(IStream* srcStream)
   assert(dstStream);
 
   uint64_t totalWritten = 0;
-  if(write_tlm_transcode_)
+  /* The full marker-patching path (transcodeCodestream) must be taken
+     whenever *any* marker mutation is requested, not just TLM. Otherwise
+     SOP/EPH/PLT/progression/quality-reduction requests would silently fall
+     through to the verbatim copy path and have no effect. */
+  bool needMarkerPatching = write_tlm_transcode_ || write_plt_transcode_ || write_sop_transcode_ ||
+                            write_eph_transcode_ || max_layers_transcode_ > 0 ||
+                            max_res_transcode_ > 0 || transcode_prog_order_ != GRK_PROG_UNKNOWN;
+  if(needMarkerPatching)
   {
-    totalWritten = transcodeCodestreamWithTLM(srcStream, jp2cDataOffset, jp2cDataLength);
+    totalWritten = transcodeCodestream(srcStream, jp2cDataOffset, jp2cDataLength);
   }
   else
   {
@@ -1060,8 +1067,8 @@ uint64_t FileFormatJP2Compress::transcode(IStream* srcStream)
 
   return totalWritten;
 }
-uint64_t FileFormatJP2Compress::transcodeCodestreamWithTLM(IStream* srcStream, uint64_t csStart,
-                                                           uint64_t csLength)
+uint64_t FileFormatJP2Compress::transcodeCodestream(IStream* srcStream, uint64_t csStart,
+                                                    uint64_t csLength)
 {
   auto dstStream = codeStream->getStream();
   uint64_t csEnd = csStart + csLength;
@@ -1480,6 +1487,20 @@ uint64_t FileFormatJP2Compress::transcodeCodestreamWithTLM(IStream* srcStream, u
   // --- Phase 3: Write new codestream ---
   uint64_t totalWritten = 0;
 
+  // Determine whether TLM should appear in the output: either explicitly
+  // requested, or the source already contained TLM (whose values must be
+  // updated because tile-part lengths may have changed).
+  bool hadTlm = false;
+  for(auto& mhm : mainHeaderMarkers)
+  {
+    if(mhm.type == TLM)
+    {
+      hadTlm = true;
+      break;
+    }
+  }
+  bool writeTlm = write_tlm_transcode_ || hadTlm;
+
   // 3a. Write SOC
   if(!dstStream->write(SOC))
     return 0;
@@ -1621,29 +1642,33 @@ uint64_t FileFormatJP2Compress::transcodeCodestreamWithTLM(IStream* srcStream, u
     totalWritten += markerTotalLen;
   }
 
-  // 3c. Write new TLM marker with adjusted tile-part lengths
-  uint16_t Ltlm = (uint16_t)(4 + tlmMarkerBytesPerTilePart * numTileParts);
-  if(!dstStream->write(TLM))
-    return 0;
-  totalWritten += 2;
-  if(!dstStream->write(Ltlm))
-    return 0;
-  totalWritten += 2;
-  if(!dstStream->write8u(0)) // Ztlm = 0
-    return 0;
-  totalWritten += 1;
-  if(!dstStream->write8u(0x60)) // Stlm: ST=2 (16-bit indices), SP=1 (32-bit lengths)
-    return 0;
-  totalWritten += 1;
-
-  for(uint32_t i = 0; i < numTileParts; ++i)
+  // 3c. Write new TLM marker with adjusted tile-part lengths (only if
+  //      the source already had TLM or if TLM was explicitly requested)
+  if(writeTlm)
   {
-    if(!dstStream->write(tileParts[i].tileIndex))
+    uint16_t Ltlm = (uint16_t)(4 + tlmMarkerBytesPerTilePart * numTileParts);
+    if(!dstStream->write(TLM))
       return 0;
     totalWritten += 2;
-    if(!dstStream->write(adjustedLengths[i]))
+    if(!dstStream->write(Ltlm))
       return 0;
-    totalWritten += 4;
+    totalWritten += 2;
+    if(!dstStream->write8u(0)) // Ztlm = 0
+      return 0;
+    totalWritten += 1;
+    if(!dstStream->write8u(0x60)) // Stlm: ST=2 (16-bit indices), SP=1 (32-bit lengths)
+      return 0;
+    totalWritten += 1;
+
+    for(uint32_t i = 0; i < numTileParts; ++i)
+    {
+      if(!dstStream->write(tileParts[i].tileIndex))
+        return 0;
+      totalWritten += 2;
+      if(!dstStream->write(adjustedLengths[i]))
+        return 0;
+      totalWritten += 4;
+    }
   }
 
   // 3d. Write tile parts with PLT insertion and packet-level processing

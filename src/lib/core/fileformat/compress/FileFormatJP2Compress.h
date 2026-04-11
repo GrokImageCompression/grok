@@ -84,7 +84,7 @@ private:
   uint8_t max_res_transcode_ = 0;
   GRK_PROG_ORDER transcode_prog_order_ = GRK_PROG_UNKNOWN;
   grk_stream_params transcode_src_{};
-  uint64_t transcodeCodestreamWithTLM(IStream* srcStream, uint64_t csStart, uint64_t csLength);
+  uint64_t transcodeCodestream(IStream* srcStream, uint64_t csStart, uint64_t csLength);
 };
 
 } // namespace grk

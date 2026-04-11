@@ -31,6 +31,11 @@ def pytest_configure(config):
     config.addinivalue_line("markers", "s3: S3/MinIO integration tests (need --run-s3)")
 
 
+def pytest_sessionstart(session):
+    version = grok_core.grk_version()
+    print(f"\n=== Running Grok Python tests (libgrokj2k {version}) ===\n")
+
+
 def pytest_collection_modifyitems(config, items):
     if config.getoption("--run-s3"):
         return
