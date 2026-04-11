@@ -128,9 +128,9 @@ bool T1OJPH::preCompress([[maybe_unused]] CompressBlockExec* block)
       for(auto i = 0U; i < w; ++i)
       {
         int32_t temp = *tiledp++;
-        int32_t val = temp >= 0 ? temp : -temp;
-        int32_t sign = (int32_t)((temp >= 0) ? 0U : 0x80000000);
-        int32_t res = sign | (val << shift);
+        uint32_t val = temp >= 0 ? (uint32_t)temp : -(uint32_t)temp;
+        uint32_t sign = temp >= 0 ? 0U : 0x80000000U;
+        int32_t res = (int32_t)(sign | (val << shift));
         unencoded_data[cblk_index] = res;
         cblk_index++;
       }
@@ -145,9 +145,9 @@ bool T1OJPH::preCompress([[maybe_unused]] CompressBlockExec* block)
       for(auto i = 0U; i < w; ++i)
       {
         int32_t t = (int32_t)((float)*tiledp++ * block->inv_step_ht * (float)(1 << shift));
-        int32_t val = t >= 0 ? t : -t;
-        int32_t sign = t >= 0 ? 0 : (int32_t)0x80000000;
-        int32_t res = sign | val;
+        uint32_t val = t >= 0 ? (uint32_t)t : -(uint32_t)t;
+        uint32_t sign = t >= 0 ? 0U : 0x80000000U;
+        int32_t res = (int32_t)(sign | val);
         unencoded_data[cblk_index] = res;
         cblk_index++;
       }
