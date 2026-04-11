@@ -743,7 +743,7 @@ bool FileFormatJP2Family::read_res_box(uint32_t* id, uint32_t* num, uint32_t* de
     grklog.warn("Bad resolution box : signalled single res box size %d should equal "
                 "required single res box size %d. Ignoring.",
                 size, box_size);
-    return true;
+    return false;
   }
   grk_read(p_resolution_data, id);
   grk_read(*p_resolution_data, num + 1, 2);
@@ -778,7 +778,7 @@ bool FileFormatJP2Family::read_res(uint8_t* p_resolution_data, uint32_t resoluti
     uint32_t exponent[2];
 
     if(!read_res_box(&id, num, den, exponent, &p_resolution_data))
-      return false;
+      return true;
     double* res;
     switch(id)
     {
