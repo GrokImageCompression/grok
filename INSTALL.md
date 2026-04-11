@@ -1,24 +1,3 @@
-# Dependencies
-
-## ExifTool
-
-If the `-V` flag is used to transfer ExIF tags to the output file, [ExifTool](https://exiftool.org/) must be installed.
-
-### Linux
-
-Use your package manager to install ExifTool. This will ensure that the ExifTool Perl modules
-are correctly installed
-
-### MacOS
-
-Use [brew](https://brew.sh/) package manager to install ExifTool. This will ensure that the ExifTool Perl modules are correctly installed
-
-### Windows
-
-`-V` is not supported on Windows. To transfer tags, simply run
-`$ exiftool -TagsFromFile $SOURCE_FILE "-all:all>all:all" $DEST_FILE`
-after running Grok.
-
 # Install from Package Manager
 
 1. **Debian** Grok `.deb` packages can be found [here](https://tracker.debian.org/pkg/libgrokj2k)
@@ -39,8 +18,7 @@ Grok releases can be found [here](https://github.com/GrokImageCompression/grok/r
 
 ## Build
 
-Grok uses [cmake](https://www.cmake.org) to configure builds across multiple platforms.
-It requires version 3.20 or higher.
+Grok uses [cmake](https://www.cmake.org) to configure builds across multiple platforms. It requires version 3.20 or higher.
 
 ## Compilers
 
@@ -258,3 +236,139 @@ Grok provides bindings for Python, C#, Java, and Rust.
 
 - **Python/C#/Java** (SWIG): see [bindings/swig/README.md](bindings/swig/README.md) for build instructions, API reference, and test information.
 - **Rust** (bindgen): see [bindings/rust/README.md](bindings/rust/README.md) for build and usage instructions.
+
+## GPU Plugin Integration
+
+Grok supports GPU-accelerated Tier-1 encode and decode via the
+closed source `grok-gpu-plugin` project.
+The plugin offloads DWT, bit-plane coding, and MQ arithmetic coding to
+NVIDIA CUDA GPUs while Grok handles file I/O, header parsing, and Tier-2
+packet assembly.
+
+### Requirements
+
+| Dependency     | Version   | Notes                          |
+|----------------|-----------|--------------------------------|
+| CUDA Toolkit   | ≥ 11.0    | CUDA 12.x recommended          |
+| NVIDIA GPU     | CC ≥ 6.0  | Tested on Ampere (CC 8.6)      |
+| C++23 compiler | GCC 13+   | Also tested with Clang 17+     |
+| CMake          | ≥ 3.21    |                                |
+
+### Building the Plugin
+
+The plugin is built independently from Grok as a shared library:
+
+```bash
+# Clone with submodules
+git clone --recurse-submodules <plugin-repo-url>
+cd grok-gpu-plugin
+
+# Configure (shared library, CUDA enabled)
+cmake -B build -S . \
+    -DCMAKE_BUILD_TYPE=Debug \
+    -DGRK_GPU_BUILD_SHARED=ON \
+    -DGRK_GPU_USE_CUDA=ON \
+    -DGRK_GPU_CUDA_ARCH=86 \
+    -DGRK_GPU_BUILD_TESTS=ON \
+    -DGRK_GPU_BUILD_TOOLS=OFF
+
+# Build
+cmake --build build -j$(nproc)
+
+# Verify (optional)
+ctest --test-dir build --output-on-failure
+```
+
+Replace `86` with your GPU's compute capability (e.g., `75` for Turing,
+`90` for Hopper).
+
+### Installing the Plugin
+
+Grok discovers the plugin by searching for `libgrokj2k_plugin.so` in the
+same directory as the Grok executables. The plugin builds as
+`libgrok_gpu_plugin.so`, so a symlink is required:
+
+```bash
+ln -sf /PATH/TO/grok-gpu-plugin/build/libgrok_gpu_plugin.so \
+       /PATH/TO/grok/build/bin/libgrokj2k_plugin.so
+```
+
+The symlink must be recreated if the plugin or Grok build directory changes.
+
+### Using the GPU Plugin
+
+Pass `-k 1` to `grk_compress` or `grk_decompress` to enable GPU acceleration.
+
+#### Single-file compress
+
+```bash
+grk_compress -i input.tiff -o output.jp2 -k 1
+```
+
+#### Single-file decompress
+
+```bash
+grk_decompress -i input.jp2 -o output.tif -k 1
+```
+
+#### Batch compress (directory of TIFFs)
+
+```bash
+grk_compress --batch-src /path/to/tiffs \
+             --out-dir /path/to/output \
+             --out-fmt jp2 \
+             -k 1 -e 10
+```
+
+#### Batch decompress
+
+```bash
+grk_decompress --batch-src /path/to/jp2s \
+               --out-dir /path/to/output \
+               --out-fmt tif \
+               -k 1 -e 10
+```
+
+The `-e` flag sets the number of executor threads for batch file I/O.
+
+### Environment Variables
+
+| Variable              | Value   | Purpose                                          |
+|-----------------------|---------|--------------------------------------------------|
+| `CUDA_MODULE_LOADING` | `EAGER` | Required. Ensures CUDA modules load at init time |
+| `GRK_DEBUG`           | `1`–`5` | Optional. Verbosity: 1=error 2=warn 3=info 4=debug 5=trace. Level ≥ 3 enables plugin verbose output |
+
+### Plugin Constraints
+
+- Single tile per image (no multi-tile images)
+- Precision: 8, 10, 12, or 16 bits per component
+- No subsampling (`dx = dy = 1`)
+- Maximum 4 components
+- No code block style extensions (`cblk_sty = 0`)
+- Unsigned samples only
+
+### Known Issues
+
+- **Python bindings**: When `libgrokj2k_plugin.so` is present in `build/bin/`,
+  the plugin's auto-discovery intercepts Python SWIG binding calls to
+  `grk_codec_compress()`. Remove or rename the symlink before running Python
+  tests via `ctest`.
+
+- **CUDA cleanup at exit**: The executables call `grk_deinitialize()` before
+  returning from `main()` to ensure CUDA resources are released before the
+  CUDA runtime unloads. This is handled automatically by `grk_compress` and
+  `grk_decompress`; library consumers should call `grk_deinitialize()` at
+  process exit if using the GPU plugin.
+
+### Debugging with VS Code
+
+The repository includes GPU launch configurations in `.vscode/launch.json`:
+
+| Configuration               | Description                                          |
+|-----------------------------|------------------------------------------------------|
+| `single compress GPU`       | Single-file GPU compress                             |
+| `single decompress GPU`     | Single-file GPU decompress                           |
+| `compress GPU`              | Batch GPU compress (directory of TIFFs)              |
+| `decompress GPU`            | Batch GPU decompress (directory of JP2s)             |
+
+These configs set `CUDA_MODULE_LOADING=EAGER` and `GRK_DEBUG=3` automatically.

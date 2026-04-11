@@ -328,7 +328,7 @@
             "miDebuggerPath": "/usr/bin/gdb"
         },
         {
-            "name": "test failed",
+            "name": "vsicurl",
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/build/bin/grk_decompress",
@@ -340,7 +340,7 @@
             ],
             "cwd": "${workspaceFolder}",
             "environment": [
-                { "name": "GRK_DEBUG", "value": "4"}
+                { "name": "GRK_DEBUG", "value": "3"}
             ],
             "MIMode": "gdb",
             "miDebuggerPath": "/usr/bin/gdb"
