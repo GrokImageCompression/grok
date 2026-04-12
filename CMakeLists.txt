@@ -16,7 +16,7 @@
 cmake_minimum_required(VERSION 3.21)
 
 project(GROK
-  VERSION 20.2.8
+  VERSION 20.2.9
   LANGUAGES C CXX)
 
 #######################################
