@@ -560,6 +560,24 @@ void CodeStreamDecompress::decompressSequential(void)
       break;
   }
 
+  // Best-effort: schedule incomplete tiles (those with some tile parts parsed
+  // but not all) for decompression with whatever data they have.
+  if(!cp_.hasTLM())
+  {
+    for(auto tileIndex : tilesToDecompress_.getSlatedTiles())
+    {
+      auto cached = tileCache_->get(tileIndex);
+      if(cached && cached->processor && !cached->processor->scheduledForDecompression() &&
+         !cached->processor->allSOTMarkersParsed())
+      {
+        cached->processor->setTruncated();
+        cached->processor->prepareForDecompression();
+        if(!cached->processor->hasError())
+          schedule(cached->processor, true);
+      }
+    }
+  }
+
   // Mark tiles that were never parsed (missing from truncated codestream)
   // as complete so wait() doesn't hang.  Tiles that WERE parsed are still
   // being decompressed asynchronously and must not be completed here.

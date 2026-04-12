@@ -347,6 +347,8 @@ struct ITileProcessor
   virtual bool isBestEffortDecompressed(void) = 0;
   virtual void setBestEffortDecompressed(void) = 0;
 
+  virtual bool scheduledForDecompression(void) = 0;
+
   /**
    * @brief Reinitialize for re-decompression after LRU eviction.
    *

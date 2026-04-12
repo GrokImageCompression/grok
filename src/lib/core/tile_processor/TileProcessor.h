@@ -340,6 +340,7 @@ struct TileProcessor : virtual public ITileProcessor
 
   bool isBestEffortDecompressed(void) override;
   void setBestEffortDecompressed(void) override;
+  bool scheduledForDecompression(void) override;
   void resetSOTParsing() override;
   bool reinitForReDecompress(void) override;
 
@@ -472,6 +473,7 @@ private:
    * (may have been truncated or errored). Not re-decompressed on codec reuse.
    */
   bool bestEffortDecompressed_ = false;
+  bool scheduledForDecompression_ = false;
 
   /**
    * @brief @ref GrkImage for this tile

@@ -256,10 +256,16 @@ void TileProcessor::setBestEffortDecompressed(void)
   bestEffortDecompressed_ = true;
 }
 
+bool TileProcessor::scheduledForDecompression(void)
+{
+  return scheduledForDecompression_;
+}
+
 void TileProcessor::resetSOTParsing()
 {
   numSOTsParsed_ = 0;
   tcp_->tilePartCounter_ = 0;
+  scheduledForDecompression_ = false;
 }
 
 bool TileProcessor::reinitForReDecompress()
@@ -271,6 +277,7 @@ bool TileProcessor::reinitForReDecompress()
   // Recreate tile structure
   tile_ = new Tile(headerImage_->numcomps);
   initialized_ = false;
+  scheduledForDecompression_ = false;
 
   // Re-run init to set up bounds, resolutions, precincts, code blocks
   if(!init())
@@ -802,6 +809,7 @@ void TileProcessor::prepareConcurrentParsing(void)
 
 void TileProcessor::prepareForDecompression(void)
 {
+  scheduledForDecompression_ = true;
   auto prep = [this]() {
     if(hasError())
       return;

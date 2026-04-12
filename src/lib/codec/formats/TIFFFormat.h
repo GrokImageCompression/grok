@@ -1522,8 +1522,8 @@ bool TIFFFormat<T>::readTiffPixels(TIFF* tif, grk_image_comp* comps, uint16_t nu
             /* Small strip: process sequentially (avoid Taskflow overhead) */
             for(uint32_t r = 0; r < rowCount; ++r)
             {
-              if(!convertRowTIFF<T>(datau8 + (size_t)r * (size_t)rowStride, buffer32s, pixelCount, prec,
-                                    sgnd, invert))
+              if(!convertRowTIFF<T>(datau8 + (size_t)r * (size_t)rowStride, buffer32s, pixelCount,
+                                    prec, sgnd, invert))
               {
                 success = false;
                 goto beach;
