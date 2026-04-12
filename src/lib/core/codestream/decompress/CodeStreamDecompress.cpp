@@ -1455,7 +1455,7 @@ bool CodeStreamDecompress::fetchByTile(
   // when either (a) too many tiles are in-flight for decompression, or
   // (b) the fetcher is too far ahead of the consumer (swath-based release).
   auto numTileCols = cp_.t_grid_width_;
-  fetcher->setFetchThrottle([this, numTileCols]() {
+  fetcher->setFetchThrottle([this]() {
     // Row-based: don't fetch tiles more than maxRowsAhead_ rows beyond
     // the last row released by the consumer.
     if(tileCompletion_)

@@ -495,7 +495,7 @@ void WaveletReverse::h_53(uint8_t res, TileComponentWindow<int32_t>* tileBuffer,
       uint32_t dn = horiz_.dn;
       uint32_t parity = horiz_.parity;
       resFlow->waveletHoriz_->nextTask().work(
-          [this, sn, dn, parity, winL, winH, winDest, hMin, hMax, orient] {
+          [this, sn, dn, parity, winL, winH, winDest, hMin, hMax] {
             horizPool_[TFSingleton::workerId()].sn = sn;
             horizPool_[TFSingleton::workerId()].dn = dn;
             horizPool_[TFSingleton::workerId()].parity = parity;
