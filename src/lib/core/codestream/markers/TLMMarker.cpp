@@ -69,7 +69,8 @@ TLMMarker::TLMMarker(uint16_t numSignalledTiles)
   tilePartsPerTile_.resize(numSignalledTiles_);
 }
 
-TLMMarker::TLMMarker(const std::string& filePath, uint16_t numSignalledTiles, uint64_t tileStreamStart)
+TLMMarker::TLMMarker(const std::string& filePath, uint16_t numSignalledTiles,
+                     uint64_t tileStreamStart)
     : TLMMarker(numSignalledTiles)
 {
   valid_ = false;

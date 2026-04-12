@@ -240,7 +240,6 @@ namespace HWY_NAMESPACE
     }
   }
 
-
   /* Lift-only for L-wide elements (no K/invK scaling, for fused-scale path). */
   static void hwy_step_97_lift(float* mem, uint32_t sn, uint32_t dn, uint32_t parity, Line32 win_l,
                                Line32 win_h)

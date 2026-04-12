@@ -36,7 +36,9 @@ struct Marker
    * @param pos position in code stream
    * @param len length of marker (marker id included)
    */
-  explicit Marker(uint16_t id = 0, uint64_t pos = 0, uint16_t len = 0) : id_(id), pos_(pos), len_(len) {}
+  explicit Marker(uint16_t id = 0, uint64_t pos = 0, uint16_t len = 0)
+      : id_(id), pos_(pos), len_(len)
+  {}
 
   /**
    * @brief serializes to disk
