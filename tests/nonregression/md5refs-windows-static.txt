@@ -45,6 +45,6 @@ d402c4aefdb7aa7d14696757a245cc38  issue205-tif.jp2.tif
 dc4f61d85db7583163fb95d6c3e07fd3  truncated.bmp
 d402c4aefdb7aa7d14696757a245cc38  issue205.jp2_r0.tif
 e72fec22399e944e541a0d8505382e08  issue205.jp2_r1.tif
-e674a7d3c6fa71e775c96dca29807794  multi_tile_truncated_rgb.tif
-e674a7d3c6fa71e775c96dca29807794  page.tif
+2d0ee6c27449e24a1908065299ede44d  multi_tile_truncated_rgb.tif
+2d0ee6c27449e24a1908065299ede44d  page.tif
 2d0ee6c27449e24a1908065299ede44d  page_tlm.tif
