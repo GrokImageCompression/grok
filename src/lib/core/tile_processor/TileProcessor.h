@@ -326,6 +326,7 @@ struct TileProcessor : virtual public ITileProcessor
    * @return true if completely parsed, otherwise false
    */
   bool allSOTMarkersParsed() override;
+  bool hasUnparsedTileParts() override;
 
   /**
    * @brief Sets processor to truncated if not all tile parts have

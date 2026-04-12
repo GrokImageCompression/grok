@@ -568,7 +568,7 @@ void CodeStreamDecompress::decompressSequential(void)
     {
       auto cached = tileCache_->get(tileIndex);
       if(cached && cached->processor && !cached->processor->scheduledForDecompression() &&
-         !cached->processor->allSOTMarkersParsed())
+         cached->processor->hasUnparsedTileParts())
       {
         cached->processor->setTruncated();
         cached->processor->prepareForDecompression();
@@ -586,7 +586,7 @@ void CodeStreamDecompress::decompressSequential(void)
     for(auto tileIndex : tilesToDecompress_.getSlatedTiles())
     {
       auto cached = tileCache_->get(tileIndex);
-      if(!cached || !cached->processor || !cached->processor->allSOTMarkersParsed())
+      if(!cached || !cached->processor || cached->processor->hasUnparsedTileParts())
         tileCompletion_->complete(tileIndex);
     }
   }

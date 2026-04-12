@@ -783,6 +783,12 @@ bool TileProcessor::allSOTMarkersParsed(void)
   return truncated_ || (numSOTsParsed_ == tcp_->signalledNumTileParts_);
 }
 
+bool TileProcessor::hasUnparsedTileParts(void)
+{
+  return !truncated_ && tcp_->signalledNumTileParts_ > 0 &&
+         numSOTsParsed_ < tcp_->signalledNumTileParts_;
+}
+
 void TileProcessor::prepareConcurrentParsing(void)
 {
   if(concurrentFlowsStale_)
@@ -815,16 +821,21 @@ void TileProcessor::prepareForDecompression(void)
       return;
     // now we can get ready to decompress this tile
     if(!tcp_->validateQuantization())
+    {
+      success_ = false;
       return;
+    }
 
     if(!tcp_->mergePpt())
     {
       grklog.error("Failed to merge PPT data");
+      success_ = false;
       return;
     }
     if(!init())
     {
       grklog.error("Cannot decompress tile %u", tileIndex_);
+      success_ = false;
       return;
     }
 

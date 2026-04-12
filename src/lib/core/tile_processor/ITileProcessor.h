@@ -319,6 +319,16 @@ struct ITileProcessor
   virtual bool allSOTMarkersParsed() = 0;
 
   /**
+   * @brief True when we know for certain that tile parts are missing.
+   *
+   * Returns true only when the SOT marker explicitly signalled a tile-part
+   * count (TNsot > 0) and fewer parts have been parsed so far. When TNsot
+   * is 0 (unspecified), we cannot tell whether parts are missing, so this
+   * returns false— callers should not assume the tile is incomplete.
+   */
+  virtual bool hasUnparsedTileParts() = 0;
+
+  /**
    * @brief Reset SOT parsing state so the tile can be re-parsed from the codestream.
    */
   virtual void resetSOTParsing() = 0;
