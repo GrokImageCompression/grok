@@ -89,7 +89,7 @@ DecompressScheduler::~DecompressScheduler()
   }
 
   delete[] differentialInfo_;
-  release();
+  DecompressScheduler::release();
 }
 
 void DecompressScheduler::release(void)

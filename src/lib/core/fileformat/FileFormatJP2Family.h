@@ -121,7 +121,7 @@ struct AsocBox : Box, Buffer8
 {
   ~AsocBox() override
   {
-    dealloc();
+    AsocBox::dealloc();
   }
   void dealloc() override
   {

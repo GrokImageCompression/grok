@@ -39,7 +39,7 @@ ImageFormat::ImageFormat()
 {
   grk_io_init init;
   init.max_pooled_requests = 0;
-  registerGrkReclaimCallback(init, grkReclaimCallback, &pool);
+  ImageFormat::registerGrkReclaimCallback(init, grkReclaimCallback, &pool);
 }
 ImageFormat::~ImageFormat()
 {

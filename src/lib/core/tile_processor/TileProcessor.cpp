@@ -85,15 +85,15 @@ TileProcessor::TileProcessor(uint16_t tile_index, TileCodingParams* tcp, CodeStr
       markerParser_(isCompressor ? nullptr : new MarkerParser()), truncated_(false),
       image_(nullptr), isCompressor_(isCompressor), tileCacheStrategy_(tileCacheStrategy)
 {
-  setStream(stream, false);
-  setProcessors(markerParser_);
+  TileProcessor::setStream(stream, false);
+  TileProcessor::setProcessors(markerParser_);
   if(!isCompressor_)
     tcp_->packets_ = new PacketCache();
   threadTilePart_.resize(TFSingleton::num_threads());
 }
 TileProcessor::~TileProcessor()
 {
-  release(GRK_TILE_CACHE_NONE);
+  TileProcessor::release(GRK_TILE_CACHE_NONE);
   delete scheduler_;
   delete mct_;
   if(!isCompressor_)

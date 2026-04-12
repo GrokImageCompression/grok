@@ -34,7 +34,7 @@ SchedulerStandard::SchedulerStandard(uint16_t numComps) : CodecScheduler(numComp
 }
 SchedulerStandard::~SchedulerStandard()
 {
-  release();
+  SchedulerStandard::release();
 }
 void SchedulerStandard::release(void)
 {

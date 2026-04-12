@@ -64,7 +64,7 @@ FileFormatMJ2Compress::FileFormatMJ2Compress(IStream* stream)
 FileFormatMJ2Compress::~FileFormatMJ2Compress()
 {
   if(!finalized_ && !sampleRecords_.empty())
-    finalize();
+    FileFormatMJ2Compress::finalize();
 }
 
 bool FileFormatMJ2Compress::init(grk_cparameters* param, GrkImage* image)
