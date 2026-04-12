@@ -43,7 +43,7 @@ struct FetchAuth
   std::string username_;
   std::string password_;
   std::string bearer_token_;
-  std::string custom_header_;
+  std::vector<std::string> custom_headers_;
   std::string region_;
   std::string session_token_; // Added for AWS_SESSION_TOKEN
   std::string s3_endpoint_; // Custom S3 endpoint URL (e.g. MinIO)
@@ -80,9 +80,10 @@ struct FetchAuth
   uint32_t retry_delay_ = 0;
 
   FetchAuth() = default;
-  FetchAuth(const std::string& u, const std::string& p, const std::string& t, const std::string& h,
-            const std::string& r = "", const std::string& st = "")
-      : username_(u), password_(p), bearer_token_(t), custom_header_(h), region_(r),
+  FetchAuth(const std::string& u, const std::string& p, const std::string& t,
+            const std::vector<std::string>& h = {}, const std::string& r = "",
+            const std::string& st = "")
+      : username_(u), password_(p), bearer_token_(t), custom_headers_(h), region_(r),
         session_token_(st)
   {}
 };

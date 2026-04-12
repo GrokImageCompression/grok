@@ -128,8 +128,11 @@ IStream* StreamGenerator::createCurlFetchStream(void)
     auth.session_token_ = streamParams_.bearer_token;
   if(streamParams_.region[0])
     auth.region_ = streamParams_.region;
-  if(streamParams_.custom_header[0])
-    auth.custom_header_ = streamParams_.custom_header;
+  for(uint8_t i = 0; i < streamParams_.num_custom_headers; ++i)
+  {
+    if(streamParams_.custom_headers[i][0])
+      auth.custom_headers_.emplace_back(streamParams_.custom_headers[i]);
+  }
   if(streamParams_.s3_endpoint[0])
     auth.s3_endpoint_ = streamParams_.s3_endpoint;
   auth.s3_use_https_ = streamParams_.s3_use_https;

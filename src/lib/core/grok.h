@@ -582,7 +582,10 @@ typedef struct _grk_stream_params
   char username[129]; /* AWS access key ID: max 128 chars + null */
   char password[129]; /* Secret access key: max 128 chars + null */
   char bearer_token[4097]; /* Session token: up to 4096 chars + null */
-  char custom_header[1024]; /* Single header: fits within 8KB total limit */
+#define GRK_MAX_CUSTOM_HEADERS 16
+  char custom_headers[GRK_MAX_CUSTOM_HEADERS][1024]; /* Custom HTTP headers */
+  uint8_t
+      num_custom_headers; /* Number of entries in custom_headers[] (0..GRK_MAX_CUSTOM_HEADERS) */
   char region[64]; /* Region code: max 50 chars + buffer */
 
   /* 5 S3 Endpoint Configuration (for S3-compatible services like MinIO) */

@@ -72,7 +72,9 @@ public:
     safe_strcpy(streamParams_.username, src->username);
     safe_strcpy(streamParams_.password, src->password);
     safe_strcpy(streamParams_.bearer_token, src->bearer_token);
-    safe_strcpy(streamParams_.custom_header, src->custom_header);
+    streamParams_.num_custom_headers = src->num_custom_headers;
+    for(uint8_t i = 0; i < src->num_custom_headers; ++i)
+      safe_strcpy(streamParams_.custom_headers[i], src->custom_headers[i]);
     safe_strcpy(streamParams_.region, src->region);
 
     safe_strcpy(streamParams_.s3_endpoint, src->s3_endpoint);
