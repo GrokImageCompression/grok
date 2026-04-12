@@ -1165,7 +1165,7 @@ uint64_t grk_plugin_internal_encode_callback(gpup_compress_callback_info* info)
   grk_info.compressor_parameters = s_originalCompressParams;
   // Cache the tile wrapper to avoid repeated deep alloc/free
   static thread_local grk_plugin_tile* s_cachedEncodeTileWrapper = nullptr;
-  static thread_local gpup_tile* s_cachedEncodeTileSrc = nullptr;
+  static thread_local const gpup_tile* s_cachedEncodeTileSrc = nullptr;
   if(info->tile != s_cachedEncodeTileSrc)
   {
     grk_plugin_tile_free_wrapper(s_cachedEncodeTileWrapper);
@@ -1341,7 +1341,7 @@ int32_t grk_plugin_internal_decode_callback(PluginDecodeCallbackInfo* info)
   // Cache the tile wrapper to avoid repeated deep alloc/free on every callback
   // (the plugin calls back multiple times per tile: HEADER, T2, POST_T1, CLEAN)
   static thread_local grk_plugin_tile* s_cachedTileWrapper = nullptr;
-  static thread_local gpup_tile* s_cachedTileSrc = nullptr;
+  static thread_local const gpup_tile* s_cachedTileSrc = nullptr;
   if(info->tile != s_cachedTileSrc)
   {
     if(s_cachedTileWrapper && info->tile)

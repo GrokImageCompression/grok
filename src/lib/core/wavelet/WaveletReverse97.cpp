@@ -240,66 +240,6 @@ namespace HWY_NAMESPACE
     }
   }
 
-  /* Full 9/7 inverse lifting step on interleaved scratch buffer.
-   * Each element is Lanes(float) wide. */
-  static void hwy_step_97_full(float* mem, uint32_t sn, uint32_t dn, uint32_t parity, Line32 win_l,
-                               Line32 win_h)
-  {
-    const HWY_FULL(float) df;
-    const size_t L = Lanes(df);
-
-    if((!parity && dn == 0 && sn <= 1) || (parity && sn == 0 && dn >= 1))
-      return;
-
-    auto make_step1 = [&](bool isBandL) -> std::pair<float*, uint32_t> {
-      int64_t parityOff = isBandL ? (int64_t)parity : (int64_t)!parity;
-      int64_t band_0 = isBandL ? win_l.x0 : win_h.x0;
-      int64_t band_1 = isBandL ? win_l.x1 : win_h.x1;
-      float* d = mem + (parityOff + band_0 - win_l.x0) * L;
-      return {d, (uint32_t)(band_1 - band_0)};
-    };
-
-    auto make_step2 = [&](bool isBandL) -> std::tuple<float*, float*, uint32_t, uint32_t> {
-      int64_t parityOff = isBandL ? (int64_t)parity : (int64_t)!parity;
-      int64_t band_0 = isBandL ? win_l.x0 : win_h.x0;
-      int64_t band_1 = isBandL ? win_l.x1 : win_h.x1;
-      int64_t lmax = isBandL ? (std::min<int64_t>)(sn, (int64_t)dn - parityOff)
-                             : (std::min<int64_t>)(dn, (int64_t)sn - parityOff);
-      if(lmax < 0)
-        lmax = 0;
-      assert(lmax >= band_0);
-      lmax -= band_0;
-      float* d = mem + (parityOff + band_0 - win_l.x0) * L;
-      d += L;
-      float* dPrev = parityOff ? d - 2 * L : d;
-      return {d, dPrev, (uint32_t)(band_1 - band_0), (uint32_t)lmax};
-    };
-
-    {
-      auto [d, len] = make_step1(true);
-      hwy_step1_97(d, len, hwy_K);
-    }
-    {
-      auto [d, len] = make_step1(false);
-      hwy_step1_97(d, len, hwy_twice_invK);
-    }
-    {
-      auto [d, dPrev, len, lmax] = make_step2(true);
-      hwy_step2_97(d, dPrev, len, lmax, hwy_dwt_delta);
-    }
-    {
-      auto [d, dPrev, len, lmax] = make_step2(false);
-      hwy_step2_97(d, dPrev, len, lmax, hwy_dwt_gamma);
-    }
-    {
-      auto [d, dPrev, len, lmax] = make_step2(true);
-      hwy_step2_97(d, dPrev, len, lmax, hwy_dwt_beta);
-    }
-    {
-      auto [d, dPrev, len, lmax] = make_step2(false);
-      hwy_step2_97(d, dPrev, len, lmax, hwy_dwt_alpha);
-    }
-  }
 
   /* Lift-only for L-wide elements (no K/invK scaling, for fused-scale path). */
   static void hwy_step_97_lift(float* mem, uint32_t sn, uint32_t dn, uint32_t parity, Line32 win_l,
@@ -930,60 +870,7 @@ void WaveletReverse::step_97(dwt_scratch<vec4f>* GRK_RESTRICT scratch)
   step2_97(makeParams97(scratch, true, false), dwt_beta);
   step2_97(makeParams97(scratch, false, false), dwt_alpha);
 }
-void WaveletReverse::interleave_h_97(dwt_scratch<vec4f>* GRK_RESTRICT scratch,
-                                     Buffer2dSimple<float> winL, Buffer2dSimple<float> winH,
-                                     uint32_t remaining_height)
-{
-  float* GRK_RESTRICT scratchDataL = (float*)(scratch->mem + scratch->parity);
-  uint32_t x0 = scratch->win_l.x0;
-  uint32_t x1 = scratch->win_l.x1;
-  const size_t vec4f_elts = vec4f::NUM_ELTS;
-  for(uint32_t k = 0; k < 2; ++k)
-  {
-    auto src = (k == 0) ? winL.buf_ : winH.buf_;
-    uint32_t stride = (k == 0) ? winL.stride_ : winH.stride_;
-    if(remaining_height >= vec4f_elts && ((size_t)src & 0x0f) == 0 &&
-       ((size_t)scratchDataL & 0x0f) == 0 && (stride & 0x0f) == 0)
-    {
-      /* Fast code path */
-      for(uint32_t i = x0; i < x1; ++i, scratchDataL += vec4f_elts * 2)
-      {
-        uint32_t j = i;
-        scratchDataL[0] = src[j];
-        j += stride;
-        scratchDataL[1] = src[j];
-        j += stride;
-        scratchDataL[2] = src[j];
-        j += stride;
-        scratchDataL[3] = src[j];
-      }
-    }
-    else
-    {
-      /* Slow code path */
-      for(uint32_t i = x0; i < x1; ++i, scratchDataL += vec4f_elts * 2)
-      {
-        uint32_t j = i;
-        scratchDataL[0] = src[j];
-        j += stride;
-        if(remaining_height == 1)
-          continue;
-        scratchDataL[1] = src[j];
-        j += stride;
-        if(remaining_height == 2)
-          continue;
-        scratchDataL[2] = src[j];
-        j += stride;
-        if(remaining_height == 3)
-          continue;
-        scratchDataL[3] = src[j];
-      }
-    }
-    scratchDataL = (float*)(scratch->mem + 1 - scratch->parity);
-    x0 = scratch->win_h.x0;
-    x1 = scratch->win_h.x1;
-  }
-}
+
 void WaveletReverse::h_strip_97(dwt_scratch<vec4f>* GRK_RESTRICT scratch, const uint32_t resHeight,
                                 Buffer2dSimple<float> winL, Buffer2dSimple<float> winH,
                                 Buffer2dSimple<float> winDest)
@@ -1027,25 +914,7 @@ bool WaveletReverse::h_97(uint8_t res, uint32_t num_threads, size_t dataLength,
   }
   return true;
 }
-void WaveletReverse::interleave_v_97(dwt_scratch<vec4f>* GRK_RESTRICT scratch,
-                                     Buffer2dSimple<float> winL, Buffer2dSimple<float> winH,
-                                     uint32_t nb_elts_read)
-{
-  auto bi = scratch->mem + scratch->parity;
-  auto band = winL.buf_ + scratch->win_l.x0 * winL.stride_;
-  for(uint32_t i = scratch->win_l.x0; i < scratch->win_l.x1; ++i, bi += 2)
-  {
-    memcpy((float*)bi, band, nb_elts_read * sizeof(float));
-    band += winL.stride_;
-  }
-  bi = scratch->mem + 1 - scratch->parity;
-  band = winH.buf_ + scratch->win_h.x0 * winH.stride_;
-  for(uint32_t i = scratch->win_h.x0; i < scratch->win_h.x1; ++i, bi += 2)
-  {
-    memcpy((float*)bi, band, nb_elts_read * sizeof(float));
-    band += winH.stride_;
-  }
-}
+
 void WaveletReverse::v_strip_97(dwt_scratch<vec4f>* GRK_RESTRICT scratch, const uint32_t resWidth,
                                 const uint32_t resHeight, Buffer2dSimple<float> winL,
                                 Buffer2dSimple<float> winH, Buffer2dSimple<float> winDest,

@@ -44,7 +44,7 @@ public:
   /**
    * @brief Destroys a SchedulerExcalibur
    */
-  virtual ~CompressSchedulerExcalibur() = default;
+  ~CompressSchedulerExcalibur() override = default;
 
 private:
   /**

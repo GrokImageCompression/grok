@@ -175,7 +175,7 @@ struct TLMMarker
    * @brief Constructs a TLMMarker
    * @param numSignalledTiles number of tiles signalled in main header
    */
-  TLMMarker(std::string& filePath, uint16_t numSignalledTiles, uint64_t tileStreamStart);
+  TLMMarker(const std::string& filePath, uint16_t numSignalledTiles, uint64_t tileStreamStart);
 
   /**
    * @brief Constructs a TLMMarker

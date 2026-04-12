@@ -122,7 +122,7 @@ struct grk_simple_mcc_decorrelation_data
  */
 struct TileCodingParams
 {
-  TileCodingParams(CodingParams* cp);
+  explicit TileCodingParams(CodingParams* cp);
   TileCodingParams(const TileCodingParams& rhs);
   TileCodingParams& operator=(const TileCodingParams&) = delete;
   ~TileCodingParams();

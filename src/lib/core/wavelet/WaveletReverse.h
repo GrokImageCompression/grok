@@ -167,8 +167,6 @@ private:
 
   ////////////////////////////////////////////////////////////////////////////////////////////
   // 9/7
-  void interleave_h_97(dwt_scratch<vec4f>* GRK_RESTRICT dwt, Buffer2dSimple<float> winL,
-                       Buffer2dSimple<float> winH, uint32_t remaining_height);
 
   void h_strip_97(dwt_scratch<vec4f>* GRK_RESTRICT horiz, const uint32_t resHeight,
                   Buffer2dSimple<float> winL, Buffer2dSimple<float> winH,
@@ -177,9 +175,6 @@ private:
   bool h_97(uint8_t res, uint32_t num_threads, size_t dataLength,
             dwt_scratch<vec4f>& GRK_RESTRICT horiz, const uint32_t resHeight,
             Buffer2dSimple<float> winL, Buffer2dSimple<float> winH, Buffer2dSimple<float> winDest);
-
-  void interleave_v_97(dwt_scratch<vec4f>* GRK_RESTRICT dwt, Buffer2dSimple<float> winL,
-                       Buffer2dSimple<float> winH, uint32_t nb_elts_read);
 
   void v_strip_97(dwt_scratch<vec4f>* GRK_RESTRICT vert, const uint32_t resWidth,
                   const uint32_t resHeight, Buffer2dSimple<float> winL, Buffer2dSimple<float> winH,

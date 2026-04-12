@@ -69,14 +69,14 @@ TLMMarker::TLMMarker(uint16_t numSignalledTiles)
   tilePartsPerTile_.resize(numSignalledTiles_);
 }
 
-TLMMarker::TLMMarker(std::string& filePath, uint16_t numSignalledTiles, uint64_t tileStreamStart)
+TLMMarker::TLMMarker(const std::string& filePath, uint16_t numSignalledTiles, uint64_t tileStreamStart)
     : TLMMarker(numSignalledTiles)
 {
   valid_ = false;
   auto serialized = TLMFile<TilePartLengthPOD>::load(filePath);
   if(serialized)
   {
-    for(auto& tplp : serialized.value())
+    for(const auto& tplp : serialized.value())
     {
       TilePartLength<uint32_t> tpl(tplp.tileIndex_, tplp.length_);
       add(tpl);

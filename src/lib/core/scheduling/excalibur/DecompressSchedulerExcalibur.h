@@ -42,7 +42,7 @@ public:
   /**
    * @brief Destroys a SchedulerExcalibur
    */
-  virtual ~DecompressSchedulerExcalibur();
+  ~DecompressSchedulerExcalibur() override;
 
   bool scheduleT1(ITileProcessor* tileProcessor) override;
 

@@ -402,7 +402,7 @@ static void wait_tile_range(grk_object* codec, const grk_header_info* headerInfo
   }
 }
 
-static bool decompress(grk_object* codec, grk_header_info* headerInfo,
+static bool decompress(grk_object* codec, const grk_header_info* headerInfo,
                        [[maybe_unused]] grk_decompress_parameters* decompressParams,
                        bool decompressTile, uint16_t tileIndex, grk_image** image)
 {
@@ -506,7 +506,7 @@ static const char* prog_order_to_string(GRK_PROG_ORDER order)
   }
 }
 
-bool isNetwork(std::string& f)
+bool isNetwork(const std::string& f)
 {
   std::string_view file{f};
   return file.starts_with("http://") || file.starts_with("https://") || file.starts_with("/vsis3/");
@@ -647,7 +647,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] const char** argv)
 // #define TEST_FUZZER
 #ifdef TEST_FUZZER
   {
-    grk_header_info headerInfo = {};
+    grk_header_info fuzzHeaderInfo = {};
     grk_decompress_parameters parameters = {};
     parameters.dw_x1 = 1024;
     parameters.dw_y1 = 1024;
@@ -714,7 +714,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] const char** argv)
       cleanup();
       return -1;
     }
-    if(!grk_decompress_read_header(codec, &headerInfo))
+    if(!grk_decompress_read_header(codec, &fuzzHeaderInfo))
     {
       cleanup();
       return -1;

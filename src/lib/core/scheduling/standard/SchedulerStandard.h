@@ -37,7 +37,7 @@ public:
    * @brief Constructs a SchedulerStandard
    * @param numComps number of components
    */
-  SchedulerStandard(uint16_t numComps);
+  explicit SchedulerStandard(uint16_t numComps);
 
   /**
    * @brief Destroys a SchedulerStandard

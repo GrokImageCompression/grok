@@ -46,7 +46,7 @@ const uint8_t MSIG_UUID[16] = {0x96, 0xA9, 0xF1, 0xF1, 0xDC, 0x98, 0x40, 0x2D,
 class FileFormatJP2Decompress final : public FileFormatJP2Family, public IDecompressor
 {
 public:
-  FileFormatJP2Decompress(IStream* stream);
+  explicit FileFormatJP2Decompress(IStream* stream);
   ~FileFormatJP2Decompress();
 
   bool readHeader(grk_header_info* header_info) override;

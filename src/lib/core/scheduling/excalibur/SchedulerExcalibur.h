@@ -36,7 +36,7 @@ public:
    * @brief Constructs a SchedulerExcalibur
    * @param numComps number of components
    */
-  SchedulerExcalibur(uint16_t numComps);
+  explicit SchedulerExcalibur(uint16_t numComps);
 
   /**
    * @brief Destroys a SchedulerExcalibur

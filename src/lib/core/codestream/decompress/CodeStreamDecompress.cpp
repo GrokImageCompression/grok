@@ -428,7 +428,7 @@ void CodeStreamDecompress::decompressTLM(const std::set<uint16_t>& slated)
   // 1 schedule all slated tiles
   if(!doTileBatching())
   {
-    for(auto& tileIndex : slated)
+    for(const auto& tileIndex : slated)
     {
       if(!schedule(getTileProcessor(tileIndex), true))
         break;

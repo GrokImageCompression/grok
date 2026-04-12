@@ -159,7 +159,7 @@ struct PrecinctCompress : public Precinct
   using Precinct::Precinct;
 
 private:
-  PrecinctImpl* makeImpl(void);
+  PrecinctImpl* makeImpl(void) override;
 };
 
 struct PrecinctDecompress : public Precinct
@@ -167,7 +167,7 @@ struct PrecinctDecompress : public Precinct
   using Precinct::Precinct;
 
 private:
-  PrecinctImpl* makeImpl(void);
+  PrecinctImpl* makeImpl(void) override;
 };
 
 } // namespace grk

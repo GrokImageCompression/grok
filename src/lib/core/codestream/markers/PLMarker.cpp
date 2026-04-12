@@ -276,7 +276,7 @@ bool PLMarker::readPLT(uint8_t* headerData, uint16_t headerSize, int16_t tilePar
   if(!findMarker(Zpl, false))
     return false;
 
-  auto buf = addNewMarker(headerData, headerSize, tilePartIndex);
+  const auto buf = addNewMarker(headerData, headerSize, tilePartIndex);
   if(!buf)
     return false;
 #ifdef DEBUG_PLT
@@ -404,7 +404,7 @@ uint32_t PLMarker::pop(void)
       }
       else
       {
-        currMarkerIter_++;
+        ++currMarkerIter_;
         if(currMarkerIter_ != rawMarkers_->end())
         {
           if(currMarkerIter_->second->empty())

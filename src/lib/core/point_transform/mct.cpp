@@ -73,7 +73,7 @@ namespace HWY_NAMESPACE
   class DecompressDcShiftIrrev
   {
   public:
-    void transform(ScheduleInfo info)
+    void transform(const ScheduleInfo& info)
     {
       auto highestResBuffer =
           info.tile->comps_[info.compno].getWindow()->getResWindowBufferHighestSimpleF();
@@ -103,7 +103,7 @@ namespace HWY_NAMESPACE
   class DecompressDcShiftRev
   {
   public:
-    void transform(ScheduleInfo info)
+    void transform(const ScheduleInfo& info)
     {
       auto highestResBufferStride =
           info.tile->comps_[info.compno].getWindow()->getResWindowBufferHighestStride();
@@ -131,7 +131,7 @@ namespace HWY_NAMESPACE
   class DecompressRev
   {
   public:
-    void transform(ScheduleInfo info)
+    void transform(const ScheduleInfo& info)
     {
       auto w0 = info.tile->comps_[0].getWindow()->getResWindowBufferHighestSimple();
       auto w1 = info.tile->comps_[1].getWindow()->getResWindowBufferHighestSimple();
@@ -188,7 +188,7 @@ namespace HWY_NAMESPACE
   class DecompressIrrev
   {
   public:
-    void transform(ScheduleInfo info)
+    void transform(const ScheduleInfo& info)
     {
       auto w0 = info.tile->comps_[0].getWindow()->getResWindowBufferHighestSimpleF();
       auto w1 = info.tile->comps_[1].getWindow()->getResWindowBufferHighestSimpleF();
@@ -257,7 +257,7 @@ namespace HWY_NAMESPACE
   class CompressRev
   {
   public:
-    void transform(ScheduleInfo info)
+    void transform(const ScheduleInfo& info)
     {
       auto highestResBufferStride =
           info.tile->comps_[info.compno].getWindow()->getResWindowBufferHighestStride();
@@ -297,7 +297,7 @@ namespace HWY_NAMESPACE
   class CompressIrrev
   {
   public:
-    void transform(ScheduleInfo info)
+    void transform(const ScheduleInfo& info)
     {
       auto highestResBufferStride =
           info.tile->comps_[info.compno].getWindow()->getResWindowBufferHighestStride();

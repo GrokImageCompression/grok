@@ -28,8 +28,8 @@ class CodeStreamDecompress;
 class FileFormatMJ2Decompress : public IDecompressor, public FileFormatMJ2
 {
 public:
-  FileFormatMJ2Decompress(IStream* stream);
-  virtual ~FileFormatMJ2Decompress();
+  explicit FileFormatMJ2Decompress(IStream* stream);
+  ~FileFormatMJ2Decompress() override;
   bool readHeader(grk_header_info* header_info) override;
   GrkImage* getImage(uint16_t tile_index, bool wait) override;
   GrkImage* getImage(void) override;

@@ -592,7 +592,7 @@ bool FileFormatJP2Family::read_ftyp(uint8_t* headerData, uint32_t headerSize)
   return true;
 }
 
-std::string FileFormatJP2Family::getBoxName(Box box)
+std::string FileFormatJP2Family::getBoxName(const Box& box)
 {
   char boxTypeChars[5]; // Extra byte for null terminator
   auto be_boxType = toBigEndian(box.type);
@@ -1082,7 +1082,7 @@ bool FileFormatJP2Family::read_component_mapping(uint8_t* component_mapping_head
 }
 bool FileFormatJP2Family::read_palette_clr(uint8_t* p_pclr_header_data, uint32_t pclr_header_size)
 {
-  auto orig_header_data = p_pclr_header_data;
+  const auto orig_header_data = p_pclr_header_data;
   assert(p_pclr_header_data != nullptr);
   if(getColour()->palette)
     return false;

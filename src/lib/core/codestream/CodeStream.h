@@ -106,7 +106,7 @@ class TileCache;
 class CodeStream
 {
 public:
-  CodeStream(IStream* stream);
+  explicit CodeStream(IStream* stream);
   virtual ~CodeStream();
 
   IStream* getStream();

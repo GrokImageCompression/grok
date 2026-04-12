@@ -322,7 +322,6 @@ bool DecompressScheduler::scheduleT1(ITileProcessor* tileProcessor)
       DcShiftParam dcShift;
       if(numRes > 1 && wholeDecompress)
       {
-        auto tccp = tcp->tccps_ + compno;
         bool isMctComp = tileProcessor->needsMctDecompress(compno) && tcp->mct_ == 1;
         // For MCT components: don't fuse DC shift into wavelet.
         // Wavelet fusion applies clamp before inverse color transform,
@@ -369,7 +368,6 @@ bool DecompressScheduler::scheduleT1(ITileProcessor* tileProcessor)
         if(!tileProcessor->needsMctDecompress(compno) || tcp->mct_ == 2)
         {
           // standalone DC shift when wavelet didn't fuse it
-          uint8_t numRes = tilec->nextPacketProgressionState_.numResolutionsRead();
           bool waveletFusedDc = (numRes > 1 && tileProcessor->getTCP()->wholeTileDecompress_);
           if(!waveletFusedDc)
           {

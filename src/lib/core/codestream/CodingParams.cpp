@@ -375,7 +375,7 @@ TileCodingParams::TileCodingParams(const TileCodingParams& rhs)
 
   for(uint32_t j = 0; j < rhs.numMaxMccRecords_; ++j)
   {
-    auto src_mcc_rec = rhs.mccRecords_ + j;
+    const auto src_mcc_rec = rhs.mccRecords_ + j;
     auto dest_mcc_rec = mccRecords_ + j;
     if(src_mcc_rec->decorrelation_array_)
     {
@@ -1779,7 +1779,7 @@ bool TileCodingParams::validateQuantization(void)
   // ensure lossy wavelet has quantization set
   for(uint16_t k = 0; k < numComps_; ++k)
   {
-    auto tccp = tccps_ + k;
+    const auto tccp = tccps_ + k;
     if(tccp->qmfbid_ == 0 && tccp->qntsty_ == CCP_QNTSTY_NOQNT)
     {
       grklog.error(
@@ -1800,7 +1800,7 @@ bool TileCodingParams::validateQuantization(void)
     uint8_t maxDecompositions = 0;
     for(uint16_t k = 0; k < numComps_; ++k)
     {
-      auto tccp = tccps_ + k;
+      const auto tccp = tccps_ + k;
       if(tccp->numresolutions_ == 0)
         continue;
       // only consider number of resolutions from a component
@@ -1823,10 +1823,10 @@ bool TileCodingParams::validateQuantization(void)
       return false;
     }
     // 2. Check Tile QCD
-    TileComponentCodingParams* qcd_comp = nullptr;
+    const TileComponentCodingParams* qcd_comp = nullptr;
     for(uint16_t k = 0; k < numComps_; ++k)
     {
-      auto tccp = tccps_ + k;
+      const auto tccp = tccps_ + k;
       if(tccp->fromTileHeader_ && !tccp->fromQCC_)
       {
         qcd_comp = tccp;
@@ -1838,7 +1838,7 @@ bool TileCodingParams::validateQuantization(void)
       uint8_t maxTileDecompositions = 0;
       for(uint16_t k = 0; k < numComps_; ++k)
       {
-        auto tccp = tccps_ + k;
+        const auto tccp = tccps_ + k;
         if(tccp->numresolutions_ == 0)
           continue;
         // only consider number of resolutions from a component

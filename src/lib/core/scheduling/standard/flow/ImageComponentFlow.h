@@ -120,7 +120,7 @@ public:
    *
    * @param numresolutions number of resolutions for this component
    */
-  ImageComponentFlow(uint8_t numresolutions);
+  explicit ImageComponentFlow(uint8_t numresolutions);
   /**
    * @brief Destroy the ImageComponentFlow object
    *

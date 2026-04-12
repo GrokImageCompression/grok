@@ -47,7 +47,7 @@ public:
   /**
    * @brief Destroys a DecompressScheduler
    */
-  ~DecompressScheduler();
+  ~DecompressScheduler() override;
 
   bool scheduleT1(ITileProcessor* tileProcessor) override;
 

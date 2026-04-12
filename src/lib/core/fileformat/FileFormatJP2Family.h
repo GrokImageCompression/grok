@@ -153,7 +153,7 @@ protected:
   bool readHeader(grk_header_info* header_info, GrkImage* headerImage);
   virtual GrkImage* getHeaderImage(void) = 0;
   grk_color* getColour(void);
-  std::string getBoxName(Box box);
+  std::string getBoxName(const Box& box);
   /**
    * @brief Finds the BOX_FUNC related to given box id.
    *

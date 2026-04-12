@@ -181,7 +181,7 @@ std::pair<bool, uint16_t> MarkerParser::processMarker(void)
     grklog.error("Zero-size marker in header.");
     return {false, markerBodyLength};
   }
-  auto processor = currentProcessor();
+  const auto processor = currentProcessor();
   if(!processor)
   {
     grklog.error("Unknown marker 0x%x encountered", currMarkerId_);

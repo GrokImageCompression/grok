@@ -369,7 +369,7 @@ uint8_t* FileFormatJP2Compress::write_colr(uint32_t* p_nb_bytes_written)
   }
   else
   {
-    auto clr = getColour();
+    const auto clr = getColour();
     /* ICC profile */
     if(meth == 2)
     {
@@ -1390,7 +1390,7 @@ uint64_t FileFormatJP2Compress::transcodeCodestream(IStream* srcStream, uint64_t
       {
         // All filtered packets go to the first tile part of this tile
         uint32_t firstTpIdx = tpIndices[0];
-        for(auto& pkt : filtered)
+        for(const auto& pkt : filtered)
         {
           TilePartPacket tpp;
           tpp.totalLength = pkt.totalLength;
@@ -1404,11 +1404,11 @@ uint64_t FileFormatJP2Compress::transcodeCodestream(IStream* srcStream, uint64_t
         size_t pktOffset = 0;
         for(auto tpIdx : tpIndices)
         {
-          auto& tp = tileParts[tpIdx];
+          const auto& tp = tileParts[tpIdx];
           uint32_t cumulated = 0;
           while(pktOffset < filtered.size() && cumulated < tp.dataSize)
           {
-            auto& pkt = filtered[pktOffset];
+            const auto& pkt = filtered[pktOffset];
             TilePartPacket tpp;
             tpp.totalLength = pkt.totalLength;
             tpp.headerLength = pkt.headerLength;
@@ -1429,7 +1429,7 @@ uint64_t FileFormatJP2Compress::transcodeCodestream(IStream* srcStream, uint64_t
           continue;
         PLMarker pltSizer;
         pltSizer.pushInit(true);
-        for(auto& tpp : tpPackets[tpIdx])
+        for(const auto& tpp : tpPackets[tpIdx])
         {
           uint32_t adjLen = tpp.totalLength;
           if(write_sop_transcode_)
@@ -1450,7 +1450,7 @@ uint64_t FileFormatJP2Compress::transcodeCodestream(IStream* srcStream, uint64_t
   for(uint32_t i = 0; i < numTileParts; ++i)
   {
     uint32_t existingPltSize = 0;
-    for(auto& hm : tileParts[i].headerMarkers)
+    for(const auto& hm : tileParts[i].headerMarkers)
     {
       if(hm.type == PLT)
         existingPltSize += 2 + hm.segLen; // marker(2) + segment
@@ -1460,7 +1460,7 @@ uint64_t FileFormatJP2Compress::transcodeCodestream(IStream* srcStream, uint64_t
     {
       // Compute new data size from packet-level info
       uint32_t newDataSize = 0;
-      for(auto& tpp : tpPackets[i])
+      for(const auto& tpp : tpPackets[i])
       {
         newDataSize += tpp.totalLength;
         if(write_sop_transcode_)
@@ -1470,7 +1470,7 @@ uint64_t FileFormatJP2Compress::transcodeCodestream(IStream* srcStream, uint64_t
       }
       // newLength = SOT(12) + headerMarkers(non-PLT,non-SOP-related) + PLT + SOD(2) + newData
       uint32_t headerSize = sotMarkerSegmentLen;
-      for(auto& hm : tileParts[i].headerMarkers)
+      for(const auto& hm : tileParts[i].headerMarkers)
       {
         if(hm.type == PLT)
           continue;
@@ -1491,7 +1491,7 @@ uint64_t FileFormatJP2Compress::transcodeCodestream(IStream* srcStream, uint64_t
   // requested, or the source already contained TLM (whose values must be
   // updated because tile-part lengths may have changed).
   bool hadTlm = false;
-  for(auto& mhm : mainHeaderMarkers)
+  for(const auto& mhm : mainHeaderMarkers)
   {
     if(mhm.type == TLM)
     {
@@ -1623,14 +1623,6 @@ uint64_t FileFormatJP2Compress::transcodeCodestream(IStream* srcStream, uint64_t
 
         // Also patch component sub-sampling factors
         // Components start at offset 38: Ssiz(1) + XRsiz(1) + YRsiz(1) per component
-        // The sub-sampling factors need dividing too
-        uint16_t Csiz = ((uint16_t)buf[38] << 8) | buf[39];
-        for(uint16_t c = 0; c < Csiz && (42 + c * 3) < markerTotalLen; ++c)
-        {
-          uint32_t off = 42 + c * 3;
-          // Ssiz at off+0, XRsiz at off+1, YRsiz at off+2
-          // Sub-sampling stays the same — the SIZ dimensions already account for it
-        }
       }
     }
 
@@ -1703,7 +1695,7 @@ uint64_t FileFormatJP2Compress::transcodeCodestream(IStream* srcStream, uint64_t
     {
       PLMarker pltWriter(dstStream);
       pltWriter.pushInit(true);
-      for(auto& tpp : tpPackets[tpIdx])
+      for(const auto& tpp : tpPackets[tpIdx])
       {
         uint32_t adjLen = tpp.totalLength;
         if(write_sop_transcode_)
@@ -1759,7 +1751,7 @@ uint64_t FileFormatJP2Compress::transcodeCodestream(IStream* srcStream, uint64_t
     {
       // Packet-level copy: read each packet from source, inject SOP/EPH
       srcStream->seek(tp.sodOffset + 2); // skip SOD in source
-      for(auto& tpp : tpPackets[tpIdx])
+      for(const auto& tpp : tpPackets[tpIdx])
       {
         // Write SOP marker before packet
         if(write_sop_transcode_)
@@ -1950,7 +1942,7 @@ uint32_t FileFormatJP2Compress::calcAsocSize(AsocBox* asoc)
     size += 8 + (uint32_t)asoc->num_elts();
 
   // nested asoc children
-  for(auto& child : asoc->children)
+  for(const auto& child : asoc->children)
     size += calcAsocSize(child);
 
   return size;
@@ -1992,7 +1984,7 @@ bool FileFormatJP2Compress::writeAsocBox(IStream* stream, AsocBox* asoc)
   }
 
   // write nested asoc children
-  for(auto& child : asoc->children)
+  for(const auto& child : asoc->children)
   {
     if(!writeAsocBox(stream, child))
       return false;

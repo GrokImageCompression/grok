@@ -687,7 +687,7 @@ uint8_t* FileFormatMJ2Compress::write_stsd(uint32_t* p_nb_bytes_written)
 
 // ========== Super-box assembly helpers ==========
 
-static uint8_t* assemble_super_box(uint32_t box_type, uint8_t** sub_boxes, uint32_t* sub_sizes,
+static uint8_t* assemble_super_box(uint32_t box_type, uint8_t** sub_boxes, const uint32_t* sub_sizes,
                                    uint32_t count, uint32_t* p_nb_bytes_written)
 {
   uint32_t total = 8;

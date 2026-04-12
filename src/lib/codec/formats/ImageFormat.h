@@ -66,7 +66,7 @@ protected:
   void allocPalette(grk_color* color, uint8_t num_channels, uint16_t num_entries);
   void copyICC(grk_image* dest, const uint8_t* iccbuf, uint32_t icclen);
   void createMeta(grk_image* img);
-  bool allComponentsSanityCheck(grk_image* image, bool equalPrecision);
+  bool allComponentsSanityCheck(const grk_image* image, bool equalPrecision);
   bool isFinalOutputSubsampled(grk_image* image);
   bool isChromaSubsampled(grk_image* image);
   bool areAllComponentsSameSubsampling(grk_image* image);

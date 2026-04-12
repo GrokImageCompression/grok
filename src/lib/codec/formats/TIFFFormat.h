@@ -276,7 +276,7 @@ static inline bool extractExifFromTiff(TIFF* tif, uint8_t** outBuf, uint32_t* ou
     bool outOfLine;
   };
   std::vector<Ifd0BlobEntry> ifd0BlobEntries;
-  for(auto& t : ifd0Tags)
+  for(const auto& t : ifd0Tags)
   {
     Ifd0BlobEntry e;
     e.tag = t.tag;
@@ -350,7 +350,7 @@ static inline bool extractExifFromTiff(TIFF* tif, uint8_t** outBuf, uint32_t* ou
 
   // We need to interleave the ExifIFD pointer tag (0x8769) in sorted order
   bool exifPtrWritten = false;
-  for(auto& e : ifd0BlobEntries)
+  for(const auto& e : ifd0BlobEntries)
   {
     // insert ExifIFD pointer before any tag > 0x8769
     if(!exifPtrWritten && !exifEntries.empty() && e.tag > 0x8769)
@@ -1184,7 +1184,7 @@ bool TIFFFormat<T>::encodeFinish(void)
     return true;
   }
   // save EXIF data before closing the primary TIFF handle
-  uint8_t* exifBuf = nullptr;
+  const uint8_t* exifBuf = nullptr;
   uint32_t exifLen = 0;
   std::string fname;
   if(image_ && image_->meta && image_->meta->exif_buf && image_->meta->exif_len)
@@ -1419,11 +1419,11 @@ bool TIFFFormat<T>::readTiffPixels(TIFF* tif, grk_image_comp* comps, uint16_t nu
     planes[0] = (T*)comp->data;
     uint32_t height = 0;
     // if width % chroma_subsample_x != 0...
-    size_t units = (comp->w + chroma_subsample_x - 1) / chroma_subsample_x;
+    size_t planeUnits = (comp->w + chroma_subsample_x - 1) / chroma_subsample_x;
     // each coded row will be padded to fill unit
-    size_t padding = (units * chroma_subsample_x - comp->w);
+    size_t padding = (planeUnits * chroma_subsample_x - comp->w);
     if(subsampled)
-      rowStride = (tsize_t)(units * unitSize);
+      rowStride = (tsize_t)(planeUnits * unitSize);
     size_t xpos = 0;
     for(; (height < comp->h) && (strip < TIFFNumberOfStrips(tif)); strip++)
     {

@@ -35,7 +35,7 @@ public:
    * @brief Constructs a CodeStreamDecompress
    * @param stream @ref CodeStreamDecompress
    */
-  CodeStreamDecompress(IStream* stream);
+  explicit CodeStreamDecompress(IStream* stream);
 
   /**
    * @brief Destroys a CodeStreamDecompress

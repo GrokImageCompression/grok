@@ -38,7 +38,7 @@ public:
   /**
    * @brief Destroys a CompressScheduler
    */
-  ~CompressScheduler() = default;
+  ~CompressScheduler() override = default;
 
   bool scheduleT1(ITileProcessor* proc) override;
   bool populateT1Flow(FlowComponent* flow);

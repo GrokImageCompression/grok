@@ -789,7 +789,6 @@ GrkRC GrkDecompress::pluginMain(int argc, const char* argv[], DecompressInitPara
     {
       grk_plugin_wait_for_batch_complete();
       grk_plugin_stop_batch_decompress();
-      rc = GrkRCSuccess;
     }
     else
     {

@@ -22,7 +22,7 @@ namespace grk
 class FileFormatJP2Compress : public FileFormatJP2Family, public ICompressor
 {
 public:
-  FileFormatJP2Compress(IStream* stream);
+  explicit FileFormatJP2Compress(IStream* stream);
   virtual ~FileFormatJP2Compress();
 
   bool init(grk_cparameters* param, GrkImage* image) override;

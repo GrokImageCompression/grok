@@ -213,7 +213,7 @@ void ImageFormat::createMeta(grk_image* img)
  *    (if equalPrecision is true)
  *
  */
-bool ImageFormat::allComponentsSanityCheck(grk_image* image, bool checkEqualPrecision)
+bool ImageFormat::allComponentsSanityCheck(const grk_image* image, bool checkEqualPrecision)
 {
   if(!image || image->decompress_num_comps == 0)
     return false;

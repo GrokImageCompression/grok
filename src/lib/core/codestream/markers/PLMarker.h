@@ -102,7 +102,7 @@ struct PLMarker
    * @brief Constructs a PLMarker
    * @param strm @ref IStream for code stream
    */
-  PLMarker(IStream* strm);
+  explicit PLMarker(IStream* strm);
 
   /**
    * @brief Reads PLT marker

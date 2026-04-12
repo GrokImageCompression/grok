@@ -23,7 +23,7 @@ namespace grk
 class CodeStreamCompress : public CodeStream, public ICompressor
 {
 public:
-  CodeStreamCompress(IStream* stream);
+  explicit CodeStreamCompress(IStream* stream);
   virtual ~CodeStreamCompress() = default;
 
   static char* convertProgressionOrder(GRK_PROG_ORDER prg_order);

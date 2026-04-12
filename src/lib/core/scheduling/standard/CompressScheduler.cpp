@@ -131,12 +131,11 @@ bool CompressScheduler::scheduleT1(ITileProcessor* proc)
   for(auto i = 0U; i < TFSingleton::num_threads(); ++i)
     coders_.push_back(t1::CoderFactory::makeCoder(tcp_->isHT(), true, maxCblkW, maxCblkH, 0));
 
-  size_t num_threads = TFSingleton::num_threads();
   encodeBlocks_ = blocks;
   const size_t maxBlocks = blocks.size();
 
   tf::Taskflow taskflow;
-  num_threads = TFSingleton::num_threads();
+  size_t num_threads = TFSingleton::num_threads();
   auto node = new tf::Task[num_threads];
   for(auto i = 0U; i < num_threads; i++)
     node[i] = taskflow.placeholder();

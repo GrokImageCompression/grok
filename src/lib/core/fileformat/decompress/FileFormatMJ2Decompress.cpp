@@ -102,7 +102,7 @@ FileFormatMJ2Decompress::~FileFormatMJ2Decompress()
 {
   for(auto img : decompressedImages_)
     grk_unref(img);
-  for(auto& scs : sampleCodeStreams_)
+  for(const auto& scs : sampleCodeStreams_)
   {
     delete scs.codeStream;
     delete scs.stream;

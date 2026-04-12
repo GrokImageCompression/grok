@@ -510,7 +510,7 @@ bool CodeStreamCompress::init(grk_cparameters* parameters, GrkImage* image)
     {
       uint64_t lMctSize = (uint64_t)image->numcomps * image->numcomps * sizeof(float);
       auto lTmpBuf = (float*)grk_malloc(lMctSize);
-      auto dc_shift = (int32_t*)((uint8_t*)parameters->mct_data + lMctSize);
+      const auto dc_shift = (const int32_t*)((const uint8_t*)parameters->mct_data + lMctSize);
       if(!lTmpBuf)
       {
         grklog.error("Not enough memory to allocate temp buffer");
@@ -1792,7 +1792,7 @@ bool CodeStreamCompress::init_mct_encoding(TileCodingParams* tcp, GrkImage* imag
   grk_simple_mcc_decorrelation_data* mcc_data;
   uint32_t mct_size, nb_elem;
   float *data, *current_data;
-  TileComponentCodingParams* tccp;
+  const TileComponentCodingParams* tccp;
 
   assert(tcp != nullptr);
 

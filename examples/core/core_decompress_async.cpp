@@ -286,7 +286,7 @@ bool write_async(grk_image* image, std::string fileName)
   return true;
 }
 
-bool isNetworkAsync(std::string& f)
+bool isNetworkAsync(const std::string& f)
 {
   std::string_view file{f};
   return file.starts_with("http://") || file.starts_with("https://") || file.starts_with("/vsis3/");
@@ -529,7 +529,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] const char** argv)
 
     // Step 2: Wait for swaths and retrieve tile data
     auto y = imgY0;
-    auto swathIndex = 0;
+    uint32_t swathIndex = 0;
     while(y < imgY1)
     {
       auto swathY1 = std::min(y + swathHeight, imgY1);
