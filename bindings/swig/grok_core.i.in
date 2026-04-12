@@ -1,5 +1,8 @@
 %module grok_core
 
+// suppress SWIG 451 (const char* member may leak)
+#pragma SWIG nowarn=451
+
 // Dynamically include grok.h using CMake's configured path
 %{
 #include "@GROK_CORE_INCLUDE_PATH@/grok.h"

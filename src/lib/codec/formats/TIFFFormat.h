@@ -251,8 +251,8 @@ static inline bool extractExifFromTiff(TIFF* tif, uint8_t** outBuf, uint32_t* ou
 
   // --- build standalone TIFF blob with IFD0 + EXIF sub-IFD ---
   // IFD0 entries: metadata tags + ExifIFD pointer (tag 0x8769)
-  uint16_t ifd0Count = (uint16_t)ifd0Tags.size() + (exifEntries.empty() ? 0 : 1);
-  uint16_t exifCount = (uint16_t)exifEntries.size();
+  uint16_t ifd0Count = static_cast<uint16_t>(ifd0Tags.size() + (exifEntries.empty() ? 0 : 1));
+  uint16_t exifCount = static_cast<uint16_t>(exifEntries.size());
 
   // layout:
   // [0..7]   TIFF header (byte order + magic 42 + IFD0 offset=8)
@@ -262,7 +262,7 @@ static inline bool extractExifFromTiff(TIFF* tif, uint8_t** outBuf, uint32_t* ou
   // [...]    EXIF out-of-line data blocks
 
   uint32_t ifd0Start = 8;
-  uint32_t ifd0DirSize = 2 + ifd0Count * 12 + 4;
+  uint32_t ifd0DirSize = static_cast<uint32_t>(2 + ifd0Count * 12 + 4);
   uint32_t ifd0DataStart = ifd0Start + ifd0DirSize;
 
   // compute IFD0 out-of-line data
@@ -311,7 +311,7 @@ static inline bool extractExifFromTiff(TIFF* tif, uint8_t** outBuf, uint32_t* ou
   }
 
   uint32_t exifIfdStart = ifd0DataStart + ifd0DataSize;
-  uint32_t exifDirSize = exifEntries.empty() ? 0 : (2 + exifCount * 12 + 4);
+  uint32_t exifDirSize = exifEntries.empty() ? 0u : static_cast<uint32_t>(2 + exifCount * 12 + 4);
   uint32_t exifDataStart = exifIfdStart + exifDirSize;
 
   // compute EXIF out-of-line data layout
@@ -1481,7 +1481,7 @@ bool TIFFFormat<T>::readTiffPixels(TIFF* tif, grk_image_comp* comps, uint16_t nu
               {
                 if(!convOk.load(std::memory_order_relaxed))
                   return;
-                const uint8_t* rowData = datau8 + (size_t)r * rowStride;
+                const uint8_t* rowData = datau8 + (size_t)r * (size_t)rowStride;
                 if(!convertRowTIFF<T>(rowData, rowBufs[r], pixelCount, prec, sgnd, invert))
                 {
                   convOk.store(false, std::memory_order_relaxed);
@@ -1522,7 +1522,7 @@ bool TIFFFormat<T>::readTiffPixels(TIFF* tif, grk_image_comp* comps, uint16_t nu
             /* Small strip: process sequentially (avoid Taskflow overhead) */
             for(uint32_t r = 0; r < rowCount; ++r)
             {
-              if(!convertRowTIFF<T>(datau8 + (size_t)r * rowStride, buffer32s, pixelCount, prec,
+              if(!convertRowTIFF<T>(datau8 + (size_t)r * (size_t)rowStride, buffer32s, pixelCount, prec,
                                     sgnd, invert))
               {
                 success = false;
@@ -1538,8 +1538,8 @@ bool TIFFFormat<T>::readTiffPixels(TIFF* tif, grk_image_comp* comps, uint16_t nu
           /* Advance all state by rowCount rows */
           for(uint16_t k = 0; k < numcomps; ++k)
             planes[k] += (size_t)rowCount * comp->stride;
-          datau8 += (size_t)rowCount * rowStride;
-          ssize -= (tsize_t)((size_t)rowCount * rowStride);
+          datau8 += (size_t)rowCount * (size_t)rowStride;
+          ssize -= (tsize_t)((size_t)rowCount * (size_t)rowStride);
           height += rowCount;
         }
         else

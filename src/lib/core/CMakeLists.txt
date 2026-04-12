@@ -207,17 +207,28 @@ if(NOT CMAKE_SYSTEM_NAME STREQUAL Emscripten)
     else()
       set_source_files_properties(
         ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/coding/ojph_block_decoder_ssse3.cpp
-        PROPERTIES COMPILE_FLAGS -mssse3)
+        PROPERTIES COMPILE_FLAGS "-mssse3 -w")
       set_source_files_properties(
         ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/coding/ojph_block_decoder_avx2.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/coding/ojph_block_encoder_avx2.cpp
-        PROPERTIES COMPILE_FLAGS -mavx2)
+        PROPERTIES COMPILE_FLAGS "-mavx2 -w")
       set_source_files_properties(
         ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/coding/ojph_block_encoder_avx512.cpp
-        PROPERTIES COMPILE_FLAGS "-mavx512f -mavx512cd")
+        PROPERTIES COMPILE_FLAGS "-mavx512f -mavx512cd -w")
     endif()
   endif()
 endif()
+
+# suppress warnings from third-party OpenJPH code
+set_source_files_properties(
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/coding/ojph_block_common.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/coding/ojph_block_decoder32.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/coding/ojph_block_decoder64.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/coding/ojph_block_encoder.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/others/ojph_arch.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/others/ojph_mem.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/others/ojph_message.cpp
+  PROPERTIES COMPILE_OPTIONS "-w")
 
 if (GRK_BUILD_PLUGIN_LOADER)
     add_definitions(-DGRK_BUILD_PLUGIN_LOADER)

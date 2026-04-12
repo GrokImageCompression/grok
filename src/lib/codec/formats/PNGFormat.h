@@ -375,7 +375,6 @@ grk_image* PNGFormat<T>::do_decode(grk_cparameters* params)
   int color_type;
   grk_image_comp cmptparm[4];
   uint8_t sigbuf[8];
-  T* planes_[4];
   int srgbIntent = -1;
   png_textp text_ptr;
   int num_comments = 0;
@@ -544,8 +543,6 @@ grk_image* PNGFormat<T>::do_decode(grk_cparameters* params)
     image_->comps[nr_comp_ - 1U].type = GRK_CHANNEL_TYPE_OPACITY;
     image_->comps[nr_comp_ - 1U].association = GRK_CHANNEL_ASSOC_WHOLE_IMAGE;
   }
-  for(uint32_t i = 0; i < nr_comp_; i++)
-    planes_[i] = (T*)image_->comps[i].data;
 
   // See if iCCP chunk is present
   if(png_get_valid(png_, info_, PNG_INFO_iCCP))
