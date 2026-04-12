@@ -671,24 +671,6 @@ bool CodeStreamCompress::init(grk_cparameters* parameters, GrkImage* image)
   return true;
 }
 
-void CodeStreamCompress::handleTileProcessor(
-    ITileProcessorCompress* proc, MinHeapPtr<ITileProcessorCompress, uint16_t, MinHeapLocker>& heap,
-    std::atomic<bool>& success)
-{
-  std::unique_lock<std::mutex> lk(heapMutex_);
-  auto seq = heap.pop(proc);
-  for(const auto& s : seq)
-  {
-    // printf("Write tile %d\n", s->getIndex());
-    if(success)
-    {
-      if(!writeTileParts(s))
-        success = false;
-    }
-    delete s;
-  }
-}
-
 uint64_t CodeStreamCompress::compress(grk_plugin_tile* tile)
 {
   uint32_t numTiles = (uint32_t)cp_.t_grid_height_ * cp_.t_grid_width_;

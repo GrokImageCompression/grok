@@ -306,10 +306,6 @@ private:
   bool init_mct_encoding(TileCodingParams* tcp, GrkImage* image);
 
   uint32_t totalTileParts_;
-  mutable std::mutex heapMutex_;
-  void handleTileProcessor(ITileProcessorCompress* proc,
-                           MinHeapPtr<ITileProcessorCompress, uint16_t, MinHeapLocker>& heap,
-                           std::atomic<bool>& success);
 };
 
 } // namespace grk

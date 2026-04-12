@@ -617,45 +617,7 @@ static void setHT(grk_cparameters* parameters, bool hasCompressionRatios, bool h
   }
 }
 
-bool parseCommaSeparatedIntegers(const std::string& input, std::vector<uint32_t>& output,
-                                 size_t numIntegers)
-{
-  std::stringstream ss(input);
-  std::string token;
-  output.clear();
 
-  while(std::getline(ss, token, ','))
-  {
-    try
-    {
-      int32_t value = std::stoi(token);
-      if(value <= 0)
-      {
-        spdlog::error("Synthesfmtize values must be positive.");
-        return false;
-      }
-      output.push_back((uint32_t)value);
-    }
-    catch(const std::invalid_argument& e)
-    {
-      std::cerr << "Invalid integer value: " << token << std::endl;
-      return false;
-    }
-    catch(const std::out_of_range& e)
-    {
-      std::cerr << "Integer value out of range: " << token << std::endl;
-      return false;
-    }
-  }
-
-  if(output.size() != numIntegers)
-  {
-    std::cerr << "Error: Exactly " << numIntegers << " integer values are required." << std::endl;
-    return false;
-  }
-
-  return true;
-}
 
 uint8_t charToUint8(char c)
 {

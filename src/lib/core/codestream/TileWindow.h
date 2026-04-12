@@ -68,12 +68,6 @@ public:
    */
   bool isSlated(uint16_t tile_index);
 
-  /**
-   * @brief Gets the total number of tiles in window
-   * @return uint16_t
-   */
-  uint16_t getTotalNumTiles(void);
-
   std::set<uint16_t>& getSlatedTiles(void);
 
   Rect16 getSlatedTileRect(void);

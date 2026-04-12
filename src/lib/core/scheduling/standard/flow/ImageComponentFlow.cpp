@@ -138,12 +138,5 @@ FlowComponent* ImageComponentFlow::getPrePostProc(tf::Taskflow& codecFlow)
 
   return prePostProc_;
 }
-std::string ImageComponentFlow::genBlockFlowTaskName(uint8_t resFlowNo)
-{
-  std::stringstream ss;
-  ss << "blockFlowTask-" << resFlowNo;
-
-  return ss.str();
-}
 
 } // namespace grk

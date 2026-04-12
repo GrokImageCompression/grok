@@ -134,10 +134,6 @@ public:
   /**
    * @brief Generates block flow task name
    *
-   * @param resFlowNo resolution flow number
-   * @return std::string name of block flow task
-   */
-  std::string genBlockFlowTaskName(uint8_t resFlowNo);
   /**
    * @brief Gets the Resflow object
    *

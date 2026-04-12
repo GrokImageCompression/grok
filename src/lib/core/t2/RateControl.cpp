@@ -180,13 +180,4 @@ uint16_t RateControl::slopeToLog(double slope)
   return (uint16_t)logSlope;
 }
 
-/* Convert from Q8.8 fixed point of log(slope) to slope
-
- See above discussion. We just need to reverse the formula above.
- */
-double RateControl::slopeFromLog(uint16_t logSlope)
-{
-  return exp((logSlope + log(slopeCutoff) * scale - shift) * invScale);
-}
-
 } // namespace grk

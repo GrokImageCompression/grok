@@ -74,20 +74,6 @@ struct Precinct : public Rect32_16
   TagTreeU8* getImsbTree(void);
 
   /**
-   * @brief Gets code block grid width
-   *
-   * @return uint16_t grid width
-   */
-  uint16_t getCblkGridwidth(void);
-
-  /**
-   * @brief Gets code block grid height
-   *
-   * @return uint16_t grid height
-   */
-  uint16_t getCblkGridHeight(void);
-
-  /**
    * @brief Gets nominal size (area) of code block
    *
    * @return uint16_t nominal size

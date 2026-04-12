@@ -28,10 +28,6 @@ void TileWindow::init(Rect16 allTiles)
   allTiles_ = allTiles;
   slate(allTiles_);
 }
-uint16_t TileWindow::getTotalNumTiles(void)
-{
-  return (uint16_t)allTiles_.area();
-}
 void TileWindow::slate(Rect16 tiles)
 {
   assert(!allTiles_.intersection(tiles).empty());
