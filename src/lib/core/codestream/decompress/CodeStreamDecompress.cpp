@@ -1086,9 +1086,7 @@ bool CodeStreamDecompress::setDecompressRegion(RectD region)
     {
       tileCompletion_ = std::make_unique<TileCompletion>(
           tileCache_.get(), imageBounds, cp_.t_width_, cp_.t_height_,
-          [this](uint16_t tileIndexBegin, uint16_t tileIndexEnd) {
-            onRowCompleted(tileIndexBegin, tileIndexEnd);
-          },
+          [this](uint16_t tileIndexBegin, uint16_t) { onRowCompleted(tileIndexBegin); },
           [this]() {
             scheduleTileBatch();
             // Wake the fetcher so it can re-check the row-based throttle
@@ -1323,7 +1321,7 @@ void CodeStreamDecompress::waitSwathCopy()
   swathCopyFutureManager_.waitAndClear();
 }
 
-void CodeStreamDecompress::onRowCompleted(uint16_t tileIndexBegin, uint16_t tileIndexEnd)
+void CodeStreamDecompress::onRowCompleted(uint16_t tileIndexBegin)
 {
   if(!doTileBatching())
     return;

@@ -153,7 +153,8 @@ static size_t chunkWriteCallback(void* contents, size_t size, size_t nmemb, void
   auto& req = (*ctx->requests_)[res->requestIndex_];
   if(res->data_.size() == req.length_)
   {
-    ctx->chunkBuffer_->add(res->requestIndex_, res->data_.data(), req.length_);
+    ctx->chunkBuffer_->add(static_cast<ChunkBuffer<>::index_type>(res->requestIndex_),
+                           res->data_.data(), req.length_);
     res->data_.clear();
     res->data_.shrink_to_fit();
   }

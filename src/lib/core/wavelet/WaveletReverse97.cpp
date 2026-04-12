@@ -99,29 +99,6 @@ namespace HWY_NAMESPACE
   static const float hwy_dwt_gamma = -0.882911075f;
   static const float hwy_dwt_delta = -0.443506852f;
 
-  /* step1: multiply each element in a band by constant c.
-   * data points to first element; stride between same-band elements = 2*L floats
-   * (interleaved L/H layout, each element is L floats wide). */
-  static void hwy_step1_97(float* data, uint32_t len, float c)
-  {
-    const HWY_FULL(float) df;
-    const size_t L = Lanes(df);
-    const size_t stride = 2 * L;
-    auto cv = Set(df, c);
-
-    /* process 4 elements at a time */
-    uint32_t i;
-    for(i = 0; i + 3 < len; i += 4, data += stride * 4)
-    {
-      Store(Mul(Load(df, data), cv), df, data);
-      Store(Mul(Load(df, data + stride), cv), df, data + stride);
-      Store(Mul(Load(df, data + stride * 2), cv), df, data + stride * 2);
-      Store(Mul(Load(df, data + stride * 3), cv), df, data + stride * 3);
-    }
-    for(; i < len; ++i, data += stride)
-      Store(Mul(Load(df, data), cv), df, data);
-  }
-
   /* step2: lifting step.
    * data points to first source element; targets are at data[-L].
    * Update: target += (prev_source + source) * c */
@@ -260,7 +237,7 @@ namespace HWY_NAMESPACE
         lmax = 0;
       assert(lmax >= band_0);
       lmax -= band_0;
-      float* d = mem + (parityOff + band_0 - win_l.x0) * L;
+      float* d = mem + static_cast<size_t>(parityOff + band_0 - win_l.x0) * L;
       d += L;
       float* dPrev = parityOff ? d - 2 * L : d;
       return {d, dPrev, (uint32_t)(band_1 - band_0), (uint32_t)lmax};
@@ -307,7 +284,7 @@ namespace HWY_NAMESPACE
         lmax = 0;
       assert(lmax >= band_0);
       lmax -= band_0;
-      float* d = mem + (parityOff + band_0 - win_l.x0) * PLL;
+      float* d = mem + static_cast<size_t>(parityOff + band_0 - win_l.x0) * PLL;
       d += PLL;
       float* dPrev = parityOff ? d - 2 * PLL : d;
       return {d, dPrev, (uint32_t)(band_1 - band_0), (uint32_t)lmax};

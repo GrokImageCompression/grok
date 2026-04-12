@@ -1262,8 +1262,8 @@ struct encode_info
   DWT dwt;
 };
 
-bool WaveletFwdImpl::compress(TileComponent* tile_comp, uint8_t qmfbid, uint32_t maxDim,
-                              DcShiftParam dcShift, bool intInput)
+bool WaveletFwdImpl::compress(TileComponent* tile_comp, uint8_t qmfbid, DcShiftParam dcShift,
+                              bool intInput)
 {
   if(qmfbid == 1)
     return HWY_DYNAMIC_DISPATCH(encode_53)(tile_comp, dcShift.enabled ? dcShift.shift : 0);
@@ -1272,7 +1272,7 @@ bool WaveletFwdImpl::compress(TileComponent* tile_comp, uint8_t qmfbid, uint32_t
                                            intInput);
 }
 std::unique_ptr<WaveletFwdScheduleData> WaveletFwdImpl::scheduleCompress(
-    TileComponent* tile_comp, uint8_t qmfbid, uint32_t maxDim, DcShiftParam dcShift,
+    TileComponent* tile_comp, uint8_t qmfbid, DcShiftParam dcShift,
     std::vector<std::pair<FlowComponent*, FlowComponent*>>& levelFlows, bool intInput)
 {
   if(qmfbid == 1)

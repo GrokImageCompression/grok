@@ -133,7 +133,7 @@ public:
   void setRegionDecompression(void);
   /**
    * @brief Generates block flow task name
-   *
+   */
   /**
    * @brief Gets the Resflow object
    *

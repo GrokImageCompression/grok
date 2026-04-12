@@ -283,9 +283,9 @@ typedef struct _gpup_header_info
   uint32_t cblockw_init;
   uint32_t cblockh_init;
   bool irreversible;
-  uint32_t mct;
+  uint8_t mct;
   uint16_t rsiz;
-  uint32_t numresolutions;
+  uint8_t numresolutions;
   gpup_prog_order prog_order;
   uint8_t csty;
   uint8_t cblk_sty;
@@ -293,7 +293,7 @@ typedef struct _gpup_header_info
   uint32_t prch_init[GPUP_MAXRLVLS];
   uint32_t tx0, ty0;
   uint32_t t_width, t_height;
-  uint32_t t_grid_width, t_grid_height;
+  uint16_t t_grid_width, t_grid_height;
   uint16_t max_layers_;
 } gpup_header_info;
 

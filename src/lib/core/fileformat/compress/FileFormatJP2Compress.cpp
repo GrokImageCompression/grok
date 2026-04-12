@@ -2051,7 +2051,7 @@ bool FileFormatJP2Compress::write_rreq(void)
 
   // rreq box: 8 (header) + 1 (ML) + 1 (FUAM) + 1 (DCM) + 2 (NSF)
   //           + NSF * (2 (SF) + 1 (SM)) + 2 (NVF)
-  uint32_t boxSize = 8 + 1 + 1 + 1 + 2 + num_rreq_standard_features_ * 3 + 2;
+  uint32_t boxSize = 8 + 1 + 1 + 1 + 2 + static_cast<uint32_t>(num_rreq_standard_features_) * 3 + 2;
 
   if(!stream->write(boxSize))
     return false;

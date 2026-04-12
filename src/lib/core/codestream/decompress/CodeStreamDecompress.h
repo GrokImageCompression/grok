@@ -178,7 +178,7 @@ protected:
 private:
   void postReadHeader(void);
 
-  void onRowCompleted(uint16_t tileIndexBegin, uint16_t tileIndexEnd);
+  void onRowCompleted(uint16_t tileIndexBegin);
   void scheduleTileBatch();
   static constexpr int32_t maxRowsAhead_ = 2;
 

@@ -331,8 +331,6 @@ void TileProcessorCompress::buildCompressDAG(void)
   {
     auto tile_comp = tile_->comps_ + compno;
     auto tccp = tcp_->tccps_ + compno;
-    auto maxDim = std::max(cp_->t_width_, cp_->t_height_);
-
     if(tile_comp->num_resolutions_ <= 1)
       continue;
 
@@ -374,8 +372,7 @@ void TileProcessorCompress::buildCompressDAG(void)
     // (MCT handles int→float conversion for its components)
     bool intInput = !isMctComp && (tccp->qmfbid_ == 0);
     WaveletFwdImpl w;
-    auto scratch =
-        w.scheduleCompress(tile_comp, tccp->qmfbid_, maxDim, dcShift, levelFlows, intInput);
+    auto scratch = w.scheduleCompress(tile_comp, tccp->qmfbid_, dcShift, levelFlows, intInput);
     if(scratch)
       dwtScratch_.push_back(std::move(scratch));
 
@@ -550,8 +547,6 @@ bool TileProcessorCompress::doCompress(void)
       {
         auto tile_comp = tile_->comps_ + compno;
         auto tccp = tcp_->tccps_ + compno;
-        auto maxDim = std::max(cp_->t_width_, cp_->t_height_);
-
         // compute DC shift for fusion into wavelet first level
         DcShiftParam dcShift;
         if(tile_comp->num_resolutions_ > 1)
@@ -581,7 +576,7 @@ bool TileProcessorCompress::doCompress(void)
         bool isMctComp2 = needsMctDecompress(compno) && tcp_->mct_ == 1;
         bool intInput = !isMctComp2 && (tccp->qmfbid_ == 0);
         WaveletFwdImpl w;
-        if(!w.compress(tile_comp, tccp->qmfbid_, maxDim, dcShift, intInput))
+        if(!w.compress(tile_comp, tccp->qmfbid_, dcShift, intInput))
           return false;
       }
     }
