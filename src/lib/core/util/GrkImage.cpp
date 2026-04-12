@@ -831,26 +831,6 @@ void GrkImage::filterComponents(const std::vector<uint16_t>& compsToKeep)
   decompress_num_comps = newNumComps;
 }
 
-GrkImage* GrkImage::duplicate(void) const
-{
-  auto destImage = new GrkImage();
-  copyHeaderTo(destImage);
-  for(uint16_t compno = 0; compno < numcomps; ++compno)
-  {
-    auto compDest = destImage->comps + compno;
-    auto compSrc = comps + compno;
-    GrkImage::allocData(compDest);
-    assert(compSrc->stride <= compDest->stride);
-    compDest->stride = compSrc->stride;
-    assert(compSrc->w == compDest->w);
-    std::memcpy(compDest->data, compSrc->data,
-                (size_t)compSrc->stride * compSrc->h * sizeOfDataType(compSrc->data_type));
-    assert(componentsEqual(compSrc, compDest, true));
-  }
-
-  return destImage;
-}
-
 /**
  * Create new image and transfer tile buffer data
  *

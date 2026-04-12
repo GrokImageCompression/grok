@@ -34,7 +34,7 @@ struct T2Decompress
    * @brief Constructs a T2Decompress object
    * @param tileProc @ref TileProcesor
    */
-  T2Decompress(ITileProcessor* tileProc);
+  explicit T2Decompress(ITileProcessor* tileProc);
 
   /**
    * @brief Destroys a T2Decompress object

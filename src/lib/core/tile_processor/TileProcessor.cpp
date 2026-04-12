@@ -1306,10 +1306,6 @@ Rect32 TileProcessor::getUnreducedTileWindow(void)
   return unreducedImageWindow_.clip(tile_);
 }
 
-uint64_t TileProcessor::getNumReadDataPackets(void)
-{
-  return numReadDataPackets_;
-}
 void TileProcessor::incNumReadDataPackets(void)
 {
   numReadDataPackets_++;

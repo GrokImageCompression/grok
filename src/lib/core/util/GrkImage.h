@@ -112,7 +112,6 @@ public:
   void transferDataTo(GrkImage* dest);
   void filterComponents(const std::vector<uint16_t>& compsToKeep);
   GrkImage* extractFrom(const Tile* tile_src) const;
-  GrkImage* duplicate(void) const;
   bool composite(const GrkImage* src);
   bool greyToRGB(void);
   bool applyColourManagement(void);

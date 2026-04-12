@@ -47,7 +47,7 @@ struct TileProcessor : virtual public ITileProcessor
   /**
    * @brief Destroys a TileProcessor
    */
-  virtual ~TileProcessor();
+  virtual ~TileProcessor() override;
 
   void setProcessors(MarkerParser* parser) override;
 
@@ -184,7 +184,7 @@ struct TileProcessor : virtual public ITileProcessor
    *
    * @return Tile*
    */
-  Tile* getTile(void);
+  Tile* getTile(void) override;
 
   grk_progression_state getProgressionState() override;
 
@@ -436,13 +436,6 @@ private:
    * @return true if successful
    */
   bool createDecompressTileComponentWindows(void);
-
-  /**
-   * @brief Get the Num Read Data Packets object
-   *
-   * @return number of read data packets
-   */
-  uint64_t getNumReadDataPackets(void);
 
   /**
    * @brief @ref MarkerParser

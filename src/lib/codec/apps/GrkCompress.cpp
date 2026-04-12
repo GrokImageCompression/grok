@@ -617,8 +617,6 @@ static void setHT(grk_cparameters* parameters, bool hasCompressionRatios, bool h
   }
 }
 
-
-
 uint8_t charToUint8(char c)
 {
   switch(c)
