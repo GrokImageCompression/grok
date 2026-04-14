@@ -1091,7 +1091,101 @@
             "miDebuggerPath": "/usr/bin/gdb"
         },
         {
-            "name": "compress GPU",
+            "name": "GPU compress single mammo",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/bin/grk_compress",
+            "args": [
+                "-i",
+                "$HOME/Downloads/mammo/bto6/bto06_0000.tif",
+                "-o",
+                "$HOME/Downloads/mammo/bto6_compressed/bto06_0000.tif.j2k",
+                "--out-fmt",
+                "j2k",
+                "-k",
+                "1",
+            ],
+            "cwd": "${workspaceFolder}/build/bin",
+            "environment": [
+                {
+                    "name": "CUDA_MODULE_LOADING",
+                    "value": "EAGER"
+                },
+                {
+                    "name": "GRK_DEBUG",
+                    "value": "3"
+                }
+            ],
+            "MIMode": "gdb",
+            "miDebuggerPath": "/usr/bin/gdb"
+        },
+        {
+            "name": "GPU compress batch mammo",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/bin/grk_compress",
+            "args": [
+                "--batch-src",
+                "$HOME/Downloads/mammo/bto6",
+                "--out-dir",
+                "$HOME/Downloads/mammo/bto6_compressed",
+                "--out-fmt",
+                "j2k",
+                "-k",
+                "1",
+                // "-b",
+                // "32,32",
+                //"64,64",
+                "-e",
+                "50"
+            ],
+            "cwd": "${workspaceFolder}/build/bin",
+            "environment": [
+                {
+                    "name": "CUDA_MODULE_LOADING",
+                    "value": "EAGER"
+                },
+                {
+                    "name": "GRK_DEBUG",
+                    "value": "3"
+                }
+            ],
+            "MIMode": "gdb",
+            "miDebuggerPath": "/usr/bin/gdb"
+        },
+        {
+            "name": "GPU decompress batch mammo",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/bin/grk_decompress",
+            "args": [
+                "--batch-src",
+                "$HOME/Downloads/mammo/bto6_compressed",
+                "--out-dir",
+                "$HOME/Downloads/mammo/bto6_round",
+                "--out-fmt",
+                "tif",
+                "-e",
+                "50",
+                "-k",
+                "1"
+            ],
+            "cwd": "${workspaceFolder}/build/bin",
+            "environment": [
+                {
+                    "name": "CUDA_MODULE_LOADING",
+                    "value": "EAGER"
+                },
+                {
+                    "name": "GRK_DEBUG",
+                    "value": "3"
+                }
+            ],
+            "MIMode": "gdb",
+            "miDebuggerPath": "/usr/bin/gdb"
+        },
+        {
+            "name": "GPU compress batch cinema",
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/build/bin/grk_compress",
@@ -1124,7 +1218,7 @@
             "miDebuggerPath": "/usr/bin/gdb"
         },
         {
-            "name": "decompress GPU",
+            "name": "GPU decompress batch cinema",
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/build/bin/grk_decompress",
@@ -1155,7 +1249,7 @@
             "miDebuggerPath": "/usr/bin/gdb"
         },
         {
-            "name": "single compress GPU",
+            "name": "GPU compress single cinema",
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/build/bin/grk_compress",
@@ -1185,7 +1279,7 @@
             "miDebuggerPath": "/usr/bin/gdb"
         },
         {
-            "name": "single decompress GPU",
+            "name": "GPU decompress single cinema",
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/build/bin/grk_decompress",

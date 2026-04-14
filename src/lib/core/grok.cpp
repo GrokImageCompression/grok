@@ -1163,7 +1163,9 @@ uint64_t grk_plugin_internal_encode_callback(gpup_compress_callback_info* info)
   grk_info.output_file_name_is_relative = info->outputFileNameIsRelative;
   grk_info.output_file_name = info->output_file_name;
   grk_info.compressor_parameters = s_originalCompressParams;
-  // Cache the tile wrapper to avoid repeated deep alloc/free
+  // Cache the tile wrapper to avoid repeated deep alloc/free.
+  // In batch mode, the same gpup_tile pointer may be reused with new data,
+  // so always update the wrapper's shared data pointers.
   static thread_local grk_plugin_tile* s_cachedEncodeTileWrapper = nullptr;
   static thread_local const gpup_tile* s_cachedEncodeTileSrc = nullptr;
   if(info->tile != s_cachedEncodeTileSrc)
@@ -1171,6 +1173,11 @@ uint64_t grk_plugin_internal_encode_callback(gpup_compress_callback_info* info)
     grk_plugin_tile_free_wrapper(s_cachedEncodeTileWrapper);
     s_cachedEncodeTileWrapper = gpup_tile_to_grk(info->tile);
     s_cachedEncodeTileSrc = info->tile;
+  }
+  else if(info->tile && s_cachedEncodeTileWrapper)
+  {
+    // Same tile pointer reused (batch pool) — update data pointers in-place
+    gpup_tile_update_grk(s_cachedEncodeTileWrapper, info->tile);
   }
   grk_info.tile = s_cachedEncodeTileWrapper;
 

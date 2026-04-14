@@ -175,6 +175,37 @@ bool TileProcessorCompress::makeLayerFeasible(uint16_t layno, uint16_t thresh, b
 
   return allocationChanged;
 }
+
+void TileProcessorCompress::syncPluginCodeBlockData()
+{
+  uint32_t state = grk_plugin_get_debug_state();
+  if(!current_plugin_tile_ || (state & GRK_PLUGIN_STATE_PRE_TR1))
+    return;
+  for(uint16_t compno = 0; compno < tile_->numcomps_; compno++)
+  {
+    auto tilec = &tile_->comps_[compno];
+    for(uint8_t resno = 0; resno < tilec->num_resolutions_; resno++)
+    {
+      auto res = &tilec->resolutions_[resno];
+      for(uint8_t bandIndex = 0; bandIndex < res->numBands_; bandIndex++)
+      {
+        auto band = &res->band[bandIndex];
+        for(auto [precinctIndex, vectorIndex] : band->precinctMap_)
+        {
+          auto prc = band->precincts_[vectorIndex];
+          for(uint32_t cblkno = 0; cblkno < prc->getNumCblks(); cblkno++)
+          {
+            auto cblk = prc->getCompressBlock(cblkno);
+            uint32_t num_pix = (uint32_t)cblk->area();
+            compress_synch_with_plugin(this, compno, resno, bandIndex, precinctIndex, cblkno, band,
+                                       cblk, &num_pix);
+          }
+        }
+      }
+    }
+  }
+}
+
 /*
  Hybrid rate control using bisect algorithm with optimal truncation points
  */
@@ -190,6 +221,10 @@ bool TileProcessorCompress::pcrdBisectFeasible(uint32_t* allPacketBytes, bool di
   auto t2 = T2Compress(this);
   if(single_lossless || !needsRateControl())
   {
+    // Sync code block data from plugin tile before building layers,
+    // since T1 encoding was skipped when a plugin tile is present.
+    syncPluginCodeBlockData();
+
     if(single_lossless)
       makeSingleLosslessLayer();
     else
@@ -471,6 +506,11 @@ bool TileProcessorCompress::pcrdBisectSimple(uint32_t* allPacketBytes, bool disa
   double min_slope = DBL_MAX;
   double max_slope = -1;
   uint32_t state = grk_plugin_get_debug_state();
+
+  // Sync code block data from plugin tile before building layers,
+  // since T1 encoding was skipped when a plugin tile is present.
+  syncPluginCodeBlockData();
+
   bool single_lossless = makeSingleLosslessLayer();
   auto tcp = tcp_;
 

@@ -580,8 +580,8 @@ GrkRC GrkCompress::pluginMain(int argc, const char* argv[], CompressInitParams* 
 
   // 2. single image encode
   if(!initParams->inputFolder.set_imgdir)
-    return grk_plugin_compress(&initParams->parameters, pluginCompressCallback) ? GrkRCSuccess
-                                                                                : GrkRCFail;
+    return grk_plugin_compress(&initParams->parameters, pluginCompressCallback) ? GrkRCFail
+                                                                                : GrkRCSuccess;
 
   // 3. directory encode (non-MJ2)
   {
