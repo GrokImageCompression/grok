@@ -38,6 +38,7 @@ struct DecompressInitParams
     free(outFolder.imgdirpath);
   }
   bool initialized;
+  bool usePlugin = true;
   grk_decompress_parameters parameters;
   std::vector<uint16_t> compIndices;
   char pluginPath[GRK_PATH_LEN];

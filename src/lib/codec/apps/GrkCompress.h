@@ -27,6 +27,7 @@ struct CompressInitParams
   CompressInitParams();
   ~CompressInitParams();
   bool initialized = false;
+  bool usePlugin = true;
   grk_cparameters parameters = {};
   char pluginPath[GRK_PATH_LEN];
   grk_img_fol inputFolder;

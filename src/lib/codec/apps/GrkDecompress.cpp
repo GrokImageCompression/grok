@@ -627,7 +627,10 @@ GrkRC GrkDecompress::parseCommandLine(int argc, const char* argv[],
   if(kernelBuildOptionsOpt->count() > 0)
     parameters->kernel_build_options = kernelBuildOptions;
   if(deviceIdOpt->count() > 0)
+  {
     parameters->device_id = deviceId;
+    initParams->usePlugin = (deviceId == -2);
+  }
   if(durationOpt->count() > 0)
     parameters->duration = duration;
 
@@ -752,6 +755,12 @@ GrkRC GrkDecompress::pluginMain(int argc, const char* argv[], DecompressInitPara
   pngSetVerboseFlag(true);
 #endif
   initParams->initialized = true;
+  // only load GPU plugin when -G is specified to be -2 (CPU only)
+  if(!initParams->usePlugin)
+  {
+    grk_initialize(nullptr, initParams->parameters.num_threads, nullptr);
+    return GrkRCFail;
+  }
   // loads plugin but does not actually create codec
   bool pluginInitialised = false;
   grk_initialize(initParams->pluginPath, initParams->parameters.num_threads, &pluginInitialised);

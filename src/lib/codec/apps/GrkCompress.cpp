@@ -544,6 +544,12 @@ GrkRC GrkCompress::pluginMain(int argc, const char* argv[], CompressInitParams* 
   tiffSetErrorAndWarningHandlers(true);
 #endif
   initParams->initialized = true;
+  // only load GPU plugin when -G is specified to be -2 (CPU only)
+  if(!initParams->usePlugin)
+  {
+    grk_initialize(nullptr, initParams->parameters.num_threads, nullptr);
+    return GrkRCFail;
+  }
   // load plugin but do not actually create codec
   bool pluginInitialised;
   grk_initialize(initParams->pluginPath, initParams->parameters.num_threads, &pluginInitialised);
@@ -777,7 +783,10 @@ GrkRC GrkCompress::parseCommandLine(int argc, const char* argv[], CompressInitPa
   if(numThreadsOpt->count() > 0)
     parameters->num_threads = numThreads;
   if(deviceIdOpt->count() > 0)
+  {
     parameters->device_id = deviceId;
+    initParams->usePlugin = (deviceId == -2);
+  }
   if(durationOpt->count() > 0)
     parameters->duration = duration;
   if(inputFormatOpt->count() > 0)
