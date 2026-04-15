@@ -220,7 +220,7 @@ struct Buffer : A<T>
   }
   void set_num_elts(size_t elts)
   {
-    assert(elts <= num_elts_);
+    assert(!owns_data_ || elts <= num_elts_);
     num_elts_ = elts;
   }
 
