@@ -1142,6 +1142,48 @@ int GrkDecompress::postProcess(grk_plugin_decompress_callback_info* info)
   if(!info)
     return -1;
   auto fmt = info->format_private ? (IImageFormat*)info->format_private : imageFormat;
+  // GPU mono POST_T1: format was deleted after previous file — create fresh one
+  if(!fmt && (info->decompress_flags & GRK_DECODE_POST_T1))
+  {
+    auto parameters = info->decompressor_parameters;
+    auto cod_format = info->cod_format != GRK_FMT_UNK ? info->cod_format : parameters->cod_format;
+    switch(cod_format)
+    {
+      case GRK_FMT_PXM:
+        fmt = new PNMFormat<int32_t>(parameters->split_by_component);
+        break;
+      case GRK_FMT_PGX:
+        fmt = new PGXFormat<int32_t>();
+        break;
+      case GRK_FMT_BMP:
+        fmt = new BMPFormat<int32_t>();
+        break;
+      case GRK_FMT_TIF:
+#ifdef GROK_HAVE_LIBTIFF
+        fmt = new TIFFFormat<int32_t>();
+#endif
+        break;
+      case GRK_FMT_RAW:
+        fmt = new RAWFormat<int32_t>(true);
+        break;
+      case GRK_FMT_RAWL:
+        fmt = new RAWFormat<int32_t>(false);
+        break;
+      case GRK_FMT_JPG:
+#ifdef GROK_HAVE_LIBJPEG
+        fmt = new JPEGFormat<int32_t>();
+#endif
+        break;
+      case GRK_FMT_PNG:
+#ifdef GROK_HAVE_LIBPNG
+        fmt = new PNGFormat<int32_t>();
+#endif
+        break;
+      default:
+        break;
+    }
+    info->format_private = fmt;
+  }
   bool failed = true;
   bool imageNeedsDestroy = false;
   const char* infile = nullptr;

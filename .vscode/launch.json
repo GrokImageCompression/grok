@@ -1136,7 +1136,7 @@
                 "32,32",
                 //"64,64",
                 "-e",
-                "50"
+                "10"
             ],
             "cwd": "${workspaceFolder}/build/bin",
             "environment": [
@@ -1159,11 +1159,11 @@
             "program": "${workspaceFolder}/build/bin/grk_decompress",
             "args": [
                 "-i",
-                "$HOME/temp/mammo/bto6_compressed/bto06_0000.j2k",
+                "$HOME/temp/mammo/bto6_compressed/bto06_0003.j2k",
                 "-o",
-                "$HOME/temp/mammo/bto6_round/bto06_0000.j2k.tif",
-                // "-e",
-                // "50",
+                "$HOME/temp/mammo/bto6_round/bto06_0003.j2k.tif",
+                "-e",
+                "2",
             ],
             "cwd": "${workspaceFolder}/build/bin",
             "environment": [
@@ -1191,8 +1191,8 @@
                 "$HOME/temp/mammo/bto6_round",
                 "--out-fmt",
                 "tif",
-                // "-e",
-                // "50",
+                "-e",
+                "16",
             ],
             "cwd": "${workspaceFolder}/build/bin",
             "environment": [
@@ -1252,7 +1252,7 @@
                 "--out-fmt",
                 "tif",
                 "-e",
-                "50",
+                "20",
             ],
             "cwd": "${workspaceFolder}/build/bin",
             "environment": [
