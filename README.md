@@ -27,6 +27,8 @@ Benchmark results (16 threads, GDAL release build, Fedora 42):
 ### Features
 - High Throughput JPEG 2000 (HTJ2K) support
 - Random-access sub-image decoding (TLM + PLT markers)
+- [Multi-level tile cache](doc/TileCache.md) with LRU eviction and compressed chunk caching
+- [S3 / cloud storage](doc/S3.md) with network fetch caching and disk spillover
 - ICC color profiles, XML/IPTC/XMP/EXIF metadata
 - Monochrome, sRGB, palette, YCC, extended YCC, CIELab, CMYK
 - 1–16 bit precision
@@ -58,6 +60,8 @@ grk_transcode -i input.jp2 -o output.jp2 -X -L
 
 ### Links
 - [Installation](INSTALL.md)
+- [Tile Cache Architecture](doc/TileCache.md)
+- [S3 / Cloud Storage](doc/S3.md)
 - [Language Bindings](bindings/swig/README.md)
 - [Wiki & Docs](https://github.com/GrokImageCompression/grok/wiki)
 - [GitHub](https://github.com/GrokImageCompression/grok)
