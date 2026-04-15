@@ -1111,7 +1111,7 @@ namespace HWY_NAMESPACE
         {
           T* scratch = data->scratch_pool;
           vertFlow->nextTask().work(
-              [tiledp, scratch, rw, rh, parity_col, stride, currentDcShift, currentIntInput] {
+              [tiledp, scratch, rw, rh, parity_col, stride, currentDcShift, currentIntInput, lanes] {
                 DWT dwt;
                 uint32_t j;
                 for(j = 0; j + lanes - 1 < rw; j += lanes)
@@ -1160,7 +1160,7 @@ namespace HWY_NAMESPACE
         if(num_threads <= 1 || rh < (lanes << 1))
         {
           T* scratch = data->scratch_pool;
-          horizFlow->nextTask().work([tiledp, scratch, rw, rh, parity_row, stride] {
+          horizFlow->nextTask().work([tiledp, scratch, rw, rh, parity_row, stride, lanes] {
             DWT dwt;
             uint32_t j;
             for(j = 0; j + lanes - 1 < rh; j += lanes)
