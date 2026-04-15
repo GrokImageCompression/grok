@@ -194,6 +194,33 @@ Either rebuild without ASAN (`-DWITH_SANITIZER=OFF`) or preload the runtime:
 
     $  LD_PRELOAD=$(gcc -print-file-name=libasan.so) PYTHONPATH=/PATH/TO/BUILD/bin python -m pytest ...
 
+### GPU Plugin Tests
+
+GPU tests exercise the GPU plugin via `grk_compress` and `grk_decompress` binaries.
+They require a CUDA-capable GPU with the plugin built. Tests are disabled by default.
+
+To run GPU tests via `ctest`:
+
+    $  cd /PATH/TO/BUILD
+    $  ctest -R python_gpu_tests -V
+
+Or filter by the `gpu` label:
+
+    $  cd /PATH/TO/BUILD
+    $  ctest -L gpu -V
+
+To run them directly with `pytest`:
+
+    $  cd /PATH/TO/SOURCE
+    $  PYTHONPATH=/PATH/TO/BUILD/bin LD_LIBRARY_PATH=/PATH/TO/BUILD/bin \
+       python -m pytest tests/python/test_gpu.py --run-gpu -v
+
+All GPU compress operations use `-b 32,32` code block size (required for GPU decompress).
+The `CUDA_MODULE_LOADING=EAGER` environment variable is set automatically by the CTest target.
+
+Tests cover: single/batch compress and decompress, lossy/lossless, bit depths 8/10/12/16,
+mono and RGB, cinema 2K profile, and CPU-only fallback (`-G -2`).
+
 ## macOS
 
 macOS builds are configured similar to *NIX builds.

@@ -25,10 +25,17 @@ def pytest_addoption(parser):
         default=False,
         help="Run S3/MinIO integration tests (requires running MinIO on localhost:9000)",
     )
+    parser.addoption(
+        "--run-gpu",
+        action="store_true",
+        default=False,
+        help="Run GPU plugin tests (requires CUDA-capable GPU and plugin built)",
+    )
 
 
 def pytest_configure(config):
     config.addinivalue_line("markers", "s3: S3/MinIO integration tests (need --run-s3)")
+    config.addinivalue_line("markers", "gpu: GPU plugin tests (need --run-gpu)")
 
 
 def pytest_sessionstart(session):
@@ -37,12 +44,17 @@ def pytest_sessionstart(session):
 
 
 def pytest_collection_modifyitems(config, items):
-    if config.getoption("--run-s3"):
-        return
-    skip_s3 = pytest.mark.skip(reason="Need --run-s3 option to run")
-    for item in items:
-        if "s3" in item.keywords:
-            item.add_marker(skip_s3)
+    if not config.getoption("--run-s3"):
+        skip_s3 = pytest.mark.skip(reason="Need --run-s3 option to run")
+        for item in items:
+            if "s3" in item.keywords:
+                item.add_marker(skip_s3)
+
+    if not config.getoption("--run-gpu"):
+        skip_gpu = pytest.mark.skip(reason="Need --run-gpu option to run")
+        for item in items:
+            if "gpu" in item.keywords:
+                item.add_marker(skip_gpu)
 
 
 @pytest.fixture(scope="session", autouse=True)

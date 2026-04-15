@@ -1252,7 +1252,7 @@
                 "--out-fmt",
                 "tif",
                 "-e",
-                "20",
+                "50",
             ],
             "cwd": "${workspaceFolder}/build/bin",
             "environment": [

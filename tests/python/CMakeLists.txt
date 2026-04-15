@@ -29,3 +29,20 @@ set_tests_properties(python_tests PROPERTIES
     ENVIRONMENT "PYTHONPATH=${GROK_BIN_DIR};LD_LIBRARY_PATH=${GROK_BIN_DIR}:$ENV{LD_LIBRARY_PATH}"
     DEPENDS grok_core
 )
+
+# GPU plugin tests (opt-in, requires CUDA GPU and plugin)
+add_test(
+    NAME python_gpu_tests
+    COMMAND ${Python3_EXECUTABLE} -m pytest
+        ${PYTHON_TEST_DIR}/test_gpu.py
+        --run-gpu
+        -v
+        --tb=short
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+)
+
+set_tests_properties(python_gpu_tests PROPERTIES
+    ENVIRONMENT "PYTHONPATH=${GROK_BIN_DIR};LD_LIBRARY_PATH=${GROK_BIN_DIR}:$ENV{LD_LIBRARY_PATH};CUDA_MODULE_LOADING=EAGER"
+    DEPENDS grok_core
+    LABELS "gpu"
+)
