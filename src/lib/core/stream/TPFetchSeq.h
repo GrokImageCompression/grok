@@ -96,6 +96,10 @@ struct SharedPtrSeq
   {
     objStore_.resize(N);
   }
+  void clear()
+  {
+    objStore_.clear();
+  }
 
 private:
   std::vector<std::shared_ptr<T>> objStore_;
@@ -141,6 +145,12 @@ struct TPSeq : public SharedPtrSeq<DataSlice>
     }
     SharedPtrSeq<DataSlice>::push_back(std::make_shared<DataSlice>(offset, length));
     return true;
+  }
+
+  void reset()
+  {
+    clear();
+    signalledNumTileParts_ = 0;
   }
 
   /**

@@ -266,6 +266,7 @@ void TileProcessor::resetSOTParsing()
   numSOTsParsed_ = 0;
   tcp_->tilePartCounter_ = 0;
   scheduledForDecompression_ = false;
+  tilePartSeq_.reset();
 }
 
 bool TileProcessor::reinitForReDecompress()

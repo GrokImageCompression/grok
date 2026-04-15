@@ -1103,7 +1103,8 @@
                 "--out-fmt",
                 "j2k",
                 "-b",
-                "32,32"
+                "32,32",
+                "-I"
             ],
             "cwd": "${workspaceFolder}/build/bin",
             "environment": [
@@ -1268,7 +1269,7 @@
             "miDebuggerPath": "/usr/bin/gdb"
         },
         {
-            "name": "GPU compress single cinema",
+            "name": "GPU compress single mono",
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/build/bin/grk_compress",
