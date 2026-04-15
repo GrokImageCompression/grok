@@ -103,6 +103,13 @@ struct ITileProcessor
                              TilePartInfo tilePartInfo) = 0;
 
   /**
+   * @brief Parse tile-part packets using cached SOT offsets from tilePartSeq_,
+   * without re-reading SOT markers.
+   * @return true if successful
+   */
+  virtual bool decompressFromCachedTileParts() = 0;
+
+  /**
    * @brief Reads the Start of Tile (SOT) marker
    * @param stream Input stream
    * @param headerData Header data buffer

@@ -808,10 +808,27 @@ bool CodeStreamDecompress::decompressTileImpl(uint16_t tileIndex)
   if(!cp_.hasTLM())
   {
     bool invalidMarker = false;
-    // a.parse remaining tile parts
     auto tileProcessor = cacheEntry ? cacheEntry->processor : nullptr;
-    if(!tileProcessor || !tileProcessor->allSOTMarkersParsed())
+
+    if(tileProcessor && tileProcessor->allSOTMarkersParsed() &&
+       tileProcessor->getNumProcessedPackets() > 0)
     {
+      // (a) Fully parsed + packets ready → schedule T1/T2 directly
+      if(!schedule(tileProcessor, false))
+        return false;
+    }
+    else if(tileProcessor && tileProcessor->allSOTMarkersParsed())
+    {
+      // (b) SOTs known from previous decode, packets not parsed →
+      //     direct-seek parse using cached tile-part offsets
+      if(!tileProcessor->decompressFromCachedTileParts())
+        return false;
+      if(!schedule(tileProcessor, false))
+        return false;
+    }
+    else
+    {
+      // (c) No SOT info → full sequential parse (first decode)
       decompressSequentialPrepare();
       try
       {
@@ -823,29 +840,23 @@ bool CodeStreamDecompress::decompressTileImpl(uint16_t tileIndex)
         grklog.warn("Found invalid marker 0x%.4x in tile %u header", ime.marker_, tileIndex);
         invalidMarker = true;
       }
-    }
-    else
-    {
-      // c. schedule decompression
-      if(!schedule(tileProcessor, false))
-        return false;
-    }
 
-    // b. If not cached, check for corrupt Adobe images where a final tile part is not parsed
-    // due to incorrectly-signalled number of tile parts.
-    if(!invalidMarker && !cacheEntry)
-    {
-      try
+      // Check for corrupt Adobe images where a final tile part is not parsed
+      // due to incorrectly-signalled number of tile parts.
+      if(!invalidMarker && !cacheEntry)
       {
-        if(markerParser_.readSOTorEOC() && markerParser_.currId() == SOT)
+        try
         {
-          if(markerParser_.checkForIllegalTilePart())
-            return false;
+          if(markerParser_.readSOTorEOC() && markerParser_.currId() == SOT)
+          {
+            if(markerParser_.checkForIllegalTilePart())
+              return false;
+          }
         }
-      }
-      catch(const t1_t2::InvalidMarkerException& ime)
-      {
-        grklog.warn("Found invalid marker 0x%.4x in tile %u header", ime.marker_, tileIndex);
+        catch(const t1_t2::InvalidMarkerException& ime)
+        {
+          grklog.warn("Found invalid marker 0x%.4x in tile %u header", ime.marker_, tileIndex);
+        }
       }
     }
 

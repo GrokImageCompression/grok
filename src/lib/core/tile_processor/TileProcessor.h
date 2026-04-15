@@ -87,6 +87,15 @@ struct TileProcessor : virtual public ITileProcessor
                      uint16_t mainMarkerId, TilePartInfo tilePartInfo) override;
 
   /**
+   * @brief Parse tile-part packets using cached SOT offsets from tilePartSeq_,
+   * without re-reading SOT markers. Used on second decode for tiles whose
+   * SOTs were already parsed on the first pass.
+   *
+   * @return true if successful
+   */
+  bool decompressFromCachedTileParts() override;
+
+  /**
    * @brief Reads SOT marker
    *
    * @param stream

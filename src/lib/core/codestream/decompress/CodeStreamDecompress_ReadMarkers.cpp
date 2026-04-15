@@ -361,17 +361,26 @@ bool CodeStreamDecompress::readSOT(uint8_t* headerData, uint16_t headerSize)
   currTileIndex_ = tileIndex;
 
   grk_read(&headerData, &currTilePartInfo_.tilePartLength_);
-  if(!cp_.hasTLM() && !tilesToDecompress_.isSlated(tileIndex))
+
+  auto cached = tileCache_->get(tileIndex);
+  // Skip tiles that are already decompressed (best-effort or normal)
+  if(cached && cached->processor &&
+     (cached->processor->isBestEffortDecompressed() ||
+      (cached->processor->getImage() && !cached->dirty_)))
   {
+    currTileIndex_ = -1;
     return currTilePartInfo_.tilePartLength_
                ? stream_->skip((int64_t)(currTilePartInfo_.tilePartLength_ - sotMarkerSegmentLen))
                : true;
   }
 
-  auto cached = tileCache_->get(tileIndex);
-  if(cached && cached->processor && cached->processor->isBestEffortDecompressed())
+  if(!cp_.hasTLM() && !tilesToDecompress_.isSlated(tileIndex))
   {
-    currTileIndex_ = -1;
+    // Record SOT info for non-slated tiles so tilePartSeq_ is populated
+    // for potential future decode via decompressFromCachedTileParts()
+    auto processor = getTileProcessor(tileIndex);
+    if(!processor->readSOT(this->stream_, headerData, headerSize, currTilePartInfo_, false))
+      return false;
     return currTilePartInfo_.tilePartLength_
                ? stream_->skip((int64_t)(currTilePartInfo_.tilePartLength_ - sotMarkerSegmentLen))
                : true;

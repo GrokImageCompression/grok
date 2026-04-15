@@ -502,6 +502,43 @@ bool TileProcessor::decompressWithTLM(const std::shared_ptr<TPFetchSeq>& tilePar
   return true;
 }
 
+bool TileProcessor::decompressFromCachedTileParts()
+{
+  for(size_t i = 0; i < tilePartSeq_.size(); ++i)
+  {
+    auto& tp = tilePartSeq_[i];
+
+    // Seek past SOT marker segment to tile-part content
+    if(!getStream()->seek(tp->offset_ + sotMarkerSegmentLen) || getStream()->numBytesLeft() == 0)
+      break;
+
+    // Read first marker ID after SOT
+    try
+    {
+      if(!markerParser_->readId(false))
+        return false;
+    }
+    catch(const t1_t2::InvalidMarkerException&)
+    {
+      truncated_ = true;
+      continue;
+    }
+
+    // Reconstruct TilePartInfo from cached data
+    TilePartInfo tpi;
+    tpi.tilePart_ = (uint8_t)i;
+    tpi.tilePartLength_ = (uint32_t)tp->length_;
+    tpi.remainingTilePartBytes_ =
+        tpi.tilePartLength_ >= sotMarkerSegmentLen ? tpi.tilePartLength_ - sotMarkerSegmentLen : 0;
+
+    if(!parseTilePart(nullptr, nullptr, markerParser_->currId(), tpi))
+      return false;
+  }
+
+  prepareForDecompression();
+  return true;
+}
+
 bool TileProcessor::readSOT(IStream* stream, uint8_t* headerData, uint16_t headerSize,
                             TilePartInfo& tilePartInfo, bool needToReadIndexAndLength)
 {

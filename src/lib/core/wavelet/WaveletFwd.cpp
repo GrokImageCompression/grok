@@ -1110,17 +1110,17 @@ namespace HWY_NAMESPACE
         if(num_threads <= 1 || rw < (lanes << 1))
         {
           T* scratch = data->scratch_pool;
-          vertFlow->nextTask().work(
-              [tiledp, scratch, rw, rh, parity_col, stride, currentDcShift, currentIntInput, lanes] {
-                DWT dwt;
-                uint32_t j;
-                for(j = 0; j + lanes - 1 < rw; j += lanes)
-                  dwt.encode_v((T*)tiledp + j, scratch, rh, parity_col, stride, lanes,
-                               currentDcShift, currentIntInput);
-                if(j < rw)
-                  dwt.encode_v((T*)tiledp + j, scratch, rh, parity_col, stride, rw - j,
-                               currentDcShift, currentIntInput);
-              });
+          vertFlow->nextTask().work([tiledp, scratch, rw, rh, parity_col, stride, currentDcShift,
+                                     currentIntInput, lanes] {
+            DWT dwt;
+            uint32_t j;
+            for(j = 0; j + lanes - 1 < rw; j += lanes)
+              dwt.encode_v((T*)tiledp + j, scratch, rh, parity_col, stride, lanes, currentDcShift,
+                           currentIntInput);
+            if(j < rw)
+              dwt.encode_v((T*)tiledp + j, scratch, rh, parity_col, stride, rw - j, currentDcShift,
+                           currentIntInput);
+          });
         }
         else
         {

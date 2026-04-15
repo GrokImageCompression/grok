@@ -26,7 +26,23 @@ namespace grk
 
 /**
  * @struct TileCacheEntry
- * @brief Store a tile cache entry
+ * @brief Stores a tile processor together with its cache state.
+ *
+ * ## dirty_ flag
+ *
+ * A cache entry is **dirty** when its decompressed pixel data is stale or
+ * absent and the tile must be (re-)decompressed before its image can be used.
+ *
+ * - Newly created entries start dirty (`dirty_ = true`).
+ * - After a successful decompress the entry is marked clean (`dirty_ = false`).
+ * - The entry becomes dirty again when:
+ *   - The progression state changes (e.g. a different layer count is requested).
+ *   - The tile is evicted by the LRU policy (decompressed data released, but the
+ *     processor and its SOT/packet metadata survive for re-decompression).
+ *
+ * Callers use `!dirty_` together with `processor->getImage()` to decide whether
+ * the cached tile can be returned directly or needs to go through the
+ * decompress pipeline again.
  */
 struct TileCacheEntry
 {
@@ -38,17 +54,53 @@ struct TileCacheEntry
   }
 
   ITileProcessor* processor;
+  /** True when the entry's decompressed image is stale or absent. */
   bool dirty_;
 };
 
 /**
  * @class TileCache
- * @brief Cache tile processors using a simple array, initialized with the total number of tiles.
+ * @brief Caches tile processors so that repeated decompress calls on the same
+ * codec can reuse SOT metadata, packet data, and decompressed images.
  *
- * When LRU eviction is enabled (maxActiveTiles_ > 0), accessing a tile promotes it
- * in the LRU list. When the active tile count exceeds the limit, the least-recently-used
- * tile's decompressed data is released via GRK_TILE_CACHE_LRU. The processor remains
- * so re-decompression can occur from the CompressedChunkCache.
+ * ## Tile lifecycle
+ *
+ * 1. **First encounter (SOT parsed)** — `getTileProcessor()` creates a
+ *    `TileProcessor`, and the SOT handler populates its `tilePartSeq_`
+ *    (tile-part offsets/lengths) and increments `numSOTsParsed_`.
+ *    At this stage the entry is dirty with no decompressed image.
+ *
+ * 2. **Packet parsing + decompression** — `parseTilePart()` caches raw
+ *    packet data, then T2+T1 decompression produces a `GrkImage`.
+ *    The entry is marked clean (`dirty_ = false`).
+ *
+ * 3. **Cache hit on subsequent decode** — `decompressTile()` finds an
+ *    entry with `getImage() && !dirty_` and returns immediately.
+ *
+ * 4. **SOT-cached fast path** — When a tile's SOTs were parsed on a prior
+ *    decode but the tile was not slated for decompression, its
+ *    `tilePartSeq_` already contains the byte offsets of every tile part.
+ *    On a later decode targeting that tile,
+ *    `decompressFromCachedTileParts()` seeks directly to each tile part
+ *    using these cached offsets — no sequential codestream re-walk needed.
+ *
+ * 5. **LRU eviction** — When `maxActiveTiles_` is set, exceeding the
+ *    limit evicts the least-recently-used tile's decompressed data via
+ *    `release(GRK_TILE_CACHE_LRU)`. The processor (with SOT metadata)
+ *    survives so the tile can be re-decompressed from the
+ *    `CompressedChunkCache` without re-parsing the codestream.
+ *
+ * 6. **Best-effort decompression** — A tile marked
+ *    `isBestEffortDecompressed()` was decompressed from a truncated or
+ *    corrupt codestream. It is never re-decompressed or reset, since
+ *    re-parsing would produce the same (or worse) result.
+ *
+ * ## resetSOTParsing
+ *
+ * Called before a sequential codestream re-walk. Resets `numSOTsParsed_`,
+ * `tilePartCounter_`, and `tilePartSeq_` so that the SOT handler can
+ * re-populate them. Tiles that already have a decompressed image or are
+ * best-effort are skipped — their cached state is preserved.
  */
 class TileCache
 {
@@ -187,8 +239,10 @@ public:
     {
       if(!entry || !entry->processor)
         continue;
-      if(!entry->processor->isBestEffortDecompressed())
-        entry->processor->resetSOTParsing();
+      // Skip tiles that are already decompressed or have cached SOT info
+      if(entry->processor->isBestEffortDecompressed() || entry->processor->getImage())
+        continue;
+      entry->processor->resetSOTParsing();
     }
   }
 
