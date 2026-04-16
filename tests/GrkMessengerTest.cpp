@@ -365,7 +365,7 @@ static void testSharedMemoryAllocation()
   grk_handle fd = 0;
   char* buf = nullptr;
 
-  bool rc = SharedMemoryManager::initShm("/grk_test_shm_alloc", bufLen, &fd, &buf);
+  bool rc = SharedMemoryManager::initShm("/grk_test_shm_alloc", bufLen, &fd, &buf, true);
   TEST_ASSERT(rc, "initShm should succeed");
   TEST_ASSERT(buf != nullptr, "buffer should be non-null");
 
@@ -379,6 +379,36 @@ static void testSharedMemoryAllocation()
   TEST_ASSERT(buf == nullptr, "buffer should be null after deinit");
   TEST_PASS("testSharedMemoryAllocation");
 }
+
+#ifndef _WIN32
+// Test that creator handles stale shm from a previous crash (EEXIST → unlink → retry)
+static void testSharedMemoryCrashRecovery()
+{
+  const char* name = "/grk_test_crash_recovery";
+  const size_t bufLen = 4096;
+
+  // simulate stale segment left by a crashed process
+  shm_unlink(name);
+  int stale_fd = shm_open(name, O_CREAT | O_RDWR, 0666);
+  TEST_ASSERT(stale_fd >= 0, "stale shm_open should succeed");
+  ftruncate(stale_fd, (off_t)bufLen);
+  close(stale_fd);
+
+  // creator should recover: unlink stale segment and create fresh
+  grk_handle fd = 0;
+  char* buf = nullptr;
+  bool rc = SharedMemoryManager::initShm(name, bufLen, &fd, &buf, true);
+  TEST_ASSERT(rc, "initShm should recover from stale segment");
+  TEST_ASSERT(buf != nullptr, "buffer should be non-null after recovery");
+
+  memset(buf, 0xCD, bufLen);
+  TEST_ASSERT((uint8_t)buf[0] == 0xCD, "written data should persist after recovery");
+
+  rc = SharedMemoryManager::deinitShm(name, bufLen, fd, &buf);
+  TEST_ASSERT(rc, "deinitShm should succeed");
+  TEST_PASS("testSharedMemoryCrashRecovery");
+}
+#endif
 
 // Test frame accessor methods
 static void testFrameAccessors()
@@ -458,6 +488,18 @@ static void testClientInitBufferQueue()
   const size_t compressedSize = 64;
   const size_t numFrames = 2;
 
+#ifndef _WIN32
+  // Pre-create data buffers (simulates server creating before client opens)
+  shm_unlink(grokUncompressedBuf.c_str());
+  shm_unlink(grokCompressedBuf.c_str());
+  grk_handle pre_uc_fd = 0, pre_c_fd = 0;
+  char *pre_uc = nullptr, *pre_c = nullptr;
+  SharedMemoryManager::initShm(grokUncompressedBuf, uncompressedSize * numFrames, &pre_uc_fd,
+                               &pre_uc, true);
+  SharedMemoryManager::initShm(grokCompressedBuf, compressedSize * numFrames, &pre_c_fd, &pre_c,
+                               true);
+#endif
+
   MessengerInit init(true, "Global\\grk_test3_out", "Global\\grk_test3_out_sent",
                      "Global\\grk_test3_out_ready", "Global\\grk_test3_in",
                      "Global\\grk_test3_in_sent", "Global\\grk_test3_in_ready", proc, 0, 0, 0, 0);
@@ -474,6 +516,14 @@ static void testClientInitBufferQueue()
     TEST_ASSERT(m.availableBuffers_.pop(src), "should get buffer");
     TEST_ASSERT(src.frameId_ == i, "frameId should match");
   }
+
+#ifndef _WIN32
+  munmap(pre_uc, uncompressedSize * numFrames);
+  close(pre_uc_fd);
+  munmap(pre_c, compressedSize * numFrames);
+  close(pre_c_fd);
+#endif
+
   TEST_PASS("testClientInitBufferQueue");
 }
 
@@ -536,6 +586,9 @@ int GrkMessengerTest::main(int argc, char** argv)
   // Full protocol loopback test
   fprintf(stdout, "\n[Shared Memory / Buffers]\n");
   testSharedMemoryAllocation();
+#ifndef _WIN32
+  testSharedMemoryCrashRecovery();
+#endif
   testFrameAccessors();
   testServerBufferQueue();
   testClientInitBufferQueue();

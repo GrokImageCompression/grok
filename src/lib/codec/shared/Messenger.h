@@ -321,7 +321,11 @@ private:
 };
 struct SharedMemoryManager
 {
-  static bool initShm(const std::string& name, size_t len, grk_handle* hMapFile, char** buffer)
+  // Windows: CreateFileMapping transparently opens or creates the mapping,
+  // so isCreator is unused — stale segments from a previous crash are handled
+  // automatically, unlike POSIX where O_EXCL + shm_unlink recovery is needed.
+  static bool initShm(const std::string& name, size_t len, grk_handle* hMapFile, char** buffer,
+                      [[maybe_unused]] bool isCreator)
   {
     *hMapFile = CreateFileMapping(INVALID_HANDLE_VALUE, // use paging file
                                   NULL, // default security
@@ -447,7 +451,8 @@ private:
 };
 struct SharedMemoryManager
 {
-  static bool initShm(const std::string& name, size_t len, grk_handle* shm_fd, char** buffer)
+  static bool initShm(const std::string& name, size_t len, grk_handle* shm_fd, char** buffer,
+                      bool isCreator)
   {
     if(*shm_fd)
       return true;
@@ -466,38 +471,63 @@ struct SharedMemoryManager
       return false;
     }
 
-    *shm_fd = shm_open(name.c_str(), O_CREAT | O_RDWR, 0666);
-    if(*shm_fd < 0)
+    if(isCreator)
     {
-      getMessengerLogger()->error("Error opening shared memory: %s", strerror(errno));
-      return false;
-    }
-    int rc = ftruncate(*shm_fd, (off_t)len);
-    if(rc)
-    {
-      getMessengerLogger()->error("Error truncating shared memory to %" PRIu64 " bytes: %s",
-                                  (uint64_t)len, strerror(errno));
-      rc = close(*shm_fd);
+      *shm_fd = shm_open(name.c_str(), O_CREAT | O_EXCL | O_RDWR, 0666);
+      if(*shm_fd < 0 && errno == EEXIST)
+      {
+        // stale segment from a previous crash — remove and retry
+        shm_unlink(name.c_str());
+        *shm_fd = shm_open(name.c_str(), O_CREAT | O_EXCL | O_RDWR, 0666);
+      }
+      if(*shm_fd < 0)
+      {
+        getMessengerLogger()->error("Error creating shared memory %s: %s", name.c_str(),
+                                    strerror(errno));
+        *shm_fd = 0;
+        return false;
+      }
+      int rc = ftruncate(*shm_fd, (off_t)len);
       if(rc)
-        getMessengerLogger()->error("Error closing shared memory: %s", strerror(errno));
-      rc = shm_unlink(name.c_str());
-      // 2 == No such file or directory
-      if(rc && errno != 2)
-        getMessengerLogger()->error("Error unlinking shared memory: %s", strerror(errno));
-      return false;
+      {
+        getMessengerLogger()->error("Error truncating shared memory to %" PRIu64 " bytes: %s",
+                                    (uint64_t)len, strerror(errno));
+        close(*shm_fd);
+        shm_unlink(name.c_str());
+        *shm_fd = 0;
+        return false;
+      }
     }
-    *buffer = static_cast<char*>(mmap(0, len, PROT_WRITE, MAP_SHARED, *shm_fd, 0));
+    else
+    {
+      // Non-creator: open existing segment, retry briefly if not yet created
+      const int maxRetries = 50;
+      const int retryDelayMs = 10;
+      for(int attempt = 0; attempt < maxRetries; ++attempt)
+      {
+        *shm_fd = shm_open(name.c_str(), O_RDWR, 0666);
+        if(*shm_fd >= 0)
+          break;
+        if(errno != ENOENT || attempt == maxRetries - 1)
+        {
+          getMessengerLogger()->error("Error opening shared memory %s: %s", name.c_str(),
+                                      strerror(errno));
+          return false;
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(retryDelayMs));
+      }
+    }
+
+    *buffer = static_cast<char*>(mmap(0, len, PROT_READ | PROT_WRITE, MAP_SHARED, *shm_fd, 0));
     if(*buffer == MAP_FAILED)
     {
       *buffer = nullptr;
-      getMessengerLogger()->error("Error mapping shared memory: %s", strerror(errno));
-      rc = close(*shm_fd);
-      if(rc)
-        getMessengerLogger()->error("Error closing shared memory: %s", strerror(errno));
-      rc = shm_unlink(name.c_str());
-      // 2 == No such file or directory
-      if(rc && errno != 2)
-        getMessengerLogger()->error("Error unlinking shared memory: %s", strerror(errno));
+      getMessengerLogger()->error("Error mapping shared memory %s: %s", name.c_str(),
+                                  strerror(errno));
+      close(*shm_fd);
+      if(isCreator)
+        shm_unlink(name.c_str());
+      *shm_fd = 0;
     }
 
     return *buffer != nullptr;
@@ -674,10 +704,7 @@ static void processorThread(Messenger* messenger, std::function<void(std::string
 
 struct Messenger
 {
-  explicit Messenger(MessengerInit init)
-      : running(true), initialized_(false), shutdown_(false), init_(init), outboundSynch_(nullptr),
-        inboundSynch_(nullptr), uncompressed_buffer_(nullptr), compressed_buffer_(nullptr),
-        uncompressed_fd_(0), compressed_fd_(0)
+  explicit Messenger(MessengerInit init) : init_(init)
   {
     if(!isClient())
     {
@@ -757,15 +784,6 @@ struct Messenger
   }
   bool initBuffers(void)
   {
-#ifndef _WIN32
-    // clean up in case of previous crash
-    if(init_.firstLaunch(init_.isClient_))
-    {
-      // shm_unlink(grokUncompressedBuf.c_str());
-      // shm_unlink(grokCompressedBuf.c_str());
-    }
-#endif
-
     char temp[512];
     sprintf(temp,
             "Initializing shared memory buffers: num frames %zu, "
@@ -775,9 +793,9 @@ struct Messenger
     getMessengerLogger()->info(temp);
     if(init_.uncompressedFrameSize_)
     {
-      bool rc = SharedMemoryManager::initShm(grokUncompressedBuf,
-                                             init_.uncompressedFrameSize_ * init_.numFrames_,
-                                             &uncompressed_fd_, &uncompressed_buffer_);
+      bool rc = SharedMemoryManager::initShm(
+          grokUncompressedBuf, init_.uncompressedFrameSize_ * init_.numFrames_, &uncompressed_fd_,
+          &uncompressed_buffer_, !init_.isClient_);
       if(!rc)
         return false;
 
@@ -787,9 +805,9 @@ struct Messenger
     }
     if(init_.compressedFrameSize_)
     {
-      bool rc = SharedMemoryManager::initShm(grokCompressedBuf,
-                                             init_.compressedFrameSize_ * init_.numFrames_,
-                                             &compressed_fd_, &compressed_buffer_);
+      bool rc = SharedMemoryManager::initShm(
+          grokCompressedBuf, init_.compressedFrameSize_ * init_.numFrames_, &compressed_fd_,
+          &compressed_buffer_, !init_.isClient_);
       if(!rc)
         return false;
 
@@ -939,9 +957,9 @@ struct Messenger
 
     return (uint8_t*)(compressed_buffer_ + frameId * init_.compressedFrameSize_);
   }
-  std::atomic_bool running;
-  bool initialized_;
-  bool shutdown_;
+  std::atomic_bool running{true};
+  bool initialized_ = false;
+  bool shutdown_ = false;
   MessengerBlockingQueue<std::string> sendQueue;
   MessengerBlockingQueue<std::string> receiveQueue;
   MessengerBlockingQueue<BufferSrc> availableBuffers_;
@@ -956,17 +974,17 @@ protected:
 
 private:
   std::thread outbound;
-  Synch* outboundSynch_;
+  Synch* outboundSynch_ = nullptr;
 
   std::thread inbound;
-  Synch* inboundSynch_;
+  Synch* inboundSynch_ = nullptr;
 
   std::vector<std::thread> processors_;
-  char* uncompressed_buffer_;
-  char* compressed_buffer_;
+  char* uncompressed_buffer_ = nullptr;
+  char* compressed_buffer_ = nullptr;
 
-  grk_handle uncompressed_fd_;
-  grk_handle compressed_fd_;
+  grk_handle uncompressed_fd_ = 0;
+  grk_handle compressed_fd_ = 0;
 };
 
 /*************************** I/O Threads *******************************/
@@ -975,7 +993,8 @@ static void outboundThread(Messenger* messenger, const std::string& sendBuf, Syn
   grk_handle shm_fd = 0;
   char* send_buffer = nullptr;
 
-  if(!SharedMemoryManager::initShm(sendBuf, messageBufferLen, &shm_fd, &send_buffer))
+  if(!SharedMemoryManager::initShm(sendBuf, messageBufferLen, &shm_fd, &send_buffer,
+                                   !messenger->isClient()))
     return;
   while(messenger->running)
   {
@@ -998,7 +1017,8 @@ static void inboundThread(Messenger* messenger, const std::string& receiveBuf, S
   grk_handle shm_fd = 0;
   char* receive_buffer = nullptr;
 
-  if(!SharedMemoryManager::initShm(receiveBuf, messageBufferLen, &shm_fd, &receive_buffer))
+  if(!SharedMemoryManager::initShm(receiveBuf, messageBufferLen, &shm_fd, &receive_buffer,
+                                   !messenger->isClient()))
     return;
   while(messenger->running)
   {
