@@ -60,6 +60,7 @@ grk_transcode -i input.jp2 -o output.jp2 -X -L
 
 ### Links
 - [Installation](INSTALL.md)
+- [Testing](TESTING.md)
 - [Tile Cache Architecture](doc/TileCache.md)
 - [S3 / Cloud Storage](doc/S3.md)
 - [Language Bindings](bindings/swig/README.md)
