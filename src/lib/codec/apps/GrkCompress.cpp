@@ -62,6 +62,7 @@ using namespace grk;
 #include "grk_string.h"
 #include "spdlog/sinks/basic_file_sink.h"
 #include "GrkCompress.h"
+#include "Messenger.h"
 
 void exit_func()
 {
@@ -361,6 +362,13 @@ int GrkCompress::main(int argc, const char** argv, grk_image* in_image, grk_stre
       goto cleanup;
     }
 
+    // CPU shared memory batch compress
+    if(initParams.parameters.shared_memory_interface)
+    {
+      success = shmBatchCompress(&initParams);
+      goto cleanup;
+    }
+
     // MJ2 directory encode: all input images → single .mj2 file
     if(initParams.parameters.cod_format == GRK_FMT_MJ2 && initParams.inputFolder.set_imgdir)
     {
@@ -504,6 +512,195 @@ int GrkCompress::main(int argc, const char** argv, grk_image* in_image, grk_stre
   }
 cleanup:
   return success;
+}
+
+int GrkCompress::shmBatchCompress(CompressInitParams* initParams)
+{
+  using namespace grk_plugin;
+
+  setUpSignalHandler();
+
+  // parse "GRK_MSGR_BATCH_IMAGE,width,stride,height,spp,depth" from batch_src
+  std::string batchSrc(initParams->inputFolder.imgdirpath);
+  Msg batchMsg(batchSrc);
+  auto tag = batchMsg.next();
+  if(tag != GRK_MSGR_BATCH_IMAGE)
+  {
+    spdlog::error("shmBatchCompress: expected {} tag, got '{}'", GRK_MSGR_BATCH_IMAGE, tag);
+    return 1;
+  }
+  uint32_t imgWidth = batchMsg.nextUint();
+  uint32_t imgStride = batchMsg.nextUint();
+  (void)imgStride;
+  uint32_t imgHeight = batchMsg.nextUint();
+  uint32_t imgSpp = batchMsg.nextUint();
+  uint32_t imgDepth = batchMsg.nextUint();
+
+  size_t uncompressedFrameSize = Messenger::uncompressedFrameSize(imgWidth, imgHeight, imgSpp);
+  // conservative upper bound for compressed frame size
+  size_t compressedFrameSize = (size_t)imgWidth * imgHeight * imgSpp * ((imgDepth + 7) / 8) * 3 / 2;
+  if(compressedFrameSize < 4096)
+    compressedFrameSize = 4096;
+  const size_t numFrames = 8;
+
+  setMessengerLogger(new MessengerLogger("[SHM-CPU] "));
+
+  auto* parameters = &initParams->parameters;
+
+  // shared state for flush synchronization
+  std::atomic<uint32_t> framesProcessed{0};
+  std::atomic<uint32_t> flushTarget{0};
+  std::atomic<bool> flushRequested{false};
+  std::mutex flushMutex;
+  std::condition_variable flushCv;
+
+  auto processor = [&](std::string message) {
+    Msg msg(message);
+    auto msgTag = msg.next();
+
+    if(msgTag == GRK_MSGR_BATCH_SUBMIT_UNCOMPRESSED)
+    {
+      auto clientFrameId = msg.nextUint();
+      auto uncompressedFrameId = msg.nextUint();
+      uint8_t* srcPixels = messenger_->getUncompressedFrame(uncompressedFrameId);
+      if(!srcPixels)
+      {
+        spdlog::error("shmBatchCompress: null uncompressed frame {}", uncompressedFrameId);
+        return;
+      }
+
+      // create grk_image from raw pixel data
+      auto cmptparms = std::make_unique<grk_image_comp[]>(imgSpp);
+      for(uint32_t c = 0; c < imgSpp; ++c)
+      {
+        memset(&cmptparms[c], 0, sizeof(grk_image_comp));
+        cmptparms[c].dx = 1;
+        cmptparms[c].dy = 1;
+        cmptparms[c].w = imgWidth;
+        cmptparms[c].h = imgHeight;
+        cmptparms[c].prec = (uint8_t)imgDepth;
+        cmptparms[c].sgnd = false;
+      }
+      GRK_COLOR_SPACE clrspc = (imgSpp >= 3) ? GRK_CLRSPC_SRGB : GRK_CLRSPC_GRAY;
+      grk_image* image = grk_image_new((uint16_t)imgSpp, cmptparms.get(), clrspc, true);
+      if(!image)
+      {
+        spdlog::error("shmBatchCompress: failed to create image for frame {}", clientFrameId);
+        messenger_->reclaimUncompressed(uncompressedFrameId);
+        messenger_->send(GRK_MSGR_BATCH_PROCESSED_UNCOMPRESSED, uncompressedFrameId);
+        return;
+      }
+
+      image->x0 = 0;
+      image->y0 = 0;
+      image->x1 = imgWidth;
+      image->y1 = imgHeight;
+
+      // copy pixel data from SHM (interleaved 16-bit) into planar int32_t components
+      auto* src16 = reinterpret_cast<const uint16_t*>(srcPixels);
+      for(uint32_t y = 0; y < imgHeight; ++y)
+      {
+        for(uint32_t x = 0; x < imgWidth; ++x)
+        {
+          for(uint32_t c = 0; c < imgSpp; ++c)
+          {
+            auto* data = static_cast<int32_t*>(image->comps[c].data);
+            data[y * imgWidth + x] = (int32_t)src16[(y * imgWidth + x) * imgSpp + c];
+          }
+        }
+      }
+
+      // done reading uncompressed buffer — release it back to client
+      messenger_->send(GRK_MSGR_BATCH_PROCESSED_UNCOMPRESSED, uncompressedFrameId);
+
+      // compress to memory buffer
+      grk_cparameters localParams = *parameters;
+      if(localParams.mct == 255)
+        localParams.mct = (imgSpp >= 3) ? 1 : 0;
+
+      // get a compressed buffer slot from the server queue
+      BufferSrc compressedSlot;
+      if(!messenger_->availableBuffers_.waitAndPop(compressedSlot))
+      {
+        spdlog::error("shmBatchCompress: no compressed buffer available");
+        grk_object_unref(&image->obj);
+        return;
+      }
+
+      grk_stream_params streamParams{};
+      streamParams.buf = compressedSlot.framePtr_;
+      streamParams.buf_len = compressedFrameSize;
+
+      grk_object* codec = grk_compress_init(&streamParams, &localParams, image);
+      uint64_t compressedLen = 0;
+      if(codec)
+      {
+        compressedLen = grk_compress(codec, nullptr);
+        grk_object_unref(codec);
+      }
+      grk_object_unref(&image->obj);
+
+      if(!compressedLen)
+      {
+        spdlog::error("shmBatchCompress: compression failed for frame {}", clientFrameId);
+        messenger_->availableBuffers_.push(compressedSlot);
+        return;
+      }
+
+      messenger_->send(GRK_MSGR_BATCH_SUBMIT_COMPRESSED, clientFrameId, compressedSlot.frameId_,
+                       compressedLen);
+
+      uint32_t count = ++framesProcessed;
+      if(flushRequested.load() && count >= flushTarget.load())
+      {
+        std::lock_guard<std::mutex> lk(flushMutex);
+        flushCv.notify_all();
+      }
+    }
+    else if(msgTag == GRK_MSGR_BATCH_PROCESSSED_COMPRESSED)
+    {
+      auto compressedFrameId = msg.nextUint();
+      messenger_->reclaimCompressed(compressedFrameId);
+    }
+    else if(msgTag == GRK_MSGR_BATCH_FLUSH)
+    {
+      auto enqueuedCount = msg.nextUint();
+      flushTarget.store(enqueuedCount);
+      flushRequested.store(true);
+      {
+        std::unique_lock<std::mutex> lk(flushMutex);
+        flushCv.wait(lk, [&] { return framesProcessed.load() >= enqueuedCount; });
+      }
+    }
+    else if(msgTag == GRK_MSGR_BATCH_SHUTDOWN)
+    {
+      messenger_->running = false;
+    }
+  };
+
+  uint32_t num_threads = std::thread::hardware_concurrency();
+  if(num_threads == 0)
+    num_threads = 4;
+
+  MessengerInit init(false, // server
+                     grokToClientMessageBuf, grokSentSynch, clientReceiveReadySynch,
+                     clientToGrokMessageBuf, clientSentSynch, grokReceiveReadySynch, processor,
+                     num_threads, uncompressedFrameSize, compressedFrameSize, numFrames);
+
+  messenger_ = new Messenger(init);
+
+  // tell client the buffer layout
+  messenger_->send(GRK_MSGR_BATCH_COMPRESS_INIT, imgWidth, imgStride, imgHeight, imgSpp, imgDepth,
+                   compressedFrameSize, numFrames);
+
+  // wait until shutdown
+  while(messenger_->running)
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
+  delete messenger_;
+  messenger_ = nullptr;
+
+  return 0;
 }
 
 int GrkCompress::pluginBatchCompress(CompressInitParams* initParams)

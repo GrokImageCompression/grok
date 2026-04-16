@@ -20,6 +20,11 @@
 #include "common.h"
 #include "IImageFormat.h"
 
+namespace grk_plugin
+{
+struct Messenger;
+}
+
 namespace grk
 {
 struct CompressInitParams
@@ -41,15 +46,18 @@ struct CompressInitParams
 class GrkCompress
 {
 public:
-  GrkCompress(void) = default;
+  GrkCompress(void) : messenger_(nullptr) {}
   ~GrkCompress(void) = default;
   int main(int argc, const char* argv[], grk_image* in_image, grk_stream_params* out_buffer);
 
 private:
+  int shmBatchCompress(CompressInitParams* initParams);
   int pluginBatchCompress(CompressInitParams* initParams);
   GrkRC pluginMain(int argc, const char* argv[], CompressInitParams* initParams);
   GrkRC parseCommandLine(int argc, const char* argv[], CompressInitParams* initParams);
   int compress(const std::string& inputFile, CompressInitParams* initParams);
+
+  grk_plugin::Messenger* messenger_;
 };
 
 } // namespace grk

@@ -56,6 +56,7 @@
 #include "grk_string.h"
 #include "GrkDecompress.h"
 #include "codestream/CodeStreamLimits.h"
+#include "Messenger.h"
 
 namespace grk
 {
@@ -108,7 +109,7 @@ static void decompress_help_display(void)
           grk_version());
   fputs(decompress_help_text, stdout);
 }
-GrkDecompress::GrkDecompress() : storeToDisk(true), imageFormat(nullptr) {}
+GrkDecompress::GrkDecompress() : storeToDisk(true), imageFormat(nullptr), messenger_(nullptr) {}
 GrkDecompress::~GrkDecompress(void)
 {
   delete imageFormat;
@@ -557,8 +558,21 @@ GrkRC GrkDecompress::parseCommandLine(int argc, const char* argv[],
 
   if(inDirOpt->count() > 0)
   {
-    if(!validateDirectory(inDir))
-      return GrkRCFail;
+    // detect SHM batch mode: batch-src has 6+ comma-separated values
+    std::stringstream ss(inDir);
+    uint32_t count = 0;
+    while(ss.good())
+    {
+      std::string substr;
+      std::getline(ss, substr, ',');
+      count++;
+    }
+    bool isShmBatch = (count >= 6);
+    if(!isShmBatch)
+    {
+      if(!validateDirectory(inDir))
+        return GrkRCFail;
+    }
     inputFolder->imgdirpath = (char*)malloc(strlen(inDir.c_str()) + 1);
     strcpy(inputFolder->imgdirpath, inDir.c_str());
     inputFolder->set_imgdir = true;
@@ -635,6 +649,10 @@ GrkRC GrkDecompress::parseCommandLine(int argc, const char* argv[],
     parameters->duration = duration;
 
   /* check for possible errors */
+  // detect SHM mode for validation bypass
+  bool isShmMode = inputFolder->imgdirpath &&
+                   std::string(inputFolder->imgdirpath).find(grk_plugin::GRK_MSGR_BATCH_IMAGE) == 0;
+
   if(inputFolder->set_imgdir)
   {
     if(!(parameters->infile[0] == 0))
@@ -642,7 +660,7 @@ GrkRC GrkDecompress::parseCommandLine(int argc, const char* argv[],
       spdlog::error("options --batch-src and -i cannot be used together.");
       return GrkRCParseArgsFailed;
     }
-    if(!inputFolder->set_out_format)
+    if(!isShmMode && !inputFolder->set_out_format)
     {
       spdlog::error("When --batch-src is used, --out-fmt <FORMAT> must be used.");
       spdlog::error("Only one format allowed.\n"
@@ -755,6 +773,15 @@ GrkRC GrkDecompress::pluginMain(int argc, const char* argv[], DecompressInitPara
   pngSetVerboseFlag(true);
 #endif
   initParams->initialized = true;
+
+  // SHM batch mode: skip plugin, initialize for CPU, and let main() handle
+  if(initParams->inputFolder.imgdirpath &&
+     std::string(initParams->inputFolder.imgdirpath).find(grk_plugin::GRK_MSGR_BATCH_IMAGE) == 0)
+  {
+    grk_initialize(nullptr, initParams->parameters.num_threads, nullptr);
+    return GrkRCFail;
+  }
+
   // only load GPU plugin when -G is specified to be -2 (CPU only)
   if(!initParams->usePlugin)
   {
@@ -1329,6 +1356,14 @@ int GrkDecompress::main(int argc, const char* argv[])
       goto cleanup;
     }
 
+    // CPU shared memory batch decompress
+    if(initParams.inputFolder.imgdirpath &&
+       std::string(initParams.inputFolder.imgdirpath).find(grk_plugin::GRK_MSGR_BATCH_IMAGE) == 0)
+    {
+      rc = shmBatchDecompress(&initParams);
+      goto cleanup;
+    }
+
     // MJ2 multi-frame decompress: single .mj2 → numbered output images
     if(!initParams.inputFolder.set_imgdir && initParams.parameters.infile[0])
     {
@@ -1510,6 +1545,191 @@ int GrkDecompress::main(int argc, const char* argv[])
 cleanup:
   destoryParams(&initParams.parameters);
   return rc;
+}
+
+int GrkDecompress::shmBatchDecompress(DecompressInitParams* initParams)
+{
+  using namespace grk_plugin;
+
+  setUpSignalHandler();
+
+  // parse "GRK_MSGR_BATCH_IMAGE,width,stride,height,spp,depth" from batch_src
+  std::string batchSrc(initParams->inputFolder.imgdirpath);
+  Msg batchMsg(batchSrc);
+  auto tag = batchMsg.next();
+  if(tag != GRK_MSGR_BATCH_IMAGE)
+  {
+    spdlog::error("shmBatchDecompress: expected {} tag, got '{}'", GRK_MSGR_BATCH_IMAGE, tag);
+    return 1;
+  }
+  uint32_t imgWidth = batchMsg.nextUint();
+  uint32_t imgStride = batchMsg.nextUint();
+  (void)imgStride;
+  uint32_t imgHeight = batchMsg.nextUint();
+  uint32_t imgSpp = batchMsg.nextUint();
+  uint32_t imgDepth = batchMsg.nextUint();
+
+  size_t uncompressedFrameSize = Messenger::uncompressedFrameSize(imgWidth, imgHeight, imgSpp);
+  // conservative upper bound for compressed frame size
+  size_t compressedFrameSize = (size_t)imgWidth * imgHeight * imgSpp * ((imgDepth + 7) / 8) * 3 / 2;
+  if(compressedFrameSize < 4096)
+    compressedFrameSize = 4096;
+  const size_t numFrames = 8;
+
+  setMessengerLogger(new MessengerLogger("[SHM-CPU-D] "));
+
+  // shared state for flush synchronization
+  std::atomic<uint32_t> framesProcessed{0};
+  std::atomic<uint32_t> flushTarget{0};
+  std::atomic<bool> flushRequested{false};
+  std::mutex flushMutex;
+  std::condition_variable flushCv;
+
+  auto processor = [&](std::string message) {
+    Msg msg(message);
+    auto msgTag = msg.next();
+
+    if(msgTag == GRK_MSGR_BATCH_SUBMIT_COMPRESSED)
+    {
+      auto clientFrameId = msg.nextUint();
+      auto compressedFrameId = msg.nextUint();
+      auto compressedLength = msg.nextUint();
+      uint8_t* compressedPtr = messenger_->getCompressedFrame(compressedFrameId);
+      if(!compressedPtr || !compressedLength)
+      {
+        spdlog::error("shmBatchDecompress: null compressed frame {}", compressedFrameId);
+        return;
+      }
+
+      // decompress from memory buffer
+      grk_decompress_parameters dparams{};
+      grk_stream_params streamParams{};
+      streamParams.buf = compressedPtr;
+      streamParams.buf_len = compressedLength;
+      streamParams.is_read_stream = true;
+
+      grk_object* codec = grk_decompress_init(&streamParams, &dparams);
+      if(!codec)
+      {
+        spdlog::error("shmBatchDecompress: grk_decompress_init failed for frame {}", clientFrameId);
+        messenger_->send(GRK_MSGR_BATCH_PROCESSSED_COMPRESSED, compressedFrameId);
+        return;
+      }
+      grk_header_info headerInfo{};
+      if(!grk_decompress_read_header(codec, &headerInfo))
+      {
+        spdlog::error("shmBatchDecompress: read_header failed for frame {}", clientFrameId);
+        grk_object_unref(codec);
+        messenger_->send(GRK_MSGR_BATCH_PROCESSSED_COMPRESSED, compressedFrameId);
+        return;
+      }
+      if(!grk_decompress(codec, nullptr))
+      {
+        spdlog::error("shmBatchDecompress: decompress failed for frame {}", clientFrameId);
+        grk_object_unref(codec);
+        messenger_->send(GRK_MSGR_BATCH_PROCESSSED_COMPRESSED, compressedFrameId);
+        return;
+      }
+      grk_image* image = grk_decompress_get_image(codec);
+      if(!image)
+      {
+        spdlog::error("shmBatchDecompress: get_image returned null for frame {}", clientFrameId);
+        grk_object_unref(codec);
+        messenger_->send(GRK_MSGR_BATCH_PROCESSSED_COMPRESSED, compressedFrameId);
+        return;
+      }
+
+      // done reading compressed buffer — release it back to client
+      messenger_->send(GRK_MSGR_BATCH_PROCESSSED_COMPRESSED, compressedFrameId);
+
+      // get an uncompressed buffer slot from the server queue
+      BufferSrc uncompressedSlot;
+      if(!messenger_->availableBuffers_.waitAndPop(uncompressedSlot))
+      {
+        spdlog::error("shmBatchDecompress: no uncompressed buffer available");
+        grk_object_unref(codec);
+        return;
+      }
+
+      // copy decompressed pixels (planar int32_t → interleaved 16-bit)
+      auto* dst16 = reinterpret_cast<uint16_t*>(uncompressedSlot.framePtr_);
+      for(uint32_t y = 0; y < imgHeight; ++y)
+      {
+        for(uint32_t x = 0; x < imgWidth; ++x)
+        {
+          for(uint32_t c = 0; c < imgSpp; ++c)
+          {
+            auto* data = static_cast<int32_t*>(image->comps[c].data);
+            uint32_t stride = image->comps[c].stride;
+            dst16[(y * imgWidth + x) * imgSpp + c] = (uint16_t)data[y * stride + x];
+          }
+        }
+      }
+      grk_object_unref(codec);
+
+      messenger_->send(GRK_MSGR_BATCH_SUBMIT_UNCOMPRESSED, clientFrameId,
+                       uncompressedSlot.frameId_);
+
+      uint32_t count = ++framesProcessed;
+      if(flushRequested.load() && count >= flushTarget.load())
+      {
+        std::lock_guard<std::mutex> lk(flushMutex);
+        flushCv.notify_all();
+      }
+    }
+    else if(msgTag == GRK_MSGR_BATCH_PROCESSED_UNCOMPRESSED)
+    {
+      auto uncompressedFrameId = msg.nextUint();
+      messenger_->reclaimUncompressed(uncompressedFrameId);
+    }
+    else if(msgTag == GRK_MSGR_BATCH_FLUSH)
+    {
+      auto enqueuedCount = msg.nextUint();
+      flushTarget.store(enqueuedCount);
+      flushRequested.store(true);
+      {
+        std::unique_lock<std::mutex> lk(flushMutex);
+        flushCv.wait(lk, [&] { return framesProcessed.load() >= enqueuedCount; });
+      }
+    }
+    else if(msgTag == GRK_MSGR_BATCH_SHUTDOWN)
+    {
+      messenger_->running = false;
+    }
+  };
+
+  uint32_t num_threads = std::thread::hardware_concurrency();
+  if(num_threads == 0)
+    num_threads = 4;
+
+  MessengerInit init(false, // server
+                     grokToClientMessageBuf, grokSentSynch, clientReceiveReadySynch,
+                     clientToGrokMessageBuf, clientSentSynch, grokReceiveReadySynch, processor,
+                     num_threads, uncompressedFrameSize, compressedFrameSize, numFrames);
+
+  messenger_ = new Messenger(init);
+
+  // for decompress: server manages uncompressed output buffers, not compressed
+  {
+    BufferSrc dummy;
+    while(messenger_->availableBuffers_.pop(dummy))
+      ;
+    for(size_t i = 0; i < numFrames; ++i)
+      messenger_->availableBuffers_.push(BufferSrc(0, i, messenger_->getUncompressedFrame(i)));
+  }
+
+  // tell client the buffer layout (using DECOMPRESS_INIT so client fills compressed buffers)
+  messenger_->send(GRK_MSGR_BATCH_DECOMPRESS_INIT, imgWidth, imgStride, imgHeight, imgSpp, imgDepth,
+                   compressedFrameSize, numFrames);
+
+  // wait until shutdown
+  while(messenger_->running)
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
+  delete messenger_;
+  messenger_ = nullptr;
+
+  return 0;
 }
 
 } // namespace grk

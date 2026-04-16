@@ -21,6 +21,11 @@
 #include "CLI/CLI.hpp"
 #include <vector>
 
+namespace grk_plugin
+{
+struct Messenger;
+}
+
 namespace grk
 {
 struct DecompressInitParams
@@ -72,9 +77,11 @@ private:
   void setDefaultParams(grk_decompress_parameters* parameters);
   void destoryParams(grk_decompress_parameters* parameters);
   void printTiming(uint32_t num_images, std::chrono::duration<double> elapsed);
+  int shmBatchDecompress(DecompressInitParams* initParams);
 
   bool storeToDisk;
   IImageFormat* imageFormat;
+  grk_plugin::Messenger* messenger_;
 };
 
 } // namespace grk

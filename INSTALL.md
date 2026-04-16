@@ -221,6 +221,33 @@ The `CUDA_MODULE_LOADING=EAGER` environment variable is set automatically by the
 Tests cover: single/batch compress and decompress, lossy/lossless, bit depths 8/10/12/16,
 mono and RGB, cinema 2K profile, and CPU-only fallback (`-G -2`).
 
+### Shared Memory Batch Tests
+
+The SHM batch tests verify the shared-memory inter-process protocol used for batch
+compression and decompression. Each test spawns the codec binary as a child process and
+communicates via POSIX shared memory and semaphores.
+
+To run SHM batch tests via `ctest`:
+
+    $  cd /PATH/TO/BUILD
+    $  ctest -R grk_shm_batch -V
+
+Individual tests:
+
+    $  ctest -R grk_shm_batch_compress -V
+    $  ctest -R grk_shm_batch_decompress -V
+
+Or run the binaries directly:
+
+    $  ./bin/grk_shm_batch_compress ./bin/grk_compress
+    $  ./bin/grk_shm_batch_decompress ./bin/grk_decompress
+
+Each test compresses/decompresses 4 frames (64x64, 3-channel, 12-bit) through the SHM
+protocol and validates pixel-perfect round-trip fidelity.
+
+Note: these two tests share POSIX named semaphores and SHM segments, so they must not
+run in parallel. The CTest configuration uses `RESOURCE_LOCK` to enforce this automatically.
+
 ## macOS
 
 macOS builds are configured similar to *NIX builds.

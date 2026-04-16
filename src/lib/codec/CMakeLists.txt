@@ -20,6 +20,7 @@ include_directories(
   ${CMAKE_CURRENT_SOURCE_DIR}/formats/fileio
   ${CMAKE_CURRENT_SOURCE_DIR}/common
   ${CMAKE_CURRENT_SOURCE_DIR}/apps
+  ${CMAKE_CURRENT_SOURCE_DIR}/shared
 )
 
 set(GROK_CODEC_SRCS
@@ -68,8 +69,11 @@ if(GROK_HAVE_LIBJPEG)
 	target_link_libraries(${GROK_CODEC_NAME} PRIVATE ${JPEG_LIBNAME})
 endif()
 
-if(UNIX)
-  target_link_libraries(${GROK_CODEC_NAME} PUBLIC ${CMAKE_THREAD_LIBS_INIT})
+find_package(Threads REQUIRED)
+target_link_libraries(${GROK_CODEC_NAME} PUBLIC Threads::Threads)
+# shared memory (shm_open, sem_open) used by Messenger.h
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+  target_link_libraries(${GROK_CODEC_NAME} PRIVATE rt)
 endif()
 set_target_properties(${GROK_CODEC_NAME} PROPERTIES ${GROK_LIBRARY_PROPERTIES})
 target_compile_options(${GROK_CODEC_NAME} PRIVATE ${GROK_COMPILE_OPTIONS})
@@ -94,5 +98,8 @@ install(TARGETS ${INSTALL_LIBS}
 
 # Install includes files
 install(FILES grok_codec.h
+  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${GROK_INSTALL_SUBDIR} COMPONENT Headers
+)
+install(FILES shared/Messenger.h
   DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${GROK_INSTALL_SUBDIR} COMPONENT Headers
 )
