@@ -60,6 +60,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   target_link_libraries(grk_messenger_test rt)
 endif()
 add_test(NAME grk_messenger_test COMMAND grk_messenger_test)
+set_tests_properties(grk_messenger_test PROPERTIES RESOURCE_LOCK shm_grok)
 
 add_executable(grk_messenger_loopback grk_messenger_loopback.cpp)
 target_include_directories(grk_messenger_loopback PRIVATE
@@ -70,6 +71,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   target_link_libraries(grk_messenger_loopback rt)
 endif()
 add_test(NAME grk_messenger_loopback COMMAND grk_messenger_loopback)
+set_tests_properties(grk_messenger_loopback PROPERTIES RESOURCE_LOCK shm_grok)
 
 add_executable(grk_shm_batch_compress grk_shm_batch_compress.cpp)
 target_include_directories(grk_shm_batch_compress PRIVATE

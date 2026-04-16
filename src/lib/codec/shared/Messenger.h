@@ -500,9 +500,11 @@ struct SharedMemoryManager
     }
     else
     {
-      // Non-creator: open existing segment, retry briefly if not yet created
-      const int maxRetries = 50;
-      const int retryDelayMs = 10;
+      // Non-creator: open existing segment, retry briefly if not yet created.
+      // Message buffers need longer waits (server subprocess may still be starting),
+      // data buffers are typically ready immediately (server creates before sending init).
+      const int maxRetries = 100;
+      const int retryDelayMs = 100;
       for(int attempt = 0; attempt < maxRetries; ++attempt)
       {
         *shm_fd = shm_open(name.c_str(), O_RDWR, 0666);
