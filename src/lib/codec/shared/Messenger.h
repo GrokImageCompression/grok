@@ -15,6 +15,22 @@
  *
  */
 
+/*
+ * Shared-memory IPC header used by both Grok and external projects (e.g. DCP-o-matic).
+ *
+ * Porting notes for projects that copy this file:
+ *
+ *   1. inline globals (C++17) — sLogger, setMessengerLogger(), getMessengerLogger()
+ *      are declared with `inline`. For C++11/14, change these to `extern` declarations
+ *      and provide definitions in a single .cc file.
+ *
+ *   2. MessengerInit constructor — the first parameter is `bool isClient`. Client-only
+ *      callers should pass `true`.
+ *
+ *   3. License — this file is AGPL-3.0. Downstream copies may need to adjust the
+ *      license header to match the host project.
+ */
+
 #pragma once
 
 #include <iostream>
@@ -131,6 +147,16 @@ struct IMessengerLogger
   virtual void info(const char* fmt, ...) = 0;
   virtual void warn(const char* fmt, ...) = 0;
   virtual void error(const char* fmt, ...) = 0;
+
+protected:
+  template<typename... Args>
+  std::string log_message(char const* const format, Args&... args) noexcept
+  {
+    constexpr size_t message_size = 512;
+    char message[message_size];
+    std::snprintf(message, message_size, format, args...);
+    return std::string(message);
+  }
 };
 struct MessengerLogger : public IMessengerLogger
 {
@@ -428,7 +454,7 @@ struct SharedMemoryManager
       getMessengerLogger()->error("Error opening shared memory: %s", strerror(errno));
       return false;
     }
-    int rc = ftruncate(*shm_fd, sizeof(char) * len);
+    int rc = ftruncate(*shm_fd, (off_t)len);
     if(rc)
     {
       getMessengerLogger()->error("Error truncating shared memory: %s", strerror(errno));
