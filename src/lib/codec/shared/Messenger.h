@@ -50,31 +50,43 @@ namespace grk_plugin
 
 /*************************** Shared Memory API *******************************/
 /*
-1. client receives setup info
-GRK_MSGR_BATCH_COMPRESS_INIT, width,stride,height,samplesPerPixel,depth,compressed frame size,
-number of frames
+Compress workflow:
+  1. client receives setup info
+     GRK_MSGR_BATCH_COMPRESS_INIT, width, stride, height, samplesPerPixel, depth,
+     compressed frame size, number of frames
+     client creates blocking queue for uncompressed buffers and fills them with pointers
+  2. client sends uncompressed
+     GRK_MSGR_BATCH_SUBMIT_UNCOMPRESSED, client_frame_id, uncompressed_frame_id
+  3. client receives release of uncompressed
+     GRK_MSGR_BATCH_PROCESSED_UNCOMPRESSED, uncompressed_frame_id
+  4. client receives compressed
+     GRK_MSGR_BATCH_SUBMIT_COMPRESSED, client_frame_id, compressed_frame_id,
+     compressed_frame_length
+  5. client sends release of compressed
+     GRK_MSGR_BATCH_PROCESSSED_COMPRESSED, compressed_frame_id
+  6. client sends flush at end of batch
+     GRK_MSGR_BATCH_FLUSH, enqueued_frame_count
 
-client then creates blocking queue for uncompressed buffers and fills them with
-pointers
-
-2. client sends uncompressed
-GRK_MSGR_BATCH_SUBMIT_UNCOMPRESSED, client_frame_id, uncompressed_frame_id
-
-3. client receives release of uncompressed
-GRK_MSGR_BATCH_PROCESSED_UNCOMPRESSED, uncompressed_frame_id
-
-4. client receives compressed
-GRK_MSGR_BATCH_SUBMIT_COMPRESSED, client_frame_id, compressed_frame_id, compressed_frame_length
-
-5. client sends release of compressed
-GRK_MSGR_BATCH_PROCESSSED_COMPRESSED, compressed_frame_id
-
-6. client send flush at end of batch
-GRK_MSGR_BATCH_FLUSH, enqueued_frame_count
+Decompress workflow:
+  1. client receives setup info
+     GRK_MSGR_BATCH_DECOMPRESS_INIT, width, stride, height, samplesPerPixel, depth,
+     compressed frame size, number of frames
+     client creates shared buffers, drains uncompressed queue, and fills with
+     compressed buffer pointers
+  2. client sends compressed
+     GRK_MSGR_BATCH_SUBMIT_COMPRESSED, client_frame_id, compressed_frame_id,
+     compressed_frame_length
+  3. client receives release of compressed
+     GRK_MSGR_BATCH_PROCESSSED_COMPRESSED, compressed_frame_id
+  4. client receives decompressed
+     GRK_MSGR_BATCH_PROCESSED_UNCOMPRESSED, uncompressed_frame_id
+  5. client sends flush at end of batch
+     GRK_MSGR_BATCH_FLUSH, enqueued_frame_count
 
 */
 
 /*************************** Synchronization Names *******************************/
+#ifdef _WIN32
 static std::string grokToClientMessageBuf = "Global\\grok_to_client_message";
 static std::string grokSentSynch = "Global\\grok_sent";
 static std::string clientReceiveReadySynch = "Global\\client_receive_ready";
@@ -85,6 +97,18 @@ static std::string grokReceiveReadySynch = "Global\\grok_receive_ready";
 
 static std::string grokUncompressedBuf = "Global\\grok_uncompressed_buf";
 static std::string grokCompressedBuf = "Global\\grok_compressed_buf";
+#else
+static std::string grokToClientMessageBuf = "/grok_to_client_message";
+static std::string grokSentSynch = "/grok_sent";
+static std::string clientReceiveReadySynch = "/client_receive_ready";
+
+static std::string clientToGrokMessageBuf = "/client_to_grok_message";
+static std::string clientSentSynch = "/client_sent";
+static std::string grokReceiveReadySynch = "/grok_receive_ready";
+
+static std::string grokUncompressedBuf = "/grok_uncompressed_buf";
+static std::string grokCompressedBuf = "/grok_compressed_buf";
+#endif
 
 /*************************** Message IDs *******************************/
 static const std::string GRK_MSGR_BATCH_IMAGE = "GRK_MSGR_BATCH_IMAGE";
@@ -356,11 +380,13 @@ struct Synch
   void open(void)
   {
     sentSem_ = sem_open(sentSemName_.c_str(), O_CREAT, 0666, 0);
-    if(!sentSem_)
-      getMessengerLogger()->error("Error opening shared memory: %s", strerror(errno));
+    if(sentSem_ == SEM_FAILED)
+      getMessengerLogger()->error("Error opening semaphore %s: %s", sentSemName_.c_str(),
+                                  strerror(errno));
     receiveReadySem_ = sem_open(receiveReadySemName_.c_str(), O_CREAT, 0666, 1);
-    if(!receiveReadySem_)
-      getMessengerLogger()->error("Error opening shared memory: %s", strerror(errno));
+    if(receiveReadySem_ == SEM_FAILED)
+      getMessengerLogger()->error("Error opening semaphore %s: %s", receiveReadySemName_.c_str(),
+                                  strerror(errno));
   }
   void close(void)
   {
@@ -416,8 +442,9 @@ struct SharedMemoryManager
       return false;
     }
     *buffer = static_cast<char*>(mmap(0, len, PROT_WRITE, MAP_SHARED, *shm_fd, 0));
-    if(!*buffer)
+    if(*buffer == MAP_FAILED)
     {
+      *buffer = nullptr;
       getMessengerLogger()->error("Error mapping shared memory: %s", strerror(errno));
       rc = close(*shm_fd);
       if(rc)
@@ -697,9 +724,9 @@ struct Messenger
     bool rc = true;
     char temp[512];
     sprintf(temp,
-            "Initializing shared memory buffers: num frames %ld, "
-            "					uncompressed frame size %ld, "
-            "						compressed frame size %ld ",
+            "Initializing shared memory buffers: num frames %zu, "
+            "					uncompressed frame size %zu, "
+            "						compressed frame size %zu ",
             init_.numFrames_, init_.uncompressedFrameSize_, init_.compressedFrameSize_);
     getMessengerLogger()->info(temp);
     if(init_.uncompressedFrameSize_)
