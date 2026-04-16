@@ -47,6 +47,7 @@
 #include <queue>
 #include <cassert>
 #include <cstdarg>
+#include <cinttypes>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -448,6 +449,23 @@ struct SharedMemoryManager
 {
   static bool initShm(const std::string& name, size_t len, grk_handle* shm_fd, char** buffer)
   {
+    if(*shm_fd)
+      return true;
+    if(len == 0)
+    {
+      getMessengerLogger()->error("Shared memory size is 0 for %s", name.c_str());
+      errno = EINVAL;
+      return false;
+    }
+    // Guard: off_t is signed; ensure bytes fits.
+    if(len > static_cast<uint64_t>(std::numeric_limits<off_t>::max()))
+    {
+      getMessengerLogger()->error("Shared memory size too large (%" PRIu64 ") for %s", len,
+                                  name.c_str());
+      errno = EOVERFLOW;
+      return false;
+    }
+
     *shm_fd = shm_open(name.c_str(), O_CREAT | O_RDWR, 0666);
     if(*shm_fd < 0)
     {
@@ -457,7 +475,8 @@ struct SharedMemoryManager
     int rc = ftruncate(*shm_fd, (off_t)len);
     if(rc)
     {
-      getMessengerLogger()->error("Error truncating shared memory: %s", strerror(errno));
+      getMessengerLogger()->error("Error truncating shared memory to %" PRIu64 " bytes: %s",
+                                  (uint64_t)len, strerror(errno));
       rc = close(*shm_fd);
       if(rc)
         getMessengerLogger()->error("Error closing shared memory: %s", strerror(errno));
@@ -747,7 +766,6 @@ struct Messenger
     }
 #endif
 
-    bool rc = true;
     char temp[512];
     sprintf(temp,
             "Initializing shared memory buffers: num frames %zu, "
@@ -757,9 +775,11 @@ struct Messenger
     getMessengerLogger()->info(temp);
     if(init_.uncompressedFrameSize_)
     {
-      rc = rc && SharedMemoryManager::initShm(grokUncompressedBuf,
-                                              init_.uncompressedFrameSize_ * init_.numFrames_,
-                                              &uncompressed_fd_, &uncompressed_buffer_);
+      bool rc = SharedMemoryManager::initShm(grokUncompressedBuf,
+                                             init_.uncompressedFrameSize_ * init_.numFrames_,
+                                             &uncompressed_fd_, &uncompressed_buffer_);
+      if(!rc)
+        return false;
 
       auto msg = std::string("Initialized shared uncompressed memory buffers: ") +
                  (rc ? "success" : "failure");
@@ -767,16 +787,18 @@ struct Messenger
     }
     if(init_.compressedFrameSize_)
     {
-      rc = rc && SharedMemoryManager::initShm(grokCompressedBuf,
-                                              init_.compressedFrameSize_ * init_.numFrames_,
-                                              &compressed_fd_, &compressed_buffer_);
+      bool rc = SharedMemoryManager::initShm(grokCompressedBuf,
+                                             init_.compressedFrameSize_ * init_.numFrames_,
+                                             &compressed_fd_, &compressed_buffer_);
+      if(!rc)
+        return false;
 
       auto msg = std::string("Initialized shared compressed memory buffers: ") +
                  (rc ? "success" : "failure");
       getMessengerLogger()->info(msg.c_str());
     }
 
-    return rc;
+    return true;
   }
 
   bool deinitShm(void)
@@ -832,14 +854,15 @@ struct Messenger
 
     return success;
   }
-  void initClient(size_t uncompressedFrameSize, size_t compressedFrameSize, size_t numFrames)
+  bool initClient(size_t uncompressedFrameSize, size_t compressedFrameSize, size_t numFrames)
   {
     getMessengerLogger()->info("Initializing shared memory client");
     // client fills queue with pending uncompressed buffers
     init_.uncompressedFrameSize_ = uncompressedFrameSize;
     init_.compressedFrameSize_ = compressedFrameSize;
     init_.numFrames_ = numFrames;
-    initBuffers();
+    if(!initBuffers())
+      return false;
     auto ptr = uncompressed_buffer_;
     for(size_t i = 0; i < init_.numFrames_; ++i)
     {
@@ -851,6 +874,7 @@ struct Messenger
     initialized_ = true;
     clientInitializedCondition_.notify_all();
     getMessengerLogger()->info("Initialized shared memory client");
+    return true;
   }
   bool waitForClientInit(void)
   {
@@ -1046,8 +1070,9 @@ static void processorThread(Messenger* messenger, std::function<void(std::string
           Messenger::uncompressedFrameSize(width, height, samplesPerPixel);
       auto compressedFrameSize = msg.nextUint();
       auto numFrames = msg.nextUint();
-      messenger->initClient(messenger->init_.uncompressedFrameSize_, compressedFrameSize,
-                            numFrames);
+      if(!messenger->initClient(messenger->init_.uncompressedFrameSize_, compressedFrameSize,
+                                numFrames))
+        return;
     }
     else if(tag == GRK_MSGR_BATCH_DECOMPRESS_INIT)
     {
@@ -1063,8 +1088,9 @@ static void processorThread(Messenger* messenger, std::function<void(std::string
       auto compressedFrameSize = msg.nextUint();
       auto numFrames = msg.nextUint();
       // for decompress: client manages compressed buffers (input)
-      messenger->initClient(messenger->init_.uncompressedFrameSize_, compressedFrameSize,
-                            numFrames);
+      if(!messenger->initClient(messenger->init_.uncompressedFrameSize_, compressedFrameSize,
+                                numFrames))
+        return;
       // drain uncompressed buffers and fill with compressed buffers
       {
         BufferSrc dummy;
