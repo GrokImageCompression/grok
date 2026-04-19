@@ -138,7 +138,7 @@ protected:
    *
    * @return true if successful
    */
-  bool decompressImpl(std::set<uint16_t> slated);
+  bool decompressImpl(std::set<uint16_t> pendingTiles);
 
   bool decompressTileImpl(uint16_t tile_index);
 
@@ -318,8 +318,8 @@ private:
                                Rect32 unreducedImageBounds,
                                std::function<std::function<void()>(ITileProcessor*)> postGenerator);
 
-  void decompressSequential(void);
-  void decompressTLM(const std::set<uint16_t>& slated);
+  void decompressSequential(const std::set<uint16_t>& pendingTiles);
+  void decompressTLM(const std::set<uint16_t>& pendingTiles);
 
   bool doTileBatching(void);
 

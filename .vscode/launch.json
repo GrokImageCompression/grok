@@ -848,18 +848,18 @@
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/build/bin/grk_decompress",
+           // "program": "/usr/bin/valgrind",
             "args": [
+                //"${workspaceFolder}/build/bin/grk_decompress",
                 "-i",
-                "$HOME/temp/clusterfuzz-testcase-minimized-grk_decompress_fuzzer-4737912531910656",
+                "$HOME/temp/clusterfuzz-testcase-minimized-grk_decompress_fuzzer-6503262076338176",
                 "-d 0,0,1024,1024",
-                // "-t",
-                //  "20",
                  "-o",
                 "$HOME/temp/fuzz.pgx"
 
             ],
             "environment": [
-                { "name": "GRK_DEBUG", "value": "3" },
+                { "name": "GRK_DEBUG", "value": "4" },
             ],
             "cwd": "${workspaceFolder}",
             "MIMode": "gdb",

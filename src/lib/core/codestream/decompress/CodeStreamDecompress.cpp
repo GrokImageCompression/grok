@@ -212,8 +212,8 @@ bool CodeStreamDecompress::decompress(grk_plugin_tile* tile)
 
   multiTileComposite_->postReadHeader(&cp_);
   tileCache_->init(cp_.t_grid_width_ * cp_.t_grid_height_);
-  auto slated = tilesToDecompress_.getSlatedTiles();
-  if(!decompressImpl(slated))
+  auto slatedTiles = tilesToDecompress_.getSlatedTiles();
+  if(!decompressImpl(slatedTiles))
     return false;
 
   // If all slated tiles were already cached, decompressImpl returned
@@ -222,7 +222,7 @@ bool CodeStreamDecompress::decompress(grk_plugin_tile* tile)
   // complete so that grk_decompress_wait() won't hang.
   if(tileCompletion_)
   {
-    for(auto tileIndex : slated)
+    for(auto tileIndex : slatedTiles)
     {
       auto cacheEntry = tileCache_->get(tileIndex);
       if(!cacheEntry)
@@ -244,17 +244,17 @@ bool CodeStreamDecompress::decompress(grk_plugin_tile* tile)
   return success_;
 }
 
-bool CodeStreamDecompress::decompressImpl(std::set<uint16_t> slated)
+bool CodeStreamDecompress::decompressImpl(std::set<uint16_t> pendingTiles)
 {
-  // Filter out fully cached tiles from slated
-  std::erase_if(slated, [this](uint16_t index) {
+  // Filter out fully cached tiles
+  std::erase_if(pendingTiles, [this](uint16_t index) {
     auto cacheEntry = tileCache_->get(index);
     if(!cacheEntry)
       return false;
     auto proc = cacheEntry->processor;
     return proc->isBestEffortDecompressed() || (proc->getImage() && !cacheEntry->dirty_);
   });
-  if(slated.empty())
+  if(pendingTiles.empty())
     return true;
 
   // Extract LRU-evicted tiles that can be re-decompressed from cache
@@ -262,14 +262,14 @@ bool CodeStreamDecompress::decompressImpl(std::set<uint16_t> slated)
   std::set<uint16_t> reDecompressTiles;
   if(compressedChunkCache_ && cp_.hasTLM())
   {
-    for(auto it = slated.begin(); it != slated.end();)
+    for(auto it = pendingTiles.begin(); it != pendingTiles.end();)
     {
       auto cacheEntry = tileCache_->get(*it);
       if(cacheEntry && cacheEntry->processor->getImage() && !cacheEntry->processor->getTile() &&
          cacheEntry->dirty_ && compressedChunkCache_->contains(*it))
       {
         reDecompressTiles.insert(*it);
-        it = slated.erase(it);
+        it = pendingTiles.erase(it);
       }
       else
       {
@@ -280,8 +280,8 @@ bool CodeStreamDecompress::decompressImpl(std::set<uint16_t> slated)
 
   // Require tile_ to exist for differential updates — an LRU-evicted tile
   // without cached compressed data must go through the full decompress path
-  bool doDifferential = !slated.empty();
-  for(auto& tileIndex : slated)
+  bool doDifferential = !pendingTiles.empty();
+  for(auto& tileIndex : pendingTiles)
   {
     auto cacheEntry = tileCache_->get(tileIndex);
     if(!cacheEntry || !cacheEntry->processor->getImage() || !cacheEntry->processor->getTile())
@@ -313,13 +313,13 @@ bool CodeStreamDecompress::decompressImpl(std::set<uint16_t> slated)
     cacheEntry->dirty_ = false;
   }
 
-  if(slated.empty())
+  if(pendingTiles.empty())
     return true;
 
   // synchronous batch init
   if(doTileBatching() && !cp_.hasTLM())
   {
-    batchTileUnscheduledSequential_ = (uint16_t)slated.size();
+    batchTileUnscheduledSequential_ = (uint16_t)pendingTiles.size();
     batchTileScheduleHeadroomSequential_ =
         batchTileHeadroomIncrement(batchTileInitialRows_, batchTileUnscheduledSequential_);
     batchTileScheduledRows_ = batchTileInitialRows_;
@@ -337,14 +337,14 @@ bool CodeStreamDecompress::decompressImpl(std::set<uint16_t> slated)
       return postMultiTile(tp); // Return the result directly
     };
 
-    if(fetchByTile(slated, scratchImage_->getBounds(), generator))
+    if(fetchByTile(pendingTiles, scratchImage_->getBounds(), generator))
       return true;
 
     // b) prepare for TLM decompress
     tilePartFetchFlat_ = std::make_shared<TPFetchSeq>();
     tilePartFetchByTile_ =
         std::make_shared<std::unordered_map<uint16_t, std::shared_ptr<TPFetchSeq>>>();
-    TPFetchSeq::genCollections(&cp_.tlmMarkers_->getTileParts(), slated, tilePartFetchFlat_,
+    TPFetchSeq::genCollections(&cp_.tlmMarkers_->getTileParts(), pendingTiles, tilePartFetchFlat_,
                                tilePartFetchByTile_);
   }
   else
@@ -369,7 +369,7 @@ bool CodeStreamDecompress::decompressImpl(std::set<uint16_t> slated)
   // 1. differential decompression
   if(doDifferential)
   {
-    for(auto& tileIndex : slated)
+    for(auto& tileIndex : pendingTiles)
     {
       if(doDifferential)
       {
@@ -389,9 +389,9 @@ bool CodeStreamDecompress::decompressImpl(std::set<uint16_t> slated)
 
   std::function<void()> task;
   if(cp_.hasTLM())
-    task = [this, slated]() { decompressTLM(slated); };
+    task = [this, pendingTiles]() { decompressTLM(pendingTiles); };
   else
-    task = [this]() { decompressSequential(); };
+    task = [this, pendingTiles]() { decompressSequential(pendingTiles); };
 
   decompressWorker_ = std::thread(task);
   return true;
@@ -423,12 +423,12 @@ bool CodeStreamDecompress::schedule(ITileProcessor* tileProcessor, bool multiTil
 
 // TLM ///////////////////////////////////////////////////////////////
 
-void CodeStreamDecompress::decompressTLM(const std::set<uint16_t>& slated)
+void CodeStreamDecompress::decompressTLM(const std::set<uint16_t>& pendingTiles)
 {
-  // 1 schedule all slated tiles
+  // 1 schedule all pending tiles
   if(!doTileBatching())
   {
-    for(const auto& tileIndex : slated)
+    for(const auto& tileIndex : pendingTiles)
     {
       if(!schedule(getTileProcessor(tileIndex), true))
         break;
@@ -436,13 +436,13 @@ void CodeStreamDecompress::decompressTLM(const std::set<uint16_t>& slated)
     return;
   }
 
-  // 2. push all slated tiles into the queue
-  for(const auto& value : slated)
+  // 2. push all pending tiles into the queue
+  for(const auto& value : pendingTiles)
     batchTileQueueTLM_.push(value);
 
   // 3. schedule first  N rows
   uint16_t initialBatchCount =
-      batchTileHeadroomIncrement(batchTileInitialRows_, (uint16_t)slated.size());
+      batchTileHeadroomIncrement(batchTileInitialRows_, (uint16_t)pendingTiles.size());
   batchTileScheduledRows_ = batchTileInitialRows_;
   {
     std::lock_guard<std::mutex> lock(batchTileQueueMutex_);
@@ -501,7 +501,7 @@ void CodeStreamDecompress::decompressSequentialPrepare(void)
   stream_->memAdvise(stream_->tell(), 0, GrkAccessPattern::ACCESS_RANDOM);
 }
 
-void CodeStreamDecompress::decompressSequential(void)
+void CodeStreamDecompress::decompressSequential(const std::set<uint16_t>& pendingTiles)
 {
   bool foundUnknownMarker = false;
   while(!markerParser_.endOfCodeStream() && !foundUnknownMarker)
@@ -511,10 +511,10 @@ void CodeStreamDecompress::decompressSequential(void)
     {
       if(!sequentialParseAndSchedule(true))
       {
-        // If we've exhausted all slated tiles' markers or the codestream
+        // If we've exhausted all pending tiles' markers or the codestream
         // ran out of data (truncated image), stop gracefully.
-        if(tileCache_->allSlatedSOTMarkersParsed(tilesToDecompress_.getSlatedTiles()) ||
-           markerParser_.endOfCodeStream() || stream_->numBytesLeft() == 0)
+        if(tileCache_->allSlatedSOTMarkersParsed(pendingTiles) || markerParser_.endOfCodeStream() ||
+           stream_->numBytesLeft() == 0)
           break;
         success_ = false;
         break;
@@ -548,33 +548,29 @@ void CodeStreamDecompress::decompressSequential(void)
 
     // check for corrupt Adobe files where 5 tile parts per tile are signalled
     // but there are actually 6.
-    if(markerParser_.currId() == SOT &&
-       tileCache_->allSlatedSOTMarkersParsed(tilesToDecompress_.getSlatedTiles()) &&
+    if(markerParser_.currId() == SOT && tileCache_->allSlatedSOTMarkersParsed(pendingTiles) &&
        markerParser_.checkForIllegalTilePart())
     {
       success_ = false;
       break;
     }
 
-    if(tileCache_->allSlatedSOTMarkersParsed(tilesToDecompress_.getSlatedTiles()))
+    if(tileCache_->allSlatedSOTMarkersParsed(pendingTiles))
       break;
   }
 
   // Best-effort: schedule incomplete tiles (those with some tile parts parsed
   // but not all) for decompression with whatever data they have.
-  if(!cp_.hasTLM())
+  for(auto tileIndex : pendingTiles)
   {
-    for(auto tileIndex : tilesToDecompress_.getSlatedTiles())
+    auto cached = tileCache_->get(tileIndex);
+    if(cached && cached->processor && !cached->processor->scheduledForDecompression() &&
+       cached->processor->hasUnparsedTileParts())
     {
-      auto cached = tileCache_->get(tileIndex);
-      if(cached && cached->processor && !cached->processor->scheduledForDecompression() &&
-         cached->processor->hasUnparsedTileParts())
-      {
-        cached->processor->setTruncated();
-        cached->processor->prepareForDecompression();
-        if(!cached->processor->hasError())
-          schedule(cached->processor, true);
-      }
+      cached->processor->setTruncated();
+      cached->processor->prepareForDecompression();
+      if(!cached->processor->hasError())
+        schedule(cached->processor, true);
     }
   }
 
@@ -583,7 +579,7 @@ void CodeStreamDecompress::decompressSequential(void)
   // being decompressed asynchronously and must not be completed here.
   if(tileCompletion_)
   {
-    for(auto tileIndex : tilesToDecompress_.getSlatedTiles())
+    for(auto tileIndex : pendingTiles)
     {
       auto cached = tileCache_->get(tileIndex);
       if(!cached || !cached->processor || cached->processor->hasUnparsedTileParts())
