@@ -247,11 +247,15 @@ void PacketIter::genPrecinctInfo(PacketIterInfoComponent* comp, PacketIterInfoRe
  * Preconditions for OPT:
  * 1. Decompression (not compression)
  * 2. Single progression (no POC)
- * 3. Tile origin at (0,0)
- * 4. No subsampling (all dx=dy=1)
- * 5. All components have the same number of resolutions
- * 6. For PCRL/CPRL: projected precinct sizes are non-decreasing as resolution decreases
+ * 3. No subsampling (all dx=dy=1)
+ * 4. All components have the same number of resolutions
+ * 5. For PCRL/CPRL: projected precinct sizes are non-decreasing as resolution decreases
  *    (ensures the highest-resolution precinct grid covers all lower-resolution precincts)
+ *
+ * The OPT path uses per-resolution precinct step sizes for spatial
+ * progressions (RPCL), avoiding degenerate iteration when tiles have
+ * large dimensions or many resolution levels combined with small
+ * global dx/dy.
  *
  * @return true if OPT path was used, false if caller should use the non-OPT path
  */
@@ -261,9 +265,6 @@ bool PacketIter::genPrecinctInfoOPT(void)
     return false;
 
   auto tb = packetManager->getTileBounds();
-  // tile origin at (0,0) will simplify computations
-  if(tb.x0 || tb.y0)
-    return false;
   // no subsampling
   for(uint16_t compno = 0; compno < numcomps; ++compno)
   {
@@ -281,6 +282,11 @@ bool PacketIter::genPrecinctInfoOPT(void)
       break;
     case GRK_PCRL:
     case GRK_CPRL:
+      // PCRL/CPRL OPT spatial loops use precinct-aligned bounds and bitwise
+      // alignment checks that assume tile origin falls on a precinct boundary.
+      // Non-zero tile origins break these assumptions.
+      if(tb.x0 || tb.y0)
+        return false;
       // if P occurs before R, then we must ensure that for all resolutions, the precinct
       // projected onto canvas is a "multiple" of the highest resolution precinct,
       // so that the P loops covers all precincts from all resolutions
@@ -823,11 +829,13 @@ bool PacketIter::genPrecinctX0GridPCRL_OPT(ResPrecinctInfo* rpInfo)
 }
 void PacketIter::genPrecinctY0GridRPCL_OPT(ResPrecinctInfo* rpInfo)
 {
-  py0grid_ = (uint32_t)(ceildivpow2(y, rpInfo->decompLevel_) >> rpInfo->precHeightExp);
+  py0grid_ = (uint32_t)(ceildivpow2(y, rpInfo->decompLevel_) >> rpInfo->precHeightExp) -
+             rpInfo->resInPrecGridY0;
 }
 void PacketIter::genPrecinctX0GridRPCL_OPT(ResPrecinctInfo* rpInfo)
 {
-  px0grid_ = (uint32_t)(ceildivpow2(x, rpInfo->decompLevel_) >> rpInfo->precWidthExp);
+  px0grid_ = (uint32_t)(ceildivpow2(x, rpInfo->decompLevel_) >> rpInfo->precWidthExp) -
+             rpInfo->resInPrecGridX0;
 }
 /**
  * Compute the minimum spatial step sizes (dx, dy) across all components and
@@ -984,6 +992,28 @@ bool PacketIter::isWholeTile(void)
 
 bool PacketIter::next(SparseBuffer* compressedPackets)
 {
+  // OPT path: per-resolution precinct info avoids degenerate spatial
+  // iteration for tiles with large dimensions or many resolution levels.
+  if(precinctInfoOPT_)
+  {
+    switch(prog.progression)
+    {
+      case GRK_LRCP:
+        return next_lrcpOPT();
+      case GRK_RLCP:
+        return next_rlcpOPT();
+      case GRK_PCRL:
+        return next_pcrlOPT();
+      case GRK_RPCL:
+        return next_rpclOPT(compressedPackets);
+      case GRK_CPRL:
+        return next_cprlOPT(compressedPackets);
+      default:
+        return false;
+    }
+  }
+
+  // Non-OPT fallback: compression, multiple progressions, subsampling, etc.
   switch(prog.progression)
   {
     case GRK_LRCP:
@@ -996,23 +1026,22 @@ bool PacketIter::next(SparseBuffer* compressedPackets)
       // spatial progressions require non-zero step sizes to avoid infinite loops
       if(dx == 0 || dy == 0)
         return false;
-      if(prog.progression == GRK_PCRL)
-        return next_pcrl();
-      else if(prog.progression == GRK_RPCL)
-        return next_rpcl(compressedPackets);
-      else
-        return next_cprl(compressedPackets);
+      switch(prog.progression)
+      {
+        case GRK_PCRL:
+          return next_pcrl();
+        case GRK_RPCL:
+          return next_rpcl(compressedPackets);
+        default: // GRK_CPRL
+          return next_cprl(compressedPackets);
+      }
     default:
       return false;
   }
-
-  return false;
 }
 
-bool PacketIter::next_cprl(SparseBuffer* compressedPackets)
+bool PacketIter::next_cprl(SparseBuffer*)
 {
-  if(precinctInfoOPT_)
-    return next_cprlOPT(compressedPackets);
   for(; compno < prog.comp_e; compno++)
   {
     auto comp = comps + compno;
@@ -1053,8 +1082,6 @@ bool PacketIter::next_cprl(SparseBuffer* compressedPackets)
 }
 bool PacketIter::next_pcrl()
 {
-  if(precinctInfoOPT_)
-    return next_pcrlOPT();
   for(; y < prog.ty1; y += dyActive, dyActive = dy)
   {
     for(; x < prog.tx1; x += dxActive, dxActive = dx)
@@ -1098,32 +1125,17 @@ bool PacketIter::next_pcrl()
 }
 bool PacketIter::next_lrcp()
 {
-  if(precinctInfoOPT_)
-    return next_lrcpOPT();
-
   for(; layno < prog.lay_e; layno++)
   {
     for(; resno < prog.res_e; resno++)
     {
-      uint64_t prec_e = 0;
-      if(precinctInfoOPT_)
-      {
-        if(resno >= comps->numresolutions)
-          continue;
-        auto res = comps->resolutions + resno;
-        prec_e = (uint64_t)res->precinctGridWidth * res->precinctGridHeight;
-      }
       for(; compno < prog.comp_e; compno++)
       {
         auto comp = comps + compno;
-        if(!precinctInfoOPT_)
-        {
-          // skip resolutions greater than current component resolution
-          if(resno >= comp->numresolutions)
-            continue;
-          auto res = comp->resolutions + resno;
-          prec_e = (uint64_t)res->precinctGridWidth * res->precinctGridHeight;
-        }
+        if(resno >= comp->numresolutions)
+          continue;
+        auto res = comp->resolutions + resno;
+        uint64_t prec_e = (uint64_t)res->precinctGridWidth * res->precinctGridHeight;
         if(incrementInner)
           precinctIndex++;
         if(precinctIndex < prec_e)
@@ -1144,30 +1156,17 @@ bool PacketIter::next_lrcp()
 }
 bool PacketIter::next_rlcp()
 {
-  if(precinctInfoOPT_)
-    return next_rlcpOPT();
   for(; resno < prog.res_e; resno++)
   {
-    uint64_t prec_e = 0;
-    if(precinctInfoOPT_)
-    {
-      if(resno >= comps->numresolutions)
-        continue;
-      auto res = comps->resolutions + resno;
-      prec_e = (uint64_t)res->precinctGridWidth * res->precinctGridHeight;
-    }
     for(; layno < prog.lay_e; layno++)
     {
       for(; compno < prog.comp_e; compno++)
       {
         auto comp = comps + compno;
-        if(!precinctInfoOPT_)
-        {
-          if(resno >= comp->numresolutions)
-            continue;
-          auto res = comp->resolutions + resno;
-          prec_e = (uint64_t)res->precinctGridWidth * res->precinctGridHeight;
-        }
+        if(resno >= comp->numresolutions)
+          continue;
+        auto res = comp->resolutions + resno;
+        uint64_t prec_e = (uint64_t)res->precinctGridWidth * res->precinctGridHeight;
         if(incrementInner)
           precinctIndex++;
         if(precinctIndex < prec_e)
@@ -1186,11 +1185,8 @@ bool PacketIter::next_rlcp()
 
   return false;
 }
-bool PacketIter::next_rpcl(SparseBuffer* compressedPackets)
+bool PacketIter::next_rpcl(SparseBuffer*)
 {
-  if(precinctInfoOPT_)
-    return next_rpclOPT(compressedPackets);
-
   for(; resno < prog.res_e; resno++)
   {
     // if all remaining components have degenerate precinct grid, then
@@ -1538,7 +1534,13 @@ bool PacketIter::next_rpclOPT(SparseBuffer* compressedPackets)
       }
       skippedLeft_ = false;
     }
-    y = precInfo->tileBoundsPrecPRJ.y0;
+    // Reset spatial position to tile origin for the next resolution.
+    // Each resolution's tileBoundsPrecPRJ can differ, so using the current
+    // resolution's x0/y0 may place x/y outside the next resolution's range,
+    // causing precinct-grid underflow.  The tile origin is guaranteed to fall
+    // within every resolution's spatial range.
+    y = prog.ty0;
+    x = prog.tx0;
   }
 
   return false;

@@ -485,7 +485,7 @@ private:
    Get next packet in component-precinct-resolution-layer order.
    @return returns false if pi pointed to the final packet, otherwise true
    */
-  bool next_cprl(SparseBuffer* compressedPackets);
+  bool next_cprl(SparseBuffer*);
   bool next_cprlOPT(SparseBuffer* compressedPackets);
 
   /**
@@ -511,7 +511,7 @@ private:
    Get next packet in resolution-precinct-component-layer order.
    @return returns false if pi pointed to the final packet, otherwise true
    */
-  bool next_rpcl(SparseBuffer* compressedPackets);
+  bool next_rpcl(SparseBuffer*);
   bool next_rpclOPT(SparseBuffer* compressedPackets);
 
   bool skipPackets(SparseBuffer* compressedPackets, uint64_t numPackets);
