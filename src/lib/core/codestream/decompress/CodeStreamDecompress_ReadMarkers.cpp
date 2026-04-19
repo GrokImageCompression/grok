@@ -358,6 +358,14 @@ bool CodeStreamDecompress::readSOT(uint8_t* headerData, uint16_t headerSize)
   }
   uint16_t tileIndex;
   grk_read(&headerData, &tileIndex);
+
+  uint16_t totalTiles = cp_.t_grid_width_ * cp_.t_grid_height_;
+  if(tileIndex >= totalTiles)
+  {
+    grklog.error("readSOT: tile index %d lies outside tile grid %d x %d", tileIndex,
+                 cp_.t_grid_width_, cp_.t_grid_height_);
+    return false;
+  }
   currTileIndex_ = tileIndex;
 
   grk_read(&headerData, &currTilePartInfo_.tilePartLength_);
