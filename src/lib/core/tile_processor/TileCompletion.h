@@ -247,7 +247,7 @@ public:
                 grklog.debug(
                     "Clearing ITileProcessor at tile index %d (local %d, tileX=%u, tileY=%u)",
                     tileIndex, localIndex, tileX, clearTileY);
-                tileCache_->release(tileIndex);
+                tileCache_->releaseForSwath(tileIndex);
               }
             }
           }

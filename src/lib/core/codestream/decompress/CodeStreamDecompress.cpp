@@ -1250,10 +1250,6 @@ void CodeStreamDecompress::wait(grk_wait_swath* swath)
     bool rc = tileCompletion_->wait(swath);
     if(!rc)
       return;
-    // When swath-based waiting is active the fetch/decompress pipeline
-    // completes progressively, driven by row releases.  Return after
-    // the swath tiles are ready — full cleanup happens on the final
-    // call (swath == null).
     return;
   }
 
@@ -1640,6 +1636,10 @@ GrkImage* CodeStreamDecompress::getImage()
 {
   wait(nullptr);
 
+  return multiTileComposite_.get();
+}
+GrkImage* CodeStreamDecompress::getCompositeNoWait()
+{
   return multiTileComposite_.get();
 }
 

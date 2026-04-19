@@ -425,27 +425,28 @@ static bool decompress(grk_object* codec, const grk_header_info* headerInfo,
     }
   }
 
-  if(image && *image && decompressParams->asynchronous)
-  {
-    if(decompressParams->dw_x1 == 0 && !decompressTile)
-    {
-      grk_wait_swath swath = {};
-      swath.x0 = (*image)->x0;
-      swath.y0 = (*image)->y0;
-      swath.x1 = (*image)->x1;
-      swath.y1 = (*image)->y1;
-      grk_decompress_wait(codec, &swath);
-    }
-  }
-
   // retrieve image that will store uncompressed image data
   if(!decompressTile)
   {
     wait_tile_range(codec, headerInfo, 0, headerInfo->t_grid_width * headerInfo->t_grid_height);
   }
 
-  *image = decompressTile ? grk_decompress_get_tile_image(codec, tileIndex, true)
-                          : grk_decompress_get_image(codec);
+  if(decompressTile)
+  {
+    *image = grk_decompress_get_tile_image(codec, tileIndex, true);
+  }
+  else if(!decompressParams->core.skip_allocate_composite)
+  {
+    // grk_decompress_get_image() triggers wait(nullptr) which force-schedules
+    // all remaining tiles.  Only call it when we actually need the composite.
+    *image = grk_decompress_get_image(codec);
+  }
+  else
+  {
+    // When skip_allocate_composite is set, the composite has no pixel data.
+    // Use the header image for dimension info without triggering wait(nullptr).
+    *image = const_cast<grk_image*>(&headerInfo->header_image);
+  }
   if(!*image)
   {
     fprintf(stderr, "Failed to retrieve image \n");

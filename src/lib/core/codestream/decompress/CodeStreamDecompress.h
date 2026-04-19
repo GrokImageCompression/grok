@@ -90,6 +90,8 @@ public:
 
   GrkImage* getImage(void) override;
 
+  GrkImage* getCompositeNoWait(void);
+
   /**
    * @brief Gets header @ref GrkImage
    * (where main and tile header information is stored)

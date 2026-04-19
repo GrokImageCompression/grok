@@ -312,6 +312,11 @@ struct ITileProcessor
   virtual void release(uint32_t strategy) = 0;
 
   /**
+   * @brief Unconditionally releases both image and tile data (swath consumer path).
+   */
+  virtual void releaseForSwath() = 0;
+
+  /**
    * @brief Reads a PLT marker (Packet length, tile-part header)
    * @param headerData Header data buffer
    * @param headerSize Size of the header data

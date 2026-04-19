@@ -926,6 +926,14 @@ void TileProcessor::release(uint32_t strategy)
     }
   }
 }
+void TileProcessor::releaseForSwath()
+{
+  grk_unref(image_);
+  image_ = nullptr;
+
+  delete tile_;
+  tile_ = nullptr;
+}
 void TileProcessor::release(void)
 {
   release(tileCacheStrategy_);

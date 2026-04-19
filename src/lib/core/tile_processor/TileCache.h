@@ -238,6 +238,21 @@ public:
       cache_[tileIndex]->processor->release(strategy_);
   }
 
+  /**
+   * @brief Release tile data unconditionally (swath consumer path).
+   *
+   * Called by TileCompletion when the swath consumer has moved past a tile row.
+   * Frees both image_ and tile_ regardless of cache strategy, since the consumer
+   * has explicitly acknowledged it no longer needs the data.
+   */
+  void releaseForSwath(uint16_t tileIndex)
+  {
+    if(tileIndex >= cache_.size())
+      return;
+    if(cache_[tileIndex] && cache_[tileIndex]->processor)
+      cache_[tileIndex]->processor->releaseForSwath();
+  }
+
   void resetSOTParsing()
   {
     for(auto* entry : cache_)

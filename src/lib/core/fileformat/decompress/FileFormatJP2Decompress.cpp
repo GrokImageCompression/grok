@@ -103,7 +103,7 @@ bool FileFormatJP2Decompress::readHeader(grk_header_info* header_info)
       headerError_ = true;
       return false;
     }
-    image = codeStream->getImage();
+    image = codeStream->getCompositeNoWait();
     image->validateICC();
 
     // check RGB subsampling

@@ -318,6 +318,7 @@ struct TileProcessor : virtual public ITileProcessor
    * @param strategy tile cache strategy
    */
   void release(uint32_t strategy) override;
+  void releaseForSwath() override;
 
   /**
    * @brief Reads a PLT marker (Packet length, tile-part header)
