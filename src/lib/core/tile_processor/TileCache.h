@@ -196,7 +196,12 @@ public:
   TileCacheEntry* put(uint16_t tile_index, ITileProcessor* processor)
   {
     if(tile_index >= cache_.size())
+    {
+      delete processor;
+      grklog.warn("Failed to put tile processor for tile %d because tile index is out of bounds",
+                  tile_index);
       return nullptr;
+    }
     if(!cache_[tile_index])
     {
       cache_[tile_index] = new TileCacheEntry(processor);
