@@ -896,15 +896,9 @@ void TileProcessor::release(uint32_t strategy)
   if((strategy & GRK_TILE_CACHE_ALL) == GRK_TILE_CACHE_ALL)
     return;
 
-  // LRU strategy: release decompressed data but keep processor alive
-  // for re-decompression from cached compressed data
-  if(strategy & GRK_TILE_CACHE_LRU)
-  {
-    delete tile_;
-    tile_ = nullptr;
-    // Keep image_ and tilePartFetchSeq_ for re-decompression
-    return;
-  }
+  // delete tile components
+  delete tile_;
+  tile_ = nullptr;
 
   // delete image in absence of tile cache strategy
   if(strategy == GRK_TILE_CACHE_NONE)
@@ -913,11 +907,7 @@ void TileProcessor::release(uint32_t strategy)
     image_ = nullptr;
   }
 
-  // delete tile components
-  delete tile_;
-  tile_ = nullptr;
-
-  if(tilePartFetchSeq_ && strategy != GRK_TILE_CACHE_ALL)
+  if(tilePartFetchSeq_ && !(strategy & GRK_TILE_CACHE_LRU))
   {
     for(const auto& tpfs : *tilePartFetchSeq_)
     {
