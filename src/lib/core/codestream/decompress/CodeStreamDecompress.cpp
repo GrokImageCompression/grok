@@ -1592,7 +1592,8 @@ ITileProcessor* CodeStreamDecompress::getTileProcessor(uint16_t tileIndex)
 
     tileProcessor =
         new TileProcessor(tileIndex, tcp, this, stream_, false, tileCache_->getStrategy());
-    tileCache_->put(tileIndex, tileProcessor);
+    if(!tileCache_->put(tileIndex, tileProcessor))
+      return nullptr;
   }
   return tileProcessor;
 }

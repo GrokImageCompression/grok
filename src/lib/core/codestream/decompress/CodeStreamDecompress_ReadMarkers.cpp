@@ -379,7 +379,8 @@ bool CodeStreamDecompress::readSOT(uint8_t* headerData, uint16_t headerSize)
     // Record SOT info for non-slated tiles so tilePartSeq_ is populated
     // for potential future decode via decompressFromCachedTileParts()
     auto processor = getTileProcessor(tileIndex);
-    if(!processor->readSOT(this->stream_, headerData, headerSize, currTilePartInfo_, false))
+    if(!processor ||
+       !processor->readSOT(this->stream_, headerData, headerSize, currTilePartInfo_, false))
       return false;
     return currTilePartInfo_.tilePartLength_
                ? stream_->skip((int64_t)(currTilePartInfo_.tilePartLength_ - sotMarkerSegmentLen))
@@ -387,7 +388,8 @@ bool CodeStreamDecompress::readSOT(uint8_t* headerData, uint16_t headerSize)
   }
 
   auto processor = getTileProcessor(tileIndex);
-  if(!processor->readSOT(this->stream_, headerData, headerSize, currTilePartInfo_, false))
+  if(!processor ||
+     !processor->readSOT(this->stream_, headerData, headerSize, currTilePartInfo_, false))
     return false;
   currTileProcessor_ = processor;
   return true;
