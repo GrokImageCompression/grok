@@ -53,16 +53,17 @@ struct CodecDeleter
 };
 using CodecPtr = std::unique_ptr<grk_object, CodecDeleter>;
 
-// Create a synthetic test image and compress it to a J2K file with TLM markers
+// Create a synthetic test image and compress it to a J2K file
 static bool createTestImage(const std::string& path, uint32_t width, uint32_t height,
-                            uint32_t tileWidth, uint32_t tileHeight)
+                            uint32_t tileWidth, uint32_t tileHeight, bool writeTlm = true)
 {
   grk_cparameters cparams{};
   grk_compress_set_default_params(&cparams);
   cparams.cod_format = GRK_FMT_J2K;
   cparams.t_width = tileWidth;
   cparams.t_height = tileHeight;
-  cparams.write_tlm = true;
+  cparams.tile_size_on = (tileWidth < width || tileHeight < height);
+  cparams.write_tlm = writeTlm;
   cparams.numresolution = 3;
   // Lossless
   cparams.irreversible = false;
@@ -363,6 +364,150 @@ static bool testLRUCacheEviction()
 }
 
 ///////////////////////////////////////////////////////////////////
+// Test 4: LRU eviction + re-decompress from cached SOT offsets
+//
+// Creates a non-TLM image with 16 tiles, sets max_active_tiles=4,
+// decompresses all tiles (causing eviction), then re-decompresses
+// evicted tiles and verifies pixel data matches a fresh reference.
+///////////////////////////////////////////////////////////////////
+static std::vector<TileData> decompressTileByTile(const std::string& path,
+                                                  uint32_t tileCacheStrategy,
+                                                  uint16_t maxActiveTiles)
+{
+  std::vector<TileData> result;
+
+  grk_decompress_parameters params{};
+  params.core.tile_cache_strategy = tileCacheStrategy;
+  params.core.max_active_tiles = maxActiveTiles;
+
+  grk_stream_params streamParams{};
+  safe_strcpy(streamParams.file, path.data());
+
+  CodecPtr codec(grk_decompress_init(&streamParams, &params));
+  if(!codec)
+  {
+    spdlog::error("Failed to init decompressor");
+    return result;
+  }
+
+  grk_header_info headerInfo{};
+  if(!grk_decompress_read_header(codec.get(), &headerInfo))
+  {
+    spdlog::error("Failed to read header");
+    return result;
+  }
+
+  if(!grk_decompress_update(&params, codec.get()))
+  {
+    spdlog::error("grk_decompress_update failed");
+    return result;
+  }
+
+  uint16_t numTiles = headerInfo.t_grid_width * headerInfo.t_grid_height;
+  spdlog::info("decompressTileByTile: grid {}x{} = {} tiles", headerInfo.t_grid_width,
+               headerInfo.t_grid_height, numTiles);
+  for(uint16_t t = 0; t < numTiles; ++t)
+  {
+    if(!grk_decompress_tile(codec.get(), t))
+    {
+      spdlog::error("grk_decompress_tile({}) failed", t);
+      return {};
+    }
+  }
+
+  // Now re-decompress all tiles (evicted tiles trigger re-decompress path)
+  for(uint16_t t = 0; t < numTiles; ++t)
+  {
+    if(!grk_decompress_tile(codec.get(), t))
+    {
+      spdlog::error("Re-decompress of tile {} failed", t);
+      return {};
+    }
+
+    auto* tileImg = grk_decompress_get_tile_image(codec.get(), t, true);
+    if(!tileImg)
+    {
+      spdlog::error("get_tile_image({}) returned null after re-decompress", t);
+      return {};
+    }
+
+    TileData td;
+    td.tileIndex = t;
+    for(uint16_t c = 0; c < tileImg->numcomps; ++c)
+    {
+      auto& comp = tileImg->comps[c];
+      if(!comp.data)
+        continue;
+      uint32_t w = comp.w;
+      uint32_t h = comp.h;
+      auto* pixelData = static_cast<int32_t*>(comp.data);
+      std::vector<int32_t> pixels(pixelData, pixelData + w * h);
+      td.componentData.push_back(std::move(pixels));
+    }
+    result.push_back(std::move(td));
+  }
+
+  return result;
+}
+
+static bool testLRUEvictionReDecompress(const std::string& testFile)
+{
+  spdlog::info("=== Test: LRU eviction + re-decompress from cached SOT offsets ===");
+
+  // Reference: decompress each tile individually, no LRU
+  auto refData = decompressTileByTile(testFile, GRK_TILE_CACHE_IMAGE, 0);
+  if(refData.empty())
+  {
+    spdlog::error("Reference tile-by-tile decompression produced no data");
+    return false;
+  }
+  spdlog::info("Reference: {} tiles captured", refData.size());
+
+  // Test: decompress with LRU, max_active_tiles=4 (forces eviction on 16-tile image)
+  auto lruData = decompressTileByTile(testFile, GRK_TILE_CACHE_IMAGE | GRK_TILE_CACHE_LRU, 4);
+  if(lruData.empty())
+  {
+    spdlog::error("LRU re-decompress produced no data");
+    return false;
+  }
+  spdlog::info("LRU re-decompress: {} tiles captured", lruData.size());
+
+  if(refData.size() != lruData.size())
+  {
+    spdlog::error("Tile count mismatch: ref={}, lru={}", refData.size(), lruData.size());
+    return false;
+  }
+
+  for(size_t i = 0; i < refData.size(); ++i)
+  {
+    auto& ref = refData[i];
+    auto& lru = lruData[i];
+    if(ref.tileIndex != lru.tileIndex)
+    {
+      spdlog::error("Tile index mismatch at position {}", i);
+      return false;
+    }
+    if(ref.componentData.size() != lru.componentData.size())
+    {
+      spdlog::error("Component count mismatch for tile {}", ref.tileIndex);
+      return false;
+    }
+    for(size_t c = 0; c < ref.componentData.size(); ++c)
+    {
+      if(ref.componentData[c] != lru.componentData[c])
+      {
+        spdlog::error("Pixel data mismatch for tile {} component {}", ref.tileIndex, c);
+        return false;
+      }
+    }
+  }
+
+  spdlog::info("PASS: LRU eviction + re-decompress matches reference for all {} tiles",
+               refData.size());
+  return true;
+}
+
+///////////////////////////////////////////////////////////////////
 // Main
 ///////////////////////////////////////////////////////////////////
 int GrkLRUCacheTest::main(int argc, char** argv)
@@ -393,6 +538,24 @@ int GrkLRUCacheTest::main(int argc, char** argv)
     // Clean up
     std::error_code ec;
     std::filesystem::remove(testFile, ec);
+  }
+
+  // Integration test: non-TLM image with LRU eviction + re-decompress
+  std::string noTlmFile =
+      (std::filesystem::temp_directory_path() / "grk_lru_no_tlm_test.j2k").string();
+  bool noTlmCreated = createTestImage(noTlmFile, 256, 256, 64, 64, false); // 4x4 = 16 tiles, no TLM
+  if(!noTlmCreated)
+  {
+    spdlog::error("Failed to create non-TLM test image, skipping eviction test");
+    failures++;
+  }
+  else
+  {
+    if(!testLRUEvictionReDecompress(noTlmFile))
+      failures++;
+
+    std::error_code ec;
+    std::filesystem::remove(noTlmFile, ec);
   }
 
   if(failures > 0)

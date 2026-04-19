@@ -136,6 +136,7 @@ void CodeStreamDecompress::init(grk_decompress_parameters* parameters)
   cp_.init(parameters, tileCache_);
   auto core = &parameters->core;
   tileCache_->setStrategy(core->tile_cache_strategy);
+  tileCache_->setMaxActiveTiles(core->max_active_tiles);
   ioBufferCallback_ = core->io_buffer_callback;
   ioUserData_ = core->io_user_data;
   grkRegisterReclaimCallback_ = core->io_register_client_callback;
@@ -257,24 +258,33 @@ bool CodeStreamDecompress::decompressImpl(std::set<uint16_t> pendingTiles)
   if(pendingTiles.empty())
     return true;
 
-  // Extract LRU-evicted tiles that can be re-decompressed from cache
-  // (opt-in: only when compressed chunk cache is active and TLM is present)
-  std::set<uint16_t> reDecompressTiles;
-  if(compressedChunkCache_ && cp_.hasTLM())
+  // Extract LRU-evicted tiles that can be re-decompressed
+  std::set<uint16_t> reDecompressTLM; // from compressed chunk cache
+  std::set<uint16_t> reDecompressSeek; // from cached SOT offsets
+  for(auto it = pendingTiles.begin(); it != pendingTiles.end();)
   {
-    for(auto it = pendingTiles.begin(); it != pendingTiles.end();)
+    auto cacheEntry = tileCache_->get(*it);
+    if(cacheEntry && cacheEntry->processor->getImage() && !cacheEntry->processor->getTile() &&
+       cacheEntry->dirty_)
     {
-      auto cacheEntry = tileCache_->get(*it);
-      if(cacheEntry && cacheEntry->processor->getImage() && !cacheEntry->processor->getTile() &&
-         cacheEntry->dirty_ && compressedChunkCache_->contains(*it))
+      if(compressedChunkCache_ && compressedChunkCache_->contains(*it))
       {
-        reDecompressTiles.insert(*it);
+        reDecompressTLM.insert(*it);
+        it = pendingTiles.erase(it);
+      }
+      else if(cacheEntry->processor->allSOTMarkersParsed())
+      {
+        reDecompressSeek.insert(*it);
         it = pendingTiles.erase(it);
       }
       else
       {
         ++it;
       }
+    }
+    else
+    {
+      ++it;
     }
   }
 
@@ -299,7 +309,7 @@ bool CodeStreamDecompress::decompressImpl(std::set<uint16_t> pendingTiles)
   numTilesDecompressed_ = 0;
 
   // Re-decompress LRU-evicted tiles from compressed chunk cache
-  for(auto tileIndex : reDecompressTiles)
+  for(auto tileIndex : reDecompressTLM)
   {
     auto cacheEntry = tileCache_->get(tileIndex);
     auto proc = cacheEntry->processor;
@@ -310,6 +320,20 @@ bool CodeStreamDecompress::decompressImpl(std::set<uint16_t> pendingTiles)
     auto decompressTask =
         genDecompressTileTLMTask(proc, cachedSeq, scratchImage_->getBounds(), generator);
     decompressTask();
+    cacheEntry->dirty_ = false;
+  }
+
+  // Re-decompress LRU-evicted tiles by seeking to cached SOT offsets
+  for(auto tileIndex : reDecompressSeek)
+  {
+    auto cacheEntry = tileCache_->get(tileIndex);
+    auto proc = cacheEntry->processor;
+    if(!proc->reinitForReDecompress())
+      continue;
+    if(!proc->decompressFromCachedTileParts())
+      continue;
+    if(!schedule(proc, true))
+      break;
     cacheEntry->dirty_ = false;
   }
 
@@ -1233,7 +1257,20 @@ void CodeStreamDecompress::wait(grk_wait_swath* swath)
     return;
   }
 
-  // 2. wait for sequential parse
+  // 2a. Flush batch queues when using non-swath full wait.
+  // When tileCompletion_ is active but wait(nullptr) is called (not swath-based),
+  // the back-pressure logic in scheduleTileBatch() prevents scheduling queued tiles
+  // because lastCleared never advances (no swath consumer). Force-schedule all
+  // remaining tiles so the worker thread can exit.
+  if(tileCompletion_ && doTileBatching())
+  {
+    // Remove the scheduling limit so scheduleTileBatch can drain
+    batchTileScheduledRows_ = 0;
+    tileCompletion_->setLastClearedTileY(INT16_MAX);
+    scheduleTileBatch();
+  }
+
+  // 2b. wait for sequential parse
   if(decompressWorker_.joinable())
     decompressWorker_.join();
 

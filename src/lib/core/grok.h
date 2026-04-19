@@ -674,6 +674,8 @@ typedef struct _grk_decompress_core_params
    */
   uint16_t layers_to_decompress;
   uint32_t tile_cache_strategy; /* tile cache strategy */
+  uint16_t
+      max_active_tiles; /* max tiles with decompressed data (LRU eviction limit, 0 = unlimited) */
   uint32_t disable_random_access_flags; /* disable random access flags */
   bool skip_allocate_composite; /* skip allocate composite image data for multi-tile */
   grk_io_pixels_callback io_buffer_callback; /* IO buffer callback */

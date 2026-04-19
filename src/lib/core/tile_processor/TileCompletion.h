@@ -325,6 +325,12 @@ public:
     return lastClearedTileY_;
   }
 
+  void setLastClearedTileY(int32_t val)
+  {
+    std::lock_guard<std::mutex> lock(mutex_);
+    lastClearedTileY_ = val;
+  }
+
   int32_t getNeededTileY1() const
   {
     return neededTileY1_.load(std::memory_order_acquire);
