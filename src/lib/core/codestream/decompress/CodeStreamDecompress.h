@@ -321,6 +321,9 @@ private:
   void decompressSequential(const std::set<uint16_t>& pendingTiles);
   void decompressTLM(const std::set<uint16_t>& pendingTiles);
 
+  bool startTLMDecompress(std::set<uint16_t>& pendingTiles);
+  bool startSequentialDecompress(std::set<uint16_t>& pendingTiles);
+
   bool doTileBatching(void);
 
   /**
@@ -464,6 +467,8 @@ private:
   std::unique_ptr<TileCompletion> tileCompletion_;
 
   std::thread decompressWorker_;
+
+  std::function<bool(std::set<uint16_t>&)> decompressStart_;
 
   std::shared_ptr<ChunkBuffer<>> chunkBuffer_;
 

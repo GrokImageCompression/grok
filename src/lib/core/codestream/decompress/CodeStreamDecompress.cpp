@@ -316,8 +316,58 @@ bool CodeStreamDecompress::decompressImpl(std::set<uint16_t> pendingTiles)
   if(pendingTiles.empty())
     return true;
 
-  // synchronous batch init
-  if(doTileBatching() && !cp_.hasTLM())
+  // prepare for differential decompression
+  if(doDifferential)
+  {
+    differentialUpdate(scratchImage_.get());
+    for(auto& tileIndex : pendingTiles)
+    {
+      auto cacheEntry = tileCache_->get(tileIndex);
+      auto tileProcessor = cacheEntry->processor;
+      if(!tileProcessor->differentialUpdate(headerImage_->getBounds()))
+        return false;
+      if(!schedule(tileProcessor, true))
+        return false;
+    }
+    return true;
+  }
+
+  // one-time dispatch initialization
+  if(!decompressStart_)
+  {
+    if(cp_.hasTLM())
+      decompressStart_ = [this](auto& pt) { return startTLMDecompress(pt); };
+    else
+      decompressStart_ = [this](auto& pt) { return startSequentialDecompress(pt); };
+  }
+
+  return decompressStart_(pendingTiles);
+}
+
+bool CodeStreamDecompress::startTLMDecompress(std::set<uint16_t>& pendingTiles)
+{
+  // begin network fetch
+  auto generator = [this](ITileProcessor* tp) { return postMultiTile(tp); };
+
+  if(fetchByTile(pendingTiles, scratchImage_->getBounds(), generator))
+    return true;
+
+  // prepare TLM decompress
+  tilePartFetchFlat_ = std::make_shared<TPFetchSeq>();
+  tilePartFetchByTile_ =
+      std::make_shared<std::unordered_map<uint16_t, std::shared_ptr<TPFetchSeq>>>();
+  TPFetchSeq::genCollections(&cp_.tlmMarkers_->getTileParts(), pendingTiles, tilePartFetchFlat_,
+                             tilePartFetchByTile_);
+
+  // start decompress worker
+  decompressWorker_ = std::thread([this, pendingTiles]() { decompressTLM(pendingTiles); });
+  return true;
+}
+
+bool CodeStreamDecompress::startSequentialDecompress(std::set<uint16_t>& pendingTiles)
+{
+  // batch init
+  if(doTileBatching())
   {
     batchTileUnscheduledSequential_ = (uint16_t)pendingTiles.size();
     batchTileScheduleHeadroomSequential_ =
@@ -325,75 +375,22 @@ bool CodeStreamDecompress::decompressImpl(std::set<uint16_t> pendingTiles)
     batchTileScheduledRows_ = batchTileInitialRows_;
   }
 
-  // prepare for different types of decompression
-  if(doDifferential)
+  // begin network fetch
+  auto fetcher = stream_->getFetcher();
+  if(fetcher)
   {
-    differentialUpdate(scratchImage_.get());
-  }
-  else if(cp_.hasTLM())
-  {
-    // a) begin network fetch
-    auto generator = [this](ITileProcessor* tp) {
-      return postMultiTile(tp); // Return the result directly
-    };
-
-    if(fetchByTile(pendingTiles, scratchImage_->getBounds(), generator))
-      return true;
-
-    // b) prepare for TLM decompress
-    tilePartFetchFlat_ = std::make_shared<TPFetchSeq>();
-    tilePartFetchByTile_ =
-        std::make_shared<std::unordered_map<uint16_t, std::shared_ptr<TPFetchSeq>>>();
-    TPFetchSeq::genCollections(&cp_.tlmMarkers_->getTileParts(), pendingTiles, tilePartFetchFlat_,
-                               tilePartFetchByTile_);
-  }
-  else
-  {
-    // a) begin network fetch
-    auto fetcher = stream_->getFetcher();
-    if(stream_->getFetcher())
-    {
-      auto chunkSize = cp_.t_width_ * cp_.t_height_;
-      chunkBuffer_ = std::make_shared<ChunkBuffer<>>(chunkSize, markerCache_->getTileStreamStart(),
-                                                     fetcher->size());
-      fetcher->fetchChunks(chunkBuffer_);
-      stream_->setChunkBuffer(chunkBuffer_);
-    }
-
-    // b) prepare for sequential decompress
-    decompressSequentialPrepare();
+    auto chunkSize = cp_.t_width_ * cp_.t_height_;
+    chunkBuffer_ = std::make_shared<ChunkBuffer<>>(chunkSize, markerCache_->getTileStreamStart(),
+                                                   fetcher->size());
+    fetcher->fetchChunks(chunkBuffer_);
+    stream_->setChunkBuffer(chunkBuffer_);
   }
 
-  // schedule decompression
+  // prepare sequential decompress
+  decompressSequentialPrepare();
 
-  // 1. differential decompression
-  if(doDifferential)
-  {
-    for(auto& tileIndex : pendingTiles)
-    {
-      if(doDifferential)
-      {
-        auto cacheEntry = tileCache_->get(tileIndex);
-        auto tileProcessor = cacheEntry->processor;
-        if(!tileProcessor->differentialUpdate(headerImage_->getBounds()))
-        {
-          return false;
-        }
-
-        if(!schedule(tileProcessor, true))
-          return false;
-      }
-    }
-    return true;
-  }
-
-  std::function<void()> task;
-  if(cp_.hasTLM())
-    task = [this, pendingTiles]() { decompressTLM(pendingTiles); };
-  else
-    task = [this, pendingTiles]() { decompressSequential(pendingTiles); };
-
-  decompressWorker_ = std::thread(task);
+  // start decompress worker
+  decompressWorker_ = std::thread([this, pendingTiles]() { decompressSequential(pendingTiles); });
   return true;
 }
 
