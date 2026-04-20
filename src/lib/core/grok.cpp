@@ -805,6 +805,23 @@ grk_image* grk_decompress_get_image(grk_object* codecWrapper)
   return nullptr;
 }
 
+void grk_decompress_set_band_callback(grk_object* codecWrapper, grk_io_band_callback callback,
+                                      void* user_data)
+{
+  if(codecWrapper)
+  {
+    auto codec = Codec::getImpl(codecWrapper);
+    if(codec->decompressor_)
+      codec->decompressor_->setBandCallback(callback, user_data);
+  }
+}
+bool grk_image_is_post_process_no_op(grk_image* image)
+{
+  if(!image)
+    return true;
+  return static_cast<GrkImage*>(image)->isPostProcessNoOp();
+}
+
 /**
  * @brief Starts compressing image
  * @param codec         compression codec

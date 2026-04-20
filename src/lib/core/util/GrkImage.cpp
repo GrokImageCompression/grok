@@ -442,6 +442,49 @@ bool GrkImage::isOpacity(uint16_t compno) const
   return (comp->type == GRK_CHANNEL_TYPE_OPACITY ||
           comp->type == GRK_CHANNEL_TYPE_PREMULTIPLIED_OPACITY);
 }
+bool GrkImage::isPostProcessNoOp(void) const
+{
+  // applyColour: palette or channel_definition requires processing
+  if(meta && (meta->color.palette || meta->color.channel_definition))
+    return false;
+  // applyColourManagement: ICC profile that must be applied
+  if(meta && meta->color.icc_profile_buf)
+  {
+    bool isCIE = color_space == GRK_CLRSPC_DEFAULT_CIE || color_space == GRK_CLRSPC_CUSTOM_CIE;
+    bool canStoreCIE = decompress_fmt == GRK_FMT_TIF && color_space == GRK_CLRSPC_DEFAULT_CIE;
+    bool canStoreICC = (decompress_fmt == GRK_FMT_TIF || decompress_fmt == GRK_FMT_PNG ||
+                        decompress_fmt == GRK_FMT_JPG || decompress_fmt == GRK_FMT_BMP);
+    bool shouldApply =
+        force_rgb || (decompress_fmt != GRK_FMT_UNK && ((isCIE && !canStoreCIE) || !canStoreICC));
+    if(shouldApply)
+      return false;
+  }
+  // convertToRGB: SYCC/EYCC/CMYK conversion
+  if(needsConversionToRGB())
+    return false;
+  // greyToRGB
+  if(numcomps == 1 && force_rgb && color_space == GRK_CLRSPC_GRAY)
+    return false;
+  // convertPrecision
+  if(precision)
+    return false;
+  if(decompress_fmt == GRK_FMT_JPG && comps[0].prec < 8 && numcomps > 1)
+    return false;
+  // execUpsample
+  if(upsample)
+  {
+    for(uint16_t compno = 0; compno < numcomps; ++compno)
+    {
+      if(comps[compno].dx > 1U || comps[compno].dy > 1U)
+        return false;
+    }
+  }
+  // subsampled non-YCbCr images: format may reject header (e.g. TIFF only
+  // supports subsampled writing for SYCC/EYCC colour spaces)
+  if(isSubsampled() && color_space != GRK_CLRSPC_SYCC && color_space != GRK_CLRSPC_EYCC)
+    return false;
+  return true;
+}
 void GrkImage::postReadHeader(CodingParams* cp)
 {
   uint8_t prec = comps[0].prec;

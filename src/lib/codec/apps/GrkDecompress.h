@@ -80,6 +80,7 @@ private:
   int shmBatchDecompress(DecompressInitParams* initParams);
 
   bool storeToDisk;
+  bool incrementalWriteActive_;
   IImageFormat* imageFormat;
   grk_plugin::Messenger* messenger_;
 };

@@ -64,6 +64,17 @@ public:
   virtual void init(grk_decompress_parameters* param) = 0;
 
   /**
+   * @brief Sets a band-completion callback for incremental writing.
+   *
+   * Must be called after readHeader() but before decompress().
+   */
+  virtual void setBandCallback(grk_io_band_callback callback, void* user_data)
+  {
+    (void)callback;
+    (void)user_data;
+  }
+
+  /**
    * @brief Gets the @ref grk_progression_state for a tile
    *
    * @param tile_index

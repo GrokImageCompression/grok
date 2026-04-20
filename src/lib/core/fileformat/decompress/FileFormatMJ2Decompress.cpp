@@ -692,6 +692,14 @@ bool FileFormatMJ2Decompress::decompressTile(uint16_t tile_index)
 void FileFormatMJ2Decompress::dump([[maybe_unused]] uint32_t flag,
                                    [[maybe_unused]] FILE* outputFileStream) {};
 void FileFormatMJ2Decompress::wait([[maybe_unused]] grk_wait_swath* swath) {}
+void FileFormatMJ2Decompress::setBandCallback(grk_io_band_callback callback, void* user_data)
+{
+  for(auto& sc : sampleCodeStreams_)
+  {
+    if(sc.codeStream)
+      sc.codeStream->setBandCallback(callback, user_data);
+  }
+}
 bool FileFormatMJ2Decompress::readHeader(grk_header_info* header_info)
 {
   bool rc = FileFormatJP2Family::readHeader(header_info, headerImage_);

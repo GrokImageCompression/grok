@@ -41,6 +41,8 @@ public:
   void dump(uint32_t flag, FILE* outputFileStream) override;
   void wait(grk_wait_swath* swath) override;
 
+  void setBandCallback(grk_io_band_callback callback, void* user_data) override;
+
   uint32_t getNumSamples(void) override;
   bool decompressSample(uint32_t sampleIndex) override;
   GrkImage* getSampleImage(uint32_t sampleIndex) override;

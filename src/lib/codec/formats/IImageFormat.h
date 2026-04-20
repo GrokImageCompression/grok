@@ -88,6 +88,14 @@ public:
                          uint32_t concurrency) = 0;
 
   /**
+   * @brief Replace the image pointer used by subsequent write calls.
+   *
+   * Used for incremental band writing when the source image differs
+   * from the one originally passed to writeInit().
+   */
+  virtual void setImage(grk_image* image) = 0;
+
+  /**
    * @brief Writes format-specific header
    *
    * @return true if successful
@@ -116,6 +124,11 @@ public:
    * @return true if successful
    */
   virtual bool writeImageBand(uint32_t yBegin, uint32_t yEnd) = 0;
+
+  /**
+   * @brief Returns true if this format supports incremental band writing via writeImageBand().
+   */
+  virtual bool supportsIncrementalBandWrite(void) const = 0;
 
   /**
    * @brief Writes a single strip of pre-packed pixel data (push-based, incremental).

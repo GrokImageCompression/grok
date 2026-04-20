@@ -108,7 +108,9 @@ static void decompress_help_display(void)
           grk_version());
   fputs(decompress_help_text, stdout);
 }
-GrkDecompress::GrkDecompress() : storeToDisk(true), imageFormat(nullptr), messenger_(nullptr) {}
+GrkDecompress::GrkDecompress()
+    : storeToDisk(true), incrementalWriteActive_(false), imageFormat(nullptr), messenger_(nullptr)
+{}
 GrkDecompress::~GrkDecompress(void)
 {
   delete imageFormat;
@@ -921,6 +923,15 @@ static bool grkWriteStripCallback(uint32_t workerId, grk_io_buf buffer, void* us
   return imageFormat->writeStrip(workerId, buffer);
 }
 
+static bool grkWriteBandCallback(uint32_t yBegin, uint32_t yEnd, grk_image* image, void* user_data)
+{
+  if(!user_data || !image)
+    return false;
+  auto imageFormat = (IImageFormat*)user_data;
+  imageFormat->setImage(image);
+  return imageFormat->writeImageBand(yBegin, yEnd);
+}
+
 bool GrkDecompress::writeHeader(grk_plugin_decompress_callback_info* info)
 {
   if(!storeToDisk)
@@ -1106,8 +1117,21 @@ int GrkDecompress::preProcess(grk_plugin_decompress_callback_info* info)
   // 3a. initialize writer before decompress so it's ready for incremental output
   if(!writeInit(info))
     goto cleanup;
-  if(!writeHeader(info))
-    goto cleanup;
+  // enable incremental band writing when postProcess is a no-op
+  incrementalWriteActive_ = false;
+  if(storeToDisk && !parameters->single_tile_decompress && !info->init_decompressors_func &&
+     grk_image_is_post_process_no_op(info->image))
+  {
+    // write header early — metadata is already final since postProcess is a no-op
+    if(!writeHeader(info))
+      goto cleanup;
+    auto fmt = info->format_private ? (IImageFormat*)info->format_private : imageFormat;
+    if(fmt->supportsIncrementalBandWrite())
+    {
+      grk_decompress_set_band_callback(info->codec, grkWriteBandCallback, fmt);
+      incrementalWriteActive_ = true;
+    }
+  }
   // 3b. decompress one particular tile
   if(parameters->single_tile_decompress)
   {
@@ -1280,10 +1304,22 @@ int GrkDecompress::postProcess(grk_plugin_decompress_callback_info* info)
       }
     }
     auto outfileStr = outfile ? std::string(outfile) : "";
-    if(!fmt->writeImage())
+    if(incrementalWriteActive_)
     {
-      spdlog::error("Outfile {} not generated", outfileStr);
-      goto cleanup;
+      // bands already written during decompress; just finalize
+    }
+    else
+    {
+      if(!(fmt->getWriteState() & IMAGE_FORMAT_HEADER_WRITTEN) && !fmt->writeHeader())
+      {
+        spdlog::error("Encode header failed for {}", outfileStr);
+        goto cleanup;
+      }
+      if(!fmt->writeImage())
+      {
+        spdlog::error("Outfile {} not generated", outfileStr);
+        goto cleanup;
+      }
     }
     if(!fmt->writeFinish())
     {

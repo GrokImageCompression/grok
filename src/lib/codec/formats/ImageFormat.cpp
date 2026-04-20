@@ -78,6 +78,14 @@ bool ImageFormat::writeInit(grk_image* image, const std::string& filename,
 
   return true;
 }
+void ImageFormat::setImage(grk_image* image)
+{
+  image_ = image;
+}
+bool ImageFormat::supportsIncrementalBandWrite(void) const
+{
+  return false;
+}
 /***
  * library-orchestrated pixel encoding
  */

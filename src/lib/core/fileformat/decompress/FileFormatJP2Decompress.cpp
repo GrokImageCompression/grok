@@ -265,6 +265,10 @@ CodingParams* FileFormatJP2Decompress::getCodingParams(void)
 {
   return codeStream->getCodingParams();
 }
+void FileFormatJP2Decompress::setBandCallback(grk_io_band_callback callback, void* user_data)
+{
+  codeStream->setBandCallback(callback, user_data);
+}
 
 bool FileFormatJP2Decompress::read_xml(uint8_t* p_xml_data, uint32_t xml_size)
 {

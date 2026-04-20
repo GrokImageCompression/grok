@@ -52,6 +52,13 @@ public:
   bool writeHeader(void) override;
   bool writeImage() override;
   bool writeImageBand(uint32_t yBegin, uint32_t yEnd) override;
+  bool supportsIncrementalBandWrite(void) const override
+  {
+    // Split PGM files (forceSplit + single component) need the full image at once
+    if(forceSplit && image_ && image_->decompress_num_comps <= 1)
+      return false;
+    return true;
+  }
   using ImageFormat::writeStrip;
   bool writeFinish(void) override;
   grk_image* readImage(const std::string& filename, grk_cparameters* parameters) override;

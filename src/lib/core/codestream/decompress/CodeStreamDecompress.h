@@ -20,6 +20,7 @@
 #include "ConcurrentQueue.h"
 #include "TFSingleton.h"
 #include "CompressedChunkCache.h"
+#include <map>
 
 namespace grk
 {
@@ -52,6 +53,8 @@ public:
   }
 
   void init(grk_decompress_parameters* param) override;
+
+  void setBandCallback(grk_io_band_callback callback, void* user_data) override;
 
   grk_progression_state getProgressionState(uint16_t tile_index) override;
 
@@ -400,6 +403,21 @@ private:
    *
    */
   void* ioUserData_ = nullptr;
+
+  /**
+   * @brief callback invoked when a tile-row band is ready for incremental writing
+   */
+  grk_io_band_callback ioBandCallback_ = nullptr;
+  void* ioBandUserData_ = nullptr;
+
+  // band ordering for incremental writes
+  std::mutex bandOrderMutex_;
+  uint16_t nextBandTileY_ = 0;
+  struct PendingBand_
+  {
+    uint32_t yBegin, yEnd;
+  };
+  std::map<uint16_t, PendingBand_> pendingBands_;
 
   /**
    * @brief callback to reclaim io buffers

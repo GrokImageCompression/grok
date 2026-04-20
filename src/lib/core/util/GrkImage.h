@@ -204,6 +204,14 @@ public:
 
   void transferDataFrom(const Tile* tile_src_data);
 
+  /**
+   * @brief Check if postProcess would be a no-op for the current image.
+   *
+   * When true, tile-row data can be streamed directly to writeImageBand
+   * without running postProcess first.
+   */
+  bool isPostProcessNoOp(void) const;
+
 private:
   /**
    * @brief Destroys a GrkImage

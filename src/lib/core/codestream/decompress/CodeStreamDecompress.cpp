@@ -140,6 +140,8 @@ void CodeStreamDecompress::init(grk_decompress_parameters* parameters)
   ioBufferCallback_ = core->io_buffer_callback;
   ioUserData_ = core->io_user_data;
   grkRegisterReclaimCallback_ = core->io_register_client_callback;
+  ioBandCallback_ = core->io_band_callback;
+  ioBandUserData_ = core->io_band_user_data;
 
   // Initialize compressed chunk cache for LRU + network fetches
   if((core->tile_cache_strategy & GRK_TILE_CACHE_LRU) && stream_->getFetcher())
@@ -150,6 +152,11 @@ void CodeStreamDecompress::init(grk_decompress_parameters* parameters)
   }
 
   postReadHeader();
+}
+void CodeStreamDecompress::setBandCallback(grk_io_band_callback callback, void* user_data)
+{
+  ioBandCallback_ = callback;
+  ioBandUserData_ = user_data;
 }
 
 // Multi Tile //////////////////////////////////////////////////////////
@@ -213,6 +220,53 @@ bool CodeStreamDecompress::decompress(grk_plugin_tile* tile)
 
   multiTileComposite_->postReadHeader(&cp_);
   tileCache_->init(cp_.t_grid_width_ * cp_.t_grid_height_);
+  // create TileCompletion for band callback if set after header read
+  if(ioBandCallback_ && !tileCompletion_)
+  {
+    // Use unreduced image bounds so that TileCompletion computes the same tile grid
+    // (t_grid_width_ x t_grid_height_) as the codec.  Tile indices from
+    // tileProcessor->getIndex() are based on the unreduced grid.
+    Rect32 unreducedBounds(cp_.tx0_, cp_.ty0_,
+                           cp_.tx0_ + cp_.t_grid_width_ * cp_.t_width_,
+                           cp_.ty0_ + cp_.t_grid_height_ * cp_.t_height_);
+    auto slatedRect = tilesToDecompress_.getSlatedTileRect();
+    nextBandTileY_ = slatedRect.y0;
+    pendingBands_.clear();
+    uint8_t reduce = cp_.codingParams_.dec_.reduce_;
+    // Compute reduced-resolution pixel extents for Y clamping.
+    // multiTileComposite_ bounds are unreduced at this point; apply reduction.
+    auto compositeBounds = multiTileComposite_->getBounds();
+    uint32_t regionY0 = ceildivpow2<uint32_t>(compositeBounds.y0, reduce);
+    uint32_t regionY1 = ceildivpow2<uint32_t>(compositeBounds.y1, reduce);
+    uint32_t reducedTileHeight = ceildivpow2<uint32_t>(cp_.t_height_, reduce);
+    uint32_t reducedTy0 = ceildivpow2<uint32_t>(cp_.ty0_, reduce);
+    tileCompletion_ = std::make_unique<TileCompletion>(
+        tileCache_.get(), unreducedBounds, cp_.t_width_, cp_.t_height_,
+        [this, regionY0, regionY1, reducedTileHeight, reducedTy0](uint16_t tileIndexBegin,
+                                                                   uint16_t) {
+          uint16_t numTileCols = tileCompletion_->getNumTileCols();
+          uint16_t tileY = tileIndexBegin / numTileCols;
+          uint32_t tileGlobalYBegin = reducedTy0 + (uint32_t)tileY * reducedTileHeight;
+          uint32_t tileGlobalYEnd =
+              std::min(reducedTy0 + ((uint32_t)tileY + 1) * reducedTileHeight, regionY1);
+          uint32_t yBegin = std::max(tileGlobalYBegin, regionY0) - regionY0;
+          uint32_t yEnd = std::min(tileGlobalYEnd, regionY1) - regionY0;
+          if(yEnd <= yBegin)
+            return;
+          // buffer this band and drain in order
+          std::lock_guard<std::mutex> lock(bandOrderMutex_);
+          pendingBands_[tileY] = {yBegin, yEnd};
+          while(pendingBands_.count(nextBandTileY_))
+          {
+            auto& band = pendingBands_[nextBandTileY_];
+            if(!ioBandCallback_(band.yBegin, band.yEnd, scratchImage_.get(), ioBandUserData_))
+              success_ = false;
+            pendingBands_.erase(nextBandTileY_);
+            nextBandTileY_++;
+          }
+        },
+        nullptr, tilesToDecompress_.getSlatedTileRect());
+  }
   auto slatedTiles = tilesToDecompress_.getSlatedTiles();
   if(!decompressImpl(slatedTiles))
     return false;
@@ -968,8 +1022,16 @@ std::function<void()> CodeStreamDecompress::postMultiTile(void)
     }
     if(!cp_.codingParams_.dec_.skipAllocateComposite_)
     {
-      scratchImage_->transferDataTo(multiTileComposite_.get());
-      success_ = postProcess(multiTileComposite_.get());
+      if(ioBandCallback_)
+      {
+        // incremental band writes already consumed the data from scratchImage_;
+        // skip transfer and postProcess
+      }
+      else
+      {
+        scratchImage_->transferDataTo(multiTileComposite_.get());
+        success_ = postProcess(multiTileComposite_.get());
+      }
     }
   };
 }

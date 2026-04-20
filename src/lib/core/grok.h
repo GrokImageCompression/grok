@@ -638,6 +638,17 @@ typedef struct _grk_stream_params
 typedef struct _grk_image grk_image;
 
 /**
+ * @brief Callback invoked when a horizontal band of the decompressed image is ready for writing.
+ *
+ * @param yBegin first row (inclusive) of the completed band
+ * @param yEnd   one-past-last row (exclusive) of the completed band
+ * @param image  pointer to the image containing the completed band data
+ * @param user_data user data
+ */
+typedef bool (*grk_io_band_callback)(uint32_t yBegin, uint32_t yEnd, grk_image* image,
+                                     void* user_data);
+
+/**
  * @brief Callback called when decompression of a tile has completed
  */
 typedef void (*grk_decompress_callback)(void* codec, uint16_t tile_index, grk_image* tile_image,
@@ -680,6 +691,8 @@ typedef struct _grk_decompress_core_params
   grk_io_pixels_callback io_buffer_callback; /* IO buffer callback */
   void* io_user_data; /* IO user data */
   grk_io_register_reclaim_callback io_register_client_callback; /* IO register client callback */
+  grk_io_band_callback io_band_callback; /* band completion callback for incremental write */
+  void* io_band_user_data; /* band callback user data */
   /**
    * Array of 0-based component indices to decode.
    * Only these components will be fully decoded (T1, DWT, etc.).
@@ -1399,6 +1412,30 @@ GRK_API grk_image* GRK_CALLCONV grk_decompress_get_tile_image(grk_object* codec,
  * @return pointer to @ref grk_image
  */
 GRK_API grk_image* GRK_CALLCONV grk_decompress_get_image(grk_object* codec);
+
+/**
+ * @brief Set a band-completion callback on the decompressor.
+ *
+ * Must be called after grk_decompress_read_header() but before grk_decompress().
+ * When set, the decompressor invokes the callback as each tile row completes,
+ * enabling incremental writing of decompressed image bands.
+ *
+ * @param codec   decompressor object
+ * @param callback function to invoke per completed band
+ * @param user_data opaque pointer forwarded to the callback
+ */
+GRK_API void GRK_CALLCONV grk_decompress_set_band_callback(grk_object* codec,
+                                                           grk_io_band_callback callback,
+                                                           void* user_data);
+
+/**
+ * @brief Checks whether the image requires post-processing (palette, ICC, colour
+ * space conversion, precision override, or upsampling).
+ *
+ * @param image pointer to the decompressed image
+ * @return true if all post-processing steps are no-ops
+ */
+GRK_API bool GRK_CALLCONV grk_image_is_post_process_no_op(grk_image* image);
 
 /**
  * @brief Starts (or continues) decompression of the JPEG 2000 image.

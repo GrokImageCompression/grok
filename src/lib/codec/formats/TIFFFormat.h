@@ -639,6 +639,10 @@ public:
    */
   bool writeImage() override;
   bool writeImageBand(uint32_t yBegin, uint32_t yEnd) override;
+  bool supportsIncrementalBandWrite(void) const override
+  {
+    return true;
+  }
   /***
    * library-orchestrated pixel encoding
    */

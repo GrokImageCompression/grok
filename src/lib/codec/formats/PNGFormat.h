@@ -43,6 +43,10 @@ public:
   bool writeHeader(void) override;
   bool writeImage() override;
   bool writeImageBand(uint32_t yBegin, uint32_t yEnd) override;
+  bool supportsIncrementalBandWrite(void) const override
+  {
+    return true;
+  }
   using ImageFormat::writeStrip;
   bool writeFinish(void) override;
   grk_image* readImage(const std::string& filename, grk_cparameters* parameters) override;
@@ -129,11 +133,6 @@ bool PNGFormat<T>::writeHeader(void)
       break;
     if(image_->comps[0].sgnd != image_->comps[i].sgnd)
       break;
-    if(!image_->comps[i].data)
-    {
-      spdlog::error("imagetopng: component {} is null.", i);
-      return false;
-    }
   }
   if(i != nr_comp_)
   {
