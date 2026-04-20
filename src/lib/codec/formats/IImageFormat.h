@@ -98,11 +98,24 @@ public:
    * @brief Writes all pixels from the in-memory image (pull-based).
    *
    * The format pulls pixel data from the grk_image set during writeInit(),
-   * packs it into strips, and writes to disk.
+   * packs it into strips, and writes to disk. Equivalent to
+   * writeImageBand(0, image_height).
    *
    * @return true if successful
    */
   virtual bool writeImage(void) = 0;
+
+  /**
+   * @brief Writes a band of pixel rows from the in-memory image (pull-based, incremental).
+   *
+   * Packs and writes strips covering rows [yBegin, yEnd) from the image set
+   * during writeInit(). Caller must ensure rows are written in order.
+   *
+   * @param yBegin first row (inclusive) to write
+   * @param yEnd   last row (exclusive) to write
+   * @return true if successful
+   */
+  virtual bool writeImageBand(uint32_t yBegin, uint32_t yEnd) = 0;
 
   /**
    * @brief Writes a single strip of pre-packed pixel data (push-based, incremental).

@@ -35,11 +35,11 @@ public:
   ImageFormat(const ImageFormat&) = delete;
   ImageFormat& operator=(const ImageFormat&) = delete;
   virtual void registerReclaimCallback(grk_io_init io_init, grk_io_callback reclaim_callback,
-                                          void* user_data) override;
+                                       void* user_data) override;
   void ioReclaimBuffer(uint32_t workerId, grk_io_buf buffer);
   void reclaim(uint32_t workerId, grk_io_buf pixels);
   virtual bool writeInit(grk_image* image, const std::string& filename, uint32_t compression_level,
-                          uint32_t concurrency) override;
+                         uint32_t concurrency) override;
   virtual bool writeStrip(uint32_t workerId, grk_io_buf pixels) override;
   virtual bool writeFinish(void) override;
   uint32_t getWriteState(void) override;

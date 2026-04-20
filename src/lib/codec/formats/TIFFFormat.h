@@ -629,15 +629,16 @@ public:
   TIFFFormat();
   ~TIFFFormat() override;
   void registerReclaimCallback(grk_io_init io_init, grk_io_callback reclaim_callback,
-                                  void* user_data) override;
+                               void* user_data) override;
 
   bool writeInit(grk_image* image, const std::string& filename, uint32_t compression_level,
-                  uint32_t concurrency) override;
+                 uint32_t concurrency) override;
   bool writeHeader(void) override;
   /***
    * application-orchestrated pixel encoding
    */
   bool writeImage() override;
+  bool writeImageBand(uint32_t yBegin, uint32_t yEnd) override;
   /***
    * library-orchestrated pixel encoding
    */
@@ -749,8 +750,8 @@ TIFFFormat<T>::~TIFFFormat()
 }
 
 template<typename T>
-void TIFFFormat<T>::registerReclaimCallback(grk_io_init io_init,
-                                               grk_io_callback reclaim_callback, void* user_data)
+void TIFFFormat<T>::registerReclaimCallback(grk_io_init io_init, grk_io_callback reclaim_callback,
+                                            void* user_data)
 {
   grkReclaimCallback_ = reclaim_callback;
   grkReclaimUserData_ = user_data;
@@ -760,7 +761,7 @@ void TIFFFormat<T>::registerReclaimCallback(grk_io_init io_init,
 
 template<typename T>
 bool TIFFFormat<T>::writeInit(grk_image* image, const std::string& filename,
-                               uint32_t compression_level, uint32_t concurrency)
+                              uint32_t compression_level, uint32_t concurrency)
 {
   if(writeState_ & IMAGE_FORMAT_PIXELS_WRITTEN)
   {
@@ -1050,39 +1051,49 @@ bool TIFFFormat<T>::writeImage()
     if(!writeHeader())
       return false;
   }
+  return writeImageBand(0, image_->decompress_height);
+}
+
+template<typename T>
+bool TIFFFormat<T>::writeImageBand(uint32_t yBegin, uint32_t yEnd)
+{
   for(uint16_t i = 0U; i < image_->numcomps; ++i)
   {
     if(!image_->comps[i].data)
     {
-      spdlog::error("writeImage: component {} has null data.", i);
+      spdlog::error("writeImageBand: component {} has null data.", i);
       return false;
     }
   }
   bool success = false;
-  uint32_t height = image_->decompress_height;
-  auto planes = std::make_unique<T*[]>(image_->numcomps);
-  auto planesBegin = std::make_unique<T*[]>(image_->numcomps);
   uint16_t numcomps = image_->decompress_num_comps;
-  for(uint16_t i = 0U; i < numcomps; ++i)
-  {
-    planes[i] = (T*)image_->comps[i].data;
-    planesBegin[i] = planes[i];
-  }
-  uint32_t h = 0;
+  auto planes = std::make_unique<T*[]>(numcomps);
+  auto planesBegin = std::make_unique<T*[]>(numcomps);
   GrkIOBuf packedBuf;
 
   if(isFinalOutputSubsampled(image_))
   {
-    // TIFF-specific
+    uint32_t stride_luma = image_->comps[0].stride;
+    uint32_t stride_chroma1 = image_->comps[1].stride;
+    uint32_t stride_chroma2 = image_->comps[2].stride;
+
+    // Position planes at yBegin (luma at row yBegin, chroma at row yBegin/dy)
+    planes[0] = (T*)image_->comps[0].data + (uint64_t)yBegin * stride_luma;
+    planes[1] =
+        (T*)image_->comps[1].data + (uint64_t)(yBegin / chroma_subsample_y) * stride_chroma1;
+    planes[2] =
+        (T*)image_->comps[2].data + (uint64_t)(yBegin / chroma_subsample_y) * stride_chroma2;
+    planesBegin[1] = planes[1];
+    planesBegin[2] = planes[2];
+
     uint64_t packedLengthEncoded = (uint64_t)TIFFVStripSize(tif_, (uint32_t)image_->rows_per_strip);
     packedBuf = pool.get(packedLengthEncoded);
     auto bufPtr = (int8_t*)packedBuf.data;
     uint32_t bytesToWrite = 0;
-    uint32_t rowsWritten = 0;
-    for(; h < rowsWritten + height; h += chroma_subsample_y)
+    uint32_t bandRowsWritten = 0;
+    for(uint32_t h = yBegin; h < yEnd; h += chroma_subsample_y)
     {
-      uint32_t rowsSoFar = h - rowsWritten;
-      if(bytesToWrite > 0 && rowsSoFar > 0 && (rowsSoFar % image_->rows_per_strip == 0))
+      if(bytesToWrite > 0 && bandRowsWritten > 0 && (bandRowsWritten % image_->rows_per_strip == 0))
       {
         packedBuf.len = bytesToWrite;
         packedBuf.offset = orchestrator.getOffset();
@@ -1102,14 +1113,14 @@ bool TIFFFormat<T>::writeImage()
         {
           for(size_t sub_x = xposLuma; sub_x < xposLuma + chroma_subsample_x; ++sub_x)
           {
-            bool accept = (h + sub_h) < height && sub_x < image_->decompress_width;
-            *bufPtr++ = accept ? (int8_t)planes[0][sub_x + sub_h * image_->comps[0].stride] : 0;
+            bool accept = (h + sub_h) < yEnd && sub_x < image_->decompress_width;
+            *bufPtr++ = accept ? (int8_t)planes[0][sub_x + sub_h * stride_luma] : 0;
             bytesToWrite++;
           }
         }
-        if(xposChroma >= image_->comps[1].stride || xposChroma >= image_->comps[2].stride)
+        if(xposChroma >= stride_chroma1 || xposChroma >= stride_chroma2)
         {
-          spdlog::warn("TIFFFormat<T>::writeImage: chroma channel width is too short - "
+          spdlog::warn("TIFFFormat<T>::writeImageBand: chroma channel width is too short - "
                        "skipping out of bounds pixel location.");
           break;
         }
@@ -1120,15 +1131,14 @@ bool TIFFFormat<T>::writeImage()
         xposChroma++;
         xposLuma += chroma_subsample_x;
       }
-      planes[0] += image_->comps[0].stride * chroma_subsample_y;
-      planesBegin[1] += image_->comps[1].stride;
+      planes[0] += stride_luma * chroma_subsample_y;
+      planesBegin[1] += stride_chroma1;
       planes[1] = planesBegin[1];
-      planesBegin[2] += image_->comps[2].stride;
+      planesBegin[2] += stride_chroma2;
       planes[2] = planesBegin[2];
+      bandRowsWritten += chroma_subsample_y;
     }
-    if(h != rowsWritten)
-      rowsWritten += h - chroma_subsample_y - rowsWritten;
-    // cleanup
+    // flush remaining
     packedBuf.len = bytesToWrite;
     packedBuf.offset = orchestrator.getOffset();
     packedBuf.index = orchestrator.getNumPooledRequests();
@@ -1137,12 +1147,17 @@ bool TIFFFormat<T>::writeImage()
   }
   else
   {
+    for(uint16_t i = 0U; i < numcomps; ++i)
+    {
+      planes[i] = (T*)image_->comps[i].data + (uint64_t)yBegin * image_->comps[0].stride;
+    }
     auto iter = grk::InterleaverFactory<T>::makeInterleaver(image_->decompress_prec);
     if(!iter)
       goto cleanup;
-    while(h < height)
+    uint32_t h = yBegin;
+    while(h < yEnd)
     {
-      uint32_t stripRows = (std::min)(image_->rows_per_strip, height - h);
+      uint32_t stripRows = (std::min)(image_->rows_per_strip, yEnd - h);
       packedBuf = pool.get(image_->packed_row_bytes * stripRows);
       iter->interleave(((T**)planes.get()), numcomps, packedBuf.data, image_->decompress_width,
                        image_->comps[0].stride, image_->packed_row_bytes, stripRows, 0);
@@ -1748,8 +1763,8 @@ grk_image* TIFFFormat<T>::readImage(const std::string& filename, grk_cparameters
     }
   } while(TIFFReadDirectory(tif_));
   if(num_pages > 1)
-    spdlog::warn(
-        "TIFFFormat<T>::readImage: multi-page document detected. Only the first page will be encoded");
+    spdlog::warn("TIFFFormat<T>::readImage: multi-page document detected. Only the first page will "
+                 "be encoded");
   if(!TIFFSetDirectory(tif_, cur_dir))
   {
     spdlog::error("TIFFFormat<T>::readImage: failed to reset to directory {}", cur_dir);

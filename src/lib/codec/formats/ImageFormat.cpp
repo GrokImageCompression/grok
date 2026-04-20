@@ -52,7 +52,7 @@ bool ImageFormat::useStdIO(void)
 }
 
 void ImageFormat::registerReclaimCallback(grk_io_init io_init, grk_io_callback reclaim_callback,
-                                             void* user_data)
+                                          void* user_data)
 {
   orchestrator.registerReclaimCallback(io_init, reclaim_callback, user_data);
   if(io_init.max_pooled_requests)
@@ -70,7 +70,7 @@ void ImageFormat::reclaim(uint32_t workerId, grk_io_buf pixels)
   ioReclaimBuffer(workerId, GrkIOBuf(pixels));
 }
 bool ImageFormat::writeInit(grk_image* image, const std::string& filename,
-                             uint32_t compression_level, [[maybe_unused]] uint32_t concurrency)
+                            uint32_t compression_level, [[maybe_unused]] uint32_t concurrency)
 {
   compressionLevel_ = compression_level;
   fileName_ = filename;

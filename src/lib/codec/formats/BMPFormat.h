@@ -101,6 +101,7 @@ public:
   ~BMPFormat(void) override;
   bool writeHeader(void) override;
   bool writeImage() override;
+  bool writeImageBand(uint32_t yBegin, uint32_t yEnd) override;
   using ImageFormat::writeStrip;
   bool writeFinish(void) override;
   grk_image* readImage(const std::string& filename, grk_cparameters* parameters) override;
@@ -282,6 +283,18 @@ bool BMPFormat<T>::writeImage()
   {
     if(!writeHeader())
       return false;
+  }
+  return writeImageBand(0, image_->decompress_height);
+}
+
+template<typename T>
+bool BMPFormat<T>::writeImageBand(uint32_t yBegin, uint32_t yEnd)
+{
+  // BMP writes rows bottom-up — partial bands are not supported
+  if(yBegin != 0 || yEnd != image_->decompress_height)
+  {
+    spdlog::error("BMPFormat: partial band writing not supported (BMP is bottom-up)");
+    return false;
   }
   bool ret = false;
   auto w = image_->decompress_width;

@@ -42,6 +42,7 @@ public:
   PNGFormat();
   bool writeHeader(void) override;
   bool writeImage() override;
+  bool writeImageBand(uint32_t yBegin, uint32_t yEnd) override;
   using ImageFormat::writeStrip;
   bool writeFinish(void) override;
   grk_image* readImage(const std::string& filename, grk_cparameters* parameters) override;
@@ -318,20 +319,27 @@ beach:
 template<typename T>
 bool PNGFormat<T>::writeImage(void)
 {
+  return writeImageBand(0, maxY(image_->comps->h));
+}
+
+template<typename T>
+bool PNGFormat<T>::writeImageBand(uint32_t yBegin, uint32_t yEnd)
+{
   int32_t const* planes[4];
+  auto stride = image_->comps[0].stride;
   for(uint16_t compno = 0; compno < nr_comp_; ++compno)
-    planes[compno] = (T*)image_->comps[compno].data;
+    planes[compno] = (T*)image_->comps[compno].data + (uint64_t)yBegin * stride;
 
   png_bytep row_buf_cpy = row_buf_;
   int32_t adjust = image_->comps[0].sgnd ? 1 << (prec_ - 1) : 0;
-  uint32_t max = maxY(image_->comps->h);
+  uint32_t max = std::min<uint32_t>(yEnd, maxY(image_->comps->h));
   auto iter =
       grk::InterleaverFactory<int32_t>::makeInterleaver(prec_ == 16 ? grk::packer16BitBE : prec_);
   if(!iter)
     return false;
-  for(uint32_t y = 0; y < max; ++y)
+  for(uint32_t y = yBegin; y < max; ++y)
   {
-    iter->interleave((T**)planes, nr_comp_, row_buf_, image_->comps[0].w, image_->comps[0].stride,
+    iter->interleave((T**)planes, nr_comp_, row_buf_, image_->comps[0].w, stride,
                      image_->comps[0].w, 1, adjust);
 
     png_write_row(png_, row_buf_cpy);

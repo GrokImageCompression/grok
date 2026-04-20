@@ -902,9 +902,8 @@ static void cleanUpFile(const char* outfile)
     free(p);
 }
 
-static void grkRegisterReclaimCallback(grk_io_init io_init,
-                                               grk_io_callback reclaim_callback, void* io_user_data,
-                                               void* reclaim_user_data)
+static void grkRegisterReclaimCallback(grk_io_init io_init, grk_io_callback reclaim_callback,
+                                       void* io_user_data, void* reclaim_user_data)
 {
   if(!io_user_data || !reclaim_user_data)
     return;
@@ -955,9 +954,9 @@ bool GrkDecompress::writeInit(grk_plugin_decompress_callback_info* info)
     compression_level = parameters->compression_level;
   auto fmt = info->format_private ? (IImageFormat*)info->format_private : imageFormat;
   if(!fmt->writeInit(info->image, outfileStr, compression_level,
-                      info->decompressor_parameters->num_threads
-                          ? info->decompressor_parameters->num_threads
-                          : std::thread::hardware_concurrency()))
+                     info->decompressor_parameters->num_threads
+                         ? info->decompressor_parameters->num_threads
+                         : std::thread::hardware_concurrency()))
   {
     spdlog::error("Outfile {} not generated", outfileStr);
     return false;

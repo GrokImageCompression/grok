@@ -71,6 +71,7 @@ class PGXFormat : public ImageFormat
 public:
   bool writeHeader(void) override;
   bool writeImage() override;
+  bool writeImageBand(uint32_t yBegin, uint32_t yEnd) override;
   using ImageFormat::writeStrip;
   bool writeFinish(void) override;
   grk_image* readImage(const std::string& filename, grk_cparameters* parameters) override;
@@ -331,6 +332,18 @@ bool PGXFormat<T>::writeImage(void)
   success = true;
 beach:
   return success;
+}
+
+template<typename T>
+bool PGXFormat<T>::writeImageBand(uint32_t yBegin, uint32_t yEnd)
+{
+  // PGX writes separate files per component — band-by-band not supported
+  if(yBegin != 0 || yEnd != image_->comps[0].h)
+  {
+    spdlog::error("PGXFormat: partial band writing not supported");
+    return false;
+  }
+  return writeImage();
 }
 
 template<typename T>

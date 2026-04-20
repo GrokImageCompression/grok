@@ -51,6 +51,7 @@ public:
   explicit PNMFormat(bool split);
   bool writeHeader(void) override;
   bool writeImage() override;
+  bool writeImageBand(uint32_t yBegin, uint32_t yEnd) override;
   using ImageFormat::writeStrip;
   bool writeFinish(void) override;
   grk_image* readImage(const std::string& filename, grk_cparameters* parameters) override;
@@ -195,6 +196,61 @@ bool PNMFormat<T>::writeImage(void)
 
   return (image_->decompress_prec > 8U) ? encodeRows<uint16_t>(image_->decompress_height)
                                         : encodeRows<uint8_t>(image_->decompress_height);
+}
+
+template<typename T>
+bool PNMFormat<T>::writeImageBand(uint32_t yBegin, uint32_t yEnd)
+{
+  for(uint16_t i = 0U; i < image_->numcomps; ++i)
+  {
+    if(!image_->comps[i].data)
+    {
+      spdlog::error("writeImageBand: component {} has null data.", i);
+      return false;
+    }
+  }
+  // Split PGM files need the full image — fall back to writeImage for first band
+  if(forceSplit && image_->decompress_num_comps <= 1)
+  {
+    if(yBegin == 0 && yEnd == image_->decompress_height)
+      return writeImage();
+    spdlog::error("PNMFormat: split mode does not support band-by-band writing");
+    return false;
+  }
+  // Non-split (PPM/PAM) interleaved path
+  uint16_t decompress_num_comps = image_->decompress_num_comps;
+  auto planes = std::make_unique<T*[]>(decompress_num_comps);
+  for(uint32_t i = 0U; i < decompress_num_comps; ++i)
+    planes[i] = (T*)image_->comps[i].data + (uint64_t)yBegin * image_->comps[0].stride;
+  GrkIOBuf packedBuf;
+  T adjust = (image_->comps[0].sgnd ? 1 << (image_->decompress_prec - 1) : 0);
+  auto iter = grk::InterleaverFactory<int32_t>::makeInterleaver(
+      image_->decompress_prec > 8U ? grk::packer16BitBE : 8);
+  if(!iter)
+    return false;
+  uint32_t h = yBegin;
+  while(h < yEnd)
+  {
+    uint32_t stripRows = (std::min)(image_->rows_per_strip, yEnd - h);
+    packedBuf = pool.get(image_->packed_row_bytes * stripRows);
+    iter->interleave(((T**)planes.get()), decompress_num_comps, packedBuf.data,
+                     image_->decompress_width, image_->comps[0].stride, image_->packed_row_bytes,
+                     stripRows, adjust);
+    packedBuf.pooled = true;
+    packedBuf.offset = orchestrator.getOffset();
+    packedBuf.len = image_->packed_row_bytes * stripRows;
+    packedBuf.index = orchestrator.getNumPooledRequests();
+    if(!writeStripCore(0, packedBuf))
+    {
+      delete iter;
+      applicationOrchestratedReclaim(packedBuf);
+      return false;
+    }
+    h += stripRows;
+    applicationOrchestratedReclaim(packedBuf);
+  }
+  delete iter;
+  return true;
 }
 
 template<typename T>

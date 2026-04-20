@@ -31,6 +31,7 @@ public:
   explicit RAWFormat(bool isBig) : bigEndian(isBig) {}
   bool writeHeader(void) override;
   bool writeImage() override;
+  bool writeImageBand(uint32_t yBegin, uint32_t yEnd) override;
   using ImageFormat::writeStrip;
   bool writeFinish(void) override;
   grk_image* readImage(const std::string& filename, grk_cparameters* parameters) override;
@@ -209,6 +210,18 @@ beach:
 }
 
 template<typename T>
+bool RAWFormat<T>::writeImageBand(uint32_t yBegin, uint32_t yEnd)
+{
+  // RAW writes component-planar data — band-by-band not supported
+  if(yBegin != 0 || yEnd != image_->comps[0].h)
+  {
+    spdlog::error("RAWFormat: partial band writing not supported");
+    return false;
+  }
+  return writeImage();
+}
+
+template<typename T>
 bool RAWFormat<T>::writeFinish(void)
 {
   return fileIO_->close();
@@ -221,7 +234,8 @@ grk_image* RAWFormat<T>::readImage(const std::string& filename, grk_cparameters*
 }
 
 template<typename T>
-grk_image* RAWFormat<T>::readImage(const char* filename, grk_cparameters* parameters, bool bigEndian)
+grk_image* RAWFormat<T>::readImage(const char* filename, grk_cparameters* parameters,
+                                   bool bigEndian)
 {
   grk_raw_cparameters* raw_cp = &parameters->raw_cp;
   uint32_t subsampling_dx = parameters->subsampling_dx;

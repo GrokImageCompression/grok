@@ -94,6 +94,7 @@ public:
   JPEGFormat(void);
   bool writeHeader(void) override;
   bool writeImage() override;
+  bool writeImageBand(uint32_t yBegin, uint32_t yEnd) override;
   using ImageFormat::writeStrip;
   bool writeFinish(void) override;
   grk_image* readImage(const std::string& filename, grk_cparameters* parameters) override;
@@ -585,27 +586,30 @@ bool JPEGFormat<T>::writeHeader(void)
 template<typename T>
 bool JPEGFormat<T>::writeImage(void)
 {
-  /* Step 5: while (scan lines remain to be written) */
-  /*           jpeg_write_scanlines(...); */
+  return writeImageBand(0, cinfo.image_height);
+}
 
-  /* Here we use the library's state variable cinfo.next_scanline as the
-   * loop counter, so that we don't have to keep track ourselves.
-   * To keep things simple, we pass one scanline per call; you can pass
-   * more if you wish, though.
-   */
+template<typename T>
+bool JPEGFormat<T>::writeImageBand(uint32_t yBegin, uint32_t yEnd)
+{
+  if(yBegin != cinfo.next_scanline)
+  {
+    spdlog::error("JPEGFormat: band yBegin ({}) must equal next_scanline ({})", yBegin,
+                  cinfo.next_scanline);
+    return false;
+  }
   auto iter = grk::InterleaverFactory<T>::makeInterleaver(8);
   if(!iter)
     return false;
-  while(cinfo.next_scanline < cinfo.image_height)
+  auto stride = image_->comps[0].stride;
+  T* bandPlanes[4];
+  for(uint16_t i = 0; i < image_->decompress_num_comps; ++i)
+    bandPlanes[i] = (T*)image_->comps[i].data + (uint64_t)yBegin * stride;
+  while(cinfo.next_scanline < yEnd)
   {
-    /* jpeg_write_scanlines expects an array of pointers to scanlines.
-     * Here the array is only one element long, but you could pass
-     * more than one scanline at a time if that's more convenient.
-     */
-    iter->interleave((T**)planes, image_->decompress_num_comps, (uint8_t*)buffer,
-                     image_->decompress_width, image_->comps[0].stride, image_->decompress_width, 1,
-                     adjust);
-    JSAMPROW row_pointer[1]; /* pointer to JSAMPLE row[s] */
+    iter->interleave(bandPlanes, image_->decompress_num_comps, (uint8_t*)buffer,
+                     image_->decompress_width, stride, image_->decompress_width, 1, adjust);
+    JSAMPROW row_pointer[1];
     row_pointer[0] = buffer;
     jpeg_write_scanlines(&cinfo, row_pointer, 1);
   }
