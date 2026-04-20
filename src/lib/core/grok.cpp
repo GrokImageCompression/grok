@@ -223,6 +223,21 @@ void grk_deinitialize(void)
   TFSingleton::destroy();
 }
 
+void* grk_thread_pool(void)
+{
+  return &TFSingleton::get();
+}
+
+size_t grk_num_workers(void)
+{
+  return TFSingleton::num_threads();
+}
+
+uint32_t grk_worker_id(void)
+{
+  return TFSingleton::workerId();
+}
+
 static inline bool areStringsEqual(const char* lhs, const char* rhs)
 {
   if(lhs == nullptr && rhs == nullptr)

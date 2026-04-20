@@ -14,6 +14,7 @@ include_directories(
   ${CMAKE_CURRENT_BINARY_DIR}/../../lib/core # grk_config.h and grk_config_private.h
   ${GROK_SOURCE_DIR}/src/lib/core
   ${GROK_SOURCE_DIR}/src/lib/core/util
+  ${GROK_SOURCE_DIR}/src/lib/core/scheduling
   ${GROK_SOURCE_DIR}/src/include
   ${GROK_SOURCE_DIR}/src/include/CLI11/include
   ${CMAKE_CURRENT_SOURCE_DIR}/formats

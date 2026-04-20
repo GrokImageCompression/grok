@@ -2325,6 +2325,43 @@ GRK_API int32_t GRK_CALLCONV grk_plugin_batch_decompress(void);
  */
 GRK_API void GRK_CALLCONV grk_plugin_stop_batch_decompress(void);
 
+/*******************************************************************************
+ *  Thread-pool access
+ *
+ *  These functions expose the core library's TaskFlow thread pool so that
+ *  other libraries (e.g. the codec library) can submit work to the same
+ *  pool, avoiding thread contention.
+ *
+ *  The returned handle is only valid between grk_initialize() and
+ *  grk_deinitialize().  Internal C++ consumers should prefer the typed
+ *  wrappers in grk_thread_pool.h.
+ ******************************************************************************/
+
+/**
+ * @brief Returns an opaque handle to the core thread-pool executor.
+ *
+ * The handle is a pointer to the internal tf::Executor.  Cast it back
+ * with the helpers in grk_thread_pool.h (C++ only) or use
+ * grk_num_workers() / grk_worker_id() from C.
+ *
+ * @return opaque executor handle, or NULL if the library is not initialised
+ */
+GRK_API void* GRK_CALLCONV grk_thread_pool(void);
+
+/**
+ * @brief Returns the number of worker threads in the core thread pool.
+ *
+ * @return total number of threads (including the driver thread)
+ */
+GRK_API size_t GRK_CALLCONV grk_num_workers(void);
+
+/**
+ * @brief Returns the TaskFlow worker id of the calling thread.
+ *
+ * @return worker id if called from inside a TaskFlow task, 0 otherwise
+ */
+GRK_API uint32_t GRK_CALLCONV grk_worker_id(void);
+
 #ifndef SWIG
 #ifdef __cplusplus
 }
