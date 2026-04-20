@@ -27,7 +27,6 @@
 #include "BMPFormat.h"
 #include "PGXFormat.h"
 #include "PNMFormat.h"
-#include "YUVFormat.h"
 #include "common.h"
 #ifdef GROK_HAVE_LIBPNG
 #include "PNGFormat.h"

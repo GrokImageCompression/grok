@@ -40,7 +40,6 @@
 #include "decompress_help.h"
 #include "spdlogwrapper.h"
 #include "RAWFormat.h"
-#include "YUVFormat.h"
 #include "PNMFormat.h"
 #include "PGXFormat.h"
 #include "BMPFormat.h"
@@ -488,15 +487,12 @@ GrkRC GrkDecompress::parseCommandLine(int argc, const char* argv[],
       case GRK_FMT_RAWL:
         inputFolder->out_format = "rawl";
         break;
-      case GRK_FMT_YUV:
-        inputFolder->out_format = "yuv";
-        break;
       case GRK_FMT_PNG:
         inputFolder->out_format = "png";
         break;
       default:
         spdlog::error("Unknown output format image {} [only *.png, *.pnm, *.pgm, "
-                      "*.ppm, *.pgx, *.bmp, *.tif, *.jpg, *.jpeg, *.yuv, *.raw or *.rawl]",
+                      "*.ppm, *.pgx, *.bmp, *.tif, *.jpg, *.jpeg, *.raw or *.rawl]",
                       outformat);
         return GrkRCParseArgsFailed;
     }
@@ -513,13 +509,12 @@ GrkRC GrkDecompress::parseCommandLine(int argc, const char* argv[],
       case GRK_FMT_TIF:
       case GRK_FMT_RAW:
       case GRK_FMT_RAWL:
-      case GRK_FMT_YUV:
       case GRK_FMT_PNG:
       case GRK_FMT_JPG:
         break;
       default:
         spdlog::error("Unknown output format image {} [only *.png, *.pnm, *.pgm, *.ppm, *.pgx, "
-                      "*.bmp, *.tif, *.tiff, *jpg, *jpeg, *.yuv, *.raw or *rawl]",
+                      "*.bmp, *.tif, *.tiff, *jpg, *jpeg, *.raw or *rawl]",
                       outfile);
         return GrkRCParseArgsFailed;
     }
@@ -1011,9 +1006,6 @@ int GrkDecompress::preProcess(grk_plugin_decompress_callback_info* info)
     case GRK_FMT_RAWL:
       imageFormat = new RAWFormat<int32_t>(false);
       break;
-    case GRK_FMT_YUV:
-      imageFormat = new YUVFormat();
-      break;
     case GRK_FMT_JPG:
 #ifdef GROK_HAVE_LIBJPEG
       imageFormat = new JPEGFormat<int32_t>();
@@ -1459,9 +1451,6 @@ int GrkDecompress::main(int argc, const char* argv[])
               break;
             case GRK_FMT_RAWL:
               fmt = new RAWFormat<int32_t>(false);
-              break;
-            case GRK_FMT_YUV:
-              fmt = new YUVFormat();
               break;
 #ifdef GROK_HAVE_LIBJPEG
             case GRK_FMT_JPG:

@@ -310,7 +310,6 @@ typedef enum _GRK_SUPPORTED_FILE_FMT
   GRK_FMT_PNG, /* PNG */
   GRK_FMT_RAWL, /* RAW Little Endian */
   GRK_FMT_JPG, /* JPG */
-  GRK_FMT_YUV, /* YUV */
   GRK_FMT_MJ2 /* MJ2 */
 } GRK_SUPPORTED_FILE_FMT;
 

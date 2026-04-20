@@ -51,6 +51,10 @@ add_executable(grk_jp2_metadata_test grk_jp2_metadata_test.cpp GrkJP2MetadataTes
 target_link_libraries(grk_jp2_metadata_test ${GROK_CORE_NAME} spdlog::spdlog)
 add_test(NAME grk_jp2_metadata_test COMMAND grk_jp2_metadata_test)
 
+add_executable(grk_mj2_test grk_mj2_test.cpp GrkMJ2Test.cpp)
+target_link_libraries(grk_mj2_test ${GROK_CORE_NAME} spdlog::spdlog)
+add_test(NAME grk_mj2_test COMMAND grk_mj2_test)
+
 add_executable(grk_messenger_test grk_messenger_test.cpp GrkMessengerTest.cpp)
 target_include_directories(grk_messenger_test PRIVATE
   ${GROK_SOURCE_DIR}/src/lib/codec/shared

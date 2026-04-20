@@ -15,20 +15,9 @@
  *
  */
 
-#pragma once
+#include "GrkMJ2Test.h"
 
-#include "ImageFormat.h"
-
-class YUVFormat : public ImageFormat
+int main(int argc, char** argv)
 {
-public:
-  using ImageFormat::writeStrip;
-  bool writeHeader(void) override;
-
-  /***
-   * application-orchestrated pixel encoding
-   */
-  bool writeImage(void) override;
-
-  grk_image* readImage(const std::string& filename, grk_cparameters* parameters) override;
-};
+  return grk::GrkMJ2Test::main(argc, argv);
+}

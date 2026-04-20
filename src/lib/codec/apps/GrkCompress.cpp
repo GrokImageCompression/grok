@@ -48,7 +48,6 @@ using namespace grk;
 #include "PNMFormat.h"
 #include "PGXFormat.h"
 #include "BMPFormat.h"
-#include "YUVFormat.h"
 #ifdef GROK_HAVE_LIBJPEG
 #include "JPEGFormat.h"
 #endif
@@ -196,7 +195,6 @@ static bool isDecodedFormatSupported(GRK_SUPPORTED_FILE_FMT format)
     case GRK_FMT_RAWL:
     case GRK_FMT_PNG:
     case GRK_FMT_JPG:
-    case GRK_FMT_YUV:
       break;
     default:
       return false;
@@ -309,11 +307,6 @@ static grk_image* loadInputImage(const char* filename, grk_cparameters* paramete
     case GRK_FMT_RAWL: {
       RAWFormat<int32_t> raw(false);
       image = raw.readImage(filename, parameters);
-    }
-    break;
-    case GRK_FMT_YUV: {
-      YUVFormat yuv;
-      image = yuv.readImage(filename, parameters);
     }
     break;
 #ifdef GROK_HAVE_LIBPNG
@@ -2136,17 +2129,6 @@ static uint64_t pluginCompressCallback(grk_plugin_compress_user_callback_info* i
       case GRK_FMT_RAWL: {
         RAWFormat<int32_t> raw(false);
         image = raw.readImage(info->input_file_name, info->compressor_parameters);
-        if(!image)
-        {
-          spdlog::error("Unable to load raw file");
-          goto cleanup;
-        }
-      }
-      break;
-
-      case GRK_FMT_YUV: {
-        YUVFormat yuv;
-        image = yuv.readImage(info->input_file_name, info->compressor_parameters);
         if(!image)
         {
           spdlog::error("Unable to load raw file");

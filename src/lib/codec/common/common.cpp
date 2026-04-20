@@ -87,9 +87,6 @@ std::string convertFileFmtToString(GRK_SUPPORTED_FILE_FMT fmt)
     case GRK_FMT_RAW:
       return "RAW";
       break;
-    case GRK_FMT_YUV:
-      return "YUV";
-      break;
     case GRK_FMT_PNG:
       return "PNG";
       break;
@@ -253,7 +250,7 @@ GRK_SUPPORTED_FILE_FMT grk_get_file_format(const char* filename, bool& isHTJ2K)
         {"pgx", GRK_FMT_PGX},   {"pam", GRK_FMT_PXM}, {"pnm", GRK_FMT_PXM},  {"pgm", GRK_FMT_PXM},
         {"ppm", GRK_FMT_PXM},   {"pbm", GRK_FMT_PXM}, {"bmp", GRK_FMT_BMP},  {"tif", GRK_FMT_TIF},
         {"tiff", GRK_FMT_TIF},  {"jpg", GRK_FMT_JPG}, {"jpeg", GRK_FMT_JPG}, {"raw", GRK_FMT_RAW},
-        {"rawl", GRK_FMT_RAWL}, {"yuv", GRK_FMT_YUV}, {"png", GRK_FMT_PNG},  {"j2k", GRK_FMT_J2K},
+        {"rawl", GRK_FMT_RAWL}, {"png", GRK_FMT_PNG},  {"j2k", GRK_FMT_J2K},
         {"jp2", GRK_FMT_JP2},   {"j2c", GRK_FMT_J2K}, {"jpc", GRK_FMT_J2K},  {"jph", GRK_FMT_JP2},
         {"jhc", GRK_FMT_J2K},   {"mj2", GRK_FMT_MJ2}};
 

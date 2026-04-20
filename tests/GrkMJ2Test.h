@@ -15,22 +15,13 @@
  *
  */
 
-#include "YUVFormat.h"
+namespace grk
+{
 
-bool YUVFormat::writeHeader(void)
+class GrkMJ2Test
 {
-  return false;
-}
-/***
- * application-orchestrated pixel encoding
- */
-bool YUVFormat::writeImage(void)
-{
-  return false;
-}
+public:
+  static int main(int argc, char** argv);
+};
 
-grk_image* YUVFormat::readImage([[maybe_unused]] const std::string& filename,
-                             [[maybe_unused]] grk_cparameters* parameters)
-{
-  return nullptr;
-}
+} // namespace grk

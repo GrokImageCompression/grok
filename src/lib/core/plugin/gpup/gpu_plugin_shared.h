@@ -105,7 +105,6 @@ typedef enum
   GPUP_FMT_PNG,
   GPUP_FMT_RAWL,
   GPUP_FMT_JPG,
-  GPUP_FMT_YUV,
   GPUP_FMT_MJ2
 } gpup_file_fmt;
 
