@@ -40,11 +40,11 @@ class PNGFormat : public ImageFormat
 {
 public:
   PNGFormat();
-  bool encodeHeader(void) override;
-  bool encodePixels() override;
-  using ImageFormat::encodePixels;
-  bool encodeFinish(void) override;
-  grk_image* decode(const std::string& filename, grk_cparameters* parameters) override;
+  bool writeHeader(void) override;
+  bool writeImage() override;
+  using ImageFormat::writeStrip;
+  bool writeFinish(void) override;
+  grk_image* readImage(const std::string& filename, grk_cparameters* parameters) override;
 
 private:
   grk_image* do_decode(grk_cparameters* params);
@@ -90,9 +90,9 @@ PNGFormat<T>::PNGFormat()
 {}
 
 template<typename T>
-bool PNGFormat<T>::encodeHeader(void)
+bool PNGFormat<T>::writeHeader(void)
 {
-  if(isHeaderEncoded())
+  if(isHeaderWritten())
     return true;
 
   uint32_t color_type;
@@ -309,14 +309,14 @@ bool PNGFormat<T>::encodeHeader(void)
   }
 
   fails = false;
-  encodeState = IMAGE_FORMAT_ENCODED_HEADER;
+  writeState_ = IMAGE_FORMAT_HEADER_WRITTEN;
 
 beach:
   return !fails;
 }
 
 template<typename T>
-bool PNGFormat<T>::encodePixels(void)
+bool PNGFormat<T>::writeImage(void)
 {
   int32_t const* planes[4];
   for(uint16_t compno = 0; compno < nr_comp_; ++compno)
@@ -342,7 +342,7 @@ bool PNGFormat<T>::encodePixels(void)
 }
 
 template<typename T>
-bool PNGFormat<T>::encodeFinish(void)
+bool PNGFormat<T>::writeFinish(void)
 {
   if(setjmp(png_jmpbuf(png_)))
     return false;
@@ -354,13 +354,13 @@ bool PNGFormat<T>::encodeFinish(void)
   }
   free(row_buf_);
   free(row32s_);
-  bool rc = ImageFormat::encodeFinish();
+  bool rc = ImageFormat::writeFinish();
 
   return rc;
 }
 
 template<typename T>
-grk_image* PNGFormat<T>::decode(const std::string& filename, grk_cparameters* parameters)
+grk_image* PNGFormat<T>::readImage(const std::string& filename, grk_cparameters* parameters)
 {
   fileName_ = filename;
   return do_decode(parameters);

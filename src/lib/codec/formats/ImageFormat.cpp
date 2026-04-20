@@ -35,11 +35,11 @@ static bool grkReclaimCallback([[maybe_unused]] uint32_t workerId, grk_io_buf bu
 ImageFormat::ImageFormat()
     : image_(nullptr), fileIO_(nullptr), fileName_(""),
       compressionLevel_(GRK_DECOMPRESS_COMPRESSION_LEVEL_DEFAULT),
-      encodeState(IMAGE_FORMAT_UNENCODED)
+      writeState_(IMAGE_FORMAT_UNWRITTEN)
 {
   grk_io_init init;
   init.max_pooled_requests = 0;
-  ImageFormat::registerGrkReclaimCallback(init, grkReclaimCallback, &pool);
+  ImageFormat::registerReclaimCallback(init, grkReclaimCallback, &pool);
 }
 ImageFormat::~ImageFormat()
 {
@@ -51,10 +51,10 @@ bool ImageFormat::useStdIO(void)
   return grk::useStdio(fileName_);
 }
 
-void ImageFormat::registerGrkReclaimCallback(grk_io_init io_init, grk_io_callback reclaim_callback,
+void ImageFormat::registerReclaimCallback(grk_io_init io_init, grk_io_callback reclaim_callback,
                                              void* user_data)
 {
-  orchestrator.registerGrkReclaimCallback(io_init, reclaim_callback, user_data);
+  orchestrator.registerReclaimCallback(io_init, reclaim_callback, user_data);
   if(io_init.max_pooled_requests)
     orchestrator.setMaxPooledRequests(io_init.max_pooled_requests);
 }
@@ -69,7 +69,7 @@ void ImageFormat::reclaim(uint32_t workerId, grk_io_buf pixels)
   // for synchronous encode, we immediately return the pixel buffer to the pool
   ioReclaimBuffer(workerId, GrkIOBuf(pixels));
 }
-bool ImageFormat::encodeInit(grk_image* image, const std::string& filename,
+bool ImageFormat::writeInit(grk_image* image, const std::string& filename,
                              uint32_t compression_level, [[maybe_unused]] uint32_t concurrency)
 {
   compressionLevel_ = compression_level;
@@ -81,34 +81,34 @@ bool ImageFormat::encodeInit(grk_image* image, const std::string& filename,
 /***
  * library-orchestrated pixel encoding
  */
-bool ImageFormat::encodePixels(uint32_t workerId, grk_io_buf pixels)
+bool ImageFormat::writeStrip(uint32_t workerId, grk_io_buf pixels)
 {
-  std::unique_lock<std::mutex> lk(encodePixelmutex);
-  if(encodeState & IMAGE_FORMAT_ENCODED_PIXELS)
+  std::unique_lock<std::mutex> lk(writeStripMutex_);
+  if(writeState_ & IMAGE_FORMAT_PIXELS_WRITTEN)
     return true;
-  if(!isHeaderEncoded() && !encodeHeader())
+  if(!isHeaderWritten() && !writeHeader())
     return false;
 
-  return encodePixelsCore(workerId, pixels);
+  return writeStripCore(workerId, pixels);
 }
 /***
  * Common core pixel encoding
  */
-bool ImageFormat::encodePixelsCore([[maybe_unused]] uint32_t workerId, grk_io_buf pixels)
+bool ImageFormat::writeStripCore([[maybe_unused]] uint32_t workerId, grk_io_buf pixels)
 {
-  bool success = encodePixelsCoreWrite(pixels);
+  bool success = writeStripToDisk(pixels);
   if(success)
   {
     orchestrator.incrementPooled();
     // for synchronous encode, we immediately return the pixel buffer to the pool
     reclaim(workerId, GrkIOBuf(pixels));
     if(orchestrator.allPooledRequestsComplete())
-      encodeFinish();
+      writeFinish();
   }
   else
   {
-    spdlog::error("TIFFFormat::encodePixelsCore: error in pixels encode");
-    encodeState |= IMAGE_FORMAT_ERROR;
+    spdlog::error("TIFFFormat::writeStripCore: error in pixels encode");
+    writeState_ |= IMAGE_FORMAT_ERROR;
   }
 
   return success;
@@ -124,11 +124,11 @@ void ImageFormat::applicationOrchestratedReclaim([[maybe_unused]] GrkIOBuf buf)
 /***
  * Common core pixel encoding write to disk
  */
-bool ImageFormat::encodePixelsCoreWrite(grk_io_buf pixels)
+bool ImageFormat::writeStripToDisk(grk_io_buf pixels)
 {
   return (orchestrator.write(pixels.data, pixels.len) == pixels.len);
 }
-bool ImageFormat::encodeFinish(void)
+bool ImageFormat::writeFinish(void)
 {
   bool rc = fileIO_->close();
   delete fileIO_;
@@ -137,9 +137,9 @@ bool ImageFormat::encodeFinish(void)
 
   return rc;
 }
-bool ImageFormat::isHeaderEncoded(void)
+bool ImageFormat::isHeaderWritten(void)
 {
-  return ((encodeState & IMAGE_FORMAT_ENCODED_HEADER) == IMAGE_FORMAT_ENCODED_HEADER);
+  return ((writeState_ & IMAGE_FORMAT_HEADER_WRITTEN) == IMAGE_FORMAT_HEADER_WRITTEN);
 }
 bool ImageFormat::open(const std::string& fileName, const std::string& mode)
 {
@@ -163,9 +163,9 @@ bool ImageFormat::seek(int64_t pos, int whence)
 {
   return fileIO_->seek(pos, whence) == 0U;
 }
-uint32_t ImageFormat::getEncodeState(void)
+uint32_t ImageFormat::getWriteState(void)
 {
-  return encodeState;
+  return writeState_;
 }
 bool ImageFormat::openFile(void)
 {

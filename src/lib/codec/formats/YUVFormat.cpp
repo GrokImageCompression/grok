@@ -17,19 +17,19 @@
 
 #include "YUVFormat.h"
 
-bool YUVFormat::encodeHeader(void)
+bool YUVFormat::writeHeader(void)
 {
   return false;
 }
 /***
  * application-orchestrated pixel encoding
  */
-bool YUVFormat::encodePixels(void)
+bool YUVFormat::writeImage(void)
 {
   return false;
 }
 
-grk_image* YUVFormat::decode([[maybe_unused]] const std::string& filename,
+grk_image* YUVFormat::readImage([[maybe_unused]] const std::string& filename,
                              [[maybe_unused]] grk_cparameters* parameters)
 {
   return nullptr;

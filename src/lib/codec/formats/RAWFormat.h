@@ -29,15 +29,15 @@ class RAWFormat : public ImageFormat
 {
 public:
   explicit RAWFormat(bool isBig) : bigEndian(isBig) {}
-  bool encodeHeader(void) override;
-  bool encodePixels() override;
-  using ImageFormat::encodePixels;
-  bool encodeFinish(void) override;
-  grk_image* decode(const std::string& filename, grk_cparameters* parameters) override;
+  bool writeHeader(void) override;
+  bool writeImage() override;
+  using ImageFormat::writeStrip;
+  bool writeFinish(void) override;
+  grk_image* readImage(const std::string& filename, grk_cparameters* parameters) override;
 
 private:
   bool bigEndian;
-  grk_image* decode(const char* filename, grk_cparameters* parameters, bool big_endian);
+  grk_image* readImage(const char* filename, grk_cparameters* parameters, bool big_endian);
 
   template<typename WT>
   bool writeToFile(FILE* fileStream_, bool bigEndian, T* ptr, uint32_t w, uint32_t stride,
@@ -104,14 +104,14 @@ bool RAWFormat<T>::readFile(FILE* fileHandle, bool bigEndian, T* ptr, uint64_t n
 }
 
 template<typename T>
-bool RAWFormat<T>::encodeHeader(void)
+bool RAWFormat<T>::writeHeader(void)
 {
-  encodeState = IMAGE_FORMAT_ENCODED_HEADER;
+  writeState_ = IMAGE_FORMAT_HEADER_WRITTEN;
   return true;
 }
 
 template<typename T>
-bool RAWFormat<T>::encodePixels(void)
+bool RAWFormat<T>::writeImage(void)
 {
   const char* outfile = fileName_.c_str();
   uint16_t compno, numcomps;
@@ -119,7 +119,7 @@ bool RAWFormat<T>::encodePixels(void)
 
   if((image_->decompress_num_comps * image_->x1 * image_->y1) == 0)
   {
-    spdlog::error("encodePixels: invalid raw image_ parameters");
+    spdlog::error("writeImage: invalid raw image_ parameters");
     goto beach;
   }
 
@@ -137,7 +137,7 @@ bool RAWFormat<T>::encodePixels(void)
   }
   if(compno != numcomps)
   {
-    spdlog::error("encodePixels: All components shall have the same subsampling, same bit depth, "
+    spdlog::error("writeImage: All components shall have the same subsampling, same bit depth, "
                   "same sign.");
     goto beach;
   }
@@ -147,7 +147,7 @@ bool RAWFormat<T>::encodePixels(void)
   if(!fileIO_->open(outfile, "wb"))
     goto beach;
 
-  spdlog::info("encodePixels: raw image_ characteristics: {} components",
+  spdlog::info("writeImage: raw image_ characteristics: {} components",
                image_->decompress_num_comps);
 
   for(compno = 0; compno < image_->decompress_num_comps; compno++)
@@ -158,7 +158,7 @@ bool RAWFormat<T>::encodePixels(void)
 
     if(!comp->data)
     {
-      spdlog::error("encodePixels: component {} is null.", compno);
+      spdlog::error("writeImage: component {} is null.", compno);
 
       goto beach;
     }
@@ -182,7 +182,7 @@ bool RAWFormat<T>::encodePixels(void)
         rc = writeToFile<uint8_t>(fileIO_->getFileHandle(), bigEndian, ptr, w, stride, h, lower,
                                   upper);
       if(!rc)
-        spdlog::error("encodePixels: failed to write bytes for {}", outfile);
+        spdlog::error("writeImage: failed to write bytes for {}", outfile);
     }
     else if(prec <= 16)
     {
@@ -193,11 +193,11 @@ bool RAWFormat<T>::encodePixels(void)
         rc = writeToFile<uint16_t>(fileIO_->getFileHandle(), bigEndian, ptr, w, stride, h, lower,
                                    upper);
       if(!rc)
-        spdlog::error("encodePixels: ailed to write bytes for {}", outfile);
+        spdlog::error("writeImage: ailed to write bytes for {}", outfile);
     }
     else
     {
-      spdlog::error("encodePixels: invalid precision: {}", comp->prec);
+      spdlog::error("writeImage: invalid precision: {}", comp->prec);
       goto beach;
     }
   }
@@ -209,19 +209,19 @@ beach:
 }
 
 template<typename T>
-bool RAWFormat<T>::encodeFinish(void)
+bool RAWFormat<T>::writeFinish(void)
 {
   return fileIO_->close();
 }
 
 template<typename T>
-grk_image* RAWFormat<T>::decode(const std::string& filename, grk_cparameters* parameters)
+grk_image* RAWFormat<T>::readImage(const std::string& filename, grk_cparameters* parameters)
 {
-  return decode(filename.c_str(), parameters, bigEndian);
+  return readImage(filename.c_str(), parameters, bigEndian);
 }
 
 template<typename T>
-grk_image* RAWFormat<T>::decode(const char* filename, grk_cparameters* parameters, bool bigEndian)
+grk_image* RAWFormat<T>::readImage(const char* filename, grk_cparameters* parameters, bool bigEndian)
 {
   grk_raw_cparameters* raw_cp = &parameters->raw_cp;
   uint32_t subsampling_dx = parameters->subsampling_dx;

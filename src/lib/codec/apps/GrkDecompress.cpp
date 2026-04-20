@@ -907,7 +907,7 @@ static void cleanUpFile(const char* outfile)
     free(p);
 }
 
-static void grkSerializeRegisterClientCallback(grk_io_init io_init,
+static void grkRegisterReclaimCallback(grk_io_init io_init,
                                                grk_io_callback reclaim_callback, void* io_user_data,
                                                void* reclaim_user_data)
 {
@@ -915,26 +915,26 @@ static void grkSerializeRegisterClientCallback(grk_io_init io_init,
     return;
   auto imageFormat = (IImageFormat*)io_user_data;
 
-  imageFormat->registerGrkReclaimCallback(io_init, reclaim_callback, reclaim_user_data);
+  imageFormat->registerReclaimCallback(io_init, reclaim_callback, reclaim_user_data);
 }
 
-static bool grkSerializeBufferCallback(uint32_t workerId, grk_io_buf buffer, void* user_data)
+static bool grkWriteStripCallback(uint32_t workerId, grk_io_buf buffer, void* user_data)
 {
   if(!user_data)
     return false;
   auto imageFormat = (IImageFormat*)user_data;
 
-  return imageFormat->encodePixels(workerId, buffer);
+  return imageFormat->writeStrip(workerId, buffer);
 }
 
-bool GrkDecompress::encodeHeader(grk_plugin_decompress_callback_info* info)
+bool GrkDecompress::writeHeader(grk_plugin_decompress_callback_info* info)
 {
   if(!storeToDisk)
     return true;
-  if(!encodeInit(info))
+  if(!writeInit(info))
     return false;
   auto fmt = info->format_private ? (IImageFormat*)info->format_private : imageFormat;
-  if(!fmt->encodeHeader())
+  if(!fmt->writeHeader())
   {
     spdlog::error("Encode header failed.");
     return false;
@@ -943,7 +943,7 @@ bool GrkDecompress::encodeHeader(grk_plugin_decompress_callback_info* info)
   return true;
 }
 
-bool GrkDecompress::encodeInit(grk_plugin_decompress_callback_info* info)
+bool GrkDecompress::writeInit(grk_plugin_decompress_callback_info* info)
 {
   if(!storeToDisk)
     return true;
@@ -959,7 +959,7 @@ bool GrkDecompress::encodeInit(grk_plugin_decompress_callback_info* info)
   else if(cod_format == GRK_FMT_JPG || cod_format == GRK_FMT_PNG)
     compression_level = parameters->compression_level;
   auto fmt = info->format_private ? (IImageFormat*)info->format_private : imageFormat;
-  if(!fmt->encodeInit(info->image, outfileStr, compression_level,
+  if(!fmt->writeInit(info->image, outfileStr, compression_level,
                       info->decompressor_parameters->num_threads
                           ? info->decompressor_parameters->num_threads
                           : std::thread::hardware_concurrency()))
@@ -1035,9 +1035,9 @@ int GrkDecompress::preProcess(grk_plugin_decompress_callback_info* info)
       goto cleanup;
       break;
   }
-  parameters->core.io_buffer_callback = grkSerializeBufferCallback;
+  parameters->core.io_buffer_callback = grkWriteStripCallback;
   parameters->core.io_user_data = imageFormat;
-  parameters->core.io_register_client_callback = grkSerializeRegisterClientCallback;
+  parameters->core.io_register_client_callback = grkRegisterReclaimCallback;
   info->format_private = imageFormat;
 
   // 1. initialize
@@ -1135,9 +1135,9 @@ int GrkDecompress::preProcess(grk_plugin_decompress_callback_info* info)
     failed = false;
     goto cleanup;
   }
-  if(!encodeInit(info))
+  if(!writeInit(info))
     return false;
-  if(!encodeHeader(info))
+  if(!writeHeader(info))
     goto cleanup;
   failed = false;
 cleanup:
@@ -1252,10 +1252,10 @@ int GrkDecompress::postProcess(grk_plugin_decompress_callback_info* info)
   if(storeToDisk)
   {
     // GPU decode path: format was not initialized during preProcess
-    // (encodeInit was skipped because grk_decompress was not called).
+    // (writeInit was skipped because grk_decompress was not called).
     // Initialize the format now with the bridge image that has actual data.
     if(info->decompress_flags & GRK_DECODE_POST_T1 &&
-       fmt->getEncodeState() == IMAGE_FORMAT_UNENCODED)
+       fmt->getWriteState() == IMAGE_FORMAT_UNWRITTEN)
     {
       // Set decompress output fields on the bridge image
       if(image->numcomps > 0)
@@ -1277,7 +1277,7 @@ int GrkDecompress::postProcess(grk_plugin_decompress_callback_info* info)
         if(image->rows_per_strip == 0)
           image->rows_per_strip = std::min((uint32_t)32, image->comps[0].h);
       }
-      if(!fmt->encodeInit(
+      if(!fmt->writeInit(
              image, outfile ? std::string(outfile) : "",
              info->cod_format == GRK_FMT_TIF ? info->decompressor_parameters->compression : 0,
              info->decompressor_parameters->num_threads ? info->decompressor_parameters->num_threads
@@ -1288,12 +1288,12 @@ int GrkDecompress::postProcess(grk_plugin_decompress_callback_info* info)
       }
     }
     auto outfileStr = outfile ? std::string(outfile) : "";
-    if(!fmt->encodePixels())
+    if(!fmt->writeImage())
     {
       spdlog::error("Outfile {} not generated", outfileStr);
       goto cleanup;
     }
-    if(!fmt->encodeFinish())
+    if(!fmt->writeFinish())
     {
       spdlog::error("Outfile {} not generated", outfileStr);
       goto cleanup;
@@ -1480,8 +1480,8 @@ int GrkDecompress::main(int argc, const char* argv[])
               goto cleanup;
           }
 
-          if(!fmt->encodeInit(img, outFilePath, initParams.parameters.compression_level, 1) ||
-             !fmt->encodeHeader() || !fmt->encodePixels() || !fmt->encodeFinish())
+          if(!fmt->writeInit(img, outFilePath, initParams.parameters.compression_level, 1) ||
+             !fmt->writeHeader() || !fmt->writeImage() || !fmt->writeFinish())
           {
             spdlog::error("MJ2 decompress: failed to save sample {} to {}", s, outFilePath);
             delete fmt;

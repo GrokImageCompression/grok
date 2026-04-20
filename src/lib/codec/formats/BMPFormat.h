@@ -99,11 +99,11 @@ class BMPFormat : public ImageFormat
 public:
   BMPFormat(void);
   ~BMPFormat(void) override;
-  bool encodeHeader(void) override;
-  bool encodePixels() override;
-  using ImageFormat::encodePixels;
-  bool encodeFinish(void) override;
-  grk_image* decode(const std::string& filename, grk_cparameters* parameters) override;
+  bool writeHeader(void) override;
+  bool writeImage() override;
+  using ImageFormat::writeStrip;
+  bool writeFinish(void) override;
+  grk_image* readImage(const std::string& filename, grk_cparameters* parameters) override;
 
 private:
   uint64_t off_;
@@ -162,9 +162,9 @@ BMPFormat<T>::~BMPFormat(void)
 }
 
 template<typename T>
-bool BMPFormat<T>::encodeHeader(void)
+bool BMPFormat<T>::writeHeader(void)
 {
-  if(isHeaderEncoded())
+  if(isHeaderWritten())
     return true;
 
   if(!openFile())
@@ -267,20 +267,20 @@ bool BMPFormat<T>::encodeHeader(void)
     goto cleanup;
   off_ += header_plus_lut;
   ret = true;
-  encodeState = IMAGE_FORMAT_ENCODED_HEADER;
+  writeState_ = IMAGE_FORMAT_HEADER_WRITTEN;
 cleanup:
 
   return ret;
 }
 
 template<typename T>
-bool BMPFormat<T>::encodePixels()
+bool BMPFormat<T>::writeImage()
 {
-  if(encodeState & IMAGE_FORMAT_ENCODED_PIXELS)
+  if(writeState_ & IMAGE_FORMAT_PIXELS_WRITTEN)
     return true;
-  if(!isHeaderEncoded())
+  if(!isHeaderWritten())
   {
-    if(!encodeHeader())
+    if(!writeHeader())
       return false;
   }
   bool ret = false;
@@ -386,7 +386,7 @@ cleanup:
 }
 
 template<typename T>
-bool BMPFormat<T>::encodeFinish(void)
+bool BMPFormat<T>::writeFinish(void)
 {
   if(image_->meta && image_->meta->color.icc_profile_buf)
   {
@@ -400,7 +400,7 @@ bool BMPFormat<T>::encodeFinish(void)
     off_ += image_->meta->color.icc_profile_len;
   }
 
-  return ImageFormat::encodeFinish();
+  return ImageFormat::writeFinish();
 }
 
 template<typename T>
@@ -780,7 +780,7 @@ cleanup:
 }
 
 template<typename T>
-grk_image* BMPFormat<T>::decode(const std::string& fname, grk_cparameters* parameters)
+grk_image* BMPFormat<T>::readImage(const std::string& fname, grk_cparameters* parameters)
 {
   grk_image_comp cmptparm[4]; /* maximum of 4 components */
   uint8_t lut_R[256], lut_G[256], lut_B[256];

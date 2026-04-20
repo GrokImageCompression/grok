@@ -281,52 +281,52 @@ static grk_image* loadInputImage(const char* filename, grk_cparameters* paramete
   {
     case GRK_FMT_PGX: {
       PGXFormat<int32_t> pgx;
-      image = pgx.decode(filename, parameters);
+      image = pgx.readImage(filename, parameters);
     }
     break;
     case GRK_FMT_PXM: {
       PNMFormat<int32_t> pnm(false);
-      image = pnm.decode(filename, parameters);
+      image = pnm.readImage(filename, parameters);
     }
     break;
     case GRK_FMT_BMP: {
       BMPFormat<int32_t> bmp;
-      image = bmp.decode(filename, parameters);
+      image = bmp.readImage(filename, parameters);
     }
     break;
 #ifdef GROK_HAVE_LIBTIFF
     case GRK_FMT_TIF: {
       TIFFFormat<int32_t> tif;
-      image = tif.decode(filename, parameters);
+      image = tif.readImage(filename, parameters);
     }
     break;
 #endif
     case GRK_FMT_RAW: {
       RAWFormat<int32_t> raw(true);
-      image = raw.decode(filename, parameters);
+      image = raw.readImage(filename, parameters);
     }
     break;
     case GRK_FMT_RAWL: {
       RAWFormat<int32_t> raw(false);
-      image = raw.decode(filename, parameters);
+      image = raw.readImage(filename, parameters);
     }
     break;
     case GRK_FMT_YUV: {
       YUVFormat yuv;
-      image = yuv.decode(filename, parameters);
+      image = yuv.readImage(filename, parameters);
     }
     break;
 #ifdef GROK_HAVE_LIBPNG
     case GRK_FMT_PNG: {
       PNGFormat<int32_t> png;
-      image = png.decode(filename, parameters);
+      image = png.readImage(filename, parameters);
     }
     break;
 #endif
 #ifdef GROK_HAVE_LIBJPEG
     case GRK_FMT_JPG: {
       JPEGFormat<int32_t> jpeg;
-      image = jpeg.decode(filename, parameters);
+      image = jpeg.readImage(filename, parameters);
     }
     break;
 #endif
@@ -2081,7 +2081,7 @@ static uint64_t pluginCompressCallback(grk_plugin_compress_user_callback_info* i
     {
       case GRK_FMT_PGX: {
         PGXFormat<int32_t> pgx;
-        image = pgx.decode(info->input_file_name, info->compressor_parameters);
+        image = pgx.readImage(info->input_file_name, info->compressor_parameters);
         if(!image)
         {
           spdlog::error("Unable to load pgx file");
@@ -2092,7 +2092,7 @@ static uint64_t pluginCompressCallback(grk_plugin_compress_user_callback_info* i
 
       case GRK_FMT_PXM: {
         PNMFormat<int32_t> pnm(false);
-        image = pnm.decode(info->input_file_name, info->compressor_parameters);
+        image = pnm.readImage(info->input_file_name, info->compressor_parameters);
         if(!image)
         {
           spdlog::error("Unable to load pnm file");
@@ -2103,7 +2103,7 @@ static uint64_t pluginCompressCallback(grk_plugin_compress_user_callback_info* i
 
       case GRK_FMT_BMP: {
         BMPFormat<int32_t> bmp;
-        image = bmp.decode(info->input_file_name, info->compressor_parameters);
+        image = bmp.readImage(info->input_file_name, info->compressor_parameters);
         if(!image)
         {
           spdlog::error("Unable to load bmp file");
@@ -2115,7 +2115,7 @@ static uint64_t pluginCompressCallback(grk_plugin_compress_user_callback_info* i
 #ifdef GROK_HAVE_LIBTIFF
       case GRK_FMT_TIF: {
         TIFFFormat<int32_t> tif;
-        image = tif.decode(info->input_file_name, info->compressor_parameters);
+        image = tif.readImage(info->input_file_name, info->compressor_parameters);
         if(!image)
           goto cleanup;
       }
@@ -2124,7 +2124,7 @@ static uint64_t pluginCompressCallback(grk_plugin_compress_user_callback_info* i
 
       case GRK_FMT_RAW: {
         RAWFormat<int32_t> raw(true);
-        image = raw.decode(info->input_file_name, info->compressor_parameters);
+        image = raw.readImage(info->input_file_name, info->compressor_parameters);
         if(!image)
         {
           spdlog::error("Unable to load raw file");
@@ -2135,7 +2135,7 @@ static uint64_t pluginCompressCallback(grk_plugin_compress_user_callback_info* i
 
       case GRK_FMT_RAWL: {
         RAWFormat<int32_t> raw(false);
-        image = raw.decode(info->input_file_name, info->compressor_parameters);
+        image = raw.readImage(info->input_file_name, info->compressor_parameters);
         if(!image)
         {
           spdlog::error("Unable to load raw file");
@@ -2146,7 +2146,7 @@ static uint64_t pluginCompressCallback(grk_plugin_compress_user_callback_info* i
 
       case GRK_FMT_YUV: {
         YUVFormat yuv;
-        image = yuv.decode(info->input_file_name, info->compressor_parameters);
+        image = yuv.readImage(info->input_file_name, info->compressor_parameters);
         if(!image)
         {
           spdlog::error("Unable to load raw file");
@@ -2158,7 +2158,7 @@ static uint64_t pluginCompressCallback(grk_plugin_compress_user_callback_info* i
 #ifdef GROK_HAVE_LIBPNG
       case GRK_FMT_PNG: {
         PNGFormat<int32_t> png;
-        image = png.decode(info->input_file_name, info->compressor_parameters);
+        image = png.readImage(info->input_file_name, info->compressor_parameters);
         if(!image)
         {
           spdlog::error("Unable to load png file");
@@ -2171,7 +2171,7 @@ static uint64_t pluginCompressCallback(grk_plugin_compress_user_callback_info* i
 #ifdef GROK_HAVE_LIBJPEG
       case GRK_FMT_JPG: {
         JPEGFormat<int32_t> jpeg;
-        image = jpeg.decode(info->input_file_name, info->compressor_parameters);
+        image = jpeg.readImage(info->input_file_name, info->compressor_parameters);
         if(!image)
         {
           spdlog::error("Unable to load jpeg file");

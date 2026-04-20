@@ -34,15 +34,15 @@ public:
   virtual ~ImageFormat() override;
   ImageFormat(const ImageFormat&) = delete;
   ImageFormat& operator=(const ImageFormat&) = delete;
-  virtual void registerGrkReclaimCallback(grk_io_init io_init, grk_io_callback reclaim_callback,
+  virtual void registerReclaimCallback(grk_io_init io_init, grk_io_callback reclaim_callback,
                                           void* user_data) override;
   void ioReclaimBuffer(uint32_t workerId, grk_io_buf buffer);
   void reclaim(uint32_t workerId, grk_io_buf pixels);
-  virtual bool encodeInit(grk_image* image, const std::string& filename, uint32_t compression_level,
+  virtual bool writeInit(grk_image* image, const std::string& filename, uint32_t compression_level,
                           uint32_t concurrency) override;
-  virtual bool encodePixels(uint32_t workerId, grk_io_buf pixels) override;
-  virtual bool encodeFinish(void) override;
-  uint32_t getEncodeState(void) override;
+  virtual bool writeStrip(uint32_t workerId, grk_io_buf pixels) override;
+  virtual bool writeFinish(void) override;
+  uint32_t getWriteState(void) override;
   bool openFile(void);
   bool useStdIO(void);
 
@@ -51,11 +51,11 @@ protected:
   /***
    * Common core pixel encoding
    */
-  virtual bool encodePixelsCore(uint32_t workerId, grk_io_buf pixels);
+  virtual bool writeStripCore(uint32_t workerId, grk_io_buf pixels);
   /***
    * Common core pixel encoding write to disk
    */
-  virtual bool encodePixelsCoreWrite(grk_io_buf pixels);
+  virtual bool writeStripToDisk(grk_io_buf pixels);
   bool open(const std::string& fname, const std::string& mode);
   uint64_t write(GrkIOBuf buffer);
   bool read(uint8_t* buf, size_t len);
@@ -70,7 +70,7 @@ protected:
   bool isFinalOutputSubsampled(grk_image* image);
   bool isChromaSubsampled(grk_image* image);
   bool areAllComponentsSameSubsampling(grk_image* image);
-  bool isHeaderEncoded(void);
+  bool isHeaderWritten(void);
 
   grk_image* image_;
 
@@ -78,8 +78,8 @@ protected:
   std::string fileName_;
   uint32_t compressionLevel_;
 
-  uint32_t encodeState;
-  mutable std::mutex encodePixelmutex;
+  uint32_t writeState_;
+  mutable std::mutex writeStripMutex_;
   BufferPool pool;
   FileOrchestratorIO orchestrator;
 };

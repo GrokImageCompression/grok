@@ -69,11 +69,11 @@ template<typename T>
 class PGXFormat : public ImageFormat
 {
 public:
-  bool encodeHeader(void) override;
-  bool encodePixels() override;
-  using ImageFormat::encodePixels;
-  bool encodeFinish(void) override;
-  grk_image* decode(const std::string& filename, grk_cparameters* parameters) override;
+  bool writeHeader(void) override;
+  bool writeImage() override;
+  using ImageFormat::writeStrip;
+  bool writeFinish(void) override;
+  grk_image* readImage(const std::string& filename, grk_cparameters* parameters) override;
 };
 
 template<typename T>
@@ -207,20 +207,20 @@ cleanup:
 }
 
 template<typename T>
-bool PGXFormat<T>::encodeHeader(void)
+bool PGXFormat<T>::writeHeader(void)
 {
   if(!allComponentsSanityCheck(image_, false))
   {
-    spdlog::error("PGXFormat<T>::encodeHeader: image sanity check failed.");
+    spdlog::error("PGXFormat<T>::writeHeader: image sanity check failed.");
     return false;
   }
 
-  encodeState = IMAGE_FORMAT_ENCODED_HEADER;
+  writeState_ = IMAGE_FORMAT_HEADER_WRITTEN;
   return true;
 }
 
 template<typename T>
-bool PGXFormat<T>::encodePixels(void)
+bool PGXFormat<T>::writeImage(void)
 {
   bool success = false;
   for(uint16_t compno = 0; compno < image_->numcomps; compno++)
@@ -334,13 +334,13 @@ beach:
 }
 
 template<typename T>
-bool PGXFormat<T>::encodeFinish(void)
+bool PGXFormat<T>::writeFinish(void)
 {
   return !fileIO_ || fileIO_->close();
 }
 
 template<typename T>
-grk_image* PGXFormat<T>::decode(const std::string& filename, grk_cparameters* parameters)
+grk_image* PGXFormat<T>::readImage(const std::string& filename, grk_cparameters* parameters)
 {
   return pgxtoimage<T>(filename.c_str(), parameters);
 }

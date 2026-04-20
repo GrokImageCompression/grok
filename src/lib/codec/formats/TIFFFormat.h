@@ -628,32 +628,32 @@ class TIFFFormat : public ImageFormat
 public:
   TIFFFormat();
   ~TIFFFormat() override;
-  void registerGrkReclaimCallback(grk_io_init io_init, grk_io_callback reclaim_callback,
+  void registerReclaimCallback(grk_io_init io_init, grk_io_callback reclaim_callback,
                                   void* user_data) override;
 
-  bool encodeInit(grk_image* image, const std::string& filename, uint32_t compression_level,
+  bool writeInit(grk_image* image, const std::string& filename, uint32_t compression_level,
                   uint32_t concurrency) override;
-  bool encodeHeader(void) override;
+  bool writeHeader(void) override;
   /***
    * application-orchestrated pixel encoding
    */
-  bool encodePixels() override;
+  bool writeImage() override;
   /***
    * library-orchestrated pixel encoding
    */
-  virtual bool encodePixels(uint32_t workerId, grk_io_buf pixels) override;
-  bool encodeFinish(void) override;
-  grk_image* decode(const std::string& filename, grk_cparameters* parameters) override;
+  virtual bool writeStrip(uint32_t workerId, grk_io_buf pixels) override;
+  bool writeFinish(void) override;
+  grk_image* readImage(const std::string& filename, grk_cparameters* parameters) override;
 
 private:
 #ifdef GRK_CUSTOM_TIFF_IO
   TIFF* MyTIFFOpen(const char* name, const char* mode);
 #endif
-  bool encodeHeader(TIFF* tif);
+  bool writeHeader(TIFF* tif);
   /***
    * Common core pixel encoding write to disk
    */
-  bool encodePixelsCoreWrite(grk_io_buf pixels) override;
+  bool writeStripToDisk(grk_io_buf pixels) override;
 
   bool readTiffPixels(TIFF* tif, grk_image_comp* comps, uint16_t numcomps, uint16_t tiSpp,
                       uint16_t tiPC, uint16_t tiPhoto, uint32_t chroma_subsample_x,
@@ -749,7 +749,7 @@ TIFFFormat<T>::~TIFFFormat()
 }
 
 template<typename T>
-void TIFFFormat<T>::registerGrkReclaimCallback(grk_io_init io_init,
+void TIFFFormat<T>::registerReclaimCallback(grk_io_init io_init,
                                                grk_io_callback reclaim_callback, void* user_data)
 {
   grkReclaimCallback_ = reclaim_callback;
@@ -759,22 +759,22 @@ void TIFFFormat<T>::registerGrkReclaimCallback(grk_io_init io_init,
 }
 
 template<typename T>
-bool TIFFFormat<T>::encodeInit(grk_image* image, const std::string& filename,
+bool TIFFFormat<T>::writeInit(grk_image* image, const std::string& filename,
                                uint32_t compression_level, uint32_t concurrency)
 {
-  if(encodeState & IMAGE_FORMAT_ENCODED_PIXELS)
+  if(writeState_ & IMAGE_FORMAT_PIXELS_WRITTEN)
   {
     assert(!tif_);
     return true;
   }
 
-  return ImageFormat::encodeInit(image, filename, compression_level, concurrency);
+  return ImageFormat::writeInit(image, filename, compression_level, concurrency);
 }
 
 template<typename T>
-bool TIFFFormat<T>::encodeHeader(void)
+bool TIFFFormat<T>::writeHeader(void)
 {
-  if(isHeaderEncoded())
+  if(isHeaderWritten())
     return true;
 
   if(!image_)
@@ -792,7 +792,7 @@ bool TIFFFormat<T>::encodeHeader(void)
   if(file_size > UINT32_MAX)
   {
     spdlog::error(
-        "TIFFFormat<T>::encodeHeader:file size greater than UINT32_MAX and BigTIFF not supported.");
+        "TIFFFormat<T>::writeHeader:file size greater than UINT32_MAX and BigTIFF not supported.");
     return false;
   }
   const char* mode = "wb";
@@ -805,17 +805,17 @@ bool TIFFFormat<T>::encodeHeader(void)
 #endif
   if(!tif_)
   {
-    spdlog::error("TIFFFormat<T>::encodeHeader:failed to open {} for writing", fileName_.c_str());
+    spdlog::error("TIFFFormat<T>::writeHeader:failed to open {} for writing", fileName_.c_str());
     return false;
   }
 
-  return encodeHeader(tif_);
+  return writeHeader(tif_);
 }
 
 template<typename T>
-bool TIFFFormat<T>::encodeHeader(TIFF* tif)
+bool TIFFFormat<T>::writeHeader(TIFF* tif)
 {
-  if(isHeaderEncoded())
+  if(isHeaderWritten())
     return true;
 
   int tiPhoto = PHOTOMETRIC_MINISBLACK;
@@ -833,12 +833,12 @@ bool TIFFFormat<T>::encodeHeader(TIFF* tif)
   auto colourSpace = image_->decompress_colour_space;
   if(bps == 0)
   {
-    spdlog::error("TIFFFormat<T>::encodeHeader: image_ precision is zero.");
+    spdlog::error("TIFFFormat<T>::writeHeader: image_ precision is zero.");
     goto cleanup;
   }
   if(!allComponentsSanityCheck(image_, true))
   {
-    spdlog::error("TIFFFormat<T>::encodeHeader: Image sanity check failed.");
+    spdlog::error("TIFFFormat<T>::writeHeader: Image sanity check failed.");
     goto cleanup;
   }
   if(colourSpace == GRK_CLRSPC_CMYK)
@@ -846,14 +846,14 @@ bool TIFFFormat<T>::encodeHeader(TIFF* tif)
     if(numcomps < 4U)
     {
       spdlog::error(
-          "TIFFFormat<T>::encodeHeader: CMYK images shall be composed of at least 4 planes.");
+          "TIFFFormat<T>::writeHeader: CMYK images shall be composed of at least 4 planes.");
 
       return false;
     }
     tiPhoto = PHOTOMETRIC_SEPARATED;
     if(numcomps > 4U)
     {
-      spdlog::warn("TIFFFormat<T>::encodeHeader: number of components {} is "
+      spdlog::warn("TIFFFormat<T>::writeHeader: number of components {} is "
                    "greater than 4. Truncating to 4",
                    numcomps);
       numcomps = 4U;
@@ -867,7 +867,7 @@ bool TIFFFormat<T>::encodeHeader(TIFF* tif)
       case GRK_CLRSPC_SYCC:
         if(subsampled && numcomps != 3)
         {
-          spdlog::error("TIFFFormat<T>::encodeHeader: subsampled YCbCr image_ with alpha "
+          spdlog::error("TIFFFormat<T>::writeHeader: subsampled YCbCr image_ with alpha "
                         "not supported.");
           goto cleanup;
         }
@@ -893,7 +893,7 @@ bool TIFFFormat<T>::encodeHeader(TIFF* tif)
     }
     if(!isChromaSubsampled(image_))
     {
-      spdlog::error("TIFFFormat<T>::encodeHeader: only chroma channels can be subsampled");
+      spdlog::error("TIFFFormat<T>::writeHeader: only chroma channels can be subsampled");
       goto cleanup;
     }
   }
@@ -916,7 +916,7 @@ bool TIFFFormat<T>::encodeHeader(TIFF* tif)
     num_colour_channels = (uint32_t)(numcomps - (uint32_t)numExtraChannels);
     if((uint32_t)firstExtraChannel < num_colour_channels)
     {
-      spdlog::warn("TIFFFormat<T>::encodeHeader: TIFF requires that non-colour channels occur as "
+      spdlog::warn("TIFFFormat<T>::writeHeader: TIFF requires that non-colour channels occur as "
                    "last channels in image_. "
                    "TIFFTAG_EXTRASAMPLES tag for extra channels will not be set");
       numExtraChannels = 0;
@@ -1017,7 +1017,7 @@ bool TIFFFormat<T>::encodeHeader(TIFF* tif)
     TIFFSetField(tif, TIFFTAG_EXTRASAMPLES, numExtraChannels, out.get());
   }
   success = true;
-  encodeState = IMAGE_FORMAT_ENCODED_HEADER;
+  writeState_ = IMAGE_FORMAT_HEADER_WRITTEN;
 cleanup:
 
   return success;
@@ -1026,35 +1026,35 @@ cleanup:
  * library-orchestrated pixel encoding
  */
 template<typename T>
-bool TIFFFormat<T>::encodePixels(uint32_t workerId, grk_io_buf pixels)
+bool TIFFFormat<T>::writeStrip(uint32_t workerId, grk_io_buf pixels)
 {
-  std::unique_lock<std::mutex> lk(encodePixelmutex);
-  if(encodeState & IMAGE_FORMAT_ENCODED_PIXELS)
+  std::unique_lock<std::mutex> lk(writeStripMutex_);
+  if(writeState_ & IMAGE_FORMAT_PIXELS_WRITTEN)
     return true;
-  if(!isHeaderEncoded() && !encodeHeader())
+  if(!isHeaderWritten() && !writeHeader())
     return false;
 
-  return encodePixelsCore(workerId, pixels);
+  return writeStripCore(workerId, pixels);
 }
 
 /***
  * application-orchestrated pixel encoding
  */
 template<typename T>
-bool TIFFFormat<T>::encodePixels()
+bool TIFFFormat<T>::writeImage()
 {
-  if(encodeState & IMAGE_FORMAT_ENCODED_PIXELS)
+  if(writeState_ & IMAGE_FORMAT_PIXELS_WRITTEN)
     return true;
-  if(!isHeaderEncoded())
+  if(!isHeaderWritten())
   {
-    if(!encodeHeader())
+    if(!writeHeader())
       return false;
   }
   for(uint16_t i = 0U; i < image_->numcomps; ++i)
   {
     if(!image_->comps[i].data)
     {
-      spdlog::error("encodePixels: component {} has null data.", i);
+      spdlog::error("writeImage: component {} has null data.", i);
       return false;
     }
   }
@@ -1087,7 +1087,7 @@ bool TIFFFormat<T>::encodePixels()
         packedBuf.len = bytesToWrite;
         packedBuf.offset = orchestrator.getOffset();
         packedBuf.index = orchestrator.getNumPooledRequests();
-        if(!encodePixelsCore(0, packedBuf))
+        if(!writeStripCore(0, packedBuf))
           goto cleanup;
         packedBuf = pool.get(packedLengthEncoded);
         bufPtr = (int8_t*)(packedBuf.data);
@@ -1109,7 +1109,7 @@ bool TIFFFormat<T>::encodePixels()
         }
         if(xposChroma >= image_->comps[1].stride || xposChroma >= image_->comps[2].stride)
         {
-          spdlog::warn("TIFFFormat<T>::encodePixels: chroma channel width is too short - "
+          spdlog::warn("TIFFFormat<T>::writeImage: chroma channel width is too short - "
                        "skipping out of bounds pixel location.");
           break;
         }
@@ -1132,7 +1132,7 @@ bool TIFFFormat<T>::encodePixels()
     packedBuf.len = bytesToWrite;
     packedBuf.offset = orchestrator.getOffset();
     packedBuf.index = orchestrator.getNumPooledRequests();
-    if(bytesToWrite && !encodePixelsCore(0, packedBuf))
+    if(bytesToWrite && !writeStripCore(0, packedBuf))
       goto cleanup;
   }
   else
@@ -1150,7 +1150,7 @@ bool TIFFFormat<T>::encodePixels()
       packedBuf.offset = orchestrator.getOffset();
       packedBuf.len = image_->packed_row_bytes * stripRows;
       packedBuf.index = orchestrator.getNumPooledRequests();
-      if(!encodePixelsCore(0, packedBuf))
+      if(!writeStripCore(0, packedBuf))
       {
         delete iter;
         goto cleanup;
@@ -1169,16 +1169,16 @@ cleanup:
  * Common core pixel encoding write to disk
  */
 template<typename T>
-bool TIFFFormat<T>::encodePixelsCoreWrite(grk_io_buf pixels)
+bool TIFFFormat<T>::writeStripToDisk(grk_io_buf pixels)
 {
   tmsize_t written = TIFFWriteEncodedStrip(tif_, pixels.index, pixels.data, (tmsize_t)pixels.len);
   return written != -1;
 }
 
 template<typename T>
-bool TIFFFormat<T>::encodeFinish(void)
+bool TIFFFormat<T>::writeFinish(void)
 {
-  if(encodeState & IMAGE_FORMAT_ENCODED_PIXELS)
+  if(writeState_ & IMAGE_FORMAT_PIXELS_WRITTEN)
   {
     assert(!tif_);
     return true;
@@ -1207,7 +1207,7 @@ bool TIFFFormat<T>::encodeFinish(void)
       TIFFClose(tif);
     }
   }
-  encodeState |= IMAGE_FORMAT_ENCODED_PIXELS;
+  writeState_ |= IMAGE_FORMAT_PIXELS_WRITTEN;
 
   return true;
 }
@@ -1666,7 +1666,7 @@ beach:
 const uint32_t rec_601_luma[3]{299, 587, 114};
 
 template<typename T>
-grk_image* TIFFFormat<T>::decode(const std::string& filename, grk_cparameters* parameters)
+grk_image* TIFFFormat<T>::readImage(const std::string& filename, grk_cparameters* parameters)
 {
   bool found_assocalpha = false;
   size_t alpha_count = 0;
@@ -1692,13 +1692,13 @@ grk_image* TIFFFormat<T>::decode(const std::string& filename, grk_cparameters* p
   tif_ = TIFFOpen(filename.c_str(), "r");
   if(!tif_)
   {
-    spdlog::error("TIFFFormat<T>::decode: Failed to open {} for reading", filename);
+    spdlog::error("TIFFFormat<T>::readImage: Failed to open {} for reading", filename);
     return 0;
   }
 
   if(TIFFIsTiled(tif_))
   {
-    spdlog::error("TIFFFormat<T>::decode: tiled TIFF images not supported");
+    spdlog::error("TIFFFormat<T>::readImage: tiled TIFF images not supported");
     if(tif_)
       TIFFClose(tif_);
     tif_ = nullptr;
@@ -1749,10 +1749,10 @@ grk_image* TIFFFormat<T>::decode(const std::string& filename, grk_cparameters* p
   } while(TIFFReadDirectory(tif_));
   if(num_pages > 1)
     spdlog::warn(
-        "TIFFFormat<T>::decode: multi-page document detected. Only the first page will be encoded");
+        "TIFFFormat<T>::readImage: multi-page document detected. Only the first page will be encoded");
   if(!TIFFSetDirectory(tif_, cur_dir))
   {
-    spdlog::error("TIFFFormat<T>::decode: failed to reset to directory {}", cur_dir);
+    spdlog::error("TIFFFormat<T>::readImage: failed to reset to directory {}", cur_dir);
     goto cleanup;
   }
 
@@ -1762,7 +1762,7 @@ grk_image* TIFFFormat<T>::decode(const std::string& filename, grk_cparameters* p
      tiPhoto != PHOTOMETRIC_YCBCR && tiPhoto != PHOTOMETRIC_SEPARATED &&
      tiPhoto != PHOTOMETRIC_PALETTE)
   {
-    spdlog::error("TIFFFormat<T>::decode: Unsupported color format {}.\n"
+    spdlog::error("TIFFFormat<T>::readImage: Unsupported color format {}.\n"
                   "Only RGB(A), GRAY(A), CIELAB, YCC, CMYK and PALETTE have been implemented.",
                   getColourFormatString(tiPhoto));
     goto cleanup;
@@ -1776,7 +1776,7 @@ grk_image* TIFFFormat<T>::decode(const std::string& filename, grk_cparameters* p
       if((uint32_t)(luma[i] * 1000.0f + 0.5f) != rec_601_luma[i])
       {
         spdlog::error(
-            "TIFFFormat<T>::decode: YCbCr image with unsupported non Rec. 601 colour space;");
+            "TIFFFormat<T>::readImage: YCbCr image with unsupported non Rec. 601 colour space;");
         spdlog::error("YCbCrCoefficients: {},{},{}", luma[0], luma[1], luma[2]);
         spdlog::error("Please convert to sRGB before compressing.");
         goto cleanup;
@@ -1786,24 +1786,24 @@ grk_image* TIFFFormat<T>::decode(const std::string& filename, grk_cparameters* p
   // check sample format
   if(hasTiSf && tiSf != SAMPLEFORMAT_UINT && tiSf != SAMPLEFORMAT_INT)
   {
-    spdlog::error("TIFFFormat<T>::decode: Unsupported sample format: {}.",
+    spdlog::error("TIFFFormat<T>::readImage: Unsupported sample format: {}.",
                   getSampleFormatString(tiSf));
     goto cleanup;
   }
   if(tiSpp == 0)
   {
-    spdlog::error("TIFFFormat<T>::decode: Samples per pixel must be non-zero");
+    spdlog::error("TIFFFormat<T>::readImage: Samples per pixel must be non-zero");
     goto cleanup;
   }
   if(tiBps > 16U || tiBps == 0)
   {
-    spdlog::error("TIFFFormat<T>::decode: Unsupported precision {}. Maximum 16 Bits supported.",
+    spdlog::error("TIFFFormat<T>::readImage: Unsupported precision {}. Maximum 16 Bits supported.",
                   tiBps);
     goto cleanup;
   }
   if(tiWidth == 0 || tiHeight == 0)
   {
-    spdlog::error("TIFFFormat<T>::decode: Width({}) and height({}) must both "
+    spdlog::error("TIFFFormat<T>::readImage: Width({}) and height({}) must both "
                   "be non-zero",
                   tiWidth, tiHeight);
     goto cleanup;
@@ -1813,7 +1813,7 @@ grk_image* TIFFFormat<T>::decode(const std::string& filename, grk_cparameters* p
   // 2. initialize image components and signed/unsigned
   if((tiPhoto == PHOTOMETRIC_RGB) && (is_cinema) && (tiBps != 12U))
   {
-    spdlog::warn("TIFFFormat<T>::decode: Input image bitdepth is {} bits.", tiBps);
+    spdlog::warn("TIFFFormat<T>::readImage: Input image bitdepth is {} bits.", tiBps);
     spdlog::warn("TIF conversion has automatically rescaled to 12-bits");
     spdlog::warn("to comply with cinema profiles.\n");
   }
@@ -1827,7 +1827,7 @@ grk_image* TIFFFormat<T>::decode(const std::string& filename, grk_cparameters* p
     case PHOTOMETRIC_PALETTE:
       if(isSigned)
       {
-        spdlog::error("TIFFFormat<T>::decode: Signed palette image not supported");
+        spdlog::error("TIFFFormat<T>::readImage: Signed palette image not supported");
         goto cleanup;
       }
       color_space = GRK_CLRSPC_SRGB;
@@ -1852,13 +1852,13 @@ grk_image* TIFFFormat<T>::decode(const std::string& filename, grk_cparameters* p
       // jpeg library is needed to convert from YCbCr to RGB
       if(compress == COMPRESSION_OJPEG || compress == COMPRESSION_JPEG)
       {
-        spdlog::error("TIFFFormat<T>::decode: YCbCr image with JPEG compression"
+        spdlog::error("TIFFFormat<T>::readImage: YCbCr image with JPEG compression"
                       " is not supported");
         goto cleanup;
       }
       else if(compress == COMPRESSION_PACKBITS)
       {
-        spdlog::error("TIFFFormat<T>::decode: YCbCr image with PACKBITS compression"
+        spdlog::error("TIFFFormat<T>::readImage: YCbCr image with PACKBITS compression"
                       " is not supported");
         goto cleanup;
       }
@@ -1868,27 +1868,27 @@ grk_image* TIFFFormat<T>::decode(const std::string& filename, grk_cparameters* p
                             &chroma_subsample_y);
       if(chroma_subsample_x == 0 || chroma_subsample_y == 0)
       {
-        spdlog::error("TIFFFormat<T>::decode: chroma subsampling factors must be positive.");
+        spdlog::error("TIFFFormat<T>::readImage: chroma subsampling factors must be positive.");
         goto cleanup;
       }
       if(chroma_subsample_x > 255 || chroma_subsample_y > 255)
       {
         spdlog::error(
-            "TIFFFormat<T>::decode: chroma subsampling factors must each be less than 256.");
+            "TIFFFormat<T>::readImage: chroma subsampling factors must each be less than 256.");
         goto cleanup;
       }
       if(chroma_subsample_x != 1 || chroma_subsample_y != 1)
       {
         if(isSigned)
         {
-          spdlog::error("TIFFFormat<T>::decode: chroma subsampling {},{} with signed data "
+          spdlog::error("TIFFFormat<T>::readImage: chroma subsampling {},{} with signed data "
                         "is not supported",
                         chroma_subsample_x, chroma_subsample_y);
           goto cleanup;
         }
         if(numcomps != 3)
         {
-          spdlog::error("TIFFFormat<T>::decode: chroma subsampling {},{} with alpha "
+          spdlog::error("TIFFFormat<T>::readImage: chroma subsampling {},{} with alpha "
                         "channel(s) not supported",
                         chroma_subsample_x, chroma_subsample_y);
           goto cleanup;
@@ -1900,21 +1900,21 @@ grk_image* TIFFFormat<T>::decode(const std::string& filename, grk_cparameters* p
       numcomps = (uint16_t)(numcomps + 4);
       break;
     default:
-      spdlog::error("TIFFFormat<T>::decode: Unsupported colour space {}.", tiPhoto);
+      spdlog::error("TIFFFormat<T>::readImage: Unsupported colour space {}.", tiPhoto);
       goto cleanup;
       break;
   }
   if(tiPhoto == PHOTOMETRIC_CIELAB)
   {
     if(hasTiSf && (tiSf != SAMPLEFORMAT_INT))
-      spdlog::warn("TIFFFormat<T>::decode: Input image is in CIE colour space"
+      spdlog::warn("TIFFFormat<T>::readImage: Input image is in CIE colour space"
                    " but sample format is unsigned int. Forcing to signed int");
     isSigned = true;
   }
   else if(tiPhoto == PHOTOMETRIC_ICCLAB)
   {
     if(hasTiSf && (tiSf != SAMPLEFORMAT_UINT))
-      spdlog::warn("TIFFFormat<T>::decode: Input image is in ICC CIE colour"
+      spdlog::warn("TIFFFormat<T>::readImage: Input image is in ICC CIE colour"
                    " space but sample format is signed int. Forcing to unsigned int");
     isSigned = false;
   }
@@ -1922,11 +1922,11 @@ grk_image* TIFFFormat<T>::decode(const std::string& filename, grk_cparameters* p
   if(isSigned)
   {
     if(tiPhoto == PHOTOMETRIC_MINISWHITE)
-      spdlog::error("TIFFFormat<T>::decode: signed image with "
+      spdlog::error("TIFFFormat<T>::readImage: signed image with "
                     "MINISWHITE format is not fully supported");
     if(tiBps != 4 && tiBps != 8 && tiBps != 10 && tiBps != 12 && tiBps != 16)
     {
-      spdlog::error("TIFFFormat<T>::decode: signed image with bit"
+      spdlog::error("TIFFFormat<T>::readImage: signed image with bit"
                     " depth {} is not supported",
                     tiBps);
       goto cleanup;
@@ -1954,7 +1954,7 @@ grk_image* TIFFFormat<T>::decode(const std::string& filename, grk_cparameters* p
   image->x1 = image->x0 + (w - 1) * 1 + 1;
   if(image->x1 <= image->x0)
   {
-    spdlog::error("TIFFFormat<T>::decode: Bad value for image->x1({}) vs. "
+    spdlog::error("TIFFFormat<T>::readImage: Bad value for image->x1({}) vs. "
                   "image->x0({}).",
                   image->x1, image->x0);
     goto cleanup;
@@ -1963,7 +1963,7 @@ grk_image* TIFFFormat<T>::decode(const std::string& filename, grk_cparameters* p
   image->y1 = image->y0 + (h - 1) * 1 + 1;
   if(image->y1 <= image->y0)
   {
-    spdlog::error("TIFFFormat<T>::decode: Bad value for image->y1({}) vs. "
+    spdlog::error("TIFFFormat<T>::readImage: Bad value for image->y1({}) vs. "
                   "image->y0({}).",
                   image->y1, image->y0);
     goto cleanup;
@@ -1972,7 +1972,7 @@ grk_image* TIFFFormat<T>::decode(const std::string& filename, grk_cparameters* p
   {
     if(!TIFFGetField(tif_, TIFFTAG_COLORMAP, &red_orig, &green_orig, &blue_orig))
     {
-      spdlog::error("TIFFFormat<T>::decode: Missing required \"Colormap\" tag");
+      spdlog::error("TIFFFormat<T>::readImage: Missing required \"Colormap\" tag");
       goto cleanup;
     }
     uint16_t palette_num_entries = (uint16_t)(1U << tiBps);
@@ -2011,7 +2011,7 @@ grk_image* TIFFFormat<T>::decode(const std::string& filename, grk_cparameters* p
       if(alphaType == EXTRASAMPLE_ASSOCALPHA)
       {
         if(found_assocalpha)
-          spdlog::warn("TIFFFormat<T>::decode: Found more than one associated alpha channel");
+          spdlog::warn("TIFFFormat<T>::readImage: Found more than one associated alpha channel");
         alpha_count++;
         comp->type = GRK_CHANNEL_TYPE_PREMULTIPLIED_OPACITY;
         found_assocalpha = true;

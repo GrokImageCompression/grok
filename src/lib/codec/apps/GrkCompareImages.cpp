@@ -153,7 +153,7 @@ GrkImagePtr readImageFromFilePGX(const std::string& filename, uint16_t numFiles,
         separator.empty() ? filename : createMultiComponentsFilename(filename, i, separator);
 
     PGXFormat<int32_t> pgx;
-    GrkImagePtr src(pgx.decode(file.c_str(), &parameters));
+    GrkImagePtr src(pgx.readImage(file.c_str(), &parameters));
     if(!src || !src->comps || !src->comps->h || !src->comps->w)
     {
       spdlog::error("Unable to load pgx file: {}", file);
@@ -189,7 +189,7 @@ GrkImagePtr readImageFromFileBMP(const std::string& filename)
   parameters.decod_format = GRK_FMT_BMP;
 
   BMPFormat<int32_t> bmp;
-  GrkImagePtr img(bmp.decode(filename.c_str(), &parameters));
+  GrkImagePtr img(bmp.readImage(filename.c_str(), &parameters));
   if(!img)
   {
     spdlog::error("Unable to load BMP file: {}", filename);
@@ -205,7 +205,7 @@ GrkImagePtr readImageFromFilePNG(const std::string& filename)
   parameters.decod_format = GRK_FMT_PNG;
 
   PNGFormat<int32_t> png;
-  GrkImagePtr img(png.decode(filename.c_str(), &parameters));
+  GrkImagePtr img(png.readImage(filename.c_str(), &parameters));
   if(!img)
   {
     spdlog::error("Unable to load PNG file: {}", filename);
@@ -231,7 +231,7 @@ GrkImagePtr readImageFromFileTIF(const std::string& filename, const std::string&
   parameters.decod_format = GRK_FMT_TIF;
 
   TIFFFormat<int32_t> tif;
-  GrkImagePtr img(tif.decode(filename.c_str(), &parameters));
+  GrkImagePtr img(tif.readImage(filename.c_str(), &parameters));
   if(!img)
   {
     spdlog::error("Unable to load TIF file: {}", filename);
@@ -269,7 +269,7 @@ GrkImagePtr readImageFromFilePPM(const std::string& filename, uint16_t numFiles,
         separator.empty() ? filename : createMultiComponentsFilename(filename, i, separator);
 
     PNMFormat<int32_t> pnm(false);
-    GrkImagePtr src(pnm.decode(file.c_str(), &parameters));
+    GrkImagePtr src(pnm.readImage(file.c_str(), &parameters));
     if(!src || !src->comps || !src->comps->h || !src->comps->w)
     {
       spdlog::error("Unable to load ppm file: {}", file);

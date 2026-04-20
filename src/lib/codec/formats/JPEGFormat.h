@@ -92,11 +92,11 @@ class JPEGFormat : public ImageFormat
 {
 public:
   JPEGFormat(void);
-  bool encodeHeader(void) override;
-  bool encodePixels() override;
-  using ImageFormat::encodePixels;
-  bool encodeFinish(void) override;
-  grk_image* decode(const std::string& filename, grk_cparameters* parameters) override;
+  bool writeHeader(void) override;
+  bool writeImage() override;
+  using ImageFormat::writeStrip;
+  bool writeFinish(void) override;
+  grk_image* readImage(const std::string& filename, grk_cparameters* parameters) override;
 
 private:
   grk_image* jpegtoimage(const char* filename, grk_cparameters* parameters);
@@ -381,9 +381,9 @@ JPEGFormat<T>::JPEGFormat(void)
 {}
 
 template<typename T>
-bool JPEGFormat<T>::encodeHeader(void)
+bool JPEGFormat<T>::writeHeader(void)
 {
-  if(isHeaderEncoded())
+  if(isHeaderWritten())
     return true;
 
   int32_t firstAlpha = -1;
@@ -422,7 +422,7 @@ bool JPEGFormat<T>::encodeHeader(void)
   // sub-sampling not supported at the moment
   if(isFinalOutputSubsampled(image_))
   {
-    spdlog::error("JPEGFormat<T>::encodeHeader: subsampling not currently supported.");
+    spdlog::error("JPEGFormat<T>::writeHeader: subsampling not currently supported.");
     return false;
   }
 
@@ -450,14 +450,14 @@ bool JPEGFormat<T>::encodeHeader(void)
         color_space = JCS_GRAYSCALE;
       else
       {
-        spdlog::error("JPEGFormat<T>::encodeHeader: unrecognized colour space");
+        spdlog::error("JPEGFormat<T>::writeHeader: unrecognized colour space");
       }
       break;
   }
 
   if(image_->decompress_num_comps > 4)
   {
-    spdlog::error("JPEGFormat<T>::encodeHeader: number of components {} "
+    spdlog::error("JPEGFormat<T>::writeHeader: number of components {} "
                   "is greater than 4.",
                   image_->decompress_num_comps);
     return false;
@@ -467,7 +467,7 @@ bool JPEGFormat<T>::encodeHeader(void)
 
   if(prec != 1 && prec != 2 && prec != 4 && prec != 8)
   {
-    spdlog::error("JPEGFormat<T>::encodeHeader: can not create {}\n\twrong bit_depth {}", fileName_,
+    spdlog::error("JPEGFormat<T>::writeHeader: can not create {}\n\twrong bit_depth {}", fileName_,
                   prec);
     return false;
   }
@@ -484,7 +484,7 @@ bool JPEGFormat<T>::encodeHeader(void)
   // We assume that alpha channels occur as last channels in image_.
   if(numAlphaChannels && ((uint32_t)firstAlpha + numAlphaChannels >= decompress_num_comps))
   {
-    spdlog::warn("JPEGFormat<T>::encodeHeader: PNG requires that alpha channels occur"
+    spdlog::warn("JPEGFormat<T>::writeHeader: PNG requires that alpha channels occur"
                  " as last channels in image_.");
     numAlphaChannels = 0;
   }
@@ -577,13 +577,13 @@ bool JPEGFormat<T>::encodeHeader(void)
     jpeg_write_marker(&cinfo, JPEG_APP0 + 1, exif_app1, (unsigned int)exif_app1_len);
     delete[] exif_app1;
   }
-  encodeState = IMAGE_FORMAT_ENCODED_HEADER;
+  writeState_ = IMAGE_FORMAT_HEADER_WRITTEN;
 
   return true;
 }
 
 template<typename T>
-bool JPEGFormat<T>::encodePixels(void)
+bool JPEGFormat<T>::writeImage(void)
 {
   /* Step 5: while (scan lines remain to be written) */
   /*           jpeg_write_scanlines(...); */
@@ -615,7 +615,7 @@ bool JPEGFormat<T>::encodePixels(void)
 }
 
 template<typename T>
-bool JPEGFormat<T>::encodeFinish(void)
+bool JPEGFormat<T>::writeFinish(void)
 {
   /* Step 6: Finish compression */
   jpeg_finish_compress(&cinfo);
@@ -629,11 +629,11 @@ bool JPEGFormat<T>::encodeFinish(void)
   delete[] buffer32s;
 
   /* After finish_compress, we can close the output file. */
-  return ImageFormat::encodeFinish() && success;
+  return ImageFormat::writeFinish() && success;
 }
 
 template<typename T>
-grk_image* JPEGFormat<T>::decode(const std::string& filename, grk_cparameters* parameters)
+grk_image* JPEGFormat<T>::readImage(const std::string& filename, grk_cparameters* parameters)
 {
   return jpegtoimage(filename.c_str(), parameters);
 }

@@ -49,11 +49,11 @@ class PNMFormat : public ImageFormat
 {
 public:
   explicit PNMFormat(bool split);
-  bool encodeHeader(void) override;
-  bool encodePixels() override;
-  using ImageFormat::encodePixels;
-  bool encodeFinish(void) override;
-  grk_image* decode(const std::string& filename, grk_cparameters* parameters) override;
+  bool writeHeader(void) override;
+  bool writeImage() override;
+  using ImageFormat::writeStrip;
+  bool writeFinish(void) override;
+  grk_image* readImage(const std::string& filename, grk_cparameters* parameters) override;
 
 private:
   bool forceSplit;
@@ -70,7 +70,7 @@ private:
   bool readBytes(FILE* fp, grk_image* image, size_t area);
   bool closeStream(void);
 
-  grk_image* decode(const grk_cparameters* parameters);
+  grk_image* readImage(const grk_cparameters* parameters);
   bool decodeHeader(struct pnm_header* ph);
 };
 
@@ -79,14 +79,14 @@ PNMFormat<T>::PNMFormat(bool split) : forceSplit(split)
 {}
 
 template<typename T>
-bool PNMFormat<T>::encodeHeader(void)
+bool PNMFormat<T>::writeHeader(void)
 {
-  if(isHeaderEncoded())
+  if(isHeaderWritten())
     return true;
 
   if(!allComponentsSanityCheck(image_, true))
   {
-    spdlog::error("PNMFormat<T>::encodeHeader: image sanity check failed.");
+    spdlog::error("PNMFormat<T>::writeHeader: image sanity check failed.");
     return false;
   }
   if(!areAllComponentsSameSubsampling(image_))
@@ -95,7 +95,7 @@ bool PNMFormat<T>::encodeHeader(void)
   uint16_t ncomp = image_->decompress_num_comps;
   if(ncomp > 4)
   {
-    spdlog::error("PNMFormat<T>::encodeHeader: Number of components cannot be greater than 4; %u "
+    spdlog::error("PNMFormat<T>::writeHeader: Number of components cannot be greater than 4; %u "
                   "number of components not supported.",
                   image_->decompress_num_comps);
     return false;
@@ -118,7 +118,7 @@ bool PNMFormat<T>::encodeHeader(void)
     if(!writeHeader(false))
       return false;
   }
-  encodeState = IMAGE_FORMAT_ENCODED_HEADER;
+  writeState_ = IMAGE_FORMAT_HEADER_WRITTEN;
 
   return true;
 }
@@ -174,21 +174,21 @@ bool PNMFormat<T>::doNonSplitEncode(void)
  * application-orchestrated pixel encoding
  */
 template<typename T>
-bool PNMFormat<T>::encodePixels(void)
+bool PNMFormat<T>::writeImage(void)
 {
-  if(encodeState & IMAGE_FORMAT_ENCODED_PIXELS)
+  if(writeState_ & IMAGE_FORMAT_PIXELS_WRITTEN)
     return true;
 
-  if(!isHeaderEncoded())
+  if(!isHeaderWritten())
   {
-    if(!encodeHeader())
+    if(!writeHeader())
       return false;
   }
   for(uint16_t i = 0U; i < image_->numcomps; ++i)
   {
     if(!image_->comps[i].data)
     {
-      spdlog::error("encodePixels: component {} has null data.", i);
+      spdlog::error("writeImage: component {} has null data.", i);
       return false;
     }
   }
@@ -198,12 +198,12 @@ bool PNMFormat<T>::encodePixels(void)
 }
 
 template<typename T>
-bool PNMFormat<T>::encodeFinish(void)
+bool PNMFormat<T>::writeFinish(void)
 {
-  if(encodeState & IMAGE_FORMAT_ENCODED_PIXELS)
+  if(writeState_ & IMAGE_FORMAT_PIXELS_WRITTEN)
     return true;
 
-  encodeState |= IMAGE_FORMAT_ENCODED_PIXELS;
+  writeState_ |= IMAGE_FORMAT_PIXELS_WRITTEN;
 
   return orchestrator.close() && closeStream();
 }
@@ -245,7 +245,7 @@ bool PNMFormat<T>::encodeRows([[maybe_unused]] uint32_t rows)
       packedBuf.offset = orchestrator.getOffset();
       packedBuf.len = image_->packed_row_bytes * stripRows;
       packedBuf.index = orchestrator.getNumPooledRequests();
-      if(!encodePixelsCore(0, packedBuf))
+      if(!writeStripCore(0, packedBuf))
       {
         delete iter;
         applicationOrchestratedReclaim(packedBuf);
@@ -790,7 +790,7 @@ bool PNMFormat<T>::readBytes(FILE* fp, grk_image* image, size_t area)
 }
 
 template<typename T>
-grk_image* PNMFormat<T>::decode(const grk_cparameters* parameters)
+grk_image* PNMFormat<T>::readImage(const grk_cparameters* parameters)
 {
   uint8_t subsampling_dx = parameters->subsampling_dx;
   uint8_t subsampling_dy = parameters->subsampling_dy;
@@ -1044,8 +1044,8 @@ cleanup:
 } /* pnmtoimage() */
 
 template<typename T>
-grk_image* PNMFormat<T>::decode(const std::string& filename, grk_cparameters* parameters)
+grk_image* PNMFormat<T>::readImage(const std::string& filename, grk_cparameters* parameters)
 {
   fileName_ = filename;
-  return decode(parameters);
+  return readImage(parameters);
 }

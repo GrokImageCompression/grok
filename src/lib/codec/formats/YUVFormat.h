@@ -22,13 +22,13 @@
 class YUVFormat : public ImageFormat
 {
 public:
-  using ImageFormat::encodePixels;
-  bool encodeHeader(void) override;
+  using ImageFormat::writeStrip;
+  bool writeHeader(void) override;
 
   /***
    * application-orchestrated pixel encoding
    */
-  bool encodePixels(void) override;
+  bool writeImage(void) override;
 
-  grk_image* decode(const std::string& filename, grk_cparameters* parameters) override;
+  grk_image* readImage(const std::string& filename, grk_cparameters* parameters) override;
 };

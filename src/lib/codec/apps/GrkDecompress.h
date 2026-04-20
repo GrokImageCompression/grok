@@ -64,8 +64,8 @@ public:
 
 private:
   static void generateCompletion(const CLI::App& app);
-  bool encodeHeader(grk_plugin_decompress_callback_info* info);
-  bool encodeInit(grk_plugin_decompress_callback_info* info);
+  bool writeHeader(grk_plugin_decompress_callback_info* info);
+  bool writeInit(grk_plugin_decompress_callback_info* info);
   // returns 0 for failure, 1 for success, and 2 if file is not suitable for decoding
   int decompress(const std::string& fileName, DecompressInitParams* initParams);
   GrkRC pluginMain(int argc, const char* argv[], DecompressInitParams* initParams);
