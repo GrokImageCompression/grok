@@ -229,6 +229,7 @@ bool CodeStreamDecompress::readHeader(grk_header_info* headerInfo)
       headerImage_->num_precision = headerInfo->num_precision;
     }
     headerImage_->copyHeaderTo(multiTileComposite_.get());
+    multiTileComposite_->postReadHeader(&cp_);
     multiTileComposite_->validateColourSpace();
     uint32_t num_threads = (uint32_t)TFSingleton::num_threads();
     coderPool_.makeCoders(num_threads, 6, 6, [this]() -> std::shared_ptr<t1::ICoder> {

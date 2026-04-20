@@ -1103,7 +1103,12 @@ int GrkDecompress::preProcess(grk_plugin_decompress_callback_info* info)
       goto cleanup;
     }
   }
-  // decompress one particular tile
+  // 3a. initialize writer before decompress so it's ready for incremental output
+  if(!writeInit(info))
+    goto cleanup;
+  if(!writeHeader(info))
+    goto cleanup;
+  // 3b. decompress one particular tile
   if(parameters->single_tile_decompress)
   {
     if(!grk_decompress_tile(info->codec, parameters->tile_index))
@@ -1126,10 +1131,6 @@ int GrkDecompress::preProcess(grk_plugin_decompress_callback_info* info)
     failed = false;
     goto cleanup;
   }
-  if(!writeInit(info))
-    return false;
-  if(!writeHeader(info))
-    goto cleanup;
   failed = false;
 cleanup:
   if(failed)
