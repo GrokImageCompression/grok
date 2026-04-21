@@ -412,6 +412,7 @@ private:
 
   // band ordering for incremental writes
   std::mutex bandOrderMutex_;
+  std::condition_variable bandDrainCV_;
   uint16_t nextBandTileY_ = 0;
   struct PendingBand_
   {

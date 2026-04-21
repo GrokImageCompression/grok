@@ -15,6 +15,7 @@
  *
  */
 
+#include <chrono>
 #include <functional>
 
 #include "TFSingleton.h"
@@ -258,7 +259,15 @@ bool CodeStreamDecompress::decompress(grk_plugin_tile* tile)
           uint32_t yBegin = 0;
           uint32_t yEnd = std::min(tileGlobalYEnd, regionY1) - std::max(tileGlobalYBegin, regionY0);
           if(yEnd <= yBegin)
+          {
+            // Empty tile row (e.g. zero pixels after resolution reduction).
+            // Still advance nextBandTileY_ so backpressure unblocks.
+            std::lock_guard<std::mutex> lock(bandOrderMutex_);
+            if(tileY == nextBandTileY_)
+              nextBandTileY_ = tileY + 1;
+            bandDrainCV_.notify_one();
             return;
+          }
 
           uint16_t tileX0 = tileIndexBegin % numTileCols;
           uint16_t numSlatedCols = (uint16_t)tilesToDecompress_.getSlatedTileRect().width();
@@ -288,6 +297,16 @@ bool CodeStreamDecompress::decompress(grk_plugin_tile* tile)
 
             if(!ioBandCallback_(band.yBegin, band.yEnd, scratchImage_.get(), ioBandUserData_))
               success_ = false;
+
+            // Release tile processors for this completed row — compositing is done,
+            // so tile image data is no longer needed.
+            for(uint16_t col = 0; col < band.numCols; col++)
+            {
+              uint16_t tileIndex = nextBandTileY_ * numTileCols + (band.tileX0 + col);
+              tileCache_->releaseForSwath(tileIndex);
+            }
+            MemoryManager::releaseFreedPages();
+
             pendingBands_.erase(nextBandTileY_);
 
             // Advance strip buffer for the next tile row
@@ -310,6 +329,8 @@ bool CodeStreamDecompress::decompress(grk_plugin_tile* tile)
 
             nextBandTileY_ = nextTileY;
           }
+          // Wake the parser thread so it can schedule more tiles
+          bandDrainCV_.notify_one();
         },
         nullptr, tilesToDecompress_.getSlatedTileRect());
   }
@@ -825,6 +846,20 @@ bool CodeStreamDecompress::sequentialParseAndSchedule(bool multiTile)
     return true;
   }
 
+  // Backpressure for strip-based band callback: block the parser thread if
+  // this tile's row is too far ahead of the row currently being drained.
+  // Without this, all tiles decompress into memory before any row is written.
+  // Use wait_for with a timeout so we periodically re-check success_ even if
+  // the Taskflow task graph skips the post callback on error.
+  if(ioBandCallback_ && tileCompletion_)
+  {
+    uint16_t numTileCols = tileCompletion_->getNumTileCols();
+    uint16_t tileY = tileProcessor->getIndex() / numTileCols;
+    std::unique_lock<std::mutex> lock(bandOrderMutex_);
+    while(!(tileY < nextBandTileY_ + 2 || !success_))
+      bandDrainCV_.wait_for(lock, std::chrono::milliseconds(100));
+  }
+
   // schedule
   return schedule(tileProcessor, multiTile);
 }
@@ -1113,6 +1148,10 @@ std::function<void()> CodeStreamDecompress::postMultiTile(ITileProcessor* tilePr
     if(!success_)
     {
       releaseThrottle();
+      // Always mark tile as complete so row callbacks can fire and
+      // backpressure unblocks, even when the decompress failed.
+      if(tileCompletion_)
+        tileCompletion_->complete(tileProcessor->getIndex());
       return;
     }
     tileProcessor->post_decompressT2T1(scratchImage_.get());

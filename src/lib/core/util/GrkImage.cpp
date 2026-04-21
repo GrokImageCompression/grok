@@ -444,8 +444,11 @@ bool GrkImage::isOpacity(uint16_t compno) const
 }
 bool GrkImage::isPostProcessNoOp(void) const
 {
-  // applyColour: palette or channel_definition requires processing
-  if(meta && (meta->color.palette || meta->color.channel_definition))
+  // applyColour: palette requires processing; channel_definition only blocks
+  // if it needs component data swaps (type-only metadata is applied early)
+  if(meta && meta->color.palette)
+    return false;
+  if(needsChannelDefinitionSwap())
     return false;
   // applyColourManagement: ICC profile that must be applied
   if(meta && meta->color.icc_profile_buf)
@@ -504,6 +507,11 @@ bool GrkImage::isPostProcessNoOp(void) const
 }
 void GrkImage::postReadHeader(CodingParams* cp)
 {
+  // Apply channel definition types (e.g. alpha) early so format writers
+  // can emit correct metadata (TIFF EXTRASAMPLES, etc.) before strip-based
+  // decompress starts.  Component data swaps are deferred to postProcess.
+  applyChannelDefinitionTypes();
+
   uint8_t prec = comps[0].prec;
   if(precision)
     prec = precision->prec;
@@ -594,6 +602,44 @@ void GrkImage::postReadHeader(CodingParams* cp)
 void GrkImage::allocPalette(uint8_t num_channels, uint16_t num_entries)
 {
   ((GrkImageMeta*)meta)->allocPalette(num_channels, num_entries);
+}
+
+bool GrkImage::needsChannelDefinitionSwap() const
+{
+  if(!meta || !meta->color.channel_definition)
+    return false;
+  auto info = meta->color.channel_definition->descriptions;
+  uint16_t n = meta->color.channel_definition->num_channel_descriptions;
+  for(uint16_t i = 0; i < n; ++i)
+  {
+    if(info[i].typ != GRK_CHANNEL_TYPE_COLOUR)
+      continue;
+    if(info[i].asoc == GRK_CHANNEL_ASSOC_WHOLE_IMAGE)
+      continue;
+    uint16_t channel = info[i].channel;
+    uint16_t asoc = info[i].asoc;
+    if(channel >= numcomps || asoc > numcomps)
+      continue;
+    uint16_t asoc_index = (uint16_t)(asoc - 1);
+    if(channel != asoc_index)
+      return true;
+  }
+  return false;
+}
+
+void GrkImage::applyChannelDefinitionTypes()
+{
+  if(!meta || !meta->color.channel_definition)
+    return;
+  auto info = meta->color.channel_definition->descriptions;
+  uint16_t n = meta->color.channel_definition->num_channel_descriptions;
+  for(uint16_t i = 0; i < n; ++i)
+  {
+    uint16_t channel = info[i].channel;
+    if(channel >= numcomps)
+      continue;
+    comps[channel].type = (GRK_CHANNEL_TYPE)info[i].typ;
+  }
 }
 
 void GrkImage::apply_channel_definition()

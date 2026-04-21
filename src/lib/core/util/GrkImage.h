@@ -123,6 +123,8 @@ public:
 
   bool check_color(uint16_t signalledNumComps);
   void apply_channel_definition(void);
+  void applyChannelDefinitionTypes(void);
+  bool needsChannelDefinitionSwap(void) const;
   void allocPalette(uint8_t num_channels, uint16_t num_entries);
   uint32_t width(void) const;
   uint32_t height(void) const;
