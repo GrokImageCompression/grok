@@ -945,7 +945,6 @@ struct Messenger
   }
   uint8_t* getUncompressedFrame(size_t frameId)
   {
-    assert(frameId < init_.numFrames_);
     if(frameId >= init_.numFrames_)
       return nullptr;
 
@@ -953,7 +952,6 @@ struct Messenger
   }
   uint8_t* getCompressedFrame(size_t frameId)
   {
-    assert(frameId < init_.numFrames_);
     if(frameId >= init_.numFrames_)
       return nullptr;
 
