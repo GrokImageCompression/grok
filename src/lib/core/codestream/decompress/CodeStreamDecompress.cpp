@@ -255,20 +255,65 @@ bool CodeStreamDecompress::decompress(grk_plugin_tile* tile)
                        unreducedRegionY1);
           uint32_t tileGlobalYBegin = ceildivpow2<uint32_t>(unreducedTileYBegin, reduce);
           uint32_t tileGlobalYEnd = ceildivpow2<uint32_t>(unreducedTileYEnd, reduce);
-          uint32_t yBegin = std::max(tileGlobalYBegin, regionY0) - regionY0;
-          uint32_t yEnd = std::min(tileGlobalYEnd, regionY1) - regionY0;
+          // Strip-relative y coordinates: the strip buffer starts at offset 0
+          // for the current tile row
+          uint32_t yBegin = 0;
+          uint32_t yEnd =
+              std::min(tileGlobalYEnd, regionY1) - std::max(tileGlobalYBegin, regionY0);
           if(yEnd <= yBegin)
             return;
-          // buffer this band and drain in order
+
+          uint16_t tileX0 = tileIndexBegin % numTileCols;
+          uint16_t numSlatedCols =
+              (uint16_t)tilesToDecompress_.getSlatedTileRect().width();
+
+          // All compositing, band writing, and strip advancing must be serialized
+          // to prevent races on the shared strip buffer.
           std::lock_guard<std::mutex> lock(bandOrderMutex_);
-          pendingBands_[tileY] = {yBegin, yEnd};
+          pendingBands_[tileY] = {yBegin, yEnd, tileX0, numSlatedCols};
           while(pendingBands_.count(nextBandTileY_))
           {
             auto& band = pendingBands_[nextBandTileY_];
+
+            // Composite all tiles in this row into the strip buffer
+            for(uint16_t col = 0; col < band.numCols; col++)
+            {
+              uint16_t tileIndex = nextBandTileY_ * numTileCols + (band.tileX0 + col);
+              auto cacheEntry = tileCache_->get(tileIndex);
+              if(!cacheEntry || !cacheEntry->processor)
+                continue;
+              auto tileImage = cacheEntry->processor->getImage();
+              if(tileImage)
+              {
+                if(!scratchImage_->composite(tileImage))
+                  success_ = false;
+              }
+            }
+
             if(!ioBandCallback_(band.yBegin, band.yEnd, scratchImage_.get(), ioBandUserData_))
               success_ = false;
             pendingBands_.erase(nextBandTileY_);
-            nextBandTileY_++;
+
+            // Advance strip buffer for the next tile row
+            uint16_t nextTileY = nextBandTileY_ + 1;
+            uint32_t nextUnreducedY0 =
+                unreducedTy0 + (uint32_t)nextTileY * unreducedTileHeight;
+            if(nextUnreducedY0 < unreducedRegionY1)
+            {
+              uint32_t nextUnreducedY1 =
+                  std::min(nextUnreducedY0 + unreducedTileHeight, unreducedRegionY1);
+              for(uint16_t i = 0; i < scratchImage_->numcomps; i++)
+              {
+                auto comp = scratchImage_->comps + i;
+                comp->y0 = ceildivpow2<uint32_t>(
+                    ceildiv<uint32_t>(nextUnreducedY0, comp->dy), reduce);
+                uint32_t compY1 = ceildivpow2<uint32_t>(
+                    ceildiv<uint32_t>(nextUnreducedY1, comp->dy), reduce);
+                comp->h = compY1 - comp->y0;
+              }
+            }
+
+            nextBandTileY_ = nextTileY;
           }
         },
         nullptr, tilesToDecompress_.getSlatedTileRect());
@@ -1078,11 +1123,19 @@ std::function<void()> CodeStreamDecompress::postMultiTile(ITileProcessor* tilePr
     tileProcessor->post_decompressT2T1(scratchImage_.get());
     tileProcessor->setBestEffortDecompressed();
     numTilesDecompressed_++;
+
+    // Release throttle early: decompression is done, free the slot for other tiles.
+    // This prevents deadlock when strip-based band callback blocks tiles from future rows.
+    releaseThrottle();
+
     auto tileImage = tileProcessor->getImage();
     if(!cp_.codingParams_.dec_.skipAllocateComposite_ && scratchImage_->has_multiple_tiles &&
        tileImage)
     {
-      success_ = scratchImage_->composite(tileImage);
+      // When using strip-based band callback, skip composite here;
+      // it will be done in the row callback after all tiles in the row are complete.
+      if(!ioBandCallback_)
+        success_ = scratchImage_->composite(tileImage);
     }
     // complete tile
     auto tileIndex = tileProcessor->getIndex();
@@ -1094,8 +1147,6 @@ std::function<void()> CodeStreamDecompress::postMultiTile(ITileProcessor* tilePr
       tileCompletion_->complete(tileIndex);
     else
       tileProcessor->release();
-
-    releaseThrottle();
   };
 }
 
@@ -1660,6 +1711,26 @@ bool CodeStreamDecompress::activateScratch(bool singleTile, GrkImage* scratch)
   // i.e. no compositing
   if(singleTile || !headerImage_->has_multiple_tiles)
     return true;
+
+  // When band callback is active, allocate only a strip buffer (one tile-row height)
+  // instead of the full composite image. This dramatically reduces peak memory for large images.
+  if(ioBandCallback_)
+  {
+    uint8_t reduce = cp_.codingParams_.dec_.reduce_;
+    auto slatedRect = tilesToDecompress_.getSlatedTileRect();
+    uint32_t unreducedTileY0 = cp_.ty0_ + (uint32_t)slatedRect.y0 * cp_.t_height_;
+    uint32_t unreducedTileY1 =
+        std::min(unreducedTileY0 + cp_.t_height_, (uint32_t)scratch->y1);
+    for(uint16_t i = 0; i < scratch->numcomps; i++)
+    {
+      auto comp = scratch->comps + i;
+      comp->y0 = ceildivpow2<uint32_t>(ceildiv<uint32_t>(unreducedTileY0, comp->dy), reduce);
+      uint32_t compY1 =
+          ceildivpow2<uint32_t>(ceildiv<uint32_t>(unreducedTileY1, comp->dy), reduce);
+      comp->h = compY1 - comp->y0;
+    }
+    return scratch->allocCompositeData();
+  }
 
   return cp_.codingParams_.dec_.skipAllocateComposite_ || scratch->allocCompositeData();
 }

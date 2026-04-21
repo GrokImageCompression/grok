@@ -416,6 +416,7 @@ private:
   struct PendingBand_
   {
     uint32_t yBegin, yEnd;
+    uint16_t tileX0, numCols;
   };
   std::map<uint16_t, PendingBand_> pendingBands_;
 
