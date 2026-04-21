@@ -283,7 +283,8 @@ bool CodeStreamDecompress::decompress(grk_plugin_tile* tile)
             // Composite all tiles in this row into the strip buffer
             for(uint16_t col = 0; col < band.numCols; col++)
             {
-              uint16_t tileIndex = nextBandTileY_ * numTileCols + (band.tileX0 + col);
+              uint16_t tileIndex =
+                  static_cast<uint16_t>(nextBandTileY_ * numTileCols + (band.tileX0 + col));
               auto cacheEntry = tileCache_->get(tileIndex);
               if(!cacheEntry || !cacheEntry->processor)
                 continue;
@@ -302,7 +303,8 @@ bool CodeStreamDecompress::decompress(grk_plugin_tile* tile)
             // so tile image data is no longer needed.
             for(uint16_t col = 0; col < band.numCols; col++)
             {
-              uint16_t tileIndex = nextBandTileY_ * numTileCols + (band.tileX0 + col);
+              uint16_t tileIndex =
+                  static_cast<uint16_t>(nextBandTileY_ * numTileCols + (band.tileX0 + col));
               tileCache_->releaseForSwath(tileIndex);
             }
             MemoryManager::releaseFreedPages();
