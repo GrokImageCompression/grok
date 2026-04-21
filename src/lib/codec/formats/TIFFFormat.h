@@ -687,6 +687,7 @@ private:
   size_t units;
   grk_io_callback grkReclaimCallback_;
   void* grkReclaimUserData_;
+  grk::PlanarToInterleaved<T>* interleaver_;
 };
 
 #ifdef GRK_CUSTOM_TIFF_IO
@@ -756,13 +757,14 @@ TIFF* TIFFFormat<T>::MyTIFFOpen(const char* name, const char* mode)
 template<typename T>
 TIFFFormat<T>::TIFFFormat()
     : tif_(nullptr), chroma_subsample_x(1), chroma_subsample_y(1), units(0),
-      grkReclaimCallback_(nullptr), grkReclaimUserData_(nullptr)
+      grkReclaimCallback_(nullptr), grkReclaimUserData_(nullptr), interleaver_(nullptr)
 
 {}
 
 template<typename T>
 TIFFFormat<T>::~TIFFFormat()
 {
+  delete interleaver_;
   if(tif_)
     TIFFClose(tif_);
 }
@@ -1085,8 +1087,25 @@ bool TIFFFormat<T>::writeImageBand(uint32_t yBegin, uint32_t yEnd)
   }
   bool success = false;
   uint16_t numcomps = image_->decompress_num_comps;
-  auto planes = std::make_unique<T*[]>(numcomps);
-  auto planesBegin = std::make_unique<T*[]>(numcomps);
+  constexpr uint16_t kMaxStackComps = 4;
+  T* stackPlanes[kMaxStackComps];
+  T* stackPlanesBegin[kMaxStackComps];
+  std::unique_ptr<T*[]> heapPlanes;
+  std::unique_ptr<T*[]> heapPlanesBegin;
+  T** planes;
+  T** planesBegin;
+  if(numcomps <= kMaxStackComps)
+  {
+    planes = stackPlanes;
+    planesBegin = stackPlanesBegin;
+  }
+  else
+  {
+    heapPlanes = std::make_unique<T*[]>(numcomps);
+    heapPlanesBegin = std::make_unique<T*[]>(numcomps);
+    planes = heapPlanes.get();
+    planesBegin = heapPlanesBegin.get();
+  }
   GrkIOBuf packedBuf;
 
   if(isFinalOutputSubsampled(image_))
@@ -1169,28 +1188,27 @@ bool TIFFFormat<T>::writeImageBand(uint32_t yBegin, uint32_t yEnd)
     {
       planes[i] = (T*)image_->comps[i].data + (uint64_t)yBegin * image_->comps[0].stride;
     }
-    auto iter = grk::InterleaverFactory<T>::makeInterleaver(image_->decompress_prec);
-    if(!iter)
-      goto cleanup;
+    if(!interleaver_)
+    {
+      interleaver_ = grk::InterleaverFactory<T>::makeInterleaver(image_->decompress_prec);
+      if(!interleaver_)
+        goto cleanup;
+    }
     uint32_t h = yBegin;
     while(h < yEnd)
     {
       uint32_t stripRows = (std::min)(image_->rows_per_strip, yEnd - h);
       packedBuf = pool.get(image_->packed_row_bytes * stripRows);
-      iter->interleave(((T**)planes.get()), numcomps, packedBuf.data, image_->decompress_width,
-                       image_->comps[0].stride, image_->packed_row_bytes, stripRows, 0);
+      interleaver_->interleave(planes, numcomps, packedBuf.data, image_->decompress_width,
+                               image_->comps[0].stride, image_->packed_row_bytes, stripRows, 0);
       packedBuf.pooled = true;
       packedBuf.offset = orchestrator.getOffset();
       packedBuf.len = image_->packed_row_bytes * stripRows;
       packedBuf.index = orchestrator.getNumPooledRequests();
       if(!writeStripCore(0, packedBuf))
-      {
-        delete iter;
         goto cleanup;
-      }
       h += stripRows;
     }
-    delete iter;
   }
   success = true;
 cleanup:

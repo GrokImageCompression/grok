@@ -40,6 +40,7 @@ class PNGFormat : public ImageFormat
 {
 public:
   PNGFormat();
+  ~PNGFormat() override;
   bool writeHeader(void) override;
   bool writeImage() override;
   bool writeImageBand(uint32_t yBegin, uint32_t yEnd) override;
@@ -62,6 +63,7 @@ private:
   GRK_COLOR_SPACE colorSpace_;
   uint8_t prec_;
   uint16_t nr_comp_;
+  grk::PlanarToInterleaved<int32_t>* interleaver_;
 };
 
 static bool pngWarningHandlerVerbose = true;
@@ -91,8 +93,14 @@ static inline void user_error_fn([[maybe_unused]] png_structp png_ptr, png_const
 template<typename T>
 PNGFormat<T>::PNGFormat()
     : info_(nullptr), png_(nullptr), row_buf_(nullptr), row_buf_array_(nullptr), row32s_(nullptr),
-      colorSpace_(GRK_CLRSPC_UNKNOWN), prec_(0), nr_comp_(0)
+      colorSpace_(GRK_CLRSPC_UNKNOWN), prec_(0), nr_comp_(0), interleaver_(nullptr)
 {}
+
+template<typename T>
+PNGFormat<T>::~PNGFormat()
+{
+  delete interleaver_;
+}
 
 template<typename T>
 bool PNGFormat<T>::writeHeader(void)
@@ -332,18 +340,20 @@ bool PNGFormat<T>::writeImageBand(uint32_t yBegin, uint32_t yEnd)
   png_bytep row_buf_cpy = row_buf_;
   int32_t adjust = image_->comps[0].sgnd ? 1 << (prec_ - 1) : 0;
   uint32_t max = std::min<uint32_t>(yEnd, maxY(image_->comps->h));
-  auto iter =
-      grk::InterleaverFactory<int32_t>::makeInterleaver(prec_ == 16 ? grk::packer16BitBE : prec_);
-  if(!iter)
-    return false;
+  if(!interleaver_)
+  {
+    interleaver_ =
+        grk::InterleaverFactory<int32_t>::makeInterleaver(prec_ == 16 ? grk::packer16BitBE : prec_);
+    if(!interleaver_)
+      return false;
+  }
   for(uint32_t y = yBegin; y < max; ++y)
   {
-    iter->interleave((T**)planes, nr_comp_, row_buf_, image_->comps[0].w, stride,
-                     image_->comps[0].w, 1, adjust);
+    interleaver_->interleave((T**)planes, nr_comp_, row_buf_, image_->comps[0].w, stride,
+                             image_->comps[0].w, 1, adjust);
 
     png_write_row(png_, row_buf_cpy);
   }
-  delete iter;
 
   return true;
 }

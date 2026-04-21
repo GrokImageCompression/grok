@@ -226,8 +226,7 @@ bool CodeStreamDecompress::decompress(grk_plugin_tile* tile)
     // Use unreduced image bounds so that TileCompletion computes the same tile grid
     // (t_grid_width_ x t_grid_height_) as the codec.  Tile indices from
     // tileProcessor->getIndex() are based on the unreduced grid.
-    Rect32 unreducedBounds(cp_.tx0_, cp_.ty0_,
-                           cp_.tx0_ + cp_.t_grid_width_ * cp_.t_width_,
+    Rect32 unreducedBounds(cp_.tx0_, cp_.ty0_, cp_.tx0_ + cp_.t_grid_width_ * cp_.t_width_,
                            cp_.ty0_ + cp_.t_grid_height_ * cp_.t_height_);
     auto slatedRect = tilesToDecompress_.getSlatedTileRect();
     nextBandTileY_ = slatedRect.y0;
@@ -250,22 +249,19 @@ bool CodeStreamDecompress::decompress(grk_plugin_tile* tile)
           // Compute exact reduced-resolution tile Y extents using ceildivpow2
           // on unreduced coordinates, since DWT reduction is not uniformly divisible
           uint32_t unreducedTileYBegin = unreducedTy0 + (uint32_t)tileY * unreducedTileHeight;
-          uint32_t unreducedTileYEnd =
-              std::min(unreducedTy0 + ((uint32_t)tileY + 1) * unreducedTileHeight,
-                       unreducedRegionY1);
+          uint32_t unreducedTileYEnd = std::min(
+              unreducedTy0 + ((uint32_t)tileY + 1) * unreducedTileHeight, unreducedRegionY1);
           uint32_t tileGlobalYBegin = ceildivpow2<uint32_t>(unreducedTileYBegin, reduce);
           uint32_t tileGlobalYEnd = ceildivpow2<uint32_t>(unreducedTileYEnd, reduce);
           // Strip-relative y coordinates: the strip buffer starts at offset 0
           // for the current tile row
           uint32_t yBegin = 0;
-          uint32_t yEnd =
-              std::min(tileGlobalYEnd, regionY1) - std::max(tileGlobalYBegin, regionY0);
+          uint32_t yEnd = std::min(tileGlobalYEnd, regionY1) - std::max(tileGlobalYBegin, regionY0);
           if(yEnd <= yBegin)
             return;
 
           uint16_t tileX0 = tileIndexBegin % numTileCols;
-          uint16_t numSlatedCols =
-              (uint16_t)tilesToDecompress_.getSlatedTileRect().width();
+          uint16_t numSlatedCols = (uint16_t)tilesToDecompress_.getSlatedTileRect().width();
 
           // All compositing, band writing, and strip advancing must be serialized
           // to prevent races on the shared strip buffer.
@@ -296,8 +292,7 @@ bool CodeStreamDecompress::decompress(grk_plugin_tile* tile)
 
             // Advance strip buffer for the next tile row
             uint16_t nextTileY = nextBandTileY_ + 1;
-            uint32_t nextUnreducedY0 =
-                unreducedTy0 + (uint32_t)nextTileY * unreducedTileHeight;
+            uint32_t nextUnreducedY0 = unreducedTy0 + (uint32_t)nextTileY * unreducedTileHeight;
             if(nextUnreducedY0 < unreducedRegionY1)
             {
               uint32_t nextUnreducedY1 =
@@ -305,10 +300,10 @@ bool CodeStreamDecompress::decompress(grk_plugin_tile* tile)
               for(uint16_t i = 0; i < scratchImage_->numcomps; i++)
               {
                 auto comp = scratchImage_->comps + i;
-                comp->y0 = ceildivpow2<uint32_t>(
-                    ceildiv<uint32_t>(nextUnreducedY0, comp->dy), reduce);
-                uint32_t compY1 = ceildivpow2<uint32_t>(
-                    ceildiv<uint32_t>(nextUnreducedY1, comp->dy), reduce);
+                comp->y0 =
+                    ceildivpow2<uint32_t>(ceildiv<uint32_t>(nextUnreducedY0, comp->dy), reduce);
+                uint32_t compY1 =
+                    ceildivpow2<uint32_t>(ceildiv<uint32_t>(nextUnreducedY1, comp->dy), reduce);
                 comp->h = compY1 - comp->y0;
               }
             }
@@ -1719,14 +1714,12 @@ bool CodeStreamDecompress::activateScratch(bool singleTile, GrkImage* scratch)
     uint8_t reduce = cp_.codingParams_.dec_.reduce_;
     auto slatedRect = tilesToDecompress_.getSlatedTileRect();
     uint32_t unreducedTileY0 = cp_.ty0_ + (uint32_t)slatedRect.y0 * cp_.t_height_;
-    uint32_t unreducedTileY1 =
-        std::min(unreducedTileY0 + cp_.t_height_, (uint32_t)scratch->y1);
+    uint32_t unreducedTileY1 = std::min(unreducedTileY0 + cp_.t_height_, (uint32_t)scratch->y1);
     for(uint16_t i = 0; i < scratch->numcomps; i++)
     {
       auto comp = scratch->comps + i;
       comp->y0 = ceildivpow2<uint32_t>(ceildiv<uint32_t>(unreducedTileY0, comp->dy), reduce);
-      uint32_t compY1 =
-          ceildivpow2<uint32_t>(ceildiv<uint32_t>(unreducedTileY1, comp->dy), reduce);
+      uint32_t compY1 = ceildivpow2<uint32_t>(ceildiv<uint32_t>(unreducedTileY1, comp->dy), reduce);
       comp->h = compY1 - comp->y0;
     }
     return scratch->allocCompositeData();

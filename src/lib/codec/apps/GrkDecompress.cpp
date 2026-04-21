@@ -1122,8 +1122,7 @@ int GrkDecompress::preProcess(grk_plugin_decompress_callback_info* info)
   // during decompress.
   incrementalWriteActive_ = false;
   if(storeToDisk && !parameters->single_tile_decompress && !info->init_decompressors_func &&
-     grk_image_is_post_process_no_op(info->image) &&
-     parameters->dw_y1 == 0)
+     grk_image_is_post_process_no_op(info->image) && parameters->dw_y1 == 0)
   {
     if(!writeInit(info))
       goto cleanup;
