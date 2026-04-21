@@ -17,6 +17,7 @@
 
 #pragma once
 
+#include <mutex>
 #include "ICoder.h"
 
 namespace grk
@@ -59,6 +60,7 @@ public:
   std::shared_ptr<t1::ICoder> getCoder(size_t worker, uint8_t maxCblkWExp, uint8_t maxCblkHExp);
 
 private:
+  std::mutex mutex_;
   CODERMAP coderMap_;
 };
 
