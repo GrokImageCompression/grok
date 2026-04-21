@@ -31,6 +31,12 @@
 namespace grk
 {
 
+/**
+ * @class TileCompletion
+ * @brief Tracks per-tile completion and fires row callbacks for incremental compositing.
+ *
+ * @see doc/IncrementalStripeCompositing.md for the full incremental write pipeline.
+ */
 class TileCompletion
 {
 public:

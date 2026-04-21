@@ -63,6 +63,8 @@ struct TileCacheEntry
  * @brief Caches tile processors so that repeated decompress calls on the same
  * codec can reuse SOT metadata, packet data, and decompressed images.
  *
+ * @see doc/TileCache.md for architecture overview and cache strategies.
+ *
  * ## Tile lifecycle
  *
  * 1. **First encounter (SOT parsed)** — `getTileProcessor()` creates a

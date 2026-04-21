@@ -622,6 +622,12 @@ static inline bool writeExifToTiff(TIFF* tif, const uint8_t* exifBuf, uint32_t e
 /* TIFF conversion*/
 void tiffSetErrorAndWarningHandlers(bool verbose);
 
+/**
+ * @class TIFFFormat
+ * @brief TIFF format reader/writer with SIMD-accelerated pixel interleaving.
+ *
+ * @see doc/IncrementalStripeCompositing.md for the incremental band-write pipeline.
+ */
 template<typename T>
 class TIFFFormat : public ImageFormat
 {

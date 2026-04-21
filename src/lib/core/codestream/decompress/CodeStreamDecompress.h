@@ -28,6 +28,9 @@ namespace grk
 /**
  * @class CodeStreamDecompress
  * @brief Manages decompression
+ *
+ * @see doc/IncrementalStripeCompositing.md for the incremental band-write pipeline.
+ * @see doc/TileCache.md for tile caching and LRU eviction.
  */
 class CodeStreamDecompress final : public CodeStream, public IDecompressor
 {

@@ -181,6 +181,12 @@ enum class AWSCredentialSource
   EC2_OR_ECS
 };
 
+/**
+ * @class S3Fetcher
+ * @brief Fetches JPEG 2000 codestream data from S3-compatible object storage.
+ *
+ * @see doc/S3.md for credential chain, environment variables, and configuration.
+ */
 class S3Fetcher : public CurlFetcher
 {
   // Cached credentials shared across all S3Fetcher instances.
