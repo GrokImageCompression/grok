@@ -468,8 +468,25 @@ bool GrkImage::isPostProcessNoOp(void) const
   // convertPrecision
   if(precision)
     return false;
-  if(decompress_fmt == GRK_FMT_JPG && comps[0].prec < 8 && numcomps > 1)
-    return false;
+  if(decompress_fmt == GRK_FMT_JPG)
+  {
+    uint8_t prec = comps[0].prec;
+    if(prec < 8 && numcomps > 1)
+      return false;
+    if((prec > 1) && (prec < 8) && ((prec == 6) || ((prec & 1) == 1)))
+      return false;
+  }
+  if(decompress_fmt == GRK_FMT_PNG)
+  {
+    uint8_t prec = comps[0].prec;
+    uint16_t nr_comp = numcomps > 4 ? 4 : numcomps;
+    if(prec > 8 && prec < 16)
+      return false;
+    if(prec < 8 && nr_comp > 1)
+      return false;
+    if((prec > 1) && (prec < 8) && ((prec == 6) || ((prec & 1) == 1)))
+      return false;
+  }
   // execUpsample
   if(upsample)
   {

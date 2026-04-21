@@ -26,9 +26,10 @@
  *
  */
 const uint32_t IMAGE_FORMAT_UNWRITTEN = 1;
-const uint32_t IMAGE_FORMAT_HEADER_WRITTEN = 2;
-const uint32_t IMAGE_FORMAT_PIXELS_WRITTEN = 4;
-const uint32_t IMAGE_FORMAT_ERROR = 8;
+const uint32_t IMAGE_FORMAT_INITIALIZED = 2;
+const uint32_t IMAGE_FORMAT_HEADER_WRITTEN = 4;
+const uint32_t IMAGE_FORMAT_PIXELS_WRITTEN = 8;
+const uint32_t IMAGE_FORMAT_ERROR = 16;
 
 /**
  * @class IImageReader

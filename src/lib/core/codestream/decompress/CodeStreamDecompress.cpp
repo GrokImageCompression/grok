@@ -238,17 +238,23 @@ bool CodeStreamDecompress::decompress(grk_plugin_tile* tile)
     auto compositeBounds = multiTileComposite_->getBounds();
     uint32_t regionY0 = ceildivpow2<uint32_t>(compositeBounds.y0, reduce);
     uint32_t regionY1 = ceildivpow2<uint32_t>(compositeBounds.y1, reduce);
-    uint32_t reducedTileHeight = ceildivpow2<uint32_t>(cp_.t_height_, reduce);
-    uint32_t reducedTy0 = ceildivpow2<uint32_t>(cp_.ty0_, reduce);
+    uint32_t unreducedTy0 = cp_.ty0_;
+    uint32_t unreducedTileHeight = cp_.t_height_;
+    uint32_t unreducedRegionY1 = compositeBounds.y1;
     tileCompletion_ = std::make_unique<TileCompletion>(
         tileCache_.get(), unreducedBounds, cp_.t_width_, cp_.t_height_,
-        [this, regionY0, regionY1, reducedTileHeight, reducedTy0](uint16_t tileIndexBegin,
-                                                                   uint16_t) {
+        [this, regionY0, regionY1, unreducedTy0, unreducedTileHeight, unreducedRegionY1,
+         reduce](uint16_t tileIndexBegin, uint16_t) {
           uint16_t numTileCols = tileCompletion_->getNumTileCols();
           uint16_t tileY = tileIndexBegin / numTileCols;
-          uint32_t tileGlobalYBegin = reducedTy0 + (uint32_t)tileY * reducedTileHeight;
-          uint32_t tileGlobalYEnd =
-              std::min(reducedTy0 + ((uint32_t)tileY + 1) * reducedTileHeight, regionY1);
+          // Compute exact reduced-resolution tile Y extents using ceildivpow2
+          // on unreduced coordinates, since DWT reduction is not uniformly divisible
+          uint32_t unreducedTileYBegin = unreducedTy0 + (uint32_t)tileY * unreducedTileHeight;
+          uint32_t unreducedTileYEnd =
+              std::min(unreducedTy0 + ((uint32_t)tileY + 1) * unreducedTileHeight,
+                       unreducedRegionY1);
+          uint32_t tileGlobalYBegin = ceildivpow2<uint32_t>(unreducedTileYBegin, reduce);
+          uint32_t tileGlobalYEnd = ceildivpow2<uint32_t>(unreducedTileYEnd, reduce);
           uint32_t yBegin = std::max(tileGlobalYBegin, regionY0) - regionY0;
           uint32_t yEnd = std::min(tileGlobalYEnd, regionY1) - regionY0;
           if(yEnd <= yBegin)

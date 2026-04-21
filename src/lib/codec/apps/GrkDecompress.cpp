@@ -1114,14 +1114,19 @@ int GrkDecompress::preProcess(grk_plugin_decompress_callback_info* info)
       goto cleanup;
     }
   }
-  // 3a. initialize writer before decompress so it's ready for incremental output
-  if(!writeInit(info))
-    goto cleanup;
-  // enable incremental band writing when postProcess is a no-op
+  // 3a. initialize writer before decompress so it's ready for incremental output.
+  // Only call writeInit early when postProcess is a no-op, so we can write header
+  // and enable incremental band writes.  When post-processing is needed, defer
+  // writeInit until after decompress (postProcess) so that the library's
+  // io_buffer_callback (strip write) doesn't write raw/unprocessed strips
+  // during decompress.
   incrementalWriteActive_ = false;
   if(storeToDisk && !parameters->single_tile_decompress && !info->init_decompressors_func &&
-     grk_image_is_post_process_no_op(info->image))
+     grk_image_is_post_process_no_op(info->image) &&
+     parameters->dw_y1 == 0)
   {
+    if(!writeInit(info))
+      goto cleanup;
     // write header early — metadata is already final since postProcess is a no-op
     if(!writeHeader(info))
       goto cleanup;
@@ -1267,37 +1272,38 @@ int GrkDecompress::postProcess(grk_plugin_decompress_callback_info* info)
   }
   if(storeToDisk)
   {
-    // GPU decode path: format was not initialized during preProcess
-    // (writeInit was skipped because grk_decompress was not called).
-    // Initialize the format now with the bridge image that has actual data.
-    if(info->decompress_flags & GRK_DECODE_POST_T1 &&
-       fmt->getWriteState() == IMAGE_FORMAT_UNWRITTEN)
+    // Update the format's image pointer in case it changed (e.g. single tile decompress
+    // replaces info->image after writeInit was called in preProcess)
+    fmt->setImage(image);
+    // Initialize the format if not already done.  writeInit is deferred to postProcess
+    // when post-processing is needed, so the library's io_buffer_callback (strip write)
+    // doesn't write raw/unprocessed strips during decompress.
+    if(fmt->getWriteState() == IMAGE_FORMAT_UNWRITTEN)
     {
-      // Set decompress output fields on the bridge image
-      if(image->numcomps > 0)
+      if(info->decompress_flags & GRK_DECODE_POST_T1)
       {
-        if(image->decompress_prec == 0)
+        // GPU decode path: set decompress output fields on the bridge image
+        if(image->numcomps > 0)
         {
-          image->decompress_prec = image->comps[0].prec;
-          image->decompress_width = image->comps[0].w;
-          image->decompress_height = image->comps[0].h;
-          image->decompress_num_comps = image->numcomps;
-          image->decompress_colour_space = image->color_space;
+          if(image->decompress_prec == 0)
+          {
+            image->decompress_prec = image->comps[0].prec;
+            image->decompress_width = image->comps[0].w;
+            image->decompress_height = image->comps[0].h;
+            image->decompress_num_comps = image->numcomps;
+            image->decompress_colour_space = image->color_space;
+          }
+          if(image->packed_row_bytes == 0)
+          {
+            uint16_t ncmp = image->numcomps;
+            uint8_t prec = image->comps[0].prec;
+            image->packed_row_bytes = ((uint64_t)image->comps[0].w * ncmp * prec + 7U) / 8U;
+          }
+          if(image->rows_per_strip == 0)
+            image->rows_per_strip = std::min((uint32_t)32, image->comps[0].h);
         }
-        if(image->packed_row_bytes == 0)
-        {
-          uint16_t ncmp = image->numcomps;
-          uint8_t prec = image->comps[0].prec;
-          image->packed_row_bytes = ((uint64_t)image->comps[0].w * ncmp * prec + 7U) / 8U;
-        }
-        if(image->rows_per_strip == 0)
-          image->rows_per_strip = std::min((uint32_t)32, image->comps[0].h);
       }
-      if(!fmt->writeInit(
-             image, outfile ? std::string(outfile) : "",
-             info->cod_format == GRK_FMT_TIF ? info->decompressor_parameters->compression : 0,
-             info->decompressor_parameters->num_threads ? info->decompressor_parameters->num_threads
-                                                        : std::thread::hardware_concurrency()))
+      if(!writeInit(info))
       {
         spdlog::error("Outfile {} not generated", outfile ? std::string(outfile) : "");
         goto cleanup;

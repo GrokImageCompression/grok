@@ -105,6 +105,11 @@ bool FileFormatJP2Decompress::readHeader(grk_header_info* header_info)
     }
     image = codeStream->getCompositeNoWait();
     image->validateICC();
+    // Update decompress_colour_space after validateICC may have changed color_space
+    // (e.g. to GRK_CLRSPC_ICC).  postReadHeader() ran before validateICC, so
+    // decompress_colour_space still holds the old value.  Writers that emit
+    // headers before decompress() rely on this being current.
+    image->decompress_colour_space = image->color_space;
 
     // check RGB subsampling
     if(image->color_space == GRK_CLRSPC_SRGB)

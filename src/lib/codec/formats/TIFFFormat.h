@@ -641,6 +641,20 @@ public:
   bool writeImageBand(uint32_t yBegin, uint32_t yEnd) override;
   bool supportsIncrementalBandWrite(void) const override
   {
+    // Subsampled YCbCr TIFF packs luma+chroma into strips; incremental band
+    // writes produce many small strips instead of one strip per rows_per_strip,
+    // changing the TIFF structure.
+    if(image_)
+    {
+      if(!image_->upsample && !image_->force_rgb)
+      {
+        for(uint32_t i = 0; i < image_->decompress_num_comps; ++i)
+        {
+          if(image_->comps[i].dx != 1 || image_->comps[i].dy != 1)
+            return false;
+        }
+      }
+    }
     return true;
   }
   /***

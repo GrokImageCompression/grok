@@ -75,6 +75,7 @@ bool ImageFormat::writeInit(grk_image* image, const std::string& filename,
   compressionLevel_ = compression_level;
   fileName_ = filename;
   image_ = image;
+  writeState_ = IMAGE_FORMAT_INITIALIZED;
 
   return true;
 }

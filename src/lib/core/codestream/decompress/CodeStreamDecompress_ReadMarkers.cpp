@@ -189,6 +189,10 @@ void CodeStreamDecompress::postReadHeader(void)
   if(headerRead_)
   {
     setDecompressRegion(RectD(cp_.dw_x0, cp_.dw_y0, cp_.dw_x1, cp_.dw_y1));
+    // Refresh decompress_width/height/etc. now that region bounds are applied.
+    // Without this, formats that write headers before decompress() see stale
+    // full-image dimensions instead of the (possibly reduced) region dimensions.
+    multiTileComposite_->postReadHeader(&cp_);
 
     if(cp_.asynchronous_ && cp_.simulate_synchronous_)
     {
