@@ -762,6 +762,81 @@ namespace HWY_NAMESPACE
     }
   }
 
+  /* ─── Pack N planar int32 → interleaved big-endian uint16, one row ─── */
+  static void Hwy_pack_planar_to_16be(const int32_t* const* src, uint32_t numPlanes, uint8_t* dest,
+                                      uint32_t w, int32_t adjust)
+  {
+    const HWY_FULL(int32_t) di;
+    const hn::Rebind<uint16_t, decltype(di)> du16;
+    const uint32_t L = (uint32_t)Lanes(di);
+    const auto vAdj = Set(di, adjust);
+    auto dest16 = (uint16_t*)dest;
+
+    if(numPlanes == 3)
+    {
+      uint32_t i = 0;
+      for(; i + L <= w; i += L)
+      {
+        auto v0 = ReverseLaneBytes(DemoteTo(du16, Add(LoadU(di, src[0] + i), vAdj)));
+        auto v1 = ReverseLaneBytes(DemoteTo(du16, Add(LoadU(di, src[1] + i), vAdj)));
+        auto v2 = ReverseLaneBytes(DemoteTo(du16, Add(LoadU(di, src[2] + i), vAdj)));
+        StoreInterleaved3(v0, v1, v2, du16, dest16 + i * 3);
+      }
+      for(; i < w; ++i)
+      {
+        uint32_t val0 = (uint32_t)(src[0][i] + adjust);
+        uint32_t val1 = (uint32_t)(src[1][i] + adjust);
+        uint32_t val2 = (uint32_t)(src[2][i] + adjust);
+        auto p = dest + (size_t)i * 6;
+        p[0] = (uint8_t)(val0 >> 8);
+        p[1] = (uint8_t)val0;
+        p[2] = (uint8_t)(val1 >> 8);
+        p[3] = (uint8_t)val1;
+        p[4] = (uint8_t)(val2 >> 8);
+        p[5] = (uint8_t)val2;
+      }
+    }
+    else if(numPlanes == 4)
+    {
+      uint32_t i = 0;
+      for(; i + L <= w; i += L)
+      {
+        auto v0 = ReverseLaneBytes(DemoteTo(du16, Add(LoadU(di, src[0] + i), vAdj)));
+        auto v1 = ReverseLaneBytes(DemoteTo(du16, Add(LoadU(di, src[1] + i), vAdj)));
+        auto v2 = ReverseLaneBytes(DemoteTo(du16, Add(LoadU(di, src[2] + i), vAdj)));
+        auto v3 = ReverseLaneBytes(DemoteTo(du16, Add(LoadU(di, src[3] + i), vAdj)));
+        StoreInterleaved4(v0, v1, v2, v3, du16, dest16 + i * 4);
+      }
+      for(; i < w; ++i)
+      {
+        uint32_t val0 = (uint32_t)(src[0][i] + adjust);
+        uint32_t val1 = (uint32_t)(src[1][i] + adjust);
+        uint32_t val2 = (uint32_t)(src[2][i] + adjust);
+        uint32_t val3 = (uint32_t)(src[3][i] + adjust);
+        auto p = dest + (size_t)i * 8;
+        p[0] = (uint8_t)(val0 >> 8);
+        p[1] = (uint8_t)val0;
+        p[2] = (uint8_t)(val1 >> 8);
+        p[3] = (uint8_t)val1;
+        p[4] = (uint8_t)(val2 >> 8);
+        p[5] = (uint8_t)val2;
+        p[6] = (uint8_t)(val3 >> 8);
+        p[7] = (uint8_t)val3;
+      }
+    }
+    else
+    {
+      auto destPtr = dest;
+      for(uint32_t j = 0; j < w; ++j)
+        for(uint32_t k = 0; k < numPlanes; ++k)
+        {
+          uint32_t val = (uint32_t)(src[k][j] + adjust);
+          *destPtr++ = (uint8_t)(val >> 8);
+          *destPtr++ = (uint8_t)val;
+        }
+    }
+  }
+
   /* ─── Scale component data: multiply by power-of-two ─── */
   static void Hwy_scale_component_up(int32_t* data, uint32_t w, uint32_t h, uint32_t stride,
                                      int32_t scale)
@@ -834,6 +909,7 @@ HWY_EXPORT(Hwy_unpack_16le_to_i32);
 HWY_EXPORT(Hwy_deinterleave_i32);
 HWY_EXPORT(Hwy_pack_planar_to_8);
 HWY_EXPORT(Hwy_pack_planar_to_16);
+HWY_EXPORT(Hwy_pack_planar_to_16be);
 HWY_EXPORT(Hwy_scale_component_up);
 HWY_EXPORT(Hwy_scale_component_down);
 
@@ -929,6 +1005,12 @@ GRK_SIMD_API void hwy_pack_planar_to_16(const int32_t* const* src, uint32_t numP
                                         uint16_t* dest, uint32_t w, int32_t adjust)
 {
   HWY_DYNAMIC_DISPATCH(Hwy_pack_planar_to_16)(src, numPlanes, dest, w, adjust);
+}
+
+GRK_SIMD_API void hwy_pack_planar_to_16be(const int32_t* const* src, uint32_t numPlanes,
+                                          uint8_t* dest, uint32_t w, int32_t adjust)
+{
+  HWY_DYNAMIC_DISPATCH(Hwy_pack_planar_to_16be)(src, numPlanes, dest, w, adjust);
 }
 
 GRK_SIMD_API void hwy_scale_component_up(int32_t* data, uint32_t w, uint32_t h, uint32_t stride,

@@ -85,15 +85,15 @@
             "name": "SPOT6 MINIO",
             "type": "cppdbg",
             "request": "launch",
-             "program": "${workspaceFolder}/build/bin/core_decompress_async",
+             "program": "${workspaceFolder}/build/bin/grk_decompress",
             //"program": "/usr/bin/time",
             "args": [
                 // "-v",
                 // "${workspaceFolder}/build/bin/core_decompress",
                 "-i",
                 "/vsis3/grok/IMG_SPOT6_PMS_201305251604372_ORT_816009101_R1C1.JP2",
-                // "-o",
-                // "$HOME/temp/spot8.tif"
+                "-o",
+                "$HOME/temp/spot6.tif"
             ],
             "cwd": "${workspaceFolder}",
             "environment": [

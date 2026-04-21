@@ -121,6 +121,11 @@ GRK_SIMD_API void hwy_pack_planar_to_8(const int32_t* const* src, uint32_t numPl
 GRK_SIMD_API void hwy_pack_planar_to_16(const int32_t* const* src, uint32_t numPlanes,
                                         uint16_t* dest, uint32_t w, int32_t adjust);
 
+/* Pack N planar int32 components into interleaved big-endian uint16 output.
+ * Same as hwy_pack_planar_to_16 but each uint16 is stored in big-endian byte order. */
+GRK_SIMD_API void hwy_pack_planar_to_16be(const int32_t* const* src, uint32_t numPlanes,
+                                          uint8_t* dest, uint32_t w, int32_t adjust);
+
 /* Scale int32 component data by power-of-two multiply, with stride. */
 GRK_SIMD_API void hwy_scale_component_up(int32_t* data, uint32_t w, uint32_t h, uint32_t stride,
                                          int32_t scale);
