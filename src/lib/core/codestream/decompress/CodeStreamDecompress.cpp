@@ -572,6 +572,17 @@ void CodeStreamDecompress::decompressTLM(const std::set<uint16_t>& pendingTiles)
   {
     for(const auto& tileIndex : pendingTiles)
     {
+      // Backpressure for strip-based band callback: block if this tile's row
+      // is too far ahead of the row currently being drained, matching the
+      // sequential path's throttle in sequentialParseAndSchedule().
+      if(ioBandCallback_ && tileCompletion_)
+      {
+        uint16_t numTileCols = tileCompletion_->getNumTileCols();
+        uint16_t tileY = tileIndex / numTileCols;
+        std::unique_lock<std::mutex> lock(bandOrderMutex_);
+        while(!(tileY < nextBandTileY_ + 2 || !success_))
+          bandDrainCV_.wait_for(lock, std::chrono::milliseconds(100));
+      }
       if(!schedule(getTileProcessor(tileIndex), true))
         break;
     }
