@@ -179,6 +179,27 @@
             "miDebuggerPath": "/usr/bin/gdb"
         },
         {
+            "name": "Mars HiRISE",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "/usr/bin/time",
+            "args": [
+                "-v",
+                "${workspaceFolder}/build/bin/grk_decompress",
+                "-i",
+                "$HOME/temp/ESP_028011_2055_RED.JP2",
+                "-o",
+                "$HOME/temp/ESP_028011_2055_RED.JP2.TIF"
+            ],
+            "cwd": "${workspaceFolder}",
+            "environment": [
+                { "name": "GRK_DEBUG", "value": "3" },
+                { "name": "GRK_EXCALIBUR", "value": "0" }
+            ],
+            "MIMode": "gdb",
+            "miDebuggerPath": "/usr/bin/gdb"
+        },
+        {
             "name": "core simple",
             "type": "cppdbg",
             "request": "launch",
