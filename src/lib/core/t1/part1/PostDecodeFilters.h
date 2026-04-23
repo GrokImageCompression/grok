@@ -100,4 +100,40 @@ private:
   float scale;
 };
 
+// Narrowing filters for 16-bit DWT path: int32_t T1 output → int16_t band buffers
+class NarrowShiftFilter
+{
+public:
+  NarrowShiftFilter([[maybe_unused]] DecompressBlockExec* block) {}
+  inline void copy(int16_t* dest, const int32_t* src, uint32_t len)
+  {
+    for(uint32_t i = 0; i < len; ++i)
+      dest[i] = (int16_t)(src[i] / 2);
+  }
+};
+
+class NarrowRoiShiftFilter
+{
+public:
+  NarrowRoiShiftFilter(DecompressBlockExec* block) : roiShift(block->roishift) {}
+  inline void copy(int16_t* dest, const int32_t* src, uint32_t len)
+  {
+    int32_t thresh = 1 << roiShift;
+    for(uint32_t i = 0; i < len; ++i)
+    {
+      int32_t val = src[i];
+      int32_t mag = abs(val);
+      if(mag >= thresh)
+      {
+        mag >>= roiShift;
+        val = val < 0 ? -mag : mag;
+      }
+      dest[i] = (int16_t)(val / 2);
+    }
+  }
+
+private:
+  uint32_t roiShift;
+};
+
 } // namespace grk::t1

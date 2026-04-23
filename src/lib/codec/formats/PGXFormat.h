@@ -265,16 +265,16 @@ bool PGXFormat<T>::writeImage(void)
     size_t outCount = 0;
     size_t index = 0;
     uint32_t stride_diff = comp->stride - w;
+    bool isInt16 = comp->data_type == GRK_INT_16;
     if(nbytes == 1)
     {
-      auto src = (T*)comp->data;
       uint8_t buf[bufSize];
       uint8_t* outPtr = buf;
       for(uint32_t j = 0; j < h; ++j)
       {
         for(uint32_t i = 0; i < w; ++i)
         {
-          const T val = src[index++];
+          const int32_t val = isInt16 ? ((int16_t*)comp->data)[index++] : ((T*)comp->data)[index++];
           if(!grk::writeBytes<uint8_t>((uint8_t)val, buf, &outPtr, &outCount, bufSize, true,
                                        fileIO_->getFileHandle()))
           {
@@ -298,12 +298,12 @@ bool PGXFormat<T>::writeImage(void)
     {
       uint16_t buf[bufSize];
       uint16_t* outPtr = buf;
-      auto src = (T*)image_->comps[compno].data;
       for(uint32_t j = 0; j < h; ++j)
       {
         for(uint32_t i = 0; i < w; ++i)
         {
-          const T val = src[index++];
+          const int32_t val = isInt16 ? ((int16_t*)image_->comps[compno].data)[index++]
+                                      : ((T*)image_->comps[compno].data)[index++];
           if(!grk::writeBytes<uint16_t>((uint16_t)val, buf, &outPtr, &outCount, bufSize, true,
                                         fileIO_->getFileHandle()))
           {

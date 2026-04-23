@@ -900,6 +900,7 @@ void GrkImage::transferDataTo(GrkImage* dest)
 
     single_component_data_free(destComp);
     destComp->data = srcComp->data;
+    destComp->data_type = srcComp->data_type;
     destComp->owns_data = srcComp->owns_data;
     if(srcComp->stride)
     {
@@ -957,8 +958,7 @@ GrkImage* GrkImage::extractFrom(const Tile* src) const
   for(uint16_t compno = 0; compno < src->numcomps_; ++compno)
   {
     auto srcComp = src->comps_ + compno;
-    auto src_buffer = srcComp->getWindow();
-    auto src_bounds = src_buffer->bounds();
+    auto src_bounds = srcComp->windowBounds();
 
     auto destComp = destImage->comps + compno;
     destComp->x0 = src_bounds.x0;
@@ -975,8 +975,18 @@ GrkImage* GrkImage::extractFrom(const Tile* src) const
 
 bool GrkImage::composite(const GrkImage* srcImg)
 {
-  return interleaved_data.data ? compositeInterleaved<int32_t>(srcImg->numcomps, srcImg->comps)
-                               : compositePlanar<int32_t>(srcImg->numcomps, srcImg->comps);
+  if(interleaved_data.data)
+    return compositeInterleaved<int32_t>(srcImg->numcomps, srcImg->comps);
+  // Use source data_type since source tiles have the authoritative type.
+  auto dt = srcImg->comps[0].data_type;
+  switch(dt)
+  {
+    case GRK_INT_16:
+      return compositePlanar<int16_t>(srcImg->numcomps, srcImg->comps);
+    case GRK_INT_32:
+    default:
+      return compositePlanar<int32_t>(srcImg->numcomps, srcImg->comps);
+  }
 }
 
 /***
@@ -1302,65 +1312,6 @@ bool GrkImage::validateICC(void)
 /**
  * Convert to sRGB
  */
-bool GrkImage::applyColourManagement(void)
-{
-  if(!meta || !meta->color.icc_profile_buf)
-    return true;
-
-  bool isTiff = decompress_fmt == GRK_FMT_TIF;
-  bool canStoreCIE = isTiff && color_space == GRK_CLRSPC_DEFAULT_CIE;
-  bool isCIE = color_space == GRK_CLRSPC_DEFAULT_CIE || color_space == GRK_CLRSPC_CUSTOM_CIE;
-  // A TIFF,PNG, BMP or JPEG image can store the ICC profile,
-  // so no need to apply it in this case,
-  // (unless we are forcing to RGB).
-  // Otherwise, we apply the profile
-  bool canStoreICC = (decompress_fmt == GRK_FMT_TIF || decompress_fmt == GRK_FMT_PNG ||
-                      decompress_fmt == GRK_FMT_JPG || decompress_fmt == GRK_FMT_BMP);
-
-  bool shouldApplyColourManagement =
-      force_rgb || (decompress_fmt != GRK_FMT_UNK && meta->color.icc_profile_buf &&
-                    ((isCIE && !canStoreCIE) || !canStoreICC));
-  if(!shouldApplyColourManagement)
-    return true;
-
-  if(isCIE)
-  {
-    if(!force_rgb)
-      grklog.warn(" Input image is in CIE colour space,\n"
-                  "but the codec is unable to store this information in the "
-                  "output file .\n"
-                  "The output image will therefore be converted to sRGB before saving.");
-    if(!cieLabToRGB<int32_t>())
-    {
-      grklog.error("Unable to convert L*a*b image to sRGB");
-      return false;
-    }
-  }
-  else
-  {
-    if(validateICC())
-    {
-      if(!force_rgb)
-      {
-        grklog.warn("");
-        grklog.warn("The input image contains an ICC profile");
-        grklog.warn("but the codec is unable to store this profile"
-                    " in the output file.");
-        grklog.warn("The profile will therefore be applied to the output"
-                    " image before saving.");
-        grklog.warn("");
-      }
-      if(!applyICC<int32_t>())
-      {
-        grklog.warn("Unable to apply ICC profile");
-        return false;
-      }
-    }
-  }
-
-  return true;
-}
-
 bool GrkImage::greyToRGB(void)
 {
   if(numcomps != 1)
@@ -1413,7 +1364,21 @@ void GrkImage::transferDataFrom_T(const Tile* tile_src_data)
 
     // transfer memory from tile component to output image
     single_component_data_free(destComp);
-    srcComp->getWindow()->transfer((T**)&destComp->data, &destComp->stride);
+    if(srcComp->is16BitDwt())
+    {
+      // DWT ran in int16; transfer directly without widening.
+      int16_t* data16 = nullptr;
+      uint32_t stride16 = 0;
+      srcComp->getWindow16()->transfer(&data16, &stride16);
+      destComp->data = data16;
+      destComp->stride = stride16;
+      destComp->data_type = GRK_INT_16;
+    }
+    else
+    {
+      srcComp->getWindow()->transfer((T**)&destComp->data, &destComp->stride);
+      destComp->data_type = GRK_INT_32;
+    }
     destComp->owns_data = true;
   }
 }
@@ -1422,6 +1387,7 @@ void GrkImage::transferDataFrom(const Tile* tile_src_data)
   switch(comps->data_type)
   {
     case GRK_INT_32:
+    case GRK_INT_16:
       transferDataFrom_T<int32_t>(tile_src_data);
       break;
     // case GRK_INT_16:

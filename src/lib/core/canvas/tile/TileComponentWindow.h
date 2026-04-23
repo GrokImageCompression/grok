@@ -211,6 +211,16 @@ struct TileComponentWindow : public TileComponentWindowBase<T>
     dst.copyFrom<F>(src, F(block));
   }
 
+  // Cross-type post-process: narrows wider source (e.g., int32_t) into T band buffer
+  template<typename SrcT, template<class> class SrcA, typename F>
+  void postProcessNarrow(Buffer2d<SrcT, SrcA>& src, uint8_t resno,
+                         t1::eBandOrientation bandOrientation, t1::DecompressBlockExec* block)
+  {
+    Buf2dAligned dst;
+    dst = getCodeBlockDestWindowREL(resno, bandOrientation);
+    dst.template copyFromNarrow<SrcT, SrcA, F>(&src, F(block));
+  }
+
   /**
    * Get padded band window buffer
    *
@@ -240,8 +250,8 @@ struct TileComponentWindow : public TileComponentWindowBase<T>
    * If resno is > 0, return LL,HL,LH or HH band window, otherwise return LL resolution window
    *
    */
-  const Buffer2dSimple<int32_t>
-      getBandWindowBufferPaddedSimple(uint8_t resno, t1::eBandOrientation orientation) const
+  const Buffer2dSimple<T> getBandWindowBufferPaddedSimple(uint8_t resno,
+                                                          t1::eBandOrientation orientation) const
   {
     assert(resno < this->resolution_.size());
     assert(resno > 0 || orientation == t1::BAND_ORIENT_LL);
@@ -299,8 +309,8 @@ struct TileComponentWindow : public TileComponentWindowBase<T>
    *
    * @param orientation 0 for upper split window, and 1 for lower split window
    */
-  const Buffer2dSimple<int32_t> getResWindowBufferSplitSimple(uint8_t resno,
-                                                              eSplitOrientation orientation) const
+  const Buffer2dSimple<T> getResWindowBufferSplitSimple(uint8_t resno,
+                                                        eSplitOrientation orientation) const
   {
     return getResWindowBufferSplitREL(resno, orientation)->simple();
   }
@@ -332,7 +342,7 @@ struct TileComponentWindow : public TileComponentWindowBase<T>
    * @param resno resolution number
    *
    */
-  const Buffer2dSimple<int32_t> getResWindowBufferSimple(uint8_t resno) const
+  const Buffer2dSimple<T> getResWindowBufferSimple(uint8_t resno) const
   {
     return getResWindowBufferREL(resno)->simple();
   }
@@ -362,7 +372,7 @@ struct TileComponentWindow : public TileComponentWindowBase<T>
    *
    *
    */
-  Buffer2dSimple<int32_t> getResWindowBufferHighestSimple(void) const
+  Buffer2dSimple<T> getResWindowBufferHighestSimple(void) const
   {
     return getResWindowBufferHighestREL()->simple();
   }

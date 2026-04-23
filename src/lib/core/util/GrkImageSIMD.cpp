@@ -1046,7 +1046,7 @@ void hwy_copy_tile_to_swath(const grk_image* tile_img, const grk_swath_buffer* b
     const grk_image_comp& comp = tile_img->comps[compIdx];
     if(!comp.data)
       continue;
-    const int32_t* src = static_cast<const int32_t*>(comp.data);
+    const bool src16 = (comp.data_type == GRK_INT_16);
 
     // Clip to swath y range
     const uint32_t tileY0 = comp.y0;
@@ -1078,60 +1078,132 @@ void hwy_copy_tile_to_swath(const grk_image* tile_img, const grk_swath_buffer* b
       const uint32_t srcRowIdx = y - tileY0;
       const uint32_t dstRowIdx = y - swath_y0;
 
-      const int32_t* srcPtr = src + static_cast<size_t>(srcRowIdx) * comp.stride + srcXOff;
-
       uint8_t* dstRowBase = base + static_cast<int64_t>(i) * buf->band_space +
                             static_cast<int64_t>(dstRowIdx) * buf->line_space +
                             static_cast<int64_t>(dstXOff) * buf->pixel_space;
 
-      if(packed && !doPromote)
+      if(src16)
       {
-        // Fast path: contiguous output — use SIMD dispatch
-        if(buf->prec <= 8)
-          HWY_DYNAMIC_DISPATCH(Hwy_copy_i32_to_u8_row)(srcPtr, dstRowBase, cols);
-        else if(buf->prec <= 16 && buf->sgnd)
-          HWY_DYNAMIC_DISPATCH(Hwy_copy_i32_to_i16_row)(
-              srcPtr, reinterpret_cast<int16_t*>(dstRowBase), cols);
-        else if(buf->prec <= 16)
-          HWY_DYNAMIC_DISPATCH(Hwy_copy_i32_to_u16_row)(
-              srcPtr, reinterpret_cast<uint16_t*>(dstRowBase), cols);
-        else if(buf->sgnd)
-          memcpy(dstRowBase, srcPtr, static_cast<size_t>(cols) * sizeof(int32_t));
-        else
-          HWY_DYNAMIC_DISPATCH(Hwy_copy_i32_to_u32_row)(
-              srcPtr, reinterpret_cast<uint32_t*>(dstRowBase), cols);
-      }
-      else
-      {
-        // Slow path: strided output or alpha promotion
-        for(uint32_t x = 0; x < cols; ++x)
+        // Source data is int16 (from 16-bit DWT path)
+        const int16_t* srcPtr16 = static_cast<const int16_t*>(comp.data) +
+                                  static_cast<size_t>(srcRowIdx) * comp.stride + srcXOff;
+
+        if(packed && !doPromote)
         {
-          int32_t v = srcPtr[x];
-          if(doPromote)
-            v *= 255;
-          uint8_t* dstPx = dstRowBase + static_cast<int64_t>(x) * buf->pixel_space;
           if(buf->prec <= 8)
           {
-            *dstPx = v <= 0 ? 0 : v >= 255 ? 255 : (uint8_t)v;
+            for(uint32_t x = 0; x < cols; ++x)
+            {
+              int16_t v = srcPtr16[x];
+              dstRowBase[x] = v <= 0 ? 0 : v >= 255 ? 255 : (uint8_t)v;
+            }
           }
           else if(buf->prec <= 16 && buf->sgnd)
-          {
-            int16_t w = v <= -32768 ? (int16_t)-32768 : v >= 32767 ? (int16_t)32767 : (int16_t)v;
-            memcpy(dstPx, &w, sizeof(int16_t));
-          }
+            memcpy(dstRowBase, srcPtr16, static_cast<size_t>(cols) * sizeof(int16_t));
           else if(buf->prec <= 16)
           {
-            uint16_t w = v <= 0 ? (uint16_t)0 : v >= 65535 ? (uint16_t)65535 : (uint16_t)v;
-            memcpy(dstPx, &w, sizeof(uint16_t));
-          }
-          else if(buf->sgnd)
-          {
-            memcpy(dstPx, &v, sizeof(int32_t));
+            // int16 source → uint16 dest: values should be non-negative for unsigned source
+            memcpy(dstRowBase, srcPtr16, static_cast<size_t>(cols) * sizeof(int16_t));
           }
           else
           {
-            uint32_t w = v < 0 ? 0u : (uint32_t)v;
-            memcpy(dstPx, &w, sizeof(uint32_t));
+            // Widen int16 → int32/uint32
+            auto dst32 = reinterpret_cast<int32_t*>(dstRowBase);
+            for(uint32_t x = 0; x < cols; ++x)
+              dst32[x] = srcPtr16[x];
+          }
+        }
+        else
+        {
+          for(uint32_t x = 0; x < cols; ++x)
+          {
+            int32_t v = srcPtr16[x];
+            if(doPromote)
+              v *= 255;
+            uint8_t* dstPx = dstRowBase + static_cast<int64_t>(x) * buf->pixel_space;
+            if(buf->prec <= 8)
+            {
+              *dstPx = v <= 0 ? 0 : v >= 255 ? 255 : (uint8_t)v;
+            }
+            else if(buf->prec <= 16 && buf->sgnd)
+            {
+              int16_t w =
+                  v <= -32768 ? (int16_t)-32768 : v >= 32767 ? (int16_t)32767 : (int16_t)v;
+              memcpy(dstPx, &w, sizeof(int16_t));
+            }
+            else if(buf->prec <= 16)
+            {
+              uint16_t w = v <= 0 ? (uint16_t)0 : v >= 65535 ? (uint16_t)65535 : (uint16_t)v;
+              memcpy(dstPx, &w, sizeof(uint16_t));
+            }
+            else if(buf->sgnd)
+            {
+              memcpy(dstPx, &v, sizeof(int32_t));
+            }
+            else
+            {
+              uint32_t w = v < 0 ? 0u : (uint32_t)v;
+              memcpy(dstPx, &w, sizeof(uint32_t));
+            }
+          }
+        }
+      }
+      else
+      {
+        // Source data is int32 (default path)
+        const int32_t* srcPtr = static_cast<const int32_t*>(comp.data) +
+                                static_cast<size_t>(srcRowIdx) * comp.stride + srcXOff;
+
+        if(packed && !doPromote)
+        {
+          // Fast path: contiguous output — use SIMD dispatch
+          if(buf->prec <= 8)
+            HWY_DYNAMIC_DISPATCH(Hwy_copy_i32_to_u8_row)(srcPtr, dstRowBase, cols);
+          else if(buf->prec <= 16 && buf->sgnd)
+            HWY_DYNAMIC_DISPATCH(Hwy_copy_i32_to_i16_row)(
+                srcPtr, reinterpret_cast<int16_t*>(dstRowBase), cols);
+          else if(buf->prec <= 16)
+            HWY_DYNAMIC_DISPATCH(Hwy_copy_i32_to_u16_row)(
+                srcPtr, reinterpret_cast<uint16_t*>(dstRowBase), cols);
+          else if(buf->sgnd)
+            memcpy(dstRowBase, srcPtr, static_cast<size_t>(cols) * sizeof(int32_t));
+          else
+            HWY_DYNAMIC_DISPATCH(Hwy_copy_i32_to_u32_row)(
+                srcPtr, reinterpret_cast<uint32_t*>(dstRowBase), cols);
+        }
+        else
+        {
+          // Slow path: strided output or alpha promotion
+          for(uint32_t x = 0; x < cols; ++x)
+          {
+            int32_t v = srcPtr[x];
+            if(doPromote)
+              v *= 255;
+            uint8_t* dstPx = dstRowBase + static_cast<int64_t>(x) * buf->pixel_space;
+            if(buf->prec <= 8)
+            {
+              *dstPx = v <= 0 ? 0 : v >= 255 ? 255 : (uint8_t)v;
+            }
+            else if(buf->prec <= 16 && buf->sgnd)
+            {
+              int16_t w =
+                  v <= -32768 ? (int16_t)-32768 : v >= 32767 ? (int16_t)32767 : (int16_t)v;
+              memcpy(dstPx, &w, sizeof(int16_t));
+            }
+            else if(buf->prec <= 16)
+            {
+              uint16_t w = v <= 0 ? (uint16_t)0 : v >= 65535 ? (uint16_t)65535 : (uint16_t)v;
+              memcpy(dstPx, &w, sizeof(uint16_t));
+            }
+            else if(buf->sgnd)
+            {
+              memcpy(dstPx, &v, sizeof(int32_t));
+            }
+            else
+            {
+              uint32_t w = v < 0 ? 0u : (uint32_t)v;
+              memcpy(dstPx, &w, sizeof(uint32_t));
+            }
           }
         }
       }

@@ -143,10 +143,16 @@ class TestCompressDecompressRoundTrip:
         assert image is not None
 
         comp = image.comps[0]
-        data_ptr = ctypes.cast(
-            int(comp.data),
-            ctypes.POINTER(ctypes.c_int32 * (comp.h * comp.stride)),
-        )
+        if comp.data_type == grok_core.GRK_INT_16:
+            data_ptr = ctypes.cast(
+                int(comp.data),
+                ctypes.POINTER(ctypes.c_int16 * (comp.h * comp.stride)),
+            )
+        else:
+            data_ptr = ctypes.cast(
+                int(comp.data),
+                ctypes.POINTER(ctypes.c_int32 * (comp.h * comp.stride)),
+            )
         arr = data_ptr.contents
         for y in range(h):
             for x in range(w):

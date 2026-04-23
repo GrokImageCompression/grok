@@ -975,6 +975,21 @@ bool TileProcessor::createDecompressTileComponentWindows(void)
     if(imageComp->dx == 0 || imageComp->dy == 0)
       return false;
     auto tileComp = tile_->comps_ + compno;
+    // 16-bit DWT eligibility: use int16 wavelet path when the precision plus
+    // BIBO headroom fits in 16 bits. The 5/3 reversible DWT has a BIBO gain
+    // converging to ~2^3 (< 2^3.04) for typical decomposition levels (≤6).
+    // Headroom accounts for this gain plus any post-DWT processing:
+    //   - MCT components (inverse RCT expands range by ~1 bit): 5 bits → prec ≤ 11
+    //   - Non-MCT components (DC shift only): 4 bits → prec ≤ 12
+    // See doc/16BitDWT.md for full BIBO analysis and overflow-safe averaging details.
+    auto tccp = tcp_->tccps_ + compno;
+    if(tccp->qmfbid_ == 1 && tileComp->isWholeTileDecoding())
+    {
+      bool isMctComp = needsMctDecompress(compno) && tcp_->mct_ == 1;
+      uint32_t headroom = isMctComp ? 5 : 4;
+      if(imageComp->prec + headroom <= 16)
+        tileComp->setUse16BitDwt(true);
+    }
     auto unreducedImageCompWindow =
         unreducedImageWindow_.scaleDownCeil(imageComp->dx, imageComp->dy);
     if(!tileComp->canCreateWindow(unreducedImageCompWindow))
@@ -1288,7 +1303,7 @@ void TileProcessor::scheduleAndRunDecompress(CoderPool* coderPool, Rect32 unredu
             return;
           }
         }
-        if(!tilec->getWindow()->alloc())
+        if(!tilec->allocWindow())
         {
           grklog.error("Not enough memory for tile data");
           success_ = false;

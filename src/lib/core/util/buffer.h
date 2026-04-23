@@ -499,6 +499,28 @@ struct Buffer2d : protected Buffer<T, A>, public Rect32
       srcPtr += src->stride;
     }
   }
+  // Cross-type copy from a wider source type (e.g., int32_t → int16_t narrowing)
+  template<typename SrcT, template<class> class SrcA, typename F>
+  void copyFromNarrow(const Buffer2d<SrcT, SrcA>* src, F filter)
+  {
+    auto inter = intersection(src);
+    if(inter.empty())
+      return;
+
+    auto srcSimple = src->simple();
+    if(!srcSimple.buf_)
+      return;
+
+    T* ptr = this->buf_ + (inter.y0 * stride + inter.x0);
+    SrcT* srcPtr = srcSimple.buf_ + ((inter.y0 - src->y0) * srcSimple.stride_ + inter.x0 - src->x0);
+    uint32_t len = inter.width();
+    for(uint32_t j = inter.y0; j < inter.y1; ++j)
+    {
+      filter.copy(ptr, srcPtr, len);
+      ptr += stride;
+      srcPtr += srcSimple.stride_;
+    }
+  }
   struct memcpy_from
   {
     void copy(T* dst, const T* src, uint32_t len)

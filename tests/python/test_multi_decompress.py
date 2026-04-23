@@ -70,10 +70,16 @@ def extract_tile_pixels(tile_img):
     for c in range(tile_img.numcomps):
         comp = tile_img.comps[c]
         n_elements = comp.h * comp.stride
-        data_ptr = ctypes.cast(
-            int(comp.data),
-            ctypes.POINTER(ctypes.c_int32 * n_elements),
-        )
+        if comp.data_type == grok_core.GRK_INT_16:
+            data_ptr = ctypes.cast(
+                int(comp.data),
+                ctypes.POINTER(ctypes.c_int16 * n_elements),
+            )
+        else:
+            data_ptr = ctypes.cast(
+                int(comp.data),
+                ctypes.POINTER(ctypes.c_int32 * n_elements),
+            )
         arr = data_ptr.contents
         comp_pixels = []
         for y in range(comp.h):

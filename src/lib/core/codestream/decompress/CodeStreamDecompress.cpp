@@ -556,9 +556,12 @@ bool CodeStreamDecompress::schedule(ITileProcessor* tileProcessor, bool multiTil
     // T2 + T1 decompression
     // Once we schedule a processor for T1 compression, we will destroy it
     // regardless of success or not
+    // When band callback is active, always use the multi-tile post path so that
+    // tile data stays in scratchImage_ for the band writer to consume.
+    bool useMultiPost = multiTile || ioBandCallback_;
     tileProcessor->scheduleAndRunDecompress(
-        &coderPool_, multiTile ? scratchImage_->getBounds() : headerImage_->getBounds(),
-        multiTile ? postMultiTile(tileProcessor) : postSingleTile(tileProcessor),
+        &coderPool_, useMultiPost ? scratchImage_->getBounds() : headerImage_->getBounds(),
+        useMultiPost ? postMultiTile(tileProcessor) : postSingleTile(tileProcessor),
         decompressTileFutureManager_);
 
     return true;
@@ -1755,8 +1758,9 @@ bool CodeStreamDecompress::activateScratch(bool singleTile, GrkImage* scratch)
   multiTileComposite_->copyHeaderTo(scratch);
 
   // no need to allocate composite data if there is only one tile
-  // i.e. no compositing
-  if(singleTile || !headerImage_->has_multiple_tiles)
+  // i.e. no compositing — UNLESS band callback is active, which needs
+  // a destination buffer for compositing before writing.
+  if((singleTile || !headerImage_->has_multiple_tiles) && !ioBandCallback_)
     return true;
 
   // When band callback is active, allocate only a strip buffer (one tile-row height)

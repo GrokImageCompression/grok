@@ -165,6 +165,45 @@ private:
   std::unique_ptr<dwt_scratch<int32_t>[]> horizPool_;
   std::unique_ptr<dwt_scratch<int32_t>[]> vertPool_;
 
+  // 16-bit 5/3 //////////////////////////////////////////////////////////////////////////////
+  void load_h_p0_16_53(int16_t* scratch, const uint32_t width, const int16_t* bandL,
+                       const int16_t* bandH, int16_t* dest);
+
+  void load_h_p1_16_53(int16_t* scratch, const uint32_t width, const int16_t* bandL,
+                       const int16_t* bandH, int16_t* dest);
+
+  void load_h_16_53(const dwt_scratch<int16_t>* scratch, int16_t* bandL, int16_t* bandH,
+                    int16_t* dest);
+
+  void h_strip_16_53(const dwt_scratch<int16_t>* scratch, uint32_t hMin, uint32_t hMax,
+                     Buffer2dSimple<int16_t> winL, Buffer2dSimple<int16_t> winH,
+                     Buffer2dSimple<int16_t> winDest);
+
+  void h_16_53(uint8_t res, TileComponentWindow<int16_t>* scratch, uint32_t resHeight);
+
+  void v_p0_16_53(int16_t* scratch, const uint32_t height, int16_t* bandL, const uint32_t strideL,
+                  int16_t* bandH, const uint32_t strideH, int16_t* dest, const uint32_t strideDest);
+
+  void v_p1_16_53(int16_t* scratch, const uint32_t height, int16_t* bandL, const uint32_t strideL,
+                  int16_t* bandH, const uint32_t strideH, int16_t* dest, const uint32_t strideDest);
+
+  void v_16_53(const dwt_scratch<int16_t>* scratch, Buffer2dSimple<int16_t> winL,
+               Buffer2dSimple<int16_t> winH, Buffer2dSimple<int16_t> winDest, uint32_t nb_cols,
+               DcShiftParam dcShift);
+
+  void v_strip_16_53(const dwt_scratch<int16_t>* scratch, uint32_t wMin, uint32_t wMax,
+                     Buffer2dSimple<int16_t> winL, Buffer2dSimple<int16_t> winH,
+                     Buffer2dSimple<int16_t> winDest, DcShiftParam dcShift);
+
+  void v_16_53(uint8_t res, TileComponentWindow<int16_t>* buf, uint32_t resWidth);
+
+  bool tile_16_53(void);
+
+  dwt_scratch<int16_t> horiz16_;
+  dwt_scratch<int16_t> vert16_;
+  std::unique_ptr<dwt_scratch<int16_t>[]> horizPool16_;
+  std::unique_ptr<dwt_scratch<int16_t>[]> vertPool16_;
+
   ////////////////////////////////////////////////////////////////////////////////////////////
   // 9/7
 

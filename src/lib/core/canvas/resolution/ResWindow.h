@@ -335,7 +335,7 @@ private:
     return ResSimple::getBandWindow(1, orientation, paddedResWindow);
   }
 
-  Buffer2dSimple<int32_t> getResWindowBufferSimple(void) const
+  Buffer2dSimple<T> getResWindowBufferSimple(void) const
   {
     return resWindowBuffer_->simple();
   }
@@ -359,8 +359,7 @@ private:
   {
     return bandWindowsBuffersPaddedREL_[orientation];
   }
-  const Buffer2dSimple<int32_t>
-      getBandWindowBufferPaddedSimple(t1::eBandOrientation orientation) const
+  const Buffer2dSimple<T> getBandWindowBufferPaddedSimple(t1::eBandOrientation orientation) const
   {
     return bandWindowsBuffersPadded_[orientation]->simple();
   }

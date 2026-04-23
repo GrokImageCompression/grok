@@ -116,4 +116,48 @@ private:
   float scale;
 };
 
+// Narrowing filters for 16-bit DWT path: OJPH int32_t sign-magnitude → int16_t band buffers
+class NarrowShiftOJPHFilter
+{
+public:
+  explicit NarrowShiftOJPHFilter(DecompressBlockExec* block) : shift(31U - (block->k_msbs + 1U)) {}
+  inline void copy(int16_t* dest, const int32_t* src, uint32_t len)
+  {
+    for(uint32_t i = 0; i < len; ++i)
+    {
+      int32_t val = src[i];
+      int32_t val_shifted = (val & 0x7FFFFFFF) >> shift;
+      dest[i] = (int16_t)(((uint32_t)val & 0x80000000) ? -val_shifted : val_shifted);
+    }
+  }
+
+private:
+  uint32_t shift;
+};
+
+class NarrowRoiShiftOJPHFilter
+{
+public:
+  explicit NarrowRoiShiftOJPHFilter(DecompressBlockExec* block)
+      : roiShift(block->roishift), shift(31U - (block->k_msbs + 1U))
+  {}
+  inline void copy(int16_t* dest, const int32_t* src, uint32_t len)
+  {
+    int32_t thresh = 1 << roiShift;
+    for(uint32_t i = 0; i < len; ++i)
+    {
+      int32_t val = src[i];
+      int32_t mag = (val & 0x7FFFFFFF);
+      if(mag >= thresh)
+        val = (int32_t)(((uint32_t)mag >> roiShift) & ((uint32_t)val & 0x80000000));
+      int32_t val_shifted = (val & 0x7FFFFFFF) >> shift;
+      dest[i] = (int16_t)(((uint32_t)val & 0x80000000) ? -val_shifted : val_shifted);
+    }
+  }
+
+private:
+  uint32_t roiShift;
+  uint32_t shift;
+};
+
 } // namespace  grk::t1::ojph

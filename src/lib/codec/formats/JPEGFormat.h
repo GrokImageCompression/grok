@@ -124,6 +124,7 @@ private:
   struct jpeg_compress_struct cinfo;
   T const* planes[4];
   grk::PlanarToInterleaved<T>* interleaver_;
+  grk::PlanarToInterleaved<int16_t>* interleaver16_;
 };
 
 template<typename T>
@@ -384,13 +385,14 @@ cleanup:
 template<typename T>
 JPEGFormat<T>::JPEGFormat(void)
     : success(true), buffer(nullptr), buffer32s(nullptr), color_space(JCS_UNKNOWN), adjust(0),
-      readFromStdin(false), planes{0, 0, 0}, interleaver_(nullptr)
+      readFromStdin(false), planes{0, 0, 0}, interleaver_(nullptr), interleaver16_(nullptr)
 {}
 
 template<typename T>
 JPEGFormat<T>::~JPEGFormat()
 {
   delete interleaver_;
+  delete interleaver16_;
 }
 
 template<typename T>
@@ -610,23 +612,50 @@ bool JPEGFormat<T>::writeImageBand(uint32_t yBegin, uint32_t yEnd)
                   cinfo.next_scanline);
     return false;
   }
-  if(!interleaver_)
-  {
-    interleaver_ = grk::InterleaverFactory<T>::makeInterleaver(8);
-    if(!interleaver_)
-      return false;
-  }
   auto stride = image_->comps[0].stride;
-  T* bandPlanes[4];
-  for(uint16_t i = 0; i < image_->decompress_num_comps; ++i)
-    bandPlanes[i] = (T*)image_->comps[i].data + (uint64_t)yBegin * stride;
-  while(cinfo.next_scanline < yEnd)
+  bool isInt16 = image_->comps[0].data_type == GRK_INT_16;
+  if(isInt16)
   {
-    interleaver_->interleave(bandPlanes, image_->decompress_num_comps, (uint8_t*)buffer,
-                             image_->decompress_width, stride, image_->decompress_width, 1, adjust);
-    JSAMPROW row_pointer[1];
-    row_pointer[0] = buffer;
-    jpeg_write_scanlines(&cinfo, row_pointer, 1);
+    if(!interleaver16_)
+    {
+      interleaver16_ = grk::InterleaverFactory<int16_t>::makeInterleaver(8);
+      if(!interleaver16_)
+        return false;
+    }
+    int16_t* bandPlanes16[4];
+    for(uint16_t i = 0; i < image_->decompress_num_comps; ++i)
+      bandPlanes16[i] = (int16_t*)image_->comps[i].data + (uint64_t)yBegin * stride;
+    int16_t adjust16 = (int16_t)adjust;
+    while(cinfo.next_scanline < yEnd)
+    {
+      interleaver16_->interleave(bandPlanes16, image_->decompress_num_comps, (uint8_t*)buffer,
+                                 image_->decompress_width, stride, image_->decompress_width, 1,
+                                 adjust16);
+      JSAMPROW row_pointer[1];
+      row_pointer[0] = buffer;
+      jpeg_write_scanlines(&cinfo, row_pointer, 1);
+    }
+  }
+  else
+  {
+    if(!interleaver_)
+    {
+      interleaver_ = grk::InterleaverFactory<T>::makeInterleaver(8);
+      if(!interleaver_)
+        return false;
+    }
+    T* bandPlanes[4];
+    for(uint16_t i = 0; i < image_->decompress_num_comps; ++i)
+      bandPlanes[i] = (T*)image_->comps[i].data + (uint64_t)yBegin * stride;
+    while(cinfo.next_scanline < yEnd)
+    {
+      interleaver_->interleave(bandPlanes, image_->decompress_num_comps, (uint8_t*)buffer,
+                               image_->decompress_width, stride, image_->decompress_width, 1,
+                               adjust);
+      JSAMPROW row_pointer[1];
+      row_pointer[0] = buffer;
+      jpeg_write_scanlines(&cinfo, row_pointer, 1);
+    }
   }
 
   return true;

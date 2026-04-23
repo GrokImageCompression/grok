@@ -126,6 +126,36 @@ namespace HWY_NAMESPACE
   };
 
   /**
+   * Apply dc shift for reversible decompressed image (16-bit path)
+   * (assumes mono with no MCT)
+   * input and output buffers are both 16 bit integer
+   */
+  class DecompressDcShiftRev16
+  {
+  public:
+    void transform(const ScheduleInfo& info)
+    {
+      auto highestResBufferStride =
+          info.tile->comps_[info.compno].getWindow16()->getResWindowBufferHighestStride();
+      auto index = (uint64_t)info.yBegin * highestResBufferStride;
+      auto chunkSize = (uint64_t)(info.yEnd - info.yBegin) * highestResBufferStride;
+      const std::vector<ShiftInfo>& shiftInfo = info.shiftInfo;
+      auto chan0 =
+          info.tile->comps_[info.compno].getWindow16()->getResWindowBufferHighestSimple().buf_;
+      const HWY_FULL(int16_t) di16;
+      auto vshift = Set(di16, (int16_t)shiftInfo[0]._shift);
+      auto vmin = Set(di16, (int16_t)shiftInfo[0]._min);
+      auto vmax = Set(di16, (int16_t)shiftInfo[0]._max);
+      size_t begin = index;
+      for(auto j = begin; j < begin + chunkSize; j += Lanes(di16))
+      {
+        auto ni = Clamp(Load(di16, chan0 + j) + vshift, vmin, vmax);
+        Store(ni, di16, chan0 + j);
+      }
+    }
+  };
+
+  /**
    * Apply MCT with optional DC shift to reversible decompressed image
    */
   class DecompressRev
@@ -178,6 +208,66 @@ namespace HWY_NAMESPACE
         Store(Clamp(r + vdcr, minr, maxr), di, chan0 + j);
         Store(Clamp(g + vdcg, ming, maxg), di, chan1 + j);
         Store(Clamp(b + vdcb, minb, maxb), di, chan2 + j);
+      }
+    }
+  };
+
+  /**
+   * Apply MCT with optional DC shift to reversible decompressed image (16-bit path)
+   */
+  class DecompressRev16
+  {
+  public:
+    void transform(const ScheduleInfo& info)
+    {
+      auto w0 = info.tile->comps_[0].getWindow16()->getResWindowBufferHighestSimple();
+      auto w1 = info.tile->comps_[1].getWindow16()->getResWindowBufferHighestSimple();
+      auto w2 = info.tile->comps_[2].getWindow16()->getResWindowBufferHighestSimple();
+
+      if(w0.stride_ != w1.stride_ || w1.stride_ != w2.stride_ || w0.height_ != w1.height_ ||
+         w1.height_ != w2.height_)
+      {
+        grklog.warn("MCT components have differing dimensions - skipping MCT transform");
+        return;
+      }
+      auto highestResBufferStride =
+          info.tile->comps_[info.compno].getWindow16()->getResWindowBufferHighestStride();
+      auto index = (uint64_t)info.yBegin * highestResBufferStride;
+      auto chunkSize = (uint64_t)(info.yEnd - info.yBegin) * highestResBufferStride;
+      const std::vector<ShiftInfo>& shiftInfo = info.shiftInfo;
+      auto chan0 = w0.buf_;
+      auto chan1 = w1.buf_;
+      auto chan2 = w2.buf_;
+      int16_t shift[3] = {(int16_t)shiftInfo[0]._shift, (int16_t)shiftInfo[1]._shift,
+                          (int16_t)shiftInfo[2]._shift};
+      int16_t _min[3] = {(int16_t)shiftInfo[0]._min, (int16_t)shiftInfo[1]._min,
+                         (int16_t)shiftInfo[2]._min};
+      int16_t _max[3] = {(int16_t)shiftInfo[0]._max, (int16_t)shiftInfo[1]._max,
+                         (int16_t)shiftInfo[2]._max};
+
+      const HWY_FULL(int16_t) di16;
+      auto vdcr = Set(di16, shift[0]);
+      auto vdcg = Set(di16, shift[1]);
+      auto vdcb = Set(di16, shift[2]);
+      auto minr = Set(di16, _min[0]);
+      auto ming = Set(di16, _min[1]);
+      auto minb = Set(di16, _min[2]);
+      auto maxr = Set(di16, _max[0]);
+      auto maxg = Set(di16, _max[1]);
+      auto maxb = Set(di16, _max[2]);
+
+      size_t begin = index;
+      for(auto j = begin; j < begin + chunkSize; j += Lanes(di16))
+      {
+        auto y = Load(di16, chan0 + j);
+        auto u = Load(di16, chan1 + j);
+        auto v = Load(di16, chan2 + j);
+        auto g = y - ShiftRight<2>(u + v);
+        auto r = v + g;
+        auto b = u + g;
+        Store(Clamp(r + vdcr, minr, maxr), di16, chan0 + j);
+        Store(Clamp(g + vdcg, ming, maxg), di16, chan1 + j);
+        Store(Clamp(b + vdcb, minb, maxb), di16, chan2 + j);
       }
     }
   };
@@ -411,6 +501,51 @@ namespace HWY_NAMESPACE
   {
     vscheduler<DecompressDcShiftRev>(info);
   }
+
+  template<class T>
+  void vscheduler16(ScheduleInfo info)
+  {
+    auto highestResBuffer =
+        info.tile->comps_[info.compno].getWindow16()->getResWindowBufferHighestSimple();
+
+    tf::Task* tasks = nullptr;
+    tf::Taskflow taskflow;
+    uint32_t numTasks = (highestResBuffer.height_ + info.linesPerTask_ - 1) / info.linesPerTask_;
+    if(!info.flow_)
+    {
+      tasks = new tf::Task[numTasks];
+      for(uint64_t i = 0; i < numTasks; i++)
+        tasks[i] = taskflow.placeholder();
+    }
+    for(uint32_t t = 0; t < numTasks; ++t)
+    {
+      info.yBegin = t * info.linesPerTask_;
+      info.yEnd = (t != numTasks - 1) ? (t + 1) * info.linesPerTask_ : highestResBuffer.height_;
+      auto compressor = [info]() {
+        T transform;
+        transform.transform(info);
+      };
+      if(info.flow_)
+        info.flow_->nextTask().work([compressor] { compressor(); });
+      else
+        tasks[t].work(compressor);
+    }
+    if(tasks)
+    {
+      TFSingleton::get().run(taskflow).wait();
+      delete[] tasks;
+    }
+  }
+
+  void hwy_schedule_decompress_dc_shift_rev16(ScheduleInfo info)
+  {
+    vscheduler16<DecompressDcShiftRev16>(info);
+  }
+
+  void hwy_schedule_decompress_rev16(ScheduleInfo info)
+  {
+    vscheduler16<DecompressRev16>(info);
+  }
 } // namespace HWY_NAMESPACE
 } // namespace grk
 HWY_AFTER_NAMESPACE();
@@ -424,6 +559,8 @@ HWY_EXPORT(hwy_schedule_decompress_rev);
 HWY_EXPORT(hwy_schedule_decompress_irrev);
 HWY_EXPORT(hwy_schedule_decompress_dc_shift_irrev);
 HWY_EXPORT(hwy_schedule_decompress_dc_shift_rev);
+HWY_EXPORT(hwy_schedule_decompress_dc_shift_rev16);
+HWY_EXPORT(hwy_schedule_decompress_rev16);
 
 Mct::Mct(Tile* tile, GrkImage* image, TileCodingParams* tcp) : tile_(tile), image_(image), tcp_(tcp)
 {}
@@ -445,7 +582,10 @@ void Mct::schedule_decompress_dc_shift_rev(FlowComponent* flow, uint16_t compno)
   ScheduleInfo info(tile_, flow, image_->rows_per_task);
   info.compno = compno;
   genShift(compno, 1, info.shiftInfo);
-  HWY_DYNAMIC_DISPATCH(hwy_schedule_decompress_dc_shift_rev)(info);
+  if(tile_->comps_[compno].is16BitDwt())
+    HWY_DYNAMIC_DISPATCH(hwy_schedule_decompress_dc_shift_rev16)(info);
+  else
+    HWY_DYNAMIC_DISPATCH(hwy_schedule_decompress_dc_shift_rev)(info);
 }
 
 /**
@@ -466,8 +606,10 @@ void Mct::schedule_decompress_rev(FlowComponent* flow, bool applyDcShift)
 {
   ScheduleInfo info(tile_, flow, image_->rows_per_task);
   genShift(applyDcShift ? 1 : 0, info.shiftInfo);
-  HWY_DYNAMIC_DISPATCH(hwy_schedule_decompress_rev)
-  (info);
+  if(tile_->comps_[0].is16BitDwt())
+    HWY_DYNAMIC_DISPATCH(hwy_schedule_decompress_rev16)(info);
+  else
+    HWY_DYNAMIC_DISPATCH(hwy_schedule_decompress_rev)(info);
 }
 /* <summary> */
 /* Forward reversible MCT. */

@@ -67,6 +67,7 @@ public:
 private:
   bool forceSplit;
   grk::PlanarToInterleaved<int32_t>* interleaver_;
+  grk::PlanarToInterleaved<int16_t>* interleaver16_;
   bool hasAlpha(void);
   bool isOpacity(uint16_t compno);
   bool hasOpacity(void);
@@ -85,13 +86,15 @@ private:
 };
 
 template<typename T>
-PNMFormat<T>::PNMFormat(bool split) : forceSplit(split), interleaver_(nullptr)
+PNMFormat<T>::PNMFormat(bool split)
+    : forceSplit(split), interleaver_(nullptr), interleaver16_(nullptr)
 {}
 
 template<typename T>
 PNMFormat<T>::~PNMFormat()
 {
   delete interleaver_;
+  delete interleaver16_;
 }
 
 template<typename T>
@@ -235,46 +238,93 @@ bool PNMFormat<T>::writeImageBand(uint32_t yBegin, uint32_t yEnd)
   // Non-split (PPM/PAM) interleaved path
   uint16_t decompress_num_comps = image_->decompress_num_comps;
   constexpr uint16_t kMaxStackComps = 4;
-  T* stackPlanes[kMaxStackComps];
-  std::unique_ptr<T*[]> heapPlanes;
-  T** planes;
-  if(decompress_num_comps <= kMaxStackComps)
-    planes = stackPlanes;
+  GrkIOBuf packedBuf;
+  bool isInt16 = image_->comps[0].data_type == GRK_INT_16;
+  if(isInt16)
+  {
+    int16_t* stackPlanes16[kMaxStackComps];
+    std::unique_ptr<int16_t*[]> heapPlanes16;
+    int16_t** planes16;
+    if(decompress_num_comps <= kMaxStackComps)
+      planes16 = stackPlanes16;
+    else
+    {
+      heapPlanes16 = std::make_unique<int16_t*[]>(decompress_num_comps);
+      planes16 = heapPlanes16.get();
+    }
+    for(uint32_t i = 0U; i < decompress_num_comps; ++i)
+      planes16[i] = (int16_t*)image_->comps[i].data + (uint64_t)yBegin * image_->comps[0].stride;
+    int16_t adjust16 = (image_->comps[0].sgnd ? 1 << (image_->decompress_prec - 1) : 0);
+    if(!interleaver16_)
+    {
+      interleaver16_ = grk::InterleaverFactory<int16_t>::makeInterleaver(
+          image_->decompress_prec > 8U ? grk::packer16BitBE : 8);
+      if(!interleaver16_)
+        return false;
+    }
+    uint32_t h = yBegin;
+    while(h < yEnd)
+    {
+      uint32_t stripRows = (std::min)(image_->rows_per_strip, yEnd - h);
+      packedBuf = pool.get(image_->packed_row_bytes * stripRows);
+      interleaver16_->interleave(planes16, decompress_num_comps, packedBuf.data,
+                                 image_->decompress_width, image_->comps[0].stride,
+                                 image_->packed_row_bytes, stripRows, adjust16);
+      packedBuf.pooled = true;
+      packedBuf.offset = orchestrator.getOffset();
+      packedBuf.len = image_->packed_row_bytes * stripRows;
+      packedBuf.index = orchestrator.getNumPooledRequests();
+      if(!writeStripCore(0, packedBuf))
+      {
+        applicationOrchestratedReclaim(packedBuf);
+        return false;
+      }
+      h += stripRows;
+      applicationOrchestratedReclaim(packedBuf);
+    }
+  }
   else
   {
-    heapPlanes = std::make_unique<T*[]>(decompress_num_comps);
-    planes = heapPlanes.get();
-  }
-  for(uint32_t i = 0U; i < decompress_num_comps; ++i)
-    planes[i] = (T*)image_->comps[i].data + (uint64_t)yBegin * image_->comps[0].stride;
-  GrkIOBuf packedBuf;
-  T adjust = (image_->comps[0].sgnd ? 1 << (image_->decompress_prec - 1) : 0);
-  if(!interleaver_)
-  {
-    interleaver_ = grk::InterleaverFactory<int32_t>::makeInterleaver(
-        image_->decompress_prec > 8U ? grk::packer16BitBE : 8);
-    if(!interleaver_)
-      return false;
-  }
-  uint32_t h = yBegin;
-  while(h < yEnd)
-  {
-    uint32_t stripRows = (std::min)(image_->rows_per_strip, yEnd - h);
-    packedBuf = pool.get(image_->packed_row_bytes * stripRows);
-    interleaver_->interleave(((T**)planes), decompress_num_comps, packedBuf.data,
-                             image_->decompress_width, image_->comps[0].stride,
-                             image_->packed_row_bytes, stripRows, adjust);
-    packedBuf.pooled = true;
-    packedBuf.offset = orchestrator.getOffset();
-    packedBuf.len = image_->packed_row_bytes * stripRows;
-    packedBuf.index = orchestrator.getNumPooledRequests();
-    if(!writeStripCore(0, packedBuf))
+    T* stackPlanes[kMaxStackComps];
+    std::unique_ptr<T*[]> heapPlanes;
+    T** planes;
+    if(decompress_num_comps <= kMaxStackComps)
+      planes = stackPlanes;
+    else
     {
-      applicationOrchestratedReclaim(packedBuf);
-      return false;
+      heapPlanes = std::make_unique<T*[]>(decompress_num_comps);
+      planes = heapPlanes.get();
     }
-    h += stripRows;
-    applicationOrchestratedReclaim(packedBuf);
+    for(uint32_t i = 0U; i < decompress_num_comps; ++i)
+      planes[i] = (T*)image_->comps[i].data + (uint64_t)yBegin * image_->comps[0].stride;
+    T adjust = (image_->comps[0].sgnd ? 1 << (image_->decompress_prec - 1) : 0);
+    if(!interleaver_)
+    {
+      interleaver_ = grk::InterleaverFactory<int32_t>::makeInterleaver(
+          image_->decompress_prec > 8U ? grk::packer16BitBE : 8);
+      if(!interleaver_)
+        return false;
+    }
+    uint32_t h = yBegin;
+    while(h < yEnd)
+    {
+      uint32_t stripRows = (std::min)(image_->rows_per_strip, yEnd - h);
+      packedBuf = pool.get(image_->packed_row_bytes * stripRows);
+      interleaver_->interleave(((T**)planes), decompress_num_comps, packedBuf.data,
+                               image_->decompress_width, image_->comps[0].stride,
+                               image_->packed_row_bytes, stripRows, adjust);
+      packedBuf.pooled = true;
+      packedBuf.offset = orchestrator.getOffset();
+      packedBuf.len = image_->packed_row_bytes * stripRows;
+      packedBuf.index = orchestrator.getNumPooledRequests();
+      if(!writeStripCore(0, packedBuf))
+      {
+        applicationOrchestratedReclaim(packedBuf);
+        return false;
+      }
+      h += stripRows;
+      applicationOrchestratedReclaim(packedBuf);
+    }
   }
   return true;
 }
@@ -305,38 +355,73 @@ bool PNMFormat<T>::encodeRows([[maybe_unused]] uint32_t rows)
   if(doNonSplitEncode())
   {
     uint16_t decompress_num_comps = image_->decompress_num_comps;
-    auto planes = std::make_unique<T*[]>(decompress_num_comps);
-    for(uint32_t i = 0U; i < decompress_num_comps; ++i)
-      planes[i] = (T*)image_->comps[i].data;
     uint32_t h = 0;
     GrkIOBuf packedBuf;
-    T adjust = (image_->comps[0].sgnd ? 1 << (image_->decompress_prec - 1) : 0);
-    auto iter = grk::InterleaverFactory<int32_t>::makeInterleaver(
-        image_->decompress_prec > 8U ? grk::packer16BitBE : 8);
-
-    if(!iter)
-      goto cleanup;
-    while(h < height)
+    bool isInt16 = image_->comps[0].data_type == GRK_INT_16;
+    if(isInt16)
     {
-      uint32_t stripRows = (std::min)(image_->rows_per_strip, height - h);
-      packedBuf = pool.get(image_->packed_row_bytes * stripRows);
-      iter->interleave(((T**)planes.get()), decompress_num_comps, packedBuf.data,
-                       image_->decompress_width, image_->comps[0].stride, image_->packed_row_bytes,
-                       stripRows, adjust);
-      packedBuf.pooled = true;
-      packedBuf.offset = orchestrator.getOffset();
-      packedBuf.len = image_->packed_row_bytes * stripRows;
-      packedBuf.index = orchestrator.getNumPooledRequests();
-      if(!writeStripCore(0, packedBuf))
-      {
-        delete iter;
-        applicationOrchestratedReclaim(packedBuf);
+      auto planes16 = std::make_unique<int16_t*[]>(decompress_num_comps);
+      for(uint32_t i = 0U; i < decompress_num_comps; ++i)
+        planes16[i] = (int16_t*)image_->comps[i].data;
+      int16_t adjust16 = (image_->comps[0].sgnd ? 1 << (image_->decompress_prec - 1) : 0);
+      auto iter16 = grk::InterleaverFactory<int16_t>::makeInterleaver(
+          image_->decompress_prec > 8U ? grk::packer16BitBE : 8);
+      if(!iter16)
         goto cleanup;
+      while(h < height)
+      {
+        uint32_t stripRows = (std::min)(image_->rows_per_strip, height - h);
+        packedBuf = pool.get(image_->packed_row_bytes * stripRows);
+        iter16->interleave(planes16.get(), decompress_num_comps, packedBuf.data,
+                           image_->decompress_width, image_->comps[0].stride,
+                           image_->packed_row_bytes, stripRows, adjust16);
+        packedBuf.pooled = true;
+        packedBuf.offset = orchestrator.getOffset();
+        packedBuf.len = image_->packed_row_bytes * stripRows;
+        packedBuf.index = orchestrator.getNumPooledRequests();
+        if(!writeStripCore(0, packedBuf))
+        {
+          delete iter16;
+          applicationOrchestratedReclaim(packedBuf);
+          goto cleanup;
+        }
+        h += stripRows;
+        applicationOrchestratedReclaim(packedBuf);
       }
-      h += stripRows;
-      applicationOrchestratedReclaim(packedBuf);
+      delete iter16;
     }
-    delete iter;
+    else
+    {
+      auto planes = std::make_unique<T*[]>(decompress_num_comps);
+      for(uint32_t i = 0U; i < decompress_num_comps; ++i)
+        planes[i] = (T*)image_->comps[i].data;
+      T adjust = (image_->comps[0].sgnd ? 1 << (image_->decompress_prec - 1) : 0);
+      auto iter = grk::InterleaverFactory<int32_t>::makeInterleaver(
+          image_->decompress_prec > 8U ? grk::packer16BitBE : 8);
+      if(!iter)
+        goto cleanup;
+      while(h < height)
+      {
+        uint32_t stripRows = (std::min)(image_->rows_per_strip, height - h);
+        packedBuf = pool.get(image_->packed_row_bytes * stripRows);
+        iter->interleave(((T**)planes.get()), decompress_num_comps, packedBuf.data,
+                         image_->decompress_width, image_->comps[0].stride,
+                         image_->packed_row_bytes, stripRows, adjust);
+        packedBuf.pooled = true;
+        packedBuf.offset = orchestrator.getOffset();
+        packedBuf.len = image_->packed_row_bytes * stripRows;
+        packedBuf.index = orchestrator.getNumPooledRequests();
+        if(!writeStripCore(0, packedBuf))
+        {
+          delete iter;
+          applicationOrchestratedReclaim(packedBuf);
+          goto cleanup;
+        }
+        h += stripRows;
+        applicationOrchestratedReclaim(packedBuf);
+      }
+      delete iter;
+    }
 
     if(!orchestrator.close())
       goto cleanup;
@@ -418,35 +503,70 @@ bool PNMFormat<T>::writeRows(uint32_t rowsOffset, uint32_t rows, uint16_t compno
   uint32_t width = image_->decompress_width;
   uint32_t stride_diff = image_->comps[0].stride - width;
   // all components have same sign and precision
-  T adjust = (image_->comps[0].sgnd ? 1 << (image_->decompress_prec - 1) : 0);
-  T* compPtr[4] = {nullptr, nullptr, nullptr, nullptr};
   WT* outPtr = buf + *outCount;
   uint16_t start = singleComp ? compno : 0;
   uint16_t end = singleComp ? compno + 1 : ncomp;
-  for(uint16_t comp = start; comp < end; ++comp)
-    compPtr[comp] = (T*)(image_->comps + comp)->data + rowsOffset * image_->comps[0].stride;
-  for(uint32_t j = 0; j < rows; ++j)
+  bool isInt16 = image_->comps[0].data_type == GRK_INT_16;
+  if(isInt16)
   {
-    for(uint32_t i = 0; i < width; ++i)
+    int16_t adjust16 = (image_->comps[0].sgnd ? 1 << (image_->decompress_prec - 1) : 0);
+    int16_t* compPtr16[4] = {nullptr, nullptr, nullptr, nullptr};
+    for(uint16_t comp = start; comp < end; ++comp)
+      compPtr16[comp] =
+          (int16_t*)(image_->comps + comp)->data + rowsOffset * image_->comps[0].stride;
+    for(uint32_t j = 0; j < rows; ++j)
     {
-      for(uint16_t comp = start; comp < end; ++comp)
+      for(uint32_t i = 0; i < width; ++i)
       {
-        T v = *compPtr[comp]++ + adjust;
-        if(fileIO_->getFileHandle())
+        for(uint16_t comp = start; comp < end; ++comp)
         {
-          if(!grk::writeBytes<WT>((WT)v, buf, &outPtr, outCount, bufSize, true,
-                                  fileIO_->getFileHandle()))
-            return false;
-        }
-        else
-        {
-          if(!grk::writeBytes<WT>((WT)v, buf, &outPtr, outCount, bufSize, true, &orchestrator))
-            return false;
+          int16_t v = *compPtr16[comp]++ + adjust16;
+          if(fileIO_->getFileHandle())
+          {
+            if(!grk::writeBytes<WT>((WT)v, buf, &outPtr, outCount, bufSize, true,
+                                    fileIO_->getFileHandle()))
+              return false;
+          }
+          else
+          {
+            if(!grk::writeBytes<WT>((WT)v, buf, &outPtr, outCount, bufSize, true, &orchestrator))
+              return false;
+          }
         }
       }
+      for(uint16_t i = start; i < end; ++i)
+        compPtr16[i] += stride_diff;
     }
-    for(uint16_t i = start; i < end; ++i)
-      compPtr[i] += stride_diff;
+  }
+  else
+  {
+    T adjust = (image_->comps[0].sgnd ? 1 << (image_->decompress_prec - 1) : 0);
+    T* compPtr[4] = {nullptr, nullptr, nullptr, nullptr};
+    for(uint16_t comp = start; comp < end; ++comp)
+      compPtr[comp] = (T*)(image_->comps + comp)->data + rowsOffset * image_->comps[0].stride;
+    for(uint32_t j = 0; j < rows; ++j)
+    {
+      for(uint32_t i = 0; i < width; ++i)
+      {
+        for(uint16_t comp = start; comp < end; ++comp)
+        {
+          T v = *compPtr[comp]++ + adjust;
+          if(fileIO_->getFileHandle())
+          {
+            if(!grk::writeBytes<WT>((WT)v, buf, &outPtr, outCount, bufSize, true,
+                                    fileIO_->getFileHandle()))
+              return false;
+          }
+          else
+          {
+            if(!grk::writeBytes<WT>((WT)v, buf, &outPtr, outCount, bufSize, true, &orchestrator))
+              return false;
+          }
+        }
+      }
+      for(uint16_t i = start; i < end; ++i)
+        compPtr[i] += stride_diff;
+    }
   }
 
   return true;

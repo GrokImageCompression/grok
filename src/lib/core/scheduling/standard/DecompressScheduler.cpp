@@ -169,7 +169,7 @@ bool DecompressScheduler::scheduleT1(ITileProcessor* tileProcessor)
       for(uint8_t bandIndex = 0; bandIndex < res->numBands_; ++bandIndex)
       {
         auto band = res->band + bandIndex;
-        auto paddedBandWindow = tilec->getWindow()->getBandWindowPadded(resno, band->orientation_);
+        auto paddedBandWindow = tilec->getBandWindowPadded(resno, band->orientation_);
         for(auto precinct : band->precincts_)
         {
           if(!wholeTileDecoding && !paddedBandWindow->nonEmptyIntersection(precinct))
@@ -187,12 +187,18 @@ bool DecompressScheduler::scheduleT1(ITileProcessor* tileProcessor)
                   tcp->isHT() ? t1::DecompressBlockPostProcessor<int32_t>(
                                     [tilec](int32_t* srcData, t1::DecompressBlockExec* block,
                                             uint16_t stride) {
-                                      tilec->postProcessHT(srcData, block, stride);
+                                      if(tilec->is16BitDwt())
+                                        tilec->postProcessHT16(srcData, block, stride);
+                                      else
+                                        tilec->postProcessHT(srcData, block, stride);
                                     })
                               : t1::DecompressBlockPostProcessor<int32_t>(
                                     [tilec](int32_t* srcData, t1::DecompressBlockExec* block,
                                             [[maybe_unused]] uint16_t stride) {
-                                      tilec->postProcess(srcData, block);
+                                      if(tilec->is16BitDwt())
+                                        tilec->postProcess16(srcData, block);
+                                      else
+                                        tilec->postProcess(srcData, block);
                                     });
               block->bandIndex = bandIndex;
               block->bandNumbps = band->maxBitPlanes_;
@@ -345,9 +351,9 @@ bool DecompressScheduler::scheduleT1(ITileProcessor* tileProcessor)
       }
 
       waveletReverse_[compno] = new WaveletReverse(
-          tileProcessor->getScheduler(), tilec, compno, tilec->getWindow()->unreducedBounds(),
-          numRes, (tcp->tccps_ + compno)->qmfbid_, maxDim,
-          tileProcessor->getTCP()->wholeTileDecompress_, &waveletPoolData_, dcShift);
+          tileProcessor->getScheduler(), tilec, compno, tilec->windowUnreducedBounds(), numRes,
+          (tcp->tccps_ + compno)->qmfbid_, maxDim, tileProcessor->getTCP()->wholeTileDecompress_,
+          &waveletPoolData_, dcShift);
 
       if(!waveletReverse_[compno]->decompress())
         return false;

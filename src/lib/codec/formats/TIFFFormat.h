@@ -694,6 +694,7 @@ private:
   grk_io_callback grkReclaimCallback_;
   void* grkReclaimUserData_;
   grk::PlanarToInterleaved<T>* interleaver_;
+  grk::PlanarToInterleaved<int16_t>* interleaver16_;
 };
 
 #ifdef GRK_CUSTOM_TIFF_IO
@@ -763,7 +764,8 @@ TIFF* TIFFFormat<T>::MyTIFFOpen(const char* name, const char* mode)
 template<typename T>
 TIFFFormat<T>::TIFFFormat()
     : tif_(nullptr), chroma_subsample_x(1), chroma_subsample_y(1), units(0),
-      grkReclaimCallback_(nullptr), grkReclaimUserData_(nullptr), interleaver_(nullptr)
+      grkReclaimCallback_(nullptr), grkReclaimUserData_(nullptr), interleaver_(nullptr),
+      interleaver16_(nullptr)
 
 {}
 
@@ -771,6 +773,7 @@ template<typename T>
 TIFFFormat<T>::~TIFFFormat()
 {
   delete interleaver_;
+  delete interleaver16_;
   if(tif_)
     TIFFClose(tif_);
 }
@@ -1116,16 +1119,31 @@ bool TIFFFormat<T>::writeImageBand(uint32_t yBegin, uint32_t yEnd)
 
   if(isFinalOutputSubsampled(image_))
   {
+    bool isInt16 = image_->comps[0].data_type == GRK_INT_16;
     uint32_t stride_luma = image_->comps[0].stride;
     uint32_t stride_chroma1 = image_->comps[1].stride;
     uint32_t stride_chroma2 = image_->comps[2].stride;
 
     // Position planes at yBegin (luma at row yBegin, chroma at row yBegin/dy)
-    planes[0] = (T*)image_->comps[0].data + (uint64_t)yBegin * stride_luma;
-    planes[1] =
-        (T*)image_->comps[1].data + (uint64_t)(yBegin / chroma_subsample_y) * stride_chroma1;
-    planes[2] =
-        (T*)image_->comps[2].data + (uint64_t)(yBegin / chroma_subsample_y) * stride_chroma2;
+    // Use int16_t pointers when data is 16-bit to get correct pointer arithmetic
+    int16_t* p16[3] = {};
+    if(isInt16)
+    {
+      p16[0] = (int16_t*)image_->comps[0].data + (uint64_t)yBegin * stride_luma;
+      p16[1] = (int16_t*)image_->comps[1].data +
+               (uint64_t)(yBegin / chroma_subsample_y) * stride_chroma1;
+      p16[2] = (int16_t*)image_->comps[2].data +
+               (uint64_t)(yBegin / chroma_subsample_y) * stride_chroma2;
+    }
+    else
+    {
+      planes[0] = (T*)image_->comps[0].data + (uint64_t)yBegin * stride_luma;
+      planes[1] =
+          (T*)image_->comps[1].data + (uint64_t)(yBegin / chroma_subsample_y) * stride_chroma1;
+      planes[2] =
+          (T*)image_->comps[2].data + (uint64_t)(yBegin / chroma_subsample_y) * stride_chroma2;
+    }
+    int16_t* p16Begin[3] = {p16[0], p16[1], p16[2]};
     planesBegin[1] = planes[1];
     planesBegin[2] = planes[2];
 
@@ -1157,7 +1175,10 @@ bool TIFFFormat<T>::writeImageBand(uint32_t yBegin, uint32_t yEnd)
           for(size_t sub_x = xposLuma; sub_x < xposLuma + chroma_subsample_x; ++sub_x)
           {
             bool accept = (h + sub_h) < yEnd && sub_x < image_->decompress_width;
-            *bufPtr++ = accept ? (int8_t)planes[0][sub_x + sub_h * stride_luma] : 0;
+            if(isInt16)
+              *bufPtr++ = accept ? (int8_t)p16[0][sub_x + sub_h * stride_luma] : 0;
+            else
+              *bufPtr++ = accept ? (int8_t)planes[0][sub_x + sub_h * stride_luma] : 0;
             bytesToWrite++;
           }
         }
@@ -1168,17 +1189,36 @@ bool TIFFFormat<T>::writeImageBand(uint32_t yBegin, uint32_t yEnd)
           break;
         }
         // 2. chroma
-        *bufPtr++ = (int8_t)*planes[1]++;
-        *bufPtr++ = (int8_t)*planes[2]++;
+        if(isInt16)
+        {
+          *bufPtr++ = (int8_t)*p16[1]++;
+          *bufPtr++ = (int8_t)*p16[2]++;
+        }
+        else
+        {
+          *bufPtr++ = (int8_t)*planes[1]++;
+          *bufPtr++ = (int8_t)*planes[2]++;
+        }
         bytesToWrite += 2;
         xposChroma++;
         xposLuma += chroma_subsample_x;
       }
-      planes[0] += stride_luma * chroma_subsample_y;
-      planesBegin[1] += stride_chroma1;
-      planes[1] = planesBegin[1];
-      planesBegin[2] += stride_chroma2;
-      planes[2] = planesBegin[2];
+      if(isInt16)
+      {
+        p16[0] += stride_luma * chroma_subsample_y;
+        p16Begin[1] += stride_chroma1;
+        p16[1] = p16Begin[1];
+        p16Begin[2] += stride_chroma2;
+        p16[2] = p16Begin[2];
+      }
+      else
+      {
+        planes[0] += stride_luma * chroma_subsample_y;
+        planesBegin[1] += stride_chroma1;
+        planes[1] = planesBegin[1];
+        planesBegin[2] += stride_chroma2;
+        planes[2] = planesBegin[2];
+      }
       bandRowsWritten += chroma_subsample_y;
     }
     // flush remaining
@@ -1187,6 +1227,45 @@ bool TIFFFormat<T>::writeImageBand(uint32_t yBegin, uint32_t yEnd)
     packedBuf.index = orchestrator.getNumPooledRequests();
     if(bytesToWrite && !writeStripCore(0, packedBuf))
       goto cleanup;
+  }
+  else if(image_->comps[0].data_type == GRK_INT_16)
+  {
+    constexpr uint16_t kMaxStack16 = 4;
+    int16_t* stackPlanes16[kMaxStack16];
+    std::unique_ptr<int16_t*[]> heapPlanes16;
+    int16_t** planes16;
+    if(numcomps <= kMaxStack16)
+      planes16 = stackPlanes16;
+    else
+    {
+      heapPlanes16 = std::make_unique<int16_t*[]>(numcomps);
+      planes16 = heapPlanes16.get();
+    }
+    for(uint16_t i = 0U; i < numcomps; ++i)
+    {
+      planes16[i] = (int16_t*)image_->comps[i].data + (uint64_t)yBegin * image_->comps[0].stride;
+    }
+    if(!interleaver16_)
+    {
+      interleaver16_ = grk::InterleaverFactory<int16_t>::makeInterleaver(image_->decompress_prec);
+      if(!interleaver16_)
+        goto cleanup;
+    }
+    uint32_t h = yBegin;
+    while(h < yEnd)
+    {
+      uint32_t stripRows = (std::min)(image_->rows_per_strip, yEnd - h);
+      packedBuf = pool.get(image_->packed_row_bytes * stripRows);
+      interleaver16_->interleave(planes16, numcomps, packedBuf.data, image_->decompress_width,
+                                 image_->comps[0].stride, image_->packed_row_bytes, stripRows, 0);
+      packedBuf.pooled = true;
+      packedBuf.offset = orchestrator.getOffset();
+      packedBuf.len = image_->packed_row_bytes * stripRows;
+      packedBuf.index = orchestrator.getNumPooledRequests();
+      if(!writeStripCore(0, packedBuf))
+        goto cleanup;
+      h += stripRows;
+    }
   }
   else
   {

@@ -26,6 +26,7 @@ namespace grk
 {
 
 uint32_t get_PLL_COLS_53();
+uint32_t get_PLL_COLS_16_53();
 
 /**
  * @class WaveletPoolData

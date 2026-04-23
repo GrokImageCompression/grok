@@ -114,6 +114,7 @@ public:
   GrkImage* extractFrom(const Tile* tile_src) const;
   bool composite(const GrkImage* src);
   bool greyToRGB(void);
+  template<typename T>
   bool applyColourManagement(void);
   bool validateICC(void);
   void all_components_data_free(void);
@@ -172,8 +173,8 @@ public:
     {
       case GRK_INT_32:
         return postProcess_T<int32_t>();
-      // case GRK_INT_16:
-      //   return postProcess_T<int16_t>();
+      case GRK_INT_16:
+        return postProcess_T<int16_t>();
       // case GRK_INT_8:
       //   return postProcess_T<int8_t>();
       // case GRK_FLOAT:
@@ -191,8 +192,8 @@ public:
     {
       case GRK_INT_32:
         return applyColour_T<int32_t>();
-      // case GRK_INT_16:
-      //   return applyColour_T<int16_t>();
+      case GRK_INT_16:
+        return applyColour_T<int16_t>();
       // case GRK_INT_8:
       //   return applyColour_T<int8_t>();
       // case GRK_FLOAT:
@@ -500,9 +501,9 @@ bool GrkImage::cieLabToRGB(void)
 
       cmsDoTransform(transform, &Lab, RGB, 1);
 
-      red[dest_index] = RGB[0];
-      green[dest_index] = RGB[1];
-      blue[dest_index] = RGB[2];
+      red[dest_index] = (T)RGB[0];
+      green[dest_index] = (T)RGB[1];
+      blue[dest_index] = (T)RGB[2];
       dest_index++;
     }
     dest_index += dest_stride_diff;
@@ -947,14 +948,43 @@ bool GrkImage::compositePlanar(uint16_t srcNumComps, grk_image_comp* srcComps)
     size_t srcIndex = 0;
     auto destIndex = (size_t)destWin.x0 + (size_t)destWin.y0 * destComp->stride;
     size_t destLineOffset = (size_t)destComp->stride - (size_t)destWin.width();
-    auto src_ptr = (T*)srcComp->data;
     uint32_t srcLineOffset = srcComp->stride - srcComp->w;
-    for(uint32_t j = 0; j < destWin.height(); ++j)
+
+    // Source and dest have matching element types: fast memcpy path
+    if(srcComp->data_type == destComp->data_type)
     {
-      memcpy((T*)destComp->data + destIndex, src_ptr + srcIndex,
-             (size_t)destWin.width() * sizeOfDataType(destComp->data_type));
-      destIndex += destLineOffset + destWin.width();
-      srcIndex += srcLineOffset + destWin.width();
+      auto src_ptr = (T*)srcComp->data;
+      for(uint32_t j = 0; j < destWin.height(); ++j)
+      {
+        memcpy((T*)destComp->data + destIndex, src_ptr + srcIndex,
+               (size_t)destWin.width() * sizeof(T));
+        destIndex += destLineOffset + destWin.width();
+        srcIndex += srcLineOffset + destWin.width();
+      }
+    }
+    // Source is int16 but dest is int32: widen during composite
+    else if(srcComp->data_type == GRK_INT_16 && destComp->data_type == GRK_INT_32)
+    {
+      auto src16 = (int16_t*)srcComp->data;
+      auto dest32 = (int32_t*)destComp->data;
+      for(uint32_t j = 0; j < destWin.height(); ++j)
+      {
+        for(uint32_t x = 0; x < destWin.width(); ++x)
+          dest32[destIndex + x] = src16[srcIndex + x];
+        destIndex += destLineOffset + destWin.width();
+        srcIndex += srcLineOffset + destWin.width();
+      }
+    }
+    else
+    {
+      auto src_ptr = (T*)srcComp->data;
+      for(uint32_t j = 0; j < destWin.height(); ++j)
+      {
+        memcpy((T*)destComp->data + destIndex, src_ptr + srcIndex,
+               (size_t)destWin.width() * sizeof(T));
+        destIndex += destLineOffset + destWin.width();
+        srcIndex += srcLineOffset + destWin.width();
+      }
     }
   }
 
@@ -2129,11 +2159,67 @@ bool GrkImage::convertToRGB_T(void)
 }
 
 template<typename T>
+bool GrkImage::applyColourManagement(void)
+{
+  if(!meta || !meta->color.icc_profile_buf)
+    return true;
+
+  bool isTiff = decompress_fmt == GRK_FMT_TIF;
+  bool canStoreCIE = isTiff && color_space == GRK_CLRSPC_DEFAULT_CIE;
+  bool isCIE = color_space == GRK_CLRSPC_DEFAULT_CIE || color_space == GRK_CLRSPC_CUSTOM_CIE;
+  bool canStoreICC = (decompress_fmt == GRK_FMT_TIF || decompress_fmt == GRK_FMT_PNG ||
+                      decompress_fmt == GRK_FMT_JPG || decompress_fmt == GRK_FMT_BMP);
+
+  bool shouldApplyColourManagement =
+      force_rgb || (decompress_fmt != GRK_FMT_UNK && meta->color.icc_profile_buf &&
+                    ((isCIE && !canStoreCIE) || !canStoreICC));
+  if(!shouldApplyColourManagement)
+    return true;
+
+  if(isCIE)
+  {
+    if(!force_rgb)
+      grklog.warn(" Input image is in CIE colour space,\n"
+                  "but the codec is unable to store this information in the "
+                  "output file .\n"
+                  "The output image will therefore be converted to sRGB before saving.");
+    if(!cieLabToRGB<T>())
+    {
+      grklog.error("Unable to convert L*a*b image to sRGB");
+      return false;
+    }
+  }
+  else
+  {
+    if(validateICC())
+    {
+      if(!force_rgb)
+      {
+        grklog.warn("");
+        grklog.warn("The input image contains an ICC profile");
+        grklog.warn("but the codec is unable to store this profile"
+                    " in the output file.");
+        grklog.warn("The profile will therefore be applied to the output"
+                    " image before saving.");
+        grklog.warn("");
+      }
+      if(!applyICC<T>())
+      {
+        grklog.warn("Unable to apply ICC profile");
+        return false;
+      }
+    }
+  }
+
+  return true;
+}
+
+template<typename T>
 bool GrkImage::postProcess_T(void)
 {
   if(!applyColour())
     return false;
-  applyColourManagement();
+  applyColourManagement<T>();
   if(!convertToRGB_T<T>())
     return false;
   if(!greyToRGB())

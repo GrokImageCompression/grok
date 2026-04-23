@@ -23,6 +23,7 @@
 #include "FileStandardIO.h"
 #include "common.h"
 #include "ImageFormat.h"
+#include <memory>
 
 template<typename T>
 class RAWFormat : public ImageFormat
@@ -171,30 +172,65 @@ bool RAWFormat<T>::writeImage(void)
 
     T lower = sgnd ? -(1 << (prec - 1)) : 0;
     T upper = sgnd ? -lower - 1 : (1 << comp->prec) - 1;
-    auto ptr = (T*)comp->data;
+    bool isInt16 = comp->data_type == GRK_INT_16;
 
     bool rc;
     if(prec <= 8)
     {
-      if(sgnd)
-        rc = writeToFile<int8_t>(fileIO_->getFileHandle(), bigEndian, ptr, w, stride, h, lower,
-                                 upper);
+      if(isInt16)
+      {
+        // widen int16 → int32 for writeToFile; data is 8-bit so this path is rare
+        auto src16 = (int16_t*)comp->data;
+        auto widened = std::make_unique<T[]>((uint64_t)stride * h);
+        for(uint64_t idx = 0; idx < (uint64_t)stride * h; ++idx)
+          widened[idx] = src16[idx];
+        if(sgnd)
+          rc = writeToFile<int8_t>(fileIO_->getFileHandle(), bigEndian, widened.get(), w, stride, h,
+                                   lower, upper);
+        else
+          rc = writeToFile<uint8_t>(fileIO_->getFileHandle(), bigEndian, widened.get(), w, stride,
+                                    h, lower, upper);
+      }
       else
-        rc = writeToFile<uint8_t>(fileIO_->getFileHandle(), bigEndian, ptr, w, stride, h, lower,
-                                  upper);
+      {
+        auto ptr = (T*)comp->data;
+        if(sgnd)
+          rc = writeToFile<int8_t>(fileIO_->getFileHandle(), bigEndian, ptr, w, stride, h, lower,
+                                   upper);
+        else
+          rc = writeToFile<uint8_t>(fileIO_->getFileHandle(), bigEndian, ptr, w, stride, h, lower,
+                                    upper);
+      }
       if(!rc)
         spdlog::error("writeImage: failed to write bytes for {}", outfile);
     }
     else if(prec <= 16)
     {
-      if(sgnd)
-        rc = writeToFile<int16_t>(fileIO_->getFileHandle(), bigEndian, ptr, w, stride, h, lower,
-                                  upper);
+      if(isInt16)
+      {
+        auto src16 = (int16_t*)comp->data;
+        auto widened = std::make_unique<T[]>((uint64_t)stride * h);
+        for(uint64_t idx = 0; idx < (uint64_t)stride * h; ++idx)
+          widened[idx] = src16[idx];
+        if(sgnd)
+          rc = writeToFile<int16_t>(fileIO_->getFileHandle(), bigEndian, widened.get(), w, stride,
+                                    h, lower, upper);
+        else
+          rc = writeToFile<uint16_t>(fileIO_->getFileHandle(), bigEndian, widened.get(), w, stride,
+                                     h, lower, upper);
+      }
       else
-        rc = writeToFile<uint16_t>(fileIO_->getFileHandle(), bigEndian, ptr, w, stride, h, lower,
-                                   upper);
+      {
+        auto ptr = (T*)comp->data;
+        if(sgnd)
+          rc = writeToFile<int16_t>(fileIO_->getFileHandle(), bigEndian, ptr, w, stride, h, lower,
+                                    upper);
+        else
+          rc = writeToFile<uint16_t>(fileIO_->getFileHandle(), bigEndian, ptr, w, stride, h, lower,
+                                     upper);
+      }
       if(!rc)
-        spdlog::error("writeImage: ailed to write bytes for {}", outfile);
+        spdlog::error("writeImage: failed to write bytes for {}", outfile);
     }
     else
     {

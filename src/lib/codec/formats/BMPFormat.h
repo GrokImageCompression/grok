@@ -351,10 +351,14 @@ bool BMPFormat<T>::writeImageBand(uint32_t yBegin, uint32_t yEnd)
       for(uint32_t i = 0; i < w; i++)
       {
         uint8_t rc[4] = {0, 0, 0, 0};
+        bool isInt16 = image_->comps[0].data_type == GRK_INT_16;
         for(uint16_t compno = 0; compno < decompress_num_comps; ++compno)
         {
-          auto src = (T*)image_->comps[compno].data;
-          T r = src[srcIndex_ + i];
+          int32_t r;
+          if(isInt16)
+            r = ((int16_t*)image_->comps[compno].data)[srcIndex_ + i];
+          else
+            r = ((T*)image_->comps[compno].data)[srcIndex_ + i];
           r += shift[compno];
           if(scaleType[compno] == 1)
             r *= scale[compno];

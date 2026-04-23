@@ -20,6 +20,7 @@
 #include "geometry.h"
 #include "PacketProgressionState.h"
 #include "PostDecodeFilters.h"
+#include "PostDecodeFiltersOJPH.h"
 #include "htconfig.h"
 #include "SparseCanvas.h"
 #include "TileComponentWindow.h"
@@ -233,11 +234,22 @@ struct TileComponent : public Rect32
   void createWindow(Rect32 unreducedTileCompOrImageCompWindow)
   {
     dealloc();
-    window_ = new TileComponentWindow<int32_t>(
-        isCompressor_, tccp_->qmfbid_ == 1, wholeTileDecompress_,
-        Rect32(resolutions_ + num_resolutions_ - 1), Rect32(this),
-        Rect32(unreducedTileCompOrImageCompWindow), num_resolutions_,
-        isCompressor_ ? num_resolutions_ : resolutions_to_decompress_);
+    if(use16BitDwt_)
+    {
+      window16_ = new TileComponentWindow<int16_t>(
+          isCompressor_, tccp_->qmfbid_ == 1, wholeTileDecompress_,
+          Rect32(resolutions_ + num_resolutions_ - 1), Rect32(this),
+          Rect32(unreducedTileCompOrImageCompWindow), num_resolutions_,
+          isCompressor_ ? num_resolutions_ : resolutions_to_decompress_);
+    }
+    else
+    {
+      window_ = new TileComponentWindow<int32_t>(
+          isCompressor_, tccp_->qmfbid_ == 1, wholeTileDecompress_,
+          Rect32(resolutions_ + num_resolutions_ - 1), Rect32(this),
+          Rect32(unreducedTileCompOrImageCompWindow), num_resolutions_,
+          isCompressor_ ? num_resolutions_ : resolutions_to_decompress_);
+    }
   }
 
   /**
@@ -250,6 +262,8 @@ struct TileComponent : public Rect32
     regionWindow_ = nullptr;
     delete window_;
     window_ = nullptr;
+    delete window16_;
+    window16_ = nullptr;
   }
 
   /**
@@ -304,6 +318,36 @@ struct TileComponent : public Rect32
   TileComponentWindow<int32_t>* getWindow() const
   {
     return window_;
+  }
+  TileComponentWindow<int16_t>* getWindow16() const
+  {
+    return window16_;
+  }
+  bool is16BitDwt() const
+  {
+    return use16BitDwt_;
+  }
+  void setUse16BitDwt(bool use16Bit)
+  {
+    use16BitDwt_ = use16Bit;
+  }
+  // Type-independent operations that dispatch to the correct window
+  bool allocWindow()
+  {
+    return use16BitDwt_ ? window16_->alloc() : window_->alloc();
+  }
+  Rect32 windowBounds() const
+  {
+    return use16BitDwt_ ? window16_->bounds() : window_->bounds();
+  }
+  Rect32 windowUnreducedBounds() const
+  {
+    return use16BitDwt_ ? window16_->unreducedBounds() : window_->unreducedBounds();
+  }
+  const Rect32* getBandWindowPadded(uint8_t resno, t1::eBandOrientation orientation) const
+  {
+    return use16BitDwt_ ? window16_->getBandWindowPadded(resno, orientation)
+                        : window_->getBandWindowPadded(resno, orientation);
   }
   /**
    * @brief Checks if whole tile will be decoded
@@ -376,6 +420,24 @@ struct TileComponent : public Rect32
     }
   }
 
+  // 16-bit narrowing post-process: T1 outputs int32_t, band buffers are int16_t
+  void postProcess16(int32_t* srcData, t1::DecompressBlockExec* block)
+  {
+    if(block->roishift)
+      postDecompressImpl16<t1::NarrowRoiShiftFilter>(srcData, block,
+                                                     (uint16_t)block->cblk->width());
+    else
+      postDecompressImpl16<t1::NarrowShiftFilter>(srcData, block, (uint16_t)block->cblk->width());
+  }
+  // 16-bit narrowing post-process for HTJ2K: T1 outputs int32_t, band buffers are int16_t
+  void postProcessHT16(int32_t* srcData, t1::DecompressBlockExec* block, uint16_t stride)
+  {
+    if(block->roishift)
+      postDecompressImpl16<t1::ojph::NarrowRoiShiftOJPHFilter>(srcData, block, stride);
+    else
+      postDecompressImpl16<t1::ojph::NarrowShiftOJPHFilter>(srcData, block, stride);
+  }
+
   /**
    * @brief array of @ref Resolution
    *
@@ -438,6 +500,26 @@ private:
       regionWindow_->write(block->resno, blockBounds, empty ? nullptr : srcData, 1,
                            blockBounds.width());
   }
+  // 16-bit narrowing variant: int32_t source → int16_t band buffers
+  template<typename F>
+  void postDecompressImpl16(int32_t* srcData, t1::DecompressBlockExec* block, uint16_t stride)
+  {
+    auto cblk = block->cblk;
+    bool empty = cblk->dataChunksEmpty();
+
+    uint32_t x = block->x;
+    uint32_t y = block->y;
+    window16_->toRelativeCoordinates(block->resno, block->bandOrientation, x, y);
+    auto src =
+        Buffer2d<int32_t, AllocatorAligned>(srcData, false, cblk->width(), stride, cblk->height());
+    auto blockBounds = Rect32(x, y, x + cblk->width(), y + cblk->height());
+    if(!empty && !regionWindow_)
+    {
+      src.setRect(blockBounds);
+      window16_->template postProcessNarrow<int32_t, AllocatorAligned, F>(
+          src, block->resno, block->bandOrientation, block);
+    }
+  }
   /**
    * @brief @ISparseCanvas for region window
    *
@@ -458,6 +540,8 @@ private:
    *
    */
   TileComponentWindow<int32_t>* window_;
+  TileComponentWindow<int16_t>* window16_ = nullptr;
+  bool use16BitDwt_ = false;
   /**
    * @brief @ref TileComponentCodingParams
    *

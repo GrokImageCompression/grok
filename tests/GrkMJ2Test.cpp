@@ -34,6 +34,13 @@ static void safe_strcpy(char (&dest)[N], const char* src)
   dest[len] = '\0';
 }
 
+static int32_t readPixel(const grk_image_comp& comp, uint32_t index)
+{
+  if(comp.data_type == GRK_INT_16)
+    return static_cast<int16_t*>(comp.data)[index];
+  return static_cast<int32_t*>(comp.data)[index];
+}
+
 namespace grk
 {
 
@@ -87,8 +94,7 @@ static bool verifyFramePixels(const grk_image* image, uint32_t frameIndex, bool 
   }
   for(uint16_t c = 0; c < numcomps; ++c)
   {
-    auto* data = static_cast<int32_t*>(image->comps[c].data);
-    if(!data)
+    if(!image->comps[c].data)
     {
       spdlog::error("Frame {} component {}: null data", frameIndex, c);
       return false;
@@ -96,10 +102,11 @@ static bool verifyFramePixels(const grk_image* image, uint32_t frameIndex, bool 
     for(uint32_t i = 0; i < kFrameWidth * kFrameHeight; ++i)
     {
       int32_t expected = static_cast<int32_t>((i + frameIndex * 37 + c * 71) % 256);
-      if(data[i] != expected)
+      int32_t got = readPixel(image->comps[c], i);
+      if(got != expected)
       {
         spdlog::error("Frame {} comp {} pixel {}: expected {}, got {}", frameIndex, c, i, expected,
-                      data[i]);
+                      got);
         return false;
       }
     }

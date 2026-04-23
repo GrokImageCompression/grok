@@ -41,6 +41,32 @@ static void safe_strcpy(char (&dest)[N], const char* src)
   dest[len] = '\0';
 }
 
+// Read pixel data from a component into int32_t vector, handling both int32 and int16 storage.
+static std::vector<int32_t> readPixels(const grk_image_comp& comp, uint32_t count)
+{
+  std::vector<int32_t> pixels(count);
+  if(comp.data_type == GRK_INT_16)
+  {
+    auto* p = static_cast<int16_t*>(comp.data);
+    for(uint32_t i = 0; i < count; ++i)
+      pixels[i] = p[i];
+  }
+  else
+  {
+    auto* p = static_cast<int32_t*>(comp.data);
+    for(uint32_t i = 0; i < count; ++i)
+      pixels[i] = p[i];
+  }
+  return pixels;
+}
+
+static int32_t readPixel(const grk_image_comp& comp, uint32_t index)
+{
+  if(comp.data_type == GRK_INT_16)
+    return static_cast<int16_t*>(comp.data)[index];
+  return static_cast<int32_t*>(comp.data)[index];
+}
+
 namespace grk
 {
 
@@ -182,9 +208,7 @@ static std::vector<TileData> decompressAndCapture(const std::string& path,
         continue;
       uint32_t w = comp.w;
       uint32_t h = comp.h;
-      auto* pixelData = static_cast<int32_t*>(comp.data);
-      std::vector<int32_t> pixels(pixelData, pixelData + w * h);
-      td.componentData.push_back(std::move(pixels));
+      td.componentData.push_back(readPixels(comp, w * h));
     }
     result.push_back(std::move(td));
   }
@@ -441,9 +465,7 @@ static std::vector<TileData> decompressTileByTile(const std::string& path,
         continue;
       uint32_t w = comp.w;
       uint32_t h = comp.h;
-      auto* pixelData = static_cast<int32_t*>(comp.data);
-      std::vector<int32_t> pixels(pixelData, pixelData + w * h);
-      td.componentData.push_back(std::move(pixels));
+      td.componentData.push_back(readPixels(comp, w * h));
     }
     result.push_back(std::move(td));
   }
@@ -1125,8 +1147,7 @@ static bool testRGBRoundTrip()
   for(uint16_t c = 0; c < 3 && match; ++c)
   {
     auto& comp = decImg->comps[c];
-    auto* pixels = static_cast<int32_t*>(comp.data);
-    if(!pixels)
+    if(!comp.data)
     {
       spdlog::error("Component {} has no data", c);
       match = false;
@@ -1136,7 +1157,7 @@ static bool testRGBRoundTrip()
     {
       for(uint32_t x = 0; x < comp.w && match; ++x)
       {
-        int32_t got = pixels[y * comp.stride + x];
+        int32_t got = readPixel(comp, y * comp.stride + x);
         int32_t expected = refData[c][y * width + x];
         if(got != expected)
         {

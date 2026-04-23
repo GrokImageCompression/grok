@@ -34,6 +34,13 @@ static void safe_strcpy(char (&dest)[N], const char* src)
   dest[len] = '\0';
 }
 
+static int32_t readPixel(const grk_image_comp& comp, uint32_t index)
+{
+  if(comp.data_type == GRK_INT_16)
+    return static_cast<int16_t*>(comp.data)[index];
+  return static_cast<int32_t*>(comp.data)[index];
+}
+
 namespace grk
 {
 
@@ -1086,14 +1093,13 @@ static int testTranscode(const std::string& tmpDir)
   // Verify pixel data is preserved (codestream copied verbatim)
   if(dstImage->comps && dstImage->comps[0].data)
   {
-    auto* pixelData = static_cast<int32_t*>(dstImage->comps[0].data);
     bool pixelsOk = true;
     for(uint32_t i = 0; i < 16 * 16; ++i)
     {
-      if(pixelData[i] != static_cast<int32_t>(i % 256))
+      if(readPixel(dstImage->comps[0], i) != static_cast<int32_t>(i % 256))
       {
         spdlog::error("Transcode: pixel mismatch at index {} (expected {}, got {})", i,
-                      (int)(i % 256), pixelData[i]);
+                      (int)(i % 256), readPixel(dstImage->comps[0], i));
         pixelsOk = false;
         break;
       }
@@ -1257,13 +1263,12 @@ static int testTranscodeWithTLM(const std::string& tmpDir)
   // Verify pixel data
   if(dstImage->comps && dstImage->comps[0].data)
   {
-    auto* pixelData = static_cast<int32_t*>(dstImage->comps[0].data);
     for(uint32_t i = 0; i < 16 * 16; ++i)
     {
-      if(pixelData[i] != static_cast<int32_t>(i % 256))
+      if(readPixel(dstImage->comps[0], i) != static_cast<int32_t>(i % 256))
       {
         spdlog::error("Transcode TLM: pixel mismatch at index {} (expected {}, got {})", i,
-                      (int)(i % 256), pixelData[i]);
+                      (int)(i % 256), readPixel(dstImage->comps[0], i));
         ok = false;
         break;
       }
@@ -1431,13 +1436,12 @@ static int testTranscodeWithPLT(const std::string& tmpDir)
   // Verify pixel data
   if(dstImage->comps && dstImage->comps[0].data)
   {
-    auto* pixelData = static_cast<int32_t*>(dstImage->comps[0].data);
     for(uint32_t i = 0; i < 16 * 16; ++i)
     {
-      if(pixelData[i] != static_cast<int32_t>(i % 256))
+      if(readPixel(dstImage->comps[0], i) != static_cast<int32_t>(i % 256))
       {
         spdlog::error("Transcode PLT: pixel mismatch at index {} (expected {}, got {})", i,
-                      (int)(i % 256), pixelData[i]);
+                      (int)(i % 256), readPixel(dstImage->comps[0], i));
         ok = false;
         break;
       }
@@ -1615,13 +1619,12 @@ static int testTranscodeWithSOP(const std::string& tmpDir)
   bool ok = true;
   if(dstImage->comps && dstImage->comps[0].data)
   {
-    auto* pixelData = static_cast<int32_t*>(dstImage->comps[0].data);
     for(uint32_t i = 0; i < 16 * 16; ++i)
     {
-      if(pixelData[i] != static_cast<int32_t>(i % 256))
+      if(readPixel(dstImage->comps[0], i) != static_cast<int32_t>(i % 256))
       {
         spdlog::error("Transcode SOP: pixel mismatch at index {} (expected {}, got {})", i,
-                      (int)(i % 256), pixelData[i]);
+                      (int)(i % 256), readPixel(dstImage->comps[0], i));
         ok = false;
         break;
       }
@@ -1795,13 +1798,12 @@ static int testTranscodeWithEPH(const std::string& tmpDir)
   bool ok = true;
   if(dstImage->comps && dstImage->comps[0].data)
   {
-    auto* pixelData = static_cast<int32_t*>(dstImage->comps[0].data);
     for(uint32_t i = 0; i < 16 * 16; ++i)
     {
-      if(pixelData[i] != static_cast<int32_t>(i % 256))
+      if(readPixel(dstImage->comps[0], i) != static_cast<int32_t>(i % 256))
       {
         spdlog::error("Transcode EPH: pixel mismatch at index {} (expected {}, got {})", i,
-                      (int)(i % 256), pixelData[i]);
+                      (int)(i % 256), readPixel(dstImage->comps[0], i));
         ok = false;
         break;
       }
@@ -1942,13 +1944,12 @@ static int testTranscodeProgressionReorder(const std::string& tmpDir)
   bool ok = true;
   if(dstImage->comps && dstImage->comps[0].data)
   {
-    auto* pixelData = static_cast<int32_t*>(dstImage->comps[0].data);
     for(uint32_t i = 0; i < 16 * 16; ++i)
     {
-      if(pixelData[i] != static_cast<int32_t>(i % 256))
+      if(readPixel(dstImage->comps[0], i) != static_cast<int32_t>(i % 256))
       {
         spdlog::error("Transcode ProgReorder: pixel mismatch at index {} (expected {}, got {})", i,
-                      (int)(i % 256), pixelData[i]);
+                      (int)(i % 256), readPixel(dstImage->comps[0], i));
         ok = false;
         break;
       }
@@ -2124,13 +2125,12 @@ static int testTranscodeCombined(const std::string& tmpDir)
 
   if(dstImage->comps && dstImage->comps[0].data)
   {
-    auto* pixelData = static_cast<int32_t*>(dstImage->comps[0].data);
     for(uint32_t i = 0; i < 16 * 16; ++i)
     {
-      if(pixelData[i] != static_cast<int32_t>(i % 256))
+      if(readPixel(dstImage->comps[0], i) != static_cast<int32_t>(i % 256))
       {
         spdlog::error("Transcode Combined: pixel mismatch at index {} (expected {}, got {})", i,
-                      (int)(i % 256), pixelData[i]);
+                      (int)(i % 256), readPixel(dstImage->comps[0], i));
         ok = false;
         break;
       }
@@ -2390,13 +2390,12 @@ static int testTranscodeJP2ToJ2K(const std::string& tmpDir)
   // Verify pixel data preserved
   if(dstImage->comps && dstImage->comps[0].data)
   {
-    auto* pixelData = static_cast<int32_t*>(dstImage->comps[0].data);
     for(uint32_t i = 0; i < 16 * 16; ++i)
     {
-      if(pixelData[i] != static_cast<int32_t>(i % 256))
+      if(readPixel(dstImage->comps[0], i) != static_cast<int32_t>(i % 256))
       {
         spdlog::error("JP2->J2K: pixel mismatch at index {} (expected {}, got {})", i,
-                      (int)(i % 256), pixelData[i]);
+                      (int)(i % 256), readPixel(dstImage->comps[0], i));
         ok = false;
         break;
       }
