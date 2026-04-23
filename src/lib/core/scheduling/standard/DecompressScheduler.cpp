@@ -187,18 +187,12 @@ bool DecompressScheduler::scheduleT1(ITileProcessor* tileProcessor)
                   tcp->isHT() ? t1::DecompressBlockPostProcessor<int32_t>(
                                     [tilec](int32_t* srcData, t1::DecompressBlockExec* block,
                                             uint16_t stride) {
-                                      if(tilec->is16BitDwt())
-                                        tilec->postProcessHT16(srcData, block, stride);
-                                      else
-                                        tilec->postProcessHT(srcData, block, stride);
+                                      tilec->postProcessBlockHT(srcData, block, stride);
                                     })
                               : t1::DecompressBlockPostProcessor<int32_t>(
                                     [tilec](int32_t* srcData, t1::DecompressBlockExec* block,
                                             [[maybe_unused]] uint16_t stride) {
-                                      if(tilec->is16BitDwt())
-                                        tilec->postProcess16(srcData, block);
-                                      else
-                                        tilec->postProcess(srcData, block);
+                                      tilec->postProcessBlock(srcData, block);
                                     });
               block->bandIndex = bandIndex;
               block->bandNumbps = band->maxBitPlanes_;
