@@ -155,8 +155,8 @@ public:
     {
       case GRK_INT_32:
         return compositeInterleaved_T<int32_t>(src, yBegin, yEnd);
-      // case GRK_INT_16:
-      //   return compositeInterleaved_T<int16_t>(src,yBegin,yEnd);
+      case GRK_INT_16:
+        return compositeInterleaved_T<int16_t>(src, yBegin, yEnd);
       // case GRK_INT_8:
       //   return compositeInterleaved_T<int8_t>(src,yBegin,yEnd);
       // case GRK_FLOAT:

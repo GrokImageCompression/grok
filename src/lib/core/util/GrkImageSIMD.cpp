@@ -1127,8 +1127,7 @@ void hwy_copy_tile_to_swath(const grk_image* tile_img, const grk_swath_buffer* b
             }
             else if(buf->prec <= 16 && buf->sgnd)
             {
-              int16_t w =
-                  v <= -32768 ? (int16_t)-32768 : v >= 32767 ? (int16_t)32767 : (int16_t)v;
+              int16_t w = v <= -32768 ? (int16_t)-32768 : v >= 32767 ? (int16_t)32767 : (int16_t)v;
               memcpy(dstPx, &w, sizeof(int16_t));
             }
             else if(buf->prec <= 16)
@@ -1186,8 +1185,7 @@ void hwy_copy_tile_to_swath(const grk_image* tile_img, const grk_swath_buffer* b
             }
             else if(buf->prec <= 16 && buf->sgnd)
             {
-              int16_t w =
-                  v <= -32768 ? (int16_t)-32768 : v >= 32767 ? (int16_t)32767 : (int16_t)v;
+              int16_t w = v <= -32768 ? (int16_t)-32768 : v >= 32767 ? (int16_t)32767 : (int16_t)v;
               memcpy(dstPx, &w, sizeof(int16_t));
             }
             else if(buf->prec <= 16)

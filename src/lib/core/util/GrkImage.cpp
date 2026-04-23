@@ -396,9 +396,10 @@ bool GrkImage::allocData(grk_image_comp* comp, bool clear)
   if(!comp || comp->w == 0 || comp->h == 0)
     return false;
   single_component_data_free(comp);
-  uint32_t stride = grk_make_aligned_width<int32_t>(comp->w);
+  uint32_t stride = (comp->data_type == GRK_INT_16) ? grk_make_aligned_width<int16_t>(comp->w)
+                                                    : grk_make_aligned_width<int32_t>(comp->w);
   size_t dataSize = (uint64_t)stride * comp->h * sizeOfDataType(comp->data_type);
-  auto data = (int32_t*)grk_aligned_malloc(dataSize);
+  auto data = grk_aligned_malloc(dataSize);
   if(!data)
   {
     grk::grklog.error("Failed to allocate aligned memory buffer of dimensions %u x %u",

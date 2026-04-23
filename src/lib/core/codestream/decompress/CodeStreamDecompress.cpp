@@ -1757,6 +1757,41 @@ bool CodeStreamDecompress::activateScratch(bool singleTile, GrkImage* scratch)
 {
   multiTileComposite_->copyHeaderTo(scratch);
 
+  // Set int16 data_type on scratch components when all components are eligible
+  // for 16-bit DWT. This ensures the composite buffer is allocated as int16,
+  // avoiding int16→int32 widening during tile compositing.
+  // Mirror the eligibility logic from TileProcessor::createDecompressTileComponentWindows.
+  // Only do this when there's no region decode, because partial tiles have
+  // wholeTileDecompress_=false and fall back to int32 DWT.
+  if(scratch->has_multiple_tiles && region_.empty())
+  {
+    bool allEligible = true;
+    bool hasMct =
+        defaultTcp_->mct_ == 1 && scratch->numcomps >= 3 && scratch->componentsEqual(3, false);
+    for(uint16_t i = 0; i < scratch->numcomps; i++)
+    {
+      auto tccp = defaultTcp_->tccps_ + i;
+      auto comp = scratch->comps + i;
+      if(tccp->qmfbid_ != 1)
+      {
+        allEligible = false;
+        break;
+      }
+      bool isMctComp = hasMct && (i <= 2);
+      uint32_t headroom = isMctComp ? 5 : 4;
+      if(comp->prec + headroom > 16)
+      {
+        allEligible = false;
+        break;
+      }
+    }
+    if(allEligible)
+    {
+      for(uint16_t i = 0; i < scratch->numcomps; i++)
+        scratch->comps[i].data_type = GRK_INT_16;
+    }
+  }
+
   // no need to allocate composite data if there is only one tile
   // i.e. no compositing — UNLESS band callback is active, which needs
   // a destination buffer for compositing before writing.
