@@ -1363,23 +1363,14 @@ void GrkImage::transferDataFrom_T(const Tile* tile_src_data)
     auto srcComp = tile_src_data->comps_ + compno;
     auto destComp = comps + compno;
 
-    // transfer memory from tile component to output image
+    // transfer memory from tile component to output image via type-erased interface
     single_component_data_free(destComp);
-    if(srcComp->is16BitDwt())
-    {
-      // DWT ran in int16; transfer directly without widening.
-      int16_t* data16 = nullptr;
-      uint32_t stride16 = 0;
-      srcComp->getWindow16()->transfer(&data16, &stride16);
-      destComp->data = data16;
-      destComp->stride = stride16;
-      destComp->data_type = GRK_INT_16;
-    }
-    else
-    {
-      srcComp->getWindow()->transfer((T**)&destComp->data, &destComp->stride);
-      destComp->data_type = GRK_INT_32;
-    }
+    uint32_t stride = 0;
+    void* data = nullptr;
+    srcComp->transferWindowData(&data, &stride);
+    destComp->data = data;
+    destComp->stride = stride;
+    destComp->data_type = srcComp->is16BitDwt() ? GRK_INT_16 : GRK_INT_32;
     destComp->owns_data = true;
   }
 }

@@ -347,6 +347,22 @@ struct TileComponent : public Rect32
   {
     return window_->getBandWindowPadded(resno, orientation);
   }
+  void transferWindowData(void** data, uint32_t* stride)
+  {
+    window_->transferData(data, stride);
+  }
+  void attachWindowData(void* data, uint32_t stride)
+  {
+    window_->attachData(data, stride);
+  }
+  uint32_t highestResStride() const
+  {
+    return window_->highestResStride();
+  }
+  uint64_t windowStridedArea() const
+  {
+    return window_->stridedArea();
+  }
   /**
    * @brief Checks if whole tile will be decoded
    *
