@@ -199,6 +199,25 @@ private:
 
   bool tile_16_53(void);
 
+  // 16-bit fixed-point 9/7 //////////////////////////////////////////////////////////////////
+  void h_strip_16_97(const dwt_scratch<int16_t>* scratch, uint32_t hMin, uint32_t hMax,
+                     Buffer2dSimple<int16_t> winL, Buffer2dSimple<int16_t> winH,
+                     Buffer2dSimple<int16_t> winDest);
+
+  void h_16_97(uint8_t res, TileComponentWindow<int16_t>* scratch, uint32_t resHeight);
+
+  void v_16_97(const dwt_scratch<int16_t>* scratch, Buffer2dSimple<int16_t> winL,
+               Buffer2dSimple<int16_t> winH, Buffer2dSimple<int16_t> winDest, uint32_t nb_cols,
+               DcShiftParam dcShift);
+
+  void v_strip_16_97(const dwt_scratch<int16_t>* scratch, uint32_t wMin, uint32_t wMax,
+                     Buffer2dSimple<int16_t> winL, Buffer2dSimple<int16_t> winH,
+                     Buffer2dSimple<int16_t> winDest, DcShiftParam dcShift);
+
+  void v_16_97(uint8_t res, TileComponentWindow<int16_t>* buf, uint32_t resWidth);
+
+  bool tile_16_97(void);
+
   dwt_scratch<int16_t> horiz16_;
   dwt_scratch<int16_t> vert16_;
   std::unique_ptr<dwt_scratch<int16_t>[]> horizPool16_;

@@ -1648,7 +1648,11 @@ bool WaveletReverse::decompress(void)
     return tile_53();
   }
   else
+  {
+    if(tilec_->is16BitDwt())
+      return tile_16_97();
     return tile_97();
+  }
 }
 
 } // namespace grk

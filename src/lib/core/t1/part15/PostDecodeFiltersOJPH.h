@@ -160,4 +160,73 @@ private:
   uint32_t shift;
 };
 
+// Narrowing dequantization filter for 16-bit fixed-point 9/7 DWT path (OJPH).
+// Converts OJPH block coder int32 sign-magnitude output to int16 by
+// applying the quantization step size (dequantization) and clamping.
+class NarrowScaleOJPHFilter16
+{
+public:
+  explicit NarrowScaleOJPHFilter16(DecompressBlockExec* block)
+      : scale_(block->stepsize / (float)(1u << (31 - block->bandNumbps)))
+  {
+    assert(block->bandNumbps <= 31);
+  }
+  inline void copy(int16_t* dest, const int32_t* src, uint32_t len)
+  {
+    for(uint32_t i = 0; i < len; ++i)
+    {
+      int32_t val = src[i];
+      float val_scaled = (float)(val & 0x7FFFFFFF) * scale_;
+      float signed_val = ((uint32_t)val & 0x80000000) ? -val_scaled : val_scaled;
+      int32_t rounded = (int32_t)(signed_val >= 0 ? signed_val + 0.5f : signed_val - 0.5f);
+      if(rounded > 32767)
+        rounded = 32767;
+      else if(rounded < -32768)
+        rounded = -32768;
+      dest[i] = (int16_t)rounded;
+    }
+  }
+
+private:
+  float scale_;
+};
+
+// Same as NarrowScaleOJPHFilter16 but with ROI shift applied first.
+class NarrowRoiScaleOJPHFilter16
+{
+public:
+  explicit NarrowRoiScaleOJPHFilter16(DecompressBlockExec* block)
+      : roiShift_(block->roishift),
+        scale_(block->stepsize / (float)(1u << (31 - block->bandNumbps)))
+  {
+    assert(block->bandNumbps <= 31);
+  }
+  inline void copy(int16_t* dest, const int32_t* src, uint32_t len)
+  {
+    int32_t thresh = 1 << roiShift_;
+    for(uint32_t i = 0; i < len; ++i)
+    {
+      int32_t val = src[i];
+      int32_t mag = (val & 0x7FFFFFFF);
+      if(mag >= thresh)
+      {
+        mag >>= roiShift_;
+        val = (int32_t)(((uint32_t)mag) | ((uint32_t)val & 0x80000000));
+      }
+      float val_scaled = (float)(val & 0x7FFFFFFF) * scale_;
+      float signed_val = ((uint32_t)val & 0x80000000) ? -val_scaled : val_scaled;
+      int32_t rounded = (int32_t)(signed_val >= 0 ? signed_val + 0.5f : signed_val - 0.5f);
+      if(rounded > 32767)
+        rounded = 32767;
+      else if(rounded < -32768)
+        rounded = -32768;
+      dest[i] = (int16_t)rounded;
+    }
+  }
+
+private:
+  uint32_t roiShift_;
+  float scale_;
+};
+
 } // namespace  grk::t1::ojph

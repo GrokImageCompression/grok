@@ -990,6 +990,20 @@ bool TileProcessor::createDecompressTileComponentWindows(void)
       if(imageComp->prec + headroom <= 16)
         tileComp->setUse16BitDwt(true);
     }
+    // 16-bit fixed-point 9/7 eligibility: use int16 wavelet path for lossy
+    // images with ≤ 12-bit precision, whole-tile decoding, and no MCT.
+    // The headroom scaling strategy (normalizing_upshift) keeps intermediate
+    // values within int16 range — see wavelet/WaveletReverse97_16.cpp.
+    //
+    // MCT components (mct_==1) are excluded because the irreversible inverse
+    // color transform (ICT) reads float buffers, and no int16 variant exists yet.
+    // Without MCT, DC shift is fused into the wavelet last level.
+    if(tccp->qmfbid_ == 0 && tileComp->isWholeTileDecoding() && imageComp->prec <= 12)
+    {
+      bool isMctComp = needsMctDecompress(compno) && tcp_->mct_ == 1;
+      if(!isMctComp)
+        tileComp->setUse16BitDwt(true);
+    }
     auto unreducedImageCompWindow =
         unreducedImageWindow_.scaleDownCeil(imageComp->dx, imageComp->dy);
     if(!tileComp->canCreateWindow(unreducedImageCompWindow))

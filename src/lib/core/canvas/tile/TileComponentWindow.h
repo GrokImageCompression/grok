@@ -508,12 +508,26 @@ void TileComponentWindow<T>::postProcessBlock(int32_t* srcData, t1::DecompressBl
     if(!empty && !regionWindow)
     {
       src.setRect(blockBounds);
-      if(block->roishift)
-        this->template postProcessNarrow<int32_t, AllocatorAligned, t1::NarrowRoiShiftFilter>(
-            src, block->resno, block->bandOrientation, block);
+      if(block->qmfbid == 0)
+      {
+        // Irreversible 9/7: dequantize and narrow to int16
+        if(block->roishift)
+          this->template postProcessNarrow<int32_t, AllocatorAligned, t1::NarrowRoiScaleFilter16>(
+              src, block->resno, block->bandOrientation, block);
+        else
+          this->template postProcessNarrow<int32_t, AllocatorAligned, t1::NarrowScaleFilter16>(
+              src, block->resno, block->bandOrientation, block);
+      }
       else
-        this->template postProcessNarrow<int32_t, AllocatorAligned, t1::NarrowShiftFilter>(
-            src, block->resno, block->bandOrientation, block);
+      {
+        // Reversible 5/3: shift and narrow to int16
+        if(block->roishift)
+          this->template postProcessNarrow<int32_t, AllocatorAligned, t1::NarrowRoiShiftFilter>(
+              src, block->resno, block->bandOrientation, block);
+        else
+          this->template postProcessNarrow<int32_t, AllocatorAligned, t1::NarrowShiftFilter>(
+              src, block->resno, block->bandOrientation, block);
+      }
     }
   }
   else
@@ -585,14 +599,30 @@ void TileComponentWindow<T>::postProcessBlockHT(int32_t* srcData, t1::Decompress
     if(!empty && !regionWindow)
     {
       src.setRect(blockBounds);
-      if(block->roishift)
-        this->template postProcessNarrow<int32_t, AllocatorAligned,
-                                         t1::ojph::NarrowRoiShiftOJPHFilter>(
-            src, block->resno, block->bandOrientation, block);
+      if(block->qmfbid == 0)
+      {
+        // Irreversible 9/7: dequantize and narrow to int16 (OJPH sign-magnitude)
+        if(block->roishift)
+          this->template postProcessNarrow<int32_t, AllocatorAligned,
+                                           t1::ojph::NarrowRoiScaleOJPHFilter16>(
+              src, block->resno, block->bandOrientation, block);
+        else
+          this->template postProcessNarrow<int32_t, AllocatorAligned,
+                                           t1::ojph::NarrowScaleOJPHFilter16>(
+              src, block->resno, block->bandOrientation, block);
+      }
       else
-        this->template postProcessNarrow<int32_t, AllocatorAligned,
-                                         t1::ojph::NarrowShiftOJPHFilter>(
-            src, block->resno, block->bandOrientation, block);
+      {
+        // Reversible 5/3: shift and narrow to int16
+        if(block->roishift)
+          this->template postProcessNarrow<int32_t, AllocatorAligned,
+                                           t1::ojph::NarrowRoiShiftOJPHFilter>(
+              src, block->resno, block->bandOrientation, block);
+        else
+          this->template postProcessNarrow<int32_t, AllocatorAligned,
+                                           t1::ojph::NarrowShiftOJPHFilter>(
+              src, block->resno, block->bandOrientation, block);
+      }
     }
   }
   else
