@@ -648,9 +648,8 @@ namespace HWY_NAMESPACE
    * The 3-tier structure (2L main / L fallback / masked remainder) is preserved
    * to match all SIMD widths (SSE2: L=4, AVX2: L=8, AVX-512: L=16, NEON: L=4).
    * K/invK scaling is fused into the gather phase when non-trivial. */
-  static void hwy_v_cascade_stripe_97(float* scratchMem, uint32_t sn, uint32_t dn,
-                                      uint32_t parity, Line32 win_l, Line32 win_h,
-                                      const uint32_t resWidth, const uint32_t totalHeight,
+  static void hwy_v_cascade_stripe_97(float* scratchMem, uint32_t sn, uint32_t dn, uint32_t parity,
+                                      Line32 win_l, Line32 win_h, const uint32_t resWidth,
                                       float* srcL, uint32_t strideL, float* srcH, uint32_t strideH,
                                       float* dest, uint32_t strideDest, int32_t dcShift,
                                       int32_t dcMin, int32_t dcMax, uint32_t outputStart,
@@ -1178,10 +1177,10 @@ bool WaveletReverse::v_97(uint8_t res, uint32_t num_threads, size_t dataLength,
  * the central output rows are bit-exact with the traditional approach. */
 void WaveletReverse::cascade_strip_97(dwt_scratch<vec4f>* GRK_RESTRICT hScratch,
                                       dwt_scratch<vec4f>* GRK_RESTRICT vScratch,
-                                      const uint32_t resWidth, const uint32_t resHeight,
-                                      Buffer2dSimple<float> winLL, Buffer2dSimple<float> winHL,
-                                      Buffer2dSimple<float> winLH, Buffer2dSimple<float> winHH,
-                                      Buffer2dSimple<float> winDest, DcShiftParam dcShift)
+                                      const uint32_t resWidth, Buffer2dSimple<float> winLL,
+                                      Buffer2dSimple<float> winHL, Buffer2dSimple<float> winLH,
+                                      Buffer2dSimple<float> winHH, Buffer2dSimple<float> winDest,
+                                      DcShiftParam dcShift)
 {
   /* This function executes entirely within one task's context.
    * It processes one horizontal stripe of the image through the full
@@ -1217,9 +1216,9 @@ void WaveletReverse::cascade_strip_97(dwt_scratch<vec4f>* GRK_RESTRICT hScratch,
    * but only the central rows (without halo) are written to output. */
   HWY_DYNAMIC_DISPATCH(hwy_v_cascade_stripe_97)
   ((float*)vScratch->mem, vScratch->sn, vScratch->dn, vScratch->parity, vScratch->win_l,
-   vScratch->win_h, resWidth, resHeight, stripe_L.buf_, stripe_L.stride_, stripe_H.buf_,
-   stripe_H.stride_, winDest.buf_, winDest.stride_, dcShift.enabled ? dcShift.shift : 0,
-   dcShift.min, dcShift.max, vScratch->outputStart, vScratch->outputCount);
+   vScratch->win_h, resWidth, stripe_L.buf_, stripe_L.stride_, stripe_H.buf_, stripe_H.stride_,
+   winDest.buf_, winDest.stride_, dcShift.enabled ? dcShift.shift : 0, dcShift.min, dcShift.max,
+   vScratch->outputStart, vScratch->outputCount);
 }
 
 /* Schedule cascade synthesis tasks for one resolution level.
@@ -1240,11 +1239,11 @@ void WaveletReverse::cascade_strip_97(dwt_scratch<vec4f>* GRK_RESTRICT hScratch,
  * synchronization barrier between H and V. */
 bool WaveletReverse::cascade_97(uint8_t res, uint32_t num_threads, size_t dataLength,
                                 dwt_scratch<vec4f>& GRK_RESTRICT hScratch,
-                                dwt_scratch<vec4f>& GRK_RESTRICT vScratch,
-                                const uint32_t resWidth, const uint32_t resHeight,
-                                Buffer2dSimple<float> winLL, Buffer2dSimple<float> winHL,
-                                Buffer2dSimple<float> winLH, Buffer2dSimple<float> winHH,
-                                Buffer2dSimple<float> tempDest, Buffer2dSimple<float> realDest,
+                                dwt_scratch<vec4f>& GRK_RESTRICT vScratch, const uint32_t resWidth,
+                                const uint32_t resHeight, Buffer2dSimple<float> winLL,
+                                Buffer2dSimple<float> winHL, Buffer2dSimple<float> winLH,
+                                Buffer2dSimple<float> winHH, Buffer2dSimple<float> tempDest,
+                                Buffer2dSimple<float> realDest,
                                 std::shared_ptr<std::vector<float>> tempBufMem)
 {
   if(resWidth == 0 || resHeight == 0)
@@ -1304,10 +1303,9 @@ bool WaveletReverse::cascade_97(uint8_t res, uint32_t num_threads, size_t dataLe
     }
 
     auto& stripeTask = resFlow->waveletHoriz_->nextTask();
-    stripeTask.work([this, myh, taskStripeStart, taskStripes, sn_v, dn_v,
-                     v_parity, resWidth, resHeight, HALO,
-                     STRIPE_INTERLEAVED, dataLength, winLL, winHL, winLH,
-                     winHH, tempDest, dcShift, &vScratch] {
+    stripeTask.work([this, myh, taskStripeStart, taskStripes, sn_v, dn_v, v_parity, resWidth,
+                     resHeight, HALO, STRIPE_INTERLEAVED, dataLength, winLL, winHL, winLH, winHH,
+                     tempDest, dcShift, &vScratch] {
       for(uint32_t s = 0; s < taskStripes; ++s)
       {
         uint32_t stripe = taskStripeStart + s;
@@ -1320,8 +1318,7 @@ bool WaveletReverse::cascade_97(uint8_t res, uint32_t num_threads, size_t dataLe
          * We use HALO=4 sub-band rows = 8 interleaved rows for safety. */
         const uint32_t HALO_INTERLEAVED = 2 * HALO;
         uint32_t ext_iFirst = (outStart >= HALO_INTERLEAVED) ? outStart - HALO_INTERLEAVED : 0;
-        uint32_t ext_iLast =
-            std::min(outStart + outCount - 1 + HALO_INTERLEAVED, resHeight - 1);
+        uint32_t ext_iLast = std::min(outStart + outCount - 1 + HALO_INTERLEAVED, resHeight - 1);
 
         /* Map interleaved range to consistent sub-band row ranges.
          * For parity=0: L at even positions (2k), H at odd positions (2k+1).
@@ -1330,9 +1327,9 @@ bool WaveletReverse::cascade_97(uint8_t res, uint32_t num_threads, size_t dataLe
         if(v_parity == 0)
         {
           elo_L = (ext_iFirst + 1) / 2; /* ceil(ext_iFirst/2) */
-          ehi_L = ext_iLast / 2 + 1;    /* floor(ext_iLast/2) + 1 */
-          elo_H = ext_iFirst / 2;        /* floor(ext_iFirst/2) */
-          ehi_H = (ext_iLast + 1) / 2;  /* ceil(ext_iLast/2) */
+          ehi_L = ext_iLast / 2 + 1; /* floor(ext_iLast/2) + 1 */
+          elo_H = ext_iFirst / 2; /* floor(ext_iFirst/2) */
+          ehi_H = (ext_iLast + 1) / 2; /* ceil(ext_iLast/2) */
         }
         else
         {
@@ -1348,7 +1345,6 @@ bool WaveletReverse::cascade_97(uint8_t res, uint32_t num_threads, size_t dataLe
 
         uint32_t ext_sn = ehi_L - elo_L;
         uint32_t ext_dn = ehi_H - elo_H;
-        uint32_t ext_height = ext_sn + ext_dn;
 
         /* Local parity: whether the first interleaved row of the
          * extended stripe is a low-pass (0) or high-pass (1) sample.
@@ -1385,8 +1381,8 @@ bool WaveletReverse::cascade_97(uint8_t res, uint32_t num_threads, size_t dataLe
         auto stripDest = tempDest;
         stripDest.incY_IN_PLACE(outStart);
 
-        cascade_strip_97(myh.get(), myv.get(), resWidth, ext_height, stripLL, stripHL, stripLH,
-                         stripHH, stripDest, dcShift);
+        cascade_strip_97(myh.get(), myv.get(), resWidth, stripLL, stripHL, stripLH, stripHH,
+                         stripDest, dcShift);
       }
     });
     stripeTasks.push_back(stripeTask);
@@ -1397,14 +1393,13 @@ bool WaveletReverse::cascade_97(uint8_t res, uint32_t num_threads, size_t dataLe
    * complete. The dependency is enforced by Taskflow .precede() below.
    * tempBufMem is captured to keep the temp buffer alive until copy completes. */
   auto& copyTask = resFlow->waveletHoriz_->nextTask();
-  copyTask.work(
-      [tempBufMem, tempDest, realDest, resWidth, resHeight] {
-        for(uint32_t row = 0; row < resHeight; ++row)
-        {
-          memcpy(realDest.buf_ + row * realDest.stride_,
-                 tempDest.buf_ + row * tempDest.stride_, resWidth * sizeof(float));
-        }
-      });
+  copyTask.work([tempBufMem, tempDest, realDest, resWidth, resHeight] {
+    for(uint32_t row = 0; row < resHeight; ++row)
+    {
+      memcpy(realDest.buf_ + row * realDest.stride_, tempDest.buf_ + row * tempDest.stride_,
+             resWidth * sizeof(float));
+    }
+  });
   for(auto& t : stripeTasks)
     t.precede(copyTask);
 
@@ -1543,8 +1538,8 @@ bool WaveletReverse::tile_97_cascade(void)
     auto tempBufMem = std::make_shared<std::vector<float>>((size_t)resWidth * resHeight);
     Buffer2dSimple<float> tempDest(tempBufMem->data(), resWidth, resHeight);
 
-    if(!cascade_97(res, num_threads, dataLength, cascade97_h, cascade97_v,
-                   resWidth, resHeight, winLL, winHL, winLH, winHH, tempDest, winDest, tempBufMem))
+    if(!cascade_97(res, num_threads, dataLength, cascade97_h, cascade97_v, resWidth, resHeight,
+                   winLL, winHL, winLH, winHH, tempDest, winDest, tempBufMem))
       return false;
   }
 

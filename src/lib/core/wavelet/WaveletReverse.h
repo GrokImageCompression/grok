@@ -278,8 +278,7 @@ private:
   // into task-local buffers, then V-DWT with partial output (central rows only,
   // halo rows are lifted but not written).
   void cascade_strip_97(dwt_scratch<vec4f>* GRK_RESTRICT hScratch,
-                        dwt_scratch<vec4f>* GRK_RESTRICT vScratch,
-                        const uint32_t resWidth, const uint32_t resHeight,
+                        dwt_scratch<vec4f>* GRK_RESTRICT vScratch, const uint32_t resWidth,
                         Buffer2dSimple<float> winLL, Buffer2dSimple<float> winHL,
                         Buffer2dSimple<float> winLH, Buffer2dSimple<float> winHH,
                         Buffer2dSimple<float> winDest, DcShiftParam dcShift);
@@ -293,12 +292,11 @@ private:
   // share memory with realDest in whole-tile mode.
   bool cascade_97(uint8_t res, uint32_t num_threads, size_t dataLength,
                   dwt_scratch<vec4f>& GRK_RESTRICT hScratch,
-                  dwt_scratch<vec4f>& GRK_RESTRICT vScratch,
-                  const uint32_t resWidth, const uint32_t resHeight,
-                  Buffer2dSimple<float> winLL, Buffer2dSimple<float> winHL,
-                  Buffer2dSimple<float> winLH, Buffer2dSimple<float> winHH,
-                  Buffer2dSimple<float> tempDest, Buffer2dSimple<float> realDest,
-                  std::shared_ptr<std::vector<float>> tempBufMem);
+                  dwt_scratch<vec4f>& GRK_RESTRICT vScratch, const uint32_t resWidth,
+                  const uint32_t resHeight, Buffer2dSimple<float> winLL,
+                  Buffer2dSimple<float> winHL, Buffer2dSimple<float> winLH,
+                  Buffer2dSimple<float> winHH, Buffer2dSimple<float> tempDest,
+                  Buffer2dSimple<float> realDest, std::shared_ptr<std::vector<float>> tempBufMem);
 
   // Entry point for cascade 9/7 inverse DWT (replaces tile_97 when enabled).
   bool tile_97_cascade(void);
