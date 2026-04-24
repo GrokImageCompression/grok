@@ -344,10 +344,12 @@ bool DecompressScheduler::scheduleT1(ITileProcessor* tileProcessor)
         }
       }
 
+      // GRK_CASCADE_DWT=1 enables stripe-based combined H+V inverse 9/7 DWT.
+      // See WaveletReverse97.cpp for architecture documentation.
       waveletReverse_[compno] = new WaveletReverse(
           tileProcessor->getScheduler(), tilec, compno, tilec->windowUnreducedBounds(), numRes,
           (tcp->tccps_ + compno)->qmfbid_, maxDim, tileProcessor->getTCP()->wholeTileDecompress_,
-          &waveletPoolData_, dcShift);
+          &waveletPoolData_, dcShift, !!getenv("GRK_CASCADE_DWT"));
 
       if(!waveletReverse_[compno]->decompress())
         return false;

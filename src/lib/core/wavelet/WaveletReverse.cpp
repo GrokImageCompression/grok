@@ -618,10 +618,11 @@ uint32_t get_PLL_COLS_16_53()
 WaveletReverse::WaveletReverse(CodecScheduler* scheduler, TileComponent* tilec, uint16_t compno,
                                Rect32 unreducedWindow, uint8_t numres, uint8_t qmfbid,
                                uint32_t maxDim, bool wholeTileDecompress, WaveletPoolData* poolData,
-                               DcShiftParam dcShift)
+                               DcShiftParam dcShift, bool cascadeSynthesis)
     : poolData_(poolData), scheduler_(scheduler), tilec_(tilec), compno_(compno),
       unreducedWindow_(unreducedWindow), numres_(numres), qmfbid_(qmfbid), maxDim_(maxDim),
-      wholeTileDecompress_(wholeTileDecompress), dcShift_(dcShift)
+      wholeTileDecompress_(wholeTileDecompress), dcShift_(dcShift),
+      cascadeSynthesis_(cascadeSynthesis)
 {}
 WaveletReverse::~WaveletReverse(void)
 {
@@ -1651,6 +1652,10 @@ bool WaveletReverse::decompress(void)
   {
     if(tilec_->is16BitDwt())
       return tile_16_97();
+    // Cascade synthesis: stripe-based combined H+V DWT. Opt-in via
+    // GRK_CASCADE_DWT=1 env var. Bit-exact with the traditional path.
+    if(cascadeSynthesis_)
+      return tile_97_cascade();
     return tile_97();
   }
 }

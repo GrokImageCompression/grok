@@ -32,7 +32,8 @@ struct dwt_scratch
   dwt_scratch(const dwt_scratch& rhs)
       : allocatedMem(nullptr), lenBytes_(0), paddingBytes_(0), mem(nullptr), memL(nullptr),
         memH(nullptr), sn(rhs.sn), dn(rhs.dn), parity(rhs.parity), win_l(rhs.win_l),
-        win_h(rhs.win_h), resno(rhs.resno)
+        win_h(rhs.win_h), resno(rhs.resno), outputStart(rhs.outputStart),
+        outputCount(rhs.outputCount)
   {}
   ~dwt_scratch(void)
   {
@@ -93,6 +94,10 @@ struct dwt_scratch
   Line32 win_l;
   Line32 win_h;
   uint8_t resno = 0;
+  /* Cascade synthesis: V-DWT output range within the extended stripe.
+   * Only rows [outputStart, outputStart+outputCount) are written. */
+  uint32_t outputStart = 0;
+  uint32_t outputCount = 0;
 };
 
 struct DcShiftParam
@@ -108,7 +113,8 @@ class WaveletReverse
 public:
   WaveletReverse(CodecScheduler* scheduler, TileComponent* tilec, uint16_t compno, Rect32 window,
                  uint8_t numres, uint8_t qmfbid, uint32_t maxDim, bool wholeTileDecompress,
-                 WaveletPoolData* poolData, DcShiftParam dcShift = {});
+                 WaveletPoolData* poolData, DcShiftParam dcShift = {},
+                 bool cascadeSynthesis = false);
   ~WaveletReverse(void);
   bool decompress(void);
 
@@ -243,10 +249,70 @@ private:
             const uint32_t resHeight, Buffer2dSimple<float> winL, Buffer2dSimple<float> winH,
             Buffer2dSimple<float> winDest);
 
+  // ======================== Cascade synthesis ========================
+  //
+  // Stripe-based combined H+V 9/7 inverse DWT. Instead of the traditional
+  // two-phase approach (H-DWT entire image → sync → V-DWT entire image),
+  // cascade synthesis divides the image into horizontal stripes of ~64
+  // interleaved rows and processes each stripe through both H and V in
+  // one pass. This keeps intermediate data hot in L2/L3 cache, avoiding
+  // the DRAM round-trip that occurs when the full-resolution SPLIT buffers
+  // (potentially tens of MB for 4K+ images) are cold by the time the
+  // V-DWT reads them.
+  //
+  // Each stripe includes a halo of ±4 sub-band rows (8 interleaved rows)
+  // to provide context for the 9/7 V-DWT lifting steps at stripe
+  // boundaries. The halo introduces ~12% redundant H-DWT work, but this
+  // is offset by the elimination of SPLIT buffer cache misses.
+  //
+  // Opt-in: set GRK_CASCADE_DWT=1 environment variable. Output is
+  // bit-exact with the traditional path.
+  //
+  // Architecture:
+  //   tile_97_cascade   - per-resolution loop (replaces tile_97)
+  //   cascade_97        - scheduling: splits image into stripes, creates tasks
+  //   cascade_strip_97  - per-stripe kernel: H-DWT + V-DWT + output
+  //   hwy_v_cascade_stripe_97 - SIMD V-DWT with partial row output
+
+  // Per-stripe cascade kernel. H-DWT for both sub-band pairs (LL+HL, LH+HH)
+  // into task-local buffers, then V-DWT with partial output (central rows only,
+  // halo rows are lifted but not written).
+  void cascade_strip_97(dwt_scratch<vec4f>* GRK_RESTRICT hScratch,
+                        dwt_scratch<vec4f>* GRK_RESTRICT vScratch,
+                        const uint32_t resWidth, const uint32_t resHeight,
+                        Buffer2dSimple<float> winLL, Buffer2dSimple<float> winHL,
+                        Buffer2dSimple<float> winLH, Buffer2dSimple<float> winHH,
+                        Buffer2dSimple<float> winDest, DcShiftParam dcShift);
+
+  // Schedule cascade tasks for one resolution level. Divides resHeight into
+  // 64-row interleaved stripes with 8-row halo. Each task processes one or
+  // more stripes. Tasks are scheduled into waveletHoriz_ (waveletVert_ is
+  // unused in cascade mode). Stripe tasks write to tempDest; a final copy-back
+  // task (also in waveletHoriz_, with .precede() dependencies) copies results
+  // to realDest. This avoids aliasing because sub-band inputs (LL, HL, LH, HH)
+  // share memory with realDest in whole-tile mode.
+  bool cascade_97(uint8_t res, uint32_t num_threads, size_t dataLength,
+                  dwt_scratch<vec4f>& GRK_RESTRICT hScratch,
+                  dwt_scratch<vec4f>& GRK_RESTRICT vScratch,
+                  const uint32_t resWidth, const uint32_t resHeight,
+                  Buffer2dSimple<float> winLL, Buffer2dSimple<float> winHL,
+                  Buffer2dSimple<float> winLH, Buffer2dSimple<float> winHH,
+                  Buffer2dSimple<float> tempDest, Buffer2dSimple<float> realDest,
+                  std::shared_ptr<std::vector<float>> tempBufMem);
+
+  // Entry point for cascade 9/7 inverse DWT (replaces tile_97 when enabled).
+  bool tile_97_cascade(void);
+
   bool tile_97(void);
 
   dwt_scratch<vec4f> horiz97;
   dwt_scratch<vec4f> vert97;
+  dwt_scratch<vec4f> cascade97_h; // H-DWT scratch for cascade synthesis
+  dwt_scratch<vec4f> cascade97_v; // V-DWT scratch for cascade synthesis
+
+  // When true, use cascade (stripe-based combined H+V) DWT instead of the
+  // traditional two-phase approach. Controlled by GRK_CASCADE_DWT env var.
+  bool cascadeSynthesis_ = false;
   ////////////////////////////////////////////////////////////////////////////////////////////////
 
   ///////////////////////////////////////////////////////////////////////////////////////////////
