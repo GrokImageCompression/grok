@@ -209,6 +209,10 @@ set(BUILD_SHARED_LIBS OFF)
 add_subdirectory(src/include/spdlog)
 set(BUILD_SHARED_LIBS ${BUILD_SHARED_LIBS_SAVED})
 
+# freebyrd thread pool (header-only, tests disabled)
+set(FREEBIRD_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+add_subdirectory(extern/freebyrd)
+
 add_subdirectory(src/lib/core)
 
 # Build GPU plugin from submodule (extern/grok-gpu-plugin).

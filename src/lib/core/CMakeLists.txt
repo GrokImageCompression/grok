@@ -269,7 +269,7 @@ endif (GRK_ARCH MATCHES "mips")
 if(UNIX)
   target_link_libraries(${GROK_CORE_NAME} PUBLIC ${CMAKE_THREAD_LIBS_INIT})
 endif(UNIX)
-target_link_libraries(${GROK_CORE_NAME} PRIVATE hwy ${LCMS_LIBNAME} )
+target_link_libraries(${GROK_CORE_NAME} PRIVATE hwy ${LCMS_LIBNAME} freebyrd)
 if(GRK_ENABLE_LIBCURL AND GRK_HAVE_LIBCURL)
   target_link_libraries(${GROK_CORE_NAME} PRIVATE ${GRK_CURL_TARGET})
   target_include_directories(${GROK_CORE_NAME} PRIVATE
