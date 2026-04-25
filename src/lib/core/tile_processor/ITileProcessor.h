@@ -380,6 +380,11 @@ struct ITileProcessor
    * @return true if successful
    */
   virtual bool reinitForReDecompress(void) = 0;
+
+  /**
+   * @brief Check if strip-mode output was written directly (bypass multi-tile band callback).
+   */
+  virtual bool isStripOutputWritten() const = 0;
 };
 
 } // namespace grk

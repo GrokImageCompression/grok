@@ -24,6 +24,8 @@
 namespace grk
 {
 
+class SchedulerFreebyrd;
+
 template<typename ST>
 struct dwt_scratch
 {
@@ -110,6 +112,9 @@ struct DcShiftParam
 
 class WaveletReverse
 {
+  friend class SchedulerFreebyrd;
+  friend class StripDecompressor;
+
 public:
   WaveletReverse(CodecScheduler* scheduler, TileComponent* tilec, uint16_t compno, Rect32 window,
                  uint8_t numres, uint8_t qmfbid, uint32_t maxDim, bool wholeTileDecompress,
@@ -119,6 +124,12 @@ public:
   bool decompress(void);
 
   static void step_97(dwt_scratch<vec4f>* GRK_RESTRICT dwt);
+
+  /**
+   * @brief Allocate DWT scratch buffer with platform-appropriate size for 9/7.
+   * Uses Highway SIMD width to determine the correct PLL_ROWS scaling.
+   */
+  static bool allocCascadeScratch97(dwt_scratch<vec4f>& scratch, size_t dataLength);
 
 private:
   WaveletPoolData* poolData_ = nullptr;

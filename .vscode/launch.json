@@ -194,7 +194,8 @@
             "cwd": "${workspaceFolder}",
             "environment": [
                 { "name": "GRK_DEBUG", "value": "3" },
-                { "name": "GRK_EXCALIBUR", "value": "0" }
+                { "name": "GRK_SCHEDULER", "value": "freebyrd" },
+                { "name": "GRK_STRIP", "value": "1" }
             ],
             "MIMode": "gdb",
             "miDebuggerPath": "/usr/bin/gdb"

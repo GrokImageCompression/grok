@@ -1112,7 +1112,7 @@ HWY_EXPORT(GetHWY_PLL_COLS_16_97);
 HWY_EXPORT(hwy_v_synth_16_97);
 HWY_EXPORT(hwy_h_synth_16_97);
 
-static uint32_t get_PLL_COLS_16_97(void)
+uint32_t get_PLL_COLS_16_97(void)
 {
   static uint32_t value = HWY_DYNAMIC_DISPATCH(GetHWY_PLL_COLS_16_97)();
   return value;

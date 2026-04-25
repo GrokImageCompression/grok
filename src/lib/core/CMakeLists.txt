@@ -57,6 +57,7 @@ include_directories(
   ${CMAKE_CURRENT_SOURCE_DIR}/scheduling/standard
   ${CMAKE_CURRENT_SOURCE_DIR}/scheduling/standard/flow
   ${CMAKE_CURRENT_SOURCE_DIR}/scheduling/excalibur
+  ${CMAKE_CURRENT_SOURCE_DIR}/scheduling/freebyrd
   ${CMAKE_CURRENT_SOURCE_DIR}/stream
   ${CMAKE_CURRENT_SOURCE_DIR}/stream/fetchers
   ${CMAKE_CURRENT_SOURCE_DIR}/stream/fetchers/s3
@@ -145,6 +146,8 @@ set(GROK_LIBRARY_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/scheduling/excalibur/DecompressSchedulerExcalibur.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/scheduling/excalibur/CompressSchedulerExcalibur.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/scheduling/excalibur/SchedulerExcalibur.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/scheduling/freebyrd/SchedulerFreebyrd.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/scheduling/freebyrd/StripDecompressor.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/scheduling/CodecScheduler.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/scheduling/CoderPool.cpp
 

@@ -72,6 +72,7 @@ struct ITileProcessorCompress;
 #include "plugin_bridge.h"
 #include "DecompressScheduler.h"
 #include "DecompressSchedulerExcalibur.h"
+#include "SchedulerFreebyrd.h"
 
 namespace grk
 {
@@ -90,11 +91,19 @@ TileProcessor::TileProcessor(uint16_t tile_index, TileCodingParams* tcp, CodeStr
   if(!isCompressor_)
     tcp_->packets_ = new PacketCache();
   threadTilePart_.resize(TFSingleton::num_threads());
+
+  // extract band callback for strip-mode ImageFormat output
+  if(!isCompressor_)
+  {
+    ioBandCallback_ = codeStream->getBandCallback();
+    ioBandUserData_ = codeStream->getBandUserData();
+  }
 }
 TileProcessor::~TileProcessor()
 {
   TileProcessor::release(GRK_TILE_CACHE_NONE);
   delete scheduler_;
+  delete schedulerFreebyrd_;
   delete mct_;
   if(!isCompressor_)
     delete tcp_;
@@ -1113,6 +1122,13 @@ void TileProcessor::post_decompressT2T1(GrkImage* scratch)
   {
     if(tile_)
     {
+      // strip-streaming mode: output already written, no tile buffer to transfer
+      if(schedulerFreebyrd_ && SchedulerFreebyrd::isStripMode()
+         && schedulerFreebyrd_->hasStripOutput())
+      {
+        deallocBuffers();
+        return;
+      }
       if(scratch->has_multiple_tiles)
       {
         grk_unref(image_);
@@ -1184,16 +1200,19 @@ void TileProcessor::scheduleAndRunDecompress(CoderPool* coderPool, Rect32 unredu
   staleParsing_.clear();
   unreducedImageWindow_ = unreducedImageBounds;
 
-  if(!scheduler_)
+  if(!scheduler_ && !schedulerFreebyrd_)
   {
-    if(Scheduling::isExcalibur())
+    if(Scheduling::isFreebyrd())
+      schedulerFreebyrd_ =
+          new SchedulerFreebyrd(headerImage_->numcomps, headerImage_->comps->prec);
+    else if(Scheduling::isExcalibur())
       scheduler_ = new DecompressSchedulerExcalibur(headerImage_->numcomps,
                                                     headerImage_->comps->prec, coderPool);
     else
       scheduler_ =
           new DecompressScheduler(headerImage_->numcomps, headerImage_->comps->prec, coderPool);
   }
-  else
+  else if(scheduler_)
   {
     scheduler_->release();
   }
@@ -1317,6 +1336,9 @@ void TileProcessor::scheduleAndRunDecompress(CoderPool* coderPool, Rect32 unredu
             return;
           }
         }
+        // strip mode manages its own buffers — skip the full-image tile buffer
+        if(schedulerFreebyrd_ && SchedulerFreebyrd::isStripMode())
+          continue;
         if(!tilec->allocWindow())
         {
           grklog.error("Not enough memory for tile data");
@@ -1325,7 +1347,209 @@ void TileProcessor::scheduleAndRunDecompress(CoderPool* coderPool, Rect32 unredu
         }
       }
     }
-    if(!scheduler_->scheduleT1(this))
+    if(schedulerFreebyrd_)
+    {
+      if(SchedulerFreebyrd::isStripMode())
+      {
+        // streaming strip mode: set up output callback
+        auto tilec0 = tile_->comps_;
+        uint32_t w = tilec0->width();
+        uint32_t h = tilec0->height();
+        uint8_t prec = headerImage_->comps[0].prec;
+        uint16_t nc = headerImage_->numcomps;
+        bool use16 = tilec0->is16BitDwt();
+
+        if(ioBandCallback_)
+        {
+          // ImageFormat-based output via band callback
+          // Create scratch image for passing strip data to the format writer.
+          // Component data pointers will be set per strip callback.
+          auto* scratchImg = new GrkImage();
+          headerImage_->copyHeaderTo(scratchImg);
+          // ensure decompress dimensions are set (may not yet be on headerImage_)
+          scratchImg->decompress_width = w;
+          scratchImg->decompress_height = h;
+          scratchImg->decompress_prec = prec;
+          scratchImg->decompress_num_comps = nc;
+          // packed_row_bytes and rows_per_strip must match what the format writer header used
+          scratchImg->packed_row_bytes =
+              ((uint64_t)w * nc * prec + 7U) / 8U;
+          scratchImg->rows_per_strip = singleTileRowsPerStrip;
+          if(scratchImg->rows_per_strip > h)
+            scratchImg->rows_per_strip = h;
+          for(uint16_t i = 0; i < scratchImg->numcomps; i++)
+          {
+            auto& comp = scratchImg->comps[i];
+            comp.stride = w;
+            comp.w = w;
+            comp.h = h;
+            comp.data = nullptr;
+            comp.owns_data = false;
+            if(use16)
+              comp.data_type = GRK_INT_16;
+          }
+          auto bandCb = ioBandCallback_;
+          auto bandUd = ioBandUserData_;
+          auto* outerThis = this;
+          uint32_t stripH = StripConfig::outputStripHeight;
+
+          // for multi-component: allocate persistent scratch buffers
+          // (component data is processed sequentially, so we must copy)
+          if(nc > 1)
+          {
+            size_t elemSize = use16 ? sizeof(int16_t) : sizeof(int32_t);
+            for(uint16_t i = 0; i < nc; i++)
+            {
+              auto& comp = scratchImg->comps[i];
+              comp.data = grk_aligned_malloc((size_t)w * stripH * elemSize);
+              comp.owns_data = true;
+            }
+          }
+
+          schedulerFreebyrd_->setStripOutputCallback(
+            [scratchImg, bandCb, bandUd, nc, w, use16, outerThis]
+            (uint16_t compno, uint32_t row0, uint32_t numRows,
+             const void* rowData, uint32_t rowStride) {
+              (void)row0;
+              auto& comp = scratchImg->comps[compno];
+              comp.h = numRows;
+              comp.w = w;
+
+              if(nc == 1)
+              {
+                // single-component: zero-copy — point directly at strip buffer
+                comp.data = const_cast<void*>(rowData);
+                comp.stride = rowStride;
+                if(!bandCb(0, numRows, scratchImg, bandUd))
+                  outerThis->success_ = false;
+                comp.data = nullptr;
+              }
+              else
+              {
+                // multi-component: copy into persistent scratch buffer
+                size_t elemSize = use16 ? sizeof(int16_t) : sizeof(int32_t);
+                comp.stride = w;
+                for(uint32_t r = 0; r < numRows; r++)
+                  memcpy((uint8_t*)comp.data + r * w * elemSize,
+                         (const uint8_t*)rowData + r * rowStride * elemSize,
+                         w * elemSize);
+
+                if(compno == nc - 1)
+                {
+                  if(!bandCb(0, numRows, scratchImg, bandUd))
+                    outerThis->success_ = false;
+                }
+              }
+            });
+
+          if(!schedulerFreebyrd_->decompressTile(this))
+            success_ = false;
+          stripOutputWritten_ = true;
+
+          // clean up scratch image
+          if(nc == 1)
+          {
+            for(uint16_t i = 0; i < scratchImg->numcomps; i++)
+              scratchImg->comps[i].data = nullptr;
+          }
+          // multi-component: owns_data=true so destructor frees scratch buffers
+          grk_unref(scratchImg);
+        }
+        else
+        {
+          // fallback: raw PGM output via GRK_STRIP_OUTPUT env var
+          FILE* pgmFile = nullptr;
+          const char* stripOutput = std::getenv("GRK_STRIP_OUTPUT");
+          if(stripOutput)
+          {
+            pgmFile = fopen(stripOutput, "wb");
+            if(pgmFile)
+            {
+              int maxVal = (1 << prec) - 1;
+              if(nc == 1)
+                fprintf(pgmFile, "P5\n%u %u\n%d\n", w, h, maxVal);
+              else
+                fprintf(pgmFile, "P6\n%u %u\n%d\n", w, h, maxVal);
+            }
+            else
+              grklog.error("StripDecompressor: cannot open %s", stripOutput);
+          }
+
+          schedulerFreebyrd_->setStripOutputCallback(
+            [pgmFile, w, prec, nc, use16]
+            (uint16_t compno, uint32_t row0, uint32_t numRows,
+             const void* rowData, uint32_t rowStride) {
+              (void)row0;
+              if(!pgmFile)
+                return;
+              if(nc > 1)
+                return;
+              if(compno != 0)
+                return;
+
+              bool bigEndian = prec > 8;
+              for(uint32_t row = 0; row < numRows; ++row)
+              {
+                if(use16)
+                {
+                  auto src = (const int16_t*)rowData + (size_t)row * rowStride;
+                  if(bigEndian)
+                  {
+                    for(uint32_t x = 0; x < w; ++x)
+                    {
+                      uint16_t val = (uint16_t)src[x];
+                      uint8_t be[2] = { (uint8_t)(val >> 8), (uint8_t)(val & 0xFF) };
+                      fwrite(be, 1, 2, pgmFile);
+                    }
+                  }
+                  else
+                  {
+                    for(uint32_t x = 0; x < w; ++x)
+                    {
+                      uint8_t val = (uint8_t)src[x];
+                      fwrite(&val, 1, 1, pgmFile);
+                    }
+                  }
+                }
+                else
+                {
+                  auto src = (const int32_t*)rowData + (size_t)row * rowStride;
+                  if(bigEndian)
+                  {
+                    for(uint32_t x = 0; x < w; ++x)
+                    {
+                      uint16_t val = (uint16_t)src[x];
+                      uint8_t be[2] = { (uint8_t)(val >> 8), (uint8_t)(val & 0xFF) };
+                      fwrite(be, 1, 2, pgmFile);
+                    }
+                  }
+                  else
+                  {
+                    for(uint32_t x = 0; x < w; ++x)
+                    {
+                      uint8_t val = (uint8_t)src[x];
+                      fwrite(&val, 1, 1, pgmFile);
+                    }
+                  }
+                }
+              }
+            });
+
+          if(!schedulerFreebyrd_->decompressTile(this))
+            success_ = false;
+
+          if(pgmFile)
+            fclose(pgmFile);
+        }
+      }
+      else
+      {
+        // freebyrd non-strip path: full-buffer approach
+        if(!schedulerFreebyrd_->decompressTile(this))
+          success_ = false;
+      }
+    }
+    else if(!scheduler_->scheduleT1(this))
       success_ = false;
   };
 
@@ -1342,11 +1566,28 @@ void TileProcessor::scheduleAndRunDecompress(CoderPool* coderPool, Rect32 unredu
 
   // Build task graph: parse → prepare → t2 → alloc → scheduler → post
   rootFlow_ = std::make_unique<FlowComponent>();
-  scheduler_->addTo(*rootFlow_);
 
   std::function<int()> condition_lambda = [this]() -> int { return hasError() ? 1 : 0; };
-  allocAndScheduleFlow_->addTo(*rootFlow_);
-  allocAndScheduleFlow_->conditional_precede(rootFlow_.get(), scheduler_, condition_lambda);
+
+  if(scheduler_)
+  {
+    // Taskflow path: scheduler is a FlowComponent in the DAG
+    scheduler_->addTo(*rootFlow_);
+    allocAndScheduleFlow_->addTo(*rootFlow_);
+    allocAndScheduleFlow_->conditional_precede(rootFlow_.get(), scheduler_, condition_lambda);
+
+    postDecompressFlow_->addTo(*rootFlow_);
+    scheduler_->precede(*postDecompressFlow_);
+  }
+  else
+  {
+    // freebyrd path: allocAndSchedule runs synchronously (calls decompressTile)
+    // then flows directly to post-decompress
+    allocAndScheduleFlow_->addTo(*rootFlow_);
+    postDecompressFlow_->addTo(*rootFlow_);
+    allocAndScheduleFlow_->conditional_precede(rootFlow_.get(), postDecompressFlow_.get(),
+                                               condition_lambda);
+  }
 
   t2ParseFlow_->addTo(*rootFlow_);
   t2ParseFlow_->conditional_precede(rootFlow_.get(), allocAndScheduleFlow_.get(), condition_lambda);
@@ -1360,9 +1601,6 @@ void TileProcessor::scheduleAndRunDecompress(CoderPool* coderPool, Rect32 unredu
     tileHeaderParseFlow_->conditional_precede(rootFlow_.get(), prepareFlow_.get(),
                                               condition_lambda);
   }
-
-  postDecompressFlow_->addTo(*rootFlow_);
-  scheduler_->precede(*postDecompressFlow_);
 
   concurrentFlowsStale_ = true;
   futures.add(tileIndex_, TFSingleton::get().run(*rootFlow_));

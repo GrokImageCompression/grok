@@ -844,6 +844,11 @@ static uint32_t get_PLL_ROWS_97(void)
   return value;
 }
 
+bool WaveletReverse::allocCascadeScratch97(dwt_scratch<vec4f>& scratch, size_t dataLength)
+{
+  return scratch.alloc(dataLength * get_PLL_ROWS_97() / vec4f::NUM_ELTS);
+}
+
 static const float dwt_alpha = 1.586134342f; /*  12994 */
 static const float dwt_beta = 0.052980118f; /*    434 */
 static const float dwt_gamma = -0.882911075f; /*  -7233 */
