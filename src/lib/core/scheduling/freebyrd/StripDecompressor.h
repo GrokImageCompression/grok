@@ -32,7 +32,7 @@ namespace grk
 {
 
 struct ITileProcessor;
-class CoderPool;
+struct CoderPool;
 
 namespace t1
 {

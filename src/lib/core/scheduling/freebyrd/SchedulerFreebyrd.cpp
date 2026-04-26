@@ -91,7 +91,6 @@ bool SchedulerFreebyrd::decompressTile(ITileProcessor* tileProcessor)
   {
     grklog.info("SchedulerFreebyrd: strip-based decompression (GRK_STRIP=1)");
 
-    auto tcp = tileProcessor->getTCP();
     bool hasStripCallback = !!stripOutputCallback_;
 
     // strip-based: T1 decode + DWT interleaved per component per strip

@@ -571,7 +571,6 @@ bool StripDecompressor::produceRows(uint8_t resno, uint32_t y0, uint32_t y1,
   rangeH.hi = std::min(rangeH.hi, li.v_dn);
 
   // allocate strip band buffers
-  uint32_t bandWidth = li.width; // full width (sub-bands interleave horizontally)
   uint32_t llHeight = rangeL.count();
   uint32_t lhHeight = rangeH.count();
   uint32_t hlHeight = rangeL.count();
@@ -609,7 +608,6 @@ bool StripDecompressor::produceRows(uint8_t resno, uint32_t y0, uint32_t y1,
                    bufs.hh.data(), hhW, rangeH.lo);
 
   // run DWT synthesis
-  uint32_t outRows = y1 - y0;
   if(qmfbid_ == 0 && !is16Bit_)
   {
     return synthesizeStrip97(resno, y0, y1,
