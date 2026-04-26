@@ -36,7 +36,7 @@ struct CoderPool;
 
 namespace t1
 {
-struct DecompressBlockExec;
+  struct DecompressBlockExec;
 }
 
 /**
@@ -44,13 +44,14 @@ struct DecompressBlockExec;
  */
 struct StripConfig
 {
-  static constexpr uint32_t outputStripHeight = 64; // configurable strip height at highest resolution
+  static constexpr uint32_t outputStripHeight =
+      64; // configurable strip height at highest resolution
 };
 
 // callback invoked for each completed output strip
 // params: row0, numRows, rowData (packed pixels, rowStride elements per row), rowStride, userData
-using StripOutputCallback = std::function<void(uint32_t row0, uint32_t numRows,
-                                               const void* rowData, uint32_t rowStride)>;
+using StripOutputCallback =
+    std::function<void(uint32_t row0, uint32_t numRows, const void* rowData, uint32_t rowStride)>;
 
 /**
  * @class StripDecompressor
@@ -70,8 +71,8 @@ using StripOutputCallback = std::function<void(uint32_t row0, uint32_t numRows,
 class StripDecompressor
 {
 public:
-  StripDecompressor(ITileProcessor* tp, uint16_t compno, uint8_t prec,
-                    std::atomic_bool& success, StripConfig config = {});
+  StripDecompressor(ITileProcessor* tp, uint16_t compno, uint8_t prec, std::atomic_bool& success,
+                    StripConfig config = {});
   ~StripDecompressor();
 
   /**
@@ -94,7 +95,7 @@ private:
    */
   struct LevelInfo
   {
-    uint32_t width = 0, height = 0;       // this resolution's dimensions
+    uint32_t width = 0, height = 0; // this resolution's dimensions
     uint32_t prevWidth = 0, prevHeight = 0; // previous resolution's dimensions
     uint32_t h_sn = 0, h_dn = 0, h_parity = 0; // H-DWT parameters
     uint32_t v_sn = 0, v_dn = 0, v_parity = 0; // V-DWT parameters
@@ -121,19 +122,22 @@ private:
 
     BlockRef() = default;
     BlockRef(BlockRef&& o) noexcept
-      : block(std::move(o.block)),
-        bandRelX0(o.bandRelX0), bandRelY0(o.bandRelY0), bandRelY1(o.bandRelY1),
-        blockWidth(o.blockWidth), blockHeight(o.blockHeight),
-        decodedData(std::move(o.decodedData)), decodedStride(o.decodedStride),
-        refCount(o.refCount.load(std::memory_order_relaxed)),
-        decoded(o.decoded.load(std::memory_order_relaxed))
+        : block(std::move(o.block)), bandRelX0(o.bandRelX0), bandRelY0(o.bandRelY0),
+          bandRelY1(o.bandRelY1), blockWidth(o.blockWidth), blockHeight(o.blockHeight),
+          decodedData(std::move(o.decodedData)), decodedStride(o.decodedStride),
+          refCount(o.refCount.load(std::memory_order_relaxed)),
+          decoded(o.decoded.load(std::memory_order_relaxed))
     {}
     BlockRef& operator=(BlockRef&& o) noexcept
     {
       block = std::move(o.block);
-      bandRelX0 = o.bandRelX0; bandRelY0 = o.bandRelY0; bandRelY1 = o.bandRelY1;
-      blockWidth = o.blockWidth; blockHeight = o.blockHeight;
-      decodedData = std::move(o.decodedData); decodedStride = o.decodedStride;
+      bandRelX0 = o.bandRelX0;
+      bandRelY0 = o.bandRelY0;
+      bandRelY1 = o.bandRelY1;
+      blockWidth = o.blockWidth;
+      blockHeight = o.blockHeight;
+      decodedData = std::move(o.decodedData);
+      decodedStride = o.decodedStride;
       refCount.store(o.refCount.load(std::memory_order_relaxed), std::memory_order_relaxed);
       decoded.store(o.decoded.load(std::memory_order_relaxed), std::memory_order_relaxed);
       return *this;
@@ -162,8 +166,7 @@ private:
 
   // Recursively produce output rows [y0, y1) at resolution resno,
   // writing into destBuf at row offset y0.
-  bool produceRows(uint8_t resno, uint32_t y0, uint32_t y1,
-                   void* destBuf, uint32_t destStride);
+  bool produceRows(uint8_t resno, uint32_t y0, uint32_t y1, void* destBuf, uint32_t destStride);
 
   // Decode T1 blocks that overlap the given sub-band row ranges for a strip.
   // Only decodes blocks not yet decoded (lazy). Submits decode tasks to pool
@@ -174,35 +177,32 @@ private:
   void releaseBlocksForStrip(uint8_t resno, uint32_t y0, uint32_t y1);
 
   // Copy decoded block data to a sub-band strip buffer for the given row range.
-  void copyBlocksToBand(uint8_t resno, uint8_t orient,
-                        uint32_t rowStart, uint32_t rowEnd,
-                        void* bandBuf, uint32_t bandBufStride,
-                        uint32_t bandBufRowOffset);
+  void copyBlocksToBand(uint8_t resno, uint8_t orient, uint32_t rowStart, uint32_t rowEnd,
+                        void* bandBuf, uint32_t bandBufStride, uint32_t bandBufRowOffset);
 
   // Binary search: find range [first, last) of blocks overlapping [rowStart, rowEnd)
-  static std::pair<size_t, size_t> findBlockRange(
-      const std::vector<BlockRef>& blocks, uint32_t rowStart, uint32_t rowEnd);
+  static std::pair<size_t, size_t> findBlockRange(const std::vector<BlockRef>& blocks,
+                                                  uint32_t rowStart, uint32_t rowEnd);
 
   // Run separate H+V DWT synthesis for 5/3 on a strip at resolution resno.
   bool synthesizeStrip53(uint8_t resno, uint32_t outY0, uint32_t outY1,
                          Buffer2dSimple<int32_t> winLL, Buffer2dSimple<int32_t> winHL,
                          Buffer2dSimple<int32_t> winLH, Buffer2dSimple<int32_t> winHH,
-                         SubbandRange rangeL, SubbandRange rangeH, uint32_t extFirst,
-                         void* destBuf, uint32_t destStride);
+                         SubbandRange rangeL, SubbandRange rangeH, uint32_t extFirst, void* destBuf,
+                         uint32_t destStride);
 
   // Run cascade DWT synthesis for 9/7 on a strip at resolution resno.
-  bool synthesizeStrip97(uint8_t resno, uint32_t outY0, uint32_t outY1,
-                         Buffer2dSimple<float> winLL, Buffer2dSimple<float> winHL,
-                         Buffer2dSimple<float> winLH, Buffer2dSimple<float> winHH,
-                         SubbandRange rangeL, SubbandRange rangeH, uint32_t extFirst,
-                         void* destBuf, uint32_t destStride);
+  bool synthesizeStrip97(uint8_t resno, uint32_t outY0, uint32_t outY1, Buffer2dSimple<float> winLL,
+                         Buffer2dSimple<float> winHL, Buffer2dSimple<float> winLH,
+                         Buffer2dSimple<float> winHH, SubbandRange rangeL, SubbandRange rangeH,
+                         uint32_t extFirst, void* destBuf, uint32_t destStride);
 
   // Run 16-bit DWT synthesis on a strip at resolution resno.
   bool synthesizeStrip16(uint8_t resno, uint32_t outY0, uint32_t outY1,
                          Buffer2dSimple<int16_t> winLL, Buffer2dSimple<int16_t> winHL,
                          Buffer2dSimple<int16_t> winLH, Buffer2dSimple<int16_t> winHH,
-                         SubbandRange rangeL, SubbandRange rangeH, uint32_t extFirst,
-                         void* destBuf, uint32_t destStride);
+                         SubbandRange rangeL, SubbandRange rangeH, uint32_t extFirst, void* destBuf,
+                         uint32_t destStride);
 
   // -- data --
   ITileProcessor* tp_;

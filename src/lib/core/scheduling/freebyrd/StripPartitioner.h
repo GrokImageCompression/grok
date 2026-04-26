@@ -31,7 +31,10 @@ struct SubbandRange
 {
   uint32_t lo = 0;
   uint32_t hi = 0;
-  uint32_t count() const { return hi - lo; }
+  uint32_t count() const
+  {
+    return hi - lo;
+  }
 };
 
 /**
@@ -84,8 +87,7 @@ public:
    * @return Vector of StripGeometry, one per strip
    */
   static std::vector<StripGeometry> partition(uint32_t resHeight, uint32_t sn, uint32_t dn,
-                                              uint32_t parity,
-                                              uint32_t stripeInterleaved = 64,
+                                              uint32_t parity, uint32_t stripeInterleaved = 64,
                                               uint32_t halo = 4)
   {
     if(resHeight == 0)

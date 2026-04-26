@@ -356,7 +356,10 @@ struct TileProcessor : virtual public ITileProcessor
   bool scheduledForDecompression(void) override;
   void resetSOTParsing() override;
   bool reinitForReDecompress(void) override;
-  bool isStripOutputWritten() const override { return stripOutputWritten_; }
+  bool isStripOutputWritten() const override
+  {
+    return stripOutputWritten_;
+  }
 
 protected:
   /**

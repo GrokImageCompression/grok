@@ -1123,8 +1123,8 @@ void TileProcessor::post_decompressT2T1(GrkImage* scratch)
     if(tile_)
     {
       // strip-streaming mode: output already written, no tile buffer to transfer
-      if(schedulerFreebyrd_ && SchedulerFreebyrd::isStripMode()
-         && schedulerFreebyrd_->hasStripOutput())
+      if(schedulerFreebyrd_ && SchedulerFreebyrd::isStripMode() &&
+         schedulerFreebyrd_->hasStripOutput())
       {
         deallocBuffers();
         return;
@@ -1203,8 +1203,7 @@ void TileProcessor::scheduleAndRunDecompress(CoderPool* coderPool, Rect32 unredu
   if(!scheduler_ && !schedulerFreebyrd_)
   {
     if(Scheduling::isFreebyrd())
-      schedulerFreebyrd_ =
-          new SchedulerFreebyrd(headerImage_->numcomps, headerImage_->comps->prec);
+      schedulerFreebyrd_ = new SchedulerFreebyrd(headerImage_->numcomps, headerImage_->comps->prec);
     else if(Scheduling::isExcalibur())
       scheduler_ = new DecompressSchedulerExcalibur(headerImage_->numcomps,
                                                     headerImage_->comps->prec, coderPool);
@@ -1372,8 +1371,7 @@ void TileProcessor::scheduleAndRunDecompress(CoderPool* coderPool, Rect32 unredu
           scratchImg->decompress_prec = prec;
           scratchImg->decompress_num_comps = nc;
           // packed_row_bytes and rows_per_strip must match what the format writer header used
-          scratchImg->packed_row_bytes =
-              ((uint64_t)w * nc * prec + 7U) / 8U;
+          scratchImg->packed_row_bytes = ((uint64_t)w * nc * prec + 7U) / 8U;
           scratchImg->rows_per_strip = singleTileRowsPerStrip;
           if(scratchImg->rows_per_strip > h)
             scratchImg->rows_per_strip = h;
@@ -1407,40 +1405,39 @@ void TileProcessor::scheduleAndRunDecompress(CoderPool* coderPool, Rect32 unredu
           }
 
           schedulerFreebyrd_->setStripOutputCallback(
-            [scratchImg, bandCb, bandUd, nc, w, use16, outerThis]
-            (uint16_t compno, uint32_t row0, uint32_t numRows,
-             const void* rowData, uint32_t rowStride) {
-              (void)row0;
-              auto& comp = scratchImg->comps[compno];
-              comp.h = numRows;
-              comp.w = w;
+              [scratchImg, bandCb, bandUd, nc, w, use16,
+               outerThis](uint16_t compno, uint32_t row0, uint32_t numRows, const void* rowData,
+                          uint32_t rowStride) {
+                (void)row0;
+                auto& comp = scratchImg->comps[compno];
+                comp.h = numRows;
+                comp.w = w;
 
-              if(nc == 1)
-              {
-                // single-component: zero-copy — point directly at strip buffer
-                comp.data = const_cast<void*>(rowData);
-                comp.stride = rowStride;
-                if(!bandCb(0, numRows, scratchImg, bandUd))
-                  outerThis->success_ = false;
-                comp.data = nullptr;
-              }
-              else
-              {
-                // multi-component: copy into persistent scratch buffer
-                size_t elemSize = use16 ? sizeof(int16_t) : sizeof(int32_t);
-                comp.stride = w;
-                for(uint32_t r = 0; r < numRows; r++)
-                  memcpy((uint8_t*)comp.data + r * w * elemSize,
-                         (const uint8_t*)rowData + r * rowStride * elemSize,
-                         w * elemSize);
-
-                if(compno == nc - 1)
+                if(nc == 1)
                 {
+                  // single-component: zero-copy — point directly at strip buffer
+                  comp.data = const_cast<void*>(rowData);
+                  comp.stride = rowStride;
                   if(!bandCb(0, numRows, scratchImg, bandUd))
                     outerThis->success_ = false;
+                  comp.data = nullptr;
                 }
-              }
-            });
+                else
+                {
+                  // multi-component: copy into persistent scratch buffer
+                  size_t elemSize = use16 ? sizeof(int16_t) : sizeof(int32_t);
+                  comp.stride = w;
+                  for(uint32_t r = 0; r < numRows; r++)
+                    memcpy((uint8_t*)comp.data + r * w * elemSize,
+                           (const uint8_t*)rowData + r * rowStride * elemSize, w * elemSize);
+
+                  if(compno == nc - 1)
+                  {
+                    if(!bandCb(0, numRows, scratchImg, bandUd))
+                      outerThis->success_ = false;
+                  }
+                }
+              });
 
           if(!schedulerFreebyrd_->decompressTile(this))
             success_ = false;
@@ -1476,64 +1473,63 @@ void TileProcessor::scheduleAndRunDecompress(CoderPool* coderPool, Rect32 unredu
           }
 
           schedulerFreebyrd_->setStripOutputCallback(
-            [pgmFile, w, prec, nc, use16]
-            (uint16_t compno, uint32_t row0, uint32_t numRows,
-             const void* rowData, uint32_t rowStride) {
-              (void)row0;
-              if(!pgmFile)
-                return;
-              if(nc > 1)
-                return;
-              if(compno != 0)
-                return;
+              [pgmFile, w, prec, nc, use16](uint16_t compno, uint32_t row0, uint32_t numRows,
+                                            const void* rowData, uint32_t rowStride) {
+                (void)row0;
+                if(!pgmFile)
+                  return;
+                if(nc > 1)
+                  return;
+                if(compno != 0)
+                  return;
 
-              bool bigEndian = prec > 8;
-              for(uint32_t row = 0; row < numRows; ++row)
-              {
-                if(use16)
+                bool bigEndian = prec > 8;
+                for(uint32_t row = 0; row < numRows; ++row)
                 {
-                  auto src = (const int16_t*)rowData + (size_t)row * rowStride;
-                  if(bigEndian)
+                  if(use16)
                   {
-                    for(uint32_t x = 0; x < w; ++x)
+                    auto src = (const int16_t*)rowData + (size_t)row * rowStride;
+                    if(bigEndian)
                     {
-                      uint16_t val = (uint16_t)src[x];
-                      uint8_t be[2] = { (uint8_t)(val >> 8), (uint8_t)(val & 0xFF) };
-                      fwrite(be, 1, 2, pgmFile);
+                      for(uint32_t x = 0; x < w; ++x)
+                      {
+                        uint16_t val = (uint16_t)src[x];
+                        uint8_t be[2] = {(uint8_t)(val >> 8), (uint8_t)(val & 0xFF)};
+                        fwrite(be, 1, 2, pgmFile);
+                      }
+                    }
+                    else
+                    {
+                      for(uint32_t x = 0; x < w; ++x)
+                      {
+                        uint8_t val = (uint8_t)src[x];
+                        fwrite(&val, 1, 1, pgmFile);
+                      }
                     }
                   }
                   else
                   {
-                    for(uint32_t x = 0; x < w; ++x)
+                    auto src = (const int32_t*)rowData + (size_t)row * rowStride;
+                    if(bigEndian)
                     {
-                      uint8_t val = (uint8_t)src[x];
-                      fwrite(&val, 1, 1, pgmFile);
+                      for(uint32_t x = 0; x < w; ++x)
+                      {
+                        uint16_t val = (uint16_t)src[x];
+                        uint8_t be[2] = {(uint8_t)(val >> 8), (uint8_t)(val & 0xFF)};
+                        fwrite(be, 1, 2, pgmFile);
+                      }
+                    }
+                    else
+                    {
+                      for(uint32_t x = 0; x < w; ++x)
+                      {
+                        uint8_t val = (uint8_t)src[x];
+                        fwrite(&val, 1, 1, pgmFile);
+                      }
                     }
                   }
                 }
-                else
-                {
-                  auto src = (const int32_t*)rowData + (size_t)row * rowStride;
-                  if(bigEndian)
-                  {
-                    for(uint32_t x = 0; x < w; ++x)
-                    {
-                      uint16_t val = (uint16_t)src[x];
-                      uint8_t be[2] = { (uint8_t)(val >> 8), (uint8_t)(val & 0xFF) };
-                      fwrite(be, 1, 2, pgmFile);
-                    }
-                  }
-                  else
-                  {
-                    for(uint32_t x = 0; x < w; ++x)
-                    {
-                      uint8_t val = (uint8_t)src[x];
-                      fwrite(&val, 1, 1, pgmFile);
-                    }
-                  }
-                }
-              }
-            });
+              });
 
           if(!schedulerFreebyrd_->decompressTile(this))
             success_ = false;

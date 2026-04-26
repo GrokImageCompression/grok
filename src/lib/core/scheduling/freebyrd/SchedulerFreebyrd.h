@@ -33,7 +33,7 @@ struct CoderPool;
 
 namespace t1
 {
-struct DecompressBlockExec;
+  struct DecompressBlockExec;
 }
 
 /**
@@ -82,8 +82,14 @@ public:
   // callback receives: (compno, row0, numRows, rowData, rowStride)
   using CompStripCallback = std::function<void(uint16_t compno, uint32_t row0, uint32_t numRows,
                                                const void* rowData, uint32_t rowStride)>;
-  void setStripOutputCallback(CompStripCallback cb) { stripOutputCallback_ = std::move(cb); }
-  bool hasStripOutput() const { return !!stripOutputCallback_; }
+  void setStripOutputCallback(CompStripCallback cb)
+  {
+    stripOutputCallback_ = std::move(cb);
+  }
+  bool hasStripOutput() const
+  {
+    return !!stripOutputCallback_;
+  }
 
   void release();
 

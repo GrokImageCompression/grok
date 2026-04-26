@@ -58,8 +58,14 @@ public:
   void init(grk_decompress_parameters* param) override;
 
   void setBandCallback(grk_io_band_callback callback, void* user_data) override;
-  grk_io_band_callback getBandCallback() const override { return ioBandCallback_; }
-  void* getBandUserData() const override { return ioBandUserData_; }
+  grk_io_band_callback getBandCallback() const override
+  {
+    return ioBandCallback_;
+  }
+  void* getBandUserData() const override
+  {
+    return ioBandUserData_;
+  }
 
   grk_progression_state getProgressionState(uint16_t tile_index) override;
 

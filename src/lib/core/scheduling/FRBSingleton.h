@@ -42,7 +42,8 @@ public:
     if(numThreads_ == numThreads && instance_)
       return;
     numThreads_ = numThreads;
-    instance_ = std::make_unique<frb::thread_pool>(frb::pool_config{.num_threads = (uint32_t)numThreads_});
+    instance_ =
+        std::make_unique<frb::thread_pool>(frb::pool_config{.num_threads = (uint32_t)numThreads_});
   }
 
   static frb::thread_pool& get()
@@ -51,7 +52,8 @@ public:
     if(!instance_)
     {
       numThreads_ = std::thread::hardware_concurrency();
-      instance_ = std::make_unique<frb::thread_pool>(frb::pool_config{.num_threads = (uint32_t)numThreads_});
+      instance_ = std::make_unique<frb::thread_pool>(
+          frb::pool_config{.num_threads = (uint32_t)numThreads_});
     }
     assert(instance_);
     return *instance_;

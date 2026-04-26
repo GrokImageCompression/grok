@@ -66,9 +66,8 @@ namespace grk
 
 // ─── construction / teardown ─────────────────────────────────────────────────
 
-StripDecompressor::StripDecompressor(ITileProcessor* tp, uint16_t compno,
-                                     uint8_t prec, std::atomic_bool& success,
-                                     StripConfig config)
+StripDecompressor::StripDecompressor(ITileProcessor* tp, uint16_t compno, uint8_t prec,
+                                     std::atomic_bool& success, StripConfig config)
     : tp_(tp), compno_(compno), prec_(prec), success_(success), config_(config)
 {
   auto tcp = tp_->getTCP();
@@ -84,12 +83,11 @@ StripDecompressor::StripDecompressor(ITileProcessor* tp, uint16_t compno,
   uint32_t num_threads = (uint32_t)FRBSingleton::num_threads();
   uint16_t cbw = tccp->cblkw_expn_ ? (uint16_t)1 << tccp->cblkw_expn_ : 0;
   uint16_t cbh = tccp->cblkh_expn_ ? (uint16_t)1 << tccp->cblkh_expn_ : 0;
-  coderPool_.makeCoders(
-      num_threads, tccp->cblkw_expn_, tccp->cblkh_expn_,
-      [tcp, cbw, cbh, tp]() -> std::shared_ptr<t1::ICoder> {
-        return std::shared_ptr<t1::ICoder>(t1::CoderFactory::makeCoder(
-            tcp->isHT(), false, cbw, cbh, tp->getTileCacheStrategy()));
-      });
+  coderPool_.makeCoders(num_threads, tccp->cblkw_expn_, tccp->cblkh_expn_,
+                        [tcp, cbw, cbh, tp]() -> std::shared_ptr<t1::ICoder> {
+                          return std::shared_ptr<t1::ICoder>(t1::CoderFactory::makeCoder(
+                              tcp->isHT(), false, cbw, cbh, tp->getTileCacheStrategy()));
+                        });
 
   initLevelInfo();
   buildBlockIndex();
@@ -388,14 +386,16 @@ void StripDecompressor::preAllocateBuffers()
 
 // ─── binary search for overlapping blocks ────────────────────────────────────
 
-std::pair<size_t, size_t> StripDecompressor::findBlockRange(
-    const std::vector<BlockRef>& blocks, uint32_t rowStart, uint32_t rowEnd)
+std::pair<size_t, size_t> StripDecompressor::findBlockRange(const std::vector<BlockRef>& blocks,
+                                                            uint32_t rowStart, uint32_t rowEnd)
 {
   // blocks sorted by bandRelY0
-  auto lower = std::lower_bound(blocks.begin(), blocks.end(), rowStart,
-      [](const BlockRef& br, uint32_t val) { return br.bandRelY1 <= val; });
-  auto upper = std::lower_bound(lower, blocks.end(), rowEnd,
-      [](const BlockRef& br, uint32_t val) { return br.bandRelY0 < val; });
+  auto lower =
+      std::lower_bound(blocks.begin(), blocks.end(), rowStart,
+                       [](const BlockRef& br, uint32_t val) { return br.bandRelY1 <= val; });
+  auto upper = std::lower_bound(lower, blocks.end(), rowEnd, [](const BlockRef& br, uint32_t val) {
+    return br.bandRelY0 < val;
+  });
   return {(size_t)(lower - blocks.begin()), (size_t)(upper - blocks.begin())};
 }
 
@@ -519,8 +519,8 @@ bool StripDecompressor::decompressStream(StripOutputCallback outputCallback)
 
 // ─── recursive strip production ──────────────────────────────────────────────
 
-bool StripDecompressor::produceRows(uint8_t resno, uint32_t y0, uint32_t y1,
-                                    void* destBuf, uint32_t destStride)
+bool StripDecompressor::produceRows(uint8_t resno, uint32_t y0, uint32_t y1, void* destBuf,
+                                    uint32_t destStride)
 {
   if(!success_)
     return false;
@@ -600,12 +600,9 @@ bool StripDecompressor::produceRows(uint8_t resno, uint32_t y0, uint32_t y1,
     return false;
 
   // copy decoded T1 data for detail bands (strides are in elements)
-  copyBlocksToBand(resno, t1::BAND_ORIENT_HL, rangeL.lo, rangeL.hi,
-                   bufs.hl.data(), hlW, rangeL.lo);
-  copyBlocksToBand(resno, t1::BAND_ORIENT_LH, rangeH.lo, rangeH.hi,
-                   bufs.lh.data(), lhW, rangeH.lo);
-  copyBlocksToBand(resno, t1::BAND_ORIENT_HH, rangeH.lo, rangeH.hi,
-                   bufs.hh.data(), hhW, rangeH.lo);
+  copyBlocksToBand(resno, t1::BAND_ORIENT_HL, rangeL.lo, rangeL.hi, bufs.hl.data(), hlW, rangeL.lo);
+  copyBlocksToBand(resno, t1::BAND_ORIENT_LH, rangeH.lo, rangeH.hi, bufs.lh.data(), lhW, rangeH.lo);
+  copyBlocksToBand(resno, t1::BAND_ORIENT_HH, rangeH.lo, rangeH.hi, bufs.hh.data(), hhW, rangeH.lo);
 
   // run DWT synthesis
   if(qmfbid_ == 0 && !is16Bit_)
@@ -614,9 +611,8 @@ bool StripDecompressor::produceRows(uint8_t resno, uint32_t y0, uint32_t y1,
                              Buffer2dSimple<float>((float*)bufs.ll.data(), llW, llHeight),
                              Buffer2dSimple<float>((float*)bufs.hl.data(), hlW, hlHeight),
                              Buffer2dSimple<float>((float*)bufs.lh.data(), lhW, lhHeight),
-                             Buffer2dSimple<float>((float*)bufs.hh.data(), hhW, hhHeight),
-                             rangeL, rangeH, extFirst,
-                             destBuf, destStride);
+                             Buffer2dSimple<float>((float*)bufs.hh.data(), hhW, hhHeight), rangeL,
+                             rangeH, extFirst, destBuf, destStride);
   }
   else if(is16Bit_)
   {
@@ -625,8 +621,7 @@ bool StripDecompressor::produceRows(uint8_t resno, uint32_t y0, uint32_t y1,
                              Buffer2dSimple<int16_t>((int16_t*)bufs.hl.data(), hlW, hlHeight),
                              Buffer2dSimple<int16_t>((int16_t*)bufs.lh.data(), lhW, lhHeight),
                              Buffer2dSimple<int16_t>((int16_t*)bufs.hh.data(), hhW, hhHeight),
-                             rangeL, rangeH, extFirst,
-                             destBuf, destStride);
+                             rangeL, rangeH, extFirst, destBuf, destStride);
   }
   else
   {
@@ -635,8 +630,7 @@ bool StripDecompressor::produceRows(uint8_t resno, uint32_t y0, uint32_t y1,
                              Buffer2dSimple<int32_t>((int32_t*)bufs.hl.data(), hlW, hlHeight),
                              Buffer2dSimple<int32_t>((int32_t*)bufs.lh.data(), lhW, lhHeight),
                              Buffer2dSimple<int32_t>((int32_t*)bufs.hh.data(), hhW, hhHeight),
-                             rangeL, rangeH, extFirst,
-                             destBuf, destStride);
+                             rangeL, rangeH, extFirst, destBuf, destStride);
   }
 }
 
@@ -679,24 +673,22 @@ void StripDecompressor::decodeBlocksForStrip(uint8_t resno, uint32_t y0, uint32_
       auto* brPtr = &br;
 
       // set up postProcessor to capture decoded data
-      block->postProcessor_ =
-          t1::DecompressBlockPostProcessor<int32_t>(
-              [brPtr, blockW, blockH](int32_t* srcData, t1::DecompressBlockExec* blk,
-                                    uint16_t stride) {
-                if(blk->cblk->dataChunksEmpty())
-                {
-                  brPtr->decoded.store(true, std::memory_order_release);
-                  return;
-                }
-                uint16_t srcStride = stride ? stride : (uint16_t)blockW;
-                brPtr->decodedStride = srcStride;
-                brPtr->decodedData.resize((size_t)srcStride * blockH);
-                memcpy(brPtr->decodedData.data(), srcData,
-                       (size_t)srcStride * blockH * sizeof(int32_t));
-                brPtr->decoded.store(true, std::memory_order_release);
-                // release compressed cblk data — no longer needed after decode
-                blk->cblk->release();
-              });
+      block->postProcessor_ = t1::DecompressBlockPostProcessor<int32_t>(
+          [brPtr, blockW, blockH](int32_t* srcData, t1::DecompressBlockExec* blk, uint16_t stride) {
+            if(blk->cblk->dataChunksEmpty())
+            {
+              brPtr->decoded.store(true, std::memory_order_release);
+              return;
+            }
+            uint16_t srcStride = stride ? stride : (uint16_t)blockW;
+            brPtr->decodedStride = srcStride;
+            brPtr->decodedData.resize((size_t)srcStride * blockH);
+            memcpy(brPtr->decodedData.data(), srcData,
+                   (size_t)srcStride * blockH * sizeof(int32_t));
+            brPtr->decoded.store(true, std::memory_order_release);
+            // release compressed cblk data — no longer needed after decode
+            blk->cblk->release();
+          });
 
       pool.submit(frb::task([this, block, tccp_w, tccp_h] {
         if(!success_)
@@ -825,9 +817,8 @@ void StripDecompressor::releaseBlocksForStrip(uint8_t resno, uint32_t y0, uint32
 
 // ─── copy decoded block data to strip band buffer ────────────────────────────
 
-void StripDecompressor::copyBlocksToBand(uint8_t resno, uint8_t orient,
-                                         uint32_t rowStart, uint32_t rowEnd,
-                                         void* bandBuf, uint32_t bandBufStride,
+void StripDecompressor::copyBlocksToBand(uint8_t resno, uint8_t orient, uint32_t rowStart,
+                                         uint32_t rowEnd, void* bandBuf, uint32_t bandBufStride,
                                          uint32_t bandBufRowOffset)
 {
   auto& blocks = blockIndex_[resno][orient];
@@ -841,14 +832,10 @@ void StripDecompressor::copyBlocksToBand(uint8_t resno, uint8_t orient,
     if(br.decodedData.empty())
       continue;
 
-    uint32_t blockLocalY = (br.bandRelY0 >= bandBufRowOffset)
-                               ? br.bandRelY0 - bandBufRowOffset
-                               : 0;
-    uint32_t srcRowSkip = (br.bandRelY0 < bandBufRowOffset)
-                              ? bandBufRowOffset - br.bandRelY0
-                              : 0;
-    uint32_t copyHeight = std::min(br.blockHeight - srcRowSkip,
-                                   rowEnd - std::max(br.bandRelY0, rowStart));
+    uint32_t blockLocalY = (br.bandRelY0 >= bandBufRowOffset) ? br.bandRelY0 - bandBufRowOffset : 0;
+    uint32_t srcRowSkip = (br.bandRelY0 < bandBufRowOffset) ? bandBufRowOffset - br.bandRelY0 : 0;
+    uint32_t copyHeight =
+        std::min(br.blockHeight - srcRowSkip, rowEnd - std::max(br.bandRelY0, rowStart));
 
     uint32_t blockX = br.bandRelX0;
     uint32_t blockW = br.blockWidth;
@@ -870,8 +857,10 @@ void StripDecompressor::copyBlocksToBand(uint8_t resno, uint8_t orient,
           {
             float val = (float)src[i] * scale;
             int32_t rounded = (int32_t)(val >= 0 ? val + 0.5f : val - 0.5f);
-            if(rounded > 32767) rounded = 32767;
-            else if(rounded < -32768) rounded = -32768;
+            if(rounded > 32767)
+              rounded = 32767;
+            else if(rounded < -32768)
+              rounded = -32768;
             dst[i] = (int16_t)rounded;
           }
         }
@@ -910,14 +899,10 @@ void StripDecompressor::copyBlocksToBand(uint8_t resno, uint8_t orient,
 
 // ─── DWT synthesis implementations ───────────────────────────────────────────
 
-bool StripDecompressor::synthesizeStrip53(uint8_t resno, uint32_t outY0, uint32_t outY1,
-                                          Buffer2dSimple<int32_t> winLL,
-                                          Buffer2dSimple<int32_t> winHL,
-                                          Buffer2dSimple<int32_t> winLH,
-                                          Buffer2dSimple<int32_t> winHH,
-                                          SubbandRange rangeL, SubbandRange rangeH,
-                                          uint32_t extFirst,
-                                          void* destBuf, uint32_t destStride)
+bool StripDecompressor::synthesizeStrip53(
+    uint8_t resno, uint32_t outY0, uint32_t outY1, Buffer2dSimple<int32_t> winLL,
+    Buffer2dSimple<int32_t> winHL, Buffer2dSimple<int32_t> winLH, Buffer2dSimple<int32_t> winHH,
+    SubbandRange rangeL, SubbandRange rangeH, uint32_t extFirst, void* destBuf, uint32_t destStride)
 {
   auto& pool = FRBSingleton::get();
   auto& li = levels_[resno];
@@ -941,11 +926,10 @@ bool StripDecompressor::synthesizeStrip53(uint8_t resno, uint32_t outY0, uint32_
 
   // create WaveletReverse to access h_strip_53 / v_strip_53
   bool wholeDecompress = tcp->wholeTileDecompress_;
-  WaveletReverse wavelet(nullptr, tilec, compno_, tilec->windowUnreducedBounds(),
-                         numRes_, qmfbid_,
-                         std::max(tp_->getCodingParams()->t_width_,
-                                  tp_->getCodingParams()->t_height_),
-                         wholeDecompress, nullptr, {}, true);
+  WaveletReverse wavelet(
+      nullptr, tilec, compno_, tilec->windowUnreducedBounds(), numRes_, qmfbid_,
+      std::max(tp_->getCodingParams()->t_width_, tp_->getCodingParams()->t_height_),
+      wholeDecompress, nullptr, {}, true);
 
   uint32_t maxDim = max_resolution(tilec->resolutions_, numRes_);
 
@@ -1044,9 +1028,8 @@ bool StripDecompressor::synthesizeStrip53(uint8_t resno, uint32_t outY0, uint32_
   {
     auto wMin = j * widthIncr;
     auto wMax = (j < numTasks - 1U) ? (j + 1U) * widthIncr : resWidth;
-    pool.submit(frb::task([this, &wavelet, splitLHeight, splitHHeight,
-                           wMin, wMax, vSplitL, vSplitH, vDest,
-                           dcShift, scratchElems, extFirst, &li] {
+    pool.submit(frb::task([this, &wavelet, splitLHeight, splitHHeight, wMin, wMax, vSplitL, vSplitH,
+                           vDest, dcShift, scratchElems, extFirst, &li] {
       if(!success_)
         return;
 
@@ -1089,13 +1072,10 @@ bool StripDecompressor::synthesizeStrip53(uint8_t resno, uint32_t outY0, uint32_
 }
 
 bool StripDecompressor::synthesizeStrip97(uint8_t resno, uint32_t outY0, uint32_t outY1,
-                                          Buffer2dSimple<float> winLL,
-                                          Buffer2dSimple<float> winHL,
-                                          Buffer2dSimple<float> winLH,
-                                          Buffer2dSimple<float> winHH,
+                                          Buffer2dSimple<float> winLL, Buffer2dSimple<float> winHL,
+                                          Buffer2dSimple<float> winLH, Buffer2dSimple<float> winHH,
                                           SubbandRange rangeL, SubbandRange rangeH,
-                                          uint32_t extFirst,
-                                          void* destBuf, uint32_t destStride)
+                                          uint32_t extFirst, void* destBuf, uint32_t destStride)
 {
   auto& pool = FRBSingleton::get();
   auto& li = levels_[resno];
@@ -1108,11 +1088,10 @@ bool StripDecompressor::synthesizeStrip97(uint8_t resno, uint32_t outY0, uint32_
   bool wholeDecompress = tcp->wholeTileDecompress_;
 
   // create WaveletReverse for cascade_strip_97
-  WaveletReverse wavelet(nullptr, tilec, compno_, tilec->windowUnreducedBounds(),
-                         numRes_, qmfbid_,
-                         std::max(tp_->getCodingParams()->t_width_,
-                                  tp_->getCodingParams()->t_height_),
-                         wholeDecompress, nullptr, {}, true);
+  WaveletReverse wavelet(
+      nullptr, tilec, compno_, tilec->windowUnreducedBounds(), numRes_, qmfbid_,
+      std::max(tp_->getCodingParams()->t_width_, tp_->getCodingParams()->t_height_),
+      wholeDecompress, nullptr, {}, true);
 
   size_t dataLength = max_resolution(tilec->resolutions_, numRes_);
 
@@ -1149,9 +1128,8 @@ bool StripDecompressor::synthesizeStrip97(uint8_t resno, uint32_t outY0, uint32_
   uint32_t stripParity = (extFirst & 1) ^ li.v_parity;
 
   // submit a single strip DWT task
-  pool.submit(frb::task([this, &wavelet, &li, resWidth, dataLength,
-                         winLL, winHL, winLH, winHH, tempDest, dcShift,
-                         rangeL, rangeH, stripParity, outY0, outY1, extFirst] {
+  pool.submit(frb::task([this, &wavelet, &li, resWidth, dataLength, winLL, winHL, winLH, winHH,
+                         tempDest, dcShift, rangeL, rangeH, stripParity, outY0, outY1, extFirst] {
     if(!success_)
       return;
 
@@ -1184,9 +1162,8 @@ bool StripDecompressor::synthesizeStrip97(uint8_t resno, uint32_t outY0, uint32_
       return;
     }
 
-    wavelet.cascade_strip_97(&hScratch, &vScratch, resWidth,
-                             winLL, winHL, winLH, winHH,
-                             tempDest, dcShift);
+    wavelet.cascade_strip_97(&hScratch, &vScratch, resWidth, winLL, winHL, winLH, winHH, tempDest,
+                             dcShift);
   }));
 
   pool.wait_idle();
@@ -1207,14 +1184,10 @@ bool StripDecompressor::synthesizeStrip97(uint8_t resno, uint32_t outY0, uint32_
   return true;
 }
 
-bool StripDecompressor::synthesizeStrip16(uint8_t resno, uint32_t outY0, uint32_t outY1,
-                                          Buffer2dSimple<int16_t> winLL,
-                                          Buffer2dSimple<int16_t> winHL,
-                                          Buffer2dSimple<int16_t> winLH,
-                                          Buffer2dSimple<int16_t> winHH,
-                                          SubbandRange rangeL, SubbandRange rangeH,
-                                          uint32_t extFirst,
-                                          void* destBuf, uint32_t destStride)
+bool StripDecompressor::synthesizeStrip16(
+    uint8_t resno, uint32_t outY0, uint32_t outY1, Buffer2dSimple<int16_t> winLL,
+    Buffer2dSimple<int16_t> winHL, Buffer2dSimple<int16_t> winLH, Buffer2dSimple<int16_t> winHH,
+    SubbandRange rangeL, SubbandRange rangeH, uint32_t extFirst, void* destBuf, uint32_t destStride)
 {
   auto& pool = FRBSingleton::get();
   auto& li = levels_[resno];
@@ -1237,11 +1210,10 @@ bool StripDecompressor::synthesizeStrip16(uint8_t resno, uint32_t outY0, uint32_
   Buffer2dSimple<int16_t> splitH((int16_t*)bufs.splitH.data(), resWidth, splitHHeight);
 
   bool wholeDecompress = tcp->wholeTileDecompress_;
-  WaveletReverse wavelet(nullptr, tilec, compno_, tilec->windowUnreducedBounds(),
-                         numRes_, qmfbid_,
-                         std::max(tp_->getCodingParams()->t_width_,
-                                  tp_->getCodingParams()->t_height_),
-                         wholeDecompress, nullptr, {}, true);
+  WaveletReverse wavelet(
+      nullptr, tilec, compno_, tilec->windowUnreducedBounds(), numRes_, qmfbid_,
+      std::max(tp_->getCodingParams()->t_width_, tp_->getCodingParams()->t_height_),
+      wholeDecompress, nullptr, {}, true);
 
   uint32_t maxDim = max_resolution(tilec->resolutions_, numRes_);
   uint32_t pllCols = (qmfbid_ == 1) ? get_PLL_COLS_16_53() : get_PLL_COLS_16_97();
@@ -1341,9 +1313,8 @@ bool StripDecompressor::synthesizeStrip16(uint8_t resno, uint32_t outY0, uint32_
   {
     auto wMin = j * widthIncr;
     auto wMax = (j < numTasks - 1U) ? (j + 1U) * widthIncr : resWidth;
-    pool.submit(frb::task([this, &wavelet, splitLHeight, splitHHeight,
-                           wMin, wMax, vSplitL, vSplitH, vDest,
-                           dcShift, scratchElems, extFirst, &li] {
+    pool.submit(frb::task([this, &wavelet, splitLHeight, splitHHeight, wMin, wMax, vSplitL, vSplitH,
+                           vDest, dcShift, scratchElems, extFirst, &li] {
       if(!success_)
         return;
 

@@ -105,10 +105,9 @@ bool SchedulerFreebyrd::decompressTile(ITileProcessor* tileProcessor)
       {
         // streaming mode: strip-local buffers, output via callback
         auto cb = stripOutputCallback_;
-        if(!strip.decompressStream([compno, cb](uint32_t row0, uint32_t numRows,
-                                                const void* rowData, uint32_t rowStride) {
-          cb(compno, row0, numRows, rowData, rowStride);
-        }))
+        if(!strip.decompressStream(
+               [compno, cb](uint32_t row0, uint32_t numRows, const void* rowData,
+                            uint32_t rowStride) { cb(compno, row0, numRows, rowData, rowStride); }))
           return false;
       }
       else
@@ -165,12 +164,12 @@ bool SchedulerFreebyrd::decodeBlocks(ITileProcessor* tileProcessor)
     uint16_t cbw = tccp->cblkw_expn_ ? (uint16_t)1 << tccp->cblkw_expn_ : 0;
     uint16_t cbh = tccp->cblkh_expn_ ? (uint16_t)1 << tccp->cblkh_expn_ : 0;
 
-    coderPool_.makeCoders(
-        num_threads, tccp->cblkw_expn_, tccp->cblkh_expn_,
-        [tcp, cbw, cbh, tileProcessor]() -> std::shared_ptr<t1::ICoder> {
-          return std::shared_ptr<t1::ICoder>(t1::CoderFactory::makeCoder(
-              tcp->isHT(), false, cbw, cbh, tileProcessor->getTileCacheStrategy()));
-        });
+    coderPool_.makeCoders(num_threads, tccp->cblkw_expn_, tccp->cblkh_expn_,
+                          [tcp, cbw, cbh, tileProcessor]() -> std::shared_ptr<t1::ICoder> {
+                            return std::shared_ptr<t1::ICoder>(
+                                t1::CoderFactory::makeCoder(tcp->isHT(), false, cbw, cbh,
+                                                            tileProcessor->getTileCacheStrategy()));
+                          });
 
     auto tilec = tileProcessor->getTile()->comps_ + compno;
     auto wholeTileDecoding = tilec->isWholeTileDecoding();
@@ -335,148 +334,144 @@ bool SchedulerFreebyrd::runCascadeDWT97(ITileProcessor* tileProcessor, uint16_t 
 
   size_t dataLength = max_resolution(tr, numRes);
 
-    // compute DC shift for fusion into last-level DWT
-    bool wholeDecompress = tcp->wholeTileDecompress_;
-    DcShiftParam dcShift;
-    if(numRes > 1 && wholeDecompress)
+  // compute DC shift for fusion into last-level DWT
+  bool wholeDecompress = tcp->wholeTileDecompress_;
+  DcShiftParam dcShift;
+  if(numRes > 1 && wholeDecompress)
+  {
+    bool isMctComp = tileProcessor->needsMctDecompress(compno) && tcp->mct_ == 1;
+    if(!isMctComp)
     {
-      bool isMctComp = tileProcessor->needsMctDecompress(compno) && tcp->mct_ == 1;
-      if(!isMctComp)
+      auto img_comp = tileProcessor->getHeaderImage()->comps + compno;
+      dcShift.shift = tccp->dcLevelShift_;
+      if(img_comp->sgnd)
       {
-        auto img_comp = tileProcessor->getHeaderImage()->comps + compno;
-        dcShift.shift = tccp->dcLevelShift_;
-        if(img_comp->sgnd)
-        {
-          dcShift.min = -(1 << (img_comp->prec - 1));
-          dcShift.max = (1 << (img_comp->prec - 1)) - 1;
-        }
-        else
-        {
-          dcShift.min = 0;
-          dcShift.max = (1 << img_comp->prec) - 1;
-        }
-        dcShift.enabled = (dcShift.shift != 0) || (tccp->qmfbid_ == 0);
+        dcShift.min = -(1 << (img_comp->prec - 1));
+        dcShift.max = (1 << (img_comp->prec - 1)) - 1;
       }
+      else
+      {
+        dcShift.min = 0;
+        dcShift.max = (1 << img_comp->prec) - 1;
+      }
+      dcShift.enabled = (dcShift.shift != 0) || (tccp->qmfbid_ == 0);
+    }
+  }
+
+  // create a WaveletReverse instance to access cascade_strip_97
+  // (scheduler_=nullptr is safe since cascade_strip_97 doesn't use it)
+  WaveletReverse wavelet(nullptr, tilec, compno, tilec->windowUnreducedBounds(), numRes,
+                         tccp->qmfbid_,
+                         std::max(tileProcessor->getCodingParams()->t_width_,
+                                  tileProcessor->getCodingParams()->t_height_),
+                         wholeDecompress, nullptr, {}, true);
+
+  for(uint8_t res = 1; res < numRes; ++res)
+  {
+    auto prevResWidth = resWidth;
+    auto prevResHeight = resHeight;
+    ++tr;
+    resWidth = tr->width();
+    resHeight = tr->height();
+    if(resWidth == 0 || resHeight == 0)
+      continue;
+
+    // H-DWT parameters for this resolution
+    uint32_t h_sn = prevResWidth;
+    uint32_t h_dn = resWidth - prevResWidth;
+    uint32_t h_parity = tr->x0 & 1;
+
+    // V-DWT parameters
+    uint32_t v_sn = prevResHeight;
+    uint32_t v_dn = resHeight - prevResHeight;
+    uint32_t v_parity = tr->y0 & 1;
+
+    // sub-band inputs
+    auto winLL = buf->getResWindowBufferSimpleF((uint8_t)(res - 1U));
+    auto winHL = buf->getBandWindowBufferPaddedSimpleF(res, t1::BAND_ORIENT_HL);
+    auto winLH = buf->getBandWindowBufferPaddedSimpleF(res, t1::BAND_ORIENT_LH);
+    auto winHH = buf->getBandWindowBufferPaddedSimpleF(res, t1::BAND_ORIENT_HH);
+    auto winDest = buf->getResWindowBufferSimpleF(res);
+
+    // allocate temp buffer to avoid aliasing (sub-band inputs share memory with dest)
+    auto tempBufMem = std::make_shared<std::vector<float>>((size_t)resWidth * resHeight);
+    Buffer2dSimple<float> tempDest(tempBufMem->data(), resWidth, resHeight);
+
+    // DC shift only on the last resolution level
+    DcShiftParam resDcShift = (res == numRes - 1) ? dcShift : DcShiftParam{};
+
+    // partition into strips
+    auto strips = StripPartitioner::partition(resHeight, v_sn, v_dn, v_parity);
+
+    // submit strip DWT tasks to freebyrd pool
+    for(auto& sg : strips)
+    {
+      pool.submit(frb::task([this, &wavelet, sg, h_sn, h_dn, h_parity, resWidth, dataLength, winLL,
+                             winHL, winLH, winHH, tempDest, resDcShift] {
+        if(!success_)
+          return;
+
+        // allocate per-task DWT scratch buffers
+        dwt_scratch<vec4f> hScratch;
+        hScratch.sn = h_sn;
+        hScratch.dn = h_dn;
+        hScratch.parity = h_parity;
+        hScratch.win_l = Line32(0, h_sn);
+        hScratch.win_h = Line32(0, h_dn);
+        if(!WaveletReverse::allocCascadeScratch97(hScratch, dataLength))
+        {
+          grklog.error("SchedulerFreebyrd: cascade hScratch alloc failed");
+          success_ = false;
+          return;
+        }
+
+        dwt_scratch<vec4f> vScratch;
+        uint32_t ext_sn = sg.rangeL.count();
+        uint32_t ext_dn = sg.rangeH.count();
+        vScratch.sn = ext_sn;
+        vScratch.dn = ext_dn;
+        vScratch.parity = sg.localParity;
+        vScratch.win_l = Line32(0, ext_sn);
+        vScratch.win_h = Line32(0, ext_dn);
+        vScratch.outputStart = sg.outputStartInStripe;
+        vScratch.outputCount = sg.outCount;
+        if(!WaveletReverse::allocCascadeScratch97(vScratch, dataLength))
+        {
+          grklog.error("SchedulerFreebyrd: cascade vScratch alloc failed");
+          success_ = false;
+          return;
+        }
+
+        // set up sub-band windows offset to this strip's start row
+        auto stripLL = winLL;
+        stripLL.incY_IN_PLACE(sg.rangeL.lo);
+        auto stripHL = winHL;
+        stripHL.incY_IN_PLACE(sg.rangeL.lo);
+        auto stripLH = winLH;
+        stripLH.incY_IN_PLACE(sg.rangeH.lo);
+        auto stripHH = winHH;
+        stripHH.incY_IN_PLACE(sg.rangeH.lo);
+        auto stripDest = tempDest;
+        stripDest.incY_IN_PLACE(sg.outStart);
+
+        wavelet.cascade_strip_97(&hScratch, &vScratch, resWidth, stripLL, stripHL, stripLH, stripHH,
+                                 stripDest, resDcShift);
+      }));
     }
 
-    // create a WaveletReverse instance to access cascade_strip_97
-    // (scheduler_=nullptr is safe since cascade_strip_97 doesn't use it)
-    WaveletReverse wavelet(nullptr, tilec, compno, tilec->windowUnreducedBounds(),
-                           numRes, tccp->qmfbid_,
-                           std::max(tileProcessor->getCodingParams()->t_width_,
-                                    tileProcessor->getCodingParams()->t_height_),
-                           wholeDecompress, nullptr, {}, true);
+    // wait for all strip tasks at this resolution to complete
+    pool.wait_idle();
 
-    for(uint8_t res = 1; res < numRes; ++res)
+    if(!success_)
+      return false;
+
+    // copy-back from temp buffer to real destination
+    for(uint32_t row = 0; row < resHeight; ++row)
     {
-      auto prevResWidth = resWidth;
-      auto prevResHeight = resHeight;
-      ++tr;
-      resWidth = tr->width();
-      resHeight = tr->height();
-      if(resWidth == 0 || resHeight == 0)
-        continue;
-
-      // H-DWT parameters for this resolution
-      uint32_t h_sn = prevResWidth;
-      uint32_t h_dn = resWidth - prevResWidth;
-      uint32_t h_parity = tr->x0 & 1;
-
-      // V-DWT parameters
-      uint32_t v_sn = prevResHeight;
-      uint32_t v_dn = resHeight - prevResHeight;
-      uint32_t v_parity = tr->y0 & 1;
-
-      // sub-band inputs
-      auto winLL = buf->getResWindowBufferSimpleF((uint8_t)(res - 1U));
-      auto winHL = buf->getBandWindowBufferPaddedSimpleF(res, t1::BAND_ORIENT_HL);
-      auto winLH = buf->getBandWindowBufferPaddedSimpleF(res, t1::BAND_ORIENT_LH);
-      auto winHH = buf->getBandWindowBufferPaddedSimpleF(res, t1::BAND_ORIENT_HH);
-      auto winDest = buf->getResWindowBufferSimpleF(res);
-
-      // allocate temp buffer to avoid aliasing (sub-band inputs share memory with dest)
-      auto tempBufMem = std::make_shared<std::vector<float>>((size_t)resWidth * resHeight);
-      Buffer2dSimple<float> tempDest(tempBufMem->data(), resWidth, resHeight);
-
-      // DC shift only on the last resolution level
-      DcShiftParam resDcShift = (res == numRes - 1) ? dcShift : DcShiftParam{};
-
-      // partition into strips
-      auto strips = StripPartitioner::partition(resHeight, v_sn, v_dn, v_parity);
-
-      // submit strip DWT tasks to freebyrd pool
-      for(auto& sg : strips)
-      {
-        pool.submit(frb::task([this, &wavelet, sg, h_sn, h_dn, h_parity,
-                               resWidth, dataLength, winLL, winHL, winLH, winHH,
-                               tempDest, resDcShift] {
-          if(!success_)
-            return;
-
-          // allocate per-task DWT scratch buffers
-          dwt_scratch<vec4f> hScratch;
-          hScratch.sn = h_sn;
-          hScratch.dn = h_dn;
-          hScratch.parity = h_parity;
-          hScratch.win_l = Line32(0, h_sn);
-          hScratch.win_h = Line32(0, h_dn);
-          if(!WaveletReverse::allocCascadeScratch97(hScratch, dataLength))
-          {
-            grklog.error("SchedulerFreebyrd: cascade hScratch alloc failed");
-            success_ = false;
-            return;
-          }
-
-          dwt_scratch<vec4f> vScratch;
-          uint32_t ext_sn = sg.rangeL.count();
-          uint32_t ext_dn = sg.rangeH.count();
-          vScratch.sn = ext_sn;
-          vScratch.dn = ext_dn;
-          vScratch.parity = sg.localParity;
-          vScratch.win_l = Line32(0, ext_sn);
-          vScratch.win_h = Line32(0, ext_dn);
-          vScratch.outputStart = sg.outputStartInStripe;
-          vScratch.outputCount = sg.outCount;
-          if(!WaveletReverse::allocCascadeScratch97(vScratch, dataLength))
-          {
-            grklog.error("SchedulerFreebyrd: cascade vScratch alloc failed");
-            success_ = false;
-            return;
-          }
-
-          // set up sub-band windows offset to this strip's start row
-          auto stripLL = winLL;
-          stripLL.incY_IN_PLACE(sg.rangeL.lo);
-          auto stripHL = winHL;
-          stripHL.incY_IN_PLACE(sg.rangeL.lo);
-          auto stripLH = winLH;
-          stripLH.incY_IN_PLACE(sg.rangeH.lo);
-          auto stripHH = winHH;
-          stripHH.incY_IN_PLACE(sg.rangeH.lo);
-          auto stripDest = tempDest;
-          stripDest.incY_IN_PLACE(sg.outStart);
-
-          wavelet.cascade_strip_97(&hScratch, &vScratch, resWidth,
-                                   stripLL, stripHL, stripLH, stripHH,
-                                   stripDest, resDcShift);
-        }));
-      }
-
-      // wait for all strip tasks at this resolution to complete
-      pool.wait_idle();
-
-      if(!success_)
-        return false;
-
-      // copy-back from temp buffer to real destination
-      for(uint32_t row = 0; row < resHeight; ++row)
-      {
-        memcpy(winDest.buf_ + row * winDest.stride_,
-               tempDest.buf_ + row * tempDest.stride_,
-               resWidth * sizeof(float));
-      }
+      memcpy(winDest.buf_ + row * winDest.stride_, tempDest.buf_ + row * tempDest.stride_,
+             resWidth * sizeof(float));
     }
-  
+  }
 
   return true;
 }
@@ -524,8 +519,8 @@ bool SchedulerFreebyrd::runSeparateDWT53(ITileProcessor* tileProcessor, uint16_t
   }
 
   // create a WaveletReverse instance to access h_strip_53 and v_strip_53
-  WaveletReverse wavelet(nullptr, tilec, compno, tilec->windowUnreducedBounds(),
-                         numRes, tccp->qmfbid_,
+  WaveletReverse wavelet(nullptr, tilec, compno, tilec->windowUnreducedBounds(), numRes,
+                         tccp->qmfbid_,
                          std::max(tileProcessor->getCodingParams()->t_width_,
                                   tileProcessor->getCodingParams()->t_height_),
                          wholeDecompress, nullptr, {}, true);
@@ -580,24 +575,24 @@ bool SchedulerFreebyrd::runSeparateDWT53(ITileProcessor* tileProcessor, uint16_t
       for(uint32_t j = 0; j < numTasks; ++j)
       {
         auto hMax = (j < numTasks - 1U) ? heightIncr : bandHeight - j * heightIncr;
-        pool.submit(frb::task([this, &wavelet, h_sn, h_dn, h_parity,
-                               winL, winH, winDest, hMax, maxDim] {
-          if(!success_)
-            return;
+        pool.submit(
+            frb::task([this, &wavelet, h_sn, h_dn, h_parity, winL, winH, winDest, hMax, maxDim] {
+              if(!success_)
+                return;
 
-          dwt_scratch<int32_t> hScratch;
-          hScratch.sn = h_sn;
-          hScratch.dn = h_dn;
-          hScratch.parity = h_parity;
-          if(!hScratch.alloc(maxDim))
-          {
-            grklog.error("SchedulerFreebyrd: 5/3 hScratch alloc failed");
-            success_ = false;
-            return;
-          }
+              dwt_scratch<int32_t> hScratch;
+              hScratch.sn = h_sn;
+              hScratch.dn = h_dn;
+              hScratch.parity = h_parity;
+              if(!hScratch.alloc(maxDim))
+              {
+                grklog.error("SchedulerFreebyrd: 5/3 hScratch alloc failed");
+                success_ = false;
+                return;
+              }
 
-          wavelet.h_strip_53(&hScratch, 0, hMax, winL, winH, winDest);
-        }));
+              wavelet.h_strip_53(&hScratch, 0, hMax, winL, winH, winDest);
+            }));
         winL.incY_IN_PLACE(heightIncr);
         winH.incY_IN_PLACE(heightIncr);
         winDest.incY_IN_PLACE(heightIncr);
@@ -622,8 +617,8 @@ bool SchedulerFreebyrd::runSeparateDWT53(ITileProcessor* tileProcessor, uint16_t
     {
       auto wMin = j * widthIncr;
       auto wMax = (j < numTasks - 1U) ? (j + 1U) * widthIncr : resWidth;
-      pool.submit(frb::task([this, &wavelet, v_sn, v_dn, v_parity,
-                             wMin, wMax, winL, winH, winDest, resDcShift, scratchElems] {
+      pool.submit(frb::task([this, &wavelet, v_sn, v_dn, v_parity, wMin, wMax, winL, winH, winDest,
+                             resDcShift, scratchElems] {
         if(!success_)
           return;
 
@@ -697,8 +692,7 @@ bool SchedulerFreebyrd::runSeparateDWT16(ITileProcessor* tileProcessor, uint16_t
   }
 
   // create a WaveletReverse instance to access 16-bit h_strip/v_strip methods
-  WaveletReverse wavelet(nullptr, tilec, compno, tilec->windowUnreducedBounds(),
-                         numRes, qmfbid,
+  WaveletReverse wavelet(nullptr, tilec, compno, tilec->windowUnreducedBounds(), numRes, qmfbid,
                          std::max(tileProcessor->getCodingParams()->t_width_,
                                   tileProcessor->getCodingParams()->t_height_),
                          wholeDecompress, nullptr, {}, true);
@@ -753,27 +747,27 @@ bool SchedulerFreebyrd::runSeparateDWT16(ITileProcessor* tileProcessor, uint16_t
       for(uint32_t j = 0; j < numTasks; ++j)
       {
         auto hMax = (j < numTasks - 1U) ? heightIncr : bandHeight - j * heightIncr;
-        pool.submit(frb::task([this, &wavelet, qmfbid, h_sn, h_dn, h_parity,
-                               winL, winH, winDest, hMax, maxDim] {
-          if(!success_)
-            return;
+        pool.submit(frb::task(
+            [this, &wavelet, qmfbid, h_sn, h_dn, h_parity, winL, winH, winDest, hMax, maxDim] {
+              if(!success_)
+                return;
 
-          dwt_scratch<int16_t> hScratch;
-          hScratch.sn = h_sn;
-          hScratch.dn = h_dn;
-          hScratch.parity = h_parity;
-          if(!hScratch.alloc(maxDim))
-          {
-            grklog.error("SchedulerFreebyrd: 16-bit hScratch alloc failed");
-            success_ = false;
-            return;
-          }
+              dwt_scratch<int16_t> hScratch;
+              hScratch.sn = h_sn;
+              hScratch.dn = h_dn;
+              hScratch.parity = h_parity;
+              if(!hScratch.alloc(maxDim))
+              {
+                grklog.error("SchedulerFreebyrd: 16-bit hScratch alloc failed");
+                success_ = false;
+                return;
+              }
 
-          if(qmfbid == 1)
-            wavelet.h_strip_16_53(&hScratch, 0, hMax, winL, winH, winDest);
-          else
-            wavelet.h_strip_16_97(&hScratch, 0, hMax, winL, winH, winDest);
-        }));
+              if(qmfbid == 1)
+                wavelet.h_strip_16_53(&hScratch, 0, hMax, winL, winH, winDest);
+              else
+                wavelet.h_strip_16_97(&hScratch, 0, hMax, winL, winH, winDest);
+            }));
         winL.incY_IN_PLACE(heightIncr);
         winH.incY_IN_PLACE(heightIncr);
         winDest.incY_IN_PLACE(heightIncr);
@@ -798,8 +792,8 @@ bool SchedulerFreebyrd::runSeparateDWT16(ITileProcessor* tileProcessor, uint16_t
     {
       auto wMin = j * widthIncr;
       auto wMax = (j < numTasks - 1U) ? (j + 1U) * widthIncr : resWidth;
-      pool.submit(frb::task([this, &wavelet, qmfbid, v_sn, v_dn, v_parity,
-                             wMin, wMax, winL, winH, winDest, resDcShift, scratchElems] {
+      pool.submit(frb::task([this, &wavelet, qmfbid, v_sn, v_dn, v_parity, wMin, wMax, winL, winH,
+                             winDest, resDcShift, scratchElems] {
         if(!success_)
           return;
 
@@ -847,7 +841,10 @@ bool SchedulerFreebyrd::postProcess(ITileProcessor* tileProcessor)
     auto headerImage = tileProcessor->getHeaderImage();
 
     // compute per-component DC shift + clamp info
-    struct ShiftInfo { int32_t shift, min, max; };
+    struct ShiftInfo
+    {
+      int32_t shift, min, max;
+    };
     ShiftInfo si[3];
     for(uint16_t c = 0; c < 3; ++c)
     {
@@ -912,43 +909,43 @@ bool SchedulerFreebyrd::postProcess(ITileProcessor* tileProcessor)
       }
       else
       {
-      // 32-bit path: int32_t buffers
-      auto w0 = tile->comps_[0].getWindow()->getResWindowBufferHighestSimple();
-      auto w1 = tile->comps_[1].getWindow()->getResWindowBufferHighestSimple();
-      auto w2 = tile->comps_[2].getWindow()->getResWindowBufferHighestSimple();
+        // 32-bit path: int32_t buffers
+        auto w0 = tile->comps_[0].getWindow()->getResWindowBufferHighestSimple();
+        auto w1 = tile->comps_[1].getWindow()->getResWindowBufferHighestSimple();
+        auto w2 = tile->comps_[2].getWindow()->getResWindowBufferHighestSimple();
 
-      uint32_t stride = tile->comps_[0].getWindow()->getResWindowBufferHighestStride();
-      uint32_t height = w0.height_;
-      uint32_t numTasks = std::min(height, (uint32_t)FRBSingleton::num_threads());
-      uint32_t rowsPerTask = height / numTasks;
+        uint32_t stride = tile->comps_[0].getWindow()->getResWindowBufferHighestStride();
+        uint32_t height = w0.height_;
+        uint32_t numTasks = std::min(height, (uint32_t)FRBSingleton::num_threads());
+        uint32_t rowsPerTask = height / numTasks;
 
-      for(uint32_t t = 0; t < numTasks; ++t)
-      {
-        uint32_t yBegin = t * rowsPerTask;
-        uint32_t yEnd = (t < numTasks - 1) ? (t + 1) * rowsPerTask : height;
+        for(uint32_t t = 0; t < numTasks; ++t)
+        {
+          uint32_t yBegin = t * rowsPerTask;
+          uint32_t yEnd = (t < numTasks - 1) ? (t + 1) * rowsPerTask : height;
 
-        pool.submit(frb::task([this, w0, w1, w2, stride, yBegin, yEnd, si] {
-          if(!success_)
-            return;
-          auto index = (uint64_t)yBegin * stride;
-          auto count = (uint64_t)(yEnd - yBegin) * stride;
-          auto c0 = w0.buf_ + index;
-          auto c1 = w1.buf_ + index;
-          auto c2 = w2.buf_ + index;
-          for(uint64_t j = 0; j < count; ++j)
-          {
-            int32_t y = c0[j];
-            int32_t u = c1[j];
-            int32_t v = c2[j];
-            int32_t g = y - ((u + v) >> 2);
-            int32_t r = v + g;
-            int32_t b = u + g;
-            c0[j] = std::clamp(r + si[0].shift, si[0].min, si[0].max);
-            c1[j] = std::clamp(g + si[1].shift, si[1].min, si[1].max);
-            c2[j] = std::clamp(b + si[2].shift, si[2].min, si[2].max);
-          }
-        }));
-      }
+          pool.submit(frb::task([this, w0, w1, w2, stride, yBegin, yEnd, si] {
+            if(!success_)
+              return;
+            auto index = (uint64_t)yBegin * stride;
+            auto count = (uint64_t)(yEnd - yBegin) * stride;
+            auto c0 = w0.buf_ + index;
+            auto c1 = w1.buf_ + index;
+            auto c2 = w2.buf_ + index;
+            for(uint64_t j = 0; j < count; ++j)
+            {
+              int32_t y = c0[j];
+              int32_t u = c1[j];
+              int32_t v = c2[j];
+              int32_t g = y - ((u + v) >> 2);
+              int32_t r = v + g;
+              int32_t b = u + g;
+              c0[j] = std::clamp(r + si[0].shift, si[0].min, si[0].max);
+              c1[j] = std::clamp(g + si[1].shift, si[1].min, si[1].max);
+              c2[j] = std::clamp(b + si[2].shift, si[2].min, si[2].max);
+            }
+          }));
+        }
       } // end 32-bit else
     }
     else

@@ -114,8 +114,14 @@ public:
   GrkImage* getHeaderImage(void);
   grk_plugin_tile* getCurrentPluginTile();
   CodingParams* getCodingParams(void);
-  virtual grk_io_band_callback getBandCallback() const { return nullptr; }
-  virtual void* getBandUserData() const { return nullptr; }
+  virtual grk_io_band_callback getBandCallback() const
+  {
+    return nullptr;
+  }
+  virtual void* getBandUserData() const
+  {
+    return nullptr;
+  }
 
 protected:
   bool exec(std::vector<PROCEDURE_FUNC>& procedureList);
