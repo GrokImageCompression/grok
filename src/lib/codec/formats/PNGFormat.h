@@ -311,7 +311,7 @@ bool PNGFormat<T>::writeHeader(void)
       spdlog::error("Can't allocate memory for PNG row");
       goto beach;
     }
-    row32s_ = (T*)malloc((size_t)image_->comps[0].w * (size_t)nr_comp_ * sizeof(int32_t));
+    row32s_ = (T*)malloc((size_t)image_->comps[0].w * (size_t)nr_comp_ * sizeof(T));
     if(row32s_ == nullptr)
     {
       spdlog::error("Can't allocate memory for interleaved 32s row");
@@ -565,6 +565,8 @@ grk_image* PNGFormat<T>::do_decode(grk_cparameters* params)
     auto img_comp = cmptparm + i;
     img_comp->prec = (uint8_t)bit_depth;
     img_comp->sgnd = false;
+    if constexpr(sizeof(T) == 2)
+      img_comp->data_type = GRK_INT_16;
     img_comp->dx = params->subsampling_dx;
     img_comp->dy = params->subsampling_dy;
     img_comp->w = grk::ceildiv<uint32_t>(width, img_comp->dx);

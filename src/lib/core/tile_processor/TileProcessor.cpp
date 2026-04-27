@@ -1005,8 +1005,10 @@ bool TileProcessor::createDecompressTileComponentWindows(void)
     // values within int16 range — see wavelet/WaveletReverse97_16.cpp.
     //
     // MCT components (mct_==1) are excluded because the irreversible inverse
-    // color transform (ICT) reads float buffers, and no int16 variant exists yet.
-    // Without MCT, DC shift is fused into the wavelet last level.
+    // color transform (ICT) in float produces different results than the Q15
+    // fixed-point int16 variant (DecompressIrrev16). The fixed-point path
+    // introduces rounding errors (up to ~24 LSB for 12-bit) that change the
+    // output bitstream, breaking MD5 conformance.
     if(tccp->qmfbid_ == 0 && tileComp->isWholeTileDecoding() && imageComp->prec <= 12)
     {
       bool isMctComp = needsMctDecompress(compno) && tcp_->mct_ == 1;

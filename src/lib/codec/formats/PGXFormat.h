@@ -149,6 +149,8 @@ grk_image* pgxtoimage(const char* filename, const grk_cparameters* parameters)
                             : cmptparm.y0 + (uint32_t)(h - 1) * parameters->subsampling_dy + 1;
   cmptparm.sgnd = sign;
   cmptparm.prec = (uint8_t)prec;
+  if constexpr(sizeof(T) == 2)
+    cmptparm.data_type = GRK_INT_16;
   cmptparm.dx = parameters->subsampling_dx;
   cmptparm.dy = parameters->subsampling_dy;
 
@@ -165,7 +167,7 @@ grk_image* pgxtoimage(const char* filename, const grk_cparameters* parameters)
 
   /* set image data */
   stride_diff = image->comps->stride - w;
-  shift = (uint8_t)(32 - prec);
+  shift = (uint8_t)(sizeof(T) * 8 - prec);
   dest = (T*)image->comps->data;
   for(uint32_t j = 0; j < h; ++j)
   {

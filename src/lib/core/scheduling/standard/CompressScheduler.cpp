@@ -119,6 +119,7 @@ bool CompressScheduler::scheduleT1(ITileProcessor* proc)
             block->mct_norms = mct_norms_;
             block->mct_numcomps = mct_numcomps_;
             block->k_msbs = (uint8_t)(band->maxBitPlanes_ - cblk->numbps());
+            block->use16BitDwt = tilec->is16BitDwt();
             blocks.push_back(block);
           }
         }
@@ -206,6 +207,7 @@ bool CompressScheduler::populateT1Flow(FlowComponent* flow)
             block->mct_norms = mct_norms_;
             block->mct_numcomps = mct_numcomps_;
             block->k_msbs = (uint8_t)(band->maxBitPlanes_ - cblk->numbps());
+            block->use16BitDwt = tilec->is16BitDwt();
             blocks.push_back(block);
           }
         }

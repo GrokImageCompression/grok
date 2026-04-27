@@ -71,6 +71,31 @@ bool Coder::preCompress(CompressBlockExec* block, uint32_t& maximum)
       tile_index += tileLineAdvance;
     }
   }
+  else if(block->use16BitDwt)
+  {
+    // 16-bit 9/7 forward DWT uses odd-branch halving to prevent overflow:
+    // highpass coefficients are stored at half magnitude.  The horizontal
+    // DWT uses a non-halving variant for vertical-highpass rows , so all non-LL subbands have
+    // uniform ×2 compensation.
+    //   LL (orientation 0): no halving → scale = 1
+    //   HL, LH, HH (orientation 1,2,3): halved once → scale = 2
+    double halvingScale = (block->bandOrientation != 0) ? 2.0 : 1.0;
+    double quant = halvingScale / block->stepsize;
+    for(auto j = 0U; j < h; ++j)
+    {
+      for(auto i = 0U; i < w; ++i)
+      {
+        int32_t temp = (int32_t)grk_lrintf((float)(((double)block->tiledp[tile_index++] * quant)) *
+                                           (1 << T1_NMSEDEC_FRACBITS));
+        int32_t mag = temp * ((temp > 0) - (temp < 0));
+        if((uint32_t)mag > maximum)
+          maximum = (uint32_t)mag;
+        int32_t sgn = int32_t((uint32_t)(mag != temp) * 0x80000000);
+        uncompressedData[cblk_index++] = sgn | mag;
+      }
+      tile_index += tileLineAdvance;
+    }
+  }
   else
   {
     const auto* const tiledp = (float*)block->tiledp;

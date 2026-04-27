@@ -342,6 +342,83 @@ namespace HWY_NAMESPACE
   };
 
   /**
+   * Apply MCT with optional DC shift to irreversible decompressed image (16-bit path)
+   * Uses fixed-point Q15 arithmetic for the ICT coefficients.
+   * For coefficients > 1.0, split into integer + fractional: e.g. 1.402 = 1 + 0.402
+   */
+  class DecompressIrrev16
+  {
+  public:
+    void transform(const ScheduleInfo& info)
+    {
+      auto w0 = info.tile->comps_[0].getWindow16()->getResWindowBufferHighestSimple();
+      auto w1 = info.tile->comps_[1].getWindow16()->getResWindowBufferHighestSimple();
+      auto w2 = info.tile->comps_[2].getWindow16()->getResWindowBufferHighestSimple();
+
+      if(w0.stride_ != w1.stride_ || w1.stride_ != w2.stride_ || w0.height_ != w1.height_ ||
+         w1.height_ != w2.height_)
+      {
+        grklog.warn("MCT components have differing dimensions - skipping MCT transform");
+        return;
+      }
+      auto highestResBufferStride =
+          info.tile->comps_[info.compno].getWindow16()->getResWindowBufferHighestStride();
+      auto index = (uint64_t)info.yBegin * highestResBufferStride;
+      auto chunkSize = (uint64_t)(info.yEnd - info.yBegin) * highestResBufferStride;
+      const std::vector<ShiftInfo>& shiftInfo = info.shiftInfo;
+      auto chan0 = w0.buf_;
+      auto chan1 = w1.buf_;
+      auto chan2 = w2.buf_;
+
+      const HWY_FULL(int16_t) di16;
+
+      int16_t shift[3] = {(int16_t)shiftInfo[0]._shift, (int16_t)shiftInfo[1]._shift,
+                          (int16_t)shiftInfo[2]._shift};
+      int16_t _min[3] = {(int16_t)shiftInfo[0]._min, (int16_t)shiftInfo[1]._min,
+                         (int16_t)shiftInfo[2]._min};
+      int16_t _max[3] = {(int16_t)shiftInfo[0]._max, (int16_t)shiftInfo[1]._max,
+                         (int16_t)shiftInfo[2]._max};
+      auto vdcr = Set(di16, shift[0]);
+      auto vdcg = Set(di16, shift[1]);
+      auto vdcb = Set(di16, shift[2]);
+      auto minr = Set(di16, _min[0]);
+      auto ming = Set(di16, _min[1]);
+      auto minb = Set(di16, _min[2]);
+      auto maxr = Set(di16, _max[0]);
+      auto maxg = Set(di16, _max[1]);
+      auto maxb = Set(di16, _max[2]);
+
+      // ICT coefficients in Q15 fixed-point
+      // R = Y + 1.402*Cr = Y + Cr + 0.402*Cr
+      // G = Y - 0.34413*Cb - 0.71414*Cr
+      // B = Y + 1.772*Cb = Y + Cb + 0.772*Cb
+      const auto vCrR_frac = Set(di16, (int16_t)13173); // round(0.402 * 32768)
+      const auto vCbG = Set(di16, (int16_t)11276); // round(0.34413 * 32768)
+      const auto vCrG = Set(di16, (int16_t)23401); // round(0.71414 * 32768)
+      const auto vCbB_frac = Set(di16, (int16_t)25297); // round(0.772 * 32768)
+
+      size_t begin = index;
+      for(auto j = begin; j < begin + chunkSize; j += Lanes(di16))
+      {
+        auto vy = Load(di16, chan0 + j);
+        auto vu = Load(di16, chan1 + j);
+        auto vv = Load(di16, chan2 + j);
+
+        // R = Y + Cr + round(0.402 * Cr)
+        auto vr = vy + vv + MulFixedPoint15(vv, vCrR_frac);
+        // G = Y - round(0.34413 * Cb) - round(0.71414 * Cr)
+        auto vg = vy - MulFixedPoint15(vu, vCbG) - MulFixedPoint15(vv, vCrG);
+        // B = Y + Cb + round(0.772 * Cb)
+        auto vb = vy + vu + MulFixedPoint15(vu, vCbB_frac);
+
+        Store(Clamp(vr + vdcr, minr, maxr), di16, chan0 + j);
+        Store(Clamp(vg + vdcg, ming, maxg), di16, chan1 + j);
+        Store(Clamp(vb + vdcb, minb, maxb), di16, chan2 + j);
+      }
+    }
+  };
+
+  /**
    * Apply MCT with optional DC shift to reversible compressed image
    */
   class CompressRev
@@ -546,6 +623,11 @@ namespace HWY_NAMESPACE
   {
     vscheduler16<DecompressRev16>(info);
   }
+
+  void hwy_schedule_decompress_irrev16(ScheduleInfo info)
+  {
+    vscheduler16<DecompressIrrev16>(info);
+  }
 } // namespace HWY_NAMESPACE
 } // namespace grk
 HWY_AFTER_NAMESPACE();
@@ -561,6 +643,7 @@ HWY_EXPORT(hwy_schedule_decompress_dc_shift_irrev);
 HWY_EXPORT(hwy_schedule_decompress_dc_shift_rev);
 HWY_EXPORT(hwy_schedule_decompress_dc_shift_rev16);
 HWY_EXPORT(hwy_schedule_decompress_rev16);
+HWY_EXPORT(hwy_schedule_decompress_irrev16);
 
 Mct::Mct(Tile* tile, GrkImage* image, TileCodingParams* tcp) : tile_(tile), image_(image), tcp_(tcp)
 {}
@@ -595,8 +678,10 @@ void Mct::schedule_decompress_irrev(FlowComponent* flow, bool applyDcShift)
 {
   ScheduleInfo info(tile_, flow, image_->rows_per_task);
   genShift(applyDcShift ? 1 : 0, info.shiftInfo);
-  HWY_DYNAMIC_DISPATCH(hwy_schedule_decompress_irrev)
-  (info);
+  if(tile_->comps_[0].is16BitDwt())
+    HWY_DYNAMIC_DISPATCH(hwy_schedule_decompress_irrev16)(info);
+  else
+    HWY_DYNAMIC_DISPATCH(hwy_schedule_decompress_irrev)(info);
 }
 
 /***

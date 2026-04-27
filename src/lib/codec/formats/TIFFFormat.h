@@ -2075,6 +2075,8 @@ grk_image* TIFFFormat<T>::readImage(const std::string& filename, grk_cparameters
     auto img_comp = &cmptparm[j];
     memset(img_comp, 0, sizeof(grk_image_comp));
     img_comp->prec = (uint8_t)tiBps;
+    if constexpr(sizeof(T) == 2)
+      img_comp->data_type = GRK_INT_16;
     bool chroma = (j == 1 || j == 2);
     img_comp->dx = chroma ? (uint8_t)chroma_subsample_x : 1;
     img_comp->dy = chroma ? (uint8_t)chroma_subsample_y : 1;

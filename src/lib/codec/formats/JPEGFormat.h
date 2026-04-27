@@ -235,6 +235,8 @@ grk_image* JPEGFormat<T>::jpegtoimage(const char* filename, grk_cparameters* par
   for(int j = 0; j < cinfo.output_components; j++)
   {
     cmptparm[j].prec = (uint8_t)bps;
+    if constexpr(sizeof(T) == 2)
+      cmptparm[j].data_type = GRK_INT_16;
     cmptparm[j].dx = 1;
     cmptparm[j].dy = 1;
     cmptparm[j].w = w;

@@ -153,6 +153,7 @@ struct CompressBlockExec : public BlockExec
   int32_t* unencodedData = nullptr;
 #endif
   uint16_t mct_numcomps = 0;
+  bool use16BitDwt = false;
 
   // Delete copy constructor and assignment operator
   CompressBlockExec(const CompressBlockExec&) = delete;

@@ -201,6 +201,7 @@ GrkImage* GrkImage::create(grk_image* src, uint16_t numcmpts, grk_image_comp* cm
     comp->y0 = params->y0;
     comp->prec = params->prec;
     comp->sgnd = params->sgnd;
+    comp->data_type = params->data_type;
     if(doAllocation && !allocData(comp))
     {
       grk::grklog.error("Unable to allocate memory for image.");

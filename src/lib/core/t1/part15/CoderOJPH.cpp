@@ -137,6 +137,28 @@ bool T1OJPH::preCompress([[maybe_unused]] CompressBlockExec* block)
       tiledp += tileLineAdvance;
     }
   }
+  else if(block->use16BitDwt)
+  {
+    // Compensate for odd-branch halving in 16-bit 9/7 forward DWT.
+    // All non-LL subbands have uniform ×2 compensation (horizontal DWT
+    // uses non-halving variant for vertical-highpass rows).
+    float halvingScale = (block->bandOrientation != 0) ? 2.0f : 1.0f;
+    float scaledInvStep = block->inv_step_ht * halvingScale;
+    auto tiledp = block->tiledp;
+    for(auto j = 0U; j < h; ++j)
+    {
+      for(auto i = 0U; i < w; ++i)
+      {
+        int32_t t = (int32_t)((float)*tiledp++ * scaledInvStep * (float)(1 << shift));
+        uint32_t val = t >= 0 ? (uint32_t)t : -(uint32_t)t;
+        uint32_t sign = t >= 0 ? 0U : 0x80000000U;
+        int32_t res = (int32_t)(sign | val);
+        unencoded_data[cblk_index] = res;
+        cblk_index++;
+      }
+      tiledp += tileLineAdvance;
+    }
+  }
   else
   {
     auto tiledp = (float*)block->tiledp;

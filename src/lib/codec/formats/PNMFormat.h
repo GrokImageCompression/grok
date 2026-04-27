@@ -1066,6 +1066,8 @@ grk_image* PNMFormat<T>::readImage(const grk_cparameters* parameters)
   {
     cmptparm[i].prec = prec;
     cmptparm[i].sgnd = false;
+    if constexpr(sizeof(T) == 2)
+      cmptparm[i].data_type = GRK_INT_16;
     cmptparm[i].dx = subsampling_dx;
     cmptparm[i].dy = subsampling_dy;
     cmptparm[i].w = w;

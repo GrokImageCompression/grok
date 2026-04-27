@@ -952,6 +952,8 @@ grk_image* BMPFormat<T>::readImage(const std::string& fname, grk_cparameters* pa
     auto img_comp = cmptparm + i;
     img_comp->prec = (numcmpts == 1U) ? (uint8_t)infoHeader_.biBitCount : 8U;
     img_comp->sgnd = false;
+    if constexpr(sizeof(T) == 2)
+      img_comp->data_type = GRK_INT_16;
     img_comp->dx = parameters->subsampling_dx;
     img_comp->dy = parameters->subsampling_dy;
     img_comp->w = grk::ceildiv<uint32_t>((uint32_t)infoHeader_.biWidth, img_comp->dx);

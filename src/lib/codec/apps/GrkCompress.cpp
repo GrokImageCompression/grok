@@ -264,6 +264,7 @@ static void validateCinema(const std::string& arg, uint16_t profile, grk_cparame
   parameters->numgbits = (profile == GRK_PROFILE_CINEMA_2K) ? 1 : 2;
 }
 
+template<typename T>
 static grk_image* loadInputImage(const char* filename, grk_cparameters* parameters)
 {
   grk_image* image = nullptr;
@@ -278,47 +279,47 @@ static grk_image* loadInputImage(const char* filename, grk_cparameters* paramete
   switch(fmt)
   {
     case GRK_FMT_PGX: {
-      PGXFormat<int32_t> pgx;
+      PGXFormat<T> pgx;
       image = pgx.readImage(filename, parameters);
     }
     break;
     case GRK_FMT_PXM: {
-      PNMFormat<int32_t> pnm(false);
+      PNMFormat<T> pnm(false);
       image = pnm.readImage(filename, parameters);
     }
     break;
     case GRK_FMT_BMP: {
-      BMPFormat<int32_t> bmp;
+      BMPFormat<T> bmp;
       image = bmp.readImage(filename, parameters);
     }
     break;
 #ifdef GROK_HAVE_LIBTIFF
     case GRK_FMT_TIF: {
-      TIFFFormat<int32_t> tif;
+      TIFFFormat<T> tif;
       image = tif.readImage(filename, parameters);
     }
     break;
 #endif
     case GRK_FMT_RAW: {
-      RAWFormat<int32_t> raw(true);
+      RAWFormat<T> raw(true);
       image = raw.readImage(filename, parameters);
     }
     break;
     case GRK_FMT_RAWL: {
-      RAWFormat<int32_t> raw(false);
+      RAWFormat<T> raw(false);
       image = raw.readImage(filename, parameters);
     }
     break;
 #ifdef GROK_HAVE_LIBPNG
     case GRK_FMT_PNG: {
-      PNGFormat<int32_t> png;
+      PNGFormat<T> png;
       image = png.readImage(filename, parameters);
     }
     break;
 #endif
 #ifdef GROK_HAVE_LIBJPEG
     case GRK_FMT_JPG: {
-      JPEGFormat<int32_t> jpeg;
+      JPEGFormat<T> jpeg;
       image = jpeg.readImage(filename, parameters);
     }
     break;
@@ -400,7 +401,8 @@ int GrkCompress::main(int argc, const char** argv, grk_image* in_image, grk_stre
         initParams.parameters.rate_control_algorithm = rate_control_algorithm;
         initParams.parameters.decod_format = GRK_FMT_UNK;
 
-        grk_image* image = loadInputImage(filePath.string().c_str(), &initParams.parameters);
+        grk_image* image =
+            loadInputImage<int32_t>(filePath.string().c_str(), &initParams.parameters);
         if(!image)
         {
           spdlog::warn("Skipping unreadable file: {}", filePath.filename().string());
@@ -2070,102 +2072,11 @@ static uint64_t pluginCompressCallback(grk_plugin_compress_user_callback_info* i
       }
     }
     /* decode the source image */
-    switch(info->compressor_parameters->decod_format)
+    image = loadInputImage<int32_t>(info->input_file_name, info->compressor_parameters);
+    if(!image)
     {
-      case GRK_FMT_PGX: {
-        PGXFormat<int32_t> pgx;
-        image = pgx.readImage(info->input_file_name, info->compressor_parameters);
-        if(!image)
-        {
-          spdlog::error("Unable to load pgx file");
-          goto cleanup;
-        }
-      }
-      break;
-
-      case GRK_FMT_PXM: {
-        PNMFormat<int32_t> pnm(false);
-        image = pnm.readImage(info->input_file_name, info->compressor_parameters);
-        if(!image)
-        {
-          spdlog::error("Unable to load pnm file");
-          goto cleanup;
-        }
-      }
-      break;
-
-      case GRK_FMT_BMP: {
-        BMPFormat<int32_t> bmp;
-        image = bmp.readImage(info->input_file_name, info->compressor_parameters);
-        if(!image)
-        {
-          spdlog::error("Unable to load bmp file");
-          goto cleanup;
-        }
-      }
-      break;
-
-#ifdef GROK_HAVE_LIBTIFF
-      case GRK_FMT_TIF: {
-        TIFFFormat<int32_t> tif;
-        image = tif.readImage(info->input_file_name, info->compressor_parameters);
-        if(!image)
-          goto cleanup;
-      }
-      break;
-#endif /* GROK_HAVE_LIBTIFF */
-
-      case GRK_FMT_RAW: {
-        RAWFormat<int32_t> raw(true);
-        image = raw.readImage(info->input_file_name, info->compressor_parameters);
-        if(!image)
-        {
-          spdlog::error("Unable to load raw file");
-          goto cleanup;
-        }
-      }
-      break;
-
-      case GRK_FMT_RAWL: {
-        RAWFormat<int32_t> raw(false);
-        image = raw.readImage(info->input_file_name, info->compressor_parameters);
-        if(!image)
-        {
-          spdlog::error("Unable to load raw file");
-          goto cleanup;
-        }
-      }
-      break;
-
-#ifdef GROK_HAVE_LIBPNG
-      case GRK_FMT_PNG: {
-        PNGFormat<int32_t> png;
-        image = png.readImage(info->input_file_name, info->compressor_parameters);
-        if(!image)
-        {
-          spdlog::error("Unable to load png file");
-          goto cleanup;
-        }
-      }
-      break;
-#endif /* GROK_HAVE_LIBPNG */
-
-#ifdef GROK_HAVE_LIBJPEG
-      case GRK_FMT_JPG: {
-        JPEGFormat<int32_t> jpeg;
-        image = jpeg.readImage(info->input_file_name, info->compressor_parameters);
-        if(!image)
-        {
-          spdlog::error("Unable to load jpeg file");
-          goto cleanup;
-        }
-      }
-      break;
-#endif /* GROK_HAVE_LIBPNG */
-      default:
-        spdlog::error("Input file format {} is not supported",
-                      convertFileFmtToString(info->compressor_parameters->decod_format));
-        goto cleanup;
+      spdlog::error("Unable to load input file");
+      goto cleanup;
     }
 
     /* Can happen if input file is TIFF or PNG

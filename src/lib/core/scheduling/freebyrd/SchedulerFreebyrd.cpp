@@ -950,46 +950,93 @@ bool SchedulerFreebyrd::postProcess(ITileProcessor* tileProcessor)
     }
     else
     {
-      // irreversible inverse MCT (ICT) with DC shift on float buffers
-      auto w0 = tile->comps_[0].getWindow()->getResWindowBufferHighestSimpleF();
-      auto w1 = tile->comps_[1].getWindow()->getResWindowBufferHighestSimpleF();
-      auto w2 = tile->comps_[2].getWindow()->getResWindowBufferHighestSimpleF();
-
-      uint32_t stride = tile->comps_[0].getWindow()->getResWindowBufferHighestStride();
-      uint32_t height = w0.height_;
-      uint32_t numTasks = std::min(height, (uint32_t)FRBSingleton::num_threads());
-      uint32_t rowsPerTask = height / numTasks;
-
-      for(uint32_t t = 0; t < numTasks; ++t)
+      // irreversible inverse MCT (ICT) with DC shift
+      bool use16 = tile->comps_[0].is16BitDwt();
+      if(use16)
       {
-        uint32_t yBegin = t * rowsPerTask;
-        uint32_t yEnd = (t < numTasks - 1) ? (t + 1) * rowsPerTask : height;
+        // 16-bit path: int16_t buffers with fixed-point ICT
+        auto w0 = tile->comps_[0].getWindow16()->getResWindowBufferHighestSimple();
+        auto w1 = tile->comps_[1].getWindow16()->getResWindowBufferHighestSimple();
+        auto w2 = tile->comps_[2].getWindow16()->getResWindowBufferHighestSimple();
 
-        pool.submit(frb::task([this, w0, w1, w2, stride, yBegin, yEnd, si] {
-          if(!success_)
-            return;
-          auto index = (uint64_t)yBegin * stride;
-          auto count = (uint64_t)(yEnd - yBegin) * stride;
-          auto c0 = w0.buf_ + index;
-          auto c1 = w1.buf_ + index;
-          auto c2 = w2.buf_ + index;
-          auto i0 = reinterpret_cast<int32_t*>(c0);
-          auto i1 = reinterpret_cast<int32_t*>(c1);
-          auto i2 = reinterpret_cast<int32_t*>(c2);
-          for(uint64_t j = 0; j < count; ++j)
-          {
-            float y = c0[j];
-            float u = c1[j];
-            float v = c2[j];
-            float r = y + 1.402f * v;
-            float g = y - 0.34413f * u - 0.71414f * v;
-            float b = y + 1.772f * u;
-            i0[j] = std::clamp((int32_t)lrintf(r) + si[0].shift, si[0].min, si[0].max);
-            i1[j] = std::clamp((int32_t)lrintf(g) + si[1].shift, si[1].min, si[1].max);
-            i2[j] = std::clamp((int32_t)lrintf(b) + si[2].shift, si[2].min, si[2].max);
-          }
-        }));
+        uint32_t stride = tile->comps_[0].getWindow16()->getResWindowBufferHighestStride();
+        uint32_t height = w0.height_;
+        uint32_t numTasks = std::min(height, (uint32_t)FRBSingleton::num_threads());
+        uint32_t rowsPerTask = height / numTasks;
+
+        for(uint32_t t = 0; t < numTasks; ++t)
+        {
+          uint32_t yBegin = t * rowsPerTask;
+          uint32_t yEnd = (t < numTasks - 1) ? (t + 1) * rowsPerTask : height;
+
+          pool.submit(frb::task([this, w0, w1, w2, stride, yBegin, yEnd, si] {
+            if(!success_)
+              return;
+            auto index = (uint64_t)yBegin * stride;
+            auto count = (uint64_t)(yEnd - yBegin) * stride;
+            auto c0 = w0.buf_ + index;
+            auto c1 = w1.buf_ + index;
+            auto c2 = w2.buf_ + index;
+            for(uint64_t j = 0; j < count; ++j)
+            {
+              // ICT: R = Y + 1.402*Cr, G = Y - 0.34413*Cb - 0.71414*Cr, B = Y + 1.772*Cb
+              // Use int32 intermediates to avoid overflow in multiply
+              int32_t y = c0[j];
+              int32_t u = c1[j];
+              int32_t v = c2[j];
+              int32_t r = y + v + ((v * 13173 + 16384) >> 15); // Y + 1.402*Cr
+              int32_t g = y - ((u * 11276 + 16384) >> 15) - ((v * 23401 + 16384) >> 15);
+              int32_t b = y + u + ((u * 25297 + 16384) >> 15); // Y + 1.772*Cb
+              c0[j] = (int16_t)std::clamp(r + si[0].shift, si[0].min, si[0].max);
+              c1[j] = (int16_t)std::clamp(g + si[1].shift, si[1].min, si[1].max);
+              c2[j] = (int16_t)std::clamp(b + si[2].shift, si[2].min, si[2].max);
+            }
+          }));
+        }
       }
+      else
+      {
+        // float path: existing ICT on float buffers
+        auto w0 = tile->comps_[0].getWindow()->getResWindowBufferHighestSimpleF();
+        auto w1 = tile->comps_[1].getWindow()->getResWindowBufferHighestSimpleF();
+        auto w2 = tile->comps_[2].getWindow()->getResWindowBufferHighestSimpleF();
+
+        uint32_t stride = tile->comps_[0].getWindow()->getResWindowBufferHighestStride();
+        uint32_t height = w0.height_;
+        uint32_t numTasks = std::min(height, (uint32_t)FRBSingleton::num_threads());
+        uint32_t rowsPerTask = height / numTasks;
+
+        for(uint32_t t = 0; t < numTasks; ++t)
+        {
+          uint32_t yBegin = t * rowsPerTask;
+          uint32_t yEnd = (t < numTasks - 1) ? (t + 1) * rowsPerTask : height;
+
+          pool.submit(frb::task([this, w0, w1, w2, stride, yBegin, yEnd, si] {
+            if(!success_)
+              return;
+            auto index = (uint64_t)yBegin * stride;
+            auto count = (uint64_t)(yEnd - yBegin) * stride;
+            auto c0 = w0.buf_ + index;
+            auto c1 = w1.buf_ + index;
+            auto c2 = w2.buf_ + index;
+            auto i0 = reinterpret_cast<int32_t*>(c0);
+            auto i1 = reinterpret_cast<int32_t*>(c1);
+            auto i2 = reinterpret_cast<int32_t*>(c2);
+            for(uint64_t j = 0; j < count; ++j)
+            {
+              float y = c0[j];
+              float u = c1[j];
+              float v = c2[j];
+              float r = y + 1.402f * v;
+              float g = y - 0.34413f * u - 0.71414f * v;
+              float b = y + 1.772f * u;
+              i0[j] = std::clamp((int32_t)lrintf(r) + si[0].shift, si[0].min, si[0].max);
+              i1[j] = std::clamp((int32_t)lrintf(g) + si[1].shift, si[1].min, si[1].max);
+              i2[j] = std::clamp((int32_t)lrintf(b) + si[2].shift, si[2].min, si[2].max);
+            }
+          }));
+        }
+      } // end float else
     }
 
     pool.wait_idle();

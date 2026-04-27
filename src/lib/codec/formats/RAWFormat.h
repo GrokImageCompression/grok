@@ -321,6 +321,8 @@ grk_image* RAWFormat<T>::readImage(const char* filename, grk_cparameters* parame
     memset(cmptparm + i, 0, sizeof(grk_image_comp));
     cmptparm[i].prec = raw_cp->prec;
     cmptparm[i].sgnd = raw_cp->sgnd;
+    if constexpr(sizeof(T) == 2)
+      cmptparm[i].data_type = GRK_INT_16;
     cmptparm[i].dx = (uint8_t)(subsampling_dx * raw_cp->comps[i].dx);
     cmptparm[i].dy = (uint8_t)(subsampling_dy * raw_cp->comps[i].dy);
     cmptparm[i].w = w;

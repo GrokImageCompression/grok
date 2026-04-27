@@ -201,11 +201,11 @@ void convertToOutput(const uint8_t* src, T* dest, size_t w, bool invert)
       for(i = 0; i < (w & ~(size_t)1U); i += 2U)
       {
         uint8_t val = *src++;
-        dest[i + 0] = INV(sign_extend<T>(val >> 4, 32 - 4), 0xF, invert);
-        dest[i + 1] = INV(sign_extend<T>(val & 0xF, 32 - 4), 0xF, invert);
+        dest[i + 0] = INV(sign_extend<T>(val >> 4, sizeof(T) * 8 - 4), 0xF, invert);
+        dest[i + 1] = INV(sign_extend<T>(val & 0xF, sizeof(T) * 8 - 4), 0xF, invert);
       }
       if(w & 1U)
-        dest[i + 0] = INV(sign_extend<T>((*src++) >> 4, 32 - 4), 0xF, invert);
+        dest[i + 0] = INV(sign_extend<T>((*src++) >> 4, sizeof(T) * 8 - 4), 0xF, invert);
     }
     else
     {
@@ -368,22 +368,22 @@ void convertToOutput(const uint8_t* src, T* dest, size_t w, bool invert)
         uint32_t val3 = *src++;
         uint32_t val4 = *src++;
 
-        dest[i + 0] =
-            sign_extend<T>(INV((T)((val0 << 2) | (val1 >> 6)), INV_MASK_10, invert), 32 - 10);
+        dest[i + 0] = sign_extend<T>(INV((T)((val0 << 2) | (val1 >> 6)), INV_MASK_10, invert),
+                                     sizeof(T) * 8 - 10);
         dest[i + 1] = sign_extend<T>(
-            INV((T)(((val1 & 0x3FU) << 4) | (val2 >> 4)), INV_MASK_10, invert), 32 - 10);
+            INV((T)(((val1 & 0x3FU) << 4) | (val2 >> 4)), INV_MASK_10, invert), sizeof(T) * 8 - 10);
         dest[i + 2] = sign_extend<T>(
-            INV((T)(((val2 & 0xFU) << 6) | (val3 >> 2)), INV_MASK_10, invert), 32 - 10);
-        dest[i + 3] =
-            sign_extend<T>(INV((T)(((val3 & 0x3U) << 8) | val4), INV_MASK_10, invert), 32 - 10);
+            INV((T)(((val2 & 0xFU) << 6) | (val3 >> 2)), INV_MASK_10, invert), sizeof(T) * 8 - 10);
+        dest[i + 3] = sign_extend<T>(INV((T)(((val3 & 0x3U) << 8) | val4), INV_MASK_10, invert),
+                                     sizeof(T) * 8 - 10);
       }
       if(w & 3U)
       {
         uint32_t val0 = *src++;
         uint32_t val1 = *src++;
         w = w & 3U;
-        dest[i + 0] =
-            sign_extend<T>(INV((T)((val0 << 2) | (val1 >> 6)), INV_MASK_10, invert), 32 - 10);
+        dest[i + 0] = sign_extend<T>(INV((T)((val0 << 2) | (val1 >> 6)), INV_MASK_10, invert),
+                                     sizeof(T) * 8 - 10);
 
         if(w > 1U)
         {
@@ -482,17 +482,17 @@ void convertToOutput(const uint8_t* src, T* dest, size_t w, bool invert)
         uint32_t val1 = *src++;
         uint32_t val2 = *src++;
 
-        dest[i + 0] =
-            sign_extend<T>(INV((T)((val0 << 4) | (val1 >> 4)), INV_MASK_12, invert), 32 - 12);
-        dest[i + 1] =
-            sign_extend<T>(INV((T)(((val1 & 0xFU) << 8) | val2), INV_MASK_12, invert), 32 - 12);
+        dest[i + 0] = sign_extend<T>(INV((T)((val0 << 4) | (val1 >> 4)), INV_MASK_12, invert),
+                                     sizeof(T) * 8 - 12);
+        dest[i + 1] = sign_extend<T>(INV((T)(((val1 & 0xFU) << 8) | val2), INV_MASK_12, invert),
+                                     sizeof(T) * 8 - 12);
       }
       if(w & 1U)
       {
         uint32_t val0 = *src++;
         uint32_t val1 = *src++;
-        dest[i + 0] =
-            sign_extend<T>(INV((T)((val0 << 4) | (val1 >> 4)), INV_MASK_12, invert), 32 - 12);
+        dest[i + 0] = sign_extend<T>(INV((T)((val0 << 4) | (val1 >> 4)), INV_MASK_12, invert),
+                                     sizeof(T) * 8 - 12);
       }
     }
     else
