@@ -156,6 +156,37 @@ namespace HWY_NAMESPACE
   };
 
   /**
+   * Apply dc shift for irreversible decompressed image (16-bit path)
+   * (assumes mono with no MCT)
+   * NarrowScaleFilter16 has already dequantized T1 output to int16,
+   * so only integer shift + clamp is needed (same op as DecompressDcShiftRev16).
+   */
+  class DecompressDcShiftIrrev16
+  {
+  public:
+    void transform(const ScheduleInfo& info)
+    {
+      auto highestResBufferStride =
+          info.tile->comps_[info.compno].getWindow16()->getResWindowBufferHighestStride();
+      auto index = (uint64_t)info.yBegin * highestResBufferStride;
+      auto chunkSize = (uint64_t)(info.yEnd - info.yBegin) * highestResBufferStride;
+      const std::vector<ShiftInfo>& shiftInfo = info.shiftInfo;
+      auto chan0 =
+          info.tile->comps_[info.compno].getWindow16()->getResWindowBufferHighestSimple().buf_;
+      const HWY_FULL(int16_t) di16;
+      auto vshift = Set(di16, (int16_t)shiftInfo[0]._shift);
+      auto vmin = Set(di16, (int16_t)shiftInfo[0]._min);
+      auto vmax = Set(di16, (int16_t)shiftInfo[0]._max);
+      size_t begin = index;
+      for(auto j = begin; j < begin + chunkSize; j += Lanes(di16))
+      {
+        auto ni = Clamp(Load(di16, chan0 + j) + vshift, vmin, vmax);
+        Store(ni, di16, chan0 + j);
+      }
+    }
+  };
+
+  /**
    * Apply MCT with optional DC shift to reversible decompressed image
    */
   class DecompressRev
@@ -614,6 +645,11 @@ namespace HWY_NAMESPACE
     }
   }
 
+  void hwy_schedule_decompress_dc_shift_irrev16(ScheduleInfo info)
+  {
+    vscheduler16<DecompressDcShiftIrrev16>(info);
+  }
+
   void hwy_schedule_decompress_dc_shift_rev16(ScheduleInfo info)
   {
     vscheduler16<DecompressDcShiftRev16>(info);
@@ -640,6 +676,7 @@ HWY_EXPORT(hwy_compress_irrev);
 HWY_EXPORT(hwy_schedule_decompress_rev);
 HWY_EXPORT(hwy_schedule_decompress_irrev);
 HWY_EXPORT(hwy_schedule_decompress_dc_shift_irrev);
+HWY_EXPORT(hwy_schedule_decompress_dc_shift_irrev16);
 HWY_EXPORT(hwy_schedule_decompress_dc_shift_rev);
 HWY_EXPORT(hwy_schedule_decompress_dc_shift_rev16);
 HWY_EXPORT(hwy_schedule_decompress_rev16);
@@ -655,7 +692,10 @@ void Mct::schedule_decompress_dc_shift_irrev(FlowComponent* flow, uint16_t compn
   ScheduleInfo info(tile_, flow, image_->rows_per_task);
   info.compno = compno;
   genShift(compno, 1, info.shiftInfo);
-  HWY_DYNAMIC_DISPATCH(hwy_schedule_decompress_dc_shift_irrev)(info);
+  if(tile_->comps_[compno].is16BitDwt())
+    HWY_DYNAMIC_DISPATCH(hwy_schedule_decompress_dc_shift_irrev16)(info);
+  else
+    HWY_DYNAMIC_DISPATCH(hwy_schedule_decompress_dc_shift_irrev)(info);
 }
 /***
  * decompress dc shift only - reversible
