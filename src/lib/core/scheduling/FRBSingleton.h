@@ -18,64 +18,22 @@
 #pragma once
 
 #include <cstddef>
-#include <memory>
-#include <mutex>
 #include <thread>
-#include <cassert>
-
-#include <freebyrd/freebyrd.h>
 
 /**
  * @class FRBSingleton
- * @brief Manages a global freebyrd thread pool instance for strip-based decompression.
+ * @brief Stub — freebyrd thread pool has been removed.
  *
- * Mirrors the TFSingleton API so callers can swap between Taskflow and freebyrd pools.
- * The pool is created lazily on first access or explicitly via create().
+ * Retains the API surface so that SchedulerFreebyrd and StripDecompressor
+ * continue to compile, but all methods are no-ops.
  */
 class FRBSingleton
 {
 public:
-  static void create(size_t numThreads)
-  {
-    std::lock_guard<std::mutex> lock(mutex_);
-    numThreads = numThreads ? numThreads : std::thread::hardware_concurrency();
-    if(numThreads_ == numThreads && instance_)
-      return;
-    numThreads_ = numThreads;
-    instance_ =
-        std::make_unique<frb::thread_pool>(frb::pool_config{.num_threads = (uint32_t)numThreads_});
-  }
-
-  static frb::thread_pool& get()
-  {
-    std::lock_guard<std::mutex> lock(mutex_);
-    if(!instance_)
-    {
-      numThreads_ = std::thread::hardware_concurrency();
-      instance_ = std::make_unique<frb::thread_pool>(
-          frb::pool_config{.num_threads = (uint32_t)numThreads_});
-    }
-    assert(instance_);
-    return *instance_;
-  }
-
-  static size_t num_threads()
-  {
-    std::lock_guard<std::mutex> lock(mutex_);
-    return numThreads_;
-  }
-
-  static void destroy()
-  {
-    std::lock_guard<std::mutex> lock(mutex_);
-    instance_.reset();
-    numThreads_ = 0;
-  }
+  static void create(size_t) {}
+  static size_t num_threads() { return std::thread::hardware_concurrency(); }
+  static void destroy() {}
 
 private:
   FRBSingleton() = delete;
-
-  static inline std::unique_ptr<frb::thread_pool> instance_ = nullptr;
-  static inline std::mutex mutex_;
-  static inline size_t numThreads_ = 0;
 };

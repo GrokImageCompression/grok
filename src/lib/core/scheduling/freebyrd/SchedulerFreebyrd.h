@@ -22,6 +22,8 @@
 #include <memory>
 #include <vector>
 #include <functional>
+#include <cstdlib>
+#include <string>
 
 #include "StripDecompressor.h"
 
@@ -29,7 +31,6 @@ namespace grk
 {
 
 struct ITileProcessor;
-struct CoderPool;
 
 namespace t1
 {
@@ -38,18 +39,10 @@ namespace t1
 
 /**
  * @class SchedulerFreebyrd
- * @brief Strip-based decompression scheduler using freebyrd thread pool.
+ * @brief Stub — freebyrd thread pool has been removed.
  *
- * Unlike the Taskflow-based CodecScheduler, this scheduler does not inherit
- * from FlowComponent. It drives strip-based T1 decode → cascade DWT → output
- * using freebyrd's dependency_gate and task_domain primitives.
- *
- * Phase 1: Full tile alloc, strip decode + cascade DWT via freebyrd pool.
- *   - T1 decode all code blocks in parallel
- *   - Cascade DWT per strip (reusing WaveletReverse::cascade_strip_97)
- *   - DC shift fused into last-level DWT
- *
- * Phase 3 (future): Strip-local buffer allocation for low RSS.
+ * The class interface is preserved so TileProcessor still compiles,
+ * but decompressTile() always returns false with an error message.
  */
 class SchedulerFreebyrd
 {
@@ -65,16 +58,7 @@ public:
   }
 
   /**
-   * @brief Schedule and execute decompression for a tile.
-   *
-   * Drives the full pipeline synchronously using freebyrd pool:
-   *   1. Build block list per resolution (same iteration as DecompressScheduler)
-   *   2. T1 decode all blocks in parallel via freebyrd
-   *   3. Cascade DWT per strip per resolution (bottom-up)
-   *   4. Post-processing (DC shift fused into DWT for 9/7 whole-tile)
-   *
-   * @param tileProcessor the tile to decompress
-   * @return true if decompression succeeded
+   * @brief Stub — always returns false (freebyrd removed).
    */
   bool decompressTile(ITileProcessor* tileProcessor);
 
@@ -104,7 +88,6 @@ private:
   uint16_t numcomps_;
   uint8_t prec_;
   std::atomic_bool success_;
-  CoderPool coderPool_;
 
   // Block list per component, per resolution
   using BlockList = std::vector<std::shared_ptr<t1::DecompressBlockExec>>;

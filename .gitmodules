@@ -12,6 +12,3 @@
 	path = extern/grok-gpu-plugin
 	url = git@gitlab-rsa:GrokImageCompression/grok_gpu_plugin.git
 	update = none
-[submodule "extern/freebyrd"]
-	path = extern/freebyrd
-	url = git@github.com:GrokImageCompression/freebyrd.git
