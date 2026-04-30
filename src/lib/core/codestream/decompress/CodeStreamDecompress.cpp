@@ -258,73 +258,71 @@ bool CodeStreamDecompress::decompress(grk_plugin_tile* tile)
           // for the current tile row
           uint32_t yBegin = 0;
           uint32_t yEnd = std::min(tileGlobalYEnd, regionY1) - std::max(tileGlobalYBegin, regionY0);
-          if(yEnd <= yBegin)
-          {
-            // Empty tile row (e.g. zero pixels after resolution reduction).
-            // Still advance nextBandTileY_ so backpressure unblocks.
-            std::lock_guard<std::mutex> lock(bandOrderMutex_);
-            if(tileY == nextBandTileY_)
-              nextBandTileY_ = tileY + 1;
-            bandDrainCV_.notify_one();
-            return;
-          }
 
           uint16_t tileX0 = tileIndexBegin % numTileCols;
           uint16_t numSlatedCols = (uint16_t)tilesToDecompress_.getSlatedTileRect().width();
 
           // All compositing, band writing, and strip advancing must be serialized
           // to prevent races on the shared strip buffer.
+          // Empty rows (yEnd <= yBegin) are inserted as sentinels so the drain
+          // loop processes them in order — an early-return would lose the
+          // advancement when an empty row completes before a prior row.
           std::lock_guard<std::mutex> lock(bandOrderMutex_);
           pendingBands_[tileY] = {yBegin, yEnd, tileX0, numSlatedCols};
           while(pendingBands_.count(nextBandTileY_))
           {
             auto& band = pendingBands_[nextBandTileY_];
 
-            // Check if any tile in this row already wrote strip output directly
-            bool stripOutputHandled = false;
-            for(uint16_t col = 0; col < band.numCols; col++)
+            // Skip compositing and callback for empty rows (zero pixels
+            // after resolution reduction).
+            if(band.yEnd > band.yBegin)
             {
-              uint16_t tileIndex =
-                  static_cast<uint16_t>(nextBandTileY_ * numTileCols + (band.tileX0 + col));
-              auto cacheEntry = tileCache_->get(tileIndex);
-              if(cacheEntry && cacheEntry->processor &&
-                 cacheEntry->processor->isStripOutputWritten())
-              {
-                stripOutputHandled = true;
-                break;
-              }
-            }
-
-            if(!stripOutputHandled)
-            {
-              // Composite all tiles in this row into the strip buffer
+              // Check if any tile in this row already wrote strip output directly
+              bool stripOutputHandled = false;
               for(uint16_t col = 0; col < band.numCols; col++)
               {
                 uint16_t tileIndex =
                     static_cast<uint16_t>(nextBandTileY_ * numTileCols + (band.tileX0 + col));
                 auto cacheEntry = tileCache_->get(tileIndex);
-                if(!cacheEntry || !cacheEntry->processor)
-                  continue;
-                auto tileImage = cacheEntry->processor->getImage();
-                if(tileImage)
+                if(cacheEntry && cacheEntry->processor &&
+                   cacheEntry->processor->isStripOutputWritten())
                 {
-                  if(!scratchImage_->composite(tileImage))
-                    success_ = false;
+                  stripOutputHandled = true;
+                  break;
                 }
               }
 
-              if(!ioBandCallback_(band.yBegin, band.yEnd, scratchImage_.get(), ioBandUserData_))
-                success_ = false;
-            }
+              if(!stripOutputHandled)
+              {
+                // Composite all tiles in this row into the strip buffer
+                for(uint16_t col = 0; col < band.numCols; col++)
+                {
+                  uint16_t tileIndex =
+                      static_cast<uint16_t>(nextBandTileY_ * numTileCols + (band.tileX0 + col));
+                  auto cacheEntry = tileCache_->get(tileIndex);
+                  if(!cacheEntry || !cacheEntry->processor)
+                    continue;
+                  auto tileImage = cacheEntry->processor->getImage();
+                  if(tileImage)
+                  {
+                    if(!scratchImage_->composite(tileImage))
+                      success_ = false;
+                  }
+                }
 
-            // Release tile processors for this completed row
-            for(uint16_t col = 0; col < band.numCols; col++)
-            {
-              uint16_t tileIndex =
-                  static_cast<uint16_t>(nextBandTileY_ * numTileCols + (band.tileX0 + col));
-              tileCache_->releaseForSwath(tileIndex);
+                if(!ioBandCallback_(band.yBegin, band.yEnd, scratchImage_.get(), ioBandUserData_))
+                  success_ = false;
+              }
+
+              // Release tile processors for this completed row
+              for(uint16_t col = 0; col < band.numCols; col++)
+              {
+                uint16_t tileIndex =
+                    static_cast<uint16_t>(nextBandTileY_ * numTileCols + (band.tileX0 + col));
+                tileCache_->releaseForSwath(tileIndex);
+              }
+              MemoryManager::releaseFreedPages();
             }
-            MemoryManager::releaseFreedPages();
 
             pendingBands_.erase(nextBandTileY_);
 
