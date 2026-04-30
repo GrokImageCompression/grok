@@ -1857,8 +1857,6 @@ grk_image* TIFFFormat<T>::readImage(const std::string& filename, grk_cparameters
   uint16_t numcomps = 0;
   uint32_t icclen = 0;
   uint8_t* iccbuf = nullptr;
-  uint8_t* iptc_buf = nullptr;
-  uint32_t iptc_len = 0;
   uint8_t* xmp_buf = nullptr;
   uint32_t xmp_len = 0;
   uint16_t* sampleinfo = nullptr;
@@ -1866,6 +1864,8 @@ grk_image* TIFFFormat<T>::readImage(const std::string& filename, grk_cparameters
   bool hasXRes = false, hasYRes = false, hasResUnit = false;
   bool isSigned = (tiSf == SAMPLEFORMAT_INT);
   bool needSignedPixelReader = isSigned && (tiBps == 8 || tiBps == 16);
+  uint32_t count = 0;
+  void* raw_ptr = nullptr;
 
   // 1. sanity checks
 
@@ -2216,16 +2216,16 @@ grk_image* TIFFFormat<T>::readImage(const std::string& filename, grk_cparameters
       copyICC(image, iccbuf, icclen);
   }
   // 7. extract IPTC meta-data
-  if(TIFFGetFieldDefaulted(tif_, TIFFTAG_RICHTIFFIPTC, &iptc_len, &iptc_buf) == 1)
+  if(TIFFGetField(tif_, TIFFTAG_RICHTIFFIPTC, &count, &raw_ptr) == 1 && raw_ptr)
   {
-    if(TIFFIsByteSwapped(tif_))
-      TIFFSwabArrayOfLong((uint32_t*)iptc_buf, iptc_len);
-    // since TIFFTAG_RICHTIFFIPTC is of type TIFF_LONG, we must multiply
-    // by 4 to get the length in bytes
-    createMeta(image);
-    image->meta->iptc_len = iptc_len * 4;
-    image->meta->iptc_buf = new uint8_t[iptc_len];
-    memcpy(image->meta->iptc_buf, iptc_buf, iptc_len);
+    const uint8_t* src = static_cast<const uint8_t*>(raw_ptr);
+    if(count > 0)
+    {
+      createMeta(image);
+      image->meta->iptc_len = count;
+      image->meta->iptc_buf = new uint8_t[count];
+      memcpy(image->meta->iptc_buf, src, count);
+    }
   }
   // 8. extract XML meta-data
   if(TIFFGetFieldDefaulted(tif_, TIFFTAG_XMLPACKET, &xmp_len, &xmp_buf) == 1)
