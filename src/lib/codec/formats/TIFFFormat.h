@@ -997,23 +997,7 @@ bool TIFFFormat<T>::writeHeader(TIFF* tif)
       TIFFSetField(tif, TIFFTAG_XMLPACKET, image_->meta->xmp_len, image_->meta->xmp_buf);
     if(image_->meta->iptc_buf && image_->meta->iptc_len)
     {
-      // length must be multiple of 4
-      auto iptc_len = image_->meta->iptc_len;
-      iptc_len += (4 - (iptc_len & 0x03));
-      if(iptc_len > image_->meta->iptc_len)
-      {
-        auto new_iptf_buf = new uint8_t[iptc_len];
-        memset(new_iptf_buf, 0, iptc_len);
-        memcpy(new_iptf_buf, image_->meta->iptc_buf, image_->meta->iptc_len);
-        delete[] image_->meta->iptc_buf;
-        image_->meta->iptc_buf = new_iptf_buf;
-        image_->meta->iptc_len = iptc_len;
-      }
-      // Tag is of type TIFF_LONG, so byte length is divided by four
-      if(TIFFIsByteSwapped(tif))
-        TIFFSwabArrayOfLong((uint32_t*)image_->meta->iptc_buf,
-                            (tmsize_t)(image_->meta->iptc_len / 4));
-      TIFFSetField(tif, TIFFTAG_RICHTIFFIPTC, (uint32_t)(image_->meta->iptc_len / 4),
+      TIFFSetField(tif, TIFFTAG_RICHTIFFIPTC, (uint32_t)(image_->meta->iptc_len),
                    (void*)image_->meta->iptc_buf);
     }
   }
