@@ -24,8 +24,7 @@ namespace grk
 
 StripDecompressor::StripDecompressor([[maybe_unused]] ITileProcessor* tp,
                                      [[maybe_unused]] uint16_t compno,
-                                     [[maybe_unused]] uint8_t prec,
-                                     std::atomic_bool& success,
+                                     [[maybe_unused]] uint8_t prec, std::atomic_bool& success,
                                      [[maybe_unused]] StripConfig config)
     : tp_(tp), compno_(compno), prec_(prec), success_(success), config_(config)
 {}

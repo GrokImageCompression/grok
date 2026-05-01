@@ -31,7 +31,10 @@ class FRBSingleton
 {
 public:
   static void create(size_t) {}
-  static size_t num_threads() { return std::thread::hardware_concurrency(); }
+  static size_t num_threads()
+  {
+    return std::thread::hardware_concurrency();
+  }
   static void destroy() {}
 
 private:
