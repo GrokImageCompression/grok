@@ -141,7 +141,7 @@ bool Coder::compress(CompressBlockExec* block)
   auto distortion =
       blockCoder_->compress_cblk(&cblkexp, max, block->bandOrientation, block->compno, block->level,
                                  block->qmfbid, block->stepsize, block->cblk_sty, block->mct_norms,
-                                 block->mct_numcomps, block->doRateControl);
+                                 block->mct_numcomps, block->doRateControl, block->earlyStopSlope);
 
   cblk->setNumPasses(cblkexp.numPassesTotal);
   cblk->setNumBps(cblkexp.numbps);

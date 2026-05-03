@@ -281,7 +281,8 @@ void TileProcessorCompress::scheduleCompressT1()
     mct_norms = (const double*)(tcp->mct_norms_);
   }
 
-  scheduler_ = new CompressScheduler(tile_, needsRateControl(), tcp, mct_norms, mct_numcomps);
+  scheduler_ = new CompressScheduler(tile_, needsRateControl(), tcp, mct_norms, mct_numcomps,
+                                     cp_->codingParams_.enc_.progressiveRateControl_);
   scheduler_->scheduleT1(nullptr);
 }
 bool TileProcessorCompress::compressT2(uint32_t* tileBytesWritten)
@@ -430,7 +431,8 @@ void TileProcessorCompress::buildCompressDAG(void)
       mct_numcomps = headerImage_->numcomps;
       mct_norms = (const double*)(tcp->mct_norms_);
     }
-    scheduler_ = new CompressScheduler(tile_, needsRateControl(), tcp, mct_norms, mct_numcomps);
+    scheduler_ = new CompressScheduler(tile_, needsRateControl(), tcp, mct_norms, mct_numcomps,
+                                       cp_->codingParams_.enc_.progressiveRateControl_);
     static_cast<CompressScheduler*>(scheduler_)->populateT1Flow(t1Flow_.get());
   }
   t1Flow_->addTo(*compressFlow_);

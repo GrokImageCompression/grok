@@ -852,7 +852,7 @@ GrkRC GrkCompress::parseCommandLine(int argc, const char* argv[], CompressInitPa
   std::string tileParts;
   uint16_t rsiz;
 
-  bool eph, applyICC, irreversible, plt, sop, tlm;
+  bool eph, applyICC, irreversible, plt, sop, tlm, progressiveRC;
 
   auto outDirOpt = app.add_option("-a,--out-dir", outDir, "Output directory");
   auto rateControlAlgorithmOpt =
@@ -922,6 +922,8 @@ GrkRC GrkCompress::parseCommandLine(int argc, const char* argv[], CompressInitPa
   auto mctOpt = app.add_option("-Y,--mct", mct, "Multi component transform")->default_val(0);
   auto imfOpt = app.add_option("-z,--imf", imf, "IMF profile");
   auto rsizOpt = app.add_option("-Z,--rsiz", rsiz, "Rsiz")->default_val(0);
+  auto progressiveRCOpt =
+      app.add_flag("--progressive-rc", progressiveRC, "Progressive rate control");
 
   app.set_help_flag("-h", "Show abreviated usage");
   app.add_flag("--help", "Show detailed usage");
@@ -962,6 +964,8 @@ GrkRC GrkCompress::parseCommandLine(int argc, const char* argv[], CompressInitPa
     parameters->write_plt = true;
   if(tlmOpt->count() > 0)
     parameters->write_tlm = true;
+  if(progressiveRCOpt->count() > 0)
+    parameters->progressive_rate_control = true;
   if(repetitionsOpt->count() > 0)
     parameters->repeats = repetitions;
   if(rateControlAlgorithmOpt->count() > 0)

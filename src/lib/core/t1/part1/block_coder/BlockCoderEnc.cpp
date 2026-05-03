@@ -733,7 +733,8 @@ void BlockCoder::enc_clnpass(int8_t bpno, int32_t* nmsedec, uint32_t cblksty)
 }
 double BlockCoder::compress_cblk(cblk_enc* cblk, uint32_t max, uint8_t orientation, uint16_t compno,
                                  uint8_t level, uint8_t qmfbid, double stepsize, uint32_t cblksty,
-                                 const double* mct_norms, uint16_t mct_numcomps, bool doRateControl)
+                                 const double* mct_norms, uint16_t mct_numcomps, bool doRateControl,
+                                 uint16_t earlyStopSlope)
 {
   code_block_enc_allocate(cblk);
   auto mqc = &coder;
@@ -771,6 +772,44 @@ double BlockCoder::compress_cblk(cblk_enc* cblk, uint32_t max, uint8_t orientati
   mqc->debug_mqc.level = level;
   //}
 #endif
+
+  // INCREMENTAL CONVEX HULL EARLY TERMINATION
+  //
+  // Convert the log-domain slope threshold to linear domain for use in the
+  // per-pass heuristic below. This conversion is the inverse of RateControl::slopeToLog():
+  //   slopeToLog(s) = ln(s) * (256/ln2) - ln(2^64) * (256/ln2) + 65536
+  //                 = log2(s) * 256 + 49152
+  // Inverse:
+  //   s = 2^((logSlope - 49152) / 256)
+  //     = exp((logSlope - 65536) * ln2/256) * 2^64
+  //
+  // We exclude the LL band from early termination because LL subband blocks
+  // have non-zero-mean samples, causing distortion to vary unpredictably with
+  // bit-plane depth. This can produce consecutive non-hull passes that would
+  // cause premature termination. All detail subbands (HL, LH, HH) have
+  // approximately zero-mean samples and well-behaved monotone slope decay.
+  float linearSlopeThreshold = -1.0f;
+  if(earlyStopSlope > 1 && doRateControl && orientation != BAND_ORIENT_LL)
+  {
+    // Convert from grok's log-domain slope representation to linear domain.
+    // grok encodes slopes as: logSlope = ln(s/2^64) * (256/ln2) + 65536
+    //   where s is the linear slope (distortion-decrease per byte).
+    // Inversion: s = exp((logSlope - 65536) * ln2/256) * 2^64
+    //
+    // 65536 = midpoint offset chosen so the uint16_t range [0, 65535] maps to
+    //   slopes spanning roughly [2^(-256)·2^64, 2^(+255)·2^64] in linear domain,
+    //   covering the full practical range of JPEG 2000 coding pass slopes.
+    // 256 = scale factor giving 256 log-slope units per octave (factor-of-2 in
+    //   linear slope). This provides fine granularity for PCRD-opt threshold
+    //   selection while fitting in uint16_t.
+    // 2^64 = normalization constant. Slopes are stored relative to 2^64 so that
+    //   typical slopes (distortion per byte, where distortion uses MSE in
+    //   fixed-point with 2^64 headroom) map to the useful uint16_t range.
+    const float logScale = 0.693147180559945f / 256.0f;  // ln(2)/256
+    float logVal = (static_cast<float>(earlyStopSlope) - 65536.0f) * logScale;
+    const float maxSlope = static_cast<float>(1ULL << 63) * 2.0f;  // 2^64 normalization
+    linearSlopeThreshold = expf(logVal) * maxSlope;
+  }
 
   double cumwmsedec = 0.0;
   uint8_t passno;
@@ -862,6 +901,165 @@ double BlockCoder::compress_cblk(cblk_enc* cblk, uint32_t max, uint8_t orientati
     {
       passtype = 0;
       bpno--;
+
+      // INCREMENTAL CONVEX HULL TERMINATION HEURISTIC
+      //
+      // At each bit-plane boundary, we evaluate whether encoding further passes
+      // is worthwhile by estimating whether any recent pass could plausibly lie
+      // on the R-D convex hull above the threshold slope.
+      //
+      // THEORY (Taubman & Marcellin, Ch. 8):
+      // The PCRD-opt algorithm assigns each coding pass a slope equal to the
+      // marginal distortion decrease per byte on the convex hull. A pass is
+      // included in a quality layer iff its hull slope exceeds the layer's
+      // threshold λ*. For well-behaved subbands, slopes decrease approximately
+      // geometrically with bit-plane depth (factor ~4× per plane for uniform
+      // statistics). If all recent passes have slopes well below threshold,
+      // subsequent passes will too.
+      //
+      // ALGORITHM:
+      // For each candidate point z0 (scanning backwards from the current pass z):
+      //   1. Compute the MINIMUM accumulated slope in a backward window of up to
+      //      7 passes starting at z0. The minimum (rather than maximum) is used
+      //      because it represents the most conservative estimate of the slope
+      //      that z0 would have if it were on the convex hull — a lower bound
+      //      on the true hull slope. If even this lower bound exceeds the
+      //      threshold, the pass is definitely useful and we must not terminate.
+      //
+      //   2. Compare against an ESCALATING threshold:
+      //        S_z0 < threshold × 3^floor((z - z0) / 3)
+      //      The factor 3^floor(q/3) raises the required slope by 3× for each
+      //      full bit-plane of distance from the current pass. This accounts for
+      //      the fact that slopes decrease ~4× per bit-plane at high rates — using
+      //      3× instead of 4× provides conservatism (we under-estimate the expected
+      //      decay, making termination harder to trigger incorrectly).
+      //
+      //   3. Track "potential hull points" — candidates whose slopes form a
+      //      monotonically decreasing sequence with positive slope and rate.
+      //      These approximate what the convex hull would look like.
+      //
+      // TERMINATION CONDITIONS (all must hold simultaneously):
+      //   a) The interval [z0, z] spans at least 3 passes (one full bit-plane
+      //      of evidence that slopes are below threshold).
+      //   b) At least 2 potential hull points were identified (ensures the R-D
+      //      curve has enough structure for a meaningful slope estimate).
+      //   c) ALL passes in the interval satisfy condition (2) above — no pass
+      //      has a conservative slope estimate exceeding its scaled threshold.
+      //
+      // WHY THIS IS SAFE:
+      // - The minimum-slope backward window provides a LOWER BOUND on hull slope.
+      //   If the lower bound is below threshold, the true slope may still be above
+      //   (we don't terminate). Only when even the lower bound is below do we
+      //   consider termination.
+      // - The 3× escalating factor gives older passes progressively more slack,
+      //   because their slopes are naturally expected to be higher (they encode
+      //   more significant bit-planes). Using 3× rather than the theoretical 4×
+      //   decay rate adds a safety margin.
+      // - Requiring 2 hull points and 3+ passes prevents spurious termination
+      //   from noise in a single pass's statistics.
+      // passno >= 5 ensures we have at least 2 full bit-planes of data (passes 0-2
+      // for first bit-plane + passes 3-5 for second). This guarantees enough R-D
+      // samples for a meaningful slope estimate; slopes from a single bit-plane
+      // can be noisy and unrepresentative of the overall trend.
+      if(linearSlopeThreshold > 0.0f && passno >= 5)
+      {
+        int z = static_cast<int>(passno) - 1;  // index of just-completed cleanup pass
+        int numHullPoints = 0;
+        int z0;
+        float lastDeltaD = 0.0f, lastDeltaL = 0.0f;
+        float bestDeltaD = 0.0f, bestDeltaL = 0.0f;
+
+        // numHullPoints < 3: we only need 2 hull points for a valid termination
+        // decision, but scan up to 3 to accumulate evidence. Once 3 are found, the
+        // backwards scan can stop — additional points would only confirm what we
+        // already know. This bounds the scan cost to O(3 × 7) = O(21) iterations
+        // per bit-plane boundary.
+        for(z0 = z; z0 >= 0 && numHullPoints < 3; z0--)
+        {
+          // Backward window of up to 7 passes: this spans slightly more than
+          // 2 full bit-planes (2 × 3 = 6 passes). Using 7 instead of 6 gives
+          // one extra pass of context, which smooths out noise in slope estimation
+          // without significantly increasing computation. The window accumulates
+          // a "running best" (minimum slope) which represents the most conservative
+          // estimate of the true hull slope at this candidate point.
+          float deltaL = 0.0f, deltaD = 0.0f;
+          bestDeltaD = 0.0f;
+          bestDeltaL = 0.0f;
+          for(int u = z0; u >= 0 && u > (z0 - 7); u--)  // window depth = 7 (see above)
+          {
+            // Incremental rate and distortion for pass u
+            float incL = static_cast<float>(
+                cblk->passes[u].rate - (u > 0 ? cblk->passes[u - 1].rate : 0));
+            float incD = static_cast<float>(
+                cblk->passes[u].distortiondec - (u > 0 ? cblk->passes[u - 1].distortiondec : 0.0));
+            deltaL += incL;
+            deltaD += incD;
+
+            // Keep the window with LOWEST slope (most conservative estimate).
+            // On first iteration (u == z0), initialize. Subsequently, update
+            // when the new accumulated slope is lower than previous best.
+            // Comparison: bestDeltaD/bestDeltaL > deltaD/deltaL
+            // Rearranged to avoid division: bestDeltaD * deltaL > deltaD * bestDeltaL
+            if(u == z0 || (bestDeltaD * deltaL > deltaD * bestDeltaL))
+            {
+              bestDeltaD = deltaD;
+              bestDeltaL = deltaL;
+            }
+          }
+
+          // Apply escalating threshold: alpha(z - z0) = 3^floor((z - z0) / 3)
+          //
+          // Rationale for 3× per bit-plane:
+          // At high compression ratios, slopes decay approximately 4× per bit-plane
+          // (because each successive plane encodes ~1/4 the energy of the previous).
+          // Using 3× instead of the theoretical 4× provides a conservative safety
+          // margin: we demand less slope decay than theory predicts before concluding
+          // a pass is below threshold. This reduces the false-termination rate at
+          // the cost of slightly less aggressive pruning.
+          //
+          // The "dist -= 3" step corresponds to one full bit-plane (3 coding passes:
+          // significance, refinement, cleanup). We only begin escalating after the
+          // first bit-plane of distance (dist > 2) because within a single plane,
+          // slopes don't follow the geometric decay model.
+          float ref = linearSlopeThreshold * bestDeltaL;
+          for(int dist = z - z0; dist > 2; dist -= 3)
+            ref *= 3.0f;
+
+          // Condition 3.c: if the best (minimum) slope at z0 exceeds the scaled
+          // threshold, this pass might be on the hull — abort termination check.
+          if(bestDeltaD > ref)
+          {
+            numHullPoints = 0;  // Signal: do not terminate
+            break;
+          }
+
+          // Check if this point qualifies as a potential convex hull point:
+          // requires positive slope, and slopes must be monotonically decreasing
+          // (consistent with convex hull property).
+          if(bestDeltaD > 0.0f && bestDeltaL > 0.0f)
+          {
+            if(numHullPoints > 0 &&
+               (bestDeltaD * lastDeltaL <= lastDeltaD * bestDeltaL))
+              continue;  // Slope not decreasing — cannot be a hull point
+            lastDeltaD = bestDeltaD;
+            lastDeltaL = bestDeltaL;
+            numHullPoints++;
+          }
+        }
+
+        // Terminate encoding if:
+        // - numHullPoints >= 2: at least two R-D points form a decreasing slope
+        //   sequence, confirming we have enough structure for a reliable estimate.
+        //   A single hull point could be a fluke; two establish a trend.
+        // - (z - z0) >= 3: the backward scan covered at least one full bit-plane
+        //   (3 passes). This ensures the slope evidence spans a meaningful coding
+        //   depth. Without this guard, termination could trigger from only 1-2
+        //   passes of below-threshold slopes, which is insufficient evidence.
+        if(numHullPoints >= 2 && (z - z0) >= 3)
+        {
+          break;
+        }
+      }
     }
     if(cblksty & GRK_CBLKSTY_RESET)
       mqc->resetstates();

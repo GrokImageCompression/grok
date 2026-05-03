@@ -36,7 +36,8 @@ public:
   void code_block_enc_deallocate(cblk_enc* p_code_block);
   double compress_cblk(cblk_enc* cblk, uint32_t max, uint8_t orientation, uint16_t compno,
                        uint8_t level, uint8_t qmfbid, double stepsize, uint32_t cblksty,
-                       const double* mct_norms, uint16_t mct_numcomps, bool doRateControl);
+                       const double* mct_norms, uint16_t mct_numcomps, bool doRateControl,
+                       uint16_t earlyStopSlope = 0);
   static double getnorm(uint32_t level, uint8_t orientation, bool reversible);
 
   bool decompress_cblk(CodeblockDecompress* cblk, uint8_t orientation, uint32_t cblksty);

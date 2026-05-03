@@ -155,6 +155,18 @@ struct CompressBlockExec : public BlockExec
   uint16_t mct_numcomps = 0;
   bool use16BitDwt = false;
 
+  /**
+   * @brief Progressive early-stop slope threshold (log-domain, uint16_t).
+   *
+   * When non-zero, the block encoder may terminate encoding after a
+   * complete bit-plane if the incremental slope of that bit-plane falls
+   * below this threshold. This value is set by the ProgressiveSlopeEstimator
+   * based on statistics from previously-completed blocks in the same tile.
+   *
+   * A value of 0 means "no early termination" — encode all bit-planes.
+   */
+  uint16_t earlyStopSlope = 0;
+
   // Delete copy constructor and assignment operator
   CompressBlockExec(const CompressBlockExec&) = delete;
   CompressBlockExec& operator=(const CompressBlockExec&) = delete;

@@ -355,6 +355,7 @@ bool CodeStreamCompress::init(grk_cparameters* parameters, GrkImage* image)
   cp_.codingParams_.enc_.writePlt_ = parameters->write_plt;
   cp_.codingParams_.enc_.writeTlm_ = parameters->write_tlm;
   cp_.codingParams_.enc_.rateControlAlgorithm_ = parameters->rate_control_algorithm;
+  cp_.codingParams_.enc_.progressiveRateControl_ = parameters->progressive_rate_control;
 
   /* tiles */
   cp_.t_width_ = parameters->t_width;

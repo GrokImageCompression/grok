@@ -19,6 +19,8 @@
 
 #include "SchedulerStandard.h"
 #include "RateControlStats.h"
+#include "ProgressiveSlopeEstimator.h"
+#include <memory>
 
 namespace grk
 {
@@ -34,7 +36,8 @@ public:
    * @param mct_numcomps number of mct components
    */
   CompressScheduler(Tile* tile, bool needsRateControl, TileCodingParams* tcp,
-                    const double* mct_norms, uint16_t mct_numcomps);
+                    const double* mct_norms, uint16_t mct_numcomps,
+                    bool progressiveRateControl = false);
   /**
    * @brief Destroys a CompressScheduler
    */
@@ -70,6 +73,16 @@ private:
   void compress(t1::ICoder* coder, t1::CompressBlockExec* block);
 
   /**
+   * @brief Initialize the progressive slope estimator from the block list.
+   *
+   * Computes total sample count across all blocks and target rate (bytes/sample),
+   * then constructs the ProgressiveSlopeEstimator if a rate target is available.
+   *
+   * @param blocks Vector of all blocks to be encoded in this tile.
+   */
+  void initSlopeEstimator(const std::vector<t1::CompressBlockExec*>& blocks);
+
+  /**
    * @brief @ref Tile to compress
    */
   Tile* tile_;
@@ -82,6 +95,11 @@ private:
    * @brief true if rate control requested
    */
   bool needsRateControl_;
+
+  /**
+   * @brief true if progressive rate control (early termination) is enabled
+   */
+  bool progressiveRateControl_;
   /**
    * @brief vector of @ref CompressBlockExec encode blocks
    */
@@ -111,6 +129,18 @@ private:
    * @brief rate control statistics collected during T1 encoding
    */
   RateControlStats rateControlStats_;
+
+  /**
+   * @brief Progressive slope estimator for intra-frame early pass termination.
+   *
+   * When a target rate is known, this estimator builds a slope histogram from
+   * completed blocks and publishes a conservative early-stop threshold that
+   * subsequent blocks can use to skip encoding trailing bit-planes that would
+   * be discarded by PCRD.
+   *
+   * Null when rate control is not applicable (lossless, no rate target).
+   */
+  std::unique_ptr<ProgressiveSlopeEstimator> slopeEstimator_;
 };
 
 } // namespace grk

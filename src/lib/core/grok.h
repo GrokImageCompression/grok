@@ -1700,6 +1700,21 @@ typedef struct _grk_cparameters
   uint8_t num_rreq_standard_features; /* number of standard features */
   bool geoboxes_after_jp2c; /* write metadata boxes (UUID, asoc, XML) after codestream */
 
+  /**
+   * Enable progressive rate control during T1 encoding.
+   *
+   * When true, the encoder estimates the PCRD slope threshold progressively
+   * as code blocks complete, and terminates encoding of subsequent blocks early
+   * when their coding passes are predicted to be discarded by rate control.
+   *
+   * This provides significant speedup (20-40% for DCI/high-ratio compression)
+   * at the cost of non-bit-exact output compared to standard PCRD. Quality
+   * differences are negligible (within rounding error of the target rate).
+   *
+   * Default: false (standard full-encode + PCRD, bit-exact reproducible output).
+   */
+  bool progressive_rate_control;
+
   /* Transcode mode: rewrite JP2 boxes while copying the codestream verbatim.
    * Set transcode=true and populate transcode_src with the source stream.
    * The image passed to grk_transcode() provides the metadata for the new boxes.

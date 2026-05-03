@@ -59,8 +59,10 @@ struct ITileProcessor;
 namespace grk
 {
 CompressScheduler::CompressScheduler(Tile* tile, bool needsRateControl, TileCodingParams* tcp,
-                                     const double* mct_norms, uint16_t mct_numcomps)
+                                     const double* mct_norms, uint16_t mct_numcomps,
+                                     bool progressiveRateControl)
     : SchedulerStandard(tile->numcomps_), tile_(tile), needsRateControl_(needsRateControl),
+      progressiveRateControl_(progressiveRateControl),
       blockCount_(-1), tcp_(tcp), mct_norms_(mct_norms), mct_numcomps_(mct_numcomps)
 {
   rateControlStats_.init(tile->numcomps_);
@@ -134,6 +136,11 @@ bool CompressScheduler::scheduleT1(ITileProcessor* proc)
 
   encodeBlocks_ = blocks;
   const size_t maxBlocks = blocks.size();
+
+  // Initialize progressive slope estimator when rate control is active.
+  // The estimator needs: total samples (sum of all block areas) and target rate (bytes/sample).
+  // This enables early termination of coding passes predicted to be discarded by PCRD.
+  initSlopeEstimator(blocks);
 
   tf::Taskflow taskflow;
   size_t num_threads = TFSingleton::num_threads();
@@ -223,6 +230,9 @@ bool CompressScheduler::populateT1Flow(FlowComponent* flow)
   encodeBlocks_ = blocks;
   const size_t maxBlocks = blocks.size();
 
+  // Initialize progressive slope estimator (same as scheduleT1 path)
+  initSlopeEstimator(blocks);
+
   size_t num_threads = TFSingleton::num_threads();
   for(auto i = 0U; i < num_threads; i++)
   {
@@ -244,6 +254,12 @@ bool CompressScheduler::compress(size_t workerId, uint64_t maxBlocks)
   if(index >= maxBlocks)
     return false;
   auto block = encodeBlocks_[index];
+
+  // Set the early-stop threshold from the progressive estimator.
+  // This is a lock-free atomic read — the estimator updates it as blocks complete.
+  if(slopeEstimator_)
+    block->earlyStopSlope = slopeEstimator_->getEarlyStopSlope();
+
   compress(coder, block);
   delete block;
 
@@ -269,6 +285,24 @@ void CompressScheduler::compress(t1::ICoder* coder, t1::CompressBlockExec* block
     // Compute convex hull for feasible truncation points
     if(cblk->getNumPasses() > 0)
       RateControl::convexHull(cblk->getPass(0), cblk->getNumPasses());
+
+    // Feed completed block data to the progressive slope estimator.
+    // This builds the slope-rate histogram used to predict the PCRD threshold.
+    if(slopeEstimator_ && cblk->getNumPasses() > 0)
+    {
+      // Extract slopes and rates into stack arrays for the estimator.
+      // Maximum coding passes per block: 3 * maxBitPlanes ≈ 3*16 = 48.
+      uint8_t numPasses = cblk->getNumPasses();
+      uint16_t slopes[48];
+      uint16_t rates[48];
+      for(uint8_t p = 0; p < numPasses; p++)
+      {
+        auto pass = cblk->getPass(p);
+        slopes[p] = pass->slope_;
+        rates[p] = pass->rate_;
+      }
+      slopeEstimator_->updateStats(slopes, rates, numPasses, num_pix);
+    }
 
     // Collect slope stats for both bisect algorithms
     for(uint8_t passno = 0; passno < cblk->getNumPasses(); passno++)
@@ -303,6 +337,47 @@ void CompressScheduler::compress(t1::ICoder* coder, t1::CompressBlockExec* block
       }
     }
   }
+}
+
+void CompressScheduler::initSlopeEstimator(
+    const std::vector<t1::CompressBlockExec*>& blocks)
+{
+  // The progressive slope estimator requires:
+  //   1. A target rate is specified (rate-distortion mode)
+  //   2. Rate control is needed (not lossless, not zero-rate)
+  //
+  // For multi-layer encoding, we must use the HIGHEST quality layer's target
+  // (the largest byte budget). This is the most permissive threshold — it
+  // determines the minimum slope below which passes are DEFINITELY discarded
+  // by ALL layers. Using a smaller layer's target would over-estimate the
+  // threshold and incorrectly terminate passes needed by higher-quality layers.
+  //
+  // tcp_->rates_[k] contains target byte counts after conversion from
+  // compression ratios. Higher indices = higher quality = more bytes.
+  if(!needsRateControl_)
+    return;
+  if(!progressiveRateControl_)
+    return;
+
+  // Find the maximum target rate across all layers
+  double maxTargetBytes = 0.0;
+  for(uint16_t k = 0; k < tcp_->numLayers_; ++k)
+  {
+    if(tcp_->rates_[k] > maxTargetBytes)
+      maxTargetBytes = tcp_->rates_[k];
+  }
+  if(maxTargetBytes <= 0.0)
+    return;
+
+  uint64_t totalSamples = 0;
+  for(const auto* blk : blocks)
+    totalSamples += static_cast<uint64_t>(blk->cblk->width()) * blk->cblk->height();
+
+  if(totalSamples == 0)
+    return;
+
+  double targetRate = maxTargetBytes / static_cast<double>(totalSamples);
+  slopeEstimator_ = std::make_unique<ProgressiveSlopeEstimator>(totalSamples, targetRate);
 }
 
 } // namespace grk

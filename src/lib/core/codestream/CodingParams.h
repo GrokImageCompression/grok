@@ -353,6 +353,8 @@ struct EncodingParams
   bool writeTlm_;
   /* rate control algorithm */
   uint32_t rateControlAlgorithm_;
+  /* progressive rate control during T1 encoding */
+  bool progressiveRateControl_;
 };
 
 struct DecodingParams
