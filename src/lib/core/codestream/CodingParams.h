@@ -365,6 +365,7 @@ struct DecodingParams
   uint16_t layersToDecompress_;
   uint32_t disableRandomAccessFlags_;
   bool skipAllocateComposite_;
+  bool fast16BitMct_;
 };
 
 struct TLMMarker;

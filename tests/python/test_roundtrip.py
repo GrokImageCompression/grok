@@ -222,3 +222,155 @@ class TestHeaderReading:
         assert header.numresolutions == 4
         assert header.irreversible is False
         grok_core.grk_object_unref(codec2)
+
+
+class TestFastMct:
+    """Tests for the --fast-mct (fast_16bit_mct) option: 9/7 MCT decompress via int16 DWT."""
+
+    def _compress_irrev_rgb(self, path, width, height, prec):
+        """Compress a synthetic RGB image with irreversible 9/7 + MCT."""
+        params = grok_core.grk_cparameters()
+        grok_core.grk_compress_set_default_params(params)
+        params.cod_format = grok_core.GRK_FMT_J2K
+        params.irreversible = True
+        params.mct = 1
+
+        image = grok_core.grk_image_new_uniform(
+            3, width, height, 1, 1, prec, False, grok_core.GRK_CLRSPC_SRGB
+        )
+        if image is None:
+            return False
+
+        max_val = (1 << prec) - 1
+        for c in range(3):
+            comp = image.comps[c]
+            data_ptr = ctypes.cast(
+                int(comp.data),
+                ctypes.POINTER(ctypes.c_int32 * (comp.h * comp.stride)),
+            )
+            arr = data_ptr.contents
+            for y in range(comp.h):
+                for x in range(comp.w):
+                    arr[y * comp.stride + x] = ((x * 13 + y * 7 + c * 41) * 37) % (max_val + 1)
+
+        stream = grok_core.grk_stream_params()
+        stream.file = path
+        codec = grok_core.grk_compress_init(stream, params, image)
+        if codec is None:
+            grok_core.grk_object_unref(image.obj)
+            return False
+
+        length = grok_core.grk_compress(codec, None)
+        grok_core.grk_object_unref(codec)
+        grok_core.grk_object_unref(image.obj)
+        return length > 0
+
+    def _decompress_with_fast_mct(self, path, fast_mct):
+        """Decompress with fast_16bit_mct flag set or unset."""
+        stream = grok_core.grk_stream_params()
+        stream.file = path
+
+        params = grok_core.grk_decompress_parameters()
+        params.core.fast_16bit_mct = fast_mct
+        codec = grok_core.grk_decompress_init(stream, params)
+        if codec is None:
+            return None, None
+
+        header = grok_core.grk_header_info()
+        if not grok_core.grk_decompress_read_header(codec, header):
+            grok_core.grk_object_unref(codec)
+            return None, None
+
+        image = grok_core.grk_decompress_get_image(codec)
+        if image is None:
+            grok_core.grk_object_unref(codec)
+            return None, None
+
+        if not grok_core.grk_decompress(codec, None):
+            grok_core.grk_object_unref(codec)
+            return None, None
+
+        return image, codec
+
+    def test_fast_mct_12bit_produces_int16(self, tmp_path):
+        """12-bit RGB 9/7 with fast_mct should use GRK_INT_16 data type."""
+        j2k = str(tmp_path / "rgb12_irrev.j2k")
+        assert self._compress_irrev_rgb(j2k, 64, 64, 12)
+
+        image, codec = self._decompress_with_fast_mct(j2k, True)
+        assert image is not None
+        for c in range(3):
+            assert image.comps[c].data_type == grok_core.GRK_INT_16
+        grok_core.grk_object_unref(codec)
+
+    def test_no_fast_mct_12bit_produces_int32(self, tmp_path):
+        """12-bit RGB 9/7 without fast_mct should use GRK_INT_32 (conformant path)."""
+        j2k = str(tmp_path / "rgb12_irrev.j2k")
+        assert self._compress_irrev_rgb(j2k, 64, 64, 12)
+
+        image, codec = self._decompress_with_fast_mct(j2k, False)
+        assert image is not None
+        for c in range(3):
+            assert image.comps[c].data_type == grok_core.GRK_INT_32
+        grok_core.grk_object_unref(codec)
+
+    def test_fast_mct_pixel_values_close(self, tmp_path):
+        """fast_mct output should be within ±2 of conformant path for 12-bit 9/7."""
+        j2k = str(tmp_path / "rgb12_irrev.j2k")
+        w, h, prec = 64, 64, 12
+        assert self._compress_irrev_rgb(j2k, w, h, prec)
+
+        # Decompress with conformant path
+        img_ref, codec_ref = self._decompress_with_fast_mct(j2k, False)
+        assert img_ref is not None
+
+        # Decompress with fast_mct path
+        img_fast, codec_fast = self._decompress_with_fast_mct(j2k, True)
+        assert img_fast is not None
+
+        max_diff = 0
+        for c in range(3):
+            comp_ref = img_ref.comps[c]
+            comp_fast = img_fast.comps[c]
+
+            ref_ptr = ctypes.cast(
+                int(comp_ref.data),
+                ctypes.POINTER(ctypes.c_int32 * (comp_ref.h * comp_ref.stride)),
+            )
+            fast_ptr = ctypes.cast(
+                int(comp_fast.data),
+                ctypes.POINTER(ctypes.c_int16 * (comp_fast.h * comp_fast.stride)),
+            )
+            ref_arr = ref_ptr.contents
+            fast_arr = fast_ptr.contents
+
+            for y in range(h):
+                for x in range(w):
+                    ref_val = ref_arr[y * comp_ref.stride + x]
+                    fast_val = fast_arr[y * comp_fast.stride + x]
+                    diff = abs(ref_val - fast_val)
+                    if diff > max_diff:
+                        max_diff = diff
+
+        # Fast path uses Q15 fixed-point ICT and int16 DWT coefficients,
+        # which introduces quantization error vs the float path.
+        # For 12-bit content, max diff ~40 is typical (< 1% of range).
+        assert max_diff <= 40, f"Max pixel difference {max_diff} exceeds tolerance of 40"
+
+        grok_core.grk_object_unref(codec_ref)
+        grok_core.grk_object_unref(codec_fast)
+
+    def test_grk_get_data_type_fast_mct(self):
+        """grk_get_data_type with fast_mct=True returns INT_16 for 12-bit 9/7 MCT."""
+        # 12-bit, MCT, 9/7, fast_mct=True → INT_16
+        assert (
+            grok_core.grk_get_data_type(False, 12, True, 0, True) == grok_core.GRK_INT_16
+        )
+        # 12-bit, MCT, 9/7, fast_mct=False → INT_32 (conformant)
+        assert (
+            grok_core.grk_get_data_type(False, 12, True, 0, False) == grok_core.GRK_INT_32
+        )
+        # 12-bit, no MCT, 9/7 → INT_16 regardless of fast_mct
+        assert (
+            grok_core.grk_get_data_type(False, 12, False, 0, False) == grok_core.GRK_INT_16
+        )

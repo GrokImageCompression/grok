@@ -993,7 +993,9 @@ bool TileProcessor::createDecompressTileComponentWindows(void)
     if(tileComp->isWholeTileDecoding())
     {
       bool isMctComp = needsMctDecompress(compno) && tcp_->mct_ == 1;
-      if(grk_get_data_type(false, imageComp->prec, isMctComp, tccp->qmfbid_) == GRK_INT_16)
+      bool fastMct = cp_->codingParams_.dec_.fast16BitMct_;
+      if(grk_get_data_type(false, imageComp->prec, isMctComp, tccp->qmfbid_, fastMct) ==
+         GRK_INT_16)
         tileComp->setUse16BitDwt(true);
     }
     auto unreducedImageCompWindow =

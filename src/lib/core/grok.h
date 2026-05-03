@@ -702,6 +702,7 @@ typedef struct _grk_decompress_core_params
    */
   uint16_t* comps_to_decode;
   uint16_t num_comps_to_decode;
+  bool fast_16bit_mct; /* opt into fast 16-bit DWT path for 9/7 MCT decompress (prec <= 12) */
 } grk_decompress_core_params;
 
 /**
@@ -1237,7 +1238,7 @@ GRK_API grk_image* GRK_CALLCONV grk_image_new(uint16_t numcmpts, grk_image_comp*
  * @return GRK_INT_16 if the 16-bit path will be used, GRK_INT_32 otherwise
  */
 GRK_API grk_data_type GRK_CALLCONV grk_get_data_type(bool compress, uint8_t prec, bool is_mct,
-                                                     uint8_t qmfbid);
+                                                     uint8_t qmfbid, bool fast_mct);
 
 /**
  * @brief Allocates an empty image metadata object.

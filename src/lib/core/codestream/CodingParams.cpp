@@ -189,6 +189,7 @@ void CodingParams::init(grk_decompress_parameters* parameters,
   codingParams_.dec_.reduce_ = core->reduce;
   codingParams_.dec_.disableRandomAccessFlags_ = core->disable_random_access_flags;
   codingParams_.dec_.skipAllocateComposite_ = core->skip_allocate_composite;
+  codingParams_.dec_.fast16BitMct_ = core->fast_16bit_mct;
   if(core->layers_to_decompress != codingParams_.dec_.layersToDecompress_ ||
      core->reduce != codingParams_.dec_.reduce_)
   {

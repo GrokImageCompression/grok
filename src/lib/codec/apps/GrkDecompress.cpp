@@ -351,7 +351,7 @@ GrkRC GrkDecompress::parseCommandLine(int argc, const char* argv[],
   uint8_t reduce = 0;
   uint16_t layer = 0;
   int32_t deviceId = 0;
-  bool forceRgb = false, splitPnm = false, upsample = false, xml = false;
+  bool forceRgb = false, splitPnm = false, upsample = false, xml = false, fastMct = false;
 
   auto outDirOpt = cmd.add_option("-a,--out-dir", outDir, "Output directory");
   auto compressionOpt = cmd.add_option("-c,--compression", compression, "Output compression type");
@@ -388,6 +388,8 @@ GrkRC GrkDecompress::parseCommandLine(int argc, const char* argv[],
   auto xmlOpt = cmd.add_flag("-X,--xml", xml, "XML metadata");
   auto inDirOpt = cmd.add_option("-y,--batch-src", inDir, "Input source");
   auto durationOpt = cmd.add_option("-z,--duration", duration, "Duration in seconds");
+  auto fastMctOpt =
+      cmd.add_flag("--fast-mct", fastMct, "Use fast 16-bit DWT for 9/7 MCT decompress (prec <= 12)");
 
   cmd.set_help_flag("-h", "Show abreviated usage");
   cmd.add_flag("--help", "Show detailed usage");
@@ -609,6 +611,8 @@ GrkRC GrkDecompress::parseCommandLine(int argc, const char* argv[],
   }
   if(randomAccessOpt->count() > 0)
     parameters->core.disable_random_access_flags = disableRandomAccess;
+  if(fastMctOpt->count() > 0)
+    parameters->core.fast_16bit_mct = fastMct;
   parameters->single_tile_decompress = tileOpt->count() > 0;
   if(tileOpt->count() > 0)
     parameters->tile_index = (uint16_t)tile;
