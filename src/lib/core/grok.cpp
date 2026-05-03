@@ -405,12 +405,48 @@ grk_image* grk_image_new(uint16_t numcmpts, grk_image_comp* cmptparms, GRK_COLOR
 
 grk_data_type grk_get_data_type(bool compress, uint8_t prec, bool is_mct, uint8_t qmfbid)
 {
+  // Reversible 5/3 (ITU-T T.800 Annex F.3.4):
+  //   The 5/3 analysis lifting steps are:
+  //     D[n] -= floor((S[n] + S[n+1]) / 2)         (prediction)
+  //     S[n] += floor((D[n-1] + D[n] + 2) / 4)     (update)
+  //   BIBO (Bounded-Input Bounded-Output) gain analysis shows intermediate
+  //   values can grow by at most 2^3 (≤6 levels) or 2^4 (>6 levels), plus
+  //   1 extra bit when the reversible colour transform (RCT, ITU-T T.800
+  //   Annex G.2) is applied.  The update step uses an overflow-safe
+  //   averaging operator (see WaveletFwd.cpp) so only the prediction step's
+  //   pre-accumulation headroom limits the working precision:
+  //     prec + headroom ≤ 16
+  //   where headroom = 4 (no MCT) or 5 (MCT, RCT component).
+  //   See doc/16BitDWT.md for full BIBO analysis and overflow-safe averaging details.
   if(qmfbid == 1) // reversible 5/3
   {
     uint32_t headroom = is_mct ? 5 : 4;
     if(prec + headroom <= 16)
       return GRK_INT_16;
   }
+  // Irreversible 9/7 (ITU-T T.800 Annex F.3.5):
+  //   The 9/7 analysis uses four lifting steps with coefficients
+  //   α=-1.586, β=-0.053, γ=0.883, δ=0.444 followed by K-scaling.
+  //
+  //   Compress: because the lowpass BIBO gain per level ≈ 6× (dominated by
+  //   the large |α| coefficient), intermediate values compound across
+  //   decomposition levels.  Fixed-point 16-bit processing is feasible only
+  //   when prec + 6 ≤ 16  →  prec ≤ 10.
+  //   The implementation uses an odd-branch (high-pass) halving strategy
+  //   that stores D samples at half magnitude through the lifting chain,
+  //   with adjusted coefficients and a normalizing factor computed from
+  //   BIBO gains (see WaveletFwd.cpp).
+  //
+  //   Decompress: the headroom scaling strategy (normalizing_upshift) keeps
+  //   intermediate values within int16 range for prec ≤ 12 — see
+  //   wavelet/WaveletReverse97_16.cpp.
+  //
+  //   MCT components are excluded because the irreversible colour transform
+  //   (ICT) in float produces different results than the Q15 fixed-point
+  //   int16 variant (DecompressIrrev16). The fixed-point path introduces
+  //   rounding errors (up to ~24 LSB for 12-bit) that change the output
+  //   bitstream, breaking MD5 conformance. On the compress side, ICT
+  //   operates on float buffers.
   else if(qmfbid == 0) // irreversible 9/7
   {
     if(!is_mct)

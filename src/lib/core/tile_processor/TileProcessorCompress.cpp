@@ -124,50 +124,12 @@ bool TileProcessorCompress::preCompressTile([[maybe_unused]] size_t thread_id)
     auto unreducedTileComp = tileComp;
     tileComp->createWindow(Rect32(unreducedTileComp));
 
-    // 16-bit forward DWT eligibility.
-    //
-    // Reversible 5/3 (ITU-T T.800 Annex F.3.4):
-    //   The 5/3 analysis lifting steps are:
-    //     D[n] -= floor((S[n] + S[n+1]) / 2)         (prediction)
-    //     S[n] += floor((D[n-1] + D[n] + 2) / 4)     (update)
-    //   BIBO (Bounded-Input Bounded-Output) gain analysis shows intermediate
-    //   values can grow by at most 2^3 (≤6 levels) or 2^4 (>6 levels), plus
-    //   1 extra bit when the reversible colour transform (RCT, ITU-T T.800
-    //   Annex G.2) is applied.  The update step uses an overflow-safe
-    //   averaging operator (see WaveletFwd.cpp) so only the prediction step's
-    //   pre-accumulation headroom limits the working precision:
-    //     prec + headroom ≤ 16
-    //   where headroom = 4 (no MCT) or 5 (MCT, RCT component).
-    //
-    // Irreversible 9/7 (ITU-T T.800 Annex F.3.5):
-    //   The 9/7 analysis uses four lifting steps with coefficients
-    //   α=-1.586, β=-0.053, γ=0.883, δ=0.444 followed by K-scaling.
-    //   Because the lowpass BIBO gain per level ≈ 6× (dominated by the large
-    //   |α| coefficient), intermediate values compound across decomposition
-    //   levels.  Fixed-point 16-bit processing is feasible only when
-    //   prec + 6 ≤ 16  →  prec ≤ 10.
-    //   The implementation uses an odd-branch (high-pass) halving strategy
-    //   that stores D samples at half magnitude through the lifting chain,
-    //   with adjusted coefficients and a normalizing factor computed from
-    //   BIBO gains (see WaveletFwd.cpp).
-    //   MCT components are excluded because the irreversible colour transform
-    //   (ICT) operates on float buffers.
     auto tccp = tcp_->tccps_ + compno;
     if(tileComp->num_resolutions_ > 1)
     {
-      if(tccp->qmfbid_ == 1)
-      {
-        bool isMctComp = needsMctDecompress(compno) && tcp_->mct_ == 1;
-        uint32_t headroom = isMctComp ? 5 : 4;
-        if(imageComp->prec + headroom <= 16)
-          tileComp->setUse16BitDwt(true);
-      }
-      else if(tccp->qmfbid_ == 0)
-      {
-        bool isMctComp = needsMctDecompress(compno) && tcp_->mct_ == 1;
-        if(!isMctComp && imageComp->prec + 6 <= 16)
-          tileComp->setUse16BitDwt(true);
-      }
+      bool isMctComp = needsMctDecompress(compno) && tcp_->mct_ == 1;
+      if(grk_get_data_type(true, imageComp->prec, isMctComp, tccp->qmfbid_) == GRK_INT_16)
+        tileComp->setUse16BitDwt(true);
     }
   }
   uint32_t numTiles = (uint32_t)cp_->t_grid_height_ * cp_->t_grid_width_;
