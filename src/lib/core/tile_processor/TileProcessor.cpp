@@ -927,8 +927,13 @@ void TileProcessor::release(uint32_t strategy)
 }
 void TileProcessor::releaseForSwath()
 {
-  grk_unref(image_);
-  image_ = nullptr;
+  // Only release the image when tile caching is not enabled;
+  // per-band reads may revisit this tile for subsequent bands
+  if(!(tileCacheStrategy_ & GRK_TILE_CACHE_IMAGE))
+  {
+    grk_unref(image_);
+    image_ = nullptr;
+  }
 
   delete tile_;
   tile_ = nullptr;
