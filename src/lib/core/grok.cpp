@@ -403,6 +403,33 @@ grk_image* grk_image_new(uint16_t numcmpts, grk_image_comp* cmptparms, GRK_COLOR
   return GrkImage::create(nullptr, numcmpts, cmptparms, clrspc, alloc_data);
 }
 
+grk_data_type grk_get_data_type(bool compress, uint8_t prec, bool is_mct, uint8_t qmfbid)
+{
+  if(qmfbid == 1) // reversible 5/3
+  {
+    uint32_t headroom = is_mct ? 5 : 4;
+    if(prec + headroom <= 16)
+      return GRK_INT_16;
+  }
+  else if(qmfbid == 0) // irreversible 9/7
+  {
+    if(!is_mct)
+    {
+      if(compress)
+      {
+        if(prec + 6 <= 16)
+          return GRK_INT_16;
+      }
+      else
+      {
+        if(prec <= 12)
+          return GRK_INT_16;
+      }
+    }
+  }
+  return GRK_INT_32;
+}
+
 grk_image_meta* grk_image_meta_new(void)
 {
   return (grk_image_meta*)(new GrkImageMeta());

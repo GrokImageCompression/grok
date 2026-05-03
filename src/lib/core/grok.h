@@ -1224,6 +1224,22 @@ GRK_API grk_image* GRK_CALLCONV grk_image_new(uint16_t numcmpts, grk_image_comp*
                                               GRK_COLOR_SPACE clrspc, bool alloc_data);
 
 /**
+ * @brief Determine the data type used by Grok for image component data.
+ *
+ * Returns the data type (GRK_INT_32 or GRK_INT_16) that Grok will use
+ * for storing image component data during compression or decompression,
+ * assuming standard conditions (whole-tile decoding, num_resolutions > 1).
+ *
+ * @param compress  true for compression, false for decompression
+ * @param prec      image component precision in bits
+ * @param is_mct    true if multi-component transform (MCT/RCT/ICT) is applied
+ * @param qmfbid    wavelet transform: 1 for reversible (5/3), 0 for irreversible (9/7)
+ * @return GRK_INT_16 if the 16-bit path will be used, GRK_INT_32 otherwise
+ */
+GRK_API grk_data_type GRK_CALLCONV grk_get_data_type(bool compress, uint8_t prec, bool is_mct,
+                                                     uint8_t qmfbid);
+
+/**
  * @brief Allocates an empty image metadata object.
  *
  * Returns a heap-allocated @ref grk_image_meta that holds optional metadata
