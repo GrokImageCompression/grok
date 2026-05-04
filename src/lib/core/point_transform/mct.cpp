@@ -718,7 +718,9 @@ void Mct::schedule_decompress_irrev(FlowComponent* flow, bool applyDcShift)
 {
   ScheduleInfo info(tile_, flow, image_->rows_per_task);
   genShift(applyDcShift ? 1 : 0, info.shiftInfo);
-  if(tile_->comps_[0].is16BitDwt())
+  // All 3 MCT components must agree on data type; use 16-bit only if all are 16-bit
+  if(tile_->comps_[0].is16BitDwt() && tile_->comps_[1].is16BitDwt() &&
+     tile_->comps_[2].is16BitDwt())
     HWY_DYNAMIC_DISPATCH(hwy_schedule_decompress_irrev16)(info);
   else
     HWY_DYNAMIC_DISPATCH(hwy_schedule_decompress_irrev)(info);
@@ -731,7 +733,9 @@ void Mct::schedule_decompress_rev(FlowComponent* flow, bool applyDcShift)
 {
   ScheduleInfo info(tile_, flow, image_->rows_per_task);
   genShift(applyDcShift ? 1 : 0, info.shiftInfo);
-  if(tile_->comps_[0].is16BitDwt())
+  // All 3 MCT components must agree on data type; use 16-bit only if all are 16-bit
+  if(tile_->comps_[0].is16BitDwt() && tile_->comps_[1].is16BitDwt() &&
+     tile_->comps_[2].is16BitDwt())
     HWY_DYNAMIC_DISPATCH(hwy_schedule_decompress_rev16)(info);
   else
     HWY_DYNAMIC_DISPATCH(hwy_schedule_decompress_rev)(info);

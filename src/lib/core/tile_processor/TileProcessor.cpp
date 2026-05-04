@@ -998,6 +998,30 @@ bool TileProcessor::createDecompressTileComponentWindows(void)
          GRK_INT_16)
         tileComp->setUse16BitDwt(true);
     }
+  }
+  // MCT operates on all 3 components with the same data type;
+  // if any MCT component is not 16-bit, force all to 32-bit
+  if(needsMctDecompress() && tcp_->mct_ == 1 && tile_->numcomps_ >= 3)
+  {
+    bool all16 = true;
+    for(uint16_t compno = 0; compno < 3; ++compno)
+    {
+      if(!tile_->comps_[compno].is16BitDwt())
+      {
+        all16 = false;
+        break;
+      }
+    }
+    if(!all16)
+    {
+      for(uint16_t compno = 0; compno < 3; ++compno)
+        tile_->comps_[compno].setUse16BitDwt(false);
+    }
+  }
+  for(uint16_t compno = 0; compno < tile_->numcomps_; ++compno)
+  {
+    auto imageComp = headerImage_->comps + compno;
+    auto tileComp = tile_->comps_ + compno;
     auto unreducedImageCompWindow =
         unreducedImageWindow_.scaleDownCeil(imageComp->dx, imageComp->dy);
     if(!tileComp->canCreateWindow(unreducedImageCompWindow))
