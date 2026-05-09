@@ -469,6 +469,16 @@ bool TileProcessor::decompressPrepareWithTLM(const std::shared_ptr<TPFetchSeq>& 
     }
 
     // parse tile part
+    if(selectiveFetch_)
+    {
+      // Override tile-part length to match actual stream size
+      // (selective fetch provides only needed data)
+      tilePartInfo_.tilePartLength_ = (uint32_t)tp->length_;
+      tilePartInfo_.remainingTilePartBytes_ =
+          tilePartInfo_.tilePartLength_ >= sotMarkerSegmentLen
+              ? tilePartInfo_.tilePartLength_ - sotMarkerSegmentLen
+              : 0;
+    }
     if(!parseTilePart(nullptr, nullptr, markerParser_->currId(), tilePartInfo_))
       return false;
 
@@ -476,18 +486,26 @@ bool TileProcessor::decompressPrepareWithTLM(const std::shared_ptr<TPFetchSeq>& 
     uint64_t actualTilePartLength = getStream()->tell() - (tp->stream_ ? 0 : tp->offset_);
     if(actualTilePartLength > tp->length_)
     {
-      grklog.error("Tile %u: TLM marker tile part length %u differs from actual"
-                   " tile part length %u:\n"
-                   "     last sot position: %u, current position : %u.",
-                   tileIndex_, tp->length_, actualTilePartLength, tp->offset_, getStream()->tell());
-      throw CorruptTLMException();
+      if(!selectiveFetch_)
+      {
+        grklog.error("Tile %u: TLM marker tile part length %u differs from actual"
+                     " tile part length %u:\n"
+                     "     last sot position: %u, current position : %u.",
+                     tileIndex_, tp->length_, actualTilePartLength, tp->offset_,
+                     getStream()->tell());
+        throw CorruptTLMException();
+      }
     }
     else if(actualTilePartLength < tp->length_)
     {
-      grklog.warn("Tile %u: TLM marker tile part length %u differs from actual"
-                  " tile part length %u:\n"
-                  "     last sot position: %u, current position : %u",
-                  tileIndex_, tp->length_, actualTilePartLength, tp->offset_, getStream()->tell());
+      if(!selectiveFetch_)
+      {
+        grklog.warn("Tile %u: TLM marker tile part length %u differs from actual"
+                    " tile part length %u:\n"
+                    "     last sot position: %u, current position : %u",
+                    tileIndex_, tp->length_, actualTilePartLength, tp->offset_,
+                    getStream()->tell());
+      }
       truncated_ = true;
     }
   }
@@ -495,6 +513,9 @@ bool TileProcessor::decompressPrepareWithTLM(const std::shared_ptr<TPFetchSeq>& 
   tilePartFetchSeq_ = tilePartFetchSeq;
 
   prepareForDecompression();
+
+  if(selectiveFetch_ && tcp_ && tcp_->packets_)
+    tcp_->packets_->setSelectiveFetch(true);
 
   return true;
 }

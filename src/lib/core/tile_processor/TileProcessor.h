@@ -361,6 +361,11 @@ struct TileProcessor : virtual public ITileProcessor
     return stripOutputWritten_;
   }
 
+  void setSelectiveFetch(bool selective)
+  {
+    selectiveFetch_ = selective;
+  }
+
 protected:
   /**
    * @brief header @ref GrkImage
@@ -490,6 +495,11 @@ private:
    *
    */
   bool truncated_ = false;
+
+  /**
+   * @brief true if selective fetch mode is active (partial tile-part data)
+   */
+  bool selectiveFetch_ = false;
 
   /**
    * @brief true if tile was decompressed on a best-effort basis
