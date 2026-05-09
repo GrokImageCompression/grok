@@ -19,7 +19,7 @@
 
 #include "grk_config_private.h"
 #ifdef _WIN32
-#include <Windows.h>
+#include <windows.h>
 #include <io.h>
 #include <fcntl.h>
 #else

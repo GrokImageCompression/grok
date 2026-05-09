@@ -18,7 +18,7 @@
 #include <string>
 #include <cstring>
 #include <filesystem>
-#include <inttypes.h>
+#include <cinttypes>
 
 #include "grok_codec.h"
 #include "grk_examples_config.h"

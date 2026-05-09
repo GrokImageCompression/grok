@@ -22,6 +22,7 @@
 #include <cstddef>
 #include <cstdlib>
 #include <sstream>
+#include <cinttypes>
 #ifndef _WIN32
 #include <cstring>
 #include <sys/time.h>

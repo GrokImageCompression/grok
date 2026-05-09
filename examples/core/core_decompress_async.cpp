@@ -37,7 +37,7 @@ This pattern is used by the GDAL JP2Grok driver:
 #include <algorithm>
 #include <chrono>
 #include <sstream>
-#include <inttypes.h>
+#include <cinttypes>
 
 #include "grok.h"
 #include "grk_examples_config.h"

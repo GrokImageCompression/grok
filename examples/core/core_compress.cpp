@@ -30,7 +30,7 @@ of three approaches for the destination:
 #include <cstring>
 #include <memory>
 #include <cstdlib>
-#include <inttypes.h>
+#include <cinttypes>
 
 #include "grok.h"
 #include "core.h"

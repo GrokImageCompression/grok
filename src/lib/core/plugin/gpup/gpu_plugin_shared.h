@@ -492,7 +492,7 @@ inline gpup_image* gpup_image_new(uint16_t numcmpts, gpup_image_comp* cmptparms,
         size_t dataSize = (size_t)stride * cmptparms[i].h * sizeof(int32_t);
         dataSize = ((dataSize + GPUP_BUFFER_ALIGNMENT - 1) / GPUP_BUFFER_ALIGNMENT) *
                    GPUP_BUFFER_ALIGNMENT;
-        img->comps[i].data = (int32_t*)std::aligned_alloc(GPUP_BUFFER_ALIGNMENT, dataSize);
+        img->comps[i].data = (int32_t*)::aligned_alloc(GPUP_BUFFER_ALIGNMENT, dataSize);
         if(img->comps[i].data)
           memset(img->comps[i].data, 0, dataSize);
         img->comps[i].stride = stride;

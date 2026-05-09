@@ -28,7 +28,7 @@ Complex example demonstrating a variety of options for decompression
 #include <iostream>
 #include <cstdlib>
 #include <regex>
-#include <inttypes.h>
+#include <cinttypes>
 
 #include "grok.h"
 #include "grk_examples_config.h"

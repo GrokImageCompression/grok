@@ -25,7 +25,7 @@ with memory buffers as source and destination
 #include <cstdio>
 #include <cstring>
 #include <memory>
-#include <inttypes.h>
+#include <cinttypes>
 #include <vector>
 #include <chrono>
 #include <cstdlib>

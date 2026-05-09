@@ -54,7 +54,7 @@ static inline void* grkAlignedAllocN(size_t alignment, size_t size)
 #ifdef _WIN32
   return _aligned_malloc(size, alignment);
 #else
-  return std::aligned_alloc(alignment, size);
+  return ::aligned_alloc(alignment, size);
 #endif
 }
 static void* grk_aligned_malloc(size_t size)

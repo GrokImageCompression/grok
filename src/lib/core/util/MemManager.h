@@ -124,7 +124,7 @@ public:
 #ifdef _WIN32
     void* ptr = _aligned_malloc(bytes, alignment);
 #else
-    void* ptr = std::aligned_alloc(alignment, bytes);
+    void* ptr = ::aligned_alloc(alignment, bytes);
 #endif
 
     if(ptr && track_stats)

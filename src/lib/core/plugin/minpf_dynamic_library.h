@@ -18,7 +18,7 @@
 #pragma once
 #include <plugin/minpf_common.h>
 #ifdef _WIN32
-#include <Windows.h>
+#include <windows.h>
 #else
 #include <dlfcn.h>
 #endif
