@@ -463,6 +463,9 @@ private:
   bool fetchByTile(std::set<uint16_t>& slated, Rect32 unreducedImageBounds,
                    std::function<std::function<void()>(ITileProcessor*)> postGenerator);
 
+  bool fetchByTileSelective(std::set<uint16_t>& slated, Rect32 unreducedImageBounds,
+                            std::function<std::function<void()>(ITileProcessor*)> postGenerator);
+
   /**
    * @brief Scratch @ref GrkImage for decompressor
    * This image may composite multiple tiles, if needed.

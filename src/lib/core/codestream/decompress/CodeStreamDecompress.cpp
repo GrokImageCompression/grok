@@ -60,6 +60,7 @@ struct ITileProcessor;
 #include "TileCompletion.h"
 #include "GrkImageSIMD.h"
 #include "CodeStreamDecompress.h"
+#include "SelectiveFetchRanges.h"
 
 namespace grk
 {
@@ -510,6 +511,21 @@ bool CodeStreamDecompress::startTLMDecompress(std::set<uint16_t>& pendingTiles)
 {
   // begin network fetch
   auto generator = [this](ITileProcessor* tp) { return postMultiTile(tp); };
+
+  // Try selective fetch for reduced resolution over network
+  uint8_t reduce = cp_.codingParams_.dec_.reduce_;
+  if(reduce > 0 && stream_->getFetcher())
+  {
+    // Check progression order (use first tile's TCP)
+    auto tcp = cp_.tcps_.get(*pendingTiles.begin());
+    auto prog = tcp->prg_;
+    if(prog == GRK_RLCP || prog == GRK_RPCL ||
+       (prog == GRK_LRCP && tcp->numLayers_ == 1))
+    {
+      if(fetchByTileSelective(pendingTiles, scratchImage_->getBounds(), generator))
+        return true;
+    }
+  }
 
   if(fetchByTile(pendingTiles, scratchImage_->getBounds(), generator))
     return true;
@@ -1721,6 +1737,333 @@ bool CodeStreamDecompress::fetchByTile(
           decompressQueue_->push(
               [this, tileIndex, tilePartSeqCopy, unreducedImageBounds, postGenerator]() {
                 const auto tileProcessor = getTileProcessor(tileIndex);
+                auto decompressTask = genDecompressTileTLMTask(tileProcessor, tilePartSeqCopy,
+                                                               unreducedImageBounds, postGenerator);
+                decompressTask();
+              });
+        }
+      }));
+
+  return true;
+}
+
+bool CodeStreamDecompress::fetchByTileSelective(
+    std::set<uint16_t>& slated, Rect32 unreducedImageBounds,
+    std::function<std::function<void()>(ITileProcessor*)> postGenerator)
+{
+  auto fetcher = stream_->getFetcher();
+  if(!fetcher)
+    return false;
+
+  const auto& allTileParts = cp_.tlmMarkers_->getTileParts();
+  uint8_t reduce = cp_.codingParams_.dec_.reduce_;
+
+  // Phase 1: Fetch 4KB header of each tile-part
+  constexpr uint32_t headerFetchSize = 4096;
+
+  // Create modified tile-part info with 4KB lengths for header fetch
+  TPSEQ_VEC headerTileParts(allTileParts.size());
+  for(auto tileIndex : slated)
+  {
+    if(tileIndex >= allTileParts.size() || !allTileParts[tileIndex])
+      continue;
+    auto& srcParts = allTileParts[tileIndex];
+    headerTileParts[tileIndex] = std::make_unique<TPSeq>();
+    for(size_t i = 0; i < srcParts->size(); ++i)
+    {
+      auto& part = (*srcParts)[i];
+      uint32_t fetchLen = std::min<uint32_t>((uint32_t)part->length_, headerFetchSize);
+      headerTileParts[tileIndex]->push_back((uint8_t)i, (uint8_t)srcParts->size(),
+                                            part->offset_, fetchLen);
+    }
+  }
+
+  // Structure to collect Phase 1 results
+  struct TileHeaderResult
+  {
+    std::vector<TilePartHeaderInfo> headerInfos; // per tile-part
+    std::vector<std::unique_ptr<uint8_t[]>> headerData; // raw header bytes
+    std::vector<uint32_t> headerSizes; // actual header sizes
+  };
+  auto headerResults =
+      std::make_shared<std::unordered_map<uint16_t, TileHeaderResult>>();
+  std::mutex headerMutex;
+  std::promise<bool> phase1Promise;
+  auto phase1Future = phase1Promise.get_future();
+  auto remainingTiles = std::make_shared<std::atomic<size_t>>(slated.size());
+
+  // Phase 1 fetch: get tile-part headers
+  fetcher->fetchTiles(
+      headerTileParts, slated, nullptr,
+      [&headerResults, &headerMutex, &remainingTiles, &phase1Promise](
+          size_t requestIndex, TileFetchContext* context) {
+        auto& tilePart = (*context->requests_)[requestIndex];
+        auto tileIndex = tilePart->tileIndex_;
+
+        auto& tilePartSeq = (*context->tilePartFetchByTile_)[tileIndex];
+        if(tilePartSeq->incrementFetchCount() == tilePartSeq->size())
+        {
+          // All tile-parts for this tile have arrived
+          TileHeaderResult result;
+          for(size_t i = 0; i < tilePartSeq->size(); ++i)
+          {
+            auto& tp = (*tilePartSeq)[i];
+            // Parse PLT and SOD from the raw header bytes
+            // Skip SOT marker (12 bytes) at start of tile-part data
+            constexpr size_t sotLen = 12;
+            if(tp->length_ > sotLen && tp->data_)
+            {
+              auto info = extractTilePartHeaderInfo(
+                  tp->data_.get() + sotLen, (size_t)(tp->length_ - sotLen));
+              // Adjust SOD offset to be relative to tile-part start
+              if(info.valid)
+                info.sodOffset += sotLen;
+              result.headerInfos.push_back(std::move(info));
+              result.headerData.push_back(std::move(tp->data_));
+              result.headerSizes.push_back((uint32_t)tp->length_);
+            }
+            else
+            {
+              result.headerInfos.push_back(TilePartHeaderInfo{0, {}, false});
+              result.headerData.push_back(nullptr);
+              result.headerSizes.push_back(0);
+            }
+          }
+          {
+            std::lock_guard<std::mutex> lock(headerMutex);
+            (*headerResults)[tileIndex] = std::move(result);
+          }
+          if(remainingTiles->fetch_sub(1) == 1)
+            phase1Promise.set_value(true);
+        }
+      });
+
+  // Wait for Phase 1 to complete
+  phase1Future.get();
+
+  // Phase 2: Compute needed lengths and fetch truncated tile-parts
+  auto numComps = headerImage_->numcomps;
+  Rect32 imageBounds(headerImage_->x0, headerImage_->y0, headerImage_->x1, headerImage_->y1);
+
+  // Build modified tile-part info with truncated lengths
+  TPSEQ_VEC selectiveTileParts(allTileParts.size());
+  auto selectiveFetchTiles = std::make_shared<std::set<uint16_t>>();
+
+  for(auto tileIndex : slated)
+  {
+    auto it = headerResults->find(tileIndex);
+    if(it == headerResults->end())
+      continue;
+
+    auto& hdr = it->second;
+    bool allValid = true;
+    for(auto& info : hdr.headerInfos)
+    {
+      if(!info.valid || info.pltLengths.empty())
+      {
+        allValid = false;
+        break;
+      }
+    }
+
+    if(!allValid)
+    {
+      // Fallback: fetch full tile-part (no PLT or parsing failed)
+      selectiveTileParts[tileIndex] = std::make_unique<TPSeq>();
+      auto& srcParts = allTileParts[tileIndex];
+      for(size_t i = 0; i < srcParts->size(); ++i)
+      {
+        auto& part = (*srcParts)[i];
+        selectiveTileParts[tileIndex]->push_back(
+            (uint8_t)i, (uint8_t)srcParts->size(), part->offset_, (uint32_t)part->length_);
+      }
+      selectiveFetchTiles->insert(tileIndex);
+      continue;
+    }
+
+    // Compute tile bounds
+    uint16_t tileX = tileIndex % cp_.t_grid_width_;
+    uint16_t tileY = tileIndex / cp_.t_grid_width_;
+    auto tileBounds = cp_.getTileBounds(imageBounds, tileX, tileY);
+
+    // Get coding params for this tile
+    auto tcp = cp_.tcps_.get(tileIndex);
+
+    // Combine PLT lengths from all tile-parts
+    std::vector<uint32_t> allPltLengths;
+    for(auto& info : hdr.headerInfos)
+    {
+      allPltLengths.insert(allPltLengths.end(),
+                           info.pltLengths.begin(), info.pltLengths.end());
+    }
+
+    // Build TilePacketInfo
+    TilePacketInfo tpi;
+    tpi.progression = tcp->prg_;
+    tpi.numComponents = numComps;
+    tpi.numLayers = tcp->numLayers_;
+    tpi.numResolutions.resize(numComps);
+    tpi.precinctsPerRes.resize(numComps);
+    tpi.pltLengths = std::move(allPltLengths);
+
+    for(uint16_t compno = 0; compno < numComps; ++compno)
+    {
+      auto tccp = tcp->tccps_ + compno;
+      auto comp = headerImage_->comps + compno;
+      tpi.numResolutions[compno] = tccp->numresolutions_;
+
+      // Compute tile-component bounds (scale by component subsampling)
+      uint32_t tcx0 = (uint32_t)((tileBounds.x0 + comp->dx - 1) / comp->dx);
+      uint32_t tcy0 = (uint32_t)((tileBounds.y0 + comp->dy - 1) / comp->dy);
+      uint32_t tcx1 = (uint32_t)((tileBounds.x1 + comp->dx - 1) / comp->dx);
+      uint32_t tcy1 = (uint32_t)((tileBounds.y1 + comp->dy - 1) / comp->dy);
+
+      tpi.precinctsPerRes[compno].resize(tccp->numresolutions_);
+      for(uint8_t resno = 0; resno < tccp->numresolutions_; ++resno)
+      {
+        tpi.precinctsPerRes[compno][resno] = computeNumPrecincts(
+            tcx0, tcy0, tcx1, tcy1,
+            tccp->numresolutions_, resno,
+            tccp->precWidthExp_[resno], tccp->precHeightExp_[resno]);
+      }
+    }
+
+    // Compute target resolution count (total res - reduce)
+    uint8_t maxRes = 0;
+    for(uint16_t c = 0; c < numComps; ++c)
+      maxRes = std::max(maxRes, tpi.numResolutions[c]);
+    uint8_t targetRes = (maxRes > reduce) ? (maxRes - reduce) : 1;
+
+    auto ranges = computeSelectiveFetchRanges(tpi, targetRes);
+
+    if(ranges.empty())
+    {
+      // No savings possible, fetch full tile-parts
+      selectiveTileParts[tileIndex] = std::make_unique<TPSeq>();
+      auto& srcParts = allTileParts[tileIndex];
+      for(size_t i = 0; i < srcParts->size(); ++i)
+      {
+        auto& part = (*srcParts)[i];
+        selectiveTileParts[tileIndex]->push_back(
+            (uint8_t)i, (uint8_t)srcParts->size(), part->offset_, (uint32_t)part->length_);
+      }
+      selectiveFetchTiles->insert(tileIndex);
+      continue;
+    }
+
+    // For RLCP/RPCL: ranges should be a single contiguous block starting at offset 0
+    // Needed length = end of last range
+    uint64_t neededDataBytes = ranges.back().end();
+
+    // Create truncated tile-part entries
+    // For single tile-part: header + needed data
+    // For multiple tile-parts: first tile-part gets header + data, rest get header only
+    selectiveTileParts[tileIndex] = std::make_unique<TPSeq>();
+    auto& srcParts = allTileParts[tileIndex];
+
+    if(srcParts->size() == 1)
+    {
+      // Single tile-part: header + SOD(2) + needed data
+      auto& part = (*srcParts)[0];
+      auto& headerInfo = hdr.headerInfos[0];
+      uint64_t truncatedLen = headerInfo.sodOffset + 2 + neededDataBytes;
+      truncatedLen = std::min<uint64_t>(truncatedLen, part->length_);
+      selectiveTileParts[tileIndex]->push_back(0, 1, part->offset_, (uint32_t)truncatedLen);
+    }
+    else
+    {
+      // Multiple tile-parts: distribute needed bytes across tile-parts
+      // For now, fetch all tile-parts but truncate based on cumulative PLT
+      uint64_t remainingNeeded = neededDataBytes;
+      for(size_t i = 0; i < srcParts->size(); ++i)
+      {
+        auto& part = (*srcParts)[i];
+        auto& headerInfo = hdr.headerInfos[i];
+        if(!headerInfo.valid)
+        {
+          // Can't truncate, fetch full
+          selectiveTileParts[tileIndex]->push_back(
+              (uint8_t)i, (uint8_t)srcParts->size(), part->offset_, (uint32_t)part->length_);
+          continue;
+        }
+        uint64_t tpDataSize = part->length_ - headerInfo.sodOffset - 2;
+        if(remainingNeeded >= tpDataSize)
+        {
+          // Need all data from this tile-part
+          selectiveTileParts[tileIndex]->push_back(
+              (uint8_t)i, (uint8_t)srcParts->size(), part->offset_, (uint32_t)part->length_);
+          remainingNeeded -= tpDataSize;
+        }
+        else
+        {
+          // Truncate this tile-part
+          uint64_t truncatedLen = headerInfo.sodOffset + 2 + remainingNeeded;
+          selectiveTileParts[tileIndex]->push_back(
+              (uint8_t)i, (uint8_t)srcParts->size(), part->offset_, (uint32_t)truncatedLen);
+          remainingNeeded = 0;
+        }
+      }
+    }
+    selectiveFetchTiles->insert(tileIndex);
+  }
+
+  if(selectiveFetchTiles->empty())
+    return false;
+
+  // Phase 2: Fetch truncated tile-parts through existing pipeline
+  maxFetchedTileRow_.store(-1, std::memory_order_release);
+
+  startDecompressConsumer(std::min((uint16_t)TFSingleton::num_threads(),
+                                   (uint16_t)((maxRowsAhead_ + 1) * cp_.t_grid_width_)));
+
+  auto numTileCols = cp_.t_grid_width_;
+  fetcher->setFetchThrottle([this]() {
+    if(tileCompletion_)
+    {
+      int32_t lastCleared = tileCompletion_->getLastClearedTileY();
+      int32_t maxAllowed = lastCleared + maxRowsAhead_ + 2;
+      if(maxFetchedTileRow_.load(std::memory_order_acquire) >= maxAllowed)
+        return false;
+    }
+    uint16_t inFlight;
+    {
+      std::lock_guard<std::mutex> lock(decompressThrottleMutex_);
+      inFlight = decompressInFlight_;
+    }
+    return decompressQueue_->size() + inFlight < maxDecompressInFlight_;
+  });
+
+  fetchByTileFutures_.push_back(fetcher->fetchTiles(
+      selectiveTileParts, *selectiveFetchTiles, nullptr,
+      [this, numTileCols, unreducedImageBounds, postGenerator,
+       selectiveFetchTiles](size_t requestIndex, TileFetchContext* context) {
+        auto& tilePart = (*context->requests_)[requestIndex];
+        tilePart->stream_ = std::unique_ptr<IStream>(memStreamCreate(
+            tilePart->data_.get(), tilePart->length_, false, nullptr, stream_->getFormat(), true));
+        auto& tilePartSeq = (*context->tilePartFetchByTile_)[tilePart->tileIndex_];
+        if(tilePartSeq->incrementFetchCount() == tilePartSeq->size())
+        {
+          auto tileIndex = tilePart->tileIndex_;
+
+          if(compressedChunkCache_)
+            compressedChunkCache_->put(tileIndex, tilePartSeq);
+
+          int32_t tileRow = tileIndex / numTileCols;
+          int32_t prev = maxFetchedTileRow_.load(std::memory_order_acquire);
+          while(prev < tileRow &&
+                !maxFetchedTileRow_.compare_exchange_weak(prev, tileRow,
+                                                          std::memory_order_release,
+                                                          std::memory_order_acquire))
+          {
+          }
+          auto tilePartSeqCopy = tilePartSeq;
+          decompressQueue_->push(
+              [this, tileIndex, tilePartSeqCopy, unreducedImageBounds, postGenerator]() {
+                const auto tileProcessor = getTileProcessor(tileIndex);
+                // Enable selective fetch mode on the packet cache
+                auto tcp = tileProcessor->getTCP();
+                if(tcp && tcp->packets_)
+                  tcp->packets_->setSelectiveFetch(true);
                 auto decompressTask = genDecompressTileTLMTask(tileProcessor, tilePartSeqCopy,
                                                                unreducedImageBounds, postGenerator);
                 decompressTask();
