@@ -156,6 +156,14 @@ bool DecompressScheduler::scheduleT1(ITileProcessor* tileProcessor)
 
     // 1. create blocks and store in blocksByRes
     auto& componentBlocks = blocksByTile_[compno];
+    // When not caching all, clear stale blocks from previous decompress
+    // to avoid accumulating entries that exceed the ImageComponentFlow's resFlows_ array.
+    if(!cacheAll)
+    {
+      for(auto& block : componentBlocks)
+        block.release();
+      componentBlocks.clear();
+    }
     diffInfo->layersDecompressed_ = tcp->layersToDecompress_;
     bool finalLayer = tcp->layersToDecompress_ == tcp->numLayers_;
 

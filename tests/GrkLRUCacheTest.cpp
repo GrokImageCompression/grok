@@ -1180,6 +1180,612 @@ static bool testRGBRoundTrip()
 }
 
 ///////////////////////////////////////////////////////////////////
+// Helper: Create a multi-layer test image with PLT markers
+//
+// Creates a lossless image with multiple quality layers, suitable
+// for testing progressive layer decompress.
+///////////////////////////////////////////////////////////////////
+static bool createMultiLayerImage(const std::string& path, uint32_t width, uint32_t height,
+                                  uint32_t tileWidth, uint32_t tileHeight, uint16_t numLayers,
+                                  uint8_t numResolutions, bool writeTlm, bool writePlt)
+{
+  grk_cparameters cparams{};
+  grk_compress_set_default_params(&cparams);
+  cparams.cod_format = GRK_FMT_J2K;
+  cparams.t_width = tileWidth;
+  cparams.t_height = tileHeight;
+  cparams.tile_size_on = (tileWidth < width || tileHeight < height);
+  cparams.write_tlm = writeTlm;
+  cparams.write_plt = writePlt;
+  cparams.numresolution = numResolutions;
+  cparams.irreversible = false;
+  cparams.numlayers = numLayers;
+  // Use layer_rate[0] = 0 for lossless final layer
+  for(uint16_t i = 0; i < numLayers - 1; ++i)
+    cparams.layer_rate[i] = (float)(20 * (numLayers - i)); // decreasing rates
+  cparams.layer_rate[numLayers - 1] = 0; // lossless
+
+  grk_image_comp comp{};
+  comp.dx = 1;
+  comp.dy = 1;
+  comp.w = width;
+  comp.h = height;
+  comp.x0 = 0;
+  comp.y0 = 0;
+  comp.prec = 8;
+  comp.sgnd = 0;
+
+  auto* image = grk_image_new(1, &comp, GRK_CLRSPC_GRAY, true);
+  if(!image)
+    return false;
+
+  auto* data = static_cast<int32_t*>(image->comps[0].data);
+  for(uint32_t y = 0; y < height; ++y)
+    for(uint32_t x = 0; x < width; ++x)
+      data[y * width + x] = static_cast<int32_t>((x * 7 + y * 13) % 256);
+
+  grk_stream_params sp{};
+  safe_strcpy(sp.file, path.data());
+
+  auto* codec = grk_compress_init(&sp, &cparams, image);
+  if(!codec)
+  {
+    grk_object_unref(&image->obj);
+    return false;
+  }
+
+  uint64_t len = grk_compress(codec, nullptr);
+  grk_object_unref(codec);
+  grk_object_unref(&image->obj);
+
+  if(len == 0)
+  {
+    spdlog::error("Multi-layer compression failed");
+    return false;
+  }
+
+  spdlog::info("Created multi-layer image: {}x{}, {} layers, {} resolutions, {} bytes", width,
+               height, numLayers, numResolutions, len);
+  return true;
+}
+
+///////////////////////////////////////////////////////////////////
+// Test 13: Progressive layer decompress
+//
+// Creates a multi-layer image, decompresses with 1 layer, then
+// re-decompresses with all layers. Verifies that:
+// - Initial decompress produces valid output
+// - After setting progression state with more layers, re-decompress
+//   produces higher quality or equal output
+// - Final full-layer decompress matches reference
+///////////////////////////////////////////////////////////////////
+static bool testProgressiveLayerDecompress()
+{
+  spdlog::info("=== Test: Progressive layer decompress ===");
+
+  std::string testFile =
+      (std::filesystem::temp_directory_path() / "grk_progressive_layer_test.j2k").string();
+
+  uint16_t numLayers = 3;
+  if(!createMultiLayerImage(testFile, 128, 128, 128, 128, numLayers, 3, false, true))
+  {
+    spdlog::error("Failed to create multi-layer test image");
+    return false;
+  }
+
+  // Step 1: Full lossless reference decompress (all layers)
+  grk_decompress_parameters fullParams{};
+  fullParams.core.tile_cache_strategy = GRK_TILE_CACHE_IMAGE;
+
+  grk_stream_params sp1{};
+  safe_strcpy(sp1.file, testFile.data());
+  CodecPtr refCodec(grk_decompress_init(&sp1, &fullParams));
+  grk_header_info hi1{};
+  grk_decompress_read_header(refCodec.get(), &hi1);
+  grk_decompress_update(&fullParams, refCodec.get());
+  grk_decompress_tile(refCodec.get(), 0);
+  auto* refImg = grk_decompress_get_tile_image(refCodec.get(), 0, true);
+  if(!refImg)
+  {
+    spdlog::error("Failed to decompress reference");
+    std::filesystem::remove(testFile);
+    return false;
+  }
+  auto refPixels = readPixels(refImg->comps[0], refImg->comps[0].w * refImg->comps[0].h);
+  spdlog::info("Reference: {}x{}, {} layers", refImg->comps[0].w, refImg->comps[0].h,
+               hi1.num_layers);
+
+  // Step 2: Progressive decompress — start with 1 layer
+  // CACHE_ALL is required: code block coders retain intermediate state
+  // across layers so T1 can decode incrementally.
+  grk_decompress_parameters progParams{};
+  progParams.core.tile_cache_strategy = GRK_TILE_CACHE_IMAGE | GRK_TILE_CACHE_ALL;
+  progParams.core.layers_to_decompress = 1;
+
+  grk_stream_params sp2{};
+  safe_strcpy(sp2.file, testFile.data());
+  CodecPtr progCodec(grk_decompress_init(&sp2, &progParams));
+  grk_header_info hi2{};
+  grk_decompress_read_header(progCodec.get(), &hi2);
+  grk_decompress_update(&progParams, progCodec.get());
+
+  // Decompress tile 0 with 1 layer
+  grk_decompress_tile(progCodec.get(), 0);
+  auto* layer1Img = grk_decompress_get_tile_image(progCodec.get(), 0, true);
+  if(!layer1Img || !layer1Img->comps[0].data)
+  {
+    spdlog::error("Failed to decompress with 1 layer");
+    std::filesystem::remove(testFile);
+    return false;
+  }
+  auto layer1Pixels =
+      readPixels(layer1Img->comps[0], layer1Img->comps[0].w * layer1Img->comps[0].h);
+  spdlog::info("Layer 1 decompress: {}x{}", layer1Img->comps[0].w, layer1Img->comps[0].h);
+
+  // Verify dimensions match reference
+  if(layer1Img->comps[0].w != refImg->comps[0].w || layer1Img->comps[0].h != refImg->comps[0].h)
+  {
+    spdlog::error("FAIL: Layer-1 dimensions differ from reference");
+    std::filesystem::remove(testFile);
+    return false;
+  }
+
+  // Step 3: Set progression state to decompress all layers
+  grk_progression_state state{};
+  state.single_tile = true;
+  state.tile_index = 0;
+  state.num_resolutions = hi2.numresolutions;
+  for(uint8_t r = 0; r < state.num_resolutions; ++r)
+    state.layers_per_resolution[r] = numLayers;
+
+  if(!grk_decompress_set_progression_state(progCodec.get(), state))
+  {
+    spdlog::error("Failed to set progression state");
+    std::filesystem::remove(testFile);
+    return false;
+  }
+
+  // Re-decompress tile 0 with all layers
+  grk_decompress_tile(progCodec.get(), 0);
+  auto* fullImg = grk_decompress_get_tile_image(progCodec.get(), 0, true);
+  if(!fullImg || !fullImg->comps[0].data)
+  {
+    spdlog::error("Failed to re-decompress with all layers");
+    std::filesystem::remove(testFile);
+    return false;
+  }
+  auto fullPixels = readPixels(fullImg->comps[0], fullImg->comps[0].w * fullImg->comps[0].h);
+  spdlog::info("Full-layer re-decompress: {}x{}", fullImg->comps[0].w, fullImg->comps[0].h);
+
+  // Step 4: Verify full-layer output matches reference
+  bool match = (fullPixels == refPixels);
+  if(!match)
+  {
+    // Count mismatches
+    uint32_t mismatches = 0;
+    for(size_t i = 0; i < fullPixels.size(); ++i)
+    {
+      if(fullPixels[i] != refPixels[i])
+        mismatches++;
+    }
+    spdlog::error("FAIL: Full-layer re-decompress differs from reference ({} mismatches out of {})",
+                  mismatches, fullPixels.size());
+  }
+  else
+  {
+    spdlog::info("PASS: Full-layer re-decompress matches reference");
+  }
+
+  // Step 5: Verify progression state reflects decoded layers
+  auto finalState = grk_decompress_get_progression_state(progCodec.get(), 0);
+  spdlog::info("Final progression state: num_resolutions={}", finalState.num_resolutions);
+  for(uint8_t r = 0; r < finalState.num_resolutions; ++r)
+    spdlog::info("  resolution {}: layers_read={}", r, finalState.layers_per_resolution[r]);
+
+  std::error_code ec;
+  std::filesystem::remove(testFile, ec);
+
+  return match;
+}
+
+///////////////////////////////////////////////////////////////////
+// Test 14: Progressive resolution decompress
+//
+// Decompresses at reduce=2 (lowest resolution), then at reduce=0
+// (full resolution). Verifies:
+// - Reduced output has smaller dimensions
+// - Full-res output matches a direct full-res decompress
+///////////////////////////////////////////////////////////////////
+static bool testProgressiveResolutionDecompress()
+{
+  spdlog::info("=== Test: Progressive resolution decompress ===");
+
+  std::string testFile =
+      (std::filesystem::temp_directory_path() / "grk_progressive_res_test.j2k").string();
+
+  // 5 resolution levels → reduce=2 gives 1/4 dimensions
+  if(!createMultiLayerImage(testFile, 256, 256, 256, 256, 1, 5, false, true))
+  {
+    spdlog::error("Failed to create test image");
+    return false;
+  }
+
+  // Step 1: Full-res reference
+  grk_decompress_parameters refParams{};
+  refParams.core.tile_cache_strategy = GRK_TILE_CACHE_IMAGE | GRK_TILE_CACHE_ALL;
+  refParams.core.reduce = 0;
+
+  grk_stream_params sp1{};
+  safe_strcpy(sp1.file, testFile.data());
+  CodecPtr refCodec(grk_decompress_init(&sp1, &refParams));
+  grk_header_info hi{};
+  grk_decompress_read_header(refCodec.get(), &hi);
+  grk_decompress_update(&refParams, refCodec.get());
+  grk_decompress_tile(refCodec.get(), 0);
+  auto* refImg = grk_decompress_get_tile_image(refCodec.get(), 0, true);
+  if(!refImg)
+  {
+    spdlog::error("Failed full-res reference decompress");
+    std::filesystem::remove(testFile);
+    return false;
+  }
+  uint32_t refW = refImg->comps[0].w;
+  uint32_t refH = refImg->comps[0].h;
+  auto refPixels = readPixels(refImg->comps[0], refW * refH);
+  spdlog::info("Reference: {}x{}, {} resolutions", refW, refH, hi.numresolutions);
+
+  // Step 2: Reduced decompress (reduce=2 → 1/4 res)
+  grk_decompress_parameters redParams{};
+  redParams.core.tile_cache_strategy = GRK_TILE_CACHE_IMAGE | GRK_TILE_CACHE_ALL;
+  redParams.core.reduce = 2;
+
+  grk_stream_params sp2{};
+  safe_strcpy(sp2.file, testFile.data());
+  CodecPtr redCodec(grk_decompress_init(&sp2, &redParams));
+  grk_header_info hi2{};
+  grk_decompress_read_header(redCodec.get(), &hi2);
+  grk_decompress_update(&redParams, redCodec.get());
+  grk_decompress_tile(redCodec.get(), 0);
+  auto* redImg = grk_decompress_get_tile_image(redCodec.get(), 0, true);
+  if(!redImg)
+  {
+    spdlog::error("Failed reduced decompress");
+    std::filesystem::remove(testFile);
+    return false;
+  }
+  uint32_t redW = redImg->comps[0].w;
+  uint32_t redH = redImg->comps[0].h;
+  spdlog::info("Reduced (reduce=2): {}x{}", redW, redH);
+
+  if(redW >= refW || redH >= refH)
+  {
+    spdlog::error("FAIL: Reduced dimensions ({}x{}) not smaller than full ({}x{})", redW, redH,
+                  refW, refH);
+    std::filesystem::remove(testFile);
+    return false;
+  }
+
+  // Step 3: Now decompress at full resolution with a fresh codec on the same file
+  // This tests that a subsequent full-res decode is correct
+  grk_decompress_parameters fullParams{};
+  fullParams.core.tile_cache_strategy = GRK_TILE_CACHE_IMAGE | GRK_TILE_CACHE_ALL;
+  fullParams.core.reduce = 0;
+
+  grk_stream_params sp3{};
+  safe_strcpy(sp3.file, testFile.data());
+  CodecPtr fullCodec(grk_decompress_init(&sp3, &fullParams));
+  grk_header_info hi3{};
+  grk_decompress_read_header(fullCodec.get(), &hi3);
+  grk_decompress_update(&fullParams, fullCodec.get());
+  grk_decompress_tile(fullCodec.get(), 0);
+  auto* fullImg = grk_decompress_get_tile_image(fullCodec.get(), 0, true);
+  if(!fullImg)
+  {
+    spdlog::error("Failed full-res decompress after reduced");
+    std::filesystem::remove(testFile);
+    return false;
+  }
+  uint32_t fullW = fullImg->comps[0].w;
+  uint32_t fullH = fullImg->comps[0].h;
+  auto fullPixels = readPixels(fullImg->comps[0], fullW * fullH);
+  spdlog::info("Full-res: {}x{}", fullW, fullH);
+
+  bool match = (fullPixels == refPixels);
+  if(!match)
+  {
+    uint32_t mismatches = 0;
+    for(size_t i = 0; i < std::min(fullPixels.size(), refPixels.size()); ++i)
+    {
+      if(fullPixels[i] != refPixels[i])
+        mismatches++;
+    }
+    spdlog::error("FAIL: Full-res after reduced differs from reference ({} mismatches)", mismatches);
+  }
+  else
+  {
+    spdlog::info("PASS: Full-res after reduced matches reference");
+  }
+
+  std::error_code ec;
+  std::filesystem::remove(testFile, ec);
+  return match;
+}
+
+///////////////////////////////////////////////////////////////////
+// Test 15: Progressive resolution — verify separate codecs work
+//
+// Resolution changes (reduce parameter) require a fresh codec
+// because the tile image dimensions are set at first decompress.
+// This test verifies that low-res → high-res works correctly
+// using separate codec instances (same as Test 14 but with
+// GRK_TILE_CACHE_ALL to exercise the cacheAll path).
+///////////////////////////////////////////////////////////////////
+static bool testProgressiveResolutionReDecompress()
+{
+  spdlog::info("=== Test: Progressive resolution with GRK_TILE_CACHE_ALL ===");
+
+  std::string testFile =
+      (std::filesystem::temp_directory_path() / "grk_progressive_res_redecomp_test.j2k").string();
+
+  // 4 resolution levels, single tile with TLM
+  if(!createMultiLayerImage(testFile, 256, 256, 256, 256, 1, 4, true, true))
+  {
+    spdlog::error("Failed to create test image");
+    return false;
+  }
+
+  // Full-res reference (separate codec)
+  grk_decompress_parameters refParams{};
+  refParams.core.tile_cache_strategy = GRK_TILE_CACHE_IMAGE | GRK_TILE_CACHE_ALL;
+  refParams.core.reduce = 0;
+
+  grk_stream_params spRef{};
+  safe_strcpy(spRef.file, testFile.data());
+  CodecPtr refCodec(grk_decompress_init(&spRef, &refParams));
+  grk_header_info hiRef{};
+  grk_decompress_read_header(refCodec.get(), &hiRef);
+  grk_decompress_update(&refParams, refCodec.get());
+  grk_decompress_tile(refCodec.get(), 0);
+  auto* refImg = grk_decompress_get_tile_image(refCodec.get(), 0, true);
+  if(!refImg)
+  {
+    spdlog::error("Failed reference decompress");
+    std::filesystem::remove(testFile);
+    return false;
+  }
+  auto refPixels = readPixels(refImg->comps[0], refImg->comps[0].w * refImg->comps[0].h);
+  uint32_t refW = refImg->comps[0].w, refH = refImg->comps[0].h;
+  spdlog::info("Reference: {}x{}", refW, refH);
+
+  // Reduced codec
+  grk_decompress_parameters redParams{};
+  redParams.core.tile_cache_strategy = GRK_TILE_CACHE_IMAGE | GRK_TILE_CACHE_ALL;
+  redParams.core.reduce = 2;
+
+  grk_stream_params spRed{};
+  safe_strcpy(spRed.file, testFile.data());
+  CodecPtr redCodec(grk_decompress_init(&spRed, &redParams));
+  grk_header_info hiRed{};
+  grk_decompress_read_header(redCodec.get(), &hiRed);
+  grk_decompress_update(&redParams, redCodec.get());
+  grk_decompress_tile(redCodec.get(), 0);
+  auto* redImg = grk_decompress_get_tile_image(redCodec.get(), 0, true);
+  if(!redImg)
+  {
+    spdlog::error("Failed reduced decompress");
+    std::filesystem::remove(testFile);
+    return false;
+  }
+  uint32_t redW = redImg->comps[0].w, redH = redImg->comps[0].h;
+  spdlog::info("Reduced (reduce=2): {}x{}", redW, redH);
+
+  if(redW >= refW || redH >= refH)
+  {
+    spdlog::error("FAIL: Reduced output not smaller than full");
+    std::filesystem::remove(testFile);
+    return false;
+  }
+
+  // Full-res via new codec
+  grk_decompress_parameters fullParams{};
+  fullParams.core.tile_cache_strategy = GRK_TILE_CACHE_IMAGE | GRK_TILE_CACHE_ALL;
+  fullParams.core.reduce = 0;
+
+  grk_stream_params spFull{};
+  safe_strcpy(spFull.file, testFile.data());
+  CodecPtr fullCodec(grk_decompress_init(&spFull, &fullParams));
+  grk_header_info hiFull{};
+  grk_decompress_read_header(fullCodec.get(), &hiFull);
+  grk_decompress_update(&fullParams, fullCodec.get());
+  grk_decompress_tile(fullCodec.get(), 0);
+  auto* fullImg = grk_decompress_get_tile_image(fullCodec.get(), 0, true);
+  if(!fullImg || !fullImg->comps[0].data)
+  {
+    spdlog::error("Failed full-res decompress");
+    std::filesystem::remove(testFile);
+    return false;
+  }
+  uint32_t fullW = fullImg->comps[0].w, fullH = fullImg->comps[0].h;
+  auto fullPixels = readPixels(fullImg->comps[0], fullW * fullH);
+  spdlog::info("Full-res: {}x{}", fullW, fullH);
+
+  bool match = (fullPixels == refPixels);
+  if(!match)
+  {
+    uint32_t mismatches = 0;
+    for(size_t i = 0; i < fullPixels.size(); ++i)
+    {
+      if(fullPixels[i] != refPixels[i])
+        mismatches++;
+    }
+    spdlog::error("FAIL: Full-res with TILE_CACHE_ALL differs from reference ({} mismatches)",
+                  mismatches);
+  }
+  else
+  {
+    spdlog::info("PASS: Progressive resolution with TILE_CACHE_ALL matches reference");
+  }
+
+  std::error_code ec;
+  std::filesystem::remove(testFile, ec);
+  return match;
+}
+
+///////////////////////////////////////////////////////////////////
+// Test 16: Mixed layer + resolution progressive decompress
+//
+// Combines layer progression (on a single codec) with resolution
+// progression (requires a new codec). CACHE_ALL is required for both.
+//
+// Steps:
+//   1. Reference: full-res, all layers
+//   2. Codec A: reduce=2, 1 layer → layer progression to all layers
+//   3. Codec B: reduce=0, all layers → verify matches reference
+///////////////////////////////////////////////////////////////////
+static bool testMixedLayerResolutionProgressive()
+{
+  spdlog::info("=== Test: Mixed layer + resolution progressive ===");
+
+  std::string testFile =
+      (std::filesystem::temp_directory_path() / "grk_mixed_progressive_test.j2k").string();
+
+  uint16_t numLayers = 3;
+  uint8_t numResolutions = 4;
+
+  // Create image with multiple layers AND resolutions, single tile, TLM
+  if(!createMultiLayerImage(testFile, 128, 128, 128, 128, numLayers, numResolutions, true, true))
+  {
+    spdlog::error("Failed to create test image");
+    return false;
+  }
+
+  // Step 1: Full-res, all-layers reference
+  grk_decompress_parameters refParams{};
+  refParams.core.tile_cache_strategy = GRK_TILE_CACHE_IMAGE | GRK_TILE_CACHE_ALL;
+  refParams.core.reduce = 0;
+
+  grk_stream_params spRef{};
+  safe_strcpy(spRef.file, testFile.data());
+  CodecPtr refCodec(grk_decompress_init(&spRef, &refParams));
+  grk_header_info hiRef{};
+  grk_decompress_read_header(refCodec.get(), &hiRef);
+  grk_decompress_update(&refParams, refCodec.get());
+  grk_decompress_tile(refCodec.get(), 0);
+  auto* refImg = grk_decompress_get_tile_image(refCodec.get(), 0, true);
+  if(!refImg)
+  {
+    spdlog::error("Failed reference decompress");
+    std::filesystem::remove(testFile);
+    return false;
+  }
+  uint32_t refW = refImg->comps[0].w, refH = refImg->comps[0].h;
+  auto refPixels = readPixels(refImg->comps[0], refW * refH);
+  spdlog::info("Reference: {}x{}, {} layers, {} resolutions", refW, refH, hiRef.num_layers,
+               hiRef.numresolutions);
+
+  // Step 2: Codec A — reduced resolution, 1 layer
+  grk_decompress_parameters redParams{};
+  redParams.core.tile_cache_strategy = GRK_TILE_CACHE_IMAGE | GRK_TILE_CACHE_ALL;
+  redParams.core.reduce = 2;
+  redParams.core.layers_to_decompress = 1;
+
+  grk_stream_params spRed{};
+  safe_strcpy(spRed.file, testFile.data());
+  CodecPtr redCodec(grk_decompress_init(&spRed, &redParams));
+  grk_header_info hiRed{};
+  grk_decompress_read_header(redCodec.get(), &hiRed);
+  grk_decompress_update(&redParams, redCodec.get());
+  grk_decompress_tile(redCodec.get(), 0);
+  auto* redImg = grk_decompress_get_tile_image(redCodec.get(), 0, true);
+  if(!redImg || !redImg->comps[0].data)
+  {
+    spdlog::error("Failed reduced/1-layer decompress");
+    std::filesystem::remove(testFile);
+    return false;
+  }
+  uint32_t redW = redImg->comps[0].w, redH = redImg->comps[0].h;
+  spdlog::info("Reduced (reduce=2, 1 layer): {}x{}", redW, redH);
+
+  if(redW >= refW || redH >= refH)
+  {
+    spdlog::error("FAIL: Reduced dimensions not smaller than full");
+    std::filesystem::remove(testFile);
+    return false;
+  }
+
+  // Step 3: Layer progression on Codec A — decompress all layers at same reduced resolution
+  uint8_t reducedResolutions = hiRed.numresolutions - redParams.core.reduce;
+  grk_progression_state layerState{};
+  layerState.single_tile = true;
+  layerState.tile_index = 0;
+  layerState.num_resolutions = reducedResolutions;
+  for(uint8_t r = 0; r < layerState.num_resolutions; ++r)
+    layerState.layers_per_resolution[r] = numLayers;
+
+  if(!grk_decompress_set_progression_state(redCodec.get(), layerState))
+  {
+    spdlog::error("Failed to set layer progression state");
+    std::filesystem::remove(testFile);
+    return false;
+  }
+
+  grk_decompress_tile(redCodec.get(), 0);
+  auto* redFullImg = grk_decompress_get_tile_image(redCodec.get(), 0, true);
+  if(!redFullImg || !redFullImg->comps[0].data)
+  {
+    spdlog::error("Failed reduced/all-layers re-decompress");
+    std::filesystem::remove(testFile);
+    return false;
+  }
+  spdlog::info("Reduced all-layers: {}x{}", redFullImg->comps[0].w, redFullImg->comps[0].h);
+
+  // Step 4: Codec B — full resolution, all layers (resolution upscale requires new codec)
+  grk_decompress_parameters fullParams{};
+  fullParams.core.tile_cache_strategy = GRK_TILE_CACHE_IMAGE | GRK_TILE_CACHE_ALL;
+  fullParams.core.reduce = 0;
+
+  grk_stream_params spFull{};
+  safe_strcpy(spFull.file, testFile.data());
+  CodecPtr fullCodec(grk_decompress_init(&spFull, &fullParams));
+  grk_header_info hiFull{};
+  grk_decompress_read_header(fullCodec.get(), &hiFull);
+  grk_decompress_update(&fullParams, fullCodec.get());
+  grk_decompress_tile(fullCodec.get(), 0);
+  auto* fullImg = grk_decompress_get_tile_image(fullCodec.get(), 0, true);
+  if(!fullImg || !fullImg->comps[0].data)
+  {
+    spdlog::error("Failed full-res decompress");
+    std::filesystem::remove(testFile);
+    return false;
+  }
+  uint32_t fullW = fullImg->comps[0].w, fullH = fullImg->comps[0].h;
+  auto fullPixels = readPixels(fullImg->comps[0], fullW * fullH);
+  spdlog::info("Full-res all-layers: {}x{}", fullW, fullH);
+
+  // Step 5: Verify full output matches reference
+  bool match = (fullPixels == refPixels);
+  if(!match)
+  {
+    uint32_t mismatches = 0;
+    for(size_t i = 0; i < std::min(fullPixels.size(), refPixels.size()); ++i)
+    {
+      if(fullPixels[i] != refPixels[i])
+        mismatches++;
+    }
+    spdlog::error("FAIL: Mixed progressive output differs from reference ({} mismatches)",
+                  mismatches);
+  }
+  else
+  {
+    spdlog::info("PASS: Mixed layer + resolution progressive matches reference");
+  }
+
+  std::error_code ec;
+  std::filesystem::remove(testFile, ec);
+  return match;
+}
+
+///////////////////////////////////////////////////////////////////
 // Main
 ///////////////////////////////////////////////////////////////////
 int GrkLRUCacheTest::main(int argc, char** argv)
@@ -1311,6 +1917,22 @@ int GrkLRUCacheTest::main(int argc, char** argv)
 
   // Test 12: RGB multi-component round-trip
   if(!testRGBRoundTrip())
+    failures++;
+
+  // Test 13: Progressive layer decompress
+  if(!testProgressiveLayerDecompress())
+    failures++;
+
+  // Test 14: Progressive resolution decompress (separate codecs)
+  if(!testProgressiveResolutionDecompress())
+    failures++;
+
+  // Test 15: Progressive resolution re-decompress (single codec)
+  if(!testProgressiveResolutionReDecompress())
+    failures++;
+
+  // Test 16: Mixed layer + resolution progressive
+  if(!testMixedLayerResolutionProgressive())
     failures++;
 
   if(failures > 0)

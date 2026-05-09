@@ -937,8 +937,6 @@ bool CodeStreamDecompress::decompressTileImpl(uint16_t tileIndex)
   auto cacheEntry = tileCache_->get(tileIndex);
   if(cacheEntry && cacheEntry->processor && cacheEntry->processor->getImage())
   {
-    // if there are already processed packets, then this is a differential decompression
-    // so perform differential update and continue on to decompression
     auto proc = cacheEntry->processor;
     if(proc->getNumProcessedPackets())
     {
