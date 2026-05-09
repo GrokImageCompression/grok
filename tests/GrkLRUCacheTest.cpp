@@ -2135,6 +2135,320 @@ static bool testPLTHeaderExtraction()
 }
 
 ///////////////////////////////////////////////////////////////////
+// Test 19: Selective fetch simulation for LRCP (disjoint ranges)
+//
+// Creates a J2K file with LRCP progression, 2 layers, 4 resolutions.
+// Computes selective fetch ranges for reduce=2 (want 2 out of 4 res).
+// Verifies:
+// - Ranges are disjoint (not contiguous from offset 0)
+// - Range data sum < full data (bandwidth savings)
+// - Assembled buffer (header + concatenated ranges) decompresses correctly
+///////////////////////////////////////////////////////////////////
+static bool testSelectiveFetchSimulation()
+{
+  using namespace grk;
+  spdlog::info("=== Test: Selective fetch simulation (LRCP disjoint) ===");
+
+  std::string testFile =
+      (std::filesystem::temp_directory_path() / "grk_selective_sim.j2k").string();
+
+  // Create LRCP image with 2 layers, 4 resolutions
+  {
+    grk_cparameters cparams{};
+    grk_compress_set_default_params(&cparams);
+    cparams.cod_format = GRK_FMT_J2K;
+    cparams.t_width = 128;
+    cparams.t_height = 128;
+    cparams.tile_size_on = false;
+    cparams.write_tlm = true;
+    cparams.write_plt = true;
+    cparams.numresolution = 4;
+    cparams.irreversible = false;
+    cparams.numlayers = 2;
+    cparams.prog_order = GRK_LRCP;
+    cparams.layer_rate[0] = 20;
+    cparams.layer_rate[1] = 0; // lossless
+
+    grk_image_comp comp{};
+    comp.dx = 1;
+    comp.dy = 1;
+    comp.w = 128;
+    comp.h = 128;
+    comp.prec = 8;
+    comp.sgnd = 0;
+
+    auto* image = grk_image_new(1, &comp, GRK_CLRSPC_GRAY, true);
+    if(!image)
+      return false;
+
+    auto* data = static_cast<int32_t*>(image->comps[0].data);
+    for(uint32_t y = 0; y < 128; ++y)
+      for(uint32_t x = 0; x < 128; ++x)
+        data[y * 128 + x] = static_cast<int32_t>((x * 7 + y * 13) % 256);
+
+    grk_stream_params sp{};
+    safe_strcpy(sp.file, testFile.data());
+
+    auto* codec = grk_compress_init(&sp, &cparams, image);
+    if(!codec)
+    {
+      grk_object_unref(&image->obj);
+      return false;
+    }
+    uint64_t len = grk_compress(codec, nullptr);
+    grk_object_unref(codec);
+    grk_object_unref(&image->obj);
+    if(len == 0)
+    {
+      spdlog::error("LRCP compression failed");
+      return false;
+    }
+    spdlog::info("Created LRCP image: 128x128, 2 layers, 4 res, {} bytes", len);
+  }
+
+  // Read raw file
+  std::ifstream file(testFile, std::ios::binary | std::ios::ate);
+  if(!file)
+    return false;
+  auto fileSize = file.tellg();
+  file.seekg(0);
+  std::vector<uint8_t> rawData(fileSize);
+  file.read(reinterpret_cast<char*>(rawData.data()), fileSize);
+  file.close();
+
+  // Find SOT
+  uint64_t sotOffset = 0;
+  for(size_t i = 0; i + 1 < rawData.size(); ++i)
+  {
+    if(rawData[i] == 0xFF && rawData[i + 1] == 0x90)
+    {
+      sotOffset = i;
+      break;
+    }
+  }
+
+  constexpr size_t sotLen = 12;
+  uint64_t headerStart = sotOffset + sotLen;
+  auto headerInfo = extractTilePartHeaderInfo(rawData.data() + headerStart,
+                                              rawData.size() - headerStart);
+  bool pass = true;
+
+  if(!headerInfo.valid || headerInfo.pltLengths.empty())
+  {
+    spdlog::error("FAIL: Could not extract PLT from LRCP file");
+    std::filesystem::remove(testFile);
+    return false;
+  }
+
+  spdlog::info("PLT packets: {}, SOD offset: {}", headerInfo.pltLengths.size(),
+               headerInfo.sodOffset);
+
+  // Build TilePacketInfo for LRCP
+  // 128x128 single tile, 1 component, 4 resolutions, 2 layers
+  TilePacketInfo tpi;
+  tpi.progression = GRK_LRCP;
+  tpi.numComponents = 1;
+  tpi.numLayers = 2;
+  tpi.numResolutions = {4};
+  tpi.pltLengths = headerInfo.pltLengths;
+
+  // Compute precincts per resolution
+  tpi.precinctsPerRes.resize(1);
+  tpi.precinctsPerRes[0].resize(4);
+  for(uint8_t r = 0; r < 4; ++r)
+  {
+    tpi.precinctsPerRes[0][r] = computeNumPrecincts(0, 0, 128, 128, 4, r, 15, 15);
+  }
+
+  // Compute ranges for reduce=2 (want 2 out of 4 resolutions)
+  auto ranges = computeSelectiveFetchRanges(tpi, 2);
+
+  uint64_t fullDataSize = 0;
+  for(auto len : headerInfo.pltLengths)
+    fullDataSize += len;
+
+  uint64_t selectiveSize = 0;
+  for(auto& r : ranges)
+    selectiveSize += r.length;
+
+  spdlog::info("Full data: {} bytes, selective: {} bytes ({:.1f}% savings)",
+               fullDataSize, selectiveSize,
+               100.0 * (1.0 - (double)selectiveSize / fullDataSize));
+
+  // Verify ranges are disjoint (LRCP with 2 layers should produce > 1 range)
+  if(ranges.size() <= 1)
+  {
+    spdlog::error("FAIL: Expected disjoint ranges for LRCP with 2 layers, got {}",
+                  ranges.size());
+    pass = false;
+  }
+  else
+  {
+    spdlog::info("PASS: Got {} disjoint ranges (as expected for LRCP)", ranges.size());
+  }
+
+  // Verify savings > 0
+  if(selectiveSize >= fullDataSize)
+  {
+    spdlog::error("FAIL: No bandwidth savings from selective fetch");
+    pass = false;
+  }
+  else
+  {
+    spdlog::info("PASS: Selective fetch saves {:.1f}% bandwidth",
+                 100.0 * (1.0 - (double)selectiveSize / fullDataSize));
+  }
+
+  // Verify ranges don't exceed data bounds
+  for(auto& r : ranges)
+  {
+    if(r.end() > fullDataSize)
+    {
+      spdlog::error("FAIL: Range [{}, {}) exceeds data size {}", r.offset, r.end(), fullDataSize);
+      pass = false;
+      break;
+    }
+  }
+
+  // Verify assembled buffer decompresses: build header + concatenated ranges
+  uint64_t sodOffsetInFile = sotOffset + headerInfo.sodOffset + sotLen;
+  uint64_t dataStartInFile = sodOffsetInFile + 2; // after SOD marker
+
+  // Assemble: SOT + tile-part header + SOD + concatenated needed data
+  uint64_t assembledHeaderSize = headerInfo.sodOffset + sotLen + 2; // SOT(12) + headers + SOD(2)
+  uint64_t assembledSize = assembledHeaderSize + selectiveSize;
+  std::vector<uint8_t> assembled(assembledSize);
+
+  // Copy header
+  std::memcpy(assembled.data(), rawData.data() + sotOffset, assembledHeaderSize);
+
+  // Copy concatenated data ranges
+  uint64_t pos = assembledHeaderSize;
+  for(auto& r : ranges)
+  {
+    std::memcpy(assembled.data() + pos, rawData.data() + dataStartInFile + r.offset, r.length);
+    pos += r.length;
+  }
+
+  // Write assembled to temp file and decompress with reduce=2
+  std::string assembledFile =
+      (std::filesystem::temp_directory_path() / "grk_selective_assembled.j2k").string();
+
+  // We need to also include the main header (everything before SOT)
+  {
+    std::vector<uint8_t> fullAssembled(sotOffset + assembledSize);
+    std::memcpy(fullAssembled.data(), rawData.data(), sotOffset); // main header
+    std::memcpy(fullAssembled.data() + sotOffset, assembled.data(), assembledSize);
+
+    // Fix SOT tile-part length to match assembled size
+    uint32_t newTpLen = (uint32_t)assembledSize;
+    fullAssembled[sotOffset + 6] = (uint8_t)(newTpLen >> 24);
+    fullAssembled[sotOffset + 7] = (uint8_t)(newTpLen >> 16);
+    fullAssembled[sotOffset + 8] = (uint8_t)(newTpLen >> 8);
+    fullAssembled[sotOffset + 9] = (uint8_t)(newTpLen);
+
+    std::ofstream out(assembledFile, std::ios::binary);
+    out.write(reinterpret_cast<char*>(fullAssembled.data()), fullAssembled.size());
+    out.close();
+  }
+
+  // Decompress assembled file with reduce=2
+  {
+    grk_decompress_parameters params{};
+    params.core.tile_cache_strategy = GRK_TILE_CACHE_IMAGE;
+    params.core.reduce = 2;
+    grk_stream_params sp{};
+    safe_strcpy(sp.file, assembledFile.data());
+    CodecPtr codec(grk_decompress_init(&sp, &params));
+    grk_header_info hi{};
+    if(!grk_decompress_read_header(codec.get(), &hi))
+    {
+      spdlog::error("FAIL: Could not read assembled file header");
+      pass = false;
+    }
+    else
+    {
+      grk_decompress_update(&params, codec.get());
+      if(!grk_decompress_tile(codec.get(), 0))
+      {
+        spdlog::error("FAIL: Could not decompress assembled file");
+        pass = false;
+      }
+      else
+      {
+        spdlog::info("PASS: Assembled selective data decompresses successfully");
+      }
+    }
+  }
+
+  // Also decompress original with reduce=2 for reference pixel comparison
+  std::vector<int32_t> refPixels, selPixels;
+  {
+    grk_decompress_parameters params{};
+    params.core.tile_cache_strategy = GRK_TILE_CACHE_IMAGE;
+    params.core.reduce = 2;
+    grk_stream_params sp{};
+    safe_strcpy(sp.file, testFile.data());
+    CodecPtr codec(grk_decompress_init(&sp, &params));
+    grk_header_info hi{};
+    grk_decompress_read_header(codec.get(), &hi);
+    grk_decompress_update(&params, codec.get());
+    auto* img = grk_decompress_get_sample_image(codec.get(), 0);
+    grk_decompress_tile(codec.get(), 0);
+    if(img && img->comps[0].data)
+    {
+      auto* d = (int32_t*)img->comps[0].data;
+      refPixels.assign(d, d + img->comps[0].w * img->comps[0].h);
+    }
+  }
+  {
+    grk_decompress_parameters params{};
+    params.core.tile_cache_strategy = GRK_TILE_CACHE_IMAGE;
+    params.core.reduce = 2;
+    grk_stream_params sp{};
+    safe_strcpy(sp.file, assembledFile.data());
+    CodecPtr codec(grk_decompress_init(&sp, &params));
+    grk_header_info hi{};
+    grk_decompress_read_header(codec.get(), &hi);
+    grk_decompress_update(&params, codec.get());
+    auto* img = grk_decompress_get_sample_image(codec.get(), 0);
+    grk_decompress_tile(codec.get(), 0);
+    if(img && img->comps[0].data)
+    {
+      auto* d = (int32_t*)img->comps[0].data;
+      selPixels.assign(d, d + img->comps[0].w * img->comps[0].h);
+    }
+  }
+
+  if(!refPixels.empty() && !selPixels.empty() && refPixels.size() == selPixels.size())
+  {
+    if(refPixels == selPixels)
+      spdlog::info("PASS: Selective fetch pixels match reference");
+    else
+    {
+      spdlog::error("FAIL: Selective fetch pixels differ from reference");
+      pass = false;
+    }
+  }
+  else if(refPixels.empty() || selPixels.empty())
+  {
+    spdlog::warn("Could not compare pixels (ref: {}, sel: {})", refPixels.size(),
+                 selPixels.size());
+  }
+
+  std::error_code ec;
+  std::filesystem::remove(testFile, ec);
+  std::filesystem::remove(assembledFile, ec);
+
+  if(pass)
+    spdlog::info("PASS: Selective fetch simulation (LRCP disjoint)");
+  else
+    spdlog::error("FAIL: Selective fetch simulation (LRCP disjoint)");
+
+  return pass;
+}
+
+///////////////////////////////////////////////////////////////////
 // Main
 ///////////////////////////////////////////////////////////////////
 int GrkLRUCacheTest::main(int argc, char** argv)
@@ -2290,6 +2604,10 @@ int GrkLRUCacheTest::main(int argc, char** argv)
 
   // Test 18: PLT header extraction from real J2K file
   if(!testPLTHeaderExtraction())
+    failures++;
+
+  // Test 19: Selective fetch simulation (LRCP disjoint ranges)
+  if(!testSelectiveFetchSimulation())
     failures++;
 
   if(failures > 0)
