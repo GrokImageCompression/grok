@@ -561,7 +561,9 @@ protected:
 
   virtual void auth(CURL* curl)
   {
-    if(EnvVarManager::test_bool("GRK_HTTP_UNSAFESSL") || auth_.s3_allow_insecure_)
+    if(EnvVarManager::test_bool("GRK_HTTP_UNSAFESSL") ||
+       EnvVarManager::test_bool("GRK_CURL_ALLOW_INSECURE") ||
+       auth_.s3_allow_insecure_)
     {
       curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
       curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L);
