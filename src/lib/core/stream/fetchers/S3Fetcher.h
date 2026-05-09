@@ -151,7 +151,6 @@ namespace grk
  * ║  HTTP / CURL CONFIGURATION                                              ║
  * ╠═══════════════════════════════════════════════════════════════════════════╣
  * ║  GRK_CURL_ALLOW_INSECURE           YES / NO — disable SSL verification  ║
- * ║  GRK_HTTP_UNSAFESSL                YES / NO — same (from CurlFetcher)   ║
  * ║  GRK_CURL_TIMEOUT                  Request timeout in seconds            ║
  * ║  GRK_CURL_CACHE_SIZE               Curl receive buffer size in bytes     ║
  * ║  GRK_CURL_NON_CACHED               Disable connection reuse for prefix   ║

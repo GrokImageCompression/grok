@@ -102,7 +102,7 @@
                 { "name": "AWS_SECRET_ACCESS_KEY", "value": "minioadmin" },
                 { "name": "AWS_S3_ENDPOINT", "value": "https://minio.example.com:9000" },
                 { "name": "AWS_VIRTUAL_HOSTING", "value": "FALSE" },
-                { "name": "GRK_HTTP_UNSAFESSL", "value": "YES" }
+                { "name": "GRK_CURL_ALLOW_INSECURE", "value": "YES" }
             ],
             "MIMode": "gdb",
             "miDebuggerPath": "/usr/bin/gdb"
@@ -130,7 +130,7 @@
                 { "name": "AWS_SECRET_ACCESS_KEY", "value": "minioadmin" },
                 { "name": "AWS_S3_ENDPOINT", "value": "https://minio.example.com:9000" },
                 { "name": "AWS_VIRTUAL_HOSTING", "value": "FALSE" },
-                { "name": "GRK_HTTP_UNSAFESSL", "value": "YES" }
+                { "name": "GRK_CURL_ALLOW_INSECURE", "value": "YES" }
             ],
             "MIMode": "gdb",
             "miDebuggerPath": "/usr/bin/gdb"
@@ -528,7 +528,7 @@
                 { "name": "AWS_SECRET_ACCESS_KEY", "value": "minioadmin" },
                 { "name": "AWS_S3_ENDPOINT", "value": "https://minio.example.com:9000" },
                 { "name": "AWS_VIRTUAL_HOSTING", "value": "FALSE" },
-                { "name": "GRK_HTTP_UNSAFESSL", "value": "YES" }
+                { "name": "GRK_CURL_ALLOW_INSECURE", "value": "YES" }
             ],
             "MIMode": "gdb",
             "miDebuggerPath": "/usr/bin/gdb"
@@ -610,7 +610,7 @@
                 { "name": "AWS_SECRET_ACCESS_KEY", "value": "minioadmin" },
                 { "name": "AWS_S3_ENDPOINT", "value": "https://minio.example.com:9000" },
                 { "name": "AWS_VIRTUAL_HOSTING", "value": "FALSE" },
-                { "name": "GRK_HTTP_UNSAFESSL", "value": "YES" }
+                { "name": "GRK_CURL_ALLOW_INSECURE", "value": "YES" }
             ],
             "MIMode": "gdb",
             "miDebuggerPath": "/usr/bin/gdb"
@@ -809,7 +809,7 @@
                 { "name": "AWS_SECRET_ACCESS_KEY", "value": "minioadmin" },
                 { "name": "AWS_S3_ENDPOINT", "value": "https://minio.example.com:9000" },
                 { "name": "AWS_VIRTUAL_HOSTING", "value": "TRUE" },
-                { "name": "GRK_HTTP_UNSAFESSL", "value": "TRUE" },
+                { "name": "GRK_CURL_ALLOW_INSECURE", "value": "TRUE" },
             ],
             "cwd": "${workspaceFolder}",
             "MIMode": "gdb",
@@ -862,7 +862,7 @@
                 { "name": "AWS_SECRET_ACCESS_KEY", "value": "minioadmin" },
                 { "name": "AWS_S3_ENDPOINT", "value": "https://minio.example.com:9000" },
                 { "name": "AWS_VIRTUAL_HOSTING", "value": "FALSE" },
-                { "name": "GRK_HTTP_UNSAFESSL", "value": "TRUE" },
+                { "name": "GRK_CURL_ALLOW_INSECURE", "value": "TRUE" },
             ],
             "cwd": "${workspaceFolder}",
             "MIMode": "gdb",
