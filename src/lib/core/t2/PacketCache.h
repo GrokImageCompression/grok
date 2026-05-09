@@ -43,8 +43,20 @@ public:
    * @brief Moves to next chunk / packet buffer and associated @ref PacketParser if present.
    * If no parser is available, then nullptr is pushed to list of parsers
    * @param offset remaining bytes in current chunk
+   * @param dataPresent if false, skip SparseBuffer advance (data not fetched)
    */
-  void next(size_t offset);
+  void next(size_t offset, bool dataPresent = true);
+
+  /**
+   * @brief Returns true if selective fetch mode is active
+   */
+  bool isSelectiveFetch(void) const;
+
+  /**
+   * @brief Sets selective fetch mode
+   * @param selective true if only partial packet data was fetched
+   */
+  void setSelectiveFetch(bool selective);
 
   /**
    * @brief Resets state to beginning of packet list, and beginning
@@ -76,6 +88,7 @@ private:
 
   std::vector<PacketParser*> parsers_;
   std::vector<PacketParser*>::iterator iter_;
+  bool selectiveFetch_ = false;
 };
 
 } // namespace grk

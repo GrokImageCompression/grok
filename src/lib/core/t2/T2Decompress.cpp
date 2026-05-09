@@ -79,17 +79,22 @@ bool T2Decompress::parsePackets(uint16_t tile_no, PacketCache* compressedPackets
     while(currPi->next(pltMarkers ? compressedPackets : nullptr))
     {
       // code below is written this way as chunkLength() can throw, also indicating truncated tile
-      try
+      // With selective fetch, the buffer may be exhausted for skipped (unfetched) packets,
+      // so we only check for truncation when not in selective fetch mode.
+      if(!compressedPackets->isSelectiveFetch())
       {
-        if(compressedPackets->chunkLength() == 0)
+        try
         {
-          throw SparseBufferIncompleteException();
+          if(compressedPackets->chunkLength() == 0)
+          {
+            throw SparseBufferIncompleteException();
+          }
         }
-      }
-      catch(SparseBufferIncompleteException& sbie)
-      {
-        grklog.warn("Tile %u is truncated.", tile_no);
-        return true;
+        catch(SparseBufferIncompleteException& sbie)
+        {
+          grklog.warn("Tile %u is truncated.", tile_no);
+          return true;
+        }
       }
 
       try
@@ -235,7 +240,8 @@ bool T2Decompress::parsePacket(uint16_t compno, uint8_t resno, uint64_t precinct
   // 7. compressedPackets can now increment to next packet
   try
   {
-    packetCache->next(packetLength);
+    bool dataPresent = !skip || !packetCache->isSelectiveFetch();
+    packetCache->next(packetLength, dataPresent);
   }
   catch([[maybe_unused]] const SparseBufferOverrunException& sboe)
   {

@@ -32,6 +32,7 @@
 // Self-contained cache headers for unit testing
 #include "LRUCache.h"
 #include "DiskCache.h"
+#include "SelectiveFetchRanges.h"
 
 template<size_t N>
 static void safe_strcpy(char (&dest)[N], const char* src)
@@ -1786,6 +1787,220 @@ static bool testMixedLayerResolutionProgressive()
 }
 
 ///////////////////////////////////////////////////////////////////
+// Test 17: Selective fetch byte range computation
+//
+// Tests the computeSelectiveFetchRanges() utility for all
+// progression orders. Verifies that:
+// - RLCP/RPCL produce contiguous ranges for low-res packets
+// - LRCP/PCRL/CPRL produce correct disjoint ranges
+// - Gap coalescing works
+// - Edge cases handled (all res, single res, multi-component)
+///////////////////////////////////////////////////////////////////
+static bool testSelectiveFetchRanges()
+{
+  using namespace grk;
+  spdlog::info("=== Test: Selective fetch byte range computation ===");
+
+  bool pass = true;
+
+  // Simple case: 1 component, 3 resolutions, 1 layer, 1 precinct per res
+  // PLT lengths: [10, 20, 30] (res0=10, res1=20, res2=30)
+  {
+    TilePacketInfo info;
+    info.progression = GRK_RLCP;
+    info.numComponents = 1;
+    info.numLayers = 1;
+    info.numResolutions = {3};
+    info.precinctsPerRes = {{1, 1, 1}};
+    info.pltLengths = {10, 20, 30};
+
+    // Request 1 resolution (res0 only)
+    auto ranges = computeSelectiveFetchRanges(info, 1);
+    if(ranges.size() != 1 || ranges[0].offset != 0 || ranges[0].length != 10)
+    {
+      spdlog::error("FAIL: RLCP 1-res: expected [0,10), got {} ranges", ranges.size());
+      if(!ranges.empty())
+        spdlog::error("  range[0] = [{}, {})", ranges[0].offset, ranges[0].end());
+      pass = false;
+    }
+
+    // Request 2 resolutions (res0 + res1)
+    ranges = computeSelectiveFetchRanges(info, 2);
+    if(ranges.size() != 1 || ranges[0].offset != 0 || ranges[0].length != 30)
+    {
+      spdlog::error("FAIL: RLCP 2-res: expected [0,30), got {} ranges", ranges.size());
+      pass = false;
+    }
+
+    // Request all resolutions
+    ranges = computeSelectiveFetchRanges(info, 3);
+    if(ranges.size() != 1 || ranges[0].length != 60)
+    {
+      spdlog::error("FAIL: RLCP all-res: expected [0,60), got {} ranges", ranges.size());
+      pass = false;
+    }
+  }
+
+  // LRCP: 1 component, 3 resolutions, 2 layers, 1 precinct per res
+  // Packet order: L0[R0,R1,R2], L1[R0,R1,R2]
+  // PLT: [10, 20, 30, 15, 25, 35]
+  // Requesting res0 only → packets 0,3 → ranges [0,10) and [60,75)
+  {
+    TilePacketInfo info;
+    info.progression = GRK_LRCP;
+    info.numComponents = 1;
+    info.numLayers = 2;
+    info.numResolutions = {3};
+    info.precinctsPerRes = {{1, 1, 1}};
+    info.pltLengths = {10, 20, 30, 15, 25, 35};
+
+    auto ranges = computeSelectiveFetchRanges(info, 1);
+    // L0: R0(10) needed, R1(20) skip, R2(30) skip → range [0,10)
+    // L1: R0(15) needed at offset 60, R1(25) skip, R2(35) skip → range [60,75)
+    if(ranges.size() != 2)
+    {
+      spdlog::error("FAIL: LRCP 1-res: expected 2 ranges, got {}", ranges.size());
+      pass = false;
+    }
+    else
+    {
+      if(ranges[0].offset != 0 || ranges[0].length != 10)
+      {
+        spdlog::error("FAIL: LRCP range[0]: expected [0,10), got [{},{})", ranges[0].offset,
+                      ranges[0].end());
+        pass = false;
+      }
+      if(ranges[1].offset != 60 || ranges[1].length != 15)
+      {
+        spdlog::error("FAIL: LRCP range[1]: expected [60,75), got [{},{})", ranges[1].offset,
+                      ranges[1].end());
+        pass = false;
+      }
+    }
+  }
+
+  // RPCL: same as RLCP for single precinct — contiguous
+  {
+    TilePacketInfo info;
+    info.progression = GRK_RPCL;
+    info.numComponents = 1;
+    info.numLayers = 2;
+    info.numResolutions = {3};
+    info.precinctsPerRes = {{1, 1, 1}};
+    info.pltLengths = {10, 20, 15, 25, 30, 35};
+    // RPCL: R0[P0[C0[L0,L1]]], R1[P0[C0[L0,L1]]], R2[P0[C0[L0,L1]]]
+    // Packets: R0L0(10), R0L1(20), R1L0(15), R1L1(25), R2L0(30), R2L1(35)
+
+    auto ranges = computeSelectiveFetchRanges(info, 1);
+    // Only R0 packets: [0, 30) = 10+20
+    if(ranges.size() != 1 || ranges[0].offset != 0 || ranges[0].length != 30)
+    {
+      spdlog::error("FAIL: RPCL 1-res: expected [0,30), got {} ranges", ranges.size());
+      if(!ranges.empty())
+        spdlog::error("  range[0] = [{}, {})", ranges[0].offset, ranges[0].end());
+      pass = false;
+    }
+  }
+
+  // PCRL: Precinct → Component → Resolution → Layer
+  // 1 comp, 3 res, 2 layers, 1 precinct per res
+  // P0[C0[R0[L0,L1], R1[L0,L1], R2[L0,L1]]]
+  // PLT: [10, 20, 15, 25, 30, 35]
+  {
+    TilePacketInfo info;
+    info.progression = GRK_PCRL;
+    info.numComponents = 1;
+    info.numLayers = 2;
+    info.numResolutions = {3};
+    info.precinctsPerRes = {{1, 1, 1}};
+    info.pltLengths = {10, 20, 15, 25, 30, 35};
+
+    auto ranges = computeSelectiveFetchRanges(info, 1);
+    // R0: L0(10)+L1(20) = [0,30)
+    // R1: skip, R2: skip
+    if(ranges.size() != 1 || ranges[0].offset != 0 || ranges[0].length != 30)
+    {
+      spdlog::error("FAIL: PCRL 1-res: expected [0,30), got {} ranges", ranges.size());
+      pass = false;
+    }
+  }
+
+  // CPRL: Component → Precinct → Resolution → Layer
+  // Same structure as PCRL for single component
+  {
+    TilePacketInfo info;
+    info.progression = GRK_CPRL;
+    info.numComponents = 1;
+    info.numLayers = 2;
+    info.numResolutions = {3};
+    info.precinctsPerRes = {{1, 1, 1}};
+    info.pltLengths = {10, 20, 15, 25, 30, 35};
+
+    auto ranges = computeSelectiveFetchRanges(info, 1);
+    if(ranges.size() != 1 || ranges[0].offset != 0 || ranges[0].length != 30)
+    {
+      spdlog::error("FAIL: CPRL 1-res: expected [0,30), got {} ranges", ranges.size());
+      pass = false;
+    }
+  }
+
+  // Gap coalescing test
+  {
+    TilePacketInfo info;
+    info.progression = GRK_LRCP;
+    info.numComponents = 1;
+    info.numLayers = 2;
+    info.numResolutions = {3};
+    info.precinctsPerRes = {{1, 1, 1}};
+    info.pltLengths = {10, 5, 30, 15, 5, 35}; // gaps of 5 between needed ranges
+
+    auto ranges = computeSelectiveFetchRanges(info, 1, 0);
+    // Without coalescing: 2 ranges
+    if(ranges.size() != 2)
+    {
+      spdlog::error("FAIL: coalesce=0: expected 2 ranges, got {}", ranges.size());
+      pass = false;
+    }
+
+    // With coalescing threshold of 100 (merge all gaps ≤ 100)
+    ranges = computeSelectiveFetchRanges(info, 1, 100);
+    if(ranges.size() != 1)
+    {
+      spdlog::error("FAIL: coalesce=100: expected 1 range, got {}", ranges.size());
+      pass = false;
+    }
+  }
+
+  // Multi-component test: 2 comps, 2 res each, 1 layer, 1 precinct per res
+  // RLCP: R0[L0[C0P0, C1P0]], R1[L0[C0P0, C1P0]]
+  // PLT: [10, 20, 30, 40]
+  {
+    TilePacketInfo info;
+    info.progression = GRK_RLCP;
+    info.numComponents = 2;
+    info.numLayers = 1;
+    info.numResolutions = {2, 2};
+    info.precinctsPerRes = {{1, 1}, {1, 1}};
+    info.pltLengths = {10, 20, 30, 40};
+
+    auto ranges = computeSelectiveFetchRanges(info, 1);
+    // R0 packets: C0(10) + C1(20) = [0, 30)
+    if(ranges.size() != 1 || ranges[0].offset != 0 || ranges[0].length != 30)
+    {
+      spdlog::error("FAIL: multi-comp RLCP 1-res: expected [0,30), got {} ranges", ranges.size());
+      pass = false;
+    }
+  }
+
+  if(pass)
+    spdlog::info("PASS: Selective fetch byte range computation");
+  else
+    spdlog::error("FAIL: Selective fetch byte range computation");
+
+  return pass;
+}
+
+///////////////////////////////////////////////////////////////////
 // Main
 ///////////////////////////////////////////////////////////////////
 int GrkLRUCacheTest::main(int argc, char** argv)
@@ -1933,6 +2148,10 @@ int GrkLRUCacheTest::main(int argc, char** argv)
 
   // Test 16: Mixed layer + resolution progressive
   if(!testMixedLayerResolutionProgressive())
+    failures++;
+
+  // Test 17: Selective fetch byte range computation
+  if(!testSelectiveFetchRanges())
     failures++;
 
   if(failures > 0)

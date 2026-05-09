@@ -39,6 +39,7 @@ target_link_libraries(j2k_multi_region_decompress ${GROK_CORE_NAME} spdlog::spdl
 add_executable(grk_lru_cache_test grk_lru_cache_test.cpp GrkLRUCacheTest.cpp)
 target_include_directories(grk_lru_cache_test PRIVATE
   ${GROK_SOURCE_DIR}/src/lib/core/cache
+  ${GROK_SOURCE_DIR}/src/lib/core/t2
   ${CMAKE_BINARY_DIR}/src/lib/core
 )
 target_link_libraries(grk_lru_cache_test ${GROK_CORE_NAME} spdlog::spdlog)

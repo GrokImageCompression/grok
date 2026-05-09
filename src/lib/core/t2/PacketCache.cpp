@@ -38,10 +38,21 @@ PacketCache::~PacketCache()
     delete p;
 }
 
-void PacketCache::next(size_t offset)
+void PacketCache::next(size_t offset, bool dataPresent)
 {
-  SparseBuffer::chunkSkip(offset);
+  if(dataPresent)
+    SparseBuffer::chunkSkip(offset);
   next();
+}
+
+bool PacketCache::isSelectiveFetch(void) const
+{
+  return selectiveFetch_;
+}
+
+void PacketCache::setSelectiveFetch(bool selective)
+{
+  selectiveFetch_ = selective;
 }
 
 void PacketCache::rewind(void)
