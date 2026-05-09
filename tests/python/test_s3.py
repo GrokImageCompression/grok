@@ -630,3 +630,112 @@ class TestS3LRUCache:
             assert ref_hashes[tidx] == lru_hashes[tidx], (
                 f"Tile {tidx} pixel mismatch with low cache limit"
             )
+
+
+# ---------------------------------------------------------------------------
+# PLT-based selective fetch over S3 (one test per progression order)
+# ---------------------------------------------------------------------------
+
+PROGRESSIONS = ["LRCP", "RLCP", "RPCL", "PCRL", "CPRL"]
+
+
+def _make_selective_jp2(tmp_path, progression, width=256, height=256):
+    """Create a multi-tile JP2 with TLM, PLT, 4 resolutions, 2 layers."""
+    pgm_path = str(tmp_path / "input.pgm")
+    make_pgm(pgm_path, width=width, height=height)
+    filename = f"selective_{progression}.jp2"
+    jp2_path = str(tmp_path / filename)
+    args = [
+        "grk_compress",
+        "-i", pgm_path,
+        "-o", jp2_path,
+        "-t", "128,128",       # multi-tile
+        "-X",                  # TLM
+        "-L",                  # PLT
+        "-n", "4",             # 4 resolutions
+        "-p", progression,
+        "-r", "20,1",          # 2 layers (20x compressed + lossless)
+    ]
+    rc = grok_codec.grk_codec_compress(args, None, None)
+    assert rc == 0, f"Compress failed for {progression}"
+    assert os.path.getsize(jp2_path) > 0
+    return jp2_path, filename
+
+
+@pytest.fixture(
+    scope="module",
+    params=PROGRESSIONS,
+    ids=[f"selective_{p}" for p in PROGRESSIONS],
+)
+def selective_on_minio(request, tmp_path_factory):
+    """Compress with each progression + TLM + PLT, upload to MinIO."""
+    progression = request.param
+    tmp_path = tmp_path_factory.mktemp(f"selective_{progression}")
+    jp2_path, filename = _make_selective_jp2(tmp_path, progression)
+    minio_put_object(BUCKET, filename, jp2_path)
+    return progression, filename, jp2_path
+
+
+@pytest.mark.s3
+@pytest.mark.skipif(grok_core is None, reason="grok_core module not available")
+class TestS3SelectiveFetch:
+    """Test PLT-based selective fetch for each progression order.
+
+    Creates multi-tile JP2 with TLM+PLT for each of the 5 progressions,
+    uploads to MinIO, decompresses from S3 with reduce=2, and verifies
+    the output matches local decompress at the same reduce level.
+    """
+
+    def test_selective_fetch_reduced(self, selective_on_minio, tmp_path):
+        """Decompress from S3 with reduce=2 triggers selective fetch;
+        output must match local decompress."""
+        progression, key, local_jp2 = selective_on_minio
+
+        # Local decompress with reduce=2 (reference)
+        local_out = str(tmp_path / f"local_{progression}.pgm")
+        rc = grok_codec.grk_codec_decompress(
+            ["grk_decompress", "-i", local_jp2, "-o", local_out, "-r", "2"]
+        )
+        assert rc == 0, f"Local decompress failed for {progression}"
+
+        # S3 decompress with reduce=2 (triggers selective fetch path)
+        s3_out = str(tmp_path / f"s3_{progression}.pgm")
+        s3_path = f"/vsis3/{BUCKET}/{key}"
+        rc = grok_codec.grk_codec_decompress(
+            ["grk_decompress", "-i", s3_path, "-o", s3_out, "-r", "2"]
+        )
+        assert rc == 0, f"S3 selective decompress failed for {progression}"
+
+        # Compare outputs
+        with open(local_out, "rb") as f:
+            local_hash = hashlib.sha256(f.read()).hexdigest()
+        with open(s3_out, "rb") as f:
+            s3_hash = hashlib.sha256(f.read()).hexdigest()
+        assert local_hash == s3_hash, (
+            f"Selective fetch output differs from local for {progression}"
+        )
+
+    def test_selective_fetch_full_res_still_works(self, selective_on_minio, tmp_path):
+        """Decompress from S3 with no reduce (full res) still works correctly."""
+        progression, key, local_jp2 = selective_on_minio
+
+        local_out = str(tmp_path / f"local_full_{progression}.pgm")
+        rc = grok_codec.grk_codec_decompress(
+            ["grk_decompress", "-i", local_jp2, "-o", local_out]
+        )
+        assert rc == 0
+
+        s3_out = str(tmp_path / f"s3_full_{progression}.pgm")
+        s3_path = f"/vsis3/{BUCKET}/{key}"
+        rc = grok_codec.grk_codec_decompress(
+            ["grk_decompress", "-i", s3_path, "-o", s3_out]
+        )
+        assert rc == 0
+
+        with open(local_out, "rb") as f:
+            local_hash = hashlib.sha256(f.read()).hexdigest()
+        with open(s3_out, "rb") as f:
+            s3_hash = hashlib.sha256(f.read()).hexdigest()
+        assert local_hash == s3_hash, (
+            f"Full-res S3 output differs from local for {progression}"
+        )

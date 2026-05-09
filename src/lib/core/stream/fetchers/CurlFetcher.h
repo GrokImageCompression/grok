@@ -294,11 +294,10 @@ public:
     // 1. cache fetch data
     {
       std::lock_guard<std::mutex> lock(fetch_mutex_);
-      if(!allTileParts_)
-        allTileParts_ = &allTileParts;
+      allTileParts_ = &allTileParts;
       if(!user_data_)
         user_data_ = user_data;
-      if(!tileFetchCallback_)
+      if(callback)
         tileFetchCallback_ = callback;
     }
 

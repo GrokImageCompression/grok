@@ -1,0 +1,29 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": "../sicorax"
+		},
+		{
+			"path": "../dcpomatic"
+		},
+		{
+			"path": "../dcpdoctor"
+		},
+		{
+			"path": "../imfwizard"
+		},
+		{
+			"path": "../gdal"
+		},
+		{
+			"path": "../postkit"
+		},
+		{
+			"path": "../tiletopia"
+		}
+	],
+	"settings": {}
+}

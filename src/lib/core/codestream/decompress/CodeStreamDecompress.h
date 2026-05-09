@@ -374,6 +374,9 @@ private:
    */
   std::unique_ptr<TileCodingParams> defaultTcp_;
 
+  /** @brief Selective fetch tile-parts (kept alive for async Phase 2 fetch) */
+  TPSEQ_VEC selectiveTileParts_;
+
   /**
    * @brief true if there was an error reading the main header
    */

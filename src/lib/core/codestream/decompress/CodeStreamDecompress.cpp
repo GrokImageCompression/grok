@@ -1753,6 +1753,7 @@ bool CodeStreamDecompress::fetchByTileSelective(
 
   // Phase 1: Fetch 4KB header of each tile-part
   constexpr uint32_t headerFetchSize = 4096;
+  grklog.info("fetchByTileSelective: Phase 1 starting, %zu tiles, reduce=%u", slated.size(), (unsigned)reduce);
 
   // Create modified tile-part info with 4KB lengths for header fetch
   TPSEQ_VEC headerTileParts(allTileParts.size());
@@ -1784,6 +1785,9 @@ bool CodeStreamDecompress::fetchByTileSelective(
   std::promise<bool> phase1Promise;
   auto phase1Future = phase1Promise.get_future();
   auto remainingTiles = std::make_shared<std::atomic<size_t>>(slated.size());
+
+  // Save slated tiles before Phase 1 fetch (fetchTiles moves the set)
+  auto slatedTiles = slated;
 
   // Phase 1 fetch: get tile-part headers
   fetcher->fetchTiles(
@@ -1832,21 +1836,25 @@ bool CodeStreamDecompress::fetchByTileSelective(
       });
 
   // Wait for Phase 1 to complete
+  grklog.info("fetchByTileSelective: waiting for Phase 1...");
   phase1Future.get();
+  grklog.info("fetchByTileSelective: Phase 1 complete");
 
   // Phase 2: Compute needed lengths and fetch truncated tile-parts
   auto numComps = headerImage_->numcomps;
   Rect32 imageBounds(headerImage_->x0, headerImage_->y0, headerImage_->x1, headerImage_->y1);
 
   // Build modified tile-part info with truncated lengths
-  TPSEQ_VEC selectiveTileParts(allTileParts.size());
+  selectiveTileParts_.resize(allTileParts.size());
   auto selectiveFetchTiles = std::make_shared<std::set<uint16_t>>();
 
-  for(auto tileIndex : slated)
+  for(auto tileIndex : slatedTiles)
   {
     auto it = headerResults->find(tileIndex);
     if(it == headerResults->end())
+    {
       continue;
+    }
 
     auto& hdr = it->second;
     bool allValid = true;
@@ -1862,12 +1870,12 @@ bool CodeStreamDecompress::fetchByTileSelective(
     if(!allValid)
     {
       // Fallback: fetch full tile-part (no PLT or parsing failed)
-      selectiveTileParts[tileIndex] = std::make_unique<TPSeq>();
+      selectiveTileParts_[tileIndex] = std::make_unique<TPSeq>();
       auto& srcParts = allTileParts[tileIndex];
       for(size_t i = 0; i < srcParts->size(); ++i)
       {
         auto& part = (*srcParts)[i];
-        selectiveTileParts[tileIndex]->push_back(
+        selectiveTileParts_[tileIndex]->push_back(
             (uint8_t)i, (uint8_t)srcParts->size(), part->offset_, (uint32_t)part->length_);
       }
       selectiveFetchTiles->insert(tileIndex);
@@ -1879,8 +1887,8 @@ bool CodeStreamDecompress::fetchByTileSelective(
     uint16_t tileY = tileIndex / cp_.t_grid_width_;
     auto tileBounds = cp_.getTileBounds(imageBounds, tileX, tileY);
 
-    // Get coding params for this tile
-    auto tcp = cp_.tcps_.get(tileIndex);
+    // Get coding params from default TCP (main header - tile TCPs aren't parsed yet)
+    auto tcp = defaultTcp_.get();
 
     // Combine PLT lengths from all tile-parts
     std::vector<uint32_t> allPltLengths;
@@ -1932,12 +1940,12 @@ bool CodeStreamDecompress::fetchByTileSelective(
     if(ranges.empty())
     {
       // No savings possible, fetch full tile-parts
-      selectiveTileParts[tileIndex] = std::make_unique<TPSeq>();
+      selectiveTileParts_[tileIndex] = std::make_unique<TPSeq>();
       auto& srcParts = allTileParts[tileIndex];
       for(size_t i = 0; i < srcParts->size(); ++i)
       {
         auto& part = (*srcParts)[i];
-        selectiveTileParts[tileIndex]->push_back(
+        selectiveTileParts_[tileIndex]->push_back(
             (uint8_t)i, (uint8_t)srcParts->size(), part->offset_, (uint32_t)part->length_);
       }
       selectiveFetchTiles->insert(tileIndex);
@@ -1947,7 +1955,7 @@ bool CodeStreamDecompress::fetchByTileSelective(
     // Check if ranges are contiguous starting at offset 0 (RLCP/RPCL/single-layer LRCP)
     bool contiguous = (ranges.size() == 1 && ranges[0].offset == 0);
 
-    selectiveTileParts[tileIndex] = std::make_unique<TPSeq>();
+    selectiveTileParts_[tileIndex] = std::make_unique<TPSeq>();
     auto& srcParts = allTileParts[tileIndex];
 
     if(contiguous)
@@ -1960,7 +1968,7 @@ bool CodeStreamDecompress::fetchByTileSelective(
         auto& headerInfo = hdr.headerInfos[0];
         uint64_t truncatedLen = headerInfo.sodOffset + 2 + neededDataBytes;
         truncatedLen = std::min<uint64_t>(truncatedLen, part->length_);
-        selectiveTileParts[tileIndex]->push_back(0, 1, part->offset_, (uint32_t)truncatedLen);
+        selectiveTileParts_[tileIndex]->push_back(0, 1, part->offset_, (uint32_t)truncatedLen);
       }
       else
       {
@@ -1972,21 +1980,21 @@ bool CodeStreamDecompress::fetchByTileSelective(
           auto& headerInfo = hdr.headerInfos[i];
           if(!headerInfo.valid)
           {
-            selectiveTileParts[tileIndex]->push_back(
+            selectiveTileParts_[tileIndex]->push_back(
                 (uint8_t)i, (uint8_t)srcParts->size(), part->offset_, (uint32_t)part->length_);
             continue;
           }
           uint64_t tpDataSize = part->length_ - headerInfo.sodOffset - 2;
           if(remainingNeeded >= tpDataSize)
           {
-            selectiveTileParts[tileIndex]->push_back(
+            selectiveTileParts_[tileIndex]->push_back(
                 (uint8_t)i, (uint8_t)srcParts->size(), part->offset_, (uint32_t)part->length_);
             remainingNeeded -= tpDataSize;
           }
           else
           {
             uint64_t truncatedLen = headerInfo.sodOffset + 2 + remainingNeeded;
-            selectiveTileParts[tileIndex]->push_back(
+            selectiveTileParts_[tileIndex]->push_back(
                 (uint8_t)i, (uint8_t)srcParts->size(), part->offset_, (uint32_t)truncatedLen);
             remainingNeeded = 0;
           }
@@ -2003,7 +2011,7 @@ bool CodeStreamDecompress::fetchByTileSelective(
         for(size_t i = 0; i < srcParts->size(); ++i)
         {
           auto& part = (*srcParts)[i];
-          selectiveTileParts[tileIndex]->push_back(
+          selectiveTileParts_[tileIndex]->push_back(
               (uint8_t)i, (uint8_t)srcParts->size(), part->offset_, (uint32_t)part->length_);
         }
         selectiveFetchTiles->insert(tileIndex);
@@ -2016,7 +2024,7 @@ bool CodeStreamDecompress::fetchByTileSelective(
 
       // Entry 0: header (tile-part start to SOD+2)
       uint32_t headerLen = (uint32_t)(headerInfo.sodOffset + 2);
-      selectiveTileParts[tileIndex]->push_back(0, numEntries, part->offset_, headerLen);
+      selectiveTileParts_[tileIndex]->push_back(0, numEntries, part->offset_, headerLen);
 
       // Entries 1..N: data ranges (offset relative to tile-part packet data start)
       uint64_t dataStart = part->offset_ + headerInfo.sodOffset + 2;
@@ -2024,7 +2032,7 @@ bool CodeStreamDecompress::fetchByTileSelective(
       {
         uint64_t rangeFileOffset = dataStart + ranges[r].offset;
         uint32_t rangeLen = (uint32_t)ranges[r].length;
-        selectiveTileParts[tileIndex]->push_back(
+        selectiveTileParts_[tileIndex]->push_back(
             (uint8_t)(1 + r), numEntries, rangeFileOffset, rangeLen);
       }
     }
@@ -2033,13 +2041,14 @@ bool CodeStreamDecompress::fetchByTileSelective(
 
   if(selectiveFetchTiles->empty())
     return false;
+  grklog.info("fetchByTileSelective: %zu tiles to fetch", selectiveFetchTiles->size());
 
   // Track which tiles have disjoint (sparse) fetch entries
   auto disjointTiles = std::make_shared<std::set<uint16_t>>();
   for(auto tileIndex : *selectiveFetchTiles)
   {
     auto& srcParts = allTileParts[tileIndex];
-    auto& selParts = selectiveTileParts[tileIndex];
+    auto& selParts = selectiveTileParts_[tileIndex];
     if(selParts && selParts->size() > srcParts->size())
       disjointTiles->insert(tileIndex);
   }
@@ -2068,7 +2077,7 @@ bool CodeStreamDecompress::fetchByTileSelective(
   });
 
   fetchByTileFutures_.push_back(fetcher->fetchTiles(
-      selectiveTileParts, *selectiveFetchTiles, nullptr,
+      selectiveTileParts_, *selectiveFetchTiles, nullptr,
       [this, numTileCols, unreducedImageBounds, postGenerator,
        selectiveFetchTiles, disjointTiles](size_t requestIndex, TileFetchContext* context) {
         auto& tilePart = (*context->requests_)[requestIndex];

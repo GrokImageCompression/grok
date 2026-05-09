@@ -23,10 +23,14 @@
 #include "grok.h"
 
 #ifdef _WIN32
+#ifdef GRK_STATIC
+#define GRK_INTERNAL
+#else
 #ifdef GRK_EXPORTS
 #define GRK_INTERNAL __declspec(dllexport)
 #else
 #define GRK_INTERNAL __declspec(dllimport)
+#endif
 #endif
 #else
 #define GRK_INTERNAL __attribute__((visibility("default")))
