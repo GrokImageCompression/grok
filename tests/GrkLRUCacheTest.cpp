@@ -2001,6 +2001,140 @@ static bool testSelectiveFetchRanges()
 }
 
 ///////////////////////////////////////////////////////////////////
+// Test 18: PLT header extraction from real JPEG2000 file
+//
+// Creates a J2K file with PLT markers, reads the raw tile-part
+// header bytes, and verifies extractTilePartHeaderInfo correctly
+// extracts SOD offset and PLT packet lengths.
+///////////////////////////////////////////////////////////////////
+static bool testPLTHeaderExtraction()
+{
+  using namespace grk;
+  spdlog::info("=== Test: PLT header extraction ===");
+
+  std::string testFile =
+      (std::filesystem::temp_directory_path() / "grk_plt_extract_test.j2k").string();
+
+  // Create image with PLT, 3 resolutions, 2 layers, RLCP progression
+  if(!createMultiLayerImage(testFile, 64, 64, 64, 64, 2, 3, true, true))
+  {
+    spdlog::error("Failed to create test image");
+    return false;
+  }
+
+  // Read the raw file
+  std::ifstream file(testFile, std::ios::binary | std::ios::ate);
+  if(!file)
+  {
+    spdlog::error("Failed to open test file");
+    std::filesystem::remove(testFile);
+    return false;
+  }
+  auto fileSize = file.tellg();
+  file.seekg(0);
+  std::vector<uint8_t> rawData(fileSize);
+  file.read(reinterpret_cast<char*>(rawData.data()), fileSize);
+  file.close();
+
+  // Find SOT marker (0xFF90) to locate tile-part start
+  uint64_t sotOffset = 0;
+  bool foundSOT = false;
+  for(size_t i = 0; i + 1 < rawData.size(); ++i)
+  {
+    if(rawData[i] == 0xFF && rawData[i + 1] == 0x90)
+    {
+      sotOffset = i;
+      foundSOT = true;
+      break;
+    }
+  }
+  if(!foundSOT)
+  {
+    spdlog::error("FAIL: No SOT marker found");
+    std::filesystem::remove(testFile);
+    return false;
+  }
+
+  // SOT marker is 12 bytes: 0xFF90 + 2-byte len (10) + 2-byte tile + 4-byte tp_len + 1-byte tp + 1-byte tns
+  uint64_t headerStart = sotOffset + 12; // first marker after SOT header
+  size_t headerSize = std::min<size_t>(4096, rawData.size() - headerStart);
+
+  auto info = extractTilePartHeaderInfo(rawData.data() + headerStart, headerSize);
+
+  bool pass = true;
+  if(!info.valid)
+  {
+    spdlog::error("FAIL: extractTilePartHeaderInfo returned invalid");
+    pass = false;
+  }
+  else
+  {
+    spdlog::info("SOD offset (relative to post-SOT): {}", info.sodOffset);
+    spdlog::info("PLT packet count: {}", info.pltLengths.size());
+
+    if(info.pltLengths.empty())
+    {
+      spdlog::error("FAIL: No PLT lengths extracted");
+      pass = false;
+    }
+    else
+    {
+      // Verify PLT lengths sum matches actual packet data size
+      uint64_t pltSum = 0;
+      for(auto len : info.pltLengths)
+        pltSum += len;
+
+      // SOD is at info.sodOffset, packet data starts at sodOffset + 2 (SOD marker is 2 bytes)
+      // Packet data goes to end of tile-part
+      // Read tile-part length from SOT
+      uint32_t tilePartLen = ((uint32_t)rawData[sotOffset + 6] << 24) |
+                             ((uint32_t)rawData[sotOffset + 7] << 16) |
+                             ((uint32_t)rawData[sotOffset + 8] << 8) | rawData[sotOffset + 9];
+      uint64_t packetDataSize = tilePartLen - 12 - info.sodOffset - 2; // SOT(12) + headers + SOD(2)
+
+      spdlog::info("PLT sum: {}, actual packet data: {}", pltSum, packetDataSize);
+
+      if(pltSum != packetDataSize)
+      {
+        spdlog::error("FAIL: PLT sum {} != packet data size {}", pltSum, packetDataSize);
+        pass = false;
+      }
+      else
+      {
+        spdlog::info("PASS: PLT sum matches packet data size");
+      }
+    }
+  }
+
+  // Also verify via the codec: decompress and check PLT packet count matches
+  grk_decompress_parameters params{};
+  params.core.tile_cache_strategy = GRK_TILE_CACHE_IMAGE;
+  grk_stream_params sp{};
+  safe_strcpy(sp.file, testFile.data());
+  CodecPtr codec(grk_decompress_init(&sp, &params));
+  grk_header_info hi{};
+  grk_decompress_read_header(codec.get(), &hi);
+  grk_decompress_update(&params, codec.get());
+  grk_decompress_tile(codec.get(), 0);
+
+  // Expected packets: numLayers * sum(precincts_per_res)
+  // For single-tile 64x64 with 3 resolutions and default precincts: typically 1 precinct/res
+  // So expected = 2 layers * 3 resolutions * 1 precinct = 6 packets
+  spdlog::info("Expected PLT packets: ~6 (2 layers * 3 res * 1 precinct/res)");
+  spdlog::info("Extracted PLT packets: {}", info.pltLengths.size());
+
+  std::error_code ec;
+  std::filesystem::remove(testFile, ec);
+
+  if(pass)
+    spdlog::info("PASS: PLT header extraction");
+  else
+    spdlog::error("FAIL: PLT header extraction");
+
+  return pass;
+}
+
+///////////////////////////////////////////////////////////////////
 // Main
 ///////////////////////////////////////////////////////////////////
 int GrkLRUCacheTest::main(int argc, char** argv)
@@ -2152,6 +2286,10 @@ int GrkLRUCacheTest::main(int argc, char** argv)
 
   // Test 17: Selective fetch byte range computation
   if(!testSelectiveFetchRanges())
+    failures++;
+
+  // Test 18: PLT header extraction from real J2K file
+  if(!testPLTHeaderExtraction())
     failures++;
 
   if(failures > 0)

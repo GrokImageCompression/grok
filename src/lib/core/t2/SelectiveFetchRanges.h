@@ -93,4 +93,44 @@ GRK_INTERNAL std::vector<FetchRange> computeSelectiveFetchRanges(const TilePacke
  */
 GRK_INTERNAL uint64_t computeTotalPackets(const TilePacketInfo& info);
 
+/**
+ * @brief Result of parsing a tile-part header for selective fetch
+ */
+struct TilePartHeaderInfo
+{
+  uint64_t sodOffset; ///< byte offset of SOD marker within the tile-part
+  std::vector<uint32_t> pltLengths; ///< decoded PLT packet lengths
+  bool valid; ///< true if parsing succeeded
+};
+
+/**
+ * @brief Extracts PLT packet lengths and SOD offset from raw tile-part header bytes
+ *
+ * Scans the header bytes for PLT markers (0xFF58) and SOD marker (0xFF93).
+ * Decodes PLT VBR-encoded packet lengths. Does NOT require full codec infrastructure.
+ *
+ * @param headerData pointer to raw tile-part header bytes (starting from first marker after SOT)
+ * @param headerSize number of bytes available
+ * @return TilePartHeaderInfo with SOD offset and PLT lengths, or valid=false on error
+ */
+GRK_INTERNAL TilePartHeaderInfo extractTilePartHeaderInfo(const uint8_t* headerData,
+                                                          size_t headerSize);
+
+/**
+ * @brief Computes precinct count for a single resolution of a single component
+ *
+ * Uses the same formula as PacketManager::getParams.
+ *
+ * @param tileCompBounds tile-component bounds (tile bounds scaled by component subsampling)
+ * @param numResolutions total resolutions for this component
+ * @param resno resolution index (0 = lowest)
+ * @param precWidthExp log2 of precinct width for this resolution
+ * @param precHeightExp log2 of precinct height for this resolution
+ * @return number of precincts at this resolution
+ */
+GRK_INTERNAL uint64_t computeNumPrecincts(uint32_t tcx0, uint32_t tcy0,
+                                          uint32_t tcx1, uint32_t tcy1,
+                                          uint8_t numResolutions, uint8_t resno,
+                                          uint8_t precWidthExp, uint8_t precHeightExp);
+
 } // namespace grk

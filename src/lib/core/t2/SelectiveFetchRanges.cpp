@@ -20,6 +20,19 @@
 #include <algorithm>
 #include <cassert>
 
+namespace
+{
+template<typename T>
+T ceildivpow2_local(T a, uint8_t b)
+{
+  return (T)((a + ((uint64_t)1 << b) - 1) >> b);
+}
+inline uint32_t floordivpow2_local(uint32_t a, uint8_t b)
+{
+  return a >> b;
+}
+} // namespace
+
 namespace grk
 {
 
@@ -273,6 +286,118 @@ std::vector<FetchRange> computeSelectiveFetchRanges(const TilePacketInfo& info,
   }
 
   return ranges;
+}
+
+TilePartHeaderInfo extractTilePartHeaderInfo(const uint8_t* headerData, size_t headerSize)
+{
+  TilePartHeaderInfo result{};
+  result.valid = false;
+
+  if(!headerData || headerSize < 4)
+    return result;
+
+  // Marker IDs
+  constexpr uint16_t PLT_MARKER = 0xFF58;
+  constexpr uint16_t SOD_MARKER = 0xFF93;
+
+  size_t pos = 0;
+
+  // Scan for markers. Each marker is 0xFF XX, followed by a 2-byte big-endian length
+  // (except SOD which has no length field — data follows immediately).
+  while(pos + 1 < headerSize)
+  {
+    // Look for marker prefix
+    if(headerData[pos] != 0xFF)
+    {
+      pos++;
+      continue;
+    }
+
+    uint16_t markerId = ((uint16_t)headerData[pos] << 8) | headerData[pos + 1];
+
+    if(markerId == SOD_MARKER)
+    {
+      result.sodOffset = pos;
+      result.valid = true;
+      return result;
+    }
+
+    // All other markers have a 2-byte length field after the marker ID
+    if(pos + 3 >= headerSize)
+      break; // not enough data for length field
+
+    uint16_t markerLen = ((uint16_t)headerData[pos + 2] << 8) | headerData[pos + 3];
+
+    if(markerId == PLT_MARKER)
+    {
+      // PLT body starts at pos+4, length is markerLen-2 (excluding length field itself)
+      // First byte after length is Zplt (index), rest are VBR-encoded packet lengths
+      if(pos + 4 >= headerSize || markerLen < 3)
+      {
+        pos += 2 + markerLen;
+        continue;
+      }
+
+      // Skip Zplt byte
+      size_t pltStart = pos + 5; // pos+2 (len field) + 2 (len value) + 1 (Zplt)
+      size_t pltEnd = pos + 2 + markerLen;
+      if(pltEnd > headerSize)
+        pltEnd = headerSize;
+
+      // Decode VBR packet lengths
+      uint32_t packetLen = 0;
+      for(size_t i = pltStart; i < pltEnd; ++i)
+      {
+        uint8_t byte = headerData[i];
+        packetLen |= (byte & 0x7F);
+        if(byte & 0x80)
+        {
+          packetLen <<= 7;
+        }
+        else
+        {
+          result.pltLengths.push_back(packetLen);
+          packetLen = 0;
+        }
+      }
+    }
+
+    // Advance past this marker: marker_id(2) + length(markerLen includes length field bytes)
+    pos += 2 + markerLen;
+  }
+
+  // If we reach here, SOD was not found
+  return result;
+}
+
+uint64_t computeNumPrecincts(uint32_t tcx0, uint32_t tcy0,
+                             uint32_t tcx1, uint32_t tcy1,
+                             uint8_t numResolutions, uint8_t resno,
+                             uint8_t precWidthExp, uint8_t precHeightExp)
+{
+  // Scale tile-component bounds to resolution level
+  uint8_t power = (uint8_t)(numResolutions - 1U - resno);
+  uint32_t rx0 = ceildivpow2_local(tcx0, power);
+  uint32_t ry0 = ceildivpow2_local(tcy0, power);
+  uint32_t rx1 = ceildivpow2_local(tcx1, power);
+  uint32_t ry1 = ceildivpow2_local(tcy1, power);
+
+  uint32_t resW = (rx1 > rx0) ? (rx1 - rx0) : 0;
+  uint32_t resH = (ry1 > ry0) ? (ry1 - ry0) : 0;
+
+  if(resW == 0 || resH == 0)
+    return 0;
+
+  // Compute precinct grid
+  uint32_t adjX0 = floordivpow2_local(rx0, precWidthExp) << precWidthExp;
+  uint32_t adjY0 = floordivpow2_local(ry0, precHeightExp) << precHeightExp;
+  uint32_t adjX1 = ceildivpow2_local(rx1, precWidthExp) << precWidthExp;
+  uint32_t adjY1 = ceildivpow2_local(ry1, precHeightExp) << precHeightExp;
+
+  uint32_t gridW = (adjX1 - adjX0) >> precWidthExp;
+  uint32_t gridH = (adjY1 - adjY0) >> precHeightExp;
+
+  return (uint64_t)gridW * gridH;
 }
 
 } // namespace grk
