@@ -1345,6 +1345,52 @@
             ],
             "MIMode": "gdb",
             "miDebuggerPath": "/usr/bin/gdb"
+        },
+        {
+            "name": "TCI Selective Fetch MINIO",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/bin/grk_decompress",
+            "args": [
+                "-i",
+                "/vsis3/grok/T32TQM_20241115T100159_TCI_10m.jp2",
+                "-o",
+                "$HOME/temp/tci_selective.tif",
+                // "-r",
+                // "2"
+            ],
+            "cwd": "${workspaceFolder}",
+            "environment": [
+                { "name": "GRK_DEBUG", "value": "4" },
+                { "name": "AWS_ACCESS_KEY_ID", "value": "minioadmin" },
+                { "name": "AWS_SECRET_ACCESS_KEY", "value": "minioadmin" },
+                { "name": "AWS_S3_ENDPOINT", "value": "localhost:9000" },
+                { "name": "AWS_VIRTUAL_HOSTING", "value": "FALSE" },
+                { "name": "AWS_HTTPS", "value": "YES" },
+                { "name": "GRK_CURL_ALLOW_INSECURE", "value": "YES" }
+            ],
+            "MIMode": "gdb",
+            "miDebuggerPath": "/usr/bin/gdb"
+        },
+              {
+            "name": "TCI Selective Fetch",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/bin/grk_decompress",
+            "args": [
+                "-i",
+                "~/temp/T32TQM_20241115T100159_TCI_10m.jp2",
+                "-o",
+                "$HOME/temp/tci_selective.tif",
+                "-r",
+                "2"
+            ],
+            "cwd": "${workspaceFolder}",
+            "environment": [
+                { "name": "GRK_DEBUG", "value": "3" },
+            ],
+            "MIMode": "gdb",
+            "miDebuggerPath": "/usr/bin/gdb"
         }
     ],
     "inputs": [

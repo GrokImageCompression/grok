@@ -1449,12 +1449,15 @@ void CodeStreamDecompress::wait(grk_wait_swath* swath)
   // the back-pressure logic in scheduleTileBatch() prevents scheduling queued tiles
   // because lastCleared never advances (no swath consumer). Force-schedule all
   // remaining tiles so the worker thread can exit.
-  if(tileCompletion_ && doTileBatching())
+  // Also unblock the fetch throttle for selective fetch (fetchByTileSelective),
+  // which uses the row-based throttle even in synchronous mode.
+  if(tileCompletion_)
   {
     // Remove the scheduling limit so scheduleTileBatch can drain
     batchTileScheduledRows_ = 0;
     tileCompletion_->setLastClearedTileY(INT16_MAX);
-    scheduleTileBatch();
+    if(doTileBatching())
+      scheduleTileBatch();
   }
 
   // 2b. wait for sequential parse
