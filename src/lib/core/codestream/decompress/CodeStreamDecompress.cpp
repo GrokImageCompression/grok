@@ -2039,7 +2039,119 @@ bool CodeStreamDecompress::fetchByTileSelective(
     selectiveFetchTiles->insert(tileIndex);
   }
 
-  if(selectiveFetchTiles->empty())
+  // Reuse Phase 1 data for tiles where all needed data fits within the header fetch
+  struct PrefetchedTile
+  {
+    uint16_t tileIndex;
+    std::shared_ptr<TPFetchSeq> decompressSeq;
+    bool disjoint;
+  };
+  std::vector<PrefetchedTile> prefetchedTiles;
+  for(auto it = selectiveFetchTiles->begin(); it != selectiveFetchTiles->end();)
+  {
+    auto tileIndex = *it;
+    auto& selParts = selectiveTileParts_[tileIndex];
+    auto headerIt = headerResults->find(tileIndex);
+    if(!selParts || headerIt == headerResults->end())
+    {
+      ++it;
+      continue;
+    }
+    auto& hdr = headerIt->second;
+    auto& srcParts = allTileParts[tileIndex];
+    bool isDjoint = (selParts->size() != srcParts->size());
+
+    // Check if all entries' data fits within Phase 1 buffers
+    bool allFit = true;
+    if(!isDjoint)
+    {
+      // Contiguous: each entry maps 1:1 to a tile-part's Phase 1 buffer
+      for(size_t i = 0; i < selParts->size(); ++i)
+      {
+        if(i >= hdr.headerSizes.size() || !hdr.headerData[i] ||
+           (*selParts)[i]->length_ > hdr.headerSizes[i])
+        {
+          allFit = false;
+          break;
+        }
+      }
+    }
+    else
+    {
+      // Disjoint (single tile-part only): entries are sub-ranges within the one buffer
+      if(srcParts->size() != 1 || hdr.headerSizes.empty() || !hdr.headerData[0])
+      {
+        allFit = false;
+      }
+      else
+      {
+        uint64_t baseOffset = (*srcParts)[0]->offset_;
+        uint32_t bufSize = hdr.headerSizes[0];
+        for(size_t i = 0; i < selParts->size(); ++i)
+        {
+          auto& entry = (*selParts)[i];
+          uint64_t relOff = entry->offset_ - baseOffset;
+          if(relOff + entry->length_ > bufSize)
+          {
+            allFit = false;
+            break;
+          }
+        }
+      }
+    }
+    if(!allFit)
+    {
+      ++it;
+      continue;
+    }
+    // Build decompression sequence from Phase 1 data
+    if(!isDjoint)
+    {
+      auto decompressSeq = std::make_shared<TPFetchSeq>();
+      for(size_t i = 0; i < selParts->size(); ++i)
+      {
+        auto& entry = (*selParts)[i];
+        auto fetch = std::make_shared<TPFetch>(entry->offset_, entry->length_, tileIndex);
+        fetch->data_ = std::make_unique<uint8_t[]>(entry->length_);
+        std::memcpy(fetch->data_.get(), hdr.headerData[i].get(), entry->length_);
+        fetch->stream_ = std::unique_ptr<IStream>(memStreamCreate(
+            fetch->data_.get(), fetch->length_, false, nullptr, stream_->getFormat(), true));
+        decompressSeq->SharedPtrSeq<TPFetch>::push_back(fetch);
+      }
+      prefetchedTiles.push_back({tileIndex, decompressSeq, false});
+    }
+    else
+    {
+      // Disjoint: assemble header + data ranges into single contiguous buffer
+      uint64_t baseOffset = (*srcParts)[0]->offset_;
+      uint64_t totalSize = 0;
+      for(size_t i = 0; i < selParts->size(); ++i)
+        totalSize += (*selParts)[i]->length_;
+
+      auto assembled = std::make_unique<uint8_t[]>(totalSize);
+      uint64_t pos = 0;
+      for(size_t i = 0; i < selParts->size(); ++i)
+      {
+        auto& entry = (*selParts)[i];
+        uint64_t relOff = entry->offset_ - baseOffset;
+        std::memcpy(assembled.get() + pos, hdr.headerData[0].get() + relOff, entry->length_);
+        pos += entry->length_;
+      }
+
+      auto decompressSeq = std::make_shared<TPFetchSeq>();
+      auto assembledFetch = std::make_shared<TPFetch>(0, totalSize, tileIndex);
+      assembledFetch->data_ = std::move(assembled);
+      assembledFetch->stream_ = std::unique_ptr<IStream>(memStreamCreate(
+          assembledFetch->data_.get(), totalSize, false, nullptr, stream_->getFormat(), true));
+      decompressSeq->SharedPtrSeq<TPFetch>::push_back(assembledFetch);
+      prefetchedTiles.push_back({tileIndex, decompressSeq, true});
+    }
+    it = selectiveFetchTiles->erase(it);
+  }
+  if(!prefetchedTiles.empty())
+    grklog.debug("fetchByTileSelective: %zu tiles reusing Phase 1 data", prefetchedTiles.size());
+
+  if(selectiveFetchTiles->empty() && prefetchedTiles.empty())
     return false;
   grklog.debug("fetchByTileSelective: %zu tiles to fetch", selectiveFetchTiles->size());
 
@@ -2060,6 +2172,35 @@ bool CodeStreamDecompress::fetchByTileSelective(
                                    (uint16_t)((maxRowsAhead_ + 1) * cp_.t_grid_width_)));
 
   auto numTileCols = cp_.t_grid_width_;
+
+  // Queue pre-fetched tiles directly for decompression (reusing Phase 1 data)
+  for(auto& pf : prefetchedTiles)
+  {
+    if(compressedChunkCache_)
+      compressedChunkCache_->put(pf.tileIndex, pf.decompressSeq);
+
+    int32_t tileRow = pf.tileIndex / numTileCols;
+    int32_t prev = maxFetchedTileRow_.load(std::memory_order_acquire);
+    while(prev < tileRow &&
+          !maxFetchedTileRow_.compare_exchange_weak(prev, tileRow, std::memory_order_release,
+                                                    std::memory_order_acquire))
+    {
+    }
+    decompressQueue_->push(
+        [this, tileIndex = pf.tileIndex, decompressSeq = pf.decompressSeq,
+         unreducedImageBounds, postGenerator]() {
+          const auto tileProcessor = getTileProcessor(tileIndex);
+          auto* tp = dynamic_cast<TileProcessor*>(tileProcessor);
+          if(tp)
+            tp->setSelectiveFetch(true);
+          auto decompressTask = genDecompressTileTLMTask(tileProcessor, decompressSeq,
+                                                         unreducedImageBounds, postGenerator);
+          decompressTask();
+        });
+  }
+
+  if(!selectiveFetchTiles->empty())
+  {
   fetcher->setFetchThrottle([this]() {
     if(tileCompletion_)
     {
@@ -2150,6 +2291,7 @@ bool CodeStreamDecompress::fetchByTileSelective(
               });
         }
       }));
+  } // if(!selectiveFetchTiles->empty())
 
   return true;
 }
