@@ -18,6 +18,7 @@
 #pragma once
 
 #include <cstdint>
+#include <memory>
 #include <vector>
 
 #include "grok.h"
@@ -105,6 +106,19 @@ struct TilePartHeaderInfo
   uint64_t sodOffset; ///< byte offset of SOD marker within the tile-part
   std::vector<uint32_t> pltLengths; ///< decoded PLT packet lengths
   bool valid; ///< true if parsing succeeded
+};
+
+/**
+ * @brief Aggregated Phase 1 header results for all tile-parts of a single tile.
+ *
+ * Populated during the Phase 1 header probe of fetchByTileSelective().
+ * Contains parsed PLT/SOD info plus the raw bytes for potential Phase 1 data reuse.
+ */
+struct TileHeaderResult
+{
+  std::vector<TilePartHeaderInfo> headerInfos; ///< parsed PLT + SOD per tile-part
+  std::vector<std::unique_ptr<uint8_t[]>> headerData; ///< raw header bytes per tile-part
+  std::vector<uint32_t> headerSizes; ///< actual byte count fetched per tile-part
 };
 
 /**

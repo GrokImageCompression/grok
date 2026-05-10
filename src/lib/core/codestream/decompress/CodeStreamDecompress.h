@@ -20,6 +20,7 @@
 #include "ConcurrentQueue.h"
 #include "TFSingleton.h"
 #include "CompressedChunkCache.h"
+#include "SelectiveFetchRanges.h"
 #include <map>
 
 namespace grk
@@ -510,6 +511,46 @@ private:
       uint16_t tileIndex, std::shared_ptr<TPFetchSeq> decompressSeq, uint16_t numTileCols,
       Rect32 unreducedImageBounds,
       std::function<std::function<void()>(ITileProcessor*)> postGenerator);
+
+  /**
+   * @brief Build selective tile-part entries for a single tile.
+   *
+   * Uses PLT packet lengths from the Phase 1 header result and the tile's
+   * progression order to compute the minimal fetch ranges for the target
+   * resolution. Populates selectiveTileParts_[tileIndex] with either:
+   *  - Truncated entries (contiguous case) — one per tile-part, trimmed to
+   *    the needed prefix of packet data.
+   *  - Synthetic entries (disjoint case) — header entry + one entry per
+   *    disjoint data range within the tile-part.
+   *  - Full tile-part entries (fallback) — when PLT is invalid or no savings
+   *    are possible.
+   *
+   * @param tileIndex       tile index
+   * @param hdr             Phase 1 header result for this tile
+   * @param allTileParts    full tile-part offset/length info from TLM
+   * @param reduce          resolution reduction level
+   */
+  void buildSelectiveTileParts(uint16_t tileIndex, const TileHeaderResult& hdr,
+                               const TPSEQ_VEC& allTileParts, uint8_t reduce);
+
+  /**
+   * @brief Try to reuse Phase 1 data for tiles whose needed bytes fit in the header fetch.
+   *
+   * For each tile in selectiveFetchTiles, checks whether all selective entries
+   * fit within the already-fetched Phase 1 buffers. If so, builds a decompression
+   * sequence directly from Phase 1 data and removes the tile from the fetch set.
+   *
+   * Handles both contiguous and disjoint layouts.
+   *
+   * @param selectiveFetchTiles  tiles scheduled for Phase 2 fetch (modified in-place)
+   * @param headerResults        Phase 1 header data per tile
+   * @param allTileParts         full tile-part info from TLM
+   * @return vector of tiles with pre-built decompression sequences
+   */
+  std::vector<std::pair<uint16_t, std::shared_ptr<TPFetchSeq>>> reusePhase1Data(
+      std::shared_ptr<std::set<uint16_t>>& selectiveFetchTiles,
+      const std::unordered_map<uint16_t, TileHeaderResult>& headerResults,
+      const TPSEQ_VEC& allTileParts);
 
   /**
    * @brief Scratch @ref GrkImage for decompressor
