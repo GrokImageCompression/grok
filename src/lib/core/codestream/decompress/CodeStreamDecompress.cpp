@@ -1743,6 +1743,33 @@ bool CodeStreamDecompress::fetchByTile(
   return true;
 }
 
+void CodeStreamDecompress::enqueueTileForDecompress(
+    uint16_t tileIndex, std::shared_ptr<TPFetchSeq> decompressSeq, uint16_t numTileCols,
+    Rect32 unreducedImageBounds,
+    std::function<std::function<void()>(ITileProcessor*)> postGenerator)
+{
+  if(compressedChunkCache_)
+    compressedChunkCache_->put(tileIndex, decompressSeq);
+
+  int32_t tileRow = tileIndex / numTileCols;
+  int32_t prev = maxFetchedTileRow_.load(std::memory_order_acquire);
+  while(prev < tileRow &&
+        !maxFetchedTileRow_.compare_exchange_weak(prev, tileRow, std::memory_order_release,
+                                                  std::memory_order_acquire))
+  {
+  }
+  decompressQueue_->push(
+      [this, tileIndex, decompressSeq, unreducedImageBounds, postGenerator]() {
+        const auto tileProcessor = getTileProcessor(tileIndex);
+        auto* tp = dynamic_cast<TileProcessor*>(tileProcessor);
+        if(tp)
+          tp->setSelectiveFetch(true);
+        auto decompressTask = genDecompressTileTLMTask(tileProcessor, decompressSeq,
+                                                       unreducedImageBounds, postGenerator);
+        decompressTask();
+      });
+}
+
 bool CodeStreamDecompress::fetchByTileSelective(
     std::set<uint16_t>& slated, Rect32 unreducedImageBounds,
     std::function<std::function<void()>(ITileProcessor*)> postGenerator)
@@ -2039,7 +2066,17 @@ bool CodeStreamDecompress::fetchByTileSelective(
     selectiveFetchTiles->insert(tileIndex);
   }
 
-  // Reuse Phase 1 data for tiles where all needed data fits within the header fetch
+  // Phase 1 data reuse: avoid re-fetching data that was already downloaded during the
+  // header probe. For small tiles or low target resolutions, the 4 KB header fetch often
+  // contains all the packets needed for the reduced decompress. In that case we build the
+  // decompression sequence directly from the Phase 1 buffer and skip the Phase 2 HTTP request.
+  //
+  // Two layouts are handled:
+  //  - Contiguous (selParts count == tile-part count): each entry maps 1:1 to a tile-part
+  //    buffer; we copy the prefix of the Phase 1 buffer.
+  //  - Disjoint  (selParts count > tile-part count, single tile-part only): entries reference
+  //    different sub-ranges of one Phase 1 buffer; we assemble them into a single contiguous
+  //    buffer identical to the Phase 2 disjoint callback output.
   struct PrefetchedTile
   {
     uint16_t tileIndex;
@@ -2175,29 +2212,8 @@ bool CodeStreamDecompress::fetchByTileSelective(
 
   // Queue pre-fetched tiles directly for decompression (reusing Phase 1 data)
   for(auto& pf : prefetchedTiles)
-  {
-    if(compressedChunkCache_)
-      compressedChunkCache_->put(pf.tileIndex, pf.decompressSeq);
-
-    int32_t tileRow = pf.tileIndex / numTileCols;
-    int32_t prev = maxFetchedTileRow_.load(std::memory_order_acquire);
-    while(prev < tileRow &&
-          !maxFetchedTileRow_.compare_exchange_weak(prev, tileRow, std::memory_order_release,
-                                                    std::memory_order_acquire))
-    {
-    }
-    decompressQueue_->push(
-        [this, tileIndex = pf.tileIndex, decompressSeq = pf.decompressSeq,
-         unreducedImageBounds, postGenerator]() {
-          const auto tileProcessor = getTileProcessor(tileIndex);
-          auto* tp = dynamic_cast<TileProcessor*>(tileProcessor);
-          if(tp)
-            tp->setSelectiveFetch(true);
-          auto decompressTask = genDecompressTileTLMTask(tileProcessor, decompressSeq,
-                                                         unreducedImageBounds, postGenerator);
-          decompressTask();
-        });
-  }
+    enqueueTileForDecompress(pf.tileIndex, pf.decompressSeq, numTileCols, unreducedImageBounds,
+                             postGenerator);
 
   if(!selectiveFetchTiles->empty())
   {
@@ -2269,26 +2285,8 @@ bool CodeStreamDecompress::fetchByTileSelective(
             decompressSeq = tilePartSeq;
           }
 
-          if(compressedChunkCache_)
-            compressedChunkCache_->put(tileIndex, decompressSeq);
-
-          int32_t tileRow = tileIndex / numTileCols;
-          int32_t prev = maxFetchedTileRow_.load(std::memory_order_acquire);
-          while(prev < tileRow &&
-                !maxFetchedTileRow_.compare_exchange_weak(prev, tileRow, std::memory_order_release,
-                                                          std::memory_order_acquire))
-          {
-          }
-          decompressQueue_->push(
-              [this, tileIndex, decompressSeq, unreducedImageBounds, postGenerator]() {
-                const auto tileProcessor = getTileProcessor(tileIndex);
-                auto* tp = dynamic_cast<TileProcessor*>(tileProcessor);
-                if(tp)
-                  tp->setSelectiveFetch(true);
-                auto decompressTask = genDecompressTileTLMTask(tileProcessor, decompressSeq,
-                                                               unreducedImageBounds, postGenerator);
-                decompressTask();
-              });
+          enqueueTileForDecompress(tileIndex, decompressSeq, numTileCols, unreducedImageBounds,
+                                  postGenerator);
         }
       }));
   } // if(!selectiveFetchTiles->empty())

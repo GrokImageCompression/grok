@@ -466,8 +466,50 @@ private:
   bool fetchByTile(std::set<uint16_t>& slated, Rect32 unreducedImageBounds,
                    std::function<std::function<void()>(ITileProcessor*)> postGenerator);
 
+  /**
+   * @brief Two-phase PLT-based selective tile fetch for reduced resolution decompression.
+   *
+   * Phase 1 (header probe): Fetches a small prefix (4 KB) of each tile-part to extract
+   * the PLT marker (packet lengths) and SOD offset without downloading full tile data.
+   *
+   * Range computation: Uses PLT packet lengths and the tile's progression order to compute
+   * the minimal byte ranges needed for the target resolution level (reduce > 0).
+   * For resolution-first progressions (RLCP, RPCL) this produces a single contiguous range;
+   * for layer-first (LRCP, CPRL, PCRL) it may produce disjoint ranges.
+   *
+   * Phase 1 data reuse: When the computed ranges fit entirely within the 4 KB already
+   * fetched in Phase 1, the data is reused directly — no Phase 2 HTTP request is issued.
+   * This is common for small tiles or low-resolution decompressions where all needed
+   * packets are contained in the initial header fetch.
+   *
+   * Phase 2 (selective fetch): For tiles whose needed data exceeds the Phase 1 buffer,
+   * truncated or disjoint HTTP range requests are issued to fetch only the required
+   * packet data.
+   *
+   * @param slated           set of tile indices to decompress
+   * @param unreducedImageBounds  unreduced image bounds for decompress tasks
+   * @param postGenerator    factory for post-decompress callbacks
+   * @return true if tiles were scheduled for decompression
+   */
   bool fetchByTileSelective(std::set<uint16_t>& slated, Rect32 unreducedImageBounds,
                             std::function<std::function<void()>(ITileProcessor*)> postGenerator);
+
+  /**
+   * @brief Enqueue a tile for decompression via the decompress pipeline.
+   *
+   * Updates the compressed chunk cache, advances the max-fetched tile row,
+   * and pushes a decompress task onto the decompress queue.
+   *
+   * @param tileIndex         tile index
+   * @param decompressSeq     tile-part fetch sequence with data and MemStreams
+   * @param numTileCols       number of tile columns in the grid
+   * @param unreducedImageBounds  unreduced image bounds for decompress tasks
+   * @param postGenerator     factory for post-decompress callbacks
+   */
+  void enqueueTileForDecompress(
+      uint16_t tileIndex, std::shared_ptr<TPFetchSeq> decompressSeq, uint16_t numTileCols,
+      Rect32 unreducedImageBounds,
+      std::function<std::function<void()>(ITileProcessor*)> postGenerator);
 
   /**
    * @brief Scratch @ref GrkImage for decompressor
