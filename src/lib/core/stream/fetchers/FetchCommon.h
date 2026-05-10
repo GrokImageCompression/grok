@@ -82,6 +82,9 @@ struct FetchAuth
   // Fetch concurrency (0 = use default of 30)
   uint32_t fetch_batch_size_ = 0;
 
+  // HTTP/2 multiplexing (disabled by default)
+  bool http2_multiplex_ = false;
+
   FetchAuth() = default;
   FetchAuth(const std::string& u, const std::string& p, const std::string& t,
             const std::vector<std::string>& h = {}, const std::string& r = "",

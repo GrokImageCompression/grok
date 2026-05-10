@@ -76,7 +76,6 @@ CurlFetcher::CurlFetcher(void) : tileWriteCallback_(tileWriteCallback)
   if(!multi_handle_)
     throw std::runtime_error("Failed to initialize CURL multi handle");
   curl_multi_setopt(multi_handle_, CURLMOPT_MAX_TOTAL_CONNECTIONS, 100L);
-  curl_multi_setopt(multi_handle_, CURLMOPT_PIPELINING, CURLPIPE_MULTIPLEX);
   fetchThread_ = std::thread(&CurlFetcher::fetchWorker, this);
 }
 
@@ -120,6 +119,8 @@ void CurlFetcher::init(const std::string& path, const FetchAuth& auth)
     retryDelayMs_ = auth_.retry_delay_ * 1000;
   if(auth_.fetch_batch_size_ > 0)
     batchSize_ = auth_.fetch_batch_size_;
+  if(auth_.http2_multiplex_)
+    curl_multi_setopt(multi_handle_, CURLMOPT_PIPELINING, CURLPIPE_MULTIPLEX);
   parse(path);
   fetch_total_size();
 }
@@ -569,8 +570,11 @@ CURL* CurlFetcher::configureHandle(uint64_t offset, uint64_t end, FetchResult& r
   curl_easy_setopt(curl, CURLOPT_URL, url_.c_str());
   curl_initiate_retry(curl);
   curl_easy_setopt(curl, CURLOPT_VERBOSE, 0L);
-  curl_easy_setopt(curl, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_2TLS);
-  curl_easy_setopt(curl, CURLOPT_PIPEWAIT, 1L);
+  if(auth_.http2_multiplex_)
+  {
+    curl_easy_setopt(curl, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_2TLS);
+    curl_easy_setopt(curl, CURLOPT_PIPEWAIT, 1L);
+  }
   curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, callback);
   curl_easy_setopt(curl, CURLOPT_WRITEDATA, &result);
   curl_easy_setopt(curl, CURLOPT_PRIVATE, &result);

@@ -628,6 +628,9 @@ typedef struct _grk_stream_params
   /* 13 Fetch concurrency (0 = use default of 30) */
   uint32_t fetch_batch_size; /* max concurrent HTTP range requests */
 
+  /* 14 HTTP/2 multiplexing (0 = disabled, 1 = enabled) */
+  bool http2_multiplex;
+
 } grk_stream_params;
 
 /**
