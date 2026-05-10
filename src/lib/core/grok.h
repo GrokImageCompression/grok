@@ -628,7 +628,24 @@ typedef struct _grk_stream_params
   /* 13 Fetch concurrency (0 = use default of 30) */
   uint32_t fetch_batch_size; /* max concurrent HTTP range requests */
 
-  /* 14 HTTP/2 multiplexing (0 = disabled, 1 = enabled) */
+  /* 14 HTTP/2 multiplexing (default: disabled).
+   * When enabled, all concurrent range requests share a single TCP connection
+   * via CURLPIPE_MULTIPLEX + HTTP_VERSION_2TLS + PIPEWAIT.
+   *
+   * Trade-offs:
+   *  + Reduces connection overhead when issuing hundreds of small range requests
+   *  + Better for servers/CDNs with good HTTP/2 stream handling
+   *  - Single TCP connection means TCP-level head-of-line blocking: one packet
+   *    loss stalls ALL streams (vs. only one connection with HTTP/1.1)
+   *  - PIPEWAIT forces requests to queue behind the initial TLS handshake
+   *    instead of opening parallel connections immediately
+   *  - Some object stores (e.g. CloudFerro) process multiplexed range requests
+   *    sequentially, negating the concurrency benefit
+   *  - For a small number of range requests, the HTTP/2 framing and flow-control
+   *    overhead can make it 10-15% slower than parallel HTTP/1.1 connections
+   *
+   * Recommendation: leave disabled unless benchmarking shows a clear benefit
+   * for your specific server and workload. */
   bool http2_multiplex;
 
 } grk_stream_params;
