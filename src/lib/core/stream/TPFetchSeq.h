@@ -17,6 +17,7 @@
 
 #pragma once
 
+#include <algorithm>
 #include <cassert>
 #include <cstring>
 #include <vector>
@@ -112,6 +113,12 @@ struct SharedPtrSeq
   void clear()
   {
     objStore_.clear();
+  }
+
+  template<typename Compare>
+  void sort(Compare comp)
+  {
+    std::sort(objStore_.begin(), objStore_.end(), comp);
   }
 
 private:
@@ -242,6 +249,13 @@ struct TPFetch : public DataSlice
 
 struct TPFetchSeq : SharedPtrSeq<TPFetch>
 {
+  void sortByOffset()
+  {
+    sort([](const std::shared_ptr<TPFetch>& a, const std::shared_ptr<TPFetch>& b) {
+      return a->offset_ < b->offset_;
+    });
+  }
+
   void push_back(uint16_t tileIndex, const std::unique_ptr<TPSeq>& tileParts)
   {
     if(!tileParts)
@@ -289,6 +303,11 @@ struct TPFetchSeq : SharedPtrSeq<TPFetch>
         }
       }
     }
+
+    // Sort requests by file offset so that batched HTTP requests target
+    // sequential file regions, improving server-side read coalescing
+    // and CDN cache efficiency.
+    tilePartFetchFlat->sortByOffset();
   }
 
   /**
