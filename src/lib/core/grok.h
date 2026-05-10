@@ -625,6 +625,9 @@ typedef struct _grk_stream_params
   uint32_t max_retry; /* maximum number of retries */
   uint32_t retry_delay; /* delay between retries in seconds */
 
+  /* 13 Fetch concurrency (0 = use default of 30) */
+  uint32_t fetch_batch_size; /* max concurrent HTTP range requests */
+
 } grk_stream_params;
 
 /**

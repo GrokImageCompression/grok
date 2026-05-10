@@ -94,6 +94,8 @@ public:
   // fetcher so it can re-check the condition.
   virtual void setFetchThrottle(std::function<bool()> throttle) = 0;
   virtual void notifyThrottleRelease() = 0;
+
+  virtual void setBatchSize(size_t batchSize) = 0;
 };
 
 struct TileFetchContext : public std::enable_shared_from_this<TileFetchContext>
@@ -131,6 +133,7 @@ public:
 
   void setFetchThrottle(std::function<bool()> throttle) override;
   void notifyThrottleRelease() override;
+  void setBatchSize(size_t batchSize) override;
   void init(const std::string& path, const FetchAuth& auth) override;
   size_t read(uint8_t* buffer, size_t numBytes) override;
   bool seek(uint64_t offset) override;

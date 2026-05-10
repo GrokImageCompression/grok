@@ -79,6 +79,9 @@ struct FetchAuth
   uint32_t max_retry_ = 0;
   uint32_t retry_delay_ = 0;
 
+  // Fetch concurrency (0 = use default of 30)
+  uint32_t fetch_batch_size_ = 0;
+
   FetchAuth() = default;
   FetchAuth(const std::string& u, const std::string& p, const std::string& t,
             const std::vector<std::string>& h = {}, const std::string& r = "",

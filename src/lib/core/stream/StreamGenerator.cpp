@@ -160,6 +160,7 @@ IStream* StreamGenerator::createCurlFetchStream(void)
   auth.connect_timeout_ = streamParams_.connect_timeout;
   auth.max_retry_ = streamParams_.max_retry;
   auth.retry_delay_ = streamParams_.retry_delay;
+  auth.fetch_batch_size_ = streamParams_.fetch_batch_size;
   grklog.debug("StreamGenerator: s3_allow_insecure: streamParams=%d, auth=%d",
                (int)streamParams_.s3_allow_insecure, (int)auth.s3_allow_insecure_);
   std::string_view file{streamParams_.file};

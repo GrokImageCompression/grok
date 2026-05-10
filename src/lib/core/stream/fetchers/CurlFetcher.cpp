@@ -106,6 +106,11 @@ void CurlFetcher::notifyThrottleRelease()
   throttleCV_.notify_one();
 }
 
+void CurlFetcher::setBatchSize(size_t batchSize)
+{
+  batchSize_ = std::max<size_t>(1, batchSize);
+}
+
 void CurlFetcher::init(const std::string& path, const FetchAuth& auth)
 {
   auth_ = auth;
@@ -113,6 +118,8 @@ void CurlFetcher::init(const std::string& path, const FetchAuth& auth)
     maxRetries_ = auth_.max_retry_;
   if(auth_.retry_delay_ > 0)
     retryDelayMs_ = auth_.retry_delay_ * 1000;
+  if(auth_.fetch_batch_size_ > 0)
+    batchSize_ = auth_.fetch_batch_size_;
   parse(path);
   fetch_total_size();
 }
