@@ -553,6 +553,15 @@ private:
       const TPSEQ_VEC& allTileParts);
 
   /**
+   * @brief Install fetch throttle on the given fetcher.
+   *
+   * Back pressure: prevent the fetcher from scheduling more HTTP requests
+   * when either (a) the fetcher is too far ahead of the consumer (swath-based
+   * release), or (b) too many tiles are in-flight for decompression.
+   */
+  void installFetchThrottle(IFetcher* fetcher);
+
+  /**
    * @brief Scratch @ref GrkImage for decompressor
    * This image may composite multiple tiles, if needed.
    */

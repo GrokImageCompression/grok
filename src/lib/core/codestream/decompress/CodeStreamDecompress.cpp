@@ -1682,28 +1682,8 @@ bool CodeStreamDecompress::fetchByTile(
   startDecompressConsumer(std::min((uint16_t)TFSingleton::num_threads(),
                                    (uint16_t)((maxRowsAhead_ + 1) * cp_.t_grid_width_)));
 
-  // Back pressure: prevent the fetcher from scheduling more HTTP requests
-  // when either (a) too many tiles are in-flight for decompression, or
-  // (b) the fetcher is too far ahead of the consumer (swath-based release).
   auto numTileCols = cp_.t_grid_width_;
-  fetcher->setFetchThrottle([this]() {
-    // Row-based: don't fetch tiles more than maxRowsAhead_ rows beyond
-    // the last row released by the consumer.
-    if(tileCompletion_)
-    {
-      int32_t lastCleared = tileCompletion_->getLastClearedTileY();
-      int32_t maxAllowed = lastCleared + maxRowsAhead_ + 2;
-      if(maxFetchedTileRow_.load(std::memory_order_acquire) >= maxAllowed)
-        return false;
-    }
-    // In-flight: don't overwhelm the decompress pipeline
-    uint16_t inFlight;
-    {
-      std::lock_guard<std::mutex> lock(decompressThrottleMutex_);
-      inFlight = decompressInFlight_;
-    }
-    return decompressQueue_->size() + inFlight < maxDecompressInFlight_;
-  });
+  installFetchThrottle(fetcher);
 
   fetchByTileFutures_.push_back(fetcher->fetchTiles(
       cp_.tlmMarkers_->getTileParts(), slated, nullptr,
@@ -2053,6 +2033,28 @@ std::vector<std::pair<uint16_t, std::shared_ptr<TPFetchSeq>>>
   return prefetchedTiles;
 }
 
+void CodeStreamDecompress::installFetchThrottle(IFetcher* fetcher)
+{
+  fetcher->setFetchThrottle([this]() {
+    // Row-based: don't fetch tiles more than maxRowsAhead_ rows beyond
+    // the last row released by the consumer.
+    if(tileCompletion_)
+    {
+      int32_t lastCleared = tileCompletion_->getLastClearedTileY();
+      int32_t maxAllowed = lastCleared + maxRowsAhead_ + 2;
+      if(maxFetchedTileRow_.load(std::memory_order_acquire) >= maxAllowed)
+        return false;
+    }
+    // In-flight: don't overwhelm the decompress pipeline
+    uint16_t inFlight;
+    {
+      std::lock_guard<std::mutex> lock(decompressThrottleMutex_);
+      inFlight = decompressInFlight_;
+    }
+    return decompressQueue_->size() + inFlight < maxDecompressInFlight_;
+  });
+}
+
 bool CodeStreamDecompress::fetchByTileSelective(
     std::set<uint16_t>& slated, Rect32 unreducedImageBounds,
     std::function<std::function<void()>(ITileProcessor*)> postGenerator)
@@ -2091,9 +2093,6 @@ bool CodeStreamDecompress::fetchByTileSelective(
   std::promise<bool> phase1Promise;
   auto phase1Future = phase1Promise.get_future();
   auto remainingTiles = std::make_shared<std::atomic<size_t>>(slated.size());
-
-  // Save slated tiles before Phase 1 fetch (fetchTiles moves the set)
-  auto slatedTiles = slated;
 
   // Phase 1 fetch: get tile-part headers
   fetcher->fetchTiles(headerTileParts, slated, nullptr,
@@ -2149,7 +2148,7 @@ bool CodeStreamDecompress::fetchByTileSelective(
   selectiveTileParts_.resize(allTileParts.size());
   auto selectiveFetchTiles = std::make_shared<std::set<uint16_t>>();
 
-  for(auto tileIndex : slatedTiles)
+  for(auto tileIndex : slated)
   {
     auto it = headerResults->find(tileIndex);
     if(it == headerResults->end())
@@ -2196,21 +2195,7 @@ bool CodeStreamDecompress::fetchByTileSelective(
 
   if(!selectiveFetchTiles->empty())
   {
-  fetcher->setFetchThrottle([this]() {
-    if(tileCompletion_)
-    {
-      int32_t lastCleared = tileCompletion_->getLastClearedTileY();
-      int32_t maxAllowed = lastCleared + maxRowsAhead_ + 2;
-      if(maxFetchedTileRow_.load(std::memory_order_acquire) >= maxAllowed)
-        return false;
-    }
-    uint16_t inFlight;
-    {
-      std::lock_guard<std::mutex> lock(decompressThrottleMutex_);
-      inFlight = decompressInFlight_;
-    }
-    return decompressQueue_->size() + inFlight < maxDecompressInFlight_;
-  });
+  installFetchThrottle(fetcher);
 
   fetchByTileFutures_.push_back(fetcher->fetchTiles(
       selectiveTileParts_, *selectiveFetchTiles, nullptr,

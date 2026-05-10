@@ -91,6 +91,7 @@ set(GROK_LIBRARY_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/stream/MappedFile.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/stream/StreamIO.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/stream/StreamGenerator.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/stream/fetchers/CurlFetcher.cpp
   
   ${CMAKE_CURRENT_SOURCE_DIR}/plugin/minpf_dynamic_library.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/plugin/minpf_plugin_manager.cpp

@@ -17,6 +17,8 @@
 
 #pragma once
 
+#include <cassert>
+#include <cstring>
 #include <vector>
 #include <memory>
 #include <set>
@@ -24,6 +26,8 @@
 #include <atomic>
 
 #include "FetchCommon.h"
+#include "Logger.h"
+#include "IStream.h"
 
 namespace grk
 {
@@ -52,6 +56,15 @@ struct SharedPtrSeq
    * @return Iterator pointing to first shared_ptr
    */
   iterator begin()
+  {
+    return objStore_.begin();
+  }
+
+  /**
+   * @brief Returns const iterator to beginning of sequence
+   * @return Const iterator pointing to first shared_ptr
+   */
+  const_iterator begin() const
   {
     return objStore_.begin();
   }
@@ -211,6 +224,12 @@ struct TPFetch : public DataSlice
     {
       data_ = std::make_unique<uint8_t[]>(length_);
     }
+    if(fetchOffset_ + chunkLen > length_)
+    {
+      grklog.error("TPFetch::copy: buffer overflow (offset=%zu + len=%zu > capacity=%zu)",
+                   fetchOffset_, chunkLen, (size_t)length_);
+      return;
+    }
     std::memcpy(data_.get() + fetchOffset_, chunk, chunkLen);
     fetchOffset_ += chunkLen;
   }
@@ -249,7 +268,7 @@ struct TPFetchSeq : SharedPtrSeq<TPFetch>
   }
 
   static void
-      genCollections(const TPSEQ_VEC* allTileParts, std::set<uint16_t>& slated,
+      genCollections(const TPSEQ_VEC* allTileParts, const std::set<uint16_t>& slated,
                      std::shared_ptr<TPFetchSeq>& tilePartFetchFlat,
                      std::shared_ptr<std::unordered_map<uint16_t, std::shared_ptr<TPFetchSeq>>>&
                          tilePartFetchByTile)
@@ -272,6 +291,13 @@ struct TPFetchSeq : SharedPtrSeq<TPFetch>
     }
   }
 
+  /**
+   * @brief Atomically increment and return the fetch-completed count.
+   *
+   * When the returned value equals size(), all tile-parts for this tile
+   * have been fetched. Uses uint8_t storage, limiting to 255 tile-parts
+   * per tile (the JPEG 2000 spec allows up to 255 tile-parts per tile).
+   */
   uint8_t incrementFetchCount()
   {
     std::atomic_ref<uint8_t> atomicCount(fetchCount_);
