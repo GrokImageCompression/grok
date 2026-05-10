@@ -389,8 +389,8 @@ GrkRC GrkDecompress::parseCommandLine(int argc, const char* argv[],
   auto xmlOpt = cmd.add_flag("-X,--xml", xml, "XML metadata");
   auto inDirOpt = cmd.add_option("-y,--batch-src", inDir, "Input source");
   auto durationOpt = cmd.add_option("-z,--duration", duration, "Duration in seconds");
-  auto fastMctOpt =
-      cmd.add_flag("--fast-mct", fastMct, "Use fast 16-bit DWT for 9/7 MCT decompress (prec <= 12)");
+  auto fastMctOpt = cmd.add_flag("--fast-mct", fastMct,
+                                 "Use fast 16-bit DWT for 9/7 MCT decompress (prec <= 12)");
 
   cmd.set_help_flag("-h", "Show abreviated usage");
   cmd.add_flag("--help", "Show detailed usage");

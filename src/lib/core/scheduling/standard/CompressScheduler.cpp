@@ -62,8 +62,8 @@ CompressScheduler::CompressScheduler(Tile* tile, bool needsRateControl, TileCodi
                                      const double* mct_norms, uint16_t mct_numcomps,
                                      bool progressiveRateControl)
     : SchedulerStandard(tile->numcomps_), tile_(tile), needsRateControl_(needsRateControl),
-      progressiveRateControl_(progressiveRateControl),
-      blockCount_(-1), tcp_(tcp), mct_norms_(mct_norms), mct_numcomps_(mct_numcomps)
+      progressiveRateControl_(progressiveRateControl), blockCount_(-1), tcp_(tcp),
+      mct_norms_(mct_norms), mct_numcomps_(mct_numcomps)
 {
   rateControlStats_.init(tile->numcomps_);
 }
@@ -339,8 +339,7 @@ void CompressScheduler::compress(t1::ICoder* coder, t1::CompressBlockExec* block
   }
 }
 
-void CompressScheduler::initSlopeEstimator(
-    const std::vector<t1::CompressBlockExec*>& blocks)
+void CompressScheduler::initSlopeEstimator(const std::vector<t1::CompressBlockExec*>& blocks)
 {
   // The progressive slope estimator requires:
   //   1. A target rate is specified (rate-distortion mode)

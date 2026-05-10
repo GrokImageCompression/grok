@@ -225,11 +225,10 @@ public:
    *              Lower values are more conservative (fewer early terminations).
    *              Default 0.75 provides good balance of safety vs performance.
    */
-  ProgressiveSlopeEstimator(uint64_t totalSamples, double targetRate,
-                            double alpha = kDefaultAlpha)
-      : totalSamples_(totalSamples), targetRate_(targetRate), alpha_(alpha),
-        codedSamples_(0), minBin_(kSlopeBins - 1), maxBin_(0),
-        currentThreshold_(0), updateCounter_(0), nextUpdateInterval_(2)
+  ProgressiveSlopeEstimator(uint64_t totalSamples, double targetRate, double alpha = kDefaultAlpha)
+      : totalSamples_(totalSamples), targetRate_(targetRate), alpha_(alpha), codedSamples_(0),
+        minBin_(kSlopeBins - 1), maxBin_(0), currentThreshold_(0), updateCounter_(0),
+        nextUpdateInterval_(2)
   {
     // Conservative padding: ensures we don't overestimate the threshold
     // when extrapolating from partial data. The padding represents
@@ -257,8 +256,8 @@ public:
    *       histogram. Non-feasible points are interior to the convex hull
    *       and would never be selected by PCRD.
    */
-  void updateStats(const uint16_t* passSlopesLog, const uint16_t* passRates,
-                   uint8_t numPasses, uint32_t blockArea)
+  void updateStats(const uint16_t* passSlopesLog, const uint16_t* passRates, uint8_t numPasses,
+                   uint32_t blockArea)
   {
     if(numPasses == 0)
       return;
@@ -381,10 +380,8 @@ private:
     // Compute byte budget: how many bytes should be included at the threshold.
     // We scale by (coded + padding) / total to extrapolate from partial data.
     // The padding makes this estimate larger than reality → threshold stays LOW.
-    double adjustedSamples =
-        static_cast<double>(codedSamples_ + conservativePadding_);
-    uint64_t maxBytes =
-        static_cast<uint64_t>(1.0 + adjustedSamples * targetRate_);
+    double adjustedSamples = static_cast<double>(codedSamples_ + conservativePadding_);
+    uint64_t maxBytes = static_cast<uint64_t>(1.0 + adjustedSamples * targetRate_);
 
     // Scan from highest slope down, accumulating bytes
     uint64_t cumulativeBytes = 0;
@@ -433,18 +430,18 @@ private:
 
   // --- Configuration (immutable after construction) ---
 
-  uint64_t totalSamples_;         ///< Total subband samples in tile
-  double targetRate_;             ///< Target bytes per sample
-  double alpha_;                  ///< Conservative scaling factor
-  uint64_t conservativePadding_;  ///< Extra samples for conservative estimate
+  uint64_t totalSamples_; ///< Total subband samples in tile
+  double targetRate_; ///< Target bytes per sample
+  double alpha_; ///< Conservative scaling factor
+  uint64_t conservativePadding_; ///< Extra samples for conservative estimate
 
   // --- Mutable state (protected by mutex_) ---
 
   std::mutex mutex_;
-  uint64_t codedSamples_;                     ///< Samples encoded so far
-  int minBin_;                                ///< Lowest occupied histogram bin
-  int maxBin_;                                ///< Highest occupied histogram bin
-  uint64_t slopeRateHistogram_[kSlopeBins];   ///< Bytes per quantized slope bin
+  uint64_t codedSamples_; ///< Samples encoded so far
+  int minBin_; ///< Lowest occupied histogram bin
+  int maxBin_; ///< Highest occupied histogram bin
+  uint64_t slopeRateHistogram_[kSlopeBins]; ///< Bytes per quantized slope bin
 
   // --- Published threshold (atomic, lock-free read) ---
 
@@ -452,8 +449,8 @@ private:
 
   // --- Update scheduling ---
 
-  int updateCounter_;                         ///< Blocks since last recompute
-  int nextUpdateInterval_;                    ///< Blocks between recomputes (grows)
+  int updateCounter_; ///< Blocks since last recompute
+  int nextUpdateInterval_; ///< Blocks between recomputes (grows)
 };
 
 } // namespace grk

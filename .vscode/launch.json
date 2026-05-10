@@ -1347,32 +1347,38 @@
             "miDebuggerPath": "/usr/bin/gdb"
         },
         {
-            "name": "TCI Selective Fetch MINIO",
+            "name": "TCI Selective Fetch CloudFerro",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/build/bin/grk_decompress",
+            "program": "/usr/bin/time",
+            //"program": "${workspaceFolder}/build/bin/grk_decompress",
             "args": [
+                "-v",
+                "${workspaceFolder}/build/bin/grk_decompress",
                 "-i",
-                "/vsis3/grok/T32TQM_20241115T100159_TCI_10m.jp2",
+                "/vsis3/s2samples/T33UYT_20260503T095051_TCI_10m.jp2",
                 "-o",
                 "$HOME/temp/tci_selective.tif",
                 "-r",
-                "2"
+                "4"
             ],
             "cwd": "${workspaceFolder}",
             "environment": [
                 { "name": "GRK_DEBUG", "value": "3" },
-                { "name": "AWS_ACCESS_KEY_ID", "value": "minioadmin" },
-                { "name": "AWS_SECRET_ACCESS_KEY", "value": "minioadmin" },
-                { "name": "AWS_S3_ENDPOINT", "value": "localhost:9000" },
+                { "name": "AWS_S3_ENDPOINT", "value": "s3.waw3-1.cloudferro.com" },
                 { "name": "AWS_VIRTUAL_HOSTING", "value": "FALSE" },
                 { "name": "AWS_HTTPS", "value": "YES" },
-                { "name": "GRK_CURL_ALLOW_INSECURE", "value": "YES" }
+                // Since this is an open/public file, we skip credential signing
+                { "name": "AWS_NO_SIGN_REQUEST", "value": "YES" },
+                { "name": "AWS_ACCESS_KEY_ID", "value": "" },
+                { "name": "AWS_SECRET_ACCESS_KEY", "value": "" },
+                // CloudFerro uses valid CA certs, so we can disable insecure mode
+                { "name": "GRK_CURL_ALLOW_INSECURE", "value": "NO" }
             ],
             "MIMode": "gdb",
             "miDebuggerPath": "/usr/bin/gdb"
         },
-              {
+        {
             "name": "TCI Selective Fetch",
             "type": "cppdbg",
             "request": "launch",

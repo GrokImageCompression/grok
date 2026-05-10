@@ -86,8 +86,8 @@ struct TilePacketInfo
  * @return vector of byte ranges to fetch, or empty on error
  */
 GRK_INTERNAL std::vector<FetchRange> computeSelectiveFetchRanges(const TilePacketInfo& info,
-                                                    uint8_t resolutionsToDecompress,
-                                                    uint64_t gapThreshold = 0);
+                                                                 uint8_t resolutionsToDecompress,
+                                                                 uint64_t gapThreshold = 0);
 
 /**
  * @brief Computes the total number of packets for a tile
@@ -132,9 +132,8 @@ GRK_INTERNAL TilePartHeaderInfo extractTilePartHeaderInfo(const uint8_t* headerD
  * @param precHeightExp log2 of precinct height for this resolution
  * @return number of precincts at this resolution
  */
-GRK_INTERNAL uint64_t computeNumPrecincts(uint32_t tcx0, uint32_t tcy0,
-                                          uint32_t tcx1, uint32_t tcy1,
-                                          uint8_t numResolutions, uint8_t resno,
+GRK_INTERNAL uint64_t computeNumPrecincts(uint32_t tcx0, uint32_t tcy0, uint32_t tcx1,
+                                          uint32_t tcy1, uint8_t numResolutions, uint8_t resno,
                                           uint8_t precWidthExp, uint8_t precHeightExp);
 
 } // namespace grk

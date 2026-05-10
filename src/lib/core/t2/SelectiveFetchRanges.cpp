@@ -370,10 +370,9 @@ TilePartHeaderInfo extractTilePartHeaderInfo(const uint8_t* headerData, size_t h
   return result;
 }
 
-uint64_t computeNumPrecincts(uint32_t tcx0, uint32_t tcy0,
-                             uint32_t tcx1, uint32_t tcy1,
-                             uint8_t numResolutions, uint8_t resno,
-                             uint8_t precWidthExp, uint8_t precHeightExp)
+uint64_t computeNumPrecincts(uint32_t tcx0, uint32_t tcy0, uint32_t tcx1, uint32_t tcy1,
+                             uint8_t numResolutions, uint8_t resno, uint8_t precWidthExp,
+                             uint8_t precHeightExp)
 {
   // Scale tile-component bounds to resolution level
   uint8_t power = (uint8_t)(numResolutions - 1U - resno);

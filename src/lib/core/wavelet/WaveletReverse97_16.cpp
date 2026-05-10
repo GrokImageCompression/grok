@@ -649,11 +649,12 @@ namespace HWY_NAMESPACE
    *
    *  All arithmetic stays in int16 since dc_shift and dc_max fit for ≤12-bit.
    **************************************************************************/
-  [[maybe_unused]] static void scalar_v_synth_16_97_dc(int16_t* scratch, uint32_t height, const int16_t* bandL,
-                                      uint32_t strideL, const int16_t* bandH, uint32_t strideH,
-                                      int16_t* dest, uint32_t strideDest, uint32_t parity,
-                                      uint32_t sn, uint32_t dn, int16_t dc, int16_t dcMin,
-                                      int16_t dcMax)
+  [[maybe_unused]] static void scalar_v_synth_16_97_dc(int16_t* scratch, uint32_t height,
+                                                       const int16_t* bandL, uint32_t strideL,
+                                                       const int16_t* bandH, uint32_t strideH,
+                                                       int16_t* dest, uint32_t strideDest,
+                                                       uint32_t parity, uint32_t sn, uint32_t dn,
+                                                       int16_t dc, int16_t dcMin, int16_t dcMax)
   {
     // Synthesize into scratch first (using scratch as both workspace and
     // temporary destination with stride=1)

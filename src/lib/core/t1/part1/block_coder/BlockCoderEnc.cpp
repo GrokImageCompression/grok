@@ -805,9 +805,9 @@ double BlockCoder::compress_cblk(cblk_enc* cblk, uint32_t max, uint8_t orientati
     // 2^64 = normalization constant. Slopes are stored relative to 2^64 so that
     //   typical slopes (distortion per byte, where distortion uses MSE in
     //   fixed-point with 2^64 headroom) map to the useful uint16_t range.
-    const float logScale = 0.693147180559945f / 256.0f;  // ln(2)/256
+    const float logScale = 0.693147180559945f / 256.0f; // ln(2)/256
     float logVal = (static_cast<float>(earlyStopSlope) - 65536.0f) * logScale;
-    const float maxSlope = static_cast<float>(1ULL << 63) * 2.0f;  // 2^64 normalization
+    const float maxSlope = static_cast<float>(1ULL << 63) * 2.0f; // 2^64 normalization
     linearSlopeThreshold = expf(logVal) * maxSlope;
   }
 
@@ -963,7 +963,7 @@ double BlockCoder::compress_cblk(cblk_enc* cblk, uint32_t max, uint8_t orientati
       // can be noisy and unrepresentative of the overall trend.
       if(linearSlopeThreshold > 0.0f && passno >= 5)
       {
-        int z = static_cast<int>(passno) - 1;  // index of just-completed cleanup pass
+        int z = static_cast<int>(passno) - 1; // index of just-completed cleanup pass
         int numHullPoints = 0;
         int z0;
         float lastDeltaD = 0.0f, lastDeltaL = 0.0f;
@@ -985,13 +985,13 @@ double BlockCoder::compress_cblk(cblk_enc* cblk, uint32_t max, uint8_t orientati
           float deltaL = 0.0f, deltaD = 0.0f;
           bestDeltaD = 0.0f;
           bestDeltaL = 0.0f;
-          for(int u = z0; u >= 0 && u > (z0 - 7); u--)  // window depth = 7 (see above)
+          for(int u = z0; u >= 0 && u > (z0 - 7); u--) // window depth = 7 (see above)
           {
             // Incremental rate and distortion for pass u
-            float incL = static_cast<float>(
-                cblk->passes[u].rate - (u > 0 ? cblk->passes[u - 1].rate : 0));
-            float incD = static_cast<float>(
-                cblk->passes[u].distortiondec - (u > 0 ? cblk->passes[u - 1].distortiondec : 0.0));
+            float incL =
+                static_cast<float>(cblk->passes[u].rate - (u > 0 ? cblk->passes[u - 1].rate : 0));
+            float incD = static_cast<float>(cblk->passes[u].distortiondec -
+                                            (u > 0 ? cblk->passes[u - 1].distortiondec : 0.0));
             deltaL += incL;
             deltaD += incD;
 
@@ -1029,7 +1029,7 @@ double BlockCoder::compress_cblk(cblk_enc* cblk, uint32_t max, uint8_t orientati
           // threshold, this pass might be on the hull — abort termination check.
           if(bestDeltaD > ref)
           {
-            numHullPoints = 0;  // Signal: do not terminate
+            numHullPoints = 0; // Signal: do not terminate
             break;
           }
 
@@ -1038,9 +1038,8 @@ double BlockCoder::compress_cblk(cblk_enc* cblk, uint32_t max, uint8_t orientati
           // (consistent with convex hull property).
           if(bestDeltaD > 0.0f && bestDeltaL > 0.0f)
           {
-            if(numHullPoints > 0 &&
-               (bestDeltaD * lastDeltaL <= lastDeltaD * bestDeltaL))
-              continue;  // Slope not decreasing — cannot be a hull point
+            if(numHullPoints > 0 && (bestDeltaD * lastDeltaL <= lastDeltaD * bestDeltaL))
+              continue; // Slope not decreasing — cannot be a hull point
             lastDeltaD = bestDeltaD;
             lastDeltaL = bestDeltaL;
             numHullPoints++;

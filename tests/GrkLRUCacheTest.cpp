@@ -1500,7 +1500,8 @@ static bool testProgressiveResolutionDecompress()
       if(fullPixels[i] != refPixels[i])
         mismatches++;
     }
-    spdlog::error("FAIL: Full-res after reduced differs from reference ({} mismatches)", mismatches);
+    spdlog::error("FAIL: Full-res after reduced differs from reference ({} mismatches)",
+                  mismatches);
   }
   else
   {
@@ -2055,7 +2056,8 @@ static bool testPLTHeaderExtraction()
     return false;
   }
 
-  // SOT marker is 12 bytes: 0xFF90 + 2-byte len (10) + 2-byte tile + 4-byte tp_len + 1-byte tp + 1-byte tns
+  // SOT marker is 12 bytes: 0xFF90 + 2-byte len (10) + 2-byte tile + 4-byte tp_len + 1-byte tp +
+  // 1-byte tns
   uint64_t headerStart = sotOffset + 12; // first marker after SOT header
   size_t headerSize = std::min<size_t>(4096, rawData.size() - headerStart);
 
@@ -2229,8 +2231,8 @@ static bool testSelectiveFetchSimulation()
 
   constexpr size_t sotLen = 12;
   uint64_t headerStart = sotOffset + sotLen;
-  auto headerInfo = extractTilePartHeaderInfo(rawData.data() + headerStart,
-                                              rawData.size() - headerStart);
+  auto headerInfo =
+      extractTilePartHeaderInfo(rawData.data() + headerStart, rawData.size() - headerStart);
   bool pass = true;
 
   if(!headerInfo.valid || headerInfo.pltLengths.empty())
@@ -2271,15 +2273,13 @@ static bool testSelectiveFetchSimulation()
   for(auto& r : ranges)
     selectiveSize += r.length;
 
-  spdlog::info("Full data: {} bytes, selective: {} bytes ({:.1f}% savings)",
-               fullDataSize, selectiveSize,
-               100.0 * (1.0 - (double)selectiveSize / fullDataSize));
+  spdlog::info("Full data: {} bytes, selective: {} bytes ({:.1f}% savings)", fullDataSize,
+               selectiveSize, 100.0 * (1.0 - (double)selectiveSize / fullDataSize));
 
   // Verify ranges are disjoint (LRCP with 2 layers should produce > 1 range)
   if(ranges.size() <= 1)
   {
-    spdlog::error("FAIL: Expected disjoint ranges for LRCP with 2 layers, got {}",
-                  ranges.size());
+    spdlog::error("FAIL: Expected disjoint ranges for LRCP with 2 layers, got {}", ranges.size());
     pass = false;
   }
   else
@@ -2432,8 +2432,7 @@ static bool testSelectiveFetchSimulation()
   }
   else if(refPixels.empty() || selPixels.empty())
   {
-    spdlog::warn("Could not compare pixels (ref: {}, sel: {})", refPixels.size(),
-                 selPixels.size());
+    spdlog::warn("Could not compare pixels (ref: {}, sel: {})", refPixels.size(), selPixels.size());
   }
 
   std::error_code ec;
