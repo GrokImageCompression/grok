@@ -16,6 +16,7 @@
  */
 
 #include <chrono>
+#include <cmath>
 #include <functional>
 
 #include "TFSingleton.h"
@@ -2066,12 +2067,36 @@ bool CodeStreamDecompress::fetchByTileSelective(
   const auto& allTileParts = cp_.tlmMarkers_->getTileParts();
   uint8_t reduce = cp_.codingParams_.dec_.reduce_;
 
-  // Phase 1: Fetch 4KB header of each tile-part
-  constexpr uint32_t headerFetchSize = 4096;
-  grklog.debug("fetchByTileSelective: Phase 1 starting, %zu tiles, reduce=%u", slated.size(),
-               (unsigned)reduce);
+  // Determine if the progression order produces contiguous data from the start.
+  // For these cases, Phase 1 can speculatively fetch the estimated needed amount
+  // so that reusePhase1Data() can skip Phase 2 entirely.
+  auto tcp = defaultTcp_.get();
+  bool contiguousProgression = false;
+  switch(tcp->prg_)
+  {
+    case GRK_RLCP:
+    case GRK_RPCL:
+      contiguousProgression = true;
+      break;
+    case GRK_LRCP:
+      contiguousProgression = (tcp->numLayers_ == 1);
+      break;
+    default:
+      break;
+  }
 
-  // Create modified tile-part info with 4KB lengths for header fetch
+  // Phase 1: fetch tile-part headers (and possibly all needed data for contiguous cases)
+  constexpr uint32_t headerFetchSize = 4096;
+  grklog.debug("fetchByTileSelective: Phase 1 starting, %zu tiles, reduce=%u, contiguous=%d",
+               slated.size(), (unsigned)reduce, (int)contiguousProgression);
+
+  // Create modified tile-part info for Phase 1 fetch.
+  // For contiguous progressions, estimate the needed data size and fetch that
+  // directly, eliminating the need for a second round-trip in most cases.
+  double pixelRatio = (contiguousProgression && reduce > 0)
+                          ? (1.0 / std::pow(4.0, reduce)) * 2.0
+                          : 0.0;
+
   TPSEQ_VEC headerTileParts(allTileParts.size());
   for(auto tileIndex : slated)
   {
@@ -2082,7 +2107,17 @@ bool CodeStreamDecompress::fetchByTileSelective(
     for(size_t i = 0; i < srcParts->size(); ++i)
     {
       auto& part = (*srcParts)[i];
-      uint32_t fetchLen = std::min<uint32_t>((uint32_t)part->length_, headerFetchSize);
+      uint32_t fetchLen;
+      if(contiguousProgression && reduce > 0)
+      {
+        uint64_t estimated = std::max<uint64_t>(
+            headerFetchSize, (uint64_t)(part->length_ * pixelRatio));
+        fetchLen = (uint32_t)std::min<uint64_t>(estimated, part->length_);
+      }
+      else
+      {
+        fetchLen = std::min<uint32_t>((uint32_t)part->length_, headerFetchSize);
+      }
       headerTileParts[tileIndex]->push_back((uint8_t)i, (uint8_t)srcParts->size(), part->offset_,
                                             fetchLen);
     }
