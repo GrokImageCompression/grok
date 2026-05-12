@@ -63,6 +63,7 @@ using namespace grk;
 #include "spdlog/sinks/basic_file_sink.h"
 #include "GrkCompress.h"
 #include "Messenger.h"
+#include "XYZTransform.h"
 
 void exit_func()
 {
@@ -408,6 +409,18 @@ int GrkCompress::main(int argc, const char** argv, grk_image* in_image, grk_stre
         {
           spdlog::warn("Skipping unreadable file: {}", filePath.filename().string());
           continue;
+        }
+
+        // Apply RGB → X'Y'Z' colour transform if requested
+        if(initParams.parameters.apply_xyz_transform)
+        {
+          if(!grk::applyXYZTransform(image))
+          {
+            spdlog::error("Failed to apply XYZ colour transform");
+            grk_object_unref(&image->obj);
+            success = EXIT_FAILURE;
+            goto mj2_main_cleanup;
+          }
         }
 
         if(first)
@@ -926,6 +939,10 @@ GrkRC GrkCompress::parseCommandLine(int argc, const char* argv[], CompressInitPa
   auto progressiveRCOpt =
       app.add_flag("--progressive-rc", progressiveRC, "Progressive rate control");
 
+  bool xyzTransform;
+  auto xyzOpt = app.add_flag("--xyz", xyzTransform,
+                              "Apply Rec.709 RGB to DCI X'Y'Z' colour transform before compression");
+
   app.set_help_flag("-h", "Show abreviated usage");
   app.add_flag("--help", "Show detailed usage");
   try
@@ -967,6 +984,8 @@ GrkRC GrkCompress::parseCommandLine(int argc, const char* argv[], CompressInitPa
     parameters->write_tlm = true;
   if(progressiveRCOpt->count() > 0)
     parameters->progressive_rate_control = true;
+  if(xyzOpt->count() > 0)
+    parameters->apply_xyz_transform = true;
   if(repetitionsOpt->count() > 0)
     parameters->repeats = repetitions;
   if(rateControlAlgorithmOpt->count() > 0)
@@ -2084,6 +2103,16 @@ static uint64_t pluginCompressCallback(grk_plugin_compress_user_callback_info* i
       goto cleanup;
     }
 
+    // Apply RGB → X'Y'Z' colour transform if requested
+    if(parameters->apply_xyz_transform)
+    {
+      if(!grk::applyXYZTransform(image))
+      {
+        spdlog::error("Failed to apply XYZ colour transform");
+        goto cleanup;
+      }
+    }
+
     /* Can happen if input file is TIFF or PNG
      * and GROK_HAVE_LIBTIF or GROK_HAVE_LIBPNG is undefined
      */
@@ -2153,7 +2182,12 @@ static uint64_t pluginCompressCallback(grk_plugin_compress_user_callback_info* i
   }
 
   /* Decide if MCT should be used */
-  if(parameters->mct == 255)
+  if(parameters->apply_xyz_transform)
+  {
+    // XYZ-encoded data must not have MCT applied
+    parameters->mct = 0;
+  }
+  else if(parameters->mct == 255)
   { /* mct mode has not been set in commandline */
     parameters->mct = (image->numcomps >= 3) ? 1 : 0;
   }

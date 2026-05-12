@@ -68,6 +68,7 @@
 #include "GrkImage.h"
 #include "ICompressor.h"
 #include "IDecompressor.h"
+#include "XYZTransform.h"
 
 #include "MemStream.h"
 
@@ -962,6 +963,10 @@ void grk_compress_set_default_params(grk_cparameters* parameters)
   parameters->transcode_prog_order = GRK_PROG_UNKNOWN;
   parameters->device_id = 0;
   parameters->repeats = 1;
+}
+bool grk_apply_xyz_transform(grk_image* image)
+{
+  return grk::applyXYZTransform(image);
 }
 grk_object* grk_compress_init(grk_stream_params* streamParams, grk_cparameters* parameters,
                               grk_image* image)

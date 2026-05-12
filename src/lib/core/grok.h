@@ -1751,6 +1751,16 @@ typedef struct _grk_cparameters
   uint8_t max_res_transcode; /* max resolutions to keep (0 = all) */
   GRK_PROG_ORDER
   transcode_prog_order; /* reorder packets to this progression (GRK_PROG_UNKNOWN = keep) */
+
+  /**
+   * Apply Rec.709 RGB → DCI X'Y'Z' colour transform on the input image
+   * before compression. Uses SIMD-accelerated pipeline:
+   *   1. Rec.709 OETF⁻¹ (gamma → linear)
+   *   2. 3×3 matrix (linear RGB → linear CIE XYZ, D65)
+   *   3. DCI 2.6 gamma (linear → X'Y'Z')
+   * Only applied to images with ≥3 components.
+   */
+  bool apply_xyz_transform;
 } grk_cparameters;
 
 /**
@@ -1776,6 +1786,17 @@ typedef struct _grk_cparameters
  *                   (see @ref grk_cparameters); must not be NULL
  */
 GRK_API void GRK_CALLCONV grk_compress_set_default_params(grk_cparameters* parameters);
+
+/**
+ * @brief Apply Rec.709 RGB → DCI X'Y'Z' colour transform to an image in-place.
+ *
+ * Operates on planar int32 component buffers (comp[0..2].data).
+ * Pixel values are interpreted as unsigned integers in [0, (1<<prec)-1].
+ *
+ * @param image  Image with ≥3 components. Only components 0,1,2 are modified.
+ * @return true on success, false if image has <3 components.
+ */
+GRK_API bool GRK_CALLCONV grk_apply_xyz_transform(grk_image* image);
 
 /**
  * @brief Creates and initializes a JPEG 2000 compressor.
