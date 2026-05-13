@@ -1227,6 +1227,7 @@ std::function<void()> CodeStreamDecompress::postMultiTile(ITileProcessor* tilePr
 
 bool CodeStreamDecompress::setDecompressRegion(RectD region)
 {
+  compositeBoundsReduced_ = false;
   auto image = headerImage_;
   auto imageBounds = headerImage_->getBounds();
 
@@ -1258,7 +1259,6 @@ bool CodeStreamDecompress::setDecompressRegion(RectD region)
       region.x1 *= scale;
       region.y1 *= scale;
     }
-    compositeBoundsReduced_ = false;
     Rect16 tilesToDecompress;
     auto canvasRegion = Rect32((uint32_t)region.x0 + image->x0, (uint32_t)region.y0 + image->y0,
                                (uint32_t)region.x1 + image->x0, (uint32_t)region.y1 + image->y0);
