@@ -181,6 +181,7 @@ void CodingParams::init(grk_decompress_parameters* parameters,
   dw_y0 = parameters->dw_y0;
   dw_x1 = parameters->dw_x1;
   dw_y1 = parameters->dw_y1;
+  dw_reduced = parameters->dw_reduced;
   asynchronous_ = parameters->asynchronous;
   simulate_synchronous_ = parameters->simulate_synchronous;
   decompressCallback_ = parameters->decompress_callback;

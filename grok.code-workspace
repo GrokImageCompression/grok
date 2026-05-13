@@ -23,6 +23,9 @@
 		},
 		{
 			"path": "../tiletopia"
+		},
+		{
+			"path": "../ix"
 		}
 	],
 	"settings": {}

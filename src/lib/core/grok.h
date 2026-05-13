@@ -754,6 +754,7 @@ typedef struct _grk_decompress_params
   double dw_x1; /* decompress window right boundary*/
   double dw_y0; /* decompress window top boundary*/
   double dw_y1; /* decompress window bottom boundary*/
+  bool dw_reduced; /* if true, dw_x0..dw_y1 are in reduced (output) coordinate space */
   uint16_t tile_index; /* index of decompressed tile*/
 
   /***************************************************************************

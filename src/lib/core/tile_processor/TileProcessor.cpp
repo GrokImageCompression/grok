@@ -1162,6 +1162,17 @@ void TileProcessor::post_decompressT2T1(GrkImage* scratch)
       {
         grk_unref(image_);
         image_ = scratch->extractFrom(tile_);
+        // extractFrom() sets image x0/y0/x1/y1 from unreduced tile canvas
+        // coordinates.  When caller passed reduced coordinates (dw_reduced),
+        // reduce them to match the output coordinate space.
+        uint8_t reduce = cp_->codingParams_.dec_.reduce_;
+        if(cp_->dw_reduced && reduce > 0)
+        {
+          image_->x0 = ceildivpow2<uint32_t>(image_->x0, reduce);
+          image_->y0 = ceildivpow2<uint32_t>(image_->y0, reduce);
+          image_->x1 = ceildivpow2<uint32_t>(image_->x1, reduce);
+          image_->y1 = ceildivpow2<uint32_t>(image_->y1, reduce);
+        }
       }
       else
       {

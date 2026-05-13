@@ -1248,6 +1248,17 @@ bool CodeStreamDecompress::setDecompressRegion(RectD region)
       region.x1 = (double)ceil(val[2] * w);
       region.y1 = (double)ceil(val[3] * h);
     }
+    else if(cp_.dw_reduced && cp_.codingParams_.dec_.reduce_ > 0)
+    {
+      // Caller passes coordinates in the reduced output space;
+      // scale up to full-resolution for internal processing.
+      uint32_t scale = 1u << cp_.codingParams_.dec_.reduce_;
+      region.x0 *= scale;
+      region.y0 *= scale;
+      region.x1 *= scale;
+      region.y1 *= scale;
+    }
+    compositeBoundsReduced_ = false;
     Rect16 tilesToDecompress;
     auto canvasRegion = Rect32((uint32_t)region.x0 + image->x0, (uint32_t)region.y0 + image->y0,
                                (uint32_t)region.x1 + image->x0, (uint32_t)region.y1 + image->y0);
@@ -1439,7 +1450,25 @@ void CodeStreamDecompress::wait(grk_wait_swath* swath)
   // 1. Swath-based early return: tile data ready but NOT post-processed
   if(swath && tileCompletion_)
   {
-    bool rc = tileCompletion_->wait(swath);
+    // When caller passed reduced coordinates (dw_reduced), scale up to
+    // full-resolution for TileCompletion which uses unreduced tile grid.
+    grk_wait_swath fullResSwath = *swath;
+    uint8_t reduce = cp_.codingParams_.dec_.reduce_;
+    if(cp_.dw_reduced && reduce > 0)
+    {
+      uint32_t scale = 1u << reduce;
+      fullResSwath.x0 *= scale;
+      fullResSwath.y0 *= scale;
+      fullResSwath.x1 *= scale;
+      fullResSwath.y1 *= scale;
+    }
+    bool rc = tileCompletion_->wait(&fullResSwath);
+    // Copy output tile indices back to caller's swath
+    swath->tile_x0 = fullResSwath.tile_x0;
+    swath->tile_y0 = fullResSwath.tile_y0;
+    swath->tile_x1 = fullResSwath.tile_x1;
+    swath->tile_y1 = fullResSwath.tile_y1;
+    swath->num_tile_cols = fullResSwath.num_tile_cols;
     if(!rc)
       return;
     return;
@@ -2433,6 +2462,19 @@ GrkImage* CodeStreamDecompress::getImage(uint16_t tile_index, bool doWait)
 GrkImage* CodeStreamDecompress::getImage()
 {
   wait(nullptr);
+
+  // Reduce image-level bounds to match component (output) coordinate space.
+  // Only when caller passed reduced coordinates (dw_reduced), the
+  // multiTileComposite_ still has unreduced canvas bounds that need reducing.
+  auto reduce = cp_.codingParams_.dec_.reduce_;
+  if(cp_.dw_reduced && reduce > 0 && !compositeBoundsReduced_)
+  {
+    multiTileComposite_->x0 = ceildivpow2<uint32_t>(multiTileComposite_->x0, reduce);
+    multiTileComposite_->y0 = ceildivpow2<uint32_t>(multiTileComposite_->y0, reduce);
+    multiTileComposite_->x1 = ceildivpow2<uint32_t>(multiTileComposite_->x1, reduce);
+    multiTileComposite_->y1 = ceildivpow2<uint32_t>(multiTileComposite_->y1, reduce);
+    compositeBoundsReduced_ = true;
+  }
 
   return multiTileComposite_.get();
 }

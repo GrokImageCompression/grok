@@ -444,6 +444,7 @@ struct CodingParams
   double dw_x1 = 0; /* decompress window right boundary*/
   double dw_y0 = 0; /* decompress window top boundary*/
   double dw_y1 = 0; /* decompress window bottom boundary*/
+  bool dw_reduced = false; /* if true, dw_x0..dw_y1 are in reduced coordinate space */
   std::unique_ptr<PPMMarker> ppmMarkers_;
   TileCodingParamsPool tcps_; /** default tile coding parameters */
   union

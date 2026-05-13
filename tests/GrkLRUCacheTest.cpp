@@ -883,14 +883,17 @@ static bool testReduceWithRegion()
     return false;
   }
 
-  // Decompress a sub-region at reduce=1
+  // Decompress a sub-region at reduce=1.
+  // Coordinates are in reduced output space: 64x64 reduced pixels
+  // = 128x128 full-res pixels, yielding 64x64 output.
   grk_decompress_parameters params{};
   params.core.tile_cache_strategy = GRK_TILE_CACHE_IMAGE;
   params.core.reduce = 1;
   params.dw_x0 = 0;
   params.dw_y0 = 0;
-  params.dw_x1 = 128;
-  params.dw_y1 = 128;
+  params.dw_x1 = 64;
+  params.dw_y1 = 64;
+  params.dw_reduced = true;
   params.asynchronous = true;
   params.simulate_synchronous = true;
 
@@ -919,10 +922,11 @@ static bool testReduceWithRegion()
     return false;
   }
 
-  // At reduce=1, the 128x128 region should produce ~64x64 output
+  // At reduce=1, the 64x64 reduced-space region produces ~64x64 output
   uint32_t w = img->x1 - img->x0;
   uint32_t h = img->y1 - img->y0;
-  spdlog::info("Reduce+region output: {}x{}", w, h);
+  spdlog::info("Reduce+region output: {}x{} (x0={}, y0={}, x1={}, y1={})", w, h, img->x0, img->y0, img->x1, img->y1);
+  spdlog::info("Reduce+region comps[0]: w={}, h={}", img->comps[0].w, img->comps[0].h);
 
   std::error_code ec;
   std::filesystem::remove(testFile, ec);
@@ -933,14 +937,102 @@ static bool testReduceWithRegion()
     return false;
   }
 
-  // Region is 128x128, reduce=1 → expect ~64x64
-  if(w > 128 || h > 128)
+  // Region is 64x64 in reduced space → expect ~64x64 output
+  if(w > 64 || h > 64)
   {
     spdlog::error("FAIL: Output larger than region");
     return false;
   }
 
   spdlog::info("PASS: Reduce + region combined");
+  return true;
+}
+
+///////////////////////////////////////////////////////////////////
+// Test 9b: Reduced-coords API for multi-tile per-tile images
+//
+// Verifies that grk_decompress_get_tile_image returns tile images
+// with x0/y0/x1/y1 in reduced coordinate space (not full-res).
+///////////////////////////////////////////////////////////////////
+static bool testReducedCoordsPerTile()
+{
+  spdlog::info("=== Test: Reduced-coords per-tile API ===");
+
+  // Create 256x256 image with 128x128 tiles (2x2 grid)
+  std::string testFile =
+      (std::filesystem::temp_directory_path() / "grk_reduced_coords_test.j2k").string();
+  if(!createTestImage(testFile, 256, 256, 128, 128, false))
+  {
+    spdlog::error("Failed to create test image");
+    return false;
+  }
+
+  // Decompress at reduce=1 (output 128x128 with 64x64 tiles)
+  grk_decompress_parameters params{};
+  params.core.tile_cache_strategy = GRK_TILE_CACHE_IMAGE;
+  params.core.reduce = 1;
+  params.core.skip_allocate_composite = true;
+  params.dw_reduced = true;
+  params.asynchronous = true;
+  params.simulate_synchronous = true;
+
+  grk_stream_params sp{};
+  safe_strcpy(sp.file, testFile.data());
+  CodecPtr codec(grk_decompress_init(&sp, &params));
+  grk_header_info hi{};
+  grk_decompress_read_header(codec.get(), &hi);
+  grk_decompress_update(&params, codec.get());
+
+  bool ok = grk_decompress(codec.get(), nullptr);
+  if(!ok)
+  {
+    spdlog::error("Decompress failed");
+    std::filesystem::remove(testFile);
+    return false;
+  }
+
+  grk_decompress_wait(codec.get(), nullptr);
+
+  // Check each tile's image coordinates are in reduced space
+  // Full-res tiles: (0,0,128,128), (128,0,256,128), (0,128,128,256), (128,128,256,256)
+  // Expected reduced: (0,0,64,64), (64,0,128,64), (0,64,64,128), (64,64,128,128)
+  struct Expected
+  {
+    uint16_t tileIndex;
+    uint32_t x0, y0, x1, y1;
+  };
+  Expected expected[] = {{0, 0, 0, 64, 64}, {1, 64, 0, 128, 64}, {2, 0, 64, 64, 128}, {3, 64, 64, 128, 128}};
+
+  for(auto& e : expected)
+  {
+    auto* tileImg = grk_decompress_get_tile_image(codec.get(), e.tileIndex, true);
+    if(!tileImg)
+    {
+      spdlog::error("FAIL: get_tile_image returned null for tile {}", e.tileIndex);
+      std::filesystem::remove(testFile);
+      return false;
+    }
+    if(tileImg->x0 != e.x0 || tileImg->y0 != e.y0 || tileImg->x1 != e.x1 || tileImg->y1 != e.y1)
+    {
+      spdlog::error("FAIL: tile {} coords ({},{},{},{}) != expected ({},{},{},{})", e.tileIndex,
+                    tileImg->x0, tileImg->y0, tileImg->x1, tileImg->y1, e.x0, e.y0, e.x1, e.y1);
+      std::filesystem::remove(testFile);
+      return false;
+    }
+    // Also verify component dimensions match reduced tile size
+    uint32_t cw = tileImg->comps[0].w;
+    uint32_t ch = tileImg->comps[0].h;
+    if(cw != (e.x1 - e.x0) || ch != (e.y1 - e.y0))
+    {
+      spdlog::error("FAIL: tile {} comp size {}x{} != expected {}x{}", e.tileIndex, cw, ch,
+                    e.x1 - e.x0, e.y1 - e.y0);
+      std::filesystem::remove(testFile);
+      return false;
+    }
+  }
+
+  std::filesystem::remove(testFile);
+  spdlog::info("PASS: Reduced-coords per-tile API");
   return true;
 }
 
@@ -2539,6 +2631,10 @@ int GrkLRUCacheTest::main(int argc, char** argv)
 
   // Test 9: Reduce + region combined
   if(!testReduceWithRegion())
+    failures++;
+
+  // Test 9b: Reduced-coords per-tile API
+  if(!testReducedCoordsPerTile())
     failures++;
 
   // Test 10: All tiles via decompressTile then re-read

@@ -393,6 +393,7 @@ private:
    *
    */
   std::unique_ptr<GrkImage, RefCountedDeleter<GrkImage>> multiTileComposite_;
+  bool compositeBoundsReduced_ = false;
 
   /**
    * @brief Holds unreduced unsubsampled decompress region , if set
