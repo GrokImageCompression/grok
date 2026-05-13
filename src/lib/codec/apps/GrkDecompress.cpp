@@ -393,6 +393,7 @@ GrkRC GrkDecompress::parseCommandLine(int argc, const char* argv[],
                                  "Use fast 16-bit DWT for 9/7 MCT decompress (prec <= 12)");
 
   cmd.set_help_flag("-h", "Show abreviated usage");
+  cmd.set_version_flag("-v,--version", grk_version(), "Show version");
   cmd.add_flag("--help", "Show detailed usage");
   // Hidden completion generator
   cmd.add_flag("--generate-completion", "Generate Bash completion script")->group("");

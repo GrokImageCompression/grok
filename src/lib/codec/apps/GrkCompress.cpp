@@ -944,6 +944,7 @@ GrkRC GrkCompress::parseCommandLine(int argc, const char* argv[], CompressInitPa
                               "Apply Rec.709 RGB to DCI X'Y'Z' colour transform before compression");
 
   app.set_help_flag("-h", "Show abreviated usage");
+  app.set_version_flag("-v,--version", grk_version(), "Show version");
   app.add_flag("--help", "Show detailed usage");
   try
   {
