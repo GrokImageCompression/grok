@@ -548,12 +548,19 @@ void FileFormatMJ2Decompress::stsc_decompact(mj2_tk* tk)
 {
   if(tk->sampletochunk_.size() == 1)
   {
+    auto samples_per_chunk = tk->sampletochunk_[0].samples_per_chunk_;
+    if(samples_per_chunk == 0 || samples_per_chunk > tk->samples_.size())
+    {
+      grklog.error("MJ2 STSC: samples_per_chunk %u is inconsistent with sample count %u",
+                   samples_per_chunk, (uint32_t)tk->samples_.size());
+      return;
+    }
     auto num_chunks = (uint32_t)ceil((double)tk->samples_.size() /
-                                     (double)tk->sampletochunk_[0].samples_per_chunk_);
+                                     (double)samples_per_chunk);
     for(uint32_t k = 0; k < num_chunks; k++)
     {
       mj2_chunk chunk;
-      chunk.num_samples_ = tk->sampletochunk_[0].samples_per_chunk_;
+      chunk.num_samples_ = samples_per_chunk;
       tk->chunks_.push_back(chunk);
     }
   }
@@ -627,6 +634,11 @@ void FileFormatMJ2Decompress::stco_decompact(mj2_tk* tk)
     uint32_t intra_chunk_offset = 0;
     for(uint32_t j = 0; j < chunk.num_samples_; j++)
     {
+      if(samples_count >= tk->samples_.size())
+      {
+        grklog.error("MJ2 STCO: chunk samples exceed declared sample count");
+        return;
+      }
       tk->samples_[samples_count].offset_ = intra_chunk_offset + chunk.offset_;
       intra_chunk_offset += tk->samples_[samples_count].samples_size_;
       samples_count++;
