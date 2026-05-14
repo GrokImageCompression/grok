@@ -173,28 +173,22 @@ template<typename T>
 struct Rect
 {
   Rect(T origin_x0, T origin_y0, T x0, T y0, T x1, T y1)
-      : absoluteCoordinates(true), origin_x0(origin_x0), origin_y0(origin_y0), x0(x0), y0(y0),
-        x1(x1), y1(y1)
+      : origin_x0(origin_x0), origin_y0(origin_y0), x0(x0), y0(y0), x1(x1), y1(y1)
   {}
   Rect(T x0, T y0, T x1, T y1) : Rect(x0, y0, x0, y0, x1, y1) {}
   Rect(const Rect& rhs) : Rect(&rhs) {}
   explicit Rect(const Rect* rhs)
       : origin_x0(rhs->origin_x0), origin_y0(rhs->origin_y0), x0(rhs->x0), y0(rhs->y0), x1(rhs->x1),
         y1(rhs->y1)
-  {
-    absoluteCoordinates = rhs->absoluteCoordinates;
-  }
+  {}
   Rect(void) : Rect(0, 0, 0, 0) {}
   virtual ~Rect() = default;
 
-  bool absoluteCoordinates;
   T origin_x0, origin_y0;
   T x0, y0, x1, y1;
 
-  Rect<T>& setOrigin(T origx, T origy, bool absolute)
+  Rect<T>& setOrigin(T origx, T origy)
   {
-    absoluteCoordinates = absolute;
-
     assert(x0 >= origx);
     assert(y0 >= origy);
 
@@ -203,14 +197,12 @@ struct Rect
 
     return *this;
   }
-  Rect<T>& setOrigin(const Rect<T>& rhs, bool absolute)
+  Rect<T>& setOrigin(const Rect<T>& rhs)
   {
-    return setOrigin(&rhs, absolute);
+    return setOrigin(&rhs);
   }
-  Rect<T>& setOrigin(const Rect<T>* rhs, bool absolute)
+  Rect<T>& setOrigin(const Rect<T>* rhs)
   {
-    absoluteCoordinates = absolute;
-
     if(rhs)
     {
       assert(x0 >= rhs->origin_x0);
@@ -221,23 +213,12 @@ struct Rect
 
     return *this;
   }
-  Rect<T>& toRelative(void)
+  /// Return a copy with origin subtracted from coordinates (absolute → relative).
+  Rect<T> toRelative(void) const
   {
     assert(x0 >= origin_x0);
     assert(y0 >= origin_y0);
-    if(absoluteCoordinates)
-      pan_IN_PLACE(-(int64_t)origin_x0, -(int64_t)origin_y0);
-    absoluteCoordinates = false;
-
-    return *this;
-  }
-  Rect<T>& toAbsolute(void)
-  {
-    if(!absoluteCoordinates)
-      pan_IN_PLACE(origin_x0, origin_y0);
-    absoluteCoordinates = true;
-
-    return *this;
+    return pan(-(int64_t)origin_x0, -(int64_t)origin_y0);
   }
   virtual void print(void) const
   {
@@ -263,7 +244,6 @@ struct Rect
   {
     if(*this != rhs)
     { // self-assignment check expected
-      absoluteCoordinates = rhs.absoluteCoordinates;
       origin_x0 = rhs.origin_x0;
       origin_y0 = rhs.origin_y0;
       x0 = rhs.x0;
@@ -290,7 +270,7 @@ struct Rect
   {
     if(this == &rhs)
       return true;
-    return absoluteCoordinates == rhs.absoluteCoordinates && origin_x0 == rhs.origin_x0 &&
+    return origin_x0 == rhs.origin_x0 &&
            origin_y0 == rhs.origin_y0 && x0 == rhs.x0 && y0 == rhs.y0 && x1 == rhs.x1 &&
            y1 == rhs.y1;
   }
@@ -346,13 +326,11 @@ struct Rect
   }
   Rect<T> intersection(const Rect<T>& rhs) const
   {
-    assert(absoluteCoordinates == rhs.absoluteCoordinates);
 
     return intersection(&rhs);
   }
   Rect<T> clip(const Rect* rhs) const
   {
-    assert(absoluteCoordinates == rhs->absoluteCoordinates);
     return Rect<T>(std::max<T>(x0, rhs->x0), std::max<T>(y0, rhs->y0), std::min<T>(x1, rhs->x1),
                    std::min<T>(y1, rhs->y1));
   }
@@ -371,7 +349,6 @@ struct Rect
   }
   Rect<T>& clip_IN_PLACE(const Rect& rhs)
   {
-    assert(absoluteCoordinates == rhs.absoluteCoordinates);
     *this = Rect<T>(std::max<T>(x0, rhs.x0), std::max<T>(y0, rhs.y0), std::min<T>(x1, rhs.x1),
                     std::min<T>(y1, rhs.y1));
 
@@ -379,13 +356,11 @@ struct Rect
   }
   Rect<T> intersection(const Rect* rhs) const
   {
-    assert(absoluteCoordinates == rhs->absoluteCoordinates);
     return Rect<T>(std::max<T>(x0, rhs->x0), std::max<T>(y0, rhs->y0), std::min<T>(x1, rhs->x1),
                    std::min<T>(y1, rhs->y1));
   }
   bool nonEmptyIntersection(const Rect* rhs) const
   {
-    assert(absoluteCoordinates == rhs->absoluteCoordinates);
     return std::max<T>(x0, rhs->x0) < std::min<T>(x1, rhs->x1) &&
            std::max<T>(y0, rhs->y0) < std::min<T>(y1, rhs->y1);
   }
@@ -396,7 +371,6 @@ struct Rect
   }
   Rect<T> rectUnion(const Rect* rhs) const
   {
-    assert(absoluteCoordinates == rhs->absoluteCoordinates);
     return Rect<T>(std::min<T>(x0, rhs->x0), std::min<T>(y0, rhs->y0), std::max<T>(x1, rhs->x1),
                    std::max<T>(y1, rhs->y1));
   }
