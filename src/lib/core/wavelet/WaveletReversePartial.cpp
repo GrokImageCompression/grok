@@ -534,16 +534,17 @@ struct PartialBandInfo
 
     tileBandWindowREL[t1::BAND_ORIENT_LL] = bandWindowREL_[t1::BAND_ORIENT_LL];
     tileBandWindowREL[t1::BAND_ORIENT_HL] =
-        bandWindowREL_[t1::BAND_ORIENT_HL].pan(fullRes->band[t1::BAND_INDEX_LH].width(), 0);
+        bandWindowREL_[t1::BAND_ORIENT_HL].pan(fullRes->width(), 0);
     tileBandWindowREL[t1::BAND_ORIENT_LH] =
-        bandWindowREL_[t1::BAND_ORIENT_LH].pan(0, fullRes->band[t1::BAND_INDEX_HL].height());
-    tileBandWindowREL[t1::BAND_ORIENT_HH] = bandWindowREL_[t1::BAND_ORIENT_HH].pan(
-        fullRes->band[t1::BAND_INDEX_LH].width(), fullRes->band[t1::BAND_INDEX_HL].height());
+        bandWindowREL_[t1::BAND_ORIENT_LH].pan(0, fullRes->height());
+    tileBandWindowREL[t1::BAND_ORIENT_HH] =
+        bandWindowREL_[t1::BAND_ORIENT_HH].pan(fullRes->width(), fullRes->height());
     // 2. pre-allocate sparse blocks
+    auto fullResNext = fullRes + 1;
     for(uint32_t i = 0; i < t1::BAND_NUM_ORIENTATIONS; ++i)
     {
       auto temp = tileBandWindowREL[i];
-      if(!sa->alloc(temp.grow_IN_PLACE(2 * FILTER_WIDTH, fullRes->width(), fullRes->height()),
+      if(!sa->alloc(temp.grow_IN_PLACE(2 * FILTER_WIDTH, fullResNext->width(), fullResNext->height()),
                     true))
         return false;
     }
@@ -553,7 +554,6 @@ struct PartialBandInfo
     splitWindowREL_[SPLIT_L] = tileWindow->getResWindowBufferSplitREL(resno, SPLIT_L);
     splitWindowREL_[SPLIT_H] = tileWindow->getResWindowBufferSplitREL(resno, SPLIT_H);
 
-    auto fullResNext = fullRes + 1;
     for(uint32_t k = 0; k < SPLIT_NUM_ORIENTATIONS; ++k)
     {
       auto temp = splitWindowREL_[k];
