@@ -95,7 +95,7 @@ jobs:
       # The CMake binaries on the Github Actions machines are (as of this writing) 3.12
       run: |
         if [[ "${{ matrix.os }}" == "windows-latest" ]]; then
-          cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DBUILD_SHARED_LIBS=${{ matrix.shared_libs_flag }} -DBUILD_TESTING:BOOL=ON -DGRK_DATA_ROOT=$DATA_ROOT -DGRK_ENABLE_LIBCURL=OFF -DGRK_ENABLE_ASAN=ON $GENERATOR_PLATFORM
+          cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DBUILD_SHARED_LIBS=${{ matrix.shared_libs_flag }} -DBUILD_TESTING:BOOL=ON -DGRK_DATA_ROOT=$DATA_ROOT -DGRK_ENABLE_LIBCURL=OFF $GENERATOR_PLATFORM
         elif [[ "${{ matrix.os }}" != "ubuntu-latest" ]]; then
           cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DBUILD_SHARED_LIBS=${{ matrix.shared_libs_flag }} -DBUILD_TESTING:BOOL=ON -DGRK_DATA_ROOT=$DATA_ROOT -DGRK_ENABLE_LIBCURL=OFF $GENERATOR_PLATFORM
         else
