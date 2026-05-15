@@ -324,7 +324,7 @@ typedef enum _GRK_CODEC_FORMAT
   GRK_CODEC_MJ2 /** Motion JPEG 2000 */
 } GRK_CODEC_FORMAT;
 
-#define GRK_PATH_LEN 4096 /* Grok maximum supported filename size */
+#define GRK_PATH_LEN 1024 /* Grok maximum supported filename size */
 #define GRK_MAX_LAYERS 256 /* Grok maximum number of quality layers */
 
 /*

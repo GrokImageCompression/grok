@@ -81,6 +81,18 @@ if(CMAKE_CXX_LINK_PIE_SUPPORTED)
   set(CMAKE_POSITION_INDEPENDENT_CODE TRUE)
 endif()
 
+# AddressSanitizer support
+option(GRK_ENABLE_ASAN "Enable AddressSanitizer (ASan) for detecting memory errors" OFF)
+if(GRK_ENABLE_ASAN)
+  if(MSVC)
+    add_compile_options(/fsanitize=address)
+    # MSVC ASan does not require link flags; the runtime is linked automatically.
+  else()
+    add_compile_options(-fsanitize=address -fno-omit-frame-pointer)
+    add_link_options(-fsanitize=address)
+  endif()
+endif()
+
 add_compile_options(
   $<$<AND:$<COMPILE_LANGUAGE:C,CXX>,$<CONFIG:RelWithDebInfo>>:-fno-omit-frame-pointer>)
 add_link_options(

@@ -81,22 +81,42 @@ struct CodecDeleter
 };
 using CodecPtr = std::unique_ptr<grk_object, CodecDeleter>;
 
+// Heap-allocate large parameter structs to avoid stack overflows on Windows.
+static auto make_cparameters()
+{
+  auto p = std::make_unique<grk_cparameters>();
+  memset(p.get(), 0, sizeof(grk_cparameters));
+  return p;
+}
+static auto make_decompress_parameters()
+{
+  auto p = std::make_unique<grk_decompress_parameters>();
+  memset(p.get(), 0, sizeof(grk_decompress_parameters));
+  return p;
+}
+static auto make_stream_params()
+{
+  auto p = std::make_unique<grk_stream_params>();
+  memset(p.get(), 0, sizeof(grk_stream_params));
+  return p;
+}
+
 // Create a synthetic test image and compress it to a J2K file
 static bool createTestImage(const std::string& path, uint32_t width, uint32_t height,
                             uint32_t tileWidth, uint32_t tileHeight, bool writeTlm = true)
 {
-  grk_cparameters cparams{};
-  grk_compress_set_default_params(&cparams);
-  cparams.cod_format = GRK_FMT_J2K;
-  cparams.t_width = tileWidth;
-  cparams.t_height = tileHeight;
-  cparams.tile_size_on = (tileWidth < width || tileHeight < height);
-  cparams.write_tlm = writeTlm;
-  cparams.numresolution = 3;
+  auto cparams = make_cparameters();
+  grk_compress_set_default_params(cparams.get());
+  cparams->cod_format = GRK_FMT_J2K;
+  cparams->t_width = tileWidth;
+  cparams->t_height = tileHeight;
+  cparams->tile_size_on = (tileWidth < width || tileHeight < height);
+  cparams->write_tlm = writeTlm;
+  cparams->numresolution = 3;
   // Lossless
-  cparams.irreversible = false;
-  cparams.numlayers = 1;
-  cparams.layer_rate[0] = 0;
+  cparams->irreversible = false;
+  cparams->numlayers = 1;
+  cparams->layer_rate[0] = 0;
 
   grk_image_comp comp{};
   comp.dx = 1;
@@ -121,10 +141,10 @@ static bool createTestImage(const std::string& path, uint32_t width, uint32_t he
     for(uint32_t x = 0; x < width; ++x)
       data[y * width + x] = static_cast<int32_t>((x * 7 + y * 13) % 256);
 
-  grk_stream_params streamParams{};
-  safe_strcpy(streamParams.file, path.data());
+  auto streamParams = make_stream_params();
+  safe_strcpy(streamParams->file, path.data());
 
-  auto* codec = grk_compress_init(&streamParams, &cparams, image);
+  auto* codec = grk_compress_init(streamParams.get(), cparams.get(), image);
   if(!codec)
   {
     spdlog::error("Failed to init compressor");
@@ -159,15 +179,15 @@ static std::vector<TileData> decompressAndCapture(const std::string& path,
 {
   std::vector<TileData> result;
 
-  grk_decompress_parameters params{};
-  params.core.tile_cache_strategy = tileCacheStrategy;
-  params.asynchronous = true;
-  params.simulate_synchronous = true;
+  auto params = make_decompress_parameters();
+  params->core.tile_cache_strategy = tileCacheStrategy;
+  params->asynchronous = true;
+  params->simulate_synchronous = true;
 
-  grk_stream_params streamParams{};
-  safe_strcpy(streamParams.file, path.data());
+  auto streamParams = make_stream_params();
+  safe_strcpy(streamParams->file, path.data());
 
-  CodecPtr codec(grk_decompress_init(&streamParams, &params));
+  CodecPtr codec(grk_decompress_init(streamParams.get(), params.get()));
   if(!codec)
   {
     spdlog::error("Failed to init decompressor");
@@ -402,14 +422,14 @@ static std::vector<TileData> decompressTileByTile(const std::string& path,
 {
   std::vector<TileData> result;
 
-  grk_decompress_parameters params{};
-  params.core.tile_cache_strategy = tileCacheStrategy;
-  params.core.max_active_tiles = maxActiveTiles;
+  auto params = make_decompress_parameters();
+  params->core.tile_cache_strategy = tileCacheStrategy;
+  params->core.max_active_tiles = maxActiveTiles;
 
-  grk_stream_params streamParams{};
-  safe_strcpy(streamParams.file, path.data());
+  auto streamParams = make_stream_params();
+  safe_strcpy(streamParams->file, path.data());
 
-  CodecPtr codec(grk_decompress_init(&streamParams, &params));
+  CodecPtr codec(grk_decompress_init(streamParams.get(), params.get()));
   if(!codec)
   {
     spdlog::error("Failed to init decompressor");
@@ -423,7 +443,7 @@ static std::vector<TileData> decompressTileByTile(const std::string& path,
     return result;
   }
 
-  if(!grk_decompress_update(&params, codec.get()))
+  if(!grk_decompress_update(params.get(), codec.get()))
   {
     spdlog::error("grk_decompress_update failed");
     return result;
@@ -585,20 +605,20 @@ static bool testTLMEvictionReDecompress(const std::string& testFile)
 static bool createMultiTilePartImage(const std::string& path, uint32_t width, uint32_t height,
                                      uint32_t tileWidth, uint32_t tileHeight, bool writeTlm)
 {
-  grk_cparameters cparams{};
-  grk_compress_set_default_params(&cparams);
-  cparams.cod_format = GRK_FMT_J2K;
-  cparams.t_width = tileWidth;
-  cparams.t_height = tileHeight;
-  cparams.tile_size_on = (tileWidth < width || tileHeight < height);
-  cparams.write_tlm = writeTlm;
-  cparams.numresolution = 3;
-  cparams.irreversible = false;
-  cparams.numlayers = 1;
-  cparams.layer_rate[0] = 0;
+  auto cparams = make_cparameters();
+  grk_compress_set_default_params(cparams.get());
+  cparams->cod_format = GRK_FMT_J2K;
+  cparams->t_width = tileWidth;
+  cparams->t_height = tileHeight;
+  cparams->tile_size_on = (tileWidth < width || tileHeight < height);
+  cparams->write_tlm = writeTlm;
+  cparams->numresolution = 3;
+  cparams->irreversible = false;
+  cparams->numlayers = 1;
+  cparams->layer_rate[0] = 0;
   // Multiple tile parts: one per component
-  cparams.enable_tile_part_generation = true;
-  cparams.new_tile_part_progression_divider = 'C';
+  cparams->enable_tile_part_generation = true;
+  cparams->new_tile_part_progression_divider = 'C';
 
   // 3-component RGB image
   grk_image_comp comps[3]{};
@@ -626,10 +646,10 @@ static bool createMultiTilePartImage(const std::string& path, uint32_t width, ui
         data[y * width + x] = static_cast<int32_t>((x * (7 + c) + y * (13 + c)) % 256);
   }
 
-  grk_stream_params sp{};
-  safe_strcpy(sp.file, path.data());
+  auto sp = make_stream_params();
+  safe_strcpy(sp->file, path.data());
 
-  auto* codec = grk_compress_init(&sp, &cparams, image);
+  auto* codec = grk_compress_init(sp.get(), cparams.get(), image);
   if(!codec)
   {
     grk_object_unref(&image->obj);
@@ -723,13 +743,13 @@ static bool testTruncatedFileRecovery()
   }
 
   // Decompress — should handle truncation gracefully
-  grk_decompress_parameters params{};
-  params.core.tile_cache_strategy = GRK_TILE_CACHE_IMAGE;
+  auto params = make_decompress_parameters();
+  params->core.tile_cache_strategy = GRK_TILE_CACHE_IMAGE;
 
-  grk_stream_params streamParams{};
-  safe_strcpy(streamParams.file, truncFile.data());
+  auto streamParams = make_stream_params();
+  safe_strcpy(streamParams->file, truncFile.data());
 
-  CodecPtr codec(grk_decompress_init(&streamParams, &params));
+  CodecPtr codec(grk_decompress_init(streamParams.get(), params.get()));
   if(!codec)
   {
     spdlog::error("Failed to init decompressor for truncated file");
@@ -755,7 +775,7 @@ static bool testTruncatedFileRecovery()
   uint16_t numTiles = headerInfo.t_grid_width * headerInfo.t_grid_height;
   uint16_t succeeded = 0;
   uint16_t failed = 0;
-  if(!grk_decompress_update(&params, codec.get()))
+  if(!grk_decompress_update(params.get(), codec.get()))
   {
     spdlog::error("grk_decompress_update failed");
     std::filesystem::remove(fullFile);
@@ -806,16 +826,16 @@ static bool testReducedResolution()
   }
 
   // Full resolution reference
-  grk_decompress_parameters fullParams{};
-  fullParams.core.tile_cache_strategy = GRK_TILE_CACHE_IMAGE;
-  fullParams.core.reduce = 0;
+  auto fullParams = make_decompress_parameters();
+  fullParams->core.tile_cache_strategy = GRK_TILE_CACHE_IMAGE;
+  fullParams->core.reduce = 0;
 
-  grk_stream_params sp1{};
-  safe_strcpy(sp1.file, testFile.data());
-  CodecPtr codec1(grk_decompress_init(&sp1, &fullParams));
+  auto sp1 = make_stream_params();
+  safe_strcpy(sp1->file, testFile.data());
+  CodecPtr codec1(grk_decompress_init(sp1.get(), fullParams.get()));
   grk_header_info hi1{};
   grk_decompress_read_header(codec1.get(), &hi1);
-  grk_decompress_update(&fullParams, codec1.get());
+  grk_decompress_update(fullParams.get(), codec1.get());
   grk_decompress_tile(codec1.get(), 0);
   auto* fullImg = grk_decompress_get_tile_image(codec1.get(), 0, true);
   uint32_t fullW = fullImg ? fullImg->comps[0].w : 0;
@@ -823,16 +843,16 @@ static bool testReducedResolution()
   spdlog::info("Full resolution tile 0: {}x{}", fullW, fullH);
 
   // Reduced resolution (reduce=1 → half)
-  grk_decompress_parameters redParams{};
-  redParams.core.tile_cache_strategy = GRK_TILE_CACHE_IMAGE;
-  redParams.core.reduce = 1;
+  auto redParams = make_decompress_parameters();
+  redParams->core.tile_cache_strategy = GRK_TILE_CACHE_IMAGE;
+  redParams->core.reduce = 1;
 
-  grk_stream_params sp2{};
-  safe_strcpy(sp2.file, testFile.data());
-  CodecPtr codec2(grk_decompress_init(&sp2, &redParams));
+  auto sp2 = make_stream_params();
+  safe_strcpy(sp2->file, testFile.data());
+  CodecPtr codec2(grk_decompress_init(sp2.get(), redParams.get()));
   grk_header_info hi2{};
   grk_decompress_read_header(codec2.get(), &hi2);
-  grk_decompress_update(&redParams, codec2.get());
+  grk_decompress_update(redParams.get(), codec2.get());
   grk_decompress_tile(codec2.get(), 0);
   auto* redImg = grk_decompress_get_tile_image(codec2.get(), 0, true);
   uint32_t redW = redImg ? redImg->comps[0].w : 0;
@@ -886,23 +906,23 @@ static bool testReduceWithRegion()
   // Decompress a sub-region at reduce=1.
   // Coordinates are in reduced output space: 64x64 reduced pixels
   // = 128x128 full-res pixels, yielding 64x64 output.
-  grk_decompress_parameters params{};
-  params.core.tile_cache_strategy = GRK_TILE_CACHE_IMAGE;
-  params.core.reduce = 1;
-  params.dw_x0 = 0;
-  params.dw_y0 = 0;
-  params.dw_x1 = 64;
-  params.dw_y1 = 64;
-  params.dw_reduced = true;
-  params.asynchronous = true;
-  params.simulate_synchronous = true;
+  auto params = make_decompress_parameters();
+  params->core.tile_cache_strategy = GRK_TILE_CACHE_IMAGE;
+  params->core.reduce = 1;
+  params->dw_x0 = 0;
+  params->dw_y0 = 0;
+  params->dw_x1 = 64;
+  params->dw_y1 = 64;
+  params->dw_reduced = true;
+  params->asynchronous = true;
+  params->simulate_synchronous = true;
 
-  grk_stream_params sp{};
-  safe_strcpy(sp.file, testFile.data());
-  CodecPtr codec(grk_decompress_init(&sp, &params));
+  auto sp = make_stream_params();
+  safe_strcpy(sp->file, testFile.data());
+  CodecPtr codec(grk_decompress_init(sp.get(), params.get()));
   grk_header_info hi{};
   grk_decompress_read_header(codec.get(), &hi);
-  grk_decompress_update(&params, codec.get());
+  grk_decompress_update(params.get(), codec.get());
 
   bool ok = grk_decompress(codec.get(), nullptr);
   if(!ok)
@@ -968,20 +988,20 @@ static bool testReducedCoordsPerTile()
   }
 
   // Decompress at reduce=1 (output 128x128 with 64x64 tiles)
-  grk_decompress_parameters params{};
-  params.core.tile_cache_strategy = GRK_TILE_CACHE_IMAGE;
-  params.core.reduce = 1;
-  params.core.skip_allocate_composite = true;
-  params.dw_reduced = true;
-  params.asynchronous = true;
-  params.simulate_synchronous = true;
+  auto params = make_decompress_parameters();
+  params->core.tile_cache_strategy = GRK_TILE_CACHE_IMAGE;
+  params->core.reduce = 1;
+  params->core.skip_allocate_composite = true;
+  params->dw_reduced = true;
+  params->asynchronous = true;
+  params->simulate_synchronous = true;
 
-  grk_stream_params sp{};
-  safe_strcpy(sp.file, testFile.data());
-  CodecPtr codec(grk_decompress_init(&sp, &params));
+  auto sp = make_stream_params();
+  safe_strcpy(sp->file, testFile.data());
+  CodecPtr codec(grk_decompress_init(sp.get(), params.get()));
   grk_header_info hi{};
   grk_decompress_read_header(codec.get(), &hi);
-  grk_decompress_update(&params, codec.get());
+  grk_decompress_update(params.get(), codec.get());
 
   bool ok = grk_decompress(codec.get(), nullptr);
   if(!ok)
@@ -1047,15 +1067,15 @@ static bool testAllTilesThenReRead(const std::string& testFile)
 {
   spdlog::info("=== Test: All tiles via decompressTile then re-read ===");
 
-  grk_decompress_parameters params{};
-  params.core.tile_cache_strategy = GRK_TILE_CACHE_IMAGE;
+  auto params = make_decompress_parameters();
+  params->core.tile_cache_strategy = GRK_TILE_CACHE_IMAGE;
 
-  grk_stream_params sp{};
-  safe_strcpy(sp.file, testFile.data());
-  CodecPtr codec(grk_decompress_init(&sp, &params));
+  auto sp = make_stream_params();
+  safe_strcpy(sp->file, testFile.data());
+  CodecPtr codec(grk_decompress_init(sp.get(), params.get()));
   grk_header_info hi{};
   grk_decompress_read_header(codec.get(), &hi);
-  grk_decompress_update(&params, codec.get());
+  grk_decompress_update(params.get(), codec.get());
 
   uint16_t numTiles = hi.t_grid_width * hi.t_grid_height;
   spdlog::info("All-tiles-then-reread: grid {}x{} = {} tiles", hi.t_grid_width, hi.t_grid_height,
@@ -1102,15 +1122,15 @@ static bool testOutOfBoundsTileIndex(const std::string& testFile)
 {
   spdlog::info("=== Test: Out-of-bounds tile index ===");
 
-  grk_decompress_parameters params{};
-  params.core.tile_cache_strategy = GRK_TILE_CACHE_IMAGE;
+  auto params = make_decompress_parameters();
+  params->core.tile_cache_strategy = GRK_TILE_CACHE_IMAGE;
 
-  grk_stream_params sp{};
-  safe_strcpy(sp.file, testFile.data());
-  CodecPtr codec(grk_decompress_init(&sp, &params));
+  auto sp = make_stream_params();
+  safe_strcpy(sp->file, testFile.data());
+  CodecPtr codec(grk_decompress_init(sp.get(), params.get()));
   grk_header_info hi{};
   grk_decompress_read_header(codec.get(), &hi);
-  grk_decompress_update(&params, codec.get());
+  grk_decompress_update(params.get(), codec.get());
 
   uint16_t numTiles = hi.t_grid_width * hi.t_grid_height;
   uint16_t badIndex = numTiles + 10;
@@ -1141,17 +1161,17 @@ static bool testRGBRoundTrip()
       (std::filesystem::temp_directory_path() / "grk_rgb_roundtrip.j2k").string();
 
   // Compress
-  grk_cparameters cparams{};
-  grk_compress_set_default_params(&cparams);
-  cparams.cod_format = GRK_FMT_J2K;
-  cparams.t_width = 64;
-  cparams.t_height = 64;
-  cparams.tile_size_on = true;
-  cparams.numresolution = 3;
-  cparams.irreversible = false;
-  cparams.numlayers = 1;
-  cparams.layer_rate[0] = 0;
-  cparams.mct = 1; // standard MCT
+  auto cparams = make_cparameters();
+  grk_compress_set_default_params(cparams.get());
+  cparams->cod_format = GRK_FMT_J2K;
+  cparams->t_width = 64;
+  cparams->t_height = 64;
+  cparams->tile_size_on = true;
+  cparams->numresolution = 3;
+  cparams->irreversible = false;
+  cparams->numlayers = 1;
+  cparams->layer_rate[0] = 0;
+  cparams->mct = 1; // standard MCT
 
   grk_image_comp comps[3]{};
   for(int c = 0; c < 3; ++c)
@@ -1188,9 +1208,9 @@ static bool testRGBRoundTrip()
     }
   }
 
-  grk_stream_params sp{};
-  safe_strcpy(sp.file, testFile.data());
-  auto* enc = grk_compress_init(&sp, &cparams, image);
+  auto sp = make_stream_params();
+  safe_strcpy(sp->file, testFile.data());
+  auto* enc = grk_compress_init(sp.get(), cparams.get(), image);
   if(!enc)
   {
     grk_object_unref(&image->obj);
@@ -1208,14 +1228,14 @@ static bool testRGBRoundTrip()
   spdlog::info("RGB compressed: {} bytes", len);
 
   // Decompress and verify
-  grk_decompress_parameters dparams{};
-  dparams.core.tile_cache_strategy = GRK_TILE_CACHE_IMAGE;
-  dparams.asynchronous = true;
-  dparams.simulate_synchronous = true;
+  auto dparams = make_decompress_parameters();
+  dparams->core.tile_cache_strategy = GRK_TILE_CACHE_IMAGE;
+  dparams->asynchronous = true;
+  dparams->simulate_synchronous = true;
 
-  grk_stream_params sp2{};
-  safe_strcpy(sp2.file, testFile.data());
-  CodecPtr dec(grk_decompress_init(&sp2, &dparams));
+  auto sp2 = make_stream_params();
+  safe_strcpy(sp2->file, testFile.data());
+  CodecPtr dec(grk_decompress_init(sp2.get(), dparams.get()));
   grk_header_info hi{};
   grk_decompress_read_header(dec.get(), &hi);
   grk_decompress(dec.get(), nullptr);
@@ -1282,21 +1302,21 @@ static bool createMultiLayerImage(const std::string& path, uint32_t width, uint3
                                   uint32_t tileWidth, uint32_t tileHeight, uint16_t numLayers,
                                   uint8_t numResolutions, bool writeTlm, bool writePlt)
 {
-  grk_cparameters cparams{};
-  grk_compress_set_default_params(&cparams);
-  cparams.cod_format = GRK_FMT_J2K;
-  cparams.t_width = tileWidth;
-  cparams.t_height = tileHeight;
-  cparams.tile_size_on = (tileWidth < width || tileHeight < height);
-  cparams.write_tlm = writeTlm;
-  cparams.write_plt = writePlt;
-  cparams.numresolution = numResolutions;
-  cparams.irreversible = false;
-  cparams.numlayers = numLayers;
+  auto cparams = make_cparameters();
+  grk_compress_set_default_params(cparams.get());
+  cparams->cod_format = GRK_FMT_J2K;
+  cparams->t_width = tileWidth;
+  cparams->t_height = tileHeight;
+  cparams->tile_size_on = (tileWidth < width || tileHeight < height);
+  cparams->write_tlm = writeTlm;
+  cparams->write_plt = writePlt;
+  cparams->numresolution = numResolutions;
+  cparams->irreversible = false;
+  cparams->numlayers = numLayers;
   // Use layer_rate[0] = 0 for lossless final layer
   for(uint16_t i = 0; i < numLayers - 1; ++i)
-    cparams.layer_rate[i] = (float)(20 * (numLayers - i)); // decreasing rates
-  cparams.layer_rate[numLayers - 1] = 0; // lossless
+    cparams->layer_rate[i] = (float)(20 * (numLayers - i)); // decreasing rates
+  cparams->layer_rate[numLayers - 1] = 0; // lossless
 
   grk_image_comp comp{};
   comp.dx = 1;
@@ -1317,10 +1337,10 @@ static bool createMultiLayerImage(const std::string& path, uint32_t width, uint3
     for(uint32_t x = 0; x < width; ++x)
       data[y * width + x] = static_cast<int32_t>((x * 7 + y * 13) % 256);
 
-  grk_stream_params sp{};
-  safe_strcpy(sp.file, path.data());
+  auto sp = make_stream_params();
+  safe_strcpy(sp->file, path.data());
 
-  auto* codec = grk_compress_init(&sp, &cparams, image);
+  auto* codec = grk_compress_init(sp.get(), cparams.get(), image);
   if(!codec)
   {
     grk_object_unref(&image->obj);
@@ -1367,15 +1387,15 @@ static bool testProgressiveLayerDecompress()
   }
 
   // Step 1: Full lossless reference decompress (all layers)
-  grk_decompress_parameters fullParams{};
-  fullParams.core.tile_cache_strategy = GRK_TILE_CACHE_IMAGE;
+  auto fullParams = make_decompress_parameters();
+  fullParams->core.tile_cache_strategy = GRK_TILE_CACHE_IMAGE;
 
-  grk_stream_params sp1{};
-  safe_strcpy(sp1.file, testFile.data());
-  CodecPtr refCodec(grk_decompress_init(&sp1, &fullParams));
+  auto sp1 = make_stream_params();
+  safe_strcpy(sp1->file, testFile.data());
+  CodecPtr refCodec(grk_decompress_init(sp1.get(), fullParams.get()));
   grk_header_info hi1{};
   grk_decompress_read_header(refCodec.get(), &hi1);
-  grk_decompress_update(&fullParams, refCodec.get());
+  grk_decompress_update(fullParams.get(), refCodec.get());
   grk_decompress_tile(refCodec.get(), 0);
   auto* refImg = grk_decompress_get_tile_image(refCodec.get(), 0, true);
   if(!refImg)
@@ -1391,16 +1411,16 @@ static bool testProgressiveLayerDecompress()
   // Step 2: Progressive decompress — start with 1 layer
   // CACHE_ALL is required: code block coders retain intermediate state
   // across layers so T1 can decode incrementally.
-  grk_decompress_parameters progParams{};
-  progParams.core.tile_cache_strategy = GRK_TILE_CACHE_IMAGE | GRK_TILE_CACHE_ALL;
-  progParams.core.layers_to_decompress = 1;
+  auto progParams = make_decompress_parameters();
+  progParams->core.tile_cache_strategy = GRK_TILE_CACHE_IMAGE | GRK_TILE_CACHE_ALL;
+  progParams->core.layers_to_decompress = 1;
 
-  grk_stream_params sp2{};
-  safe_strcpy(sp2.file, testFile.data());
-  CodecPtr progCodec(grk_decompress_init(&sp2, &progParams));
+  auto sp2 = make_stream_params();
+  safe_strcpy(sp2->file, testFile.data());
+  CodecPtr progCodec(grk_decompress_init(sp2.get(), progParams.get()));
   grk_header_info hi2{};
   grk_decompress_read_header(progCodec.get(), &hi2);
-  grk_decompress_update(&progParams, progCodec.get());
+  grk_decompress_update(progParams.get(), progCodec.get());
 
   // Decompress tile 0 with 1 layer
   grk_decompress_tile(progCodec.get(), 0);
@@ -1504,16 +1524,16 @@ static bool testProgressiveResolutionDecompress()
   }
 
   // Step 1: Full-res reference
-  grk_decompress_parameters refParams{};
-  refParams.core.tile_cache_strategy = GRK_TILE_CACHE_IMAGE | GRK_TILE_CACHE_ALL;
-  refParams.core.reduce = 0;
+  auto refParams = make_decompress_parameters();
+  refParams->core.tile_cache_strategy = GRK_TILE_CACHE_IMAGE | GRK_TILE_CACHE_ALL;
+  refParams->core.reduce = 0;
 
-  grk_stream_params sp1{};
-  safe_strcpy(sp1.file, testFile.data());
-  CodecPtr refCodec(grk_decompress_init(&sp1, &refParams));
+  auto sp1 = make_stream_params();
+  safe_strcpy(sp1->file, testFile.data());
+  CodecPtr refCodec(grk_decompress_init(sp1.get(), refParams.get()));
   grk_header_info hi{};
   grk_decompress_read_header(refCodec.get(), &hi);
-  grk_decompress_update(&refParams, refCodec.get());
+  grk_decompress_update(refParams.get(), refCodec.get());
   grk_decompress_tile(refCodec.get(), 0);
   auto* refImg = grk_decompress_get_tile_image(refCodec.get(), 0, true);
   if(!refImg)
@@ -1528,16 +1548,16 @@ static bool testProgressiveResolutionDecompress()
   spdlog::info("Reference: {}x{}, {} resolutions", refW, refH, hi.numresolutions);
 
   // Step 2: Reduced decompress (reduce=2 → 1/4 res)
-  grk_decompress_parameters redParams{};
-  redParams.core.tile_cache_strategy = GRK_TILE_CACHE_IMAGE | GRK_TILE_CACHE_ALL;
-  redParams.core.reduce = 2;
+  auto redParams = make_decompress_parameters();
+  redParams->core.tile_cache_strategy = GRK_TILE_CACHE_IMAGE | GRK_TILE_CACHE_ALL;
+  redParams->core.reduce = 2;
 
-  grk_stream_params sp2{};
-  safe_strcpy(sp2.file, testFile.data());
-  CodecPtr redCodec(grk_decompress_init(&sp2, &redParams));
+  auto sp2 = make_stream_params();
+  safe_strcpy(sp2->file, testFile.data());
+  CodecPtr redCodec(grk_decompress_init(sp2.get(), redParams.get()));
   grk_header_info hi2{};
   grk_decompress_read_header(redCodec.get(), &hi2);
-  grk_decompress_update(&redParams, redCodec.get());
+  grk_decompress_update(redParams.get(), redCodec.get());
   grk_decompress_tile(redCodec.get(), 0);
   auto* redImg = grk_decompress_get_tile_image(redCodec.get(), 0, true);
   if(!redImg)
@@ -1560,16 +1580,16 @@ static bool testProgressiveResolutionDecompress()
 
   // Step 3: Now decompress at full resolution with a fresh codec on the same file
   // This tests that a subsequent full-res decode is correct
-  grk_decompress_parameters fullParams{};
-  fullParams.core.tile_cache_strategy = GRK_TILE_CACHE_IMAGE | GRK_TILE_CACHE_ALL;
-  fullParams.core.reduce = 0;
+  auto fullParams = make_decompress_parameters();
+  fullParams->core.tile_cache_strategy = GRK_TILE_CACHE_IMAGE | GRK_TILE_CACHE_ALL;
+  fullParams->core.reduce = 0;
 
-  grk_stream_params sp3{};
-  safe_strcpy(sp3.file, testFile.data());
-  CodecPtr fullCodec(grk_decompress_init(&sp3, &fullParams));
+  auto sp3 = make_stream_params();
+  safe_strcpy(sp3->file, testFile.data());
+  CodecPtr fullCodec(grk_decompress_init(sp3.get(), fullParams.get()));
   grk_header_info hi3{};
   grk_decompress_read_header(fullCodec.get(), &hi3);
-  grk_decompress_update(&fullParams, fullCodec.get());
+  grk_decompress_update(fullParams.get(), fullCodec.get());
   grk_decompress_tile(fullCodec.get(), 0);
   auto* fullImg = grk_decompress_get_tile_image(fullCodec.get(), 0, true);
   if(!fullImg)
@@ -1629,16 +1649,16 @@ static bool testProgressiveResolutionReDecompress()
   }
 
   // Full-res reference (separate codec)
-  grk_decompress_parameters refParams{};
-  refParams.core.tile_cache_strategy = GRK_TILE_CACHE_IMAGE | GRK_TILE_CACHE_ALL;
-  refParams.core.reduce = 0;
+  auto refParams = make_decompress_parameters();
+  refParams->core.tile_cache_strategy = GRK_TILE_CACHE_IMAGE | GRK_TILE_CACHE_ALL;
+  refParams->core.reduce = 0;
 
-  grk_stream_params spRef{};
-  safe_strcpy(spRef.file, testFile.data());
-  CodecPtr refCodec(grk_decompress_init(&spRef, &refParams));
+  auto spRef = make_stream_params();
+  safe_strcpy(spRef->file, testFile.data());
+  CodecPtr refCodec(grk_decompress_init(spRef.get(), refParams.get()));
   grk_header_info hiRef{};
   grk_decompress_read_header(refCodec.get(), &hiRef);
-  grk_decompress_update(&refParams, refCodec.get());
+  grk_decompress_update(refParams.get(), refCodec.get());
   grk_decompress_tile(refCodec.get(), 0);
   auto* refImg = grk_decompress_get_tile_image(refCodec.get(), 0, true);
   if(!refImg)
@@ -1652,16 +1672,16 @@ static bool testProgressiveResolutionReDecompress()
   spdlog::info("Reference: {}x{}", refW, refH);
 
   // Reduced codec
-  grk_decompress_parameters redParams{};
-  redParams.core.tile_cache_strategy = GRK_TILE_CACHE_IMAGE | GRK_TILE_CACHE_ALL;
-  redParams.core.reduce = 2;
+  auto redParams = make_decompress_parameters();
+  redParams->core.tile_cache_strategy = GRK_TILE_CACHE_IMAGE | GRK_TILE_CACHE_ALL;
+  redParams->core.reduce = 2;
 
-  grk_stream_params spRed{};
-  safe_strcpy(spRed.file, testFile.data());
-  CodecPtr redCodec(grk_decompress_init(&spRed, &redParams));
+  auto spRed = make_stream_params();
+  safe_strcpy(spRed->file, testFile.data());
+  CodecPtr redCodec(grk_decompress_init(spRed.get(), redParams.get()));
   grk_header_info hiRed{};
   grk_decompress_read_header(redCodec.get(), &hiRed);
-  grk_decompress_update(&redParams, redCodec.get());
+  grk_decompress_update(redParams.get(), redCodec.get());
   grk_decompress_tile(redCodec.get(), 0);
   auto* redImg = grk_decompress_get_tile_image(redCodec.get(), 0, true);
   if(!redImg)
@@ -1681,16 +1701,16 @@ static bool testProgressiveResolutionReDecompress()
   }
 
   // Full-res via new codec
-  grk_decompress_parameters fullParams{};
-  fullParams.core.tile_cache_strategy = GRK_TILE_CACHE_IMAGE | GRK_TILE_CACHE_ALL;
-  fullParams.core.reduce = 0;
+  auto fullParams = make_decompress_parameters();
+  fullParams->core.tile_cache_strategy = GRK_TILE_CACHE_IMAGE | GRK_TILE_CACHE_ALL;
+  fullParams->core.reduce = 0;
 
-  grk_stream_params spFull{};
-  safe_strcpy(spFull.file, testFile.data());
-  CodecPtr fullCodec(grk_decompress_init(&spFull, &fullParams));
+  auto spFull = make_stream_params();
+  safe_strcpy(spFull->file, testFile.data());
+  CodecPtr fullCodec(grk_decompress_init(spFull.get(), fullParams.get()));
   grk_header_info hiFull{};
   grk_decompress_read_header(fullCodec.get(), &hiFull);
-  grk_decompress_update(&fullParams, fullCodec.get());
+  grk_decompress_update(fullParams.get(), fullCodec.get());
   grk_decompress_tile(fullCodec.get(), 0);
   auto* fullImg = grk_decompress_get_tile_image(fullCodec.get(), 0, true);
   if(!fullImg || !fullImg->comps[0].data)
@@ -1754,16 +1774,16 @@ static bool testMixedLayerResolutionProgressive()
   }
 
   // Step 1: Full-res, all-layers reference
-  grk_decompress_parameters refParams{};
-  refParams.core.tile_cache_strategy = GRK_TILE_CACHE_IMAGE | GRK_TILE_CACHE_ALL;
-  refParams.core.reduce = 0;
+  auto refParams = make_decompress_parameters();
+  refParams->core.tile_cache_strategy = GRK_TILE_CACHE_IMAGE | GRK_TILE_CACHE_ALL;
+  refParams->core.reduce = 0;
 
-  grk_stream_params spRef{};
-  safe_strcpy(spRef.file, testFile.data());
-  CodecPtr refCodec(grk_decompress_init(&spRef, &refParams));
+  auto spRef = make_stream_params();
+  safe_strcpy(spRef->file, testFile.data());
+  CodecPtr refCodec(grk_decompress_init(spRef.get(), refParams.get()));
   grk_header_info hiRef{};
   grk_decompress_read_header(refCodec.get(), &hiRef);
-  grk_decompress_update(&refParams, refCodec.get());
+  grk_decompress_update(refParams.get(), refCodec.get());
   grk_decompress_tile(refCodec.get(), 0);
   auto* refImg = grk_decompress_get_tile_image(refCodec.get(), 0, true);
   if(!refImg)
@@ -1778,17 +1798,17 @@ static bool testMixedLayerResolutionProgressive()
                hiRef.numresolutions);
 
   // Step 2: Codec A — reduced resolution, 1 layer
-  grk_decompress_parameters redParams{};
-  redParams.core.tile_cache_strategy = GRK_TILE_CACHE_IMAGE | GRK_TILE_CACHE_ALL;
-  redParams.core.reduce = 2;
-  redParams.core.layers_to_decompress = 1;
+  auto redParams = make_decompress_parameters();
+  redParams->core.tile_cache_strategy = GRK_TILE_CACHE_IMAGE | GRK_TILE_CACHE_ALL;
+  redParams->core.reduce = 2;
+  redParams->core.layers_to_decompress = 1;
 
-  grk_stream_params spRed{};
-  safe_strcpy(spRed.file, testFile.data());
-  CodecPtr redCodec(grk_decompress_init(&spRed, &redParams));
+  auto spRed = make_stream_params();
+  safe_strcpy(spRed->file, testFile.data());
+  CodecPtr redCodec(grk_decompress_init(spRed.get(), redParams.get()));
   grk_header_info hiRed{};
   grk_decompress_read_header(redCodec.get(), &hiRed);
-  grk_decompress_update(&redParams, redCodec.get());
+  grk_decompress_update(redParams.get(), redCodec.get());
   grk_decompress_tile(redCodec.get(), 0);
   auto* redImg = grk_decompress_get_tile_image(redCodec.get(), 0, true);
   if(!redImg || !redImg->comps[0].data)
@@ -1808,7 +1828,7 @@ static bool testMixedLayerResolutionProgressive()
   }
 
   // Step 3: Layer progression on Codec A — decompress all layers at same reduced resolution
-  uint8_t reducedResolutions = hiRed.numresolutions - redParams.core.reduce;
+  uint8_t reducedResolutions = hiRed.numresolutions - redParams->core.reduce;
   grk_progression_state layerState{};
   layerState.single_tile = true;
   layerState.tile_index = 0;
@@ -1834,16 +1854,16 @@ static bool testMixedLayerResolutionProgressive()
   spdlog::info("Reduced all-layers: {}x{}", redFullImg->comps[0].w, redFullImg->comps[0].h);
 
   // Step 4: Codec B — full resolution, all layers (resolution upscale requires new codec)
-  grk_decompress_parameters fullParams{};
-  fullParams.core.tile_cache_strategy = GRK_TILE_CACHE_IMAGE | GRK_TILE_CACHE_ALL;
-  fullParams.core.reduce = 0;
+  auto fullParams = make_decompress_parameters();
+  fullParams->core.tile_cache_strategy = GRK_TILE_CACHE_IMAGE | GRK_TILE_CACHE_ALL;
+  fullParams->core.reduce = 0;
 
-  grk_stream_params spFull{};
-  safe_strcpy(spFull.file, testFile.data());
-  CodecPtr fullCodec(grk_decompress_init(&spFull, &fullParams));
+  auto spFull = make_stream_params();
+  safe_strcpy(spFull->file, testFile.data());
+  CodecPtr fullCodec(grk_decompress_init(spFull.get(), fullParams.get()));
   grk_header_info hiFull{};
   grk_decompress_read_header(fullCodec.get(), &hiFull);
-  grk_decompress_update(&fullParams, fullCodec.get());
+  grk_decompress_update(fullParams.get(), fullCodec.get());
   grk_decompress_tile(fullCodec.get(), 0);
   auto* fullImg = grk_decompress_get_tile_image(fullCodec.get(), 0, true);
   if(!fullImg || !fullImg->comps[0].data)
@@ -2201,14 +2221,14 @@ static bool testPLTHeaderExtraction()
   }
 
   // Also verify via the codec: decompress and check PLT packet count matches
-  grk_decompress_parameters params{};
-  params.core.tile_cache_strategy = GRK_TILE_CACHE_IMAGE;
-  grk_stream_params sp{};
-  safe_strcpy(sp.file, testFile.data());
-  CodecPtr codec(grk_decompress_init(&sp, &params));
+  auto params = make_decompress_parameters();
+  params->core.tile_cache_strategy = GRK_TILE_CACHE_IMAGE;
+  auto sp = make_stream_params();
+  safe_strcpy(sp->file, testFile.data());
+  CodecPtr codec(grk_decompress_init(sp.get(), params.get()));
   grk_header_info hi{};
   grk_decompress_read_header(codec.get(), &hi);
-  grk_decompress_update(&params, codec.get());
+  grk_decompress_update(params.get(), codec.get());
   grk_decompress_tile(codec.get(), 0);
 
   // Expected packets: numLayers * sum(precincts_per_res)
@@ -2248,20 +2268,20 @@ static bool testSelectiveFetchSimulation()
 
   // Create LRCP image with 2 layers, 4 resolutions
   {
-    grk_cparameters cparams{};
-    grk_compress_set_default_params(&cparams);
-    cparams.cod_format = GRK_FMT_J2K;
-    cparams.t_width = 128;
-    cparams.t_height = 128;
-    cparams.tile_size_on = false;
-    cparams.write_tlm = true;
-    cparams.write_plt = true;
-    cparams.numresolution = 4;
-    cparams.irreversible = false;
-    cparams.numlayers = 2;
-    cparams.prog_order = GRK_LRCP;
-    cparams.layer_rate[0] = 20;
-    cparams.layer_rate[1] = 0; // lossless
+    auto cparams = make_cparameters();
+    grk_compress_set_default_params(cparams.get());
+    cparams->cod_format = GRK_FMT_J2K;
+    cparams->t_width = 128;
+    cparams->t_height = 128;
+    cparams->tile_size_on = false;
+    cparams->write_tlm = true;
+    cparams->write_plt = true;
+    cparams->numresolution = 4;
+    cparams->irreversible = false;
+    cparams->numlayers = 2;
+    cparams->prog_order = GRK_LRCP;
+    cparams->layer_rate[0] = 20;
+    cparams->layer_rate[1] = 0; // lossless
 
     grk_image_comp comp{};
     comp.dx = 1;
@@ -2280,10 +2300,10 @@ static bool testSelectiveFetchSimulation()
       for(uint32_t x = 0; x < 128; ++x)
         data[y * 128 + x] = static_cast<int32_t>((x * 7 + y * 13) % 256);
 
-    grk_stream_params sp{};
-    safe_strcpy(sp.file, testFile.data());
+    auto sp = make_stream_params();
+    safe_strcpy(sp->file, testFile.data());
 
-    auto* codec = grk_compress_init(&sp, &cparams, image);
+    auto* codec = grk_compress_init(sp.get(), cparams.get(), image);
     if(!codec)
     {
       grk_object_unref(&image->obj);
@@ -2446,12 +2466,12 @@ static bool testSelectiveFetchSimulation()
 
   // Decompress assembled file with reduce=2
   {
-    grk_decompress_parameters params{};
-    params.core.tile_cache_strategy = GRK_TILE_CACHE_IMAGE;
-    params.core.reduce = 2;
-    grk_stream_params sp{};
-    safe_strcpy(sp.file, assembledFile.data());
-    CodecPtr codec(grk_decompress_init(&sp, &params));
+    auto params = make_decompress_parameters();
+    params->core.tile_cache_strategy = GRK_TILE_CACHE_IMAGE;
+    params->core.reduce = 2;
+    auto sp = make_stream_params();
+    safe_strcpy(sp->file, assembledFile.data());
+    CodecPtr codec(grk_decompress_init(sp.get(), params.get()));
     grk_header_info hi{};
     if(!grk_decompress_read_header(codec.get(), &hi))
     {
@@ -2460,7 +2480,7 @@ static bool testSelectiveFetchSimulation()
     }
     else
     {
-      grk_decompress_update(&params, codec.get());
+      grk_decompress_update(params.get(), codec.get());
       if(!grk_decompress_tile(codec.get(), 0))
       {
         spdlog::error("FAIL: Could not decompress assembled file");
@@ -2476,15 +2496,15 @@ static bool testSelectiveFetchSimulation()
   // Also decompress original with reduce=2 for reference pixel comparison
   std::vector<int32_t> refPixels, selPixels;
   {
-    grk_decompress_parameters params{};
-    params.core.tile_cache_strategy = GRK_TILE_CACHE_IMAGE;
-    params.core.reduce = 2;
-    grk_stream_params sp{};
-    safe_strcpy(sp.file, testFile.data());
-    CodecPtr codec(grk_decompress_init(&sp, &params));
+    auto params = make_decompress_parameters();
+    params->core.tile_cache_strategy = GRK_TILE_CACHE_IMAGE;
+    params->core.reduce = 2;
+    auto sp = make_stream_params();
+    safe_strcpy(sp->file, testFile.data());
+    CodecPtr codec(grk_decompress_init(sp.get(), params.get()));
     grk_header_info hi{};
     grk_decompress_read_header(codec.get(), &hi);
-    grk_decompress_update(&params, codec.get());
+    grk_decompress_update(params.get(), codec.get());
     auto* img = grk_decompress_get_sample_image(codec.get(), 0);
     grk_decompress_tile(codec.get(), 0);
     if(img && img->comps[0].data)
@@ -2494,15 +2514,15 @@ static bool testSelectiveFetchSimulation()
     }
   }
   {
-    grk_decompress_parameters params{};
-    params.core.tile_cache_strategy = GRK_TILE_CACHE_IMAGE;
-    params.core.reduce = 2;
-    grk_stream_params sp{};
-    safe_strcpy(sp.file, assembledFile.data());
-    CodecPtr codec(grk_decompress_init(&sp, &params));
+    auto params = make_decompress_parameters();
+    params->core.tile_cache_strategy = GRK_TILE_CACHE_IMAGE;
+    params->core.reduce = 2;
+    auto sp = make_stream_params();
+    safe_strcpy(sp->file, assembledFile.data());
+    CodecPtr codec(grk_decompress_init(sp.get(), params.get()));
     grk_header_info hi{};
     grk_decompress_read_header(codec.get(), &hi);
-    grk_decompress_update(&params, codec.get());
+    grk_decompress_update(params.get(), codec.get());
     auto* img = grk_decompress_get_sample_image(codec.get(), 0);
     grk_decompress_tile(codec.get(), 0);
     if(img && img->comps[0].data)
