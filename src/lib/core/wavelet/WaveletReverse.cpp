@@ -1053,6 +1053,212 @@ void WaveletReverse::v_strip_53(const dwt_scratch<int32_t>* scratch, uint32_t wM
     v_53(scratch, winL, winH, winDest, wMax - j, dcShift);
 }
 
+/* Cascade strip V-DWT: same lifting as v_p0_53 but only writes
+ * output rows [outputStart, outputStart+outputCount) to dest. */
+void WaveletReverse::v_cascade_p0_53(int32_t* scratch, uint32_t height, int32_t* bandL,
+                                     uint32_t strideL, int32_t* bandH, uint32_t strideH,
+                                     int32_t* dest, uint32_t strideDest, uint32_t outputStart,
+                                     uint32_t outputCount)
+{
+  assert(height > 1);
+  int32_t s1n = bandL[0];
+  int32_t d1n = bandH[0];
+  int32_t s0n = s1n - ((d1n + 1) >> 1);
+
+  uint32_t i = 0;
+  if(height > 2)
+  {
+    auto bL = bandL + strideL;
+    auto bH = bandH + strideH;
+    for(uint32_t j = 0; i < (height - 3); i += 2, j++)
+    {
+      int32_t d1c = d1n;
+      int32_t s0c = s0n;
+      s1n = *bL;
+      bL += strideL;
+      d1n = *bH;
+      bH += strideH;
+      s0n = s1n - ((d1c + d1n + 2) >> 2);
+      scratch[i] = s0c;
+      scratch[i + 1] = d1c + ((s0c + s0n) >> 1);
+    }
+  }
+  scratch[i] = s0n;
+  if(height & 1)
+  {
+    scratch[height - 1] = bandL[((height - 1) >> 1) * strideL] - ((d1n + 1) >> 1);
+    scratch[height - 2] = d1n + ((s0n + scratch[height - 1]) >> 1);
+  }
+  else
+  {
+    scratch[height - 1] = d1n + s0n;
+  }
+  /* Write only the requested output rows */
+  dest += outputStart * strideDest;
+  for(i = outputStart; i < outputStart + outputCount; ++i)
+  {
+    *dest = scratch[i];
+    dest += strideDest;
+  }
+}
+
+/* Cascade strip V-DWT: same lifting as v_p1_53 but only writes
+ * output rows [outputStart, outputStart+outputCount) to dest. */
+void WaveletReverse::v_cascade_p1_53(int32_t* scratch, uint32_t height, int32_t* bandL,
+                                     uint32_t strideL, int32_t* bandH, uint32_t strideH,
+                                     int32_t* dest, uint32_t strideDest, uint32_t outputStart,
+                                     uint32_t outputCount)
+{
+  assert(height > 2);
+  int32_t s1 = bandH[strideH];
+  int32_t dc = bandL[0] - ((bandH[0] + s1 + 2) >> 2);
+  scratch[0] = bandH[0] + dc;
+  auto s2_ptr = bandH + (strideH << 1);
+  auto dn_ptr = bandL + strideL;
+  uint32_t i, j;
+  for(i = 1, j = 1; i < (height - 2 - !(height & 1)); i += 2, j++)
+  {
+    int32_t s2 = *s2_ptr;
+    s2_ptr += strideH;
+    int32_t dn = *dn_ptr - ((s1 + s2 + 2) >> 2);
+    dn_ptr += strideL;
+    scratch[i] = dc;
+    scratch[i + 1] = s1 + ((dn + dc) >> 1);
+    dc = dn;
+    s1 = s2;
+  }
+  scratch[i] = dc;
+  if(!(height & 1))
+  {
+    int32_t dn = bandL[((height >> 1) - 1) * strideL] - ((s1 + 1) >> 1);
+    scratch[height - 2] = s1 + ((dn + dc) >> 1);
+    scratch[height - 1] = dn;
+  }
+  else
+  {
+    scratch[height - 1] = s1 + dc;
+  }
+  /* Write only the requested output rows */
+  dest += outputStart * strideDest;
+  for(i = outputStart; i < outputStart + outputCount; ++i)
+  {
+    *dest = scratch[i];
+    dest += strideDest;
+  }
+}
+
+/* Multi-column cascade V-DWT 5/3: full lifting, partial output. */
+void WaveletReverse::v_cascade_53(const dwt_scratch<int32_t>* scratch, Buffer2dSimple<int32_t> winL,
+                                  Buffer2dSimple<int32_t> winH, Buffer2dSimple<int32_t> winDest,
+                                  uint32_t nb_cols, DcShiftParam dcShift, uint32_t outputStart,
+                                  uint32_t outputCount)
+{
+  const uint32_t height = scratch->sn + scratch->dn;
+  assert(height != 0);
+  int32_t dc = dcShift.enabled ? dcShift.shift : 0;
+  int32_t dcMin = dcShift.min;
+  int32_t dcMax = dcShift.max;
+  if(scratch->parity == 0)
+  {
+    if(height == 1)
+    {
+      if(dcShift.enabled)
+      {
+        for(uint32_t c = 0; c < nb_cols; c++, winL.buf_++, winDest.buf_++)
+          winDest.buf_[0] = std::clamp(winL.buf_[0] + dc, dcMin, dcMax);
+      }
+      else
+      {
+        for(uint32_t c = 0; c < nb_cols; c++, winL.buf_++, winDest.buf_++)
+          winDest.buf_[0] = winL.buf_[0];
+      }
+    }
+    else
+    {
+      for(uint32_t c = 0; c < nb_cols; c++, winL.buf_++, winH.buf_++, winDest.buf_++)
+        v_cascade_p0_53(scratch->mem, height, winL.buf_, winL.stride_, winH.buf_, winH.stride_,
+                        winDest.buf_, winDest.stride_, outputStart, outputCount);
+      if(dcShift.enabled)
+      {
+        auto d = winDest.buf_ - nb_cols;
+        for(uint32_t c = 0; c < nb_cols; c++, d++)
+          for(uint32_t r = 0; r < outputCount; r++)
+            d[r * winDest.stride_] = std::clamp(d[r * winDest.stride_] + dc, dcMin, dcMax);
+      }
+    }
+  }
+  else
+  {
+    if(height == 1)
+    {
+      if(dcShift.enabled)
+      {
+        for(uint32_t c = 0; c < nb_cols; c++, winL.buf_++, winDest.buf_++)
+          winDest.buf_[0] = std::clamp((winL.buf_[0] >> 1) + dc, dcMin, dcMax);
+      }
+      else
+      {
+        for(uint32_t c = 0; c < nb_cols; c++, winL.buf_++, winDest.buf_++)
+          winDest.buf_[0] = winL.buf_[0] >> 1;
+      }
+    }
+    else if(height == 2)
+    {
+      if(dcShift.enabled)
+      {
+        for(uint32_t c = 0; c < nb_cols; c++, winL.buf_++, winH.buf_++, winDest.buf_++)
+        {
+          scratch->mem[1] = winL.buf_[0] - ((winH.buf_[0] + 1) >> 1);
+          winDest.buf_[0] = std::clamp(winH.buf_[0] + scratch->mem[1] + dc, dcMin, dcMax);
+          winDest.buf_[winDest.stride_] = std::clamp(scratch->mem[1] + dc, dcMin, dcMax);
+        }
+      }
+      else
+      {
+        for(uint32_t c = 0; c < nb_cols; c++, winL.buf_++, winH.buf_++, winDest.buf_++)
+        {
+          scratch->mem[1] = winL.buf_[0] - ((winH.buf_[0] + 1) >> 1);
+          winDest.buf_[0] = winH.buf_[0] + scratch->mem[1];
+          winDest.buf_[winDest.stride_] = scratch->mem[1];
+        }
+      }
+    }
+    else
+    {
+      for(uint32_t c = 0; c < nb_cols; c++, winL.buf_++, winH.buf_++, winDest.buf_++)
+        v_cascade_p1_53(scratch->mem, height, winL.buf_, winL.stride_, winH.buf_, winH.stride_,
+                        winDest.buf_, winDest.stride_, outputStart, outputCount);
+      if(dcShift.enabled)
+      {
+        auto d = winDest.buf_ - nb_cols;
+        for(uint32_t c = 0; c < nb_cols; c++, d++)
+          for(uint32_t r = 0; r < outputCount; r++)
+            d[r * winDest.stride_] = std::clamp(d[r * winDest.stride_] + dc, dcMin, dcMax);
+      }
+    }
+  }
+}
+
+/* Column-group iteration for cascade V-DWT 5/3 */
+void WaveletReverse::v_cascade_strip_53(const dwt_scratch<int32_t>* scratch, uint32_t wMin,
+                                        uint32_t wMax, Buffer2dSimple<int32_t> winL,
+                                        Buffer2dSimple<int32_t> winH,
+                                        Buffer2dSimple<int32_t> winDest, DcShiftParam dcShift,
+                                        uint32_t outputStart, uint32_t outputCount)
+{
+  uint32_t j;
+  for(j = wMin; j + get_PLL_COLS_53() <= wMax; j += get_PLL_COLS_53())
+  {
+    v_cascade_53(scratch, winL, winH, winDest, get_PLL_COLS_53(), dcShift, outputStart,
+                 outputCount);
+    winL.incX_IN_PLACE(get_PLL_COLS_53());
+    winH.incX_IN_PLACE(get_PLL_COLS_53());
+    winDest.incX_IN_PLACE(get_PLL_COLS_53());
+  }
+  if(j < wMax)
+    v_cascade_53(scratch, winL, winH, winDest, wMax - j, dcShift, outputStart, outputCount);
+}
+
 void WaveletReverse::v_53(uint8_t res, TileComponentWindow<int32_t>* buf, uint32_t resWidth)
 {
   if(resWidth == 0)
@@ -1545,6 +1751,250 @@ void WaveletReverse::v_strip_16_53(const dwt_scratch<int16_t>* scratch, uint32_t
   }
   if(j < wMax)
     v_16_53(scratch, winL, winH, winDest, wMax - j, dcShift);
+}
+
+/* Cascade strip V-DWT 16-bit 5/3 parity=0: full lifting, partial output. */
+void WaveletReverse::v_cascade_p0_16_53(int16_t* scratch, uint32_t height, int16_t* bandL,
+                                        uint32_t strideL, int16_t* bandH, uint32_t strideH,
+                                        int16_t* dest, uint32_t strideDest, uint32_t outputStart,
+                                        uint32_t outputCount)
+{
+  assert(height > 1);
+  int16_t s1n = bandL[0];
+  int16_t d1n = bandH[0];
+  int16_t s0n = (int16_t)(s1n - ((d1n + 1) >> 1));
+
+  uint32_t i = 0;
+  if(height > 2)
+  {
+    auto bL = bandL + strideL;
+    auto bH = bandH + strideH;
+    for(uint32_t j = 0; i < (height - 3); i += 2, j++)
+    {
+      int16_t d1c = d1n;
+      int16_t s0c = s0n;
+      s1n = *bL;
+      bL += strideL;
+      d1n = *bH;
+      bH += strideH;
+      s0n = (int16_t)(s1n - ((d1c + d1n + 2) >> 2));
+      scratch[i] = s0c;
+      scratch[i + 1] = (int16_t)(d1c + ((s0c + s0n) >> 1));
+    }
+  }
+  scratch[i] = s0n;
+  if(height & 1)
+  {
+    scratch[height - 1] = (int16_t)(bandL[((height - 1) >> 1) * strideL] - ((d1n + 1) >> 1));
+    scratch[height - 2] = (int16_t)(d1n + ((s0n + scratch[height - 1]) >> 1));
+  }
+  else
+  {
+    scratch[height - 1] = d1n + s0n;
+  }
+  dest += outputStart * strideDest;
+  for(i = outputStart; i < outputStart + outputCount; ++i)
+  {
+    *dest = scratch[i];
+    dest += strideDest;
+  }
+}
+
+/* Cascade strip V-DWT 16-bit 5/3 parity=1: full lifting, partial output. */
+void WaveletReverse::v_cascade_p1_16_53(int16_t* scratch, uint32_t height, int16_t* bandL,
+                                        uint32_t strideL, int16_t* bandH, uint32_t strideH,
+                                        int16_t* dest, uint32_t strideDest, uint32_t outputStart,
+                                        uint32_t outputCount)
+{
+  assert(height > 2);
+  int16_t s1 = bandH[strideH];
+  int16_t dc = (int16_t)(bandL[0] - ((bandH[0] + s1 + 2) >> 2));
+  scratch[0] = (int16_t)(bandH[0] + dc);
+  auto s2_ptr = bandH + (strideH << 1);
+  auto dn_ptr = bandL + strideL;
+  uint32_t i, j;
+  for(i = 1, j = 1; i < (height - 2 - !(height & 1)); i += 2, j++)
+  {
+    int16_t s2 = *s2_ptr;
+    s2_ptr += strideH;
+    int16_t dn = (int16_t)(*dn_ptr - ((s1 + s2 + 2) >> 2));
+    dn_ptr += strideL;
+    scratch[i] = dc;
+    scratch[i + 1] = (int16_t)(s1 + ((dn + dc) >> 1));
+    dc = dn;
+    s1 = s2;
+  }
+  scratch[i] = dc;
+  if(!(height & 1))
+  {
+    int16_t dn = (int16_t)(bandL[((height >> 1) - 1) * strideL] - ((s1 + 1) >> 1));
+    scratch[height - 2] = (int16_t)(s1 + ((dn + dc) >> 1));
+    scratch[height - 1] = dn;
+  }
+  else
+  {
+    scratch[height - 1] = s1 + dc;
+  }
+  dest += outputStart * strideDest;
+  for(i = outputStart; i < outputStart + outputCount; ++i)
+  {
+    *dest = scratch[i];
+    dest += strideDest;
+  }
+}
+
+/* Multi-column cascade V-DWT 16-bit 5/3: full lifting, partial output. */
+void WaveletReverse::v_cascade_16_53(const dwt_scratch<int16_t>* scratch,
+                                     Buffer2dSimple<int16_t> winL, Buffer2dSimple<int16_t> winH,
+                                     Buffer2dSimple<int16_t> winDest, uint32_t nb_cols,
+                                     DcShiftParam dcShift, uint32_t outputStart,
+                                     uint32_t outputCount)
+{
+  const uint32_t height = scratch->sn + scratch->dn;
+  assert(height != 0);
+  int16_t dc = dcShift.enabled ? (int16_t)dcShift.shift : 0;
+  int16_t dcMin = (int16_t)dcShift.min;
+  int16_t dcMax = (int16_t)dcShift.max;
+  if(scratch->parity == 0)
+  {
+    if(height == 1)
+    {
+      if(dcShift.enabled)
+      {
+        for(uint32_t c = 0; c < nb_cols; c++, winL.buf_++, winDest.buf_++)
+          winDest.buf_[0] = std::clamp<int16_t>(winL.buf_[0] + dc, dcMin, dcMax);
+      }
+      else
+      {
+        for(uint32_t c = 0; c < nb_cols; c++, winL.buf_++, winDest.buf_++)
+          winDest.buf_[0] = winL.buf_[0];
+      }
+    }
+    else
+    {
+      for(uint32_t c = 0; c < nb_cols; c++, winL.buf_++, winH.buf_++, winDest.buf_++)
+        v_cascade_p0_16_53(scratch->mem, height, winL.buf_, winL.stride_, winH.buf_, winH.stride_,
+                           winDest.buf_, winDest.stride_, outputStart, outputCount);
+      if(dcShift.enabled)
+      {
+        auto d = winDest.buf_ - nb_cols;
+        for(uint32_t c = 0; c < nb_cols; c++, d++)
+          for(uint32_t r = 0; r < outputCount; r++)
+            d[r * winDest.stride_] = std::clamp<int16_t>(d[r * winDest.stride_] + dc, dcMin, dcMax);
+      }
+    }
+  }
+  else
+  {
+    if(height == 1)
+    {
+      if(dcShift.enabled)
+      {
+        for(uint32_t c = 0; c < nb_cols; c++, winL.buf_++, winDest.buf_++)
+          winDest.buf_[0] = std::clamp<int16_t>((winL.buf_[0] >> 1) + dc, dcMin, dcMax);
+      }
+      else
+      {
+        for(uint32_t c = 0; c < nb_cols; c++, winL.buf_++, winDest.buf_++)
+          winDest.buf_[0] = winL.buf_[0] >> 1;
+      }
+    }
+    else if(height == 2)
+    {
+      if(dcShift.enabled)
+      {
+        for(uint32_t c = 0; c < nb_cols; c++, winL.buf_++, winH.buf_++, winDest.buf_++)
+        {
+          scratch->mem[1] = (int16_t)(winL.buf_[0] - ((winH.buf_[0] + 1) >> 1));
+          winDest.buf_[0] = std::clamp<int16_t>(winH.buf_[0] + scratch->mem[1] + dc, dcMin, dcMax);
+          winDest.buf_[winDest.stride_] = std::clamp<int16_t>(scratch->mem[1] + dc, dcMin, dcMax);
+        }
+      }
+      else
+      {
+        for(uint32_t c = 0; c < nb_cols; c++, winL.buf_++, winH.buf_++, winDest.buf_++)
+        {
+          scratch->mem[1] = (int16_t)(winL.buf_[0] - ((winH.buf_[0] + 1) >> 1));
+          winDest.buf_[0] = winH.buf_[0] + scratch->mem[1];
+          winDest.buf_[winDest.stride_] = scratch->mem[1];
+        }
+      }
+    }
+    else
+    {
+      for(uint32_t c = 0; c < nb_cols; c++, winL.buf_++, winH.buf_++, winDest.buf_++)
+        v_cascade_p1_16_53(scratch->mem, height, winL.buf_, winL.stride_, winH.buf_, winH.stride_,
+                           winDest.buf_, winDest.stride_, outputStart, outputCount);
+      if(dcShift.enabled)
+      {
+        auto d = winDest.buf_ - nb_cols;
+        for(uint32_t c = 0; c < nb_cols; c++, d++)
+          for(uint32_t r = 0; r < outputCount; r++)
+            d[r * winDest.stride_] = std::clamp<int16_t>(d[r * winDest.stride_] + dc, dcMin, dcMax);
+      }
+    }
+  }
+}
+
+/* Column-group iteration for cascade V-DWT 16-bit 5/3 */
+void WaveletReverse::v_cascade_strip_16_53(const dwt_scratch<int16_t>* scratch, uint32_t wMin,
+                                           uint32_t wMax, Buffer2dSimple<int16_t> winL,
+                                           Buffer2dSimple<int16_t> winH,
+                                           Buffer2dSimple<int16_t> winDest, DcShiftParam dcShift,
+                                           uint32_t outputStart, uint32_t outputCount)
+{
+  uint32_t j;
+  for(j = wMin; j + get_PLL_COLS_16_53() <= wMax; j += get_PLL_COLS_16_53())
+  {
+    v_cascade_16_53(scratch, winL, winH, winDest, get_PLL_COLS_16_53(), dcShift, outputStart,
+                    outputCount);
+    winL.incX_IN_PLACE(get_PLL_COLS_16_53());
+    winH.incX_IN_PLACE(get_PLL_COLS_16_53());
+    winDest.incX_IN_PLACE(get_PLL_COLS_16_53());
+  }
+  if(j < wMax)
+    v_cascade_16_53(scratch, winL, winH, winDest, wMax - j, dcShift, outputStart, outputCount);
+}
+
+/* Column-group cascade V-DWT 16-bit 9/7: full V-DWT into temp, then copy partial output. */
+void WaveletReverse::v_cascade_strip_16_97(const dwt_scratch<int16_t>* scratch, uint32_t wMin,
+                                           uint32_t wMax, Buffer2dSimple<int16_t> winL,
+                                           Buffer2dSimple<int16_t> winH,
+                                           Buffer2dSimple<int16_t> winDest, DcShiftParam dcShift,
+                                           uint32_t outputStart, uint32_t outputCount)
+{
+  const uint32_t height = scratch->sn + scratch->dn;
+  if(height == 0)
+    return;
+  uint32_t width = wMax - wMin;
+  uint32_t stride = (width + 15U) & ~15U;
+
+  // Allocate temp buffer for full V-DWT output
+  auto temp = std::make_unique<int16_t[]>((size_t)stride * height);
+  Buffer2dSimple<int16_t> tempDest(temp.get(), stride, height);
+
+  // Perform full V-DWT into temp (no DC shift - apply during copy)
+  DcShiftParam noDcShift{};
+  v_strip_16_97(scratch, wMin, wMax, winL, winH, tempDest, noDcShift);
+
+  // Copy only [outputStart, outputStart+outputCount) rows to dest
+  int16_t dc = dcShift.enabled ? (int16_t)dcShift.shift : 0;
+  int16_t dcMin = (int16_t)dcShift.min;
+  int16_t dcMax = (int16_t)dcShift.max;
+  for(uint32_t r = 0; r < outputCount; ++r)
+  {
+    auto src = temp.get() + (outputStart + r) * stride;
+    auto dst = winDest.buf_ + r * winDest.stride_;
+    if(dcShift.enabled)
+    {
+      for(uint32_t c = 0; c < width; ++c)
+        dst[c] = std::clamp<int16_t>(src[c] + dc, dcMin, dcMax);
+    }
+    else
+    {
+      memcpy(dst, src, width * sizeof(int16_t));
+    }
+  }
 }
 
 void WaveletReverse::v_16_53(uint8_t res, TileComponentWindow<int16_t>* buf, uint32_t resWidth)

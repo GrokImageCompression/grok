@@ -37,17 +37,21 @@ namespace t1
   struct DecompressBlockExec;
 }
 
+class CoderPool;
+class WaveletPoolData;
+class DwtFlowHelper;
+
 /**
  * @class SchedulerFreebyrd
- * @brief Stub — freebyrd thread pool has been removed.
+ * @brief Alternative decompression scheduler using sequential T1 → DWT → MCT pipeline.
  *
- * The class interface is preserved so TileProcessor still compiles,
- * but decompressTile() always returns false with an error message.
+ * Decodes all code blocks in parallel via TaskFlow, then runs DWT and MCT/DC-shift
+ * post-processing. Activated by setting GRK_SCHEDULER=freebyrd.
  */
 class SchedulerFreebyrd
 {
 public:
-  SchedulerFreebyrd(uint16_t numcomps, uint8_t prec);
+  SchedulerFreebyrd(uint16_t numcomps, uint8_t prec, CoderPool* streamPool = nullptr);
   ~SchedulerFreebyrd();
 
   // check for strip-based decompression mode via GRK_STRIP env var
@@ -58,7 +62,7 @@ public:
   }
 
   /**
-   * @brief Stub — always returns false (freebyrd removed).
+   * @brief Full-tile decompression: T1 decode → DWT → MCT/DC-shift.
    */
   bool decompressTile(ITileProcessor* tileProcessor);
 
@@ -84,6 +88,11 @@ private:
   bool runSeparateDWT53(ITileProcessor* tileProcessor, uint16_t compno);
   bool runSeparateDWT16(ITileProcessor* tileProcessor, uint16_t compno);
   bool postProcess(ITileProcessor* tileProcessor);
+#ifdef GRK_USE_SCX_SCHEDULING
+  bool decodeAndTransformScx(ITileProcessor* tileProcessor);
+#else
+  bool decodeAndTransform(ITileProcessor* tileProcessor);
+#endif
 
   uint16_t numcomps_;
   uint8_t prec_;
@@ -92,6 +101,11 @@ private:
   // Block list per component, per resolution
   using BlockList = std::vector<std::shared_ptr<t1::DecompressBlockExec>>;
   std::vector<std::vector<BlockList>> blocksByComp_; // [compno][resIdx] → blocks
+
+  CoderPool coderPool_;
+  CoderPool* streamPool_;
+  WaveletPoolData* waveletPoolData_;
+  DwtFlowHelper* dwtHelper_; // provides ImageComponentFlow for WaveletReverse
 
   CompStripCallback stripOutputCallback_;
 };

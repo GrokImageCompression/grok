@@ -1243,7 +1243,8 @@ void TileProcessor::scheduleAndRunDecompress(CoderPool* coderPool, Rect32 unredu
   if(!scheduler_ && !schedulerFreebyrd_)
   {
     if(Scheduling::isFreebyrd())
-      schedulerFreebyrd_ = new SchedulerFreebyrd(headerImage_->numcomps, headerImage_->comps->prec);
+      schedulerFreebyrd_ = new SchedulerFreebyrd(headerImage_->numcomps, headerImage_->comps->prec,
+                                                   coderPool);
     else if(Scheduling::isExcalibur())
       scheduler_ = new DecompressSchedulerExcalibur(headerImage_->numcomps,
                                                     headerImage_->comps->prec, coderPool);
