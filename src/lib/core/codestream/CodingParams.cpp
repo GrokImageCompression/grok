@@ -780,7 +780,7 @@ bool TileCodingParams::readPoc(uint8_t* headerData, uint16_t headerSize, int til
     std::lock_guard<std::mutex> lock(pocMutex_);
     if(tilePartIndex == -1)
     {
-      uint32_t oldNum = numpocs_ + 1;
+      uint32_t oldNum = (numpocs_ == 0) ? 0 : numpocs_ + 1;
       if(oldNum + currentNumProgressions > GRK_MAXRLVLS)
       {
         grklog.error("read_poc: number of progressions %u exceeds Grok maximum number %u",
@@ -816,7 +816,8 @@ void TileCodingParams::finalizePocs(void)
   }
 
   // Validate main header POCs if any
-  for(uint32_t i = 0; i < numpocs_; ++i)
+  if(numpocs_ > 0)
+  for(uint32_t i = 0; i <= numpocs_; ++i)
   {
     auto& prog = progressionOrderChange_[i];
     prog.lay_e = std::min<uint16_t>(prog.lay_e, numLayers_);
