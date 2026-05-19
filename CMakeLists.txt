@@ -272,6 +272,19 @@ if(GRK_BUILD_PLUGIN_LOADER)
     RUNTIME_OUTPUT_DIRECTORY "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}"
     ${GROK_LIBRARY_PROPERTIES}
   )
+  # Copy .metallib to the binary output directory so the plugin can find it at runtime
+  if(APPLE AND TARGET grok_metallib)
+    set(_metallib_src "${CMAKE_CURRENT_BINARY_DIR}/extern/grok-gpu-plugin/grok_kernels.metallib")
+    set(_metallib_dst "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/grok_kernels.metallib")
+    add_custom_command(
+      OUTPUT "${_metallib_dst}"
+      COMMAND ${CMAKE_COMMAND} -E copy_if_different "${_metallib_src}" "${_metallib_dst}"
+      DEPENDS "${_metallib_src}"
+      COMMENT "Copying grok_kernels.metallib to output directory"
+    )
+    add_custom_target(copy_metallib ALL DEPENDS "${_metallib_dst}")
+    add_dependencies(copy_metallib grok_metallib)
+  endif()
 endif()
 
 # Build codec library before SWIG bindings (codec bindings link against it)

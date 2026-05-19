@@ -792,8 +792,22 @@ GrkRC GrkCompress::pluginMain(int argc, const char* argv[], CompressInitParams* 
 
   // 2. single image encode
   if(!initParams->inputFolder.set_imgdir)
-    return grk_plugin_compress(&initParams->parameters, pluginCompressCallback) ? GrkRCFail
-                                                                                : GrkRCSuccess;
+  {
+    auto start = std::chrono::high_resolution_clock::now();
+    uint32_t repeats = std::max(initParams->parameters.repeats, 1u);
+    for(uint32_t i = 0; i < repeats; ++i)
+    {
+      if(grk_plugin_compress(&initParams->parameters, pluginCompressCallback))
+        return GrkRCFail;
+    }
+    auto finish = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> elapsed = finish - start;
+    if(repeats > 1)
+      spdlog::info("compress time: {} ms/image ({} FPS)",
+                   (elapsed.count() * 1000) / (double)repeats,
+                   (double)repeats / elapsed.count());
+    return GrkRCSuccess;
+  }
 
   // 3. directory encode (non-MJ2)
   {

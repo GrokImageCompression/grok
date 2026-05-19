@@ -839,8 +839,20 @@ GrkRC GrkDecompress::pluginMain(int argc, const char* argv[], DecompressInitPara
     start = std::chrono::high_resolution_clock::now();
     if(!initParams->inputFolder.set_imgdir)
     {
-      if(grk_plugin_decompress(&initParams->parameters, decompress_callback))
-        goto cleanup;
+      uint32_t repeats = std::max(initParams->parameters.repeats, 1u);
+      for(uint32_t i = 0; i < repeats; ++i)
+      {
+        if(grk_plugin_decompress(&initParams->parameters, decompress_callback))
+          goto cleanup;
+      }
+      if(repeats > 1)
+      {
+        auto elapsed = std::chrono::high_resolution_clock::now() - start;
+        std::chrono::duration<double> secs = elapsed;
+        spdlog::info("decompress time: {} ms/image ({} FPS)",
+                     (secs.count() * 1000) / (double)repeats,
+                     (double)repeats / secs.count());
+      }
     }
     else
     {
