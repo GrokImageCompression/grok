@@ -38,3 +38,4 @@ _ReSharper*/
 packages/
 *.bmp
 *.pyc
+.vscode/*workspace
