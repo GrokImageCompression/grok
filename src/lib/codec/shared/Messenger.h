@@ -103,18 +103,18 @@ Decompress workflow:
 */
 
 /*************************** Synchronization Names *******************************/
-#ifdef _WIN32
-static std::string grokToClientMessageBuf = "Global\\grok_to_client_message";
-static std::string grokSentSynch = "Global\\grok_sent";
-static std::string clientReceiveReadySynch = "Global\\client_receive_ready";
-
-static std::string clientToGrokMessageBuf = "Global\\client_to_grok_message";
-static std::string clientSentSynch = "Global\\client_sent";
-static std::string grokReceiveReadySynch = "Global\\grok_receive_ready";
-
-static std::string grokUncompressedBuf = "Global\\grok_uncompressed_buf";
-static std::string grokCompressedBuf = "Global\\grok_compressed_buf";
-#else
+// SHM segment and semaphore names are platform-conditional:
+//
+// macOS: POSIX shm_open/sem_open require names to start with '/' and contain
+//        no other '/' characters. Using the "Global\" prefix fails on macOS.
+//
+// Linux/Windows: dcpomatic and grokPro use the "Global\" prefix unconditionally
+//        (originally a Windows convention for cross-session shared memory).
+//        On Linux, shm_open accepts arbitrary names (stored in /dev/shm/).
+//        We must match this convention for dcpomatic compatibility.
+//
+// TODO: Coordinate with dcpomatic to adopt a unified naming scheme.
+#ifdef __APPLE__
 static std::string grokToClientMessageBuf = "/grok_to_client_message";
 static std::string grokSentSynch = "/grok_sent";
 static std::string clientReceiveReadySynch = "/client_receive_ready";
@@ -125,6 +125,17 @@ static std::string grokReceiveReadySynch = "/grok_receive_ready";
 
 static std::string grokUncompressedBuf = "/grok_uncompressed_buf";
 static std::string grokCompressedBuf = "/grok_compressed_buf";
+#else
+static std::string grokToClientMessageBuf = "Global\\grok_to_client_message";
+static std::string grokSentSynch = "Global\\grok_sent";
+static std::string clientReceiveReadySynch = "Global\\client_receive_ready";
+
+static std::string clientToGrokMessageBuf = "Global\\client_to_grok_message";
+static std::string clientSentSynch = "Global\\client_sent";
+static std::string grokReceiveReadySynch = "Global\\grok_receive_ready";
+
+static std::string grokUncompressedBuf = "Global\\grok_uncompressed_buf";
+static std::string grokCompressedBuf = "Global\\grok_compressed_buf";
 #endif
 
 /*************************** Message IDs *******************************/
@@ -473,13 +484,35 @@ struct SharedMemoryManager
 
     if(isCreator)
     {
+      // Platform-conditional shm_open flags:
+      //
+      // dcpomatic (our primary client) calls startThreads() BEFORE launching
+      // grk_compress, so the client's outbound thread may create SHM segments
+      // before the server even starts. Both sides use O_CREAT | O_RDWR (without
+      // O_EXCL), meaning whoever arrives first creates the segment and the other
+      // simply opens it — this is the grokPro-era convention.
+      //
+      // macOS: We must use O_EXCL because macOS shm_open has issues with stale
+      // segments from crashed processes that weren't properly unlinked. The
+      // unlink-and-retry handles EEXIST gracefully. This works on macOS because
+      // dcpomatic doesn't currently target macOS with grok's SHM path.
+      //
+      // Linux: O_EXCL would break dcpomatic compatibility — if the client
+      // already created the segment, O_EXCL fails, the server unlinks it and
+      // creates a new one, leaving client and server mapped to different memory.
+      //
+      // TODO: Unify this once dcpomatic is updated to not pre-create SHM
+      // segments before launching the server.
+#ifdef __APPLE__
       *shm_fd = shm_open(name.c_str(), O_CREAT | O_EXCL | O_RDWR, 0666);
       if(*shm_fd < 0 && errno == EEXIST)
       {
-        // stale segment from a previous crash — remove and retry
         shm_unlink(name.c_str());
         *shm_fd = shm_open(name.c_str(), O_CREAT | O_EXCL | O_RDWR, 0666);
       }
+#else
+      *shm_fd = shm_open(name.c_str(), O_CREAT | O_RDWR, 0666);
+#endif
       if(*shm_fd < 0)
       {
         getMessengerLogger()->error("Error creating shared memory %s: %s", name.c_str(),

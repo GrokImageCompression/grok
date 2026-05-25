@@ -139,8 +139,14 @@ static int32_t minpf_load(const char* path)
   minpf_dynamic_library* lib = nullptr;
 
   minpf_plugin_manager* mgr = minpf_get_plugin_manager();
-  if(!mgr || mgr->num_libraries == MINPF_MAX_PLUGINS)
+  if(!mgr)
   {
+    fprintf(stderr, "[plugin] Plugin manager not initialized\n");
+    return -1;
+  }
+  if(mgr->num_libraries == MINPF_MAX_PLUGINS)
+  {
+    fprintf(stderr, "[plugin] Maximum number of plugins (%d) already loaded\n", MINPF_MAX_PLUGINS);
     return -1;
   }
   lib = minpf_load_dynamic_library(path, nullptr);
@@ -151,6 +157,8 @@ static int32_t minpf_load(const char* path)
   postLoadFunc = (minpf_post_load_func)(minpf_get_symbol(lib, "minpf_post_load_plugin"));
   if(!postLoadFunc)
   {
+    fprintf(stderr, "[plugin] Library '%s' missing required symbol 'minpf_post_load_plugin'\n",
+            path);
     minpf_unload_dynamic_library(lib);
     return -1;
   }
@@ -161,6 +169,7 @@ static int32_t minpf_load(const char* path)
   }
   else
   {
+    fprintf(stderr, "[plugin] Failed to resolve full path for plugin '%s'\n", path);
     minpf_unload_dynamic_library(lib);
     return -1;
   }
@@ -168,7 +177,7 @@ static int32_t minpf_load(const char* path)
   mgr->dynamic_libraries[mgr->num_libraries++] = lib;
   auto rc = minpf_post_load_plugin(fullPath, postLoadFunc);
   if(rc)
-    fprintf(stderr, "Plugin %s failed to initialize \n", fullPath);
+    fprintf(stderr, "[plugin] Plugin '%s' failed to initialize (rc=%d)\n", fullPath, rc);
   return rc;
 }
 

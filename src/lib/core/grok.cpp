@@ -1183,9 +1183,6 @@ static const char* plugin_stop_batch_decode_method_name = "plugin_stop_batch_dec
 bool pluginLoaded = false;
 bool grk_plugin_load(grk_plugin_load_info info)
 {
-  if(!info.pluginPath)
-    return false;
-
   // form plugin name
   std::string pluginName = "";
 #if !defined(_WIN32)
@@ -1193,22 +1190,55 @@ bool grk_plugin_load(grk_plugin_load_info info)
 #endif
   pluginName += std::string(GROK_PLUGIN_NAME) + "." + minpf_get_dynamic_library_extension();
 
-  // form absolute plugin path
-  auto pluginPath = std::string(info.pluginPath) +
-                    static_cast<char>(std::filesystem::path::preferred_separator) + pluginName;
-  int32_t rc = minpf_load_from_path(pluginPath.c_str(), nullptr);
-
-  // if fails, try local path
-  if(rc)
+  // Try explicit plugin path first
+  if(info.pluginPath)
   {
-    std::string localPlugin =
-        std::string(".") + (char)std::filesystem::path::preferred_separator + pluginName;
-    rc = minpf_load_from_path(localPlugin.c_str(), nullptr);
+    auto pluginPath = std::string(info.pluginPath) +
+                      static_cast<char>(std::filesystem::path::preferred_separator) + pluginName;
+    fprintf(stdout, "[plugin] Attempting to load plugin from '%s'\n", pluginPath.c_str());
+    int32_t rc = minpf_load_from_path(pluginPath.c_str(), nullptr);
+    if(!rc)
+    {
+      pluginLoaded = true;
+      fprintf(stdout, "[plugin] Successfully loaded plugin '%s'\n", pluginName.c_str());
+      return true;
+    }
   }
-  pluginLoaded = !rc;
-  if(!pluginLoaded)
-    minpf_cleanup_plugin_manager();
-  return pluginLoaded;
+
+  // Fallback: try current working directory (dcpomatic launches grk_compress
+  // from its own binary dir without passing -g)
+  std::string localPlugin =
+      std::string(".") + (char)std::filesystem::path::preferred_separator + pluginName;
+  fprintf(stdout, "[plugin] Trying local path '%s'\n", localPlugin.c_str());
+  int32_t rc = minpf_load_from_path(localPlugin.c_str(), nullptr);
+  if(!rc)
+  {
+    pluginLoaded = true;
+    fprintf(stdout, "[plugin] Successfully loaded plugin '%s'\n", pluginName.c_str());
+    return true;
+  }
+
+  // Fallback: try executable's directory
+  std::error_code ec;
+  auto exePath = std::filesystem::read_symlink("/proc/self/exe", ec);
+  if(!ec)
+  {
+    auto exeDir = exePath.parent_path().string();
+    auto exeDirPlugin =
+        exeDir + static_cast<char>(std::filesystem::path::preferred_separator) + pluginName;
+    fprintf(stdout, "[plugin] Trying executable dir '%s'\n", exeDirPlugin.c_str());
+    rc = minpf_load_from_path(exeDirPlugin.c_str(), nullptr);
+    if(!rc)
+    {
+      pluginLoaded = true;
+      fprintf(stdout, "[plugin] Successfully loaded plugin '%s'\n", pluginName.c_str());
+      return true;
+    }
+  }
+
+  fprintf(stderr, "[plugin] Failed to load plugin '%s' from any path\n", pluginName.c_str());
+  minpf_cleanup_plugin_manager();
+  return false;
 }
 uint32_t grk_plugin_get_debug_state()
 {
@@ -1233,7 +1263,10 @@ void grk_plugin_cleanup(void)
 GRK_API bool GRK_CALLCONV grk_plugin_init(grk_plugin_init_info initInfo)
 {
   if(!pluginLoaded)
+  {
+    fprintf(stderr, "[plugin] grk_plugin_init called but no plugin is loaded\n");
     return false;
+  }
   auto mgr = minpf_get_plugin_manager();
   if(mgr && mgr->num_libraries > 0)
   {
@@ -1245,8 +1278,20 @@ GRK_API bool GRK_CALLCONV grk_plugin_init(grk_plugin_init_info initInfo)
       gpup_info.verbose = initInfo.verbose;
       gpup_info.license = initInfo.license;
       gpup_info.server = initInfo.server;
-      return func(gpup_info);
+      bool result = func(gpup_info);
+      if(!result)
+        fprintf(stderr, "[plugin] Plugin init failed (device_id=%u, license='%s')\n",
+                initInfo.device_id, initInfo.license ? initInfo.license : "");
+      else
+        fprintf(stdout, "[plugin] Plugin initialized successfully (device_id=%u)\n",
+                initInfo.device_id);
+      return result;
     }
+    fprintf(stderr, "[plugin] Plugin missing '%s' symbol\n", plugin_init_method_name);
+  }
+  else
+  {
+    fprintf(stderr, "[plugin] No plugin libraries available in manager\n");
   }
   return false;
 }

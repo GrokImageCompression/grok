@@ -37,6 +37,7 @@
 #include <chrono>
 #include <algorithm>
 #include <filesystem>
+#include <unordered_map>
 #include "CLI/CLI.hpp"
 
 #include "common.h"
@@ -699,8 +700,10 @@ int GrkCompress::shmBatchCompress(CompressInitParams* initParams)
   messenger_ = new Messenger(init);
 
   // tell client the buffer layout
+  spdlog::info("[SHM-CPU] Sending shared memory batch compress init message");
   messenger_->send(GRK_MSGR_BATCH_COMPRESS_INIT, imgWidth, imgStride, imgHeight, imgSpp, imgDepth,
                    compressedFrameSize, numFrames);
+  spdlog::info("[SHM-CPU] Waiting for client messages...");
 
   // wait until shutdown
   while(messenger_->running)
@@ -750,7 +753,7 @@ GrkRC GrkCompress::pluginMain(int argc, const char* argv[], CompressInitParams* 
   tiffSetErrorAndWarningHandlers(true);
 #endif
   initParams->initialized = true;
-  // only load GPU plugin when -G is specified to be -2 (CPU only)
+  // skip GPU plugin when -G is not specified or is -2 (CPU only)
   if(!initParams->usePlugin)
   {
     grk_initialize(nullptr, initParams->parameters.num_threads, nullptr);
@@ -861,6 +864,30 @@ uint8_t charToUint8(char c)
 
 GrkRC GrkCompress::parseCommandLine(int argc, const char* argv[], CompressInitParams* initParams)
 {
+  // Convert legacy single-dash long options (used by dcpomatic) to double-dash
+  static const std::unordered_map<std::string, std::string> legacyFlags = {
+      {"-batch_src", "--batch-src"},
+      {"-out_fmt", "--out-fmt"},
+      {"-cinema2K", "--cinema-2k"},
+      {"-cinema4K", "--cinema-4k"},
+      {"-kernel_build", "--kernel_build"},
+  };
+  std::vector<std::string> normalizedArgs;
+  normalizedArgs.reserve(static_cast<size_t>(argc));
+  for(int i = 0; i < argc; ++i)
+  {
+    std::string arg = argv[i];
+    auto it = legacyFlags.find(arg);
+    if(it != legacyFlags.end())
+      normalizedArgs.push_back(it->second);
+    else
+      normalizedArgs.push_back(std::move(arg));
+  }
+  std::vector<const char*> normalizedArgv;
+  normalizedArgv.reserve(normalizedArgs.size());
+  for(auto& a : normalizedArgs)
+    normalizedArgv.push_back(a.c_str());
+
   grk_cparameters* parameters = &initParams->parameters;
   grk_img_fol* inputFolder = &initParams->inputFolder;
   grk_img_fol* outFolder = &initParams->outFolder;
@@ -948,6 +975,8 @@ GrkRC GrkCompress::parseCommandLine(int argc, const char* argv[], CompressInitPa
                                     "Source image directory OR comma separated list of compression "
                                     "settings for shared memory interface");
   auto mctOpt = app.add_option("-Y,--mct", mct, "Multi component transform")->default_val(0);
+  bool verbose = false;
+  app.add_flag("-v,--verbose", verbose, "Verbose output");
   auto imfOpt = app.add_option("-z,--imf", imf, "IMF profile");
   auto rsizOpt = app.add_option("-Z,--rsiz", rsiz, "Rsiz")->default_val(0);
   auto progressiveRCOpt =
@@ -958,11 +987,11 @@ GrkRC GrkCompress::parseCommandLine(int argc, const char* argv[], CompressInitPa
                               "Apply Rec.709 RGB to DCI X'Y'Z' colour transform before compression");
 
   app.set_help_flag("-h", "Show abreviated usage");
-  app.set_version_flag("-v,--version", grk_version(), "Show version");
+  app.set_version_flag("-V,--version", grk_version(), "Show version");
   app.add_flag("--help", "Show detailed usage");
   try
   {
-    app.parse(argc, argv);
+    app.parse(static_cast<int>(normalizedArgv.size()), normalizedArgv.data());
   }
   catch(const CLI::ParseError& e)
   {
@@ -979,6 +1008,9 @@ GrkRC GrkCompress::parseCommandLine(int argc, const char* argv[], CompressInitPa
     compress_help_display();
     return GrkRCUsage;
   }
+
+  if(verbose && !std::getenv("GRK_DEBUG"))
+    setenv("GRK_DEBUG", "3", 0);
 
   configureLogging(logfile);
 
@@ -1016,7 +1048,7 @@ GrkRC GrkCompress::parseCommandLine(int argc, const char* argv[], CompressInitPa
   if(deviceIdOpt->count() > 0)
   {
     parameters->device_id = deviceId;
-    initParams->usePlugin = (deviceId == -2);
+    initParams->usePlugin = (deviceId != -2);
   }
   if(durationOpt->count() > 0)
     parameters->duration = duration;
