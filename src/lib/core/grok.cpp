@@ -1195,12 +1195,12 @@ bool grk_plugin_load(grk_plugin_load_info info)
   {
     auto pluginPath = std::string(info.pluginPath) +
                       static_cast<char>(std::filesystem::path::preferred_separator) + pluginName;
-    fprintf(stdout, "[plugin] Attempting to load plugin from '%s'\n", pluginPath.c_str());
+    Logger::logger_.info("[plugin] Attempting to load plugin from '%s'", pluginPath.c_str());
     int32_t rc = minpf_load_from_path(pluginPath.c_str(), nullptr);
     if(!rc)
     {
       pluginLoaded = true;
-      fprintf(stdout, "[plugin] Successfully loaded plugin '%s'\n", pluginName.c_str());
+      Logger::logger_.info("[plugin] Successfully loaded plugin '%s'", pluginName.c_str());
       return true;
     }
   }
@@ -1209,12 +1209,12 @@ bool grk_plugin_load(grk_plugin_load_info info)
   // from its own binary dir without passing -g)
   std::string localPlugin =
       std::string(".") + (char)std::filesystem::path::preferred_separator + pluginName;
-  fprintf(stdout, "[plugin] Trying local path '%s'\n", localPlugin.c_str());
+  Logger::logger_.info("[plugin] Trying local path '%s'", localPlugin.c_str());
   int32_t rc = minpf_load_from_path(localPlugin.c_str(), nullptr);
   if(!rc)
   {
     pluginLoaded = true;
-    fprintf(stdout, "[plugin] Successfully loaded plugin '%s'\n", pluginName.c_str());
+    Logger::logger_.info("[plugin] Successfully loaded plugin '%s'", pluginName.c_str());
     return true;
   }
 
@@ -1226,17 +1226,16 @@ bool grk_plugin_load(grk_plugin_load_info info)
     auto exeDir = exePath.parent_path().string();
     auto exeDirPlugin =
         exeDir + static_cast<char>(std::filesystem::path::preferred_separator) + pluginName;
-    fprintf(stdout, "[plugin] Trying executable dir '%s'\n", exeDirPlugin.c_str());
+    Logger::logger_.info("[plugin] Trying executable dir '%s'", exeDirPlugin.c_str());
     rc = minpf_load_from_path(exeDirPlugin.c_str(), nullptr);
     if(!rc)
     {
       pluginLoaded = true;
-      fprintf(stdout, "[plugin] Successfully loaded plugin '%s'\n", pluginName.c_str());
+      Logger::logger_.info("[plugin] Successfully loaded plugin '%s'", pluginName.c_str());
       return true;
     }
   }
 
-  fprintf(stderr, "[plugin] Failed to load plugin '%s' from any path\n", pluginName.c_str());
   minpf_cleanup_plugin_manager();
   return false;
 }
@@ -1264,7 +1263,6 @@ GRK_API bool GRK_CALLCONV grk_plugin_init(grk_plugin_init_info initInfo)
 {
   if(!pluginLoaded)
   {
-    fprintf(stderr, "[plugin] grk_plugin_init called but no plugin is loaded\n");
     return false;
   }
   auto mgr = minpf_get_plugin_manager();
@@ -1280,18 +1278,11 @@ GRK_API bool GRK_CALLCONV grk_plugin_init(grk_plugin_init_info initInfo)
       gpup_info.server = initInfo.server;
       bool result = func(gpup_info);
       if(!result)
-        fprintf(stderr, "[plugin] Plugin init failed (device_id=%u, license='%s')\n",
-                initInfo.device_id, initInfo.license ? initInfo.license : "");
-      else
-        fprintf(stdout, "[plugin] Plugin initialized successfully (device_id=%u)\n",
-                initInfo.device_id);
+        Logger::logger_.info("[plugin] Plugin init failed (device_id=%u, license='%s')",
+                             initInfo.device_id, initInfo.license ? initInfo.license : "");
       return result;
     }
-    fprintf(stderr, "[plugin] Plugin missing '%s' symbol\n", plugin_init_method_name);
-  }
-  else
-  {
-    fprintf(stderr, "[plugin] No plugin libraries available in manager\n");
+    Logger::logger_.info("[plugin] Plugin missing '%s' symbol", plugin_init_method_name);
   }
   return false;
 }
