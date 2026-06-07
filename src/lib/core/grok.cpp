@@ -272,6 +272,16 @@ struct InitState
 static InitState initState_;
 static std::mutex initMutex;
 
+// Plugin loading is suppressed when the GRK_NO_PLUGIN environment variable is
+// set (to any value). Cached on first read so the env is consulted once per
+// process — useful for `make test` and similar contexts that want to force
+// the CPU codec without changing call sites.
+static bool grk_plugin_load_inhibited(void)
+{
+  static const bool inhibited = std::getenv("GRK_NO_PLUGIN") != nullptr;
+  return inhibited;
+}
+
 void grk_initialize(const char* pluginPath, uint32_t numThreads, bool* plugin_initialized)
 {
   if(plugin_initialized)
@@ -323,8 +333,8 @@ void grk_initialize(const char* pluginPath, uint32_t numThreads, bool* plugin_in
 
     initState_ = newState;
 
-    // 2. try to load plugin
-    if(!initState_.pluginInitialized_)
+    // 2. try to load plugin (skipped when GRK_NO_PLUGIN is set)
+    if(!initState_.pluginInitialized_ && !grk_plugin_load_inhibited())
     {
       grk_plugin_load_info info;
       info.pluginPath = pluginPath;

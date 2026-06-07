@@ -58,13 +58,19 @@ extern "C" {
 /**
  * @brief Environment variables
  *
- * @brief Set this environment variable to enable various levels of debug logging
- * levels: 1 - 5
- * level 1 provides only error logging
- * level 3 provides error, warning and information logging
- *
  * GRK_DEBUG
+ *   Enable debug logging at the given level (1-5):
+ *     1 — errors only
+ *     2 — errors + warnings
+ *     3 — errors + warnings + info
+ *     4 — adds debug output
+ *     5 — adds trace output
  *
+ * GRK_NO_PLUGIN
+ *   When set (to any value), grk_initialize() skips grk_plugin_load(). This
+ *   forces the CPU codec for the whole process — useful for `make test` and
+ *   any context that wants to bypass the GPU/accelerator plugin without
+ *   changing call sites. Read once on first grk_initialize() call.
  */
 
 /**
