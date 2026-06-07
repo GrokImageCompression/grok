@@ -1010,7 +1010,13 @@ GrkRC GrkCompress::parseCommandLine(int argc, const char* argv[], CompressInitPa
   }
 
   if(verbose && !std::getenv("GRK_DEBUG"))
+  {
+#ifdef _WIN32
+    _putenv("GRK_DEBUG=3");
+#else
     setenv("GRK_DEBUG", "3", 0);
+#endif
+  }
 
   configureLogging(logfile);
 
