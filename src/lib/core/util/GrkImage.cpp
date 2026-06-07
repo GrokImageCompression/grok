@@ -396,6 +396,16 @@ bool GrkImage::allocData(grk_image_comp* comp, bool clear)
 {
   if(!comp || comp->w == 0 || comp->h == 0)
     return false;
+  // SIMD requires aligned stride stored in uint32_t. Reject up front when
+  // aligning would overflow — otherwise grk_make_aligned_width wraps to 0
+  // and grk_aligned_malloc fails with a misleading "0 x h" message.
+  if(!grk_aligned_width_fits(comp->w))
+  {
+    grk::grklog.error(
+        "Cannot allocate buffer for width %u: SIMD-aligned stride would exceed uint32_t (max %u)",
+        comp->w, UINT32_MAX - grk_max_align_elements + 1);
+    return false;
+  }
   single_component_data_free(comp);
   uint32_t stride = (comp->data_type == GRK_INT_16) ? grk_make_aligned_width<int16_t>(comp->w)
                                                     : grk_make_aligned_width<int32_t>(comp->w);
@@ -403,8 +413,8 @@ bool GrkImage::allocData(grk_image_comp* comp, bool clear)
   auto data = grk_aligned_malloc(dataSize);
   if(!data)
   {
-    grk::grklog.error("Failed to allocate aligned memory buffer of dimensions %u x %u",
-                      comp->stride, comp->h);
+    grk::grklog.error("Failed to allocate aligned memory buffer of dimensions %u x %u (%zu bytes)",
+                      stride, comp->h, dataSize);
     return false;
   }
   if(clear)

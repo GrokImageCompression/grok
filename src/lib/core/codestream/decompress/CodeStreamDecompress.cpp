@@ -229,8 +229,13 @@ bool CodeStreamDecompress::decompress(grk_plugin_tile* tile)
     // Use unreduced image bounds so that TileCompletion computes the same tile grid
     // (t_grid_width_ x t_grid_height_) as the codec.  Tile indices from
     // tileProcessor->getIndex() are based on the unreduced grid.
-    Rect32 unreducedBounds(cp_.tx0_, cp_.ty0_, cp_.tx0_ + cp_.t_grid_width_ * cp_.t_width_,
-                           cp_.ty0_ + cp_.t_grid_height_ * cp_.t_height_);
+    // Compute in uint64_t and clip to UINT32_MAX so a tile grid extent that exceeds
+    // uint32_t (e.g. Xsiz=UINT32_MAX with XTsiz=2^31) doesn't wrap to 0.
+    uint64_t unreducedX1 = (uint64_t)cp_.tx0_ + (uint64_t)cp_.t_grid_width_ * cp_.t_width_;
+    uint64_t unreducedY1 = (uint64_t)cp_.ty0_ + (uint64_t)cp_.t_grid_height_ * cp_.t_height_;
+    Rect32 unreducedBounds(cp_.tx0_, cp_.ty0_,
+                           (uint32_t)std::min<uint64_t>(unreducedX1, UINT32_MAX),
+                           (uint32_t)std::min<uint64_t>(unreducedY1, UINT32_MAX));
     auto slatedRect = tilesToDecompress_.getSlatedTileRect();
     nextBandTileY_ = slatedRect.y0;
     pendingBands_.clear();

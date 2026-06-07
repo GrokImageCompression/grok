@@ -158,6 +158,16 @@ bool SIZMarker::read(CodeStreamDecompress* codeStream, uint8_t* headerData, uint
     grklog.error("SIZ marker: invalid tile size (%u, %u)", cp->t_width_, cp->t_height_);
     return false;
   }
+  // Tile-level allocations use uint32_t-aligned strides; reject tiles whose
+  // width is so close to UINT32_MAX that SIMD alignment would overflow.
+  // (Image-level allocations are checked at allocData time so that smaller
+  //  decode regions of an oversized image are still allowed.)
+  if(!grk_aligned_width_fits(cp->t_width_))
+  {
+    grklog.error("SIZ marker: tile width %u is too large for SIMD-aligned allocation (max %u)",
+                 cp->t_width_, UINT32_MAX - grk_max_align_elements + 1);
+    return false;
+  }
   if(cp->tx0_ > headerImage->x0 || cp->ty0_ > headerImage->y0)
   {
     grklog.error("SIZ marker: tile origin (%u,%u) cannot lie in the region"
