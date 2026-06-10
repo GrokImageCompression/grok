@@ -555,8 +555,7 @@ void FileFormatMJ2Decompress::stsc_decompact(mj2_tk* tk)
                    samples_per_chunk, (uint32_t)tk->samples_.size());
       return;
     }
-    auto num_chunks = (uint32_t)ceil((double)tk->samples_.size() /
-                                     (double)samples_per_chunk);
+    auto num_chunks = (uint32_t)ceil((double)tk->samples_.size() / (double)samples_per_chunk);
     for(uint32_t k = 0; k < num_chunks; k++)
     {
       mj2_chunk chunk;

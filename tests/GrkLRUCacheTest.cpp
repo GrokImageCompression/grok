@@ -945,7 +945,8 @@ static bool testReduceWithRegion()
   // At reduce=1, the 64x64 reduced-space region produces ~64x64 output
   uint32_t w = img->x1 - img->x0;
   uint32_t h = img->y1 - img->y0;
-  spdlog::info("Reduce+region output: {}x{} (x0={}, y0={}, x1={}, y1={})", w, h, img->x0, img->y0, img->x1, img->y1);
+  spdlog::info("Reduce+region output: {}x{} (x0={}, y0={}, x1={}, y1={})", w, h, img->x0, img->y0,
+               img->x1, img->y1);
   spdlog::info("Reduce+region comps[0]: w={}, h={}", img->comps[0].w, img->comps[0].h);
 
   std::error_code ec;
@@ -1021,7 +1022,8 @@ static bool testReducedCoordsPerTile()
     uint16_t tileIndex;
     uint32_t x0, y0, x1, y1;
   };
-  Expected expected[] = {{0, 0, 0, 64, 64}, {1, 64, 0, 128, 64}, {2, 0, 64, 64, 128}, {3, 64, 64, 128, 128}};
+  Expected expected[] = {
+      {0, 0, 0, 64, 64}, {1, 64, 0, 128, 64}, {2, 0, 64, 64, 128}, {3, 64, 64, 128, 128}};
 
   for(auto& e : expected)
   {

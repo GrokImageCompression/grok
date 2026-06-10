@@ -129,14 +129,14 @@ size_t CurlFetcher::read(uint8_t* buffer, size_t numBytes)
 {
   if(current_offset_ + numBytes > total_size_)
   {
-    grklog.error("Read %zu bytes at offset %llu exceeds total size %llu", numBytes,
-                 current_offset_, total_size_);
+    grklog.error("Read %zu bytes at offset %llu exceeds total size %llu", numBytes, current_offset_,
+                 total_size_);
     return 0;
   }
 
   FetchResult result;
-  auto curl = configureHandle(current_offset_, current_offset_ + numBytes - 1, result,
-                              tileWriteCallback_);
+  auto curl =
+      configureHandle(current_offset_, current_offset_ + numBytes - 1, result, tileWriteCallback_);
   auto res = curl_easy_perform(curl);
   if(res != CURLE_OK)
   {
@@ -182,8 +182,8 @@ bool CurlFetcher::seek(uint64_t offset)
 }
 
 std::future<bool> CurlFetcher::fetchTiles(const TPSEQ_VEC& allTileParts,
-                                           const std::set<uint16_t>& slated, void* user_data,
-                                           TileFetchCallback callback)
+                                          const std::set<uint16_t>& slated, void* user_data,
+                                          TileFetchCallback callback)
 {
   // 1. cache fetch data
   {
@@ -245,7 +245,7 @@ void CurlFetcher::fetchChunks(std::shared_ptr<ChunkBuffer<>> chunkBuffer)
 }
 
 void CurlFetcher::fetchChunks(std::shared_ptr<ChunkBuffer<>> chunkBuffer,
-                               std::shared_ptr<std::vector<ChunkRequest>> requests)
+                              std::shared_ptr<std::vector<ChunkRequest>> requests)
 {
   ChunkTask task(chunkBuffer, requests);
 
@@ -350,8 +350,7 @@ std::vector<std::string> CurlFetcher::listDirectory(const std::string& path)
 }
 
 // Metadata retrieval (HEAD request)
-bool CurlFetcher::getMetadata(const std::string& path,
-                               std::map<std::string, std::string>& metadata)
+bool CurlFetcher::getMetadata(const std::string& path, std::map<std::string, std::string>& metadata)
 {
   CURL* curl = curl_easy_init();
   if(!curl)
@@ -561,7 +560,7 @@ void CurlFetcher::fetch_total_size()
 }
 
 CURL* CurlFetcher::configureHandle(uint64_t offset, uint64_t end, FetchResult& result,
-                                    CURL_FETCHER_WRITE_CALLBACK callback)
+                                   CURL_FETCHER_WRITE_CALLBACK callback)
 {
   CURL* curl = curl_easy_init();
   if(!curl)
@@ -670,8 +669,8 @@ bool CurlFetcher::scheduleNextBatch(CURL_FETCHER_WRITE_CALLBACK callback)
 }
 
 void CurlFetcher::retryRequest(FetchResult* result, uint64_t offset, uint64_t end,
-                                CURL_FETCHER_WRITE_CALLBACK callback,
-                                std::function<void()> onFatalError)
+                               CURL_FETCHER_WRITE_CALLBACK callback,
+                               std::function<void()> onFatalError)
 {
   result->retryCount_++;
   grklog.warn("Retrying request %zu (retry %u/%u)", result->requestIndex_, result->retryCount_,

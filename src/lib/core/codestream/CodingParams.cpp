@@ -817,42 +817,42 @@ void TileCodingParams::finalizePocs(void)
 
   // Validate main header POCs if any
   if(numpocs_ > 0)
-  for(uint32_t i = 0; i <= numpocs_; ++i)
-  {
-    auto& prog = progressionOrderChange_[i];
-    prog.lay_e = std::min<uint16_t>(prog.lay_e, numLayers_);
-    prog.res_e = std::min<uint8_t>(prog.res_e, maxNumResLevels);
-    prog.comp_e = std::min<uint16_t>(prog.comp_e, numComps_);
+    for(uint32_t i = 0; i <= numpocs_; ++i)
+    {
+      auto& prog = progressionOrderChange_[i];
+      prog.lay_e = std::min<uint16_t>(prog.lay_e, numLayers_);
+      prog.res_e = std::min<uint8_t>(prog.res_e, maxNumResLevels);
+      prog.comp_e = std::min<uint16_t>(prog.comp_e, numComps_);
 
-    if(prog.res_s >= maxNumResLevels)
-    {
-      grklog.error("finalizePocs: invalid POC start resolution number %u", prog.res_s);
-      // handle error, e.g., throw or set error state
-      return;
+      if(prog.res_s >= maxNumResLevels)
+      {
+        grklog.error("finalizePocs: invalid POC start resolution number %u", prog.res_s);
+        // handle error, e.g., throw or set error state
+        return;
+      }
+      if(prog.res_e <= prog.res_s)
+      {
+        grklog.error("finalizePocs: invalid POC end resolution %u", prog.res_e);
+        return;
+      }
+      if(prog.comp_s >= numComps_)
+      {
+        grklog.error("finalizePocs: invalid POC start component %u", prog.comp_s);
+        return;
+      }
+      if(prog.comp_e <= prog.comp_s)
+      {
+        grklog.error("finalizePocs: invalid POC end component (%u) : end component is "
+                     "less than or equal to POC start component (%u)",
+                     prog.comp_e, prog.comp_s);
+        return;
+      }
+      if(prog.lay_e == 0)
+      {
+        grklog.error("finalizePocs: invalid POC end layer 0");
+        return;
+      }
     }
-    if(prog.res_e <= prog.res_s)
-    {
-      grklog.error("finalizePocs: invalid POC end resolution %u", prog.res_e);
-      return;
-    }
-    if(prog.comp_s >= numComps_)
-    {
-      grklog.error("finalizePocs: invalid POC start component %u", prog.comp_s);
-      return;
-    }
-    if(prog.comp_e <= prog.comp_s)
-    {
-      grklog.error("finalizePocs: invalid POC end component (%u) : end component is "
-                   "less than or equal to POC start component (%u)",
-                   prog.comp_e, prog.comp_s);
-      return;
-    }
-    if(prog.lay_e == 0)
-    {
-      grklog.error("finalizePocs: invalid POC end layer 0");
-      return;
-    }
-  }
 
   uint32_t pos = numpocs_ + 1;
   for(uint8_t tp = 0; tp < signalledNumTileParts_; ++tp)

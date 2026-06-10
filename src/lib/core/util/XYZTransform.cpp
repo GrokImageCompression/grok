@@ -76,7 +76,7 @@ namespace HWY_NAMESPACE
    * uses Highway SIMD float vectors.
    */
   static void Hwy_rgb_to_xyz(int32_t* HWY_RESTRICT rBuf, int32_t* HWY_RESTRICT gBuf,
-                              int32_t* HWY_RESTRICT bBuf, uint64_t numPixels, uint32_t prec)
+                             int32_t* HWY_RESTRICT bBuf, uint64_t numPixels, uint32_t prec)
   {
     const uint32_t maxVal = (1u << prec) - 1;
     const float scale = 1.0f / (float)maxVal;
@@ -103,9 +103,12 @@ namespace HWY_NAMESPACE
       uint32_t rv = (uint32_t)rBuf[i];
       uint32_t gv = (uint32_t)gBuf[i];
       uint32_t bv = (uint32_t)bBuf[i];
-      if(rv > maxVal) rv = maxVal;
-      if(gv > maxVal) gv = maxVal;
-      if(bv > maxVal) bv = maxVal;
+      if(rv > maxVal)
+        rv = maxVal;
+      if(gv > maxVal)
+        gv = maxVal;
+      if(bv > maxVal)
+        bv = maxVal;
 
       float r = linLut[rv];
       float g = linLut[gv];
@@ -118,8 +121,10 @@ namespace HWY_NAMESPACE
 
       // Gamma via LUT (quantize linear to output precision for indexing)
       auto quantize = [maxVal, gammaScale](float v) -> uint32_t {
-        if(v <= 0.0f) return 0;
-        if(v >= 1.0f) return maxVal;
+        if(v <= 0.0f)
+          return 0;
+        if(v >= 1.0f)
+          return maxVal;
         return (uint32_t)(v * gammaScale + 0.5f);
       };
 
@@ -169,17 +174,16 @@ bool applyXYZTransform(grk_image* image)
   uint32_t h = compR.h;
   uint32_t prec = compR.prec;
 
-  grklog.info("XYZ transform: %ux%u, %u-bit, strides: R=%u G=%u B=%u, data_type: R=%d G=%d B=%d",
-              w, h, prec, compR.stride, compG.stride, compB.stride,
-              (int)compR.data_type, (int)compG.data_type, (int)compB.data_type);
+  grklog.info("XYZ transform: %ux%u, %u-bit, strides: R=%u G=%u B=%u, data_type: R=%d G=%d B=%d", w,
+              h, prec, compR.stride, compG.stride, compB.stride, (int)compR.data_type,
+              (int)compG.data_type, (int)compB.data_type);
 
   // Handle int16 data type: need to widen to int32 for processing, then narrow back
   bool isInt16 = (compR.data_type == GRK_INT_16);
-  
+
   // If data is stored with stride, we need to process row-by-row
   // For contiguous data (stride == w), we can process in one shot
-  bool contiguous =
-      (compR.stride == w) && (compG.stride == w) && (compB.stride == w);
+  bool contiguous = (compR.stride == w) && (compG.stride == w) && (compB.stride == w);
 
   if(contiguous)
   {

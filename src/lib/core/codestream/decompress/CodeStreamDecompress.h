@@ -508,10 +508,10 @@ private:
    * @param unreducedImageBounds  unreduced image bounds for decompress tasks
    * @param postGenerator     factory for post-decompress callbacks
    */
-  void enqueueTileForDecompress(
-      uint16_t tileIndex, std::shared_ptr<TPFetchSeq> decompressSeq, uint16_t numTileCols,
-      Rect32 unreducedImageBounds,
-      std::function<std::function<void()>(ITileProcessor*)> postGenerator);
+  void
+      enqueueTileForDecompress(uint16_t tileIndex, std::shared_ptr<TPFetchSeq> decompressSeq,
+                               uint16_t numTileCols, Rect32 unreducedImageBounds,
+                               std::function<std::function<void()>(ITileProcessor*)> postGenerator);
 
   /**
    * @brief Build selective tile-part entries for a single tile.
@@ -548,10 +548,10 @@ private:
    * @param allTileParts         full tile-part info from TLM
    * @return vector of tiles with pre-built decompression sequences
    */
-  std::vector<std::pair<uint16_t, std::shared_ptr<TPFetchSeq>>> reusePhase1Data(
-      std::shared_ptr<std::set<uint16_t>>& selectiveFetchTiles,
-      const std::unordered_map<uint16_t, TileHeaderResult>& headerResults,
-      const TPSEQ_VEC& allTileParts);
+  std::vector<std::pair<uint16_t, std::shared_ptr<TPFetchSeq>>>
+      reusePhase1Data(std::shared_ptr<std::set<uint16_t>>& selectiveFetchTiles,
+                      const std::unordered_map<uint16_t, TileHeaderResult>& headerResults,
+                      const TPSEQ_VEC& allTileParts);
 
   /**
    * @brief Install fetch throttle on the given fetcher.

@@ -544,8 +544,9 @@ struct PartialBandInfo
     for(uint32_t i = 0; i < t1::BAND_NUM_ORIENTATIONS; ++i)
     {
       auto temp = tileBandWindowREL[i];
-      if(!sa->alloc(temp.grow_IN_PLACE(2 * FILTER_WIDTH, fullResNext->width(), fullResNext->height()),
-                    true))
+      if(!sa->alloc(
+             temp.grow_IN_PLACE(2 * FILTER_WIDTH, fullResNext->width(), fullResNext->height()),
+             true))
         return false;
     }
     resWindowREL_ = tileWindow->getResWindowBufferREL(resno);

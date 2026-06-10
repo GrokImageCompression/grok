@@ -850,8 +850,7 @@ GrkRC GrkDecompress::pluginMain(int argc, const char* argv[], DecompressInitPara
         auto elapsed = std::chrono::high_resolution_clock::now() - start;
         std::chrono::duration<double> secs = elapsed;
         spdlog::info("decompress time: {} ms/image ({} FPS)",
-                     (secs.count() * 1000) / (double)repeats,
-                     (double)repeats / secs.count());
+                     (secs.count() * 1000) / (double)repeats, (double)repeats / secs.count());
       }
     }
     else

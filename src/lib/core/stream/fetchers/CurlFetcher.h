@@ -177,8 +177,7 @@ public:
   std::vector<std::string> listDirectory(const std::string& path) override;
 
   // Metadata retrieval (HEAD request)
-  bool getMetadata(const std::string& path,
-                   std::map<std::string, std::string>& metadata) override;
+  bool getMetadata(const std::string& path, std::map<std::string, std::string>& metadata) override;
 
 protected:
   virtual curl_slist* prepareAuthHeaders(curl_slist* headers) = 0;

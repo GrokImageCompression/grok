@@ -270,9 +270,8 @@ struct Rect
   {
     if(this == &rhs)
       return true;
-    return origin_x0 == rhs.origin_x0 &&
-           origin_y0 == rhs.origin_y0 && x0 == rhs.x0 && y0 == rhs.y0 && x1 == rhs.x1 &&
-           y1 == rhs.y1;
+    return origin_x0 == rhs.origin_x0 && origin_y0 == rhs.origin_y0 && x0 == rhs.x0 &&
+           y0 == rhs.y0 && x1 == rhs.x1 && y1 == rhs.y1;
   }
   void setRect(const Rect* rhs)
   {
@@ -326,7 +325,6 @@ struct Rect
   }
   Rect<T> intersection(const Rect<T>& rhs) const
   {
-
     return intersection(&rhs);
   }
   Rect<T> clip(const Rect* rhs) const

@@ -807,8 +807,7 @@ GrkRC GrkCompress::pluginMain(int argc, const char* argv[], CompressInitParams* 
     std::chrono::duration<double> elapsed = finish - start;
     if(repeats > 1)
       spdlog::info("compress time: {} ms/image ({} FPS)",
-                   (elapsed.count() * 1000) / (double)repeats,
-                   (double)repeats / elapsed.count());
+                   (elapsed.count() * 1000) / (double)repeats, (double)repeats / elapsed.count());
     return GrkRCSuccess;
   }
 
@@ -866,10 +865,8 @@ GrkRC GrkCompress::parseCommandLine(int argc, const char* argv[], CompressInitPa
 {
   // Convert legacy single-dash long options (used by dcpomatic) to double-dash
   static const std::unordered_map<std::string, std::string> legacyFlags = {
-      {"-batch_src", "--batch-src"},
-      {"-out_fmt", "--out-fmt"},
-      {"-cinema2K", "--cinema-2k"},
-      {"-cinema4K", "--cinema-4k"},
+      {"-batch_src", "--batch-src"},       {"-out_fmt", "--out-fmt"},
+      {"-cinema2K", "--cinema-2k"},        {"-cinema4K", "--cinema-4k"},
       {"-kernel_build", "--kernel_build"},
   };
   std::vector<std::string> normalizedArgs;
@@ -984,7 +981,7 @@ GrkRC GrkCompress::parseCommandLine(int argc, const char* argv[], CompressInitPa
 
   bool xyzTransform;
   auto xyzOpt = app.add_flag("--xyz", xyzTransform,
-                              "Apply Rec.709 RGB to DCI X'Y'Z' colour transform before compression");
+                             "Apply Rec.709 RGB to DCI X'Y'Z' colour transform before compression");
 
   app.set_help_flag("-h", "Show abreviated usage");
   app.set_version_flag("-V,--version", grk_version(), "Show version");

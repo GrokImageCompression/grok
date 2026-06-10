@@ -1768,25 +1768,22 @@ void CodeStreamDecompress::enqueueTileForDecompress(
 
   int32_t tileRow = tileIndex / numTileCols;
   int32_t prev = maxFetchedTileRow_.load(std::memory_order_acquire);
-  while(prev < tileRow &&
-        !maxFetchedTileRow_.compare_exchange_weak(prev, tileRow, std::memory_order_release,
-                                                  std::memory_order_acquire))
+  while(prev < tileRow && !maxFetchedTileRow_.compare_exchange_weak(
+                              prev, tileRow, std::memory_order_release, std::memory_order_acquire))
   {
   }
-  decompressQueue_->push(
-      [this, tileIndex, decompressSeq, unreducedImageBounds, postGenerator]() {
-        const auto tileProcessor = getTileProcessor(tileIndex);
-        auto* tp = dynamic_cast<TileProcessor*>(tileProcessor);
-        if(tp)
-          tp->setSelectiveFetch(true);
-        auto decompressTask = genDecompressTileTLMTask(tileProcessor, decompressSeq,
-                                                       unreducedImageBounds, postGenerator);
-        decompressTask();
-      });
+  decompressQueue_->push([this, tileIndex, decompressSeq, unreducedImageBounds, postGenerator]() {
+    const auto tileProcessor = getTileProcessor(tileIndex);
+    auto* tp = dynamic_cast<TileProcessor*>(tileProcessor);
+    if(tp)
+      tp->setSelectiveFetch(true);
+    auto decompressTask =
+        genDecompressTileTLMTask(tileProcessor, decompressSeq, unreducedImageBounds, postGenerator);
+    decompressTask();
+  });
 }
 
-void CodeStreamDecompress::buildSelectiveTileParts(uint16_t tileIndex,
-                                                   const TileHeaderResult& hdr,
+void CodeStreamDecompress::buildSelectiveTileParts(uint16_t tileIndex, const TileHeaderResult& hdr,
                                                    const TPSEQ_VEC& allTileParts, uint8_t reduce)
 {
   auto numComps = headerImage_->numcomps;
@@ -1954,11 +1951,10 @@ void CodeStreamDecompress::buildSelectiveTileParts(uint16_t tileIndex,
   }
 }
 
-std::vector<std::pair<uint16_t, std::shared_ptr<TPFetchSeq>>>
-    CodeStreamDecompress::reusePhase1Data(
-        std::shared_ptr<std::set<uint16_t>>& selectiveFetchTiles,
-        const std::unordered_map<uint16_t, TileHeaderResult>& headerResults,
-        const TPSEQ_VEC& allTileParts)
+std::vector<std::pair<uint16_t, std::shared_ptr<TPFetchSeq>>> CodeStreamDecompress::reusePhase1Data(
+    std::shared_ptr<std::set<uint16_t>>& selectiveFetchTiles,
+    const std::unordered_map<uint16_t, TileHeaderResult>& headerResults,
+    const TPSEQ_VEC& allTileParts)
 {
   std::vector<std::pair<uint16_t, std::shared_ptr<TPFetchSeq>>> prefetchedTiles;
 
@@ -2127,9 +2123,8 @@ bool CodeStreamDecompress::fetchByTileSelective(
   // Create modified tile-part info for Phase 1 fetch.
   // For contiguous progressions, estimate the needed data size and fetch that
   // directly, eliminating the need for a second round-trip in most cases.
-  double pixelRatio = (contiguousProgression && reduce > 0)
-                          ? (1.0 / std::pow(4.0, reduce)) * 2.0
-                          : 0.0;
+  double pixelRatio =
+      (contiguousProgression && reduce > 0) ? (1.0 / std::pow(4.0, reduce)) * 2.0 : 0.0;
 
   TPSEQ_VEC headerTileParts(allTileParts.size());
   for(auto tileIndex : slated)
@@ -2144,8 +2139,8 @@ bool CodeStreamDecompress::fetchByTileSelective(
       uint32_t fetchLen;
       if(contiguousProgression && reduce > 0)
       {
-        uint64_t estimated = std::max<uint64_t>(
-            headerFetchSize, (uint64_t)(part->length_ * pixelRatio));
+        uint64_t estimated =
+            std::max<uint64_t>(headerFetchSize, (uint64_t)(part->length_ * pixelRatio));
         fetchLen = (uint32_t)std::min<uint64_t>(estimated, part->length_);
       }
       else
@@ -2264,64 +2259,64 @@ bool CodeStreamDecompress::fetchByTileSelective(
 
   if(!selectiveFetchTiles->empty())
   {
-  installFetchThrottle(fetcher);
+    installFetchThrottle(fetcher);
 
-  fetchByTileFutures_.push_back(fetcher->fetchTiles(
-      selectiveTileParts_, *selectiveFetchTiles, nullptr,
-      [this, numTileCols, unreducedImageBounds, postGenerator, selectiveFetchTiles,
-       disjointTiles](size_t requestIndex, TileFetchContext* context) {
-        auto& tilePart = (*context->requests_)[requestIndex];
-        auto tileIndex = tilePart->tileIndex_;
-        auto& tilePartSeq = (*context->tilePartFetchByTile_)[tileIndex];
+    fetchByTileFutures_.push_back(fetcher->fetchTiles(
+        selectiveTileParts_, *selectiveFetchTiles, nullptr,
+        [this, numTileCols, unreducedImageBounds, postGenerator, selectiveFetchTiles,
+         disjointTiles](size_t requestIndex, TileFetchContext* context) {
+          auto& tilePart = (*context->requests_)[requestIndex];
+          auto tileIndex = tilePart->tileIndex_;
+          auto& tilePartSeq = (*context->tilePartFetchByTile_)[tileIndex];
 
-        if(!disjointTiles->count(tileIndex))
-        {
-          // Contiguous case: create MemStream per entry (standard path)
-          tilePart->stream_ =
-              std::unique_ptr<IStream>(memStreamCreate(tilePart->data_.get(), tilePart->length_,
-                                                       false, nullptr, stream_->getFormat(), true));
-        }
-
-        if(tilePartSeq->incrementFetchCount() == tilePartSeq->size())
-        {
-          std::shared_ptr<TPFetchSeq> decompressSeq;
-
-          if(disjointTiles->count(tileIndex))
+          if(!disjointTiles->count(tileIndex))
           {
-            // Disjoint case: assemble header + data ranges into single buffer
-            // Entry 0 = header (with SOT), entries 1..N = data ranges
-            uint64_t totalSize = 0;
-            for(size_t i = 0; i < tilePartSeq->size(); ++i)
-              totalSize += (*tilePartSeq)[i]->length_;
+            // Contiguous case: create MemStream per entry (standard path)
+            tilePart->stream_ = std::unique_ptr<IStream>(
+                memStreamCreate(tilePart->data_.get(), tilePart->length_, false, nullptr,
+                                stream_->getFormat(), true));
+          }
 
-            auto assembled = std::make_unique<uint8_t[]>(totalSize);
-            uint64_t pos = 0;
-            for(size_t i = 0; i < tilePartSeq->size(); ++i)
+          if(tilePartSeq->incrementFetchCount() == tilePartSeq->size())
+          {
+            std::shared_ptr<TPFetchSeq> decompressSeq;
+
+            if(disjointTiles->count(tileIndex))
             {
-              auto& tp = (*tilePartSeq)[i];
-              if(tp->data_)
-                std::memcpy(assembled.get() + pos, tp->data_.get(), tp->length_);
-              pos += tp->length_;
+              // Disjoint case: assemble header + data ranges into single buffer
+              // Entry 0 = header (with SOT), entries 1..N = data ranges
+              uint64_t totalSize = 0;
+              for(size_t i = 0; i < tilePartSeq->size(); ++i)
+                totalSize += (*tilePartSeq)[i]->length_;
+
+              auto assembled = std::make_unique<uint8_t[]>(totalSize);
+              uint64_t pos = 0;
+              for(size_t i = 0; i < tilePartSeq->size(); ++i)
+              {
+                auto& tp = (*tilePartSeq)[i];
+                if(tp->data_)
+                  std::memcpy(assembled.get() + pos, tp->data_.get(), tp->length_);
+                pos += tp->length_;
+              }
+
+              // Create single-entry TPFetchSeq with assembled data
+              decompressSeq = std::make_shared<TPFetchSeq>();
+              auto assembledFetch = std::make_shared<TPFetch>(0, totalSize, tileIndex);
+              assembledFetch->data_ = std::move(assembled);
+              assembledFetch->stream_ = std::unique_ptr<IStream>(
+                  memStreamCreate(assembledFetch->data_.get(), totalSize, false, nullptr,
+                                  stream_->getFormat(), true));
+              decompressSeq->SharedPtrSeq<TPFetch>::push_back(assembledFetch);
+            }
+            else
+            {
+              decompressSeq = tilePartSeq;
             }
 
-            // Create single-entry TPFetchSeq with assembled data
-            decompressSeq = std::make_shared<TPFetchSeq>();
-            auto assembledFetch = std::make_shared<TPFetch>(0, totalSize, tileIndex);
-            assembledFetch->data_ = std::move(assembled);
-            assembledFetch->stream_ = std::unique_ptr<IStream>(
-                memStreamCreate(assembledFetch->data_.get(), totalSize, false, nullptr,
-                                stream_->getFormat(), true));
-            decompressSeq->SharedPtrSeq<TPFetch>::push_back(assembledFetch);
+            enqueueTileForDecompress(tileIndex, decompressSeq, numTileCols, unreducedImageBounds,
+                                     postGenerator);
           }
-          else
-          {
-            decompressSeq = tilePartSeq;
-          }
-
-          enqueueTileForDecompress(tileIndex, decompressSeq, numTileCols, unreducedImageBounds,
-                                  postGenerator);
-        }
-      }));
+        }));
   } // if(!selectiveFetchTiles->empty())
 
   return true;
