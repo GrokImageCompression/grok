@@ -148,7 +148,7 @@ private:
           split.y1 =
               (resWindowBuffer_->y1 == 0 ? 0 : ceildivpow2<uint32_t>(resWindowBuffer_->y1 - i, 1));
           resWindowBufferSplit_[i] = new Buf2dAligned(split);
-          resWindowBufferSplitREL_[i] = new Buf2dAligned(resWindowBufferSplit_[i]);
+          resWindowBufferSplitREL_[i] = new Buf2dAligned(split.toRelative());
         }
       }
     }
