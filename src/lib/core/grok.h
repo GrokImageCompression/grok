@@ -806,14 +806,22 @@ typedef enum _grk_data_type
 /**
  * @struct grk_image_comp
  * @brief Image component
+ *
+ * (x0, y0, w, h) is the authoritative description of the data rectangle
+ * in @ref data for all roles — compression input, full-image
+ * decompression output, and per-tile decompression output. For a
+ * per-tile image from a windowed decompress, it describes the cropped
+ * decode window (not the full tile), and disagrees with the enclosing
+ * grk_image's x0/y0/x1/y1. See the grk_image struct comment for the full
+ * breakdown.
  */
 typedef struct _grk_image_comp
 {
-  uint32_t x0; /* x offset relative to whole image */
-  uint32_t y0; /* y offset relative to whole image */
-  uint32_t w; /* width */
-  uint32_t stride; /* stride */
-  uint32_t h; /* height */
+  uint32_t x0; /* x offset on reference grid of the data rectangle */
+  uint32_t y0; /* y offset on reference grid of the data rectangle */
+  uint32_t w; /* width of data rectangle */
+  uint32_t stride; /* row pitch in samples (>= w; may be aligned) */
+  uint32_t h; /* height of data rectangle */
   uint8_t dx; /* horizontal separation of component samples with respect to reference grid  */
   uint8_t dy; /* vertical separation of component samples with respect to reference grid  */
   uint8_t prec; /* precision */
@@ -870,10 +878,53 @@ typedef struct _grk_image_meta
  * @brief Grok image
  * Note: do not directly create a grk_image object. Instead use the @ref grk_image_new
  * API method to create a grk_image object, and clean it up with @ref grk_object_unref
+ *
+ * COORDINATE FRAMES:
+ *
+ * grk_image is used both as input to compression and as output from
+ * decompression. The interpretation of x0/y0/x1/y1 versus
+ * comps[i].x0/y0/w/h depends on which role the image is playing:
+ *
+ * 1. Compression input (caller-populated source image):
+ *      - x0/y0/x1/y1            = image bounds on the reference grid.
+ *      - comps[i].x0/y0 + (w,h) = the component's full extent, equal to
+ *                                 the image bounds (scaled by dx/dy for
+ *                                 subsampled components).
+ *      Both frames agree.
+ *
+ * 2. Full-image decompression output (from @ref grk_decompress_get_image):
+ *      - x0/y0/x1/y1            = reduced image bounds.
+ *      - comps[i].x0/y0 + (w,h) = the component's full decoded extent.
+ *      Both frames agree.
+ *
+ * 3. Per-tile decompression output
+ *    (from @ref grk_decompress_get_tile_image), windowed decompress
+ *    (dw_x0/dw_y0/dw_x1/dw_y1 set on grk_decompress_parameters):
+ *      - x0/y0/x1/y1            = the FULL tile rectangle on the canvas
+ *                                 (unreduced, non-windowed tile bounds).
+ *      - comps[i].x0/y0 + (w,h) = the cropped decode window — the
+ *                                 intersection of dw_* with this tile,
+ *                                 reduced if dw_reduced was set.
+ *      The two frames DISAGREE. The data layout — origin, width, height,
+ *      stride — is described entirely by comps[i]. Do NOT take origin
+ *      from image->x0/y0 and size from comps[i].w/h: that mixes frames
+ *      and yields a rectangle that misses the actual decoded pixels.
+ *
+ * Recommended access pattern (works in all three cases):
+ *     auto& c = img->comps[componentIndex];
+ *     // origin in canvas coords:    (c.x0, c.y0)
+ *     // valid data rectangle:       width c.w, height c.h
+ *     // row pitch in samples:       c.stride
+ *     // pixel at canvas (X, Y):     c.data[(Y - c.y0) * c.stride + (X - c.x0)]
  */
 typedef struct _grk_image
 {
   grk_object obj; /* object */
+  /* x0/y0/x1/y1 describe the image bounds on the reference grid.
+   * Role-dependent — see the struct-level comment above:
+   *  - compression input / full-image decompress output: image bounds.
+   *  - per-tile decompress output: FULL tile bounds (NOT the decoded
+   *    window). Use comps[i].x0/y0/w/h for the data rectangle. */
   uint32_t x0; /* image horizontal offset from origin of reference grid */
   uint32_t y0; /* image vertical offset from origin of reference grid */
   uint32_t x1; /* image right boundary in reference grid*/
