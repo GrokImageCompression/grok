@@ -171,20 +171,20 @@ private:
                              Buf2dAligned* bandWindowsBuffersPaddedXL,
                              Buf2dAligned* bandWindowsBuffersPaddedXH, bool useRelative)
   {
-    auto lowerRes = useRelative ? Rect32(tileCompAtLowerRes_).toRelative() : Rect32(tileCompAtLowerRes_);
+    auto lowerRes =
+        useRelative ? Rect32(tileCompAtLowerRes_).toRelative() : Rect32(tileCompAtLowerRes_);
     auto xlBounds = useRelative ? Rect32(bandWindowsBuffersPaddedXL).toRelative()
                                 : Rect32(bandWindowsBuffersPaddedXL);
     auto xhBounds = useRelative ? Rect32(bandWindowsBuffersPaddedXH).toRelative()
                                 : Rect32(bandWindowsBuffersPaddedXH);
+    auto resWin = useRelative ? Rect32(resWindowBuffer).toRelative() : Rect32(resWindowBuffer);
 
     // two windows formed by horizontal pass and used as input for vertical pass
-    auto splitResWindowBounds = Rect32(resWindowBuffer->x0, xlBounds.y0,
-                                       resWindowBuffer->x1, xlBounds.y1);
+    auto splitResWindowBounds = Rect32(resWin.x0, xlBounds.y0, resWin.x1, xlBounds.y1);
     resWindowBufferSplit[SPLIT_L] = new Buf2dAligned(splitResWindowBounds);
 
     splitResWindowBounds =
-        Rect32(resWindowBuffer->x0, lowerRes.y1 + xhBounds.y0,
-               resWindowBuffer->x1, lowerRes.y1 + xhBounds.y1);
+        Rect32(resWin.x0, lowerRes.y1 + xhBounds.y0, resWin.x1, lowerRes.y1 + xhBounds.y1);
     resWindowBufferSplit[SPLIT_H] = new Buf2dAligned(splitResWindowBounds);
   }
   bool alloc(bool clear)
