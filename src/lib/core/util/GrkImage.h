@@ -1443,8 +1443,10 @@ bool GrkImage::apply_palette_clr()
     auto src = (T*)oldComps[compno].data;
     auto dst = (T*)newComps[channel].data;
     size_t num_pixels = (size_t)newComps[channel].stride * newComps[channel].h;
-    uint32_t diff = (uint32_t)(newComps[channel].stride - newComps[channel].w);
-    size_t ind = 0;
+    uint32_t srcDiff = (uint32_t)(oldComps[compno].stride - oldComps[compno].w);
+    uint32_t dstDiff = (uint32_t)(newComps[channel].stride - newComps[channel].w);
+    size_t srcInd = 0;
+    size_t dstInd = 0;
 
     switch(mapping->mapping_type)
     {
@@ -1459,12 +1461,14 @@ bool GrkImage::apply_palette_clr()
         {
           for(uint32_t m = 0; m < newComps[channel].w; ++m)
           {
-            uint32_t k = static_cast<uint32_t>(src[ind]); // unsigned cast to avoid signed issues
+            uint32_t k =
+                static_cast<uint32_t>(src[srcInd++]); // unsigned cast to avoid signed issues
             if(k > top_k)
               k = top_k;
-            dst[ind++] = (T)lut[k * num_channels + palette_column];
+            dst[dstInd++] = (T)lut[k * num_channels + palette_column];
           }
-          ind += diff;
+          srcInd += srcDiff;
+          dstInd += dstDiff;
         }
       }
       break;

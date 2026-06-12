@@ -240,9 +240,9 @@
             "program": "${workspaceFolder}/build/bin/compare_images",
             "args": [
                 "-b",
-                "/home/aaron/src/grok-test-data/baseline/conformance/subsampling_1.ppm",
+                "$HOME/src/grok-test-data/baseline/conformance/subsampling_1.ppm",
                 "-t",
-                "/home/aaron/src/grok/build/tests/conformance/Temporary/subsampling_1.jp2.ppm",
+                "$HOME/src/grok/build/tests/conformance/Temporary/subsampling_1.jp2.ppm",
                 "-n",
                 "1",
                 "-p",
@@ -339,11 +339,9 @@
             "program": "${workspaceFolder}/build/bin/grk_decompress",
             "args": [
             "-i",
-             "/home/aaron/src/grok-test-data/input/nonregression/kodak_2layers_lrcp.j2c",
+             "$HOME/temp/0001535002.tif.jp2",
              "-o",
-             "/home/aaron/temp/kodak_2layers_lrcp-l2.j2c.tif",
-            "-l",
-             "2"
+             "$HOME/temp/0001535002_round.tif",
             ],
             "cwd": "${workspaceFolder}",
             "environment": [
@@ -353,6 +351,26 @@
             "miDebuggerPath": "/usr/bin/gdb"
         },
         {
+            "name": "test crash",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/bin/grk_decompress",
+            "args": [
+            "-i",
+             "$HOME/src/grok-test-data/input/conformance/file9.jp2",
+             "-o",
+             "$HOME/temp/crash.tif",
+            ],
+            "cwd": "${workspaceFolder}",
+            "environment": [
+                { "name": "GRK_DEBUG", "value": "4" }
+            ],
+            "MIMode": "gdb",
+            "miDebuggerPath": "/usr/bin/gdb"
+        },
+
+
+        {
             "name": "vsicurl",
             "type": "cppdbg",
             "request": "launch",
@@ -361,7 +379,7 @@
                 "-i",
                 "/vsicurl/https://www.opengeodata.nrw.de/produkte/geobasis/lusat/akt/dop/dop_jp2_f10/dop10rgbi_32_280_5653_1_nw_2025.jp2",
                 "-o",
-                "/home/aaron/temp/vsicurl.tif",
+                "$HOME/temp/vsicurl.tif",
                 // "-d",
                 // "0,0,1024,1024"
             ],
@@ -381,7 +399,7 @@
                 "-i",
                 "/vsigs/gcp-public-data-sentinel-2/tiles/10/S/DG/S2A_MSIL1C_20150918T190346_N0204_R113_T10SDG_20150918T190345.SAFE/GRANULE/L1C_T10SDG_A001254_20150918T190345/IMG_DATA/T10SDG_20150918T190346_B01.jp2",
                 "-o",
-                "/home/aaron/temp/vsigs.tif"
+                "$HOME/temp/vsigs.tif"
             ],
             "cwd": "${workspaceFolder}",
             "environment": [
@@ -399,7 +417,7 @@
                 "-i",
                 "/vsiaz/CONTAINER/PATH/TO/FILE.jp2",
                 "-o",
-                "/home/aaron/temp/vsiaz.tif"
+                "$HOME/temp/vsiaz.tif"
             ],
             "cwd": "${workspaceFolder}",
             "environment": [
