@@ -1334,6 +1334,7 @@ bool GrkImage::sycc420_to_rgb(bool oddFirstX, bool oddFirstY)
 template<typename T>
 bool GrkImage::apply_palette_clr()
 {
+  // idempotent
   if(palette_applied)
     return true;
 
@@ -1413,6 +1414,7 @@ bool GrkImage::apply_palette_clr()
     }
   }
 
+  uint32_t top_k = pal->num_entries - 1;
   auto oldComps = comps;
   auto newComps = new grk_image_comp[num_channels];
   memset(newComps, 0, num_channels * sizeof(grk_image_comp));
@@ -1420,9 +1422,10 @@ bool GrkImage::apply_palette_clr()
   {
     auto mapping = component_mapping + channel;
     uint16_t compno = mapping->component;
+
+    // allocate destination component
     newComps[channel] = oldComps[compno];
     newComps[channel].data = nullptr; // null out to avoid double-free
-
     if(!GrkImage::allocData(newComps + channel))
     {
       for(uint16_t ch = 0; ch < channel; ++ch)
@@ -1435,13 +1438,8 @@ bool GrkImage::apply_palette_clr()
     }
     newComps[channel].prec = channel_prec[channel];
     newComps[channel].sgnd = channel_sign[channel];
-  }
-  uint32_t top_k = pal->num_entries - 1;
-  for(uint16_t channel = 0; channel < num_channels; ++channel)
-  {
-    /* Palette mapping: */
-    auto mapping = component_mapping + channel;
-    uint16_t compno = mapping->component;
+
+    // do palette mapping
     auto src = (T*)oldComps[compno].data;
     auto dst = (T*)newComps[channel].data;
     size_t num_pixels = (size_t)newComps[channel].stride * newComps[channel].h;
@@ -1472,6 +1470,8 @@ bool GrkImage::apply_palette_clr()
       break;
     }
   }
+
+  // finalize
   for(uint16_t i = 0; i < numcomps; ++i)
     single_component_data_free(oldComps + i);
   delete[] oldComps;
