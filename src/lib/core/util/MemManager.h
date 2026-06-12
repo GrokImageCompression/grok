@@ -40,20 +40,24 @@
 namespace grk
 {
 
-const size_t grk_buffer_alignment = 64;
+// Align buffers on 64 byte cache lines
+// This also works for SIMD up to AVX512 which
+// needs alignment on 512 bits == 64 bytes
+const size_t grk_buffer_alignment_bytes = 64;
 
+// ensure width is divisible by grk_buffer_alignment_bytes bytes
 template<typename T>
 uint32_t grk_make_aligned_width(uint32_t width)
 {
   assert(width);
-  assert(sizeof(T) <= grk_buffer_alignment);
-  size_t align = grk_buffer_alignment / sizeof(T);
+  assert(sizeof(T) <= grk_buffer_alignment_bytes);
+  size_t align = grk_buffer_alignment_bytes / sizeof(T);
   return (uint32_t)((((uint64_t)width + align - 1) / align) * align);
 }
 
 // Worst-case alignment (in elements) across data types used by the decoder.
-// int16_t produces the strictest alignment in element units: grk_buffer_alignment / 2.
-constexpr uint32_t grk_max_align_elements = grk_buffer_alignment / sizeof(int16_t);
+// int16_t produces the strictest alignment in element units: grk_buffer_alignment_bytes / 2.
+constexpr uint32_t grk_max_align_elements = grk_buffer_alignment_bytes / sizeof(int16_t);
 
 // True if `width` can be SIMD-aligned without overflowing uint32_t.
 // Allocations use uint32_t stride, so widths past this limit are unallocatable.
@@ -119,7 +123,7 @@ public:
 
   void* aligned_malloc(size_t bytes)
   {
-    return aligned_malloc(grk_buffer_alignment, bytes);
+    return aligned_malloc(grk_buffer_alignment_bytes, bytes);
   }
 
   void* aligned_malloc(size_t alignment, size_t bytes)
