@@ -180,6 +180,8 @@ GrkImage* GrkImage::create(grk_image* src, uint16_t numcmpts, grk_image_comp* cm
     image->upsample = src->upsample;
     image->precision = src->precision;
     image->num_precision = src->num_precision;
+    image->rescale = src->rescale;
+    image->num_rescale = src->num_rescale;
     image->rows_per_strip = src->rows_per_strip;
     image->packed_row_bytes = src->packed_row_bytes;
   }
@@ -387,6 +389,8 @@ void GrkImage::copyHeaderTo(GrkImage* dest) const
   dest->precision = precision;
   dest->has_multiple_tiles = has_multiple_tiles;
   dest->num_precision = num_precision;
+  dest->rescale = rescale;
+  dest->num_rescale = num_rescale;
   dest->rows_per_strip = rows_per_strip;
   dest->packed_row_bytes = packed_row_bytes;
 }

@@ -232,6 +232,8 @@ bool CodeStreamDecompress::readHeader(grk_header_info* headerInfo)
       headerImage_->upsample = headerInfo->upsample;
       headerImage_->precision = headerInfo->precision;
       headerImage_->num_precision = headerInfo->num_precision;
+      headerImage_->rescale = headerInfo->rescale;
+      headerImage_->num_rescale = headerInfo->num_rescale;
     }
     headerImage_->copyHeaderTo(multiTileComposite_.get());
     multiTileComposite_->validateColourSpace();

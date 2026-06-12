@@ -453,6 +453,22 @@ typedef struct _grk_precision
 } grk_precision;
 
 /**
+ * @struct grk_rescale
+ * @brief Linear value-range rescale:
+ *        out = round((in - src_min) * (dst_max - dst_min) / (src_max - src_min)) + dst_min,
+ *        clamped to [min(dst_min,dst_max), max(dst_min,dst_max)].
+ *        Applied per-component before any precision adjustment. Component prec/sgnd
+ *        are updated to fit the dst range.
+ */
+typedef struct _grk_rescale
+{
+  double src_min;
+  double src_max;
+  double dst_min;
+  double dst_max;
+} grk_rescale;
+
+/**
  * @struct grk_progression_state
  * @brief Stores progression state information
  * Note: limited to 256 components
@@ -774,6 +790,8 @@ typedef struct _grk_decompress_params
   bool upsample; /* upsample components according to their dx and dy values*/
   grk_precision* precision; /* precision array */
   uint32_t num_precision; /* size of precision array*/
+  grk_rescale* rescale; /* rescale array (linear value remap) */
+  uint32_t num_rescale; /* size of rescale array */
   bool split_by_component; /* split output components to different files for PNM */
   bool single_tile_decompress; /* single tile decompress */
   /************************************************************************** */
@@ -944,6 +962,8 @@ typedef struct _grk_image
   bool upsample; /* upsample */
   grk_precision* precision; /* precision */
   uint32_t num_precision; /* number of precision */
+  grk_rescale* rescale; /* rescale array (linear value remap) */
+  uint32_t num_rescale; /* number of rescale entries */
   bool has_multiple_tiles; /* has multiple tiles */
   bool split_by_component; /* split by component */
   uint16_t decompress_num_comps; /* decompress number of components */
@@ -1020,6 +1040,8 @@ typedef struct _grk_header_info
   bool upsample; /* upsample */
   grk_precision* precision; /* precision */
   uint32_t num_precision; /* number of precision */
+  grk_rescale* rescale; /* rescale array (linear value remap) */
+  uint32_t num_rescale; /* number of rescale entries */
   bool split_by_component; /* split by component */
   bool single_tile_decompress; /* single tile decompress */
 } grk_header_info;

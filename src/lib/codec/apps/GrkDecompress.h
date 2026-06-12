@@ -70,6 +70,7 @@ private:
   int decompress(const std::string& fileName, DecompressInitParams* initParams);
   GrkRC pluginMain(int argc, const char* argv[], DecompressInitParams* initParams);
   bool parsePrecision(const char* option, grk_decompress_parameters* parameters);
+  bool parseRescale(const char* option, grk_decompress_parameters* parameters);
   char nextFile(const std::string& file_name, const grk_img_fol* inputFolder,
                 const grk_img_fol* outFolder, grk_decompress_parameters* parameters);
   GrkRC parseCommandLine(int argc, const char* argv[], DecompressInitParams* initParams);

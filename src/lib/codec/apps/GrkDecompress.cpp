@@ -244,6 +244,55 @@ bool GrkDecompress::parsePrecision(const char* option, grk_decompress_parameters
   return result;
 }
 
+bool GrkDecompress::parseRescale(const char* option, grk_decompress_parameters* parameters)
+{
+  if(parameters->rescale)
+  {
+    free(parameters->rescale);
+    parameters->rescale = nullptr;
+  }
+  parameters->num_rescale = 0U;
+
+  const char* remaining = option;
+  while(true)
+  {
+    double sm, sM, dm, dM;
+    int consumed = 0;
+    int n = sscanf(remaining, "%lf,%lf,%lf,%lf%n", &sm, &sM, &dm, &dM, &consumed);
+    if(n != 4)
+    {
+      spdlog::error("Could not parse rescale option {}", option);
+      return false;
+    }
+    if(sm == sM)
+    {
+      spdlog::error("Rescale src_min == src_max in option {}", option);
+      return false;
+    }
+    uint32_t new_size = parameters->num_rescale + 1U;
+    auto new_arr = (grk_rescale*)realloc(parameters->rescale, new_size * sizeof(grk_rescale));
+    if(!new_arr)
+    {
+      spdlog::error("Could not allocate memory for rescale option");
+      return false;
+    }
+    parameters->rescale = new_arr;
+    parameters->rescale[parameters->num_rescale] = {sm, sM, dm, dM};
+    parameters->num_rescale = new_size;
+
+    const char* sep = remaining + consumed;
+    if(*sep == '\0')
+      break;
+    if(*sep != ';')
+    {
+      spdlog::error("Invalid separator '{}' in rescale option {}", *sep, option);
+      return false;
+    }
+    remaining = sep + 1;
+  }
+  return true;
+}
+
 char GrkDecompress::nextFile(const std::string& inputFile, const grk_img_fol* inputFolder,
                              const grk_img_fol* outFolder, grk_decompress_parameters* parameters)
 {
@@ -344,7 +393,7 @@ GrkRC GrkDecompress::parseCommandLine(int argc, const char* argv[],
   CLI::App cmd("grk_decompress command line", grk_version());
 
   std::string outDir, compression, decodeRegion, pluginPathStr, inputFile, outputFile, outFor,
-      precision, logfile, inDir, components;
+      precision, rescale, logfile, inDir, components;
   auto& compIndices = initParams->compIndices;
   uint32_t repetitions = 0, numThreads = 0, kernelBuildOptions = 0,
            compressionLevel = std::numeric_limits<uint32_t>::max(), disableRandomAccess = 0,
@@ -385,6 +434,11 @@ GrkRC GrkDecompress::parseCommandLine(int argc, const char* argv[],
   auto outputFileOpt = cmd.add_option("-o,--out-file", outputFile, "Output file");
   auto outForOpt = cmd.add_option("-O,--out-fmt", outFor, "Output Format");
   auto precisionOpt = cmd.add_option("-p,--precision", precision, "Force precision");
+  auto rescaleOpt =
+      cmd.add_option("-S,--rescale", rescale,
+                     "Linear value rescale per component: "
+                     "src_min,src_max,dst_min,dst_max[;src_min,src_max,dst_min,dst_max...]. "
+                     "Last entry applies to remaining components. Runs before -p.");
   auto reduceOpt = cmd.add_option("-r,--reduce", reduce, "Number of final resolutions to skip")
                        ->check(CLI::Range(0, GRK_MAXRLVLS - 1));
   auto splitPnmOpt = cmd.add_flag("-s,--split-pnm", splitPnm, "Split PNM");
@@ -625,6 +679,8 @@ GrkRC GrkDecompress::parseCommandLine(int argc, const char* argv[],
   if(tileOpt->count() > 0)
     parameters->tile_index = (uint16_t)tile;
   if(precisionOpt->count() > 0 && !parsePrecision(precision.c_str(), parameters))
+    return GrkRCParseArgsFailed;
+  if(rescaleOpt->count() > 0 && !parseRescale(rescale.c_str(), parameters))
     return GrkRCParseArgsFailed;
   if(numThreadsOpt->count() > 0)
     parameters->num_threads = numThreads;

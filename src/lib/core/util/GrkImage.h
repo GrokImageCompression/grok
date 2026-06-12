@@ -27,6 +27,7 @@
 #include "packer.h"
 #include "GrkImageMeta.h"
 #include "GrkImageSIMD.h"
+#include "RescaleComponent.h"
 
 namespace grk
 {
@@ -279,6 +280,9 @@ public:
 private:
   template<typename T>
   void scaleComponent(grk_image_comp* component, uint8_t precision);
+
+  template<typename T>
+  void rescaleComponent(grk_image_comp* component, const grk_rescale& r);
 
   /** Copy planar image data to planar composite image
    *
@@ -600,6 +604,16 @@ void clip(grk_image_comp* component, uint8_t precision)
 template<typename T>
 void GrkImage::convertPrecision(void)
 {
+  if(rescale && num_rescale)
+  {
+    for(uint16_t compno = 0; compno < numcomps; ++compno)
+    {
+      uint32_t rno = compno;
+      if(rno >= num_rescale)
+        rno = num_rescale - 1U;
+      rescaleComponent<T>(comps + compno, rescale[rno]);
+    }
+  }
   if(precision)
   {
     for(uint16_t compno = 0; compno < numcomps; ++compno)
@@ -916,6 +930,13 @@ void GrkImage::scaleComponent(grk_image_comp* component, uint8_t precision)
     }
   }
   component->prec = precision;
+}
+
+template<typename T>
+void GrkImage::rescaleComponent(grk_image_comp* component, const grk_rescale& r)
+{
+  if(!rescale_component<T>(component, r))
+    grklog.warn("rescaleComponent: skipped (src_min == src_max or null data)");
 }
 
 /** Copy planar image data to planar composite image

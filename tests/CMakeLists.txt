@@ -48,6 +48,14 @@ add_test(NAME grk_lru_cache_test COMMAND grk_lru_cache_test)
 add_executable(compare_raw_files compare_raw_files.cpp GrkCompareRawFiles.cpp)
 target_link_libraries(compare_raw_files ${GROK_CORE_NAME} spdlog::spdlog)
 
+add_executable(grk_rescale_test GrkRescaleTest.cpp)
+target_include_directories(grk_rescale_test PRIVATE
+  ${GROK_SOURCE_DIR}/src/lib/core/util
+  ${CMAKE_BINARY_DIR}/src/lib/core
+)
+target_link_libraries(grk_rescale_test ${GROK_CORE_NAME})
+add_test(NAME grk_rescale_test COMMAND grk_rescale_test)
+
 add_executable(grk_jp2_metadata_test grk_jp2_metadata_test.cpp GrkJP2MetadataTest.cpp)
 target_link_libraries(grk_jp2_metadata_test ${GROK_CORE_NAME} spdlog::spdlog)
 add_test(NAME grk_jp2_metadata_test COMMAND grk_jp2_metadata_test)
