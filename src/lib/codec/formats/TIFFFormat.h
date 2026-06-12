@@ -861,6 +861,14 @@ bool TIFFFormat<T>::writeHeader(TIFF* tif)
   uint16_t numcomps = image_->decompress_num_comps;
   bool subsampled = isFinalOutputSubsampled(image_);
   auto colourSpace = image_->decompress_colour_space;
+  // Detect preserved-palette write: single-channel indexed image with a 3-channel RGB LUT.
+  // TIFF PHOTOMETRIC_PALETTE always emits a 3-array (R/G/B) ColorMap.  A mono palette
+  // (num_channels == 1) is handled by replicating the single channel into all three.
+  bool writePalette = image_->meta && image_->meta->color.palette &&
+                      image_->meta->color.palette->component_mapping && !image_->apply_palette &&
+                      (image_->meta->color.palette->num_channels == 3 ||
+                       image_->meta->color.palette->num_channels == 1) &&
+                      numcomps == 1;
   if(bps == 0)
   {
     spdlog::error("TIFFFormat<T>::writeHeader: image_ precision is zero.");
@@ -871,7 +879,11 @@ bool TIFFFormat<T>::writeHeader(TIFF* tif)
     spdlog::error("TIFFFormat<T>::writeHeader: Image sanity check failed.");
     goto cleanup;
   }
-  if(colourSpace == GRK_CLRSPC_CMYK)
+  if(writePalette)
+  {
+    tiPhoto = PHOTOMETRIC_PALETTE;
+  }
+  else if(colourSpace == GRK_CLRSPC_CMYK)
   {
     if(numcomps < 4U)
     {
@@ -964,6 +976,37 @@ bool TIFFFormat<T>::writeHeader(TIFF* tif)
   TIFFSetField(tif, TIFFTAG_PLANARCONFIG, PLANARCONFIG_CONTIG);
   TIFFSetField(tif, TIFFTAG_PHOTOMETRIC, tiPhoto);
   TIFFSetField(tif, TIFFTAG_ROWSPERSTRIP, image_->rows_per_strip);
+  if(writePalette)
+  {
+    auto pal = image_->meta->color.palette;
+    uint32_t numEntries = pal->num_entries;
+    // libtiff requires colormap arrays sized 2^BitsPerSample, regardless of how many
+    // entries are populated; unused tail entries are zero-filled.
+    uint32_t mapSize = (bps >= 16) ? 65536U : (1U << bps);
+    if(numEntries > mapSize)
+      numEntries = mapSize;
+    std::unique_ptr<uint16_t[]> redMap(new uint16_t[mapSize]());
+    std::unique_ptr<uint16_t[]> greenMap(new uint16_t[mapSize]());
+    std::unique_ptr<uint16_t[]> blueMap(new uint16_t[mapSize]());
+    uint16_t* maps[3] = {redMap.get(), greenMap.get(), blueMap.get()};
+    for(uint32_t entry = 0; entry < numEntries; ++entry)
+    {
+      for(uint8_t c = 0; c < 3; ++c)
+      {
+        // For a mono palette, replicate channel 0 into R/G/B
+        uint8_t srcChan = (pal->num_channels == 1) ? 0 : c;
+        int32_t v = pal->lut[entry * pal->num_channels + srcChan];
+        uint8_t cprec = pal->channel_prec[srcChan];
+        uint32_t uv = (uint32_t)v;
+        if(cprec < 16)
+          uv <<= (16 - cprec);
+        else if(cprec > 16)
+          uv >>= (cprec - 16);
+        maps[c][entry] = (uint16_t)uv;
+      }
+    }
+    TIFFSetField(tif, TIFFTAG_COLORMAP, redMap.get(), greenMap.get(), blueMap.get());
+  }
   if(tiPhoto == PHOTOMETRIC_YCBCR)
   {
     float refBlackWhite[6] = {0.0, 255.0, 128.0, 255.0, 128.0, 255.0};

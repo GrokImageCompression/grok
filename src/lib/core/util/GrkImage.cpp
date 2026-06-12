@@ -176,6 +176,7 @@ GrkImage* GrkImage::create(grk_image* src, uint16_t numcmpts, grk_image_comp* cm
   {
     image->decompress_fmt = src->decompress_fmt;
     image->force_rgb = src->force_rgb;
+    image->apply_palette = src->apply_palette;
     image->upsample = src->upsample;
     image->precision = src->precision;
     image->num_precision = src->num_precision;
@@ -381,6 +382,7 @@ void GrkImage::copyHeaderTo(GrkImage* dest) const
   dest->decompress_prec = decompress_prec;
   dest->decompress_colour_space = decompress_colour_space;
   dest->force_rgb = force_rgb;
+  dest->apply_palette = apply_palette;
   dest->upsample = upsample;
   dest->precision = precision;
   dest->has_multiple_tiles = has_multiple_tiles;
@@ -458,7 +460,7 @@ bool GrkImage::isPostProcessNoOp(void) const
 {
   // applyColour: palette requires processing; channel_definition only blocks
   // if it needs component data swaps (type-only metadata is applied early)
-  if(meta && meta->color.palette)
+  if(meta && meta->color.palette && apply_palette)
     return false;
   if(needsChannelDefinitionSwap())
     return false;
@@ -524,12 +526,41 @@ void GrkImage::postReadHeader(CodingParams* cp)
   // decompress starts.  Component data swaps are deferred to postProcess.
   applyChannelDefinitionTypes();
 
+  // Auto-promote apply_palette when output format cannot store the palette as-is.
+  // Default behaviour: TIFF and BMP preserve the palette + index channel; all other
+  // formats expand to colour channels.  force_rgb always forces expansion.
+  if(meta && meta->color.palette && meta->color.palette->component_mapping)
+  {
+    auto pal = meta->color.palette;
+    if(force_rgb)
+      apply_palette = true;
+    else if(decompress_fmt != GRK_FMT_TIF && decompress_fmt != GRK_FMT_BMP &&
+            decompress_fmt != GRK_FMT_UNK)
+      apply_palette = true;
+    else if(decompress_fmt == GRK_FMT_TIF && pal->num_channels != 3 && pal->num_channels != 1)
+      apply_palette = true; // TIFF PHOTOMETRIC_PALETTE only supports 1- or 3-channel LUT
+    else if(decompress_fmt == GRK_FMT_BMP)
+    {
+      bool over8 = false;
+      for(uint8_t i = 0; i < pal->num_channels; ++i)
+      {
+        if(pal->channel_prec[i] > 8)
+        {
+          over8 = true;
+          break;
+        }
+      }
+      if(over8 || pal->num_channels > 3 || comps[0].prec > 8)
+        apply_palette = true;
+    }
+  }
+
   uint8_t prec = comps[0].prec;
   if(precision)
     prec = precision->prec;
   bool isGAorRGBA = (decompress_num_comps == 4 || decompress_num_comps == 2) &&
                     isOpacity(decompress_num_comps - 1);
-  if(meta && meta->color.palette)
+  if(meta && meta->color.palette && apply_palette)
     decompress_num_comps = meta->color.palette->num_channels;
   else
     decompress_num_comps = (force_rgb && numcomps < 3) ? 3 : numcomps;

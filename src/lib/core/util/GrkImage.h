@@ -2243,7 +2243,7 @@ bool GrkImage::applyColour_T(void)
     /* Part 1, I.5.3.4: Either both or none : */
     if(!meta->color.palette->component_mapping)
       ((GrkImageMeta*)meta)->releaseColorPalatte();
-    else if(!apply_palette_clr<T>())
+    else if(apply_palette && !apply_palette_clr<T>())
       return false;
   }
   if(meta->color.channel_definition)

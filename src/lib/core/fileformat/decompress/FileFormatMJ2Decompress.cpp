@@ -800,6 +800,7 @@ bool FileFormatMJ2Decompress::decompressSampleInternal(uint32_t sampleIndex)
   if(decompressParamsSet_)
   {
     sampleHeaderInfo.force_rgb = decompressParams_.force_rgb;
+    sampleHeaderInfo.apply_palette = decompressParams_.apply_palette;
     sampleHeaderInfo.upsample = decompressParams_.upsample;
   }
   sampleHeaderInfo.color_space = headerImage_->color_space;

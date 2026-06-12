@@ -770,6 +770,7 @@ typedef struct _grk_decompress_params
   */
   GRK_COLOR_SPACE color_space;
   bool force_rgb; /* force output to sRGB */
+  bool apply_palette; /* apply palette LUT and expand index channel to colour channels */
   bool upsample; /* upsample components according to their dx and dy values*/
   grk_precision* precision; /* precision array */
   uint32_t num_precision; /* size of precision array*/
@@ -939,6 +940,7 @@ typedef struct _grk_image
   double display_resolution[2]; /* display resolution */
   GRK_SUPPORTED_FILE_FMT decompress_fmt; /* decompress format */
   bool force_rgb; /* force RGB */
+  bool apply_palette; /* apply palette LUT and expand index channel to colour channels */
   bool upsample; /* upsample */
   grk_precision* precision; /* precision */
   uint32_t num_precision; /* number of precision */
@@ -1014,6 +1016,7 @@ typedef struct _grk_header_info
   GRK_COLOR_SPACE color_space;
   GRK_SUPPORTED_FILE_FMT decompress_fmt; /* decompress format */
   bool force_rgb; /* force RGB */
+  bool apply_palette; /* apply palette LUT and expand index channel to colour channels */
   bool upsample; /* upsample */
   grk_precision* precision; /* precision */
   uint32_t num_precision; /* number of precision */

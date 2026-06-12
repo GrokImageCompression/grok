@@ -252,12 +252,49 @@ bool BMPFormat<T>::writeHeader(void)
   // 1024-byte LUT
   if(image_->decompress_num_comps == 1)
   {
-    for(uint32_t i = 0; i < 256; i++)
+    bool writePalette = image_->meta && image_->meta->color.palette &&
+                        image_->meta->color.palette->component_mapping && !image_->apply_palette &&
+                        image_->meta->color.palette->num_channels == 3;
+    if(writePalette)
     {
-      *header_ptr++ = (uint8_t)i;
-      *header_ptr++ = (uint8_t)i;
-      *header_ptr++ = (uint8_t)i;
-      *header_ptr++ = 0;
+      auto pal = image_->meta->color.palette;
+      uint32_t numEntries = (pal->num_entries > 256) ? 256 : pal->num_entries;
+      for(uint32_t i = 0; i < numEntries; i++)
+      {
+        uint8_t bgr[3];
+        for(uint8_t c = 0; c < 3; ++c)
+        {
+          int32_t v = pal->lut[i * pal->num_channels + c];
+          uint8_t cprec = pal->channel_prec[c];
+          uint32_t uv = (uint32_t)v;
+          if(cprec < 8)
+            uv <<= (8 - cprec);
+          else if(cprec > 8)
+            uv >>= (cprec - 8);
+          bgr[c] = (uint8_t)uv;
+        }
+        *header_ptr++ = bgr[2]; // B
+        *header_ptr++ = bgr[1]; // G
+        *header_ptr++ = bgr[0]; // R
+        *header_ptr++ = 0;
+      }
+      for(uint32_t i = numEntries; i < 256; i++)
+      {
+        *header_ptr++ = 0;
+        *header_ptr++ = 0;
+        *header_ptr++ = 0;
+        *header_ptr++ = 0;
+      }
+    }
+    else
+    {
+      for(uint32_t i = 0; i < 256; i++)
+      {
+        *header_ptr++ = (uint8_t)i;
+        *header_ptr++ = (uint8_t)i;
+        *header_ptr++ = (uint8_t)i;
+        *header_ptr++ = 0;
+      }
     }
   }
   destBuff.data = header_;

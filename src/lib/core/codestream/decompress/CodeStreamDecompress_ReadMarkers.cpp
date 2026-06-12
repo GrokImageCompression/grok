@@ -228,6 +228,7 @@ bool CodeStreamDecompress::readHeader(grk_header_info* headerInfo)
       if(headerImage_->color_space == GRK_CLRSPC_UNKNOWN)
         headerImage_->color_space = headerInfo->color_space;
       headerImage_->force_rgb = headerInfo->force_rgb;
+      headerImage_->apply_palette = headerInfo->apply_palette;
       headerImage_->upsample = headerInfo->upsample;
       headerImage_->precision = headerInfo->precision;
       headerImage_->num_precision = headerInfo->num_precision;

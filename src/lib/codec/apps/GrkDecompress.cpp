@@ -352,7 +352,8 @@ GrkRC GrkDecompress::parseCommandLine(int argc, const char* argv[],
   uint8_t reduce = 0;
   uint16_t layer = 0;
   int32_t deviceId = 0;
-  bool forceRgb = false, splitPnm = false, upsample = false, xml = false, fastMct = false;
+  bool forceRgb = false, splitPnm = false, upsample = false, xml = false, fastMct = false,
+       applyPalette = false;
 
   auto outDirOpt = cmd.add_option("-a,--out-dir", outDir, "Output directory");
   auto compressionOpt = cmd.add_option("-c,--compression", compression, "Output compression type");
@@ -362,6 +363,10 @@ GrkRC GrkDecompress::parseCommandLine(int argc, const char* argv[],
                      "Number of decompress repetitions, for either a folder or a single file");
   auto forceRgbOpt =
       cmd.add_flag("-f,--force-rgb", forceRgb, "Force sRGB colour format for output");
+  auto applyPaletteOpt =
+      cmd.add_flag("--apply-palette", applyPalette,
+                   "Apply palette LUT and expand index channel to colour channels (default: "
+                   "preserve palette + index for TIFF/BMP output where supported)");
   auto pluginPathOpt = cmd.add_option("-g,--plugin-path", pluginPathStr, "Plugin path");
   auto deviceIdOpt = cmd.add_option("-G,--device-id", deviceId, "Device ID");
   auto numThreadsOpt = cmd.add_option("-H,--num-threads", numThreads, "Number of threads");
@@ -437,6 +442,7 @@ GrkRC GrkDecompress::parseCommandLine(int argc, const char* argv[],
 
   parameters->io_xml = xmlOpt->count() > 0;
   parameters->force_rgb = forceRgbOpt->count() > 0;
+  parameters->apply_palette = applyPaletteOpt->count() > 0;
   if(upsampleOpt->count() > 0)
   {
     if(reduceOpt->count() > 0)
@@ -738,6 +744,7 @@ int GrkDecompress::decompress(const std::string& fileName, DecompressInitParams*
 
   info.header_info.color_space = info.decompressor_parameters->color_space;
   info.header_info.force_rgb = info.decompressor_parameters->force_rgb;
+  info.header_info.apply_palette = info.decompressor_parameters->apply_palette;
   info.header_info.upsample = info.decompressor_parameters->upsample;
   info.header_info.precision = info.decompressor_parameters->precision;
   info.header_info.num_precision = info.decompressor_parameters->num_precision;
@@ -1435,6 +1442,7 @@ int GrkDecompress::main(int argc, const char* argv[])
 
         grk_header_info headerInfo{};
         headerInfo.force_rgb = initParams.parameters.force_rgb;
+        headerInfo.apply_palette = initParams.parameters.apply_palette;
         headerInfo.upsample = initParams.parameters.upsample;
         if(!grk_decompress_read_header(codec, &headerInfo))
         {
