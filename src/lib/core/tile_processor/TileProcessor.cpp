@@ -1011,13 +1011,15 @@ bool TileProcessor::createDecompressTileComponentWindows(void)
       return false;
     auto tileComp = tile_->comps_ + compno;
     auto tccp = tcp_->tccps_ + compno;
-    if(tileComp->isWholeTileDecoding())
-    {
-      bool isMctComp = needsMctDecompress(compno) && tcp_->mct_ == 1;
-      bool fastMct = cp_->codingParams_.dec_.fast16BitMct_;
-      if(grk_get_data_type(false, imageComp->prec, isMctComp, tccp->qmfbid_, fastMct) == GRK_INT_16)
-        tileComp->setUse16BitDwt(true);
-    }
+    bool isMctComp = needsMctDecompress(compno) && tcp_->mct_ == 1;
+    bool fastMct = cp_->codingParams_.dec_.fast16BitMct_;
+    bool can16Bit =
+        grk_get_data_type(false, imageComp->prec, isMctComp, tccp->qmfbid_, fastMct) == GRK_INT_16;
+    // 16-bit DWT is currently only supported for whole-tile decode; the region/partial
+    // decode path still requires int32_t because SparseCanvas and WaveletReversePartial
+    // are not yet templated on sample type.
+    if(can16Bit && tileComp->isWholeTileDecoding())
+      tileComp->setUse16BitDwt(true);
   }
   // MCT operates on all 3 components with the same data type;
   // if any MCT component is not 16-bit, force all to 32-bit
