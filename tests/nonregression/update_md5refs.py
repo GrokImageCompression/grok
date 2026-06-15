@@ -43,7 +43,11 @@ def _find_codestream_start(data: bytes) -> int:
             header_size = 16
         if box_type == b"jp2c":
             cs_start = pos + header_size
-            if cs_start + 2 <= len(data) and data[cs_start] == 0xFF and data[cs_start + 1] == 0x4F:
+            if (
+                cs_start + 2 <= len(data)
+                and data[cs_start] == 0xFF
+                and data[cs_start + 1] == 0x4F
+            ):
                 return cs_start
             break
         # box_len == 0 means "extends to EOF" — but only jp2c should do that
@@ -247,7 +251,9 @@ def main():
     parser = argparse.ArgumentParser(
         description="Update md5refs.txt (or a platform-specific override) from ctest LastTest.log"
     )
-    parser.add_argument("files", nargs="*", help="Optional: path to LastTest.log or md5refs.txt")
+    parser.add_argument(
+        "files", nargs="*", help="Optional: path to LastTest.log or md5refs.txt"
+    )
     parser.add_argument(
         "--platform",
         metavar="NAME",
@@ -321,7 +327,9 @@ def main():
 
         if data_dirs:
             # Load canonical md5refs.txt for comparison
-            canonical = load_md5refs(SCRIPT_DIR / "md5refs.txt") if args.platform else {}
+            canonical = (
+                load_md5refs(SCRIPT_DIR / "md5refs.txt") if args.platform else {}
+            )
             lossy, lossless, unknown = verify_lossy(mismatches, data_dirs, canonical)
             if lossy:
                 print(f"\n  Lossy (9/7) mismatches — expected, OK: {len(lossy)}")
@@ -332,7 +340,9 @@ def main():
                 for src, out in unknown:
                     print(f"    {src} -> {out}")
             if lossless:
-                print(f"\n  ERROR: {len(lossless)} mismatch(es) from LOSSLESS (5/3) sources!")
+                print(
+                    f"\n  ERROR: {len(lossless)} mismatch(es) from LOSSLESS (5/3) sources!"
+                )
                 for src, out in lossless:
                     print(f"    {src} -> {out}")
                 print("\n  Lossless mismatches indicate a real decoder bug, not")

@@ -109,14 +109,24 @@ def minio_put_object(bucket, key, filepath):
         insecure = ["--insecure"] if MINIO_SECURE else []
         # Configure alias and upload
         subprocess.run(
-            [mc, *insecure, "alias", "set", "groktest",
-             f"{MINIO_SCHEME}://{MINIO_ENDPOINT}", MINIO_ACCESS_KEY, MINIO_SECRET_KEY],
-            capture_output=True, check=True,
+            [
+                mc,
+                *insecure,
+                "alias",
+                "set",
+                "groktest",
+                f"{MINIO_SCHEME}://{MINIO_ENDPOINT}",
+                MINIO_ACCESS_KEY,
+                MINIO_SECRET_KEY,
+            ],
+            capture_output=True,
+            check=True,
         )
         # Create bucket (ignore error if exists)
         subprocess.run(
             [mc, *insecure, "mb", "--ignore-existing", f"groktest/{bucket}"],
-            capture_output=True, check=True,
+            capture_output=True,
+            check=True,
         )
         # Set bucket to public (so unsigned reads work for http:// URL tests)
         subprocess.run(
@@ -126,7 +136,8 @@ def minio_put_object(bucket, key, filepath):
         # Upload
         subprocess.run(
             [mc, *insecure, "cp", filepath, f"groktest/{bucket}/{key}"],
-            capture_output=True, check=True,
+            capture_output=True,
+            check=True,
         )
         return
 
@@ -270,7 +281,9 @@ TILE_TLM_CONFIGS = [
 ]
 
 
-@pytest.fixture(scope="module", params=TILE_TLM_CONFIGS, ids=[c[0] for c in TILE_TLM_CONFIGS])
+@pytest.fixture(
+    scope="module", params=TILE_TLM_CONFIGS, ids=[c[0] for c in TILE_TLM_CONFIGS]
+)
 def tile_tlm_on_minio(request, tmp_path_factory):
     """Compress with tile/TLM config, upload to MinIO, return metadata."""
     desc, extra_args, multi_tile = request.param
@@ -322,6 +335,7 @@ class TestS3TileTLM:
 # Async decompress over S3 (the GDAL JP2Grok driver use case)
 # ---------------------------------------------------------------------------
 
+
 def async_decompress_s3(s3_path, swath_height=0):
     """Perform async decompress with swath retrieval from an S3 path.
 
@@ -346,7 +360,7 @@ def async_decompress_s3(s3_path, swath_height=0):
     assert ok, "grk_decompress_read_header failed"
 
     num_tiles = header_info.t_grid_width * header_info.t_grid_height
-    single_tile = (num_tiles == 1)
+    single_tile = num_tiles == 1
 
     if single_tile:
         params.core.skip_allocate_composite = False
@@ -442,9 +456,7 @@ class TestS3AsyncDecompress:
         s3_path = f"/vsis3/{BUCKET}/{key}"
         tiles, full_w, full_h, num_tiles = async_decompress_s3(s3_path)
         tile_indices = {t[0] for t in tiles}
-        assert tile_indices == set(range(num_tiles)), (
-            f"{desc}: missing tiles"
-        )
+        assert tile_indices == set(range(num_tiles)), f"{desc}: missing tiles"
 
     def test_async_s3_matches_local_async(self, async_on_minio):
         """Async S3 decompress retrieves same tiles as local async decompress."""
@@ -461,6 +473,7 @@ class TestS3AsyncDecompress:
 # ---------------------------------------------------------------------------
 # LRU compressed-chunk cache over S3
 # ---------------------------------------------------------------------------
+
 
 def _tile_pixel_hash(tile_img):
     """Return SHA-256 hex digest of a tile image's component 0 pixel data."""
@@ -502,7 +515,7 @@ def async_decompress_s3_lru(s3_path, cache_strategy, swath_height=0):
     assert ok, "grk_decompress_read_header failed"
 
     num_tiles = header_info.t_grid_width * header_info.t_grid_height
-    single_tile = (num_tiles == 1)
+    single_tile = num_tiles == 1
 
     if single_tile:
         params.core.skip_allocate_composite = False
@@ -563,9 +576,7 @@ def lru_on_minio(tmp_path_factory):
     tmp_path = tmp_path_factory.mktemp("lru_cache")
     filename = "lru_cache_test.jp2"
     # Multi-tile with TLM — required for fetchByTile path that activates the cache
-    jp2_path = make_jp2(
-        tmp_path, filename=filename, extra_args=["-t", "64,64", "-X"]
-    )
+    jp2_path = make_jp2(tmp_path, filename=filename, extra_args=["-t", "64,64", "-X"])
     key = filename
     minio_put_object(BUCKET, key, jp2_path)
     return key, jp2_path
@@ -601,9 +612,9 @@ class TestS3LRUCache:
         assert ref_n == lru_n
         for tidx in ref_hashes:
             assert tidx in lru_hashes, f"Tile {tidx} missing from LRU output"
-            assert ref_hashes[tidx] == lru_hashes[tidx], (
-                f"Tile {tidx} pixel mismatch: IMAGE vs LRU"
-            )
+            assert (
+                ref_hashes[tidx] == lru_hashes[tidx]
+            ), f"Tile {tidx} pixel mismatch: IMAGE vs LRU"
 
     def test_lru_low_cache_limit(self, lru_on_minio, monkeypatch):
         """LRU with very low cache limit forces eviction and re-decompress.
@@ -627,9 +638,9 @@ class TestS3LRUCache:
 
         for tidx in ref_hashes:
             assert tidx in lru_hashes, f"Tile {tidx} missing (low cache)"
-            assert ref_hashes[tidx] == lru_hashes[tidx], (
-                f"Tile {tidx} pixel mismatch with low cache limit"
-            )
+            assert (
+                ref_hashes[tidx] == lru_hashes[tidx]
+            ), f"Tile {tidx} pixel mismatch with low cache limit"
 
 
 # ---------------------------------------------------------------------------
@@ -647,14 +658,20 @@ def _make_selective_jp2(tmp_path, progression, width=256, height=256):
     jp2_path = str(tmp_path / filename)
     args = [
         "grk_compress",
-        "-i", pgm_path,
-        "-o", jp2_path,
-        "-t", "128,128",       # multi-tile
-        "-X",                  # TLM
-        "-L",                  # PLT
-        "-n", "4",             # 4 resolutions
-        "-p", progression,
-        "-r", "20,1",          # 2 layers (20x compressed + lossless)
+        "-i",
+        pgm_path,
+        "-o",
+        jp2_path,
+        "-t",
+        "128,128",  # multi-tile
+        "-X",  # TLM
+        "-L",  # PLT
+        "-n",
+        "4",  # 4 resolutions
+        "-p",
+        progression,
+        "-r",
+        "20,1",  # 2 layers (20x compressed + lossless)
     ]
     rc = grok_codec.grk_codec_compress(args, None, None)
     assert rc == 0, f"Compress failed for {progression}"
@@ -711,9 +728,9 @@ class TestS3SelectiveFetch:
             local_hash = hashlib.sha256(f.read()).hexdigest()
         with open(s3_out, "rb") as f:
             s3_hash = hashlib.sha256(f.read()).hexdigest()
-        assert local_hash == s3_hash, (
-            f"Selective fetch output differs from local for {progression}"
-        )
+        assert (
+            local_hash == s3_hash
+        ), f"Selective fetch output differs from local for {progression}"
 
     def test_selective_fetch_full_res_still_works(self, selective_on_minio, tmp_path):
         """Decompress from S3 with no reduce (full res) still works correctly."""
@@ -736,6 +753,6 @@ class TestS3SelectiveFetch:
             local_hash = hashlib.sha256(f.read()).hexdigest()
         with open(s3_out, "rb") as f:
             s3_hash = hashlib.sha256(f.read()).hexdigest()
-        assert local_hash == s3_hash, (
-            f"Full-res S3 output differs from local for {progression}"
-        )
+        assert (
+            local_hash == s3_hash
+        ), f"Full-res S3 output differs from local for {progression}"

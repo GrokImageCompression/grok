@@ -251,7 +251,9 @@ class TestFastMct:
             arr = data_ptr.contents
             for y in range(comp.h):
                 for x in range(comp.w):
-                    arr[y * comp.stride + x] = ((x * 13 + y * 7 + c * 41) * 37) % (max_val + 1)
+                    arr[y * comp.stride + x] = ((x * 13 + y * 7 + c * 41) * 37) % (
+                        max_val + 1
+                    )
 
         stream = grok_core.grk_stream_params()
         stream.file = path
@@ -355,7 +357,9 @@ class TestFastMct:
         # Fast path uses Q15 fixed-point ICT and int16 DWT coefficients,
         # which introduces quantization error vs the float path.
         # For 12-bit content, max diff ~40 is typical (< 1% of range).
-        assert max_diff <= 40, f"Max pixel difference {max_diff} exceeds tolerance of 40"
+        assert (
+            max_diff <= 40
+        ), f"Max pixel difference {max_diff} exceeds tolerance of 40"
 
         grok_core.grk_object_unref(codec_ref)
         grok_core.grk_object_unref(codec_fast)
@@ -364,13 +368,16 @@ class TestFastMct:
         """grk_get_data_type with fast_mct=True returns INT_16 for 12-bit 9/7 MCT."""
         # 12-bit, MCT, 9/7, fast_mct=True → INT_16
         assert (
-            grok_core.grk_get_data_type(False, 12, True, 0, True) == grok_core.GRK_INT_16
+            grok_core.grk_get_data_type(False, 12, True, 0, True)
+            == grok_core.GRK_INT_16
         )
         # 12-bit, MCT, 9/7, fast_mct=False → INT_32 (conformant)
         assert (
-            grok_core.grk_get_data_type(False, 12, True, 0, False) == grok_core.GRK_INT_32
+            grok_core.grk_get_data_type(False, 12, True, 0, False)
+            == grok_core.GRK_INT_32
         )
         # 12-bit, no MCT, 9/7 → INT_16 regardless of fast_mct
         assert (
-            grok_core.grk_get_data_type(False, 12, False, 0, False) == grok_core.GRK_INT_16
+            grok_core.grk_get_data_type(False, 12, False, 0, False)
+            == grok_core.GRK_INT_16
         )

@@ -121,8 +121,7 @@ class TestCodecCompress:
         jp2_path = str(tmp_path / "output.jp2")
 
         rc = grok_codec.grk_codec_compress(
-            ["grk_compress", "-i", pgm_path, "-o", jp2_path],
-            None, None
+            ["grk_compress", "-i", pgm_path, "-o", jp2_path], None, None
         )
         assert rc == 0
         assert os.path.getsize(jp2_path) > 0
@@ -134,9 +133,7 @@ class TestCodecDump:
         """Dump JP2 header info via codec bindings."""
         jp2_path = make_jp2(tmp_path)
 
-        rc = grok_codec.grk_codec_dump(
-            ["grk_dump", "-i", jp2_path]
-        )
+        rc = grok_codec.grk_codec_dump(["grk_dump", "-i", jp2_path])
         assert rc == 0
 
 
@@ -204,9 +201,7 @@ class TestCodecErrors:
 
     def test_compress_missing_args(self):
         """Compress with missing arguments should return non-zero."""
-        rc = grok_codec.grk_codec_compress(
-            ["grk_compress"], None, None
-        )
+        rc = grok_codec.grk_codec_compress(["grk_compress"], None, None)
         assert rc != 0
 
     def test_minimal_args_list(self):

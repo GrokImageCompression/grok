@@ -113,13 +113,9 @@ def get_component_array(comp):
     """Return a ctypes array for a component's pixel data."""
     n_elements = comp.h * comp.stride
     if comp.data_type == grok_core.GRK_INT_16:
-        ptr = ctypes.cast(
-            int(comp.data), ctypes.POINTER(ctypes.c_int16 * n_elements)
-        )
+        ptr = ctypes.cast(int(comp.data), ctypes.POINTER(ctypes.c_int16 * n_elements))
     else:
-        ptr = ctypes.cast(
-            int(comp.data), ctypes.POINTER(ctypes.c_int32 * n_elements)
-        )
+        ptr = ctypes.cast(int(comp.data), ctypes.POINTER(ctypes.c_int32 * n_elements))
     return ptr.contents
 
 
@@ -157,22 +153,29 @@ def compare_region(full_image, region_image, x0, y0):
                 fy = y0 + ry
                 full_val = full_arr[fy * full_comp.stride + fx]
                 if reg_val != full_val:
-                    stats = {"min": min_val, "max": max_val,
-                             "nonzero": n_nonzero, "total": n_total}
+                    stats = {
+                        "min": min_val,
+                        "max": max_val,
+                        "nonzero": n_nonzero,
+                        "total": n_total,
+                    }
                     return False, (c, fx, fy, full_val, reg_val), stats
 
-    stats = {"min": min_val, "max": max_val,
-             "nonzero": n_nonzero, "total": n_total}
+    stats = {"min": min_val, "max": max_val, "nonzero": n_nonzero, "total": n_total}
     return True, None, stats
 
 
 def display_first_diff(full_image, region_image, x0, y0, diff_info):
     """Print info about the first differing pixel."""
     comp_idx, fx, fy, expected, actual = diff_info
-    print(f"  MISMATCH at component={comp_idx}, "
-          f"full_image({fx},{fy}): expected={expected}, got={actual}")
-    print(f"  Region origin: ({x0}, {y0}), "
-          f"region size: {region_image.comps[0].w}x{region_image.comps[0].h}")
+    print(
+        f"  MISMATCH at component={comp_idx}, "
+        f"full_image({fx},{fy}): expected={expected}, got={actual}"
+    )
+    print(
+        f"  Region origin: ({x0}, {y0}), "
+        f"region size: {region_image.comps[0].w}x{region_image.comps[0].h}"
+    )
 
 
 def main():
@@ -182,12 +185,14 @@ def main():
     parser.add_argument("image", help="Path to JPEG 2000 image")
     parser.add_argument("max_dim", type=int, help="Max dimension for random regions")
     parser.add_argument(
-        "-n", "--iterations", type=int, default=0,
-        help="Number of random regions to test (default: 0 = run until interrupted)"
+        "-n",
+        "--iterations",
+        type=int,
+        default=0,
+        help="Number of random regions to test (default: 0 = run until interrupted)",
     )
     parser.add_argument(
-        "--seed", type=int, default=None,
-        help="Random seed for reproducibility"
+        "--seed", type=int, default=None, help="Random seed for reproducibility"
     )
     args = parser.parse_args()
 
@@ -208,20 +213,26 @@ def main():
     for c in range(num_comps):
         comp = full_image.comps[c]
         arr = get_component_array(comp)
-        sample_vals = [arr[y * comp.stride + x]
-                       for y in range(0, comp.h, max(1, comp.h // 8))
-                       for x in range(0, comp.w, max(1, comp.w // 8))]
+        sample_vals = [
+            arr[y * comp.stride + x]
+            for y in range(0, comp.h, max(1, comp.h // 8))
+            for x in range(0, comp.w, max(1, comp.w // 8))
+        ]
         n_nonzero = sum(1 for v in sample_vals if v != 0)
         mn = min(sample_vals)
         mx = max(sample_vals)
-        print(f"  Component {c}: sample min={mn}, max={mx}, "
-              f"nonzero={n_nonzero}/{len(sample_vals)}")
+        print(
+            f"  Component {c}: sample min={mn}, max={mx}, "
+            f"nonzero={n_nonzero}/{len(sample_vals)}"
+        )
         if mn == mx == 0:
             print(f"  WARNING: Component {c} appears to be all zeros!")
 
     if args.max_dim > img_w or args.max_dim > img_h:
-        print(f"WARNING: max_dim ({args.max_dim}) exceeds image dimensions, "
-              f"clamping to image size")
+        print(
+            f"WARNING: max_dim ({args.max_dim}) exceeds image dimensions, "
+            f"clamping to image size"
+        )
 
     passed = 0
     failed = 0
@@ -244,8 +255,10 @@ def main():
 
             region_image, region_codec = decompress_region(args.image, x0, y0, x1, y1)
             if region_image is None:
-                print(f"[{i}/{label}] SKIP region ({x0},{y0})-({x1},{y1}) "
-                      f"- decompress failed")
+                print(
+                    f"[{i}/{label}] SKIP region ({x0},{y0})-({x1},{y1}) "
+                    f"- decompress failed"
+                )
                 continue
 
             match, diff_info, stats = compare_region(full_image, region_image, x0, y0)
@@ -254,14 +267,18 @@ def main():
                 passed += 1
                 all_zero = stats["nonzero"] == 0
                 zero_warn = " [ALL ZEROS]" if all_zero else ""
-                print(f"[{i}/{label}] OK  region ({x0},{y0})-({x1},{y1}) "
-                      f"size {rw}x{rh}  "
-                      f"[min={stats['min']} max={stats['max']} "
-                      f"nonzero={stats['nonzero']}/{stats['total']}]{zero_warn}")
+                print(
+                    f"[{i}/{label}] OK  region ({x0},{y0})-({x1},{y1}) "
+                    f"size {rw}x{rh}  "
+                    f"[min={stats['min']} max={stats['max']} "
+                    f"nonzero={stats['nonzero']}/{stats['total']}]{zero_warn}"
+                )
             else:
                 failed += 1
-                print(f"[{i}/{label}] FAIL region ({x0},{y0})-({x1},{y1}) "
-                      f"size {rw}x{rh}")
+                print(
+                    f"[{i}/{label}] FAIL region ({x0},{y0})-({x1},{y1}) "
+                    f"size {rw}x{rh}"
+                )
                 display_first_diff(full_image, region_image, x0, y0, diff_info)
 
             grok_core.grk_object_unref(region_codec)

@@ -111,16 +111,20 @@ def _make_synthetic_tiff(path, width=256, height=256, channels=3, depth=8):
     pixel_offset = bps_ext_offset + len(bps_data)
 
     entries = [
-        (256, 3, 1, width),                                    # ImageWidth
-        (257, 3, 1, height),                                   # ImageLength
-        (258, 3, channels,
-         storage_depth if channels == 1 else bps_ext_offset),  # BitsPerSample
-        (259, 3, 1, 1),                                        # Compression = None
-        (262, 3, 1, 2 if channels >= 3 else 1),                # PhotometricInterpretation
-        (273, 4, 1, pixel_offset),                              # StripOffsets (single strip)
-        (277, 3, 1, channels),                                  # SamplesPerPixel
-        (278, 4, 1, height),                                    # RowsPerStrip = all rows
-        (279, 4, 1, image_data_size),                           # StripByteCounts
+        (256, 3, 1, width),  # ImageWidth
+        (257, 3, 1, height),  # ImageLength
+        (
+            258,
+            3,
+            channels,
+            storage_depth if channels == 1 else bps_ext_offset,
+        ),  # BitsPerSample
+        (259, 3, 1, 1),  # Compression = None
+        (262, 3, 1, 2 if channels >= 3 else 1),  # PhotometricInterpretation
+        (273, 4, 1, pixel_offset),  # StripOffsets (single strip)
+        (277, 3, 1, channels),  # SamplesPerPixel
+        (278, 4, 1, height),  # RowsPerStrip = all rows
+        (279, 4, 1, image_data_size),  # StripByteCounts
     ]
 
     # TIFF header (little-endian)
@@ -166,12 +170,17 @@ class TestGpuCompressSingle:
         jp2 = tmp_path / "rgb.jp2"
         _make_synthetic_tiff(str(tiff), width=128, height=128, channels=3)
 
-        result = _run([
-            str(_GRK_COMPRESS),
-            "-i", str(tiff),
-            "-o", str(jp2),
-            "-b", "32,32",
-        ])
+        result = _run(
+            [
+                str(_GRK_COMPRESS),
+                "-i",
+                str(tiff),
+                "-o",
+                str(jp2),
+                "-b",
+                "32,32",
+            ]
+        )
         assert result.returncode == 0, result.stderr
         assert jp2.exists() and jp2.stat().st_size > 0
 
@@ -181,13 +190,18 @@ class TestGpuCompressSingle:
         jp2 = tmp_path / "rgb_lossy.jp2"
         _make_synthetic_tiff(str(tiff), width=128, height=128, channels=3)
 
-        result = _run([
-            str(_GRK_COMPRESS),
-            "-i", str(tiff),
-            "-o", str(jp2),
-            "-b", "32,32",
-            "-I",
-        ])
+        result = _run(
+            [
+                str(_GRK_COMPRESS),
+                "-i",
+                str(tiff),
+                "-o",
+                str(jp2),
+                "-b",
+                "32,32",
+                "-I",
+            ]
+        )
         assert result.returncode == 0, result.stderr
         assert jp2.exists() and jp2.stat().st_size > 0
 
@@ -197,13 +211,19 @@ class TestGpuCompressSingle:
         jp2 = tmp_path / "mono.jp2"
         _make_synthetic_tiff(str(tiff), width=128, height=128, channels=1)
 
-        result = _run([
-            str(_GRK_COMPRESS),
-            "-i", str(tiff),
-            "-o", str(jp2),
-            "-n", "1",
-            "-b", "32,32",
-        ])
+        result = _run(
+            [
+                str(_GRK_COMPRESS),
+                "-i",
+                str(tiff),
+                "-o",
+                str(jp2),
+                "-n",
+                "1",
+                "-b",
+                "32,32",
+            ]
+        )
         assert result.returncode == 0, result.stderr
         assert jp2.exists() and jp2.stat().st_size > 0
 
@@ -213,14 +233,20 @@ class TestGpuCompressSingle:
         j2k = tmp_path / "mono.j2k"
         _make_synthetic_tiff(str(tiff), width=128, height=128, channels=1)
 
-        result = _run([
-            str(_GRK_COMPRESS),
-            "-i", str(tiff),
-            "-o", str(j2k),
-            "-n", "1",
-            "-b", "32,32",
-            "-I",
-        ])
+        result = _run(
+            [
+                str(_GRK_COMPRESS),
+                "-i",
+                str(tiff),
+                "-o",
+                str(j2k),
+                "-n",
+                "1",
+                "-b",
+                "32,32",
+                "-I",
+            ]
+        )
         assert result.returncode == 0, result.stderr
         assert j2k.exists() and j2k.stat().st_size > 0
 
@@ -240,9 +266,12 @@ class TestGpuDecompressSingle:
         _make_synthetic_tiff(str(tiff), width=128, height=128, channels=3)
         args = [
             str(_GRK_COMPRESS),
-            "-i", str(tiff),
-            "-o", str(jp2),
-            "-b", "32,32",
+            "-i",
+            str(tiff),
+            "-o",
+            str(jp2),
+            "-b",
+            "32,32",
         ]
         if lossy:
             args.append("-I")
@@ -254,11 +283,15 @@ class TestGpuDecompressSingle:
         jp2 = self._compress_first(tmp_path, lossy=False)
         out_tif = tmp_path / "output.tif"
 
-        result = _run([
-            str(_GRK_DECOMPRESS),
-            "-i", str(jp2),
-            "-o", str(out_tif),
-        ])
+        result = _run(
+            [
+                str(_GRK_DECOMPRESS),
+                "-i",
+                str(jp2),
+                "-o",
+                str(out_tif),
+            ]
+        )
         assert result.returncode == 0, result.stderr
         assert out_tif.exists() and out_tif.stat().st_size > 0
 
@@ -267,11 +300,15 @@ class TestGpuDecompressSingle:
         jp2 = self._compress_first(tmp_path, lossy=True)
         out_tif = tmp_path / "output.tif"
 
-        result = _run([
-            str(_GRK_DECOMPRESS),
-            "-i", str(jp2),
-            "-o", str(out_tif),
-        ])
+        result = _run(
+            [
+                str(_GRK_DECOMPRESS),
+                "-i",
+                str(jp2),
+                "-o",
+                str(out_tif),
+            ]
+        )
         assert result.returncode == 0, result.stderr
         assert out_tif.exists() and out_tif.stat().st_size > 0
 
@@ -291,19 +328,28 @@ class TestGpuRoundTrip:
         tiff_out = tmp_path / "out.tif"
         _make_synthetic_tiff(str(tiff_in), width=64, height=64, channels=3)
 
-        r1 = _run([
-            str(_GRK_COMPRESS),
-            "-i", str(tiff_in),
-            "-o", str(jp2),
-            "-b", "32,32",
-        ])
+        r1 = _run(
+            [
+                str(_GRK_COMPRESS),
+                "-i",
+                str(tiff_in),
+                "-o",
+                str(jp2),
+                "-b",
+                "32,32",
+            ]
+        )
         assert r1.returncode == 0, r1.stderr
 
-        r2 = _run([
-            str(_GRK_DECOMPRESS),
-            "-i", str(jp2),
-            "-o", str(tiff_out),
-        ])
+        r2 = _run(
+            [
+                str(_GRK_DECOMPRESS),
+                "-i",
+                str(jp2),
+                "-o",
+                str(tiff_out),
+            ]
+        )
         assert r2.returncode == 0, r2.stderr
         assert tiff_out.exists() and tiff_out.stat().st_size > 0
 
@@ -314,20 +360,29 @@ class TestGpuRoundTrip:
         tiff_out = tmp_path / "out.tif"
         _make_synthetic_tiff(str(tiff_in), width=64, height=64, channels=3)
 
-        r1 = _run([
-            str(_GRK_COMPRESS),
-            "-i", str(tiff_in),
-            "-o", str(jp2),
-            "-b", "32,32",
-            "-I",
-        ])
+        r1 = _run(
+            [
+                str(_GRK_COMPRESS),
+                "-i",
+                str(tiff_in),
+                "-o",
+                str(jp2),
+                "-b",
+                "32,32",
+                "-I",
+            ]
+        )
         assert r1.returncode == 0, r1.stderr
 
-        r2 = _run([
-            str(_GRK_DECOMPRESS),
-            "-i", str(jp2),
-            "-o", str(tiff_out),
-        ])
+        r2 = _run(
+            [
+                str(_GRK_DECOMPRESS),
+                "-i",
+                str(jp2),
+                "-o",
+                str(tiff_out),
+            ]
+        )
         assert r2.returncode == 0, r2.stderr
         assert tiff_out.exists() and tiff_out.stat().st_size > 0
 
@@ -338,20 +393,30 @@ class TestGpuRoundTrip:
         tiff_out = tmp_path / "mono_out.tif"
         _make_synthetic_tiff(str(tiff_in), width=64, height=64, channels=1)
 
-        r1 = _run([
-            str(_GRK_COMPRESS),
-            "-i", str(tiff_in),
-            "-o", str(jp2),
-            "-n", "1",
-            "-b", "32,32",
-        ])
+        r1 = _run(
+            [
+                str(_GRK_COMPRESS),
+                "-i",
+                str(tiff_in),
+                "-o",
+                str(jp2),
+                "-n",
+                "1",
+                "-b",
+                "32,32",
+            ]
+        )
         assert r1.returncode == 0, r1.stderr
 
-        r2 = _run([
-            str(_GRK_DECOMPRESS),
-            "-i", str(jp2),
-            "-o", str(tiff_out),
-        ])
+        r2 = _run(
+            [
+                str(_GRK_DECOMPRESS),
+                "-i",
+                str(jp2),
+                "-o",
+                str(tiff_out),
+            ]
+        )
         assert r2.returncode == 0, r2.stderr
         assert tiff_out.exists() and tiff_out.stat().st_size > 0
 
@@ -379,13 +444,19 @@ class TestGpuBatchCompress:
         src, dst = work_dir
         self._populate_batch_input(src)
 
-        result = _run([
-            str(_GRK_COMPRESS),
-            "--batch-src", str(src),
-            "--out-dir", str(dst),
-            "--out-fmt", "jp2",
-            "-b", "32,32",
-        ])
+        result = _run(
+            [
+                str(_GRK_COMPRESS),
+                "--batch-src",
+                str(src),
+                "--out-dir",
+                str(dst),
+                "--out-fmt",
+                "jp2",
+                "-b",
+                "32,32",
+            ]
+        )
         assert result.returncode == 0, result.stderr
         outputs = list(dst.glob("*.jp2"))
         assert len(outputs) >= 3
@@ -395,14 +466,20 @@ class TestGpuBatchCompress:
         src, dst = work_dir
         self._populate_batch_input(src)
 
-        result = _run([
-            str(_GRK_COMPRESS),
-            "--batch-src", str(src),
-            "--out-dir", str(dst),
-            "--out-fmt", "j2k",
-            "-b", "32,32",
-            "-I",
-        ])
+        result = _run(
+            [
+                str(_GRK_COMPRESS),
+                "--batch-src",
+                str(src),
+                "--out-dir",
+                str(dst),
+                "--out-fmt",
+                "j2k",
+                "-b",
+                "32,32",
+                "-I",
+            ]
+        )
         assert result.returncode == 0, result.stderr
         outputs = list(dst.glob("*.j2k"))
         assert len(outputs) >= 3
@@ -412,14 +489,21 @@ class TestGpuBatchCompress:
         src, dst = work_dir
         self._populate_batch_input(src, count=2)
 
-        result = _run([
-            str(_GRK_COMPRESS),
-            "--batch-src", str(src),
-            "--out-dir", str(dst),
-            "--out-fmt", "jp2",
-            "-b", "32,32",
-            "-e", "2",
-        ])
+        result = _run(
+            [
+                str(_GRK_COMPRESS),
+                "--batch-src",
+                str(src),
+                "--out-dir",
+                str(dst),
+                "--out-fmt",
+                "jp2",
+                "-b",
+                "32,32",
+                "-e",
+                "2",
+            ]
+        )
         assert result.returncode == 0, result.stderr
         outputs = list(dst.glob("*.jp2"))
         assert len(outputs) >= 2
@@ -433,14 +517,20 @@ class TestGpuBatchDecompress:
         for i in range(count):
             _make_synthetic_tiff(
                 str(src / f"img_{i:03d}.tif"),
-                width=64, height=64, channels=3,
+                width=64,
+                height=64,
+                channels=3,
             )
         args = [
             str(_GRK_COMPRESS),
-            "--batch-src", str(src),
-            "--out-dir", str(compressed),
-            "--out-fmt", "jp2",
-            "-b", "32,32",
+            "--batch-src",
+            str(src),
+            "--out-dir",
+            str(compressed),
+            "--out-fmt",
+            "jp2",
+            "-b",
+            "32,32",
         ]
         if lossy:
             args.append("-I")
@@ -457,12 +547,17 @@ class TestGpuBatchDecompress:
 
         self._batch_compress_first(src, compressed)
 
-        result = _run([
-            str(_GRK_DECOMPRESS),
-            "--batch-src", str(compressed),
-            "--out-dir", str(decompressed),
-            "--out-fmt", "tif",
-        ])
+        result = _run(
+            [
+                str(_GRK_DECOMPRESS),
+                "--batch-src",
+                str(compressed),
+                "--out-dir",
+                str(decompressed),
+                "--out-fmt",
+                "tif",
+            ]
+        )
         assert result.returncode == 0, result.stderr
         outputs = list(decompressed.glob("*.tif"))
         assert len(outputs) >= 3
@@ -478,13 +573,19 @@ class TestGpuBatchDecompress:
 
         self._batch_compress_first(src, compressed, count=2)
 
-        result = _run([
-            str(_GRK_DECOMPRESS),
-            "--batch-src", str(compressed),
-            "--out-dir", str(decompressed),
-            "--out-fmt", "tif",
-            "-e", "2",
-        ])
+        result = _run(
+            [
+                str(_GRK_DECOMPRESS),
+                "--batch-src",
+                str(compressed),
+                "--out-dir",
+                str(decompressed),
+                "--out-fmt",
+                "tif",
+                "-e",
+                "2",
+            ]
+        )
         assert result.returncode == 0, result.stderr
         outputs = list(decompressed.glob("*.tif"))
         assert len(outputs) >= 2
@@ -509,24 +610,37 @@ class TestGpuBatchRoundTrip:
         for i in range(3):
             _make_synthetic_tiff(
                 str(src / f"frame_{i:03d}.tif"),
-                width=64, height=64, channels=3,
+                width=64,
+                height=64,
+                channels=3,
             )
 
-        r1 = _run([
-            str(_GRK_COMPRESS),
-            "--batch-src", str(src),
-            "--out-dir", str(compressed),
-            "--out-fmt", "jp2",
-            "-b", "32,32",
-        ])
+        r1 = _run(
+            [
+                str(_GRK_COMPRESS),
+                "--batch-src",
+                str(src),
+                "--out-dir",
+                str(compressed),
+                "--out-fmt",
+                "jp2",
+                "-b",
+                "32,32",
+            ]
+        )
         assert r1.returncode == 0, r1.stderr
 
-        r2 = _run([
-            str(_GRK_DECOMPRESS),
-            "--batch-src", str(compressed),
-            "--out-dir", str(decompressed),
-            "--out-fmt", "tif",
-        ])
+        r2 = _run(
+            [
+                str(_GRK_DECOMPRESS),
+                "--batch-src",
+                str(compressed),
+                "--out-dir",
+                str(decompressed),
+                "--out-fmt",
+                "tif",
+            ]
+        )
         assert r2.returncode == 0, r2.stderr
         assert len(list(decompressed.glob("*.tif"))) >= 3
 
@@ -541,25 +655,38 @@ class TestGpuBatchRoundTrip:
         for i in range(3):
             _make_synthetic_tiff(
                 str(src / f"frame_{i:03d}.tif"),
-                width=64, height=64, channels=3,
+                width=64,
+                height=64,
+                channels=3,
             )
 
-        r1 = _run([
-            str(_GRK_COMPRESS),
-            "--batch-src", str(src),
-            "--out-dir", str(compressed),
-            "--out-fmt", "jp2",
-            "-b", "32,32",
-            "-I",
-        ])
+        r1 = _run(
+            [
+                str(_GRK_COMPRESS),
+                "--batch-src",
+                str(src),
+                "--out-dir",
+                str(compressed),
+                "--out-fmt",
+                "jp2",
+                "-b",
+                "32,32",
+                "-I",
+            ]
+        )
         assert r1.returncode == 0, r1.stderr
 
-        r2 = _run([
-            str(_GRK_DECOMPRESS),
-            "--batch-src", str(compressed),
-            "--out-dir", str(decompressed),
-            "--out-fmt", "tif",
-        ])
+        r2 = _run(
+            [
+                str(_GRK_DECOMPRESS),
+                "--batch-src",
+                str(compressed),
+                "--out-dir",
+                str(decompressed),
+                "--out-fmt",
+                "tif",
+            ]
+        )
         assert r2.returncode == 0, r2.stderr
         assert len(list(decompressed.glob("*.tif"))) >= 3
 
@@ -585,19 +712,28 @@ class TestGpuBitDepth:
         tiff_out = tmp_path / f"rgb_{depth}bit_out.tif"
         _make_synthetic_tiff(str(tiff_in), width=64, height=64, channels=3, depth=depth)
 
-        r1 = _run([
-            str(_GRK_COMPRESS),
-            "-i", str(tiff_in),
-            "-o", str(jp2),
-            "-b", "32,32",
-        ])
+        r1 = _run(
+            [
+                str(_GRK_COMPRESS),
+                "-i",
+                str(tiff_in),
+                "-o",
+                str(jp2),
+                "-b",
+                "32,32",
+            ]
+        )
         assert r1.returncode == 0, r1.stderr
 
-        r2 = _run([
-            str(_GRK_DECOMPRESS),
-            "-i", str(jp2),
-            "-o", str(tiff_out),
-        ])
+        r2 = _run(
+            [
+                str(_GRK_DECOMPRESS),
+                "-i",
+                str(jp2),
+                "-o",
+                str(tiff_out),
+            ]
+        )
         assert r2.returncode == 0, r2.stderr
         assert tiff_out.exists() and tiff_out.stat().st_size > 0
 
@@ -609,20 +745,29 @@ class TestGpuBitDepth:
         tiff_out = tmp_path / f"rgb_{depth}bit_lossy_out.tif"
         _make_synthetic_tiff(str(tiff_in), width=64, height=64, channels=3, depth=depth)
 
-        r1 = _run([
-            str(_GRK_COMPRESS),
-            "-i", str(tiff_in),
-            "-o", str(jp2),
-            "-b", "32,32",
-            "-I",
-        ])
+        r1 = _run(
+            [
+                str(_GRK_COMPRESS),
+                "-i",
+                str(tiff_in),
+                "-o",
+                str(jp2),
+                "-b",
+                "32,32",
+                "-I",
+            ]
+        )
         assert r1.returncode == 0, r1.stderr
 
-        r2 = _run([
-            str(_GRK_DECOMPRESS),
-            "-i", str(jp2),
-            "-o", str(tiff_out),
-        ])
+        r2 = _run(
+            [
+                str(_GRK_DECOMPRESS),
+                "-i",
+                str(jp2),
+                "-o",
+                str(tiff_out),
+            ]
+        )
         assert r2.returncode == 0, r2.stderr
         assert tiff_out.exists() and tiff_out.stat().st_size > 0
 
@@ -634,20 +779,30 @@ class TestGpuBitDepth:
         tiff_out = tmp_path / f"mono_{depth}bit_out.tif"
         _make_synthetic_tiff(str(tiff_in), width=64, height=64, channels=1, depth=depth)
 
-        r1 = _run([
-            str(_GRK_COMPRESS),
-            "-i", str(tiff_in),
-            "-o", str(jp2),
-            "-n", "1",
-            "-b", "32,32",
-        ])
+        r1 = _run(
+            [
+                str(_GRK_COMPRESS),
+                "-i",
+                str(tiff_in),
+                "-o",
+                str(jp2),
+                "-n",
+                "1",
+                "-b",
+                "32,32",
+            ]
+        )
         assert r1.returncode == 0, r1.stderr
 
-        r2 = _run([
-            str(_GRK_DECOMPRESS),
-            "-i", str(jp2),
-            "-o", str(tiff_out),
-        ])
+        r2 = _run(
+            [
+                str(_GRK_DECOMPRESS),
+                "-i",
+                str(jp2),
+                "-o",
+                str(tiff_out),
+            ]
+        )
         assert r2.returncode == 0, r2.stderr
         assert tiff_out.exists() and tiff_out.stat().st_size > 0
 
@@ -659,21 +814,31 @@ class TestGpuBitDepth:
         tiff_out = tmp_path / f"mono_{depth}bit_lossy_out.tif"
         _make_synthetic_tiff(str(tiff_in), width=64, height=64, channels=1, depth=depth)
 
-        r1 = _run([
-            str(_GRK_COMPRESS),
-            "-i", str(tiff_in),
-            "-o", str(jp2),
-            "-n", "1",
-            "-b", "32,32",
-            "-I",
-        ])
+        r1 = _run(
+            [
+                str(_GRK_COMPRESS),
+                "-i",
+                str(tiff_in),
+                "-o",
+                str(jp2),
+                "-n",
+                "1",
+                "-b",
+                "32,32",
+                "-I",
+            ]
+        )
         assert r1.returncode == 0, r1.stderr
 
-        r2 = _run([
-            str(_GRK_DECOMPRESS),
-            "-i", str(jp2),
-            "-o", str(tiff_out),
-        ])
+        r2 = _run(
+            [
+                str(_GRK_DECOMPRESS),
+                "-i",
+                str(jp2),
+                "-o",
+                str(tiff_out),
+            ]
+        )
         assert r2.returncode == 0, r2.stderr
         assert tiff_out.exists() and tiff_out.stat().st_size > 0
 
@@ -696,12 +861,17 @@ class TestGpuCinema:
         jp2 = tmp_path / "cinema.jp2"
         self._make_cinema_tiff(tiff)
 
-        result = _run([
-            str(_GRK_COMPRESS),
-            "-i", str(tiff),
-            "-o", str(jp2),
-            "--cinema-2k", "24",
-        ])
+        result = _run(
+            [
+                str(_GRK_COMPRESS),
+                "-i",
+                str(tiff),
+                "-o",
+                str(jp2),
+                "--cinema-2k",
+                "24",
+            ]
+        )
         assert result.returncode == 0, result.stderr
         assert jp2.exists() and jp2.stat().st_size > 0
 
@@ -712,24 +882,35 @@ class TestGpuCinema:
         tiff_out = tmp_path / "cinema_out.tif"
         self._make_cinema_tiff(tiff_in)
 
-        r1 = _run([
-            str(_GRK_COMPRESS),
-            "-i", str(tiff_in),
-            "-o", str(jp2),
-            "--cinema-2k", "24",
-        ])
+        r1 = _run(
+            [
+                str(_GRK_COMPRESS),
+                "-i",
+                str(tiff_in),
+                "-o",
+                str(jp2),
+                "--cinema-2k",
+                "24",
+            ]
+        )
         assert r1.returncode == 0, r1.stderr
 
-        r2 = _run([
-            str(_GRK_DECOMPRESS),
-            "-i", str(jp2),
-            "-o", str(tiff_out),
-        ])
+        r2 = _run(
+            [
+                str(_GRK_DECOMPRESS),
+                "-i",
+                str(jp2),
+                "-o",
+                str(tiff_out),
+            ]
+        )
         assert r2.returncode == 0, r2.stderr
         assert tiff_out.exists() and tiff_out.stat().st_size > 0
 
-    @pytest.mark.skip(reason="Batch cinema compress with small test images is slow; "
-                       "use larger images for manual batch cinema testing")
+    @pytest.mark.skip(
+        reason="Batch cinema compress with small test images is slow; "
+        "use larger images for manual batch cinema testing"
+    )
     def test_batch_cinema_2k_roundtrip(self, tmp_path):
         """Batch cinema 2K compress → decompress round-trip."""
         src = tmp_path / "cinema_input"
@@ -742,21 +923,32 @@ class TestGpuCinema:
         for i in range(2):
             self._make_cinema_tiff(src / f"cinema_{i:03d}.tif")
 
-        r1 = _run([
-            str(_GRK_COMPRESS),
-            "--batch-src", str(src),
-            "--out-dir", str(compressed),
-            "--out-fmt", "jp2",
-            "--cinema-2k", "24",
-        ])
+        r1 = _run(
+            [
+                str(_GRK_COMPRESS),
+                "--batch-src",
+                str(src),
+                "--out-dir",
+                str(compressed),
+                "--out-fmt",
+                "jp2",
+                "--cinema-2k",
+                "24",
+            ]
+        )
         assert r1.returncode == 0, r1.stderr
 
-        r2 = _run([
-            str(_GRK_DECOMPRESS),
-            "--batch-src", str(compressed),
-            "--out-dir", str(decompressed),
-            "--out-fmt", "tif",
-        ])
+        r2 = _run(
+            [
+                str(_GRK_DECOMPRESS),
+                "--batch-src",
+                str(compressed),
+                "--out-dir",
+                str(decompressed),
+                "--out-fmt",
+                "tif",
+            ]
+        )
         assert r2.returncode == 0, r2.stderr
         assert len(list(decompressed.glob("*.tif"))) >= 2
 
@@ -774,12 +966,17 @@ class TestCpuFallback:
         jp2 = tmp_path / "cpu.jp2"
         _make_synthetic_tiff(str(tiff), width=64, height=64, channels=3)
 
-        result = _run([
-            str(_GRK_COMPRESS),
-            "-i", str(tiff),
-            "-o", str(jp2),
-            "-G", "-2",
-        ])
+        result = _run(
+            [
+                str(_GRK_COMPRESS),
+                "-i",
+                str(tiff),
+                "-o",
+                str(jp2),
+                "-G",
+                "-2",
+            ]
+        )
         assert result.returncode == 0, result.stderr
         assert jp2.exists() and jp2.stat().st_size > 0
 
@@ -789,18 +986,28 @@ class TestCpuFallback:
         out_tif = tmp_path / "cpu_out.tif"
         _make_synthetic_tiff(str(tiff), width=64, height=64, channels=3)
 
-        _run([
-            str(_GRK_COMPRESS),
-            "-i", str(tiff),
-            "-o", str(jp2),
-            "-G", "-2",
-        ])
+        _run(
+            [
+                str(_GRK_COMPRESS),
+                "-i",
+                str(tiff),
+                "-o",
+                str(jp2),
+                "-G",
+                "-2",
+            ]
+        )
 
-        result = _run([
-            str(_GRK_DECOMPRESS),
-            "-i", str(jp2),
-            "-o", str(out_tif),
-            "-G", "-2",
-        ])
+        result = _run(
+            [
+                str(_GRK_DECOMPRESS),
+                "-i",
+                str(jp2),
+                "-o",
+                str(out_tif),
+                "-G",
+                "-2",
+            ]
+        )
         assert result.returncode == 0, result.stderr
         assert out_tif.exists() and out_tif.stat().st_size > 0

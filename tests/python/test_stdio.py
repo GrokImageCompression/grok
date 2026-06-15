@@ -59,9 +59,7 @@ def make_test_jp2(tmp_path, filename="test.jp2"):
         [GRK_COMPRESS, "-i", pgm_path, "-o", jp2_path],
         capture_output=True,
     )
-    assert result.returncode == 0, (
-        f"grk_compress failed: {result.stderr.decode()}"
-    )
+    assert result.returncode == 0, f"grk_compress failed: {result.stderr.decode()}"
     assert os.path.getsize(jp2_path) > 0
     return jp2_path, pgm_path
 
@@ -76,13 +74,11 @@ class TestDecompressToStdout:
             [GRK_DECOMPRESS, "-i", jp2_path, "--out-fmt", "PNG"],
             capture_output=True,
         )
-        assert result.returncode == 0, (
-            f"grk_decompress to stdout failed: {result.stderr.decode()}"
-        )
+        assert (
+            result.returncode == 0
+        ), f"grk_decompress to stdout failed: {result.stderr.decode()}"
         # PNG files start with an 8-byte signature
-        assert result.stdout[:4] == b"\x89PNG", (
-            "Output does not look like a PNG file"
-        )
+        assert result.stdout[:4] == b"\x89PNG", "Output does not look like a PNG file"
         assert len(result.stdout) > 8
 
     def test_decompress_to_stdout_ppm(self, tmp_path):
@@ -93,13 +89,14 @@ class TestDecompressToStdout:
             [GRK_DECOMPRESS, "-i", jp2_path, "--out-fmt", "PGM"],
             capture_output=True,
         )
-        assert result.returncode == 0, (
-            f"grk_decompress to stdout failed: {result.stderr.decode()}"
-        )
+        assert (
+            result.returncode == 0
+        ), f"grk_decompress to stdout failed: {result.stderr.decode()}"
         # PGM files start with "P5" (binary) or "P2" (ASCII)
-        assert result.stdout[:2] in (b"P5", b"P2"), (
-            "Output does not look like a PGM file"
-        )
+        assert result.stdout[:2] in (
+            b"P5",
+            b"P2",
+        ), "Output does not look like a PGM file"
 
     def test_decompress_to_stdout_matches_file(self, tmp_path):
         """Verify stdout output matches file output."""
@@ -131,9 +128,7 @@ class TestCompressFromStdin:
         """Compress a PGM image from stdin to a file."""
         # Create a PGM image in memory
         width, height, maxval = 32, 32, 255
-        pixels = bytes(
-            (x + y) % 256 for y in range(height) for x in range(width)
-        )
+        pixels = bytes((x + y) % 256 for y in range(height) for x in range(width))
         pgm_data = f"P5\n{width} {height}\n{maxval}\n".encode() + pixels
 
         out_path = str(tmp_path / "from_stdin.jp2")
@@ -142,9 +137,9 @@ class TestCompressFromStdin:
             input=pgm_data,
             capture_output=True,
         )
-        assert result.returncode == 0, (
-            f"grk_compress from stdin failed: {result.stderr.decode()}"
-        )
+        assert (
+            result.returncode == 0
+        ), f"grk_compress from stdin failed: {result.stderr.decode()}"
         assert os.path.getsize(out_path) > 0
 
         # Verify the output is valid by decompressing it
@@ -174,7 +169,7 @@ class TestCompressFromStdin:
             input=png_data,
             capture_output=True,
         )
-        assert result.returncode == 0, (
-            f"grk_compress from stdin failed: {result.stderr.decode()}"
-        )
+        assert (
+            result.returncode == 0
+        ), f"grk_compress from stdin failed: {result.stderr.decode()}"
         assert os.path.getsize(out_path) > 0

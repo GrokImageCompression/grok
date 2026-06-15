@@ -63,6 +63,7 @@ struct Segment
   void clear()
   {
     totalPasses_ = 0;
+    headerTotalPasses_ = 0;
     totalBytes_ = 0;
     maxPasses_ = 0;
     memset(calculatedPassesInLayer_, 0, numLayers_ * sizeof(uint8_t));
@@ -116,9 +117,19 @@ struct Segment
   uint16_t numLayers_ = 0;
 
   /**
-   * @brief Running total of number of passes across multiple layers
+   * @brief Running total of number of passes across multiple layers, accumulated
+   * by the data parser (parsePacketData). Only advances for packets whose data is
+   * actually parsed.
    */
   uint8_t totalPasses_ = 0;
+  /**
+   * @brief Running total of number of passes across multiple layers, accumulated
+   * by the packet-header parser (readPacketHeader). Mirrors totalPasses_ but is
+   * maintained purely from header information, so it stays correct even when packet
+   * data is not parsed (e.g. precincts outside a decompression region). This keeps
+   * the header parser's segment-boundary decisions independent of parsePacketData.
+   */
+  uint8_t headerTotalPasses_ = 0;
   /**
    * @brief Maximum number of passes in this code block
    * This is determined by the code block style i.e. mode switch
@@ -239,7 +250,7 @@ struct CodeblockDecompressImpl : public CodeblockImpl
     // create new segment if there are currently none
     // or the current segment has maxed out its passes
     auto seg = currHeaderParsedSegment();
-    if(seg == segs_.end() || (*seg)->totalPasses_ == (*seg)->maxPasses_)
+    if(seg == segs_.end() || (*seg)->headerTotalPasses_ == (*seg)->maxPasses_)
       newSegment(cblk_sty);
 
     // 4. parse all segments in this layer
@@ -264,9 +275,9 @@ struct CodeblockDecompressImpl : public CodeblockImpl
       }
       else
       {
-        assert(seg->maxPasses_ >= seg->totalPasses_);
+        assert(seg->maxPasses_ >= seg->headerTotalPasses_);
         seg->calculatedPassesInLayer_[layno] = std::min<uint8_t>(
-            (uint8_t)(seg->maxPasses_ - seg->totalPasses_), remainingPassesInLayer);
+            (uint8_t)(seg->maxPasses_ - seg->headerTotalPasses_), remainingPassesInLayer);
       }
       if(seg->calculatedPassesInLayer_[layno] > remainingPassesInLayer)
       {
@@ -288,6 +299,11 @@ struct CodeblockDecompressImpl : public CodeblockImpl
       signalledLayerDataBytes += seg->signalledBytesInLayer_[layno];
       assert(remainingPassesInLayer >= seg->calculatedPassesInLayer_[layno]);
       remainingPassesInLayer -= seg->calculatedPassesInLayer_[layno];
+
+      // 2b. advance the header-side pass total for this segment (mirrors the
+      // data-side update in parsePacketData), so segment-boundary decisions in
+      // subsequent layers do not depend on the data having been parsed
+      seg->headerTotalPasses_ += seg->calculatedPassesInLayer_[layno];
 
       // 3. create next segment if this layer spans multiple segments
       if(remainingPassesInLayer > 0)

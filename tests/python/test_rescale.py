@@ -44,9 +44,7 @@ def _compress_uniform(path, w, h, nc, prec, color_space, value):
         grok_core.GRK_FMT_JP2 if path.endswith(".jp2") else grok_core.GRK_FMT_J2K
     )
 
-    image = grok_core.grk_image_new_uniform(
-        nc, w, h, 1, 1, prec, False, color_space
-    )
+    image = grok_core.grk_image_new_uniform(nc, w, h, 1, 1, prec, False, color_space)
     assert image is not None
     _fill_uniform(image, value)
 
@@ -129,18 +127,16 @@ class TestRescale:
             assert comp.sgnd == 0
             for y in (0, 5, 15):
                 for x in (0, 7, 15):
-                    assert _read_pixel(comp, x, y) == 100, (
-                        f"pixel ({x},{y}) = {_read_pixel(comp, x, y)}, expected 100"
-                    )
+                    assert (
+                        _read_pixel(comp, x, y) == 100
+                    ), f"pixel ({x},{y}) = {_read_pixel(comp, x, y)}, expected 100"
         finally:
             grok_core.grk_object_unref(codec)
 
     def test_clamp_to_dst_range(self, tmp_path):
         """Source values above src_max must clamp to dst_max, not overflow."""
         path = str(tmp_path / "uniform200.j2k")
-        assert _compress_uniform(
-            path, 8, 8, 1, 8, grok_core.GRK_CLRSPC_GRAY, value=200
-        )
+        assert _compress_uniform(path, 8, 8, 1, 8, grok_core.GRK_CLRSPC_GRAY, value=200)
 
         # Map 0..100 -> 0..255: 200 is outside src; must clamp to dst_max=255.
         image, codec = _decompress_with_rescale(path, (0.0, 100.0, 0.0, 255.0))
@@ -158,9 +154,7 @@ class TestRescale:
         source 100 to dst_max."""
         path = str(tmp_path / "uniform_low.j2k")
         # Pick a source value at src_min so the expected output is dst_min.
-        assert _compress_uniform(
-            path, 8, 8, 1, 8, grok_core.GRK_CLRSPC_GRAY, value=0
-        )
+        assert _compress_uniform(path, 8, 8, 1, 8, grok_core.GRK_CLRSPC_GRAY, value=0)
 
         image, codec = _decompress_with_rescale(path, (0.0, 100.0, 255.0, 0.0))
         assert image is not None
@@ -173,9 +167,7 @@ class TestRescale:
     def test_no_rescale_when_num_rescale_zero(self, tmp_path):
         """Setting rescale=ptr but num_rescale=0 must leave pixels untouched."""
         path = str(tmp_path / "uniform100b.j2k")
-        assert _compress_uniform(
-            path, 8, 8, 1, 8, grok_core.GRK_CLRSPC_GRAY, value=100
-        )
+        assert _compress_uniform(path, 8, 8, 1, 8, grok_core.GRK_CLRSPC_GRAY, value=100)
 
         stream = grok_core.grk_stream_params()
         stream.file = path

@@ -357,9 +357,10 @@
             "program": "${workspaceFolder}/build/bin/grk_decompress",
             "args": [
             "-i",
-             "$HOME/src/grok-test-data/input/conformance/file9.jp2",
+             "$HOME/temp/grok-jp2-lossy-rpcl-decode-bug-samples-with-source/cnb000537987_2025_BC_user-copy.jp2",
              "-o",
              "$HOME/temp/crash.tif",
+             "-d 0,0,512,512"
             ],
             "cwd": "${workspaceFolder}",
             "environment": [

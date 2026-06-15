@@ -53,11 +53,22 @@ def shift_image(img: np.ndarray, index: int, total: int, max_val: int) -> np.nda
 
 
 def main():
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     default_input = os.path.expanduser("~/temp/rgb_12/sample_12 (Copy 10).tiff")
-    parser.add_argument("--input", "-i", default=default_input, help="Source 12-bit RGB TIFF")
-    parser.add_argument("--outdir", "-o", default=os.path.expanduser("~/temp/rgb_12"), help="Output directory")
-    parser.add_argument("--count", "-n", type=int, default=33, help="Number of output frames")
+    parser.add_argument(
+        "--input", "-i", default=default_input, help="Source 12-bit RGB TIFF"
+    )
+    parser.add_argument(
+        "--outdir",
+        "-o",
+        default=os.path.expanduser("~/temp/rgb_12"),
+        help="Output directory",
+    )
+    parser.add_argument(
+        "--count", "-n", type=int, default=33, help="Number of output frames"
+    )
     args = parser.parse_args()
 
     src = Path(args.input)
@@ -89,7 +100,9 @@ def main():
         r_mean = shifted[:, :, 0].mean()
         g_mean = shifted[:, :, 1].mean()
         b_mean = shifted[:, :, 2].mean()
-        print(f"  [{i:3d}/{args.count}] {name}  R={r_mean:.0f} G={g_mean:.0f} B={b_mean:.0f}")
+        print(
+            f"  [{i:3d}/{args.count}] {name}  R={r_mean:.0f} G={g_mean:.0f} B={b_mean:.0f}"
+        )
 
     print(f"\nWrote {args.count} frames to {outdir}")
 

@@ -186,8 +186,9 @@ MULTI_DECOMPRESS_CONFIGS = [
 def multi_tile_jp2(request, tmp_path_factory):
     desc, extra_args, size, first_tile, second_tile = request.param
     tmp_path = tmp_path_factory.mktemp(desc)
-    jp2_path = make_jp2(tmp_path, filename=f"{desc}.jp2",
-                        extra_args=extra_args, width=size, height=size)
+    jp2_path = make_jp2(
+        tmp_path, filename=f"{desc}.jp2", extra_args=extra_args, width=size, height=size
+    )
     return desc, jp2_path, first_tile, second_tile
 
 
@@ -213,9 +214,9 @@ class TestMultiDecompress:
         # Test: decompress first_tile then second_tile on the same codec
         test_pixels = decompress_two_tiles_same_codec(jp2_path, first_tile, second_tile)
 
-        assert len(ref_pixels) == len(test_pixels), (
-            f"{desc}: component count mismatch: {len(ref_pixels)} vs {len(test_pixels)}"
-        )
+        assert len(ref_pixels) == len(
+            test_pixels
+        ), f"{desc}: component count mismatch: {len(ref_pixels)} vs {len(test_pixels)}"
         for c in range(len(ref_pixels)):
             assert ref_pixels[c] == test_pixels[c], (
                 f"{desc}: component {c} pixel data differs between fresh and "
@@ -246,9 +247,9 @@ class TestMultiDecompress:
 
         # First tile should still be in the cache
         tile_img = grok_core.grk_decompress_get_tile_image(codec, first_tile, True)
-        assert tile_img is not None, (
-            f"{desc}: first tile {first_tile} lost from cache after second decompress"
-        )
+        assert (
+            tile_img is not None
+        ), f"{desc}: first tile {first_tile} lost from cache after second decompress"
         assert tile_img.comps[0].w > 0
         assert tile_img.comps[0].h > 0
 
@@ -307,6 +308,7 @@ class TestMultiDecompress:
 # the second time they should be served from cache, not re-decompressed.
 # ---------------------------------------------------------------------------
 
+
 def _decompress_tile_set(jp2_path, tile_indices):
     """Decompress a sequence of tiles on a single codec and return
     {tile_index: pixel_data} for all decompressed tiles."""
@@ -345,21 +347,31 @@ def _decompress_tile_set(jp2_path, tile_indices):
 # (desc, extra_args, image_size, region_a_tiles, region_b_tiles)
 OVERLAP_CONFIGS = [
     # 4x4 grid with TLM: top-left region then center region (overlap at tile 5)
-    ("overlap_tlm_corner_center",
-     ["-t", "32,32", "-X"], 128,
-     [0, 1, 4, 5], [5, 6, 9, 10]),
+    (
+        "overlap_tlm_corner_center",
+        ["-t", "32,32", "-X"],
+        128,
+        [0, 1, 4, 5],
+        [5, 6, 9, 10],
+    ),
     # 4x4 grid with TLM: left column then right-shifted column (overlap at col 1)
-    ("overlap_tlm_columns",
-     ["-t", "32,32", "-X"], 128,
-     [0, 1, 4, 5, 8, 9, 12, 13], [1, 2, 5, 6, 9, 10, 13, 14]),
+    (
+        "overlap_tlm_columns",
+        ["-t", "32,32", "-X"],
+        128,
+        [0, 1, 4, 5, 8, 9, 12, 13],
+        [1, 2, 5, 6, 9, 10, 13, 14],
+    ),
     # 4x4 grid without TLM: same corner-center overlap
-    ("overlap_no_tlm_corner_center",
-     ["-t", "32,32"], 128,
-     [0, 1, 4, 5], [5, 6, 9, 10]),
+    ("overlap_no_tlm_corner_center", ["-t", "32,32"], 128, [0, 1, 4, 5], [5, 6, 9, 10]),
     # 4x4 grid without TLM: same column overlap
-    ("overlap_no_tlm_columns",
-     ["-t", "32,32"], 128,
-     [0, 1, 4, 5, 8, 9, 12, 13], [1, 2, 5, 6, 9, 10, 13, 14]),
+    (
+        "overlap_no_tlm_columns",
+        ["-t", "32,32"],
+        128,
+        [0, 1, 4, 5, 8, 9, 12, 13],
+        [1, 2, 5, 6, 9, 10, 13, 14],
+    ),
 ]
 
 
@@ -371,8 +383,9 @@ OVERLAP_CONFIGS = [
 def overlap_jp2(request, tmp_path_factory):
     desc, extra_args, size, region_a, region_b = request.param
     tmp_path = tmp_path_factory.mktemp(desc)
-    jp2_path = make_jp2(tmp_path, filename=f"{desc}.jp2",
-                        extra_args=extra_args, width=size, height=size)
+    jp2_path = make_jp2(
+        tmp_path, filename=f"{desc}.jp2", extra_args=extra_args, width=size, height=size
+    )
     return desc, jp2_path, region_a, region_b
 
 
@@ -402,9 +415,9 @@ class TestOverlappingRegionDecompress:
             ref_pixels = decompress_single_tile_fresh(jp2_path, idx)
             test_pixels = test_result[idx]
             for c in range(len(ref_pixels)):
-                assert ref_pixels[c] == test_pixels[c], (
-                    f"{desc}: overlap tile {idx} component {c} differs from fresh"
-                )
+                assert (
+                    ref_pixels[c] == test_pixels[c]
+                ), f"{desc}: overlap tile {idx} component {c} differs from fresh"
 
     def test_region_a_only_tiles_match_fresh(self, overlap_jp2):
         """Tiles exclusive to region A are correct after region B is decoded."""
@@ -420,9 +433,9 @@ class TestOverlappingRegionDecompress:
             ref_pixels = decompress_single_tile_fresh(jp2_path, idx)
             test_pixels = test_result[idx]
             for c in range(len(ref_pixels)):
-                assert ref_pixels[c] == test_pixels[c], (
-                    f"{desc}: region-A-only tile {idx} component {c} differs"
-                )
+                assert (
+                    ref_pixels[c] == test_pixels[c]
+                ), f"{desc}: region-A-only tile {idx} component {c} differs"
 
     def test_region_b_only_tiles_match_fresh(self, overlap_jp2):
         """Tiles exclusive to region B (newly decompressed) are correct."""
@@ -437,6 +450,6 @@ class TestOverlappingRegionDecompress:
             ref_pixels = decompress_single_tile_fresh(jp2_path, idx)
             test_pixels = test_result[idx]
             for c in range(len(ref_pixels)):
-                assert ref_pixels[c] == test_pixels[c], (
-                    f"{desc}: region-B-only tile {idx} component {c} differs"
-                )
+                assert (
+                    ref_pixels[c] == test_pixels[c]
+                ), f"{desc}: region-B-only tile {idx} component {c} differs"
