@@ -2,4 +2,4 @@ find . \( -type d \( -name CLI11 -o -name extern -o -name highway -o -name third
 -o \( -iname *.h -o -iname *.c -o -iname *.cpp -o -iname *.hpp \) -print \
 | xargs clang-format -style=file -i -fallback-style=none
 
-black . --extend-exclude '/(extern|thirdparty|spdlog|highway)/'
+black . --extend-exclude '/(extern|thirdparty|spdlog|highway|taskflow)/'
