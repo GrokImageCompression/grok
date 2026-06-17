@@ -14,4 +14,4 @@
 	update = none
 [submodule "src/include/taskflow"]
 	path = src/include/taskflow
-	url = https://github.com/taskflow/taskflow.git
+	url = https://github.com/boxerab/taskflow.git
