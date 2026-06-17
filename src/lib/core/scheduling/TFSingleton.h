@@ -41,10 +41,12 @@ public:
   {
     std::lock_guard<std::mutex> lock(mutex_);
     numThreads = numThreads ? numThreads : std::thread::hardware_concurrency();
-    if(numThreads_ == numThreads)
+    if(numThreads_ == numThreads && instance_)
       return;
     numThreads_ = numThreads;
-    instance_ = std::make_unique<tf::Executor>(numThreads_);
+    // numThreads == 1 => inline executor (0 workers): all work runs on the
+    // calling thread, keeping the process truly single-threaded.
+    instance_ = std::make_unique<tf::Executor>(numThreads_ == 1 ? 0 : numThreads_);
   }
 
   /**
@@ -58,8 +60,7 @@ public:
     {
       // Initialize with default thread count if instance is null
       numThreads_ = std::thread::hardware_concurrency();
-      ;
-      instance_ = std::make_unique<tf::Executor>(numThreads_);
+      instance_ = std::make_unique<tf::Executor>(numThreads_ == 1 ? 0 : numThreads_);
     }
     assert(instance_); // Should always be valid now
     return *instance_;
@@ -74,6 +75,15 @@ public:
   {
     std::lock_guard<std::mutex> lock(mutex_);
     return numThreads_;
+  }
+
+  /**
+   * @brief True when running single-threaded (inline executor, no workers).
+   */
+  static bool isSingleThreaded()
+  {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return numThreads_ == 1;
   }
 
   /**

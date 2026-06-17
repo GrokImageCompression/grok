@@ -536,6 +536,13 @@ bool CodeStreamDecompress::startTLMDecompress(std::set<uint16_t>& pendingTiles)
   TPFetchSeq::genCollections(&cp_.tlmMarkers_->getTileParts(), pendingTiles, tilePartFetchFlat_,
                              tilePartFetchByTile_);
 
+  // single thread: run the producer inline on the caller, no worker thread
+  if(TFSingleton::isSingleThreaded())
+  {
+    decompressTLM(pendingTiles);
+    return true;
+  }
+
   // start decompress worker
   decompressWorker_ = std::thread([this, pendingTiles]() { decompressTLM(pendingTiles); });
   return true;
@@ -565,6 +572,13 @@ bool CodeStreamDecompress::startSequentialDecompress(std::set<uint16_t>& pending
 
   // prepare sequential decompress
   decompressSequentialPrepare();
+
+  // single thread: run the producer inline on the caller, no worker thread
+  if(TFSingleton::isSingleThreaded())
+  {
+    decompressSequential(pendingTiles);
+    return true;
+  }
 
   // start decompress worker
   decompressWorker_ = std::thread([this, pendingTiles]() { decompressSequential(pendingTiles); });
@@ -1375,7 +1389,10 @@ bool CodeStreamDecompress::setDecompressRegion(RectD region)
 
 bool CodeStreamDecompress::doTileBatching(void)
 {
-  return tilesToDecompress_.getSlatedTiles().size() > 1 && cp_.asynchronous_;
+  // single thread runs the producer inline; batching throttles against a
+  // consumer thread that does not exist, so disable it.
+  return tilesToDecompress_.getSlatedTiles().size() > 1 && cp_.asynchronous_ &&
+         !TFSingleton::isSingleThreaded();
 }
 
 uint16_t CodeStreamDecompress::batchTileHeadroomIncrement(uint16_t numRows, uint16_t tilesLeft)
