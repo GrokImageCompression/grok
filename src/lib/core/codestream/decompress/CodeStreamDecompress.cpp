@@ -18,6 +18,7 @@
 #include <chrono>
 #include <cmath>
 #include <functional>
+#include <optional>
 
 #include "TFSingleton.h"
 #include "grk_fseek.h"
@@ -132,6 +133,12 @@ CodeStreamDecompress::CodeStreamDecompress(IStream* stream)
   tileMarkerParsers_.resize(TFSingleton::num_threads());
   std::generate(tileMarkerParsers_.begin(), tileMarkerParsers_.end(),
                 []() { return std::make_unique<MarkerParser>(); });
+
+  // Single-threaded mode: give this codec its own inline (0-worker) executor so
+  // concurrent decodes run on their own thread instead of contending on the
+  // global singleton.  Multi-threaded mode keeps using the shared pool.
+  if(TFSingleton::isSingleThreaded())
+    localExecutor_ = std::make_unique<tf::Executor>(0);
 }
 void CodeStreamDecompress::init(grk_decompress_parameters* parameters)
 {
@@ -166,6 +173,12 @@ void CodeStreamDecompress::setBandCallback(grk_io_band_callback callback, void* 
 
 bool CodeStreamDecompress::decompress(grk_plugin_tile* tile)
 {
+  // Route all scheduling/wavelet work onto this codec's own executor while
+  // decoding (single-threaded mode only; no-op when localExecutor_ is null).
+  std::optional<TFSingleton::ScopedExecutor> scopedExec;
+  if(localExecutor_)
+    scopedExec.emplace(localExecutor_.get(), 1);
+
   current_plugin_tile = tile;
 
   // GPU plugin T2-only fast path: skip heavy infrastructure
@@ -928,6 +941,12 @@ bool CodeStreamDecompress::sequentialParseAndSchedule(bool multiTile)
 
 bool CodeStreamDecompress::decompressTile(uint16_t tileIndex)
 {
+  // Route all scheduling/wavelet work onto this codec's own executor while
+  // decoding (single-threaded mode only; no-op when localExecutor_ is null).
+  std::optional<TFSingleton::ScopedExecutor> scopedExec;
+  if(localExecutor_)
+    scopedExec.emplace(localExecutor_.get(), 1);
+
   multiTileComposite_->postReadHeader(&cp_);
 
   // 1. sanity check on tile index

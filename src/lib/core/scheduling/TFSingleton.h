@@ -52,9 +52,15 @@ public:
   /**
    * @brief Gets current instance of the Singleton (creates with full hardware concurrency if null)
    * @return Taskflow Executor
+   *
+   * When a per-codec executor is active on this thread (see ScopedExecutor)
+   * it is returned lock-free, so concurrent single-threaded decodes do not
+   * contend on mutex_.  Otherwise the process-global executor is used.
    */
   static tf::Executor& get(void)
   {
+    if(tlsActive_)
+      return *tlsExec_;
     std::lock_guard<std::mutex> lock(mutex_);
     if(!instance_)
     {
@@ -73,6 +79,8 @@ public:
    */
   static size_t num_threads()
   {
+    if(tlsActive_)
+      return tlsNumThreads_;
     std::lock_guard<std::mutex> lock(mutex_);
     return numThreads_;
   }
@@ -82,6 +90,8 @@ public:
    */
   static bool isSingleThreaded()
   {
+    if(tlsActive_)
+      return tlsNumThreads_ == 1;
     std::lock_guard<std::mutex> lock(mutex_);
     return numThreads_ == 1;
   }
@@ -107,6 +117,39 @@ public:
     return (id >= 0) ? (uint32_t)id : 0u;
   }
 
+  /**
+   * @brief Scoped override that makes get()/num_threads()/workerId() resolve to a
+   * caller-owned executor on the current thread instead of the global singleton.
+   *
+   * Used in single-threaded mode so each codec runs on its own inline executor:
+   * concurrent decodes become independent and lock-free.  Saves and restores the
+   * previous thread-local values, so nesting (e.g. overviews) is safe.
+   */
+  class ScopedExecutor
+  {
+  public:
+    ScopedExecutor(tf::Executor* exec, size_t numThreads)
+        : prevExec_(tlsExec_), prevNumThreads_(tlsNumThreads_), prevActive_(tlsActive_)
+    {
+      tlsExec_ = exec;
+      tlsNumThreads_ = numThreads;
+      tlsActive_ = true;
+    }
+    ~ScopedExecutor()
+    {
+      tlsExec_ = prevExec_;
+      tlsNumThreads_ = prevNumThreads_;
+      tlsActive_ = prevActive_;
+    }
+    ScopedExecutor(const ScopedExecutor&) = delete;
+    ScopedExecutor& operator=(const ScopedExecutor&) = delete;
+
+  private:
+    tf::Executor* prevExec_;
+    size_t prevNumThreads_;
+    bool prevActive_;
+  };
+
 private:
   // Deleted copy constructor and assignment operator
   TFSingleton(const TFSingleton&) = delete;
@@ -130,4 +173,19 @@ private:
    * @brief total number of threads
    */
   static size_t numThreads_;
+
+  /**
+   * @brief Per-thread override executor (set by ScopedExecutor), or nullptr.
+   */
+  static thread_local tf::Executor* tlsExec_;
+
+  /**
+   * @brief Thread count reported while a ScopedExecutor override is active.
+   */
+  static thread_local size_t tlsNumThreads_;
+
+  /**
+   * @brief True while a ScopedExecutor override is active on this thread.
+   */
+  static thread_local bool tlsActive_;
 };

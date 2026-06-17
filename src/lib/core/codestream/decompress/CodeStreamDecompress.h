@@ -53,7 +53,12 @@ public:
       decompressConsumer_.join();
     if(decompressWorker_.joinable())
       decompressWorker_.join();
-    TFSingleton::get().wait_for_all();
+    // Wait on this codec's own executor when it owns one (single-threaded mode);
+    // the decode scope has already exited so the thread-local override is gone.
+    if(localExecutor_)
+      localExecutor_->wait_for_all();
+    else
+      TFSingleton::get().wait_for_all();
   }
 
   void init(grk_decompress_parameters* param) override;
@@ -589,6 +594,16 @@ private:
   CoderPool coderPool_;
 
   std::vector<std::unique_ptr<MarkerParser>> tileMarkerParsers_;
+
+  /**
+   * @brief Per-codec inline executor, owned only in single-threaded mode.
+   *
+   * When set, the decode runs on this executor (activated via
+   * TFSingleton::ScopedExecutor for the duration of decompress/decompressTile)
+   * instead of the process-global singleton, so concurrent single-threaded
+   * decodes are independent and lock-free.  Null in multi-threaded mode.
+   */
+  std::unique_ptr<tf::Executor> localExecutor_;
 
   /**
    * @brief global HT flag
