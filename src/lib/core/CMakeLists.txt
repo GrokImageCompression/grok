@@ -23,6 +23,7 @@ include_directories(
   ${GROK_SOURCE_DIR}/src/lib/codec/common
   ${GROK_SOURCE_DIR}/src/lib/codec
   ${GROK_SOURCE_DIR}/src/include
+  ${GROK_SOURCE_DIR}/src/include/taskflow # taskflow submodule (nests headers under taskflow/)
   ${CMAKE_CURRENT_SOURCE_DIR}
   ${CMAKE_CURRENT_SOURCE_DIR}/plugin
   ${CMAKE_CURRENT_SOURCE_DIR}/wavelet
