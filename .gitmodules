@@ -12,3 +12,6 @@
 	path = extern/grok-gpu-plugin
 	url = git@gitlab-rsa:GrokImageCompression/grok_gpu_plugin.git
 	update = none
+[submodule "src/include/taskflow"]
+	path = src/include/taskflow
+	url = https://github.com/taskflow/taskflow.git
