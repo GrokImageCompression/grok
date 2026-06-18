@@ -1021,24 +1021,36 @@ bool TileProcessor::createDecompressTileComponentWindows(void)
     if(can16Bit && tileComp->isWholeTileDecoding())
       tileComp->setUse16BitDwt(true);
   }
-  // MCT operates on all 3 components with the same data type;
-  // if any MCT component is not 16-bit, force all to 32-bit
-  if(needsMctDecompress() && tcp_->mct_ == 1 && tile_->numcomps_ >= 3)
+  // All output image components must share a single sample data type: the
+  // interleaved image writers (TIFF/PNG/...) select the element type from
+  // component 0 and apply it to every plane, and inverse MCT likewise requires
+  // a uniform type across its components. A mix is possible because MCT colour
+  // components and standalone components (e.g. an alpha channel) make the 16-bit
+  // eligibility decision independently — for irreversible 9/7, MCT (ICT)
+  // components fall back to int32 while a non-MCT 8-bit component qualifies for
+  // int16. If any component is not 16-bit, force them all to 32-bit.
+  //
+  // TODO(perf): forcing to int32 sacrifices the int16 DWT bandwidth saving on
+  // the otherwise-eligible components. A more efficient alternative is to keep
+  // those components on the int16 DWT path and widen int16 planes to int32 only
+  // at the packing/output boundary. That must be done centrally (e.g. a
+  // GrkImage component-type normalization applied after decode, before handoff),
+  // NOT in a single format writer: all writers (BMP/JPEG/PGX/PNG/PNM/RAW/TIFF)
+  // and grk_image API consumers assume a uniform comps[0] sample type/stride.
+  // Worth revisiting for images with many int16-eligible non-MCT channels.
+  bool all16 = true;
+  for(uint16_t compno = 0; compno < tile_->numcomps_; ++compno)
   {
-    bool all16 = true;
-    for(uint16_t compno = 0; compno < 3; ++compno)
+    if(!tile_->comps_[compno].is16BitDwt())
     {
-      if(!tile_->comps_[compno].is16BitDwt())
-      {
-        all16 = false;
-        break;
-      }
+      all16 = false;
+      break;
     }
-    if(!all16)
-    {
-      for(uint16_t compno = 0; compno < 3; ++compno)
-        tile_->comps_[compno].setUse16BitDwt(false);
-    }
+  }
+  if(!all16)
+  {
+    for(uint16_t compno = 0; compno < tile_->numcomps_; ++compno)
+      tile_->comps_[compno].setUse16BitDwt(false);
   }
   for(uint16_t compno = 0; compno < tile_->numcomps_; ++compno)
   {
