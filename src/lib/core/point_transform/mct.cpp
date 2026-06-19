@@ -373,11 +373,15 @@ namespace HWY_NAMESPACE
   };
 
   /**
-   * Apply MCT with optional DC shift to irreversible decompressed image (16-bit path)
-   * Uses fixed-point Q15 arithmetic for the ICT coefficients.
-   * For coefficients > 1.0, split into integer + fractional: e.g. 1.402 = 1 + 0.402
+   * Apply MCT with optional DC shift to irreversible decompressed image (16-bit buffers).
+   * Reads and writes int16 buffers but performs the inverse ICT in floating point,
+   * widening int16 -> float in-register and narrowing the result back to int16. The ICT
+   * itself is therefore bit-identical to the reference float path (DecompressIrrev) - no
+   * fixed-point rounding - while keeping the int16 memory footprint. The only residual
+   * difference vs the int32 pipeline is the int16 reverse DWT, which is already used for
+   * non-MCT irreversible components.
    */
-  class DecompressIrrev16
+  class DecompressIrrevFloat16
   {
   public:
     void transform(const ScheduleInfo& info)
@@ -402,49 +406,66 @@ namespace HWY_NAMESPACE
       auto chan2 = w2.buf_;
 
       const HWY_FULL(int16_t) di16;
+      const hwy::HWY_NAMESPACE::Half<decltype(di16)> di16h;
+      const hwy::HWY_NAMESPACE::Repartition<int32_t, decltype(di16)> di32;
+      const hwy::HWY_NAMESPACE::Repartition<float, decltype(di16)> df;
 
-      int16_t shift[3] = {(int16_t)shiftInfo[0]._shift, (int16_t)shiftInfo[1]._shift,
-                          (int16_t)shiftInfo[2]._shift};
-      int16_t _min[3] = {(int16_t)shiftInfo[0]._min, (int16_t)shiftInfo[1]._min,
-                         (int16_t)shiftInfo[2]._min};
-      int16_t _max[3] = {(int16_t)shiftInfo[0]._max, (int16_t)shiftInfo[1]._max,
-                         (int16_t)shiftInfo[2]._max};
-      auto vdcr = Set(di16, shift[0]);
-      auto vdcg = Set(di16, shift[1]);
-      auto vdcb = Set(di16, shift[2]);
-      auto minr = Set(di16, _min[0]);
-      auto ming = Set(di16, _min[1]);
-      auto minb = Set(di16, _min[2]);
-      auto maxr = Set(di16, _max[0]);
-      auto maxg = Set(di16, _max[1]);
-      auto maxb = Set(di16, _max[2]);
+      int32_t shift[3] = {shiftInfo[0]._shift, shiftInfo[1]._shift, shiftInfo[2]._shift};
+      int32_t _min[3] = {shiftInfo[0]._min, shiftInfo[1]._min, shiftInfo[2]._min};
+      int32_t _max[3] = {shiftInfo[0]._max, shiftInfo[1]._max, shiftInfo[2]._max};
+      auto vdcr = Set(di32, shift[0]);
+      auto vdcg = Set(di32, shift[1]);
+      auto vdcb = Set(di32, shift[2]);
+      auto minr = Set(di32, _min[0]);
+      auto ming = Set(di32, _min[1]);
+      auto minb = Set(di32, _min[2]);
+      auto maxr = Set(di32, _max[0]);
+      auto maxg = Set(di32, _max[1]);
+      auto maxb = Set(di32, _max[2]);
 
-      // ICT coefficients in Q15 fixed-point
-      // R = Y + 1.402*Cr = Y + Cr + 0.402*Cr
-      // G = Y - 0.34413*Cb - 0.71414*Cr
-      // B = Y + 1.772*Cb = Y + Cb + 0.772*Cb
-      const auto vCrR_frac = Set(di16, (int16_t)13173); // round(0.402 * 32768)
-      const auto vCbG = Set(di16, (int16_t)11276); // round(0.34413 * 32768)
-      const auto vCrG = Set(di16, (int16_t)23401); // round(0.71414 * 32768)
-      const auto vCbB_frac = Set(di16, (int16_t)25297); // round(0.772 * 32768)
+      // Exact ICT coefficients (identical to the reference float path DecompressIrrev):
+      //   R = Y + 1.402*Cr
+      //   G = Y - 0.34413*Cb - 0.71414*Cr
+      //   B = Y + 1.772*Cb
+      auto vrv = Set(df, 1.402f);
+      auto vgu = Set(df, 0.34413f);
+      auto vgv = Set(df, 0.71414f);
+      auto vbu = Set(df, 1.772f);
+
+      // Components arrive in the Q-format scale (left-shifted by qShift at dequant
+      // and carried through the inverse DWT).  This is the synthesis sink, so the
+      // ICT (which is scale-invariant) is computed in that scale and the result is
+      // brought back to sample scale by multiplying by 2^-qShift before rounding.
+      const int qShift = info.tile->comps_[0].qShift();
+      const auto vInvScale = Set(df, qShift > 0 ? (1.0f / (float)(1u << qShift)) : 1.0f);
 
       size_t begin = index;
       for(auto j = begin; j < begin + chunkSize; j += Lanes(di16))
       {
-        auto vy = Load(di16, chan0 + j);
-        auto vu = Load(di16, chan1 + j);
-        auto vv = Load(di16, chan2 + j);
+        auto y16 = Load(di16, chan0 + j);
+        auto u16 = Load(di16, chan1 + j);
+        auto v16 = Load(di16, chan2 + j);
 
-        // R = Y + Cr + round(0.402 * Cr)
-        auto vr = vy + vv + MulFixedPoint15(vv, vCrR_frac);
-        // G = Y - round(0.34413 * Cb) - round(0.71414 * Cr)
-        auto vg = vy - MulFixedPoint15(vu, vCbG) - MulFixedPoint15(vv, vCrG);
-        // B = Y + Cb + round(0.772 * Cb)
-        auto vb = vy + vu + MulFixedPoint15(vu, vCbB_frac);
+        // lower half: int16 -> int32 -> float, ICT, descale, round-to-nearest, dc-shift, clamp
+        auto yl = ConvertTo(df, PromoteLowerTo(di32, y16));
+        auto ul = ConvertTo(df, PromoteLowerTo(di32, u16));
+        auto vl = ConvertTo(df, PromoteLowerTo(di32, v16));
+        auto rl = Clamp(NearestInt((yl + vl * vrv) * vInvScale) + vdcr, minr, maxr);
+        auto gl = Clamp(NearestInt((yl - ul * vgu - vl * vgv) * vInvScale) + vdcg, ming, maxg);
+        auto bl = Clamp(NearestInt((yl + ul * vbu) * vInvScale) + vdcb, minb, maxb);
 
-        Store(Clamp(vr + vdcr, minr, maxr), di16, chan0 + j);
-        Store(Clamp(vg + vdcg, ming, maxg), di16, chan1 + j);
-        Store(Clamp(vb + vdcb, minb, maxb), di16, chan2 + j);
+        // upper half
+        auto yh = ConvertTo(df, PromoteUpperTo(di32, y16));
+        auto uh = ConvertTo(df, PromoteUpperTo(di32, u16));
+        auto vh = ConvertTo(df, PromoteUpperTo(di32, v16));
+        auto rh = Clamp(NearestInt((yh + vh * vrv) * vInvScale) + vdcr, minr, maxr);
+        auto gh = Clamp(NearestInt((yh - uh * vgu - vh * vgv) * vInvScale) + vdcg, ming, maxg);
+        auto bh = Clamp(NearestInt((yh + uh * vbu) * vInvScale) + vdcb, minb, maxb);
+
+        // narrow int32 -> int16 (saturating, but already clamped) and recombine halves
+        Store(Combine(di16, DemoteTo(di16h, rh), DemoteTo(di16h, rl)), di16, chan0 + j);
+        Store(Combine(di16, DemoteTo(di16h, gh), DemoteTo(di16h, gl)), di16, chan1 + j);
+        Store(Combine(di16, DemoteTo(di16h, bh), DemoteTo(di16h, bl)), di16, chan2 + j);
       }
     }
   };
@@ -662,7 +683,7 @@ namespace HWY_NAMESPACE
 
   void hwy_schedule_decompress_irrev16(ScheduleInfo info)
   {
-    vscheduler16<DecompressIrrev16>(info);
+    vscheduler16<DecompressIrrevFloat16>(info);
   }
 } // namespace HWY_NAMESPACE
 } // namespace grk

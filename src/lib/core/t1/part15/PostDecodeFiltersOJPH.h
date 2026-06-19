@@ -167,7 +167,8 @@ class NarrowScaleOJPHFilter16
 {
 public:
   explicit NarrowScaleOJPHFilter16(DecompressBlockExec* block)
-      : scale_(block->stepsize / (float)(1u << (31 - block->bandNumbps)))
+      : scale_(block->stepsize / (float)(1u << (31 - block->bandNumbps)) *
+               (float)(1u << block->qShift))
   {
     assert(block->bandNumbps <= 31);
   }
@@ -197,7 +198,8 @@ class NarrowRoiScaleOJPHFilter16
 public:
   explicit NarrowRoiScaleOJPHFilter16(DecompressBlockExec* block)
       : roiShift_(block->roishift),
-        scale_(block->stepsize / (float)(1u << (31 - block->bandNumbps)))
+        scale_(block->stepsize / (float)(1u << (31 - block->bandNumbps)) *
+               (float)(1u << block->qShift))
   {
     assert(block->bandNumbps <= 31);
   }

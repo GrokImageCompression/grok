@@ -414,75 +414,50 @@ grk_image* grk_image_new(uint16_t numcmpts, grk_image_comp* cmptparms, GRK_COLOR
   return GrkImage::create(nullptr, numcmpts, cmptparms, clrspc, alloc_data);
 }
 
-grk_data_type grk_get_data_type(bool compress, uint8_t prec, bool is_mct, uint8_t qmfbid,
-                                bool fast_mct)
+grk_data_type grk_get_data_type(bool compress, uint8_t prec, bool is_mct, uint8_t qmfbid)
 {
-  // Reversible 5/3 (ITU-T T.800 Annex F.3.4):
-  //   The 5/3 analysis lifting steps are:
-  //     D[n] -= floor((S[n] + S[n+1]) / 2)         (prediction)
-  //     S[n] += floor((D[n-1] + D[n] + 2) / 4)     (update)
-  //   BIBO (Bounded-Input Bounded-Output) gain analysis shows intermediate
-  //   values can grow by at most 2^3 (≤6 levels) or 2^4 (>6 levels), plus
-  //   1 extra bit when the reversible colour transform (RCT, ITU-T T.800
-  //   Annex G.2) is applied.  The update step uses an overflow-safe
-  //   averaging operator (see WaveletFwd.cpp) so only the prediction step's
-  //   pre-accumulation headroom limits the working precision:
-  //     prec + headroom ≤ 16
-  //   where headroom = 4 (no MCT) or 5 (MCT, RCT component).
-  //   See doc/16BitDWT.md for full BIBO analysis and overflow-safe averaging details.
+  // 16- vs 32-bit data-type selection, derived from BIBO (bounded-input
+  // bounded-output) analysis of the inverse wavelet transform.  The int16 path
+  // stores coefficients in a fixed-point representation, so it is only viable when
+  // the sample precision plus the worst-case headroom the transform needs still
+  // fits in the 16-bit container:
+  //     recommended = prec + headroom;   use int16 iff recommended <= 16.
+  //
+  //   Reversible 5/3 (T.800 F.3.4): the lifting is exact integer arithmetic, so no
+  //   fractional bits are required — the only headroom is BIBO dynamic-range growth.
+  //   The 2D inverse 5/3 BIBO gain needs 4 bits, plus 1 more when the reversible
+  //   colour transform (RCT) adds its extra bit of range; a further guard bit is
+  //   reserved once the total already exceeds 16.  int16 is therefore bit-exact for
+  //   5/3 up to prec 12 (non-MCT) / 11 (MCT).
+  //
+  //   Irreversible 9/7 (T.800 F.3.5): the transform is real-valued, so the int16
+  //   fixed-point coefficients must ALSO carry fractional bits, or the per-step
+  //   lifting rounding accumulates into visible error (it compounds across the
+  //   ~10 lifting/scaling ops of a 2D level and across decomposition levels).
+  //   The 7-bit headroom budgets ~3 bits for the 9/7 2D BIBO gain (intermediate
+  //   lifting values exceed the reconstructed sample) and ~4 bits of fractional
+  //   precision to keep that accumulated rounding well under 1 LSB.  So
+  //   prec + 7 <= 16  =>  prec <= 9 uses int16 (>= 4 fractional bits, near-float
+  //   accuracy); at prec >= 10 the fractional margin collapses, so 10/11/12-bit
+  //   (incl. DCI) decode in 32-bit float — exact, and consistent with the int32
+  //   region/partial-decode path.  See doc/16BitDWT.md and WaveletReverse97_16.cpp.
+  int recommended;
   if(qmfbid == 1) // reversible 5/3
   {
-    uint32_t headroom = is_mct ? 5 : 4;
-    if(prec + headroom <= 16)
-      return GRK_INT_16;
+    recommended = (int)prec + (is_mct ? 5 : 4);
+    if(recommended > 16)
+      ++recommended;
   }
-  // Irreversible 9/7 (ITU-T T.800 Annex F.3.5):
-  //   The 9/7 analysis uses four lifting steps with coefficients
-  //   α=-1.586, β=-0.053, γ=0.883, δ=0.444 followed by K-scaling.
-  //
-  //   Compress: because the lowpass BIBO gain per level ≈ 6× (dominated by
-  //   the large |α| coefficient), intermediate values compound across
-  //   decomposition levels.  Fixed-point 16-bit processing is feasible only
-  //   when prec + 6 ≤ 16  →  prec ≤ 10.
-  //   The implementation uses an odd-branch (high-pass) halving strategy
-  //   that stores D samples at half magnitude through the lifting chain,
-  //   with adjusted coefficients and a normalizing factor computed from
-  //   BIBO gains (see WaveletFwd.cpp).
-  //   MCT components are excluded because the irreversible colour transform
-  //   (ICT) operates on float buffers.
-  //
-  //   Decompress: the headroom scaling strategy (normalizing_upshift) keeps
-  //   intermediate values within int16 range for prec ≤ 12 — see
-  //   wavelet/WaveletReverse97_16.cpp.
-  //   MCT (ICT) is applied AFTER inverse DWT on each component independently
-  //   and does not affect DWT overflow.  The ICT output for 12-bit data
-  //   (worst-case ~5700 via 1.772× Cb amplification) fits in int16.
-  //   When fast_mct is set, DecompressIrrev16 performs ICT in Q15 fixed-point,
-  //   introducing ±1-2 LSB rounding vs the reference float path — acceptable
-  //   for lossy decode.  Without fast_mct, MCT components use the standard
-  //   float path (int32 buffers) for bit-exact conformance.
-  //
-  //   Future option: a float-ICT variant (DecompressIrrevFloat16) could read
-  //   int16 DWT output, widen to float, apply standard float ICT, and narrow
-  //   back to int16.  This would eliminate ICT rounding error while keeping
-  //   int16 DWT memory savings — useful if stricter conformance is needed.
-  else if(qmfbid == 0) // irreversible 9/7
+  else // irreversible 9/7
   {
-    if(compress)
-    {
-      if(!is_mct && prec + 6 <= 16)
-        return GRK_INT_16;
-    }
-    else
-    {
-      if(!is_mct || fast_mct)
-      {
-        if(prec <= 12)
-          return GRK_INT_16;
-      }
-    }
+    // The forward ICT operates on float buffers, so MCT components cannot use the
+    // int16 path on compress; the inverse ICT (DecompressIrrevFloat16) supports
+    // int16, so decompress has no such restriction.
+    if(compress && is_mct)
+      return GRK_INT_32;
+    recommended = (int)prec + 7;
   }
-  return GRK_INT_32;
+  return recommended <= 16 ? GRK_INT_16 : GRK_INT_32;
 }
 
 grk_image_meta* grk_image_meta_new(void)

@@ -211,30 +211,6 @@ option(GRK_BUILD_CODEC "Build the CODEC executables" ON)
 option(GRK_BUILD_PLUGIN_LOADER "Enable loading of T1 plugin" OFF)
 mark_as_advanced(GRK_BUILD_PLUGIN_LOADER)
 
-# Sicorax Rust scheduling library (used by freebyrd scheduler)
-option(GRK_USE_SCX_SCHEDULING "Link sicorax Rust scheduling library for freebyrd scheduler" OFF)
-if(GRK_USE_SCX_SCHEDULING)
-  set(SCX_SCHEDULING_DIR "${CMAKE_SOURCE_DIR}/../sicorax" CACHE PATH "Path to sicorax source tree")
-  set(SCX_SCHEDULING_LIB "${SCX_SCHEDULING_DIR}/crates/scx-scheduling/target/release/libscx_scheduling.a")
-  if(NOT EXISTS "${SCX_SCHEDULING_LIB}")
-    message(STATUS "Building sicorax scx-scheduling Rust crate...")
-    execute_process(
-      COMMAND cargo build --release
-      WORKING_DIRECTORY "${SCX_SCHEDULING_DIR}/crates/scx-scheduling"
-      RESULT_VARIABLE SCX_BUILD_RESULT
-    )
-    if(NOT SCX_BUILD_RESULT EQUAL 0)
-      message(FATAL_ERROR "Failed to build scx-scheduling Rust crate")
-    endif()
-  endif()
-  add_library(scx_scheduling STATIC IMPORTED)
-  set_target_properties(scx_scheduling PROPERTIES IMPORTED_LOCATION "${SCX_SCHEDULING_LIB}")
-  # Rust static libs on Linux need pthread and dl
-  if(UNIX AND NOT APPLE)
-    set_target_properties(scx_scheduling PROPERTIES INTERFACE_LINK_LIBRARIES "pthread;dl")
-  endif()
-endif()
-
 set(SPDLOG_INSTALL OFF CACHE BOOL "" FORCE)
 set(SPDLOG_BUILD_EXAMPLE OFF CACHE BOOL "" FORCE)
 set(SPDLOG_BUILD_TESTS OFF CACHE BOOL "" FORCE)

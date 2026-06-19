@@ -128,7 +128,7 @@ bool TileProcessorCompress::preCompressTile([[maybe_unused]] size_t thread_id)
     if(tileComp->num_resolutions_ > 1)
     {
       bool isMctComp = needsMctDecompress(compno) && tcp_->mct_ == 1;
-      if(grk_get_data_type(true, imageComp->prec, isMctComp, tccp->qmfbid_, false) == GRK_INT_16)
+      if(grk_get_data_type(true, imageComp->prec, isMctComp, tccp->qmfbid_) == GRK_INT_16)
         tileComp->setUse16BitDwt(true);
     }
   }

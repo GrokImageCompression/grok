@@ -1012,9 +1012,8 @@ bool TileProcessor::createDecompressTileComponentWindows(void)
     auto tileComp = tile_->comps_ + compno;
     auto tccp = tcp_->tccps_ + compno;
     bool isMctComp = needsMctDecompress(compno) && tcp_->mct_ == 1;
-    bool fastMct = cp_->codingParams_.dec_.fast16BitMct_;
     bool can16Bit =
-        grk_get_data_type(false, imageComp->prec, isMctComp, tccp->qmfbid_, fastMct) == GRK_INT_16;
+        grk_get_data_type(false, imageComp->prec, isMctComp, tccp->qmfbid_) == GRK_INT_16;
     // 16-bit DWT is currently only supported for whole-tile decode; the region/partial
     // decode path still requires int32_t because SparseCanvas and WaveletReversePartial
     // are not yet templated on sample type.
@@ -1056,6 +1055,17 @@ bool TileProcessor::createDecompressTileComponentWindows(void)
   {
     auto imageComp = headerImage_->comps + compno;
     auto tileComp = tile_->comps_ + compno;
+    // Q-format fractional bits for the int16 9/7 path: coefficients are dequantized
+    // left-shifted by qShift and shifted back at synthesis output, retaining
+    // sub-LSB precision through the fixed-point lifting.  13 = 16-bit container
+    // minus ~3 bits reserved for the 9/7 2D BIBO intermediate gain; the gate
+    // (prec <= 9 for int16 9/7) leaves >= 4 fractional bits.  Reversible 5/3 is
+    // exact integer arithmetic and keeps qShift 0; int32/float keeps 0.
+    if(tileComp->is16BitDwt() && (tcp_->tccps_ + compno)->qmfbid_ == 0 && imageComp->prec < 13 &&
+       tileComp->num_resolutions_ > 1)
+      tileComp->setQShift((uint8_t)(13 - imageComp->prec));
+    else
+      tileComp->setQShift(0);
     auto unreducedImageCompWindow =
         unreducedImageWindow_.scaleDownCeil(imageComp->dx, imageComp->dy);
     if(!tileComp->canCreateWindow(unreducedImageCompWindow))

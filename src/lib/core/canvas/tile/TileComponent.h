@@ -330,6 +330,18 @@ struct TileComponent : public Rect32
   {
     use16BitDwt_ = use16Bit;
   }
+  // Fractional bits carried in the int16 fixed-point (Q-format) 9/7 DWT path:
+  // coefficients are dequantized left-shifted by qShift, kept upshifted across all
+  // levels, and shifted back down at the synthesis output.  0 for int32/float and
+  // for reversible 5/3 (which is exact integer). See WaveletReverse97_16.cpp.
+  uint8_t qShift() const
+  {
+    return qShift_;
+  }
+  void setQShift(uint8_t q)
+  {
+    qShift_ = q;
+  }
   // Type-independent operations through ITileComponentWindow interface
   bool allocWindow()
   {
@@ -453,6 +465,7 @@ private:
    */
   ITileComponentWindow* window_;
   bool use16BitDwt_ = false;
+  uint8_t qShift_ = 0;
   /**
    * @brief @ref TileComponentCodingParams
    *

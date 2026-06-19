@@ -540,6 +540,16 @@ namespace HWY_NAMESPACE
     return (int16_t)(x + mf15(x, scale_invK_frac));
   }
 
+  /**
+   * @brief Round-to-nearest right shift by `u` bits (the inverse of the
+   * fractional upshift applied at the H-synthesis input).  Returns x unchanged
+   * when u == 0.  See the "FRACTIONAL UPSHIFT" note in hwy_h_synth_16_97.
+   */
+  static inline int16_t down_round(int16_t x, int u)
+  {
+    return u > 0 ? (int16_t)(((int32_t)x + (1 << (u - 1))) >> u) : x;
+  }
+
   /**************************************************************************
    *  Scalar Vertical 1D 16-bit 9/7 Synthesis (column-at-a-time)
    *
@@ -568,6 +578,8 @@ namespace HWY_NAMESPACE
       return;
     if(height == 1)
     {
+      // coefficients are in Q-format; output stays in Q-format (intermediate level
+      // or MCT component) — the sink (final non-MCT level / inverse MCT) downshifts.
       if(parity == 0)
         *dest = apply_K_scale(*bandL);
       else
@@ -626,7 +638,7 @@ namespace HWY_NAMESPACE
       scratch[i] = (int16_t)(scratch[i] + even_sum + frac);
     }
 
-    // Scatter from contiguous scratch back to strided destination column
+    // Scatter to strided destination column (stays in Q-format; sink downshifts)
     for(uint32_t i = 0; i < height; ++i)
     {
       *dest = scratch[i];
@@ -649,23 +661,24 @@ namespace HWY_NAMESPACE
    *
    *  All arithmetic stays in int16 since dc_shift and dc_max fit for ≤12-bit.
    **************************************************************************/
-  [[maybe_unused]] static void scalar_v_synth_16_97_dc(int16_t* scratch, uint32_t height,
-                                                       const int16_t* bandL, uint32_t strideL,
-                                                       const int16_t* bandH, uint32_t strideH,
-                                                       int16_t* dest, uint32_t strideDest,
-                                                       uint32_t parity, uint32_t sn, uint32_t dn,
-                                                       int16_t dc, int16_t dcMin, int16_t dcMax)
+  [[maybe_unused]] static void
+      scalar_v_synth_16_97_dc(int16_t* scratch, uint32_t height, const int16_t* bandL,
+                              uint32_t strideL, const int16_t* bandH, uint32_t strideH,
+                              int16_t* dest, uint32_t strideDest, uint32_t parity, uint32_t sn,
+                              uint32_t dn, int16_t dc, int16_t dcMin, int16_t dcMax, int qShift)
   {
-    // Synthesize into scratch first (using scratch as both workspace and
-    // temporary destination with stride=1)
+    // Synthesize into scratch first (using scratch as both workspace and temporary
+    // destination with stride=1); the result is in Q-format.
     scalar_v_synth_16_97(scratch, height, bandL, strideL, bandH, strideH, scratch, 1, parity, sn,
                          dn);
 
-    // Apply DC shift and clamp, scatter to strided destination column
+    // This is the synthesis sink: round the Q-format fractional bits back out,
+    // apply DC shift and clamp, scatter to strided destination column.
+    int32_t round = qShift > 0 ? (1 << (qShift - 1)) : 0;
     for(uint32_t i = 0; i < height; ++i)
     {
-      int16_t val = (int16_t)std::clamp<int32_t>((int32_t)scratch[i] + dc, dcMin, dcMax);
-      *dest = val;
+      int32_t s = ((int32_t)scratch[i] + round) >> qShift;
+      *dest = (int16_t)std::clamp<int32_t>(s + dc, dcMin, dcMax);
       dest += strideDest;
     }
   }
@@ -694,6 +707,12 @@ namespace HWY_NAMESPACE
    *      Steps targeting E: left = O[k],   right = O[k+1]
    *      Steps targeting O: left = E[k-1], right = E[k]
    **************************************************************************/
+  /*
+   *  Coefficients arrive already in the fixed-point Q-format (dequantized with a
+   *  qShift left-shift, see PostDecodeFilters / TileProcessor), so the synthesis
+   *  here simply runs in that scale; the fractional bits are removed once at the
+   *  vertical-synthesis output (hwy_v_synth_16_97) / inverse MCT.
+   */
   static void hwy_h_synth_16_97(int16_t* scratch, uint32_t width, const int16_t* bandL,
                                 const int16_t* bandH, int16_t* dest, uint32_t parity, uint32_t sn,
                                 uint32_t dn)
@@ -719,7 +738,7 @@ namespace HWY_NAMESPACE
     int16_t* E = scratch;
     int16_t* O = scratch + sn;
 
-    /* Phase 1: Scale L → E with K, H → O with 2/K */
+    /* Phase 1: scale L → E with K, H → O with 2/K */
     uint32_t k;
     for(k = 0; k + L <= sn; k += L)
     {
@@ -957,7 +976,7 @@ namespace HWY_NAMESPACE
                                 uint32_t strideL, const int16_t* bandH, uint32_t strideH,
                                 int16_t* dest, uint32_t strideDest, uint32_t parity,
                                 [[maybe_unused]] uint32_t sn, [[maybe_unused]] uint32_t dn,
-                                int16_t dc, int16_t dcMin, int16_t dcMax)
+                                int16_t dc, int16_t dcMin, int16_t dcMax, int qShift)
   {
     const HWY_FULL(int16_t) di;
     const auto L = (uint32_t)Lanes(di);
@@ -1076,19 +1095,27 @@ namespace HWY_NAMESPACE
     }
 
     /* ------------------------------------------------------------------ */
-    /*  Phase 3: Scatter to strided destination with optional DC shift     */
+    /*  Phase 3: Scatter to strided destination                            */
+    /*                                                                     */
+    /*  dc != 0 marks the final non-MCT level: this is the synthesis sink, */
+    /*  so round the Q-format fractional bits back out (round-shift by      */
+    /*  qShift), add the DC level shift and clamp.  dc == 0 is either an    */
+    /*  intermediate level or an MCT component, whose output stays in       */
+    /*  Q-format for the next level / the inverse MCT to consume; copy it   */
+    /*  through unchanged.                                                  */
     /* ------------------------------------------------------------------ */
     if(dc != 0)
     {
+      const auto vRound = Set(di, (int16_t)(qShift > 0 ? (1 << (qShift - 1)) : 0));
       const auto vdc = Set(di, dc);
       const auto vmin = Set(di, dcMin);
       const auto vmax = Set(di, dcMax);
       for(uint32_t i = 0; i < height; ++i)
       {
-        auto v0 = Clamp(Load(di, scratch + (size_t)i * PLL) + vdc, vmin, vmax);
-        auto v1 = Clamp(Load(di, scratch + (size_t)i * PLL + L) + vdc, vmin, vmax);
-        StoreU(v0, di, dest + (size_t)i * strideDest);
-        StoreU(v1, di, dest + (size_t)i * strideDest + L);
+        auto s0 = ShiftRightSame(Load(di, scratch + (size_t)i * PLL) + vRound, qShift);
+        auto s1 = ShiftRightSame(Load(di, scratch + (size_t)i * PLL + L) + vRound, qShift);
+        StoreU(Clamp(s0 + vdc, vmin, vmax), di, dest + (size_t)i * strideDest);
+        StoreU(Clamp(s1 + vdc, vmin, vmax), di, dest + (size_t)i * strideDest + L);
       }
     }
     else
@@ -1279,7 +1306,8 @@ void WaveletReverse::v_16_97(const dwt_scratch<int16_t>* scratch, Buffer2dSimple
   {
     HWY_DYNAMIC_DISPATCH(hwy_v_synth_16_97)
     (scratch->mem, height, winL.buf_, winL.stride_, winH.buf_, winH.stride_, winDest.buf_,
-     winDest.stride_, scratch->parity, scratch->sn, scratch->dn, dc, dcMin, dcMax);
+     winDest.stride_, scratch->parity, scratch->sn, scratch->dn, dc, dcMin, dcMax,
+     tilec_->qShift());
     return;
   }
 
@@ -1287,9 +1315,10 @@ void WaveletReverse::v_16_97(const dwt_scratch<int16_t>* scratch, Buffer2dSimple
   {
     if(dcShift.enabled)
     {
-      HWY_NAMESPACE::scalar_v_synth_16_97_dc(
-          scratch->mem, height, winL.buf_, winL.stride_, winH.buf_, winH.stride_, winDest.buf_,
-          winDest.stride_, scratch->parity, scratch->sn, scratch->dn, dc, dcMin, dcMax);
+      HWY_NAMESPACE::scalar_v_synth_16_97_dc(scratch->mem, height, winL.buf_, winL.stride_,
+                                             winH.buf_, winH.stride_, winDest.buf_, winDest.stride_,
+                                             scratch->parity, scratch->sn, scratch->dn, dc, dcMin,
+                                             dcMax, tilec_->qShift());
     }
     else
     {

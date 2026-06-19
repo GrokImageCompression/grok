@@ -208,6 +208,7 @@ bool DecompressScheduler::scheduleT1(ITileProcessor* tileProcessor)
               block->cblk = cblk;
               block->cblk_sty = tccp->cblkStyle_;
               block->qmfbid = tccp->qmfbid_;
+              block->qShift = tilec->qShift();
               block->resno = resno;
               block->roishift = tccp->roishift_;
               block->stepsize = band->stepsize_;

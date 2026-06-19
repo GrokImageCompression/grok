@@ -150,7 +150,11 @@ private:
 class NarrowScaleFilter16
 {
 public:
-  NarrowScaleFilter16(DecompressBlockExec* block) : scale_(block->stepsize / 2) {}
+  // scale = stepsize/2, left-shifted by qShift to dequantize into the Q-format
+  // int16 DWT representation (qShift==0 leaves the value at sample scale).
+  NarrowScaleFilter16(DecompressBlockExec* block)
+      : scale_(block->stepsize / 2 * (float)(1u << block->qShift))
+  {}
   inline void copy(int16_t* dest, const int32_t* src, uint32_t len)
   {
     for(uint32_t i = 0; i < len; ++i)
@@ -175,7 +179,7 @@ class NarrowRoiScaleFilter16
 {
 public:
   NarrowRoiScaleFilter16(DecompressBlockExec* block)
-      : roiShift_(block->roishift), scale_(block->stepsize / 2)
+      : roiShift_(block->roishift), scale_(block->stepsize / 2 * (float)(1u << block->qShift))
   {}
   inline void copy(int16_t* dest, const int32_t* src, uint32_t len)
   {
