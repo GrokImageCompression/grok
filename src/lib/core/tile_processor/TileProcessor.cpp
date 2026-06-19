@@ -1056,14 +1056,19 @@ bool TileProcessor::createDecompressTileComponentWindows(void)
     auto imageComp = headerImage_->comps + compno;
     auto tileComp = tile_->comps_ + compno;
     // Q-format fractional bits for the int16 9/7 path: coefficients are dequantized
-    // left-shifted by qShift and shifted back at synthesis output, retaining
-    // sub-LSB precision through the fixed-point lifting.  13 = 16-bit container
-    // minus ~3 bits reserved for the 9/7 2D BIBO intermediate gain; the gate
-    // (prec <= 9 for int16 9/7) leaves >= 4 fractional bits.  Reversible 5/3 is
-    // exact integer arithmetic and keeps qShift 0; int32/float keeps 0.
-    if(tileComp->is16BitDwt() && (tcp_->tccps_ + compno)->qmfbid_ == 0 && imageComp->prec < 13 &&
-       tileComp->num_resolutions_ > 1)
-      tileComp->setQShift((uint8_t)(13 - imageComp->prec));
+    // left-shifted by qShift and shifted back at the synthesis output, retaining
+    // sub-LSB precision through the fixed-point lifting.
+    //
+    // qShift = 12 - prec scales a prec-bit image's coefficients to the SAME int16
+    // magnitude that the (previously validated) prec <= 12 int16 9/7 path produced
+    // at qShift 0 — i.e. it stays inside the dynamic-range envelope already known
+    // not to overflow, leaving ~3 bits of int16 headroom for the 2D BIBO lifting
+    // gain.  For the eligible range (prec <= 9, see grk_get_data_type) that yields
+    // 3-4 fractional bits (8-bit -> 4, 9-bit -> 3) — enough for near-float accuracy.
+    // Reversible 5/3 is exact integer arithmetic and keeps qShift 0; int32/float 0.
+    if(tileComp->is16BitDwt() && (tcp_->tccps_ + compno)->qmfbid_ == 0 &&
+       imageComp->prec < 12 && tileComp->num_resolutions_ > 1)
+      tileComp->setQShift((uint8_t)(12 - imageComp->prec));
     else
       tileComp->setQShift(0);
     auto unreducedImageCompWindow =
