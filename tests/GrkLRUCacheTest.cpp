@@ -42,6 +42,16 @@ static void safe_strcpy(char (&dest)[N], const char* src)
   dest[len] = '\0';
 }
 
+// Delete a temp file without throwing. The throwing std::filesystem::remove
+// overload raises filesystem_error on Windows when the file is still open
+// ("being used by another process"), which would escape as an uncaught
+// exception; the error_code overload just reports failure instead.
+static void removeQuietly(const std::string& path)
+{
+  std::error_code ec;
+  std::filesystem::remove(path, ec);
+}
+
 // Read pixel data from a component into int32_t vector, handling both int32 and int16 storage.
 static std::vector<int32_t> readPixels(const grk_image_comp& comp, uint32_t count)
 {
@@ -753,8 +763,8 @@ static bool testTruncatedFileRecovery()
   if(!codec)
   {
     spdlog::error("Failed to init decompressor for truncated file");
-    std::filesystem::remove(fullFile);
-    std::filesystem::remove(truncFile);
+    removeQuietly(fullFile);
+    removeQuietly(truncFile);
     return false;
   }
 
@@ -763,8 +773,8 @@ static bool testTruncatedFileRecovery()
   if(!headerOk)
   {
     spdlog::info("Header read failed for truncated file (expected for very short truncation)");
-    std::filesystem::remove(fullFile);
-    std::filesystem::remove(truncFile);
+    removeQuietly(fullFile);
+    removeQuietly(truncFile);
     return true; // graceful failure is acceptable
   }
 
@@ -778,8 +788,8 @@ static bool testTruncatedFileRecovery()
   if(!grk_decompress_update(params.get(), codec.get()))
   {
     spdlog::error("grk_decompress_update failed");
-    std::filesystem::remove(fullFile);
-    std::filesystem::remove(truncFile);
+    removeQuietly(fullFile);
+    removeQuietly(truncFile);
     return false;
   }
 
@@ -928,7 +938,7 @@ static bool testReduceWithRegion()
   if(!ok)
   {
     spdlog::error("Decompress with reduce+region failed");
-    std::filesystem::remove(testFile);
+    removeQuietly(testFile);
     return false;
   }
 
@@ -938,7 +948,7 @@ static bool testReduceWithRegion()
   if(!img)
   {
     spdlog::error("Failed to get image after reduce+region decompress");
-    std::filesystem::remove(testFile);
+    removeQuietly(testFile);
     return false;
   }
 
@@ -1008,7 +1018,9 @@ static bool testReducedCoordsPerTile()
   if(!ok)
   {
     spdlog::error("Decompress failed");
-    std::filesystem::remove(testFile);
+    codec.reset();
+    std::error_code ec;
+    std::filesystem::remove(testFile, ec);
     return false;
   }
 
@@ -1031,14 +1043,18 @@ static bool testReducedCoordsPerTile()
     if(!tileImg)
     {
       spdlog::error("FAIL: get_tile_image returned null for tile {}", e.tileIndex);
-      std::filesystem::remove(testFile);
+      codec.reset();
+      std::error_code ec;
+      std::filesystem::remove(testFile, ec);
       return false;
     }
     if(tileImg->x0 != e.x0 || tileImg->y0 != e.y0 || tileImg->x1 != e.x1 || tileImg->y1 != e.y1)
     {
       spdlog::error("FAIL: tile {} coords ({},{},{},{}) != expected ({},{},{},{})", e.tileIndex,
                     tileImg->x0, tileImg->y0, tileImg->x1, tileImg->y1, e.x0, e.y0, e.x1, e.y1);
-      std::filesystem::remove(testFile);
+      codec.reset();
+      std::error_code ec;
+      std::filesystem::remove(testFile, ec);
       return false;
     }
     // Also verify component dimensions match reduced tile size
@@ -1048,12 +1064,16 @@ static bool testReducedCoordsPerTile()
     {
       spdlog::error("FAIL: tile {} comp size {}x{} != expected {}x{}", e.tileIndex, cw, ch,
                     e.x1 - e.x0, e.y1 - e.y0);
-      std::filesystem::remove(testFile);
+      codec.reset();
+      std::error_code ec;
+      std::filesystem::remove(testFile, ec);
       return false;
     }
   }
 
-  std::filesystem::remove(testFile);
+  codec.reset();
+  std::error_code ec;
+  std::filesystem::remove(testFile, ec);
   spdlog::info("PASS: Reduced-coords per-tile API");
   return true;
 }
@@ -1247,14 +1267,14 @@ static bool testRGBRoundTrip()
   if(!decImg)
   {
     spdlog::error("Failed to get decompressed RGB image");
-    std::filesystem::remove(testFile);
+    removeQuietly(testFile);
     return false;
   }
 
   if(decImg->numcomps != 3)
   {
     spdlog::error("Expected 3 components, got {}", decImg->numcomps);
-    std::filesystem::remove(testFile);
+    removeQuietly(testFile);
     return false;
   }
 
@@ -1403,7 +1423,7 @@ static bool testProgressiveLayerDecompress()
   if(!refImg)
   {
     spdlog::error("Failed to decompress reference");
-    std::filesystem::remove(testFile);
+    removeQuietly(testFile);
     return false;
   }
   auto refPixels = readPixels(refImg->comps[0], refImg->comps[0].w * refImg->comps[0].h);
@@ -1430,7 +1450,7 @@ static bool testProgressiveLayerDecompress()
   if(!layer1Img || !layer1Img->comps[0].data)
   {
     spdlog::error("Failed to decompress with 1 layer");
-    std::filesystem::remove(testFile);
+    removeQuietly(testFile);
     return false;
   }
   auto layer1Pixels =
@@ -1441,7 +1461,7 @@ static bool testProgressiveLayerDecompress()
   if(layer1Img->comps[0].w != refImg->comps[0].w || layer1Img->comps[0].h != refImg->comps[0].h)
   {
     spdlog::error("FAIL: Layer-1 dimensions differ from reference");
-    std::filesystem::remove(testFile);
+    removeQuietly(testFile);
     return false;
   }
 
@@ -1456,7 +1476,7 @@ static bool testProgressiveLayerDecompress()
   if(!grk_decompress_set_progression_state(progCodec.get(), state))
   {
     spdlog::error("Failed to set progression state");
-    std::filesystem::remove(testFile);
+    removeQuietly(testFile);
     return false;
   }
 
@@ -1466,7 +1486,7 @@ static bool testProgressiveLayerDecompress()
   if(!fullImg || !fullImg->comps[0].data)
   {
     spdlog::error("Failed to re-decompress with all layers");
-    std::filesystem::remove(testFile);
+    removeQuietly(testFile);
     return false;
   }
   auto fullPixels = readPixels(fullImg->comps[0], fullImg->comps[0].w * fullImg->comps[0].h);
@@ -1541,7 +1561,7 @@ static bool testProgressiveResolutionDecompress()
   if(!refImg)
   {
     spdlog::error("Failed full-res reference decompress");
-    std::filesystem::remove(testFile);
+    removeQuietly(testFile);
     return false;
   }
   uint32_t refW = refImg->comps[0].w;
@@ -1565,7 +1585,7 @@ static bool testProgressiveResolutionDecompress()
   if(!redImg)
   {
     spdlog::error("Failed reduced decompress");
-    std::filesystem::remove(testFile);
+    removeQuietly(testFile);
     return false;
   }
   uint32_t redW = redImg->comps[0].w;
@@ -1576,7 +1596,7 @@ static bool testProgressiveResolutionDecompress()
   {
     spdlog::error("FAIL: Reduced dimensions ({}x{}) not smaller than full ({}x{})", redW, redH,
                   refW, refH);
-    std::filesystem::remove(testFile);
+    removeQuietly(testFile);
     return false;
   }
 
@@ -1597,7 +1617,7 @@ static bool testProgressiveResolutionDecompress()
   if(!fullImg)
   {
     spdlog::error("Failed full-res decompress after reduced");
-    std::filesystem::remove(testFile);
+    removeQuietly(testFile);
     return false;
   }
   uint32_t fullW = fullImg->comps[0].w;
@@ -1666,7 +1686,7 @@ static bool testProgressiveResolutionReDecompress()
   if(!refImg)
   {
     spdlog::error("Failed reference decompress");
-    std::filesystem::remove(testFile);
+    removeQuietly(testFile);
     return false;
   }
   auto refPixels = readPixels(refImg->comps[0], refImg->comps[0].w * refImg->comps[0].h);
@@ -1689,7 +1709,7 @@ static bool testProgressiveResolutionReDecompress()
   if(!redImg)
   {
     spdlog::error("Failed reduced decompress");
-    std::filesystem::remove(testFile);
+    removeQuietly(testFile);
     return false;
   }
   uint32_t redW = redImg->comps[0].w, redH = redImg->comps[0].h;
@@ -1698,7 +1718,7 @@ static bool testProgressiveResolutionReDecompress()
   if(redW >= refW || redH >= refH)
   {
     spdlog::error("FAIL: Reduced output not smaller than full");
-    std::filesystem::remove(testFile);
+    removeQuietly(testFile);
     return false;
   }
 
@@ -1718,7 +1738,7 @@ static bool testProgressiveResolutionReDecompress()
   if(!fullImg || !fullImg->comps[0].data)
   {
     spdlog::error("Failed full-res decompress");
-    std::filesystem::remove(testFile);
+    removeQuietly(testFile);
     return false;
   }
   uint32_t fullW = fullImg->comps[0].w, fullH = fullImg->comps[0].h;
@@ -1791,7 +1811,7 @@ static bool testMixedLayerResolutionProgressive()
   if(!refImg)
   {
     spdlog::error("Failed reference decompress");
-    std::filesystem::remove(testFile);
+    removeQuietly(testFile);
     return false;
   }
   uint32_t refW = refImg->comps[0].w, refH = refImg->comps[0].h;
@@ -1816,7 +1836,7 @@ static bool testMixedLayerResolutionProgressive()
   if(!redImg || !redImg->comps[0].data)
   {
     spdlog::error("Failed reduced/1-layer decompress");
-    std::filesystem::remove(testFile);
+    removeQuietly(testFile);
     return false;
   }
   uint32_t redW = redImg->comps[0].w, redH = redImg->comps[0].h;
@@ -1825,7 +1845,7 @@ static bool testMixedLayerResolutionProgressive()
   if(redW >= refW || redH >= refH)
   {
     spdlog::error("FAIL: Reduced dimensions not smaller than full");
-    std::filesystem::remove(testFile);
+    removeQuietly(testFile);
     return false;
   }
 
@@ -1841,7 +1861,7 @@ static bool testMixedLayerResolutionProgressive()
   if(!grk_decompress_set_progression_state(redCodec.get(), layerState))
   {
     spdlog::error("Failed to set layer progression state");
-    std::filesystem::remove(testFile);
+    removeQuietly(testFile);
     return false;
   }
 
@@ -1850,7 +1870,7 @@ static bool testMixedLayerResolutionProgressive()
   if(!redFullImg || !redFullImg->comps[0].data)
   {
     spdlog::error("Failed reduced/all-layers re-decompress");
-    std::filesystem::remove(testFile);
+    removeQuietly(testFile);
     return false;
   }
   spdlog::info("Reduced all-layers: {}x{}", redFullImg->comps[0].w, redFullImg->comps[0].h);
@@ -1871,7 +1891,7 @@ static bool testMixedLayerResolutionProgressive()
   if(!fullImg || !fullImg->comps[0].data)
   {
     spdlog::error("Failed full-res decompress");
-    std::filesystem::remove(testFile);
+    removeQuietly(testFile);
     return false;
   }
   uint32_t fullW = fullImg->comps[0].w, fullH = fullImg->comps[0].h;
@@ -2142,7 +2162,7 @@ static bool testPLTHeaderExtraction()
   if(!file)
   {
     spdlog::error("Failed to open test file");
-    std::filesystem::remove(testFile);
+    removeQuietly(testFile);
     return false;
   }
   auto fileSize = file.tellg();
@@ -2166,7 +2186,7 @@ static bool testPLTHeaderExtraction()
   if(!foundSOT)
   {
     spdlog::error("FAIL: No SOT marker found");
-    std::filesystem::remove(testFile);
+    removeQuietly(testFile);
     return false;
   }
 
@@ -2352,7 +2372,7 @@ static bool testSelectiveFetchSimulation()
   if(!headerInfo.valid || headerInfo.pltLengths.empty())
   {
     spdlog::error("FAIL: Could not extract PLT from LRCP file");
-    std::filesystem::remove(testFile);
+    removeQuietly(testFile);
     return false;
   }
 
