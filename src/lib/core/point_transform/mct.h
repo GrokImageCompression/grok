@@ -49,6 +49,13 @@ class Mct
 public:
   Mct(Tile* tile, GrkImage* image, TileCodingParams* tcp);
 
+  /** Re-point the non-owning tile reference (the owning TileProcessor may free
+   *  and recreate its Tile across a re-decompress / cache eviction). */
+  void setTile(Tile* tile)
+  {
+    tile_ = tile;
+  }
+
   /**
    Apply a reversible multi-component transform to an image
    */

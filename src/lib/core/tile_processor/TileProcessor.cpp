@@ -286,6 +286,10 @@ bool TileProcessor::reinitForReDecompress()
 
   // Recreate tile structure
   tile_ = new Tile(headerImage_->numcomps);
+  // mct_ holds a non-owning Tile*; re-point it at the new tile so the inverse
+  // MCT pass does not dereference the previously freed Tile.
+  if(mct_)
+    mct_->setTile(tile_);
   initialized_ = false;
   scheduledForDecompression_ = false;
 
@@ -929,6 +933,9 @@ void TileProcessor::release(uint32_t strategy)
   // delete tile components
   delete tile_;
   tile_ = nullptr;
+  // drop mct_'s dangling reference to the freed tile
+  if(mct_)
+    mct_->setTile(nullptr);
 
   // delete image in absence of tile cache strategy
   if(strategy == GRK_TILE_CACHE_NONE)
@@ -958,6 +965,9 @@ void TileProcessor::releaseForSwath()
 
   delete tile_;
   tile_ = nullptr;
+  // drop mct_'s dangling reference to the freed tile
+  if(mct_)
+    mct_->setTile(nullptr);
 }
 void TileProcessor::release(void)
 {
