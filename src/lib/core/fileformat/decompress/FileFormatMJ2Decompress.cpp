@@ -718,11 +718,24 @@ bool FileFormatMJ2Decompress::readHeader(grk_header_info* header_info)
     return false;
   if(current_track_)
   {
+    // capture the total input size before seeking: numBytesLeft() is not
+    // reliable after seek(0) on the file buffer.
+    streamLength_ = stream_->tell() + stream_->numBytesLeft();
     // seek to beginning of file to get base pointer for absolute STCO offsets
     stream_->seek(0);
     auto basePtr = stream_->currPtr();
     for(const auto& sample : current_track_->samples_)
     {
+      // offset_/samples_size_ come straight from the STCO/STSZ tables and are
+      // used as raw offsets into the file buffer; reject samples that fall
+      // outside it (also covers the 4-byte box-length probe below).
+      if((uint64_t)sample.offset_ + sample.samples_size_ > streamLength_ ||
+         (uint64_t)sample.offset_ + sizeof(uint32_t) > streamLength_)
+      {
+        grklog.error("MJ2: sample at offset %u (size %u) lies outside the %llu-byte stream",
+                     sample.offset_, sample.samples_size_, (unsigned long long)streamLength_);
+        return false;
+      }
       auto ptr = basePtr + sample.offset_;
       // cross-check sample size with box length
       // as long as box is not XL
@@ -761,6 +774,17 @@ bool FileFormatMJ2Decompress::decompressSampleInternal(uint32_t sampleIndex)
   // get base pointer for absolute file offsets
   stream_->seek(0);
   auto basePtr = stream_->currPtr();
+
+  // bound the sample against the file buffer before using offset_ as a pointer
+  // (streamLength_ was captured in readHeader before any seek)
+  if((uint64_t)sample.offset_ + sample.samples_size_ > streamLength_ ||
+     (uint64_t)sample.offset_ + sizeof(uint32_t) > streamLength_)
+  {
+    grklog.error("MJ2: sample %u at offset %u (size %u) lies outside the %llu-byte stream",
+                 sampleIndex, sample.offset_, sample.samples_size_,
+                 (unsigned long long)streamLength_);
+    return false;
+  }
 
   auto samplePtr = basePtr + sample.offset_;
 
