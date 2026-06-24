@@ -222,6 +222,14 @@ grk_image* JPEGFormat<T>::jpegtoimage(const char* filename, grk_cparameters* par
     success = false;
     goto cleanup;
   }
+  // cmptparm[]/planes[] are sized for at most 3 components; a 4-component
+  // (Adobe CMYK/YCCK) JPEG would otherwise overflow those stack arrays.
+  if(cinfo.output_components > 3)
+  {
+    spdlog::error("jpegtoimage: Unsupported number of components {}", cinfo.output_components);
+    success = false;
+    goto cleanup;
+  }
 
   decompress_num_comps = (uint16_t)cinfo.output_components;
   w = cinfo.image_width;
