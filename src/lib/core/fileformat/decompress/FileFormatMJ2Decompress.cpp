@@ -505,11 +505,23 @@ bool FileFormatMJ2Decompress::read_stsd(uint8_t* headerData, uint32_t headerSize
  * Time To Sample box Decompact
  *
  */
-void FileFormatMJ2Decompress::tts_decompact(mj2_tk* tk)
+bool FileFormatMJ2Decompress::tts_decompact(mj2_tk* tk)
 {
+  // Each materialised sample must map to at least one byte of media data, so
+  // the total sample count cannot exceed the file size. This caps a crafted
+  // STTS samples_count_ (raw uint32) that would otherwise drive billions of
+  // push_backs, and prevents num_samples_ (uint32) from wrapping.
+  uint64_t streamLen = stream_ ? stream_->tell() + stream_->numBytesLeft() : 0;
+  uint64_t total = tk->num_samples_;
   for(const auto& tts : tk->tts_)
   {
-    tk->num_samples_ += tts.samples_count_;
+    total += tts.samples_count_;
+    if(total > streamLen)
+    {
+      grklog.error("MJ2 STTS: sample count %llu exceeds %llu-byte stream",
+                   (unsigned long long)total, (unsigned long long)streamLen);
+      return false;
+    }
     for(uint32_t j = 0; j < tts.samples_count_; j++)
     {
       mj2_sample sample;
@@ -517,6 +529,8 @@ void FileFormatMJ2Decompress::tts_decompact(mj2_tk* tk)
       tk->samples_.push_back(sample);
     }
   }
+  tk->num_samples_ = (uint32_t)total;
+  return true;
 }
 
 bool FileFormatMJ2Decompress::read_stts(uint8_t* headerData, uint32_t headerSize)
@@ -535,7 +549,8 @@ bool FileFormatMJ2Decompress::read_stts(uint8_t* headerData, uint32_t headerSize
     tk->tts_.push_back(tts);
   }
 
-  tts_decompact(tk);
+  if(!tts_decompact(tk))
+    return false;
 
   return true;
 }
