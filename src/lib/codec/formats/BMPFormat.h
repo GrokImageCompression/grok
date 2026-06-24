@@ -687,6 +687,7 @@ bool BMPFormat<T>::readRle8Data(uint8_t* pData, uint32_t stride, uint32_t width,
   uint8_t* pix = nullptr;
   const uint8_t* beyond = nullptr;
   const uint8_t* pixels_ptr = nullptr;
+  const uint8_t* pixels_end = nullptr;
   bool rc = false;
   auto pixels = new uint8_t[infoHeader_.biSizeImage];
   if(!read(pixels, infoHeader_.biSizeImage))
@@ -694,15 +695,21 @@ bool BMPFormat<T>::readRle8Data(uint8_t* pData, uint32_t stride, uint32_t width,
     goto cleanup;
   }
   pixels_ptr = pixels;
+  pixels_end = pixels + infoHeader_.biSizeImage;
   beyond = pData + (size_t)stride * height;
   pix = pData;
 
   while(y < height)
   {
+    // every read below must stay within the biSizeImage-sized input buffer
+    if(pixels_ptr >= pixels_end)
+      goto cleanup;
     int c = *pixels_ptr++;
     if(c)
     {
       int j;
+      if(pixels_ptr >= pixels_end)
+        goto cleanup;
       uint8_t c1 = *pixels_ptr++;
       for(j = 0; (j < c) && (x < width) && ((size_t)pix < (size_t)beyond); j++, x++, pix++)
       {
@@ -712,6 +719,8 @@ bool BMPFormat<T>::readRle8Data(uint8_t* pData, uint32_t stride, uint32_t width,
     }
     else
     {
+      if(pixels_ptr >= pixels_end)
+        goto cleanup;
       c = *pixels_ptr++;
       if(c == 0x00)
       { /* EOL */
@@ -725,6 +734,8 @@ bool BMPFormat<T>::readRle8Data(uint8_t* pData, uint32_t stride, uint32_t width,
       }
       else if(c == 0x02)
       { /* MOVE by dxdy */
+        if(pixels_ptr + 2 > pixels_end)
+          goto cleanup;
         c = *pixels_ptr++;
         x += (uint32_t)c;
         c = *pixels_ptr++;
@@ -736,6 +747,8 @@ bool BMPFormat<T>::readRle8Data(uint8_t* pData, uint32_t stride, uint32_t width,
         int j;
         for(j = 0; (j < c) && (x < width) && ((size_t)pix < (size_t)beyond); j++, x++, pix++)
         {
+          if(pixels_ptr >= pixels_end)
+            goto cleanup;
           uint8_t c1 = *pixels_ptr++;
           *pix = c1;
           written++;
@@ -764,20 +777,27 @@ bool BMPFormat<T>::readRle4Data(uint8_t* pData, uint32_t stride, uint32_t width,
   uint32_t x = 0, y = 0, written = 0;
   uint8_t* pix = nullptr;
   const uint8_t* pixels_ptr = nullptr;
+  const uint8_t* pixels_end = nullptr;
   const uint8_t* beyond = nullptr;
   bool rc = false;
   auto pixels = new uint8_t[infoHeader_.biSizeImage];
   if(!read(pixels, infoHeader_.biSizeImage))
     goto cleanup;
   pixels_ptr = pixels;
+  pixels_end = pixels + infoHeader_.biSizeImage;
   beyond = pData + (size_t)stride * height;
   pix = pData;
   while(y < height)
   {
+    // every read below must stay within the biSizeImage-sized input buffer
+    if(pixels_ptr >= pixels_end)
+      goto cleanup;
     int c = *pixels_ptr++;
     if(c)
     { /* encoded mode */
       int j;
+      if(pixels_ptr >= pixels_end)
+        goto cleanup;
       uint8_t c1 = *pixels_ptr++;
 
       for(j = 0; (j < c) && (x < width) && ((size_t)pix < (size_t)beyond); j++, x++, pix++)
@@ -788,6 +808,8 @@ bool BMPFormat<T>::readRle4Data(uint8_t* pData, uint32_t stride, uint32_t width,
     }
     else
     { /* absolute mode */
+      if(pixels_ptr >= pixels_end)
+        goto cleanup;
       c = *pixels_ptr++;
       if(c == 0x00)
       { /* EOL */
@@ -801,6 +823,8 @@ bool BMPFormat<T>::readRle4Data(uint8_t* pData, uint32_t stride, uint32_t width,
       }
       else if(c == 0x02)
       { /* MOVE by dxdy */
+        if(pixels_ptr + 2 > pixels_end)
+          goto cleanup;
         c = *pixels_ptr++;
         x += (uint32_t)c;
 
@@ -816,7 +840,11 @@ bool BMPFormat<T>::readRle4Data(uint8_t* pData, uint32_t stride, uint32_t width,
         for(j = 0; (j < c) && (x < width) && ((size_t)pix < (size_t)beyond); j++, x++, pix++)
         {
           if((j & 1) == 0)
+          {
+            if(pixels_ptr >= pixels_end)
+              goto cleanup;
             c1 = *pixels_ptr++;
+          }
           *pix = (uint8_t)((j & 1) ? (c1 & 0x0fU) : ((uint8_t)(c1 >> 4) & 0x0fU));
           written++;
         }
