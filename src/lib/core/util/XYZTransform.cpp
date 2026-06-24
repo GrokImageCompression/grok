@@ -178,9 +178,6 @@ bool applyXYZTransform(grk_image* image)
               h, prec, compR.stride, compG.stride, compB.stride, (int)compR.data_type,
               (int)compG.data_type, (int)compB.data_type);
 
-  // Handle int16 data type: need to widen to int32 for processing, then narrow back
-  bool isInt16 = (compR.data_type == GRK_INT_16);
-
   // If data is stored with stride, we need to process row-by-row
   // For contiguous data (stride == w), we can process in one shot
   bool contiguous = (compR.stride == w) && (compG.stride == w) && (compB.stride == w);

@@ -2175,8 +2175,8 @@ bool CodeStreamDecompress::fetchByTileSelective(
       uint32_t fetchLen;
       if(contiguousProgression && reduce > 0)
       {
-        uint64_t estimated =
-            std::max<uint64_t>(headerFetchSize, (uint64_t)(part->length_ * pixelRatio));
+        uint64_t estimated = std::max<uint64_t>(
+            headerFetchSize, (uint64_t)(static_cast<double>(part->length_) * pixelRatio));
         fetchLen = (uint32_t)std::min<uint64_t>(estimated, part->length_);
       }
       else

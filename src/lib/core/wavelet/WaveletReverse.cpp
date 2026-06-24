@@ -1641,7 +1641,7 @@ void WaveletReverse::v_16_53(const dwt_scratch<int16_t>* scratch, Buffer2dSimple
       if(dcShift.enabled)
       {
         for(uint32_t c = 0; c < nb_cols; c++, winL.buf_++, winDest.buf_++)
-          winDest.buf_[0] = std::clamp<int16_t>(winL.buf_[0] + dc, dcMin, dcMax);
+          winDest.buf_[0] = (int16_t)std::clamp<int>(winL.buf_[0] + dc, dcMin, dcMax);
       }
       else
       {
@@ -1668,7 +1668,7 @@ void WaveletReverse::v_16_53(const dwt_scratch<int16_t>* scratch, Buffer2dSimple
           for(uint32_t c = 0; c < nb_cols; c++, d++)
             for(uint32_t r = 0; r < height; r++)
               d[r * winDest.stride_] =
-                  std::clamp<int16_t>(d[r * winDest.stride_] + dc, dcMin, dcMax);
+                  (int16_t)std::clamp<int>(d[r * winDest.stride_] + dc, dcMin, dcMax);
         }
       }
     }
@@ -1680,7 +1680,7 @@ void WaveletReverse::v_16_53(const dwt_scratch<int16_t>* scratch, Buffer2dSimple
       if(dcShift.enabled)
       {
         for(uint32_t c = 0; c < nb_cols; c++, winL.buf_++, winDest.buf_++)
-          winDest.buf_[0] = std::clamp<int16_t>((winL.buf_[0] >> 1) + dc, dcMin, dcMax);
+          winDest.buf_[0] = (int16_t)std::clamp<int>((winL.buf_[0] >> 1) + dc, dcMin, dcMax);
       }
       else
       {
@@ -1729,7 +1729,7 @@ void WaveletReverse::v_16_53(const dwt_scratch<int16_t>* scratch, Buffer2dSimple
           for(uint32_t c = 0; c < nb_cols; c++, d++)
             for(uint32_t r = 0; r < height; r++)
               d[r * winDest.stride_] =
-                  std::clamp<int16_t>(d[r * winDest.stride_] + dc, dcMin, dcMax);
+                  (int16_t)std::clamp<int>(d[r * winDest.stride_] + dc, dcMin, dcMax);
         }
       }
     }
@@ -1862,7 +1862,7 @@ void WaveletReverse::v_cascade_16_53(const dwt_scratch<int16_t>* scratch,
       if(dcShift.enabled)
       {
         for(uint32_t c = 0; c < nb_cols; c++, winL.buf_++, winDest.buf_++)
-          winDest.buf_[0] = std::clamp<int16_t>(winL.buf_[0] + dc, dcMin, dcMax);
+          winDest.buf_[0] = (int16_t)std::clamp<int>(winL.buf_[0] + dc, dcMin, dcMax);
       }
       else
       {
@@ -1880,7 +1880,8 @@ void WaveletReverse::v_cascade_16_53(const dwt_scratch<int16_t>* scratch,
         auto d = winDest.buf_ - nb_cols;
         for(uint32_t c = 0; c < nb_cols; c++, d++)
           for(uint32_t r = 0; r < outputCount; r++)
-            d[r * winDest.stride_] = std::clamp<int16_t>(d[r * winDest.stride_] + dc, dcMin, dcMax);
+            d[r * winDest.stride_] =
+                (int16_t)std::clamp<int>(d[r * winDest.stride_] + dc, dcMin, dcMax);
       }
     }
   }
@@ -1891,7 +1892,7 @@ void WaveletReverse::v_cascade_16_53(const dwt_scratch<int16_t>* scratch,
       if(dcShift.enabled)
       {
         for(uint32_t c = 0; c < nb_cols; c++, winL.buf_++, winDest.buf_++)
-          winDest.buf_[0] = std::clamp<int16_t>((winL.buf_[0] >> 1) + dc, dcMin, dcMax);
+          winDest.buf_[0] = (int16_t)std::clamp<int>((winL.buf_[0] >> 1) + dc, dcMin, dcMax);
       }
       else
       {
@@ -1906,8 +1907,10 @@ void WaveletReverse::v_cascade_16_53(const dwt_scratch<int16_t>* scratch,
         for(uint32_t c = 0; c < nb_cols; c++, winL.buf_++, winH.buf_++, winDest.buf_++)
         {
           scratch->mem[1] = (int16_t)(winL.buf_[0] - ((winH.buf_[0] + 1) >> 1));
-          winDest.buf_[0] = std::clamp<int16_t>(winH.buf_[0] + scratch->mem[1] + dc, dcMin, dcMax);
-          winDest.buf_[winDest.stride_] = std::clamp<int16_t>(scratch->mem[1] + dc, dcMin, dcMax);
+          winDest.buf_[0] =
+              (int16_t)std::clamp<int>(winH.buf_[0] + scratch->mem[1] + dc, dcMin, dcMax);
+          winDest.buf_[winDest.stride_] =
+              (int16_t)std::clamp<int>(scratch->mem[1] + dc, dcMin, dcMax);
         }
       }
       else
@@ -1930,7 +1933,8 @@ void WaveletReverse::v_cascade_16_53(const dwt_scratch<int16_t>* scratch,
         auto d = winDest.buf_ - nb_cols;
         for(uint32_t c = 0; c < nb_cols; c++, d++)
           for(uint32_t r = 0; r < outputCount; r++)
-            d[r * winDest.stride_] = std::clamp<int16_t>(d[r * winDest.stride_] + dc, dcMin, dcMax);
+            d[r * winDest.stride_] =
+                (int16_t)std::clamp<int>(d[r * winDest.stride_] + dc, dcMin, dcMax);
       }
     }
   }
@@ -1988,7 +1992,7 @@ void WaveletReverse::v_cascade_strip_16_97(const dwt_scratch<int16_t>* scratch, 
     if(dcShift.enabled)
     {
       for(uint32_t c = 0; c < width; ++c)
-        dst[c] = std::clamp<int16_t>(src[c] + dc, dcMin, dcMax);
+        dst[c] = (int16_t)std::clamp<int>(src[c] + dc, dcMin, dcMax);
     }
     else
     {
