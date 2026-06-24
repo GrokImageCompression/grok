@@ -77,13 +77,17 @@ private:
   bool read_url(uint8_t* headerData, uint32_t headerSize);
   bool read_urn(uint8_t* headerData, uint32_t headerSize);
 
-  void tts_decompact(mj2_tk* tk);
+  bool tts_decompact(mj2_tk* tk);
   void stsc_decompact(mj2_tk* tk);
   void stco_decompact(mj2_tk* tk);
 
   grk_decompress_parameters decompressParams_;
   bool decompressParamsSet_;
   std::vector<GrkImage*> decompressedImages_;
+  // total input size, captured during readHeader before any seek (numBytesLeft
+  // is not reliable after seek(0) on the file buffer); used to bound raw
+  // STCO/STSZ sample offsets.
+  uint64_t streamLength_ = 0;
 
   struct SampleCodeStream
   {

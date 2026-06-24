@@ -19,6 +19,7 @@
 #include "TFSingleton.h"
 #include "simd.h"
 #include "WaveletCommon.h"
+#include "Logger.h"
 
 namespace grk
 {
@@ -38,6 +39,12 @@ bool WaveletPoolData::alloc(size_t maxDim)
 
     size_t buffer_size = maxDim;
     auto multiplier = std::max(sizeof(int32_t) * get_PLL_COLS_53(), sizeof(vec4f));
+    // overflow guard (the sibling dwt_scratch::alloc already has one)
+    if(multiplier && maxDim > SIZE_MAX / multiplier)
+    {
+      grklog.error("WaveletPoolData: scratch size overflow for dimension %zu", maxDim);
+      return false;
+    }
     buffer_size *= multiplier;
     for(size_t i = 0; i < num_threads; ++i)
     {

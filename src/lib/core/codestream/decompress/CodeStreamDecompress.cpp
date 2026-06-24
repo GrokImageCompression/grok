@@ -2451,9 +2451,33 @@ bool CodeStreamDecompress::activateScratch(bool singleTile, GrkImage* scratch)
       auto comp = scratch->comps + i;
       comp->y0 = ceildivpow2<uint32_t>(ceildiv<uint32_t>(unreducedTileY0, comp->dy), reduce);
       uint32_t compY1 = ceildivpow2<uint32_t>(ceildiv<uint32_t>(unreducedTileY1, comp->dy), reduce);
+      // The drain loop advances comp->h to each later tile-row height without
+      // reallocating; a non-tile-aligned YTOsiz can make an interior row taller
+      // than the first, so size the buffer for the TALLEST reduced row.
+      uint32_t maxH = compY1 - comp->y0;
+      for(uint16_t ty = (uint16_t)(slatedRect.y0 + 1); ty < slatedRect.y1; ty++)
+      {
+        uint32_t uy0 = cp_.ty0_ + (uint32_t)ty * cp_.t_height_;
+        uint32_t uy1 = std::min(uy0 + cp_.t_height_, (uint32_t)scratch->y1);
+        if(uy0 >= uy1)
+          continue;
+        uint32_t ry0 = ceildivpow2<uint32_t>(ceildiv<uint32_t>(uy0, comp->dy), reduce);
+        uint32_t ry1 = ceildivpow2<uint32_t>(ceildiv<uint32_t>(uy1, comp->dy), reduce);
+        maxH = std::max(maxH, ry1 - ry0);
+      }
+      comp->h = maxH;
+    }
+    if(!scratch->allocCompositeData())
+      return false;
+    // report the first tile-row height for the initial decode; the buffer stays
+    // sized for maxH so later (taller) rows still fit.
+    for(uint16_t i = 0; i < scratch->numcomps; i++)
+    {
+      auto comp = scratch->comps + i;
+      uint32_t compY1 = ceildivpow2<uint32_t>(ceildiv<uint32_t>(unreducedTileY1, comp->dy), reduce);
       comp->h = compY1 - comp->y0;
     }
-    return scratch->allocCompositeData();
+    return true;
   }
 
   return cp_.codingParams_.dec_.skipAllocateComposite_ || scratch->allocCompositeData();

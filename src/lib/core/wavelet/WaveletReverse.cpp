@@ -2087,6 +2087,10 @@ bool WaveletReverse::tile_16_53(void)
 
 bool WaveletReverse::decompress(void)
 {
+  // The pool allocation may legitimately fail (e.g. a degenerate/oversized
+  // tile dimension whose scratch is never actually used); tolerate that as
+  // before. The overflow guard in alloc() prevents the size computation from
+  // wrapping and under-allocating.
   if(poolData_)
     poolData_->alloc(maxDim_);
 

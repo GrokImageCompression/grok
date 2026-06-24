@@ -1279,10 +1279,20 @@ bool FileFormatJP2Family::read_asoc(uint8_t* header_data, uint32_t header_data_s
 
   return true;
 }
+// maximum JP2/JPX asoc superbox nesting depth (stack-exhaustion guard)
+static constexpr uint32_t maxAsocDepth = 64;
 uint32_t FileFormatJP2Family::read_asoc(AsocBox* parent, uint8_t** header_data,
-                                        uint32_t* header_data_size, uint32_t asocSize)
+                                        uint32_t* header_data_size, uint32_t asocSize,
+                                        uint32_t depth)
 {
   assert(*header_data);
+  // cap nesting: each level consumes only the 8-byte child header, so a few-MB
+  // payload of nested asoc boxes would otherwise exhaust the stack.
+  if(depth > maxAsocDepth)
+  {
+    grklog.error("ASOC box nesting exceeds maximum depth %u", maxAsocDepth);
+    throw BadAsocException();
+  }
   if(asocSize < 8)
   {
     grklog.error("ASOC box must be at least 8 bytes in size");
@@ -1329,7 +1339,7 @@ uint32_t FileFormatJP2Family::read_asoc(AsocBox* parent, uint8_t** header_data,
         asocBytesUsed += childSize;
         break;
       case JP2_ASOC:
-        asocBytesUsed += read_asoc(childAsoc, header_data, header_data_size, childSize);
+        asocBytesUsed += read_asoc(childAsoc, header_data, header_data_size, childSize, depth + 1);
         break;
       case JP2_XML:
         childAsoc->alloc(childSize);

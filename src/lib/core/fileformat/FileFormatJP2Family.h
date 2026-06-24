@@ -164,7 +164,7 @@ protected:
   const FindHandlerInfo img_find_handler(uint32_t id);
 
   uint32_t read_asoc(AsocBox* parent, uint8_t** header_data, uint32_t* header_data_size,
-                     uint32_t asocSize);
+                     uint32_t asocSize, uint32_t depth = 0);
   bool read_asoc(uint8_t* header_data, uint32_t header_data_size);
   void serializeAsoc(AsocBox* asoc, grk_asoc* serial_asocs, uint32_t* num_asocs, uint32_t level);
   /***

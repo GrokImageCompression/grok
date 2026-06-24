@@ -286,6 +286,10 @@ bool TileProcessor::reinitForReDecompress()
 
   // Recreate tile structure
   tile_ = new Tile(headerImage_->numcomps);
+  // mct_ holds a non-owning Tile*; re-point it at the new tile so the inverse
+  // MCT pass does not dereference the previously freed Tile.
+  if(mct_)
+    mct_->setTile(tile_);
   initialized_ = false;
   scheduledForDecompression_ = false;
 
@@ -929,6 +933,9 @@ void TileProcessor::release(uint32_t strategy)
   // delete tile components
   delete tile_;
   tile_ = nullptr;
+  // drop mct_'s dangling reference to the freed tile
+  if(mct_)
+    mct_->setTile(nullptr);
 
   // delete image in absence of tile cache strategy
   if(strategy == GRK_TILE_CACHE_NONE)
@@ -958,6 +965,9 @@ void TileProcessor::releaseForSwath()
 
   delete tile_;
   tile_ = nullptr;
+  // drop mct_'s dangling reference to the freed tile
+  if(mct_)
+    mct_->setTile(nullptr);
 }
 void TileProcessor::release(void)
 {
@@ -1440,8 +1450,12 @@ void TileProcessor::scheduleAndRunDecompress(CoderPool* coderPool, Rect32 unredu
           scratchImg->decompress_height = h;
           scratchImg->decompress_prec = prec;
           scratchImg->decompress_num_comps = nc;
-          // packed_row_bytes and rows_per_strip must match what the format writer header used
-          scratchImg->packed_row_bytes = ((uint64_t)w * nc * prec + 7U) / 8U;
+          // packed_row_bytes and rows_per_strip must match what the format writer header used.
+          // The PNM streaming packer emits whole 8- or 16-bit samples, so for PXM the row size
+          // must use the rounded byte width, not the raw (bit-packed) precision; otherwise a
+          // precision not in {8,16} under-sizes the strip buffer and the packer overflows it.
+          uint8_t packPrec = (scratchImg->decompress_fmt == GRK_FMT_PXM) ? (prec > 8 ? 16 : 8) : prec;
+          scratchImg->packed_row_bytes = ((uint64_t)w * nc * packPrec + 7U) / 8U;
           scratchImg->rows_per_strip = singleTileRowsPerStrip;
           if(scratchImg->rows_per_strip > h)
             scratchImg->rows_per_strip = h;

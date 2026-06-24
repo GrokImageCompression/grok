@@ -27,7 +27,10 @@
 #include <cstdlib>
 #include <cstring>
 
-const uint8_t grk_cblk_dec_compressed_data_pad_ht = 8;
+// 16 bytes: the SIMD HT MagSgn forward reader (frwd_read) issues 16-byte vector
+// loads that may run up to 16 bytes past the end of the code-block data, so the
+// trailing pad must be at least that wide.
+const uint8_t grk_cblk_dec_compressed_data_pad_ht = 16;
 
 // Function pointer types for SIMD-dispatched block coding
 using decode_cb_t = bool (*)(grk::t1::ojph::ui8*, grk::t1::ojph::ui32*, grk::t1::ojph::ui32,
