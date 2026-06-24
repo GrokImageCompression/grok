@@ -571,12 +571,9 @@ template<typename T>
 bool BMPFormat<T>::readInfoHeader(const GRK_BITMAPFILEHEADER* fileHeader,
                                   GRK_BITMAPINFOHEADER* infoHeader)
 {
-  const size_t len_initial = infoHeader->biSize - sizeof(uint32_t);
-  uint8_t temp[sizeof(GRK_BITMAPINFOHEADER)];
-  auto temp_ptr = (uint32_t*)temp;
-  if(!read(temp, len_initial))
-    return false;
-
+  // Validate biSize against the legal header-size set BEFORE using it to size
+  // the read: an unvalidated biSize either underflows len_initial (biSize < 4)
+  // or overruns the fixed temp buffer (biSize > sizeof temp), smashing the stack.
   switch(infoHeader->biSize)
   {
     case BITMAPCOREHEADER_LENGTH:
@@ -590,6 +587,13 @@ bool BMPFormat<T>::readInfoHeader(const GRK_BITMAPFILEHEADER* fileHeader,
       spdlog::error("unknown BMP header size {}", infoHeader->biSize);
       return false;
   }
+  const size_t len_initial = infoHeader->biSize - sizeof(uint32_t);
+  uint8_t temp[sizeof(GRK_BITMAPINFOHEADER)];
+  auto temp_ptr = (uint32_t*)temp;
+  if(len_initial > sizeof(temp))
+    return false;
+  if(!read(temp, len_initial))
+    return false;
   bool is_os2 = infoHeader->biSize == BITMAPCOREHEADER_LENGTH;
   if(is_os2)
   { // OS2
