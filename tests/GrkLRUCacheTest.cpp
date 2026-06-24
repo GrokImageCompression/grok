@@ -16,8 +16,10 @@
  */
 
 #include <cstdint>
+#include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <exception>
 #include <fstream>
 #include <memory>
 #include <string>
@@ -2562,10 +2564,61 @@ static bool testSelectiveFetchSimulation()
 }
 
 ///////////////////////////////////////////////////////////////////
+// Crash diagnostics
+//
+// CI has no interactive debugger, and a hard fault (notably the Windows
+// __fastfail 0xC0000409) gives only an opaque exit code. CI also pipes stdout,
+// which is fully buffered, so the last "=== Test ===" line before a fault is
+// lost. Unbuffer the streams and flush spdlog on every message so the failing
+// subtest is always visible in LastTest.log, and convert an uncaught exception
+// or a CRT invalid-parameter fault into a readable, flushed log line.
+///////////////////////////////////////////////////////////////////
+static void installCrashDiagnostics()
+{
+  setvbuf(stdout, nullptr, _IONBF, 0);
+  setvbuf(stderr, nullptr, _IONBF, 0);
+  spdlog::flush_on(spdlog::level::trace);
+
+  std::set_terminate([]() {
+    if(auto ep = std::current_exception())
+    {
+      try
+      {
+        std::rethrow_exception(ep);
+      }
+      catch(const std::exception& e)
+      {
+        spdlog::critical("std::terminate: uncaught exception: {}", e.what());
+      }
+      catch(...)
+      {
+        spdlog::critical("std::terminate: uncaught non-standard exception");
+      }
+    }
+    else
+    {
+      spdlog::critical("std::terminate called with no active exception");
+    }
+    std::fflush(nullptr);
+    std::_Exit(70);
+  });
+
+#ifdef _WIN32
+  _set_invalid_parameter_handler(
+      [](const wchar_t*, const wchar_t*, const wchar_t*, unsigned, uintptr_t) {
+        spdlog::critical("CRT invalid-parameter fault");
+        std::fflush(nullptr);
+        std::_Exit(71);
+      });
+#endif
+}
+
+///////////////////////////////////////////////////////////////////
 // Main
 ///////////////////////////////////////////////////////////////////
 int GrkLRUCacheTest::main(int argc, char** argv)
 {
+  installCrashDiagnostics();
   grk_initialize(nullptr, 0, nullptr);
 
   int failures = 0;
