@@ -1076,8 +1076,8 @@ bool TileProcessor::createDecompressTileComponentWindows(void)
     // gain.  For the eligible range (prec <= 9, see grk_get_data_type) that yields
     // 3-4 fractional bits (8-bit -> 4, 9-bit -> 3) — enough for near-float accuracy.
     // Reversible 5/3 is exact integer arithmetic and keeps qShift 0; int32/float 0.
-    if(tileComp->is16BitDwt() && (tcp_->tccps_ + compno)->qmfbid_ == 0 &&
-       imageComp->prec < 12 && tileComp->num_resolutions_ > 1)
+    if(tileComp->is16BitDwt() && (tcp_->tccps_ + compno)->qmfbid_ == 0 && imageComp->prec < 12 &&
+       tileComp->num_resolutions_ > 1)
       tileComp->setQShift((uint8_t)(12 - imageComp->prec));
     else
       tileComp->setQShift(0);
@@ -1454,7 +1454,8 @@ void TileProcessor::scheduleAndRunDecompress(CoderPool* coderPool, Rect32 unredu
           // The PNM streaming packer emits whole 8- or 16-bit samples, so for PXM the row size
           // must use the rounded byte width, not the raw (bit-packed) precision; otherwise a
           // precision not in {8,16} under-sizes the strip buffer and the packer overflows it.
-          uint8_t packPrec = (scratchImg->decompress_fmt == GRK_FMT_PXM) ? (prec > 8 ? 16 : 8) : prec;
+          uint8_t packPrec =
+              (scratchImg->decompress_fmt == GRK_FMT_PXM) ? (prec > 8 ? 16 : 8) : prec;
           scratchImg->packed_row_bytes = ((uint64_t)w * nc * packPrec + 7U) / 8U;
           scratchImg->rows_per_strip = singleTileRowsPerStrip;
           if(scratchImg->rows_per_strip > h)
