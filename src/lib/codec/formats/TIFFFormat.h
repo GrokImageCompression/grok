@@ -2273,6 +2273,17 @@ grk_image* TIFFFormat<T>::readImage(const std::string& filename, grk_cparameters
       image->meta->exif_len = exif_size;
     }
   }
+  // For chunky (interleaved) data the per-row scratch buffer is sized from
+  // tiSpp, but the de-interleavers read width*numcomps samples. If the
+  // photometric/extrasamples-derived numcomps exceeds the SamplesPerPixel tag,
+  // the readers over-read the row buffer, so require them to agree.
+  if(tiPC == PLANARCONFIG_CONTIG && numcomps != tiSpp)
+  {
+    spdlog::error("TIFFFormat<T>::readImage: component count {} does not match "
+                  "SamplesPerPixel {} for contiguous (chunky) data",
+                  numcomps, tiSpp);
+    goto cleanup;
+  }
   // 9. read pixel data
   if(needSignedPixelReader)
   {
