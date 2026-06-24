@@ -340,6 +340,10 @@ bool FileFormatMJ2Decompress::read_url(uint8_t* headerData, uint32_t headerSize)
     grklog.error("MJ2: url box outside of a track");
     return false;
   }
+  // version+flags is a 4-byte fullbox header; guard the subtraction so a short
+  // box does not underflow headerSize into a huge value and over-read below.
+  if(headerSize < 4)
+    return false;
   uint8_t version;
   uint32_t flag;
   read_version_and_flag(&headerData, version, flag);
@@ -368,6 +372,10 @@ bool FileFormatMJ2Decompress::read_urn(uint8_t* headerData, uint32_t headerSize)
     grklog.error("MJ2: urn box outside of a track");
     return false;
   }
+  // version+flags is a 4-byte fullbox header; guard the subtraction so a short
+  // box does not underflow headerSize into a huge value and over-read below.
+  if(headerSize < 4)
+    return false;
   uint8_t version;
   uint32_t flag;
   read_version_and_flag(&headerData, version, flag);
