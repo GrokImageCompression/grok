@@ -334,6 +334,12 @@ bool FileFormatMJ2Decompress::read_vmhd(uint8_t* headerData, uint32_t headerSize
 
 bool FileFormatMJ2Decompress::read_url(uint8_t* headerData, uint32_t headerSize)
 {
+  // a dref/url box can appear with no preceding tkhd, leaving current_track_ null
+  if(!current_track_)
+  {
+    grklog.error("MJ2: url box outside of a track");
+    return false;
+  }
   uint8_t version;
   uint32_t flag;
   read_version_and_flag(&headerData, version, flag);
@@ -356,6 +362,12 @@ bool FileFormatMJ2Decompress::read_url(uint8_t* headerData, uint32_t headerSize)
 
 bool FileFormatMJ2Decompress::read_urn(uint8_t* headerData, uint32_t headerSize)
 {
+  // a dref/urn box can appear with no preceding tkhd, leaving current_track_ null
+  if(!current_track_)
+  {
+    grklog.error("MJ2: urn box outside of a track");
+    return false;
+  }
   uint8_t version;
   uint32_t flag;
   read_version_and_flag(&headerData, version, flag);
