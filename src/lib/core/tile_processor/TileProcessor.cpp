@@ -1450,8 +1450,12 @@ void TileProcessor::scheduleAndRunDecompress(CoderPool* coderPool, Rect32 unredu
           scratchImg->decompress_height = h;
           scratchImg->decompress_prec = prec;
           scratchImg->decompress_num_comps = nc;
-          // packed_row_bytes and rows_per_strip must match what the format writer header used
-          scratchImg->packed_row_bytes = ((uint64_t)w * nc * prec + 7U) / 8U;
+          // packed_row_bytes and rows_per_strip must match what the format writer header used.
+          // The PNM streaming packer emits whole 8- or 16-bit samples, so for PXM the row size
+          // must use the rounded byte width, not the raw (bit-packed) precision; otherwise a
+          // precision not in {8,16} under-sizes the strip buffer and the packer overflows it.
+          uint8_t packPrec = (scratchImg->decompress_fmt == GRK_FMT_PXM) ? (prec > 8 ? 16 : 8) : prec;
+          scratchImg->packed_row_bytes = ((uint64_t)w * nc * packPrec + 7U) / 8U;
           scratchImg->rows_per_strip = singleTileRowsPerStrip;
           if(scratchImg->rows_per_strip > h)
             scratchImg->rows_per_strip = h;
