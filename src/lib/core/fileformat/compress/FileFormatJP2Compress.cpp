@@ -748,6 +748,7 @@ bool FileFormatJP2Compress::init(grk_cparameters* parameters, GrkImage* image)
   }
   if(jpx_branding_)
     brand = JP2_JPX;
+  bool jph_branding = (brand == JP2_JPH);
   minversion = 0; /* MinV */
   numcl = jpx_branding_ ? 2 : 1;
   cl = (uint32_t*)grk_malloc(sizeof(uint32_t) * numcl);
@@ -756,9 +757,19 @@ bool FileFormatJP2Compress::init(grk_cparameters* parameters, GrkImage* image)
     grklog.error("Not enough memory when set up the JP2 compressor");
     return false;
   }
-  cl[0] = JP2_JP2;
-  if(jpx_branding_)
-    cl[1] = JP2_JPX;
+  if(jph_branding)
+  {
+    /* ISO/IEC 15444-15: a JPH file's compatibility list is 'jph ' only
+       (matches the OpenHTJ2K reference writer; a Part-1 reader cannot
+       decode an HT codestream, so 'jp2 ' would be a false claim). */
+    cl[0] = JP2_JPH;
+  }
+  else
+  {
+    cl[0] = JP2_JP2;
+    if(jpx_branding_)
+      cl[1] = JP2_JPX;
+  }
 
   /* Image Header box */
   numcomps = inputImage_->numcomps; /* NC */
