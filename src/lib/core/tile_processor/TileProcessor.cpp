@@ -1687,6 +1687,17 @@ void TileProcessor::scheduleAndRunDecompress(CoderPool* coderPool, Rect32 unredu
     tileHeaderParseFlow_->addTo(*rootFlow_);
     tileHeaderParseFlow_->conditional_precede(rootFlow_.get(), prepareFlow_.get(),
                                               condition_lambda);
+
+    // The parse/prepare flows carry one-shot tasks (parseHeader, TileComponent::init)
+    // populated for THIS submission only.  Consume them now by moving them into the
+    // in-flight holding pen: they stay alive there for the run below and are freed by
+    // the next submission's waitAndClear() + staleParsing_.clear().  This guarantees a
+    // second submission of the same tile that does not re-parse cannot compose and
+    // re-run these already-completed tasks — which previously double-executed
+    // parseHeader / TileComponent::init, causing double-free / use-after-free.
+    // (prepareConcurrentParsing() recreates fresh empty flows on the next parse.)
+    staleParsing_.push_back(std::move(tileHeaderParseFlow_));
+    staleParsing_.push_back(std::move(prepareFlow_));
   }
 
   concurrentFlowsStale_ = true;
