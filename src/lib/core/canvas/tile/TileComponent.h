@@ -218,6 +218,24 @@ struct TileComponent : public Rect32
       return false;
     }
 
+    // Defense-in-depth: window construction relies on Rect::toRelative(), whose
+    // precondition is that coordinates lie at or beyond their origin.  A malformed
+    // stream can produce a resolution rect that violates this (or is otherwise
+    // ill-formed); reject it up front rather than risk undefined behaviour once
+    // asserts are compiled out.  (Empty/degenerate-but-consistent resolutions are
+    // legal and intentionally NOT rejected here.)
+    for(uint8_t r = 0; r < num_resolutions_; ++r)
+    {
+      auto& res = resolutions_[r];
+      if(!res.valid() || res.x0 < res.origin_x0 || res.y0 < res.origin_y0)
+      {
+        grklog.error("Invalid tile-component geometry at resolution %u "
+                     "(%u,%u,%u,%u) origin (%u,%u)",
+                     r, res.x0, res.y0, res.x1, res.y1, res.origin_x0, res.origin_y0);
+        return false;
+      }
+    }
+
     return true;
   }
 

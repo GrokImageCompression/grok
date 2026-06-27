@@ -147,6 +147,14 @@ private:
               (resWindowBuffer_->y0 == 0 ? 0 : ceildivpow2<uint32_t>(resWindowBuffer_->y0 - i, 1));
           split.y1 =
               (resWindowBuffer_->y1 == 0 ? 0 : ceildivpow2<uint32_t>(resWindowBuffer_->y1 - i, 1));
+          // The vertical split halves y0/y1; the y-origin must be carried into the
+          // same halved coordinate space, otherwise split.toRelative() underflows
+          // (y0 < origin_y0) whenever the resolution window has a non-zero origin.
+          // For the common relative-coordinate case (origin_y0 == 0) this is a no-op.
+          split.origin_y0 =
+              (resWindowBuffer_->origin_y0 == 0
+                   ? 0
+                   : ceildivpow2<uint32_t>(resWindowBuffer_->origin_y0 - i, 1));
           resWindowBufferSplit_[i] = new Buf2dAligned(split);
           resWindowBufferSplitREL_[i] = new Buf2dAligned(split.toRelative());
         }
