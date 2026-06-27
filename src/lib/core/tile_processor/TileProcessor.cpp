@@ -701,12 +701,12 @@ bool TileProcessor::parseTilePart(std::vector<std::unique_ptr<MarkerParser>>* pa
 {
   bool concurrent = parsers && bifurcatedStream;
   std::shared_ptr<IStream> streamGuard;
-  std::shared_ptr<bool> owned_by_parser;
+  std::shared_ptr<std::atomic<bool>> owned_by_parser;
   if(concurrent)
   {
-    owned_by_parser = std::make_shared<bool>(false);
+    owned_by_parser = std::make_shared<std::atomic<bool>>(false);
     streamGuard = std::shared_ptr<IStream>(bifurcatedStream, [owned_by_parser](IStream* p) {
-      if(!*owned_by_parser)
+      if(!owned_by_parser->load())
         delete p;
     });
   }
@@ -717,14 +717,20 @@ bool TileProcessor::parseTilePart(std::vector<std::unique_ptr<MarkerParser>>* pa
     auto tpi = tilePartInfo;
     auto parser = markerParser_;
     auto id = TFSingleton::workerId();
-    threadTilePart_[id] = tpi.tilePart_;
     if(concurrent)
     {
+      // A bifurcated tile-part stream must be parsed by exactly one parser.
+      // Claim ownership atomically: if this task is ever dispatched more than
+      // once, only the first runner takes the stream; any duplicate is a no-op.
+      // This prevents two parsers owning (and later double-freeing) one stream.
+      bool expected = false;
+      if(!owned_by_parser->compare_exchange_strong(expected, true))
+        return;
       parser = (*parsers)[id].get();
       setProcessors(parser);
       parser->setStream(bifurcatedStream, true);
-      *owned_by_parser = true;
     }
+    threadTilePart_[id] = tpi.tilePart_;
     parser->synch(mainMarkerId);
 
     // 1. read tile markers from stream until SOD or EOC
