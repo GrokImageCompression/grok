@@ -1411,10 +1411,14 @@ int GrkDecompress::postProcess(grk_plugin_decompress_callback_info* info)
 cleanup:
   // GPU decode path: component data pointers were replaced with pool buffer pointers
   // in deviceToHostMapped. Null them to prevent TileCache from freeing pool memory.
+  // GRK_DECODE_POST_T1 is also set for normal CPU decodes (GRK_DECODE_ALL), so only
+  // null buffers the image does NOT own: GPU pool buffers are owns_data==false, while
+  // image-owned heap buffers (e.g. palette expansion) must be freed by the destructor.
   if(info->decompress_flags & GRK_DECODE_POST_T1 && info->image)
   {
     for(uint32_t i = 0; i < info->image->numcomps; ++i)
-      info->image->comps[i].data = nullptr;
+      if(!info->image->comps[i].owns_data)
+        info->image->comps[i].data = nullptr;
   }
   grk_object_unref(info->codec);
   info->codec = nullptr;
