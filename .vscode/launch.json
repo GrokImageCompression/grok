@@ -896,7 +896,7 @@
             "args": [
                 //"${workspaceFolder}/build/bin/grk_decompress",
                 "-i",
-                "$HOME/temp/clusterfuzz-testcase-minimized-grk_decompress_fuzzer-4717825607663616",
+                "$HOME/temp/clusterfuzz-testcase-minimized-grk_decompress_fuzzer-6266225987223552",
                 "-d 0,0,1024,1024",
                  "-o",
                 "$HOME/temp/fuzz.pgx"

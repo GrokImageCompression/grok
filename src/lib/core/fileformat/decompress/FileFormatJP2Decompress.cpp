@@ -246,12 +246,18 @@ bool FileFormatJP2Decompress::postProcess(GrkImage* img)
     for(uint16_t i = 0; i < n; ++i)
     {
       uint16_t channel = info[i].channel;
-      // auto img = codeStream->getImage();
-      if(!hasPalette && channel >= img->numcomps)
+      if(channel >= img->numcomps)
       {
-        grklog.error("channel definition: channel=%u must be strictly less than numcomps=%u",
-                     channel, img->numcomps);
-        return false;
+        // Without a palette this is a hard error; with a palette the cdef
+        // channel may reference a palette channel that is not a materialized
+        // image component, so skip rather than writing out of bounds.
+        if(!hasPalette)
+        {
+          grklog.error("channel definition: channel=%u must be strictly less than numcomps=%u",
+                       channel, img->numcomps);
+          return false;
+        }
+        continue;
       }
       img->comps[channel].type = (GRK_CHANNEL_TYPE)info[i].typ;
     }
