@@ -29,7 +29,9 @@
 #ifdef _WIN32
 #include <malloc.h>
 #include <windows.h>
-#elif defined(__linux__)
+#elif defined(__GLIBC__)
+// malloc_trim is a glibc extension; musl (e.g. Alpine) has neither the
+// declaration nor the symbol.
 #include <malloc.h>
 #endif
 
@@ -77,7 +79,7 @@ public:
 
   static void releaseFreedPages()
   {
-#ifdef __linux__
+#if defined(__GLIBC__)
     malloc_trim(0);
 #elif defined(_WIN32)
     HeapCompact(GetProcessHeap(), 0);

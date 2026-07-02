@@ -17,6 +17,15 @@
 
 #pragma once
 
+// byteswap.h must be included at file scope: musl defines its bswap_* as
+// static inline functions, and including the header inside a function body
+// (as was done below) creates illegal nested function definitions on musl.
+// glibc's are macros/builtins, which is why the in-body include only broke
+// on Alpine/musl.
+#if defined(__linux__) || defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__)
+#include <byteswap.h>
+#endif
+
 namespace grk
 {
 
@@ -65,8 +74,7 @@ void grk_read(const uint8_t* src, TYPE* value, uint32_t numBytes)
     *value = (TYPE)_byteswap_ushort((uint16_t)*value);
   }
 #elif defined(__linux__) || defined(__FreeBSD__) || defined(__NetBSD__) || \
-    defined(__OpenBSD__) // POSIX with byteswap.h
-#include <byteswap.h>
+    defined(__OpenBSD__) // POSIX with byteswap.h (included at file scope)
   if(numBytes == 8)
   {
     *value = (TYPE)bswap_64((uint64_t)*value);
