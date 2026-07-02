@@ -175,3 +175,38 @@ jobs:
       with:
         files: build/grok-${{ matrix.os }}.zip
 
+  # Static musl build to guard against glibc-only assumptions (see issue #413).
+  # Runs on an ubuntu runner via an Alpine container: actions/checkout cannot
+  # run directly in an Alpine container because the runner's bundled Node is
+  # glibc-linked and will not execute under musl.
+  build-alpine-musl:
+    name: build-alpine-musl (static)
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: true
+    - name: static build + smoke test in Alpine (musl) container
+      run: |
+        docker run --rm -v "$PWD":/src -w /src alpine:3.20 sh -c '
+          set -e
+          apk add --no-cache build-base cmake git bash perl nasm linux-headers python3
+          cmake -S . -B build-alpine \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DBUILD_SHARED_LIBS=OFF \
+            -DBUILD_TESTING=OFF \
+            -DGRK_ENABLE_LIBCURL=OFF \
+            -DGRK_BUILD_CODEC=ON \
+            -DCMAKE_EXE_LINKER_FLAGS=-static
+          cmake --build build-alpine -j"$(nproc)"
+          if ldd build-alpine/bin/grk_compress >/dev/null 2>&1; then
+            echo "ERROR: grk_compress is not statically linked"; exit 1
+          fi
+          echo "confirmed fully static musl binary"
+          printf "P5\n2 2\n255\n" > /tmp/t.pgm
+          printf "\x00\x40\x80\xc0" >> /tmp/t.pgm
+          ./build-alpine/bin/grk_compress -i /tmp/t.pgm -o /tmp/t.jp2
+          ./build-alpine/bin/grk_decompress -i /tmp/t.jp2 -o /tmp/out.pgm
+          echo "PNM round-trip OK on musl"
+        '
+
