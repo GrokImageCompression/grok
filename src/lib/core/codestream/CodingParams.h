@@ -321,6 +321,8 @@ struct TileCodingParams
   uint32_t numMaxMccRecords_ = 0;
   /** If cod == true --> there was a COD marker for the present tile */
   uint32_t cod_ = 0;
+  /** true once a COC marker has been read (per-component coding style) */
+  bool sawCoc_ = false;
   /** If ppt == true --> there was a PPT marker for the present tile */
   bool ppt_ = false;
   Quantizer* qcd_ = nullptr;
