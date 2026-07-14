@@ -1,0 +1,24 @@
+# Vendored in-tree under grok. The empty [workspace] table keeps mercury as
+# its own workspace root (own Cargo.lock/deps) rather than being pulled into
+# grok's root workspace at ../Cargo.toml.
+[workspace]
+
+[package]
+name = "mercury"
+version = "0.1.0"
+edition = "2024"
+description = "Pure-Rust JPEG 2000 Part 1 streaming decode engine, embedded in Grok (libgrokj2k)"
+
+[lib]
+crate-type = ["lib", "staticlib"]
+
+[features]
+# The only build mode: the embedding codec (Grok) compiles native/ against
+# its own Highway tree, so build.rs emits no C++ and the kernel symbols
+# resolve at the final C++ link. Grok builds this crate with
+#   cargo build --lib --no-default-features --features extern-kernels
+default = ["extern-kernels"]
+extern-kernels = []
+
+[dependencies]
+thiserror = "2"

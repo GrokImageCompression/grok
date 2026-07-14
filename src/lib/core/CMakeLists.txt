@@ -184,6 +184,7 @@ set(GROK_LIBRARY_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/part1/block_coder/BlockCoderDec.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/part1/block_coder/BlockCoderEnc.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/part1/Coder.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/part1/mercury_t1_shim.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/part1/block_coder/mqcoder/mqc.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/part1/block_coder/mqcoder/mqc_base.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/part1/block_coder/mqcoder/mqc_backup.cpp
@@ -277,6 +278,44 @@ if(UNIX)
   target_link_libraries(${GROK_CORE_NAME} PUBLIC ${CMAKE_THREAD_LIBS_INIT})
 endif(UNIX)
 target_link_libraries(${GROK_CORE_NAME} PRIVATE hwy ${LCMS_LIBNAME})
+
+# LOCAL-ONLY: mercury streaming fast path — compile mercury's DWT kernels
+# against grok's Highway (byte-identical vs mercury's vendored 1.4.0, gated
+# 2026-07-13) and link the extern-kernels mercury staticlib. The mercury
+# source is vendored in-tree under ${CMAKE_SOURCE_DIR}/mercury; the staticlib
+# is built from it by cargo as part of this build (see mercury_lib below), so
+# building grok also builds libmercury.a — no separate cargo step.
+set(MERCURY_DIR ${CMAKE_SOURCE_DIR}/mercury)
+set(MERCURY_LIB ${MERCURY_DIR}/target-grok/release/libmercury.a)
+
+find_program(CARGO_EXECUTABLE cargo REQUIRED)
+file(GLOB_RECURSE MERCURY_RUST_SRCS CONFIGURE_DEPENDS ${MERCURY_DIR}/src/*.rs)
+add_custom_command(
+  OUTPUT ${MERCURY_LIB}
+  COMMAND ${CARGO_EXECUTABLE} build --release --lib
+          --no-default-features --features extern-kernels
+          --target-dir ${MERCURY_DIR}/target-grok
+  WORKING_DIRECTORY ${MERCURY_DIR}
+  DEPENDS ${MERCURY_RUST_SRCS}
+          ${MERCURY_DIR}/Cargo.toml ${MERCURY_DIR}/Cargo.lock ${MERCURY_DIR}/build.rs
+  COMMENT "Building mercury staticlib (cargo)"
+  VERBATIM)
+add_custom_target(mercury_lib DEPENDS ${MERCURY_LIB})
+add_dependencies(${GROK_CORE_NAME} mercury_lib)
+
+set(MERCURY_KERNEL_SRCS
+  ${MERCURY_DIR}/native/transform/hwy_dwt.cpp
+  ${MERCURY_DIR}/native/transform/mercury_dwt_bridge.cpp)
+target_sources(${GROK_CORE_NAME} PRIVATE
+  ${MERCURY_KERNEL_SRCS}
+  ${CMAKE_CURRENT_SOURCE_DIR}/mercury_fastpath.cpp)
+set_source_files_properties(${MERCURY_KERNEL_SRCS} PROPERTIES
+  COMPILE_OPTIONS "-O2;-msse2;-std=gnu++23;-w"
+  COMPILE_DEFINITIONS "HWY_STATIC_DEFINE;TOOLCHAIN_MISS_ASM_HWCAP_H;NDEBUG"
+  INCLUDE_DIRECTORIES "${MERCURY_DIR}/native;${CMAKE_CURRENT_SOURCE_DIR}/highway")
+set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/mercury_fastpath.cpp PROPERTIES
+  INCLUDE_DIRECTORIES "${MERCURY_DIR}/include")
+target_link_libraries(${GROK_CORE_NAME} PRIVATE ${MERCURY_LIB} dl)
 if(GRK_USE_SCX_SCHEDULING)
   target_link_libraries(${GROK_CORE_NAME} PRIVATE scx_scheduling)
   target_include_directories(${GROK_CORE_NAME} PRIVATE "${SCX_SCHEDULING_DIR}/src/scheduling")
